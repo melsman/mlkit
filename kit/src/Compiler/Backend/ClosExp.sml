@@ -205,8 +205,8 @@ struct
 								       finish="]sclos " ^ (flatten1(pr_sma alloc)),
 								       childsep=RIGHT ",",
 								       children= map layout_ce (rhos@excons@lvs)}
-      | layout_ce(RECORD{elems,alloc,tag}) = HNODE{start="[",
-						   finish="] " ^ (flatten1(pr_sma alloc)),
+      | layout_ce(RECORD{elems,alloc,tag}) = HNODE{start="(",
+						   finish=") " ^ (flatten1(pr_sma alloc)),
 						   childsep=RIGHT ",",
 						   children= map layout_ce elems}
       | layout_ce(SELECT(i,ce)) = HNODE{start="#" ^ Int.toString i ^ "(",

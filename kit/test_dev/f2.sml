@@ -3,7 +3,7 @@ let
   infix  3  := o
   infixr 5  :: @
   fun !(x: 'a ref): 'a = prim ("!", "!", x) 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 
   fun printNum (i:int) : unit = prim("printNum", "printNum", i)
 

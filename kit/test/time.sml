@@ -28,7 +28,7 @@ val _ = print "\nFile time.sml: Testing structure Time...\n"
 local 
     fun fib n = if n<2 then 1 else fib(n-1) + fib(n-2);
     open Time
-    val bigt = fromSeconds 987654321 + fromMicroseconds 500012;
+    val bigt = fromSeconds (*9 2001-01-05, Niels????*) 87654321 + fromMicroseconds 500012;
     val litt = fromSeconds 454 + fromMicroseconds 501701
 
 val test1 = 
@@ -40,7 +40,7 @@ val test2a =
 	   andalso zeroTime = fromMilliseconds 0
 	   andalso zeroTime = fromMicroseconds 0);
 val test2b = 
-    tst' "test2b" (fn _ => toSeconds bigt = 987654321
+    tst' "test2b" (fn _ => toSeconds bigt = (*9 2001-01-05, Niels???to big for tag*) 87654321
 	   andalso toSeconds litt = 454
 	   andalso toMilliseconds litt = 454501
 	   andalso toMicroseconds litt = 454501701);

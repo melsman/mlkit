@@ -1,8 +1,6 @@
 Group is
 
 ../Common/common.cm
-C_CONST.sml   (* are these two used? *)
-CConst.sml
 
 Lambda/CON.sml
 Lambda/Con.sml
@@ -14,9 +12,6 @@ Lambda/Lvars.sml
 Lambda/COMPILER_ENV.sml
 COMPILE_BASIS.sml
 COMP_BASIS.sml
-
-Kam/ADDRESS_LABELS.sml
-Kam/AddressLabels.sml
 
 Lambda/CompilerEnv__dummy.sml
 CompileBasis__dummy.sml
@@ -41,6 +36,8 @@ Lambda/EliminateEq.sml
 Lambda/COMPILE_DEC.sml
 Lambda/CompileDec.sml
 
+Regions/REG_CONST.sml
+Regions/RegConst.sml
 Regions/AT_INF.sml
 Regions/AtInf.sml
 Regions/DROP_REGIONS.sml
@@ -72,30 +69,13 @@ Regions/SpreadExpression.sml
 Regions/TestSpreadDataType.sml
 Regions/TestSpreadExp.sml
 
-Kam/PHYS_SIZE_INF.sml
-Kam/PhysSizeInf.sml
-Kam/REGION_FLOW_GRAPH_PROFILING.sml
-Kam/RegionFlowGraphProfiling.sml
-
-(*
- Kam/COMP_LAMB.sml
- Kam/COMP_LAMB_ENV.sml
- Kam/CompLamb.sml
- Kam/CompLambEnv.sml
- 
- Kam/KAM_BACKEND.sml
- 
- Kam/KAM_VAR.sml
- Kam/KIT_ABSTRACT_MACHINE.sml
- Kam/KamVar.sml
- 
- Cfg/CFG_INFO.sml
- Cfg/CFG_INST.sml
- Cfg/CfgInst.sml
- Cfg/CfgKitAM.sml
- Cfg/TRANSFORM_KBP.sml
- Cfg/TransformKbp.sml
-*)
+(* For all backends *)
+Regions/ADDRESS_LABELS.sml
+Regions/AddressLabels.sml
+Regions/PHYS_SIZE_INF.sml
+Regions/PhysSizeInf.sml
+Regions/REGION_FLOW_GRAPH_PROFILING.sml
+Regions/RegionFlowGraphProfiling.sml
 
 (* Bytecode Backend *)
 Backend/KAM/KAM.sml
@@ -142,7 +122,6 @@ Backend/X86/INSTS_X86.sml
 Backend/X86/InstsX86.sml
 
 (* HPPA Backend *)
-(* Backend/HpPaRisc/BackendInfo.sml *)
 Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
 Backend/HpPaRisc/HppaResolveJumps.sml
 Backend/HpPaRisc/HpPaDelaySlotOptimization.sml

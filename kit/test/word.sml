@@ -89,7 +89,7 @@ val _ = pr_ln "test9a" test9a
 val test9b = checkrange (32,65)
     (fn k => 0 = w2i (<< (i2w 1, i2w k)));
 val _ = pr_ln "test9b" test9b
-val test9c = check (maxnegint = w2i (<< (i2w 1, i2w 31)));
+val test9c = check (maxnegint = w2i (<< (i2w 1, i2w (wordSize-1)))); (* wordSize-1 was 31 14/04/1999, Niels *)
 val _ = pr_ln "test9c" test9c
 val test9d = checkrange (0, 1025)
     (fn i => 2 * i = w2i (<< (i2w i, i2w 1)));

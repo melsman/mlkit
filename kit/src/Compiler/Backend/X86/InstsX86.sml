@@ -51,6 +51,8 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | addl of ea * ea
       | subl of ea * ea
       | negl of ea
+      | decl of ea
+      | incl of ea
       | imull of ea * ea
       | notl of ea
       | orl of ea * ea
@@ -161,6 +163,8 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	       | addl a => emit_bin("addl", a)
 	       | subl a => emit_bin("subl", a)
 	       | negl ea => emit_unary("negl", ea)
+  	       | decl ea => emit_unary("decl", ea)
+  	       | incl ea => emit_unary("incl", ea)
 	       | imull a => emit_bin("imull", a)
 	       | notl ea => emit_unary("notl", ea)
 	       | orl a => emit_bin("orl", a)

@@ -1,5 +1,12 @@
-(*
+infix  7  * / div mod
+infix  6  + - ^
+infixr 5  :: @
+infix  4  = <> > >= < <=
+infix  3  := o
+infix  0  before
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
   fun printReal (n:real):unit = prim("printReal","printReal",n)
+fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 
   infix ==
   val epsilon = 0.000666 
@@ -16,7 +23,7 @@
   val b = (4.0 + 3.0 == 7.0)
   val _ = if b then print "True" else print "False"
   val _ = error (4.0 + 3.0 == 7.0) "+"
-*)
+
   val b = 4.0 < 3.0
 
   val _ = if b then print "ERROR" else print "OK"

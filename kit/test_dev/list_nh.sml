@@ -1,7 +1,7 @@
 
 let
 
-  fun print (s:string):unit = prim ("printString","printString",s)
+  fun print (s:string):unit = prim ("printStringML","printStringML",s)
   fun printNum (s:int):unit = prim ("printNum","printNum",s)
 
   datatype Name =

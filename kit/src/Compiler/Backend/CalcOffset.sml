@@ -150,26 +150,34 @@ struct
     fun assign_binders(binders,offset) =
       let
 	fun assign_binder(((place,phsize as PhysSizeInf.INF),_),offset) = 
-	  let val obj_size = BI.size_of_reg_desc()
-	      val ann_offset = if BI.down_growing_stack then offset+obj_size-1
-			       else offset
-	  in (((place,phsize),ann_offset),offset++obj_size)
+	  let 
+	    val obj_size = BI.size_of_reg_desc()
+	    val ann_offset = if BI.down_growing_stack then offset+obj_size-1 else offset
+	  in 
+	    (((place,phsize),ann_offset),offset++obj_size)
 	  end
 	  | assign_binder(((place,phsize as PhysSizeInf.WORDS i),_),offset) = 
-	  if LS.is_region_real place andalso BI.double_alignment_required then
-	    let val offset' = double_align_offset offset
-	    in (((place,phsize),offset'),offset'++i)   (* Double Align finite regions with runtime type REAL; 
-							* +2 necessary for tagging hack 11/01/1999, Niels hmm 
-							* we must correct PSI such that this isn't necessary, 
-							* function psi_tr *)
+	    let 
+	      val offset' = 
+		if LS.is_region_real place andalso BI.double_alignment_required then
+		  double_align_offset offset
+		else
+		  offset
+	      val ann_offset = 
+		if BI.down_growing_stack then 
+		  offset'+i-1
+		else 
+		  offset'
+	    in 
+	      (((place,phsize),ann_offset),offset'++i) 
 	    end
-	  else
-	    let val obj_size = i+1    (* +1 necessary for tagging hack 11/01/1999, 
+(*	  else
+	    let val obj_size = i(*+1*) (*psi_tr updated 2001-01-18, Niels*)    (* +1 necessary for tagging hack 11/01/1999, 
 				       * Niels, we should correct this in PSI, function psi_tr *)
 	        val ann_offset = if BI.down_growing_stack then offset+obj_size-1 (*offset+(1-obj_size)*)
 				 else offset
 	    in (((place,phsize),ann_offset),offset++obj_size) 
-	    end
+	    end*)
       in
 	foldr (fn (binder,(acc,offset)) => 
 	       let
@@ -183,8 +191,10 @@ struct
       let
 	fun assign_sty(IFF.STACK_STY lv,LVmap,PHmap,offset) = (STACK_STY(lv,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
 	  | assign_sty(IFF.PHREG_STY(lv,phreg),LVmap,PHmap,offset) = (PHREG_STY(lv,phreg),LVmap,PHmap,offset)
-	  | assign_sty(IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) = (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_lv(PHmap,offset,phreg),offset++1)
-	  | assign_sty(IFF.FLUSHED_CALLER_STY(lv,phreg),LVmap,PHmap,offset) = (FLUSHED_CALLER_STY(lv,phreg,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
+	  | assign_sty(IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) = 
+	      (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_lv(PHmap,offset,phreg),offset++1)
+	  | assign_sty(IFF.FLUSHED_CALLER_STY(lv,phreg),LVmap,PHmap,offset) = 
+	      (FLUSHED_CALLER_STY(lv,phreg,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
 	  | assign_sty(IFF.FV_STY lv,LVamp,PHmap,offset) = (FV_STY lv,LVmap,PHmap,offset)
       in
 	foldl (fn (sty,(stys_acc,LVmap,PHmap,offset)) =>
@@ -206,8 +216,10 @@ struct
 
     fun CO_lss([],LVmap,PHmap,offset,acc) = acc
       | CO_lss(LS.ASSIGN a::lss,LVmap,PHmap,offset,acc) = LS.ASSIGN a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FLUSH(atom,_)::lss,LVmap,PHmap,offset,acc) = LS.FLUSH(atom,assign_offset_atom(atom,LVmap,PHmap))::CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FETCH(atom,_)::lss,LVmap,PHmap,offset,acc) = LS.FETCH(atom,assign_offset_atom(atom,LVmap,PHmap))::CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.FLUSH(atom,_)::lss,LVmap,PHmap,offset,acc) = 
+          LS.FLUSH(atom,assign_offset_atom(atom,LVmap,PHmap))::CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.FETCH(atom,_)::lss,LVmap,PHmap,offset,acc) = 
+          LS.FETCH(atom,assign_offset_atom(atom,LVmap,PHmap))::CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.FNJMP a::lss,LVmap,PHmap,offset,acc) = LS.FNJMP a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.FNCALL a::lss,LVmap,PHmap,offset,acc) = LS.FNCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.JMP a::lss,LVmap,PHmap,offset,acc) = LS.JMP a :: CO_lss(lss,LVmap,PHmap,offset,acc)
@@ -238,10 +250,14 @@ struct
 		  handl_return=(handl_return',handl_return_lv,bv),offset=ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_S sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_S,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_C sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_C,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_E sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_E,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = 
+          CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.SWITCH_S sw::lss,LVmap,PHmap,offset,acc) = 
+          CO_sw(CO_lss,LS.SWITCH_S,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.SWITCH_C sw::lss,LVmap,PHmap,offset,acc) = 
+          CO_sw(CO_lss,LS.SWITCH_C,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.SWITCH_E sw::lss,LVmap,PHmap,offset,acc) = 
+          CO_sw(CO_lss,LS.SWITCH_E,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.RESET_REGIONS a::lss,LVmap,PHmap,offset,acc) = LS.RESET_REGIONS a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.PRIM a::lss,LVmap,PHmap,offset,acc) = LS.PRIM a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.CCALL a::lss,LVmap,PHmap,offset,acc) = LS.CCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
@@ -300,19 +316,19 @@ struct
       fun new_fun_nr() = (local_fun_nr := !local_fun_nr+1; Word32.fromInt (!local_fun_nr-1))
     end
 
-    (* We have an environment LVenv mapping variables to their offsets in the activation record          *)
-    (* -- A spilled variable may be live at an application                                               *)
-    (* -- A variable mapped into a caller save register and never flused is never live at an application *)
-    (* -- A variable mapped into a caller save register and flused may be live at an application         *)
-    (* -- A variable mapped into a callee save register is not considered yet!                           *)
-    fun add_sty(STACK_STY(lv,offset),LVmap) = LvarFinMap.add(lv,offset,LVmap) 
-      | add_sty(PHREG_STY(lv,phreg),LVmap) = LVmap 
-      | add_sty(FLUSHED_CALLEE_STY(phreg,offset),LVmap) = LVmap
-      | add_sty(FLUSHED_CALLER_STY(lv,phreg,offset),LVmap) = LvarFinMap.add(lv,offset,LVmap)
-      | add_sty(FV_STY lv,LVmap) = LVmap
+    (* We have an environment LVenv mapping variables to their offsets in the activation record           *)
+    (* -- A spilled variable may be live at an application                                                *)
+    (* -- A variable mapped into a caller save register and never flushed is never live at an application *)
+    (* -- A variable mapped into a caller save register and flushed may be live at an application         *)
+    (* -- A variable mapped into a callee save register is not considered yet!                            *)
+    fun add_sty(STACK_STY(lv,offset),size_cc,LVmap) = LvarFinMap.add(lv,offset+size_cc,LVmap) 
+      | add_sty(PHREG_STY(lv,phreg),size_cc,LVmap) = LVmap 
+      | add_sty(FLUSHED_CALLEE_STY(phreg,offset),size_cc,LVmap) = LVmap
+      | add_sty(FLUSHED_CALLER_STY(lv,phreg,offset),size_cc,LVmap) = LvarFinMap.add(lv,offset+size_cc,LVmap)
+      | add_sty(FV_STY lv,size_cc,LVmap) = LVmap
 
-    fun add_stys([],LVmap) = LVmap
-      | add_stys(sty::rest,LVmap) = add_stys(rest,add_sty(sty,LVmap))
+    fun add_stys([],size_cc,LVmap) = LVmap
+      | add_stys(sty::rest,size_cc,LVmap) = add_stys(rest,size_cc,add_sty(sty,size_cc,LVmap))
 
     fun lookup_lvs(LVmap,[]) = []
       | lookup_lvs(LVmap,lv::lvs) =
@@ -323,8 +339,9 @@ struct
     fun lvset_difference(lv_set,lv_list,LVmap) = foldr (fn (offset,set) => IntSet.remove offset set) lv_set (lookup_lvs(LVmap,lv_list))
     fun lvset_add(lv_set,lv_list,LVmap) = foldr (fn (offset,set) => IntSet.insert offset set) lv_set (lookup_lvs(LVmap,lv_list))
 
-    fun gen_bitvector(L_set,size_ff) =
+    fun gen_bitvector(L_set,size_ccf,size_rcf,size_ff) =
       let
+	val size_fd = size_ff+size_ccf+size_rcf+1 (* +1 for return address *)
 	val w0 = Word32.fromInt 0
 	fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
 	fun pws ws = app pw ws
@@ -340,10 +357,10 @@ struct
 	    word::gen_words(offset::offsets,adjust+32,Word32.fromInt 0)
 
 	val num_words = 
-	  if size_ff mod 32 = 0 then
-	    size_ff div 32
+	  if size_fd mod 32 = 0 then
+	    size_fd div 32
 	  else
-	    (size_ff div 32)+1
+	    (size_fd div 32)+1
 	fun postfix_words l =
 	  if length l < num_words then
 	    postfix_words(l@[Word32.fromInt 0])
@@ -351,11 +368,12 @@ struct
 	    l
 
 	val ws = postfix_words(gen_words(offsets_in_bitvector_sorted,0,w0))
-(*	val _ = app (fn off => print ("Offset " ^ Int.toString off ^ "\n")) offsets_in_bitvector_sorted
+(*	val _ = app (fn off => print ("Offset " ^ Int.toString off ^ "\n")) offsets_in_bitvector_sorted 
 	val _ = pws ws
-	val _ = print ("size_ff is " ^ Int.toString size_ff ^ " and num_words is " ^ Int.toString num_words ^ "\n")*)
+	val _ = print ("size_fd is " ^ Int.toString size_fd ^ " and num_words is " ^ Int.toString num_words ^ "\n")*)
       in
-        new_fun_nr() :: (Word32.fromInt size_ff) :: ws
+	(* FunNr :: offsetToReturn :: fdSize :: frameMap *)
+        new_fun_nr() :: (Word32.fromInt (size_ff+size_ccf)) :: (Word32.fromInt size_fd) :: ws
       end
 
     fun CBV_sw(CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
@@ -376,8 +394,9 @@ struct
 	 gen_sw(LS.SWITCH(atom,sels',default'))::lss')
       end
 
-    fun CBV_lss (lss,size_ff) =
+    fun CBV_lss (lss,size_ccf,size_rcf,size_ff,LVenv_cc) =
       let 
+	val size_cc = size_ccf + size_rcf + 1 (* +1 for return address *)
 	fun CBV_lss'([],LVenv,L_set) = (L_set,[])
 	  | CBV_lss'(ls::lss,LVenv,L_set) =
 	  (case ls of
@@ -386,7 +405,7 @@ struct
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
-		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
 		 LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
@@ -399,7 +418,7 @@ struct
 
 (*		 val _ = print (LS.pr_line_stmt pr_sty pr_offset pr_atom false ls)
 		 val _ = print "\n"*)
-		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
 		 LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
@@ -409,7 +428,7 @@ struct
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
-		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
 		 LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
@@ -419,7 +438,7 @@ struct
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
-		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
 		 LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
@@ -435,20 +454,22 @@ struct
 	   | LS.SCOPE{pat,scope} =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (L_set_scope,scope') = CBV_lss'(scope,add_stys(pat,LVenv),L_set')
+		 val (L_set_scope,scope') = CBV_lss'(scope,add_stys(pat,size_cc,LVenv),L_set')
 	       in
 		 (L_set_scope,
 		  LS.SCOPE{pat=pat,scope=scope'}::lss')
 	       end
 	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),offset} =>
-	       (* Pointer to handle closure is at offset+1, see CodeGen.sml *)
+	       (* Pointer to handle closure is at offset+1, see CodeGen.sml - for upgrowing stacks *)
+	       (* Pointer to handle closure is at offset-1, see CodeGenX86.sml - for down growing stacks *)
 	       let
+		 val handle_lv_offset = if BI.down_growing_stack then offset - 1 + size_cc else offset + 1 + size_cc
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (L_set_handl_return,handl_return') = CBV_lss'(handl_return,LVenv,
 								   lvset_difference(L_set',LS.get_lvar_atom(handl_return_lv,[]),LVenv))            (* Handler is dead in handlreturn code *)
-		 val bv_handl_return = gen_bitvector(L_set_handl_return,size_ff)
-		 val (L_set_default,default') = CBV_lss'(default,LVenv,IntSet.insert (offset+1) L_set')  (* Handler is live in default code *)
-		 val (L_set_handl,handl') = CBV_lss'(handl,LVenv,IntSet.remove (offset+1) L_set_default) (* Handler is dead in handl code *)
+		 val bv_handl_return = gen_bitvector(L_set_handl_return,size_ccf,size_rcf,size_ff)
+		 val (L_set_default,default') = CBV_lss'(default,LVenv,IntSet.insert handle_lv_offset L_set')  (* Handler is live in default code *)
+		 val (L_set_handl,handl') = CBV_lss'(handl,LVenv,IntSet.remove handle_lv_offset L_set_default) (* Handler is dead in handl code *)
 	       in
 		 ((*IntSet.insert (offset+1)*) L_set_handl ,
 		  LS.HANDLE{default=default',
@@ -489,7 +510,7 @@ struct
 		  ls::lss')
 	       end)
       in
-	#2(CBV_lss'(lss,LvarFinMap.empty,IntSet.empty))
+	#2(CBV_lss'(lss,LVenv_cc,IntSet.empty))
       end
 
     (*********************************)
@@ -497,10 +518,18 @@ struct
     (*********************************)
     fun do_top_decl gen_fn (lab,cc,lss) =
       let
-	val size_cc = CallConv.get_cc_size cc
-	val _ = if size_cc <> 1 then die "do_top_decl: CC not of size 1" else () (* For now we assume all variables are passed in machine registers *)
+	(* size_fd = size_cc + size_ff *)
+	val size_rcf = CallConv.get_rcf_size cc
+	val size_ccf = CallConv.get_ccf_size cc
+	val size_cc = CallConv.get_cc_size cc (* incl. return label *)
 	val size_ff = CallConv.get_frame_size cc
-	val lss_cbv = CBV_lss(lss,size_ff)
+	val args_on_stack_cc = CallConv.get_spilled_args_with_offsets cc
+	val LVenv_cc = List.foldl (fn ((lv,offset),LVenv) => LvarFinMap.add(lv,offset+size_cc,LVenv)) 
+                                     LvarFinMap.empty args_on_stack_cc 
+	val res_on_stack_cc = CallConv.get_spilled_res_with_offsets cc
+	val LVenv_cc = List.foldl (fn ((lv,offset),LVenv) => LvarFinMap.add(lv,offset+size_cc,LVenv)) 
+                                     LVenv_cc res_on_stack_cc 
+	val lss_cbv = CBV_lss(lss,size_ccf,size_rcf,size_ff,LVenv_cc)
       in
 	gen_fn(lab,cc,lss_cbv)
       end

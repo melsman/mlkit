@@ -1,6 +1,6 @@
 let
   infixr 5  :: @
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
   datatype l = 
     L of string
   | LL of string

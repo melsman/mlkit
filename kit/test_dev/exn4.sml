@@ -1,6 +1,6 @@
 
-fun print (s:string) : unit = prim("printString", "printString", s)
-fun exnName (e: exn) : string = prim("exnName", "exnNameProfiling", e)   (* exomorphic by copying *)
+fun print (s:string) : unit = prim("printStringML", "printStringML", s)
+fun exnName (e: exn) : string = prim("exnNameML", "exnNameProfilingML", e)   (* exomorphic by copying *)
 
 exception ThisIsAnException
 infix ::

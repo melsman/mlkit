@@ -40,6 +40,8 @@ signature INSTS_X86 =
     | addl of ea * ea
     | subl of ea * ea
     | negl of ea
+    | decl of ea
+    | incl of ea
     | imull of ea * ea
     | notl of ea
     | orl of ea * ea

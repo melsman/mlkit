@@ -2,9 +2,16 @@
 signature TESTFILE =
   sig
     
-    datatype opt = NoBasisLib | CompareCompilerLogs
-    | TimeExecutable | TimeCompiler
-    | ExpectCompileTimeError | Profiling
+    datatype opt = 
+      NoBasisLib 
+    | NoOptimiser 
+    | CompareCompilerLogs
+    | TimeExecutable 
+    | TimeCompiler
+    | ExpectCompileTimeError 
+    | Profiling
+    | GC
+    | Tags
       
     datatype entry = PM of string * opt list
     | SML of string * opt list
@@ -18,9 +25,16 @@ signature TESTFILE =
 structure TestFile : TESTFILE =
   struct
     
-    datatype opt = NoBasisLib | CompareCompilerLogs
-    | TimeExecutable | TimeCompiler
-    | ExpectCompileTimeError | Profiling
+    datatype opt = 
+      NoBasisLib 
+    | NoOptimiser
+    | CompareCompilerLogs
+    | TimeExecutable 
+    | TimeCompiler
+    | ExpectCompileTimeError 
+    | Profiling
+    | GC
+    | Tags
       
     datatype entry = PM of string * opt list
     | SML of string * opt list
@@ -58,11 +72,14 @@ structure TestFile : TESTFILE =
 	  | read_opt (all as s::rest) =
 	  case s
 	    of "nobasislib" => (SOME NoBasisLib, rest)
+	     | "nooptimiser" => (SOME NoOptimiser, rest)
 	     | "ccl" => (SOME CompareCompilerLogs, rest)
 	     | "tx" => (SOME TimeExecutable, rest)
 	     | "tc" => (SOME TimeCompiler, rest)
 	     | "ecte" => (SOME ExpectCompileTimeError, rest)
 	     | "prof" => (SOME Profiling, rest)
+	     | "gc" => (SOME GC, rest)
+	     | "tags" => (SOME Tags, rest)
 	     | _ => (NONE, all)
 	fun read_opts (l, acc) =
 	  case read_opt l

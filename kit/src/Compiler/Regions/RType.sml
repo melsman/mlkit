@@ -6,8 +6,8 @@ functor RType(structure Flags : FLAGS
               structure L: LAMBDA_EXP
               structure TyName: TYNAME
                 sharing type L.TyName = TyName.TyName 
-	      structure CConst : C_CONST
-			sharing TyName = CConst.TyName
+	      structure RegConst : REG_CONST
+			sharing TyName = RegConst.TyName
 	      structure FinMap : FINMAP
               structure PP : PRETTYPRINT
                 sharing type PP.StringTree = E.StringTree
@@ -1145,7 +1145,7 @@ struct
   	     else [(rho, in_list (size_of_tyname tyname))]
   	 | RECORD [] => [(rho, SOME 0)] (*unit is not allocated*)
   	 | RECORD mus =>
-  	     (rho, in_list (SOME (CConst.size_of_record mus)))
+  	     (rho, in_list (SOME (RegConst.size_of_record mus)))
   	     :: concat_lists (map (c_function_effects1 in_list) mus)
   	     (*it is assumed that concat_lists does not concat the lists in
   	      opposite order, i.e., that concat_list [[1,2], [3], [4]] is
@@ -1155,10 +1155,10 @@ struct
   and no i_opt = i_opt (*i.e., `no, we are not below a list constructor'*)
   and size_of_tyname tyname =
         if TyName.eq (tyname, TyName.tyName_REAL)
-  	then SOME (CConst.size_of_real ())
+  	then SOME (RegConst.size_of_real ())
   	else if TyName.eq (tyname, TyName.tyName_STRING)
 	 orelse TyName.eq (tyname, TyName.tyName_WORD_TABLE) then NONE
-        else if CConst.unboxed_tyname tyname then SOME 0
+        else if RegConst.unboxed_tyname tyname then SOME 0
   	else die ("S (CCALL ...): \nI am sorry, but c functions returning "
   		  ^ TyName.pr_TyName tyname
   		  ^ " are not supported yet.\n")

@@ -17,7 +17,7 @@ signature CODE_GEN =
 
 
     val emit : AsmPrg * string -> unit
-    val generate_link_code : label list -> AsmPrg
+    val generate_link_code : label list * (label list * label list) -> AsmPrg
   end
 
 

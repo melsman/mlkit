@@ -98,3 +98,5 @@ sml_gmtime
 sml_mktime
 sml_asctime
 sml_strftime
+precision
+get_time_base

@@ -52,11 +52,14 @@ structure Tester : TESTER =
 	val _ = if dir="" then () else OS.FileSys.chDir dir
 	val compile_command_base = "kit -logtofiles " ^ 
 	  (if opt TestFile.NoBasisLib then "-nobasislib " else "") ^
+          (if opt TestFile.NoOptimiser then "-nooptimiser " else "") ^
 	  (if opt TestFile.TimeCompiler then "-timings " else "") ^
           (if opt TestFile.CompareCompilerLogs then "-reportfilesig " else "")
 
 	val compile_command = compile_command_base ^ file	  
-	val compile_command_prof = compile_command_base ^ "-prof " ^ file	  
+	val compile_command_prof = compile_command_base ^ "-prof " ^ file
+	val compile_command_gc = compile_command_base ^ "-gc " ^ file
+	val compile_command_gc_prof = compile_command_base ^ "-gc -prof " ^ file
 
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
@@ -121,7 +124,36 @@ structure Tester : TESTER =
 	  else (msgErr "rename (mv) failure";
 		TestReport.add_runtime_bare_line(filepath,false))
 
-	fun maybe_trywithprof() =
+	fun maybe_trywith(file,out_file, outok_file, test_option, compile_command, add_line_testreport, exe_cmd_args) =
+	  let
+	    fun test_output () =
+	      if files_equal (file^out_file, file^outok_file) then
+		(msgOk (out_file ^ " equal to " ^ outok_file); true)
+	      else (msgErr (out_file ^ " not equal to " ^ outok_file); false)
+	  in
+	    if test_option() then
+	      (msg' (" executing command `" ^ compile_command ^ "'");
+	       if OS.Process.system compile_command = OS.Process.success then
+		 if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
+		   if OS.Process.system (exe_file ^ " " ^ exe_cmd_args ^ " > " ^ file^out_file) = OS.Process.success then
+		     add_line_testreport (filepath,test_output())
+		   else (msgErr "run failure";
+			 add_line_testreport (filepath,false))
+		 else (msgErr "rename (mv) failure";
+		       add_line_testreport (filepath,false))
+	       else (msgErr "compile failure";
+		     add_line_testreport (filepath,false)))
+	    else ()
+	  end
+
+	fun maybe_trywithprof() = maybe_trywith(file,
+						".outp",
+						".out.ok",
+						fn () => opt TestFile.Profiling,
+						compile_command_prof,
+						TestReport.add_profile_line, 
+						"")
+(*	fun maybe_trywithprof() =
 	  let
 	    val outp_file = file ^ ".outp"
 	    val outok_file = file ^ ".out.ok"
@@ -143,14 +175,47 @@ structure Tester : TESTER =
 	       else (msgErr "compile failure";
 		     TestReport.add_profile_line (filepath,false)))
 	    else ()
-	  end
+	  end 20/04/1999, Niels*)
+
+	fun maybe_trywithgc() = maybe_trywith(file,
+					      ".outgc",
+					      ".out.ok",
+					      fn () => opt TestFile.GC,
+					      compile_command_gc,
+					      TestReport.add_gc_line,
+					      " -silent_gc ")
+	fun maybe_trywithgcprof() = maybe_trywith(file,
+						  ".outgcp",
+						  ".out.ok",
+						  fn () => opt TestFile.GC andalso opt TestFile.Profiling,
+						  compile_command_gc_prof,
+						  TestReport.add_gc_profile_line,
+						  " -silent_gc ")
+	fun maybe_trywithtags() = maybe_trywith(file,
+						".outtags",
+						".out.ok",
+						fn () => opt TestFile.Tags,
+						compile_command_gc,
+						TestReport.add_tags_line,
+						" -disable_gc -silent_gc ")
+	fun maybe_trywithtagsprof() = maybe_trywith(file,
+						    ".outtagsp",
+						    ".out.ok",
+						    fn () => opt TestFile.Tags andalso opt TestFile.Profiling,
+						    compile_command_gc_prof,
+						    TestReport.add_tags_profile_line,
+						    " -disable_gc -silent_gc ")
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
         if OS.Process.system compile_command = OS.Process.success then
 	  (maybe_compare_complogs true; 
 	   maybe_report_comptimes();
 	   rename_and_run();
-	   maybe_trywithprof())
+	   maybe_trywithprof();
+	   maybe_trywithgc();
+	   maybe_trywithgcprof();
+	   maybe_trywithtags();
+	   maybe_trywithtagsprof())
 	else
 	  maybe_compare_complogs false;
 	recover()

@@ -129,7 +129,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     type target = CodeGen.AsmPrg
     type label = Labels.label
 
-    type linkinfo = {code_label:label, imports: label list, exports : label list, unsafe:bool}
+    type linkinfo = {code_label:label, imports: label list * label list, exports : label list * label list, unsafe:bool}
     fun code_label_of_linkinfo (li:linkinfo) = #code_label li
     fun exports_of_linkinfo (li:linkinfo) = #exports li
     fun imports_of_linkinfo (li:linkinfo) = #imports li
@@ -156,8 +156,8 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 		 exports=exports}
 
 	      val linkinfo = mk_linkinfo {code_label=main_lab,
-					  imports=(#1 imports) @ (#2 imports), (* Merge MLFunLab and DatLab *)
-					  exports=(#1 exports) @ (#2 exports), (* Merge MLFunLab and DatLab *)
+					  imports=imports, (* (MLFunLab,DatLab) *)
+					  exports=exports, (* (MLFunLab,DatLab) *)
 					  unsafe=not(safe)}
 	      val CB = CompileBasis.mk_CompileBasis(cb,env)
 	    in 

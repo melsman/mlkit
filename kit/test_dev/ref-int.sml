@@ -16,7 +16,7 @@
 
   fun a <> b = not (a = b)
   fun (f o g) x = f(g x)
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
   fun printNum (n:int):unit = prim("printNum","printNum",n)
 (*  fun printNum n = print (Int.toString n)*)
 

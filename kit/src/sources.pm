@@ -1,26 +1,35 @@
 import Edlib/edlib.pm
        Common/common.pm
-       Compiler/compilerx86.pm
+       Compiler/compiler.pm
        
 in
     Manager/FREE_IDS.sml
-    Manager/FreeIds.sml
+    Common/Elaboration.sml
+Compiler/EXECUTION.sml
+
     Manager/INT_MODULES.sml
-    Manager/MANAGER_OBJECTS.sml
     Manager/OPACITY_ELIM.sml
     Manager/PARSE_ELAB.sml
+    Manager/MANAGER_OBJECTS.sml
     Manager/MANAGER.sml
 
+
+    Manager/FreeIds.sml
     Manager/IntModules.sml
     Manager/OpacityElim.sml
     Manager/ParseElab.sml
     Manager/ManagerObjects.sml
     Manager/Manager.sml
-    
-    Common/Elaboration.sml
-    Compiler/Backend/X86/ExecutionX86.sml
-    (*Compiler/Backend/HpPaRisc/ExecutionHPPA.sml*)
-    Common/SMLofNJOnKit.sml   (* hack *)
-    Common/KitCompiler.sml
-    Common/KitOnKit.sml       (* running the Kit *)
+    Manager/MspComp.sml (* new 2001-01-27, Niels *)
+
+
+Compiler/Backend/X86/ExecutionX86.sml
+Compiler/Backend/Dummy/Execution__dummy.sml
+(* Compiler/Backend/PaML/ExecutionPaML.sml *)
+Compiler/Backend/HpPaRisc/ExecutionHPPA.sml 
+(*Compiler/Backend/KAM/ExecutionKAM.sml not yet supported 2001-01-27, Niels*)
+
+Compiler/BuildCompile.sml
+Compiler/Backend/NativeCompile.sml
+Common/KitCompiler.sml
 end

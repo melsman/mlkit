@@ -52,8 +52,8 @@ functor SpreadExpression(
   structure Crash: CRASH
   structure PP: PRETTYPRINT
     sharing type PP.StringTree =  E.StringTree = RSE.StringTree  = R.StringTree = Eff.StringTree
-  structure CConst : C_CONST
-    sharing TyName = CConst.TyName
+(*  structure CConst : C_CONST
+    sharing TyName = CConst.TyName 2001-01-18, Niels*)
 ): SPREAD_EXPRESSION =
 struct
 

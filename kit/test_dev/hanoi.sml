@@ -1,12 +1,3 @@
-(*
-fun digit n = chr(ord "0" + n)
-fun digits(n,acc) =
-      if n >=0 andalso n<=9 then digit n:: acc
-      else digits (n div 10, digit(n mod 10) :: acc)
-
-fun int_to_string(n) = implode(digits(n,[]))
-*)
-
 let
   infix +
   infix -
