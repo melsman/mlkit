@@ -18,10 +18,10 @@ exception Chr and Quot and Floor and Sqrt and
  * BUILT-IN PRIMITIVES
  * ============================ *)
 
-fun op = (x: ''a, y: ''a): bool =           prim(0, (x, y))
-fun (x: 'a ref) := (y: 'a): unit =          prim(17, (x, y)) 
-fun !(x: 'a ref): 'a =                      prim(18, x) 
-fun ord (c : char) : int =                  prim (31, ("id", "id", c))
+fun op = (x: ''a, y: ''a): bool =           prim ("=", "=", (x, y))
+fun (x: 'a ref) := (y: 'a): unit =          prim (":=", ":=", (x, y))
+fun !(x: 'a ref): 'a =                      prim ("!", "!", x)
+fun ord (c : char) : int =                  prim ("id", "id", c)
 
 
 
@@ -29,41 +29,41 @@ fun ord (c : char) : int =                  prim (31, ("id", "id", c))
  * IMPORTED PRIMITIVES
  * ====================== *)
 
-fun chr (i:int): char =                     prim(31, ("chrChar", "chrChar", i, Chr))
-fun size (s:string): int =                  prim(31, ("sizeString", "sizeString", s))
-fun explode (str: string): char list =      prim(31, ("explodeString", "explodeStringProfiling", str))
-fun implode (chars: char list): string =    prim(31, ("implodeChars", "implodeCharsProfiling", chars))
-fun op ^ (s1:string, s2:string): string =   prim(31, ("concatString", "concatStringProfiling", s1, s2)) 
-fun real(x: int): real =                    prim(31, ("realInt", "realInt", x))
-fun floor(x:real):int =                     prim(31, ("floorFloat", "floorFloat", x, Floor))
-fun (x: real) / (y: real): real =           prim(31, ("divFloat", "divFloat", x, y, Quot))
-fun sqrt(x: real): real =                   prim(31, ("sqrtFloat", "sqrtFloat", x, Sqrt)) 
-fun exp(x: real): real =                    prim(31, ("expFloat", "expFloat", x, Exp)) 
-fun ln(x: real): real =                     prim(31, ("lnFloat", "lnFloat", x, Ln)) 
-fun sin(x: real): real =                    prim(31, ("sinFloat", "sinFloat", x)) 
-fun cos(x: real): real =                    prim(31, ("cosFloat", "cosFloat", x)) 
-fun atan(x: real): real =                   prim(31, ("atanFloat", "atanFloat", x)) 
+fun chr (i:int): char =                     prim ("chrChar", "chrChar", (i, Chr))
+fun size (s:string): int =                  prim ("sizeString", "sizeString", s)
+fun explode (str: string): char list =      prim ("explodeString", "explodeStringProfiling", str)
+fun implode (chars: char list): string =    prim ("implodeChars", "implodeCharsProfiling", chars)
+fun op ^ (s1:string, s2:string): string =   prim ("concatString", "concatStringProfiling", (s1, s2))
+fun real(x: int): real =                    prim ("realInt", "realInt", x)
+fun floor(x:real):int =                     prim ("floorFloat", "floorFloat", (x, Floor))
+fun (x: real) / (y: real): real =           prim ("divFloat", "divFloat", (x, y, Quot))
+fun sqrt(x: real): real =                   prim ("sqrtFloat", "sqrtFloat", (x, Sqrt))
+fun exp(x: real): real =                    prim ("expFloat", "expFloat", (x, Exp))
+fun ln(x: real): real =                     prim ("lnFloat", "lnFloat", (x, Ln))
+fun sin(x: real): real =                    prim ("sinFloat", "sinFloat", x) 
+fun cos(x: real): real =                    prim ("cosFloat", "cosFloat", x) 
+fun atan(x: real): real =                   prim ("atanFloat", "atanFloat", x) 
 
 
 abstype instream = INS of int                 (* Streams ala the old Def. *)
 and outstream = OUTS of int
 with
-  val std_in : instream =                     INS(prim(31, ("stdInStream", "stdInStream", 0)))
-  val std_out : outstream =                   OUTS(prim(31, ("stdOutStream", "stdOutStream", 0)))
+  val std_in : instream =                     INS(prim ("stdInStream", "stdInStream", 0))
+  val std_out : outstream =                   OUTS(prim ("stdOutStream", "stdOutStream", 0))
 
   exception CANNOT_OPEN
-  fun open_in(f: string): instream =          INS(prim(31, ("openInStream", "openInStream", f, CANNOT_OPEN)))
+  fun open_in(f: string): instream =          INS(prim ("openInStream", "openInStream", (f, CANNOT_OPEN)))
                                               handle CANNOT_OPEN => raise Io("Cannot open " ^ f)
-  fun open_out(f: string): outstream =        OUTS(prim(31, ("openOutStream", "openOutStream", f, CANNOT_OPEN)))
+  fun open_out(f: string): outstream =        OUTS(prim ("openOutStream", "openOutStream", (f, CANNOT_OPEN)))
                                               handle CANNOT_OPEN => raise Io("Cannot open " ^ f)
-  fun input(INS i, n: int): string =          prim(31, ("inputStream", "inputStreamProfiling", i, n))
-  fun lookahead(INS i): string =              prim(31, ("lookaheadStream", "lookaheadStreamProfiling", i)) 
-  fun close_in(INS i): unit =                 prim(31, ("closeStream", "closeStream", i))
-  fun end_of_stream(INS i): bool =            prim(31, ("endOfStream", "endOfStream", i))
+  fun input(INS i, n: int): string =          prim ("inputStream", "inputStreamProfiling", (i, n))
+  fun lookahead(INS i): string =              prim ("lookaheadStream", "lookaheadStreamProfiling", i) 
+  fun close_in(INS i): unit =                 prim ("closeStream", "closeStream", i)
+  fun end_of_stream(INS i): bool =            prim ("endOfStream", "endOfStream", i)
   val output_exval =                          Io "Output stream is closed"
-  fun output(OUTS i, str: string): unit =     prim(31, ("outputStream", "outputStream", i, str, output_exval))
-  fun close_out(OUTS i): unit =               prim(31, ("closeStream", "closeStream", i))
-  fun flush_out(OUTS i): unit =               prim(31, ("flushStream", "flushStream", i))    
+  fun output(OUTS i, str: string): unit =     prim ("outputStream", "outputStream", (i, str, output_exval))
+  fun close_out(OUTS i): unit =               prim ("closeStream", "closeStream", i)
+  fun flush_out(OUTS i): unit =               prim ("flushStream", "flushStream", i)
 end
 
 
