@@ -39,7 +39,7 @@ struct
     {long="register_allocation", short=NONE, item=ref true, neg=true,
      menu=["Control", "register allocation"],
      desc="Perform register allocation. Without register allocation\n\
-      \enabled, programs run somewhat slower--but they run andn\n\
+      \enabled, programs run somewhat slower--but they run and\n\
       \you save about 15 percent on compile time."}
 
   val region_profiling = Flags.is_on0 "region_profiling"
