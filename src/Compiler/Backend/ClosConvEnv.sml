@@ -242,6 +242,7 @@ functor ClosConvEnv(structure Lvars : LVARS
       | match_acc_type(FIX(lab1,NONE,i1,_),FIX(lab2,NONE,i2,_)) = Labels.match(lab1,lab2)
       | match_acc_type(LABEL _,FIX _) = ()
       | match_acc_type(FIX _,LABEL _) = ()
+      | match_acc_type(FIX _, FIX _) = () (* bug fix: mael 2001-08-16 *)
       | match_acc_type _ = die "match_acc_type"
 
     fun enrich({ConEnv=ConEnv0,VarEnv=VarEnv0,ExconEnv=ExconEnv0,RhoEnv=RhoEnv0,RhoKindEnv=RhoKindEnv0},
