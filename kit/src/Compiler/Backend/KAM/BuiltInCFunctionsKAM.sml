@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Thu Nov  2 12:56:40 2000 *)
+(* Mon Nov  6 00:34:15 2000 *)
 signature BUILT_IN_C_FUNCTIONS_KAM = 
   sig
     val name_to_built_in_C_function_index : string -> int

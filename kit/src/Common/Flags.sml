@@ -131,7 +131,7 @@ functor Flags (structure Crash : CRASH
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
     val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
 
-    val colwidth               = ref 80
+    val colwidth               = ref 200
 
     val log        = ref TextIO.stdOut
 

@@ -107,7 +107,7 @@ fun build_kam () =
 (*      List.app disable opts;*)
       enable "delay_assembly";
       enable "print_KAM_program";
-(*      enable "print_lift_conv_program"; *)
+      enable "print_lift_conv_program"; 
 (*      enable "chat"; *)
       KitKAM.Flags.target_file_extension := ".uo"
 
