@@ -206,10 +206,12 @@ functor IntModules(structure Name : NAME
 	      val (ce, cb, mc) = int_strexp(intB, strexp)
 	      val (funstamp,strid,E,strexp0,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
+	      val _ = print "  [contraining begin ...]\n"
 	      val ce = CE.constrain(ce,E')
+	      val _ = print "  [constraining end ...]\n"
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,CE.declare_strid(strid,ce,CE.emptyCEnv),
-				      CompileBasis.plus(#3 (IntBasis.un intB), cb))
-
+				      CompileBasis.plus(#3 (IntBasis.un intB), cb))             (* The argument may use things *)
+		                                                                                (* which are not in intB0 *)
 	      (* We now check if there is code in the repository
 	       * we can reuse. *)
 	      fun reuse_code () =
