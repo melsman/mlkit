@@ -29,7 +29,7 @@ signature AUTH =
    [newPassword n] generates a new password constructed from n
    characters chosen randomly from the set {a-zA-Z2-9} \ {loO}.
 
-   [sendPassword p] send an email to the user with person_id p
+   [sendPassword p] sends an email to the user with person_id p
    containing the user's password.
    *)
   end
@@ -46,29 +46,36 @@ structure Auth : AUTH =
 
     (* verifyPerson; return SOME(p) if user with person_id p 
      * is logged in; returns NONE otherwise. *)
-    fun verifyPerson0 (getPassword: string -> string option) : person_id option =
+    fun verifyPerson0 (getPasswd: string -> string option) 
+      : person_id option =
       (case (Ns.Cookie.getCookieValue "auth_person_id",
 	     Ns.Cookie.getCookieValue "auth_password") 
 	 of (SOME person_id, SOME psw) =>
-	   (case getPassword person_id
+	   (case getPasswd person_id
 	      of NONE => NONE
 	       | SOME db_psw => 
 		if db_psw = psw then Int.fromString person_id
 		else NONE)
-	  | _ => (Ns.log (Ns.Notice,"Auth.verifyPerson: no cookies")
-		  ; NONE)
-	      ) handle Ns.Cookie.CookieError _ => 
-	 (Ns.log (Ns.Notice,"Auth.verifyPerson: Cookie error")
-	  ; NONE)
-
+	  | _ => NONE) 
+	 handle Ns.Cookie.CookieError _ => NONE
+(*
     fun verifyPerson() = 
-      let 
-	fun getPasswd person_id =
-	  Db.zeroOrOneField 
-	  `select password from person 
-	   where person_id = ^(Db.qq' person_id)`
-      in 
-	verifyPerson0 getPasswd
+      verifyPerson0 (fn p => Db.zeroOrOneField 
+		     `select password from person 
+ 	  	      where person_id = ^p`)
+*)
+    fun verifyPerson() = 
+      let fun f p = 
+	    case Db.zeroOrOneField 
+	           `select password from person 
+	            where person_id = ^p`
+	      of SOME pw => pw
+	       | NONE => ""
+	  fun g p = 
+	    case Ns.Cache.cacheWhileUsed (f, "auth", 600) p
+	      of "" => NONE
+	       | pw => SOME pw
+      in verifyPerson0 g
       end
 
     fun isLoggedIn() : bool = case verifyPerson()
