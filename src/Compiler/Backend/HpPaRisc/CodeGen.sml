@@ -338,6 +338,35 @@ struct
       | pop_aty(aty,tmp_reg:reg,size_ff,C) =
       LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg} ::
       move_reg_into_aty(tmp_reg,aty,size_ff,C)
+
+    (* Returns a register with arg and a continuation function. *)
+    fun resolve_arg_aty(arg: SS.Aty, tmp:reg, size_ff:int) : reg * (RiscInst list -> RiscInst list) =
+      case arg
+	of SS.PHREG_ATY r => (r, fn C => C)
+	 | _ => (tmp, fn C => move_aty_into_reg(arg, tmp, size_ff, C))
+
+    (* Returns a floating point register and a continuation function. *)
+    fun resolve_float_aty_arg(float_aty,tmp_reg,tmp_float,size_ff) =
+      let 
+	val disp = 
+	  if !BI.tag_values then 
+	    "8" 
+	  else 
+	    "0"
+      in 
+	case float_aty of
+	  SS.PHREG_ATY x => (tmp_float,fn C => FLDDS{complt=EMPTY,d=disp,s=Space 0,b=x,t=tmp_float} :: C)
+	| _ => (tmp_float,fn C => move_aty_into_reg(float_aty,tmp_reg,size_ff,
+						    FLDDS{complt=EMPTY,d=disp,s=Space 0,b=tmp_reg,t=tmp_float} :: C))
+      end
+
+    fun box_float_reg(base_reg,float_reg,C) =
+      if !BI.tag_values then
+	load_immed(IMMED BI.value_tag_real,tmp_reg2,
+		   STW{r=tmp_reg2,d="0",s=Space 0,b=base_reg} ::
+		   FSTDS{complt=EMPTY,r=float_reg,d="8",s=Space 0,b=base_reg} :: C)
+      else
+	FSTDS {complt=EMPTY,r=float_reg,d="0",s=Space 0,b=base_reg} :: C
   
     (***********************)
     (* Calling C Functions *)
@@ -708,13 +737,94 @@ struct
 	 SUBI{cond=NEVER,i=base,r=x,t=d} :: C
        end
 
+    fun addf(x,y,b,d,size_ff,C) =
+      let
+	val (x_float_reg,x_C) = resolve_float_aty_arg(x,tmp_reg0,tmp_float_reg0,size_ff)
+	val (y_float_reg,y_C) = resolve_float_aty_arg(y,tmp_reg0,tmp_float_reg1,size_ff)
+	val (b_reg,b_C) = resolve_arg_aty(b,tmp_reg0,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	x_C(y_C(FADD{fmt=DBL,r1=x_float_reg,r2=y_float_reg,t=tmp_float_reg2} ::
+		b_C(box_float_reg(b_reg,tmp_float_reg2,
+				  COPY{r=b_reg,t=d_reg} :: C'))))
+      end
+
+    fun subf(x,y,b,d,size_ff,C) =
+      let
+	val (x_float_reg,x_C) = resolve_float_aty_arg(x,tmp_reg0,tmp_float_reg0,size_ff)
+	val (y_float_reg,y_C) = resolve_float_aty_arg(y,tmp_reg0,tmp_float_reg1,size_ff)
+	val (b_reg,b_C) = resolve_arg_aty(b,tmp_reg0,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	x_C(y_C(FSUB{fmt=DBL,r1=x_float_reg,r2=y_float_reg,t=tmp_float_reg2} ::
+		b_C(box_float_reg(b_reg,tmp_float_reg2,
+				  COPY{r=b_reg,t=d_reg} :: C'))))
+      end
+
+    fun mulf(x,y,b,d,size_ff,C) =
+      let
+	val (x_float_reg,x_C) = resolve_float_aty_arg(x,tmp_reg0,tmp_float_reg0,size_ff)
+	val (y_float_reg,y_C) = resolve_float_aty_arg(y,tmp_reg0,tmp_float_reg1,size_ff)
+	val (b_reg,b_C) = resolve_arg_aty(b,tmp_reg0,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	x_C(y_C(FMPY{fmt=DBL,r1=x_float_reg,r2=y_float_reg,t=tmp_float_reg2} ::
+		b_C(box_float_reg(b_reg,tmp_float_reg2,
+				  COPY{r=b_reg,t=d_reg} :: C'))))
+      end
+
+    fun divf(x,y,b,d,size_ff,C) =
+      let
+	val (b_reg,b_C) = resolve_arg_aty(b,tmp_reg0,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	compile_c_call_prim("divFloat",[b,x,y],NONE,size_ff,tmp_reg0,
+			    b_C(if b_reg = d_reg then C' else COPY{r=b_reg,t=d_reg} :: C'))
+      end
+
+    fun negf(b,x,d,size_ff,C) =
+      let
+	val (x_float_reg,x_C) = resolve_float_aty_arg(x,tmp_reg0,tmp_float_reg0,size_ff)
+	val (b_reg,b_C) = resolve_arg_aty(b,tmp_reg0,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	x_C(FSUB{fmt=DBL,r1=Float 0,r2=x_float_reg,t=tmp_float_reg0} ::
+	    b_C(box_float_reg(b_reg,tmp_float_reg0,
+			      COPY{r=b_reg,t=d_reg} :: C')))
+      end
+
+    fun absf(b,x,d,size_ff,C) =
+      let
+	val (x_float_reg,x_C) = resolve_float_aty_arg(x,tmp_reg0,tmp_float_reg0,size_ff)
+	val (b_reg,b_C) = resolve_arg_aty(b,tmp_reg0,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	x_C(FABS{fmt=DBL,r=x_float_reg,t=tmp_float_reg0} ::
+	    b_C(box_float_reg(b_reg,tmp_float_reg0,
+			      COPY{r=b_reg,t=d_reg} :: C')))
+      end
+
+    fun cmpf(cond,x,y,d,size_ff,C) =
+      let
+	val (x_float_reg,x_C) = resolve_float_aty_arg(x,tmp_reg0,tmp_float_reg0,size_ff)
+	val (y_float_reg,y_C) = resolve_float_aty_arg(y,tmp_reg0,tmp_float_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+      in
+	(* Assume true; *)
+	(* don't clear anything *)
+	x_C(y_C(LDI{i=int_to_string BI.ml_true,t=d_reg} ::
+		FCMP{fmt=DBL,cond=cond,r1=x_float_reg,r2=y_float_reg} ::
+		FTEST ::
+		LDI{i=int_to_string BI.ml_false,t=d_reg} :: C'))
+      end
+
     (*******************)
     (* Code Generation *)
     (*******************)
 
     (* printing an assignment *)
-    fun debug_assign(str,C) =
-      if Flags.is_on "debug_codeGen" then
+    fun debug_assign(str,C) = C
+(*      if Flags.is_on "debug_codeGen" then
       let
 	val string_lab = gen_string_lab (str ^ "\n")
       in
@@ -723,7 +833,7 @@ struct
 			compile_c_call_prim("printString",[SS.PHREG_ATY arg0],NONE,0,tmp_reg0 (*not used*),
 					    COMMENT "End of Debug Assignment" :: C))
       end
-      else C
+      else C*)
 
     fun CG_lss(lss,size_ff,size_cc,size_rcf,size_ccf,C) =
       let
@@ -1148,6 +1258,16 @@ struct
 		   | ("__lesseq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])     => cmpi(LESSEQUAL,x,y,d,C)
 		   | ("__greater_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])    => cmpi(GREATERTHAN,x,y,d,C)
 		   | ("__greatereq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])  => cmpi(GREATEREQUAL,x,y,d,C)
+		   | ("__plus_float",[b,x,y],[d])     => addf(x,y,b,d,size_ff,C)
+		   | ("__minus_float",[b,x,y],[d])    => subf(x,y,b,d,size_ff,C)
+		   | ("__mul_float",[b,x,y],[d])      => mulf(x,y,b,d,size_ff,C)
+		   | ("__div_float",[b,x,y],[d])      => divf(x,y,b,d,size_ff,C)
+		   | ("__neg_float",[b,x],[d])        => negf(b,x,d,size_ff,C)
+		   | ("__abs_float",[b,x],[d])        => absf(b,x,d,size_ff,C)
+		   | ("__less_float",[x,y],[d])       => cmpf(LESSTHAN,x,y,d,size_ff,C)
+		   | ("__lesseq_float",[x,y],[d])     => cmpf(LESSEQUAL,x,y,d,size_ff,C)
+		   | ("__greater_float",[x,y],[d])    => cmpf(GREATERTHAN,x,y,d,size_ff,C)
+		   | ("__greatereq_float",[x,y],[d])  => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
 		   | ("__fresh_exname",[],[aty]) =>
 		       load_label_addr(exn_counter_lab,SS.PHREG_ATY tmp_reg1,size_ff,
 				       LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg2} ::
@@ -1164,8 +1284,8 @@ struct
       end
 
     (* printing a label *)
-    fun debug_label(lab,C) = 
-      if Flags.is_on "debug_codeGen" then
+    fun debug_label(lab,C) = C
+(*      if Flags.is_on "debug_codeGen" then
       let
 	val lab_str = pp_lab lab ^ "\n"
 	val string_lab = gen_string_lab lab_str
@@ -1175,7 +1295,7 @@ struct
 			compile_c_call_prim("printString",[SS.PHREG_ATY arg0],NONE,0,tmp_reg0(*not used*),
 					    COMMENT "End of Debug Label" :: C))
       end
-      else C
+      else C*)
 
     fun CG_top_decl' gen_fn (lab,cc,lss) = 
       let
@@ -1250,11 +1370,6 @@ struct
 	val next_prog_unit = Labels.new_named "next_prog_unit"
 	val progunit_labs = map MLFunLab linkinfos
 
-	val (progunit_labs, first_progunit_lab) =
-	  case progunit_labs @ [lab_exit] of
-	    first::rest => (rev rest, first)
-	  | _ => die "generate_link_code.list empty"
-
 	fun slot_for_datlab(l,C) =
 	  DOT_DATA ::
 	  DOT_ALIGN 4 ::
@@ -1277,6 +1392,7 @@ struct
 
 	fun raise_insts C = (* expects exception value in arg0 *)
 	  let
+	    val _ = add_static_data [DOT_EXPORT(NameLab "raise_exn","CODE")]
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
 	    val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
 	  in
@@ -1357,9 +1473,18 @@ struct
 					  DOT_END :: []))
 	val _  = add_static_data static_data
 
-	fun push_addresses_progunits(progunit_labs,C) = 
-	  foldr (fn (l,C) => load_label_addr(l,SS.PHREG_ATY tmp_reg1,0,
-					     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: C)) C progunit_labs
+	fun generate_jump_code_progunits(progunit_labs,C) = 
+	  foldr (fn (l,C) => 
+		 let
+		   val next_lab = new_local_lab "next_progunit_lab"
+		 in
+		   COMMENT "PUSH NEXT LOCAL LABEL" ::
+		   load_label_addr(next_lab,SS.PHREG_ATY tmp_reg1,0,
+		   STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} ::
+		   COMMENT "JUMP TO NEXT PROGRAM UNIT" ::
+		   META_B{n=false,target=l} :: 
+                   LABEL next_lab :: C)
+		 end) C progunit_labs
 
 	val _ = add_lib_function "allocateRegion"
 	fun allocate_global_regions(region_labs,C) = 
@@ -1384,6 +1509,7 @@ struct
           init_primitive_exception_constructors_code(
 
 	  (* Push top-level handler on stack *)
+          COMMENT "PUSH TOP-LEVEL HANDLER ON STACK" ::
 	  COPY{r=sp, t=tmp_reg1} ::
 	  load_label_addr(NameLab "TopLevelHandlerLab", SS.PHREG_ATY tmp_reg3,0,
 	  STWM{r=tmp_reg3,d="4",s=Space 0,b=sp} ::
@@ -1395,27 +1521,23 @@ struct
 	  STW{r=sp,d="-4",s=Space 0,b=sp} ::  
 	  STW{r=sp,d="0",s=Space 0,b=tmp_reg1} :: (* Update exnPtr *)
 
-	  (* Push addresses of program units on stack, starting with the exit label and
-	   * ending with label for the second program unit. *)
-	  push_addresses_progunits(progunit_labs,
+	  (* Double Align SP *)	
+          COMMENT "DOUBLE ALIGN SP" ::
+	  LDI{i="4",t=tmp_reg1} :: 
+          AND{cond=EQUAL,r1=tmp_reg1,r2=sp,t=tmp_reg1} ::
+          LDO{d="4",b=sp,t=sp} ::
 
-         (* Push Address Of next_prog_unit function *)
-	 load_label_addr(NameLab (Labels.pr_label next_prog_unit),SS.PHREG_ATY tmp_reg1,0,
-			 STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::
-
-			 (* Jump to first program unit. *)
-			 META_B {n=false, target=first_progunit_lab} :: C))))))
+	  (* Code that jump to progunits. *)
+	  COMMENT "JUMP CODE TO PROGRAM UNITS" ::
+	  generate_jump_code_progunits(progunit_labs,
+          (* Jump to lab_exit *)
+          COMMENT "JUMP TO LAB_EXIT" ::
+          META_B{n=false,target=lab_exit} :: C)))))
 	  
-	fun nextlab_insts C =
+	fun lab_exit_insts C =
 	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
 			else 0
 	  in
-	    LABEL(NameLab(Labels.pr_label next_prog_unit)) :: (* Code that jumps to the next program unit *)
-	    LDW {d="0",s=Space 0,b=sp,t=tmp_reg1}  ::         (* tmp_reg1 = next_prog_unit label *)
-	    LDWM {d="-4",s=Space 0,b=sp,t=tmp_reg0} ::        (* tmp_reg0 = label of next prog unit *)
-	    STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::           (* now make sp point at next_prog_unit label again *)
-	    META_BV{n=false,x=Gen 0,b=tmp_reg0} ::            (* now jump to next program unit *)
-	    
 	    LABEL(lab_exit) ::
 	    COMMENT "**** Link Exit code ****" ::
 	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,tmp_reg0(*not used*),
@@ -1423,8 +1545,7 @@ struct
 				DOT_PROCEND :: C)
 	  end
 
-	val init_link_code = init_insts(nextlab_insts(raise_insts(toplevel_handler [])))
-	val _ = add_static_data [DOT_EXPORT(NameLab "raise_exn","CODE")] (* only temporary *)
+	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler [])))
       in
 	HppaResolveJumps.RJ{top_decls = [],
 			    init_code = init_link_code,

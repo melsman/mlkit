@@ -120,6 +120,11 @@ signature LINE_STMT =
     val L : {main_lab:label,code:ClosPrg,imports:label list * label list,exports:label list * label list} -> 
             {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
+    (*****************************************************************)
+    (* In CalcOffsets we must know if a region has runtime type REAL *)
+    (*****************************************************************)
+    val is_region_real : place -> bool
+
     (***************************************************)
     (* Def and Use sets for LineStmt RETURN lvars ONLY *)
     (***************************************************)

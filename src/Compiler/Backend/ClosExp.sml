@@ -345,7 +345,7 @@ struct
 	  HNODE{start="ccall(\"" ^ name ^ "\", <",
 		finish=">)",
 		childsep=RIGHT ",",
-		children=(map layout_ce args) @ (map layout_ce rhos_for_result)}
+		children=(map layout_ce rhos_for_result) @ (map layout_ce args)}
       | layout_ce(FRAME{declared_lvars,declared_excons}) =
 		  NODE{start="{|",
 		       finish="|}",
@@ -1496,12 +1496,14 @@ struct
 		     val env_with_rho_kind =
 			  (env_with_rv plus_decl_with CE.declareRhoKind)
 			  (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
+
 		     val env_with_rho_drop = 
 			   (env_with_rho_kind plus_decl_with CE.declareRho)
 			   (map (fn (place,_) => (place,CE.DROPPED_RVAR(drop_rho place))) drops)
 		     val env_with_rho_drop_kind =
 		           (env_with_rho_drop plus_decl_with CE.declareRhoKind)
 			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops) (* new 23/11/1998, Niels*)
+
 		     val env_with_args =
 		           (env_with_rho_drop_kind plus_decl_with CE.declareLvar)
 			   (map (fn lv => (lv, CE.LVAR lv)) args)
@@ -1626,16 +1628,16 @@ struct
 			 | Lvars.LESSEQ_INT      => BI.LESSEQ_INT
 			 | Lvars.GREATER_INT     => BI.GREATER_INT
 			 | Lvars.GREATEREQ_INT   => BI.GREATEREQ_INT
-			 | Lvars.PLUS_FLOAT      => "PLUS_FLOAT"
-			 | Lvars.MINUS_FLOAT     => "MINUS_FLOAT"
-			 | Lvars.MUL_FLOAT       => "MUL_FLOAT"
-			 | Lvars.DIV_FLOAT       => "DIV_FLOAT"
-			 | Lvars.NEG_FLOAT       => "NEG_FLOAT"
-			 | Lvars.ABS_FLOAT       => "ABS_FLOAT"
-			 | Lvars.LESS_FLOAT      => "LESS_FLOAT"
-			 | Lvars.LESSEQ_FLOAT    => "LESSEQ_FLOAT"
-			 | Lvars.GREATER_FLOAT   => "GREATER_FLOAT"
-			 | Lvars.GREATEREQ_FLOAT => "GREATEREQ_FLOAT"))
+			 | Lvars.PLUS_FLOAT      => BI.PLUS_FLOAT
+			 | Lvars.MINUS_FLOAT     => BI.MINUS_FLOAT
+			 | Lvars.MUL_FLOAT       => BI.MUL_FLOAT
+			 | Lvars.DIV_FLOAT       => BI.DIV_FLOAT
+			 | Lvars.NEG_FLOAT       => BI.NEG_FLOAT
+			 | Lvars.ABS_FLOAT       => BI.ABS_FLOAT
+			 | Lvars.LESS_FLOAT      => BI.LESS_FLOAT
+			 | Lvars.LESSEQ_FLOAT    => BI.LESSEQ_FLOAT
+			 | Lvars.GREATER_FLOAT   => BI.GREATER_FLOAT
+			 | Lvars.GREATEREQ_FLOAT => BI.GREATEREQ_FLOAT))
 
 		 val smas_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
 

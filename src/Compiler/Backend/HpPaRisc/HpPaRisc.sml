@@ -38,6 +38,12 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
     val ret0     = Gen 28  (* Result from ordinary calls. *)
     val ret1     = Gen 29  (* Result from millicode calls. *)
 
+    val tmp_float_reg0 = Float 8  (* 8-11 are caller-saves regs. *)
+    val tmp_float_reg1 = Float 9
+    val tmp_float_reg2 = Float 10
+    val arg_float0     = Float 5
+    val ret_float0     = Float 4
+
     fun reg_eq(Gen i1,Gen i2) = i1 = i2
       | reg_eq(Float i1,Float i2) = i2 = i2
       | reg_eq(Ctrl i1,Ctrl i2) = i1 = i2

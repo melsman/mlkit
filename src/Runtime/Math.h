@@ -80,4 +80,6 @@ StringDesc* generalStringOfFloatProf(int rAddr, StringDesc *str, int f, int pPoi
 /* For basislib Math structure */
 int sml_sqrt(int d, int s);
 
+void printReal(double *n);
+
 #endif /*MATH*/
