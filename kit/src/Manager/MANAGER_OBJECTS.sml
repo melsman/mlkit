@@ -27,7 +27,7 @@ signature MANAGER_OBJECTS =
     structure FunStamp :
       sig
 	val new : funid -> funstamp
-	val from_filemodtime : filepath -> funstamp
+	val from_filemodtime : filepath -> funstamp option
 	val eq : funstamp * funstamp -> bool
       end
 

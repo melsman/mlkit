@@ -171,7 +171,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  fun pr [] = ()
 	    | pr ((funid, path:string)::rest) = 
 	    let val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
-	    in print " "; print (String.padR " " (sz - size unitname) unitname); 
+	    in print " "; print (String.padR " " sz unitname); 
 	       print path; print "\n"; pr rest
 	    end
       in print (String.padR "-" sz "" ^ "---------\n"); 
@@ -232,11 +232,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     (* Matching of export elaboration and interpretation bases to
      * those in repository for a given funid *)
 
-    fun match_elab(names_elab, elabB, funid) =
+    fun match_elab(names_elab, elabB, rea, funid) =
       case Repository.lookup_elab funid
-	of SOME (_,(_,_,_,names_elab',_,elabB',_)) =>    (* names_elab' are already marked generative - lookup *)
+	of SOME (_,(_,_,_,names_elab',_,elabB',rea')) => (* names_elab' are already marked generative - lookup *)
 	  (List.apply Name.mark_gen names_elab;          (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');               (* name in the bucket is generative. *)
+	   OpacityElim.match(rea,rea');
 	   List.apply Name.unmark_gen names_elab)
 	 | NONE => () (*bad luck*)
 
@@ -313,7 +314,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		       * bases to those found in repository. *)
 
 		      val _ = chat "[matching begin...]\n"
-		      val _ = match_elab(names_elab, elabB', funid)
+		      val _ = match_elab(names_elab, elabB', rea',funid)
 		      val _ = match_int(names_int, intB', funid)
 		      val _ = chat "[matching end...]\n"
 
@@ -342,7 +343,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_enrich a = Basis.enrich a
 
     fun build_unit(B, (funid, filepath): punit) : Basis * modcode =
-      let val funstamp_now = FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
+      let val funstamp_now = 
+	    case FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
+	      of SOME fs => fs
+	       | NONE => (print (" *** Error: The file "^ filepath ^ " does not exist.\n"); raise PARSE_ELAB_ERROR[])
 	  exception CAN'T_REUSE
       in (case (Repository_lookup_elab funid, Repository_lookup_int funid)
 	    of (SOME(_,(infB, elabB, (rea,dom_rea), names_elab,infB',elabB', rea')), 
