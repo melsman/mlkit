@@ -101,7 +101,7 @@ signature HTML =
     val export_hiddens : (string * string) list -> quot
     val export_url_vars: (string * string) list -> quot
     val genUrl         : string -> (string * string) list -> string
-
+    val genUrla        : string -> (string * string) list -> string -> string
     (* HTML frames and framesets *)
     val frameset   : string -> quot -> quot
     val frame      : { src : string, name : string } -> quot
