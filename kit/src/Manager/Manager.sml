@@ -133,13 +133,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun print_result_report report = (Report.print' report (!Flags.log);
 				      Flags.report_warnings ())
 
+(*
     (* ---------------------------------------
      * Reset and commit
      * --------------------------------------- *)
 	
     fun reset() = (IntModules.reset(); Repository.clear(); Flags.reset_warnings())
     fun commit() = IntModules.commit()
-
+*)
 
     (* ----------
      * Projects
@@ -767,7 +768,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun elab (unitname : string) : unit =
       let val prjid = unitname
 	  val (infB,elabB,_,_) = Basis.un Basis.initial
-	  val _ = reset()
+	  val _ = Flags.reset_warnings ()
 	  val log_cleanup = log_init unitname
       in (case ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB,
 				     file=unitname_to_sourcefile unitname} 

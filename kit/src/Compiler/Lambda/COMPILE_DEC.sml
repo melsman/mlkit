@@ -12,5 +12,4 @@ signature COMPILE_DEC =
 
     val compileStrdecs: CEnv -> strdec list -> CEnv * LambdaPgm
 
-    val reset: unit -> unit
-  end;
+  end

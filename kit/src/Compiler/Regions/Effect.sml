@@ -1392,8 +1392,8 @@ tracing *)
                                    else NONE) (etas))
 
   val reset_cone = Cone.reset
-  fun reset() = (reset_cone emptyCone;
-		 resetCount();
+  fun reset() = ((*reset_cone emptyCone;*)
+		 (* resetCount(); *)
                  globalIncs:= Increments.empty)
 
   fun commit() = commit_count()

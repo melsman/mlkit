@@ -823,6 +823,9 @@ struct
                PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", 
                        children = [PP.LEAF(Excon.pr_excon excon ^ alloc_s), layTrip(t,3)]}
             end
+	| DEEXCON(excon,tr) => 
+	    PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
+		    children = [PP.LEAF("deexcon_" ^ Excon.pr_excon excon), layTrip(tr,3)]}
         | RECORD(alloc, args) =>
             let 
                val alloc_s = alloc_string alloc

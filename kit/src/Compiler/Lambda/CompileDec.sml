@@ -2489,7 +2489,6 @@ the 12 lines above are very similar to the code below
   val _ = CE.set_compileTypeScheme compileTypeScheme   (* MEGA HACK - Martin *)
   val _ = CE.set_normalize_sigma normalize_sigma   (* Another one; Mads *)
 
-  fun reset () = () 
 
   end;
 

@@ -21,7 +21,4 @@ signature COMPILE =
     val generate_link_code : EA list -> target
     val emit: {target: target, filename:string} -> unit
 
-    val reset : unit -> unit
-    val commit : unit -> unit
-
   end 
