@@ -36,6 +36,14 @@ signature SCS_LOGIN =
     (* [set_user_pw_cookie user_id passwd redirect] sets two new
        cookies with user_id and password. Redirects to url redirect.*)
 
+    val getUserInfoCache : (string,(string*string)option) Ns.Cache.cache
+    val getUserInfoFromDb : string -> (string * string) option
+    (* [getUserInfoFromDb user_id] fetches encrypted password and
+        language preference from DB. The functions is memoized. *)
+
+    val calcMd5 : string -> string
+    (* [calcMd5 s] returns the result of MD5 hashing s *)
+
   end
 
 structure ScsLogin :> SCS_LOGIN =
@@ -46,26 +54,43 @@ structure ScsLogin :> SCS_LOGIN =
 
     datatype cookie_info = COOKIE | NO_COOKIE
 
+    fun calcMd5 s =
+      Db.oneField `select fast_md5.md5_string('^(s)') from dual`
+
+    val getUserInfoCache =
+      Ns.Cache.get (Ns.Cache.String,
+		    Ns.Cache.Option(Ns.Cache.Pair Ns.Cache.String Ns.Cache.String),
+		    "ScsLogin.getUserInfor",
+		    Ns.Cache.WhileUsed 3600)
+    local
+      fun getUserInfoFromDb' user_id = 
+	case Db.zeroOrOneRow `select fast_md5.md5_string(password) as password,
+	                             scs_user.language_pref(user_id) as lang
+                                from scs_users
+                               where user_id = ^(Db.qqq user_id)
+                                 and deleted_p = 'f'` of
+	  NONE => NONE
+	| SOME [db_psw,db_lang] => SOME (db_psw,db_lang)
+    in
+      val getUserInfoFromDb = Ns.Cache.memoize getUserInfoCache getUserInfoFromDb'
+    end
+
     (* auth_verify_user; return user_id if happy, 0 otherwise *)
     fun verifyUser' () =
       let
 	val auth_user_id = Ns.Cookie.getCookieValue "auth_user_id"
-	val auth_password = Ns.Cookie.getCookieValue "auth_password"
+	val session_id = Ns.Cookie.getCookieValue "session_id"
       in
-	case (auth_user_id,auth_password) of
+	case (auth_user_id,session_id) of
 	  (SOME user_id, SOME psw) =>
-	    (case Db.zeroOrOneRow `select password,scs_user.language_pref(user_id) as lang
-                                     from scs_users
-                                    where user_id = ^(Db.qqq user_id)
-                                      and deleted_p = 'f'` of
-               NONE => (COOKIE,default)
-	     | SOME [db_psw,db_lang] => 
+	    (case getUserInfoFromDb user_id of
+	       NONE => (COOKIE,default)
+	     | SOME (db_psw,db_lang) => 
 		 if db_psw = psw then 
 		   (case Int.fromString user_id of
 		      NONE => (COOKIE,default)
 		    | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
-		 else (COOKIE,default)
-	     | SOME _ => raise Fail "ScsLogin.auth_verify_user")
+		 else (COOKIE,default))
 	| _ => (NO_COOKIE,default)
       end
     handle Ns.Cookie.CookieError _ => (NO_COOKIE,default)
@@ -99,8 +124,8 @@ structure ScsLogin :> SCS_LOGIN =
 `HTTP/1.0 302 Found
 Location: ^target_url
 MIME-Version: 1.0
-^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
-^(Ns.Cookie.deleteCookie{name="auth_person_id",path=SOME "/"})
+^(Ns.Cookie.deleteCookie{name="session_id",path=SOME "/"})
+^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/"})
 
 You should not be seeing this!`;
 (*Ns.returnRedirect target_url; 2003-03-10, nh*)
@@ -188,8 +213,8 @@ MIME-Version: 1.0
 ^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/"})
 ^(Ns.Cookie.setCookie{name="auth_user_id", value=Int.toString user_id,expiry=NONE,
 		      domain=NONE,path=SOME "/",secure=false})
-^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
-^(Ns.Cookie.setCookie{name="auth_password", value=passwd,expiry=NONE,
+^(Ns.Cookie.deleteCookie{name="session_id",path=SOME "/"})
+^(Ns.Cookie.setCookie{name="session_id", value=calcMd5 passwd,expiry=NONE,
 		      domain=NONE,path=SOME "/",secure=false})
 
 
