@@ -376,12 +376,12 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     local
       val getErr' = getErr "" trim
-      fun msgString s =
+      fun msgString s = `^s` (*
 	(case ScsLogin.user_lang of
 	   ScsLang.en => `^s
 	     You must type a string`
 	| ScsLang.da => `^s
-	     Du skal indtaste en tegnstreng.`)
+	     Du skal indtaste en tegnstreng.`) 2003-04-04, nh *)
       fun msgLenString l s = 
 	(case ScsLogin.user_lang of
 	   ScsLang.en => `^s
