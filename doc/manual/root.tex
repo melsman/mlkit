@@ -1,5 +1,6 @@
-\documentclass[12pt,times]{book}
+\documentclass[12pt]{book}
 \usepackage[dvips]{graphics}
+\usepackage[ps2pdf,bookmarks=true]{hyperref}
 \usepackage{makeidx}
 \usepackage{theorem}
 %\usepackage{times}                % times font
@@ -1455,7 +1456,7 @@ example then becomes
    end 
 \end{verbatim}
 
-\section{Effects and {\tt letregion}}
+\section{Effects and \texttt{letregion}}
 \label{effects.sec}
 We now describe the general principle that the Kit uses to decide when
 it is safe to put 
@@ -4314,7 +4315,7 @@ over three runs.}
 \hrule
 \end{figure}
 
-\section{$\resetr$ and $\resetf$}
+\section{\texttt{resetRegions} and \texttt{forceResetting}}
 It is often the case that there are only a few places in the program
 where resetting is really essential, for example in some main loop.
 Therefore, the Kit provides two operations that the programmer can use
@@ -4714,7 +4715,7 @@ input by first reading one line and then extracting the name.
 \label{hof.sec}
 %---------------------------------------------------------
 
-\section{Lambda Abstractions ({\tt fn})}
+\section{Lambda Abstractions (\texttt{fn})}
 A {\em lambda abstraction\/} 
 \index{lambda abstraction}%
 \index{function!higher-order}%
@@ -5072,7 +5073,7 @@ depends on the type and effect of the expression
 they occur free neither in the type with place of the expression
 nor in the type environment.
 
-\section{Examples: {\tt map} and {\tt foldl}}
+\section{Examples: \texttt{map} and \texttt{foldl}}
 Consider the program\footnote{Program \boxml{kitdemo/map.sml}.}
 \begin{verbatim}
    fun map f [] = []
@@ -5274,7 +5275,7 @@ into four different kinds of calls:
 In the sections to follow, we describe each of these kinds of calls in
 detail.
 
-\section{Tail Call of Known Function ({\tt jmp})}
+\section{Tail Call of Known Function (\texttt{jmp})}
 \label{simplejump.sec}
 A call to a
 \index{region polymorphism}%
@@ -5374,7 +5375,7 @@ Also notice that the Kit does not try to in-line {\tt g} in {\tt h}
 on the efficiency of the generated code. Another example of a {\tt
   jmp} tail call is shown in Section~\ref{foldl.sec}.
 
-\section{Non-Tail Call of Known Function \index{funcall@\texttt{funcall}}({\tt funcall})}
+\section{Non-Tail Call of Known Function \index{funcall@\texttt{funcall}}(\texttt{funcall})}
 In the case that a call to a known function cannot be turned into a
 tail call, because the call needs to return to do more work, the call
 is transformed into
@@ -5392,7 +5393,7 @@ This case completes all possible cases of applications of
 region-polymorphic functions. We now turn to function applications
 where the operator is not the name of a region-polymorphic function.
 
-\section{Tail Call of Unknown Function ({\tt fnjmp})}
+\section{Tail Call of Unknown Function (\texttt{fnjmp})}
 Consider the case\index{fnjmp@\texttt{fnjmp}}
 $$\exp_1\,\exp_2$$
 where (a) the call is a tail call and (b) $\exp_1$
@@ -5419,7 +5420,7 @@ in assembly language.
 The mnemonic used in call-explicit expressions for this special case is
 $$\boxml{fnjmp $\exp_1$ $\exp_2$}$$
 
-\section{Non-Tail Call of Unknown Function ({\tt fncall})}
+\section{Non-Tail Call of Unknown Function (\texttt{fncall})}
 Consider the case
 $$\exp_1\,\exp_2$$
 where (a) the call is not a tail call and (b)
@@ -5461,7 +5462,7 @@ for the function and pointers to the closures for \boxml{f} and
 \boxml{g}. When called, the created function first performs a non-tail
 call of \boxml{g} and then a tail call to \boxml{f}.
 
-\section{Example: {\tt foldl}  Revisited}
+\section{Example: \texttt{foldl}  Revisited}
 \label{foldl.sec}
 Consider the following declaration of folding over
 lists:\footnote{Program \boxml{kitdemo/fold1.sml}.}
@@ -8463,10 +8464,10 @@ to compile a smaller program \texttt{kitkbjul9.sml} found in the
   # ../bin/mlkit kitkbjul9.sml
   ...
   [wrote executable file: run]
-  # rp2ps -region -name "MLKit compiling kitkbjul9" \
+  # rp2ps -region -name "ML Kit compiling kitkbjul9" \
          -sampleMax 2000 -eps 137 mm
   Region profiling to output file region.ps.
-  Using name MLKit compiling kitkbjul9.
+  Using name ML Kit compiling kitkbjul9.
   Using 2000 samples.
   Using encapsulated postscript with width 388 pt.
   # gv -seascape region.ps
@@ -8508,9 +8509,9 @@ that the number of profile ticks is increased using the option
   ...
   [wrote executable file: run]
   # rp2ps -region -sampleMax 2000 -eps 137 mm \
-          -name "MLKit compiling kitkbjul9 (100000 microsec)"         
+          -name "ML Kit compiling kitkbjul9 (100000 microsec)"         
   Region profiling to output file region.ps.
-  Using name MLKit compiling kitkbjul9 (100000 microsec).
+  Using name ML Kit compiling kitkbjul9 (100000 microsec).
   Using 2000 samples.
   Using encapsulated postscript with width 388 pt.
   # gv -seascape region.ps
@@ -8521,7 +8522,7 @@ that the number of profile ticks is increased using the option
 \begin{center}
 \includegraphics{mlkit_compiling_kitkbjul9_400msec.eps}
 \end{center}
-\caption{A region profile of the MLKit compiling the program \texttt{kitkbjul9.sml}. 
+\caption{A region profile of the ML Kit compiling the program \texttt{kitkbjul9.sml}. 
  Memory is traversed once every 0.1 second.}
 \label{mlkit_compiling_kitkbjul9_400msec.fig}
 %\medskip\hrule
@@ -8658,9 +8659,9 @@ x86 native backend. The options are slightly different for the version
 of the ML Kit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 4.0.0, Sep 20, 2001 [X86 Backend]
+ML Kit version 4.1.0, Apr 05, 2002 [X86 Backend]
 
-Usage: mlkit [OPTION]... [file.sml | file.sig | file.pm]
+Usage: mlkit_kam [OPTION]... [file.sml | file.sig | file.pm]
 
 Options:
 
@@ -8704,6 +8705,27 @@ Options:
 
 --no_contract
      Opposite of --contract.
+
+--cross_module_opt, -cross_opt                             (on)
+     Enable cross-module optimisation including in-lining
+     of small functions and specialisation of small
+     recursive functions. Which optimisations are performed
+     across modules is controlled by individual optimisation
+     flags.
+
+--no_cross_module_opt, -no_cross_opt
+     Opposite of --cross_module_opt, -cross_opt.
+
+--dangling_pointers, -dangle                               (on)
+     When this option is disabled, dangling pointers
+     are avoided by forcing values captured in
+     closures to live at-least as long as the closure
+     itself. So as to make garbage collection sound,
+     this option is disabled by default when garbage
+     collection is enabled.
+
+--no_dangling_pointers, -no_dangle
+     Opposite of --dangling_pointers, -dangle.
 
 --debug_compiler, -debug                                  (off)
      Print intermediate forms of a program during compilation.
@@ -8754,7 +8776,12 @@ Options:
      garbage collection is enabled, all values are tagged. Due
      to region inference, for most programs, the garbage
      collector is invoked less often than for systems based
-     only on garbage collection.
+     only on garbage collection. When garbage collection is
+     enabled, introduction of dangling pointers are avoided by
+     forcing values captured in closures to live at-least as
+     long as the closure. Moreover, enabling garbage
+     collection implicitly enables the preservation of tail
+     calls (see the option ``preserve_tail_calls''.)
 
 --no_garbage_collection, -no_gc
      Opposite of --garbage_collection, -gc.
@@ -8802,7 +8829,7 @@ Options:
 --log_to_file                                             (off)
      Log to files instead of stdout.
 
---maximum_inline_size N                                    (20)
+--maximum_inline_size N                                    (50)
      Functions smaller than this size (counted in abstract
      syntax tree nodes) are in-lines, even if they are used
      more than once. Functions that are used only once are
@@ -8837,6 +8864,14 @@ Options:
 --output S, -o S                                        ("run")
      The name of the executable file generated by
      the Kit.
+
+--preserve_tail_calls, -ptc                               (off)
+     Avoid the wrapping of letregion constructs around
+     tail calls. Turning on garbage collection
+     automatically turns on this option.
+
+--no_preserve_tail_calls, -no_ptc
+     Opposite of --preserve_tail_calls, -ptc.
 
 --print_K_normal_forms                                    (off)
      Print Region Expressions in K-Normal Form. Applicable,
@@ -8956,6 +8991,21 @@ Options:
 --no_raggedRight
      Opposite of --raggedRight.
 
+--recompile_basislib, -scratch                            (off)
+     Recompile basis library from scratch. This option
+     is useful together with other options that control
+     code generation.
+
+--no_recompile_basislib, -no_scratch
+     Opposite of --recompile_basislib, -scratch.
+
+--region_inference, -ri                                    (on)
+     With this flag disabled, all values are allocated in
+     global regions.
+
+--no_region_inference, -no_ri
+     Opposite of --region_inference, -ri.
+
 --region_profiling, -prof                                 (off)
      Enable region profiling. Object code stemming
      from compiling a program with region profiling enabled
@@ -8967,7 +9017,7 @@ Options:
 
 --register_allocation                                      (on)
      Perform register allocation. Without register allocation
-     enabled, programs run somewhat slower--but they run andn
+     enabled, programs run somewhat slower--but they run and
      you save about 15 percent on compile time.
 
 --no_register_allocation
@@ -8992,6 +9042,11 @@ Options:
 
 --strip                                                   (off)
      If enabled, the Kit strips the generated executable.
+
+--tag_values, -tag                                        (off)
+     Enable tagging of values as used when garbage
+     collection is enabled for implementing pointer
+     traversal.
 
 --type_check_lambda                                        (on)
      Type check lambda expression prior to performing region
