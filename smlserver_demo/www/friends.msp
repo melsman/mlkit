@@ -22,7 +22,7 @@ fun format (g, wseq) =
 
 ?>
 
-<?MSP$ Ns.Db.fold (format, $"", query) ?>
+<?MSP$ Db.fold (format, $"", query) ?>
 
 </table>
 </center>

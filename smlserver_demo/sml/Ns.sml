@@ -14,60 +14,11 @@ structure Ns :> NS =
     type status = int        (* see nsthread.h *)
     val OK = 0 and ERROR = ~1 and END_DATA = 4
 
-    type set = int
-
     fun isNull(s : string) : bool = prim("nssml_isNullString", "nssml_isNullString", s)
 
-    structure Set =
-      struct
-	fun get (s :set, key: string): string option =
-	  let val res : string = prim("nssml_SetGet", "nssml_SetGet", (s,key))
-	  in if isNull res then NONE
-	     else SOME res
-	  end
-	fun getOpt (s:set, key:string, dflt:string): string =
-	  Option.getOpt(get (s, key), dflt)
-	fun put (s: set, key: string, value: string) : unit = 
-	  prim("nssml_SetPut", "nssml_SetPut", (s,key,value))
-	fun free (s: set) : unit =
-	  prim("Ns_SetFree", "Ns_SetFree", s)
-	fun create (name: string) : set =
-	  prim("nssml_SetCreate", "nssml_SetCreate", name)
-	fun size (s: set) : int =
-	  prim("nssml_SetSize", "nssml_SetSize", s)
-	fun unique (s: set, key: string) : bool =
-	  prim("nssml_SetUnique", "nssml_SetUnique", (s,key))
-
-	fun key (s: set, index: int) : string option =
-	  let val res : string = prim("nssml_SetKey", "nssml_SetKey", (s, index))
-	  in if isNull res then NONE
-	     else SOME res
-	  end
-
-	fun value (s: set, index: int) : string option =
-	  let val res : string = prim("nssml_SetValue", "nssml_SetValue", (s, index))
-	  in if isNull res then NONE
-	     else SOME res
-	  end
-
-	fun getPair(s,n) = 
-	  case (key(s,n), value(s,n))
-	    of (SOME k,SOME v) => (k,v)
-	     | _ => raise Fail "Ns.getPair"
-	fun foldr (f:(string * string) * 'a -> 'a) (b:'a) (s:set) : 'a =
-	  let fun loop (n,acc) = if n < 0 then acc
-				 else loop (n-1, f(getPair(s,n),acc))
-	  in loop (size s - 1, b)
-	  end
-	fun foldl (f:(string * string) * 'a -> 'a) (b:'a) (s:set) : 'a =
-	  let fun loop (n,acc) = if n < 0 then acc
-				 else f(getPair(s,n), loop(n-1,acc))
-	  in loop (size s - 1, b)
-	  end
-	fun list s = foldl (op ::) nil s
-	fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) nil s
-      end
-
+    structure Set : NS_SET = NsSet 
+    type set = Set.set
+ 
     structure Conn =
       struct
 	fun returnHtml(status: int, s: string) : status =
@@ -119,53 +70,6 @@ structure Ns :> NS =
 	  prim("nssml_ConnUrl", "nssml_ConnUrl", getConn())
       end
 
-    type db = int
-    type poolname = string
-    structure Db =
-      struct
-	fun poolGetHandle (poolname : poolname) : db =
-	  prim("nssml_DbPoolGetHandle", "nssml_DbPoolGetHandle", poolname)
-	fun poolPutHandle (db : db) : unit =
-	  prim("nssml_DbPoolPutHandle", "nssml_DbPoolPutHandle", db)
-	fun dmlDb (db : db, s: string) : status =
-	  prim("nssml_DbDML", "nssml_DbDML", (db, s))
-
-	fun dml (s: string) : status =
-	  let val db = poolGetHandle "main"
-	  in (dmlDb (db,s) before poolPutHandle db)
-	    handle X => (poolPutHandle db; raise X)
-	  end
-	fun select (db : db, s : string) : set =
-	  prim("nssml_DbSelect", "nssml_DbSelect", (db, s))
-	fun getRow (db : db, s : set) : status =
-	  prim("nssml_DbGetRow", "nssml_DbGetRow", (db, s))
-
-	fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:string) : 'a =
-	  let val s : set = select(db, sql)
-	    fun g n = Set.getOpt(s, n, "##")
-	    fun loop (acc:'a) : 'a =
-	      if (getRow(db,s) <> END_DATA) then loop (f(g,acc))
-	      else acc
-	  in loop acc
-	  end
-
-	fun fold (f:(string->string)*'a->'a, acc:'a, sql:string) : 'a =
-	  let val db = poolGetHandle "main"
-	  in (foldDb (db,f,acc,sql) before poolPutHandle db)
-	    handle X => (poolPutHandle db; raise X)
-	  end
-
-	fun qq s =
-	  let 
-	    fun qq_s' [] = []
-	      | qq_s' (x::xs) = if x = #"'" then x :: x :: (qq_s' xs) else x :: (qq_s' xs)
-	  in
-	    implode(qq_s'(explode s))
-	  end
-
-	fun seq_nextval_exp seq_name = seq_name ^ ".nextval"
-      end
-
     structure Cache =
       struct
 	type cache = int
@@ -191,47 +95,7 @@ structure Ns :> NS =
 	  end
       end
 
-    structure Info =
-      struct
-	fun configFile() : string =
-	  prim("nssml_InfoConfigFile", "nssml_InfoConfigFile", ())
-
-	fun configGetValue {sectionName: string, key: string} : string option =
-	  let val res : string = prim("nssml_configGetValue", "nssml_configGetValue", 
-				      (sectionName, key))
-	  in if isNull res then NONE
-	     else SOME res
-	  end
-
-	fun configGetValueExact {sectionName: string, key: string} : string option =
-	  let val res : string = prim("nssml_configGetValueExact", "nssml_configGetValueExact", 
-				      (sectionName, key))	  
-	  in if isNull res then NONE
-	     else SOME res
-	  end
-	    
-	fun errorLog() : string =
-	  prim("nssml_InfoErrorLog", "nssml_InfoErrorLog", ())
-
-	fun homePath() : string =
-	  prim("nssml_InfoHomePath", "nssml_InfoHomePath", ())
-
-	fun hostname() : string =
-	  prim("nssml_InfoHostname", "nssml_InfoHostname", ())
-
-	fun pid() : int =
-	  prim("Ns_InfoPid", "Ns_InfoPid", ())
-
-	fun serverVersion() : string =
-	  prim("nssml_InfoServerVersion", "nssml_InfoServerVersion", ())
-
-	fun uptime() : int =
-	  prim("Ns_InfoUptime", "Ns_InfoUptime", ())
-	  
-	fun pageRoot() : string =
-	  prim("nssml_PageRoot", "nssml_PageRoot", ())
-
-      end
+    structure Info : NS_INFO = NsInfo
 
     fun return (s : string) : status =
       Conn.returnHtml(200, s)
@@ -321,4 +185,11 @@ structure Ns :> NS =
 
     val _ = OS.FileSys.chDir (Info.pageRoot())
 
+    (* Creating the two supported database interfaces *)
+    structure DbOra : DB = DbFunctor(structure DbBasic = DbBasicOra
+				     structure Set = Set
+				     structure Info = Info)
+    structure DbPg  : DB = DbFunctor(structure DbBasic = DbBasicPG
+				     structure Set = Set
+				     structure Info = Info)
   end

@@ -1,6 +1,13 @@
 local
-  ../sml/NS.sml
-  ../sml/Ns.sml  
+  local
+    ../sml/NsSet.sml
+    ../sml/NsInfo.sml
+    ../sml/DbFunctor.sml
+  in
+    ../sml/NS.sml
+    ../sml/Ns.sml  
+    ../sml/Db.sml
+  end
   ../sml/MSP.sml
   ../sml/Msp.sml
   ../sml/FormVar.sml
@@ -38,5 +45,7 @@ in
   cs_add.sml
   cs_upd.sml
   cs_const.sml
+
+  ug.sml
  ]
 end

@@ -7,14 +7,14 @@ fun sl2s sep [] = ""
 fun gen_ch_nums s = sl2s "," (List.map (Int.toString o Char.ord) (explode s))
 
 (* Can we avoid using flatten all the time? *)
-fun format (g, s) = `^(Ns.Quot.flatten s)
+fun format (g, s) = `
   <li><form action=cs_upd.sml method=post>
     Id: <b>^(g "id")</b> = <input type=text name=text value="^(g "text")"> (^(gen_ch_nums (g "text")))
     <input type=hidden value="^(g "id")" name="num">
     <input type=submit value="Update Id ^(g "id")">
-  </form><p>`
+  </form><p>` :: s
 
-val l = Ns.Db.fold (format, nil, query) 
+val l = List.concat (List.rev (Db.fold (format, nil, query)))
 
 (* Is there an easier way to write \n? *)
 fun ch_row ch 1 = `<td> ^(Int.toString ch) (<b>^(String.str(Char.chr ch))</b>) </td>`

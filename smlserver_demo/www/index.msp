@@ -39,6 +39,7 @@ in
                  ("A demo of various MSP styles", "test.msp"),
 		 ("Send an Email", "mail_form.sml"),
                  ("Character Support", "cs.html"),
+                 ("User Group Example", "ug.sml"),
                  ("This index page", "index.msp")]
 end
 ?>
