@@ -93,7 +93,8 @@ as
   is
   begin
     update scs_parties
-       set deleted_p = 't'
+       set deleted_p = 't',
+           email = party_id || '-' || email
      where scs_parties.party_id = party.delete.party_id;
   end delete;
 
