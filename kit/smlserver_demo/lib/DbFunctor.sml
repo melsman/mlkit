@@ -413,6 +413,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
     fun fromBool true = "t"
       | fromBool false = "f"
 
+    fun toReal r = Real.fromString r
+    fun fromReal r = Real.toString r
+
     fun valueList vs = String.concatWith "," (List.map qqq vs)
     fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qqq v) vs)
 

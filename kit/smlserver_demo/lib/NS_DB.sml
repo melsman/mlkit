@@ -48,6 +48,9 @@ signature NS_DB =
     val setList       : (string*string) list -> string
     val toBool        : string -> bool option
     val fromBool      : bool -> string
+    val toReal        : string -> real option
+    val fromReal      : real -> string
+
   end
 
 (*

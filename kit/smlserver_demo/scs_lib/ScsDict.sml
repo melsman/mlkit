@@ -161,12 +161,14 @@ signature SCS_DICT =
           val str = s (dictWithArgsToDict dict args)
           val str = s' (dictWithArgsToDict dict args) *)
     val dictWithArgsToDict : dict -> string list -> dict
+
+    (* [subst phase args] returns a quotations where all %0,%1,... are
+       replaced by the respective arguments in args. *)
+    val subst : string -> string list -> quot
   end
 
 structure ScsDict :> SCS_DICT =
   struct 
-    fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
-
     fun subst (s,arg,pattern) =
       String.concatWith " " 
         (List.map (fn frag => if frag = pattern then arg else frag) 
@@ -261,7 +263,7 @@ structure ScsDict :> SCS_DICT =
 
     fun d source_lang module file_name phrase =
       let
-	val can_phrase = canonical phrase
+	val can_phrase = ScsString.canonical phrase
         val module_file_phrase = module ^ "-" ^ file_name ^ "-" ^ can_phrase 
 	val cn = cacheName(source_lang,ScsLogin.user_lang)
       in
@@ -319,23 +321,21 @@ structure ScsDict :> SCS_DICT =
 
     val s = Quot.toString o s'
 
-    local 
-      fun subst phrase args =
-	Quot.fromString (subst' phrase
-			 (Array.fromList (List.map (fn s => (String.size s,s)) args)))
-    in
-      fun sl' dict args =
-	let
-	  val phrase = s dict
-	in
-	  subst phrase args
-	end          
+    fun subst phrase args =
+      Quot.fromString (subst' phrase
+		       (Array.fromList (List.map (fn s => (String.size s,s)) args)))
 
-      fun sl dict args = Quot.toString(sl' dict args)   
+    fun sl' dict args =
+      let
+	val phrase = s dict
+      in
+	subst phrase args
+      end          
 
-      fun dictWithArgsToDict dict args =
-	List.map (fn (lang,phrase) => (lang, subst (Quot.toString phrase) args)) dict
-    end
+    fun sl dict args = Quot.toString(sl' dict args)   
+      
+    fun dictWithArgsToDict dict args =
+      List.map (fn (lang,phrase) => (lang, subst (Quot.toString phrase) args)) dict
   end
 
 
