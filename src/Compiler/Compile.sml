@@ -96,7 +96,6 @@ functor Compile(structure Excon : EXCON
                 structure KAMBackend : KAM_BACKEND
 		  sharing type CompLamb.EA = KAMBackend.EA
 		      and type CompLamb.code = KAMBackend.code
-		      and type CompLamb.linkinfo = KAMBackend.linkinfo
 
 		structure CompileBasis: COMPILE_BASIS
 		  sharing type CompileBasis.EqEnv = EliminateEq.env
@@ -143,8 +142,13 @@ functor Compile(structure Excon : EXCON
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
     type strdec = CompileDec.strdec
-    type linkinfo = KAMBackend.linkinfo
-    type basisinfo = (int*KAMBackend.EA) list
+    type EA = KAMBackend.EA
+    type linkinfo = {code_label:KAMBackend.EA, imports: EA list, exports : EA list, unsafe:bool}
+    fun code_label_of_linkinfo (li:linkinfo) = #code_label li
+    fun exports_of_linkinfo (li:linkinfo) = #exports li
+    fun imports_of_linkinfo (li:linkinfo) = #imports li
+    fun unsafe_linkinfo (li:linkinfo) = #unsafe li
+    val pp_EA = KAMBackend.KAM.pp_EA
 
     fun die s = Crash.impossible ("Compile." ^ s)
 
@@ -632,9 +636,9 @@ functor Compile(structure Excon : EXCON
     fun comp_lamb(l2kam_ce, pgm) = 
       let val _ = chat "\nCompiling region annotated lambda language ..."
 	  val _ = Timing.timing_begin()
-	  val (linkinfo, code, l2kam_ce') = CompLamb.comp_lamb(l2kam_ce, pgm)
+	  val {code_label, code, env=l2kam_ce1,imports,exports} = CompLamb.comp_lamb(l2kam_ce, pgm)
 	  val _ = Timing.timing_end("Com. Lam.")
-      in (linkinfo, code, l2kam_ce')
+      in {code_label=code_label, code=code, l2kam_ce1=l2kam_ce1, imports=imports,exports=exports}
       end
 
 
@@ -645,6 +649,7 @@ functor Compile(structure Excon : EXCON
     type target = KAMBackend.target
     fun comp_with_new_backend(rse, Psi, mulenv, drop_env, psi_env, l2kam_ce, lamb_opt, vcg_file) =
       let
+	val unsafe = not(LambdaExp.safeLambdaPgm lamb_opt)
 	val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
         val _ = MulExp.warn_puts(rse, mul_pgm)
         val k_mul_pgm = k_norm mul_pgm
@@ -654,7 +659,7 @@ functor Compile(structure Excon : EXCON
         val _ = warn_dangling_pointers(rse, psi_pgm)
         val app_conv_psi_pgm = appConvert psi_pgm
 	val _ = RegionFlowGraphProfiling.reset_graph ()
-	val (linkinfo, code, l2kam_ce1) = comp_lamb(l2kam_ce, app_conv_psi_pgm) 
+	val {code_label,l2kam_ce1, code, exports, imports} = comp_lamb(l2kam_ce, app_conv_psi_pgm) 
 
 	(* Generate lambda code file with program points *)
 	val old_setting = !print_program_points
@@ -682,6 +687,7 @@ functor Compile(structure Excon : EXCON
 		  ()
 
 	val target = KAMBackend.generate_target_code code
+	val linkinfo = {code_label=code_label,imports=imports,exports=exports,unsafe=unsafe}
       in
 	(rse1, Psi1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo)
       end
@@ -726,7 +732,7 @@ functor Compile(structure Excon : EXCON
     val generate_link_code = 
       let
 	(* Global regions for all modules. *)
-	val basis_info : basisinfo = 
+	val basis_info : (int*EA) list = 
 	  [(Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_top, KAMBackend.KAM.toplevel_region_withtype_topEA),
 	   (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_string, KAMBackend.KAM.toplevel_region_withtype_stringEA),
 	   (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_real, KAMBackend.KAM.toplevel_region_withtype_realEA)]

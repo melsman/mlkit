@@ -61,17 +61,17 @@ let
 
   fun build_runtime() =
     let val _ = print "\n ** Building runtime system **\n\n"
-    in cd "Runtime/Version17";
+    in cd "Runtime";
       if OS.Process.system "gmake" = OS.Process.success then cdsrc()
       else die "build_runtime: gmake failed"
     end
 
   fun build_rp2ps() =
     (print "\n ** Building profiling tool rp2ps **\n\n";
-     cd "Runtime/Version17/Rp2ps";
+     cd "Tools/Rp2ps";
      if OS.Process.system ("gmake") = OS.Process.success then cdsrc() 
      else die "build_rp2ps: gmake failed";
-     if OS.Process.system "cp Runtime/Version17/Rp2ps/rp2ps ../bin/rp2ps" = OS.Process.success then ()
+     if OS.Process.system "cp Tools/Rp2ps/rp2ps ../bin/rp2ps" = OS.Process.success then ()
      else die "build_rp2ps: failed to install rp2ps")
       
   fun build_kit() = 

@@ -1,0 +1,62 @@
+%
+% Theorems and the like
+%
+\newtheorem{theorem}{Theorem}
+%\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{property}[theorem]{Property}
+\newtheorem{observation}[theorem]{Observation}
+\newcounter{excount}
+\newcommand{\exercise}{\par\medskip\noindent\addtocounter{excount}{1}{\mbox{\bf Exercise\ \theexcount\quad}}}
+%
+% Slides
+%
+\newcounter{slipage}
+\newcommand{\Beginslide}[1]{\par\noindent\addtocounter{slipage}{1}{\bf #1}\hfil(\theslipage)\break\vskip-5mm}
+\newcommand{\Endslide}{\clearpage}
+%
+% Pictures
+%
+\setlength{\unitlength}{1 true mm}
+%
+% Lines
+%
+\newcommand{\bigline}{\hrule width\hsize height 1mm depth 0mm}
+\newcommand{\linie}{\vrule width\hsize height 1mm depth 0mm}
+%
+% Semantics
+%
+\newcommand{\id}[1]{{\it #1}}
+\def\Dom{\mathop{\rm Dom}\nolimits}
+\def\boxml#1{\hbox{\tt #1}}
+\def\boxit#1{\hbox{\it #1\/}}
+\newcommand{\ts}{\vdash}
+\newcommand{\dts}{\models}
+\newcommand{\ra}{\Rightarrow}
+\newcommand{\ar}[1]{\mathop{\vbox{\ialign{##\crcr % right arrow with 
+                                                  % argument on top
+       \noalign{\kern 2pt\nointerlineskip}\crcr
+       $\hfil\scriptstyle\kern 6pt{#1}\kern 6pt\hfil$\crcr
+       \noalign{\kern-2pt\nointerlineskip}\crcr
+       \rightarrowfill\crcr}}}\nolimits}
+\newcommand{\rulesec}[2]{\subsubsection*{{\bf#1}\hfill\fbox{#2}}}
+\def\emptymap{\{\}}
+\long\def\proof{\noindent\hangindent=10mm\hangafter=1{\bf Proof\  }} 
+%
+% Displays of ML code
+%
+\newenvironment{newmltabbing}{\begingroup\catcode`\~=\active\begin{tabbing}}{\end{tabbing}\endgroup}
+\newenvironment{mltabbing}{\begingroup\catcode`\_=\active\catcode`\#=\active\catcode`\~=\active\begin{tabbing}}{\end{tabbing}\endgroup}
+
+{\catcode`\_=\active \def_{\_}%
+\catcode`\#=\active \def#{\#}%
+\catcode`\~=\active \def~{$\sim$}}
+%
+%  Refereeing comments   (\nc is just short for \nextcomment)
+%
+\def\nextcomment#1{\par\smallskip\noindent{\bf#1:\quad}}
+\def\nc#1{\nextcomment{#1}}
+%

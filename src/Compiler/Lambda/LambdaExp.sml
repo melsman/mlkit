@@ -44,8 +44,8 @@ functor LambdaExp(structure Lvars: LVARS
       | CONStype    of Type list * TyName
       | RECORDtype  of Type list
 
-    fun foldl (g: 'a -> 'b -> 'a) (acc: 'a) [] = acc
-      | foldl g acc (x::xs) = foldl g (g acc x) xs
+    fun foldl' (g: 'a -> 'b -> 'a) (acc: 'a) [] = acc
+      | foldl' g acc (x::xs) = foldl' g (g acc x) xs
 
     fun foldType (g : 'a -> Type -> 'a) (acc: 'a) (tau : Type) : 'a =
       case tau of
@@ -53,7 +53,7 @@ functor LambdaExp(structure Lvars: LVARS
       | ARROWtype(taus1,taus2) => g (foldTypes g (foldTypes g acc taus2) taus1 ) tau
       | CONStype(taus,_) => g(foldTypes g acc taus)tau
       | RECORDtype(taus) => g(foldTypes g acc taus)tau
-    and foldTypes g acc taus = foldl (foldType g) acc taus
+    and foldTypes g acc taus = foldl' (foldType g) acc taus
         
     fun size_type tau = foldType (fn n:int => fn _ => n+1)
 
@@ -158,7 +158,7 @@ functor LambdaExp(structure Lvars: LVARS
 	
 	fun foldSwitch (SWITCH(arg, selections, wildcard)) =
 	  let
-	    val acc' = foldl (foldTD fcns) (foldTD fcns new_acc arg) (map #2 selections)
+	    val acc' = foldl' (foldTD fcns) (foldTD fcns new_acc arg) (map #2 selections)
           in
 	    case wildcard
 	      of SOME lamb => foldTD fcns acc' lamb
@@ -167,13 +167,13 @@ functor LambdaExp(structure Lvars: LVARS
           
       in
 	case lamb of
-          VAR{instances, ...} => foldl g new_acc instances
+          VAR{instances, ...} => foldl' g new_acc instances
         | INTEGER _ => new_acc
         | STRING _ => new_acc
         | REAL _ => new_acc
-	| FN{pat,body} => foldTD fcns (foldl (foldType g) new_acc (map #2 pat)) body
-	| LET{pat,bind,scope} => foldTD fcns (foldTD fcns (foldl (foldType g) new_acc (map #3 pat)) bind) scope
-	| FIX{functions,scope} => foldTD fcns (foldl (foldTD fcns) (foldl (foldType g) new_acc (map #Type functions))  (map #bind functions)) scope
+	| FN{pat,body} => foldTD fcns (foldl' (foldType g) new_acc (map #2 pat)) body
+	| LET{pat,bind,scope} => foldTD fcns (foldTD fcns (foldl' (foldType g) new_acc (map #3 pat)) bind) scope
+	| FIX{functions,scope} => foldTD fcns (foldl' (foldTD fcns) (foldl' (foldType g) new_acc (map #Type functions))  (map #bind functions)) scope
 	| APP(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
 	| EXCEPTION(excon,tauOpt,lamb) => 
              (case tauOpt of NONE => foldTD fcns new_acc lamb
@@ -185,19 +185,19 @@ functor LambdaExp(structure Lvars: LVARS
 	| SWITCH_S switch => foldSwitch switch
 	| SWITCH_C switch => foldSwitch switch
 	| SWITCH_E switch => foldSwitch switch
-	| PRIM(prim,lambs) => foldl (foldTD fcns) new_acc lambs
+	| PRIM(prim,lambs) => foldl' (foldTD fcns) new_acc lambs
         | FRAME _ => acc
       end
 	
     and foldPrim (g: 'a -> Type -> 'a) (acc:'a) (prim:Type prim) : 'a =
       case prim of
-        CONprim{instances,...} => foldl (foldType g) acc instances
-      | DECONprim{instances,...} => foldl (foldType g) acc instances
+        CONprim{instances,...} => foldl' (foldType g) acc instances
+      | DECONprim{instances,...} => foldl' (foldType g) acc instances
       | DEREFprim{instance} => (foldType g) acc instance 
       | REFprim{instance} => (foldType g) acc instance 
       | ASSIGNprim{instance} => (foldType g) acc instance 
       | EQUALprim{instance} => (foldType g) acc instance 
-      | CCALLprim {instances, ...} => foldl (foldType g) acc instances
+      | CCALLprim {instances, ...} => foldl' (foldType g) acc instances
       | RESET_REGIONSprim{instance} => (foldType g) acc instance 
       | FORCE_RESET_REGIONSprim{instance} => (foldType g) acc instance 
       | _ => acc
@@ -209,10 +209,85 @@ functor LambdaExp(structure Lvars: LVARS
    fun size_incl_types (e: LambdaExp) = foldTD(fn n:int => fn exp => n+1, 
                                               fn n: int => fn tau => n+1) 
                                        0 e
-                                    
+
+   (* safeLambdaPgm: This predicate approximates whether a lambda
+    * program performs side effects; it is used to determine if a
+    * program unit can be discharged at link time in case it is not
+    * used. *)
+
+   local
+     fun safe_prim prim =
+       case prim
+	 of CONprim _ => true
+	  | DECONprim _ => true
+	  | EXCONprim _ => true
+	  | DEEXCONprim _ => true
+	  | RECORDprim => true
+	  | SELECTprim _ => true       
+	  | UB_RECORDprim => true
+	  | NEG_INTprim => false
+	  | NEG_REALprim => true
+	  | ABS_INTprim => false
+	  | ABS_REALprim => true
+	  | DEREFprim _ => true
+	  | REFprim _ => true
+	  | ASSIGNprim _ => false
+	  | MUL_REALprim => true
+	  | MUL_INTprim => false
+	  | PLUS_REALprim => true
+	  | PLUS_INTprim => false
+	  | MINUS_REALprim => true
+	  | MINUS_INTprim => false
+	  | EQUALprim _ => true
+	  | EQUAL_INTprim => true
+	  | LESS_REALprim => true
+	  | LESS_INTprim => true
+	  | GREATER_REALprim => true
+	  | GREATER_INTprim => true
+	  | LESSEQ_REALprim => true
+	  | LESSEQ_INTprim => true
+	  | GREATEREQ_REALprim => true
+	  | GREATEREQ_INTprim => true
+	  | CCALLprim _ => false
+	  | RESET_REGIONSprim _ => false
+	  | FORCE_RESET_REGIONSprim _ => false
+
+     fun safe_sw safe_exp (SWITCH(exp,sel,opt)) =
+       foldl (fn ((_,exp), acc) => acc andalso safe_exp exp)
+       (safe_exp exp andalso 
+	case opt
+	  of SOME exp => safe_exp exp
+	   | NONE => true) 
+       sel
+
+     fun safe_exp exp =
+       case exp
+	 of VAR _ => true
+	  | INTEGER _ => true			
+	  | STRING _ => true
+	  | REAL _ => true
+	  | FN _ => true
+	  | LET {bind, scope, ...} => safe_exp bind andalso safe_exp scope
+	  | FIX {scope,...} => safe_exp scope
+	  | APP _ => false
+	  | EXCEPTION (_,_,exp) => safe_exp exp
+	  | RAISE _ => false
+	  | HANDLE (exp,_) => safe_exp exp
+	  | SWITCH_I sw => safe_sw safe_exp sw
+	  | SWITCH_S sw => safe_sw safe_exp sw
+	  | SWITCH_C sw => safe_sw safe_exp sw
+	  | SWITCH_E sw => safe_sw safe_exp sw
+	  | PRIM (prim,exps) => foldl (fn (exp,acc) => acc andalso safe_exp exp) (safe_prim prim) exps
+	  | FRAME _ => true
+
+   in (* local *)
+
+     fun safeLambdaPgm(PGM(_,exp)) = safe_exp exp
+
+   end (* local *)
 
    (* prettyprinting. *)
-    type StringTree = PP.StringTree
+   type StringTree = PP.StringTree
 
     fun layoutPrim layoutType prim = 
      case prim of
