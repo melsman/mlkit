@@ -121,6 +121,17 @@ functor CompBasis(structure Con : CON
 			  else log("\n" ^ s ^ ": enrich failed."); b)
 		      else b
 
+    fun debug1(s, b,oenv,oenv1) = 
+	if !debug_man_enrich then
+	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
+	     else (log("\n" ^ s ^ ": enrich failed."); 
+		   print ("*** OEnv =\n");
+		   PP.printTree (OptLambda.layout_env oenv);
+		   print ("\n*** OEnv1 =\n");
+		   PP.printTree (OptLambda.layout_env oenv1));
+		 b)
+	else b
+
     local
       fun EliminateEq_enrich a = EliminateEq.enrich a
       fun LambdaStatSem_enrich a = LambdaStatSem.enrich a
@@ -136,7 +147,7 @@ functor CompBasis(structure Con : CON
 		   mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1}) =
 	debug("EqEnv", EliminateEq_enrich(EqEnv,EqEnv1)) andalso 
 	debug("TCEnv", LambdaStatSem_enrich(TCEnv,TCEnv1)) andalso
-	debug("OEnv", OptLambda_enrich(OEnv,OEnv1)) andalso
+	debug1("OEnv", OptLambda_enrich(OEnv,OEnv1), OEnv, OEnv1) andalso
 	debug("rse", RegionStatEnv_enrich(rse,rse1)) andalso
 	debug("mulenv", Mul_enrich_efenv((mulenv,rse),(mulenv1,rse1))) andalso
 	debug("mularefmap", Mul_enrich_mularefmap(mularefmap,mularefmap1)) andalso
@@ -178,12 +189,7 @@ functor CompBasis(structure Con : CON
 	      TyName.tyName_VECTOR :: tynames     (* for elim eq *) 
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames
                         else tynames
-	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames}) handle x =>
-               (say "CompileBasis.restrict: ElimiateEq.restrict failed\n";
-                say "Then equality environment is:\n";
-                PP.outputTree(say,  EliminateEq.layout_env EqEnv, 70);
-                say "(end of equality environment)\n";
-                raise x) 
+	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
 	  val lvars = lvars_eq @ lvars
 	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})

@@ -863,6 +863,13 @@ in
      ("region_inference", SOME "ri", "region_inference", region_inference,
       "With this flag disabled, all values are allocated in\n\
        \global regions.")
+
+  val _ = add true
+     ("repository", SOME "rep", "repository", ref true,
+      "Use in-memory repository to avoid unnecessary\n\
+      \recompilation. This flag should be disabled when\n\
+      \compiling mlb-files, which make use of the file system\n\
+      \as a repository.")
 end
 
 val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))

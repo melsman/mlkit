@@ -21,6 +21,7 @@ functor Name(structure Crash : CRASH) : NAME =
     in fun current_matchcount() = !current
        val matchcount_lt = op <
        fun incr_matchcount() = (current := !current + 1)
+       val matchcount_invalid = ~1
     end
 
     (* The string is the base *)
@@ -40,7 +41,8 @@ functor Name(structure Crash : CRASH) : NAME =
 
     (* used by Manager to alpha-rename export bases *)
     fun assignKey (r as ref {key=(_,s),rigid,gen_mark=g},i) =
-	r := {key=(i,s),rigid=rigid,gen_mark=g}
+	if rigid then die "assignKey on rigid name"
+	else r := {key=(i,s),rigid=rigid,gen_mark=g}
 
     (* Bucket for generated names *)
     val bucket = ref ([] : name list) 

@@ -127,6 +127,16 @@ functor IntModules(structure Name : NAME
 
     type absprjid = ModuleEnvironments.absprjid
 
+    val repository = Flags.is_on0 "repository"
+
+    fun Repository_lookup_int a =
+	if repository() then Repository.lookup_int a
+	else NONE
+
+    fun Repository_add_int a : unit =
+	if repository() then Repository.add_int a
+	else ()
+
     open TopdecGrammar (*declares StrId*)
 
     fun to_TypeInfo i =
@@ -486,27 +496,27 @@ functor IntModules(structure Name : NAME
 		
 	      (* We now check if there is code in the repository
 	       * we can reuse. *)
-	      fun reuse_code () =
-		case Repository.lookup_int (absprjid,funid)
-		  of SOME(_,(funstamp',Eres',tintB',longstrids,N',mc',intB'')) =>
-		    if FunStamp.eq(funstamp,funstamp') then
-		      if let val tintB0 = intB0
-			     val tintB1 = intB1
-			     val tintB0' = IntBasis.plus(tintB0,tintB1)
-			 in IntBasis.enrich(tintB0',tintB') andalso IntBasis.agree(longstrids,tintB0',tintB')
-			 end then
-			 if ElabEnv.eq(Eres,Eres') then
-			   if ModCode.exist mc' then 
-			     let val _ = chat ("[reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]")
-			         val (_,_,ce',cb') = IntBasis.un intB''
-				 val _ = List.app Name.unmark_gen N'   (* unmark names - they where *)
-			     in SOME(ce',cb',mc')                        (* marked in the repository. *)
-			     end
-			   else reuse_msg "object code is missing"
-			 else reuse_msg "result environment has changed"
-		      else reuse_msg "assumptions have changed"
-		    else reuse_msg "functor is modified"
-		   | NONE => NONE
+	      fun reuse_code () =		
+		  case Repository_lookup_int (absprjid,funid) of 
+		      SOME(_,(funstamp',Eres',tintB',longstrids,N',mc',intB'')) =>
+			 if FunStamp.eq(funstamp,funstamp') then
+			     if let val tintB0 = intB0
+				    val tintB1 = intB1
+				    val tintB0' = IntBasis.plus(tintB0,tintB1)
+				in IntBasis.enrich(tintB0',tintB') andalso IntBasis.agree(longstrids,tintB0',tintB')
+				end then
+				if ElabEnv.eq(Eres,Eres') then
+				    if ModCode.exist mc' then 
+					let val _ = chat ("[reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]")
+					    val (_,_,ce',cb') = IntBasis.un intB''
+					    val _ = List.app Name.unmark_gen N'   (* unmark names - they where *)
+					in SOME(ce',cb',mc')                        (* marked in the repository. *)
+					end
+				    else reuse_msg "object code is missing"
+				else reuse_msg "result environment has changed"
+			     else reuse_msg "assumptions have changed"
+			 else reuse_msg "functor is modified"
+		    | NONE => NONE
 
 	  in case reuse_code ()
 	       of SOME(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
@@ -552,7 +562,7 @@ functor IntModules(structure Name : NAME
 		      * repository we can match against. We also store the
 		      * entry in the repository and we emit the generated code,
 		      * since all names now have become rigid. *)
-		     val mc' = case Repository.lookup_int (absprjid,funid)
+		     val mc' = case Repository_lookup_int (absprjid,funid)
 			       of SOME(entry_no, (_,_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
 				 (List.app Name.mark_gen N';              (* N2 is returned by lookup_int *)
 				  IntBasis.match(intB'', intB2);
@@ -566,7 +576,7 @@ functor IntModules(structure Name : NAME
 				| NONE => let val mc' = ModCode.emit (absprjid, mc')
 					      val tintB' = intB'
 					  in List.app Name.mk_rigid N';
-					     Repository.add_int((absprjid,funid),(funstamp,Eres,tintB',longstrids,N',mc',intB''));
+					     Repository_add_int((absprjid,funid),(funstamp,Eres,tintB',longstrids,N',mc',intB''));
 					     mc'
 					  end
 		     val mc'' = ModCode.seq(mc,mc')

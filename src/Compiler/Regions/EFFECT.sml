@@ -19,8 +19,7 @@ sig
   val empty: effect
   val find: effect -> effect
   val eq_effect: effect * effect -> bool (* nodes not necessarily canonical *)
-  val eq_canonical_effect: effect * effect -> bool (* reference equality; 
-                                            nodes canonical *)
+
   val pu_effect  : effect Pickle.pu
   val pu_effects : effect list Pickle.pu
   val pu_runType : runType Pickle.pu

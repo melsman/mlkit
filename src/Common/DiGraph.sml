@@ -674,11 +674,17 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     fun layout_nodes_deep (layout_info: 'info -> StringTree) 
                      (g: 'info graph) : StringTree =
       let
+	val debug = true
+	fun maybe_under layout n =
+	    if debug then [PP.NODE{start="(", finish = ")", indent = 1, 
+				   childsep = PP.RIGHT ",",
+				   children = map layout (out_of_node n)}]
+	    else nil
         fun layout(n: 'info node): StringTree =
           let val n = find n
           in if !(get_visited n) then (* detected sharing; print node with "@" prefixed *)
                 PP.NODE{start = "@", finish = "", indent = 1, childsep = PP.NOSEP,
-                        children = [layout_node layout_info n]}
+                        children = layout_node layout_info n :: maybe_under layout n}
              else
                ((get_visited n):= true;
                 case (out_of_node n) of

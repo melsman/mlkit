@@ -148,7 +148,6 @@ struct
   val empty = G.mk_node (UNION{represents = NONE})
 
   fun eq_effect(node1, node2) = G.eq_nodes(G.find node1,G.find node2)
-  fun eq_canonical_effect(node1, node2) = G.eq_nodes(node1,node2)
 
   fun layout_effect e = G.layout_node layout_einfo (G.find e)
   fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [G.find(e)]
@@ -160,7 +159,7 @@ struct
      | _ => die "get_instance"
 
   fun is_arrow_effect effect =  (* effect node not necessarily canonical *)
-     case G.find_info  effect of
+     case G.find_info effect of
 	 EPS _ => true
        | _ => false
 
@@ -255,7 +254,7 @@ struct
       let val n = G.find n
       in
        case G.get_info n of
-         RHO{put = SOME n',...} => n'  (* hash consing *)
+         RHO{put = SOME n',...} => G.find n'  (* hash consing *)
        | RHO{put = NONE, key, level,get,instance,pix,ty} =>
            let (* create new node *)
                val new = G.mk_node(PUT)
@@ -271,7 +270,7 @@ struct
       let val n = G.find n
       in
        case G.get_info n of
-         RHO{get = SOME n',...} => n'  (* hash consing *)
+         RHO{get = SOME n',...} => G.find n'  (* hash consing *)
        | RHO{get = NONE, key, level,put,instance,pix,ty} =>
            let (* create new node *)
                val new = G.mk_node(GET)
@@ -626,11 +625,11 @@ struct
       (topLayer cone, #2(pop cone))    
 
   local
-    val init_count = ref 9    (* 9 top-level predefined rhos/eps declared below! *)
+    val init_count = 9    (* 9 top-level predefined rhos/eps declared below! *)
     val count = ref 0
     fun inc r = r:= !r + 1;
   in
-    fun resetCount _ = count:= !init_count
+    fun resetCount _ = count:= init_count
     fun freshInt _ = (inc count; !count)
   end
 
@@ -784,7 +783,7 @@ struct
   end
 
   val toplevel_puts_and_gets =
-    let val toplevel_rhos = [toplevel_region_withtype_top, (*toplevel_region_withtype_word, ME 1998-09-03*)
+    let val toplevel_rhos = [toplevel_region_withtype_top, (* toplevel_region_withtype_word, ME 1998-09-03 *)
 			     toplevel_region_withtype_bot, toplevel_region_withtype_string,
 			     toplevel_region_withtype_pair, toplevel_region_withtype_array,
 			     toplevel_region_withtype_ref, toplevel_region_withtype_triple]
@@ -843,7 +842,9 @@ struct
 		       (fn e => 
 			case get_level_and_key e of 
 			    SOME (_,ref i) => if i <> 0 then i else die "pu_node"
-			  | NONE => 0) (toplevel_effects@toplevel_puts_and_gets) o G.pu_node maybeNewHashInfo PUT))
+			  | NONE => 0  (* could be optimized! *) ) 
+		       (toplevel_effects@toplevel_puts_and_gets) 
+		       o G.pu_node maybeNewHashInfo PUT))
 
   val pu_nodes : einfo Pickle.pu -> einfo G.node list Pickle.pu
       = Pickle.cache (Pickle.nameGen "Effect.nodes" o Pickle.listGen o pu_node)
@@ -1150,10 +1151,10 @@ tracing *)
          die ("illegal unification involving global region(s) " ^ 
 	      Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
        else
-	RHO{level = l1, put = aux_combine(p1,p2), 
-	    get = aux_combine(g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
+	RHO{level = l1, put = aux_combine(k1,k2,p1,p2), 
+	    get = aux_combine(k1,k2,g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
 	| _ => die "einfo_combine_rho"
-  and aux_combine(op1,op2) =
+  and aux_combine(k1,k2,op1,op2) =
     case (op1,op2) of
       (NONE,NONE) => op1
     | (SOME _, NONE) => op1
@@ -1214,17 +1215,30 @@ tracing *)
      the two nodes (none of which have children)
   *)
 
-  fun unifyRho(rho_node1, rho_node2) cone : cone = 
-    unifyNodes(G.union einfo_combine_rho)(rho_node1, rho_node2) cone
+  fun checkRho s r : unit =
+      if is_rho r then ()
+      else die ("checkRho." ^ s ^ ": " ^ PP.flatten1 (layout_effect r))
 
-  fun unifyRho_no_lowering(r1,r2) : unit =
-    unifyNodes_no_lowering (G.union einfo_combine_rho) (r1,r2)
+  fun checkNotRho s r : unit =
+      if is_rho r then die ("checkNotRho." ^ s ^ ": " ^ PP.flatten1 (layout_effect r))
+      else ()
 
-  fun unifyEps(eps_node1, eps_node2) cone : cone = 
-    unifyNodes(G.union_without_edge_duplication 
-               (einfo_combine_eps(eps_node1,eps_node2)) 
-               is_union)
-              (eps_node1, eps_node2) cone
+  fun unifyRho (r1,r2) cone : cone = 
+      (checkRho "unifyRho1" r1;
+       checkRho "unifyRho2" r2;
+       unifyNodes(G.union einfo_combine_rho)(r1, r2) cone)
+
+  fun unifyRho_no_lowering (r1,r2) : unit =
+      (checkRho "unifyRho_no_lowering1" r1;
+       checkRho "unifyRho_no_lowering2" r2;
+       unifyNodes_no_lowering (G.union einfo_combine_rho) (r1,r2))
+
+  fun unifyEps(e1, e2) cone : cone = 
+      (checkNotRho "unifyEps1" e1;
+       checkNotRho "unifyEps2" e2;
+       unifyNodes(G.union_without_edge_duplication 
+		  (einfo_combine_eps(e1,e2)) 
+		  is_union) (e1,e2) cone)
 
 
 
@@ -1582,7 +1596,7 @@ tracing *)
 	if G.eq_nodes(G.find toplevel_rho,G.find effect) then ()
 	else (G.union einfo_combine_rho (G.find toplevel_rho,G.find effect);())
     in (*say_etas[layout_effect effect] (*test*);*)
-      if is_arrow_effect(G.find effect) then
+      if is_arrow_effect effect then
 	if G.eq_nodes(G.find toplevel_arreff,G.find effect) then ()
 	else (
 	      (*
@@ -1602,10 +1616,10 @@ tracing *)
 	       *)
 	      ())
       else 
-	if is_rho (G.find effect) then
+	if is_rho effect then
 	  case get_place_ty effect
 	    of SOME WORD_RT =>   union_with(toplevel_region_withtype_word)
-	     | SOME TOP_RT =>    union_with(toplevel_region_withtype_top)
+  	     | SOME TOP_RT =>    union_with(toplevel_region_withtype_top)
 	     | SOME BOT_RT =>    union_with(toplevel_region_withtype_bot)
 	     | SOME STRING_RT => union_with(toplevel_region_withtype_string)
 	     | SOME PAIR_RT =>   union_with(toplevel_region_withtype_pair)    
@@ -1623,14 +1637,14 @@ tracing *)
 	ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
 			       "mk_top_level_unique: not top-level in cone"))
     in
-      (*
+(*
        print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
        say_etas(layoutEtas nodes_for_unification);
        print"now unifying...:\n";
-       *)
-      app unify_with_toplevel_effect nodes_for_unification;
-      (* the above side-effects cone; now return it: *)
-      cone
+*)
+       app unify_with_toplevel_effect nodes_for_unification;
+       (* the above side-effects cone; now return it: *)
+       cone
   end 
 
 

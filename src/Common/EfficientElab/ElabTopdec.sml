@@ -412,7 +412,11 @@ functor ElabTopdec
      * Match object in repository (for recompilation)
      * ------------------------------------------------ *)
 
+    val repository = Flags.is_on0 "repository"
+
     fun match_and_update_repository (absprjid_and_funid,T',E') : unit =
+      if not(repository()) then ()
+      else
       let val N' = map TyName.name (TyName.Set.list T')
 	  val B' = B.from_E E'
 	  val obj = (ElabRep.empty_infix_basis,B.empty,[],(ElabRep.empty_opaq_env, TyName.Set.empty), 

@@ -888,7 +888,7 @@ structure Pickle :> PICKLE = (* was : *)
 	    typ = "Register(" ^ #typ pu ^ ")"} 
 	end
 
-    fun registerEq (eq: 'a * 'a -> bool) (key : 'a -> int) (vs: 'a list) (pu : 'a pu) : 'a pu =
+    fun registerEq (eq: 'a * 'a -> bool) (key : 'a -> int)(vs: 'a list) (pu : 'a pu) : 'a pu =
 	let val h : ('a,word) H.hash_table = H.mkTable (key, eq) (10,PickleExn)
 	    val _ = List.foldl (fn (e,n) => (H.insert h (e,n); n + 0w1)) 0w1 vs
 	    val v = Vector.fromList vs

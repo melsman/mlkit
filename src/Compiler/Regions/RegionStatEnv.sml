@@ -302,13 +302,6 @@ functor RegionStatEnv(structure Name : NAME
       E.eq_effect(place1,place2) andalso 
       equal_sigma(R.type_to_scheme tau1,R.type_to_scheme tau2)
 
-    fun enrich ({tyname_env, con_env, excon_env,lvar_env},
-		{tyname_env=tyname_env1, con_env=con_env1, excon_env=excon_env1,lvar_env=lvar_env1}) =
-      TyNameMap.enrich (op =) (tyname_env,tyname_env1) andalso
-      ConMap.enrich equal_con_res (con_env,con_env1) andalso
-      ExconMap.enrich equal_excon_res (excon_env,excon_env1) andalso
-      LvarMap.enrich equal_lvar_res (lvar_env,lvar_env1)
-
     local
       fun tyname_env_restrict(tyname_env,tynames) =
 	TyNameMap.restrict(TyName.pr_TyName,tyname_env,tynames)
@@ -369,6 +362,30 @@ functor RegionStatEnv(structure Name : NAME
 			    layout_con_env con_env,
 			    layout_excon_env excon_env,
 			    layout_lvar_env lvar_env]}
+
+    val debug_man_enrich = Flags.is_on0 "debug_man_enrich"
+    fun debug(s, b) = if debug_man_enrich() then
+                         (if b then log("\nRSE." ^ s ^ ": enrich succeeded.")
+			  else log("\nRSE." ^ s ^ ": enrich failed."); b)
+		      else b
+    fun debug1(s, b,lvenv,lvenv1) = 
+	if debug_man_enrich() then
+	    (if b then log("\nRSE." ^ s ^ ": enrich succeeded.")
+	     else (log("\nRSE." ^ s ^ ": enrich failed."); 
+		   print ("*** RSE.LVEnv =\n");
+		   PP.printTree (layout_lvar_env lvenv);
+		   print ("\n*** RSE.LVEnv1 =\n");
+		   PP.printTree (layout_lvar_env lvenv1));
+		 b)
+	else b
+
+
+    fun enrich ({tyname_env, con_env, excon_env,lvar_env},
+		{tyname_env=tyname_env1, con_env=con_env1, excon_env=excon_env1,lvar_env=lvar_env1}) =
+	debug("TyNameMap", TyNameMap.enrich (op =) (tyname_env,tyname_env1)) andalso
+	debug("ConMap", ConMap.enrich equal_con_res (con_env,con_env1)) andalso
+	debug("ExconMap", ExconMap.enrich equal_excon_res (excon_env,excon_env1)) andalso
+	debug1("LvarMap", LvarMap.enrich equal_lvar_res (lvar_env,lvar_env1),lvar_env,lvar_env1)
 
     val pu_arity = Pickle.tup3Gen(Pickle.int,E.pu_runTypes,Pickle.int)
 

@@ -34,8 +34,11 @@ functor Lvars(structure Name : NAME
     fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
       | pr_lvar {str,...} = str
 
-    fun pr_lvar' ({str="",name,...} : lvar) : string = "v_" ^ Int.toString (#1(Name.key name))
-      | pr_lvar' {str,name,...} = str ^ "_" ^ Int.toString (#1(Name.key name))
+    fun pr_lvar' ({str,name,...} : lvar) : string =
+	let val (i,s) = Name.key name
+	    val str = if str = "" then "v:" else str ^ ":"
+	in str ^ Int.toString i ^ ":" ^ s
+	end
 
     fun name ({name,...} : lvar) : name = name
 
