@@ -54,7 +54,7 @@ signature SCS_FILE_STORAGE =
 	contains a help message placed at right og the upload-button.*)
     val uploadFolderForm : 
       folder_id * string * priv * (string * string) list * string * string * string * 
-      (int -> string -> string) * (int -> string) * ScsDict.dict -> (int * quot)
+      (int -> string -> string -> string) * (int -> string) * ScsDict.dict -> (int * quot)
 
     (* [uploadFile (db,user_id,folder_id,priv,fv_file,description)]
         uploads file represented by form variable fv_file with the
@@ -361,7 +361,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 				    (ScsLang.da,`Slet filen ^filename?`)]
 	  in
 	    `<tr bgcolor="^bgcolor">
-	     <td>^(fn_return_file file_id (mkFileIcon mime_type ^ " " ^ filename))</td>
+	     <td>^(fn_return_file file_id filename (mkFileIcon mime_type ^ " " ^ filename))</td>
 	     <td>^description</td>
 	     <td align="right">^(ScsFile.ppFilesize filesize)</td>
              <td>^(ScsDate.pp last_modified)</td>
