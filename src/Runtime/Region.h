@@ -109,7 +109,6 @@ typedef struct lobjs {
 /* 
 Region descriptors
 ------------------
-
 ro is the type of region descriptors. Region descriptors are kept on
 the stack and are linked together so that one can traverse the stack
 of regions (for profiling and for popping of regions when exceptions

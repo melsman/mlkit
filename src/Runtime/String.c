@@ -16,7 +16,7 @@
 //     content of the string is not initialized. 
 
 static inline String
-allocString(Region rAddr, int size  COMMA_INT_PPOINT) 
+REG_POLY_FUN_HDR(allocString, Region rAddr, int size) 
 {
   String sd;
   int szAlloc;                // size of string in words + tag
@@ -60,7 +60,7 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr)
   unsigned char *p;
   int i;
 
-  res = allocString(rAddr, strlen(cStr)  COMMA_PPOINT);   // sets size also
+  res = REG_POLY_CALL(allocString, rAddr, strlen(cStr));   // sets size also
 
   for ( p = &(res->data); *cStr != '\0'; )
     {
@@ -88,7 +88,7 @@ String
 REG_POLY_FUN_HDR(makeChar, Region rAddr, unsigned char ch) 
 {
   String res;
-  res = allocString(rAddr, 1  COMMA_PPOINT);
+  res = REG_POLY_CALL(allocString, rAddr, 1);
   res->data = ch;                  // ch untagged
   *(&(res->data)+1) = '\0';
   return res;
@@ -108,7 +108,7 @@ REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML)
 {
   int sizeC = convertIntToC(sizeML);
   String strPtr;
-  strPtr = allocString(rAddr, sizeC  COMMA_PPOINT);
+  strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
 
@@ -139,7 +139,7 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
   unsigned char *s, *p;
   int i, sz;
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
-  res = allocString(rAddr, sz  COMMA_PPOINT);
+  res = REG_POLY_CALL(allocString, rAddr, sz);
   p = &(res->data);
   s = &(str1->data);
   for ( i = 0; i < sizeStringDefine(str1); i++)
@@ -175,7 +175,7 @@ REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs)
       length++;
     }
 
-  res = allocString (rAddr, length  COMMA_PPOINT);
+  res = REG_POLY_CALL(allocString, rAddr, length);
   p = &(res->data);
   for ( ys = xs; isCONS(ys); ys = tl(ys) ) 
     {
@@ -201,7 +201,7 @@ REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs)
     {
       sz += sizeStringDefine(hd(ys));
     }
-  res = allocString(rAddr, sz  COMMA_PPOINT);
+  res = REG_POLY_CALL(allocString, rAddr, sz);
 
   p = &(res->data);
   for ( ys = xs; isCONS(ys); ys = tl(ys) )

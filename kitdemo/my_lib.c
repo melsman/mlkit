@@ -214,7 +214,7 @@ int dir(int pairRho, int strRho, StringDesc *mlDirName, int exn) {
 
   if ((dfd = opendir(cDirName)) == NULL) {
     raise_exn(exn);
-    return; /* This return statement is necessary with the C backend */
+    return 0;
   }
   makeNIL(resList);  
   while ((dp = readdir(dfd)) != NULL) {
@@ -243,10 +243,10 @@ int dirProf(int pairRho, int strRho, StringDesc *mlDirName, int exn, int pPoint)
   if (is_inf_and_atbot(strRho))
     resetRegion(strRho);
 
-  convertStringToC(mlDirName, cDirName, 1000, exn);  /* MEMO: does not work with the C backend */
+  convertStringToC(mlDirName, cDirName, 1000, exn);
   if ((dfd = opendir(cDirName)) == NULL) {
     raise_exn(exn);
-    return; /* This return statement is necessary with the C backend */
+    return 0;
   }
 
   makeNIL(resList);  
@@ -271,7 +271,7 @@ int change_elem(int newPair, int stringRho, int pair, int exn) {
   firstElem_ml = elemRecordML(pair, 0);
   secondElem_ml = elemRecordML(pair, 1);
 
-  convertStringToC((StringDesc *)secondElem_ml, cStr, 1000, exn);  /* MEMO: does not work with the C backend! */
+  convertStringToC((StringDesc *)secondElem_ml, cStr, 1000, exn);
   secondElem_ml = (int) convertStringToML(stringRho, cStr);
 
   elemRecordML(newPair, 0) = secondElem_ml;
