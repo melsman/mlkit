@@ -12,7 +12,7 @@
 set serveroutput on;
 
 create table tmp_table1( 
-  passwd varchar(8) 
+  passwd varchar(50) 
     constraint tmp_table1_passwd_pk primary key
 );
 commit;
@@ -50,16 +50,28 @@ declare
 
   -- used to test the function 'scs_users.gen_passwd'
   procedure test_gen_passwd(
-    email in varchar2,
-    n in integer
+    pw_length		in integer,
+    testcase		in integer
   ) 
   is 
-    pw varchar2(2000);
+    pw		varchar2(50);
+    i		integer;
+    pw_failed	exception;
   begin
-    pw := scs_user.gen_passwd(test_gen_passwd.email);
+    pw := scs_user.gen_passwd( pw_length );
+
+    for i in 1..length( pw ) loop
+      if substr( pw, i ) in ('0', 'O', '1', 'l') then
+        raise pw_failed;
+      end if;
+    end loop;
+
     scs_test.testBool( 'gen_passwd [' || pw || ']',
-                       test_gen_passwd.n,
-                       length(pw) = scs_math.min(length(email)+4,8));
+                       test_gen_passwd.testcase, true );
+  exception
+    when pw_failed then
+      scs_test.testBool( 'gen_passwd [' || pw || ']',
+                       test_gen_passwd.testcase, false );
   end test_gen_passwd;
 
 -- end of declare block
@@ -75,8 +87,6 @@ begin
 
   invalid_uid := scs.new_obj_id;
 
-  scs_test.printl( 'testing function ''gen_passwd'':' );
-
   scs_test.printl( 'testing function ''new'':' );
   select count(*) into counter1_b from scs_users;
   select count(*) into counter2_b from scs_persons;
@@ -85,13 +95,13 @@ begin
   uid1 := scs.new_obj_id;
   uid1 := scs_user.new( 
     user_id => uid1,
-    password => scs_user.gen_passwd('nh@it.edu'),
+    password => scs_user.gen_passwd( 8 ),
     salt => scs_random.rand_string(30),
     screen_name => 'niels' || uid1,
     email => 'nh@it.edu' || uid1,
     first_names => 'Niels', 
     last_name => 'Hallenberg', 
-    security_id => '141148-NH 1',
+    security_id => uid,
     modifying_user => scs_user.system
   );
 
@@ -117,7 +127,7 @@ begin
     begin
       uid := scs_user.new(
         user_id => ' || to_char(uid1) || ',
-        password => scs_user.gen_passwd(''nh@it.edu''),
+        password => scs_user.gen_passwd( 8 ),
         salt => scs_random.rand_string(30),
         email => ''' || to_char(uid1) || 'nh@it.edu'',
         first_names => ''Niels'', 
@@ -126,15 +136,15 @@ begin
         modifying_user => scs_user.system);
     end;', 'f' );
 
-  -- illegal values: a password is supplied that exists in the table scs_party
+  -- illegal values: an email is supplied that exists in the table scs_party
   scs_test.testExn( 'new', 4, '
     declare
       uid	integer;
     begin
       uid := scs_user.new(
-        password => scs_user.gen_passwd(''nh@it.edu''),
+        password => scs_user.gen_passwd( 8 ),
         salt => scs_random.rand_string(30),
-        email => ''nh@it.edu'',
+        email => ''nh@it.edu' || to_char(uid1) || ''',
         first_names => ''Niels'', 
         last_name => ''Hallenberg'', 
         security_id => ''141148-NH 1'',
@@ -147,7 +157,7 @@ begin
       uid	integer;
     begin
       uid := scs_user.new(
-        password => scs_user.gen_passwd(''nh@it.edu''),
+        password => scs_user.gen_passwd( 8 ),
         salt => scs_random.rand_string(30),
         screen_name => ''niels'',
         email => ''nh@it.edu'',
@@ -158,12 +168,21 @@ begin
     end;', 'f' );
 
   scs_test.printl( 'testing ''gen_passwd'':' );
-  scs_test.testBool('gen_passwd [' || '' || ']', 1, scs_user.gen_passwd('') is null);
-  test_gen_passwd('n',2);
-  test_gen_passwd('nh',3);
-  test_gen_passwd('nh@',4);
-  test_gen_passwd('nh@it-c.dk',5);
-  test_gen_passwd('nhnhnhnhnhnhnh@it-c.dk',6);
+  test_gen_passwd(  1, 1 );
+  test_gen_passwd( 10, 2);
+  test_gen_passwd( 50, 3);
+  scs_test.testBool( 'gen_passwd', 4, scs_user.gen_passwd( -10 ) is null );
+  scs_test.testBool( 'gen_passwd', 5, scs_user.gen_passwd( 0 ) is null );
+  scs_test.testBool( 'gen_passwd', 6, scs_user.gen_passwd( 51 ) is null );
+  scs_test.testBool( 'gen_passwd', 7, scs_user.gen_passwd( 100 ) is null );
+  scs_test.testUnit( 'gen_passwd', 8, '
+    declare
+      i		integer;
+    begin
+      for i in 1..1000 loop
+        insert into tmp_table1( passwd ) values ( scs_user.gen_passwd(8) );
+      end loop;
+    end;' );
 
   scs_test.printl( 'testing function ''system'':' );
   select person_id into tmp_uid from scs_persons
@@ -249,6 +268,9 @@ show errors
 declare
   uid1			integer;
   uid2			integer;
+  uid3			integer;
+  uid4			integer;
+  uid5			integer;
 
   invalid_id		integer;
 
@@ -273,6 +295,9 @@ declare
   imp_id19		integer;
 
   n			integer;
+
+  person_r		scs_persons%ROWTYPE;
+  party_r		scs_parties%ROWTYPE;
 
   assert_b		boolean;
   assert_a		boolean;
@@ -306,13 +331,13 @@ begin
   uid1 := scs.new_obj_id;
   uid1 := scs_user.new(
     user_id => uid1,
-    password => scs_user.gen_passwd('nh@it.edu'),
+    password => scs_user.gen_passwd( 8 ),
     salt => scs_random.rand_string(30),
     screen_name => 'niels' || uid1,
     email => 'nh@it.edu' || uid1,
     first_names => 'Niels', 
     last_name => 'Hallenberg', 
-    security_id => '141148-NH 1',
+    security_id => uid1,
     modifying_user => scs_user.system 
   );
 
@@ -347,8 +372,9 @@ begin
     from dual;
   insert into scs_user_imports 
     (user_imp_id,first_names,last_name,security_id,email,url,on_what_table,on_which_id,modifying_user)
-  values (imp_id3,'','','141148-NH 1','','','',null,scs_user.system);
-  scs_test.testBool('imp_exact_match', 3, scs_user.imp_exact_match(imp_id3) = uid1);
+  values (imp_id3,'','',uid1,'','','',null,scs_user.system);
+  scs_test.testBool('imp_exact_match', 3, 
+    scs_user.imp_exact_match(imp_id3) = uid1);
 
   -- 2 - match on security id: non-existing person record with this security id
   select scs_user_imports_id_seq.nextval
@@ -393,7 +419,7 @@ begin
     from dual;
   insert into scs_user_imports 
     (user_imp_id,first_names,last_name,security_id,email,url,on_what_table,on_which_id,modifying_user)
-  values (imp_id8,'Niels','Hallenberg','','nh@it.edu','','',null,scs_user.system);
+  values (imp_id8,'Niels','Hallenberg','','nh@it.edu'||uid1,'','',null,scs_user.system);
   scs_test.testBool('imp_exact_match', 8, scs_user.imp_exact_match(imp_id8) = uid1);
   
   -- This should match: normalised name and email matches
@@ -402,9 +428,120 @@ begin
     from dual;
   insert into scs_user_imports 
     (user_imp_id,first_names,last_name,security_id,email,url,on_what_table,on_which_id,modifying_user)
-  values (imp_id9,'Niels Peter','Hallenberg','','nh@it.edu','','',null,scs_user.system);
+  values (imp_id9,'Niels Peter','Hallenberg','','nh@it.edu'||uid1,'','',null,scs_user.system);
   scs_test.testBool('imp_exact_match', 9, scs_user.imp_exact_match(imp_id9) = uid1);
   
+  -- two users uid3, uid4 with same security id
+  uid3 := scs.new_obj_id;
+  uid3 := scs_user.new(
+    user_id => uid3,
+    password => scs_user.gen_passwd( 8 ),
+    salt => scs_random.rand_string(30),
+    screen_name => 'niels' || uid3,
+    email => 'nh@it.edu' || uid3,
+    first_names => 'Niels', 
+    last_name => 'Hallenberg', 
+    security_id => uid3,
+    modifying_user => scs_user.system 
+  );
+  uid4 := scs.new_obj_id;
+  uid4 := scs_user.new(
+    user_id => uid4,
+    password => scs_user.gen_passwd( 8 ),
+    salt => scs_random.rand_string(30),
+    screen_name => 'niels' || uid4,
+    email => 'nh@it.edu' || uid4,
+    first_names => 'Niels', 
+    last_name => 'Hallenberg', 
+    security_id => uid3,
+    modifying_user => scs_user.system 
+  );
+  select scs_user_imports_id_seq.nextval
+    into imp_id17
+    from dual;
+  insert into scs_user_imports 
+    (user_imp_id,first_names,last_name,security_id,email,url,on_what_table,on_which_id,modifying_user)
+  values (imp_id17,'Niels Peter','Hallenberg',uid3,'','','',null,scs_user.system);
+  scs_test.testBool( 'imp_exact_match', 10, 
+    scs_user.imp_exact_match(imp_id17) is null );
+
+  scs_test.printl( 'testing procedure ''imp_row_into_user'':' );
+
+  uid5 := scs.new_obj_id;
+  uid5 := scs_user.new(
+    user_id => uid5,
+    password => scs_user.gen_passwd( 8 ),
+    salt => scs_random.rand_string(30),
+    screen_name => 'niels' || uid5,
+    email => 'nh@it.edu' || uid5,
+    first_names => 'Niels', 
+    last_name => 'Hallenberg', 
+    security_id => uid5,
+    modifying_user => scs_user.system 
+  );
+  select scs_user_imports_id_seq.nextval
+    into imp_id18
+    from dual;
+  insert into scs_user_imports 
+    (user_imp_id,first_names,last_name,security_id,email,url,on_what_table,on_which_id,modifying_user)
+  values (imp_id18,'Kurt','von der Übergeek',uid4,'kvdu','permanent','',null,scs_user.system);
+  scs_user.imp_row_into_user(
+    user_imp_id => imp_id18,
+    user_id	=> uid5
+  );
+  select * into person_r from scs_persons where person_id = uid5;
+  select * into party_r from scs_parties where party_id = uid5;
+  scs_test.testBool( 'imp_row_into_user', 1, 
+    person_r.first_names = 'Kurt' AND
+    person_r.last_name  = 'von der Übergeek' AND
+    person_r.security_id = uid4 AND
+    party_r.email	 = 'kvdu'
+  );
+  scs_test.testBool( 'imp_row_into_user', 2, 
+    party_r.url	 = 'permanent'
+  );
+
+  select scs_user_imports_id_seq.nextval
+  into imp_id19
+  from dual;
+  insert into scs_user_imports 
+    (user_imp_id,first_names,last_name,security_id,email,url,on_what_table,on_which_id,modifying_user)
+  values (imp_id19,'','','','','not changing','',null,scs_user.system);
+  scs_user.imp_row_into_user(
+    user_imp_id => imp_id19,
+    user_id	=> uid5
+  );
+  select * into party_r from scs_parties where party_id = uid5;
+  scs_test.testBool( 'imp_row_into_user', 3, 
+    party_r.url	 = 'permanent'
+  );
+
+  -- illegal user_id
+  scs_test.testUnit( 'imp_row_into_user', 4, '
+    begin
+      scs_user.imp_row_into_user(
+        user_imp_id => ' || imp_id19 || ',
+	user_id	=> ' || invalid_id || '
+      );  
+    end;' );
+
+  -- illegal imp_id
+  scs_test.testUnit( 'imp_row_into_user', 5, '
+    begin
+      scs_user.imp_row_into_user(
+        user_imp_id => ' || invalid_id || ',
+	user_id	=> ' || uid5 || '
+      );
+    end;' );
+
+  -- both id's illegal
+  scs_test.testUnit( 'imp_row_into_user', 6, '
+    begin
+      scs_user.imp_row_into_user(
+        user_imp_id => ' || invalid_id || ',
+	user_id	=> ' || invalid_id || '
+      );  
+    end;' );
 
   scs_test.printl('testing procedure ''imp_row'':');
   -- There is an exact match on (table,id)-pair: new first_names 
@@ -509,21 +646,22 @@ begin
      and scs_persons.deleted_p = 'f';
   scs_test.testBool('imp_row', 6, counter1_a = counter1_b + 1 );
   
-  begin 
-    select person_id
-      into uid2
-      from scs_persons
-     where scs_persons.first_names = 'Peter Hugo'
-       and scs_persons.last_name = to_char(imp_id16)
-       and scs_persons.deleted_p = 'f';
-  end;
-  exception
-    when NO_DATA_FOUND then
-      scs_test.printl( 'an error connected to testcase 7 occured ' ); 
+  select person_id
+    into uid2
+    from scs_persons
+   where scs_persons.first_names = 'Peter Hugo'
+     and scs_persons.last_name = to_char(imp_id16)
+     and scs_persons.deleted_p = 'f';
+
   scs_test.testBool( 'imp_row', 7, 
     scs_person_rel.exists_p(uid2,'MyNewTable',imp_id16) = 't' );
 
-  -- There is not an exact match but at least one with a similar normalised name 
+  -- illegal imp_id
+  scs_test.testUnit( 'imp_row', 8, '
+    begin
+      scs_user.imp_row( ' || invalid_id || ');
+    end;' );
+
 
   -- cleaning up
   scs_test.printl( 'cleaning up...' );
@@ -531,12 +669,13 @@ begin
     imp_id1,  imp_id2,  imp_id3,  imp_id4,
     imp_id5,  imp_id6,  imp_id7,  imp_id8,
     imp_id9,  imp_id10, imp_id11, imp_id12,
-    imp_id13, imp_id14, imp_id15, imp_id16 );
-  delete scs_user_preferences where user_id in ( uid1, uid2  );
-  delete scs_users where user_id in ( uid1, uid2  );
-  delete scs_person_rels where person_id in ( uid1, uid2  );
-  delete scs_persons where person_id in ( uid1, uid2  );
-  delete scs_parties where party_id in  ( uid1, uid2  );
+    imp_id13, imp_id14, imp_id15, imp_id16,
+    imp_id17, imp_id18 );
+  delete scs_user_preferences where user_id in ( uid1, uid2, uid3, uid4, uid5 );
+  delete scs_users where user_id in ( uid1, uid2, uid3, uid4, uid5 );
+  delete scs_person_rels where person_id in ( uid1, uid2, uid3, uid4, uid5 );
+  delete scs_persons where person_id in ( uid1, uid2, uid3, uid4, uid5 );
+  delete scs_parties where party_id in  ( uid1, uid2, uid3, uid4, uid5 );
 
   select count(*) into counter0_a from scs_users;
   select count(*) into counter00_a from scs_user_preferences;
@@ -551,6 +690,37 @@ begin
   scs_test.testBool( 'garbage check', 4, counter0000_b = counter0000_a );
   scs_test.testBool( 'garbage check', 5, counter00000_b = counter00000_a );
   scs_test.testBool( 'garbage check', 6, counter000000_b = counter000000_a );
+
+exception
+  when others then
+    scs_test.printl( 'an unknown error occured' );      
+    -- cleaning up
+    scs_test.printl( 'cleaning up...' );
+    delete scs_user_imports where user_imp_id in( 
+      imp_id1,  imp_id2,  imp_id3,  imp_id4,
+      imp_id5,  imp_id6,  imp_id7,  imp_id8,
+      imp_id9,  imp_id10, imp_id11, imp_id12,
+      imp_id13, imp_id14, imp_id15, imp_id16,
+      imp_id17, imp_id18 );
+    delete scs_user_preferences where user_id in ( uid1, uid2, uid3, uid4, uid5 );
+    delete scs_users where user_id in ( uid1, uid2, uid3, uid4, uid5 );
+    delete scs_person_rels where person_id in ( uid1, uid2, uid3, uid4, uid5 );
+    delete scs_persons where person_id in ( uid1, uid2, uid3, uid4, uid5 );
+    delete scs_parties where party_id in  ( uid1, uid2, uid3, uid4, uid5 );
+    
+    select count(*) into counter0_a from scs_users;
+    select count(*) into counter00_a from scs_user_preferences;
+    select count(*) into counter000_a from scs_persons;
+    select count(*) into counter0000_a from scs_person_rels;
+    select count(*) into counter00000_a from scs_parties;
+    select count(*) into counter000000_a from scs_user_imports;
+    
+    scs_test.testBool( 'garbage check', 1, counter0_b = counter0_a );
+    scs_test.testBool( 'garbage check', 2, counter00_b = counter00_a );
+    scs_test.testBool( 'garbage check', 3, counter000_b = counter000_a );
+    scs_test.testBool( 'garbage check', 4, counter0000_b = counter0000_a );
+    scs_test.testBool( 'garbage check', 5, counter00000_b = counter00000_a );
+    scs_test.testBool( 'garbage check', 6, counter000000_b = counter000000_a );
 end;
 / 
 show errors

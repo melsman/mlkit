@@ -49,6 +49,8 @@ show errors
    Taken from: http://orafaq.cs.rmit.edu.au/scripts/plsql/random.txt
 
    History:
+   261102 Kennie Nybo Pontoppidan <kennie@it-c.dk> Changed rand_string to 
+          return strings with upper case characters
    141102 Kennie Nybo Pontoppidan <kennie@it-c.dk> Added comments and corrected
 	  the random generator to be able to create more than 200 unique values
    151002 Niels Hallenberg <nh@it.edu> Edited names
@@ -97,7 +99,7 @@ is
   /* --------------------
      function rand_string
      --------------------
-     returns a random string of size ssiz
+     returns a random string of alpha numerics of size ssiz
      (same as get_rand, except this is a function, not a procedure)
   */  
   function rand_string(ssiz IN number) return varchar2;
@@ -172,7 +174,7 @@ is
    begin
      m := scs_math.min(ssiz,2000);
      for i in 1..m loop
-       c := substr('abcdefghijklmnopqrstuvwxyz0123456789',rand_max(36),1);
+       c := substr('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',rand_max(62),1);
        result := result || c;
      end loop;
      return result;

@@ -8,6 +8,7 @@
    package scs_user
 
    History:
+   261102 Kennie Nybo Pontoppidan <kennie@it-c.dk> rewrote gen_passwd
    191102 Kennie Nybo Pontoppidan <kennie@it-c.dk> added comments
    281002 Niels Hallenberg <nh@it.edu> created package
 ====================================================================== */
@@ -22,7 +23,7 @@ as
      throws a ScsDbExn exception if 
        *  an user_id is supplied and there exists an entry in scs_persons 
           with this id as person_id
-       *  a password is supplied that exists in the table scs_party 
+       *  a email is supplied that exists in the table scs_party 
        *  a screen_name is supplied that exists in the table scs_users
   */
   function new (
@@ -85,17 +86,12 @@ as
   /* -------------------
      function gen_passwd
      -------------------
-     generates and returns a password using email as salt
+     generates and returns a password of length 'length'
 
-     returns null if provided with email = null
-
-     You'd have to have the same first 4 characters in the email 
-     and generate at the same time of day to get a duplicate.
-     This is taken from:
-     http://asktom.oracle.com/pls/ask/f?p=4950:8:::::F4950_P8_DISPLAYID:98812348060
+     returns null if not 0 < length <= 50
   */
   function gen_passwd (
-    email in varchar2
+    pw_length in integer
   ) return varchar2;
 
   /* ---------------
@@ -114,7 +110,8 @@ as
      a row 'p_import' in the import table p_import and a row 'p' in the table
      scs_persons.
 
-     returns null if there isn't an exact match.
+     returns null if there isn't an exact match
+		  or if there are multiple matches.
 
      We say that p_import is an exact match of p if one of
      the following is true:
@@ -135,6 +132,18 @@ as
   ) return scs_persons.person_id%TYPE;
 
 
+  /* ---------------------------
+     procedure imp_row_into_user
+     ---------------------------
+     Imports the row in scs_user_imports with 'user_imp_id'
+     into the user with user_id 'user_id'
+
+     party.url is only updated if it is not null for this user.
+     This is because the user is able to change his url other places 
+     in the system.
+     
+     never fails 
+  */
   procedure imp_row_into_user (
     user_imp_id in scs_user_imports.user_imp_id%TYPE,
     user_id     in scs_users.user_id%TYPE
@@ -196,6 +205,8 @@ as
 
    this function is implemented in the package body, but
    no test cases are provided
+
+   CURRENTLY NOT USED
   function receives_alerts_p (
     user_id in scs_users.user_id%TYPE
   ) return char;
@@ -205,6 +216,8 @@ as
 
    this procedure is implemented in the package body, but
    no test cases are provided
+
+   CURRENTLY NOT USED
   procedure approve_email (
     user_id in scs_users.user_id%TYPE
   );
@@ -214,6 +227,8 @@ as
 
    this procedure is implemented in the package body, but
    no test cases are provided
+
+   CURRENTLY NOT USED
   procedure unapprove_email (
     user_id in scs_users.user_id%TYPE
   );
@@ -370,6 +385,7 @@ as
       return null;
   end deleted_p;
 
+
   function language_pref (
     user_id in scs_users.user_id%TYPE
   ) return scs_user_preferences.language_pref%TYPE
@@ -387,35 +403,25 @@ as
       return null;
   end language_pref;
 
+
   function gen_passwd (
-    email in varchar2
+    pw_length in integer
   ) return varchar2
   is
-    j      number := 0;
-    k      number;
-    str    varchar2(30);
-    result varchar2(30);
+    result varchar2(50);
   begin
-    if email is null then
+    if pw_length <= 0 or pw_length > 50 then 
       return null;
     end if;
-    str := substr (email, 1, 4) || to_char (sysdate, 'SSSS');
-    for i in 1 .. least (length (str), 8)
-    loop
-      j := mod (j + ascii (substr (str, i, 1)), 256);
-      k := mod (bitand (j, ascii (substr (str, i, 1))), 74) + 48;
-      if k between 58 and 64 then
-        k := k + 7;
-      elsif k between 91 and 96 then
-        k := k + 6;
-      end if;
-      result := result || chr (k);
-    end loop;
+
+    result := substr( scs_random.rand_string( pw_length ), 1, pw_length );
+
+    -- readable passwords don't have 0, O, 1, l
     result := replace (result, '1', '2');
     result := replace (result, 'l', 'L');
     result := replace (result, '0', '9');
     result := replace (result, 'O', 'P');
-    result := 'A' || substr (result, 2);
+
     return result;
   end gen_passwd;
 
@@ -475,6 +481,9 @@ as
         end;
       end;
     end;
+    exception
+      when TOO_MANY_ROWS then
+        return null;
   end imp_exact_match;
 
   procedure imp_row_into_user (
@@ -517,7 +526,8 @@ as
     if imp_row_into_user.row.url is not null then
       update scs_parties
          set url = imp_row_into_user.row.url
-       where scs_parties.party_id = imp_row_into_user.user_id;
+       where scs_parties.party_id = imp_row_into_user.user_id
+         and scs_parties.url is null;
     end if;
     /* on_what_table and on_which_id */
     if imp_row_into_user.row.on_what_table is not null and 
@@ -527,7 +537,7 @@ as
                          on_which_id => imp_row_into_user.row.on_which_id);
     end if;
 
-    /* Delete imported row */
+    -- Delete imported row
     delete from scs_user_imports
      where scs_user_imports.user_imp_id = imp_row_into_user.row.user_imp_id;
   exception
@@ -552,52 +562,13 @@ as
     v_person_id := scs_user.imp_exact_match(imp_row.user_imp_id);
 
     if v_person_id is not null then
-      /* We update fields */
-      begin
-        /* first_names */
-        if imp_row.row.first_names is not null then
-          update scs_persons
-             set first_names = imp_row.row.first_names
-           where scs_persons.person_id = v_person_id;
-        end if;
-        /* last_name */
-        if imp_row.row.last_name is not null then
-          update scs_persons
-             set last_name = imp_row.row.last_name
-           where scs_persons.person_id = v_person_id;
-        end if;
-        /* security_id */
-        if imp_row.row.security_id is not null then
-          update scs_persons
-             set security_id = imp_row.row.security_id
-           where scs_persons.person_id = v_person_id;
-        end if;
-        /* email */
-        if imp_row.row.email is not null then
-          update scs_parties
-             set email = imp_row.row.email
-           where scs_parties.party_id = v_person_id;
-        end if;
-        /* url */
-        if imp_row.row.url is not null then
-          update scs_parties
-             set url = imp_row.row.url
-           where scs_parties.party_id = v_person_id;
-        end if;
-        /* on_what_table and on_which_id */
-        if imp_row.row.on_what_table is not null and 
-           imp_row.row.on_which_id is not null then
-          scs_person_rel.add(person_id => v_person_id,
-                             on_what_table => imp_row.row.on_what_table,
-                             on_which_id => imp_row.row.on_which_id);
-        end if;
-
-        /* Delete imported row */
-        delete from scs_user_imports
-         where scs_user_imports.user_imp_id = imp_row.row.user_imp_id;
-      end;
+      -- We update fields
+      imp_row_into_user(
+        user_imp_id => imp_row.user_imp_id,
+	user_id     => v_person_id
+      );
     else
-      /* We create a new user, if no other person has the same normalised name */
+      -- We create a new user, if no other person has the same normalised name
       begin
         if imp_row.row.norm_name is not null and 
            (scs_person.norm_name_exists_p(imp_row.row.norm_name) = 'f' or
@@ -646,8 +617,10 @@ as
                 from scs_user_imports
                order by user_imp_id)
     loop
-      scs_user.imp_row(user_imp_id => r.user_imp_id,
-                       always_p => always_p);
+      scs_user.imp_row(
+        user_imp_id => r.user_imp_id,
+        always_p    => always_p 
+      );
     end loop;
   end imp_all_rows;
 end scs_user;
