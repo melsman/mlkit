@@ -26,9 +26,11 @@ val intro_text =
 fun gen_rows (name, sql) =
   (name,
    ScsError.wrapPanic
-   (Db.list (fn g => (g "name", g "email", g "security_id", g "on_what_table", g "on_which_id"))) sql)
+   (Db.list (fn g => (g "name", g "email", g "security_id", 
+		      g "on_what_table", g "on_which_id",
+		      Db.toBool (g "e_deleted_p")))) sql)
 
-fun layout_row bgcolor (name, email, security_id, on_what_table, on_which_id) =
+fun layout_row bgcolor (name, email, security_id, on_what_table, on_which_id, e_deleted_p) =
   let
     val del_rel_link = 
       if on_what_table <> "" andalso on_which_id <> "" then
@@ -43,6 +45,9 @@ fun layout_row bgcolor (name, email, security_id, on_what_table, on_which_id) =
      <td><b>^name</b></td>
      <td>^email</td>
      <td>^security_id</td>
+     <td align="center">^(if e_deleted_p = SOME true then ScsDict.s UcsDict.yes_dict 
+	   else if e_deleted_p = SOME false then ScsDict.s UcsDict.no_dict
+	     else "")</td>
      <td align="center">` ^^ del_rel_link ^^ `</td>
      </tr>`
   end
@@ -57,6 +62,7 @@ fun gen_table (name,rows) =
 	           <tr><th>^(ScsUserImp.nameField())</th>
 	           <th>^(ScsUserImp.emailField())</th>
                    <th>^(ScsUserImp.securityIdField())</th>
+                   <th>^(ScsUserImp.extSrcDelField())</th>
                    <th>^(ScsUserImp.delRelField())</th></tr>`,
 	   align="center",
 	   footer=``} 
@@ -72,7 +78,7 @@ val rowss =
   (List.map ScsUserImp.getSource ScsUserImp.all_sources)
 
 (* Add central personnel register info *)
-val rowss = (ScsUserImp.service_name, [(name,email,security_id,"","")]) :: rowss
+val rowss = (ScsUserImp.service_name, [(name,email,security_id,"","",NONE)]) :: rowss
 
 val _ = ScsUserImp.returnPg title
   (`<h1>^title</h1> 

@@ -11,6 +11,10 @@ signature SCS_USER_IMP =
 			    security_id_chk_sql : quot option,
 			    name_chk_sql : quot option,
 			    email_chk_sql : quot option,
+			    (* rel_to_del_row checks that all relations in the
+			       central register is to non deleted rows in the
+                               external sources *)
+			    rel_to_del_row_chk_sql : quot option,
 			    basic_info_sql : string -> quot}
 
     (* external_sources: datatype holding the external sources available. *)
@@ -40,6 +44,7 @@ signature SCS_USER_IMP =
     val normNameWidget     : string -> UcsWidget.component
     val securityIdField    : unit -> string
     val securityIdWidget   : string -> UcsWidget.component
+    val extSrcDelField     : unit -> string
     val emailField         : unit -> string
     val emailWidget        : string -> UcsWidget.component
     val urlField           : unit -> string
@@ -105,6 +110,7 @@ structure ScsUserImp :> SCS_USER_IMP =
 			    security_id_chk_sql : quot option,
 			    name_chk_sql : quot option,
 			    email_chk_sql : quot option,
+			    rel_to_del_row_chk_sql : quot option,
 			    basic_info_sql : string -> quot}
 
     datatype external_sources =
@@ -148,15 +154,31 @@ structure ScsUserImp :> SCS_USER_IMP =
                          and e.login is not null
                          and ucs_hsas_dw.neqT_null(lower(party.email),
                                                    lower(concat(e.login,'@it-c.dk'))) = 't'`,
+	        rel_to_del_row_chk_sql = SOME
+		  `select p.person_id, pr.on_what_table, pr.on_which_id,
+                          '' as e_name,
+                          e.login as e_email,
+                          e.cpr as e_security_id,
+                          scs_person.name(p.person_id) as p_name,
+                          party.email as p_email,
+                          p.security_id as p_security_id
+                     from sysadm_login e, scs_persons p, scs_person_rels pr, scs_parties party
+                    where e.id = pr.on_which_id
+                      and pr.on_what_table = 'sysadm_login'
+                      and p.person_id = pr.person_id
+                      and p.person_id = party.party_id
+                      and e.deleted_p = 't'
+		  `,
 		basic_info_sql = fn id => `select '' as name,
                                                   login || '@it-c.dk' as email,
                                                   cpr as security_id,
                                                   on_what_table,
-                                                  on_which_id
-                                             from sysadm_login_w, scs_person_rels
+                                                  on_which_id,
+						  sysadm_login.deleted_p as e_deleted_p
+                                             from sysadm_login, scs_person_rels
                                             where scs_person_rels.person_id = ^(Db.qqq id)
                                               and scs_person_rels.on_what_table = 'sysadm_login'
-                                              and scs_person_rels.on_which_id = sysadm_login_w.id`}
+                                              and scs_person_rels.on_which_id = sysadm_login.id`}
 
     val hsas_per =
       HSASPer {name= [(ScsLang.en,`Student database (HSAS)`),
@@ -195,15 +217,30 @@ structure ScsUserImp :> SCS_USER_IMP =
                      and ucs_hsas_dw.neqT_null(lower(scs_person.name(p.person_id)),
                                                lower(e.fornavn || ' ' || e.efternavn)) = 't'`,
 	       email_chk_sql = NONE,
+	       rel_to_del_row_chk_sql = SOME 
+	         `select p.person_id,pr.on_what_table, pr.on_which_id,
+                         e.fornavn || ' ' || e.efternavn as e_name, 
+                         '' as e_email, 
+                         e.cpr as e_security_id,
+                         scs_person.name(p.person_id) as p_name,
+                         party.email as p_email,
+                         p.security_id as p_security_id
+                    from hsas_per e,scs_persons p,scs_person_rels pr, scs_parties party
+                   where e.id = pr.on_which_id 
+                     and pr.on_what_table='hsas_per'
+                     and p.person_id = pr.person_id
+                     and p.person_id = party.party_id
+                     and e.deleted_p = 't'`,
 	       basic_info_sql = fn id => `select fornavn || ' ' || efternavn as name,
                                                  '' as email,
                                                  cpr as security_id,
                                                  on_what_table,
-                                                 on_which_id
-                                            from hsas_per_w, scs_person_rels
+                                                 on_which_id,
+						 hsas_per.deleted_p as e_deleted_p
+                                            from hsas_per, scs_person_rels
                                            where scs_person_rels.person_id = ^(Db.qqq id)
                                              and scs_person_rels.on_what_table = 'hsas_per'
-                                             and scs_person_rels.on_which_id = hsas_per_w.id`}
+                                             and scs_person_rels.on_which_id = hsas_per.id`}
 
     val personnel_roster = 
       PersonnelRoster {name = [(ScsLang.en,`Personnel Roster`),
@@ -258,11 +295,13 @@ structure ScsUserImp :> SCS_USER_IMP =
                              and e.email is not null
                              and ucs_hsas_dw.neqT_null(lower(party.email),
                                                        lower(e.email)) = 't'`,
+	               rel_to_del_row_chk_sql = NONE,
 		       basic_info_sql = fn id => `select fornavne || ' ' || efternavn as name, 
                                                          email,
                                                          person_cpr as security_id,
                                                          on_what_table,
-                                                         on_which_id
+                                                         on_which_id,
+                                                         'f' as e_deleted_p
                                                     from person, scs_person_rels
                                                    where scs_person_rels.person_id = ^(Db.qqq id)
                                                      and scs_person_rels.on_what_table = 'person'
@@ -310,6 +349,13 @@ structure ScsUserImp :> SCS_USER_IMP =
       fun securityIdField () = ScsDict.s titles
       fun securityIdWidget v =
 	UcsWidget.twoColumns(titles, info, false, [`^v`])
+    end
+
+    local
+      val titles = [(ScsLang.en,`Ext. src. deleted`),
+		    (ScsLang.da,`Ekstern kilde slettet`)]
+    in
+      fun extSrcDelField() = ScsDict.s titles
     end
 
     local

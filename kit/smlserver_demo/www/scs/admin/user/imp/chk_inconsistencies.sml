@@ -213,6 +213,43 @@ in
 	 `^intro_ext_email_section <p>
 	 ` ^^ (gen_all_tables rowss_email_chk))
 
+  (* For each external source, check that a relation in scs_person_rels
+     relates to a non deleted row in the external source
+     Result table
+       External Source                  Personnel Register 
+       Relation Name Email Security id  Name Email Security id *)
+  val rowss_del_rel_chk = 
+    List.foldr (fn (source:ScsUserImp.external_source,acc) => 
+		case #rel_to_del_row_chk_sql source of 
+		  NONE => acc 
+		| SOME sql => gen_rows(source,sql) :: acc) [] 
+    (List.map ScsUserImp.getSource ScsUserImp.all_sources)
+
+  val title_del_rel_section =
+    ScsDict.s [(ScsLang.en,`Persons in central personnel register that relates to an
+		            external source where the row in the external source is
+			    deleted.`),
+	       (ScsLang.da,`Personer i det centrale personregister som relaterer til
+		            en række i en ekstern kilde, hvor rækken i den eksterne
+			    kilde er slettet.`)]
+  val intro_del_rel_section =
+    ScsDict.s [(ScsLang.en,`The following tables show persons that relates to an 
+                            external source and where the row in the external source
+                            is deleted.`),
+	       (ScsLang.da,`De følgende tabeller viser personer som relaterer til 
+		            en ekstern kilde og hvor rækken i den eksterne kilde er
+			    slettet.`)]
+
+  val intro_del_rel_section =
+    `<h3>^title_del_rel_section</h3>` ^^ 
+    (if all_empty rowss_del_rel_chk then
+       ScsDict.s' [(ScsLang.en,`There are no persons that relates to 
+		                deleted rows in external sources`),
+		   (ScsLang.da,`Der er ikke nogen personer som referer til slettede
+		                rækker i en ekstern kilde.`)]
+     else
+	 `^intro_del_rel_section <p>
+	 ` ^^ (gen_all_tables rowss_del_rel_chk))
 
 end
 
@@ -226,7 +263,9 @@ val _ = ScsUserImp.returnPg title
 
    ` ^^ ext_name_section ^^ `
 
-   ` ^^ ext_email_section)
+   ` ^^ ext_email_section ^^ `
+   
+   ` ^^ intro_del_rel_section)
 
 
 
