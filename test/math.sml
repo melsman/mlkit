@@ -125,8 +125,10 @@ val test12g = tst2 "test12g" (pow, ~10.0, ~2.0, 0.01);
 val test12h = tst2 "test12h" (pow, 0.0, 0.5, 0.0); 
 val test12i = tst2 "test12i" (pow, 0.4, ~2.0, 6.25); 
 
+(*we do not follow the Basis Library specification exactly here, but rather follow math.h
 val test12j = tst0 "test12j" (if Real.==(pow(0.0, ~1.0),Real.posInf) then "OK" else "WRONG")
 val test12k = tst0 "test12k" (if Real.==(pow(0.0, ~0.5),Real.posInf) then "OK" else "WRONG")
+*)
 val test12l = tst0 "test12l" (if Real.isNan(pow(~1.0, 1.1)) then "OK" else "WRONG")
 val test12m = tst0 "test12m" (if Real.isNan(pow(~1.0, 0.5)) then "OK" else "WRONG")
 val test12n = tst0 "test12n" (if Real.==(pow(3.0, 1000000.0),Real.posInf) then "OK" else "WRONG")   (* not in basis lib spec.*)

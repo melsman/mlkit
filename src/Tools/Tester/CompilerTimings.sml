@@ -58,19 +58,16 @@ structure CompilerTimings : COMPILER_TIMINGS =
 
 
     fun from_file s : (string * Time.time) list =
-      let val is = TextIO.openIn s
-      in let val ss = read is 
-(*	     val _ = print "\nbefore compress\n"
-	     val _ = pr ss *)
+      let val is = (TextIO.openIn s) 
+	    handle _ => raise ReadTimingsError ("failed to open compiler timings file `" ^ s ^ "'.\n")
+      in let val ss = (read is) 
+	       handle ReadTimingsError s => 
+		 (TextIO.closeIn is;
+		  raise ReadTimingsError ("error when trying to read compiler timings: " ^ s ^ ".\n")) 
 	     val ss = compress ss
-(*	     val _ = print "\nafter compress\n"
-	     val _ = pr ss  *)
 	 in TextIO.closeIn is;
 	   ss
-	 end handle ReadTimingsError s => 
-	   (TextIO.closeIn is;
-	    raise ReadTimingsError ("error when trying to read compiler timings: " ^ s ^ ".\n"))
-      end handle _ => raise ReadTimingsError ("failed to open compiler timings file `" ^ s ^ "'.\n")
-
+	 end 
+      end
 
   end
