@@ -23,6 +23,8 @@ signature QUOT =
     val >= : (quot * quot) -> bool 
 
     val wrapString : (quot -> quot) -> (string -> string)
+
+    val valOf : quot option -> quot
   end
 
 structure Quot : QUOT =
@@ -62,6 +64,8 @@ structure Quot : QUOT =
 
       fun wrapString (f:quot -> quot): (string -> string) = toString o f o fromString 
     end
+
+    fun valOf q_opt = case q_opt of SOME q => q | NONE => ``
   end
 
 type quot = Quot.quot
