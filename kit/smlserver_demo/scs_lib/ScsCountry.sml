@@ -13,7 +13,7 @@ structure ScsCountry :> SCS_COUNTRY =
     local
       fun genSql lang =
 	  `select country_id, scs_text.getText(
-	     country_name_tid, ^(ScsLang.toString lang)
+	     country_name_tid, ^(Db.qqq (ScsLang.toString lang))
 	   ) as name 
 	   from scs_country_codes
 	  order by name`
