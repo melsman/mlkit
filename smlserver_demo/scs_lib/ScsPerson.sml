@@ -35,6 +35,8 @@ signature SCS_PERSON =
         party_id          : int,
 	portrait_type_vid : int,
         portrait_type_val : portrait_type,
+	filename          : string,
+	url               : string,
 	width             : int,
 	height            : int,
 	bytes             : int,
@@ -42,7 +44,29 @@ signature SCS_PERSON =
 
     val portrait_type_from_DB : string -> portrait_type option
     val portrait_type_to_DB   : portrait_type -> string
+
+    (* [getPortrait file_id] returns the portrait represented by file_id. *)
+    val getPortrait : int -> portrait_record option
+
+    (* [getPortraits user_id] returns a list of portraits uploaded
+        for this user. *)
     val getPortraits : int -> portrait_record list
+
+    (* [portraitAsHtml (user_id,per:person_record,official_p,adm_p)]
+       returns HTML for a portrait. user_id is the logged in user. per
+       is the person for which we will show a portrait. If official_p
+       is true, then we show the official portrait even if a
+       non-official portrait exists. If adm_p is true then the
+       portrait is shown even though the person has not allowed his
+       portrait to be shown to every one on the Internet/Intranet. 
+       
+       The rules used to pick portrait:
+          1 if may_show_portrait_p = false andalso 
+               user_id <> person_id andalso 
+               not adm_p then default_picture
+          2 non official picture (if official_p = false)
+          3 official picture *)
+    val portraitAsHtml : int * person_record * bool * bool -> string
 
     (* [getPerson user_id] fetches a person from the database *)
     val getPerson : int -> person_record option
@@ -174,6 +198,8 @@ structure ScsPerson :> SCS_PERSON =
         party_id          : int,
 	portrait_type_vid : int,
         portrait_type_val : portrait_type,
+	filename          : string,
+        url               : string,
 	width             : int,
 	height            : int,
 	bytes             : int,
@@ -188,30 +214,92 @@ structure ScsPerson :> SCS_PERSON =
       | portrait_type_to_DB thumb_fixed_height = "thumb_fixed_height"
       | portrait_type_to_DB thumb_fixed_width = "thumb_fixed_width"
 
+    (* Virtually download directory *)
+    val download_dir = "/scs/person/portrait_download"
     local
-      fun f g = {file_id = (ScsError.valOf o Int.fromString) (g "file_id"),
-		 party_id = (ScsError.valOf o Int.fromString) (g "party_id"), 
-		 portrait_type_vid = (ScsError.valOf o Int.fromString) (g "portrait_type_vid"), 
-		 portrait_type_val = (ScsError.valOf o portrait_type_from_DB) (g "portrait_type_val"),
-		 width = (ScsError.valOf o Int.fromString) (g "width"),
-		 height = (ScsError.valOf o Int.fromString) (g "height"),
-                 bytes = (ScsError.valOf o Int.fromString) (g "bytes"),
-		 official_p = (ScsError.valOf o Db.toBool) (g "official_p")}
+      fun mk_url (filename,file_id) = 
+	Html.genUrl (download_dir ^ "/" ^ filename) [("file_id",Int.toString file_id)]
+      fun f g = 
+	let
+	  val file_id = (ScsError.valOf o Int.fromString) (g "file_id")
+	  val filename = g "filename"
+	in
+	  {file_id = file_id,
+	   party_id = (ScsError.valOf o Int.fromString) (g "party_id"), 
+	   portrait_type_vid = (ScsError.valOf o Int.fromString) (g "portrait_type_vid"), 
+	   portrait_type_val = (ScsError.valOf o portrait_type_from_DB) (g "portrait_type_val"),
+	   filename = filename,
+	   url = mk_url (filename,file_id),
+	   width = (ScsError.valOf o Int.fromString) (g "width"),
+	   height = (ScsError.valOf o Int.fromString) (g "height"),
+	   bytes = (ScsError.valOf o Int.fromString) (g "bytes"),
+	   official_p = (ScsError.valOf o Db.toBool) (g "official_p")}
+	end
       fun portraitSQL from_wh = 
 	` select p.file_id,
                  p.party_id,
                  p.portrait_type_vid,
                  scs_enumeration.getVal(p.portrait_type_vid) as portrait_type_val,
+		 fs.name,
                  p.width,
                  p.height,
                  p.bytes,
                  p.official_p
 	   ` ^^ from_wh
     in
+      fun getPortrait file_id =
+	SOME (Db.oneRow' f (portraitSQL ` from scs_portraits p, scs_fs_files fs
+		                         where p.file_id = '^(Int.toString file_id)'
+                                           and p.file_id = fs.file_id `))
+	handle _ => NONE
       fun getPortraits user_id =
-	ScsError.wrapPanic (Db.list f) (portraitSQL ` from scs_portraits p
-                                                     where party_id = '^(Int.toString user_id)' `)
+	ScsError.wrapPanic (Db.list f) (portraitSQL ` from scs_portraits p, scs_fs_files fs
+                                                     where p.party_id = '^(Int.toString user_id)'
+                                                       and p.file_id = fs.file_id`)
     end
+
+    val empty_portrait_thumbnail = 
+      { width = 78,
+        height = 100,
+	bytes = 2841,
+	file = download_dir ^ "/empty_portrait_thumbnail.jpg"}
+    val empty_portrait_large =
+      { width = 78,
+        height = 100,
+	bytes = 2841,
+	file = download_dir ^ "/empty_portrait_large.jpg"}
+    fun portraitAsHtml (user_id,per:person_record,official_p,adm_p) =
+      let
+	fun html (url_thumb,w,h) url_large = Quot.toString
+	  `<a href="^(url_large)">
+	  <img src="^(url_thumb)" width="^(Int.toString w)" height="^(Int.toString h)" 
+	  align="right" alt="^(#name per)"></a>`
+	val default_html = 
+	  html (#file empty_portrait_thumbnail,#width empty_portrait_thumbnail,#height empty_portrait_thumbnail)
+	  (#file empty_portrait_large)
+	val use_default_p =
+	  #may_show_portrait_p per = false andalso
+	  user_id <> #person_id per andalso not adm_p
+	val portraits = getPortraits (#person_id per)
+	fun getPicture pic_type official_p = 
+	  List.find (fn pic => #portrait_type_val pic = pic_type andalso #official_p pic = official_p) portraits
+	val official_html =
+	  case (getPicture thumb_fixed_height true,getPicture original true) of
+	     (SOME thumb,SOME large) => html(#url thumb,#width thumb,#height thumb) (#url large)
+	   | _ => default_html
+	val non_official_html = 
+	  if official_p then
+	    official_html
+	  else
+	    case (getPicture thumb_fixed_height false,getPicture original false) of
+	      (SOME thumb,SOME large) => html(#url thumb,#width thumb,#height thumb) (#url large)
+	    | _ => official_html
+      in
+	if use_default_p then
+	  default_html
+	else
+	  non_official_html
+      end	
 
     local
       fun f g = {person_id = (ScsError.valOf o Int.fromString) (g "person_id"),
