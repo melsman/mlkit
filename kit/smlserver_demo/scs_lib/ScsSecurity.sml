@@ -1,5 +1,5 @@
 (* $id$ *)
-
+ 
 structure ScsSecurity (*:> SCS_SECURITY*) =
   struct
     fun randomChar () = 
@@ -172,6 +172,30 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
       end
 
 
+    (* [xssFilterLeaveNoTags text] returns a string which is more secure to 
+	present to a user. The function should be used to present insecure 
+	data to the user.
 
+        converts 
+          <	|->	&lt;
+	  >	|->	&gt;
+          ( 	|->	&#40;
+          ) 	|->	&#41;
+	  #	|->	&#35;
+	  &	|->	&#38;
+     *)
+    fun xssFilterLeaveNoTags (text:string) =
+      let
+	fun f (c, acc) = case c of
+            #"<"  => (#";")::(#"t")::(#"l")::(#"&")::acc
+          | #">"  => (#";")::(#"t")::(#"g")::(#"&")::acc
+	  | #"("  => (#";")::(#"0")::(#"4")::(#"#")::(#"&")::acc
+	  | #")"  => (#";")::(#"1")::(#"4")::(#"#")::(#"&")::acc
+	  | #"#"  => (#";")::(#"5")::(#"3")::(#"#")::(#"&")::acc 
+	  | #"&"  => (#";")::(#"8")::(#"3")::(#"#")::(#"&")::acc
+	  | other => other::acc
+      in
+        (implode o rev) ( Substring.foldl f [] (Substring.all text) )
+      end      
   end
 
