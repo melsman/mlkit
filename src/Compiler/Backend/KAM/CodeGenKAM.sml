@@ -626,7 +626,7 @@ and code is actually generated when passing arguments in region polymorphic func
 
     local
       fun mk_fun f_fun (lab,cc,ce) =
-	(* Region arguments start a offset 0 *)
+	(* Region arguments start at offset 0 *)
 	(* cc.res contains one pseudo lvar for each value returned, see LiftTrip in ClosExp *)
 	let
 	  val decomp_cc = CallConv.decompose_cc cc
@@ -651,16 +651,23 @@ and code is actually generated when passing arguments in region polymorphic func
   (******************************)
   (* Code Generation -- KAM     *)
   (******************************)
-  fun CG {main_lab:label,
+  fun CG {main_lab_opt:label option,
 	  code=clos_prg:ClosPrg,
-	  imports:label list * label list,
-	  exports:label list * label list} =
+	  imports=(imports_code:label list, imports_data:label list),
+	  exports=(exports_code:label list, exports_data:label list)} =
     let
       val _ = chat "[CodeGeneration for the KAM..."
+
+      val exports_code = case main_lab_opt
+			   of SOME l => l :: exports_code
+			    | NONE => exports_code
+	
       val asm_prg = {top_decls=CG_clos_prg clos_prg,
-		     init_code=[],
-		     exit_code=[],
-		     static_data=[]}
+		     main_lab_opt=main_lab_opt,
+		     imports_code=imports_code,
+		     imports_data=imports_data,
+		     exports_code=exports_code,
+		     exports_data=exports_data}
       val _ = 
 	if Flags.is_on "print_KAM_program" then
 	  display("\nReport: AFTER CodeGeneration for the KAM:", 
@@ -676,8 +683,9 @@ and code is actually generated when passing arguments in region polymorphic func
     (*              Generate Link Code for Incremental Compilation                    *)
     (* ------------------------------------------------------------------------------ *)
     fun generate_link_code (linkinfos:label list) = {top_decls=[], (* not done 05/10-2000, Niels *)
-						     init_code=[],
-						     exit_code=[],
-						     static_data=[]}
-
-end;
+						     main_lab_opt=NONE,
+						     imports_code=nil,
+						     imports_data=nil,
+						     exports_code=nil,
+						     exports_data=nil}
+end

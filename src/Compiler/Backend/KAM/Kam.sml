@@ -140,6 +140,9 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | FetchGlobal of label
       | StoreGlobal of label
 
+      | FetchData of label
+      | StoreData of label
+
       | Comment of string
       | Nop
 
@@ -184,9 +187,11 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | FN of label * KamInst list
 
     type AsmPrg = {top_decls: TopDecl list,
-		   init_code: KamInst list,
-		   exit_code: KamInst list,
-		   static_data: KamInst list}
+		   main_lab_opt: label option,
+		   imports_code: label list,
+		   imports_data: label list,
+		   exports_code: label list,
+		   exports_data: label list}
 
     (*----------------------------------------------------------*)
     (*                    Pretty printing                       *)
@@ -270,7 +275,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | EnvToAcc => "EnvToAcc" :: acc
 
       |	ImmedInt(i) => "ImmedInt(" :: (pp_i i) :: ")" :: acc
-      | ImmedString(s) => "ImmedString(" :: s :: ")" :: acc
+      | ImmedString(s) => "ImmedString(\"" :: String.toString s :: "\")" :: acc
       | ImmedReal(r) => "ImmedReal(" :: r :: ")" :: acc
 	
       | Push => "Push" :: acc
@@ -309,6 +314,9 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | FetchGlobal(lab) => "FetchGlobal(" :: (pp_lab lab) :: ")" :: acc
       | StoreGlobal(lab) => "StoreGlobal(" :: (pp_lab lab) :: ")" :: acc
+
+      | FetchData(lab) => "FetchData(" :: (pp_lab lab) :: ")" :: acc
+      | StoreData(lab) => "StoreData(" :: (pp_lab lab) :: ")" :: acc
 
       | Comment(s) => "Comment[" :: s :: "]" :: acc
       | Nop => "Nop" :: acc
@@ -352,7 +360,8 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
     fun pr_inst i = concat(pp_inst(i,[]))
 
-    fun output_AsmPrg (os,{top_decls,init_code,exit_code,static_data}) =
+(*
+    fun output_AsmPrg (os, {top_decls, main_lab_opt, import_size, export_size, data_size}) =
       let
 	fun fold ([], acc) = acc
 	  | fold (inst::insts, acc) = "\n"::(pp_inst(inst, fold (insts, acc)))
@@ -367,34 +376,29 @@ functor Kam(structure Labels : ADDRESS_LABELS
 	   TextIO.output(os,"\n;}\n"))
       in
 	(set_out_stream os;
-	 out_kam_insts init_code;
+	 TextIO.output(os, "\nHEADER is {\n  Main label option = " ^ 
+		       (case main_lab_opt
+			  of SOME lab => "SOME " ^ Labels.pr_label lab
+			   | NONE => "NONE"));
+	 TextIO.output(os, "\n  Import size = " ^ Int.toString import_size);
+	 TextIO.output(os, "\n  Export size = " ^ Int.toString export_size);
+	 TextIO.output(os, "\n  Data size = " ^ Int.toString data_size ^ "}");
 	 List.app pp_top_decl top_decls;
-	 out_kam_insts exit_code;
-	 out_kam_insts static_data;
 	 TextIO.output(os,"\n\n");
 	 reset_output_stream())
       end
+*)
 
     type StringTree = PP.StringTree
-    fun layout_AsmPrg({top_decls,init_code,exit_code,static_data}) =
+    fun layout_AsmPrg({top_decls,
+		       main_lab_opt,
+		       imports_code,
+		       imports_data,
+		       exports_code,
+		       exports_data}) =
       let
 	open PP
 	fun layout_kam_inst i = LEAF(concat(pp_inst(i,[])))
-	val init_node = NODE{start="Begin InitCode",
-			     finish="End InitCode",
-			     indent=2,
-			     childsep=RIGHT " ",
-			     children = map layout_kam_inst init_code}
-	val exit_node = NODE{start="Begin ExitCode",
-			     finish="End ExitCode",
-			     indent=2,
-			     childsep=RIGHT " ",
-			     children=map layout_kam_inst exit_code}
-	val static_data_node = NODE{start="Begin Static Data",
-				    finish="End Static Data",
-				    indent=2,
-				    childsep=RIGHT " ",
-				    children=map layout_kam_inst static_data}
 	fun layout_top_decl(FUN(lab,kam_insts)) =
           NODE{start = "FUN " ^ Labels.pr_label lab ^ " is {",
 	       finish = "}", 
@@ -412,12 +416,24 @@ functor Kam(structure Labels : ADDRESS_LABELS
 			     indent=0,
 			     childsep=RIGHT " ",
 			     children=map layout_top_decl top_decls}
+	fun labels s labs = NODE{start=s ^ " = [",finish="]",indent=2,childsep=RIGHT",",
+				 children=map (LEAF o Labels.pr_label) labs}
+	val header_node = NODE {start="HEADER is {",
+				finish="}", childsep=RIGHT "; ", indent=2,
+				children=[LEAF ("Main label option = " ^ 
+						(case main_lab_opt
+						   of SOME lab => "SOME " ^ Labels.pr_label lab
+						    | NONE => "NONE")),
+					  labels "Imports code" imports_code,
+					  labels "Imports data" imports_data,
+					  labels "Exports code" exports_code,
+					  labels "Exports data" exports_data]}
       in
 	NODE{start="KAM program begin",
 	     finish="KAM program end",
 	     indent=2,
 	     childsep=NOSEP,
-	     children = [init_node,body_node,exit_node,static_data_node]}
+	     children = [header_node,body_node]}
       end
   end
 

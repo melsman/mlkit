@@ -4,7 +4,7 @@ signature CODE_GEN_KAM =
     type AsmPrg
     type ClosPrg
 
-    val CG : {main_lab:label,
+    val CG : {main_lab_opt:label option,
 	      code: ClosPrg,
 	      imports:label list * label list,
 	      exports:label list * label list} -> AsmPrg
