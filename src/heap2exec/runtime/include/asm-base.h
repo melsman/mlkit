@@ -116,14 +116,17 @@
     .globl CFUNSYM(ID);		\
     LABEL(CFUNSYM(ID))
 
+/* #    define LABEL(ID)	  CONCAT(ID,:) */
+/* #    define IMMED(ID)	  CONCAT($,ID) */
+
 #elif defined(HOST_X86)
 #  if defined(OPSYS_WIN32)
 #    include "x86-masm.h"
 #    define WORD(W)     WORD32(W)
 #  else
 #    define GLOBAL(ID)	  .globl	CSYM(ID)
-#    define LABEL(ID)	  CONCAT(ID,:)
-#    define IMMED(ID)	  CONCAT($,ID)
+#    define LABEL(ID)	  ID:
+#    define IMMED(ID)	  $ID
 #    define ALIGN4        .align 2
 #    define WORD(W)       .word W
 #    define TEXT          .text
