@@ -102,7 +102,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
     in
       val asInteger = exception_to_opt (chars_to_int o explode)
       val asWord = exception_to_opt (asWord0 o explode)
-      fun chars_to_posint_in_base chars = chars_to_posint_in_base chars
+      val chars_to_posint_in_base = fn base => fn chars =>
+	    chars_to_posint_in_base base chars
 	    handle Overflow => impossible "chars_to_posint_in_base"
       (*31/10/1995-Martin: new; the old couldn't handle 2147483647.0:
        (because it used accumInt instead of accumReal)*)
@@ -137,8 +138,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
     fun addChars text (LEX_ARGUMENT{sourceReader, stringChars, ...}) =
       LEX_ARGUMENT{sourceReader=sourceReader,
-		   stringChars=text :: stringChars, commentDepth=0
-		  }
+		   stringChars=text :: stringChars, commentDepth=0}
 
     fun addControlChar text arg =
       addChars (chr(ord(String.nth 1 text) - ord "@")) arg
@@ -156,9 +156,10 @@ functor LexUtils(structure LexBasics: LEX_BASICS
       fun addAsciiChar (pos, text) arg =
 	    add_numbered_char (pos, text) arg 255
 	      (case explode text of
-		 ["\\", c1, c2, c3] =>
-		   chars_to_posint_in_base 10 [c1, c2, c3]
+		 ["\\", c1, c2, c3] => chars_to_posint_in_base 10 [c1, c2, c3]
 	       | _ => impossible "addAsciiChar")
+
+
 
       (*indtil videre, `addUnicodeChar' will only allow `unicode' chars in
        the range [0; 255].  20/06/1997 18:53. tho.*)
