@@ -672,34 +672,82 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep'));  
 		       intRep := FinMap.empty;
 		       intRep' := FinMap.empty)
-	fun delete_rep rep absprjid_and_funid = case FinMap.remove ((absprjid_and_funid, !region_profiling), !rep)
-					       of SOME res => rep := res
-						| _ => ()
+
+	val strip_install_dir' = ModuleEnvironments.strip_install_dir'
+	val is_absprjid_basislib = ModuleEnvironments.is_absprjid_basislib
+
+	fun delete_rep rep absprjid_and_funid = 
+	  case FinMap.remove ((strip_install_dir' absprjid_and_funid, !region_profiling), !rep)
+	    of SOME res => rep := res
+	     | _ => ()
+
 	fun delete_entries absprjid_and_funid = (ElabRep.delete_entries absprjid_and_funid; 
 						 delete_rep intRep absprjid_and_funid;
 						 delete_rep intRep' absprjid_and_funid)
-	fun lookup_rep rep exportnames_from_entry absprjid_and_funid =
+
+	(* To allow the binary distribution of the Kit to be stored in
+	  different directories on different systems---to make the Kit
+	  relocatable---we must allow the object files for the basis
+	  library to be moved to another location after building the
+	  system, and still have the object files being reused. To
+	  this end, we pass as an argument to the Kit executable the
+	  directory in which the Kit is located (installed). The
+	  string ref Flags.install_dir is set to this directory during
+	  launch of the Kit. *)
+	  
+	fun prepend_install_dir (funstamp, ElabEnv, IntBasis, longstrids, names, modcode, IntBasis') =
+	  let 
+	    fun prepend_install_dir_modcode modcode = 
+	      case modcode
+		of EMPTY_MODC => EMPTY_MODC
+		 | SEQ_MODC(modc1,modc2) => SEQ_MODC(prepend_install_dir_modcode modc1, 
+						     prepend_install_dir_modcode modc2)
+		 | EMITTED_MODC(fp,li) => EMITTED_MODC(OS.Path.concat(!Flags.install_dir,fp),li)
+		 | NOTEMITTED_MODC(target,linkinfo,filename) => die "prepend_install_dir_modcode" 
+	  in (funstamp, ElabEnv, IntBasis, longstrids, names, prepend_install_dir_modcode modcode, IntBasis')
+	  end
+
+	fun remove_install_dir (funstamp, ElabEnv, IntBasis, longstrids, names, modcode, IntBasis') =
+	  let 
+	    fun remove_install_dir_modcode modcode = 
+	      case modcode
+		of EMPTY_MODC => EMPTY_MODC
+		 | SEQ_MODC(modc1,modc2) => SEQ_MODC(remove_install_dir_modcode modc1, 
+						     remove_install_dir_modcode modc2)
+		 | EMITTED_MODC(fp,li) => EMITTED_MODC(OS.Path.mkRelative(fp, !Flags.install_dir),li)
+		 | NOTEMITTED_MODC(target,linkinfo,filename) => die "remove_install_dir_modcode" 
+	  in (funstamp, ElabEnv, IntBasis, longstrids, names, remove_install_dir_modcode modcode, IntBasis')
+	  end
+
+	fun lookup_rep rep exportnames_from_entry (absprjid_and_funid as (absprjid,_)) =
 	  let val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
 	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
-		if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
+		if (all_gen o exportnames_from_entry) entry then 
+		  (* if absprjid is "basislib.pm" then we prepend to the entry the 
+		   * directory in which the o.-files are located (the install_dir). *)
+		  if is_absprjid_basislib absprjid then
+		    SOME(n, prepend_install_dir entry)
+		  else SOME(n,entry)
 		else find(entries,n+1)
-	  in case FinMap.lookup (!rep) (absprjid_and_funid, !region_profiling)
+	  in case FinMap.lookup (!rep) (strip_install_dir' absprjid_and_funid, !region_profiling)
 	       of SOME entries => find(entries, 0)
 		| NONE => NONE
 	  end
 
-	fun add_rep rep (absprjid_and_funid,entry) : unit =
+	fun add_rep rep (absprjid_and_funid as (absprjid,_),entry) : unit =
 	  rep := let val r = !rep 
-		     val i = (absprjid_and_funid, !region_profiling)
+		     val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
 		 in case FinMap.lookup r i
 		      of SOME res => FinMap.add(i,res @ [entry],r)
-		       | NONE => FinMap.add(i,[entry],r)
+		       | NONE => FinMap.add(i, [if is_absprjid_basislib absprjid then
+						  remove_install_dir entry
+						else entry], r)
 		 end
 
 	fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
 	  rep := let val r = !rep
-		     val i = (absprjid_and_funid, !region_profiling)
+		     val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
 	             fun owr(0,entry::res,entry') = entry'::res
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		       | owr _ = die "owr_rep.owr"

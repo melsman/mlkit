@@ -44,6 +44,20 @@ signature FLAGS =
     val add_string_to_menu: string list * string * string * string ref -> unit
     val add_int_to_menu: string list * string * string * int ref -> unit
 
+
+    (* To allow the binary distribution of the Kit to be stored in
+     different directories on different systems---to make the Kit
+     relocatable---we must allow the object files for the basis
+     library to be moved to another location after building the
+     system, and still have the object files being reused. To
+     this end, we pass as an argument to the Kit executable the
+     directory in which the Kit is located (installed). The
+     string ref Flags.install_dir is set to this directory during
+     launch of the Kit. *)
+
+    val install_dir : string ref
+
+
     val raggedRight: bool ref  (* set to true if PrettyPrinting should
 				  be allowed to exceed `colwidth' by as
 				  much as it likes in order not to omit

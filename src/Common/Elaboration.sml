@@ -557,6 +557,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 						type ElabBasis = Basics.ModuleEnvironments.Basis
 						type longstrid = Basics.StrId.longstrid
                                                 type absprjid = Basics.ModuleEnvironments.absprjid
+						val strip_install_dir' = Basics.ModuleEnvironments.strip_install_dir'
 						structure Crash =  Tools.Crash
 						structure FinMap = Tools.FinMap)
 

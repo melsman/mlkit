@@ -29,6 +29,8 @@ functor Flags (structure Crash : CRASH
 
      *)
 
+
+    val install_dir = ref "You_did_not_set_path_to_install_dir"
      
     (* Pretty Printing *)
 
