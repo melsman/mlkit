@@ -150,7 +150,7 @@ structure Ns :> NS =
 		 concatOpt "; expires=" (Option.map datefmt expiry),
 		 concatOpt "; domain=" domain,
 		 concatOpt "; path=" path,
-		 "; secure", Bool.toString secure]
+		 "; ", if secure then "secure" else ""]
 	    end
 
 	  fun setCookies cookies = String.concat (List.map setCookie cookies)
