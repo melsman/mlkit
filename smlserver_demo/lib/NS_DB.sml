@@ -8,6 +8,8 @@ signature NS_DB_BASIC =
     val endTrans      : quot
     val rollback      : quot
     val fromDate      : Date.date -> string
+    val toTimestampExp: string -> string
+    val timestampType : string
   end
 
 signature NS_POOL =
@@ -163,10 +165,6 @@ signature NS_DB =
     as it's last expression.*)
     val panicDml      : (quot -> 'a) -> quot -> unit
 
-    (* [errorDml f_error sql] similar to panicDml except that no error
-    message is passed to f_error. *)
-(*    val errorDml      : (unit -> 'a) -> quot -> unit*)
-
     (* [panicDmlTrans f_panic f_db] similar to panicDmlTransDb *)
     val panicDmlTrans : (quot -> 'a) -> (db -> 'a) -> 'a
 
@@ -247,16 +245,58 @@ signature NS_DB =
 
     (* [toDate d] returns the Date.date representation of d, where d
     is the date representation from the database. Returns NONE if d
-    cannot be converted into a Date.date. *)
+    cannot be converted into a Date.date. Only year, month and day are
+    considered. *)
     val toDate : string -> Date.date option
+
+    (* [timestampType] the database type representing a timestamp. *)
+    val timestampType : string
+
+    (* [toTimestampExp d] returns a string that fit in a select
+    statement which will return a timestamp representation of column d
+    which can be used by toTimestamp:
+
+       `select ^(Db.toTimestampExp "d") from t`
+
+    where d is a column of type date (in oracle) *)
+    val toTimestampExp: string -> string
+
+    (* [toTimestamp t] returns the Date.date representation of t,
+    where d is the timestap representation from the database. Returns
+    NONE if t cannot be converted into a Date.date. Year, month, day,
+    hour, minutes and seconds are considered. *)
+    val toTimestamp : string -> Date.date option
 
     (* [fromDate d] returns a string which can be used in an SQL
     statement to insert the date d in the database *)
     val fromDate : Date.date -> string
 
-    (* *)
-    val valueList     : string list -> string
-    val setList       : (string*string) list -> string
+    (* [valueList vs] returns a string formatted to be part of an
+    insert statement:
 
+      `insert into t (f1,f2,f3) values (^(Db.valueList [f1,f2,f3]))`
+
+    is turned into
+
+      `insert into t (f1,f2,f3) values ('f1_','f2_','f3_')`
+
+    where fi_ are the properly quoted values. *)
+    val valueList     : string list -> string
+
+    (* [setList nvs] returns a string formatted to be part of an
+    update statement. Say nvs = [(n1,v1),(n2,v2)], then
+
+       `update t set ^(Db.setList nvs)`
+ 
+    is turned into
+   
+       `update t set n1='v1_',n2='v2_'`
+
+    where vi_ are the properly quoted values *)
+    val setList : (string*string) list -> string
+
+    (* [wrapDb f] obtains a handle db with getHandle. applies f to db
+    and before returning the result, the handle db is returned with
+    putHandle *)
     val wrapDb : (db -> 'a) -> 'a
   end

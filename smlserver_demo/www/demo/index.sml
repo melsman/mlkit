@@ -20,6 +20,7 @@ val examples =
    ("Multiplication (MSP)", "mul.msp", []),
    ("Calendars (MSP)", "calendar.msp", []),
    ("Tables (MSP)", "test.msp", []),
+   ("Testing Your Database (requires a database)", "db_test.sml", []),
    ("SMLserver images", "images/index.html", []),
    ("This index page", "index.sml", [])]
 
