@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-KITVERSION=3.9.1
+KITVERSION=3.9.2
 ARCH-OS=x86-linux
 INSTDIR=/usr/share/mlkit
 INSTDIR_KAM=/usr/share/mlkit_kam

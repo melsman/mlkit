@@ -13,12 +13,9 @@ fun error s = returnPage ("Error: " ^ s)
    you; use your browser's back-button to back-up 
    and enter a number in the form.`
 
-val persons = 
-  case Ns.Conn.formvar "persons"
-    of SOME s => (case Int.fromString s
-		    of SOME n => real n
-		     | NONE => error "You must type a number")
-     | NONE => error "Query data missing"
+val persons = case FormVar.getNat "persons"
+		of SOME n => real n
+		 | NONE => error "You must type a number"
 
 fun pr_num s r = 
   if Real.== (r,1.0) then "one " ^ s

@@ -26,6 +26,7 @@ signature EXCON =
     val ex_MATCH    : excon
     val ex_BIND     : excon
     val ex_OVERFLOW : excon
+    val ex_INTERRUPT : excon
 
     structure Map : MONO_FINMAP where type dom = excon
   end

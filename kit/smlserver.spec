@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit SMLserver Version 3.9.1
+# RPM Spec File for the ML Kit SMLserver Version 3.9.2
 # ---------------------------------------------------------------------
 #
 # Here is a short description of how to build an RPM File for the ML
@@ -38,11 +38,11 @@
 
 Summary: SML Support for AOLserver
 Name: smlserver
-Version: 3.9.1
+Version: 3.9.2
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.it.edu/research/mlkit/download/smlserver-3.9.1.tgz
+Source: http://www.it.edu/research/mlkit/download/smlserver-3.9.2.tgz
 URL: http://www.it.edu/research/mlkit
 Vendor: IT University of Copenhagen
 Packager: Martin Elsman (mael@dina.kvl.dk)

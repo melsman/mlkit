@@ -146,7 +146,8 @@ functor CompilerEnv(structure Ident: IDENT
 		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
 		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
-		      (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType))
+		      (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType)),
+		      (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType))
 		      ])
 
     local 

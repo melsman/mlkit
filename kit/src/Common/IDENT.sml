@@ -60,6 +60,7 @@ signature IDENT =
     val id_Match : id
     val id_Bind : id
     val id_Overflow : id
+    val id_Interrupt : id
 
     (* Bogus identifier *)
     val bogus: longid

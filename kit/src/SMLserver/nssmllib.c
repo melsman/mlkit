@@ -26,7 +26,7 @@ nssml_log(Ns_LogSeverity ls, StringDesc* s_ml)
 
 // ML: conn * int * string -> status
 int
-nssml_ConnReturnHtml(Ns_Conn * c, int status, StringDesc* s_ml) 
+nssml_ConnReturnHtml(Ns_Conn* c, int status, StringDesc* s_ml) 
 {
   int res;
   char* s_c;
@@ -343,23 +343,16 @@ nssml_GetMimeType(int rAddr, StringDesc* s)
   int sz;
   char* s_c;
   char* res_c;
-  //  Ns_Log(Notice, "nssml_GetMimeType entering");
   sz = sizeStringDefine(s) + 1;
-  //  Ns_Log(Notice, "nssml_GetMimeType sz=%d", sz);
   s_c = (char*)Ns_Malloc(sz);
-  //  Ns_Log(Notice, "nssml_GetMimeType after malloc");
   convertStringToC(s, s_c, sz, (int)&exn_OVERFLOW);
-  //  Ns_Log(Notice, "nssml_GetMimeType after convertStringToC");
   res_c = Ns_GetMimeType(s_c);
-  //  Ns_Log(Notice, "nssml_GetMimeType after Ns_GetMimeType");
   Ns_Free(s_c);
-  //  Ns_Log(Notice, "nssml_GetMimeType after Ns_Free");
   if ( res_c == NULL ) {
     Ns_Log(Warning, "nssml_GetMimeType problem - returning empty string");
     res_c = "";
   }
   s = convertStringToML(rAddr, res_c);
-  //  Ns_Log(Notice, "nssml_GetMimeType after convertStringToML");
   return s;
 }
 
@@ -415,3 +408,57 @@ nssml_DecodeUrl(int rAddr, StringDesc* s)
   return s;
 }
 
+// ML: {sectionName: string, key: string} -> string ptr_option
+StringDesc*
+nssml_configGetValue(int rAddr, StringDesc *section_ml, StringDesc *key_ml)
+{
+  int section_sz, key_sz;
+  char* section_c;
+  char* key_c;
+  char* res;
+  StringDesc* res_ml;
+  section_sz = sizeStringDefine(section_ml) + 1;
+  key_sz = sizeStringDefine(key_ml) + 1;
+  section_c = (char*)Ns_Malloc(section_sz);
+  key_c = (char*)Ns_Malloc(key_sz);
+  convertStringToC(section_ml, section_c, section_sz, (int)&exn_OVERFLOW);
+  convertStringToC(key_ml, key_c, key_sz, (int)&exn_OVERFLOW);
+  res = Ns_ConfigGetValue(section_c, key_c);
+  if ( res == NULL ) {
+    Ns_Free(section_c);
+    Ns_Free(key_c);
+    return (StringDesc*)NULL;
+  }
+  res_ml = convertStringToML(rAddr, res);
+  return res_ml;
+}
+
+// ML: {sectionName: string, key: string} -> string ptr_option
+StringDesc*
+nssml_configGetValueExact(int rAddr, StringDesc *section_ml, StringDesc *key_ml)
+{
+  int section_sz, key_sz;
+  char* section_c;
+  char* key_c;
+  char* res;
+  section_sz = sizeStringDefine(section_ml) + 1;
+  key_sz = sizeStringDefine(key_ml) + 1;
+  section_c = (char*)Ns_Malloc(section_sz);
+  key_c = (char*)Ns_Malloc(key_sz);
+  convertStringToC(section_ml, section_c, section_sz, (int)&exn_OVERFLOW);
+  convertStringToC(key_ml, key_c, key_sz, (int)&exn_OVERFLOW);
+  res = Ns_ConfigGetValueExact(section_c, key_c);
+  if ( res == NULL ) {
+    Ns_Free(section_c);
+    Ns_Free(key_c);
+    return (StringDesc*)NULL;
+  }
+  return convertStringToML(rAddr, res);
+}
+
+// ML: conn -> string
+StringDesc* 
+nssml_ConnUrl(int rAddr, Ns_Conn* conn)
+{
+  return convertStringToML(rAddr, conn->request->url);
+}

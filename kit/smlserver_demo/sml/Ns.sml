@@ -114,6 +114,9 @@ structure Ns :> NS =
 
 	fun setRequiredHeaders(contentType: string, contentLength: int) : unit =
 	  prim("nssml_ConnSetRequiredHeaders", "nssml_ConnSetRequiredHeaders", (getConn(), contentType, contentLength))
+
+	fun url () : string =
+	  prim("nssml_ConnUrl", "nssml_ConnUrl", getConn())
       end
 
     type db = int
@@ -158,6 +161,20 @@ structure Ns :> NS =
 	fun configFile() : string =
 	  prim("nssml_InfoConfigFile", "nssml_InfoConfigFile", ())
 
+	fun configGetValue {sectionName: string, key: string} : string option =
+	  let val res : string = prim("nssml_configGetValue", "nssml_configGetValue", 
+				      (sectionName, key))
+	  in if isNull res then NONE
+	     else SOME res
+	  end
+
+	fun configGetValueExact {sectionName: string, key: string} : string option =
+	  let val res : string = prim("nssml_configGetValueExact", "nssml_configGetValueExact", 
+				      (sectionName, key))	  
+	  in if isNull res then NONE
+	     else SOME res
+	  end
+	    
 	fun errorLog() : string =
 	  prim("nssml_InfoErrorLog", "nssml_InfoErrorLog", ())
 
@@ -255,10 +272,12 @@ structure Ns :> NS =
 		    extra_headers=nil,body=body}
       end
 
-    fun exit() = OS.Process.exit 1 (*todo: this function should not make the 
-				    *web-server restart; instead, database handles should be
-				    *released and the the script should exit without 
-				    *trouble.*)
+    fun exit() = raise Interrupt  
+    (* By raising Interrupt, the web-server is not killed as it
+     * would be if we call OS.Process.exit. Also, handlers can
+     * protect the freeing of resources such as file descriptors
+     * and database handles. Moreover, region pages are freed as 
+     * they should be. *)
 
     val _ = OS.FileSys.chDir (Info.pageRoot())
 

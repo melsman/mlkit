@@ -186,7 +186,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  end
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
-	val version = "3.9.1"
+	val version = "3.9.2"
 	val greetings = ("ML Kit version " ^ version ^ ", " ^ date ^ " [" ^
 			 backend_name ^ " Backend]\n")
 
