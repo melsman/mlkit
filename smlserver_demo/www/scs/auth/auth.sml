@@ -28,22 +28,23 @@ val pid =
   case Db.zeroOrOneField `select party_id
                           from scs_parties
                           where email = ^(Db.qqq email)
-                            and deleted_p = 'f'` 
+                            and deleted_p = 'f'`  (* why not extend select with match on password? 2003-04-06, nh *)
     of NONE => reject( `Det indtastede email og kodeord findes ikke i databasen.<p>` ^^
                        `(eng. The provided password and email does not match a record in our database)`)
-     | SOME pid => pid
+     | SOME pid => (ScsError.valOf o Int.fromString) pid
 
-val _ = Ns.write
+val _ = ScsLogin.set_user_pw_cookie pid passwd target
+(* Ns.write
 `HTTP/1.0 302 Found
 Location: ^target
 MIME-Version: 1.0
 ^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/"})
 ^(Ns.Cookie.setCookie{name="auth_user_id", value=pid,expiry=NONE,
 		      domain=NONE,path=SOME "/",secure=false})
-^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
-^(Ns.Cookie.setCookie{name="auth_password", value=passwd,expiry=NONE,
+^(Ns.Cookie.deleteCookie{name="session_id",path=SOME "/"})
+^(Ns.Cookie.setCookie{name="session_id", value=passwd,expiry=NONE,
 		      domain=NONE,path=SOME "/",secure=false})
 
-You should not be seeing this!`
+You should not be seeing this!` 2003-04-06, nh *)
 
 
