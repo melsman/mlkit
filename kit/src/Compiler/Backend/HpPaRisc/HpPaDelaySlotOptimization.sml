@@ -80,6 +80,7 @@ functor HpPaDelaySlotOptimization(structure HpPaRisc : HP_PA_RISC
 	| LDO _    => chk(inst1, inst2)
 	| LDO' _   => chk(inst1, inst2)
 	| LDW _    => chk(inst1, inst2)
+	| LDW' _   => chk(inst1, inst2)
 	| LDWS _   => chk(inst1, inst2)
 	| LDWM _   => chk(inst1, inst2)
 		   
@@ -95,6 +96,7 @@ functor HpPaDelaySlotOptimization(structure HpPaRisc : HP_PA_RISC
 	| SUBO _   => chk(inst1, inst2)
 	| SUBI _   => chk(inst1, inst2)
 	| STW  _   => chk(inst1, inst2)
+	| STW' _   => chk(inst1, inst2)
 	| STWS _   => chk(inst1, inst2)
 	| STWM _   => chk(inst1, inst2)
 
@@ -132,8 +134,6 @@ functor HpPaDelaySlotOptimization(structure HpPaRisc : HP_PA_RISC
 	| META_BV _     => die "instOkInDelaySlot - META_BV" 
 	| META_IF_BIT _ => die "instOkInDelaySlot - META_IF_BIT" 
 	| META_B _      => die "instOkInDelaySlot - META_B" 
-      
-	| SEQ _         => die "DelaySlotOptimization - instOkInDelaySlot - SEQ" 
       end
 
     (* It is only assembler directives that we do not have to stop for. *)
@@ -174,6 +174,7 @@ functor HpPaDelaySlotOptimization(structure HpPaRisc : HP_PA_RISC
        | LDO _      => true
        | LDO' _     => true
        | LDW _      => true
+       | LDW' _     => true
        | LDWS _     => true
        | LDWM _     => true
 		   
@@ -189,6 +190,7 @@ functor HpPaDelaySlotOptimization(structure HpPaRisc : HP_PA_RISC
        | SUBO _     => true
        | SUBI _     => true
        | STW _      => true
+       | STW' _     => true
        | STWS _     => true
        | STWM _     => true
 
@@ -227,9 +229,6 @@ functor HpPaDelaySlotOptimization(structure HpPaRisc : HP_PA_RISC
        | META_IF_BIT _  => die "haveToStop - META_IF_BIT" 
        | META_B _       => die "haveToStop - META_B" 
       
-       | SEQ _          => die "haveToStop - SEQ" 
-
-
     fun DSO(prg as {top_decls: TopDecl list,
 		    init_code: RiscInst list,
 		    exit_code: RiscInst list,

@@ -214,6 +214,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | LDO of   {d: string, b: reg, t: reg} 
       | LDO' of  {pr_d: unit->string, b: reg, t: reg} 
       | LDW of   {d: string, s: reg, b: reg, t: reg} 
+      | LDW' of  {pr_d: unit->string, s: reg, b: reg, t: reg}
       | LDWS of  {cmplt: comp, d: string, s: reg, b: reg, t: reg} 
       | LDWM of  {d: string, s: reg, b: reg, t: reg} 
 
@@ -229,6 +230,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | SUBO of  {cond: cond, r1: reg, r2: reg, t: reg} 
       | SUBI of  {cond: cond, i: string, r: reg, t: reg} 
       | STW of   {r: reg, d: string, s: reg, b: reg} 
+      | STW' of  {r: reg, pr_d: unit->string, s: reg, b: reg}
       | STWS of  {cmplt: comp, r: reg, d: string, s: reg, b: reg} 
       | STWM of  {r: reg, d: string, s: reg, b: reg} 
 
@@ -267,8 +269,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | META_BV of {n: bool, x: reg, b: reg}
       | META_IF_BIT of {r: reg, bitNo: int, target: lab}
       | META_B of {n: bool, target: lab}
-
-      | SEQ of RiscInst * RiscInst
 
     datatype TopDecl =
         FUN of label * RiscInst list
@@ -401,6 +401,8 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
 	   (indent::"LDO"::indent::(pr_d())::"("::(pp_reg (b,"), "::(pp_reg (t,acc)))))
       | LDW {d, s, b, t} =>
 	   (indent::"LDW"::indent::d::"("::(pp_reg (s,", "::(pp_reg (b,"), "::(pp_reg (t,acc)))))))
+      | LDW'{pr_d, s, b, t} =>
+	   (indent::"LDW"::indent::(pr_d())::"("::(pp_reg (s,", "::(pp_reg (b,"), "::(pp_reg (t,acc)))))))
       | LDWS {cmplt, d, s, b, t} =>
 	   (indent::"LDWS"::(pp_comp cmplt)::indent::d::"("::(pp_reg (s,", "::(pp_reg (b,"), "::(pp_reg (t,acc)))))))
       | LDWM {d, s, b, t} =>
@@ -424,6 +426,8 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
 	   (indent::"SUBI"::(pp_cond cond)::indent::i::", "::(pp_reg (r,", "::(pp_reg (t,acc)))))
       | STW {r, d, s, b} =>
 	   (indent::"STW"::indent::(pp_reg (r,", "::d::"("::(pp_reg (s,", "::(pp_reg (b,")"::acc)))))))
+      | STW' {r, pr_d, s, b} => 
+	   (indent::"STW"::indent::(pp_reg (r,", "::(pr_d())::"("::(pp_reg (s,", "::(pp_reg (b,")"::acc)))))))
       | STWS {cmplt, r, d, s, b} =>
 	   (indent::"STWS"::(pp_comp cmplt)::indent::(pp_reg (r,", "::d::"("::(pp_reg (s,", "::(pp_reg (b,")"::acc)))))))
       | STWM {r, d, s, b} =>
@@ -480,8 +484,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
 	   (indent::"META_IF_BIT(r: "::(pp_reg (r,", bitNo: "::(Int.toString bitNo)::", target: "::(pp_lab' (target,")"::acc)))))
       | META_B {n, target} =>
 	   (indent::"META_B(n: "::(if n then "true" else "false")::", target: "::(pp_lab' (target,")"::acc)))
-
-      | SEQ _ => die "pp_inst - SEQ"
 
     fun pr_inst i = concat(pp_inst(i,[]))
 
@@ -554,17 +556,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       end
 
     (*----------------------------------------------------------*)
-    (*             Basic Compilation Functions                  *)
-    (*----------------------------------------------------------*)
-
-    infix ++
-    val op ++ = SEQ
-
-    fun load_label (lab, destReg) = 
-      ADDIL' {pr_i=fn() => "L'" ^ pp_lab lab ^ "-$global$", r=dp} ++
-      LDO'   {pr_d=fn() => "R'" ^ pp_lab lab ^ "-$global$", b=Gen 1, t=destReg}
-
-    (*----------------------------------------------------------*)
     (*             Defs and Uses (for scheduling)               *)
     (*----------------------------------------------------------*)
 
@@ -606,6 +597,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | LDO       {d, b, t} => [t]
       | LDO'      {pr_d, b, t} => [t]
       | LDW       {d, s, b, t} => [t]
+      | LDW'      {pr_d, s, b, t} => [t]
       | LDWS      {cmplt, d, s, b, t} => [t]
       | LDWM      {d, s, b, t} => [b, t]
 
@@ -621,6 +613,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | SUBO {cond, r1, r2, t} => [t]
       | SUBI {cond, i, r, t} => [t]
       | STW {r, d, s, b} => []
+      | STW' {r, pr_d, s, b} => []
       | STWS {cmplt, r, d, s, b} => []
       | STWM {r, d, s, b} => [b]
 
@@ -658,8 +651,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | META_BV {n, x, b} => []
       | META_IF_BIT {r, bitNo, target} => []
       | META_B {n, target} => []
-
-      | SEQ _ => die "regs_defd - SEQ" 
 
     fun regs_used i = 
       case i of
@@ -699,6 +690,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | LDO       {d, b, t} => [b]
       | LDO'      {pr_d, b, t} => [b]
       | LDW       {d, s, b, t} => [b]
+      | LDW'      {pr_d, s, b, t} => [b]
       | LDWS      {cmplt, d, s, b, t} => [b]
       | LDWM      {d, s, b, t} => [b]
 
@@ -714,6 +706,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | SUBO      {cond, r1, r2, t} => [r1,r2]
       | SUBI      {cond, i, r, t} => [r]
       | STW       {r, d, s, b} => [b,r]
+      | STW'      {r, pr_d, s, b} => [b,r]
       | STWS      {cmplt, r, d, s, b} => [b,r]
       | STWM      {r, d, s, b} => [b,r]
 
@@ -752,8 +745,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | META_IF_BIT {r, bitNo, target} => []
       | META_B {n, target} => []
 
-      | SEQ _ => die "regs_used - SEQ" 
-
     fun does_inst_nullify(i) =
       case i of
         ADD       {cond, r1, r2, t} => cond<>NEVER
@@ -790,8 +781,9 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | LDI       {i, t}              => false
       | LDIL      {i, t}              => false
       | LDO       {d, b, t}           => false
-      | LDO'      {pr_d, b, t}           => false
+      | LDO'      {pr_d, b, t}        => false
       | LDW       {d, s, b, t}        => false
+      | LDW'      {pr_d, s, b, t}     => false
       | LDWS      {cmplt, d, s, b, t} => false
       | LDWM      {d, s, b, t}        => false
 
@@ -807,6 +799,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | SUBO      {cond, r1, r2, t}    => cond<>NEVER
       | SUBI      {cond, i, r, t}      => cond<>NEVER
       | STW       {r, d, s, b}         => false
+      | STW'      {r, pr_d, s, b}      => false
       | STWS      {cmplt, r, d, s, b}  => false
       | STWM      {r, d, s, b}         => false
 	  
@@ -845,8 +838,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | META_IF_BIT {r, bitNo, target}       => die "DelaySlotOptimization - doesInstNullify - META_IF_BIT" 
       | META_B {n, target}                   => die "DelaySlotOptimization - doesInstNullify - META_B"
 	  
-      | SEQ _ => die "DelaySlotOptimization - doesFirstInstNullify - SEQ"
-
     fun is_jmp i = 
       case i of
 	ADD      _ => false
@@ -885,6 +876,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | LDO      _ => false
       | LDO'     _ => false
       | LDW      _ => false
+      | LDW'     _ => false
       | LDWS     _ => false
       | LDWM     _ => false
 		 
@@ -900,6 +892,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | SUBO     _ => false
       | SUBI     _ => false
       | STW      _ => false
+      | STW'     _ => false
       | STWS     _ => false
       | STWM     _ => false
 
@@ -937,8 +930,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | META_BV          _ => true
       | META_IF_BIT      _ => true
       | META_B           _ => true
-
-      | SEQ              _ => false
 
     fun is_asm_directive i = 
       case i of
@@ -978,6 +969,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | LDO      _ => false
       | LDO'     _ => false
       | LDW      _ => false
+      | LDW'     _ => false
       | LDWS     _ => false
       | LDWM     _ => false
 		 
@@ -993,6 +985,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | SUBO     _ => false
       | SUBI     _ => false
       | STW      _ => false
+      | STW'     _ => false
       | STWS     _ => false
       | STWM     _ => false
 
@@ -1030,8 +1023,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | META_BV          _ => die "Not possible at assembler level."
       | META_IF_BIT      _ => die "Not possible at assembler level."
       | META_B           _ => die "Not possible at assembler level."
-
-      | SEQ              _ => die "Not possible at assembler level."
 
   end
 

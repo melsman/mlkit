@@ -146,6 +146,7 @@ signature HP_PA_RISC =
       | LDO of   {d: string, b: reg, t: reg} 
       | LDO' of  {pr_d: unit->string, b: reg, t: reg} 
       | LDW of   {d: string, s: reg, b: reg, t: reg}
+      | LDW' of  {pr_d: unit->string, s: reg, b: reg, t: reg}
       | LDWS of  {cmplt: comp, d: string, s: reg, b: reg, t: reg}
       | LDWM of  {d: string, s: reg, b: reg, t: reg} 
 
@@ -161,6 +162,7 @@ signature HP_PA_RISC =
       | SUBO of   {cond: cond, r1: reg, r2: reg, t: reg} 
       | SUBI of  {cond: cond, i: string, r: reg, t: reg} 
       | STW of   {r: reg, d: string, s: reg, b: reg} 
+      | STW' of  {r: reg, pr_d: unit->string, s: reg, b: reg}
       | STWS of  {cmplt: comp, r: reg, d: string, s: reg, b: reg} 
       | STWM of  {r: reg, d: string, s: reg, b: reg} 
       | ZVDEP of {cond:cond, r:reg,d:string,t:reg}
@@ -198,8 +200,6 @@ signature HP_PA_RISC =
       | META_IF_BIT of {r: reg, bitNo: int, target: lab}
       | META_B of {n: bool, target: lab}
 
-      | SEQ of RiscInst * RiscInst
-    
     datatype TopDecl =
         FUN of label * RiscInst list
       | FN of label * RiscInst list
@@ -212,7 +212,6 @@ signature HP_PA_RISC =
     (*******************************)
     (* Basic Compilation Functions *)
     (*******************************)
-    val load_label        : lab * reg -> RiscInst
     val regs_defd         : RiscInst -> reg list
     val regs_used         : RiscInst -> reg list
     val does_inst_nullify : RiscInst -> bool
