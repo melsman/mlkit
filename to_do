@@ -11,6 +11,10 @@ TO BE FIXED BY: (MT|MAEL|FAXE)
 
 WAIT
 
+
+Eliminate generated object code that is never used. We cannot
+eliminate object code for units with side-effects, however.
+
 Make recompilation dependent on a notion of `compiler configuration'
 (list of entry-flag pairs); in this way, we can ensure that linking
 will always succeed even if the compiler configuration changes. A
@@ -30,9 +34,6 @@ functors. Syntax:
           |  file.o                              precompiled object
           |  file.grm                            yacc source file
           |  file.lex                            lex source file
-
-Eliminate generated object code that is never used. We cannot
-eliminate object code for units with side-effects, however.
 
 It seems that kam variables are local to each target unit; currently,
 however, we allocate a global store (in data space) for these
