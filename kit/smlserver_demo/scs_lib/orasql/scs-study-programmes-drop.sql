@@ -1,1 +1,0 @@
-drop table scs_study_programmes;
