@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "HashTable.h"
-// #include "ns.h"
 
 static int
 stringHash(char *s)
@@ -19,13 +18,15 @@ emptyHashTable(int arraySize)
 {
   HashTable h;
   int i;
+  int sz_bytes;
 
   // MEMO: arraySize should be rounded up to a power of two minus one
 
-  h = (HashTable)malloc(4 * arraySize + sizeof(struct hashTable));
+  sz_bytes = 4 * (arraySize+1) + sizeof(struct hashTable);
+  h = (HashTable)malloc(sz_bytes);
   h->arraySize = arraySize;
   h->size = 0;
-  for ( i = 0 ; i < arraySize ; i ++ )
+  for ( i = 0 ; i <= arraySize ; i ++ )
     {
       h->array[i] = 0;
     }
@@ -50,7 +51,6 @@ lookupHashTable(HashTable h, char* key)
 {
   int hash;
   hash = stringHash(key) & (h->arraySize);
-  // Ns_Log(Notice, "nssml: lookup (hash=%d)", hash);
   return lookupObjectList(h->array[hash], key);
 }
 
@@ -77,7 +77,10 @@ freeObjectList(ObjectListHashTable *ol)
   for ( ; ol ; ol = ol->next )
     {
       if ( ol_prev )
-	free(ol_prev);
+	{
+	  free(ol_prev->key);
+	  free(ol_prev);
+	}
       ol_prev = ol;
     }
   if ( ol_prev )
@@ -92,7 +95,7 @@ void
 freeHashTable(HashTable h)
 {
   int i;
-  for ( i = 0 ; i < h->arraySize ; i ++ )
+  for ( i = 0 ; i <= h->arraySize ; i ++ )
     {
       freeObjectList(h->array[i]);
     }
