@@ -255,6 +255,7 @@ extern Klump * freelist;
 
 #ifdef KAM
 #define TOP_REGION   (*topRegionCell)
+void free_region_pages(Klump* first, Klump* last);
 #else
 extern Ro * topRegion;
 #define TOP_REGION   topRegion
@@ -379,7 +380,6 @@ extern unsigned int callsOfDeallocateRegionInf,
 extern FiniteRegionDesc * topFiniteRegion;
 extern int size_to_space;
 
-
 /* Profiling functions. */
 Region allocRegionInfiniteProfiling(Region roAddr, unsigned int regionId);
 Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int regionId);
@@ -391,5 +391,7 @@ int *allocProfiling(Region rAddr,int n, int pPoint);  // used by Table.c
 
 void printTopRegInfo();
 int size_free_list();
+
+void free_lobjs(Lobjs* lobjs);
 
 #endif /*REGION_H*/

@@ -86,6 +86,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     in 
 	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
       fun pmdir() = 
+	if !Flags.SMLserver then "PM/"
+	else
 	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
 	else case (gc_p(), region_profiling(), tag_pairs_p())
 	       of (true,   true,               false) => "PM/RI_GC_PROF/"

@@ -1353,6 +1353,10 @@ int main_interp(int argc, char * argv[]) {
   int res, start, c;
   Interp* interp;
   char* errorStr = NULL;
+
+  debug(printf("[Resolving global code fragments]\n"));
+  resolveGlobalCodeFragments();
+
   debug(printf("[Creating new interpreter]\n"));
   interp = interpNew();
   
