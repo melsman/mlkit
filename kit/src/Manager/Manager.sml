@@ -245,6 +245,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * (may raise PARSE_ELAB_ERROR)
      * -------------------------------- *)
 
+    fun free_ids a = FreeIds.free_ids a
+    fun ElabBasis_restrict a = ElabBasis.restrict a
+    fun IntBasis_restrict a = IntBasis.restrict a
+    fun OpacityElim_restrict a = OpacityElim.restrict a
+    fun opacity_elimination a = OpacityElim.opacity_elimination a
+
     exception PARSE_ELAB_ERROR
     fun parse_elab_interp (B, funid, source_filepath, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
@@ -263,24 +269,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  let val names_elab = !Name.bucket
 
 		      val freeids as {ids,tycons,strids,funids,sigids} =
-			let val ids = FreeIds.free_ids topdec
+			let val ids = free_ids topdec
 			in {ids=FreeIds.vids_of_ids ids, tycons=FreeIds.tycons_of_ids ids,
 			    strids=FreeIds.strids_of_ids ids, funids=FreeIds.funids_of_ids ids,
 			    sigids=FreeIds.sigids_of_ids ids}
 			end
 
 		      (* val _ = debug_free_ids ids *)
-		      val elabB_im = ElabBasis.restrict(elabB,freeids)
+		      val elabB_im = ElabBasis_restrict(elabB,freeids)
 		      (* val _ = debug_basis "Import" Bimp *)
 
 		      (* val _ = print "\n[restricting interpretation basis ...\n" *)
-		      val intB_im = IntBasis.restrict(intB, (funids,strids,ids,tycons))
+		      val intB_im = IntBasis_restrict(intB, (funids,strids,ids,tycons))
 		      (* val _ = print " done]\n" *)
 
  		      val tynames_elabB_im = ElabBasis.tynames elabB_im
-		      val rea_im = OpacityElim.restrict(rea,tynames_elabB_im)
+		      val rea_im = OpacityElim_restrict(rea,tynames_elabB_im)
 
-		      val (topdec', rea') = OpacityElim.opacity_elimination(rea_im, topdec)
+		      val (topdec', rea') = opacity_elimination(rea_im, topdec)
 
 		      val _ = Name.bucket := []
 		      val (intB', modc) = IntModules.interp(intB_im, topdec', filename)
