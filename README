@@ -11,7 +11,7 @@ based memory management scheme in which allocation and de-allocation
 primitives are added to the program at compile time. The Kit also
 makes it possible to combine the region based memory management scheme
 with traditional reference tracing garbage collection. Two versions of
-the the ML Kit is available, one that generates efficient native code
+the ML Kit is available, one that generates efficient native code
 for the x86 architecture and one that generates portable bytecode that
 can be interpreted by an abstract machine. The largest program
 compiled with the Kit is the Kit itself (around 80.000 lines of SML,
