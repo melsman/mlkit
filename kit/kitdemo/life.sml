@@ -139,7 +139,7 @@ local
   			    (i+1,j-1),(i+1,j),(i+1,j+1)]
   
   
-  fun pr x = output(std_out, x)
+  fun pr x = TextIO.output(TextIO.stdOut, x)
   infix footnote
   fun x footnote y = x
 
@@ -210,6 +210,6 @@ local
   fun testit _ = show(iter 200)    
 
 in
-  val _ = testit std_out
+  val _ = testit ()
 end
  
