@@ -27,26 +27,26 @@ information about installing the ML Kit on a FreeBSD/x86 platform.
 1. Installation Requirements
 ----------------------------
 To install and use the ML Kit, you need a Linux box running Redhat
-Linux 7.1 or similar. 
+Linux, Debian, or similar. 
 
 Unless you are installing one of the binary RPM distributions, you
-need Standard ML of New Jersey version 110.0.7 (or later) to compile
-the ML Kit sources. A link to the home page for the Standard ML of New
-Jersey compiler is available from the ML Kit home page. Once
-installed, the ML Kit will take up around 25Mb of disk space, which
-includes documentation, example files, and a pre-compiled Standard ML
-Basis Library.
+need Standard ML of New Jersey version 110.0.7 to compile the ML Kit
+sources. A link to the home page for the Standard ML of New Jersey
+compiler is available from the ML Kit home page. Once installed, the
+ML Kit will take up around 25Mb of disk space, which includes
+documentation, example files, and a pre-compiled Standard ML Basis
+Library.
 
 2. Preparing for Building and Installation
 ------------------------------------------
-In the following, except in the section on "Binary Distributions",
-we assume that version 110.0.7 (or later) of Standard ML of New Jersey
-is installed on your Linux box, such that the command "sml" is
-available from the command line. We shall also assume that you have
-downloaded the compressed tar-file named mlkit-x.y.z.tgz and placed it
-somewhere on your system. You now have the option of installing the
-version of the ML Kit with the native backend or the version with the
-bytecode backend.
+In the following, except in the section on "Binary Distributions", we
+assume that version 110.0.7 of Standard ML of New Jersey is installed
+on your Linux box, such that the command "sml" is available from the
+command line. We shall also assume that you have downloaded the
+compressed tar-file named mlkit-x.y.z.tgz and placed it somewhere on
+your system. You now have the option of installing the version of the
+ML Kit with the native backend or the version with the bytecode
+backend.
 
 3. Building and Installing the ML Kit (Native Backend)
 ------------------------------------------------------
@@ -76,7 +76,7 @@ in the previous section, proceed as follows:
       % make install INSTDIR=$(HOME)/mlkit-x.y.z
     
 Once installed, make a personal copy of the kitdemo/ directory and try
-compile the kitdemo/helloworld.sml program. The commands
+to compile the kitdemo/helloworld.sml program. The commands
 
    % cd kitdemo
    % /usr/share/mlkit-x.y.z/bin/mlkit helloworld.sml
@@ -115,8 +115,8 @@ that, when executed, should print a greeting from the Kit.
 
 5. Binary Distributions
 -----------------------
-Binary distributions in form of RPM files are available from the ML
-Kit home page. If you ever need to build RPM files for the ML Kit
+Binary distributions in the form of RPM files are available from the
+ML Kit home page. If you ever need to build RPM files for the ML Kit
 yourself, consult the documentation in the mlkit.spec file found in
 the source distribution.
 
