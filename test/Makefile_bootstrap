@@ -2,10 +2,10 @@ ARCH-OS=x86-linux
 MKDIR=mkdir -p
 INSTALL=cp -p
 RUNTIME_FLAGS=
-COMP_FLAGS= -gc 
+COMP_FLAGS=
 
 bootstrap:
-	cd src; ../bin/mlkit $(COMP_FLAGS) sources.pm
+	cd src; ../bin/mlkit -gc $(COMP_FLAGS) sources.pm
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystem.o $(INSTDIR)/bin
