@@ -15,7 +15,7 @@ structure ScsAuth :> SCS_AUTH =
       val rightList = fn () => []
     in
     fun returnPg title body =
-      UcsPage.returnPgMenu "ucs@it.edu" "Niels Hallenberg" 
+      UcsPage.returnPgMenu MitItu.Ressources.url_request "Support"
       title (leftList()) (rightList()) [] body
     end
   end

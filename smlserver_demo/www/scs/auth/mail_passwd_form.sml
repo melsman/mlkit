@@ -3,13 +3,21 @@ val lang =
     SOME l => ScsLang.fromString l
   | NONE => ScsLang.en
 
-val title = 
-  ScsDict.getString [(ScsLang.da,`Få password`),(ScsLang.en,`Get Password`)] lang
+val (mitITU_da, mitITU_en) = (
+  ScsDict.getString MitItu.Ressources.mitITU_dict ScsLang.da,
+  ScsDict.getString MitItu.Ressources.mitITU_dict ScsLang.en
+)
+
+val title = ScsDict.getString [
+  (ScsLang.da,`Få password til ^mitITU_da`),
+  (ScsLang.en,`Get Password for ^mitITU_en`)
+] lang
+
 
 val body =
   ScsDict.getString 
-  [(ScsLang.da,`Indtast din email og du vil modtage dit UCS password pr. email.`),
-   (ScsLang.en,`Write your email address and we will send you your UCS password by email.`)]
+  [(ScsLang.da,`Indtast din email og du vil modtage dit  password til ^mitITU_da pr. email.`),
+   (ScsLang.en,`Write your email address and we will send you your  password for ^mitITU_en by email.`)]
   lang
 
 val _ = ScsPage.returnPg title

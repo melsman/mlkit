@@ -16,6 +16,10 @@ signature SCS_ROLE =
     | UcsEduInfo          (* Created in ucs-edus-patch006.sql *)
     | PhdAdm              (* Created in ucs-edus-patch006.sql *)
     | PortraitAdm         (* Created in ucs-edus-patch006.sql *)
+    | UcsPrPersonaleAdm   (* Created in ucs-pr-patch002.sql *)
+    | UcsPrAdm		  (* Created in ucs-pr-patch002.sql *)
+    | UcsPrITAdm	  (* Created in ucs-pr-patch002.sql *)
+    | UcsPrInternAdm      (* Created in ucs-pr-patch002.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -60,20 +64,28 @@ structure ScsRole :> SCS_ROLE =
     | UcsEduInfo
     | PhdAdm
     | PortraitAdm
+    | UcsPrPersonaleAdm
+    | UcsPrAdm		
+    | UcsPrITAdm	
+    | UcsPrInternAdm    
     | Other of string
 
     fun fromString str = 
       case str of
-        "SiteAdm" => SiteAdm
-      | "StudAdm" => StudAdm
-      | "UcsPbVejlederAdm" => UcsPbSupervisorAdm
-      | "UcsPbProjectAdm" => UcsPbProjectAdm
-      | "OaAdm" => OaAdm
-      | "UcsEbEventEditor" => UcsEbEventEditor
-      | "ScsPersonAdm" => ScsPersonAdm
-      | "UcsEduInfo" => UcsEduInfo
-      | "PhdAdm" => PhdAdm
-      | "PortraitAdm" => PortraitAdm
+        "SiteAdm"           => SiteAdm
+      | "StudAdm"	    => StudAdm
+      | "UcsPbVejlederAdm"  => UcsPbSupervisorAdm
+      | "UcsPbProjectAdm"   => UcsPbProjectAdm
+      | "OaAdm"		    => OaAdm
+      | "UcsEbEventEditor"  => UcsEbEventEditor
+      | "ScsPersonAdm"	    => ScsPersonAdm
+      | "UcsEduInfo"	    => UcsEduInfo
+      | "PhdAdm"	    => PhdAdm
+      | "PortraitAdm"	    => PortraitAdm
+      | "UcsPrPersonaleAdm" => UcsPrPersonaleAdm
+      | "UcsPrAdm"	    => UcsPrAdm		
+      | "UcsPrITAdm"	    => UcsPrITAdm	
+      | "UcsPrInternAdm"    => UcsPrInternAdm    
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -90,6 +102,10 @@ structure ScsRole :> SCS_ROLE =
       | UcsEduInfo => "UcsEduInfo"
       | PhdAdm => "PhdAdm"
       | PortraitAdm => "PortraitAdm"
+      | UcsPrPersonaleAdm => "UcsPrPersonaleAdm"
+      | UcsPrAdm	    => "UcsPrAdm"		
+      | UcsPrITAdm	    => "UcsPrITAdm"	
+      | UcsPrInternAdm    => "UcsPrInternAdm"    
       | Other s => s
 	  
     (* We cache the result for 5 minutes.

@@ -71,17 +71,23 @@ val mail_msg =
 ` ^^ text_da)]
 
 val html_msg = 
-  ScsDict.getQuot [(ScsLang.da,`Du (^email) vil om kort tid modtage en email med dit password.<br>
-		    <a href="/scs/auth/auth_form.sml">Tilbage til login siden</a><p>`),
-		   (ScsLang.en,`In a short time, you'll (^email) receive an email with your password.<br>
-		    <a href="/scs/auth/auth_form.sml">Go to the login page</a>`)] lang
-
+  let
+    val start_a = `<a href=^(Html.genUrl "/scs/auth/auth_form.sml" [("auth_login", email)])>`
+  in
+    ScsDict.getQuot [
+      (ScsLang.da, `Du (^email) vil om kort tid modtage en email med dit 
+		   password.<br>
+		   ` ^^ start_a ^^ `Tilbage til login siden</a><p>`),
+      (ScsLang.en,`In a short time, you'll (^email) receive an email with 
+		 your password.<br>` ^^ start_a ^^ `Go to the login page</a>`)
+    ] lang
+  end
 val html_title = 
   ScsDict.getString [(ScsLang.da,`Password er tilsendt pr. mail`),
 		     (ScsLang.en,`Password has been mailed`)] lang
 
 val _ = 
-  (Ns.Mail.send {to=email, from=ScsConfig.scs_site_adm_email(),subject="UCS Password",
+  (Ns.Mail.send {to=email, from=ScsConfig.scs_site_adm_email(),subject= ScsDict.getString MitItu.Ressources.mitITU_dict lang ^ "Password",
 		 body=ScsDict.getString
 		 (ScsDict.dictWithArgsToDict mail_msg [first_names,last_name,email,passwd,
 						       ScsConfig.scs_site_name(),ScsConfig.scs_site_url()]) 
