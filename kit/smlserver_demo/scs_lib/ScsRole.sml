@@ -22,5 +22,5 @@ structure ScsRole :> SCS_ROLE =
                      from dual` = "t"
 
     fun has_one_p uid [] = false
-      | has_one_p uid x::xs = has_p uid x orelse (has_one_p uid xs)
+      | has_one_p uid (x::xs) = has_p uid x orelse (has_one_p uid xs)
   end
