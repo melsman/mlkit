@@ -35,7 +35,7 @@ structure DbClob :> DB_CLOB =
     val insert = Db.Handle.dmlTrans o insert_fn
 
     fun delete_fn (clob_id : string) : Db.Handle.db -> unit =
-      fn db => Db.Handle.dmlDb db `delete from clob where clob_id = ^(Db.qqq clob_id)`
+      fn db => Db.Handle.dmlDb db `delete from db_clob where clob_id = ^(Db.qqq clob_id)`
     fun delete clob_id = Db.Handle.dmlTrans (delete_fn clob_id)
 
     fun update_fn clob_id q = fn db => (delete_fn clob_id db; insert_fn' clob_id q db; ())

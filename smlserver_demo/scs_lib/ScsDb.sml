@@ -1,6 +1,7 @@
 signature SCS_DB =
   sig
     val dbClickDml    : string -> string -> string -> string -> quot -> unit
+    val dbClickDmlDb  : Db.Handle.db -> string -> string -> string -> string -> quot -> unit
     val panicDml      : quot -> unit
     val panicDmlTrans : (Db.Handle.db -> 'a) -> 'a
     val errorDml      : quot -> quot -> unit
@@ -25,6 +26,15 @@ structure ScsDb :> SCS_DB =
 	 else ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` ^^ insert_sql)
 	   handle X => ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` 
 				       ^^ insert_sql ^^ `^(General.exnMessage X)`))
+
+    fun dbClickDmlDb db table_name id_column_name generated_id return_url insert_sql =
+      (Db.Handle.dmlDb db insert_sql;
+       Ns.returnRedirect return_url;())
+      handle Fail s =>
+	(if Db.Handle.existsOneRowDb db `select 1 as num from ^table_name where ^id_column_name = '^(Db.qq generated_id)'` 
+	   then (Ns.returnRedirect return_url;()) (* it's a double click, so just redirect the user to the index page *)
+	 else raise Fail "DbFunctor.dbClickDml choked. DB returned error on SQL "
+	   handle X => raise Fail "DbFunctor.dbClickDml choked. DB returned error on SQL")
 
     fun panicDml f = Db.panicDml ScsError.panic f
     fun panicDmlTrans f = Db.Handle.panicDmlTrans ScsError.panic f

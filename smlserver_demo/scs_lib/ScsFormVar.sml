@@ -66,6 +66,7 @@ signature SCS_FORM_VAR =
     val getNatErr      : int formvar_fn
     val getRealErr     : real formvar_fn
     val getStringErr   : string formvar_fn
+    val getStringLenErr: int -> string formvar_fn
     val getIntRangeErr : int -> int -> int formvar_fn
     val getEmailErr    : string formvar_fn 
     val getNameErr     : string formvar_fn 
@@ -269,6 +270,10 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		 end)
 
       val getStringErr = getErrWithOverflow "" (%"string") (fn v => if size v = 0 then NONE else SOME v)
+
+      fun getStringLenErr l = getErrWithOverflow "" 
+	(ScsDict.d1 ScsLang.English "string or it is too long - max. %0 characters" (Int.toString l))
+	(fn v => if size v = 0 orelse size v > l then NONE else SOME v)
     end
 
     fun getIntRangeErr a b (args as (fv:string,emsg:string,errs:errs)) =
