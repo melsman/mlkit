@@ -174,7 +174,7 @@ structure ScsPrint :> SCS_PRINT =
 	 (Html.inhidden "on_what_table" on_what_table) ^^
 	 (Html.inhidden "on_what_id" on_what_id) ^^
 	 (Html.inhidden "note" note) ^^
-	 (ScsWidget.largeTA "source" source) ^^ `<p>` ^^
+	 (ScsWidget.largeTa "source" source) ^^ `<p>` ^^
 	 (ScsWidget.oneLine (choosePrinter "printer")))
       end
   end

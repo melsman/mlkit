@@ -8,6 +8,7 @@ signature SCS_ROLE =
     datatype role = 
       SiteAdm
     | StudAdm
+    | OaAdm
     | SupervisorAdm
     | Other of string
 
@@ -40,6 +41,7 @@ structure ScsRole :> SCS_ROLE =
     datatype role = 
       SiteAdm
     | StudAdm
+    | OaAdm
     | SupervisorAdm
     | Other of string
 
@@ -48,6 +50,7 @@ structure ScsRole :> SCS_ROLE =
         "SiteAdm" => SiteAdm
       | "StudAdm" => StudAdm
       | "VejlederAdm" => SupervisorAdm
+      | "OaAdm" => OaAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -56,6 +59,7 @@ structure ScsRole :> SCS_ROLE =
       case role of
         SiteAdm => "SiteAdm"
       | StudAdm => "StudAdm"
+      | OaAdm   => "OaAdm"
       | SupervisorAdm => "VejlederAdm"
       | Other s => s
 

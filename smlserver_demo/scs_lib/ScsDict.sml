@@ -9,13 +9,17 @@ signature SCS_DICT =
        language preferences for the user logged into the
        web-site. 
 
-       The dictionary is stored in the database (file 
-       scs-dict-create.sql). If the database is not accessible,
+       Some of the functions will store the dictionary in the database
+      (file scs-dict-create.sql). If the database is not accessible,
        or the user has no preferences (e.g., may not be
        logged in), then a default language is chosen. 
 
-       The language support is divided in small texts and 
-       larger texts. For larger texts, you will probably 
+       The language support is divided in a dictionary stored in the
+       database and a dictionary coded in the ML code. The functions
+       below works on either the database or on translation options
+       passed as arguments.
+
+       For larger texts, you will probably
        include all the language versions in the 
        script-files. You can get the language 
        preference, and then use a case expression to
@@ -33,6 +37,10 @@ signature SCS_DICT =
        then the missing phrase is logged. It is then up to 
        the maintainer to include the phrase in the database.
 
+       Using the database to store translations is different from what
+       most people do, and we still need experience with its use to
+       see whether its a good idea or not.
+
        The Design Requirements:
 
          * Phrases from the database must be cached.
@@ -44,11 +52,17 @@ signature SCS_DICT =
 	   must be small - we choose the letter d that
 	   works on strings and d' that works on
 	   quotations
+         * It must be possible to move a (part of a) dictionary from
+           one database to another database
 
-       Canonical Representation: All source texts are 
-       stored with words separated by one space; new 
+       Canonical Representation: All source texts stored in the
+       database are stored with words separated by one space; new
        lines etc. has been removed.
      *)
+
+     (*********************************************)
+     (* The functions below works on the database *)
+     (*********************************************)
 
      (* [d source_lang module file_name phrase] translates the
         phrase written in source_lang into the language preferred by
@@ -88,8 +102,52 @@ signature SCS_DICT =
     val dl : ScsLang.lang -> string -> string -> string list -> string -> string
     val dl': ScsLang.lang -> string -> string -> string list -> quot -> quot
 
+    (* [cacheName (source,target)] returns the name of the case used to
+       store translations from source language to target language *)
     val cacheName  : ScsLang.lang * ScsLang.lang -> string
+
+    (* [cacheFlush (source,target)] flushes the cache used to 
+       store translations from source language to target language *)
     val cacheFlush : ScsLang.lang * ScsLang.lang -> unit
+
+    (*******************************************************)
+    (* The functions below works on a list of translations *)
+    (* passed explicitly to each function (type dict).     *)
+    (*******************************************************)
+
+    (* [dict] type describing one phrase in many languages *)
+    type dict = (ScsLang.lang * quot) list
+
+    (* [ScsDict] exception raised on error *)
+    exception ScsDict of string
+
+    (* [s dict] returns the first phrase in the dictionary dict
+       corresponding to the preferred language by the logged in user. 
+       The first phrase in dict is returned if the preferred language
+       is not in dict. Raises EmptyDict if the dictionary is empty. *)
+    val s : dict -> string
+
+    (* [s' dict] returns the first phrase in the dictionary dict
+       corresponding to the preferred language by the logged in user. 
+       The first phrase in dict is returned if the preferred language
+       is not in dict. Raises EmptyDict if the dictionary is empty. *)
+    val s' : dict -> quot
+ 
+    (* [sl dict args] returns the first phrase in the dictionary dict
+       corresponding to the preferred language by the logged in
+       user. The first phrase in dict is used if the preferred
+       language is not in dict. Any %n pattern in the phrase surrounded
+       with white space is replaced by the n'th arg in the list
+       args. *)
+    val sl : dict -> string list -> string
+
+    (* [sl' dict args] returns the first phrase in the dictionary dict
+       corresponding to the preferred language by the logged in
+       user. The first phrase in dict is used if the preferred
+       language is not in dict. Any %n pattern in the phrase surrounded
+       with white space is replaced by the n'th arg in the list
+       args. *)
+    val sl' : dict -> string list -> quot
   end
 
 structure ScsDict :> SCS_DICT =
@@ -233,6 +291,35 @@ structure ScsDict :> SCS_DICT =
 
     fun d3 source_lang module file_name arg0 arg1 arg2 = dl source_lang module file_name [arg0,arg1,arg2]
     fun d3' source_lang module file_name arg0 arg1 arg2 = dl' source_lang module file_name [arg0,arg1,arg2]
+
+    (*******************************************************)
+    (* The functions below works on a list of translations *)
+    (* passed explicitly to each function (type dict).     *)
+    (*******************************************************)
+
+    type dict = (ScsLang.lang * quot) list
+
+    exception ScsDict of string
+
+    fun s' [] = raise ScsDict "ScsDict.s: dictionary missing"
+      | s' ((lang,phrase)::xs) =
+	if ScsLogin.user_lang = lang then phrase 
+	else
+	  case List.find (fn (lang,phrase) => lang = ScsLogin.user_lang) xs of
+            NONE => phrase (* We return the first phrase in the list if user-preferred language does not exists *)
+          | SOME xs => #2(xs)
+
+    val s = Quot.toString o s'
+
+    fun sl' dict args =
+      let
+        val phrase = s dict
+      in
+	Quot.fromString (subst' phrase
+		          (Array.fromList (List.map (fn s => (String.size s,s)) args)))
+      end          
+
+    fun sl dict args = Quot.toString(sl' dict args)   
   end
 
 

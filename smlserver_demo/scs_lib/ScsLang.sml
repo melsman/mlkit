@@ -20,7 +20,13 @@ signature SCS_LANG =
     lang in language to_lang. Used when building selection-boxes. *)
     val toText      : lang -> lang -> string
 
+    (* [toString lang] returns the string representation of the
+       language lang as stored in the database. *)
     val toString : lang -> string
+
+    (* [fromString str] returns the language described by str as
+       stored in the database. Raises ScsLang if the str is not
+       recognized. *)
     val fromString : string -> lang
   end
 
