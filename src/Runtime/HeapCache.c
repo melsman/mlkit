@@ -167,11 +167,20 @@ void touchHeap(Heap* h)
   h->status = HSTAT_DIRTY;
 }
 
+static void freePages(RegionCopy *rc)
+{
+  if ( rc ) 
+    {
+      free_region_pages(rc->r->fp, (Klump*)(rc->r->b) - 1);
+      free(rc);
+    }  
+}
+
 void deleteHeap(Heap *h)
 {
-  if ( h->r0copy ) free(h->r0copy);
-  if ( h->r2copy ) free(h->r2copy);
-  if ( h->r3copy ) free(h->r3copy);      
+  freePages(h->r0copy);
+  freePages(h->r2copy);
+  freePages(h->r3copy);
   free(h);
 }
 

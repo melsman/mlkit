@@ -814,6 +814,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
 	}
       else 
 	{
+	  // memo: log error
 	  deleteHeap(h);
 	  return res;
 	}
