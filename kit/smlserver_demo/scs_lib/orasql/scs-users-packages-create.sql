@@ -43,7 +43,7 @@ as
     first_names	      in scs_persons.first_names%TYPE,
     last_name	      in scs_persons.last_name%TYPE,
     security_id       in scs_persons.security_id%TYPE default null,
-    language_pref     in scs_user_preferences.language_pref%TYPE default 'en'
+    language_pref     in scs_user_preferences.language_pref%TYPE default 'da'
   ) return scs_users.user_id%TYPE;
 
   /* -----------------

@@ -199,11 +199,13 @@ as
 
      never fails     
   */
+/* delete is a reserved word in Oracle 9i!
   procedure delete (
     person_id     in scs_person_rels.person_id%TYPE,
     on_what_table in scs_person_rels.on_what_table%TYPE,
     on_which_id   in scs_person_rels.on_which_id%TYPE
   );
+*/
 
   /* --------------------
      procedure delete_all
@@ -257,6 +259,7 @@ as
                               person_id || ' to scs_person_rels.');
   end add;
 
+/*
   procedure delete (
     person_id     in scs_person_rels.person_id%TYPE,
     on_what_table in scs_person_rels.on_what_table%TYPE,
@@ -270,6 +273,7 @@ as
        and on_what_table = scs_person_rel.delete.on_what_table
        and on_which_id = scs_person_rel.delete.on_which_id;
   end delete;
+*/
 
   procedure delete_all (
     person_id     in scs_person_rels.person_id%TYPE
