@@ -780,10 +780,18 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val Real   = mk_ConsType ([], TyName.tyName_REAL)
       val String = mk_ConsType ([], TyName.tyName_STRING)
       val Bool   = mk_ConsType ([], TyName.tyName_BOOL)
+      val Char   = mk_ConsType ([], TyName.tyName_CHAR)
+      val Word   = mk_ConsType ([], TyName.tyName_WORD)
 
       fun of_scon (SCon.INTEGER _) = Int
 	| of_scon (SCon.STRING _)  = String
 	| of_scon (SCon.REAL _)    = Real
+	| of_scon (SCon.WORD _)    = Word
+	| of_scon (SCon.CHAR _)    = Char
+(*KILL 23/06/1997 14:50. tho.:
+	| of_scon (SCon.WORD _)    = Int
+	| of_scon (SCon.CHAR _)    = Int
+*)
 
       (*generalise and fake_generalise:*)
 
