@@ -281,6 +281,8 @@ signature ENVIRONMENTS =
 	(* enrich(phi0,(phi,T)) : phi(t) = phi0(t), for each t in T *)
 	val enrich               : realisation * (realisation * TyName.Set.Set) -> bool
 
+	val match                : realisation * realisation -> unit
+
 	(*renaming T = a realisation that maps each tyname in T
 	 to a fresh tyname:*)
 

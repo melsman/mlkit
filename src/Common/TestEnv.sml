@@ -738,10 +738,17 @@ old*)
 
     (* This function compiles a project and leaves a file "run" in the target directory. *)
     (* This file can then be executed.                                                   *)
+
+    (* Because SML/NJ's runtime system starts with `run' we have problems fetching
+     * memory information from the top program, hence we rename the generated `run'
+     * file to run_project. *)
+
     fun evalProjects project_name =
       (Manager.read project_name;
-       Manager.build())
-      
+       Manager.build();
+       OS.FileSys.rename{old=target_directory() ^ "run", new=target_directory() ^ "run_project"})
+      handle OS.SysErr _ => raise Crash_test "evalProjects. Problem with renaming of run file."
+
     fun gen_input_str NONE = ""
       | gen_input_str (SOME input_str) = " < " ^ input_str ^ " "
 
@@ -868,10 +875,10 @@ old*)
 		 (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
-	       val shell_command = ("run " ^ exec_opt ^ 
+	       val shell_command = ("run_project " ^ exec_opt ^ 
 				    (gen_input_str input_to_project) ^
 				    " > " ^ new_out_datafile)
-	       val _ = ok_log_report ("Executing target program: " ^ new_line ^ "run " ^ exec_opt ^ 
+	       val _ = ok_log_report ("Executing target program: " ^ new_line ^ "run_project " ^ exec_opt ^ 
 				      " > " ^ (shorten_filename new_out_datafile) ^ ".")
 	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
 		
@@ -1053,8 +1060,8 @@ old*)
 		 end
 	       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
-	       val exe_file =  "run"
-(*	       val _ = mv "run" out_file *)
+	       val exe_file =  "run_project"
+(*	       val _ = mv "run_project" out_file *)
 	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
