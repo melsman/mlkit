@@ -1,0 +1,94 @@
+
+structure String =   (* Depends on StrBase and Char *)
+  struct 
+
+    type string = string (*CharVector.vector*)
+    structure Char = Char
+
+    (* Primitives *)
+
+    fun sub_unsafe (s:string,i:int) : Char.char = prim ("__bytetable_sub", (s,i))
+    fun size (s : string) : int = prim ("__bytetable_size", s)
+    fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
+
+    (* Body *)
+
+    val maxSize = CharVector.maxLen
+
+    fun sub(s, i) = if i<0 orelse i >= size s then raise Subscript
+		    else sub_unsafe(s, i)
+
+    fun extract x = CharVector.extract x
+
+    fun substring (s, i, j) = extract(s, i, SOME j)
+
+    fun concat x = CharVector.concat x
+
+    fun concatWith sep [] = ""
+      | concatWith sep l = concat (tl (foldr (fn (s,acc)=>sep::s::acc) [] l))
+
+    fun implode l = CharVector.fromList l
+    fun explode s = StrBase.explode s
+
+    fun str (c : char) : string = implode [c]
+
+    fun translate f s = StrBase.translate f (s, 0, size s);
+    fun tokens p s = map substring (StrBase.tokens p (s, 0, size s));
+    fun fields p s = map substring (StrBase.fields p (s, 0, size s));
+
+    fun map x = CharVector.map x
+
+    fun isPrefix s1 s2 = 
+      let val n1 = size s1 
+	  and n2 = size s2
+	  val stop = if n1 < n2 then n1 else n2
+	  fun h j = (* At this point s1[0..j-1] = s2[0..j-1] *)
+	    j = stop orelse sub_unsafe(s1, j) = sub_unsafe(s2, j) andalso h (j+1)
+      in n1 <= n2 andalso h 0 
+      end
+	
+    fun compare (s1:string, s2) = 
+      if s1 < s2 then LESS
+      else if s1 > s2 then GREATER
+	   else EQUAL
+
+
+    fun collate cmp (s1, s2) =
+      let val n1 = size s1 
+	  and n2 = size s2
+	  val stop = if n1 < n2 then n1 else n2
+	  fun h j = (* At this point s1[0..j-1] = s2[0..j-1] *)
+	    if j = stop then if      n1 < n2 then LESS
+			     else if n1 > n2 then GREATER
+				  else                 EQUAL
+	    else case cmp(sub_unsafe(s1, j), sub_unsafe(s2, j))
+		   of LESS    => LESS
+		    | GREATER => GREATER
+		    | EQUAL   => h (j+1)
+      in h 0 
+      end
+
+    fun fromString s =
+      let fun getc i = if i < size s then SOME (sub_unsafe(s, i), i+1) else NONE
+	  fun h src res = case getc src
+			    of NONE => SOME (implode(rev res))
+			     | SOME(#"\\", src1) => 
+			      (case StrBase.fromMLescape getc src1 
+				 of NONE => NONE
+				  | SOME(c, src2) => h src2 (c :: res))
+			     | SOME(c, src1) => h src1 (c :: res)
+      in h 0 []
+      end
+	
+    fun toString s = StrBase.translate StrBase.toMLescape (s, 0, size s)
+    fun fromCString s = StrBase.fromCString s
+    fun toCString s = StrBase.translate StrBase.toCescape (s, 0, size s)
+
+    val op <  = op <  : string * string -> bool
+    val op <= = op <= : string * string -> bool
+    val op >  = op >  : string * string -> bool
+    val op >= = op >= : string * string -> bool
+
+  end (*structure String*)
+
+fun substring x = String.substring x

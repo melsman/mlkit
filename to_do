@@ -1,3 +1,28 @@
+mael 2004-12-14: The definition of a "basis closure" is too strong. At
+the moment too much is included in the closure, which means that
+serialized bases take up a large amount of space on disk.
+
+
+mael 2004-12-13: Status on MLB files.
+
+It is now possible to compile the ML Kit itself using
+MLB-files. Unfortunately, a segmentation fault occurs when compiling
+General.sml - compilation of Initial.sml goes well. Some things to do:
+
+  * Check for cycles in MLB-graph.
+
+  ** fix bug (see above)
+
+  * rewrite tests to use mlb-files instead of pm-files
+
+  * modify test-utility to call mlbmake instead of mlkit when
+    the argument is an mlb-file. Alternatively, exec mlbmake from
+    within mlkit when the argument is an mlb-file.
+
+  * Extend mlbmake to take a single sml-file "file.sml" as
+    argument. Its semantics should then be similar to
+      local $(SML_LIB)/basis/basis.mlb in file.sml end 
+
 mael 2004-10-30 Plan for mlb-files implementation in the ML Kit.
 
 Status: It is now possible to compile simple mlb-files and have
@@ -85,10 +110,10 @@ mael 2001-11-12: unboxed implementation of datatypes that
   constructors are allowed for the datatype to be implemented
   unboxed. Examples of datatypes that may be implemented unboxed
   include (1) The list datatype, (2) enumerations, (3) the Binary
-  tree datatypes in kit/basislib/Binarymap.sml,
-  kit/basislib/Binaryset.sml, kit/basislib/Intmap.sml,
-  kit/basislib/Intset.sml, kit/basislib/Polyhash.sml,
-  kit/basislib/Splaymap.sml, and kit/basislib/Splayset.sml, (4)
+  tree datatypes in kit/basis/Binarymap.sml,
+  kit/basis/Binaryset.sml, kit/basis/Intmap.sml,
+  kit/basis/Intset.sml, kit/basis/Polyhash.sml,
+  kit/basis/Splaymap.sml, and kit/basis/Splayset.sml, (4)
   Patricia trees (kit/src/Common/IntFinMapPT.sml), and (5) Union Find
   data structure (kit/src/Compiler/Kam/UnionFindPoly.sml.)
   

@@ -1039,7 +1039,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
 		if (all_gen o exportnames_from_entry) entry then 
-		  (* if absprjid is "basislib.pm" then we prepend to the entry the 
+		  (* if absprjid is "basis.pm" then we prepend to the entry the 
 		   * directory in which the o.-files are located (the install_dir). *)
 		  if is_absprjid_basislib absprjid then
 		    SOME(n, prepend_install_dir entry)

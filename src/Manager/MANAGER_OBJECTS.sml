@@ -8,9 +8,9 @@ signature MANAGER_OBJECTS =
     (* Absolute project identifiers; project identifiers with absolute
        path information (e.g.,
        /home/mael/kit/ml-yacc-lib/ml-yacc-lib.pm); there is one
-       exception: the project identifier basislib.pm is unique---it
+       exception: the project identifier basis.pm is unique---it
        cannot be redefined---and it must be referred to without a
-       path. This special treatment of basislib.pm makes it possible
+       path. This special treatment of basis.pm makes it possible
        to relocate the distribution of the kit, with the basis library
        compiled. *)
 		    

@@ -19,6 +19,9 @@ DESCRIPTION
 RCS LOG
 
 $Log$
+Revision 1.2  2004/12/16 09:04:08  mael
+changed directory kit/basislib to kit/basis and kit/basislib/basislib.mlb to kit/basis/basis.mlb (etc) so that the same mlb-files can be compiled with MLKit and MLton
+
 Revision 1.1  2000/05/05 14:22:19  kfl
 Changes made to the kit so as it can be compiled with mosml 1.99
 ----------------------------------------------------------------
@@ -28,7 +31,7 @@ Changes made to the kit so as it can be compiled with mosml 1.99
   * Used mosmlhack.pm in Compiler/compilerx86.pm
   * Changed sources.pm to use Compiler/compilerx86.pm and
     Compiler/Backend/X86/ExecutionX86.sml
-  * Changes from Martin in basislib/Initial.sml
+  * Changes from Martin in basis/Initial.sml
   * Changed
 	    val garbage_collection = ref true
     to

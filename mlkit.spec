@@ -106,7 +106,7 @@ rm -rf $RPM_BUILD_ROOT
 
 # Libraries
 /usr/share/mlkit/ml-yacc-lib
-/usr/share/mlkit/basislib
+/usr/share/mlkit/basis
 
 %post
 echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/mlkit

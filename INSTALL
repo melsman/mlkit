@@ -142,7 +142,7 @@ The source distribution contains the following files and directories:
   test_dev/     test cases used under development
   kitdemo/      example input for the kit (i.e., sml source files
                 and project files)
-  basislib/     Standard ML Basis Library for the Kit
+  basis/        Standard ML Basis Library for the Kit
   kitlib/       kit-specific library functions
   ml-yacc-lib/  interface to ML Yacc generated parsers
   Makefile
