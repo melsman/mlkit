@@ -2,6 +2,7 @@ import
   ../Edlib/edlib.pm
 in
   BasisCompat.sml
+  ListUtils.sml
   BASIC_IO.sml
   CRASH.sml
   FLAGS.sml

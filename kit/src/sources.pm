@@ -19,6 +19,7 @@ in
     Manager/ParseElab.sml
     Manager/ManagerObjects.sml
     Manager/MspComp.sml (* new 2001-01-27, Niels *)
+    Manager/Scriptlet.sml
     Manager/Manager.sml
 
     Compiler/BuildCompile.sml
