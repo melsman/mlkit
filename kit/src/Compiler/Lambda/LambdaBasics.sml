@@ -580,7 +580,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	    val S = match_tau(FinMap.empty,tau,tau')
 	    val subst = map (fn tv => case FinMap.lookup S tv
 					of Some tau => (tv,tau)
-					 | None => die "match_sigma0") tvs
+					 | None => (tv,TYVARtype tv)) tvs
 	in subst
 	end
 

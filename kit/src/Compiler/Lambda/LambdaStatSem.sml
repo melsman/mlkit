@@ -370,7 +370,14 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
     val eq_Types = LambdaBasics.eq_Types
 
     fun eqType s (tau,tau') = if eq_Type(tau,tau') then () 
-			      else die ("eqType " ^ s)
+			      else (log "--------------------------------\n";
+				    log ("Error in lambda type checking (" ^ s ^ "):\n");
+				    log "The type\n";
+				    log_st (layoutType tau);
+				    log	"is not compatible with type\n";
+				    log_st (layoutType tau');
+				    log "--------------------------------\n";
+				    die ("eqType"))
 
     val unit_Type = RECORDtype []
 
@@ -677,9 +684,10 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		else (fn _ => ())
 
 	      fun check_type_scheme(tyvars, tau, tau') =
-		if eq_Type(tau,tau') then (check_polymorphism tyvars; 
-					   tyvars_not_in_env(tyvars, env))
-		else die "LET.types not equal"
+		(eqType "LET" (tau,tau');
+		 check_polymorphism tyvars; 
+		 tyvars_not_in_env(tyvars, env))
+
 
 	      val ts_bind = unTypeList "LET.bind" (type_lexp env bind)
 	  in 
