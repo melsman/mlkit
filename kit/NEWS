@@ -1,5 +1,10 @@
 ML Kit NEWS file                                       October, 2001
 
+ * nh 2001-10-20: The Garbage Collection algorithm now uses two stacks;
+   one for infinite regions and one for finite regions. Each finite
+   region is only traversed once and it is still a non-recursive
+   algorithm. The stack size is determined dynamically.
+
  * mael 2001-10-14: It is now possible to disable region inference in
    the ML Kit by specifying the flag no_region_inference (or no_ri) on
    the command line. The flag has the effect that no fresh region

@@ -5,6 +5,7 @@ RUNTIME_FLAGS=
 COMP_FLAGS=
 
 bootstrap:
+	cd src; make genopcodes
 	cd src; ../bin/mlkit -gc $(COMP_FLAGS) sources.pm
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
