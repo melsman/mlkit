@@ -49,7 +49,7 @@ PACK_WORD.sml Pack32Little.sml Pack32Big.sml
 
 (* Reals *)
 MATH.sml Math.sml REAL.sml Real.sml
-PACK_REAL.sml PackRealBig.sml
+PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
 
 (* IntInf -- makes use of Real *)
 INT_INF.sml IntInf.sml
