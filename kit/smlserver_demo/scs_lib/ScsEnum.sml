@@ -65,6 +65,10 @@ signature SCS_ENUM =
        val_id. Returns NONE if no val_id exists. *)
     val getVal : val_id -> value option
 
+    (* [getVid enum_name value] returns the vid represented by the pair
+       (enum_name, value). Returns NONE if no pair exists. *)
+    val getVid : enum_name -> value -> int option
+
     (* [valToText (value,enum_name,lang)] returns the description of
         enumeration value val for the enumeration enum_name. Returns
         "" if no enum_name or value exists. *)
@@ -240,6 +244,20 @@ structure ScsEnum :> SCS_ENUM =
       Db.oneField `select value
                      from scs_enum_values
                     where val_id = '^(Int.toString val_id)'`
+
+    fun getVid enum_name value  = 
+      let
+        val vid_opt = ScsError.wrapOpt Db.oneField `
+	select scs_enumeration.getVid(
+	         ^(Db.qqq enum_name),
+		 ^(Db.qqq value)
+	       ) 
+          from dual`
+      in
+        case vid_opt of
+	    SOME vid => Int.fromString vid
+	  | NONE     => NONE 
+      end
 
     fun valToText (value,enum_name,lang) =
       Db.oneField `select text
