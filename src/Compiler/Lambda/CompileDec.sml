@@ -383,6 +383,16 @@ old*)
     (* ---------------------------------------------------------------------- *)
     (*         Compilation of the semantic objects Type and TypeScheme        *)
     (* ---------------------------------------------------------------------- *)
+
+    (*compileTyName is necessary because char and word from
+     CompileDec onwards are treated as int.*)
+
+    fun compileTyName tyname =
+          if TyName.eq (tyname, TyName.tyName_CHAR)
+	  orelse TyName.eq (tyname, TyName.tyName_WORD) 
+	  then TyName.tyName_INT
+	  else tyname
+
     fun compileType (typ: StatObject.Type) : LambdaExp.Type S =
         case Type.to_RecType typ of
           None =>
@@ -412,7 +422,7 @@ old*)
                                       (Type.un_ConsType constype)
                  in
                    (mapList compileType tys) bindS (fn tys' =>
-                   unitS(CONStype(tys',tyname)))
+                   unitS(CONStype(tys', compileTyName tyname)))
                  end)
         | Some rho =>
             let
@@ -554,7 +564,7 @@ old*)
 		      else let val tyname = (NoSome "TypeFcn not simple" o 
 					     TypeFcn.to_TyName o TyStr.to_theta) tystr
 			       val VE = TyStr.to_VE tystr
-			   in (tyname, VE)::tystr_list
+			   in (compileTyName tyname, VE)::tystr_list
 			   end) [] TyEnv
       in
 	List.foldL (fn (tyname, VE) => fn (env', datbind_list) =>
@@ -796,6 +806,8 @@ old*)
         of SCONatexp(_, SCon.INTEGER x) => unitS(INTEGER x)
          | SCONatexp(_, SCon.STRING x) => unitS(STRING x)
          | SCONatexp(_, SCon.REAL x) => unitS(REAL x)
+         | SCONatexp(_, SCon.CHAR x) => unitS(INTEGER x)
+         | SCONatexp(_, SCon.WORD x) => unitS(INTEGER x)
 
          | IDENTatexp(info, OP_OPT(longid, _)) =>
 	  (case lookupLongid env longid
@@ -1430,6 +1442,22 @@ old*)
               unitS(x,e')) 
             | _ => raise Next) 
           (FinMap.list map)
+
+        fun foldCharMap map =
+          mapList 
+          (fn (SCon.CHAR x, t) =>
+              (compileDecTree env (t, compiler,failure,poly)) bindS (fn e' =>
+              unitS(x,e')) 
+            | _ => raise Next) 
+          (FinMap.list map)
+
+        fun foldWordMap map =
+          mapList 
+          (fn (SCon.WORD x, t) =>
+              (compileDecTree env (t, compiler,failure,poly)) bindS (fn e' =>
+              unitS(x,e')) 
+            | _ => raise Next) 
+          (FinMap.list map)
       in
 
         (foldIntegerMap selections) bindS (fn selections' =>
@@ -1449,6 +1477,20 @@ old*)
         (foldRealMap selections) bindS (fn selections' =>
         (compileDecTree env (wildcard,compiler,failure,poly)) bindS (fn w' =>
         unitS(SWITCH_R(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
+                              selections',Some w')))))
+
+        handle Next =>
+
+        (foldCharMap selections) bindS (fn selections' =>
+        (compileDecTree env (wildcard,compiler,failure,poly)) bindS (fn w' =>
+        unitS(SWITCH_I(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
+                              selections',Some w')))))
+
+        handle Next =>
+
+        (foldWordMap selections) bindS (fn selections' =>
+        (compileDecTree env (wildcard,compiler,failure,poly)) bindS (fn w' =>
+        unitS(SWITCH_I(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
                               selections',Some w')))))
 
         handle Next => die "compileSconSwitch"
