@@ -74,6 +74,11 @@ signature SCS_ENUM =
        enumeration with name enum_name *)
     val allValues : enum_name -> int list
 
+    (* [allValues' enum_name enum_from_DB_fn] returns a list of pairs 
+       (value, text) for all enumeration values in the enumeration with 
+       name enum_name *)
+    val allValues' : enum_name -> (string -> 'a) -> ('a*string) list
+
    (* [selectEnumeration fv v_opt] returns a selection list for
        chosing an enumeration, that is, enum_id. *)
     val selectEnumeration : string -> enum_id option -> quot
@@ -313,4 +318,18 @@ structure ScsEnum :> SCS_ENUM =
     val ordering_dict = [(ScsLang.da,`Rækkefølge`),(ScsLang.en,`Ordering`)]
     val edit_dict     = [(ScsLang.da,`Ret`),(ScsLang.en,`Edit`)]
     val save_dict     = [(ScsLang.da,`Gem`),(ScsLang.en,`Store`)]
+
+    fun allValues' enum_name enum_from_DB_fn =
+      let
+	fun status_enumeration_sql () = `
+	  select ev.val_id, ev.value, scs_text.getText(
+	    ev.text_id, ^(Db.qqq (ScsLang.toString (ScsLogin.user_lang())))) as text
+	    from scs_enum_values ev, scs_enumerations e
+	    where ev.enum_id = e.enum_id
+	      and e.name = ^(Db.qqq enum_name )`
+	fun f g = ((enum_from_DB_fn o g) "value", g "text")
+      in
+        Db.list f (status_enumeration_sql())
+      end
+
   end
