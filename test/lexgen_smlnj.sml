@@ -47,6 +47,9 @@ see the COPYRIGHT NOTICE for details and restrictions.
 	05/18/95 (jhr) changed Vector.vector to Vector.fromList
 *
  * $Log$
+ * Revision 1.2  2001/10/21 22:26:58  mael
+ * meny new benchmark programs ported from mlton
+ *
  * Revision 1.1  2001/10/17 15:15:35  mael
  * Benchmarking
  *
@@ -1310,4 +1313,6 @@ structure Main =
     fun testit _ = LexGen.lexGen ("DATA/ml.lex")
   end (* Main *)
 
-fun doit() = Main.doit()
+fun repeat (0, f) = ()
+  | repeat (n, f) = (f(); repeat (n-1, f))
+fun doit() = repeat (10, Main.doit)
