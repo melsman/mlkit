@@ -532,7 +532,8 @@ functor EliminateEq (structure Lvars : LVARS
 		       | sel (tv::tvs) (tau::taus) = 
 		           if equality_tyvar tv then tau :: sel tvs taus
 			   else sel tvs taus
-		       | sel _ _ = die "t.VAR.sel"
+		       | sel [] _ = die ("t.VAR.sel [] _.  lvar=" ^ Lvars.pr_lvar lvar)
+		       | sel _ [] = die ("t.VAR.sel _ [].  lvar=" ^ Lvars.pr_lvar lvar)
 		     val instances' = sel tyvars instances
 		 in
 		   apply_eq_fns env instances' lexp
