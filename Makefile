@@ -121,7 +121,6 @@ install:
 	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
 	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
 
-
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
 bootstrap:
@@ -140,6 +139,29 @@ bootstrap:
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
 	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
+
+install_kam:
+	rm -rf $(INSTDIR_KAM)
+	$(MKDIR) $(INSTDIR_KAM)
+	$(MKDIR) $(INSTDIR_KAM)/bin
+	$(MKDIR) $(INSTDIR_KAM)/doc
+	$(INSTALL) bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM)/bin
+	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
+	$(INSTALL) copyright $(INSTDIR_KAM)
+	$(INSTALL) README $(INSTDIR_KAM)
+	$(INSTALL) -R kitdemo $(INSTDIR_KAM)/kitdemo 
+	$(INSTALL) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
+	$(INSTALL) -R basislib $(INSTDIR_KAM)/basislib
+	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_KAM)/doc
+	chown -R `whoami`.`whoami` $(INSTDIR_KAM)
+	chmod -R ug+rw $(INSTDIR_KAM)
+	chmod -R o+r $(INSTDIR_KAM)
+
+	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
+	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
+	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
+	rm -f /usr/bin/mlkit_kam
+	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
 
 install_smlserver:
 	rm -rf $(INSTDIR_SMLSERVER)
