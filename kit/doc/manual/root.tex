@@ -5972,13 +5972,87 @@ Currently, only the native backend supports garbage collection.
 
 The way to tell the compiler to generate code that supports garbage
 collection is simply to enable the option {\tt garbage collection},
-either from the command-line or from the interactive menu.
+either from the command-line (use the short option {\tt -gc}) or from
+the interactive menu.
 
 \section{Dangling Pointers}
-mael: fill in
-\section{Instrumenting the Executable}
-mael: fill in
+The region type system supports deallocation of memory that is not
+accessed in the remainder of the execution of the program. Because of
+this principle, the execution model may lead to {\em dangling
+  pointers}, that is, pointers that point into memory that has been
+discharged. The canonical example is the following:
+\begin{verbatim}
+  val f = let val x = ref (2, [1])
+          in fn y => (#1 (!x), y)
+          end 
+  val r = f 5
+\end{verbatim}
+In MulExp, the program looks as follows:\footnote{Compiled with {\tt
+    mlkit -maximum\_inline\_size 0 -gc -Ppse -w 40 dangling.sml} from
+  within the {\tt kitdemo} directory.}
+\begin{verbatim}
+   let val f = 
+           letregion r7:3 
+           in let val x = 
+                      let val v139380 = 
+                              (2, :: (1, nil) attop r7) attop r1
+                      in  ref attop r1 v139380
+                      end 
+              in   fn attop r1 y => 
+                   (let val v139387 = ![] x
+                    in  #0 v139387
+                    end , 
+                    y
+                   ) attop r1
+              end  
+           end (*r7:3*); 
+       val r = f 5
+   in  {|r: (_,r1), f: (_,r1)|}
+   end 
+\end{verbatim}
+Notice here that region {\tt r7}, which contains the list {\tt [1]},
+is deallocated before the function {\tt f} is applied to the value
+{\tt 5}. The problem for the reference tracing garbage collector is
+that the memory containing the list {\tt [1]} may be overwritten when
+the garbage collector is trying to collect the value. The Kit writes
+the following message:
+{\small 
+\begin{verbatim}
+   ** Lvar x has a type scheme with a region 
+      variable with higher level than the epsilon of the function.
+   ** Potentially dangling references out of closure for  fn  y:
 
+      x:  r7
+
+   Unimplemented: Potential dangling pointer! Garbage collection 
+    is unsound in this case. Please disable garbage collection
+    or alter your program so that no non-live values escape in
+    closures. This is also a warning that if you run your
+    program through a compiler based on conventional garbage
+    collection, your program may contain a space leak.
+\end{verbatim}}
+
+\section{Instrumenting the Executable}
+Executables produced by the Kit with garbage collection enabled can be
+instrumented by use of command-line options. For instance, if the Kit
+has produced a file {\tt run}, one can pass the option {\tt
+  -silent\_gc} to {\tt run} to disable the printing of garbage
+collection information at runtime. An overview of available
+command-line options is shown when one pass the option {\tt -help} to
+the generated executable:
+{\small
+\begin{verbatim}
+   Usage: ./run
+         [-help, -h] 
+         [-disable_gc | -silent_gc] [-heap_to_live_ratio d] 
+     where
+         -help, -h                Print this help screen and exit.
+
+         -disable_gc              Disable garbage collector.
+         -silent_gc               Suppress messages.
+         -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.
+\end{verbatim}
+}
 
 \part{System Reference}
 
