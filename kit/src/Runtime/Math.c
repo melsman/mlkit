@@ -440,3 +440,8 @@ StringDesc* generalStringOfFloatProf(int rAddr, StringDesc *str, int f, int pPoi
 
 #endif /*PROFILING*/
 
+/* DEBUG */
+void printReal(double *n) {
+  printf("Num: %5.2f\n",*n);
+  return;
+}

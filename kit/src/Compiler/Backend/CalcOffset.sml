@@ -90,8 +90,10 @@ struct
 
     local
       val max_offset = ref 0
+      val is_frame_db_aligned = ref true
     in
       fun reset_max_offset() = (max_offset := BI.init_frame_offset)
+      fun set_frame_db_alignment t = is_frame_db_aligned := t
       infix ++
       fun offset ++ inc =
 	if offset+inc < !max_offset then
@@ -99,7 +101,30 @@ struct
 	else
 	  (max_offset := offset+inc;
 	   offset+inc)
-      fun get_max_offset() = !max_offset
+      fun get_max_offset() = 
+	(case !is_frame_db_aligned of
+	   true =>
+	     (if !max_offset mod 2 = 0 then
+		!max_offset
+	      else
+		!max_offset+1)
+	 | false => 
+	     (if !max_offset mod 2 = 0 then
+		!max_offset+1
+	      else
+		!max_offset))
+      fun double_align_offset offset =
+	(case !is_frame_db_aligned of
+	   true =>
+	     (if offset mod 2 = 0 then
+		offset
+	      else
+		offset++1)
+	 | false => 
+	     (if offset mod 2 = 0 then
+		offset++1
+	      else
+		offset))
     end
 
     fun lookup_lv(lv_map,lv) =
@@ -115,7 +140,15 @@ struct
     fun assign_binders(binders,offset) =
       let
 	fun assign_binder(((place,phsize as PhysSizeInf.INF),_),offset) = (((place,phsize),offset),offset++BI.size_of_reg_desc())
-	  | assign_binder(((place,phsize as PhysSizeInf.WORDS i),_),offset) = (((place,phsize),offset),offset++i)
+	  | assign_binder(((place,phsize as PhysSizeInf.WORDS i),_),offset) = 
+	  if LS.is_region_real place then
+	    let
+	      val offset' = double_align_offset offset
+	    in
+	      (((place,phsize),offset'),offset'++i) (* Double Align finite regions with runtime type REAL *)
+	    end
+	  else
+	    (((place,phsize),offset),offset++i)
       in
 	foldr (fn (binder,(acc,offset)) => 
 	       let
@@ -188,26 +221,27 @@ struct
     (********************************)
     (* CO on Top level Declarations *)
     (********************************)
-    fun CO_top_decl(LineStmt.FUN(lab,cc,lss)) = 
+    fun do_top_decl gen_fn (lab,cc,lss) =
+      (* We preserve the invariant that sp is always double aligned after an activation record. *)
       let
 	val _ = reset_max_offset()
+	val size_cc = CallConv.get_cc_size cc
+	(* If size_cc is odd then the frame is _not_ double aligned *)
+	val _ = 
+	  if size_cc mod 2 = 0 then
+	    set_frame_db_alignment true
+	  else
+	    set_frame_db_alignment false
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
 	val cc' = CallConv.add_frame_size(cc,get_max_offset())
       in
-	LineStmt.FUN(lab,cc',lss_co)
+	gen_fn(lab,cc',lss_co)
       end
-      | CO_top_decl(LineStmt.FN(lab,cc,lss)) = 
-      let
-	val _ = reset_max_offset()
-	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
-	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
-	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
-	val cc' = CallConv.add_frame_size(cc,get_max_offset())
-      in
-	LineStmt.FN(lab,cc',lss_co)
-      end
+
+    fun CO_top_decl(LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
+      | CO_top_decl(LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
   in
     fun CO {main_lab:label,
 	     code=iff_prg: (StoreTypeIFF,unit,Atom) LinePrg,

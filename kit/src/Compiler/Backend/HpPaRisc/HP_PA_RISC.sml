@@ -29,6 +29,12 @@ signature HP_PA_RISC =
     val ret0     : reg  (* Result from ordinary calls. *)
     val ret1     : reg  (* Result from millicode calls. *)
 
+    val tmp_float_reg0 : reg  (* 8-11 are caller-saves regs. *)
+    val tmp_float_reg1 : reg
+    val tmp_float_reg2 : reg
+    val arg_float0     : reg
+    val ret_float0     : reg
+
     val reg_eq   : reg*reg -> bool
 
     (*-----------------------------------------------------------*)
