@@ -1,55 +1,39 @@
-val _ = ScsPage.returnPg "SMLserver Examples" (`
-  See the <a href=http://www.smlserver.org>SMLserver Home Page</a> for
-  SMLserver news and updates.<p>
+val examples =
+  [("Time-of-day", "time_of_day.sml"),
+   ("Count up and down", "counter.sml"),
+   ("Temperature conversion", "temp.html"),
+   ("Dynamic recipe", "recipe.html"),
+   ("Guess with Bill", "guess.sml"),
+   ("Form variables", "formvar.sml"),
+   ("Server information", "server.sml"),
+   ("Currency service", "currency_cache.html"),
+   ("Send an email", "mail_form.sml"),
+(*   ("Employee search", "employee/index.html"), *)
+   ("Best Wines web-site", "rating/index.sml"),
+   ("SMLserver link database (password protected)", "link/index.sml"),
+(*   ("Game of life", "life.sml"),  *)
+   ("Hello world", "hello.msp"),
+   ("Multiplication table", "mul.msp"),
+   ("Generating calendars", "calendar.msp"),
+   ("A demo of various MSP styles", "test.msp"),
+   ("SMLserver images", "images/index.html"),
+   ("This index page", "index.sml")]
 
-  <h2>Examples</h2>
+fun mkrow (desc, file) = `
+  <tr><td>^desc</td><td><a href="^file">^file</a></td></tr>`
 
-  <TABLE BORDER>
-<TR><TH>Description</TH><TH>Run script</TH></TR>
-` ^^ 
-let
-  fun mkrow (desc, file) = `
-    <tr><td>^desc</td><td><a href="^file">^file</a></td></tr>`
-in 
-  Quot.concat (List.map mkrow 
-	       [("Hello world", "hello.msp"),
-		("Fibonacci", "hello.sml"),
-		("Fibonacci (long)", "fib.sml"),
-		("Game of Life", "life.sml"),
-		("Generating a calendar", "calendar.msp"),
-		("Server Information", "server.sml"),
-		("Cache Demonstration", "cache.sml"),
-		("Time-of-day", "time_of_day.sml"),
-		("Multiplication Table", "mul.msp"),
-		("Temperature Conversion", "temp.html"),
-		("Dynamic Recipe", "recipe.html"),
-		("Guess a Number", "guess.sml"),
-		("Count Up and Down", "counter.sml"),
-		("Generating an index of a subdirectory", "fileindex.msp"),
-		("Logging information to a file", "logtofile.msp"),
-		("A demo of various MSP styles", "test.msp"),
-		("Send an Email", "mail_form.sml"),
-		("Character Support", "cs.html"),
-		("User Group Example", "ug.sml"),
-		("The RegExp Structure", "regexp.sml"),
-		("Currency Service", "currency.html"),
-		("Cookies", "cookie.sml"),
-		("Form variables", "formvar.sml"),
-		("Authentication", "auth_example.sml"),
-		("Email Example (password protected, see the <a href=\"auth_example.sml\">authentication</a> example)",
-		 "email_form.sml"),
-		("SMLserver Images", "images/index.html"),
-		("Dictionary","scs/admin/dict/dict_form.sml"),
-		("This index page", "index.sml")])
-end ^^ `
+val _ = Page.return "SMLserver Examples" 
+  (`See the <a href=http://www.smlserver.org>SMLserver 
+    Home Page</a> for SMLserver news and updates.<p>
+    <h2>Examples</h2>
 
-</TABLE>
-
-<p>
-Most of the <b>*.msp</b> examples are taken from the <a
-href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.sml">ML Server
-Pages (MSP) homepage</a>. The first MSP implementation used <a
-href="http://www.dina.kvl.dk/~sestoft/mosml.html">Moscow ML</a>.
-`)
+    <TABLE BORDER>
+    <TR><TH>Description</TH><TH>Run script</TH></TR>` 
+    ^^ Quot.concat (List.map mkrow examples) ^^ 
+   `</TABLE>
+    <p>
+    Some of the <b>*.msp</b> examples are from the <a 
+    href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.sml">ML 
+    Server Pages (MSP) homepage</a>.`)
 
 

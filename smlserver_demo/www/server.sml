@@ -1,10 +1,6 @@
 val user = getOpt(Ns.Info.configGetValue{sectionName="ns/parameters", key="user"}, "---")
-val _ =
-Ns.return `<HTML>
-<BODY bgcolor=lightgreen>
-<h2>Server Information</h2>
-
-<table bgcolor=grey border=1 align=center>
+val _ = Page.return "Server Information" `
+<table border=1>
 <tr><th>Configuration File</th> <td> ^(Ns.Info.configFile()) </td></tr>
 <tr><th>Error Log</th>          <td> ^(Ns.Info.errorLog()) </td></tr>
 <tr><th>Home Path</th>          <td> ^(Ns.Info.homePath()) </td></tr>
@@ -16,7 +12,7 @@ Ns.return `<HTML>
 </table>
 
 <h2>Connection Information</h2>
-<table bgcolor=grey border=1 align=center>
+<table border=1>
 <tr><th>Host</th>               <td> ^(Ns.Conn.host()) </td></tr>
 <tr><th>Location</th>           <td> ^(Ns.Conn.location()) </td></tr>
 <tr><th>Url</th>                <td> ^(Ns.Conn.url()) </td></tr>
@@ -27,7 +23,7 @@ Ns.return `<HTML>
 </table>
 
 <h2>Headers Information</h2>
-<table bgcolor=grey border=1 align=center>
+<table border=1>
 <tr><th>Key</th><th>Value</th></tr>
 ^(concat(Ns.Set.foldr(fn ((k,v),acc) => 
 		      "<tr><td>" :: k :: "</td><td>" :: v :: "</td></tr>" :: acc) 
@@ -35,7 +31,7 @@ Ns.return `<HTML>
 </table>
 
 <h2>Form Data</h2>
-<table bgcolor=grey border=1 align=center>
+<table border=1>
 <tr><th>Key</th><th>Value</th></tr>
 ^(case Ns.Conn.getQuery()
     of SOME s => 
@@ -46,7 +42,7 @@ Ns.return `<HTML>
 </table>
 
 <h2>Some Mime-Types</h2>
-<table bgcolor=grey border=1 align=center>
+<table border=1>
 <tr><th>File</th><th>Mime-Type</th></tr>
 ^(concat(foldr (fn (f, acc) => 
 		"<tr><td>" :: f :: "</td><td>" ::
@@ -56,7 +52,7 @@ Ns.return `<HTML>
 </table>
 
 <h2>Some Configuration File Information</h2>
-<table bgcolor=grey border=1 align=center>
+<table border=1>
 <tr><th>ns/parameters debug</th>
     <td>^(getOpt(Ns.Info.configGetValue{sectionName="ns/parameters", key="debug"}, "none")) </td>
 </tr>
@@ -69,7 +65,4 @@ Ns.return `<HTML>
 <tr><th>ns/parameters not-there</th>
     <td>^(getOpt(Ns.Info.configGetValue{sectionName="ns/parameters", key="not-there"}, "none")) </td>
 </tr>
-</table>
-
-</BODY>
-</HTML>`
+</table>`

@@ -1,12 +1,11 @@
   fun returnPage title pic body = Ns.return 
     `<html> 
-       <head><title>^title</title></head>
-       <body bgcolor=white>
-         <center> <h2>^title</h2> <img src=^pic> <p>
-                  ^(Quot.toString body) <p>
-                  <i>Served by SMLserver</i>
-         </center>
-       </body>
+      <head><title>^title</title></head>
+      <body bgcolor=white> <center> 
+      <h2>^title</h2> <img src=^pic> <p>
+       ^(Quot.toString body) <p> <i>Served by <a 
+          href=http://www.smlserver.org>SMLserver</a>
+      </i> </center> </body>
      </html>`
 
   fun mk_form (n:int) = 
@@ -17,14 +16,14 @@
      </form>`
 
   val _ =
-    case ScsFormVar.wrapOpt ScsFormVar.getNatErr "n"
+    case FormVar.wrapOpt FormVar.getNatErr "n"
       of NONE => 
          returnPage "Guess a number between 0 and 100"
            "bill_guess.jpg"
            (mk_form (Random.range(0,100) (Random.newgen())))
            
        | SOME n =>
-         case ScsFormVar.wrapOpt ScsFormVar.getNatErr "guess"
+         case FormVar.wrapOpt FormVar.getNatErr "guess"
            of NONE => 
              returnPage "You must type a number - try again"
                "bill_guess.jpg" (mk_form n) 

@@ -1,5 +1,5 @@
 val cn =
-  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "cookie_name" of
+  case FormVar.wrapOpt FormVar.getStringErr "cookie_name" of
     NONE => "CookieName"
   | SOME cn => cn
 

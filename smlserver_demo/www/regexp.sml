@@ -30,8 +30,8 @@ val _ =
 
   <h2>Function <code>RegExp.extract</code></h2><p>
   ^(do_regExp "Name: ([a-zA-Z ]+);Tlf: ([0-9 ]+)" "Name: Hans Hansen;Tlf: 66 66 66 66")
-  ^(do_regExp emailp "name@compagny.com")
-  ^(do_regExp emailp "name@compagny@com")
+  ^(do_regExp emailp "name@company.com")
+  ^(do_regExp emailp "name@company@com")
 
   <h2>A group that takes part in a match repeatedly</h2>
   ^(do_regExpBool "(a(b+))+" "abbabbb")

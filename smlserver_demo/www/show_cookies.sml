@@ -1,35 +1,24 @@
 fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
-val % = ScsDict.d ScsLang.English
 
-val _ = ScsPage.returnPg (%"Show Cookies")
-   ((case ScsLogin.user_lang of
-      ScsLang.Danish => `
-	Dette er en kodeordsbeskyttet side.<p>
+(* What is going on here Niels??? mael 2001-12-19 *)
+val time_s = Time.toSeconds (Time.now()) + 60
+val date = (datefmt o Date.fromTimeUniv o Time.fromSeconds) time_s
 
-	Du er logget på med bruger id: ^(Int.toString ScsLogin.user_id)<p>
+fun layoutCookie ((n,v),acc) = `^n == ^v <br>` ^^ acc
 
-	Det nuværende tidsstempel er (GMT): <b>^(datefmt(Date.fromTimeUniv(Time.fromSeconds(Time.toSeconds(Time.now())+60))))</b><p>
-
-	Nedenfor kan du se de to cookier som anvendes ved validering.<p>` 
-    | ScsLang.English => `
-	This is a password protected page.<p>
-
-	You are logged in with user_id: ^(Int.toString ScsLogin.user_id)<p>
-
-	Current GMT date is: <b>^(datefmt(Date.fromTimeUniv(Time.fromSeconds(Time.toSeconds(Time.now())+60))))</b><p>
-	
-	Here, you can see the two cookies used for authentication.<p>`) ^^
-
-      `
-      <blockquote>
-      <pre>`
-      ^^ (List.foldl (fn ((n,v),a) => `^n == ^v <br>` ^^ a) `` Ns.Cookie.allCookies) ^^ `
-      </pre>
-      </blockquote>
-
-      <form method=post action="../auth_logout.sml">
-      <input type=submit value="^(% "Logout")">
-      </form><p>
-
-      <p>
-      ^(% "Back to") <a href="auth_example.sml">^(% "authentication example")</a> ^(%"page").`)
+val _ = Page.return "Show Cookies"
+   (`This is a password protected page.<p> You are logged 
+     in with person_id: ^(Int.toString Login.person_id)<p>
+     Current GMT date is: <b>^date</b><p> Here, you can see 
+     the two cookies used for authentication.<p>
+     <blockquote>
+     <pre>` ^^ 
+     (List.foldl layoutCookie `` Ns.Cookie.allCookies) ^^ 
+    `</pre>
+     </blockquote>
+     <form method=post action="../auth_logout.sml">
+     <input type=submit value="Logout">
+     </form>
+     <p><p>
+     Back to <a href="auth_example.sml">authentication 
+     example</a> page.`)
