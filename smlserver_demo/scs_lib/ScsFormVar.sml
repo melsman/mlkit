@@ -1042,7 +1042,7 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
                          msgName (regExpMatch "[a-zA-ZAÆØÅaæøåüäéáö '\\-]+")
 
       val getAddrErr = getErr' [(ScsLang.en, `address`),(ScsLang.da, `adresse`)]
-                         msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåüáö '\\-.:;,]+")
+                         msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåüáö '\\-.:;,/]+")
 
       val getLoginErr = getErr' [(ScsLang.en, `login`),(ScsLang.da,`login`)] msgLogin 
 	(fn login =>

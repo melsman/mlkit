@@ -32,6 +32,10 @@ signature SCS_ERROR =
         error page including the message msg. *)
     val wrapPanic' : quot -> ('a -> 'b) -> 'a -> 'b
 
+    (* [wrapPanic'' logmsg f a] has the same semantics as wrapPanic, except
+	that logmsg is added to the log for better debugging *)
+    val wrapPanic'' : quot -> ('a -> 'b) -> 'a -> 'b
+
     (* [wrapOpt f a] applies f a and returns SOME (result). If an
         exception is raised then NONE is returned. No error is logged
         or mailed. This is not a panic error. *)
@@ -130,6 +134,13 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
       handle 
           Fail s => panic (`Fail raised: ^s`)
 	| X      => panic `wrapPanic: some error happended: ^(General.exnMessage X)`
+
+    fun wrapPanic'' logmsg f a = f a 
+      handle 
+          Fail s => panic (`Fail raised: ^s ` ^^ logmsg)
+	| X      => panic (`wrapPanic: some error happended: ^(General.exnMessage X) ` ^^ logmsg)
+
+
 
     fun wrapOpt f a = SOME(f a)
       handle _ => NONE
