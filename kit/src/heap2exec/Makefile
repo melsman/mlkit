@@ -16,5 +16,5 @@ run-110.40.x86-linux:
 	cd runtime-110.40/objs; make clean
 
 clean:
-	rm -rf heap2exec *.o run.x86-linux
+	rm -rf heap2exec *.o run.x86-linux *~
 	cd runtime; $(MAKE) clean
