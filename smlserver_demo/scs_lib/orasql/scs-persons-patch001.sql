@@ -5,9 +5,6 @@ Date:   2003-11-02
 Author: Niels Hallenberg
 Purpose: 
 * Add table scs_profiles for storing user profiles
-* Add fields to scs_parties to allow for upload of portraits.
-* Add table scs_portraits to allow for upload of portraits
-
 */
 
 create table scs_profiles (
