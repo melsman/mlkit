@@ -18,6 +18,7 @@ signature NS_CONN = sig
   val redirect       : string -> status
   val server         : unit -> string
   val url            : unit -> string
+  val hasConnection  : unit -> bool
 end
 
 (*
@@ -98,4 +99,10 @@ end
 
  [url()] return the url (relative to server-root) associated 
  with the request.
+
+ [hasConnection()] returns true if a connection is available.
+ Returns false otherwise. For the execution of init scripts
+ and scheduled scripts, no connection is available. This 
+ function may be used to protect execution of code that 
+ requires a connection (e.g., execution of library code).
 *)
