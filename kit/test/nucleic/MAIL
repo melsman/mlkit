@@ -1,0 +1,23 @@
+Here is an sml program translated from scheme by Marc Feeley.  It does
+some calculations relating to the 3D structure of nucleic acids.
+Since it exists now in C, scheme, sml, miranda, and haskell versions
+people here were doing some benchmarking.  The C version takes about 4
+seconds on a sparc SLC machine (which I think is around 20 integer
+specmarks).  They had sml/nj 0.75 installed here, and this sml version
+ran in 11 seconds on the SLC (after taking _lots_ of time and memory
+to compile).  I thought it might be faster on a new version, so I
+brought 1.03f over and built it.  Surprisingly, 1.03f ran it in 22 seconds.
+
+The translation is crude, so it could probably be speeded up considerably.
+But why the 100% slowdown between 0.75 and 1.03f?  Is it the space-unsafe
+optimizations in 0.75 again?  It would be good to profile this and see
+what's happening.  I haven't had time to look at the code, but it has
+some big tuples of tuples of reals, which probably explains the slow
+compilation.
+
+By the way, the final answer should be 179.
+
+Dave
+
+P.S. The Glasgow Haskell compiler never finished compiling the Haskell
+version, and Harlequin MLWorks dumped core while compiling it.

@@ -1,0 +1,331 @@
+\begin{thebibliography}{10}
+
+\bibitem{Alt93}
+M.~Alt, C.~Fecht, C.~Ferdinand, and R.~Wilhelm.
+\newblock The {{Trafola-{S}}} subsystem.
+\newblock In B.~Hoffmann and B.~Krieg-Br\"uckner, editors, {\em Program
+  development by specification and transformation, {LNCS} 680}, pages 539--576.
+  Springer-Verlag, Berlin, May 1993.
+
+\bibitem{App92}
+A.~W. Appel.
+\newblock {\em Compiling with Continuations}.
+\newblock Cambridge Univ. Press, Cambridge, England, 1992.
+
+\bibitem{Arm93}
+J.~Armstrong, M.~Williams, and R.~Virding.
+\newblock {\em Concurrent programming in Erlang}.
+\newblock Prentice Hall, Englewood Cliffs, New Jersey, 1993.
+
+\bibitem{Aug93c}
+L.~Augustsson.
+\newblock {HBC} user's manual.
+\newblock Programming Methodology Group Distributed with the HBC compiler,
+  Depart. of Comp. Sci, Chalmers, S--412 96 G\"{o}teborg, Sweden, 1993.
+
+\bibitem{Bee92a}
+M.~Beemster.
+\newblock The lazy functional intermediate language {Stoffel}.
+\newblock Technical report CS-92-16, Dept. of Comp. Sys, Univ. of Amsterdam,
+  Dec 1992.
+
+\bibitem{Bee93}
+M.~Beemster.
+\newblock Optimizing transformations for a lazy functional language.
+\newblock In W.-J. Withagen, editor, {\em 7th Computer systems}, pages 17--40,
+  Eindhoven, The Netherlands, Nov 1993. Eindhoven Univ. of Technology.
+
+\bibitem{Can92c}
+D.~C. Cann.
+\newblock The optimizing {SISAL} compiler: version 12.0.
+\newblock Manual UCRL-MA-110080, Lawrence Livermore National Laboratory,
+  Livermore, California, Apr 1992.
+
+\bibitem{Can92}
+D.~C. Cann.
+\newblock Retire {FORTRAN}? a debate rekindled.
+\newblock {\em Communications ACM}, 35(8):81--89, Aug 1992.
+
+\bibitem{Cha92a}
+E.~Chailloux.
+\newblock An efficient way of compiling {ML} to {C}.
+\newblock In P.~Lee, editor, {\em {ACM} {SIGPLAN} Workshop on {ML} and its
+  Applications}, pages 37--51, San Francisco, California, Jun 1992. School of
+  Comp. Sci, Carnegie Mellon Univ., Pittsburg, Pennsylvania, Technical report
+  CMU-CS-93-105.
+
+\bibitem{Did94}
+K.~Didrich, A.~Fett, C.~Gerke, W.~Grieskamp, and P.~Pepper.
+\newblock {OPAL}: Design and implementation of an algebraic programming
+  language.
+\newblock In J.~Gutknecht, editor, {\em Programming Languages and System
+  Architectures, {LNCS} 782}, pages 228--244, Zurich, Switzerland, Mar 1994.
+  Springer-Verlag, Berlin.
+
+\bibitem{Diw94}
+A.~Diwan, D.~Tarditi, and E.~Moss.
+\newblock Memory subsystem performance of programs with copying garbage
+  collection.
+\newblock In {\em 21st Principles of programming languages}, pages 1--14,
+  Portland, Oregon, Jan 1994. ACM.
+
+\bibitem{Ler93}
+X.~Leroy {\em et al.}
+\newblock {\em The {Caml} {Light} system, release 0.61}.
+\newblock Software and documentation distributed by anonymous FTP on {\tt
+  ftp.inria.fr}, 1993.
+
+\bibitem{Fee90}
+M.~Feeley and J.~S. Miller.
+\newblock A parallel virtual machine for efficient {{S}}cheme compilation.
+\newblock In {\em {Lisp} and functional programming}, pages 119--130, Nice,
+  France, Jul 1990. ACM.
+
+\bibitem{Fee94}
+M.~Feeley, M.~Turcotte, and G.~{LaPalme}.
+\newblock Using {{Multilisp}} for solving constraint satisfaction problems: an
+  application to nucleic acid {{3D}} structure determination.
+\newblock {\em Lisp and symbolic computation (to appear)}, 1994.
+
+\bibitem{Fin92a}
+S.~Finn and M.~Crawley.
+\newblock {\em Using Poly/{ML} {2.05M}}.
+\newblock Abstract Hardware Ltd., Aug 1992.
+
+\bibitem{Fis84}
+J.~A. Fisher, J.~R. Ellis, J.~C. Ruttenberg, and A.~Nicolau.
+\newblock Parallel processing: A smart compiler and a dumb machine.
+\newblock In {\em Compiler construction}, pages 37--47, Montr\'{e}al, Canada,
+  Jun 1984. ACM SIGPLAN notices,19(6).
+
+\bibitem{Gie94}
+R.~Giegerich and R.~J.~M. Hughes.
+\newblock Functional programming in the real world.
+\newblock Dagstuhl seminar report~89, IBFI GmbH, Schloss Dagstuhl, D-66687
+  Wadern, Germany, May 1994.
+
+\bibitem{Gil94}
+A.~J. Gill and S.~L. {Peyton Jones}.
+\newblock Cheap deforestation in practice: An optimiser for {Haskell}.
+\newblock In {\em Proc. {IFIP}}, pages ???--???, Hamburg, Germany, Aug 1994.
+
+\bibitem{Gol94}
+S.~C. Goldstein.
+\newblock The implementation of a threaded abstract machine.
+\newblock Technical report UCB/CSP 94-818, Comp. Sci. Division (EECS), Univ. of
+  California, Berkeley CA 94720, 1994.
+
+\bibitem{Gop89}
+K.~Gopinath and J.~L. Hennesy.
+\newblock Copy elimination in functional languages.
+\newblock In {\em 16th Principles of programming languages}, pages 303--314,
+  Austin, Texas, Jan 1989. ACM.
+
+\bibitem{Yal94}
+The Yale~Haskell Group.
+\newblock {\em The Yale {Haskell} Users Manual (version Y2.1)}.
+\newblock Dept. of Comp. Sci, Yale Univ., Jul 1994.
+
+\bibitem{Hal85}
+R.~H. {Halstead Jr}.
+\newblock {Multilisp}: A language for concurrent symbolic computation.
+\newblock {\em ACM Transactions on programming languages and systems},
+  7(4):501--538, Oct 1985.
+
+\bibitem{Har94x}
+Harlequin.
+\newblock {\em {MLWorks} draft documentation}.
+\newblock Harlequin Ltd, Cambridge, England, 1994.
+
+\bibitem{Har91}
+P.~H. Hartel, H.~W. Glaser, and J.~M. Wild.
+\newblock Compilation of functional languages using flow graph analysis.
+\newblock {\em Software---practice and experience}, 24(2):127--173, Feb 1994.
+
+\bibitem{Har92b}
+P.~H. Hartel and K.~G. Langendoen.
+\newblock Benchmarking implementations of lazy functional languages.
+\newblock In {\em 6th Functional programming languages and computer
+  architecture}, pages 341--349, Copenhagen, Denmark, Jun 1993. ACM.
+
+\bibitem{Hau94}
+B.~Hausman.
+\newblock Turbo erlang: Approaching the speed of {C}.
+\newblock In E.~Tick and G.~Succi, editors, {\em Implementations of Logic
+  Programming Systems}, pages 119--135. Kluwer Academic Publishers,
+  Boston/Dordrecht/London, Mar 1994.
+
+\bibitem{Hud92a}
+P.~Hudak, S.~L. {Peyton Jones}, and P.~L.~Wadler (editors).
+\newblock Report on the programming language {Haskell} -- a non-strict purely
+  functional language, version 1.2.
+\newblock {\em ACM SIGPLAN notices}, 27(5):R1--R162, May 1992.
+
+\bibitem{Jon94c}
+M.~P. Jones.
+\newblock The implementation of the {{G}}ofer functional programming system.
+\newblock Research Report YALEU/DCS/RR-1030, Dept. of Comp. Sci, Yale Univ.,
+  New haven, Connecticut, May 1994.
+
+\bibitem{Ker88}
+B.~W. Kernighan and D.~W. Ritchie.
+\newblock {\em The {{C}} programming language}.
+\newblock Prentice Hall, Englewood Cliffs, New Jersey, 1988.
+
+\bibitem{Ler92}
+X.~Leroy.
+\newblock Unboxed objects and polymorphic typing.
+\newblock In {\em 19th Principles of Programming Languages}, pages 177--188,
+  Albuquerque, New Mexico, Jan 1992. ACM Press.
+
+\bibitem{Mac92}
+R.~A. MacLachlan.
+\newblock {CMU} common {Lisp} user's manual.
+\newblock Technical report CMU-CS-92-161, School of Comp. Sci, Carnegie Mellon
+  Univ., Jul 1992.
+
+\bibitem{McG85}
+J.~R. McGraw, S.~K. Skedzielewski, S.~Allan, R.~Oldehoeft, J.~R.~W. Glauert,
+  C.~Kirkham, B.~Noyce, and R.~Thomas.
+\newblock {Sisal}: Streams and iteration in a single assignment language.
+\newblock Language reference manual version 1.2 M-146, Rev. 1, Lawrence
+  Livermore National Laboratory, Livermore, California, Mar 1985.
+
+\bibitem{Mil90}
+R.~Milner, M.~Tofte, and R.~Harper.
+\newblock {\em The definition of {Standard} {ML}}.
+\newblock MIT Press, Cambridge, Massachusetts, 1990.
+
+\bibitem{Nik90a}
+R.~S. Nikhil.
+\newblock {ID} version 90.0 reference manual.
+\newblock Computation Structures Group Memo 284-1, Laboratory for Comp. Sci,
+  MIT, Cambridge Massachusetts, Sep 1990.
+
+\bibitem{Pey87}
+S.~L. {Peyton Jones}.
+\newblock {\em The implementation of functional programming languages}.
+\newblock Prentice Hall, Englewood Cliffs, New Jersey, 1987.
+
+\bibitem{Pey93c}
+S.~L. {Peyton Jones}, C.~V. Hall, K.~Hammond, W.~D. Partain, and P.~L. Wadler.
+\newblock The glasgow {Haskell} compiler: a technical overview.
+\newblock In {\em Proc Joint Framework for Information Technology ({JFIT})
+  Conference}, pages ???--???, Keele, England, Mar 1993.
+
+\bibitem{Pey91b}
+S.~L. {Peyton Jones} and J.~Launchbury.
+\newblock Unboxed values as first class citizens in a non-strict functional
+  language.
+\newblock In R.~J.~M. Hughes, editor, {\em 5th Functional programming languages
+  and computer architecture, {LNCS} 523}, pages 636--666, Cambridge,
+  Massachusetts, Sep 1991. Springer-Verlag, Berlin.
+
+\bibitem{Pla94}
+M.~J. Plasmeijer and M.~C. J.~D. van Eekelen.
+\newblock {\em {Concurrent {Clean}} - version 1.0 - Language Reference Manual,
+  draft version}.
+\newblock Dept. of Comp. Sci, Univ. of Nijmegen, The Netherlands, Jun 1994.
+
+\bibitem{Ran87}
+J.~E. Ranelletti.
+\newblock {\em Graph transformation algorithms for array memory memory
+  optimization in applicative languages}.
+\newblock PhD thesis, Comp. Sci. Dept, Univ. of California at Davis,
+  California, Nov 1987.
+
+\bibitem{Ree91}
+J.~A. Rees and W.~Clinger.
+\newblock {\em Revised$^4$ Report on the Algorithmic Language {{S}}cheme}.
+\newblock MIT, Cambridge, Massachusetts, Nov 1991.
+
+\bibitem{Roj94}
+N.~R\"ojemo.
+\newblock Nhc - nearly a {Haskell} compiler.
+\newblock Technical report in preparation, Dept. of Computing Science, Chalmers
+  Univ., 1994.
+
+\bibitem{San93}
+P.~M. Sansom and S.~L. {Peyton Jones}.
+\newblock Generational garbage collection for {Haskell}.
+\newblock In {\em 6th Functional programming languages and computer
+  architecture}, pages 106--116, Copenhagen, Denmark, Jun 1993. ACM.
+
+\bibitem{Sch91}
+W.~Schulte and W.~Grieskamp.
+\newblock Generating efficient portable code for a strict applicative language.
+\newblock In J.~Darlington and R.~Dietrich, editors, {\em Phoenix Seminar and
+  Workshop on Declarative Programming}, pages 239--252, Sasbachwalden, West
+  Germany, Nov 1991. Springer-Verlag, Berlin.
+
+\bibitem{Ser94a}
+M.~Serrano.
+\newblock {\em Bigloo 1.7 user's manual}.
+\newblock INRIA Rocquencourt, France (to appear), 1994.
+
+\bibitem{Ser94b}
+M.~Serrano and P.~Weis.
+\newblock $1+1=1$: an optimizing {Caml} compiler.
+\newblock In {\em {ACM-SIGPLAN} Workshop on {ML} and its applications}, pages
+  101--111. Research report 2265, INRIA Rocquencourt, France, Nun 1994.
+
+\bibitem{Sha94}
+Z.~Shao.
+\newblock {\em Compiling {Standard} {ML} for Efficient Execution on Modern
+  Machines}.
+\newblock PhD thesis, Princeton Univ, Princeton, New Jersey, Nov 1994.
+
+\bibitem{Sme91}
+S.~Smetsers, E.~G. J. M.~H. N\"{o}cker, J.~van Groningen, and M.~J. Plasmeijer.
+\newblock Generating efficient code for lazy functional languages.
+\newblock In R.~J.~M. Hughes, editor, {\em 5th Functional programming languages
+  and computer architecture, {LNCS} 523}, pages 592--617, Cambridge,
+  Massachusetts, Sep 1991. Springer-Verlag, Berlin.
+
+\bibitem{Ste90}
+G.~L. {Steele Jr}.
+\newblock {\em Common {Lisp} the Language}.
+\newblock Digital Press, Bedford, second edition, 1990.
+
+\bibitem{Tho93a}
+B.~Thomsen, L.~Leth, S.~Prasad, T.-S. Kuo, A.~Kramer, F.~Knabe, and
+  A.~Giacalone.
+\newblock Facile antigua release -- programming guide.
+\newblock Technical report ECRC-93-20, European Computer-Industry Research
+  Centre, Munich, Germany (The reference manual and license agreement are
+  available by anonymous ftp from ftp.ecrc.de.), 1993.
+
+\bibitem{Tur85}
+D.~A. Turner.
+\newblock {Miranda}: A non-strict functional language with polymorphic types.
+\newblock In J.-P. Jouannaud, editor, {\em 2nd Functional programming languages
+  and computer architecture, {LNCS} 201}, pages 1--16, Nancy, France, Sep 1985.
+  Springer-Verlag, Berlin.
+
+\bibitem{Tur90a}
+D.~A. Turner.
+\newblock {\em {Miranda} system manual}.
+\newblock Research Software Ltd, 23 St Augustines Road, Canterbury, Kent CT1
+  1XP, England, Apr 1990.
+
+\bibitem{Wad90b}
+P.~L. Wadler.
+\newblock Deforestation: transforming programs to eliminate trees.
+\newblock {\em Theoretical Computer Science}, 73(2):231--248, 1990.
+
+\bibitem{Wei93}
+P.~Weis and X.~Leroy.
+\newblock {\em Le langage {Caml}}.
+\newblock Inter\'Editions, 1993.
+
+\bibitem{Wen91}
+E.~P. Wentworth.
+\newblock Code generation for a lazy functional language.
+\newblock Technical report 91/19, Dept. of Comp. Sci, Rhodes Univ., Dec 1991.
+
+\bibitem{Wen92}
+{E. P}. Wentworth.
+\newblock {RUFL} reference manual.
+\newblock Technical report 92/1, Dept. of Comp. Sci, Rhodes Univ., Jan 1992.
+
+\end{thebibliography}
