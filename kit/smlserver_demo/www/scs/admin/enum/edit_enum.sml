@@ -8,7 +8,7 @@ val title = ScsDict.s [(ScsLang.en,`Edit Enumerations`),
 		       (ScsLang.da,`Ret Enumereringer`)]
 
 val search_form =
-  UcsWidget.formBox NONE "edit_enum.sml" 
+  UcsWidget.formBox [] "edit_enum.sml" 
   [("submit",ScsDict.s [(ScsLang.en,`Edit Enumeration`),
 			(ScsLang.da,`Ret Enumerering`)],NONE)]
   ``
