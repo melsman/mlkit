@@ -6,7 +6,8 @@
 \input{genericmac}
 \input{mac}
 \newcommand{\rhoword}{\rho_{\rm w}}
-\title{Programming with Regions in the ML Kit}
+\title{Programming with Regions in the ML Kit\\
+$2^{nd}$ edition}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft \and Peter Bertelsen}
@@ -114,6 +115,7 @@ The ML Kit with Regions is a compiler for full
 Standard ML, including Modules and the SML Basis Library.  It is
 intended for the development of stand-alone applications that must be
 reliable, fast, and space efficient.
+
 
 There has always been a tension between high-level features in 
 programming languages and the programmer's 
@@ -1216,7 +1218,7 @@ values (e.g., pairs and strings) is paired with a region variable,
 indicating where the value is to be put at runtime. Type constructors
 that represents unboxed values (e.g., integers and booleans) are
 paired with the region variable $\rhoword$, which denotes a
-non-existing global region.\index{boxing}\index{value!boxed}\index{value!unboxed} As an
+non-existing global region.\index{$\rhoword$}\index{boxing}\index{value!boxed}\index{value!unboxed} As an
 abbreviation, we shall often omit the region variable $\rhoword$ from
 region-annotated types; and so shall the Kit.
 
@@ -1744,10 +1746,11 @@ At every place one refers to the function, for example because one calls the fun
 the region inference algorithm inserts
 a list of 
 \index{region parameter!actual}%
-actual region parameters thus telling the function where to put its
+actual region parameters that tell the function 
+where to put its
 result. This is all done automatically; the user does not have to introduce
-region parameters or pass them as arguments. But it is useful to understand
-the general principle so that one can exploit the feature fully.
+region parameters or pass them as arguments. Even so, it is useful to understand
+the general principle, so that one can good use of region polymorphism.
 
 The syntax of a (single) function declaration in $\MulExp$ is:
 \begin{tabbing}
@@ -1767,14 +1770,18 @@ where \boxml{[$\rho_1'$, $\cdots$, $\rho_k'$]} is a record of
 \index{region parameter!actual}%
 {\em actual region parameters},
 $\rho_0'$ is the region where this record is stored, and $e'$ is an expression
-denoting the argument to the call. Notice that region parameters are enclosed in angle brackets
+denoting the argument to the call. Notice that region parameters are enclosed in  brackets
 (\boxml{[ ]}); this should not cause confusion with ML lists, because $\RegExp$ and $\MulExp$
-do not use the angle brackets for lists.
+do not use brackets for lists.\index{[ ]@{\tt [ ]}}.
+
+In the special case $k'=0$ the record for actual region parameters is empty
+and is therefore not allocated. We therefore omit printing the ``\boxml{at $\rho_0$}''
+in that case.
 
 Different calls of $f$ can use different actual regions; this feature
 is essential for obtaining good separation of lifetimes.
 
-For an example, consider\footnote{Program \boxml{kitdemo/fromto.sml}.}
+For an example, consider the following program:
 \begin{verbatim}
        fun fromto(a, b) = if a>b then []
                           else a :: fromto(a+1, b)
@@ -1821,7 +1828,9 @@ The corresponding $\MulExp$ program is shown in Figure~\ref{fromto.fig}.
    end 
 \end{verbatim}
 \caption{The region-annotated version of {\tt fromto} shows that {\tt fromto}
-is region-polymorphic.}
+is region-polymorphic. (Program: \boxml{kitdemo/fromto.sml}, printed by selecting
+{\tt print drop regions expression} from the {\tt Printing of intermediate forms} menu and
+then selecting {\tt Compile an sml file} from the main menu.)}
 \medskip
 
 \hrule
@@ -1844,7 +1853,7 @@ $$\sigma::=\lsigma$$
 where $\alpha_1,\ldots,\alpha_n$ are type variables,
 $\rho_1,\ldots,\rho_k$ are region variables,
 $\epsilon_1,\ldots,\epsilon_m$ are effect variables,
-and $\tau$ is a region-annotated type.
+and $\tau$ is a region-annotated type.\index{effect variable!bound}
 
 The types of \boxml{nil} and \boxml{::} in Section~\ref{listtypes.sec} are examples of 
 \index{region polymorphism}%
@@ -1944,12 +1953,14 @@ in the inferred region type scheme:
       ((\alpha,\rho_1),[\rho_2'])\boxml{list}, \rho_4) \\ 
 &&\ar{\epsilon.\{\Get(\rho_4),\Get(\rho_2),\Put(\rho_2')\}} ((\alpha,\rho_1),[\rho_2'])\boxml{list}
 \end{eqnarray*}
-One of the key things one needs to be conscious of when programming
-with regions is whether one want functions to create fresh values or
-whether one wants to add to existing regions. Adding to existing
+When one writes a  function it is a good idea to consider
+whether one wants the function  to create values in fresh regions or
+whether one wants it to add value to existing regions. 
+Adding to existing
 regions can of course make these regions too large and long-lived,
 because the entire region will be alive for as long as one of the values
-in the region may be needed in the future. Here are two more examples
+in the region may be needed in the future. 
+Here are two more examples
 to highlight the difference between functions that can put values in
 fresh regions and functions that add values to existing regions:
 \begin{verbatim}
@@ -2000,9 +2011,10 @@ may call itself inside its own body ($e$) with regions that are different
 from its own formal region parameter ({\tt [$\rho_1$, $\cdots$, $\rho_k$]}).
 This feature is called {\it polymorphic recursion in regions}, named after
 polymorphic recursion, the analogous concept for types.
-Polymorphic recursion in regions is vital for achieving good recursion.
-It is also a major source of  complication of the region inference algorithm
-that we use in the Kit, but we shall not tire the reader with the details here.
+Polymorphic recursion in regions is vital for achieving good 
+memory management in connection with recursion.
+Unfortunately, it is also makes  the region inference problem considerably more
+challenging, but that is a different story \cite{tofte:birkedal:98}.
 
 We now show a typical use of polymorphic recursion in regions, namely
 merge sorting of lists. The basic idea of merge sort is simple: first
@@ -2280,11 +2292,9 @@ force de-allocation of the list by  inserting
 $\boxml{val \_ = \resetr(list)}$ after the declaration of {\tt n}; but, as we shall see,
 there are less draconian ways of achieving the same result.} 
 
-It is crucial to bear the ground rule in mind when programming with regions.
-For a more interesting example, consider the following declarations, taken from a program that
-computes prime numbers using the 
-\index{Sieve of Eratosthenes}%
-Sieve of Eratosthenes:
+For a more interesting example of the consequences of the Ground Rule, 
+consider the following declarations, taken from a program that
+computes prime numbers using the \index{Sieve of Eratosthenes}Sieve of Eratosthenes:
 \begin{verbatim}
     fun cp [] = []
       | cp (x::xs) = x :: cp xs 
@@ -2323,9 +2333,10 @@ sieve} outside the {\tt let}:\pagebreak
                   in (cp rest,x::p)
                   end
 \end{verbatim}
-Although we cannot explain why the copying really overwrites the input
-list until we have dealt with resetting of regions (Chapter~\ref{storagemodes.sec}),
-we can explain why this transformation ensures that the list bound to
+That the copying really overwrites the input
+list relies, in part, on region resetting (Chapter~\ref{storagemodes.sec}).
+But it also relies on region polymorphism and on the Ground Rule.
+Rewriting the applicationn of \boxml{sieve} ensures that the list bound to
 {\tt rest} will not live to see the recursive call of {\tt sieve}.
 Unless forced by context to do otherwise, {\tt sift} 
 will create a list using fresh regions. Because {\tt cp} is also 
@@ -2336,9 +2347,10 @@ the auxiliary pairs of {\tt rest} appears in the effect of the
 (revised) {\tt let} expression. However, this region variable does not occur free in the
 region type scheme and place of any value variable in scope at that point, not
 even in the region type scheme and place of {\tt sieve}, which only has the region that
-contains {\tt sieve} itself free in its region type scheme and place. Consequently, region inference will wrap
+contains {\tt sieve} itself free in its region type scheme and place. 
+Consequently, region inference  wraps
 the {\tt let} expression by a {\tt letregion} binding of the region
-variable in question, yielding something like
+variable in question:
 \begin{verbatim}
     fun sieve(a as ([], p)) = a
       | sieve(x::xs, p) = 
@@ -2349,27 +2361,20 @@ variable in question, yielding something like
                   end
 \end{verbatim}
 \section{Shortening Lifetime}
-Informally, region inference forces lifetime to be at least as long as
-scope. However, region inference will introduce a {\tt letregion}
-binding of $\rho$ around an expression containing a free occurrence of
-$\rho$ if $\rho$ occurs free neither in the type of the expression nor
-in the region type scheme and place of any variable in scope at the
-expression.
-
-Useful 
-\index{program transformation}%
-program transformations to
-shorten \index{lifetime|)}\index{lifetime!shortening}lifetimes
-include:
+Informally, region inference forces the lifetime of an identifier
+to be at least its scope. Improving memory performance therefore
+sometimes requires making scopes of identifiers smaller.
+Useful \index{program transformation}program transformations 
+include:\index{lifetime|)}\index{lifetime!shortening}
 \begin{enumerate}
-\item Inwards let floating: 
+\item {\bf Inwards let floating}: 
 \index{let floating}%
 transform
 $$\boxml{let val $\id_1$ = $\exp_1$ val $\id_2$ = $\exp_2$ in $\exp$ end}$$
 into
 $$\boxml{let val $\id_2$ = let val $\id_1$ = $\exp_1$ in $\exp_2$ end in $\exp$ end}$$
 provided $\id_1$ does not occur free in $\exp$.
-\item Application extrusion: 
+\item {\bf Application extrusion}: 
 \index{application extrusion}%
 transform
 $$\boxml{let $\dec$ in $f$($\exp$) end}$$
@@ -2377,15 +2382,10 @@ into
 $$\boxml{$f$ let $\dec$ in $\exp$ end}$$
 provided $f$ is an identifier that is not declared by $\dec$.
 \end{enumerate} 
-These meaning-preserving 
-transformations are useful in situations where early de-allocation is important. 
-Application extrusion is a useful programming habbit, 
-especially in connection with 
-\index{tail recursion}%
-tail recursion; the reader will see it employed several times in what
-follows. 
-\index{scope rules|)}%
-
+Application extrusion is a particularly useful
+in connection with \index{tail recursion}tail recursion;
+the reader will see it employed several times in what follows.
+\index{scope rules|)}
 
 \chapter{Static Detection of Space Leaks}
 
@@ -2396,7 +2396,7 @@ being re-cycled as early as it should (or not at all).
 
 If a region-polymorphic function with region type scheme $\sigma$
 has a put effect on a region variable 
-that is not amongst the bound region variables of $\sigma$ then
+that is not amongst the bound region variables of $\sigma$, then
 one quite possibly has a space leak; every application of the
 function may write values into a region that is the same for
 all calls of the function. For example, consider the 
@@ -2416,8 +2416,8 @@ as {\tt x}. The first call of $\boxml{f}$ will not cause the
 append operation to be called, but the second one will. One can say that
 \boxml{f} has a space leak in that it can write values into a more
 global region, namely a region that is allocated at the beginning of
-the body of {\tt g}. Hence, the sequence of calls to {\tt f} would
-accumulate copies of {\tt x@x} in that region, although none of these
+the body of {\tt g}. The sequence of calls to {\tt f}
+accumulates copies of {\tt x@x} in that region, although none of these
 lists are accessible anywhere.
 In this particular case, the values are not even part of 
 the result type of {\tt f}, 
@@ -2428,17 +2428,20 @@ The region type scheme inferred for \boxml{f} is
 $$\forall\epsilon.\boxml{int} \ar{\epsilon.\{\Put(\mathtt{r5})\}} \boxml{int}$$
 where the region-annotated type of \boxml{x} is
 $$(\boxml{int},[\boxml{r5}])\boxml{list}$$
-Here we see that $\boxml{r5}$ is free in the region type scheme and appears with put effect.
+Here we see that $\boxml{r5}$ is free in the region type scheme and appears with a put effect.
 
 \section{Warnings About Space Leaks}
-The Kit issues a warning each time it meets a {\tt fun} declared
-function that has a free put effect occurring somewhere in its type
-scheme. In practice, we have found this warning mechanism to be an
-extremely valuable device for predicting space leaks. The region-annotated version of our example function {\tt g} is listed in
+The Kit issues a warning each time it meets a 
+function that is declared using {\tt fun} and has a free put 
+effect occurring somewhere in its type
+scheme. In practice, this warning mechanism is a
+valuable device for predicting space leaks. 
+The region-annotated version of our example function {\tt g} is listed in
 Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the Kit issues the
-following warning, provided inlining performed by the optimiser is
-disabled:\footnote{This disabling is done by setting the {\tt
-    maximum inline size}, found in the {\tt Control/Optimiser} sub-menu, to {\tt 0}.}
+following warning:\footnote{To provoke the warning, one has to disable
+inlining in the {\Lam} optimiser; this is done by setting the {\tt
+    Maximum inline size}, found in the 
+	{\tt Control/Optimiser} sub-menu, to {\tt 0}.\index{optimiser}}
 \begin{figure}
 \hrule
 \begin{verbatim}
@@ -2499,7 +2502,7 @@ call to \boxml{@}.
 
 \section{Fixing Space Leaks}
 Often one can fix a space leak by delaying the creation of the
-global value that causes the space leak. In the above example,
+ value that causes the space leak. In the above example,
 we can move the construction of the list into \boxml{f}:\footnote{Program \boxml{kitdemo/escape1.sml}.}
 \begin{verbatim}
        fun g() = 
@@ -2552,11 +2555,9 @@ Basis Library:\index{TextIO@{\tt TextIO}}\index{openIn@{\tt
     name=f} handle exn => raiseIo "openOut" f exn
 \end{verbatim}
 As explained in Chapter~\ref{exceptions.sec}, 
-our region inference algorithm is very simple-minded about 
-unary exception\index{exception} constructors;
 when a unary exception constructor is applied to a value, both the
 argument value and the resulting constructed value are forced into
-a global region. Thus, the application 
+a particular global region. Thus, the application 
 $$\verb+IO.Io {function = fcn^"", name = nam^"", cause = exn}+$$
 has a
 potential space leak in it; every time we apply the exception
@@ -2571,7 +2572,7 @@ so that they are not forced to be placed in the global string region.
 \chapter{References}
 \label{refs.sec}
 Section~\ref{refbasics.sec} gives a brief summary of references in
-Standard ML; it may be skipped by readers who know the language.
+Standard ML; it may be skipped by readers who know SML.
 Thereafter, we discuss runtime representation of references and region-annotated
 reference types.
 \section{References in Standard ML}
@@ -2625,9 +2626,35 @@ word is allocated in the region denoted by $\rho$; let $r$ be the
 address of this word. Then $v$ is stored at address $r$ and $r$ is the
 result of the evaluation.
 
+\begin{figure}
+\hrule
+\begin{center}
+\begin{picture}(50,20)
+\put(8,5){\hbox{$\ldots$}}
+\put(20,5){\framebox(20,10){$v$}}
+\put(15,8){\hbox{$r:$}}
+\put(25,0){\boxml{r35}}
+\put(8,0){\boxml{r34}}
+\put(45,0){\boxml{r36}}
+\put(45,5){\hbox{$\ldots$}}
+\end{picture}
+\end{center}
+\caption{Creating a reference allocates one word in a region on the 
+region stack. Here, the region is drawn as a finite region,
+but it could equally well be infinite.}
+\label{refsv.fig}
+\medskip
+\hrule
+\end{figure}
+
+
+The situation is depicted in Figure~\ref{refsv.fig}. The value $v$
+can be unboxed as shown in Figure~\ref{refs.fig}. Or it may be
+boxed, in which case $v$ is an address.
+
 Notice that a reference really is a pointer in the implementation.  In
-particular, a reference is not tagged and may be stored in a KAM
-register. The contents of the reference is also one word, either an
+particular, a reference is not tagged, so it may be stored in a KAM
+register. The contents of the reference is also always one word, either an
 unboxed value (e.g., an integer or a boolean) or a pointer (if the
 contents is boxed).  So the contents of a reference is not tagged
 either.
@@ -2645,15 +2672,17 @@ way, assignment is a constant-time operation.
 \section{Region-Annotated Reference Types}
 The general \index{type!region-annotated}form 
 of a region-annotated reference type is:
-$$(\tau\,\REF,\rho)$$
+$$(\mu\,\REF,\rho)$$
 Informally, a reference $r$ has this type
 if it is the address of a word in the region denoted by $\rho$ and,
-moreover, $\tau$ is the region-annotated type of the contents of that word. 
+moreover, $\mu$ is the region-annotated type and place of the contents of that word. 
 For example, assume
 $\rho$ is bound to some region name, say \boxml{r35}; then the evaluation
 of the declaration ~\boxml{val x = ref $\at\,\rho$ 3}~ results in the environment
 $\{\boxml{x}\mapsto r\}$, where $r$ is the address of a word with
 contents 3 residing in region \boxml{r35}, see Figure~\ref{refs.fig}.
+The type of \boxml{x} is {\tt ((int,$\rhoword$) ref, $\rho$)}  which, as usual,
+we shorten to \boxml{(int ref, $\rho$)}.
 
 \begin{figure}
 \hrule
@@ -2834,28 +2863,50 @@ There is no need to shy away from using references when programming
 with regions. However, one needs to be aware of the restriction that
 values that may be assigned to the same references are forced to live
 in the same region, and that this region with all its values will be alive
-for as long as the reference is live. No restriction applies if the
-contents type is unboxed (e.g., {\tt int}), for in that case, no region
-for the contents is allocated at all. But one should avoid creating
+for as long as the reference is live. If the
+contents type is unboxed (e.g., {\tt int}), there is no problem,
+for in that case, no region
+for the contents is allocated. But one should avoid creating
 long-lived references that are assigned many different large values.
 
 \chapter{Recursive Data Types}
 \label{datatypes.sec}
-Standard ML \index{tree!binary}permits the programmer to declare (possibly recursive) data types 
-using the {\tt datatype} declaration. For example, one can declare a polymorphic, recursive
-data type for binary trees as follows:\index{tree@{\tt tree}}\index{Lf@{\tt Lf}}\index{Br@{\tt Br}}\index{datatype@{\tt datatype}}
+This chapter describes how the Kit treats  recursive data types. We have already
+seen how one recursive datatype, namely lists, is handled. This chapter deals
+with the general case.
+%Standard ML \index{tree!binary}
+%permits the programmer to declare (possibly recursive) data types 
+%using the {\tt datatype} declaration. 
+%For example, one can declare a polymorphic, recursive
+%data type for binary trees as 
+%follows:\index{tree@{\tt tree}}\index{Lf@{\tt Lf}}\index{Br@{\tt Br}}\index{datatype@{\tt datatype}}
+%\begin{verbatim}
+%       datatype 'a tree = Lf | Br of 'a * 'a tree * 'a tree;
+%\end{verbatim}
+\section{Spreading Data Types}
+The Kit performs an analysis  called \index{spreading}``spreading of data types''.
+Spreading of datatypes analyses {\tt datatype} declarations. 
+This analysis of a {\tt datatype} declaration uses information
+about the type constructors that appear in the types of the constructors
+of the data type(s) introduced by the declaration, but it does not
+use information about the use of the data type.
+
+Spreading
+determines  (a) a so-called \index{arity}arity of every type name
+that the data type declaration introduces and (b) a region type scheme for
+every value constructor introduced by the data type declaration. 
+
+In the Definition of Standard ML every type name has an attribute, 
+called its arity \cite{mthm97}. The arity of a type name is the number of
+type arguments it requires. For example, {\tt int} has
+arity 0 while the type name introduced by the following 
+declaration of binary trees has arity 1:
+\index{tree@{\tt tree}}\index{Lf@{\tt Lf}}\index{Br@{\tt Br}}\index{datatype@{\tt datatype}}
 \begin{verbatim}
        datatype 'a tree = Lf | Br of 'a * 'a tree * 'a tree;
 \end{verbatim}
-\section{Spreading Data Types}
-The Kit performs an analysis, called \index{spreading}``spreading of data types'',
-of the {\tt datatype} declarations contained in the program. Spreading
-determines  (a) a so-called \index{arity}arity of every type name
-that the data type declaration introduces and (b) a region type scheme for
-every value constructor introduced by the data type declaration. In Standard ML,
-every type name has an attribute, called its arity. For example, {\tt int} has
-arity 0 while the type name introduced by the above declaration would have
-arity 1. However, the notion of arity has to be extended internally in the Kit to account for regions
+
+The Kit extends  the notion of arity  (in it's internal languages)  to account for regions
 and effects. For lists, for example, we need a region for holding the pairs to which {\tt ::} is
 applied. For the data type
 \begin{verbatim}
@@ -2874,14 +2925,16 @@ has one auxiliary region variable, namely the region variable that
 describes where the pairs of type {\tt 'a * 'a list} (i.e., the auxiliary
 \index{pair!auxiliary}pairs), reside.
 
-One also needs auxiliary arrow effects for cases such as 
+Besides auxiliary regions, one sometimes needs auxiliary effects.
+For an example, consider: 
 \begin{verbatim}
        datatype V = N of int | F of V -> V
 \end{verbatim}
-where we need an arrow effect for the function type \boxml{V -> V}. We refer
+Here one needs an arrow effect for the function type \boxml{V -> V}. We refer
 to such an arrow effect as an 
 \index{arrow effect!auxiliary}%
 {\em auxiliary arrow effect} of the data type in question.
+
 
 We define the {\em (internal) arity} of a type name $t$ to be a 
 triple $(n,k,m)$ of non-negative integers, 
@@ -2915,9 +2968,11 @@ types simultaneously).
 %Within one constructor binding ({\it conbind\/}), all
 %occurrences of the same type variable are paired with the same region variable. 
 %Different type variables are paired with different region variables.
-Because we allow at most one auxiliary region variable for each {\tt datatype}
-declaration, the analysis of data type declarations sometimes unifies
-two auxiliary region variables that would otherwise be distinct; but it only unifies auxiliary region
+
+Because of the limit on the number of  auxiliary region variables, 
+spreading of data type declarations sometimes unifies
+two auxiliary region variables that would otherwise be distinct; 
+but it only unifies auxiliary region
 variables that have the same runtime type. 
 
 The practical consequence of these restrictions is that 
@@ -2930,7 +2985,8 @@ are put into regions and are subsequently de-allocated (in a constant time opera
 the region is popped. The next section is an example 
 to illustrate the point.
 
-For simplicity, constructed values except lists (Chapter~\ref{lists.sec}) are always boxed. 
+For simplicity, constructed values except lists 
+(Chapter~\ref{lists.sec}) are always boxed. 
 
 \section{Example: Balanced Trees}
 Consider the program in
@@ -3016,18 +3072,19 @@ $$\boxml{exception {\it excon}}$$
 and 
 $$\boxml{exception {\it excon} of {\it ty}}$$
 for introducing nullary and unary exception constructors,
-respectively. Unary exception constructors are typically
-used when one wants to raise an exception that contains a
-reason (represented by a value of type {\it ty}).
+respectively. 
+%Unary exception constructors are typically
+%used when one wants to raise an exception that contains a
+%reason (represented by a value of type {\it ty}).
 
-Unlike in some languages (e.g., Java), exception declarations need not
+Exception declarations need not
 occur at top level. For example, a function body may contain exception
 declarations.  Each evaluation of an exception declaration creates a
 fresh
 \index{exception!generative}%
 \index{exception name}%
 {\em exception name\/} and binds it to the exception constructor. This
-is sometimes referred to as the {\em generative\/} nature of ML
+is sometimes referred to as the {\em generative\/} nature of Standard ML
 exceptions.
 
 In the ML Kit, an exception name is implemented as a pointer to a pair
@@ -3051,22 +3108,21 @@ pointer to a word that points to an exception name. A constructed
 exception value is a pair $(\ename,v)$ of an exception name $\ename$
 and a value $v$; we refer to $v$ as the {\em argument\/} of $\ename$.
 This representation of exception values allows for the exception name
-of an exception value to be fetched without knowledge whether the
+of an exception value to be fetched in the same way irrespective of whether the
 exception value is nullary or constructed.
 
 Referring to a nullary exception constructor allocates no memory. By
 contrast, applying a unary exception constructor to an argument
 constructs a constructed exception value. The memory cost of such an
-application is two words for holding the pair of the exception name
-associated with the exception constructor and the argument value.
+application is two words for holding the pair $(\ename, v)$.
 
 The distinction between nullary and unary exception constructors
 is important in the Kit because our region inference analysis
 takes a simple-minded approach to exceptions: 
 \begin{quote}
-  All exception values are put in
+  All exception values are put into a certain
   \index{region!global}%
-  global regions and thus never reclaimed automatically.
+  global region and thus never reclaimed automatically.
 \end{quote}
 We therefore make the following recommendations:
 \begin{enumerate}
@@ -3077,7 +3133,8 @@ We therefore make the following recommendations:
       no harm in raising and handling constructed exception values frequently;
       it is the creation of many different constructed exception values
       that can lead to space leaks. Nullary
-      constructors may be used freely without incurring memory costs.
+      constructors may be raised 
+	  without incurring memory costs.
 \end{enumerate}
 
 \section{Raising Exceptions}
@@ -3111,7 +3168,7 @@ $$\boxml{${\it exp}_1$ handle {\it match}}$$
 is compiled into a $\MulExp$ expression of the form
 \begin{tabbing}
 \ \ \ \ \ \ \=\tt letregion $\rho$ in \\
-\>\ \ \=\boxml{let $f$ = fn {\it match} $\at\,\rho$ in $e_1$ handle $f$ end}\\
+\>\ \ \=\boxml{let $f$ = fn $\at\,\rho$ {\it match} in $e_1$ handle $f$ end}\\
 \>\tt end
 \end{tabbing}
 where $f$ is a fresh variable.
@@ -3169,17 +3226,20 @@ create additional exception values.\footnote{Program
 
 \chapter{Resetting Regions}
 \label{storagemodes.sec}
-In Section~\ref{checked.sec}, we explained that 
+The idea of region resetting was introduced
+in Section~\ref{checked.sec}.
 \index{region!resetting}%
-resetting of regions is an important ingredient in programming with
-regions.
-%(The point was illustrated with the Game of Life in Section~\ref{life.sec}.)
+
 This chapter gives an informal explanation of the rules that
-govern resetting, rules, which play a key r\^ole in Kit programming
+govern resetting. Knowing these rules is useful,
 irrespective of whether one leaves resetting of regions to the
-Kit or prefers to control resetting explicitly in the program.
-Resetting only makes sense for infinite regions. It is a 
-constant-time operation.
+Kit, or prefers to control resetting explicitly in the program.
+
+Resetting only makes sense for infinite regions. 
+Resetting a region is a  constant-time operation.
+Since the same region variable can be bound sometimes to a finite region
+and sometimes to an infinite region a runtime, resetting a
+region can involve a test at runtime.
 
 The Kit contains an analysis, called the {\em storage mode analysis}, which has
 two purposes:
@@ -3819,7 +3879,7 @@ results are shown in Figure~\ref{length.timing.fig}. Because {\tt
   upto} alone takes 0.38 seconds to build the list, the differences in
 times are clear: the versions of the length function that take pairs
 as arguments are slower than the version that stores values on the
-stack (i.e., {\tt nlength}); this difference would of course be
+stack (i.e., {\tt nlength}); this difference would presumably be
 reduced significantly if the Kit allowed functions to take argument
 values in more than one register.
 
@@ -3837,22 +3897,19 @@ over three runs.}
 \label{length.timing.fig}
 \end{figure}
 
-Programming with storage modes is useful if one wants to miniaturise
-programs using the Kit. However, it is often the case that there are
+\section{$\resetr$ and $\resetf$}
+It is often the case that there are
 only a few places in the program where resetting is really essential,
-for example in some main loop that is supposed to run forever.
+for example in some main loop.
 Therefore, the Kit provides two operations that the programmer can use
 to encourage (or force) the Kit to perform resetting at particular
-places in the program.  These operations are described in the next
-section.
-
-\section{$\resetr$ and $\resetf$}
-The programmer can reset regions using the two built-in primitives
-\index{resetRegions@$\resetr$}%
+places in the program. The two operations are 
+\index{resetRegions@{\tt resetRegions}}
 $$\resetr\; {\it vid}$$
 and \index{forceResetting@$\resetf$}
 $$\resetf\; {\it vid}$$
-For both primitives, the argument has to be a value identifier. To port programs that contain {\tt resetRegions}
+In both cases, the argument has to be a value identifier. 
+To port programs that contain {\tt resetRegions}
 and {\tt forceResetting} to other ML systems, simply declare
 \begin{verbatim}
        fun resetRegions _ = ()
@@ -4046,7 +4103,7 @@ and then previewed using the command \boxml{ghostview region.ps}~.}
 
 \section{Example: Scanning Text Files}
 \label{scan.sec}
-In this section, we present a program that can 
+In this section we present a program that can 
 \index{scan@{\tt scan}}scan a sequence of Standard ML source
 files so as to compute what percentage of the source files is made
 up by comments. Recall that an ML comment begins with the two
@@ -4249,7 +4306,8 @@ where {\it pat} is a pattern and {\it exp} an expression.
 Lambda abstractions denote functions. We refer to the {\it exp} as the
 {\em body} of the function; variable occurrences in {\it pat} are
 binding occurrences; informally, the variables that occur
-in {\it pat} are said to be {\em lambda-bound} with scope {\it exp}.\index{variable!lambda-bound} 
+in {\it pat} are said to be {\em lambda-bound} with scope 
+{\it exp}.\index{variable!lambda-bound} 
 
 Lambda abstractions are represented by closures, both in the language
 definition and in the Kit. In the Kit, a closure for a lambda abstraction
@@ -4288,17 +4346,17 @@ $$\boxml{fun $f$ $\atpat_1\,\atpat_2 \cdots \atpat_n$ = $\exp$}$$
 as a shorthand for 
 $$\boxml{fun $f$ $\atpat_1$ => fn $\atpat_2$ => $\cdots$ fn $\atpat_n$ => $\exp$}$$
 where $\atpat$ ranges over atomic patterns.
-We say that functions declared using this abbreviation are \index{function!Curried}{\em Curried}. 
+Functions declared using this abbreviation are said to be \index{function!Curried}{\em Curried}. 
 
 \section{Region-Annotated Function Types}
 \label{functiontypes.sec}
 The general form of a region-annotated 
-\index{function type!region-annotated}%
-\index{type!region-annotated}function type is
-$$(\tau_1\ar{\epsilon.\rea}\tau_2, \rho)$$
-where $\tau_1$ is the
-region-annotated type of the argument, $\tau_2$ is the
-region-annotated type of the result, and $\rho$ is the region
+\index{function type!region-annotated}\index{type!region-annotated}%
+function type is
+$$(\mu_1\ar{\epsilon.\rea}\mu_2, \rho)$$
+where $\mu_1$ is the
+type and place of the argument, $\mu_2$ is the
+type and place of the result, and $\rho$ is the region
 containing the closure for the function.
 As mentioned in Section~\ref{listtypes.sec}, the unusual looking object
 $\epsilon.\rea$ is called an 
@@ -4408,7 +4466,7 @@ The polymorphism in effects makes it possible to distinguish between
 the latent effects of different actual arguments to {\tt apply}. For
 example, the functions {\tt (fn n => n + 1.0)} and {\tt (fn m => m)}
 have different latent effects. Let us take the function {\tt (fn n =>
-  n + 1.0)} as example. It has region-annotated function type
+  n + 1.0)} as an example. It has region-annotated function type
 \begin{equation}
 \label{suc.lab}
 ((\boxml{real},\rho_{18})\ar{\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\}}(\boxml{real}, \rho_5), \rho_{17})
@@ -4430,8 +4488,7 @@ Formally, a \index{substitution}{\em substitution\/} is a triple
 $(\St,\Sr,\Se)$, where $\St$ is a finite map from type variables to
 region-annotated types, $\Sr$ is a finite map from region variables to
 region variables, and $\Se$ is a finite map from effect variables to
-arrow effects.  We shall not define here what it means to apply a
-substitution to a type, but let us explain why substitutions map
+arrow effects.  Let us explain why substitutions map
 effect variables to arrow effects.  One alternative, one might
 consider, is to let substitutions map effect variables to effect
 variables. But then substitutions would not be able to account for the
@@ -4460,15 +4517,15 @@ variable or a term of the form $\Get(\rho)$ or $\Put(\rho)$, where $\rho$ as usu
 variables. An \index{effect!definition}{\em effect\/} is a finite set of atomic effects.
 
 One can get the Kit to print region-annotated 
-\index{type!region annotated}%
+\index{type!region  annotated}%
 \index{region type scheme!printing of}%
-types of all binding occurrences of value variables.  Also, one can
-choose to have arrow effects included in the printout: Enable the
-flags~~\texttt{print types}~~and~~\texttt{print effects}~~in the
-\texttt{Layout} menu.  Although enabling these flags gives very
-verbose output, it is instructive to look at such a term just once, to
-see how arrow effects are instantiated. We show the full output for
-the {\tt apply} example in Figure~\ref{apply.fig}.
+types of all binding occurrences of value variables.  Also, one can 
+choose to have arrow effects included in the printout by enabling 
+the flags~~\texttt{print types}~~and~~\texttt{print effects}~~in the 
+\texttt{Layout} menu. Although enabling these flags gives very 
+verbose output, it is instructive to look at such a term at least once, to 
+see how arrow effects are instantiated. We show the full output for 
+the {\tt apply} example in Figure~\ref{apply.fig}. 
 
 \begin{figure}
 \hrule \medskip
@@ -4642,7 +4699,7 @@ Figure~\ref{map.fig}.
 \medskip \hrule
 \label{map.fig}
 \end{figure}
-We see that the region that appear free in the region-annotated type of the successor
+We see that the region that appears free in the region-annotated type of the successor
 function (i.e., \boxml{r27}) is allocated prior 
 to the call of {\tt map} and that it stays
 alive throughout the evaluation of the body of {\tt map}. Notice, however, that
@@ -4682,8 +4739,8 @@ the allocation of the pair \boxml{(x,acc)}, for
 the region of the pair is free in the region-annotated type of \boxml{f},
 which is locally live at that point.
 
-The solution is to require that {\tt f} be curried, to avoid the creation of the pair altogether, that is, going to higher order
-rather than lower:\footnote{Program \boxml{kitdemo/fold2.sml}.}
+What if require that {\tt f} be curried, to avoid the creation of the pair 
+altogether?\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{verbatim}
        fun foldl f b xs = 
          let fun loop(p as ([], b))= p
@@ -4692,8 +4749,12 @@ rather than lower:\footnote{Program \boxml{kitdemo/fold2.sml}.}
              #2(loop(xs,b))
          end
 \end{verbatim}
-The region-annotated version of this program appears in Figure~\ref{fold2.fig} on page~\pageref{fold2.fig}.
+The region-annotated version of this program appears in Figure~\ref{fold2.fig} 
+on page~\pageref{fold2.fig}. This saves the allocation of a pair inside loop,
+although the saving is  lost if the the evaluation of {\tt f x} creates a closure.
 
+In short, folding a function over a list may leak two words of memory for each
+list element. 
 \chapter{The Function Call}
 Standard ML allows function applications of the form
 $$\exp_1 \exp_2$$
@@ -5026,7 +5087,8 @@ two closures are being allocated for the duration of the
 recursive call. Thus, space usage is linear in the length 
 of the list (4 words for each list cell, to be precise).
 
-An efficient version of {\tt foldl} is written thus:\footnote{Program \boxml{kitdemo/fold2.sml}.}
+An alternative version of {\tt foldl} assumes that \boxml{f}
+is curried:\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{verbatim}
        fun foldl f b xs = 
          let fun loop(p as ([], b))= p
@@ -5072,9 +5134,8 @@ fun foldl attop r1 [r7:3, r8:3] (f)=
   region.}  \medskip \hrule
 \label{fold2.fig}
 \end{figure}
-There are two reasons why this version of {\tt foldl} is much better
-than the straightforward version. First, the loop is implemented as a
-jump and, more importantly, there is no new allocation in each
+Here the loop is implemented as a
+jump and there is no new allocation in each
 iteration, except, of course, for the allocation that {\tt f} might
 make.\footnote{All the allocations made by the calls to {\tt f} (one
   call for each element of the list) are put in the same regions. If
@@ -5097,11 +5158,11 @@ detect it? If not, the Kit will tell you when you compile the program.
 
 \chapter{Modules and Projects}
 \label{modules_and_projects.chap}
-In Section \ref{tryit.sec}, we described how to compile and run single
-file programs. In this chapter, we describe how to program in the
-large, with the Kit, using Standard ML Modules and the possibility of
+In Section \ref{tryit.sec} we described how to compile and run single
+file programs. In this chapter we describe how to program in the
+large with the Kit, using Standard ML Modules and the possibility of
 organising source files into project files. The Kit fully supports
-Standard ML Modules, and it has a sophisticated system for avoiding
+Standard ML Modules and it has a sophisticated system for avoiding
 unnecessary recompilation. In the following section, we describe the
 notion of projects. We then turn to show how to program 
 with structures, signatures, and functors. To enable the programmer
@@ -5110,26 +5171,33 @@ shall also explain how the Kit compiles Modules language constructs.
 
 
 \section{Projects \label{projects.sec}}
-A project file has extension {\tt .pm}, and in it, one can mention a
-sequence of projects to import and a sequence of source files. Both
-project files and source files may be mentioned using either absolute
-or relative paths (relative paths are relative to the location of the
-project file). Until now, we have seen a few examples of project files
-with no imports (see e.g., Section~\ref{polyrec.sec} for such an
-example). Later, in Section~\ref{functors.sec}, we shall see an
-example of a project that imports other projects; the Kit enforces the
-restriction that projects may not be cyclic. Project files may contain
-Standard ML style comments.
+A \index{project}\index{project file}{\em project file} is a file which lists the SML source files
+that make up a project. A project file can also 
+\index{importing a project}{\em import} other
+project files, so one can organise projects in a hierarchical manner.
+The Kit enforces the restriction that projects may not be cyclic.
 
-Every source file must contain a top-level Standard ML declaration;
+Project files have file extension \index{{\tt .pm}@pm}{\tt .pm}. In a project file, one
+can refer to other project files and source files using  absolute
+or relative \index{path!absolute}\index{path!relative}paths. 
+Relative paths are relative to the location of the
+project file. Until now, we have seen a few examples of project files
+with no imports (see Section~\ref{polyrec.sec} for such an
+example). In Section~\ref{functors.sec}, we present an
+example of a project that imports other projects.  
+
+Project files may contain Standard ML 
+style \index{project file!comment in}\index{comment!in project file}comments.
+
+Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
-mentioned in the project file and all other projects that imports
+mentioned in the project file and all other projects that import
 this project file. Thus, a source file may depend on source files
 mentioned earlier in the project file and on other imported projects.
 The meaning of an entire project is the meaning of the top-level
 declaration that would arise by first expanding all imported projects
 and then concatenating all the source files listed in the project
-file, in the order they are listed, except that, each project is 
+file, in the order they are listed, except that each project is 
 only executed the first time it is imported. 
 
 The Kit has a system for managing compilation and recompilation of
@@ -5141,9 +5209,9 @@ recompiled.\index{recompilation}\index{project}
 \index{source file}%
 Thus, the separate compilation system is a way of avoiding recompiling
 parts of a (possibly) long sequence of declarations, while ensuring
-that the result is always the same as if one had recompiled the entire
-program.  As an example, consider the project file for the text
-scanning example of Section~\ref{scan.sec}:\footnote{Project \boxml{kitdemo/scan.pm}.}
+that the result is always the same as if one had compiled the entire
+program from scratch.  As an example, consider the project file (\boxml{kitdemo/scan.pm}) for the text
+scanning example of Section~\ref{scan.sec}. It contains the following two lines:
 \begin{verbatim}
   lib.sml
   scan.sml
@@ -5151,8 +5219,8 @@ scanning example of Section~\ref{scan.sec}:\footnote{Project \boxml{kitdemo/scan
 
 \noindent 
 The source files for the project are {\tt lib.sml} and and {\tt
-  scan.sml}, which are both located in the directory where the project
-file {\tt scan.pm} is located. Whereas each of the source files {\tt
+  scan.sml}, which are both located in the directory where 
+{\tt scan.pm} is located. Whereas each of the source files {\tt
   lib.sml} and {\tt scan.sml} depends on the Basis Library, the source
 file {\tt scan.sml} also depends on {\tt lib.sml}.
 
@@ -5160,8 +5228,11 @@ The {\tt Project} sub-menu provides the user with operations for
 setting a project file name and for reading and compiling the project
 file.
 
-The system detects automatically---from file modification dates---if a
-source file is modified.  After a project has been successfully
+The Kit automatically detects  when a source file
+has been modified. (It uses file modification dates of the operating
+system for this purpose.) 
+
+After a project has been successfully
 compiled and linked, it can be executed by running the
 command\index{run@{\tt run}}
 \begin{verbatim}
@@ -5181,8 +5252,8 @@ A source file is recompiled if either (1) the user has modified the
 source file or (2) the assumptions under which the source file was
 previously compiled have changed. To avoid unnecessary recompilation,
 assumptions for a source file depend on only the free identifiers.
-Moreover, if a source file has been compiled earlier, the system will
-seek to {\em match\/}\index{matching} the new exported information to
+Moreover, if a source file has been compiled earlier, the Kit 
+seeks to {\em match\/}\index{matching} the new exported information to
 the old exported information by renaming generated names to names
 generated when the source file was first compiled. Matching allows the
 compiler to use fresh names (stamps) for implementing generative data
@@ -5191,21 +5262,24 @@ necessarily recompiled even though source files, on which it depends,
 are modified.\index{recompilation!cut-off}
 
 Let us assume that we modify the source file {\tt lib.sml} of the
-text scanning example.  Selecting {\tt Compile and link project} in
-the {\tt Project} sub-menu will cause {\tt lib.sml} to be recompiled.
-Then, the Kit checks whether the assumptions under which the source
-file {\tt scan.sml} was compiled have changed, and if so, recompiles
+text scanning example.  Selecting {\tt Compile and link project} from
+the {\tt Project} sub-menu  causes {\tt lib.sml} to be recompiled.
+The Kit checks whether the assumptions under which the source
+file {\tt scan.sml} was compiled have changed, and if so, recompiles 
 {\tt scan.sml}.  Modifying only comments or string constants inside
 {\tt lib.sml} or extending its set of declared identifiers does not
-trigger recompilation of {\tt scan.sml}.  However, more information is
-needed to compile a source file than the ML type schemes for its free
-variables. Thus, it might be the case that a source file is
+trigger recompilation of {\tt scan.sml}.  
+
+Some of the information a source file depends on is the ML type
+schemes of its free variables. It also depends on, for example, 
+the region type schemes of its free variables. 
+Thus it can happen that a source file is
 recompiled even though the ML type assumptions for free variables have
 not changed. For instance, the region type scheme for a free variable
-might have changed, even though the underlying ML type scheme has not.
+may have changed, even though the underlying ML type scheme has not.
 
-As an example, consider modifying the function {\tt readWord} in the
-source file {\tt lib.sml} to put its result in a global region. This
+As an example, consider what happens if modify the function {\tt readWord} in the
+source file {\tt lib.sml} so that it puts its result in a global region. This
 will trigger recompilation of the source file {\tt scan.sml}, because
 the assumptions under which it was previously compiled have
 changed. Besides changes in region type schemes, changes in
@@ -5217,10 +5291,12 @@ functions may also trigger recompilation.
 The support for Modules together with the possibility of dividing top-level
 declarations into source files provide a mechanism for
 programming in the large. In the Kit, structures exist only at compile
-time, thus, the memory conscious programmer need not worry where
-structures go at runtime.
+time. 
+Thus the one need not worry where
+structures live at runtime.\index{structure declaration}
 
-Consider the project {\tt set.pm},\footnote{Project
+We illustrate the compile-time nature of structures with the following
+example. Consider the project {\tt set.pm},\footnote{Project
   \boxml{kitdemo/set.pm}.} which mentions the source files {\tt poly\_set.sml} and {\tt int\_set.sml}. The source
   file {\tt poly\_set.sml} contains the following top-level
   declaration:
@@ -5251,8 +5327,9 @@ a structure, using the {\tt open} declaration, no code is generated
 for rebinding the identifiers that become visible.
 
 \section{Signatures}
-Signature declarations are held entirely in the compiler at compile
-time and do not result in any generated code. The source file {\tt
+Signature \index{signature declaration}declarations also exist at compile
+time only in the Kit. In particular, a signature declaration does not
+result in code. The source file {\tt
 int\_set.sml} in the project {\tt set.pm}, discussed earlier, contains
 the signature declaration
 \begin{verbatim}
@@ -5274,7 +5351,8 @@ of the former use of signatures to Section~\ref{functors.sec}.
 Transparent signature constraints may both restrict components from a
 structure and make polymorphic components less polymorphic. Moreover,
 opaque signature constraints may also make type components of
-structures abstract. Consider the structure declarations
+structures abstract. Consider the structure 
+declarations\index{signature constraint!transparent}\index{signature constraint!opaque}
 \begin{verbatim}
 structure IntSet1 : INT_SET = PolySet
 structure IntSet2 :> INT_SET = PolySet
@@ -5291,16 +5369,21 @@ eliminated at compile time (after elaboration) and transformed into
 transparent signature constraints.
 
 \section{Functors \label{functors.sec}}
-Functors are functions from structures to structures. The Kit
-specialises functors for each application. Thus, types that are
-abstract for the programmer becomes visible to the compiler.
-Moreover, region type schemes and other information about identifiers
-are available when the Kit compiles the body of a functor.
+Functors map structures to structures. The Kit
+specialises a functor every time it is applied.
+Thus, types that are
+abstract for the programmer (inside a functor body) become 
+visible to the compiler.
+Region type schemes and other information about identifiers in the
+actual functor argument
+are available when the Kit compiles the functor body.
 
-However, for practical reasons, it is important that functors are not
-simply in-lined. In-lining could cause intermediate representations of
-programs in the Kit to be as large as all sources for the entire
-program.  Further, non-restricted in-lining could lead to unnecessary
+For practical reasons, it is important that not all functor applications
+are expanded at once, since this could 
+cause intermediate representations of
+programs  to become as large as (or even 
+much larger than) the entire
+program. Further, non-restricted in-lining could lead to unnecessary
 recompilation upon modification of source files. Instead, the largest
 structure declarations not containing functor applications are
 compiled into separate chunks of machine object code. Assumptions for
@@ -5438,42 +5521,39 @@ on integers.
 %
 \label{useOfProf.sec}
 We have already seen several examples of the use of the region profiler. We
-shall now explain how to profile in more detail. For example, we shall see
+shall now explain in more detail how to profile programs. For example, we shall see
 how one can find out precisely what allocation points in the program
 contribute to a particular region.
 
 The region profiler consists of several tools which can be used to analyse
 the dynamic memory behaviour of the target program. First of all, there are
 the \emph{profiles}\index{profiles} which are graphs showing the dynamic
-memory usage of the executed program. There are three different graphs:
+memory usage of the executed program. There are three different types of graphs:
 \begin{itemize}
-\item A \emph{region profile} is a graph
-  \index{region profile}%
-  which gives a ``global'' view of the memory usage by showing the
-  total number of words allocated in regions and on the stack as a
-  function of time. In the graph, regions that arise from the same
-  \begin{center}
-    \texttt{letregion} $\rho$ \texttt{in} $e$ \texttt{end}
-  \end{center}
-  expression are collected into one coloured band, labelled $\rho$. The
-  region variables that label bands are always global or letregion-bound,
-  never formal region parameters.
+\item A \emph{region profile} is a graph\index{region profile} which gives
+  a ``global'' view of the memory usage by showing the total number of
+  words allocated in regions and on the stack as a function of time. In the
+  graph, regions that arise from the same
+\begin{center}
+\texttt{letregion} $\rho$ \texttt{in} $e$ \texttt{end}
+\end{center}
+expression are collected into one coloured band, labelled $\rho$. The
+region variables that label bands are always global or letregion-bound,
+never formal region parameters.
 
-\item An \emph{object profile} is a graph
-  \index{object profile}%
-  which gives a ``local'' view into a particular region, as a function
-  of time. The graph shows the objects allocated into a chosen region,
-  with one coloured band for each allocation point in the
-  region-annotated lambda program\footnote{Every occurrence of an
-    ``\texttt{at}'' in the region-annotated lambda program is an
-    allocation point.}.  Each allocation point is annotated with a
-  \emph{program point}
-  \index{program point}%
-  which is a unique number identifying the
-  allocation.\footnote{Program points are unique local to a project,
-    e.g.\ with a project containing two source files, the program
-    points in the region-annotated lambda programs for the two files
-    will be distinct.}
+\item An \emph{object profile} is a graph\index{object profile} which gives
+  a ``local'' view of a single region, as a function of time. The
+  graph shows the objects allocated into a chosen region, with one coloured
+  band for each allocation point in the region-annotated lambda
+  program\footnote{Every occurrence of an ``\texttt{at}'' in the
+    region-annotated lambda program is an allocation point.}.  Each
+  allocation point is annotated with a \emph{program point}\index{program
+    point} which is a unique number identifying the
+  allocation.\footnote{Program points are unique local to a project, e.g.\ 
+    with a project containing two source files, 
+    the program points in the region-annotated lambda
+    programs for the two files will be distinct.}
+
   
   If you have an object profile showing that program point 42
   (written \texttt{pp42}) contributes with a lot of allocations you
@@ -5484,7 +5564,7 @@ memory usage of the executed program. There are three different graphs:
   which shows the stack memory usage, as a function of time.
 \end{itemize}
 
-As described above the region profiler can give you a region-annotated
+The Kit can give you a region-annotated
 lambda program annotated with program points.
   
 During compilation, it is also possible to generate a \emph{region flow
@@ -5610,7 +5690,7 @@ that region, see Figure \ref{scan_rev1_2.fig}.
 \end{figure}
 %\noindent
 The object profile shows that program point \texttt{pp33} produces a lot
-of allocations which are first freed again when the program stops. We now
+of allocations which are first freed when the program stops. We now
 search for \texttt{pp33} in file \texttt{prelude.log} and find:
 
 %\begin{footnotesize}
@@ -5622,7 +5702,7 @@ fun implode attop r1 pp32 [r110:inf] (strs)=
 \noindent
 Formal region variable \texttt{r110} is instantiated with {\tt letregion}-bound
 region variable \texttt{r2797} in a call to function \texttt{implode}. We
-now search after \texttt{r2797} in file \texttt{scan\_rev1.log} and find the
+now search for \texttt{r2797} in file \texttt{scan\_rev1.log} and find the
 following fragment of the region flow graph.
 \begin{eqnarray}
 \texttt{toString}&&\texttt{[r1545:inf]} \nonumber\\
@@ -6595,6 +6675,7 @@ The flags
 \texttt{print regions} control the printing of types and places,
 effects and region allocation points (e.g., $\at\,\rho$).
 All eight combinations of these three flags are possible, but if
+\index{print effects@{\tt print effects}}%
 {\tt print effects} is turned on it is best also to turn the two
 others on so that one can see where the effect variables and region variables
 that appear in arrow effects are bound.
@@ -6642,6 +6723,63 @@ selecting {\tt print all flags and variables} from the {\tt Control}
 sub-menu, the Kit prints a table of all entries that may be set from a
 script file.
 
+Enabling \texttt{print in K-Normal Form}\index{print in K-Normal Form@{\tt print in
+    K-Normal Form}}\index{K-normalisation} causes  expressions to be output
+in K-Normal Form instead of the simplified form in which they are
+normally presented.
+%
+\section{Creating your own Script File}
+\label{scriptmodify.sec}
+%
+If you have built the Kit yourself on an HP or a SUN using
+the distribution accessible from our web site, the Kit has
+already produced a script file for you and you do not have
+to modify it to get started. If somebody else has built
+the Kit locally, they should be able to refer you to a script file which you
+can take as a starting point; the only things you will
+have to change in the script will be the constants
+listed in Section~\ref{paths.sec}. Likewise, if
+you have downloaded an executable Kit from the Kit web site,
+you will have received with it a script file for the architecture
+in question and you only have to modify the constants listed
+in Section~\ref{paths.sec}.
+If you are porting the Kit to a completely 
+different platform, you need to take the script constants 
+listed in Section~\ref{cflags.sec} into account too.
+\subsection{Script constants concerning paths}
+\label{paths.sec}
+Under the header \boxml{(*  File *)} in the script file you should
+find the following constants\index{paths}
+\begin{description}
+\item[{\tt log\_to\_file}] True if log information should be written
+to a file rather than onto the screen.
+\item[{\tt path\_to\_kit\_script}] The full file name of 
+your script file.\index{path to kit script@{\tt path\_to\_kit\_script}}
+\item[{\tt path\_to\_runtime}] The full file name of the non-profiling
+runtime system of the Kit.\index{path to runtime system@{{\tt path\_to\_runtime}}}
+\item[{\tt path\_to\_runtime\_prof}] The full file name of the profiling
+runtime system of the Kit.\index{runtime system}\index{runtime system!path to@}
+\index{path to runtime system@{{\tt path\_to\_runtime\_prof}}}
+\end{description}
+\subsection{Platform-dependent Settings}
+\label{cflags.sec}
+The string constant {\tt target\_file\_extension} is set to
+\boxml{".c"} if you generate C target code and to \boxml{".s"}
+if you generate HP target code.\index{target file extension@{\tt target\_file\_extension}}
+\index{kit architecture@{\tt kit\_architecture}}
+\index{C compiler@{\tt c\_compiler}}
+\index{C!libraries}
+\index{c libs@{\tt c\_libs}}
+
+The following settings
+\begin{verbatim}
+val kit_architecture : string = "HPUX"
+val c_compiler : string = "cc -Aa"
+val c_libs : string = "-lm"
+\end{verbatim}
+may all have to be changed, depending on your platform and
+the C-compiler you use.  See the {\tt readme} and {\tt roadmap} files 
+in the distribution.
 
 \chapter{Calling C Functions}
 \label{ccall.sec}
@@ -7582,6 +7720,15 @@ directory for detailed comments.)
 
 \chapter{Changes from Version 2}
 \index{changes}
+\section{Modules and Separate Compilation}
+The most important development since Version 2 is the
+ability to compile Modules and the discipline of separate 
+compilation. A distinguished feature of the way modules are
+compiled is that module constructs do not give rise to 
+{\em any} code, so there is no runtime overhead in using modules.
+\section{Standard Basis Library}
+The ML Kit now contains (a large portion of) the Standard Basis
+Library, based on the Moscow ML version of the Library.
 \section{More Efficient Representation of Lists}
 \index{list} List constructors are now represented unboxed, that is,
 the least significant bits of a list value is used to distinguish
@@ -7602,6 +7749,8 @@ see exactly what parts of the Basis Library are supported, consult the
 project file {\tt basislib.pm} located in the directory {\tt
   kit/basislib}. 
 
+\bibliographystyle{alpha}
+\bibliography{tofte}
 \index{live variable analysis|see{variable}}
 \index{KAM|see{Kit Abstract Machine}}
 \index{endomorphism|see{region endomorphism}}
