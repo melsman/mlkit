@@ -52,7 +52,8 @@ signature SCS_PERSON =
     | PORTRAIT_ADM
     val getPortraitModeErr   : string * ScsFormVar.errs -> portrait_mode * ScsFormVar.errs
     val portraitModeToString : portrait_mode -> string
-    val portraitFaneside     : portrait_mode -> quot option list -> portrait_mode UcsWidget.faneside option
+    val portraitFaneside     : portrait_mode -> int option -> 
+                               quot option list -> portrait_mode UcsWidget.faneside option
     val portraitFaneblad     : portrait_mode -> portrait_mode UcsWidget.faneside option list -> quot
 
     datatype upload_mode =
@@ -295,6 +296,7 @@ signature SCS_PERSON =
     val fix_email : string -> string
 
     val portrait_adm_nb : string option -> UcsPage.navbar_item
+    val portrait_adm_help : quot
   end
 
 structure ScsPerson :> SCS_PERSON =
@@ -372,14 +374,21 @@ structure ScsPerson :> SCS_PERSON =
 	PORTRAIT_ADM_HELP => "portrait_adm_help"
       | PORTRAIT_ADM => "portrait_adm"
 
-    fun portraitFaneside mode body =
-      case mode of
-        PORTRAIT_ADM =>
-	SOME (UcsDict.portrait_adm_dict, Html.genUrl "/scs/person/portrait_adm_form.sml" 
-	      [("mode", portraitModeToString PORTRAIT_ADM)], PORTRAIT_ADM, body)
-      | PORTRAIT_ADM_HELP => 
-	SOME (UcsDict.portrait_adm_help_dict, Html.genUrl "/scs/person/portrait_adm_form.sml" 
-	      [("mode", portraitModeToString PORTRAIT_ADM)], PORTRAIT_ADM, body)
+    fun portraitFaneside mode person_id_opt body =
+      let
+	val hvs = 
+	  case person_id_opt of
+	    SOME person_id => [("person_id",Int.toString person_id)]
+	  | NONE => []
+      in
+	case mode of
+	  PORTRAIT_ADM =>
+	    SOME (UcsDict.portrait_adm_dict, Html.genUrl "/scs/person/portrait_adm_form.sml" 
+		  (("mode", portraitModeToString PORTRAIT_ADM)::hvs), PORTRAIT_ADM, body)
+	| PORTRAIT_ADM_HELP => 
+	    SOME (UcsDict.portrait_adm_help_dict, Html.genUrl "/scs/person/portrait_adm_form.sml" 
+		  (("mode", portraitModeToString PORTRAIT_ADM_HELP)::hvs), PORTRAIT_ADM_HELP, body)
+      end
 
     local
       fun outerBox top qs =
@@ -1164,4 +1173,118 @@ structure ScsPerson :> SCS_PERSON =
         SOME name => (``, ScsDict.s' UcsDict.portrait_adm_dict ^^ ` for ` ^^
 		      `^name`)
       | NONE	 => (``, ScsDict.s' UcsDict.portrait_adm_dict)
+
+    val portrait_adm_help =
+
+      `<h2>Portrætadministration</h2>
+
+      Der findes både et <i>officielt</i> og et <i>ikke officielt</i>
+      billede. Det officielle billede tages ved studiestart eller ved
+      ansættelse og administreres af ansatte på ITU der har fået
+      tildelt rollen <b>PictureAdm</b> i UCS. <p>
+
+      Det ikke officielle billede uploades af brugerne selv.<p>
+
+      Udover registrering af to billeder registreres <i>synlighed</i>
+      af billedet, dvs. hvorvidt en bruger ønsker at billedet skal
+      vises på Intranettet og Internettet eller om det skal være
+      skjult for alle pånær enkelte med adminstratorrettigheder i
+      UCS.<p>
+
+      Det officielle billede gemmes i henholdsvis den størrelse og
+      kvalitet som det der uploades samt en thumbnail. Den oprindelige
+      størrelse og kvalitet bevares, således at administrationen selv
+      bestemmer kvaliteten. Nogle af de officielle billeder anvendes
+      f.eks. i aviser og andre steder, hvor der kræves en vis
+      kvalitet.<p>
+
+      De ikke officielle billeder gemmes i en større udgave på højst
+      400 pixels i højden og i en thumbnail. Dette sikrer et
+      kontrolleret forbrug af diskplads.<p>
+
+      <h3>Arbejdsgang</h3>
+
+      Følgende opgaver varetages i forbindelse med administration af
+      billeder:
+
+      <ul>
+
+      <li>Studieadministrationen registrerer synlighed for nye
+      studerende. Nye studerende skriver under på hvorvidt deres
+      billede må vises offentligt ved accept af studieplads eller
+      tilmelding til enkeltfag.<p>
+
+      <li>Personaleafdelingen registrerer synlighed for nye
+      ansatte. Ansatte skriver under på hvorvidt deres billede må
+      vises offentligt i forbindelse med deres ansættelseskontrakt.
+
+      <li>Intern Service vedligeholder de officielle billeder for både
+      ansatte og studerende.
+
+      <li>Brugerne uploader selv de ikke officielle billeder.
+
+      </ul>
+
+      <h3>Administrationssiden</h3>
+
+      Brugere med rollen <b>PictureAdm</b> kan tilgå
+      administrationssiden via deres egen hovedside. Linket
+      "Portrætadministration" til siden findes i kassen "Site
+      administration".<p>
+
+      Når administrationssiden åbnes første gang vil der blot være en
+      "søge-boks" hvori man kan søge efter den bruger hvis synlighed
+      eller billeder skal redigeres:<p>
+
+      <img src="/scs/person/images/search.png"><p>
+      
+      <h3>Synlighed</h3>
+
+      På administrationssiden registreres synlighed i kassen med
+      overskriften "Synlighed":<p>
+
+      <img src="/scs/person/images/synlighed.png"><p>
+
+      Vælges "Ja" betyder det at billederne må vises offentligt. Væges
+      "Nej" betyder det at billederne kun vises til brugere med
+      administrationsrettigheder, f.eks. studieadministration.<p>
+
+      Ved at klikke på info-knappen til højre for "Gem" ses hvilke
+      registreringer der er sket på dette felt.<p>
+
+      <h3>Visning af et billede</h3>
+
+      Når et billede vises anvendes følgende prioriteter:
+      
+      <ol>
+      <li> Hvis det ikke officielle billede findes, så vises det.
+      <li> Hvis det officielle billede findes, så vises det.
+      <li> Ellers vises et "tomt" billede med korrektur af en person
+      </ol>
+
+      <h3>Link til billede fra ekstern side</h3>
+
+Systemet anvender det ikke officielle billede hvis det findes, ellers
+anvendes det officielle billede. Hvis der ikke er givet tilladelse til
+at vise et billede eller der ikke findes noget officielt billede, så
+vises et standard anonymt billede. \newline
+
+
+  
+  
+\item Rollen \picadm{} kan uploade officielle og ikke officielle
+  billeder på alle registrerede brugere.
+  
+\item Rollen \alle{} kan uploade ikke officielle billeder af sig selv,
+  som anvendes på nettet. 
+  
+\item Rollen \picadm{} kan gøre et ikke officielt billede til det
+  officielle billede.
+  
+\item Rollen \picadm{} kan for alle brugere markere om de ønsker at
+  billedet anvendes på Internettet eller ikke. Brugerne kan ikke selv
+  angive dette, da det kræver en underskrift.
+
+
+      `
   end
