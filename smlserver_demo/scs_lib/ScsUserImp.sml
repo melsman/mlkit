@@ -153,7 +153,7 @@ structure ScsUserImp :> SCS_USER_IMP =
                          and p.person_id = party.party_id
                          and e.login is not null
                          and ucs_hsas_dw.neqT_null(lower(party.email),
-                                                   lower(concat(e.login,'@it-c.dk'))) = 't'`,
+                                                   lower(concat(e.login,'@itu.dk'))) = 't'`,
 	        rel_to_del_row_chk_sql = SOME
 		  `select p.person_id, pr.on_what_table, pr.on_which_id,
                           '' as e_name,
@@ -170,7 +170,7 @@ structure ScsUserImp :> SCS_USER_IMP =
                       and e.deleted_p = 't'
 		  `,
 		basic_info_sql = fn id => `select '' as name,
-                                                  login || '@it-c.dk' as email,
+                                                  login || '@itu.dk' as email,
                                                   cpr as security_id,
                                                   on_what_table,
                                                   on_which_id,
@@ -564,7 +564,7 @@ structure ScsUserImp :> SCS_USER_IMP =
     val service_name = [(ScsLang.en, `Central Personnel Register`),
 			(ScsLang.da, `Centralt Person Register`)]
 
-    val service_adm_email = "nh@it-c.dk"
+    val service_adm_email = "ucs@itu.dk"
 
     (* ====================================================================== *)
     (* page generation                                                        *)
