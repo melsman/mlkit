@@ -15,6 +15,10 @@ signature SCS_LIST =
        non empty. The functions fn_empty decides whether an element is
        empty. *)
     val allOrNone    : ('a -> bool) -> 'a list -> bool
+
+   (* [contains x xs] retruns true if atleast one x exists in xs;
+       otherwise returns false. *)
+    val contains : ''a -> ''a list -> bool
   end
 
 structure ScsList :> SCS_LIST =
@@ -38,4 +42,6 @@ structure ScsList :> SCS_LIST =
       in
         zip' (xs,ys) 
       end
+
+    fun contains x xs = List.exists (fn y => x = y) xs
   end

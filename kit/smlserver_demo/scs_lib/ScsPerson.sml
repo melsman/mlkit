@@ -3,8 +3,12 @@ signature SCS_PERSON =
     datatype sex = Female | Male
 
     (* [name user_id] returns the name found in the database for user
-       identified by user_id *)
+       identified by user_id. Returns "" if no email exists. *)
     val name : int -> string
+
+    (* [email user_id] returns the email found in the database for user
+       identified by user_id. Returns "" if no email exists. *)
+    val email : int -> string
 
     (* [search_form target_url hvs] generates a standard HTML search
        form. The user enter a search expression (e.g., name, security
@@ -58,6 +62,11 @@ structure ScsPerson :> SCS_PERSON =
       Db.oneField `select scs_person.name(person_id)
                      from scs_persons
                     where scs_persons.person_id = '^(Int.toString user_id)'`
+      handle Fail _ => ""
+
+    fun email user_id =
+      Db.oneField `select scs_party.email(^(Int.toString user_id))
+                     from dual`
       handle Fail _ => ""
 
     fun search_form target_url hvs =
