@@ -67,4 +67,6 @@ signature IDENT =
 
     val reset : unit -> unit   (* resets counter to initial counter. *)
     val commit : unit -> unit  (* sets initial counter to current counter. *)
+
+    val pu : id Pickle.pu
   end;

@@ -48,6 +48,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     fun uncurry f (a,b) = f a b 
 
     fun impossible s = Crash.impossible ("Environments." ^ s)
+    val die = impossible
+
     fun noSome NONE s = impossible s
       | noSome (SOME x) s = x
     fun map_opt f (SOME x) = SOME (f x)
@@ -256,14 +258,149 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     (*the types Context, Env, StrEnv, TyEnv, TyStr, and VarEnv, and
      some layout and report functions for them.*)
 
-    datatype Context = CONTEXT of {U : ExplicitTyVarEnv,
-				   E : Env}
-	 and Env = ENV of {SE : StrEnv, TE : TyEnv, VE : VarEnv}
+    datatype VarEnv = VARENV of (id, range_private) FinMap.map
+    
+    datatype TyStr = TYSTR of {theta : TypeFcn, VE : VarEnv}
+    
+    datatype TyEnv = TYENV of (tycon, TyStr) FinMap.map
+
+    datatype ExplicitTyVarEnv = EXPLICITTYVARENV of (ExplicitTyVar,Type) FinMap.map
+
+    datatype Env = ENV of {SE : StrEnv, TE : TyEnv, VE : VarEnv}
 	 and StrEnv = STRENV of (strid, Env) FinMap.map
-	 and TyEnv = TYENV of (tycon, TyStr) FinMap.map
-	 and TyStr = TYSTR of {theta : TypeFcn, VE : VarEnv}
-	 and VarEnv = VARENV of (id, range_private) FinMap.map
-	 and ExplicitTyVarEnv = EXPLICITTYVARENV of (ExplicitTyVar,Type) FinMap.map
+
+    datatype Context = CONTEXT of {U : ExplicitTyVarEnv, E : Env}
+
+    (* Picklers *)
+    val pu_ConArg = 
+	let open Pickle
+	in pairGen(TypeScheme.pu, listGen Ident.pu)
+	end
+
+    val pu_range_private =
+	let open Pickle
+	    fun toInt (LONGVARpriv _) = 0
+	      | toInt (LONGCONpriv _) = 1
+	      | toInt (LONGEXCONpriv _) = 2
+	    fun eq (LONGVARpriv s1, LONGVARpriv s2) = #4 TypeScheme.pu (s1,s2)
+	      | eq (LONGCONpriv c1, LONGCONpriv c2) = #4 pu_ConArg (c1,c2)
+	      | eq (LONGEXCONpriv t1, LONGEXCONpriv t2) = #4 Type.pu (t1,t2)
+	      | eq _ = false
+
+	    fun fun_LONGVARpriv _ = 
+		(fn LONGVARpriv s => pickler TypeScheme.pu s
+	          | _ => die "pu_range_private.LONGVARpriv.pickler",
+		 fn supe =>
+		 let val (s,supe) = unpickler TypeScheme.pu supe
+		 in (LONGVARpriv s, supe)
+		 end,
+		 fn LONGVARpriv s => hasher TypeScheme.pu s
+		  | _ => die "pu_range_private.LONGVARpriv.hasher",
+		 eq)
+
+	    fun fun_LONGCONpriv _ = 
+		(fn LONGCONpriv c => pickler pu_ConArg c
+	          | _ => die "pu_range_private.LONGCONpriv.pickler",
+		 fn supe =>
+		 let val (c,supe) = unpickler pu_ConArg supe
+		 in (LONGCONpriv c, supe)
+		 end,
+		 fn LONGCONpriv c => hasher pu_ConArg c
+		  | _ => die "pu_range_private.LONGCONpriv.hasher",
+		 eq)
+
+	    fun fun_LONGEXCONpriv _ = 
+		(fn LONGEXCONpriv t => pickler Type.pu t
+	          | _ => die "pu_range_private.LONGEXCONpriv.pickler",
+		 fn supe =>
+		 let val (t,supe) = unpickler Type.pu supe
+		 in (LONGEXCONpriv t, supe)
+		 end,
+		 fn LONGEXCONpriv t => hasher Type.pu t
+		  | _ => die "pu_range_private.LONGEXCONpriv.hasher",
+		 eq)
+
+	in dataGen (toInt, eq, [fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
+	end
+
+    val pu_VarEnv : VarEnv Pickle.pu =
+	let open Pickle
+	in Pickle.convert (VARENV, fn VARENV s => s) 
+	    (FinMap.pu (Ident.pu,pu_range_private))
+	end
+
+    val pu_TyStr : TyStr Pickle.pu =
+	let open Pickle 
+	    fun to (tf,ve) = TYSTR{theta=tf,VE=ve}
+	    fun from (TYSTR{theta,VE}) = (theta,VE)
+	in convert (to,from)
+	    (pairGen(TypeFcn.pu,pu_VarEnv))
+	end
+
+    val pu_TyEnv : TyEnv Pickle.pu =
+	let open Pickle
+	in Pickle.convert (TYENV, fn TYENV s => s) 
+	    (FinMap.pu (TyCon.pu,pu_TyStr))
+	end
+
+    val pu_ExplicitTyVarEnv : ExplicitTyVarEnv Pickle.pu =
+	let open Pickle
+	in Pickle.convert (EXPLICITTYVARENV, fn EXPLICITTYVARENV s => s) 
+	    (FinMap.pu (DecGrammar.TyVar.pu,Type.pu))
+	end
+
+    val (pu_Env, pu_StrEnv) =
+	let open Pickle
+	    fun EnvToInt (ENV _) = 0
+	    fun StrEnvToInt (STRENV _) = 0
+	    fun EnvEq (ENV {SE,TE,VE}, ENV {SE=SE2,TE=TE2,VE=VE2}) = 
+		StrEnvEq (SE,SE2) andalso #4 pu_TyEnv(TE,TE2)
+		andalso #4 pu_VarEnv (VE,VE2)
+	    and StrEnvEq (STRENV m1, STRENV m2) = 
+		FinMap.Fold (fn ((d,r1),b) => b andalso
+			     case FinMap.lookup m2 d of
+				 SOME r2 => EnvEq(r1,r2)
+			       | NONE => false) true m1
+	    fun fun_ENV (pu_Env, pu_StrEnv) =
+		(fn ENV {SE,TE,VE} => fn spe =>
+		 let val spe = pickler pu_StrEnv SE spe
+		     val spe = pickler pu_TyEnv TE spe
+		 in pickler pu_VarEnv VE spe
+		 end,
+		 fn supe =>
+		 let val (SE,supe) = unpickler pu_StrEnv supe
+		     val (TE,supe) = unpickler pu_TyEnv supe
+		     val (VE,supe) = unpickler pu_VarEnv supe
+		 in (ENV{SE=SE,TE=TE,VE=VE}, supe)
+		 end,
+		 fn ENV {SE,TE,VE} =>
+		 hashCombine(hasher pu_StrEnv SE,
+			     hashCombine(hasher pu_TyEnv TE,
+					 hasher pu_VarEnv VE)),
+		 EnvEq)
+
+	    fun fun_STRENV (pu_Env, pu_StrEnv) =
+		let val pu_strenv = FinMap.pu(StrId.pu,pu_Env)
+		in
+		    (fn STRENV m => pickler pu_strenv m,
+		     fn supe => let val (m, supe) = unpickler pu_strenv supe
+				in (STRENV m, supe)
+				end,
+		     fn STRENV m => hasher pu_strenv m,
+		     StrEnvEq)
+		end
+		 
+	in data2Gen (EnvToInt,EnvEq,[fun_ENV],
+		     StrEnvToInt,StrEnvEq,[fun_STRENV])
+	end
+
+    val pu_Context =
+	let open Pickle
+	    fun to (U,E) = CONTEXT{U=U,E=E}
+	    fun from (CONTEXT{U,E}) = (U,E)
+	in convert (to,from)
+	    (pairGen(pu_ExplicitTyVarEnv, pu_Env))
+	end
 
     fun layoutSE (STRENV m) = 
       FinMap.layoutMap {start="", finish="",sep=", ", eq=" : "} 
@@ -598,6 +735,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		  if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
 		  else ids) [] VE
 
+      val pu = pu_VarEnv
     end (*VE*)
 
 
@@ -628,6 +766,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  (match_theta(theta,theta0);
 	   VE.match(VE,VE0))
       end
+
+      val pu = pu_TyStr
     end (*TyStr*)
 
 
@@ -785,6 +925,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		     map
       end (*local*)
       val layout = layoutTE
+
+      val pu = pu_TyEnv
     end (*TE*)
 
 
@@ -827,6 +969,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	      TyName.Set.union (tynames SE)
 		(TyName.Set.union (VE.tynames VE) (TE.tynames TE))
       val layout = layoutSE
+
+      val pu = pu_StrEnv
     end (*SE*)
 
 
@@ -1303,6 +1447,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () => (case SE.lookup SE0 strid 
 								  of SOME E0 => match (E,E0)
 								   | NONE => ())) () SE
+      val pu = pu_Env
     end (*E*)
 
 
@@ -1476,6 +1621,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  VARENV m
 	end (*let*) handle BoundTwice VE => VE
       end (*local exception BoundTwice*)
+
+      val pu = pu_Context
     end (*C*)
   
   

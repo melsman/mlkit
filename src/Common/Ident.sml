@@ -103,4 +103,7 @@ functor Ident(structure StrId: STRID
     end
 
     fun idToLongId id = LONGID(nil, id)
+
+    val pu = Pickle.convert (ID, fn ID s => s) Pickle.string
+
   end;

@@ -56,6 +56,16 @@ functor Lvars(structure Name : NAME
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted
 
+    val pu =
+	let open Pickle
+	    fun to ((n,s,f),(i,u)) : lvar = 
+		{name=n, str=s, free=f, inserted=i, use=u}
+	    fun from ({name=n, str=s, free=f, inserted=i, use=u} : lvar) = ((n,s,f),(i,u))
+	in convert (to,from)
+	    (pairGen(tup3Gen(Name.pu,string,ref0Gen bool),
+		     pairGen(ref0Gen bool,ref0Gen int)))
+	end
+
     structure QD : QUASI_DOM =
       struct
 	type dom = lvar

@@ -7,6 +7,7 @@ functor KitBarry
 
 is
 
+Pickle/pickle.cm
 Common/common.cm
 Compiler/compiler.cm
 

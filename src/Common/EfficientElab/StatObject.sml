@@ -98,9 +98,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
         NO_TY_LINK of TyVarDesc        (* type variable *)
       | TY_LINK of Type                (* type variable linked to type *)
 
-    and overloaded = Overloaded of TyName.Set.Set
-                   | Nonoverloaded
-
     and RecType = 
         NILrec
       | VARrec of {RowVar : RowVar, level : level ref}    (* a rowvar has a level *)
@@ -118,11 +115,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    equality : bool,  (* Does the tyvar admit equality *)
 	    rank: rank ref,   (* The rank field contains an updatable rank for the 
 			       * type variable. See TYNAME for further comments. *)
-	    overloaded : overloaded, (* The overloaded field contains a list of type names that 
-				      * the overloaded tyvar may be instantiated to, for instance 
-				      * [Type.Real, Type.Int, Type.Word] if the overloaded 
-				      * tyvar stands for a socalled num (e.g., in the type 
-				      * scheme for `+'). *)
+	    overloaded : TyName.Set.Set option, 
+                              (* The overloaded field contains a list of type names that 
+			       * the overloaded tyvar may be instantiated to, for instance 
+			       * [Type.Real, Type.Int, Type.Word] if the overloaded 
+			       * tyvar stands for a socalled num (e.g., in the type 
+			       * scheme for `+'). *)
 	    explicit : ExplicitTyVar option,  (* Does the tyvar stem from an explicit tyvar; explicit
 					       * tyvars may not be unified with other types. *)
 	    inst :  {TypeDesc : TypeDesc, level : level ref} option ref}
@@ -173,6 +171,220 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     fun newTVNames () = NAMES (ref [])
 
 
+    (* Normalization of Type, RecType, etc.; after normalization, we can assume:
+     *    TyVarDesc:
+     *       (1) inst field is ref(NONE)
+     *    TyLink:
+     *       (1) TY_LINK variants do not occur
+     *    RecType:
+     *       (1) VARrec do not occur
+     *    RecLink:
+     *       (1) Does not occur
+     *    RowVar:
+     *       (1) Does not occur
+     *)
+	
+    fun norm_Type ty =
+	let val {TypeDesc,level} = findType ty
+	    val TypeDesc = 
+		case TypeDesc of
+		    TYVAR (ref (NO_TY_LINK tvd)) =>
+			(case #inst tvd of
+			     ref (SOME _) => die "norm_Type.TYVAR"
+			   | _ => TypeDesc)
+		  | TYVAR _ => die "norm_Type.TYVAR2"
+		  | ARROW(t1,t2) => ARROW(norm_Type t1, norm_Type t2)
+		  | RECTYPE rt => RECTYPE(norm_RecType rt)
+		  | CONSTYPE(ts,tn) => CONSTYPE(map norm_Type ts,tn)
+	in {TypeDesc=TypeDesc,level=level}
+	end
+
+    and norm_RecType rt =
+	case findRecType rt of
+	    NILrec => rt
+	  | VARrec _ => die "norm_RecType.uninstantiated rowvar"
+	  | ROWrec (l,t,rt) => ROWrec(l,norm_Type t, norm_RecType rt)
+
+    (* Pickling *)
+    val pu_TyVarDesc =
+	let open Pickle
+	    fun to ((id,e,r),ov,ex) : TyVarDesc = 
+		{id=id, equality=e,rank=r,overloaded=ov,explicit=ex,inst=ref NONE}
+	    fun from {id=id, equality=e,rank=r,overloaded=ov,explicit=ex,inst} =
+		((id,e,r),ov,ex)
+	in convert (to,from) 
+	    (tup3Gen(tup3Gen(int,
+			     bool,
+			     ref0Gen TyName.Rank.pu),
+		     optionGen (TyName.Set.pu TyName.pu),
+		     optionGen ExplicitTyVar.pu))
+	end
+
+    val pu_TyVar : TyVar Pickle.pu =
+	let open Pickle
+	in 
+	    (fn ref (NO_TY_LINK tvd) => pickler pu_TyVarDesc tvd
+	      | _ => die "pu_TyVar.pickler",
+	     fn supe => let val (tvd,supe) = unpickler pu_TyVarDesc supe
+			in (ref(NO_TY_LINK tvd), supe)
+			end,
+	     fn ref (NO_TY_LINK tvd) => hasher pu_TyVarDesc tvd
+	      | _ => die "pu_TyVar.hasher",
+	     op =)
+	end
+
+    val pu_Type : TypeDesc Pickle.pu -> Type Pickle.pu =
+	let open Pickle
+	    fun to (td,l) = {TypeDesc=td,level=l}
+	    fun from {TypeDesc=td,level=l} = (td,l)
+	in cache (fn pu_td => convert (to,from) (pairGen(pu_td,ref0Gen int)))
+	end
+
+    val pu_Types : TypeDesc Pickle.pu -> Type list Pickle.pu =
+	Pickle.cache (fn pu_td => Pickle.listGen (pu_Type pu_td))
+	
+    val (pu_TypeDesc, pu_RecType) =
+	let open Pickle
+	    fun TypeDescToInt (TYVAR _) = 0
+	      | TypeDescToInt (ARROW _) = 1
+	      | TypeDescToInt (RECTYPE _) = 2
+	      | TypeDescToInt (CONSTYPE _) = 3
+	    fun RecTypeToInt (NILrec) = 0
+	      | RecTypeToInt (ROWrec _) = 1
+	      | RecTypeToInt (VARrec _) = die "RecTypeToInt"
+	    fun TypeDescEq (TYVAR (ref tv1), TYVAR (ref tv2)) = TyVarEq(tv1,tv2)
+	      | TypeDescEq (ARROW(t1,t2), ARROW(t1',t2')) =
+		TypeEq(t1,t1') andalso TypeEq(t2,t2')
+	      | TypeDescEq (RECTYPE rt1, RECTYPE rt2) = RecTypeEq(rt1,rt2)
+	      | TypeDescEq (CONSTYPE(ts1,tn1),CONSTYPE(ts2,tn2)) = 
+		TyName.eq(tn1,tn2) andalso TypesEq(ts1,ts2)
+	      | TypeDescEq _ = false
+	    and RecTypeEq (NILrec,NILrec) = true
+	      | RecTypeEq (ROWrec(l1,t1,rt1), ROWrec(l2,t2,rt2)) =
+		l1=l2 andalso TypeEq(t1,t2) andalso RecTypeEq(rt1,rt2)
+	      | RecTypeEq (VARrec _, _) = die "RecTypeEq1"
+	      | RecTypeEq (_, VARrec _) = die "RecTypeEq2"
+	      | RecTypeEq _ = false
+	    and TyVarEq (NO_TY_LINK d1, NO_TY_LINK d2) = 
+		#id d1 = #id d2 andalso #equality d1 = #equality d2
+		andalso #rank d1 = #rank d2
+		andalso (case (#overloaded d1, #overloaded d2) of
+			     (SOME s1, SOME s2) => TyName.Set.eq s1 s2
+			   | (NONE, NONE) => true
+			   | _ => false)
+		andalso #explicit d1 = #explicit d2
+		andalso (case (!(#inst d1), !(#inst d2)) of
+			     (NONE,NONE) => true
+			   | _ => die "TyVarEq1")
+	      | TyVarEq _ = die "TyVarEq2"
+	    and TypeEq (t1,t2) = #level t1 = #level t2 
+		andalso TypeDescEq(#TypeDesc t1, #TypeDesc t2)
+	    and TypesEq (t1::ts1,t2::ts2) = TypesEq(ts1,ts2) andalso TypeEq(t1,t2)
+	      | TypesEq (nil, nil) = true
+	      | TypesEq _ = false
+
+	    fun TypeDescTYVAR (pu_TypeDesc,pu_RecType) =
+		(fn TYVAR tv => pickler pu_TyVar tv 
+	          | _ => die "TypeDescTYVAR.pickler",
+		 fn supe => let val (tv,supe) = unpickler pu_TyVar supe
+			    in (TYVAR tv, supe)
+			    end,
+		 fn TYVAR tv => hasher pu_TyVar tv
+		  | _ => die "TypeDescTYVAR.hasher",
+		 TypeDescEq)
+
+	    fun TypeDescARROW (pu_TypeDesc,pu_RecType) =
+		(fn td => fn spe =>
+		 case td of
+		     ARROW (t1,t2) => 
+			 let val pu_Type = pu_Type pu_TypeDesc
+			     val spe = pickler pu_Type t1 spe
+			 in pickler pu_Type t2 spe
+			 end
+		   | _ => die "TypeDescARROW.pickler",
+		 fn supe => let val pu_Type = pu_Type pu_TypeDesc
+				val (t1,supe) = unpickler pu_Type supe
+				val (t2,supe) = unpickler pu_Type supe				    
+			    in (ARROW(t1,t2), supe)
+			    end,
+		 fn ARROW(t1,t2) => 
+		 let val h_Type = hasher (pu_Type pu_TypeDesc)
+		 in hashCombine (h_Type t1, h_Type t2)
+		 end
+		  | _ => die "TypeDescARROW.hasher",
+		 TypeDescEq)
+
+	    fun TypeDescRECTYPE  (pu_TypeDesc,pu_RecType) =
+		(fn RECTYPE rt => pickler pu_RecType rt
+	          | _ => die "TypeDescRECTYPE.pickler",
+		 fn supe => let val (rt,supe) = unpickler pu_RecType supe
+			    in (RECTYPE rt, supe)
+			    end,
+		 fn RECTYPE rt => hasher pu_RecType rt
+		  | _ => die "TypeDescRECTYPE.hasher",
+		 TypeDescEq)
+
+	    fun TypeDescCONSTYPE (pu_TypeDesc,pu_RecType) =
+		(fn td => fn spe =>
+		 case td of
+		     CONSTYPE (ts,tn) => 
+			 let val pu_Types = pu_Types pu_TypeDesc
+			     val spe = pickler pu_Types ts spe
+			 in pickler TyName.pu tn spe
+			 end
+		   | _ => die "TypeDescCONSTYPE.pickler",
+		 fn supe => let val pu_Types = pu_Types pu_TypeDesc
+				val (ts,supe) = unpickler pu_Types supe
+				val (tn,supe) = unpickler TyName.pu supe				    
+			    in (CONSTYPE(ts,tn), supe)
+			    end,
+		 fn CONSTYPE(ts,tn) => 
+		 let val h_Types = hasher (pu_Types pu_TypeDesc)
+		 in hashCombine (h_Types ts, hasher TyName.pu tn)
+		 end
+		  | _ => die "TypeDescCONSTYPE.hasher",
+		 TypeDescEq)
+
+	    fun RecTypeNILrec (pu_TypeDesc,pu_RecType) =
+		(fn rt => fn spe => spe,
+		 fn supe => (NILrec, supe),
+		 fn rt => fn d => 0w0,
+		 RecTypeEq)
+
+	    fun RecTypeROWrec (pu_TypeDesc,pu_RecType) =
+		(fn rt => fn spe =>
+		 case rt of
+		     ROWrec (l,t,rt) => 
+			 let val pu_Type = pu_Type pu_TypeDesc
+			     val spe = pickler Lab.pu l spe
+			     val spe = pickler pu_Type t spe			     
+			 in pickler pu_RecType rt spe
+			 end
+		   | _ => die "RecTypeROWrec.pickler",
+		 fn supe => let val pu_Type = pu_Type pu_TypeDesc
+				val (l,supe) = unpickler Lab.pu supe
+				val (t,supe) = unpickler pu_Type supe				    
+				val (rt,supe) = unpickler pu_RecType supe				    
+			    in (ROWrec(l,t,rt), supe)
+			    end,
+		 fn ROWrec(l,t,rt) => 
+		 let val h_Type = hasher (pu_Type pu_TypeDesc)
+		 in hashCombine (hasher Lab.pu l,
+				 hashCombine (h_Type t, hasher pu_RecType rt))
+		 end
+		  | _ => die "RecTypeROWrec.hasher",
+		 RecTypeEq)
+
+	    val TypeDescFuns = 
+		[TypeDescTYVAR, TypeDescARROW, TypeDescRECTYPE, TypeDescCONSTYPE]
+	    val RecTypeFuns = [RecTypeNILrec, RecTypeROWrec]
+
+	in data2Gen(TypeDescToInt,TypeDescEq,TypeDescFuns,
+		    RecTypeToInt,RecTypeEq,RecTypeFuns)
+	end
+
+    val pu_Type = pu_Type pu_TypeDesc
+
     structure TyVar = 
       struct
 
@@ -203,11 +415,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun get_overloaded (ref (NO_TY_LINK tvd)) = #overloaded tvd
 	  | get_overloaded (ref (TY_LINK _)) = die "TyVar.get_overloaded"
 
-	fun resolve_overloaded (ref (NO_TY_LINK {overloaded=Overloaded ts,...})) = ts
+	fun resolve_overloaded (ref (NO_TY_LINK {overloaded=SOME ts,...})) = ts
 	  | resolve_overloaded _ = die "resolve_overloaded"
 
-	fun is_overloaded0 (Overloaded _) = true
-	  | is_overloaded0 Nonoverloaded = false
+	fun is_overloaded0 (SOME _) = true
+	  | is_overloaded0 NONE = false
 	fun is_overloaded tv = (is_overloaded0 o get_overloaded) tv
 
 
@@ -239,14 +451,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 				   overloaded = overloaded,
 				   explicit = explicit,
 				   inst = ref NONE})
-	  fun fresh_normal () = fresh0 {equality=false, overloaded=Nonoverloaded, explicit=NONE}
+	  fun fresh_normal () = fresh0 {equality=false, overloaded=NONE, explicit=NONE}
 	  fun fresh_overloaded tynames =
 	    fresh0 {equality=false,
-		    overloaded=Overloaded (TyName.Set.fromList tynames),
+		    overloaded=SOME (TyName.Set.fromList tynames),
 		    explicit=NONE}
 
 	  fun from_ExplicitTyVar extv = fresh0 {equality=ExplicitTyVar.isEquality extv, 
-						overloaded=Nonoverloaded, explicit=SOME extv}
+						overloaded=NONE, explicit=SOME extv}
 	end
 
       (* Make fresh type variables for bound type variables; this
@@ -318,7 +530,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	in "(" ^ pr_l l ^ ")"
 	end
 
-
+      val pu = pu_TyVar
     end (*TyVar*)
 
 
@@ -685,6 +897,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			   (BasisCompat.ListPair.zipEq (dom,range))
 	  end handle BasisCompat.ListPair.UnequalLengths => die "RecType.sort"
 
+	val pu = pu_RecType
+
       end (*RecType*)
 
       (* Find free and bound type variables; We should use an accumulator
@@ -1029,15 +1243,15 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	  case #TypeDesc (findType tau) 
 	    of TYVAR (ref (NO_TY_LINK {explicit=SOME _,...})) => 
 	      raise Unify "unify_with_overloaded_tyvar: explicit tyvar"
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=Nonoverloaded, 
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=NONE, 
 					      rank, inst, ...}))) =>
 	      let val tvd = {equality = equality, id = id, rank = rank, 
-			     overloaded=Overloaded tynames1, explicit = NONE, inst = inst}
+			     overloaded=SOME tynames1, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=Overloaded tynames2, 
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=SOME tynames2, 
 					      rank, inst, ...}))) =>
-	      let val overloaded = Overloaded (TyName.Set.intersect tynames1 tynames2)
+	      let val overloaded = SOME (TyName.Set.intersect tynames1 tynames2)
 		  val tvd = {equality = equality, id = id, rank = rank, 
 			     overloaded = overloaded, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
@@ -1062,9 +1276,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      else Substitution.Id
 
 	    val S' = case overloaded 
-		       of Overloaded tynames =>
+		       of SOME tynames =>
 			 unify_with_overloaded_tyvar tynames (Substitution.on (S, tau))
-			| Nonoverloaded => Substitution.Id
+			| NONE => Substitution.Id
 	  in
 	    if ListUtils.member tv restricted_tyvars then raise Unify "unify_with_tyvar.2"
 	    else tv := TY_LINK tau
@@ -1275,6 +1489,15 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	val match = match_Type
       end (*local*)
 
+      val pu : Type Pickle.pu =
+	  let open Pickle
+	  in
+	      (pickler pu_Type o norm_Type,
+	       unpickler pu_Type,
+	       hasher pu_Type o norm_Type,
+	       fn (t1,t2) => #4 pu_Type (norm_Type t1, norm_Type t2))
+	  end
+
     end (*Type*)
 
 
@@ -1454,6 +1677,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       (* Matching for the recompilation manager *)
 
       fun match((_,tau1),(_,tau2)) : unit = Type.match(tau1,tau2)
+
+      val pu =
+	  let open Pickle
+	  in pairGen(listGen TyVar.pu,Type.pu)
+	  end
     
     end (*TypeScheme*)
 
@@ -1536,6 +1764,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun pretty_string' names theta = #body (pretty_string names theta)
 	  
 	fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
+
+	val pu =
+	    let open Pickle
+		fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
+		fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
+	    in convert (to,from) TypeScheme.pu
+	    end
 
     end (*TypeFcn*)
 
@@ -1753,6 +1988,45 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      | convert (TYNAME t) = TypeFcn.from_TyName t
 	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
 	end
+
+      val pu_TypeFcn' =
+	  let open Pickle
+	      fun toInt (TYNAME _) = 0
+		| toInt (EXPANDED _) = 1
+	      fun eq (TYNAME tn, TYNAME tn2) = #4 TyName.pu (tn,tn2)
+		| eq (EXPANDED tf, EXPANDED tf2) = #4 TypeFcn.pu (tf,tf2)
+		| eq _ = false
+	      fun fun_TYNAME _ =
+		  (fn TYNAME tn => pickler TyName.pu tn
+		    | _ => die "fun_TYNAME.pickler",
+		   fn supe =>
+		   let val (tn,supe) = unpickler TyName.pu supe
+		   in (TYNAME tn,supe)
+		   end,
+		   fn TYNAME tn => hasher TyName.pu tn
+		    | _ => die "fun_TYNAME.hasher",
+		   eq)
+	      fun fun_EXPANDED _ =
+		  (fn EXPANDED tf => pickler TypeFcn.pu tf
+		    | _ => die "fun_EXPANDED.pickler",
+		   fn supe =>
+		   let val (tf,supe) = unpickler TypeFcn.pu supe
+		   in (EXPANDED tf,supe)
+		   end,
+		   fn EXPANDED tf => hasher TypeFcn.pu tf
+		    | _ => die "fun_EXPANDED.hasher",
+		   eq)
+	  in dataGen(toInt,eq,[fun_TYNAME,fun_EXPANDED])
+	  end
+      val pu = 
+	  let open Pickle 
+	      fun to (SOME e) = Not_Id e
+		| to NONE = Realisation_Id
+	      fun from (Not_Id e) = SOME e
+		| from Realisation_Id = NONE
+	  in convert (to,from)
+	      (optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
+	  end
 	
     end (*Realisation*)
 
@@ -1770,7 +2044,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val sigma2 = 
 	let
 	  val tv = ref (NO_TY_LINK {id= 1, equality = false, rank=dummy_rank_ref,
-					  overloaded = Nonoverloaded, explicit=NONE, inst=ref NONE})
+					  overloaded = NONE, explicit=NONE, inst=ref NONE})
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val r =   {TypeDesc = 
@@ -1818,7 +2092,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val sigma2 = 
 	let
 	  val tv = ref (NO_TY_LINK({id= 1, equality = false, rank=dummy_rank_ref,
-					  overloaded = Nonoverloaded, explicit=NONE, inst = ref NONE}))
+					  overloaded = NONE, explicit=NONE, inst = ref NONE}))
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val r =   {TypeDesc = 

@@ -20,7 +20,7 @@ functor TyName(
     fun die s = Crash.impossible ("TyName." ^ s)
     val tag_values = Flags.is_on0 "tag_values"
 
-    (* Type names are based on names which may be `matched'. In
+    (* Type names are based on names, which may be `matched'. In
      * particular, if two type names, n1 and n2, are successfully
      * matched, eq(n1,n2) = true. This may affect the canonical
      * ordering of type names. *)
@@ -56,6 +56,8 @@ functor TyName(
 	  val op <= : rank * rank -> bool = op <=
 
 	  fun from_TyName({rank=ref rank,...}:TyName) = rank
+	      
+	  val pu = Pickle.int
 	end
       end
 			  
@@ -153,6 +155,18 @@ functor TyName(
 	if unboxed tn then 
 	  die ("setUnboxed.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
 	else #unboxed tn := true
+
+      val pu = 
+	  let open Pickle
+	      fun to ((t,n,a),(r,e,u)) : TyName = 
+		  {tycon=t, name=n, arity=a, rank=r,
+		   equality=e, unboxed=u}
+	      fun from ({tycon=t, name=n, arity=a, rank=r,
+			 equality=e, unboxed=u} : TyName) = ((t,n,a),(r,e,u))	    
+	  in convert (to,from)
+	      (pairGen(tup3Gen(TyCon.pu,Name.pu,int),
+		       tup3Gen(ref0Gen int,bool,ref0Gen bool)))
+	  end
 
     structure QD : QUASI_DOM =
       struct

@@ -1,6 +1,5 @@
-(* Type variables - Definition v3 page ?? *)
+(* Explicit type variables *)
 
-(*$TyVar: CRASH TYVAR*)
 functor TyVar(structure Crash: CRASH): TYVAR =
   struct
     datatype SyntaxTyVar = TYVAR of string
@@ -11,4 +10,8 @@ functor TyVar(structure Crash: CRASH): TYVAR =
     fun isEquality (TYVAR s) = (case explode s of
 				  #"'" :: #"'" :: ss => true
 				| _ => false)
-  end;
+
+    val pu = 
+	Pickle.convert (TYVAR, fn TYVAR s => s) 
+	Pickle.string
+  end

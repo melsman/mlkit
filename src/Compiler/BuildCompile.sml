@@ -126,7 +126,8 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 							 fun lt (a:T) b = LambdaExp.lt_tyvar(a,b)
 						  end
 				structure PP = PP
-				structure Report = Report))
+				structure Report = Report
+				structure Crash = Crash))
 
     structure Stack = Stack()
 
@@ -237,7 +238,8 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
                     fun lt(a: T) b = Effect.lt_eps_or_rho(a,b)
                   end
                   structure PP =PP
-                  structure Report = Report)
+                  structure Report = Report
+		  structure Crash = Crash)
 
 
    structure HashTable = HashTable(structure PP = PP)
@@ -320,6 +322,7 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 		     type edgeInfo = unit
 		     val lt = fn a => fn b => Lvars.lt(a,b)
 		     fun getId lv = lv
+		     val pu = Lvars.pu
 		   end
 		 structure PP = PP
 		 structure Flags = Flags

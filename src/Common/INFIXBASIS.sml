@@ -1,4 +1,3 @@
-(*$INFIX_BASIS*)
 signature INFIX_BASIS =
   sig
     type id
@@ -19,4 +18,6 @@ signature INFIX_BASIS =
 
     type StringTree
     val layoutBasis: Basis -> StringTree
-  end;
+
+    val pu : Basis Pickle.pu
+  end

@@ -261,7 +261,8 @@ functor Basics(structure Tools: TOOLS): BASICS =
       (structure Ident = Ident
        structure FinMap = Tools.FinMap
        structure Report = Tools.Report
-       structure PP = Tools.PrettyPrint)
+       structure PP = Tools.PrettyPrint
+       structure Crash = Tools.Crash)
 
     structure SigId = SigId()
           and FunId = FunId()
@@ -587,7 +588,8 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 							fun lt (a,f,bs) (a',f',bs') = Basics.ModuleEnvironments.lt_absprjid(a,a')
 							  orelse (a = a' andalso (Basics.FunId.< (f,f') orelse
 										  f = f' andalso bs_lt (bs,bs')))
-						      end)
+						      end
+				    structure Crash = Tools.Crash)
 
 	  val prof_p : unit->bool = Basics.Tools.Flags.is_on0 "region_profiling"
 	  val gc_p : unit->bool = Basics.Tools.Flags.is_on0 "garbage_collection"
@@ -614,6 +616,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 	  fun restrict _ = die "restrict"
 	  fun layoutMap _ = die "layoutMap"
 	  fun reportMap _ = die "reportMap"
+	  fun pu _ _ = die "pu"
 	end
 
       structure ElabRepository = ElabRepository(structure Name = Basics.Name

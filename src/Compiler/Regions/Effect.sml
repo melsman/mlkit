@@ -810,6 +810,84 @@ struct
 
 
 
+
+  (* Picklers *)
+  val pu_intref = Pickle.ref0Gen Pickle.int
+  val pu_runType =
+      Pickle.enumGen [WORD_RT, STRING_RT, PAIR_RT, TOP_RT, BOT_RT,
+		      ARRAY_RT, REF_RT, TRIPLE_RT]
+
+  local val pu_node_cache : einfo G.node Pickle.pu option ref = ref NONE
+  in fun pu_node pu_einfo =
+      case !pu_node_cache of SOME pu => pu
+    | NONE => let val pu = G.pu_node PUT pu_einfo
+	      in pu_node_cache := SOME pu
+	       ; pu
+	      end
+  end
+
+  local val pu_nodeopt_cache : einfo G.node option Pickle.pu option ref = ref NONE
+  in fun pu_nodeopt pu_einfo =
+      case !pu_nodeopt_cache of SOME pu => pu
+    | NONE => let val pu = Pickle.optionGen (pu_node pu_einfo)
+	      in pu_nodeopt_cache := SOME pu
+	       ; pu
+	      end
+  end
+
+  local val pu_represents_cache : einfo G.node list option Pickle.pu option ref = ref NONE
+  in fun pu_represents pu_einfo =
+      case !pu_represents_cache of SOME pu => pu
+    | NONE => let val pu = Pickle.optionGen (Pickle.listGen (pu_node pu_einfo))
+	      in pu_represents_cache := SOME pu
+	       ; pu
+	      end
+  end
+
+  local val pu_instance_cache : einfo G.node option ref Pickle.pu option ref = ref NONE
+  in fun pu_instance pu_einfo =
+      case !pu_instance_cache of SOME pu => pu
+    | NONE => let val pu = Pickle.refGen (pu_nodeopt pu_einfo) NONE 
+	      in pu_instance_cache := SOME pu
+	       ; pu
+	      end
+  end
+
+  val pu_einfo =
+      let open Pickle
+	  fun toInt (EPS _) = 0
+	    | toInt (UNION _) = 1
+	    | toInt PUT = 2
+	    | toInt GET = 3
+	    | toInt WORDEFFECT = 4
+	    | toInt (RHO _) = 5
+	  val pu_einfo_cache : einfo Pickle.pu option ref = ref NONE
+	  fun pu_einfo_get() =
+	      case !pu_einfo_cache of
+		  SOME pu => pu
+		| _ => die "pu_einfo_get"
+	  fun eq (EPS {key=k,level=l,represents=r,instance=i,pix=p}, 
+		  EPS {key=k2,level=l2,represents=r2,instance=i2,pix=p2}) = 
+	      k=k2 andalso l=l2 andalso i=i2 andalso p=p2
+	      andalso #4(pu_represents (pu_einfo_get()))(r,r2)
+	    | eq (UNION {represents=r}, UNION {represents=r2}) = #4(pu_represents (pu_einfo_get()))(r,r2)
+	    | eq (PUT, PUT) = true
+	    | eq (GET, GET) = true
+	    | eq (WORDEFFECT,WORDEFFECT) = true
+	    | eq (RHO {put,get=g,key=k,level=l,instance=i,pix=p,ty=t}, 
+		  RHO {put=put2,get=g2,key=k2,level=l2,instance=i2,pix=p2,ty=t2}) = 
+	      k=k2 andalso l=l2 andalso i=i2 andalso p=p2 andalso t=t2
+	      andalso #4(pu_nodeopt (pu_einfo_get()))(put,put2)
+	      andalso #4(pu_nodeopt (pu_einfo_get()))(g,g2)
+	    | eq _ = false
+	  val pu_einfo = dataGen(toInt,eq,[(*fun_EPS, fun_UNION, fun_PUT, fun_GET,
+					    fun_WORDEFFECT, fun_RHO*)])	  
+      in pu_einfo_cache := SOME pu_einfo 
+       ; pu_einfo
+      end
+
+  val pu_effect : effect Pickle.pu = pu_node pu_einfo
+
 (* Tracing Cone Layers (for profiling)
 
   val trace = ConeLayer.trace
@@ -872,7 +950,9 @@ tracing *)
                          get_key_of_eps i < get_key_of_eps j
                   end
                 structure PP = PP
-                structure Report = Report)
+                structure Report = Report
+		structure Crash = Crash
+		val pu_dom = pu_effect)
 
 
   val globalIncs: delta_phi Increments.map ref = ref(Increments.empty)
@@ -1829,7 +1909,6 @@ tracing *)
 		  say_eps eps;
 		  die ("represents"))
     end
-
 
 end; 
 

@@ -189,6 +189,68 @@ struct
 
    fun reportMap f t = Report.flatten(map f (list t))
 
+
+   (* Pickler *)
+
+   fun pu _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
+       let open Pickle
+	   fun eq (Empty, Empty) = true
+	     | eq (Lf(w1,a1), Lf(w2,a2)) = w1 = w2 andalso (#4 pu_a)(a1,a2)
+	     | eq (Br(w1,w2,m1,m2),Br(w1',w2',m1',m2')) = w1 = w1' andalso w2 = w2'
+	       andalso eq (m1,m1') andalso eq (m2,m2')
+	     | eq _ = false
+	       
+	   fun toInt Empty = 0
+	     | toInt (Lf _) = 1
+	     | toInt (Br _) = 2
+	       
+	   fun pu_Empty _ =
+	       (fn _ => fn spe => spe,
+		fn supe => (Empty, supe),
+		fn ds => fn _ => 0w0,
+		eq)
+
+	   fun pu_Lf _ =
+	       (fn t => fn spe =>
+		case t of
+		    Lf(w,a) => let val spe = pickler word w spe
+			       in pickler pu_a a spe
+			       end
+		  | _ => raise Fail "IntFinMapPT.pu_Lf.pickler",
+  	        fn supe => 
+		let val (w,supe) = unpickler word supe
+		    val (a,supe) = unpickler pu_a supe
+		in (Lf(w,a),supe)
+		end,
+		fn Lf(w,a) => hashCombine(hasher word w, hasher pu_a a)
+		 | _ => raise Fail "IntFinMapPT.pu_Lf.hasher",
+		eq)
+
+	   fun pu_Br (pu: 'a map pu) =
+	       (fn t => fn spe =>
+		case t of
+		    Br(w1,w2,m1,m2) => let val spe = pickler word w1 spe
+					   val spe = pickler word w2 spe
+					   val spe = pickler pu m1 spe
+				       in pickler pu m2 spe
+				       end
+		  | _ => raise Fail "IntFinMapPT.pu_Br.pickler",
+		fn supe => 
+		let val (w1,supe) = unpickler word supe
+		    val (w2,supe) = unpickler word supe
+		    val (m1,supe) = unpickler pu supe
+		    val (m2,supe) = unpickler pu supe
+		in (Br(w1,w2,m1,m2),supe)
+		end,
+		fn Br(w1,w2,m1,m2) => hashCombine(hasher word w1, 
+						  hashCombine(hasher word w2,
+							      hashCombine(hasher pu m1,
+									  hasher pu m2)))
+		 | _ => raise Fail "IntFinMapPT.pu_Br.hasher",
+		eq)
+       in
+	   dataGen (toInt, eq, [pu_Empty, pu_Lf, pu_Br])
+       end
 end
 
 

@@ -1,0 +1,16 @@
+Group
+
+structure Pickle
+signature PICKLE
+
+is
+
+POLYHASH.sml
+Polyhash.sml
+eqhashdyn2.sml
+stream.sig
+stream.sml
+
+pickle.sig
+pickle.sml
+

@@ -75,6 +75,7 @@ functor RegionFlowGraphProfiling(structure Effect    : EFFECT
 					  type edgeInfo = (place*pp) AtInf.at (* We put the storage mode on the edge. *)
 					  fun lt (a:nodeId) b = (a<b)
 					  fun getId ((id,s,size):info) = id
+					  val pu = Pickle.int
 					end
 				      structure PP = PP
 				      structure Flags = Flags

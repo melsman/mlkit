@@ -690,7 +690,8 @@ struct
 		      fun lt(l1: T) l2 = Lvars.lt(l1,l2)
 		    end
 		  structure PP =PP
-		  structure Report = Report)
+		  structure Report = Report
+		  structure Crash = Crash)
 
     local
       fun pp_dom lvar = PP.LEAF (Lvars.pr_lvar lvar)
@@ -1127,7 +1128,8 @@ struct
 		      fun lt(se1: T) se2 = lt_se(se1,se2)
 		    end
 		  structure PP =PP
-		  structure Report = Report)
+		  structure Report = Report
+		  structure Crash = Crash)
 
     fun unify_ce_se ces_and_ses se_map =
       let

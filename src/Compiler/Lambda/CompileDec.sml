@@ -926,7 +926,8 @@ Report: Opt:
 	 fun lt ifeq1 ifeq2 = lt_from_cmp ifeq_cmp (ifeq1, ifeq2)
        end (*structure Order*)
        structure PP = PrettyPrint
-       structure Report = Report)
+       structure Report = Report
+       structure Crash = Crash)
 
     type mapr = node map.map ref
     val mapr : mapr = ref map.empty
@@ -1640,7 +1641,8 @@ end; (*match compiler local*)
 					   val lt : T -> T -> bool = fn a => fn b => a < b
 					 end
 				       structure PP = PrettyPrint
-				       structure Report = Report)
+				       structure Report = Report
+				       structure Crash = Crash)
 
       (* 32-bit primitives are resolved to primitives working on either 
        * boxed or unboxed representations *)

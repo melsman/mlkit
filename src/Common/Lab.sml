@@ -27,4 +27,9 @@ functor Lab(): LAB =
 
     val mk_IdentLab = LAB
     val mk_IntegerLab = LAB o Int.toString
+
+    val pu = 
+	Pickle.convert (LAB, fn LAB s => s) 
+	Pickle.string
+	
   end;

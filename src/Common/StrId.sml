@@ -1,4 +1,4 @@
-(* Exception constructors - Definition v3 page 4 *)
+(* Structure identifiers *)
 
 functor StrId(structure Timestamp: TIMESTAMP
 	      structure Crash: CRASH
@@ -39,4 +39,6 @@ functor StrId(structure Timestamp: TIMESTAMP
     fun longStrIdOfStrId strid = LONGSTRID(nil, strid)
 
     val op < = fn (STRID str1, STRID str2) => str1 < str2
-  end;
+
+    val pu = Pickle.convert (STRID, fn STRID s => s) Pickle.string    
+  end

@@ -1,11 +1,4 @@
-(*$IntSet : PRETTYPRINT KIT_MONO_SET *)
-
 (* Finite sets using balanced AVL trees *)
-
-(* LOG: 
-    08/03/1995-Martin: Optimized difference (s1 \ s2). Now check
-                       if s1 is empty.
-*)
 
 functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
   struct
@@ -14,11 +7,9 @@ functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
 
     type elt = int
 
-(*    fun a < b = Order.lt a b *)
-      fun lt ((a:elt),b) = a<b
+    fun lt ((a:elt),b) = a<b
 
     fun (i1:elt) == (i2:elt) : bool = i1 = i2
-(*      not (i1 < i2 orelse i2 < i1) *)
 
     exception Impossible of string
     fun impossible s = raise (Impossible s)
@@ -361,5 +352,51 @@ functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
 	       indent=3,
 	       childsep=PP.RIGHT sep,
 	       children=listmap layoutItem (list s)}
+
+    val pu_bal =
+	let open Pickle
+	in enumGen [L,B,R]
+	end
+
+    fun pu pu_elt = 
+	let open Pickle
+	    fun toInt E = 0
+	      | toInt (N _) = 1
+	    fun eq (E,E) = true
+	      | eq (N (e1,s1,s1',b1), N(e2,s2,s2',b2)) =
+		#4 pu_elt (e1,e2) andalso b1 = b2 andalso
+		eq (s1,s2) andalso eq (s1',s2')
+	      | eq _ = false		
+	    fun funE (_ : Set pu) : Set pu = 
+		(fn _ => fn spe => spe,
+		 fn supe => (E,supe),
+		 fn ds => fn _ => 0w0,
+		 eq)
+	    fun funN (pu : Set pu) : Set pu =
+		(fn n => fn spe =>
+		 case n of 
+		     N(e,s1,s2,b) => let val spe = pickler pu_elt e spe
+					 val spe = pickler pu s1 spe
+					 val spe = pickler pu s2 spe
+				     in pickler pu_bal b spe
+				     end
+		   | _ => raise Fail "OrderSet.pu.funN.pickle",
+		 fn supe =>
+		 let val (e,supe) = unpickler pu_elt supe
+		     val (s1,supe) = unpickler pu supe
+		     val (s2,supe) = unpickler pu supe
+		     val (b,supe) = unpickler pu_bal supe
+		 in (N(e,s1,s2,b),supe)
+		 end,
+		 fn N(e,s1,s2,b) => 
+		 hashCombine(hasher pu_elt e,
+			     hashCombine(hasher pu_bal b,
+					 hashCombine(hasher pu s1,
+						     hasher pu s2)))
+		  | _ => raise Fail "OrderSet.pu.funN.hasher",
+		 eq)					      
+	in dataGen (toInt, eq, [funE,funN])
+	end
+
   end
 

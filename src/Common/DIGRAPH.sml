@@ -229,5 +229,6 @@ signature DIGRAPH =
 
     val layout_nodes_deep : ('info -> StringTree) -> 'info node list -> StringTree
 
+    val pu_node : 'info -> 'info Pickle.pu -> 'info node Pickle.pu
   end;
 

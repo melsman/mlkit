@@ -79,6 +79,8 @@ signature ENVIRONMENTS =
 	val layout               : VarEnv -> StringTree
 	val report               : (id * range -> Report) * VarEnv -> Report
 	val ids_with_tyvar_in_type_scheme : VarEnv -> TyVar -> id list
+
+	val pu                   : VarEnv Pickle.pu
       end (*VE*)
     
 
@@ -94,6 +96,7 @@ signature ENVIRONMENTS =
 	val shares               : TyStr * TyStr -> bool
 	val tynames              : TyStr -> TyName.Set.Set
 	val layout               : TyStr -> StringTree
+	val pu                   : TyStr Pickle.pu
       end (*TyStr*)
 
     
@@ -119,6 +122,8 @@ signature ENVIRONMENTS =
 	val report               : {tyEnv : TyEnv, bindings : bool} -> Report
 	val tynames              : TyEnv -> TyName.Set.Set
 	val layout               : TyEnv -> StringTree
+
+	val pu                   : TyEnv Pickle.pu
       end (*TE*)
 
 
@@ -137,6 +142,8 @@ signature ENVIRONMENTS =
 	val map                  : (Env -> Env) -> StrEnv -> StrEnv
 	val report               : (strid * Env -> Report) * StrEnv -> Report
 	val layout               : StrEnv -> StringTree
+
+	val pu                   : StrEnv Pickle.pu
       end (*SE*)
 
 
@@ -175,6 +182,8 @@ signature ENVIRONMENTS =
 	val match                : Env * Env -> unit
 	val enrich               : Env * Env -> bool   (* strong enrichment *)
 	val eq                   : Env * Env -> bool
+
+	val pu                   : Env Pickle.pu
       end (*E*)
 
 
@@ -221,7 +230,9 @@ signature ENVIRONMENTS =
 	       also included in the result.
 	       *)
 
-	val layout : Context -> StringTree
+	val layout               : Context -> StringTree
+
+	val pu                   : Context Pickle.pu 
       end (*C*)
 
 
@@ -291,8 +302,10 @@ signature ENVIRONMENTS =
 
 	val renaming             : TyName.Set.Set -> realisation
 	val renaming'            : TyName.Set.Set -> TyName.Set.Set * realisation  
-	val layout : realisation -> StringTree
+	val layout               : realisation -> StringTree
 
+	val pu                   : realisation Pickle.pu
+ 
       end (*Realisation*)
 
     val ABS : TyEnv * Env -> TyName list * Env * realisation

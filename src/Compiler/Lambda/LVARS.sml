@@ -39,6 +39,8 @@ signature LVARS =
     val env_lvar : lvar
     val notused_lvar : lvar
 
+    val pu : lvar Pickle.pu
+
   end;
 
 

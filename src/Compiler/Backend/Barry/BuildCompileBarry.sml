@@ -107,7 +107,8 @@ functor BuildCompileBarry (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE_BARRY
 							 fun lt (a:T) b = LambdaExp.lt_tyvar(a,b)
 						  end
 				structure PP = PP
-				structure Report = Report))
+				structure Report = Report
+				structure Crash = Crash))
 
     structure Stack = Stack()
 
@@ -146,6 +147,7 @@ functor BuildCompileBarry (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE_BARRY
 		     type edgeInfo = unit
 		     val lt = fn a => fn b => Lvars.lt(a,b)
 		     fun getId lv = lv
+		     val pu = Lvars.pu
 		   end
 		 structure PP = PP
 		 structure Flags = Flags

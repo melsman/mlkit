@@ -114,4 +114,6 @@ signature COMPILER_ENV =
 
     type StringTree
     val layoutCEnv: CEnv -> StringTree
+
+    val pu : CEnv Pickle.pu
   end;

@@ -157,6 +157,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
     fun log_st (st) : unit = PP.outputTree (log, st, 70)
+    fun pr_st (st) : unit = PP.outputTree (print, st, 120)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
 	  	
     (* ------------------------------------------- 
@@ -721,6 +722,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       : Basis * modcode * bool * (string * Time.time) list =  
       let val _ = maybe_create_pmdir()
 	  val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, fi, clean)
+	  val _ =
+	      if true then () else
+	      let open Pickle
+		  val os : outstream = empty()
+		  val _ = print "\n [Begin pickling...]\n"
+		  val os : outstream = pickler Basis.pu B' os
+		  val s = toString os
+		  val (B'': Basis,_) = unpickler Basis.pu (fromString s)
+		  val _ = pr_st (MO.Basis.layout B'')
+		  val _ = print ("\n [End pickling (sz = " ^ Int.toString (size s) ^ ")]\n")
+	      in ()
+	      end
       in (B', modc, clean, (unitid,modtime)::modtimes)
       end
 

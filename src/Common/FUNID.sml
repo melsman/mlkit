@@ -1,6 +1,4 @@
-(* Functor identifiers - Definition v3 page 10 *)
-
-(*$FUNID*)
+(* Functor identifiers *)
 
 signature FUNID =
   sig
@@ -10,4 +8,6 @@ signature FUNID =
     and pr_FunId: funid -> string
 
     val < : funid * funid -> bool	(* Used for top-level printout *)
-  end;
+
+    val pu : funid Pickle.pu
+  end

@@ -53,23 +53,34 @@ signature MANAGER_OBJECTS =
 	val from_filemodtime : filename -> funstamp option
 	val modTime : funstamp -> Time.time option
 	val eq : funstamp * funstamp -> bool
+	val pu : funstamp Pickle.pu
       end
 
     val funid_from_filename : filename -> funid
     val funid_to_filename : funid -> filename
 
     type IntFunEnv and IntBasis and ElabEnv and strexp and strid
+     and InfixBasis and ElabBasis and opaq_env
+
+    type BodyBuilderClos = {infB: InfixBasis,
+			    elabB: ElabBasis,
+			    absprjid: absprjid,
+			    filename: string,
+			    opaq_env: opaq_env,
+			    T: TyName.TyName list,
+			    resE: ElabEnv}
 
     structure IntFunEnv :
       sig
 	val empty : IntFunEnv
 	val initial : IntFunEnv
 	val plus : IntFunEnv * IntFunEnv -> IntFunEnv
-	val add : funid * (absprjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) * IntFunEnv -> IntFunEnv
-	val lookup : IntFunEnv -> funid -> absprjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis  
+	val add : funid * (absprjid * funstamp * strid * ElabEnv * BodyBuilderClos * IntBasis) * IntFunEnv -> IntFunEnv
+	val lookup : IntFunEnv -> funid -> absprjid * funstamp * strid * ElabEnv * BodyBuilderClos * IntBasis  
 	val restrict : IntFunEnv * funid list -> IntFunEnv
 	val enrich : IntFunEnv * IntFunEnv -> bool  (* using funstamps *)
 	val layout : IntFunEnv -> StringTree
+(*	val pu : IntFunEnv Pickle.pu *)
       end
 
     type IntSigEnv and sigid
@@ -83,6 +94,7 @@ signature MANAGER_OBJECTS =
 	val restrict : IntSigEnv * sigid list -> IntSigEnv
 	val enrich : IntSigEnv * IntSigEnv -> bool
 	val layout : IntSigEnv -> StringTree
+(*	val pu : IntSigEnv Pickle.pu *)
       end
 
     type CEnv and CompileBasis and longtycon and longid and longstrid
@@ -101,21 +113,25 @@ signature MANAGER_OBJECTS =
 	val initial : unit -> IntBasis
 	val restrict : IntBasis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
 				   longvids: longid list, longtycons: longtycon list} -> IntBasis
+(*	val pu : IntBasis Pickle.pu *)
       end
 
-    type Basis and InfixBasis and ElabBasis and opaq_env
+    type Basis 
+
     structure Basis :
       sig
-	val empty : Basis
-	val mk : InfixBasis * ElabBasis * opaq_env * IntBasis -> Basis
-	val un : Basis -> InfixBasis * ElabBasis * opaq_env * IntBasis
-	val plus : Basis * Basis -> Basis
-	val layout : Basis -> StringTree
+	val empty   : Basis
+	val mk      : InfixBasis * ElabBasis * opaq_env * IntBasis -> Basis
+	val un      : Basis -> InfixBasis * ElabBasis * opaq_env * IntBasis
+	val plus    : Basis * Basis -> Basis
+	val layout  : Basis -> StringTree
 
-	val agree : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
-	val enrich : Basis * (Basis * TyName.Set.Set) -> bool
+	val agree   : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
+	val enrich  : Basis * (Basis * TyName.Set.Set) -> bool
 
 	val initial : unit -> Basis
+
+	val pu      : Basis Pickle.pu
       end
 
     type name

@@ -185,6 +185,8 @@ struct
 
    fun reportMap f t = Report.flatten(map f (list t))
 
+   fun pu _ = raise Fail "WordFinMapPT.pu: not implemented"
+
 end
 
 

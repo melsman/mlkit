@@ -375,6 +375,20 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  | modTime _ = NONE
 	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ Time.toString time
 	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.toString i
+	val pu = 
+	    let open Pickle
+		val pu_funid_time = pairGen(FunId.pu,time)
+		val pu_funid_int = pairGen(FunId.pu,int)
+		fun toInt (FUNSTAMP_MODTIME _) = 0
+		  | toInt (FUNSTAMP_GEN _) = 1
+		fun fun_FUNSTAMP_MODTIME _ =
+		    con1 eq FUNSTAMP_MODTIME (fn FUNSTAMP_MODTIME v => v | _ => die "pu.FUNSTAMP_MODTIME")
+		    pu_funid_time
+		fun fun_FUNSTAMP_GEN _ =
+		    con1 eq FUNSTAMP_GEN (fn FUNSTAMP_GEN v => v | _ => die "pu.FUNSTAMP_GEN")
+		    pu_funid_int
+	    in dataGen(toInt,eq,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
+	    end
       end
 
     type ElabEnv = ModuleEnvironments.Env
@@ -386,11 +400,43 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     type sigid = ModuleEnvironments.sigid
 
+    type ElabBasis = ModuleEnvironments.Basis 
+    type InfixBasis = InfixBasis.Basis
+    type opaq_env = OpacityElim.opaq_env     
+
+    type BodyBuilderClos = {infB: InfixBasis,
+			    elabB: ElabBasis,
+			    absprjid: absprjid,
+			    filename: string,
+			    opaq_env: opaq_env,
+			    T: TyName.TyName list,
+			    resE: ElabEnv}
+
+    val pu_BodyBuilderClos =
+	let open Pickle
+	    fun to ((infB,elabB,absprjid),(filename,opaq_env,T),resE) = 
+		{infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
+		 opaq_env=opaq_env,T=T,resE=resE}
+	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
+		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),resE)
+	in convert (to,from)
+	    (tup3Gen(tup3Gen(InfixBasis.pu,ModuleEnvironments.B.pu,string),
+		     tup3Gen(string,OpacityElim.OpacityEnv.pu,listGen TyName.pu), 
+		     Execution.Elaboration.Basics.Environments.E.pu))
+	end
+
     datatype IntSigEnv = ISE of (sigid, TyName.Set.Set) FinMap.map
-    datatype IntFunEnv = IFE of (funid, absprjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
+    datatype IntFunEnv = IFE of (funid, absprjid * funstamp * strid * ElabEnv * BodyBuilderClos * IntBasis) FinMap.map
          and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
 
-    (* The closure is to represent a structure expression in a compact way *)
+    (* Instead of storing structure expressions in functor environments, information necessary for recreating 
+     * structure expressions is stored (BodyBuilderClos). *)
+
+    val pu_IntSigEnv =
+	let open Pickle
+	in convert (ISE, fn ISE v => v) 
+	    (FinMap.pu(SigId.pu,TyName.Set.pu TyName.pu))
+	end
 
     structure IntFunEnv =
       struct
@@ -494,8 +540,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	     * need also add the compiler bases for each of the functor 
 	     * identifiers to the resulting interpretation basis; see 
 	     * the example test/fxp_err.sml for an example where not 
-	     * adding theses compiler bases causes the compiler to 
-	     * crash. *)
+	     * adding compiler bases causes the compiler to crash. *)
 		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) => 
 					   let val IB ib = #6 functorClos
 					   in CompileBasis.plus(cb,#4 ib)
@@ -561,10 +606,6 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			    CompilerEnv.initialCEnv(), CompileBasis.initial)
       end
 
-    type ElabBasis = ModuleEnvironments.Basis 
-    type InfixBasis = InfixBasis.Basis
-    type opaq_env = OpacityElim.opaq_env     
-
     datatype Basis = BASIS of InfixBasis * ElabBasis * opaq_env * IntBasis
 
     structure Basis =
@@ -609,6 +650,14 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			       OpacityElim.OpacityEnv.initial, 
 			       IntBasis.initial())
 	val _ = app Name.mk_rigid (!Name.bucket)
+
+	val pu =
+	    let open Pickle
+		fun to (ib,eb,oe) = BASIS(ib, eb, oe, IntBasis.empty)
+		fun from (BASIS(ib,eb,oe,_)) = (ib,eb,oe)
+	    in convert (to,from)
+		(tup3Gen(InfixBasis.pu,ModuleEnvironments.B.pu,OpacityElim.OpacityEnv.pu))
+	    end
       end
 
 

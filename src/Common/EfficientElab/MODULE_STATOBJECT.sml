@@ -74,6 +74,8 @@ signature MODULE_STATOBJECT =
 	val eq : Sig * Sig -> bool
 
 	val on : realisation * Sig -> Sig
+
+	val pu : Sig Pickle.pu
       end
 
 
@@ -99,5 +101,7 @@ signature MODULE_STATOBJECT =
 	val eq : FunSig * FunSig -> bool
 
 	val on : realisation * FunSig -> FunSig
+
+	val pu : FunSig Pickle.pu
       end
   end;
