@@ -12,4 +12,5 @@ ps2: ps
 
 pdf: dvi
 	dvips -Ppdf -o root.ps root.dvi 
-	ps2pdf -sPAPERSIZE=a4 root.ps root.pdf
+	ps2pdf -sPAPERSIZE=a4 root.ps mlkit.pdf
+	rm -f root.ps
