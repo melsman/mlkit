@@ -1,8 +1,10 @@
 signature SCS_STRING =
   sig
-    val translate : (char -> string) -> string -> string
-    val lower     : string -> string
-    val upper     : string -> string
+    val translate  : (char -> string) -> string -> string
+    val lower      : string -> string
+    val upper      : string -> string
+    val lowerFirst : string -> string
+
 
     (* [canonical s] returns a canonical representation of s, that is,
        all words are separated by only one space; new lines etc. has
@@ -37,6 +39,16 @@ structure ScsString =
     fun translate f s  = concat (map f (explode s))
     fun lower s = CharVector.fromList (List.map Char.toLower (explode s))
     fun upper s = CharVector.fromList (List.map Char.toUpper (explode s))
+
+    fun lowerFirst str = 
+      let
+        val (first,rest) = Substring.splitAt (Substring.all str,1)
+      in
+        (Char.toString o Char.toLower o valOf o Substring.first) first
+	^ Substring.string rest
+      end
+      handle _ => str
+
 
     fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
 
