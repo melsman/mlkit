@@ -1,5 +1,5 @@
 (*$RegionStatEnv: REGION_STAT_ENV RTYPE EFFECT LVARS CON EXCON TYNAME
-                  CRASH PRETTYPRINT LAMBDA_EXP MONO_FINMAP*)
+                  CRASH PRETTYPRINT LAMBDA_EXP MONO_FINMAP FLAGS*)
 
 functor RegionStatEnv(structure R: RTYPE
 		      structure E: EFFECT
