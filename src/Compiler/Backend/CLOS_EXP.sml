@@ -130,6 +130,7 @@ signature CLOS_EXP =
     val restrict : env * {lvars:lvar list,
 			  cons:con list,
 			  excons:excon list} -> env
+    val pu : env Pickle.pu
 
     val cc : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,
 								    code:ClosPrg,
@@ -155,11 +156,3 @@ signature CLOS_EXP =
     val pr_free : lvar list * excon list * place list -> string
 
   end
-
-
-
-
-
-
-
-

@@ -20,4 +20,6 @@ signature LAMBDA_STAT_SEM =
 
     type StringTree
     val layout_env : env -> StringTree
+
+    val pu : env Pickle.pu
   end

@@ -810,5 +810,30 @@ handle x =>
 	 log (" ** Rewrite the program to use an explicit equality function\n");
 	 log (" ** for this particular datatype.\n\n");
 	 raise e)
-	 
+
+    val pu =
+	let open Pickle
+	    fun resultToInt (MONOLVAR _) = 0
+	      | resultToInt (POLYLVAR _) = 1
+	      | resultToInt (FAIL _) = 2
+	    fun resultEq (MONOLVAR(lv1,tvs1),MONOLVAR(lv2,tvs2)) = #4 Lvars.pu (lv1,lv2) andalso 
+		#4 LambdaExp.pu_tyvars (tvs1,tvs2)
+	      | resultEq (POLYLVAR lv1,POLYLVAR lv2) = #4 Lvars.pu (lv1,lv2)
+	      | resultEq (FAIL s1, FAIL s2) = s1 = s2
+	      | resultEq _ = false
+	    fun fun_MONOLVAR _ =
+		con1 resultEq MONOLVAR (fn MONOLVAR a => a | _ => die "pu.MONOLVAR")
+		(pairGen(Lvars.pu,LambdaExp.pu_tyvars))
+	    fun fun_POLYLVAR _ =
+		con1 resultEq POLYLVAR (fn POLYLVAR a => a | _ => die "pu.POLYLVAR")
+		Lvars.pu
+	    fun fun_FAIL _ =
+		con1 resultEq FAIL (fn FAIL a => a | _ => die "pu.FAIL")
+		string
+	    val pu_res = dataGen(resultToInt,resultEq,[fun_MONOLVAR,fun_POLYLVAR,fun_FAIL])
+	    val pu_tnm = TyNameMap.pu TyName.pu pu_res
+	    val pu_tvm = TyVarMap.pu LambdaExp.pu_tyvar Lvars.pu
+	    val pu_lvm = LvarMap.pu Lvars.pu LambdaExp.pu_tyvars
+	in tup3Gen(pu_tnm,pu_tvm,pu_lvm)
+	end
   end

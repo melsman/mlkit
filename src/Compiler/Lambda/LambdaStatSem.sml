@@ -107,6 +107,8 @@ end
 		    type StringTree
 		    val layout_env : env -> StringTree
 		    val layoutTypes : Type list -> StringTree
+
+		    val pu : env Pickle.pu
 		  end =
       struct
 
@@ -364,6 +366,20 @@ end
 			      * the purpose of debugging!! *)
 
 
+	val pu = 
+	    let fun to ((f,ce,te,le),ee) = {ftv=f,con_env=ce,tyname_env=te,
+					  lvar_env=le,excon_env=ee}
+		fun from {ftv=f,con_env=ce,tyname_env=te,
+			  lvar_env=le,excon_env=ee} = ((f,ce,te,le),ee)
+		open Pickle
+		val pu_f = NatSet.pu LambdaExp.pu_tyvar
+		val pu_ce = Con.Map.pu Con.pu LambdaExp.pu_TypeScheme
+		val pu_te = TyName.Map.pu TyName.pu (listGen Con.pu)
+		val pu_le = Lvars.Map.pu Lvars.pu LambdaExp.pu_TypeScheme
+		val pu_ee = Excon.Map.pu Excon.pu (optionGen LambdaExp.pu_Type)
+	    in convert (to,from)
+		(pairGen(tup4Gen(pu_f,pu_ce,pu_te,pu_le),pu_ee))
+	    end
 
       end
 

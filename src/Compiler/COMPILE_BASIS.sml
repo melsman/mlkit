@@ -26,4 +26,5 @@ signature COMPILE_BASIS =
     type StringTree
     val layout_CompileBasis: CompileBasis -> StringTree
 
+    val pu : CompileBasis Pickle.pu
   end

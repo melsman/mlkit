@@ -20,4 +20,6 @@ signature OPT_LAMBDA =
 
     type StringTree
     val layout_env : env -> StringTree
+
+    val pu : env Pickle.pu
   end;

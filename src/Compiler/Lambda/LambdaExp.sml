@@ -1199,4 +1199,320 @@ functor LambdaExp(structure Lvars: LVARS
 	end
     val pu_tyvars = Pickle.listGen pu_tyvar
 	
-  end;
+    val pu_TypeScheme = Pickle.pairGen(pu_tyvars,pu_Type)
+
+    val pu_lv_opt = Pickle.optionGen Lvars.pu
+
+    val pu_TypeOpt = Pickle.optionGen pu_Type
+
+    val pu_frame =
+	let open Pickle
+	    val pu_dlv = 
+		convert (fn (lv,tvs,t) => {lvar=lv,tyvars=tvs,Type=t},
+			 fn {lvar=lv,tyvars=tvs,Type=t} => (lv,tvs,t))
+		(tup3Gen(Lvars.pu,pu_tyvars,pu_Type))
+	in convert (fn (dlvs,dexns) => {declared_lvars=dlvs,declared_excons=dexns},
+		    fn {declared_lvars=dlvs,declared_excons=dexns} => (dlvs,dexns))
+	    (pairGen(listGen pu_dlv,listGen(pairGen(Excon.pu,pu_TypeOpt))))
+	end
+
+    val pu_TypeList =
+	let open Pickle
+	    fun toInt (Types _) = 0
+	      | toInt (Frame _) = 1
+	      | toInt RaisedExnBind = 2
+	    fun eq (Types ts1, Types ts2) = #4 pu_Types (ts1,ts2)
+	      | eq (Frame f1, Frame f2) = #4 pu_frame (f1,f2)
+	      | eq (RaisedExnBind,RaisedExnBind) = true
+	      | eq _ = false
+	    fun fun_Types _ =
+		con1 eq Types (fn Types a => a | _ => die "pu_TypeList.Types")
+		pu_Types
+	    fun fun_Frame _ =
+		con1 eq Frame (fn Frame a => a | _ => die "pu_TypeList.Frame")
+		pu_frame
+	    val fun_RaisedExnBind = con0 eq RaisedExnBind
+	in dataGen(toInt,eq,[fun_Types,fun_Frame,fun_RaisedExnBind])
+	end
+
+    val pu_prim =
+	let open Pickle
+	    fun toInt (CONprim _) = 0
+	      | toInt (DECONprim _) = 1
+	      | toInt (EXCONprim _) = 2
+	      | toInt (DEEXCONprim _) = 3
+	      | toInt RECORDprim = 4
+	      | toInt (SELECTprim _) = 5
+	      | toInt UB_RECORDprim = 6
+	      | toInt DROPprim = 7
+	      | toInt (DEREFprim _) = 8
+	      | toInt (REFprim _) = 9
+	      | toInt (ASSIGNprim _) = 10
+	      | toInt (EQUALprim _) = 11
+	      | toInt (CCALLprim _) = 12
+	      | toInt (RESET_REGIONSprim _) = 13
+	      | toInt (FORCE_RESET_REGIONSprim _) = 14
+
+	    fun eq (CONprim {con=c1,instances=il1}, CONprim {con=c2,instances=il2}) =
+		#4 Con.pu (c1,c2) andalso #4 pu_Types (il1,il2)
+	      | eq (DECONprim {con=c1,instances=il1,lv_opt=lvo1}, DECONprim {con=c2,instances=il2,lv_opt=lvo2}) =
+		#4 Con.pu (c1,c2) andalso #4 pu_lv_opt (lvo1,lvo2) andalso #4 pu_Types (il1,il2)
+	      | eq (EXCONprim e1,EXCONprim e2) = #4 Excon.pu (e1,e2)
+	      | eq (DEEXCONprim e1,DEEXCONprim e2) = #4 Excon.pu (e1,e2)
+	      | eq (RECORDprim,RECORDprim) = true
+	      | eq (SELECTprim i1,SELECTprim i2) = i1=i2
+	      | eq (UB_RECORDprim,UB_RECORDprim) = true
+	      | eq (DROPprim,DROPprim) = true
+	      | eq (DEREFprim {instance=t1}, DEREFprim {instance=t2}) = #4 pu_Type (t1,t2)
+	      | eq (REFprim {instance=t1}, REFprim {instance=t2}) = #4 pu_Type (t1,t2)
+	      | eq (ASSIGNprim {instance=t1},ASSIGNprim {instance=t2}) = #4 pu_Type (t1,t2)
+	      | eq (EQUALprim {instance=t1},EQUALprim {instance=t2}) = #4 pu_Type (t1,t2)
+	      | eq (CCALLprim {name=n1,instances=il1,tyvars=tvs1,Type=t1},
+		    CCALLprim {name=n2,instances=il2,tyvars=tvs2,Type=t2}) =
+		n1=n2 andalso #4 pu_TypeScheme ((tvs1,t1),(tvs2,t2))
+		andalso #4 pu_Types(il1,il2)
+	      | eq (RESET_REGIONSprim {instance=t1},RESET_REGIONSprim {instance=t2}) = #4 pu_Type (t1,t2)
+	      | eq (FORCE_RESET_REGIONSprim {instance=t1},FORCE_RESET_REGIONSprim {instance=t2}) = #4 pu_Type (t1,t2)
+	      | eq _ = false
+
+	    fun fun_CONprim _ = 
+		con1 eq CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
+		(convert (fn (c,il) => {con=c,instances=il}, fn {con=c,instances=il} => (c,il))
+		 (pairGen (Con.pu,pu_Types)))
+	    fun fun_DECONprim _ =
+		con1 eq DECONprim (fn DECONprim a => a | _ => die "pu_prim.DECONprim")
+		(convert (fn (c,il,lvo) => {con=c,instances=il,lv_opt=lvo}, fn {con=c,instances=il,lv_opt=lvo} => (c,il,lvo))
+		 (tup3Gen (Con.pu,pu_Types,pu_lv_opt)))		
+	    fun fun_EXCONprim _ = 
+		con1 eq EXCONprim (fn EXCONprim a => a | _ => die "pu_prim.EXCONprim")
+		Excon.pu
+	    fun fun_DEEXCONprim _ =
+		con1 eq DEEXCONprim (fn DEEXCONprim a => a | _ => die "pu_prim.DEEXCONprim")
+		Excon.pu
+	    val fun_RECORDprim = con0 eq RECORDprim
+	    fun fun_SELECTprim _ =
+		con1 eq SELECTprim (fn SELECTprim a => a | _ => die "pu_prim.SELECTprim")
+		int
+	    val fun_UB_RECORDprim = con0 eq UB_RECORDprim
+	    val fun_DROPprim = con0 eq DROPprim
+	    fun fun_DEREFprim _ =
+		con1 eq DEREFprim (fn DEREFprim a => a | _ => die "pu_prim.DEREFprim")
+		(convert(fn t => {instance=t},#instance) pu_Type)
+	    fun fun_REFprim _ =
+		con1 eq REFprim (fn REFprim a => a | _ => die "pu_prim.REFprim")
+		(convert(fn t => {instance=t},#instance) pu_Type)
+	    fun fun_ASSIGNprim _ =
+		con1 eq ASSIGNprim (fn ASSIGNprim a => a | _ => die "pu_prim.ASSIGNprim")
+		(convert(fn t => {instance=t},#instance) pu_Type)
+	    fun fun_EQUALprim _ =
+		con1 eq EQUALprim (fn EQUALprim a => a | _ => die "pu_prim.EQUALprim")
+		(convert(fn t => {instance=t},#instance) pu_Type)
+	    fun fun_CCALLprim _ =
+		con1 eq CCALLprim (fn CCALLprim a => a | _ => die "pu_prim.CCALLprim")
+		(convert (fn (n,il,(tvs,t)) => {name=n,instances=il,tyvars=tvs,Type=t}, 
+			  fn {name=n,instances=il,tyvars=tvs,Type=t} => (n,il,(tvs,t)))
+		 (tup3Gen (string,pu_Types,pu_TypeScheme)))
+	    fun fun_RESET_REGIONSprim _ =
+		con1 eq RESET_REGIONSprim (fn RESET_REGIONSprim a => a | _ => die "pu_prim.RESET_REGIONSprim")
+		(convert(fn t => {instance=t},#instance) pu_Type)
+	    fun fun_FORCE_RESET_REGIONSprim _ =
+		con1 eq FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
+		(convert(fn t => {instance=t},#instance) pu_Type)
+	in dataGen(toInt,eq,[fun_CONprim,
+			     fun_DECONprim,
+			     fun_EXCONprim,
+			     fun_DEEXCONprim,
+			     fun_RECORDprim,
+			     fun_SELECTprim,
+			     fun_UB_RECORDprim,
+			     fun_DROPprim,
+			     fun_DEREFprim,
+			     fun_REFprim,
+			     fun_ASSIGNprim,
+			     fun_EQUALprim,
+			     fun_CCALLprim,
+			     fun_RESET_REGIONSprim,
+			     fun_FORCE_RESET_REGIONSprim])
+	end
+
+    fun pu_Switch pu_a pu_LambdaExp =
+	let open Pickle
+	in convert (SWITCH,fn SWITCH a => a)
+	    (tup3Gen(pu_LambdaExp,listGen(pairGen(pu_a,pu_LambdaExp)),optionGen pu_LambdaExp))
+	end
+
+    val pu_con_lvopt = Pickle.pairGen(Con.pu,pu_lv_opt)
+
+    val pu_excon_lvopt = Pickle.pairGen(Excon.pu,pu_lv_opt)
+
+    val pu_LambdaExp =
+	let open Pickle
+	    fun toInt (VAR _) = 0
+	      | toInt (INTEGER _) = 1
+	      | toInt (WORD _) = 2
+	      | toInt (STRING _) = 3
+	      | toInt (REAL _) = 4
+	      | toInt (FN _) = 5
+	      | toInt (LET _) = 6
+	      | toInt (FIX _) = 7
+	      | toInt (APP _) = 8
+	      | toInt (EXCEPTION _) = 9
+	      | toInt (RAISE _) = 10
+	      | toInt (HANDLE _) = 11
+	      | toInt (SWITCH_I _) = 12
+	      | toInt (SWITCH_W _) = 13
+	      | toInt (SWITCH_S _) = 14
+	      | toInt (SWITCH_C _) = 15
+	      | toInt (SWITCH_E _) = 16
+	      | toInt (PRIM _) = 17
+	      | toInt (FRAME _) = 18
+
+	    fun eq_pat (nil,nil) = true
+	      | eq_pat ((lv1,t1)::ps1,(lv2,t2)::ps2) = eq_pat(ps1,ps2)
+		andalso #4 Lvars.pu (lv1,lv2) andalso #4 pu_Type (t1,t2)
+	      | eq_pat _ = false
+
+	    fun eq_pat' (nil,nil) = true
+	      | eq_pat' ((lv1,tvs1,t1)::ps1,(lv2,tvs2,t2)::ps2) = eq_pat'(ps1,ps2)
+		andalso #4 Lvars.pu (lv1,lv2) andalso #4 pu_TypeScheme ((tvs1,t1),(tvs2,t2))
+	      | eq_pat' _ = false
+
+	    fun eq_sw eq_a eq_e (SWITCH(e1,l1,eo1), SWITCH(e2,l2,eo2)) = 
+		let fun eq_l (nil,nil) = true
+		      | eq_l ((a1,e1)::es1,(a2,e2)::es2) = eq_a(a1,a2) 
+		        andalso eq_e(e1,e2) andalso eq_l(es1,es2)
+		      | eq_l _ = false
+		    fun eq_o (NONE,NONE) = true
+		      | eq_o (SOME e1,SOME e2) = eq_e(e1,e2)
+		      | eq_o _ = false
+		in eq_e(e1,e2) andalso eq_l(l1,l2) andalso eq_o(eo1,eo2)
+		end
+
+	    fun eq (VAR {lvar=lv1,instances=il1},VAR {lvar=lv2,instances=il2}) = 
+		#4 Lvars.pu (lv1,lv2) andalso #4 pu_Types(il1,il2)
+	      | eq (INTEGER (i1,t1),INTEGER (i2,t2)) = i1=i2 andalso #4 pu_Type (t1,t2)
+	      | eq (WORD (w1,t1),WORD (w2,t2)) = w1=w2 andalso #4 pu_Type (t1,t2)
+	      | eq (STRING s1,STRING s2) = s1=s2
+	      | eq (REAL s1,REAL s2) = s1=s2
+	      | eq (FN {pat=p1,body=e1},FN {pat=p2,body=e2}) = eq_pat(p1,p2) andalso eq(e1,e2)
+	      | eq (LET {pat=p1,bind=e1,scope=e1'},LET {pat=p2,bind=e2,scope=e2'}) = eq_pat'(p1,p2)
+		andalso eq(e1,e2) andalso eq(e1',e2')
+	      | eq (FIX {functions=fs1,scope=e1},FIX {functions=fs2,scope=e2}) = eq_fs(fs1,fs2)
+		andalso eq(e1,e2)
+	      | eq (APP (e1,e1'),APP (e2,e2')) = eq(e1,e2) andalso eq(e1',e2')
+	      | eq (EXCEPTION (ec1,to1,e1),EXCEPTION (ec2,to2,e2)) = #4 Excon.pu (ec1,ec2)
+		andalso #4 pu_TypeOpt(to1,to2) andalso eq(e1,e2)
+	      | eq (RAISE (e1,tl1),RAISE (e2,tl2)) = #4 pu_TypeList(tl1,tl2) andalso eq(e1,e2)
+	      | eq (HANDLE (e1,e1'),HANDLE (e2,e2')) = eq(e1,e2) andalso eq(e1',e2')
+	      | eq (SWITCH_I {switch=sw1,precision=p1},SWITCH_I {switch=sw2,precision=p2}) = p1=p2
+		andalso eq_sw (op =) eq (sw1,sw2)
+	      | eq (SWITCH_W {switch=sw1,precision=p1},SWITCH_W {switch=sw2,precision=p2}) = p1=p2
+		andalso eq_sw (op =) eq (sw1,sw2)
+	      | eq (SWITCH_S sw1,SWITCH_S sw2) = eq_sw (op =) eq (sw1,sw2)
+	      | eq (SWITCH_C sw1,SWITCH_C sw2) = eq_sw (#4 pu_con_lvopt) eq (sw1,sw2)
+	      | eq (SWITCH_E sw1,SWITCH_E sw2) = eq_sw (#4 pu_excon_lvopt) eq (sw1,sw2)
+	      | eq (PRIM (p1,es1),PRIM (p2,es2)) = #4 pu_prim(p1,p2) andalso eqs(es1,es2)
+	      | eq (FRAME f1,FRAME f2) = #4 pu_frame (f1,f2)
+	      | eq _ = false
+	    and eqs (nil,nil) = true
+	      | eqs (e1::es1,e2::es2) = eqs(es1,es2) andalso eq(e1,e2)
+	      | eqs _ = false
+	    and eq_fs (nil,nil) = true
+	      | eq_fs ({lvar=lv1,tyvars=tvs1,Type=t1,bind=e1}::ps1,{lvar=lv2,tyvars=tvs2,Type=t2,bind=e2}::ps2) = 
+		eq_fs (ps1,ps2)	andalso #4 Lvars.pu (lv1,lv2) andalso #4 pu_TypeScheme ((tvs1,t1),(tvs2,t2))
+		andalso eq(e1,e2)
+	      | eq_fs _ = false
+		
+	    fun fun_VAR pu_LambdaExp =
+		con1 eq VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
+		(convert (fn (lv,il) => {lvar=lv,instances=il}, fn {lvar=lv,instances=il} => (lv,il))
+		 (pairGen(Lvars.pu,pu_Types)))
+	    fun fun_INTEGER pu_LambdaExp =
+		con1 eq INTEGER (fn INTEGER a => a | _ => die "pu_LambdaExp.INTEGER")
+		(pairGen(int32,pu_Type))
+	    fun fun_WORD pu_LambdaExp =
+		con1 eq WORD (fn WORD a => a | _ => die "pu_LambdaExp.WORD")
+		(pairGen(word32,pu_Type))
+	    fun fun_STRING pu_LambdaExp =
+		con1 eq STRING (fn STRING a => a | _ => die "pu_LambdaExp.STRING")
+		string
+	    fun fun_REAL pu_LambdaExp =
+		con1 eq REAL (fn REAL a => a | _ => die "pu_LambdaExp.REAL")
+		string
+	    fun fun_FN pu_LambdaExp =
+		con1 eq FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
+		(convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
+		 (pairGen(listGen(pairGen(Lvars.pu,pu_Type)),pu_LambdaExp)))
+	    fun fun_LET pu_LambdaExp =
+		con1 eq LET (fn LET a => a | _ => die "pu_LambdaExp.LET")
+		(convert (fn (p,b,s) => {pat=p,bind=b,scope=s}, fn {pat=p,bind=b,scope=s} => (p,b,s))
+		 (tup3Gen(listGen(tup3Gen(Lvars.pu,pu_tyvars,pu_Type)),
+			  pu_LambdaExp, pu_LambdaExp)))
+	    fun fun_FIX pu_LambdaExp =
+		let val pu_function = 
+		    convert (fn (lv,tvs,t,e) => {lvar=lv,tyvars=tvs,Type=t,bind=e},
+			     fn {lvar=lv,tyvars=tvs,Type=t,bind=e} => (lv,tvs,t,e))
+		    (tup4Gen(Lvars.pu,pu_tyvars,pu_Type,pu_LambdaExp))
+		in con1 eq FIX (fn FIX a => a | _ => die "pu_LambdaExp.FIX")
+		    (convert (fn (fs,s) => {functions=fs,scope=s}, fn {functions=fs,scope=s} => (fs,s))
+		     (pairGen(listGen pu_function,
+			      pu_LambdaExp)))
+		end
+	    fun fun_APP pu_LambdaExp =
+		con1 eq APP (fn APP a => a | _ => die "pu_LambdaExp.APP")
+		(pairGen(pu_LambdaExp,pu_LambdaExp))
+	    fun fun_EXCEPTION pu_LambdaExp =
+		con1 eq EXCEPTION (fn EXCEPTION a => a | _ => die "pu_LambdaExp.EXCEPTION")
+		(tup3Gen(Excon.pu,pu_TypeOpt,pu_LambdaExp))
+	    fun fun_RAISE pu_LambdaExp =
+		con1 eq RAISE (fn RAISE a => a | _ => die "pu_LambdaExp.RAISE")
+		(pairGen(pu_LambdaExp,pu_TypeList))
+	    fun fun_HANDLE pu_LambdaExp =
+		con1 eq HANDLE (fn HANDLE a => a | _ => die "pu_LambdaExp.HANDLE")
+		(pairGen(pu_LambdaExp,pu_LambdaExp))
+	    fun fun_SWITCH_I pu_LambdaExp =
+		con1 eq SWITCH_I (fn SWITCH_I a => a | _ => die "pu_LambdaExp.SWITCH_I")
+		(convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
+		 (pairGen(pu_Switch int32 pu_LambdaExp,int)))
+	    fun fun_SWITCH_W pu_LambdaExp =
+		con1 eq SWITCH_W (fn SWITCH_W a => a | _ => die "pu_LambdaExp.SWITCH_W")
+		(convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
+		 (pairGen(pu_Switch word32 pu_LambdaExp,int)))
+	    fun fun_SWITCH_S pu_LambdaExp =
+		con1 eq SWITCH_S (fn SWITCH_S a => a | _ => die "pu_LambdaExp.SWITCH_S")
+		(pu_Switch string pu_LambdaExp)
+	    fun fun_SWITCH_C pu_LambdaExp =
+		con1 eq SWITCH_C (fn SWITCH_C a => a | _ => die "pu_LambdaExp.SWITCH_C")
+		(pu_Switch pu_con_lvopt pu_LambdaExp)
+	    fun fun_SWITCH_E pu_LambdaExp =
+		con1 eq SWITCH_E (fn SWITCH_E a => a | _ => die "pu_LambdaExp.SWITCH_E")
+		(pu_Switch pu_excon_lvopt pu_LambdaExp)
+	    fun fun_PRIM pu_LambdaExp =
+		con1 eq PRIM (fn PRIM a => a | _ => die "pu_LambdaExp.PRIM")
+		(pairGen(pu_prim,listGen pu_LambdaExp))
+	    fun fun_FRAME pu_LambdaExp =
+		con1 eq FRAME (fn FRAME a => a | _ => die "pu_LambdaExp.FRAME")
+		pu_frame
+	    
+	in dataGen(toInt,eq,[fun_VAR,
+			     fun_INTEGER,
+			     fun_WORD,
+			     fun_STRING,
+			     fun_REAL,
+			     fun_FN,
+			     fun_LET,
+			     fun_FIX,
+			     fun_APP,
+			     fun_EXCEPTION,
+			     fun_RAISE,
+			     fun_HANDLE,
+			     fun_SWITCH_I,
+			     fun_SWITCH_W,
+			     fun_SWITCH_S,
+			     fun_SWITCH_C,
+			     fun_SWITCH_E,
+			     fun_PRIM,
+			     fun_FRAME])
+	end
+
+  end
