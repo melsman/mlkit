@@ -215,6 +215,11 @@ functor BuildCompile (structure TyName : TYNAME
           )
 
 
+  structure CConst = CConst
+    (structure Flags = Flags
+     structure Crash = Crash
+     structure TyName = TyName)
+
      structure SpreadExpression =  SpreadExpression(
        structure Con = Con
        structure ExCon = Excon
@@ -226,10 +231,12 @@ functor BuildCompile (structure TyName : TYNAME
        structure SpreadDatatype = SpreadDatatype
        structure Lvars =  Lvars
        structure TyName = TyName
+       structure FinMap = FinMap
        structure Crash = Crash
        structure PP = PP
        structure Flags=Flags
-     )
+       structure CConst = CConst
+	 )
 
    structure RegInf= RegInf(
       structure Con = Con
@@ -312,6 +319,7 @@ functor BuildCompile (structure TyName : TYNAME
     structure KAMBackend = KAMBackend(structure PP = PP
 				      structure Report = Report
 				      structure Name = Name
+				      structure CConst = CConst
 				      structure Flags = Flags
 				      structure Timing = Timing
 				      structure Crash = Crash)
@@ -435,7 +443,9 @@ functor BuildCompile (structure TyName : TYNAME
 					structure LvarMap = LvarEqMap
 					structure Flags = Flags
 					structure Crash = Crash
-					structure PP = PP)
+					structure PP = PP
+					structure CConst = CConst
+					  )
 
     structure CompLambEnv = CompLambEnv(structure Lvars = Lvars
 					structure Con = Con
@@ -533,6 +543,7 @@ functor BuildCompile (structure TyName : TYNAME
 			structure Environments = Environments
                         structure Lvars = Lvars
                         structure LambdaExp = LambdaExp
+                        structure LambdaBasics = LambdaBasics
                         structure CompilerEnv = CompilerEnv
 
                         structure MatchCompiler = MatchCompiler
