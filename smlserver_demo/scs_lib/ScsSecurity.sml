@@ -164,7 +164,9 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
 			   rest ( (#";")::(#"5")::(#"3")::(#"#")::(#"&")::acc )
 	      | #"&"  => parseHTML 
 			   rest ( (#";")::(#"8")::(#"3")::(#"#")::(#"&")::acc )
+              | #"\n" => parseHTML rest ( (#">")::(#"r")::(#"b")::(#"<")::acc )
 	      | other => parseHTML rest ( other::acc )
+
             )
 	  | NONE => implode (rev acc) 
       in
