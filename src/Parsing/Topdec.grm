@@ -143,7 +143,7 @@ type arg = unit
         | DECPOSINTEGER of int option | DECNEGINTEGER of int option
 	| HEXINTEGER of int option | DIGIT of int 
 	| WORD of int option
-	| REAL of real option | STRING of string
+	| REAL of string option | STRING of string
         | ID of string | TYVAR of string 
 
 (* Junk: *)
@@ -155,7 +155,7 @@ type arg = unit
 %value  DECNEGINTEGER   (SOME 0)
 %value  HEXINTEGER      (SOME 0)
 %value  WORD		(SOME 0)
-%value  REAL            (SOME 0.0)
+%value  REAL            (SOME "0.0")
 %value  STRING          ("")
 %value  ID              ("bogus")
 %value  TYVAR           ("'bogus")

@@ -1439,7 +1439,7 @@ structure MlyValue =
 struct
 datatype svalue = VOID | ntVOID of unit ->  unit
  | TYVAR of unit ->  (string) | ID of unit ->  (string)
- | STRING of unit ->  (string) | REAL of unit ->  (real option)
+ | STRING of unit ->  (string) | REAL of unit ->  (string option)
  | WORD of unit ->  (int option) | DIGIT of unit ->  (int)
  | HEXINTEGER of unit ->  (int option)
  | DECNEGINTEGER of unit ->  (int option)
@@ -1648,7 +1648,7 @@ fn (T 8) => MlyValue.QUAL_ID(fn () => (["bogus"])) |
 (T 62) => MlyValue.DECNEGINTEGER(fn () => (SOME 0)) | 
 (T 63) => MlyValue.HEXINTEGER(fn () => (SOME 0)) | 
 (T 65) => MlyValue.WORD(fn () => (SOME 0)) | 
-(T 66) => MlyValue.REAL(fn () => (SOME 0.0)) | 
+(T 66) => MlyValue.REAL(fn () => (SOME "0.0")) | 
 (T 67) => MlyValue.STRING(fn () => ("")) | 
 (T 68) => MlyValue.ID(fn () => ("bogus")) | 
 (T 69) => MlyValue.TYVAR(fn () => ("'bogus")) | 

@@ -71,7 +71,7 @@ signature GRAMMAR_UTILS =
     val mk_WordSCon: int -> C.scon
     val mk_StringSCon: string -> C.scon
     val mk_CharSCon: int -> C.scon
-    val mk_RealSCon: real -> C.scon
+    val mk_RealSCon: string -> C.scon
     val impossible : string -> 'a
     val span_info : info * info -> info
     val PP : pos -> pos -> info	(* `PP L R' generates position

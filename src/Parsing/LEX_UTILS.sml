@@ -1,6 +1,5 @@
 (* General lexing utilities. *)
 
-(*$LEX_UTILS*)
 signature LEX_UTILS =
   sig
     type LexArgument
@@ -21,7 +20,7 @@ signature LEX_UTILS =
     val asDigit: string -> int
     val asInteger: string -> int option
     val asWord: string -> int option
-    val asReal: string -> real option
+    val asReal: string -> string option
 
     val initArg: SourceReader -> LexArgument
     val clearString: LexArgument -> LexArgument

@@ -6,7 +6,7 @@ val EOF:  'a * 'a -> (svalue,'a) token
 val TYVAR: (string) *  'a * 'a -> (svalue,'a) token
 val ID: (string) *  'a * 'a -> (svalue,'a) token
 val STRING: (string) *  'a * 'a -> (svalue,'a) token
-val REAL: (real option) *  'a * 'a -> (svalue,'a) token
+val REAL: (string option) *  'a * 'a -> (svalue,'a) token
 val WORD: (int option) *  'a * 'a -> (svalue,'a) token
 val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
 val HEXINTEGER: (int option) *  'a * 'a -> (svalue,'a) token
