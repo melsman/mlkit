@@ -89,6 +89,15 @@ struct
     | pr_aty(INTEGER_ATY i) = Int.toString i
     | pr_aty(UNIT_ATY) = "()"
 
+  fun eq_aty(REG_I_ATY offset1,REG_I_ATY offset2) = offset1 = offset2
+    | eq_aty(REG_F_ATY offset1,REG_F_ATY offset2) = offset1 = offset2
+    | eq_aty(STACK_ATY offset1,STACK_ATY offset2) = offset1 = offset2
+    | eq_aty(DROPPED_RVAR_ATY,DROPPED_RVAR_ATY) = true
+    | eq_aty(PHREG_ATY phreg1,PHREG_ATY phreg2) = phreg1 = phreg2
+    | eq_aty(INTEGER_ATY i1,INTEGER_ATY i2) = i1 = i2
+    | eq_aty(UNIT_ATY,UNIT_ATY) = true
+    | eq_aty _ = false
+
   (****************************************************************)
   (* Add Dynamic Flags                                            *)
   (****************************************************************)

@@ -132,6 +132,17 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val res_phreg = HpPaRisc.reg_res_as_lvs
     val args_phreg_ccall = HpPaRisc.reg_args_ccall_as_lvs
     val res_phreg_ccall = HpPaRisc.reg_res_ccall_as_lvs
+
+    val all_regs = HpPaRisc.all_regs_as_lvs
+
+    val callee_save_ccall_phregs   = HpPaRisc.callee_save_regs_ccall_as_lvs
+    val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
+    fun is_callee_save_ccall phreg = Lvarset.member(phreg,callee_save_ccall_phregset)
+
+    val caller_save_ccall_phregs   = HpPaRisc.caller_save_regs_ccall_as_lvs
+    val caller_save_ccall_phregset = Lvarset.lvarsetof caller_save_ccall_phregs
+    fun is_caller_save_ccall phreg = Lvarset.member(phreg,caller_save_ccall_phregset)
+
     val callee_save_phregs = HpPaRisc.callee_save_regs_mlkit_as_lvs
     val callee_save_phregset = Lvarset.lvarsetof callee_save_phregs
     fun is_callee_save phreg = Lvarset.member(phreg,callee_save_phregset)
@@ -174,7 +185,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val prims = ["__equal_int", "__minus_int", "__plus_int", (* "__mul_int", *) (* treat millicode calls as C calls (e.g., mul) *)
 		 "__neg_int", "__abs_int", "__less_int", "__lesseq_int",        (*  ; for def-use.. *)
 		 "__greater_int", "__greatereq_int", "__fresh_exname",
-		 "__plus_float", "__minus_float", "__mul_float", "__div_float",
+		 "__plus_float", "__minus_float", "__mul_float", (*"__div_float",*) (* calls a C function *)
 		 "__neg_float", "__abs_float", "__less_float", "__lesseq_float",
 		 "__greater_float", "__greatereq_float", "less_word__", "greater_word__",
 		 "lesseq_word__", "greatereq_word__", "plus_word8__", "minus_word8__",

@@ -270,7 +270,7 @@ functor CallConv(structure Lvars : LVARS
 
     fun pr_sty(CC_NO_STY lv) = Lvars.pr_lvar lv
       | pr_sty(CC_STACK(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
-      | pr_sty(CC_PHREG(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ Lvars.pr_lvar phreg
+      | pr_sty(CC_PHREG(lv,phreg)) = (*Lvars.pr_lvar lv ^ ":" ^*) Lvars.pr_lvar phreg
 
     fun pr_sty_opt(SOME sty) = pr_sty sty
       | pr_sty_opt(NONE) = ""

@@ -442,6 +442,23 @@ struct
 	   | LS.SWITCH_S sw => CBV_sw(CBV_lss',LS.SWITCH_S,sw,L_set,LVenv,lss)
 	   | LS.SWITCH_C sw => CBV_sw(CBV_lss',LS.SWITCH_C,sw,L_set,LVenv,lss)
 	   | LS.SWITCH_E sw => CBV_sw(CBV_lss',LS.SWITCH_E,sw,L_set,LVenv,lss)
+	   | LS.FLUSH(atom,_) => 
+	       let (* We define the stack slot *)
+		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = (LineStmt.get_var_atom(atom,[]),[])
+	       in
+		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
+		  ls::lss')
+	       end
+
+	   | LS.FETCH(atom,_) =>
+	       let (* We use the stack slot (i.e., the stack slot is live) *)
+		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = ([],LineStmt.get_var_atom(atom,[]))
+	       in
+		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
+		  ls::lss')
+	       end
 	   | _ => 
 	       let
 		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)

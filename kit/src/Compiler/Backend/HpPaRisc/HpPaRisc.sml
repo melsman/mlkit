@@ -83,6 +83,8 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       fun reg_to_lv(Gen i) = Vector.sub(map_reg_to_lvs,i)
 	| reg_to_lv _ = die "reg_to_lv: reg is not a general register (Gen)"
 
+      val all_regs_as_lvs = map reg_to_lv all_regs
+
       val reg_args = map Gen [3,4,5,6,7,8,9,10] 
       val reg_args_as_lvs = map reg_to_lv reg_args
       val reg_res = map Gen [10,9,8,7,6,5,4,3] 
@@ -99,7 +101,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       val caller_save_regs_mlkit = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,22,23,24,25,26,28,29]
       val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
 
-      val callee_save_regs_ccall = map Gen []
+      val callee_save_regs_ccall = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
       val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
 
       (* tmp_reg0, tmp_reg1, mrp and rp should not be in this list as they are never live across a C call *)

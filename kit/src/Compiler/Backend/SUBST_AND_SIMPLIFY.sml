@@ -29,6 +29,7 @@ signature SUBST_AND_SIMPLIFY =
       | INTEGER_ATY      of int 
       | UNIT_ATY
 
+    val eq_aty : Aty * Aty -> bool
 
     val SS : {main_lab:label,code:(StoreTypeCO,offset,AtomCO) LinePrg,imports:label list * label list,exports:label list * label list} ->
              {main_lab:label,code:(StoreTypeCO,offset,Aty) LinePrg,imports:label list * label list,exports:label list * label list}
