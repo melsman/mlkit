@@ -88,7 +88,7 @@ typedef struct rp {
   struct rp *n;                   /* NULL or pointer to next page. */
   struct gen *gen;                /* Pointer back to generation. Used by GC. */
   #ifdef ENABLE_GEN_GC
-  int *colorPtr;                  /* Color pointer used by generational GC */
+  unsigned int *colorPtr;         /* Color pointer used by generational GC */
   #endif /* ENABLE_GEN_GC */
   int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Rp;
@@ -201,7 +201,7 @@ are raised) */
 /* Important: don't mess with Ro unless you also redefine the constants below. */
 #define offsetG0InRo 0
 #ifdef ENABLE_GEN_GC
-#define offsetG1InRo 3  /* words */
+#define offsetG1InRo 12  /* bytes */
 #endif
 typedef struct ro {
   Gen g0;              /* g0 is the only generation when ordinary GC is used. g0 is the
@@ -305,9 +305,9 @@ typedef Ro* Region;
 #endif /*ENABLE_GC*/
 
 #ifdef ENABLE_GEN_GC
-#define get_ro_from_gen(gen)    ( (is_gen_1(gen)) ? ( (Ro*)(((void*)(&(gen)))-offsetG1InRo) ) : ( (Ro*)(((void*)(&(gen)))-offsetG0InRo) ) )
+#define get_ro_from_gen(gen)    ( (is_gen_1(gen)) ? ( (Ro*)(((unsigned int)(&(gen)))-offsetG1InRo) ) : ( (Ro*)(((unsigned int)(&(gen)))-offsetG0InRo) ) )
 #else
-#define get_ro_from_gen(gen)    ((Ro*)(((void*)(&(gen)))-offsetG0InRo))
+#define get_ro_from_gen(gen)    ( (Ro*)(((unsigned int)(&(gen)))-offsetG0InRo) )
 #endif /* ENABLE_GEN_GC */
 
 /*

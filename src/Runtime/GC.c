@@ -145,6 +145,11 @@ print(unsigned int *value)
   return;
 }
 
+void pp_gen(Gen *gen)  // ToDo: GenGC 
+{
+  fprintf(stderr,"\n[Addr: %x, fp:%x, a:%x, b:%x]",gen,gen->fp, gen->a,gen->b);
+}
+
 /*#define copy_words(from,to,w) (memcpy((to),(from),4*(w)))*/
 inline static void 
 copy_words(unsigned int *from,unsigned int *to,int num) 
@@ -616,7 +621,6 @@ acopy(Gen *gen, unsigned int *obj_ptr)
 {
   int size;
   unsigned int *new_obj_ptr;
-
 #ifdef PROFILING
   int pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr))-1)->atId;
@@ -711,11 +715,26 @@ points_into_tospace (unsigned int x)
   return ret;
 }
 
+inline static 
+Gen * what_gen_to_copy_to(Gen *gen, unsigned int *obj_ptr)
+{
+  #ifdef ENABLE_GEN_GC
+    if (obj_ptr < get_rp_header(obj_ptr)->colorPtr) 
+      return &(get_ro_from_gen(*gen)->g1);
+    else
+      { if is_gen_1(*gen) die("not g0"); // ToDo: GenGC remove test
+      return gen;} /* Will always be g0 */
+  #else
+    return gen;
+  #endif /* ENABLE_GEN_GC */
+}
+
 static unsigned int 
 evacuate(unsigned int obj) 
 {
   Rp* rp;
   Gen* gen;
+  Gen* copy_to_gen;
 
   unsigned int *obj_ptr, *new_obj_ptr;
 
@@ -762,7 +781,6 @@ evacuate(unsigned int obj)
 
   // Object is in an infinite region
   gen = rp->gen; 
-
   switch ( rtype(*gen) ) {
   case RTYPE_PAIR:
     {
@@ -770,7 +788,8 @@ evacuate(unsigned int obj)
 	{
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = acopy_pair(gen, obj_ptr);
+      copy_to_gen = what_gen_to_copy_to(gen, obj_ptr);
+      new_obj_ptr = acopy_pair(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
@@ -780,7 +799,8 @@ evacuate(unsigned int obj)
 	{
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = acopy_ref(gen, obj_ptr);
+      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr);
+      new_obj_ptr = acopy_ref(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
@@ -790,7 +810,8 @@ evacuate(unsigned int obj)
 	{
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = acopy_triple(gen, obj_ptr);
+      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr);
+      new_obj_ptr = acopy_triple(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
@@ -804,18 +825,19 @@ evacuate(unsigned int obj)
 	    }
 	  die ("forward ptr check failed\n");
 	}
-      new_obj_ptr = acopy(gen, obj_ptr);
+      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr);
+      new_obj_ptr = acopy(copy_to_gen, obj_ptr);
       *obj_ptr = tag_forward_ptr(new_obj_ptr);  // install forward pointer
     }
   }
-  if ( is_gen_status_NONE(*gen) ) 
+  if ( is_gen_status_NONE(*copy_to_gen) ) 
     {
 #ifdef PROFILING 
       push_scan_stack(new_obj_ptr - sizeObjectDesc);
 #else
       push_scan_stack(new_obj_ptr);
 #endif
-      set_gen_status_SOME(*gen);
+      set_gen_status_SOME(*copy_to_gen);
     }
   return (unsigned int)new_obj_ptr;
 }
@@ -1003,17 +1025,25 @@ do_scan_stack()
 }
 
 inline static 
-void clear_tospace_bit_in_gen(Gen *gen) 
+void clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen) 
 { Rp *p;
 
   for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
     {
+      /* Clear tospace-bit */
       if ( is_tospace_bit(p->n) ) { 
 	// check that all region pages have their tospace bit set
 	p->n = clear_tospace_bit(p->n);
       } else {
 	die ("gc: page in tospace not marked");
       }
+      #ifdef ENABLE_GEN_GC
+        /* Update colorPtr */
+        if (p->n) /* tospace-bit has been cleared */
+	  p->colorPtr = (unsigned int*) (p+1); /* Not last page so entire page is black */
+	else
+	  p->colorPtr = gen->a; /* Last page so only allocated part of page is black */
+      #endif /* ENABLE_GEN_GC */
     }
 }
 
@@ -1243,11 +1273,12 @@ gc(unsigned int **sp, unsigned int reg_map)
     }
 
   // Unmark all tospace bits in region pages in regions on the stack
+  // Update colorPtr in all region pages.
   for( r = TOP_REGION ; r ; r = r->p ) 
     {
-      clear_tospace_bit_in_gen(&(r->g0));
+      clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g0));
       #ifdef ENABLE_GEN_GC
-        clear_tospace_bit_in_gen(&(r->g1));
+        clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g1));
       #endif /* ENABLE_GEN_GC */
     }
 
