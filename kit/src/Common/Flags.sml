@@ -108,7 +108,7 @@ functor Flags (structure Crash : CRASH
     val path_to_runtime_prof = ref "You_did_not_set_path_to_runtime_prof"
 
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
-    val c_libs = ref "-lM" (*include math lib when compiling target code from the kit*)
+    val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
 
     (* The following three are only used by TestEnv: *)
     val kit_backend = ref "C" (*either "C" or "native"*)

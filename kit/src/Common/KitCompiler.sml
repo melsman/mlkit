@@ -176,9 +176,18 @@ structure K = struct
 
     fun install() =
       let val _ = print "\n ** Installing compiler executable **\n\n"
-	  val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit.hppa-hpux9"}
+          fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
+	  fun kit_image() =
+	    case arch_os()
+	      of ("X86", "Linux") => (Flags.lookup_string_entry "c_libs" := "-lm";
+				      "kit.x86-linux")
+	    | ("HPPA", "HPUX") => (Flags.lookup_string_entry "c_libs" := "-lM";
+				   "kit.hppa-hpux9")
+	    | ("SUN", "OS4") => "unknown"
+	    | _ => "unknown"
+	  val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file=kit_image()}
 	  val os = TextIO.openOut kitbinkit_path
-	  val _ = (TextIO.output(os, "sml110 @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
+	  val _ = (TextIO.output(os, "sml @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
 	  val _ = OS.Process.system("chmod a+x " ^ kitbinkit_path)
 	    handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ kitbinkit_path ^ "' failed***\n");
 			 OS.Process.success)

@@ -4,6 +4,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <sys/times.h>
+
+#if defined(linux)
+#include <sys/resource.h>
+#endif
+
+
 #include "Tagging.h"
 #include "String.h"
 
