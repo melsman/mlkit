@@ -227,6 +227,7 @@ fun htmlencode s : string =
     let fun encode #"<" = "&lt;"
 	  | encode #">" = "&gt;"
 	  | encode #"&" = "&amp;"
+	  | encode #"\"" = "&#34;" (*MT Aug 5, 2001 *)
 	  | encode c    = String.str c
     in String.translate encode s end
 end
