@@ -50,6 +50,7 @@ signature LEX_BASICS =
 
     type Report
     val reportPosition: {left: pos, right: pos} -> Report
+    val output_source : {os: outstream, left: pos, right: pos} -> unit
 
     type StringTree
     val layoutPos: pos -> StringTree
