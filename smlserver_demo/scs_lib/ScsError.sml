@@ -115,7 +115,7 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
     fun valOf NONE     = panic `valOf(NONE)`
       | valOf (SOME v) = v
 
-    fun valOf' str NONE     = panic `^str`
+    fun valOf' str NONE     = panic `valOf'(NONE): ^str`
       | valOf' str (SOME v) = v
 
     fun valOfMsg msg NONE     = errorMsg msg
