@@ -24,6 +24,12 @@ in
 	   disable "garbage_collection";
 	   enable "region_profiling"; 
 	   K.build_basislib();
+
+	   enable "garbage_collection";
+	   enable "region_profiling"; 
+	   K.build_basislib();
+
+           disable "garbage_collection";
 	   disable "region_profiling"; 
 
 (*	   enable "comments_in_x86_asmcode";*)

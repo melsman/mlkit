@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes; it is based *)
-(* on the file /home/mael/mlkit/kit/src/Compiler/Backend/KAM/KamInsts.spec *)
+(* on the file /home/nh/ITU/MLKit/mlkit/kit/src/Compiler/Backend/KAM/KamInsts.spec *)
 
 functor OpcodesKAM () : OPCODES_KAM = 
   struct
