@@ -95,7 +95,7 @@ functor AndOrTree(structure Ident: IDENT
 		   | None => nil
 	       )
 
-      | explodePatrow(DOTDOTDOT _) = nil
+      | explodePatrow(DOTDOTDOT i) =  nil (* DOTDOTDOT was expanded by ElabDec.resolve_patrow *)
 
     fun getNodeInfo tree =
       case tree
