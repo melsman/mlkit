@@ -8168,6 +8168,7 @@ directory for detailed comments.)
 %---------------------------------------------------------
 \chapter{Bootstrapping}
 %---------------------------------------------------------
+
 In this chapter, we demonstrate the process of generating an
 executable ML Kit that uses regions itself for compiling Standard ML
 programs. An overview of the bootstrapping process is pictured in
@@ -8187,10 +8188,19 @@ when running, uses SML/NJ's runtime system. This version of the ML Kit
 is pictured to the right of the SML/NJ executable and is created using
 the standard built procedure:
 \begin{verbatim}
-  > make mlkit
-  ...
-  > make install INSTDIR=$(HOME)/mlkit-v1
-  ...
+[23:01-kit]# pwd
+/import/home/nh/ITU/MLKit/mlkit/kit
+[23:02-kit]# make clean
+...
+[23:04-kit]# make
+...
+[23:11-kit]# make install INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
+...
+[23:14-kit]# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
+...
+[23:16-kit]# cd /import/home/nh/ITU/MLKit/mlkit-v1
+...
+[23:25-mlkit-v1]# make bootstrap INSTDIR=/import/home/nh/MLKit/mlkit-v2
 \end{verbatim}
 
 To construct a version of the ML Kit that is based on the ML Kit runtime
@@ -8213,6 +8223,30 @@ version of the ML Kit used for compilation; the reason that two
 iterations are necessary has to do with the way that machine code
 labels are choosen when memorization of the Basic Library is supported
 (compared to when memorization is not supported.)
+
+\subsection{Testing while bootstrapping}
+
+You can easily apply all the ML Kit tests in the test directory. This
+will, perform an acceptance test on the four configurations of the ML:
+
+\begin{enumerate}
+
+\item with region inference alone
+\item with region inference and profiling
+\item with region inference and garbage collection
+\item with region inference, garbage collection and profiling
+
+Below we show the process of building the kits 
+\end{enumerate}
+
+\begin{verbatim}
+[23:38-kit]# pwd
+/home/nh/ITU/MLKit/mlkit/kit
+[23:40-kit]# make clean
+...
+
+\end{verbatim}
+
 
 %---------------------------------------------------------
 \chapter{Summary of Changes}
@@ -8726,3 +8760,4 @@ Options:
 \hrule
 \bigskip
 \end{document}
+
