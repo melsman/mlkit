@@ -63,7 +63,7 @@ specialised ones.
 
     type field_name = ScsDict.dict
 
-    val getIntErr      : msg -> int formvar_fn
+    val getIntErr      : msg -> int formvar_fnrr
 
 val getUserIdErr = getIntErr "User id" 
 
@@ -122,6 +122,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val isErrors  : errs -> bool
 
     val getIntErr              : int formvar_fn
+    val getIntTrimErr          : int formvar_fn
     val getNatErr              : int formvar_fn
     val getRealErr             : real formvar_fn
     val getPosRealErr          : real formvar_fn
@@ -330,6 +331,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		       else NONE
 		   | nil => NONE
 		 end handle Fail s => NONE)
+      val getIntTrimErr = getErrWithOverflow 0 [(ScsLang.en,`number`),(ScsLang.da,`tal`)]
+	(fn v => let val l = (explode o ScsString.trim) v
+		 in 
+		   case l
+		     of c::_ => 
+		       if Char.isDigit c orelse c = #"-" orelse c = #"~" then
+			 (case Int.scan StringCvt.DEC List.getItem l
+			    of SOME (n, nil) => SOME n
+			  | _ => NONE)
+		       else NONE
+		   | nil => NONE
+		 end handle Fail s => NONE)
+
       val getNatErr = getErrWithOverflow 0 [(ScsLang.en,`positive number`),(ScsLang.da,`positivt tal`)]
 	(fn v => let val l = explode v
 		 in 
