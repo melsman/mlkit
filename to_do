@@ -1,5 +1,10 @@
 Possible things to do
 ---------------------
+nh 2002-11-13 : problems with explicit typ-vars. 
+
+   type t = 'a option
+
+raises exception but it should return an error message instead.
 
 mael 2003-02-04: nicer pretty-printing of signatures (mlkit
 -sig). Particularly, parameterized type constructors have an extra
