@@ -62,12 +62,18 @@ structure ScsPrint :> SCS_PRINT =
 	     else f
 	  end*)
 (*      val scs_print_dir = "scs_print/"*)
+(* KNP 30-10-2003
       fun path_preview () = Ns.Info.pageRoot() ^ "/" ^ (getInfo "scs_print_preview")
+*)
+      fun path_preview () = ScsConfig.scs_tmp()
       fun texfile f = path_preview() ^ "/" ^ f ^ ".tex"
       fun psfile f = path_preview() ^ "/" ^ f ^ ".ps"
       fun pdffile f = path_preview() ^ "/" ^ f ^ ".pdf"
       fun dvifile f = path_preview() ^ "/" ^ f ^ ".dvi"
+      fun pdfurl f = path_preview() ^ "/" ^ f ^ ".pdf"
+(*
       fun pdfurl f = "/" ^ (getInfo "scs_print_preview") ^ "/" ^ f ^ ".pdf"
+*)
     in
       fun genTmpPDF doc_type source =
 	case doc_type of
@@ -244,7 +250,7 @@ structure ScsPrint :> SCS_PRINT =
 	let
 	  val pdf = genPDF doc_type sources
 	in
-	  Ns.returnFile pdf
+	  Ns.returnFile ( pdf )	  
         end
 
     end (* of local block *)
