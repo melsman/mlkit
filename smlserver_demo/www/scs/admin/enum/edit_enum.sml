@@ -46,7 +46,7 @@ val edit_enum_form =
 	     <td>^(#value enum_val)</td>
 	    <td>^(text_da_widget)</td>
 	    <td>^(text_eng_widget)</td>
-	    <td>^(if #active_p enum_val then ScsDict.s UcsPb.yes_dict else ScsDict.s UcsPb.no_dict)</td>
+	    <td>^(if #active_p enum_val then ScsDict.s UcsDict.yes_dict else ScsDict.s UcsDict.no_dict)</td>
 	    <td>^(Int.toString (#ordering enum_val))</td>
 	    <td>^(Quot.toString edit_link)</td>
 	    </tr>` ^^ post_form
