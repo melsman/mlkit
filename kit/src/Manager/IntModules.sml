@@ -152,14 +152,9 @@ functor IntModules(structure Name : NAME
        fun reset_unitname_counter() = counter := 0
     end
 
-
     (* ----------------------------------------------------
-     * Determine where to put target files; if profiling is
-     * enabled then we put target files into the PM/Prof/
-     * directory; otherwise, we put target files into the
-     * PM/NoProf/ directory.
+     * Determine where to put target files
      * ---------------------------------------------------- *)
-   
    val pmdir = ManagerObjects.pmdir
 
     (* ----------------------------------------------------

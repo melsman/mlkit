@@ -1,4 +1,10 @@
-ML Kit NEWS file                                       September, 2001
+ML Kit NEWS file                                       October, 2001
+
+ * mael 2001-10-14: It is now possible to disable region inference in
+   the ML Kit by specifying the flag no_region_inference (or no_ri) on
+   the command line. The flag has the effect that no fresh region
+   variables are generated during the spreading phase of region
+   inference.
 
  * mael 2001-09-30: Added regular expression support (structure RegExp) 
    to the basis library. The implementation is based on an 

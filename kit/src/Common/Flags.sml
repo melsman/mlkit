@@ -57,6 +57,7 @@ functor Flags (structure Crash : CRASH
     val print_types  = ref false
     val warn_on_escaping_puts = ref false
     val all_multiplicities_infinite = ref false   
+    val region_inference = ref true
 
     (* Optimiser *)
     val statistics_after_optimisation = ref false
@@ -930,6 +931,10 @@ in
       \in your projects, this option should be turned on, unless\n\
       \you wish to import the Basis Library manually in your\n\
       \projects.")
+  val _ = add true
+     ("region_inference", SOME "ri", "region_inference", region_inference,
+      "With this flag disabled, all values are allocated in\n\
+       \global regions.")
 end
 
 val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))

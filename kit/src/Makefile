@@ -112,18 +112,18 @@ LINES = /home/mael/kit/src/lines.mael.sml
 
 
 bdys:
-	(cd Common/PM/NoProf; wc -l *.bdy > $(FILE))
-	(cd Common/EfficientElab/PM/NoProf; wc -l *.bdy >> $(FILE)) 
-	(cd Parsing/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Lambda/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Regions/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Kam/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Cfg/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/C/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Backend/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Backend/HpPaRisc/PM/NoProf; wc -l *.bdy >> $(FILE))	
-	(cd Manager/PM/NoProf; wc -l *.bdy >> $(FILE))	
+	(cd Common/PM/RI; wc -l *.bdy > $(FILE))
+	(cd Common/EfficientElab/PM/RI; wc -l *.bdy >> $(FILE)) 
+	(cd Parsing/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/Lambda/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/Regions/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/Kam/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/Cfg/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/C/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/Backend/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Compiler/Backend/HpPaRisc/PM/RI; wc -l *.bdy >> $(FILE))	
+	(cd Manager/PM/RI; wc -l *.bdy >> $(FILE))	
 
 lines:
 	(cd Common; cat *.sml > $(LINES))

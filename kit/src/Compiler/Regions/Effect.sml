@@ -769,11 +769,24 @@ struct
     in app (fn to => edge(find toplevel_arreff,find to)) (puts@gets)
     end
 
-  (* Optimization: For regions of type word we reuse 
-   * the top-level region. Word regions are
-   * dropped anyway. *)
+  (* Optimization: For regions of type word we reuse the top-level
+   * region. Word regions are dropped anyway. When the flag
+   * region_inference is disabled, fresh regions are not
+   * generated. *)
+
+  val region_inference = Flags.is_on0 "region_inference"
+
+  fun maybeFreshRhoWithTy (p as (rt,cone)) =
+    if region_inference() then freshRhoWithTy p
+    else case rt 
+	   of TOP_RT => (toplevel_region_withtype_top,cone)
+	    | BOT_RT => freshRhoWithTy p (* toplevel_region_withtype_bot *)
+	    | STRING_RT => (toplevel_region_withtype_string,cone)
+	    | REAL_RT => (toplevel_region_withtype_real,cone)
+	    | WORD_RT => die "maybeFreshRhoWithTy.not possible"
+
   val freshRhoWithTy = fn (WORD_RT,cone) => (toplevel_region_withtype_word, cone)
-                        | p => freshRhoWithTy p 
+                        | p => maybeFreshRhoWithTy p 
 
 
 

@@ -162,7 +162,7 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
     return -1;
   }
   strcpy(uo, pageRoot);
-  strcat(uo, "/PM/NoProf/");
+  strcat(uo, "/PM/RI/");
   strcat(uo, prjid);
   strcat(uo, "-");
   i = strlen(uo);

@@ -76,21 +76,23 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     val gc_p = Flags.is_on0 "garbage_collection"
 
     (* ----------------------------------------------------
-     * Determine where to put target files; if profiling is
-     * enabled then we put target files into the PM/Prof/
-     * directory; otherwise, we put target files into the
-     * PM/NoProf/ directory.
+     * Determine where to put target files
      * ---------------------------------------------------- *)
 
     local
-      val region_profiling = Flags.lookup_flag_entry "region_profiling"
+      val region_profiling = Flags.is_on0 "region_profiling"
+      val region_inference = Flags.is_on0 "region_inference"
     in 
       fun pmdir() = 
-	if !region_profiling then 
-	  if gc_p() then "PM/GCProf/" 
-	  else "PM/Prof/"
-	else if gc_p() then "PM/GC/" 
-        else "PM/NoProf/"
+	case (region_inference(), gc_p(), region_profiling())
+	  of (true,               true,   true)  => "PM/RI_GC_PROF/"
+	   | (true,               true,   false) => "PM/RI_GC/"
+	   | (true,               false,  true)  => "PM/RI_PROF/"
+	   | (true,               false,  false) => "PM/RI/"
+	   | (false,              true,   true)  => "PM/GC_PROF/"
+	   | (false,              true,   false) => "PM/GC/"
+	   | (false,              false,  true)  => "PM/PROF/"
+	   | (false,              false,  false) => "PM/NOTHING/"
     end
 
     type linkinfo = Execution.linkinfo

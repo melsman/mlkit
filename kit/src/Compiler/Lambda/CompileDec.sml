@@ -2330,20 +2330,25 @@ the 12 lines above are very similar to the code below
 	     | RECvalbind(_, vb) => flattenRecValbind vb
       in
         case valbind
-          of PLAINvalbind(i, pat, exp, NONE) =>
+          of PLAINvalbind(i, pat, exp, vbOpt) =>
             (case to_TypeInfo i
 	       of SOME (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) => 
-		 compile_binding env (topLevel, pat, exp, (tyvars, Type))
+		 let
+(*		   (* omit tyvars that are not in Type *)
+		   val tyvarsType = Type.tyvars Type
+		   val tyvars = List.foldr (fn (tv,acc) => 
+					    if List.exists (fn tv' => TyVar.eq(tv,tv')) tyvarsType then tv::acc
+					    else acc) nil tyvars
+*)
+		   val (env1, f1) = compile_binding env (topLevel, pat, exp, (tyvars, Type))
+		 in case vbOpt
+		      of SOME vb =>
+			let val (envRest, f2) = compileValbind env (topLevel,vb)
+			in (env1 plus envRest, f1 o f2)
+			end
+		       | NONE => (env1, f1)
+		 end
 		| _ => die "compileValbind: no type info")
-
-           | PLAINvalbind(i, pat, exp, SOME vb) =>
-               (case to_TypeInfo i
-		  of SOME (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) =>
-		    let val (env1, f1) = compile_binding env (topLevel, pat, exp, (tyvars, Type))
-		        val (envRest, f2) = compileValbind env (topLevel,vb)
-		    in (env1 plus envRest, f1 o f2)
-		    end
-		   | _ => die "compileValbind: no type info")
 
            | RECvalbind(_, vb) =>
                let val pairs = flattenRecValbind vb
