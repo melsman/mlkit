@@ -114,14 +114,6 @@ structure ScsLogin :> SCS_LOGIN =
 
     (* auth_verify_user; return user_id if happy, 0 otherwise *)
     local
-      (* Force SSL connection on production server. *)
-      fun maybe_force_ssl_conn () =
-	if ScsConfig.scs_debug_p() = "false" andalso
-	  String.substring(Ns.Conn.location(),0,5) <> "https"
-	  then (Ns.returnRedirect (ScsConfig.scs_site_url() ^ (target_url ` `));
-		Ns.exit())
-	else ()
-
       (* We memoize the cookie information for one connection
          only. The cookie information is checked exactly once for
          every connection. This also works with caching of library
@@ -155,11 +147,10 @@ structure ScsLogin :> SCS_LOGIN =
 						 "function during library initialization")
     in
       fun verifyUser' () =
-	(maybe_force_ssl_conn(); (* Maybe redirect and exit *)
 	 case !user_info of
 	   NONE => (user_info := SOME (verifyUser''());
 		    Option.valOf (!user_info))
-	 | SOME i => i)
+	 | SOME i => i
       fun upd_user_lang lang = 
 	case !user_info of
 	  NONE => user_info := SOME((NO_COOKIE,(default_id,lang)))
@@ -209,6 +200,15 @@ You should not be seeing this!`;
     in
       fun auth () =
       let
+	(* Force SSL connection on production server. *)
+	fun maybe_force_ssl_conn () =
+	  if ScsConfig.scs_debug_p() = "false" andalso
+	    String.substring(Ns.Conn.location(),0,5) <> "https"
+	    then (Ns.returnRedirect (ScsConfig.scs_site_url() ^ (target_url ` `));
+		  Ns.exit())
+	  else ()
+
+	val _ = maybe_force_ssl_conn(); (* Maybe redirect and exit *)
 	val (cookie,(user_id,user_lang)) = verifyUser'()
 	val msg = 
 	  case cookie of
