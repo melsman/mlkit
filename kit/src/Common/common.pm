@@ -47,10 +47,10 @@ in
   QuasiMap.sml
 
   KIT_MONO_SET.sml
+  QuasiSet.sml
   IntSet.sml
-
   NatSet.sml
-  EqSetList.sml
+(*  EqSetList.sml*)
   OrderSet.sml
 
   ../Manager/Name.sml

@@ -55,8 +55,8 @@ functor OpacityEnv(structure FunId : FUNID
     fun eq_fe_entry((T1,rea1),(T2,rea2)) = TyName.Set.eq T1 T2 andalso Realisation.eq (rea1,rea2)
     fun enrich ((fe1, rea1),((fe2,rea2),T)) = 
       FE.enrich eq_fe_entry (fe1,fe2) andalso Realisation.enrich(rea1,(rea2,T))
-    fun restrict((fe,rea), (funids,T)) = (FE.restrict (fe,funids), Realisation.restrict T rea)
-      handle FE.Restrict => die "restrict"
+    fun restrict((fe,rea), (funids,T)) = (FE.restrict (FunId.pr_FunId,fe,funids), Realisation.restrict T rea)
+      handle FE.Restrict s => die ("restrict; funid " ^ s ^ " is not in the environment")
     fun match((fe1,rea1),(fe2,rea2)) = Realisation.match(rea1,rea2)
 
     type StringTree = PP.StringTree

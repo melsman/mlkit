@@ -7,6 +7,7 @@
 functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure TopdecGrammar : TOPDEC_GRAMMAR   (*needed for type strexp*)
 			 sharing type TopdecGrammar.funid = ModuleEnvironments.funid
+			 sharing type TopdecGrammar.sigid = ModuleEnvironments.sigid
 			 sharing type TopdecGrammar.id = ModuleEnvironments.id
 			 sharing type TopdecGrammar.longtycon = ModuleEnvironments.longtycon
 			 sharing type TopdecGrammar.longstrid = ModuleEnvironments.longstrid
@@ -59,6 +60,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     end
 
     structure FunId = TopdecGrammar.FunId
+    structure SigId = TopdecGrammar.SigId
     structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
     type filename = string
@@ -364,16 +366,16 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type ElabEnv = ModuleEnvironments.Env
     type CEnv = CompilerEnv.CEnv
     type CompileBasis = CompileBasis.CompileBasis
-    type TopCompileBasis = CompileBasis.TopCompileBasis
 
     type strexp = TopdecGrammar.strexp
     type strid = ModuleEnvironments.strid
     type prjid = ModuleEnvironments.prjid
 
+    type sigid = ModuleEnvironments.sigid
+
+    datatype IntSigEnv = ISE of (sigid, TyName.Set.Set) FinMap.map
     datatype IntFunEnv = IFE of (funid, prjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
-         and IntBasis = IB of IntFunEnv * CEnv * CompileBasis
-	   
-    datatype TopIntBasis = TIB of IntFunEnv * CEnv * TopCompileBasis
+         and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
 
     (* The closure is to represent a structure expression in a compact way *)
 
@@ -386,12 +388,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun lookup (IFE ife) funid =
 	  case FinMap.lookup ife funid
 	    of SOME res => res
-	     | NONE => die "IntFunEnv.lookup"
+	     | NONE => die ("IntFunEnv.lookup: could not find funid " ^ FunId.pr_FunId funid)
 	fun restrict (IFE ife, funids) = IFE
 	  (foldl (fn (funid, acc) =>
 		  case FinMap.lookup ife funid
 		    of SOME e => FinMap.add(funid,e,acc)
-		     | NONE => die "IntFunEnv.restrict") FinMap.empty funids)
+		     | NONE => die ("IntFunEnv.restrict: could not find funid " ^ FunId.pr_FunId funid)) 
+	   FinMap.empty funids)
 	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; enrichment for free variables is checked *)
 	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
@@ -401,23 +404,49 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #2) ife
       end
 
+
+    structure IntSigEnv =
+      struct
+	val empty = ISE FinMap.empty
+	val initial = empty
+	fun plus (ISE ise1, ISE ise2) = ISE(FinMap.plus(ise1,ise2))
+	fun add (sigid,T,ISE ise) = ISE(FinMap.add(sigid,T,ise))
+	fun lookup (ISE ise) sigid =
+	  case FinMap.lookup ise sigid
+	    of SOME T => T
+	     | NONE => die ("IntSigEnv.lookup: could not find sigid " ^ SigId.pr_SigId sigid)
+	fun restrict (ISE ise, sigids) = ISE
+	  (foldl (fn (sigid, acc) =>
+		  case FinMap.lookup ise sigid
+		    of SOME e => FinMap.add(sigid,e,acc)
+		     | NONE => die ("IntSigEnv.restrict: could not find sigid " ^ SigId.pr_SigId sigid)) 
+	   FinMap.empty sigids)
+	fun enrich(ISE ise0, ISE ise) : bool = 
+	  FinMap.Fold(fn ((sigid, T), b) => b andalso
+		      case FinMap.lookup ise0 sigid
+			of SOME T0 => TyName.Set.eq T T0
+			 | NONE => false) true ise
+	fun layout (ISE ise) = FinMap.layoutMap{start="IntSigEnv = [", eq="->",sep=", ", finish="]"}
+	  (PP.LEAF o SigId.pr_SigId) 
+	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
+	fun tynames (ISE ise) = FinMap.fold (fn (a,b) => TyName.Set.union a b) TyName.Set.empty ise
+      end
+
+
     type longid = TopdecGrammar.DecGrammar.Ident.longid
     type longstrid = TopdecGrammar.StrId.longstrid
     type longtycon = TopdecGrammar.DecGrammar.TyCon.longtycon
     structure IntBasis =
       struct
 	val mk = IB
-	val mk' = TIB
 	fun un (IB ib) = ib
-	fun un' (TIB ib) = ib
-	val empty = IB (IntFunEnv.empty, CompilerEnv.emptyCEnv, CompileBasis.empty)
-	fun plus (IB(ife1,ce1,cb1), IB(ife2,ce2,cb2)) =
-	  IB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
-	fun plus' (TIB(ife1,ce1,tcb1), TIB(ife2,ce2,tcb2)) =
-	  TIB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus'(tcb1,tcb2))
-	local
-	  fun restr (cb_restr, (ife,ce,cb), {funids, longstrids, longvids, longtycons}) =
+	val empty = IB (IntFunEnv.empty, IntSigEnv.empty, CompilerEnv.emptyCEnv, CompileBasis.empty)
+	fun plus (IB(ife1,ise1,ce1,cb1), IB(ife2,ise2,ce2,cb2)) =
+	  IB(IntFunEnv.plus(ife1,ife2), IntSigEnv.plus(ise1,ise2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
+
+	fun restrict (IB(ife,ise,ce,cb), {funids, sigids, longstrids, longvids, longtycons}) =
 	    let val ife' = IntFunEnv.restrict(ife,funids)
+	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
 		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
 			else ()*)
@@ -425,8 +454,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce')
 		fun tynames_ife(IFE ife, tns) = 
 		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
-		        let val IB(_,ce,_) = obj
-			in CompilerEnv.tynamesOfCEnv ce @ tns
+		        let val IB(_,ise,ce,_) = obj
+			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
 			end
 		  in FinMap.fold tynames_obj tns ife
 		  end
@@ -437,35 +466,34 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			       TyName.tyName_REAL]    (* real needed because of overloading *)
 		  @ (CompilerEnv.tynamesOfCEnv ce')
 		val tynames = tynames_ife(ife',tynames)
+		val tynames = TyName.Set.list (TyName.Set.union (TyName.Set.fromList tynames) 
+					       (IntSigEnv.tynames ise'))
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
-		val cb' = cb_restr(cb,(lvars,lvars_with_prims,tynames,cons,excons))
-	    in (ife',ce',cb')
+		val cb' = CompileBasis.restrict(cb,(lvars,lvars_with_prims,tynames,cons,excons))
+	    in IB (ife',ise',ce',cb')
 	    end
-	in 
-	   fun restrict (TIB tib, res) = IB(restr(CompileBasis.restrict, tib, res))
-	end 
 
-	fun match(IB(ife1,ce1,cb1),TIB(ife2,ce2,tcb2)) =
+	fun match(IB(ife1,ise1,ce1,cb1),IB(ife2,ise2,ce2,cb2)) =
 	  let val _ = CompilerEnv.match(ce1,ce2)
-	      val cb1' = CompileBasis.match(cb1,tcb2)
-	  in IB(ife1,ce1,cb1')
+	      val cb1' = CompileBasis.match(cb1,cb2)
+	  in IB(ife1,ise1,ce1,cb1')
 	  end
 
 	local 
 	  fun IntFunEnv_enrich a = IntFunEnv.enrich a
+	  fun IntSigEnv_enrich a = IntSigEnv.enrich a
 	  fun CompilerEnv_enrichCEnv a = CompilerEnv.enrichCEnv a
 	  fun CompileBasis_enrich a = CompileBasis.enrich a
 	  fun CompileBasis_enrich a = CompileBasis.enrich a
-	  fun enrich0(enr,(ife0,ce0,cb0),(ife,ce,cb)) =
-	    IntFunEnv_enrich(ife0,ife) andalso CompilerEnv_enrichCEnv(ce0,ce) 
-	    andalso enr(cb0,cb)
 	in
-	  fun enrich(TIB IB1, TIB IB2) = enrich0(CompileBasis_enrich, IB1, IB2)
+	  fun enrich(IB(ife0,ise0,ce0,cb0),IB(ife,ise,ce,cb)) =
+	    IntFunEnv_enrich(ife0,ife) andalso IntSigEnv_enrich(ise0,ise) 
+	    andalso CompilerEnv_enrichCEnv(ce0,ce) andalso CompileBasis_enrich(cb0,cb)
 	end
 
 	local
-	  fun agree1(longstrid, (_,ce1,cb1), (_,ce2,cb2)) =
+	  fun agree1(longstrid, (_,_,ce1,cb1), (_,_,ce2,cb2)) =
 	    let val ce1 = CompilerEnv.lookup_longstrid ce1 longstrid
 	        val ce2 = CompilerEnv.lookup_longstrid ce2 longstrid
 	    in
@@ -488,26 +516,26 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    | agree2 (longstrid::longstrids, B1, B2) = 
 	    agree1(longstrid, B1, B2) andalso agree2(longstrids, B1, B2)
 	in
-	  fun agree (l, TIB B1, TIB B2) = agree2 (l, B1, B2) 
+	  fun agree (l, IB B1, IB B2) = agree2 (l, B1, B2) 
 	end
 
-	fun layout(IB(ife,ce,cb)) =
+	fun layout(IB(ife,ise,ce,cb)) =
 	  PP.NODE{start="IntBasis = [", finish="]", indent=1, childsep=PP.RIGHT ", ",
 		  children=[IntFunEnv.layout ife,
+			    IntSigEnv.layout ise,
 			    CompilerEnv.layoutCEnv ce,
 			    CompileBasis.layout_CompileBasis cb]}
 	  
 	  (* operations used in Manager, only. *)
-	val initial = TIB (IntFunEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial)
-	fun topify (IB(ife,ce,cb)) = TIB(ife,ce,CompileBasis.topify cb)
+	val initial = IB (IntFunEnv.initial, IntSigEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial)
       end
 
     type ElabBasis = ModuleEnvironments.Basis 
     type InfixBasis = InfixBasis.Basis
-    type sigid = ModuleEnvironments.sigid
     type opaq_env = OpacityElim.opaq_env     
+
     datatype Basis = BASIS of InfixBasis * ElabBasis * opaq_env * IntBasis
-    datatype TopBasis = TOPBASIS of InfixBasis * ElabBasis * opaq_env * TopIntBasis
+
     structure Basis =
       struct
 	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityElim.OpacityEnv.empty, IntBasis.empty)
@@ -530,14 +558,14 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  fun OpacityElim_enrich a = OpacityElim.OpacityEnv.enrich a
 	  fun IntBasis_enrich a = IntBasis.enrich a
 	in
-	  fun enrich (TOPBASIS (infB1,elabB1,rea1,tintB1), (TOPBASIS (infB2,elabB2,rea2,tintB2), dom_rea)) = 
+	  fun enrich (BASIS (infB1,elabB1,rea1,tintB1), (BASIS (infB2,elabB2,rea2,tintB2), dom_rea)) = 
 	    debug("InfixBasis", InfixBasis_eq(infB1,infB2)) andalso 
 	    debug("ElabBasis", ModuleEnvironments_B_enrich (elabB1,elabB2)) andalso
 	    debug("OpacityEnv", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
 	    debug("IntBasis", IntBasis_enrich(tintB1,tintB2))
 	end
 
-	fun agree(longstrids, TOPBASIS(_,elabB1,rea1,tintB1), (TOPBASIS(_,elabB2,rea2,tintB2), dom_rea)) =
+	fun agree(longstrids, BASIS(_,elabB1,rea1,tintB1), (BASIS(_,elabB2,rea2,tintB2), dom_rea)) =
 	  ModuleEnvironments.B.agree(longstrids,elabB1,elabB2) andalso IntBasis.agree(longstrids,tintB1,tintB2)
 	  
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
@@ -545,17 +573,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
 			    OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
 
-	val initial = TOPBASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial)
+	val initial = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial)
 	val _ = app Name.mk_rigid (!Name.bucket)
-	fun plus' (TOPBASIS (infb,elabb,rea,tintb), TOPBASIS (infb',elabb',rea',tintb')) =
-	  TOPBASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
-		    OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus'(tintb, tintb'))
-
-	fun topify (BASIS(infB,elabB,rea,intB)) = TOPBASIS(infB,elabB,rea,IntBasis.topify intB)
-	val empty' = topify empty
-
-	fun mk' a = TOPBASIS a
-	fun un' (TOPBASIS a) = a
       end
 
 
@@ -566,11 +585,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
 	  name list * InfixBasis * ElabBasis * opaq_env
 
-	type int_entry = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
+	type int_entry = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
 	  modcode * IntBasis
 
-	type int_entry' = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
-	  modcode * TopIntBasis
+	type int_entry' = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
+	  modcode * IntBasis
 
 	type intRep = ((prjid * funid) * bool, int_entry list) FinMap.map ref
 	  (* the bool is true if profiling is enabled *)

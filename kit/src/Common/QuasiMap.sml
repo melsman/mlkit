@@ -170,14 +170,18 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	    | (m1,m2) => mk_flex (IFM.mergeMap f' (imap' m1) (imap' m2))
       end
 
-    exception Restrict
-    fun restrict (m, nil) = Empty
-      | restrict (m, l) =
+    fun pp_lookup pp [] i = die "pp_lookup; element not there"
+      | pp_lookup pp (d::rest) i = if i = key d then pp d else pp_lookup pp rest i
+
+    exception Restrict of string
+    fun restrict (pp, m, nil) = Empty
+      | restrict (pp, m, l) =
       case ensure_consistent m
-	of Empty => raise Restrict
+	of Empty => raise Restrict "[empty map]"
 	 | m => let val im = imap' m
 		    val ns = map key l
-		    val im' = IFM.restrict (im, ns) handle IFM.Restrict => raise Restrict
+		    val pp' = pp_lookup pp l 
+		    val im' = IFM.restrict (pp', im, ns) handle IFM.Restrict s => raise Restrict s
 		    val rigid = IFM.fold (fn ((d,_), r) => r andalso rigid d) true im'
 		in if rigid then mk_rigid im'
 		   else mk_flex im'

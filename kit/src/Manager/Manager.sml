@@ -42,9 +42,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     structure ElabBasis = ModuleEnvironments.B
     structure ErrorCode = ParseElab.ErrorCode
 
-    type TopBasis = ManagerObjects.TopBasis
-
-
     fun die s = Crash.impossible ("Manager." ^ s)
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
@@ -367,10 +364,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun OpacityElim_restrict a = OpacityElim.OpacityEnv.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
-    fun parse_elab_interp (prjid,B, funid, punit, funstamp_now) : TopBasis * modcode =
+    fun parse_elab_interp (prjid,B, funid, punit, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file punit
-	      val (infB, elabB, opaq_env, topIntB) = Basis.un' B
+	      val (infB, elabB, opaq_env, topIntB) = Basis.un B
 	      val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
 	      val log_cleanup = log_init unitname
 	      val _ = Name.bucket := []
@@ -392,8 +389,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      (* val _ = debug_basis "Import" Bimp *)
 
 		      val _ = chat "[restricting interpretation basis begin...]"
-		      val intB_im = IntBasis_restrict(topIntB, {funids=funids,longstrids=longstrids,longtycons=longtycons,
-								longvids=longvids})
+		      val intB_im = IntBasis_restrict(topIntB, {funids=funids,sigids=sigids,longstrids=longstrids,
+								longtycons=longtycons,longvids=longvids})
 		      val _ = chat "[restricting interpretation basis end...]"
 
 		      val _ = chat "[finding tynames in elaboration basis begin...]"
@@ -431,10 +428,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val modc = ModCode.emit (prjid,modc)  (* When module code is inserted in repository,
 							     * names become rigid, so we emit the module code. *)
 		      val elabE' = ElabBasis.to_E elabB'
-		      val tintB_im = IntBasis.topify intB_im
-		      val tintB' = IntBasis.topify intB'
+		      val tintB_im = intB_im
+		      val tintB' = intB'
 		      val _ = Repository.add_int' ((prjid,funid),(funstamp_now,elabE',tintB_im,longstrids,names_int,modc,tintB'))
-		      val B' = Basis.mk'(infB',elabB',opaq_env',tintB')
+		      val B' = Basis.mk(infB',elabB',opaq_env',tintB')
 		  in print_result_report report;
 		    log_cleanup();
 		    (B',modc)
@@ -451,7 +448,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_enrich a = Basis.enrich a
     fun Basis_agree a = Basis.agree a
 
-    fun build_punit(prjid,B: TopBasis, punit : string, clean : bool) : TopBasis * modcode * bool * Time.time =
+    fun build_punit(prjid,B: Basis, punit : string, clean : bool) : Basis * modcode * bool * Time.time =
       (* The bool is a `clean' flag;  *)
       let
           val funid = ManagerObjects.funid_from_filename punit
@@ -466,10 +463,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		SOME(_,(funstamp, elabE, tintB, _, names_int, modc, tintB'))) =>
 	      if FunStamp.eq(funstamp,funstamp_now) andalso ModCode.exist modc then
 		(if clean then (print ("[reusing code for: \t" ^ punit ^ "]\n");
-				(Basis.mk'(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
+				(Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
 		 else if
 		        let
-			  val B_im = Basis.mk'(infB,elabB,opaq_env,tintB)
+			  val B_im = Basis.mk(infB,elabB,opaq_env,tintB)
 			  fun unmark_names () = (List.app Name.unmark_gen names_elab;    (* Unmark names - they where *)
 						 List.app Name.unmark_gen names_int)     (* marked in the repository. *)
 			  fun remark_names () = (List.app Name.mark_gen names_elab;      (*  If enrichment fails we remark *)
@@ -481,7 +478,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			in (if res then () else remark_names() ; res)
 			end then 
 	  		          (print ("[reusing code for: \t" ^ punit ^ " *]\n");
-				   (Basis.mk'(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
+				   (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
 
 		 else raise CAN'T_REUSE)
 
@@ -500,7 +497,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ---------------- *)
 
     fun Basis_plus (B,B') = Basis.plus(B,B')		    
-    fun Basis_plus' (B,B') = Basis.plus'(B,B')		    
 
     fun maybe_create_dir d : unit =
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
@@ -534,7 +530,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * the source files mentioned in the project. *)
 
     fun build_unitid(prjid, B, unitid, clean, modtimes) 
-      : TopBasis * modcode * bool * (string * Time.time) list =  
+      : Basis * modcode * bool * (string * Time.time) list =  
       let val {cd_old, file=unitid} = change_dir unitid
       in let val _ = maybe_create_PM_dir()
 	     val (B', modc, clean, modtime) = build_punit (prjid, B, unitid, clean)
@@ -544,54 +540,54 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     (* Build a sequence of units *)
     fun build_unitids(prjid, B, Bacc, unitids, clean, modtimes)
-      : TopBasis * modcode * bool * (string * Time.time) list =  
+      : Basis * modcode * bool * (string * Time.time) list =  
       case unitids
 	of [] => (Bacc, ModCode.empty, clean, modtimes)
 	 | [unitid] => 
 	  let val (B', modc, clean, modtimes) = build_unitid(prjid, B, unitid, clean, modtimes)
-	  in (Basis_plus'(Bacc, B'), modc, clean, modtimes)
+	  in (Basis_plus(Bacc, B'), modc, clean, modtimes)
 	  end
 	 | unitid::unitids => 
 	  let val (B1, modc1, clean, modtimes) = build_unitid(prjid, B, unitid, clean, modtimes)
-	      val (B2, modc2, clean, modtimes) = build_unitids(prjid, Basis_plus'(B, B1), Basis_plus'(Bacc,B1), 
+	      val (B2, modc2, clean, modtimes) = build_unitids(prjid, Basis_plus(B, B1), Basis_plus(Bacc,B1), 
 							       unitids, clean, modtimes)
 	  in (B2, ModCode.seq(modc1, modc2), clean, modtimes)
 	  end
 	  
     local val emptyInfB = #1 (Basis.un Basis.empty)
-          val emptyCEnv = #2 (IntBasis.un IntBasis.empty)
+          val emptyCEnv = #3 (IntBasis.un IntBasis.empty)
     in 
       fun drop_toplevel B = 
-	let val (_, _, phi, tintB)  = Basis.un' B	  
-	    val (_, _, tcb) = IntBasis.un' tintB
-	    val tintB' = IntBasis.mk'(ManagerObjects.IntFunEnv.empty, emptyCEnv, tcb)
-	in Basis.mk'(emptyInfB, ElabBasis.empty, phi, tintB')
+	let val (_, _, phi, tintB)  = Basis.un B	  
+	    val (_, _, _, tcb) = IntBasis.un tintB
+	    val tintB' = IntBasis.mk(ManagerObjects.IntFunEnv.empty, ManagerObjects.IntSigEnv.empty, emptyCEnv, tcb)
+	in Basis.mk(emptyInfB, ElabBasis.empty, phi, tintB')
 	end
     end
 
-    fun build_body (prjid, B:TopBasis, body, clean, modtimes) 
-      : TopBasis * modcode * bool * (string * Time.time) list =  
+    fun build_body (prjid, B: Basis, body, clean, modtimes) 
+      : Basis * modcode * bool * (string * Time.time) list =  
       case body
-	of EMPTYbody => (Basis.topify Basis.empty, ModCode.empty, clean, modtimes)
+	of EMPTYbody => (Basis.empty, ModCode.empty, clean, modtimes)
 	 | LOCALbody (body1,body2,body3) => 
 	  let val (B1, modc1, clean, modtimes) = build_body(prjid, B, body1, clean, modtimes)
-              val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus'(B,B1), body2, clean, modtimes)
+              val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus(B,B1), body2, clean, modtimes)
 	      val B1' = drop_toplevel B1
-	      val B' = Basis_plus'(B1',B2)
+	      val B' = Basis_plus(B1',B2)
 	      val modc' = ModCode.seq(modc1,modc2)
 	  in case body3
 	       of EMPTYbody => (B', modc', clean, modtimes)
-		| _ => let val (B3, modc3, clean, modtimes) = build_body(prjid, Basis_plus'(B,B'), body3, clean, modtimes)
-		       in (Basis_plus'(B',B3), ModCode.seq(modc',modc3), clean, modtimes)
+		| _ => let val (B3, modc3, clean, modtimes) = build_body(prjid, Basis_plus(B,B'), body3, clean, modtimes)
+		       in (Basis_plus(B',B3), ModCode.seq(modc',modc3), clean, modtimes)
 		       end
 	  end 
 	 | UNITbody(unitid,body) => 
 	  (case collect_units(body, [unitid])
-	     of (unitids, NONE) => build_unitids(prjid, B, Basis.topify Basis.empty, unitids, clean, modtimes)
+	     of (unitids, NONE) => build_unitids(prjid, B, Basis.empty, unitids, clean, modtimes)
 	      | (unitids, SOME body) => 
-	       let val (B1, modc1, clean, modtimes) = build_unitids(prjid, B, Basis.topify Basis.empty, unitids, clean, modtimes)
-		   val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus'(B,B1), body, clean, modtimes)
-	       in (Basis_plus'(B1,B2), ModCode.seq(modc1,modc2), clean, modtimes)
+	       let val (B1, modc1, clean, modtimes) = build_unitids(prjid, B, Basis.empty, unitids, clean, modtimes)
+		   val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus(B,B1), body, clean, modtimes)
+	       in (Basis_plus(B1,B2), ModCode.seq(modc1,modc2), clean, modtimes)
 	       end)
 
       (* Write a dummy file for the project into the `PM/Prof' or `PM/NoProf' directory. The date of this dummy
@@ -644,7 +640,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     type absprjid = string
 
-    type projectmap = (prjid * absprjid * extobj list * TopBasis) list
+    type projectmap = (prjid * absprjid * extobj list * Basis) list
 
     fun projectmap_lookup map prjid =
       let fun look [] = NONE
@@ -674,7 +670,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun build_project {cycleset : prjid list, pmap : projectmap, longprjid : prjid} 
 
-      : {res_basis : TopBasis, res_modc : modcode, 
+      : {res_basis : Basis, res_modc : modcode, 
 	 pmap : projectmap, extobjs : extobj list, clean : bool} =
 
       let val {cd_old, file=prjid} = change_dir longprjid
@@ -692,14 +688,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		         val prjid1 = OS.Path.file longprjid1
 		     in case projectmap_lookup pmap prjid1
 			  of SOME(absprjid1',extobjs',B') =>
-			    if absprjid1 = absprjid1' then (Basis_plus'(B,B'), modc, pmap, extobjs' @ extobjs, clean0)
+			    if absprjid1 = absprjid1' then (Basis_plus(B,B'), modc, pmap, extobjs' @ extobjs, clean0)
 			    else error ("Your project is inconsistent! The project identifier " ^ quot prjid1 ^ 
 					" stands\nfor different projects. Eliminate the inconsistency")
 			   | NONE => 
 			      let val {res_basis, res_modc, pmap, extobjs=extobjs', clean} = 
 				      build_project {cycleset=prjid :: cycleset, pmap=pmap, longprjid=longprjid1}
 				  val pmap = projectmap_add(prjid1,absprjid1,extobjs,res_basis,pmap)
-			      in (Basis_plus' (B, res_basis), ModCode.seq (modc, res_modc), 
+			      in (Basis_plus (B, res_basis), ModCode.seq (modc, res_modc), 
 				  pmap, extobjs' @ extobjs, clean0 andalso clean)
 			      end
 		     end) (Basis.initial, ModCode.empty, pmap, extobjs, clean) imports
@@ -754,7 +750,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
 	    if !Flags.auto_import_basislib then 
 	      let val {res_modc, res_basis, extobjs, ...} = build_project{cycleset=[], pmap=[], longprjid= !Flags.basislib_project}
-	      in (res_modc, Basis_plus'(Basis.initial,res_basis), extobjs)
+	      in (res_modc, Basis_plus(Basis.initial,res_basis), extobjs)
 	      end
 	    else (ModCode.empty, Basis.initial, [])
 	  val (_, modc_file, _, _) = build_body(prjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [])
@@ -770,7 +766,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun elab (unitname : string) : unit =
       let val prjid = unitname
-	  val (infB,elabB,_,_) = Basis.un' Basis.initial
+	  val (infB,elabB,_,_) = Basis.un Basis.initial
 	  val _ = reset()
 	  val log_cleanup = log_init unitname
       in (case ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB,

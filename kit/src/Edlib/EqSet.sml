@@ -25,8 +25,7 @@ struct
 
 (* ABSTYPE *)
 
-  abstype 'a Set = Set of 'a list
-  with
+  datatype 'a Set = Set of 'a list
 
 (* TYPE *)
 
@@ -154,6 +153,5 @@ struct
     fun fold' f (Set []) = raise Empty "fold'"
     |   fold' f (Set l)  = List.foldL' f l
 
-  end (* abstype *)
 end
 

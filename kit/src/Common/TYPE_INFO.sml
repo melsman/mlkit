@@ -122,6 +122,10 @@ signature TYPE_INFO =
       | OPAQUE_CONSTRAINT_INFO of Env * realisation
 	                (* Attached to opaque signature constraints *)
 
+      | SIGBIND_INFO of TyName.Set.Set    (* Attached to signature bindings; those 
+					   * type names that occur free in the 
+					   * elaborated signature. *)
+
       | DELAYED_REALISATION of realisation * TypeInfo   (* To support delayed realisation of
 							 * type info. *)
 

@@ -40,10 +40,20 @@ functor OpacityElim(structure Crash : CRASH
 
     type realisation = Environments.realisation
     type opaq_env = OpacityEnv.opaq_env
-    val plus = OpacityEnv.plus
-    val from_rea = OpacityEnv.from_rea
-    val rea_of = OpacityEnv.rea_of
-    val from_funid = OpacityEnv.from_funid
+    fun plus a = OpacityEnv.plus a
+    fun from_rea a = OpacityEnv.from_rea a
+    fun rea_of a = OpacityEnv.rea_of a
+    fun from_funid a = OpacityEnv.from_funid a
+
+    fun B_tynames B = ModuleEnvironments.B.tynames B
+    fun E_tynames E = Environments.E.tynames E
+
+    fun TyName_Set_difference a = TyName.Set.difference a
+    fun Realisation_renaming a = Realisation.renaming a
+    fun Realisation_dom a = Realisation.dom a
+    fun Realisation_restrict_from a = Realisation.restrict_from a
+    fun Realisation_inverse a = Realisation.inverse a
+    fun Realisation_restrict a = Realisation.restrict a
 
     type topdec = TopdecGrammar.topdec
 
@@ -51,9 +61,9 @@ functor OpacityElim(structure Crash : CRASH
       PP.outputTree(print,ModuleEnvironments.B.layout B, 100)
 
     infix oo
-    val op oo = Realisation.oo
+    fun op oo a = Realisation.oo a
     val Id : realisation = Realisation.Id
-    val on_Env = Realisation.on_Env
+    fun on_Env a = Realisation.on_Env a
 
     val tynames_initial_basis = ModuleEnvironments.B.tynames ModuleEnvironments.B.initial
 
@@ -359,15 +369,15 @@ functor OpacityElim(structure Crash : CRASH
 		  of SOME(TypeInfo.FUNCTOR_APP_INFO{rea_inst,rea_gen,Env}) => (rea_inst, rea_gen, Env)
 		   | _ => die "elim_strexp.APPstrexp: no info"
 	      val rea_g_ = 
-		case Realisation.inverse (Realisation.restrict (Realisation.dom rea_funid) rea_g)
+		case Realisation_inverse (Realisation_restrict (Realisation_dom rea_funid) rea_g)
 		  of SOME rea_g_ => rea_g_
 		   | NONE => die "elim_strexp.APPstrexp: cannot find inverse"
-	      val rea_g1 = Realisation.restrict_from (Realisation.dom rea_funid) rea_g 
-	      val rea_g2 = Realisation.renaming (TyName.Set.difference T (Realisation.dom rea_g1))
+	      val rea_g1 = Realisation_restrict_from (Realisation_dom rea_funid) rea_g 
+	      val rea_g2 = Realisation_renaming (TyName_Set_difference T (Realisation_dom rea_g1))
 	      val rea_i' = rea_strexp oo rea_0 oo rea_i
 	      val rea_g' = rea_g1 oo rea_g2
 	      val rea' = rea_g2 oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
-	      val E' = Realisation.on_Env rea' E
+	      val E' = on_Env rea' E
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNCTOR_APP_INFO{rea_inst=rea_i',rea_gen=rea_g',Env=E'})
 (*ME 1998-07-27
 	      val _ = print "\nOpacity Elimination of functor application.\n"
@@ -438,7 +448,7 @@ functor OpacityElim(structure Crash : CRASH
 	       | _ => die "elim_funbind.wrong type info."
 	  val (strexp',rea') = elim_strexp(oenv, strexp)      
 	  val resE' = on_Env rea' resE
-	  val T' = TyName.Set.difference (Environments.E.tynames resE') (ModuleEnvironments.B.tynames elabB')
+	  val T' = TyName_Set_difference (E_tynames resE') (B_tynames elabB')
 
 	    (* Also subtract the set of type names that can be
 	     * introduced in the program by derived forms, exhaustive
@@ -446,7 +456,7 @@ functor OpacityElim(structure Crash : CRASH
 	     * set of type names that occurs free in the initial
 	     * basis. *)
 
-	  val T' = TyName.Set.difference T' tynames_initial_basis
+	  val T' = TyName_Set_difference T' tynames_initial_basis
 
 	  val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNBIND_INFO {argE=argE, elabBref=ref elabB, T=T', resE=resE', 
 								    opaq_env_opt=SOME oenv})
@@ -464,6 +474,22 @@ functor OpacityElim(structure Crash : CRASH
       in (FUNCTORfundec(on_info(rea_of oenv,i),funbind'), oenv')
       end
 
+    (* Signatures *)
+
+    val rea_base = Realisation.from_T_and_tyname 
+      (TyName.Set.fromList [TyName.tyName_CHAR,TyName.tyName_WORD,TyName.tyName_WORD8],
+       TyName.tyName_INT)
+
+    fun elim_sigbind (rea, SIGBIND (i, sigid, sigexp, sigbind_opt)) =
+      SIGBIND(on_info(rea,i),sigid,sigexp, elim_sigbind_opt(rea,sigbind_opt))
+
+    and elim_sigbind_opt (rea, NONE) = NONE
+      | elim_sigbind_opt (rea, SOME sigbind) = SOME(elim_sigbind(rea,sigbind))
+
+    fun elim_sigdec (rea, SIGNATUREsigdec (i, sigbind)) =
+      SIGNATUREsigdec(on_info(rea,i), elim_sigbind(rea,sigbind))
+		      
+
     fun elim_topdec(oenv, topdec) =
       case topdec
 	of STRtopdec(i, strdec, topdecopt) =>
@@ -472,8 +498,9 @@ functor OpacityElim(structure Crash : CRASH
 	  in (STRtopdec(on_info(rea_of oenv,i),strdec',topdecopt'), plus(from_rea rea',oenv''))
 	  end
 	 | SIGtopdec(i, sigdec, topdecopt) =>
-	  let val (topdecopt', oenv') = elim_opt_oenv elim_topdec (oenv, topdecopt)
-	  in (SIGtopdec(on_info(rea_of oenv,i),sigdec,topdecopt'), oenv')
+	  let val sigdec' = elim_sigdec (rea_of oenv oo rea_base, sigdec)
+	      val (topdecopt', oenv') = elim_opt_oenv elim_topdec (oenv, topdecopt)
+	  in (SIGtopdec(on_info(rea_of oenv,i),sigdec',topdecopt'), oenv')
 	  end
 	 | FUNtopdec(i, fundec, topdecopt) =>
 	  let val (fundec', oenv') = elim_fundec(oenv, fundec)
@@ -484,6 +511,17 @@ functor OpacityElim(structure Crash : CRASH
    end (* local *)
 
    fun opacity_elimination (oenv: opaq_env, topdec: topdec) : topdec * opaq_env =
-     elim_topdec (oenv, topdec)
-
+     ((* Compiler.Profile.reset();
+      Compiler.Profile.setTimingMode true; *)
+      let
+	  val res = elim_topdec (oenv, topdec)
+(*
+	  val tempfile = OS.FileSys.tmpName()
+	  val os = TextIO.openOut tempfile
+	  val _ = Compiler.Profile.report os
+	  val _ = TextIO.closeOut os   
+	  val _ = print ("[exported profile to file " ^ tempfile ^ "]\n")
+*)
+      in res
+      end)
   end

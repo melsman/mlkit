@@ -649,16 +649,15 @@ struct
   fun read_string r () =
       (u_or_q_from_read_string := false ;
        outLine "<string in double quotes>, Up (u), or Quit (quit): >" ;
-       let val s = TextIO.inputLine TextIO.stdIn
-	   val (_, l) = List.splitFirst (fn ch => ch <> #" ") (explode s)
-	         handle List.First _ => ([],[])
+       let val cs = explode(TextIO.inputLine TextIO.stdIn)
+	   val cs = StringCvt.skipWS getc cs
        in
-	 case l of 
+	 case cs of 
 	   [] => (help () ; read_string r ())
 	 | #"q" :: #"u" :: #"i" :: #"t" :: _  => u_or_q_from_read_string := true
 	 | #"u" :: _  => u_or_q_from_read_string := true
 	 | #"\"" (*"*) :: _  => 
-           (case scan_string getc l
+           (case scan_string getc cs
 	      of SOME(s,_) => r := s 
 	       | NONE => (help () ; read_string r ()))
 	 | _ => (help () ; read_string r ())
@@ -666,14 +665,13 @@ struct
 
   fun read_int r () =
     (outLine "<number> or up (u): >";
-     let val s = TextIO.inputLine TextIO.stdIn
-         val (_, l) = List.splitFirst(fn ch => ch <> #" ")(explode s)
-	   handle List.First _ => ([],[])
-     in case l 
+     let val cs = explode(TextIO.inputLine TextIO.stdIn)
+         val cs = StringCvt.skipWS getc cs
+     in case cs 
 	  of [] => (help(); read_int r ())
 	   | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
 	   | #"u" :: _  => ()
-	   | _ => (case Int.scan StringCvt.DEC getc l 
+	   | _ => (case Int.scan StringCvt.DEC getc cs 
 		     of SOME(i,_) => r:= i 
 		      | _ => (help(); read_int r ()))
      end)
@@ -908,30 +906,28 @@ struct
   
   fun read_display_cmd(): cmd =
     (print "\n>";
-     let val s = TextIO.inputLine TextIO.stdIn
-         val (_, l) = List.splitFirst (fn ch => ch <> #" ") (explode s)
-	       handle List.First _ => ([],[])
-     in case l of
+     let val cs = explode(TextIO.inputLine TextIO.stdIn)
+         val cs = StringCvt.skipWS getc cs
+     in case cs of
           [] => HELP
         | #"q" :: #"u" :: #"i" :: #"t" :: _ => QUIT
         | #"u" :: _ => UP
-        | #"a" :: l' => (case Int.scan StringCvt.DEC getc l' 
+        | #"a" :: cs => (case Int.scan StringCvt.DEC getc cs 
 			   of SOME(i, _) => ACTIVATE i
 			    | _ => HELP)
-        | #"t" :: l' => (case Int.scan StringCvt.DEC getc l' 
+        | #"t" :: cs => (case Int.scan StringCvt.DEC getc cs 
 			   of SOME(i, _) => TOGGLE i
 			    | _ => HELP)
-        | ch :: l' =>  (case Int.scan StringCvt.DEC getc l
-			  of SOME(n,_) => ACTIVATE_OR_TOGGLE n
-			   | _ => HELP)
+        | _ =>  (case Int.scan StringCvt.DEC getc cs
+		   of SOME(n,_) => ACTIVATE_OR_TOGGLE n
+		    | _ => HELP)
      end);
   
   fun read_button_cmd () : cmd =
         (print "\n>";
-	 let val s = TextIO.inputLine TextIO.stdIn
-	     val (_, l) = List.splitFirst (fn ch => ch <> #" ") (explode s)
-	           handle List.First _ => ([],[])
-	 in case l of
+	 let val cs = explode(TextIO.inputLine TextIO.stdIn)
+	     val cs = StringCvt.skipWS getc cs
+	 in case cs of
 	   [] => HELP
 	 | #"q" :: #"u" :: #"i" :: #"t" :: _ => QUIT
 	 | #"u" :: _ => UP
@@ -1248,7 +1244,7 @@ struct
 			    ^ "' to toggle menu, if that is what you want");
 		  inter(path, menu) )
 	      | {text, below, ...} => (inter(text::path, below); inter(path, menu))
-		  ) handle (* Subscript *) _ => (outLine"***Number out of range" ; inter(path, menu)))
+		  ) handle Subscript => (outLine"***Number out of range" ; inter(path, menu)))
           | TOGGLE n =>
 	      ((case NewList.nth (l,n) of
 		  {attr = SWITCH r, ...} => 
@@ -1256,7 +1252,7 @@ struct
 		| {attr = VALUE _ , ...} => 
 		    (outLine("***Nothing to toggle ");
 		     inter(path, menu) )
-                    ) handle (* Subscript *) _ =>
+                    ) handle Subscript =>
 		               (outLine "***Number out of range" ;
 				help(); inter(path, menu)))
           | ACTIVATE_OR_TOGGLE n =>
@@ -1271,7 +1267,7 @@ struct
 		    (* assume activate *)
 		    (inter (text::path, below) ; inter(path, menu))
 		| _ => (help () ; inter (path, menu))
-		    ) handle (* Subscript *) _ =>
+		    ) handle Subscript =>
 		               (outLine "***Number out of range" ;
 				help() ; inter (path, menu)))
           | UP => (case path of (*ignore u when at top-level menu*)

@@ -464,12 +464,12 @@ old *)
 	    | NONE => oneForWhich f r  
 
 
-    exception Restrict
-    fun restrict(m: 'b map, dom : dom list) : 'b map =
+    exception Restrict of string
+    fun restrict(pp, m: 'b map, dom : dom list) : 'b map =
       foldl(fn (d, acc) => 
 		 case lookup m d
 		   of SOME res => add(d,res,acc)
-		    | NONE => raise Restrict) empty dom 
+		    | NONE => raise Restrict(pp d)) empty dom 
 
     fun enrich en (m0, m) =
       Fold(fn ((d,r),b) => b andalso

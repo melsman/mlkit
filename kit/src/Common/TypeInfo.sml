@@ -9,7 +9,7 @@ functor TypeInfo (structure Crash: CRASH
 		  structure StatObject : STATOBJECT
 		    sharing type PP.StringTree = StatObject.StringTree
 		  structure Environments : ENVIRONMENTS
-		    sharing type Environments.StringTree = PP.StringTree
+		    sharing type Environments.StringTree = PP.StringTree = StatObject.TyName.StringTree
 		    sharing type Environments.realisation = StatObject.realisation
 		  structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		    sharing type ModuleEnvironments.StringTree = PP.StringTree
@@ -60,13 +60,15 @@ functor TypeInfo (structure Crash: CRASH
     | FUNBIND_INFO of {argE: Env,elabBref: Basis ref, T: TyName.Set.Set, resE: Env, opaq_env_opt: opaq_env option}
     | TRANS_CONSTRAINT_INFO of Env
     | OPAQUE_CONSTRAINT_INFO of Env * realisation
+    | SIGBIND_INFO of TyName.Set.Set
     | DELAYED_REALISATION of realisation * TypeInfo
 
     fun on_TypeInfo' (phi,ti) =
-      let val phi_on_Type   = StatObject.Realisation.on_Type phi
-	  val phi_on_TE     = Environments.Realisation.on_TyEnv phi (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
-	  val phi_on_E      = Environments.Realisation.on_Env phi         (* it used to be the identity *)
-	  val phi_on_phi' = fn phi' => StatObject.Realisation.oo(phi,phi')
+      let fun phi_on_Type tau = StatObject.Realisation.on_Type phi tau
+	  fun phi_on_TE TE = Environments.Realisation.on_TyEnv phi TE (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
+	  fun phi_on_E E = Environments.Realisation.on_Env phi E        (* it used to be the identity *)
+	  fun phi_on_phi' phi' = StatObject.Realisation.oo(phi,phi')
+	  fun phi_on_T T = StatObject.Realisation.on_TyName_set phi T
       in case ti 
 	   of LAB_INFO {index, tyvars, Type} => LAB_INFO {index=index,tyvars=tyvars,
 							  Type=phi_on_Type Type}
@@ -94,6 +96,7 @@ functor TypeInfo (structure Crash: CRASH
 (*	     FUNBIND_INFO {argE=phi_on_E argE,elabB=elabB,T=T,resE=resE,rea_opt=SOME phi} *)
             | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO (phi_on_E E)
             | OPAQUE_CONSTRAINT_INFO (E,phi') => OPAQUE_CONSTRAINT_INFO (phi_on_E E, phi_on_phi' phi')
+	    | SIGBIND_INFO T => SIGBIND_INFO (phi_on_T T)
 (*	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi_on_phi' phi', ti)  *)
 	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi, on_TypeInfo'(phi', ti))
       end
@@ -210,5 +213,9 @@ functor TypeInfo (structure Crash: CRASH
 	 | OPAQUE_CONSTRAINT_INFO (Env,phi) => PP.NODE{start="OPAQUE_CONSTRAINT_INFO(", finish=")",
 						indent=2,childsep=PP.RIGHT ", ",
 						children=[layoutEnv Env, PP.LEAF "phi"]}
+	 | SIGBIND_INFO T => PP.NODE{start="SIGBIND_INFO(", finish=")",
+				     indent=2,childsep=PP.NOSEP,
+				     children=[TyName.Set.layoutSet {start="", finish="", sep=", "}
+					       (PP.LEAF o TyName.pr_TyName) T]}
          | DELAYED_REALISATION(phi,ti) => layout (on_TypeInfo'(phi,ti))
   end;

@@ -760,8 +760,9 @@ functor ElabTopdec
 	  let
 	    val (sigma, out_sigexp) = elab_sigexp (B, sigexp)
 	    val G = G.singleton (sigid, sigma)
+	    val out_i = ElabInfo.plus_TypeInfo (okConv i) (TypeInfo.SIGBIND_INFO (Sigma.tynames sigma))
 	  in
-	    (G, OG.SIGBIND (okConv i, sigid, out_sigexp, NONE))
+	    (G, OG.SIGBIND (out_i, sigid, out_sigexp, NONE))
 	  end
 
 	(* Signature bindings *)                            (*rule 67*)
@@ -772,7 +773,7 @@ functor ElabTopdec
 	    val (G2, out_sigbind) = elab_sigbind (B, sigbind)
 	    val out_i = if EqSet.member sigid (G.dom G2)
 			then repeatedIdsError (i, [ErrorInfo.SIGID_RID sigid])
-			else okConv i
+			else ElabInfo.plus_TypeInfo (okConv i) (TypeInfo.SIGBIND_INFO (Sigma.tynames sigma))
 	  in
 	    (G1 G_plus_G G2,
 	     OG.SIGBIND (out_i, sigid, out_sigexp, SOME out_sigbind))
