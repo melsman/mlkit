@@ -50,6 +50,7 @@ signature SCS_DATE =
     val allMthsInYearInPeriod  : int * Date.date * Date.date -> int list
     val half_year        : Date.date -> Date.date * Date.date
     val semester         : Date.date -> Date.date * Date.date
+    val add_secs         : Date.date -> int -> Date.date
     val add_days         : Date.date -> int -> Date.date
     val getWeekNo        : Date.date -> int     (* Monday as first day of week *)
     val getDayOfWeek     : Date.date -> int (* Monday = 0, ..., Sunday = 6 *)
@@ -448,13 +449,21 @@ structure ScsDate :> SCS_DATE =
 	loop(last_mth,[])
       end
 
-    fun add_days d n =
+    fun add_secs d n =
       (if n < 0 then
+	 Date.fromTimeLocal(Time.- (Date.toTime d, Time.fromSeconds(Int.abs n)))
+       else
+	 Date.fromTimeLocal(Time.+ (Time.fromSeconds n, Date.toTime d)))
+	 handle _ => raise ScsDate ("add_secs. can't add " ^ (Int.toString n) ^
+				    " secs to the date " ^ (ppIso d))
+
+    fun add_days d n = add_secs d (n * 24 * 3600)
+(*      (if n < 0 then
 	 Date.fromTimeLocal(Time.- (Date.toTime d, Time.fromSeconds(Int.abs n * 24 * 3600)))
        else
 	 Date.fromTimeLocal (Time.+ (Time.fromSeconds(n * 24 * 3600),Date.toTime d)))
 	 handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ 
-				    " days to the date " ^ (ppIso d))
+				    " days to the date " ^ (ppIso d)) 2004-10-04, nh *)
 
     fun half_year d =
       let
