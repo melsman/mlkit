@@ -1460,6 +1460,7 @@ end; (*match compiler local*)
 	 ("__int31_to_int", ("id", "__int31_to_int32ub")), 
 	 ("__int32_to_int", ("__int32b_to_int31", "id")), 
 	 ("__int32_to_word", ("__int32b_to_word31", "id")), 
+	 ("__int32_to_word32", ("__int32b_to_word32b", "id")), 
 	 ("__int32_to_int31", ("__int32b_to_int31", "__int32ub_to_int31")), 
 	 ("__int_to_int31", ("id", "__int32ub_to_int31")), 
 	 ("__word_to_word32", ("__word31_to_word32b", "id")), 
@@ -1471,6 +1472,7 @@ end; (*match compiler local*)
 	 ("__word31_to_word_X", ("id", "__word31_to_word32ub_X")), 
 	 ("__word31_to_word32_X", ("__word31_to_word32b_X", "__word31_to_word32ub_X")), 
 	 ("__word32_to_int32", ("__word32b_to_int32b", "__word32ub_to_int32ub")), 
+	 ("__word32_to_int32_X", ("__word32b_to_int32b_X", "id")), 
 	 ("__word32_to_int", ("__word32b_to_int31", "__word32ub_to_int32ub")),
 	 ("__word32_to_int_X", ("__word32b_to_int31_X", "id"))
 	 ])
@@ -1532,24 +1534,24 @@ end; (*match compiler local*)
 	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
 	 word32=SOME word32, real=SOME real, string=SOME string}
 	
-      fun binary_ccall t n = 
+      fun binary_ccall t n args = 
 	let val c = ccall n [t,t] t
-	in fn args => PRIM(c, args)
+	in PRIM(c, args)
 	end
 
-      fun binary_ccall_exn t n = 
+      fun binary_ccall_exn t n args = 
 	let val c = ccall n [t,t,exnType] t
-	in fn args => PRIM(c, args)
+	in PRIM(c, args)
 	end
 
-      fun unary_ccall t n = 
+      fun unary_ccall t n args = 
 	let val c = ccall n [t] t
-	in fn args => PRIM(c, args)
+	in PRIM(c, args)
 	end
 
-      fun cmp_ccall t n = 
+      fun cmp_ccall t n args = 
 	let val c = ccall n [t,t] boolType
-	in fn args => PRIM(c, args)
+	in PRIM(c, args)
 	end
 
       (* Operations on Words (word8, word31, word32) *)
@@ -1742,11 +1744,11 @@ end; (*match compiler local*)
     local
       fun equal t n = ccall n [t,t] boolType
     in
-      val equal_int31 = equal int31Type "__equal_int31"
-      val equal_int32 = equal int32Type "__equal_int32"
+      fun equal_int31() = equal int31Type "__equal_int31"
+      fun equal_int32() = equal int32Type "__equal_int32"
       fun equal_word8() = equal (wordDefaultType()) "__equal_word"
-      val equal_word31 = equal word31Type "__equal_word31"
-      val equal_word32 = equal word32Type "__equal_word32"
+      fun equal_word31() = equal word31Type "__equal_word31"
+      fun equal_word32() = equal word32Type "__equal_word32"
     end
 
     (* ----------------------------------------------------------------------- *)
@@ -1994,15 +1996,15 @@ end; (*match compiler local*)
 		    case (instances', arg')
 		      of ([CONStype([], tyname)], PRIM(RECORDprim, l)) => 
 			(if TyName.eq(tyname, TyName.tyName_INT31) then
-			   PRIM(equal_int31, l)
+			   PRIM(equal_int31(), l)
 			 else if TyName.eq(tyname, TyName.tyName_INT32) then
-			   PRIM(equal_int32, l)
+			   PRIM(equal_int32(), l)
 			 else if TyName.eq(tyname, TyName.tyName_WORD8) then
 			   PRIM(equal_word8(), l)
 			 else if TyName.eq(tyname, TyName.tyName_WORD31) then
-			   PRIM(equal_word31, l)
+			   PRIM(equal_word31(), l)
 			 else if TyName.eq(tyname, TyName.tyName_WORD32) then
-			   PRIM(equal_word32, l)
+			   PRIM(equal_word32(), l)
 			 else default())
 		       | _ => default()
 		  else default()
@@ -2069,11 +2071,11 @@ end; (*match compiler local*)
                         (* Specialice EQUALprim to EQUAL_INTprim, when possible *)
                         val prim' = case (isequal,instance') of
                                       (true,CONStype([], tyname)) =>
-                                        if TyName.eq(tyname,TyName.tyName_INT31) then equal_int31
-					else if TyName.eq(tyname,TyName.tyName_INT32) then equal_int32
+                                        if TyName.eq(tyname,TyName.tyName_INT31) then equal_int31()
+					else if TyName.eq(tyname,TyName.tyName_INT32) then equal_int32()
 					else if TyName.eq(tyname,TyName.tyName_WORD8) then equal_word8()
-					else if TyName.eq(tyname,TyName.tyName_WORD31) then equal_word31
-					else if TyName.eq(tyname,TyName.tyName_WORD32) then equal_word32
+					else if TyName.eq(tyname,TyName.tyName_WORD31) then equal_word31()
+					else if TyName.eq(tyname,TyName.tyName_WORD32) then equal_word32()
                                         else prim {instance=instance'}
                                     | _ => prim {instance=instance'}
 		     in TLE.PRIM (prim', args')

@@ -136,6 +136,7 @@ struct
     in
       fun new_string_lab() : lab = DatLab(Labels.new_named ("StringLab" ^ Int.toString(incr())))
       fun new_float_lab() : lab = DatLab(Labels.new_named ("FloatLab" ^ Int.toString(incr())))
+      fun new_num_lab() : lab = DatLab(Labels.new_named ("BoxedNumLab" ^ Int.toString(incr())))
       fun reset_label_counter() = counter := 0
     end
 
@@ -246,7 +247,17 @@ struct
       if x = "0" orelse x = "0x0" then I.xorl(R dst_reg, R dst_reg) :: C
       else I.movl(I x, R dst_reg) :: C
 
-    fun loadNumBoxed(x,dst_reg:reg,C) = die "loadNumBoxed.todo"
+    fun loadNumBoxed(x,dst_reg:reg,C) = 
+      if not(BI.tag_integers()) then die "loadNumBoxed.boxed integers/words necessary only when tagging is enabled"
+      else 
+	let val num_lab = new_num_lab()
+	  val _ = add_static_data [I.dot_data,
+				   I.dot_align 4,
+				   I.lab num_lab,
+				   I.dot_long(BI.pr_tag_w(BI.tag_word_boxed(true))),
+				   I.dot_long x]
+	in I.movl(LA num_lab, R dst_reg) :: C
+	end
 
     (* returns true if boxed representation is used for 
      * integers of the given precision *)
@@ -811,7 +822,7 @@ struct
 	    case opr_aty
 	      of SS.PHREG_ATY r => (r, fn C => C)
 	       | _ => (tmp_reg1, fn C => move_aty_into_reg(opr_aty,tmp_reg1,size_ff, C))
-	  val opr = if oprBoxed then D("0", opr_reg)   (* boxed representation of nums *)
+	  val opr = if oprBoxed then D("4", opr_reg)   (* boxed representation of nums *)
 		    else R opr_reg                     (* unboxed representation of nums *)
 	in
 	  F (binary_search(sels,
@@ -823,21 +834,28 @@ struct
 	end
 
 
-      fun cmpi_kill_tmp01(jump,x,y,d,size_ff,C) = 
+      fun cmpi_kill_tmp01 {box} (jump,x,y,d,size_ff,C) = 
 	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             val true_lab = new_local_lab "true"
             val cont_lab = new_local_lab "cont"
+	    fun compare C = 
+	      if box then
+		I.movl(D("4",y_reg), R tmp_reg1) ::
+		I.movl(D("4",x_reg), R tmp_reg0) ::
+		I.cmpl(R tmp_reg1, R tmp_reg0) :: C
+	      else I.cmpl(R y_reg, R x_reg) :: C
 	in
-	  x_C(y_C(
-          I.cmpl(R y_reg, R x_reg) ::
-          jump true_lab ::
-          I.movl(I (int_to_string BI.ml_false), R d_reg) ::
-          I.jmp(L cont_lab) ::         
-          I.lab true_lab ::
-          I.movl(I (int_to_string BI.ml_true), R d_reg) ::
-          I.lab cont_lab :: C'))
+	   x_C(
+	   y_C(
+	   compare (
+	   jump true_lab ::
+	   I.movl(I (int_to_string BI.ml_false), R d_reg) ::
+	   I.jmp(L cont_lab) ::         
+	   I.lab true_lab ::
+	   I.movl(I (int_to_string BI.ml_true), R d_reg) ::
+	   I.lab cont_lab :: C')))
 	end
 
       fun cmpi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) = 
@@ -851,17 +869,23 @@ struct
           I.jmp (L lab_f) :: rem_dead_code C))
 	end
 
+      (* version with boxed arguments; assume tagging is enabled *)
+      fun cmpbi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) = 
+	if BI.tag_integers() then
+	  let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	      val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	  in
+	    x_C(y_C(
+	    I.movl(D("4", y_reg), R tmp_reg1) ::
+	    I.movl(D("4", x_reg), R tmp_reg0) ::
+	    I.cmpl(R tmp_reg1, R tmp_reg0) ::
+	    jump lab_t ::
+            I.jmp (L lab_f) :: rem_dead_code C))
+	  end
+	else die "cmpbi_and_jmp_kill_tmp01: tagging disabled!"
+
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
-(*
-      fun maybe_tag_integers(inst,C) = 
-	if BI.tag_integers() then inst :: jump_overflow C
-	else C
-
-      fun maybe_tag_words(inst,C) = 
-	if BI.tag_integers() then inst :: C
-	else C
-*)		
       fun sub_num_kill_tmp01 {ovf : bool, tag: bool} (x,y,d,size_ff,C) =
 	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -921,6 +945,21 @@ struct
 	   do_tag C')))
 	end
 
+      fun neg_int32b_kill_tmp0 (b,x,d,size_ff,C) =
+	if not(BI.tag_integers()) then die "neg_int32b_kill_tmp0.tagging required"
+	else 
+	  let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	    val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+	  in x_C(
+	     load_indexed(tmp_reg0,x_reg,WORDS 1,
+	     I.negl(R tmp_reg0) ::
+             jump_overflow (
+             move_aty_into_reg(b,d_reg,size_ff,
+             store_indexed(d_reg,WORDS 1, tmp_reg0,                                       (* store negated value *)
+             load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,     (* mk tag *)
+	     store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))                            (* store tag *)
+	  end
+
      fun abs_int_kill_tmp0 {tag} (x,d,size_ff,C) =
        let val cont_lab = new_local_lab "cont"
 	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -934,6 +973,25 @@ struct
          jump_overflow (
          do_tag (
          I.lab cont_lab :: C'))))
+       end
+
+
+     fun abs_int32b_kill_tmp0 (b,x,d,size_ff,C) =
+       let val cont_lab = new_local_lab "cont"
+	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+       in
+	 x_C(
+	 load_indexed(tmp_reg0,x_reg,WORDS 1,
+	 I.cmpl(I "0", R tmp_reg0) ::
+         I.jge cont_lab ::
+         I.negl (R tmp_reg0) ::  
+         jump_overflow (
+         I.lab cont_lab :: 
+         move_aty_into_reg(b,d_reg,size_ff,
+         store_indexed(d_reg, WORDS 1, tmp_reg0,                                      (* store negated value *)
+         load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,     (* mk tag *)
+         store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))                            (* store tag *)
        end
 
      fun word32ub_to_int32ub(x,d,size_ff,C) =
@@ -951,17 +1009,23 @@ struct
        in x_C(copy(x_reg, d_reg, I.sarl (I "1", R d_reg) :: C'))
        end       
 
-     fun int32ub_to_int31(x,d,size_ff,C) =
+     fun num32_to_num31 {boxedarg,ovf} (x,d,size_ff,C) =
        let
 	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-       in x_C(copy(x_reg, d_reg,
-		   I.imull(I "2", R d_reg) ::
-		   jump_overflow (
-		   I.addl(I "1", R d_reg) :: 
-		   jump_overflow C')))
+	   fun maybe_unbox C = if boxedarg then load_indexed(d_reg,x_reg,WORDS 1,C)
+			       else copy(x_reg,d_reg,C)
+	   fun check_ovf C = if ovf then jump_overflow C else C
+       in x_C(
+          maybe_unbox(
+	  I.imull(I "2", R d_reg) ::
+	  check_ovf (
+          I.addl(I "1", R d_reg) :: C')))   (* No need to check for overflow after adding 1; the
+					     * intermediate result is even (after multiplying 
+					     * with 2) so adding one cannot give Overflow because the
+					     * largest integer is odd! mael 2001-04-29 *)
        end
-
+(*
      fun word32ub_to_word31(x,d,size_ff,C) =
        let
 	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -970,6 +1034,7 @@ struct
 		   I.imull(I "2", R d_reg) ::
 		   I.addl(I "1", R d_reg) :: C'))
        end
+
 
      (* word31_to_word32ub_X: the 31 low-order bits of x and d are the
       * same, and if bit 31 of x is 1 then bit 32 of d is one, otherwise 
@@ -981,7 +1046,7 @@ struct
        in x_C(copy(x_reg, d_reg,
 		   I.sarl(I "1", R d_reg) :: C'))
        end
-       
+*)       
 
      fun bin_float_op_kill_tmp01 finst (x,y,b,d,size_ff,C) =
        let val x_C = push_float_aty(x, tmp_reg0, size_ff)
@@ -1041,53 +1106,6 @@ struct
          C')
        end
 
-     fun addw8_kill_tmp01 (x,y,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in x_C(y_C(
-	  copy(y_reg, tmp_reg1,
-          copy(x_reg, d_reg,
-          I.addl(R tmp_reg1, R d_reg) ::
-	  (if BI.tag_integers() then
-             I.decl (R d_reg) :: I.andl(I "0X1FF", R d_reg) :: C'
-	   else
-	     I.andl(I "0XFF", R d_reg) :: C')))))
-       end
-
-     fun subw8_kill_tmp01 (x,y,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in x_C(y_C(
-	  copy(y_reg, tmp_reg1,
-          copy(x_reg, d_reg,
-          I.subl(R tmp_reg1, R d_reg) ::
-	  (if BI.tag_integers() then
-	     I.incl (R d_reg) :: I.andl(I "0X1FF", R d_reg) :: C'
-	   else
-	     I.andl(I "0XFF", R d_reg) :: C')))))
-       end
-
-     fun mulw8_kill_tmp01 (x,y,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in 
-         x_C(y_C(
-	 copy(y_reg, tmp_reg1,
-         copy(x_reg, d_reg,
-	 if BI.tag_integers() then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
-           I.sarl(I "1", R d_reg) ::
-	   I.subl(I "1", R tmp_reg1) ::
-	   I.imull(R tmp_reg1, R d_reg) ::
-	   I.addl(I "1", R d_reg) :: 
-           I.andl(I "0X1FF", R d_reg) :: C'
-	 else
-           I.imull(R tmp_reg1, R d_reg) ::
-           I.andl(I "0XFF", R d_reg) :: C'))))
-       end
-
      fun bin_op_kill_tmp01 inst (x,y,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1099,11 +1117,12 @@ struct
          inst(R tmp_reg1, R d_reg) :: C'))))
        end
 
-     (* andb and orb are the same for 31 and 32 bit representations *)
+     (* andb and orb are the same for 31 bit (tagged) and 
+      * 32 bit (untagged) representations *)
      fun andb_word_kill_tmp01 a = bin_op_kill_tmp01 I.andl a   (* A[x&y] = A[x] & A[y]  tagging *)
      fun orb_word_kill_tmp01 a = bin_op_kill_tmp01 I.orl a     (* A[x|y] = A[x] | A[y]  tagging *)
 
-     (* xorb needs to set the lowest bit for the 31 bit version *) 
+     (* xorb needs to set the lowest bit for the 31 bit (tagged) version *) 
      fun xorb_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1117,97 +1136,86 @@ struct
 	 do_tag C'))))
        end
 
-     fun bin_op_w32boxed__ inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in
-	 x_C(
-	 load_indexed(tmp_reg0,x_reg,WORDS 1,
-         y_C(
-         load_indexed(tmp_reg1,y_reg,WORDS 1,
-         inst(R tmp_reg0, R tmp_reg1) ::
-	 move_aty_into_reg(r,d_reg,size_ff,
-         store_indexed(d_reg,WORDS 1,tmp_reg1,
-         load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg1,
-	 store_indexed(d_reg,WORDS 0, tmp_reg1,C'))))))))
-       end
+     fun bin_op_w32boxed__ {ovf} inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
+       if not(BI.tag_integers()) then die "bin_op_w32boxed__.tagging_disabled"
+       else 
+	 let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	     val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	     val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+	     fun check_ovf C = if ovf then jump_overflow C else C
+	 in
+	   x_C(
+	   load_indexed(tmp_reg0,x_reg,WORDS 1,
+	   y_C(
+	   load_indexed(tmp_reg1,y_reg,WORDS 1,
+	   inst(R tmp_reg0, R tmp_reg1) ::
+           check_ovf (
+	   move_aty_into_reg(r,d_reg,size_ff,
+	   store_indexed(d_reg,WORDS 1,tmp_reg1,
+	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg1,
+	   store_indexed(d_reg,WORDS 0, tmp_reg1,C')))))))))
+	 end
 
      fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       bin_op_w32boxed__ I.addl (r,x,y,d,size_ff,C)
+       bin_op_w32boxed__ {ovf=false} I.addl (r,x,y,d,size_ff,C)
 
      fun subw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       bin_op_w32boxed__ I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subl *)
+       bin_op_w32boxed__ {ovf=false} I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subl *)
 
      fun mulw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       bin_op_w32boxed__ I.imull (r,x,y,d,size_ff,C)
+       bin_op_w32boxed__ {ovf=false} I.imull (r,x,y,d,size_ff,C)
 
      fun orw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       bin_op_w32boxed__ I.orl (r,x,y,d,size_ff,C)
+       bin_op_w32boxed__ {ovf=false} I.orl (r,x,y,d,size_ff,C)
 
      fun andw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       bin_op_w32boxed__ I.andl (r,x,y,d,size_ff,C)
+       bin_op_w32boxed__ {ovf=false} I.andl (r,x,y,d,size_ff,C)
 
      fun xorw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       bin_op_w32boxed__ I.xorl (r,x,y,d,size_ff,C)
+       bin_op_w32boxed__ {ovf=false} I.xorl (r,x,y,d,size_ff,C)
 
-     fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in
-	 x_C(
-	 load_indexed(tmp_reg1,x_reg,WORDS 1,
-         y_C(
-         load_indexed(ecx,y_reg,WORDS 1,  (* tmp_reg0 = ecx, see InstsX86.sml *)
-         inst(R cl, R tmp_reg1) ::
-	 move_aty_into_reg(r,d_reg,size_ff,
-         store_indexed(d_reg,WORDS 1,tmp_reg1,
-         load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg1,
-	 store_indexed(d_reg,WORDS 0, tmp_reg1, C'))))))))
-       end
+     fun mul_int32b (b,x,y,d,size_ff,C) =
+       bin_op_w32boxed__ {ovf=true} I.imull (b,x,y,d,size_ff,C)
+	 
+     fun sub_int32b (b,x,y,d,size_ff,C) =
+       bin_op_w32boxed__ {ovf=true} I.subl (b,y,x,d,size_ff,C)
 
-     fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
-       shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
+     fun add_int32b (b,x,y,d,size_ff,C) =
+       bin_op_w32boxed__ {ovf=true} I.addl (b,x,y,d,size_ff,C)
 
-     fun shift_right_signedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
-       shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
+     fun num31_to_num32b(b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
+       if BI.tag_integers() then 
+	 let val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+	 in
+	   move_aty_into_reg(x,tmp_reg0,size_ff,
+	   I.sarl(I "1", R tmp_reg0) :: 
+	   move_aty_into_reg(b,d_reg,size_ff,
+	   store_indexed(d_reg,WORDS 1,tmp_reg0,
+	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,
+	   store_indexed(d_reg,WORDS 0,tmp_reg0, C')))))
+	 end	 
+       else die "num31_to_num32b.tagging_disabled"
 
-     fun shift_right_unsignedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
-       shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
-(*
-     fun shift_op_kill_tmp01 inst (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-       in x_C(y_C(         
-	  copy(y_reg, ecx,
-	  copy(x_reg, d_reg,
-          inst(R cl, R d_reg) :: C'))))
-       end
-*)
-     fun shift_left_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-	   (* y is represented tagged only when BI.tag_integers() is true *)
-	   fun untag_y C = if BI.tag_integers() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
-			   else C
-       in 
-	 if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
-	   x_C(y_C(
-	   copy(y_reg, ecx,
-           copy(x_reg, d_reg,
-	   I.decl (R d_reg) ::           (* x - 1  *)
-	   untag_y (                     (* y >> 1 *)
-	   I.sall (R cl, R d_reg) ::     (*   <<   *)
-	   I.incl (R d_reg) :: C')))))   (* 1 +    *)
-	 else
-	   x_C(y_C(         
-	   copy(y_reg, ecx,
-           copy(x_reg, d_reg,
-           I.sall(R cl, R d_reg) :: C'))))
-       end
+     fun num32b_to_num32b {ovf:bool} (b,x,d,size_ff,C) =
+       if not(BI.tag_integers()) then die "num32b_to_num32b.tagging_disabled"
+       else 
+	 let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	     val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+	     fun check_ovf C = 
+	       if ovf then
+		 I.btl(I "31", R tmp_reg0) ::     (* sign bit set? *)
+		 I.jc (NameLab "__raise_overflow") :: C
+	       else C
+	 in 
+	   x_C (
+           load_indexed(tmp_reg0,x_reg,WORDS 1,
+	   check_ovf (
+	   move_aty_into_reg(b,d_reg,size_ff,
+	   store_indexed(d_reg, WORDS 1, tmp_reg0, 
+	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,
+	   store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))
+	 end
+       
 (*
      fun toIntw32boxed__ (x,d,size_ff,C) =
        let 
@@ -1238,6 +1246,60 @@ struct
 	   store_indexed(d_reg,WORDS 0,tmp_reg1,C')))
        end	 
 *)
+
+
+     fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = 
+       if not(BI.tag_integers()) then die "shift_w32boxed__.tagging is not enabled as required"
+       else
+       (* y is unboxed and tagged *)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+       in
+	 x_C(
+	 load_indexed(tmp_reg1,x_reg,WORDS 1,
+         y_C(
+         copy(y_reg,ecx,                        (* tmp_reg0 = ecx, see InstsX86.sml *)
+	 I.sarl (I "1", R ecx) ::               (* untag y: y >> 1 *)
+         inst(R cl, R tmp_reg1) ::
+	 move_aty_into_reg(r,d_reg,size_ff,
+         store_indexed(d_reg,WORDS 1,tmp_reg1,
+         load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg1,
+	 store_indexed(d_reg,WORDS 0, tmp_reg1, C'))))))))
+       end
+
+     fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
+
+     fun shift_right_signedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
+
+     fun shift_right_unsignedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
+
+     fun shift_left_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+	   (* y is represented tagged only when BI.tag_integers() is true *)
+	   fun untag_y C = if BI.tag_integers() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
+			   else C
+       in 
+	 if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
+	   x_C(y_C(
+	   copy(y_reg, ecx,
+           copy(x_reg, d_reg,
+	   I.decl (R d_reg) ::           (* x - 1  *)
+	   untag_y (                     (* y >> 1 *)
+	   I.sall (R cl, R d_reg) ::     (*   <<   *)
+	   I.incl (R d_reg) :: C')))))   (* 1 +    *)
+	 else
+	   x_C(y_C(         
+	   copy(y_reg, ecx,
+           copy(x_reg, d_reg,
+           I.sall(R cl, R d_reg) :: C'))))
+       end
+
      fun shift_right_signed_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
@@ -1281,49 +1343,7 @@ struct
 	   copy(x_reg, d_reg,
            I.shrl(R cl, R d_reg) :: C'))))
        end
-(*		
-      fun subw_kill_tmp01(x,y,d,size_ff,C) =
-	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-	in
-	  x_C(y_C(
-          copy(y_reg, tmp_reg1,
-	  copy(x_reg, d_reg,
-          I.subl(R tmp_reg1, R d_reg) ::
- 	  maybe_tag_words(I.addl(I "1",R d_reg), 
-          C')))))
-	end
-  
-      fun addw_kill_tmp01(x,y,d,size_ff,C) =
-	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-	in x_C(y_C(
-           copy(y_reg, tmp_reg1,
-           copy(x_reg, d_reg,
-           I.addl(R tmp_reg1, R d_reg) ::
-	   maybe_tag_words(I.addl(I "-1", R d_reg),
-           C')))))
-	end
 
-      fun mulw_kill_tmp01(x,y,d,size_ff,C) = 
-	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-	in x_C(y_C(
-           copy(y_reg, tmp_reg1,
-           copy(x_reg, d_reg,
-	   if BI.tag_integers() then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
-		I.sarl(I "1", R d_reg) ::
-		I.subl(I "1", R tmp_reg1) ::
-		I.imull(R tmp_reg1, R d_reg) ::
-		I.addl(I "1", R d_reg) :: 
-                C'
-	   else 
-		I.imull(R tmp_reg1, R d_reg) :: C'))))
-	end
-*)
      (*******************)
      (* Code Generation *)
      (*******************)
@@ -1942,52 +1962,56 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 	       | LS.PRIM{name,args,res=[SS.FLOW_VAR_ATY(lv,lab_t,lab_f)]} => 
 		  comment_fn (fn () => "PRIM FLOW: " ^ pr_ls ls,
 		  let val (lab_t,lab_f) = (LocalLab lab_t,LocalLab lab_f)
+		      fun cmp(i,x,y) = cmpi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
+		      fun cmp_boxed(i,x,y) = cmpbi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
 		  in case (name,args) 
-		       of ("__equal_int32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.je,x,y,lab_t,lab_f,size_ff,C)
-			| ("__equal_int32b",[x,y]) => not_impl "__equal_int32b"
-			| ("__equal_int31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.je,x,y,lab_t,lab_f,size_ff,C)
-			| ("__equal_word31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.je,x,y,lab_t,lab_f,size_ff,C)
-			| ("__equal_word32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.je,x,y,lab_t,lab_f,size_ff,C)
-			| ("__equal_word32b",[x,y]) => not_impl "__equal_word32b"
-			| ("__less_int32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jl,x,y,lab_t,lab_f,size_ff,C)
-			| ("__less_int32b",[x,y]) => not_impl "__less_int32b"
-			| ("__less_int31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jl,x,y,lab_t,lab_f,size_ff,C)
-			| ("__less_word31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jb,x,y,lab_t,lab_f,size_ff,C)
-			| ("__less_word32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jb,x,y,lab_t,lab_f,size_ff,C)
-			| ("__less_word32b",[x,y]) => not_impl "__less_word32b"
-			| ("__lesseq_int32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jle,x,y,lab_t,lab_f,size_ff,C)
-			| ("__lesseq_int32b",[x,y]) => not_impl "__lesseq_int32b"
-			| ("__lesseq_int31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jle,x,y,lab_t,lab_f,size_ff,C)
-			| ("__lesseq_word31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jbe,x,y,lab_t,lab_f,size_ff,C) 
-			| ("__lesseq_word32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jbe,x,y,lab_t,lab_f,size_ff,C) 
-			| ("__lesseq_word32b",[x,y]) => not_impl "__lesseq_word32b"
-			| ("__greater_int32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jg,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greater_int32b",[x,y]) => not_impl "__greater_int32b"
-			| ("__greater_int31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jg,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greater_word31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.ja,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greater_word32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.ja,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greater_word32b",[x,y]) => not_impl "__greater_word32b"
-			| ("__greatereq_int32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jge,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greatereq_int32b",[x,y]) => not_impl "__greatereq_int32b"
-			| ("__greatereq_int31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jge,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greatereq_word31",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jae,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greatereq_word32ub",[x,y]) => cmpi_and_jmp_kill_tmp01(I.jae,x,y,lab_t,lab_f,size_ff,C)
-			| ("__greatereq_word32b",[x,y]) => not_impl "__greatereq_word32b"
+		       of ("__equal_int32ub",[x,y]) => cmp(I.je,x,y)
+			| ("__equal_int32b",[x,y]) => cmp_boxed(I.je,x,y)
+			| ("__equal_int31",[x,y]) => cmp(I.je,x,y)
+			| ("__equal_word31",[x,y]) => cmp(I.je,x,y)
+			| ("__equal_word32ub",[x,y]) => cmp(I.je,x,y)
+			| ("__equal_word32b",[x,y]) => cmp_boxed(I.je,x,y)
+			| ("__less_int32ub",[x,y]) => cmp(I.jl,x,y)
+			| ("__less_int32b",[x,y]) => cmp_boxed(I.jl,x,y)
+			| ("__less_int31",[x,y]) => cmp(I.jl,x,y)
+			| ("__less_word31",[x,y]) => cmp(I.jb,x,y)
+			| ("__less_word32ub",[x,y]) => cmp(I.jb,x,y)
+			| ("__less_word32b",[x,y]) => cmp_boxed(I.jb,x,y)
+			| ("__lesseq_int32ub",[x,y]) => cmp(I.jle,x,y)
+			| ("__lesseq_int32b",[x,y]) => cmp_boxed(I.jle,x,y)
+			| ("__lesseq_int31",[x,y]) => cmp(I.jle,x,y)
+			| ("__lesseq_word31",[x,y]) => cmp(I.jbe,x,y) 
+			| ("__lesseq_word32ub",[x,y]) => cmp(I.jbe,x,y) 
+			| ("__lesseq_word32b",[x,y]) => cmp_boxed(I.jbe,x,y)
+			| ("__greater_int32ub",[x,y]) => cmp(I.jg,x,y)
+			| ("__greater_int32b",[x,y]) => cmp_boxed(I.jg,x,y)
+			| ("__greater_int31",[x,y]) => cmp(I.jg,x,y)
+			| ("__greater_word31",[x,y]) => cmp(I.ja,x,y)
+			| ("__greater_word32ub",[x,y]) => cmp(I.ja,x,y)
+			| ("__greater_word32b",[x,y]) => cmp_boxed(I.ja,x,y)
+			| ("__greatereq_int32ub",[x,y]) => cmp(I.jge,x,y)
+			| ("__greatereq_int32b",[x,y]) => cmp_boxed(I.jge,x,y)
+			| ("__greatereq_int31",[x,y]) => cmp(I.jge,x,y)
+			| ("__greatereq_word31",[x,y]) => cmp(I.jae,x,y)
+			| ("__greatereq_word32ub",[x,y]) => cmp(I.jae,x,y)
+			| ("__greatereq_word32b",[x,y]) => cmp_boxed(I.jae,x,y)
 			| _ => die "CG_ls: Unknown PRIM used on Flow Variable"
 		  end)
 	       | LS.PRIM{name,args,res} => 
+		  let
+		  in
 		  comment_fn (fn () => "PRIM: " ^ pr_ls ls,
 		  (* Note that the prim names are defined in BackendInfo! *)
 		  (case (name,args,case res of nil => [SS.UNIT_ATY] | _ => res) 
-		     of ("__equal_int32ub",[x,y],[d]) => cmpi_kill_tmp01(I.je,x,y,d,size_ff,C)
-		      | ("__equal_int32b",[b,x,y],[d]) => not_impl name
-		      | ("__equal_int31",[x,y],[d]) => cmpi_kill_tmp01(I.je,x,y,d,size_ff,C)
-		      | ("__equal_word31",[x,y],[d]) => cmpi_kill_tmp01(I.je,x,y,d,size_ff,C)
-		      | ("__equal_word32ub",[x,y],[d]) => cmpi_kill_tmp01(I.je,x,y,d,size_ff,C)
-		      | ("__equal_word32b",[x,y],[d]) => not_impl name
+		     of ("__equal_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
+		      | ("__equal_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.je,x,y,d,size_ff,C)
+		      | ("__equal_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
+		      | ("__equal_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
+		      | ("__equal_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
+		      | ("__equal_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.je,x,y,d,size_ff,C)
 
 		      | ("__plus_int32ub",[x,y],[d]) => add_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-		      | ("__plus_int32b",[b,x,y],[d]) => not_impl name
+		      | ("__plus_int32b",[b,x,y],[d]) => add_int32b (b,x,y,d,size_ff,C)
 		      | ("__plus_int31",[x,y],[d]) => add_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
 		      | ("__plus_word31",[x,y],[d]) => add_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
 		      | ("__plus_word32ub",[x,y],[d]) => add_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
@@ -1995,7 +2019,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		      | ("__plus_real",[b,x,y],[d]) => addf_kill_tmp01(x,y,b,d,size_ff,C)
 
 		      | ("__minus_int32ub",[x,y],[d]) => sub_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-		      | ("__minus_int32b",[b,x,y],[d]) => not_impl name
+		      | ("__minus_int32b",[b,x,y],[d]) => sub_int32b (b,x,y,d,size_ff,C)
 		      | ("__minus_int31",[x,y],[d]) => sub_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
 		      | ("__minus_word31",[x,y],[d]) => sub_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
 		      | ("__minus_word32ub",[x,y],[d]) => sub_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
@@ -2003,7 +2027,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		      | ("__minus_real",[b,x,y],[d]) => subf_kill_tmp01(x,y,b,d,size_ff,C)
 
 		      | ("__mul_int32ub", [x,y], [d]) => mul_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C) 
-		      | ("__mul_int32b", [b,x,y], [d]) => not_impl name
+		      | ("__mul_int32b", [b,x,y], [d]) => mul_int32b (b,x,y,d,size_ff,C)
 		      | ("__mul_int31", [x,y], [d]) => mul_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C) 
 		      | ("__mul_word31", [x,y], [d]) => mul_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)  
 		      | ("__mul_word32ub", [x,y], [d]) => mul_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C) 
@@ -2013,45 +2037,45 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		      | ("__div_real", [b,x,y],[d]) => divf_kill_tmp01(x,y,b,d,size_ff,C)
 
 		      | ("__neg_int32ub",[x],[d]) => neg_int_kill_tmp0 {tag=false} (x,d,size_ff,C)
-		      | ("__neg_int32b",[b,x],[d]) => not_impl name
+		      | ("__neg_int32b",[b,x],[d]) => neg_int32b_kill_tmp0 (b,x,d,size_ff,C)
 		      | ("__neg_int31",[x],[d]) => neg_int_kill_tmp0 {tag=true} (x,d,size_ff,C)
 		      | ("__neg_real",[b,x],[d]) => negf_kill_tmp01(b,x,d,size_ff,C)
 
 		      | ("__abs_int32ub",[x],[d]) => abs_int_kill_tmp0 {tag=false} (x,d,size_ff,C)
-		      | ("__abs_int32b",[b,x],[d]) => not_impl name
+		      | ("__abs_int32b",[b,x],[d]) => abs_int32b_kill_tmp0 (b,x,d,size_ff,C)
 		      | ("__abs_int31",[x],[d]) => abs_int_kill_tmp0 {tag=true} (x,d,size_ff,C)
 		      | ("__abs_real",[b,x],[d]) => absf_kill_tmp01(b,x,d,size_ff,C)
 
-		      | ("__less_int32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jl,x,y,d,size_ff,C)
-		      | ("__less_int32b",[x,y],[d]) => not_impl name
-		      | ("__less_int31",[x,y],[d]) => cmpi_kill_tmp01(I.jl,x,y,d,size_ff,C)
-		      | ("__less_word31",[x,y],[d]) => cmpi_kill_tmp01(I.jb,x,y,d,size_ff,C)
-		      | ("__less_word32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jb,x,y,d,size_ff,C)
-		      | ("__less_word32b",[x,y],[d]) => not_impl name
+		      | ("__less_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jl,x,y,d,size_ff,C)
+		      | ("__less_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jl,x,y,d,size_ff,C)
+		      | ("__less_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jl,x,y,d,size_ff,C)
+		      | ("__less_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
+		      | ("__less_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
+		      | ("__less_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jb,x,y,d,size_ff,C)
 		      | ("__less_real",[x,y],[d]) => cmpf_kill_tmp01(LESSTHAN,x,y,d,size_ff,C)
 
-		      | ("__lesseq_int32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jle,x,y,d,size_ff,C)
-		      | ("__lesseq_int32b",[x,y],[d]) => not_impl name
-		      | ("__lesseq_int31",[x,y],[d]) => cmpi_kill_tmp01(I.jle,x,y,d,size_ff,C)
-		      | ("__lesseq_word31",[x,y],[d]) => cmpi_kill_tmp01(I.jbe,x,y,d,size_ff,C)
-		      | ("__lesseq_word32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jbe,x,y,d,size_ff,C)
-		      | ("__lesseq_word32b",[x,y],[d]) => not_impl name
+		      | ("__lesseq_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
+		      | ("__lesseq_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jle,x,y,d,size_ff,C)
+		      | ("__lesseq_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
+		      | ("__lesseq_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
+		      | ("__lesseq_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
+		      | ("__lesseq_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jbe,x,y,d,size_ff,C)
 		      | ("__lesseq_real",[x,y],[d]) => cmpf_kill_tmp01(LESSEQUAL,x,y,d,size_ff,C)
 
-		      | ("__greater_int32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jg,x,y,d,size_ff,C)
-		      | ("__greater_int32b",[x,y],[d]) => not_impl name
-		      | ("__greater_int31",[x,y],[d]) => cmpi_kill_tmp01(I.jg,x,y,d,size_ff,C)
-		      | ("__greater_word31",[x,y],[d]) => cmpi_kill_tmp01(I.ja,x,y,d,size_ff,C)
-		      | ("__greater_word32ub",[x,y],[d]) => cmpi_kill_tmp01(I.ja,x,y,d,size_ff,C)
-		      | ("__greater_word32b",[x,y],[d]) => not_impl name
+		      | ("__greater_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
+		      | ("__greater_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jg,x,y,d,size_ff,C)
+		      | ("__greater_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
+		      | ("__greater_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
+		      | ("__greater_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
+		      | ("__greater_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.ja,x,y,d,size_ff,C)
 		      | ("__greater_real",[x,y],[d]) => cmpf_kill_tmp01(GREATERTHAN,x,y,d,size_ff,C)
 
-		      | ("__greatereq_int32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jge,x,y,d,size_ff,C)
-		      | ("__greatereq_int32b",[x,y],[d]) => not_impl name
-		      | ("__greatereq_int31",[x,y],[d]) => cmpi_kill_tmp01(I.jge,x,y,d,size_ff,C)
-		      | ("__greatereq_word31",[x,y],[d]) => cmpi_kill_tmp01(I.jae,x,y,d,size_ff,C)
-		      | ("__greatereq_word32ub",[x,y],[d]) => cmpi_kill_tmp01(I.jae,x,y,d,size_ff,C)
-		      | ("__greatereq_word32b",[x,y],[d]) => not_impl name
+		      | ("__greatereq_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
+		      | ("__greatereq_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jge,x,y,d,size_ff,C)
+		      | ("__greatereq_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
+		      | ("__greatereq_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
+		      | ("__greatereq_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
+		      | ("__greatereq_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jae,x,y,d,size_ff,C)
 		      | ("__greatereq_real",[x,y],[d]) => cmpf_kill_tmp01(GREATEREQUAL,x,y,d,size_ff,C)		       
 		       	
 		      | ("__andb_word31",[x,y],[d]) => andb_word_kill_tmp01(x,y,d,size_ff,C)
@@ -2074,31 +2098,36 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		       shift_right_signed_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
 		      | ("__shift_right_signed_word32ub",[x,y],[d]) => 
 		       shift_right_signed_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-		      | ("__shift_right_signed_word32b",[b,x,y],[d]) => shift_right_signedw32boxed__(b,x,y,d,size_ff,C)
+		      | ("__shift_right_signed_word32b",[b,x,y],[d]) => 
+		       shift_right_signedw32boxed__(b,x,y,d,size_ff,C)
 
 		      | ("__shift_right_unsigned_word31",[x,y],[d]) =>
 		       shift_right_unsigned_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
 		      | ("__shift_right_unsigned_word32ub",[x,y],[d]) => 
 		       shift_right_unsigned_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-		      | ("__shift_right_unsigned_word32b",[b,x,y],[d]) => shift_right_unsignedw32boxed__(b,x,y,d,size_ff,C)
+		      | ("__shift_right_unsigned_word32b",[b,x,y],[d]) => 
+		       shift_right_unsignedw32boxed__(b,x,y,d,size_ff,C)
 
-		      | ("__int31_to_int32b",[b,x],[d]) => not_impl name
+		      | ("__int31_to_int32b",[b,x],[d]) => num31_to_num32b(b,x,d,size_ff,C)
 		      | ("__int31_to_int32ub",[x],[d]) => num31_to_num32ub(x,d,size_ff,C)
-		      | ("__int32b_to_int31",[x],[d]) => not_impl name
-		      | ("__int32ub_to_int31",[x],[d]) => int32ub_to_int31(x,d,size_ff,C)
+		      | ("__int32b_to_int31",[x],[d]) => num32_to_num31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
+		      | ("__int32ub_to_int31",[x],[d]) => num32_to_num31 {boxedarg=false,ovf=true} (x,d,size_ff,C)
 
-		      | ("__word31_to_word32b",[b,x],[d]) => not_impl name
+		      | ("__word31_to_word32b",[b,x],[d]) => num31_to_num32b(b,x,d,size_ff,C)
 		      | ("__word31_to_word32ub",[x],[d]) => num31_to_num32ub(x,d,size_ff,C)
-		      | ("__word32b_to_word31",[x],[d]) => not_impl name
-		      | ("__word32ub_to_word31",[x],[d]) => word32ub_to_word31(x,d,size_ff,C)
+		      | ("__word32b_to_word31",[x],[d]) => num32_to_num31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+		      | ("__word32ub_to_word31",[x],[d]) => num32_to_num31 {boxedarg=false,ovf=false} (x,d,size_ff,C)
 
-		      | ("__word31_to_word32ub_X",[x],[d]) => word31_to_word32ub_X(x,d,size_ff,C)
-		      | ("__word31_to_word32b_X",[b,x],[d]) => not_impl name
+		      | ("__word31_to_word32ub_X",[x],[d]) => num31_to_num32ub(x,d,size_ff,C)
+		      | ("__word31_to_word32b_X",[b,x],[d]) => num31_to_num32b(b,x,d,size_ff,C)
 
-		      | ("__word32b_to_int32b",[b,x],[d]) => not_impl name
+		      | ("__word32b_to_int32b",[b,x],[d]) => num32b_to_num32b {ovf=true} (b,x,d,size_ff,C)
+		      | ("__word32b_to_int32b_X",[b,x],[d]) => num32b_to_num32b {ovf=false} (b,x,d,size_ff,C)
+		      | ("__int32b_to_word32b",[b,x],[d]) => num32b_to_num32b {ovf=false} (b,x,d,size_ff,C)
 		      | ("__word32ub_to_int32ub",[x],[d]) => word32ub_to_int32ub(x,d,size_ff,C)
-		      | ("__word32b_to_int31",[x],[d]) => not_impl name
-		      | ("__int32b_to_word31",[x],[d]) => not_impl name
+		      | ("__word32b_to_int31",[x],[d]) => num32_to_num31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
+		      | ("__int32b_to_word31",[x],[d]) => num32_to_num31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+		      | ("__word32b_to_int31_X", [x],[d]) => num32_to_num31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
 (*
 		      | ("toIntw32boxed__",[x],[d]) => toIntw32boxed__ (x,d,size_ff,C)
 		      | ("fromIntw32boxed__",[r,x],[d]) => fromIntw32boxed__ (r,x,d,size_ff,C)
@@ -2109,11 +2138,16 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
                        I.addl(I "1", R tmp_reg0) ::
                        I.movl(R tmp_reg0, L exn_counter_lab) :: C)
 		      | _ => die ("PRIM(" ^ name ^ ") not implemented")))
-
+		  end
 	       | LS.CCALL{name,args,rhos_for_result,res} => 
 		  let 
 		    fun comp_c_call(all_args,res,C) = 
 		      compile_c_call_prim(name, all_args, res, size_ff, tmp_reg1, C)
+		    val _ = 
+		      if BI.is_prim name then
+			die ("CCALL." ^ name ^ " is meant to be a primitive inlined by the compiler " ^ 
+			     "- but it is not dealt with!")
+		      else ()
 		  in
 		    comment_fn (fn () => "CCALL: " ^ pr_ls ls,
 		     (case (name, rhos_for_result@args, res)
@@ -2503,10 +2537,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  else C
 
 	fun main_insts C =
-	  let val res = if BI.tag_values() then 1 (* 2 * 0 + 1 *)
-			else 0
-	  in
-	    I.dot_text ::
+	   (I.dot_text ::
 	    I.dot_align 4 ::
 	    I.dot_globl (NameLab "code") ::
 	    I.lab (NameLab "code") ::
@@ -2535,12 +2566,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
-	    compile_c_call_prim("terminateML", [mkIntAty res], 
+	    compile_c_call_prim("terminateML", [mkIntAty 0], 
 				NONE,0,eax, (* instead of res we might use the result from 
 					     * the last function call, 2001-01-08, Niels *)
 	    (*I.leave :: *)
-	    I.ret :: C))))))))))
-	  end
+	    I.ret :: C)))))))))))
 
 	val init_link_code = (main_insts o raise_insts o 
 			      toplevel_handler o allocate o resetregion o 

@@ -48,8 +48,8 @@ testmatc.sml        ccl
 (* Tests of some benchmark programs *)
 
 kitfib35.sml            tx               nobasislib
-kitdangle.sml           tx               nobasislib     (* does not work with GC currently! *)
-kitdangle3.sml          tx               nobasislib     (* does not work with GC currently! *)
+kitdangle.sml           tx               nobasislib
+kitdangle3.sml          tx               nobasislib
 kitreynolds2.sml        tx   
 kitreynolds3.sml        tx   
 kitloop2.sml            tx   

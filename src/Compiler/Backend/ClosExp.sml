@@ -1876,6 +1876,14 @@ struct
 		 val (selections,opt) =
 		   compile_sels_and_default selections opt (fn m=>m) (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
+
+		 (* When tagging is enabled, integers in SWITCH_I are converted in
+		  * CodeGenX86.sml - so in that case we must use an untagged representation 
+		  * of true, which is 1 (given that BI.ml_true is 3). *)
+		 val True = Int32.fromInt (if BI.ml_true = 3 then 
+					     if BI.tag_integers() then 1
+					     else BI.ml_true
+					   else die "True")
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(s,ce')::rest,default) =
 		   let
@@ -1886,7 +1894,7 @@ struct
 			 bind=STRING s,
 			 scope=LET{pat=[lv_sw],
 				   bind=CCALL{name="equalStringML",args=[ce,VAR lv_s],rhos_for_result=[]},
-				   scope=SWITCH_I{switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
+				   scope=SWITCH_I{switch=SWITCH(VAR lv_sw,[(True,ce')],
 								compile_seq_switch(ce,rest,default)),
 						  precision=BI.defaultIntPrecision()}}}
 		   end
@@ -2613,10 +2621,18 @@ struct
 		 val (selections,opt) =
 		   compile_sels_and_default selections opt (fn m=>m) (fn tr => liftTrip tr env lab)
 		 val ce = liftTrip tr env lab
+
+		 (* When tagging is enabled, integers in SWITCH_I are converted in
+		  * CodeGenX86.sml - so in that case we must use an untagged representation 
+		  * of true, which is 1 (given that BI.ml_true is 3). *)
+		 val True = Int32.fromInt (if BI.ml_true = 3 then 
+					     if BI.tag_integers() then 1
+					     else BI.ml_true
+					   else die "True")
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(s,ce')::rest,default) =
 		   SWITCH_I {switch=SWITCH(CCALL{name="equalStringML",args=[ce,STRING s],rhos_for_result=[]},
-					   [(Int32.fromInt BI.ml_true,ce')],
+					   [(True,ce')],
 					   compile_seq_switch(ce,rest,default)),
 			     precision=BI.defaultIntPrecision()}
 		 val lv_str = fresh_lvar("sw_str")

@@ -1595,15 +1595,31 @@ ML Basis Library through the
 this chapter, we introduce some of the top-level bindings that are
 provided by the initial basis.
 
-\section{Integers}
+\section{Integers and Words}
 \label{integers.sec}
 Values of type 
 \index{integer}%
-{\tt int} are represented as unboxed 32-bit signed integers. When reference
-tracing garbage collection is enabled in the Kit, one bit is used for
-tagging; Chapter~\ref{gc.chap} describes how to compile programs with
-garbage collection enabled.  The following operations on integers are
-pre-defined at top level:
+{\tt int} are represented as unboxed 32-bit signed integers. When
+reference tracing garbage collection is enabled in the Kit, one bit is
+used for tagging, thus in this case values of type {\tt int} are
+really 31-bit signed integers; Chapter~\ref{gc.chap} describes how to
+compile programs with garbage collection enabled. The structure {\tt
+  Int} provides many useful operations on integers of type {\tt
+  int}.\footnote{To see what operations are available in the {\tt Int}
+  structure, consult the file {\tt basislib/INTEGER.sml}.}  The Kit
+also defines the structures 
+\index{Int31 structure@{\tt Int31} structure}%
+{\tt Int31} and 
+\index{Int32 structure@{\tt Int32} structure}%
+{\tt Int32} for operations on 31-bit and 32-bit integers,
+respectively. When garbage collection is enabled, values of type {\tt
+  Int32.int} are represented boxed, whereas values of type {\tt
+  Int31.int} also in this case are represented unboxed. When garbage
+collection is enabled, the structure {\tt Int} is identical to the
+structure {\tt Int31}. When garbage collection is disabled, the
+structure {\tt Int} is identical to the structure {\tt Int32}.
+
+The following operations on integers are pre-defined at top level:
 \index{=@\texttt{=}}%
 \index{<>@\texttt{<>}}%
 \index{<@\texttt{<}}%
@@ -1624,10 +1640,21 @@ pre-defined at top level:
    val ~ :  int -> int
    val abs: int -> int
 \end{verbatim}
-Many other useful operations on integers are available in the {\tt
-  Int} structure.\footnote{To see what operations are available in the
-  {\tt Int} structure, consult the file {\tt
-    basislib/INTEGER.sml}.}
+
+Operations on 8-bit, 31-bit, and 32-bit unsigned words are available
+in the structures 
+\index{Word8 structure@{\tt Word8} structure}%
+{\tt Word8}, 
+\index{Word31 structure@{\tt Word31} structure}%
+{\tt Word31}, and 
+\index{Word32 structure@{\tt Word32} structure}%
+{\tt Word32}.
+Similarly as for integers, when garbage collection is enabled, the
+structure {\tt Word} is identical to the structure {\tt Word31} and
+the values of type {\tt Word32.word} are represented boxed. Contrary,
+when garbage collection is disabled, the structure {\tt Word} is
+identical to the structure {\tt Word32} and values of type {\tt
+  Word32.word} are represented unboxed.
 
 \section{Reals}
 The 
@@ -1712,8 +1739,8 @@ initial basis provides the following top-level operations on characters and stri
    val substring: string * int * int -> string
 \end{verbatim}
 Characters are represented as 32-bit words, although only 8 bits are
-used to store the character. Just like integers, characters are
-unboxed and untagged when garbage collection is disabled.
+used to store the character. Characters are always unboxed, also when
+garbage collection is enabled.
 
 A string is represented by a 32-bit pointer into an infinite region.
 The string is stored in consecutive bytes in the region, except if the
