@@ -9,7 +9,8 @@ interpCode(Interp* interpreter,          // Interpreter
 	   Ro** topRegionCell,           // Cell for holding a pointer to the top-most region
 	   char** errorStr,              // Cell to store error-string in case of an uncaught exception
 	   unsigned long *exnCnt,        // Exception name counter
-	   bytecode_t b_prog);           // The actual code
+	   bytecode_t b_prog,            // The actual code
+	   void *serverCtx);             // Apache request_rec pointer
 
 
 /* Resolve code; i.e., turn instruction numbers into instruction

@@ -86,7 +86,13 @@ struct
     {long="comments_in_kam_code", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "comments in KAM code"],
      desc=""}
-				  
+
+  val webserver : string ref = ref "AOLserver"
+  val _ = Flags.add_string_entry 
+      {long="webserver", short=NONE, menu=["Control", "webserver"], 
+       item=webserver,
+       desc="Webserver used with SMLserver. Possibilities are\n\
+	\Apache and AOLserver."}
 
   val comments_in_kam_code = Flags.lookup_flag_entry "comments_in_kam_code"
   val jump_tables = true
@@ -454,9 +460,10 @@ struct
 	 | ClosExp.ForeignPtr => acc
 	 | ClosExp.Unit => acc
 
+    val webserver = Flags.lookup_string_entry "webserver"
     fun name_to_built_in_C_function_index name = 
       if !Flags.SMLserver then 
-        if !Flags.WEBserver = "Apache" then 
+        if !webserver = "Apache" then 
 	  BuiltInCFunctions.name_to_built_in_C_function_index_apsml name
 	else
 	  BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
@@ -873,6 +880,8 @@ struct
 		  | "__is_null"            => PrimIsNull
 
 		  | "terminateML"          => Halt
+
+		  | "__serverGetCtx"       => GetContext
 
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in	    
