@@ -77,7 +77,7 @@ typedef unsigned int uint32;
 	debug(printf(" after deallocateRegionsUntil\n"));                                 \
                                                                                           \
 	sp = exnPtr - 1;                                /* reset stack pointer */         \
-	(unsigned long)exnPtr = *exnPtr;                /* enable the previous handler */ \
+	exnPtr = (unsigned long*)*exnPtr;               /* enable the previous handler */ \
                                                                                           \
 	debug(printf(" now calling the handler function\n"));                             \
                                                         /* now do the function call! The  \ 
@@ -1016,7 +1016,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       
       Instruct(POP_EXN_PTR): {
 	debug(printf("POP_EXN_PTR\n"));
-	(unsigned long)exnPtr = popValDef;
+	exnPtr = (unsigned long*)popValDef;
 	Next;
       }
 
@@ -1221,19 +1221,19 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(PRIM_ADD_W31): {
 	debug(printf("PRIM_ADD_W31\n"));
-	(unsigned int)acc = (unsigned int)(popValDef) + (unsigned int)(acc - 1);
+	acc = (int)((unsigned int)(popValDef) + (unsigned int)(acc - 1));
 	Next;
       }
 
       Instruct(PRIM_SUB_W31): {
 	debug(printf("PRIM_SUB_W31\n"));
-	(unsigned int)acc = (unsigned int)(popValDef) - (unsigned int)(acc - 1);
+	acc = (int)((unsigned int)(popValDef) - (unsigned int)(acc - 1));
 	Next;
       }
       
       Instruct(PRIM_MUL_W31): {
 	debug(printf("PRIM_MUL_W31\n"));
-	(unsigned int)acc = 1 + (unsigned int)((popValDef) >> 1) * (unsigned int)(acc - 1);
+	acc = (int)(1 + (unsigned int)((popValDef) >> 1) * (unsigned int)(acc - 1));
 	Next;
       }
 
