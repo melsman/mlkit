@@ -161,7 +161,8 @@ functor CompileBasis(structure Con : CON
 
     fun restrict ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
 		  (lvars,lvars_with_prims,tynames,cons,excons)) = 
-      let val excons = Excon.ex_MATCH :: Excon.ex_BIND :: excons
+      let val excons = Excon.ex_DIV :: Excon.ex_MOD ::
+	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
 	  val tynames = TyName.tyName_BOOL :: tynames        (* for elim eq *) 
 	  val (lvars,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})

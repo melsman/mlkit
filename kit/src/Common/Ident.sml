@@ -57,6 +57,8 @@ old*)
     (* Identifiers for predefined overloaded variables *)
     val id_ABS = ID "abs"
     val id_NEG = ID "~"
+    val id_DIV = ID "div"
+    val id_MOD = ID "mod"
     val id_PLUS = ID "+"
     val id_MINUS = ID "-"
     val id_MUL = ID "*"
@@ -70,6 +72,8 @@ old*)
     val id_STD_IN = ID "std_in"
     val id_STD_OUT = ID "std_out"
 
+    val id_Div = ID "Div"
+    val id_Mod = ID "Mod"
     val id_Match = ID "Match"
     val id_Bind = ID "Bind"
 

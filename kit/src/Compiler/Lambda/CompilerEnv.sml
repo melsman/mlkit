@@ -51,7 +51,7 @@ functor CompilerEnv(structure Ident: IDENT
                     | CON of con * tyvar list * Type * Type list * instance_transformer
                     | REF       (* ref is *not* a constructor in the backend, but a primitive! *)
                     | EXCON of excon * Type
-                    | ABS | NEG | PLUS | MINUS | MUL | LESS 
+                    | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS 
 		    | GREATER | LESSEQ | GREATEREQ
 		                (* ABS .. GREATEREQ are place-holders for 
 				   the built-in overloaded operators 
@@ -91,6 +91,8 @@ functor CompilerEnv(structure Ident: IDENT
 		      (Ident.id_PLUS, PLUS),
 		      (Ident.id_MINUS, MINUS),
 		      (Ident.id_MUL, MUL),
+		      (Ident.id_DIV, DIV),
+		      (Ident.id_MOD, MOD),
 		      (Ident.id_LESS, LESS),
 		      (Ident.id_GREATER, GREATER),
 		      (Ident.id_LESSEQ, LESSEQ),
@@ -104,6 +106,8 @@ functor CompilerEnv(structure Ident: IDENT
 					 [LambdaExp.TYVARtype tyvar_list],[0])),
 		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_list],listType,
 					  [LambdaExp.TYVARtype tyvar_list],[0])),
+		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
+		      (Ident.id_Mod, EXCON(Excon.ex_MOD, exnType)),
 		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType))
 		      ])
@@ -173,6 +177,8 @@ functor CompilerEnv(structure Ident: IDENT
 	 | PLUS => Lvars.plus_int_lvar :: Lvars.plus_float_lvar :: lvs
 	 | MINUS => Lvars.minus_int_lvar :: Lvars.minus_float_lvar :: lvs
 	 | MUL => Lvars.mul_int_lvar :: Lvars.mul_float_lvar :: lvs
+	 | DIV => Lvars.div_int_lvar :: lvs
+	 | MOD => Lvars.mod_int_lvar :: lvs
 	 | LESS => Lvars.less_int_lvar :: Lvars.less_float_lvar :: lvs
 	 | GREATER => Lvars.greater_int_lvar :: Lvars.greater_float_lvar :: lvs
 	 | LESSEQ => Lvars.lesseq_int_lvar :: Lvars.lesseq_float_lvar :: lvs
@@ -313,6 +319,8 @@ old*)
        | eq_res (PLUS,PLUS) = true
        | eq_res (MINUS,MINUS) = true
        | eq_res (MUL,MUL) = true
+       | eq_res (DIV,DIV) = true
+       | eq_res (MOD,MOD) = true
        | eq_res (LESS,LESS) = true
        | eq_res (GREATER,GREATER) = true
        | eq_res (LESSEQ,LESSEQ) = true
@@ -490,6 +498,8 @@ old*)
 					  | PLUS => "PLUS"
 					  | MINUS => "MINUS"
 					  | MUL => "MUL"
+					  | DIV => "DIV"
+					  | MOD => "MOD"
 					  | LESS => "LESS"
 					  | GREATER => "GREATER"
 					  | LESSEQ => "LESSEQ"

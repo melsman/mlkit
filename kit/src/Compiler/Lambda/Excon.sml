@@ -28,6 +28,8 @@ functor Excon(structure Name : NAME) : EXCON =
     val ex_SUM   : excon  = mk_excon "Sum"
     val ex_DIFF  : excon  = mk_excon "Diff"
     val ex_PROD  : excon  = mk_excon "Prod"
+    val ex_DIV   : excon  = mk_excon "Div"
+    val ex_MOD   : excon  = mk_excon "Mod"
     val ex_MATCH : excon  = mk_excon "Match"
     val ex_BIND  : excon  = mk_excon "Bind"
 

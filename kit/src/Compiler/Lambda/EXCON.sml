@@ -29,6 +29,8 @@ signature EXCON =
     val ex_SUM   : excon
     val ex_DIFF  : excon
     val ex_PROD  : excon
+    val ex_DIV   : excon
+    val ex_MOD   : excon
     val ex_MATCH : excon
     val ex_BIND  : excon
 

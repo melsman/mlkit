@@ -279,8 +279,9 @@ functor RegionStatEnv(structure R: RTYPE
 
     val excon_env0 = ExconMap.fromList 
       (map (fn excon => (excon, (R.exnType,E.toplevel_region_withtype_top)))
-       [Excon.ex_ABS, Excon.ex_NEG, Excon.ex_SUM,
-	Excon.ex_DIFF, Excon.ex_PROD, Excon.ex_MATCH, Excon.ex_BIND])
+       [Excon.ex_ABS, Excon.ex_NEG, Excon.ex_SUM, Excon.ex_DIFF,
+	Excon.ex_PROD, Excon.ex_DIV, Excon.ex_MOD,
+	Excon.ex_MATCH, Excon.ex_BIND])
 
     val initial: regionStatEnv ={tyname_env = tyname_env0,
 				 con_env = conenv0,
