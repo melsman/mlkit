@@ -24,7 +24,8 @@ structure CompileSMLNJ : COMPILE =
 	   | NONE => NONE
       end handle _ => NONE
 *)
-    val heap2execDir = "/home/mael/mlkit/kit/src/heap2exec/"
+(*    val heap2execDir = "/home/mael/mlkit/kit/src/heap2exec/"*)
+    val heap2execDir = "/home/nh/ITU/MLKit/mlkit/kit/src/heap2exec/"
     val heap2exec = heap2execDir ^ "heap2exec " ^ heap2execDir ^ "run.x86-linux"
     fun compile src =
       let val {base,ext} = OS.Path.splitBaseExt src

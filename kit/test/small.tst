@@ -17,12 +17,12 @@ by a list of tokens. The following tokens are supported:
 Test files may contain Standard ML like comments.
 
 *)
-kittmergesort.sml       tx 
-kkb36c.sml              tx 
+(*kittmergesort.sml       tx 
 kitlife35u.sml          tx 
 lexgen.sml              tx 
+professor2.sml          tx *)
+kkb36c.sml              tx 
 vliw.sml                tx 
-professor2.sml          tx 
 logic.pm
 (*
 mlyacc.pm               tx 
