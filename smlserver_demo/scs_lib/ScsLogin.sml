@@ -9,6 +9,10 @@ signature SCS_LOGIN =
     val verifyUser : unit -> int * ScsLang.lang
     val loggedIn   : bool
 
+    val d : 'a * 'a -> 'a
+    (* [d (str_dk,str_eng)] returns either str_dk or str_eng depending
+    on the logged in user preference *)
+
     val auth_filter : (string * ScsRole.role list) list -> unit
   end
 
@@ -48,6 +52,12 @@ structure ScsLogin :> SCS_LOGIN =
     val (user_id,user_lang) = verifyUser()
     val loggedIn = user_id <> 0
 
+    (* Language selection *)
+    fun d (str_dk,str_eng) =
+      case user_lang of
+	ScsLang.en => str_eng
+      | ScsLang.da => str_dk
+
     (* ==================================================== *)
     (* Below, we check for password protected pages.        *)
     (* To each page we specify which roles that             *)
@@ -57,11 +67,11 @@ structure ScsLogin :> SCS_LOGIN =
     fun auth_filter protected_pages =
       let
 	val target = (*Ns.Conn.location()^*)Ns.Conn.url()
-	fun reject () =
+	fun reject msgs =
 	  let
 	    val query_data = case Ns.Conn.getQuery() of
 	      NONE => ""
-	    | SOME s => Quot.toString (Html.export_url_vars (Ns.Set.list s))
+	    | SOME s => Quot.toString (Html.export_url_vars (("msg",Quot.toString (d msgs)) :: Ns.Set.list s))
 	  in
 	    (Ns.returnRedirect (Ns.Conn.location()^"/scs/auth/auth_form.sml?target=" ^ 
 				Ns.encodeUrl (target^query_data)); 
@@ -75,7 +85,13 @@ structure ScsLogin :> SCS_LOGIN =
 	    if ScsRole.has_one_p user_id roles then
 	      ()
 	    else
-	      reject()
+	  reject (`Du har ikke de nødvendige adgangsprivilegier til at tilgå siden.<p>
+                   Hvis du mener det er en fejl, så send en email til ` ^^ 
+		   (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ `.<p>`,
+		  `You do not have access to the page you are requesting.<p>
+                   Please send an email to the ` ^^ 
+                   (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ ` if you
+                   believe you should have access to the page.<p>`)
 	  else
 	    (* Access is not to the protected page p *)
 	    ()
@@ -83,7 +99,13 @@ structure ScsLogin :> SCS_LOGIN =
 	(* we tell SMLserver to verify that the user is logged in and
            holds one of the roles in the roles list before serving any
            of the protected_pages *)
-	List.app verifyUserFilter protected_pages
+	if not loggedIn then
+	  reject (`Du skal indtaste email og password for at få adgang til systemet.<p>
+		   Hvis du allerede har indtastet en email og password, så må du prøve igen.<p>`,
+		  `You must type in an email and password to get access to the web-site.<p>
+                   If you have already typed in an email and password, then you must try again.<p>`)
+	else
+	  List.app verifyUserFilter protected_pages
       end
   end
 

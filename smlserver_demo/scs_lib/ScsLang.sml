@@ -15,7 +15,7 @@ signature SCS_LANG =
     may be used to build a selection list of all languages in the
     user's preferred language. *)
     val all_for_sel_box : lang -> (string * string) list
-   
+
     (* [toText lang to_lang] return the text-description of language
     lang in language to_lang. Used when building selection-boxes. *)
     val toText      : lang -> lang -> string
@@ -36,7 +36,6 @@ structure ScsLang :> SCS_LANG =
     fun fromString "da" = da
       | fromString "en" = en
       | fromString l = raise ScsLang ("Language " ^ l ^ " not known")
-
 
     fun all_as_text lang =
       (Db.list (fn g => g "text") `select scs_text.getText(scs_lang.language_name_tid,^(Db.qqq (toString lang))) as text
