@@ -187,7 +187,7 @@ structure K = struct
 	    | _ => "unknown"
 	  val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file=kit_image()}
 	  val os = TextIO.openOut kitbinkit_path
-	  val _ = (TextIO.output(os, "sml @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
+	  val _ = (TextIO.output(os, "sml @SMLload=" ^ kitbinkitimage_path ^ " $*"); TextIO.closeOut os)
 	  val _ = OS.Process.system("chmod a+x " ^ kitbinkit_path)
 	    handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ kitbinkit_path ^ "' failed***\n");
 			 OS.Process.success)

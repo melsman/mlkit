@@ -43,30 +43,25 @@ functor OptLambda(structure Lvars: LVARS
     * Some Optimisation Constants
     * ----------------------------------------------------------------- *)
 
-    val max_inline_size = ref 20            (* max size of non-recursive function defs. to be inlined. *)
-    val max_specialize_size = ref 200       (* max size of recursive function defs. to be specialised. *) 
-    val max_optimise = 20                   (* maximal number of times the entire term is traversed. *)
+    val max_optimise = 20  (* maximal number of times the entire term is traversed. *)
 
     
    (* -----------------------------------------------------------------
     * Dynamic flags
     * ----------------------------------------------------------------- *)
 
-    val path = ["Control", "Optimiser"]
-    val add_entry = fn (s, s', r) => Flags.add_flag_to_menu (path, s, s', r) 
     val statistics_after_optimisation = Flags.lookup_flag_entry "statistics_after_optimisation"
-    val specialize_recursive_functions = ref true
-    val entries = [("minimize_fixs", "minimize fix's", ref true),
-		   ("fix_conversion", "fix conversion", ref true),
-		   ("contract", "contract", ref true),
-		   ("specialize_recursive_functions", "  specialize recursive functions", specialize_recursive_functions),
-		   ("elim_explicit_records", "eliminate explicit records", ref true)]
-    val _ = map add_entry entries
-    val _ = Flags.add_int_to_menu(path,"max_specialise_size", "Maximum specialise size", max_specialize_size)
-    val _ = Flags.add_int_to_menu(path,"max_inline_size", "Maximum inline size", max_inline_size)
+    val minimize_fixs = Flags.lookup_flag_entry "minimize_fixs"
+    val fix_conversion_ref = Flags.lookup_flag_entry "fix_conversion"
+    val contract_ref = Flags.lookup_flag_entry "contract"
+    val specialize_recursive_functions = Flags.lookup_flag_entry "specialize_recursive_functions"
+    val eliminate_explicit_records_ref = Flags.lookup_flag_entry "eliminate_explicit_records"
 
-    val is_on = Flags.is_on
+    val max_specialise_size = Flags.lookup_int_entry "maximum_specialise_size"
+       (* max size of recursive function defs. to be specialised. *) 
 
+    val max_inline_size = Flags.lookup_int_entry "maximum_inline_size"
+       (* max size of non-recursive function defs. to be inlined. *)
 
    (* -----------------------------------------------------------------
     * Some helpful functions
@@ -806,7 +801,7 @@ functor OptLambda(structure Lvars: LVARS
 		   val env' = case functions
 				of [function as {lvar,tyvars,Type,bind}] => 
 				  let val cv = if !specialize_recursive_functions andalso specializable function then 
-				                  CFIX{Type=Type,bind=bind,large=not(small_lamb (!max_specialize_size) bind)} 
+				                  CFIX{Type=Type,bind=bind,large=not(small_lamb (!max_specialise_size) bind)} 
 					       else CUNKNOWN
 				  in updateEnv [lvar] [(tyvars,cv)] env
 				  end
@@ -842,7 +837,7 @@ functor OptLambda(structure Lvars: LVARS
 	end
     in 
       fun contract lamb =
-	if is_on "contract" then
+	if !contract_ref then
 	  let val _ = log "contracting\n"
 	      val _ = reset_excon_bucket()
 	      val _ = init lamb
@@ -913,7 +908,7 @@ functor OptLambda(structure Lvars: LVARS
            | _ => map_lamb (transf env) lamb
    in
      fun eliminate_explicit_records lamb =
-       if is_on "elim_explicit_records" then
+       if !eliminate_explicit_records_ref then
 	 (log "eliminating explicit records\n";
 (*	  log " traversing\n"; *)
 	  traverse lamb;
@@ -1065,10 +1060,10 @@ functor OptLambda(structure Lvars: LVARS
 	in fix 
 	end
    in
-     fun minimize_fixs lamb = 
+     fun do_minimize_fixs lamb = 
        let fun min_fixs (FIX fs) = map_lamb min_fixs (FIX (minimize_fix fs))
 	     | min_fixs lamb = map_lamb min_fixs lamb
-       in if is_on "minimize_fixs" then min_fixs lamb
+       in if !minimize_fixs then min_fixs lamb
 	  else lamb
        end
    end
@@ -1089,7 +1084,7 @@ functor OptLambda(structure Lvars: LVARS
 		      scope=scope})
 	   | f lamb = lamb
      in
-       if is_on "fix_conversion" then (log "fix_conversion\n"; passTD f lamb)
+       if !fix_conversion_ref then (log "fix_conversion\n"; passTD f lamb)
        else lamb
      end
 
@@ -1316,7 +1311,7 @@ functor OptLambda(structure Lvars: LVARS
 				    else lamb'
 				 end
 
-	  val pre_opt = minimize_fixs
+	  val pre_opt = do_minimize_fixs
 
 	  val _ = reset_statistics()
 	  val lamb' = loop 0 (pre_opt lamb)

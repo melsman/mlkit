@@ -156,19 +156,14 @@ functor Compile(structure Excon : EXCON
     (*  Dynamic Flags.                                                        *)
     (* ---------------------------------------------------------------------- *)
 
-    val print_opt_lambda_expression = ref false
-    val print_drop_regions_expression_with_storage_modes = ref false 
-    val _ = Flags.add_flag_to_menu (["Printing of intermediate forms"], "print_opt_lambda_expression",
-				    "print optimised lambda expression", print_opt_lambda_expression)
-    val _ = Flags.add_flag_to_menu (["Printing of intermediate forms"], 
-				    "print_drop_regions_expression_with_storage_modes",
-				    "print drop regions expression with storage modes", 
-				    print_drop_regions_expression_with_storage_modes)
-
+    val print_opt_lambda_expression = 
+      Flags.lookup_flag_entry "print_opt_lambda_expression" 
+    val print_drop_regions_expression_with_storage_modes = 
+      Flags.lookup_flag_entry "print_drop_regions_expression_with_storage_modes"
     val print_physical_size_inference_expression =
-          Flags.lookup_flag_entry "print_physical_size_inference_expression"
+      Flags.lookup_flag_entry "print_physical_size_inference_expression"
     val print_call_explicit_expression =
-          Flags.lookup_flag_entry "print_call_explicit_expression"
+      Flags.lookup_flag_entry "print_call_explicit_expression"
     val print_program_points = Flags.lookup_flag_entry "print_program_points"
 
 
