@@ -8,49 +8,49 @@ structure Html :> HTML =
     fun comment str = `<!-- ^str -->`
 
     (* HTML documents and headers *)
-    fun html quot = `<HTML>` ^^ quot ^^ `</HTML>`
-    fun head quot = `<HEAD>` ^^ quot ^^ `</HEAD>`
-    fun title quot = `<TITLE>` ^^ quot ^^ `</TITLE>`
-    fun body quot = `<BODY>` ^^ quot ^^ `</BODY>`
-    fun bodya attr quot = ` <BODY ^attr>` ^^ quot ^^ `</BODY>`
+    fun html quot = `<html>` ^^ quot ^^ `</html>`
+    fun head quot = `<head>` ^^ quot ^^ `</head>`
+    fun title quot = `<title>` ^^ quot ^^ `</title>`
+    fun body quot = `<body>` ^^ quot ^^ `</body>`
+    fun bodya attr quot = ` <body ^attr>` ^^ quot ^^ `</body>`
     fun htmldoc tit bod = html (head (title tit) ^^ body bod)
 
     (* HTML headings and vertical format *)
-    fun h1 quot = `<H1>` ^^ quot ^^ `</H1>`
-    fun h2 quot = `<H2>` ^^ quot ^^ `</H2>`
-    fun h3 quot = `<H3>` ^^ quot ^^ `</H3>`
-    fun h4 quot = `<H4>` ^^ quot ^^ `</H4>`
-    fun h5 quot = `<H5>` ^^ quot ^^ `</H5>`
-    fun h6 quot = `<H6>` ^^ quot ^^ `</H6>`
+    fun h1 quot = `<h1>` ^^ quot ^^ `</h1>`
+    fun h2 quot = `<h2>` ^^ quot ^^ `</h2>`
+    fun h3 quot = `<h3>` ^^ quot ^^ `</h3>`
+    fun h4 quot = `<h4>` ^^ quot ^^ `</h4>`
+    fun h5 quot = `<h5>` ^^ quot ^^ `</h5>`
+    fun h6 quot = `<h6>` ^^ quot ^^ `</h6>`
 
-    fun p quot = `<P>` ^^ quot ^^ `</P>`
-    fun pa attr quot = `<P ^attr>` ^^ quot ^^ `</P>`
-    val br = `<BR>`
-    fun bra attr = `<BR ^attr>`
-    val hr = `<HR>`
-    fun hra attr = `<HR ^attr>`
+    fun p quot = `<p>` ^^ quot ^^ `</p>`
+    fun pa attr quot = `<p ^attr>` ^^ quot ^^ `</p>`
+    val br = `<br>`
+    fun bra attr = `<br ^attr>`
+    val hr = `<hr>`
+    fun hra attr = `<hr ^attr>`
 
-    fun divi quot = `<DIV>` ^^ quot ^^ `</DIV>`
-    fun divia attr quot = `<DIV ^attr>` ^^ quot ^^ `</DIV>`
-    fun blockquote quot = `<BLOCKQUOTE>` ^^ quot ^^ `</BLOCKQUOTE>`
-    fun blockquotea attr quot = `<BLOCKQUOTE ^attr>` ^^ quot ^^ `</BLOCKQUOTE>`
-    fun center quot = `<CENTER>` ^^ quot ^^ `</CENTER>`
-    fun address quot = `<ADDRESS>` ^^ quot ^^ `</ADDRESS>`
-    fun pre quot = `<PRE>` ^^ quot ^^ `</PRE>`
+    fun divi quot = `<div>` ^^ quot ^^ `</div>`
+    fun divia attr quot = `<div ^attr>` ^^ quot ^^ `</div>`
+    fun blockquote quot = `<blockquote>` ^^ quot ^^ `</blockquote>`
+    fun blockquotea attr quot = `<blockquote ^attr>` ^^ quot ^^ `</blockquote>`
+    fun center quot = `<center>` ^^ quot ^^ `</center>`
+    fun address quot = `<address>` ^^ quot ^^ `</address>`
+    fun pre quot = `<pre>` ^^ quot ^^ `</pre>`
 
     (* HTML anchors and hyperlinks *)
-    fun ahref link name = `<A HREF="` ^^ link ^^ `">` ^^ name ^^ `</A>`
-    fun ahrefa link attr name = `<A HREF="` ^^ link ^^ `" ` ^^ attr ^^ `>` ^^ name ^^ `</A>`
-    fun aname name quot = `<A NAME="^name">` ^^ quot ^^ `</A>`
+    fun ahref link name = `<a href="` ^^ link ^^ `">` ^^ name ^^ `</a>`
+    fun ahrefa link attr name = `<a href="` ^^ link ^^ `" ` ^^ attr ^^ `>` ^^ name ^^ `</a>`
+    fun aname name quot = `<a name="^name">` ^^ quot ^^ `</a>`
     fun aemail email name = `<a href="mailto:^email">^name</a>`
 
     (* HTML text formats and style *)
-    fun em quot = `<EM>` ^^ quot ^^ `</EM>`
-    fun strong quot = `<STRONG>` ^^ quot ^^ `</STRONG>`
-    fun tt quot = `<TT>` ^^ quot ^^ `</TT>`
-    fun sub quot = `<SUB>` ^^ quot ^^ `</SUB>`
-    fun sup quot = `<SUP>` ^^ quot ^^ `</SUP>`
-    fun fonta attr quot = `<FONT ^attr>` ^^ quot ^^ `</FONT>`
+    fun em quot = `<em>` ^^ quot ^^ `</em>`
+    fun strong quot = `<strong>` ^^ quot ^^ `</strong>`
+    fun tt quot = `<tt>` ^^ quot ^^ `</tt>`
+    fun sub quot = `<sub>` ^^ quot ^^ `</sub>`
+    fun sup quot = `<sup>` ^^ quot ^^ `</sup>`
+    fun fonta attr quot = `<font ^attr>` ^^ quot ^^ `</font>`
 
     (* HTML lists *)
     fun ul quot = `<UL>` ^^ quot ^^ `</UL>`
@@ -91,7 +91,7 @@ structure Html :> HTML =
     fun forma action attr quot = `<FORM ACTION="^action" ^attr>` ^^ quot ^^ `</FORM>`
     fun input typ = `<INPUT TYPE="^typ">`
     fun inputa typ attr = `<INPUT TYPE="^typ" ^attr>`
-    fun intext name attr = `<INPUT TYPE=TEXT NAME="^name" ` ^^ attr ^^ `>`
+    fun intext name attr = `<input type="text" name="^name" ` ^^ attr ^^ `>`
     fun inpassword name attr = `<INPUT TYPE=PASSWORD NAME="^name" ^attr>`
     fun incheckbox {name, value} attr = `<INPUT TYPE=CHECKBOX VALUE="^value" NAME="^name" ^attr>`
     fun inradio {name, value} attr = `<INPUT TYPE=RADIO VALUE="^value" NAME="^name" ^attr>`
