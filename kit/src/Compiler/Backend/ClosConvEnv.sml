@@ -241,6 +241,7 @@ functor ClosConvEnv(structure Lvars : LVARS
       | acc_type_eq(FIX(lab1,NONE,i1,_),FIX(lab2,NONE,i2,_)) = Labels.eq(lab1,lab2)
       | acc_type_eq(LABEL _,FIX _) = false
       | acc_type_eq(FIX _,LABEL _) = false
+      | acc_type_eq(FIX _,FIX _) = false (* bug fix: mael 2003-12-01 *)
       | acc_type_eq _ = die "acc_type_eq"
 
     fun match_acc_type(LABEL lab1,LABEL lab2) = Labels.match(lab1,lab2)
