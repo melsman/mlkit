@@ -33,6 +33,14 @@ sig
   val is_get : effect -> bool
   val rho_of : effect -> place (* should only be applied to PUT and GET nodes *)
 
+
+  (* acc_rho effect acc conses effect onto acc iff
+     acc is a RHO node which has a put effect on it.
+     When effect is consed onto acc, its visited field is set.
+     (Such a region should not be dropped - see DropRegions.drop_places *)
+
+  val acc_rho: effect -> effect list -> effect list
+
   (* mk_phi(eps_node): returns list of atomic effects in the effect which has
      eps_node as its primary effect variable. eps_node must be an effect variable *)
 
