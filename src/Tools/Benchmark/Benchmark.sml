@@ -180,7 +180,7 @@ structure Benchmark =
       in case  c 
 	   of MLKIT flags => {head=head, compile=CompileMLKIT.compile, memusage=true, flags=flags}
 	    | SMLNJ       => {head=head, compile=CompileSMLNJ.compile, memusage=false, flags=""}
-	    | SMLNJ_110_40=> {head=head, compile=CompileSMLNJ_110_40.compile, memusage=false, flags=""}
+	    | SMLNJ_110_40=> raise Fail "Not implemented" (* {head=head, compile=CompileSMLNJ_110_40.compile, memusage=false, flags=""} *)
 	    | MLTON flags => {head=head, compile=CompileMLTON.compile, memusage=false, flags=flags}
       end
 
