@@ -538,12 +538,14 @@ struct
     | zip ((x::xs),(y::ys)) = (x,y) :: (zip (xs,ys))
     | zip _ = die "zip: Cannot zip two lists."
 
+(*
   fun is_region_real place =
     (case Effect.get_place_ty place
        of NONE => die "LETREGION.alloc.regvar has no runtype."
 	| SOME Effect.REAL_RT => true
 	| SOME Effect.STRING_RT => false
 	| SOME _ => false)
+*)
 
   (***********************)
   (* Linearization: L_ce *)

@@ -1432,7 +1432,7 @@ struct
       (case Effect.get_place_ty rho of
 	 SOME Effect.WORD_RT   => Effect.toplevel_region_withtype_word
        | SOME Effect.STRING_RT => Effect.toplevel_region_withtype_string
-       | SOME Effect.REAL_RT   => Effect.toplevel_region_withtype_real
+       | SOME Effect.PAIR_RT   => Effect.toplevel_region_withtype_pair
        | SOME Effect.TOP_RT    => Effect.toplevel_region_withtype_top
        | SOME Effect.BOT_RT    => Effect.toplevel_region_withtype_bot
        | _ => die "drop_rho: no runtime-type")

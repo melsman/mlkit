@@ -177,6 +177,7 @@ struct
                      end)
   |  E.RECORDtype(types) => 
          foldr (uncurry plus) (0,[case types of [] => Effect.WORD_RT
+                               | [_,_] => Effect.PAIR_RT 
                                | _ => Effect.TOP_RT],zero) 
           (map (infer_arity_ty rse current_tynames) types)
   )
@@ -211,7 +212,7 @@ struct
   fun get_place (rho_resource: (Effect.runType * place)list ref) rt = 
     case (List.find (fn (rt',rho) => rt = rt') (! rho_resource)) 
       of SOME e => #2 e
-       | NONE => die "get_place: no more places"
+       | NONE => die ("get_place: no places of type " ^ Effect.show_runType rt)
 
   fun get_eps arreff_resource () = 
     case !arreff_resource of [] => die "get_eps: no more epsilons"

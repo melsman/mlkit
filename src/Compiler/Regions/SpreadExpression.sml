@@ -544,7 +544,7 @@ struct
         end
     | E.REAL(r: string)=> 
         let 
-            val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.REAL_RT, B)
+            val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.TOP_RT, B)
             val tau = R.realType
         in
 	    (B,E'.TR(E'.REAL(r, rho),E'.Mus [(tau,rho)], (*Eff.*)mkPut rho),

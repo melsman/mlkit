@@ -191,7 +191,7 @@ functor CompBasis(structure Con : CON
 	  val mulenv1 = Mul.restrict_efenv(mulenv,lvars)
 	  val (places,effectvars) = (*RegionStatEnv.places_effectvarsRSE rse1*)
 	    ([Effect.toplevel_region_withtype_top, Effect.toplevel_region_withtype_string,
-	      Effect.toplevel_region_withtype_real,Effect.toplevel_region_withtype_bot], [Effect.toplevel_arreff])
+	      Effect.toplevel_region_withtype_pair,Effect.toplevel_region_withtype_bot], [Effect.toplevel_arreff])
 	  val mularefmap1 = Mul.restrict_mularefmap(mularefmap,effectvars)
 	  val drop_env1 = DropRegions.restrict(drop_env,lvars)
 	  val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)

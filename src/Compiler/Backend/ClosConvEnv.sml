@@ -118,7 +118,7 @@ functor ClosConvEnv(structure Lvars : LVARS
                                                *)
         LABEL(BI.toplevel_region_withtype_bot_lab)),
        (Effect.toplevel_region_withtype_string, LABEL(BI.toplevel_region_withtype_string_lab)),
-       (Effect.toplevel_region_withtype_real, LABEL(BI.toplevel_region_withtype_real_lab))]
+       (Effect.toplevel_region_withtype_pair, LABEL(BI.toplevel_region_withtype_pair_lab))]
     val initialRhoKindEnv : RhoKindEnv = RegvarFinMap.fromList
       [(Effect.toplevel_region_withtype_top,LI),
        (Effect.toplevel_region_withtype_bot,LI), (* arbitrary binding, but some binding
@@ -127,7 +127,7 @@ functor ClosConvEnv(structure Lvars : LVARS
 						    the expression which CompLamb takes
 						    as input (mads, Nov 16 1997) *)
        (Effect.toplevel_region_withtype_string, LI),
-       (Effect.toplevel_region_withtype_real, LI)]
+       (Effect.toplevel_region_withtype_pair, LI)]
 
     val initialEnv = {ConEnv     = initialConEnv,
 		      VarEnv     = initialVarEnv,

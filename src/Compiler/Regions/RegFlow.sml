@@ -173,14 +173,14 @@ struct
  
     fun connect_to_global rho : unit= 
        case Eff.get_place_ty rho of
-         SOME Eff.WORD_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_word)
-       | SOME Eff.STRING_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_string)
-       | SOME Eff.REAL_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_real)
-       | SOME Eff.TOP_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_top)
+         SOME Eff.WORD_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_word)
+       | SOME Eff.STRING_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_string)
+       | SOME Eff.PAIR_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_pair)
+       | SOME Eff.TOP_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_top)
        | SOME Eff.BOT_RT => (add_edge_iter(rho,Eff.toplevel_region_withtype_bot);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_word);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_string);
-                             add_edge_iter(rho,Eff.toplevel_region_withtype_real);
+                             add_edge_iter(rho,Eff.toplevel_region_withtype_pair);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_top))
        | NONE => die "connect_to_global"
 

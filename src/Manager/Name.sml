@@ -98,7 +98,7 @@ functor Name(structure Crash : CRASH) : NAME =
     val reg_top = new_rigid()             (* name 0 *)
     val reg_bot = new_rigid()             (* name 1 *)
     val reg_string = new_rigid()          (* name 2 *)
-    val reg_real = new_rigid()            (* name 3 *)
+    val reg_pair = new_rigid()            (* name 3 *)
 
     val exn_DIV = new_rigid()             (* name 4 *)
     val exn_MATCH = new_rigid()           (* name 5 *)

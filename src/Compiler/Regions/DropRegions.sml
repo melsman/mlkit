@@ -58,7 +58,7 @@ functor DropRegions(structure Name : NAME
 
     fun pr_rt Eff.WORD_RT = "word"
       | pr_rt Eff.STRING_RT = "string"
-      | pr_rt Eff.REAL_RT = "real"
+      | pr_rt Eff.PAIR_RT = "pair"
       | pr_rt Eff.BOT_RT = "bot"
       | pr_rt Eff.TOP_RT = "top"
 
@@ -200,7 +200,7 @@ functor DropRegions(structure Name : NAME
       end
 
     fun check_atp_w atp s = check_atplace (Eff.WORD_RT, atp) s
-    fun check_atp_r atp s = check_atplace (Eff.REAL_RT, atp) s
+    fun check_atp_p atp s = check_atplace (Eff.PAIR_RT, atp) s
     fun check_atp_s atp s = check_atplace (Eff.STRING_RT, atp) s
     fun check_atp_t atp s = check_atplace (Eff.TOP_RT, atp) s
 
@@ -244,7 +244,7 @@ functor DropRegions(structure Name : NAME
 		  of SOME LETREGION_INF => ATTOP
 		    (case Eff.get_place_ty (Eff.find rho)
 		       of SOME Eff.STRING_RT => Eff.toplevel_region_withtype_string
-			| SOME Eff.REAL_RT => Eff.toplevel_region_withtype_real
+			| SOME Eff.PAIR_RT => Eff.toplevel_region_withtype_pair
 			| SOME _ => Eff.toplevel_region_withtype_top
 			| NONE => die "S_atp.lookup")
 		   | _ => atp
@@ -285,7 +285,7 @@ functor DropRegions(structure Name : NAME
 		    (WORD(w,t,S atp), maybe_add regvar_env atp acc))
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
                                    (STRING(s,S atp), maybe_add regvar_env atp acc))
-	     | REAL (s, atp) => (check_atp_r atp "REAL"; (REAL(s,S atp), maybe_add regvar_env atp acc))
+	     | REAL (s, atp) => (check_atp_t atp "REAL"; (REAL(s,S atp), maybe_add regvar_env atp acc))
 	     | UB_RECORD trips => 
                            let val (trips', acc) = List.foldR (fn tr => fn (trs,acc) =>
                                                     let val (tr', acc)= drop env tr acc
