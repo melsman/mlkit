@@ -303,14 +303,6 @@ struct
       | REG_F i => stackAddr(0-sp+i, ClosExp.pr_rhos [rho], acc)
       | ENV_REG => envToAcc acc
 
-    fun num_args_cc(cc) =
-      let
-	val decomp_cc = CallConv.decompose_cc cc
-      in
-	List.length (#reg_args(decomp_cc)) +
-	List.length (#args(decomp_cc))
-      end
-
     fun comment(str,C) = 
       if !comments_in_kam_code then Comment str :: C
       else C
@@ -413,6 +405,7 @@ struct
       end
       | CG_ce(ClosExp.FNCALL{opr,args,clos},env,sp,cc,acc) = 
       die "FNCALL: clos is non-empty."      
+(*
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE},env,sp,cc,acc) =
       ImmedIntPush "0" ::        (* is it always all the region arguments that are reused? *)
       comp_ces(args,env,sp+1,cc,
@@ -423,17 +416,32 @@ struct
 	    push (comp_ces(args,env,sp+1,cc,
 			   ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
 			   dead_code_elim acc)))
+*)
+(*      | CG_ce(ClosExp.JMP a,env,sp,cc,acc) = CG_ce(ClosExp.FUNCALL a,env,sp,cc,acc)*)
+
+      | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos},env,sp,cc,acc) =
+      let 
+	val allargs = reg_args @ args
+	fun push_clos NONE C = ImmedIntPush "0" :: C
+	  | push_clos (SOME clos_ce) C = CG_ce(clos_ce,env,sp,cc, push C)
+      in push_clos clos (comp_ces(allargs, env, sp+1, cc,
+				  ApplyFunJmp(opr, List.length allargs, sp) :: 
+				  dead_code_elim acc))
+      end
       | CG_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos},env,sp,cc,acc) = die "JMP reg_vec is non-empty."
-      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=NONE},env,sp,cc,acc) =
+      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos},env,sp,cc,acc) =
       let
+	val allargs = reg_args @ args
 	val return_lbl = Labels.new_named "return_from_app"
+	fun push_clos NONE C = ImmedIntPush "0" :: C
+	  | push_clos (SOME clos_ce) C = CG_ce(clos_ce,env,sp+1,cc, push C)
       in
 	PushLbl(return_lbl) ::
-	ImmedIntPush "0" ::
-	comp_ces(reg_args @ args,env,sp+2,cc,
-		 ApplyFunCall(opr,List.length args + List.length reg_args) :: 
-		 Label(return_lbl) :: acc)
+	push_clos clos (comp_ces(allargs,env,sp+2,cc,
+				 ApplyFunCall(opr,List.length allargs) :: 
+				 Label(return_lbl) :: acc))
       end
+(*
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce},env,sp,cc,acc) = 
       let
 	val return_lbl = Labels.new_named "return_from_app"
@@ -444,6 +452,7 @@ struct
 			     ApplyFunCall(opr,List.length args + List.length reg_args) :: 
 			     Label(return_lbl) :: acc)))
       end
+*)
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos},env,sp,cc,acc) = die "FUNCALL: reg_vec is non-empty."
       | CG_ce(ClosExp.LETREGION{rhos,body},env,sp,cc,acc) = 
       let
@@ -469,7 +478,11 @@ struct
 					     (List.foldl (fn (rho,acc) => 
 							  comp_dealloc_rho (rho,acc)) acc rhos))))
       end
-      | CG_ce(ClosExp.LET{pat=[],bind,scope},env,sp,cc,acc) = die "LET with pat = []."
+      | CG_ce(ClosExp.LET{pat=[],bind,scope},env,sp,cc,acc) =
+	comment ("Let _",
+	CG_ce(bind,env,sp,cc,  
+	  push (CG_ce(scope,env,sp+1,cc, pop(1,acc)))))
+      
       | CG_ce(ClosExp.LET{pat,bind,scope},env,sp,cc,acc) = 
       let
 	val n = List.length pat
@@ -758,8 +771,8 @@ struct
 	let
 	  val decomp_cc = CallConv.decompose_cc cc
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
-	  fun add_clos_opt (NONE,env) = (env, Return)
-	    | add_clos_opt (SOME clos_lv, env) = (declareLvar(clos_lv,ENV_REG,env), Return)
+	  fun add_clos_opt (NONE,env) = env
+	    | add_clos_opt (SOME clos_lv, env) = declareLvar(clos_lv,ENV_REG,env)
 (*
 	  val _ = print "Regvars formals:\n"
 	  val _ = app (fn lv => print (Lvars.pr_lvar lv ^ ", ")) (#reg_args(decomp_cc))
@@ -767,13 +780,13 @@ struct
 *)
           val (offset,env) = List.foldl add_lvar (0,initialEnv) (#reg_args(decomp_cc))
 	  val (offset,env) = List.foldl add_lvar (offset,env) (#args(decomp_cc))
-	  val (env,return_inst) = add_clos_opt(#clos(decomp_cc),env)
+	  val env = add_clos_opt(#clos(decomp_cc),env)
 
-	  val returns = Int.max(1, List.length (#res(decomp_cc)))  (* the return_inst instruction assumes 
+	  val returns = Int.max(1, List.length (#res(decomp_cc)))  (* the Return instruction assumes 
 								    * that there is at least one result 
 								    * to return *)
 	in
-	  f_fun(lab,CG_ce(ce,env,offset,cc,[return_inst(offset,returns)]))
+	  f_fun(lab,CG_ce(ce,env,offset,cc,[Return(offset,returns)]))
 	end
     in
       fun CG_top_decl(ClosExp.FUN(lab,cc,ce)) = mk_fun FUN (lab,cc,ce)

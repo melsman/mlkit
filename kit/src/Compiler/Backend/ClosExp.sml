@@ -2370,7 +2370,6 @@ struct
 	   | MulExp.FIX{free=_,shared_clos,functions,scope} => die "liftExp: No free variables in FIX"
 
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
-	       (* Poly tail call so we reuse the region vector stored in cur_rv *)
 	       let
 		 val ces_arg = (* We remove the unboxed record. *)
 		   case tr2 of
@@ -2382,10 +2381,8 @@ struct
 	       in
 		 JMP{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=smas,clos=ce_clos}
 	       end
-	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
-	   | MulExp.APP(SOME MulExp.FUNCALL, _,
-			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_), 
-			tr2) =>
+	   | MulExp.APP(SOME MulExp.JMP, _, tr1, tr2) => die "JMP to other than lvar"
+	   | MulExp.APP(SOME MulExp.FUNCALL, _,	tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_), tr2) =>
 	       let
 		 val ces_arg = (* We remove the unboxed record. *)
 		   case tr2 of
@@ -2393,7 +2390,6 @@ struct
 		   | _ => [liftTrip tr2 env lab]
 
 		 val (ce_clos,lab_f) = compile_letrec_app env lvar
-
 		 val smas = List.map (fn alloc => PASS_PTR_TO_RHO(convert_alloc(alloc,env))) rhos_actuals
 	       in
 		 FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=smas,clos=ce_clos}
