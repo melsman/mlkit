@@ -11,6 +11,8 @@ create table auth_user (
 --insert into auth_user (user_id, password, login, name, lang) values (1, 'Martin', 'mael', 'Martin Elsman','English');
 --insert into auth_user (user_id, password, login, name, lang) values (2, 'Niels', 'nh', 'Niels Hallenberg','Danish');
 
+
+
 commit;
 
 -- For sqlplus

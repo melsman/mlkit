@@ -86,6 +86,7 @@ signature SCS_FORM_VAR =
     val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
     val wrapMaybe : 'a formvar_fn -> 'a formvar_fn
+    val wrapMaybe_nh : 'a -> 'a formvar_fn -> 'a formvar_fn 
     val wrapExn : 'a formvar_fn -> (string -> 'a)
     val wrapFail : 'a formvar_fn -> (string * string -> 'a)
     val wrapPanic : (quot -> 'a) -> 'a formvar_fn -> (string -> 'a)
@@ -181,6 +182,16 @@ structure ScsFormVar :> SCS_FORM_VAR =
       (fn (fv,emsg,errs) => 
        (case Ns.Conn.formvarAll fv of
 	  [] => (case f(fv,emsg,[]) of (v,_) => (v,errs)) (* No formvar => don't report error *)
+	| [v] => 
+	   (if trim v = "" then
+	      (case f(fv,emsg,[]) of (v,_) => (v,errs)) (* Don't report error *)
+	    else f(fv,emsg,errs))
+	| _ => f(fv,emsg,errs))) (* Multiple formvars => report error *)
+
+    fun wrapMaybe_nh empty_val (f : 'a formvar_fn) =
+      (fn (fv,emsg,errs) => 
+       (case Ns.Conn.formvarAll fv of
+	  [] => (empty_val,errs) (* No formvar => don't report error *)
 	| [v] => 
 	   (if trim v = "" then
 	      (case f(fv,emsg,[]) of (v,_) => (v,errs)) (* Don't report error *)
