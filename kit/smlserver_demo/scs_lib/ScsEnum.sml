@@ -27,6 +27,10 @@ signature SCS_ENUM =
        enum_name) instead of the enum_id *)
     val selectName : enum_name -> ScsLang.lang -> string -> val_id option -> quot
 
+    (* [selectNameExcerpt enum_name values lang fv v_opt] is similar to 
+	selectName except that the possible values are restricted by values *)
+    val selectNameExcerpt : enum_name -> value list -> ScsLang.lang -> string -> val_id option -> quot
+
     (* [selectName' enum_name lang add_opts fv v_opt] is similar to selectName
        except that the it is possible to prepend additional
 	(value, name) pairs in the list add_opts *)
@@ -205,6 +209,14 @@ structure ScsEnum :> SCS_ENUM =
 	  selectName_template enum_name lang add_opts fv v_opt
       end
 
+      fun selectNameExcerpt enum_name values lang fv v_opt =
+	let
+	  val opts = (mk_opts `e.name = ^(Db.qqq enum_name) and ev.value in (^(String.concatWith ", " (map Db.qqq values)))` lang)
+	in
+ 	  case v_opt of
+	      NONE   => ScsWidget.select opts fv
+            | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
+	end
 
       fun mk_radio_input_tag fv v_opt (text, value)  = 
 	let
