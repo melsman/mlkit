@@ -10,8 +10,14 @@ create table smls_dict (
   unique (lang,text));
 
 drop sequence dict_seq;
-create sequence dict_seq start with 20;
 drop sequence phrase_seq;
+
+-- For PostgreSQL
+create sequence dict_seq start 20;
+create sequence phrase_seq start 20;
+
+-- For Oracle
+create sequence dict_seq start with 20;
 create sequence phrase_seq start with 20;
 
 -- Necessary for the email-example
