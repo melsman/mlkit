@@ -10,6 +10,7 @@ signature SCS_ROLE =
     | StudAdm
     | OaAdm
     | UcsPbSupervisorAdm  (* Created in ucs-pb-supervisor-lists-initialdata-create.sql *)
+    | UcsPbProjectAdm     (* Created in ucs-pb-initialdata-create.sql *)
     | UcsEbEventEditor    (* Created in ucs-events-initialdata-create.sql *)
     | ScsPersonAdm        (* Created in scs-users-initialdata-create.sql *)
     | Other of string
@@ -45,6 +46,7 @@ structure ScsRole :> SCS_ROLE =
     | StudAdm
     | OaAdm
     | UcsPbSupervisorAdm
+    | UcsPbProjectAdm
     | UcsEbEventEditor
     | ScsPersonAdm
     | Other of string
@@ -54,6 +56,7 @@ structure ScsRole :> SCS_ROLE =
         "SiteAdm" => SiteAdm
       | "StudAdm" => StudAdm
       | "UcsPbVejlederAdm" => UcsPbSupervisorAdm
+      | "UcsPbProjectAdm" => UcsPbProjectAdm
       | "OaAdm" => OaAdm
       | "UcsEbEventEditor" => UcsEbEventEditor
       | "ScsPersonAdm" => ScsPersonAdm
@@ -67,6 +70,7 @@ structure ScsRole :> SCS_ROLE =
       | StudAdm => "StudAdm"
       | OaAdm   => "OaAdm"
       | UcsPbSupervisorAdm => "UcsPbVejlederAdm"
+      | UcsPbProjectAdm => "UcsPbProjectAdm"
       | UcsEbEventEditor => "UcsEbEventEditor"
       | ScsPersonAdm => "ScsPersonAdm"
       | Other s => s

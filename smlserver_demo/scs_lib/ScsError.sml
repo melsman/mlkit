@@ -10,7 +10,20 @@ signature SCS_ERROR =
     val panic      : quot -> 'a
     val valOf      : 'a option -> 'a
 
-    val wrapPanic     : ('a -> 'b) -> 'a -> 'b
+    (* [wrapPanic f a] applies f a and returns the result. If an
+        exception is raised then the web-service fails with a system
+        error page. *)
+    val wrapPanic : ('a -> 'b) -> 'a -> 'b
+
+    (* [wrapOpt f a] applies f a and returns SOME (result). If an
+        exception is raised then NONE is returned. No error is logged
+        or mailed. This is no a panic error. *)
+    val wrapOpt   : ('a -> 'b) -> 'a -> 'b option
+
+    (* [wrapMsg title msg f a] similar to wrapPanic except that msg is
+       shown to the user and no error is logged or emailed. This is 
+       not a panic error.*)
+    val wrapMsg   : quot -> ('a -> 'b) -> 'a -> 'b
   end
 
 structure ScsError :> SCS_ERROR =
@@ -42,6 +55,7 @@ structure ScsError :> SCS_ERROR =
 	     Du må meget gerne prøve igen senere.`;
 	 Ns.exit())
       end
+
     fun valOf NONE = panic `valOf(NONE)`
       | valOf (SOME(v)) = v
 
@@ -49,4 +63,10 @@ structure ScsError :> SCS_ERROR =
       handle Fail s => panic (`Fail raised: ^s`)
 	| X => panic(`wrapPanic: some error happended: ^(General.exnMessage X)`)
 
+    fun wrapOpt f a = SOME(f a)
+      handle _ => NONE
+
+    fun wrapMsg msg f a = f a
+      handle _ => (ScsPage.returnPg "" msg;
+		   Ns.exit())
   end
