@@ -427,7 +427,7 @@ REG_POLY_FUN_HDR(sml_errormsg, Region rAddr, int errnum)    /* SML Basis */
     }
   else
     {
-      res = (char *)sys_errlist[errnum];
+      res = (char *)strerror(errnum);
     }
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
