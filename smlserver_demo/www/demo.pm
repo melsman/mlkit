@@ -25,6 +25,10 @@ local
   ../demo_lib/RatingUtil.sml
 in
  [
+  auth_form.sml
+  auth_logout.sml
+  auth.sml
+
   demo/index.sml
   demo/rating/index.sml
   demo/rating/add.sml

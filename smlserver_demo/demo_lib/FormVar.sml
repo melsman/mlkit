@@ -359,7 +359,7 @@ structure FormVar :> FORM_VAR =
       val getPhoneErr = getErr' ("phone number") msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
       val getHtmlErr = getErr' ("HTML text") msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' ("URL") msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
+      val getUrlErr =  getErr' ("URL") msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?")
       val getEnumErr = fn enums => getErr' ("enumeration") (msgEnum enums) (chkEnum enums)
       val getYesNoErr = let val enums = ["Yes","No"] in getErr' ("Yes/No") (msgEnum enums) (chkEnum ["t","f"]) end
       val getTableName = getErr' ("table name") msgTableName (regExpMatch "[a-zA-Z_]+")

@@ -9,4 +9,4 @@ val delete =
 
 val _ = Db.dml delete
 
-val _ = Ns.returnRedirect "/link/index.sml"
+val _ = Ns.returnRedirect "index.sml"

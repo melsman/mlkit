@@ -37,4 +37,3 @@
      <b>Year:</b><input type=text name=year size=4>&nbsp;
      <input type=submit value="Rate it...">
      </form>`)
-
