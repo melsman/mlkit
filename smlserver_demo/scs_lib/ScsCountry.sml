@@ -5,6 +5,10 @@ signature SCS_COUNTRY =
 
     val selectCountry : string -> int option -> quot
 
+    val valOfCountry : int option -> string
+
+    val countryName : int -> ScsLang.lang -> string
+
   end (* of SCS_COUNTRY *)
 
 structure ScsCountry :> SCS_COUNTRY =
@@ -30,5 +34,14 @@ structure ScsCountry :> SCS_COUNTRY =
 	    | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
 	end
     end
+
+    fun countryName country_id lang = Db.oneField `
+      select scs_text.getText(cc.country_name_tid,
+			      ^(Db.qqq (ScsLang.toString lang)))
+        from scs_country_codes cc
+       where cc.country_id = '^(Int.toString country_id)'`
+
+    fun valOfCountry NONE = ""
+      | valOfCountry (SOME country_id) = countryName country_id (ScsLogin.user_lang())
 
   end
