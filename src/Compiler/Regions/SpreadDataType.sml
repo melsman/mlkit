@@ -408,9 +408,9 @@ struct
 
       fun msg(s) = if !Flags.chat then (*mads*) TextIO.output(TextIO.stdOut, s^"\n") else ()
 
-      val _ = msg "Computing new datatype bindings..."
+      (*val _ = msg "Computing new datatype bindings..."*)
       val (target_datbind,cone) = List.foldL (spread_single_datbind) ([],cone) datbind
-      val _ = msg "Computing new constructor env..."
+      (*val _ = msg "Computing new constructor env..."*)
 
       val rse = mk_rse_one_mutual_recursion target_datbind rse 
 
