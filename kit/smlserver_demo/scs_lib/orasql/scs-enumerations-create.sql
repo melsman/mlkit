@@ -103,6 +103,12 @@ as
     value	in scs_enum_values.value%TYPE    
   ) return scs_texts.text_id%TYPE;
 
+
+  function getTID(
+    val_id	in scs_enum_values.val_id%TYPE
+  ) return scs_texts.text_id%TYPE;
+
+
   function getEnumId (
     name	in scs_enumerations.name%TYPE
   ) return scs_enumerations.enum_id%TYPE;     
@@ -304,6 +310,29 @@ as
   end getTID;
 
 
+
+  function getTID(
+    val_id	in scs_enum_values.val_id%TYPE
+  ) return scs_texts.text_id%TYPE
+  is
+    text_id integer;
+  begin
+    select text_id into getTID.text_id 
+      from scs_enum_values 
+      where val_id = getTID.val_id ;
+
+    if getTID.text_id is null then 
+      raise_application_error( scs.ScsDbExn, 'No text_id found for val_id=' || to_char(val_id) ); 
+    end if;
+
+    return text_id; 
+
+  exception
+    when NO_DATA_FOUND then
+      raise_application_error( scs.ScsDbExn, 'No text_id found for val_id=' || to_char(val_id) ); 
+  end getTID;
+
+
   procedure swapOrdering(
     val_id1	in scs_enum_values.val_id%TYPE,
     val_id2	in scs_enum_values.val_id%TYPE
@@ -344,9 +373,3 @@ as
 end scs_enumeration;
 /
 show errors
-
-
-
-
-
-

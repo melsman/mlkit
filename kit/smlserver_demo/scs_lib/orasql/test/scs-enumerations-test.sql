@@ -14,8 +14,8 @@ begin
   scs_test.printl('Testing Enumerations...');
 
   -- testing new
-  enumid1 := scs_enumeration.new( name => 'graduate_programmes' );
-  enumid2 := scs_enumeration.new( enum_id => 2, name => 'graduate_programmes2' );
+  enumid1 := scs_enumeration.new( name => 'test_programmes' );
+  enumid2 := scs_enumeration.new( enum_id => 2, name => 'test_programmes2' );
   scs_test.testBool( 'new', 1, enumid2 = 2 );
 
   -- testing updateValue
@@ -44,13 +44,14 @@ begin
   scs_test.testBool('updateValue', 5, scs_text.exists_p(textid1) = 'f');
   scs_test.testBool('updateValue', 6, scs_text.exists_p(textid2) = 't');
 
-  -- Testing getTID
-  scs_test.testExn('getTID', 1,
+  -- Testing getTID, 2 parameter version
+  scs_test.testExn('getTID, 2 parameter version', 1,
                    'declare
                       textid integer;
                     begin
                       textid := scs_enumeration.getTID(enum_id => ' || enumid1 || ', value => ''Does not exists...'');
                     end;','f');
+
 
   -- enum_id 42 does not exist, but it should not fail.
   scs_test.testUnit('destroy', 1,
@@ -67,13 +68,13 @@ begin
   -- destroy name that exists
   scs_test.testUnit('destroy', 3,
                     'begin
-                       scs_enumeration.destroy(name => ''graduate_programmes2'');
+                       scs_enumeration.destroy(name => ''test_programmes2'');
                      end;' );
 
   -- destroy name that does not exists - this should not fail
   scs_test.testUnit('destroy', 4,
                     'begin 
-                       scs_enumeration.destroy(name => ''graduate_programmes2'');  
+                       scs_enumeration.destroy(name => ''test_programmes2'');  
                      end;');
 
 end;
@@ -83,10 +84,14 @@ declare
   eid integer;
   vid1 integer;
   vid2 integer;
+  vid3 integer;
+  tid integer;
   eh_ordering1 integer;
   eh_ordering2 integer;
   dkm_ordering1 integer;
   dkm_ordering2 integer;
+
+
 begin
   eid := scs_enumeration.new( name => 'test' );
 
@@ -101,9 +106,25 @@ begin
   scs_test.testBool( 'swapOrdering', 1,
     eh_ordering2 = dkm_ordering1 and dkm_ordering2 = eh_ordering1 );
 
+  -- Testing getTID, 1 parameter version
+  scs_test.testExn('getTID, 1 parameter version', 1,
+                   'declare
+                      textid integer;
+                    begin
+                      textid := scs_enumeration.getTID( val_id => -1 );
+                    end;','f');
+
+  tid := scs_text.new;
+  vid3 := scs_enumeration.updateValue( enum_id => eid, 
+					 value => 'hest', 
+					 text_id => tid );
+  scs_test.testBool('getTID, 1 parameter version', 1, 
+	            scs_enumeration.getTID( val_id => vid3 ) = tid );
+  
   -- cleaning up
   scs_enumeration.destroy( 'test' );
   
 end;
 /
 show errors
+
