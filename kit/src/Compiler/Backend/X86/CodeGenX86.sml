@@ -1466,8 +1466,10 @@ struct
 		    val size_ccf_new = length spilled_args
 (*
 		    val _ = if size_ccf_new > 0 then
-			      print ("** JMP to " ^ Labels.pr_label opr ^ " with " ^ 
-				     Int.toString size_ccf_new ^ " args on the stack\n")
+			      print ("** JMP to " ^ Labels.pr_label opr ^ " with\n" ^ 
+				     "**    size_ccf_new = " ^ Int.toString size_ccf_new ^ "\n" ^
+				     "**    size_ccf = " ^ Int.toString size_ccf ^ "\n" ^
+				     "**    size_ff = " ^ Int.toString size_ff ^ "\n")
 			    else ()
 *)
 		    fun flush_args C =
@@ -1490,34 +1492,24 @@ struct
 		     (base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
 				       jmp C)))
 		  end)
-(*
-	       | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) => 
-		  comment_fn (fn () => "JMP: " ^ pr_ls ls,
-		  let 
-		    val (spilled_args,_,_) = 
-		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
-		    fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
-		  in 
-		    if List.length spilled_args > 0 then
-			      (print ("** Ooops - turning tail call of " ^ Labels.pr_label opr 
-				      ^ "\n**         into ordinary call (CodeGenX86)\n");
-			       CG_ls(LS.FUNCALL cc,C))
-		    else
-		      base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
-				       jmp C)
-		  end)
-*)
 	       | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
 		  comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
 		  let 
 		    val (spilled_args,spilled_res,return_lab_offset) = 
 		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    val size_rcf = List.length spilled_res
+(*
 val size_ccf = length spilled_args (* 2001-01-08, Niels debug *)
 val size_cc = size_rcf+size_ccf+1  (* 2001-01-08, Niels debug *)
-(*val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^ 
+val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^ 
 				 (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
 
+(*
+		    val _ = if size_ccf > 0 then
+			      print ("** FUNCALL to " ^ Labels.pr_label opr ^ " with " ^ 
+				     Int.toString size_ccf ^ " args on the stack\n")
+			    else ()
+*)
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
 		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C (spilled_args)
