@@ -415,6 +415,7 @@ struct
       end (* let fun R_sw ...*)
   in
      Effect.algorithm_R:=true;
+     Effect.reset(); (* in order to reset list of effect updates in Effect *)
      (* for toplas submission: insert call show_visited *)
      (fn x => (* show_visited *) (#1(R x)) handle AbortExp => Crash.impossible "R failed")
   end;

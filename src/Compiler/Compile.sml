@@ -258,19 +258,21 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
     (*  Compile RESET                                                         *)
     (* ---------------------------------------------------------------------- *)
-    fun reset () = (CompLamb.reset();
-		    LambdaExp.reset();
+
+(*
+    (* The following reset functions are never called *)
+    fun reset () = (CompLamb.reset();   (* resets counters and kamvar marks! *)
+		    LambdaExp.reset();  (* counters only *)
 		    reset_pp_count();
 		    reset_effect_count();
-                    Effect.reset();       (* resets global cone *)
-		    CompileDec.reset())
+                    Effect.reset())       (* resets global cone *)
 
     fun commit () = (CompLamb.commit();
 		     commit_pp_count();
 		     LambdaExp.commit();
 		     commit_effect_count();
 		     Effect.commit())
-		     
+*)		     
 
     (* ---------------------------------------------------------------------- *)
     (*  Compile the declaration using old compiler environment, ce            *)
@@ -399,37 +401,35 @@ functor Compile(structure Excon : EXCON
                         }) = 
     let
         val _ = (chat "Inferring regions and effects ...";
-		 Timing.timing_begin()
-                 (*;Compiler.Profile.reset()
-                 ;Compiler.Profile.setTimingMode true*))
+		 Timing.timing_begin())
+(*
+	val _ = if !profRegInf.b then (Compiler.Profile.reset(); Compiler.Profile.setTimingMode true) else ()
+*)
         val rse_with_con = SpreadExp.RegionStatEnv.plus(rse,rse_con)
-(*	val _ = print "RegInf.inferEffects begin... \n" *)
+(*	val _ = print "RegInf.inferEffects ... \n" *)
         val cone = RegInf.inferEffects
                    (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log)))
                    (cone,rse_with_con, spread_lamb_exp)
-(*	val _ = print "RegInf.inferEffects end.\n"*)
+(*	val _ = print "RegInf.Creating new layer ...\n" *)
         val new_layer = Effect.topLayer cone (* to get back to level of "cone" *)
 (*
         val _ = print "new_layer before lowering:\n"
         val _ = out_layer(Effect.layoutEtas new_layer)
 *)
+(*	val _ = print "RegInf.Creating Cone ...\n" *)
 	val toplevel = Effect.level Effect.initCone
 	val cone = foldl (fn (effect, cone) =>
 			       Effect.lower toplevel effect cone) cone new_layer
-
-(*        val _ = print "new_layer after lowering:\n"
+(*
+        val _ = print "new_layer after lowering:\n"
         val _ = out_layer(Effect.layoutEtas new_layer)
-	val _ = print "\n*** Unifying toplevel regions and effects ***\n" 
 *)
+(*	val _ = print "RegInf.Unifying toplevel regions and effects ...\n" *)
         val cone = Effect.unify_with_toplevel_rhos_eps(cone,new_layer)
-(*	val _ = print "\n*** Unified toplevel regions and effects ***\n" *)
+
 	val new_layer = []
 
         val _ = Timing.timing_end("RegInf")
-     (*   val _ = (Profile.profileOff();
-                TextIO.output(!Flags.log, "\n PROFILING OF R\n\n");
-                Profile.report(!Flags.log));
-     *)
 
         val pgm' = RegionExp.PGM{expression = spread_lamb_exp, (*side-effected*)
                       export_datbinds = datbinds, (*unchanged*)
@@ -439,10 +439,11 @@ functor Compile(structure Excon : EXCON
         val _ = if Flags.is_on "region_profiling" then
 	          ()
 		else
-		  (reset_effect_count();      (* inserted; mads *)
+		  ((*print "RegInf.Normalising program ...\n";*)
+		   reset_effect_count();      (* inserted; mads *)
 		   RegionExp.normPgm(pgm',effect_counter) 
 		   )
-
+(*	val _ = print "RegInf.Computing rse' ...\n"  *)
 	val rse' =
 	  case spread_lamb_exp
 	    of RegionExp.TR(_,RegionExp.Frame{declared_lvars,declared_excons},_) =>
@@ -458,6 +459,18 @@ functor Compile(structure Excon : EXCON
 
 	       end handle _ => die "cannot form rse'")
 	     | _ => die "program does not have type frame"
+(*
+	val _ =
+	  if !profRegInf.b then
+	    let
+	      val tempfile = OS.FileSys.tmpName()
+	      val os = TextIO.openOut tempfile
+	      val _ = Compiler.Profile.report os
+	      val _ = TextIO.closeOut os   
+	    in print ("RegInf.Exported profile to file " ^ tempfile ^ "\n")
+	    end
+	  else ()
+*)
     in 
       if !Flags.DEBUG_COMPILER then
         (say "Resulting region-static environment:\n";

@@ -324,6 +324,7 @@ functor IntModules(structure Name : NAME
 		   | NONE => 
                        (print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
 			      " (from project " ^ prjid ^ ") begin]\n");
+			if FunId.pr_FunId funid = "Infixing" then profRegInf.b := true else ();
                         NONE )
 
 	  in case reuse_code ()
@@ -666,7 +667,8 @@ functor IntModules(structure Name : NAME
 	  end 
 	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(prjid,intB,topdec)
-
+(*
     fun reset() = (Compile.reset(); reset_unitname_counter())
     val commit = Compile.commit
+*)
   end

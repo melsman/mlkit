@@ -1325,3 +1325,8 @@ val interact = Menu.interact
 end (* functor Flags *)  
    
   
+
+structure profRegInf =
+  struct
+    val b = ref false
+  end

@@ -18,19 +18,19 @@ clean:
 depend:
 	mv Makefile Makefile.bak
 	(sed -n -e '1,/^### DO NOT DELETE THIS LINE/p' Makefile.bak;	 \
-         gcc -MM $(CFILES) | sed -e 's/\.o/-p.o/') > Makefile
+         gcc -MM $(CFILES)) > Makefile
 	rm Makefile.bak
 
 ### DO NOT DELETE THIS LINE
-Rp2Ps-p.o: Rp2Ps.c Flags.h Rp2Ps.h Types.h ProfileData.h Sample.h
-ProfileData-p.o: ProfileData.c Flags.h Error.h Alloc.h Types.h \
+Rp2Ps.o: Rp2Ps.c Flags.h Rp2Ps.h Types.h ProfileData.h Sample.h
+ProfileData.o: ProfileData.c Flags.h Error.h Alloc.h Types.h \
  ProfileData.h Graph.h Output.h Sample.h Rp2Ps.h
-Sample-p.o: Sample.c Flags.h Error.h Sample.h Alloc.h Types.h Rp2Ps.h
-Graph-p.o: Graph.c Rp2Ps.h Flags.h Types.h Error.h Output.h Alloc.h \
+Sample.o: Sample.c Flags.h Error.h Sample.h Alloc.h Types.h Rp2Ps.h
+Graph.o: Graph.c Rp2Ps.h Flags.h Types.h Error.h Output.h Alloc.h \
  PostScript.h Curves.h
-Curves-p.o: Curves.c Flags.h Curves.h Output.h Rp2Ps.h Types.h
-Output-p.o: Output.c Output.h Flags.h Rp2Ps.h Types.h
-PostScript-p.o: PostScript.c PostScript.h Output.h Flags.h Error.h \
+Curves.o: Curves.c Flags.h Curves.h Output.h Rp2Ps.h Types.h
+Output.o: Output.c Output.h Flags.h Rp2Ps.h Types.h
+PostScript.o: PostScript.c PostScript.h Output.h Flags.h Error.h \
  Rp2Ps.h Types.h
-Error-p.o: Error.c Rp2Ps.h Flags.h Types.h
-Alloc-p.o: Alloc.c Error.h Types.h
+Error.o: Error.c Rp2Ps.h Flags.h Types.h
+Alloc.o: Alloc.c Error.h Types.h

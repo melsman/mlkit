@@ -15,7 +15,4 @@ signature MANAGER =
 
     val elab : string -> unit   (* elab path  elaborates path
 				 * May raise PARSE_ELAB_ERROR. *)
-
-    val reset : unit -> unit    (* Resets the system *)
-    val commit : unit -> unit
   end

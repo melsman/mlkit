@@ -182,7 +182,7 @@ sig
   val represents: effect -> effect list
 
   val reset_cone: cone -> unit
-  val reset: unit -> unit  (* reset counter to initial counter *)
+  val reset: unit -> unit  (* reset list of effect updates; done once pr module *)
   val commit: unit -> unit (* sets the initial counter to the current counter. *)
 (*
   val trace: int list ref
