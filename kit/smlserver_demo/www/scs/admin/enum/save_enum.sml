@@ -8,9 +8,9 @@ val _ = ScsFormVar.anyErrors errs
 val _ = 
   Db.execSp [`scs_text.updateTextProc('^(Int.toString text_id)',
                                       '^(ScsLang.toString ScsLang.da)',
-                                      '^(text_da)')`,
+                                      ^(Db.qqq text_da))`,
 	     `scs_text.updateTextProc('^(Int.toString text_id)',
                                       '^(ScsLang.toString ScsLang.en)',
-                                      '^(text_eng)')`]
+                                      ^(Db.qqq text_eng))`]
 
 val _ = ScsConn.returnRedirect "edit_enum.sml" [("enum_id",Int.toString enum_id)]
