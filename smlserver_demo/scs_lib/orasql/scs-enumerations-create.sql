@@ -32,11 +32,11 @@ as
     name	in scs_enumerations.name%TYPE
   ) return scs_enumerations.enum_id%TYPE;
 
-  procedure updateValue(
+  function updateValue(
     enum_id	in scs_enumerations.enum_id%TYPE,
     text_id	in scs_texts.text_id%TYPE,
     value	in scs_enum_values.value%TYPE
-  );
+  ) return scs_enum_values.val_id%TYPE;
 
   procedure delete (
     id		in scs_enumerations.enum_id%TYPE default null,
@@ -51,7 +51,7 @@ as
 end scs_enumeration;
 /
 show errors
-
+ 
 create or replace package body scs_enumeration
 as
   function new (
@@ -66,25 +66,41 @@ as
     return new_enum_id;
   end new;
 
-  procedure updateValue(
+
+  function updateValue(
     enum_id	in scs_enumerations.enum_id%TYPE,
     text_id	in scs_texts.text_id%TYPE,
     value	in scs_enum_values.value%TYPE
-  ) 
+  ) return scs_enum_values.val_id%TYPE
   is
     val_id scs_enum_values.val_id%TYPE;
   begin
-    val_id := scs.new_obj_id;
+    -- anonymous block needed here to handle
+    -- case where no record was found
+    -- (select statement throws an exception)
+    begin
+      select val_id into updateValue.val_id 
+        from scs_enum_values
+       where enum_id = updateValue.enum_id
+         and value = updateValue.value;
+    exception 
+      when no_data_found then 
+        commit;
+    end;
 
-    update scs_enum_values 
-    set text_id = updateValue.text_id
-    where enum_id = updateValue.enum_id
-      and value = updateValue.value;
-    if sql%notfound then
+    if val_id is null then
+      val_id := scs.new_obj_id;
       insert into scs_enum_values( val_id, enum_id, text_id, value ) 
       values ( val_id, enum_id, text_id, value );
+    else
+      update scs_enum_values 
+         set text_id = updateValue.text_id
+       where enum_id = updateValue.enum_id
+         and val_id = val_id;
     end if;
+    return val_id;
   end updateValue;
+
 
   procedure delete (
     id		in scs_enumerations.enum_id%TYPE default null,
@@ -120,6 +136,7 @@ as
     delete scs_enumerations where enum_id = v_id;
     return;
   end delete;
+
 
   function getTID(
     enum_id	in scs_enumerations.enum_id%TYPE,
