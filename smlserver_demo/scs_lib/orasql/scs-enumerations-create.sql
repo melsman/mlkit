@@ -29,7 +29,10 @@ create table scs_enum_values(
     constraint scs_enum_values_active_p_nn not null
     constraint scs_enum_values_active_p_ck
       check (active_p in ('t','f')),
-  constraint scs_enum_values_un unique(enum_id,value)
+  ordering integer
+    constraint scs_enum_values_order_nn not null,
+  constraint scs_enum_values_enu_val_un unique(enum_id,value),
+  constraint scs_enum_values_enu_ord_un unique(enum_id,ordering)
 );
 
 -----------
@@ -106,7 +109,13 @@ as
 
   function getName (
     enum_id	in scs_enumerations.enum_id%TYPE
-  ) return scs_enumerations.name%TYPE;     
+  ) return scs_enumerations.name%TYPE;
+
+  procedure swapOrdering(
+    val_id1	in scs_enum_values.val_id%TYPE,
+    val_id2	in scs_enum_values.val_id%TYPE
+  ) ;
+
 end scs_enumeration;
 /
 show errors
@@ -139,6 +148,7 @@ as
   is
     val_id        scs_enum_values.val_id%TYPE;
     v_text_id_old scs_texts.text_id%TYPE;
+    ordering	  scs_enum_values.ordering%TYPE;
   begin
     -- anonymous block needed here to handle
     -- case where no record was found
@@ -155,8 +165,10 @@ as
 
     if val_id is null then
       val_id := scs.new_obj_id;
-      insert into scs_enum_values( val_id, enum_id, text_id, value ) 
-      values ( val_id, enum_id, text_id, value );
+      select count (*) into ordering from scs_enum_values where enum_id = updateValue.enum_id;
+      ordering := ordering +1 ; 
+      insert into scs_enum_values( val_id, enum_id, text_id, value, ordering ) 
+      values ( val_id, enum_id, text_id, value, ordering );
     else
       begin
         select text_id
@@ -291,6 +303,50 @@ as
 				       || value || ' and enum_id=' || to_char(enum_id) ); 
   end getTID;
 
+
+  procedure swapOrdering(
+    val_id1	in scs_enum_values.val_id%TYPE,
+    val_id2	in scs_enum_values.val_id%TYPE
+  )
+  is 
+    ordering1 integer;
+    ordering2 integer;
+  begin
+    select ordering into ordering1 from scs_enum_values where val_id = val_id1;
+    select ordering into ordering2 from scs_enum_values where val_id = val_id2;
+    
+    /* this is the nice way to do it. Unfortunately it only works from sqlplus
+       (without variables) and cannot be parsed as a procedure by the plsql 
+       parser:
+    update scs_enum_values
+    set ordering = 
+      case when val_id = swapOrdering.val_id1 then swapOrdering.ordering2
+           when val_id = swapOrdering.val_id2 then swapOrdering.ordering1
+      end 
+    where val_id in (val_id1, val_id2);
+    */
+
+    update scs_enum_values
+    set ordering = -1
+    where val_id = val_id1;
+
+    update scs_enum_values
+    set ordering = ordering1
+    where val_id = val_id2;
+
+    update scs_enum_values
+    set ordering = ordering2
+    where val_id = val_id1;
+
+  end swapOrdering;
+
+
 end scs_enumeration;
 /
 show errors
+
+
+
+
+
+

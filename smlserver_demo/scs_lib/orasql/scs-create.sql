@@ -1,3 +1,5 @@
+-- $Id$
+
 create sequence scs_object_id_seq start with 10;
 
 create or replace package scs
