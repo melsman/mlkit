@@ -1,0 +1,9 @@
+Possible things to do
+---------------------
+
+  2001-09-23, Niels:
+    NS_DB: make wrapOneOnly such that
+             wrapOneOnly zeroOrOneRow works as oneRow.
+
+    SmlsLogin:     val login_pages = ["/auth/admin/.*", "/dict/.*"]
+       should come from the nsd-file.
