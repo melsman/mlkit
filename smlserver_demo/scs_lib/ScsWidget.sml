@@ -45,15 +45,16 @@ structure ScsWidget :> SCS_WIDGET =
     val % = ScsDict.d ScsLang.en "scs_lib" "ScsWidget.sml"
     fun namedBox hdcolor bgcolor title body = `
       <table border=0 bgcolor="^hdcolor" cellpadding=1 cellspacing=0>
-      <tr><td><table border=0 bgcolor="^bgcolor" cellpadding=3 cellspacing=0 width=100%>
-      <tr><td bgcolor="^hdcolor">
-      <font color=white><b>^title</b></font>
-      </td></tr><tr><td> `
-      ^^ body ^^ ` 
-      </td></tr>
-      </table>
-      </td>
-      </tr>
+        <tr><td>
+          <table border=0 bgcolor="^bgcolor" cellpadding=3 cellspacing=0 width=100%>
+          <tr><td bgcolor="^hdcolor">
+          <font color=white><b>^title</b></font>
+          </td></tr>
+          <tr><td> `
+           ^^ body ^^ ` 
+          </td></tr>
+          </table>
+        </td></tr>
       </table>`
 
     fun lineTable {hdcolor: string, row_col1: string, row_col2: string,
