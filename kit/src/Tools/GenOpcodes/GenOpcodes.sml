@@ -125,7 +125,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val _ = outln "/* This file is auto-generated with Tools/GenOpcodes; it is based */"
 	val _ = outln ("/* on the file " ^ spec_file ^ " */")
 	val _ = outln "#ifdef LAB_THREADED"
-	val _ = outln ("#include \"" ^ kam_insts_H_file ^ "\"")
+	val _ = outln ("#include \"" ^ OS.Path.file(kam_insts_H_file) ^ "\"")
 	val _ = outln "int getInstArity(unsigned long inst) {"
 	val _ = outln "  switch(inst) {"
 	fun i_to_a i = if i < 0 then "-" ^ Int.toString (~i) else Int.toString i
@@ -227,16 +227,9 @@ structure GenOpcodes : GEN_OPCODES =
 	copy_if_different tmp_file outfile
       end
 
-    fun process_args [src_dir] = SOME src_dir
-      | process_args _ = NONE
-
-    fun print_usage progname = print("\nusage: " ^ progname ^ " src_dir\n")
-
     fun main (progname, args) =
-      case process_args args
-	of SOME src_dir =>
-	 (let
-	    fun mk_path rel_path = OS.Path.mkCanonical(OS.Path.concat(src_dir, rel_path))
+      let
+	    fun mk_path rel_path = rel_path
 	    (* Opcodes *)
 	    val spec_file = mk_path "Compiler/Backend/KAM/KamInsts.spec"
 	    val functor_file = mk_path "Compiler/Backend/KAM/OpcodesKAM.sml"
@@ -263,10 +256,9 @@ structure GenOpcodes : GEN_OPCODES =
 		     (* version of the C file that support nssml functionality used by
 		      * SMLserver *)
 		     write_built_in_c_funcs_C [spec_file_cfuncs, spec_file_cfuncs_nssml] C_file_cfuncs_nssml)
-	  in
+      in
 	     OS.Process.success
-	  end handle _ => OS.Process.failure)
-      | NONE => (print_usage progname; OS.Process.failure)
+      end handle _ => OS.Process.failure
 
     fun install() =
       let 
