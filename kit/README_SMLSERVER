@@ -59,43 +59,60 @@ We shall assume that AOLserver is already installed; see above. To
 configure AOLserver to load the SMLserver module
 kit/src/SMLserver/nssml.so at statup time, you must first copy the
 nssml.so file to the place where AOLserver looks for modules. You must
-now edit your nsd.tcl-file - the file given to the AOLserver
+now edit your nsd.tcl-file -- the file given to the AOLserver
 executable `nsd' at startup. First, add the entry
 
    ns_param nssml nssml.so
 
-to the 
+to the section
 
-   ns_section "ns/server/{server}/modules"
+   ns_section "ns/server/${server}/modules"
 
-section. Then add the section
+Then add the section
 
-   ns_section "ns/server/mael/module/nssml"
+   ns_section "ns/server/${server}/module/nssml"
    ns_param prjid web
 
-After restarting AOLserver, you should now be able to try the example
-project hello.pm (described below). By looking in the AOLserver
-server.log, you should see that AOLserver is running.  A sample
-nsd.tcl init file is available as kit/smlserver_demo/nsd.mael.tcl.
+A sample nsd.tcl init file is available as
+smlserver_demo/nsd.mael.tcl.  After restarting AOLserver, you should
+inspect the AOLserver server.log file and see that AOLserver is
+running and that the nssml.so module is loaded. You should now be able
+to try the example project hello.pm.
 
 
-COMPILING THE EXAMPLE PROJECT smlserver_demo/hello.pm
+COMPILING THE EXAMPLE PROJECT hello.pm
 -----------------------------------------------------
 
+Start by copying the smlserver_demo/sml directory to your personal
+server root directory. Also copy the content files of the
+smlserver_demo/www directory to your personal www directory. Your
+directory structure should now look as follows:
+
+   /web/user/
+      www/
+        hello.pm
+        hello.sml ...
+      sml/
+        Ns.sml ...
+      log/
+        server.log ...
+      tcl/
+        ...
+
 To make the msp-pages and sml-pages that appear in the hello.pm file
-available to browsers, you must first make hello.pm the *current web
-project* by executing:
+in the www directory available to browsers, make hello.pm the *current
+web project* by executing:
   
+  mael@daffy> cd www
   mael@daffy> ln -s hello.pm web.pm
 
-assuming you are in the kit/smlserver_demo directory. Thereafter,
-compile the current web project by running:
+Thereafter, compile the current web project by running:
 
-  mael@daffy> ../bin/mlkit_web web.pm
+  mael@daffy> mlkit_web web.pm
 
-also in the kit/smlserver_demo directory. Assuming that you have
-AOLserver running with the SMLserver module loaded, you should now be
-able to fetch the page first.html from your browser using the url
+Assuming that you have AOLserver running with the SMLserver module
+loaded, you should now be able to fetch the page first.html from your
+browser using the url
 
   http://127.0.0.1:8080/first.html
 
@@ -166,7 +183,7 @@ system with rpm's installed:
 
      6.a. Install data model
 
-        mael@daffy> cd kit/smlserver_demo/www/
+        mael@daffy> cd www
         mael@daffy> psql
            ...
         mael=# \i friends.sql
@@ -178,14 +195,14 @@ system with rpm's installed:
 	SMLserver allows you to have only one web-project running at a
         time. Make friends.pm the current web project by executing:
 
-        mael@daffy> cd kit/smlserver_demo/www
+        mael@daffy> cd www
         mael@daffy> ln -s friends.pm web.pm
 
      6.c. Compile the current project
 
         You can now compile the current project by executing:        
 
-        mael@daffy> ../../bin/mlkit_web web.pm
+        mael@daffy> mlkit_web web.pm
 
   7. Go start your browser
 

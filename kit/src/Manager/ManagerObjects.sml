@@ -314,15 +314,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
 		   | EMITTED_MODC(tfile,_) => tfile::acc
 		   | NOTEMITTED_MODC(target,li,filename) =>
-		    let val tfile = base_absprjid ^ "-" ^ filename ^ ".o"
+		    let val tfile = base_absprjid ^ "-" ^ filename ^ ".uo"
 		    in tfile::acc
 		    end
 		   | _ => acc  
-	      val files = files_to_be_emitted(modc,nil)
-	      fun modify s = case rev (explode s)
-			       of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
-				| _ => s
-	      val uofiles = map modify files
+	      val uofiles = files_to_be_emitted(modc,nil)
 	      val ulfile = "PM/" ^ base_absprjid ^ ".ul"
 	      val timeStampFile = timeStampFileName(absprjid)
 	      val os = TextIO.openOut ulfile
