@@ -94,12 +94,16 @@ signature LAMBDA_EXP =
       | NOTEQUALprim of {instance: 'Type}
       | LESS_REALprim
       | LESS_INTprim
+      | LESS_STRINGprim
       | GREATER_REALprim
       | GREATER_INTprim
+      | GREATER_STRINGprim
       | LESSEQ_REALprim
       | LESSEQ_INTprim
+      | LESSEQ_STRINGprim
       | GREATEREQ_REALprim
       | GREATEREQ_INTprim
+      | GREATEREQ_STRINGprim
       | OPEN_INprim                                   (* I/O *)
       | OPEN_OUTprim
       | INPUTprim
