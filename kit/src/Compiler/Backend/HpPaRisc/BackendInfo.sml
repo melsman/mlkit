@@ -29,6 +29,17 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val init_sclos_offset = 0	 (* First offset in shared closure is 0 *)                             
     val init_regvec_offset = 0	 (* First offset in region vector is 0 *)                              
 
+    (******************************)
+    (* Runtime System Information *)
+    (******************************)
+    val pOff  = 0 (* Offset for previous region pointer (p) in a region descriptor. *)
+    val aOff  = 1 (* Offset for allocation pointer (a) in a region descriptor. *)
+    val bOff  = 2 (* Offset for border pointer (b) in a region descriptor. *)
+    val fpOff = 3 (* Offset for first region page pointer (fp) in a region descriptor. *)
+
+    val regionPageTotalSize = 254 (*ALLOCATABLE_WORDS_IN_REGION_PAGE*) + 2 (*HEADER_WORDS_IN_REGION_PAGE*)
+    val regionPageHeaderSize = 2 (*HEADER_WORDS_IN_REGION_PAGE*)
+
     (***********)
     (* Tagging *)
     (***********)
@@ -67,7 +78,6 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 	val w_size = shift_left(6,size)
 	val w_immovable = or_bits(w_size,shift_left(5,immovable))
 	val w_tag = or_bits(w_immovable,tag)
-	(*val _ = if t=3 then pw("t=3",w_tag) else ()*)
       in
 	w_tag
       end

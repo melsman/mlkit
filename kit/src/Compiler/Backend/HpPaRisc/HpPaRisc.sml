@@ -9,7 +9,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
     (***********)
     (* Logging *)
     (***********)
-    fun die s  = Crash.impossible ("SubstAndSimplify." ^ s)
+    fun die s  = Crash.impossible ("HpPaRisc." ^ s)
 
     (*----------------------------------------------------------*)
     (*                  Register definitions.                   *)
@@ -28,8 +28,8 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
     val tmp_gr1  = Gen 1
     val tmp_reg0 = Gen 19 
     val tmp_reg1 = Gen 20 
-(*    val tmp_reg2 = Gen 21 *)
-(*    val tmp_reg3 = Gen 22 *)
+    val tmp_reg2 = Gen 21 (* Used in inline_alloc only *)
+    val tmp_reg3 = Gen 22 (* Used in inline_alloc only *)
 
     val arg0     = Gen 26  (* Argument and return registers *)
     val arg1     = Gen 25  (* for C function calls. *)

@@ -73,7 +73,11 @@ struct
     [("print_HP-PARISC_program", "print HP-PARISC program", ref false),
      ("debug_codeGen","DEBUG CODE_GEN",ref false)]
 
+  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
+    [("inline_alloc", "Inline alloc", ref false)]
+
   val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
+  val inline_alloc = Flags.lookup_flag_entry "inline_alloc"
 
   (********************************)
   (* CG on Top Level Declarations *)
@@ -505,19 +509,33 @@ struct
     fun reset_region(t:reg,tmp:reg,size_ff,C) = 
       compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],SOME(SS.PHREG_ATY t),size_ff,tmp,C)
 
-    fun alloc_kill_gen1_tmp0_1_2(t:reg,n:int,size_ff,C) =
-      let 
-	val _ = add_lib_function "__allocate"
-	val l = new_local_lab "return_from_alloc"
-      in
-	copy(t,tmp_reg1,
-	load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
-        STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
-	load_immed(IMMED n, mrp, 
-        META_B{n=false,target=NameLab "__allocate"} ::  (* META_B destroys tmp_reg0 *)
-        LABEL l :: 
-	copy(tmp_reg1,t,C))))
-      end
+    fun alloc_kill_gen1_tmp0_1(t:reg,n:int,size_ff,C) =
+      if !inline_alloc then
+	let 
+	  val _ = add_lib_function "__inline_allocate"
+	  val l = new_local_lab "return_from_alloc"
+	in
+	  copy(t,tmp_reg1,
+	  load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
+	  STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
+	  load_immed(IMMED(n*4), mrp, 
+          META_B{n=false,target=NameLab "__inline_allocate"} ::  (* META_B destroys tmp_reg0 *)
+          LABEL l :: 
+	  copy(tmp_reg1,t,C))))
+	end
+      else
+	let 
+	  val _ = add_lib_function "__allocate"
+	  val l = new_local_lab "return_from_alloc"
+	in
+	  copy(t,tmp_reg1,
+	  load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
+          STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
+	  load_immed(IMMED n, mrp, 
+          META_B{n=false,target=NameLab "__allocate"} ::  (* META_B destroys tmp_reg0 *)
+          LABEL l :: 
+	  copy(tmp_reg1,t,C))))
+	end
 
     fun clear_status_bits(t,C) = DEPI{cond=NEVER,i="0",p="31",len="2",t=t}::C
     fun set_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER,i="1",p="30",len="1",t=dst_reg} :: C
@@ -546,21 +564,21 @@ struct
        | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => C
        | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => C
        | LS.IGNORE => C
-       | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,alloc_kill_gen1_tmp0_1_2(dst_reg,n,size_ff,C))
+       | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,alloc_kill_gen1_tmp0_1(dst_reg,n,size_ff,C))
        | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,C)
-       | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,alloc_kill_gen1_tmp0_1_2(dst_reg,n,size_ff,C))
+       | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,alloc_kill_gen1_tmp0_1(dst_reg,n,size_ff,C))
        | LS.ATTOP_FF(aty,pp) => 
 	   let
 	     val default_lab = new_local_lab "no_alloc"
 	   in
 	     move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,
 				  META_IF_BIT{r=dst_reg,bitNo=31,target=default_lab} :: (* inf bit set? *)
-				  alloc_kill_gen1_tmp0_1_2(dst_reg,n,size_ff,LABEL default_lab :: C))
+				  alloc_kill_gen1_tmp0_1(dst_reg,n,size_ff,LABEL default_lab :: C))
 	   end
        | LS.ATBOT_LI(aty,pp) => 
 	   move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,
 				reset_region(dst_reg,tmp_reg0,size_ff, (* dst_reg is preserved for alloc *)
-					     alloc_kill_gen1_tmp0_1_2(dst_reg,n,size_ff,C)))
+					     alloc_kill_gen1_tmp0_1(dst_reg,n,size_ff,C)))
        | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,C) (* atbot bit not set; its a finite region *)
        | LS.SAT_FI(aty,pp) => 
 	   let
@@ -569,7 +587,7 @@ struct
 	     move_aty_into_reg_kill_gen1_ap(aty,dst_reg,size_ff,
 				  META_IF_BIT{r=dst_reg,bitNo=30,target=default_lab} :: (* atbot bit set? *)
 				  reset_region(dst_reg,tmp_reg0,size_ff,LABEL default_lab ::  (* dst_reg is preverved over the call *)
-					       alloc_kill_gen1_tmp0_1_2(dst_reg,n,size_ff,C)))
+					       alloc_kill_gen1_tmp0_1(dst_reg,n,size_ff,C)))
 	   end
        | LS.SAT_FF(aty,pp) => 
 	   let
@@ -580,7 +598,7 @@ struct
 				  META_IF_BIT{r=dst_reg,bitNo=31,target=finite_lab} :: (* inf bit set? *)
 				  META_IF_BIT{r=dst_reg,bitNo=30,target=attop_lab} ::  (* atbot bit set? *)
 				  reset_region(dst_reg,tmp_reg0,size_ff,LABEL attop_lab ::  (* dst_reg is preserved over the call *)
-					       alloc_kill_gen1_tmp0_1_2(dst_reg,n,size_ff,LABEL finite_lab :: C)))
+					       alloc_kill_gen1_tmp0_1(dst_reg,n,size_ff,LABEL finite_lab :: C)))
 	   end)
 
     (* Set Atbot bits on region variables *)
@@ -1801,6 +1819,69 @@ struct
 
 	fun allocate C = ccall_stub("__allocate", "alloc", [tmp_reg1, mrp], SOME tmp_reg1, C)
 
+	(* args: tmp_reg1=region pointer and mrp=n bytes to allocate. Result in tmp_reg1 *)
+	(* return address is pushed on the stack *)
+	fun inline_alloc C = 
+	  let
+	    val _ = add_lib_function "callSbrk"
+	    val _ = add_static_data [DOT_EXPORT(NameLab "__inline_allocate","CODE")]
+	    (* Note, that tmp_reg2 and tmp_reg3 are in caller_save_regs_ccall! *)
+	    fun push_caller_save_ccall C = 
+	      foldl (fn (r, C) => STWM{r=r,d="4",s=Space 0,b=sp} :: C) C HpPaRisc.caller_save_regs_ccall
+	    fun pop_caller_save_ccall C = 
+	      foldr (fn (r, C) => LDWM{d="-4",s=Space 0,b=sp,t=r} :: C) C HpPaRisc.caller_save_regs_ccall
+	    val lab = new_local_lab "after_free_list"
+	    val afterSbrk = new_local_lab "after_SBRK"
+	    val size_ff = 0 (* dummy *)
+	  in
+	    DOT_CODE ::
+	    LABEL (NameLab "__inline_allocate") ::
+	    STWM{r=tmp_reg2,d="4",s=Space 0,b=sp} ::                                               (* push(t2)              *)	    
+	    STWM{r=tmp_reg3,d="4",s=Space 0,b=sp} ::                                               (* push(t3)              *)	    
+            DEPI{cond=NEVER, i="0", p="31", len="2", t=tmp_reg1} ::                                (* clear status bits     *)     
+            load_indexed_kill_gen1(tmp_reg2,tmp_reg1,WORDS BI.aOff,                                (* t2=t1->a              *)
+	    ADD{cond=NEVER,r1=tmp_reg2,r2=mrp,t=tmp_reg3} ::                                       (* t3=t2+mrp             *)
+            load_indexed_kill_gen1(rp,tmp_reg1,WORDS BI.bOff,                                      (* rp=t1->b              *)
+            META_IF{cond=GREATERTHAN,r1=tmp_reg3,r2=rp,target=lab} ::                              (* if t3>rp {            *) 
+            load_label_addr_kill_gen1(NameLab "freelist", SS.PHREG_ATY tmp_reg2,tmp_reg2,size_ff,  (*   t2 = &freelist      *)
+            LDW{d="0",s=Space 0,b=tmp_reg2,t=tmp_reg3} ::                                          (*   t3 = freelist       *)
+
+            META_IF {cond=EQUAL,r1=tmp_reg3,r2=Gen 0,target=afterSbrk} ::                          (*   if freelist==NULL { *)
+            STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} ::                                               (*     push(t1)          *)
+            STWM{r=mrp,d="4",s=Space 0,b=sp} ::                                                    (*     push(mrp)         *)
+            push_caller_save_ccall(                                                                (*     flush registers   *)
+
+            align_stack_kill_gen1(tmp_reg0,
+            META_BL{n=false,target=NameLab "callSbrk",rpLink=rp,callStr=""} ::                     (*     update free list. *)
+            restore_stack(
+
+            pop_caller_save_ccall(                                                                 (*     fetch registers   *)
+            LDWM{d="-4",s=Space 0,b=sp,t=mrp} ::                                                   (*     pop(mrp)          *)
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg1} ::                                              (*     pop(t1)           *)
+            load_indexed_kill_gen1(rp,tmp_reg1,WORDS BI.bOff,                                      (*     rp=t1->b          *)
+            LDW{d="0",s=Space 0,b=tmp_reg2,t=tmp_reg3} ::                                          (*     t3 = freelist     *)
+            LABEL afterSbrk ::                                                                     (*   }                   *)
+
+            LDW{d="0",s=Space 0,b=tmp_reg3,t=tmp_reg0} ::                                          (*   t0=t3->k.n          *)  
+            STW{r=tmp_reg0,d="0",s=Space 0,b=tmp_reg2} ::                                          (*   freelist=t0         *)
+            STW{r=Gen 0,d="0",s=Space 0,b=tmp_reg3} ::                                             (*   t3->k.n = NULL      *)
+
+            store_indexed_kill_gen1(rp,WORDS(~BI.regionPageTotalSize),tmp_reg3,                    (*   ((rp->b)-1)->k.n=t3 *)
+            base_plus_offset_kill_gen1(tmp_reg3,WORDS BI.regionPageTotalSize,rp,                   (*   rp=&(t3+1)          *)
+            store_indexed_kill_gen1(tmp_reg1,WORDS BI.bOff, rp,                                    (*   t1->b=rp            *)
+
+            base_plus_offset_kill_gen1(tmp_reg3, WORDS BI.regionPageHeaderSize, tmp_reg2,          (*   t2=&(t3->k.i)       *)
+            ADD{cond=NEVER,r1=tmp_reg2,r2=mrp,t=tmp_reg3} ::                                       (*   t3=t2+mrp           *)
+            LABEL lab ::                                                                           (* }                     *)
+
+            store_indexed_kill_gen1(tmp_reg1,WORDS BI.aOff,tmp_reg3,                               (* t1->a=t3              *)
+            copy(tmp_reg2,tmp_reg1,                                                                (* t1=t2                 *)
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg3} ::                                              (* pop(t3)               *)		 
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg2} ::                                              (* pop(t2)               *)
+            LDWM{d="-4",s=Space 0,b=sp,t=mrp} ::                                                   (* pop(return_address)   *)
+            META_BV{n=false,x=Gen 0,b=mrp} :: C))))))))))))))                                      (* return to caller      *)
+	  end
+
 	fun gc_stub C = (* tmp_reg1 must contain the register map and mrp the return address. *)
 	  if !do_garbage_collection then
 	    let
@@ -1921,7 +2002,7 @@ struct
 				DOT_PROCEND :: C)
 	  end
 
-	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate(gc_stub [])))))
+	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate(gc_stub(inline_alloc []))))))
       in
 	HppaResolveJumps.RJ{top_decls = [],
 			    init_code = init_link_code,
