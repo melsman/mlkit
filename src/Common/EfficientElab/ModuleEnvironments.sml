@@ -291,7 +291,7 @@ functor ModuleEnvironments(
               (*Restriction relation for compilation manager*)
 
 	(* MEMO: use operations on F and G instead *)
-      fun restrictB (BASIS {F=FUNENV F,G=SIGENV G,E},
+      fun restrictB restrictE (BASIS {F=FUNENV F,G=SIGENV G,E},
 		     {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
 		      funids : funid list, sigids : sigid list}:longids) =
 	let val F' = foldl
@@ -308,11 +308,11 @@ functor ModuleEnvironments(
 				       | NONE => die ("restrictB.sigid " ^ SigId.pr_SigId sigid ^ " not in basis."))
 			in FinMap.add(sigid,Sig,Gnew)
 			end) FinMap.empty sigids
-	    val E' = E.restrict (E, {longvids=longvids, longtycons=longtycons, longstrids=longstrids})
+	    val E' = restrictE (E, {longvids=longvids, longtycons=longtycons, longstrids=longstrids})
 	in BASIS {F=FUNENV F', G=SIGENV G', E=E'}
 	end
       val enrich = enrichB
-      val restrict = restrictB
+      fun restrict p = restrictB E.restrict p
 
       fun domain(BASIS{F=FUNENV F,G=SIGENV G,E}) : longids =
 	  let val (SE,TE,VE) = E.un E

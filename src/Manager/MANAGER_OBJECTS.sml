@@ -44,6 +44,9 @@ signature MANAGER_OBJECTS =
 	 * in mc1 removed. *)
 	val deleteUlfile : absprjid -> unit
 	val pu : modcode Pickle.pu
+	val dirMod : string -> modcode -> modcode
+	    (* [dirMod d mc] replaces paths p in mc with
+	     * paths d/f where f is the file of p *)
       end
 
     type filename (*= string*)
@@ -121,11 +124,11 @@ signature MANAGER_OBJECTS =
 	val enrich : IntBasis * IntBasis -> bool
 
 	val initial : unit -> IntBasis
-	val restrict : IntBasis * longids -> IntBasis
+	val restrict : IntBasis * longids * TyName.Set.Set -> IntBasis
 	val pu : IntBasis Pickle.pu
       end
 
-    type Basis 
+    type Basis and name
 
     structure Basis :
       sig
@@ -151,9 +154,22 @@ signature MANAGER_OBJECTS =
 	val initial : unit -> Basis
 
 	val pu      : Basis Pickle.pu
+
+	type Basis0 = InfixBasis * ElabBasis
+	val pu_Basis0 : Basis0 Pickle.pu
+	val plusBasis0 : Basis0 * Basis0 -> Basis0
+	val initialBasis0 : unit -> Basis0
+	val matchBasis0 : Basis0 * Basis0 -> Basis0
+	val eqBasis0 : Basis0 * Basis0 -> bool
+
+	type Basis1 = opaq_env * IntBasis
+	val pu_Basis1 : Basis1 Pickle.pu
+	val plusBasis1 : Basis1 * Basis1 -> Basis1
+	val initialBasis1 : unit -> Basis1
+	val matchBasis1 : Basis1 * Basis1 -> Basis1
+	val eqBasis1 : Basis1 * Basis1 -> bool
       end
 
-    type name
     structure Repository :
       sig
 

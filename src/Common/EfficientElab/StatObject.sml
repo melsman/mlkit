@@ -1691,6 +1691,17 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
     structure Realisation = struct
 
+      fun tynamesRng (Realisation_Id) = TyName.Set.empty
+	| tynamesRng (Not_Id m) = 
+	  TyName.Map.Fold (fn ((tn,TYNAME tn'),acc) => 
+			      if TyName.eq(tn,tn') then acc
+			      else TyName.Set.insert tn' acc
+	                    | ((tn,EXPANDED tf),acc) => 
+				  TyName.Set.union (TyName.Set.remove tn 
+						   (TypeFcn.tynames tf)) 
+				  acc) 
+	  TyName.Set.empty m
+
       fun dom Realisation_Id = TyName.Set.empty
 	| dom (Not_Id m) = TyName.Set.fromList(TyName.Map.dom m)
 
@@ -1867,7 +1878,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	case on_Realisation phi1 phi2
 	  of Realisation_Id => phi1
 	   | Not_Id m2 => 
-	    let fun member t nil = false
+	    let
+(*
+		fun member t nil = false
 		  | member t0 (t::ts) = TyName.eq (t0,t) orelse member t0 ts
 	        val d1 = TyName.Map.dom m1
 	        fun loop nil = ()
@@ -1877,8 +1890,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		     PP.printTree(layout phi2)
 		     ;die ("realisation map overlay: " ^ TyName.pr_TyName t))
 		  else loop ts
+*)
 	    in (*loop (TyName.Map.dom m2); *)
-	      Not_Id(TyName.Map.plus(m1, m2))   (*m2,m1 ?? *)
+	      Not_Id(TyName.Map.plus(m1, m2))
  	    end
 
       fun enrich (rea0, (rea,T)) =

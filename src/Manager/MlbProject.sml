@@ -263,6 +263,9 @@ functor MlbProject () : MLB_PROJECT =
 
 	(* Support for writing dependency information to disk in .d-files. *)
 
+	fun dirMod dir file = if OS.Path.isAbsolute file then file
+			      else OS.Path.concat(dir,file)
+			
 	structure DepEnv = 
 	    struct
 		type L = string list	    
@@ -284,9 +287,33 @@ functor MlbProject () : MLB_PROJECT =
 		fun singleBidEntry e = D(nil,[e])
 		fun singleFile f = D([f],nil)
 		val empty = D(nil,nil)
+		fun dirModify ("", dep) = dep
+		  | dirModify (dir, dep : D) : D =
+		    let fun depMap f (D(L,bds)) = D(map f L,map (fn (b,d) => (b,depMap f d)) bds)
+		    in depMap (dirMod dir) dep
+		    end
 	    end
 
 	val older = Time.<
+
+	fun maybe_create_dir d : unit = 
+	    if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
+		if OS.FileSys.isDir d then ()
+		else error ("The file " ^ quot d ^ " is not a directory")
+	    else ((OS.FileSys.mkDir d;()) handle _ => 
+		  error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ 
+			 OS.FileSys.getDir()))
+		
+	fun maybe_create_depdir() =
+	    let val dirs = String.tokens (fn c => c = #"/") (!depDir)
+		fun append_path "" d = d
+		  | append_path p d = p ^ "/" ^ d
+		fun loop (p, nil) = ()
+		  | loop (p, d::ds) = let val p = append_path p d
+				      in maybe_create_dir p; loop(p, ds)
+				      end
+	    in loop("", dirs)
+	    end
 
 	fun writeDep file s =
 	    (let val os = TextIO.openOut file       (* what about general paths *)
@@ -299,11 +326,26 @@ functor MlbProject () : MLB_PROJECT =
 	fun mlbFileIsOlder modTimeMlbFile file : bool =
 	    older (modTimeMlbFile, OS.FileSys.modTime file) handle _ => false
 
+	fun mkAbs file = OS.Path.mkAbsolute(file,OS.FileSys.getDir())
+
+	fun subDir "" = (fn p => p)
+	  | subDir dir =
+	    let val dir_abs = mkAbs dir
+	    in fn p =>
+		let val p_abs = mkAbs p
+		in OS.Path.mkRelative(p_abs,dir_abs)
+		end
+	    end
+
 	fun maybeWriteDep smlfile modTimeMlbFile D : unit =
-	    let val file = !depDir ^ "/" ^ smlfile ^ ".d"
+	    let val {dir,file} = OS.Path.splitDirFile smlfile
+		infix ## 
+		val op ## = OS.Path.concat
+		val file = dir ## (!depDir) ## (file ^ ".d")
 	    in if mlbFileIsOlder modTimeMlbFile file then ()         (* Don't write .d-file if the current .d-file *)
 	       else                                                  (*  is newer than the mlb-file! *) 
 		   let val L = DepEnv.getL D
+		       val L = map (subDir dir) L
 		       val s = concat (map (fn s => s ^ " ") L)
 		   in case fromFile' file of
 		       SOME s' => if s = s' then ()                  (* Don't write .d-file if its content already *)
@@ -321,6 +363,15 @@ functor MlbProject () : MLB_PROJECT =
 		  | look ((x,D)::xs) = if mlbfile = x then SOME D
 				       else look xs
 	    in look mlbfiles
+	    end
+
+	fun change_dir path : {cd_old : unit -> unit, file : string} =
+	    let val {dir,file} = OS.Path.splitDirFile path
+	    in if dir = "" then {cd_old = fn()=>(),file=file}
+	       else let val old_dir = OS.FileSys.getDir()
+			val _ = OS.FileSys.chDir dir
+		    in {cd_old=fn()=>OS.FileSys.chDir old_dir, file=file}
+		    end handle OS.SysErr _ => error ("Failed to access directory " ^ quot dir)
 	    end
 
 	fun dep_bexp (D:D) (A:A) bexp : D * A =
@@ -370,35 +421,52 @@ functor MlbProject () : MLB_PROJECT =
 			 SOME t => (  maybeWriteDep smlfile t D
 				    ; (DepEnv.singleFile smlfile, A))
 		       | NONE => error "No modification time available for the basis file")
-	      | MLBFILEbdec mlbfile => dep_bdec_file A mlbfile
+	      | MLBFILEbdec mlbfile => 
+			 let val (D,A) = dep_bdec_file A mlbfile
+			 in (DepEnv.dirModify (OS.Path.dir mlbfile, D), A)
+			 end
 
-	and dep_bdec_file (A:A) mlbfile : D * A =
-	    case lookupA A mlbfile of
-		SOME D => (D,A)
-	      | NONE =>
-		    let val bdec = parse mlbfile
-			val modTimeMlbFileTmp = #modTimeMlbFile A
-			val modTimeMlbFile = OS.FileSys.modTime mlbfile
-			    handle _ => error ("Failed to read the modification time of the basis file " ^
-					       mlbfile)
-			val A = {modTimeMlbFile=SOME(OS.FileSys.modTime mlbfile),
-				 mlbfiles= #mlbfiles A}
-			val (D,A) = dep_bdec DepEnv.empty A bdec
-		    in (D, {modTimeMlbFile = modTimeMlbFileTmp,
-			    mlbfiles=(mlbfile,D) :: #mlbfiles A})
-		    end
+	and dep_bdec_file (A:A) mlbfile_rel : D * A =
+	    let val mlbfile_abs = mkAbs mlbfile_rel
+	    in
+		case lookupA A mlbfile_abs of
+		    SOME D => (D,A)
+		  | NONE =>
+			let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
+			in let val _ = maybe_create_depdir()
+			       val bdec = parse mlbfile
+			       val modTimeMlbFileTmp = #modTimeMlbFile A
+			       val modTimeMlbFile = OS.FileSys.modTime mlbfile
+				   handle _ => error ("Failed to read the modification time of the basis file " ^
+						      mlbfile)
+			       val A = {modTimeMlbFile=SOME(modTimeMlbFile),
+					mlbfiles= #mlbfiles A}
+			       val (D,A) = dep_bdec DepEnv.empty A bdec
+			   in  cd_old() ; 
+			       (D, {modTimeMlbFile = modTimeMlbFileTmp,
+				    mlbfiles=(mlbfile_abs,D) :: #mlbfiles A})
+			   end handle X => (cd_old(); raise X)
+			end
+	    end
 
 	fun dep (mlbfile : string) : unit =
 	    (dep_bdec_file emptyA mlbfile; ())
 
 
 	(* Support for finding the source files of a basis file *)
-	fun srcs_bdec_file mlbs mlb =
-	    if member mlb mlbs then (nil,mlbs)
-	    else let val bdec = parse mlb
-		     val (ss, mlbs) = srcs_bdec mlbs bdec
-		 in (ss,mlb::mlbs)
-		 end
+	fun srcs_bdec_file mlbs mlbfile_rel =
+	    let val mlbfile_abs = mkAbs mlbfile_rel
+	    in if member mlbfile_abs mlbs then (nil,mlbs)
+	       else let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
+		    in 
+			let val bdec = parse mlbfile
+			    val (ss, mlbs) = srcs_bdec mlbs bdec
+			    val ss = map (dirMod (OS.Path.dir mlbfile_rel)) ss
+			in cd_old()
+			    ; (ss,mlbfile_abs::mlbs)
+			end handle X => (cd_old(); raise X)
+		    end 
+	    end
 
 	and srcs_bdec mlbs bdec =
 	    case bdec of 
@@ -416,7 +484,7 @@ functor MlbProject () : MLB_PROJECT =
 	      | BASISbdec (bid,bexp) => srcs_bexp mlbs bexp
 	      | OPENbdec _ => (nil,mlbs)
 	      | SMLFILEbdec smlfile => ([smlfile],mlbs)
-	      | MLBFILEbdec mlb => srcs_bdec_file mlbs mlb
+	      | MLBFILEbdec mlbfile => srcs_bdec_file mlbs mlbfile
 		    
 	and srcs_bexp mlbs bexp =
 	    case bexp of

@@ -288,7 +288,7 @@ signature STATOBJECT =
 	val eq                      : realisation * realisation -> bool
 	val layout                  : realisation -> StringTree
 	val pu                      : realisation Pickle.pu
-
+	val tynamesRng              : realisation -> TyName.Set.Set
       end (*Realisation*)
 
   end;

@@ -58,10 +58,10 @@ functor IntModules(structure Name : NAME
 		     sharing type TopdecGrammar.topdec = ParseElab.topdec
 
 		   structure FreeIds : FREE_IDS
-		     sharing type FreeIds.longid = ManagerObjects.longid
+		     sharing type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = TopdecGrammar.DecGrammar.Ident.longid = Environments.longid
 		     sharing type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
 		     sharing type FreeIds.longstrid = ManagerObjects.longstrid = TopdecGrammar.longstrid
-		     sharing type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid
+		     sharing type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid = ModuleEnvironments.funid
 		     sharing type FreeIds.sigid = ManagerObjects.sigid = TopdecGrammar.sigid = ModuleEnvironments.sigid
 		     sharing type FreeIds.longtycon = ManagerObjects.longtycon = TopdecGrammar.longtycon
 		     sharing type FreeIds.strexp = TopdecGrammar.strexp = ManagerObjects.strexp
@@ -297,7 +297,9 @@ functor IntModules(structure Name : NAME
 			 (* Now, do matching *)
 			 val _ = (List.app (Name.mark_gen o TyName.name) (#T BBC);
 				  List.app Name.mark_gen names_elab; 
+				  Name.rematching := true;
 				  ElabEnv.match(resE', #resE BBC);
+				  Name.rematching := false;
 				  List.app (Name.unmark_gen o TyName.name) (#T BBC);
 				  List.app Name.unmark_gen names_elab)
 
@@ -540,7 +542,7 @@ functor IntModules(structure Name : NAME
 			   val _ = chat "[restricting interpretation basis begin...]"
 			   val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), 
 							 {funids=funids,sigids=sigids,longtycons=longtycons,
-							  longstrids=longstrids,longvids=longvids})
+							  longstrids=longstrids,longvids=longvids}, TyName.Set.empty   (* MEMO: Potential error!!! mael 2004-11-17 *)  )
 			   val _ = chat "[restricting interpretation basis end...]"
 		       in (intB', longstrids)
 		       end
@@ -633,7 +635,7 @@ functor IntModules(structure Name : NAME
     fun int_funbind (absprjid: absprjid, intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
       let val {funids,longtycons,longstrids,longvids,sigids} = FreeIds.fid_strexp_sigexp strid strexp sigexp
 	  val intB0 = IntBasis.restrict(intB, {funids=funids,sigids=sigids,longstrids=longstrids,
-					       longvids=longvids,longtycons=longtycons})
+					       longvids=longvids,longtycons=longtycons}, TyName.Set.empty)
 	  val funstamp = FunStamp.new funid
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i
@@ -642,7 +644,7 @@ functor IntModules(structure Name : NAME
 		    val infB = case (ElabInfo.ParseInfo.to_DFInfo o ElabInfo.to_ParseInfo) i
 				 of SOME (ElabInfo.ParseInfo.DFInfo.INFIX_BASIS infB) => infB
 				  | _ => die "int_funbind.no infix basis info" 
-		in (argE, {infB=infB,elabB=elabB,T=TyName.Set.list T,resE=resE,opaq_env=opaq_env})
+		in (argE, {infB=infB,elabB=elabB,T=TyName.Set.list T,resE=resE,opaq_env=opaq_env})    (* NOTE: elabB is restricted when running FreeIds on program unit! *)
 		end
 	       | _ => die "int_funbind.no type info"
 	  val BBC = generate_BBC(absprjid, funid, strid, body_builder_info, strexp)

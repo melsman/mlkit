@@ -64,9 +64,11 @@ functor Name(structure Crash : CRASH) : NAME =
 
     fun rigid (ref {rigid,...} : name) = rigid
 
+    val rematching = ref false
+
     fun match(n1 as ref {gen_mark=ref true,rigid=false,key=k1} : name, 
 	      ref (n0 as {gen_mark=gen_mark as ref true,key=k2,...})) =
-	if #2 k1 = #2 k2 then
+	if #2 k1 = #2 k2 orelse !rematching then
 	    (gen_mark := false;
 	     n1 := n0;
 	     incr_matchcount() (* ; print ".\n"*) )

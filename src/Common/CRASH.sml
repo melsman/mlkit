@@ -1,5 +1,3 @@
-(*$CRASH*)
-
 (* CRASH signature: used for internal consistency errors and so on. *)
 signature CRASH =
   sig
@@ -9,4 +7,4 @@ signature CRASH =
 
     exception CRASH			(* So we can catch it and reenter
 					   at top-level. *)
-  end;
+  end

@@ -112,6 +112,7 @@ in
   val _ = comp_RI_PROF()
   val _ = comp_RI_GC()
   val _ = comp_RI_GC_PROF()
+
   val _ = K.install()
 
 end

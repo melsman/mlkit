@@ -142,12 +142,22 @@ functor ManagerObjects(structure Execution : EXECUTION
 	 * ----------------------------------------------- *)
 
 	fun emit (target,absprjid,filename) =
-	    let val target_filename =
+	    let fun esc n = 
+		  let fun loop nil acc = implode(rev acc)
+                        | loop (#"." :: #"." :: cc) acc = loop cc (#"%"::acc)
+                        | loop (#"/" :: cc) acc = loop cc (#"+"::acc)
+                        | loop (c :: cc) acc = loop cc (c::acc)
+		  in loop (explode n) nil
+		  end
+		val target_filename =
 		   if Flags.is_on "compile_only" then
-		       OS.Path.base(Flags.get_string_entry "output")
+		       let val p = OS.Path.base(Flags.get_string_entry "output") 
+			   val filename = OS.Path.file filename
+		       in if OS.Path.file p = filename then p else p ^ "." ^ filename
+		       end
 		   else
-		       let fun f file = String.translate (fn #"/" => "+" | #"." => "%" | c => str c) file		   
-			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ f filename
+		       let 
+			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ esc filename
 			   val target_filename = pmdir() ^ target_filename
 		       in OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
 		       end
@@ -414,6 +424,15 @@ functor ManagerObjects(structure Execution : EXECUTION
 					fun_EMITTED_MODC,
 					fun_NOTEMITTED_MODC])
 	    end
+
+	fun dirMod d EMPTY_MODC = EMPTY_MODC
+	  | dirMod d (SEQ_MODC(modc1,modc2)) = SEQ_MODC(dirMod d modc1, dirMod d modc2)
+	  | dirMod d (EMITTED_MODC(fp,li)) = 
+	    let val f = OS.Path.file fp
+	        val fp = OS.Path.concat (d,f)
+	    in EMITTED_MODC(fp,li)
+	    end
+	  | dirMod _ _ = die "dirMod applied to non-emitted modcode"
       end
 
 
@@ -595,7 +614,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	fun plus (IB(ife1,ise1,ce1,cb1), IB(ife2,ise2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), IntSigEnv.plus(ise1,ise2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
 
-	fun restrict (IB(ife,ise,ce,cb), {funids, sigids, longstrids, longvids, longtycons}) =
+	fun restrict (IB(ife,ise,ce,cb), {funids, sigids, longstrids, longvids, longtycons}, tynames_opacity_env) =
 	    let val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
@@ -617,9 +636,10 @@ functor ManagerObjects(structure Execution : EXECUTION
 			       TyName.tyName_WORD31,
 			       TyName.tyName_WORD32,
 			       TyName.tyName_STRING,  (* string is needed for string constants *)
+			       TyName.tyName_CHAR,    (* char is needed for char constants *)
 			       TyName.tyName_REF,
 			       TyName.tyName_REAL]    (* real needed because of overloading *)
-		  @ (CompilerEnv.tynamesOfCEnv ce')
+		  @ (CompilerEnv.tynamesOfCEnv ce') @ (TyName.Set.list tynames_opacity_env)
 		val tynames = tynames_ife(ife',tynames)
 		val tynames = TyName.Set.list (TyName.Set.union (TyName.Set.fromList tynames) 
 					       (IntSigEnv.tynames ise'))
@@ -742,18 +762,20 @@ functor ManagerObjects(structure Execution : EXECUTION
 		val eB' = ModuleEnvironments.B.restrict(eB,ids)
 		val _ = chat "[restricting elaboration basis end...]"
 		    
-		val _ = chat "[restricting interpretation basis begin...]"
-		val iB' = IntBasis.restrict(iB,ids)
-		val _ = chat "[restricting interpretation basis end...]"
-		    
 		val _ = chat "[finding tynames in elaboration basis begin...]"
 		val tynames_eB' = ModuleEnvironments.B.tynames eB'
 		val _ = chat "[finding tynames in elaboration basis end...]"
 		    
 		val _ = chat "[restricting opacity env begin...]"
 		val oe' = OpacityElim.OpacityEnv.restrict(oe,(#funids ids,tynames_eB'))
+		val tynames_oe' = Execution.Elaboration.Basics.StatObject.Realisation.tynamesRng(OpacityElim.OpacityEnv.rea_of oe')
+		val tynames = TyName.Set.union tynames_oe' tynames_eB'
 		val _ = chat "[restricting opacity env end...]"
-	    in (BASIS(infB,eB',oe',iB'),tynames_eB')
+
+		val _ = chat "[restricting interpretation basis begin...]"
+		val iB' = IntBasis.restrict(iB,ids,tynames_oe')
+		val _ = chat "[restricting interpretation basis end...]"		   
+	    in (BASIS(infB,eB',oe',iB'),tynames)
 	    end
 
 	fun match (BASIS(infB,eB,oe,iB), BASIS(infB0,eB0,oe0,iB0)) =
@@ -800,6 +822,43 @@ functor ManagerObjects(structure Execution : EXECUTION
 			   comment "OpacityEnv.pu" OpacityElim.OpacityEnv.pu, 
 			   IntBasis.pu)))
 	    end
+
+	type Basis0 = InfixBasis * ElabBasis
+	val pu_Basis0 =
+	    let open Pickle
+	    in pairGen(InfixBasis.pu, ModuleEnvironments.B.pu)
+	    end
+	fun plusBasis0 ((ib,eb),(ib',eb')) = 
+	    (InfixBasis.compose(ib,ib'), ModuleEnvironments.B.plus(eb,eb'))
+	fun initialBasis0() = 
+	    (InfixBasis.emptyB, ModuleEnvironments.B.initial())
+	fun matchBasis0 ((infB,eB), (infB0,eB0)) =
+	    let val _ = ModuleEnvironments.B.match(eB,eB0)
+	    in (infB,eB)
+	    end
+	fun eqBasis0((infB1,eB1), (infB2,eB2)) =
+	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso 
+	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1))
+
+	type Basis1 = opaq_env * IntBasis
+	val pu_Basis1 =
+	    let open Pickle
+	    in pairGen(OpacityElim.OpacityEnv.pu, IntBasis.pu)
+	    end
+	fun plusBasis1((oe,ib),(oe',ib')) = 
+	    (OpacityElim.OpacityEnv.plus(oe,oe'),
+	     IntBasis.plus(ib,ib'))
+	fun initialBasis1() = (OpacityElim.OpacityEnv.initial, 
+			       IntBasis.initial())
+	fun matchBasis1 ((oe,iB), (oe0,iB0)) =
+	    let val _ = OpacityElim.OpacityEnv.match(oe,oe0)
+		val iB = IntBasis.match(iB,iB0)
+	    in (oe,iB)
+	    end
+	fun eqBasis1((oe1,iB1), (oe2,iB2)) =
+	    db_f "OpacityEnv" (OpacityElim.OpacityEnv.eq(oe1,oe2)) andalso 
+	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
+
       end
 
 

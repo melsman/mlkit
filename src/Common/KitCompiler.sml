@@ -147,7 +147,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		 structure Flags = Tools.Flags)
 
     structure Manager =
-      Manager(structure ManagerObjects = ManagerObjects
+      Manager(structure StrId = Basics.StrId
+	      structure Ident = Basics.Ident
+	      structure TyCon = Basics.TyCon
+              structure ManagerObjects = ManagerObjects
 	      structure OpacityElim = OpacityElim
 	      structure Name = Basics.Name
 	      structure Environments = Basics.Environments
@@ -227,8 +230,14 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				   raise Fail ""))]
 		
 	    val nullary_options =
-		[("version", fn () => raise Fail ""),
-		 ("help", fn () => (print_usage();
+		[("version", fn () => (print_greetings(); 
+				       raise Fail "")),
+		 ("v", fn () => (print_greetings(); 
+				 raise Fail "")),
+		 ("V", fn () => (print_greetings(); 
+				 raise Fail "")),
+		 ("help", fn () => (print_greetings(); 
+				    print_usage();
 				    print_options();
 				    print (Flags.help_all()); 
 				    raise Fail ""))]
@@ -246,7 +255,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		end
 	in
 	    fun kitexe(root_dir, args) = 
-		(print_greetings(); set_paths root_dir; go_options args)
+		(set_paths root_dir; go_options args)
 		handle Fail "" => OS.Process.success
 		     | Fail s => (print ("Error: " ^ s ^ "\n"); 
 				  OS.Process.failure)
