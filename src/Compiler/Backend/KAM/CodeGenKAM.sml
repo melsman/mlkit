@@ -24,6 +24,7 @@ functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
 		     sharing type Lvarset.lvar = Lvars.lvar
 		   structure Kam: KAM
                      sharing type Kam.label = Labels.label
+		   structure BuiltInCFunctions : BUILT_IN_C_FUNCTIONS_KAM
 		   structure PP : PRETTYPRINT
 		     sharing type PP.StringTree = 
 		                  Effect.StringTree = 
@@ -34,7 +35,7 @@ functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
                    structure Flags : FLAGS
 		   structure Report : REPORT
 		     sharing type Report.Report = Flags.Report
-		   structure Crash : CRASH) (* : sig end *) =
+		   structure Crash : CRASH) : CODE_GEN_KAM (* : sig end *) =
 
 struct
   structure LvarFinMap = Lvars.Map
@@ -184,18 +185,18 @@ struct
   local
     fun access_lv(lv,env,sp) =
       case lookupVar env lv of
-	STACK i => SelectStack(0-sp+i)
-      | ENV i => SelectEnv(i)
-      |	REG_I i => StackAddrInfBit(0-sp+i)
-      | REG_F i => StackAddr(0-sp+i)
+	STACK i => SelectStack(0-sp+i, Lvars.pr_lvar lv)
+      | ENV i => SelectEnv(i, Lvars.pr_lvar lv)
+      |	REG_I i => StackAddrInfBit(0-sp+i, Lvars.pr_lvar lv)
+      | REG_F i => StackAddr(0-sp+i, Lvars.pr_lvar lv)
       | ENV_REG => EnvToAcc
 
     fun access_rho(rho,env,sp) =
       case lookupRho env rho of
-	STACK i => SelectStack(0-sp+i)
-      | ENV i => SelectEnv(i)
-      |	REG_I i => StackAddrInfBit(0-sp+i)
-      | REG_F i => StackAddr(0-sp+i)
+	STACK i => SelectStack(0-sp+i, ClosExp.pr_rhos [rho])
+      | ENV i => SelectEnv(i, ClosExp.pr_rhos [rho])
+      |	REG_I i => StackAddrInfBit(0-sp+i, ClosExp.pr_rhos [rho])
+      | REG_F i => StackAddr(0-sp+i, ClosExp.pr_rhos [rho])
       | ENV_REG => EnvToAcc
 
     fun num_args_cc(cc) =
@@ -285,7 +286,7 @@ struct
       | CG_ce(ClosExp.SELECT(i,ce as ClosExp.VAR lv),env,sp,cc,acc) = 
       (* This may be a SelectEnv? *)
       if Lvars.eq(lv,Lvars.env_lvar) then
-	SelectEnv(i)::acc
+	SelectEnv(i, Lvars.pr_lvar lv)::acc
       else
 	CG_ce(ce,env,sp,cc,Select(i)::acc)
       | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Select(i)::acc)
@@ -340,16 +341,21 @@ struct
 	  | comp_alloc_rhos((place,PhysSizeInf.INF)::rs,env,sp,cc,fn_acc) = 
 	  LetregionInf ::
 	  comp_alloc_rhos(rs,declareRho(place,REG_I(sp),env),sp+(BI.size_of_reg_desc()),cc,fn_acc)
+(*	  | comp_alloc_rhos((place,PhysSizeInf.WORDS 0)::rs,env,sp,cc,fn_acc) = 
+	  comp_alloc_rhos(rs,env,sp,cc,fn_acc) it seems that finite rhos of size 0 actually exists in env? 2000-10-08, Niels 
+and code is actually generated when passing arguments in region polymorphic functions??? *)
 	  | comp_alloc_rhos((place,PhysSizeInf.WORDS i)::rs,env,sp,cc,fn_acc) = 
 	  LetregionFin(i) ::
 	  comp_alloc_rhos(rs,declareRho(place,REG_F(sp),env),sp+i,cc,fn_acc)
-	fun comp_dealloc_rho(place,PhysSizeInf.INF) =  EndregionInf
-	  | comp_dealloc_rho(place,PhysSizeInf.WORDS i) = Pop(i)
+	fun comp_dealloc_rho((place,PhysSizeInf.INF), acc) =  EndregionInf :: acc
+(*	  | comp_dealloc_rho((place,PhysSizeInf.WORDS 0), acc) = acc 2000-10-08, Niels *)
+	  | comp_dealloc_rho((place,PhysSizeInf.WORDS i), acc) = Pop(i) :: acc
       in
+	Comment ("Letregion <" ^ (ClosExp.pr_rhos (List.map #1 rhos)) ^ ">") ::
 	comp_alloc_rhos(rhos,env,sp,cc,
 			fn (env,sp) => CG_ce(body,env,sp,cc,
 					     (List.foldl (fn (rho,acc) => 
-							  comp_dealloc_rho rho :: acc) acc rhos)))
+							  comp_dealloc_rho (rho,acc)) acc rhos)))
       end
       | CG_ce(ClosExp.LET{pat=[],bind,scope},env,sp,cc,acc) = die "LET with pat = []."
       | CG_ce(ClosExp.LET{pat,bind,scope},env,sp,cc,acc) = 
@@ -358,6 +364,7 @@ struct
 	fun declareLvars([],sp,env) = env
 	  | declareLvars(lv::lvs,sp,env) = declareLvars(lvs,sp+1,declareLvar(lv,STACK(sp),env))
       in
+	Comment ("Let <" ^ (ClosExp.pr_lvars pat) ^ ">") ::
 	CG_ce(bind,env,sp,cc, Push ::
 	      CG_ce(scope,declareLvars(pat,sp,env),sp+n,cc,Pop(n) :: acc))
       end
@@ -515,7 +522,7 @@ struct
 	       | "__fresh_exname"         => PrimFreshExname
 	       | _ => die ("PRIM(" ^ name ^ ") not implemented"))
 
-	    fun name_to_built_in_C_function_index name =
+(*	    fun name_to_built_in_C_function_index name =
 	      case name
 		of "__mul_int" => 0
 	      | "mul_word__" => 1
@@ -618,7 +625,7 @@ struct
 	      | "sml_mktime" => 98
 	      | "sml_asctime" => 99
 	      | "sml_strftime" => 100
-	      | _ => die ("CG_ce.name_to_built_in_C_function_index: " ^ name ^ " not implemented.")
+	      | _ => die ("CG_ce.name_to_built_in_C_function_index: " ^ name ^ " not implemented.") *)
 	  in
 	    if BI.is_prim name then 
 	      (* rhos_for_result comes after args so that the accumulator holds the *)
@@ -632,7 +639,7 @@ struct
 		val all_args = rhos_for_result @ args
 	      in
 		comp_ces(all_args,env,sp,cc,
-			 Ccall(name_to_built_in_C_function_index name,
+			 Ccall(BuiltInCFunctions.name_to_built_in_C_function_index name,
 			       List.length all_args) :: acc)
 	      end
 	  end

@@ -90,13 +90,13 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | ClearBit30And31
       | UbTagCon
 	
-      | SelectStack of int
-      | SelectEnv of int
+      | SelectStack of int * string       (* string for debug only *)
+      | SelectEnv of int * string         (* string for debug only *)
       | Select of int
       | Store of int
 
-      | StackAddrInfBit of int
-      | StackAddr of int
+      | StackAddrInfBit of int * string   (* string for debug only *)
+      | StackAddr of int * string         (* string for debug only *)
       | EnvToAcc
 
       |	ImmedInt of int
@@ -259,13 +259,13 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | ClearBit30And31 => "ClearBit30And31" :: acc
       | UbTagCon => "UbTagCon" :: acc
 	
-      | SelectStack(off) => "SelectStack(" :: (pp_i off) :: ")" :: acc
-      | SelectEnv(off) => "SelectEnv(" :: (pp_i off) :: ")" :: acc
+      | SelectStack(off,s) => "SelectStack(" :: (pp_i off) :: "," :: s :: ")" :: acc
+      | SelectEnv(off,s) => "SelectEnv(" :: (pp_i off) :: "," :: s :: ")" :: acc
       | Select(off) => "Select(" :: (pp_i off) :: ")" :: acc
       | Store(off) => "Store(" :: (pp_i off) :: ")" :: acc
 
-      | StackAddrInfBit(off) => "StackAddrInfBit(" :: (pp_i off) :: ")" :: acc
-      | StackAddr(off) => "StackAddr(" :: (pp_i off) :: ")" :: acc
+      | StackAddrInfBit(off,s) => "StackAddrInfBit(" :: (pp_i off) :: "," :: s :: ")" :: acc
+      | StackAddr(off,s) => "StackAddr(" :: (pp_i off) :: "," :: s :: ")" :: acc
       | EnvToAcc => "EnvToAcc" :: acc
 
       |	ImmedInt(i) => "ImmedInt(" :: (pp_i i) :: ")" :: acc
@@ -274,7 +274,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 	
       | Push => "Push" :: acc
       | PushLbl(lab) => "PushLbl(" :: (pp_lab lab) :: ")" :: acc
-      | Pop(n) => if n = 0 then "Pop" :: acc else "Pop(" :: (pp_i n) :: ")" :: acc
+      | Pop(n) => if n = 1 then "Pop" :: acc else "Pop(" :: (pp_i n) :: ")" :: acc
 	
       | ApplyFnCall(n) => "ApplyFnCall(" :: (pp_i n) :: ")" :: acc
       | ApplyFnJmp(n1,n2) => "ApplyFnJmp(" :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc

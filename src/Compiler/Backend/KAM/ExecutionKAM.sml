@@ -72,6 +72,8 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     structure JumpTables = JumpTables(structure BI = BackendInfo
 				      structure Crash = Crash)
 
+    structure BuiltInCFunctions = BuiltInCFunctionsKAM()
+
     structure CodeGen = CodeGenKAM(structure PhysSizeInf = PhysSizeInf
 				   structure Con = Con
 				   structure Excon = Excon
@@ -85,10 +87,28 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 				   structure JumpTables = JumpTables
 				   structure Lvarset = Lvarset
 				   structure Kam = Kam
+				   structure BuiltInCFunctions = BuiltInCFunctions
 				   structure PP = PP
 				   structure Report = Report
 				   structure Flags = Flags
 				   structure Crash = Crash)
+
+    structure Opcodes = OpcodesKAM()
+    structure BuffCode = BuffCode()
+    structure ResolveLocalLabels = ResolveLocalLabels(structure BC = BuffCode
+						      structure IntFinMap = IntFinMap
+						      structure Labels = Labels
+						      structure Crash = Crash)
+
+    structure EmitCode = EmitCode(structure Labels = Labels
+				  structure CG = CodeGen
+				  structure Opcodes = Opcodes
+				  structure BC = BuffCode
+				  structure RLL = ResolveLocalLabels
+				  structure Kam = Kam
+				  structure BI = BackendInfo
+				  structure Flags = Flags
+				  structure Crash = Crash)
 
     structure CompileBasis = CompileBasis(structure CompBasis = CompBasis
 					  structure ClosExp = ClosExp
@@ -137,6 +157,6 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 
     fun generate_link_code (labs : label list) : target = CodeGen.generate_link_code labs
 
-    fun emit {target, filename:string} : unit = ()
+    fun emit (arg as {target, filename:string}) : unit = EmitCode.emit arg
 
   end

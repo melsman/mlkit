@@ -100,7 +100,17 @@ Kam/RegionFlowGraphProfiling.sml
 (* Bytecode Backend *)
 Backend/KAM/KAM.sml
 Backend/KAM/Kam.sml
-Backend/KAM/CodeGenKAM.sml  
+Backend/KAM/CodeGenKAM.sml
+Backend/KAM/CODE_GEN_KAM.sml
+Backend/KAM/OPCODES_KAM.sml
+Backend/KAM/OpcodesKAM.sml
+Backend/KAM/BUFF_CODE.sml
+Backend/KAM/BuffCode.sml
+Backend/KAM/RESOLVE_LOCAL_LABELS.sml
+Backend/KAM/ResolveLocalLabels.sml
+Backend/KAM/EMIT_CODE.sml
+Backend/KAM/EmitCode.sml
+Backend/KAM/BuiltInCFunctionsKAM.sml
 
 (* Native Backend *)
 Backend/CLOS_CONV_ENV.sml

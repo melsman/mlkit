@@ -164,7 +164,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * Append functions
 	 * ----------------------------- *)
 	  
-	fun append_ext s = s ^ ".s"
+	fun append_ext s = s ^ !target_file_extension (* changed from ".s" 2000-10-10, Niels *)
 
 	fun append_o s = s ^ ".o"
 
