@@ -9,3 +9,4 @@ CompilerTimings.sml
 TestReport.sml
 (* MemTime.sml*)
 Tester.sml
+ExecProfile.sml

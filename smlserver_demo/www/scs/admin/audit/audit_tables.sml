@@ -31,6 +31,11 @@ needed. Some tables are very large.</b><p>
 <li>When do you want to audit up to:<br> ` ^^ 
 (ScsWidget.intextDate NONE "end_date") ^^ `
 
+<li>Limit rows to: ` ^^ 
+
+(ScsWidget.intextVal 5 "50" "limit") ^^
+` 
+
 </ul>
 
 <center>

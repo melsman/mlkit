@@ -1,6 +1,7 @@
 signature NS_DB_BASIC =
   sig
     val seqNextvalExp : string -> string
+    val seqCurrvalExp : string -> string
     val fromDual      : string
     val sysdateExp    : string
     val beginTrans    : quot
@@ -85,6 +86,8 @@ signature NS_DB =
 
     val seqNextvalExp : string -> string  (*construct new-sequence expression*)
     val seqNextval    : string -> int     (*obtain new sequence number from database*)
+    val seqCurrvalExp : string -> string  (*construct last-used sequence expression*)
+    val seqCurrval    : string -> int     (*obtain last-used sequence number from database*)
     val sysdateExp    : string            (*construct sysdate expression*)
 
     val qq  : string -> string  (* replace each quote (') with quote-quote ('') *)

@@ -58,7 +58,9 @@ signature SCS_FORM_VAR =
 
     val emptyErr : errs
     val addErr : quot * errs -> errs
+    val buildErrMsg : errs -> quot
     val anyErrors : errs -> unit
+    val isErrors  : errs -> bool
 
     val getIntErr      : int formvar_fn
     val getNatErr      : int formvar_fn
@@ -78,6 +80,8 @@ signature SCS_FORM_VAR =
     val getDateErr     : Date.date formvar_fn
     val getDateIso     : string formvar_fn
     val getTableName   : string formvar_fn
+    val getLangErr     : ScsLang.lang formvar_fn
+    val getRegExpErr   : RegExp.regexp formvar_fn
 
     val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
@@ -119,14 +123,14 @@ structure ScsFormVar :> SCS_FORM_VAR =
     fun errTooMany(f_msg:string) : quot =
       `^(%"Error in field") ^f_msg. ^(%"More than one dataitem is provided").`
 
-    fun returnErrorPg (errs: errs) : Ns.status = ScsPage.returnPg (%"Form Error") 
+    fun buildErrMsg (errs: errs) : quot =
       (case ScsLogin.user_lang of
 	 ScsLang.English => `
 	   We had a problem processing your entry:
 
-	   <ul>` ^^
-	   Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^
-	   `</ul>
+	   <ul>` ^^ 
+	   Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
+	   </ul>
 
 	   Please back up using your browser, correct it, and resubmit your entry<p>
 	   
@@ -137,16 +141,22 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	       ("en fejl","fejlen") else ("nogle fejl","fejlene")
 	   in
 	     `Vi har fundet ^problem_string i dine indtastede data:
-	       <ul>` ^^
-	     Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^
-	     `</ul>
+	     <ul>` ^^ 
+	     Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
+	     </ul>
+
 	     Vær venlig at klikke på "tilbage"-knappen i din browser, og ret
 	     ^please_correct. Derefter kan du indsende dine oplysninger igen<p>
 	     På forhånd tak.`
 	   end)
 
+    fun returnErrorPg (errs: errs) : Ns.status = ScsPage.returnPg (%"Form Error") (buildErrMsg errs)
+
     fun anyErrors ([]:errs) = ()
       | anyErrors (errs) = (returnErrorPg errs; Ns.exit())
+
+    fun isErrors ([]:errs) = false
+      | isErrors (errs) = true
 
     fun wrapQQ (f : string formvar_fn) : string * string * errs -> (string * string) * errs =
       fn arg =>
@@ -457,6 +467,66 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	| ScsLang.Danish => `^s
 	     Du har ikke specificeret et korrekt <b>tabelnavn</b>.
 	     </blockquote>`)
+      fun msgRegExp s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     You must type a <b>regular expression</b> defined as follows.<p>
+	     <pre>
+ Grammar for regular expressions (RegExp):
+
+    re ::= re1 "|" re2         re1 or re2
+        |  re1 re2             re1 followed by re2
+        |  re "*"              re repeated zero or more times
+        |  re "+"              re repeated one or more times
+        |  re "?"              re zero or one time
+        |  "(" re ")"          re
+        |  c                   specific character
+        |  "\" c               escaped character; c is one of |,*,+,?,(,),[,],$,.,\,t,n,v,f,r
+        |  "[" class "]"       character class
+        |  "[^^" class "]"      negated character class
+        |  $                   empty string
+        |  .                   any character
+
+    class ::=  c               specific character
+           |   "\" c           escaped character; c is one of [,],-,\,t,n,v,f,r
+           |   c1 "-" c2       ascii character range
+           |                   empty class 
+           |   class class     composition
+            
+ Whitespace is significant.  Special characters can be escaped by \  
+</pre>
+	     </blockquote>`
+	| ScsLang.Danish => `^s
+	     <blockquote>
+	     Du skal indtaste et <b>regulært udtryk</b> defineret således.<p>
+	     <pre>
+ Grammatik for regulære udtryk (RegExp):
+
+    re ::= re1 "|" re2         re1 eller re2
+        |  re1 re2             re1 efterfulgt af re2
+        |  re "*"              re gentaget nul eller flere gange
+        |  re "+"              re gentaget en eller flere gange
+        |  re "?"              re nul eller en gang
+        |  "(" re ")"          re
+        |  c                   angivet tegn c
+        |  "\" c               escaped karakter; c er en af følgende: |,*,+,?,(,),[,],$,.,\,t,n,v,f,r
+        |  "[" class "]"       tengklasse
+        |  "[^^" class "]"      negeret tegnklasse
+        |  $                   tom tegnstreng
+        |  .                   ethvert tegn
+
+    class ::=  c               angivet tegn
+           |   "\" c           escaped tegn, c er en af følgende: [,],-,\,t,n,v,f,r
+           |   c1 "-" c2       ascii tegn interval
+           |                   tom klasse
+           |   class class     sammensætning
+            
+ Mellemrum har betydning. Tegn escapes ved \  
+</pre>
+	     </blockquote>`)
+      fun msgLang s = msgEnum (List.map (% o ScsLang.toString) ScsLang.all) s 
+
       fun convCpr cpr =
 	case String.explode (trim cpr) of
 	  d1 :: d2 :: m1 :: m2 :: y1 :: y2 :: (#"-") :: t1 :: t2 :: t3 :: t4 :: [] =>
@@ -549,6 +619,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		   SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
 		 | _ => ScsError.panic `ScsFormVar.convDate failed on ^v`))
 	   handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
+      fun chkRegExp v = (RegExp.fromString v; true) handle _ => false
+      fun chkLang v = (ScsLang.fromString v; true) handle _ => false
     in
       val getEmailErr = getErr' (%"email") msgEmail
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
@@ -568,6 +640,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getDateIso = getErr' (%"date") msgDateIso chkDateIso
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (%"date") msgDate chkDate
       val getTableName = getErr' (%"table name") msgTableName (regExpMatch "[a-zA-Z_]+")
+      val getLangErr = getErr ScsLang.English ScsLang.fromString (%"language") msgLang chkLang
+      val getRegExpErr = getErr (RegExp.fromString "$") RegExp.fromString (%"regular expression") msgRegExp chkRegExp
     end
 
     fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)

@@ -102,6 +102,13 @@ structure Html :> HTML =
     fun select name attr quot = `<SELECT NAME="^name" ^attr>` ^^ quot ^^ `</SELECT>`
     fun option value name = `<OPTION VALUE="^value">^name</OPTION>`
 
+    fun export_hiddens hvs =
+      (List.foldr (fn ((n,v),acc) => `
+		   <input type=hidden name="^n" value="^v">` ^^ acc) `` hvs)
+    fun export_url_vars [] = ``
+      | export_url_vars hvs = `?` ^^ (Quot.concatWith "&" (List.map (fn (n,v) => `^(n)=^(Ns.encodeUrl v)`) hvs))
+    fun genUrl u hvs = Quot.toString (`^u` ^^ (export_url_vars hvs))
+
     (* HTML frames and framesets *)
     fun frameset attr quot = `<FRAMESET ^attr` ^^ quot ^^ `</FRAMESET>`
     fun frame { src, name } = `<FRAME SRC="^src" NAME="^name">` 

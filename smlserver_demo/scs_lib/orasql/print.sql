@@ -1,9 +1,12 @@
 -- Log on printed documents using ScsPrint
 
---drop table scs_print_log;
---drop sequence scs_print_id_seq;
+drop table scs_print_log;
+drop sequence scs_print_id_seq;
 create sequence scs_print_id_seq;
+drop sequence scs_print_batch_id_seq;
+create sequence scs_print_batch_id_seq;
 create table scs_print_log (
+  batch_id integer not null,
   print_id integer primary key,
   user_id integer references auth_user(user_id),
   on_what_table varchar(100),
