@@ -100,9 +100,9 @@ input1Stream(FILE *is)
   ch = fgetc(is);
   if ( ch == EOF )
     {
-      return -1;
+      return convertIntToML(-1);
     }
-  return ch;
+  return convertIntToML(ch);
 }
 
 
@@ -157,10 +157,10 @@ lookaheadStream(FILE *is)
   is = (FILE *)untag_scalar(is);
   if ( (ch=getc(is)) == EOF )
     {
-      return -1;
+      return convertIntToML(-1);
     }
   ungetc(ch, is);
-  return ch;
+  return convertIntToML(ch);
 }
 
 void 
@@ -170,6 +170,7 @@ closeStream(FILE *stream)
   fclose(stream);
 }
 
+/*
 int 
 endOfStream(FILE *stream) 
 {
@@ -184,6 +185,7 @@ endOfStream(FILE *stream)
   ungetc(ch, stream);
   return mlFALSE;
 }
+*/
 
 int 
 outputStream(FILE *os, StringDesc *s, int exn) 

@@ -151,8 +151,8 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_ea (D(d,r)) = if d="0" then "(" ^ pr_reg r ^ ")"
 			 else d ^ "(" ^ pr_reg r ^ ")"
       | pr_ea (DD(d,r1,r2,m)) = 
-	let val m = if m = "1" then "" else "," ^ m
-	    val d = if d = "0" then "" else d
+	let val m = if m = "1" orelse m = "" then "" else "," ^ m
+	    val d = if d = "0" orelse d = "" then "" else d
 	in d ^ "(" ^ pr_reg r1 ^ "," ^ pr_reg r2 ^ m ^ ")"
 	end
 

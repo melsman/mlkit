@@ -285,10 +285,17 @@ void deallocateRegionNew(
       Lobjs* lobjs = TOP_REGION->lobjs;
       while ( lobjs ) 
 	{
-	  Lobjs* lobjsTmp = lobjs->next;
+	  Lobjs* lobjsTmp;
 #ifdef ENABLE_GC
-	  lobj_current -= size_lobj(lobjs->value);
+	  unsigned int tag;
+	  #ifdef PROFILING
+	  tag = *((&(lobjs->value)) + sizeObjectDesc);
+	  #else
+	  tag = lobjs->value;
+	  #endif	  
+	  lobj_current -= size_lobj(tag);
 #endif	  
+	  lobjsTmp = lobjs->next;
 	  free(lobjs);
 	  lobjs = lobjsTmp;
 	}
@@ -623,10 +630,17 @@ int resetRegion(int rAdr) {
       Lobjs* lobjs = rp->lobjs;
       while ( lobjs ) 
 	{
-	  Lobjs* lobjsTmp = lobjs->next;
+	  Lobjs* lobjsTmp;
 #ifdef ENABLE_GC
-	  lobj_current -= size_lobj(lobjs->value);
+	  unsigned int tag;
+	  #ifdef PROFILING
+	  tag = *((&(lobjs->value)) + sizeObjectDesc);
+	  #else
+	  tag = lobjs->value;
+	  #endif	  
+	  lobj_current -= size_lobj(tag);
 #endif	  
+	  lobjsTmp = lobjs->next;
 	  free(lobjs);
 	  lobjs = lobjsTmp;
 	}
