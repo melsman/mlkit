@@ -24,6 +24,8 @@ functor CodeGenX86(structure BackendInfo : BACKEND_INFO
                    sharing type SubstAndSimplify.place = LineStmt.place
                    sharing type SubstAndSimplify.reg = InstsX86.reg
                    sharing type SubstAndSimplify.label = Labels.label
+                   structure Effect : EFFECT
+		   sharing type Effect.place = SubstAndSimplify.place
 	           structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = LineStmt.StringTree
 		   structure Flags : FLAGS
@@ -37,6 +39,8 @@ struct
   structure BI = BackendInfo
   structure SS = SubstAndSimplify
   structure LS = LineStmt
+
+  val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
@@ -118,9 +122,10 @@ struct
     val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)
     val stack_bot_gc_lab = NameLab "stack_bot_gc" (* Declared in GC.c *)
     val gc_stub_lab = NameLab "__gc_stub"
-    val global_region_labs = [BI.toplevel_region_withtype_top_lab,
-			      BI.toplevel_region_withtype_string_lab,
-			      BI.toplevel_region_withtype_real_lab]
+    val global_region_labs = 
+      [(Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_top, BI.toplevel_region_withtype_top_lab),
+       (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_string, BI.toplevel_region_withtype_string_lab),
+       (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_real, BI.toplevel_region_withtype_real_lab)]
 
     (* Labels Local To This Compilation Unit *)
     fun new_local_lab name = LocalLab (Labels.new_named name)
@@ -227,7 +232,7 @@ struct
       | move_aty_into_reg(SS.INTEGER_ATY i,dst_reg,size_ff,C) = 
 	      load_immed'(i,dst_reg,C) (* Integers are tagged in ClosExp *)
       | move_aty_into_reg(SS.UNIT_ATY,dst_reg,size_ff,C) = 
-	      if !BI.tag_integers then load_immed(IMMED BI.ml_unit,dst_reg,C)
+	      if BI.tag_integers() then load_immed(IMMED BI.ml_unit,dst_reg,C)
 	      else C
       | move_aty_into_reg(SS.FLOW_VAR_ATY _,_,_,_) = die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
 
@@ -354,7 +359,7 @@ struct
 
     (* Push float on float stack *)
     fun push_float_aty(float_aty, t, size_ff) =       
-      let val disp = if !BI.tag_values then "8" 
+      let val disp = if BI.tag_values() then "8" 
 		     else "0"
       in fn C => case float_aty 
 		   of SS.PHREG_ATY x => I.fldl(D(disp, x)) :: C
@@ -364,7 +369,7 @@ struct
 
     (* Pop float from float stack *)
     fun pop_store_float_reg(base_reg,t:reg,C) =
-      if !BI.tag_values then 
+      if BI.tag_values() then 
 	load_immed(IMMED (Word32.toInt(BI.tag_real false)),t,
 	I.movl(R t,D("0",base_reg)) ::
 	I.fstpl (D("8",base_reg)) :: C)
@@ -380,7 +385,7 @@ struct
       let
 	val (convert: bool,name: string) =
 	  case explode name 
-	    of #"@" :: rest => (!BI.tag_integers, implode rest)
+	    of #"@" :: rest => (BI.tag_integers(), implode rest)
 	     | _ => (false, name)
 
 	fun convert_int_to_c(reg,C) =
@@ -475,14 +480,24 @@ struct
          copy(tmp_reg1, t, C))
       end
 
-    fun alloc_kill_tmp01(t:reg,n:int,size_ff,C) =
-      let val l = new_local_lab "return_from_alloc"
-      in copy(t,tmp_reg1,
-         I.pushl(LA l) ::
-	 load_immed(IMMED n, tmp_reg0, 
-	 I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-         I.lab l :: 
-	 copy(tmp_reg1,t,C)))
+    fun alloc_kill_tmp01(t:reg,n0:int,size_ff,pp:LS.pp,C) =
+      let val n = if region_profiling() then n0 + BI.objectDescSizeP 
+		  else n0
+	  val l = new_local_lab "return_from_alloc"
+	  fun post_prof C =
+	    if region_profiling() then   (* tmp_reg1 now points at the object descriptor; initialize it *)
+	      I.movl(I (int_to_string pp), D("0",tmp_reg1)) ::               (* first word is pp *)
+	      I.movl(I (int_to_string n0), D("4",tmp_reg1)) ::               (* second word is object size *)
+	      I.leal(D (int_to_string (4*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) :: C  (* make tmp_reg1 point at object *)
+	    else C
+      in 
+	copy(t,tmp_reg1,
+	I.pushl(LA l) ::
+	load_immed(IMMED n, tmp_reg0, 
+	I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
+        I.lab l ::
+        post_prof
+	(copy(tmp_reg1,t,C))))
       end
 
     fun set_atbot_bit(dst_reg:reg,C) =
@@ -508,6 +523,12 @@ struct
 	 | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
 	 | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory"
 
+    fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
+      if false (*region_profiling() *) then 
+	if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")	  
+	else I.movl(I(int_to_string pp), D("-8", obj_ptr)) :: C
+      else C
+
     fun alloc_ap_kill_tmp01(sma, dst_reg:reg, n, size_ff, C) =
       case sma 
 	of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => C
@@ -520,24 +541,25 @@ struct
 	 | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => C
 	 | LS.IGNORE => C
 	 | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                  alloc_kill_tmp01(dst_reg,n,size_ff,C))
-	 | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+                                   alloc_kill_tmp01(dst_reg,n,size_ff,pp,C))
+	 | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
+                                   store_pp_prof(dst_reg,pp,C))
+	 | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,    (* atbot bit not set; its a finite region *)
+				   store_pp_prof(dst_reg,pp,C))
 	 | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                  alloc_kill_tmp01(dst_reg,n,size_ff,C))
+                                   alloc_kill_tmp01(dst_reg,n,size_ff,pp,C))
 	 | LS.ATTOP_FF(aty,pp) => 
 	  let val default_lab = new_local_lab "no_alloc"
 	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
 	     I.btl(I "0", R dst_reg) :: (* inf bit set? *)
 	     I.jnc default_lab ::
-	     alloc_kill_tmp01(dst_reg,n,size_ff, 
+	     alloc_kill_tmp01(dst_reg,n,size_ff,pp,
 	     I.lab default_lab :: C))
 	  end
 	 | LS.ATBOT_LI(aty,pp) => 
 	  move_aty_into_reg_ap(aty,dst_reg,size_ff,
 	  reset_region(dst_reg,tmp_reg0,size_ff,     (* dst_reg is preserved for alloc *)
-	  alloc_kill_tmp01(dst_reg,n,size_ff,C)))
-	 | LS.ATBOT_LF(aty,pp) => 
-	  move_aty_into_reg_ap(aty,dst_reg,size_ff,C)  (* atbot bit not set; its a finite region *)
+	  alloc_kill_tmp01(dst_reg,n,size_ff,pp,C)))
 	 | LS.SAT_FI(aty,pp) => 
 	  let val default_lab = new_local_lab "no_reset"
 	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
@@ -545,7 +567,7 @@ struct
              I.jnc default_lab ::
 	     reset_region(dst_reg,tmp_reg0,size_ff,
              I.lab default_lab ::         (* dst_reg is preverved over the call *)
-	     alloc_kill_tmp01(dst_reg,n,size_ff,C)))
+	     alloc_kill_tmp01(dst_reg,n,size_ff,pp,C)))
 	  end
 	 | LS.SAT_FF(aty,pp) => 
 	  let val finite_lab = new_local_lab "no_alloc"
@@ -557,7 +579,7 @@ struct
              I.jnc attop_lab ::
 	     reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
              I.lab attop_lab ::  
-	     alloc_kill_tmp01(dst_reg,n,size_ff,
+	     alloc_kill_tmp01(dst_reg,n,size_ff,pp,
 	     I.lab finite_lab :: C)))
 	  end
 
@@ -770,11 +792,11 @@ struct
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
       fun maybe_tag_integers(inst,C) = 
-	if !BI.tag_integers then inst :: jump_overflow C
+	if BI.tag_integers() then inst :: jump_overflow C
 	else C
 
       fun maybe_tag_words(inst,C) = 
-	if !BI.tag_integers then inst :: C
+	if BI.tag_integers() then inst :: C
 	else C
 		
       fun subi_kill_tmp01(x,y,d,size_ff,C) =
@@ -811,7 +833,7 @@ struct
 	in x_C(y_C(
            copy(y_reg, tmp_reg1,
            copy(x_reg, d_reg,
-	   if !BI.tag_integers then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
+	   if BI.tag_integers() then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
 		I.sarl(I "1", R d_reg) ::
 		I.subl(I "1", R tmp_reg1) ::
 		I.imull(R tmp_reg1, R d_reg) ::
@@ -913,7 +935,7 @@ struct
 	  copy(y_reg, tmp_reg1,
           copy(x_reg, d_reg,
           I.addl(R tmp_reg1, R d_reg) ::
-	  (if !BI.tag_integers then
+	  (if BI.tag_integers() then
              I.decl (R d_reg) :: I.andl(I "0X1FF", R d_reg) :: C'
 	   else
 	     I.andl(I "0XFF", R d_reg) :: C')))))
@@ -927,7 +949,7 @@ struct
 	  copy(y_reg, tmp_reg1,
           copy(x_reg, d_reg,
           I.subl(R tmp_reg1, R d_reg) ::
-	  (if !BI.tag_integers then
+	  (if BI.tag_integers() then
 	     I.incl (R d_reg) :: I.andl(I "0X1FF", R d_reg) :: C'
 	   else
 	     I.andl(I "0XFF", R d_reg) :: C')))))
@@ -941,7 +963,7 @@ struct
          x_C(y_C(
 	 copy(y_reg, tmp_reg1,
          copy(x_reg, d_reg,
-	 if !BI.tag_integers then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
+	 if BI.tag_integers() then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
            I.sarl(I "1", R d_reg) ::
 	   I.subl(I "1", R tmp_reg1) ::
 	   I.imull(R tmp_reg1, R d_reg) ::
@@ -1053,7 +1075,7 @@ struct
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
        in 
-	 if !BI.tag_integers then   (* 1 + ((x - 1) << (y >> 1)) *)
+	 if BI.tag_integers() then   (* 1 + ((x - 1) << (y >> 1)) *)
 	   x_C(y_C(
 	   copy(y_reg, ecx,
            copy(x_reg, d_reg,
@@ -1073,7 +1095,7 @@ struct
 	 val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
        in 
-	 if !BI.tag_integers then
+	 if BI.tag_integers() then
 	   (load_indexed(d_reg,x_reg,WORDS 1,
 	    I.sall (I "1", R d_reg) :: (* d_reg = 2*d_reg+1 *)
    	    I.incl (R d_reg) :: C'))
@@ -1086,7 +1108,7 @@ struct
 	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
        in
 	 move_aty_into_reg(r,d_reg,size_ff,
-	 if !BI.tag_integers then
+	 if BI.tag_integers() then
 	   load_immed(IMMED(Word32.toInt (BI.tag_word_boxed false)),tmp_reg0,
 	   store_indexed(d_reg,WORDS 0,tmp_reg0,
 	   move_aty_into_reg(x,tmp_reg1,size_ff,
@@ -1102,7 +1124,7 @@ struct
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
        in 
-	 if !BI.tag_integers then (* 1 | ((x) >> (y >> 1)) *)
+	 if BI.tag_integers() then (* 1 | ((x) >> (y >> 1)) *)
 	   x_C(y_C(         
  	   copy(y_reg, ecx,
 	   copy(x_reg, d_reg,
@@ -1121,7 +1143,7 @@ struct
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
        in 
-	 if !BI.tag_integers then (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
+	 if BI.tag_integers() then (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
 	   x_C(y_C(         
  	   copy(y_reg, ecx,
 	   copy(x_reg, d_reg,
@@ -1167,7 +1189,7 @@ struct
 	in x_C(y_C(
            copy(y_reg, tmp_reg1,
            copy(x_reg, d_reg,
-	   if !BI.tag_integers then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
+	   if BI.tag_integers() then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
 		I.sarl(I "1", R d_reg) ::
 		I.subl(I "1", R tmp_reg1) ::
 		I.imull(R tmp_reg1, R d_reg) ::
@@ -1221,7 +1243,7 @@ struct
 		    | LS.REAL str => 
 		     let val float_lab = new_float_lab()
 		         val _ = 
-			   if !BI.tag_values then 
+			   if BI.tag_values() then 
 			     add_static_data [I.dot_data,
 					      I.dot_align 8,
 					      I.lab float_lab,
@@ -1241,7 +1263,7 @@ struct
 		         val n_skip = length rhos + 1 (* We don't traverse region pointers,
 						       * i.e. we skip rhos+1 fields *)
 		     in
-		       if !BI.tag_values then
+		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,size_ff,
        		         load_immed(IMMED(Word32.toInt(BI.tag_clos(false,num_elems+1,n_skip))),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
@@ -1264,7 +1286,7 @@ struct
 		     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 		         val num_elems = List.length elems
 		     in 
-		       if !BI.tag_values then
+		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
        		         load_immed(IMMED(Word32.toInt(BI.tag_regvec(false,num_elems))),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
@@ -1284,7 +1306,7 @@ struct
 		         val num_elems = List.length (LS.smash_free elems)
 			 val n_skip = length rhos (* We don't traverse region pointers *)
 		     in
-		       if !BI.tag_values then
+		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
        		         load_immed(IMMED(Word32.toInt(BI.tag_sclos(false,num_elems,n_skip))),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
@@ -1305,7 +1327,7 @@ struct
 		     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 		         val num_elems = List.length elems
 		     in
-		       if !BI.tag_values then
+		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
        		         load_immed(IMMED(Word32.toInt tag),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
@@ -1321,7 +1343,7 @@ struct
 			    (num_elems-1,C') elems))
 		     end
 		    | LS.SELECT(i,aty) => 
-		     if !BI.tag_values then
+		     if BI.tag_values() then
 		       move_index_aty_to_aty(aty,pat,WORDS(i+1),tmp_reg1,size_ff,C)
 		     else
 		       move_index_aty_to_aty(aty,pat,WORDS i,tmp_reg1,size_ff,C)
@@ -1330,7 +1352,7 @@ struct
 			  LS.ENUM i => 
 			    let 
 			      val tag = 
-				if !BI.tag_values orelse (*hack to treat booleans tagged*)
+				if BI.tag_values() orelse (*hack to treat booleans tagged*)
 				  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
 				  2*i+1 
 				else i
@@ -1404,14 +1426,14 @@ struct
 			  | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,tmp_reg1,size_ff,C)
 			  | _ => die "CG_ls: DECON used with con_kind ENUM")
 		    | LS.DEREF aty =>
-		     let val offset = if !BI.tag_values then 1 else 0
+		     let val offset = if BI.tag_values() then 1 else 0
 		     in move_index_aty_to_aty(aty,pat,WORDS offset,tmp_reg1,size_ff,C)
 		     end
 		    | LS.REF(alloc,aty) =>
-		     let val offset = if !BI.tag_values then 1 else 0
+		     let val offset = if BI.tag_values() then 1 else 0
 		         val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 			 fun maybe_tag_value C =
-			   if !BI.tag_values then
+			   if BI.tag_values() then
 			     I.movl(I (int_to_string(Word32.toInt(BI.tag_ref(false)))), 
 				    D("0", reg_for_result)) :: C
 			   else C
@@ -1428,10 +1450,10 @@ struct
 		    | LS.ASSIGNREF(alloc,aty1,aty2) =>
 		     let 
 		       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		       val offset = if !BI.tag_values then 1 else 0
+		       val offset = if BI.tag_values() then 1 else 0
 		     in
 		       store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
-                       if !BI.tag_integers then
+                       if BI.tag_integers() then
 			 load_immed(IMMED BI.ml_unit,reg_for_result,C')
                        else C')
 		     end
@@ -1456,7 +1478,7 @@ struct
 		let
 		  val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,
 								    reg_args=[],reg_vec=NONE,res=res}
-		  val offset_codeptr = if !BI.tag_values then "4" else "0"
+		  val offset_codeptr = if BI.tag_values() then "4" else "0"
 		in
 		  if List.length spilled_args > 0 then
 		    CG_ls(LS.FNCALL cc,C)
@@ -1475,7 +1497,7 @@ struct
 	       | LS.FNCALL{opr,args,clos,res,bv} =>
 		  comment_fn (fn () => "FNCALL: " ^ pr_ls ls,
 		  let 
-		    val offset_codeptr = if !BI.tag_values then "4" else "0"
+		    val offset_codeptr = if BI.tag_values() then "4" else "0"
 		    val (spilled_args,spilled_res,return_lab_offset) = 
 		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=[],reg_vec=NONE,res=res}
 		    val size_rcf = length spilled_res
@@ -1501,10 +1523,9 @@ struct
 			  I.movl(D(offset_codeptr,tmp_reg1), R tmp_reg1) :: (* convention, i.e., size_ff+size_cc *)
 			  I.jmp(R tmp_reg1) :: C)
 		  in 
-		    load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* Fetch return label address *)
 		    base_plus_offset(esp,WORDS(~size_rcf),esp,                         (* Move esp after rcf *)
-		    I.pushl(R tmp_reg1) ::                                             (* Push Return Label *)
-		    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C)))))
+		    I.pushl(LA return_lab) ::                                          (* Push Return Label *)
+		    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
 		  end)
 	       | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) => 
 		  comment_fn (fn () => "JMP: " ^ pr_ls ls,
@@ -1580,27 +1601,64 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		      foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res) 
 	 	    fun jmp C = I.jmp(L(MLFunLab opr)) :: C
 		  in 
-		    load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* Fetch return label address *)
 		    base_plus_offset(esp,WORDS(~size_rcf),esp,                          (* Move esp after rcf *)
-		    I.pushl(R tmp_reg1) ::                                             (* Push Return Label *)
-		    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C)))))
+		    I.pushl(LA return_lab) ::                                           (* Push Return Label *)
+		    flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
 		  end)
 	       | LS.LETREGION{rhos,body} =>
 		  comment ("LETREGION",
 		  let 
-		    fun alloc_region_prim((_,offset),C) =  
-		      base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
-		      compile_c_call_prim("allocateRegion",[SS.PHREG_ATY tmp_reg1],NONE,size_ff,tmp_reg0(*not used*),C))
-		    fun dealloc_region_prim C = 
-		      compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
-		    fun remove_finite_rhos([]) = [] 
-		      | remove_finite_rhos(((place,LineStmt.WORDS i),offset)::rest) = remove_finite_rhos rest
-		      | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
-		    val rhos_to_allocate = remove_finite_rhos rhos
+		    fun key place = Int.toString (Effect.key_of_eps_or_rho place)
+		    fun alloc_region_prim(((place,phsize),offset),C) =
+  	  	      if region_profiling() then
+		        case phsize
+			  of LineStmt.WORDS 0 => C (* zero-sized finite region *)
+			   | LineStmt.WORDS i =>   (* finite region *)
+			    let (* The offset points at the object - not the region descriptor, 
+				 * nor the object descriptor; allocRegionFiniteProfiling expects
+				 * a pointer to the region descriptor. See CalcOffset.sml for a 
+				 * picture. The size i of the region does not include the sizes 
+				 * of the object descriptor and the region descriptor. *)
+			      val reg_offset = offset + BI.objectDescSizeP + BI.finiteRegionDescSizeP
+			    in
+			      base_plus_offset(esp,WORDS(size_ff-reg_offset-1),tmp_reg1,
+			       compile_c_call_prim("allocRegionFiniteProfiling",
+						   [SS.PHREG_ATY tmp_reg1,
+						    SS.INTEGER_ATY (key place),
+						    SS.INTEGER_ATY (Int.toString i)], NONE,
+						   size_ff,tmp_reg0(*not used*),C))
+			    end
+			   | LineStmt.INF => 
+			    base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
+		              compile_c_call_prim("allocRegionInfiniteProfiling",
+						  [SS.PHREG_ATY tmp_reg1, 
+						   SS.INTEGER_ATY (key place)], NONE,
+						  size_ff,tmp_reg0(*not used*),C))
+		      else
+		        case phsize
+			  of LineStmt.WORDS i => C  (* finite region; no code generated *)
+			   | LineStmt.INF => 
+			    base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
+		              compile_c_call_prim("allocateRegion",[SS.PHREG_ATY tmp_reg1],NONE,
+						size_ff,tmp_reg0(*not used*),C))
+		    fun dealloc_region_prim (((place,phsize),offset),C) = 
+		      if region_profiling() then
+		        case phsize
+			  of LineStmt.WORDS 0 => C
+			   | LineStmt.WORDS i =>
+			    compile_c_call_prim("deallocRegionFiniteProfiling",[],NONE,
+						size_ff,tmp_reg0(*not used*),C)
+			   | LineStmt.INF => 
+			    compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
+		      else
+			case phsize
+			  of LineStmt.WORDS i => C
+			   | LineStmt.INF => 
+			    compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
 		  in
 		    foldr alloc_region_prim 
 		    (CG_lss(body,size_ff,size_ccf,
-			    foldl (fn (_,C) => dealloc_region_prim C) C rhos_to_allocate)) rhos_to_allocate
+			    foldl dealloc_region_prim C rhos)) rhos
 		  end )
 	       | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_ccf,C)
 	       | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty,bv),offset} =>
@@ -1816,6 +1874,22 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		      | _ => die ("PRIM(" ^ name ^ ") not implemented")))
 
 	       | LS.CCALL{name,args,rhos_for_result,res} => 
+		  let 
+		    val pp = 34343 (*dummy program point!! mael 2001-03-14 *)
+		    fun comp_c_call(all_args,res,C) = 
+		      let 
+(*
+			val all_args = 
+			  if region_profiling() andalso not(List.null rhos_for_result) then 
+			    SS.INTEGER_ATY(int_to_string pp) :: all_args 
+			  else all_args
+
+			val _ = print ("Call to " ^ name ^ " with " ^ Int.toString (List.length all_args) ^ 
+				       " arguments\n")
+*)
+		      in compile_c_call_prim(name, all_args, res, size_ff, tmp_reg1, C)
+		      end
+		  in
 		     comment_fn (fn () => "CCALL: " ^ pr_ls ls,
 		     (case (name, rhos_for_result@args, res)
 			of ("__mul_int", [x,y], [d]) => muli_kill_tmp01(x,y,d,size_ff,C) 
@@ -1832,14 +1906,41 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 			 | ("plus_w32boxed__",[r,x,y],[d]) => addw32boxed(r,x,y,d,size_ff,C)
 			 | ("minus_w32boxed__",[r,x,y],[d]) => subw32boxed(r,x,y,d,size_ff,C)
 			 | ("mul_w32boxed__",[r,x,y],[d]) => mulw32boxed(r,x,y,d,size_ff,C)
-
-			 | (_,all_args,[]) => compile_c_call_prim(name, all_args, NONE, size_ff, tmp_reg1, C)
-			 | (_,all_args, [res_aty]) => compile_c_call_prim(name, all_args, SOME res_aty, size_ff, tmp_reg1, C)
-			 | _ => die "CCall with more than one result variable")))
+			 | (_,all_args,[]) => comp_c_call(all_args, NONE, C)
+			 | (_,all_args, [res_aty]) => comp_c_call(all_args, SOME res_aty, C)
+			 | _ => die "CCall with more than one result variable"))
+		  end)
        in
 	 foldr (fn (ls,C) => CG_ls(ls,C)) C lss
        end
 
+     fun do_prof C =
+       if region_profiling() then
+	 let val labStack = new_local_lab "profStack"
+	   val labCont = new_local_lab "profCont"
+	   val labCont2 = new_local_lab "profCont2-"
+	   val maxStackLab = NameLab "maxStack"
+	   val timeToProfLab = NameLab "timeToProfile"
+	 in I.movl(L maxStackLab, R tmp_reg0) ::     (* The stack grows downwards!! *)
+	   I.cmpl(R esp, R tmp_reg0) ::
+	   I.jl labCont ::                                                    (* if ( *maxStack > esp ) {     *)
+	   I.movl(R esp, L maxStackLab) ::                                    (*    *maxStack = esp ;         *)
+	   I.movl(L (NameLab "regionDescUseProfInf"), R tmp_reg0) ::          (*    maxProfStack =            *)
+	   I.addl(L (NameLab "regionDescUseProfFin"), R tmp_reg0) ::          (*       regionDescUseProfInf   *)
+	   I.addl(L (NameLab "allocProfNowFin"), R tmp_reg0) ::               (*     + regionDescUseProfFin   *)
+	   I.movl(R tmp_reg0, L (NameLab "maxProfStack")) ::                  (*     + allocProfNowFin ;      *)
+	   I.lab labCont ::                                                   (* }                            *)
+	   I.movl(L timeToProfLab, R tmp_reg0) ::                             (* if ( timeToProfile )         *)
+	   I.cmpl(I "0", R tmp_reg0) ::                                       (*    call __proftick(esp);     *) 
+	   I.je labCont2 ::
+	   I.movl (R esp, R tmp_reg1) ::              (* proftick assumes argument in tmp_reg1 *)
+	   I.pushl (LA labCont2) ::                    (* push return address *)
+	   I.jmp (L(NameLab "__proftick")) ::
+	   I.lab labCont2 ::
+	   C
+	 end
+       else C
+	   
     fun CG_top_decl' gen_fn (lab,cc,lss) = 
       let
 	val w0 = Word32.fromInt 0
@@ -1865,8 +1966,9 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
       in
 	gen_fn(lab,
 	       do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args,
-		     base_plus_offset(esp,WORDS(~size_ff),esp,
-				      CG_lss(lss,size_ff,size_ccf,C))))
+		base_plus_offset(esp,WORDS(~size_ff),esp,
+                 do_prof(
+		  CG_lss(lss,size_ff,size_ccf,C)))))
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1881,7 +1983,6 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
       get_static_data (comment ("END OF STATIC DATA AREA",nil)))
 
     fun init_x86_code() = [I.dot_text]
-
   in
     fun CG {main_lab:label,
 	    code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
@@ -1918,7 +2019,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data labels in the root set. ")
 val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 *)
-	fun slot_for_datlab(l,C) =
+	fun slot_for_datlab((_,l),C) =
 	  I.dot_globl (DatLab l) ::
 	  I.dot_data ::
 	  I.dot_align 4 ::
@@ -1932,7 +2033,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
  	  let
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	    val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
-	    val offset = if !BI.tag_values then 1 else 0
+	    val offset = if BI.tag_values() then 1 else 0
 	  in
 	      I.lab (NameLab "TopLevelHandlerLab") ::
 	      load_indexed(arg_reg,arg_reg,WORDS offset, 
@@ -1952,7 +2053,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  let
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	    val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
-	    val offset_codeptr = if !BI.tag_values then "4" else "0"
+	    val offset_codeptr = if BI.tag_values() then "4" else "0"
 	  in
 	    I.dot_globl(NameLab "raise_exn") ::
 	    I.lab (NameLab "raise_exn") ::
@@ -1960,7 +2061,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    comment ("DEALLOCATE REGIONS UNTIL",
 	    I.movl(L exn_ptr_lab, R tmp_reg1) ::
 	    compile_c_call_prim("deallocateRegionsUntil_X86",[SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
-
 
 	    comment ("RESTORE EXN PTR",
 	    I.movl(L exn_ptr_lab, R tmp_reg1) ::
@@ -1986,7 +2086,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  let
 	    val string_lab = gen_string_lab exn_string
 	    val _ = 
-	      if !BI.tag_values then       (* Exception Name and Exception must be tagged. *)
+	      if BI.tag_values() then       (* Exception Name and Exception must be tagged. *)
 		add_static_data [I.dot_data,
 				 I.dot_align 4,
 				 I.dot_globl exn_lab,
@@ -2015,7 +2115,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 				 I.lab exn_flush_lab, (* The Primitive Exception is Flushed at this Address *)
 				 I.dot_long "0"]
 	  in
-	    if !BI.tag_values then
+	    if BI.tag_values() then
 	      comment ("SETUP PRIM EXN: " ^ exn_string,
 	      load_label_addr(exn_lab,SS.PHREG_ATY tmp_reg0,tmp_reg0,0,
 	      I.movl(R tmp_reg0, R tmp_reg1) ::
@@ -2059,30 +2159,38 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 			    I.dot_long "0" :: nil)
 	val _  = add_static_data static_data
 
-	fun ccall_stub(stubname, cfunction, args, C) =  (* result in tmp_reg1 *)
+	(* args can only be tmp_reg0 and tmp_reg1; no arguments 
+	 * on the stack; only the return address! *)
+	fun ccall_stub(stubname, cfunction, args, res, C) =  (* result in tmp_reg1 if ret=true *)
 	  let 
 	    fun push_callersave_regs C = 
 	      foldl (fn (r, C) => I.pushl(R r) :: C) C caller_save_regs_ccall
 	    fun pop_callersave_regs C = 
 	      foldr (fn (r, C) => I.popl(R r) :: C) C caller_save_regs_ccall
-	    val size_ff = 0 (*dummy*)
+	    val size_ff = 0 (* dummy *)
 	    val stublab = NameLab stubname
+	    val res = if res then SOME (SS.PHREG_ATY tmp_reg1) else NONE
 	  in 
 	    I.dot_text ::
 	    I.dot_globl stublab ::
 	    I.lab stublab ::
 	    push_callersave_regs
-	    (compile_c_call_prim(cfunction,map SS.PHREG_ATY args,
-				 SOME (SS.PHREG_ATY tmp_reg1), size_ff, eax,
+	    (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, eax,
 	      pop_callersave_regs 
               (I.popl(R tmp_reg0) ::
 	       I.jmp(R tmp_reg0) :: C)))
 	  end       	     
 
 	fun allocate C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
-	  ccall_stub("__allocate", "alloc", [tmp_reg1,tmp_reg0], C)
+	  ccall_stub("__allocate", "alloc", [tmp_reg1, tmp_reg0], true, C)
 
-	fun resetregion C = ccall_stub("__reset_region", "resetRegion", [tmp_reg1], C)
+	fun resetregion C = 
+	  ccall_stub("__reset_region", "resetRegion", [tmp_reg1], true, C)
+
+	fun proftick C =
+	  if region_profiling() then
+	    ccall_stub("__proftick", "profileTick", [tmp_reg1], false, C)
+	  else C
 
 	fun overflow_stub C =
 	  let val stublab = NameLab "__raise_overflow"
@@ -2120,30 +2228,40 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 		 let val next_lab = new_local_lab "next_progunit_lab"
 		 in
 		   comment ("PUSH NEXT LOCAL LABEL",
-		   load_label_addr(next_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0,
-		   I.pushl(R tmp_reg1) ::
+		   I.pushl(LA next_lab) ::
 		   comment ("JUMP TO NEXT PROGRAM UNIT",
 		   I.jmp(L l) :: 
 		   I.dot_long "0XFFFFFFFF" :: (* Marks, no more frames on stack. Used to calculate rootset. *)
 		   I.dot_long "0XFFFFFFFF" :: (* An arbitrary offsetToReturn *)
 		   I.dot_long "0XFFFFFFFF" :: (* An arbitrary function number. *)
-                   I.lab next_lab :: C)))
+                   I.lab next_lab :: C))
 		 end) C progunit_labs
 
 	fun allocate_global_regions(region_labs,C) = 
-	  foldl (fn (lab,C) => 
-		 I.subl(I(int_to_string(4*BI.size_of_reg_desc())), R esp) ::
-		 I.movl(R esp, R tmp_reg1) ::
-		(* I.addl(I "4", R tmp_reg1) :: *)
-		 I.pushl(R tmp_reg1) ::
-		 I.call(NameLab "allocateRegion") ::
-		 I.addl(I "4", R esp) ::                (* one argument to pop *)
-		 I.movl(R eax, L (DatLab lab)) :: C) C region_labs
+	  let 
+	    fun maybe_push_region_id (region_id,C) = 
+	      if region_profiling() then I.pushl(I (int_to_string region_id)) :: C
+	      else C
+	    val c_name = if region_profiling() then "allocRegionInfiniteProfiling"
+			 else "allocateRegion"
+	    fun pop_args C =
+	      if region_profiling() then I.addl(I "8", R esp) :: C (* two arguments to pop *)
+	      else I.addl(I "4", R esp) :: C                       (* one argument to pop *)
+	  in
+	    foldl (fn ((region_id,lab),C) =>
+		   I.subl(I(int_to_string(4*BI.size_of_reg_desc())), R esp) ::
+		   I.movl(R esp, R tmp_reg1) ::
+                   maybe_push_region_id (region_id,
+		   I.pushl(R tmp_reg1) ::
+		   I.call(NameLab c_name) ::
+		   pop_args 
+		   (I.movl(R eax, L (DatLab lab)) :: C))) C region_labs
+	  end
 
 	fun push_top_level_handler C =
 	  let 
 	    fun gen_clos C = 
-	      if !BI.tag_values then 
+	      if BI.tag_values() then 
 		copy(esp, tmp_reg1,
 		I.addl(I "-4", R tmp_reg1) ::
 		I.movl(R tmp_reg1, D("4", esp)) :: C)
@@ -2165,8 +2283,16 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    I.movl(R esp, L stack_bot_gc_lab) :: C
 	  else C
 
+	fun init_prof C = 
+	  if region_profiling() then  (* stack_bot_gc[0] = esp *)
+	    I.movl(R esp, L (NameLab "stackBot")) :: 
+	    I.movl(R esp, L (NameLab "maxStack")) :: 
+	    I.movl(R esp, L (NameLab "maxStackP")) :: 
+	    C
+	  else C
+
 	fun main_insts C =
-	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
+	  let val res = if BI.tag_values() then 1 (* 2 * 0 + 1 *)
 			else 0
 	  in
 	    I.dot_text ::
@@ -2187,30 +2313,27 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    (* Push top-level handler on stack *)
 	    push_top_level_handler(
 
-(*
-	  (* Double Align SP *)	
-          I.comment "DOUBLE ALIGN SP" ::
-	  LDI{i="4",t=tmp_reg1} :: 
-          AND{cond=EQUAL,r1=tmp_reg1,r2=sp,t=tmp_reg1} ::
-          LDO{d="4",b=sp,t=sp} ::
-*)
 	    (* Initialize stack_bot_gc. *)
 	    init_stack_bot_gc(
 
+            (* Initialize profiling *)
+            init_prof(
+            
 	    (* Code that jump to progunits. *)
 	    comment ("JUMP CODE TO PROGRAM UNITS",
 	    generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
 	    compile_c_call_prim("terminateML", [SS.INTEGER_ATY (int_to_string res)], 
-				NONE,0,eax, (* instead of res we might use the result from the last function call, 2001-01-08, Niels *)
+				NONE,0,eax, (* instead of res we might use the result from 
+					     * the last function call, 2001-01-08, Niels *)
 	    (*I.leave :: *)
-	    I.ret :: C)))))))))
+	    I.ret :: C))))))))))
 	  end
 
 	val init_link_code = (main_insts o raise_insts o 
 			      toplevel_handler o allocate o resetregion o 
-			      overflow_stub o gc_stub) nil
+			      overflow_stub o gc_stub o proftick) nil
       in
 	{top_decls = [],
 	 init_code = init_link_code,

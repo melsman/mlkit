@@ -1,0 +1,14 @@
+
+
+********** sharing.sml *************
+
+
+sharing.sml, line 6, column 13:
+    functor F (structure S1 : S
+               ^^^^^^^^^^^^^^^^
+               structure S2 : S
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               sharing S1 = S2) = struct 
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+t (=int) is defined before the preceding specification,
+so you cannot share it here.

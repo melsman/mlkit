@@ -88,6 +88,8 @@ struct
        desc="Print program with instructions for activation\n\
 	\record fetching and flushing."}
 
+    val region_profiling = Flags.is_on0 "region_profiling"
+
     fun lvset_difference(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.delete(set,lv)) lv_set lv_list
     fun lvset_add(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.add(set,lv)) lv_set lv_list
     fun lvset_delete(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.delete(set,lv)) lv_set lv_list
@@ -132,124 +134,116 @@ struct
     (***************************************)
     (* Calculate Set of Variables to Flush *)
     (***************************************)
-    fun F_sw(F_lss,LS.SWITCH(atom,sels,default),L_set,F_set,C_set,R_set) =
+    fun F_sw(F_lss,LS.SWITCH(atom,sels,default),L_set,F_set,C_set) =
       let
-	val (L_set_sels,F_set_sels,C_set_sels,R_set_sels) = 
-	  foldr 
-	  (fn ((sel,lss),(L_set_acc,F_set,C_set,R_set)) => 
-	   let 
-	     val (L_set',F_set',C_set',R_set') = F_lss(lss,L_set,F_set,C_set,R_set)
-	   in 
-	     (Lvarset.union(L_set_acc,L_set'),F_set',C_set',R_set') 
-	   end) (Lvarset.empty,F_set,C_set,R_set) sels
-	val (L_set_def,F_set_def,C_set_def,R_set_def) = F_lss(default,L_set,F_set_sels,C_set_sels,R_set_sels)
+	val (L_set_sels, F_set_sels, C_set_sels) = 
+	  foldr (fn ((sel,lss), (L_set_acc, F_set, C_set)) => 
+		 let val (L_set', F_set', C_set') = F_lss(lss, L_set, F_set, C_set)
+		 in (Lvarset.union(L_set_acc, L_set'), F_set', C_set') 
+		 end) (Lvarset.empty, F_set, C_set) sels
+	val (L_set_def, F_set_def, C_set_def) = F_lss(default, L_set, F_set_sels, C_set_sels)
       in
 	(lvset_add(Lvarset.union(L_set_def,L_set_sels),LS.get_lvar_atom(atom,[])),
 	 F_set_def,
-	 C_set_def,
-	 R_set_def)
+	 C_set_def)
       end
 
-    fun do_non_tail_call (ls,L_set,F_set,C_set,R_set) =
+    fun do_non_tail_call (ls,L_set,F_set,C_set) =
       let
 	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_to_flush = lvset_difference(L_set,def)
       in
 	(lvset_add(lvars_to_flush,use),
 	 Lvarset.union(F_set,lvars_to_flush),
-	 C_set,
-	 lvset_add(R_set,LS.get_phreg_ls ls))
+	 C_set)
       end
 
-    fun do_non_tail_ccall (ls,L_set,F_set,C_set,R_set) =
-      let
+    fun do_non_tail_ccall (ls,L_set,F_set,C_set) =
+      let 
 	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_to_flush = lvset_difference(L_set,def)
       in
 	(lvset_add(lvars_to_flush,use),
 	 F_set,
-	 Lvarset.union(C_set,lvars_to_flush),
-	 lvset_add(R_set,LS.get_phreg_ls ls))
+	 Lvarset.union(C_set,lvars_to_flush))
       end
 
-    fun do_tail_call (ls,L_set,F_set,C_set,R_set) =
-      let
-	val (def,use) = LS.def_use_lvar_ls ls
-	val lvars_to_flush = lvset_difference(L_set,def)
-      in
-	(Lvarset.lvarsetof use,
-	 F_set,
-	 C_set,
-	 lvset_add(R_set,LS.get_phreg_ls ls))
+    fun do_tail_call (ls,L_set,F_set,C_set) =
+      let val (def,use) = LS.def_use_lvar_ls ls
+      in (Lvarset.lvarsetof use, F_set, C_set)
       end
 
-    fun F_ls(ls,L_set,F_set,C_set,R_set) = 
+    fun F_ls(ls,L_set,F_set,C_set) = 
       (case ls of
-	 LS.FNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set,R_set)
-       | LS.FNJMP cc => do_tail_call(ls,L_set,F_set,C_set,R_set) 
-       | LS.FUNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set,R_set)
-       | LS.JMP cc => do_tail_call(ls,L_set,F_set,C_set,R_set) 
-       | LS.LETREGION{rhos,body} => (* A letregion calls a C function at entry (allocateRegion) and at end (deallocateRegion). *)
-	   if List.null (remove_finite_rhos rhos) then
-	     F_lss(body,L_set,F_set,C_set,R_set)
+	 LS.FNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set)
+       | LS.FNJMP cc => do_tail_call(ls,L_set,F_set,C_set) 
+       | LS.FUNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set)
+       | LS.JMP cc => do_tail_call(ls,L_set,F_set,C_set) 
+       | LS.LETREGION{rhos,body} => 
+	   if List.null rhos orelse ( not(region_profiling()) 
+				      andalso List.null (remove_finite_rhos rhos) ) then
+	     F_lss(body,L_set,F_set,C_set)
 	   else
 	     let
-	       val (L_set',F_set',C_set',R_set') = F_lss(body,L_set,F_set,Lvarset.union(C_set,L_set),R_set)
+	       (* A letregion calls a C function at entry (allocateRegion) 
+		* and at end (deallocateRegion), therefore the two unions below. *)
+	       val (L_set',F_set',C_set') = F_lss(body,L_set,F_set,Lvarset.union(C_set,L_set))
 	     in (* No variables are defined in a letregion construct. *)
-	       (L_set',F_set',Lvarset.union(C_set',L_set'),R_set')
+	       (L_set',F_set',Lvarset.union(C_set',L_set'))
 	     end
        | LS.SCOPE{pat,scope} => (* do also remove from C_set using RI.is_callee_save_c_call. 17/02/1999, Niels *)
 	   let
-	     val (L_set',F_set',C_set',R_set') = F_lss(scope,L_set,F_set,C_set,R_set)
-	     fun lv_to_remove(RA.STACK_STY lv,acc) f = lv::acc
-	       | lv_to_remove(RA.PHREG_STY (lv,phreg),acc) f = 
-	       if f phreg then
-		 lv::acc
-	       else
-		 acc
-	       | lv_to_remove(RA.FV_STY lv,acc) f = acc
-	     val lvs_to_remove_ccall = foldr (fn (sty,acc) => lv_to_remove (sty,acc) RI.is_callee_save_ccall) [] pat
-	     fun add_phreg(RA.STACK_STY lv,acc) = acc
-	       | add_phreg(RA.PHREG_STY (lv,phreg),acc) = phreg::acc
-	       | add_phreg(RA.FV_STY lv,acc) = acc
-	     val phregs_to_add = foldr (fn (sty,acc) => add_phreg(sty,acc)) [] pat
+	     val (L_set',F_set',C_set') = F_lss(scope,L_set,F_set,C_set)
+	     val lvs_to_remove_C = 
+	       let
+		 fun lv_to_remove_C(RA.STACK_STY lv,acc) = lv::acc
+		   | lv_to_remove_C(RA.PHREG_STY (lv,phreg),acc) = 
+		   if RI.is_callee_save_ccall phreg then lv::acc
+		   else acc
+		   | lv_to_remove_C(RA.FV_STY lv,acc) = acc
+	       in foldr lv_to_remove_C [] pat
+	       end
+	     val lvs_to_remove_F = 
+	       let
+		 fun lv_to_remove_F(RA.STACK_STY lv,acc) = lv::acc
+		   | lv_to_remove_F(RA.PHREG_STY (lv,phreg),acc) = acc
+		   | lv_to_remove_F(RA.FV_STY lv,acc) = acc  (* hmmm;  mael 2001-03-21*)
+	       in foldr lv_to_remove_F [] pat
+	       end
 	   in
 	     (L_set',
-	      F_set',
-	      lvset_difference(C_set',lvs_to_remove_ccall),
-	      lvset_add(R_set',phregs_to_add))
+	      lvset_difference(F_set',lvs_to_remove_F),
+	      lvset_difference(C_set',lvs_to_remove_C))
 	   end
        | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} =>
 	   let
-	     val (L_set1,F_set1,C_set1,R_set1) = F_lss(default,L_set,F_set,C_set,R_set)
-	     val (L_set2,F_set2,C_set2,R_set2) = F_lss(handl,L_set1,F_set1,C_set1,R_set1) 
-	     val R_set_all = R_set2
+	     val (L_set1,F_set1,C_set1) = F_lss(default,L_set,F_set,C_set)
+	     val (L_set2,F_set2,C_set2) = F_lss(handl,L_set1,F_set1,C_set1) 
 	     val handl_return_lvar = LS.get_var_atom (handl_return_lv,nil)
 	     val F_set3 = Lvarset.union(F_set2,lvset_difference(L_set,handl_return_lvar)) (* We must flush all caller save registers that are live *)
                                                                                           (* after the handle. We define handl_return_lv in the    *)
                                                                                           (* handle construct. 17/02/1999, Niels                   *)
 	   in
-	     (L_set2,F_set3,C_set2,R_set_all) 
+	     (L_set2,F_set3,C_set2) 
 	   end
        | LS.HANDLE{default,handl,handl_return,offset} => die "F_ls: handl_return in HANDLE not empty"
-       | LS.SWITCH_I sw => F_sw(F_lss,sw,L_set,F_set,C_set,R_set)
-       | LS.SWITCH_S sw => F_sw(F_lss,sw,L_set,F_set,C_set,R_set)
-       | LS.SWITCH_C sw => F_sw(F_lss,sw,L_set,F_set,C_set,R_set)
-       | LS.SWITCH_E sw => F_sw(F_lss,sw,L_set,F_set,C_set,R_set)
-       | LS.CCALL{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set,R_set) 
+       | LS.SWITCH_I sw => F_sw(F_lss,sw,L_set,F_set,C_set)
+       | LS.SWITCH_S sw => F_sw(F_lss,sw,L_set,F_set,C_set)
+       | LS.SWITCH_C sw => F_sw(F_lss,sw,L_set,F_set,C_set)
+       | LS.SWITCH_E sw => F_sw(F_lss,sw,L_set,F_set,C_set)
+       | LS.CCALL{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set) 
        | _ =>
 	   let
 	     val (def,use) = LS.def_use_lvar_ls ls
 	   in
 	     (lvset_add(lvset_difference(L_set,def),use),
 	      F_set,
-	      C_set,
-	      lvset_add(R_set,LS.get_phreg_ls ls))
+	      C_set)
 	   end)
-    and F_lss(lss,L_set,F_set,C_set,R_set) = 
+    and F_lss(lss,L_set,F_set,C_set) = 
       foldr 
-      (fn (ls,(L_set,F_set,C_set,R_set)) => F_ls(ls,L_set,F_set,C_set,R_set))
-      (L_set,F_set,C_set,R_set) lss
+      (fn (ls,(L_set,F_set,C_set)) => F_ls(ls,L_set,F_set,C_set))
+      (L_set,F_set,C_set) lss
 
     (*****************************************************)
     (* Insert Flushes and Scope on Callee Save Registers *)
@@ -362,20 +356,24 @@ struct
 	fun IF_lss'([],U_set) = ([],U_set)
 	  | IF_lss'((ls as LS.FNCALL cc)::lss,U_set) = do_non_tail_call_if(ls,F_set,IF_lss'(lss,U_set))
 	  | IF_lss'((ls as LS.FUNCALL cc)::lss,U_set) = do_non_tail_call_if(ls,F_set,IF_lss'(lss,U_set))
-	  | IF_lss'(LS.LETREGION{rhos,body}::lss,U_set) =  (* If we have any infinite regions, then we perform a C-call at entry (allocRegion) and at *)
-	  let                                              (* exit (deallocateRegion). We must then fetch caller save registers!                      *)
+	  | IF_lss'(LS.LETREGION{rhos,body}::lss,U_set) =  
+	  (* If we have any infinite regions, then we perform a C-call at entry (allocRegion) and at
+	   * exit (deallocateRegion). We must then fetch caller save registers! When profiling is enabled,
+	   * we perform C calls at entry and exit also for finite regions. *)
+	  let
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
+	    val ccalls_in_and_out : bool =
+	      List.null rhos orelse ( not(region_profiling()) 
+				      andalso List.null (remove_finite_rhos rhos) )
 	    val lv_fetch2 = 
-	      if List.null (remove_finite_rhos rhos) then
-		Lvarset.empty
-	      else
-		Lvarset.intersection(C_set,U_set_acc)
+	      if ccalls_in_and_out then	Lvarset.empty
+	      else Lvarset.intersection(C_set,U_set_acc)
+
 	    val (body,U_set_body) = IF_lss'(body,Lvarset.difference(U_set_acc,lv_fetch2))
+
 	    val lv_fetch1 =
-	      if List.null (remove_finite_rhos rhos) then
-		Lvarset.empty
-	      else
-		Lvarset.intersection(C_set,U_set_body)
+	      if ccalls_in_and_out then Lvarset.empty
+	      else Lvarset.intersection(C_set,U_set_body)
 	  in
 	    (LS.LETREGION{rhos=rhos,body=insert_fetch_if(Lvarset.members lv_fetch1,body)}::
 	     insert_fetch_if(Lvarset.members lv_fetch2,acc),Lvarset.difference(U_set_body,lv_fetch1))
@@ -427,17 +425,21 @@ struct
     (*********************************)
     fun do_top_decl gen_fn (lab,cc,lss) =
       let
-	val (_,F_set,C_set,R_set) = F_lss(lss,Lvarset.empty,Lvarset.empty,Lvarset.empty,Lvarset.empty)
+	val (_,F_set,C_set) = F_lss(lss,Lvarset.empty,Lvarset.empty,Lvarset.empty)
+
+	(* remove variables from F and C that are not assigned
+	 * to registers... mael 2001-03-21 *)
 	val F = lvset_delete(F_set,CallConv.get_spilled_args cc)
 	val C = lvset_delete(C_set,CallConv.get_spilled_args cc)
-	val lss_iff = [LS.SCOPE{pat = nil,
-				scope = IFF_lss(lss,Lvarset.union(F,C),nil)}]
+	val lss_iff = IFF_lss(lss,Lvarset.union(F,C),nil)
 	val (lss_if,_) = IF_lss(lss_iff,F,C)
       in
 	gen_fn(lab,cc,lss_if)
       end
     fun IFF_top_decl(LS.FUN(lab,cc,lss)) = do_top_decl LS.FUN (lab,cc,lss)
       | IFF_top_decl(LS.FN(lab,cc,lss)) = do_top_decl LS.FN (lab,cc,lss)
+
+    val print_fetch_and_flush_program = Flags.is_on0 "print_fetch_and_flush_program"
   in
     fun IFF {main_lab:label,
 	     code=ra_prg: (StoreTypeRA,unit,Atom) LinePrg,
@@ -448,11 +450,11 @@ struct
 	val _ = reset_stat()
 	val line_prg_iff = foldr (fn (func,acc) => IFF_top_decl func :: acc) [] ra_prg
 	val _ = 
-	  if Flags.is_on "print_fetch_and_flush_program" then
-	    display("\nReport: AFTER INSERT FETCH AND FLUSH:", LS.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_iff)
-	  else
-	    ()
-	val _ = pp_stat()
+	  if print_fetch_and_flush_program() then
+	    display("\nReport: AFTER INSERT FETCH AND FLUSH:", 
+		    LS.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_iff)
+	  else ()
+(*	val _ = pp_stat() *)
 	val _ = chat "]\n"
       in
 	{main_lab=main_lab,code=line_prg_iff: (StoreType,unit,Atom) LinePrg,imports=imports,exports=exports}

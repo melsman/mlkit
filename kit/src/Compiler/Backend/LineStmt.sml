@@ -561,48 +561,58 @@ struct
 	     map (fn (sel,ce) => (f_sel sel,f_L (ce,[]))) sels,
 	     f_L (default,[]))
 
-    fun L_ce(ClosExp.VAR lv,lvars_res,acc)             = ASSIGN{pat=VAR(one_lvar lvars_res),bind=ATOM(VAR lv)}::acc
-      | L_ce(ClosExp.RVAR place,lvars_res,acc)         = die "RVAR not implemented"
-      | L_ce(ClosExp.DROPPED_RVAR place,lvars_res,acc) = die "DROPPED_RVAR not implemented"
-      | L_ce(ClosExp.FETCH lab,lvars_res,acc)          = ASSIGN{pat=VAR(one_lvar lvars_res),bind=LOAD lab}::acc
-      | L_ce(ClosExp.STORE(ce,lab),lvars_res,acc)      = ASSIGN{pat=VAR(one_lvar lvars_res),bind=STORE(ce_to_atom ce,lab)}::acc
-      | L_ce(ClosExp.INTEGER i,lvars_res,acc)          = ASSIGN{pat=VAR(one_lvar lvars_res),bind=ATOM(INTEGER i)}::acc
-      | L_ce(ClosExp.STRING s,lvars_res,acc)           = ASSIGN{pat=VAR(one_lvar lvars_res),bind=STRING s}::acc
-      | L_ce(ClosExp.REAL s,lvars_res,acc)             = ASSIGN{pat=VAR(one_lvar lvars_res),bind=REAL s}::acc
-      | L_ce(ClosExp.PASS_PTR_TO_MEM(sma,i),lvars_res,acc) = ASSIGN{pat=VAR(one_lvar lvars_res),bind=PASS_PTR_TO_MEM(sma_to_sma sma,i)}::acc
-      | L_ce(ClosExp.PASS_PTR_TO_RHO sma,lvars_res,acc) = ASSIGN{pat=VAR(one_lvar lvars_res),bind=PASS_PTR_TO_RHO(sma_to_sma sma)}::acc
-      | L_ce(ClosExp.UB_RECORD ces,lvars_res,acc)      = 
-          List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
-      | L_ce(ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=CLOS_RECORD{label=label,
-							      elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
-							      alloc=sma_to_sma alloc}}::acc
-      | L_ce(ClosExp.REGVEC_RECORD{elems,alloc},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma alloc}}::acc
-      | L_ce(ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=SCLOS_RECORD{elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),alloc=sma_to_sma alloc}}::acc
-      | L_ce(ClosExp.RECORD{elems,alloc,tag},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag}}::acc
-      | L_ce(ClosExp.SELECT(i,ce),lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=SELECT(i,ce_to_atom ce)}::acc
-      | L_ce(ClosExp.FNJMP{opr,args,clos},lvars_res,acc) = 
-	  FNJMP{opr=ce_to_atom opr,args=ces_to_atoms args,clos=ce_to_atom_opt clos,res=map VAR lvars_res, bv=[]}::acc
-      | L_ce(ClosExp.FNCALL{opr,args,clos},lvars_res,acc) =
-	  FNCALL{opr=ce_to_atom opr,args=ces_to_atoms args,clos=ce_to_atom_opt clos,res=map VAR lvars_res, bv=[]}::acc
-      | L_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos},lvars_res,acc) =
+    fun maybe_assign ([], bind, acc) = acc
+      | maybe_assign ([lv], bind, acc) = ASSIGN{pat=VAR lv, bind=bind} :: acc
+      | maybe_assign _ = die "maybe_assign.more than one lvar to bind!"      
+
+    fun L_ce(ce,lvars_res,acc) =
+      case ce
+	of ClosExp.VAR lv => maybe_assign (lvars_res, ATOM(VAR lv), acc)
+	 | ClosExp.RVAR place => die "RVAR not implemented"
+	 | ClosExp.DROPPED_RVAR place => die "DROPPED_RVAR not implemented"
+	 | ClosExp.FETCH lab => maybe_assign (lvars_res, LOAD lab, acc)
+	 | ClosExp.STORE(ce,lab) => ASSIGN{pat=UNIT,bind=STORE(ce_to_atom ce,lab)}::acc
+	 | ClosExp.INTEGER i => maybe_assign (lvars_res, ATOM(INTEGER i), acc)
+	 | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
+	 | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
+	 | ClosExp.PASS_PTR_TO_MEM(sma,i) => maybe_assign (lvars_res, PASS_PTR_TO_MEM(sma_to_sma sma,i), acc)
+	 | ClosExp.PASS_PTR_TO_RHO sma => maybe_assign (lvars_res, PASS_PTR_TO_RHO(sma_to_sma sma), acc)
+	 | ClosExp.UB_RECORD ces => List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
+	 | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc} => 
+	  maybe_assign (lvars_res, CLOS_RECORD{label=label,
+					       elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
+					       alloc=sma_to_sma alloc}, acc)
+	 | ClosExp.REGVEC_RECORD{elems,alloc} => 
+	  maybe_assign (lvars_res, REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma alloc}, acc)
+	 | ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc} => 
+	  maybe_assign (lvars_res, SCLOS_RECORD{elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
+						alloc=sma_to_sma alloc}, acc)
+	 | ClosExp.RECORD{elems,alloc,tag} => 
+	  maybe_assign (lvars_res, RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag}, acc)
+	 | ClosExp.SELECT(i,ce) =>
+	  maybe_assign (lvars_res, SELECT(i,ce_to_atom ce), acc)
+	 | ClosExp.FNJMP{opr,args,clos} =>
+	  FNJMP{opr=ce_to_atom opr,args=ces_to_atoms args,
+		clos=ce_to_atom_opt clos, res=map VAR lvars_res, bv=[]}::acc
+	 | ClosExp.FNCALL{opr,args,clos} =>
+	  FNCALL{opr=ce_to_atom opr,args=ces_to_atoms args,
+		 clos=ce_to_atom_opt clos,res=map VAR lvars_res, bv=[]}::acc
+	 | ClosExp.JMP{opr,args,reg_vec,reg_args,clos} =>
 	  JMP{opr=opr,args=ces_to_atoms args,reg_vec=ce_to_atom_opt reg_vec,reg_args=ces_to_atoms reg_args,
 	      clos=ce_to_atom_opt clos,res=map VAR lvars_res,bv=[]}::acc
-      | L_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos},lvars_res,acc) =
+	 | ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos} =>
 	  FUNCALL{opr=opr,args=ces_to_atoms args,reg_vec=ce_to_atom_opt reg_vec,reg_args=ces_to_atoms reg_args,
 		  clos=ce_to_atom_opt clos,res=map VAR lvars_res,bv=[]}::acc
-      | L_ce(ClosExp.LETREGION{rhos,body},lvars_res,acc) =
+	 | ClosExp.LETREGION{rhos,body} =>
 	  LETREGION{rhos=map binder_to_binder rhos,body=L_ce(body,lvars_res,[])}::acc
-      | L_ce(ClosExp.LET{pat,bind,scope},lvars_res,acc) =
+	 | ClosExp.LET{pat=[],bind,scope} =>  (*mael 2001-03-15*)
+	  L_ce(bind,[],L_ce(scope,lvars_res,acc))
+	 | ClosExp.LET{pat,bind,scope} =>
 	  SCOPE{pat=map mk_sty pat,scope=L_ce(bind,pat,L_ce(scope,lvars_res,[]))}::acc
-      | L_ce(ClosExp.RAISE ce,lvars_res,acc) = RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
-      | L_ce(ClosExp.HANDLE(ce1,ce2),lv_ress,C) =
+	 | ClosExp.RAISE ce => RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
+	 | ClosExp.HANDLE(ce1,ce2) =>
 	  let
-	    val lv_res = case lv_ress 
+	    val lv_res = case lvars_res
 			   of [lv_res] => lv_res 
 			    | nil => Lvars.wild_card 
 			    | _ => die "L_ce: HANDLE with more than one lvars_res"
@@ -610,42 +620,40 @@ struct
 	  in
 	    HANDLE{default=L_ce(ce1,[lv_res],[]),
 		   handl=([SCOPE{pat=[mk_sty clos_lv],scope=L_ce(ce2,[clos_lv],[])}],VAR clos_lv),
-		   handl_return=([],VAR lv_res,[]),offset=()}::C (* for now, offset is unit *)
+		   handl_return=([],VAR lv_res,[]),offset=()} :: acc (* for now, offset is unit *)
 	  end
-      | L_ce(ClosExp.SWITCH_I sw,lvars_res,acc) = SWITCH_I(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i))::acc
-      | L_ce(ClosExp.SWITCH_S sw,lvars_res,acc) = SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
-      | L_ce(ClosExp.SWITCH_C sw,lvars_res,acc) = SWITCH_C(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),
-							       fn (con,con_kind) => (con,con_kind_to_con_kind con_kind)))::acc
-      | L_ce(ClosExp.SWITCH_E sw,lvars_res,acc) = SWITCH_E(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn e => e))::acc
-      | L_ce(ClosExp.CON0{con,con_kind,aux_regions,alloc},lvars_res,acc) =
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=CON0{con=con,con_kind=con_kind_to_con_kind con_kind,
-						       aux_regions=smas_to_smas aux_regions,
-						       alloc=sma_to_sma alloc}}::acc
-      | L_ce(ClosExp.CON1{con,con_kind,alloc,arg},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=CON1{con=con,con_kind=con_kind_to_con_kind con_kind,
-						       alloc=sma_to_sma alloc,arg=ce_to_atom arg}}::acc
-      | L_ce(ClosExp.DECON{con,con_kind,con_exp},lvars_res,acc) =
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=DECON{con=con,con_kind=con_kind_to_con_kind con_kind,
-							con_aty=ce_to_atom con_exp}}::acc
-      | L_ce(ClosExp.DEREF ce,lvars_res,acc) =
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=DEREF(ce_to_atom ce)}::acc
-      | L_ce(ClosExp.REF(sma,ce),lvars_res,acc) =
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=REF(sma_to_sma sma,ce_to_atom ce)}::acc
-      | L_ce(ClosExp.ASSIGN(sma,ce1,ce2),lvars_res,acc) =
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2)}::acc
-      | L_ce(ClosExp.DROP(ce),lvars_res,acc) = L_ce(ce,lvars_res,acc)
-      | L_ce(ClosExp.RESET_REGIONS{force,regions_for_resetting},lvars_res,acc) = 
+	 | ClosExp.SWITCH_I sw => SWITCH_I(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i))::acc
+	 | ClosExp.SWITCH_S sw => SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
+	 | ClosExp.SWITCH_C sw => SWITCH_C(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn (con,con_kind) => (con,con_kind_to_con_kind con_kind)))::acc
+	 | ClosExp.SWITCH_E sw => SWITCH_E(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn e => e))::acc
+	 | ClosExp.CON0{con,con_kind,aux_regions,alloc} =>
+	  maybe_assign (lvars_res, CON0{con=con,con_kind=con_kind_to_con_kind con_kind,
+				       aux_regions=smas_to_smas aux_regions,
+				       alloc=sma_to_sma alloc}, acc)
+	 | ClosExp.CON1{con,con_kind,alloc,arg} => 
+	  maybe_assign (lvars_res, CON1{con=con,con_kind=con_kind_to_con_kind con_kind,
+					alloc=sma_to_sma alloc,arg=ce_to_atom arg}, acc)
+	 | ClosExp.DECON{con,con_kind,con_exp} =>
+	  maybe_assign (lvars_res, DECON{con=con,con_kind=con_kind_to_con_kind con_kind,
+					 con_aty=ce_to_atom con_exp}, acc)
+	 | ClosExp.DEREF ce =>
+	  maybe_assign (lvars_res, DEREF(ce_to_atom ce), acc)
+	 | ClosExp.REF(sma,ce) =>
+	  maybe_assign (lvars_res, REF(sma_to_sma sma,ce_to_atom ce), acc)
+	 | ClosExp.ASSIGN(sma,ce1,ce2) =>
+	  maybe_assign (lvars_res, ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
+	 | ClosExp.DROP(ce) => L_ce(ce,lvars_res,acc)
+	 | ClosExp.RESET_REGIONS{force,regions_for_resetting} => 
 	  (* We must have RESET_REGIONS return unit. *)
 	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=ATOM UNIT}::acc
-      | L_ce(ClosExp.CCALL{name,rhos_for_result,args},lvars_res,acc) = 
+	  maybe_assign (lvars_res, ATOM UNIT, acc)
+	 | ClosExp.CCALL{name,rhos_for_result,args} => 
 	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
 				       res=map VAR lvars_res}::acc
 	  else CCALL{name=name,args=ces_to_atoms args,
 		     rhos_for_result=ces_to_atoms rhos_for_result,
 		     res=map VAR lvars_res}::acc
-      | L_ce(ClosExp.FRAME{declared_lvars,declared_excons},[],acc) = acc
-      | L_ce(ClosExp.FRAME{declared_lvars,declared_excons},_,_) = die "L_ce.FRAME: lvars_res not empty."
+	 | ClosExp.FRAME{declared_lvars,declared_excons} => acc
 
     fun L_top_decl(ClosExp.FUN(lab,cc,ce)) =
       let
@@ -793,6 +801,34 @@ struct
 
   fun get_var_smas(smas,acc) = foldr (fn (sma,acc) => get_var_sma(sma,acc)) acc smas
 
+(* <<<<< LineStmt.sml *)
+(*
+  fun def_var_se (se: Atom SimpleExp,acc:lvar list) = acc
+
+  fun use_var_se(ATOM atom,acc) = get_var_atom(atom,acc)
+    | use_var_se(LOAD lab,acc) = acc
+    | use_var_se(STORE(atom,lab),acc) = get_var_atom(atom,acc)
+    | use_var_se(STRING str,acc) = acc
+    | use_var_se(REAL str,acc) = acc
+    | use_var_se(CLOS_RECORD{label,elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+    | use_var_se(REGVEC_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_smas(elems,acc))
+    | use_var_se(SCLOS_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+    | use_var_se(RECORD{elems,alloc,tag},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
+    | use_var_se(SELECT(i,atom),acc) = get_var_atom(atom,acc)
+    | use_var_se(CON0{con,con_kind,aux_regions,alloc},acc) = get_var_sma(alloc, get_var_smas(aux_regions,acc))
+    | use_var_se(CON1{con,con_kind,alloc,arg},acc) = get_var_sma(alloc,get_var_atom(arg,acc))
+    | use_var_se(DECON{con,con_kind,con_aty},acc) = get_var_atom(con_aty,acc)
+    | use_var_se(DEREF atom,acc) = get_var_atom(atom,acc)
+    | use_var_se(REF(sma,atom),acc) = get_var_sma(sma,get_var_atom(atom,acc))
+    | use_var_se(ASSIGNREF(sma,atom1,atom2),acc) = get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
+    | use_var_se(PASS_PTR_TO_MEM(sma,i),acc) = get_var_sma(sma,acc)
+    | use_var_se(PASS_PTR_TO_RHO sma,acc) = get_var_sma(sma,acc)
+
+  fun use_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
+    get_var_atoms(args,get_var_atom_opt(reg_vec,
+					get_var_atoms(reg_args,get_var_atom_opt(clos,[]))))
+*)
+(* ======= *)
   fun get_var_sma_ignore(ATTOP_LI(atom,pp),acc) = acc
     | get_var_sma_ignore(ATTOP_LF(atom,pp),acc) = acc
     | get_var_sma_ignore(ATTOP_FI(atom,pp),acc) = acc
@@ -807,7 +843,15 @@ struct
 
   fun smash_free_ignore (lvs,excons,rhos) = excons@lvs
 
+(* >>>>> 1.22
+
+  <<<<< LineStmt.sml
+  =====
+*)
+
   fun def_var_se (se: Atom SimpleExp,acc:lvar list) = acc
+
+(* >>>>> 1.22 *)
 
   fun def_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = get_var_atoms(res,[])
 

@@ -39,6 +39,8 @@ struct
      desc="Perform register allocation. Without register allocation\n\
       \enabled, programs run somewhat slower--but they run andn\n\
       \you save about 15 percent on compile time."}
+
+  val region_profiling = Flags.is_on0 "region_profiling"
 				  
   type lvarset = Lvarset.lvarset
   type place = Effect.place
@@ -844,7 +846,7 @@ struct
 
   fun Build (args_on_stack_lvs, lss) =
     let 
-      fun set_lrs_status(new_s,lv) = 
+      fun set_lrs_status new_s lv = 
 	case nTableLookup (key lv)
 	  of SOME {lrs = (lrs as ref old_s),...} => lrs := merge_lrs(old_s,new_s)
 	   | NONE => die "set_lrs_status - nTableLookup failed"
@@ -866,8 +868,8 @@ struct
 	  val lvars_to_flush = Lvarset.difference(L,def)
 	  val _ = 
 	    case ls of
-	      LS.CCALL _ => lvarset_app (fn lv => set_lrs_status(c_call,lv)) lvars_to_flush
-	    | _ => lvarset_app (fn lv => set_lrs_status(ml_call,lv)) lvars_to_flush
+	      LS.CCALL _ => lvarset_app (set_lrs_status c_call) lvars_to_flush
+	    | _ => lvarset_app (set_lrs_status ml_call) lvars_to_flush
 	  val L = Lvarset.union(L,def)  (* We insert edges between def'ed variables *)
 	  val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) L) def 
 	  val L = Lvarset.union(use, lvars_to_flush(*Lvarset.difference(L,def)*))
@@ -917,15 +919,27 @@ struct
 	   | LS.FNCALL _ => do_non_tail_call(L,ls)
 	   | LS.JMP _ => do_tail_call(L,ls) 
 	   | LS.FUNCALL _ => do_non_tail_call(L,ls)
-	   | LS.LETREGION{rhos,body} => (* Infinite letregions involve ccalls *)
+	   | LS.LETREGION{rhos,body} => 
 	    let
 	      val L' = ig_lss(body,L)
-	    in
-	      if List.null (remove_finite_rhos rhos) then
-		lvarset_app (fn lv => set_lrs_status(c_call,lv)) L'
-	      else
-		();
-	      L'
+		
+	      (* Infinite letregions involve C calls and so do
+	       * finite regions when profiling is enabled. C calls
+	       * are involved both at entrance to the body and at
+	       * exit of the body, thus, we mark both members of L
+	       * and L' as crossing C calls. The live range status
+	       * setting that appears here should be in sync with
+	       * FetchAndFlush.sml, although the live range status
+	       * setting is not crucial for soundness of the
+	       * register allocator. *)
+
+	      (* Update live range status for live variables, if C 
+	       * calls are involved. *)
+	      val _ = if List.null rhos orelse ( not(region_profiling()) 
+						 andalso List.null (remove_finite_rhos rhos) ) then ()
+		      else (lvarset_app (set_lrs_status c_call) L ;
+			    lvarset_app (set_lrs_status c_call) L')
+	    in L'
 	    end
 	   | LS.SCOPE{pat,scope} => ig_lss(scope, L)
 	   (* File Thesis/handle.ps contains a drawing of liveness wrt. handle. 17/02/1999, Niels *)
@@ -936,7 +950,7 @@ struct
 	     (* handle construct. 19/03/1999, Niels                   *)
 	     val L' = ig_lss(handl, ig_lss(default, L))
 	     val handl_return_lvar = one_in_list (LS.get_var_atom (handl_return_lv,nil))
-	     val _ = lvarset_app (fn lv => set_lrs_status(ml_call,lv)) (Lvarset.delete(L',handl_return_lvar))
+	     val _ = lvarset_app (set_lrs_status ml_call) (Lvarset.delete(L',handl_return_lvar))
 	     val _ = lvarset_app (fn l => AddEdge(l,handl_return_lvar)) L'  (* ME 1999-08-14 *)
 	   in
 	     L'

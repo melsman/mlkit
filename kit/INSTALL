@@ -169,7 +169,6 @@ The source distribution contains the following files and directories:
             X86/        x86 native backend
             KAM/        bytecode backend
             Dummy/      dummy backend (no code generation)
-            HpPaRisc/   HP PA-RISC backend (not supported)
       RuntimeWithGC/	C source files and executables for runtime system
       heap2exec/        creating executables from sml/nj images
       Tools/            sources for Kit tools (Rp2ps, Tester, and GenOpcodes)

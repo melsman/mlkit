@@ -27,8 +27,8 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 		  structure Flags = Flags
 		  structure Report = Report
 		  structure Crash = Crash
+		  structure RegConst = BuildCompile.RegConst
 		  val down_growing_stack : bool = true          (* true for x86 code generation *)
-		  val double_alignment_required : bool = false  (* false for x86 code generation *)
 		  val extra_prims = nil)                        (* for KAM *)
 
     structure NativeCompile = NativeCompile(open ExecutionArgs
@@ -58,17 +58,18 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 				   structure PP = PP
 				   structure Flags = Tools.Flags
 				   structure Report = Tools.Report
-				   structure Crash = Tools.Crash)
+				   structure Crash = Tools.Crash
+				   structure Effect = BuildCompile.Effect)
 
     structure Compile = BuildCompile.Compile
     structure CompilerEnv = BuildCompile.CompilerEnv
 
     val _ = Flags.add_string_entry 
-      {long="clibs", short=NONE, item=ref "-lm",
-       menu=["Control", "clibs"],
-       desc="If you have added your own object files to a project, you\n\
-	\might also need to link with libraries other than\n\
-	\libm.so (\"-lm\")."}
+      {long="clibs", short=NONE, item=ref "-lm -lc",
+       menu=["Control", "c libraries (archives)"],
+       desc="If you have added your own object files to a project,\n\
+	\you might also need to link with libraries other\n\
+	\than libm.a and libc.a (\"-lm -lc\")."}
 
     val strip_p = ref false
     val _ = Flags.add_bool_entry 
@@ -82,6 +83,15 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	desc="Delete assembler files produced by the compiler. If you\n\
 	 \disable this flag, you can inspect the assembler code\n\
 	 \produced by the compiler."}
+
+    val _ = Flags.add_bool_entry 
+	{long="gdb_support", short=SOME "g", neg=false, 
+	 menu=["Debug","gdb support"], item=ref false, 
+	 desc="When enabled, the compiler passes the option --gstabs\n\
+	  \to `as' (The GNU Assembler) and preserves the generated\n\
+	  \assembler files (.s files). Passing the --gstabs\n\
+	  \option to `as' makes it possible to step through\n\
+	  \the generated program using gdb (The GNU Debugger)."}
  
     val backend_name = "X86"
 
@@ -123,17 +133,20 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
       end
     val generate_link_code = SOME (fn (labs,exports) => CodeGen.generate_link_code (labs,exports))
 	
-
     fun delete_file f = OS.FileSys.remove f handle _ => ()
     fun execute_command command : unit =
       (OS.Process.system command; ())
 (*      handle OS.SysErr(s,_) => die ("\nCommand " ^ command ^ "\nfailed (" ^ s ^ ");") *)
-  
-    val delete_target_files = Flags.lookup_flag_entry "delete_target_files"
+
+    val gdb_support = Flags.is_on0 "gdb_support"
+    val delete_target_files = Flags.is_on0 "delete_target_files"
     val clibs = Flags.lookup_string_entry "clibs"
+
+    fun gas() = if gdb_support() then "as --gstabs"
+		else "as"
     fun assemble (file_s, file_o) =
-      (execute_command (!(Flags.lookup_string_entry "c_compiler") ^ " -c -o " ^ file_o ^ " " ^ file_s);
-       if !delete_target_files then delete_file file_s 
+      (execute_command (gas() ^ " -o " ^ file_o ^ " " ^ file_s);
+       if delete_target_files() andalso not(gdb_support()) then delete_file file_s 
        else ())
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
@@ -166,6 +179,10 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
       let val files = map (fn s => s ^ " ") files
 	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
 	    concat files ^ path_to_runtime() ^ " " ^ !clibs
+(*
+	  val shell_cmd = "ld -o " ^ run ^ " " ^ 
+	    concat files ^ path_to_runtime() ^ " /lib/crt0.o " ^ !clibs
+	*)    
       in (*print("[using link command: " ^ shell_cmd ^ "]\n"); *)
 	execute_command shell_cmd;
 	strip run;

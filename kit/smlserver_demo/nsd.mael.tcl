@@ -30,17 +30,6 @@ ns_param directoryfile index.msp
 ns_param pageroot /home/mael/web/www
 ns_param enabletclpages off
 
-#ns_section "ns/server/mael/tcl"
-#ns_param library /home/mael/web/tcl
-#ns_param errorpage $home/errorpage.tcl
-#ns_param debug on
-
-#ns_section "ns/server/mael/adp"
-#ns_param map "/*.adp"
-
-#ns_section "ns/server/mael/adp/parsers"
-#ns_param fancy ".adp"
-
 ns_section "ns/server/mael/module/nslog"
 ns_param file /home/mael/web/log/access.log
 

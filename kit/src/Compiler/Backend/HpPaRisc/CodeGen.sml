@@ -393,7 +393,7 @@ struct
     fun resolve_float_aty_arg_kill_gen1(float_aty,t,tmp_float,size_ff) =
       let 
 	val disp = 
-	  if !BI.tag_values then 
+	  if BI.tag_values() then 
 	    "8" 
 	  else 
 	    "0"
@@ -405,7 +405,7 @@ struct
       end
 
     fun box_float_reg(base_reg,float_reg,t:reg,C) =
-      if !BI.tag_values then
+      if BI.tag_values() then
 	load_immed(IMMED (Word32.toInt(BI.tag_real(false))),t,
 		   STW{r=t,d="0",s=Space 0,b=base_reg} ::
 		   FSTDS{complt=EMPTY,r=float_reg,d="8",s=Space 0,b=base_reg} :: C)
@@ -430,7 +430,7 @@ struct
 	val _ = add_lib_function name
 	val (convert: bool,name: string) =
 	  (case explode name of
-	     #"@" :: rest => (!BI.tag_integers, implode rest)
+	     #"@" :: rest => (BI.tag_integers(), implode rest)
 	   | _ => (false, name))
 
 	fun convert_int_to_c(reg,C) =
@@ -848,7 +848,7 @@ struct
 	end
 
       fun maybe_tag_integers(inst,C) =		  
-	if !BI.tag_integers then
+	if BI.tag_integers() then
 	  inst :: C
 	else
 	  C
@@ -874,7 +874,7 @@ struct
 	end
 
       fun muli(x:reg,y:reg,d:reg,C) = (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
-	if !BI.tag_integers then
+	if BI.tag_integers() then
 	  (add_lib_function("$$mulI");
 	   SHD{cond=NEVER,r1=Gen 0,r2=arg1,p="1",t=arg1} ::
 	   LDO {d="-1",b=arg0,t=arg0} ::
@@ -893,7 +893,7 @@ struct
 	  val (x_reg,x_C) = resolve_arg_aty_kill_gen1(x,tmp_reg0,size_ff)
 	  val (d_reg,C') = resolve_aty_def_kill_gen1(d,tmp_reg1,size_ff,C)
 	  val base = 
-	    if !BI.tag_integers then 
+	    if BI.tag_integers() then 
 	      "2" 
 	    else 
 	      "0"
@@ -906,7 +906,7 @@ struct
 	 val (x_reg,x_C) = resolve_arg_aty_kill_gen1(x,tmp_reg0,size_ff)
 	 val (d_reg,C') = resolve_aty_def_kill_gen1(d,tmp_reg1,size_ff,C)
 	 val base = 
-	   if !BI.tag_integers then 
+	   if BI.tag_integers() then 
 	     "2" 
 	   else 
 	     "0"
@@ -1158,7 +1158,7 @@ struct
 		    let
 		      val float_lab = new_float_lab()
 		      val _ = 
-			if !BI.tag_values then 
+			if BI.tag_values() then 
 			  add_static_data [DOT_DATA,
 					   DOT_ALIGN 8,
 					   LABEL float_lab,
@@ -1179,7 +1179,7 @@ struct
 		      val num_elems = List.length (LS.smash_free elems)
 		      val n_skip = length rhos + 1 (* We don't traverse region pointers, i.e. we skip rhos+1 fields *)
 		    in
-		      if !BI.tag_values then
+		      if BI.tag_values() then
 			alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,num_elems+2,size_ff,
        		        load_immed(IMMED(Word32.toInt(BI.tag_clos(false,num_elems+1,n_skip))),mrp,
 			store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,
@@ -1201,7 +1201,7 @@ struct
 		      val (reg_for_result,C') = resolve_aty_def_kill_gen1(pat,tmp_reg1,size_ff,C)
 		      val num_elems = List.length elems
 		    in
-		      if !BI.tag_values then
+		      if BI.tag_values() then
 			alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,num_elems+1,size_ff,
        		        load_immed(IMMED(Word32.toInt(BI.tag_regvec(false,num_elems))),mrp,
 			store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,
@@ -1220,7 +1220,7 @@ struct
 		      val num_elems = List.length (LS.smash_free elems)
 		      val n_skip = length rhos (* We don't traverse region pointers *)
 		    in
-		      if !BI.tag_values then
+		      if BI.tag_values() then
 			alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,num_elems+1,size_ff,
        		        load_immed(IMMED(Word32.toInt(BI.tag_sclos(false,num_elems,n_skip))),mrp,
 			store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,
@@ -1239,7 +1239,7 @@ struct
 		      val (reg_for_result,C') = resolve_aty_def_kill_gen1(pat,tmp_reg1,size_ff,C)
 		      val num_elems = List.length elems
 		    in
-		      if !BI.tag_values then
+		      if BI.tag_values() then
 			alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,num_elems+1,size_ff,
        		        load_immed(IMMED(Word32.toInt tag),mrp,
 			store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,
@@ -1253,7 +1253,7 @@ struct
 								    C))) (num_elems-1,C') elems))
 		    end
 		| LS.SELECT(i,aty) => 
-		    if !BI.tag_values then
+		    if BI.tag_values() then
 		      move_index_aty_to_aty_kill_gen1(aty,pat,WORDS(i+1),tmp_reg1,size_ff,C)
 		    else
 		      move_index_aty_to_aty_kill_gen1(aty,pat,WORDS i,tmp_reg1,size_ff,C)
@@ -1262,7 +1262,7 @@ struct
 		       LS.ENUM i => 
 			 let 
 			   val tag = 
-			     if !BI.tag_values orelse (*hack to treat booleans tagged*)
+			     if BI.tag_values() orelse (*hack to treat booleans tagged*)
 			       Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
 			       2*i+1 
 			     else i
@@ -1336,16 +1336,16 @@ struct
 			   | _ => die "CG_ls: DECON used with con_kind ENUM")
 		| LS.DEREF aty =>
 			     let
-			       val offset = if !BI.tag_values then 1 else 0
+			       val offset = if BI.tag_values() then 1 else 0
 			     in
 			       move_index_aty_to_aty_kill_gen1(aty,pat,WORDS offset,tmp_reg1,size_ff,C)
 			     end
 		| LS.REF(alloc,aty) =>
 			     let
-			       val offset = if !BI.tag_values then 1 else 0
+			       val offset = if BI.tag_values() then 1 else 0
 			       val (reg_for_result,C') = resolve_aty_def_kill_gen1(pat,tmp_reg1,size_ff,C)
 			       fun maybe_tag_value C =
-				 if !BI.tag_values then
+				 if BI.tag_values() then
 				   load_immed(IMMED (Word32.toInt(BI.tag_ref(false))),mrp,
 					      store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,C))
 				 else C
@@ -1362,7 +1362,7 @@ struct
 		| LS.ASSIGNREF(alloc,aty1,aty2) =>
 			     let 
 			       val (reg_for_result,C') = resolve_aty_def_kill_gen1(pat,tmp_reg1,size_ff,C)
-			       val offset = if !BI.tag_values then 1 else 0
+			       val offset = if BI.tag_values() then 1 else 0
 			     in
 			       store_aty_in_aty_record_kill_reg1(aty2,aty1,WORDS offset,tmp_reg1,mrp,size_ff,
 			       load_immed(IMMED BI.ml_unit,reg_for_result,C'))
@@ -1386,7 +1386,7 @@ struct
 	       let
 		 val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,
 								   reg_args=[],reg_vec=NONE,res=res}
-		 val offset_codeptr = if !BI.tag_values then "4" else "0"
+		 val offset_codeptr = if BI.tag_values() then "4" else "0"
 	       in
 		 if List.length spilled_args > 0 then
 		     CG_ls(LS.FNCALL cc,C)
@@ -1404,7 +1404,7 @@ struct
 	   | LS.FNCALL{opr,args,clos,res,bv} =>
 	       COMMENT (pr_ls ls) :: 
 		  let
-		    val offset_codeptr = if !BI.tag_values then "4" else "0"
+		    val offset_codeptr = if BI.tag_values() then "4" else "0"
 		    val (spilled_args,spilled_res,return_lab_offset) = 
 		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=[],reg_vec=NONE,res=res}
 		    val size_rcf = length spilled_res
@@ -1547,7 +1547,7 @@ struct
 	   let
 	     val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	     val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
-	     val offset_codeptr = if !BI.tag_values then "4" else "0"
+	     val offset_codeptr = if BI.tag_values() then "4" else "0"
 
 	     fun deallocate_regions_until C =
 	       COMMENT "DEALLOCATE REGIONS UNTIL" ::
@@ -1834,7 +1834,7 @@ struct
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	    val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
 	  in
-	    if !BI.tag_values then
+	    if BI.tag_values() then
 	      LABEL (NameLab "TopLevelHandlerLab") ::
 	      load_indexed_kill_gen1(arg_reg,arg_reg,WORDS 1, 
 	      load_indexed_kill_gen1(arg_reg,arg_reg,WORDS 2, (* Fetch pointer to exception string *)
@@ -1851,7 +1851,7 @@ struct
 	    val _ = add_static_data [DOT_EXPORT(NameLab "raise_exn","CODE")]
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	    val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
-	    val offset_codeptr = if !BI.tag_values then "4" else "0"
+	    val offset_codeptr = if BI.tag_values() then "4" else "0"
 	  in
 	    LABEL (NameLab "raise_exn") ::
 	    copy(arg0,arg_reg, (* We assume that arg_reg is preserved across C calls *)
@@ -1881,7 +1881,7 @@ struct
 	  let
 	    val string_lab = gen_string_lab exn_string
 	    val _ = 
-	      if !BI.tag_values then       (* Exception Name and Exception must be tagged. *)
+	      if BI.tag_values() then       (* Exception Name and Exception must be tagged. *)
 		add_static_data [DOT_DATA,
 				 DOT_ALIGN 4,
 				 DOT_EXPORT (exn_lab, "DATA"),
@@ -1910,7 +1910,7 @@ struct
 				 LABEL exn_flush_lab, (* The Primitive Exception is Flushed at this Address *)
 				 DOT_WORD "0"]
 	  in
-	    if !BI.tag_values then
+	    if BI.tag_values() then
 	      COMMENT ("SETUP PRIM EXN: " ^ exn_string) :: 
 	      load_label_addr_kill_gen1(exn_lab,SS.PHREG_ATY tmp_reg0,tmp_reg0,0,
 	      ADDI{cond=NEVER,i="8",r=tmp_reg0,t=tmp_reg1} ::
@@ -2140,7 +2140,7 @@ struct
 
 
 	fun push_top_level_handler C =
-	  if !BI.tag_values then
+	  if BI.tag_values() then
 	    (* Push top-level handler on stack *)
             COMMENT "PUSH TOP-LEVEL HANDLER ON STACK" ::
 	    copy(sp, tmp_reg1,
@@ -2203,7 +2203,7 @@ struct
           META_B{n=false,target=lab_exit} :: C)))))
 	  
 	fun lab_exit_insts C =
-	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
+	  let val res = if BI.tag_values() then 1 (* 2 * 0 + 1 *)
 			else 0
 	  in
 	    LABEL(lab_exit) ::

@@ -15,7 +15,7 @@ struct
 
   structure TyName = TyName
 
-   val ALLOCATABLE_WORDS_IN_REGION_PAGE = 200
+   val ALLOCATABLE_WORDS_IN_REGION_PAGE = 254
          (*Number of words that can be allocated in each regionpage.
 	  Used by CompLamb for determining whether every allocation
 	  (alloc(...)) will fit in one page, and by KbpToHpPa to
@@ -30,24 +30,38 @@ struct
    val ALLOCATABLE_WORDS_IN_PRIM_ARRAY = ALLOCATABLE_WORDS_IN_REGION_PAGE - 5
    val initial_closure_offset = 1	(*initial offset for free variables in a closure*)
 
-   val tag_values = Flags.lookup_flag_entry "tag_values"
-   fun size_of_real ()  = if !tag_values then 4 else 2
-   fun size_of_ref ()   = if !tag_values then 2 else 1
-   fun size_of_record l = if !tag_values then List.length l + 1 else List.length l
+   val tag_values = Flags.is_on0 "tag_values"
+
+   fun size_of_real () = 
+     if tag_values() then 4 else 2
+
+   fun size_of_ref () = 
+     if tag_values() then 2 else 1
+
+   fun size_of_record l = 
+     if tag_values() then List.length l + 1 else List.length l
+
    fun size_closure (l1,l2,l3) = 
-     if !tag_values then 
-       List.length l1 + List.length l2 + List.length l3 + 1 + 1 (* code pointer and tag *)
-     else
-       List.length l1 + List.length l2 + List.length l3 + 1
+     if tag_values() then List.length l1 + List.length l2 + List.length l3 + 1 + 1 (* code pointer and tag *)
+     else List.length l1 + List.length l2 + List.length l3 + 1
+
    fun size_fix_closure (l1,l2,l3) = 
-     if !tag_values then 
-       List.length l1 + List.length l2 + List.length l3 + 1 
-     else
-       List.length l1 + List.length l2 + List.length l3
-   fun size_region_vector l = if !tag_values then List.length l + 1 else List.length l
-   fun size_exname() = if !tag_values then 3 else 2 
-   fun size_excon0() = if !tag_values then 2 else 1
-   fun size_excon1() = if !tag_values then 3 else 2
+     if tag_values() then List.length l1 + List.length l2 + List.length l3 + 1 
+     else List.length l1 + List.length l2 + List.length l3
+
+   fun size_region_vector l = 
+     if tag_values() then List.length l + 1 
+     else List.length l
+
+   fun size_exname() = 
+     if tag_values() then 3 else 2
+
+   fun size_excon0() = 
+     if tag_values() then 2 else 1
+
+   fun size_excon1() = 
+     if tag_values() then 3 else 2
+
    fun size_con0() = 1 (* boxed CON0 is always 1 word *)
    fun size_con1() = 2 (* boxed CON1 is always 2 words. *)
      

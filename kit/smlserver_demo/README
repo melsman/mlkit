@@ -1,18 +1,19 @@
 This is file README for SMLserver                 (ME 2001-01-12)
 
 INTRODUCTION
+------------
 
 SMLserver is an SML module for AOLserver, an Open Source webserver
 provided by America Online. SMLserver supports webserver
-interpretation of bytecode files compiled with the ML Kit. SMLserver
-supports both ML Server Pages [1] (i.e., msp-files) and plain
-sml-files using an SML interface to the AOLserver API.
+interpretation of bytecode files compiled with the ML Kit. Both ML
+Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
+interface to the AOLserver API, are supported.
 
 SMLserver uses a load-once-execute-many scheme for executing sml-files
-and msp-files, which, together with database pooling, make it possible
-to create database backed web sites in SML that are capable of
-answering a high number of requests compared to systems using a
-traditional CGI based approach.  
+and msp-files. Together with database pooling, the SMLserver
+load-once-execute-many scheme makes it possible to create database
+backed web sites in SML that are capable of answering a high number of
+requests compared to systems using a traditional CGI based approach.
 
 A project file (pm-file) maintained by the web-programmer is used to
 keep track of library modules, msp-files, and sml-files that are part
@@ -25,6 +26,7 @@ restarted, the library modules are reloaded.
 
 
 SYSTEM REQUIREMENTS
+-------------------
 
 To use SMLserver you need the following:
 
@@ -49,14 +51,64 @@ To use SMLserver you need the following:
     reading this file, you probably already have the ML Kit source
     distribution installed.
 
+
 INSTALLATION
+------------
 
-Before you install the ML Kit, you must install AOLserver; see above.
+We shall assume that AOLserver is already installed; see above. To
+configure AOLserver to load the SMLserver module
+kit/src/SMLserver/nssml.so at statup time, you must first copy the
+nssml.so file to the place where AOLserver looks for modules. You must
+now edit your nsd.tcl-file - the file given to the AOLserver
+executable `nsd' at startup. First, add the entry
 
-To install the ML Kit with SMLserver support...
+   ns_param nssml nssml.so
+
+to the 
+
+   ns_section "ns/server/{server}/modules"
+
+section. Then add the section
+
+   ns_section "ns/server/mael/module/nssml"
+   ns_param prjid web
+
+After restarting AOLserver, you should now be able to try the example
+project hello.pm (described below). By looking in the AOLserver
+server.log, you should see that AOLserver is running.  A sample
+nsd.tcl init file is available as kit/smlserver_demo/nsd.mael.tcl.
+
+
+COMPILING THE EXAMPLE PROJECT smlserver_demo/hello.pm
+-----------------------------------------------------
+
+To make the msp-pages and sml-pages that appear in the hello.pm file
+available to browsers, you must first make hello.pm the *current web
+project* by executing:
+  
+  mael@daffy> ln -s hello.pm web.pm
+
+assuming you are in the kit/smlserver_demo directory. Thereafter,
+compile the current web project by running:
+
+  mael@daffy> ../bin/mlkit_web web.pm
+
+also in the kit/smlserver_demo directory. Assuming that you have
+AOLserver running with the SMLserver module loaded, you should now be
+able to fetch the page first.html from your browser using the url
+
+  http://127.0.0.1:8080/first.html
+
+You should see a greeting from the server. You should also be able to
+fetch the pages
+
+  http://127.0.0.1:8080/hello.msp
+  http://127.0.0.1:8080/calendar.msp
+  http://127.0.0.1:8080/index.msp
 
 
 POSTGRESQL DETAILS
+------------------
 
 Postinstallation details for setting up Postgresql on a RedHat 7.0
 system with rpm's installed:
@@ -112,52 +164,43 @@ system with rpm's installed:
 
   6. Run the friends example:
 
+     6.a. Install data model
+
         mael@daffy> cd kit/smlserver_demo/www/
         mael@daffy> psql
            ...
         mael=# \i friends.sql
            ...
         mael=# \q
-        mael@daffy> ../../bin/kit web.pm
 
-     Go start your browser and visit
-  
-        http://127.0.0.1:8080/friends.msp
+     6.b. Make friends.pm the current web project
 
+	SMLserver allows you to have only one web-project running at a
+        time. Make friends.pm the current web project by executing:
 
-COMPILING THE EXAMPLE PROJECT smlserver_demo/web.pm
+        mael@daffy> cd kit/smlserver_demo/www
+        mael@daffy> ln -s friends.pm web.pm
 
-To make the msp-pages and sml-pages that appear in the web.pm file
-available to browsers, execute `../bin/kit web.pm' in the
-smlserver_demo directory. (Notice that before you can do so, the ML
-Kit version 3.2 or later must already be installed on your system.)
+     6.c. Compile the current project
 
-Start AOLserver, if you have not already done so:
-  
-  $ cd kit/smlserver_demo
-  $ /usr/aol32/bin/nsd -t nsd.mael.tcl -u mael -g mael
+        You can now compile the current project by executing:        
 
-By looking in the file smlserver_demo/log/server.log, you should see
-that AOLserver has started as expected. Now try to fetch the page
-first.html from your browser using the url
+        mael@daffy> ../../bin/mlkit_web web.pm
 
-  http://127.0.0.1:8080/first.html
+  7. Go start your browser
 
-You should see a greeting from the server. You can now try fetching
-one of the pages
-
-  http://127.0.0.1:8080/hello.msp
-  http://127.0.0.1:8080/calendar.msp
-  http://127.0.0.1:8080/index.msp
+     visit http://127.0.0.1:8080/friends.msp
 
 
 TO DO
+-----
 
 Currently SMLserver supports only one thread, but this limitation is
 soon to change...
 
 
 REFERENCES  
+----------
   
 [1] A system for running ML Server Pages using the Apache Web-server
 was first implemented by Peter Sestoft. For more information about
