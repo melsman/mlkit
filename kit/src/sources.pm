@@ -1,6 +1,6 @@
 import Edlib/edlib.pm
        Common/common.pm
-       Compiler/compiler.pm
+       Compiler/compilerx86.pm
        
 in
     Manager/FREE_IDS.sml
@@ -18,7 +18,8 @@ in
     Manager/Manager.sml
     
     Common/Elaboration.sml
-    Compiler/Backend/HpPaRisc/ExecutionHPPA.sml
+    Compiler/Backend/X86/ExecutionX86.sml
+    (*Compiler/Backend/HpPaRisc/ExecutionHPPA.sml*)
     Common/SMLofNJOnKit.sml   (* hack *)
     Common/KitCompiler.sml
     Common/KitOnKit.sml       (* running the Kit *)

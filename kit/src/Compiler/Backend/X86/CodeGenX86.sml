@@ -23,9 +23,10 @@ functor CodeGenX86(structure BackendInfo : BACKEND_INFO
                    sharing type Labels.label = LineStmt.label
 		   sharing type CallConv.cc = LineStmt.cc
 	           structure SubstAndSimplify: SUBST_AND_SIMPLIFY
+                    where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
 		   sharing type SubstAndSimplify.lvar = LineStmt.lvar 
                    sharing type SubstAndSimplify.place = LineStmt.place
-                   sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg
+                   (*sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg*)
                    sharing type SubstAndSimplify.reg = BackendInfo.reg
                    sharing type SubstAndSimplify.label = Labels.label
 	           structure PP : PRETTYPRINT

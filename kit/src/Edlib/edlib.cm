@@ -13,11 +13,15 @@ Edlib.sml
 EDLIB_GENERAL.sml
 EdlibGeneral.sml
 LIST.sml
-List.sml
+(*List.sml
+*)
+edList.sml
 EQ_SET.sml
 EqSet.sml
 LIST_PAIR.sml
-ListPair.sml
+(*ListPair.sml
+*)
+edListPair.sml
 LIST_SORT.sml
 ListSort.sml
 SET.sml
