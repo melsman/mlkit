@@ -27,6 +27,7 @@ functor CompileDec(structure Con: CON
 			 and type Environments.TyVar = StatObject.TyVar
 			 and type Environments.id = TopdecGrammar.id
 			 and type Environments.strid = TopdecGrammar.strid
+			 and Environments.TyName = TyName
 
                    structure LambdaExp: LAMBDA_EXP
                      sharing type LambdaExp.lvar = Lvars.lvar
@@ -45,6 +46,8 @@ functor CompileDec(structure Con: CON
 			 and type CompilerEnv.TypeScheme = StatObject.TypeScheme
 			 and type CompilerEnv.strid = TopdecGrammar.strid
 			 and type CompilerEnv.ElabEnv = Environments.Env
+			 and type CompilerEnv.TyName = TyName.TyName
+			 and type CompilerEnv.tycon = Environments.tycon
 
                    structure MatchCompiler: MATCH_COMPILER
                      sharing type MatchCompiler.pat = TopdecGrammar.DecGrammar.pat
@@ -315,6 +318,7 @@ functor CompileDec(structure Con: CON
     fun compileTyName tyname =
           if TyName.eq (tyname, TyName.tyName_CHAR)
 	  orelse TyName.eq (tyname, TyName.tyName_WORD) 
+	  orelse TyName.eq (tyname, TyName.tyName_WORD8) 
 	  then TyName.tyName_INT
 	  else tyname
 
@@ -450,37 +454,6 @@ functor CompileDec(structure Con: CON
 	  List.foldL (compile_and_normalize_cb tyname tyvars') (CE.emptyCEnv,[]) (rev cbs)
       in
 	(env, tyvars', cons_TypeOpts)
-      end
-
-
-    (* ---------------------------------------------------------------------- *)
-    (*	       Compilation of the semantic object TyEnv (TE)                  *)
-    (* ---------------------------------------------------------------------- *)
-
-       (* A datatype declaration is compiled by compiling the semantic
-        * object TyEnv associated with it. The type environment
-        * (TyEnv) has been glued (as type info) to the syntactic
-        * construct of the datatype declaration during elaboration.
-        * Notice that the syntactic restrictions (see p. 9, The Def.)
-        * ensures that no constructor identifier is bound twice by the
-        * same datbind. *)
-
-    fun compileTyEnv (TyEnv : TyEnv) : CE.CEnv * datbind_list =
-      let
-	(* type structures in TyEnv with non-empty VE *)
-	val tystr_list : (TyName * VarEnv) list = 
-	      TE.fold (fn tystr => fn tystr_list => 
-		      if VE.is_empty (TyStr.to_VE tystr) then tystr_list
-		      else let val tyname = (NoSome "TypeFcn not simple" o 
-					     TypeFcn.to_TyName o TyStr.to_theta) tystr
-			       val VE = TyStr.to_VE tystr
-			   in (compileTyName tyname, VE)::tystr_list
-			   end) [] TyEnv
-      in
-	List.foldL (fn (tyname, VE) => fn (env', datbind_list) =>
-		    let val (env'', tyvars, cbs) = compile'TyStr' (tyname, VE)
-		    in (env' plus env'', (tyvars, tyname, cbs) :: datbind_list)
-		    end) (CE.emptyCEnv, []) tystr_list
       end
 
 
@@ -673,6 +646,19 @@ functor CompileDec(structure Con: CON
 				      [VAR {lvar=lvar1, instances=[]}])]
 			       @ exn_args)}
 	    end
+      fun overloaded_prim_fn' info result = (*e.g., CE.LESS, ... *)
+	    let val ty = CONStype ([], string_or_int_or_real info (TyName.tyName_INT,
+								   TyName.tyName_REAL,
+								   TyName.tyName_STRING))
+	        val lvar1 = Lvars.newLvar ()
+	    in (*takes two arguments*)
+	      FN {pat=[(lvar1, RECORDtype [ty, ty])],
+		  body=PRIM (unoverload info result,
+			     [PRIM (SELECTprim 0,
+				    [VAR {lvar=lvar1, instances=[]}]),
+			      PRIM (SELECTprim 1,
+				    [VAR {lvar=lvar1, instances=[]}])])}
+	    end
     end (*local*)
 
    (* ---------------------------------------------------------------------- *)
@@ -739,10 +725,10 @@ functor CompileDec(structure Con: CON
 	           [PRIM (EXCONprim Excon.ex_DIV, [])]
 	      | CE.MOD =>       overloaded_prim_fn info CE.MOD       false
 		   [PRIM (EXCONprim Excon.ex_MOD, [])]
-	      | CE.LESS =>      overloaded_prim_fn info CE.LESS      false []
-	      | CE.GREATER =>   overloaded_prim_fn info CE.GREATER   false []
-	      | CE.LESSEQ =>    overloaded_prim_fn info CE.LESSEQ    false []
-	      | CE.GREATEREQ => overloaded_prim_fn info CE.GREATEREQ false []
+	      | CE.LESS =>      overloaded_prim_fn' info CE.LESS
+	      | CE.GREATER =>   overloaded_prim_fn' info CE.GREATER
+	      | CE.LESSEQ =>    overloaded_prim_fn' info CE.LESSEQ
+	      | CE.GREATEREQ => overloaded_prim_fn' info CE.GREATEREQ
 	      | CE.CON(con,tyvars,_,il,it) => (*See COMPILER_ENV*)
 	       let
 		 val (functional,Type,instances) =
@@ -1083,29 +1069,27 @@ functor CompileDec(structure Con: CON
          | UNRES_FUNdec _ =>
              die "compileDec(UNRES_FUN)"
 
-         | TYPEdec _ => (CE.emptyCEnv, fn x => x)
+         | TYPEdec(i, typbind) => (compileTypbind i, fn x => x)
 
-         | DATATYPEdec(i,datbind) => 
-	     let val (env1,datbinds) = compileDatbind env i
+         | DATATYPEdec(i, _) => 
+	     let val (env_ve, env_te, datbinds) = compileDatbind i
 	         val _ = DatBinds.add datbinds
-	     in (env1,fn x => x)
+	     in (env_ve plus env_te, fn x => x)
 	     end
 
 	 | DATATYPE_REPLICATIONdec (i, tycon, longtycon) => 
-	     let val (env1, _) = compileDatbind env i
-	     in (env1, fn x => x)  	               (*don't add datbinds*)
+	     let val env1 = compileDatrepl i
+	     in (env1, fn x => x)
 	     end
 
-         | ABSTYPEdec(i, datbind, dec) =>
-	     let val (env1, datbinds) = compileDatbind env i
+         | ABSTYPEdec(i, _, dec) =>
+	     let val (env_ve, env_te, datbinds) = compileDatbind i
 	         val _ = DatBinds.add datbinds
-		 val (env2, f) = compileDec (env plus env1) (false,dec)
-	     in (env2, f)  (* only tycons in dom. of env1 would survive - but 
-			    * we dont have these in envs. -- Martin *)
+		 val (env2, f) = compileDec (env plus (env_ve plus env_te)) (false,dec)
+	     in (env_te plus env2, f)
 	     end
 
-         | EXCEPTIONdec(_, exbind) =>
-             compileExbind env exbind
+         | EXCEPTIONdec(_, exbind) => compileExbind env exbind
 
          | LOCALdec(_, dec1, dec2) =>
              let val (env1, f1) = compileDec env (false,dec1)
@@ -1178,10 +1162,47 @@ functor CompileDec(structure Con: CON
                end
       end
 
-    and compileDatbind (env:CE.CEnv) i : (CE.CEnv * datbind_list) =
+
+       (* A datatype declaration is compiled by compiling the semantic
+        * object TyEnv associated with it. The type environment
+        * (TyEnv) has been glued (as type info) to the syntactic
+        * construct of the datatype declaration during elaboration.
+        * Notice that the syntactic restrictions (see p. 9, The Def.)
+        * ensures that no constructor identifier is bound twice by the
+        * same datbind. *)
+                          (* VE        TE *) 
+    and compileDatbind i : CE.CEnv * CE.CEnv * datbind_list =
       case ElabInfo.to_TypeInfo i 
-	of Some(TypeInfo.DATBIND_INFO {TE}) => compileTyEnv TE 
+	of Some(TypeInfo.TYENV_INFO TyEnv) => 
+	  TE.Fold (fn (tycon,tystr) => fn (env_ve, env_te, dats) => 
+	       if VE.is_empty (TyStr.to_VE tystr) then die "compileDatbind"
+	       else let val tyname = (NoSome "TypeFcn not simple" o 
+				      TypeFcn.to_TyName o TyStr.to_theta) tystr
+			val VE = TyStr.to_VE tystr
+			val (env_ve', tyvars, cbs) = compile'TyStr' (compileTyName tyname, VE) 
+			val env_te' = CE.declare_tycon(tycon, [tyname], env_te)
+		    in (env_ve plus env_ve', env_te', (tyvars,tyname,cbs)::dats)
+		    end) (CE.emptyCEnv,CE.emptyCEnv,[]) TyEnv
 	 | _ => die "No TyEnv type info for compiling datbind"
+
+    and compileDatrepl i : CE.CEnv =
+      case ElabInfo.to_TypeInfo i 
+	of Some(TypeInfo.TYENV_INFO TyEnv) =>
+	  (* A datatype replication may or may not introduce an empty VE component. *)
+	  TE.Fold (fn (tycon, tystr) => fn env' => 
+		   if VE.is_empty (TyStr.to_VE tystr) then
+		     let val tns = TyName.Set.list(TyStr.tynames tystr)
+		     in CE.declare_tycon(tycon,tns,env')
+		     end
+		   else let val tyname = (NoSome "TypeFcn not simple" o 
+					  TypeFcn.to_TyName o TyStr.to_theta) tystr
+			    val VE = TyStr.to_VE tystr
+			    val (env'', tyvars, cbs) = compile'TyStr' (compileTyName tyname, VE) 
+			in CE.declare_tycon(tycon,[tyname],env' plus env'')
+			end) CE.emptyCEnv TyEnv
+	 | _ => die "No TyEnv type info for compiling datatype replication/type declaration"
+
+    and compileTypbind i : CE.CEnv = compileDatrepl i
 
     and compileExbind (env:CE.CEnv) exbind : (CE.CEnv * (LambdaExp -> LambdaExp)) =
       case exbind
@@ -1478,20 +1499,21 @@ functor CompileDec(structure Con: CON
 		     exp')
 		 end
 		| CE.REF => 
-		 let val (tyvars,tau) = convert_sigma sigma
-		     val instances' = map compileType instances
-		     val tyvars = map compileTyVar tyvars
-		     val tau = compileType tau
-		     val env' = CE.declareLvar(bind,map TYVARtype tyvars,env)
-		     val exp' = compileDecTree env' (child,compiler,failure,poly)
-		 in (if poly then (polyLet tyvars) else monoLet)
-		    ((case instances'
-			of [instance'] => (bind,tau,PRIM(DEREFprim{instance=instance'},
-							 [VAR{lvar=parent,
-							      instances=CE.lookupLvar env parent}]))
-			 | _ => die "compileDecTree(ConDEREF..)"),
-			exp')
-		 end
+		 (case instances
+		    of [instance] =>                            
+		      let val (tyvars,tau) = convert_sigma sigma    (* For deref the instance is the *)
+			  val instance' = compileType instance      (* instantiated argument type. *)
+			  val tyvars = map compileTyVar tyvars
+			  val tau = compileType tau
+			  val env' = CE.declareLvar(bind,map TYVARtype tyvars,env)
+			  val exp' = compileDecTree env' (child,compiler,failure,poly)
+		      in (if poly then polyLet tyvars else monoLet)
+			((bind,tau,PRIM(DEREFprim{instance=CONStype([instance'],TyName.tyName_REF)},
+					[VAR{lvar=parent,
+					     instances=CE.lookupLvar env parent}])),
+			 exp')
+		      end
+		     | _ => die "compileDecTree.CON_DECOMPOSE.wrong number of instances")
 		| _ => die "compileDecTree.CON_DECOMPOSE.not CON or REF"
 	  end
 
@@ -1518,16 +1540,18 @@ functor CompileDec(structure Con: CON
              end
 
          | CON_SWITCH{arg, selections, wildcard} =>
-             let val selections' =
-	           map (fn (con,(ti,tree)) => 
-			let val e' = compileDecTree env (tree,compiler,failure,poly)
-			in (lookupLongcon env (Ident.idToLongId con), e')
-			end)
-		   (FinMap.list selections)
-		 val wildcardOpt' = compileDecTreeOpt env (wildcard,compiler,failure,poly)
-	     in SWITCH_C(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
-				selections',wildcardOpt'))
-	     end
+             (case (FinMap.list selections, wildcard)
+		of ([(con,(ti,tree))], None) => compileDecTree env (tree,compiler,failure,poly)
+
+	         | (selections, _) =>
+		  let val selections' = map (fn (con,(ti,tree)) => 
+					     let val e' = compileDecTree env (tree,compiler,failure,poly)
+					     in (lookupLongcon env (Ident.idToLongId con), e')
+					     end) selections
+		      val wildcardOpt' = compileDecTreeOpt env (wildcard,compiler,failure,poly)
+		  in SWITCH_C(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
+				     selections',wildcardOpt'))
+		  end)
 
          | SCON_SWITCH{arg, selections, wildcard} =>
              compileSconSwitch env (arg, selections, wildcard, compiler, failure,poly)
