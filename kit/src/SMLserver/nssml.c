@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include "ns.h"
+#include "HashTable.h"
 #include "../Runtime/LoadKAM.h"
 #include "../Runtime/HeapCache.h"
 #include "../Runtime/Region.h"
@@ -60,6 +61,7 @@ typedef struct {
   char* prjid;
   char ulFileName[NSSML_PATH_MAX];
   time_t timeStamp;
+  HashTable scripts;
 } InterpContext;
 
 // hack to implement filtering -  this variable
@@ -185,6 +187,8 @@ rpMap = regionPageMapNew();
   
   ctx->timeStamp = (time_t)-1; 
 
+  ctx->scripts = emptyHashTable(3);
+
   // hack to implement filtering - see below
   globalInterpContext = ctx;
 
@@ -217,9 +221,9 @@ rpMap = regionPageMapNew();
 }
 
 /* -------------------------------------------------
- * nssml_smlFileToUoFile - convert sml-absolute filename
- * into the uo-file for the sml-file. Also works for 
- * msp-files. Returns -1 on error.
+ * nssml_smlFileToUoFile - convert sml-absolute 
+ * filename into the uo-file for the sml-file. Also 
+ * works for msp-files. Returns -1 on error. 
  * ------------------------------------------------- */
 
 int
@@ -232,12 +236,11 @@ nssml_next_sml0(char* p)
 }
 
 int 
-nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid) 
+nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid, int path_p) 
 {
   char* pageRoot;
   char* p; /*  = strrchr(url, '/'); */
   int i;
-  char name[NSSML_PATH_MAX];
   pageRoot = Ns_PageRoot(hServer);
   if ( strstr(url,pageRoot) != url ) {
     Ns_Log(Error, 
@@ -245,9 +248,16 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
 	   pageRoot, url);
     return -1;
   }
-  strcpy(uo, pageRoot);
-  strcat(uo, "/PM/");
-  strcat(uo, prjid);
+  if ( path_p ) 
+    {
+      strcpy(uo, pageRoot);
+      strcat(uo, "/PM/");
+      strcat(uo, prjid);
+    }
+  else 
+    {
+      strcpy(uo, prjid);
+    }
   strcat(uo, "-");
   i = strlen(uo);
   p = url + strlen(pageRoot);
@@ -285,15 +295,16 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   Ns_DString ds;
   char* urlfile;                 /* the requested url as file */
   char uo[NSSML_PATH_MAX];
+  char uo_file[NSSML_PATH_MAX];
   int res;
   time_t t;
   char *errorStr = NULL;
 
   /* Check that sml-file exists */
   
-  if ( Ns_UrlIsFile(ctx->hServer, url) != 1 ) {
-    return NSSML_FILENOTFOUND;
-  }
+  //  if ( Ns_UrlIsFile(ctx->hServer, url) != 1 ) {
+  //    return NSSML_FILENOTFOUND;
+  //  }
 
   /*
    * Test to see if the ul-file exists
@@ -351,6 +362,21 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
 	  count++;
 	}
 
+      // clear the script-name hash table
+      freeHashTable(ctx->scripts);
+      ctx->scripts = emptyHashTable(3);
+
+      if ( ! strcmp(buff,"scripts:") )
+	{
+	  while ( fgets ( buff, NSSML_PATH_MAX, is ) != NULL ) 
+	    {
+	      if ( buff[strlen(buff) - 1] == '\n' ) 
+		buff[strlen(buff) - 1] = '\0';
+	      // Ns_Log(Notice, "nssml: Accepting script: %s", buff);
+	      insertHashTable(ctx->scripts, buff, "ok");
+	    }
+	}
+
       // close the ul-file
       fclose(is);
       ctx->timeStamp = t;
@@ -361,12 +387,39 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   Ns_UrlToFile(&ds, ctx->hServer, url);
   urlfile = ds.string;
 
-  if ( nssml_smlFileToUoFile(ctx->hServer,urlfile,uo,ctx->prjid) == -1 ) 
+  if ( nssml_smlFileToUoFile(ctx->hServer,urlfile,uo,ctx->prjid, 1) == -1 ) 
     {
       return NSSML_FILENOTFOUND;
     }
 
+  // See if uo-file is a script that can be served
+  if ( nssml_smlFileToUoFile(ctx->hServer,urlfile,uo_file,ctx->prjid, 0) == -1 ) 
+    {
+      return NSSML_FILENOTFOUND;
+    }
+
+  if ( ! lookupHashTable(ctx->scripts, uo_file) )
+    {
+      int i;
+      // Ns_Log(Notice, "nssml: Request not script: %s", uo_file);
+      // Ns_Log(Notice, "nssml: Size of hash table: %d", ctx->scripts->size);
+      // Ns_Log(Notice, "nssml: Size of hash table array: %d", ctx->scripts->arraySize);
+      for ( i = 0 ; i < ctx->scripts->arraySize ; i ++ )
+	{
+	  ObjectListHashTable* ol;
+	  if ( (ol = ctx->scripts->array[i]) == 0 )
+	    continue;
+	  Ns_Log(Notice, "nssml: array[%d]:", i);
+	  for ( ; ol ; ol = ol->next )
+	    {
+	      Ns_Log(Notice, "nssml:   %s: %s", ol->key, (char *)(ol->value));
+	    }
+	}
+      return NSSML_FILENOTFOUND;
+    }
+
   // Ns_Log(Notice, "Starting interpreter on file %s", uo);
+
   res = interpLoadRun(ctx->interp, uo, &errorStr);
 
   if ( res < 0 ) {    // uncaught exception; errorStr allocated
