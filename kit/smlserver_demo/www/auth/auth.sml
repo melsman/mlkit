@@ -1,3 +1,8 @@
+val target =
+  case FormVar.getString "target" of
+    NONE => (Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
+  | SOME t => t
+
 val al =
   case FormVar.getString "auth_login" of
     NONE => (Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
@@ -13,9 +18,10 @@ val user_id =
     NONE => (Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
   | SOME user_id => user_id
 
+val _ = Ns.log(Ns.Notice, "auth.sml: " ^ target)
 val _ = Ns.Quot.write
 `HTTP/1.0 302 Found
-Location: http://localhost:8005/auth/admin/admin.sml
+Location: ^target
 MIME-Version: 1.0
 ^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/auth"})
 ^(Ns.Cookie.setCookie{name="auth_user_id", value=user_id,expiry=NONE,
@@ -23,5 +29,6 @@ MIME-Version: 1.0
 ^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/auth"})
 ^(Ns.Cookie.setCookie{name="auth_password", value=ap,expiry=NONE,
 		      domain=NONE,path=SOME "/auth",secure=false})
+
 
 You should not be seeing this!`

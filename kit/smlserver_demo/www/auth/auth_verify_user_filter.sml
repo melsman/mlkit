@@ -20,22 +20,25 @@ handle Ns.Cookie.CookieError _ => 0
 
 (* auth_verify_user_filter; procedure to filter if a
    user is authenticated to request a page *)
-
-fun auth_verify_user_filter () =
+val _ =
   let
-    val user_id = auth_verify_user ()
+    val target = Ns.Conn.location()^Ns.Conn.url()
+    fun auth_verify_user_filter () =
+      let
+	val _ = Ns.log(Ns.Notice, "auth_verify_user_filter: " ^ target)
+	val user_id = auth_verify_user ()
+      in
+	if user_id = 0 then
+	  (Ns.returnRedirect ("http://localhost:8005/auth/auth_form.sml?target=" ^ 
+			      Ns.encodeUrl target); Ns.exit())
+	else 
+	  ()
+      end
   in
-    if user_id = 0 then
-      (Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
-    else 
-      ()
+    (* we tell SMLserver to run our cookie checker procedure before
+     serving any request for a URL that starts with "/auth/" *)
+    if RegExp.regExpBool "http://nh.itu.dk:8005/auth/admin/.*" target then
+      auth_verify_user_filter ()
+    else ()
   end
-
-(* we tell SMLserver to run our cookie checker procedure before
-   serving any request for a URL that starts with "/auth/" *)
-val _ = Ns.log (Ns.Notice, Ns.Conn.location()^Ns.Conn.url())
-val _ = 
-  if RegExp.regExpBool "http://nh.itu.dk:8005/auth/admin/.*" (Ns.Conn.location()^Ns.Conn.url()) then
-    auth_verify_user_filter ()
-  else ()
 
