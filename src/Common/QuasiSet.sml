@@ -247,7 +247,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 			     hasher pu_m imap)
 		  | _ => die "pu.funFlexible.hasher",
 		 eq)
-	in dataGen (toInt,eq,[funRigid,funFlexible])
+	in dataGen (toInt,[funRigid,funFlexible])
 	end
 
     fun pu pu_e =

@@ -226,7 +226,7 @@ functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
 		 Pickle.hashCombine (Pickle.hasher Pickle.word w, Pickle.hashCombine(h n1, h n2))
 		  | _ => raise Fail "NatSet.pu.fun_some.hasher",
 		 eq)	    
-	in Pickle.dataGen (toInt,eq,[fun_empty,fun_some])
+	in Pickle.dataGen (toInt,[fun_empty,fun_some])
 	end
 end
 

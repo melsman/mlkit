@@ -8,16 +8,17 @@ signature PICKLE =
 	
     type 'a pickler   = 'a -> outstream -> outstream
     type 'a unpickler = instream -> 'a * instream
-    type 'a hasher = 'a -> int -> word    (* int: hash depth *)
-    val hashCombine : (int -> word) * (int -> word) -> int -> word
+    type 'a hasher = 'a -> int -> word    (* int: hash depth *)  (* delete *)
+    val hashCombine : (int -> word) * (int -> word) -> int -> word  (* delete *)
 
-    type 'a eq = 'a * 'a -> bool
+    type 'a eq = 'a * 'a -> bool (* delete *)
 
-    type 'a pu = 'a pickler * 'a unpickler * 'a hasher * 'a eq
+    type 'a pu = 'a pickler * 'a unpickler * 'a hasher * 'a eq  (* make abstract *)
 
     val pickler   : 'a pu -> 'a pickler
     val unpickler : 'a pu -> 'a unpickler
-    val hasher    : 'a pu -> 'a hasher
+
+    val hasher    : 'a pu -> 'a hasher  (* delete *)
 
     val word      : word pu
     val word32    : Word32.word pu
@@ -40,38 +41,33 @@ signature PICKLE =
     val shareGen  : 'a pu -> 'a pu
     val enumGen   : ''a list -> ''a pu     
 
-    val dataGen   : ('a->int) * ('a*'a->bool) 
-                    * ('a pu -> 'a pu) list -> 'a pu
-    val data2Gen  : ('a->int) * ('a*'a->bool) 
-                    * ('a pu * 'b pu -> 'a pu) list 
-	            * ('b->int) * ('b*'b->bool) 
-                    * ('a pu * 'b pu -> 'b pu) list 
+    val dataGen   : ('a->int) * ('a pu -> 'a pu) list -> 'a pu
+    val data2Gen  : ('a->int) * ('a pu * 'b pu -> 'a pu) list 
+	            * ('b->int) * ('a pu * 'b pu -> 'b pu) list 
                     -> 'a pu * 'b pu
 
-    val data3Gen  : ('a->int) * ('a*'a->bool) 
-                    * ('a pu * 'b pu * 'c pu -> 'a pu) list 
-	            * ('b->int) * ('b*'b->bool) 
-                    * ('a pu * 'b pu * 'c pu -> 'b pu) list 
-	            * ('c->int) * ('c*'c->bool) 
-                    * ('a pu * 'b pu * 'c pu -> 'c pu) list 
+    val data3Gen  : ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list 
+	            * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list 
+	            * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list 
                     -> 'a pu * 'b pu * 'c pu
 
-    val con1      : ('b*'b->bool) 
-                    -> ('a->'b) -> ('b->'a) -> 'a pu
-	            -> 'b pu
-
-    val con0      : ('b*'b->bool) -> 'b -> 'b pu -> 'b pu
+    val con0       : 'b -> 'b pu -> 'b pu
+    val con1       : ('a->'b) -> ('b->'a) -> 'a pu -> 'b pu
 
     val empty      : unit -> outstream
     val fromString : string -> instream
     val toString   : outstream -> string
-(*
-    val get        : instream -> word * instream
-    val out        : word * outstream -> outstream
-*)
+
     val convert    : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
 
     val cache      : ('a -> 'b pu) -> 'a -> 'b pu
+
+    val register   : 'a list -> 'a pu -> 'a pu
+
+    (* [register vs pu] returns a pickler-unpickler with the property
+     that a pickled value equal to a value in vs is equal to the
+     value in vs when unpickled.
+     *)
   end
 
 (*
@@ -113,8 +109,8 @@ signature PICKLE =
  a pickler-unpickler pu for the argument type to the option type.
 
  [shareGen pu] given a pickler-unpickler for some type, the function
- generates a pickler-unpickler, which implements sharing of equal
- values (defined by polymorphic equality).
+ generates a pickler-unpickler, which implements sharing of equivalent
+ values (defined by structural equality).
 
  [enumGen cs] generates a pickler-unpickler for an enumeration
  datatype, given each value of the datatype.
@@ -137,7 +133,7 @@ signature PICKLE =
 
  [fromString s] returns an instream corresponding to the string s.
 
- [toString os] returns a string corresponding to output send to the
+ [toString os] returns a string corresponding to output sent to the
  outstream os.
 
  [get is] reads a word from the instream is.

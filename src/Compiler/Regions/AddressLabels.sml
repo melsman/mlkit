@@ -36,7 +36,13 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
     val exn_BIND_lab = (Name.exn_BIND, "exn_BIND")                (* label 9 *)
     val exn_OVERFLOW_lab = (Name.exn_OVERFLOW, "exn_OVERFLOW")    (* label 10 *)
     val exn_INTERRUPT_lab = (Name.exn_INTERRUPT, "exn_INTERRUPT") (* label 11 *)
-      
+
+    val pu =
+	Pickle.register [reg_top_lab,reg_bot_lab,reg_string_lab,
+			 reg_pair_lab,reg_array_lab,reg_ref_lab,
+			 reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
+			 exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
+	let open Pickle
+	in pairGen(Name.pu,string)
+	end
   end
-
-

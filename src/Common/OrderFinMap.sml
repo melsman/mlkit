@@ -532,7 +532,7 @@ old *)
 								 hasher pu_bal b))))
 		  | _ => die "pu.fun_N.hasher",
 		 eq)
-	in dataGen(toInt,eq,[fun_E,fun_N])
+	in dataGen(toInt,[fun_E,fun_N])
 	end
 
   end

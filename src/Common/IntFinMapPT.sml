@@ -249,7 +249,7 @@ struct
 		 | _ => raise Fail "IntFinMapPT.pu_Br.hasher",
 		eq)
        in
-	   dataGen (toInt, eq, [pu_Empty, pu_Lf, pu_Br])
+	   dataGen (toInt,[pu_Empty, pu_Lf, pu_Br])
        end
 end
 

@@ -320,7 +320,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		  | _ => die "pu_range_private.LONGEXCONpriv.hasher",
 		 eq)
 
-	in dataGen (toInt, eq, [fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
+	in dataGen (toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
 	end
 
     val pu_VarEnv : VarEnv Pickle.pu =
@@ -390,8 +390,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		     StrEnvEq)
 		end
 		 
-	in data2Gen (EnvToInt,EnvEq,[fun_ENV],
-		     StrEnvToInt,StrEnvEq,[fun_STRENV])
+	in data2Gen (EnvToInt,[fun_ENV],
+		     StrEnvToInt,[fun_STRENV])
 	end
 
     val pu_Context =

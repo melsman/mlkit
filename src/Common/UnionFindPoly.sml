@@ -137,7 +137,7 @@ struct
 	       fn LINK e => hasher (pu_Element pu) e
 		| _ => die "fun_LINK.hasher",
 	       eq)
-	  val pu = dataGen(toInt, eq, [fun_EQR,fun_LINK])
+	  val pu = dataGen(toInt,[fun_EQR,fun_LINK])
       in pu_Element pu
       end
 

@@ -190,6 +190,10 @@ signature MANAGER_OBJECTS =
 	   * export names are marked non-generative; for an entry to
 	   * be reused, all export names must be marked generative. *)
 
+	type repository
+	val getRepository : unit -> repository
+	val setRepository : repository -> unit
+	val pu            : repository Pickle.pu
       end
     
   end

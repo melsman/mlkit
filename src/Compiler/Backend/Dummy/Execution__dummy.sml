@@ -55,5 +55,6 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     fun emit _ = ""
     fun link_files_with_runtime_system _ _ _ = ()
 
+    val pu_linkinfo = Pickle.unit
   end
 

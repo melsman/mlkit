@@ -343,6 +343,28 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    in	      
 	      print("[wrote file " ^ ulfile ^ "]\n")
 	    end
+
+	val pu =
+	    let open Pickle
+		fun toInt EMPTY_MODC = 0
+		  | toInt (SEQ_MODC _) = 1
+		  | toInt (EMITTED_MODC _) = 2
+		  | toInt (NOTEMITTED_MODC _) = 3
+		val fun_EMPTY_MODC = con0 EMPTY_MODC
+		fun fun_SEQ_MODC pu = 
+		    con1 SEQ_MODC (fn SEQ_MODC a => a | _ => die "ModCode.pu.SEQ_MODC")
+		    (pairGen(pu,pu))
+		fun fun_EMITTED_MODC _ = 
+		    con1 EMITTED_MODC (fn EMITTED_MODC a => a | _ => die "ModCode.pu.EMITTED_MODC")
+		    (pairGen(string,Execution.pu_linkinfo))
+		fun error _ = die "ModCode.pu.NOTEMITTED_MODC"
+		fun fun_NOTEMITTED_MODC _ = 
+		    con1 error error (convert (error,error) unit)
+	    in dataGen(toInt,[fun_EMPTY_MODC,
+			      fun_SEQ_MODC,
+			      fun_EMITTED_MODC,
+			      fun_NOTEMITTED_MODC])
+	    end
       end
 
 
@@ -378,12 +400,12 @@ functor ManagerObjects(structure Execution : EXECUTION
 		fun toInt (FUNSTAMP_MODTIME _) = 0
 		  | toInt (FUNSTAMP_GEN _) = 1
 		fun fun_FUNSTAMP_MODTIME _ =
-		    con1 eq FUNSTAMP_MODTIME (fn FUNSTAMP_MODTIME v => v | _ => die "pu.FUNSTAMP_MODTIME")
+		    con1 FUNSTAMP_MODTIME (fn FUNSTAMP_MODTIME v => v | _ => die "pu.FUNSTAMP_MODTIME")
 		    pu_funid_time
 		fun fun_FUNSTAMP_GEN _ =
-		    con1 eq FUNSTAMP_GEN (fn FUNSTAMP_GEN v => v | _ => die "pu.FUNSTAMP_GEN")
+		    con1 FUNSTAMP_GEN (fn FUNSTAMP_GEN v => v | _ => die "pu.FUNSTAMP_GEN")
 		    pu_funid_int
-	    in dataGen(toInt,eq,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
+	    in dataGen(toInt,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
 	    end
       end
 
@@ -441,29 +463,18 @@ functor ManagerObjects(structure Execution : EXECUTION
 	let open Pickle
 	    fun IntFunEnvToInt _ = 0
 	    fun IntBasisToInt _ = 0
-	    fun IntFunEnvEq(IFE m1, IFE m2) = 
-		let fun eqRes ((a1,f1,s1,e1,b1,i1),(a2,f2,s2,e2,b2,i2)) =
-		    s1 = s2 andalso a1 = a2 andalso  #4 FunStamp.pu (f1,f2)
-		    andalso #4 Execution.Elaboration.Basics.Environments.E.pu (e1,e2)
-		    andalso #4 pu_BodyBuilderClos (b1,b2) 
-		    andalso IntBasisEq(i1,i2)
-		in FinMap.eq eqRes (m1,m2)
-		end
-	    and IntBasisEq(IB(if1,ise1,ce1,cb1),IB(if2,ise2,ce2,cb2)) =
-		IntFunEnvEq(if1,if2) andalso #4 pu_IntSigEnv(ise1,ise2)
-		andalso #4 CompilerEnv.pu (ce1,ce2) andalso #4 CompileBasis.pu (cb1,cb2)
 	    fun fun_IFE (pu_IntFunEnv, pu_IntBasis) =
-		con1 IntFunEnvEq IFE (fn IFE a => a)		
+		con1 IFE (fn IFE a => a)		
 		(FinMap.pu (FunId.pu,
 			    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
 			    (pairGen(tup3Gen(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
 				     tup3Gen(Execution.Elaboration.Basics.Environments.E.pu,
 					     pu_BodyBuilderClos,pu_IntBasis)))))
 	    fun fun_IB (pu_IntFunEnv, pu_IntBasis) =
-		con1 IntBasisEq IB (fn IB a => a)
+		con1 IB (fn IB a => a)
 		(tup4Gen(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
-	in data2Gen(IntFunEnvToInt,IntFunEnvEq,[fun_IFE],
-		    IntBasisToInt,IntBasisEq,[fun_IB])
+	in data2Gen(IntFunEnvToInt,[fun_IFE],
+		    IntBasisToInt,[fun_IB])
 	end
 
     structure IntFunEnv =
@@ -707,11 +718,11 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	type int_entry' = int_entry
 
-	type intRep = int_entry list RM.map ref
-	type intRep' = int_entry' list RM.map ref
+	type intRep = int_entry list RM.map
+	type intRep' = int_entry' list RM.map
 
-	val intRep : intRep = ref RM.empty
-	val intRep' : intRep' = ref RM.empty
+	val intRep : intRep ref = ref RM.empty
+	val intRep' : intRep' ref = ref RM.empty
 	fun clear() = (ElabRep.clear();
 		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep));  
 		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep'));  
@@ -833,6 +844,22 @@ functor ManagerObjects(structure Execution : EXECUTION
 	val add_elab = ElabRep.add_elab
 	val owr_elab = ElabRep.owr_elab
 	fun recover() = (ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
+
+	val pu_int_entry =
+	    let open Pickle
+	    in convert (fn ((a1,a2,a3,a4),(a5,a6,a7)) => (a1,a2,a3,a4,a5,a6,a7),
+			fn (a1,a2,a3,a4,a5,a6,a7) => ((a1,a2,a3,a4),(a5,a6,a7)))
+		(pairGen(tup4Gen(FunStamp.pu,Environments.E.pu,IntBasis.pu,listGen StrId.pu_longstrid),
+			 tup3Gen(listGen Name.pu,ModCode.pu,IntBasis.pu)))
+	    end
+	val pu_intRep : intRep Pickle.pu = 
+	    RM.pu ElabRep.pu_dom (Pickle.listGen pu_int_entry)
+	type repository = ElabRep.elabRep * intRep
+	fun getIntRep() = !intRep
+	fun setIntRep r = intRep := r
+	fun getRepository() = (ElabRep.getElabRep(),getIntRep())
+	fun setRepository(er,ir) = (ElabRep.setElabRep er; setIntRep ir)
+	val pu = Pickle.pairGen(ElabRep.pu,pu_intRep)
       end
     
   end

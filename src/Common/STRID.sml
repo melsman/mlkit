@@ -25,4 +25,5 @@ signature STRID =
     val < : strid * strid -> bool
 
     val pu : strid Pickle.pu
+    val pu_longstrid : longstrid Pickle.pu
   end

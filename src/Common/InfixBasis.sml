@@ -95,7 +95,7 @@ functor InfixBasis(structure Ident: IDENT
 		 fn INFIXR i => hasher int i
 		  | _ => die "pu_InfixEntry.INFIXR.hasher",
 		 op =)
-	in dataGen(toInt,op =,[fun_NONFIX,fun_INFIX,fun_INFIXR])
+	in dataGen(toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
 	end
 
     val pu : Basis Pickle.pu = FinMap.pu(Ident.pu,pu_InfixEntry)

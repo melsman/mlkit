@@ -198,4 +198,13 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 	  print("[Created file " ^ run ^ "]\n")
 	  (* ; app (print o (fn s => "   " ^ s ^ "\n")) files  *)
 	end
+
+    val pu_linkinfo =
+	let open Pickle
+	    val pu_labels = listGen Labels.pu
+	    val pu_pair = pairGen(pu_labels,pu_labels)
+	in convert (fn (c,i,e,u) => {code_label=c,imports=i,exports=e,unsafe=u},
+		    fn {code_label=c,imports=i,exports=e,unsafe=u} => (c,i,e,u))
+	    (tup4Gen(Labels.pu,pu_pair,pu_pair,bool))
+	end    
   end

@@ -44,6 +44,8 @@ functor Con(structure Name : NAME
     val con_ANTIQUOTE : con  = mk_con "ANTIQUOTE"
 
     val pu = 
+	Pickle.register [con_REF,con_TRUE,con_FALSE,con_NIL,con_CONS,
+			 con_QUOTE,con_ANTIQUOTE]
 	let open Pickle
 	    fun to (s,n) : con = {str=s,name=n}
 	    fun from ({str=s,name=n} : con) = (s,n)
@@ -57,12 +59,7 @@ functor Con(structure Name : NAME
 	val name = name
 	val pp = pr_con
       end
-(*
-    structure Map = EqFinMap(structure Report = Report
-			     structure PP = PP
-			     type dom = con
-			     val eq = eq)
-*)
+
     structure Map = QuasiMap(structure IntFinMap = IntFinMap
 			     structure Name = Name
 			     structure Crash = Crash

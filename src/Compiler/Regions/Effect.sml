@@ -866,22 +866,8 @@ struct
 	      case !pu_einfo_cache of
 		  SOME pu => pu
 		| _ => die "pu_einfo_get"
-	  fun eq (EPS {key=k,level=l,represents=r,instance=i,pix=p}, 
-		  EPS {key=k2,level=l2,represents=r2,instance=i2,pix=p2}) = 
-	      k=k2 andalso l=l2 andalso i=i2 andalso p=p2
-	      andalso #4(pu_represents (pu_einfo_get()))(r,r2)
-	    | eq (UNION {represents=r}, UNION {represents=r2}) = #4(pu_represents (pu_einfo_get()))(r,r2)
-	    | eq (PUT, PUT) = true
-	    | eq (GET, GET) = true
-	    | eq (WORDEFFECT,WORDEFFECT) = true
-	    | eq (RHO {put,get=g,key=k,level=l,instance=i,pix=p,ty=t}, 
-		  RHO {put=put2,get=g2,key=k2,level=l2,instance=i2,pix=p2,ty=t2}) = 
-	      k=k2 andalso l=l2 andalso i=i2 andalso p=p2 andalso t=t2
-	      andalso #4(pu_nodeopt (pu_einfo_get()))(put,put2)
-	      andalso #4(pu_nodeopt (pu_einfo_get()))(g,g2)
-	    | eq _ = false
-	  val pu_einfo = dataGen(toInt,eq,[(*fun_EPS, fun_UNION, fun_PUT, fun_GET,
-					    fun_WORDEFFECT, fun_RHO*)])	  
+	  val pu_einfo = dataGen(toInt,[(*fun_EPS, fun_UNION, fun_PUT, fun_GET,
+					 fun_WORDEFFECT, fun_RHO*)])	  
       in pu_einfo_cache := SOME pu_einfo 
        ; pu_einfo
       end
