@@ -1,6 +1,6 @@
 (*$CompileDec : CON EXCON TYNAME TOPDEC_GRAMMAR STATOBJECT ENVIRONMENTS LVARS
         LAMBDA_EXP LAMBDA_BASICS COMPILER_ENV ELAB_INFO FINMAP FINMAPEQ CRASH
-        FLAGS PRETTYPRINT REPORT COMPILE_DEC*)
+        FLAGS PRETTYPRINT REPORT COMPILE_DEC OrderFinMap OrderSet KIT_MONO_SET*)
 
 (* At some point we should clean up this code.. Constructors are not
  * looked up in the environment anymore.. Also, - it would be nice if
@@ -684,10 +684,6 @@ local
     | span (Excon _) = span_infinite
     | span (Tuple {arity}) = span_1
 
-  (*list of cons:*)
-  fun isin (x,[]) = false
-    | isin (x,x'::xs) = con_eq (x, x') orelse isin (x, xs)
-
   datatype path = Access of int * con * path | Obj
     (*a path is a description of how to access a component value of the value
      that is being pattern matched.  For instance, if the value being matched
@@ -730,10 +726,26 @@ local
   val string_from_rhs = Int.string
   fun string_from_rhs' (_, rhs) = string_from_rhs rhs
 
-  datatype termd = Pos of con * termd list | Neg of con list
+  structure conset : KIT_MONO_SET = OrderSet
+    (structure Order : ORDERING = struct
+       type T = con
+       fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
+     end (*structure Order*)
+     structure PP = PrettyPrint)
+
+  structure negset = struct
+    type negset = int (*number of cons in the set*) * conset.Set (*the cons*)
+    val empty = (0, conset.empty)
+    fun member con (i, conset) = conset.member con conset
+    fun insert con (i, conset) = (i + 1, conset.insert con conset)
+    fun size (i, _) = i
+  end (*structure negset*)
+
+       
+  datatype termd = Pos of con * termd list | Neg of negset.negset
   type context = (con * termd list) list
 
-  fun addneg (Neg nonset, con) = Neg (con::nonset)
+  fun addneg (Neg negset, con) = Neg (negset.insert con negset)
     | addneg _ = die "addneg"
 
   fun augment ([], termd) = []
@@ -752,9 +764,10 @@ local
   fun staticmatch (con : con, termd : termd) : matchresult =
 	(case termd of
 	   Pos (pcon, _) => (case con_cmp (con, pcon) of Eq => Yes | _ => No)
-	 | Neg (nonset)  => if isin (con, nonset) then No
-			    else if span_eq_int (span con) (length nonset + 1) then Yes
-				 else Maybe)
+	 | Neg negset  => if negset.member con negset then No
+			  else if span_eq_int (span con) (negset.size negset + 1)
+			       then Yes
+			       else Maybe)
 
   datatype kind = Success of rhs' | IfEq of ifeq
   withtype node = {lvar : lvar, kind : kind, refs : int ref, visited : bool ref}
@@ -981,7 +994,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
   and match_con pcon (argpats : (int * pat) list)
 	(path, termd, ctx, work, rhs, rules) =
 	let
-	  fun getdargs (Neg _) = map (fn _ => Neg []) argpats
+	  fun getdargs (Neg _) = map (fn _ => Neg negset.empty) argpats
 	    | getdargs (Pos (con, dargs)) = dargs
 	  fun getoargs () = map (fn (i, pat) => Access (i, pcon, path)) argpats
 	  fun succeed' () = succeed
@@ -1378,7 +1391,7 @@ fun compile_decdag_to_functions  compile_no obj raise_something tau_return env
 
   fun mk_decdag (rules : rule list)   : edge =
 	(reset () ;
-	 let val edge = fail (Neg [], rules)
+	 let val edge = fail (Neg negset.empty, rules)
 	 in
 	   edge_bump edge ;
 	   edge
