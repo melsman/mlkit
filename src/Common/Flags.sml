@@ -137,7 +137,6 @@ functor Flags(structure Crash: CRASH): FLAGS =
     val load_ref: (string -> unit)ref  = ref dummy
     val touch_unit_ref = ref "dummy"
     val touch_ref: (string -> unit)ref  = ref dummy
-    val touch_all_ref: (unit -> unit)ref  = ref dummy
     val comp_ref: (string -> unit)ref  = ref dummy
     val test_ref: (unit -> unit)ref  = ref dummy
     val current_source_file = ref "dummy"
@@ -976,7 +975,7 @@ old*)
   end (*local*)
 
 
-  (*3,5. Profiling menu*)
+  (*3,5. File menu*)
 
   val file_item : item = mk_header "File"
         (DISPLAY
@@ -1007,8 +1006,7 @@ old*)
           (DISPLAY
 	   [{text = "region profiling",
 	     attr = VALUE (fn () => show_flag (!region_profiling)),
-	     below = ACTION (fn () => ((!touch_all_ref) ();
-				       toggle_ref region_profiling))},
+	     below = ACTION (fn () => toggle_ref region_profiling)},
 	    mk_toggle ("generate lambda program with program points", gen_lambda_with_pp),
 	    mk_toggle ("generate region flow graph (.vcg file)", gen_vcg_graph),
 	    mk_int_pair_list_action(region_paths, "paths between two nodes in region flow graph")
@@ -1113,7 +1111,13 @@ old*)
   fun interact () = interact0 ()
         handle Quit => ()
 	     | Crash.CRASH => (outLine "*** CRASH raised *" ; interact ()) 
-	     | _ => (outLine "*** Uncaught exception" ; interact ())
+	     | Io s => (outLine ("*** Io \"" ^ s ^ "\" raised *"); interact ())
+	     | SML_NJ.Unsafe.CInterface.SystemCall s =>
+	         (outLine ("*** SystemCall \"" ^ s ^ "\" raised *"); interact ())
+	     | Overflow => (outLine "*** Overflow raised *"; interact ())
+	     | e => (outLine "*** Uncaught exception\nI shall reraise it...\n" ;
+		     raise e ;
+		     interact ())
 
   and interact0 () = inter ([], !menu)
   
