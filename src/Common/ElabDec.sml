@@ -371,13 +371,10 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       end
 
 
-    (* Insert type information in valbind; the generic_tyvars are
-     * those tyvars that were generalised when VE was closed (by
-     * C.close). ME 1998-11-18 *)
+    (* Insert type information in valbind; generalised type variables
+     * are collected from annotated type information in the patterns. *)
    
-    fun insert_type_info_in_valbind (generic_tyvars : TyVar list, 
-				     VE : VarEnv, 
-				     valbind: OG.valbind) : OG.valbind =
+    fun insert_type_info_in_valbind (VE : VarEnv, valbind: OG.valbind) : OG.valbind =
       let 
 	val generic_tyvars_pat = ref nil
 	fun add_tyvars tvs = generic_tyvars_pat := TyVar.unionTyVarSet (!generic_tyvars_pat, tvs)
@@ -397,7 +394,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		       | _ => i
 	      in OG.LAYEREDpat(i', id_op, ty_opt, do_pat pat)
 	      end
-
 	     | OG.UNRES_INFIXpat _ => impossible "do_pat(UNRES_INFIX)"
 
         and do_atpat atpat =
@@ -744,7 +740,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		     handle E => (Level.pop(); raise E)
                val _ = Level.pop() 
 
-	       val (generic_tyvars, VE') = C.close (S onC C, valbind, VE)
+	       val VE' = C.close (S onC C, valbind, VE)
 
 (*for debugging
 	       fun pr_id id = 
@@ -759,7 +755,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			       (i, ErrorInfo.TYVARS_SCOPED_TWICE
 				    (map TyVar.from_ExplicitTyVar explicittyvars))
 
-               val out_valbind = insert_type_info_in_valbind (generic_tyvars, VE', out_valbind)
+               val out_valbind = insert_type_info_in_valbind (VE', out_valbind)
 
 	     (*The side condition ``U n tyvars VE' = {}'' is enforced partly
 	      by disallowing unification of free explicit tyvars (giving the

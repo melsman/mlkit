@@ -210,7 +210,7 @@ signature ENVIRONMENTS =
 	(* C.close is the function Clos defined p. 20, only used in
 	 * rule 15, i.e., in ElabDec.elab_dec (C, VALdec ...). *)
 
-	val close                : Context * valbind * VarEnv -> TyVar list * VarEnv
+	val close                : Context * valbind * VarEnv -> VarEnv
 
 	val dom_pat              : Context * pat * bool -> id list
               (*dom_pat (C, pat) = the list of id's bound by pat---i.e.,
