@@ -1,6 +1,6 @@
 (*$Manager: MANAGER_OBJECTS NAME ENVIRONMENTS MODULE_ENVIRONMENTS
             PARSE_ELAB CRASH REPORT PRETTYPRINT FLAGS INT_MODULES
-            FREE_IDS MANAGER TIMING*)
+            FREE_IDS OPACITY_ELIM MANAGER TIMING*)
 
 functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		structure Name : NAME
@@ -23,6 +23,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      and type FreeIds.strid = ManagerObjects.strid = ModuleEnvironments.strid
 		      and type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
 		      and type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
+		structure OpacityElim : OPACITY_ELIM
+		  sharing OpacityElim.TyName = Environments.TyName = ManagerObjects.TyName
+		    = ModuleEnvironments.TyName
+		      and type OpacityElim.topdec = ParseElab.topdec
+		      and type OpacityElim.realisation = ManagerObjects.realisation
 	        structure Timing : TIMING
 		structure Crash : CRASH
 		structure Report : REPORT
@@ -103,7 +108,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     val _ = Flags.add_flag_to_menu
           (["Control"], "report_file_sig",
 	   "report types, values, etc.", report_file_sig)
+	  
+    (* ----------------------------------------
+     * Some parsing functions
+     * ---------------------------------------- *)
 
+    exception ParseProjectFile of string
+    fun drop_comments (l: string list) : string list =
+      let fun loop(n, "(" :: "*" :: rest ) = loop(n+1, rest)
+	    | loop(n, "*" :: ")" :: rest ) = loop(n-1, if n=1 then " "::rest else rest)
+	    | loop(0, ch ::rest) = ch :: loop (0,rest)
+	    | loop(0, []) = []
+	    | loop(n, ch ::rest) = loop(n,rest)
+	    | loop(n, []) = raise ParseProjectFile "unclosed comment"
+      in loop(0,l)
+      end
 	
     (* ------------------------------------------- 
      * Debugging and reporting
@@ -168,24 +187,35 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       end
 
     (* ----------------------------------------------------------
-     * load(name)  loads project file `name' into project
+     * read(name)  (re)reads project file `name' into project. The
+     *             repository is not reset; use reset() for this.
      * ---------------------------------------------------------- *)
 
-    fun load (s : string) : unit =  
+    fun read (s : string) : unit =  
       let val s = !source_directory ^ s
-          val file_string = StringParse.fromFile s
-	  val files = StringParse.words {groups=" \n\t", singles="",
-					 preserveGroups=false, preserveSingles=false} file_string
-	  fun elim []= []
-	    | elim (""::fs) = elim fs
-	    | elim (f ::fs) = f :: elim fs
-	  val files = elim files 
-      in
-	reset();
-	project := map (fn f => (ManagerObjects.funid_from_filename f,
-				 !source_directory ^ f ^ ".sml")) files
-      end handle Io io_s => (error ("Project file \"" ^ s ^ "\" cannot be opened."));
+ 	  fun is_whitesp "\n" = true
+	    | is_whitesp " " = true
+	    | is_whitesp "\t" = true
+	    | is_whitesp _ = false
+	    
+	  fun lex_whitesp (all as c::rest) = if is_whitesp c then lex_whitesp rest
+					     else all 
+	    | lex_whitesp [] = []
+	  fun lex_name(c::rest, acc) = if is_whitesp c then (implode(rev acc), rest)
+				       else lex_name (rest, c::acc)
+	    | lex_name ([], acc) = (implode(rev acc), [])
+	  fun lex_names acc cs = case lex_whitesp cs
+				   of [] => rev acc
+				    | cs => let val (name,cs') = lex_name(cs, [])
+					    in lex_names (name::acc) cs'
+					    end
 
+	  val files = (lex_names [] o drop_comments o explode o StringParse.fromFile) s
+      in
+	 project := map (fn f => (ManagerObjects.funid_from_filename f,
+				  !source_directory ^ f ^ ".sml")) files
+      end handle Io io_s => (error ("Project file \"" ^ s ^ "\" cannot be opened."))
+               | ParseProjectFile s1 => (error ("Parsing project file \"" ^ s ^ "\": " ^ s1))
 
 
     type Basis = ManagerObjects.Basis
@@ -196,9 +226,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun match_elab(names_elab, elabB, funid) =
       case Repository.lookup_elab funid
-	of Some (_,(_,_,names_elab',_,elabB')) =>    (* names_elab' are already marked generative - lookup *)
-	  (List.apply Name.mark_gen names_elab;      (* returned the entry. The invariant is that every *)
-	   ElabBasis.match(elabB, elabB');           (* name in the bucket is generative. *)
+	of Some (_,(_,_,_,names_elab',_,elabB',_)) =>    (* names_elab' are already marked generative - lookup *)
+	  (List.apply Name.mark_gen names_elab;          (* returned the entry. The invariant is that every *)
+	   ElabBasis.match(elabB, elabB');               (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_elab)
 	 | None => () (*bad luck*)
 
@@ -219,7 +249,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun parse_elab_interp (B, funid, source_filepath, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file(source_filepath)
-	      val (infB, elabB, intB) = Basis.un B
+	      val (infB, elabB, rea, intB) = Basis.un B
 	      val filename = ManagerObjects.funid_to_filename funid
 	      val log_cleanup = log_init filename
 	      val _ = Name.bucket := []
@@ -247,8 +277,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val intB_im = IntBasis.restrict(intB, (funids,strids,ids,tycons))
 		      (* val _ = print " done]\n" *)
 
+ 		      val tynames_elabB_im = ElabBasis.tynames elabB_im
+		      val rea_im = OpacityElim.restrict(rea,tynames_elabB_im)
+
+		      val (topdec', rea') = OpacityElim.opacity_elimination(rea_im, topdec)
+
 		      val _ = Name.bucket := []
-		      val (intB', modc) = IntModules.interp(intB_im, topdec, filename)
+		      val (intB', modc) = IntModules.interp(intB_im, topdec', filename)
 		      val names_int = !Name.bucket
 		      val _ = Name.bucket := []
 
@@ -260,12 +295,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 		      val _ = Repository.delete_entries funid
 
-		      val _ = Repository.add_elab (funid, (infB, elabB_im, names_elab, infB', elabB'))
+		      val _ = Repository.add_elab (funid, (infB, elabB_im, (rea_im,tynames_elabB_im), 
+							   names_elab, infB', elabB', rea'))
 		      val modc = ModCode.emit modc  (* When module code is inserted in repository,
 						     * names become rigid, so we emit the module code. *)
 		      val elabE' = ElabBasis.to_E elabB'
 		      val _ = Repository.add_int (funid, (funstamp_now, elabE', intB_im, names_int, modc, intB'))
-		      val B' = Basis.mk(infB',elabB',intB')
+		      val B' = Basis.mk(infB',elabB',rea',intB')
 		  in print_result_report report;
 		    log_cleanup();
 		    (B',modc)
@@ -281,22 +317,26 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let val funstamp_now = FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
 	  exception CAN'T_REUSE
       in (case (Repository.lookup_elab funid, Repository.lookup_int funid)
-	    of (Some(_,(infB, elabB,names_elab,infB',elabB')), 
+	    of (Some(_,(infB, elabB, (rea,dom_rea), names_elab,infB',elabB', rea')), 
 		Some(_,(funstamp,elabE,intB,names_int,modc,intB'))) =>
-	      let val B_im = Basis.mk(infB,elabB,intB)
+	      let val B_im = Basis.mk(infB,elabB,rea,intB)
 	      in if FunStamp.eq(funstamp,funstamp_now) andalso
 		     let (* val _ = print "\n[checking enrichment ...\n" *)
-		         val res = Basis.enrich(B, B_im)
+		         val res = Basis.enrich(B, (B_im, dom_rea))
 			 (* val _ = print " done]\n" *)
 		     in res
-		     end andalso
-		     let (* val _ = print "\n[checking environment equality ...\n" *)
-		         val res = Environments.E.eq(ElabBasis.to_E elabB', elabE)
+		     end 
+
+(* andalso
+		     let (* val _ = print "\n[checking environment equality ...\n" *)   (* Why is this necessary? *)
+		         val res = Environments.E.eq(ElabBasis.to_E elabB', elabE)    (* I've commented it out 14/10/97-Martin *)
 			 (* val _ = print " done]\n" *)
 		     in res
-		     end then 
+		     end 
+*)              
+                   then 
 		    let val _ = print ("[reusing code for: \t" ^ filepath ^ "]\n")
-		        val B_ex = Basis.mk(infB',elabB',intB')
+		        val B_ex = Basis.mk(infB',elabB',rea',intB')
 		    in List.apply Name.unmark_gen names_elab;    (* unmark names - they where *)
 		       List.apply Name.unmark_gen names_int;     (* marked in the repository. *)
 		       (B_ex, modc)
@@ -344,7 +384,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ----------------------------- *)
 
     fun comp (filename : string) : unit =
-      let val (infB,elabB,intB) = Basis.un Basis.initial
+      let val (infB,elabB,rea,intB) = Basis.un Basis.initial
 	  val _ = reset()
 	  val _ = Timing.reset_timings()
 	  val _ = Timing.new_file filename
@@ -352,7 +392,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       in (case ParseElab.parse_elab {infB=infB,elabB=elabB,
 				     file=filename_to_sourcefile filename} 
 	    of ParseElab.SUCCESS {report, topdec, ...} =>
-	      let val (_, modc) = IntModules.interp(intB, topdec, filename)
+	      let val (topdec',_) = OpacityElim.opacity_elimination(rea,topdec)
+		  val (_, modc) = IntModules.interp(intB, topdec', filename)
 		  val modc = ModCode.emit modc
 	      in ModCode.mk_exe(modc, filename ^ ".exe");
 	         print_result_report report;
@@ -368,7 +409,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ----------------------------- *)
 
     fun elab (filename : string) : unit =
-      let val (infB,elabB,_) = Basis.un Basis.initial
+      let val (infB,elabB,_,_) = Basis.un Basis.initial
 	  val _ = reset()
 	  val log_cleanup = log_init filename
       in (case ParseElab.parse_elab {infB=infB,elabB=elabB,
@@ -382,9 +423,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     (* initialize Flags.build_ref to contain build (for interaction), etc.
      * See comment in FLAGS.*)
 
-    val _ = Flags.build_ref := build
-    val _ = Flags.show_ref := show
-    val _ = Flags.load_ref := load
+    val _ = Flags.build_project_ref := build
+    val _ = Flags.show_project_ref := show
+    val _ = Flags.read_project_ref := read
     val _ = 
       let val comp = fn a => 
 	((comp a) handle PARSE_ELAB_ERROR => output(std_out, "\n ** Parse or elaboration error occurred. **\n"))
