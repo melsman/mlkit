@@ -200,10 +200,10 @@ You should not be seeing this!`;
         else
 	  (reject (`Du har ikke de nødvendige adgangsprivilegier til at tilgå siden. ` ^^
                    `Hvis du mener det er en fejl, så send en email til ` ^^ 
-		    (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ `.<br>` ^^
+		    (Html.aemail (ScsConfig.scs_site_adm_email()) "administrator") ^^ `.<br>` ^^
 		   `(eng. You do not have access to the page you are requesting. ` ^^
                    `Please send an email to the ` ^^ 
-                    (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ ` if you
+                    (Html.aemail (ScsConfig.scs_site_adm_email()) "administrator") ^^ ` if you
                     believe you should have access to the page.)<p>`);
            default_id)
       end

@@ -45,7 +45,9 @@ fun updPortrait db file_id (pic_format:ScsPicture.picture_format) =
   `update scs_portraits
       set ^(Db.setList [("width",Int.toString (#width pic_format)),
 			("height",Int.toString (#height pic_format)),
-			("bytes",Int.toString (#size pic_format))])
+			("bytes",Int.toString (#size pic_format)),
+			("modifying_user",Int.toString user_id)]),
+          last_modified = sysdate
     where file_id = '^(Int.toString file_id)'`
 
 fun delTmpFiles files = List.app (fn f => FileSys.remove f handle _ => ()) files
@@ -121,7 +123,9 @@ val _ =
 			   bytes             = #size orig_format,
 			   official_p        = true,
 			   person_name       = "",
-			   may_show_portrait_p = false (* Arbitraty value *)}
+			   may_show_portrait_p = false (* Arbitraty value *),
+			   modifying_user = 0 (* Arbitrary value *),
+			   last_modified = ScsDate.now_local() (* Arbitrary value *)}
 			val _ = ScsPerson.insPortrait db orig_pic
 
 			(* Upload thumbnail *)
@@ -144,7 +148,9 @@ val _ =
 			   bytes             = #size thumb_format,
 			   official_p        = true,
 			   person_name       = "",
-			   may_show_portrait_p = false (* Arbitraty value *)}
+			   may_show_portrait_p = false (* Arbitraty value *),
+			   modifying_user = 0 (* Arbitrary value *),
+			   last_modified = ScsDate.now_local() (* Arbitrary value *)}
 			val _ = ScsPerson.insPortrait db thumb_pic
 
 			(* No error has happened, so we continue cleaning up *)
@@ -164,6 +170,18 @@ val _ =
 	end
     | "may_show_portrait" =>
 	let
+	  fun log_show_p db show_p = 
+	    Db.Handle.execSpDb db 
+	    [`scs_approval.approve_row(table_name  => ^(Db.qqq ScsPerson.scs_approvals_show_portrait_name),
+	                               id          => ^(Int.toString person_id),
+	                               approved_by => ^(Int.toString (user_id)),
+	                               note_text   => ^(Db.qqq 
+							(if show_p then
+							   "Ja - billede må vises offentligt"
+							 else
+							   "Nej - billede må ikke vises offentligt")),
+	                               modified_by => ^(Int.toString user_id) )`]
+
 	  val (show_p,errs) = ScsPerson.getMayShowPortraitpErr("show_p",ScsFormVar.emptyErr)
 	  val _ = ScsFormVar.anyErrors errs
 	  val upd_sql = 
@@ -172,13 +190,18 @@ val _ =
 				  ("modifying_user",Int.toString user_id)]),
                     last_modified = sysdate
               where party_id = '^(Int.toString person_id)'`
-	  val _ =  ScsError.wrapPanic Db.dml upd_sql
-	  (* Reset cache ScsPersonRetPortrait *)
-	  val portraits = ScsPerson.getPortraits person_id
-	  val _ = List.app (fn pic => ScsPerson.cacheMayReturnPortrait_p 
-			    (#file_id pic) (#party_id pic) (#may_show_portrait_p pic)) portraits
+	  fun upd_show_p db =
+	    let
+	      val _ = Db.Handle.dmlDb db upd_sql
+	      val _ = log_show_p db show_p
+	      (* Reset cache ScsPersonRetPortrait *)
+	      val portraits = ScsPerson.getPortraits person_id
+	    in
+	      List.app (fn pic => ScsPerson.cacheMayReturnPortrait_p 
+			(#file_id pic) (#party_id pic) (#may_show_portrait_p pic)) portraits
+	    end
 	in
-	  ()
+	  ScsError.wrapPanic Db.Handle.dmlTrans upd_show_p
 	end
     | "delete" => 
 	let
@@ -327,7 +350,8 @@ val _ =
 	    
 	      (* mk original picture in max size (800x600) in tmp-directory *)
 	      val (orig_tmp,orig_tmp_format) =
-		if #height orig_format > ScsPerson.max_height then
+		if #height orig_format > ScsPerson.max_height andalso 
+		  not (ScsPerson.mayKeepOrigSize user_id) then
 		  let
 		    val (h,w) = ScsPicture.fixedHeight orig_format ScsPerson.max_height
 		    val orig_tmp = ScsConfig.scs_tmp() ^ "/" ^ "orig_tmp-" ^ filename
@@ -382,7 +406,9 @@ val _ =
 		 bytes             = #size orig_tmp_format,
 		 official_p        = official_p,
 		 person_name       = "",
-		 may_show_portrait_p = false (* Arbitraty value *)}
+		 may_show_portrait_p = false (* Arbitraty value *),
+		 modifying_user = 0 (* Arbitrary value *),
+		 last_modified = ScsDate.now_local() (* Arbitrary value *)}
 	      val _ = ScsPerson.insPortrait db orig_pic
 
 	      (* Upload thumbnail *)
@@ -407,7 +433,9 @@ val _ =
 		 bytes             = #size thumb_format,
 		 official_p        = official_p,
 		 person_name       = "",
-		 may_show_portrait_p = false (* Arbitraty value *)}
+		 may_show_portrait_p = false (* Arbitraty value *),
+		 modifying_user = 0 (* Arbitrary value *),
+		 last_modified = ScsDate.now_local() (* Arbitrary value *)}
 	      val _ = ScsPerson.insPortrait db thumb_pic
 
 	      (* No error has happened, so we continue cleaning up *)
@@ -433,3 +461,9 @@ val _ =
     [("mode",UcsSs.Widget.modeToString UcsSs.Widget.MY_PROFILE_VIEW)]
 
 
+(*--------------
+
+
+
+
+*)

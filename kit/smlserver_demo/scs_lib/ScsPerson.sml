@@ -30,7 +30,7 @@ signature SCS_PERSON =
 	modifying_user : int,
 	deleted_p      : bool}
 
-    datatype portrait_type = original | thumb_fixed_height | thumb_fixed_width
+    datatype portrait_type = original | thumb_fixed_height
     type portrait_record =
       { file_id             : int,
         party_id            : int,
@@ -43,7 +43,13 @@ signature SCS_PERSON =
 	bytes               : int,
 	official_p          : bool,
 	person_name         : string,
-	may_show_portrait_p : bool}
+	may_show_portrait_p : bool,
+	modifying_user      : int,
+	last_modified       : Date.date}
+
+    datatype portrait_mode =
+      PORTRAIT_ADM_HELP
+    | PORTRAIT_ADM
       
     val portrait_types_enum_name : string
     val portrait_type_from_DB : string -> portrait_type option
@@ -84,6 +90,18 @@ signature SCS_PERSON =
         cached values of showing pictures to the public. *)
     val cacheMayReturnPortrait_p : int -> int -> bool -> unit
 
+    (* [returnLargePortrait ()] expects fv person_id and returns the
+    original picture for that person. Used in trap.sml *)
+    val returnLargePortrait : unit -> unit
+
+    (* [returnThumbnail ()] expects fv person_id and returns the
+    thumbnail picture for that person. Used in trap.sml *)
+    val returnThumbnail : unit -> unit
+
+    (* [returnPortraitFile ()] returns the portrait file given by fv
+        file_id. Used in trap.sml *)
+    val returnPortraitFile : unit -> unit
+
     (* [mayToggleShowPortrait user_id] returns true if user_id may
         toggle the field may_show_portrait_p. *)
     val mayToggleShowPortrait : int -> bool
@@ -92,11 +110,22 @@ signature SCS_PERSON =
         make the non official portrait the official one. *)
     val mayMakeNonOfficialOfficial : int -> bool
 
-      (* [genPortraitHtml thumb_opt large_opt default] returns HTML
-          for showing a portrait as a thumbnail and when clicked opens
-          a larger portrait. If either thumb_opt or large_opt is NONE,
-          then default is returned. *)
-    val genPortraitHtml : portrait_record option -> portrait_record option -> string -> string
+    (* [mayKeepOrigSize user_id] returns true if user_id may keep the
+        original size of the picture, that is, the size is not
+        reduced. *)
+    val mayKeepOrigSize : int -> bool
+
+    (* [genPortraitHtml thumb_opt large_opt default] returns HTML
+        for showing a portrait as a thumbnail and when clicked opens
+        a larger portrait. If either thumb_opt or large_opt is NONE,
+        then default is returned. *)
+    val genPortraitHtml    : portrait_record option -> portrait_record option -> string -> string
+
+    (* [genExtPortraitHtml thumb_opt large_opt default] returns HTML
+        for showing a portrait from an external page as a thumbnail
+        and when clicked opens a larger portrait. If either thumb_opt
+        or large_opt is NONE, then default is returned. *)
+    val genExtPortraitHtml : portrait_record option -> portrait_record option -> string -> string
 
     (* [portraitAsHtml (user_id,per:person_record,official_p,adm_p)]
        returns HTML for a portrait. user_id is the logged in user. per
@@ -122,6 +151,10 @@ signature SCS_PERSON =
         uploaded picture is larger, then it is scaled down. *)
     val max_height   : int
 
+    (* [scs_approvals_show_portrait_name] is the string used when
+        loggin may_show_portrait_p in ScsApprovals. *)
+    val scs_approvals_show_portrait_name : string
+
     (* [thumb_height] is the height of a thumbnail. *)
     val thumb_height : int
 
@@ -129,6 +162,8 @@ signature SCS_PERSON =
         priviledge that user_id has on uploading pictures (either
         officials og non officials) to person per. *)
     val uploadPortraitPriv : int * bool * person_record -> ScsFileStorage.priv
+
+    val may_see_portrait_adm_p : int -> bool 
 
     (* [portrait_req_info] is a dictionary with info about pictures
         and the requirements *)
@@ -245,6 +280,8 @@ signature SCS_PERSON =
          - if email is of form login => login@itu.dk
      *)
     val fix_email : string -> string
+
+    val portrait_adm_nb : string option -> UcsPage.navbar_item
   end
 
 structure ScsPerson :> SCS_PERSON =
@@ -279,7 +316,7 @@ structure ScsPerson :> SCS_PERSON =
 	modifying_user : int,
 	deleted_p      : bool}
 
-    datatype portrait_type = original | thumb_fixed_height | thumb_fixed_width
+    datatype portrait_type = original | thumb_fixed_height
     type portrait_record =
       { file_id             : int,
         party_id            : int,
@@ -292,20 +329,52 @@ structure ScsPerson :> SCS_PERSON =
 	bytes               : int,
 	official_p          : bool,
 	person_name         : string,
-        may_show_portrait_p : bool}
+        may_show_portrait_p : bool,
+	modifying_user      : int,
+	last_modified       : Date.date}
 
     val portrait_types_enum_name = "scs_portrait_types"
     fun portrait_type_from_DB "orig" = SOME original
       | portrait_type_from_DB "thumb_fixed_height" = SOME thumb_fixed_height
-      | portrait_type_from_DB "thumb_fixed_width" = SOME thumb_fixed_width
       | portrait_type_from_DB "" = NONE
       | portrait_type_from_DB s = ScsError.panic `ScsPerson.protrait_type_from_DB: can't convert ^s`
     fun portrait_type_to_DB original = "orig"
       | portrait_type_to_DB thumb_fixed_height = "thumb_fixed_height"
-      | portrait_type_to_DB thumb_fixed_width = "thumb_fixed_width"
 
-    (* Virtually download directory *)
-    val download_dir = "/scs/person/portrait_download"
+    datatype portrait_mode =
+      PORTRAIT_ADM_HELP
+    | PORTRAIT_ADM
+      
+    local
+
+      (* Names only change in external sources once a day. Hence, it
+         shouldn't be a big problem not updating the cache. *)
+      val name_cache = 	
+	Ns.Cache.get(Ns.Cache.Int,
+		     Ns.Cache.String,
+		     "ScsPersonName",
+		     Ns.Cache.TimeOut 10000)
+      fun name' user_id =
+	Db.oneField `select scs_person.name(person_id)
+                       from scs_persons
+                      where scs_persons.person_id = '^(Int.toString user_id)'`
+	handle Fail _ => ""
+    in
+      fun name user_id = Ns.Cache.memoize name_cache name' user_id
+    end
+
+   (* Check for form variables *)
+    fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
+
+    fun getOfficialpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"Official_p",errs)
+
+    fun getMayShowPortraitpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"May show portrait",errs)
+
+    val upload_root_label = "ScsPersonPortrait"        (* Upload root label used in FS *)
+    val max_height = 400                               (* Height of large pictures *)
+    val thumb_height = 180                             (* Height of thumbnails *)
+    val download_dir = "/scs/person/portrait_download" (* Virtually download directory *)
+    val scs_approvals_show_portrait_name ="scs_parties:may_show_portrait"
     local
       fun mk_url (filename,file_id) = 
 	Html.genUrl (download_dir ^ "/" ^ filename) [("file_id",Int.toString file_id)]
@@ -325,7 +394,9 @@ structure ScsPerson :> SCS_PERSON =
 	   bytes = (ScsError.valOf o Int.fromString) (g "bytes"),
 	   official_p = (ScsError.valOf o Db.toBool) (g "official_p"),
 	   person_name = g "person_name",
-	   may_show_portrait_p = (ScsError.valOf o Db.toBool) (g "may_show_portrait_p")}
+	   may_show_portrait_p = (ScsError.valOf o Db.toBool) (g "may_show_portrait_p"),
+	   modifying_user = (ScsError.valOf o Int.fromString) (g "modifying_user"),
+	   last_modified = (ScsError.valOf o Db.toTimestamp) (g "last_modified")}
 	end
       fun portraitSQL from_wh = 
 	` select p.file_id,
@@ -338,7 +409,9 @@ structure ScsPerson :> SCS_PERSON =
                  p.height,
                  p.bytes,
                  p.official_p,
-                 party.may_show_portrait_p
+                 party.may_show_portrait_p,
+                 p.modifying_user,
+                 ^(Db.toTimestampExp "p.last_modified") as last_modified
 	   ` ^^ from_wh
     in
       fun getPortrait file_id =
@@ -367,7 +440,9 @@ structure ScsPerson :> SCS_PERSON =
 	bytes = 2841,
 	official_p = false,
 	person_name = "-",
-	may_show_portrait_p = true}
+	may_show_portrait_p = true,
+	modifying_user = 0 (* Arbitrary value *),
+	last_modified = ScsDate.now_local() (* Arbitrary value *)}
     val empty_portrait_large : portrait_record =
       { file_id = 0,
         party_id = 0,
@@ -380,7 +455,9 @@ structure ScsPerson :> SCS_PERSON =
 	bytes = 2841,
 	official_p = false,
 	person_name = "-",
-	may_show_portrait_p = true}
+	may_show_portrait_p = true,
+	modifying_user = 0 (* Arbitrary value *),
+	last_modified = ScsDate.now_local() (* Arbitrary value *)}
 
     fun getPicture pic_type official_p (portraits : portrait_record list) = 
       List.find (fn pic => #portrait_type_val pic = pic_type andalso 
@@ -398,20 +475,19 @@ structure ScsPerson :> SCS_PERSON =
     fun insPortrait db (pic : portrait_record) =
       let
 	val ins_sql = `insert into scs_portraits
-	                 (file_id,party_id,portrait_type_vid,width,height,bytes,official_p)
+	                 (file_id,party_id,portrait_type_vid,width,height,bytes,official_p,modifying_user)
                        values
 		         ('^(Int.toString (#file_id pic))','^(Int.toString (#party_id pic))',
 			  scs_enumeration.getVID(^(Db.qqq portrait_types_enum_name),
 						 '^(portrait_type_to_DB (#portrait_type_val pic))'),
                           '^(Int.toString (#width pic))', '^(Int.toString (#height pic))',
-			  '^(Int.toString (#bytes pic))', '^(Db.fromBool (#official_p pic))')`
+			  '^(Int.toString (#bytes pic))', '^(Db.fromBool (#official_p pic))',
+			  '^(Int.toString (ScsLogin.user_id()))')`
       in
 	ScsError.wrapPanic
 	(Db.Handle.dmlDb db) ins_sql
       end
 
-
-    (* TODO: add cache that must be reset when may_show_portrait_p is updated!!! *)
     local
       val may_return_portrait_cache =
 	Ns.Cache.get(Ns.Cache.Int,
@@ -422,8 +498,8 @@ structure ScsPerson :> SCS_PERSON =
 	case getPortrait file_id of
 	  SOME pic => (#may_show_portrait_p pic,#party_id pic)
 	| NONE => (false,~1) (* No picture so do not return it. *)
-      val may_show_portrait_p =	
-	Ns.Cache.memoize may_return_portrait_cache may_show_portrait_p' 
+      fun may_show_portrait_p file_id =	
+	Ns.Cache.memoize may_return_portrait_cache may_show_portrait_p' file_id
     in
       fun mayReturnPortrait_p user_id file_id adm_p = 
 	let
@@ -437,10 +513,82 @@ structure ScsPerson :> SCS_PERSON =
 	(Ns.Cache.insert (may_return_portrait_cache,file_id,(show_p,person_id));())
     end
 
+    (* Supporting links to pictures from external pages. *)
+    fun may_see_portrait_adm_p user_id = ScsRole.has_one_p user_id [ScsRole.PhdAdm,ScsRole.StudAdm,ScsRole.UcsEduInfo]
+    local 
+      fun returnEmpty pic_type = 
+	case pic_type of 
+	  thumb_fixed_height => 
+	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url empty_portrait_thumbnail));())
+	| _ => 
+	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url empty_portrait_large));())
+      fun returnFile pic_type user_id file_id =
+	if mayReturnPortrait_p user_id file_id (may_see_portrait_adm_p user_id) then
+	  (ScsError.log ("Returning Portrait file id: " ^ Int.toString file_id);
+	   ScsFileStorage.returnFile upload_root_label file_id)
+	else
+	  (ScsError.log ("Not allowed to return portrait file id: " ^ Int.toString file_id);
+	   returnEmpty pic_type)
+      fun returnPic pic_type =
+	let
+	  val user_id = ScsLogin.user_id() (* User is not necessarily logged in! *)
+	  val (person_id,errs) = getPersonIdErr("person_id",ScsFormVar.emptyErr)
+	in
+	  if ScsFormVar.isErrors errs then
+	    returnEmpty pic_type
+	  else
+	    let
+	      val portraits = getPortraits person_id
+	    in
+	      case getPicture pic_type false portraits of
+		SOME pic => returnFile pic_type user_id (#file_id pic) (* Non official pictures first. *)
+	      | NONE => 
+		  (case getPicture pic_type true portraits of
+		     SOME pic => returnFile pic_type user_id (#file_id pic) (* Official picture last. *)
+		   | NONE => returnEmpty pic_type)
+	    end
+	end
+    in
+      fun returnLargePortrait () = returnPic original
+      fun returnThumbnail () = returnPic thumb_fixed_height
+      fun returnPortraitFile () =
+	let
+	  val user_id = ScsLogin.user_id() (* User is not necessarily logged in! *)
+	  val (file_id,errs) = ScsFileStorage.getFileIdErr("file_id",ScsFormVar.emptyErr)
+	in
+	  if ScsFormVar.isErrors errs then
+	    returnEmpty thumb_fixed_height
+	  else
+	    returnFile thumb_fixed_height user_id file_id
+	end
+      fun genExtPortraitHtml (thumb_opt:portrait_record option) (large_opt:portrait_record option) default = 
+	let
+	  fun fileextension filename = 
+	    case Path.ext filename of
+	      NONE => ""
+	    | SOME ext => ext
+	in
+	  case (thumb_opt,large_opt) of
+	    (SOME thumb,SOME large) => 
+	      Quot.toString
+	      `<a href="^(Html.genUrl (Quot.toString 
+                                       `^(Ns.Conn.location())^(download_dir)/portrait.^(fileextension (#filename large))`) 
+                          [("person_id",Int.toString (#party_id large))])">
+	      <img src="^(Html.genUrl (Quot.toString 
+					`^(Ns.Conn.location())^(download_dir)/thumbnail.^(fileextension (#filename thumb))`) 
+                          [("person_id",Int.toString (#party_id thumb))])"
+	      alt="^(#person_name thumb)"></a>`
+	  | _ => default
+	end
+    end
+
     fun mayToggleShowPortrait user_id =
       ScsRole.has_one_p user_id [ScsRole.SiteAdm,ScsRole.PortraitAdm]
 
     fun mayMakeNonOfficialOfficial user_id =
+      ScsRole.has_one_p user_id [ScsRole.SiteAdm,ScsRole.PortraitAdm]
+
+    fun mayKeepOrigSize user_id = 
       ScsRole.has_one_p user_id [ScsRole.SiteAdm,ScsRole.PortraitAdm]
 
     fun genPortraitHtml (thumb_opt:portrait_record option) (large_opt:portrait_record option) default = 
@@ -448,7 +596,8 @@ structure ScsPerson :> SCS_PERSON =
 	(SOME thumb,SOME large) => 
 	  Quot.toString
 	  `<a href="^(#url large)">
-	   <img src="^(#url thumb)" width="^(Int.toString (#width thumb))" 
+	   <img src="^(#url thumb)" 
+	   width="^(Int.toString (#width thumb))" 
 	   height="^(Int.toString (#height thumb))" 
 	   align="right" alt="^(#person_name thumb)"></a>`
       | _ => default
@@ -514,33 +663,64 @@ structure ScsPerson :> SCS_PERSON =
 	val fv_target = Quot.toString `<input type=hidden name="target" value="^target">`
         val fv_official_p = Quot.toString `<input type=hidden name="official_p" 
 	  value="^(Db.fromBool official_p)">`
-	val upload_form = ` ^(current_picture_html)
+	val confirm_upload = 
+	  if pic_exists_p then
+	    SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at udskifte det nuværende billede.`),
+						     (ScsLang.en,`Please confirm, that you want to replace the 
+						      current picture.`)]))
+	  else
+	    NONE
+	val info_upload_file =
+	  case thumb_opt of
+	    SOME thumb => 
+	      UcsPage.info
+	      (ScsDict.s [(ScsLang.da,`<h2>Nuværende billede</h2>
+			   Nuværende billede er gemt af ^(name (#modifying_user thumb)) den 
+			   ^(ScsDate.ppTimestamp (#last_modified thumb)).`),
+			  (ScsLang.en,`<h2>Current picture.</h2>
+			   Current picture is uploaded by ^(name (#modifying_user thumb)) on
+			   ^(ScsDate.ppTimestamp (#last_modified thumb))`)])
+	  | NONE => ""
+	val upload_form = `^(current_picture_html) ` ^^
+	  (ScsWidget.namedBox "#999999" "#FFFFFF" (ScsDict.s [(ScsLang.en,`Upload picture`),
+							     (ScsLang.da,`Upload billede`)]) 
+	   ` 
 	  <form enctype=multipart/form-data method=post action="/scs/person/upload_portrait.sml">
 	  <input type=hidden name="person_id" value="^(Int.toString person_id)">
 	  ^fv_target
 	  ^fv_official_p
 	  <input type=file size="20" name="upload_filename">
 	  ^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Gem fil`),
-						  (ScsLang.en,`Upload file`)],NONE))
-	  </form>`
+						  (ScsLang.en,`Upload file`)],confirm_upload))
+	   ^info_upload_file
+	  </form>`)
 
+
+	val confirm_rotate =
+	  SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at rotere det nuværende billede.`),
+						   (ScsLang.en,`Please confirm, that you want to rotate the 
+						    current picture.`)]))
 	val rotate_form =
 	  if pic_exists_p then
+	    ScsWidget.namedBox "#999999" "#FFFFFF" (ScsDict.s [(ScsLang.en,`Rotate picture`),
+							       (ScsLang.da,`Roter billede`)])
 	    `<form action="/scs/person/upload_portrait.sml">
 	    <input type=hidden name="mode" value="rotate"> 
   	    ^fv_target
    	    ^fv_official_p
 	    <input type=hidden name="person_id" value="^(Int.toString person_id)">
-	    ^(ScsDict.s [(ScsLang.da,`roter billede til venstre`),
+	    <ul>
+	    <li>^(ScsDict.s [(ScsLang.da,`roter billede til venstre`),
 			 (ScsLang.en,`rotate picture to the left`)])
 	    <input type=radio name="direction" 
-	    value="^(ScsPicture.directionToString ScsPicture.left)"><br>
-	    ^(ScsDict.s [(ScsLang.da,`roter billede til højre`),
+	    value="^(ScsPicture.directionToString ScsPicture.left)">
+	    <li>^(ScsDict.s [(ScsLang.da,`roter billede til højre`),
 			 (ScsLang.en,`rotate picture to the right`)])
 	    <input type=radio name="direction" 
 	    value="^(ScsPicture.directionToString ScsPicture.right)"><br>
 	    ^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Roter`),
-						    (ScsLang.en,`Rotate`)],NONE))
+						    (ScsLang.en,`Rotate`)],confirm_rotate))
+            </ul>
 	    </form>
 	    ^(ScsDict.s [(ScsLang.da,`Bemærk, at billedkvaliteten forringes en anelse ved 
 			  rotation, så du skal ikke gøre dette mere end 1 eller 2 gange.`),
@@ -549,23 +729,40 @@ structure ScsPerson :> SCS_PERSON =
 	  else
 	    ``
 
+	val confirm_delete =
+	  SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at slette det nuværende billede.`),
+						   (ScsLang.en,`Please confirm, that you want to delete the 
+						    current picture.`)]))
         val delete_form = 
 	  if pic_exists_p then
-	    `<p>^(ScsDict.s [(ScsLang.da,`Slet billede.`),
-			     (ScsLang.en,`Delete picture.`)])
+	    ScsWidget.namedBox "#999999" "#FFFFFF" (ScsDict.s [(ScsLang.en,`Delete picture`),
+							       (ScsLang.da,`Slet billede`)]) `
 	    <form action="/scs/person/upload_portrait.sml">
 	    <input type=hidden name="mode" value="delete"> 
 	    ^fv_target
 	    ^fv_official_p
 	    <input type=hidden name="person_id" value="^(Int.toString person_id)">
 	    ^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Slet billede`),
-						    (ScsLang.en,`Delete picture`)],NONE))
+						    (ScsLang.en,`Delete picture`)],confirm_delete))
 	    </form>
 	    `
 	  else
 	    ``
+
+        val ext_link =
+	  if pic_exists_p andalso #may_show_portrait_p (Option.valOf thumb_opt) then
+	    ScsWidget.namedBox "#999999" "#FFFFFF" (ScsDict.s [(ScsLang.en,`Ekstern link til billede`),
+							       (ScsLang.da,`External link to picture`)]) `
+	    ^(ScsDict.s [(ScsLang.da,`Du kan anvende nedenstående HTML kode når du linker til billede eksternt:`),
+			 (ScsLang.en,`You may use the HTML code below when you link to the picture from an
+			  external document.`)])<p>
+	    <code>
+	    ^(ScsSecurity.xssFilterLeaveNoTags (genExtPortraitHtml thumb_opt large_opt ""))
+	    </code>`
+	  else
+	    ``
       in
-	Quot.toString (upload_form ^^ `<p>` ^^ rotate_form ^^ delete_form)
+	Quot.toString (upload_form ^^ `<p>` ^^ rotate_form ^^ `<p>` ^^ delete_form ^^ `<p>` ^^ ext_link)
       end
 
     (* getOrCreateUploadFolderId: check folder_id in scs_parties and
@@ -575,10 +772,6 @@ structure ScsPerson :> SCS_PERSON =
        where 
           party_id = thxx (t is for thousand and h for hundred)
     *)
-    val upload_root_label = "ScsPersonPortrait"
-    val max_height = 400
-    val thumb_height = 110
-
     fun getOrCreateUploadFolderId (db:Db.Handle.db,per:person_record) =
       case #upload_folder_id per of
 	SOME id => id
@@ -678,7 +871,7 @@ structure ScsPerson :> SCS_PERSON =
 		 keywords_da = g "keywords_da",
 		 keywords_en = g "keywords_en",
 		 edit_no = (ScsError.valOf o Int.fromString) (g "edit_no"),
-		 last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
+		 last_modified = (ScsError.valOf o Db.toTimestamp) (g "last_modified"),
 		 modifying_user = (ScsError.valOf o Int.fromString) (g "modifying_user"),
 		 deleted_p = (ScsError.valOf o Db.toBool) (g "deleted_p")}
       fun profileSQL from_wh =
@@ -694,7 +887,7 @@ structure ScsPerson :> SCS_PERSON =
 		 scs_text.getText(p.keywords_tid,'^(ScsLang.toString ScsLang.en)') 
 		   as keywords_en,
                  p.edit_no, 
-                 p.last_modified, 
+                 ^(Db.toTimestampExp "p.last_modified") as last_modified, 
                  p.modifying_user, 
                  p.deleted_p
             ` ^^ from_wh
@@ -763,11 +956,6 @@ structure ScsPerson :> SCS_PERSON =
 	| p => (p,errs)
 
     end
-    fun name user_id =
-      Db.oneField `select scs_person.name(person_id)
-                     from scs_persons
-                    where scs_persons.person_id = '^(Int.toString user_id)'`
-      handle Fail _ => ""
 
     fun email user_id =
       Db.oneField `select scs_party.email(^(Int.toString user_id))
@@ -814,25 +1002,16 @@ structure ScsPerson :> SCS_PERSON =
 
     fun search_form target_url hvs = 
       let
-        val formbox = UcsWidget.FORMBOX{
-	  action     = "/scs/person/person_search.sml", 
-	  form_attr  = [],
-	  buts       = [("submit",ScsDict.s [(ScsLang.en,`Search`),(ScsLang.da,`Søg`)] ,NONE)],
-	  header     = Html.export_hiddens (("target_url",target_url)::hvs),
-	  table_attr = [],
-	  body       = [searchWidget false UcsWidget.WRITE "pat" NONE]
-	}
+        fun formbox() = UcsWidget.FORMBOX
+	  {action     = "/scs/person/person_search.sml", 
+	   form_attr  = [],
+	   buts       = [("submit",ScsDict.s [(ScsLang.en,`Search`),(ScsLang.da,`Søg`)] ,NONE)],
+	   header     = Html.export_hiddens (("target_url",target_url)::hvs),
+	   table_attr = [],
+	   body       = [searchWidget false UcsWidget.WRITE "pat" NONE]}
       in
-        UcsWidget.layoutComponentGrp formbox
+        UcsWidget.layoutComponentGrp (formbox())
       end
-
-
-   (* Check for form variables *)
-    fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
-
-    fun getOfficialpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"Official_p",errs)
-
-    fun getMayShowPortraitpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"May show portrait",errs)
 
     fun splitCpr cpr = (String.substring (cpr,0,6),String.substring (cpr,6,4))
 
@@ -903,4 +1082,9 @@ structure ScsPerson :> SCS_PERSON =
     fun isFemale_p cpr = 
       cprToSex cpr = Female
 
+    fun portrait_adm_nb (name_opt:string option) = 
+      case name_opt of
+        SOME name => (``, ScsDict.s' UcsDict.portrait_adm_dict ^^ ` for ` ^^
+		      `^name`)
+      | NONE	 => (``, ScsDict.s' UcsDict.portrait_adm_dict)
   end
