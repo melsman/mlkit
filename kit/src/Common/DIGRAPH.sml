@@ -59,19 +59,16 @@ signature DIGRAPH =
     val out_of_node: 'info node -> 'info node list
       (* out_of_node(n):  list of targets of out-edges of n *)
 
-    val eq_nodes : ('info node * 'info node) ->    (* nodes canonical *)
-                   bool
+    val eq_nodes : ('info node * 'info node) -> bool
       (* equality by reference *)
 
     val visit_all: 'info node -> unit
-      (* visit_all(n): mark all unmarked nodes reachble from n *)
+      (* visit_all(n): mark all unmarked nodes reachable from n *)
 
     val unvisit_all: 'info node -> unit
-      (* unvisit_all(n): unmark all marked nodes reachble from n *)
+      (* unvisit_all(n): unmark all marked nodes reachable from n *)
 
     val unvisit: 'info node list -> unit
-
-    val get_visited: 'info node -> bool ref
 
     val union    : ('info * 'info -> 'info) -> 
                    ('info node * 'info node) -> (* nodes canonical *)
@@ -103,16 +100,14 @@ signature DIGRAPH =
                    'info node
                    
     (* union_left(info_combine)(n1,n2): like   union,
-       but with resulting nodes gets precisely the out-edges that n1 has
+       but with resulting nodes precisely the out-edges that n1 has
     *)
 
     val find     : 'info node -> 'info node             
-    val get_info : 'info node -> 'info         (* node canonical *)
-    and set_info : 'info node -> 'info -> unit (* node canonical *)
-    val find_info : 'info node -> 'info        (* The node need not be canonical *)
-    val find_visited: 'info node -> bool ref        (* The node need not be canonical *)
-    val find_rep_and_info : 'info node -> 'info node * 'info  (* The argument node need 
-                                                     not be canonical *)
+    val set_info : 'info node -> 'info -> unit
+    val find_info : 'info node -> 'info
+    val find_visited: 'info node -> bool ref
+    val find_rep_and_info : 'info node -> 'info node * 'info
 
     val topsort  : 'info node list -> 'info node list 
       (*

@@ -153,12 +153,12 @@ struct
   fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [G.find(e)]
   
   fun get_instance effect =
-     case G.find_info (G.find effect) of
+     case G.find_info effect of
        EPS{instance, ...} => instance
      | RHO{instance, ...} => instance
      | _ => die "get_instance"
 
-  fun is_arrow_effect effect =  (* effect node not necessarily canonical *)
+  fun is_arrow_effect effect =
      case G.find_info effect of
 	 EPS _ => true
        | _ => false
@@ -168,7 +168,7 @@ struct
     | is_union _ = false
 
   fun is_rho effect =
-     case G.find_info effect of (* effect node not necessarily canonical *)
+     case G.find_info effect of
 	 RHO _ => true
        | _ => false
 
@@ -178,13 +178,11 @@ struct
      (Such a region should not be dropped - see DropRegions.drop_places *)
 
   fun acc_rho effect (acc: effect list): effect list =
-      let val effect = G.find effect
-      in  case (G.find_info effect, G.get_visited effect) of
-	      (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect::acc)
-	    | _ => acc
-      end
+      case (G.find_info effect, G.find_visited effect) of
+	  (RHO{put = SOME _, ...}, r as ref false) => (r:= true; G.find effect :: acc)
+	| _ => acc
 
-  fun is_put effect =           (* effect node not necessarily canonical *)
+  fun is_put effect =
      case G.find_info effect of
        PUT => true
     | _ => false
@@ -201,7 +199,7 @@ struct
      | _ => false
 
   fun get_level_and_key(effect): (level*key) option =
-     case G.find_info (G.find effect) of
+     case G.find_info effect of
        EPS{level, key,...} => SOME(level,key)
      | RHO{level, key,...} => SOME(level,key)
      | _ => NONE
@@ -211,30 +209,32 @@ struct
       RHO{key,...} => !key
      | _ => die "key_of_rho (not a RHO)"
 
-  fun get_level_and_key'(effect): (level*key) option = (* effect canonical *)
-     case G.get_info (effect) of
+(*
+  fun get_level_and_key'(effect): (level*key) option =
+     case G.find_info effect of
        EPS{level, key,...} => SOME(level,key)
      | RHO{level, key,...} => SOME(level,key)
      | _ => NONE
+*)
 
   fun setkey generator (effect) =
-     case G.get_info(G.find effect) of
+     case G.find_info effect of
        EPS{key, ...} => key:= generator()
      | RHO{key, ...} => key:= generator()
      | _ => ()
 
   fun get_level_of_rho(effect):int =
-     case G.find_info (effect) of
-       RHO{level as ref (l),...} => l
+     case G.find_info effect of
+       RHO{level as ref l,...} => l
      | _ => die "GetLevelOfRho"
 
   fun get_key_of_eps(effect):int =
-     case G.find_info (effect) of
-       EPS{key as ref (k),...} => k
+     case G.find_info effect of
+       EPS{key as ref k,...} => k
      | _ => die "GetKeyOfEps"
 
   fun get_place_ty(effect): runType option =
-     case G.find_info (effect) of
+     case G.find_info effect of
       RHO{ty,...} => SOME ty
      | _ => NONE
 
@@ -253,7 +253,7 @@ struct
   fun mkPut(n: effect) = (* n must represent a region variable*)
       let val n = G.find n
       in
-       case G.get_info n of
+       case G.find_info n of
          RHO{put = SOME n',...} => G.find n'  (* hash consing *)
        | RHO{put = NONE, key, level,get,instance,pix,ty} =>
            let (* create new node *)
@@ -269,7 +269,7 @@ struct
   fun mkGet(n: effect) = (* n must represent a region variable*)
       let val n = G.find n
       in
-       case G.get_info n of
+       case G.find_info n of
          RHO{get = SOME n',...} => G.find n'  (* hash consing *)
        | RHO{get = NONE, key, level,put,instance,pix,ty} =>
            let (* create new node *)
@@ -303,15 +303,14 @@ struct
   fun remove_duplicates effects =
     let fun loop([], acc) = acc
           | loop(effect::rest, acc) =
-              let val effect = find effect
-                  val r = (G.get_visited effect)
+              let val r = (G.find_visited effect)
               in if !r then loop(rest,acc)
-                 else (r:= true; loop(rest, effect::acc))
+                 else (r:= true; loop(rest, find effect::acc))
               end
 
         val result = loop(effects,[])
     in
-        app (fn node => G.get_visited node:= false) result;
+        app (fn node => G.find_visited node:= false) result;
         result
     end
 
@@ -715,14 +714,11 @@ struct
                   end)) ([],c) rhos
 
   fun setRunType(place:effect)(rt: runType) : unit = 
-    let val place = G.find place
-    in
-      case G.get_info(place) of
-        RHO{put,get,key,level,instance,pix,ty} =>
-          G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,pix=pix,ty = rt})
-      | _ => die "setRunType: node is not a region variable"
-    end
-
+      case G.find_info place of
+	  RHO{put,get,key,level,instance,pix,ty} =>
+	      G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,pix=pix,ty=rt})
+	| _ => die "setRunType: node is not a region variable"
+	      
   (* freshEps(cone): Generate a fresh effect variable
      at the topmost layer of   cone   and insert it in
      this topmost layer *)
@@ -1000,12 +996,12 @@ tracing *)
         and search (n: effect, ns : effect list) : effect list =
           let 
             val n = G.find n
-            val r = G.get_visited n
+            val r = G.find_visited n
           in
             if !r then ns 
             else (r := true;
                   let
-                          val i = G.get_info n 
+                          val i = G.find_info n 
                   in
                           case i of
                             UNION _ =>
@@ -1082,9 +1078,9 @@ tracing *)
        are the result). Finally, unmark all nodes in l2 *)
      let val l1 = map find l1 
          and l2 = map find l2
-     in app (fn node => G.get_visited node:= true) l2;
-        List.filter (fn node => not(!(G.get_visited node))) l1
-          footnote app (fn node => G.get_visited node:= false) l2
+     in app (fn node => G.find_visited node:= true) l2;
+        List.filter (fn node => not(!(G.find_visited node))) l1
+          footnote app (fn node => G.find_visited node:= false) l2
      end
   
   fun say_eps eps = PP.outputTree(say, layout_effect eps, !Flags.colwidth)
@@ -1176,7 +1172,7 @@ tracing *)
 
   fun mkSameLevel(node1, node2) (cone) : cone = 
        (* node1 and node2 must both be either EPS nodes or RHO nodes *)
-    case (get_level_and_key' node1, get_level_and_key' node2) of
+    case (get_level_and_key node1, get_level_and_key node2) of
       (SOME(ref l1, _), SOME(ref l2, _)) =>          
         if l1=l2 then cone
         else if l1<l2 then lower l1 node2 cone
@@ -1276,7 +1272,7 @@ tracing *)
       let 
           val node = find node
       in
-          case G.get_info(node) of
+          case G.find_info(node) of
             PUT =>
               (case G.out_of_node node of
                  (rho_origin::_) =>
@@ -1390,12 +1386,12 @@ tracing *)
           let 
             val _ = sawNode()
             val n = G.find n
-            val r = G.get_visited n
+            val r = G.find_visited n
           in
             if !r then ns 
             else (r := true;
                   let
-                          val i = G.get_info n 
+                          val i = G.find_info n 
                   in
                           case i of
                             UNION _ =>
@@ -1474,12 +1470,11 @@ tracing *)
 
 
   (* sameLists(l1, l2) : bool   returns true if l1 and l2 contain the same elements;
-     neither l1 nor l2 contains duplicates; 
-     all elements of l1 and l2 are canonical
+     neither l1 nor l2 contains duplicates
   *)
 
   fun sameLists(l1,l2) : bool =
-    let fun visit l1 = app (fn node => G.get_visited node := true) l1
+    let fun visit l1 = app (fn node => G.find_visited node := true) l1
         fun unvisit([], acc) = acc
           | unvisit(x::l2',acc) = 
              let val r = G.find_visited x
@@ -1533,10 +1528,10 @@ tracing *)
 
   fun topsort x = G.topsort x
 
-  fun pix node = case G.get_info(G.find node) of
-    RHO{pix, ...} => pix
-  | EPS{pix, ...} => pix
-  | _ => die "pix: cannot take pre-order index of node which is not a region or effect variable"
+  fun pix node = case G.find_info node of
+      RHO{pix, ...} => pix
+    | EPS{pix, ...} => pix
+    | _ => die "pix: cannot take pre-order index of node which is not a region or effect variable"
 
   fun get_visited node = G.find_visited node (*G.get_visited(G.find node)*)
 
@@ -1675,16 +1670,12 @@ tracing *)
 
 
   fun ae_lt(node1, node2) = (* GET > PUT > EPS *)
-    let val node1 = G.find node1
-        val node2 = G.find node2
-    in case (G.get_info(node1), G.get_info(node2)) of
-        (EPS _, EPS _) => get_key_of_eps node1 < get_key_of_eps node2
-      | (EPS _, _) => true
-      | (PUT, PUT) => key_of_get_or_put node1 < key_of_get_or_put node2
-      | (PUT, EPS _) => false
-      | _ => raise AE_LT
-    end
-
+      case (G.find_info node1, G.find_info node2) of
+	  (EPS _, EPS _) => get_key_of_eps node1 < get_key_of_eps node2
+	| (EPS _, _) => true
+	| (PUT, PUT) => key_of_get_or_put node1 < key_of_get_or_put node2
+	| (PUT, EPS _) => false
+	| _ => raise AE_LT
 
   local (* sorting of atomic effects *)
     fun merge([], ys) = ys:effect list
@@ -1711,21 +1702,18 @@ tracing *)
      eps_node as its primary effect variable. *)
 
   fun mk_phi eps_node =
-     let val n = G.find eps_node
-     in case G.get_info n of
+      case G.find_info eps_node of
           EPS{represents = SOME l, ...} => l
         | UNION{represents = SOME l} => l
-        | PUT  => [n]
+        | PUT  => [G.find eps_node]
         | GET  => []
 	| WORDEFFECT => []
         | RHO _ => []
         | _ => die "mk_phi"
-     end
 
   fun visit_eps_or_rho node acc = 
-    let val n = G.find node
-        val i = G.get_info n
-        val r = G.get_visited n
+    let val i = G.find_info node
+        val r = G.find_visited node
     in 
         case i of 
           EPS _ => (r:=true; r::acc)
@@ -1734,7 +1722,7 @@ tracing *)
               NONE => (r:=true; r::acc)
             | SOME n => 
                    let
-                       val r' = G.get_visited(n)
+                       val r' = G.find_visited n
                    in r:= true; r':=true; r::r'::acc 
                    end)
         | _ => die "visit_eps_or_rho: neither eps nor rho node"
@@ -1747,7 +1735,7 @@ tracing *)
          or PUT rho or GET rho for rho in discharged_basis:
       *)
       let val refs = foldl (fn (a,b) => visit_eps_or_rho a b) [] discharged_basis 
-          fun keep (ae,mul): bool = not(!(G.get_visited(G.find ae)))
+          fun keep (ae,mul): bool = not(!(G.find_visited(G.find ae)))
       in 
          List.filter keep psi footnote
             app (fn r => r := false) refs
@@ -1822,7 +1810,7 @@ tracing *)
         else eps' :: insert_into_list(eps, rest)
 
   fun check_represents(l) =  (* check that all members of l are atomic effects*)
-    (map (fn n => case G.get_info n of
+    (map (fn n => case G.find_info n of
              EPS _ => ()
            | PUT  => ()
            | GET  => () 
@@ -1846,10 +1834,10 @@ tracing *)
         fun search (n: effect) : effect list  = 
           let 
             val n = find n
-            val r = G.get_visited n
+            val r = G.find_visited n
           in
             if !r then
-              case G.get_info n of 
+              case G.find_info n of 
                 EPS{represents = SOME l, ...} => insert_into_list(n,l)
               | EPS{represents = NONE, ...} =>
                    (say "broken invariant: bottom_up_eval: cyclic effect: "  ;
@@ -1873,7 +1861,7 @@ tracing *)
                      )
             else
               (r:= true;
-               case G.get_info n of
+               case G.find_info n of
                  EPS{represents, key,level,pix,instance} =>
                    (let 
                       val ns = G.out_of_node n
@@ -1923,14 +1911,11 @@ tracing *)
       end
 
   fun represents(eps) =
-    let val eps = G.find eps
-    in case G.get_info(eps) 
-	 of EPS{represents = SOME l, ...} => l
-	  | _ => (say "No info for eps\n";
-		  say_eps eps;
-		  die ("represents"))
-    end
-
+      case G.find_info eps of 
+	  EPS{represents = SOME l, ...} => l
+	| _ => (say "No info for eps\n";
+		say_eps eps;
+		die ("represents"))
 end; 
 
 (*
