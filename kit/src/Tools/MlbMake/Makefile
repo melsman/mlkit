@@ -3,3 +3,7 @@
 
 clean:
 	rm -rf CM PM MLB *~
+
+mlbmake: Makefile sources.mlb *.sml
+	../../../bin/mlbmake sources.mlb
+	mv a.out mlbmake

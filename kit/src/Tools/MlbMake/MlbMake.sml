@@ -67,7 +67,7 @@ structure MLKitComp : COMP =
 		     target: string,  (* file.o -> file.o.lnk, file.o, file.o.eb *)
 		     namebase: string,
 		     flags: string} : string =
-	    let val s = mlkitexe() ^ " -c -namebase " ^ namebase ^ " -o " ^ target
+	    let val s = mlkitexe() ^ " -c -no_cross_opt -namebase " ^ namebase ^ " -o " ^ target
 		val s = if flags = "" then s else s ^ " " ^ flags
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ pp_list " " basisFiles
 	    in s ^ " " ^ source
@@ -88,7 +88,10 @@ structure MLKitComp : COMP =
  * subdirectories to MLB. *)
 
 
-functor Mlb(C: COMP) : sig val build : string -> string -> unit end =
+functor Mlb(structure C: COMP
+	    val verbose : bool ref) 
+    : sig val build : string -> string -> unit 
+      end =
 struct
     structure MlbProject = MlbProject()
 
@@ -101,14 +104,28 @@ struct
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); 
 			      raise Fail "error")
 
-    fun verbose() = true
-    fun vchat s = if verbose() then print (" +++ " ^ s ^ "\n") else ()
+    fun vchat s = if !verbose then print (" ++ " ^ s ^ "\n") else ()
 
-    fun objFileFromSmlFile mlbfile smlfile = C.mlbdir () ^ "/" ^ mlbfile ^ "-" ^ smlfile ^ C.objFileExt()
+    local
+	fun fileFromSmlFile smlfile ext =
+	    let val {dir,file} = OS.Path.splitDirFile smlfile
+		infix ##
+		val op ## = OS.Path.concat
+	    in dir ## C.mlbdir () ## (file ^ ext)
+	    end
+    in
+	fun objFileFromSmlFile mlbfile smlfile =
+	    fileFromSmlFile smlfile (C.objFileExt())
 
-    fun lnkFileFromSmlFile mlbfile smlfile = objFileFromSmlFile mlbfile smlfile ^ ".lnk"
+	fun lnkFileFromSmlFile mlbfile smlfile = 
+	    objFileFromSmlFile mlbfile smlfile ^ ".lnk"
 
-    fun ebFileFromSmlFile mlbfile smlfile = objFileFromSmlFile mlbfile smlfile ^ ".eb"
+	fun ebFileFromSmlFile mlbfile smlfile = 
+	    objFileFromSmlFile mlbfile smlfile ^ ".eb"
+
+	fun depFileFromSmlFile smlfile =
+	    fileFromSmlFile smlfile ".d"
+    end
 
     fun maybe_create_dir d : unit = 
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
@@ -138,34 +155,61 @@ struct
 	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
       end
 
+    fun mkAbs file = OS.Path.mkAbsolute(file,OS.FileSys.getDir())
+
+    fun subDir "" = (fn p => p)
+      | subDir dir =
+	let val dir_abs = mkAbs dir
+	    in fn p =>
+		let val p_abs = mkAbs p
+		in OS.Path.mkRelative(p_abs,dir_abs)
+		end
+	end
+
+    fun dirMod dir file = if OS.Path.isAbsolute file then file
+			  else OS.Path.concat(dir,file)
+
     (* --------------------
      * Build an mlb-project
      * -------------------- *)
 
-    fun readDependencies uid = 
-	let val is = TextIO.openIn (C.mlbdir() ^ "/" ^ uid ^ ".d") 
+    fun readDependencies smlfile = 
+	let val dir = OS.Path.dir smlfile
+	    val depFile = depFileFromSmlFile smlfile
+	    val is = TextIO.openIn depFile
 	in let val all = TextIO.inputAll is handle _ => ""
-	       val uids = String.tokens Char.isSpace all
-	       val _ = vchat ("Dependencies for " ^ uid ^ ": " ^ all)
-	   in TextIO.closeIn is; uids
+	       val smlfiles = String.tokens Char.isSpace all
+	       val smlfiles = map (dirMod dir) smlfiles   
+	       val _ = vchat ("Dependencies for " ^ smlfile ^ ": " ^ all)
+	   in TextIO.closeIn is; smlfiles
 	   end handle _ => (TextIO.closeIn is; nil)
 	end handle _ => nil
 
     fun recompileUnnecessary mlbfile smlfile : bool =
-    (* f.sml<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.lnk *)
+    (* f.sml<f.{lnk,eb} and f.d<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.lnk *)
 	let val _ = vchat ("Checking necessity of recompiling " ^ smlfile)
 	    fun modTime f = OS.FileSys.modTime f
 	    val op < = Time.<=
 	    val lnkFile = lnkFileFromSmlFile mlbfile smlfile
 	    val ebFile = ebFileFromSmlFile mlbfile smlfile
+	    val depFile = depFileFromSmlFile smlfile
 	    val modTimeSmlFile = modTime smlfile handle X => (vchat "modTime SMLfile"; raise X)
-	    val modTimeEbFile = modTime ebFile handle X => (vchat ("modTime ebFile" ^ ebFile); raise X)
 	    val modTimeLnkFile = modTime lnkFile handle X => (vchat "modTime lnkFile"; raise X)
 	    fun debug(s,b) = (vchat(s ^ ":" ^ Bool.toString b); b)
-	in debug("req1", modTimeSmlFile < modTimeLnkFile) andalso
-	   debug("req2", modTimeSmlFile < modTimeEbFile) andalso
-	   List.all (fn smlfile => debug("reqN", modTime (ebFileFromSmlFile mlbfile smlfile) < modTimeLnkFile))
-	   (readDependencies smlfile)
+	in modTimeSmlFile < modTimeLnkFile 
+	    andalso
+	    let val modTimeEbFile = modTime ebFile handle X => (vchat ("modTime ebFile " ^ ebFile); raise X)
+	    in modTimeSmlFile < modTimeEbFile 
+		andalso
+		let val modTimeDepFile = modTime depFile handle X => (vchat "modTime depFile"; raise X)
+		in modTimeDepFile < modTimeLnkFile
+		    andalso
+		    modTimeDepFile < modTimeEbFile
+		    andalso
+		    List.all (fn smlfile => modTime (ebFileFromSmlFile mlbfile smlfile) < modTimeLnkFile)
+		    (readDependencies smlfile)
+		end
+	    end
 	end handle _ => false
 
     fun system cmd : unit = 
@@ -187,7 +231,7 @@ struct
 	    val basisFiles = map (ebFileFromSmlFile mlbfile) deps
 	    val cmd = C.compile {basisFiles=basisFiles,source=smlfile,
 				 target=objFileFromSmlFile mlbfile smlfile,
-				 namebase=mlbfile,
+				 namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
 				 flags=flags}
 	in system cmd
 	end
@@ -212,9 +256,18 @@ struct
 
 end
 
-structure Main : sig end =
+structure Main : 
+    sig 
+	val cmdName : unit -> string
+	val mlbmake : string * string list -> OS.Process.status
+    end =
 struct
-    structure MlbMLKit = Mlb(MLKitComp) 
+
+    val verbose = ref false
+    fun vchat0 s = if !verbose then print s else ()
+
+    structure MlbMLKit = Mlb(structure C = MLKitComp
+			     val verbose = verbose) 
 (*    structure MlbMosml = Mlb(MosmlComp) *)
 
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); 
@@ -225,8 +278,8 @@ struct
 
     fun cmdName() = "mlbmake"
 	    
-    fun print_greetings comp =
-	print(cmdName() ^ " version " ^ version ^ comp ^ ", " ^ date ^ "\n")
+    fun greetings comp =
+	cmdName() ^ " version " ^ version ^ comp ^ ", " ^ date ^ "\n"
 
     fun print_usage() = print ("\nUsage: " ^ cmdName() ^ " {-mlkit|-mosml} [OPTION]*... [file.mlb] [COMPILER OPTION]*\n\n" ^
 			       "Options:\n\n")
@@ -242,52 +295,37 @@ struct
 	
     fun print_options() = app (fn (t, l) => (print(t ^ "\n"); print_indent l; print "\n")) options
  
-    val unary_options = nil
+    val compiler = ref "mlkit"
+    val unary_options =
+	[("compiler", fn s => compiler := s)]
+
+    fun show_version() =
+	(print (greetings(!compiler)); OS.Process.exit OS.Process.success)
 
     val nullary_options =
-	[("version", fn () => OS.Process.exit OS.Process.success),
-	 ("help", fn () => (print_usage();
+	[("version", fn () => show_version()),
+	 ("V", fn () => show_version()),
+	 ("verbose", fn () => verbose := true),
+	 ("v", fn () => verbose := true),
+	 ("help", fn () => (print (greetings(!compiler));
+			    print_usage();
 			    print_options();
 			    OS.Process.exit OS.Process.success))]
 	
-    fun mlbmake (cmd,comp::args) = 
-	(let val _ = print_greetings comp
-	     val rest = Options.read_options{options=args, 
+    fun mlbmake (cmd,args) = 
+	(let val rest = Options.read_options{options=args, 
 					     nullary=nullary_options,
 					     unary=unary_options}
+	     val _ = vchat0(greetings(!compiler))
 	     val build = 
-		 case comp of
-		     "-mlkit" => MlbMLKit.build
-		   | _ => error ("compiler " ^ comp ^ " not supported")
-	     val flags = ""
+		 case !compiler of
+		     "mlkit" => MlbMLKit.build
+		   | comp => error ("compiler " ^ comp ^ " not supported")
+	     fun sappend nil = ""
+	       | sappend [x] = x
+	       | sappend (x::xs) = x ^ " " ^ sappend xs
 	 in case rest of
-	    [mlbfile] => (build flags mlbfile; OS.Process.success) 
+	    mlbfile :: flags => (build (sappend flags) mlbfile; OS.Process.success) 
 	  | _ => error "I expect exactly one mlb-file as argument"
 	 end handle _ => OS.Process.failure)
-      | mlbmake _ = OS.Process.failure
-
-    fun install() =
-	let 
-	    fun arch_os() = 
-		case SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName() of
-		    "X86-Linux" => "x86-linux"
-		  | "HPPA-HPUX" => "hppa-hpux"
-		  | "X86-BSD" => "x86-bsd"
-		  | s => s
-	    val _ = print ("\n ** Exporting " ^ cmdName() ^ " executable **\n\n")
-	    val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(OS.FileSys.getDir(), "../../../bin"))
-	    val bin_path = OS.Path.joinDirFile{dir=kitbin_path, file=cmdName()}		
-	    val binimage_path = OS.Path.joinDirFile{dir=kitbin_path, file=cmdName() ^ "." ^ arch_os()}
-	    val os = TextIO.openOut bin_path
-	    val _ = (TextIO.output(os, "sml @SMLload=" ^ binimage_path ^ " " ^ " $*"); 
-		     TextIO.closeOut os)
-	    val _ = OS.Process.system("chmod a+x " ^ bin_path)
-		handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ 
-				   bin_path ^ "' failed***\n");
-			     OS.Process.failure)
-	in SMLofNJ.exportFn(bin_path, mlbmake)
-	end
-    
-    val _ = install() handle exn => error (General.exnMessage exn)
-
 end
