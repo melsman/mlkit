@@ -1,3 +1,8 @@
+val target = 
+  case FormVar.getString "target" of
+    SOME t => t
+  | NONE => Ns.Conn.location() ^ "/auth/admin/admin.sml" (* Default target url *)
+
 val _ = Ns.Quot.return `
 <html>
 <head>
@@ -6,6 +11,7 @@ val _ = Ns.Quot.return `
 <body>
 <form action=auth.sml method=post>
   <table>
+   <input type=hidden name=target value="^target">
     <tr><td><b>Login</b></td>
     <td><input type=text name=auth_login size=20></td>
     </tr>
