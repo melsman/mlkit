@@ -41,6 +41,7 @@ signature HTML =
     val ahref    : quot -> quot -> quot
     val ahrefa   : quot -> quot -> quot -> quot
     val aname    : string -> quot -> quot
+    val aemail   : string -> string -> quot
 
     (* HTML text formats and style *)
     val em       : quot -> quot
@@ -183,6 +184,7 @@ end
 
    [aname nam ws] generates <A NAME="name">ws</A>.
 
+   [aemail email name] generate <a href="mailto:email">name</a>.
 
    HTML text formats and style:
 

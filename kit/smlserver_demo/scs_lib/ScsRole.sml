@@ -17,6 +17,7 @@ signature SCS_ROLE =
 structure ScsRole :> SCS_ROLE =
   struct
     type role = string
+
     fun has_p uid role =
       Db.oneField `select scs_role.has_p(^(Int.toString uid),^(Db.qqq role))
                      from dual` = "t"
