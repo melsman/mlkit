@@ -74,7 +74,7 @@ struct
      ("debug_codeGen","DEBUG CODE_GEN",ref false)]
 
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("inline_alloc", "Inline alloc", ref false)]
+    [("inline_alloc", "Inline alloc", ref true)]
 
   val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
   val inline_alloc = Flags.lookup_flag_entry "inline_alloc"
@@ -511,18 +511,32 @@ struct
 
     fun alloc_kill_gen1_tmp0_1(t:reg,n:int,size_ff,C) =
       if !inline_alloc then
-	let 
-	  val _ = add_lib_function "__inline_allocate"
-	  val l = new_local_lab "return_from_alloc"
-	in
-	  copy(t,tmp_reg1,
-	  load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
-	  STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
-	  load_immed(IMMED(n*4), mrp, 
-          META_B{n=false,target=NameLab "__inline_allocate"} ::  (* META_B destroys tmp_reg0 *)
-          LABEL l :: 
-	  copy(tmp_reg1,t,C))))
-	end
+	if !do_garbage_collection then
+	  let 
+	    val _ = add_lib_function "__inline_allocate_gc"
+	    val l = new_local_lab "return_from_alloc"
+	  in
+	    copy(t,tmp_reg1,
+	    load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
+	    STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
+	    load_immed(IMMED(n*4), mrp, 
+            META_B{n=false,target=NameLab "__inline_allocate_gc"} ::  (* META_B destroys tmp_reg0 *)
+            LABEL l :: 
+	    copy(tmp_reg1,t,C))))
+	  end
+	else	  
+	  let 
+	    val _ = add_lib_function "__inline_allocate"
+	    val l = new_local_lab "return_from_alloc"
+	  in
+	    copy(t,tmp_reg1,
+	    load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
+	    STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
+	    load_immed(IMMED(n*4), mrp, 
+            META_B{n=false,target=NameLab "__inline_allocate"} ::  (* META_B destroys tmp_reg0 *)
+            LABEL l :: 
+	    copy(tmp_reg1,t,C))))
+	  end
       else
 	let 
 	  val _ = add_lib_function "__allocate"
@@ -1821,6 +1835,54 @@ struct
 
 	(* args: tmp_reg1=region pointer and mrp=n bytes to allocate. Result in tmp_reg1 *)
 	(* return address is pushed on the stack *)
+	fun inline_alloc_gc C = 
+	  let
+	    val _ = add_lib_function "alloc"
+	    val _ = add_static_data [DOT_EXPORT(NameLab "__inline_allocate_gc","CODE")]
+	    (* Note, that tmp_reg2 and tmp_reg3 are in caller_save_regs_ccall! *)
+	    fun push_caller_save_ccall C = 
+	      foldl (fn (r, C) => STWM{r=r,d="4",s=Space 0,b=sp} :: C) C HpPaRisc.caller_save_regs_ccall
+	    fun pop_caller_save_ccall C = 
+	      foldr (fn (r, C) => LDWM{d="-4",s=Space 0,b=sp,t=r} :: C) C HpPaRisc.caller_save_regs_ccall
+	    val lab = new_local_lab "after_free_list"
+	    val size_ff = 0 (* dummy *)
+	  in
+	    DOT_CODE ::
+	    LABEL (NameLab "__inline_allocate_gc") ::
+	    STWM{r=tmp_reg2,d="4",s=Space 0,b=sp} ::                                               (* push(t2)              *)
+	    STWM{r=tmp_reg3,d="4",s=Space 0,b=sp} ::                                               (* push(t3)              *)
+            DEPI{cond=NEVER, i="0", p="31", len="2", t=tmp_reg1} ::                                (* clear status bits     *)     
+            load_indexed_kill_gen1(tmp_reg2,tmp_reg1,WORDS BI.aOff,                                (* t2=t1->a              *)
+	    ADD{cond=NEVER,r1=tmp_reg2,r2=mrp,t=tmp_reg3} ::                                       (* t3=t2+mrp             *)
+            load_indexed_kill_gen1(rp,tmp_reg1,WORDS BI.bOff,                                      (* rp=t1->b              *)
+            META_IF{cond=GREATERTHAN,r1=tmp_reg3,r2=rp,target=lab} ::                              (* if t3>rp {            *) 
+            push_caller_save_ccall(                                                                (*   flush registers     *)
+
+            align_stack_kill_gen1(tmp_reg0,
+	    copy(tmp_reg1,arg0,
+            copy(mrp,arg1,
+            META_BL{n=false,target=NameLab "alloc",rpLink=rp,
+		    callStr="ARGW0=GR, ARGW1=GR, RTNVAL=GR"} ::                                    (*   alloc in new page. *)
+	    copy(ret0,tmp_reg1,
+            restore_stack(
+
+            pop_caller_save_ccall(                                                                 (*   fetch registers     *)
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg3} ::                                              (*   pop(t3)             *)		 
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg2} ::                                              (*   pop(t2)             *)
+            LDWM{d="-4",s=Space 0,b=sp,t=mrp} ::                                                   (*   pop(return_address) *)
+            META_BV{n=false,x=Gen 0,b=mrp} ::                                                      (*   return to caller    *)
+            LABEL lab ::                                                                           (* }                     *)
+
+            store_indexed_kill_gen1(tmp_reg1,WORDS BI.aOff,tmp_reg3,                               (* t1->a=t3              *)
+            copy(tmp_reg2,tmp_reg1,                                                                (* t1=t2                 *)
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg3} ::                                              (* pop(t3)               *)		 
+            LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg2} ::                                              (* pop(t2)               *)
+            LDWM{d="-4",s=Space 0,b=sp,t=mrp} ::                                                   (* pop(return_address)   *)
+            META_BV{n=false,x=Gen 0,b=mrp} :: C)))))))))))                                         (* return to caller      *)
+	  end
+
+	(* args: tmp_reg1=region pointer and mrp=n bytes to allocate. Result in tmp_reg1 *)
+	(* return address is pushed on the stack *)
 	fun inline_alloc C = 
 	  let
 	    val _ = add_lib_function "callSbrk"
@@ -2002,7 +2064,7 @@ struct
 				DOT_PROCEND :: C)
 	  end
 
-	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate(gc_stub(inline_alloc []))))))
+	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate(gc_stub(inline_alloc(inline_alloc_gc [])))))))
       in
 	HppaResolveJumps.RJ{top_decls = [],
 			    init_code = init_link_code,
