@@ -24,16 +24,15 @@ functor AtInf(structure Lvars: LVARS
       	        sharing type Eff.place = MulExp.place = MulExp.effect 
                         = LLV.place = RegFlow.place = RegFlow.effect  
                         = RegvarBT.dom = RType.place = RType.effect 
-                        = Eff.place = Eff.effect = MulExp.RegionExp.place
+                        = Eff.place = Eff.effect 
 	        sharing type Mul.mul = MulExp.mul = LLV.mul = RegFlow.mul
                 sharing type LLV.qmularefset = Mul.qmularefset 
                         = RegFlow.qmularefset = MulExp.qmularefset
                 sharing type LLV.LambdaPgm = MulExp.LambdaPgm = RegFlow.LambdaPgm
                 sharing type LLV.lvar = Lvars.lvar = MulExp.lvar
                 sharing type Excon.excon = MulExp.excon = LLV.excon
-                sharing type RType.Type = MulExp.Type = MulExp.RegionExp.Type
+                sharing type RType.Type = MulExp.Type 
                 sharing type RType.tyvar = MulExp.tyvar
-                sharing type MulExp.metaType = MulExp.RegionExp.metaType
                 sharing type RType.sigma = MulExp.sigma
 ) : AT_INF =
   struct

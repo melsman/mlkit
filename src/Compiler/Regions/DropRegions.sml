@@ -4,9 +4,6 @@ functor DropRegions(structure Name : NAME
                     structure MulExp : MUL_EXP
                     structure Mul: MUL
                       sharing type Mul.mulef = MulExp.mulef
-                    structure RegionExp : REGION_EXP
-                      sharing RegionExp = MulExp.RegionExp
-                      sharing type RegionExp.metaType = MulExp.metaType
 		    structure AtInf : AT_INF
 		      sharing type AtInf.LambdaPgm = MulExp.LambdaPgm 
                       sharing type AtInf.LambdaExp = MulExp.LambdaExp
@@ -14,14 +11,14 @@ functor DropRegions(structure Name : NAME
 		      sharing type RSE.lvar = MulExp.lvar
 		    structure RType : RTYPE
 		      sharing type RType.sigma = RSE.TypeAndPlaceScheme
-                      sharing type RegionExp.Type = RType.Type
+                      sharing type MulExp.Type = RType.Type
 		    structure Lvars : LVARS
 		      sharing type Lvars.lvar = MulExp.lvar
 		      sharing type Lvars.name = Name.name
 		    structure Crash : CRASH
 		    structure FinMapEq : FINMAPEQ
 		    structure Eff : EFFECT
-		      sharing type Eff.place = MulExp.place = MulExp.effect = RegionExp.place =
+		      sharing type Eff.place = MulExp.place = MulExp.effect =
                                    RType.place = RSE.place = AtInf.place
 		    structure PP : PRETTYPRINT
 		      sharing type PP.StringTree = Eff.StringTree = FinMapEq.StringTree = MulExp.StringTree
@@ -36,8 +33,6 @@ functor DropRegions(structure Name : NAME
     structure LvarMap = Lvars.Map
 
     open MulExp AtInf
-    structure RE = RegionExp
-
 
     fun die s = Crash.impossible ("DropRegions."^s)
 

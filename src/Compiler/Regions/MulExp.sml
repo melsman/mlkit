@@ -7,8 +7,9 @@ functor MulExp(
   structure Excon: EXCON
   structure RegionExp: REGION_EXP
     sharing type RegionExp.con = Con.con
-    sharing type RegionExp.excon = Excon.excon
+    sharing type RegionExp.excon = Excon.excon    
   structure Eff: EFFECT
+    sharing type Eff.cone = RegionExp.cone
   structure Mul: MUL
     sharing type Mul.effectvar = Eff.effect = RegionExp.effect
   structure R: RTYPE

@@ -6,21 +6,20 @@
 signature BUILD_COMPILE = 
   sig
     structure CompilerEnv : COMPILER_ENV
-    structure CompileBasis: COMPILE_BASIS
+    structure CompBasis: COMP_BASIS
     structure Compile: COMPILE
-    structure CallConv : CALL_CONV
-    structure LineStmt : LINE_STMT
-    structure SubstAndSimplify : SUBST_AND_SIMPLIFY
+    structure Effect : EFFECT
+    structure AtInf : AT_INF
+    structure PhysSizeInf : PHYS_SIZE_INF
+    structure MulExp : MUL_EXP
+    structure EffVarEnv : MONO_FINMAP
+    structure RType : RTYPE
+    structure Mul : MUL
+    structure RegionExp : REGION_EXP
   end  
 
-functor BuildCompile (structure BackendInfo : BACKEND_INFO
-		      structure RegisterInfo : REGISTER_INFO
-		      include EXECUTION_ARGS 
-			where type Labels.label = BackendInfo.label
-			where type Lvars.lvar = RegisterInfo.lvar
-                        where type Lvarset.lvarset = RegisterInfo.lvarset) : BUILD_COMPILE =
+functor BuildCompile (include EXECUTION_ARGS) : BUILD_COMPILE =
   struct
-
     structure Basics = Elaboration.Basics
     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
     structure Tools = Basics.Tools
@@ -256,8 +255,6 @@ functor BuildCompile (structure BackendInfo : BACKEND_INFO
       structure PP = PP
       structure Crash = Crash)
 
-    structure IntSet = IntSet(structure PP = PP)
-
     structure CompilerEnv =
       CompilerEnv(structure Ident = Ident
 		  structure StrId = StrId
@@ -380,153 +377,23 @@ functor BuildCompile (structure BackendInfo : BACKEND_INFO
 					structure PP = PP
 					structure CConst = CConst)
 
-    structure RegionFlowGraphProfiling =
-      RegionFlowGraphProfiling(structure Effect = Effect
-			       structure AtInf = AtInf
-			       structure PhySizeInf = PhysSizeInf
-			       structure PP = PP
-			       structure Flags = Flags
-			       structure Crash = Crash
-			       structure Report = Report)
-
-    structure ClosConvEnv = ClosConvEnv(structure Lvars = Lvars
-					structure Con = Con
-					structure Excon = Excon
-					structure Effect = Effect
-					structure MulExp = MulExp
-					structure RegvarFinMap = EffVarEnv
-					structure PhysSizeInf = PhysSizeInf
-					structure Labels = Labels
-					structure BI = BackendInfo
-					structure PP = PP
-					structure Crash = Crash)
-
-    structure CallConv = CallConv(structure Lvars = Lvars
-				  structure RI = RegisterInfo
-				  structure BI = BackendInfo
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
-
-    structure ClosExp = ClosExp(structure Con = Con
-				structure Excon = Excon
-				structure Lvars = Lvars
-				structure TyName = TyName
-				structure Effect = Effect
-				structure RType = RType
-				structure MulExp = MulExp
-				structure Mul = Mul
-				structure RegionExp = RegionExp
-				structure AtInf = AtInf
-				structure PhysSizeInf = PhysSizeInf
-				structure Labels = Labels
-				structure ClosConvEnv = ClosConvEnv
-				structure BI = BackendInfo
-				structure CallConv = CallConv
-				structure PP = PP
-				structure Flags = Flags
-				structure Report = Report
-				structure Crash = Crash)
-
-    structure LineStmt = LineStmt(structure PhysSizeInf = PhysSizeInf
-				  structure Con = Con
-				  structure Excon = Excon
-				  structure Lvars = Lvars
-				  structure Effect = Effect
-				  structure Labels = Labels
-				  structure CallConv = CallConv
-				  structure ClosExp = ClosExp
-				  structure RI = RegisterInfo
-				  structure BI = BackendInfo
-				  structure Lvarset = Lvarset
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
-
-    structure RegAlloc = RegAlloc(structure PhysSizeInf = PhysSizeInf
-				  structure Con = Con
-				  structure Excon = Excon
-				  structure Lvars = Lvars
-				  structure Effect = Effect
-				  structure Lvarset = Lvarset
-				  structure Labels = Labels
-				  structure CallConv = CallConv
-				  structure LineStmt = LineStmt
-				  structure RI = RegisterInfo
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
-
-    structure FetchAndFlush = FetchAndFlush(structure PhysSizeInf = PhysSizeInf
-					    structure Con = Con
-					    structure Excon = Excon
-					    structure Lvars = Lvars
-					    structure Effect = Effect
-					    structure Labels = Labels
-					    structure CallConv = CallConv
-					    structure LineStmt = LineStmt
-					    structure RegAlloc = RegAlloc
-					    structure RI = RegisterInfo
-					    structure Lvarset = Lvarset
-					    structure PP = PP
-					    structure Flags = Flags
-					    structure Report = Report
-					    structure Crash = Crash)
-
-    structure CalcOffset = CalcOffset(structure PhysSizeInf = PhysSizeInf
-				      structure Con = Con
-				      structure Excon = Excon
-				      structure Lvars = Lvars
-				      structure Effect = Effect
-				      structure Labels = Labels
-				      structure CallConv = CallConv
-				      structure LineStmt = LineStmt
-				      structure FetchAndFlush = FetchAndFlush
-				      structure BI = BackendInfo
-				      structure IntSet = IntSet
-				      structure PP = PP
-				      structure Flags = Flags
-				      structure Report = Report
-				      structure Crash = Crash)
-
-    structure SubstAndSimplify = SubstAndSimplify(structure PhysSizeInf = PhysSizeInf
-						  structure Con = Con
-						  structure Excon = Excon
-						  structure Lvars = Lvars
-						  structure Effect = Effect
-						  structure RegvarFinMap = EffVarEnv
-						  structure Labels = Labels
-						  structure CallConv = CallConv
-						  structure LineStmt = LineStmt
-						  structure CalcOffset = CalcOffset
-						  structure RI = RegisterInfo
-						  structure PP = PP
-						  structure Flags = Flags
-						  structure Report = Report
-						  structure Crash = Crash)
-
-
-    structure CompileBasis =
-      CompileBasis(structure CompilerEnv = CompilerEnv
-		   structure Con = Con
-		   structure Lvars = Lvars
-		   structure Excon = Excon
-		   structure TyName = TyName
-		   structure LambdaStatSem = LambdaStatSem
-		   structure EliminateEq = EliminateEq
-		   structure OptLambda = OptLambda
-		   structure Effect = Effect
-		   structure RegionStatEnv = RegionStatEnv
-		   structure DropRegions = DropRegions
-		   structure PhysSizeInf = PhysSizeInf
-		   structure ClosExp = ClosExp
-		   structure Report = Report
-		   structure PP = PP
-		   structure Flags = Flags
-		   structure Mul = Mul)
+    structure CompBasis =
+      CompBasis(structure CompilerEnv = CompilerEnv
+		structure Con = Con
+		structure Lvars = Lvars
+		structure Excon = Excon
+		structure TyName = TyName
+		structure LambdaStatSem = LambdaStatSem
+		structure EliminateEq = EliminateEq
+		structure OptLambda = OptLambda
+		structure Effect = Effect
+		structure RegionStatEnv = RegionStatEnv
+		structure DropRegions = DropRegions
+		structure PhysSizeInf = PhysSizeInf
+		structure Report = Report
+		structure PP = PP
+		structure Flags = Flags
+		structure Mul = Mul)
 
 
     structure CompileDec = CompileDec(
@@ -568,6 +435,7 @@ functor BuildCompile (structure BackendInfo : BACKEND_INFO
 	      structure AtInf = AtInf
 	      structure DropRegions = DropRegions
 	      structure PhysSizeInf = PhysSizeInf
+(*
 	      structure ClosExp = ClosExp
 	      structure LineStmt = LineStmt
 	      structure RegAlloc = RegAlloc
@@ -575,6 +443,7 @@ functor BuildCompile (structure BackendInfo : BACKEND_INFO
 	      structure CalcOffset = CalcOffset
 	      structure SubstAndSimplify = SubstAndSimplify
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
+*)
 	      structure CompilerEnv = CompilerEnv
 	      structure RType = RType
 	      structure Effect = Effect
@@ -583,7 +452,7 @@ functor BuildCompile (structure BackendInfo : BACKEND_INFO
 	      structure MulInf = MulInf
 	      structure CompileDec = CompileDec
 	      structure OptLambda = OptLambda
-	      structure CompileBasis = CompileBasis
+	      structure CompBasis = CompBasis
 	      structure Report = Report
 	      structure Flags = Flags
 	      structure PP = PP

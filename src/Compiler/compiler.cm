@@ -1,7 +1,7 @@
 Group is
 
 ../Common/common.cm
-C_CONST.sml
+C_CONST.sml   (* are these two used? *)
 CConst.sml
 
 Lambda/CON.sml
@@ -13,14 +13,16 @@ Lambda/Lvars.sml
 
 Lambda/COMPILER_ENV.sml
 COMPILE_BASIS.sml
+COMP_BASIS.sml
 
 Kam/ADDRESS_LABELS.sml
 Kam/AddressLabels.sml
 
 Lambda/CompilerEnv__dummy.sml
 CompileBasis__dummy.sml
-
 CompileBasis.sml
+
+CompBasis.sml
 
 COMPILE.sml
 Compile.sml
@@ -95,6 +97,12 @@ Kam/RegionFlowGraphProfiling.sml
  Cfg/TransformKbp.sml
 *)
 
+(* Bytecode Backend *)
+Backend/KAM/KAM.sml
+Backend/KAM/Kam.sml
+Backend/KAM/CodeGenKAM.sml  
+
+(* Native Backend *)
 Backend/CLOS_CONV_ENV.sml
 Backend/ClosConvEnv.sml
 Backend/CALL_CONV.sml
@@ -118,17 +126,13 @@ Backend/CODE_GEN.sml
 Backend/JUMP_TABLES.sml
 Backend/JumpTables.sml
 
+(* X86 Backend *)
 Backend/X86/CodeGenX86.sml
 Backend/X86/INSTS_X86.sml
 Backend/X86/InstsX86.sml
 
-(* 18/09-2000, Niels *)
-Backend/KAM/KAM.sml
-Backend/KAM/Kam.sml
-Backend/KAM/CodeGenKAM.sml  
-
-(*
-Backend/HpPaRisc/BackendInfo.sml
+(* HPPA Backend *)
+(* Backend/HpPaRisc/BackendInfo.sml *)
 Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
 Backend/HpPaRisc/HppaResolveJumps.sml
 Backend/HpPaRisc/HpPaDelaySlotOptimization.sml
@@ -136,4 +140,4 @@ Backend/HpPaRisc/HP_PA_DELAY_SLOT_OPTIMIZATION.sml
 Backend/HpPaRisc/CodeGen.sml
 Backend/HpPaRisc/HP_PA_RISC.sml
 Backend/HpPaRisc/HpPaRisc.sml
-*)
+

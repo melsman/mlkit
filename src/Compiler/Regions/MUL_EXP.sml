@@ -23,7 +23,8 @@ signature MUL_EXP =
     type excon
     type TyName
     type place and effect and mul and efenv
-    type effectvar  sharing type effectvar = effect
+    type effectvar = effect
+    type StringTree
 
     eqtype tyvar 
 
@@ -32,6 +33,20 @@ signature MUL_EXP =
          mularefmap and dependency_map and qmularefset and regionStatEnv
 
     structure RegionExp: REGION_EXP
+      where type lvar = lvar
+      where type con = con
+      where type excon = excon
+      where type place = place
+      where type TyName = TyName
+      where type effect = effect
+      where type tyvar = tyvar
+      where type sigma = sigma
+      where type il = il
+      where type cone = cone
+      where type StringTree = StringTree
+      where type metaType = metaType
+      where type datbinds = datbinds 
+      where type Type = Type
 
     datatype callKind = JMP      (* tail call     to fix-bound function *)
                       | FUNCALL  (* non-tail call to fix-bound function *)
@@ -184,7 +199,6 @@ signature MUL_EXP =
                     ('b list * 'a -> 'b list) ->
                     ('a,'b,'c)LambdaPgm -> ('a,'b,'c)LambdaPgm
 
-    type StringTree
     val printcount: int ref  (* controls printing of effects on expressions*)
     val layoutLambdaPgm: ('a -> StringTree option) -> ('a -> StringTree option) -> 
                          ('b -> StringTree option) -> 

@@ -343,6 +343,7 @@ local
 in
 
   structure KitX86 = KitCompiler(ExecutionX86(ExecutionArgs))
+  structure KitHPPA = KitCompiler(ExecutionHPPA(ExecutionArgs))
   structure KitDummy = KitCompiler(ExecutionDummy(ExecutionArgs))
 
 end (*local*)

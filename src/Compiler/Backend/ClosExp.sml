@@ -6,29 +6,23 @@ functor ClosExp(structure Con : CON
 		structure RType : RTYPE
 		  sharing type RType.effect = Effect.effect
 		  sharing type RType.tyname = TyName.TyName
-                structure RegionExp: REGION_EXP
-                 sharing type RType.Type = RegionExp.Type
                 structure Mul : MUL
-                  sharing type Mul.effectvar = Effect.effect = RegionExp.effect
+                  sharing type Mul.effectvar = Effect.effect 
                 structure MulExp : MUL_EXP
-		  sharing type MulExp.con = Con.con = MulExp.RegionExp.con
-		  sharing type MulExp.Type = RType.Type = MulExp.RegionExp.Type
+		  sharing type MulExp.con = Con.con 
+		  sharing type MulExp.Type = RType.Type 
 		  sharing type MulExp.effect = Effect.effect
-		  sharing type MulExp.lvar = Lvars.lvar = RegionExp.lvar
+		  sharing type MulExp.lvar = Lvars.lvar 
 		  sharing type MulExp.excon = Excon.excon
-		  sharing type MulExp.datbinds = MulExp.RegionExp.datbinds
-		  sharing type MulExp.metaType = MulExp.RegionExp.metaType
                   sharing type MulExp.il = RType.il
 		  sharing type MulExp.qmularefset = Mul.qmularefset
                   sharing type MulExp.mulef = Mul.mulef
                   sharing type MulExp.lvar = Lvars.lvar = Mul.lvar
-                  sharing type MulExp.metaType = RegionExp.metaType = MulExp.RegionExp.metaType
-                  sharing MulExp.RegionExp = RegionExp
 	        structure PhysSizeInf : PHYS_SIZE_INF
 		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
                 structure AtInf : AT_INF
                   sharing type AtInf.place = Effect.effect = MulExp.place = Mul.place = 
-                               RegionExp.place = RType.place = Effect.place = MulExp.RegionExp.place =
+                               RType.place = Effect.place = 
 			       PhysSizeInf.place
 		  sharing type PhysSizeInf.at = AtInf.at
 		structure Labels : ADDRESS_LABELS
@@ -50,6 +44,7 @@ functor ClosExp(structure Con : CON
 		structure Crash : CRASH) : CLOS_EXP = 
 struct
 
+  structure RegionExp = MulExp.RegionExp
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con
@@ -2753,32 +2748,47 @@ struct
 	 exports=export_labs}
       end (* End clos_conv *)
 
-    fun lift(l2clos_exp_env, Fenv,
-	     prog as MulExp.PGM{expression = tr,
-				export_datbinds,
-				import_vars,
-				export_vars,
-				export_basis,
-				export_Psi}) = 
+    (* For bytecode 13/09-2000, Niels *)
+    fun lift(clos_env, prog) = 
       let
+	val _ = chat "[Lifting for bytecode generation..."
+	val n_prog = N prog
+
+	val _ = 
+	  if Flags.is_on "print_normalized_program" then
+	    display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
+	  else ()
+
+	val Fenv = F n_prog
+	val prog as MulExp.PGM{expression = tr,
+			       export_datbinds,
+			       import_vars,
+			       export_vars,
+			       export_basis,
+			       export_Psi} = MulExp.k_evalPgm n_prog
+
 	val _ = reset_lvars()
 	val _ = reset_labs()
 	val _ = reset_top_decls()
 	val import_labs = 
-	  find_globals_in_env (valOf(!import_vars)) l2clos_exp_env
+	  find_globals_in_env (valOf(!import_vars)) clos_env
 	  handle _ => die "clos_conv: import_vars not specified."
 	val env_datbind = add_datbinds_to_env export_datbinds CE.empty
-	val global_env = CE.plus (l2clos_exp_env, env_datbind)
+	val global_env = CE.plus (clos_env, env_datbind)
 	val _ = set_global_env global_env
 	val main_lab = fresh_lab "main"
 	val lift_exp = liftTrip tr global_env main_lab
 	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[],[]),lift_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
+	val code = get_top_decls() 
+
       (* val _ = display("\nReport: export_env:", CE.layoutEnv export_env)*)
+      (*val _ = display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all_lift))) 21/09-2000, Niels*)
+
       in
 	{main_lab=main_lab,
-	 code=get_top_decls(),
+	 code=code,
 	 env=export_env,
 	 imports=import_labs,
 	 exports=export_labs}
@@ -2813,8 +2823,7 @@ struct
 	  ()
       val Fenv = F n_prog
       val all = clos_conv (clos_env, Fenv, n_prog)
-val all_lift = lift(clos_env, Fenv, MulExp.k_evalPgm n_prog) (* For bytecode 13/09-2000, Niels *)
-(*val _ = display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all_lift))) 21/09-2000, Niels*)
+ (* val all_lift = lift(clos_env, Fenv, MulExp.k_evalPgm n_prog) (* For bytecode 13/09-2000, Niels *) *)
       val _ = 
 	if Flags.is_on "print_clos_conv_program" then
 	  display("\nReport: AFTER CLOSURE CONVERSION:", layout_clos_prg (#code(all)))

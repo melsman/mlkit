@@ -1,7 +1,9 @@
 (* Specification of HPPA Risc code. *)
 
-functor HpPaRISC(structure Labels : ADDRESS_LABELS
+functor HpPaRisc(structure Labels : ADDRESS_LABELS
 		 structure Lvars : LVARS
+		 structure Lvarset : LVARSET
+		   sharing type Lvarset.lvar = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		 structure Crash : CRASH):HP_PA_RISC =
   struct
@@ -43,71 +45,105 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
     val tmp_float_reg2 = Float 10
     val arg_float0     = Float 5
     val ret_float0     = Float 4
-
-    fun reg_eq(Gen i1,Gen i2) = i1 = i2
-      | reg_eq(Float i1,Float i2) = i2 = i2
-      | reg_eq(Ctrl i1,Ctrl i2) = i1 = i2
-      | reg_eq(Space i1,Space i2) = i1 = i2
-      | reg_eq _ = false
-
+      
+    fun pp_i i = Int.toString i
+    fun pp_reg(Gen i,acc) = "%r"::(pp_i i)::acc
+      | pp_reg(Float i,acc) = "%fr"::(pp_i i)::acc
+      | pp_reg(Ctrl i,acc) = "%cr"::(pp_i i)::acc
+      | pp_reg(Space i,acc) = "%sr"::(pp_i i)::acc
+      
     (*-----------------------------------------------------------*)
     (* Converting Between General Registers and Precolored Lvars *)
     (* As Used In The Phases Preceeding Code Generation          *)
     (*-----------------------------------------------------------*)
+
     type lvar = Lvars.lvar
-    local
-      structure LvarFinMap = Lvars.Map
 
-      val regs = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
-      val all_regs = map Gen regs
-      val reg_lvs = map (fn i => Lvars.new_named_lvar ("ph"^Int.toString i)) regs
-      val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,all_regs))
-      val map_reg_to_lvs = Vector.fromList reg_lvs
-    in
-      val all_regs = all_regs
-      fun is_reg lv = 
-	(case LvarFinMap.lookup map_lvs_to_reg lv of
-	   SOME reg => true
-	 | NONE  => false)
+    structure RI =
+      struct
 
-      fun lv_to_reg lv = 
-	(case LvarFinMap.lookup map_lvs_to_reg lv of
-	   NONE => die "lv_to_phreg: lv not a register"
-	 | SOME i => i)
+	type reg = reg
+	type lvar = lvar
+	type lvarset = Lvarset.lvarset
+	  
+	structure LvarFinMap = Lvars.Map
 
-      fun lv_to_reg_no lv =
-	(case lv_to_reg lv of
-	   Gen i => i
-	 | _ => die "lv_to_reg_no: lv is not a register")
+	val regs = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+	val all_regs0 = map Gen regs
+	val reg_lvs = map (fn i => Lvars.new_named_lvar ("ph"^Int.toString i)) regs
+	val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,all_regs0))
+	val map_reg_to_lvs = Vector.fromList reg_lvs
 
-      fun reg_to_lv(Gen i) = Vector.sub(map_reg_to_lvs,i)
-	| reg_to_lv _ = die "reg_to_lv: reg is not a general register (Gen)"
+	fun is_reg lv = 
+	  (case LvarFinMap.lookup map_lvs_to_reg lv of
+	     SOME reg => true
+	   | NONE  => false)
 
-      val all_regs_as_lvs = map reg_to_lv all_regs
+	fun lv_to_reg lv = 
+	  (case LvarFinMap.lookup map_lvs_to_reg lv of
+	     NONE => die "lv_to_phreg: lv not a register"
+	   | SOME i => i)
+	     
+	fun reg_to_lv(Gen i) = Vector.sub(map_reg_to_lvs,i)
+	  | reg_to_lv _ = die "reg_to_lv: reg is not a general register (Gen)"
+	  
+	val all_regs = map reg_to_lv all_regs0
+	  
+	val reg_args = map Gen [3,4,5,6,7,8,9,10] 
+	val reg_args_as_lvs = map reg_to_lv reg_args
+	val args_phreg = reg_args_as_lvs
+	val reg_res = map Gen [10,9,8,7,6,5,4,3] 
+	val reg_res_as_lvs = map reg_to_lv reg_res
+	val res_phreg = reg_res_as_lvs
+	val reg_args_ccall = map Gen [26,25,24,23]
+	val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall
+	val args_phreg_ccall = reg_args_ccall_as_lvs
+	val reg_res_ccall = map Gen [28] 
+	val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
+	val res_phreg_ccall = reg_res_ccall_as_lvs
 
-      val reg_args = map Gen [3,4,5,6,7,8,9,10] 
-      val reg_args_as_lvs = map reg_to_lv reg_args
-      val reg_res = map Gen [10,9,8,7,6,5,4,3] 
-      val reg_res_as_lvs = map reg_to_lv reg_res
+	val callee_save_regs_mlkit = map Gen []
+	val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
+	val callee_save_phregs = callee_save_regs_mlkit_as_lvs
+	val callee_save_phregset = Lvarset.lvarsetof callee_save_phregs
+	fun is_callee_save _ = false
 
-      val reg_args_ccall = map Gen [26,25,24,23]
-      val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall
-      val reg_res_ccall = map Gen [28] 
-      val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
-
-      val callee_save_regs_mlkit = map Gen []
-      val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
-
-      val caller_save_regs_mlkit = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,22,23,24,25,26,28,29]
-      val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
-
-      val callee_save_regs_ccall = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
-      val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
-
+	val caller_save_regs_mlkit = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,22,23,24,25,26,28,29]
+	val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
+	val caller_save_phregs = caller_save_regs_mlkit_as_lvs
+	val caller_save_phregset = Lvarset.lvarsetof caller_save_regs_mlkit_as_lvs
+	fun is_caller_save lv = Lvarset.member (lv,caller_save_phregset)
+	  
+	val callee_save_regs_ccall = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
+	val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
+	val callee_save_ccall_phregs = callee_save_regs_ccall_as_lvs
+	val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
+	fun is_callee_save_ccall lv = Lvarset.member (lv,callee_save_ccall_phregset)
+	  
       (* tmp_reg0, tmp_reg1, mrp and rp should not be in this list as they are never live across a C call *)
-      val caller_save_regs_ccall = map Gen [21,22,23,24,25,26,28,29]
-      val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall
-    end
+	val caller_save_regs_ccall = map Gen [21,22,23,24,25,26,28,29]
+	val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall
+	val caller_save_ccall_phregs = caller_save_regs_ccall_as_lvs
+	val caller_save_ccall_phregset = Lvarset.lvarsetof caller_save_ccall_phregs
+	fun is_caller_save_ccall lv = Lvarset.member (lv,caller_save_ccall_phregset)
+	  
+	fun pr_reg reg = concat(pp_reg(reg,[]))
+
+	fun reg_eq(Gen i1,Gen i2) = i1 = i2
+	  | reg_eq(Float i1,Float i2) = i2 = i2
+	  | reg_eq(Ctrl i1,Ctrl i2) = i1 = i2
+	  | reg_eq(Space i1,Space i2) = i1 = i2
+	  | reg_eq _ = false
+      end
+
+    val caller_save_regs_ccall = RI.caller_save_regs_ccall
+    val callee_save_regs_ccall = RI.callee_save_regs_ccall
+    val all_regs = RI.all_regs0  
+    fun lv_to_reg_no lv =
+      (case RI.lv_to_reg lv of
+	 Gen i => i
+       | _ => die "lv_to_reg_no: lv is not a register")
+
 
     (*----------------------------------------------------------*)
     (*                     Some Basic Tools                     *)
@@ -294,14 +330,6 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
 
     fun remove_ctrl s = "Lab" ^ String.implode (List.filter Char.isAlphaNum (String.explode s))
     fun remove_ctrl' s = String.implode (List.filter Char.isPrint (String.explode s))
-
-    fun pp_i i = Int.toString i
-    fun pp_reg(Gen i,acc) = "%r"::(pp_i i)::acc
-      | pp_reg(Float i,acc) = "%fr"::(pp_i i)::acc
-      | pp_reg(Ctrl i,acc) = "%cr"::(pp_i i)::acc
-      | pp_reg(Space i,acc) = "%sr"::(pp_i i)::acc
-
-    fun pr_reg reg = concat(pp_reg(reg,[]))
 
     fun pp_lab (DatLab l) = remove_ctrl(Labels.pr_label l)
       | pp_lab (LocalLab l) = "L$" ^ remove_ctrl(Labels.pr_label l) (* L$ is not allowed in HP's as but we use gas *)

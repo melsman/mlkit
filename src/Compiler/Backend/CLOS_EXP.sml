@@ -129,6 +129,12 @@ signature CLOS_EXP =
 								    imports:label list * label list,
 								    exports:label list * label list}
 
+    (* For bytecode ME 2000-10-04 *)
+    val lift : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,
+								      code:ClosPrg,
+								      env:env,
+								      imports:label list * label list,
+								      exports:label list * label list}
     type StringTree
     val layout_clos_exp : ClosExp -> StringTree
     val layout_top_decl : TopDecl -> StringTree
