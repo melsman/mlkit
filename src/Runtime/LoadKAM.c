@@ -531,7 +531,7 @@ interpLoadExtend(Interp* interp, char* file)
 #define GLOBAL_EXCON(X, NAME) { debug(printf("Allocating global excon (%d) at sp=%x\n", X, sp)); \
                                 selectStackDef(0) = (unsigned long)(sp + 1); \
                                 selectStackDef(1) = exname_counter++; \
-                                selectStackDef(2) = (unsigned long)convertStringToML(*(ds + 2), NAME); \
+                                selectStackDef(2) = (unsigned long)convertStringToML((Region)*(ds + 2), NAME); \
                                 *(ds + X) = (unsigned long)sp; \
                                 offsetSP(3); }
 

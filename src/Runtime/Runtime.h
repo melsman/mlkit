@@ -2,8 +2,8 @@
  *             Runtime system for the ML-Kit                      *
  *----------------------------------------------------------------*/
 
-#ifndef __RUNTIME_H
-#define __RUNTIME_H
+#ifndef RUNTIME_H
+#define RUNTIME_H
 
 #include "String.h"
 #include "Flags.h"
@@ -67,5 +67,5 @@ int terminate (int status);    /* status is a C value */
 int terminateML (int status);  /* status is an ML value */
 void uncaught_exception (StringDesc *exnStr);
 
-#endif /* __RUNTIME_H */
+#endif /* RUNTIME_H */
 

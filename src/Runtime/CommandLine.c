@@ -233,14 +233,14 @@ void parseCmdLineArgs(int argc, char *argv[]) {
 }
 
 #ifdef PROFILING
-StringDesc *
-sml_commandline_nameProfiling(int rAddr, int pPoint) 
+String
+sml_commandline_nameProfiling(Region rAddr, int pPoint) 
 {
   return convertStringToMLProfiling(rAddr, commandline_argv[0], pPoint);
 } 
 #else
-StringDesc *
-sml_commandline_name(int rAddr) 
+String
+sml_commandline_name(Region rAddr) 
 {
   return convertStringToML(rAddr, commandline_argv[0]);
 } 
@@ -248,13 +248,13 @@ sml_commandline_name(int rAddr)
 
 int 
 #ifdef PROFILING
-sml_commandline_argsProfiling(int pairRho, int strRho, int pPoint) 
+sml_commandline_argsProfiling(Region pairRho, Region strRho, int pPoint) 
 #else
-sml_commandline_args(int pairRho, int strRho) 
+sml_commandline_args(Region pairRho, Region strRho) 
 #endif
 {
   int *resList, *pairPtr;
-  StringDesc *mlStr;
+  String mlStr;
   int counter = commandline_argc;
   makeNIL(resList);  
   while ( counter > app_arg_index ) 

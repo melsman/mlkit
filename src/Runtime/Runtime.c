@@ -79,7 +79,7 @@ terminateML (int status)
 }
 
 void 
-uncaught_exception (StringDesc *exnStr) 
+uncaught_exception (String exnStr) 
 { 
   fprintf(stderr,"uncaught exception "); 
   fflush(stderr);
@@ -98,7 +98,7 @@ uncaught_exception (StringDesc *exnStr)
 #ifdef TAG_VALUES
 
 static inline int 
-equalTable(Table *x, Table *y) 
+equalTable(Table x, Table y) 
 {
   int i, sz_x, *px, *py;
   sz_x = get_table_size(x->size);
@@ -159,7 +159,7 @@ L0:
 	else return mlFALSE; 
     }Obsolete 10/01/1999, Niels */
     if (val_tag_kind(x) == TAG_STRING) {
-      return equalStringML((StringDesc *) x, (StringDesc *) y);
+      return equalStringML((String) x, (String) y);
     }
     if (val_tag_kind(x) == TAG_RECORD) {
       for (i = 1; i <= get_record_size(x); i++) {
@@ -175,7 +175,7 @@ L0:
 	return mlFALSE;
     }
     if (val_tag_kind(x) == TAG_TABLE) {
-      return equalTable((Table*)x,(Table*)y);
+      return equalTable((Table)x,(Table)y);
     }
     die("equal_poly - No matching tag!");
   }

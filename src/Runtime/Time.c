@@ -93,11 +93,11 @@ sml_mktime (int vAddr, int v)
   return vAddr;
 }
 
-StringDesc *
+String
 #ifdef PROFILING
-sml_asctimeProfiling (int rAddr, int v, int exn, int pPoint) 
+sml_asctimeProfiling (Region rAddr, int v, int exn, int pPoint) 
 #else
-sml_asctime (int rAddr, int v, int exn) 
+sml_asctime (Region rAddr, int v, int exn) 
 #endif
 {
   struct tm tmr;
@@ -123,11 +123,11 @@ sml_asctime (int rAddr, int v, int exn)
 #endif
 }
 
-StringDesc *
+String
 #ifdef PROFILING
-sml_strftimeProfiling (int rAddr, StringDesc *fmt, int v, int exn, int pPoint) 
+sml_strftimeProfiling (Region rAddr, String fmt, int v, int exn, int pPoint) 
 #else
-sml_strftime (int rAddr, StringDesc *fmt, int v, int exn) 
+sml_strftime (Region rAddr, String fmt, int v, int exn) 
 #endif
 {
   struct tm tmr;

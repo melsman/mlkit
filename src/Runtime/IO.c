@@ -112,9 +112,9 @@ input1Stream(FILE *is)
 
 StringDesc *
 #ifdef PROFILING
-inputStreamProfiling(int rd, FILE *is, int n, int pPoint) 
+inputStreamProfiling(Region rd, FILE *is, int n, int pPoint) 
 #else
-inputStream(int rd, FILE *is, int n) 
+inputStream(Region rd, FILE *is, int n) 
 #endif
 {
   unsigned char buf[100];
@@ -280,9 +280,9 @@ sml_access(StringDesc *path, int permarg, int exn)               /* ML */
 
 StringDesc *
 #ifdef PROFILING
-sml_getdirProfiling(int rAddr, int exn, int pPoint)  	 /* SML Basis */
+sml_getdirProfiling(Region rAddr, int exn, int pPoint) 	 /* SML Basis */
 #else
-sml_getdir(int rAddr, int exn)                 	 /* SML Basis */
+sml_getdir(Region rAddr, int exn)                 	 /* SML Basis */
 #endif
 {
  char directory[MAXPATHLEN];
@@ -387,9 +387,9 @@ sml_opendir(StringDesc *path, int exn)           /* SML Basis */
 
 StringDesc *
 #ifdef PROFILING
-sml_readdirProfiling(int rAddr, int v, int pPoint)          /* SML Basis */
+sml_readdirProfiling(Region rAddr, int v, int pPoint)          /* SML Basis */
 #else
-sml_readdir(int rAddr, int v)                               /* SML Basis */
+sml_readdir(Region rAddr, int v)                               /* SML Basis */
 #endif
 {
   struct dirent *direntry;
@@ -443,9 +443,9 @@ sml_errno(void)             /* SML Basis */
 
 StringDesc *
 #ifdef PROFILING
-sml_errormsgProfiling(int rAddr, int errnum, int pPoint)    /* SML Basis */
+sml_errormsgProfiling(Region rAddr, int errnum, int pPoint)    /* SML Basis */
 #else
-sml_errormsg(int rAddr, int errnum)                         /* SML Basis */
+sml_errormsg(Region rAddr, int errnum)                         /* SML Basis */
 #endif
 {
   char *res;
@@ -481,9 +481,9 @@ sml_islink(StringDesc *path, int exn)              /* SML Basis */
 
 StringDesc *
 #ifdef PROFILING
-sml_readlinkProfiling(int rAddr, StringDesc *path, int exn, int pPoint)         /* SML Basis */
+sml_readlinkProfiling(Region rAddr, StringDesc *path, int exn, int pPoint)         /* SML Basis */
 #else
-sml_readlink(int rAddr, StringDesc *path, int exn)                              /* SML Basis */
+sml_readlink(Region rAddr, StringDesc *path, int exn)                              /* SML Basis */
 #endif
 {
   char buffer[MAXPATHLEN];
@@ -505,9 +505,9 @@ extern char *realpath();
 
 StringDesc *
 #ifdef PROFILING
-sml_realpathProfiling(int rAddr, StringDesc *path, int exn, int pPoint)   /* SML Basis */
+sml_realpathProfiling(Region rAddr, StringDesc *path, int exn, int pPoint)   /* SML Basis */
 #else
-sml_realpath(int rAddr, StringDesc *path, int exn)                        /* SML Basis */
+sml_realpath(Region rAddr, StringDesc *path, int exn)                        /* SML Basis */
 #endif
 {
   char buffer[MAXPATHLEN];
@@ -555,9 +555,9 @@ sml_system(StringDesc *cmd, int exn)         /* SML Basis */
 
 StringDesc *
 #ifdef PROFILING
-sml_getenvProfiling(int rAddr, StringDesc *var, int exn, int pPoint)   /* SML Basis */
+sml_getenvProfiling(Region rAddr, StringDesc *var, int exn, int pPoint)   /* SML Basis */
 #else
-sml_getenv(int rAddr, StringDesc *var, int exn)                        /* SML Basis */
+sml_getenv(Region rAddr, StringDesc *var, int exn)                        /* SML Basis */
 #endif
 {
   char *res;

@@ -5,7 +5,7 @@
 // word_sub0(t,i): extract element i from table t
 /*Now in-lined
 int 
-word_sub0 (Table* t, int i)
+word_sub0 (Table t, int i)
 {
   i = convertIntToC(i);
   return convertIntToML(*(&(t->data) + i));
@@ -16,7 +16,7 @@ word_sub0 (Table* t, int i)
 // with element x
 /*Now in-lined
 void 
-word_update0 (Table* t, int i, int x)
+word_update0 (Table t, int i, int x)
 {
   i = convertIntToC(i);
   x = convertIntToC(x);
@@ -27,20 +27,20 @@ word_update0 (Table* t, int i, int x)
 
 // word_table0(rAddr, n): return a pointer to a table 
 // with n elements allocated in the region indicated by rAddr
-Table* 
+Table 
 #ifdef PROFILING
-word_table0Prof (int rAddr, int n, int pPoint)
+word_table0Prof (Region rAddr, int n, int pPoint)
 #else
-word_table0 (int rAddr, int n)
+word_table0 (Region rAddr, int n)
 #endif
 {
-  Table* res;
+  Table res;
 
   n = convertIntToC(n);
   #ifdef PROFILING
-  res = (Table*)allocProfiling(rAddr, n+1, pPoint);
+  res = (Table)allocProfiling(rAddr, n+1, pPoint);
   #else
-  res = (Table*)alloc(rAddr, n+1);
+  res = (Table)alloc(rAddr, n+1);
   #endif
   res->size = val_tag_table(n);
   #ifdef ENABLE_GC
@@ -59,21 +59,21 @@ word_table0 (int rAddr, int n)
 // word_table_init(rAddr, n, x): return a pointer to a table 
 // with n initialized (=x) elements allocated in the region 
 // indicated by rAddr
-Table* 
+Table
 #ifdef PROFILING
-word_table_initProf (int rAddr, int n, int x, int pPoint)
+word_table_initProf (Region rAddr, int n, int x, int pPoint)
 #else
-word_table_init (int rAddr, int n, int x)
+word_table_init (Region rAddr, int n, int x)
 #endif
 {
-  Table* res;
+  Table res;
   int i, *p;
 
   n = convertIntToC(n);
   #ifdef PROFILING
-  res = (Table*)allocProfiling(rAddr, n+1, pPoint);
+  res = (Table)allocProfiling(rAddr, n+1, pPoint);
   #else
-  res = (Table*)alloc(rAddr, n+1);
+  res = (Table)alloc(rAddr, n+1);
   #endif
   res->size = val_tag_table(n);
 
@@ -90,7 +90,7 @@ word_table_init (int rAddr, int n, int x)
 // on vectors (EliminateEq.sml). 
 /*Now in-lined
 int 
-table_size (Table *t)
+table_size (Table t)
 {
   return convertIntToML(get_table_size(t->size));
 }

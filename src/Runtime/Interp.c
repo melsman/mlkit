@@ -72,7 +72,7 @@ typedef unsigned int uint32;
 
 #define Raise(EXNVALUE) {                                                                 \
  	debug(printf("RAISE; EXNVALUE = %x\n", EXNVALUE));                                \
-	deallocateRegionsUntil((unsigned long)exnPtr, topRegionCell);                     \
+	deallocateRegionsUntil((Region)exnPtr, topRegionCell);                            \
 	debug(printf(" after deallocateRegionsUntil\n"));                                 \
                                                                                           \
 	sp = exnPtr - 1;                                /* reset stack pointer */         \
@@ -216,40 +216,40 @@ typedef unsigned int uint32;
 
 #define allocN {                 \
   debug(printf("allocN %d\n", s32pc)); \
-  acc = (int) alloc(acc, s32pc); \
+  acc = (int) alloc((Region)acc, s32pc); \
 }
 
 #define allocIfInfN {              \
   debug(printf("allocIfInfN %d acc = 0x%x\n", s32pc, acc)); \
   if (is_inf(acc)) {                 \
     debug(printf("  allocating\n")); \
-    acc = (int) alloc(acc, s32pc);   \
+    acc = (int) alloc((Region)acc, s32pc);   \
   }                                  \
 }
 
 #define allocSatInfN {           \
   debug(printf("allocSatInfN %d\n", s32pc)); \
-  if (is_atbot(acc))             \
-    resetRegion(acc);            \
-  acc = (int) alloc(acc, s32pc); \
+  if (is_atbot((Region)acc))             \
+    resetRegion((Region)acc);            \
+  acc = (int) alloc((Region)acc, s32pc); \
 }
 
 #define allocSatIfInfN {            \
   debug(printf("allocSatIfInfN %d acc = 0x%x\n", s32pc,acc)); \
-  if (is_inf_and_atbot(acc)) {       \
-    resetRegion(acc);               \
+  if (is_inf_and_atbot((Region)acc)) {       \
+    resetRegion((Region)acc);               \
     debug(printf("  resetting\n")); \
   }                                 \
-  if (is_inf(acc)) {                \
+  if (is_inf((Region)acc)) {                \
     debug(printf("  allocating\n")); \
-    acc = (int) alloc(acc, s32pc);  \
+    acc = (int) alloc((Region)acc, s32pc);  \
   }                                 \
 }
 
 #define allocAtbotN {            \
   debug(printf("allocAtbotN %d\n", s32pc)); \
-  resetRegion(acc);              \
-  acc = (int) alloc(acc, s32pc); \
+  resetRegion((Region)acc);              \
+  acc = (int) alloc((Region)acc, s32pc); \
 }
 
 #define blockCopy2 { \
@@ -432,7 +432,7 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
       Instruct(BLOCK_ALLOC_2): {
-	acc = (int) alloc(acc, 2);
+	acc = (int) alloc((Region)acc, 2);
 	blockCopy2;
 	Next;
       }
@@ -491,7 +491,7 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(CLEAR_BIT_30_AND_31): {
 	debug(printf("clearBitStatusBits\n"));
-	acc = clearStatusBits(acc);
+	acc = (int)clearStatusBits((Region)acc);
 	Next;
       }
 
@@ -605,19 +605,19 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(RESET_REGION): {
 	debug(printf("resetRegion\n"));
-	resetRegion(acc);
+	resetRegion((Region)acc);
 	Next;
       }
       Instruct(MAYBE_RESET_REGION): {
 	debug(printf("maybeRegionRegion\n"));
-	if (is_inf_and_atbot(acc))
-	  resetRegion(acc);
+	if (is_inf_and_atbot((Region)acc))
+	  resetRegion((Region)acc);
 	Next;
       }
       Instruct(RESET_REGION_IF_INF): {
 	debug(printf("resetRegionIfInf\n"));
-	if (is_inf(acc))
-	  resetRegion(acc);
+	if (is_inf((Region)acc))
+	  resetRegion((Region)acc);
 	Next;
       }
 
@@ -993,12 +993,12 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 	acc = *((unsigned long *)acc);           /* Fetch exn number */	
 
 	/* write uncaught exception string into errorStr */
-	exn_sz = 1 + sizeStringDefine((StringDesc *)temp);
+	exn_sz = 1 + sizeStringDefine((String)temp);
 	if ( (*errorStr = (char*)malloc(exn_sz) ) <= 0 ) 
 	  {
 	    die ("GLOBAL_EXN_HANDLER_REPORT - malloc failed");
 	  }
-	convertStringToC ((StringDesc *)temp, *errorStr, exn_sz, 0);
+	convertStringToC ((String)temp, *errorStr, exn_sz, 0);
 	if ( acc == 4 ) {
 	  acc = -2;         /* we return -2 for Interrupt */
 	} else {
@@ -1244,33 +1244,33 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(PRIM_BYTETABLE_SUB): {
 	debug(printf("PRIM_BYTETABLE_SUB(%d,%d)\n", selectStackDef(-1), acc));
-	acc = (int)(*(&(((StringDesc*)(popValDef))->data) + acc));
+	acc = (int)(*(&(((String)(popValDef))->data) + acc));
 	Next;
       }
 
       Instruct(PRIM_BYTETABLE_UPDATE): {
 	debug(printf("PRIM_BYTETABLE_UPDATE(%d,%d,%d)\n", selectStackDef(-2), selectStackDef(-1), acc));
-	*(&(((StringDesc*)(selectStackDef(-2)))->data) + (selectStackDef(-1))) = (unsigned char)acc;
+	*(&(((String)(selectStackDef(-2)))->data) + (selectStackDef(-1))) = (unsigned char)acc;
 	popNDef(2);
 	Next;
       }
 
       Instruct(PRIM_WORDTABLE_SUB): {
 	debug(printf("PRIM_WORDTABLE_SUB(%d,%d)\n", selectStackDef(-1), acc));
-	acc = *(&(((Table*)(popValDef))->data) + acc);
+	acc = *(&(((Table)(popValDef))->data) + acc);
 	Next;
       }
 
       Instruct(PRIM_WORDTABLE_UPDATE): {
 	debug(printf("PRIM_WORDTABLE_UPDATE(%d,%d,%d)\n", selectStackDef(-2), selectStackDef(-1), acc));
-	*(&(((Table*)(selectStackDef(-2)))->data) + (selectStackDef(-1))) = acc;
+	*(&(((Table)(selectStackDef(-2)))->data) + (selectStackDef(-1))) = acc;
 	popNDef(2);
 	Next;
       }
 
       Instruct(PRIM_TABLE_SIZE): {
 	debug(printf("PRIM_TABLE_SIZE\n"));
-	acc = get_table_size(((StringDesc*)acc)->size);  // get_table_size == get_string_size
+	acc = get_table_size(((String)acc)->size);  // get_table_size == get_string_size
 	Next;
       }
 

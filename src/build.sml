@@ -56,7 +56,6 @@ val _ = (enable "print_types"; enable "print_rho_types")
 
   val _ = comp_RI_GC_PROF()
   val _ = comp_RI_PROF()
-
   val _ = K.install()
 
 end

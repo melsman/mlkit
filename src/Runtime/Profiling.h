@@ -2,8 +2,8 @@
  *                         Profiling                              *
  *----------------------------------------------------------------*/
 
-#ifndef PROF
-#define PROF
+#ifndef PROFILING_H
+#define PROFILING_H
 
 #ifdef PROFILING
 #include "Flags.h"
@@ -132,4 +132,4 @@ void queueMark();  /* does nothing */
 
 #endif /*PROFILING*/
 
-#endif /*PROF*/
+#endif /*PROFILING_H*/

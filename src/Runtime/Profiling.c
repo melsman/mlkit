@@ -370,7 +370,7 @@ PrintRegion(Ro* rp)
   if (rp!=NULL)
     {
       fprintf(stderr,"\nAddress of Ro %0x, First free word %0x, Border of region %0x\n     ",rp,rp->a,rp->b);
-      for ( ptr = rp->fp , i = 1 ; ptr ; ptr = ptr->k.n , i++ ) 
+      for ( ptr = rp->fp , i = 1 ; ptr ; ptr = ptr->n , i++ ) 
 	{
 	  fprintf(stderr,"-->Page%2d:%d",i,ptr);
 	  if (i%3 == 0)
@@ -622,7 +622,7 @@ pp_infinite_region (int rAddr)
   Klump *crp;
   Ro *rp;
   rp = (Ro *) clearStatusBits(rAddr);
-  for(crp=rp->fp; crp != NULL; crp=crp->k.n) 
+  for(crp=rp->fp; crp != NULL; crp=crp->n) 
     {
       fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); /* crp is a Klump. */
       while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
@@ -649,7 +649,7 @@ pp_infinite_regions()
   for ( rp = TOP_REGION ; rp ; rp = rp->p ) 
     {
       fprintf(stderr,"Region %d\n", rp->regionId);
-      for(crp=rp->fp; crp!=NULL; crp=crp->k.n) 
+      for(crp=rp->fp; crp!=NULL; crp=crp->n) 
 	{
 	  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); /* crp is a Klump. */
 	  while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
@@ -1004,7 +1004,7 @@ profileTick(int *stackTop)
        * which is traversed independently; crp always points at the 
        * beginning of a regionpage(=nPtr|dummy|data). */
 
-      for( crp = rd->fp ; crp->k.n ; crp = crp->k.n ) 
+      for( crp = rd->fp ; crp->n ; crp = crp->n ) 
 	{
 	  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Klump
 	  // notPP = 0 means no object allocated

@@ -103,7 +103,7 @@ void printTopRegInfo() {
   printf("  p : %0x\n", (rp->p));
 
   printf("Region Pages\n");
-  for (kp=rp->fp;kp!=NULL;kp=kp->k.n)
+  for (kp=rp->fp;kp!=NULL;kp=kp->n)
     printf(" %0x\n ", kp);
 
   return;
@@ -125,7 +125,7 @@ void printRegionInfo(int rAddr,  char *str) {
   printf("  p : %0x\n", (rp->p));
 
   printf("Region Pages\n");
-  for (kp=rp->fp;kp!=NULL;kp=kp->k.n)
+  for (kp=rp->fp;kp!=NULL;kp=kp->n)
     printf(" %0x\n ", kp);
 
   return;
@@ -145,7 +145,7 @@ void printRegionStack() {
 int NoOfPagesInRegion(Ro *rp) {
   int i;
   Klump *ptr;
-  for (i=0,ptr=rp->fp;ptr!=NULL;ptr=ptr->k.n) i++;
+  for (i=0,ptr=rp->fp;ptr!=NULL;ptr=ptr->n) i++;
   return i;
 }
 
@@ -158,7 +158,7 @@ void printFreeList() {
   kp = freelist;
   while (kp != NULL) {
     printf(" %0x ",kp);
-    kp = kp->k.n;
+    kp = kp->n;
   }
   FREELIST_MUTEX_UNLOCK;
   printf("Exit printFreeList\n");
@@ -176,7 +176,7 @@ int size_free_list() {
   kp = freelist;
   while (kp != NULL) {
     i++;
-    kp = kp->k.n;
+    kp = kp->n;
   }
 
   FREELIST_MUTEX_UNLOCK;
@@ -223,18 +223,18 @@ int *allocateRegion(Ro *roAddr
   #endif /* ENABLE_GC */
 
   kp = freelist;
-  freelist= freelist->k.n;
+  freelist= freelist->n;
 
   FREELIST_MUTEX_UNLOCK;
 
-  kp->k.n = NULL;                  // First and last region page
-  kp->k.r = roAddr;                // Point back To region descriptor
+  kp->n = NULL;                  // First and last region page
+  kp->r = roAddr;                // Point back To region descriptor
 
-  roAddr->a = (int *)(&(kp->k.i)); // We allocate from k.i in the page
-  roAddr->b = (int *)(kp+1);       // The border is after this page
-  roAddr->p = TOP_REGION;	   // Push this region onto the region stack
-  roAddr->fp = kp;                 // Update pointer to the first page
-  roAddr->lobjs = NULL;            // The list of large objects is empty
+  roAddr->a = (int *)(&(kp->i)); // We allocate from i in the page
+  roAddr->b = (int *)(kp+1);     // The border is after this page
+  roAddr->p = TOP_REGION;	 // Push this region onto the region stack
+  roAddr->fp = kp;               // Update pointer to the first page
+  roAddr->lobjs = NULL;          // The list of large objects is empty
   
   TOP_REGION = roAddr;
 
@@ -305,7 +305,7 @@ void deallocateRegionNew(
    * at-least one page in a region. */
 
   FREELIST_MUTEX_LOCK;
-  (((Klump *)TOP_REGION->b)-1)->k.n = freelist;
+  (((Klump *)TOP_REGION->b)-1)->n = freelist;
   freelist = TOP_REGION->fp;
   FREELIST_MUTEX_UNLOCK;
 
@@ -359,10 +359,10 @@ void callSbrk() {
   /* We have to fragment the SBRK-chunk into region pages. */
   while ((char *)(np+1) < ((char *)freelist)+BYTES_ALLOC_BY_SBRK) { 
     np++;
-    (np-1)->k.n = np;
+    (np-1)->n = np;
     rp_total++;
   }
-  np->k.n = old_free_list;
+  np->n = old_free_list;
 
   #ifdef ENABLE_GC
   if (!disable_gc)
@@ -416,13 +416,13 @@ void callSbrkArg(int no_of_region_pages) {
   /* We have to fragment the SBRK-chunk into region pages. */
   while ((char *)(np+1) < ((char *)freelist)+bytes_to_alloc) { 
     np++;
-    (np-1)->k.n = np;
+    (np-1)->n = np;
 
 
     rp_total++;
 
   }
-  np->k.n = old_free_list;
+  np->n = old_free_list;
 
   #ifdef ENABLE_GC
   if (!disable_gc)
@@ -471,21 +471,21 @@ void alloc_new_block(Ro *rp) {
   FREELIST_MUTEX_LOCK;
   if (freelist==NULL) callSbrk(); 
   np = freelist;
-  freelist= freelist->k.n;
+  freelist= freelist->n;
   FREELIST_MUTEX_UNLOCK;
 
   if (!is_rp_aligned((unsigned int)np))
     die("alloc_new_block: region page is not properly aligned.");
 
-  np->k.n = NULL;
-  np->k.r = rp;      /* We Point Back To Region Descriptor. Used By GC. */
+  np->n = NULL;
+  np->r = rp;      /* We Point Back To Region Descriptor. Used By GC. */
 
   if (rp->fp)
-    (((Klump *)(rp->b))-1)->k.n = np; /* Updates the next field in the last region page. */
+    (((Klump *)(rp->b))-1)->n = np; /* Updates the next field in the last region page. */
   else
     rp->fp = np;                    /* Update pointer to the first page. */
 
-  rp->a = (int *)(&(np->k.i));    /* Updates the allocation pointer. */
+  rp->a = (int *)(&(np->i));      /* Updates the allocation pointer. */
   rp->b = (int *)(np+1);          /* Updates the border pointer. */
 }
 
@@ -497,7 +497,7 @@ void alloc_new_block(Ro *rp) {
  *  allocated in region pages; larger objects are allocated using       *
  *  malloc.
  *----------------------------------------------------------------------*/
-int *alloc (int rAddr, int n) { 
+int *alloc (Region rAddr, int n) { 
   int *t1;
   int *t2;
   int *t3;
@@ -508,7 +508,7 @@ int *alloc (int rAddr, int n) {
 #endif
 
   /*  debug(printf("[alloc, rAddr=%x, n=%d, topFiniteRegion = %x, ...\n", rAddr, 9, topFiniteRegion)); */
-  rp = (Ro *) clearStatusBits(rAddr);
+  rp = clearStatusBits(rAddr);
 
   /*  debug(printf("[alloc, rAddr=%x, id=%d, n=%d, topFiniteRegion = %x ...\n", rAddr, rp->regionId, n, topFiniteRegion)); */
 
@@ -584,7 +584,9 @@ int *alloc (int rAddr, int n) {
  *  the region administration structure is updated. The statusbits are  *
  *  not changed.                                                        *
  *----------------------------------------------------------------------*/
-int resetRegion(int rAdr) { 
+Region 
+resetRegion(Region rAdr) 
+{ 
   Ro *rp;
   
 #ifdef PROFILING
@@ -595,7 +597,7 @@ int resetRegion(int rAdr) {
 
   debug(printf("[resetRegions..."));
 
-  rp = (Ro *) clearStatusBits(rAdr);
+  rp = clearStatusBits(rAdr);
 
 #ifdef PROFILING
   callsOfResetRegion++;
@@ -611,19 +613,19 @@ int resetRegion(int rAdr) {
 #endif
 
   /* There is always at least one page in a region. */
-  if ( (rp->fp)->k.n != NULL ) { /* There are more than one page in the region. */
+  if ( (rp->fp)->n != NULL ) { /* There are more than one page in the region. */
     FREELIST_MUTEX_LOCK;
-    (((Klump *)rp->b)-1)->k.n = freelist;
-    freelist = (rp->fp)->k.n;
+    (((Klump *)rp->b)-1)->n = freelist;
+    freelist = (rp->fp)->n;
     FREELIST_MUTEX_UNLOCK;
-    (rp->fp)->k.n = NULL;
+    (rp->fp)->n = NULL;
 
     #ifdef ENABLE_GC
     rp_used--;              // at least one page is freed; see comment in alloc_new_block
     #endif /* ENABLE_GC */  //   concerning conservative computation.
   }
 
-  rp->a = (int *)(&(rp->fp)->k.i); /* beginning of klump in first page */
+  rp->a = (int *)(&(rp->fp)->i);   /* beginning of klump in first page */
   rp->b = (int *)((rp->fp)+1);     /* end of klump in first page */
 
   if ( rp->lobjs )
@@ -664,7 +666,7 @@ int resetRegion(int rAdr) {
  *  description. It deallocates all regions that are placed over sp.       *
  *  The function does not return or alter anything.                        *
  *-------------------------------------------------------------------------*/
-void deallocateRegionsUntil(int rAddr
+void deallocateRegionsUntil(Region rAddr
 #ifdef KAM
 			    , Ro** topRegionCell
 #endif
@@ -673,7 +675,7 @@ void deallocateRegionsUntil(int rAddr
 
   // debug(printf("[deallocateRegionsUntil(rAddr = %x, topFiniteRegion = %x)...\n", rAddr, topFiniteRegion));
 
-  rp = (Ro *) clearStatusBits(rAddr);
+  rp = clearStatusBits(rAddr);
   
 #ifdef PROFILING
   callsOfDeallocateRegionsUntil++;
@@ -703,12 +705,12 @@ void deallocateRegionsUntil(int rAddr
  *  the stack growing towards negative infinity.                           *
  *-------------------------------------------------------------------------*/
 #ifndef KAM
-void deallocateRegionsUntil_X86(int rAddr) { 
+void deallocateRegionsUntil_X86(Region rAddr) { 
   Ro *rp;
 
   //  debug(printf("[deallocateRegionsUntil_X86(rAddr = %x, topFiniteRegion = %x)...\n", rAddr, topFiniteRegion));
 
-  rp = (Ro *) clearStatusBits(rAddr);
+  rp = clearStatusBits(rAddr);
   
 #ifdef PROFILING
   callsOfDeallocateRegionsUntil++;
@@ -781,22 +783,22 @@ int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId) {
   #endif /* ENABLE_GC */
 
   kp = freelist;
-  freelist= freelist->k.n;
+  freelist= freelist->n;
 
   FREELIST_MUTEX_UNLOCK;
 
-  kp->k.n = NULL;                  // First and last region page
-  kp->k.r = roAddr;                // Pointer back to region descriptor (used by GC)
+  kp->n = NULL;                  // First and last region page
+  kp->r = roAddr;                // Pointer back to region descriptor (used by GC)
 
-  roAddr->a = (int *)(&(kp->k.i)); // We allocate from k.i in the page
-  roAddr->b = (int *)(kp+1);       // The border is after this page
-  roAddr->p = TOP_REGION;	   // Push this region onto the region stack
-  roAddr->fp = kp;                 // Update pointer to the first page
-  roAddr->allocNow = 0;            // No allocation yet
-  roAddr->allocProfNow = 0;        // No allocation yet
-  roAddr->regionId = regionId;     // Put name of region in region descriptor
+  roAddr->a = (int *)(&(kp->i)); // We allocate from i in the page
+  roAddr->b = (int *)(kp+1);     // The border is after this page
+  roAddr->p = TOP_REGION;	 // Push this region onto the region stack
+  roAddr->fp = kp;               // Update pointer to the first page
+  roAddr->allocNow = 0;          // No allocation yet
+  roAddr->allocProfNow = 0;      // No allocation yet
+  roAddr->regionId = regionId;   // Put name of region in region descriptor
 
-  roAddr->lobjs = NULL;            // The list of large objects is empty
+  roAddr->lobjs = NULL;          // The list of large objects is empty
 
   TOP_REGION = roAddr;
 
@@ -900,7 +902,7 @@ int *deallocRegionFiniteProfiling(void) {
  * and takes care of allocating it, returning a pointer to the     *
  * beginning of the user value, as if profiling is not enabled.    *
  *-----------------------------------------------------------------*/
-int *allocProfiling(int rAddr,int n, int pPoint) {
+int *allocProfiling(Region rAddr,int n, int pPoint) {
   int *res;
 
   debug(printf("[Entering allocProfiling... rAddr:%x, n:%d, pp:%d.", rAddr, n, pPoint));
