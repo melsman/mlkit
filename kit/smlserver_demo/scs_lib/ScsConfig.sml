@@ -8,8 +8,8 @@ signature SCS_CONFIG =
     val scs_site_index_page   : unit -> string
     val scs_site_adm_email    : unit -> string
     val scs_site_name         : unit -> string
-    val scs_site_url          : unit -> string (* url to site from external link, that is, with https *)
-    val scs_home_path         : unit -> string (* path to home from internal link, that is, without https *)
+    val scs_site_url          : unit -> string (* url to site from external link, that is, with https, eg. https://www.x.com/ *)
+    val scs_home_path         : unit -> string (* path to home from internal link, that is, without https, eg / *)
     val scs_file_storage_root : unit -> string
     val scs_debug_p           : unit -> string
     val scs_email_when_debug  : unit -> string
