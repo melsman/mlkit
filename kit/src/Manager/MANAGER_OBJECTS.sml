@@ -1,4 +1,3 @@
-(*$MANAGER_OBJECTS: TYNAME *)
 
 signature MANAGER_OBJECTS =
   sig
@@ -51,13 +50,12 @@ signature MANAGER_OBJECTS =
 	val layout : IntFunEnv -> StringTree
       end
 
-    type CEnv and CompileBasis and longtycon and longid and longstrid
+    type CEnv and CompileBasis and longtycon and longid and longstrid and TopIntBasis
     structure IntBasis :
       sig
 	val mk : IntFunEnv * CEnv * CompileBasis -> IntBasis
 	val un : IntBasis -> IntFunEnv * CEnv * CompileBasis
 	val empty : IntBasis
-	val initial : IntBasis
 	val plus : IntBasis * IntBasis -> IntBasis
 	val restrict : IntBasis * {funids:funid list, longstrids: longstrid list,
 				   longvids: longid list, longtycons: longtycon list} -> IntBasis
@@ -65,19 +63,29 @@ signature MANAGER_OBJECTS =
 	val enrich : IntBasis * IntBasis -> bool
 	val agree : longstrid list * IntBasis * IntBasis -> bool   (* structure agreement *)
 	val layout : IntBasis -> StringTree
+
+	(* operations that are only used in Manager *)	
+	val initial : unit -> TopIntBasis
+	val plus' : TopIntBasis * IntBasis -> TopIntBasis
+	val enrich' : TopIntBasis * IntBasis -> bool
+	val restrict' : TopIntBasis * {funids:funid list, longstrids: longstrid list,
+				       longvids: longid list, longtycons: longtycon list} -> IntBasis
       end
 
-    type Basis and InfixBasis and ElabBasis and realisation and sigid
+    type Basis and TopBasis and InfixBasis and ElabBasis and realisation and sigid
     structure Basis :
       sig
-	val initial : Basis
 	val empty : Basis
 	val mk : InfixBasis * ElabBasis * realisation * IntBasis -> Basis
 	val un : Basis -> InfixBasis * ElabBasis * realisation * IntBasis
 	val plus : Basis * Basis -> Basis
-	val enrich : Basis * (Basis * TyName.Set.Set) -> bool
-	val agree : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
 	val layout : Basis -> StringTree
+
+	val agree : longstrid list * TopBasis * (Basis * TyName.Set.Set) -> bool
+	val enrich : TopBasis * (Basis * TyName.Set.Set) -> bool
+	val initial : unit -> TopBasis
+	val plus' : TopBasis * Basis -> TopBasis
+	val un' : TopBasis -> InfixBasis * ElabBasis * realisation * TopIntBasis
       end
 
     type name

@@ -30,7 +30,7 @@ On HPUX:
 
   make runtimeHPUX  
 
-On Sun OS/4: (* NOT SUPPORTED AT THE MOMENT *)
+On Sun OS/4:
 
   make runtimeSUN_OS4
 
@@ -51,22 +51,22 @@ The tool "rp2ps" converts output from a program compiled with region
 profiling enabled to a profile graph in postscript, that is, it
 converts an .rp file to a .ps file. From KITDIR do
 
-   cd src/Runtime/Version17/Rp2ps/
+  cd src/Runtime/Version17/Rp2ps/
 
 On HPUX
 
-   make rp2psHPUX
+  make rp2psHPUX
 
 On SUN_OS4
 
   make rp2psSUN_OS4
 
 
-3. Building the ML Kit with Regions compiler     (* ASSUMES HPUX *) 
+3. Building the ML Kit with Regions compiler
 -- -----------------------------------------
 To compile the sources for the ML Kit with Regions, you need Standard
 ML of New Jersey (SML/NJ) version 110.0.3 (and no other). The ML Kit
-Web site at the top of this file contains links to SML/NJ.  The
+Web site at the top of this file has links to SML/NJ.  The
 executable Kit will take up around 8Mb of disc space. Building it
 typically takes half an hour or so and is best done on a machine with
 at least 64Mb of RAM.
@@ -78,12 +78,22 @@ KITDIR, type
   cd src/
   sml-cm
 
-Within SML/NJ type 
+Now, if you want to compile the HPUX version of the Kit then simply type
+(within SML/NJ)
 
   CM.make();
 
-and the compilation manager will build the Kit. Once the Kit has been
-built, you can install the Kit by writing
+and the compilation manager will build the version of the Kit that
+generates HPUX machine code. If you want to compile the C version of
+the Kit then type
+
+  CM.SymVal.define("KIT_TARGET_C", 1);
+  CM.make();
+
+and the compilation manager will build the version of the Kit that
+generates C code.
+
+Once the Kit has been built, you can install the Kit by writing
 
   K.install();
 
@@ -104,12 +114,12 @@ and the executable "run", which is now located in the "kitdemo/"
 directory, can be run.
 
 As explained in "Programming with Regions in the ML Kit"
-(doc/diku97-12.a4.ps.gz), every user can have her own kit script
-containing personal preferences (flags to control optimizations, how
-programs should be pretty-printed, etc.) The kit does not force you to
-have a script file; the Kit will work fine with the default
-settings. A sample kit script file "kit.script" is located in the
-"kitdemo" directory.
+(doc/diku97-12.a4.ps.gz), every user can have her own kit script with
+personal preferences (flags to control optimizations, how programs
+should be pretty-printed, etc.) The kit does not force you to have a
+script file; the Kit will work fine with the default settings. A
+sample kit script file "kit.script" is located in the "kitdemo"
+directory.
 
 If you want to modify the Kit, you should consider using K.kit() (from
 within SML/NJ) instead of using K.install(); see the source file

@@ -2,7 +2,7 @@
 signature FREE_IDS =
   sig
 
-    type longtycon and longstrid and longid
+    type longtycon and longstrid and strid and longid
     type funid and sigid
     type topdec and dec and strexp
 
@@ -12,6 +12,7 @@ signature FREE_IDS =
 
     val fid_topdec : topdec -> longids
     val fid_strexp : strexp -> longids
+    val fid_strexp' : strid -> strexp -> longids   (* do not include longids with qualifier strid *)
     val fid_dec    : dec    -> longids
 				
 

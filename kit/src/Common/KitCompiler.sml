@@ -128,6 +128,11 @@ structure K = struct
 
   local
 
+    (* To ease the setup process, we setup the Kit to compile programs
+     * for the architecture that the Kit itself is compiled
+     * under. Thus, cross-compiling is not possible without modifying the
+     * following code. *)
+
     (* Directories *)
 
     val kitsrc_path = OS.FileSys.getDir()   (* assumes we are in kit/src/ directory *)
@@ -156,6 +161,12 @@ structure K = struct
 		 Flags.read_script "kit.script";
 		 Flags.interact())
 
+    fun build_basislib() =
+      (OS.FileSys.chDir "../basislib";
+       set_paths();
+       build "basislib.pm";
+       OS.FileSys.chDir "../src")
+
     fun install() =
       let val os = TextIO.openOut kitbinkit_path
 	  val _ = (TextIO.output(os, "sml110 @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
@@ -170,8 +181,5 @@ structure K = struct
 
   val cd = OS.FileSys.chDir
   val pwd = OS.FileSys.getDir
-  fun ib a = (cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/basislib/" ;
-	      kit {})
-  fun src a = cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/"
 
 end (*structure K*)

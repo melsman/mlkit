@@ -85,7 +85,7 @@ functor CompilerEnv(structure Ident: IDENT
     datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv}
     and StrEnv    = STRENV of (strid,CEnv) FinMap.map
     and VarEnv    = VARENV of (id,result) FinMap.map
-    and TyEnv     = TYENV of (tycon, TyName list) FinMap.map
+    and TyEnv     = TYENV of (tycon,TyName list * CEnv) FinMap.map
 
     val emptyStrEnv    = STRENV FinMap.empty
     and emptyVarEnv    = VARENV FinMap.empty
@@ -130,18 +130,18 @@ functor CompilerEnv(structure Ident: IDENT
 		      ])
 
     local open TyCon TyName
-    in val initialTyEnv = TYENV(initMap [(tycon_INT, [tyName_INT]),
-					 (tycon_WORD, [tyName_INT]),
-					 (tycon_WORD8, [tyName_INT]),
-					 (tycon_REAL, [tyName_REAL]),
-					 (tycon_STRING, [tyName_STRING]),
-					 (tycon_CHAR, [tyName_INT]),
-					 (tycon_EXN, [tyName_EXN]),
-					 (tycon_REF, [tyName_REF]),
-					 (tycon_BOOL, [tyName_BOOL]),
-					 (tycon_LIST, [tyName_LIST]),
-					 (tycon_WORD_TABLE, [tyName_WORD_TABLE]),
-					 (tycon_UNIT, [])
+    in val initialTyEnv = TYENV(initMap [(tycon_INT, ([tyName_INT], emptyCEnv)),
+					 (tycon_WORD, ([tyName_INT], emptyCEnv)),
+					 (tycon_WORD8, ([tyName_INT], emptyCEnv)),
+					 (tycon_REAL, ([tyName_REAL], emptyCEnv)),
+					 (tycon_STRING, ([tyName_STRING], emptyCEnv)),
+					 (tycon_CHAR, ([tyName_INT], emptyCEnv)),
+					 (tycon_EXN, ([tyName_EXN], emptyCEnv)),
+					 (tycon_REF, ([tyName_REF], emptyCEnv)),
+					 (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
+					 (tycon_LIST, ([tyName_LIST], emptyCEnv)),
+					 (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)),
+					 (tycon_UNIT, ([], emptyCEnv))
 					 ])
     end
 
@@ -167,8 +167,8 @@ functor CompilerEnv(structure Ident: IDENT
     fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv}) =
       CENV{StrEnv=STRENV(FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv}
 
-    fun declare_tycon(tycon, tynames, CENV{StrEnv,VarEnv,TyEnv=TYENV m}) =
-      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,tynames,m))}
+    fun declare_tycon(tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m}) =
+      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m))}
 
     fun plus (CENV{StrEnv,VarEnv,TyEnv}, CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv'}) =
       CENV{StrEnv=plusStrEnv(StrEnv,StrEnv'),
@@ -201,6 +201,18 @@ functor CompilerEnv(structure Ident: IDENT
     fun lookup_longstrid ce longstrid =
       let val (strids,strid) = StrId.explode_longstrid longstrid
 	  fun lookup (ce, []) = lookup_strid ce strid
+	    | lookup (ce, strid::strids) = lookup(lookup_strid ce strid, strids)
+      in lookup(ce, strids)
+      end
+
+    fun lookup_tycon (CENV{TyEnv=TYENV m, ...}) tycon =
+      case FinMap.lookup m tycon
+	of SOME res => res
+	 | NONE => die ("lookup_tycon(" ^ TyCon.pr_TyCon tycon ^ ")")
+
+    fun lookup_longtycon ce longtycon =
+      let val (strids,tycon) = TyCon.explode_LongTyCon longtycon
+	  fun lookup (ce, []) = lookup_tycon ce tycon
 	    | lookup (ce, strid::strids) = lookup(lookup_strid ce strid, strids)
       in lookup(ce, strids)
       end
@@ -251,8 +263,9 @@ functor CompilerEnv(structure Ident: IDENT
     val primlvarsOfCEnv = varsOfCEnv primlvars_result 
 
     fun tynamesOfCEnv ce : TyName list =
-      let fun tynames_TE(TYENV m, acc) = FinMap.fold (op @) acc m 
-          fun tynames_E(CENV{VarEnv=VARENV ve, StrEnv, TyEnv, ...}, acc) =
+      let fun tynames_TEentry((tns,ce),acc) = tynames_E(ce,tns@acc) 
+          and tynames_TE(TYENV m, acc) = FinMap.fold tynames_TEentry acc m 
+          and tynames_E(CENV{VarEnv=VARENV ve, StrEnv, TyEnv, ...}, acc) =
 	    let val acc = tynames_SE (StrEnv,acc)
 	        val acc = tynames_TE (TyEnv,acc)
 	    in FinMap.fold tynames_result acc ve
@@ -321,7 +334,11 @@ functor CompilerEnv(structure Ident: IDENT
 
    local
 
-     val debug_man_enrich = ref false (*Flags.lookup_flag_entry "debug_man_enrich"*)
+    val debug_man_enrich = ref false
+    val _ = Flags.add_flag_to_menu (["Debug Kit", "Manager"], 
+				    "debug_man_enrich", "debug man enrich",
+				    debug_man_enrich)
+
      fun log s = TextIO.output(TextIO.stdOut,s)
      fun debug(s, b) = if !debug_man_enrich then
                          (if b then log("\n" ^ s ^ ": enrich succeeded.")
@@ -360,19 +377,21 @@ functor CompilerEnv(structure Ident: IDENT
 		      of SOME res1 => eq_res(res1,res2)
 		       | NONE => false) true env2
 
-     fun eq_tyenv_res(res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
+     fun eq_tynames(res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
        
      fun enrichTyEnv(TYENV m1,TYENV m2) =
-       FinMap.Fold (fn ((id2,res2),b) => b andalso
+       FinMap.Fold (fn ((id2,(res2,ce2)),b) => b andalso
 		    case FinMap.lookup m1 id2
-		      of SOME res1 => eq_tyenv_res(res1,res2)
+		      of SOME (res1,ce1) => eq_tynames(res1,res2) andalso eqCEnv(ce1,ce2)
 		       | NONE => false) true m2
        
-     fun enrichCEnv(CENV{StrEnv,VarEnv,TyEnv},
+     and enrichCEnv(CENV{StrEnv,VarEnv,TyEnv},
 		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv'}) =
        debug("StrEnv", enrichStrEnv(StrEnv,StrEnv')) andalso 
        debug("VarEnv", enrichVarEnv(VarEnv,VarEnv')) andalso
        debug("TyEnv", enrichTyEnv(TyEnv,TyEnv'))
+
+     and eqCEnv(ce1,ce2) = enrichCEnv(ce1,ce2) andalso enrichCEnv(ce2,ce1)
 
      and enrichStrEnv(STRENV se1, STRENV se2) =
        FinMap.Fold (fn ((strid,env2),b) => b andalso
@@ -571,11 +590,11 @@ functor CompilerEnv(structure Ident: IDENT
 	      childsep=PP.NOSEP}
 
     and layoutTyEnv (TYENV m) = 
-      let fun layout_tynames tynames = 
-	    PP.NODE {start="[",finish="]",indent=0, children=map TyName.layout tynames,
+      let fun layout_res (tynames,ce) = 
+	    PP.NODE {start="([",finish="], ce)",indent=0, children=map TyName.layout tynames,
 		     childsep=PP.RIGHT ","}
       in FinMap.layoutMap {start="TyEnv = {", eq=" -> ", sep = ", ", finish="}"} (PP.LEAF o TyCon.pr_TyCon)
-	 layout_tynames m
+	 layout_res m
       end
 
   end;
