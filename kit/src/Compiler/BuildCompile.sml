@@ -165,11 +165,18 @@ functor BuildCompile (structure TyName : TYNAME
 				    structure Crash = Crash
 				    structure Report = Report)
 
+  structure CConst = CConst
+    (structure Flags = Flags
+     structure Crash = Crash
+     structure TyName = TyName)
+
    structure RType:RTYPE = RType(structure Flags = Flags
 				 structure Crash = Crash
 				 structure E = Effect
 				 structure DiGraph = DiGraph
 				 structure L = LambdaExp
+				 structure CConst = CConst
+				 structure FinMap = FinMap
 				 structure TyName = TyName
 				 structure PP = PP)
 
@@ -216,11 +223,6 @@ functor BuildCompile (structure TyName : TYNAME
            structure PP = PP
           )
 
-
-  structure CConst = CConst
-    (structure Flags = Flags
-     structure Crash = Crash
-     structure TyName = TyName)
 
      structure SpreadExpression =  SpreadExpression(
        structure Con = Con
