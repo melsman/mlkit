@@ -2,6 +2,17 @@ signature SCS_PERSON =
   sig
     datatype sex = Female | Male
 
+    type person_record = {
+      first_names 	: string,
+      last_name		: string,
+      name 		: string,
+      email		: string,
+      url		: string
+    }
+
+    (* [getPerson user_id] fetches a person from the database *)
+    val getPerson : int -> person_record option
+
     (* [name user_id] returns the name found in the database for user
        identified by user_id. Returns "" if no email exists. *)
     val name : int -> string
@@ -68,6 +79,35 @@ signature SCS_PERSON =
 structure ScsPerson :> SCS_PERSON =
   struct
     datatype sex = Female | Male
+
+    type person_record = {
+      first_names 	: string,
+      last_name		: string,
+      name 		: string,
+      email		: string,
+      url		: string
+    }
+
+    fun getPerson user_id = 
+      let
+	fun f g = {
+	  first_names = g "first_names",
+	  last_name = g "last_name",
+	  name = g "name",
+	  email = g "email",
+	  url = g "url"
+	}
+	val personSQL = `
+	  select first_names, last_name, 
+		 scs_person.name(^(Int.toString user_id)) name, 
+		 scs_party.email(^(Int.toString user_id)) email,
+		 scs_party.url(^(Int.toString user_id)) url
+	    from scs_persons
+	   where person_id = ^(Int.toString user_id)` 
+      in
+	SOME( Db.oneRow' f personSQL )
+      end
+      handle _ => NONE
 
     fun name user_id =
       Db.oneField `select scs_person.name(person_id)
