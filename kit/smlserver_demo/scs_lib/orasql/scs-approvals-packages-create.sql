@@ -30,6 +30,7 @@ is
     table_name  in varchar2,
     id          in integer,
     approved_by in integer,
+    note_text   in varchar2,
     modified_by in integer
   );
 
@@ -48,7 +49,7 @@ is
     table_name  in varchar2,
     id          in integer,
     approved_by in integer,
-    note_text   in varchar,
+    note_text   in varchar2,
     modified_by in integer
   );
   
@@ -75,6 +76,7 @@ is
     table_name  in varchar2,
     id          in integer,
     approved_by in integer,
+    note_text   in varchar2,
     modified_by in integer
   ) is
   begin
@@ -83,7 +85,8 @@ is
       ON_WHAT_TABLE, 
       ON_WHICH_ID,   
       USER_ID,       
-      DECISION,      
+      DECISION, 
+      NOTE_TEXT,     
       CREATED_ON,    
       LAST_MODIFIED, 
       MODIFYING_USER
@@ -93,6 +96,7 @@ is
       id,
       approved_by,
       't',
+      note_text,
       sysdate,
       sysdate,
       modified_by
@@ -103,7 +107,7 @@ is
     table_name  in varchar2,
     id          in integer,
     approved_by in integer,
-    note_text   in varchar,
+    note_text   in varchar2,
     modified_by in integer
   ) is
   begin
