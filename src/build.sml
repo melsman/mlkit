@@ -20,7 +20,14 @@ in
 	   enable "print_rho_types";
 	   enable "debug_compiler";
 *)
+
 	   enable "garbage_collection";
+
+	   disable "region_inference";
+	   enable "scratch";
+	   K.build_basislib();
+	   disable "scratch";
+	   enable "region_inference";
 
 	   K.build_basislib();
 
