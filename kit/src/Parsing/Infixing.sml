@@ -416,20 +416,30 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                   end
 
                 fun inventVars ([(atpats,_,_)]) = (* only one clause *)
-                      map GrammarUtils.inventId_from_atpat atpats
+                      map (fn atpat =>
+			   (GrammarUtils.inventId_from_atpat atpat,
+			    get_info_atpat atpat))
+		        atpats
                   | inventVars ((atpats,_,_)::_) = (* more than one clause *)
-                      map (GrammarUtils.inventId o (fn _ => ())) atpats
+                      map (fn atpat =>
+			   (GrammarUtils.inventId (), get_info_atpat atpat))
+		        atpats
                   | inventVars [] = Crash.impossible "Infixing.inventVars: no\
                        \ clauses in fvalbind"
 
                   
                 val vars = inventVars rhsList
+		  (*the newly invented vars are paired with the info from the atpats
+		   they stand for to give better infos where they are used*)
 
                 val varTuple =
-                      probableTupleAtExp (map (GrammarUtils.atexpOfIdent info) vars)
+                      probableTupleAtExp
+		        (map (fn (id, i_id) => GrammarUtils.atexpOfIdent i_id id) vars)
+(*KILL 06/01/1998 20:49. tho.:
 		  (*Using `info' here is somewhat arbitrary; before, an empty info
 		   was used.  It is not possible to put any really meaningful info
 		   on these newly invented atexps, dixi.*)
+*)
 
                 fun mkMatch((atpats, exp, ty_opt) :: rest) =
                       let
@@ -468,21 +478,19 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                           end
                      | None => impossible "fvalbindToValbind(innerApp)"
 
-                fun curry id exp =
+                fun curry (id, i_id) exp =
                   (*The handling of the sourcinfo is not ideal, here.
 		   The abstraction and other syntax nodes get the same source
 		   info as the body*)
                   let val i_body = get_info_exp exp 
                   in 
-                     FNexp(i_body,
-                        MATCH(i_body,
-                              MRULE(i_body, GrammarUtils.patOfIdent i_body 
-			      (id, false),
-                                    exp
-                                   ),
-                              None
-                             )
-                       )
+		    FNexp (i_body,
+		      MATCH (i_body,
+			MRULE (GrammarUtils.span_info (i_id,
+						       get_info_exp exp),
+			       GrammarUtils.patOfIdent i_id (id, false),
+			       exp),
+			None))
                   end
 
                 val curriedFn =
