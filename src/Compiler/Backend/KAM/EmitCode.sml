@@ -3,8 +3,10 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 		  structure Opcodes : OPCODES_KAM
 		  structure BC : BUFF_CODE
 		  structure RLL : RESOLVE_LOCAL_LABELS
+                    sharing type Labels.label = RLL.label
 		  structure Kam : KAM
 		    sharing type Kam.AsmPrg = CG.AsmPrg
+                    sharing type Kam.label = Labels.label
 		  structure BI : BACKEND_INFO
 		  structure Flags : FLAGS
 		  structure Crash : CRASH) : EMIT_CODE =
@@ -57,7 +59,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | StackAddr(off,s) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | EnvToAcc => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
-      |	ImmedInt(i) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      |	ImmedInt(i) => (out_opcode IMMED_INT; out_int i)
       | ImmedString(str) => 
 	  let
 	    val str_size = String.size str
@@ -75,15 +77,15 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | ImmedReal(r) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 	
       | Push => (out_opcode PUSH)
-      | PushLbl(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PushLbl(lab) => (out_opcode PUSH_LBL; RLL.out_label lab)
       | Pop(n) => (out_opcode POP_N; out_int n)
 	
-      | ApplyFnCall(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | ApplyFnJmp(n1,n2) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | ApplyFunCall(lab,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | ApplyFunCallNoClos(lab,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | ApplyFunJmp(lab,n1,n2) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | ApplyFunJmpNoClos(lab,n1,n2) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | ApplyFnCall(n) => (out_opcode APPLY_FN_CALL; out_int n)
+      | ApplyFnJmp(n1,n2) => (out_opcode APPLY_FN_JMP; out_int n1; out_int n2)
+      | ApplyFunCall(lab,n) => (out_opcode APPLY_FUN_CALL; RLL.out_label lab; out_int n)
+      | ApplyFunCallNoClos(lab,n) => (out_opcode APPLY_FUN_CALL_NO_CLOS; RLL.out_label lab; out_int n)
+      | ApplyFunJmp(lab,n1,n2) => (out_opcode APPLY_FUN_JMP; RLL.out_label lab; out_int n1; out_int n2)
+      | ApplyFunJmpNoClos(lab,n1,n2) => (out_opcode APPLY_FUN_JMP_NO_CLOS; RLL.out_label lab; out_int n1; out_int n2)
       | Return(n1,n2) => 
 	  (out_opcode RETURN;
 	   out_int n1;
@@ -94,13 +96,13 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	   out_int idx;
 	   out_int arity)
 
-      | Label(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | JmpRel(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | IfNotEqJmpRel(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | IfLessThanJmpRel(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | IfGreaterThanJmpRel(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | DotLabel(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | JmpVector(lab,first_sel) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | Label(lab) => RLL.define_label lab
+      | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
+      | IfNotEqJmpRel(lab) => (out_opcode IF_NOT_EQ_JMP_REL; RLL.out_label lab)
+      | IfLessThanJmpRel(lab) => (out_opcode IF_LESS_THAN_JMP_REL; RLL.out_label lab)
+      | IfGreaterThanJmpRel(lab) => (out_opcode IF_GREATER_THAN_JMP_REL; RLL.out_label lab)
+      | DotLabel(lab) => (out_opcode DOT_LABEL; RLL.out_label lab)
+      | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_int first_sel)
 
       | Raise => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PushExnPtr => die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -117,7 +119,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | StoreGlobal(lab) => () (*die ("inst " ^ (pr_inst inst) ^ " not emitted") not implemented yet *)
 
       | Comment(s) => ()
-      | Nop => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | Nop => ()
 
       | PrimEqual => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimSubi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -131,10 +133,10 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimNegf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimAbsf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
-      | PrimLessThan => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimLessEqual => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimGreaterThan => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimGreaterEqual => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimLessThan => (out_opcode PRIM_LESS_THAN)
+      | PrimLessEqual => (out_opcode PRIM_LESS_EQUAL)
+      | PrimGreaterThan => (out_opcode PRIM_GREATER_THAN)
+      | PrimGreaterEqual => (out_opcode PRIM_GREATER_EQUAL)
 					                              
       | PrimLessThanUnsigned => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimGreaterThanUnsigned	=> die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -161,9 +163,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
     fun emit_top_decl top_decl =
       let
-	fun emit_decl (lab,kam_insts) = 
-	  (BC.init_out_code ();
-	   emit_kam_insts kam_insts)
+	fun emit_decl (lab,kam_insts) = emit_kam_insts kam_insts
       in
 	case top_decl of
 	  Kam.FUN(lab,kam_insts) => emit_decl(lab,kam_insts)
@@ -175,6 +175,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 			 exit_code: Kam.KamInst list,
 			 static_data: Kam.KamInst list}, filename:string} : unit = 
       (chat ("[Emitting KAM code in file " ^ filename ^ "...");
+       BC.init_out_code();
+       RLL.reset_label_table();
        List.app emit_top_decl top_decls;
        BC.dump_buffer filename;
        print ("[wrote KAM code file:\t" ^ filename ^ "]\n");
