@@ -101,7 +101,7 @@ Finite (\boxml{$\rho$:$n$})& Region whose size can be determined at compile time
          region size in words. At runtime, a finite region is allocated
          on the runtime stack.\cr
 Infinite (\boxml{$\rho$:INF})& All other regions. At runtime, an infinite region
-         consists of a stack allocated region descripter, which contains pointers
+         consists of a stack allocated region descriptor, which contains pointers
          to the beginning and the end of a linked list of fixed size region
          pages.\cr }
 \hrule
@@ -188,7 +188,7 @@ background who is interested in developing reliable and efficient
 applications written in Standard ML. Also, the report may be of
 interest to researchers of programming languages, since the ML Kit
 with Regions is a fairly bold exercise in program analysis. We should
-emphasise, however, that this report is very much intended as a user's
+emphasize, however, that this report is very much intended as a user's
 guide, not a scientific publication.
 
 This report consists of three parts:
@@ -226,7 +226,7 @@ ML Kit Version~3 with
   \index{bytecode}%
   bytecode backend. To improve portability of programs, the Kit now
   has a bytecode backend, which generates code that can be executed on
-  a stack machine with region primitives that otherwise closely
+  a stack machine with region primitives. The stack machine closely
   resembles the stack machine used in the O'Caml and Moscow ML
   compilers.
 \end{enumerate}
@@ -350,7 +350,7 @@ that is, it might use more memory than expected, perhaps eventually,
 exhaust the memory of the machine.
 
 The other prevailing approach is to use automatic garbage collection
-in the heap.  Some implementers of some languages even dispense with
+in the heap.  Some implementors of some languages even dispense with
 the stack entirely, relying only on a heap with garbage collection.
 Garbage collection techniques separate allocation, which is done by
 the programmer, from de-allocation, which is done by the garbage
@@ -363,7 +363,7 @@ typically based on the idea that if data is reachable via pointers
 (starting from the stack and other root data) then those data must be
 kept. Consequently, programs have to be written with care to avoid
 hanging on to too many pointers. Space conscious programmers (and
-language implementers) can work their way around these problems, for
+language implementors) can work their way around these problems, for
 example by assigning {\tt nil} to pointers that are no longer used.
 However, such tricks often rely on assumptions about the code that
 cannot be checked by the compiler and that are likely to be
@@ -567,7 +567,7 @@ To help programmers get used to the idea of programming with regions,
 the ML Kit can print region-annotated programs, that is, source programs
 it has annotated with region directives. Also, it provides a 
 \index{region profiling}%
-{\em region profiler\/} for examining run-time behaviour.  The region
+{\em region profiler\/} for examining run-time behavior.  The region
 profiler gives a graphical representation of region sizes as a
 function of time. This tool makes it possible to see what regions use
 the most space and even to relate memory consumption back to
@@ -594,11 +594,11 @@ of programming.
 \section{Example: the Game of Life}
 \label{life.sec}
 \index{Life!game of}%
-To illustrate the general flavour of region-based memory management,
+To illustrate the general flavor of region-based memory management,
 let us consider the problem of implementing the game of Life. The game
 takes place on a board that resembles a chess board, except that the
 size of the board can grow as the game evolves. Thus every position
-has eight neighbouring positions (perhaps after extension of the
+has eight neighboring positions (perhaps after extension of the
 board).  At any point in time, every position is either {\em alive} or
 {\em dead}. A snapshot of the game consisting of the board together
 with an indication of which positions are alive is called a {\em
@@ -607,10 +607,10 @@ generation to the next. Consider generation $n$ from which we want to
 create generation $n+1$ ($n\geq0$). Let $(i,j)$ be a position on the
 board, relative to some fixed point $(0,0)$ in the plane. Assume
 $(i,j)$ is alive in generation $n$. Then $(i,j)$ stays alive in
-generation $n+1$ if and only if it has two or three live neighbours in
+generation $n+1$ if and only if it has two or three live neighbors in
 generation $n$. Assume $(i,j)$ is dead at generation $n$. Then it is
 born in generation $n+1$ if and only if it has precisely three live
-neighbours at generation $n$. We assume that only finitely many
+neighbors at generation $n$. We assume that only finitely many
 positions are alive initially. An example of two generations of Life
 is shown below:
 \begin{verbatim}
@@ -702,13 +702,13 @@ put in a separate region? Piling all generations on top of each other
 in the same region would clearly be a waste of space: only the most
 recent generation is ever needed. Similarly, giving each generation a
 separate region on the region stack is no good either, because it
-would make the stack grow ad infinitum (although this could be
+would make the stack grow infinitely (although this could be
 alleviated somewhat by resetting all regions except the topmost one).
 The solution is simple, however: use two regions, one for the current
 generation and one for the new generation. When the new generation has
 been created, reset the region of the old region and copy the contents
 of the new region into the old region. This effect is achieved by
-organising the main loop of the program as follows:
+organizing the main loop of the program as follows:
 \begin{verbatim}
    local 
 (*1*) fun nthgen'(p as(0,g)) = p 
@@ -744,7 +744,7 @@ passionately about it).\footnote{The source file for the life program
   is \boxml{kitdemo/life.sml}. Running programs is described in
   Section~\ref{tryit.sec}. When run with n=10000 under Linux on an x86
   box, the memory consumption (resident memory, measured using {\tt
-    top}) quickly reaches 500kb??? (was: 180Kb under HP-PA-RISC) and
+    top}) quickly reaches 500Kb??? (was: 180Kb under HP-PA-RISC) and
   stays there for the remaining generations.}
 
 \begin{figure}
@@ -826,7 +826,7 @@ amount of memory used for regions during the computation is 26,060
 bytes. Figure~\ref{lifeprof200.fig}, which has data collected from 200
 snapshots of the computation, clearly shows that most of the 26,060
 bytes are reclaimed between every two generations of the game. It
-turns out that the game essentially stabilises with a small number of
+turns out that the game essentially stabilizes with a small number of
 live positions on the board after roughly 150 generations.  This
 stabilisation is clearly reflected in the region profile.
 
@@ -1021,7 +1021,7 @@ Region inference also decides, for each value-producing expression,
 into which region (identified by a region variable) the value will be
 put.
 
-We emphasise that region variables and {\tt letregion} expressions are
+We emphasize that region variables and {\tt letregion} expressions are
 not present in source programs. The source language is unadulterated
 Standard ML, so programs that run on the Kit should be easy to port to
 any other Standard ML implementation.
@@ -1046,10 +1046,10 @@ is partitioned into a stack and a heap, which holds region pages, all
 of the same size.
 
 One important property of the two backends is that they are perfectly
-interchangable, except that programs compiled with the native backend
+interchangeable, except that programs compiled with the native backend
 runs faster than program compiled with the bytecode backend. In
 particular, when reasoning about memory you do not need to think about
-which backend your programs uses.
+which backend your programs use.
 
 For the x86 native backend, programs compile into a sequence of
 instructions, for example for moving word-size data between two
@@ -1088,7 +1088,7 @@ values are not stored in regions, except when they are part of a boxed
 value. For example, the integer \boxml{3} by itself is stored as the
 (binary representation) of the value 3 in a register or in a machine
 word. However, the pair \boxml{(3,4)} is represented as a pointer to
-two consequtive words in a region, the first of which contains the
+two consecutive words in a region, the first of which contains the
 binary representation of 3 and the second of which contains the binary
 representation of 4.
 
@@ -1188,7 +1188,7 @@ kit on your own copy.
 The Kit provides two mechanisms for compiling programs. The first
 mechanism is based on a
 \index{menu interaction}%
-interactive menu-driven dialogue system, which allows you to toggle
+interactive menu-driven dialog system, which allows you to toggle
 flags, alter compiler settings, and compile programs interactively.
 The second mechanism is simply to pass
 \index{mlkit@\texttt{mlkit}!executable}%
@@ -1214,7 +1214,7 @@ Example~\ref{proj.ex}, place yourself in your own copy of the {\tt
   kit}.
 
 After the Kit has uttered various greetings, you will find yourself in
-a rudimentary menu-driven dialogue, see Figure~\ref{dialogue.fig}.
+a rudimentary menu-driven dialog, see Figure~\ref{dialogue.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
@@ -1732,7 +1732,7 @@ sum of the size of their input and their output.
 The string and character operations can raise exceptions, as detailed in the
 Standard ML Basis Library documentation.
 
-The structures {\tt Char}, {\tt String}, and {StringCvt} provide other
+The structures {\tt Char}, {\tt String}, and {\tt StringCvt} provide other
 useful operations on characters and strings.\footnote{Consult {\tt basislib/CHAR.sml}, {\tt basislib/STRING.sml},
   and {\tt basislib/STRING\_CVT.sml}.}
 
@@ -1757,8 +1757,8 @@ booleans.\footnote{Consult the file {\tt basislib/BOOL.sml}.}
 \label{lists.sec}\index{list}
 %---------------------------------------------------------
 Section~\ref{lsyn.sec} gives a summary of the list concept in Standard
-ML, introduces the notion of the {\em auxilary pairs} of a list and
-presents the syntax of constructors and destructors in the
+ML, introduces the notion of the {\em auxiliary pairs} of a list and
+presents the syntax of constructors and de-constructors in the
 intermediate languages.  Section~\ref{listtypes.sec} introduces
 region-annotated list types and show how they correspond to the layout
 of lists in memory.  Section~\ref{listexamples.sec} gives a small
@@ -1817,7 +1817,7 @@ The intermediate languages $\Lam$, $\RegExp$, and $\MulExp$ have
 SML-like constructs for applying constructors, but they decompose
 constructed values by applying a
 \index{decon@\texttt{decon}}%
-deconstructor primitive, not by pattern
+de-constructor primitive, not by pattern
 matching.
 \index{at@\texttt{at}}%
 \begin{center}
@@ -1981,7 +1981,7 @@ into the $\RegExp$ program shown in Figure~\ref{listprint.fig}.
    in  {|it: _|}
    end 
 \end{verbatim}
-\caption{Example showing construction and deconstruction of a small list.
+\caption{Example showing construction and de-construction of a small list.
 Layout of the list {\tt l} is analogous to Figure~\ref{listregions.fig}.
 The infinite region {\tt r10} holds the auxiliary pairs of the list.
 }
@@ -2219,7 +2219,7 @@ regions. However, the auxiliary pairs of \boxml{xs} and \boxml{ys}
 need not be in the same regions, although the elements of \boxml{xs}
 and \boxml{ys} clearly must be in the same regions, because they end
 up in the same list. These properties of the append function \boxml{@}
-are summarised in its inferred region-annotated type scheme:
+are summarized in its inferred region-annotated type scheme:
 $$\begin{array}{c}\forall\alpha\rho_7\rho_8\rho_9\epsilon.
    [ ((\alpha,\rho_9),[\rho_8])\boxml{list},
       ((\alpha,\rho_9),[\rho_7])\boxml{list} ] \\
@@ -2464,7 +2464,7 @@ total in regions& $9n$ & 1,800,000 bytes
 It turns out that each iterative call of \boxml{merge} pushes three
 registers on the stack, so that stack size will be approximately
 $3\times 4\times n$ bytes, which for $n=50,000$ is 600,000 bytes.  The
-total space consumption for sorting 50,000 integeres should therefore
+total space consumption for sorting 50,000 integers should therefore
 be roughly 2,400,000 bytes.
 
 %mael - do the testing when the profiler becomes available
@@ -2502,8 +2502,8 @@ $2nc_1$.
 
 Although region inference is based on types and effects, it is also to
 some extent syntax dependent. That is, two programs that are
-equivalent in their input-output behaviour can easily have very
-different memory behaviour. In this chapter, we discuss how to write
+equivalent in their input-output behavior can easily have very
+different memory behavior. In this chapter, we discuss how to write
 \index{declaration!value}%
 declarations so as to obtain good results with region inference. The
 region inference rules that underlie the ML Kit with Regions are
@@ -2615,7 +2615,7 @@ at runtime will remain allocated. More precisely:
   Ground Rule: The region rules forbid transforming an expression
   $\exp$ into \boxml{letregion $\rho$ in $\exp$ end} if $\exp$ is in
   the scope of an identifier that has $\rho$ free in its
-  region-annoated type scheme with place.
+  region-annotated type scheme with place.
 \end{quote}
 For an example, consider
 \begin{verbatim}
@@ -2686,7 +2686,7 @@ application of {\tt sieve} outside the {\tt let}:
 That the copying really overwrites the input list relies, in part, on
 region resetting (Chapter~\ref{storagemodes.sec}).  But it also relies
 on region polymorphism and on the Ground Rule.  Rewriting the
-applicationn of \boxml{sieve} ensures that the list bound to {\tt
+application of \boxml{sieve} ensures that the list bound to {\tt
   rest} will not live to see the recursive call of {\tt sieve}.
 Unless forced by context to do otherwise, {\tt sift} will create a
 list using fresh regions. Because {\tt cp} is also
@@ -2806,9 +2806,9 @@ mechanism is a valuable device for predicting space leaks.  The
 region-annotated version of our example function {\tt g} is listed in
 Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the Kit
 issues the following warning:\footnote{To provoke the warning, one has
-  to disable inlining in the
+  to disable in-lining in the
   \index{optimiser}%
-  {\Lam} optimiser; this is done by setting the {\tt Maximum inline
+  {\Lam} optimiser; this is done by setting the {\tt Maximum in-line
     size}, found in the {\tt Control/Optimiser} sub-menu, to {\tt 0}.}
 \begin{figure}
 \hrule
@@ -2948,7 +2948,7 @@ references
 
 \halign{\indent\tt#\ \hfil&\quad$#$\hfil\ &\quad#\hfil\cr
 ref & \forall\alpha.\alpha\to\alpha\,\REF & create reference\cr
-!   & \forall\alpha.\alpha\,\REF\to\alpha & dereferencing\cr
+!   & \forall\alpha.\alpha\,\REF\to\alpha & de-referencing\cr
 :=  & \forall\alpha.\alpha\,\REF\ast\alpha\to\UNIT & assignment\cr}
 \medskip
 
@@ -3019,13 +3019,13 @@ contents of the reference is also always one word, either an unboxed
 value (e.g., an integer or a boolean) or a pointer (if the contents is
 boxed).  So the contents of a reference is not tagged either.
 
-Dereferencing a reference $r$ is done by reading the contents of the
-memory location $r$.  Notice that dereferencing does not require
+De-referencing a reference $r$ is done by reading the contents of the
+memory location $r$.  Notice that de-referencing does not require
 knowledge of what region the word with address $r$ resides in.
 
 Assigning a value $v$ to a reference $r$ simply stores $v$ in the
 memory at address $r$. When $v$ is an unboxed value, the assignment
-can be regarded as copying $v$ into the memory cell $r$; othewise $v$
+can be regarded as copying $v$ into the memory cell $r$; otherwise $v$
 is a pointer, which the assignment stores in the memory cell $r$.
 Either way, assignment is a constant-time operation.
 
@@ -3087,7 +3087,7 @@ Assigning a value $v$ to a reference $r$ does not make a copy of $v$
 to point to $v$.
 
 The advantage of the chosen scheme for handling references is that
-reference creation, dereferencing, and assignment all are
+reference creation, de-referencing, and assignment all are
 constant-time operations. The disadvantage is that if two values may
 be assigned to the same reference, then they are forced to be in the
 same regions (cf. the region-annotated type schemes given above).
@@ -3168,10 +3168,10 @@ of the function.)\footnote{Program \boxml{kitdemo/refs2.sml}.}
    val y = memo_id "abc"
    val z = memo_id "efg";
 \end{verbatim}
-Provided that inlining by the optimiser is restricted to inline only
+Provided that in-lining by the optimiser is restricted to in-line only
 those functions that are applied once,\footnote{To restrict the
   optimiser accordingly, set the menu entry {\tt Control/Compiler/maximum
-    inline size} to {\tt 0}.} this example compiles into
+    in-line size} to {\tt 0}.} this example compiles into
 \begin{verbatim}
    let val r = let val v39399 = nil in ref at r1 v39399 end ; 
        fun memo_id at r1 [] (x)= 
@@ -3392,7 +3392,7 @@ indeed it is. Here is the proof:
 \end{verbatim}
 The exomorphic behavior of {\tt balpre} causes the tree to be
 allocated in regions {\tt r61} and {\tt r62}, which are both
-deallocated after the call to {\tt preord}.
+de-allocated after the call to {\tt preord}.
 
 This is the kind of certainty about lifetimes we are aiming at.
 Imagine, for example, that the trees under consideration were terms
@@ -3491,7 +3491,7 @@ is evaluated as follows. First {\it exp},
 an expression of type {\tt exn}, is evaluated to an exception value.
 Then the runtime
 \index{stack}%
-stack is scanned from top towards bottom in search of a handler that
+stack is scanned from top to bottom in search of a handler that
 can handle the exception. A register points to the top-most exception
 handler; the exception handlers are linked together as a linked list
 interspersed with the other contents of the runtime stack.  If a
@@ -3587,7 +3587,7 @@ Section~\ref{checked.sec}.
 
 This chapter gives an informal explanation of the rules that govern
 resetting. Knowing these rules is useful, irrespective of whether one
-leaves resetting of regions to the Kit, or prefers to control
+makes the Kit decide on region resetting, or prefers to control
 resetting explicitly in the program.
 
 Resetting only makes sense for infinite regions.  Resetting a region
@@ -4096,8 +4096,8 @@ pushed onto the stack.
 In Figure~\ref{length.region.fig}, we clearly see the five phases.  In
 each phase, first a list is built---seen as an almost linear growth in
 a region; then follows a shorter computation of the length of the
-list.  The space behaviour of the five ways of computing the length
-vary considerably. We shall have more to say about the time behaviour
+list.  The space behavior of the five ways of computing the length
+vary considerably. We shall have more to say about the time behavior
 in what follows.
 
 As one would expect, {\tt nlength} leads to a peak in stack size; it
@@ -5965,7 +5965,7 @@ how one can find out precisely what allocation points in the program
 contribute to allocation in a particular region.
 
 The profiler consists of several tools that can be used to analyse the
-dynamic memory behaviour of a program. First of all, the profiler lets
+dynamic memory behavior of a program. First of all, the profiler lets
 you create graphs of the dynamic memory usage of the program. Three
 different kinds of graphs may be created:
 \begin{itemize}
@@ -7700,7 +7700,7 @@ The implementation of the \verb|raise_exn| function for the native
 backend differs from that of the C backend; in the native backend,
 \verb|raise_exn| never returns, whereas in the C backend,
 \verb|raise_exn| sets a flag, which is checked (by code generated by
-the Kit) when the function returns. Thus, to obtain the same behaviour
+the Kit) when the function returns. Thus, to obtain the same behavior
 with the two backends, one should avoid side effecting expressions and
 statements between function returns and calls of \verb|raise_exn|.
 
@@ -7835,7 +7835,7 @@ Now, for the Kit to make correct, that is safe, decisions about when
 to de-allocate regions, the endomorphic properties of a C function
 must be expressed in the region-annotated type scheme for value identifiers
 to which the C function is bound. The programmer can tell the Kit
-about region endomorphic behaviour of a C function by using type
+about region endomorphic behavior of a C function by using type
 variables.  For example, here is an ML declaration that binds a value
 identifier {\tt second} to the C function
 \verb|select_second|:\footnote{Project {\tt kitdemo/select\_second.pm}. The C
@@ -7852,7 +7852,7 @@ $$\forall \alpha_1\alpha_2\rho_1\rho_2\rho_3\epsilon.((\alpha_1,
 \rho_1) * (\alpha_2, \rho_2), \rho_3) \ar{\epsilon.\{\Get(\rho_3)\}} (\alpha_2,
 \rho_2)$$
 Notice that the region-annotated type scheme expresses the region endomorphic
-behaviour of the C function.
+behavior of the C function.
 
  
 %=======================================================
