@@ -1,0 +1,87 @@
+Release Plan:
+
+  Numbering scheme? Keep it simple: each upgrade iteration increments
+  the number by one-tenth (1.5, 1.6, 1.7 etc.). If a 'b' appears after
+  the number (e.g. 1.5b), then it's the beta test copy, not the
+  released copy.
+
+
+Assistance:
+
+  If you want assistance or let me know that some of these features
+  are more imporant to you than others, send a note to
+  nsopenssl@scottg.net.
+
+
+Versions:
+
+
+nsopenssl 1.1:
+
+ The current released version. If you want to see how we got to this
+ point, look in the ChangeLog.
+
+
+next:
+
+ * - investigate the keep-alive problem with MSIE; investigate how
+     Apache uses ssl-unclean-shutdown, downgrade-1.0,
+     force-reponse-1.0
+
+ * - verify that SGC is working.
+
+ * - investigate IntermediateChainFile implementation and implement
+     feature in mod_ssl where you can allow connections at less than
+     128-bit but force the browser to bump up to 128-bit for the actual
+     communication.
+
+ * - set 'info version' string dynamically from the OpenSSL library
+
+ * - revisit Tcl command naming; commands may need to be
+     renamed/pushed down an 'arg' level to support upcoming features;
+     better to do it now before most people use the Tcl commands
+
+ * - review internal version id and alter to conform to the numbering
+     convention shown at the top of this file
+
+ * - add config option to set minimum cipher strength server-wide; add
+     Tcl commands/config options to allow requiring minimum cipher
+     strengths for specified url paths; set config option to allow Tcl
+     interface to override config strength option(s)
+
+ * - add Tcl commands/config options to specify which url paths
+     require a valid client cert.
+
+ * - add ability to specify verification depth for both client and
+     server modes
+
+ * - add ability to have server pass intermediate CA in the cert chain
+     when offering its cert (?).
+
+ * - add crl; should optionally pass through nsopenssl and be handled
+     by the app
+
+ * - refresh the ssl.ca dir at startup
+
+ * - add ability for server to return nice error page to client when
+     they've connected to the HTTPS port with HTTP; maybe
+     even a nice link they can click on, and/or a redirect to the same
+     page via HTTPS
+
+ * - add ErrorPage options to the config file so admin can specify
+     what urls to redirect to when errors occur
+
+ * - add key pair and csr generation commands
+
+ * - add support for multiple virtual servers; may require changes to
+     the server core to allow a virtual server to have it's own IP
+     address (is this already in the core?); note: If you have three
+     virtual servers in OpenNSD/AOLserver 4.x, you must use the same
+     SSL cert for each. Why?  Because the nsopenssl module has no way
+     of knowing which server you're trying to connect to apriori so it
+     cannot select a different server cert. Only way to get around
+     this is to have each virtual server have it's own IP address, set
+     nsopenssl to map an IP to a server certificate and off you
+     go. You can (usually) set multiple IPs to one network card, or
+     have multiple network cards on your system.
+

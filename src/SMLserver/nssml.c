@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include "ns.h"
+#ifdef REQUEST_PROFILING
+#include "request_profiling.h"
+#endif /* REQUEST_PROFILING */
 #include "HashTable.h"
 #include "../Runtime/LoadKAM.h"
 #include "../Runtime/HeapCache.h"
@@ -451,10 +454,27 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   InterpContext* ctx;
   char* url;             /* the requested url */
   int res;
+#ifdef REQUEST_PROFILING
+  Ns_Time now;
+  RequestConn* rc = (RequestConn*) conn;
+  Ns_GetTime(&now);
+  Ns_Log(Notice, "SML[%d,%d] start[%d,%d] url[%s] referer[%s,%d] location[%s]",
+	 rc->id,Ns_InfoBootTime(),now.sec,now.usec,
+	 conn->request->url,
+	 Ns_ConnPeer(conn),
+	 Ns_ConnPeerPort(conn),
+	 Ns_ConnLocation(conn));
+#endif /* REQUEST_PROFILING */
 
   ctx = (InterpContext*)context;
 
   res = nssml_processSmlFile(ctx, conn->request->url);
+
+#ifdef REQUEST_PROFILING
+  Ns_GetTime(&now);
+  Ns_Log(Notice, "SML[%d,%d] end[%d,%d]",
+	 rc->id,Ns_InfoBootTime(),now.sec,now.usec);
+#endif /* REQUEST_PROFILING */
 
   switch ( res ) 
     {
