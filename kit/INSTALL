@@ -1,4 +1,4 @@
-The ML Kit INSTALL file                                  June 12, 2001
+The ML Kit INSTALL file                             September 20, 2001
 
         ML Kit home page: http://www.it.edu/research/mlkit/
 
@@ -25,10 +25,10 @@ the RPM's available from the Kit web site.
 1. Installation Requirements
 ----------------------------
 To install and use the ML Kit, you need a Linux box running Redhat
-Linux 7.0 or similar. 
+Linux 7.1 or similar. 
 
 Unless you are installing one of the binary RPM distributions, you
-need Standard ML of New Jersey version 110.0.6 (or later) to compile
+need Standard ML of New Jersey version 110.0.7 (or later) to compile
 the ML Kit sources. A link to the home page for the Standard ML of New
 Jersey compiler is available from the ML Kit home page. Once
 installed, the ML Kit will take up around 25Mb of disk space, which
@@ -38,7 +38,7 @@ Basis Library.
 2. Preparing for Building and Installation
 ------------------------------------------
 In the following, except in the section on "Binary Distributions",
-we assume that version 110.0.6 (or later) of Standard ML of New Jersey
+we assume that version 110.0.7 (or later) of Standard ML of New Jersey
 is installed on your Linux box, such that the command "sml" is
 available from the command line. We shall also assume that you have
 downloaded the compressed tar-file named mlkit-x.y.z.tgz and placed it
