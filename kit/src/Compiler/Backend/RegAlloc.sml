@@ -256,7 +256,7 @@ struct
     map (fn lv => {lv=lv,degree=ref 0, mv_related=ref NONE,
 		   worklist=ref precolored_enum, adjList=ref nil,
 		   alias = ref NONE, color=ref (SOME lv)})
-    (BI.caller_save_phregs @ BI.callee_save_phregs)
+    (BI.caller_save_phregs @ BI.callee_save_phregs)  (* Niels? what about C calls *)
   fun reset_precolored() = 
     app (fn ({lv,degree, mv_related, worklist, adjList, alias, color} : node) =>
 	 (degree:=0; mv_related:=NONE; worklist:=precolored_enum;

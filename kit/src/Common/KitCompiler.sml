@@ -240,6 +240,8 @@ structure K = struct
 	      | loop ("-prof"::rest, script) = (Flags.lookup_flag_entry "region_profiling" := true; loop (rest, script))
 	      | loop ("-gc"::rest, script) = (Flags.lookup_flag_entry "garbage_collection" := true; loop (rest, script))
 	      | loop ("-delay_assembly"::rest, script) = (Flags.lookup_flag_entry "delay_assembly" := true; loop (rest, script))
+	      | loop ("-chat"::rest, script) = (Flags.chat := true; loop (rest, script))
+	      | loop ("-nodso" ::rest, script) = (Flags.lookup_flag_entry "delay_slot_optimization" := false; loop(rest, script))
 	      | loop ("-version"::rest, script) = loop (rest, script) (*skip*)
 	      | loop (rest,script) = (Flags.read_script script; go rest)
 	in print greetings;

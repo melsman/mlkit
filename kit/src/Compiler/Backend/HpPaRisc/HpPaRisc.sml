@@ -580,7 +580,7 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       | B         {n, target} => []
       | BB        {n, cond, r, p, target} => []
       | BL        {n, target, t} => [t]
-      | BLE       {n, wd, sr, b} => []
+      | BLE       {n, wd, sr, b} => [mrp]  (* The millicall return pointer is defined *)
       | BV        {n, x, b} => []
 
       | COMB      {cond, n, r1, r2, target} => die "regs_defd - COMB" 

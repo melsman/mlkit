@@ -109,6 +109,8 @@ Backend/JumpTables.sml
    Backend/HpPaRisc/BackendInfo.sml
    Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
    Backend/HpPaRisc/HppaResolveJumps.sml
+   Backend/HpPaRisc/HpPaDelaySlotOptimization.sml
+   Backend/HpPaRisc/HP_PA_DELAY_SLOT_OPTIMIZATION.sml
    Backend/HpPaRisc/CodeGen.sml
    Backend/HpPaRisc/HP_PA_RISC.sml
    Backend/HpPaRisc/HpPaRisc.sml
