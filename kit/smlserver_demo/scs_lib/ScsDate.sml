@@ -160,7 +160,7 @@ structure ScsDate :> SCS_DATE =
       case mth of
 	Date.Jan => "January"
       | Date.Feb => "February"
-      | Date.Mar => "Marts"
+      | Date.Mar => "March"
       | Date.Apr => "April"
       | Date.May => "May"
       | Date.Jun => "June"
