@@ -1,7 +1,7 @@
 signature SCRIPTLET =
     sig
 	(* Parsing scriptlet form variable arguments *)
-	type result = {funid:string, strid:string, valspecs: (string * string) list}
+	type result = {funid:string, valspecs: (string * string) list}
 	val parseArgsFile : string -> result
 
 	(* Generation of abstract form interfaces *)
@@ -18,7 +18,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
     struct
 
 	(* Parsing scriptlet form variable arguments *)
-	type result = {funid:string, strid:string, valspecs: (string * string) list}
+	type result = {funid:string, valspecs: (string * string) list}
 
 	fun isSymbol c =
 	    case c of
@@ -79,18 +79,24 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	       | NONE => error "nonclosed comment"
 		     
 	fun isId token : bool = 
-	    CharVector.foldl (fn (c,b) => b andalso 
-			      Char.isAlphaNum c) true token
+	    CharVector.foldli (fn (i,c,b) => 
+			       (if i=0 then
+				    (Char.isAlpha c 
+				     orelse c = #"_") 
+				else (b andalso (Char.isAlphaNum c 
+						 orelse c = #"_" 
+						 orelse c = #"'")))) true (token,0,NONE)
 
 	fun isLongid token : bool = 
-	    CharVector.foldl (fn (c,b) => b andalso 
-			      (Char.isAlphaNum c orelse c = #".")) true token
+	    let val subtokens = String.tokens (fn c => c = #".") token
+	    in List.all isId subtokens
+	    end
 
-	fun parseId tokens : string * string list =
+	fun parseId s tokens : string * string list =
 	    case tokens of
 		t::ts => if isId t then (t,ts)
-			 else error "failed to parse functor identifier"
-	      | _ => error "failed to parse functor identifier"
+			 else error ("failed to parse " ^ s ^ " identifier")
+	      | _ => error ("failed to parse " ^ s ^ " identifier")
 
 	fun parseToken s tokens =
 	    case tokens of
@@ -117,7 +123,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	    let fun parseSpec ts : ((string * string) * string list) option =
 		  case ts of
 		      "val" :: ts => 
-			  let val (id,ts) = parseId ts
+			  let val (id,ts) = parseId "value" ts
 			      val ts = parseToken ":" ts
 			  in
 			      case parseType (ts,nil) of
@@ -141,15 +147,19 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	      | SOME ts =>
 		    let (* val _ = printss ts *)
 			val ts = parseToken "functor" ts
-			val (funid, ts) = parseId ts
+			val (funid, ts) = parseId "functor" ts
 			val ts = parseToken "(" ts
-			val (strid, ts) = parseId ts
-			val ts = parseToken ":" ts
-			val ts = parseToken "sig" ts
-			val (specs,ts) = parseSpecs ts
-		    in {funid=funid,valspecs=specs,strid=strid}
+		    in case ts of
+			[")", ":"] => {funid=funid,valspecs=nil}
+	               | _ =>
+			let				
+			    val (strid, ts) = parseId "structure" ts
+			    val ts = parseToken ":" ts
+			    val ts = parseToken "sig" ts
+			    val (specs,ts) = parseSpecs ts
+			in {funid=funid,valspecs=specs}
+			end
 		    end
-
 	fun parseArgsFile (f: string) : result =
 	    let val is = TextIO.openIn f
 	    in parseArgs is before TextIO.closeIn is
@@ -201,11 +211,22 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		fun out_header_sig () =
 		    (  outl   "signature SCRIPTS ="
 		     ; outi 1 "sig"
-		     ; outi 2 "include XHTML_EXTRA")
+		     ; outi 2 "include XHTML_EXTRA"
+		     ; outi 2 "structure Http : HTTP_EXTRA"
+		     ; outi 2 "sharing type Http.html = html")
 
 		fun appl f nil = ()
 		  | appl f [x] = f(x,true)
 		  | appl f (x::xs) = (f(x,false); appl f xs)
+
+		fun maybe_out_linkargs fields ty =
+		    if fields = nil then outl ty
+		    else (  outs "{"
+			  ; appl (fn ({name,typ},b) => outs (name ^ ":" ^ stripFormtype typ 
+							     ^ (if b then "" else ", "))) fields
+			  ; outl "}"
+			  ; outi 10 ("-> " ^ ty)
+			  )
 
 		fun out_script_sig {name,fields} =
 		    (  outi 2 ("structure " ^ name ^ " :")
@@ -219,11 +240,8 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; outl "nil,'a,'p,block) form"
 		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,block) elt"
 		     ; outs (ind 4)
-		     ; outs "val link : {"
-		     ; appl (fn ({name,typ},b) => outs (name ^ ":" ^ stripFormtype typ 
-							^ (if b then "" else ", "))) fields
-		     ; outl "}"
-		     ; outi 10 "-> ('x,'y,ina,'f,'p,inline) elt"
+		     ; outs "val link : "
+		     ; maybe_out_linkargs fields "('x,'y,ina,'f,'p,inline) elt"
 		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,inline) elt"
 		     ; outi 3 "end")
 
@@ -231,8 +249,32 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		    (  outl "structure Scripts :> SCRIPTS ="
 		     ; outi 1 "struct"
 		     ; outi 2 "open XHtml"
+		     ; outi 2 "structure Http = Http"
 		     ; outi 2 "fun form0 t s = Unsafe.form {action=s,method=\"post\"} t"
 		     ; outnl())
+
+		fun out_link s fields =
+		    if fields = nil then 
+			outi 4 ("fun link e = Unsafe.ahref {src=\"/" ^ s ^ ".sml\"} e")
+		    else 
+			(  outs (ind 4)
+			 ; outs "fun link {"
+			 ; appl (fn ({name,typ},b) => outs(name ^ "=" ^ name ^ "'" ^
+							   (if b then "" else ","))) fields
+			 ; outl "} e ="
+			 ; outi 5 ("Unsafe.ahref {src=concat[\"/" ^ s ^ ".sml\", ")
+			 ; (let
+				fun outline p {name,typ} =
+				    let val typ = stripFormtype typ
+				    in outi 7 ("\"" ^ p ^ name ^ "=\", Unsafe.urlencode(" 
+					       ^ typToString typ ^ " " ^ name ^ "'),")
+				    end
+			    in case fields of
+				f::fs => (outline "?" f; app (outline "&") fs)
+			      | nil => ()
+			    end)
+			 ; outi 7 "\"\"]} e"	  
+			 )
 
 		fun out_script_struct {name=s,fields} = 
 		    (  outi 2 ("structure " ^ s ^ " =")
@@ -242,24 +284,8 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; app (fn {name,typ} => outi 4 ("val " ^ name ^ " = {script=" ^ s ^ 
 						     ", n=\"" ^ name ^ "\"}")) fields
 		     ; outi 4 ("fun form t = form0 t " ^ s)
-		     ; outs (ind 4)
-		     ; outs "fun link {"
-		     ; appl (fn ({name,typ},b) => outs(name ^ "=" ^ name ^ "'" ^
-						   (if b then "" else ","))) fields
-		     ; outl "} e ="
-		     ; outi 5 ("Unsafe.ahref {src=concat[\"/\", " ^ s ^ ",")
-		     ; (let
-			    fun outline p {name,typ} =
-			      let val typ = stripFormtype typ
-			      in outi 7 ("\"" ^ p ^ "\", #n " ^ name ^ ", \"=\", " 
-					 ^ typToString typ ^ " " ^ name ^ "',")
-			      end
-			in case fields of
-		                f::fs => (outline "?" f; app (outline "&") fs)
-			      | nil => ()
-			end)
-		     ; outi 7 "\"\"]} e"
-		     ; outi 4 "end")
+		     ; out_link s fields
+		     ; outi 3 "end")
 	    in
 	        outl "(* This script is auto generated by SMLserver, based on"
 	      ; outl " * scriptlet functor arguments - DO NOT EDIT THIS FILE! *)"
@@ -271,6 +297,11 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	      ; out_header_struct()
 	      ; app out_script_struct ss
 	      ; outi 2 "end"
+	      ; outnl()
+              ; outl   "signature SCRIPTLET ="
+	      ; outi 1 "sig"
+	      ; outi 2 "val response : Scripts.Http.response"
+	      ; outi 1 "end"
 	      ; bufToString()
 	    end	
 
@@ -291,12 +322,29 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 
 	fun genFormInterface (file:string) a =
 	    if writeIfDifferent {file=file,content=genFormIface a} then
-		print ("[created type safe XHTML form interface: " ^ file ^ "]\n")
+		print ("[wrote type safe XHTML form interface: " ^ file ^ "]\n")
 	    else 
 		print ("[reusing type safe XHTML form interface: " ^ file ^ "]\n")
 
 	fun genScriptletInstance {name,fields} : string = 
-	    "val _ = Ns.Conn.write \"hello\""
+	    let fun objFrom typ = 
+		  let val typ = stripFormtype typ
+		  in case typ of
+		      "int" => "Obj.fromInt'"
+		    | "string" => "Obj.fromString'"
+		    | "bool" => "Obj.fromBool'"
+		    | _ => error ("unsupported field type: " ^ typ)
+		  end
+		fun mk_field {name,typ} = ("    val " ^ name ^ " = case Ns.Conn.formvar \"" ^ name ^ "\" of\n\
+					   \        SOME s => " ^ objFrom typ ^ " s\n\
+					   \      | NONE => (Ns.Conn.write \"Impossible\";\n\
+					   \                 Ns.exit())\n")
+	    in
+		concat (["structure X = ", name, " (\n",
+			 "  struct\n"] @ map mk_field fields @
+			["  end)\n",
+			 "val _ = Ns.Conn.write (Scripts.Http.Unsafe.toString X.response)\n"])
+	    end
 
 	fun genScriptletInstantiations (ss: script list) : string list =
 	    map (fn s as {name,...} =>
@@ -304,7 +352,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     val file = name ^ ".gen.sml"
 		 in 
 		     (if writeIfDifferent {file=file, content=i} then
-			  print ("[created scriptlet instance: " ^ file ^ "]\n")
+			  print ("[wrote scriptlet instance: " ^ file ^ "]\n")
 		      else 
 			  print ("[reusing scriptlet instance: " ^ file ^ "]\n")
 		     ) ; file

@@ -345,7 +345,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	      val _ = TextIO.output(os, "")
 	      val _ = TextIO.closeOut os;
 	    in	      
-	      print("[Created file " ^ ulfile ^ "]\n")
+	      print("[wrote file " ^ ulfile ^ "]\n")
 	    end
       end
 
