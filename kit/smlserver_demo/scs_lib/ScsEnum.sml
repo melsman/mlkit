@@ -3,6 +3,7 @@ signature SCS_ENUM =
     type enum_id = int
     type val_id = int
     type enum_name = string
+    type value = string
 
     (* [select enum_id lang fv v_opt] returns a selection widget for
        enumeration identified by enum_id. The choises are shown in language
@@ -28,10 +29,14 @@ signature SCS_ENUM =
        val_id in language lang. *)
     val valName    : val_id -> ScsLang.lang -> string
 
+    (* [getVal val_id] returns the value represented by
+       val_id. Returns NONE if no val_id exists. *)
+    val getVal : val_id -> value option
+
     (* [valToText (value,enum_name,lang)] returns the description of
         enumeration value val for the enumeration enum_name. Returns
         "" if no enum_name or value exists. *)
-    val valToText : string * string * ScsLang.lang -> string
+    val valToText : value * enum_name * ScsLang.lang -> string
 
     (* [allValues enum_name] returns a list of all enumeration values in the
        enumeration with name enum_name *)
@@ -43,6 +48,7 @@ structure ScsEnum :> SCS_ENUM =
     type enum_id = int
     type val_id = int
     type enum_name = string
+    type value = string
 
     local
       fun genSql wh lang =
@@ -88,6 +94,12 @@ structure ScsEnum :> SCS_ENUM =
       Db.oneField `select scs_text.getText(ev.text_id,^(Db.qqq (ScsLang.toString lang))) as text
                      from scs_enum_values ev
                     where ev.val_id = '^(Int.toString val_id)'`
+
+    fun getVal val_id =
+      ScsError.wrapOpt 
+      Db.oneField `select value
+                     from scs_enum_values
+                    where val_id = '^(Int.toString val_id)'`
 
     fun valToText (value,enum_name,lang) =
       Db.oneField `select text
