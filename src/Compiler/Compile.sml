@@ -580,7 +580,8 @@ functor Compile(structure Excon : EXCON
 	: (place,place*mul,qmularefset ref)LambdaPgm_psi =
 	(chat "K-normalisation ...";
          Timing.timing_begin();
-         let val pgm' = MulInf.k_normPgm pgm
+         let (* val _ = display("\nReport: just before K-normalisation:", layoutLambdaPgm pgm) *)
+	     val pgm' = MulInf.k_normPgm pgm
 	 in Timing.timing_end("Knorm");
 (*KILL 29/03/1997 19:29. tho.:
 	    if Flags.is_on "print_K_normal_forms" 

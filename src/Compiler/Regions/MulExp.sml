@@ -1600,6 +1600,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
         | atomic(TR(RECORD(_,[]), _, _, _)) = true
         | atomic _ = false
 
+      (* assumes mu1 is not an unboxed tuple *)
       fun one_sub' k (tr1 as (TR(_,mu1,phi1,psi1))) f =
            kne tr1 (fn tr1' =>
             if atomic tr1' then k(f tr1')
@@ -1647,6 +1648,16 @@ val (body',dep) = mk_deptr(EE',body, dep)
       | FN{pat,body,free,alloc} =>
         k (e_to_t(FN{pat=pat, free=free,alloc=alloc,
               body = kne body (fn x => x)}))
+
+	(* special case application! multiple args. *)
+      | LETREGION{B,rhos = rhos as ref [letregion_bound_rho], 
+                  body as TR(APP(ck,sr,tr1 as TR(VAR{lvar, alloc = SOME _, ...}, _, _, _), 
+				 t2 as TR(UB_RECORD trs, mu2, phi2, psir2)), a,b,c)
+                 } =>
+	many_sub trs (fn trs' => e_to_t(LETREGION{B=B,rhos =rhos,body = 
+		  TR(APP(ck,sr,tr1, TR(UB_RECORD trs' , mu2, phi2, psir2)), a,b,c)}))
+
+	(* special case application! *)
       | LETREGION{B,rhos = rhos as ref [letregion_bound_rho], 
                   body as TR(APP(ck,sr,tr1 as TR(VAR{lvar, alloc = SOME _, ...}, _, _, _), tr2), a,b,c)
                  } =>
@@ -1673,18 +1684,18 @@ val (body',dep) = mk_deptr(EE',body, dep)
          in k(e_to_t(FIX{free=free, shared_clos=shared_clos, functions = functions', scope=scope'}))
          end)
 
-       | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), (*mael: unboxed region-polymorphic call *)
+      | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), (*mael: unboxed region-polymorphic call *)
 	     t2 as TR((UB_RECORD trs), mu2, phi2, psir2)) => 
-	     (print "Here we are!!\n";
-	      many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2)))))
+	      many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2))))
 
        | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), t2) =>   (* region-polymorphic call *)
-               one_sub t2 (fn atomic2 => e_to_t(APP(ck,sr,opr, atomic2)))
+	      one_sub t2 (fn atomic2 => e_to_t(APP(ck,sr,opr, atomic2)))
        | APP(ck,sr,opr as TR(VAR{alloc = NONE, ... },_,_,_), 
              t2 as TR((UB_RECORD trs), mu2, phi2, psir2)) =>        (* primitive *)
-          many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2))))
+	      many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2))))
 
-       | APP(ck,sr,t1 ,t2) => (* other application *)  two_sub(t1,t2) (fn (t1',t2') => e_to_t(APP(ck,sr,t1',t2')))
+       | APP(ck,sr,t1 ,t2) => (* other application *)  
+	      two_sub(t1,t2) (fn (t1',t2') => e_to_t(APP(ck,sr,t1',t2')))
        | EXCEPTION(excon,b,mu_excon,a,tr1) =>
            k(e_to_t(EXCEPTION(excon,b,mu_excon,a, kne tr1 (fn x => x))))
        | RAISE (tr1 as TR(_,mu2,phi1,psi1)) =>

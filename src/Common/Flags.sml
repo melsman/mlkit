@@ -85,7 +85,7 @@ functor Flags (structure Crash : CRASH
     val fix_conversion = ref true
     val contract = ref true
     val specialize_recursive_functions = ref true
-    val unbox_function_arguments = ref false
+    val unbox_function_arguments = ref true
     val eliminate_explicit_records = ref true
     val maximum_inline_size = ref 20            
     val maximum_specialise_size = ref 200

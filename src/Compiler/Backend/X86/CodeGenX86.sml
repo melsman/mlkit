@@ -1350,7 +1350,7 @@ struct
 		    val size_rcf = List.length spilled_res
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
-		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
+		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C (spilled_args)
 		    (* We pop in reverse order such that size_ff+offset works *)
 		    fun fetch_res C = 
 		      foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res) 

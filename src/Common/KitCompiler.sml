@@ -329,6 +329,10 @@ structure K = struct
 			  Flags.interact())
 
     val kitexe = fn a => kitexe a
+
+    val comp = fn f => (set_paths default_root_dir;
+			comp f)
+
   end
 
   val cd = OS.FileSys.chDir
