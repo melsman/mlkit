@@ -3,26 +3,28 @@ functor ElabRepository(structure Name : NAME
 		       structure TyName : TYNAME
 		       structure InfixBasis : INFIX_BASIS
 		       structure OpacityEnv : OPACITY_ENV
-		       eqtype funid
-                       eqtype absprjid
+		       structure FunId : FUNID
+		       structure StrId : STRID
+		       structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure RepositoryFinMap : MONO_FINMAP
-			 where type dom = absprjid * funid
+			 where type dom = ModuleEnvironments.absprjid * FunId.funid
+		       sharing type ModuleEnvironments.funid = FunId.funid
 		       structure Flags : FLAGS
-		       type ElabBasis
-		       type longstrid
-		       val strip_install_dir' : absprjid * funid -> absprjid * funid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
 
     structure TyName = TyName
     structure RM = RepositoryFinMap
 
+    val strip_install_dir' = ModuleEnvironments.strip_install_dir'
+
     type name = Name.name
      and InfixBasis = InfixBasis.Basis
-     and funid = funid
-     and ElabBasis = ElabBasis
+     and funid = FunId.funid
+     and ElabBasis = ModuleEnvironments.Basis
      and opaq_env = OpacityEnv.opaq_env
-     and longstrid = longstrid
+     and longstrid = StrId.longstrid
+    type absprjid = ModuleEnvironments.absprjid
 
     fun die s = Crash.impossible ("ElabRepository."^s)
 
@@ -32,9 +34,9 @@ functor ElabRepository(structure Name : NAME
     type absprjid = absprjid
     type elab_entry = (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
 		       name list * InfixBasis * ElabBasis * opaq_env)
-    type elabRep = elab_entry list RM.map ref
+    type elabRep = elab_entry list RM.map
 
-    val elabRep : elabRep = ref RM.empty
+    val elabRep : elabRep ref = ref RM.empty
 
     fun clear() = elabRep := RM.empty
 
@@ -83,5 +85,25 @@ functor ElabRepository(structure Name : NAME
       List.app 
       (List.app (fn entry => List.app Name.mark_gen (#5 entry)))
       (RM.range (!elabRep))
+
+      
+    fun getElabRep () =	!elabRep
+    fun setElabRep e = elabRep := e
+
+    val pu_elab_entry : elab_entry Pickle.pu =
+	let open Pickle
+	in convert (fn ((a1,a2,a3,a4),(a5,a6,a7,a8)) => (a1,a2,a3,a4,a5,a6,a7,a8),
+		    fn (a1,a2,a3,a4,a5,a6,a7,a8) => ((a1,a2,a3,a4),(a5,a6,a7,a8)))
+	    (pairGen(tup4Gen(InfixBasis.pu,ModuleEnvironments.B.pu,
+			     listGen StrId.pu_longstrid,pairGen(OpacityEnv.pu,TyName.Set.pu TyName.pu)),
+		     tup4Gen(listGen Name.pu,InfixBasis.pu,ModuleEnvironments.B.pu,OpacityEnv.pu)))
+	end
+
+    val pu_dom = Pickle.pairGen(ModuleEnvironments.pu_absprjid,FunId.pu)
+
+    val pu : elabRep Pickle.pu =
+	let open Pickle
+	in RM.pu pu_dom (listGen pu_elab_entry)
+	end
 
   end

@@ -69,5 +69,12 @@ functor ExecutionBarry(BuildCompileBarry : BUILD_COMPILE_BARRY) : EXECUTION =
 	     print("[Created file " ^ pm_file ^ "]\n"))
 	    handle X => (TextIO.closeOut os; raise X)
 	end
+
+    val pu_linkinfo =
+	let open Pickle
+	in convert (fn b => {unsafe=b},
+		    fn {unsafe=b} => b)
+	    bool
+	end
   end
 

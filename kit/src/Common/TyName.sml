@@ -140,33 +140,27 @@ functor TyName(
 				   orelse eq(tn,tyName_WORD32))
 
     fun unboxed tn = unboxed_num32 tn orelse !(#unboxed tn)
-(*
-    fun unboxed (tn : TyName) : bool = 
-      eq(tn, tyName_BOOL) 
-      orelse eq(tn, tyName_CHAR) 
-      orelse eq(tn, tyName_WORD8) 
-      orelse eq(tn, tyName_INT31) 
-      orelse eq(tn, tyName_WORD31) 
-      orelse eq(tn, tyName_LIST) 
-      orelse ( not(tag_values()) andalso ( eq(tn,tyName_INT32) 
-					    orelse eq(tn,tyName_WORD32) ))
-*)
-      fun setUnboxed (tn: TyName) : unit = 
+
+    fun setUnboxed (tn: TyName) : unit = 
 	if unboxed tn then 
-	  die ("setUnboxed.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
+	    die ("setUnboxed.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
 	else #unboxed tn := true
 
-      val pu = 
-	  let open Pickle
-	      fun to ((t,n,a),(r,e,u)) : TyName = 
-		  {tycon=t, name=n, arity=a, rank=r,
-		   equality=e, unboxed=u}
-	      fun from ({tycon=t, name=n, arity=a, rank=r,
-			 equality=e, unboxed=u} : TyName) = ((t,n,a),(r,e,u))	    
-	  in convert (to,from)
-	      (pairGen(tup3Gen(TyCon.pu,Name.pu,int),
-		       tup3Gen(ref0Gen int,bool,ref0Gen bool)))
-	  end
+    val pu = 
+	Pickle.register 
+	[tyName_BOOL,tyName_INT31,tyName_INT32,tyName_WORD8,tyName_WORD31,
+	 tyName_WORD32,tyName_REAL,tyName_STRING,tyName_CHAR,tyName_LIST,tyName_FRAG,
+	 tyName_REF,tyName_ARRAY,tyName_VECTOR,tyName_CHARARRAY,tyName_FOREIGNPTR,tyName_EXN]
+	let open Pickle
+	    fun to ((t,n,a),(r,e,u)) : TyName = 
+		{tycon=t, name=n, arity=a, rank=r,
+		 equality=e, unboxed=u}
+	    fun from ({tycon=t, name=n, arity=a, rank=r,
+		       equality=e, unboxed=u} : TyName) = ((t,n,a),(r,e,u))	    
+	in convert (to,from)
+	    (pairGen(tup3Gen(TyCon.pu,Name.pu,int),
+		     tup3Gen(ref0Gen int,bool,ref0Gen bool)))
+	end
 
     structure QD : QUASI_DOM =
       struct

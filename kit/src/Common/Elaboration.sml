@@ -584,10 +584,11 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 	  structure M = OrderFinMap(structure Report = Basics.Tools.Report
 				    structure PP = Tools.PrettyPrint
 				    structure Order = struct
-							type T = absprjid * funid * bool list
-							fun lt (a,f,bs) (a',f',bs') = Basics.ModuleEnvironments.lt_absprjid(a,a')
-							  orelse (a = a' andalso (Basics.FunId.< (f,f') orelse
-										  f = f' andalso bs_lt (bs,bs')))
+							type T = (absprjid * funid) * bool list
+							fun lt ((a,f),bs) ((a',f'),bs') = 
+							    Basics.ModuleEnvironments.lt_absprjid(a,a')
+							    orelse (a = a' andalso (Basics.FunId.< (f,f') orelse
+										    f = f' andalso bs_lt (bs,bs')))
 						      end
 				    structure Crash = Tools.Crash)
 
@@ -596,7 +597,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 	  val scratch : unit->bool = Basics.Tools.Flags.is_on0 "recompile_basislib"
 	  val tag_pairs_p : unit->bool = Basics.Tools.Flags.is_on0 "tag_pairs"
 	    
-	  fun Tr (a,f) = (a,f,[scratch(),prof_p(),gc_p(),tag_pairs_p()])
+	  fun Tr p = (p,[scratch(),prof_p(),gc_p(),tag_pairs_p()])
 	  fun die s = Basics.Tools.Crash.impossible ("Elaboration.RepositoryFinMap." ^ s)
 
 	  open M
@@ -616,7 +617,11 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 	  fun restrict _ = die "restrict"
 	  fun layoutMap _ = die "layoutMap"
 	  fun reportMap _ = die "reportMap"
-	  fun pu _ _ = die "pu"
+	  val pu = fn pu_d => fn pu_r =>
+	      let open Pickle
+		  val pu_d = pairGen(pu_d,listGen bool)
+	      in pu pu_d pu_r
+	      end
 	end
 
       structure ElabRepository = ElabRepository(structure Name = Basics.Name
@@ -624,11 +629,9 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 						structure TyName = Basics.TyName
 						structure OpacityEnv = Basics.OpacityEnv
 						structure Flags = Tools.Flags
-						type funid = Basics.FunId.funid
-						type ElabBasis = Basics.ModuleEnvironments.Basis
-						type longstrid = Basics.StrId.longstrid
-                                                type absprjid = Basics.ModuleEnvironments.absprjid
-						val strip_install_dir' = Basics.ModuleEnvironments.strip_install_dir'
+						structure FunId = Basics.FunId
+						structure StrId = Basics.StrId
+						structure ModuleEnvironments = Basics.ModuleEnvironments
 						structure Crash =  Tools.Crash
 						structure RepositoryFinMap = RepositoryFinMap)
 

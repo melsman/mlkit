@@ -34,13 +34,14 @@ functor Excon(structure Name : NAME
     val ex_INTERRUPT : excon  = mk_excon "Interrupt"
 
     val pu = 
+	Pickle.register [ex_DIV, ex_MATCH, ex_BIND, 
+			 ex_OVERFLOW, ex_INTERRUPT]
 	let open Pickle
 	    fun to (s,n) : excon = {str=s,name=n}
 	    fun from ({str=s,name=n} : excon) = (s,n)
 	in convert (to,from) (pairGen(string,Name.pu))
 	end
 	
-
     structure QD : QUASI_DOM =
       struct
 	type dom = excon
@@ -48,12 +49,7 @@ functor Excon(structure Name : NAME
 	val name = name
 	val pp = pr_excon
       end
-(*
-    structure Map = EqFinMap(structure Report = Report
-			     structure PP = PP
-			     type dom = excon
-			     val eq = eq)
-*)
+
     structure Map = QuasiMap(structure IntFinMap = IntFinMap
 			     structure Name = Name
 			     structure Crash = Crash

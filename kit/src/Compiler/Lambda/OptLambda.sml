@@ -1061,40 +1061,29 @@ functor OptLambda(structure Lvars: LVARS
 		| toInt (CCONST _) = 3
 		| toInt (CFN _) = 4
 		| toInt (CFIX _) = 5
-	      fun eq (CVAR e1, CVAR e2) = #4 LambdaExp.pu_LambdaExp(e1,e2)
-		| eq (CRECORD cvs1, CRECORD cvs2) = eqs(cvs1,cvs2)
-		| eq (CUNKNOWN,CUNKNOWN) = true
-		| eq (CCONST e1, CCONST e2) = #4 LambdaExp.pu_LambdaExp(e1,e2)
-		| eq (CFN{lexp=e1,large=l1},CFN{lexp=e2,large=l2}) = 
-		  l1 = l2 andalso #4 LambdaExp.pu_LambdaExp(e1,e2)
-		| eq (CFIX{Type=t1,bind=e1,large=l1},CFIX{Type=t2,bind=e2,large=l2}) = 
-		  l1 = l2 andalso #4 LambdaExp.pu_Type (t1,t2) andalso #4 LambdaExp.pu_LambdaExp(e1,e2)
-		| eq _ = false
-	      and eqs (nil,nil) = true
-		| eqs (cv1::cvs1,cv2::cvs2) = eqs(cvs1,cvs2) andalso eq(cv1,cv2)
-		| eqs _ = false
+
 	      fun fun_CVAR _ = 
-		  con1 eq CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
+		  con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
 		  LambdaExp.pu_LambdaExp
 	      fun fun_CRECORD pu =
-		  con1 eq CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
+		  con1 CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
 		  (listGen pu)
-	      val fun_CUNKNOWN = con0 eq CUNKNOWN
+	      val fun_CUNKNOWN = con0 CUNKNOWN
 	      fun fun_CCONST _ =
-		  con1 eq CCONST (fn CCONST a => a | _ => die "pu_contract_env.CCONST")
+		  con1 CCONST (fn CCONST a => a | _ => die "pu_contract_env.CCONST")
 		  LambdaExp.pu_LambdaExp
 	      fun fun_CFN _ =
-		  con1 eq CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
+		  con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
 		  (convert (fn (e,l) => {lexp=e,large=l}, fn {lexp=e,large=l} => (e,l))
 		   (pairGen(LambdaExp.pu_LambdaExp,bool)))
 	      fun fun_CFIX _ =
-		  con1 eq CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
+		  con1 CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
 		  (convert (fn (t,e,l) => {Type=t,bind=e,large=l}, 
 			    fn {Type=t,bind=e,large=l} => (t,e,l))
 		   (tup3Gen(LambdaExp.pu_Type,LambdaExp.pu_LambdaExp,bool)))		  
 	      val pu_cv = 
-		  dataGen(toInt,eq,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
-				    fun_CCONST,fun_CFN,fun_CFIX])
+		  dataGen(toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
+				 fun_CCONST,fun_CFN,fun_CFIX])
 	  in LvarMap.pu Lvars.pu
 	      (pairGen(LambdaExp.pu_tyvars,pu_cv))
 	  end
@@ -1665,19 +1654,15 @@ functor OptLambda(structure Lvars: LVARS
 	     fun toInt (NORMAL_ARGS) = 0
 	       | toInt (UNBOXED_ARGS _) = 1
 	       | toInt (ARG_VARS _) = 2
-	     fun eq (NORMAL_ARGS,NORMAL_ARGS) = true
-	       | eq (UNBOXED_ARGS s1, UNBOXED_ARGS s2) = #4 LambdaExp.pu_TypeScheme(s1,s2)
-	       | eq (ARG_VARS v1, ARG_VARS v2) = #4 pu_lvarVector(v1,v2)
-	       | eq _ = false
-	     val fun_NORMAL_ARGS = con0 eq NORMAL_ARGS
+	     val fun_NORMAL_ARGS = con0 NORMAL_ARGS
 	     fun fun_UNBOXED_ARGS _ =
-		 con1 eq UNBOXED_ARGS (fn UNBOXED_ARGS a => a | _ => die "pu.UNBOXED_ARGS")
+		 con1 UNBOXED_ARGS (fn UNBOXED_ARGS a => a | _ => die "pu.UNBOXED_ARGS")
 		 LambdaExp.pu_TypeScheme
 	     fun fun_ARG_VARS _ =
-		 con1 eq ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
+		 con1 ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
 		 pu_lvarVector
 	     val pu_fix_boxity =
-		 dataGen(toInt,eq,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
+		 dataGen(toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
 	 in LvarMap.pu Lvars.pu pu_fix_boxity
 	 end
    end

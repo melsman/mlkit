@@ -325,7 +325,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 		 eq)
 
 	    val pu_graphnode =
-		dataGen(toInt,eq,[fun_GRAPHNODE])
+		dataGen(toInt,[fun_GRAPHNODE])
 	in pu_node pu_graphnode
 	end
 

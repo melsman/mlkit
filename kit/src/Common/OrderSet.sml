@@ -395,7 +395,7 @@ functor OrderSet(structure Order : ORDERING
 						     hasher pu s2)))
 		  | _ => raise Fail "OrderSet.pu.funN.hasher",
 		 eq)					      
-	in dataGen (toInt, eq, [funE,funN])
+	in dataGen (toInt,[funE,funN])
 	end
   end
 

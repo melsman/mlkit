@@ -1002,6 +1002,26 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 end handle E => (cd_old(); raise E)
       end 
 
+    fun exportRep() : unit =
+	let open Pickle
+	    val os : outstream = empty()
+	    val _ = print "\n [Begin pickling...]\n"
+	    val r = MO.Repository.getRepository()
+	    val os : outstream = pickler MO.Repository.pu r os
+	    val _ = print "\n [Converting to string...]\n"
+	    val s = toString os
+	    val _ = print ("\n [End pickling (sz = " ^ Int.toString (size s) ^ ")]\n")
+	    val _ = print "\n [Begin unpickling...]\n"
+	    val (r2,_) = unpickler MO.Repository.pu (fromString s)
+	    val _ = MO.Repository.setRepository r2
+(*	    val _ = print "\n [Begin printing...]\n"
+	    val _ = pr_st (MO.Basis.layout B'')
+*)
+	in ()
+	end
+
+
+
     (* -----------------------------------------
      * build longprjid  builds a project
      * ----------------------------------------- *)
@@ -1020,6 +1040,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
       in List.app MO.SystemTools.delete_file files_to_delete
+(*	  ; exportRep() *)
       end
 
     (* -----------------------------

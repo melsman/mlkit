@@ -37,8 +37,15 @@ signature ELAB_REPOSITORY =
     val recover : unit -> unit
 
           (* Before building a project the repository should be
-	   * ``recovered'' meaning that all export names are marked
-	   * generative (see NAME). Then when an entry is reused,
-	   * export names are marked non-generative (for an entry to
-	   * be reused all export names must be marked generative.) *)
+	   * ``recovered''. The recovering phase takes care of 
+	   * marking all export names as generative (see NAME). Then,
+	   * when an entry is reused, export names are marked non-
+	   * generative (for an entry to be reused all export names 
+	   * must be marked generative.) *)
+
+    type elabRep
+    val getElabRep : unit -> elabRep
+    val setElabRep : elabRep -> unit
+    val pu_dom : (absprjid * funid) Pickle.pu
+    val pu : elabRep Pickle.pu
   end

@@ -379,8 +379,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		[TypeDescTYVAR, TypeDescARROW, TypeDescRECTYPE, TypeDescCONSTYPE]
 	    val RecTypeFuns = [RecTypeNILrec, RecTypeROWrec]
 
-	in data2Gen(TypeDescToInt,TypeDescEq,TypeDescFuns,
-		    RecTypeToInt,RecTypeEq,RecTypeFuns)
+	in data2Gen(TypeDescToInt,TypeDescFuns,
+		    RecTypeToInt,RecTypeFuns)
 	end
 
     val pu_Type = pu_Type pu_TypeDesc
@@ -2016,7 +2016,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		   fn EXPANDED tf => hasher TypeFcn.pu tf
 		    | _ => die "fun_EXPANDED.hasher",
 		   eq)
-	  in dataGen(toInt,eq,[fun_TYNAME,fun_EXPANDED])
+	  in dataGen(toInt,[fun_TYNAME,fun_EXPANDED])
 	  end
       val pu = 
 	  let open Pickle 

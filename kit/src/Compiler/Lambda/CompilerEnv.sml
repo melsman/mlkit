@@ -672,65 +672,37 @@ functor CompilerEnv(structure Ident: IDENT
 	      | toInt RESET_REGIONS = 15
 	      | toInt FORCE_RESET_REGIONS = 16
 	      | toInt PRIM = 17          
-	    fun eq (LVAR (lv1,tvs1,t1,ts1), LVAR (lv2,tvs2,t2,ts2)) = 
-		#4 Lvars.pu(lv1,lv2) andalso
-		#4 LambdaExp.pu_tyvars(tvs1,tvs2) andalso
-		#4 LambdaExp.pu_Type(t1,t2) andalso
-		#4 LambdaExp.pu_Types(ts1,ts2)
-	      | eq (CON (c1,tvs1,t1,ts1), CON (c2,tvs2,t2,ts2)) =
-		#4 Con.pu(c1,c2) andalso
-		#4 LambdaExp.pu_tyvars(tvs1,tvs2) andalso
-		#4 LambdaExp.pu_Type(t1,t2) andalso
-		#4 LambdaExp.pu_Types(ts1,ts2)
-	      | eq (REF,REF) = true
-	      | eq (EXCON (e1,t1), EXCON (e2,t2)) =
-		#4 Excon.pu(e1,e2) andalso
-		#4 LambdaExp.pu_Type(t1,t2)
-	      | eq (ABS,ABS) = true
-	      | eq (NEG,NEG) = true
-	      | eq (PLUS,PLUS) = true
-	      | eq (MINUS,MINUS) = true
-	      | eq (MUL,MUL) = true
-	      | eq (DIV,DIV) = true
-	      | eq (MOD,MOD) = true
-	      | eq (LESS,LESS) = true
-	      | eq (GREATER,GREATER) = true
-	      | eq (LESSEQ,LESSEQ) = true
-	      | eq (GREATEREQ,GREATEREQ) = true
-	      | eq (RESET_REGIONS,RESET_REGIONS) = true
-	      | eq (FORCE_RESET_REGIONS,FORCE_RESET_REGIONS) = true
-	      | eq (PRIM,PRIM) = true
-	      | eq _ = false
+
 	    fun fun_LVAR _ = 
-		    con1 eq LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
-		    (tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
-			     LambdaExp.pu_Type, LambdaExp.pu_Types))
+		con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
+		(tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
+			 LambdaExp.pu_Type, LambdaExp.pu_Types))
 	    fun fun_CON _ = 
-		    con1 eq CON (fn CON lv => lv | _ => die "pu.CON")
-		    (tup4Gen(Con.pu, LambdaExp.pu_tyvars,
+		con1 CON (fn CON lv => lv | _ => die "pu.CON")
+		(tup4Gen(Con.pu, LambdaExp.pu_tyvars,
 			     LambdaExp.pu_Type, LambdaExp.pu_Types))
 	    fun fun_EXCON _ = 
-		    con1 eq EXCON (fn EXCON lv => lv | _ => die "pu.CON")
-		    (pairGen(Excon.pu,LambdaExp.pu_Type))
-	in dataGen(toInt,eq,
+		con1 EXCON (fn EXCON lv => lv | _ => die "pu.CON")
+		(pairGen(Excon.pu,LambdaExp.pu_Type))
+	in dataGen(toInt,
 		   [fun_LVAR,
 		    fun_CON,
-		    con0 eq REF,
+		    con0 REF,
 		    fun_EXCON,
-		    con0 eq ABS,
-		    con0 eq NEG,
-		    con0 eq PLUS,
-		    con0 eq MINUS,
-		    con0 eq MUL,
-		    con0 eq DIV,
-		    con0 eq MOD,
-		    con0 eq LESS,
-		    con0 eq GREATER,
-		    con0 eq LESSEQ,
-		    con0 eq GREATEREQ,
-		    con0 eq RESET_REGIONS,
-		    con0 eq FORCE_RESET_REGIONS,
-		    con0 eq PRIM])
+		    con0 ABS,
+		    con0 NEG,
+		    con0 PLUS,
+		    con0 MINUS,
+		    con0 MUL,
+		    con0 DIV,
+		    con0 MOD,
+		    con0 LESS,
+		    con0 GREATER,
+		    con0 LESSEQ,
+		    con0 GREATEREQ,
+		    con0 RESET_REGIONS,
+		    con0 FORCE_RESET_REGIONS,
+		    con0 PRIM])
 	end
 
     val pu_PathEnv = 
@@ -764,9 +736,9 @@ functor CompilerEnv(structure Ident: IDENT
 	    fun fun_TYENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
 		convert (TYENV,fn TYENV v => v)
 		(FinMap.pu(TyCon.pu,pairGen(pu_TyNames,pu_CEnv)))
-	in data3Gen(CEnvToInt,CEnvEq,[fun_CENV],
-		    StrEnvToInt,StrEnvEq,[fun_STRENV],
-		    TyEnvToInt,TyEnvEq,[fun_TYENV])
+	in data3Gen(CEnvToInt,[fun_CENV],
+		    StrEnvToInt,[fun_STRENV],
+		    TyEnvToInt,[fun_TYENV])
 	end
 
   end

@@ -56,16 +56,6 @@ functor Lvars(structure Name : NAME
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted
 
-    val pu =
-	let open Pickle
-	    fun to ((n,s,f),(i,u)) : lvar = 
-		{name=n, str=s, free=f, inserted=i, use=u}
-	    fun from ({name=n, str=s, free=f, inserted=i, use=u} : lvar) = ((n,s,f),(i,u))
-	in convert (to,from)
-	    (pairGen(tup3Gen(Name.pu,string,ref0Gen bool),
-		     pairGen(ref0Gen bool,ref0Gen int)))
-	end
-
     structure QD : QUASI_DOM =
       struct
 	type dom = lvar
@@ -73,12 +63,7 @@ functor Lvars(structure Name : NAME
 	val name = name
 	val pp = pr_lvar
       end
-(*
-    structure Map = EqFinMap(structure Report = Report
-			     structure PP = PP
-			     type dom = lvar
-			     val eq = eq)
-*)
+
     structure Map = QuasiMap(structure IntFinMap = IntFinMap
 			     structure Name = Name
 			     structure Crash = Crash
@@ -90,7 +75,18 @@ functor Lvars(structure Name : NAME
     val env_lvar = new_named_lvar("env")
     val notused_lvar = new_named_lvar("notused")
 
-  end;
+    val pu =
+	Pickle.register [env_lvar,notused_lvar]
+	let open Pickle
+	    fun to ((n,s,f),(i,u)) : lvar = 
+		{name=n, str=s, free=f, inserted=i, use=u}
+	    fun from ({name=n, str=s, free=f, inserted=i, use=u} : lvar) = ((n,s,f),(i,u))
+	in convert (to,from)
+	    (pairGen(tup3Gen(Name.pu,string,ref0Gen bool),
+		     pairGen(ref0Gen bool,ref0Gen int)))
+	end
+
+  end
 
 
 (***********************************************************************

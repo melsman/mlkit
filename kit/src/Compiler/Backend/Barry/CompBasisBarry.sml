@@ -132,11 +132,10 @@ functor CompBasisBarry
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
-	let fun to () = empty
-	    fun from _ = ()			 
+	let fun to (tce,eqe,oe) = {TCEnv=tce, EqEnv=eqe, OEnv=oe}
+	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe} = (tce,eqe,oe)
 	    open Pickle
 	in convert (to,from)
-	    unit
-	end
-    
+	    (tup3Gen(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
+	end    
   end

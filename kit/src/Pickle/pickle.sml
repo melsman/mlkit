@@ -228,8 +228,7 @@ structure Pickle :> PICKLE =
 	 )
       end
 
-    fun dataGen (toInt: 'a -> int, eq: 'a * 'a -> bool, 
-		 fs : ('a pu -> 'a pu) list) : 'a pu =
+    fun dataGen (toInt: 'a -> int, fs : ('a pu -> 'a pu) list) : 'a pu =
 	let val res : 'a pu option ref = ref NONE
 	    val ps : 'a pu Vector.vector option ref = ref NONE
 	    fun p v (s,pe) =
@@ -241,6 +240,10 @@ structure Pickle :> PICKLE =
 	      let val (w,s) = S.getcw s
 	      in #2(getPUPI (Word32.toInt w)) (s,upe)
 	      end
+	    and eq(a1:'a,a2:'a) : bool =
+		let val n = toInt a1
+		in n = toInt a2 andalso #4 (getPUPI n) (a1,a2)
+		end
 	    and getPUP() = 
 		case !res of
 		    NONE => let val pup = shareGen (p,up,h,eq)
@@ -264,8 +267,8 @@ structure Pickle :> PICKLE =
         in getPUP()
 	end
 
-    fun data2Gen (aToInt: 'a -> int, aEq : 'a * 'a -> bool, afs : ('a pu * 'b pu -> 'a pu) list,
-		  bToInt: 'b -> int, bEq : 'b * 'b -> bool, bfs : ('a pu * 'b pu -> 'b pu) list) 
+    fun data2Gen (aToInt: 'a -> int, afs : ('a pu * 'b pu -> 'a pu) list,
+		  bToInt: 'b -> int, bfs : ('a pu * 'b pu -> 'b pu) list) 
 	: 'a pu * 'b pu =
 	let val aRes : 'a pu option ref = ref NONE
 	    val bRes : 'b pu option ref = ref NONE
@@ -280,6 +283,10 @@ structure Pickle :> PICKLE =
 	      let val (w,s) = S.getcw s
 	      in #2(aGetPUPI (Word32.toInt w)) (s,upe)
 	      end
+	    and aEq(a1:'a,a2:'a) : bool =
+		let val n = aToInt a1
+		in n = aToInt a2 andalso #4 (aGetPUPI n) (a1,a2)
+		end
 	    and aGetPUP() = 
 		case !aRes of
 		    NONE => let val pup = shareGen (aP,aUp,aH,aEq)
@@ -304,6 +311,10 @@ structure Pickle :> PICKLE =
 	      let val (w,s) = S.getcw s
 	      in #2(bGetPUPI (Word32.toInt w)) (s,upe)
 	      end
+	    and bEq(b1:'b,b2:'b) : bool =
+		let val n = bToInt b1
+		in n = bToInt b2 andalso #4 (bGetPUPI n) (b1,b2)
+		end
 	    and bGetPUP() = 
 		case !bRes of
 		    NONE => let val pup = shareGen (bP,bUp,bH,bEq)
@@ -332,9 +343,9 @@ structure Pickle :> PICKLE =
         in (aGetPUP(), bGetPUP())
 	end
 
-    fun data3Gen (aToInt: 'a -> int, aEq : 'a * 'a -> bool, afs : ('a pu * 'b pu * 'c pu -> 'a pu) list,
-		  bToInt: 'b -> int, bEq : 'b * 'b -> bool, bfs : ('a pu * 'b pu * 'c pu -> 'b pu) list,
-		  cToInt: 'c -> int, cEq : 'c * 'c -> bool, cfs : ('a pu * 'b pu * 'c pu -> 'c pu) list) 
+    fun data3Gen (aToInt: 'a -> int, afs : ('a pu * 'b pu * 'c pu -> 'a pu) list,
+		  bToInt: 'b -> int, bfs : ('a pu * 'b pu * 'c pu -> 'b pu) list,
+		  cToInt: 'c -> int, cfs : ('a pu * 'b pu * 'c pu -> 'c pu) list) 
 	: 'a pu * 'b pu * 'c pu =
 	let val aRes : 'a pu option ref = ref NONE
 	    val bRes : 'b pu option ref = ref NONE
@@ -351,6 +362,10 @@ structure Pickle :> PICKLE =
 	      let val (w,s) = S.getcw s
 	      in #2(aGetPUPI (Word32.toInt w)) (s,upe)
 	      end
+	    and aEq(a1:'a,a2:'a) : bool =
+		let val n = aToInt a1
+		in n = aToInt a2 andalso #4 (aGetPUPI n) (a1,a2)
+		end
 	    and aGetPUP() = 
 		case !aRes of
 		    NONE => let val pup = shareGen (aP,aUp,aH,aEq)
@@ -375,6 +390,10 @@ structure Pickle :> PICKLE =
 	      let val (w,s) = S.getcw s
 	      in #2(bGetPUPI (Word32.toInt w)) (s,upe)
 	      end
+	    and bEq(b1:'b,b2:'b) : bool =
+		let val n = bToInt b1
+		in n = bToInt b2 andalso #4 (bGetPUPI n) (b1,b2)
+		end
 	    and bGetPUP() = 
 		case !bRes of
 		    NONE => let val pup = shareGen (bP,bUp,bH,bEq)
@@ -399,6 +418,10 @@ structure Pickle :> PICKLE =
 	      let val (w,s) = S.getcw s
 	      in #2(cGetPUPI (Word32.toInt w)) (s,upe)
 	      end
+	    and cEq(c1:'c,c2:'c) : bool =
+		let val n = cToInt c1
+		in n = cToInt c2 andalso #4 (cGetPUPI n) (c1,c2)
+		end
 	    and cGetPUP() = 
 		case !cRes of
 		    NONE => let val pup = shareGen (cP,cUp,cH,cEq)
@@ -432,67 +455,38 @@ structure Pickle :> PICKLE =
         in (aGetPUP(), bGetPUP(), cGetPUP())
 	end
 
-    fun con0 (eq: 'b*'b->bool) (b: 'b) (pu: 'b pu) =
+    fun con0 (b: 'b) (pu: 'b pu) =
 	(fn _ => fn spe => spe,
 	 fn supe => (b,supe),
 	 fn _ => fn _ => 0w0,
-	 eq)
+	 fn _ => true)       (* tag is checked with toInt in dataNGen *)
 
-    fun con1 (eq: 'b*'b->bool) 
-	(con:'a->'b) (decon: 'b->'a) (pu: 'a pu) =
+    fun con1 (con:'a->'b) (decon: 'b->'a) (pu: 'a pu) =
 	(fn b:'b => pickler pu (decon b),
 	 fn supe => 
 	 let val (a,supe) = unpickler pu supe
 	 in (con a,supe)
 	 end,
 	 fn b:'b => hasher pu (decon b),
-	 eq)
+	 fn (b1:'b, b2:'b) => #4 pu (decon b1, decon b2))
 
     fun listGen (pu_a as (p_a,up_a,h_a,eq_a): 'a pu) : 'a list pu =
 	let fun toInt nil = 0
 	      | toInt _ = 1
-	    fun eq (nil,nil) = true
-	      | eq (x::xs,y::ys) = eq_a(x,y) andalso eq (xs,ys)
-	      | eq _ = false
-	    val f_nil = con0 eq nil
+	    val f_nil = con0 nil
 	    fun f_cons pu =
-		con1 eq (op ::) (fn op :: p => p | _ => fail "cons")
+		con1 (op ::) (fn op :: p => p | _ => fail "cons")
 		(pairGen(pu_a,pu))
-(*
-	    fun f_nil (_ : 'a list pu) : 'a list pu = 
-		(fn _ => fn spe => spe,
-		 fn supe => (nil,supe),
-		 fn _ => fn _ => 0w0,
-		 eq)
-	    fun f_cons ((p, up, h, eq): 'a list pu) : 'a list pu =
-		(fn l => fn spe =>
-		 case l of v_a :: v_r =>
-		 let val spe = p_a v_a spe
-		 in p v_r spe
-		 end
-	         | _ => raise Fail "f_cons",
-		 fn supe =>
-		 let val (v_a,supe) = up_a supe
-		     val (v_r,supe) = up supe
-		 in (v_a::v_r, supe)
-		 end,
-		 fn v_a::rest => hashCombine (h_a v_a, h rest)
-		  | _ => raise Fail "f_cons",
-		 eq)
-*)
-	in dataGen (toInt,eq,[f_nil,f_cons])
+	in dataGen (toInt,[f_nil,f_cons])
 	end
 
     fun optionGen (pu_a: 'a pu) : 'a option pu =
 	let fun toInt NONE = 0
 	      | toInt (SOME _) = 1
-	    fun eq (NONE,NONE) = true
-	      | eq (SOME a1,SOME a2) = #4 pu_a (a1,a2)
-	      | eq _ = false
-	    val fun_NONE = con0 eq NONE
+	    val fun_NONE = con0 NONE
 	    fun fun_SOME _ = 
-		con1 eq SOME (fn SOME v => v | NONE => fail "option") pu_a
-	in dataGen(toInt,eq,[fun_NONE,fun_SOME])
+		con1 SOME (fn SOME v => v | NONE => fail "option") pu_a
+	in dataGen(toInt,[fun_NONE,fun_SOME])
 	end
 (*
     fun optionGen ((p,up,h,eq):'a pu) : 'a option pu = shareGen
@@ -562,16 +556,7 @@ structure Pickle :> PICKLE =
     fun empty() : outstream = 
 	(S.openOut(), 
 	 H.mkTable (Word.toIntX o Dyn.hash maxDepth, Dyn.eq) (10,PickleExn))
-(*
-    fun get (s,upe) = 
-	let val (w,s) = S.getcw s
-	in (w, (s,upe))
-	end
-    fun out (w,(s,pe)) =
-	let val s = S.outcw(w,s)
-	in (s,pe)
-	end
-*)
+
     fun convert (to,back) (p,up,h,eq) =
 	shareGen
 	(fn v => fn s => p (back v) s,
@@ -620,6 +605,33 @@ structure Pickle :> PICKLE =
 			in cache := SOME pu
 			 ; pu
 			end
+	end
+
+    fun register (vs: 'a list) (pu : 'a pu) : 'a pu =
+	let val h : ('a,word) H.hash_table = H.mkTable (fn v => Word.toIntX (hasher pu v maxDepth), #4 pu) (10,PickleExn)
+	    val _ = List.foldl (fn (e,n) => (H.insert h (e,n); n + 0w1)) 0w1 vs
+	    val v = Vector.fromList vs
+	    fun lookup w = 
+		let val i = Word.toInt w - 1
+		in Vector.sub(v,i)
+		end		    
+	    val NOT_THERE : word = 0w0
+	in (fn v => fn (s,pe) => 
+	    case H.peek h v of
+		SOME w => (S.outcw(w_to_w32 w,s),pe)
+	      | NONE => let val s = S.outcw(w_to_w32 NOT_THERE,s)
+			in pickler pu v (s,pe)
+			end,
+	    fn (s,upe) =>
+	    let val (w,s) = S.getcw s
+		val w = w32_to_w w
+	    in if w = NOT_THERE then unpickler pu (s,upe)
+	       else let val v = lookup w
+		    in (v,(s,upe))
+		    end
+	    end,
+	    hasher pu,
+	    #4 pu)	   
 	end
   end
 
