@@ -20,7 +20,9 @@ signature PICKLE =
     val hasher    : 'a pu -> 'a hasher
 
     val word      : word pu
+    val word32    : Word32.word pu
     val int       : int pu
+    val int32     : Int32.int pu
     val bool      : bool pu
     val string    : string pu
     val char      : char pu
@@ -34,6 +36,7 @@ signature PICKLE =
     val ref0Gen   : 'a pu -> 'a ref pu
     val listGen   : 'a pu -> 'a list pu
     val optionGen : 'a pu -> 'a option pu
+    val vectorGen : 'a pu -> 'a Vector.vector pu
     val shareGen  : 'a pu -> 'a pu
     val enumGen   : ''a list -> ''a pu     
 
@@ -62,9 +65,10 @@ signature PICKLE =
     val empty      : unit -> outstream
     val fromString : string -> instream
     val toString   : outstream -> string
+(*
     val get        : instream -> word * instream
     val out        : word * outstream -> outstream
-
+*)
     val convert    : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
 
     val cache      : ('a -> 'b pu) -> 'a -> 'b pu

@@ -728,10 +728,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  val os : outstream = empty()
 		  val _ = print "\n [Begin pickling...]\n"
 		  val os : outstream = pickler Basis.pu B' os
+		  val _ = print "\n [Converting to string...]\n"
 		  val s = toString os
-		  val (B'': Basis,_) = unpickler Basis.pu (fromString s)
-		  val _ = pr_st (MO.Basis.layout B'')
 		  val _ = print ("\n [End pickling (sz = " ^ Int.toString (size s) ^ ")]\n")
+		  val _ = print "\n [Begin unpickling...]\n"
+		  val (B'': Basis,_) = unpickler Basis.pu (fromString s)
+		  val _ = print "\n [Begin printing...]\n"
+		  val _ = pr_st (MO.Basis.layout B'')
 	      in ()
 	      end
       in (B', modc, clean, (unitid,modtime)::modtimes)

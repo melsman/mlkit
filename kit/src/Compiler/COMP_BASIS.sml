@@ -28,4 +28,6 @@ signature COMP_BASIS =
 				    mularefmap:mularefmap,drop_env:drop_env,psi_env:psi_env}
     type StringTree
     val layout_CompBasis: CompBasis -> StringTree
+
+    val pu : CompBasis Pickle.pu
   end

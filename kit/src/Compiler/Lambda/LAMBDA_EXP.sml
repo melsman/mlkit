@@ -142,8 +142,10 @@ signature LAMBDA_EXP =
     (* Generate ML code *)
     val barify : LambdaPgm -> StringTree
 
-    val pu_tyvar  : tyvar Pickle.pu
-    val pu_tyvars : tyvar list Pickle.pu
-    val pu_Type   : Type Pickle.pu
-    val pu_Types  : Type list Pickle.pu
+    val pu_tyvar      : tyvar Pickle.pu
+    val pu_tyvars     : tyvar list Pickle.pu
+    val pu_Type       : Type Pickle.pu
+    val pu_Types      : Type list Pickle.pu
+    val pu_TypeScheme : (tyvar list * Type) Pickle.pu 
+    val pu_LambdaExp  : LambdaExp Pickle.pu
   end

@@ -4,51 +4,46 @@
 (* COMPILE_BASIS is the combined basis of all environments in 
  * the backend *) 
 
-functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
+functor ManagerObjects(structure Execution : EXECUTION
 		       structure TopdecGrammar : TOPDEC_GRAMMAR   (*needed for type strexp*)
-			 sharing type TopdecGrammar.funid = ModuleEnvironments.funid
-			 sharing type TopdecGrammar.sigid = ModuleEnvironments.sigid
-			 sharing type TopdecGrammar.id = ModuleEnvironments.id
-			 sharing type TopdecGrammar.longtycon = ModuleEnvironments.longtycon
-			 sharing type TopdecGrammar.longstrid = ModuleEnvironments.longstrid
+			 sharing type TopdecGrammar.DecGrammar.Ident.longid = Execution.CompilerEnv.longid
+			 sharing type TopdecGrammar.funid = Execution.Elaboration.Basics.ModuleEnvironments.funid
+			 sharing type TopdecGrammar.sigid = Execution.Elaboration.Basics.ModuleEnvironments.sigid
+			 sharing type TopdecGrammar.id = Execution.Elaboration.Basics.ModuleEnvironments.id
+			 sharing type TopdecGrammar.longtycon = Execution.Elaboration.Basics.ModuleEnvironments.longtycon
+			 sharing type TopdecGrammar.longstrid = Execution.Elaboration.Basics.ModuleEnvironments.longstrid
+			 sharing type TopdecGrammar.strid = Execution.Elaboration.Basics.ModuleEnvironments.strid
 		       structure OpacityElim : OPACITY_ELIM
-			 sharing OpacityElim.TyName = ModuleEnvironments.TyName
-			 sharing type OpacityElim.OpacityEnv.realisation = ModuleEnvironments.realisation
+			 sharing OpacityElim.TyName = Execution.Elaboration.Basics.ModuleEnvironments.TyName
+			 sharing type OpacityElim.OpacityEnv.realisation = Execution.Elaboration.Basics.ModuleEnvironments.realisation
 			 sharing type OpacityElim.topdec = TopdecGrammar.topdec
-		       structure Execution : EXECUTION
-			 sharing type Execution.CompilerEnv.id = ModuleEnvironments.id
-			 sharing type Execution.CompilerEnv.longid = TopdecGrammar.DecGrammar.Ident.longid
-			 sharing type Execution.CompilerEnv.strid = ModuleEnvironments.strid
-			 sharing type Execution.CompilerEnv.longstrid = ModuleEnvironments.longstrid
-			 sharing type Execution.CompilerEnv.tycon = ModuleEnvironments.tycon
-			 sharing type Execution.CompilerEnv.longtycon = ModuleEnvironments.longtycon
-			 sharing type Execution.CompileBasis.TyName = ModuleEnvironments.TyName
-		       structure Labels : ADDRESS_LABELS
-			 sharing type Labels.label = Execution.label
-		       structure InfixBasis: INFIX_BASIS
 		       structure ElabRep : ELAB_REPOSITORY
-			 sharing type ElabRep.funid = TopdecGrammar.funid 
-			 sharing type ElabRep.InfixBasis = InfixBasis.Basis
-			 sharing type ElabRep.ElabBasis = ModuleEnvironments.Basis
+			 sharing type ElabRep.funid = TopdecGrammar.funid = OpacityElim.OpacityEnv.funid
+			 sharing type ElabRep.InfixBasis = Execution.Elaboration.Basics.InfixBasis.Basis
+			 sharing type ElabRep.ElabBasis = Execution.Elaboration.Basics.ModuleEnvironments.Basis
 			 sharing type ElabRep.opaq_env = OpacityElim.opaq_env
-			 sharing type ElabRep.longstrid = ModuleEnvironments.longstrid
-			 sharing ElabRep.TyName = ModuleEnvironments.TyName
-                         sharing type ElabRep.absprjid = ModuleEnvironments.absprjid  
+			 sharing type ElabRep.longstrid = Execution.Elaboration.Basics.ModuleEnvironments.longstrid
+			 sharing ElabRep.TyName = Execution.Elaboration.Basics.ModuleEnvironments.TyName
+                         sharing type ElabRep.absprjid = Execution.Elaboration.Basics.ModuleEnvironments.absprjid  
+			 sharing type ElabRep.name = Execution.Elaboration.Basics.Name.name   
 		       structure RepositoryFinMap : MONO_FINMAP
-			 where type dom = ModuleEnvironments.absprjid * TopdecGrammar.funid 
+			 where type dom = Execution.Elaboration.Basics.ModuleEnvironments.absprjid * TopdecGrammar.funid 
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
-			 sharing type PP.StringTree = Execution.CompilerEnv.StringTree 
-			   = ModuleEnvironments.StringTree = FinMap.StringTree 
-			   = InfixBasis.StringTree = OpacityElim.OpacityEnv.StringTree
-		       structure Name : NAME
-			 sharing type Name.name = ModuleEnvironments.TyName.name = ElabRep.name
+			 sharing type PP.StringTree
+			   = Execution.Elaboration.Basics.ModuleEnvironments.StringTree = FinMap.StringTree 
+			   = OpacityElim.OpacityEnv.StringTree
 		       structure Flags : FLAGS
 		       structure Crash : CRASH) : MANAGER_OBJECTS =
   struct
 
     structure CompilerEnv = Execution.CompilerEnv
     structure CompileBasis = Execution.CompileBasis
+    structure Environments = Execution.Elaboration.Basics.Environments
+    structure ModuleEnvironments = Execution.Elaboration.Basics.ModuleEnvironments
+    structure Name = Execution.Elaboration.Basics.Name
+    structure InfixBasis = Execution.Elaboration.Basics.InfixBasis
+    structure Labels = Execution.Labels
 
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
@@ -62,6 +57,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     structure FunId = TopdecGrammar.FunId
     structure SigId = TopdecGrammar.SigId
+    structure StrId = TopdecGrammar.StrId
     structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
     type filename = string
@@ -412,6 +408,16 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			    T: TyName.TyName list,
 			    resE: ElabEnv}
 
+    datatype IntSigEnv = ISE of (sigid, TyName.Set.Set) FinMap.map
+    datatype IntFunEnv = IFE of (funid, absprjid * funstamp * strid * ElabEnv * BodyBuilderClos * IntBasis) FinMap.map
+         and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
+
+    (* Instead of storing structure expressions in functor environments, information necessary for recreating 
+     * structure expressions is stored (BodyBuilderClos). *)
+
+
+    (* Picklers *)
+
     val pu_BodyBuilderClos =
 	let open Pickle
 	    fun to ((infB,elabB,absprjid),(filename,opaq_env,T),resE) = 
@@ -420,22 +426,44 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
 		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),resE)
 	in convert (to,from)
-	    (tup3Gen(tup3Gen(InfixBasis.pu,ModuleEnvironments.B.pu,string),
+	    (tup3Gen(tup3Gen(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
 		     tup3Gen(string,OpacityElim.OpacityEnv.pu,listGen TyName.pu), 
 		     Execution.Elaboration.Basics.Environments.E.pu))
 	end
-
-    datatype IntSigEnv = ISE of (sigid, TyName.Set.Set) FinMap.map
-    datatype IntFunEnv = IFE of (funid, absprjid * funstamp * strid * ElabEnv * BodyBuilderClos * IntBasis) FinMap.map
-         and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
-
-    (* Instead of storing structure expressions in functor environments, information necessary for recreating 
-     * structure expressions is stored (BodyBuilderClos). *)
 
     val pu_IntSigEnv =
 	let open Pickle
 	in convert (ISE, fn ISE v => v) 
 	    (FinMap.pu(SigId.pu,TyName.Set.pu TyName.pu))
+	end
+
+    val (pu_IntFunEnv,pu_IntBasis) =
+	let open Pickle
+	    fun IntFunEnvToInt _ = 0
+	    fun IntBasisToInt _ = 0
+	    fun IntFunEnvEq(IFE m1, IFE m2) = 
+		let fun eqRes ((a1,f1,s1,e1,b1,i1),(a2,f2,s2,e2,b2,i2)) =
+		    s1 = s2 andalso a1 = a2 andalso  #4 FunStamp.pu (f1,f2)
+		    andalso #4 Execution.Elaboration.Basics.Environments.E.pu (e1,e2)
+		    andalso #4 pu_BodyBuilderClos (b1,b2) 
+		    andalso IntBasisEq(i1,i2)
+		in FinMap.eq eqRes (m1,m2)
+		end
+	    and IntBasisEq(IB(if1,ise1,ce1,cb1),IB(if2,ise2,ce2,cb2)) =
+		IntFunEnvEq(if1,if2) andalso #4 pu_IntSigEnv(ise1,ise2)
+		andalso #4 CompilerEnv.pu (ce1,ce2) andalso #4 CompileBasis.pu (cb1,cb2)
+	    fun fun_IFE (pu_IntFunEnv, pu_IntBasis) =
+		con1 IntFunEnvEq IFE (fn IFE a => a)		
+		(FinMap.pu (FunId.pu,
+			    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
+			    (pairGen(tup3Gen(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
+				     tup3Gen(Execution.Elaboration.Basics.Environments.E.pu,
+					     pu_BodyBuilderClos,pu_IntBasis)))))
+	    fun fun_IB (pu_IntFunEnv, pu_IntBasis) =
+		con1 IntBasisEq IB (fn IB a => a)
+		(tup4Gen(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
+	in data2Gen(IntFunEnvToInt,IntFunEnvEq,[fun_IFE],
+		    IntBasisToInt,IntBasisEq,[fun_IB])
 	end
 
     structure IntFunEnv =
@@ -462,6 +490,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun layout (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
 	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #2) ife
 	fun fold f i (IFE ife) = FinMap.Fold f i ife
+	val pu = pu_IntFunEnv
       end
 
 
@@ -490,6 +519,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  (PP.LEAF o SigId.pr_SigId) 
 	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
 	fun tynames (ISE ise) = FinMap.fold (fn (a,b) => TyName.Set.union a b) TyName.Set.empty ise
+
+	val pu = pu_IntSigEnv
       end
 
 
@@ -604,6 +635,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  (* operations used in Manager, only. *)
 	fun initial() = IB (IntFunEnv.initial, IntSigEnv.initial, 
 			    CompilerEnv.initialCEnv(), CompileBasis.initial)
+	val pu = pu_IntBasis
       end
 
     datatype Basis = BASIS of InfixBasis * ElabBasis * opaq_env * IntBasis
@@ -653,10 +685,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	val pu =
 	    let open Pickle
-		fun to (ib,eb,oe) = BASIS(ib, eb, oe, IntBasis.empty)
-		fun from (BASIS(ib,eb,oe,_)) = (ib,eb,oe)
+		fun to (ib,eb,oe,intb) = BASIS(ib,eb,oe,intb)
+		fun from (BASIS(ib,eb,oe,intb)) = (ib,eb,oe,intb)
 	    in convert (to,from)
-		(tup3Gen(InfixBasis.pu,ModuleEnvironments.B.pu,OpacityElim.OpacityEnv.pu))
+		(tup4Gen(InfixBasis.pu, ModuleEnvironments.B.pu, 
+			 OpacityElim.OpacityEnv.pu, IntBasis.pu))
 	    end
       end
 

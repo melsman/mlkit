@@ -4,6 +4,8 @@
 
 structure Pickle :> PICKLE =
   struct
+    val sharing_p = true
+
     structure S = Stream
     structure H = Polyhash
     structure Dyn = EqHashDyn
@@ -25,7 +27,7 @@ structure Pickle :> PICKLE =
 	end
 
     fun hashCombine (h1,h2) d = 
-	if d >= 0 then 0w0 
+	if d <= 0 then 0w0 
 	else hashAdd(h1 (d-1), h2 (d-1))
 
     type dyn = Dyn.dyn
@@ -48,22 +50,29 @@ structure Pickle :> PICKLE =
 
     fun pu a = a
 
-    fun wordGen (toWord:''a->word, fromWord:word->''a) : ''a pu =
+    fun w32_to_w w32 = (Word.fromLargeWord o Word32.toLargeWord) w32
+    fun w_to_w32 w = (Word32.fromLargeWord o Word.toLargeWord) w
+
+    fun wordGen (toWord:''a->Word32.word, fromWord:Word32.word->''a) : ''a pu =
        (fn w => fn (s, pe) => (S.outcw (toWord w,s), pe),
 	fn (s, upe) => let val (w,s) = S.getcw s
 		       in (fromWord w, (s, upe))
 		       end,
-        fn a => fn d => toWord a,
+        fn a => fn d => (w32_to_w(toWord a)),
 	op =)
 	
-    val word = wordGen (fn x => x, fn x => x)
-    val int = wordGen (Word.fromInt, Word.toIntX)
+    val word = wordGen (w_to_w32, w32_to_w)
+    val word32 = wordGen (fn x => x, fn x => x)
+    val int = wordGen (Word32.fromInt, Word32.toIntX)
+    val int32 = wordGen (Word32.fromLargeInt o Int32.toLarge, Int32.fromLarge o Word32.toLargeIntX)
+	
     val bool = wordGen (fn true => 0w1 | false => 0w0,
 			fn 0w0 => false | _ => true)
-    val char = wordGen (Word.fromInt o Char.ord, 
-			Char.chr o Word.toIntX)
+    val char = wordGen (Word32.fromInt o Char.ord, 
+			Char.chr o Word32.toIntX)
 
-    fun shareGen ((p,up,h,eq):'a pu) : 'a pu =
+    fun shareGen (pu as (p,up,h,eq):'a pu) : 'a pu =
+      if not sharing_p then pu else
       let val REF = 0w0 and DEF = 0w1           
           val (toDyn,fromDyn) = Dyn.new h eq
       in
@@ -72,7 +81,7 @@ structure Pickle :> PICKLE =
 	    in case H.peek pe d of
 		 SOME loc => 
 		   let val s = S.outcw(REF,s)
-		       val s = S.outw(loc,s)
+		       val s = S.outw(w_to_w32 loc,s)
 		   in (s,pe)
 		   end
 	       | NONE =>
@@ -86,7 +95,7 @@ structure Pickle :> PICKLE =
 	     let val (tag,s) = S.getcw s
 	     in if tag = REF then
 		   let val (loc,s) = S.getw s
-		   in case H.peek upe loc of
+		   in case H.peek upe (w32_to_w loc) of
 			 SOME d => (fromDyn d, (s,upe))
 		       | NONE => raise Fail "shareGen.impossible"
 		   end
@@ -105,13 +114,13 @@ structure Pickle :> PICKLE =
 	shareGen
 	(fn st => fn (s, pe) =>
 	 let val sz = size st
-	     val s = S.outcw(Word.fromInt sz, s)
+	     val s = S.outcw(Word32.fromInt sz, s)
 	     val s = CharVector.foldl (fn (c,cs) => S.out(c,cs)) s st
 	 in (s, pe)
 	 end,
 	 fn (s,upe) =>
 	 let val (sz,s) = S.getcw s
-	     val sz = Word.toInt sz
+	     val sz = Word32.toInt sz
 	     fun read (0,s,acc) = (implode(rev acc), s)
 	       | read (n,s,acc) = 
 		 let val (c,s) = S.get s
@@ -147,7 +156,7 @@ structure Pickle :> PICKLE =
 	    in case H.peek pe d of
 		 SOME loc => 
 		   let val s = S.outcw(REF_LOC,s)
-		       val s = S.outw(loc,s)
+		       val s = S.outw(w_to_w32 loc,s)
 		   in (s,pe)
 		   end
 	       | NONE =>
@@ -161,7 +170,7 @@ structure Pickle :> PICKLE =
 	     let val (tag,s) = S.getcw s
 	     in if tag = REF_LOC then
 		   let val (loc,s) = S.getw s
-		   in case H.peek upe loc of
+		   in case H.peek upe (w32_to_w loc) of
 			 SOME d => (fromDyn d, (s, upe))
 		       | NONE => raise Fail "ref.impossible"
 		   end
@@ -188,7 +197,7 @@ structure Pickle :> PICKLE =
 	    in case H.peek pe d of
 		 SOME loc => 
 		   let val s = S.outcw(REF_LOC,s)
-		       val s = S.outw(loc,s)
+		       val s = S.outw(w_to_w32 loc,s)
 		   in (s,pe)
 		   end
 	       | NONE =>
@@ -202,7 +211,7 @@ structure Pickle :> PICKLE =
 	     let val (tag,s) = S.getcw s
 	     in if tag = REF_LOC then
 		   let val (loc,s) = S.getw s
-		   in case H.peek upe loc of
+		   in case H.peek upe (w32_to_w loc) of
 			 SOME d => (fromDyn d, (s, upe))
 		       | NONE => raise Fail "ref.impossible"
 		   end
@@ -225,12 +234,12 @@ structure Pickle :> PICKLE =
 	    val ps : 'a pu Vector.vector option ref = ref NONE
 	    fun p v (s,pe) =
 	      let val i = toInt v
-		  val s = S.outcw (Word.fromInt i, s)
+		  val s = S.outcw (Word32.fromInt i, s)
 	      in #1(getPUPI i) v (s,pe)
 	      end
             and up (s,upe) =
 	      let val (w,s) = S.getcw s
-	      in #2(getPUPI (Word.toInt w)) (s,upe)
+	      in #2(getPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and getPUP() = 
 		case !res of
@@ -264,12 +273,12 @@ structure Pickle :> PICKLE =
 	    val bPs : 'b pu Vector.vector option ref = ref NONE
 	    fun aP v (s,pe) =
 	      let val i = aToInt v
-		  val s = S.outcw (Word.fromInt i, s)
+		  val s = S.outcw (Word32.fromInt i, s)
 	      in #1(aGetPUPI i) v (s,pe)
 	      end
             and aUp (s,upe) =
 	      let val (w,s) = S.getcw s
-	      in #2(aGetPUPI (Word.toInt w)) (s,upe)
+	      in #2(aGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and aGetPUP() = 
 		case !aRes of
@@ -288,12 +297,12 @@ structure Pickle :> PICKLE =
 		  | SOME psv => Vector.sub(psv,i)		
 	    and bP v (s,pe) =
 	      let val i = bToInt v
-		  val s = S.outcw (Word.fromInt i, s)
+		  val s = S.outcw (Word32.fromInt i, s)
 	      in #1(bGetPUPI i) v (s,pe)
 	      end
             and bUp (s,upe) =
 	      let val (w,s) = S.getcw s
-	      in #2(bGetPUPI (Word.toInt w)) (s,upe)
+	      in #2(bGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and bGetPUP() = 
 		case !bRes of
@@ -335,12 +344,12 @@ structure Pickle :> PICKLE =
 	    val cPs : 'c pu Vector.vector option ref = ref NONE
 	    fun aP v (s,pe) =
 	      let val i = aToInt v
-		  val s = S.outcw (Word.fromInt i, s)
+		  val s = S.outcw (Word32.fromInt i, s)
 	      in #1(aGetPUPI i) v (s,pe)
 	      end
             and aUp (s,upe) =
 	      let val (w,s) = S.getcw s
-	      in #2(aGetPUPI (Word.toInt w)) (s,upe)
+	      in #2(aGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and aGetPUP() = 
 		case !aRes of
@@ -359,12 +368,12 @@ structure Pickle :> PICKLE =
 		  | SOME psv => Vector.sub(psv,i)		
 	    and bP v (s,pe) =
 	      let val i = bToInt v
-		  val s = S.outcw (Word.fromInt i, s)
+		  val s = S.outcw (Word32.fromInt i, s)
 	      in #1(bGetPUPI i) v (s,pe)
 	      end
             and bUp (s,upe) =
 	      let val (w,s) = S.getcw s
-	      in #2(bGetPUPI (Word.toInt w)) (s,upe)
+	      in #2(bGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and bGetPUP() = 
 		case !bRes of
@@ -383,12 +392,12 @@ structure Pickle :> PICKLE =
 		  | SOME psv => Vector.sub(psv,i)
 	    and cP v (s,pe) =
 	      let val i = cToInt v
-		  val s = S.outcw (Word.fromInt i, s)
+		  val s = S.outcw (Word32.fromInt i, s)
 	      in #1(cGetPUPI i) v (s,pe)
 	      end
             and cUp (s,upe) =
 	      let val (w,s) = S.getcw s
-	      in #2(cGetPUPI (Word.toInt w)) (s,upe)
+	      in #2(cGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and cGetPUP() = 
 		case !cRes of
@@ -533,10 +542,10 @@ structure Pickle :> PICKLE =
 	    fun lookupv nil _ = raise Fail "enumGen.unknown constructor tag"
 	      | lookupv ((x,w)::xs) w0 = if w=w0 then x else lookupv xs w0
 	in
-	    (fn v => fn (s,pe) => (S.outcw(lookupw wxs v,s),pe),
+	    (fn v => fn (s,pe) => (S.outcw(w_to_w32(lookupw wxs v),s),pe),
 	     fn (s, upe) =>
 	     let val (w,s) = S.getcw s
-	     in (lookupv wxs w, (s,upe))
+	     in (lookupv wxs (w32_to_w w), (s,upe))
 	     end,
 	     fn v => fn d => lookupw wxs v,
 	     op =
@@ -553,7 +562,7 @@ structure Pickle :> PICKLE =
     fun empty() : outstream = 
 	(S.openOut(), 
 	 H.mkTable (Word.toIntX o Dyn.hash maxDepth, Dyn.eq) (10,PickleExn))
-
+(*
     fun get (s,upe) = 
 	let val (w,s) = S.getcw s
 	in (w, (s,upe))
@@ -562,14 +571,14 @@ structure Pickle :> PICKLE =
 	let val s = S.outcw(w,s)
 	in (s,pe)
 	end
-
+*)
     fun convert (to,back) (p,up,h,eq) =
 	shareGen
 	(fn v => fn s => p (back v) s,
 	 fn s => let val (v,s) = up s
 		 in (to v,s)
 		 end,
-	 h o back,
+	 fn v => hashCombine((h o back) v, fn _ => 0w1),
 	 fn (x,y) => eq(back x, back y))
 
     fun tup3Gen (a,b,c) =
@@ -583,6 +592,10 @@ structure Pickle :> PICKLE =
 	    fun from (a,b,c,d) = ((a,b),(c,d))
 	in convert (to,from) (pairGen(pairGen(a,b),pairGen(c,d)))
 	end
+
+    fun vectorGen pu =
+	convert (Vector.fromList,Vector.foldr (op ::) nil)
+	(listGen pu)
 
     val real = convert (fn v => case Real.fromString v of
 			SOME v => v

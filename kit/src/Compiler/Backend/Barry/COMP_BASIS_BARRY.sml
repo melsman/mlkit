@@ -22,4 +22,7 @@ signature COMP_BASIS_BARRY =
     val de_CompBasis: CompBasis -> {TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv}
     type StringTree
     val layout_CompBasis: CompBasis -> StringTree
+
+    val pu : CompBasis Pickle.pu
+
   end

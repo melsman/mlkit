@@ -80,7 +80,7 @@ signature MANAGER_OBJECTS =
 	val restrict : IntFunEnv * funid list -> IntFunEnv
 	val enrich : IntFunEnv * IntFunEnv -> bool  (* using funstamps *)
 	val layout : IntFunEnv -> StringTree
-(*	val pu : IntFunEnv Pickle.pu *)
+	val pu : IntFunEnv Pickle.pu
       end
 
     type IntSigEnv and sigid
@@ -94,7 +94,7 @@ signature MANAGER_OBJECTS =
 	val restrict : IntSigEnv * sigid list -> IntSigEnv
 	val enrich : IntSigEnv * IntSigEnv -> bool
 	val layout : IntSigEnv -> StringTree
-(*	val pu : IntSigEnv Pickle.pu *)
+	val pu : IntSigEnv Pickle.pu
       end
 
     type CEnv and CompileBasis and longtycon and longid and longstrid
@@ -113,7 +113,7 @@ signature MANAGER_OBJECTS =
 	val initial : unit -> IntBasis
 	val restrict : IntBasis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
 				   longvids: longid list, longtycons: longtycon list} -> IntBasis
-(*	val pu : IntBasis Pickle.pu *)
+	val pu : IntBasis Pickle.pu
       end
 
     type Basis 

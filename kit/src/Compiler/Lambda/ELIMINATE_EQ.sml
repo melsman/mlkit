@@ -19,8 +19,6 @@ signature ELIMINATE_EQ =
 
     type StringTree
     val layout_env : env -> StringTree
+	
+    val pu : env Pickle.pu
   end
-
-
-
-    

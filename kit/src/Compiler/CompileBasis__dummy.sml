@@ -22,4 +22,6 @@ functor CompileBasisDummy(structure TyName : TYNAME
     fun match _ = empty
     fun restrict _ = empty
     fun eq _ = true
+	
+    val pu = Pickle.unit
   end
