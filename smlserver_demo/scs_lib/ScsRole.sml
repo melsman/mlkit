@@ -24,6 +24,9 @@ signature SCS_ROLE =
     | UcsTrTimeRecordAdm  (* Created in ucs-tr-initialdata-create.sql *)
     | UcsObOptagAdm  	  (* Created in ucs-ob-initialdata-create.sql *)
     | UcsCbCourseAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbITUAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbTITAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbEBUSSAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
     | UcsPrRucAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | UcsPrEbussAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | Other of string
@@ -55,6 +58,9 @@ signature SCS_ROLE =
        doing the same role queries many times within a litle time
        period like 5 minutes. *)
     val flushRoleCache : unit -> unit
+
+    (* [getAllRoles user_id] returns a list of roles for the user *)
+    val getAllRoles : int -> role list
   end
 
 structure ScsRole :> SCS_ROLE =
@@ -78,6 +84,9 @@ structure ScsRole :> SCS_ROLE =
     | UcsTrTimeRecordAdm
     | UcsObOptagAdm  	  
     | UcsCbCourseAdm
+    | UcsCbITUAdm  	
+    | UcsCbTITAdm  	
+    | UcsCbEBUSSAdm  	
     | UcsPrRucAdm	  
     | UcsPrEbussAdm	  
     | Other of string
@@ -104,6 +113,9 @@ structure ScsRole :> SCS_ROLE =
       | "UcsCbCourseAdm"     => UcsCbCourseAdm
       | "UcsPrRucAdm"	     => UcsPrRucAdm  
       | "UcsPrEbussAdm"	     => UcsPrEbussAdm
+      | "UcsCbITUAdm"  	     => UcsCbITUAdm     
+      | "UcsCbTITAdm"  	     =>	UcsCbTITAdm     
+      | "UcsCbEBUSSAdm"	     =>	UcsCbEBUSSAdm   
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -128,6 +140,9 @@ structure ScsRole :> SCS_ROLE =
       | UcsTrTimeRecordAdm => "UcsTrTimeRecordAdm"
       | UcsObOptagAdm	   => "UcsObOptagAdm"
       | UcsCbCourseAdm	   => "UcsCbCourseAdm"
+      | UcsCbITUAdm  	   => "UcsCbITUAdm"     
+      | UcsCbTITAdm  	   => "UcsCbTITAdm"     
+      | UcsCbEBUSSAdm      => "UcsCbEBUSSAdm"   
       | UcsPrRucAdm	   => "UcsPrRucAdm"  
       | UcsPrEbussAdm	   => "UcsPrEbussAdm"
       | Other s => s
@@ -162,6 +177,13 @@ structure ScsRole :> SCS_ROLE =
 
     fun has_one_or_empty_p uid [] = true
       | has_one_or_empty_p uid xs = has_one_p uid xs
+
+    fun getAllRoles user_id =
+      (Db.list (fn g => (fromString o g) "abbreviation"))
+          `select scs_roles.abbreviation
+             from scs_roles, scs_role_rels
+            where scs_roles.role_id = scs_role_rels.role_id
+              and scs_role_rels.party_id = '^(Int.toString user_id)'`
 
 
   end

@@ -48,7 +48,7 @@ signature SCS_STRING =
     val toOpt     : string -> string option
 
     (* [ml_search_pattern pat] returns a pattern with % added at each
-        space *)
+        space and pattern lowered case *)
     val mk_search_pattern : string -> string
 
     val quoteString : string -> string
@@ -150,7 +150,7 @@ structure ScsString =
 	if pat = "" then 
 	  "%" 
 	else 
-	  "%"^(String.concatWith "%" (String.tokens Char.isSpace pat))^"%"
+	  "%"^(String.concatWith "%" (map lower (String.tokens Char.isSpace pat)))^"%"
 
     fun quoteString str = Quot.toString `"^str"`
 
