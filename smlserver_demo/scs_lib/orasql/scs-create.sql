@@ -42,16 +42,7 @@ show errors
 @scs-roles-create.sql;
 @scs-persons-create.sql;
 @scs-users-create.sql;
-@scs-teachers-create.sql;
 @scs-groups-create.sql;
-
-@scs-boards-of-studies-create.sql;
-@scs-curriculums-create.sql;
-@scs-study-programmes-create.sql;
-
-@scs-approvals-create.sql;
-@scs-evaluations-create.sql;
-@scs-periods-create.sql;
 
 select table_name from user_tables;
 

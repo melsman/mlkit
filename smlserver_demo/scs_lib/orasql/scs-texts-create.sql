@@ -9,8 +9,8 @@ create table scs_languages(
     constraint scs_lang_language_id_nn not null
     constraint scs_lang_language_id_pk primary key,
   language_text_id integer
-    constraint scs_lang_language_text_id_nn not null,
-  constraint scs_lang_language_text_id_fk foreign key (language_text_id) references scs_texts(text_id)
+    constraint scs_lang_language_text_id_nn not null
+    constraint scs_lang_language_text_id_fk references scs_texts(text_id)
 );
 
 create table scs_text_lang(
@@ -27,9 +27,9 @@ create table scs_text_lang(
 
 
 ------------------------------
--- texts package prototypes --
+-- scs_text package prototypes --
 ------------------------------
-create or replace package texts
+create or replace package scs_text
 as
   function new(
     object_id in integer default null
@@ -40,14 +40,14 @@ as
 --    text in scs_text_lang.text%TYPE
 --  ) return scs_texts.text_id%TYPE;
 
-end texts;
+end scs_text;
 /
 show errors
 
 ------------------------
--- texts package body --
+-- scs_text package body --
 ------------------------
-create or replace package body texts
+create or replace package body scs_text
 as
   function new(
     object_id in integer default null
@@ -62,7 +62,7 @@ as
 -- might put exception handling here
   end new;
 
-end texts;
+end scs_text;
 / 
 show errors
 
