@@ -458,10 +458,7 @@ functor LambdaBasics (structure Lvars : LVARS
 		(Set.fromList equal_tyvar bound_tyvars)
 	    in
 	      if Set.isEmpty intersection then S'
-	      else (if !Flags.DEBUG_OPTIMISER then 
-		      TextIO.output(TextIO.stdOut,"TypeVariableCapture raised\n")
-		    else ();
-		      raise TypeVariableCapture)
+	      else raise TypeVariableCapture
 	    end
 
 	  fun on_bound_lvar S {lvar,tyvars,Type} =

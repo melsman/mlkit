@@ -50,12 +50,16 @@ local
 	=> usr1 <= usr2 andalso sys1 <= sys2 andalso gc1 <= gc1;
     fun cput1 < cput2 = (cput1 <= cput2) andalso (cput1 <> cput2);
 in
+
+(* My laptop is too quick to get 3 and 4 right 
+ * when the argument to fib is 25! ME 2001-02-01 *)
+
 val test3 = tst "test3" (checkCPUTimer totalCPUTime <= checkCPUTimer totalCPUTime
-		  andalso (checkCPUTimer totalCPUTime before fib 25 seq ())
+		  andalso (checkCPUTimer totalCPUTime before fib 28 seq ())
   		           < checkCPUTimer totalCPUTime);
 val ctmr = startCPUTimer ();
 val test4 = tst "test4" (checkCPUTimer ctmr <= checkCPUTimer ctmr
-		  andalso (checkCPUTimer ctmr before fib 25 seq ())
+		  andalso (checkCPUTimer ctmr before fib 28 seq ())
   		           < checkCPUTimer ctmr);
 end;
 (*

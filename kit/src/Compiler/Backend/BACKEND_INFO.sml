@@ -46,7 +46,6 @@ signature BACKEND_INFO =
 
     val tag_values       : bool ref
     val tag_integers     : bool ref
-    val unbox_datatypes  : bool ref
     val size_of_real     : unit -> int
     val size_of_ref      : unit -> int
     val size_of_record   : 'a list -> int

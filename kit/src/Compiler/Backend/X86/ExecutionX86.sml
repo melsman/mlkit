@@ -63,6 +63,22 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
     structure Compile = BuildCompile.Compile
     structure CompilerEnv = BuildCompile.CompilerEnv
 
+    val _ = Flags.add_string_entry 
+      {long="clibs", short=NONE, item=ref "-lm",
+       menu=["Control", "clibs"],
+       desc="If you have added your own object files to a project, you\n\
+	\might also need to link with libraries other than\n\
+	\libm.so (\"-lm\")."}
+
+    val _ = Flags.add_bool_entry
+       {long="delete_target_files", short=NONE, neg=true, item=ref true,
+	menu=["Debug", "delete target files"], 
+	desc="Delete assembler files produced by the compiler. If you\n\
+	 \disable this flag, you can inspect the assembler code\n\
+	 \produced by the compiler."}
+ 
+    val backend_name = "X86"
+
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = BuildCompile.CompilerEnv.CEnv
     type strdec = TopdecGrammar.strdec
@@ -110,11 +126,11 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
       (OS.Process.system command; ())
 (*      handle OS.SysErr(s,_) => die ("\nCommand " ^ command ^ "\nfailed (" ^ s ^ ");") *)
   
-    val c_libs = Flags.lookup_string_entry "c_libs"
+    val delete_target_files = Flags.lookup_flag_entry "delete_target_files"
+    val clibs = Flags.lookup_string_entry "clibs"
     fun assemble (file_s, file_o) =
       (execute_command (!(Flags.lookup_string_entry "c_compiler") ^ " -c -o " ^ file_o ^ " " ^ file_s);
-       if !(Flags.lookup_flag_entry "delete_target_files")
-	 then  delete_file file_s 
+       if !delete_target_files then delete_file file_s 
        else ())
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
@@ -132,10 +148,10 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
     fun link_files_with_runtime_system path_to_runtime files run =
       let val files = map (fn s => s ^ " ") files
 	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
-	    concat files ^ path_to_runtime() ^ " " ^ !(Flags.lookup_string_entry "c_libs")
-      in execute_command shell_cmd;
-	TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n" ^
-		       "[used link: " ^ shell_cmd ^ "]\n" (*to be removed, 2001-01-04, Niels*))
+	    concat files ^ path_to_runtime() ^ " " ^ !clibs
+      in (*print("[using link command: " ^ shell_cmd ^ "]\n"); *)
+	execute_command shell_cmd;
+	print("[wrote executable file:\t" ^ run ^ "]\n")	
       end 
 
   end;

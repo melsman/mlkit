@@ -74,16 +74,20 @@ struct
   (****************************************************************)
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
+  val _ = List.app (fn (k,s,r) => Flags.add_bool_entry
+		    {long=k,short=NONE,item=r,menu=["Printing of intermediate forms",s],neg=false,desc=""})
     [("print_HP-PARISC_program_meta", "print HP-PARISC program (with META instructions)", ref false),
      ("print_HP-PARISC_program", "print HP-PARISC program", ref false)]
 
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("inline_alloc_HP-PARISC", "Inline alloc HP-PARISC", ref true)]
+  val _ = Flags.add_bool_entry
+    {long="inline_alloc_HP-PARISC", short=NONE, item=ref true, neg=false,
+     menu=["Control","Lambda Backend", "inline alloc HP-PARISC"],
+     desc=""}
+				  
 
-  val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
+  val gc_p = Flags.is_on0 "garbage_collection"
   val inline_alloc = Flags.lookup_flag_entry "inline_alloc_HP-PARISC"
-  val jump_tables = Flags.lookup_flag_entry "jump_tables"
+  val jump_tables = true
 
   (********************************)
   (* CG on Top Level Declarations *)
@@ -478,7 +482,7 @@ struct
 	  | gen_bv'(w::ws,C) = 
 	  gen_bv'(ws,DOT_WORD("0X"^Word32.fmt StringCvt.HEX w)::C)
       in
-	if !do_garbage_collection then
+	if gc_p() then
 	  gen_bv'(ws,C)
 	else
 	  C
@@ -487,7 +491,7 @@ struct
     (* reg_map is a register map describing live registers at entry to the function       *)
     (* The stub requires reg_map to reside in tmp_reg1 and the return address in mrp *)
     fun do_gc(reg_map: Word32.word,C) =
-      if !do_garbage_collection then
+      if gc_p() then
 	let
 	  val _ = add_lib_function (pp_lab gc_stub_lab)
 	  val l = new_local_lab "return_from_gc_stub"
@@ -529,7 +533,7 @@ struct
 
     fun alloc_kill_gen1_tmp0_1(t:reg,n:int,size_ff,C) =
       if !inline_alloc then
-	if !do_garbage_collection then
+	if gc_p() then
 	  let 
 	    val _ = add_lib_function "__inline_allocate_gc"
 	    val l = new_local_lab "return_from_alloc"
@@ -775,7 +779,7 @@ struct
 	    val compile_sel = fn (i,C) => load_immed(IMMED i, mrp, C)                                     (* compile_sel            *)
 	    val if_not_equal_go_lab = fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=mrp,target=lab} :: C (* if_not_equal_go_lab    *)
 	  in
-	    if !jump_tables then
+	    if jump_tables then
 	      JumpTables.binary_search(sels,
 				       default,
 				       comment,
@@ -1760,7 +1764,7 @@ struct
 	val _ = add_static_data [DOT_IMPORT(exn_ptr_lab, "DATA"),
 				 DOT_IMPORT(exn_counter_lab,"DATA")]
 	val _ = 
-	  if !do_garbage_collection then
+	  if gc_p() then
 	    add_static_data [DOT_IMPORT(time_to_gc_lab,"DATA")]
 	  else
 	    ()
@@ -2078,7 +2082,7 @@ struct
 	  end
 
 	fun gc_stub C = (* tmp_reg1 must contain the register map and mrp the return address. *)
-	  if !do_garbage_collection then
+	  if gc_p() then
 	    let
 	      val _ = add_static_data [DOT_EXPORT(gc_stub_lab,"CODE")]	    
 	      fun push_all_regs C = 

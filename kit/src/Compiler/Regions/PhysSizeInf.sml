@@ -47,10 +47,7 @@ functor PhysSizeInf(structure Name : NAME
     * Dynamic flags
     * ----------------------------------------------------------------- *)
 
-    val print_program_points = ref false
-    val _ = Flags.add_flag_to_menu
-          (["Layout"], "print_program_points", "print program points",
-	   print_program_points)
+    val print_all_program_points = Flags.lookup_flag_entry "print_all_program_points"
 
     (* ----------------------------------------------------------------------
      * General Abbreviations and some utilities                                              
@@ -903,7 +900,7 @@ functor PhysSizeInf(structure Name : NAME
 
     fun layout_effectpp (effect, ~1) = E.layout_effect effect
       | layout_effectpp (effect, pp) =
-      if !print_program_points then
+      if !print_all_program_points then
 	PP.HNODE{start="",finish="",childsep=PP.RIGHT " ",
 		 children=[E.layout_effect effect, PP.LEAF ("pp"^Int.toString pp)]}
       else E.layout_effect effect

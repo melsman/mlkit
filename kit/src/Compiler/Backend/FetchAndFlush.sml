@@ -82,6 +82,12 @@ struct
     structure LS = LineStmt
     structure RA = RegAlloc
 
+    val _ = Flags.add_bool_entry
+      {long="print_fetch_and_flush_program", short=NONE, item=ref false, neg=false,
+       menu=["Printing of intermediate forms", "print program with fetch and flush (LineStmt)"],
+       desc="Print program with instructions for activation\n\
+	\record fetching and flushing."}
+
     fun lvset_difference(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.delete(set,lv)) lv_set lv_list
     fun lvset_add(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.add(set,lv)) lv_set lv_list
     fun lvset_delete(lv_set,lv_list) = foldr (fn (lv,set) => Lvarset.delete(set,lv)) lv_set lv_list

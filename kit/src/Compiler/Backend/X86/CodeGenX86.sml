@@ -75,12 +75,13 @@ struct
   (****************************************************************)
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("comments_in_x86_asmcode", "comments in x86 assembler code", ref false)]
+  val _ = Flags.add_bool_entry {long="comments_in_x86_asmcode", short=NONE, item=ref false,
+				menu=["Debug", "comments in x86 assembler code"], neg=false,
+				desc="Insert comments in x86 assembler code."}
 
-  val jump_tables = Flags.lookup_flag_entry "jump_tables"
+  val jump_tables = true
   val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x86_asmcode"
-  val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
+  val gc_p = Flags.is_on0 "garbage_collection"
 
   (**********************************
    * Some code generation utilities *
@@ -430,14 +431,14 @@ struct
     fun gen_bv (ws,C) =
       let fun gen_bv'([],C) = C
 	    | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_long ("0X"^Word32.fmt StringCvt.HEX w)::C)
-      in if !do_garbage_collection then gen_bv'(ws,C)
+      in if gc_p() then gen_bv'(ws,C)
 	 else C
       end
 
     (* reg_map is a register map describing live registers at entry to the function       *)
     (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
     fun do_gc(reg_map: Word32.word,size_ccf,size_rcf,C) =
-      if !do_garbage_collection then 
+      if gc_p() then 
 	let
 	  val l = new_local_lab "return_from_gc_stub"
 	  val reg_map_immed = "0X" ^ Word32.fmt StringCvt.HEX reg_map
@@ -705,7 +706,7 @@ struct
 	    fun if_less_than_go_lab (lab,C) = I.cmpl(R tmp_reg0,R opr_reg) :: I.jl lab :: C
 	    fun if_greater_than_go_lab (lab,C) = I.cmpl(R tmp_reg0,R opr_reg) :: I.jg lab :: C
 	  in
-	    if !jump_tables then
+	    if jump_tables then
 	      JumpTables.binary_search
 	      (sels,
 	       default,
@@ -1767,9 +1768,10 @@ val size_cc = size_rcf+size_ccf+1  (* 2001-01-08, Niels debug *)
         val next_prog_unit = Labels.new_named "next_prog_unit"
 	val progunit_labs = map MLFunLab linkinfos
 	val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
+(*
 val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data labels in the root set. ")
 val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
-
+*)
 	fun slot_for_datlab(l,C) =
 	  I.dot_globl (DatLab l) ::
 	  I.dot_data ::
@@ -1944,7 +1946,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  end
 
 	fun gc_stub C = (* tmp_reg1 must contain the register map and tmp_reg0 the return address. *)
-	  if !do_garbage_collection then
+	  if gc_p() then
 	    let
 	      fun push_all_regs C = 
 		foldr (fn (r, C) => I.pushl(R r) :: C) C all_regs
@@ -2011,7 +2013,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  end
 
 	fun init_stack_bot_gc C = 
-	  if !do_garbage_collection then  (* stack_bot_gc[0] = esp *)
+	  if gc_p() then  (* stack_bot_gc[0] = esp *)
 	    I.movl(R esp, L stack_bot_gc_lab) :: C
 	  else C
 

@@ -1228,20 +1228,8 @@ struct
       | mult("l",PhysSizeInf.WORDS n) = CE.LF
       | mult _ = die "mult: Wrong binding or phsize"
 
-    fun maybe_box_con (c as (CE.UB_NULLARY i)) = 
-      if !BI.unbox_datatypes then 
-	c
-      else 
-	CE.B_NULLARY i
-    | maybe_box_con (c as (CE.UB_UNARY i)) = 
-	if !BI.unbox_datatypes then 
-	  c
-	else 
-	  CE.B_UNARY i
-    | maybe_box_con c = c
-
     fun lookup_con env con = 
-      (case maybe_box_con(CE.lookupCon env con) of
+      (case CE.lookupCon env con of
 	 CE.ENUM i    => ENUM i
        | CE.UB_NULLARY i => UNBOXED i
        | CE.UB_UNARY i => UNBOXED i
@@ -1836,7 +1824,7 @@ struct
 	   | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 fun tag con = 
-		   (case maybe_box_con(CE.lookupCon env con) of
+		   (case CE.lookupCon env con of
 		      CE.ENUM i => 
 			if !BI.tag_values orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
@@ -2524,7 +2512,7 @@ struct
 	   | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 fun tag con = 
-		   (case maybe_box_con(CE.lookupCon env con) of
+		   (case CE.lookupCon env con of
 		      CE.ENUM i => 
 			if !BI.tag_values orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then

@@ -192,21 +192,22 @@ functor Compile(structure Excon : EXCON
       Flags.lookup_flag_entry "print_physical_size_inference_expression"
     val print_call_explicit_expression =
       Flags.lookup_flag_entry "print_call_explicit_expression"
+(*
     val print_program_points = Flags.lookup_flag_entry "print_program_points"
+*)
 
+(*
     val gc_flag              = Flags.lookup_flag_entry "garbage_collection"
     val tag_values_flag      = Flags.lookup_flag_entry "tag_values"
     val tag_integers_flag    = Flags.lookup_flag_entry "tag_integers"
-    val unbox_datatypes_flag = Flags.lookup_flag_entry "unbox_datatypes"
     fun set_tag_flags() =
       if !gc_flag  then
 	(tag_values_flag := true;
-	 tag_integers_flag := true;
-	 unbox_datatypes_flag := false)
+	 tag_integers_flag := true)
       else
 	(tag_values_flag := false;
-	 tag_integers_flag := false;
-	 unbox_datatypes_flag := true)
+	 tag_integers_flag := false)
+*)
 
     (* ---------------------------------------------------------------------- *)
     (*  Printing utilities                                                    *)
@@ -751,8 +752,10 @@ functor Compile(structure Excon : EXCON
     fun compile(CEnv, Basis, strdecs, vcg_file) : res =
       let
 
+(*
 	(* Make sure that tag flags are set appropriately. *)
 	val _ = set_tag_flags()
+*)
 
 	(* There is only space in the basis for one lambdastat-env.
 	 * If we want more checks, we should insert more components

@@ -13,13 +13,26 @@ struct
 
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
-  val add_entry = fn (s, s', r) => Flags.add_flag_to_menu (["Layout"], s, s', r)
+  fun add_entry (k, s, r, d) = 
+    Flags.add_bool_entry {long=k,short=NONE,item=r,neg=false,menu=["Layout",s],desc=d}
+
   val print_rho_levels = ref false
   val print_rho_types = ref false
-  val entries = [("print_rho_levels", "print levels of region variables", print_rho_levels),
-		 ("print_rho_types", "print runtime types of region variables", print_rho_types)]
-  val _ = app add_entry entries
-
+  val _ = app add_entry
+    [("print_rho_levels", "print levels of region variables", print_rho_levels,
+      "Print levels of region and effect variables in types and\n\
+       \intermediate forms. Levels control quantification of region\n\
+       \and effect variables."),
+      ("print_rho_types", "print runtime types of region variables", print_rho_types,
+       "Print region types of region variables in types and\n\
+	\intermediate forms. Possible region types are:\n\
+	\    w   type of regions containing only word values; these\n\
+	\        regions are dropped from the program because word\n\
+	\        values are represented unboxed.\n\
+	\    r   type of regions containing only reals.\n\
+	\    s   type of regions containing only strings.\n\
+	\    t   type of regions not containing word values, reals, or\n\
+	\        strings.")]
 
   type StringTree = PP.StringTree
   infix footnote

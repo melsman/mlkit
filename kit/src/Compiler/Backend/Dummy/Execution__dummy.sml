@@ -29,6 +29,9 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     structure CompileBasis = CompileBasisDummy(structure TyName = TyName
 					       structure PP = PP)
 
+    val backend_name = "Dummy"
+    val backend_longname = "Dummy (no output generated)"
+
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
     type strdec = TopdecGrammar.strdec

@@ -190,9 +190,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
     fun pr_st st = (PP.outputTree(print,st,100); print "\n")
 
-    fun debug_pr_msg (msg: string): unit =
-          if !Flags.DEBUG_ELABDEC then TextIO.output(TextIO.stdOut,msg) else ()
-
     fun getRepeatedElements equal ls =
           let
 	    fun NoOfOccurences x [] = 0
@@ -598,17 +595,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     and elab_exp(C : Context, exp : IG.exp) : 
         (Substitution * Type * OG.exp) =
       let
-        val _ =
-          if !Flags.DEBUG_ELABDEC then
-            pr("elab_exp: ", IG.layoutExp exp)
-          else ()
-
         val (S, ty, exp') = elab_exp'(C, exp)
-
-        val _ =
-          if !Flags.DEBUG_ELABDEC then
-            pr("giving:   ", Type.layout ty)
-          else ()
       in
         (S, ty, exp')
       end
@@ -814,7 +801,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 						       of SOME t => t::T
 							| NONE => impossible "elab_dec(DATATYPEdec)")
 			[] TE2)
-               val _ = debug_pr_msg "elab_dec(DATATYPEdec)"
              in
                (Substitution.Id, T, E.from_VE_and_TE (VE2, TE2),
                 OG.DATATYPEdec(addTypeInfo_TYENV (okConv i, TE2),
@@ -1179,11 +1165,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
 	    val out_i = okConv i
           in
-	    if !Flags.DEBUG_ELABDEC then
-	      pr ("RECvalbind: ", PP.NODE {start="{", finish="}", indent=0,
-					   children=[VE.layout VE''],
-					   childsep=PP.NOSEP})
-	    else () ;
 	    (S' oo S, VE'', OG.RECvalbind (out_i, valbind''))
           end
 
@@ -1649,26 +1630,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     and elab_pat (C : Context, pat : IG.pat)
       : (Substitution * (VarEnv * Type) * OG.pat) =
       let
-        val _ =
-          if !Flags.DEBUG_ELABDEC then
-            pr("elab_pat: ", IG.layoutPat pat)
-          else ()
-
         val (S, (VE, ty), pat') = elab_pat'(C, pat)
-
-        val _ =
-          if !Flags.DEBUG_ELABDEC then
-            let 
-              val t = PP.NODE{start="{", finish="}", indent=0,
-                              children=[VE.layout VE,
-                                        Type.layout ty
-                                       ],
-                              childsep=PP.RIGHT "; "
-                             }
-            in
-              pr("giving:   ", t)
-            end
-              else ()
       in
         (S, (VE, ty), pat')
       end
@@ -1845,7 +1807,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			 val (typeFcn, _) = TyStr.to_theta_and_VE tystr
 			 val expectedArity = TypeFcn.arity typeFcn
 			 val actualArity = length tau_list
-			 val _ = debug_pr_msg "elab_ty(CONty)"
 		       in
 			 if expectedArity = actualArity then
 			   (SOME(TypeFcn.apply (typeFcn, tau_list)),
@@ -1932,10 +1893,6 @@ let
     : OverloadingInfo.OverloadingInfo =
         let val tau' = S on tau
 	in
-	  if !Flags.DEBUG_ELABDEC then
-	    (pr("res: tv is: ", Type.layout tau);
-	     pr("res:  S on tv yields type: ", Type.layout tau'))
-	  else ();
 	  (case Type.to_TyVar tau' of
 	     NONE => (case tau_to_overloadinginfo tau'
 			of SOME res => res
@@ -1957,9 +1914,7 @@ let
 		     must be resolved to a default type.  And now someone has remembered
 		     to put this resolve into work by unifying the tyvar with
 		     the default type:*)
-		    (if !Flags.DEBUG_ELABDEC
-		     then TextIO.output (TextIO.stdOut, "res: SOME tv\n") else () ;
-		     (case Type.unify (default_type, tau') of
+		    ((case Type.unify (default_type, tau') of
 			Type.UnifyOk => ()
 		      | _ => () (*impossible "resolve_tau: unify" *) ) ;
 		     default)
@@ -1985,10 +1940,6 @@ let
 	  fun loop typ = 
 	        let val typ' = S on typ
 		in
-		  if !Flags.DEBUG_FLEXRECORDS then 
-		    (pr("flexrecres: typ = ", Type.layout typ);
-		     pr("flexrecres: typ' = ", Type.layout typ'))
-		  else ();
 		  if Type.eq (typ',typ) then typ else loop typ'
 		end
 	in

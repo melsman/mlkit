@@ -117,11 +117,17 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     structure Compile = BuildCompile.Compile
     structure CompilerEnv = BuildCompile.CompilerEnv
 
+    val backend_name = "KAM"
+
     (* Maybe create a file with all uo-files listed in order; we get the name 
      * of the file from the Flags variable uolistfile *)
     val kam_uolistfile = ref ""
-    val _ = Flags.add_string_to_menu(["Control"], "kam_uolistfile", 
-				     "KAM uo-list file", kam_uolistfile);
+
+    val _ = Flags.add_string_entry 
+      {long="kam_uolistfile", short=NONE, item=kam_uolistfile,
+       menu=["Control", "KAM uo-list file"], 
+       desc="File for listing the uo-files (KAM code files) that make\n\
+	\up the compiled program."}
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = BuildCompile.CompilerEnv.CEnv
@@ -188,7 +194,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 	  val os = TextIO.openOut run	    
       in
 (*	print ("[Creating file " ^ run ^ " begin ...]\n"); *)
-	TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/src/RuntimeWithGC/kam ");
+	TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
 	app (fn f => TextIO.output(os, f ^ " ")) files;
 	TextIO.closeOut os;
 	OS.Process.system "chmod a+x run";

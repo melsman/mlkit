@@ -28,6 +28,11 @@ functor LineStmt(structure PhysSizeInf : PHYS_SIZE_INF
 		 structure Crash : CRASH) : LINE_STMT = 
 struct
 
+  val _ = Flags.add_bool_entry
+    {long="print_linearised_program", short=NONE, item=ref false,neg=false,
+     menu=["Printing of intermediate forms", "print linearised program (LineStmt)"],
+     desc=""}
+
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con
@@ -499,7 +504,7 @@ struct
       PP.flatten1(layout_line_stmt' pr_sty pr_offset pr_aty simplify ls)
   end
 
-  val flow_var_flag = Flags.lookup_flag_entry "use_flow_variables"
+  val flow_var_flag = true
 
   (*************)
   (* Utilities *)
@@ -1182,7 +1187,7 @@ struct
       val _ = reset_flow_var_stat()
       val line_prg = L_clos_prg clos_prg	
       val line_prg_flow_var = 
-	if !flow_var_flag then
+	if flow_var_flag then
 	  FV_prg line_prg
 	else
 	  line_prg

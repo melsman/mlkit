@@ -267,8 +267,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      ^ (if equality then "''" else "'")
 	      ^ (case names of
 		   NAMES (L as ref L') =>
-		     if !Flags.DEBUG_TYVARS then boring
-		     else
 		       (let val {letter, ...} =
 			           List.first (fn {tv, ...} => tv = id) L'
 			in

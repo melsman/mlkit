@@ -28,6 +28,18 @@ struct
 
   structure LS = LineStmt
 
+  val _ = Flags.add_bool_entry
+    {long="print_register_allocated_program", short=NONE, item=ref false, neg=false,
+     menu=["Printing of intermediate forms", "print register allocated program (LineStmt)"],
+     desc=""}
+
+  val _ = Flags.add_bool_entry
+    {long="register_allocation", short=NONE, item=ref true, neg=true,
+     menu=["Control", "register allocation"],
+     desc="Perform register allocation. Without register allocation\n\
+      \enabled, programs run somewhat slower--but they run and you\n\
+      \save about 15 percent on compile time."}
+				  
   type lvarset = Lvarset.lvarset
   type place = Effect.place
   type excon = Excon.excon
@@ -75,7 +87,7 @@ struct
     | one_in_list _ = die "one_in_list: list has more than one element."
 
 
-  val export_ig_flag = Flags.lookup_flag_entry "export_ig_graph"
+  val export_ig_flag = false
 
   (*************************************************)
   (* Make Call Conventions Explicit at Call Points *)
@@ -1010,7 +1022,7 @@ struct
       end
   in
     fun export_ig filename =
-      if !export_ig_flag then
+      if export_ig_flag then
 	let
 	  val _ = reset_set()
 	  val stream = TextIO.openOut filename

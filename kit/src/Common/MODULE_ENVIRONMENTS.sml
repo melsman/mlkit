@@ -49,7 +49,8 @@ signature MODULE_ENVIRONMENTS =
                        (*F, functor environments*)
 
     eqtype absprjid  (* absolute project identifier *)
-    val absprjid_to_string: absprjid -> string
+    val lt_absprjid : absprjid * absprjid -> bool
+    val absprjid_to_string : absprjid -> string
     val mk_absprjid: string -> absprjid
     val strip_install_dir : absprjid -> absprjid
     val strip_install_dir' : absprjid * funid -> absprjid * funid

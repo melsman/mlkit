@@ -76,14 +76,20 @@ struct
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
 
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_kam_program", "print kam program", ref false)]
+  val _ = Flags.add_bool_entry 
+    {long="print_kam_program", short=NONE, item=ref false, neg=false,
+     menu=["Printing of intermediate forms", "print KAM program"],
+     desc="Print Kit Abstract Machine code."}
+				  
 
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("comments_in_kam_code", "comments in kam code", ref true)]
+  val _ = Flags.add_bool_entry 
+    {long="comments_in_kam_code", short=NONE, item=ref false, neg=false,
+     menu=["Printing of intermediate forms", "comments in KAM code"],
+     desc=""}
+				  
 
   val comments_in_kam_code = Flags.lookup_flag_entry "comments_in_kam_code"
-  val jump_tables = Flags.lookup_flag_entry "jump_tables"
+  val jump_tables = true
 
   (*************)
   (* Utilities *)
@@ -337,7 +343,7 @@ struct
 			if_greater_than_go_lab_sel: label * int * KamInst list -> KamInst list,
 			compile_insts: ClosExp.ClosExp * KamInst list -> KamInst list,
 			C) =
-	if !jump_tables then
+	if jump_tables then
 	  JumpTables.binary_search_new(sels,
 				       default,
 				       comment,
@@ -359,20 +365,10 @@ struct
 			compile_insts,
 			C)
     end
-
-(*    fun num_args_cc cc =
-      let
-	val decomp_cc = CallConv.decompose_cc cc
-      in
-	List.length (#reg_args(decomp_cc)) +
-	List.length (#args(decomp_cc))
-      end not used anyway 2000-10-15, Niels *)
     
-    local val smlserver : bool ref = Flags.lookup_flag_entry "smlserver"
-    in fun name_to_built_in_C_function_index name = 
-         if !smlserver then BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
-	 else BuiltInCFunctions.name_to_built_in_C_function_index name
-    end
+    fun name_to_built_in_C_function_index name = 
+      if !Flags.SMLserver then BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
+      else BuiltInCFunctions.name_to_built_in_C_function_index name
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp,acc)
@@ -803,7 +799,6 @@ struct
     let
       val _ = chat "[CodeGeneration for the KAM..."
 
-
       val exports_code = case main_lab_opt
 			   of SOME l => l :: exports_code
 			    | NONE => exports_code
@@ -828,14 +823,4 @@ struct
     in
       asm_prg
     end
-
-    (* ------------------------------------------------------------------------------ *)
-    (*              Generate Link Code for Incremental Compilation                    *)
-    (* ------------------------------------------------------------------------------ *)
-    fun generate_link_code (linkinfos:label list) = {top_decls=[], (* not done 05/10-2000, Niels *)
-						     main_lab_opt=NONE,
-						     imports_code=nil,
-						     imports_data=nil,
-						     exports_code=nil,
-						     exports_data=nil}
 end

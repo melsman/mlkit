@@ -76,13 +76,31 @@ functor ExecutionHPPA(BuildCompile : BUILD_COMPILE) : EXECUTION =
     structure Compile = BuildCompile.Compile
     structure CompilerEnv = BuildCompile.CompilerEnv
 
+    val backend_name = "HPPA"
+
     (****************************************************************)
     (* Add Dynamic Flags                                            *)
     (****************************************************************)
-    val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-      [("delay_slot_optimization", "Delay Slot Optimization", ref true)]
+
+    val _ = Flags.add_bool_entry
+      {long="delay_slot_optimization", short=NONE,item=ref true,neg=true,
+       menu=["Control", "delay slot optimization"], desc=""}
+
+    val _ = Flags.add_bool_entry
+       {long="delete_target_files", short=NONE, neg=true, item=ref true,
+	menu=["Debug", "delete target files"], 
+	desc="Delete assembler files produced by the compiler. If you\n\
+	 \disable this flag, you can inspect the assembler code\n\
+	 \produced by the compiler."}
+
     val dso_flag = Flags.lookup_flag_entry "delay_slot_optimization"
 
+    val _ = Flags.add_string_entry 
+      {long="clibs", short=NONE, item=ref "-lM",
+       menu=["Control", "clibs"],
+       desc="If you have added your own object files to a project, you\n\
+	\might also need to link with libraries other than\n\
+	\libM.so (\"-lM\")."}
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = BuildCompile.CompilerEnv.CEnv
@@ -136,11 +154,11 @@ functor ExecutionHPPA(BuildCompile : BUILD_COMPILE) : EXECUTION =
       (OS.Process.system command; ())
 (*      handle OS.SysErr(s,_) => die ("\nCommand " ^ command ^ "\nfailed (" ^ s ^ ");") *)
   
-    val c_libs = Flags.lookup_string_entry "c_libs"
+    val delete_target_files = Flags.lookup_flag_entry "delete_target_files"
+    val clibs = Flags.lookup_string_entry "clibs"
     fun assemble (file_s, file_o) =
       (execute_command (!(Flags.lookup_string_entry "c_compiler") ^ " -c -o " ^ file_o ^ " " ^ file_s);
-       if !(Flags.lookup_flag_entry "delete_target_files")
-	 then  delete_file file_s 
+       if !delete_target_files then delete_file file_s 
        else ())
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
@@ -158,7 +176,7 @@ functor ExecutionHPPA(BuildCompile : BUILD_COMPILE) : EXECUTION =
     fun link_files_with_runtime_system path_to_runtime files run =
       let val files = map (fn s => s ^ " ") files
 	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
-	    concat files ^ path_to_runtime() ^ " " ^ !(Flags.lookup_string_entry "c_libs")
+	    concat files ^ path_to_runtime() ^ " " ^ !clibs
       in execute_command shell_cmd;
 	TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")
       end 

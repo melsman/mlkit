@@ -145,23 +145,8 @@ functor IntModules(structure Name : NAME
      * directory; otherwise, we put target files into the
      * PM/NoProf/ directory.
      * ---------------------------------------------------- *)
-
-    local
-      val region_profiling = Flags.lookup_flag_entry "region_profiling"
-      val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
-    in 
-      fun pmdir() = 
-	if !region_profiling then 
-	  if !gc_flag then
-	    "PM/GCProf/" 
-	  else 
-	    "PM/Prof/"
-	else
-	  if !gc_flag then
-	    "PM/GC/" 
-	  else 
-	    "PM/NoProf/"
-    end
+   
+   val pmdir = ManagerObjects.pmdir
 
     (* ----------------------------------------------------
      * Compile a sequence of structure declarations
