@@ -86,11 +86,17 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
+	ln -s $(INSTDIR)/bin/mlkit $(INSTDIR)/bin/kit
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
 bootstrap:
 	$(INSTALL) -a test $(INSTDIR)/test
+	cd $(INSTDIR)/test; ln -s README testlink
+	cd $(INSTDIR)/test; ln -s testcycl testcycl
+	cd $(INSTDIR)/test; ln -s exists.not testbadl
+	cd $(INSTDIR)/test; echo -e 'hardlinkA' >> hardlinkA
+	cd $(INSTDIR)/test; ln hardlinkA hardlinkB
 	$(INSTALL) -a src $(INSTDIR)/src
 	cd $(INSTDIR)/src; make clean
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
@@ -99,42 +105,7 @@ bootstrap:
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
-	echo -e '# Some commands' >! $(INSTDIR)/Makefile
-	echo -e 'ARCH-OS=x86-linux' >> $(INSTDIR)/Makefile
-	echo -e 'MKDIR=mkdir -p' >> $(INSTDIR)/Makefile
-	echo -e 'INSTALL=cp -p' >> $(INSTDIR)/Makefile
-	echo -e '' >> $(INSTDIR)/Makefile
-	echo -e 'bootstrap:' >> $(INSTDIR)/Makefile
-	echo -e '	cd src; ../bin/mlkit -gc sources.pm' >> $(INSTDIR)/Makefile
-	echo -e '	$(MKDIR) $(INSTDIR2)' >> $(INSTDIR)/Makefile
-	echo -e '	$(MKDIR) $(INSTDIR2)/bin' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) bin/runtimeSystem.o $(INSTDIR2)/bin' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) bin/runtimeSystemGC.o $(INSTDIR2)/bin' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) bin/runtimeSystemGCProf.o $(INSTDIR2)/bin' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) bin/runtimeSystemProf.o $(INSTDIR2)/bin' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) bin/rp2ps $(INSTDIR2)/bin' >> $(INSTDIR2)/Makefile
-	echo -e '	$(INSTALL) src/run $(INSTDIR2)/bin/mlkit' >> $(INSTDIR2)/Makefile
-	echo -e '	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR2)/bin' >> $(INSTDIR)/Makefile
-	echo -e "	echo -e 'sml @SMLload=$(INSTDIR2)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR2)/bin/kittester" >> $(INSTDIR)/Makefile
-	echo -e '	chmod a+x $(INSTDIR2)/bin/kittester' >> $(INSTDIR)/Makefile
-
-	echo -e '	$(INSTALL) copyright $(INSTDIR2)' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) README $(INSTDIR2)' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) -R kitdemo $(INSTDIR2)/kitdemo ' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) -a test $(INSTDIR2)/test' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) -a src $(INSTDIR2)/src' >> $(INSTDIR)/Makefile
-	echo -e '	cd $(INSTDIR2)/src; make clean' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) -R ml-yacc-lib $(INSTDIR2)/ml-yacc-lib' >> $(INSTDIR)/Makefile
-	echo -e '	$(INSTALL) -R basislib $(INSTDIR2)/basislib' >> $(INSTDIR)/Makefile
-	echo -e '	chown -R `whoami`.`whoami` $(INSTDIR2)' >> $(INSTDIR)/Makefile
-	echo -e '	chmod -R ug+rw $(INSTDIR2)' >> $(INSTDIR)/Makefile
-	echo -e '	chmod -R o+r $(INSTDIR2)' >> $(INSTDIR)/Makefile
-	echo -e '	chmod a+x $(INSTDIR2)/bin/mlkit' >> $(INSTDIR)/Makefile
-	echo -e '' >> $(INSTDIR)/Makefile
-	echo -e 'all_test:' >> $(INSTDIR)/Makefile
-	echo -e '	cd test; ../bin/kittester ../bin/mlkit all.tst' >> $(INSTDIR)/Makefile
-	echo -e '' >> $(INSTDIR)/Makefile
-	echo -e 'all: all_test bootstrap' >> $(INSTDIR)/Makefile
+	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
 
 install_smlserver:
 	rm -rf $(INSTDIR_WEB)
