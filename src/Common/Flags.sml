@@ -990,7 +990,9 @@ in
 end
 
 val _ = Menu.add_int_list_to_menu ("", ["Profiling", "print program points"], program_points)
+(*
 val _ = Menu.add_int_pair_list_to_menu ("", ["Profiling", "paths between two nodes in region flow graph"], region_paths)
+*)
 
   (*6. Debug Kit*)
 
