@@ -140,7 +140,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
      one error tag per info:*)
 
     fun errorConv (i : ParseInfo, e : ErrorInfo.ErrorInfo) : ElabInfo =
-          ElabInfo.plus_ErrorInfo (okConv i) e 
+	  ElabInfo.plus_ErrorInfo (okConv i) e
 
     (*preOverloadingConv: as okConv, except it includes some
      OverloadingInfo:*)
@@ -320,47 +320,38 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       | initial_TE (IG.DATBIND(_, explicittyvars, tycon, _, Some datbind)) =
           TE.plus (TE.init explicittyvars tycon, initial_TE datbind)
 
-   (* addLabelInfo: given a RecType and a PATROW, populate the info fields
-      with LAB_INFO giving types for each label. This is needed by the compiler. 
-      The index of each label (also needed by the compiler) is here set to 0 (zero)
-      --- during overloading resolvations the indexes are corrected.
-      The label info must be added _during_ elaboration (it cannot simply be done 
-      when overloading is resolved) --- consider a patrow in a
-      val pat = exp; here the info is needed in pat to generalise the types recorded. 
-      The reason that the correct indexes are recorded later is that only when the
-      type is resolved (so that record variables have been turned into record types 
-      without record variables) do we know the correct index: consider
-      fn {2 = x, ...} => x; here we do not know the index of 2 until we have found
-      out what ... stands for (e.g., if it stands for { 1 = _ } the index of 2 should 
-      be 1 but if it stands for { 3 = _ } the index of 2 should be 0). 
+   (*addLabelInfo: given a RecType and a PATROW, populate the info fields
+    with LAB_INFO giving types for each label. This is needed by the
+    compiler.  The index of each label (also needed by the compiler) is here
+    set to 666 --- during overloading resolvations the indexes are corrected.
+    The label info must be added _during_ elaboration (it cannot simply be
+    done when overloading is resolved) --- consider a patrow in a val pat =
+    exp; here the info is needed in pat to generalise the types recorded.
+    The reason that the correct indexes are recorded later is that only when
+    the type is resolved (so that record variables have been turned into
+    record types without record variables) do we know the correct index:
+    consider fn {2 = x, ...} => x; here we do not know the index of 2 until
+    we have found out what ... stands for (e.g., if it stands for { 1 = _ }
+    the index of 2 should be 1 but if it stands for { 3 = _ } the index of 2
+    should be 0).
 
-      Thus addLabelIndexInfo below is used during resolvation to record correct indices.
-
-    *)
+    Thus addLabelIndexInfo below is used during resolvation to record correct
+    indices.*)
 
     fun addLabelInfo(recType, patrow) =
       let
-        val labtys = Type.RecType.to_list recType
-        val sortedLabs = map (#1) labtys
+        val lab_tau_s = Type.RecType.to_list recType
         fun f (OG.PATROW (i, lab, pat, patrow_opt)) =
-          (case ElabInfo.to_ErrorInfo i of
-            None => 
-              let
-                val index = where sortedLabs lab
-(*
-val _ = output(std_out,"ElabDec.addLabelInfo: index = " ^ Int.string index ^ "\n")
-val _ = pr("ElabDec.addLabelInfo: recType = ",
-           StatObject.layoutType (StatObject.mkTypeRecType recType))
-*)
-                val (_,tau) = List.nth index labtys 
-                              handle List.Subscript _ =>
-                                impossible "addLabelInfo"
-              in
-                OG.PATROW (addTypeInfo_LAB(i, index, tau),
-			   lab, pat, map_opt f patrow_opt)
-              end
-           | Some _ => OG.PATROW (i, lab, pat, patrow_opt))
-
+	      OG.PATROW ((case ElabInfo.to_ErrorInfo i of
+			    (*in the clauses below, if something is wrong, I assume
+			     it is because there was a type error, and simply refrain
+			     from annotating LAB_INFO:*)
+			    None =>
+			      ((case List.first (fn (lab', tau) => lab = lab') lab_tau_s of
+				  (lab', tau) => addTypeInfo_LAB (i, 666, tau))
+				  handle List.First _ => i)
+			  | Some _ => i),
+	                 lab, pat, map_opt f patrow_opt)
           | f (OG.DOTDOTDOT i) = OG.DOTDOTDOT i
       in
         f patrow
@@ -532,36 +523,22 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
             OG.DOTDOTDOT _ => patrow
           | OG.PATROW(i, l, pat, patrowOpt) =>
               OG.PATROW
-              (case ElabInfo.to_TypeInfo i of
-                 Some(TypeInfo.LAB_INFO{index, Type,...}) =>
-                   ElabInfo.plus_TypeInfo i 
-                   (TypeInfo.LAB_INFO{index=index,Type=Type,
-                                      tyvars=close_tau Type})
-               | _ => impossible "do_patrow: wrong type info",
-		   l,
-		   do_pat close_tau pat, map_opt (do_patrow close_tau) patrowOpt)
+              ((case ElabInfo.to_TypeInfo i of
+		  Some(TypeInfo.LAB_INFO{index, Type,...}) =>
+		    ElabInfo.plus_TypeInfo i 
+		    (TypeInfo.LAB_INFO{index=index,Type=Type,
+				       tyvars=close_tau Type})
+		| _ =>
+		    (*it is possible that there is no LAB_INFO: there may
+		     have been a "type" error, so instead of doing an `impossible',
+		     I return the info unchanged:*) i),
+		  l,
+		  do_pat close_tau pat, map_opt (do_patrow close_tau) patrowOpt)
 
       in
         do_valbind valbind
       end
 
-(*old
-    (*
-     * phi_on_dec phi dec :
-     *   applies the type realisation to the recorded type information in the 
-     * dec (used in connection with abstype declarations).
-     *)
-
-    fun phi_on_dec phi (dec: OG.dec) =
-      let fun phi_on_TypeInfo ti = TypeInfo.on_TypeInfo(phi,ti)
-          fun phi_on_Info i =
-	    (case ElabInfo.to_TypeInfo i of
-	       None => i
-	     | Some ti => ElabInfo.plus_TypeInfo i (phi_on_TypeInfo ti))
-      in
-        OG.map_dec_info phi_on_Info dec
-      end
-old*)
     
     (********************************************************)
     (*      Elaboration (type checking)                     *)
@@ -1755,10 +1732,8 @@ old*)
                      List.member lab (Type.RecType.sorted_labs rho)) of
                  (true, false) =>
                    (S' oo S,
-                    (VE.plus (VE, VE'),
-                     Type.RecType.add_field (lab, tau) rho
-                     ), OG.PATROW(okConv i, lab, out_pat, Some out_patrow)
-                    )
+                    (VE.plus (VE, VE'), Type.RecType.add_field (lab, tau) rho
+                     ), OG.PATROW(okConv i, lab, out_pat, Some out_patrow))
                | (true, true) => 
                    (Substitution.bogus,
                     (VE', rho),
@@ -1766,7 +1741,7 @@ old*)
                               lab, out_pat, Some out_patrow))
                | (false, false) =>
                    (Substitution.bogus,
-                    (VE', rho),
+                    (VE', Type.RecType.add_field (lab, tau) rho),
                     OG.PATROW(repeatedIdsError(i, 
                                   map ErrorInfo.ID_RID (EqSet.list intdom)),
                               lab, out_pat, Some out_patrow))
