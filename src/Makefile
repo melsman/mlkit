@@ -41,8 +41,8 @@ mlkit_kam: basics
 	chmod a+x $(BINDIR)/mlkit_kam
 
 smlserver: basics
-	cd SMLserver; $(MAKE)
 	cd RuntimeWithGC; $(MAKE) runtimeSystemKamNsSml.o
+	cd SMLserver; $(MAKE)
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_web.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit_web
