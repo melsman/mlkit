@@ -82,7 +82,7 @@ functor Lvars(structure Name : NAME
 
     val pu =
 	Pickle.hashConsEq eq
-	(Pickle.register [env_lvar,notused_lvar]
+	(Pickle.register "Lvars" [env_lvar,notused_lvar]
 	 let open Pickle
 	     fun to ((n,s,f),i,u) : lvar = 
 		 {name=n, str=s, free=f, inserted=i, use=u}

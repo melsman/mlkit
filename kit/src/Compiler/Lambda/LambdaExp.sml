@@ -1181,7 +1181,7 @@ functor LambdaExp(structure Lvars: LVARS
 	      | toInt (CONStype _) = 2
 	      | toInt (RECORDtype _) = 3
 	    val pu_TypeList : Type Pickle.pu -> Type list Pickle.pu = 
-		Pickle.cache listGen
+		Pickle.cache "list" listGen
 
 	    fun fun_TYVARtype _ = 
 		con1 TYVARtype (fn TYVARtype tv => tv | _ => die "pu_Type.TYVARtype")

@@ -785,6 +785,20 @@ struct
   fun set_pix_of_secondary_rhos rhos : unit= 
        List.app (fn rho => (E.pix rho := skey rho * ~10)) rhos
 
+  fun check_eff s e = 
+      let fun check_rho s r = (* mael 2004-10-19 *)
+	  let val k = E.key_of_eps_or_rho r
+	  in if k = 1 andalso not(E.eq_effect(E.toplevel_region_withtype_top,r)) then
+	      die ("check_eff: " ^ s)
+	     else ()
+	  end
+      in
+	  if E.is_put e orelse E.is_get e then
+	      check_rho (s ^ ".putget") (E.rho_of e)
+	  else if E.is_rho e then check_rho (s ^ ".rho") e
+	       else ()		  
+      end
+
 
   fun regEffClos(B: E.cone, B_0: int, phi: E.effect, tau: Type): 
                                     E.cone * sigma * string option =
@@ -811,8 +825,19 @@ struct
      (* make sure there is at most one generalisable secondary effect variable *)
      val reachable_nodes = E.subgraph annotations
 
+     val _ = app (check_eff "regEffClos2") reachable_nodes
+	 handle X =>
+	      let
+		  val _ = logsay("\nregEffClos enter, tau = ");
+		  val (lay_ty, _) = mk_layout false
+		  val _ = PP.outputTree(logsay,lay_ty tau,!Flags.colwidth)
+		  val _ = print ("\nphi = " ^ PP.flatten1(E.layout_effect_deep phi) ^ "\n")
+	      in raise X
+	      end
+
      val B_2 = unify_generic_secondary_epss(B_1,n,reachable_nodes, annotations)
 
+     val _ = app (check_eff "regEffClos3") reachable_nodes
      val subgraph = E.contract_effects annotations
                     (* nodes in "subgraph" are listed in bottom-up order, without
                        duplicates *)
@@ -1285,11 +1310,11 @@ struct
 
   (* Picklers *)
   val pu_mu : Type Pickle.pu -> (Type * place) Pickle.pu 
-      = Pickle.cache (fn pu_Type => Pickle.nameGen "RType.mu" 
-		      (Pickle.pairGen(pu_Type,E.pu_effect)))
+      = Pickle.cache "mu" (fn pu_Type => Pickle.nameGen "RType.mu" 
+			   (Pickle.pairGen(pu_Type,E.pu_effect)))
 
   val pu_mus : Type Pickle.pu -> (Type * place) list Pickle.pu
-      = Pickle.cache (Pickle.nameGen "RType.mus" o Pickle.listGen o pu_mu)
+      = Pickle.cache "mus" (Pickle.nameGen "RType.mus" o Pickle.listGen o pu_mu)
 
   val pu_Type =
       let open Pickle
@@ -1307,8 +1332,8 @@ struct
 	      con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
 	      (pu_mus pu_Type)
 	  fun fun_FUN pu_Type =
-	      con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
-	      (tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type))
+	      debugUnpickle "FUN" (con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
+	      (tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type)))
       in dataGen("RType.Type",toInt,[fun_TYVAR,fun_CONSTYPE,fun_RECORD,fun_FUN])
       end
   val pu_mu = pu_mu pu_Type
@@ -1316,7 +1341,7 @@ struct
   val pu_sigma =
       let open Pickle
       in convert (FORALL, fn FORALL a => a)
-	  (tup4Gen0(L.pu_tyvars,E.pu_effects,E.pu_effects,pu_Type))
+	  (tup4Gen0(L.pu_tyvars,E.pu_effects,E.pu_effects,debugUnpickle "Type" pu_Type))
       end
 
 end; (* RType ends here *)

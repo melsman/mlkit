@@ -150,7 +150,7 @@ functor TyName(
 
     val pu = 
 	Pickle.hashConsEq eq
-	(Pickle.register 
+	(Pickle.register "TyName"
 	 [tyName_BOOL,tyName_INT31,tyName_INT32,tyName_WORD8,tyName_WORD31,
 	  tyName_WORD32,tyName_REAL,tyName_STRING,tyName_CHAR,tyName_LIST,tyName_FRAG,
 	  tyName_REF,tyName_ARRAY,tyName_VECTOR,tyName_CHARARRAY,tyName_FOREIGNPTR,tyName_EXN]

@@ -93,9 +93,9 @@ struct
       let open Pickle
 	  val dummy : 'a ElementNode = EQR(dummy,ref 0) 
 	  val pu_Element : 'a ElementNode Pickle.pu -> 'a Element Pickle.pu 
-	      = cache (fn pu => let val pu = (*refEqGen eq dummy pu*) refGen dummy pu
-				in convert (fn a => find a, fn a => find a) pu
-				end)
+	      = cache "Element" (fn pu => let val pu = refEqGen eq_Elements dummy pu
+					  in convert (fn a => a, fn a => find a) pu
+					  end)
 	  fun toInt (EQR _) = 0
 	    | toInt (LINK _) = 1
 	  fun fun_EQR pu =

@@ -233,20 +233,25 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                                           children = map (layout_node layout_info) ns}]}
 
     (* Pickler *)
-    val pu_boolref = Pickle.refOneGen Pickle.bool
-    val pu_intref = Pickle.refOneGen Pickle.int
-
-    fun pu_node (maybeNewHashInfo: 'info -> int option) (dummy: 'info) (pu_info : 'info Pickle.pu) 
-	: 'info node Pickle.pu =
-	let open Pickle
+    local 
+	open Pickle
+	val pu_boolref = refOneGen bool
+	val pu_intref = refOneGen int
+    in
+	fun pu {maybeNewHashInfo: 'info -> int option,
+		dummy: 'info,
+		register: 'info node pu -> 'info node pu} (pu_info : 'info pu) 
+	    : 'info node pu * 'info node list pu =
+	let
 	    val dummy : 'info graphnode = GRAPHNODE{info=dummy, visited=ref false, 
 						    df_num=ref 0, out=nil}
 	    fun toInt (GRAPHNODE _) = 0
+
 	    val pu_node : 'info graphnode Pickle.pu -> 'info node Pickle.pu 
-		= cache (nameGen "DiGraph.node" o UF.pu dummy)
+		= cache "DiGraph.node" (register o nameGen "DiGraph.node" o UF.pu dummy)
 
 	    val pu_graph : 'info graphnode Pickle.pu -> 'info graph Pickle.pu 
-		= cache (nameGen "DiGraph.graph" o listGen o pu_node)
+		= cache "DiGraph.graph" (nameGen "DiGraph.graph" o listGen o pu_node)
 
 	    val pu_graphnode =
 		let
@@ -260,8 +265,9 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 		in
 		    dataGen("DiGraph.graphnode",toInt,[fun_GRAPHNODE])
 		end
-	in pu_node pu_graphnode
+	in (pu_node pu_graphnode, pu_graph pu_graphnode)
 	end
+    end
 
     end (* abstype *)
 

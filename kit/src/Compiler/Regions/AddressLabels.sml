@@ -47,10 +47,11 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
 
     val pu =
 	Pickle.hashConsEq eq
-	(Pickle.register [reg_top_lab,reg_bot_lab,reg_string_lab,
-			  reg_pair_lab,reg_array_lab,reg_ref_lab,
-			  reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
-			  exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
+	(Pickle.register "AddressLabels"
+	 [reg_top_lab,reg_bot_lab,reg_string_lab,
+	  reg_pair_lab,reg_array_lab,reg_ref_lab,
+	  reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
+	  exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
 	 let open Pickle
 	 in newHash (#1 o Name.key o #1)
 	     (pairGen(Name.pu,string))

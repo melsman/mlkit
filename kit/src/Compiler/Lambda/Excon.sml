@@ -37,7 +37,7 @@ functor Excon(structure Name : NAME
 
     val pu = 
 	Pickle.hashConsEq eq
-	(Pickle.register [ex_DIV, ex_MATCH, ex_BIND, 
+	(Pickle.register "Excon" [ex_DIV, ex_MATCH, ex_BIND, 
 			  ex_OVERFLOW, ex_INTERRUPT]
 	 let open Pickle
 	     fun to (s,n) : excon = {str=s,name=n}

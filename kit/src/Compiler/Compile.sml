@@ -24,9 +24,9 @@ functor Compile(structure Excon : EXCON
 		  sharing SpreadExp.E' = RegionExp
                   sharing type SpreadExp.place = Effect.effect = SpreadExp.RegionStatEnv.effectvar
                   sharing type SpreadExp.cone = Effect.cone = SpreadExp.RegionStatEnv.cone
-		  sharing type SpreadExp.RegionStatEnv.TypeAndPlaceScheme = RegionExp.sigma
+		  sharing type SpreadExp.RegionStatEnv.TypeAndPlaceScheme = RegionExp.sigma = RType.sigma
 		  sharing type SpreadExp.RegionStatEnv.excon = RegionExp.excon
-		  sharing type SpreadExp.RegionStatEnv.lvar = RegionExp.lvar
+		  sharing type SpreadExp.RegionStatEnv.lvar = RegionExp.lvar = Lvars.lvar
 		  sharing type SpreadExp.RegionStatEnv.place = RegionExp.place
 		  sharing type SpreadExp.RegionStatEnv.Type = RegionExp.Type
 
@@ -377,7 +377,10 @@ functor Compile(structure Excon : EXCON
          (*Profile.reset();
          Profile.profileOn();*)
          let 
-	   val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
+(*	     val _ = display ("Region static environment 0",SpreadExp.RegionStatEnv.layout rse) *)
+	     val effects_rse = SpreadExp.RegionStatEnv.FoldLvar (fn ((lv,(_,_,s,r,_,_)),acc) => if Lvars.pr_lvar lv = "revAcc" then r :: RType.frv_sigma s @ acc else acc) nil rse
+(*	     val _ = out_layer (Effect.layoutEtas effects_rse) *)
+	     val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
          in 
 	   Timing.timing_end("SpreadExp");
 	   chat "]\n";
@@ -408,6 +411,13 @@ functor Compile(structure Excon : EXCON
 	val _ = if !profRegInf.b then (Compiler.Profile.reset(); Compiler.Profile.setTimingMode true) else ()
 *)
         val rse_with_con = SpreadExp.RegionStatEnv.plus(rse,rse_con)
+(*
+	val _ = display ("Region static environment 0",SpreadExp.RegionStatEnv.layout(rse_with_con))
+	val effects_rse0 = SpreadExp.RegionStatEnv.FoldLvar (fn ((lv,(_,_,s,r,_,_)),acc) => if Lvars.pr_lvar lv = "revAcc" then r :: RType.frv_sigma s @ acc else acc) nil rse_with_con
+	val _ = print ("Checking effects; size = " ^ Int.toString(List.length effects_rse0) ^ "\n")
+	val _ = out_layer (Effect.layoutEtas effects_rse0)
+	val _ = Effect.check_effects "Compile" effects_rse0
+*)
 (*	val _ = print "RegInf.inferEffects ... \n" *)
         val cone = RegInf.inferEffects
                    (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log)))
@@ -465,11 +475,8 @@ functor Compile(structure Excon : EXCON
 
 	       end handle _ => die "cannot form rse'")
 	     | _ => die "program does not have type frame"
-(*
-        val _ = print "rhos_epss_rse' :\n"
+
 	val (rhos_rse',epss_rse') = SpreadExp.RegionStatEnv.places_effectvarsRSE rse'
-        val _ = out_layer(Effect.layoutEtas (rhos_rse' @ epss_rse'))
-*)
 (*
 	val _ =
 	  if !profRegInf.b then

@@ -147,7 +147,7 @@ struct
   type place = effect
   val empty = G.mk_node (UNION{represents = NONE})
 
-  fun eq_effect(node1, node2) = G.eq_nodes(G.find node1,G.find node2)
+  fun eq_effect(node1, node2) = G.eq_nodes(node1,node2)
 
   fun layout_effect e = G.layout_node layout_einfo (G.find e)
   fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [G.find(e)]
@@ -162,7 +162,6 @@ struct
      case G.find_info effect of
 	 EPS _ => true
        | _ => false
-
 
   fun is_union(UNION _) = true
     | is_union _ = false
@@ -244,11 +243,18 @@ struct
      | RHO{level, key,...} => SOME(!level)
      | _ => NONE
 
+  fun rho_of node = 
+      case G.out_of_node node of 
+	  [rho_node] => rho_node 
+	| _ => die "rho_of"
+        
   fun edge(from,to) = G.mk_edge(from,to);
 
   fun mkRho(level, key) = 
+      (if key=1 then print "mkRho with key 1\n" else ();
        G.mk_node(RHO{key = ref key, level = ref level, 
                      put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = BOT_RT})
+	   )
   
   fun mkPut(n: effect) = (* n must represent a region variable*)
       let val n = G.find n
@@ -286,7 +292,7 @@ struct
       let (* val _ = case l of nil => print ("Effect.mkUnion: empty list!!!\n") | _ => () *)
           val new = G.mk_node(UNION{represents=NONE})
       in
-          app (fn n => G.mk_edge(new, G.find n)) l;
+          app (fn n => G.mk_edge(new, n)) l;
           new
       end
 
@@ -653,7 +659,7 @@ struct
 
   fun rename_rhos_aux(rhos, c: cone as (n,_), f, g) : effect list * cone =
       foldr (fn (rho,(rhos',c)) =>
-                  case G.find_info(G.find rho) of
+                  case G.find_info rho of
                     RHO{level,pix,ty,...} =>
                      let val k = freshInt()
                          val new_rho = 
@@ -786,7 +792,7 @@ struct
         val puts = map mkPut toplevel_rhos
         val gets = map mkGet toplevel_rhos
 	val puts_and_gets = puts@gets
-    in app (fn to => edge(find toplevel_arreff,find to)) puts_and_gets
+    in app (fn to => edge(toplevel_arreff,to)) puts_and_gets
 	; puts_and_gets
     end
 
@@ -832,29 +838,44 @@ struct
 	| RHO {key=ref k,...} => SOME k
 	| EPS {key=ref k,...} => SOME k
 
-  val pu_node : einfo Pickle.pu -> einfo G.node Pickle.pu
-      = Pickle.cache (Pickle.nameGen "effect" o
-		      (Pickle.registerEq eq_effect 
-		       (fn e => 
-			case get_level_and_key e of 
-			    SOME (_,ref i) => if i <> 0 then i else die "pu_node"
-			  | NONE => 0  (* could be optimized! *) ) 
-		       (toplevel_effects@toplevel_puts_and_gets) 
-		       o G.pu_node maybeNewHashInfo PUT))
-
-  val pu_nodes : einfo Pickle.pu -> einfo G.node list Pickle.pu
-      = Pickle.cache (Pickle.nameGen "Effect.nodes" o Pickle.listGen o pu_node)
-
-  val pu_represents : einfo Pickle.pu -> einfo G.node list option Pickle.pu
-      = Pickle.cache (Pickle.nameGen "Effect.represents" o Pickle.optionGen o pu_nodes)
-
-  val pu_nodeopt : einfo Pickle.pu -> einfo G.node option Pickle.pu
-      = Pickle.cache (Pickle.optionGen o pu_node)
-
+  val pu_node_nodes : einfo Pickle.pu -> einfo G.node Pickle.pu * einfo G.node list Pickle.pu =
+      let 
 (*
-  val pu_instance : einfo Pickle.pu -> einfo G.node option ref Pickle.pu 
-      = Pickle.cache (Pickle.nameGen "Effect.instance" o Pickle.refGen NONE o pu_nodeopt)
+	  fun eq_eff (e1,e2) = 
+	      let fun check_eq is_kind key = 
+		    is_kind e1 andalso is_kind e2 andalso key e1 = key e2 
+	      in check_eq is_rho key_of_rho 
+		  orelse check_eq is_put (key_of_rho o rho_of)
+		  orelse check_eq is_get (key_of_rho o rho_of)
+		  orelse check_eq is_arrow_effect get_key_of_eps
+	      end
 *)
+	  fun key_effect e = 
+	      case get_level_and_key e of 
+		  SOME (_,ref i) => if i <> 0 then i else die "pu_node"
+		| NONE => 0  (* could be optimized! *)
+(*
+	  fun checkRho1 e = 
+	      case get_level_and_key e of
+		  SOME(_,ref k) => (if k = 1 then
+					(if not(eq_effect(toplevel_region_withtype_top,e)) then die "checkRho1"
+					 else ())
+				    else ())
+		| NONE => ()
+*)
+      in Pickle.cache2 "Effect.node_nodes" 
+	  (G.pu {maybeNewHashInfo=maybeNewHashInfo,dummy=PUT,
+		 register=Pickle.registerEq eq_effect key_effect "pu_node" (toplevel_effects@toplevel_puts_and_gets)})
+      end
+
+  val pu_represents : einfo Pickle.pu -> einfo G.node list option Pickle.pu =      
+      Pickle.cache "Effect.rep" 
+      (Pickle.nameGen "Effect.represents" o Pickle.optionGen o #2 o pu_node_nodes)
+
+  val pu_nodeopt : einfo Pickle.pu -> einfo G.node option Pickle.pu = 
+      Pickle.cache "Effect.nodeopt" 
+      (Pickle.optionGen o #1 o pu_node_nodes)
+
   val pu_einfo =
       let open Pickle
 	  fun toInt (EPS _) = 0
@@ -893,9 +914,7 @@ struct
 				       fun_WORDEFFECT, fun_RHO])
       end
 
-  val pu_effect  : effect Pickle.pu = pu_node pu_einfo
-  val pu_effects : effect list Pickle.pu = Pickle.nameGen "Effect.effects" (pu_nodes pu_einfo)
-
+  val (pu_effect, pu_effects) = pu_node_nodes pu_einfo
 
 (* Tracing Cone Layers (for profiling)
 
@@ -1134,41 +1153,48 @@ tracing *)
 		  | NONE => ()
 	     else (); einfo2)
        | _ => die "einfo_combine_eps"
- 
-  fun einfo_combine_rho(einfo1, einfo2) =  (* assume einfo1 and einfo2 
-					    * have the same level *)
-    case (einfo1, einfo2) 
-      of (RHO{level = l1, put = p1, get = g1,key=k1,instance=instance1, pix = pix1,ty = t1}, 
-	  RHO{level=l2,put=p2,get=g2,key=k2, instance = instance2, pix = pix2, ty = t2}) =>
-       if !k1 <> !k2 andalso (!k1 < 9 andalso !k2 < 9) 
-          orelse !k1 = 3 andalso t2<>BOT_RT
-          orelse !k2 = 3 andalso t1<>BOT_RT
-         then 
-         die ("illegal unification involving global region(s) " ^ 
-	      Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
-       else
-	RHO{level = l1, put = aux_combine(k1,k2,p1,p2), 
-	    get = aux_combine(k1,k2,g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
-	| _ => die "einfo_combine_rho"
-  and aux_combine(k1,k2,op1,op2) =
-    case (op1,op2) of
-      (NONE,NONE) => op1
-    | (SOME _, NONE) => op1
-    | (NONE, SOME _) => op2
-    | (SOME n1, SOME n2) => 
-         (* n1 and n2 are supposed to be either both PUT nodes 
-            or both GET nodes *)
-         (* The resulting node (a PUT/GET) will have only one out-edge,
-            namely to the region variable which n1 points to *)
-	SOME(G.union_left (fn (a,b) =>
-		      case (a,b)
-			of (WORDEFFECT,_) => WORDEFFECT    (* see comment by freshRhoWithWordTy above *)
-			 | (_,WORDEFFECT) => WORDEFFECT
-			 | (PUT,PUT) => a
-			 | (GET,GET) => a
-			 | _ => die ("aux_combine: (a,b) = (" ^ PP.flatten1 (layout_einfo a) ^ ", " ^
-				     PP.flatten1 (layout_einfo b) ^ ")\n"))
-	     (G.find n1, G.find n2))
+
+  local
+      val largest_toplevel_effect_key = 9
+      fun aux_combine(op1,op2) =
+	  case (op1,op2) of
+	      (NONE,NONE) => op1
+	    | (SOME _, NONE) => op1
+	    | (NONE, SOME _) => op2
+	    | (SOME n1, SOME n2) => 
+		  (* n1 and n2 are supposed to be either both PUT nodes 
+		   or both GET nodes *)
+		  (* The resulting node (a PUT/GET) will have only one out-edge,
+		   namely to the region variable which n1 points to *)
+		  SOME(G.union_left 
+		       (fn (a,b) =>
+			case (a,b) of 
+			    (WORDEFFECT,_) => WORDEFFECT    (* see comment by freshRhoWithWordTy above *)
+			  | (_,WORDEFFECT) => WORDEFFECT
+			  | (PUT,PUT) => a
+			  | (GET,GET) => a
+			  | _ => die ("aux_combine: (a,b) = (" ^ PP.flatten1 (layout_einfo a) ^ ", " ^
+				      PP.flatten1 (layout_einfo b) ^ ")\n"))
+		       (n1, n2))
+  in
+      fun einfo_combine_rho(einfo1, einfo2) =  (* assume einfo1 and einfo2 
+						* have the same level *)
+	  case (einfo1, einfo2) of 
+	      (RHO{level=l1,put=p1,get=g1,key=k1,instance=instance1,pix=pix1,ty=t1}, 
+	       RHO{level=l2,put=p2,get=g2,key=k2,instance=instance2,pix=pix2,ty=t2}) =>
+	      if !k1 <> !k2 andalso (!k1 < largest_toplevel_effect_key 
+				     andalso !k2 < largest_toplevel_effect_key) 
+		  orelse !k1 = 3 andalso t2<>BOT_RT
+		  orelse !k2 = 3 andalso t1<>BOT_RT
+		  then 
+		      die ("illegal unification involving global region(s) " ^ 
+			   Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
+	      else
+		  RHO{level = l1, put = aux_combine(p1,p2), 
+		      get = aux_combine(g1,g2), key =min_key(k1,k2), 
+		      instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
+	     | _ => die "einfo_combine_rho"
+  end
 
   fun mkSameLevel(node1, node2) (cone) : cone = 
        (* node1 and node2 must both be either EPS nodes or RHO nodes *)
@@ -1523,8 +1549,10 @@ tracing *)
   fun subgraph(l) = G.nodes(G.subgraph(l))
 
   fun contract_effects (arreffs: effect list): effect list  =
-      G.nodes(G.quotient layout_einfo einfo_scc_combine (G.subgraph arreffs));
-
+      let val sg = G.subgraph arreffs
+	  val effs = G.nodes(G.quotient layout_einfo einfo_scc_combine sg);
+      in effs
+      end
 
   fun topsort x = G.topsort x
 
@@ -1588,11 +1616,11 @@ tracing *)
   fun unify_with_toplevel_effect effect : unit =
     let 
       fun union_with(toplevel_rho) : unit =
-	if G.eq_nodes(G.find toplevel_rho,G.find effect) then ()
-	else (G.union einfo_combine_rho (G.find toplevel_rho,G.find effect);())
+	if G.eq_nodes(toplevel_rho,effect) then ()
+	else (G.union einfo_combine_rho (toplevel_rho,effect);())
     in (*say_etas[layout_effect effect] (*test*);*)
       if is_arrow_effect effect then
-	if G.eq_nodes(G.find toplevel_arreff,G.find effect) then ()
+	if G.eq_nodes(toplevel_arreff,effect) then ()
 	else (
 	      (*
 	       print "unifying with toplevel_arreff:";
@@ -1601,9 +1629,8 @@ tracing *)
 	       print "\n";
 	       *)
 	      G.union_without_edge_duplication 
-	      (einfo_combine_eps(G.find toplevel_arreff,G.find effect))
-	      is_union
-	      (G.find toplevel_arreff,G.find effect);
+	        (einfo_combine_eps(toplevel_arreff,effect))
+	        is_union (toplevel_arreff,effect);
 	      (*
 	       print "toplevel_arreff, effect :";
 	       say_eps toplevel_arreff;
@@ -1661,10 +1688,6 @@ tracing *)
   fun key_of_get_or_put node = case G.out_of_node node of
       [rho_node] => key_of_rho rho_node
       | _ => die "key_of_get_or_put"
-
-  fun rho_of node = case G.out_of_node node of [rho_node] => rho_node | _ => die "rho_of"
-        
-      
 
   exception AE_LT
 

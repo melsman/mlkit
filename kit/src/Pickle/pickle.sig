@@ -64,12 +64,13 @@ signature PICKLE =
     val convert   : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
     val convert0  : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
 
-    val cache     : ('a -> 'b pu) -> 'a -> 'b pu
+    val cache     : string -> ('a -> 'b pu) -> 'a -> 'b pu
+    val cache2    : string -> ('a -> 'b pu * 'c pu) -> 'a -> 'b pu * 'c pu
 
-    val register  : 'a list -> 'a pu -> 'a pu
+    val register  : string -> 'a list -> 'a pu -> 'a pu
 
     val registerEq: ('a*'a->bool) -> ('a->int) 
-                     -> 'a list -> 'a pu -> 'a pu
+	            -> string -> 'a list -> 'a pu -> 'a pu
 
     val hashCons  : 'a pu -> 'a pu
     val hashConsEq: ('a*'a->bool) -> 'a pu -> 'a pu
@@ -81,6 +82,8 @@ signature PICKLE =
     val debug     : string -> 'a pu -> 'a pu
     val nameGen   : string -> 'a pu -> 'a pu
     val comment   : string -> 'a pu -> 'a pu
+    val checkUnpickle : ('a -> unit) -> 'a pu -> 'a pu
+    val debugUnpickle : string -> 'a pu -> 'a pu
   end
 
 (*
