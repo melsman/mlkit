@@ -63,7 +63,8 @@ void releaseHeap(Heap *h);
 // the heap status to be HSTAT_UNINITIALIZED. 
 void initializeHeap(Heap *h, int *sp, int *exnPtr);
 
-// [deleteHeap(h)] deletes the heap by freeing it.
+// [deleteHeap(h)] deletes the heap by freeing it. Also frees region
+// pages in the regions in the heap.
 void deleteHeap(Heap *h);
 
 #endif
