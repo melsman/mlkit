@@ -9,6 +9,9 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 		): LEX_UTILS =
   struct
     open LexBasics Token
+    fun impossible s = Crash.impossible ("LexUtils." ^ s)
+    fun noSome None s = impossible s
+      | noSome (Some x) s = x
 
     datatype LexArgument = LEX_ARGUMENT of {sourceReader: SourceReader,
 					    stringChars: string list,
@@ -24,7 +27,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	fun glue(".", y :: ys) = (* "." :: *) glue(y, ys)
 	  | glue(x, "." :: ys) = x :: glue(".", ys)
 	  | glue(x, y :: ys) = glue(x ^ y, ys)
-	  | glue(".", nil) = Crash.impossible "asQualId.glue"
+	  | glue(".", nil) = impossible "asQualId.glue"
 	  | glue(x, nil) = [x]
       in
 	glue("", explode text)
@@ -48,114 +51,75 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	of "*" :: _ => true
 	 | _ => false			(* We can't get nil (or [_]). *)
 
-    fun asDigit text = ord text - ord "0"
-
     local
-      fun accumInt(sign, n, xs) =
-	case xs
-	  of "~" :: xs' => accumInt(~1, n,xs')
-	   | "." :: _ => (sign , n, xs)
-	   | "E" :: _ => (sign , n, xs)
-	   | x :: xs' => accumInt( sign, n * 10 + asDigit x, xs')
-	   | nil => (sign , n , nil)
+      fun chars_to_int ("~" :: chars) = ~1 * chars_to_posint chars
+	| chars_to_int chars = chars_to_posint chars
+      and chars_to_posint ("0" :: "x" :: chars) =
+	    chars_to_posint_in_base 16 chars
+	| chars_to_posint chars = chars_to_posint_in_base 10 chars
+      and chars_to_posint_in_base base chars =
+	    chars_to_posint_in_base0 base 0 chars
+      and chars_to_posint_in_base0 base n [] = n
+	| chars_to_posint_in_base0 base n (char :: chars) =
+	    (case char_to_int_opt base char of
+	       Some i => chars_to_posint_in_base0 base (n * base + i) chars
+	     | None => n)
+      and char_to_int_opt base char =
+	    let val i = if StringType.isUpper char then ord char - ord "A" + 10
+			else if StringType.isLower char then ord char - ord "a" + 10
+			     else if StringType.isDigit char then ord char - ord "0"
+				  else ~1 (*hack*)
+	    in 
+	      if i>=0 andalso i<base then Some i else None
+	    end handle _ => None
+      fun char_to_int base char =
+	    noSome (char_to_int_opt base char) "char_to_int"
 
-      fun accumDec(mul, n, xs) =
-	case xs
-	  of "E" :: _ => (n, xs)
-	   | x :: xs' => accumDec(mul/10.0, n + mul * real(asDigit x), xs')
-	   | nil => (n, nil)
+      fun accumDec (mul, n, xs) =
+	    (case xs of
+	       "E" :: _ => (n, xs)
+	     | x :: xs' => accumDec (mul/10.0, n + mul * real (char_to_int 10 x), xs')
+	     | nil => (n, nil))
 
-      fun integer_from_list (chars: string list) = 
-        let val (sign, n, _) = accumInt(1, 0,chars)
-        in sign * n
-        end
+      (*accumReal looks very much like accumInt (now chars_to_int) looked,
+       but you must use accumReal, as int's haven't got the sufficient
+       precision to convert the int part of a real.*)
 
-      fun accumReal(sign, r, xs) =
-	case xs
-	  of "~" :: xs' => accumReal(~1, r, xs')
-	   | "." :: _ => (sign , r, xs)
-	   | "E" :: _ => (sign , r, xs)
-	   | x :: xs' => accumReal( sign, r * 10.0 + real(asDigit x), xs')
-	   | nil => (sign, r, nil)
+      fun accumReal (sign, r, xs) =
+	    (case xs of
+	       "~" :: xs' => accumReal(~1, r, xs')
+	     | "." :: _ => (sign , r, xs)
+	     | "E" :: _ => (sign , r, xs)
+	     | x :: xs' => accumReal (sign, r * 10.0 + real (char_to_int 10 x), xs')
+	     | nil => (sign, r, nil))
+
+      fun asWord0 ("0" :: "w" :: "x" :: chars) =
+	    chars_to_posint_in_base 16 chars 
+	| asWord0 ("0" :: "w" :: chars) = chars_to_posint_in_base 10 chars
+	| asWord0 _ = impossible "asWord0"
     in
-      fun asInteger text = integer_from_list (explode text)
-
-      (* 31/10/1995-Martin: new; the old couldn't handle 2147483647.0 *)
+      val asInteger = chars_to_int o explode
+      val asWord = asWord0 o explode
+      val chars_to_posint_in_base = chars_to_posint_in_base
+      (*31/10/1995-Martin: new; the old couldn't handle 2147483647.0:
+       (because it used accumInt instead of accumReal)*)
       fun asReal text =
 	let
-
-(*debug
-	  val _ = print ("real: " ^  text ^ "\n") 
-debug*)
-
           val ln10 = ln(10.0)
 	  val (sign, intPart_as_real, rest) = accumReal(1, 0.0, explode text)
+	  val (decPart, rest') = (case rest of
+				    "." :: xs => accumDec (0.1, 0.0, xs)
+				  | _ => (0.0, rest))
 
-(*debug
-	  val _ = BasicIO.println("[intPart=" ^ Real.string intPart_as_real ^ "]")
-	  val _ = BasicIO.println("[rest=" ^ implode rest ^ "]")
-debug*)
-
-	  val (decPart, rest') =
-	    case rest
-	      of "." :: xs => accumDec(0.1, 0.0,xs)
-	       | _ => (0.0, rest)
-
-(*debug
-	  val _ = BasicIO.println("[decPart=" ^ Real.string decPart ^ "]")
-	  val _ = BasicIO.println("[rest'=" ^ implode rest' ^ "]")
-debug*)
-
-	  val expPart: int =  (* the exponent part, if present, orelse 0 *)
-          case rest' of 
-               "E" :: xs => integer_from_list xs
-	     | _ => 0
-
-(*debug
-	  val _ = BasicIO.println("[expPart=" ^ Int.string expPart ^ "]")
-debug*)
-
+	  (* the exponent part, if present, orelse 0 *)
+	  val expPart : int = (case rest' of 
+				 "E" :: xs => chars_to_int xs
+			       | _ => 0)
 	  fun E(x, y) = x * exp(y*ln10)
 	in
           real(sign)*E(intPart_as_real + decPart, real expPart)
-	end handle _ => Crash.impossible("cannot make real constant out of string:" ^ text)
-
-(*old
-      fun asReal text =
-	let
-	  val _ = print ("real: " ^  text ^ "\n") 
-          val ln10 = ln(10.0)
-	  val (sign, intPart, rest) = accumInt(1, 0, explode text)
-
-	  val _ = BasicIO.println("[intPart=" ^ Int.string intPart ^ "]")
-	  val _ = BasicIO.println("[rest=" ^ implode rest ^ "]")
-
-
-	  val (decPart, rest') =
-	    case rest
-	      of "." :: xs => accumDec(0.1, 0.0,xs)
-	       | _ => (0.0, rest)
-
-
-	  val _ = BasicIO.println("[decPart=" ^ Real.string decPart ^ "]")
-	  val _ = BasicIO.println("[rest'=" ^ implode rest' ^ "]")
-
-
-	  val expPart: int =  (* the exponent part, if present, orelse 0 *)
-          case rest' of 
-               "E" :: xs => integer_from_list xs
-	     | _ => 0
-
-
-	  val _ = BasicIO.println("[expPart=" ^ Int.string expPart ^ "]")
-
-
-	  fun E(x, y) = x * exp(y*ln10)
-	in
-          real(sign)*E(real intPart + decPart, real expPart)
-	end handle _ => Crash.impossible("cannot make real constant out of string:" ^ text)
-old*)
-    end
+	end handle _ => impossible ("asReal: cannot make real constant out of: " ^ text)
+    end (*local*)
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,
 					    stringChars=nil,
@@ -176,20 +140,33 @@ old*)
     fun addControlChar text arg =
       addChars (chr(ord(String.nth 1 text) - ord "@")) arg
 
-    fun addAsciiChar (pos, text) arg =
-      let
-	val ascii =
-	  case explode text
-	    of ["\\", c1, c2, c3] =>
-		 asDigit c1 * 100 + asDigit c2 * 10 + asDigit c3
-	     | _ =>
-		 Crash.impossible "addAsciiChar"
-      in
-	if ascii > 255 then
-	  raise LexBasics.LEXICAL_ERROR(pos, "bad ASCII escape: " ^ text)
-	else
-	  addChars (chr ascii) arg
-      end
+    fun asDigit text = ord text - ord "0"
+
+    local
+      fun add_numbered_char (pos, text) arg limit n =
+	    if n > limit then
+	      raise LexBasics.LEXICAL_ERROR
+		      (pos, "ASCII escape " ^ text ^ " must be < " ^ Int.string limit)
+	    else
+	      addChars (chr n) arg
+    in
+      fun addAsciiChar (pos, text) arg =
+	    add_numbered_char (pos, text) arg 255
+	      (case explode text of
+		 ["\\", c1, c2, c3] =>
+		   chars_to_posint_in_base 10 [c1, c2, c3]
+	       | _ => impossible "addAsciiChar")
+
+      (*indtil videre, `addUnicodeChar' will only allow `unicode' chars in
+       the range [0; 255].  20/06/1997 18:53. tho.*)
+
+      fun addUnicodeChar (pos, text) arg =
+	    add_numbered_char (pos, text) arg 255
+	      (case explode text of
+		 ["\\", "u", c1, c2, c3, c4] =>
+		   chars_to_posint_in_base 16 [c1, c2, c3, c4]
+	       | _ => impossible "addUnicodeChar")
+    end (*local*)
 
     fun asString(LEX_ARGUMENT{stringChars, ...}) = implode(rev stringChars)
 

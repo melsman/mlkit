@@ -20,6 +20,7 @@ signature LEX_UTILS =
     val asQualId: string -> string list
     val asDigit: string -> int
     val asInteger: string -> int
+    val asWord: string -> int
     val asReal: string -> real
 
     val initArg: SourceReader -> LexArgument
@@ -29,6 +30,7 @@ signature LEX_UTILS =
     val addChars: string -> LexArgument -> LexArgument
     val addControlChar: string -> LexArgument -> LexArgument
     val addAsciiChar: (pos * string) -> LexArgument -> LexArgument
+    val addUnicodeChar: (pos * string) -> LexArgument -> LexArgument
 
     val asString: LexArgument -> string
 
