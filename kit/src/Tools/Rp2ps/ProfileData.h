@@ -11,14 +11,6 @@
 			  exit(-1); \
 		        }}\
 
-
-/* remember to change these in Runtime/Region.h as well !!!!!!!!!!!!!! */
-
-#define MAX_REGIONS_TO_PROFILE 200000    /* maximal number of region variables in
-                                            region-annotated lambda term (the source) */
-#define MAX_ALLOCATION_POINTS 20000     /* maximal number of allocation points in the
-					    region annotated lambda term. */
-
 typedef struct objectList {
   int atId;                /* Allocation point identifier. */
   int size;                /* Size of object in bytes. */
@@ -47,16 +39,16 @@ typedef struct tickList {
 
 extern TickList * firstTick;           /* Pointer to data for the first tick. */
 extern TickList * lastTick;            /* Pointer to data for the last tick. */
-extern RegionList * regionHashTable[]; /* Used as hash table into a region list. */
-extern ObjectList * objectHashTable[]; /* Used as hash table into an object list. */
 
-/*extern int profTab[];*/ /* Table containing statistics about regions. */
-#define NoOfPages 0
-#define MaxNoOfPages 1
-#define NoOfInstances 2
-#define MaxNoOfInstances 3
-#define AllocNow 4
-#define MaxAlloc 5
+/* Entries in hash table for region ids */
+typedef struct profTabList {
+  int regionId;
+  int maxAlloc;
+  struct profTabList * next;
+} ProfTabList;
+
+#define profHashTabSize 3881
+extern ProfTabList * profHashTab[];
 
 extern int maxRegions;    /* max. number of allocated words in regions. */
 extern int maxInstances;  /* max. number of instances.       */

@@ -150,7 +150,7 @@ functor AtInf(structure Lvars: LVARS
      then
         PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have requested resetting the regions that appear free ",
-                      PP.LEAF ("in the region type scheme of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
+                      PP.LEAF ("in the region type scheme and place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p),
                       PP.LEAF "I have done as you requested, but I cannot guarantee that it is safe.",
                       PP.LEAF "Here are my objections (one for each region variable concerned):"]}                 
@@ -158,7 +158,7 @@ functor AtInf(structure Lvars: LVARS
   else 
         PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have suggested resetting the regions that appear free ",
-                      PP.LEAF ("in the region type scheme of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
+                      PP.LEAF ("in the region type scheme and place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p)]}                 
 
 

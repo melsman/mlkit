@@ -28,6 +28,10 @@ TO BE FIXED BY: FAXE?
 
 WAIT
 
+What should the effect of the flag `print_regions' be? I guess that if
+print_regions is disabled then pretty printing of MulExp should look
+like LambdaExp?
+ 
 Implement some kind of project reuse; it currently takes too long for
 the manager to find out that the code for the basis library can be
 reused. The problem is that the result basis for the basis library

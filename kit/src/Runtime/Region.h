@@ -266,6 +266,7 @@ extern unsigned int callsOfDeallocateRegionInf,
 extern Ro * topRegion;
 extern FiniteRegionDesc * topFiniteRegion;
 
+/*
 extern int profTab[MAX_REGIONS_TO_PROFILE][6];
 #define NoOfPages 0
 #define MaxNoOfPages 1
@@ -273,6 +274,7 @@ extern int profTab[MAX_REGIONS_TO_PROFILE][6];
 #define MaxNoOfInstances 3
 #define AllocNow 4
 #define MaxAlloc 5
+*/
 
 /* Profiling functions. */
 int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId);

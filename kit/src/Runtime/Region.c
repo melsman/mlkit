@@ -13,7 +13,7 @@ Ro * topRegion;
 
 #ifdef PROFILING
 FiniteRegionDesc * topFiniteRegion = NULL;
-int profTab[MAX_REGIONS_TO_PROFILE][6]; /* Table containing statistics about regions. */
+
 unsigned int callsOfDeallocateRegionInf=0,
              callsOfDeallocateRegionFin=0,
              callsOfAlloc=0,
@@ -246,9 +246,9 @@ int *deallocateRegion()
     printf("RegionId %d too large in DeallocateRegion. Change constant MAX_REGIONS_TO_PROFILE in file Runtime.h\n", topRegion->regionId);
     exit(-1);
   }
-  profTab[topRegion->regionId][NoOfPages] -= i;
-  profTab[topRegion->regionId][NoOfInstances] --;
-  profTab[topRegion->regionId][AllocNow] -= topRegion->allocNow;
+  profTabSetNoOfPages(topRegion->regionId, profTabGetNoOfPages(topRegion->regionId) - i);
+  profTabSetNoOfInstances(topRegion->regionId, profTabGetNoOfInstances(topRegion->regionId) - 1);
+  profTabSetAllocNow(topRegion->regionId, profTabGetAllocNow(topRegion->regionId) - (topRegion->allocNow));
 #endif
 
   sp = (int *) topRegion; /* topRegion points at the bottom of the region description on the stack. */
@@ -353,11 +353,8 @@ void alloc_new_block(Ro *rp)
   } */
 #endif
 #ifdef PROFILING
-  if (rp->regionId >= MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in alloc_new_block. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", rp->regionId, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
-  }
-  profTab[rp->regionId][MaxNoOfPages] = max(++(profTab[rp->regionId][NoOfPages]), profTab[rp->regionId][MaxNoOfPages]);
+  if (profTabGetNoOfPages(rp->regionId) >= profTabGetMaxNoOfPages(rp->regionId))
+    profTabSetMaxNoOfPages(rp->regionId, profTabGetNoOfPages(rp->regionId)+1); 
   maxNoOfPages = max(++noOfPages, maxNoOfPages);
 #endif
 
@@ -439,8 +436,10 @@ int *alloc (int rAddr, int n)
     printf("RegionId %d too large in alloc(%d). Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", rp->regionId, n,MAX_REGIONS_TO_PROFILE);
     exit(-1);
   }
-  profTab[rp->regionId][AllocNow] += n-sizeObjectDesc;
-  profTab[rp->regionId][MaxAlloc] = max(profTab[rp->regionId][AllocNow], profTab[rp->regionId][MaxAlloc]);
+  profTabSetAllocNow(rp->regionId, profTabGetAllocNow(rp->regionId) + (n-sizeObjectDesc));
+  if (profTabGetAllocNow(rp->regionId) > profTabGetMaxAlloc(rp->regionId))
+    profTabSetMaxAlloc(rp->regionId, profTabGetAllocNow(rp->regionId));
+
 #if DEBUG_ALLOC
     printf("Region descriptor at address (leave): %0x, fp: %0x, b: %0x, a: %0x, p: %0x, allocNow: %d, allocProfNow: %d, regionId: %d.\n",
     rp,(rp->fp),(rp->b),(rp->a),(rp->p), (rp->allocNow),(rp->allocProfNow),(rp->regionId));
@@ -525,10 +524,10 @@ void resetRegion(int rAdr)
   }
   if (j) { /* We have to check that there are at least one page. */
     noOfPages -= j-1;
-    profTab[rp->regionId][NoOfPages] -= j-1;
+    profTabSetNoOfPages(rp->regionId, profTabGetNoOfPages(rp->regionId) - (j-1));
   }
   allocNowInf -= rp->allocNow;
-  profTab[rp->regionId][AllocNow] -= rp->allocNow;
+  profTabSetAllocNow(rp->regionId, profTabGetAllocNow(rp->regionId) - (rp->allocNow));
   allocProfNowInf -= rp->allocProfNow;
 #endif
 
@@ -644,13 +643,11 @@ int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId)
   
   callsOfAllocateRegionInf++;
   maxNoOfPages = max(++noOfPages, maxNoOfPages);
-  if (regionId > MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in allocRegionInfiniteProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", regionId, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
-  }
-  profTab[regionId][MaxNoOfPages] = max(++profTab[regionId][NoOfPages], profTab[regionId][MaxNoOfPages]);
+  if (profTabGetNoOfPages(regionId) >= profTabGetMaxNoOfPages(regionId))
+    profTabSetMaxNoOfPages(regionId, profTabGetNoOfPages(regionId) + 1); 
   maxNoOfInstances = max(++noOfInstances, maxNoOfInstances);
-  profTab[regionId][MaxNoOfInstances] = max(++profTab[regionId][NoOfInstances], profTab[regionId][MaxNoOfInstances]);
+  if (profTabGetNoOfInstances(regionId) >= profTabGetMaxNoOfInstances(regionId))
+    profTabSetMaxNoOfInstances(regionId, profTabGetNoOfInstances(regionId) + 1); 
 
   regionDescUseInf += (sizeRo-sizeRoProf);
   maxRegionDescUseInf = max(maxRegionDescUseInf,regionDescUseInf);
@@ -719,7 +716,8 @@ void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId,
     printf("RegionId %d too large in allocRegionFiniteProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", regionId, MAX_REGIONS_TO_PROFILE);
     exit(-1);
   }
-  profTab[regionId][MaxNoOfInstances] = max(++profTab[regionId][NoOfInstances], profTab[regionId][MaxNoOfInstances]);
+  if (profTabGetNoOfInstances(regionId) >= profTabGetMaxNoOfInstances(regionId))
+    profTabSetMaxNoOfInstances(regionId, profTabGetNoOfInstances(regionId) + 1);
 
   allocNowFin += size; 
   maxAllocFin = max(allocNowFin, maxAllocFin);
@@ -730,8 +728,9 @@ void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId,
     maxAllocProfFin = allocProfNowFin;
     maxRegionDescUseProfFin = regionDescUseProfFin;
   }
-  profTab[regionId][AllocNow] += size;
-  profTab[regionId][MaxAlloc] = max(profTab[regionId][AllocNow], profTab[regionId][MaxAlloc]);
+  profTabSetAllocNow(regionId, profTabGetAllocNow(regionId) + size);
+  if (profTabGetAllocNow(regionId) > profTabGetMaxAlloc(regionId))
+    profTabSetMaxAlloc(regionId, profTabGetAllocNow(regionId));
 
   rdAddr->p = topFiniteRegion; /* link to previous region description on stack */
   rdAddr->regionId = regionId; /* Put name on region in descriptor. */
@@ -765,10 +764,12 @@ int *deallocRegionFiniteProfiling(void)
     printf("RegionId %d too large in deallocRegionFiniteProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", topFiniteRegion->regionId, MAX_REGIONS_TO_PROFILE);
     exit(-1);
   }
-  profTab[topFiniteRegion->regionId][NoOfInstances] --;
+  profTabSetNoOfInstances(topFiniteRegion->regionId, profTabGetNoOfInstances(topFiniteRegion->regionId) - 1);
     
   allocNowFin -= ((ObjectDesc *) (topFiniteRegion + 1))->size; 
-  profTab[topFiniteRegion->regionId][AllocNow] -= ((ObjectDesc *) (topFiniteRegion + 1))->size;
+  profTabSetAllocNow(topFiniteRegion->regionId, profTabGetAllocNow(topFiniteRegion->regionId) 
+		     - (((ObjectDesc *) (topFiniteRegion + 1))->size));
+
   allocProfNowFin -= sizeObjectDesc;
   regionDescUseProfFin -= sizeFiniteRegionDesc;
 
@@ -925,8 +926,9 @@ int *updateSizeForDoublesProfiling(int size, int *doublePtr) {
     printf("RegionId %d too large in updateSizeForDoublesProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", regionId, MAX_REGIONS_TO_PROFILE);
     exit(-1);
   }
-  profTab[regionId][AllocNow] += size;
-  profTab[regionId][MaxAlloc] = max(profTab[regionId][AllocNow], profTab[regionId][MaxAlloc]);
+  profTabSetAllocNow(regionId,profTabGetAllocNow(regionId) + size);
+  if (profTabGetAllocNow(regionId) > profTabGetMaxAlloc(regionId))
+    profTabSetMaxAlloc(regionId, profTabGetAllocNow(regionId));
 
   return doublePtr;
 
