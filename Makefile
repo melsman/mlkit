@@ -5,6 +5,7 @@ ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
 INSTDIR=/usr/share/mlkit
 INSTDIR_KAM=/usr/share/mlkit_kam
+INSTDIR_BARRY=/usr/share/barry
 INSTDIR_SMLSERVER=/usr/share/smlserver
 RPMDIR=/usr/src/rpm
 #RPMDIR=/usr/src/redhat
@@ -179,6 +180,29 @@ install_kam:
 	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
 	rm -f /usr/bin/mlkit_kam
 	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
+
+install_barry:
+	rm -rf $(INSTDIR_BARRY)
+	$(MKDIR) $(INSTDIR_BARRY)
+	$(MKDIR) $(INSTDIR_BARRY)/bin
+	$(MKDIR) $(INSTDIR_BARRY)/doc
+	$(INSTALL) bin/barry.$(ARCH-OS) $(INSTDIR_BARRY)/bin
+	$(INSTALL) copyright $(INSTDIR_BARRY)
+	$(INSTALL) README $(INSTDIR_BARRY)
+	$(INSTALL) README_BARRY $(INSTDIR_BARRY)
+	$(INSTALL) -R kitdemo $(INSTDIR_BARRY)/kitdemo 
+	$(INSTALL) -R ml-yacc-lib $(INSTDIR_BARRY)/ml-yacc-lib
+	$(INSTALL) -R basislib $(INSTDIR_BARRY)/basislib
+	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_BARRY)/doc
+	chown -R `whoami`.`whoami` $(INSTDIR_BARRY)
+	chmod -R ug+rw $(INSTDIR_BARRY)
+	chmod -R o+r $(INSTDIR_BARRY)
+
+	echo '#!/bin/sh' > $(INSTDIR_BARRY)/bin/barry
+	echo -e '$(INSTDIR_BARRY)/bin/barry.$(ARCH-OS) $(INSTDIR_BARRY) $$*' >> $(INSTDIR_BARRY)/bin/barry
+	chmod a+x $(INSTDIR_BARRY)/bin/barry
+	rm -f /usr/bin/barry
+	cp -f -p $(INSTDIR_BARRY)/bin/barry /usr/bin/barry
 
 install_smlserver:
 	rm -rf $(INSTDIR_SMLSERVER)
