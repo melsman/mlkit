@@ -48,5 +48,5 @@ structure ScsError :> SCS_ERROR =
     fun wrapPanic f a = f a 
       handle Fail s => panic (`Fail raised: ^s`)
 	| X => panic(`wrapPanic: some error happended: ^(General.exnMessage X)`)
-      
+
   end

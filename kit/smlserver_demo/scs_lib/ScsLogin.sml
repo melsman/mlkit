@@ -91,7 +91,15 @@ structure ScsLogin :> SCS_LOGIN =
 	        | SOME s => Ns.Set.list s)),
              ("msg",Quot.toString msg)]
 	in
-	  (Ns.returnRedirect target_url;
+	  (Ns.write 
+`HTTP/1.0 302 Found
+Location: ^target_url
+MIME-Version: 1.0
+^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
+^(Ns.Cookie.deleteCookie{name="auth_person_id",path=SOME "/"})
+
+You should not be seeing this!`;
+(*Ns.returnRedirect target_url; 2003-03-10, nh*)
 	   Ns.exit())
 	end
     in

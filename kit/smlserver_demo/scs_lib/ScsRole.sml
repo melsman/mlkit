@@ -9,7 +9,7 @@ signature SCS_ROLE =
       SiteAdm
     | StudAdm
     | OaAdm
-    | SupervisorAdm
+    | UcsPbSupervisorAdm  (* Created in ucs-pb-supervisor-lists-initialdata-create.sql *)
     | UcsEbEventEditor    (* Created in ucs-events-initialdata-create.sql *)
     | ScsPersonAdm        (* Created in scs-users-initialdata-create.sql *)
     | Other of string
@@ -44,7 +44,7 @@ structure ScsRole :> SCS_ROLE =
       SiteAdm
     | StudAdm
     | OaAdm
-    | SupervisorAdm
+    | UcsPbSupervisorAdm
     | UcsEbEventEditor
     | ScsPersonAdm
     | Other of string
@@ -53,7 +53,7 @@ structure ScsRole :> SCS_ROLE =
       case str of
         "SiteAdm" => SiteAdm
       | "StudAdm" => StudAdm
-      | "VejlederAdm" => SupervisorAdm
+      | "UcsPbVejlederAdm" => UcsPbSupervisorAdm
       | "OaAdm" => OaAdm
       | "UcsEbEventEditor" => UcsEbEventEditor
       | "ScsPersonAdm" => ScsPersonAdm
@@ -66,7 +66,7 @@ structure ScsRole :> SCS_ROLE =
         SiteAdm => "SiteAdm"
       | StudAdm => "StudAdm"
       | OaAdm   => "OaAdm"
-      | SupervisorAdm => "VejlederAdm"
+      | UcsPbSupervisorAdm => "UcsPbVejlederAdm"
       | UcsEbEventEditor => "UcsEbEventEditor"
       | ScsPersonAdm => "ScsPersonAdm"
       | Other s => s
