@@ -1,10 +1,12 @@
 import ../lib/lib.pm
 in
   local
+../sys/begin.sml
        ../demo_lib/Page.sml
        ../demo_lib/FormVar.sml
        ../demo_lib/Auth.sml
        ../demo_lib/RatingUtil.sml
+../sys/end.sml
   in 
     [
      (* SMLserver System Files *)
