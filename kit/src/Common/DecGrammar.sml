@@ -465,6 +465,16 @@ struct
     | find_topmost_id_in_atpat _ = None
 
 
+  (*is_'true'_'nil'_etc & is_'it' are used to enforce some syntactic
+   restrictions (Definition, §2.9 & §3.5).*)
+
+  val idset_'true'_'nil'_etc =
+	EqSet.fromList [Ident.id_TRUE, Ident.id_FALSE, Ident.id_NIL,
+			Ident.id_CONS, Ident.id_REF]
+  fun is_'true'_'nil'_etc id = EqSet.member id idset_'true'_'nil'_etc
+  fun is_'it' id = id = Ident.id_IT
+
+
   local open PrettyPrint
   in
     type StringTree = StringTree
