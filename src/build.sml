@@ -120,7 +120,9 @@ fun build_kam () =
 
 (*      ; disable "jump_tables" *)
 
+    KitKAM.Flags.lookup_string_entry "kam_uolistfile" := "basislib.ul";
     KitKAM.build_basislib() ;
+    KitKAM.Flags.lookup_string_entry "kam_uolistfile" := "";
 
 (*    enable "print_kam_program" ;*)
 (*    enable "print_lift_conv_program";*)
@@ -128,7 +130,6 @@ fun build_kam () =
 (*    KitKAM.comp "../test_dev/real_problem.sml"*)
 
     KitKAM.install() 
-
   end;
 
 val _ = build_kam()
