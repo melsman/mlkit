@@ -42,8 +42,6 @@ struct
 
   val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
-  val untagged_pairs : unit -> bool = fn _ => false
-
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeCO = SubstAndSimplify.StoreTypeCO
@@ -89,6 +87,11 @@ struct
   val jump_tables = true
   val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x86_asmcode"
   val gc_p = Flags.is_on0 "garbage_collection"
+  val _ = Flags.add_bool_entry {long="tag_free_pairs_gc", short=NONE, item=ref false,
+				menu=["Control", "tag free garbage collection of pairs"], neg=true,
+				desc="Tag free collection of pairs when garbage collection\n\
+				\is enabled."}
+  val tag_free_pairs_gc_p = Flags.is_on0 "tag_free_pairs_gc"
 
   (**********************************
    * Some code generation utilities *
@@ -126,9 +129,9 @@ struct
     val stack_bot_gc_lab = NameLab "stack_bot_gc" (* Declared in GC.c *)
     val gc_stub_lab = NameLab "__gc_stub"
     val global_region_labs = 
-      [(Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_top, BI.toplevel_region_withtype_top_lab),
-       (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_string, BI.toplevel_region_withtype_string_lab),
-       (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_pair, BI.toplevel_region_withtype_pair_lab)]
+      [(Effect.toplevel_region_withtype_top, BI.toplevel_region_withtype_top_lab),
+       (Effect.toplevel_region_withtype_string, BI.toplevel_region_withtype_string_lab),
+       (Effect.toplevel_region_withtype_pair, BI.toplevel_region_withtype_pair_lab)]
 
     (* Labels Local To This Compilation Unit *)
     fun new_local_lab name = LocalLab (Labels.new_named name)
@@ -453,6 +456,18 @@ struct
       else 
 	I.fstpl (D("0",base_reg)) :: C
 
+
+    (* When tag free collection of pairs is enabled, a bit is stored in the
+     * region descriptor if the region is an infinite region holding pairs. Here we
+     * arrange that special C functions for allocating regions are called for 
+     * regions containing pairs; these C functions then take care of setting the appropriate 
+     * bit - mael 2002-10-14 *)
+
+    fun pair_region_special (place:Effect.place) : bool =
+	BI.tag_values() andalso tag_free_pairs_gc_p()
+	andalso (case Effect.get_place_ty place
+		 of SOME Effect.PAIR_RT => true | _ => false)
+			   
 
     (***********************)
     (* Calling C Functions *)
@@ -1746,7 +1761,7 @@ struct
 		    | LS.RECORD{elems=[],alloc,tag} => 
 		     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
 		    | LS.RECORD{elems,alloc,tag} =>
-		  (*  if BI.tag_values() andalso List.length elems = 2 andalso untagged_pairs() then
+		  (*  if BI.tag_values() andalso List.length elems = 2 andalso tag_free_pairs_gc_p() then
 			 let 
 			     (* Explanation of how we deal with untagged pairs in the presence
 			      * of garbage collection and tagging of values in general 
@@ -2055,6 +2070,7 @@ struct
 		  comment ("LETREGION",
 		  let 
 		    fun key place = mkIntAty (Effect.key_of_eps_or_rho place)
+
 		    fun alloc_region_prim(((place,phsize),offset),C) =
   	  	      if region_profiling() then
 		        case phsize
@@ -2074,19 +2090,28 @@ struct
 						    mkIntAty i], NONE,
 						   size_ff,tmp_reg0(*not used*),C))
 			    end
-			   | LineStmt.INF => 
+			   | LineStmt.INF =>
+			    let val name = if pair_region_special(place)
+					       then "allocPairRegionInfiniteProfilingMaybeUnTag"
+					   else "allocRegionInfiniteProfilingMaybeUnTag"
+			    in
 			    base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
-		              compile_c_call_prim("allocRegionInfiniteProfilingMaybeUnTag",
+		              compile_c_call_prim(name,
 						  [SS.PHREG_ATY tmp_reg1, 
 						   key place], NONE,
 						  size_ff,tmp_reg0(*not used*),C))
+			    end
 		      else
 		        case phsize
 			  of LineStmt.WORDS i => C  (* finite region; no code generated *)
 			   | LineStmt.INF => 
-			    base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
-		              compile_c_call_prim("allocateRegion",[SS.PHREG_ATY tmp_reg1],NONE,
-						size_ff,tmp_reg0(*not used*),C))
+			      let val name = if pair_region_special(place) then "allocatePairRegion"
+					     else "allocateRegion"
+			      in
+				  base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
+				    compile_c_call_prim(name,[SS.PHREG_ATY tmp_reg1],NONE,
+						      size_ff,tmp_reg0(*not used*),C))
+			      end
 		    fun dealloc_region_prim (((place,phsize),offset),C) = 
 		      if region_profiling() then
 		        case phsize
@@ -2550,13 +2575,33 @@ struct
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
       | CG_top_decl(LS.FN(lab,cc,lss)) = CG_top_decl' I.FN (lab,cc,lss)
 
+    local
+	fun data_x_progunit_lab x l = NameLab(Labels.pr_label l ^ "_data_" ^ x)
+	fun data_x_lab x (l:label, C) =
+	    if gc_p() then
+		let val lab = data_x_progunit_lab x l
+		in I.dot_globl lab ::
+		    I.lab lab :: C
+		end
+	    else C
+    in	
+	fun data_begin_progunit_lab (MLFunLab l) = data_x_progunit_lab "begin" l
+	  | data_begin_progunit_lab _ = die "data_begin_progunit_lab"
+	fun data_begin_lab a = data_x_lab "begin" a
+	fun data_end_progunit_lab (MLFunLab l) = data_x_progunit_lab "end" l
+	  | data_end_progunit_lab _ = die "data_end_progunit_lab"
+	fun data_end_lab a = data_x_lab "end" a
+    end
+
     (***************************************************)
     (* Init Code and Static Data for this program unit *)
     (***************************************************)
-    fun static_data() = 
+    fun static_data(l:label) = 
       I.dot_data :: 
       comment ("START OF STATIC DATA AREA",
-      get_static_data (comment ("END OF STATIC DATA AREA",nil)))
+      data_begin_lab (l,
+      get_static_data (data_end_lab(l,
+      comment ("END OF STATIC DATA AREA",nil)))))
 
     fun init_x86_code() = [I.dot_text]
   in
@@ -2573,7 +2618,7 @@ struct
 	val _ = add_static_data (map (fn lab => I.dot_globl(DatLab lab)) (#2 exports)) 
 	val x86_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
 		       init_code = init_x86_code(),
-		       static_data = static_data()}
+		       static_data = static_data main_lab}
 	val _ = chat "]\n"
       in
 	x86_prg
@@ -2799,6 +2844,38 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    end
 	  else C
 
+	val data_begin_init_lab = NameLab "data_begin_init_lab"
+	val data_end_init_lab = NameLab "data_end_init_lab"
+	val data_begin_addr = NameLab "data_begin_addr"
+	val data_end_addr = NameLab "data_end_addr"
+	fun generate_data_begin_end(progunit_labs,C) =
+	    if gc_p() then 
+		let 
+		    fun comp (l,C) =
+			let val begin_punit_lab = data_begin_progunit_lab l
+			    val end_punit_lab = data_end_progunit_lab l
+			    val lbelow = new_local_lab "lbelow"
+			    val labove = new_local_lab "labove"
+			in
+			    I.cmpl(LA begin_punit_lab, R tmp_reg0) ::
+			    I.jb lbelow ::
+			    I.movl(LA begin_punit_lab, R tmp_reg0) ::
+			    I.lab lbelow ::
+			    I.cmpl(LA end_punit_lab, R tmp_reg1) ::
+			    I.ja labove ::
+			    I.movl(LA end_punit_lab, R tmp_reg1) ::
+			    I.lab labove ::
+			    C
+			end
+		in
+		    I.movl (LA data_begin_init_lab, R tmp_reg0) ::
+		    I.movl (LA data_end_init_lab, R tmp_reg1) ::
+		    foldl comp (I.movl (R tmp_reg0, L data_begin_addr) ::
+				I.movl (R tmp_reg1, L data_end_addr) :: C)
+		    progunit_labs
+		end
+	    else C
+
 	fun generate_jump_code_progunits(progunit_labs,C) = 
 	  foldr (fn (l,C) => 
 		 let val next_lab = new_local_lab "next_progunit_lab"
@@ -2820,20 +2897,28 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	      else C
 	    (* Notice, that regionId is not tagged because compile_c_call is not used *)
             (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
-	    val c_name = if region_profiling() then "allocRegionInfiniteProfiling"
-			 else "allocateRegion"
+	    fun c_name rho = 
+		if pair_region_special(rho) then
+		    if region_profiling() then "allocPairRegionInfiniteProfiling"
+		    else "allocatePairRegion"
+		else 
+		    if region_profiling() then "allocRegionInfiniteProfiling"
+		    else "allocateRegion"
 	    fun pop_args C =
 	      if region_profiling() then I.addl(I "8", R esp) :: C (* two arguments to pop *)
 	      else I.addl(I "4", R esp) :: C                       (* one argument to pop *)
 	  in
-	    foldl (fn ((region_id,lab),C) =>
+	    foldl (fn ((rho,lab),C) =>
+		   let val region_id = Effect.key_of_eps_or_rho rho
+		   in
 		   I.subl(I(int_to_string(4*BI.size_of_reg_desc())), R esp) ::
 		   I.movl(R esp, R tmp_reg1) ::
                    maybe_push_region_id (region_id,
 		   I.pushl(R tmp_reg1) ::
-		   I.call(NameLab c_name) ::
+		   I.call(NameLab (c_name rho)) ::
 		   pop_args 
-		   (I.movl(R eax, L (DatLab lab)) :: C))) C region_labs
+		   (I.movl(R eax, L (DatLab lab)) :: C))
+		   end) C region_labs
 	  end
 
 	fun push_top_level_handler C =
@@ -2875,6 +2960,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    I.dot_globl (NameLab "code") ::
 	    I.lab (NameLab "code") ::
 
+	    (* Compute range of data space *)
+	    generate_data_begin_end(progunit_labs,
+
             (* Initialize profiling *)
             init_prof(
 
@@ -2903,15 +2991,35 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 				NONE,0,eax, (* instead of res we might use the result from 
 					     * the last function call, 2001-01-08, Niels *)
 	    (*I.leave :: *)
-	    I.ret :: C)))))))))))
+	    I.ret :: C))))))))))))
 
 	val init_link_code = (main_insts o raise_insts o 
 			      toplevel_handler o allocate o resetregion o 
 			      overflow_stub o gc_stub o proftick) nil
+	fun data_begin C = 
+	    if gc_p() then
+		(I.lab (data_begin_init_lab) :: C)
+	    else C
+	fun data_end C =
+	    if gc_p() then
+		(I.dot_align 4 ::
+		 I.dot_globl data_begin_addr ::
+		 I.lab data_begin_addr ::
+		 I.dot_long "0" ::
+		 I.dot_globl data_end_addr ::
+		 I.lab data_end_addr ::
+		 I.dot_long "0" ::
+		 I.lab (data_end_init_lab) ::	C)
+	    else C
       in
 	{top_decls = [],
 	 init_code = init_link_code,
-	 static_data = get_static_data []}
+	 static_data = (I.dot_data :: 
+			comment ("START OF STATIC DATA AREA",
+                        data_begin (
+			get_static_data (
+			data_end (
+			comment ("END OF STATIC DATA AREA",nil))))))}
       end
   end
 

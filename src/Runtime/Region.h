@@ -55,7 +55,7 @@ words in all.
 The Danish word 'klump' means 'chunk', in this case:  'region page'.
 */
 
-// Unomment the following line to enable region page statistics (for SMLserver)
+// Uncomment the following line to enable region page statistics (for SMLserver)
 //#define REGION_PAGE_STAT 1
 #ifdef REGION_PAGE_STAT
 typedef struct regionPageMapHashList {
@@ -74,9 +74,10 @@ extern RegionPageMap* rpMap;
 #endif /* REGION_PAGE_STAT */
 
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
-/*Number of words that can be allocated in each regionpage.*/
-/*If you change this, remember also to change src/Compiler/Kam/CConst.sml
-  and src/Compiler/Backend/HpPaRisc/BackendInfo.sml. */
+
+/* Number of words that can be allocated in each regionpage.  If you
+ * change this, remember also to change
+ * src/Compiler/Backend/X86/BackendInfo.sml. */
 
 typedef struct klump {
   struct klump *n;                   /* NULL or pointer to next page. */
@@ -85,44 +86,80 @@ typedef struct klump {
 } Klump;
 
 #define HEADER_WORDS_IN_REGION_PAGE 2 
-/*Number of words in the header part of a region page.*/
-/*If you change this, remember also to change src/Compiler/Kam/CConst.sml
-  and src/Compiler/Backend/HpPaRisc/BackendInfo.sml. */
 
-/* ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must be one 1Kb, used by GC. */
+/* Number of words in the header part of a region page. If you 
+ * change this, remember also to change
+ * src/Compiler/Backend/X86/BackendInfo.sml.
+ *
+ * ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must
+ * be one 1Kb, used by GC.  */
+
 #define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
 
-/*
-Free pages are kept in a free list. When the free list becomes empty and
-more space is requiredd, the runtime system calls the operating system
-function malloc in order to get space for a number (here 30) of fresh
-region pages:
-*/
+/* Free pages are kept in a free list. When the free list becomes
+ * empty and more space is required, the runtime system calls the
+ * operating system function malloc in order to get space for a number
+ * (here 30) of fresh region pages: */
 
 /* Size of allocated space in each SBRK-call. */
 #define BYTES_ALLOC_BY_SBRK REGION_PAGE_BAG_SIZE*sizeof(Klump)  
 
-/* 
-Region large objects idea: Modify the region based memory model so
-that each ``infinite region'' (i.e., a region for which the size of
-the region is not determined statically) contains a list of objects
-allocated using the C library function `malloc'. When a region is
-deallocated or reset, the list of malloced objects in the region are
-freed using the C library function `free'. The major reason for large
-object support is to gain better indexing properties for arrays and
-vectors. Without support for large objects, arrays and vectors must be
-split up in chunks. With strings implemented as linked list of pages,
-indexing in large character arrays takes time which is linear in the
-index parameter and with word-vectors and word-arrays being
-implemented as a tree structure, indexing in word-vectors and
-word-arrays take time which is logarithmic in the index parameter. 
- -- mael 2001-09-13
-*/
+/* When garbage collection is enabled, a single bit in a region page
+ * descriptor specifies if the page is part of to-space during garbage
+ * collection. At points between garbage collections, no region page
+ * descriptor has the bit set; given a region page descriptor, the
+ * to-space bit is the least significant bit in the next-pointer in
+ * the region page descriptor. */
+
+#ifdef ENABLE_GC
+#define clear_tospace_bit(p)  (Klump*)((unsigned int)(p) & 0xFFFFFFFE)
+#define set_tospace_bit(p)    (Klump*)((unsigned int)(p) | 0x1)
+#define is_tospace_bit(p)     ((unsigned int)(p) & 0x1)
+#endif
+
+/* Region large objects idea: Modify the region based memory model so
+ * that each ``infinite region'' (i.e., a region for which the size of
+ * the region is not determined statically) contains a list of objects
+ * allocated using the C library function `malloc'. When a region is
+ * deallocated or reset, the list of malloced objects in the region
+ * are freed using the C library function `free'. The major reason for
+ * large object support is to gain better indexing properties for
+ * arrays and vectors. Without support for large objects, arrays and
+ * vectors must be split up in chunks. With strings implemented as
+ * linked list of pages, indexing in large character arrays takes time
+ * which is linear in the index parameter and with word-vectors and
+ * word-arrays being implemented as a tree structure, indexing in
+ * word-vectors and word-arrays take time which is logarithmic in the
+ * index parameter.  -- mael 2001-09-13 */
+
+/* For tag-free garbage collection of pairs, we make sure that large
+ * objects are aligned on 1K boundaries, which makes it possible to
+ * determine if a pointer points into the stack, constants in data
+ * space, a region in from-space, or a region in to-space. The orig
+ * pointer points back to the memory allocated by malloc (which holds
+ * the large object). */
 
 typedef struct lobjs {
   struct lobjs* next;     // pointer to next large object or NULL
+#ifdef ENABLE_GC
+  char* orig;             // pointer to memory allocated by malloc - for freeing
+#endif
   unsigned int value;     // a large object; inlined to avoid pointer-indirection
 } Lobjs;
+
+/* When garbage collection is enabled, a bit in a large object
+ * descriptor specifies that the object is indeed a large object. The
+ * bit helps the garbage collector determine, given a pointer p to an
+ * object, whether p points to a tag-free pair. */
+
+#ifdef ENABLE_GC
+#define clear_lobj_bit(p)     (Lobjs*)((unsigned int)(p) & 0xFFFFFFFD)
+#define set_lobj_bit(p)       (Lobjs*)((unsigned int)(p) | 0x2)
+#define is_lobj_bit(p)        ((unsigned int)(p) & 0x2)
+#else
+#define clear_lobj_bit(p)     (p)
+#define set_lobj_bit(p)       (p)
+#endif /* ENABLE_GC */
 
 /* 
 Region descriptors
@@ -166,6 +203,19 @@ typedef Ro* Region;
 #define freeInRegion(rAddr)   (rAddr->b - rAddr->a) /* Returns freespace in words. */
 
 #define descRo_a(rAddr,w) (rAddr->a = rAddr->a - w) /* Used in IO.inputStream */
+
+
+/* When garbage collection is enabled, a bit in the region descriptor
+ * is used to determine if a region holds pairs only, which makes it
+ * possible to use a tag-free scheme for pairs.  */
+
+#ifdef ENABLE_GC
+#define is_pairregion(rd)           ((unsigned int)((rd)->fp) & 0x01)
+#define set_pairregion(rd)          (rd->fp = (Klump*)(((unsigned int)((rd)->fp)) | 0x01))
+#define clear_pairregion(fp)        ((Klump*)((unsigned int)(fp) & 0xFFFFFFFE))
+#else
+#define clear_pairregion(fp)        (fp)
+#endif /*ENABLE_GC*/
 
 /*
 Region polymorphism

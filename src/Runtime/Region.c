@@ -253,7 +253,7 @@ void printRegionStack() {
 int NoOfPagesInRegion(Ro *rp) {
   int i;
   Klump *ptr;
-  for (i=0,ptr=rp->fp;ptr!=NULL;ptr=ptr->n) i++;
+  for (i=0,ptr=clear_pairregion(rp->fp);ptr!=NULL;ptr=ptr->n) i++;
   return i;
 }
 
@@ -356,6 +356,15 @@ int *allocateRegion(Ro *roAddr
   return (int *) roAddr;
 }  
 
+#ifdef ENABLE_GC
+int *allocatePairRegion(Ro *rd)
+{
+  int *res = allocateRegion(rd);
+  set_pairregion(rd);
+  return res;
+}
+#endif /*ENABLE_GC*/
+
 /*----------------------------------------------------------------------*
  * NEW NEW NEW NEW NEW                                                  *
  * We may not change sp!                                                *
@@ -371,7 +380,7 @@ void deallocateRegionNew(
 			 ) { 
   int i;
 
-  /* printf("[deallocateRegionNew... top region: %x, regionId: %d\n", TOP_REGION, TOP_REGION->regionId);*/
+  debug(printf("[deallocateRegionNew... top region: %x\n", TOP_REGION));
 
 #ifdef PROFILING
   callsOfDeallocateRegionInf++;
@@ -405,8 +414,12 @@ void deallocateRegionNew(
 	  #endif	  
 	  lobjs_current -= size_lobj(tag);
 #endif	  
-	  lobjsTmp = lobjs->next;
+	  lobjsTmp = clear_lobj_bit(lobjs->next);
+#ifdef ENABLE_GC
+	  free(lobjs->orig);
+#else
 	  free(lobjs);
+#endif
 	  lobjs = lobjsTmp;
 	}
     }
@@ -416,14 +429,35 @@ void deallocateRegionNew(
 
   FREELIST_MUTEX_LOCK;
   (((Klump *)TOP_REGION->b)-1)->n = freelist;
-  freelist = TOP_REGION->fp;
+  freelist = clear_pairregion(TOP_REGION->fp);
   FREELIST_MUTEX_UNLOCK;
 
   TOP_REGION=TOP_REGION->p;
 
-  /* printf("]\n");*/
+  debug(printf("]\n"));
 
   return;
+}
+
+inline static Lobjs *
+alloc_lobjs(int n) {
+#ifdef ENABLE_GC
+  Lobjs* lobjs;
+  char *p;
+  int r;  
+  p = (char*)malloc(4*(n+2) + 1024);
+  if ( p == NULL )
+    die("alloc_lobjs: malloc returned NULL");
+  if ( r = (int)p % 1024 ) {
+    lobjs = (Lobjs*)(p + 1024 - r);
+  } else {
+    lobjs = (Lobjs*)p;
+  }
+  lobjs->orig = p;
+  return lobjs;
+#else
+  return (Lobjs*)malloc(4*(n+1));
+#endif /* ENABLE_GC */
 }
 
 /*----------------------------------------------------------------------*
@@ -527,17 +561,12 @@ void callSbrkArg(int no_of_region_pages) {
   while ((char *)(np+1) < ((char *)freelist)+bytes_to_alloc) { 
     np++;
     (np-1)->n = np;
-
-
     rp_total++;
-
   }
   np->n = old_free_list;
 
-  #ifdef ENABLE_GC
   if (!disable_gc)
     time_to_gc = 1;
-  #endif /* ENABLE_GC */
 
   return;
 }
@@ -590,14 +619,31 @@ void alloc_new_block(Ro *rp) {
   if (!is_rp_aligned((unsigned int)np))
     die("alloc_new_block: region page is not properly aligned.");
 
-  np->n = NULL;
+#ifdef ENABLE_GC
+  if ( doing_gc )
+    np->n = set_tospace_bit(NULL);     // to-space bit
+  else 
+#endif
+    np->n = NULL;
   np->r = rp;      /* We Point Back To Region Descriptor. Used By GC. */
 
-  if (rp->fp)
-    (((Klump *)(rp->b))-1)->n = np; /* Updates the next field in the last region page. */
+  if ( clear_pairregion(rp->fp) )
+#ifdef ENABLE_GC
+    if ( doing_gc )
+      (((Klump *)(rp->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
+    else
+#endif
+      (((Klump *)(rp->b))-1)->n = np; /* Updates the next field in the last region page. */
   else
-    rp->fp = np;                    /* Update pointer to the first page. */
-
+#ifdef ENABLE_GC
+    if ( is_pairregion(rp) )
+      {
+	rp->fp = np;              /* Update pointer to the first page. */
+	set_pairregion(rp);
+      }
+    else 
+#endif
+      rp->fp = np;                /* Update pointer to the first page. */
   rp->a = (int *)(&(np->i));      /* Updates the allocation pointer. */
   rp->b = (int *)(np+1);          /* Updates the border pointer. */
 }
@@ -648,8 +694,9 @@ int *alloc (Region rAddr, int n) {
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
       Lobjs* lobjs;
-      lobjs = (Lobjs*)malloc(4*(n+1));
-      lobjs->next = rp->lobjs;
+      //      lobjs = (Lobjs*)malloc(4*(n+1));
+      lobjs = alloc_lobjs(n);
+      lobjs->next = set_lobj_bit(rp->lobjs);
       rp->lobjs = lobjs;
       #ifdef PROFILING
       //    fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
@@ -727,20 +774,20 @@ resetRegion(Region rAdr)
 #endif
 
   /* There is always at least one page in a region. */
-  if ( (rp->fp)->n != NULL ) { /* There are more than one page in the region. */
+  if ( (clear_pairregion(rp->fp))->n != NULL ) { /* There are more than one page in the region. */
     FREELIST_MUTEX_LOCK;
     (((Klump *)rp->b)-1)->n = freelist;
-    freelist = (rp->fp)->n;
+    freelist = (clear_pairregion(rp->fp))->n;
     FREELIST_MUTEX_UNLOCK;
-    (rp->fp)->n = NULL;
+    (clear_pairregion(rp->fp))->n = NULL;
 
     #ifdef ENABLE_GC
     rp_used--;              // at least one page is freed; see comment in alloc_new_block
     #endif /* ENABLE_GC */  //   concerning conservative computation.
   }
 
-  rp->a = (int *)(&(rp->fp)->i);   /* beginning of klump in first page */
-  rp->b = (int *)((rp->fp)+1);     /* end of klump in first page */
+  rp->a = (int *)(&(clear_pairregion(rp->fp))->i);   /* beginning of klump in first page */
+  rp->b = (int *)((clear_pairregion(rp->fp))+1);     /* end of klump in first page */
 
   if ( rp->lobjs )
     {                                // free large objects
@@ -757,8 +804,12 @@ resetRegion(Region rAdr)
 	  #endif	  
 	  lobjs_current -= size_lobj(tag);
 #endif	  
-	  lobjsTmp = lobjs->next;
+	  lobjsTmp = clear_lobj_bit(lobjs->next);
+#ifdef ENABLE_GC
+	  free(lobjs->orig);
+#else
 	  free(lobjs);
+#endif
 	  lobjs = lobjsTmp;
 	}
       rp->lobjs = NULL;
@@ -874,7 +925,8 @@ void deallocateRegionsUntil_X86(Region rAddr) {
  *  There has to be room for the region descriptor on the stack, which  *
  *  roAddr points at.                                                   *
  *----------------------------------------------------------------------*/
-int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId) { 
+int *
+allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId) { 
   Klump *kp;
 
   /* printf("[allocRegionInfiniteProfiling roAddr=%x, regionId=%d...", roAddr, regionId);*/
@@ -926,10 +978,28 @@ int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId) {
 
 /* In CodeGenX86, we use a generic function to compile a C-call. The regionId */
 /* may therefore be tagged, which this stub-function takes care of.           */
-int *allocRegionInfiniteProfilingMaybeUnTag(Ro *roAddr, unsigned int regionId) { 
-  return allocRegionInfiniteProfiling(roAddr, convertIntToC(regionId));
+int *
+allocRegionInfiniteProfilingMaybeUnTag(Ro *rd, unsigned int regionId) 
+{ 
+  return allocRegionInfiniteProfiling(rd, convertIntToC(regionId));
 }
 
+int *
+allocPairRegionInfiniteProfiling(Ro *rd, unsigned int regionId) 
+{
+  int *res = allocRegionInfiniteProfiling(rd, regionId);
+  set_pairregion(rd);
+  return res;
+}
+
+int *
+allocPairRegionInfiniteProfilingMaybeUnTag(Ro *rd, unsigned int regionId) 
+{ 
+  int *res = allocRegionInfiniteProfiling(rd, convertIntToC(regionId));
+  set_pairregion(rd);
+  return res;
+}
+ 
 /*-------------------------------------------------------------------------------*
  * allocRegionFiniteProfiling:                                                   *
  * Program point 0 is used as indication no object at all in the runtime system. *

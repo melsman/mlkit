@@ -19,6 +19,9 @@ extern int doing_gc;
 extern int raised_exn_interupt;
 extern int raised_exn_overflow;
 
+extern unsigned int *data_begin_addr;
+extern unsigned int *data_end_addr;
+
 unsigned int size_lobj(unsigned int tag);
 
 void gc(unsigned int **sp, unsigned int reg_map);
