@@ -12,9 +12,6 @@ mael 2003-02-04: nicer pretty-printing of signatures (mlkit
 -sig). Particularly, parameterized type constructors have an extra
 space.
 
-mael 2003-02-04: Report inexhaustive matches - this feature is
-apparently disabled! hmm... Redundant matches are reported.
-
 mael 2001-11-27: curry-compression: turn
 
     let f = \x.let g = \y.e1 in \z.e2
