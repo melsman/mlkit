@@ -11,6 +11,8 @@ signature STRID =
     val inventStrId: unit -> strid		(* NEW PARSER *)
     val longStrIdOfStrId: strid -> longstrid	(* NEW PARSER *)
 
+    val invented_StrId : strid -> bool
+
     val implode_longstrid : strid list * strid -> longstrid
     and explode_longstrid : longstrid -> strid list * strid
 					(* MEMO: elsewhere we use the

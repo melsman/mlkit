@@ -11,6 +11,8 @@ signature TYPE_INFO =
     type Env
     type realisation
     type strid and tycon and id
+    type Basis
+    type TyName
 
     (*
      * Note that we record tyvars and types (and not typeschemes as 
@@ -93,16 +95,21 @@ signature TYPE_INFO =
       | FUNCTOR_APP_INFO of realisation * Env
                         (* Attached to functor applications; The env is the
 			 * elaboration result of the functor application. *)
-      | FUNBIND_INFO of Env
-                        (* Attached to functor bindings; the env is the environment
+      | FUNBIND_INFO of {argE: Env, elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation Option}
+                        (* Attached to functor bindings; the arg env is the environment
 			 * resulting from elaborating the sigexp in a functor 
-			 * binding. *)
+			 * binding. All other info is there to make it possible to re-build an 
+			 * elaborated functor body structure expression from the source. *)
       | TRANS_CONSTRAINT_INFO of Env
 	                (* Attached to transparent signature constraints *)
       | OPAQUE_CONSTRAINT_INFO of Env * realisation
 	                (* Attached to opaque signature constraints *)
 
-    val on_TypeInfo : realisation * TypeInfo -> TypeInfo
+      | DELAYED_REALISATION of realisation * TypeInfo   (* To support delayed realisation of
+							 * type info. *)
+
+    val on_TypeInfo : realisation * TypeInfo -> TypeInfo  (* delayed realisation *)
+    val normalise : TypeInfo -> TypeInfo                  (* force realisations *)
 
     type StringTree
     val layout : TypeInfo -> StringTree

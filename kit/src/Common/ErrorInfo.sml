@@ -1,16 +1,24 @@
 (* Error information *)
 
-(*$ErrorInfo: STATOBJECT IDENT LAB TYCON TYNAME SIGID
-        STRID FUNID REPORT PRETTYPRINT ERROR_INFO*)
+(*$ErrorInfo: STATOBJECT MODULE_STATOBJECT IDENT LAB TYCON TYNAME
+        SIGID STRID FUNID REPORT PRETTYPRINT ERROR_INFO*)
 
 functor ErrorInfo(structure StatObject : STATOBJECT
+		  structure ModuleStatObject : MODULE_STATOBJECT
+		    sharing ModuleStatObject.TyName = StatObject.TyName
+		    sharing type ModuleStatObject.TyVar = StatObject.TyVar
+		        and type ModuleStatObject.Type = StatObject.Type
+			and type ModuleStatObject.TypeScheme = StatObject.TypeScheme
+			and type ModuleStatObject.TypeFcn = StatObject.TypeFcn
                   structure Ident: IDENT
+		    sharing type Ident.id = ModuleStatObject.id
                   structure Lab:   LAB
                   structure TyCon: TYCON
-                  structure TyName: TYNAME
-		    sharing TyName = StatObject.TyName
+		    sharing type TyCon.longtycon = ModuleStatObject.longtycon
                   structure SigId: SIGID
                   structure StrId: STRID
+		    sharing type StrId.strid = ModuleStatObject.strid
+		        and type StrId.longstrid = ModuleStatObject.longstrid
                   structure FunId: FUNID
                   structure Report: REPORT
 		  structure PrettyPrint : PRETTYPRINT
@@ -30,6 +38,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
     type TyVar             = StatObject.TyVar
     type TyName            = TyName.TyName
     type TypeFcn           = StatObject.TypeFcn
+    type SigMatchError     = ModuleStatObject.SigMatchError
 
     (*import from other modules:*)
     type id                = Ident.id
@@ -99,19 +108,8 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | WHERE_TYPE_NOT_TYNAME of longtycon * TypeFcn * Type
       | WHERE_TYPE_ARITY of TyVar list * (longtycon * TyName)
 
-     (* Signature matching errors: *)
-      | MISSINGSTR  of longstrid
-      | MISSINGTYPE of longtycon
-      | S_CONFLICTINGARITY of longtycon * (TyName * TypeFcn)
-      | CONFLICTINGEQUALITY of longtycon * (TyName * TypeFcn)
-      | MISSINGVAR of strid list * id
-      | MISSINGEXC of strid list * id
-      | S_RIGIDTYCLASH of longtycon
-      | S_CONFLICTING_DOMCE of longtycon
-      | NOTYENRICHMENT of {qualid: strid list * id, 
-                           str_sigma : TypeScheme, str_vce: string,
-                           sig_sigma : TypeScheme, sig_vce: string}
-      | EXCNOTEQUAL of strid list * id * (Type * Type)
+      (* Signature matching errors: *)
+      | SIGMATCH_ERROR of SigMatchError
 
      (* Module unification errors: *)
       | CYCLE of longstrid
@@ -300,55 +298,54 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 	        ^ " or " ^ Int.string (List.size tyvars)
 	        ^ " arguments?")
 
-      | report (MISSINGSTR longstrid) =
-	  line ("Missing structure: " ^ StrId.pr_LongStrId longstrid ^ ".")
+      (* Signature Matching Errors *)
 
-      | report (MISSINGTYPE longtycon) =
-	  line ("Missing type: " ^ TyCon.pr_LongTyCon longtycon ^ ".")
+      | report (SIGMATCH_ERROR sigmatcherror) =
+	  let open ModuleStatObject
+	  in case sigmatcherror
+	       of MISSINGSTR longstrid => line ("Missing structure: " ^ StrId.pr_LongStrId longstrid ^ ".")
 
-      | report (S_CONFLICTINGARITY(longtycon, _)) =
-	  line ("S/Conflicting arity: " ^ TyCon.pr_LongTyCon longtycon ^ ".")
+		| MISSINGTYPE longtycon => line ("Missing type: " ^ TyCon.pr_LongTyCon longtycon ^ ".")
 
-      | report (CONFLICTINGEQUALITY(longtycon, _)) =
-	  line ("Conflicting equality attributes: "
-	       ^ TyCon.pr_LongTyCon longtycon ^ ".")
+		| S_CONFLICTINGARITY(longtycon, _) => line ("S/Conflicting arity: " ^ TyCon.pr_LongTyCon longtycon ^ ".")
 
-      | report (MISSINGVAR (strids, id)) =
-	  line ("Missing variable: " ^ prStrIds strids
-		^ Ident.pr_id id ^ ".")
+		| CONFLICTINGEQUALITY(longtycon, _) => line ("Conflicting equality attributes: "
+							     ^ TyCon.pr_LongTyCon longtycon ^ ".")
 
-      | report (MISSINGEXC(strids, id)) =
-	  line ("Error in signature matching: the exception `" ^ prStrIds strids
-	       ^ Ident.pr_id id ^ "' is specified,")
-	  // line("but absent from the structure.")
+		| MISSINGVAR (strids, id) => line ("Missing variable: " ^ prStrIds strids
+						   ^ Ident.pr_id id ^ ".")
 
-      | report (S_RIGIDTYCLASH longtycon) =
-	  line ("Rigid type clash for: " ^ TyCon.pr_LongTyCon longtycon ^ ".")
+		| MISSINGEXC(strids, id) => line ("Error in signature matching: the exception `" ^ prStrIds strids
+						  ^ Ident.pr_id id ^ "' is specified,")
+		                            // line("but absent from the structure.")
 
-      | report (S_CONFLICTING_DOMCE longtycon) =
-	  line ("Error in signature matching involving datatype `"
-		^ TyCon.pr_LongTyCon longtycon ^ "'")
-	  // line ("(The domain of the constructor environment specified in")
-	  // line (" the signature clashes with the domain of the constructor")
-	  // line (" environment in the structure.)")
+		| S_RIGIDTYCLASH longtycon => line ("Rigid type clash for: " ^ TyCon.pr_LongTyCon longtycon ^ ".")
 
-      | report (NOTYENRICHMENT{qualid=(strids, id),str_sigma,str_vce,sig_sigma,sig_vce}) =
-	  line ("Error in signature matching:") 
-	  // line ("the type specified in the signature does not enrich")
-	  // line ("the type inferred in the structure;")
-          // line ("Structure declares:")
-          // line (str_vce ^ " " ^ prStrIds strids  ^ Ident.pr_id id ^ " :")
-          // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout str_sigma))
-          // line ("Signature specifies:")
-          // line (sig_vce ^ " " ^ prStrIds strids  ^ Ident.pr_id id ^ " :")
-          // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout sig_sigma) ^ ".")
+		| S_CONFLICTING_DOMCE longtycon =>
+		 line ("Error in signature matching involving datatype `"
+		       ^ TyCon.pr_LongTyCon longtycon ^ "'")
+		 // line ("(The domain of the constructor environment specified in")
+		 // line (" the signature clashes with the domain of the constructor")
+		 // line (" environment in the structure.)")
 
-      | report (EXCNOTEQUAL(strids, id, (ty1, ty2))) =
-	  line("Error in signature matching:") 
-	  // line("specified and declared type for exception `"
-		  ^ prStrIds strids ^ Ident.pr_id id ^"' differ;")
-	  // line("  declared  type: " ^ Type.string ty1)
-	  // line("  specified  type: " ^ Type.string ty2)
+	       | NOTYENRICHMENT{qualid=(strids, id),str_sigma,str_vce,sig_sigma,sig_vce} =>
+		 line ("Error in signature matching:") 
+		 // line ("the type specified in the signature does not enrich")
+		 // line ("the type inferred in the structure;")
+		 // line ("Structure declares:")
+		 // line (str_vce ^ " " ^ prStrIds strids  ^ Ident.pr_id id ^ " :")
+		 // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout str_sigma))
+		 // line ("Signature specifies:")
+		 // line (sig_vce ^ " " ^ prStrIds strids  ^ Ident.pr_id id ^ " :")
+		 // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout sig_sigma) ^ ".")
+
+	       | EXCNOTEQUAL(strids, id, (ty1, ty2)) =>
+		 line("Error in signature matching:") 
+		 // line("specified and declared type for exception `"
+			 ^ prStrIds strids ^ Ident.pr_id id ^"' differ;")
+		 // line("  declared  type: " ^ Type.string ty1)
+		 // line("  specified  type: " ^ Type.string ty2)
+	  end
 
       | report (CYCLE longstrid) =
 	  line ("Cyclic sharing specification; cyclic structure path: "

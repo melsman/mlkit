@@ -25,6 +25,7 @@ functor ElabTopdec
    sharing type ElabInfo.ErrorInfo.longstrid = StrId.longstrid
    sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
    sharing type ElabInfo.TypeInfo.strid = StrId.strid
+       and type ElabInfo.TypeInfo.TyName = StatObject.TyName
 
   structure IG : TOPDEC_GRAMMAR
      sharing type IG.strid = StrId.strid
@@ -72,8 +73,8 @@ functor ElabTopdec
      sharing ModuleStatObject.TyName = StatObject.TyName
      sharing type ModuleStatObject.Env = Environments.Env
      sharing type ModuleStatObject.realisation = StatObject.realisation
-     sharing type ModuleStatObject.ErrorInfo = ElabInfo.ErrorInfo.ErrorInfo
      sharing type ModuleStatObject.StringTree = PrettyPrint.StringTree
+         and type ModuleStatObject.SigMatchError = ElabInfo.ErrorInfo.SigMatchError
 
    structure ModuleEnvironments : MODULE_ENVIRONMENTS
      sharing ModuleEnvironments.TyName = StatObject.TyName
@@ -91,6 +92,7 @@ functor ElabTopdec
      sharing type ModuleEnvironments.longtycon = IG.longtycon
      sharing type ModuleEnvironments.sigid = IG.sigid
      sharing type ModuleEnvironments.funid = IG.funid
+         and type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
 
    structure Name : NAME
      sharing type Name.name = StatObject.TyName.name
@@ -223,11 +225,6 @@ functor ElabTopdec
     fun typeConv (i : ParseInfo, type_info : TypeInfo.TypeInfo) : ElabInfo =
           ElabInfo.plus_TypeInfo (okConv i) type_info
 
-    fun check_repeated_ids_spec(E1,E2) =
-      map ErrorInfo.STRID_RID (EqSet.list (EqSet.intersect (SE.dom (E.to_SE E1)) (SE.dom (E.to_SE E2)))) @
-      map ErrorInfo.TYCON_RID (EqSet.list (EqSet.intersect (TE.dom (E.to_TE E1)) (TE.dom (E.to_TE E2)))) @
-      map ErrorInfo.ID_RID (EqSet.list (EqSet.intersect (VE.dom (E.to_VE E1)) (VE.dom (E.to_VE E2))))		 
-
     fun repeatedIdsError (i : ParseInfo,
 			  rids : ErrorInfo.RepeatedId list)
           : ElabInfo =
@@ -257,14 +254,14 @@ functor ElabTopdec
     fun Sigma_match (i, Sigma, E) =
       (okConv i, Sigma.match (Sigma, E))
       handle No_match reason =>
-	(errorConv (i, reason), Sigma.instance Sigma)
+	(errorConv (i, ErrorInfo.SIGMATCH_ERROR reason), Sigma.instance Sigma)
 
     fun Sigma_match' (i, Sigma, E) =                                            (* The realisation maps abstract type names *)
       let val (E_trans_result, E_opaque_result, phi) = Sigma.match' (Sigma, E)  (* E_opaque_result into what they stand for *)
       in (okConv i, E_trans_result, E_opaque_result, phi)                       (* in E_trans_result. *)
       end handle No_match reason =>
 	let val E = Sigma.instance Sigma
-	in (errorConv (i, reason), E, E, Realisation.Id)
+	in (errorConv (i, ErrorInfo.SIGMATCH_ERROR reason), E, E, Realisation.Id)
 	end
 
     (*initial_TE datdesc = the TE to be used initially in
@@ -642,7 +639,7 @@ functor ElabTopdec
 		     val (T', E') = Sigma.to_T_and_E T'E'
 		     val T'E' = Sigma.from_T_and_E (TyName.Set.difference (tynames_E E')
 						       (TyName.Set.union T0 T'), E')
-		     val out_i = errorConv (i, reason)
+		     val out_i = errorConv (i, ErrorInfo.SIGMATCH_ERROR reason)
 		     val E' = Sigma.instance T'E'
 		   in (T @ (TyName.Set.list T'), E', OG.APPstrexp (out_i, funid, out_strexp)) 
 		   end
@@ -982,48 +979,52 @@ functor ElabTopdec
       | IG.SHARING_TYPEspec (i, spec, longtycon_withinfo_s) =>
 	  let
 	    val (T0, E, out_spec, ids) = elab_spec (B, spec, ids)
-	    val (T, out_longtycon_withinfo_s) =
+	    val (T, out_longtycon_withinfo_s, error) =
 	           List.foldR
 		   (fn IG.WITH_INFO (i, longtycon_i) =>
-		    fn (T', out_longtycon_withinfo_s) =>
-		     let val (T'', out_i) =
+		    fn (T', out_longtycon_withinfo_s, error) =>
+		     let val (T'', out_i, error) =
 		           case lookup_longtycon E longtycon_i
 			     of Some tystr_i =>
 			       let val theta_i = TyStr.to_theta tystr_i
 			       in case TypeFcn.to_TyName theta_i 
 				    of Some t_i =>
 				      if TyName.Set.member t_i (TyName.Set.fromList T0) then
-					(t_i::T', okConv i)
+					(t_i::T', okConv i, error)
 				      else
-					(T', errorConv (i, ErrorInfo.SHARING_TYPE_RIGID(longtycon_i, t_i)))
+					(T', errorConv (i, ErrorInfo.SHARING_TYPE_RIGID(longtycon_i, t_i)), true)
 				     | None => (T', errorConv (i, ErrorInfo.SHARING_TYPE_NOT_TYNAME
-							       (longtycon_i, theta_i)))
+							       (longtycon_i, theta_i)), true)
 			       end
-			      | None => (T', errorConv (i, ErrorInfo.LOOKUP_LONGTYCON longtycon_i))
+			      | None => (T', errorConv (i, ErrorInfo.LOOKUP_LONGTYCON longtycon_i), true)
 		     in
-		       (T'', OG.WITH_INFO (out_i, longtycon_i) :: out_longtycon_withinfo_s)
+		       (T'', OG.WITH_INFO (out_i, longtycon_i) :: out_longtycon_withinfo_s, error)
 		     end)
-		          ([], []) longtycon_withinfo_s
-
-	    (* Now, find a representative; if everything is allright, T 
-	     * will have at least one member. *)
-
-	    fun find ([], acc) = impossible "IG.SHARING_TYPEspec.find"
-	      | find ([t], acc) = (t, acc)
-	      | find (t::ts, acc) = if TyName.equality t then (t, ts @ acc)
-				    else find (ts,t::acc)
-	    val (t0, T') = find(T, []) 
-	    val arity = TyName.arity t0
-	    val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0
+		          ([], [], false) longtycon_withinfo_s
 	  in 
-	    if List.forAll (fn t => TyName.arity t = arity) T' then
-	      let val phi = Realisation.from_T_and_theta (TyName.Set.fromList T', TypeFcn.from_TyName t0)
-	      in (T0', Realisation.on_Env phi E,
-		  OG.SHARING_TYPEspec (okConv i, out_spec, out_longtycon_withinfo_s), ids)
-	      end
-	    else (T0', E, OG.SHARING_TYPEspec
-		  (errorConv (i, ErrorInfo.SHARING_TYPE_ARITY T),
-		   out_spec, out_longtycon_withinfo_s), ids)
+	    if error then ([], E.bogus, OG.SHARING_TYPEspec(okConv i, out_spec, out_longtycon_withinfo_s), ids)
+	    else let 
+	       
+		   (* Now, find a representative; if everything is allright, T 
+		    * will have at least one member. *)
+
+		   fun find ([], acc) = impossible "IG.SHARING_TYPEspec.find"
+		     | find ([t], acc) = (t, acc)
+		     | find (t::ts, acc) = if TyName.equality t then (t, ts @ acc)
+					   else find (ts,t::acc)
+		   val (t0, T') = find(T, []) 
+		   val arity = TyName.arity t0
+		   val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0
+		 in 
+		   if List.forAll (fn t => TyName.arity t = arity) T' then
+		     let val phi = Realisation.from_T_and_theta (TyName.Set.fromList T', TypeFcn.from_TyName t0)
+		     in (T0', Realisation.on_Env phi E,
+			 OG.SHARING_TYPEspec (okConv i, out_spec, out_longtycon_withinfo_s), ids)
+		     end
+		   else (T0', E, OG.SHARING_TYPEspec
+			 (errorConv (i, ErrorInfo.SHARING_TYPE_ARITY T),
+			  out_spec, out_longtycon_withinfo_s), ids)
+		 end
 	  end
       
       | IG.SHARINGspec (i, spec, longstrid_withinfo_s) =>
@@ -1326,16 +1327,15 @@ functor ElabTopdec
 	  let
 	    val (T_E, out_sigexp) = elab_sigexp (B, sigexp)
 	    val (T, E) = Sigma.to_T_and_E T_E
-	    val (T'', E', out_strexp) =
-	          elab_strexp
-		    (B B_plus_E (E.from_SE (SE.singleton (strid,E))),
-		     strexp)
+	    val B' = B B_plus_E (E.from_SE (SE.singleton (strid,E)))
+	    val (T'', E', out_strexp) = elab_strexp(B', strexp)
 	    val T' = TyName.Set.intersect (tynames_E E') (TyName.Set.fromList T'')
 	    val T'E' = Sigma.from_T_and_E (T',E')
 	    val (F, out_funbind_opt) = elab_X_opt (B, funbind_opt) elab_funbind F.empty
 	    val out_i = if EqSet.member funid (F.dom F)
 			then repeatedIdsError (i, [ErrorInfo.FUNID_RID funid])
-			else ElabInfo.plus_TypeInfo (okConv i) (TypeInfo.FUNBIND_INFO E)
+			else ElabInfo.plus_TypeInfo (okConv i) 
+			  (TypeInfo.FUNBIND_INFO {argE=E,elabB=B',T=T'',resE=E',rea_opt=None})
 	  in
 	    (F.singleton (funid, Phi.from_T_and_E_and_Sigma (T, E, T'E')) F_plus_F F,
 	     OG.FUNBIND (out_i, funid, strid, out_sigexp, out_strexp,

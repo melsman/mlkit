@@ -10,14 +10,37 @@ signature MODULE_STATOBJECT =
 
     (*types from other modules:*)
     structure TyName : TYNAME
+    type TyName sharing type TyName = TyName.TyName
+
+    type TyVar
+    type Type
+    type TypeScheme
+    type TypeFcn
     type Env
     type realisation
-    type StringTree sharing type StringTree = TyName.Set.StringTree
-    type ErrorInfo
-    type TyVar
-    eqtype id
 
-    exception No_match of ErrorInfo
+    eqtype id
+    type strid
+    type longstrid
+    type longtycon
+
+    type StringTree sharing type StringTree = TyName.Set.StringTree
+
+    datatype SigMatchError =
+      MISSINGSTR  of longstrid
+    | MISSINGTYPE of longtycon
+    | S_CONFLICTINGARITY of longtycon * (TyName * TypeFcn)
+    | CONFLICTINGEQUALITY of longtycon * (TyName * TypeFcn)
+    | MISSINGVAR of strid list * id
+    | MISSINGEXC of strid list * id
+    | S_RIGIDTYCLASH of longtycon
+    | S_CONFLICTING_DOMCE of longtycon
+    | NOTYENRICHMENT of {qualid: strid list * id, 
+			 str_sigma : TypeScheme, str_vce: string,
+			 sig_sigma : TypeScheme, sig_vce: string}
+    | EXCNOTEQUAL of strid list * id * (Type * Type)
+
+    exception No_match of SigMatchError
     (*raised by Sigma.match and Phi.match when matching fails*)
 
 

@@ -2168,6 +2168,7 @@ let
 	    TRANS_CONSTRAINT_INFO E (* signatures are closed *)
       | S on_TypeInfo (OPAQUE_CONSTRAINT_INFO E_and_phi) =
 	    OPAQUE_CONSTRAINT_INFO E_and_phi (* signatures and realisations are closed *)
+      | S on_TypeInfo (DELAYED_REALISATION _) = impossible "on_TypeInfo.DELAYED_REALISATION"
   in
     fun resolve_i ElabInfo =
           (case ElabInfo.to_TypeInfo ElabInfo of
