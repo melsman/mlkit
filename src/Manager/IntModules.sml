@@ -150,7 +150,7 @@ functor IntModules(structure Name : NAME
 	  val unitname = case unitname_opt
 			   of SOME unitname => unitname
 			    | NONE => fresh_unitname()
-	  val vcg_filename = pmdir() ^ unitname ^ ".vcg"
+	  val vcg_filename = (* pmdir() ^ *) unitname ^ ".vcg"
       in case Compile.compile(ce,cb,strdecs,vcg_filename)
 	   of Compile.CodeRes(ce',cb',target,linkinfo) =>
 	     (ce',cb', ModCode.mk_modcode(target,linkinfo,unitname))

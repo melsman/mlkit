@@ -242,8 +242,8 @@ C procedure calls, because that would use stack space proportional to $N$.
 By contrast, programmers have much less help when it comes to managing
 the heap.  Two approaches prevail. The first approach is that the
 programmer manages memory herself, using explicit allocation and
-de-allocation instructions (e.g., \index{malloc@{\tt malloc}}{\tt
-  malloc} and \index{free@{\tt free}}{\tt free} in C). For non-trivial
+de-allocation instructions (e.g., \index{malloc@\texttt{malloc}}{\tt
+  malloc} and \index{free@\texttt{free}}{\tt free} in C). For non-trivial
 programs this can be a very significant burden, because it is, in
 general, very hard to make sure that none of the values that reside in
 the memory that one wishes to de-allocate are not needed for the rest
@@ -620,7 +620,7 @@ achieved by organising the main loop of the program as follows:
 (*8*) fun iter n = #2(nthgen'(n,gun()))
   end
 \end{verbatim}
-Here \boxml{nthgen'} \index{nthgen@{\tt nthgen}}is the main loop of
+Here \boxml{nthgen'} \index{nthgen@\texttt{nthgen}}is the main loop of
 the program. It takes a pair as argument; the first component of the
 pair indicates the number of iterations desired, while the second,
 \boxml{g}, is the current generation. The use of the {\tt as} pattern
@@ -637,7 +637,7 @@ Figure~\ref{doublecopy.fig}).  All in all, we have achieved that at
 most two generations are live at the same time (a fact that can be
 checked by inspecting the region-annotated code, if one feels
 passionately about it).\footnote{The source file for the life program
-  is \boxml{kitdemo/life.sml}\index{life@{\tt life}}. Running programs
+  is \boxml{kitdemo/life.sml}\index{life@\texttt{life}}. Running programs
   is described in Section~\ref{tryit.sec}. When run with n=10000 on
   the HP PA-RISC, the memory consumption (resident memory, measured
   using {\tt top}) quickly reaches 180Kb and stays there for the
@@ -772,7 +772,7 @@ there will be one snapshot per second.
 Finally, you create a PostScript file and view it as
 follows:\footnote{The program {\tt rp2ps} can be found in the {\tt
     kit/bin} directory.}
-\index{rp2ps@{\tt rp2ps}}%
+\index{rp2ps@\texttt{rp2ps}}%
 \begin{verbatim}
        rp2ps -region -name life -sampleMax 80 
        ghostview -seascape region.ps
@@ -785,16 +785,17 @@ over the duration of the computation).
 Figure~\ref{lifeprof80.fig} was produced by first
 \index{LaTeX@{\LaTeX\ document!including figure in}}%
 executing the command
-\index{eps@{\tt -eps} option}%
-\index{sampleMax@{\tt -sampleMax} option}%
-\index{region@{\tt -region} option}%
+\index{eps@\texttt{-eps} option}%
+\index{sampleMax@\texttt{-sampleMax} option}%
+\index{region@\texttt{-region} option}%
 \begin{verbatim}
  rp2ps -region -name life -sampleMax 80 -eps 137 mm
 \end{verbatim}
-The option \boxml{-eps 137 mm} has the effect that \boxml{region.ps}
-becomes an encapsulated PostScript file.\index{region.ps@{\tt region.ps}}
-The resulting \boxml{region.ps} was renamed \boxml{life80.ps}
-and included in this document as follows:
+The option \boxml{-eps 137 mm} has the effect that 
+\index{region.ps@\texttt{region.ps}}%
+\boxml{region.ps} becomes an encapsulated PostScript file.  The
+resulting \boxml{region.ps} was renamed \boxml{life80.ps} and included
+in this document as follows:
 \begin{verbatim}
 \begin{figure}
 \begin{center}
@@ -894,7 +895,7 @@ In $\RegExp$,
 region allocation and de-allocation are explicit, they are always paired,
 and they follow
 the syntactical structure of the source program. 
-If $e$ is an expression in $\RegExp$, then so is\index{letregion@{\tt letregion}}
+If $e$ is an expression in $\RegExp$, then so is\index{letregion@\texttt{letregion}}
 $$\boxml{letregion $\rho$ in $e$ end}$$
 Here $\rho$ is a 
 \index{region variable}%
@@ -1121,7 +1122,7 @@ If no errors were found during compilation, the Kit produces a
 {\em target program} in the form of an executable file, called {\tt
   run}. The Kit places {\tt run} in the working directory.
 
-Running the target program is done from the UNIX shell by typing \index{run@{\tt run}}
+Running the target program is done from the UNIX shell by typing \index{run@\texttt{run}}
 \begin{verbatim}
        run
 \end{verbatim}
@@ -1133,10 +1134,10 @@ Library that are needed for linking.
 Running the programs presented in this chapter is not particularly
 exciting, because none of them produce output! However, as an
 exercise, try executing the 
-\index{hello world@{\tt hello world}}%
+\index{hello world@\texttt{hello world}}%
 {\tt helloworld.sml} program, which, like all other example files in
 this document, is located in the
-\index{kitdemo directory@{\tt kitdemo} directory}%
+\index{kitdemo directory@\texttt{kitdemo} directory}%
 {\tt kitdemo} directory.
 
 
@@ -1161,7 +1162,7 @@ The tuple constructor in $\Lam$ is written as in SML:
 $$\boxml{(}e_1\boxml{,}\ldots\boxml{,}e_n\boxml{)}$$
 However, the corresponding expression in $\RegExp$ and $\MulExp$ takes the form
 $$\boxml{(}e_1\boxml{,}\ldots\boxml{,}e_n\boxml{)}\,\at\,\rho$$
-\index{at@{\tt at}}where $\rho$ is a 
+\index{at@\texttt{at}}where $\rho$ is a 
 \index{region variable}%
 region variable indicating where the tuple should be put.  In the case
 $n=0$, the $\at\,\rho$ is not printed, because the empty tuple is not
@@ -1213,7 +1214,6 @@ Region inference extends this idea by inferring for each expression a
 \index{type with place}%
 \index{region-annotated type}%
 {\em (region-annotated) type with place}. We use 
-\index{\mu}%
 $\mu$ to range over types with places
 $$\mu::=(\tau,\rho)$$
 where $\tau$ is a {\em region-annotated type},
@@ -1257,7 +1257,7 @@ The above example then becomes
 \section{Effects and {\tt letregion}}
 \label{effects.sec}
 We now describe the general principle that the Kit uses to decide
-when it is safe to put \boxml{letregion} around  an expression.\index{letregion@{\tt letregion}}
+when it is safe to put \boxml{letregion} around  an expression.\index{letregion@\texttt{letregion}}
 
 Here is an example of an SML program that first creates a pair and
 then selects a component of the pair, after which the pair is garbage:\footnote{Program \boxml{kitdemo/elimpair.sml}.}
@@ -1313,7 +1313,7 @@ branch and that at most one of the branches will be chosen.) Thus, the
 pair will be allocated in a little region on the runtime stack.
 
 But how does the Kit know that it is safe to de-allocate {\tt r7}
-where the \index{letregion@{\tt letregion}}{\tt letregion} ends?\index{region!de-allocation}
+where the \index{letregion@\texttt{letregion}}{\tt letregion} ends?\index{region!de-allocation}
 
 The answer lies in the fact that the Kit infers for every expression
 not just a region-annotated type with place, but also a so-called \index{effect}{\em effect}. 
@@ -1341,7 +1341,7 @@ a region that is used only locally within the expression.
 That this is true is of course far from trivial, but it
 has been proved for a skeletal version of $\RegExp$.  Consequently, 
 when this condition is met, the region inference
-algorithm wraps a \index{letregion@{\tt letregion}}{\tt letregion} binding of the region variable
+algorithm wraps a \index{letregion@\texttt{letregion}}{\tt letregion} binding of the region variable
 around that expression.
 
 In our example, there are no free variables in $e_0$; moreover, $\boxml{r7}$
@@ -1353,7 +1353,7 @@ around $e_0$.
 A 
 \index{record!runtime representation of}%
 record with 0 components
-(the value of type \index{unit@{\tt unit}}{\tt unit}) is represented
+(the value of type \index{unit@\texttt{unit}}{\tt unit}) is represented
 unboxed.  A record with $n$ components ($n\geq 1$) is represented
 boxed, as a pointer to precisely $n$ words in a region.  Notice that
 records are not tagged. Avoiding tags is possible, because (1) there
@@ -1392,7 +1392,20 @@ provided by the initial basis.
 \label{integers.sec}
 Values of type \index{integer}{\tt int} are represented as 32-bit signed integers.
 The following operations on integers are 
-pre-defined at top level:\index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{div@{\tt div}}\index{mod@{\tt mod}}\index{{\tt *}}\index{\verb+~+}\index{abs@{\tt abs}}
+pre-defined at top level:
+\index{=@\texttt{=}}%
+\index{<>@\texttt{<>}}%
+\index{<@\texttt{<}}%
+\index{>@\texttt{>}}%
+\index{<=@\texttt{<=}}%
+\index{>=@\texttt{>=}}%
+\index{+@\texttt{+}}%
+\index{-@\texttt{-}}%
+\index{div@\texttt{div}}%
+\index{mod@\texttt{mod}}%
+\index{*@\texttt{*}}%
+\index{~@\verb+~+}%
+\index{abs@\texttt{abs}}%
 \begin{verbatim}
 infix  4 = <> < > <= >= 
 infix  6 + - 
@@ -1412,7 +1425,23 @@ all 32 bits are available.
 The 
 \index{initial basis}%
 initial basis provides the following top-level operations on reals:
-\index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{{\tt *}}\index{{\tt /}}\index{\verb+~+}\index{abs@{\tt abs}}\index{real@{\tt real}}\index{trunc@{\tt trunc}}\index{floor@{\tt floor}}\index{ceil@{\tt ceil}}\index{round@{\tt round}}
+\index{=@\texttt{=}}%
+\index{<>@\texttt{<>}}%
+\index{<@\texttt{<}}%
+\index{>@\texttt{>}}%
+\index{<=@\texttt{<=}}%
+\index{>=@\texttt{>=}}%
+\index{+@\texttt{+}}%
+\index{-@\texttt{-}}%
+\index{*@\texttt{*}}%
+\index{/@\texttt{/}}%
+\index{~@\verb+~+}%
+\index{abs@\texttt{abs}}%
+\index{real@\texttt{real}}%
+\index{trunc@\texttt{trunc}}%
+\index{floor@\texttt{floor}}%
+\index{ceil@\texttt{ceil}}%
+\index{round@\texttt{round}}%
 \begin{verbatim}
 infix  4 < > <= >= 
 infix  6 + - 
@@ -1436,7 +1465,7 @@ Section~\ref{runtimetypes.sec}) are never unified with regions of any
 other runtime type.
 
 A real constant $c$ in the source program is translated into an
-expression of the form \index{at@{\tt at}}$c\at\rho$, where $\rho$ is
+expression of the form \index{at@\texttt{at}}$c\at\rho$, where $\rho$ is
 a region variable, indicating the region into which the real will be
 stored.
 
@@ -1446,7 +1475,17 @@ operations on reals.
 \section{Characters and Strings}
 The 
 \index{initial basis}%
-initial basis provides the following top-level operations on characters and strings:\index{{\tt =}}\index{\verb+^+}\index{ord@{\tt ord}}\index{chr@{\tt chr}}\index{str@{\tt str}}\index{size@{\tt size}}\index{explode@{\tt explode}}\index{implode@{\tt implode}}\index{concat@{\tt concat}}\index{substring@{\tt substring}}
+initial basis provides the following top-level operations on characters and strings:
+\index{=@\texttt{=}}%
+\index{^@\verb+^+}%
+\index{ord@\texttt{ord}}%
+\index{chr@\texttt{chr}}%
+\index{str@\texttt{str}}%
+\index{size@\texttt{size}}%
+\index{explode@\texttt{explode}}%
+\index{implode@\texttt{implode}}%
+\index{concat@\texttt{concat}}%
+\index{substring@\texttt{substring}}%
 \begin{verbatim}
 infix  4 = 
 infix  6 ^
@@ -1490,7 +1529,9 @@ The boolean values {\tt true} and {\tt false} are represented as
 Booleans are unboxed. The 
 \index{initial basis}%
 initial basis provides the following top-level operations on
-booleans:\index{{\tt =}}\index{not@{\tt not}}
+booleans:
+\index{=@\texttt{=}}%
+\index{not@\texttt{not}}%
 \begin{verbatim}
 infix 4 =
 val not: bool -> bool
@@ -1511,8 +1552,8 @@ Section~\ref{listexamples.sec} gives a small example.
 \section{Syntax}
 \label{lsyn.sec}
 In Standard ML, all lists are constructed 
-from the two constructors \index{::@{\tt ::}}\boxml{::} (read: cons)
-and \index{nil@{\tt nil}}{\tt nil}.   
+from the two constructors \index{::@\texttt{::}}\boxml{::} (read: cons)
+and \index{nil@\texttt{nil}}{\tt nil}.   
 As a shorthand, one can write $\boxml{[}\exp_1\boxml{,}\cdots
 \boxml{,}\exp_n\boxml{]}$ for
 $$ \exp_1\boxml{::}\; \cdots\; \boxml{::} \exp_n\boxml{::}\boxml{nil}$$
@@ -1554,8 +1595,8 @@ values with decomposition of pairs.
 The intermediate languages 
 $\Lam$, $\RegExp$, and $\MulExp$ have SML-like constructs for applying constructors, but
 they decompose constructed values  
-by applying a \index{decon@{\tt decon}}deconstructor primitive,
-not by pattern matching.\index{at@{\tt at}}
+by applying a \index{decon@\texttt{decon}}deconstructor primitive,
+not by pattern matching.\index{at@\texttt{at}}
 \begin{center}
 \begin{tabular}{|c|c|}\hline
 $\Lam$, $\RegExp$, or $\MulExp$ & \\ \hline
@@ -1727,7 +1768,7 @@ The infinite region {\tt r7} holds the auxiliary pairs of the list.
 
 \chapter{First-Order Functions}
 In this chapter, we shall treat \index{function}\index{function!first-order}functions that are declared with
-\index{fun@{\tt fun}}{\tt fun} and that are first-order (i.e., that neither take functions
+\index{fun@\texttt{fun}}{\tt fun} and that are first-order (i.e., that neither take functions
 as arguments nor produce functions as results). Higher-order functions
 are treated in Chapter~\ref{hof.sec}.
 Region polymorphism works uniformly over all types; 
@@ -1775,7 +1816,7 @@ where \boxml{[$\rho_1'$, $\cdots$, $\rho_k'$]} is a record of
 $\rho_0'$ is the region where this record is stored, and $e'$ is an expression
 denoting the argument to the call. Notice that region parameters are enclosed in  brackets
 (\boxml{[ ]}); this should not cause confusion with ML lists, because $\RegExp$ and $\MulExp$
-do not use brackets for lists.\index{[ ]@{\tt [ ]}}.
+do not use brackets for lists.\index{[ ]@\texttt{[ ]}}.
 
 In the special case $k'=0$ the record for actual region parameters is empty
 and is therefore not allocated. We therefore omit printing the ``\boxml{at $\rho_0$}''
@@ -1839,7 +1880,7 @@ then selecting {\tt Compile an sml file} from the main menu.)}
 \hrule
 \label{fromto.fig}
 \end{figure}
-Notice that \boxml{r7} is a formal region parameter of {\tt fromto}.\index{fromto@{\tt fromto}}
+Notice that \boxml{r7} is a formal region parameter of {\tt fromto}.\index{fromto@\texttt{fromto}}
 In the last call of {\tt fromto}, a record holding a
 region descriptor for \boxml{r19} is passed to {\tt fromto};
 the region record is stored in {\tt r20}. Notice that the regions that hold
@@ -2044,7 +2085,7 @@ cells), $r$ ($n/2$ cells). Continuing this way, at the rightmost merge
 of two lists of length at most one, approximately $4n$ list cells are
 live.  Then a series of final merges occur.  Code that uses these
 ideas is listed in Figure~\ref{msort.fig}.
-\index{cp@{\tt cp}}\index{msort@{\tt msort}}
+\index{cp@\texttt{cp}}\index{msort@\texttt{msort}}
 \index{merge sort}%
 \index{projects!compiling}\index{projects!running}\footnote{Project
   {\tt kitdemo/msort.pm}, file {\tt kitdemo/msort.sml}. To compile the
@@ -2202,17 +2243,17 @@ $$\dec_1\boxml{;}\dec_2$$
 is a {\em sequential declaration}. The identifiers declared by this
 declaration are the identifiers that are declared by $\dec_1$ or $\dec_2$;
 moreover, identifiers declared in $\dec_1$ may be referenced in $\dec_2$.
-The \index{;@{\tt ;}}semicolon is associative. Thus, in a sequence 
+The \index{;@\texttt{;}}semicolon is associative. Thus, in a sequence 
 $\dec_1\boxml{;}\ldots\boxml{;}\dec_n$
 of declarations, identifiers declared in 
 $\dec_i$ may be referenced in $\dec_{i+1},\ldots
 ,\dec_n$ ($1\leq i\leq n$). 
 
-The Core Language has two forms of \index{declaration!local}\index{let@{\tt let}}local declarations. The
+The Core Language has two forms of \index{declaration!local}\index{let@\texttt{let}}local declarations. The
 expression 
 $$\boxml{let $\dec$ in $\exp$ end}$$
 declares identifiers whose scope does not extend beyond $\exp$. Similarly,
-the declaration\index{local@{\tt local}}
+the declaration\index{local@\texttt{local}}
 $$\boxml{local $\dec_1$ in $\dec_2$ end}$$
 first declares identifiers (in $\dec_1$) whose scope does not extend beyond
 $\dec_2$ and then uses these declarations to perform the declarations in
@@ -2256,7 +2297,7 @@ For example consider the ML expression:
 \end{verbatim}
 }
 
-Although the scope of the declaration is only the declaration of \index{smallPrime@{\tt smallPrime}}{\tt smallPrime},
+Although the scope of the declaration is only the declaration of \index{smallPrime@\texttt{smallPrime}}{\tt smallPrime},
 {\tt private} is accessed (at runtime) whenever {\tt smallPrime} is called.
 Thus, the lifetime of the list of small primes is at least as long as the
 lifetime of the {\tt smallPrime} function itself.
@@ -2266,7 +2307,7 @@ but, because we want to be able to handle recursive data types and higher-order
 functions, the coupling is less tight. 
 The ground rule of region inference
 \index{region inference!ground rule}%
-\index{letregion@{\tt letregion}}%
+\index{letregion@\texttt{letregion}}%
 is that as long as a value variable is in scope, the value bound to it
 at runtime will remain allocated. More precisely:
 \begin{quote}
@@ -2543,8 +2584,7 @@ free in the declaration of \boxml{f} and will be kept alive as long as \boxml{f}
 
 At other times, there is no clean way of avoiding escaping put
 effects.  One example is found in the {\tt TextIO} structure of the
-Basis Library:\index{TextIO@{\tt TextIO}}\index{openIn@{\tt
-    openIn}}\index{openOut@{\tt openOut}}
+Basis Library:\index{TextIO@\texttt{TextIO}}\index{openIn@\texttt{openIn}}\index{openOut@\texttt{openOut}}
 \begin{verbatim}
  exception CannotOpen
  fun raiseIo fcn nam exn = 
@@ -2584,7 +2624,7 @@ reference types.
 \label{refbasics.sec}
 A reference is a memory address (pointer).
 Standard ML has three built-in operations on \index{reference}references 
-\index{ref@{\tt ref}}\index{"!@{\tt "!}}\index{:=@{\tt :=}}
+\index{ref@\texttt{ref}}\index{"!@\texttt{"!}}\index{:=@\texttt{:=}}
 \medskip
 
 \halign{\indent\tt#\ \hfil&\quad$#$\hfil\ &\quad#\hfil\cr
@@ -2884,7 +2924,7 @@ with the general case.
 %using the {\tt datatype} declaration. 
 %For example, one can declare a polymorphic, recursive
 %data type for binary trees as 
-%follows:\index{tree@{\tt tree}}\index{Lf@{\tt Lf}}\index{Br@{\tt Br}}\index{datatype@{\tt datatype}}
+%follows:\index{tree@\texttt{tree}}\index{Lf@\texttt{Lf}}\index{Br@\texttt{Br}}\index{datatype@\texttt{datatype}}
 %\begin{verbatim}
 %       datatype 'a tree = Lf | Br of 'a * 'a tree * 'a tree;
 %\end{verbatim}
@@ -2906,7 +2946,7 @@ called its arity \cite{mthm97}. The arity of a type name is the number of
 type arguments it requires. For example, {\tt int} has
 arity 0 while the type name introduced by the following 
 declaration of binary trees has arity 1:
-\index{tree@{\tt tree}}\index{Lf@{\tt Lf}}\index{Br@{\tt Br}}\index{datatype@{\tt datatype}}
+\index{tree@\texttt{tree}}\index{Lf@\texttt{Lf}}\index{Br@\texttt{Br}}\index{datatype@\texttt{datatype}}
 \begin{verbatim}
        datatype 'a tree = Lf | Br of 'a * 'a tree * 'a tree;
 \end{verbatim}
@@ -3071,7 +3111,7 @@ Standard ML
 \index{exception constructor}%
 exception constructors are introduced by
 \index{exception declaration}%
-\index{exception@{\tt exception}}% 
+\index{exception@\texttt{exception}}% 
 {\em exception declarations}. The two most basic forms are
 $$\boxml{exception {\it excon}}$$
 and 
@@ -3101,7 +3141,7 @@ the pair is, as always with pairs, two words.
 
 \section{Exception Values}
 Standard ML has a type 
-\index{exn@{\tt exn}}%
+\index{exn@\texttt{exn}}%
 {\tt exn} of 
 \index{exception value}%
 {\em exception values}.  An exception value is either a
@@ -3154,7 +3194,7 @@ together as a linked list interspersed with the other contents of
 the runtime stack. If a matching handler is found, the runtime stack
 is popped down to the handler. This popping includes popping of regions
 that lie between that stack top and the handler. Put differently,
-consider an expression of the form \index{letregion@{\tt letregion}}
+consider an expression of the form \index{letregion@\texttt{letregion}}
 {\tt letregion $\rho$ in $e$ end}; if $e$ evaluates to an exception packet,
 then the region bound to $\rho$ is de-allocated and the packet is also
 the result of evaluating the \texttt{letregion} expression.
@@ -3194,7 +3234,7 @@ cannot be determined statically, provided one admits arithmetic
 operations as constant-time operations.
 
 \section{Example: Prudent Use of Exceptions}
-Here is an example of prudent use of exceptions in the ML Kit:\index{hd@{\tt hd}}\index{tl@{\tt tl}}
+Here is an example of prudent use of exceptions in the ML Kit:\index{hd@\texttt{hd}}\index{tl@\texttt{tl}}
 \bigskip
 
 \vbox{
@@ -3272,7 +3312,7 @@ $\resetf$ instructions.
 %
 As we have seen in previous chapters, region inference decorates every
 \index{allocation point}%
-\index{at@{\tt at}}%
+\index{at@\texttt{at}}%
 allocation point with an annotation of the form $\at\,\rho$,
 indicating into what region the value should be stored.
 
@@ -3288,10 +3328,10 @@ contains no values) and then storing the value into the region.
 %at the bottom of the region. 
 
 The storage mode analysis transforms an allocation point $\at\,\rho$ into 
-\index{attop@{\tt attop}}%
+\index{attop@\texttt{attop}}%
 $\attop\,\rho$ when it estimates that $\rho$ contains live values at the allocation point, whereas it
 transforms it into 
-\index{atbot@{\tt atbot}}%
+\index{atbot@\texttt{atbot}}%
 $\atbot\,\rho$ if it can prove that the region will contain no live
 values at that allocation point. The tokens $\attop$ and $\atbot$ are
 called 
@@ -3377,7 +3417,7 @@ be stored at the top or at the bottom.\footnote{When $\rho$ has
 The relevant parts of the result of compiling the last example are
 shown in Figure~\ref{sma1.fig}.  To see the storage modes, switch on
 the flag
-\index{print drop regions expression with storage modes@{\tt print drop regions expression with storage modes}}%
+\index{print drop regions expression with storage modes@\texttt{print drop regions expression with storage modes}}%
 $$\boxml{print drop regions expression with storage modes}$$
 in the menu \boxml{Printing of intermediate forms}.
 
@@ -3523,16 +3563,15 @@ Now there are the following cases:
       (and this lambda abstraction is not the right-hand side of a 
       declaration of a region-polymorphic function that has $\rho$ as
       formal parameter):}
-      use {\tt attop} (see Figure~\ref{b1.fig})\index{attop@{\tt attop}};
+      use {\tt attop} (see Figure~\ref{b1.fig})\index{attop@\texttt{attop}};
 \item[B2]{\it $\rho$ is bound by a {\tt letregion} expression inside the
       smallest enclosing function:} use {\tt atbot} if no locally live
       variable at the allocation point has $\rho$ free in its region-annotated
       type scheme with place (Section~\ref{regtych.sec}), and use {\tt attop} otherwise 
-      (see Figure~\ref{b2.fig})\index{letregion@{\tt letregion}};
+      (see Figure~\ref{b2.fig})\index{letregion@\texttt{letregion}};
     \item[B3 (first attempt)]{\it $\rho$ is a formal parameter of a
         region-polymorphic function whose right-hand side is the
-        smallest enclosing lambda abstraction:} use \index{sat@{\tt
-          sat}}{\tt sat}, if no locally live variable at the
+        smallest enclosing lambda abstraction:} use \index{sat@\texttt{sat}}{\tt sat}, if no locally live variable at the
       allocation point has $\rho$ free in its region-annotated type scheme with place, and
       use {\tt attop} otherwise (see Figure~\ref{b3.fig}).
 \end{description}
@@ -3682,7 +3721,7 @@ Next, {\tt klength} is a version that contains a local
 \index{region endomorphism}%
 region endomorphism {\tt loop} to perform the iteration; {\tt llength}
 is similar to {\tt klength}, except that the region endomorphism is
-declared outside {\tt llength}, using \index{local@{\tt local}}{\tt
+declared outside {\tt llength}, using \index{local@\texttt{local}}{\tt
   local}.
 \begin{figure}
 \vbox{
@@ -3741,7 +3780,7 @@ The
 \index{region descriptor}%
 {\tt rDesc} band shows how much space is used on the stack for
 holding region descriptors. The 
-\index{stack band@{\tt stack} band}%
+\index{stack band@\texttt{stack} band}%
 {\tt stack} band shows how much space is used on the stack, 
 including neither finite regions nor region descriptors; the {\tt stack}
 band mainly consists of registers and return addresses 
@@ -3909,7 +3948,7 @@ for example in some main loop.
 Therefore, the Kit provides two operations that the programmer can use
 to encourage (or force) the Kit to perform resetting at particular
 places in the program. The two operations are 
-\index{resetRegions@{\tt resetRegions}}
+\index{resetRegions@\texttt{resetRegions}}
 $$\resetr\; {\it vid}$$
 and \index{forceResetting@$\resetf$}
 $$\resetf\; {\it vid}$$
@@ -3953,7 +3992,7 @@ unsafe ($\resetf$).}
 \label{improvedmerge.sec}
 We can now improve on the 
 \index{merge sort}%
-\index{msort@{\tt msort}}%
+\index{msort@\texttt{msort}}%
 mergesort algorithm (Section~\ref{polyrec.sec}) by taking storage
 modes into account. Splitting a list can be done by an iterative
 region endomorphism that is made local to the sorting function.  Also,
@@ -4081,36 +4120,34 @@ see Figure~\ref{force.fig}.\footnote{Project:   \boxml{kitdemo/msortreset2.pm}, 
 \hrule
 \label{force.fig}
 \end{figure}
-The region profile of the improved merge sort appears in 
-Figure~\ref{msortreset.fig}. As expected, we have
-now brought space consumption down from four times to two times the size of the
-input. 
-Figure~\ref{msortreset.fig}
-may be compared to Figure~\ref{msortregion.fig} on page~\pageref{msortregion.fig}.
+The region profile of the improved merge sort appears in
+Figure~\ref{msortreset.fig}. As expected, we have now brought space
+consumption down from four times to two times the size of the input.
+Figure~\ref{msortreset.fig} may be compared to
+Figure~\ref{msortregion.fig} on page~\pageref{msortregion.fig}.
 
 \begin{figure}
 \begin{center}
 \includegraphics{msortreset2.ps}
 \end{center}
+\index{region.ps@\texttt{region.ps}}%
+\index{sampleMax@\texttt{-sampleMax} option}%
+\index{eps file@\texttt{-eps} option}%
+\index{rp2ps@\texttt{rp2ps}}%
 \caption{Region profiling of the improved mergesort. 
-The lower triangle contains unsorted elements, while the
-upper triangle contains sorted elements.
-The program was compiled with
-profiling enabled and then run with the command
-\boxml{run -microsec 100000}. The picture \index{region.ps@{\tt region.ps}}(\boxml{region.ps}) 
-was generated by the 
-\index{sampleMax@{\tt -sampleMax} option}%
-\index{eps file}%
-\index{rp2ps@{\tt rp2ps}}%
-command \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}
-and then previewed using the command \boxml{ghostview region.ps}~.}
+  The lower triangle contains unsorted elements, while the upper
+  triangle contains sorted elements.  The program was compiled with
+  profiling enabled and then run with the command \boxml{run -microsec 100000}. 
+  The PostScript picture \boxml{region.ps} was generated
+  with the command \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}
+  and then previewed using the command \boxml{ghostview region.ps}~.}
 \label{msortreset.fig}
 \end{figure}
 
 \section{Example: Scanning Text Files}
 \label{scan.sec}
 In this section we present a program that can 
-\index{scan@{\tt scan}}scan a sequence of Standard ML source
+\index{scan@\texttt{scan}}scan a sequence of Standard ML source
 files so as to compute what percentage of the source files is made
 up by comments. Recall that an ML comment begins with the two
 characters {\tt (*}, ends with {\tt *)}, and that comments may be
@@ -4320,7 +4357,7 @@ At this stage, it will hardly come as a surprise to the reader that closures are
 in regions.  Sometimes they reside in finite regions on the stack, other times
 they live in infinite regions, just like all other boxed values.
 
-Every occurrence of {\tt fn} \index{fn@{\tt fn}}in the program is considered 
+Every occurrence of {\tt fn} \index{fn@\texttt{fn}}in the program is considered 
 an allocation point; the region-annotated version of the lambda abstraction is
 $$\boxml{fn $\at\,\rho$ {\it pat} => {\it exp}}$$
 Standard ML allows  functions to be declared using {\tt val} rather than {\tt fun}, for example, 
@@ -4329,9 +4366,9 @@ Standard ML allows  functions to be declared using {\tt val} rather than {\tt fu
 \end{verbatim}
 declares the value identifier {\tt h} to be the composition of {\tt g}
 and {\tt f}.  Whereas functions declared with 
-\index{fun@{\tt fun}}%
+\index{fun@\texttt{fun}}%
 {\tt fun} automatically become region-polymorphic, functions
-declared with \index{val@{\tt val}}{\tt val} do not in general become
+declared with \index{val@\texttt{val}}{\tt val} do not in general become
 \index{region polymorphism}%
 region-polymorphic.\footnote{The reason for this is that the
   expression on the right-hand side of the value declaration might
@@ -4345,7 +4382,7 @@ into a {\tt fun} declaration, thereby making the function
 region-polymorphic after all.
 
 ML allows declarations of the form
-\index{fun@{\tt fun}}%
+\index{fun@\texttt{fun}}%
 $$\boxml{fun $f$ $\atpat_1\,\atpat_2 \cdots \atpat_n$ = $\exp$}$$
 as a shorthand for 
 $$\boxml{fun $f$ $\atpat_1$ => fn $\atpat_2$ => $\cdots$ fn $\atpat_n$ => $\exp$}$$
@@ -4794,7 +4831,7 @@ cases. We say that expressions produced by this analysis are
 \index{function call!call-explicit}%
 {\em call-explicit}.\label{call-explicit} One can inspect
 call-explicit programs by enabling the flag
-\index{print call-explicit expression@{\tt print call-explicit expression}}%
+\index{print call-explicit expression@\texttt{print call-explicit expression}}%
 $$\boxml{print call-explicit expression}$$
 in the menu~~
 \texttt{Printing of intermediate forms}, and thus check whether
@@ -4809,9 +4846,9 @@ the most specialised (and most efficient) cases towards the default  cases.
 
 \section{Parameter Passing}
 There is one (and so far only one) \index{register}register that is used for passing arguments
-to functions. It is called \index{standardArg@{\tt standardArg}}{\tt stardardArg}. In addition, region-polymorphic functions
+to functions. It is called \index{standardArg@\texttt{standardArg}}{\tt stardardArg}. In addition, region-polymorphic functions
 use another fixed register, 
-called \index{standardArg1@{\tt standardArg1}}{\tt standardArg1}\footnote{Admittedly, not terribly good nomenclature.},
+called \index{standardArg1@\texttt{standardArg1}}{\tt standardArg1}\footnote{Admittedly, not terribly good nomenclature.},
 which points to the record of region parameters that the caller has allocated prior to the call.
 
 \section{Tail Calls}
@@ -4829,8 +4866,7 @@ so as to free memory.
 \section{Simple Jump ({\tt jmp})}
 \label{simplejump.sec}
 In this section, we consider conditions under which the Kit implements
-a function call as a simple \index{jump}\index{jmp@{\tt
-    jmp}}
+a function call as a simple \index{jump}\index{jmp@\texttt{jmp}}
 \index{region polymorphism}%
 jump. A call of a region-polymorphic function takes the form
 $$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] $\at\,\rho_0$ $\exp$}$$
@@ -4951,7 +4987,7 @@ will be shown in Section~\ref{foldl.sec}.
 \label{tail.fig}
 \end{figure}
 
-\section{Non-Tail Call of Region-Polymorphic Function \index{funcall@{\tt funcall}}({\tt funcall})}
+\section{Non-Tail Call of Region-Polymorphic Function \index{funcall@\texttt{funcall}}({\tt funcall})}
 Still referring to the form (\ref{ntcall}), let us consider the
 case where (\ref{cond1}) or (\ref{cond2}) is not satisfied.
 Then the Kit will allocate $\rho_0$ before the call of $f$ 
@@ -4992,14 +5028,14 @@ region-polymorphic functions. We now turn to function applications
 where the operator is not the name of a region-polymorphic function.
 
 \section{Tail Call of Unknown Function ({\tt fnjmp})}
-Consider the case\index{fnjmp@{\tt fnjmp}}
+Consider the case\index{fnjmp@\texttt{fnjmp}}
 $$\exp_1\,\exp_2$$
 where (a) the call is a tail call and (b) $\exp_1$ is not the name of a region-polymorphic function.
 
 Here $\exp_1$ will be evaluated to a closure, pointed to by a standard 
-register called \index{standardClos@{\tt standardClos}}\index{register}
+register called \index{standardClos@\texttt{standardClos}}\index{register}
 {\tt standardClos}. Then $\exp_2$ will be evaluated and the result put
-in the standard register \index{standardArg@{\tt standardArg}}{\tt standardArg}.
+in the standard register \index{standardArg@\texttt{standardArg}}{\tt standardArg}.
 The first word in the closure always contains the address of
 the code of the function. This address is fetched into a register and a jump to
 the address is made. Because the call is a tail call, it induces no allocation, neither
@@ -5041,7 +5077,7 @@ The resulting call-explicit expression produced by the Kit is
 \end{verbatim}
 Notice that \boxml{f o g} first creates a closure in \boxml{r7}
 and then returns. When called, the created function first performs
-a non-tail call of \boxml{g} and then a tail call to \boxml{f}.\index{o@{\tt o}}
+a non-tail call of \boxml{g} and then a tail call to \boxml{f}.\index{o@\texttt{o}}
 
 \section{Example: {\tt foldl}  Revisited}
 \label{foldl.sec}
@@ -5052,7 +5088,7 @@ Consider the following declaration of folding over lists:\footnote{Program \boxm
            [] => b
          | x::xs' => foldl f (f x b) xs'
 \end{verbatim}
-The recursive call of \index{foldl@{\tt foldl}}{\tt foldl} is a call of a known function, but not a tail
+The recursive call of \index{foldl@\texttt{foldl}}{\tt foldl} is a call of a known function, but not a tail
 call; {\tt foldl} returns a closure, which is subsequently
 applied to the value of {\tt (f x b)}. This too returns a closure,
 which in turn is applied to {\tt xs'}. 
@@ -5185,7 +5221,7 @@ that make up a project. A project file can also
 hierarchical manner.  The Kit enforces the restriction that projects
 may not be cyclic.
 
-Project files have file extension \index{{\tt .pm}@pm}{\tt .pm}. The 
+Project files have file extension \index{.pm@\texttt{.pm}}{\tt .pm}. The 
 \index{project file!grammar}%
 grammar for project files ({\it pm}) is given in Figure~\ref{pm_grammar.fig}.
 \begin{figure}
@@ -5265,7 +5301,7 @@ setting a project file name and for reading and compiling the project
 file.  The Kit automatically detects when a source file has been
 modified. (It uses file modification dates of the operating system for
 this purpose.)  After a project has been successfully compiled and
-linked, it can be executed by running the command\index{run@{\tt run}}
+linked, it can be executed by running the command\index{run@\texttt{run}}
 \begin{verbatim}
  run
 \end{verbatim}
@@ -5738,7 +5774,7 @@ profiling. As an example, we investigate a revised version of the {\tt
 asking for a list of input files to scan (as project \texttt{scan.pm}
 does), the revised version of the scan project asks for only one input
 file, which it then scans
-\index{scan_rev1.pm@{\tt scan\_rev1.pm}}%
+\index{scan_rev1.pm@\texttt{scan\_rev1.pm}}%
 50~times.\footnote{Project {\tt kitdemo/scan\_rev1.pm}.}
 
 The first thing to do is to get an overview of the memory usage of the
@@ -5908,9 +5944,8 @@ directs the embedding of profiling instructions in the generated code
 and instructs the compiler whether to report a region flow graph.
 
 The compile-time profiling strategy is set up in the 
-\index{Profiling@{\tt Profiling} sub-menu}%
-{\tt Profiling} sub-menu:\footnote{The 
-  \index{instruction count profiling@\texttt{instruction count profiling}}%
+\index{Profiling@\texttt{Profiling} sub-menu}%
+{\tt Profiling} sub-menu:\index{instruction count profiling@\texttt{instruction count profiling}}\footnote{The   
   \texttt{instruction count profiling} option is available only with the
   native backend and has nothing to do with region profiling; it simply
   counts the number of executed instructions in the target program
@@ -5932,20 +5967,20 @@ The compile-time profiling strategy is set up in the
 %\end{quote}
 \noindent
 Region profiling is enabled by toggling the item
-\index{region profiling@{\tt region profiling}}%
+\index{region profiling@\texttt{region profiling}}%
 \mbox{{\tt region profiling}}. If you want the Kit to report
 region-annotated programs with program points, you should enable
 either 
-\index{print physical size inference expression@{\tt print physical size inference expression}}%
+\index{print physical size inference expression@\texttt{print physical size inference expression}}%
 {\tt print physical size inference expression} or
-\index{print call-explicit expression@{\tt print call-explicit expression}}%
+\index{print call-explicit expression@\texttt{print call-explicit expression}}%
 {\tt print call-explicit expression} from the {\tt Printing of
   intermediate forms} sub-menu together with the item 
-\index{print program points@{\tt print program points}}%
+\index{print program points@\texttt{print program points}}%
 {\tt print program points} from the {\tt Layout} sub-menu.
 
 To make the compiler report a region flow graph, enable
-\index{show region flow graph and generate .vcg file@{\tt show region flow graph and generate .vcg file}}%
+\index{show region flow graph and generate .vcg file@\texttt{show region flow graph and generate .vcg file}}%
 {\tt show region flow graph and generate .vcg file}. The region flow
 graph is reported both in text layout and in a {\tt .vcg} file, which,
 when interpreted by the 
@@ -5957,7 +5992,7 @@ VCG tool, provides a graphical version of the graph.\footnote{The VCG
   \texttt{vcg.1.30.r3.17.tar}.}
 
 As a running example, we use the 
-\index{life@{life}}%
+\index{life@\texttt{life}}%
 {\tt life} program.\footnote{Program {\tt kitdemo/life.sml}.}  We
 enable the {\tt region profiling} option and the {\tt show region flow
   graph and generate .vcg file} option from the {\tt Profiling}
@@ -5980,14 +6015,14 @@ In the file {\tt life.log} you find the call-explicit region-annotated
 program with program points and the region flow graph in text layout
 for the {\tt life.sml} source file.  The region flow graph is found by
 searching for \texttt{REGION FLOW GRAPH FOR PROFILING}. The graph
-contains the following fragment:\label{reg_flow_graph.ex}
+contains the following fragment (modified slightly to fit here):\label{reg_flow_graph.ex}
 \begin{verbatim}
- cp_list[r314:inf]
-    --r314 sat-->   [*r314*] ;
-    --r314 atbot-->   LETREGION[r1539:inf];
-    --r314 sat-->   nthgen'[r944:inf]   
-                   --r944 sat-->   [*r944*] ;
-                   --r944 atbot-->   LETREGION[r1588:inf];
+ cp_list[r89698:inf]
+  --r89698 sat-->  [*r89698*] ;
+  --r89698 atbot-->   LETREGION[r90769:inf];
+  --r89698 sat-->   nthgen'[r90246:inf]   
+                     --r90246 sat-->   [*r90246*] ;
+                     --r90246 atbot-->   LETREGION[r90812:inf];
 \end{verbatim}
 The region flow graph is almost equivalent to the graph used by the
 storage mode analysis (see page~\pageref{region flow graph}). In the
@@ -5998,34 +6033,33 @@ follows that \texttt{letregion}-bound region variables are always leaf
 nodes.
 
 Nodes in the graph are written in square brackets, where for example
-\texttt{cp\_list[r314:inf]} means that \texttt{r314} is a formal
+\texttt{cp\_list[r89698:inf]} means that \texttt{r89698} is a formal
 region parameter of function \texttt{cp\_list}. An asterisk inside a
 square bracket means that the node has been written earlier. Only the
 node identifier (i.e., the region variable) will then be printed. The
 size of the region is printed after the region variable; we use {\tt
-  inf} for infinite regions and {\em size} for finite regions of size
-{\em size} words.
+  inf} for infinite regions and {\em size\/} for finite regions of size
+{\em size\/} words.
 
 Edges are written with the {\em from node\/} identifier annotated on
 them. The edge points to the \emph{to node}. The fragment
 \begin{verbatim}
- cp_list[r314:inf] --r314 sat--> [*r314*] ;
+ cp_list[r89698:inf]
+  --r89698 sat-->  [*r89698*] ;
 \end{verbatim}
-is read: there is an edge from node \texttt{r314} to node
-\texttt{r314} and node \texttt{r314} has been written earlier. From
+is read: there is an edge from node \texttt{r89698} to node
+\texttt{r89698} and node \texttt{r89698} has been written earlier. From
 the cycle in the graph, one can conclude that \texttt{cp\_list} calls
 itself recursively; if you look in file {\tt life.sml}, you will
 find something like
 \begin{verbatim}
- fun cp_list[] = []
-   | cp_list((x,y)::rest) = 
-     let val l = cp_list rest
-     in (x,y):: l
-     end.
+  fun cp_list[] = []
+    | cp_list((x,y)::rest) = 
+          let val l = cp_list rest
+          in (x,y):: l
+          end
 \end{verbatim}
 
-% I don't understand the scenario below; can it happen? (ME 1998-09-27)
-%
 %\noindent
 %It is important to look inside the edge for the from node. Consider for
 %example:
@@ -6047,16 +6081,16 @@ graphs get too complicated, you may find help in the
 {\em strongly connected component\/} (scc) version of the graph.  The
 scc graph is found by searching for \texttt{[sccNo} in the log file.
 Each scc is identified by a unique {\em scc number}. The region
-variables contained in each scc is annotated on the scc-node.
+variables contained in each scc is annotated on the scc node.
 
 Consider, for example, the following fragment of the scc version of
 the region flow graph for the {\tt life} program:
 \begin{verbatim}
- [sccNo 206: r1181,]   --sccNo 206-->   [sccNo 205: r1486,];
+ [sccNo 184: r90473,]   --sccNo 184-->   [sccNo 183: r90717,];
 \end{verbatim}
-Here, we have a scc node (id 206) containing region variable
-\texttt{r1181} and an edge to scc node (id 205) containing region
-variable \texttt{r1486}.
+Here, we have a scc node (id 184) containing region variable
+\texttt{r90473} and an edge to scc node (id 183) containing region
+variable \texttt{r90717}.
 
 %--------------------------------------------------------
 \section{Region Flow Paths\label{regFlowPath.sec}}
@@ -6074,7 +6108,7 @@ $\rho'$ has been instantiated to $\rho$.
 
 You can specify the from and to nodes that you want the paths for in
 the menu item
-\index{paths between two nodes in region flow graph@{\tt paths between two nodes in region flow graph}}%
+\index{paths between two nodes in region flow graph@\texttt{paths between two nodes in region flow graph}}%
 {\tt paths between two nodes in region flow graph} in the {\tt Profiling}
 sub-menu:
 \begin{verbatim}
@@ -6101,18 +6135,21 @@ Compiling the source program again gives a new log file where you can
 search for \texttt{Starting layout of paths}:\footnote{Because region
   variables may change when re-compiling a source file, it may be
   necessary to start all over by starting the Kit again and compile
-  the project again to make sure that the regions you have specified
+  the program again to make sure that the regions you have specified
   will match the regions in a region flow graph of a previous
   compilation.}
 \begin{verbatim}
-[Starting layout of paths...
-    [Start path: [sccNo 59: r314,]--->
-                 [sccNo 58: r944,]--->[sccNo 57: r1588,]]
-...Finishing layout of paths]
+ [Starting layout of paths...
+     [Start path: 
+         [sccNo 63: r89698,]--->
+         [sccNo 62: r90246,]--->
+         [sccNo 61: r90812,]
+     ]
+ ...Finishing layout of paths]
 \end{verbatim}
 If you look at the region flow graph on
 page~\pageref{reg_flow_graph.ex}, you see that the only path from
-region \texttt{r314} to region \texttt{r1588} goes through function
+region \texttt{r89698} to region \texttt{r90812} goes through function
 \texttt{nthgen'}, that is, \texttt{nthgen'} calls \texttt{cp\_list}. If
 you look in the file \texttt{life.sml} you may notice that
 \texttt{nthgen'} actually calls a function \texttt{copy} and not
@@ -6132,18 +6169,19 @@ The
 \index{VCG tool}%
 VCG tool can be used to visualise region flow graphs exported in {\tt
   .vcg} files. We assume that the tool is installed and that it can be
-started by typing \texttt{xvcg} at the command prompt.  We use file
-\texttt{life.vcg} as the running example. Typing \mbox{\texttt{xvcg
+started by typing \texttt{xvcg} at the command prompt.  We use the file
+\texttt{life.vcg} as a running example. Typing \mbox{\texttt{xvcg
     life.vcg}} at the command prompt gives the window shown in
 Figure~\ref{vcg1.fig}.
 \begin{figure}
 \begin{center}
-  \scalebox{0.5}{\includegraphics*[0,0][293,327]{vcg1.eps}}
-  \caption{The VCG graph contains two nodes. The
-    node ``Region flow graph'' represents the folded region flow graph and
-    the node ``SCC graph'' represents the folded strongly connected
-    componemt graph.}\label{vcg1.fig}
+\scalebox{0.6}{\includegraphics{vcg1.ps}}
 \end{center}
+\caption{The VCG graph contains two nodes. The
+  node ``Region flow graph'' represents the folded region flow graph and
+  the node ``SCC graph'' represents the folded strongly connected
+  componemt graph.}
+\label{vcg1.fig}
 \end{figure}
 
 The two graphs are exported \emph{folded}, meaning that they are
@@ -6156,7 +6194,7 @@ mouse button to unfold the chosen graph. Figure~\ref{vcg2.fig}
 shows a small fraction of the unfolded region flow graph.
 \begin{figure}
 \begin{center}
-  \scalebox{0.8}{\includegraphics*[0,0][459,164]{vcg2.eps}}
+\scalebox{0.6}{\includegraphics{vcg2.ps}}
 \end{center}
 \caption{A small fragment of the region flow graph.}
 \label{vcg2.fig}
@@ -6170,33 +6208,30 @@ clicking on the right mouse button then folds the graph.
 
 Region flow paths are also exported together with the region flow
 graph. Each path is numbered and can be viewed by the {\tt Expose/Hide
-  edges} facility in the VCG pull-down menu, see Figure \ref{vcg3.fig}.
+  edges} facility in the VCG pull-down menu, see Figure~\ref{vcg3.fig}.
 \begin{figure}
 \begin{center}
-  \scalebox{0.5}{\includegraphics*[0,0][556,117]{vcg3.eps}}
+  \scalebox{0.6}{\includegraphics{vcg3.ps}}
 \end{center}
 \caption{After choosing the
   {\tt Expose/Hide edges} facility you get this window. The window
   shows that there are two classes of edges in the graph; one for the
-  region flow graph and one for the path from node \texttt{r474} to node
-  \texttt{r1748}. If you have generated the path from Section~\ref{regFlowPath.sec}, the option
-  \texttt{Path2(r314,r1588)} is present.}
+  region flow graph and one for the path from node \texttt{r89698} to node
+  \texttt{r90812}. If you have generated the path from Section~\ref{regFlowPath.sec}, the option
+  \texttt{Path2(r89698,r90812)} is present.}
 \label{vcg3.fig}
 \end{figure}
 
 Each path is numbered because there can be several paths between the same
 two nodes. Clicking on the {\tt Graph} edge class will hide the edges in the
 region flow graph so that edges in the generated path are the only edges
-shown, see Figure \ref{vcg4.fig}.
+shown, see Figure~\ref{vcg4.fig}.
 \begin{figure}
 \begin{center}
-  \scalebox{0.8}{\includegraphics*[0,0][460,186]{vcg4.eps}}
+  \scalebox{0.6}{\includegraphics{vcg4.ps}}
 \end{center}
 \caption{The figure shows the path between
-  node \texttt{r474} and \texttt{r1748}. If you look on
-  page~\pageref{reg_flow_graph.ex}, you may notice that it is the same
-  path as in the log file; the numbers have changed however, because
-  they where generated in two different compilations.}
+  node \texttt{r89698} and \texttt{r90812}.}
 \label{vcg4.fig}
 \end{figure}
 
@@ -6217,7 +6252,7 @@ run:
  -----------------------------------------------------------
 \end{verbatim}
 You can change the 
-\index{profile strategy!option@options}%
+\index{profile strategy!options}%
 profiling strategy by passing command line arguments directly to the
 executable.  The second line says that a virtual timer is used. In general, what timers are available
   is very much system dependent. Under the HP-UX operating system, there
@@ -6225,12 +6260,19 @@ are three possible timers, each of which can be enabled using one of
 the following options:\footnote{A complete description can be
     found in the manual page for \texttt{getitimer}.}
 \begin{description}
-\item[{\tt -realtime}:\index{realtime@\texttt{-realtime} option}\index{timer!real}] 
+\item[{\tt -realtime}]~
+  \index{realtime@\texttt{-realtime} option}%
+  \index{timer!real}%
   Real time.
-\item[{\tt -virtualtime}:\index{virtualtime@\texttt{-virtualtime} option}\index{timer!virtual}] 
+\item[{\tt -virtualtime}]~ 
+  \index{virtualtime@\texttt{-virtualtime} option}%
+  \index{timer!virtual}%
   The execution time for the process.
-\item[{\tt -profiletime}:\index{profiletime@\texttt{-profiletime} option}\index{timer!prof}] 
-  The execution time for the process together with the time used in the operating system on behalf of the process.
+\item[{\tt -profiletime}]~
+  \index{profiletime@\texttt{-profiletime} option}%
+  \index{timer!prof}% 
+  The execution time for the process together with the time used in
+  the operating system on behalf of the process.
 \end{description}
 
 The third line says that a 
@@ -6257,10 +6299,9 @@ the file \texttt{profile.rp}. This file can be changed by the
 \index{file@\texttt{-file} option}%
 \texttt{-file name} option.
 
-There are several other command line arguments; these options can be
-seen by using the \texttt{-h} or 
-\index{help@{\tt -help} option}%
-\texttt{-help} options.
+There are several other possible command line options; use the \texttt{-h} option or the 
+\index{help@\texttt{-help} option}%
+\texttt{-help} option for details.
 
 %----------------------------------
 \section{Regions Statistics}
@@ -6269,7 +6310,7 @@ If the executable file {\tt run} is executed with the option {\tt -showStat} the
 \index{region statistics}%
 {\em region statistics\/} is printed just before the program
 terminates. Region statistics includes information about the use of
-regions and it does not depend on the specifics of the runtime
+regions and does not depend on the specifics of the runtime
 profiling strategy; in fact, region statistics includes only exact,
 non-sampled values for the program. Assuming that {\tt run} is the
 executable file generated by compiling the program {\tt life} with
@@ -6317,7 +6358,6 @@ Figure~\ref{region_statistics.fig}.
 \medskip\hrule
 \end{figure}
 
-\noindent
 The {\tt MALLOC} part of Figure~\ref{region_statistics.fig} shows how
 memory is allocated from the operating system.
 
@@ -6339,10 +6379,10 @@ gives
 
 In the {\tt INFINITE REGIONS} part, we see the number of calls to
 infinite region operations such as {\tt allocateRegionInf} and {\tt
-  alloc}. The program has allocated 95764 infinite regions and
-deallocated 95761; the three global regions are not deallocated
+  alloc}. The program allocates 95764 infinite regions and
+deallocates 95761; the three global regions are not deallocated
 before the region statistics is printed and the program terminates.
-The program has allocated 858873 objects in infinite regions. It has
+The program allocates 858873 objects in infinite regions. It has
 been possible to reset an infinite region 123378 times. The {\tt
   deallocateRegionsUntil} operation is called whenever an exception is
 raised, thus, we see that no exceptions were raised by the program.
@@ -6354,11 +6394,11 @@ fill out a region page entirely. In the {\tt ALLOCATION} part, the value
   Infinite regions utilisation (36240/42400): 85%
 \end{verbatim}
 shows memory utilisation for infinite regions at the moment where the
-program had allocated the largest amount of memory in infinite
+program has allocated the largest amount of memory in infinite
 regions.
 
-In the {\tt STACK} part, we see that the program has allocated and
-deallocated the same number of finite regions. We also see that the
+In the {\tt STACK} part, we see that the program allocates and
+deallocates the same number of finite regions. We also see that the
 space used for finite regions is 6608 bytes and that the total use of
 stack space is 7412 bytes (excluding space used to hold profiling
 information). The stack size values
@@ -6373,139 +6413,159 @@ slot, which will often lower the difference between the two values.
 %--------------------------------------------
 \section{Processing the Profile Data File}
 %--------------------------------------------
-The profile datafile \texttt{profile.rp} can be processed by the 
-\index{rp2ps@{\tt rp2ps} options|(}%
-graph generator \texttt{rp2ps} (read: RegionProfile2PostScript) found
-in the \texttt{bin} directory for the ML Kit version you
-use.\footnote{The \texttt{rp2ps} program is based on a profiler by
+The profile datafile {\tt profile.rp} can be processed by the 
+\index{rp2ps@\texttt{rp2ps} options|(}%
+graph generator {\tt rp2ps} (read: RegionProfile2PostScript) found
+in the {\tt kit/bin} directory.\footnote{The {\tt rp2ps} program is based on a profiler by
   Colin Runciman, David Wakeling and Niklas R\"{o}jemo.} The graph
 generator is controlled by command line options.
 
-A region profile is produced by the
-\texttt{-region}
-\index{region@{\tt -region} option}%
-switch. Typing
-the UNIX command ~~\boxml{rp2ps -region}~~ produces a PostScript file in
-file \texttt{region.ps}. The file \texttt{profile.rp} is used as 
+A 
+\index{region profile}%
+\index{region@\texttt{-region} option}%
+region profile is produced by typing
+\begin{verbatim}
+ rp2ps -region
+\end{verbatim}
+at the command prompt. The program produces a PostScript file in
+file {\tt region.ps} by reading profile information from the 
 \index{profile data file}%
-profile data file. Figure \ref{prof_eks1.fig} shows the region profile
-for the example program \texttt{life.sml}.
-\begin{figure}[htb]
+profile data file {\tt profile.rp}, see Figure~\ref{profStrategy.fig}.
+A region profile for the {\tt life} program is shown in
+Figure~\ref{prof_eks1.fig}. The region that occupies the largest area
+is at the top. If there are more regions than can be shown in
+different shades, then the smallest regions are collected in an OTHER
+band at the bottom.
+
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,133]{prof_eks1.eps}}
-  \caption{The region profile shows all
-          regions and the stack with the region (or stack) having the
-          largest area at the top. Executing the life program with
-          \texttt{run -microsec 100000} and typing \texttt{rp2ps
-            -sampleMax 1200 -region} produces this graph.}\label{prof_eks1.fig}
+\includegraphics{prof_eks1.ps}
 \end{center}
+\caption{Region profile of the {\tt life} program. The region 
+  that occupies the largest area is at the top. The graph was 
+  produced by first typing \texttt{run -microsec 20000} at the
+  command prompt and then typing \texttt{rp2ps -region}.}
+\label{prof_eks1.fig}
 \end{figure}
-%\noindent
-The regions are sorted by size (area) with the largest at the top and the
-smallest at the bottom. If there are more regions than can be shown in
-different shades, the smallest are collected in an {\em other\/}
-\emph{band} at the bottom.
 
 Each region is identified with a number that matches a {\tt
-  letregion}-bound region variable in the region-annotated lambda
-program. Infinite regions end with ``{\tt inf}'' and finite regions
-with ``{\tt fin}''. We also have a band \texttt{rDesc} and
-\texttt{stack}. The \texttt{rDesc} band shows the memory used on
-infinite ``region descriptors'' on the stack. The stack band shows
-stack usage excluding the region descriptors for the infinite regions.
+  letregion}-bound region variable in the region-annotated program.
+Infinite regions end with {\tt inf} and finite regions end with {\tt
+  fin}. There are also a band named {\tt rDesc} and a band named
+{\tt stack}. The {\tt rDesc} band shows the memory used on
+region descriptors of infinite regions on the stack. The stack band
+shows stack usage excluding finite regions and region descriptors for
+infinite regions.
 
-The \emph{max.\ allocation line} ``Maximum allocated bytes in regions:
-$\ldots$'' at top of Figure \ref{prof_eks1.fig} shows the maximum number of
-bytes allocated in regions when the target program was executed. Because we
-also show the stack use on the graph (as the {\tt rDesc} and {\tt stack} band), we
-offset the max.\ allocation line upwards by the maximum stack use shown. The
-space between the max. allocation line and the top band shows the
-inaccuracy of the profiling strategy used. Having a large gap indicates
-that a smaller time slot should be used or maybe another Compile-Time Profiling
-Strategy.
+The vertical line marked ``Maximum allocated bytes in regions'' in
+Figure~\ref{prof_eks1.fig} is called the {\em maximum allocation
+  line}; it shows the maximum number of bytes allocated in regions
+when the program was executed. Because we also show the stack use on
+the graph (as the {\tt rDesc} and {\tt stack} band), the maximum
+allocation line is offset upwards by the stack use at the point where
+region allocation was at its highest. The space between the maximum
+allocation line and the top band shows the inaccuracy of the profiling
+strategy. To decrease the gap, it often helps to use a smaller time
+slot.
 
-An object profile is produced by the
-\texttt{-object}\index{object@\texttt{-object} option} switch. If we
-want to examine the largest region shown in Figure \ref{prof_eks1.fig}, we
-type \texttt{rp2ps -sampleMax 1200 -object 1588} and get the object profile shown in
-Figure \ref{prof_eks2.fig}.
-\begin{figure}[htb]
+The largest region shown in Figure~\ref{prof_eks1.fig} is {\tt
+  r90812}. An
+\index{object profile}%
+\index{object@\texttt{-object} option}%
+object profile of region {\tt r90812} is produced by typing
+\begin{verbatim}
+ rp2ps -object 90812
+\end{verbatim}
+at the command prompt. We obtain the object profile shown in
+Figure~\ref{prof_eks2.fig}.
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,133]{prof_eks2.eps}}
-  \caption{The object profile shows all
-    allocation points allocating into this region.}\label{prof_eks2.fig}
+\includegraphics{prof_eks2.ps}
 \end{center}
+\caption{The object profile shows all allocation points allocating into region {\tt r90812}.}
+\label{prof_eks2.fig}
 \end{figure}
-%\noindent
-We see that allocation point \texttt{pp64} is responsible for the largest
-amount of allocations in the program. The allocation point may be found by
-searching for program point \texttt{pp64} in the region-annotated
-lambda program.
 
-A stack profile (Figure \ref{prof_eks3.fig}) shows memory usage in
-the stack. A stack profile is generated with the \texttt{-stack}
-option\index{stack@\texttt{-stack} option} to \texttt{rp2ps}.
+We see that allocation point \texttt{pp12223} is responsible for the
+largest amount of allocations in the program. The allocation point may
+be found in the region-annotated program resulting from compiling the
+{\tt life} program (remember to enable printing of program points). In
+general, program points may also stem from the Basis Library (search
+the {.log} files in the directory {\tt kit/basislib}).
 
-\begin{figure}[htb]
+The stack profile shown in Figure~\ref{prof_eks3.fig} shows memory
+usage on the stack, excluding space used by finite regions. A 
+\index{stack profile}%
+\index{stack@\texttt{-stack} option}%
+stack profile is generated by typing
+\begin{verbatim}
+ rp2ps -stack
+\end{verbatim}
+at the command prompt.
+
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,133]{prof_eks3.eps}}
-  \caption{Memory usage on the stack.}\label{prof_eks3.fig}
+\includegraphics{prof_eks3.ps}
 \end{center}
+\caption{Memory usage on the stack excluding space for finite regions.}
+\label{prof_eks3.fig}
 \end{figure}
-%\noindent
 
 %-------------------------------------------------------
 \section{More Advanced Graphs with \texttt{rp2ps}}
 %-------------------------------------------------------
-This section gives a fast overview of the more advanced options which can
+This section gives a quick overview of the more advanced options that can
 be passed to \texttt{rp2ps}. First of all, it is possible to name the
-profiles with the \texttt{-name} option\index{name@\texttt{-name} option}. Comments are inserted in the
-x-axis with the \texttt{-comment}\index{comment@\texttt{-comment} option} option.
+profiles with the 
+\index{name@\texttt{-name} option}%
+{\tt -name} option. Comments are inserted on the
+x-axis with the 
+\index{comment@\texttt{-comment} option}%
+{\tt -comment} option.
 
-The profile data file may contain an large number of \emph{samples}
+The profile data file may contain a large number of \emph{samples}
 (the data collected by a profile tick is called a sample). By default,
-\texttt{rp2ps} only uses 64 samples. This may be changed with the
-\index{sampleMax@{\tt -sampleMax} option}%
+\texttt{rp2ps} uses only 64 samples. You can alter the setting with the
+\index{sampleMax@\texttt{-sampleMax} option}%
 \texttt{-sampleMax} option. The following two algorithms are used to sort
 out samples:
-\begin{quote}
 \begin{description}
-\item[{\tt -sortBySize}\index{sortBySize@\texttt{-sortBySize} option}] where the $n$ (specified by \texttt{-sampleMax})
-  largest samples are kept.
-\item[{\tt -sortByTime}\index{sortByTime@\texttt{-sortByTime} option}] is used by default and makes a binary deletion of
-  samples by time such that the $n$ samples shown will be equally
-  distributed on the $x$-axis.
+\item[{\tt -sortBySize}]~
+  \index{sortBySize@\texttt{-sortBySize} option}%
+  The $n$ (specified by \texttt{-sampleMax}) largest samples are
+  shown.
+\item[{\tt -sortByTime}]~
+  \index{sortByTime@\texttt{-sortByTime} option}%
+  The $n$ samples shown are equally distributed over time (default).
 \end{description}
-\end{quote}
-\noindent
-The \texttt{-sortBySize} option is handy if you get some profiles
-with a large gap between the top band and the \emph{max. allocation line}.
-If there is a large gap when using option \texttt{-sortBySize}, then you
-have to profile with smaller time slots. You can use the 
-\texttt{-stat}\index{stat@\texttt{-stat} option}
-option to get the number of samples in the profile data file. It is printed
-as \texttt{Number of ticks:}.
+The \texttt{-sortBySize} option is useful if your profiles have a
+large gap between the top band and the maximum allocation line.  If
+there is a large gap when using option \texttt{-sortBySize}, then it
+may help to profile with a smaller time slot. You can use the
+\index{stat@\texttt{-stat} option}%
+{\tt -stat} option to see the number of samples in the profile data
+file. It is printed as \texttt{Number of ticks:}.
 
-Figure \ref{prof_eks4.fig} shows the profile for the following
+Figure~\ref{prof_eks4.fig} shows the profile for the following
 command line:
-%\begin{footnotesize}
 \begin{verbatim}
-rp2ps -region -sampleMax 50 -name life.sml 
-      -comment 9 "A comment at time 9" -sortByTime
+ rp2ps -region -sampleMax 50 -name life
+       -comment 9 "A comment at time 9" -sortByTime
 \end{verbatim}
-%\end{footnotesize}
-\noindent
 
-\begin{figure}[htb]
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,133]{prof_eks4.eps}}
-  \caption{It is possible to insert comments in the profiles.}\label{prof_eks4.fig}
+  \includegraphics{prof_eks4.ps}
 \end{center}
+\caption{It is possible to insert comments in profile graphs.}
+\label{prof_eks4.fig}
 \end{figure}
-%\noindent
-The graph generator recognize several options not shown above. They are
-printed on stdout when typing \texttt{rp2ps -h}.
-\index{rp2ps@{\tt rp2ps} options|)}%
+
+The graph generator recognises several options that are not shown
+here. Help on these options is obtained by typing \texttt{rp2ps -h} or
+\index{help@\texttt{-help} option}%
+{\tt rp2ps -help} at the command prompt.
+\index{rp2ps@\texttt{rp2ps} options|)}%
 
 %==============================================
 \chapter{Interacting with the Kit}
@@ -6516,7 +6576,7 @@ Starting the Kit was described in Section~\ref{tryit.sec}.  To
 \index{leaving the Kit}%
 \index{exit from the Kit}%
 \index{quitting from the Kit}%
-leave the Kit, type \index{quit@{\tt quit}}\boxml{quit} followed by a
+leave the Kit, type \index{quit@\texttt{quit}}\boxml{quit} followed by a
 return character. 
 
 We have already described how to compile and run single source files
@@ -6534,7 +6594,7 @@ for menu entries in the Kit.
 \label{printing_intermediate_forms.sec}
 %------------------------------------------------
 The menu 
-\index{Printing of intermediate forms@{\tt Printing of intermediate forms}}%
+\index{Printing of intermediate forms@\texttt{Printing of intermediate forms}}%
 \texttt{Printing of intermediate forms} controls what intermediate
 forms are printed when a program is compiled.
 A summary of the major phases that produce printable intermediate
@@ -6579,7 +6639,7 @@ the order they take place in the Kit.
 The optimiser, which rewrites a $\Lam$\index{Lambda@$\Lam$}
 program, collects statistics about the optimisation. This statistics
 can be printed by turning on the flag
-\index{statistics after optimisation@{\tt statistics after optimisation}}%
+\index{statistics after optimisation@\texttt{statistics after optimisation}}%
 \index{optimisation!statistics}%
 \texttt{statistics after optimisation} in the
 \texttt{Control/Optimiser} menu; the other flags found in this menu
@@ -6588,12 +6648,12 @@ controls the optimiser.
 Storage mode analysis (see Chapter~\ref{storagemodes.sec}) results in
 a $\MulExp$\index{MulExp@$\MulExp$} expression, which can be printed
 by turning on the flag
-\index{print atbot expression@{\tt print atbot expression}}%
+\index{print atbot expression@\texttt{print atbot expression}}%
 \texttt{print atbot expression}.  After that, regions
 with only $\Get$ effects are removed from the $\MulExp$
 expression (see page~\pageref{bother-to-distinguish-get-n-put}).  To
 see the resulting expression, turn on 
-\index{print drop regions expression@{\tt print drop regions expression}}%
+\index{print drop regions expression@\texttt{print drop regions expression}}%
 \texttt{print drop regions expression} or \texttt{print drop regions
   expression with storage modes}. (The latter flag also prints storage
 modes.)
@@ -6603,7 +6663,7 @@ Physical size inference then determines the size in words of finite
 region variables.  For instance, a finite region that will contain a
 pair will have physical size two words.  To see the expression after
 physical size inference, turn on 
-\index{print physical size inference expression@{\tt print physical size inference expression}}%
+\index{print physical size inference expression@\texttt{print physical size inference expression}}%
 \texttt{print physical size inference expression}.  After that,
 \index{call conversion}%
 call conversion converts the $\MulExp$ expression to a
@@ -6613,36 +6673,36 @@ page~\pageref{call-explicit}).  To see the result, enable the flag
 \index{Kit Abstract Machine}%
 KAM code is generated.  The KAM code before register allocation can be
 inspected by enabling the flag 
-\index{print KAM code before register allocation@{\tt print KAM code before register allocation}}%
+\index{print KAM code before register allocation@\texttt{print KAM code before register allocation}}%
 \texttt{print KAM code before register allocation}. The result of
 \index{register allocation}%
 register allocation can be viewed by enabling the flag 
-\index{print KAM code after register allocation@{\tt print KAM code after register allocation}}%
+\index{print KAM code after register allocation@\texttt{print KAM code after register allocation}}%
 \texttt{print KAM code after register allocation}.
 
 \section{Layout of Intermediate Forms}
 \label{layout_intermediate_forms.sec}
 While the switches described in the previous section concern which
 intermediate forms to print, the switches in the sub-menu
-\texttt{Layout}\index{Layout@{\tt Layout}} control how these forms are
+\texttt{Layout}\index{Layout@\texttt{Layout}} control how these forms are
 printed.
 
 The flags 
-\index{print types@{\tt print types}}%
+\index{print types@\texttt{print types}}%
 \texttt{print types},
-\index{print effects@{\tt print effects}}%
+\index{print effects@\texttt{print effects}}%
 \texttt{print effects}, and
-\index{print regions@{\tt print regions}}%
+\index{print regions@\texttt{print regions}}%
 \texttt{print regions} control the printing of region-annotated types,
 effects, and region allocation points (e.g., $\at\,\rho$).
 All eight combinations of these three flags are possible, but if
-\index{print effects@{\tt print effects}}%
+\index{print effects@\texttt{print effects}}%
 {\tt print effects} is turned on it is best also to turn the two
 others on so that one can see where the effect variables and region variables
 that appear in arrow effects are bound.
 
 Enabling the flag
-\index{print in K-Normal Form@{\tt print in K-Normal Form}}%
+\index{print in K-Normal Form@\texttt{print in K-Normal Form}}%
 \texttt{print in K-Normal Form}\index{K-normalisation} causes
 expressions to be output in K-Normal Form instead of the simplified
 form in which they are normally presented.
@@ -6661,7 +6721,7 @@ started, type
 \end{verbatim}
 from the shell. If no script file is provided on the command line, the
 Kit will try to read a script file
-\index{kit.script@{\tt kit.script}}%
+\index{kit.script@\texttt{kit.script}}%
 {\tt kit.script} from the working directory. During a session with the
 Kit, a script file can be read using the menu entry {\tt Read a script
   file} from the {\tt File} menu.
@@ -6684,9 +6744,11 @@ selecting {\tt print all flags and variables} from the {\tt Control}
 sub-menu, the Kit prints a table of all entries that may be set from a
 script file.
 
-Enabling \texttt{print in K-Normal Form}\index{print in K-Normal Form@{\tt print in
-    K-Normal Form}}\index{K-normalisation} causes  expressions to be output
-in K-Normal Form instead of the simplified form in which they are
+Enabling 
+\index{print in K-Normal Form@\texttt{print in K-Normal Form}}%
+\index{K-normalisation}%
+\texttt{print in K-Normal Form} causes expressions to be output in
+K-Normal Form instead of the simplified form in which they are
 normally presented.
 
 
@@ -6755,7 +6817,7 @@ The Kit conforms in large parts to the Standard ML Basis Library. Part
 of the functionality found in this library is programmed in C and
 linked to the Kit runtime system.  The declarations in system
 dependent parts of the library use a special built-in identifier
-called \indexTwo{prim}{\texttt{prim}}, which is declared to have type
+called \index{prim@\texttt{prim}}\texttt{prim}, which is declared to have type
 scheme $\forall \alpha \beta .  (\texttt{string} \ast \texttt{string}
 \ast \alpha) \rightarrow \beta$ in the initial basis.  A primitive
 function is then declared by passing its name to \texttt{prim}.  For
@@ -7142,8 +7204,8 @@ The following four macros are provided in the {\tt src/Runtime/List.h}
 header file:
 \index{isNIL@\texttt{isNIL}}%
 \index{isCONS@\texttt{isCONS}}%
-\index{hd@{\tt hd}}%
-\index{tl@{\tt tl}}%
+\index{hd@\texttt{hd}}%
+\index{tl@\texttt{tl}}%
 \begin{verbatim}
  #define isNIL(x)
  #define isCONS(x)
@@ -7542,39 +7604,39 @@ the files \verb|my_lib.c| and \verb|my_lib.sml| in the {\tt kitdemo}
 directory for detailed comments.)
 
 \begin{example}\label{power.ex}
-  The \indexTwo{power}{\texttt{power}} function shows how to convert
+  The \index{power@\texttt{power}}\texttt{power} function shows how to convert
   integers with the macros \texttt{convertIntToC} and
   \texttt{convertIntToML}.
 \end{example}
 
 \begin{example}\label{power_real.ex}
-  The \indexTwo{power_real}{\texttt{power\_real}} function shows how
+  The \index{power_real@\texttt{power\_real}}\texttt{power\_real} function shows how
   to convert reals with the macros \texttt{convertRealToC} and
   \texttt{convertRealToML}.
 \end{example}
 
 \begin{example}\label{power_auto.ex}
-  The \indexTwo{power_auto}{\texttt{power\_auto}} function shows the
+  The \index{power_auto@\texttt{power\_auto}}\texttt{power\_auto} function shows the
   use of auto conversion, which allows for easy linking to certain C
   functions.
 \end{example}
 
 \begin{example}\label{print_string_list.ex}
-  The \indexTwo{print_string_list}{\texttt{print\_string\_list}}
+  The \index{print_string_list@\texttt{print\_string\_list}}\texttt{print\_string\_list}
   example shows how to traverse a list of strings. The technique can
   easily be adobted to other data structures (e.g., to lists of lists
   of strings).
 \end{example}
 
 \begin{example}\label{power_exn.ex}
-  The \indexTwo{power_exn}{\texttt{power\_exn}} function shows how an
+  The \index{power_exn@\texttt{power\_exn}}\texttt{power\_exn} function shows how an
   exception can be raised from a C function. Notice that it is
   necessary to {\tt return} from the C function after you have called
   the \verb|raise_exn| function.
 \end{example}
 
 \begin{example}\label{dir.ex}
-  The \indexTwo{dir}{\texttt{dir}} function shows how a list can be
+  The \index{dir@\texttt{dir}}\texttt{dir} function shows how a list can be
   constructed backwards.  We use the UNIX system calls
   \texttt{opendir} and \texttt{readdir} to read the contents of the
   specified directory.
@@ -7589,7 +7651,7 @@ directory for detailed comments.)
 \end{example}
 
 \begin{example}\label{real_list.ex}
-  Function \indexTwo{real_list}{\texttt{real\_list}} constructs a list
+  Function \index{real_list@\texttt{real\_list}}\texttt{real\_list} constructs a list
   of reals forwards. The reals are allocated in an infinite region. It
   may be more convenient to construct the list backwards in the C
   function and then apply a list reverse function on the result list
@@ -7597,7 +7659,7 @@ directory for detailed comments.)
 \end{example}
 
 \begin{example}\label{change_elem.ex}
-  Function \indexTwo{change_elem}{\texttt{change\_elem}} shows the use of
+  Function \index{change_elem@\texttt{change\_elem}}\texttt{change\_elem} shows the use of
   the macro \texttt{elemRecordML}. The result type is \texttt{string*int}. The
   function swaps the two elements in the pair. The Kit passes an address to
   pre-allocated space for the result pair, and an infinite region for the
