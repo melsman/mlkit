@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-KITVERSION=4.0.0
+KITVERSION=3.4.0
 ARCH-OS=x86-linux
 INSTDIR=/usr/local/mlkit
 INSTDIR_KAM=/usr/local/mlkit-kam-$(KITVERSION)
