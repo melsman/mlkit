@@ -224,7 +224,9 @@ functor IntModules(structure Name : NAME
 		      in Some(ce',cb',mc')                        (* marked in the repository. *)
 		      end
 		    else None
-		   | None => None 
+		   | None => 
+                       (print("  [compiling body of functor " ^ FunId.pr_FunId funid ^ " (begin)]\n");
+                        None )
 
 	  in case reuse_code ()
 	       of Some(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
@@ -278,7 +280,10 @@ functor IntModules(structure Name : NAME
 					     mc'
 					  end
 		     val mc'' = ModCode.seq(mc,mc')
+                     infix footnote
+                     fun op footnote(x,y)= x
 		 in (ce', cb'', ModCode.emit mc'')     (* we also emit code for arg.. see comment above *)
+                    footnote print("  [compiling body of functor " ^ FunId.pr_FunId funid ^ " (end)]\n")
 		 end
 	  end
 
