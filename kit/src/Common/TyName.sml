@@ -95,7 +95,14 @@ functor TyName(
     val tyName_STRING = freshTyName{tycon=TyCon.tycon_STRING, arity=0, equality=true}
     val tyName_CHAR = freshTyName{tycon=TyCon.tycon_CHAR, arity=0, equality=true}
     val tyName_LIST  = freshTyName{tycon=TyCon.tycon_LIST,  arity=1, equality=true}
-    val tyName_TABLE = freshTyName{tycon=TyCon.tycon_TABLE, arity=1, equality=false}
+    val tyName_BYTE_TABLE = freshTyName{tycon=TyCon.tycon_BYTE_TABLE, arity=1, equality=true}
+      (*It is silly to give byte_table arity 1, but I do it anyway to have it
+       treated the same way as word_table, which I think is treated correctly.
+       Remember the reason word_table must have arity 1 is that, when it is 
+       used for polymorphic elements, the type of the elements must be a
+       part of the type of the table, lest the region inference will deallocate
+       the elements before the table is dead.*)
+    val tyName_WORD_TABLE = freshTyName{tycon=TyCon.tycon_WORD_TABLE, arity=1, equality=true}
     val tyName_REF = freshTyName{tycon=TyCon.tycon_REF, arity=1, equality=true}
     val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
     val _ = Rank.reset()

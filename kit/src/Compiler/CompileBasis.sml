@@ -1,16 +1,13 @@
-(*$CompileBasis: ELIMINATE_EQ PRETTYPRINT CON EXCON TYNAME
-        COMPILE_BASIS OPT_LAMBDA LAMBDA_STAT_SEM REGION_STAT_ENV
-        PHYS_SIZE_INF MUL EFFECT DROP_REGIONS FREE_IDS COMP_LAMB
-        FLAGS*)
 
 functor CompileBasis(structure Con : CON 
 		     structure Excon : EXCON 
+		     structure Lvars : LVARS
 		     structure TyName : TYNAME
 		     structure LambdaStatSem : LAMBDA_STAT_SEM
 		       sharing type LambdaStatSem.con = Con.con
 			   and type LambdaStatSem.excon = Excon.excon
 		     structure EliminateEq : ELIMINATE_EQ
-		       sharing type EliminateEq.lvar = LambdaStatSem.lvar
+		       sharing type EliminateEq.lvar = LambdaStatSem.lvar = Lvars.lvar
 			   and type EliminateEq.TyName = LambdaStatSem.TyName = TyName.TyName
 		     structure OptLambda : OPT_LAMBDA
 		       sharing type OptLambda.lvar = LambdaStatSem.lvar
@@ -191,10 +188,13 @@ functor CompileBasis(structure Con : CON
 	  val cons = Con.con_NIL :: Con.con_CONS ::
 	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
 	  val tynames = TyName.tyName_LIST :: 
-              TyName.tyName_BOOL :: tynames        (* for elim eq *) 
+              TyName.tyName_BOOL ::
+	      TyName.tyName_BYTE_TABLE ::
+	      TyName.tyName_WORD_TABLE :: tynames     (* for elim eq *) 
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
 	  val lvars = lvars_eq @ lvars
-	  val lvars_with_prims = lvars_eq @ lvars_with_prims
+	  val lvars_with_prims = Lvars.less_int_lvar :: Lvars.minus_int_lvar ::
+	                         lvars_eq @ lvars_with_prims
 	  val OEnv1 = OptLambda.restrict(OEnv,lvars)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
 	  val lvars_with_prims = (*CompilerEnv.primlvarsOfCEnv CEnv1*) lvars_with_prims (*hack*)
