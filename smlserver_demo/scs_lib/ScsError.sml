@@ -10,6 +10,7 @@ signature SCS_ERROR =
     val panic      : quot -> 'a
     val panic'	   : quot -> quot -> 'a
     val valOf      : 'a option -> 'a
+    val valOf'     : string -> 'a option -> 'a
 
     (* [valOfMsg msg v_opt] returns the msg to the user and no error
         is logged if v_opt is NONE; otherwise returns the value v
@@ -94,6 +95,9 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
     fun valOf NONE     = panic `valOf(NONE)`
       | valOf (SOME v) = v
 
+    fun valOf' str NONE     = panic `^str`
+      | valOf' str (SOME v) = v
+
     fun valOfMsg msg NONE     = ( ScsPage.returnPg "" msg ; Ns.exit() )
       | valOfMsg msg (SOME v) = v
 
@@ -114,6 +118,7 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
       handle _ => ( ScsPage.returnPg "" msg ; Ns.exit() )
 
     fun log msg = Ns.log (Ns.Notice, msg)
+
 
     fun err_msg_db X_dict help_link = [
       (ScsLang.da, `^(ScsDict.getString X_dict ScsLang.da) du s&oslash;ger 

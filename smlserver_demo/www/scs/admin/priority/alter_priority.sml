@@ -18,5 +18,5 @@ val adjustOrderSQL = `scs_priority.^(adjustOrderFn)(^(Int.toString rel_id))`
 
 val _ = ScsError.wrapPanic Db.execSp [adjustOrderSQL] ;
       
-val _ = ScsConn.returnRedirect target_url
+val _ = Ns.returnRedirect target_url
 

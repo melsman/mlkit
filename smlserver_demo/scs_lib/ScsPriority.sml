@@ -23,7 +23,10 @@ signature SCS_PRIORITY =
 
     val getAllPriorities : string * int * string -> priority_record list
 
-    val newPriorityRel : string * int * string * int -> Db.Handle.db -> int
+    val newPriorityRelTrans : string * int * string * int -> Db.Handle.db 
+      -> int
+
+    val delPriorityRelTrans : string * int * string -> Db.Handle.db -> unit
   end
 
 
@@ -70,7 +73,7 @@ structure ScsPriority :> SCS_PRIORITY =
 	  priority	       = ScsData.gToInt g "priority"
 	}
 	val prio_sql = `
-	  select rel_id, on_what_parent_table, on_which_parent_id
+	  select rel_id, on_what_parent_table, on_which_parent_id,
 		 on_what_child_table, on_which_child_id, priority
 	    from scs_priority_rels
 	   where on_what_parent_table = ^(Db.qqq on_what_parent_table)
@@ -82,8 +85,8 @@ structure ScsPriority :> SCS_PRIORITY =
         ScsError.wrapPanic (Db.list f) prio_sql
       end
 
-      fun newPriorityRel (on_what_parent_table, on_which_parent_id, 
-			  on_what_child_table, on_which_child_id) db = 
+      fun newPriorityRelTrans (on_what_parent_table, on_which_parent_id, 
+			       on_what_child_table, on_which_child_id) db = 
 	let
 	  val rel_id = ScsData.getOracleIdTrans db
 	  val priority = Db.Handle.oneFieldDb db 
@@ -110,16 +113,30 @@ structure ScsPriority :> SCS_PRIORITY =
 	      ^(Db.qqq on_what_parent_table),
 	      ^(Int.toString on_which_parent_id),
 	      ^(Db.qqq on_what_child_table),
-	      ^(Int.toString on_which_child_id)
-	      priority,
+	      ^(Int.toString on_which_child_id),
+	      ^priority,
 	      sysdate,
 	      sysdate,
-	      (ScsLogin.user_id())
+	      ^(Int.toString (ScsLogin.user_id()))
 	    )`
 	in      
 	  Db.Handle.dmlDb db (new_prio_sql());
 	  rel_id
-	end (* of newPriorityRel *)
+	end (* of newPriorityRelTrans *)
+
+      fun delPriorityRelTrans (on_what_parent_table, on_which_parent_id, 
+			       on_what_child_table) db = 
+	let
+	  val del_prio_sql = `
+	    delete from scs_priority_rels
+	     where on_what_parent_table = ^(Db.qqq on_what_parent_table)
+	        and on_which_parent_id   = ^(Int.toString on_which_parent_id)
+	        and on_what_child_table  = ^(Db.qqq on_what_child_table)
+	  `
+	in      
+	  Db.Handle.dmlDb db del_prio_sql
+	end (* of delPriorityRelTrans *)
+
 
     fun compare (prio1:priority_record, prio2:priority_record) = 
       Int.compare( #priority prio1, #priority prio2)
