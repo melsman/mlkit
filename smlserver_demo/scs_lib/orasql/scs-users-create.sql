@@ -197,7 +197,8 @@ as
   is
   begin
     update scs_users
-       set deleted_p = 't'
+       set deleted_p = 't',
+           screen_name = user_id || '-' || screen_name
      where user_id = scs_user.delete.user_id;
 
     person.delete(user_id);
