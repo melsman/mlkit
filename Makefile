@@ -43,8 +43,8 @@ tgz_export:
 tgz:
 	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
 	cd ..; cp -d -f -p -R kit mlkit-$(KITVERSION)
-	cd ../mlkit-$(KITVERSION); make clean
-	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS
+	cd ../mlkit-$(KITVERSION); $(MAKE) clean
+	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
 	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
 	cd ..; rm -rf mlkit-$(KITVERSION)
 

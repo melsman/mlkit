@@ -186,7 +186,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  end
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
-	val version = "4.0a"
+	val version = "3.4.0"
 	val greetings = ("ML Kit version " ^ version ^ ", " ^ date ^ " [" ^
 			 backend_name ^ " Backend]\n")
 
@@ -217,7 +217,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 			      print_options();
 			      print (Flags.help_all()); 
 			      raise Fail ""))]
-	   
 
 	local 
 	  fun go_files [file] = ((Manager.comp file; OS.Process.success) 
