@@ -77,13 +77,14 @@ fun persons_in_db norm_name =
 fun layout_person_db (person_id,first_names,last_name,norm_name,
 		      security_id,email,url,
 		      last_modified,modifying_user) =
-  `<td><b>^first_names ^last_name</b></td>
+  `<td><a href="^(Html.genUrl "show_person_with_all_sources.sml" 
+		                             [("person_id",person_id)])">
+					     <b>^first_names ^last_name</b></a></td>
    <td>^security_id</td>
    <td>^email</td>
    <td>` ^^ (ScsQuot.maybe `^url` (Html.ahref `url` `^(Html.genUrl url [])`)) ^^ `</td>
    <td>^(UcsWidget.valOfTimestamp last_modified) (^modifying_user)</td>
-   <td>` ^^ (Html.ahref `^(Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id),
-						      ("person_id",person_id)])` `import`) ^^ `</td>`
+   <td>^(ScsUserImp.importLink user_imp_id (ScsError.wrapPanic (valOf o Int.fromString) person_id))</td>`
 
 fun gen_table [] = ScsDict.s' [(ScsLang.en,`There are no persons to import in this group.`),
 			       (ScsLang.da,`Der er ikke noget at importere i denne  gruppe.`)]

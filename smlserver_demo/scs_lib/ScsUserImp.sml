@@ -54,6 +54,7 @@ signature SCS_USER_IMP =
     val exactMatchWidget   : string -> string -> string -> string -> string -> string -> UcsWidget.component
     val deleteField        : unit -> string
     val moreInfoField      : unit -> string
+    val delRelField        : unit -> string
 
     (* [getUserImpIdErr (fv,errs)] function to check fv-error for
        scs_user_imports.user_imp_id *)
@@ -62,6 +63,10 @@ signature SCS_USER_IMP =
     (* [getExtSourceErr (fv,errs)] function to check fv-error for
        external sources (the db-names) *)
     val getExtSourceErr : string * ScsFormVar.errs -> string * ScsFormVar.errs
+
+    (* [getOnWhichIdErr (fv,errs)] function to check fv-error for
+       on_which_id error *)
+    val getOnWhichIdErr : string * ScsFormVar.errs -> int * ScsFormVar.errs
 
     (* [exactMatchLink user_imp_id person_id] if person_id exists, then an
         exact match exists, and return a link that will merge
@@ -75,6 +80,11 @@ signature SCS_USER_IMP =
     (* [moreInfoLink user_imp_id] returns a link to file that will
        show more info for record user_imp_id in table scs_user_imports *)
     val moreInfoLink : string -> string
+
+    (* [importLink user_imp_id person_id] returns a link to file that
+       will import the user_imp_id into user person_id in the central
+       personnel register *)
+    val importLink : int -> int -> string
 
     (* [service_name] is the name of this service (i.e., Central
        Personnel Register) *)
@@ -134,7 +144,9 @@ structure ScsUserImp :> SCS_USER_IMP =
                                                    lower(concat(e.login,'@it-c.dk'))) = 't'`,
 		basic_info_sql = fn id => `select '' as name,
                                                   login || '@it-c.dk' as email,
-                                                  cpr as security_id
+                                                  cpr as security_id,
+                                                  on_what_table,
+                                                  on_which_id
                                              from sysadm_login_w, scs_person_rels
                                             where scs_person_rels.person_id = ^(Db.qqq id)
                                               and scs_person_rels.on_what_table = 'sysadm_login'
@@ -179,7 +191,9 @@ structure ScsUserImp :> SCS_USER_IMP =
 	       email_chk_sql = NONE,
 	       basic_info_sql = fn id => `select fornavn || ' ' || efternavn as name,
                                                  '' as email,
-                                                 cpr as security_id
+                                                 cpr as security_id,
+                                                 on_what_table,
+                                                 on_which_id
                                             from hsas_per_w, scs_person_rels
                                            where scs_person_rels.person_id = ^(Db.qqq id)
                                              and scs_person_rels.on_what_table = 'hsas_per'
@@ -240,7 +254,9 @@ structure ScsUserImp :> SCS_USER_IMP =
                                                        lower(e.email)) = 't'`,
 		       basic_info_sql = fn id => `select fornavne || ' ' || efternavn as name, 
                                                          email,
-                                                         person_cpr as security_id
+                                                         person_cpr as security_id,
+                                                         on_what_table,
+                                                         on_which_id
                                                     from person, scs_person_rels
                                                    where scs_person_rels.person_id = ^(Db.qqq id)
                                                      and scs_person_rels.on_what_table = 'person'
@@ -338,19 +354,32 @@ structure ScsUserImp :> SCS_USER_IMP =
 	UcsWidget.twoColumns(titles, info, false, [`^(UcsWidget.valOfTimestamp date) (^user_name)`])
     end
 
+    fun importLink user_imp_id person_id =
+      let
+	val msg = ScsDict.sl [(ScsLang.en,`Please confirm, that you want to import %0`),
+			      (ScsLang.da,`Bekraft venligst, at du vil importere %0`)]
+	                     [ScsPerson.name person_id]
+      in
+	Quot.toString
+          `<a href="^(UcsPage.confirmUrl (msg,
+		      Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id),
+						 ("person_id",Int.toString person_id)]))">import</a>`
+      end
+
     local
-      val info = [(ScsLang.en,`mangler`),
-		  (ScsLang.da,`mangler`)]
+      val info = [(ScsLang.en,`If there is an exact match, then there exists a record in the
+                               central register that matches this record.`),
+		  (ScsLang.da,`Hvis der er et eksakt match, så betyder det at der i det centrale
+                               personregister allerede findes en post, som svarer til denne.`)]
       val titles = [(ScsLang.en,`Exact Match`),(ScsLang.da,`Eksakt Match`)]
     in
       fun exactMatchField () = ScsDict.s titles
       fun exactMatchLink user_imp_id person_id =
 	case person_id of
 	  "" => ScsDict.s [(ScsLang.en,`None`),(ScsLang.da,`Nej`)]
-	| person_id => Quot.toString 
-	    `<a href="^(Html.genUrl "imp_row.sml" 
-		   [("user_imp_id",user_imp_id),
-		    ("person_id",person_id)])">Import</a>`
+	| person_id => 
+	    importLink (ScsError.wrapPanic (valOf o Int.fromString) user_imp_id)
+	               (ScsError.wrapPanic (valOf o Int.fromString) person_id)
 
       fun exactMatchWidget user_imp_id person_id on_what_table cpr email norm_name =
 	case person_id of
@@ -451,6 +480,7 @@ structure ScsUserImp :> SCS_USER_IMP =
 
     fun deleteField () = ScsDict.s [(ScsLang.en,`Delete`),(ScsLang.da,`Slet`)]
     fun moreInfoField () = ScsDict.s [(ScsLang.en,`More Info`),(ScsLang.da,`Mere Info`)]
+    fun delRelField () = ScsDict.s [(ScsLang.en,`Delete Relation`),(ScsLang.da,`Slet Relation`)]
 
     fun getUserImpIdErr(fv,errs) = 
       ScsFormVar.getNatErr(fv,ScsDict.s [(ScsLang.da,`Id på importrække`),
@@ -460,6 +490,10 @@ structure ScsUserImp :> SCS_USER_IMP =
       ScsFormVar.getEnumErr (List.map (fn s => #db_name(getSource s)) all_sources)
       (fv,ScsDict.s [(ScsLang.en,`External source`),
 		     (ScsLang.da,`Ekstern kilde`)],errs)
+
+    fun getOnWhichIdErr(fv,errs) = 
+      ScsFormVar.getNatErr (fv,ScsDict.s [(ScsLang.en,`id on external source`),
+					  (ScsLang.da,`id på ekstern kilde`)],errs)
 
     fun delLink user_imp_id =
       case user_imp_id of
