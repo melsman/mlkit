@@ -1,7 +1,7 @@
 (* Path 6 -- new basis 1995-04-28, 1995-06-06, 1996-10-13 
    Code taken from MosML v 2.00 2003-09-05, nh *)
 
-structure Path : OS_PATH = 
+structure ScsPathMac : OS_PATH = 
   struct
     exception Path
 
