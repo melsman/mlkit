@@ -135,6 +135,8 @@ signature MUL_EXP =
 
     val warn_puts: regionStatEnv * (place,'b,'c) LambdaPgm -> unit
 
+    val warn_dangling_pointers: regionStatEnv * ('place,'b,'c) LambdaPgm * ('place -> place)-> unit
+
     (* (mulexp, dep') = mk_initial_mulexp(regexp, dep) :
        dep is a dependency map which gives dependencies between semantic objects.
        After the call, mulexp is a multiplicity expression obtained from

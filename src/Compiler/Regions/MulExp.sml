@@ -342,6 +342,195 @@ struct
 
 
 
+  (**********************************)
+  (* Reporting dangling pointers    *)
+  (* from closures                  *)
+  (**********************************)
+
+  (* Garbage collection is only sound if there are no dangling pointers.
+     By default, region inference allows dangling references which are never
+     followed. The following function checks every lambda expresssion in
+     the program to see whether it will result in a dangling pointer.
+
+     A lambda abstraction fn pat => e only gives rise to a dangling pointer
+     if there is has a free program variable which in its type scheme has
+     a free region variable whose level is greater than the level of the
+     effect variable associated with the fn. 
+
+     [warn_dangling_pointer TE e] traverses e and examines all lambda abstractions of e
+     For those abstractions that contain a region variable whose level is greater
+     than  the level of the effect variable associated with the lambda abstraction, 
+     a warning is printed. The warning shows the lambda abstraction (in abbreviated form)
+     and all the offending variables with their type schemes and for each of them,
+     all the offending region variables.
+
+     [warn_dangling_pointers TE e] assumes that the sets of free lambda variables
+     and excons of e have already been computed (currently done in PhysSizeInf.sml)
+
+  *)
+
+  fun bad_rhos(fn_level, rhos): place list = 
+      List.all (fn rho=> case Eff.level_of rho of
+                           Some level_rho => level_rho > fn_level
+                         | None => die "bad_rhos: no level"
+               ) rhos
+
+  type bad_lvars = (Lvar.lvar * (sigma*place)*place list)list
+
+  fun bad_lvars(fn_level, TE, lvars) : bad_lvars = 
+    List.foldL (fn lvar => fn acc => case RSE.lookupLvar TE lvar of
+                  Some (_,_,sigma,p,_,_) =>
+                    (case bad_rhos(fn_level, p:: R.frv_sigma sigma) of
+                       [] => acc
+                     | l  => (lvar,(sigma,p), l) :: acc)
+                | None => die "bad_lvars: lvar not in scope")
+               [] lvars
+
+  type bad_excons = (Excon.excon * (R.Type*place)*place list)list
+
+  fun bad_excons(fn_level, TE, excons) : bad_excons = 
+    List.foldL (fn excon => fn acc => case RSE.lookupExcon TE excon of
+                  Some (tau,p) =>
+                    (case bad_rhos(fn_level, p:: R.frv_mu(tau,p)) of
+                       [] => acc
+                     | l  => (excon,(tau,p), l) :: acc)
+                | None => die "bad_excons: excon not in scope")
+               [] excons
+
+  fun show_rhos rhos = implode(map (fn rho => " " ^ pp_regvar rho) rhos)
+
+  fun report_dangling(e, [],[]): unit = ()
+    | report_dangling(e, l1: bad_lvars, l2: bad_excons): unit =
+
+    let val source_identification = 
+          case e of FN{pat, ...} => 
+            "potentially dangling references out of closure for     fn " ^ 
+              implode(map (fn (lvar,_) => " " ^ Lvar.pr_lvar lvar) pat) ^ ":\n"
+          | _ => die "report_dangling: expression is not a lambda abstraction"
+        val bad_lvar_lines = 
+             map (fn (lvar,(sigma,p), bad_rhos) => implode["   " ^ Lvar.pr_lvar lvar^ ": " ^ show_rhos bad_rhos ^ "\n"])
+                 l1
+        val bad_excon_lines = 
+             map (fn (excon,(tau,p), bad_rhos) => implode["   " ^ Excon.pr_excon excon^ ": " ^ show_rhos bad_rhos ^ "\n"])
+                 l2
+    in warn(implode (source_identification::(bad_lvar_lines @ bad_excon_lines)))
+    end
+
+
+  fun warn_dangling_pointers (TE:regionStatEnv, 
+                   (PGM{expression = TR(e,_,_,_), ...}):('place,'a,'b) LambdaPgm,
+                   get_place: 'place -> place):unit = 
+    if not(Flags.is_on "garbage_collection") 
+      then ()
+    else      
+      let
+	fun warn_dangle TE (e: ('place,'a,'b)LambdaExp,eps_opt) = 
+	  case e of
+	    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} => 
+	         let val TE' = 
+	                List.foldR (fn {lvar,tyvars,rhos,epss,Type,...} => fn TE' => 
+			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,rhos,epss,Type), get_place shared_clos , None, None), TE'))
+			TE functions
+	
+	         in
+		     warn_dangle_trip TE' scope
+	         end
+
+             | FN{pat,body,
+                      free = ref(Some(lvars, excons, _)),
+                      ...} =>
+                let val TE' = List.foldR (fn (lvar,(tau,rho)) => fn TE' => 
+                    RSE.declareLvar(lvar, (true,true,R.type_to_scheme tau, rho , None, None), TE'))
+			TE pat
+                    val level_fn = case eps_opt of
+                                     Some eps => (case Eff.level_of eps of
+                                                    Some int => int 
+                                                  | None => die "warn_dangle: latent effect has no level"
+                                                 )
+                                   | None => die "warn_dangle: no rho of expression"
+                                   
+                in 
+                   warn_dangle_trip TE' body;
+                   report_dangling(e, bad_lvars(level_fn,TE,lvars), bad_excons(level_fn,TE,excons))
+                end
+             | FN{pat,body,free = ref None,...} =>
+                 Crash.impossible "warn_dangle: cannot analyse lambda expressions whose sets of free \n\
+                                  \program variables and excons have not been computed."
+             | LET{k_let,pat,bind,scope} =>
+                   (warn_dangle_trip TE bind;
+                    let 
+                        val TE' = List.foldR (fn (lvar,_,tyvars,ref epss,tau,rho,_)  => fn TE' => 
+			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,[],epss,tau), rho , None, None), TE'))
+                           TE
+            		   pat
+                   in warn_dangle_trip TE' scope
+                   end
+                  )
+	     | APP(_,_,e1,e2) => (warn_dangle_trip TE e1; warn_dangle_trip TE e2)           
+	     | EXCEPTION(excon, is_nullary, (tau,p), _, body) => 
+		     warn_dangle_trip (RSE.declareExcon(excon,(tau,p),TE)) body
+	     | RAISE(e) => warn_dangle_trip TE e
+	     | HANDLE(e1,e2) => (warn_dangle_trip TE e1; warn_dangle_trip TE e2)
+	     | SWITCH_I(switch) => warn_dangle_i TE switch
+	     | SWITCH_S(switch) => warn_dangle_s TE switch
+	     | SWITCH_C(switch) => warn_dangle_c TE switch
+	     | SWITCH_E(switch) => warn_dangle_e TE switch
+             | CON0 _ => ()
+             | CON1(_,tr) => warn_dangle_trip TE tr
+             | DECON(_,tr) => warn_dangle_trip TE tr
+             | EXCON(_,Some(_, tr)) => warn_dangle_trip TE tr
+             | DEEXCON(_,tr) =>warn_dangle_trip TE tr
+             | RECORD(_,l) => List.apply (warn_dangle_trip TE) l
+             | UB_RECORD l => List.apply (warn_dangle_trip TE) l
+             | SELECT(_,tr) => warn_dangle_trip TE tr
+             | DEREF tr => warn_dangle_trip TE tr
+             | REF(_,tr) => warn_dangle_trip TE tr
+             | ASSIGN(_,tr1,tr2) => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
+             | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
+             | CCALL(_,l) => List.apply (warn_dangle_trip TE) l
+             | RESET_REGIONS(_,tr) => warn_dangle_trip TE tr
+             | FRAME _ => ()
+             | LETREGION{body, ...} => warn_dangle_trip TE body
+	     | _ => ()
+	 
+           and warn_dangle_trip TE (TR(e,mu as RegionExp.Mus[(R.FUN(_,eps,_),_)],_,_)) = warn_dangle TE (e,Some eps)
+             | warn_dangle_trip TE (TR(e,mu,_,_)) = warn_dangle TE (e, None)
+
+	   and warn_dangle_i TE (SWITCH(e, list, e')) = 
+	       (warn_dangle_trip TE e;
+	        List.apply ((warn_dangle_trip TE) o #2) list;
+		warn_dangle_opt TE  e'
+	       )
+	   and warn_dangle_s TE (SWITCH(e, list, e')) = 
+	       (warn_dangle_trip TE e;
+	        List.apply ((warn_dangle_trip TE) o #2) list;
+		warn_dangle_opt TE  e'
+	       )
+	   and warn_dangle_r TE (SWITCH(e, list,e')) = 
+	       (warn_dangle_trip TE e;
+	        List.apply ((warn_dangle_trip TE) o #2) list;
+		warn_dangle_opt TE e'
+	       )
+	   and warn_dangle_c TE (SWITCH(e, list, e')) = 
+	       (warn_dangle_trip TE e;
+	        List.apply ((warn_dangle_trip TE) o #2) list;
+		warn_dangle_opt TE e'
+	       )
+	   and warn_dangle_e TE (SWITCH(e, list, e')) = 
+	       (warn_dangle_trip TE e;
+	        List.apply ((warn_dangle_trip TE) o #2) list;
+		warn_dangle_opt TE  e'
+	       )
+	   and warn_dangle_opt TE None = ()
+	     | warn_dangle_opt TE (Some e) = warn_dangle_trip TE e
+	
+      in 
+          warn_dangle TE (e,None)
+      end
+
+
+
+
   (*****************************)
   (* Pretty printing  (almost  *)
   (* same as in RegionExp)     *)

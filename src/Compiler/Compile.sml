@@ -551,7 +551,7 @@ functor Compile(structure Excon : EXCON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*   Do physical size inference                                    (NEW)  *)
+    (*   Do physical size inference                                           *)
     (* ---------------------------------------------------------------------- *)
   
     local open PhysSizeInf
@@ -568,6 +568,24 @@ functor Compile(structure Excon : EXCON
 	    (pgm',env')
 	 end)
     end
+
+
+    (* ---------------------------------------------------------------------- *)
+    (*   Warn against dangling pointers (when Garbage Collection is on)       *)
+    (* ---------------------------------------------------------------------- *)
+
+       fun warn_dangling_pointers(rse, psi_pgm) = 
+        let (* warn against dangling references *)
+            fun get_place_at(AtInf.ATTOP(rho,pp)) = rho
+              | get_place_at(AtInf.ATBOT(rho,pp)) = rho
+              | get_place_at(AtInf.SAT(rho,pp)) = rho
+              | get_place_at(AtInf.IGNORE) = Effect.toplevel_region_withtype_top
+        in
+            chat "\nChecking whether there are dangling pointers ...";
+            Timing.timing_begin();
+            MulExp.warn_dangling_pointers(rse, psi_pgm, get_place_at);
+            Timing.timing_end("Dangle")
+        end
 
 
     (* ---------------------------------------------------------------------- *)
@@ -614,6 +632,7 @@ functor Compile(structure Excon : EXCON
 	val sma_pgm = storagemodeanalysis k_mul_pgm
 	val (drop_pgm, drop_env1) = drop_regions(drop_env,sma_pgm)
 	val (psi_pgm, psi_env1) = phys_size_inf(psi_env, drop_pgm)
+        val _ = warn_dangling_pointers(rse, psi_pgm)
         val app_conv_psi_pgm = appConvert psi_pgm
 	val _ = RegionFlowGraphProfiling.reset_graph ()
 	val (linkinfo, code, l2kam_ce1) = comp_lamb(l2kam_ce, app_conv_psi_pgm) 
