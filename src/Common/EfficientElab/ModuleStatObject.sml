@@ -37,6 +37,7 @@ functor ModuleStatObject(structure StrId  : STRID
 			       and type ErrorInfo.TyName = StatObject.TyName
 			       and type ErrorInfo.TyVar = StatObject.TyVar
 			       and type ErrorInfo.Type = StatObject.Type
+                               and type ErrorInfo.TypeScheme = StatObject.TypeScheme
 
 			 structure FinMap : FINMAP
 
@@ -173,6 +174,14 @@ functor ModuleStatObject(structure StrId  : STRID
     local
       (*The path passed around is for error messages.*)
 
+          fun kind (VE.LONGVAR _)   = "var  "
+            | kind (VE.LONGCON _)   = "con  "
+            | kind (VE.LONGEXCON _) = "excon"
+
+          fun sigma(VE.LONGVAR sigm)   =  sigm
+            | sigma(VE.LONGCON sigm)   =  sigm
+            | sigma(VE.LONGEXCON tau)  = StatObject.TypeScheme.from_TyVars_and_Type([],tau)
+
 	  fun enrichesE (E, E', path) : unit =
 	      let val (SE,TE,VE) = E.un E
 		  val (SE',TE',VE') = E.un E'
@@ -220,7 +229,12 @@ functor ModuleStatObject(structure StrId  : STRID
 		        (case VE.lookup VE id of
 			   Some varenvrng  =>
 			     if enriches_sigma_is (varenvrng, varenvrng') then ()
-			     else fail (ErrorInfo.NOTYENRICHMENT (rev path, id)) 
+			     else fail (ErrorInfo.NOTYENRICHMENT
+                                        {qualid = (rev path, id),
+                                         str_sigma = sigma varenvrng,
+                                         str_vce  = kind  varenvrng,
+                                         sig_sigma = sigma varenvrng',
+                                         sig_vce  = kind  varenvrng'})
 			 | None => fail (ErrorInfo.MISSINGVAR (rev path, id))))
 		      VE'
 

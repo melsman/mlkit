@@ -25,6 +25,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
     structure TypeFcn      = StatObject.TypeFcn
     structure Realisation  = StatObject.Realisation
     type Type              = StatObject.Type
+    type TypeScheme        = StatObject.TypeScheme
     type RecType           = StatObject.RecType
     type TyVar             = StatObject.TyVar
     type TyName            = TyName.TyName
@@ -107,7 +108,9 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | MISSINGEXC of strid list * id
       | S_RIGIDTYCLASH of longtycon
       | S_CONFLICTING_DOMCE of longtycon
-      | NOTYENRICHMENT of strid list * id
+      | NOTYENRICHMENT of {qualid: strid list * id, 
+                           str_sigma : TypeScheme, str_vce: string,
+                           sig_sigma : TypeScheme, sig_vce: string}
       | EXCNOTEQUAL of strid list * id * (Type * Type)
 
      (* Module unification errors: *)
@@ -329,11 +332,16 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 	  // line (" the signature clashes with the domain of the constructor")
 	  // line (" environment in the structure.)")
 
-      | report (NOTYENRICHMENT(strids, id)) =
+      | report (NOTYENRICHMENT{qualid=(strids, id),str_sigma,str_vce,sig_sigma,sig_vce}) =
 	  line ("Error in signature matching:") 
 	  // line ("the type specified in the signature does not enrich")
 	  // line ("the type inferred in the structure;")
-	  // line ("problematic identifier: "  ^ prStrIds strids  ^ Ident.pr_id id ^ ".")
+          // line ("Structure declares:")
+          // line (str_vce ^ " " ^ prStrIds strids  ^ Ident.pr_id id ^ " :")
+          // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout str_sigma))
+          // line ("Signature specifies:")
+          // line (sig_vce ^ " " ^ prStrIds strids  ^ Ident.pr_id id ^ " :")
+          // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout sig_sigma) ^ ".")
 
       | report (EXCNOTEQUAL(strids, id, (ty1, ty2))) =
 	  line("Error in signature matching:") 

@@ -7,7 +7,7 @@ signature ERROR_INFO =
   sig
     type TyName
     type TyVar
-    type Type
+    type Type and TypeScheme
     type TypeFcn
     eqtype id
     eqtype lab
@@ -73,7 +73,9 @@ signature ERROR_INFO =
       | MISSINGEXC of strid list * id
       | S_RIGIDTYCLASH of longtycon
       | S_CONFLICTING_DOMCE of longtycon
-      | NOTYENRICHMENT of strid list * id
+      | NOTYENRICHMENT of {qualid: strid list * id, 
+                           str_sigma : TypeScheme, str_vce: string,
+                           sig_sigma : TypeScheme, sig_vce: string}
       | EXCNOTEQUAL of strid list * id * (Type * Type)
 
      (* Module unification errors: *)
