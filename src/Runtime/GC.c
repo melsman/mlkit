@@ -659,6 +659,7 @@ void print_tagged_rp_content(Rp *rp)
 /* ToDo: GenGC (1) allok skal tage højde for colorPtr
                (2) allok skal tage højde for om g1 indeholder en klump. 
    gælder for alle acopy-funktioner
+   MEMO: What does this comment mean?
 */
 inline unsigned int *
 acopy(Gen *gen, unsigned int *obj_ptr) 
@@ -759,33 +760,60 @@ points_into_tospace (unsigned int x)
   // get the tospace bit
   rp = get_rp_header(p);
   if (is_lobj_bit(rp->n))
-    return 0;
-  //      die(" we got a large object code below does not work for large objects"); // ToDo: GenGC remove 
+    return 0;    /* large object as first component of pair, triple, or ref
+		  * - not a forward-pointer */
   ret = is_tospace_bit(rp->n);
 #ifdef ENABLE_GEN_GC
   // In minor_gc x may point into to-space (a forward pointer) even
   // though the to_space_bit is not set (i.e., if the value is
   // allocated in a region page in g1 (old generation) that holds
   // values allocated before this initiation of gc and values
-  // evacuated in this initiation of gc).  So the colorPtr is
-  // overloaded; it is also used to determine if a value in an old
-  // generation is part of to-space.
+  // evacuated in this initiation of gc). We can determine that the
+  // value is in to-space by comparing the pointer to the colorPtr in
+  // the region page. If the pointer is larger than or equal to the 
+  // colorPtr then the pointer points to a value in to-space.
+  //
+  // MEMO: This is plain wrong I think! For this to work colorPtr in
+  // old-generation last-pages should be set before gc proper, which
+  // they are not - they are set AFTER gc! Thus values could have been
+  // allocated by the mutator before the next gc. mael 2005-03-19
+
   if (!ret)
     { 
       Gen *gen;
       gen = rp->gen;
-      if (is_gen_1(*gen) && p >= rp->colorPtr)
-	ret = 1;
+      if( is_gen_1(*gen) )
+	{
+	  switch(rtype(*gen))
+	    {
+	    case RTYPE_PAIR:
+	    case RTYPE_REF:
+	    case RTYPE_TRIPLE:
+	      {
+		if ( p+1 >= rp->colorPtr )
+		  ret = 1;
+		break;		
+	      }
+	    default:
+	      {
+		if ( p >= rp->colorPtr )
+		  ret = 1;
+		break;
+	      }
+	    }
+	}
     }
 #endif // ENABLE_GEN_GC
   return ret;
 }
 
-inline static 
-Gen * target_gen(Gen *gen, unsigned int *obj_ptr)
+inline static Gen * 
+target_gen(Gen *gen, Rp *rp, unsigned int *obj_ptr)
 {
 #ifdef ENABLE_GEN_GC
-    if (obj_ptr < get_rp_header(obj_ptr)->colorPtr) 
+  // We could also choose first to ask if gen is g1 (old generation)
+  //  - in this case we could return gen immediately
+    if ( obj_ptr < rp->colorPtr ) 
       return &(get_ro_from_gen(*gen)->g1);
     else
       { if is_gen_1(*gen) {
@@ -862,7 +890,7 @@ evacuate(unsigned int obj)
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	return *(obj_ptr+1);
       // obj_ptr points at slot before the actual value
-      copy_to_gen = target_gen(gen, obj_ptr+1); 
+      copy_to_gen = target_gen(gen, rp, obj_ptr+1); 
       new_obj_ptr = acopy_pair(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
@@ -874,7 +902,7 @@ evacuate(unsigned int obj)
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	return *(obj_ptr+1);
       // obj_ptr points at slot before the actual value
-      copy_to_gen = target_gen(gen,obj_ptr+1);
+      copy_to_gen = target_gen(gen, rp, obj_ptr+1);
       new_obj_ptr = acopy_ref(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
@@ -884,7 +912,7 @@ evacuate(unsigned int obj)
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	return *(obj_ptr+1);
       // obj_ptr points at slot before the actual value
-      copy_to_gen = target_gen(gen,obj_ptr+1);
+      copy_to_gen = target_gen(gen, rp, obj_ptr+1);
       new_obj_ptr = acopy_triple(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
@@ -903,7 +931,7 @@ evacuate(unsigned int obj)
 	    }
 	  die ("forward ptr check failed\n");
 	}
-      copy_to_gen = target_gen(gen,obj_ptr);
+      copy_to_gen = target_gen(gen, rp, obj_ptr);
       new_obj_ptr = acopy(copy_to_gen, obj_ptr);
       *obj_ptr = tag_forward_ptr(new_obj_ptr);  // install forward pointer
     }
@@ -1115,7 +1143,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   doing_gc = 1; // Mutex on the garbage collector
 
 #ifdef ENABLE_GEN_GC
-  major_p = (major_p==0)?(1):(0);
+  //  major_p = (major_p==0)?(1):(0);
 #endif
 
   stack_top_gc = (unsigned int*)sp;
@@ -1392,6 +1420,26 @@ gc(unsigned int **sp, unsigned int reg_map)
   
   // Unmark all tospace bits in region pages in regions on the stack
   // Update colorPtr in all region pages.
+
+  // MEMO: I don't understand why old generation pages are marked
+  // during a minor collection - all what should be necessary is to
+  // update colorPtr to the generation allocation pointer in last
+  // pages in old generation, but this should happen before garbage
+  // collection; the colorPtr is used in old generations only to help gc
+  // determine that an object points into to-space. mael 2005-03-19
+
+  // MEMO: It is not nice that we need to run through all pages during
+  // a minor collection - this means that we basically traverse ALL
+  // live data during a minor collection. A better solution would be
+  // the following: During a minor collection, the colorPtr is used as
+  // the sole mechanism for determining if an object in an old
+  // generation is part of to-space (allocated memory during
+  // gc). After gc, we mark black all non-black data in old generation
+  // pages. This can be done efficiently, by storing information about
+  // old-generation last-pages before gc proper, so that the
+  // information is available after gc. mael 2005-03-19
+
+
   for( r = TOP_REGION ; r ; r = r->p ) 
     {
       clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g0));
