@@ -43,7 +43,6 @@ kitloop2.sml            tx
 kittmergesort.sml       tx tc 
 kitqsort.sml            tx tc
 kitmandelbrot.sml       tx tc 
-(*
 kitlife35u.sml          tx tc
 klife_eq.sml            tx tc 
 kitkbjul9.sml           tx tc
@@ -54,7 +53,7 @@ fft.sml                 tx tc
 msort.pm                tx tc 
 tststrcmp.sml                 
 FuhMishra.pm            tx tc 
-*)
+
 (* Tests of dynamic semantics and the Basis Library *)
 
 testdyn1.sml               tc 

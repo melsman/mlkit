@@ -65,10 +65,10 @@ in
 	 build_kitgen_opcodes();
 	 gen_opcodes();
 	 build_runtime("RuntimeWithGC");
-(*
+
 	 build_rp2ps();
 	 build_kittester();
-*)
+
 	 build_kit())
 end ;
 
@@ -82,9 +82,9 @@ fun build_x86 () =
       disable "garbage_collection";
       disable "delete_target_files";
       disable "unbox_function_arguments";
-      enable "print_clos_conv_program";
-      KitX86.build_basislib()
-(*      ; KitX86.install() *)
+      (*enable "print_clos_conv_program";*)
+      KitX86.build_basislib();
+      KitX86.install() 
   end;
 
 
@@ -100,31 +100,36 @@ fun build_kam () =
 		      "hanoi.sml", "hello.sml", "if.sml", "immedString.sml", 
 		      "l1.sml", "list_nh.sml"(*, "listpair.sml"*), "ref.sml", "string1.sml"]
   in 
-      disable "garbage_collection";
-      disable "delete_target_files";
-      disable "unbox_function_arguments";
-      disable "link_time_dead_code_elimination";
+    disable "garbage_collection";
+    disable "delete_target_files";
+    disable "unbox_function_arguments";
+    disable "link_time_dead_code_elimination";
 (*      enable "disable_atbot_analysis"; *)
 (*      disable "unbox_datatypes"; *)
 (*      List.app disable opts;*)
-      enable "delay_assembly";
-
+    enable "delay_assembly";
 (*      enable "chat"; *)
-      KitKAM.Flags.target_file_extension := ".uo"
+    KitKAM.Flags.target_file_extension := ".uo";
 
   (*   ; List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files *)
-  (*   ; KitKAM.comp "../testprogs/f1.sml"*)
 
-      ; disable "auto_import_basislib"
-      ; enable "print_kam_program" 
+(*      ; disable "auto_import_basislib"*)
 
-      ; enable "print_lift_conv_program"  (*   PrettyPrint.sml is broken!! *)
+
+
 
 (*      ; disable "jump_tables" *)
-(*
-   ; KitKAM.build_basislib() 
-   ; KitKAM.install() 
-*)
+
+    KitKAM.build_basislib() ;
+
+(*    enable "print_kam_program" ;*)
+(*    enable "print_lift_conv_program";*)
+
+(*    KitKAM.comp "../test_dev/real_problem.sml"*)
+
+    KitKAM.install() 
+
   end;
 
 val _ = build_kam()
+(*val _ = build_x86()*)
