@@ -1,4 +1,4 @@
-Ns.returnQuot `<HTML>
+Ns.Quot.return `<HTML>
 <BODY bgcolor=lightgreen>
 <h2>Server Information</h2>
 
