@@ -2,24 +2,26 @@
  *                      Exceptions                                *
  *----------------------------------------------------------------*/
 
-#ifndef EXCEPTION
-#define EXCEPTION
+#ifndef __EXCEPTION_H
+#define __EXCEPTION_H
 
 #include<signal.h>
 
-#if defined(hpux)
-typedef void (*SignalHandler)(__harg);  
-#elif defined(sun)
-typedef void (*SignalHandler)(int);  /* was void */
-#elif defined(linux) || defined(_WIN32)
-typedef void (*SignalHandler)(int);
-#endif
+#include "String.h"
 
-extern int *exn_OVERFLOW;                 /* Exception raised for all primitive operations which
+typedef void (*SignalHandler)(int);
+
+typedef struct {
+  /*  unsigned long* next_word;  */
+  unsigned long exn_number;
+  StringDesc* string;
+} Exception;
+
+extern Exception* exn_OVERFLOW;            /* Exception raised for all primitive operations which
 					     can generate an overflow. */
 
-extern int *exn_INTERRUPT;                /* Exception for user interrupt (Ctrl-C). */
+extern Exception* exn_INTERRUPT;           /* Exception for user interrupt (Ctrl-C). */
 
 void raise_exn(int exn);
 
-#endif /*EXCEPTION*/
+#endif /* __EXCEPTION_H */

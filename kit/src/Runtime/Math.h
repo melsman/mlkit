@@ -2,13 +2,9 @@
  *                         Math                                   *
  *----------------------------------------------------------------*/
 
-#ifndef MATH
-#define MATH
+#ifndef __MATH_H
+#define __MATH_H
 
-/*----------------------------------------------------------------*
- * Include files                                                  *
- * Compiling: cc -Aa -c Math.c                                    *
- *----------------------------------------------------------------*/
 #include "Flags.h"
 #include "Tagging.h"
 #include "String.h"
@@ -17,7 +13,7 @@
  *                       Integer operations.                      *
  *----------------------------------------------------------------*/
 
-#if TAG_INTEGERS
+#ifdef TAG_INTEGERS
 #define muliML(x,y,d)  ((d)=1+((x)>>1)*((y)-1))
 #define addiML(x,y,d)  ((d)=(x)+(y)-1)
 #define subiML(x,y,d)  ((d)=(x)-(y)+1)
@@ -29,25 +25,38 @@
 
 #define  minDefine(A,B) ((A<B)?A:B)
 
-#if TAG_INTEGERS
+#ifdef TAG_INTEGERS
 #define Max_Int 1073741823       /* remember [i] = 2 * i + 1 */
 #define Min_Int -1073741824
 #define Max_Int_d 1073741823.0
 #define Min_Int_d -1073741824.0
+#define val_precision 31
 #else
 #define Max_Int 2147483647
-#define Min_Int -2147483647
+#define Min_Int (-2147483647-1)
 #define Max_Int_d 2147483647.0
-#define Min_Int_d -2147483647.0
+#define Min_Int_d -2147483648.0
+#define val_precision 32
 #endif
 
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-int divInt(int x, int y, int exn);
-int modInt(int x, int y, int exn);
-int quotInt(int x, int y);
-int remInt(int x, int y);
+int max_fixed_int(int dummy);
+int min_fixed_int(int dummy);
+int precision(int dummy);
+int __div_int32ub(int x, int y, int exn);
+int __div_int31(int x, int y, int exn);
+unsigned int __div_word32ub(unsigned int x, unsigned int y, int exn);
+unsigned int __div_word31(unsigned int x, unsigned int y, int exn);
+int __mod_int32ub(int x, int y, int exn);
+int __mod_int31(int x, int y, int exn);
+unsigned int __mod_word32ub(unsigned int x, unsigned int y, int exn);
+unsigned int __mod_word31(unsigned int x, unsigned int y, int exn);
+int __quot_int32ub(int x, int y);
+int __quot_int31(int x, int y);
+int __rem_int32ub(int x, int y);
+int __rem_int31(int x, int y);
 int realInt(int d, int x);
 int floorFloat(int f);
 int ceilFloat(int f);
@@ -80,6 +89,15 @@ StringDesc* generalStringOfFloatProf(int rAddr, StringDesc *str, int f, int pPoi
 /* For basislib Math structure */
 int sml_sqrt(int d, int s);
 
-void printReal(double *n);
+void printReal(int f);
 
-#endif /*MATH*/
+#ifdef TAG_INTEGERS
+unsigned int* __div_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
+unsigned int* __div_word32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
+unsigned int* __mod_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
+unsigned int* __mod_word32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
+unsigned int* __quot_int32b(unsigned int* b, unsigned int* x, unsigned int* y);
+unsigned int* __rem_int32b(unsigned int* b, unsigned int* x, unsigned int* y);
+#endif
+
+#endif /*__MATH_H*/

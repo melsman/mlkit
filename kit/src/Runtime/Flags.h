@@ -13,7 +13,6 @@
 /*                                                                             */
 /*   TAG_VALUES: Tag values to admit for polymorphic equality.                 */
 /*   TAG_INTEGERS: Tag integers to admit for polymorphic equality.             */
-/*   UNBOX_LISTS: Represent lists unboxed.                                     */
 
 #ifndef FLAGS
 #define FLAGS
@@ -28,12 +27,19 @@
 
 /* Tagging values. If elimination of polymorphic equality is disabled
    tagging must be enabled here. */
-#define TAG_VALUES 0
-#define TAG_INTEGERS 0
 
 /* Use boxed or unboxed representation of lists. If elimination of
    polymorphic equality is disabled boxed representation must be
    used. */
-#define UNBOX_LISTS 1
+
+#define REGION_PAGE_BAG_SIZE 30
+#define HEAP_TO_LIVE_RATIO 3.0
+
+#ifdef DEBUG
+#define debug(Arg) Arg
+#else
+#define debug(Arg) {}
+#endif
 
 #endif /*FLAGS*/
+
