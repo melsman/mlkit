@@ -86,7 +86,6 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_WEB)
 	$(MKDIR) $(INSTDIR_WEB)/bin
 	$(MKDIR) $(INSTDIR_WEB)/doc
-	$(INSTALL) bin/runtimeSystemKamNsSml.o $(INSTDIR_WEB)/bin
 	$(INSTALL) bin/mlkit_web.$(ARCH-OS) $(INSTDIR_WEB)/bin
 	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_WEB)/bin
 	$(INSTALL) copyright $(INSTDIR_WEB)
