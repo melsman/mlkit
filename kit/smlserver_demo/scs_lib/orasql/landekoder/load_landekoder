@@ -1,0 +1,7 @@
+sql-ucs < tmp-landekoder-create.sql
+
+sqlldr-ucs loader_scs_country_codes.ctl log='hsas_landekoder_med_iso.log'
+
+check hsas_landekoder_med_iso
+
+sql-ucs < tmp-landekoder-drop.sql
