@@ -598,7 +598,7 @@ struct
   exception DiffEf
 
   fun diffef_aux ([]:mulef,[]:mulef) = []
-    | diffef_aux (psi1 as ((ae1, mul1)::psi1'),psi2 as ((ae2, mul2)::psi2'))=
+    | diffef_aux ((ae1, mul1)::psi1', (ae2, mul2)::psi2')=
        (case diffmul (mul1, mul2) of
                 NUM 0 => diffef_aux(psi1', psi2')
               | mul => (ae1, mul)::diffef_aux(psi1', psi2'))
@@ -1046,11 +1046,12 @@ struct
                              lookup_mularefset(Psi', eps0')) (* formal, acyclic *)
              (* (eps0,new_actual_psi) is not necessarily acyclic, so nomalise it: *)
              val (eps0,new_actual_psi) = nf (eps0,new_actual_psi)
-(*             val t4 = layout_mulef new_actual_psi *)
+(*             val t4 = layout_mulef new_actual_psi  *)
              val Se:efsubst = [(eps0', (eps0,new_actual_psi))]
              val _ = doSubst(eps0, diffef(new_actual_psi,actual_psi), dep)
 	       handle X => (say "\ninstantiate.doSubst or diffef failed\n"; raise X)
-(*                                handle x => (say "qmul="; outtree t0;
+(*
+                                handle x => (say "qmul="; outtree t0;
                                    say "lookup Psi gave"; outtree t1;
                                    say "nf gave"; outtree t2;
                                    say "lookup Psi' gave"; outtree t3;
