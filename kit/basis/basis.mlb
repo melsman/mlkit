@@ -1,0 +1,140 @@
+(* Initial allows for other modules to be discharged at link time *)
+
+local
+    Initial.sml
+    basis General = 
+      bas 
+        GENERAL.sml General.sml OPTION.sml Option.sml 
+      end
+
+    basis List =
+      let open General
+      in bas
+            LIST.sml List.sml LIST_PAIR.sml ListPair.sml
+         end
+      end
+
+    basis Array =
+        let open General List
+            basis Poly =
+              let wordtables.sml
+              in bas 
+                    VECTOR.sml Vector.sml ARRAY.sml Array.sml
+                 end
+              end
+        in bas
+              open Poly   
+              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
+           end
+        end
+
+    basis String = 
+       let open General Array
+       in bas
+             STRING_CVT.sml StringCvt.sml 
+             local open List
+                   STR_BASE.sml StrBase.sml 
+             in
+                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml 
+             end
+          end
+       end
+
+    basis Bool = 
+       let open General String 
+       in bas BOOL.sml Bool.sml end
+       end
+
+    basis Word =
+       let open General String
+           basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
+           basis PW = let open Array W 
+                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
+                      end
+       in bas open W PW end
+       end
+
+    basis Byte = 
+       let open General String Array Word
+       in bas BYTE.sml Byte.sml end
+       end
+ 
+    basis Int =
+       let open General String
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml end
+       end
+
+    basis Real =
+       let open General String Int
+       in bas MATH.sml Math.sml REAL.sml Real.sml end
+       end
+
+    basis IntInf =
+       let open General List Array String Word Int Real
+       in bas INT_INF.sml IntInf.sml end
+       end
+(*  
+    basis Polyhash =
+       let open General String Array Word
+       in bas POLYHASH.sml Polyhash.sml end
+       end
+*)
+    basis Io =
+       let open General String List 
+       in bas IO.sml TEXT_IO.sml TextIO.sml 
+              local open Word Array Byte
+              in BIN_IO.sml BinIO.sml 
+              end
+          end
+       end
+
+    basis System =
+       let open General String
+       in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
+              basis Random = let open Real in bas RANDOM.sml Random.sml end end
+              basis Path = let open List in bas OS_PATH.sml Path.sml end end
+              basis FileSys = let open List Time Random Path in bas OS_FILE_SYS.sml FileSys.sml end end
+              basis Process = bas OS_PROCESS.sml local open List in Process.sml end end
+              basis Os = let open FileSys Path Process in bas OS.sml end end
+              basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
+              basis Date = let open Int Real Time in bas DATE.sml Date.sml end end
+              basis Timer = let open Int Time in bas TIMER.sml Timer.sml end end
+          in bas open Time Random Path FileSys 
+                      Process Os CommandLine Date Timer
+             end
+          end
+       end
+(*
+    basis Susp =  (* Suspension *) 
+       let open General String 
+       in bas SUSP.sml Susp.sml end
+       end
+
+    basis SetsAndMaps = 
+       let open General String 
+       in let basis Splay = let SPLAYTREE.sml Splaytree.sml
+                            in bas SPLAYMAP.sml Splaymap.sml SPLAYSET.sml 
+                                   local open List in Splayset.sml end 
+                               end
+                            end
+              basis BinMap = bas BINARYMAP.sml Binarymap.sml INTMAP.sml Intmap.sml end
+              basis BinSet = bas BINARYSET.sml INTSET.sml 
+                                 local open List in Binaryset.sml Intset.sml end
+                             end
+          in bas open Splay BinMap BinSet end
+          end
+       end
+
+    basis Regexp =  (* Regular expression support *)
+       let open General String 
+       in bas REG_EXP.sml local open Int Array List SetsAndMaps in RegExp.sml end end
+       end
+*)    
+    basis Sml90 = 
+       let open General List String Real Io
+       in bas SML90.sml end
+       end
+
+in
+  open General List Array String Bool Word Byte Int Real IntInf Io System Sml90
+end

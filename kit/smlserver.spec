@@ -131,7 +131,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/smlserver/xt
 
 # Libraries
-/usr/share/smlserver/basislib
+/usr/share/smlserver/basis
 
 %post
 echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/smlserverc

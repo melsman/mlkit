@@ -1623,7 +1623,7 @@ really 31-bit signed integers; Chapter~\ref{gc.chap} describes how to
 compile programs with garbage collection enabled. The structure {\tt
   Int} provides many useful operations on integers of type {\tt
   int}.\footnote{To see what operations are available in the {\tt Int}
-  structure, consult the file {\tt basislib/INTEGER.sml}.}  The Kit
+  structure, consult the file {\tt basis/INTEGER.sml}.}  The Kit
 also defines the structures 
 \index{Int31 structure@{\tt Int31} structure}%
 {\tt Int31} and 
@@ -1726,7 +1726,7 @@ into which the real will be stored.
 
 The structures {\tt Real} and {\tt Math} provide other useful
 operations on reals.\footnote{Consult the files {\tt
-    basislib/REAL.sml} and {\tt basislib/MATH.sml}.}
+    basis/REAL.sml} and {\tt basis/MATH.sml}.}
 
 \section{Characters and Strings}
 The 
@@ -1777,8 +1777,8 @@ The string and character operations can raise exceptions, as detailed in the
 Standard ML Basis Library documentation.
 
 The structures {\tt Char}, {\tt String}, and {\tt StringCvt} provide other
-useful operations on characters and strings.\footnote{Consult {\tt basislib/CHAR.sml}, {\tt basislib/STRING.sml},
-  and {\tt basislib/STRING\_CVT.sml}.}
+useful operations on characters and strings.\footnote{Consult {\tt basis/CHAR.sml}, {\tt basis/STRING.sml},
+  and {\tt basis/STRING\_CVT.sml}.}
 
 \section{Booleans}
 The boolean values {\tt true} and {\tt false} are represented as
@@ -1794,7 +1794,7 @@ booleans:
    val not: bool -> bool
 \end{verbatim}
 The structure {\tt Bool} provides other useful operations on
-booleans.\footnote{Consult the file {\tt basislib/BOOL.sml}.}
+booleans.\footnote{Consult the file {\tt basis/BOOL.sml}.}
 
 %---------------------------------------------------------
 \chapter{Lists}
@@ -5658,7 +5658,7 @@ comments. The declared identifiers of a project is the union of the
 identifiers being declared by a source file of the project, excluding
 source files that are included using {\tt local}. As an example of
 the use of {\tt local} to limit what identifiers are declared by a
-project, consult the project file {\tt basislib/basislib.pm}.
+project, consult the project file {\tt basis/basis.pm}.
 
 Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
@@ -6347,7 +6347,7 @@ library, that is, we execute the UNIX command
 \begin{verbatim}
    fgrep pp14788 *.log
 \end{verbatim}
-in the directory {\tt basislib}, and find that the program point {\tt pp14788}
+in the directory {\tt basis}, and find that the program point {\tt pp14788}
 appears in the file {\tt General.sml.log}, which contains the following
 fragment:
 \begin{verbatim}
@@ -6379,7 +6379,7 @@ the region flow graph, but the graph says nothing about in which
 module the called function is located. Thus, it may be necessary to
 look in several log files to find the path from a formal region
 variable to an actual region variable. By inspecting the call-explicit
-programs found in {\tt basislib/Int.sml.log} and {\tt
+programs found in {\tt basis/Int.sml.log} and {\tt
   kitdemo/lib.sml.log} one finds that both {\tt toString} and {\tt
   readWord} eventually call {\tt implode}. However, {\tt readWord} is
 called only initially, thus, we conclude that the space leak is caused
@@ -7034,7 +7034,7 @@ largest amount of allocations in the program. The allocation point may
 be found in the region-annotated program resulting from compiling the
 {\tt life} program (remember to enable printing of program points). In
 general, program points may also stem from the Basis Library (search
-the {.log} files in the directory {\tt basislib}).
+the {.log} files in the directory {\tt basis}).
 
 The stack profile shown in Figure~\ref{prof_eks3.fig} shows memory
 usage on the stack, excluding space used by finite regions. A 
@@ -8608,7 +8608,7 @@ The ML Kit now contains (a large portion of) the \index{Standard ML
   Basis Library} Standard ML Basis Library, based on the Moscow ML
 version of the library. To see exactly what parts of the Standard ML
 Basis Library are supported, consult the project file {\tt
-  basislib.pm} located in the directory {\tt basislib}.
+  basis.pm} located in the directory {\tt basis}.
 
 \subsubsection*{Scalability}
 The Kit now compiles fairly large programs, including Hafnium's AnnoDomini

@@ -35,7 +35,7 @@ barry:
 
 clean:
 	$(CLEAN) bin run
-	cd basislib; $(MAKE) clean
+	cd basis; $(MAKE) clean
 	cd doc/manual; $(MAKE) clean
 	cd kitlib; $(CLEAN) run
 	cd ml-yacc-lib; $(CLEAN)
@@ -130,7 +130,7 @@ install:
 	$(INSTALL) README $(INSTDIR)
 	$(INSTALL) -R kitdemo $(INSTDIR)/kitdemo 
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR)/ml-yacc-lib
-	$(INSTALL) -R basislib $(INSTDIR)/basislib
+	$(INSTALL) -R basis $(INSTDIR)/basis
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
@@ -177,7 +177,7 @@ install_kam:
 	$(INSTALL) README $(INSTDIR_KAM)
 	$(INSTALL) -R kitdemo $(INSTDIR_KAM)/kitdemo 
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
-	$(INSTALL) -R basislib $(INSTDIR_KAM)/basislib
+	$(INSTALL) -R basis $(INSTDIR_KAM)/basis
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_KAM)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR_KAM)
 	chmod -R ug+rw $(INSTDIR_KAM)
@@ -200,7 +200,7 @@ install_barry:
 	$(INSTALL) README_BARRY $(INSTDIR_BARRY)
 	$(INSTALL) -R kitdemo $(INSTDIR_BARRY)/kitdemo 
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR_BARRY)/ml-yacc-lib
-	$(INSTALL) -R basislib $(INSTDIR_BARRY)/basislib
+	$(INSTALL) -R basis $(INSTDIR_BARRY)/basis
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_BARRY)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR_BARRY)
 	chmod -R ug+rw $(INSTDIR_BARRY)
@@ -225,7 +225,7 @@ install_smlserver:
 	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(INSTALL) -R smlserver/xt $(INSTDIR_SMLSERVER)/xt
 	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
-	$(INSTALL) -R basislib $(INSTDIR_SMLSERVER)/basislib
+	$(INSTALL) -R basis $(INSTDIR_SMLSERVER)/basis
 #	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
 	$(INSTALL) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR_SMLSERVER)

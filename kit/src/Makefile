@@ -131,7 +131,7 @@ clean:
 	cd SMLserver; $(CLEAN) nssml.so *.o
 
 clean_mlb:
-	cd ../basislib; $(CLEAN_MLB)
+	cd ../basis; $(CLEAN_MLB)
 	$(CLEAN_MLB)
 	cd Pickle; $(CLEAN_MLB)
 	cd Common; $(CLEAN_MLB)

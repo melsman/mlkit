@@ -1,5 +1,18 @@
 ML Kit NEWS file
 
+ * mael 2004-12-15: Changed directory kit/basislib to kit/basis and
+   kit/basislib/basislib.pm to kit/basis/basis.pm.
+
+ * mael 2004-12-14: mlbmake: It is now checked that a source file
+   (i.e., sml-file) is included at most once in an entire MLB
+   source-hierarchy. MLB-files may be referred to multiple times,
+   although recursive references to MLB files are not allowed.
+
+ * mael 2004-12-14: mlbmake: As suggested by Stephen Weeks we now use
+   $(SML_LIB) as a path variable for refering to a root for the MLB
+   libraries. Thus, programmers can now use $(SML_LIB)/basis/basis.mlb
+   to refer to the basis library in both MLKit and MLton.
+
  * mael 2004-08-05: Bug fix: bug reported by Stephen Weeks
    concerning type scheme generalization is now fixed (see
    kit/test/weeks6.sml).

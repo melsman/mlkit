@@ -1,7 +1,7 @@
 (* load file for ML-Yacc library *)
 
   import 
-    ../basislib/basislib.pm
+    ../basis/basis.pm
   in
     base.sig
     join.sml

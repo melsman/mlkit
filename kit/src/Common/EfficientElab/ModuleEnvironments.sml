@@ -153,7 +153,7 @@ functor ModuleEnvironments(
     fun mk_absprjid x = x 
       
     fun is_absprjid_basislib absprjid = 
-      OS.Path.file absprjid = "basislib.pm"
+      OS.Path.file absprjid = "basis.pm"
       
     fun strip_install_dir absprjid =
       if is_absprjid_basislib absprjid then OS.Path.mkRelative(absprjid, !Flags.install_dir)
