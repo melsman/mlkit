@@ -162,13 +162,16 @@ functor CompilerEnv(structure Ident: IDENT
 		       (tycon_WORD, ([tyName_WordDefault()], emptyCEnv)),
 		       (tycon_REAL, ([tyName_REAL], emptyCEnv)),
 		       (tycon_STRING, ([tyName_STRING], emptyCEnv)),
+		       (tycon_ARRAY, ([tyName_ARRAY], emptyCEnv)),
+		       (tycon_VECTOR, ([tyName_VECTOR], emptyCEnv)),
+		       (tycon_CHARARRAY, ([tyName_CHARARRAY], emptyCEnv)),
 		       (tycon_CHAR, ([tyName_WORD8], emptyCEnv)),
 		       (tycon_EXN, ([tyName_EXN], emptyCEnv)),
 		       (tycon_REF, ([tyName_REF], emptyCEnv)),
 		       (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
 		       (tycon_LIST, ([tyName_LIST], emptyCEnv)),
 		       (tycon_FRAG, ([tyName_FRAG], emptyCEnv)),
-		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)),
+(*		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)), *)
 		       (tycon_UNIT, ([], emptyCEnv))
 		       ])
     in

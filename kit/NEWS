@@ -1,5 +1,22 @@
 ML Kit NEWS file                                       November, 2001
 
+ * mael 2001-11-25: Assembler in-lining of sub/update/size 
+   operations on bytetables (CharArray, Word8Array, CharVector, 
+   Word8Vector, String).
+
+ * mael 2001-11-24: Better implementation of Array/Vector (constant
+   subscripting/updating).
+
+ * mael 2001-11-24: Better implementation of CharArray/Word8Array 
+   (basislib/ByteTable.sml); no ref-indirection.
+
+ * mael 2001-11-24: Better implementation of strings/arrays/vectors
+   by supporting large objects in the runtime system; values that do
+   not fit in region pages are now allocated with malloc and placed
+   in a list of large objects in the region descriptor for the 
+   region. Upon region de-allocation, the large objects are freed 
+   using free.
+
  * mael 2001-11-20: Better reporting of garbage collection statistics
    and fragmentation (runtime flag -verbose_gc, when gc is enabled).
 

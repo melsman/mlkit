@@ -87,13 +87,16 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	    val str_size = String.size str
 	    fun gen_alignment 0 = ()
 	      | gen_alignment n = (out_byte 0; gen_alignment (n-1))
-	    val align = if Int.mod(str_size, 4) = 0 then 0 else (4-Int.mod(str_size, 4))
+	    val align = if Int.mod(str_size+1, 4) = 0 then 0 else (4-Int.mod(str_size+1, 4))
 	  in
 	    (out_opcode IMMED_STRING;
 	     out_word32 (BI.tag_string(true,str_size));
+(*
 	     out_int str_size;
 	     out_int 0; (* NULL pointer to next fragment. *)
+*)
 	     List.app (fn c => out_byte (Char.ord c)) (String.explode str); (* The actual string *)
+	     out_byte 0;
 	     gen_alignment align) (* obtain word alignment! *)
 	  end
       | ImmedReal(s) => 
@@ -245,6 +248,12 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimwToi => out_opcode PRIM_W_TO_I
 					                              
       | PrimFreshExname => out_opcode PRIM_FRESH_EXNAME
+
+      | PrimByteTableSub => out_opcode PRIM_BYTETABLE_SUB
+      | PrimByteTableUpdate => out_opcode PRIM_BYTETABLE_UPDATE
+      | PrimWordTableSub => out_opcode PRIM_WORDTABLE_SUB
+      | PrimWordTableUpdate => out_opcode PRIM_WORDTABLE_UPDATE
+      | PrimTableSize => out_opcode PRIM_TABLE_SIZE
 
     end
 

@@ -170,6 +170,13 @@ functor Kam(structure Labels : ADDRESS_LABELS
 	
       | PrimFreshExname
 
+      | PrimByteTableSub
+      | PrimByteTableUpdate
+      | PrimWordTableSub
+      | PrimWordTableUpdate
+      | PrimTableSize
+
+
     datatype TopDecl =
         FUN of label * KamInst list
       | FN of label * KamInst list
@@ -360,6 +367,12 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimwToi => "PrimwToi" :: acc
 					                              
       | PrimFreshExname => "PrimFreshExname" :: acc
+
+      | PrimByteTableSub => "PrimByteTableSub" :: acc
+      | PrimByteTableUpdate => "PrimByteTableUpdate" :: acc
+      | PrimWordTableSub => "PrimWordTableSub" :: acc
+      | PrimWordTableUpdate => "PrimWordTableUpdate" :: acc
+      | PrimTableSize => "PrimTableSize" :: acc
 
     fun pr_inst i = concat(pp_inst(i,[]))
 

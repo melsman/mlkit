@@ -15,7 +15,7 @@
 //     bytes, so we have to convert to words, and make alignment. The 
 //     content of the string is not initialized. 
 
-static StringDesc *
+static inline StringDesc *
 #ifdef PROFILING
 allocStringProfiling(int rAddr, int size, int pPoint)
 #else 
@@ -37,10 +37,10 @@ allocString(int rAddr, int size)
 
 // convertStringToC: Copy ML string to 'buf' of size 'buflen'
 void 
-convertStringToC(StringDesc *mlStr, char *buf, int buflen, int exn) 
+convertStringToC(StringDesc *mlStr, unsigned char *buf, int buflen, int exn) 
 {
   int i, sz;
-  char *p;
+  unsigned char *p;
 
   sz = sizeStringDefine(mlStr); 
   if ( sz > buflen-1) 
@@ -59,13 +59,13 @@ convertStringToC(StringDesc *mlStr, char *buf, int buflen, int exn)
 // pointen at by rAddr.
 StringDesc *
 #ifdef PROFILING
-convertStringToMLProfiling(int rAddr, char *cStr, int pPoint) 
+convertStringToMLProfiling(int rAddr, unsigned char *cStr, int pPoint) 
 #else
-convertStringToML(int rAddr, char *cStr) 
+convertStringToML(int rAddr, unsigned char *cStr) 
 #endif
 {
   StringDesc *res;
-  char *p;
+  unsigned char *p;
   int i;
 
   #ifdef PROFILING
@@ -98,9 +98,9 @@ printStringList(int xs)
 /*
 StringDesc *
 #ifdef PROFILING
-makeCharProfiling(int rAddr, char ch, int pPoint) 
+makeCharProfiling(int rAddr, unsigned char ch, int pPoint) 
 #else
-makeChar(int rAddr, char ch) 
+makeChar(int rAddr, unsigned char ch) 
 #endif
 {
   StringDesc *res;
@@ -152,11 +152,13 @@ chrCharML(int charNrML, int exn)
   return;
 }
 
+/*
 int 
-sizeStringML(StringDesc *s) 
+__bytetable_size(StringDesc *s) 
 {
   return convertIntToML(sizeStringDefine(s));
 }
+*/
 
 StringDesc *
 #ifdef PROFILING
@@ -166,7 +168,7 @@ concatStringML(int rAddr, StringDesc *str1, StringDesc *str2)
 #endif
 {
   StringDesc *res;
-  char *s, *p;
+  unsigned char *s, *p;
   int i, sz;
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
 #ifdef PROFILING
@@ -199,7 +201,7 @@ implodeCharsML(int rAddr, int xs)
   StringDesc *res;
   int length = 0;
   int ys;
-  char *p;
+  unsigned char *p;
 
   // maybe reset region
   if ( is_inf_and_atbot(rAddr) ) 
@@ -221,7 +223,7 @@ implodeCharsML(int rAddr, int xs)
   p = &(res->data);
   for ( ys = xs; isCONS(ys); ys = tl(ys) ) 
     {
-      *p++ = (char) convertIntToC (hd(ys));
+      *p++ = (unsigned char) convertIntToC (hd(ys));
     }
   *p = '\0';
   return res;
@@ -240,7 +242,7 @@ implodeStringML(int rAddr, int xs)
   StringDesc *res;
   int sz=0;
   int ys;
-  char* p;
+  unsigned char *p;
 
   // calculate string length and allocate
   for ( ys = xs; isCONS(ys); ys = tl(ys) )
@@ -259,7 +261,7 @@ implodeStringML(int rAddr, int xs)
     {
       StringDesc* sd;
       int i;
-      char *s;
+      unsigned char *s;
       sd = (StringDesc*)hd(ys);
       s = &(sd->data);
       for ( i = 0; i < sizeStringDefine(sd); i++ )
@@ -271,27 +273,31 @@ implodeStringML(int rAddr, int xs)
   return res;
 }
 
-// subStringML: returns the i'th character of the string.
+// __bytetable_sub: returns the i'th character of the string.
+/*
 int 
-subStringML(StringDesc *str,int iML) 
+__bytetable_sub(StringDesc *str,int iML) 
 {
   int iC;
-  char ch;
+  unsigned char ch;
   iC = convertIntToC(iML);
   ch = *(&(str->data) + iC);  
   return convertIntToML(ch);
 }
+*/
 
-// updateStringML: updates the i'th character of the string.
+// __bytetable_update: updates the i'th character of the string.
+/*
 void 
-updateStringML(StringDesc *str, int iML, int cML) 
+__bytetable_update(StringDesc *str, int iML, int cML) 
 {
   int iC;
-  char ch;
+  unsigned char ch;
   iC = convertIntToC(iML);
   *(&(str->data) + iC) = (char)(convertIntToC(cML));
   return;
 }
+*/
 
 void 
 printStringML(StringDesc *str) 
@@ -301,19 +307,29 @@ printStringML(StringDesc *str)
   return;
 }
 
-static int
+static inline int
 mystrcmp (StringDesc *s1, StringDesc *s2) 
 {
-  int min, l1, l2;
-  char *p1, *p2;
+  int min, l1, l2, i;
+  unsigned char *p1, *p2;
+
   l1 = sizeStringDefine(s1);
   l2 = sizeStringDefine(s2);
+
   if ( l1 < l2 ) min = l1;
-  else min = l2;
+  else           min = l2;
+
   p1 = &(s1->data);
   p2 = &(s2->data);
   
-  return memcmp(p1,p2,min+1);
+  for ( i = 0; i < min; i++, p1++, p2++ )
+    {
+      if ( *p1 < *p2 ) return -1;
+      if ( *p2 < *p1 ) return  1;
+    }
+  if ( l1 < l2 ) return -1;
+  if ( l2 < l1 ) return  1;
+  return 0;
 }
 
 int 
@@ -405,7 +421,7 @@ explodeStringML(int rAddr, StringDesc *str)
 #endif
 {
   int *res, *consPtr, *pair, *tpair, i, sz;
-  char *p;
+  unsigned char *p;
 
   sz = sizeStringDefine(str);
   if (sz == 0)
@@ -428,7 +444,6 @@ explodeStringML(int rAddr, StringDesc *str)
   res = consPtr;
   for ( i = 1 ; i < sz; i++ )
     {
-
       #ifdef PROFILING
       allocRecordMLProf(rAddr, 2, tpair, pPoint); 
       #else
@@ -452,3 +467,35 @@ printNum(int n)
   printf("Num: %d\n",convertIntToC(n));
   return;
 }
+
+#ifdef ENABLE_GC
+// copy_string(rAddr,s): copy the string s into a new string 
+// allocated in region rAddr.
+StringDesc *
+#ifdef PROFILING
+copy_stringProf(int rAddr, StringDesc *s, int pPoint)
+#else
+copy_string(int rAddr, StringDesc *s)
+#endif 
+{
+  int sz, i;
+  char *p1, *p2;
+  StringDesc *res;
+
+  sz = get_string_size(s->size);
+  #ifdef PROFILING
+  res = allocStringProfiling(rAddr, sz, pPoint);
+  #else
+  res = allocString(rAddr, sz);
+  #endif
+  p1 = &(s->data);
+  p2 = &(res->data);
+  for ( i = 0 ; i < sz ; i ++ )
+    {
+      *p2++ = *p1++;
+    }
+  *p2 = '\0';
+  return res;      
+}
+
+#endif /*ENABLE_GC*/

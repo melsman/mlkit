@@ -97,8 +97,10 @@ functor TyName(
     val tyName_CHAR = fresh true {tycon=TyCon.tycon_CHAR, arity=0, equality=true}
     val tyName_LIST = fresh true {tycon=TyCon.tycon_LIST,  arity=1, equality=true}
     val tyName_FRAG = freshTyName{tycon=TyCon.tycon_FRAG,  arity=1, equality=true}
-    val tyName_WORD_TABLE = freshTyName{tycon=TyCon.tycon_WORD_TABLE, arity=1, equality=true}
     val tyName_REF = freshTyName{tycon=TyCon.tycon_REF, arity=1, equality=true}
+    val tyName_ARRAY = freshTyName{tycon=TyCon.tycon_ARRAY, arity=1, equality=true}
+    val tyName_VECTOR = freshTyName{tycon=TyCon.tycon_VECTOR, arity=1, equality=true}
+    val tyName_CHARARRAY = freshTyName{tycon=TyCon.tycon_CHARARRAY, arity=0, equality=true}
     val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
     val _ = Rank.reset()
 

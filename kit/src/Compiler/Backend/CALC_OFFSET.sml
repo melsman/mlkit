@@ -3,10 +3,8 @@ signature CALC_OFFSET =
   sig
 
     (* Insert offset annotations on SCOPE, LETREGION and HANDLE
-       constructs in in a LINE_STMT program after insertion of fetch
+       constructs in a LINE_STMT program after insertion of fetch
        and flush constructs.
-     
-
     *)
 
     type place 

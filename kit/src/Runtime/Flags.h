@@ -12,7 +12,6 @@
 /*                        number of region pages.                              */
 /*                                                                             */
 /*   TAG_VALUES: Tag values to admit for polymorphic equality.                 */
-/*   TAG_INTEGERS: Tag integers to admit for polymorphic equality.             */
 
 #ifndef FLAGS
 #define FLAGS

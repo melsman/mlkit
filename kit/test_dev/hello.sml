@@ -1,7 +1,7 @@
 let
 fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 in
- print "It works!"
+ print "It works!\n"
 end
 
 (*

@@ -234,9 +234,9 @@ structure GenOpcodes : GEN_OPCODES =
 	    val spec_file = mk_path "Compiler/Backend/KAM/KamInsts.spec"
 	    val functor_file = mk_path "Compiler/Backend/KAM/OpcodesKAM.sml"
 	    val signature_file = mk_path "Compiler/Backend/KAM/OPCODES_KAM.sml"
-	    val kam_insts_H_file = mk_path "RuntimeWithGC/KamInsts.h"
-	    val kam_insts_C_file = mk_path "RuntimeWithGC/KamInsts.c"
-	    val jumptbl_file = mk_path "RuntimeWithGC/jumptbl.h"
+	    val kam_insts_H_file = mk_path "Runtime/KamInsts.h"
+	    val kam_insts_C_file = mk_path "Runtime/KamInsts.c"
+	    val jumptbl_file = mk_path "Runtime/jumptbl.h"
 
 	    val _ = (write_functor spec_file functor_file;
 		     write_signature spec_file signature_file;
@@ -248,8 +248,8 @@ structure GenOpcodes : GEN_OPCODES =
 	    val spec_file_cfuncs = mk_path "Compiler/Backend/KAM/BuiltInCFunctions.spec"
 	    val spec_file_cfuncs_nssml = mk_path "Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec"
 	    val functor_file_cfuncs = mk_path "Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml"
-	    val C_file_cfuncs = mk_path "RuntimeWithGC/Prims.c"
-	    val C_file_cfuncs_nssml = mk_path "RuntimeWithGC/PrimsNsSml.c"
+	    val C_file_cfuncs = mk_path "Runtime/Prims.c"
+	    val C_file_cfuncs_nssml = mk_path "Runtime/PrimsNsSml.c"
 	    val _ = (write_functor_cfuncs spec_file_cfuncs spec_file_cfuncs_nssml functor_file_cfuncs;
 		     write_built_in_c_funcs_C [spec_file_cfuncs] C_file_cfuncs;
 		     

@@ -14,7 +14,7 @@
 #define tm2cal(tptr)   mktime(tptr)
 
 /* The following must agree with timebase in basislib/Time.sml */
-#ifdef TAG_INTEGERS
+#ifdef TAG_VALUES
 #define TIMEBASE (-1073741824)
 #else
 #define TIMEBASE (Min_Int)

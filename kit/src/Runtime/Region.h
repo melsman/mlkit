@@ -107,8 +107,8 @@ word-arrays take time which is logarithmic in the index parameter.
 */
 
 typedef struct lobjs {
-  struct lobjs* next;     /* pointer to next large object or NULL */
-  int value;              /* a large object; inlined to avoid pointer-indirection */
+  struct lobjs* next;     // pointer to next large object or NULL
+  unsigned int value;     // a large object; inlined to avoid pointer-indirection
 } Lobjs;
 
 /* 

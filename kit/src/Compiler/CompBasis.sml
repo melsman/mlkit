@@ -169,7 +169,7 @@ functor CompBasis(structure Con : CON
 	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
 	  val tynames = TyName.tyName_LIST :: 
               TyName.tyName_BOOL ::
-	      TyName.tyName_WORD_TABLE :: tynames     (* for elim eq *) 
+	      TyName.tyName_VECTOR :: tynames     (* for elim eq *) 
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames}) handle x =>
                (say "CompileBasis.restrict: ElimiateEq.restrict failed\n";
                 say "Then equality environment is:\n";

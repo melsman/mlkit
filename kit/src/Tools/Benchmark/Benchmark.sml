@@ -1,4 +1,37 @@
 
+datatype compiler = MLKIT of string | SMLNJ | MLTON of string
+fun pr_compiler (c:compiler): string =
+  let fun with_flags "" s = s
+	| with_flags flags s = s ^ " [" ^ flags ^ "]"
+  in case c
+       of MLKIT flags => with_flags flags "MLKIT"
+	| SMLNJ => "SMLNJ"
+	| MLTON flags => with_flags flags "MLTON"
+  end
+
+signature RESULT_MAP =
+  sig
+    datatype result = KB of int | TM of Time.time | STR of string
+    val add : {compiler:compiler,
+	       program:string,        (* compiler independent program name *)
+	       entry:string,
+	       result:result} -> unit
+    val lookup : {compiler:compiler,program:string,entry:string} -> result option
+  end
+
+structure RM : RESULT_MAP =
+  struct
+    datatype result = KB of int | TM of Time.time | STR of string
+    val map : {compiler:compiler, program:string, entry:string,result:result} list ref = ref nil
+    fun add a : unit = map := a :: !map      
+    fun lookup {compiler:compiler,program:string,entry:string} : result option = 
+      case List.find (fn r => #compiler r = compiler 
+		      andalso #program r = program 
+		      andalso #entry r = entry) (!map)
+	of SOME a => SOME(#result a)
+	 | NONE => NONE
+  end
+    
 structure Benchmark = 
   struct
     type report = MemUsage.report
@@ -109,7 +142,6 @@ structure Benchmark =
 	  of ":"::ss => readFls (ss,nil)
 	   | _ => NONE
       end
-    datatype compiler = MLKIT of string | SMLNJ | MLTON of string
 
     fun getCompileArgs (nil, comps, out) = NONE
       | getCompileArgs (s::ss , comps, out) = 
@@ -130,15 +162,11 @@ structure Benchmark =
 	 | _ => SOME (s::ss, rev comps, out)
 
     fun getNameComp c =
-      let fun with_flags "" s = s
-	    | with_flags flags s = s ^ " [" ^ flags ^ "]"
-      in
-	case  c 
-	  of MLKIT flags =>   {head=with_flags flags "ML Kit", 
-			       compile=CompileMLKIT.compile, memusage=true, flags=flags}
-	   | SMLNJ       =>   {head="SML/NJ", compile=CompileSMLNJ.compile, memusage=false, flags=""}
-	   | MLTON flags =>   {head=with_flags flags "MLTON", 
-			       compile=CompileMLTON.compile, memusage=false, flags=flags}
+      let val head = pr_compiler c
+      in case  c 
+	   of MLKIT flags => {head=head, compile=CompileMLKIT.compile, memusage=true, flags=flags}
+	    | SMLNJ       => {head=head, compile=CompileSMLNJ.compile, memusage=false, flags=""}
+	    | MLTON flags => {head=head, compile=CompileMLTON.compile, memusage=false, flags=flags}
       end
 
     fun sourceFiles nil = nil
@@ -156,12 +184,62 @@ structure Benchmark =
 			      end)
 	 | SOME ext => raise Fail ("Unknown extension " ^ ext)
 
-    fun main1 kitdir inputs c =
+    fun add_result_map (c:compiler) (p,(_,NONE)) = ()
+      | add_result_map (c:compiler) (p,(_,SOME (out,png,{count,rss,size,data,stk,exe,sys,user,real}))) =
+      let fun add e r = RM.add{compiler=c,program=p,entry=e,result=r}
+      in  add "rss" (RM.KB rss)
+	; add "size" (RM.KB size)
+	; add "data" (RM.KB data)
+	; add "stk" (RM.KB stk)
+	; add "exe" (RM.KB exe)
+	; add "sys" (RM.TM sys)
+	; add "user" (RM.TM user)
+	; add "real" (RM.TM real)
+      end
+
+    fun main1 kitdir ps c =
       let val {head,compile,memusage,flags} = getNameComp c
 	  val _ = print ("Parsing test-files\n")
-	  val ps = sourceFiles inputs
-	  val l = map (process (compile kitdir flags) memusage) ps
+	  val orig_l = map (fn p => (#1 p,process (compile kitdir flags) memusage p)) ps
+	  val l = map #2 orig_l	    
+	  val _ = app (add_result_map c) orig_l
       in BenchTable ["loc", "rss", "size", "data", "stk", "exe", "real", "user", "sys"] (head,l,memusage)
+      end
+
+    fun compare_section_entry (cs:compiler list) (programs:string list) (name:string,entry:string) =
+      let val sz = length cs
+	  val improvement_h = if sz = 2 then TH "Improvement (percent)" else ""
+	  val table_h = TR (TH ("Program \\ " ^ entry) ^ concat (map (fn c => TH(pr_compiler c)) cs) ^
+			    improvement_h)
+	  fun pr_result r =
+	    case r
+	      of RM.TM t => Time.toString t
+	       | RM.KB i => if i > 10000 then Int.toString (i div 1000) ^ "M"
+			 else Int.toString i ^ "K"
+	       | RM.STR s => s
+	  fun pr_entry p c = 
+	    case RM.lookup {compiler=c,program=p,entry=entry}
+	      of SOME r => TD(pr_result r)
+	       | NONE => TD "-"
+	  fun percent_imp r1 r2 = TD(Real.fmt (StringCvt.FIX(SOME 1)) ((r1 - r2) * 100.0 / r1))
+	  fun improvement p [c1,c2] =
+	    ((case (RM.lookup {compiler=c1,program=p,entry=entry},
+		    RM.lookup {compiler=c2,program=p,entry=entry})
+		of (SOME (RM.KB kb1),SOME (RM.KB kb2)) => percent_imp (real kb1) (real kb2)
+		 | (SOME (RM.TM tm1),SOME (RM.TM tm2)) => percent_imp (Time.toReal tm1) (Time.toReal tm2)
+		 | _ => TD "-") handle _ => TD "_")
+	    | improvement _ _ = ""
+	    
+	  fun line p = TR (TD (tagAttr "A" ("HREF=" ^ p) p) ^ concat (map (pr_entry p) cs) ^ improvement p cs)
+	  val lines = concat(map line programs)
+      in H2 ("Comparison of " ^ name) ^ TABLE (table_h ^ lines)
+      end
+
+    fun compare_section (cs:compiler list) (ps:(string*TestFile.opt list)list) : string =
+      let val programs = map #1 ps
+	  val entries = [("Memory Usage","rss"), ("Execution Time","user")]
+	  val sections = map (compare_section_entry cs programs) entries
+      in concat sections
       end
 
     fun tokenize nil = nil
@@ -206,7 +284,9 @@ structure Benchmark =
 	   ; print "  kitbench -mlkit:-dangle -scratch: -smlnj kkb36c.sml.\n"
 	   ; OS.Process.failure)
 	 | SOME (inputs, cs, out) =>
-	  let val ts = map (main1 kitdir inputs) cs 
+	  let val ps = sourceFiles inputs
+	      val ts = map (main1 kitdir ps) cs 
+	      val compare_sec = compare_section cs ps
 	      fun withFile NONE f = f TextIO.stdOut
 		| withFile (SOME s) f =
 		let val os = TextIO.openOut s
@@ -216,7 +296,7 @@ structure Benchmark =
 		  handle ? => (TextIO.closeOut os; raise ?)
 		end
 	  in 
-	      withFile out (fn os => TextIO.output(os, BenchPage(concat ts)))
+	      withFile out (fn os => TextIO.output(os, BenchPage(concat ts ^ compare_sec)))
 	    ; OS.Process.success
 	  end
       end

@@ -67,7 +67,7 @@ struct
   in
     fun runtype (CONSTYPE(tn, _, _, _)) =  
       if TyName.unboxed tn then E.WORD_RT
-      else if eq(tn, tyName_STRING) orelse eq(tn, tyName_WORD_TABLE) then E.STRING_RT
+      else if eq(tn, tyName_STRING) orelse eq(tn, tyName_CHARARRAY) then E.STRING_RT
       else if eq(tn, tyName_REAL) then E.REAL_RT
       else E.TOP_RT
     | runtype (TYVAR _) = E.BOT_RT
@@ -1201,7 +1201,9 @@ struct
       (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
       SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
     else if (TyName.eq (tyname, TyName.tyName_STRING)
-	     orelse TyName.eq (tyname, TyName.tyName_WORD_TABLE)) then NONE
+	     orelse TyName.eq (tyname, TyName.tyName_CHARARRAY)
+	     orelse TyName.eq (tyname, TyName.tyName_ARRAY)
+	     orelse TyName.eq (tyname, TyName.tyName_VECTOR)) then NONE
     else die ("S (CCALL ...): \nI am sorry, but c functions returning "
 	      ^ TyName.pr_TyName tyname
 	      ^ " are not supported yet.\n")

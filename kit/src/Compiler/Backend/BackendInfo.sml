@@ -98,7 +98,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     fun size_of_handle()   = 4
 
     local
-      val region_large_objects = false  (* upon change, also change src/RuntimeWithGC/Makefile *)
+      val region_large_objects = true (* upon change, also change src/RuntimeWithGC/Makefile *)
       fun maybe_add (x:int) = if region_large_objects then x + 1
 			      else x
     in
@@ -182,7 +182,11 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 	 "__word32b_to_int32b", "__word32b_to_int32b_X", "__word32ub_to_int32ub", "__word31_to_int31", 
 	 "__word32b_to_int31", "__int32b_to_word31", "__word32b_to_int31_X",
 
-	 "__exn_ptr", "__fresh_exname"]
+	 "__exn_ptr", "__fresh_exname", 
+
+         "__bytetable_sub", "__bytetable_size", "__bytetable_update",
+
+	 "word_sub0", "word_update0", "table_size"]
     in
       fun is_prim name = S.member name S orelse S.member name S_flow
       fun is_flow_prim name = S.member name S_flow

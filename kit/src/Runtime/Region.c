@@ -280,15 +280,19 @@ void deallocateRegionNew(
   #endif /* ENABLE_GC */
 
   // free large objects
-  {
-    Lobjs* lobjs = TOP_REGION->lobjs;
-    while ( lobjs != NULL ) 
-      {
-	Lobjs* lobjsTmp = lobjs->next;
-	free(lobjs);
-	lobjs = lobjsTmp;
-      }
-  }
+  if ( TOP_REGION->lobjs )
+    {
+      Lobjs* lobjs = TOP_REGION->lobjs;
+      while ( lobjs ) 
+	{
+	  Lobjs* lobjsTmp = lobjs->next;
+#ifdef ENABLE_GC
+	  lobj_current -= size_lobj(lobjs->value);
+#endif	  
+	  free(lobjs);
+	  lobjs = lobjsTmp;
+	}
+    }
 
   /* Insert the region pages in the freelist; there is always 
    * at-least one page in a region. */
@@ -439,14 +443,20 @@ void alloc_new_block(Ro *rp) {
   #ifdef ENABLE_GC
   rp_to_space++;
   rp_used++;
-  if (!disable_gc) {
-    if (((((double)rp_total) - ((double)rp_used)) < (((double)rp_total)/heap_to_live_ratio)) & (time_to_gc == 0)) {
-      rp_used = rp_total - size_free_list();
-      if (((((double)rp_total) - ((double)rp_used)) < (((double)rp_total)/heap_to_live_ratio)) & (time_to_gc == 0)) {
-	time_to_gc = 1;
-      }
+  if ( (!disable_gc) && (!time_to_gc) ) 
+    {
+      double treshold = (double)rp_total - (((double)rp_total) / heap_to_live_ratio);
+      if ( (double)rp_used > treshold )
+	{
+	  // calculate correct value for rp_used; the current value may exceed the correct
+	  // value due to conservative computation in resetRegion...
+	  rp_used = rp_total - size_free_list();
+	  if ( (double)rp_used > treshold )
+	    {
+	      time_to_gc = 1;
+	    }
+	}
     }
-  }
   #endif /* ENABLE_GC */
 
   FREELIST_MUTEX_LOCK;
@@ -516,6 +526,7 @@ int *alloc (int rAddr, int n) {
 
   // see if the size of requested memory exceeds 
   // the size of a region page */
+
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
       Lobjs* lobjs;
@@ -523,9 +534,16 @@ int *alloc (int rAddr, int n) {
       lobjs->next = rp->lobjs;
       rp->lobjs = lobjs;
       #ifdef PROFILING
-      /*    fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);  */
+      //    fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
       allocatedLobjs++;
-      #endif /* PROFILING */
+      #endif
+#ifdef ENABLE_GC
+      lobj_current += 4*n;
+      if ( (!disable_gc) && (!time_to_gc) && (lobj_current>lobj_gc_treshold) ) 
+	{
+	  time_to_gc = 1;
+	}
+#endif	  
       return &(lobjs->value);
     }
 
@@ -591,23 +609,27 @@ int resetRegion(int rAdr) {
     (rp->fp)->k.n = NULL;
 
     #ifdef ENABLE_GC
-    rp_used--; /* We, at least free one region page. */
-    #endif /* ENABLE_GC */
+    rp_used--;              // at least one page is freed; see comment in alloc_new_block
+    #endif /* ENABLE_GC */  //   concerning conservative computation.
   }
 
   rp->a = (int *)(&(rp->fp)->k.i); /* beginning of klump in first page */
   rp->b = (int *)((rp->fp)+1);     /* end of klump in first page */
 
-  {                                // free large objects
-    Lobjs* lobjs = rp->lobjs;
-    while ( lobjs != NULL ) 
-      {
-	Lobjs* lobjsTmp = lobjs->next;
-	free(lobjs);
-	lobjs = lobjsTmp;
-      }
-    rp->lobjs = NULL;
-  }
+  if ( rp->lobjs )
+    {                                // free large objects
+      Lobjs* lobjs = rp->lobjs;
+      while ( lobjs ) 
+	{
+	  Lobjs* lobjsTmp = lobjs->next;
+#ifdef ENABLE_GC
+	  lobj_current -= size_lobj(lobjs->value);
+#endif	  
+	  free(lobjs);
+	  lobjs = lobjsTmp;
+	}
+      rp->lobjs = NULL;
+    }
 
 #ifdef PROFILING
   rp->allocNow = 0;
@@ -632,14 +654,16 @@ void deallocateRegionsUntil(int rAddr
 			    ) { 
   Ro *rp;
 
-  /*  debug(printf("[deallocateRegionsUntil(rAddr = %x, topFiniteRegion = %x)...\n", rAddr, topFiniteRegion)); */
+  // debug(printf("[deallocateRegionsUntil(rAddr = %x, topFiniteRegion = %x)...\n", rAddr, topFiniteRegion));
 
   rp = (Ro *) clearStatusBits(rAddr);
   
 #ifdef PROFILING
   callsOfDeallocateRegionsUntil++;
   while ((FiniteRegionDesc *)rp <= topFiniteRegion)
-    deallocRegionFiniteProfiling();
+    {
+      deallocRegionFiniteProfiling();
+    }
 #endif
 
   while (rp <= TOP_REGION) 
@@ -665,7 +689,7 @@ void deallocateRegionsUntil(int rAddr
 void deallocateRegionsUntil_X86(int rAddr) { 
   Ro *rp;
 
-  /*  debug(printf("[deallocateRegionsUntil_X86(rAddr = %x, topFiniteRegion = %x)...\n", rAddr, topFiniteRegion)); */
+  //  debug(printf("[deallocateRegionsUntil_X86(rAddr = %x, topFiniteRegion = %x)...\n", rAddr, topFiniteRegion));
 
   rp = (Ro *) clearStatusBits(rAddr);
   
@@ -675,7 +699,9 @@ void deallocateRegionsUntil_X86(int rAddr) {
   /* Don't call deallocRegionFiniteProfiling if no finite 
    * regions are allocated. mael 2001-03-20 */
   while ( (topFiniteRegion != NULL) && (FiniteRegionDesc *)rp >= topFiniteRegion)
-    deallocRegionFiniteProfiling();
+    {
+      deallocRegionFiniteProfiling();
+    }
 #endif
 
   while (rp >= TOP_REGION) 
@@ -802,21 +828,6 @@ void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId,
   /*  checkProfTab("profTabIncrAllocNow.entering.allocRegionFiniteProfiling"); */
   profTabIncrAllocNow(regionId, size);
 
-  /* Inlining of function profTabIncrAllocNow(regionId, size);
-   * this update is necessary for graph drawing */
-/*
-  index = profHashTabIndex(regionId);                             
-  for (p=profHashTab[index]; p != NULL; p=p->next) {
-    if (p->regionId == regionId) goto escape;
-  }
-  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
-  profHashTab[index] = p;
-escape:
-  p->allocNow += size;
-  if (p->allocNow > p->maxAlloc) p->maxAlloc = p->allocNow;
-*/
-  /* inlining end */
-
   rdAddr->p = topFiniteRegion;   /* link to previous region description on stack */
   rdAddr->regionId = regionId;   /* put name on region in descriptor. */
   topFiniteRegion = rdAddr;      /* pointer to topmost region description on stack */
@@ -871,29 +882,18 @@ int *deallocRegionFiniteProfiling(void) {
  * allocProfiling asks alloc for space for the object descriptor   *
  * and takes care of allocating it, returning a pointer to the     *
  * beginning of the user value, as if profiling is not enabled.    *
- *                                                                 *
- * Precondition:                                                   *
- *     n <= ALLOCATABLE_WORDS_IN_REGION_PAGE - sizeObjectDescc     *
- *                                                                 *
  *-----------------------------------------------------------------*/
 int *allocProfiling(int rAddr,int n, int pPoint) {
   int *res;
 
   debug(printf("[Entering allocProfiling... rAddr:%x, n:%d, pp:%d.", rAddr, n, pPoint));
-  /*
-  if (n + sizeObjectDesc> ALLOCATABLE_WORDS_IN_REGION_PAGE) {
-    sprintf(errorStr, "ERROR -- allocProfiling is called with request for object of size %d words(not including the size of the object descriptor) and ALLOCATABLE_WORDS_IN_REGION_PAGE is only %d\nTo solve the problem,\nincrease the value of ALLOCATABLE_WORDS_IN_REGION_PAGE (in Region.h) to\nthe number of words you need and then recompile\nthe runtime system.\n",
-	    n, ALLOCATABLE_WORDS_IN_REGION_PAGE);
-    printERROR(errorStr);
-  } */
 
-  /* allocate object descriptor and object */
-  res = alloc(rAddr, n+sizeObjectDesc);
-  /* initialize object descriptor */
-  ((ObjectDesc *)res)->atId = pPoint;
+  res = alloc(rAddr, n+sizeObjectDesc);   // allocate object descriptor and object
+  
+  ((ObjectDesc *)res)->atId = pPoint;     // initialize object descriptor
   ((ObjectDesc *)res)->size = n;
-  /* return pointer to user data */
-  res = (int *)(((ObjectDesc *)res) + 1);
+  
+  res = (int *)(((ObjectDesc *)res) + 1); // return pointer to user data
 
   debug(printf("exiting]\n"));
   return res;
