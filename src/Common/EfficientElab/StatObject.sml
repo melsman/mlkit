@@ -1511,10 +1511,23 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       | _ => false
 	  end
 
-	fun generalises_TypeScheme (sigma, (betas,tau)) : bool =
-	  generalises_Type (sigma,tau) andalso
-	  (TyVar.intersectTyVarSet (betas,tyvars sigma) = [])
-	  
+	fun generalises_TypeScheme (sigma, (betas,tau')) : bool =
+	    (TyVar.intersectTyVarSet (betas,tyvars sigma) = [])
+	    andalso
+	  let
+	    fun uncurry f (x,y) = f x y
+	    val fv_sigma = tyvars sigma
+	    val tau = instance sigma
+	    val fv_tau' = foldl (uncurry TyVar.insertTyVarSet) (Type.tyvars tau') betas
+	  in
+	    (* One must use restricted unify! Consider the call
+	     * ``generalises_TypeScheme(\/().'a->int, \/'b.'b->int)''.  This call
+	     * should return false! -- mael 2004-08-05; see test/weeks6.sml *)
+	    
+	    case Type.restricted_unify (TyVar.unionTyVarSet(fv_tau',fv_sigma)) (tau,tau') 
+	      of Type.UnifyOk => true
+	       | _ => false
+	  end
 	  
 	(* close_overload tau; close a type and do not avoid
 	 * generalisation of overloaded type variables; this function

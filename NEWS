@@ -1,5 +1,9 @@
 ML Kit NEWS file
 
+ * mael 2004-08-05: Bug fix: bug reported by Stephen Weeks
+   concerning type scheme generalization is now fixed (see
+   kit/test/weeks6.sml).
+
  * mael 2004-08-04: Finished initial work on supporting export of ML
    functions to C. Only functions of type int->int may be exported at
    present and the support works only with pure region based memory

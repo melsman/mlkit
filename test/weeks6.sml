@@ -17,7 +17,7 @@ unspecified type generalizes a type scheme.
 
 *)
 
-structure S:
+structure S :
    sig
       val f: 'b option -> 'b option
    end =
