@@ -337,11 +337,6 @@ struct
 	 | SS.INTEGER_ATY i => I.pushl(I i) :: C
          | _ => move_aty_into_reg(aty,t,size_ff,
 		I.pushl(R t) :: C)
-(*
-    fun push_aty(SS.PHREG_ATY aty_reg,t:reg,size_ff,C) = I.pushl(R aty_reg) :: C
-      | push_aty(aty,t:reg,size_ff,C) = move_aty_into_reg(aty,t,size_ff,
-							  I.pushl(R t) :: C)
-*)
 	 
     (* pop(aty), i.e., aty=esp[0]; esp+=4 *)
     (* size_ff is for sp after pop *)
@@ -1452,6 +1447,53 @@ struct
 	       | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) => 
 		  comment_fn (fn () => "JMP: " ^ pr_ls ls,
 		  let 
+		  (* The stack looks as follows - growing downwards to the right:  
+		   *
+		   *   ... | ff | rcf | retlab | ccf | ff |
+		   *                                     ^sp
+		   * To perform a tail call, the arguments that need be passed on the stack
+		   * should overwrite the ``| ccf | ff |'' part and the stack pointer 
+		   * should be adjusted accordingly. However, to compute the new arguments, some of
+		   * the values in ``| ccf | ff |'' may be needed. On the other hand, some of the
+		   * arguments may be positioned on the stack correctly already.
+		   *)
+		    val (spilled_args, (* those arguments that need be passed on the stack *)
+			 spilled_res,  (* those return values that are returned on the stack *)
+			 _) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg 
+			      {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
+
+		    val size_rcf = length spilled_res
+		    val size_ccf_new = length spilled_args
+(*
+		    val _ = if size_ccf_new > 0 then
+			      print ("** JMP to " ^ Labels.pr_label opr ^ " with " ^ 
+				     Int.toString size_ccf_new ^ " args on the stack\n")
+			    else ()
+*)
+		    fun flush_args C =
+		      foldr (fn ((aty,offset),C) => 
+			     push_aty(aty,tmp_reg1, size_ff + offset - 1 - size_rcf, C)) C spilled_args
+		    (* We pop in reverse order such that size_ff+offset works, but we must adjust for the
+		     * return label and the return convention frame that we didn't push onto the stack
+		     * because we're dealing with a tail call. *)
+
+		  (* After the arguments are pushed onto the stack, we copy them down to 
+		   * the current ``| ccf | ff |'', which is now dead. *)
+		    fun copy_down 0 C = C
+		      | copy_down n C = load_indexed(tmp_reg1, esp, WORDS (n-1),
+					 store_indexed(esp, WORDS (size_ff+size_ccf+n-1), tmp_reg1, 
+					  copy_down (n-1) C))
+		    fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
+		  in 
+		    flush_args
+		    (copy_down size_ccf_new
+		     (base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
+				       jmp C)))
+		  end)
+(*
+	       | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) => 
+		  comment_fn (fn () => "JMP: " ^ pr_ls ls,
+		  let 
 		    val (spilled_args,_,_) = 
 		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
@@ -1464,6 +1506,7 @@ struct
 		      base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
 				       jmp C)
 		  end)
+*)
 	       | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
 		  comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
 		  let 
