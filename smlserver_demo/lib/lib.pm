@@ -1,0 +1,19 @@
+  Quot.sml
+  local
+    NsBasics.sml
+    NS_SET.sml
+    NsSet.sml
+    NsInfo.sml
+    NS_DB.sml
+    DbFunctor.sml
+  in
+    NS.sml
+    Ns.sml  
+    Db.sml
+    DbClob.sml
+  end
+
+  HTML.sml
+  Html.sml
+  MSP.sml
+  Msp.sml
