@@ -103,6 +103,14 @@ structure Html :> HTML =
     fun select name attr quot = `<SELECT NAME="^name" ^attr>` ^^ quot ^^ `</SELECT>`
     fun option value name = `<OPTION VALUE="^value">^name</OPTION>`
 
+    (* Type of an url consists of a file part and form variables *)
+    type fv     = string
+    type fv_val = string
+    type fvs    = (fv * fv_val) list
+    type url    = {file: string, fvs: fvs}
+    fun getFileFromUrl (url : url) = #file url
+    fun getFvsFromUrl (url : url) = #fvs url
+    fun buildUrl file fvs = {file=file,fvs=fvs}
     fun export_hiddens hvs =
       (List.foldr (fn ((n,v),acc) => `
 		   <input type=hidden name="^n" value="^v">` ^^ acc) `` hvs)
@@ -110,6 +118,7 @@ structure Html :> HTML =
       | export_url_vars hvs = `?` ^^ (Quot.concatWith "&" (List.map (fn (n,v) => `^(n)=^(Ns.encodeUrl v)`) hvs))
     fun genUrl u hvs = Quot.toString (`^u` ^^ (export_url_vars hvs))
     fun genUrla u hvs a = Quot.toString (`^u` ^^ (export_url_vars hvs) ^^ `^a`)
+    fun flattenUrl (url : url) = genUrl (getFileFromUrl url) (getFvsFromUrl url)
 
     (* HTML frames and framesets *)
     fun frameset attr quot = `<FRAMESET ^attr` ^^ quot ^^ `</FRAMESET>`

@@ -447,7 +447,6 @@ val _ =
 	  delTmpFiles (Db.Handle.dmlTrans storeFile)
 	  handle X => (delTmpFiles (!files_to_delete_on_error); raise X)
 	end
-    | _ => () (* Unknown mode *)
 
 val _ = 
   if target = "adm" then

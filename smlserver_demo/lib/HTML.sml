@@ -1,5 +1,15 @@
 signature HTML = 
   sig
+    (* Type of an url consists of a file part and form variables *)
+    type fv     = string
+    type fv_val = string
+    type fvs    = (fv * fv_val) list
+    type url    = {file: string, fvs: fvs}
+    val getFileFromUrl : url -> string
+    val flattenUrl     : url -> string
+    val getFvsFromUrl  : url -> fvs
+    val buildUrl       : string -> fvs -> url
+
     (* HTML generic marks *)
     val mark0    : string -> quot
     val mark0a   : string -> string -> quot
