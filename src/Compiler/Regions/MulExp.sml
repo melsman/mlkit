@@ -428,7 +428,7 @@ struct
 
     let val source_identification = 
           case e of FN{pat, ...} => 
-            "** Potentially dangling references out of closure for     fn " ^ 
+            "** Potentially dangling references out of closure for  fn " ^ 
               concat(map (fn (lvar,_) => " " ^ Lvar.pr_lvar lvar) pat) ^ ":\n"
           | _ => die "report_dangling: expression is not a lambda abstraction"
         val bad_lvar_lines = 
@@ -440,9 +440,12 @@ struct
     in 
        Report.print (Report.flatten (map line (source_identification ::
 					       (bad_lvar_lines @ bad_excon_lines))));
-       Crash.unimplemented "Potential dangling pointer! Garbage collection is unsound in this case. \n \
-	\ Please disable garbage collection or alter your program so that no non-live values \n \
-	\ escape in closures."
+       Crash.unimplemented "Potential dangling pointer! Garbage collection \n\
+	                   \ is unsound in this case. Please disable garbage collection\n\
+                           \ or alter your program so that no non-live values escape in\n\
+                           \ closures. This is also a warning that if you run your\n\
+                           \ program through a compiler based on conventional garbage\n\
+                           \ collection, your program may contain a space leak."
     end
 
   val gc_p = Flags.is_on0 "garbage_collection"

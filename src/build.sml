@@ -20,12 +20,11 @@ in
 
 	   disable "garbage_collection";
 	   K.build_basislib();
-(*
+
 	   disable "garbage_collection";
 	   enable "region_profiling"; 
 	   K.build_basislib();
 	   disable "region_profiling"; 
-*)
 
 (*	   enable "comments_in_x86_asmcode";*)
 (*	   enable "gdb_support"; *)
