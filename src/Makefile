@@ -14,7 +14,8 @@ ARCH-OS=x86-linux
 HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
 
 GENOPCODES_TARGETS=RuntimeWithGC/Prims.c RuntimeWithGC/PrimsNsSml.c \
- RuntimeWithGC/KamInsts.h Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml \
+ RuntimeWithGC/KamInsts.h RuntimeWithGC/KamInsts.c RuntimeWithGC/jumptbl.h \
+ Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml \
  Compiler/Backend/KAM/OPCODES_KAM.sml Compiler/Backend/KAM/OpcodesKAM.sml
 
 GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
@@ -59,7 +60,8 @@ genopcodes: $(GENOPCODES_TARGETS)
 $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
 	mkdir -p $(BINDIR)
 	cd Tools/GenOpcodes; $(MAKE)
-	$(BINDIR)/kitgen_opcodes `pwd`
+# kitgen_opcodes assumes it's run from the src-directory
+	$(BINDIR)/kitgen_opcodes
 
 rp2ps:
 	cd Tools/Rp2ps; $(MAKE)
@@ -71,7 +73,7 @@ heap2exec: heap2exec/heap2exec
 	cd heap2exec; $(MAKE)
 
 clean:
-	rm -rf run PM CM *~
+	rm -rf run PM CM *~ $(GENOPCODES_TARGETS)
 	cd Common; rm -rf PM CM *~
 	cd Common/EfficientElab; rm -rf PM CM *~
 	cd Compiler; rm -rf PM CM *~

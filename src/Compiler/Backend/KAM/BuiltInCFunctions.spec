@@ -84,7 +84,6 @@ sml_islink
 sml_realpath
 sml_devinode
 sml_rmdir
-sml_tmpnam
 sml_modtime
 sml_filesize
 sml_remove
