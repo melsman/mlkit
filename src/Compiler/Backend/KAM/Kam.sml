@@ -86,6 +86,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | FetchData of label
       | StoreData of label
 
+      | Halt
       | Comment of string
       | Nop
 
@@ -286,6 +287,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | FetchData(lab) => "FetchData(" :: (pp_lab lab) :: ")" :: acc
       | StoreData(lab) => "StoreData(" :: (pp_lab lab) :: ")" :: acc
 
+      | Halt => "Halt" :: acc
       | Comment(s) => "Comment[" :: s :: "]" :: acc
       | Nop => "Nop" :: acc
 

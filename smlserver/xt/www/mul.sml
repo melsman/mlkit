@@ -1,23 +1,24 @@
-functor mul (F : sig val sz : int Obj.obj end) : SCRIPTLET =
+functor mul (F : sig val sz : int Form.var 
+		 end) : SCRIPTLET =
     struct
-	open Scripts infix && ##
+	open Scripts infix & % attr
 
-        fun iter f n = if n <= 1 then f 1
-		       else iter f (n-1) && f n
+        fun iter f n = if n <= 1 then flatten(f 1,nil)
+		       else iter f (n-1) & f n
 	fun col r c = 
-	    tda (A.align A.center)
+	    (td (* attr (A.align A.center) *))
 	    ($(Int.toString ( r * c )))
 	    
 	fun row sz r = 
 	    tr (iter (col r) sz)
 
 	fun tab sz = 
-	    tablea (A.border 4 ## A.width (A.pct 90) ## A.frame A.vsides ## A.rules A.rows) (iter (row sz) sz)
+	    (table attr (A.border 4 % A.width (A.pct 90) 
+			 % A.frame A.vsides % A.rules A.rows))
+	    (iter (row sz) sz)
+
+	val sz = Page.get "Size" F.sz
 
 	val response = 
-	    case Obj.valOf F.sz of
-		SOME sz => 
-		    Page.page "Multiplication table" (tab sz)
-	      | NONE => 
-		    Page.page "Error" (p($"Expecting an integer"))
+	    Page.page "Multiplication table" (tab sz)
     end

@@ -35,9 +35,10 @@ structure NsSet : NS_SET =
       end
 
     fun getPair(s,n) = 
-      case (key(s,n), value(s,n))
-	of (SOME k,SOME v) => (k,v)
-      | _ => raise Fail "Ns.getPair"
+      case (key(s,n), value(s,n)) of 
+	  (SOME k,SOME v) => (k,v)
+	| (SOME k,NONE) => (k,"") 
+	| _ => raise Fail "Ns.getPair"
     fun foldr (f:(string * string) * 'a -> 'a) (b:'a) (s:set) : 'a =
       let fun loop (n,acc) = if n < 0 then acc
 			     else loop (n-1, f(getPair(s,n),acc))

@@ -1,20 +1,25 @@
-functor questionnaire2 (F : sig val male : bool Obj.obj
-				val name : string Obj.obj
-				val email: string Obj.obj
+functor questionnaire2 (F : sig val male : bool option Form.var
+				val name : string Form.var
+				val email: string Form.var
 			    end) : SCRIPTLET =
     struct
-	open Scripts infix &&
+	open Scripts infix &
 
         fun sexFromMale true = "Male"
 	  | sexFromMale false = "Female"
 
+	val male = Page.get "Male" F.male
+	val name = Page.get "Name" F.name
+	val email = Page.get "Email" F.email
+
 	val response = 
-	    case (Obj.valOf F.male, Obj.valOf F.name, Obj.valOf F.email) of
-		(SOME male, SOME name, SOME email) =>
+	    case male of
+		SOME male =>
 		    Page.page "Your Answer" 
-		    (table (tr (th ($"Sex:") && td ($(sexFromMale male))) &&
-			    tr (th ($"Name:") && td ($name)) &&
-			    tr (th ($"Email:") && td ($email)))
+		    (table (tr (th ($"Sex:") & td ($(sexFromMale male))) &
+			    tr (th ($"Name:") & td ($name)) &
+			    tr (th ($"Email:") & td ($email)))
 		     )
-	      | _ => Page.page "Error" (p($"Wrong form variables"))
+	      | NONE =>
+		    Page.page "Make a choice!" (p($"You must be either a male or a female"))
     end

@@ -6,7 +6,7 @@ structure XHtmlAttr : XHTML_ATTR  =
 	type ('a2, 'b2, 'c,'c2, 'd,'d2, 'e,'e2, 'f,'f2, 
 	      'g,'g2, 'h,'h2) attr = string list
 
-	fun ## (a,b) = a @ b
+	fun % (a,b) = a @ b
 
 	(* Type representing absence of attribute *)
 	type na = unit
@@ -123,9 +123,9 @@ structure XHtmlAttrTest =
 	local
 	    structure A :> XHTML_ATTR = XHtmlAttr
 	    open A
-	    infix ##
+	    infix %
 	in
-	    val test1 = fn() => valign middle ## width (pct 5)
+	    val test1 = fn() => valign middle % width (pct 5)
 	    val test2 = fn() => valign middle
 	end
     end

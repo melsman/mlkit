@@ -1,12 +1,12 @@
-functor sum (F : sig val sum : int Obj.obj
-		     val n : int Obj.obj
+functor sum (F : sig val sum : int Form.var
+		     val n : int Form.var
 		 end) : SCRIPTLET =
     struct
-	open Scripts infix && ++
+	open Scripts infix & %
 
 	val response = 
-	    case (Obj.valOf F.sum, Obj.valOf F.n) of
-		(SOME sum, SOME n) =>
+	    case (Form.get F.sum, Form.get F.n) of
+		(Form.Ok sum, Form.Ok n) =>
 		    if n <= 0 then
 			Page.page "Sum" 
 			(p ($ ("Sum is " ^ Int.toString sum)))

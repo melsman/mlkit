@@ -20,6 +20,8 @@ signature SMLSERVER_UNSAFE = sig
                        -> unit
   val scheduleWeekly : string -> {day:int, hour:int, minute:int}
                        -> unit
+
+  structure Form : SMLSERVER_FORM_UNSAFE
 end
 
 (*

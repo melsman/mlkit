@@ -6,10 +6,12 @@
     SMLSERVER_INFO.sml
     SMLSERVER_DB_HANDLE.sml
     SMLSERVER_DB.sml
+    SMLSERVER_FORM.sml
     SMLSERVER_UNSAFE.sml
     NsBasics.sml
     NS_SET.sml
     NsSet.sml
+    SMLserverForm.sml
     SMLserverDbFunctor.sml
     SMLserverUnsafe.sml
   in    
@@ -17,7 +19,6 @@
     SMLserver.sml  
   end
 
-  obj.sml
   local 
     XHTML_ATTR.sml
     XHtmlAttr.sml

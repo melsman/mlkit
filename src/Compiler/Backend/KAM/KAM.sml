@@ -75,6 +75,7 @@ signature KAM =
       | FetchData of label
       | StoreData of label
 
+      | Halt
       | Comment of string
       | Nop
 
