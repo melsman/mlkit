@@ -65,10 +65,11 @@ terminateML (int status)
       double ri = 0.0;
       double gc = 0.0;
       alloc_total += alloc_period;
+      alloc_total += lobjs_period;
       gc = 100.0 * ((double)gc_total) / ((double)alloc_total);
       ri = 100.0 - gc;
       fprintf(stderr, "[GC: %d garbage collections, RI: %4.1f%, GC: %4.1f%, Frag avg: %4.1f%]\n", num_gc, 
-	      ri, gc, 100.0 - (FRAG_sum / (double)(num_gc-1)));
+	      ri, gc, FRAG_sum / (double)(num_gc-1));
     }
 #endif /* ENABLE_GC */
 

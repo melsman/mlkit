@@ -40,6 +40,7 @@ local
     K.build_basislib
 in
 
+val _ = (enable "print_types"; enable "print_rho_types")
 (*
            disable "import_basislib";
 	   enable "print_types";
@@ -49,11 +50,12 @@ in
 *)
 
   val _ = comp_RI_GC()
-(*
+
   val _ = comp_RI()
 (*  val _ = comp_GC() *)
   val _ = comp_RI_GC_PROF()
   val _ = comp_RI_PROF()
+
   val _ = K.install()
-*)
+
 end

@@ -1055,7 +1055,7 @@ good *)
 		       end) (B, [], [], []) es
 		 val B = unify_mus (mus_a, mus_es) B
 		   handle X => (print "CCALL-3\n"; raise X)
-		 val rhos_for_result = R.c_function_effects mu_r
+		 val rhos_for_result = R.c_function_effects (sigma,mu_r)
 		   handle X => (print "CCALL-4\n"; raise X)
 		 val e' = E'.CCALL ({name = name, mu_result = mu_r,
 				     rhos_for_result = rhos_for_result}, trs')

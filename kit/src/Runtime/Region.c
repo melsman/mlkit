@@ -293,7 +293,7 @@ void deallocateRegionNew(
 	  #else
 	  tag = lobjs->value;
 	  #endif	  
-	  lobj_current -= size_lobj(tag);
+	  lobjs_current -= size_lobj(tag);
 #endif	  
 	  lobjsTmp = lobjs->next;
 	  free(lobjs);
@@ -507,10 +507,6 @@ int *alloc (int rAddr, int n) {
   int *i;
 #endif
 
-#ifdef ENABLE_GC
-  alloc_period += 4*n;
-#endif
-
   /*  debug(printf("[alloc, rAddr=%x, n=%d, topFiniteRegion = %x, ...\n", rAddr, 9, topFiniteRegion)); */
   rp = (Ro *) clearStatusBits(rAddr);
 
@@ -547,14 +543,19 @@ int *alloc (int rAddr, int n) {
       allocatedLobjs++;
       #endif
 #ifdef ENABLE_GC
-      lobj_current += 4*n;
-      if ( (!disable_gc) && (lobj_current>lobj_gc_treshold) ) 
+      lobjs_current += 4*n;
+      lobjs_period += 4*n;
+      if ( (!disable_gc) && (lobjs_current>lobjs_gc_treshold) ) 
 	{
 	  time_to_gc = 1;
 	}
 #endif	  
       return &(lobjs->value);
     }
+
+#ifdef ENABLE_GC
+  alloc_period += 4*n;
+#endif
 
   t1 = rp->a;
   t2 = t1 + n;
@@ -638,7 +639,7 @@ int resetRegion(int rAdr) {
 	  #else
 	  tag = lobjs->value;
 	  #endif	  
-	  lobj_current -= size_lobj(tag);
+	  lobjs_current -= size_lobj(tag);
 #endif	  
 	  lobjsTmp = lobjs->next;
 	  free(lobjs);

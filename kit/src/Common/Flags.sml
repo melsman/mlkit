@@ -65,7 +65,7 @@ functor Flags (structure Crash : CRASH
     val specialize_recursive_functions = ref true
     val unbox_function_arguments = ref true
     val eliminate_explicit_records = ref true
-    val maximum_inline_size = ref 20            
+    val maximum_inline_size = ref 50            
     val maximum_specialise_size = ref 200
 
     (* Printing of intermediate forms *)
