@@ -399,6 +399,19 @@ struct
 					 children = map layout_top_decl top_decls}
   end
 
+  local
+    fun pr_seq [] pp = ""
+      | pr_seq [e] pp = pp e
+      | pr_seq (e::rest) pp = pp e ^ ", " ^ (pr_seq rest pp)
+    fun pp_regvar rho =  PP.flatten1(Effect.layout_effect rho)
+  in
+    fun pr_rhos rhos = pr_seq rhos pp_regvar
+    fun pr_lvars lvars = pr_seq lvars Lvars.pr_lvar
+    fun pr_excons excons = pr_seq excons Excon.pr_excon
+    fun pr_free (lvars, excons, rhos) =
+      "(["^(pr_lvars lvars)^"],["^(pr_excons excons)^"],["^(pr_rhos rhos)^"])"
+  end
+
   (****************************************************************)
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
@@ -609,10 +622,11 @@ struct
     (* The domain is the lvar bound to the function                    *)
 
     type free = lvar list * excon list * place list
+    type args = lvar list
 
     datatype fenv =
-      FN of (lvar * free)
-    | FIX of (lvar * free)
+      FN of args * free
+    | FIX of args * free
 
     structure FuncEnv =
       OrderFinMap(structure Order =
@@ -625,20 +639,11 @@ struct
 
     local
       fun pp_dom lvar = PP.LEAF (Lvars.pr_lvar lvar)
-      fun pp_regvar rho =  PP.flatten1(Effect.layout_effect rho)
-      fun pr_seq [] pp = ""
-	| pr_seq [e] pp = pp e
-	| pr_seq (e::rest) pp = pp e ^ ", " ^ (pr_seq rest pp)
-      fun pr_rhos rhos = pr_seq rhos pp_regvar
-      fun pr_lvars lvars = pr_seq lvars Lvars.pr_lvar
-      fun pr_excons excons = pr_seq excons Excon.pr_excon
-      fun pr_free (lvars, excons, rhos) =
-	"(["^(pr_lvars lvars)^"],["^(pr_excons excons)^"],["^(pr_rhos rhos)^"])"
-      fun pp_ran (FN(arg,free)) = 
-	PP.LEAF ("FN[Arg:"^(Lvars.pr_lvar arg)^
+      fun pp_ran (FN(args,free)) = 
+	PP.LEAF ("FN[Args:"^(pr_lvars args)^
 		 ",Free:"^(pr_free free)^"]")
-	| pp_ran (FIX(arg,free)) = 
-	PP.LEAF ("FIX[Arg:"^(Lvars.pr_lvar arg)^
+	| pp_ran (FIX(args,free)) = 
+	PP.LEAF ("FIX[Args:"^(pr_lvars args)^
 		 ",Free:"^(pr_free free)^"]")
     in
       fun pp_fenv fenv = pr_st(pp_ran fenv);
@@ -649,7 +654,9 @@ struct
 	  FuncEnv.layoutMap init pp_dom pp_ran Fenv
 	end
     end
-  
+
+    val empty_Fenv = FuncEnv.empty
+
     fun is_in_dom_Fenv Fenv lvar = 
       case FuncEnv.lookup Fenv lvar of
 	NONE   => false
@@ -714,7 +721,7 @@ struct
     (* Return Type *)
     (***************)
     datatype rtn_type =
-      FUNC of (lvar * free)
+      FUNC of (args * free)
     | OTHER
 
   in
@@ -724,231 +731,236 @@ struct
 			     export_vars,
 			     export_basis,
 			     export_Psi}) = 
-      let
-	val import_vars = 
-	  case import_vars
-	    of ref (SOME vars) => vars
-	  | _ => die "comp_lamb.no import vars info"
+      if false (*Flags.is_on "prune_closures"*) then 
+	let
+	  val export_vars_set = EnvLvar.fromList (#1 export_vars)
+	  val import_vars = 
+	    case import_vars
+	      of ref (SOME vars) => vars
+	    | _ => die "ClosExp.F.no import vars info"
 
-	fun FTrip ((MulExp.TR(e,metaType,ateffects,mulef))) Fenv Env =
-	  let
-	    fun FExp e Fenv (Env as (EnvLvar, EnvExCon, EnvRho)) =
-	      (case e of
-		 MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => 
-		   if is_in_dom_Fenv Fenv lvar then
-		     (rem_Fenv Fenv lvar, [OTHER])
-		   else
-		     (Fenv, [OTHER])
-	       | MulExp.INTEGER(i,alloc) => (Fenv, [OTHER])
-	       | MulExp.STRING(s,alloc) => (Fenv, [OTHER])
-	       | MulExp.REAL(r,alloc) => (Fenv, [OTHER]) 
-	       | MulExp.UB_RECORD trs => 
-		   List.foldr (fn (tr,(Fenv',types')) => 
-				(case FTrip tr Fenv' Env
-				   of (Fenv_t, [t]) => (Fenv_t,t::types')
-				 | _ => die "UB_RECORD")) (Fenv, []) trs
-	       | MulExp.FN{pat as [(lvar,_)],body,free,alloc} => 
-		   let
-		     val free_vars = 
-		       case (!free) of
-			 SOME free => free
-		       | NONE => ([], [], [])
+	  fun FTrip ((MulExp.TR(e,metaType,ateffects,mulef))) Fenv Env =
+	    let
+	      fun FExp e Fenv (Env as (EnvLvar, EnvExCon, EnvRho)) =
+		(case e of
+		   MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => 
+		     if is_in_dom_Fenv Fenv lvar then
+		       (rem_Fenv Fenv lvar, [OTHER])
+		     else
+		       (Fenv, [OTHER])
+		 | MulExp.INTEGER(i,alloc) => (Fenv, [OTHER])
+		 | MulExp.STRING(s,alloc) => (Fenv, [OTHER])
+		 | MulExp.REAL(r,alloc) => (Fenv, [OTHER]) 
+		 | MulExp.UB_RECORD trs => 
+		       List.foldr (fn (tr,(Fenv',types')) => 
+				   (case FTrip tr Fenv' Env
+				      of (Fenv_t, [t]) => (Fenv_t,t::types')
+				    | _ => die "UB_RECORD")) (Fenv, []) trs
+	         | MulExp.FN{pat,body,free,alloc} => 
+		       let
+			 val free_vars = 
+			   case (!free) of
+			     SOME free => free
+			   | NONE => ([], [], [])
+			 val args = map #1 pat
+			 val (Fenv',_) = FTrip body Fenv (add_Env (fresh_Env free_vars import_vars) (args,[],[]))
+		       in
+			 (Fenv', [FUNC(args,free_vars)])
+		       end
+		 | MulExp.LETREGION{B, rhos, body} => 
+		       FTrip body Fenv (add_Env Env ([],[],List.map #1 (!rhos)))
+		 | MulExp.LET{k_let,pat,bind,scope} => 
+		       let
+			 val lvars = List.map #1 pat
+			 val (Fenv', types) = FTrip bind Fenv Env
+			 val types' = zip (lvars,types)
+			 val Fenv_scope = List.foldl (fn ((lvar',type'),base) => 
+						      case type' of
+							FUNC(args,free) => add_Fenv base lvar' (FN(args, free))
+						      | OTHER => base) Fenv' types'
+		       in
+			 FTrip scope Fenv_scope (add_Env Env (lvars,[],[]))
+		       end
+		 | MulExp.FIX{free,shared_clos,functions,scope} =>
+		       let
+			 (* funcs : (lvar, args, formals, free, body) list *)
+			 fun f {lvar, occ, tyvars, rhos, epss, Type, rhos_formals: (place*phsize) list ref, other,
+				bound_but_never_written_into,
+				bind = MulExp.TR(MulExp.FN{pat,body,free,alloc},_,_,_)} =
+			   (case (!free)
+			      of NONE => (lvar, List.map #1 pat, List.map #1 (!rhos_formals), ([],[],[]), body)
+			    | SOME free => (lvar, List.map #1 pat, List.map #1 (!rhos_formals), free, body))
+			   | f _ = die "Functions not in expected shape."
+			 val funcs = List.map f functions
+			   
+			 val Fenv1 = List.foldl (fn ((lvar,args,_,free,_),base) => 
+						 add_Fenv base lvar (FIX(args, free))) Fenv funcs 
+			   
+			 val FenvN = List.foldl (fn ((_,args,rhos_formals,free,body),base) => 
+						 #1(FTrip body base 
+						    (add_Env (fresh_Env free import_vars) 
+						     (args,[],rhos_formals)))) Fenv1 funcs
 
-		     val (Fenv',_) = FTrip body Fenv (add_Env (fresh_Env free_vars import_vars) ([lvar],[],[]))
-		 in
-		   (Fenv', [FUNC(lvar,free_vars)])
-		 end
-	       | MulExp.FN{pat,body,free,alloc} => die "FN with not only one argument"
-	       | MulExp.LETREGION{B, rhos, body} => 
-		   FTrip body Fenv (add_Env Env ([],[],List.map #1 (!rhos)))
-	       | MulExp.LET{k_let,pat,bind,scope} => 
-		   let
-		     val lvars = List.map #1 pat
-		     val (Fenv', types) = FTrip bind Fenv Env
-		     val types' = zip (lvars,types)
-		     val Fenv_scope = List.foldl (fn ((lvar',type'),base) => 
-						   case type' of
-						     FUNC(arg,free) => add_Fenv base lvar' (FN(arg, free))
-						   | OTHER => base) Fenv' types'
+			 val all_exists = List.foldl (fn ((lvar,_,_,_,_),base) => 
+						      if is_in_dom_Fenv FenvN lvar andalso 
+							not (EnvLvar.member lvar export_vars_set) andalso (* none of the letrec may be exported *)
+							base = true then true else false) true funcs
+			   
+			 val Fenv_scope = 
+			   if all_exists then 
+			     FenvN
+			   else (* Remove all FIX bound functions. *)
+			     List.foldl (fn ((lvar,_,_,_,_),base) => 
+					 if is_in_dom_Fenv base lvar then
+					   rem_Fenv base lvar
+					 else
+					   base) FenvN funcs
+		       in
+			 FTrip scope Fenv_scope (add_Env Env (List.map #1 funcs,[],[]))
+		       end
+		 | MulExp.APP(callKind,saveRestore,operator,operand) =>
+		       (case operator 
+			  of MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,alloc=NONE,rhos_actuals,other},_,_,_) =>
+			    (* Ordinary function call or a primitive *)
+			    (case Lvars.primitive lvar
+			       of NONE => (* Ordinary function call *)
+				 let
+				   val Fenv' = (case lookup_Fenv Fenv lvar
+						  of NONE => Fenv
+						| SOME (FN(arg_fn,free_fn)) =>
+						    if free_in_Env Env free_fn then 
+						      Fenv
+						    else 
+						      rem_Fenv Fenv lvar
+						| SOME (FIX(lvars,free)) => die "Function should be FN but is recorded as FIX")
+				   val (Fenv_res, _) = FTrip operand Fenv' Env
+				 in
+				   (Fenv_res, [OTHER])
+				 end
+			     | SOME prim => (* Primitive call *)
+				 let
+				   val (Fenv_res, _) = FTrip operand Fenv Env (* We traverse all arguments *)
+				 in
+				   (Fenv_res, [OTHER])
+				 end)
+			| MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,alloc=SOME atp,rhos_actuals,other},_,_,_) =>
+			       (* Region Polymorphic call *)
+			       let
+				 val Fenv' = (case lookup_Fenv Fenv lvar
+						of NONE => Fenv
+					      | SOME (FIX(args_fix,free_fix)) =>
+						  if free_in_Env Env free_fix then
+						    Fenv
+						  else 
+						    rem_Fenv Fenv lvar
+					      | SOME (FN(lvars,free)) => die "Function should be a FIX but is recorded as FN")
+				 val (Fenv_res,_) = FTrip operand Fenv' Env
+			       in
+				 (Fenv_res, [OTHER])
+			       end
+			| _ => die "First argument in application not as expected.")
+		 | MulExp.EXCEPTION(excon,bool,typePlace,alloc,scope) => 
+			  FTrip scope Fenv (add_Env Env ([],[excon],[]))
+		 | MulExp.RAISE tr => FTrip tr Fenv Env
+		 | MulExp.HANDLE(tr1,tr2) =>
+			  let
+			    val (Fenv1, _) = FTrip tr1 Fenv Env
+			    val (Fenv2, _) = FTrip tr2 Fenv1 Env
+			  in
+			    (Fenv2, [OTHER])
+			  end
+		 | MulExp.SWITCH_I(MulExp.SWITCH(tr,choices,opt)) =>
+			  let
+			    val (Fenv_tr,_) = FTrip tr Fenv Env
+			    val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
+			    val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
+			  in
+			    (Fenv_res,[OTHER])
+			  end
+		 | MulExp.SWITCH_S(MulExp.SWITCH(tr,choices,opt)) =>
+			  let
+			    val (Fenv_tr,_) = FTrip tr Fenv Env
+			    val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
+			    val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
+			  in
+			    (Fenv_res,[OTHER])
+			  end
+		 | MulExp.SWITCH_C(MulExp.SWITCH(tr,choices,opt)) =>
+			  let
+			    val (Fenv_tr,_) = FTrip tr Fenv Env
+			    val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
+			    val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
+			  in
+			    (Fenv_res,[OTHER])
+			  end
+		 | MulExp.SWITCH_E(MulExp.SWITCH(tr,choices,opt)) =>
+  		   let
+		     val (Fenv_tr,_) = FTrip tr Fenv Env
+		     val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
+		     val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
 		   in
-		     FTrip scope Fenv_scope (add_Env Env (lvars,[],[]))
-		 end
-	     | MulExp.FIX{free,shared_clos,functions,scope} =>
-		 let
-		   (* funcs : (lvar, args, formals, free, body) list *)
-		   fun f {lvar, occ, tyvars, rhos, epss, Type, rhos_formals: (place*phsize) list ref, other,
-			  bound_but_never_written_into,
-			  bind = MulExp.TR(MulExp.FN{pat=[(arg,_)],body,free,alloc},_,_,_)} =
-		         (case (!free)
-			    of NONE => (lvar, arg, List.map #1 (!rhos_formals), ([],[],[]), body)
-			     | SOME free => (lvar, arg, List.map #1 (!rhos_formals), free, body))
-		     | f _ = die "Functions not in expected shape."
-		   val funcs = List.map f functions
-		     
-		   val Fenv1 = List.foldl (fn ((lvar,arg,_,free,_),base) => 
-					   add_Fenv base lvar (FIX(arg, free))) Fenv funcs 
-
-		   val FenvN = List.foldl (fn ((_,arg,rhos_formals,free,body),base) => 
-					   #1(FTrip body base 
-					      (add_Env (fresh_Env free import_vars) 
-					       ([arg],[],rhos_formals)))) Fenv1 funcs
-
-		   val all_exists = List.foldl (fn ((lvar,_,_,_,_),base) => 
-						if is_in_dom_Fenv FenvN lvar andalso base = true then true else false) true funcs
-
-		   val Fenv_scope = 
-		     if all_exists then 
-		       FenvN
-		     else (* Remove all FIX bound functions. *)
-		       List.foldl (fn ((lvar,_,_,_,_),base) => 
-				    if is_in_dom_Fenv base lvar then
-				      rem_Fenv base lvar
-				    else
-				      base) FenvN funcs
-		 in
-		   FTrip scope Fenv_scope (add_Env Env (List.map #1 funcs,[],[]))
-		 end
-	     | MulExp.APP(callKind,saveRestore,operator,operand) =>
-		 (case operator 
-		    of MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,alloc=NONE,rhos_actuals,other},_,_,_) =>
-		      (* Ordinary function call or a primitive *)
-		      (case Lvars.primitive lvar
-			 of NONE => (* Ordinary function call *)
-			   let
-			     val Fenv' = (case lookup_Fenv Fenv lvar
-					    of NONE => Fenv
-					     | SOME (FN(arg_fn,free_fn)) =>
-					      if free_in_Env Env free_fn then 
-						Fenv
-					      else 
-						rem_Fenv Fenv lvar
-					     | SOME (FIX(lvar,free)) => die "Function should be FN but is recorded as FIX")
-			     val (Fenv_res, _) = FTrip operand Fenv' Env
-			   in
-			     (Fenv_res, [OTHER])
-			   end
-			  | SOME prim => (* Primitive call *)
-			   let
-			     val (Fenv_res, _) = FTrip operand Fenv Env (* We traverse all arguments *)
-			   in
-			     (Fenv_res, [OTHER])
-			   end)
-		     | MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,alloc=SOME atp,rhos_actuals,other},_,_,_) =>
-		       (* Region Polymorphic call *)
-			 let
-			   val Fenv' = (case lookup_Fenv Fenv lvar
-					  of NONE => Fenv
-					   | SOME (FIX(arg_fix,free_fix)) =>
-					    if free_in_Env Env free_fix then
-					      Fenv
-					    else 
-					      rem_Fenv Fenv lvar
-					   | SOME (FN(lvar,free)) => die "Function should be a FIX but is recorded as FN")
-			   val (Fenv_res,_) = FTrip operand Fenv' Env
-			 in
-			   (Fenv_res, [OTHER])
-			 end
-		     | _ => die "First argument in application not as expected.")
-	     | MulExp.EXCEPTION(excon,bool,typePlace,alloc,scope) => 
-		 FTrip scope Fenv (add_Env Env ([],[excon],[]))
-	     | MulExp.RAISE tr => FTrip tr Fenv Env
-	     | MulExp.HANDLE(tr1,tr2) =>
-		 let
-		   val (Fenv1, _) = FTrip tr1 Fenv Env
-		   val (Fenv2, _) = FTrip tr2 Fenv1 Env
-		 in
-		   (Fenv2, [OTHER])
-		 end
-	     | MulExp.SWITCH_I(MulExp.SWITCH(tr,choices,opt)) =>
-		 let
-		   val (Fenv_tr,_) = FTrip tr Fenv Env
-		   val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
-		  val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
-		 in
-		   (Fenv_res,[OTHER])
-		 end
-	     | MulExp.SWITCH_S(MulExp.SWITCH(tr,choices,opt)) =>
-		 let
-		   val (Fenv_tr,_) = FTrip tr Fenv Env
-		   val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
-		   val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
-		 in
-		   (Fenv_res,[OTHER])
-		 end
-	     | MulExp.SWITCH_C(MulExp.SWITCH(tr,choices,opt)) =>
-		 let
-		   val (Fenv_tr,_) = FTrip tr Fenv Env
-		   val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
-		   val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
-		 in
-		   (Fenv_res,[OTHER])
-		 end
-	     | MulExp.SWITCH_E(MulExp.SWITCH(tr,choices,opt)) =>
-		 let
-		   val (Fenv_tr,_) = FTrip tr Fenv Env
-		   val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
-		   val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
-		 in
-		   (Fenv_res,[OTHER])
-		 end
-	     | MulExp.CON0{con,il,aux_regions,alloc} => (Fenv, [OTHER])
-	     | MulExp.CON1({con,il,alloc},tr) => (Fenv, [OTHER])
-	     | MulExp.DECON({con,il},tr) => FTrip tr Fenv Env
-	     | MulExp.EXCON(excon,NONE) => (Fenv, [OTHER])
-	     | MulExp.EXCON(excon,SOME(alloc,tr)) => FTrip tr Fenv Env
-	     | MulExp.DEEXCON(excon,tr) => FTrip tr Fenv Env
-	     | MulExp.RECORD(alloc, trs) => 
-		 let
-		   val Fenv_res = List.foldl (fn (tr,base) => #1(FTrip tr base Env)) Fenv trs
-		 in
-		   (Fenv_res, [OTHER])
-		 end
-	     | MulExp.SELECT(i,tr) => FTrip tr Fenv Env
-	     | MulExp.DEREF tr => FTrip tr Fenv Env
-	     | MulExp.REF(a,tr) => FTrip tr Fenv Env
-	     | MulExp.ASSIGN(alloc,tr1,tr2) => 
-		 let
-		   val (Fenv1,_) = FTrip tr1 Fenv Env
-		   val (Fenv2,_) = FTrip tr2 Fenv1 Env
-		 in
-		   (Fenv2, [OTHER])
-		 end
-	     | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1, tr2) =>
-		 let
-		   val (Fenv1,_) = FTrip tr1 Fenv Env
-		   val (Fenv2,_) = FTrip tr2 Fenv1 Env
-		 in
-		   (Fenv2, [OTHER])
-		 end
-	     | MulExp.CCALL({name, mu_result, rhos_for_result}, trs) =>
-		 let
-		   val Fenv_res = List.foldl (fn (tr,base) => #1(FTrip tr base Env)) Fenv trs
-		 in
-		   (Fenv_res, [OTHER])
-		 end
-	     | MulExp.RESET_REGIONS({force, alloc, regions_for_resetting},tr) => FTrip tr Fenv Env
-	     | MulExp.FRAME{declared_lvars, declared_excons} => 
-		 (List.foldl (fn ({lvar,...},base) => if is_in_dom_Fenv base lvar then
-			                    rem_Fenv base lvar
-					  else 
-					    base) Fenv declared_lvars, [OTHER]))
-	  in
-	    FExp e Fenv Env
-	  end
+		     (Fenv_res,[OTHER])
+		   end
+		 | MulExp.CON0{con,il,aux_regions,alloc} => (Fenv, [OTHER])
+		 | MulExp.CON1({con,il,alloc},tr) => (Fenv, [OTHER])
+		 | MulExp.DECON({con,il},tr) => FTrip tr Fenv Env
+		 | MulExp.EXCON(excon,NONE) => (Fenv, [OTHER])
+		 | MulExp.EXCON(excon,SOME(alloc,tr)) => FTrip tr Fenv Env
+		 | MulExp.DEEXCON(excon,tr) => FTrip tr Fenv Env
+		 | MulExp.RECORD(alloc, trs) => 
+		   let
+		     val Fenv_res = List.foldl (fn (tr,base) => #1(FTrip tr base Env)) Fenv trs
+		   in
+		     (Fenv_res, [OTHER])
+		   end
+		 | MulExp.SELECT(i,tr) => FTrip tr Fenv Env
+		 | MulExp.DEREF tr => FTrip tr Fenv Env
+		 | MulExp.REF(a,tr) => FTrip tr Fenv Env
+		 | MulExp.ASSIGN(alloc,tr1,tr2) => 
+		   let
+		     val (Fenv1,_) = FTrip tr1 Fenv Env
+		     val (Fenv2,_) = FTrip tr2 Fenv1 Env
+		   in
+		     (Fenv2, [OTHER])
+		   end
+		 | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1, tr2) =>
+		   let
+		     val (Fenv1,_) = FTrip tr1 Fenv Env
+		     val (Fenv2,_) = FTrip tr2 Fenv1 Env
+		   in
+		     (Fenv2, [OTHER])
+		   end
+		 | MulExp.CCALL({name, mu_result, rhos_for_result}, trs) =>
+		   let
+		     val Fenv_res = List.foldl (fn (tr,base) => #1(FTrip tr base Env)) Fenv trs
+		   in
+		     (Fenv_res, [OTHER])
+		   end
+		 | MulExp.RESET_REGIONS({force, alloc, regions_for_resetting},tr) => FTrip tr Fenv Env
+		 | MulExp.FRAME{declared_lvars, declared_excons} => 
+		   (List.foldl (fn ({lvar,...},base) => if is_in_dom_Fenv base lvar then
+				rem_Fenv base lvar
+							else 
+							  base) Fenv declared_lvars, [OTHER]))
+	    in
+	      FExp e Fenv Env
+	    end
 	      
-	val (Fenv', _) = FTrip tr FuncEnv.empty (fresh_Env import_vars ([],[],[]))
+	  val (Fenv', _) = FTrip tr FuncEnv.empty (fresh_Env import_vars ([],[],[]))
 
-	(* Remove all export_vars from Fenv'. They must be closure implemented. *)
-	val Fenv_res = List.foldl (fn (lvar,base) => 
-				    if is_in_dom_Fenv base lvar then
-				      rem_Fenv base lvar
-				    else
-				      base) Fenv' (#1(export_vars))
-
-(*	val _ = pr_st (pp_Fenv Fenv_res) Debug *)
-      in
-	Fenv_res
-      end
+	  (* Remove all export_vars from Fenv'. Currently, they are closure implemented. *)
+	  val Fenv_res = List.foldl (fn (lvar,base) => 
+				     if is_in_dom_Fenv base lvar then
+				       rem_Fenv base lvar
+				     else
+				       base) Fenv' (#1(export_vars))
+	    
+	  val _ = pr_st (pp_Fenv Fenv_res)
+	in
+	  Fenv_res
+	end
+      else
+	empty_Fenv
   end
 
   (**********************)
@@ -1312,15 +1324,10 @@ struct
 	   | _                    => (CE.declareLvar(lv,CE.SELECT(lv_clos,i),env),i+1))
 	fun add_free_excon (excon,(env,i)) = 
 	  (CE.declareExcon(excon,(CE.SELECT(lv_clos,i),
-				  CE.lookupExconArity org_env excon),env),i+1) (*!!!*)
+				  CE.lookupExconArity org_env excon),env),i+1) 
 	fun add_free_rho (place,(env,i)) = 
 	  (CE.declareRhoKind(place,CE.lookupRhoKind org_env place,
 			     CE.declareRho(place,CE.SELECT(lv_clos,i),env)),i+1)
-(*	val (env',_)  = 
-	  List.foldl add_free_rho 
-	  (List.foldl add_free_excon 
-	   (List.foldl add_free_lv (new_env, base_offset) free_lv) free_excon) free_rho 08/01/1999, Niels*)
-
 	val (env',_)  = 
 	  List.foldl add_free_lv 
 	  (List.foldl add_free_excon 
@@ -1521,7 +1528,8 @@ struct
 		     val lv_rv = fresh_lvar("rv")
 		     val (env_with_rv,_) =
 		       List.foldl (fn ((place,_),(env,i)) =>
-				    (CE.declareRho(place,CE.SELECT(lv_rv,i),env),i+1)) (env_with_funs, BI.init_regvec_offset) formals (* formals may be empty! *)
+				    (CE.declareRho(place,CE.SELECT(lv_rv,i),env),i+1)) 
+		       (env_with_funs, BI.init_regvec_offset) formals (* formals may be empty! *)
 		     val env_with_rho_kind =
 			  (env_with_rv plus_decl_with CE.declareRhoKind)
 			  (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
@@ -1536,10 +1544,14 @@ struct
 		     val env_with_args =
 		           (env_with_rho_drop_kind plus_decl_with CE.declareLvar)
 			   (map (fn lv => (lv, CE.LVAR lv)) args)
+
+		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^ 
+				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n")
+		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
 		     val cc = 
 		       (case formals of
-			  [] => CallConv.mk_cc_fun(args,SOME lv_sclos_fn,[],NONE,[],ress) (* No Region Vector Argument *)
-			| _ => CallConv.mk_cc_fun(args,SOME lv_sclos_fn,[],SOME lv_rv,[],ress))
+			  [] => CallConv.mk_cc_fun(args,sclos,[],NONE,[],ress) (* No Region Vector Argument *)
+			| _ => CallConv.mk_cc_fun(args,sclos,[],SOME lv_rv,[],ress))
 		   in
 		     (case formals of
 			[] => add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab NONE))
@@ -1914,7 +1926,7 @@ struct
 		 val (ce_excon,se_excon) = lookup_excon env excon
 		 val (ce_arg,se_arg) = ccTrip tr env lab cur_rv
 		 val (sma,se_a) = convert_alloc(alloc,env)
-		 val (smas,ces,ses) = unify_smas_ces_and_ses ([(sma,se_a)],[(ce_excon,se_excon),(ce_arg,se_arg)]) (* swapped se_arg and se_excon 09/01/1999, Niels *)
+		 val (smas,ces,ses) = unify_smas_ces_and_ses ([(sma,se_a)],[(ce_excon,se_excon),(ce_arg,se_arg)]) 
 	       in
 		 (insert_ses(RECORD{elems=ces,
 				    alloc=one_in_list(smas),
@@ -2086,7 +2098,7 @@ struct
 		 val frame_env =
 		   (frame_env_lv plus_decl_with CE.declareExcon)
 		   (map (fn {excon,label} => (excon,(CE.LABEL label,
-						     CE.lookupExconArity env excon(*!!!*)))) excons_and_labels)
+						     CE.lookupExconArity env excon))) excons_and_labels)
 		 val _ = set_frame_env frame_env
 	       in
 		 (List.foldr (fn ({excon,label},acc) =>
@@ -2103,7 +2115,7 @@ struct
 	ccExp e
       end
   in 
-    fun clos_conv(l2clos_exp_env,
+    fun clos_conv(l2clos_exp_env, Fenv,
 		  prog as MulExp.PGM{expression = tr,
 				     export_datbinds,
 				     import_vars,
@@ -2161,8 +2173,8 @@ struct
 	  display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
 	else
 	  ()
-(*      val Fenv = F n_prog *)
-      val all = clos_conv (clos_env, n_prog)
+      val Fenv = F n_prog
+      val all = clos_conv (clos_env, Fenv, n_prog)
       val _ = 
 	if Flags.is_on "print_clos_conv_program" then
 	  display("\nReport: AFTER CLOSURE CONVERSION:", layout_clos_prg (#code(all)))

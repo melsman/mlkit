@@ -129,12 +129,16 @@ signature CLOS_EXP =
 								    imports:label list * label list,
 								    exports:label list * label list}
 
-
     type StringTree
     val layout_clos_exp : ClosExp -> StringTree
     val layout_top_decl : TopDecl -> StringTree
     val layout_clos_prg : ClosPrg -> StringTree
     val layout_env      : env -> StringTree
+
+    val pr_rhos : place list -> string
+    val pr_lvars : lvar list -> string
+    val pr_excons : excon list -> string
+    val pr_free : lvar list * excon list * place list -> string
 
   end
 
