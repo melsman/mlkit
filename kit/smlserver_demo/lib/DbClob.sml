@@ -35,7 +35,7 @@ structure DbClob :> DB_CLOB =
     val insert = Db.dmlTrans o insert_fn
 
     fun delete_fn (clob_id : string) : Db.db -> unit =
-      fn db => Db.dmlDb db `delete from clob where clob_id = ^(Db.qq' clob_id)`
+      fn db => Db.dmlDb db `delete from clob where clob_id = ^(Db.qqq clob_id)`
     fun delete clob_id = Db.dmlTrans (delete_fn clob_id)
 
     fun update_fn clob_id q = fn db => (delete_fn clob_id db; insert_fn' clob_id q db; ())
@@ -44,7 +44,7 @@ structure DbClob :> DB_CLOB =
     fun select_fn clob_id =
       fn db =>
       Db.foldDb db (fn (g,acc) => acc ^^ `^(g "text")`) `` `select text from db_clob  
-                                                            where clob_id=^(Db.qq' clob_id)
+                                                            where clob_id=^(Db.qqq clob_id)
                                                             order by idx`
     fun select clob_id = Db.wrapDb (select_fn clob_id)
   end

@@ -317,7 +317,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	implode(qq_s'(explode s))
       end
 
-    fun qq' s = concat ["'", qq s, "'"]
+    fun qqq s = concat ["'", qq s, "'"]
 
     local
       fun mthToName mth =
@@ -359,8 +359,8 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     end
 
 
-    fun valueList vs = String.concatWith "," (List.map qq' vs)
-    fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qq' v) vs)
+    fun valueList vs = String.concatWith "," (List.map qqq vs)
+    fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qqq v) vs)
 
     fun seqNextvalDb db (seqName:string) : int = 
       let val s = oneFieldDb db `select ^(seqNextvalExp seqName) ^fromDual`
