@@ -1,7 +1,9 @@
-(*$CompilerEnv: IDENT TYNAME STRID CON EXCON ENVIRONMENTS LAMBDA_EXP
-	LVARS FINMAP FINMAPEQ PRETTYPRINT CRASH FLAGS COMPILER_ENV *)
+(*$CompilerEnv: IDENT TYCON TYNAME STRID CON EXCON ENVIRONMENTS
+	LAMBDA_EXP LVARS FINMAP FINMAPEQ PRETTYPRINT CRASH FLAGS
+	COMPILER_ENV *)
 
 functor CompilerEnv(structure Ident: IDENT
+		    structure TyCon : TYCON
 		    structure TyName : TYNAME
 		    structure StrId : STRID
 		      sharing type Ident.strid = StrId.strid
@@ -10,6 +12,7 @@ functor CompilerEnv(structure Ident: IDENT
 		    structure Environments : ENVIRONMENTS
 		      sharing type Environments.strid = StrId.strid
 			  and type Environments.id = Ident.id
+			  and type Environments.tycon = TyCon.tycon
 		    structure LambdaExp : LAMBDA_EXP
 		      sharing type LambdaExp.TyName = TyName.TyName
 		    structure LambdaBasics : LAMBDA_BASICS
@@ -21,7 +24,7 @@ functor CompilerEnv(structure Ident: IDENT
 		    structure PP: PRETTYPRINT
 		      sharing type FinMap.StringTree = PP.StringTree
 		          and type LambdaExp.StringTree = PP.StringTree 
-			           = FinMapEq.StringTree
+			           = FinMapEq.StringTree = TyName.StringTree
 	            structure Flags : FLAGS
 		    structure Crash: CRASH
 		   ): COMPILER_ENV =
@@ -37,6 +40,7 @@ functor CompilerEnv(structure Ident: IDENT
     type id = Ident.id
     type longid = Ident.longid
     type strid = StrId.strid
+    type tycon = TyCon.tycon
     type TyName = LambdaExp.TyName
 
     type instance_transformer = int list
@@ -45,6 +49,15 @@ functor CompilerEnv(structure Ident: IDENT
     val mk_subst = LambdaBasics.mk_subst "CompilerEnv.mk_subst"
     fun on_il(S, il) = map (LambdaBasics.on_Type S) il
 
+    (* layout functions *)
+    fun layout_scheme(tvs,tau) =
+      PP.NODE{start="",finish="",indent=0,childsep=PP.NONE,
+	      children=[layout_abs tvs,LambdaExp.layoutType tau]}
+    and layout_abs tvs = PP.NODE{start="all(",finish=").",indent=0, childsep=PP.RIGHT ",", 
+				 children=map (PP.LEAF o LambdaExp.pr_tyvar)tvs}
+    fun pr_st st = 
+      (PP.outputTree (print, st, !Flags.colwidth);
+       print "\n")
 
 
     datatype result = LVAR of lvar * tyvar list * Type * Type list
@@ -65,18 +78,19 @@ functor CompilerEnv(structure Ident: IDENT
 				   into a PRIM_APP(n, ...) in the lambda
 				   language. *)
 
-    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, LvarEnv:LvarEnv}
+    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv, LvarEnv:LvarEnv}
     and StrEnv    = STRENV of (strid,CEnv) FinMap.map
     and VarEnv    = VARENV of (id,result) FinMap.map
+    and TyEnv     = TYENV of (tycon, TyName list) FinMap.map
     and LvarEnv   = LVARENV of (lvar,Type list) FinMapEq.map
 
     val emptyStrEnv    = STRENV FinMap.empty
     and emptyVarEnv    = VARENV FinMap.empty
+    and emptyTyEnv     = TYENV FinMap.empty
     and emptyLvarEnv   = LVARENV FinMapEq.empty
-    val emptyCEnv      = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, LvarEnv=emptyLvarEnv}
+    val emptyCEnv      = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, TyEnv=emptyTyEnv, LvarEnv=emptyLvarEnv}
 
-    val initMap = List.foldL (fn (v,r) => fn m => FinMap.add(v,r,m)) 
-                  FinMap.empty
+    val initMap = List.foldL (fn (v,r) => fn m => FinMap.add(v,r,m)) FinMap.empty
     val initialStrEnv = emptyStrEnv
 
     val boolType = LambdaExp.boolType
@@ -112,38 +126,58 @@ functor CompilerEnv(structure Ident: IDENT
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType))
 		      ])
 
+    local open TyCon TyName
+    in val initialTyEnv = TYENV(initMap [(tycon_INT, [tyName_INT]),
+					 (tycon_WORD, [tyName_WORD]),
+					 (tycon_REAL, [tyName_REAL]),
+					 (tycon_STRING, [tyName_STRING]),
+					 (tycon_CHAR, [tyName_CHAR]),
+					 (tycon_EXN, [tyName_EXN]),
+					 (tycon_REF, [tyName_REF]),
+					 (tycon_BOOL, [tyName_BOOL]),
+					 (tycon_LIST, [tyName_LIST]),
+					 (tycon_UNIT, [])
+					 ])
+    end
+
     val initialCEnv = CENV{StrEnv=initialStrEnv,
 			   VarEnv=initialVarEnv,
+			   TyEnv=initialTyEnv,
 			   LvarEnv=emptyLvarEnv}
 
-    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=VARENV map,LvarEnv}) =
+    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=VARENV map,TyEnv,LvarEnv}) =
       let val il0 = List.map LambdaExp.TYVARtype tyvars
-      in CENV{StrEnv=StrEnv, LvarEnv=LvarEnv,
+      in CENV{StrEnv=StrEnv, TyEnv=TyEnv, LvarEnv=LvarEnv,
 	      VarEnv=VARENV (FinMap.add(id, LVAR (lv,tyvars,tau,il0), map))}
       end
 
-    fun declareCon(id, (con,tyvars,tau,it), CENV{StrEnv,VarEnv=VARENV map,LvarEnv}) =
+    fun declareCon(id, (con,tyvars,tau,it), CENV{StrEnv,VarEnv=VARENV map,TyEnv,LvarEnv}) =
       let val il0 = List.map LambdaExp.TYVARtype tyvars
-      in CENV{StrEnv=StrEnv, LvarEnv=LvarEnv,
+      in CENV{StrEnv=StrEnv, TyEnv=TyEnv, LvarEnv=LvarEnv,
 	      VarEnv=VARENV(FinMap.add(id,CON (con,tyvars,tau,il0,it), map))}
       end
 
-    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=VARENV map,LvarEnv}) =
-      CENV{StrEnv=StrEnv,VarEnv=VARENV(FinMap.add(id,EXCON excon,map)),LvarEnv=LvarEnv}
+    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=VARENV map,TyEnv,LvarEnv}) =
+      CENV{StrEnv=StrEnv,VarEnv=VARENV(FinMap.add(id,EXCON excon,map)),TyEnv=TyEnv,LvarEnv=LvarEnv}
 
-    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,LvarEnv}) =
-      CENV{StrEnv=STRENV(FinMap.add(strid,env,m)),VarEnv=VarEnv,LvarEnv=LvarEnv}
+    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,LvarEnv}) =
+      CENV{StrEnv=STRENV(FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv,LvarEnv=LvarEnv}
 
-    fun declareLvar(lvar,taus, CENV{StrEnv,VarEnv,LvarEnv=LVARENV map}) = 
-      CENV{StrEnv=StrEnv,VarEnv=VarEnv,LvarEnv=LVARENV(FinMapEq.add Lvars.eq (lvar,taus,map))}
+    fun declare_tycon(tycon, tynames, CENV{StrEnv,VarEnv,TyEnv=TYENV m,LvarEnv}) =
+      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,tynames,m)),LvarEnv=LvarEnv}
 
-    fun plus (CENV{StrEnv,VarEnv,LvarEnv}, CENV{StrEnv=StrEnv',VarEnv=VarEnv',LvarEnv=LvarEnv'}) =
+    fun declareLvar(lvar,taus, CENV{StrEnv,VarEnv,TyEnv,LvarEnv=LVARENV map}) = 
+      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TyEnv,LvarEnv=LVARENV(FinMapEq.add Lvars.eq (lvar,taus,map))}
+
+    fun plus (CENV{StrEnv,VarEnv,TyEnv,LvarEnv}, CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',LvarEnv=LvarEnv'}) =
       CENV{StrEnv=plusStrEnv(StrEnv,StrEnv'),
 	   VarEnv=plusVarEnv(VarEnv,VarEnv'),
+	   TyEnv=plusTyEnv(TyEnv,TyEnv'),
 	   LvarEnv=plusLvarEnv(LvarEnv,LvarEnv')}
 
     and plusStrEnv    (STRENV m1,STRENV m2)       = STRENV (FinMap.plus(m1,m2))
     and plusVarEnv    (VARENV m1,VARENV m2)       = VARENV (FinMap.plus(m1,m2))
+    and plusTyEnv     (TYENV m1,TYENV m2)         = TYENV (FinMap.plus(m1,m2))
     and plusLvarEnv   (LVARENV m1,LVARENV m2)     = LVARENV (FinMapEq.plus Lvars.eq (m1,m2))
 
     fun lookupLvar (CENV{LvarEnv=LVARENV le,...}) lvar =
@@ -212,38 +246,18 @@ functor CompilerEnv(structure Ident: IDENT
     val lvarsOfCEnv = varsOfCEnv lvars_result
     val consOfCEnv = varsOfCEnv cons_result
     val exconsOfCEnv = varsOfCEnv excons_result
-    val tynamesOfCEnv = TyName.Set.list o TyName.Set.fromList o (varsOfCEnv tynames_result)
     val primlvarsOfCEnv = varsOfCEnv primlvars_result
 
-(*
-    fun primlvarsOfCEnv (CENV{VarEnv=VARENV m,...}) lvars =
-      FinMap.fold (fn (ABS,rest) => Lvars.absint_lvar :: Lvars.absfloat_lvar :: rest
-		    | (NEG,rest) => Lvars.negint_lvar :: Lvars.negfloat_lvar :: rest
-		    | (PLUS,rest) => Lvars.plus_int_lvar :: Lvars.plus_float_lvar :: rest
-		    | (MINUS,rest) => Lvars.minus_int_lvar :: Lvars.minus_float_lvar :: rest
-		    | (MUL,rest) => Lvars.mul_int_lvar :: Lvars.mul_float_lvar :: rest
-		    | (LESS,rest) => Lvars.less_int_lvar :: Lvars.less_float_lvar :: rest
-		    | (GREATER,rest) => Lvars.greater_int_lvar :: Lvars.greater_float_lvar :: rest
-		    | (LESSEQ,rest) => Lvars.lesseq_int_lvar :: Lvars.lesseq_float_lvar :: rest
-		    | (GREATEREQ,rest) => Lvars.greatereq_int_lvar :: Lvars.greatereq_float_lvar :: rest
-		    | (_, rest) => rest) lvars m
-
-*)      
-(*old
-   fun mk_instancestransformer tyvars tyvars0 types =
-     (* order types in the order tvs in tyvars appear in tyvars0;
-      * tyvars and types are related as tyvars0 and result are related. *)
-     let fun index _ _ [] = die "index"
-	   | index n x' (x::xs) = if x=x' then n
-				  else index (n+1) x' xs
-	 fun f [] = []
-	   | f (tv0::tyvars0) =
-	   let val i = index 0 tv0 tyvars
-	   in (List.nth i types :: f tyvars0) handle _ => die "mk_instancestransformer"
-	   end
-     in f tyvars0
-     end
-old*)
+    fun tynamesOfCEnv ce : TyName list =
+      let fun tynames_TE(TYENV m, acc) = FinMap.fold (op @) acc m 
+          fun tynames_E(CENV{VarEnv=VARENV ve, StrEnv, TyEnv, ...}, acc) =
+	    let val acc = tynames_SE (StrEnv,acc)
+	        val acc = tynames_TE (TyEnv,acc)
+	    in FinMap.fold tynames_result acc ve
+	    end
+	  and tynames_SE(STRENV m, acc) = FinMap.fold tynames_E acc m 
+      in (TyName.Set.list o TyName.Set.fromList) (tynames_E(ce,[]))
+      end
 
    fun mk_it tyvars tyvars0 =
      let  fun index _ _ [] = die "index"
@@ -282,11 +296,15 @@ old*)
    fun restrictStrEnv(STRENV m, strids) =
      STRENV(restrictFinMap("restrictCEnv.strid not in env", m, strids))
 
-   fun restrictCEnv(CENV{StrEnv,VarEnv,LvarEnv=LvarEnv as LVARENV lvarenv},
-		    strids : strid list, ids : id list) =
+   fun restrictTyEnv(TYENV m, tycons) =
+     TYENV(restrictFinMap("restrictCEnv.tycon not in env", m, tycons))
+
+   fun restrictCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv=LvarEnv as LVARENV lvarenv},
+		    strids : strid list, ids : id list, tycons : tycon list) =
      if FinMapEq.isEmpty lvarenv then
        CENV{StrEnv=restrictStrEnv (StrEnv, strids),
 	    VarEnv=restrictVarEnv (VarEnv, ids),
+	    TyEnv=restrictTyEnv (TyEnv, tycons),
 	    LvarEnv=LvarEnv}
      else die "restrictCEnv.lvarenv not empty"
 
@@ -335,14 +353,23 @@ old*)
 		    case FinMap.lookup env1 id2
 		      of Some res1 => eq_res(res1,res2)
 		       | None => false) true env2
+
+     fun eq_tyenv_res(res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
        
-     fun enrichCEnv(CENV{StrEnv,VarEnv,LvarEnv=LVARENV lenv1},
-		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',LvarEnv=LVARENV lenv2}) =
+     fun enrichTyEnv(TYENV m1,TYENV m2) =
+       FinMap.Fold (fn ((id2,res2),b) => b andalso
+		    case FinMap.lookup m1 id2
+		      of Some res1 => eq_tyenv_res(res1,res2)
+		       | None => false) true m2
+       
+     fun enrichCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv=LVARENV lenv1},
+		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',LvarEnv=LVARENV lenv2}) =
        let
 	 val _ = if FinMapEq.isEmpty lenv1 then () else die "enrichCEnv.lvarenv1 not empty"
 	 val _ = if FinMapEq.isEmpty lenv2 then () else die "enrichCEnv.lvarenv2 not empty"
        in debug("StrEnv", enrichStrEnv(StrEnv,StrEnv')) andalso 
-	  debug("VarEnv", enrichVarEnv(VarEnv,VarEnv'))
+	  debug("VarEnv", enrichVarEnv(VarEnv,VarEnv')) andalso
+	  debug("TyEnv", enrichTyEnv(TyEnv,TyEnv'))
        end
 
      and enrichStrEnv(STRENV se1, STRENV se2) =
@@ -373,8 +400,8 @@ old*)
 		     of Some res0 => matchRes(res,res0)
 		      | None => ()) () env 
 
-     fun matchEnv(CENV{StrEnv,VarEnv,LvarEnv=LVARENV lenv},
-		  CENV{StrEnv=StrEnv0,VarEnv=VarEnv0, LvarEnv=LVARENV lenv0}) =
+     fun matchEnv(CENV{StrEnv,VarEnv,LvarEnv=LVARENV lenv, ...},
+		  CENV{StrEnv=StrEnv0,VarEnv=VarEnv0, LvarEnv=LVARENV lenv0, ...}) =
        let val _ = if FinMapEq.isEmpty lenv then () else die "match.lvarenv not empty"
 	   val _ = if FinMapEq.isEmpty lenv0 then () else die "match.lvarenv0 not empty"
        in matchStrEnv(StrEnv,StrEnv0);
@@ -400,7 +427,6 @@ old*)
 
    fun constrain (ce: CEnv, elabE : ElabEnv) =
      let open Environments
-
          val compileTypeScheme = case compileTypeScheme_knot 
 				   of ref (Some compileTypeScheme) => compileTypeScheme
 				    | ref None => die "compileTypeScheme_knot not set" 
@@ -411,6 +437,12 @@ old*)
 		  of VE.LONGVAR sigma => 
 		    let val (tvs',tau') = compileTypeScheme sigma
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
+			  handle X => (print ("\nMatch failed for var matching var " ^ Lvars.pr_lvar lv ^ "\n");
+				       print "Type scheme in translation env:\n";
+				       pr_st (layout_scheme(tvs,tau));
+				       print "\nType scheme in signature:\n";
+				       pr_st (layout_scheme(tvs',tau'));
+				       raise X)
 			val il' = map (LambdaBasics.on_Type S) il
 		    in LVAR(lv,tvs',tau',il')
 		    end
@@ -420,12 +452,16 @@ old*)
 		  of VE.LONGVAR sigma =>
 		    let val (tvs',tau') = compileTypeScheme sigma
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
+			  handle X => (print ("\nMatch failed for var matching con " ^ Con.pr_con con ^ "\n");
+				       raise X)			
 			val il' = map (LambdaBasics.on_Type S) il
 		    in CON(con,tvs',tau',il',it)
 		    end
 		   | VE.LONGCON sigma =>
 		    let val (tvs',tau') = compileTypeScheme sigma
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
+			  handle X => (print ("\nMatch failed for con matching con " ^ Con.pr_con con ^ "\n");
+				       raise X)			
 			val il' = map (LambdaBasics.on_Type S) il
 		    in if LambdaBasics.eq_sigma((tvs,tau),(tvs',tau')) then CON(con,tvs',tau',il',it)
 		       else die "constr_ran.CON.type schemes should be equal"
@@ -442,11 +478,11 @@ old*)
 		   | _ => die "constr_ran.EXCON.longvar or longexcon expected")
 	      | _ => die "constr_ran.expecting LVAR, CON or EXCON"
 
-         fun constr_ce(CENV{StrEnv, VarEnv, LvarEnv=LvarEnv as LVARENV lvarenv}, elabE) =
+         fun constr_ce(CENV{StrEnv, VarEnv, TyEnv, LvarEnv=LvarEnv as LVARENV lvarenv}, elabE) =
 	   let val _ = if FinMapEq.isEmpty lvarenv then () else die "constrain.lvarenv not empty"
-	       val (elabSE, _, elabVE) = E.un elabE
+	       val (elabSE, elabTE, elabVE) = E.un elabE
 	   in CENV{StrEnv=constr_se(StrEnv,elabSE), VarEnv=constr_ve(VarEnv,elabVE),
-		   LvarEnv=LvarEnv}
+		   TyEnv=constr_te(TyEnv,elabTE), LvarEnv=LvarEnv}
 	   end
 
 	 and constr_se(STRENV se, elabSE) =
@@ -464,16 +500,26 @@ old*)
 						 in FinMap.add(id,transRan', ve')
 						 end
 			      | None => die "constr_ve") FinMap.empty elabVE)
-     in constr_ce(ce, elabE)
+
+	 and constr_te(TYENV te, elabTE) =
+	   TYENV(TE.Fold(fn (tycon, _) => fn te' =>
+			 case FinMap.lookup te tycon
+			   of Some tynames => FinMap.add(tycon,tynames,te')
+			    | None => die "constr_te") FinMap.empty elabTE) 
+(*	 val _ = print "\n[Constraining ...\n" *)
+	 val res = constr_ce(ce, elabE)
+(*	 val _ = print " Done]\n" *)
+     in res
      end
 
 
    type StringTree = FinMap.StringTree
 
-    fun layoutCEnv (CENV{StrEnv,VarEnv,LvarEnv}) =
+    fun layoutCEnv (CENV{StrEnv,VarEnv,TyEnv,LvarEnv}) =
       PP.NODE{start="CENV(",finish=")",indent=2,
 	      children=[layoutStrEnv StrEnv,
 			layoutVarEnv VarEnv,
+			layoutTyEnv TyEnv,
 			layoutLvarEnv LvarEnv],
 	      childsep=PP.RIGHT ","}
 
@@ -510,6 +556,14 @@ old*)
 				       m],
 	      childsep=PP.NONE}
 
+    and layoutTyEnv (TYENV m) = 
+      let fun layout_tynames tynames = 
+	    PP.NODE {start="[",finish="]",indent=0, children=map TyName.layout tynames,
+		     childsep=PP.RIGHT ","}
+      in FinMap.layoutMap {start="TyEnv = {", eq=" -> ", sep = ", ", finish="}"} (PP.LEAF o TyCon.pr_TyCon)
+	 layout_tynames m
+      end
+
     and layoutLvarEnv (LVARENV m) =
       let 
 	fun f x = PP.NODE{start="[",finish="]",indent=0,
@@ -526,5 +580,4 @@ old*)
       end
 
   end;
-(*  LocalWords:  habor
- *)
+
