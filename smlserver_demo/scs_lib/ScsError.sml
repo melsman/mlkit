@@ -63,18 +63,20 @@ structure ScsError :> SCS_ERROR =
 	val emsg = `script: ^(Ns.Conn.location())^(Ns.Conn.url()).
 user: ^(ScsPersonData.name(ScsLogin.user_id()))
 email: ^(ScsPersonData.email(ScsLogin.user_id()))
-
 	  ` ^^ emsg
 	val title = case ScsLogin.user_lang() of
 	    ScsLang.en => "System Error"
 	  | ScsLang.da => "Systemfejl"
+val _ = logError `scserror 1`
 	val fvs  = map (fn (n,v)=> `
 	  name=^n, value=^v`) (
 	    case Ns.Conn.getQuery() of 
 	      NONE => []
 	    | SOME s => Ns.Set.list s
  	  )
+val _ = logError `scserror 2`
 	val logmsg = emsg ^^ (foldl op^^ `` fvs)
+val _ = logError (`scserror 3` ^^ logmsg)
       in
 	(logError logmsg;
 	 emailError logmsg;

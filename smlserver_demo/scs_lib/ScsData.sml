@@ -21,10 +21,19 @@ signature SCS_DATA =
       
 
     (* [mk_selectBoxFromDb' sql g_fn add_opts fv v_opt] is similar to 
-	mk_selectBoxFromDb except that it is possible to include additional
+	mk_selectBoxFromDb except that it is possible to prepend additional
 	(value, name) pairs in the list add_opts *)
     val mk_selectBoxFromDb' : quot -> ((string->string) -> (string*string)) 
       -> (string*string) list -> string -> int option -> quot
+
+    (* [mk_selectBoxFromDb'' sql g_fn pre_opts post_opts fv v_opt] 
+	is similar to mk_selectBoxFromDb' except that it is also possible 
+	to append additional
+	(value, name) pairs in the list post_opts *)
+    val mk_selectBoxFromDb'' : quot -> ((string->string) -> (string*string)) 
+      -> (string*string) list -> (string*string) list -> string -> 
+      int option -> quot
+
   end
 
 structure ScsData :> SCS_DATA =
@@ -56,9 +65,10 @@ structure ScsData :> SCS_DATA =
     fun gToStringOpt g field_name =  ScsString.toOpt (g field_name)
 
     local
-      fun mk_selectBoxFromDb_template sql g_fn add_opts fv v_opt =
+      fun mk_selectBoxFromDb_template sql g_fn pre_opts post_opts fv v_opt =
 	let
-	  val opts = add_opts @ ( ScsError.wrapPanic (Db.list g_fn) sql ) 
+	  val opts = 
+	    pre_opts @ ( ScsError.wrapPanic (Db.list g_fn) sql ) @ post_opts
 	in
 	  case v_opt of
 	      NONE   => ScsWidget.select opts fv
@@ -66,9 +76,11 @@ structure ScsData :> SCS_DATA =
 	end
     in
       fun mk_selectBoxFromDb sql g_fn fv v_opt = 
-        mk_selectBoxFromDb_template sql g_fn [] fv v_opt 
+        mk_selectBoxFromDb_template sql g_fn [] [] fv v_opt 
       fun mk_selectBoxFromDb' sql g_fn add_opts fv v_opt = 
-        mk_selectBoxFromDb_template sql g_fn add_opts fv v_opt
+        mk_selectBoxFromDb_template sql g_fn add_opts [] fv v_opt
+      fun mk_selectBoxFromDb'' sql g_fn pre_opts post_opts fv v_opt = 
+        mk_selectBoxFromDb_template sql g_fn pre_opts post_opts fv v_opt
     end
 
   end
