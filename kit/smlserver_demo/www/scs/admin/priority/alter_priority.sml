@@ -2,7 +2,7 @@
 
 val (mode,errs) = ScsPriority.getModeErr ("mode",ScsFormVar.emptyErr)
 val (rel_id, errs) = 
-  ScsFormVar.getNatErr("rel_id", "Hidden", ScsFormVar.emptyErr)
+  ScsFormVar.getNatErr("rel_id", "Hidden", errs)
 val (target_url,errs) = 
   ScsFormVar.getStringLenErr 1024 ("target_url", "Hidden", errs)
 val _ = ScsFormVar.anyErrors errs
