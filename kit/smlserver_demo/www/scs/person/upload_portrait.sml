@@ -3,13 +3,17 @@ val user_id = ScsLogin.auth()
 val (mode,errs) = (* Default mode is upload *)
   ScsFormVar.wrapMaybe_nh "upload" 
   (ScsFormVar.getEnumErr ["upload","rotate","delete"]) ("mode","mode",ScsFormVar.emptyErr)
+val (target,errs) = (* Default target is user *)
+  ScsFormVar.wrapMaybe_nh "user" 
+  (ScsFormVar.getEnumErr ["user","adm"]) ("target","target",ScsFormVar.emptyErr)
+val (official_p,errs) = ScsPerson.getOfficialpErr("official_p",errs)
 val (person_id,errs) = ScsPerson.getPersonIdErr("person_id",errs)
 val _ = ScsFormVar.anyErrors errs
 
 val (per_opt,errs) = ScsPerson.getPersonErr (person_id,ScsFormVar.emptyErr)
 val _ = ScsFormVar.anyErrors errs
 val per = ScsError.valOf per_opt (* We now know for sure, that there is a person *)
-val priv = ScsPerson.uploadPortraitPriv (user_id,per)
+val priv = ScsPerson.uploadPortraitPriv (user_id,official_p,per)
 
 fun delPortrait db (p:ScsPerson.portrait_record option) =
   case p of
@@ -32,7 +36,6 @@ fun getFormat filename =
   end
 
 fun delTmpFiles files = List.app (fn f => FileSys.remove f handle _ => ()) files
-
 val files_to_delete_on_error = ref []
 fun addFileToDeleteOnError f = files_to_delete_on_error := f :: (!files_to_delete_on_error)
 
@@ -51,8 +54,8 @@ val _ =
 	let
 	  (* Look for pictures to delete. *)
 	  val portraits = ScsPerson.getPortraits person_id
-	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height false portraits
-	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original false portraits
+	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height official_p portraits
+	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original official_p portraits
 
 	  fun delete db =
 	    let
@@ -76,8 +79,8 @@ val _ =
 
 	  (* Look for pictures to rotate. *)
 	  val portraits = ScsPerson.getPortraits person_id
-	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height false portraits
-	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original false portraits
+	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height official_p portraits
+	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original official_p portraits
 
 	  fun updPortrait db file_id pic_format =
 	    ScsError.wrapPanic (Db.Handle.dmlDb db)
@@ -111,7 +114,8 @@ val _ =
 		
 			(* mk thumbnail in tmp directory *)
 			val (h,w) = ScsPicture.fixedHeight orig_tmp_format ScsPerson.thumb_height
-			val thumb_tmp = ScsConfig.scs_tmp() ^ "/" ^ (ScsFile.uniqueFile (ScsConfig.scs_tmp())) ^
+			val thumb_tmp = 
+			  ScsConfig.scs_tmp() ^ "/" ^ (ScsFile.uniqueFile (ScsConfig.scs_tmp())) ^
 			  "." ^ (#file_ext (#mime_type orig_file))
 			val _ = addFileToDeleteOnError thumb_tmp
 			val errs = ScsPicture.convertPicture (h,w,"-sharpen 3 -quality 90",
@@ -123,11 +127,11 @@ val _ =
 		         FS and scs_portraits *)
 			val _ = updPortrait db (#file_id orig_file) orig_tmp_format
 			val _ = updPortrait db (#file_id thumb_file) thumb_tmp_format
-			val errs = (* We rotate, so no limit on size - we have already accepted the picture once. *)
+			val errs = (* We rotate, so no limit on size - the picture is already accepted. *)
 			  ScsFileStorage.replaceFile (db,user_id,orig_file,ScsFileStorage.admin,
 						      orig_tmp,ScsFormVar.emptyErr)
 			val _ = ScsFormVar.anyErrors errs
-			val errs = (* We rotate, so no limit on size - we have already accepted the picture once. *)
+			val errs = (* We rotate, so no limit on size - the picture is alread accepted. *)
 			  ScsFileStorage.replaceFile (db,user_id,thumb_file,ScsFileStorage.admin,
 						      thumb_tmp,ScsFormVar.emptyErr)
 			val _ = ScsFormVar.anyErrors errs
@@ -179,7 +183,10 @@ val _ =
                directory after the transaction.
 
              3 in case the transaction is rolled back we delete
-               the physical files that have been created in FS so far *)
+               the physical files that have been created in FS so far 
+
+	  Notice: we are using the file system so it will never be
+	  bullet proof, however we can't do it better than this. *)
 	  fun storeFile db : string list = (* returns temporary files to delete *)
 	    let
 	      val folder_id = ScsPerson.getOrCreateUploadFolderId(db,per)
@@ -224,14 +231,20 @@ val _ =
 	      (* Now we have the two pictures, so we move on inserting them into FS *)
 	      (* Delete old pictures from scs_portraits *)
 	      val old_portraits = ScsPerson.getPortraits person_id
-	      val _ = delPortrait db (ScsPerson.getPicture ScsPerson.thumb_fixed_height false old_portraits)
-	      val _ = delPortrait db (ScsPerson.getPicture ScsPerson.original false old_portraits)
+	      val thumb_old_opt = 
+		ScsPerson.getPicture ScsPerson.thumb_fixed_height official_p old_portraits
+	      val orig_old_opt = ScsPerson.getPicture ScsPerson.original official_p old_portraits
+	      val _ = delPortrait db thumb_old_opt
+	      val _ = delPortrait db orig_old_opt
 
 	      (* Upload original picture *)
 	      val (file_id,phys_file_fs_orig,errs) = 
 		ScsFileStorage.storeFile (db,user_id,folder_id,priv,orig_tmp,
 					  filename,
-					  "Non official portrait - original size")
+					  if official_p then
+					    "Official portrait - original size"
+					  else
+					    "Non official portrait - original size")
 	      val _ = addFileToDeleteOnError phys_file_fs_orig
 	      val _ = ScsFormVar.anyErrors errs
 	      val orig_pic : ScsPerson.portrait_record =
@@ -244,7 +257,7 @@ val _ =
 		 width             = #width orig_tmp_format,
 		 height            = #height orig_tmp_format,
 		 bytes             = #size orig_tmp_format,
-		 official_p        = false,
+		 official_p        = official_p,
 		 person_name       = "",
 		 may_show_portrait_p = false (* Arbitraty value *)}
 	      val _ = ScsPerson.insPortrait db orig_pic
@@ -253,7 +266,10 @@ val _ =
 	      val (file_id,phys_file_fs_thumb,errs) = 
 		ScsFileStorage.storeFile (db,user_id,folder_id,priv,thumb_tmp,
 					  "fixed_height_thumb_"^filename,
-					  "Non official portrait - thumbnail")
+					  if official_p then
+					    "Official portrait - thumbnail"
+					  else
+					    "Non official portrait - thumbnail")
 	      val _ = addFileToDeleteOnError phys_file_fs_thumb
 	      val _ = ScsFormVar.anyErrors errs
 	      val thumb_pic : ScsPerson.portrait_record =
@@ -266,15 +282,15 @@ val _ =
 		 width             = #width thumb_format,
 		 height            = #height thumb_format,
 		 bytes             = #size thumb_format,
-		 official_p        = false,
+		 official_p        = official_p,
 		 person_name       = "",
 		 may_show_portrait_p = false (* Arbitraty value *)}
 	      val _ = ScsPerson.insPortrait db thumb_pic
 
 	      (* No error has happened, so we continue cleaning up *)
 	      (* Delete old pictures from FS if they exists - both DB and file system - suppress errors *)
-	      val _ = delPortraitFS db priv (ScsPerson.getPicture ScsPerson.thumb_fixed_height false old_portraits)
-	      val _ = delPortraitFS db priv (ScsPerson.getPicture ScsPerson.original false old_portraits)
+	      val _ = delPortraitFS db priv thumb_old_opt
+	      val _ = delPortraitFS db priv orig_old_opt
 	    in
 	      [orig_filename_tmp,orig_tmp,thumb_tmp] (* Tmp-files to delete when no errors happen. *)
 	    end
@@ -283,7 +299,14 @@ val _ =
 	  handle X => (delTmpFiles (!files_to_delete_on_error); raise X)
 	end
     | _ => () (* Unknown mode *)
-	
-val _ = ScsConn.returnRedirect "/index.sml" [("mode",UcsSs.Widget.modeToString UcsSs.Widget.MY_PROFILE_VIEW)]
+
+val _ = 
+  if target = "adm" then
+    ScsConn.returnRedirect "/scs/person/portrait_adm_form.sml" 
+    [("mode",UcsSs.Widget.modeToString UcsSs.Widget.PORTRAIT_ADM),
+     ("person_id", Int.toString person_id)]
+  else
+    ScsConn.returnRedirect "/index.sml" 
+    [("mode",UcsSs.Widget.modeToString UcsSs.Widget.MY_PROFILE_VIEW)]
 
 
