@@ -168,6 +168,42 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 
 	(* Generation of abstract form interfaces *)
 
+	datatype Type = BASEtype of string
+	              | ARGtype of string * Type
+
+	fun parseType typ : Type option = 
+	    let val tx = String.tokens Char.isSpace typ
+		fun parse [x] = SOME (BASEtype x)
+		  | parse (x::xs) = (case parse xs of
+					 SOME t => SOME(ARGtype(x,t))
+				       | NONE => NONE)
+		  | parse _ = error "expecting type"
+	    in parse (rev tx)
+	    end
+	
+	fun stripObj (t:Type) : Type option =
+	    case t of
+		ARGtype ("Obj.obj",t) => SOME t
+	      | _ => NONE
+
+	fun parseTypeStripObj (t:string) : Type =
+	    case parseType t of
+		SOME t => 
+		    (case stripObj t of
+			 SOME t => t
+		       | NONE => error "expecting value specification of type 'a Obj.obj")
+	      | NONE => error "expecting type in value specification"
+
+	fun prType (BASEtype s) = s
+	  | prType (ARGtype (s,t)) = prType t ^ " " ^ s
+
+	fun typeToString (BASEtype "int") = "Int.toString"
+	  | typeToString (BASEtype "string") = "(fn x => x)"
+	  | typeToString (BASEtype "bool") = "Bool.toString"
+	  | typeToString (ARGtype("list",t)) = "ERROR: ARGtypes not yet supported"
+	  | typeToString t = error ("unsupported type: " ^ prType t)
+
+(*
 	fun stripString s s2 =
 	    let fun remove (c::cs,c2::cs2) = if c=c2 then remove(cs,cs2)
 					     else NONE
@@ -184,14 +220,14 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		SOME typ => typ
 	      | NONE => error "expecting value specification of type 'a Obj.obj"
 
-
 	fun typToString "int" = "Int.toString"
 	  | typToString "string" = ""
+	  | typToString "bool" = "Bool.toString"
 	  | typToString s = 
 	    (case rev (String.tokens (fn c => c = #".") s) of
 		 x::xs => concat (map (fn x => x ^ ".") (rev xs)) ^ "toString"
 	       | _ => error ("Type '" ^ s ^ "' not known!"))
-
+*)
 	type field = {name:string, typ:string}
 	type script = {name:string, fields:field list}
 	fun ind 0 = ""
@@ -219,10 +255,10 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		  | appl f [x] = f(x,true)
 		  | appl f (x::xs) = (f(x,false); appl f xs)
 
-		fun maybe_out_linkargs fields ty =
+		fun maybe_out_recordargs fields ty =
 		    if fields = nil then outl ty
 		    else (  outs "{"
-			  ; appl (fn ({name,typ},b) => outs (name ^ ":" ^ stripFormtype typ 
+			  ; appl (fn ({name,typ},b) => outs (name ^ ":" ^ prType (parseTypeStripObj typ)
 							     ^ (if b then "" else ", "))) fields
 			  ; outl "}"
 			  ; outi 10 ("-> " ^ ty)
@@ -233,16 +269,20 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; outi 3 "sig"
 		     ; app (fn {name,...} => outi 4 ("type " ^ name)) fields
 		     ; app (fn {name,typ} => outi 4 ("val " ^ name ^ " : (" ^ name ^ "," 
-						     ^ stripFormtype typ ^ ") fname")) fields
+						     ^ prType (parseTypeStripObj typ) ^ ") fname")) fields
 		     ; outs (ind 4)
-		     ; outs "val form : ("
+	   (*form*)  ; outs "val form : ("
 		     ; app (fn {name,...} => outs (name ^ "->")) fields
-		     ; outl "nil,'a,'p,block) form"
-		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,block) elt"
+		     ; outl "nil,'a,'p,block flow) form"
+		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,block flow) elt"
 		     ; outs (ind 4)
-		     ; outs "val link : "
-		     ; maybe_out_linkargs fields "('x,'y,ina,'f,'p,inline) elt"
-		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,inline) elt"
+           (*link*)  ; outs "val link : "
+		     ; maybe_out_recordargs fields "('x,'y,ina,'f,'p,inline flow) elt"
+		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,inline flow) elt"
+		     ; outs (ind 4)
+       (*redirect*)  ; outs "val redirect : "
+		     ; maybe_out_recordargs fields "SMLserver.Cookie.cookiedata list"
+		     ; outi 10 "-> Http.response"
 		     ; outi 3 "end")
 
 		fun out_header_struct () = 
@@ -250,8 +290,27 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; outi 1 "struct"
 		     ; outi 2 "open XHtml"
 		     ; outi 2 "structure Http = Http"
-		     ; outi 2 "fun form0 t s = Unsafe.form {action=s,method=\"post\"} t"
+		     ; outi 2 "fun form_ t s = Unsafe.form {action=s,method=\"post\"} t"
+		     ; outi 2 "fun listArgs_ preStr name toString l ="
+		     ; outi 4 "let fun loop ([x],acc) = [preStr, name, \"=\", Unsafe.urlencode(toString x)] @ acc"
+		     ; outi 10 "| loop (x::xs,acc) = loop (xs, [\"&\", name, \"=\", \
+		                               \Unsafe.urlencode(toString x)] @ acc)"
+		     ; outi 10 "| loop _ = nil"
+		     ; outi 4 "in loop (rev l,nil)"
+ 		     ; outi 4 "end"
 		     ; outnl())
+
+		fun outline p {name,typ} =
+		    let val typ = parseTypeStripObj typ
+		    in case typ of
+			BASEtype _ => 
+			    outi 7 ("\"" ^ p ^ name ^ "=\", Unsafe.urlencode(" 
+				    ^ typeToString typ ^ " " ^ name ^ "'),")
+		      | ARGtype ("list",t) => 
+			    outi 7 ("\"\"] @ listArgs_ \"" ^ p ^ "\" \"" ^ name 
+				    ^ "\" " ^ typeToString t ^ " " ^ name ^ "' @ [")
+		      | _ => error "unsupported ARGtype"
+		    end
 
 		fun out_link s fields =
 		    if fields = nil then 
@@ -262,29 +321,38 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 			 ; appl (fn ({name,typ},b) => outs(name ^ "=" ^ name ^ "'" ^
 							   (if b then "" else ","))) fields
 			 ; outl "} e ="
-			 ; outi 5 ("Unsafe.ahref {src=concat[\"/" ^ s ^ ".sml\", ")
-			 ; (let
-				fun outline p {name,typ} =
-				    let val typ = stripFormtype typ
-				    in outi 7 ("\"" ^ p ^ name ^ "=\", Unsafe.urlencode(" 
-					       ^ typToString typ ^ " " ^ name ^ "'),")
-				    end
-			    in case fields of
+			 ; outi 5 ("Unsafe.ahref {src=concat([\"/" ^ s ^ ".sml\", ")
+			 ; (case fields of
 				f::fs => (outline "?" f; app (outline "&") fs)
-			      | nil => ()
-			    end)
-			 ; outi 7 "\"\"]} e"	  
+			      | nil => ())
+			 ; outi 7 "\"\"])} e"	  
+			 )
+
+		fun out_redirect s fields =
+		    if fields = nil then 
+			outi 4 ("fun redirect l = Http.Unsafe.redirect \"" ^ s ^ ".sml\" l")
+		    else 
+			(  outs (ind 4)
+			 ; outs "fun redirect {"
+			 ; appl (fn ({name,typ},b) => outs(name ^ "=" ^ name ^ "'" ^
+							   (if b then "" else ","))) fields
+			 ; outl "} l ="
+			 ; outi 5 ("Http.Unsafe.redirect (concat([\"/" ^ s ^ ".sml\", ")
+			 ; (case fields of
+				f::fs => (outline "?" f; app (outline "&") fs)
+			      | nil => ())
+			 ; outi 7 "\"\"])) l" 
 			 )
 
 		fun out_script_struct {name=s,fields} = 
 		    (  outi 2 ("structure " ^ s ^ " =")
 		     ; outi 3 "struct"
 		     ; app (fn {name,typ} => outi 4 ("type " ^ name ^ " = unit")) fields
-		     ; outi 4 ("val " ^ s ^ " = \"" ^ s ^ ".sml\"")
-		     ; app (fn {name,typ} => outi 4 ("val " ^ name ^ " = {script=" ^ s ^ 
+		     ; app (fn {name,typ} => outi 4 ("val " ^ name ^ " = {script=\"" ^ s ^ ".sml\"" ^ 
 						     ", n=\"" ^ name ^ "\"}")) fields
-		     ; outi 4 ("fun form t = form0 t " ^ s)
+		     ; outi 4 ("fun form t = form_ t \"" ^ s ^ ".sml\"")
 		     ; out_link s fields
+		     ; out_redirect s fields		     
 		     ; outi 3 "end")
 	    in
 	        outl "(* This script is auto generated by SMLserver, based on"
@@ -327,19 +395,24 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		print ("[reusing type safe XHTML form interface: " ^ file ^ "]\n")
 
 	fun genScriptletInstance {name,fields} : string = 
-	    let fun objFrom typ = 
-		  let val typ = stripFormtype typ
-		  in case typ of
-		      "int" => "Obj.fromInt'"
-		    | "string" => "Obj.fromString'"
-		    | "bool" => "Obj.fromBool'"
-		    | _ => error ("unsupported field type: " ^ typ)
-		  end
+	    let 
+		fun objFromBaseType bt =
+		    case bt of
+			"int" => "Obj.fromInt'"
+		      | "string" => "Obj.fromString'"
+		      | "bool" => "Obj.fromBool'"
+		      | _ => error ("unsupported base type: " ^ bt)
 		fun mk_field {name,typ} = 
-		    ("    val " ^ name ^ " = case SMLserver.Unsafe.formvar \"" ^ name ^ "\" of\n\
-		      \        SOME s => " ^ objFrom typ ^ " s\n\
-		      \      | NONE => (SMLserver.Unsafe.write \"Missing form variable\";\n\
-		      \                 SMLserver.exit())\n")
+		    case parseTypeStripObj typ of
+			BASEtype bt =>
+			    ("    val " ^ name ^ " = case SMLserver.Unsafe.formvar \"" ^ name ^ "\" of\n\
+			     \        SOME s => " ^ objFromBaseType bt ^ " s\n\
+			     \      | NONE => (SMLserver.Unsafe.write \"Missing form variable '" ^ name ^ "'\";\n\
+			     \                 SMLserver.exit())\n")
+		      | ARGtype ("list",BASEtype bt) => 
+			    ("    val " ^ name ^ " = Obj.fromList' (" ^ objFromBaseType bt ^ ")\n\
+			     \        (SMLserver.Unsafe.formvarAll \"" ^ name ^ "\")\n")
+		      | typ => error ("unsupported type: " ^ prType typ)
 	    in
 		concat (["structure X = ", name, " (\n",
 			 "  struct\n"] @ map mk_field fields @

@@ -16,8 +16,6 @@ structure XHtml : XHTML_EXTRA =
 
 	type inform = unit 
 	type formclosed = unit
-	type block = unit
-	type inline = unit
 	type preclosed = unit
 	type inpre = unit
 	type aclosed = unit
@@ -27,6 +25,9 @@ structure XHtml : XHTML_EXTRA =
 	type dl = unit
 	type td = unit
 	type tr = unit
+	type 'a flow = unit
+	type block = unit
+	type inline = unit
 
 	fun htmlencode s : string =
           let fun enc #"<" = "&lt;"
@@ -45,8 +46,7 @@ structure XHtml : XHTML_EXTRA =
 	  | elem1 of string * string list * elem
 	  | seq of elem * elem
 
-	type ('x,'y,'a,'f,'p,'bi) elt = elem
-	type ('x,'y,'a,'f,'p,'k) lis = elem
+	type ('x,'y,'a,'f,'p,'k) elt = elem
 	type ('x,'y,'a,'f,'p) inl2inl = elem -> elem
 	type ('x,'y,'a,'f,'p) inl2inlpre = elem -> elem
 	type ('x,'y,'a,'f,'p) inl2blk = elem -> elem
@@ -103,7 +103,8 @@ structure XHtml : XHTML_EXTRA =
 
 	infix &&
 	val op &&  = seq
-	val op ++  = seq
+	fun flatten (x, nil) = x
+	  | flatten (x, op :: p) = seq(x,flatten p)
 
 	fun imga a {src,alt} = elem0("img", attr "src" src @ attr "alt" alt @ a)
 	fun img r = imga nil r
@@ -116,8 +117,8 @@ structure XHtml : XHTML_EXTRA =
 	type nil = unit
 	type 't obj = 't Obj.obj
 
-	type ('x,'y,'a,'p,'bi) felt = ('x,'y,'a,inform,'p,'bi) elt
-	type ('x,'a,'p,'bi) form = ('x,nil,'a,'p,'bi) felt
+	type ('x,'y,'a,'p,'k) felt = ('x,'y,'a,inform,'p,'k) elt
+	type ('x,'a,'p,'k) form = ('x,nil,'a,'p,'k) felt
 	type 'a rad = 'a
 
 	fun swap x = x
@@ -150,10 +151,15 @@ structure XHtml : XHTML_EXTRA =
 	fun inputRadio n obj = 
 	    input (SOME n, "radio", SOME (Obj.toString obj))
 
-	fun inputRadio' n obj = 
-	    input (SOME n, "radio", SOME (Obj.toString obj))
+	fun inputRadio' n obj = inputRadio n obj
 	    
-	fun radDrop x = x
+	fun radioDrop x = x
+
+	type 'a checkbox = unit
+	fun inputCheckbox n obj =
+	    input (SOME n, "checkbox", SOME (Obj.toString obj))
+	fun inputCheckbox' n obj = inputCheckbox n obj
+	fun checkboxDrop x = x
 
 	fun textarea {n,script} {rows,cols} obj = 
 	    let val s = getOpt(Option.map Obj.toString obj,"")

@@ -8,6 +8,8 @@ signature OBJ =
 	val fromString  : string -> string obj
 	val fromBool    : bool -> bool obj
 	val valOf       : 'a obj -> 'a option
+
+(*	val fromList    : ('a -> 'a obj) -> 'a list -> 'a list obj *)
     end
 
 signature OBJ_EXTRA =
@@ -17,18 +19,28 @@ signature OBJ_EXTRA =
 	val fromBool'   : string -> bool obj
 	val fromString' : string -> string obj
 	val fromInt'    : string -> int obj
+	val fromList'   : (string -> 'a obj) -> string list -> 'a list obj
     end
 
 structure Obj :> OBJ_EXTRA =
     struct
-	type 't obj = string * (string -> 't option)
-	fun fromInt i    = (Int.toString i, Int.fromString)
-	fun fromString s = (s, fn x => SOME x)
-	fun fromBool b   = (Bool.toString b, Bool.fromString)
+	datatype 't obj = BASE of string * (string -> 't option)
+                        | LIST of string list * (string list -> 't option)
+	fun fromInt i    = BASE (Int.toString i, Int.fromString)
+	fun fromString s = BASE (s, fn x => SOME x)
+	fun fromBool b   = BASE (Bool.toString b, Bool.fromString)
 
-	fun toString (v,f) = v
-	fun fromInt' s    = (s, Int.fromString)
-	fun fromString' s = (s, fn x => SOME x)
-	fun fromBool' s   = (s, Bool.fromString)
-	fun valOf (v,f)   = f v
+	fun toString (BASE(v,f)) = v
+	  | toString _ = raise Fail "Obj.toString not implemented for non-base objects"
+	fun fromInt' s    = BASE (s, Int.fromString)
+	fun fromString' s = BASE (s, fn x => SOME x)
+	fun fromBool' s   = BASE (s, Bool.fromString)
+	fun valOf (BASE(v,f)) = f v
+	  | valOf (LIST(v,f)) = f v
+	fun fromList' (f: string -> 'a obj) (ss: string list) : 'a list obj =	    
+	    LIST (ss, 
+		  foldr (fn (s,NONE) => NONE
+		          | (s,SOME xs) => (case valOf(f s) of
+						SOME x => SOME (x::xs)
+					      | NONE => NONE)) (SOME nil))
     end

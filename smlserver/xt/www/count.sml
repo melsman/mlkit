@@ -1,6 +1,6 @@
 functor count (F : sig val c : int Obj.obj end) : SCRIPTLET =
     struct
-	open Scripts infix && ++
+	open Scripts infix &&
 
         fun action s c =
 	    td (count.form (p(inputHidden count.c (Obj.fromInt c)
@@ -10,7 +10,7 @@ functor count (F : sig val c : int Obj.obj end) : SCRIPTLET =
 		NONE => Page.page "Error" (p($"I expect an integer"))
 	      | SOME c => 
 		    Page.page ("Count: " ^ Int.toString c)
-		    (table (tr (action "Up"   (c+1) ++ 
+		    (table (tr (action "Up"   (c+1) &&
 				action "Down" (c-1))
 			    )
 		     )
