@@ -4,6 +4,7 @@ signature FORMVAR =
     val getInt : string -> int option
     val getReal : string -> real option
     val getNum : string -> real option
+    val getString : string -> string option
   end
   
 structure FormVar : FORMVAR =
@@ -67,4 +68,5 @@ structure FormVar : FORMVAR =
 		 else NONE
 	        | nil => NONE
 	  end
+    fun getString (s: string) : string option = Ns.Conn.formvar s
   end

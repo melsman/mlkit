@@ -33,5 +33,10 @@ in
   mail_form.sml
   mail.sml
   mul.msp
+
+  cs_form.sml
+  cs_add.sml
+  cs_upd.sml
+  cs_const.sml
  ]
 end

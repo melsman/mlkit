@@ -86,7 +86,7 @@ signature NS =
 	 * associated with the connection. *)
 	val server : unit -> string
 
-	(* Return the url (relativ to server-root) associated with 
+	(* Return the url (relative to server-root) associated with 
 	 * the request. *)
 	val url : unit -> string
       end
@@ -132,6 +132,8 @@ signature NS =
 	val getRow : db * set -> status
 	val foldDb : db * ((string->string)*'a->'a) * 'a * string -> 'a
 	val fold : ((string->string)*'a->'a) * 'a * string -> 'a
+        val qq : string -> string
+	val seq_nextval_exp : string -> string
       end
 
     structure Cache :
