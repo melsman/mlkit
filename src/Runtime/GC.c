@@ -56,6 +56,9 @@ int doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
 int raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
 int raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
 
+int time_gc_all_ms = 0;               // total time of GC (in milliseconds)
+
+
 /* This implementation assumes a down growing stack (e.g., X86). */
 #define NUM_REGS 8
 
@@ -937,6 +940,7 @@ do_scan_stack()
 void 
 gc(unsigned int **sp, unsigned int reg_map) 
 {
+  int time_gc_one_ms;
   extern Klump* freelist;
   extern int rp_to_space;
   unsigned int **sp_ptr;
@@ -963,8 +967,6 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   doing_gc = 1; // Mutex on the garbage collector
 
-  getrusage(RUSAGE_SELF, &rusage_begin);
-
   stack_top_gc = (unsigned int*)sp;
 
   if ((int)(stack_bot_gc - stack_top_gc) < 0)
@@ -973,6 +975,11 @@ gc(unsigned int **sp, unsigned int reg_map)
     }
 
   num_gc++;
+
+  if ( verbose_gc || report_gc )
+    {
+      getrusage(RUSAGE_SELF, &rusage_begin);
+    }
 
   if ( verbose_gc ) 
     {
@@ -1189,6 +1196,17 @@ gc(unsigned int **sp, unsigned int reg_map)
   // callSbrkArg((int)to_allocate + REGION_PAGE_BAG_SIZE);
   // }
 
+  if ( verbose_gc || report_gc ) 
+    {
+      getrusage(RUSAGE_SELF, &rusage_end);
+      time_gc_one_ms = 
+	((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*1000 + 
+	 (rusage_end.ru_utime.tv_usec+rusage_end.ru_stime.tv_usec)/1000) - 
+	((rusage_begin.ru_utime.tv_sec+rusage_begin.ru_stime.tv_sec)*1000 + 
+	 (rusage_begin.ru_utime.tv_usec+rusage_begin.ru_stime.tv_usec)/1000);
+      time_gc_all_ms += time_gc_one_ms;
+    }
+
   if ( verbose_gc ) 
     {
       double RI = 0.0, GC = 0.0, FRAG = 0.0;
@@ -1201,13 +1219,8 @@ gc(unsigned int **sp, unsigned int reg_map)
       alloc_total += lobjs_period;
       gc_total += (size_from_space + lobjs_beforegc - size_to_space - lobjs_aftergc);
 
-      getrusage(RUSAGE_SELF, &rusage_end);
+      fprintf(stderr,"(%dms)", time_gc_one_ms);
 
-      fprintf(stderr,"(%dms)",
-	     ((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*1000 + 
-	      (rusage_end.ru_utime.tv_usec+rusage_end.ru_stime.tv_usec)/1000) - 
-	     ((rusage_begin.ru_utime.tv_sec+rusage_begin.ru_stime.tv_sec)*1000 + 
-	      (rusage_begin.ru_utime.tv_usec+rusage_begin.ru_stime.tv_usec)/1000));
       /*
       fprintf(stderr, " rp_total: %d\n", rp_total);
       fprintf(stderr, " size_scan_stack: %d\n", (size_scan_stack*4) / 1024);

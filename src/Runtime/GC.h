@@ -22,6 +22,8 @@ extern int doing_gc;
 extern int raised_exn_interupt;
 extern int raised_exn_overflow;
 
+extern int time_gc_all_ms;
+
 extern unsigned int *data_begin_addr;
 extern unsigned int *data_end_addr;
 
