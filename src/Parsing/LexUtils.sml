@@ -146,7 +146,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
       fun add_numbered_char (pos, text) arg limit n =
 	    if n > limit then
 	      raise LexBasics.LEXICAL_ERROR
-		      (pos, "ASCII escape " ^ text ^ " must be < " ^ Int.string limit)
+		      (pos, "ASCII escape " ^ text ^ " must be <= " ^ Int.string limit)
 	    else
 	      addChars (chr n) arg
     in
