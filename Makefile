@@ -14,7 +14,7 @@ RPMDIR=/usr/src/rpm
 MKDIR=mkdir -p
 INSTALL=cp -p
 
-CLEAN=rm -rf PM CM *~ .\#*
+CLEAN=rm -rf MLB PM CM *~ .\#*
 
 .PHONY: smlserver
 mlkit:
@@ -65,6 +65,9 @@ clean:
 	cd smlserver/xt/demolib; $(CLEAN)
 	cd smlserver/xt/libxt; $(CLEAN)
 	cd smlserver/xt/www; $(CLEAN)
+
+clean_mlb:
+	rm -rf MLB */MLB */*/MLB */*/*/MLB */*/*/*/MLB */*/*/*/*/MLB */*/*/*/*/*/MLB 
 
 tgz_export:
 	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
@@ -129,6 +132,7 @@ install:
 	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
+	$(INSTALL) version $(INSTDIR)
 	$(INSTALL) copyright $(INSTDIR)
 	$(INSTALL) README $(INSTDIR)
 	$(INSTALL) -R kitdemo $(INSTDIR)/kitdemo 
@@ -146,13 +150,13 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
-	rm -f /usr/bin/mlkit /usr/bin/rp2ps
-	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
-	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
+#	rm -f /usr/bin/mlkit /usr/bin/rp2ps
+#	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
+#	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
-bootstrap:
+bootstrap: install
 	$(INSTALL) -a test $(INSTDIR)/test
 	cd $(INSTDIR)/test; ln -sf README testlink
 	cd $(INSTDIR)/test; ln -sf testcycl testcycl
@@ -164,6 +168,9 @@ bootstrap:
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
+	$(INSTALL) bin/mlbmake.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/mlbmake.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/mlbmake
+	chmod a+x $(INSTDIR)/bin/mlbmake
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)

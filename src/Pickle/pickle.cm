@@ -11,7 +11,8 @@ Polyhash.sml
 eqhashdyn2.sml
 stream.sig
 stream.sml
-
+PACK_REAL.sml
+PackRealBigSMLNJ.sml
 pickle.sig
 pickle.sml
 

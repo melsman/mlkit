@@ -107,15 +107,14 @@ in
 
 (*  val _ = comp_contractregions() *)
 
-
   val _ = comp_RI()
-  val _ = comp_RI_PROF()
-
   val _ = comp_RI_GC()
+  val _ = comp_RI_PROF()
   val _ = comp_RI_GC_PROF()  
-
 (*
   val _ = comp_RI_GenGC()
+*)
+(*
   val _ = comp_RI_GenGC_PROF()
 *)
   val _ = Main.install()
