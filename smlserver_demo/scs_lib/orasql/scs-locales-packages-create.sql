@@ -50,6 +50,23 @@ as
     text2 in scs_text_lang.text%TYPE default null
   ) return scs_texts.text_id%TYPE;
 
+  /* ------------------------
+     procedure updateTextProc
+     ------------------------
+     updates one or two (language,text) pairs for text_id.
+     Throws a ScsDbExn exception if 'language' or 'language2' is illegal
+
+     This version is similar to updateText except that because AOLserver
+     driver does not handle calling functions that return a value we make
+     this version of updateTextProc.
+  */
+  procedure updateTextProc(
+    text_id in scs_texts.text_id%TYPE,
+    language in scs_lang.language%TYPE,
+    text in scs_text_lang.text%TYPE
+  );
+
+
   /* -------------------
      function getText
      -------------------
@@ -98,9 +115,16 @@ as
     text_id := new.object_id;
     if text_id is null then
       text_id := scs.new_obj_id( new.object_id );
-      insert into scs_texts ( text_id ) values ( text_id );
     end if;
+    
+    -- The insert raises exception if text_id already exists.
+    -- The exception is handled below.
+    insert into scs_texts ( text_id ) values ( text_id );
+
     return text_id;
+  exception
+    when others then
+      return text_id;
   end new;
 
   procedure destroy (
@@ -134,6 +158,41 @@ as
       return;
   end destroy;
 
+  procedure updateTextProc(
+    text_id in scs_texts.text_id%TYPE,
+    language in scs_lang.language%TYPE,
+    text in scs_text_lang.text%TYPE
+  )
+  is
+    new_text_id scs_texts.text_id%TYPE;
+    lang_id scs_lang.lang_id%TYPE;
+  begin
+    -- will always be unchanged, but makes sure that 
+    -- row has been created in scs_texts
+    new_text_id := scs_text.new( text_id ); 
+
+    select lang_id into updateTextProc.lang_id 
+    from scs_lang 
+    where language = updateTextProc.language;
+
+    -- updates a text for a given language 
+    -- or inserts (text,language) in scs_text_lang
+    update scs_text_lang 
+      set text = updateTextProc.text
+      where text_id = updateTextProc.new_text_id 
+        and lang_id = updateTextProc.lang_id;
+    if sql%notfound then
+       insert into scs_text_lang( text_id, lang_id, text ) 
+       values ( updateTextProc.new_text_id, updateTextProc.lang_id, text );
+    end if;
+
+    return;
+  exception
+    when no_data_found then
+      raise_application_error( scs.ScsDbExn, 
+			       'unknown language: '||updateTextProc.language );
+  end updateTextProc;
+
   function updateText(
     text_id in scs_texts.text_id%TYPE default null,
     language in scs_lang.language%TYPE,
@@ -143,31 +202,22 @@ as
   ) return scs_texts.text_id%TYPE
   is
     new_text_id scs_texts.text_id%TYPE;
-    lang_id scs_lang.lang_id%TYPE;
   begin
     new_text_id := scs_text.new( text_id ); -- might be unchanged
 
-    select lang_id into updateText.lang_id 
-    from scs_lang 
-    where language = updateText.language;
-
-    -- updates a text for a given language 
-    -- or inserts (text,language) in scs_text_lang
-    update scs_text_lang 
-      set text = updateText.text
-      where text_id = new_text_id and lang_id = updateText.lang_id;
-    if sql%notfound then
-       insert into scs_text_lang( text_id, lang_id, text ) 
-       values ( new_text_id, lang_id, text );
-    end if;
+    updateTextProc(new_text_id,
+                   language,
+                   text);
 
     if not language2 is null then
-       new_text_id := updateText( new_text_id, language2, text2 );
+      updateTextProc(new_text_id,
+                     language2,
+                     text2);
     end if;
 
     return new_text_id;
   exception
-    when no_data_found then
+    when others then
       raise_application_error( scs.ScsDbExn, 
 			       'unknown language: '||updateText.language );
   end updateText;

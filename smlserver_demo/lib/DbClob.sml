@@ -1,13 +1,33 @@
 signature DB_CLOB =
   sig
-    val insert    : quot -> string                    (* return fresh clob_id and inserts in db_clob table *)
-    val insert_fn : quot -> (Db.Handle.db -> string)  (* lamba version of insert to use as part of a larger transaction *)
-    val update    : string -> quot -> unit            (* update the clob identified as clob_id *)
-    val update_fn : string -> quot -> (Db.Handle.db -> unit) (* lambda version of update to use as part of a larger transaction *)
-    val select    : string -> quot                    (* select a Clob given a clob_id *)
-    val select_fn : string -> (Db.Handle.db -> quot)  (* lamda version of select - to use in a larger transaction *)
-    val delete    : string -> unit                    (* delete clob given a clob_id *)
-    val delete_fn : string -> (Db.Handle.db -> unit)  (* lambda version of delete - to use in a larger transaction *)
+    (* [insert q] return fresh clob_id and inserts in db_clob table *)
+    val insert    : quot -> string                    
+
+    (* [insert_fn q] lamba version of insert to use as part of a
+       larger transaction *)
+    val insert_fn : quot -> (Db.Handle.db -> string)  
+
+    (* [update clob_id q] update the clob identified as clob_id with
+       quotation q *)
+    val update    : string -> quot -> unit            
+
+    (* [update_fn clob_id q] lambda version of update to use as part
+       of a larger transaction *)
+    val update_fn : string -> quot -> (Db.Handle.db -> unit) 
+
+    (* [select clob_id] select a clob given a clob_id *)
+    val select    : string -> quot                    
+
+    (* [select_fn clob_id] lamda version of select - to use in a
+       larger transaction *)
+    val select_fn : string -> (Db.Handle.db -> quot)  
+
+    (* [delete clob_id] delete clob given a clob_id *)
+    val delete    : string -> unit                    
+
+    (* [delete_fn clob_id] lambda version of delete - to use in a
+       larger transaction *)
+    val delete_fn : string -> (Db.Handle.db -> unit)  
   end
 
 structure DbClob :> DB_CLOB =

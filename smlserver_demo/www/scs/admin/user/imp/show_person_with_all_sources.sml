@@ -35,7 +35,7 @@ fun layout_row (name, email, security_id, on_what_table, on_which_id) =
 	`<a href="^(UcsPage.confirmDelUrl (Html.genUrl "del_external_rel.sml" 
           [("person_id",Int.toString person_id),
 	   ("on_what_table",on_what_table),
-	   ("on_which_id",on_which_id)]))">^(UcsPage.icon_remove)`
+	   ("on_which_id",on_which_id)]))">^(UcsPage.icon_remove())`
       else
 	`&nbsp;`
   in

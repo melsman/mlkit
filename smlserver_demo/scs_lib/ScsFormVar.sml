@@ -322,7 +322,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		 end)
 	  
       val getRealErr = getErrWithOverflow 0.0 (ScsDict.s [(ScsLang.en,`real`),(ScsLang.da,`kommatal`)])
-	(fn v => let val l = explode v
+	(fn v => let val l = explode (ScsReal.normReal v)
 		 in
 		   case l
 		     of c::_ => 
