@@ -551,11 +551,11 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.en => `^s
 	     <blockquote>
 	     The date must be in the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001) or 
-	     in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-01-25).
+	     in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-01-25). The date must be after 1900.
 	     </blockquote>`
 	| ScsLang.da => `^s
 	     Datoen skal være i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
-	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25).
+	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25). Datoen skal være efter 1900
 	     </blockquote>`)
 
       fun msgDbTimestamp s = 
@@ -563,9 +563,11 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>time</b> and <b>date</b> in this format <code>YYYY-MM-DD HH:MM:SS</code>.
+             The year must be after 1900.
 	     </blockquote>`
 	| ScsLang.da => `^s
 	     Du skal indtaste en <b>tid</b> og <b>dato</b> i formatet <code>YYYY-MM-DD HH:MM:SS</code>.
+             Året skal være efter 1900.
 	     </blockquote>`)
 
       fun msgTableName s = 

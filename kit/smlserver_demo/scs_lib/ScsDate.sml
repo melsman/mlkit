@@ -231,7 +231,7 @@ structure ScsDate :> SCS_DATE =
       | _ => ""
 
     fun dateOk (d,m,y) =
-      m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m
+      m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m andalso y >= 1900 (* Date.sml requires y >= 1900 for some reson??? *)
 
     fun timeOk (h,m,s) =
       h >= 0 andalso h < 24 andalso m>= 0 andalso m < 60 andalso s >= 0 andalso s < 60
