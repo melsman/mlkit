@@ -3,12 +3,15 @@
 signature COMPILE =
   sig
 
-    type CompileBasis and topdec and target and linkinfo
+    (* compiler for compiling structure declarations 
+     * not containing functor applications. *)
 
-    val compile : CompileBasis * topdec * string -> (CompileBasis * target * linkinfo) Option
+    type CEnv and CompileBasis and strdec and target and linkinfo
+
+    val compile : CEnv * CompileBasis * strdec list * string ->
+      (CEnv * CompileBasis * target * linkinfo) Option
 
     val generate_link_code : linkinfo list -> target
-
     val emit: {target: target, filename:string} -> unit
 
     val reset : unit -> unit

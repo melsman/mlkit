@@ -18,7 +18,8 @@ functor DecisionTree(structure Lab: LAB
 		       sharing type PatBindings.lab = Lab.lab
 			   and type PatBindings.pat = Grammar.pat
 			   and type PatBindings.CEnv = CompilerEnv.CEnv
-
+			   and type PatBindings.tyvar = CompilerEnv.tyvar
+			   and type PatBindings.LType = CompilerEnv.Type
 		     structure Lvars: LVARS
 		       sharing type PatBindings.lvar = Lvars.lvar
 
@@ -26,7 +27,8 @@ functor DecisionTree(structure Lab: LAB
 		       sharing type PatBindings.TypeInfo
 			            = DecisionList.TypeInfo
 				    = TypeInfo.TypeInfo
-
+			   and type TypeInfo.TyVar = PatBindings.TyVar
+			   and type TypeInfo.Type = PatBindings.SType
 		     structure FinMap: FINMAP
 		       sharing type PatBindings.map = DecisionList.map
 			            = FinMap.map
@@ -54,6 +56,10 @@ functor DecisionTree(structure Lab: LAB
     type pat = Grammar.pat
     type Path = (Lab.lab * TypeInfo) list
     type CEnv = CompilerEnv.CEnv
+    type SType = TypeInfo.Type
+    type TyVar = TypeInfo.TyVar
+    type tyvar = CompilerEnv.tyvar
+    type LType = CompilerEnv.Type
 
     datatype DecisionTree =
         LAB_DECOMPOSE of {bind: lvar,
@@ -424,10 +430,10 @@ functor DecisionTree(structure Lab: LAB
 				(* FINALLY, nothing else to decompose. *)
 
     in
-      fun bindIdentifiers(root, pats, rule): DecisionTree =
+      fun bindIdentifiers compileTypeScheme (root, pats, rule): DecisionTree =
 	let
 	  val pat = List.nth (rule-1) pats
-	  val (btree, env) = patBindings(root, pat)
+	  val (btree, env) = patBindings compileTypeScheme (root, pat)
 
 	  val _ =
 	    if !Flags.DEBUG_DECISIONTREE then
@@ -454,7 +460,8 @@ functor DecisionTree(structure Lab: LAB
       the appropriate lvar, we generate a series of bindings to run down
       the path in the decision, and then perform the selection. *)
 
-    fun decisionTree'(numRules: int,
+    fun decisionTree'(compileTypeScheme : TyVar list * SType -> tyvar list * LType)
+                     (numRules: int,
 		      sortedList: (lvar * Decision) list,
 		      liveRules: RuleNum EqSet.Set,
 		      root: lvar,
@@ -466,7 +473,7 @@ functor DecisionTree(structure Lab: LAB
 			   the identifiers for this pattern. *)
 	     (if EqSet.isEmpty liveRules
 	      then FAIL
-	      else bindIdentifiers(root, pats, firstOfSet liveRules)
+	      else bindIdentifiers compileTypeScheme (root, pats, firstOfSet liveRules)
 	     )
 
 	 | (here, (dec as DECISION{path, select, defaults})) :: decs =>
@@ -538,7 +545,8 @@ functor DecisionTree(structure Lab: LAB
 		       (if !Flags.DEBUG_DECISIONTREE then 
 			  BasicIO.println("subtree --- decisions = nil")  
 			else ();
-			  decisionTree'(numRules, decs,
+			  decisionTree' compileTypeScheme 
+			               (numRules, decs,
 					subLiveRules, root, pats))
 
 		      | _ =>
@@ -551,8 +559,8 @@ functor DecisionTree(structure Lab: LAB
 			   val (deconLvar, deconF) = decompose(unlabLvar)
 			 in
 			   deconF(
-			     decisionTree'(
-			       numRules,
+			     decisionTree' compileTypeScheme
+			      (numRules,
 			       sortDecs(
 				 decs
 				 @ pairWith deconLvar decisions
@@ -624,7 +632,7 @@ functor DecisionTree(structure Lab: LAB
 	       val wildLiveRules = liveRules /\ defaults
 
 	       fun theWildcard() =
-		 decisionTree'(numRules, decs, wildLiveRules, root, pats)
+		 decisionTree' compileTypeScheme (numRules, decs, wildLiveRules, root, pats)
 
 	     in
 	       case select
@@ -684,12 +692,14 @@ functor DecisionTree(structure Lab: LAB
 		      ))
 	     end
 
-    fun decisionTree{pats: pat list, root: lvar, decisions: Decision list}
+    fun decisionTree{compileTypeScheme: TyVar list * SType -> tyvar list * LType, 
+		     pats: pat list, root: lvar, decisions: Decision list}
           : DecisionTree =
       let
 	val numRules = List.size pats
       in
-	decisionTree'(numRules, sortDecs(pairWith root decisions),
+	decisionTree' compileTypeScheme 
+	             (numRules, sortDecs(pairWith root decisions),
 		      EqSet.fromList(N_to_M(1, numRules)), root, pats
 		     )
       end

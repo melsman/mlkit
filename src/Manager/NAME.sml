@@ -24,6 +24,8 @@ signature NAME =
        * marked generative. After a succeding match, n and n' 
        * are unmarked. *)
 
+    val is_gen : name -> bool
+
     val bucket : name list ref
 
     val reset : unit -> unit

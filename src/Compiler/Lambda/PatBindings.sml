@@ -31,6 +31,11 @@ functor PatBindings (structure Lab : LAB
     type CEnv = CE.CEnv
 
     type lvar = Lvars.lvar
+    type TyVar = TypeInfo.TyVar
+    type SType = TypeInfo.Type
+    type tyvar = CompilerEnv.tyvar
+    type LType = CompilerEnv.Type
+
     type RuleNum = int
     type (''a, 'b) map = (''a, 'b) FinMap.map
     infix plus
@@ -63,36 +68,43 @@ functor PatBindings (structure Lab : LAB
         Some (TypeInfo.VAR_PAT_INFO {tyvars,...}) => List.size tyvars
       | _ => raise GetArity (*Crash.impossible "PatBindings.get_arity"*)
 
-    fun patBindings(root, pat): (BindingTree * CE.CEnv) =
+    fun patBindings (compileTypeScheme: TyVar list * SType -> tyvar list * LType)
+      (root, pat): (BindingTree * CE.CEnv) =
       case pat
         of ATPATpat(_, atpat) =>
-             atpatBindings(root, atpat)
+             atpatBindings compileTypeScheme (root, atpat)
 
         | CONSpat(i, OP_OPT(longid,_), atpat) =>
 	     (case ElabInfo.to_TypeInfo i
 		of Some (info as TypeInfo.CON_INFO _) =>
 		  let
 		    val childLv = Lvars.newLvar()
-		    val (bt, env) = atpatBindings(childLv, atpat)
+		    val (bt, env) = atpatBindings compileTypeScheme (childLv, atpat)
 		  in
 		    (CONbtree{info=info, child=bt, childLvar=childLv}, env)
 		  end
 		 | Some (info as TypeInfo.EXCON_INFO _) => 
 		  let
 		    val childLv = Lvars.newLvar()
-		    val (bt, env) = atpatBindings(childLv, atpat)
+		    val (bt, env) = atpatBindings compileTypeScheme (childLv, atpat)
 		  in
 		    (EXCONbtree{info=info,child=bt, childLvar=childLv}, env)
 		  end
 		 | _ => Crash.impossible "patBindings(CONSpat..)")
             
         | TYPEDpat(_, pat, _) =>
-            patBindings(root, pat)
+            patBindings compileTypeScheme (root, pat)
 
         | LAYEREDpat(i, OP_OPT(id, _), _, pat) =>
            (let
-              val bind = CE.declareVar(id, root, CE.emptyCEnv)
-              val (bt, env) = patBindings(root, pat)
+	      val (tyvars, Type) = 
+		case ElabInfo.to_TypeInfo i
+		  of Some (TypeInfo.VAR_PAT_INFO {tyvars,Type}) =>
+		    compileTypeScheme(tyvars,Type)
+		   | _ => Crash.impossible "PatBindings.LAYEREDpat" 
+
+              val bind = CE.declareVar(id, (root, tyvars, Type), CE.emptyCEnv)
+              val (bt, env) = patBindings compileTypeScheme (root, pat)
             in
               (bt, env plus bind)
             end handle GetArity =>
@@ -104,7 +116,7 @@ functor PatBindings (structure Lab : LAB
         | UNRES_INFIXpat _ =>
             Crash.impossible "patBindings(UNRES_INFIX)"
 
-    and atpatBindings(root, atpat): (BindingTree * CE.CEnv) =
+    and atpatBindings compileTypeScheme (root, atpat): (BindingTree * CE.CEnv) =
       case atpat
         of WILDCARDatpat _ =>
              (NILbtree, CE.emptyCEnv)
@@ -115,16 +127,16 @@ functor PatBindings (structure Lab : LAB
          | LONGIDatpat(i, OP_OPT(longid, _)) =>
              (NILbtree, 
 	      case ElabInfo.to_TypeInfo i
-		of Some (TypeInfo.VAR_PAT_INFO _) =>
-		  (case Ident.decompose longid
-		     of (nil, id) => (CE.declareVar(id, (*Lvars.rename (Ident.pr_id id)*) root, 
-						    CE.emptyCEnv) 
-				      handle GetArity =>
-                                        Crash.impossible ("Cannot find arity (PatBindings.atpatBindings)\n\
-                                        \pattern: " ^ PP.flatten1(Grammar.layoutAtpat atpat))
+		of Some (TypeInfo.VAR_PAT_INFO {tyvars,Type}) =>
+		  let val (tyvars',Type') = compileTypeScheme(tyvars,Type)
+		  in case Ident.decompose longid
+		       of (nil, id) => (CE.declareVar(id, (root, tyvars', Type'), CE.emptyCEnv) 
+					handle GetArity =>
+					  Crash.impossible ("Cannot find arity (PatBindings.atpatBindings)\n\
+					   \pattern: " ^ PP.flatten1(Grammar.layoutAtpat atpat))
 				     )
-		      | _ => Crash.impossible "atpatBindings"
-		   )
+			| _ => Crash.impossible "atpatBindings"
+		  end
 		 | _ => CE.emptyCEnv) 
 
          | RECORDatpat(_, patrowOpt) =>
@@ -159,7 +171,7 @@ functor PatBindings (structure Lab : LAB
                val (infos, lvars, pats) = unzip3 infosXlvarsXpats
 
                val (trees, envs) =
-                 ListPair.unzip(map patBindings (ListPair.zip(lvars, pats)))
+                 ListPair.unzip(map (patBindings compileTypeScheme) (ListPair.zip(lvars, pats)))
 
                val L: (lab * (TypeInfo * lvar * BindingTree)) list =
                  ListPair.zip(labs, zip3(infos, lvars, trees))
@@ -176,7 +188,7 @@ functor PatBindings (structure Lab : LAB
              end
 
          | PARatpat(_, pat) =>
-             patBindings(root, pat)
+             patBindings compileTypeScheme (root, pat)
 
 
     type StringTree = PP.StringTree

@@ -33,6 +33,9 @@ functor Name() : NAME =
     fun unmark_gen ({mark=ref false,...} : name) = ()
       | unmark_gen ({mark,...} : name) = mark := false
 
+    fun is_gen ({mark=ref true,...}: name) = true
+      | is_gen _ = false
+
     fun match ({key,mark=m as ref true}:name, 
 	       {key=key',mark=m' as ref true}:name) = 
       (key := (!key'); m := false; m' := false)

@@ -4,8 +4,8 @@
 (*$TOP_LEVEL_REPORT*)
 signature TOP_LEVEL_REPORT =
   sig
-    type Basis
+    type InfixBasis and ElabBasis
     type Report
 
-    val report: {basis: Basis, bindings: bool} -> Report
+    val report: {infB: InfixBasis, elabB: ElabBasis, bindings: bool} -> Report
   end;

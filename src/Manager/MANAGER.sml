@@ -8,24 +8,9 @@ signature MANAGER =
     val load : string -> unit                 (* load(name)  loads consult file 
 					       * `name' into program state. *)
 
-    val save : string -> unit                 (* save(name)  saves a consult file 
-					       * `name' from program state. *)
+    val build : unit -> unit                  (* build the project *)
 
-    val wipe : unit -> unit                   (* wipe()  wipes the program state 
-					       * for cache information. *)
-    val touch : string -> unit
-
-    val delete : string -> unit               (* delete(name)  deletes `name' 
-					       * from program state. *)
-
-    val add : string -> unit                  (* add(name)  adds `name' to the 
-					       * end of program state. *)
-
-    val insert : string * string -> unit      (* insert(name, name0)  inserts `name' 
-					       * before `name0' in program state. *)
-
-    val build : unit -> unit                  (* build the system *)
-
+(*
     val comp : string -> unit                 (* comp(filename)  compiles file 
 					       * (!source_dir ^ filename) *) 
 
@@ -36,13 +21,20 @@ signature MANAGER =
                    vcgname : string} -> bool  (* on file named logname.                  *)
                                               (* The strings are absolute paths. Returns  *)
                                               (* true if the program is not empty.       *)
+*)
+
+    exception PARSE_ELAB_ERROR
+    val comp : string -> unit   (* comp s  compiles (!Flags.source_directory ^ s ^ ".sml")
+				 * into (!Flags.target_directory ^ s ^ ".exe") 
+				 * Log's, vcg's and linkfile are put in target directory. 
+				 * May raise PARSE_ELAB_ERROR. *)
+
+    val elab : string -> unit                 (* elab s  elaborates only; s is a file name
+					       * relative to source_dir *)
 
     val interact : unit -> unit               (* Menu-system to control flags *)
     val read_script : unit -> unit            (* Read script file *)
 
     val reset : unit -> unit
     val commit : unit -> unit
-
-    val elab : string -> unit                 (*elab s = elaborate only; s is a file name
-					       relative to source_dir*)
   end

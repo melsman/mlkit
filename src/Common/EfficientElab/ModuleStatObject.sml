@@ -356,6 +356,22 @@ functor ModuleStatObject(structure StrId  : STRID
 	      end
 	    end
 
+      (*take care, match_via will raise No_match if there is no match*)
+      fun match_via (FUNSIG {T=T, E=E, T'E'=Sig' as SIGMA {T=T',E=E'}}, E0) : Sig * realisation =
+	    let val phi = sigMatchRea(SIGMA{T=T,E=E}, E0)
+	                    (*sigMatchRea will raise No_match,
+			     if no realisation can be found*)
+	        val E'' = Realisation.on_Env phi E
+	    in
+	      check_enrichment (E0,E'') ;       (*check_enrichment will raise No_match,
+						 if E' does not enrich E''*)
+	      let val phi_rename = Realisation.renaming T'
+		  val phi' = Realisation.oo (phi_rename, phi)
+	      in
+		(Sigma.on (phi', Sig'), phi')
+	      end
+	    end
+
       fun layout (FUNSIG{T, E, T'E'}) =
 	    let
 	      val argsig = PP.NODE {start="(", finish="", indent=1,

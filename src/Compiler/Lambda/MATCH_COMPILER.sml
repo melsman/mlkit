@@ -14,7 +14,8 @@ signature MATCH_COMPILER =
   sig
     include DECTREE_DT
 
-    val matchCompiler:
+    type SType and TyVar and LType and tyvar
+    val matchCompiler: (TyVar list * SType -> tyvar list * LType) ->
       lvar * pat list * {warnInexhaustive: bool, warnNoBindings: bool}
       -> DecisionTree			(* these flags are set when the
 					   warnings are required. *)

@@ -206,8 +206,10 @@ Compiler/Regions/SpreadDataType.sml
 Compiler/Regions/SpreadExpression.sml
 Compiler/Regions/TestSpreadDataType.sml
 Compiler/Regions/TestSpreadExp.sml
-Manager/BASIS.sml
-Manager/Basis.sml
+Manager/MANAGER_OBJECTS.sml
+Manager/ManagerObjects.sml
+Manager/INT_MODULES.sml
+Manager/IntModules.sml
 Manager/FREE_IDS.sml
 Manager/FreeIds.sml
 Manager/MANAGER.sml

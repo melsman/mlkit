@@ -911,7 +911,8 @@ struct
 	    {text = "Show project status", attr = noop_attr, 
 	     below = ACTION (fn () => !show_ref())},
 	    {text = "Compile and link project", attr = noop_attr, 
-	     below = ACTION (fn () => !build_ref())},
+	     below = ACTION (fn () => !build_ref())}])
+(*old
 	    {text = "Touch a program unit", attr = noop_attr, 
 	     below = ACTION (fn () => (read_string touch_unit_ref () ;
 				       if !u_or_q_from_read_string then () else
@@ -919,6 +920,7 @@ struct
 	    {text = "Touch it again",
 	     attr = VALUE (fn () => "(" ^ String.string (!touch_unit_ref) ^ ")"),
 	     below = ACTION (fn () => !touch_ref (!touch_unit_ref))}])
+old*)
 
   (*1. Printing of intermediate forms*)
 
