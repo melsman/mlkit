@@ -86,17 +86,16 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
-	ln -s $(INSTDIR)/bin/mlkit $(INSTDIR)/bin/kit
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
 bootstrap:
 	$(INSTALL) -a test $(INSTDIR)/test
-	cd $(INSTDIR)/test; ln -s README testlink
-	cd $(INSTDIR)/test; ln -s testcycl testcycl
-	cd $(INSTDIR)/test; ln -s exists.not testbadl
+	cd $(INSTDIR)/test; ln -sf README testlink
+	cd $(INSTDIR)/test; ln -sf testcycl testcycl
+	cd $(INSTDIR)/test; ln -sf exists.not testbadl
 	cd $(INSTDIR)/test; echo -e 'hardlinkA' >> hardlinkA
-	cd $(INSTDIR)/test; ln hardlinkA hardlinkB
+	cd $(INSTDIR)/test; ln -f hardlinkA hardlinkB
 	$(INSTALL) -a src $(INSTDIR)/src
 	cd $(INSTDIR)/src; make clean
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin

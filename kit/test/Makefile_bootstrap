@@ -1,10 +1,11 @@
 ARCH-OS=x86-linux
 MKDIR=mkdir -p
 INSTALL=cp -p
-KIT_FLAGS=
+RUNTIME_FLAGS=
+COMP_FLAGS= -gc 
 
 bootstrap:
-	cd src; ../bin/mlkit -gc sources.pm
+	cd src; ../bin/mlkit $(COMP_FLAGS) sources.pm
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystem.o $(INSTDIR)/bin
@@ -12,9 +13,10 @@ bootstrap:
 	$(INSTALL) bin/runtimeSystemGCProf.o $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemProf.o $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
-	$(INSTALL) src/run $(INSTDIR)/bin/mlkit
-	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/kit
-	echo -e '$(INSTDIR)/bin/mlkit $(KIT_FLAGS) $(INSTDIR) $$*'
+	$(INSTALL) src/run $(INSTDIR)/bin/mlkit.img
+	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
+	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
+	chmod a+x $(INSTDIR)/bin/mlkit
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
@@ -29,9 +31,10 @@ bootstrap:
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
-	chmod a+x $(INSTDIR)/bin/mlkit
+	chmod a+x $(INSTDIR)/bin/mlkit.img
+	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
 
 all_test:
-	cd test; ../bin/kittester ../bin/kit all.tst
+	cd test; ../bin/kittester ../bin/mlkit all.tst
 
 all: all_test bootstrap
