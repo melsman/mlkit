@@ -90,7 +90,7 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
       val callee_save_regs = map Gen []
       val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs
 
-      val caller_save_regs = map Gen []
+      val caller_save_regs = map Gen [3,5,6,7,8,9,10,23,24,25,26,28]
       val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs
     end
 

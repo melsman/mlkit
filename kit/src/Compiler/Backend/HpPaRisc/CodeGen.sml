@@ -88,6 +88,8 @@ struct
 			      BI.toplevel_region_withtype_string_lab,
 			      BI.toplevel_region_withtype_real_lab]
 
+    fun copy(s,t,C) = if s = t then C else COPY{r=s,t=t}::C
+
     local
       structure LibFunSet =
 	OrderSet(structure Order =
@@ -211,18 +213,19 @@ struct
       | move_aty_into_reg(SS.REG_F_ATY offset,dst_reg,size_ff,C) = base_plus_offset(sp,WORDS(~size_ff+offset),dst_reg,C)
       | move_aty_into_reg(SS.STACK_ATY offset,dst_reg,size_ff,C) = load_indexed(dst_reg,sp,WORDS(~size_ff+offset),C)
       | move_aty_into_reg(SS.DROPPED_RVAR_ATY,dst_reg,size_ff,C) = C
-      | move_aty_into_reg(SS.PHREG_ATY phreg,dst_reg,size_ff,C)  = if dst_reg = phreg then C else COPY{r=phreg,t=dst_reg} :: C
+      | move_aty_into_reg(SS.PHREG_ATY phreg,dst_reg,size_ff,C)  = copy(phreg,dst_reg,C)
       | move_aty_into_reg(SS.INTEGER_ATY i,dst_reg,size_ff,C)    = load_immed(IMMED i,dst_reg,C) (* Integers are tagged in ClosExp *)
       | move_aty_into_reg(SS.UNIT_ATY,dst_reg,size_ff,C)         = load_immed(IMMED BI.ml_unit,dst_reg,C)
+
+    fun resolve_arg(arg: SS.Aty, tmp:reg, size_ff:int) : reg * (RiscInst list -> RiscInst list) =
+      case arg
+	of SS.PHREG_ATY r => (r, fn C => C)
+	 | _ => (tmp, fn C => move_aty_into_reg(arg, tmp, size_ff, C))
 
     (* dst_aty = src_reg *)
     fun move_reg_into_aty(src_reg:reg,dst_aty,size_ff,C) =
       case dst_aty of
-	SS.PHREG_ATY dst_reg => 
-	  if src_reg = dst_reg then
-	    C
-	  else 
-	    COPY{r=src_reg,t=dst_reg} :: C
+	SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
       | SS.STACK_ATY offset => store_indexed(sp,WORDS(~size_ff+offset),src_reg,C) 
       | _ => die "move_reg_into_aty: ATY not recognized"
 
@@ -376,11 +379,11 @@ struct
     (***********************)
     (* Kills tmp_reg1 and tmp_reg2 *)
     fun align_stack C = (* MEGA HACK *)
-      COPY {r=sp, t=tmp_reg0} ::
+      copy(sp, tmp_reg0,
       load_immed(IMMED 60,tmp_reg3,
 		 ANDCM{cond=NEVER,r1=tmp_reg3,r2=sp,t=tmp_reg3} ::
 		 ADD{cond=NEVER,r1=tmp_reg3,r2=sp,t=sp} ::
-		 STWM {r=tmp_reg0,d="1028",s=Space 0,b=sp} :: C)
+		 STWM {r=tmp_reg0,d="1028",s=Space 0,b=sp} :: C))
 
     (* Kills no registers. *)      
     fun restore_stack C = LDW {d="-1028",s=Space 0,b=sp,t=sp} :: C
@@ -449,10 +452,23 @@ struct
     (* Status Bits Are Not Cleared          *)
     (* We preserve the value in register t, *)
     (* t may be used in a call to alloc     *)
-    fun reset_region(t:reg,size_ff,C) = compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],SOME(SS.PHREG_ATY t),size_ff,tmp_reg0(*not used*),C)
+    fun reset_region(t:reg,size_ff,C) = 
+      compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],SOME(SS.PHREG_ATY t),size_ff,tmp_reg0(*not used*),C)
 
     (* Status Bits Are Not Cleared *)
-    fun alloc(t:reg,n:int,size_ff,C) = compile_c_call_prim("alloc",[SS.PHREG_ATY t,SS.INTEGER_ATY n],SOME(SS.PHREG_ATY t),size_ff,tmp_reg0(*not used*),C)
+    fun alloc(t:reg,n:int,size_ff,C) =
+(*old:      compile_c_call_prim("alloc",[SS.PHREG_ATY t,SS.INTEGER_ATY n],SOME(SS.PHREG_ATY t),size_ff,tmp_reg0(*not used*),C) *)
+      
+      let val _ = add_lib_function "__allocate"
+	  val l = new_local_lab "return_from_alloc"
+      in copy(t,tmp_reg1,
+	 load_immed(IMMED n, tmp_reg2, 
+	 load_label_addr(l, SS.PHREG_ATY tmp_reg0, size_ff,
+         STWM {r=tmp_reg0, d="4", s=Space 0, b=sp} :: 
+         META_B{n=false,target=NameLab "__allocate"} ::  (* META_B destroys tmp_reg0 *)
+         LABEL l :: 
+	 copy(tmp_reg1,t, C))))
+      end
 
     fun clear_status_bits(t,C) = DEPI{cond=NEVER,i="0",p="31",len="2",t=t}::C
     fun set_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER,i="1",p="30",len="1",t=dst_reg} :: C
@@ -467,7 +483,7 @@ struct
 						  set_inf_bit(dst_reg,C))
        | SS.REG_F_ATY offset => base_plus_offset(sp,WORDS(~size_ff+offset),dst_reg,C)
        | SS.STACK_ATY offset => load_indexed(dst_reg,sp,WORDS(~size_ff+offset),C)
-       | SS.PHREG_ATY phreg  => COPY {r=phreg,t=dst_reg} :: C
+       | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
        | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory")
 
     fun alloc_ap(sma,dst_reg:reg,n,size_ff,C) =
@@ -727,21 +743,17 @@ struct
       fun muli(x:reg,y:reg,d:reg,C) = (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
 	if !BI.tag_integers then
 	  (add_lib_function("$$mulI");
-(*	   COPY{r=x,t=arg1} :: 28/12/1998, Niels*)
 	   SHD{cond=NEVER,r1=Gen 0,r2=arg1,p="1",t=arg1} ::
-(*	   COPY{r=y,t=arg0} :: 28/12/1998, Niels*)
 	   LDO {d="-1",b=arg0,t=arg0} ::
 	   META_BL {n=false,target=NameLab "$$mulI",rpLink=mrp, 
 		    callStr=";in=25,26;out=29;(MILLICALL)"} ::
 	   LDO{d="1",b=ret1,t=ret1} ::
-	   COPY{r=ret1,t=d} :: C)
+	   copy(ret1,d, C))
 	else
 	  (add_lib_function("$$muloI");
-(*	   COPY{r=x,t=arg1} ::
-	   COPY{r=y,t=arg0} :: 28/12/1998, Niels*)
 	   META_BL {n=false,target=NameLab "$$muloI",rpLink=mrp, 
 		    callStr=";in=25,26;out=29; (MILLICALL)"} ::
-	   COPY{r=ret1,t=d} :: C)
+	   copy(ret1,d, C))
 
       fun negi(x,d,size_ff,C) = (* Exception Overflow not implemented *)
 	let
@@ -779,7 +791,7 @@ struct
       in
 	x_C(y_C(FADD{fmt=DBL,r1=x_float_reg,r2=y_float_reg,t=tmp_float_reg2} ::
 		b_C(box_float_reg(b_reg,tmp_float_reg2,
-				  COPY{r=b_reg,t=d_reg} :: C'))))
+				  copy(b_reg,d_reg, C')))))
       end
 
     fun subf(x,y,b,d,size_ff,C) =
@@ -791,7 +803,7 @@ struct
       in
 	x_C(y_C(FSUB{fmt=DBL,r1=x_float_reg,r2=y_float_reg,t=tmp_float_reg2} ::
 		b_C(box_float_reg(b_reg,tmp_float_reg2,
-				  COPY{r=b_reg,t=d_reg} :: C'))))
+				  copy(b_reg,d_reg,C')))))
       end
 
     fun mulf(x,y,b,d,size_ff,C) =
@@ -803,7 +815,7 @@ struct
       in
 	x_C(y_C(FMPY{fmt=DBL,r1=x_float_reg,r2=y_float_reg,t=tmp_float_reg2} ::
 		b_C(box_float_reg(b_reg,tmp_float_reg2,
-				  COPY{r=b_reg,t=d_reg} :: C'))))
+				  copy(b_reg,d_reg,C')))))
       end
 
     fun divf(x,y,b,d,size_ff,C) =
@@ -812,7 +824,7 @@ struct
 	val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
       in
 	compile_c_call_prim("divFloat",[b,x,y],NONE,size_ff,tmp_reg0,
-			    b_C(if b_reg = d_reg then C' else COPY{r=b_reg,t=d_reg} :: C'))
+			    b_C(copy(b_reg,d_reg,C')))
       end
 
     fun negf(b,x,d,size_ff,C) =
@@ -823,7 +835,7 @@ struct
       in
 	x_C(FSUB{fmt=DBL,r1=Float 0,r2=x_float_reg,t=tmp_float_reg0} ::
 	    b_C(box_float_reg(b_reg,tmp_float_reg0,
-			      COPY{r=b_reg,t=d_reg} :: C')))
+			      copy(b_reg,d_reg,C'))))
       end
 
     fun absf(b,x,d,size_ff,C) =
@@ -834,7 +846,7 @@ struct
       in
 	x_C(FABS{fmt=DBL,r=x_float_reg,t=tmp_float_reg0} ::
 	    b_C(box_float_reg(b_reg,tmp_float_reg0,
-			      COPY{r=b_reg,t=d_reg} :: C')))
+			      copy(b_reg,d_reg,C'))))
       end
 
     fun cmpf(cond,x,y,d,size_ff,C) =
@@ -867,10 +879,10 @@ struct
 	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
       in
-	x_C(y_C(COPY{r=x_reg,t=d_reg} :: (* I may not destroy x_reg *)
+	x_C(y_C(copy(x_reg,d_reg, (* I may not destroy x_reg *)
 		DEPI{cond=NEVER,i="1",p="23",len="1",t=d_reg} ::
 		SUB{cond=NEVER,r1=d_reg,r2=y_reg,t=d_reg} ::
-		DEPI{cond=NEVER,i="0",p="23",len="23",t=d_reg} :: C'))
+		DEPI{cond=NEVER,i="0",p="23",len="23",t=d_reg} :: C')))
       end
 
     fun mulw8(x:reg,y:reg,d:reg,C) =
@@ -878,7 +890,7 @@ struct
        META_BL{n=false,target=NameLab "$$mulI",rpLink=mrp, 
 	       callStr=";in=25,26;out=29; (MILLICALL)"} ::
        DEPI{cond=NEVER,i="0",p="23",len="23",t=ret1} ::
-       COPY{r=ret1,t=d} :: C)
+       copy(ret1,d,C))
 
     fun andi(x,y,d,size_ff,C) = (* A[x&y] = A[x] & A[y]    tagging *)
       let
@@ -961,7 +973,7 @@ struct
       (add_lib_function("$$mulI");
        META_BL{n=false,target=NameLab "$$mulI",rpLink=mrp, 
 	       callStr=";in=25,26;out=29; (MILLICALL)"} ::
-       COPY{r=ret1,t=d} :: C)
+       copy(ret1,d,C))
 
     (*******************)
     (* Code Generation *)
@@ -1370,10 +1382,10 @@ struct
 				     | LS.BOXED i => (i,sel_insts)) sels
 		    fun UbTagCon(src_aty,C) =
 		      move_aty_into_reg(src_aty,tmp_reg0,size_ff, 
-					COPY{r=tmp_reg0, t=tmp_reg1} :: (* operand is in tmp_reg1, see SWITCH_I *)
+					copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
 					DEPI{cond=NEVER, i="0", p="29", len="30", t=tmp_reg1} ::
 					ADDI{cond=NOTEQUAL, i="-3", r=tmp_reg1, t=Gen 1} ::      (* nullify copy if tr = 3 *)
-					COPY{r=tmp_reg0, t=tmp_reg1} :: C)
+					copy(tmp_reg0, tmp_reg1, C)))
 		  in
 		    (case con_kind of
 		       LS.ENUM _ => CG_ls(LS.SWITCH_I(LS.SWITCH(opr_aty,sels',default)),C)
@@ -1389,62 +1401,65 @@ struct
 	   | LS.RESET_REGIONS{force=true,regions_for_resetting} =>
 		  COMMENT (pr_ls ls) :: 
 		  foldr (fn (alloc,C) => force_reset_aux_region(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting
-	   | LS.CCALL{name,args,rhos_for_result,res} => 
+	   | LS.PRIM{name,args,res} => 
 		  COMMENT (pr_ls ls) :: 
 		  (* Note that the prim names are defined in BackendInfo! *)
-		  (case (name,rhos_for_result@args,res) of
-		     ("__equal_int",[x,y],[d])            => cmpi(EQUAL,x,y,d,size_ff,C)
-		   | ("__minus_int",[x,y],[d])            => subi(x,y,d,size_ff,C)
-		   | ("__plus_int",[x,y],[d])             => addi(x,y,d,size_ff,C)
-		   | ("__mul_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])        => muli(x,y,d,C)
-		   | ("__neg_int",[x],[d])                => negi(x,d,size_ff,C)
-		   | ("__abs_int",[x],[d])                => absi(x,d,size_ff,C)
-		   | ("__less_int",[x,y],[d])             => cmpi(LESSTHAN,x,y,d,size_ff,C)
-		   | ("__lesseq_int",[x,y],[d])           => cmpi(LESSEQUAL,x,y,d,size_ff,C)
-		   | ("__greater_int",[x,y],[d])          => cmpi(GREATERTHAN,x,y,d,size_ff,C)
-		   | ("__greatereq_int",[x,y],[d])        => cmpi(GREATEREQUAL,x,y,d,size_ff,C)
-		   | ("__plus_float",[b,x,y],[d])         => addf(x,y,b,d,size_ff,C)
-		   | ("__minus_float",[b,x,y],[d])        => subf(x,y,b,d,size_ff,C)
-		   | ("__mul_float",[b,x,y],[d])          => mulf(x,y,b,d,size_ff,C)
-		   | ("__div_float",[b,x,y],[d])          => divf(x,y,b,d,size_ff,C)
-		   | ("__neg_float",[b,x],[d])            => negf(b,x,d,size_ff,C)
-		   | ("__abs_float",[b,x],[d])            => absf(b,x,d,size_ff,C)
-		   | ("__less_float",[x,y],[d])           => cmpf(LESSTHAN,x,y,d,size_ff,C)
-		   | ("__lesseq_float",[x,y],[d])         => cmpf(LESSEQUAL,x,y,d,size_ff,C)
-		   | ("__greater_float",[x,y],[d])        => cmpf(GREATERTHAN,x,y,d,size_ff,C)
-		   | ("__greatereq_float",[x,y],[d])      => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
-
-		   | ("less_word__",[x,y],[d])            => cmpi(LESSTHAN_UNSIGNED,x,y,d,size_ff,C)
-		   | ("greater_word__",[x,y],[d])         => cmpi(GREATERTHAN_UNSIGNED,x,y,d,size_ff,C)
-		   | ("lesseq_word__",[x,y],[d])          => cmpi(LESSEQUAL_UNSIGNED,x,y,d,size_ff,C)
-		   | ("greatereq_word__",[x,y],[d])       => cmpi(GREATEREQUAL_UNSIGNED,x,y,d,size_ff,C)
-
-		   | ("plus_word8__",[x,y],[d])           => addw8(x,y,d,size_ff,C)
-		   | ("minus_word8__",[x,y],[d])          => subw8(x,y,d,size_ff,C)
-		   | ("mul_word8__",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d]) => mulw8(x,y,d,C)
-
-		   | ("and__",[x,y],[d])                  => andi(x,y,d,size_ff,C)
-		   | ("or__",[x,y],[d])                   => ori(x,y,d,size_ff,C)
-		   | ("xor__",[x,y],[d])                  => xori(x,y,d,size_ff,C)
-		   | ("shift_left__",[x,y],[d])           => shift_lefti(x,y,d,size_ff,C)
-		   | ("shift_right_signed__",[x,y],[d])   => shift_right_signedi(x,y,d,size_ff,C)
-		   | ("shift_right_unsigned__",[x,y],[d]) => shift_right_unsignedi(x,y,d,size_ff,C)
-
-		   | ("plus_word__",[x,y],[d])            => addw(x,y,d,size_ff,C)
-		   | ("minus_word__",[x,y],[d])           => subw(x,y,d,size_ff,C)
-		   | ("mul_word__",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d]) => mulw(x,y,d,C)
-
-		   | ("__fresh_exname",[],[aty]) =>
+		  (case (name,args,res) 
+		     of ("__equal_int",[x,y],[d])            => cmpi(EQUAL,x,y,d,size_ff,C)
+		      | ("__minus_int",[x,y],[d])            => subi(x,y,d,size_ff,C)
+		      | ("__plus_int",[x,y],[d])             => addi(x,y,d,size_ff,C)
+		      | ("__neg_int",[x],[d])                => negi(x,d,size_ff,C)
+		      | ("__abs_int",[x],[d])                => absi(x,d,size_ff,C)
+		      | ("__less_int",[x,y],[d])             => cmpi(LESSTHAN,x,y,d,size_ff,C)
+		      | ("__lesseq_int",[x,y],[d])           => cmpi(LESSEQUAL,x,y,d,size_ff,C)
+		      | ("__greater_int",[x,y],[d])          => cmpi(GREATERTHAN,x,y,d,size_ff,C)
+		      | ("__greatereq_int",[x,y],[d])        => cmpi(GREATEREQUAL,x,y,d,size_ff,C)
+		      | ("__plus_float",[b,x,y],[d])         => addf(x,y,b,d,size_ff,C)
+		      | ("__minus_float",[b,x,y],[d])        => subf(x,y,b,d,size_ff,C)
+		      | ("__mul_float",[b,x,y],[d])          => mulf(x,y,b,d,size_ff,C)
+		      | ("__div_float",[b,x,y],[d])          => divf(x,y,b,d,size_ff,C)
+		      | ("__neg_float",[b,x],[d])            => negf(b,x,d,size_ff,C)
+		      | ("__abs_float",[b,x],[d])            => absf(b,x,d,size_ff,C)
+		      | ("__less_float",[x,y],[d])           => cmpf(LESSTHAN,x,y,d,size_ff,C)
+		      | ("__lesseq_float",[x,y],[d])         => cmpf(LESSEQUAL,x,y,d,size_ff,C)
+		      | ("__greater_float",[x,y],[d])        => cmpf(GREATERTHAN,x,y,d,size_ff,C)
+		      | ("__greatereq_float",[x,y],[d])      => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
+		       
+		      | ("less_word__",[x,y],[d])            => cmpi(LESSTHAN_UNSIGNED,x,y,d,size_ff,C)
+		      | ("greater_word__",[x,y],[d])         => cmpi(GREATERTHAN_UNSIGNED,x,y,d,size_ff,C)
+		      | ("lesseq_word__",[x,y],[d])          => cmpi(LESSEQUAL_UNSIGNED,x,y,d,size_ff,C)
+		      | ("greatereq_word__",[x,y],[d])       => cmpi(GREATEREQUAL_UNSIGNED,x,y,d,size_ff,C)
+		       
+		      | ("plus_word8__",[x,y],[d])           => addw8(x,y,d,size_ff,C)
+		      | ("minus_word8__",[x,y],[d])          => subw8(x,y,d,size_ff,C)
+		       
+		      | ("and__",[x,y],[d])                  => andi(x,y,d,size_ff,C)
+		      | ("or__",[x,y],[d])                   => ori(x,y,d,size_ff,C)
+		      | ("xor__",[x,y],[d])                  => xori(x,y,d,size_ff,C)
+		      | ("shift_left__",[x,y],[d])           => shift_lefti(x,y,d,size_ff,C)
+		      | ("shift_right_signed__",[x,y],[d])   => shift_right_signedi(x,y,d,size_ff,C)
+		      | ("shift_right_unsigned__",[x,y],[d]) => shift_right_unsignedi(x,y,d,size_ff,C)
+		       
+		      | ("plus_word__",[x,y],[d])            => addw(x,y,d,size_ff,C)
+		      | ("minus_word__",[x,y],[d])           => subw(x,y,d,size_ff,C)
+		       
+		      | ("__fresh_exname",[],[aty]) =>
 		       load_label_addr(exn_counter_lab,SS.PHREG_ATY tmp_reg1,size_ff,
 				       LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg2} ::
 				       move_reg_into_aty(tmp_reg2,aty,size_ff,
 							 ADDI {cond=NEVER, i="1", r=tmp_reg2, t=tmp_reg2} ::
 							 STW {r=tmp_reg2, d="0", s=Space 0, b=tmp_reg1} :: C))
-		   | _ => 
-		       (case res of
-			  [] => compile_c_call_prim(name,rhos_for_result@args,NONE,size_ff,tmp_reg1,C)
-			| [res_aty] => compile_c_call_prim(name,rhos_for_result@args,SOME res_aty,size_ff,tmp_reg1,C)
-			| _ => die "CCall with more than one result variable")))
+		      | _ => die ("PRIM(" ^ name ^ ") not implemented"))
+
+	   | LS.CCALL{name,args,rhos_for_result,res} => 
+		  COMMENT (pr_ls ls) :: 
+		  (case (name, rhos_for_result@args, res)
+		     of ("__mul_int", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => muli(x,y,d,C) 
+		      | ("mul_word__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw(x,y,d,C)
+		      | ("mul_word8__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw8(x,y,d,C)
+	              | (_,all_args,[]) => compile_c_call_prim(name,all_args,NONE,size_ff,tmp_reg1,C)
+		      | (_,all_args,[res_aty]) => compile_c_call_prim(name,all_args,SOME res_aty,size_ff,tmp_reg1,C)
+		      | _ => die "CCall with more than one result variable"))
       in
 	foldr (fn (ls,C) => CG_ls(ls,C)) C lss
       end
@@ -1565,7 +1580,7 @@ struct
 	    val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
 	  in
 	    LABEL (NameLab "raise_exn") ::
-	    COPY{r=arg0,t=arg_reg} :: (* We assume that arg_reg is preserved across C calls *)
+	    copy(arg0,arg_reg, (* We assume that arg_reg is preserved across C calls *)
 	    
 	    COMMENT "DEALLOCATE REGIONS UNTIL" ::
 	    load_from_label(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0,
@@ -1584,7 +1599,7 @@ struct
 	    COMMENT "JUMP TO HANDLE FUNCTION" ::
 	    load_indexed(clos_reg,tmp_reg1,WORDS(~3), (* Fetch Closure into Closure Argument Register *)
 	    LDW{d="0",s=Space 0,b=clos_reg,t=tmp_reg2} ::
-	    META_BV{n=false,x=Gen 0,b=tmp_reg2}::C))))))))
+	    META_BV{n=false,x=Gen 0,b=tmp_reg2}::C)))))))))
 	  end
 
 	(* primitive exceptions *)
@@ -1641,6 +1656,29 @@ struct
 					  DOT_END :: []))
 	val _  = add_static_data static_data
 
+	val caller_save_regs = map HpPaRisc.lv_to_reg HpPaRisc.caller_save_regs_as_lvs
+
+	fun ccall_stub(stubname, cfunction, args, ret, C) =  (* args in tmp_reg1 and tmp_reg2; result in tmp_reg1. *)
+	  let 
+	    val _ = add_static_data [DOT_EXPORT(NameLab stubname,"CODE")]
+	    fun push_callersave_regs C = 
+	      foldl (fn (r, C) => STWM{r=r,d="4",s=Space 0,b=sp} :: C) C caller_save_regs
+	    fun pop_callersave_regs C = 
+	      foldr (fn (r, C) => LDWM{d="-4",s=Space 0,b=sp,t=r} :: C) C caller_save_regs 
+	    val size_ff = 0 (*dummy*)
+	  in 
+	    DOT_CODE ::
+	    LABEL (NameLab stubname) ::
+	    push_callersave_regs
+	    (compile_c_call_prim(cfunction,map SS.PHREG_ATY args,
+				 Option.map SS.PHREG_ATY ret, size_ff, tmp_reg1(*not used*),
+	      pop_callersave_regs 
+              (LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg2} ::
+	       META_BV{n=false,x=Gen 0,b=tmp_reg2} :: C)))
+	  end       	     
+
+	fun allocate C = ccall_stub("__allocate", "alloc", [tmp_reg1, tmp_reg2], SOME tmp_reg1, C)
+
 	fun generate_jump_code_progunits(progunit_labs,C) = 
 	  foldr (fn (l,C) => 
 		 let
@@ -1657,10 +1695,10 @@ struct
 	val _ = add_lib_function "allocateRegion"
 	fun allocate_global_regions(region_labs,C) = 
 	  foldl (fn (lab,C) => 
-		 COPY{r=sp, t=arg0} ::
+		 copy(sp, arg0,
 		 LDO {d=(Int.toString(BI.size_of_reg_desc()*4)),b=sp,t=sp} ::
 		 align_stack(META_BL{n=false,target=NameLab "allocateRegion",rpLink=rp,callStr="ARGW0=GR, RTNVAL=GR"} ::
-			     restore_stack(store_in_label(SS.PHREG_ATY ret0,DatLab lab,tmp_reg1,0,C)))) C region_labs
+			     restore_stack(store_in_label(SS.PHREG_ATY ret0,DatLab lab,tmp_reg1,0,C))))) C region_labs
 
 	fun init_insts C =
 	  DOT_CODE ::
@@ -1678,7 +1716,7 @@ struct
 
 	  (* Push top-level handler on stack *)
           COMMENT "PUSH TOP-LEVEL HANDLER ON STACK" ::
-	  COPY{r=sp, t=tmp_reg1} ::
+	  copy(sp, tmp_reg1,
 	  load_label_addr(NameLab "TopLevelHandlerLab", SS.PHREG_ATY tmp_reg3,0,
 	  STWM{r=tmp_reg3,d="4",s=Space 0,b=sp} ::
 	  STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: (* Push TopLevelHandlerClosure *)
@@ -1700,7 +1738,7 @@ struct
 	  generate_jump_code_progunits(progunit_labs,
           (* Jump to lab_exit *)
           COMMENT "JUMP TO LAB_EXIT" ::
-          META_B{n=false,target=lab_exit} :: C)))))
+          META_B{n=false,target=lab_exit} :: C))))))
 	  
 	fun lab_exit_insts C =
 	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
@@ -1713,7 +1751,7 @@ struct
 				DOT_PROCEND :: C)
 	  end
 
-	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler [])))
+	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate []))))
       in
 	HppaResolveJumps.RJ{top_decls = [],
 			    init_code = init_link_code,

@@ -124,10 +124,9 @@ struct
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
     | RESET_REGIONS of {force: bool, 
 			regions_for_resetting: 'aty sma list}
-    | CCALL         of {name: string,  
-			args: 'aty list,
-			rhos_for_result : 'aty list,
-			res: 'aty list}
+    | PRIM          of {name: string, args: 'aty list, res: 'aty list}
+    | CCALL         of {name: string, args: 'aty list,
+			rhos_for_result : 'aty list, res: 'aty list}
 
   and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 
@@ -207,7 +206,7 @@ struct
 	   ATOM aty => layout_aty pr_aty aty
 	 | LOAD lab => LEAF("load(" ^ Labels.pr_label lab ^ ")")
 	 | STORE(aty,lab) => LEAF("store(" ^ pr_aty aty ^ "," ^ Labels.pr_label lab ^ ")")
-	 | STRING s  => LEAF("\"" ^ s ^ "\"")
+	 | STRING s  => LEAF("\"" ^ String.toString s ^ "\"")
 	 | REAL s    => LEAF(s)
 	 | CLOS_RECORD{label,elems,alloc} => HNODE{start="[",
 						   finish="]clos " ^ pr_sma pr_aty alloc,
@@ -372,6 +371,15 @@ struct
 		       finish="",
 		       childsep=RIGHT ",",
 		       children=map (layout_sma pr_aty) regions_for_resetting}
+	   | PRIM{name,args,res} =>
+		 let
+		   val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 in
+		   HNODE{start=flatten1(t0) ^ " = prim(\"" ^ name ^ "\", <", 
+			 finish=">)",
+			 childsep=RIGHT ",",
+			 children=map (layout_aty pr_aty) args}
+		 end
 	   | CCALL{name,args,rhos_for_result,res} =>
 		 let
 		   val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
@@ -387,7 +395,7 @@ struct
 	NODE{start="",
 	     finish= "",
 	     indent= 0,
-	     childsep= RIGHT ";",
+	     childsep= RIGHT "; ",
 	     children= map (layout_ls pr_sty pr_offset pr_aty simplify) lss}
 
       and pr_sma pr_aty sma =
@@ -572,10 +580,12 @@ struct
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2)}::acc
       | L_ce(ClosExp.RESET_REGIONS{force,regions_for_resetting},lvars_res,acc) = 
 	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::acc
-      | L_ce(ClosExp.CCALL{name,args,rhos_for_result},lvars_res,acc) = 
-	  CCALL{name=name,args=ces_to_atoms args,
-		rhos_for_result=ces_to_atoms rhos_for_result,
-		res=map VAR lvars_res}::acc
+      | L_ce(ClosExp.CCALL{name,rhos_for_result,args},lvars_res,acc) = 
+	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
+				       res=map VAR lvars_res}::acc
+	  else CCALL{name=name,args=ces_to_atoms args,
+		     rhos_for_result=ces_to_atoms rhos_for_result,
+		     res=map VAR lvars_res}::acc
       | L_ce(ClosExp.FRAME{declared_lvars,declared_excons},[],acc) = acc
       | L_ce(ClosExp.FRAME{declared_lvars,declared_excons},_,_) = die "L_ce.FRAME: lvars_res not empty."
 
@@ -656,6 +666,7 @@ struct
     | get_phreg_ls(FUNCALL cc) = get_phreg_in_fun cc
     | get_phreg_ls(RAISE{arg,defined_atys}) = get_phreg_atom(arg,[])
     | get_phreg_ls(RESET_REGIONS{force,regions_for_resetting}) = get_phreg_smas(regions_for_resetting,[])
+    | get_phreg_ls(PRIM{name,args,res}) = get_phreg_atoms(args,[])
     | get_phreg_ls(CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls _ = die "use_ls: statement contains statements itself."
 
@@ -724,6 +735,7 @@ struct
     | use_var_ls(FUNCALL cc) = use_var_on_fun cc
     | use_var_ls(RAISE{arg,defined_atys}) = get_var_atom(arg,[])
     | use_var_ls(RESET_REGIONS{force,regions_for_resetting}) = get_var_smas(regions_for_resetting,[])
+    | use_var_ls(PRIM{name,args,res}) = get_var_atoms(args,[])
     | use_var_ls(CCALL{name,args,rhos_for_result,res}) = get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
     | use_var_ls _ = die "use_var_ls: statement contains statements itself."
 
@@ -736,6 +748,7 @@ struct
     | def_var_ls(FUNCALL cc) = def_var_on_fun cc
     | def_var_ls(RAISE{arg,defined_atys}) = get_var_atoms(defined_atys,[])
     | def_var_ls(RESET_REGIONS{force,regions_for_resetting}) = []
+    | def_var_ls(PRIM{res,...}) = get_var_atoms(res,[])
     | def_var_ls(CCALL{res,...}) = get_var_atoms(res,[])
     | def_var_ls _ = die "def_var_ls: statement contains statements itself."
 

@@ -216,6 +216,7 @@ struct
       | CO_lss(LS.SWITCH_C sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_C,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_E sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_E,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.RESET_REGIONS a::lss,LVmap,PHmap,offset,acc) = LS.RESET_REGIONS a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.PRIM a::lss,LVmap,PHmap,offset,acc) = LS.PRIM a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.CCALL a::lss,LVmap,PHmap,offset,acc) = LS.CCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
 
     (********************************)

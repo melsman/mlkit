@@ -259,6 +259,8 @@ struct
 	  | SS_lss'(LS.SWITCH_E sw::lss) = SS_sw(SS_lss,LS.SWITCH_E,sw,ATYmap,RHOmap) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.RESET_REGIONS{force,regions_for_resetting}::lss) =
 	  LS.RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting} :: SS_lss(lss,ATYmap,RHOmap)
+	  | SS_lss'(LS.PRIM{name,args,res}::lss) = 
+	  LS.PRIM{name=name,args=atoms_to_atys args,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) = 
 	  LS.CCALL{name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
       in
