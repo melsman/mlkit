@@ -21,3 +21,8 @@ functor TyVar(structure Crash: CRASH): TYVAR =
 				  "'" :: "'" :: ss => true
 				| _ => false)
   end;
+
+(*$Log$
+ *Revision 1.3  1997/06/24 10:47:26  hojfeld
+ **** empty log message ***
+ **)
