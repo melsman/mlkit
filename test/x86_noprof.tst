@@ -26,7 +26,12 @@ Test files may contain Standard ML like comments.
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
+weeks.sml
+weeks2.sml          ccl       ecte
+weeks3.sml          ccl       ecte
 typerr.sml          ccl       ecte
+freedatatype.sml    ccl       ecte
+freedatatype2.sml   ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
 functor.sml         ccl
@@ -34,12 +39,14 @@ functor2.sml        ccl
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
+anoq_Exception.sml
+danwang.pm                    tc
 
 (* Tests of some benchmark programs *)
 
 kitfib35.sml            tx    gc         nobasislib
-kitdangle.sml           tx               nobasislib     (* does not work with GC currently! *)
-kitdangle3.sml          tx               nobasislib     (* does not work with GC currently! *)
+kitdangle.sml           tx               nobasislib
+kitdangle3.sml          tx               nobasislib
 kitreynolds2.sml        tx    gc
 kitreynolds3.sml        tx    gc
 kitloop2.sml            tx    gc

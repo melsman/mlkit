@@ -52,7 +52,7 @@ signature LINE_STMT =
     datatype 'aty SimpleExp =
       ATOM            of 'aty
     | LOAD            of label
-    | STORE           of 'aty * label
+    | STORE           of 'aty * label (* moved to LineStmt??? 2001-03-15, Niels *)
     | STRING          of string
     | REAL            of string
     | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
@@ -172,6 +172,19 @@ signature LINE_STMT =
     val use_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
     val def_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
     val def_use_var_ls   : ('sty,'offset,Atom) LineStmt -> lvar list * lvar list
+
+    (**************************************************************)
+    (* Def and Use sets for LineStmt RETURN only lvars            *)
+    (* Lvars bound to regions are also filtered out; they are not *)
+    (* part of the root-set and are therefore not included in the *)
+    (* bit vectors.                                               *)
+    (**************************************************************)
+    val get_var_sma_cbv    : Atom sma * lvar list -> lvar list
+    val get_var_smas_cbv   : Atom sma list * lvar list -> lvar list
+    val use_var_on_fun_cbv : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+			       clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
+    val use_var_ls_cbv     : ('sty,'offset,Atom) LineStmt -> lvar list
+    val def_use_var_ls_cbv : ('sty,'offset,Atom) LineStmt -> lvar list * lvar list
 
     (*****************************************)
     (* Get Machine Registers from a LineStmt *)

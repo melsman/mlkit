@@ -1,3 +1,4 @@
+(* Important: This module assumes tagging is enabled!               *)
 (* Boxed version of Word32 used when garbage collection is enabled. *)
 structure Word32Boxed =  (* constrained to signature WORD in file WORD.sml well not yet 2001-02-17, Niels *) 
   struct
@@ -9,28 +10,23 @@ structure Word32Boxed =  (* constrained to signature WORD in file WORD.sml well 
     fun toIntX (w : word) : int = prim("toIntw32boxed__", "toIntw32boxed__", w)
     fun fromInt (i : int) : word = prim("fromIntw32boxed__", "fromIntw32boxed__", i)
 
-    val a = fromInt 42
-    val b = toInt a
-    val _ = print (Int.toString b)
-(*
-    fun toLargeInt (w : word) : int = prim("fromInti32boxed", "id", #1 w)
-    fun toLargeIntX (w : word) : int = prim("id", "id", #1 w)
+    fun toLargeInt (w : word) : int = prim("id", "id", w)
+    fun toLargeIntX (w : word) : int = prim("id", "id", w)
     fun fromLargeInt (i : int) : word = prim("id", "id", i)
 
     fun toLargeWord (w : word) : word = w
     fun toLargeWordX (w : word) : word = w
     fun fromLargeWord (w : word) : word = w
-*)
 
-(*    fun orb (x : word, y : word) : word = prim("or_boxed__", "or_boxed__", (x, y))
-    fun andb (x : word, y : word) : word = prim("and__", "and__", (x, y))
-    fun xorb (x : word, y : word) : word = prim("xor__", "xor__", (x, y))
-    fun notb (x : word) : word = prim("xor__", "xor__",  (x, fromInt ~1))*)
-(*
+    fun orb (x : word, y : word) : word = prim("orw32boxed__", "orw32boxed__", (x, y))
+    fun andb (x : word, y : word) : word = prim("andw32boxed__", "andw32boxed__", (x, y))
+    fun xorb (x : word, y : word) : word = prim("xorw32boxed__", "xorw32boxed__", (x, y))
+    fun notb (x : word) : word = prim("xorw32boxed__", "xorw32boxed__",  (x, fromInt ~1))
+
     local
-      fun lshift_ (w : word, k : word) : word = prim("shift_left__", "shift_left__", (w,k))
-      fun rshiftsig_ (w : word, k : word) : word = prim("shift_right_signed__", "shift_right_signed__", (w,k))
-      fun rshiftuns_ (w : word, k : word) : word = prim("shift_right_unsigned__", "shift_right_unsigned__", (w,k))
+      fun lshift_ (w : word, k : word) : word = prim("shift_leftw32boxed__", "shift_leftw32boxed__", (w,k))
+      fun rshiftsig_ (w : word, k : word) : word = prim("shift_right_signedw32boxed__", "shift_right_signedw32boxed__", (w,k))
+      fun rshiftuns_ (w : word, k : word) : word = prim("shift_right_unsignedw32boxed__", "shift_right_unsignedw32boxed__", (w,k))
     in
       fun << (w, k) = 
 	if toInt k >= wordSize orelse toInt k < 0 then fromInt 0
@@ -48,11 +44,11 @@ structure Word32Boxed =  (* constrained to signature WORD in file WORD.sml well 
 
     end
 
-    val op + = fn (w1:word,w2) => w1 + w2
-    val op - = fn (w1:word,w2) => w1 - w2
-    val op * = fn (w1:word,w2) => w1 * w2
-    val op div = fn (w1:word,w2) => w1 div w2
-    val op mod = fn (w1:word,w2) => w1 mod w2
+    val op + : word*word->word = fn (w1,w2) => prim("plus_w32boxed__","plus_w32boxed__",(w1,w2))
+    val op - : word*word->word = fn (w1,w2) => prim("minus_w32boxed__","minus_w32boxed__",(w1,w2))
+    val op * : word*word->word = fn (w1,w2) => prim("mul_w32boxed__","mul_w32boxed__",(w1,w2))
+(*    val op div : word*word->word = fn (w1,w2) => prim("div_w32boxed__", "div_w32boxed__",(w1,w2))
+    val op mod : word*word->word = fn (w1,w2) => prim("mod_w32boxed__", "mod_w32boxed__",(w1,w2))
 
     local 
       open StringCvt
@@ -142,4 +138,11 @@ structure Word32Boxed =  (* constrained to signature WORD in file WORD.sml well 
     val op < = fn (w1:word,w2) => w1 < w2
     val op <= = fn (w1:word,w2) => w1 <= w2
 *)
+
+    val a = fromInt 16
+    val b = fromInt 3
+    val c = a + b
+    val d = toInt c
+    val _ = print (Int.toString d)
+
   end

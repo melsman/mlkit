@@ -1,5 +1,3 @@
-(* Doubles are not aligned yet! 18/12/1998, Niels *)
-
 functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
 		      structure Con : CON
 		      structure Excon : EXCON
@@ -35,6 +33,11 @@ struct
   val _ = Flags.add_bool_entry 
     {long="print_calc_offset_program", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "print program with activation record offsets (LineStmt)"],
+     desc=""}
+
+  val _ = Flags.add_bool_entry 
+    {long="print_bit_vectors", short=NONE, item=ref false, neg=false,
+     menu=["Printing of intermediate forms", "print bit vectors when garbage collection is enabled (LineStmt)"],
      desc=""}
     
   type place = Effect.place
@@ -402,7 +405,7 @@ struct
 
 	val (L_set_def,default') = CBV_lss(default,LVenv,L_set)
       in
-	(lvset_add(IntSet.union L_set_def L_set_sels,LS.get_lvar_atom(atom,[]),LVenv),
+	(lvset_add(IntSet.union L_set_def L_set_sels,LS.get_var_atom(atom,[]),LVenv), (* was lvar 2001-03-15, Niels *)
 	 gen_sw(LS.SWITCH(atom,sels',default'))::lss')
       end
 
@@ -415,7 +418,7 @@ struct
 	     LS.FNJMP(cc as {opr,args,clos,res,bv}) => 
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val (def,use) = LS.def_use_var_ls_cbv ls (* Don't include lvars bound to regions *)
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
@@ -425,7 +428,7 @@ struct
 	   | LS.FNCALL(cc as {opr,args,clos,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val (def,use) = LS.def_use_var_ls_cbv ls (* Don't include lvars bound to regions *)
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
 
 (*		 val _ = print (LS.pr_line_stmt pr_sty pr_offset pr_atom false ls)
@@ -438,7 +441,7 @@ struct
 	  | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val (def,use) = LS.def_use_var_ls_cbv ls (* Don't include lvars bound to regions *)
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
@@ -448,7 +451,7 @@ struct
 	   | LS.FUNCALL(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val (def,use) = LS.def_use_var_ls_cbv ls (* Don't include lvars bound to regions *)
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
@@ -478,7 +481,7 @@ struct
 		 val handle_lv_offset = if BI.down_growing_stack then offset - 1 + size_cc else offset + 1 + size_cc
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (L_set_handl_return,handl_return') = CBV_lss'(handl_return,LVenv,
-								   lvset_difference(L_set',LS.get_lvar_atom(handl_return_lv,[]),LVenv))            (* Handler is dead in handlreturn code *)
+								   lvset_difference(L_set',LS.get_var_atom(handl_return_lv,[]),LVenv))            (* Handler is dead in handlreturn code *) (* was get_lvar_atom 2001-03-15, Niels *)
 		 val bv_handl_return = gen_bitvector(L_set_handl_return,size_ccf,size_rcf,size_ff)
 		 val (L_set_default,default') = CBV_lss'(default,LVenv,IntSet.insert handle_lv_offset L_set')  (* Handler is live in default code *)
 		 val (L_set_handl,handl') = CBV_lss'(handl,LVenv,IntSet.remove handle_lv_offset L_set_default) (* Handler is dead in handl code *)
@@ -499,7 +502,7 @@ struct
 	   | LS.FLUSH(atom,_) => 
 	       let (* We define the stack slot *)
 		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = (LineStmt.get_var_atom(atom,[]),[])
+		 val (def,use) = (LS.get_var_atom(atom,[]),[]) (* ok, if atom is a phreg, i.e. spilled - but what about lvars bound to regions?*)
 	       in
 		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
 		  ls::lss')
@@ -508,7 +511,7 @@ struct
 	   | LS.FETCH(atom,_) =>
 	       let (* We use the stack slot (i.e., the stack slot is live) *)
 		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = ([],LineStmt.get_var_atom(atom,[]))
+		 val (def,use) = ([],[](*LS.get_var_atom(atom,[])2001-03-14, Niels*)) (* ok, if atom is a phreg, i.e. spilled - but what about lvars bound to regions?*)
 	       in
 		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
 		  ls::lss')
@@ -516,7 +519,7 @@ struct
 	   | _ => 
 	       let
 		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val (def,use) = LS.def_use_var_ls_cbv ls
 	       in
 		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
 		  ls::lss')
@@ -546,8 +549,8 @@ struct
 	gen_fn(lab,cc,lss_cbv)
       end
 
-    fun CBV_top_decl(LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
-      | CBV_top_decl(LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
+    fun CBV_top_decl(LS.FUN(lab,cc,lss)) = do_top_decl LS.FUN (lab,cc,lss)
+      | CBV_top_decl(LS.FN(lab,cc,lss)) = do_top_decl LS.FN (lab,cc,lss)
 
   in
     fun CBV {main_lab:label,
@@ -558,6 +561,12 @@ struct
 	val _ = chat "[Calculate BitVectors..."
 	val _ = reset_fun_nr()
 	val line_prg_cbv = foldr (fn (func,acc) => CBV_top_decl func :: acc) [] co_prg
+	val _ = 
+	  if Flags.is_on "print_bit_vectors" then
+	    display("\nReport: AFTER CALCULATING BIT VECTORS:", 
+		    LS.layout_line_prg pr_sty pr_offset pr_atom false line_prg_cbv)
+	  else
+	    ()
 	val _ = chat "]\n"
       in
 	{main_lab=main_lab,code=line_prg_cbv: (StoreType,offset,Atom) LinePrg,imports=imports,exports=exports}

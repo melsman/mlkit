@@ -21,11 +21,13 @@ signature CALL_CONV =
 
     val get_spilled_args              : cc -> lvar list
     val get_spilled_args_with_offsets : cc -> (lvar * offset) list
+    val get_spilled_region_args       : cc -> lvar list
 
     val get_spilled_res               : cc -> lvar list
     val get_spilled_res_with_offsets  : cc -> (lvar * offset) list
 
     val get_register_args             : cc -> lvar list (* Machine registers as lvars. *)
+    val get_register_args_excluding_region_args : cc -> lvar list (* Machine registers as lvars. *)
 
     val decompose_cc                  : cc -> {clos : lvar option, args : lvar list, reg_vec : lvar option, reg_args : lvar list, res : lvar list}
 
