@@ -204,6 +204,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun get_overloaded (ref (NO_TY_LINK tvd)) = #overloaded tvd
 	  | get_overloaded (ref (TY_LINK _)) = die "TyVar.get_overloaded"
 
+	fun resolve_overloaded (ref (NO_TY_LINK {overloaded=Overloaded ts,...})) = ts
+	  | resolve_overloaded _ = die "resolve_overloaded"
+
 	fun is_overloaded0 (Overloaded _) = true
 	  | is_overloaded0 Nonoverloaded = false
 	fun is_overloaded tv = (is_overloaded0 o get_overloaded) tv
