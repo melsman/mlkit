@@ -1,0 +1,52 @@
+
+Only allow entries in schript-files that do not alter
+calling-conventions, runtime representations, and so on. Profiling can
+be dealt with by introducing more bindings in repositories; such extra
+bindings in repositories makes it possible to enable and disable
+profiling without recompiling everything.
+
+
+Currently, we do not treat multiple declarations of the same functor
+identifier in the same project. We can allow this; but we cannot allow
+a functor identifier to be declared more than once in a source file.
+
+
+Allow ``local'' source files in projects.  Allow ``inlining'' of
+functors. Syntax:
+
+     bdy ::= inline funidseq                     functor inlining
+          |  local bdy in bdy end                local
+	  |  bdy bdy |  _                        sequential
+          |  file.sml | file.sig | file.fun      source file
+          |  file.o                              precompiled object
+          |  file.grm                            yacc source file
+          |  file.lex                            lex source file
+
+
+Eliminate object code that is never used. We cannot eliminate object
+code for units with side-effects, however.
+
+
+It seems that kam variables are local to each target unit; currently,
+however, we allocate a ``global'' store (in data space) for these
+variables and this store grows, infinitely. Instead, we can associate
+spilled registers to DataLabel's (KAM terminology). DataLabel's are
+already supported by KbpToHpPa. Only a few changes seem necessary
+(e.g., space is currently allocated (statically) for each store into
+the slot.) We also need to modify register allocation, such that
+spilled variables are now associated with DataLabel's.
+
+
+Allow for adjustment of in-lining strategy in Optimiser. Add a
+function add_int_entry_to_menu, or so, to Flags.
+
+
+Declare polymorphic eq. in the initial basis, and make it impossible
+to redeclare equality; if equality is in the initial basis then
+in-lining happens automatically.
+
+
+Make it harder to quit interact; use `quit' instead of `q'.
+
+
+Get TestEnv performance test to work properly under HPUX 10.
