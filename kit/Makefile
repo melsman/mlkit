@@ -254,17 +254,17 @@ dist_smlserver:
 	scp $(RPMDIR)/SRPMS/smlserver-$(KITVERSION)-1.src.rpm $(SMLSERVER_HOSTDIR)/
 
 
-MLKIT_HOST=ssh.it.edu
+MLKIT_HOST=ssh.itu.dk
 MLKIT_HOSTDIR=$(MLKIT_HOST):/import/www/research/mlkit/dist
-TESTDATE=2002-08-25
+TESTDATE=2004-06-11
 
 dist_mlkit:
 	scp NEWS $(MLKIT_HOSTDIR)/NEWS-$(KITVERSION).txt
 	scp README $(MLKIT_HOSTDIR)/README-$(KITVERSION).txt
 	scp INSTALL $(MLKIT_HOSTDIR)/INSTALL-$(KITVERSION).txt
 	scp doc/manual/mlkit.pdf $(MLKIT_HOSTDIR)/mlkit-$(KITVERSION).pdf
-	scp test/test_report-native-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).dvi
-	scp test/test_report-kam-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).dvi
+	scp ../test_reports/test_report-native-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).dvi
+	scp ../test_reports/test_report-kam-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).dvi
 	scp ../mlkit-$(KITVERSION).tgz $(MLKIT_HOSTDIR)/
 	scp $(RPMDIR)/RPMS/i386/mlkit-$(KITVERSION)-1.i386.rpm $(MLKIT_HOSTDIR)/
 	scp $(RPMDIR)/SRPMS/mlkit-$(KITVERSION)-1.src.rpm $(MLKIT_HOSTDIR)/
