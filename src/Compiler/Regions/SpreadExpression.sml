@@ -333,6 +333,7 @@ struct
                              | E'.TR(_, _, _) => (fn B=>B)) B
                            (case new_last of None => new_choices | Some t' => t'::new_choices),
                  E'.Mus mus1)
+	  | _ => die "spreadSwitch" 
           )handle List.First _ => 
           (case List.first (fn E'.TR(_,E'.Frame _, _) => true | _ => false) new_choices of
             E'.TR(_,metatype,_) => (B,metatype)
@@ -807,6 +808,7 @@ good *)
           (* expression denotes frame or failing top-level binding : *)
         | (B,t_arg as E'.TR(arg_e, E'.RaisedExnBind, phi_arg)) => 
              die "S: exception constructor applied to frame or raised Bind exception"
+	| _ => die "S(B,PRIM(EXCON...),...)"
        )
     | E.PRIM(E.DEEXCONprim(excon), [arg]) =>
         let 
