@@ -17,6 +17,7 @@ signature HP_PA_RISC =
     val rp       : reg  (* Return link.   *)
     val mrp      : reg  (* Milicode return link. *)
 
+    val tmp_reg0 : reg
     val tmp_reg1 : reg
     val tmp_reg2 : reg
 
@@ -25,6 +26,7 @@ signature HP_PA_RISC =
     val arg2     : reg
     val arg3     : reg
     val ret0     : reg  (* Result from ordinary calls. *)
+    val ret1     : reg  (* Result from millicode calls. *)
 
     val reg_eq   : reg*reg -> bool
 
@@ -57,9 +59,13 @@ signature HP_PA_RISC =
     val is_im19 : int -> bool
 
     type label
-    datatype lab = DatLab of label     (* Used for exported and imported variables only.           *)
-                 | LocalLab of label   (* Used for labels local for the current block of code only *)
-                 | NameLab of string   (* Used for named labels (e.g., function names)             *)
+    datatype lab = 
+        DatLab of label      (* For data to propagate across program units *)
+      | LocalLab of label    (* Local label inside a block *)
+      | NameLab of string    (* For ml strings, jumps to runtime system,
+			        jumps to millicode, code label, finish 
+			        label, etc. *)
+      | MLFunLab of label    (* Labels on ML Functions *)
 
     val eq_lab : lab * lab -> bool
 

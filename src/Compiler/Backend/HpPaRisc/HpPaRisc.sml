@@ -26,16 +26,17 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
     val rp       = Gen 2   (* Return link.   *)
     val mrp      = Gen 31  (* (Milicode) return link. *)
 
-    val tmp_reg1 = Gen 19
-    val tmp_reg2 = Gen 20
-(*    val tmp_reg3 = Gen 21
-    val tmp_reg4 = Gen 22*)
+    val tmp_reg0 = Gen 19
+    val tmp_reg1 = Gen 20
+    val tmp_reg2 = Gen 21
+(*    val tmp_reg3 = Gen 22*)
 
     val arg0     = Gen 26  (* Argument and return registers *)
     val arg1     = Gen 25  (* for C function calls. *)
     val arg2     = Gen 24
     val arg3     = Gen 23
     val ret0     = Gen 28  (* Result from ordinary calls. *)
+    val ret1     = Gen 29  (* Result from millicode calls. *)
 
     fun reg_eq(Gen i1,Gen i2) = i1 = i2
       | reg_eq(Float i1,Float i2) = i2 = i2
@@ -70,20 +71,20 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
       fun reg_to_lv(Gen i) = Vector.sub(map_reg_to_lvs,i)
 	| reg_to_lv _ = die "reg_to_lv: reg is not a general register (Gen)"
 
-      val reg_args = map Gen [1,2,3,4,5,6,7,8,9,10] 
+      val reg_args = map Gen [3,5,6] 
       val reg_args_as_lvs = map reg_to_lv reg_args
-      val reg_res = map Gen [10,9,8,7,6,5,4,3,2,1] 
+      val reg_res = map Gen [7] 
       val reg_res_as_lvs = map reg_to_lv reg_res
 
-      val reg_args_ccall = map Gen [1,2,3,4]
+      val reg_args_ccall = map Gen [26,25,24,23]
       val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall
-      val reg_res_ccall = map Gen [4,3,2,1] 
+      val reg_res_ccall = map Gen [28] 
       val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
 
-      val callee_save_regs = map Gen [7,8,9,10]
+      val callee_save_regs = map Gen []
       val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs
 
-      val caller_save_regs = map Gen [1,2,3,4]
+      val caller_save_regs = map Gen []
       val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs
     end
 
@@ -105,15 +106,18 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
     (*----------------------------------------------------------*)
 
     type label = Labels.label
-    datatype lab = DatLab of label      (* For data to propagate across program units *)
-		 | LocalLab of label    (* Local label inside a block *)
-		 | NameLab of string    (* For ml strings, jumps to runtime system,
-					   jumps to millicode, code label, finish 
-					   label, etc. *)
+    datatype lab = 
+        DatLab of label      (* For data to propagate across program units *)
+      | LocalLab of label    (* Local label inside a block *)
+      | NameLab of string    (* For ml strings, jumps to runtime system,
+			        jumps to millicode, code label, finish 
+			        label, etc. *)
+      | MLFunLab of label    (* Labels on ML Functions *)
 
     fun eq_lab (DatLab label1, DatLab label2) = Labels.eq(label1,label2)
       | eq_lab (LocalLab label1, LocalLab label2) = Labels.eq(label1,label2)
       | eq_lab (NameLab s1, NameLab s2) = s1 = s2
+      | eq_lab (MLFunLab label1, MLFunLab label2) = Labels.eq(label1,label2)
       | eq_lab _ = false
 
     datatype cond = NEVER
@@ -275,13 +279,15 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 
     fun pr_reg reg = concat(pp_reg(reg,[]))
 
-    fun pp_lab (DatLab l) = "DatLab" ^ Int.toString (Labels.key l)
+    fun pp_lab (DatLab l) = "DatLab" ^ Labels.pr_label l
       | pp_lab (LocalLab l) = "L$" ^ Labels.pr_label l ^ Int.toString (Labels.key l) (* L$ is not allowed in HP's as *)
       | pp_lab (NameLab s) = s
+      | pp_lab (MLFunLab l) = Labels.pr_label l
 
-    fun pp_lab' (DatLab l,acc) = "DatLab" :: (Int.toString (Labels.key l)) :: acc
+    fun pp_lab' (DatLab l,acc)   = "DatLab" :: (Labels.pr_label l) :: acc
       | pp_lab' (LocalLab l,acc) = "L$" :: (Labels.pr_label l) :: (Int.toString (Labels.key l)) :: acc (* L$ is not allowed in HP's as *)
-      | pp_lab' (NameLab s,acc) = s :: acc
+      | pp_lab' (NameLab s,acc)  = s :: acc
+      | pp_lab' (MLFunLab l,acc) = Labels.pr_label l :: acc
 
     fun pp_cond NEVER = ""
       | pp_cond ALWAYS = ",TR"
@@ -459,11 +465,13 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 	  | fold (inst::insts, acc) = "\n"::(pp_inst(inst, fold (insts, acc)))
 	fun out_risc_insts insts = out_list (fold(insts, []))
 	fun pp_top_decl(FUN(lab,insts)) = 
-	  (TextIO.output(os,"\nfun " ^ Labels.pr_label lab ^ " is");
-	   out_risc_insts insts)
+	  (TextIO.output(os,"\n;fun " ^ Labels.pr_label lab ^ " is {");
+	   out_risc_insts insts;
+	   TextIO.output(os,"\n;}\n"))
 	  | pp_top_decl(FN(lab,insts)) =
-	  (TextIO.output(os,"\nfn " ^ Labels.pr_label lab ^ " is");
-	   out_risc_insts insts)
+	  (TextIO.output(os,"\n;fn " ^ Labels.pr_label lab ^ " is {");
+	   out_risc_insts insts;
+	   TextIO.output(os,"\n;}\n"))
       in
 	(set_out_stream os;
 	 TextIO.output(os,"; Start of HPPA Code");
@@ -483,17 +491,17 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 	val init_node = NODE{start="Begin InitCode",
 			     finish="End InitCode",
 			     indent=2,
-			     childsep=NOSEP,
+			     childsep=RIGHT " ",
 			     children = map layout_risc_inst init_code}
 	val exit_node = NODE{start="Begin ExitCode",
 			     finish="End ExitCode",
 			     indent=2,
-			     childsep=NOSEP,
+			     childsep=RIGHT " ",
 			     children=map layout_risc_inst exit_code}
 	val static_data_node = NODE{start="Begin Static Data",
 				    finish="End Static Data",
 				    indent=2,
-				    childsep=NOSEP,
+				    childsep=RIGHT " ",
 				    children=map layout_risc_inst static_data}
 	fun layout_top_decl(FUN(lab,risc_insts)) =
           NODE{start = "FUN " ^ Labels.pr_label lab ^ " is {",

@@ -71,12 +71,16 @@ functor CallConv(structure Lvars : LVARS
     fun filter_out_phreg_opt(NONE) = []
       | filter_out_phreg_opt(SOME a) = filter_out_phreg([a])
 
-    fun get_cc_size{clos,free,args,reg_vec,reg_args,res,frame_size} =
+    fun get_rcf_size{clos,free,args,reg_vec,reg_args,res,frame_size} = List.length(filter_out_phreg res)
+    fun get_ccf_size{clos,free,args,reg_vec,reg_args,res,frame_size} =
       List.length(filter_out_phreg_opt clos) +
       List.length(filter_out_phreg free) +
       List.length(filter_out_phreg args) +
-      List.length(filter_out_phreg_opt reg_vec) +
-      List.length(filter_out_phreg res) +
+      List.length(filter_out_phreg_opt reg_vec)
+
+    fun get_cc_size cc =
+      get_rcf_size cc +
+      get_ccf_size cc +
       1 (* The return label occupies one word on the stack. *)
 
     fun add_frame_size({clos,free,args,reg_vec,reg_args,res,frame_size},f_size) =
@@ -217,6 +221,22 @@ functor CallConv(structure Lvars : LVARS
 
       fun get_spilled_res_with_offsets {clos,free,args,reg_vec,reg_args,res,frame_size} =
 	get_spilled_stys(res,[])
+
+      fun resolve_act_cc{clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
+	let
+	  fun append_to_list_opt(NONE,l) = l
+	    | append_to_list_opt(SOME e,l) = e::l
+	  fun calc_offset([],offset,l) = (offset,List.rev l)
+	    | calc_offset(a::aa,offset,l) = calc_offset(aa,offset+1,(a,offset)::l)
+	  val res' = List.drop(res,List.length BI.res_phreg) handle General.Subscript => []
+	  val args_list = append_to_list_opt(clos,append_to_list_opt(reg_vec,args@free@reg_args))
+	  val args' = List.drop(args_list,List.length BI.args_phreg) handle General.Subscript => []
+	  val (o_res,aty_res) = calc_offset(res',0,[])
+	  val return_lab_offset = o_res
+	  val (_,aty_args) = calc_offset(args',o_res+1,[])
+	in
+	  (aty_args,aty_res,return_lab_offset)
+	end
     end
 	
     (******************)

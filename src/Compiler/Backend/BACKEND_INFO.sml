@@ -26,6 +26,7 @@ signature BACKEND_INFO =
     val atbot_bit        : int (* We must add 2 to an address to set the atbot bit. *)
 
     val tag_values       : bool ref
+    val tag_integers     : bool ref
     val size_of_real     : unit -> int
     val size_of_ref      : unit -> int
     val size_of_record   : 'a list -> int
@@ -63,6 +64,22 @@ signature BACKEND_INFO =
     val pr_reg : reg -> string
     val reg_eq : reg * reg -> bool
 
+    (* Jump Tables *)
+    val minCodeInBinSearch : int
+    val maxDiff            : int
+    val minJumpTabSize     : int
+
+    (* Names For Primitive Functions *)
+    val EQUAL_INT     : string
+    val MINUS_INT     : string
+    val PLUS_INT      : string
+    val MUL_INT       : string
+    val NEG_INT       : string
+    val ABS_INT       : string
+    val LESS_INT      : string
+    val LESSEQ_INT    : string
+    val GREATER_INT   : string
+    val GREATEREQ_INT : string
   end
 
 

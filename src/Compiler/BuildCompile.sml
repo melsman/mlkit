@@ -622,6 +622,14 @@ functor BuildCompile (structure Name : NAME
 						  structure Report = Report
 						  structure Crash = Crash)
 
+    structure JumpTables = JumpTables(structure BI = BackendInfo)
+
+    structure HppaResolveJumps =
+      HppaResolveJumps(structure HpPaRisc = HpPaRisc
+		       structure Labels = Labels
+   		       structure Crash = Crash
+		       structure IntFinMap = IntFinMap)
+
     structure CodeGen = CodeGen(structure PhysSizeInf = PhysSizeInf
 				structure Con = Con
 				structure Excon = Excon
@@ -633,6 +641,8 @@ functor BuildCompile (structure Name : NAME
 				structure SubstAndSimplify = SubstAndSimplify
 				structure BI = BackendInfo
 				structure HpPaRisc = HpPaRisc
+				structure JumpTables = JumpTables
+				structure HppaResolveJumps = HppaResolveJumps
 				structure PP = PP
 				structure Flags = Flags
 				structure Report = Report

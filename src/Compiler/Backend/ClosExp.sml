@@ -1214,8 +1214,10 @@ struct
     fun lookup_con env con = 
       (case CE.lookupCon env con of
 	 CE.ENUM i    => ENUM i
-       | CE.BOXED i   => BOXED i
-       | CE.UNBOXED i => UNBOXED i)
+       | CE.UB_NULLARY i => UNBOXED i
+       | CE.UB_UNARY i => UNBOXED i
+       | CE.B_NULLARY i => BOXED i
+       | CE.B_UNARY i => BOXED i)
 
     (*------------------------------------------------------------------*)
     (* Analyse the datatype bindings and return an environment mapping  *)
@@ -1229,8 +1231,8 @@ struct
     fun add_datbinds_to_env (RegionExp.DATBINDS dbs) l2clos_exp_env : CE.env =
       let
 	fun tags n0 n1 [] = []
-	  | tags n0 n1 ((con,RegionExp.VALUE_CARRYING,_)::binds) = (con,CE.BOXED n1) :: tags n0 (n1+1) binds
-	  | tags n0 n1 ((con,RegionExp.CONSTANT,_)::binds) = (con,CE.BOXED n0) :: tags (n0+1) n1 binds
+	  | tags n0 n1 ((con,RegionExp.VALUE_CARRYING,_)::binds) = (con,CE.B_UNARY n1) :: tags n0 (n1+1) binds
+	  | tags n0 n1 ((con,RegionExp.CONSTANT,_)::binds) = (con,CE.B_NULLARY n0) :: tags (n0+1) n1 binds
 	fun analyse_datbind (tyname,binds: (con * RegionExp.constructorKind * 'a) list) : (con * CE.con_kind) list =
 	  tags 0 0 binds
     in
@@ -1360,12 +1362,12 @@ struct
       let
 	fun lookup lv f_lookup =
 	  (case f_lookup env lv of
-	     SOME(CE.FIX(lab,_,_))    => lab
+	     SOME(CE.FIX(lab,_,_))    => lab (* Is a MLFunLab *)
 	   | SOME(CE.LVAR _)          => die "find_globals_in_env: global bound to lvar."
 	   | SOME(CE.RVAR _)          => die "find_globals_in_env: global bound to rvar."
 	   | SOME(CE.DROPPED_RVAR _)  => die "find_globals_in_env: global bound to dropped rvar."
 	   | SOME(CE.SELECT _)        => die "find_globals_in_env: global bound to select expression."
-	   | SOME(CE.LABEL lab)       => lab
+	   | SOME(CE.LABEL lab)       => lab (* Is a DatLab *)
 	   | NONE                     => die ("find_globals_in_env: lvar not bound in env."))
 	val lvar_labs = map (fn lv => lookup lv CE.lookupVarOpt) lvars
       in
@@ -1387,7 +1389,7 @@ struct
 	fun ccExp e =
 	  (case e of
 	     MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => lookup_ve env lvar 
-	   | MulExp.INTEGER(i,alloc) => (INTEGER i, NONE_SE)
+	   | MulExp.INTEGER(i,alloc) => if !BI.tag_integers then (INTEGER(2*i+1),NONE_SE) else (INTEGER i, NONE_SE)
 	   | MulExp.STRING(s,alloc) => (STRING s,NONE_SE)
 	   | MulExp.REAL(r,alloc) => 
 	       let
@@ -1485,7 +1487,7 @@ struct
 		     val lv_rv = fresh_lvar("rv")
 		     val (env_with_rv,_) =
 		       List.foldl (fn ((place,_),(env,i)) =>
-				    (CE.declareRho(place,CE.SELECT(lv_rv,i),env),i+1)) (env_with_funs, BI.init_regvec_offset) formals
+				    (CE.declareRho(place,CE.SELECT(lv_rv,i),env),i+1)) (env_with_funs, BI.init_regvec_offset) formals (* formals may be empty! *)
 		     val env_with_rho_kind =
 			  (env_with_rv plus_decl_with CE.declareRhoKind)
 			  (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
@@ -1498,9 +1500,14 @@ struct
 		     val env_with_args =
 		           (env_with_rho_drop_kind plus_decl_with CE.declareLvar)
 			   (map (fn lv => (lv, CE.LVAR lv)) args)
-		     val cc = CallConv.mk_cc_fun(args,SOME lv_sclos_fn,[],SOME lv_rv,[],ress)
+		     val cc = 
+		       (case formals of
+			  [] => CallConv.mk_cc_fun(args,SOME lv_sclos_fn,[],NONE,[],ress) (* No Region Vector Argument *)
+			| _ => CallConv.mk_cc_fun(args,SOME lv_sclos_fn,[],SOME lv_rv,[],ress))
 		   in
-		     add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab (SOME (VAR lv_rv))))
+		     (case formals of
+			[] => add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab NONE))
+		      | _ => add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab (SOME (VAR lv_rv)))))
 		   end
 		 val _ = List.app compile_fn (zip5 (lvars,binds,formalss,dropss,labels))
 	       in
@@ -1519,7 +1526,7 @@ struct
 	       end
 	   | MulExp.FIX{free=_,shared_clos,functions,scope} => die "ccExp: No free variables in FIX"
 
-	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,alloc,rhos_actuals,...}, _, _, _), tr2) =>
+	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,alloc,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
 	       (* Poly tail call so we reuse the region vector stored in cur_rv *)
 	       let
 		 val ces_and_ses = (* We remove the unboxed record. *)
@@ -1528,8 +1535,14 @@ struct
 		   | _ => [ccTrip tr2 env lab cur_rv]
 
 		 val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
+		 val actual_region_vector_size = List.length rhos_actuals 
+		 val rv_opt = (* Does callee need a region vector at all? *)
+		   if actual_region_vector_size = 0 then
+		     NONE
+		   else
+		     cur_rv
 	       in
-		 (insert_ses(JMP{opr=lab_f,args=ces_arg,reg_vec=cur_rv,reg_args=[],clos= ce_clos,free=[]},
+		 (insert_ses(JMP{opr=lab_f,args=ces_arg,reg_vec=rv_opt,reg_args=[],clos=ce_clos,free=[]},
 			     ses),NONE_SE)
 	       end
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
@@ -1599,15 +1612,15 @@ struct
 		    | (NONE, _) => die ("APP.non-primitive with unboxed region parameters: lvar = " ^ Lvars.pr_lvar lvar)
 		    | (SOME prim, _) =>
 			(case prim of
-			   Lvars.PLUS_INT        => "PLUS_INT"
-			 | Lvars.MINUS_INT       => "MINUS_INT"
-			 | Lvars.MUL_INT         => "MUL_INT"
-			 | Lvars.NEG_INT         => "NEG_INT"
-			 | Lvars.ABS_INT         => "ABS_INT"
-			 | Lvars.LESS_INT        => "LESS_INT"
-			 | Lvars.LESSEQ_INT      => "LESSEQ_INT"
-			 | Lvars.GREATER_INT     => "GREATER_INT"
-			 | Lvars.GREATEREQ_INT   => "GREATEREQ_INT"
+			   Lvars.PLUS_INT        => BI.PLUS_INT
+			 | Lvars.MINUS_INT       => BI.MINUS_INT
+			 | Lvars.MUL_INT         => BI.MUL_INT
+			 | Lvars.NEG_INT         => BI.NEG_INT
+			 | Lvars.ABS_INT         => BI.ABS_INT
+			 | Lvars.LESS_INT        => BI.LESS_INT
+			 | Lvars.LESSEQ_INT      => BI.LESSEQ_INT
+			 | Lvars.GREATER_INT     => BI.GREATER_INT
+			 | Lvars.GREATEREQ_INT   => BI.GREATEREQ_INT
 			 | Lvars.PLUS_FLOAT      => "PLUS_FLOAT"
 			 | Lvars.MINUS_FLOAT     => "MINUS_FLOAT"
 			 | Lvars.MUL_FLOAT       => "MUL_FLOAT"
@@ -1759,8 +1772,21 @@ struct
 
 	   | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
+		 fun tag con = 
+		   (case CE.lookupCon env con of
+		      CE.ENUM i => 
+			if !BI.tag_values orelse (* hack to treat booleans tagged *)
+			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
+			  (con,ENUM(2*i+1))
+			else
+			  (con,ENUM i)
+		    | CE.UB_NULLARY i => (con,UNBOXED(4*i+3))
+		    | CE.UB_UNARY i => (con,UNBOXED i)
+		    | CE.B_NULLARY i => (con,BOXED(8*i + BI.value_tag_con0))
+		    | CE.B_UNARY i => (con, BOXED(8*i + BI.value_tag_con1)))
+
 		 val (selections,opt) =
-		   compile_sels_and_default selections opt (fn m=>(m,lookup_con env m)) 
+		   compile_sels_and_default selections opt tag 
 		                            (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
@@ -1783,7 +1809,7 @@ struct
 			 scope=LET{pat=[lv_exn2],
 				   bind=SELECT(0,VAR lv_exn1),
 				   scope=LET{pat=[lv_sw],
-					     bind=CCALL{name="EQUAL_INT",args=[ce,VAR lv_exn2],rhos_for_result=[]},
+					     bind=CCALL{name=BI.EQUAL_INT,args=[ce,VAR lv_exn2],rhos_for_result=[]},
 					     scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
 								   compile_seq_switch(ce,rest,default)))}}}
 		   end
@@ -1904,7 +1930,7 @@ struct
 		   (case tau of
 		      RType.CONSTYPE(tn,_,_,_) =>
 			if TyName.eq(tn,TyName.tyName_INT) orelse TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
-			  CCALL{name="EQUAL_INT",args=[ce1,ce2],rhos_for_result=[]}
+			  CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]}
 			else if TyName.eq(tn,TyName.tyName_STRING) then
 			  CCALL{name="equalString",args=[ce1,ce2],rhos_for_result=[]}
 			     else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
@@ -1912,7 +1938,7 @@ struct
 				  (*TODO 11/02/1998 13:47. tho.  You can delete these two
 				   die's when EliminateEq has been changed.*)
 				  else CCALL{name="equalPoly",args=[ce1,ce2],rhos_for_result=[]}
-		    | RType.RECORD [] => CCALL{name="EQUAL_INT",args=[ce1,ce2],rhos_for_result=[]} 
+		    | RType.RECORD [] => CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]} 
 		    | _ => CCALL{name="equalPoly",args=[ce1,ce2],rhos_for_result=[]})
 	       in
 		 (insert_ses(ce,ses),NONE_SE)

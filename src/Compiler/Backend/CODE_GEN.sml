@@ -21,7 +21,9 @@ signature CODE_GEN =
     type AtySS
     type RiscPrg
 
-    val CG : {main_lab:label,code:(StoreTypeSS,offset,AtySS) LinePrg,imports:label list,exports:label list} -> RiscPrg
+    val CG   : {main_lab:label,code:(StoreTypeSS,offset,AtySS) LinePrg,imports:label list,exports:label list} -> RiscPrg
+    val generate_link_code : label list -> RiscPrg
+    val emit : RiscPrg * string -> unit
   end
 
 

@@ -725,6 +725,10 @@ functor Compile(structure Excon : EXCON
 	val all_calc_offset = CalcOffset.CO all_fetch_flush
 	val all_subst_and_simplify = SubstAndSimplify.SS all_calc_offset
 	val all_risc_prg = CodeGen.CG all_subst_and_simplify
+(*	val link_prg = CodeGen.generate_link_code [#main_lab all_clos_exp]
+	val path = "/net/frej/vol/topps/disk02/MLKIT-afterVersion1/niels/GC/Working/kit/testprogs/"
+	val _ = CodeGen.emit(all_risc_prg, path ^ "hppa_file.s")
+	val _ = CodeGen.emit(link_prg, path ^ "link_file.s")*)
       in
 	#env(all_clos_exp)
       end

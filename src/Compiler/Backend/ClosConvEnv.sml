@@ -43,8 +43,10 @@ functor ClosConvEnv(structure Lvars : LVARS
     (*************************)
     datatype con_kind =     (* the integer is the index in the datatype 0,... *)
         ENUM of int
-      | UNBOXED of int
-      | BOXED of int
+      | UB_NULLARY of int
+      | UB_UNARY of int
+      | B_NULLARY of int
+      | B_UNARY of int
 
     datatype access_type =
         LVAR of lvar                            (* Variable                                  *)
@@ -77,8 +79,8 @@ functor ClosConvEnv(structure Lvars : LVARS
        * constructors in the datatype. The actual tags are computed later. *)
       [(Con.con_FALSE, ENUM 0),         (* first nullary constructor *)
        (Con.con_TRUE, ENUM 1),          (* second nullary constructor *)
-       (Con.con_NIL, UNBOXED 0),        (* first nullary constructor *)
-       (Con.con_CONS, UNBOXED 0)]       (* first unary constructor *)
+       (Con.con_NIL, UB_NULLARY 0),     (* first nullary constructor *)
+       (Con.con_CONS, UB_UNARY 0)]      (* first unary constructor *)
     val initialVarEnv : VarEnv = LvarFinMap.empty
     val initialExconEnv: ExconEnv = ExconFinMap.fromList
       [(Excon.ex_DIV, LABEL(BI.exn_DIV_lab)),
@@ -295,10 +297,12 @@ functor ClosConvEnv(structure Lvars : LVARS
 			layout_rho_kind
 			RhoKindEnv]}
 
-    and layout_con_kind =
+   and layout_con_kind =
       fn ENUM i => PP.LEAF ("enum con: " ^ Int.toString i)
-       | UNBOXED i => PP.LEAF ("unboxed con: " ^ Int.toString i) 
-       | BOXED i => PP.LEAF ("boxed con: " ^ Int.toString i) 
+       | UB_NULLARY i => PP.LEAF ("unboxed nullary con: " ^ Int.toString i) 
+       | B_NULLARY i => PP.LEAF ("boxed nullary con: " ^ Int.toString i) 
+       | UB_UNARY i => PP.LEAF ("unboxed unary con: " ^ Int.toString i) 
+       | B_UNARY i => PP.LEAF ("boxed unary con: " ^ Int.toString i) 
 
     and layout_access_type =
       fn LVAR lvar => PP.LEAF(Lvars.pr_lvar lvar)
