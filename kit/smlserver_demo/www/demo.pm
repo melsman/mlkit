@@ -1,6 +1,7 @@
 import ../lib/lib.pm
 in
   local
+       ../lib/NsCacheV2.sml
        ../demo_lib/Page.sml
        ../demo_lib/FormVar.sml
        ../demo_lib/Auth.sml
@@ -14,6 +15,9 @@ in
      demo/cache.sml
      demo/cache_add.sml
      demo/cache_lookup.sml
+     demo/cache_v2.sml
+     demo/cache_add_v2.sml
+     demo/cache_lookup_v2.sml
      demo/cookie.sml
      demo/cookie_set.sml
      demo/cookie_delete.sml
