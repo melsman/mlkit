@@ -19,5 +19,5 @@ val _ =
   | "Update Source" => ScsPage.returnPg "Printing Documents" (`
       Notice, that you have updated the document source.<p>
 
-      ` ^^ (ScsPrint.printForm category note on_what_table on_what_id (ScsPrint.docTypeFromString doc_type) `^source`))
+      ` ^^ (ScsPrint.printForm category note on_what_table on_what_id (ScsPrint.docTypeFromString doc_type) [`^source`]))
   | _ => ScsError.panic `scs-print.sml: submit ^submit not recognized`

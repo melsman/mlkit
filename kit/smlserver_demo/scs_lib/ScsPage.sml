@@ -1,69 +1,169 @@
 structure ScsPage :> SCS_PAGE =
   struct
-    type navbar = (quot * quot) list
-    fun navbar nb = Quot.concatWith "/" (List.map (fn (l,n) => Html.ahref l n) nb)
 
-    fun genTop title =
-      (case ScsLogin.user_lang of
-	 ScsLang.English => `
-	   <html>
-	   <head>
-	   <title>^title</title>
-	   </head>
-	   <body bgcolor=white>
-	   <table cellspacing=0 cellpadding=1 bgcolor=white border=0 width=100%>
-	   <tr><th align=left width=30%><a href="http://smlserver.org">
-           <img border=0 src=/images/smlserver_logo_color_medium.png></a></th>
-	   <th width=40%>&nbsp;</th>
-	   <th align=left width=30%><a href="http://www.it.edu">
-	   <img border=0 src=/images/itc_logo_white.png></a></th></tr>
-	   </table> <p>
-	   <table width=100% border=0 cellpadding=10 cellspacing=0><tr><td>
-	   <h1>^title</h1>`
-	 | ScsLang.Danish => `
-	   <html>
-	   <head>
-	   <title>^title</title>
-	   </head>
-	   <body bgcolor=white>
-	   <table cellspacing=0 cellpadding=1 bgcolor=white border=0 width=100%>
-	   <tr><th align=left width=30%><a href="http://smlserver.org">
-           <img border=0 src=/images/smlserver_logo_color_medium.png></a></th>
-	   <th width=40%>&nbsp;</th>
-	   <th align=left width=30%><a href="http://www.it-c.dk">
-	   <img border=0 src=/images/itc_logo_white.png></a></th></tr>
-	   </table> <p>
-	   <table width=100% border=0 cellpadding=10 cellspacing=0><tr><td>
-	   <h1>^title</h1>`)
+    type navbar_item = (quot * quot) 
+    type navbar =  navbar_item list
 
-    fun genBot () =
-      (case ScsLogin.user_lang of
-	 ScsLang.English => `
-	   </td></tr></table>
-	   <p><hr>
-	   <a href=http://smlserver.org><img border=0 src=/images/poweredby_smlserver_logo1.png align=right
-	   alt="You are free to use this logo on your SMLserver scripts"></a>
 
-	   <a href="http://www.smlserver.org/">SMLserver Home Page</a>,  
-	   <a href="/index.sml">Example Home Page</a> 
-	   (<a href="mailto:smlserver@it.edu">smlserver@it.edu</a>) ^(ScsDate.ppIso (ScsDate.now_local()))
-	   </body>
-	   </html>`
-	 | ScsLang.Danish => `
-	   </td></tr></table>
-	   <p><hr>
-	   <a href=http://smlserver.org><img border=0 src=/images/poweredby_smlserver_logo1.png align=right
-	   alt="Det er tilladt at anvende disse logoer i dine SMLserver programmer"></a>
+    (* [head title description keywords] returns a quotation consisting of
+       <head><title></title><meta></head> tags and reference to stylesheet *)
+    fun head cache_p title description keywords = `
+<head>
+  <title>^title</title>
+  ^(if cache_p then "" else Quot.toString `
+  <meta http-equiv="Pragma" content="no-cache"> <!-- This may not work in IE -->
+  <meta http-equiv="expires"content="0">  <!-- This may not work with Navigator -->`)
+  <meta http-equiv="description" content="^description">
+  <meta http-equiv="keywords" content="^keywords">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="robots" content="index, follow">
+</head>
+` (* head *)
 
-	   <a href="http://www.smlserver.org/">Hjemmeside for SMLserver</a>,  
-	   <a href="/index.sml">Eksempelsiden</a> 
-	   (<a href="mailto:smlserver@it.edu">smlserver@it.edu</a>) ^(ScsDate.ppIso (ScsDate.now_local()))
-	   </body>
-	   </html>`)
+    (* [generatePage width title description keywords headerTitle url_home
+		     leftList leftSpaces rightList rightSpaces body mailTo navbar] 
+       returns a quotation consisting the full HTML for the page using the 
+       design functions 'head', 'bodyHeader', 'bodyMain' and 'bodyFooter' *)
 
-    fun returnTop title = (Ns.returnHeaders(); Ns.write (genTop title))
+    fun generatePage cache_p (width:int) (title:string) (description:string) 
+      (keywords:string) (bodyHeader:quot) (bodyMain:quot) (bodyFooter:quot) 
+      (comment:quot) =
+`<html>
+` ^^
+( head cache_p title description keywords ) ^^
+`<body bgcolor="#FFFFFF">
+` ^^ bodyHeader ^^
+bodyMain ^^
+bodyFooter ^^ 
+`
+</body>
+</html>`
+(* end of generatePage *)
+
+    (* [genPg cache_p html_title html_description html_keywords html_mailTo url_home
+              leftSpaces rightSpaces leftList rightList body] generates the 
+       same output as generatePage with some values defaulted *)
+    
+    fun genPg cache_p html_title html_description html_keywords html_mailTo 
+	      url_home leftSpaces rightSpaces leftList rightList nb body =
+      let
+	val comment = ``
+	val width = 640
+	val bodyHeader_val = ``
+	val bodyMain_val = body
+	val bodyFooter_val = ``
+      in
+        generatePage cache_p width html_title html_description 
+	  html_keywords bodyHeader_val bodyMain_val bodyFooter_val comment
+      end
+
+    (* [returnPgMenu mail_to contact title leftList rightList body] 
+       returns the page to the browser. This function is used by pure UCS 
+       pages only (subsystems have their own return functions) *)    
+    fun returnPgMenu (mail_to:string) (contact:string) (title:string) 
+                     (leftList:(string*string)list)
+		     (rightList:(string*string)list) (nb:navbar) (body:quot) =
+      Ns.return ( genPg true title "ucs" "ucs" mail_to ""
+                        2 2 leftList rightList nb body )
+
+
+(* ====================================================================== *)
+(* old UCS functions here                                                 *)
+(* ====================================================================== *)
+    
+    fun genTop w title nb page = 
+      let 
+	val leftList = prependHome url_ucs_home []
+	val rightList = appendLogOut []
+	val leftSpaces = 3
+	val rightSpaces = 3
+      in
+`<html>
+<!-- Designed by Sven Bastrup, bastrup@itu.dk
+     Translated into SML by Kennie Nybo Pontoppidan, kennie@itu.dk
+     Generated by SMLServer ^( ScsDate.ppIso (ScsDate.now_local()) )
+-->` ^^
+( head true title "" "" ) ^^
+`<body bgcolor="#FFFFFF">
+` 
+^^
+( bodyHeader (page_width()) (headerTitle()) ((leftList, leftSpaces), (rightList, rightSpaces)) nb)
+      end
+
+
+    val genTop640 = genTop "640"
+
+    fun genMenuItems menu =
+      Quot.concatWith ""
+      (List.map (fn (url,name) => `&nbsp;<a class="knap" target="menu" href="^url">^name</a>`) menu)
+
+    fun genMenu w menu = `
+      <!-- START PART 2 -->
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" align="center">
+      <!-- The Menu_items-->
+      <tr valign="top" align="center">
+      <td align="center" valign="top">
+      <span class="knap">
+      <!-- *** START ITERATE *** -->
+      ` ^^ (genMenuItems menu) ^^ `
+      <!--  *** END ITERATE *** -->
+      </span>
+      </td>
+      </tr>
+      <tr align="center">
+      <td heigth="6" align="center">
+	^(img_inter_vandret w)
+      </td>
+      </tr>
+      </table>
+      <!-- END PART 2 -->`
+
+    val genMenu640 = genMenu "640"
+
+    fun genBody w body = 
+      bodyMain (page_width())  body
+
+    val genBody640 = genBody "640"
+    val genBodyWide = genBody "100%"
+
+    (* If you write this with a function it should take the following arguments:
+     date: The date when this page was last updated
+     mail_to: the email of the contact person/group
+     contact: the name of the ones to contact (what ever you should click on to get a mail window up...)*)
+
+    fun genBottom w mail_to contact = 
+      (bodyFooter (page_width()) (*(convertWidth w)*) mail_to )^^ `
+</body>
+</html>`
+
+    val genBottom640 = genBottom "640"
+
+    (* Return a page with menu and navbar. *)
+    fun returnPgMenuNavbarContact (mail_to:string) (contact:string) (title:string) 
+      (navbar:(quot*quot)list) (menu:(string*string)list) (body:quot) =
+      Ns.return (genTop640 title navbar title ^^
+		 genMenu640 menu ^^
+		 (genBody640 body) ^^
+		 (genBottom640 mail_to contact))
+
+    (* Return a page navbar. *)
+    fun returnPgNavbarContact (mail_to:string) (contact:string) (title:string) 
+      (navbar:(quot*quot)list) (body:quot) =
+      Ns.return (genTop640 title navbar title ^^
+		 (genBody640 body) ^^
+		 (genBottom640 mail_to contact))
+
+
+    fun returnPgAnon mail_to contact title body = 
+      Ns.return (genTop"640" title [] title ^^
+		 (genBody"640" body) ^^
+		 (genBottom"640" mail_to contact))
+
+    val returnPgNavbar = returnPgNavbarContact "nh@it.edu" "Niels Hallenberg"
+    val returnPg = returnPgAnon "nh@it.edu" "Niels Hallenberg"
+
+    fun returnTop title = (Ns.returnHeaders(); Ns.write (genTop640 title [] title))
     val write = Ns.write
-    fun returnBot () = Ns.write (genBot ())
+    fun returnBot () = Ns.write (genBottom640 "nh@it.edu" "Niels Hallenberg")
 
-    fun returnPg title body = Ns.return (genTop title ^^ body ^^ (genBot ()))
   end

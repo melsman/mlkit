@@ -10,4 +10,4 @@ val source = DbClob.select clob_id
 val _ =
   ScsPage.returnPg "Show Document"
   (ScsPrint.printForm ("Printed from Log") ("(log id:" ^ print_id ^ ")" ^ note) on_what_table on_what_id 
-   (ScsPrint.docTypeFromString doc_type) source)
+   (ScsPrint.docTypeFromString doc_type) [source])
