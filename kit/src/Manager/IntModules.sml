@@ -669,14 +669,15 @@ functor IntModules(structure Name : NAME
 
     fun int_sigdec (SIGNATUREsigdec (_,sigbind)) = int_sigbind sigbind
 
-    fun int_topdec (fi:bool,absprjid: absprjid, intB: IntBasis, topdec: topdec) : IntBasis * modcode =   (* can effect repository *)
+    fun int_topdec (fi:bool,unitnameOpt:string option, absprjid: absprjid, intB: IntBasis, topdec: topdec) 
+	: IntBasis * modcode =   (* may modify repository *)
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
-	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,NONE)
+	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,unitnameOpt)
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce,cb)
 	  in case topdec_opt
 	       of SOME topdec2 =>
-		 let val (intB2,modc2) = int_topdec(fi,absprjid,IntBasis.plus(intB,intB1),topdec2)
+		 let val (intB2,modc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1),topdec2)
 		 in (IntBasis.plus(intB1,intB2), ModCode.seq(modc1,modc2))
 		 end
 		| NONE => (intB1,modc1)
@@ -686,7 +687,7 @@ functor IntModules(structure Name : NAME
 	      val intB1 = IntBasis.mk(IntFunEnv.empty, ise, CE.emptyCEnv, CompileBasis.empty)
 	  in case topdec_opt
 	       of SOME topdec2 =>
-		 let val (intB2,modc2) = int_topdec(fi,absprjid,IntBasis.plus(intB,intB1),topdec2)
+		 let val (intB2,modc2) = int_topdec(fi,unitnameOpt,absprjid,IntBasis.plus(intB,intB1),topdec2)
 		 in (IntBasis.plus(intB1,intB2), modc2)
 		 end
 		| NONE => (intB1,ModCode.empty)
@@ -696,7 +697,7 @@ functor IntModules(structure Name : NAME
 	      val intB1 = IntBasis.mk(fe, IntSigEnv.empty, CE.emptyCEnv, CompileBasis.empty)
 	  in case topdec_opt
 	       of SOME topdec2 =>
-		 let val (intB2,modc2) = int_topdec(fi,absprjid,IntBasis.plus(intB,intB1),topdec2)
+		 let val (intB2,modc2) = int_topdec(fi,unitnameOpt,absprjid,IntBasis.plus(intB,intB1),topdec2)
 		 in (IntBasis.plus(intB1,intB2), modc2)
 		 end
 		| NONE => (intB1,ModCode.empty)
@@ -726,13 +727,13 @@ functor IntModules(structure Name : NAME
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
 	  in case topdec_opt
 	       of SOME topdec => 
-		 let val (intB2, mc2) = int_topdec(fi,absprjid,IntBasis.plus(intB,intB1), topdec)
+		 let val (intB2, mc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1), topdec)
 		 in (IntBasis.plus(intB1,intB2), ModCode.seq(mc1,mc2))
 		 end
 		| NONE => (intB1, mc1)
 	  end 
 	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
-	 | (NONE, SOME topdec) => int_topdec(fi,absprjid,intB,topdec)
+	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
 
 
 

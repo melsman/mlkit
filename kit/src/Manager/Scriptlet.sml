@@ -2,15 +2,16 @@ signature SCRIPTLET =
     sig
 	(* Parsing scriptlet form variable arguments *)
 	type result = {funid:string, strid:string, valspecs: (string * string) list}
-
-	val parseArgs     : TextIO.instream -> result 
 	val parseArgsFile : string -> result
 
 	(* Generation of abstract form interfaces *)
 	type field = {name:string, typ:string}
 	type script = {name:string, fields:field list}
-	val gen     : TextIO.outstream -> script list -> unit
-	val genFile : string -> script list -> unit
+	val genFormInterface : string -> script list -> unit
+
+	(* Generation of scriptlet instantiations - returns a list
+	 * of the names of the files that are generated. *)
+	val genScriptletInstantiations : script list -> string list
     end
 
 functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
@@ -181,18 +182,21 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		 x::xs => concat (map (fn x => x ^ ".") (rev xs)) ^ "toString"
 	       | _ => error ("Type '" ^ s ^ "' not known!"))
 
-
 	type field = {name:string, typ:string}
 	type script = {name:string, fields:field list}
 	fun ind 0 = ""
 	  | ind n = "  " ^ ind (n-1)
 
-	fun gen (os: TextIO.outstream) (ss:script list) = 
+	fun genFormIface (ss:script list) : string = 
 	    let 
-		fun outs s = TextIO.output(os,s)
-		fun outnl() = TextIO.output(os,"\n")
-		fun outl s = (outs s; outnl())
-		fun outi i s = (outs (ind i); outl s)
+		local val buf : string list ref = ref nil
+		in 
+		    fun bufToString() = concat(rev(!buf))
+		    fun outs s = buf := s :: !buf
+		    fun outnl() = outs "\n"
+		    fun outl s = (outs s; outnl())
+		    fun outi i s = (outs (ind i); outl s)
+		end
 
 		fun out_header_sig () =
 		    (  outl   "signature SCRIPTS ="
@@ -267,12 +271,43 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	      ; out_header_struct()
 	      ; app out_script_struct ss
 	      ; outi 2 "end"
+	      ; bufToString()
 	    end	
 
-	fun genFile (f:string) a =
-	    let val os = TextIO.openOut f
-	    in (gen os a before TextIO.closeOut os)
-		handle X => (TextIO.closeOut os; raise X)
-	    end
+	fun inputAll f : string option = 
+	    let val is = TextIO.openIn f
+	    in (SOME(TextIO.inputAll is) before TextIO.closeIn is)
+		handle X => (TextIO.closeIn is; raise X)
+	    end handle _ => NONE
+
+	fun writeIfDifferent {file:string,content:string} : bool =
+	    if SOME content = inputAll file then false
+	    else let val os = TextIO.openOut file
+		 in (  TextIO.output(os,content) 
+		     ; TextIO.closeOut os
+		     ; true
+		    ) handle X => (TextIO.closeOut os; raise X)
+		 end
+
+	fun genFormInterface (file:string) a =
+	    if writeIfDifferent {file=file,content=genFormIface a} then
+		print ("[created type safe XHTML form interface: " ^ file ^ "]\n")
+	    else 
+		print ("[reusing type safe XHTML form interface: " ^ file ^ "]\n")
+
+	fun genScriptletInstance {name,fields} : string = 
+	    "val _ = Ns.Conn.write \"hello\""
+
+	fun genScriptletInstantiations (ss: script list) : string list =
+	    map (fn s as {name,...} =>
+		 let val i = genScriptletInstance s
+		     val file = name ^ ".gen.sml"
+		 in 
+		     (if writeIfDifferent {file=file, content=i} then
+			  print ("[created scriptlet instance: " ^ file ^ "]\n")
+		      else 
+			  print ("[reusing scriptlet instance: " ^ file ^ "]\n")
+		     ) ; file
+		 end) ss
     end
 	
