@@ -136,7 +136,23 @@ val _ =
   in 
       (disable "garbage_collection";
        disable "delete_target_files";
-       disable "auto_import_basislib"
+       disable "auto_import_basislib";
+       enable "unbox_function_arguments";
+       enable "print_opt_lambda_expression";
+       enable "print_attop_atbot_expression";
+       enable "print_call_explicit_expression";
+       enable "print_linearised_program";
+       enable "print_normalized_program";
+       enable "print_clos_conv_program";
+       enable "print_register_allocated_program";
+       enable "print_simplified_program";
+       enable "comments_in_asmcode";
+
+       K.Flags.lookup_int_entry "maximum_inline_size" := 0;
+
+       K.comp "/home/user_28/mael/mlkit/kit/test/hello.sml";
+       
+       ()
        (* K.build_basislib();
        K.install() *))
   end;

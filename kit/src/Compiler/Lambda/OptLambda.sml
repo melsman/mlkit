@@ -1251,19 +1251,19 @@ functor OptLambda(structure Lvars: LVARS
        case lamb 
 	 of FIX {functions, scope} => 
 	   let 
-	     fun mk_env {lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} : unbox_fix_env =
-	       let fun normal () = LvarMap.add (lvar, NORMAL_ARGS, LvarMap.empty)
+	     fun add_env ({lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
+	       let fun normal () = LvarMap.add (lvar, NORMAL_ARGS, env)
 	       in (* interesting only if the function takes a tuple of arguments *)
 		 case Type
 		   of ARROWtype([RECORDtype nil],res) => normal()
 		    | ARROWtype([rt as RECORDtype ts],res) =>
 		     if unboxable lv body andalso !Flags.optimiser andalso !unbox_function_arguments then
-		       LvarMap.add(lvar,UNBOXED_ARGS (length ts, rt),LvarMap.empty)
+		       LvarMap.add(lvar,UNBOXED_ARGS (length ts, rt),env)
 		     else 
 		       normal()
 		    | _ => normal()
 	       end
-	       | mk_env _ = die "unbox_fix_args.f.mk_env"	       
+	       | add_env _ = die "unbox_fix_args.f.add_env"	       
 	     fun trans_function env {lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} =
 	       let fun mk_fun Type argpat body = {lvar=lvar,tyvars=tyvars,Type=Type, 
 						  bind=FN{pat=argpat, body=body}}
@@ -1290,10 +1290,9 @@ functor OptLambda(structure Lvars: LVARS
 		     | _ => die "unbox_fix_args.trans.trans_function"
 	       end
 	       | trans_function _ _ = die "unbox_fix_args.f.do_fun"
-	     val env' = Listfoldl (fn (f,e) => LvarMap.plus(e,mk_env f)) LvarMap.empty functions
-	     val env'' = LvarMap.plus(env,env')
-	     val functions = map (trans_function env'') functions
-	     val scope = trans env'' scope
+	     val env' = Listfoldl add_env env functions
+	     val functions = map (trans_function env') functions
+	     val scope = trans env' scope
 	   in
 	     FIX{functions=functions,scope=scope}
 	   end
@@ -1321,7 +1320,7 @@ functor OptLambda(structure Lvars: LVARS
 		       | VAR{lvar,instances=nil} => mk_app lvar sz
 		       | _ => 
 			 let val lv_tmp = Lvars.newLvar()
-			 in LET{pat=[(lv_tmp, nil, Type)], bind=arg,
+			 in LET{pat=[(lv_tmp, nil, Type)], bind=trans env arg,
 				scope=mk_app lv_tmp sz}
 			 end)
 		   | _ => APP(lvexp, trans env arg)
@@ -1342,9 +1341,16 @@ functor OptLambda(structure Lvars: LVARS
      val layout_unbox_fix_env = layout_unbox_fix_env
      val enrich_unbox_fix_env = enrich_unbox_fix_env
      type unbox_fix_env = unbox_fix_env
+     fun pr_env e =
+       PP.outputTree (print, layout_unbox_fix_env e, 200)
      fun unbox_fix_args (env:unbox_fix_env) lamb : LambdaExp * unbox_fix_env =
-       let val _ = frame_unbox_fix_env := LvarMap.empty
+       let val _ = print "Import unbox_fix_env:\n"
+	 val _ = pr_env env
+	   val _ = frame_unbox_fix_env := LvarMap.empty
 	   val lamb = trans env lamb
+	   val _ = print "\nExport unbox_fix_env:\n"
+	   val _ = pr_env (!frame_unbox_fix_env)
+	   val _ = print "\n"
        in (lamb, !frame_unbox_fix_env)
        end
    end

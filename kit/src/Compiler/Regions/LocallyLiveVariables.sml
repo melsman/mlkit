@@ -206,6 +206,9 @@ struct
       | freeInTrivList (TR(VAR{lvar, ...}, _, _, _)::er) = add_lvar(freeInTrivList er, lvar)
       | freeInTrivList (_::er)            = freeInTrivList er
   
+    fun freeInTriv' (TR(UB_RECORD trs, _, _, _)) = freeInTrivList trs
+      | freeInTriv' tr = freeInTriv tr
+
     (* Function llv -- compute live variables.
      * Input:  expression e and the (lvars, excons) sets live at e.
      * Effect: decorate e and its subexpressions with the live (lvars, excons)
@@ -315,7 +318,7 @@ struct
                                              (* see (23) *) (rho_act,liveset)) (!rhos_actuals)),
                                       other = other}, meta,phi,psi),
                      tr2'),
-           add_lvar(freeInTriv tr2, f))
+           add_lvar(freeInTriv' tr2, f))
         end
 
       | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = NONE,
