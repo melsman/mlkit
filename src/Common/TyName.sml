@@ -11,6 +11,7 @@ functor TyName(
 	      ) : TYNAME =
   struct
 
+    fun die s = Crash.impossible ("TyName." ^ s)
     val tag_integers = Flags.is_on0 "tag_integers"
 
     (* Type names are based on names which may be `matched'. In
@@ -26,7 +27,8 @@ functor TyName(
 		   name: name, 
 		   arity: int,
 		   rank: rank ref,
-		   equality: bool}
+		   equality: bool,
+		   unboxed: bool ref}
 
     structure Rank =
       struct
@@ -52,12 +54,14 @@ functor TyName(
       end
 			  
 
-    fun freshTyName {tycon: tycon, arity: int, equality: bool} =
+    fun fresh unboxed {tycon: tycon, arity: int, equality: bool} =
       let val name = Name.new()
       in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^ 
 	                                           Int.toString(Name.key name) ^ ")\n") else (); *)
-	{tycon=tycon, name=name, rank=Rank.new(), arity=arity, equality=equality}
+	{tycon=tycon, name=name, rank=Rank.new(), arity=arity, equality=equality, unboxed=ref unboxed}
       end
+
+    fun freshTyName r = fresh false r
 
     fun arity ({arity, ...} : TyName) : int = arity
 
@@ -71,7 +75,9 @@ functor TyName(
      * are equal; otherwise changes in attributes are not caught by
      * the system.. *)
     fun match(tn1,tn2) =
-      if equality tn1 = equality tn2 andalso arity tn1 = arity tn2 then 
+      if (equality tn1 = equality tn2 
+	  andalso arity tn1 = arity tn2 
+	  andalso !(#unboxed tn1) = !(#unboxed tn2)) then 
 	Name.match(name tn1, name tn2)
       else ()
 
@@ -79,16 +85,17 @@ functor TyName(
 
     val op eq = (fn (tn1,tn2) => id tn1 = id tn2)  
 
-    val tyName_BOOL = freshTyName{tycon=TyCon.tycon_BOOL, arity=0, equality=true}
-    val tyName_INT31  = freshTyName{tycon=TyCon.tycon_INT31, arity=0, equality=true}
+    val tyName_BOOL = fresh true {tycon=TyCon.tycon_BOOL, arity=0, equality=true}
+      
+    val tyName_INT31  = fresh true {tycon=TyCon.tycon_INT31, arity=0, equality=true}
     val tyName_INT32  = freshTyName{tycon=TyCon.tycon_INT32, arity=0, equality=true}
-    val tyName_WORD8 = freshTyName{tycon=TyCon.tycon_WORD8, arity=0, equality=true}
-    val tyName_WORD31 = freshTyName{tycon=TyCon.tycon_WORD31, arity=0, equality=true}
+    val tyName_WORD8 = fresh true {tycon=TyCon.tycon_WORD8, arity=0, equality=true}
+    val tyName_WORD31 = fresh true {tycon=TyCon.tycon_WORD31, arity=0, equality=true}
     val tyName_WORD32 = freshTyName{tycon=TyCon.tycon_WORD32, arity=0, equality=true}
     val tyName_REAL = freshTyName{tycon=TyCon.tycon_REAL, arity=0, equality=false}
     val tyName_STRING = freshTyName{tycon=TyCon.tycon_STRING, arity=0, equality=true}
-    val tyName_CHAR = freshTyName{tycon=TyCon.tycon_CHAR, arity=0, equality=true}
-    val tyName_LIST = freshTyName{tycon=TyCon.tycon_LIST,  arity=1, equality=true}
+    val tyName_CHAR = fresh true {tycon=TyCon.tycon_CHAR, arity=0, equality=true}
+    val tyName_LIST = fresh true {tycon=TyCon.tycon_LIST,  arity=1, equality=true}
     val tyName_FRAG = freshTyName{tycon=TyCon.tycon_FRAG,  arity=1, equality=true}
     val tyName_WORD_TABLE = freshTyName{tycon=TyCon.tycon_WORD_TABLE, arity=1, equality=true}
     val tyName_REF = freshTyName{tycon=TyCon.tycon_REF, arity=1, equality=true}
@@ -119,6 +126,12 @@ functor TyName(
 		   else str))
       end
 
+    fun unboxed_num32 tn = 
+      not(tag_integers()) andalso (eq(tn,tyName_INT32)
+				   orelse eq(tn,tyName_WORD32))
+
+    fun unboxed tn = unboxed_num32 tn orelse !(#unboxed tn)
+(*
     fun unboxed (tn : TyName) : bool = 
       eq(tn, tyName_BOOL) 
       orelse eq(tn, tyName_CHAR) 
@@ -128,6 +141,11 @@ functor TyName(
       orelse eq(tn, tyName_LIST) 
       orelse ( not(tag_integers()) andalso ( eq(tn,tyName_INT32) 
 					    orelse eq(tn,tyName_WORD32) ))
+*)
+      fun setUnboxed (tn: TyName) : unit = 
+	if unboxed tn then 
+	  die ("setUnboxed.tyname " ^ pr_TyName tn ^ " already marked as unboxed")
+	else #unboxed tn := true
 
     structure QD : QUASI_DOM =
       struct

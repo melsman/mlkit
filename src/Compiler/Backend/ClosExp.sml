@@ -18,6 +18,7 @@ functor ClosExp(structure Con : CON
 		  sharing type MulExp.qmularefset = Mul.qmularefset
                   sharing type MulExp.mulef = Mul.mulef
                   sharing type MulExp.lvar = Lvars.lvar = Mul.lvar
+		  sharing type MulExp.RegionExp.TyName = TyName.TyName
 	        structure PhysSizeInf : PHYS_SIZE_INF
 		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
                 structure AtInf : AT_INF
@@ -1282,11 +1283,24 @@ struct
     (*------------------------------------------------------------------*)
     fun add_datbinds_to_env (RegionExp.DATBINDS dbs) l2clos_exp_env : CE.env =
       let
-	fun tags n0 n1 [] = []
-	  | tags n0 n1 ((con,RegionExp.VALUE_CARRYING,_)::binds) = (con,CE.B_UNARY n1) :: tags n0 (n1+1) binds
-	  | tags n0 n1 ((con,RegionExp.CONSTANT,_)::binds) = (con,CE.B_NULLARY n0) :: tags (n0+1) n1 binds
-	fun analyse_datbind (tyname,binds: (con * RegionExp.constructorKind * 'a) list) : (con * CE.con_kind) list =
-	  tags 0 0 binds
+	fun enumeration tn binds = 
+	  TyName.unboxed tn andalso 
+	  List.all (fn (_,k,_) => k = RegionExp.CONSTANT) binds
+
+	fun tags_enum n nil = nil
+	  | tags_enum n ((con,_,_)::binds) = (con,CE.ENUM n) :: tags_enum (n+1) binds
+
+	fun unary tn n = if TyName.unboxed tn then CE.UB_UNARY n
+			 else CE.B_UNARY n
+	fun nullary tn n = if TyName.unboxed tn then CE.UB_NULLARY n
+			   else CE.B_NULLARY n
+	fun tags tn n0 n1 [] = []
+	  | tags tn n0 n1 ((con,RegionExp.VALUE_CARRYING,_)::binds) = (con,unary tn n1) :: tags tn n0 (n1+1) binds
+	  | tags tn n0 n1 ((con,RegionExp.CONSTANT,_)::binds) = (con,nullary tn n0) :: tags tn (n0+1) n1 binds
+
+	fun analyse_datbind (tn,binds: (con * RegionExp.constructorKind * 'a) list) : (con * CE.con_kind) list =
+	  if enumeration tn binds then tags_enum 0 binds
+	  else tags tn 0 0 binds
     in
       List.foldl (fn (datbind,env) =>
 		  (env plus_decl_with CE.declareCon) (analyse_datbind datbind))

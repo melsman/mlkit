@@ -453,7 +453,8 @@ struct
   fun warn_dangling_pointers (TE:regionStatEnv, 
                    (PGM{expression = TR(e,_,_,_), ...}):('place,'a,'b) LambdaPgm,
                    get_place: 'place -> place):unit = 
-    if not(gc_p()) 
+    if true (*when gc is enabled, the region inference algorithm R ensures that
+	     *no dangling pointers occur; mael 2001-11-05 *) orelse not(gc_p()) 
       then ()
     else      
       let

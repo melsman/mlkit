@@ -1,13 +1,47 @@
 Possible things to do
 ---------------------
 
+mael 2001-11-13: turn curried functions into functions that take
+  multiple arguments; build the closure at the call-site for those
+  functions that are not fully applied.
+
+mael 2001-11-12: better cross-module in-lining; support in-lining of
+  non-closed functions.
+
+mael 2001-11-12: don't built closures for top-level functions; all
+  free variables of such functions are either (1) top-level functions,
+  which by induction have no environment, or (2) top-level variables,
+  which are statically allocated.
+
+mael 2001-11-12: unboxed implementation of datatypes that
+  have any number of nullary constructors but at-most three unary
+  construtors that all take boxed arguments. With gc, only two unary
+  constructors are allowed for the datatype to be implemented
+  unboxed. Examples of datatypes that may be implemented unboxed
+  include (1) The list datatype, (2) enumerations, (3) the Binary
+  tree datatypes in kit/basislib/Binarymap.sml,
+  kit/basislib/Binaryset.sml, kit/basislib/Intmap.sml,
+  kit/basislib/Intset.sml, kit/basislib/Polyhash.sml,
+  kit/basislib/Splaymap.sml, and kit/basislib/Splayset.sml, (4)
+  Patricia trees (kit/src/Common/IntFinMapPT.sml), and (5) Union Find
+  data structure (kit/src/Compiler/Kam/UnionFindPoly.sml.)
+  
+mael 2001-11-12: unboxed implementation of datatypes that
+  have only one unary constructor; in most cases this optimisation is
+  captured by the unboxing mentioned above.
+ 
 mael 2001-08-07: improvment of pattern-matching; matching against a
-                 pair ((a,b),c) can be optimized by reusing the path 
-		 to a for b.
+  pair ((a,b),c) can be optimized by reusing part of the path to a for
+  b.
+
 mael 2001-08-07: catch stack-overflow
+
 mael 2001-08-07: implement strings and vectors efficiently using
-                 malloc if they don't fit in a region page.
+  malloc if they don't fit in a region page. Part of this is already
+  implemented, but we need to af
+
 mael 2001-08-03: man pages for mlkit and smlserver, rp2ps
+
 mael 2001-08-03: colors in rp2ps output
 
 Unsolved bugs

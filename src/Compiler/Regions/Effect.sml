@@ -507,7 +507,11 @@ struct
                                     (* replaces old layer*)
          | _ => die ("remove: failed to remove effect " ^ PP.flatten1 (layout_effect effect) ^ 
 		     "\nfrom cone at level " ^ Int.toString (!level) ^ 
-		     "\n(no key " ^ Int.toString key ^ " in cone)"))
+		     "\n(no key " ^ Int.toString key ^ " in cone)" ^
+		     "\n(key(effect) = " ^ 
+		     (case get_level_and_key effect
+			of NONE => "NONE"
+			 | SOME (_,ref k) => Int.toString k)))
 
   (* add "effect" with "key" to "cone" at "level" *)
 
@@ -616,7 +620,7 @@ struct
         end
 
   fun popAndClean(cone:cone): effect list  * cone =
-      (topLayer cone, #2(pop cone))
+      (topLayer cone, #2(pop cone))    
 
   local
     val init_count = ref 6    (* 6 top-level predefined rhos/eps declared below! *)
@@ -699,7 +703,16 @@ struct
                                   put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt})
         in (node, add(node, n, key, cone))
       end
-  
+
+  fun freshRhosPreserveRT(rhos,c: cone): effect list * cone  = 
+      foldr (fn (rho,(rhos',c)) => 
+             (case get_place_ty rho 
+		of NONE => die "freshRhosPreserveRT"
+		 | SOME rt => 
+		  let val (rho',c) = freshRhoWithTy(rt, c) 
+                  in (rho'::rhos',c) 
+                  end)) ([],c) rhos
+
   fun setRunType(place:effect)(rt: runType) : unit = 
     let val place = G.find place
     in
@@ -973,7 +986,6 @@ tracing *)
     case delta of 
       Lf(l: effect list) => foldl (fn (a,b) => lower level a b) B l
     | Br(d1, d2) => lower_delta level d2 (lower_delta level d1 B)
-
 
   fun setminus(l1: effect list, l2: effect list): effect list =
      (* Computes l1 \ l2;
@@ -1480,55 +1492,70 @@ tracing *)
 
    * ------------------------------------------------------- *)
 
+  fun unify_with_toplevel_effect effect : unit =
+    let 
+      fun union_with(toplevel_rho) : unit =
+	if G.eq_nodes(G.find toplevel_rho,G.find effect) then ()
+	else (G.union einfo_combine_rho (G.find toplevel_rho,G.find effect);())
+    in (*say_etas[layout_effect effect] (*test*);*)
+      if is_arrow_effect(G.find effect) then
+	if G.eq_nodes(G.find toplevel_arreff,G.find effect) then ()
+	else (
+	      (*
+	       print "unifying with toplevel_arreff:";
+	       say_eps toplevel_arreff;
+	       say_eps effect;
+	       print "\n";
+	       *)
+	      G.union_without_edge_duplication 
+	      (einfo_combine_eps(G.find toplevel_arreff,G.find effect))
+	      is_union
+	      (G.find toplevel_arreff,G.find effect);
+	      (*
+	       print "toplevel_arreff, effect :";
+	       say_eps toplevel_arreff;
+	       say_eps effect; print "\n";
+	       *)
+	      ())
+      else 
+	if is_rho (G.find effect) then
+	  case get_place_ty effect
+	    of SOME WORD_RT =>   union_with(toplevel_region_withtype_word)
+	     | SOME TOP_RT =>    union_with(toplevel_region_withtype_top)
+	     | SOME BOT_RT =>    union_with(toplevel_region_withtype_bot)
+	     | SOME STRING_RT => union_with(toplevel_region_withtype_string)
+	     | SOME REAL_RT =>   union_with(toplevel_region_withtype_real)    
+	     | NONE => die "unify_with_toplevel_effect.no runtype info"
+	else die "unify_with_toplevel_effect.not rho or eps"
+    end    
+
   fun unify_with_toplevel_rhos_eps(cone as (n,c),rhos_epss) : cone =
-  let val nodes_for_unification = 
-              rhos_epss@
-                ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
-                                    "mk_top_level_unique: not top-level in cone"))
-  in
-(*
-   print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
-   say_etas(layoutEtas nodes_for_unification);
-   print"now unifying...:\n";
-*)
-   (app 
-    (fn rho_eps =>
-       let fun union_with(toplevel_rho) : unit =
-	     if G.eq_nodes(G.find toplevel_rho,G.find rho_eps) then ()
-	     else (G.union einfo_combine_rho (G.find toplevel_rho,G.find rho_eps);())
-       in (*say_etas[layout_effect rho_eps] (*test*);*)
-         if is_arrow_effect(G.find rho_eps) then
-	    if G.eq_nodes(G.find toplevel_arreff,G.find rho_eps) then ()
-	    else (
-(*
-		  print "unifying with toplevel_arreff:";
-		  say_eps toplevel_arreff;
-		  say_eps rho_eps;
-		  print "\n";
-*)
-		  G.union_without_edge_duplication 
-		  (einfo_combine_eps(G.find toplevel_arreff,G.find rho_eps))
-                  is_union
-                  (G.find toplevel_arreff,G.find rho_eps);
-(*
-		  print "toplevel_arreff, rho_eps :";
-		  say_eps toplevel_arreff;
-		  say_eps rho_eps; print "\n";
-*)
-		  ())
-	  else if is_rho (G.find rho_eps) then
-	    case get_place_ty rho_eps
-	      of SOME WORD_RT =>   union_with(toplevel_region_withtype_word)
-	       | SOME TOP_RT =>    union_with(toplevel_region_withtype_top)
-	       | SOME BOT_RT =>    union_with(toplevel_region_withtype_bot)
-	       | SOME STRING_RT => union_with(toplevel_region_withtype_string)
-	       | SOME REAL_RT =>   union_with(toplevel_region_withtype_real)    
-	       | NONE => die "unify_with_toplevel_rhos.no runtype info"
-	  else die "unify_with_toplevel_rhos_eps.not rho or eps"
-       end) nodes_for_unification);
-    (* the above side-effects cone; now return it: *)
-    cone
+    let 
+      val nodes_for_unification = 
+	rhos_epss @
+	ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
+			       "mk_top_level_unique: not top-level in cone"))
+    in
+      (*
+       print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
+       say_etas(layoutEtas nodes_for_unification);
+       print"now unifying...:\n";
+       *)
+      app unify_with_toplevel_effect nodes_for_unification;
+      (* the above side-effects cone; now return it: *)
+      cone
   end 
+
+
+  (* restrain: decrease the level of all variables in the topmost
+   * layer by one and pop the topmost layer. *)
+  fun restrain (B as (n,c) : cone) : cone =
+    let val effs = topLayer B (*ConeLayer.range (noSome(Cone.lookup c n, "restrain: no such layer"))*)
+        (* make variables top-level effect variables *)
+         val B = unify_with_toplevel_rhos_eps(B,effs)
+(*        val B = foldl (fn (eff,B) => lower 1 eff B) B ((*remove_duplicates*) effs) *)
+    in #2(pop B)
+    end
 
 
   (**************************************)

@@ -327,15 +327,28 @@ struct
       (* all types declared in a mutally recursive datatype declaration 
          use the same region for their values: *)
 
-      val (common_place,cone) = Effect.freshRhoWithTy(Effect.TOP_RT, cone)
+      val (common_place,cone) = 
+	let (* see CompileDec.sml for information about the unboxing scheme *)
+	    val rt = case current_tynames
+		       of tn::_ => if TyName.unboxed tn then Effect.WORD_RT 
+				   else Effect.TOP_RT
+			| _ => Effect.TOP_RT
+	in Effect.freshRhoWithTy(rt, cone)
+	end
 
    (*mads   val _ = TextIO.output(TextIO.stdOut,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))*)
 
+      val (l,cone) = foldr (fn (rt,(l,cone)) => 
+			    let val (rho,cone) = Effect.freshRhoWithTy(rt,cone)
+			    in ((rt,rho)::l, cone)
+			    end) (nil, cone) (#2 common_arity)
+      val fresh_aux_rhos = map #2 l
+(*
       val (fresh_aux_rhos,cone) = fresh_list(Effect.freshRho,length(#2 common_arity),cone) 
       val l = map (fn (rt,rho) => (Effect.setRunType rho rt; (rt,rho)))
               (ListPair.zip(#2 common_arity,fresh_aux_rhos))
               handle _ => die "spreadDatbind: zip"
-
+*)
       val rho_resource = ref l
 
       val (fresh_aux_arreffs,cone) = fresh_list (Effect.freshEps,eff_arity_int(#3 common_arity), cone)

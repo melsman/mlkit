@@ -823,6 +823,15 @@ val _ = add_bool_entry {long="cross_module_opt",short=SOME "cross_opt",
                         \across modules is controlled by individual optimisation\n\
 			\flags."}
 
+val recompile_basislib = ref false
+val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch", 
+			menu=["Control", "recompile basis library"],
+			item=recompile_basislib,neg=true, 
+			desc=
+			"Recompile basis library from scratch. This option\n\
+			 \is useful together with other options that control\n\
+			 \code generation."}
+
 local
   fun add neg (l, s, r, desc) = add_bool_entry {long=l, short=NONE, menu=["Control", "Optimiser", s],
 						item=r, neg=neg, desc=desc}
@@ -882,12 +891,35 @@ in
 	      \--specialize_recursive_functions.")
 end
 
+val preserve_tail_calls = ref false
+val _ = add_bool_entry {long="preserve_tail_calls", short=SOME"ptc", item=preserve_tail_calls,
+			menu=["Control", "preserve tail calls"], neg=true,
+			desc=
+			"Avoid the wrapping of letregion constructs around\n\
+			 \tail calls. Turning on garbage collection\n\
+			 \automatically turns on this option."}
+
+val dangling_pointers = ref true
+val _ = add_bool_entry {long="dangling_pointers", short=SOME"dangle", item=dangling_pointers,
+			menu=["Control", "dangling pointers"], neg=true,
+			desc=
+			"When this option is disabled, dangling pointers\n\
+			\are avoided by forcing values captured in\n\
+			\closures to live at-least as long as the closure\n\
+			\itself. So as to make garbage collection sound,\n\
+			\this option is disabled by default when garbage\n\
+			\collection is enabled."}
+
 local
   val gc = ref false
   fun off() = (gc := false; 
+	       preserve_tail_calls := false;
+	       dangling_pointers := true;
 	       Directory.turn_off "tag_values"; 
 	       Directory.turn_off "tag_integers") 
   fun on() = (gc := true; 
+	      preserve_tail_calls := true;	      
+	      dangling_pointers := false;
 	      Directory.turn_on "tag_values"; 
 	      Directory.turn_on "tag_integers") 
 in
@@ -899,7 +931,12 @@ in
       \garbage collection is enabled, all values are tagged. Due\n\
       \to region inference, for most programs, the garbage\n\
       \collector is invoked less often than for systems based\n\
-      \only on garbage collection."}
+      \only on garbage collection. When garbage collection is\n\
+      \enabled, introduction of dangling pointers are avoided by\n\
+      \forcing values captured in closures to live at-least as\n\
+      \long as the closure. Moreover, enabling garbage\n\
+      \collection implicitly enables the preservation of tail\n\
+      \calls (see the option ``preserve_tail_calls''.)"}
 end
 
 local

@@ -104,6 +104,13 @@ sig
         variables in etas and pushing the layer onto B.
      *)
 
+  val restrain : cone -> cone
+      (* B' = restrain(B):
+         B must contain at least one level.
+	 Lower (by one) the levels of region and effect variables in the topmost 
+	 layer of B. B' is B with the topmost layer removed.
+      *)
+
   val sort: effect list -> effect list
      (* sort: sorts list of region and effect variables in descending order *)
   val sort_ae: effect list -> effect list
@@ -114,6 +121,7 @@ sig
   val resetCount: 'a -> unit
   val freshRho: cone -> effect * cone
   val freshRhos: place list * cone -> place list * cone
+  val freshRhosPreserveRT: place list * cone -> place list * cone
   val renameRhos: place list * cone -> place list * cone (* fresh variables,
                                                          preserve runtime types and pix *)
   val cloneRhos: place list * cone -> place list * cone  (* fresh variables, 
@@ -143,7 +151,8 @@ sig
   val insertRho: effect -> cone -> cone
 
   val unify_with_toplevel_rhos_eps : cone * effect list -> cone
-
+  val unify_with_toplevel_effect : effect -> unit
+    
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
   val observe: int* delta_phi * effect ->  unit
   val observeDelta: int* delta_phi * effect ->  effect list * delta_phi
