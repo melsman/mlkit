@@ -445,7 +445,7 @@ void alloc_new_block(Gen *gen) {
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
-    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )
+    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )            // inherit to-space bit
       (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
   // ToDo: GenGC only if tospace bit is set already
     else
