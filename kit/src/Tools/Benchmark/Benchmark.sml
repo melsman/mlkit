@@ -1,5 +1,5 @@
 
-datatype compiler = MLKIT of string | SMLNJ | MLTON of string
+datatype compiler = MLKIT of string | SMLNJ | MLTON of string | SMLNJ_110_40
 fun pr_compiler (c:compiler): string =
   let fun with_flags "" s = s
 	| with_flags flags s = s ^ " [" ^ flags ^ "]"
@@ -7,6 +7,7 @@ fun pr_compiler (c:compiler): string =
        of MLKIT flags => with_flags flags "MLKIT"
 	| SMLNJ => "SMLNJ"
 	| MLTON flags => with_flags flags "MLTON"
+	| SMLNJ_110_40 => "SMLNJ-110.40"
   end
 
 signature RESULT_MAP =
@@ -35,6 +36,16 @@ structure RM : RESULT_MAP =
 structure Benchmark = 
   struct
     type report = MemUsage.report
+
+    (* Added 2002-06-16, nh *)
+    fun files_equal (s1,s2) =
+      let fun open_file s = TextIO.openIn s 
+	  val is1 = open_file s1
+	  val is2 = open_file s2
+	  fun close() = (TextIO.closeIn is1; TextIO.closeIn is2)
+      in (TextIO.inputAll(is1) = TextIO.inputAll(is2) before (close()))
+      end handle _ => false
+
     fun process compile (memusage:bool) (p:string,opts:string list) : string * (string * string * report) option =
       case compile p opts
 	of SOME (s,t) =>
@@ -43,6 +54,8 @@ structure Benchmark =
 	    val png = t ^ ".png"
 	    val res = SOME (out, png, MemUsage.memUsage {cmd="./" ^ t,args=nil,out_file=out})
 	      handle _ => NONE
+            (* Added 2002-06-16, nh *)
+            (*val res = if files_equal(p^".out.ok",out) then res else NONE  Many files miss ok-files *)
 	  in 
 	    if memusage then
 	      let val cmd = "memusage -t -T --title=" ^ t ^ " -p " ^ png ^ " ./" ^ t
@@ -151,6 +164,7 @@ structure Benchmark =
 	     of SOME (flags,ss) => getCompileArgs (ss, MLKIT flags::comps, out)
 	      | NONE => getCompileArgs (ss, MLKIT "" ::comps, out))
 	 | "-smlnj"   => getCompileArgs (ss, SMLNJ::comps, out)
+         | "-smlnj-110.40"   => getCompileArgs (ss, SMLNJ_110_40::comps, out)
 	 | "-mlton"   => 
 	     (case readFlags ss
 		of SOME (flags,ss) => getCompileArgs (ss, MLTON flags::comps, out)
@@ -166,6 +180,7 @@ structure Benchmark =
       in case  c 
 	   of MLKIT flags => {head=head, compile=CompileMLKIT.compile, memusage=true, flags=flags}
 	    | SMLNJ       => {head=head, compile=CompileSMLNJ.compile, memusage=false, flags=""}
+	    | SMLNJ_110_40=> {head=head, compile=CompileSMLNJ_110_40.compile, memusage=false, flags=""}
 	    | MLTON flags => {head=head, compile=CompileMLTON.compile, memusage=false, flags=flags}
       end
 
@@ -270,6 +285,7 @@ structure Benchmark =
 	  (  print "USAGE: kitbench [OPTION]... FILE...\n"
 	   ; print "OPTIONS:\n"
 	   ; print "  -smlnj                 Run SML/NJ on each test.\n"
+	   ; print "  -smlnj-110.40          Run SML/NJ on each test (version 110.40).\n"
 	   ; print "  -mlton[:FLAG...FLAG:]  Run MLTON on each test.\n"
 	   ; print "  -mlkit[:FLAG...FLAG:]  Run MLKIT on each test.\n"
 	   ; print "  -o file                Write output to file ``file''.\n"
