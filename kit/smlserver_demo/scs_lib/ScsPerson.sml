@@ -207,6 +207,9 @@ signature SCS_PERSON =
     (* [getPersonByEmail email] fetches a person from the database *)
     val getPersonByEmail : string -> person_record option
 
+    (* [getPersonByCpr cpr] fetches a person from the database *)
+    val getPersonByCpr : string -> person_record option
+
     (* [getPersonByExtSource on_what_table on_which_id] fetches a
        person from the database that relates to the external source
        represented by on_what_table and on_which_id. *)
@@ -934,6 +937,11 @@ structure ScsPerson :> SCS_PERSON =
 	Db.zeroOrOneRow' f (personSQL ` from scs_persons p, scs_parties party
                                        where email = ^(Db.qqq (ScsString.lower email))
                                          and person_id = party_id`)
+      fun getPersonByCpr cpr = 
+	Db.zeroOrOneRow' f (personSQL ` from scs_persons p, scs_parties party
+                                       where security_id = ^(Db.qqq (ScsString.lower cpr))
+                                         and person_id = party_id`)
+
       fun getPersonErr (user_id,errs) =
 	case getPerson user_id of
 	  NONE => 
