@@ -136,6 +136,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				  ] (*--USER--*)
 
     val acceptance_suite_projects = [
+				     ("tststrcmp",None),
 				     ("FuhMishra",None),
 				     ("life",None),
 				     ("compose",None),
