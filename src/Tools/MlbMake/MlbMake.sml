@@ -1,3 +1,29 @@
+structure Listsort =
+  struct
+    fun sort ordr xs =
+      let 
+	fun merge []      ys = ys 
+	  | merge xs      [] = xs
+	  | merge (x::xs) (y::ys) =
+	  if ordr(x, y) <> GREATER then x :: merge xs (y::ys)
+	  else y :: merge (x::xs) ys
+	fun mergepairs l1  []              k = [l1]
+	  | mergepairs l1 (ls as (l2::lr)) k =
+	  if k mod 2 = 1 then l1::ls
+	  else mergepairs (merge l1 l2) lr (k div 2)
+        fun nextrun run []      = (run, [])
+          | nextrun run (xs as (x::xr)) =
+	  if ordr(x, List.hd run) = LESS then (run, xs)
+	  else nextrun (x::run) xr
+        fun sorting []      ls r = List.hd(mergepairs [] ls 0)
+          | sorting (x::xs) ls r =
+	  let val (revrun, tail) = nextrun [x] xs
+	  in sorting tail (mergepairs (List.rev revrun) ls (r+1)) (r+1) 
+	  end
+      in sorting xs [] 0 
+      end
+  end	
+
 structure Options =
     struct
 	fun opt s = case explode s of 
@@ -125,8 +151,13 @@ struct
 
     fun quot s = "'" ^ s ^ "'"
 
-    fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); 
-			      raise Fail "error")
+    local
+	fun err s = print ("\nError: " ^ s ^ ".\n\n"); 
+    in
+	fun error (s : string) = (err s; raise Fail "error")	    
+	fun errors (ss:string list) = 
+	    (app err ss; raise Fail "error")
+    end
 
     fun vchat s = if !verbose then print (" ++ " ^ s ^ "\n") else ()
 
@@ -260,14 +291,45 @@ struct
 	in system cmd
 	end
 
+    fun map2 f ss = map (fn (x,y) => (f x,f y)) ss
+
+    fun check_sources srcs_mlbs =
+	let (* first canonicalize paths *)
+	    val srcs_mlbs = map2 OS.Path.mkCanonical srcs_mlbs
+	    fun report(s,m1,m2) =
+		let val first = "The file " ^ quot s ^ " is referenced "
+		in if m1 = m2 then first ^ "more than once in " ^ quot m1
+		   else first ^ "in both " ^ quot m1 
+		       ^ " and " ^ quot m2
+		end
+	    fun porder ((s1,m1),(s2,m2)) =
+		if s1 < s2 then LESS
+		else if s1 = s2 then
+		        (if m1 < m2 then LESS
+			 else if m1 = m2 then EQUAL
+			      else GREATER)
+		     else GREATER				
+	    val srcs_mlbs = 
+	      Listsort.sort porder srcs_mlbs
+	    fun check ((s1,m1)::(s2,m2)::rest,acc) =
+		check((s2,m2)::rest,
+		      if s1 = s2 then (s1,m1,m2)::acc
+		      else acc)
+	      | check (_,nil) = ()
+	      | check (_,acc) =	(errors (map report acc))
+	in check (srcs_mlbs,nil)
+	end
+
     fun build flags mlbfile =
-	let val _ = maybe_create_mlbdir()
-	    val _ = vchat ("Building mlb-project\n");
+	let val _ = vchat ("Finding sources...\n")		
+	    val srcs_mlbs : (string * string) list = MlbProject.sources mlbfile
+	    val _ = check_sources srcs_mlbs
+	    val ss = map #1 srcs_mlbs
+
 	    val _ = vchat ("Updating dependencies...\n")
+	    val _ = maybe_create_mlbdir()
 	    val _ = MlbProject.depDir := C.mlbdir()
 	    val _ = MlbProject.dep mlbfile
-	    val _ = vchat ("Finding sources...\n")		
-	    val ss = MlbProject.sources mlbfile
 		
 	    val _ = vchat ("Compiling...\n")		
 	    val _ = app (build_mlb_one flags mlbfile) ss

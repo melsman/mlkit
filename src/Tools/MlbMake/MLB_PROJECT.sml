@@ -32,7 +32,7 @@ signature MLB_PROJECT =
 	 * recursively) and writes dependency information to disk in 
 	 * .d-files. *)
 
-	val sources : string -> string list  
+	val sources : string -> (string * string) list  
         (* [sources mlbfile] returns the list of sources (.sml- and
 	 * .sig-files) mentioned in mlbfile. *)
 
