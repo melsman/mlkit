@@ -46,7 +46,9 @@ functor ExecutionBarry(BuildCompileBarry : BUILD_COMPILE_BARRY) : EXECUTION =
 	  of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
 	   | Compile.CodeRes(ce,cb,target,safe) => 
 	    let 
-		val linkinfo : linkinfo = {unsafe=not(safe)}
+		(* to use not(safe) below, we should compile lvars, etc., to labels and 
+		 * use imports and exports appropriately *)
+		val linkinfo : linkinfo = {unsafe=true(*not(safe)*)}   
 		val CB = CompileBasis.mk_CompileBasis(cb,())
 	    in CodeRes(ce,CB,target,linkinfo)
 	    end
