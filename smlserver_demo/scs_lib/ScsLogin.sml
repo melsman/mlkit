@@ -39,6 +39,7 @@ structure ScsLogin :> SCS_LOGIN =
 	| _ => (Ns.log (Ns.Notice,"auth_verify_user (NONE): No cookies");default)
       end
     handle Ns.Cookie.CookieError _ => (Ns.log (Ns.Notice,"auth_verify_user: No cookies");default)
+	 | Ns.MissingConnection => (Ns.log (Ns.Notice,"auth_verify_user: Missing Connection");default)
       
     (* We look for login-cookies on every request *)
     (* If you don't want that, then apply a filter similar to the one below. *)
