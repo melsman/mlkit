@@ -56,6 +56,7 @@ signature SCS_DATE =
     val getDayOfWeek     : Date.date -> int (* Monday = 0, ..., Sunday = 6 *)
     val firstDateInWeek  : Date.date -> Date.date
     val lastDateInWeek   : Date.date -> Date.date
+    val firstAndLastDateInWeekNo: int -> int -> Date.date * Date.date
     val getDayOfMonth    : Date.date -> int (* 0 -- 31 *)
     val firstDateInMonth : Date.date -> Date.date
     val lastDateInMonth  : Date.date -> Date.date
@@ -572,6 +573,30 @@ structure ScsDate :> SCS_DATE =
       | weekday_to_DB Date.Sat = "Sat"
       | weekday_to_DB Date.Sun = "Sun"
 
+    fun firstAndLastDateInWeekNo week_no year =
+      let
+        val max_date = genDate(31,12,year)
+        val start_date = genDate(1,1,year)
+        fun loop d =
+	  let
+            val week_no' = getWeekNo d
+          in
+	    if week_no' = week_no then
+	      (firstDateInWeek d, lastDateInWeek d)
+            else
+              if Date.compare(d,max_date) = General.EQUAL then
+                raise ScsDate ("ScsDate.firstDateInWeekNo. can't find first date in week " ^ 
+	                       (Int.toString week_no) ^ " of year " ^ (Int.toString year))
+              else
+                loop (min(add_days d 7,max_date))
+          end
+      in  
+        if week_no < 1 orelse year < 1950 then
+           raise ScsDate ("ScsDate.firstDateInWeekNo. can't find first date in week " ^ 
+                       (Int.toString week_no) ^ " of year " ^ (Int.toString year))
+        else
+          loop (start_date)
+      end
   end (* of structure *)
 
 
