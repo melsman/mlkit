@@ -11,14 +11,13 @@ mlkit_hppa:
 	cd src; $(MAKE) mlkit_hppa
 
 clean:
-	rm -rf *~
+	rm -rf *~ bin
 	cd basislib; rm -rf PM run *~
 	cd kitlib; rm -rf PM run *~
 	cd ml-yacc-lib; rm -rf PM *~
 	cd kitdemo; rm -rf PM run *~
 	cd test; rm -rf PM run *~ *.out *.log
 	cd test_dev; rm -rf PM run *~ *.out *.log
-	cd bin; rm -rf *
 	cd smlserver_demo; rm -rf *~
 	cd smlserver_demo/sml; rm -rf *~ PM 
 	cd smlserver_demo/www; rm -rf *~ PM
