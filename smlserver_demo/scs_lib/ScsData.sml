@@ -3,8 +3,9 @@ signature SCS_DATA =
     val getOracleId : unit -> int
     val getOracleIdTrans : Db.Handle.db -> int
 
-    val gToInt : (string -> string) -> string -> int
-    val gToReal : (string -> string) -> string -> real
+    val gToInt     : (string -> string) -> string -> int
+    val gToReal    : (string -> string) -> string -> real
+    val gToRealOpt : (string -> string) -> string -> real option
 
     (* [mk_selectBoxFromDb sql g_fn fv v_opt] returns a select box, where 
        elements are taken from the DB.
@@ -31,10 +32,11 @@ structure ScsData :> SCS_DATA =
       fun gToTemplate g field_name fromString_fn = 
         ScsError.valOf' "ScsData.gToTemplate" (fromString_fn (g field_name))
     in
-      fun gToInt g field_name = gToTemplate g field_name Int.fromString
+      fun gToInt g field_name = gToTemplate g field_name Int.fromString 
       fun gToReal g field_name = gToTemplate g field_name Real.fromString
     end
 
+    fun gToRealOpt g field_name = Real.fromString (g field_name)
 
     fun mk_selectBoxFromDb sql g_fn fv v_opt =
       let
