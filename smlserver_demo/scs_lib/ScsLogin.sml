@@ -95,12 +95,33 @@ structure ScsLogin :> SCS_LOGIN =
                                  and deleted_p = 'f'` of
 	  NONE => NONE
 	| SOME [db_psw,db_lang] => SOME (db_psw,db_lang)
+	| SOME _ => NONE
     in
       val getUserInfoFromDb = Ns.Cache.memoize getUserInfoCache getUserInfoFromDb'
     end
 
+    fun target_url msg =
+      let
+	val target = Ns.Conn.url()
+      in
+	Html.genUrl "/scs/auth/auth_form.sml"
+	[("target", Html.genUrl target
+	  (case Ns.Conn.getQuery() of
+	     NONE => []
+	   | SOME s => Ns.Set.list s)),
+	 ("msg",Quot.toString msg)]
+      end
+
     (* auth_verify_user; return user_id if happy, 0 otherwise *)
     local
+      (* Force SSL connection on production server. *)
+      fun maybe_force_ssl_conn () =
+	if ScsConfig.scs_debug_p() = "false" andalso
+	  String.substring(Ns.Conn.location(),0,5) <> "https"
+	  then (Ns.returnRedirect (ScsConfig.scs_site_url() ^ (target_url ` `));
+		Ns.exit())
+	else ()
+
       (* We memoize the cookie information for one connection
          only. The cookie information is checked exactly once for
          every connection. This also works with caching of library
@@ -134,10 +155,11 @@ structure ScsLogin :> SCS_LOGIN =
 						 "function during library initialization")
     in
       fun verifyUser' () =
-	case !user_info of
-	  NONE => (user_info := SOME (verifyUser''());
-		   Option.valOf (!user_info))
-	| SOME i => i
+	(maybe_force_ssl_conn(); (* Maybe redirect and exit *)
+	 case !user_info of
+	   NONE => (user_info := SOME (verifyUser''());
+		    Option.valOf (!user_info))
+	 | SOME i => i)
       fun upd_user_lang lang = 
 	case !user_info of
 	  NONE => user_info := SOME((NO_COOKIE,(default_id,lang)))
@@ -170,14 +192,7 @@ structure ScsLogin :> SCS_LOGIN =
     local
       fun reject msg =
 	let
-  	  val target = Ns.Conn.url()
-
-	  val target_url = Html.genUrl "/scs/auth/auth_form.sml"
-            [("target", Html.genUrl target
-   	       (case Ns.Conn.getQuery() of
-	          NONE => []
-	        | SOME s => Ns.Set.list s)),
-             ("msg",Quot.toString msg)]
+	  val target_url = target_url msg
 	in
 	  (Ns.write 
 `HTTP/1.0 302 Found
@@ -190,6 +205,7 @@ You should not be seeing this!`;
 (*Ns.returnRedirect target_url; 2003-03-10, nh*)
 	   Ns.exit())
 	end
+
     in
       fun auth () =
       let
