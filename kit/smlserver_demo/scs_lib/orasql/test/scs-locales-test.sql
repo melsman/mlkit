@@ -1,4 +1,9 @@
--- test of scs_text package
+/*
+test of scs_text package
+
+$Id$
+
+*/
 
 declare
 	tid1 integer;
