@@ -187,11 +187,22 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
 	val version = "4.0.0"
-	val greetings = ("ML Kit version " ^ version ^ ", " ^ date ^ " [" ^
-			 backend_name ^ " Backend]\n")
 
-	val usage = ("\nUsage: mlkit [OPTION]... [file.sml | file.sig | file.pm]\n\n" ^
-		     "Options:\n\n")
+	fun print_greetings() =
+	  if !Flags.SMLserver then
+	    print("SMLserver version " ^ version ^ ", " ^ date ^ "\n" ^
+		  "Based on the ML Kit [" ^ backend_name ^ " Backend]\n")
+	  else 
+	    print("ML Kit version " ^ version ^ ", " ^ date ^ " [" ^
+		  backend_name ^ " Backend]\n")
+
+	fun cmd_name() = 
+	  if !Flags.SMLserver then "smlserverc"
+	  else if backend_name = "native" then "mlkit" 
+	       else "mlkit_kam"
+	    
+	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.pm]\n\n" ^
+				   "Options:\n\n")
 
 	val options = [("-script file", ["Read compiler options from `file'."]),
 		       ("-version", ["Print ML Kit version information and exit."]),
@@ -213,7 +224,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 	val nullary_options =
 	  [("version", fn () => raise Fail ""),
-	   ("help", fn () => (print usage;
+	   ("help", fn () => (print_usage();
 			      print_options();
 			      print (Flags.help_all()); 
 			      raise Fail ""))]
@@ -231,7 +242,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    end
 	in
 	  fun kitexe(root_dir, args) = 
-	    (print greetings; set_paths root_dir; go_options args)
+	    (print_greetings(); set_paths root_dir; go_options args)
 	    handle Fail "" => OS.Process.success
 		 | Fail s => (print ("Error: " ^ s ^ "\n"); 
 			      OS.Process.failure)
@@ -285,7 +296,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  in SMLofNJ.exportFn(kitbinkit_path, kitexe)
 	  end
 	
-	fun kit scriptfile = (print greetings;
+	fun kit scriptfile = (print_greetings();
 			      set_paths default_root_dir;
 			      Flags.read_script scriptfile;
 			      Flags.interact())

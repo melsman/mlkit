@@ -379,15 +379,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      " does not exist; first, compile this file.") 
 		else ()
 	     end
-	  fun check_body (U, body) =    (* Hmm; we do not allow two program units residing *)
-	    case body                   (* in different directories to have the same name! *)
+	  fun check_body (U, body) =    (* Hmm; we do not allow two program units residing
+					 * in different directories to have the same name!
+					 * - now we do;  mael 2001-09-26 *)
+	    case body                   
 	      of EMPTYbody => U
 	       | LOCALbody(body1,body2,body3) => check_body(check_body(check_body(U,body1), body2), body3)
 	       | UNITbody (longuid, body') => check_longuid(U,longuid,body')
 	       | PARbody nil => U
 	       | PARbody (longuid::rest) => check_longuid(U,longuid,PARbody rest)
 	  and check_longuid (U, longuid,body) =
-	    let val unitid = OS.Path.file longuid
+	    let val unitid = (* OS.Path.file*) longuid
 	    in 
 	      if member unitid U then 
 		error ("The program unit " ^ quot unitid ^ " is included twice in project " ^ 
@@ -566,10 +568,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		else raise CAN'T_REUSE "object file does not exist"
 	      else raise CAN'T_REUSE "program unit is modified"
 		
-	      | _ => raise CAN'T_REUSE "no rep info")
+	      | _ => raise CAN'T_REUSE "no repository info")
 
 	handle CAN'T_REUSE s =>
-	  let val _ = case s of "no rep info" => ()
+	  let val _ = case s of "no repository info" => ()
 	                      | _ => print ("[cannot reuse code for " ^ quot punit ^ " -- " ^ s ^ ".]\n")
 	      val (Bex, modc) = parse_elab_interp (absprjid,B, funid, punit, funstamp_now)
 	  in (Bex, modc, false, modtime) (*not clean*)
@@ -622,6 +624,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * (string*Time.time)list provides modification times for each of
      * the source files mentioned in the project. *)
 
+(*
     fun build_unitid(absprjid, B, unitid, clean, modtimes) 
       : Basis * modcode * bool * (string * Time.time) list =  
       let val {cd_old, file=unitid} = change_dir unitid
@@ -629,6 +632,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	     val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, clean)
 	 in cd_old(); (B', modc, clean, (unitid,modtime)::modtimes)
 	 end handle E => (cd_old(); raise E)
+      end
+*)
+
+    fun build_unitid(absprjid, B, unitid, clean, modtimes) 
+      : Basis * modcode * bool * (string * Time.time) list =  
+      let val _ = maybe_create_pmdir()
+	  val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, clean)
+      in (B', modc, clean, (unitid,modtime)::modtimes)
       end
 
     (* Build a sequence of units *)
@@ -767,9 +778,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       
     fun projectmap_add (absprjid, extobjs, basis, map) : projectmap =
       (strip_install_dir absprjid, extobjs, basis) :: map
-
-    fun projectmap_plus (projectmap1:projectmap, projectmap2) : projectmap =
-      projectmap1 @ projectmap2
 
     (* Add basislib project if auto import is enabled *)
 
