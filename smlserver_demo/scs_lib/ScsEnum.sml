@@ -27,6 +27,21 @@ signature SCS_ENUM =
        enum_name) instead of the enum_id *)
     val selectName : enum_name -> ScsLang.lang -> string -> val_id option -> quot
 
+    (* [radioList enum_id lang fv v_opt] returns a list of (radio button 
+       input tag,text) for
+       enumeration identified by enum_id. The choises are shown in language
+       lang and the form variable used is fv. If v_opt is SOME v, then
+       choise with val_id = v is pre-selected. *)
+    val radioList : enum_id -> ScsLang.lang -> string -> val_id option -> 
+      (quot*quot) list
+
+    (* [radioListName enum_name lang fv v_opt] is similar to radioList
+       except that the enumeration is identified by the name (i.e.,
+       enum_name) instead of the enum_id *)
+    val radioListName : enum_name -> ScsLang.lang -> string -> val_id option 
+      -> (quot*quot) list
+
+
     (* [getEnumErr enum_name] returns a form variable check function
        which checks that a value is one of the posibilities in the
        enumeration with name enum_name. *)
@@ -141,12 +156,14 @@ structure ScsEnum :> SCS_ENUM =
             and ev.active_p = 't'
             and ` ^^ wh ^^ `
           order by ev.ordering`
+
+      fun mk_opts sql_part lang = Db.list (fn g => (g "text", g "val_id")) 
+ 	      (genSql sql_part lang)
+
     in
       fun select enum_id lang fv v_opt =
 	let
-	  val opts =
-	    Db.list (fn g => (g "text", g "val_id")) 
- 	      (genSql `e.enum_id = '^(Int.toString enum_id)'` lang)
+	  val opts = mk_opts `e.enum_id = '^(Int.toString enum_id)'` lang
 	in
           case v_opt of
             NONE => ScsWidget.select opts fv
@@ -155,14 +172,36 @@ structure ScsEnum :> SCS_ENUM =
 
       fun selectName enum_name lang fv v_opt =
 	let
-	  val opts =
-	    Db.list (fn g => (g "text", g "val_id")) 
-	      (genSql `e.name = ^(Db.qqq enum_name)` lang)
+	  val opts = mk_opts `e.name = ^(Db.qqq enum_name)` lang
 	in
           case v_opt of
             NONE => ScsWidget.select opts fv
           | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
 	end
+
+      fun mk_radio_input_tag fv v_opt (text, value)  = 
+	let
+	  val attr = case v_opt of 
+	      SOME v => if (Int.toString v)=value then "checked" else ""
+	    | NONE   => ""
+	in
+	  (Html.inradio {name=fv, value=value} attr, `^text`)
+	end
+
+      fun radioList enum_id lang fv v_opt =
+	let
+	  val opts = mk_opts `e.enum_id = '^(Int.toString enum_id)'` lang
+	in
+	  map (mk_radio_input_tag fv v_opt) opts
+	end
+
+      fun radioListName enum_name lang fv v_opt = 
+	let
+	  val opts = mk_opts `e.name = ^(Db.qqq enum_name)` lang
+	in
+	  map (mk_radio_input_tag fv v_opt) opts
+	end
+
     end
 
     fun allValues enum_name = Db.list (fn g => Option.valOf (Int.fromString (g "val_id"))) 
