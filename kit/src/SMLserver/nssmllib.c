@@ -462,3 +462,134 @@ nssml_ConnUrl(int rAddr, Ns_Conn* conn)
 {
   return convertStringToML(rAddr, conn->request->url);
 }
+
+// ML: string -> string ptr_option
+StringDesc*
+nssml_FetchUrl(int rAddr, StringDesc *url)
+{
+  int sz;
+  char* url_c;
+  Ns_DString ds;
+  StringDesc* res;
+  sz = sizeStringDefine(url) + 1;
+  url_c = (char*)Ns_Malloc(sz);
+  convertStringToC(url, url_c, sz, (int)&exn_OVERFLOW);
+  Ns_DStringInit(&ds);
+  if ( Ns_FetchURL(&ds, url_c, NULL) != NS_OK ) {
+    Ns_DStringFree(&ds);
+    Ns_Free(url_c);
+    return (StringDesc*)NULL;
+  }
+  res = convertStringToML(rAddr, Ns_DStringValue(&ds));
+  Ns_DStringFree(&ds);
+  Ns_Free(url_c);
+  return res;
+}
+
+// Mutex symbol to protect caching operations
+static Ns_Mutex cacheLock;
+
+// Function for freeing cached values
+static void
+nssml_CacheValueFree(void *p)
+{
+  Ns_Free(p);
+}
+
+// ML: string -> cache ptr_option
+Ns_Cache*
+nssml_CacheFind(StringDesc* cacheName)
+{
+  char* cacheName_c;
+  int sz;
+  Ns_Cache* res; 
+  sz = sizeStringDefine(cacheName) + 1;
+  cacheName_c = (char*)Ns_Malloc(sz);
+  convertStringToC(cacheName, cacheName_c, sz, (int)&exn_OVERFLOW);
+  res = Ns_CacheFind(cacheName_c);
+  Ns_Free(cacheName_c);
+  return res;
+}
+
+// ML: string * int -> cache ptr_option
+Ns_Cache*
+nssml_CacheCreate(StringDesc* cacheName, int timeout)
+{
+  char* cacheName_c;
+  int sz;
+  Ns_Cache* res; 
+  sz = sizeStringDefine(cacheName) + 1;
+  cacheName_c = (char*)Ns_Malloc(sz);
+  convertStringToC(cacheName, cacheName_c, sz, (int)&exn_OVERFLOW);
+  res = Ns_CacheCreate(cacheName_c, TCL_STRING_KEYS, timeout, nssml_CacheValueFree);
+  Ns_Free(cacheName_c);
+  return res;
+}
+  
+// ML: string * int -> cache ptr_option
+Ns_Cache*
+nssml_CacheCreateSz(StringDesc* cacheName, int maxSize)
+{
+  char* cacheName_c;
+  int sz;
+  Ns_Cache* res; 
+  sz = sizeStringDefine(cacheName) + 1;
+  cacheName_c = (char*)Ns_Malloc(sz);
+  convertStringToC(cacheName, cacheName_c, sz, (int)&exn_OVERFLOW);
+  res = Ns_CacheCreateSz(cacheName_c, TCL_STRING_KEYS, maxSize, nssml_CacheValueFree);
+  Ns_Free(cacheName_c);
+  return res;
+}
+
+// ML: cache * string * string -> int
+int
+nssml_CacheSet(Ns_Cache* cache, StringDesc* key, StringDesc* value)
+{
+  char *key_c;
+  char *value_c;
+  int sz;
+  int new;
+  Ns_Entry *ePtr;
+  sz = sizeStringDefine(key) + 1;
+  key_c = (char*)Ns_Malloc(sz);
+  convertStringToC(key, key_c, sz, (int)&exn_OVERFLOW);
+  sz = sizeStringDefine(value) + 1;
+  value_c = (char*)Ns_Malloc(sz);
+  convertStringToC(value, value_c, sz, (int)&exn_OVERFLOW);
+  Ns_CacheLock(cache);
+  ePtr = Ns_CacheCreateEntry(cache, key_c, &new);
+  Ns_CacheSetValueSz(ePtr, value_c, sz);
+  Ns_CacheUnlock(cache);
+  return new;
+}
+
+// ML: cache * string -> string ptr_option
+StringDesc*
+nssml_CacheGet(int rAddr, Ns_Cache* cache, StringDesc* key)
+{
+  char *key_c;
+  int sz;
+  char *value_c;
+  Ns_Entry *ePtr;
+  StringDesc* res;
+  sz = sizeStringDefine(key) + 1;
+  key_c = (char*)Ns_Malloc(sz);
+  convertStringToC(key, key_c, sz, (int)&exn_OVERFLOW);
+  Ns_CacheLock(cache);
+  ePtr = Ns_CacheFindEntry(cache, key_c);
+  if ( ePtr == NULL ) {
+    goto none;
+  }
+  value_c = (char*)Ns_CacheGetValue(ePtr);
+  if ( value_c == NULL ) {
+    goto none;
+  }
+  res = convertStringToML(rAddr, value_c);
+  Ns_CacheUnlock(cache);
+  Ns_Free(key_c);
+  return res;
+ none:
+  Ns_CacheUnlock(cache);
+  Ns_Free(key_c);
+  return NULL;
+}
