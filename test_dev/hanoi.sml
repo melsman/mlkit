@@ -13,7 +13,7 @@ let
   infix <
   infix >
 
-  fun out_str(s) = prim ("printString","printString",s)
+  fun out_str(s) = prim ("printStringML","printStringML",s)
   fun printNum(i:int):unit = prim ("printNum","printNum",i)
 
   fun neq(x,y) = if x<y then false else if x>y then false else true

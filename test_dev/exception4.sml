@@ -8,7 +8,7 @@ local
 
   fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
   fun printNum (n:int):unit = prim("printNum","printNum",n)
 
 in (* end of prelude *)

@@ -1445,10 +1445,10 @@ end; (*match compiler local*)
       fun string_cmp_ccall name = ccall name [stringType, stringType] boolType
       fun int_cmp_ccall name = ccall name [intType, intType] boolType
 
-      val less_string = string_cmp_ccall "lessString"
-      val greater_string = string_cmp_ccall "greaterString"
-      val lesseq_string = string_cmp_ccall "lesseqString"
-      val greatereq_string = string_cmp_ccall "greatereqString"
+      val less_string = string_cmp_ccall "lessStringML"
+      val greater_string = string_cmp_ccall "greaterStringML"
+      val lesseq_string = string_cmp_ccall "lesseqStringML"
+      val greatereq_string = string_cmp_ccall "greatereqStringML"
       val less_word = int_cmp_ccall "less_word__"                 (* these primitives also works for word8 *)
       val greater_word = int_cmp_ccall "greater_word__"
       val lesseq_word = int_cmp_ccall "lesseq_word__"

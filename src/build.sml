@@ -79,12 +79,19 @@ fun build_x86 () =
     fun enable s = KitX86.Flags.lookup_flag_entry s := true
     fun disable s =  KitX86.Flags.lookup_flag_entry s := false
   in 
-      disable "garbage_collection";
-      disable "delete_target_files";
-      disable "unbox_function_arguments";
-      (*enable "print_clos_conv_program";*)
-      KitX86.build_basislib();
-      KitX86.install() 
+    disable "garbage_collection";
+    disable "delete_target_files";
+    disable "unbox_function_arguments";
+
+(*    enable "garbage_collection";
+    enable "tag_values";
+    enable "tag_integers";
+    disable "unbox_datatypes";*)
+
+    (*enable "print_clos_conv_program";*)
+    KitX86.build_basislib();
+    enable "auto_import_basislib" ;
+    KitX86.install() 
   end;
 
 

@@ -32,23 +32,23 @@ infix  0  before
     exception Chr
     exception Fail of string 
 
-fun implode (chars : char list) : string = prim ("implodeChars", "implodeCharsProfiling", chars)
-fun concat (ss : string list) : string = prim ("implodeString", "implodeStringProfiling", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatString", "concatStringProfiling", (s, s'))
+fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeString", "sizeString", s)
+fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
 
       fun append [] ys = ys
 	| append (x::xs) ys = x :: append xs ys
       fun xs @ ys = append xs ys
 
     exception Die
-    fun output (s:string):unit = prim ("printString","printString",s)
+    fun output (s:string):unit = prim ("printStringML","printStringML",s)
 
     fun die s = (output("Professor_game - DIE with message: " ^ s);
 		 raise Die)
   
-    fun exnName (e: exn) : string = prim("exnName", "exnNameProfiling", e)   (* exomorphic by copying *)
+    fun exnName (e: exn) : string = prim("exnNameML", "exnNameProfilingML", e)   (* exomorphic by copying *)
     fun exnMessage (e: exn) : string = exnName e 
 
     datatype 'a option = NONE | SOME of 'a
@@ -77,7 +77,7 @@ fun not true = false
 
 fun a <> b = not (a = b)
 
-fun print (s:string) : unit = prim("printString", "printString", s)
+fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 fun printNum (n:int):unit = prim("printNum","printNum",n)
 
 fun log s = output("Professor_game - LOG with message: " ^ s ^ "\n")
@@ -91,7 +91,7 @@ fun log s = output("Professor_game - LOG with message: " ^ s ^ "\n")
     in acc xs 0 
     end
 
-  fun chr (i : int) : char = prim ("chrChar", "chrChar", (i, Chr))
+  fun chr (i : int) : char = prim ("chrCharML", "chrCharML", (i, Chr))
   fun ord (c : char) : int = prim ("id", "id", c)
 
 
