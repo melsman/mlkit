@@ -91,7 +91,7 @@ signature COMPILER_ENV =
     val lookup_strid : CEnv -> strid -> CEnv
 
     type subst
-    val mk_subst : tyvar list * Type list -> subst
+    val mk_subst : (unit -> string) -> tyvar list * Type list -> subst
     val on_il : subst * Type list -> Type list
 
     type ElabEnv and TypeScheme

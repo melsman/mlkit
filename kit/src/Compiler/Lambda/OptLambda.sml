@@ -411,7 +411,7 @@ functor OptLambda(structure Lvars: LVARS
    fun specialize_bind {lvar=lv_f, tyvars, Type=ARROWtype([tau_1],[ARROWtype([tau_2],[tau_3])]), 
 			bind=FN{pat=[(lv_x,_)],body=FN{pat=[(lv_y,_)],body}}} 
                        instances lamb' =
-     let val S = mk_subst "specialize_bind" (tyvars, instances)
+     let val S = mk_subst (fn () => "specialize_bind") (tyvars, instances)
          val tau_2' = on_Type S tau_2
 	 val tau_1' = on_Type S tau_1
          val tau = ARROWtype([tau_2'],[on_Type S tau_3])
@@ -602,7 +602,7 @@ functor OptLambda(structure Lvars: LVARS
                   case cv
 		    of CFN {lexp=lamb',large} =>
 		      if large andalso not(Lvars.one_use lvar) then (lamb, CVAR lamb)
-		      else let val S = mk_subst "reduce1" (tyvars, instances)
+		      else let val S = mk_subst (fn () => "reduce1") (tyvars, instances)
 			       val _ = decr_use lvar
 			       val lamb'' = new_instance lamb'
 			       val _ = incr_uses lamb''
@@ -611,7 +611,7 @@ functor OptLambda(structure Lvars: LVARS
 			   in (on_LambdaExp S lamb'', CVAR lamb)    (* reduce(env,...) *)
 			   end
 		     | CVAR (lamb' as VAR{lvar=lvar',instances=instances'}) =>
-			   let val S = mk_subst "reduce2" (tyvars,instances)
+			   let val S = mk_subst (fn () => "reduce2") (tyvars,instances)
 			       val _ = decr_use lvar
 			       val _ = incr_use lvar'
 			       val lamb'' = on_LambdaExp S lamb'
@@ -622,7 +622,7 @@ functor OptLambda(structure Lvars: LVARS
 		     | CCONST lamb' => if Lvars.one_use lvar then (decr_use lvar; tick "reduce - inline-const"; (lamb', cv))
 				       else (lamb, CVAR lamb)
 		     | CUNKNOWN => (lamb, CVAR lamb)
-		     | _ => let val S = mk_subst "reduce3" (tyvars,instances)
+		     | _ => let val S = mk_subst (fn () => "reduce3") (tyvars,instances)
 			    in (lamb, on_cv S cv)
 			    end)
 		| None => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
@@ -632,7 +632,7 @@ functor OptLambda(structure Lvars: LVARS
 	   | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
 	       let fun do_sw SW (SWITCH(VAR{lvar=lvar',instances},sel,opt_e)) =
 		     if Lvars.eq(lvar,lvar') andalso Lvars.one_use lvar then
-		       let val S = mk_subst "let-switch" (tyvars, instances)
+		       let val S = mk_subst (fn () => "let-switch") (tyvars, instances)
 		       in tick "reduce - inline-switch"; 
 			 (SW (SWITCH(on_LambdaExp S bind, sel, opt_e)), cv)
 		       end
@@ -652,7 +652,7 @@ functor OptLambda(structure Lvars: LVARS
 		  else case scope
 			 of VAR{lvar=lvar',instances} =>
 			   if Lvars.eq(lvar,lvar') then   (* no need for decr_uses *)
-			     let val S = mk_subst "reduce.LET" (tyvars, instances)
+			     let val S = mk_subst (fn () => "reduce.LET") (tyvars, instances)
 			     in tick "reduce - let-var"; reduce (env, (on_LambdaExp S bind, cv))
 			     end
 			   else fail
@@ -1029,7 +1029,7 @@ functor OptLambda(structure Lvars: LVARS
 
 	    val tyvars = get_tyvars c []
 	    val types = map (TYVARtype o fresh_tv) tyvars 
-	    val S = mk_subst "rn_btvs_c" (tyvars, types)
+	    val S = mk_subst (fn () => "rn_btvs_c") (tyvars, types)
 	in on_c S c
 	end
 
@@ -1191,7 +1191,7 @@ functor OptLambda(structure Lvars: LVARS
       let fun new_tv tv = if equality_tyvar tv then fresh_eqtyvar()
 			  else fresh_tyvar()
 	  val tyvars' = map new_tv tyvars
-	  val S = mk_subst "new_sigma" (tyvars,map TYVARtype tyvars')
+	  val S = mk_subst (fn () => "new_sigma") (tyvars,map TYVARtype tyvars')
       in (tyvars', on_Type S tau)
       end
 
@@ -1200,7 +1200,7 @@ functor OptLambda(structure Lvars: LVARS
       List.size tyvars1 = List.size tyvars2 andalso
       let val (tyvars1,tau1) = new_sigma sigma1
 	  val (tyvars2,tau2) = new_sigma sigma2
-	  val S = mk_subst "eq_sigma" (tyvars1,map TYVARtype tyvars2)
+	  val S = mk_subst (fn () => "eq_sigma") (tyvars1,map TYVARtype tyvars2)
 	  val tau1' = on_Type S tau1
       in eq_tau(tau1',tau2)
       end
@@ -1237,8 +1237,8 @@ functor OptLambda(structure Lvars: LVARS
 		       val _ = if !Flags.DEBUG_OPTIMISER then
 			         log ("inverse_eta: " ^ (Lvars.pr_lvar lvar'))
 		               else ()
-                       val subst = case instances' of [] => mk_subst "inverse_eta" ([],[]) 
-                                      | _ => mk_subst "inverse_eta" (tyvars,instances')
+                       val subst = case instances' of [] => mk_subst (fn () => "inverse_eta") ([],[]) 
+                                      | _ => mk_subst (fn () => "inverse_eta") (tyvars,instances')
                         (* The above case analysis caters for the fact that the 
                          * instances may be empty, if this occurrence of lvar' is
                          * on the rhs of a val rec which declares lvar' *)
