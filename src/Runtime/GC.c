@@ -773,10 +773,11 @@ points_into_tospace (unsigned int x)
   // the region page. If the pointer is larger than or equal to the 
   // colorPtr then the pointer points to a value in to-space.
   //
-  // MEMO: This is plain wrong I think! For this to work colorPtr in
-  // old-generation last-pages should be set before gc proper, which
-  // they are not - they are set AFTER gc! Thus values could have been
-  // allocated by the mutator before the next gc. mael 2005-03-19
+  // For this to work colorPtr in old-generation last-pages should be
+  // set before gc proper, which they were not before - they were set
+  // AFTER gc!  Thus values could have been allocated by the mutator
+  // before the next gc. Now, colorPtr's in old generations are
+  // updated before gc proper. mael 2005-03-19
 
   if (!ret)
     { 
@@ -1084,8 +1085,8 @@ do_scan_stack()
   return;
 }
 
-inline static 
-void clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen) 
+inline static void 
+clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen) 
 { Rp *p;
 
   for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
@@ -1108,6 +1109,28 @@ void clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen)
 #endif // ENABLE_GEN_GC
     }
 }
+
+#ifdef ENABLE_GEN_GC
+inline static void 
+set_colorPtr_in_gen(Gen *gen) 
+{ Rp *p;
+  for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
+    {
+      if ( clear_tospace_bit(p->n) )
+	p->colorPtr = (unsigned int*) (p+1); // Not last page so entire page is black
+      else
+	p->colorPtr = gen->a; // Last page so only allocated part of page is black
+    }
+}
+
+static void
+set_colorPtr_in_old_gens(void)
+{
+  Region r;
+  for ( r = TOP_REGION ; r ; r = r->p )
+    set_colorPtr_in_gen(&(r->g1)); // old gen
+}
+#endif // ENABLE_GEN_GC
 
 #define predSPDef(sp,n) ((sp)+=(n))
 #define succSPDef(sp) (sp--)
@@ -1183,9 +1206,15 @@ gc(unsigned int **sp, unsigned int reg_map)
   mk_from_space();
 
 #ifdef ENABLE_GEN_GC
-  // If minor gc, then refs and tables in g1 and lobjs are also 
-  // part of the root-set
+
   if (is_minor_p) {
+    // If minor gc, then colorPtr in old generations should be updated
+    // to make it possible to determine if an object in the
+    // old-generation is part of to-space (see functin points_into_tospace).
+    set_colorPtr_in_old_gens();
+
+    // If minor gc, then refs and tables in g1 and lobjs are also 
+    // part of the root-set
     for ( r = TOP_REGION ; r ; r = r->p ) {
       switch ( rtype(r->g1) ) {
       case RTYPE_REF: {      // Refs are untagged
