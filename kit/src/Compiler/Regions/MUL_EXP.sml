@@ -101,7 +101,6 @@ signature MUL_EXP =
       | HANDLE   of ('a,'b,'c)trip * ('a,'b,'c)trip
       | SWITCH_I of ('a,'b,'c,int)    Switch 
       | SWITCH_S of ('a,'b,'c,string) Switch 
-      | SWITCH_R of ('a,'b,'c,real)   Switch 
       | SWITCH_C of ('a,'b,'c,con)    Switch 
       | SWITCH_E of ('a,'b,'c,excon)  Switch 
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}

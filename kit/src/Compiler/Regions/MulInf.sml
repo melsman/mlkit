@@ -280,7 +280,6 @@ struct
               end
           | SWITCH_I sw => infer_sw sw
           | SWITCH_S sw => infer_sw sw
-          | SWITCH_R sw => infer_sw sw
           | SWITCH_C sw => infer_sw sw
           | SWITCH_E sw => infer_sw sw
           | CON0{con, il, aux_regions,alloc = p} => psi_r:= Mul.put p
@@ -483,7 +482,6 @@ struct
           | HANDLE(tr1, tr2) => (set_trip(tr1); set_trip(tr2))
           | SWITCH_I sw => set_sw sw
           | SWITCH_S sw => set_sw sw
-          | SWITCH_R sw => set_sw sw
           | SWITCH_C sw => set_sw sw
           | SWITCH_E sw => set_sw sw
           | CON0 _ => ()

@@ -148,7 +148,6 @@ struct
       | HANDLE   of ('a,'b,'c)trip * ('a,'b,'c)trip
       | SWITCH_I of ('a,'b,'c,int)    Switch 
       | SWITCH_S of ('a,'b,'c,string) Switch 
-      | SWITCH_R of ('a,'b,'c,real)   Switch 
       | SWITCH_C of ('a,'b,'c,con)    Switch 
       | SWITCH_E of ('a,'b,'c,excon)  Switch 
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
@@ -286,7 +285,6 @@ struct
 	     | HANDLE(e1,e2) => (warn_puts_trip TE e1; warn_puts_trip TE e2)
 	     | SWITCH_I(switch) => warn_puts_i TE switch
 	     | SWITCH_S(switch) => warn_puts_s TE switch
-	     | SWITCH_R(switch) => warn_puts_r TE switch
 	     | SWITCH_C(switch) => warn_puts_c TE switch
 	     | SWITCH_E(switch) => warn_puts_e TE switch
              | CON0 _ => ()
@@ -752,7 +750,6 @@ struct
                )
             else layTrip(body,n)
         | SWITCH_I(sw) => layoutSwitch layTrip Int.string  sw
-        | SWITCH_R(sw) => layoutSwitch layTrip Real.string sw
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
@@ -975,7 +972,6 @@ struct
     | HANDLE(tr1,tr2) => e_to_t(HANDLE(eval env tr1, eval env tr2))
     | SWITCH_I(sw)    => e_to_t(SWITCH_I(eval_sw env sw))
     | SWITCH_S(sw)    => e_to_t(SWITCH_S(eval_sw env sw))
-    | SWITCH_R(sw)    => e_to_t(SWITCH_R(eval_sw env sw))
     | SWITCH_C(sw)    => e_to_t(SWITCH_C(eval_sw env sw))
     | SWITCH_E(sw)    => e_to_t(SWITCH_E(eval_sw env sw))
     | CON0 _ => tr
@@ -1215,10 +1211,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
             let val (sw', dep) = mk_dep_sw(EE,sw, dep)
             in (SWITCH_S sw', dep)
             end
-        | RegionExp.SWITCH_R sw =>
-            let val (sw', dep) = mk_dep_sw(EE,sw, dep)
-            in (SWITCH_R sw', dep)
-            end
         | RegionExp.SWITCH_C sw =>
             let val (sw', dep) = mk_dep_sw(EE,sw, dep)
             in (SWITCH_C sw', dep)
@@ -1455,7 +1447,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
              k(e_to_t(HANDLE(kne tr1 (fn x => x) , kne  tr2 (fn x => x))))
        | SWITCH_I(sw) => kns sw (e_to_t o SWITCH_I )
        | SWITCH_S(sw) => kns sw (e_to_t o SWITCH_S )
-       | SWITCH_R(sw) => kns sw (e_to_t o SWITCH_R )
        | SWITCH_C(sw) => kns sw (e_to_t o SWITCH_C )
        | SWITCH_E(sw) => kns sw (e_to_t o SWITCH_E )
        | CON0 _ => k tr
@@ -1553,7 +1544,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
             eq(tr1,tr2) andalso eq(tr1',tr2')
       | (SWITCH_I(sw1),SWITCH_I(sw2)) => eq_sw (sw1,sw2) eq
       | (SWITCH_S(sw1),SWITCH_S(sw2)) => eq_sw (sw1,sw2) eq
-      | (SWITCH_R(sw1),SWITCH_R(sw2)) => eq_sw (sw1,sw2) eq
       | (SWITCH_C(sw1),SWITCH_C(sw2)) => eq_sw (sw1,sw2) eq 
       | (SWITCH_E(sw1),SWITCH_E(sw2)) => eq_sw (sw1,sw2) eq
       | (CON0{con=con1, ...}, CON0{con=con2,...}) => Con.eq(con1,con2)
@@ -1802,7 +1792,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
                    end
               | SWITCH_I sw => (SWITCH_I(tailsw(sw, cont)), NEXT)
               | SWITCH_S sw => (SWITCH_S(tailsw(sw, cont)), NEXT)
-              | SWITCH_R sw => (SWITCH_R(tailsw(sw, cont)), NEXT)
               | SWITCH_C sw => (SWITCH_C(tailsw(sw, cont)), NEXT)
               | SWITCH_E sw => (SWITCH_E(tailsw(sw, cont)), NEXT)
               | CON0 a => perhapsTerminate cont(CON0 a, NEXT)

@@ -558,7 +558,6 @@ functor AtInf(structure Lvars: LVARS
 		     | HANDLE(tr1,tr2) => HANDLE(sma_trip sme tr1, sma_trip sme tr2)
 		     | SWITCH_I sw => SWITCH_I (sma_sw sme sw) 
 		     | SWITCH_S sw => SWITCH_S (sma_sw sme sw) 
-		     | SWITCH_R sw => SWITCH_R (sma_sw sme sw) 
 		     | SWITCH_C sw => SWITCH_C (sma_sw sme sw) 
 		     | SWITCH_E sw => SWITCH_E (sma_sw sme sw) 
 		     | CON0 {con, il, aux_regions, alloc} => 

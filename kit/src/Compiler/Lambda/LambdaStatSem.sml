@@ -708,7 +708,6 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		    | _ => die "HANDLE.wrong handler type")
 	 | SWITCH_I sw => type_switch (type_lexp env) (fn (i:int) => tyName_INT) sw  
 	 | SWITCH_S sw => type_switch (type_lexp env) (fn (s:string) => tyName_STRING) sw  
-	 | SWITCH_R sw => type_switch (type_lexp env) (fn (r:real) => tyName_REAL) sw  
 	 | SWITCH_C sw => type_switch (type_lexp env) 
 		   (fn (con:con) => case lookup_con env con
 				      of (_, CONStype(_,tyname)) => tyname

@@ -385,10 +385,6 @@ struct
           let val (switch', liveset') = llv_switch(switch,liveset)
           in (SWITCH_S(switch'),liveset')
           end 
-      | SWITCH_R(switch) => 
-          let val (switch', liveset') = llv_switch(switch,liveset)
-          in (SWITCH_R(switch'),liveset')
-          end 
       | SWITCH_E(SWITCH(e,branches,e_opt)) => 
   	  (* Note: e is trivial *)
   	  let fun doBranch(c,e) = 

@@ -190,10 +190,10 @@ functor EliminateEq (structure Lvars : LVARS
     fun monolet {lvar, Type, bind, scope} = 
       LET {pat=[(lvar,[],Type)], bind=bind, scope=scope}
 
-    fun is_prim_tn tn = 
-      let open TyName
-      in List.exists (fn tn' => TyName.eq(tn',tn)) [tyName_INT,tyName_REAL,tyName_BOOL,tyName_STRING,tyName_REF]
-      end
+    fun is_eq_prim_tn tn = 
+          List.exists (fn tn' => TyName.eq(tn',tn))
+	    [TyName.tyName_INT, TyName.tyName_BOOL,
+	     TyName.tyName_STRING, TyName.tyName_REF] (*not tyName_REAL*)
 
 
 
@@ -232,7 +232,7 @@ functor EliminateEq (structure Lvars : LVARS
 	      let fun apply e [] = e
 		    | apply e (tau::taus) = apply (APP(e, gen tau)) taus
 	      in
-		if is_prim_tn tn then mk_prim_eq tau
+		if is_eq_prim_tn tn then mk_prim_eq tau
 		else case lookup_tyname env tn
 		       of Some (POLYLVAR lv) =>
 			 apply (VAR {lvar = lv, instances = taus}) taus
@@ -463,7 +463,6 @@ functor EliminateEq (structure Lvars : LVARS
 		| HANDLE(e1,e2) => HANDLE(f e1, f e2)
 		| SWITCH_I sw => SWITCH_I(f_sw sw) 
 		| SWITCH_S sw => SWITCH_S(f_sw sw) 
-		| SWITCH_R sw => SWITCH_R(f_sw sw) 
 		| SWITCH_C sw => SWITCH_C(f_sw sw) 
 		| SWITCH_E sw => SWITCH_E(f_sw sw) 
 		| PRIM(p, es) => PRIM(p, map f es)
@@ -599,7 +598,6 @@ functor EliminateEq (structure Lvars : LVARS
 	 | HANDLE(lexp1, lexp2) => HANDLE(t env lexp1, t env lexp2)
 	 | SWITCH_I sw => SWITCH_I (t_switch t env sw)
 	 | SWITCH_S sw => SWITCH_S (t_switch t env sw)
-	 | SWITCH_R sw => SWITCH_R (t_switch t env sw)
 	 | SWITCH_C sw => SWITCH_C (t_switch t env sw) 
 	 | SWITCH_E sw => SWITCH_E (t_switch t env sw)   
 	 | PRIM(prim, lexps) => PRIM(prim, map (t env) lexps)

@@ -77,7 +77,6 @@ signature REGION_EXP =
       | HANDLE   of ('a,'b)trip * ('a,'b)trip
       | SWITCH_I of ('a,'b,int) Switch 
       | SWITCH_S of ('a,'b,string) Switch 
-      | SWITCH_R of ('a,'b,real) Switch 
       | SWITCH_C of ('a,'b,con) Switch 
       | SWITCH_E of ('a,'b,excon) Switch 
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}

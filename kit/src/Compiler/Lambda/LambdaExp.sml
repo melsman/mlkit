@@ -155,7 +155,6 @@ functor LambdaExp(structure Lvars: LVARS
       | HANDLE   of LambdaExp * LambdaExp
       | SWITCH_I of int Switch
       | SWITCH_S of string Switch
-      | SWITCH_R of real Switch
       | SWITCH_C of con Switch
       | SWITCH_E of excon Switch
       | PRIM     of Type prim * LambdaExp list
@@ -200,7 +199,6 @@ functor LambdaExp(structure Lvars: LVARS
 	| HANDLE(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
 	| SWITCH_I switch => foldSwitch switch
 	| SWITCH_S switch => foldSwitch switch
-	| SWITCH_R switch => foldSwitch switch
 	| SWITCH_C switch => foldSwitch switch
 	| SWITCH_E switch => foldSwitch switch
 	| PRIM(prim,lambs) => foldl (foldTD fcns) new_acc lambs
@@ -478,8 +476,6 @@ functor LambdaExp(structure Lvars: LVARS
 	  layoutSwitch layoutLambdaExp Int.string sw
       | SWITCH_S sw => 
 	  layoutSwitch layoutLambdaExp (fn x => x) sw
-      | SWITCH_R sw => 
-	  layoutSwitch layoutLambdaExp Real.string sw
       | SWITCH_C sw => 
 	  layoutSwitch layoutLambdaExp Con.pr_con sw
       | SWITCH_E sw => 

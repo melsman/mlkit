@@ -53,7 +53,6 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | HANDLE(lamb1, lamb2) => HANDLE(passTD f lamb1, passTD f lamb2)
 	   | SWITCH_I switch => SWITCH_I(passSwitch (passTD f) switch)
 	   | SWITCH_S switch => SWITCH_S(passSwitch (passTD f) switch)
-	   | SWITCH_R switch => SWITCH_R(passSwitch (passTD f) switch)
 	   | SWITCH_C switch => SWITCH_C(passSwitch (passTD f) switch)
 	   | SWITCH_E switch => SWITCH_E(passSwitch (passTD f) switch)
 	   | PRIM(prim,lambs) => PRIM(prim,map (passTD f) lambs)
@@ -92,7 +91,6 @@ functor LambdaBasics (structure Lvars : LVARS
 	      | HANDLE(lamb1, lamb2) => HANDLE(passBU f lamb1, passBU f lamb2)
 	      | SWITCH_I switch => SWITCH_I(passSwitch (passBU f) switch)
 	      | SWITCH_S switch => SWITCH_S(passSwitch (passBU f) switch)
-	      | SWITCH_R switch => SWITCH_R(passSwitch (passBU f) switch)
 	      | SWITCH_C switch => SWITCH_C(passSwitch (passBU f) switch)
 	      | SWITCH_E switch => SWITCH_E(passSwitch (passBU f) switch)
 	      | PRIM(prim,lambs) => PRIM(prim,map (passBU f) lambs)
@@ -126,7 +124,6 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | HANDLE(lamb1, lamb2) => foldTD f (foldTD f new_acc lamb1) lamb2
 	   | SWITCH_I switch => foldSwitch switch
 	   | SWITCH_S switch => foldSwitch switch
-	   | SWITCH_R switch => foldSwitch switch
 	   | SWITCH_C switch => foldSwitch switch
 	   | SWITCH_E switch => foldSwitch switch
 	   | PRIM(prim,lambs) => foldl (foldTD f) new_acc lambs
@@ -167,7 +164,6 @@ functor LambdaBasics (structure Lvars : LVARS
 	 | HANDLE(e1,e2) => HANDLE(f e1, f e2) 	   
 	 | SWITCH_I sw => SWITCH_I (map_lamb_sw f sw)
 	 | SWITCH_S sw => SWITCH_S (map_lamb_sw f sw)
-	 | SWITCH_R sw => SWITCH_R (map_lamb_sw f sw)
 	 | SWITCH_C sw => SWITCH_C (map_lamb_sw f sw)
 	 | SWITCH_E sw => SWITCH_E (map_lamb_sw f sw)
 	 | PRIM(prim, lambs) => PRIM(prim, map f lambs)
@@ -201,7 +197,6 @@ functor LambdaBasics (structure Lvars : LVARS
 	 | HANDLE(e1,e2) => (f e1; f e2) 	   
 	 | SWITCH_I sw => app_lamb_sw f sw
 	 | SWITCH_S sw => app_lamb_sw f sw
-	 | SWITCH_R sw => app_lamb_sw f sw
 	 | SWITCH_C sw => app_lamb_sw f sw
 	 | SWITCH_E sw => app_lamb_sw f sw
 	 | PRIM(prim, lambs) => app f lambs
@@ -330,7 +325,6 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | RAISE(e,tl) => RAISE(on_e ren e, on_tl ren tl)
 	   | HANDLE(e1,e2) => HANDLE(on_e ren e1, on_e ren e2)
 	   | SWITCH_I sw => SWITCH_I (on_sw (on_e ren) sw) 
-	   | SWITCH_R sw => SWITCH_R (on_sw (on_e ren) sw) 
 	   | SWITCH_S sw => SWITCH_S (on_sw (on_e ren) sw) 
 	   | SWITCH_C sw => SWITCH_C (on_sw (on_e ren) sw) 
 	   | SWITCH_E sw => SWITCH_E (on_sw (on_e ren) sw) 
@@ -506,7 +500,6 @@ functor LambdaBasics (structure Lvars : LVARS
 		 | HANDLE(lamb1,lamb2) => HANDLE(f S lamb1,f S lamb2)
 		 | SWITCH_I switch => SWITCH_I(on_switch S switch)
 		 | SWITCH_S switch => SWITCH_S(on_switch S switch)
-		 | SWITCH_R switch => SWITCH_R(on_switch S switch)
 		 | SWITCH_C switch => SWITCH_C(on_switch S switch)
 		 | SWITCH_E switch => SWITCH_E(on_switch S switch)
 		 | PRIM (prim,lambs) => PRIM(on_prim S prim,map (f S) lambs)
