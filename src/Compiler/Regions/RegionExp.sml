@@ -62,7 +62,7 @@ struct
 
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
-        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a option}
+        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, fix_bound: bool}
       | INTEGER  of int * 'a            
       | STRING   of string * 'a
       | REAL     of string * 'a
@@ -104,6 +104,7 @@ struct
       | DEREF    of ('a,'b)trip
       | REF      of 'a * ('a,'b)trip
       | ASSIGN   of 'a * ('a,'b)trip * ('a,'b)trip
+      | DROP     of ('a,'b)trip  (* to do wild cards properly; drops the type *)
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, 
@@ -170,6 +171,7 @@ struct
       | SELECT (_,tr) => mkPhiTr tr acc
       | DEREF tr => mkPhiTr tr acc
       | REF (_,tr) => mkPhiTr tr acc
+      | DROP (tr) => mkPhiTr tr acc
       | ASSIGN (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | EQUAL (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | CCALL (_,trs) => foldl (uncurry mkPhiTr) acc trs
@@ -300,7 +302,7 @@ old*)
 
 
 
-      fun layPatLet [] = LEAF("()")
+      fun layPatLet [] = LEAF("_")  (* wild card *)
         | layPatLet [one as (lvar,tyvars,tau,p)] = 
              layVarSigma(lvar,tyvars,[],[],tau,p)
         | layPatLet pat = HNODE{start = "(", finish = ")", childsep = RIGHT",", 
@@ -366,7 +368,7 @@ old*)
 
       and layExp(lamb: ('a, 'b) LambdaExp,n): StringTree =  
         case lamb of 
-          VAR{lvar, il_r, alloc = NONE} => 
+          VAR{lvar, il_r, fix_bound=false} => 
             (case R.un_il(#1(!il_r)) of 
                ([],[],[]) => LEAF(Lvar.pr_lvar lvar)
              | _ => lay_il(Lvar.pr_lvar lvar, "", #1(! il_r)))
@@ -377,8 +379,8 @@ old*)
                                       layList Eff.layout_effect epss]})
 *)
           
-        | VAR{lvar, il_r, alloc = SOME a} => 
-            lay_il(Lvar.pr_lvar lvar, " at" ^^ layout_alloc a, #1(! il_r))
+        | VAR{lvar, il_r, fix_bound=true} => 
+            lay_il(Lvar.pr_lvar lvar, "", #1(! il_r))
           
         | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
@@ -429,17 +431,15 @@ old*)
              PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
                      children = [layTrip(trip,3)]}
         | FN{pat, body, alloc}=> layLam((pat,body,alloc), n, "")
-        | APP(TR(VAR{lvar, il_r, alloc = SOME alloc},_,_), t2) =>
+        | APP(TR(VAR{lvar, il_r, fix_bound=true},_,_), t2) =>
            let
-                  (*        f il at rho (exp) 
+                  (*        f il (exp) 
                                       OR
-                            f il at rho
+                            f il 
                               (exp)                                     
                   *)
 
-             val alloc_s = 
-                   case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => ""
-             val t1 = lay_il(Lvar.pr_lvar lvar, alloc_s, #1(! il_r))
+             val t1 = lay_il(Lvar.pr_lvar lvar, "", #1(! il_r))
           in
              PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", 
                      children = [t1, layTrip(t2,3)]}
@@ -480,6 +480,14 @@ old*)
             in  PP.NODE{start = "(" , finish = ")"^s, indent = 1, childsep = PP.RIGHT " := ",
                         children = [layTrip(t1,2), layTrip(t2,2)]}
             end
+	| DROP(t) => layTrip(t,n)
+(*
+            PP.NODE{start = if n>3 then "(drop "
+			    else "drop ", 
+		    finish = if n>3 then ")" else "", 
+		    indent = 6, childsep = PP.NOSEP,
+		    children = [layTrip(t,4)]}
+*)
         | EQUAL({mu_of_arg1,mu_of_arg2, alloc},arg1,arg2) =>
             let val eq = if !Flags.print_regions then  "=" ^ alloc_string alloc else "="
                 val ty = if !(Flags.print_types) 

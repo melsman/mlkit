@@ -595,6 +595,7 @@ struct
       | CG_ce(ClosExp.ASSIGN(sma,ce1,ce2),env,sp,cc,acc) = 
 	       CG_ce(ce1,env,sp,cc, 
 		     push (CG_ce(ce2,env,sp+1,cc,Store(0) :: acc)))
+      | CG_ce(ClosExp.DROP ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,acc)  (* dropping type *)
       | CG_ce(ClosExp.RESET_REGIONS{force=false,regions_for_resetting},env,sp,cc,acc) =
 	  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
       | CG_ce(ClosExp.RESET_REGIONS{force=true,regions_for_resetting},env,sp,cc,acc) =

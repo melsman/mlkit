@@ -520,7 +520,7 @@ struct
   local
     fun binder_to_binder(place,phsize) = ((place,phsize),())  (* for now, offset is unit *)
 
-    fun one_lvar([]) = die "one_lvar: zero lvars."
+    fun one_lvar([]) = (* wild card *)Lvars.wild_card
       | one_lvar([lv]) = lv
       | one_lvar(lvars) = die "one_lvar: more than one lvar."
 
@@ -600,15 +600,18 @@ struct
       | L_ce(ClosExp.LET{pat,bind,scope},lvars_res,acc) =
 	  SCOPE{pat=map mk_sty pat,scope=L_ce(bind,pat,L_ce(scope,lvars_res,[]))}::acc
       | L_ce(ClosExp.RAISE ce,lvars_res,acc) = RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
-      | L_ce(ClosExp.HANDLE(ce1,ce2),[lv_res],C) =
+      | L_ce(ClosExp.HANDLE(ce1,ce2),lv_ress,C) =
 	  let
+	    val lv_res = case lv_ress 
+			   of [lv_res] => lv_res 
+			    | nil => Lvars.wild_card 
+			    | _ => die "L_ce: HANDLE with more than one lvars_res"
 	    val clos_lv = Lvars.new_named_lvar "handleCloslv"
 	  in
 	    HANDLE{default=L_ce(ce1,[lv_res],[]),
 		   handl=([SCOPE{pat=[mk_sty clos_lv],scope=L_ce(ce2,[clos_lv],[])}],VAR clos_lv),
 		   handl_return=([],VAR lv_res,[]),offset=()}::C (* for now, offset is unit *)
 	  end
-      | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,C) = die "L_ce: HANDLE with more than one lvars_res"
       | L_ce(ClosExp.SWITCH_I sw,lvars_res,acc) = SWITCH_I(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i))::acc
       | L_ce(ClosExp.SWITCH_S sw,lvars_res,acc) = SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
       | L_ce(ClosExp.SWITCH_C sw,lvars_res,acc) = SWITCH_C(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),
@@ -630,6 +633,7 @@ struct
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=REF(sma_to_sma sma,ce_to_atom ce)}::acc
       | L_ce(ClosExp.ASSIGN(sma,ce1,ce2),lvars_res,acc) =
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2)}::acc
+      | L_ce(ClosExp.DROP(ce),lvars_res,acc) = L_ce(ce,lvars_res,acc)
       | L_ce(ClosExp.RESET_REGIONS{force,regions_for_resetting},lvars_res,acc) = 
 	  (* We must have RESET_REGIONS return unit. *)
 	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::

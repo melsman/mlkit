@@ -171,11 +171,8 @@ functor PhysSizeInf(structure Name : NAME
 	let fun fv_sw (SWITCH(tr,choices,opt)) = (fv tr; List.apply (fv o #2) choices;
 						  case opt of SOME tr => fv tr | NONE => ())
 	in case e
-	     of VAR{lvar,alloc,rhos_actuals=ref actuals,...} =>
-	       (add_lvar lvar; case alloc
-				 of SOME atp => add_atp atp
-				  | NONE =>(); 
-		List.apply add_atp actuals)
+	     of VAR{lvar,rhos_actuals=ref actuals,...} =>
+	       (add_lvar lvar; List.apply add_atp actuals)
 	      | INTEGER(n,alloc) => add_atp alloc
 	      | STRING(s,alloc) => add_atp alloc
 	      | REAL(s,alloc) => add_atp alloc
@@ -234,6 +231,7 @@ functor PhysSizeInf(structure Name : NAME
 	      | DEREF tr => fv tr
 	      | REF (alloc,tr) => (add_atp alloc; fv tr)
 	      | ASSIGN (alloc,tr1,tr2) => (add_atp alloc; fv tr1; fv tr2)
+	      | DROP tr => fv tr
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (add_atp alloc; fv tr1; fv tr2)
 	      | CCALL ({rhos_for_result, ...}, trs) => (List.apply (add_atp o #1) rhos_for_result;
 							List.apply fv trs)
@@ -330,6 +328,7 @@ functor PhysSizeInf(structure Name : NAME
 	      | DEREF tr => ifv tr
 	      | REF (alloc,tr) => ifv tr
 	      | ASSIGN (alloc,tr1,tr2) => (ifv tr1; ifv tr2)
+	      | DROP (tr) => ifv tr
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (ifv tr1; ifv tr2)
 	      | CCALL (_, trs) => List.apply ifv trs
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => ifv tr
@@ -576,7 +575,7 @@ functor PhysSizeInf(structure Name : NAME
       
     fun psi_tr env (TR(e,_,_,_) : (place at, place*mul,unit)trip) =
       case e
-	of VAR{lvar,alloc=NONE,rhos_actuals=ref [],...} => ()
+	of VAR{lvar,fix_bound=false,rhos_actuals=ref [],...} => ()
 	 | VAR _ => die "psi_tr.variables not fully applied as assumed." 
 	 | INTEGER _ => ()
 	 | STRING _ => ()  (* immediate strings are allocated statically.. *)
@@ -620,16 +619,18 @@ functor PhysSizeInf(structure Name : NAME
 	       | NONE => die "psi_tr.FIX"
 	  end
 	 | FIX _ => die "psi_tr.free vars not available."
- 	 | APP(_,_,tr1 as TR(VAR{lvar,alloc,rhos_actuals=ref atps,...},_,_,_), tr2) =>
+ 	 | APP(_,_,tr1 as TR(VAR{lvar,fix_bound,rhos_actuals=ref atps,...},_,_,_), tr2) =>
 	  let val actuals = map (fn atp => case place_atplace atp
 					     of SOME place => place
 					      | NONE => die "APP.actual atp is IGNORE.") atps
+(*
 	      val _ = case alloc
 			of SOME atp =>
 			  (case place_atplace atp
 			     of SOME place => psi_add_place_size (place, size_region_vector actuals)
 			      | NONE => die "APP.atp is IGNORE")
 			 | NONE => () (* region vector empty or unboxed.~~ *)  
+*)
 	  in case lookup_env env lvar                               		  
 	       (* If lvar is bound in the program we add edges
 		* between formals and actuals, otherwise we add
@@ -690,6 +691,7 @@ functor PhysSizeInf(structure Name : NAME
 	 | ASSIGN (alloc,tr1,tr2) => (case place_atplace alloc
 					of SOME _ => die "psi_tr.ASSIGN"
 					 | NONE => (psi_tr env tr1; psi_tr env tr2))
+	 | DROP tr => psi_tr env tr
 	 | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) =>
 	       (case place_atplace alloc
 		  of SOME _ => die "psi_tr.EQUAL"
@@ -748,11 +750,9 @@ functor PhysSizeInf(structure Name : NAME
 	  fun bind_transform (place, mul) = (place, phsize_place place)
 	  val e' =
 	    case e
-	      of VAR {lvar,il,plain_arreffs,alloc,rhos_actuals,other} => 
-		let val alloc' = case alloc of SOME atp => SOME (pp atp) | NONE => NONE
-		in VAR {lvar=lvar,il=il,plain_arreffs=plain_arreffs,alloc=alloc',
-			rhos_actuals=ref (map pp (!rhos_actuals)),other=other} 
-		end
+	      of VAR {lvar,il,plain_arreffs,fix_bound,rhos_actuals,other} => 
+		VAR {lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
+		     rhos_actuals=ref (map pp (!rhos_actuals)),other=other} 
 	       | INTEGER (a,p) => INTEGER (a,pp p)
 	       | STRING (a,p) => STRING (a,pp p)
 	       | REAL (a,p) => REAL (a,pp p)
@@ -793,6 +793,7 @@ functor PhysSizeInf(structure Name : NAME
 	       | DEREF tr => DEREF (ips tr)
 	       | REF (alloc,tr) => REF (pp alloc,ips tr)
 	       | ASSIGN (alloc,tr1,tr2) => ASSIGN (pp alloc,ips tr1,ips tr2)
+	       | DROP (tr) => DROP (ips tr)
 	       | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) =>
 		EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=pp alloc}, ips tr1, ips tr2)
 	       | CCALL ({name, mu_result, rhos_for_result}, trs) => 

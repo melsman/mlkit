@@ -498,17 +498,10 @@ functor AtInf(structure Lvars: LVARS
 		  end
 		val e' = 
 		 (case e
-		    of VAR{lvar,il,plain_arreffs,alloc,rhos_actuals=ref actuals,other} =>
-		      let val alloc' = case alloc of 
-                                         SOME alloc => 
-                                           (if !debug_which_at then
-                                               log("application of lvar: " ^ Lvars.pr_lvar lvar)
-                                            else ();
-                                            SOME(which_at sme alloc))
-                                       | NONE => NONE
-			  val actuals' = map (which_at sme) actuals  (* also liveset here*)
+		    of VAR{lvar,il,plain_arreffs,fix_bound,rhos_actuals=ref actuals,other} =>
+		      let val actuals' = map (which_at sme) actuals  (* also liveset here*)
 		      in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
-			     alloc=alloc',rhos_actuals=ref actuals',other=()}
+			     fix_bound=fix_bound,rhos_actuals=ref actuals',other=()}
 		      end
 		     | INTEGER(n,(place,liveset)) => INTEGER(n, ATTOP place) (* no need for analysis *)
 		     | STRING(s,(place,liveset)) => STRING(s, ATTOP place)       (* no need for analysis *)
@@ -598,6 +591,7 @@ functor AtInf(structure Lvars: LVARS
 		     | DEREF tr => DEREF (sma_trip sme tr)
 		     | REF (alloc,tr) => REF(which_at sme alloc, sma_trip sme tr)
 		     | ASSIGN (alloc as (rho,_),tr1,tr2) => ASSIGN (ATTOP rho,sma_trip sme tr1, sma_trip sme tr2) (* no need for analysis *)
+		     | DROP tr => DROP (sma_trip sme tr)
 		     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc = (p,liveset)}, tr1,tr2) => 
 		      EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=ATTOP p},  (* no need for analysis *)
 			     sma_trip sme tr1,sma_trip sme tr2)

@@ -72,7 +72,7 @@ signature MUL_EXP =
 
     and ('a,'b,'c)LambdaExp =
         VAR      of {lvar: lvar, il : il, plain_arreffs: (effectvar * ateffect list) list,
-                     alloc: 'a option, rhos_actuals: 'a list ref, other: 'c}
+                     fix_bound: bool, rhos_actuals: 'a list ref, other: 'c}
 
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
@@ -130,6 +130,7 @@ signature MUL_EXP =
       | DEREF    of ('a,'b,'c)trip
       | REF      of 'a * ('a,'b,'c)trip
       | ASSIGN   of 'a * ('a,'b,'c)trip * ('a,'b,'c)trip
+      | DROP     of ('a,'b,'c)trip
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b,'c)trip * ('a,'b,'c)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, (*mu of result from c function*)

@@ -143,7 +143,7 @@ struct
                              
         in
           case e of
-            VAR{lvar,alloc,rhos_actuals,il,plain_arreffs,other: qmularefset ref} =>
+            VAR{lvar,fix_bound,rhos_actuals,il,plain_arreffs,other: qmularefset ref} =>
               let 
                 val (_,places,_) = RType.un_il il
                 val qmul = Mul.instantiateRegions(places,!other)
@@ -156,12 +156,15 @@ struct
                 val _ = Mul.instantiateeffects(arreffs,
                                                qmul, Psi, dep) (* updates 
                                                                  shared semantic objects *)
+(*
                 val psi = case alloc 
 			    of SOME p => Mul.put p 
 			     | NONE => Mul.empty_psi
+*)
+		val psi = Mul.empty_psi
               in
-  	      psi_r:= psi
-  	    end		    
+		psi_r:= psi
+	      end		    
           | INTEGER(_,p) => psi_r:= Mul.put p
           | STRING(_,p) => psi_r:= Mul.put p
           | REAL(_,p) => psi_r:= Mul.put p
@@ -329,8 +332,12 @@ struct
                  infer_trip(tr2);
                  case get_mu tr1 of 
                    RegionExp.Mus[(_,place_of_ref)] =>
-                     psi_r:= sum_psis[Mul.put p, Mul.putzero place_of_ref, get_psi tr1, get_psi tr2]
+                     psi_r:= sum_psis[Mul.put p, (*Mul.putzero place_of_ref,mael*) get_psi tr1, get_psi tr2]
                  | _ => die "ASSIGN: expected single type and place of reference")
+          | DROP(tr) =>
+              (infer_trip(tr);
+               psi_r:= get_psi tr
+              )
           | EQUAL({mu_of_arg1,mu_of_arg2, alloc}, tr1, tr2)=>
                 (infer_trip(tr1);
                  infer_trip(tr2);
@@ -474,6 +481,7 @@ struct
           | DEREF tr => set_trip tr
           | REF(_, tr) => set_trip tr
           | ASSIGN(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
+          | DROP(tr1) => (set_trip tr1)
           | EQUAL(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
           | CCALL(_, trips) => app set_trip trips
           | RESET_REGIONS(_, tr) => set_trip tr

@@ -164,7 +164,7 @@ struct
            end
       in count_visited:= !count_visited+1;
        (case e of
-         Exp.VAR{lvar, il_r = il_r as ref(il,f), alloc} =>
+         Exp.VAR{lvar, il_r = il_r as ref(il,f), fix_bound} =>
          let val (il, B) = f(il, B)
          in il_r:= (il, fn p => p);
            (case RSE.lookupLvar rse lvar of
@@ -240,6 +240,11 @@ struct
             in
                (B, Effect.Br(d1,d2))
             end
+       | Exp.LET{pat = nil, bind = bind, scope} =>  (* wild card *)
+           let val (B,d1) = R(B,rse,bind)
+               val (B,d2) = R(B,rse,scope)
+	   in (B, Effect.Br(d1,d2))
+	   end
        | Exp.LET _ => die "LET.multiple bindings not implemented." 
        | Exp.FIX{shared_clos = rho0,
                  functions,
@@ -382,6 +387,7 @@ struct
                val (B,d2) = R(B,rse,t2)
            in  (B,Effect.Br(d1,d2))
            end
+       | Exp.DROP t => R(B,rse,t)
        | Exp.EQUAL (_,t1,t2) => 
            let val (B,d1) = R(B,rse,t1)
                val (B,d2) = R(B,rse,t2)

@@ -96,6 +96,9 @@ functor Lvars(structure Name : NAME
     val greater_float_lvar: lvar = new_prim("greater_float", GREATER_FLOAT)
     val greatereq_float_lvar: lvar = new_prim("greatereq_float", GREATEREQ_FLOAT)
 
+    val wild_card : lvar (* used in LineStmt/SubstAndSimplify *)
+      = newLvar()
+
     fun primitive ({prim,...}: lvar) : primitive option = prim
 
     fun is_free ({free,...} : lvar) = free

@@ -569,6 +569,10 @@ old*)
 					    end 
 					   | _ => die "ASSIGNprim.Wrong instance kind") 
 	           | _ => die "ASSIGNprim.Wrong number of args")
+	   | DROPprim => 
+		  (case lexps
+		     of [lexp] => (type_e lexp; nil)
+		      | _ => die "DROPprim -- one parameter expected")
 	   | MUL_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MUL_REALprim"
 	   | MUL_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MUL_INTprim"
 	   | PLUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "PLUS_REALprim"
@@ -641,6 +645,12 @@ old*)
 	      val ts_body = unTypeList "FN" (type_lexp env' body)
 	      val ts_arg = map #2 pat
 	  in Types [ARROWtype(ts_arg, ts_body)]
+	  end
+	 | LET {pat=nil,bind,scope} =>   (* wild card *)
+	  let val ts = unTypeList "WILD" (type_lexp env bind)
+	    val _ = if List.null ts then ()
+		    else die "LET.wild -- the binding must be surrounded by a drop expression"
+	  in type_lexp env scope  
 	  end
 	 | LET {pat,bind,scope} =>
 	  let val env' = foldl (fn ((lvar,tyvars,Type), env) => 

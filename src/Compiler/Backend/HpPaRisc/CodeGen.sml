@@ -240,6 +240,7 @@ struct
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def_kill_gen1(SS.STACK_ATY offset,t:reg,size_ff,C) = (t,store_indexed_kill_gen1(sp,WORDS(~size_ff+offset),t,C))
       | resolve_aty_def_kill_gen1(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C) 
+      | resolve_aty_def_kill_gen1(SS.UNIT_ATY,t:reg,size_ff,C)  = (t,C)
       | resolve_aty_def_kill_gen1 _ = die "resolve_aty_def_kill_gen1: ATY cannot be defined"
 
     (* Make sure that the aty ends up in register dst_reg *)

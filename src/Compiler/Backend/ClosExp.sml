@@ -115,6 +115,7 @@ struct
     | DEREF           of ClosExp
     | REF             of sma * ClosExp
     | ASSIGN          of sma * ClosExp * ClosExp
+    | DROP            of ClosExp
     | RESET_REGIONS   of {force: bool, 
 			  regions_for_resetting: sma list}
     | CCALL           of {name: string,  
@@ -334,6 +335,10 @@ struct
 					       finish="",
 					       childsep=RIGHT ":=",
 					       children=[layout_ce ce1,layout_ce ce2]}
+      | layout_ce(DROP ce) = layout_ce ce
+(*
+	  PP.LEAF("drop " ^ (flatten1(layout_ce ce)))
+*)
       | layout_ce(RESET_REGIONS{force=true,regions_for_resetting}) =
 	  HNODE{start="force reset regions",
 		finish="",
@@ -503,7 +508,7 @@ struct
 	    in
 	      fun lvar_as_term(x,mu) =
 		TR(VAR{lvar=x,il=il0,plain_arreffs=[],
-		       alloc=NONE,rhos_actuals=ref [],other=dummy_'c},mu,[],ref Mul.empty_psi)
+		       fix_bound=false,rhos_actuals=ref [],other=dummy_'c},mu,[],ref Mul.empty_psi)
 	      fun mk_pat(lvar,mu) =
 		(case mu of
 		   RegionExp.Mus[(ty,place)] =>
@@ -520,7 +525,7 @@ struct
 
 	    fun NExp e =
 	      (case e of
-		 MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => e
+		 MulExp.VAR _ => e
 	       | MulExp.INTEGER(i,alloc) => e
 	       | MulExp.STRING(s,alloc) => e
 	       | MulExp.REAL(r,alloc) => e
@@ -577,6 +582,7 @@ struct
 	       | MulExp.DEREF tr => MulExp.DEREF (NTrip tr true)
 	       | MulExp.REF(a,tr) => MulExp.REF(a,NTrip tr true)
 	       | MulExp.ASSIGN(alloc,tr1,tr2) => MulExp.ASSIGN(alloc,NTrip tr1 true,NTrip tr2 true)
+	       | MulExp.DROP tr => MulExp.DROP (NTrip tr true)
 	       | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1, tr2) => 
 		   MulExp.EQUAL({mu_of_arg1=mu_of_arg1,mu_of_arg2=mu_of_arg2,alloc=alloc},
 				NTrip tr1 true,
@@ -739,7 +745,7 @@ struct
 	    let
 	      fun FExp e Fenv (Env as (EnvLvar, EnvExCon, EnvRho)) =
 		(case e of
-		   MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => 
+		   MulExp.VAR{lvar,...} => 
 		     if is_in_dom_Fenv Fenv lvar then
 		       (rem_Fenv Fenv lvar, [OTHER])
 		     else
@@ -816,7 +822,7 @@ struct
 		       end
 		 | MulExp.APP(callKind,saveRestore,operator,operand) =>
 		       (case operator 
-			  of MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,alloc=NONE,rhos_actuals,other},_,_,_) =>
+			  of MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,fix_bound=false,rhos_actuals,other},_,_,_) =>
 			    (* Ordinary function call or a primitive *)
 			    (case Lvars.primitive lvar
 			       of NONE => (* Ordinary function call *)
@@ -839,7 +845,7 @@ struct
 				 in
 				   (Fenv_res, [OTHER])
 				 end)
-			| MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,alloc=SOME atp,rhos_actuals,other},_,_,_) =>
+			| MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,fix_bound=true,rhos_actuals,other},_,_,_) =>
 			       (* Region Polymorphic call *)
 			       let
 				 val Fenv' = (case lookup_Fenv Fenv lvar
@@ -919,6 +925,7 @@ struct
 		   in
 		     (Fenv2, [OTHER])
 		   end
+		 | MulExp.DROP tr => FTrip tr Fenv Env
 		 | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1, tr2) =>
 		   let
 		     val (Fenv1,_) = FTrip tr1 Fenv Env
@@ -1178,7 +1185,7 @@ struct
        | SOME _ => die "lookup_excon: excon bound to FIX or RVAR"
        | NONE  => die ("lookup_excon: excon(" ^ (Excon.pr_excon excon) ^ ") not bound"))
 
-    fun lookup_rho env place =
+    fun lookup_rho env place (f : unit -> string) =
       (case CE.lookupRhoOpt env place of
 	 SOME(CE.LVAR lv') => (VAR lv',NONE_SE)
        | SOME(CE.RVAR place) => (RVAR place, NONE_SE)
@@ -1195,26 +1202,26 @@ struct
 	   in
 	     (VAR lv',FETCH_SE (lv',lab))
 	   end
-       | SOME _ => die "lookup_rho: rho bound to FIX"
-       | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound"))
+       | SOME _ => die ("lookup_rho: rho bound to FIX. " ^ f())
+       | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound. " ^ f()))
 
     fun convert_alloc (alloc,env) =
       (case alloc of
 	   AtInf.ATBOT(rho,pp) => 
 	     let
-	       val (ce,se) = lookup_rho env rho
+	       val (ce,se) = lookup_rho env rho (fn () => "convert_alloc1")
 	     in
 	       (convert_sma(AtInf.ATBOT(rho,pp),CE.lookupRhoKind env rho,ce),se)
 	     end
          | AtInf.SAT(rho,pp) =>
 	     let
-	       val (ce,se) = lookup_rho env rho
+	       val (ce,se) = lookup_rho env rho (fn () => "convert_alloc2")
 	     in
 	       (convert_sma(AtInf.SAT(rho,pp),CE.lookupRhoKind env rho,ce),se)
 	     end
 	 | AtInf.ATTOP(rho,pp) =>
 	     let
-	       val (ce,se) = lookup_rho env rho
+	       val (ce,se) = lookup_rho env rho (fn () => "convert_alloc3")
 	     in
 	       (convert_sma(AtInf.ATTOP(rho,pp),CE.lookupRhoKind env rho,ce),se)
 	     end
@@ -1325,7 +1332,7 @@ struct
       let
 	val lvs_and_ses = List.map (fn lv => lookup_ve env lv) free_lv
 	val excons_and_ses = List.map (fn excon => lookup_excon env excon) free_excon 
-	val rhos_and_ses = List.map (fn place => lookup_rho env place) free_rho
+	val rhos_and_ses = List.map (fn place => lookup_rho env place (fn () => "gen_ces_and_ses_free")) free_rho
       in
 	(lvs_and_ses,excons_and_ses,rhos_and_ses)
       end
@@ -1433,7 +1440,7 @@ struct
 
 	fun ccExp e =
 	  (case e of
-	     MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => lookup_ve env lvar 
+	     MulExp.VAR{lvar,...} => lookup_ve env lvar 
 	   | MulExp.INTEGER(i,alloc) => 
 	       ((if !BI.tag_integers then 
 		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE) 
@@ -1479,6 +1486,7 @@ struct
 		 val env_with_args = (env_body plus_decl_with CE.declareLvar) (map (fn lv => (lv, CE.LVAR lv)) args)
 
 		 val ces_and_ses = gen_ces_and_ses_free env free_vars
+		   handle _ => die "FN"
 
 		 val _ = add_new_fn(new_lab, cc, insert_se(ccTrip body env_with_args new_lab NONE))
 		 val (sma,se_sma) = convert_alloc(alloc,env)
@@ -1499,7 +1507,7 @@ struct
 
 		 val lv_sclos = fresh_lvar("sclos")
 		 val ces_and_ses = gen_ces_and_ses_free env free_vars_in_shared_clos
-
+		   handle _ => die "FIX"
 		 val lvars = map #lvar functions
 		 val binds = map #bind functions
 		 val formalss = map (! o #rhos_formals) functions (* place*phsize *)
@@ -1589,8 +1597,10 @@ struct
 	       end
 	   | MulExp.FIX{free=_,shared_clos,functions,scope} => die "ccExp: No free variables in FIX"
 
-	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,alloc,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
-	       (* Poly tail call so we reuse the region vector stored in cur_rv *)
+	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
+	       (* Poly tail call; this could be made more efficient if we distinguish between a tail call
+		* and a jmp - that is, if we recognice that regions in registers and on the stack
+		* can be reused. *)
 	       let
 		 val ces_and_ses = (* We remove the unboxed record. *)
 		   case tr2 of
@@ -1598,20 +1608,8 @@ struct
 		   | _ => [ccTrip tr2 env lab cur_rv]
 
 		 val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
-		 val actual_region_vector_size = List.length rhos_actuals 
-		 val rv_opt = (* Does callee need a region vector at all? *)
-		   if actual_region_vector_size = 0 then
-		     NONE
-		   else
-		     cur_rv
 	       in
-		 if region_vectors then
-		   (insert_ses(JMP{opr=lab_f,args=ces_arg,reg_vec=rv_opt,reg_args=[],clos=ce_clos},
-			       ses),NONE_SE)
-		 else
-		   let val _ = case cur_rv of SOME _ => die "jmp"
-		                            | NONE  => ()
-		       val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
+		   let val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
 		       val (smas,ses_sma,_) = unify_sma_se smas_regvec_and_ses SEMap.empty
 		       val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
 		       fun maybe_insert_smas([],[],ce) = ce
@@ -1622,7 +1620,7 @@ struct
 		      (maybe_insert_smas
 		       (fresh_lvs,map PASS_PTR_TO_RHO smas,
 			insert_ses
-			(JMP{opr=lab_f,args=ces_arg,reg_vec=rv_opt,
+			(JMP{opr=lab_f,args=ces_arg,reg_vec=NONE,
 			     reg_args=map VAR fresh_lvs,clos=ce_clos},
 			 ses)),
 			ses_sma),
@@ -1631,44 +1629,8 @@ struct
 	       end
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
 	   | MulExp.APP(SOME MulExp.FUNCALL, _,
-			tr1 as MulExp.TR(MulExp.VAR{lvar,alloc as (SOME atp), rhos_actuals=ref rhos_actuals,...},_,_,_), 
+			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
-             if region_vectors then 
-	       let
-		 val ces_and_ses = (* We remove the unboxed record. *)
-		   case tr2 of
-		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
-		   | _ => [ccTrip tr2 env lab cur_rv]
-
-		 val (ce_clos,ces_arg,ses,lab_f) = compile_letrec_app env lvar ces_and_ses
-
-		 val actual_region_vector_size = List.length rhos_actuals
-		 val (sma,smas,ses_sma) =
-		   if actual_region_vector_size = 0 then
-		     (dummy_sma,[],[]) (* sma is dummy and never used *)
-		   else
-		     let
-		       val (sma,se_sma) = convert_alloc(atp,env)
-		       val smas_regvec_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
-
-		       val (smas,ses_sma,_) = unify_sma_se ((sma,se_sma)::smas_regvec_and_ses) SEMap.empty
-		       val (sma,smas_regvec) = split_in_hd_and_tl smas
-		     in
-		       (sma,smas_regvec,ses_sma)
-		     end
-		 val rv = fresh_lvar ("rv")
-	       in
-		 if actual_region_vector_size = 0 then
-		   (insert_ses(FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=[],clos=ce_clos},
-			       ses),NONE_SE)
-		 else
-		    (insert_ses(LET{pat=[rv],
-				    bind=REGVEC_RECORD{elems=smas,alloc=sma},
-				    scope=insert_ses(FUNCALL{opr=lab_f,args=ces_arg,reg_vec=SOME (VAR rv),
-							     reg_args=[],clos=ce_clos},
-						     ses)},ses_sma),NONE_SE)
-	       end
-            else (*unboxed region vectors *)
 	       let
 		 val ces_and_ses = (* We remove the unboxed record. *)
 		   case tr2 of
@@ -1711,7 +1673,7 @@ struct
 			     ses'),NONE_SE)
 	       end
 	   | MulExp.APP(NONE,_, (*  primitive *)
-			tr1 as MulExp.TR(MulExp.VAR{lvar,alloc as NONE, rhos_actuals=ref rhos_actuals,...},_,_,_), 
+			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
 	       let
 		 val ces_and_ses = 
@@ -2045,6 +2007,12 @@ struct
 	       in
 		 (insert_ses(ASSIGN(sma,ce1,ce2),ses),NONE_SE)
 	       end
+	   | MulExp.DROP tr => 
+	       let
+		 val (ce,se) = ccTrip tr env lab cur_rv
+	       in
+		 (insert_se(DROP ce,se),NONE_SE)
+	       end
 	   | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1,tr2) =>
 	       let 
 		 val tau = 
@@ -2216,7 +2184,7 @@ struct
 	  | SOME(CE.SELECT(lv',i)) => SELECT(i,VAR lv')
 	  | SOME(CE.LABEL lab) => FETCH(lab)
 	  | SOME _ => die "lookup_rho: rho bound to FIX"
-	  | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound")
+	  | NONE  => die ("lookup_rho: rho(" ^ PP.flatten1(Effect.layout_effect place) ^ ") not bound...")
 
 	fun lookup_excon env excon =
 	  case CE.lookupExconOpt env excon of
@@ -2259,7 +2227,7 @@ struct
 
 	fun liftExp e =
 	  (case e of
-	     MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => lookup_ve env lvar
+	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,alloc) => 
 	       ((if !BI.tag_integers then 
 		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1)) 
@@ -2401,7 +2369,7 @@ struct
 	       end
 	   | MulExp.FIX{free=_,shared_clos,functions,scope} => die "liftExp: No free variables in FIX"
 
-	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,alloc,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
+	   | MulExp.APP(SOME MulExp.JMP, _, tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound,rhos_actuals = ref rhos_actuals,...}, _, _, _), tr2) =>
 	       (* Poly tail call so we reuse the region vector stored in cur_rv *)
 	       let
 		 val ces_arg = (* We remove the unboxed record. *)
@@ -2416,7 +2384,7 @@ struct
 	       end
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
 	   | MulExp.APP(SOME MulExp.FUNCALL, _,
-			tr1 as MulExp.TR(MulExp.VAR{lvar,alloc as (SOME atp), rhos_actuals=ref rhos_actuals,...},_,_,_), 
+			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
 	       let
 		 val ces_arg = (* We remove the unboxed record. *)
@@ -2441,7 +2409,7 @@ struct
 		 FNJMP{opr=ce_opr,args=ces,clos=NONE (*SOME ce_opr*)} (* opr and clos is similar, we only want to the opr expression once! I therefore set clos equal to NONE17/09-2000, Niels *)
 	       end
 	   | MulExp.APP(NONE,_, (*  primitive *)
-			tr1 as MulExp.TR(MulExp.VAR{lvar,alloc as NONE, rhos_actuals=ref rhos_actuals,...},_,_,_), 
+			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
 	       let
 		 val ces =
@@ -2670,6 +2638,7 @@ struct
 	       ASSIGN(convert_alloc(alloc,env),
 		      liftTrip tr1 env lab,
 		      liftTrip tr2 env lab)
+	   | MulExp.DROP(tr) => DROP(liftTrip tr env lab)
 	   | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1,tr2) =>
 	       let 
 		 val tau = 

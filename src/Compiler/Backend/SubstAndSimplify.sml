@@ -127,9 +127,10 @@ struct
       | binder_to_aty((place,PhysSizeInf.WORDS i),offset) = REG_F_ATY offset
 
     fun lookup_lv_aty(ATYmap,lv) =
-      case LvarFinMap.lookup ATYmap lv of
-	SOME r => r
-      | NONE  => die ("lookup_lv_aty(" ^ (Lvars.pr_lvar lv) ^ ")")
+      if Lvars.eq(Lvars.wild_card, lv) then UNIT_ATY
+      else case LvarFinMap.lookup ATYmap lv 
+	     of SOME r => r
+	      | NONE  => die ("lookup_lv_aty(" ^ (Lvars.pr_lvar lv) ^ ")")
     fun add_sty_lvs([],ATYmap) = ATYmap
       | add_sty_lvs(sty::rest,ATYmap) = add_sty_lvs(rest,add_sty_lv(sty,ATYmap))
 

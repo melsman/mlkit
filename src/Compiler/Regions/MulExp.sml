@@ -110,7 +110,7 @@ struct
 
     and ('a,'b,'c)LambdaExp =
         VAR      of {lvar: lvar, il: il, plain_arreffs: (effectvar * ateffect list) list,
-                     alloc: 'a option, rhos_actuals: 'a list ref, other: 'c}
+                     fix_bound: bool, rhos_actuals: 'a list ref, other: 'c}
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
       | REAL     of string * 'a
@@ -166,6 +166,7 @@ struct
       | DEREF    of ('a,'b,'c)trip
       | REF      of 'a * ('a,'b,'c)trip
       | ASSIGN   of 'a * ('a,'b,'c)trip * ('a,'b,'c)trip
+      | DROP     of ('a,'b,'c)trip
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b,'c)trip * ('a,'b,'c)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, (*mu of result from c function*)
@@ -310,6 +311,7 @@ struct
              | DEREF tr => warn_puts_trip TE tr
              | REF(_,tr) => warn_puts_trip TE tr
              | ASSIGN(_,tr1,tr2) => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
+             | DROP(tr1) => (warn_puts_trip TE tr1)
              | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
              | CCALL(_,l) => app (warn_puts_trip TE) l
              | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
@@ -506,6 +508,7 @@ struct
              | DEREF tr => warn_dangle_trip TE tr
              | REF(_,tr) => warn_dangle_trip TE tr
              | ASSIGN(_,tr1,tr2) => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
+             | DROP(tr1) => (warn_dangle_trip TE tr1)
              | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | CCALL(_,l) => app (warn_dangle_trip TE) l
              | RESET_REGIONS(_,tr) => warn_dangle_trip TE tr
@@ -649,7 +652,7 @@ struct
 
 
 
-      fun layPatLet [] = LEAF("()")
+      fun layPatLet [] = LEAF("_")  (* wild card *)
         | layPatLet [one as (lvar,_,tyvars,ref epss,tau,rho)] = 
              layVarSigma(lvar,tyvars,[],epss,tau,rho)
         | layPatLet pat = HNODE{start = "(", finish = ")", childsep = RIGHT",", 
@@ -704,16 +707,10 @@ struct
                    children = get_opt [rho_actuals_t_opt, taus_opt,rhos_opt,epss_opt]}
           end
 
-      fun laypoly(lvar,alloc,il,rhos_actuals) =
-          case (alloc, R.un_il il)
-           of  (NONE, ([],[],[])) => LEAF (Lvar.pr_lvar lvar)
-          | _ => let val alloc_s = 
-                     case alloc of 
-                          SOME alloc => 
-                           if null(rhos_actuals) then "" else alloc_string alloc
-                        | NONE => "" 
- 		 in lay_il(Lvar.pr_lvar lvar, alloc_s, il, rhos_actuals)
-		 end
+      fun laypoly(lvar,fix_bound,il,rhos_actuals) =
+          case (fix_bound, R.un_il il)
+           of  (false, ([],[],[])) => LEAF (Lvar.pr_lvar lvar)
+	    | _ => lay_il(Lvar.pr_lvar lvar, "", il, rhos_actuals)
 
       fun dont_lay_il (lvar_string:string, terminator: string, il) : StringTree =
           LEAF(lvar_string ^ terminator)
@@ -780,19 +777,19 @@ struct
 
       and layExp(lamb: ('a, 'b, 'c) LambdaExp,n): StringTree =  
         case lamb of 
-          VAR{lvar,il,alloc=NONE,rhos_actuals=ref[],plain_arreffs,other} =>  (* fix-bound variables and prims *)
+          VAR{lvar,il,fix_bound=false,rhos_actuals=ref[],plain_arreffs,other} =>  (* fix-bound variables and prims *)
             (case R.un_il(il) of                                             (* are treated below (APP) *)
                ([],[],[]) => LEAF(Lvar.pr_lvar lvar)
              | _ => lay_il(Lvar.pr_lvar lvar, "", il, []))    (* rhos_actuals empty if lvar is not fix-bound *)
 
-        | VAR{lvar,il,alloc=NONE,rhos_actuals=ref should_not_happen,
+        | VAR{lvar,il,fix_bound=false,rhos_actuals=ref should_not_happen,
                    plain_arreffs,other} =>  (* fix-bound variables and prims *)
             (case R.un_il(il) of                                             (* are treated below (APP) *)
                ([],[],[]) => LEAF(Lvar.pr_lvar lvar)
              | _ => lay_il(Lvar.pr_lvar lvar, "", il, should_not_happen))    (* rhos_actuals should be empty if lvar is not fix-bound *)
 
-        | VAR{lvar, il, alloc = SOME (a), rhos_actuals = ref rhos_actuals, plain_arreffs,other} => 
-            lay_il(Lvar.pr_lvar lvar, " at" ^^ layout_alloc a, il, rhos_actuals) ^^^ layout_other other
+        | VAR{lvar, il, fix_bound=true, rhos_actuals = ref rhos_actuals, plain_arreffs,other} => 
+            lay_il(Lvar.pr_lvar lvar, "", il, rhos_actuals) ^^^ layout_other other
 
         | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
@@ -846,17 +843,17 @@ struct
              PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
                      children = [layTrip(trip,3)]}
         | FN{pat,body,free,alloc}=> layLam((pat,body,alloc), n, "")
-        | APP(NONE,_,TR(VAR{lvar, il, alloc, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2) =>
+        | APP(NONE,_,TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2) =>
            (try_bin(lvar,t2,rhos_actuals,n)
             handle Match => 
            let
-                  (*        f il at rho (exp) 
+                  (*        f il (exp) 
                                       OR
-                            f il at rho
+                            f il 
                               (exp)                                     
                   *)
 
-	     val t1 = laypoly(lvar,alloc,il,rhos_actuals)
+	     val t1 = laypoly(lvar,fix_bound,il,rhos_actuals)
           in
              PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", 
                      children = [t1, layTrip(t2,3)]}
@@ -867,13 +864,15 @@ struct
                 finish = if n>3 then ")" else "", 
                 childsep = RIGHT " ", indent = 1,
                 children = [layTrip(t1,3), layTrip(t2,4)]}
-        | APP(SOME JMP, _, TR(VAR{lvar, il, alloc, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2)=>
-           NODE{start = "jmp " ^ Lvar.pr_lvar lvar ^ " ", 
-                finish = "", indent = 2, childsep = PP.NOSEP, children= [layTrip(t2,4)]}
-        | APP(SOME FUNCALL, _, TR(VAR{lvar, il, alloc, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2)=>
+        | APP(SOME JMP, _, TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2)=>
+           NODE{start = "jmp ", 
+                finish = "", indent = 4, childsep = PP.RIGHT " ", 
+		children= [laypoly(lvar,fix_bound,il,rhos_actuals),layTrip(t2,4)]}
+        | APP(SOME FUNCALL, _, TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2)=>
            (* insert printing of store resave here *)
            NODE{start = "funcall " , 
-                finish = "", indent = 8, childsep = PP.RIGHT " ", children= [laypoly(lvar,alloc,il,rhos_actuals),layTrip(t2,4)]}
+                finish = "", indent = 8, childsep = PP.RIGHT " ",
+		children= [laypoly(lvar,fix_bound,il,rhos_actuals),layTrip(t2,4)]}
         | APP(SOME FNJMP, _, t1, t2) =>
            NODE{start = if n>3 then "(fnjmp " else "fnjmp ", 
                 finish = if n>3 then ")" else "", 
@@ -915,6 +914,14 @@ struct
             in  PP.NODE{start = "(" , finish = ")"^s, indent = 1, childsep = PP.RIGHT " := ",
                         children = [layTrip(t1,2), layTrip(t2,2)]}
             end
+        | DROP(t) => layTrip(t,n)
+(*
+	    PP.NODE{start = if n>=3 then "(drop "
+			    else "drop ", 
+                    finish = if n>=3 then ")" else "", 
+		    indent = 6, childsep = PP.NOSEP,
+		    children = [layTrip(t,4)]}
+*)
         | EQUAL({mu_of_arg1,mu_of_arg2, alloc}, arg1, arg2) =>
             let val eq = if !Flags.print_regions then  " =" ^ alloc_string alloc ^ " " else " = "
                 val ty = if !(Flags.print_types) 
@@ -1226,6 +1233,7 @@ struct
     | DEREF(tr) => e_to_t(DEREF(eval env tr))
     | REF(a, tr) => e_to_t(REF(a, eval env tr))
     | ASSIGN(a,tr1,tr2) => e_to_t(ASSIGN(a,eval env tr1, eval env tr2))
+    | DROP(tr) => e_to_t(DROP(eval env tr))
     | EQUAL(info,tr1,tr2)=>e_to_t(EQUAL(info,eval env tr1, eval env tr2))
     | CCALL(info,trs) => e_to_t(CCALL(info, map (eval env) trs))
     | RESET_REGIONS(info,tr) => e_to_t(RESET_REGIONS(info, eval env tr))
@@ -1376,7 +1384,7 @@ struct
              end
        in
         case e of 
-          RegionExp.VAR{lvar, il_r, alloc} => 
+          RegionExp.VAR{lvar, il_r, fix_bound} => 
              let val (_,rhos,eff_nodes) = R.un_il(#1(!il_r))
 		 val arreffs = map (fn eps => (eps, Eff.mk_phi eps)) eff_nodes
                                handle _ => die ("VAR (mk_phi failed), lvar = " ^ Lvar.pr_lvar lvar)
@@ -1385,7 +1393,7 @@ struct
                                                 ^ Lvar.pr_lvar lvar)
 	     in
 	       (VAR{lvar=lvar, il = #1(!il_r) , plain_arreffs = arreffs, 
-                    alloc=alloc,rhos_actuals=ref rhos, other = r}, dep)
+                    fix_bound=fix_bound,rhos_actuals=ref rhos, other = r}, dep)
 	     end 
         | RegionExp.INTEGER(i,a) => (INTEGER(i,a), dep)
         | RegionExp.STRING(s,a) => (STRING(s,a), dep)
@@ -1499,6 +1507,10 @@ val (body',dep) = mk_deptr(EE',body, dep)
  	        val (tr2',dep) = mk_deptr(EE,tr2,dep)
             in (ASSIGN(p,tr1',tr2'),dep)
             end
+	| RegionExp.DROP (tr) =>
+            let val (tr',dep) = mk_deptr(EE,tr,dep)
+            in (DROP(tr'),dep)
+            end
 	| RegionExp.EQUAL(c,tr1,tr2) =>
             let val (tr1',dep) = mk_deptr(EE,tr1,dep)
  	        val (tr2',dep) = mk_deptr(EE,tr2,dep)
@@ -1589,7 +1601,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
       in
         fun lvar_as_term(x,mu) = 
             TR(VAR{lvar=x,il =il0 ,plain_arreffs=[],
-                   alloc=NONE,rhos_actuals= ref [], other = dummy_'c}, mu, [], ref Mul.empty_psi)
+                   fix_bound=false,rhos_actuals= ref [], other = dummy_'c}, mu, [], ref Mul.empty_psi)
 
         fun lvar_as_term'(x,mu as (tau,rho)) = 
             lvar_as_term(x,RegionExp.Mus[mu])
@@ -1656,22 +1668,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
       | FN{pat,body,free,alloc} =>
         k (e_to_t(FN{pat=pat, free=free,alloc=alloc,
               body = kne body (fn x => x)}))
-
-	(* special case application! multiple args. *)
-      | LETREGION{B,rhos = rhos as ref [letregion_bound_rho], 
-                  body as TR(APP(ck,sr,tr1 as TR(VAR{lvar, alloc = SOME _, ...}, _, _, _), 
-				 t2 as TR(UB_RECORD trs, mu2, phi2, psir2)), a,b,c)
-                 } =>
-	many_sub trs (fn trs' => e_to_t(LETREGION{B=B,rhos =rhos,body = 
-		  TR(APP(ck,sr,tr1, TR(UB_RECORD trs' , mu2, phi2, psir2)), a,b,c)}))
-
-	(* special case application! *)
-      | LETREGION{B,rhos = rhos as ref [letregion_bound_rho], 
-                  body as TR(APP(ck,sr,tr1 as TR(VAR{lvar, alloc = SOME _, ...}, _, _, _), tr2), a,b,c)
-                 } =>
-          one_sub tr2 (fn tr2' => e_to_t
-                            (LETREGION{B=B,rhos =rhos,body = 
-                                       TR(APP(ck,sr,tr1,tr2'), a,b,c)}))       
       | LETREGION{B,rhos,body} =>
         k (e_to_t(LETREGION{B=B, rhos=rhos, body = kne body (fn x => x)}))
       | LET{k_let, pat, bind, scope} =>
@@ -1692,13 +1688,13 @@ val (body',dep) = mk_deptr(EE',body, dep)
          in k(e_to_t(FIX{free=free, shared_clos=shared_clos, functions = functions', scope=scope'}))
          end)
 
-      | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), (*mael: unboxed region-polymorphic call *)
+      | APP(ck,sr,opr as (TR(VAR{fix_bound=true,...},_,_,_)), (*mael: unboxed region-polymorphic call *)
 	     t2 as TR((UB_RECORD trs), mu2, phi2, psir2)) => 
 	      many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2))))
 
-       | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), t2) =>   (* region-polymorphic call *)
+       | APP(ck,sr,opr as (TR(VAR{fix_bound=true,...},_,_,_)), t2) =>   (* region-polymorphic call *)
 	      one_sub t2 (fn atomic2 => e_to_t(APP(ck,sr,opr, atomic2)))
-       | APP(ck,sr,opr as TR(VAR{alloc = NONE, ... },_,_,_), 
+       | APP(ck,sr,opr as TR(VAR{fix_bound=false, ... },_,_,_), 
              t2 as TR((UB_RECORD trs), mu2, phi2, psir2)) =>        (* primitive *)
 	      many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2))))
 
@@ -1766,6 +1762,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
        | REF(a,tr1) => one_sub tr1 (fn tr' => e_to_t(REF(a,tr')))
        | ASSIGN(a,tr1,tr2) =>
             two_sub (tr1,tr2) (fn (t1,t2) => e_to_t(ASSIGN(a,t1,t2)))
+       | DROP(tr1) => one_sub tr1 (fn tr' => e_to_t(DROP(tr')))
        | EQUAL(info,t1,t2) => 
             two_sub (t1,t2) (fn (t1',t2') => e_to_t(EQUAL(info,t1',t2')))
        | CCALL(info, trs) =>
@@ -1857,6 +1854,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
       | (DEREF(tr1), DEREF(tr2)) => eq(tr1,tr2)
       | (REF(a,tr1), REF(a', tr2)) => eq(tr1,tr2)
       | (ASSIGN(a1,tr1,tr1'), ASSIGN(a2,tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
+      | (DROP(tr1), DROP(tr2)) => eq(tr1,tr2)
       | (EQUAL(_,tr1,tr1'), EQUAL(_,tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
       | (CCALL(_,trs1), CCALL(_,trs2)) => eq_list eq (trs1,trs2)
       | (RESET_REGIONS(_,t1), RESET_REGIONS(_,t2)) => eq(t1,t2)
@@ -1928,38 +1926,39 @@ val (body',dep) = mk_deptr(EE',body, dep)
                 SWITCH(tr0',choices',else_tr_opt') 
              end
             
-            fun find_call_kind(cont, alloc) = 
-              case (cont, alloc) of
-                (NEXT, NONE) =>     SOME FNCALL
-              | (NEXT, SOME _) =>   SOME FUNCALL
-              | (JOIN, NONE) =>     SOME FNCALL
-              | (JOIN, SOME _) =>   SOME FUNCALL
-              | (RETURN, NONE) =>   SOME FNJMP
-              | (RETURN, SOME _) => SOME FUNCALL  
+            fun find_call_kind(cont, fix_bound) = 
+              case (cont, fix_bound) of
+                (NEXT, false) =>   SOME FNCALL
+              | (NEXT, true) =>    SOME FUNCALL
+              | (JOIN, false) =>   SOME FNCALL
+              | (JOIN, true) =>    SOME FUNCALL
+              | (RETURN, false) => SOME FNJMP
+              | (RETURN, true) =>  SOME JMP  
 
-            fun application_not_in_letregion(tr1, tr2,alloc)= (* alloc is SOME _ iff tr1 is a fix-bound lvar *)
+            fun application(tr1, tr2,fix_bound)= (* fix_bound is true iff tr1 is a fix-bound lvar *)
              let val (tr2', cont') = tail(tr2,NEXT)
                  val (tr1', cont') = tail(tr1,cont')
              in
-                (APP(find_call_kind(cont, alloc), NOT_YET_DETERMINED, tr1', tr2'), cont')
+                (APP(find_call_kind(cont, fix_bound), NOT_YET_DETERMINED, tr1', tr2'), cont')
              end
 
           in
              (case e of
-                VAR{lvar,other,...} => perhapsTerminate cont(e, NEXT)
-              | INTEGER i => perhapsTerminate cont(INTEGER i, NEXT)
-              | STRING s => perhapsTerminate cont(STRING s, NEXT)
-              | REAL r => perhapsTerminate cont(REAL r, NEXT)
+                VAR{lvar,other,...} => (e, NEXT)
+              | INTEGER i => (INTEGER i, NEXT)
+              | STRING s => (STRING s, NEXT)
+              | REAL r => (REAL r, NEXT)
               | UB_RECORD l => let val (trs', cont) = tailList(l, cont)
-                               in perhapsTerminate cont(UB_RECORD trs', cont)
+                               in (UB_RECORD trs', cont)
                                end
-              | APP(_,_,t1 as TR(VAR{lvar, il, alloc, rhos_actuals=ref rhos_actuals, 
+
+              | APP(_,_,t1 as TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, 
                             plain_arreffs,other},_,_,_), t2) =>
                    (try_prim(t1,lvar,t2,rhos_actuals,cont) handle NOT_PRIM => 
-                    application_not_in_letregion(t1, t2,alloc)
+                    application(t1, t2,fix_bound)
                    )
 
-              | APP(_,_, tr1,tr2) => application_not_in_letregion(tr1, tr2,NONE)
+              | APP(_,_, tr1,tr2) => application(tr1, tr2,false)
 
               | FIX{free, shared_clos, functions, scope} =>
                    let val (scope', cont) = tail(scope, cont)
@@ -1969,76 +1968,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
                           functions=functions',scope=scope'}, NEXT)
                    end
     
-              | LETREGION{B, rhos = rhos, body = body as 
-                          TR(APP(ck,sr,tr1 as TR(VAR{lvar,il,plain_arreffs,
-                                               alloc = SOME rho_0', (* region-polymorphic function *)
-                                               rhos_actuals, other},_,_,_),
-                                 tr2),
-                             mu,rea,psi)} =>
-                  let val (tr2', cont') = tail(tr2, NEXT)
-                  in
-
-                    (************************************************************)
-                    (* first attempt JMP --- this is all described in detail in *)
-                    (*  "Programming with Regions", Chapter "The Function Call" *)
-                    (********************************************************** *)
-
-                    (case (params_opt, cont) of
-                       (NONE, RETURN) =>
-                           if null(!rhos_actuals) 
-                              andalso null(remove_from_bound(!rhos, rho_0'))
-                           then 
-                            ((*say ("JMP " ^ Lvar.pr_lvar lvar);*)
-                             (APP(SOME JMP, NOT_YET_DETERMINED, tr1, tr2'), NEXT))
-                           else raise NOTJMP
-                     | (SOME (enclosing_formal_rhos, _), RETURN) => 
-                         if 
-                             actuals_regions_match_formal_regions(
-                                    enclosing_formal_rhos, !rhos_actuals)
-                         then 
-                          (if null    (* was List.forAll (not o allocates_space) *)
-                               (remove_from_bound(!rhos, rho_0'))
-                           then ((*say ("JMP " ^ Lvar.pr_lvar lvar);*)
-                                 (APP(SOME JMP, NOT_YET_DETERMINED, tr1, tr2'), NEXT))
-                           else raise NOTJMP
-                                         (* note: continuations of the form 
-                                            GOTO lvar would be useful here *)
-                          )
-                         else  raise NOTJMP
-                     | _ => raise NOTJMP
-                    ) 
-                    handle NOTJMP =>
-                    (case !rhos_actuals of
-                     [] => (* remove allocation region of 
-                              region vector, also from surrounding letregion *)
-                        let val rhos' = remove_from_bound(!rhos, rho_0')
-                        in rhos:= rhos';
-                           perhapsTerminate cont
-                             (cleanup(LETREGION{B=B, rhos= rhos, body = 
-                                 TR(APP(SOME FUNCALL, NOT_YET_DETERMINED,
-                                     tr1, tr2'), mu,rea,psi)}), NEXT)
-                        end
-(* future optimisation: pass region vector in STD_ARG1:
-                          | [act] => (* remove allocation region of 
-                               region vector, also from surrounding letregion *)
-                              let val rhos' = remove_from_bound(!rhos, rho_0');
-                              in rhos:= rhos';
-                               perhapsTerminate cont
-                                (cleanup(LETREGION{B=B, rhos= rhos, body = 
-                                 TR(APP(SOME FUNCALL, NOT_YET_DETERMINED, tr1, tr2'),
-                                    mu,rea,psi)}), NEXT)
-                              end
-
-*)
-                          | _  => (* keep number of letregion-bound variables *)
-                             perhapsTerminate cont
-                              (LETREGION{B=B, rhos= rhos,
-                               body = 
-                                TR(APP(SOME FUNCALL, NOT_YET_DETERMINED,
-                                   tr1, tr2'),mu,rea,psi)}, NEXT)
-                         )
-                  end
-                                                   
               | LETREGION{B, rhos, body} => 
                   (* we do not remove regions that do not allocate space, 
                      for the code generator needs the bindings 
@@ -2046,10 +1975,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
                   let val not_all_dummy_regions = List.exists allocates_space (!rhos)  
                       val (body', cont') = 
                           tail(body, if not_all_dummy_regions then NEXT else cont)
-                  in if not_all_dummy_regions
-                     then perhapsTerminate cont
-                           (LETREGION{B=B, rhos = rhos, body = body'}, cont')
-                     else  (LETREGION{B=B, rhos = rhos, body = body'}, cont')
+                  in (LETREGION{B=B, rhos = rhos, body = body'}, cont')
                   end
     
               | LET{k_let,pat, bind, scope} =>
@@ -2094,59 +2020,63 @@ val (body',dep) = mk_deptr(EE',body, dep)
               | SWITCH_S sw => (SWITCH_S(tailsw(sw, cont)), NEXT)
               | SWITCH_C sw => (SWITCH_C(tailsw(sw, cont)), NEXT)
               | SWITCH_E sw => (SWITCH_E(tailsw(sw, cont)), NEXT)
-              | CON0 a => perhapsTerminate cont(CON0 a, NEXT)
+              | CON0 a => (CON0 a, NEXT)
               | CON1(opr,tr) =>
                   let val (tr', cont') = tail(tr, NEXT)
-                  in perhapsTerminate cont(CON1(opr,tr'), NEXT)
+                  in (CON1(opr,tr'), NEXT)
                   end
               | DECON(opr,tr) =>
                   let val (tr', cont') = tail(tr, NEXT)
-                  in perhapsTerminate cont(DECON(opr,tr'), NEXT)
+                  in (DECON(opr,tr'), NEXT)
                   end
-              | EXCON(excon, NONE) => perhapsTerminate cont(EXCON(excon, NONE), NEXT)
+              | EXCON(excon, NONE) => (EXCON(excon, NONE), NEXT)
               | EXCON(excon, SOME(l, tr)) => 
                   let val (tr', cont') = tail(tr, NEXT)
-                  in perhapsTerminate cont(EXCON(excon, SOME(l, tr')), NEXT)
+                  in (EXCON(excon, SOME(l, tr')), NEXT)
                   end
               | DEEXCON(excon,tr) => 
                   let val (tr', cont') = tail(tr, NEXT)
-                  in perhapsTerminate cont(DEEXCON(excon, tr'), NEXT)
+                  in (DEEXCON(excon, tr'), NEXT)
                   end
               | RECORD(a, l) =>
                   let val (l', cont') = tailList(l, NEXT)
-                  in perhapsTerminate cont(RECORD(a, l'), cont')
+                  in (RECORD(a, l'), cont')
                   end
               | SELECT(i, tr) =>
                   let val (tr', _) = tail(tr, NEXT)
-                  in perhapsTerminate cont(SELECT(i, tr'), NEXT)
+                  in (SELECT(i, tr'), NEXT)
                   end
               | DEREF(tr) => 
                   let val (tr', _) = tail(tr, NEXT)
-                  in perhapsTerminate cont(DEREF(tr'), NEXT)
+                  in (DEREF(tr'), NEXT)
                   end
               | REF(a,tr) => 
                   let val (tr', _) = tail(tr, NEXT)
-                  in perhapsTerminate cont(REF(a,tr'), NEXT)
+                  in (REF(a,tr'), NEXT)
                   end
               | ASSIGN(a,tr1,tr2) =>
                   let val (tr1', _) = tail(tr1, NEXT)
                       val (tr2', _) = tail(tr2, NEXT)
-                  in perhapsTerminate cont(ASSIGN(a,tr1',tr2'), NEXT)
+                  in (ASSIGN(a,tr1',tr2'), NEXT)
+                  end
+              | DROP(tr) => 
+                  let val (tr', _) = tail(tr, NEXT)
+                  in (DROP(tr'), NEXT)
                   end
               | EQUAL(tyinfo,tr1,tr2) =>
                   let val (tr1', _) = tail(tr1, NEXT)
                       val (tr2', _) = tail(tr2, NEXT)
-                  in perhapsTerminate cont(EQUAL(tyinfo, tr1',tr2'), NEXT)
+                  in (EQUAL(tyinfo, tr1',tr2'), NEXT)
                   end
               | CCALL(tyinfo,trs) =>
                   let val (trs', _) = tailList(trs,NEXT)
-                  in perhapsTerminate cont(CCALL(tyinfo, trs'), NEXT)
+                  in (CCALL(tyinfo, trs'), NEXT)
                   end
               | RESET_REGIONS({force,alloc,regions_for_resetting},t) => 
                   let val (t',_) = tail(t,NEXT)
-                  in perhapsTerminate cont(RESET_REGIONS({force=force, alloc=alloc,
-                                                          regions_for_resetting=regions_for_resetting}, 
-                                                         t'), NEXT)
+                  in (RESET_REGIONS({force=force, alloc=alloc,
+				     regions_for_resetting=regions_for_resetting}, 
+				    t'), NEXT)
                   end
               | FRAME l => (FRAME l, NEXT)
              )

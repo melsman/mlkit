@@ -60,6 +60,7 @@ signature LAMBDA_EXP =
       | RECORDprim 
       | SELECTprim of int        
       | UB_RECORDprim                                 (* Unboxed record. *)
+      | DROPprim
       | NEG_INTprim 
       | NEG_REALprim
       | ABS_INTprim
