@@ -16,8 +16,6 @@ printList
 implodeCharsML
 implodeStringML
 concatStringML
-sizeStringML
-subStringML
 __div_int32ub
 __div_int31
 __div_word32ub
@@ -26,12 +24,9 @@ __mod_int32ub
 __mod_int31
 __mod_word32ub
 __mod_word31
-word_sub0
-word_update0
 word_table0
-table_size
+word_table_init
 allocStringML
-updateStringML
 chrCharML
 greaterStringML
 lessStringML
@@ -68,6 +63,7 @@ openAppendStream
 flushStream
 outputStream
 inputStream
+input1Stream
 lookaheadStream
 openInBinStream
 openOutBinStream

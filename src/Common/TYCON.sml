@@ -19,16 +19,18 @@ signature TYCON =
     val tycon_WORD8  : tycon
     val tycon_WORD31  : tycon
     val tycon_WORD32 : tycon
-    and tycon_REAL   : tycon
-    and tycon_STRING : tycon
-    and tycon_CHAR   : tycon
-    and tycon_EXN    : tycon
-    and tycon_REF    : tycon
-    and tycon_BOOL   : tycon
-    and tycon_LIST   : tycon
-    and tycon_FRAG   : tycon
-    and tycon_WORD_TABLE : tycon
-    and tycon_UNIT   : tycon
+    val tycon_REAL   : tycon
+    val tycon_STRING : tycon
+    val tycon_CHAR   : tycon
+    val tycon_EXN    : tycon
+    val tycon_REF    : tycon
+    val tycon_BOOL   : tycon
+    val tycon_LIST   : tycon
+    val tycon_FRAG   : tycon
+    val tycon_ARRAY  : tycon
+    val tycon_VECTOR : tycon
+    val tycon_CHARARRAY : tycon
+    val tycon_UNIT   : tycon
 
     val pr_TyCon : tycon -> string
     val pr_LongTyCon : longtycon  -> string

@@ -2,6 +2,8 @@
  *                     Garbage Collection                         *
  *----------------------------------------------------------------*/
 
+#ifdef ENABLE_GC 
+
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
@@ -18,24 +20,34 @@
 #include "Table.h"
 #include "Exception.h"
 #include "Profiling.h"
+#include "GC.h"
 
-int time_to_gc = 0; 
-unsigned int stack_bot_gc = 0;
-unsigned int stack_top_gc;
-unsigned int rp_from_space = 0;
-unsigned int to_space_old = 0;
-unsigned int alloc_period = 0;
-unsigned int alloc_total = 0;
-unsigned int gc_total = 0;
-double FRAG_sum = 0.0;
+int time_to_gc = 0;                   // set to 1 by alloc if GC should occur at next
+                                      //   function invocation 
+unsigned int *stack_bot_gc = NULL;    // bottom and top of stack -- used during GC to
+unsigned int *stack_top_gc;           //   determine if a value is stack-allocated
+unsigned int rp_from_space = 0;       // number of region pages in from-space
+unsigned int to_space_old = 0;        // size of to-space (live) at previous GC
+unsigned int alloc_period = 0;        // allocated bytes by alloc between GC's
+unsigned int alloc_total = 0;         // allocated bytes by alloc (total)
+unsigned int gc_total = 0;            // bytes recycled by GC (total)
+unsigned int lobj_current = 0;        // bytes currently occupied by large objects
+unsigned int lobj_gc_treshold = 0;    // set time_to_gc to 1 when lobj_current exceeds
+                                      //   lobj_gc_treshold; this variable is adjusted
+                                      //   after garbage collection.
+double FRAG_sum = 0.0;                // fragmentation denotes how much of region
+                                      //   pages are used by values -- and is computed
+                                      //   as an average of percentages computed at
+                                      //   each garbage collection; thus for programs
+                                      //   that seldom garbage collect, the fragmentation
+                                      //   figure makes little sense.
 
+int *data_lab_ptr = NULL;             // pointer at exported data labels part of the root-set
+int num_gc = 0;                       // number of garbage collections
 
-int *data_lab_ptr = NULL; /* pointer at exported data labels part of the root-set. */
-int num_gc = 0;
-
-int doing_gc = 0;
-int raised_exn_interupt = 0;
-int raised_exn_overflow = 0;
+int doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
+int raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
+int raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
 
 /* This implementation assumes a down growing stack (e.g., X86). */
 #define NUM_REGS 8
@@ -65,8 +77,6 @@ int raised_exn_overflow = 0;
          FrameSize
          FrameMark (for debug)
   ReturnLabel: */
-
-#ifdef ENABLE_GC 
 
 Klump *from_space_begin, *from_space_end;
 
@@ -192,12 +202,14 @@ inline static void init_scan_container() {
 
 #define is_scan_container_empty() (container_scan == container_alloc)
 
+/*
 inline static void check_scan_container(unsigned int *ptr) {
   int i;
   for (i=0; i<container_alloc; i++)
     if (scan_container[i] == ptr)
       die("Error, scan_container not unique\n");
 }
+*/
 
 inline static void push_scan_container(unsigned int *ptr) {
   scan_container[container_alloc] = ptr;
@@ -275,17 +287,18 @@ static void mk_from_space() {
 #define clear_forward_ptr(x)        (x)
 #define tag_forward_ptr(x)          (x)
 
-/*#define val_tag_kind_and_const(x)   ((x) & 0x3F)      */    /* Least 6 significant bits  */
+// Region pages are of size 1Kb and aligned
+#define get_rp_header(x)            ((Klump *)(((unsigned int)(x)) & 0xFFFFFC00))  
 
-#define get_rp_header(x)            ((x) & 0xFFFFFC00)   /* We assume region pages of size 1Kb and aligned */
-
-#define set_status_SOME(rd)          (rd->p = (Ro *)(((unsigned int)rd->p) | 0x01))       /* We use the previous pointer to hold the status bit. */
-#define set_status_NONE(rd)          (rd->p = (Ro *)(((unsigned int)rd->p) & 0xFFFFFFFE))
-#define is_status_NONE(rd)           ((((unsigned int)(rd->p)) & 0x01) == 0)
+// Previous-pointer holds status bit
+#define set_status_SOME(rd)         (rd->p = (Ro *)(((unsigned int)rd->p) | 0x01))   
+#define set_status_NONE(rd)         (rd->p = (Ro *)(((unsigned int)rd->p) & 0xFFFFFFFE))
+#define is_status_NONE(rd)          ((((unsigned int)(rd->p)) & 0x01) == 0)
 
 /*************/
 /* DEBUGGING */
 /*************/
+/*
 static void check_rp_in_from_space(Klump *rp) {
   int ok = 0;
   Klump *rp_tmp;
@@ -299,35 +312,35 @@ static void check_rp_in_from_space(Klump *rp) {
   return;
 }
 
+
 static void check_ptr_to_forward(unsigned int *obj_ptr) {
   if (!(is_forward_ptr(*obj_ptr))) 
     die("check_ptr_to_forward: ptr is not a forward pointer");
 
   return;
 }
+*/
+
+unsigned int 
+size_lobj (unsigned int tag)
+{
+  switch ( val_tag_kind_const(tag) ) {
+  case TAG_STRING: {
+    unsigned int sz_bytes;
+    sz_bytes = get_string_size(tag) + 5;              // 1 for zero-termination, 4 for size field
+    return sz_bytes%4 ? 4+4*(sz_bytes/4) : sz_bytes;  // alignment
+  }
+  case TAG_TABLE:
+    return 4*(get_table_size(tag) + 1);
+  default:
+    die("GC.size_lobj");
+    exit(2);
+  }
+}
 
 /* -----------------------------------------------------
  * Find allocated bytes in from space; for measurements
  * ----------------------------------------------------- */
-
-static unsigned int *allocated_bytes_table_fragment(Tree *treep, int *allocated_bytes ) {
-  int i;
-  unsigned int *scan_ptr;
-
-  scan_ptr = (unsigned int*)&(treep->prim_table);
-  scan_ptr += ALLOCATABLE_WORDS_IN_PRIM_ARRAY;
-  (*allocated_bytes) += (8 + 4*ALLOCATABLE_WORDS_IN_PRIM_ARRAY);
-  
-  /* Scan rest of the fragments in the order they are allocated! */
-  if (treep->child[1]) {
-    if (treep->child[0])
-      allocated_bytes_table_fragment(treep->child[0], allocated_bytes);
-    return allocated_bytes_table_fragment(treep->child[1], allocated_bytes);
-  }
-  if (treep->child[0]) 
-    return allocated_bytes_table_fragment(treep->child[0], allocated_bytes);
-  return scan_ptr;
-}
 
 static int allocated_bytes_in_region(Ro *rd) 
 {
@@ -339,40 +352,28 @@ static int allocated_bytes_in_region(Ro *rd)
   scan_ptr = rp->k.i;
   
   while (((int *)scan_ptr) != rd->a) {
-    rp = (Klump *)get_rp_header((unsigned int)scan_ptr);
+    rp = get_rp_header(scan_ptr);
 #if PROFILING
     scan_ptr += sizeObjectDesc;
 #endif
     switch (val_tag_kind_const(scan_ptr)) {
     case TAG_STRING: {
-      /* Do Not GC the content of a string but adjust scan_ptr to after the LAST string fragment */
-      /* We know that no objects are allocated in between string fragments.                      */
-      StringDesc* str;
-      StringFragment *fragPtr, *lastFragPtr;
+      /* Do Not GC the content of a string but adjust 
+       * scan_ptr to after the string */
       int sizeWords;
-      str = (StringDesc *)scan_ptr;
-      allocated_bytes += 4;
-      for (fragPtr=&(str->sf);fragPtr;fragPtr=fragPtr->n) {
-	lastFragPtr = fragPtr;
-	allocated_bytes += (8 + fragPtr->fragmentSize);   // fragmentSize is in bytes
-	rp = (Klump *)get_rp_header((unsigned int)fragPtr);
-      }
-      sizeWords = (((lastFragPtr->fragmentSize) % 4) ? 
-		   ((lastFragPtr->fragmentSize) / 4)+1 : ((lastFragPtr->fragmentSize) / 4));
-      scan_ptr = ((unsigned int*)(lastFragPtr+1))+sizeWords;
+      StringDesc* str = (StringDesc *)scan_ptr;
+      sizeWords = get_string_size(str->size) + 5;  // 1 for zero-termination and 4 for size field
+      sizeWords = (sizeWords%4) ? (1+sizeWords/4) : (sizeWords/4);
+      scan_ptr += sizeWords;
+      allocated_bytes += (4*sizeWords);
       break;
     }
     case TAG_TABLE: {
+      int sizeWords;
       Table* table = (Table *)scan_ptr;
-      allocated_bytes += 4;
-      scan_ptr = allocated_bytes_table_fragment(&(table->tree), &allocated_bytes);
-	  /* -4 is a necessary and safe hack!                                  */
-	  /* necessary: because scan_ptr may point after the region page       */
-	  /*            if the table fragment occupies the entire region page. */
-	  /* safe: because the region page header is 8 bytes, so even if the   */
-	  /*       region page is empty, scan_ptr will remain inside the       */
-	  /*       region page. 2001-02-15, Niels                              */
-      rp = (Klump *)get_rp_header((unsigned int)scan_ptr-4);
+      sizeWords = get_table_size(table->size) + 1;
+      scan_ptr += sizeWords;
+      allocated_bytes += (4*sizeWords);
       break;
     }
     case TAG_RECORD: {
@@ -421,7 +422,7 @@ static int allocated_bytes_in_region(Ro *rd)
 static int allocated_bytes_in_regions(void) {
   int n = 0;
   Ro* rp;
-  for (rp=TOP_REGION; rp != NULL; rp = rp->p)
+  for ( rp = TOP_REGION; rp != NULL; rp = rp->p )
     {
       n += allocated_bytes_in_region(rp);
     }
@@ -463,8 +464,6 @@ inline static int get_size_obj(unsigned int *obj_ptr) {
 inline  unsigned int *copy_val(unsigned int *obj_ptr,Ro *rd) {
   int size;
   unsigned int *new_obj_ptr;
-  StringDesc *res;
-  StringFragment *fragPtr;
 
 #ifdef PROFILING
   int pPoint, oSize;
@@ -476,21 +475,18 @@ inline  unsigned int *copy_val(unsigned int *obj_ptr,Ro *rd) {
   switch (val_tag_kind_const(obj_ptr)) {
   case TAG_STRING: {
     #ifdef PROFILING
-      res = allocStringProfiling((int)rd,get_string_size(*obj_ptr), pPoint);
+      new_obj_ptr = (unsigned int*)copy_stringProf((int)rd,(StringDesc *)obj_ptr, pPoint);
     #else
-      res = allocString((int)rd,get_string_size(*obj_ptr));
+      new_obj_ptr = (unsigned int*)copy_string((int)rd,(StringDesc *)obj_ptr);
     #endif
-    fragPtr = &(res->sf);
-    copyString((StringDesc *)obj_ptr, &fragPtr, (char *) (res+1));
-    new_obj_ptr = (unsigned int*)res;
-    *obj_ptr = tag_forward_ptr((unsigned int)new_obj_ptr);  /* Install Forward Pointer */
+    *obj_ptr = tag_forward_ptr((unsigned int)new_obj_ptr); /* Install Forward Pointer */
     break;
   }
   case TAG_TABLE: {
     #ifdef PROFILING
-      new_obj_ptr = (unsigned int*)copy_tableProf((int)rd,(int)obj_ptr, pPoint);
+      new_obj_ptr = (unsigned int*)copy_tableProf((int)rd,(Table *)obj_ptr, pPoint);
     #else
-      new_obj_ptr = (unsigned int*)copy_table((int)rd,(int)obj_ptr);
+      new_obj_ptr = (unsigned int*)copy_table((int)rd,(Table *)obj_ptr);
     #endif
     *obj_ptr = tag_forward_ptr((unsigned int)new_obj_ptr); /* Install Forward Pointer */
     break;
@@ -507,7 +503,6 @@ inline  unsigned int *copy_val(unsigned int *obj_ptr,Ro *rd) {
     break;
   }
   }
-
   return new_obj_ptr;
 }
 
@@ -520,7 +515,7 @@ inline static unsigned int *copy_obj(unsigned int *obj_ptr) {
   unsigned int *new_obj_ptr;
 
   /* Get Region Page and Region Descriptor */
-  rp = (Klump *)get_rp_header((unsigned int)obj_ptr);
+  rp = get_rp_header(obj_ptr);
   rd = rp->k.r;
   new_obj_ptr = copy_val(obj_ptr,rd);
   if (is_status_NONE(rd)) {
@@ -546,178 +541,111 @@ inline static unsigned int gc_obj(unsigned int obj) {
   /* At this time, the object must contain a descriptor. is_forward_ptr must go first! */
   if (is_constant(*obj_ptr)) return obj; /* A constant (e.g., string) is not moved */
 
-  if (is_stack_allocated(obj)) { /* A stack allocated object is not moved. Note obj=obj_ptr except for the C-type! */
-    *obj_ptr = set_tag_const(*obj_ptr); /* Set const bit temporarily */
-    push_scan_container(obj_ptr);
-    return obj;
-  }
+  if ( is_stack_allocated(obj_ptr) || is_large_obj(*obj_ptr) ) 
+    { 
+      /* Stack allocated objects and large objects are not moved. 
+       * Notice: obj=obj_ptr, but the C-type is different! */
+      *obj_ptr = set_tag_const(*obj_ptr); /* Set const bit temporarily */
+      push_scan_container(obj_ptr);
+      return obj;
+    }
 
-  return (unsigned int)(copy_obj(obj_ptr));  /* We have an unvisited object */
+  return (unsigned int)(copy_obj(obj_ptr));  // object is unvisited
 }
 
-static unsigned int *scan_table_fragment(Tree *treep) {
-  int i;
-  unsigned int *scan_ptr;
+static unsigned int*
+scan_value(unsigned int* scan_ptr)
+{
+  int sizeWords;
 
-  scan_ptr = (unsigned int*)&(treep->prim_table);
-  for (i=0;i<ALLOCATABLE_WORDS_IN_PRIM_ARRAY;i++) {
+  // All finite and large objects are temporarily annotated as constants.
+  // We therefore use val_tag_kind and not val_tag_kind_const
+
+  switch ( val_tag_kind(scan_ptr) ) { 
+  case TAG_STRING: {                             // Do not GC the content of a string but adjust 
+    StringDesc* str = (StringDesc *)scan_ptr;    //    scan_ptr to after the string
+    sizeWords = get_string_size(str->size) + 5;  // 1 for zero-termination, 4 for size field
+    sizeWords = (sizeWords%4) ? (1+sizeWords/4) : (sizeWords/4);
+    return scan_ptr + sizeWords;
+  }
+  case TAG_TABLE: {
+    Table *table = (Table *)scan_ptr;
+    sizeWords = get_table_size(table->size);
+    scan_ptr++;
+    while ( sizeWords )
+      {
+	*scan_ptr = gc_obj(*scan_ptr);
+	scan_ptr++;
+	sizeWords--;
+      }
+    return scan_ptr;
+  }
+  case TAG_RECORD: {
+    int remaining, num_to_skip;
+    sizeWords = get_record_size(*scan_ptr);  // Size excludes descriptor
+    num_to_skip = get_record_skip(*scan_ptr);
+    scan_ptr = scan_ptr + 1 + num_to_skip;
+    remaining = sizeWords - num_to_skip;
+    while ( remaining ) 
+      {
+	*scan_ptr = gc_obj(*scan_ptr);
+	scan_ptr++;
+	remaining--;
+      }
+    return scan_ptr;
+  }
+  case TAG_CON0: {     /* Is a constant */
+    scan_ptr++;
+    return scan_ptr;
+  }
+  case TAG_CON1: {
+    scan_ptr++;
     *scan_ptr = gc_obj(*scan_ptr);
     scan_ptr++;
+    return scan_ptr;
   }
-  
-  /* Scan rest of the fragments in the order they are allocated! */
-  if (treep->child[1]) {
-    if (treep->child[0])
-      scan_table_fragment(treep->child[0]);
-    return scan_table_fragment(treep->child[1]);
+  case TAG_REF: {
+    scan_ptr++;
+    *scan_ptr = gc_obj(*scan_ptr);
+    scan_ptr++;
+    return scan_ptr;
   }
-  if (treep->child[0]) 
-    return scan_table_fragment(treep->child[0]);
-  return scan_ptr;
-}
+  default: {
+    pw("*scan_ptr: ", *scan_ptr);
+    die("scan_value: unrecognised object descriptor pointed to by scan_ptr");
+    return 0;
+  }
+  }
+}  
 
 static void do_scan_stack() {
   unsigned int *scan_ptr;
   Klump *rp;
   Ro *rd;
-  StringDesc *str;
-  Table *table;
-  StringFragment *fragPtr, *lastFragPtr;
-  int sizeWords;
-  int num_to_skip;
-  int remaining;
 
   /* Run Through The Scan Stack and the Container */
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
-    /* Run Through The Container - FINITE REGIONS */
+
+    /* Run Through The Container - FINITE REGIONS and LARGE OBJECTS */
     while (!(is_scan_container_empty())) {
       scan_ptr = pop_scan_container();
-
-      /* All finite objects are temporarily annotated as constants. */
-      /* We therefore use val_tag_kind and not val_tag_kind_const   */
-      switch (val_tag_kind(scan_ptr)) { 
-	case TAG_RECORD: {
-	  sizeWords = get_record_size(*scan_ptr); /* Size excludes descriptor */
-	  num_to_skip = get_record_skip(*scan_ptr);
-	  //if (num_to_skip > sizeWords)
-	  //  die("gc: num_to_skip larger than size");
-	  scan_ptr = scan_ptr + 1 + num_to_skip;
-	  remaining = sizeWords-num_to_skip;
-	  while (remaining) {
-	    *scan_ptr = gc_obj(*scan_ptr);
-	    scan_ptr++;
-	    remaining--;
-	  }
-	  break;
-	}
-	case TAG_CON0: {
-	  /* Is a constant */
-	  scan_ptr++;
-	  break;
-	}
-	case TAG_CON1: {
-	  scan_ptr++;
-	  *scan_ptr = gc_obj(*scan_ptr);
-	  scan_ptr++;
-	  break;
-	}
-	case TAG_REF: {
-	  scan_ptr++;
-	  *scan_ptr = gc_obj(*scan_ptr);
-	  scan_ptr++;
-	  break;
-	}
-	default: {
-	  pw("*scan_ptr: ",(unsigned int)(*scan_ptr));
-#ifdef PROFILING
-	  printf("size: %d, atId: %d, regionId: %d, finPtr: %x\n",
-		 *(scan_ptr-1), *(scan_ptr-2), *(scan_ptr-3), *(scan_ptr-4));
-#endif
-	  die("do_scan_stack_finite: unrecognised object descriptor by scan_ptr (or string/table that cannot be allocated in a finite region)");
-	  break;
-	}
-	}
+      scan_ptr = scan_value(scan_ptr);
     }
 
     while (!(is_scan_stack_empty())) {
       scan_ptr = pop_scan_stack();
       /* Get Region Page and Region Descriptor */
-      rp = (Klump *)get_rp_header((unsigned int)scan_ptr);
+      rp = get_rp_header(scan_ptr);
       rd = rp->k.r;
       while (((int *)scan_ptr) != rd->a) {
-	rp = (Klump *)get_rp_header((unsigned int)scan_ptr);
+	rp = get_rp_header(scan_ptr);
 #if PROFILING
 	scan_ptr += sizeObjectDesc;
 #endif
-	switch (val_tag_kind_const(scan_ptr)) {
-	case TAG_STRING: {
-	  /* Do Not GC the content of a string but adjust scan_ptr to after the LAST string fragment */
-	  /* We know that no objects are allocated in between string fragments.                      */
-	  str = (StringDesc *)scan_ptr;
-	  for (fragPtr=&(str->sf);fragPtr;fragPtr=fragPtr->n) {
-	    lastFragPtr = fragPtr;
-	    rp = (Klump *)get_rp_header((unsigned int)fragPtr);
-	  }
-	  sizeWords = (((lastFragPtr->fragmentSize) % 4) ? 
-		       ((lastFragPtr->fragmentSize) / 4)+1 : ((lastFragPtr->fragmentSize) / 4));
-	  scan_ptr = ((unsigned int*)(lastFragPtr+1))+sizeWords;
-	  break;
-	}
-	case TAG_TABLE: {
-	  table = (Table *)scan_ptr;
-	  scan_ptr = scan_table_fragment(&(table->tree));
-	  /* -4 is a necessary and safe hack!                                  */
-	  /* necessary: because scan_ptr may point after the region page       */
-	  /*            if the table fragment occupies the entire region page. */
-	  /* safe: because the region page header is 8 bytes, so even if the   */
-	  /*       region page is empty, scan_ptr will remain inside the       */
-	  /*       region page. 2001-02-15, Niels                              */
-	  rp = (Klump *)get_rp_header((unsigned int)scan_ptr-4);
-	  break;
-	}
-	case TAG_RECORD: {
-	  sizeWords = get_record_size(*scan_ptr); /* Size excludes descriptor */
-	  num_to_skip = get_record_skip(*scan_ptr);
-	  
-	  scan_ptr = scan_ptr + 1 + num_to_skip;
-	  remaining = sizeWords-num_to_skip;
-	  while (remaining) {
-	    *scan_ptr = gc_obj(*scan_ptr);
-	    scan_ptr++;
-	    remaining--;
-	  }
-	  break;
-	}
-	case TAG_CON0: {
-	  /* Is a constant */
-	  scan_ptr++;
-	  break;
-	}
-	case TAG_CON1: {
-	  scan_ptr++;
-	  *scan_ptr = gc_obj(*scan_ptr);
-	  scan_ptr++;
-	  break;
-	}
-	case TAG_REF: {
-	  scan_ptr++;
-	  *scan_ptr = gc_obj(*scan_ptr);
-	  scan_ptr++;
-	  break;
-	}
-	default: {
-	  pw("*scan_ptr: ",*scan_ptr);
-	  printf("scan_ptr: %x, rd->a: %x, diff(scan_ptr,rd->a): %d, rp: %x, diff(scan_ptr,rp): %x\n",
-		 scan_ptr,
-		 rd->a,
-		 ((int *)rd->a-(int *)scan_ptr),
-		 rp,
-		 (int *)scan_ptr-(int *)rp);
-	  die("do_scan_stack: unrecognised object descriptor by scan_ptr");
-	  break;
-	}
-	}
-	/* Are we at end of region page or is the region page full, then go to next region page. */
+	scan_ptr = scan_value(scan_ptr);
+
+	/* If at end of region page or the region page is full, go 
+	 * to next region page. */
 	if ((((int *)scan_ptr) != rd->a) &&
 	    ((((int *)scan_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
 	     (*((int *)scan_ptr) == notPP))) {
@@ -756,12 +684,13 @@ void gc(unsigned int **sp, unsigned int reg_map) {
   struct rusage rusage_end;
   unsigned int size_from_space = 0;
   unsigned int alloc_period_save;
+  Ro *rp;
 
   doing_gc = 1; // Mutex on the garbage collector
 
   getrusage(RUSAGE_SELF, &rusage_begin);
 
-  stack_top_gc = (unsigned int)sp;
+  stack_top_gc = (unsigned int*)sp;
 
   if ((int)(stack_bot_gc - stack_top_gc) < 0)
     {
@@ -780,7 +709,8 @@ void gc(unsigned int **sp, unsigned int reg_map) {
 
   rp_to_space = 0;
 
-  /* Initialize the scan stack (for Infinite Regions) and the container (for Finite Regions) */
+  /* Initialize the scan stack (for Infinite Regions) and the 
+   * container (for Finite Regions and large objects) */
   init_scan_stack();
   init_scan_container();
 
@@ -874,17 +804,39 @@ void gc(unsigned int **sp, unsigned int reg_map) {
   from_space_end->k.n = freelist;
   freelist = from_space_begin;
 
-  /* We Reset All Constant Bits in the Container - FINITE REGIONS */
+  /* Run through all infinite regions and free all 
+   * large objects that are not marked. */
+  for( rp = TOP_REGION ; rp ; rp = rp->p ) 
+    {
+      Lobjs **lobjs_ptr = &(rp->lobjs);
+      while ( *lobjs_ptr )
+	{
+	  if ( is_constant((*lobjs_ptr)->value) )
+	    { 
+	      lobjs_ptr = &((*lobjs_ptr)->next);               // preserve object
+	    }
+	  else
+	    {
+	      Lobjs *lobjs_ptr_tmp = (*lobjs_ptr)->next;
+	      lobj_current -= size_lobj((*lobjs_ptr)->value);
+	      free((*lobjs_ptr));                              // de-allocate object
+	      *lobjs_ptr = lobjs_ptr_tmp;
+	    }
+	}
+    }
+  lobj_gc_treshold = (int)(heap_to_live_ratio * (double)lobj_current);
+
+  /* Reset all constant-bits in the container - FINITE REGIONS and LARGE OBJECTS */
   clear_scan_container();
 
   rp_used = rp_to_space;
   ratio = (((double)rp_total)/(double)rp_used);
   to_allocate = heap_to_live_ratio*((double)rp_used)-((double)rp_total);
-  if (ratio < heap_to_live_ratio) {
+  if ( ratio < heap_to_live_ratio ) {
     callSbrkArg(((int)(to_allocate))+REGION_PAGE_BAG_SIZE);
   }
 
-  if (verbose_gc) 
+  if ( verbose_gc ) 
     {
       double RI = 0.0, GC = 0.0, FRAG = 0.0;
       unsigned int size_to_space;
@@ -915,10 +867,10 @@ void gc(unsigned int **sp, unsigned int reg_map) {
       if ( num_gc != 1 )
 	{
 	  RI = 100.0 * ( ((double)(to_space_old + alloc_period - size_from_space)) /
-			 ((double)(to_space_old+alloc_period-size_to_space)));
+			 ((double)(to_space_old + alloc_period - size_to_space)));
 	  
 	  GC = 100.0 * ( ((double)(size_from_space - size_to_space)) /
-			 ((double)(to_space_old+alloc_period-size_to_space)));
+			 ((double)(to_space_old + alloc_period - size_to_space)));
 
 	  FRAG = 100.0 * (((double)(size_from_space/1024))/ (double)rp_from_space);
 	  FRAG_sum = FRAG_sum + FRAG;

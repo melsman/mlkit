@@ -69,8 +69,10 @@ signature TYNAME =
     val tyName_CHAR    : TyName
     val tyName_LIST    : TyName
     val tyName_FRAG    : TyName
-    val tyName_WORD_TABLE : TyName
     val tyName_REF     : TyName
+    val tyName_ARRAY   : TyName
+    val tyName_VECTOR  : TyName
+    val tyName_CHARARRAY : TyName
     val tyName_EXN     : TyName
 
     val unboxed : TyName -> bool   (* Returns true for type names that are 

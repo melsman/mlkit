@@ -185,7 +185,7 @@ __rem_int31(int xML, int yML)
   return i32ub_to_i31(xC % yC);
 }
 
-#ifdef TAG_INTEGERS
+#ifdef TAG_VALUES
 
 unsigned int* 
 __div_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn) 
@@ -237,7 +237,7 @@ __rem_int32b(unsigned int* b, unsigned int* x, unsigned int* y)
   return b;
 }
 
-#endif /*TAG_INTEGERS*/
+#endif /*TAG_VALUES*/
 
 int 
 realInt(int d, int x) 

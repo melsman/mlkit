@@ -110,7 +110,20 @@ struct
 	else
 	  (max_offset := offset+inc;
 	   offset+inc)
-      fun get_max_offset() = !max_offset
+      fun get_max_offset lab = 
+	let val offset = !max_offset
+	    fun ceil n off = 
+	      let val rest = off mod n 
+	      in if rest = 0 then off
+		 else off + n - rest
+	      end
+(*
+	    val offset = ceil 8 offset
+            val _ = print ("Max-offset for " ^ Labels.pr_label lab ^ ": " ^ Int.toString offset ^ "\n")
+*) 
+	in
+	  offset
+	end
     end
 
     fun lookup_lv(lv_map,lv) =
@@ -250,7 +263,7 @@ struct
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
-	val cc' = CallConv.add_frame_size(cc,get_max_offset())
+	val cc' = CallConv.add_frame_size(cc,get_max_offset lab)
       in
 	gen_fn(lab,cc',lss_co)
       end

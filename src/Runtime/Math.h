@@ -13,7 +13,7 @@
  *                       Integer operations.                      *
  *----------------------------------------------------------------*/
 
-#ifdef TAG_INTEGERS
+#ifdef TAG_VALUES
 #define muliML(x,y,d)  ((d)=1+((x)>>1)*((y)-1))
 #define addiML(x,y,d)  ((d)=(x)+(y)-1)
 #define subiML(x,y,d)  ((d)=(x)-(y)+1)
@@ -25,7 +25,7 @@
 
 #define  minDefine(A,B) ((A<B)?A:B)
 
-#ifdef TAG_INTEGERS
+#ifdef TAG_VALUES
 #define Max_Int 1073741823       /* remember [i] = 2 * i + 1 */
 #define Min_Int -1073741824
 #define Max_Int_d 1073741823.0
@@ -91,7 +91,7 @@ int sml_sqrt(int d, int s);
 
 void printReal(int f);
 
-#ifdef TAG_INTEGERS
+#ifdef TAG_VALUES
 unsigned int* __div_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
 unsigned int* __div_word32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
 unsigned int* __mod_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);

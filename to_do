@@ -1,9 +1,34 @@
 Possible things to do
 ---------------------
 
+mael 2001-11-27: curry-compression: turn
+
+    let f = \x.let g = \y.e1 in \z.e2
+    in e3
+    end
+
+into
+
+    let f = \x.\z.let g = \y.e1 in e2
+    in e3
+    end
+
+Let C be the contexts defined by
+
+    C[.] := .
+          | let f = \x.e in C[.]
+Turn
+    let f = \x.C[\y.e1] in e2  
+into
+    let f = \x.\y.C[e1] in e2
+
 mael 2001-11-13: turn curried functions into functions that take
   multiple arguments; build the closure at the call-site for those
-  functions that are not fully applied.
+  functions that are not fully applied:
+
+    let f = \x1...\xn.e in (...(f e1)...en)  ==>
+    let f = \<x1...xn>.e in f <e1,...,en>
+      
 
 mael 2001-11-12: better cross-module in-lining; support in-lining of
   non-closed functions.

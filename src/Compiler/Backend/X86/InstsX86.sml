@@ -10,7 +10,7 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 
     type lvar = Lvars.lvar
     datatype reg = eax | ebx | ecx | edx | esi | edi | ebp | esp 
-                 | ah | cl
+                 | ah | al | cl
 
     type freg = int
 
@@ -35,16 +35,20 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | LA of lab         (* label address *)
       | I of string       (* immediate *)
       | D of string * reg (* displaced *)
+      | DD of string * reg * reg * string (* double displaced *)
 
     fun eq_ea (R r, R r') = r=r'
       | eq_ea (I i, I i') = i=i'
       | eq_ea (L l, L l') = eq_lab(l,l')
       | eq_ea (LA l, LA l') = eq_lab(l,l')
       | eq_ea (D p,D p') = p=p'
+      | eq_ea (DD p,DD p') = p=p'
       | eq_ea _ = false
       
     datatype inst =               (* general instructions *)
         movl of ea * ea
+      | movb of ea * ea
+      | movzbl of ea * ea
       | leal of ea * ea
       | pushl of ea
       | popl of ea
@@ -126,6 +130,7 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_reg ebp = "%ebp"
       | pr_reg esp = "%esp"
       | pr_reg ah = "%ah"
+      | pr_reg al = "%al"
       | pr_reg cl = "%cl"
 
     fun remove_ctrl s = "Lab" ^ String.implode (List.filter Char.isAlphaNum (String.explode s))
@@ -145,6 +150,11 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_ea (I s) = "$" ^ s
       | pr_ea (D(d,r)) = if d="0" then "(" ^ pr_reg r ^ ")"
 			 else d ^ "(" ^ pr_reg r ^ ")"
+      | pr_ea (DD(d,r1,r2,m)) = 
+	let val m = if m = "1" then "" else "," ^ m
+	    val d = if d = "0" then "" else d
+	in d ^ "(" ^ pr_reg r1 ^ "," ^ pr_reg r2 ^ m ^ ")"
+	end
 
     fun emit_insts (os, insts: inst list): unit = 
       let 
@@ -161,6 +171,8 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	  fun emit_inst i =  
 	    case i
 	      of movl a => emit_bin ("movl", a)
+	       | movb a => emit_bin ("movb", a)
+	       | movzbl a => emit_bin ("movzbl", a)
 	       | leal a => emit_bin ("leal", a)
 	       | pushl ea => emit_unary ("pushl", ea)
 	       | popl ea => emit_unary ("popl", ea)
@@ -281,6 +293,7 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	    of eax => eax_lv | ebx => ebx_lv | ecx => ecx_lv | edx => edx_lv
 	     | esi => esi_lv | edi => edi_lv | ebp => ebp_lv | esp => esp_lv
 	     | ah => die "reg_to_lv: ah not available for register allocation"
+	     | al => die "reg_to_lv: al not available for register allocation"
 	     | cl => die "reg_to_lv: cl not available for register allocation"
 	      
 	val reg_args = [eax,ebx,edi]

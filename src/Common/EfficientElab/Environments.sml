@@ -901,15 +901,18 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	fun joinTE [] = TE.empty
 	  | joinTE (TE :: rest) = TE.plus (TE, joinTE rest)
 
-	val TE_int31 = te (TyCon.tycon_INT31, TyName.tyName_INT31)
-	val TE_int32 = te (TyCon.tycon_INT32, TyName.tyName_INT32)
-	val TE_char = te (TyCon.tycon_CHAR, TyName.tyName_CHAR)
-	val TE_word8 = te (TyCon.tycon_WORD8, TyName.tyName_WORD8)
-	val TE_word31 = te (TyCon.tycon_WORD31, TyName.tyName_WORD31)
-	val TE_word32 = te (TyCon.tycon_WORD32, TyName.tyName_WORD32)
-	val TE_real = te (TyCon.tycon_REAL, TyName.tyName_REAL)
-	val TE_string = te (TyCon.tycon_STRING, TyName.tyName_STRING)
-	val TE_exn = te (TyCon.tycon_EXN, TyName.tyName_EXN)
+	val TE_int31 =     te (TyCon.tycon_INT31, TyName.tyName_INT31)
+	val TE_int32 =     te (TyCon.tycon_INT32, TyName.tyName_INT32)
+	val TE_char =      te (TyCon.tycon_CHAR, TyName.tyName_CHAR)
+	val TE_word8 =     te (TyCon.tycon_WORD8, TyName.tyName_WORD8)
+	val TE_word31 =    te (TyCon.tycon_WORD31, TyName.tyName_WORD31)
+	val TE_word32 =    te (TyCon.tycon_WORD32, TyName.tyName_WORD32)
+	val TE_real =      te (TyCon.tycon_REAL, TyName.tyName_REAL)
+	val TE_string =    te (TyCon.tycon_STRING, TyName.tyName_STRING)
+	val TE_chararray = te (TyCon.tycon_CHARARRAY, TyName.tyName_CHARARRAY)
+	val TE_array =     te (TyCon.tycon_ARRAY, TyName.tyName_ARRAY)
+	val TE_vector=     te (TyCon.tycon_VECTOR, TyName.tyName_VECTOR)
+	val TE_exn =       te (TyCon.tycon_EXN, TyName.tyName_EXN)
 
 	val boolVE =
 	      VE.plus (VE.singleton_con (Ident.id_TRUE, 
@@ -1159,13 +1162,13 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 				      TyStr.from_theta_and_VE (theta_unit, VE_unit))
 	end
 
-	val TE_word_table = te (TyCon.tycon_WORD_TABLE, TyName.tyName_WORD_TABLE)
+(*	val TE_word_table = te (TyCon.tycon_WORD_TABLE, TyName.tyName_WORD_TABLE) *)
 
 	val TE_initial0 = joinTE [TE_unit, TE_char, TE_real,
 				  TE_int31, TE_int32, 
 				  TE_word8, TE_word31, TE_word32,
 				  TE_string, TE_exn, TE_ref, TE_bool, TE_list,
-				  TE_word_table]
+				  TE_array, TE_vector, TE_chararray (*, TE_word_table*)]
 
 	val tag_values = Flags.is_on0 "tag_values"
 

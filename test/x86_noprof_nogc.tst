@@ -24,6 +24,12 @@ Test files may contain Standard ML like comments.
 (* Tests of static semantics; it would be great with some more
  * systematic testing here! *)
 
+valrecpat.sml
+valrecpat1.sml
+valrecpat2.sml
+valrecpat3.sml
+valrecpat4.sml
+unbox.sml
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
@@ -36,9 +42,10 @@ freedatatype.sml    ccl       ecte
 freedatatype2.sml   ccl       ecte
 sharing.sml         ccl       ecte
 opaque.sml          ccl
-opaque2.sml                           nobasislib
+opaque2.sml                        ue nobasislib
 functor.sml         ccl
 functor2.sml        ccl
+functor3.sml
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
@@ -46,6 +53,7 @@ anoq_Exception.sml
 danwang.pm                    tc
 testmatc.sml        ccl
 excon.sml
+dangle4.sml
 
 (* Tests of some benchmark programs *)
 
@@ -83,8 +91,10 @@ FuhMishra.pm            tx tc
 testdyn1.sml               tc
 check_arrays.sml             
 array.sml                    
+array2.sml
 general.sml                  
 int.sml                      
+int_2.sml                      
 int31.sml                      
 int31_2.sml                      
 int32.sml                      
@@ -113,4 +123,6 @@ word.sml
 word8.sml
 word31.sml
 word32.sml 
+regexp1.sml
+regexp2.sml
 

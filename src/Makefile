@@ -13,8 +13,8 @@ BINDIR=../bin
 ARCH-OS=x86-linux
 HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
 
-GENOPCODES_TARGETS=RuntimeWithGC/Prims.c RuntimeWithGC/PrimsNsSml.c \
- RuntimeWithGC/KamInsts.h RuntimeWithGC/KamInsts.c RuntimeWithGC/jumptbl.h \
+GENOPCODES_TARGETS=Runtime/Prims.c Runtime/PrimsNsSml.c \
+ Runtime/KamInsts.h Runtime/KamInsts.c Runtime/jumptbl.h \
  Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml \
  Compiler/Backend/KAM/OPCODES_KAM.sml Compiler/Backend/KAM/OpcodesKAM.sml
 
@@ -23,11 +23,11 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
 mlkit: basics
-	cd RuntimeWithGC; $(MAKE) runtimeSystem.o
-	cd RuntimeWithGC; $(MAKE) runtimeSystemGC.o
-	cd RuntimeWithGC; $(MAKE) runtimeSystemProf.o
-	cd RuntimeWithGC; $(MAKE) runtimeSystemGCProf.o
-	cd RuntimeWithGC; $(MAKE) runtimeSystemTag.o
+	cd Runtime; $(MAKE) runtimeSystem.o
+	cd Runtime; $(MAKE) runtimeSystemGC.o
+	cd Runtime; $(MAKE) runtimeSystemProf.o
+	cd Runtime; $(MAKE) runtimeSystemGCProf.o
+	cd Runtime; $(MAKE) runtimeSystemTag.o
 	echo 'use "build.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit
@@ -36,7 +36,7 @@ mlkit: basics
 	chmod a+x $(BINDIR)/mlkit
 
 mlkit_kam: basics
-	cd RuntimeWithGC; $(MAKE) kam
+	cd Runtime; $(MAKE) kam
 	echo 'use "build_kam.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit_kam
@@ -45,7 +45,7 @@ mlkit_kam: basics
 	chmod a+x $(BINDIR)/mlkit_kam
 
 smlserver: basics
-	cd RuntimeWithGC; $(MAKE) runtimeSystemKamNsSml.o
+	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
 	cd SMLserver; $(MAKE)
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/smlserverc.$(ARCH-OS)

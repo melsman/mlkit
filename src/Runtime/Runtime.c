@@ -13,56 +13,44 @@
 #include "Region.h"
 #include "Table.h"
 #include "CommandLine.h"
+
+#ifdef ENABLE_GC
 #include "GC.h"
+#endif
 
 #ifdef PROFILING
 #include "Profiling.h"
 #endif
 
-int die (char *s) { 
+int 
+die (char *s) 
+{ 
   fprintf(stdout,"Runtime Error: %s\n",s); 
   exit(-1); 
 }
 
-/*
-int terminate (int status) { 
-  extern int rp_total;
-#ifdef PROFILING
-  outputProfile();
-  Statistics();        
-#endif
-
-#ifdef ENABLE_GC
-  fprintf(stderr,"rp_total %d\n", rp_total);
-#endif
-  exit (status); 
-}
-*/
-
-int die2 (char *s1, char* s2) 
+int 
+die2 (char *s1, char* s2) 
 { 
     fprintf(stderr,"Runtime Error: %s\n%s",s1,s2); 
     exit(-1); 
 }
 
-int terminateML (int status) 
+int 
+terminateML (int status) 
 { 
 #ifdef ENABLE_GC
   extern int report_gc;
   extern int num_gc;
   extern int gc_total;
-  extern int alloc_total;
-  extern int alloc_period;
+  extern unsigned int alloc_total;
+  extern unsigned int alloc_period;
   extern double FRAG_sum;
 #endif
-  /*
-  extern int rp_total;
-  */
   debug(printf("[terminateML..."));
 
 #ifdef PROFILING
   outputProfilePost();
-  /*  outputProfile(); 2001-05-13, Niels we do it incrementally now*/
   Statistics();        
 #endif
 
@@ -82,7 +70,6 @@ int terminateML (int status)
       fprintf(stderr, "[GC: %d garbage collections, RI: %4.1f%, GC: %4.1f%, Frag avg: %4.1f%]\n", num_gc, 
 	      ri, gc, 100.0 - (FRAG_sum / (double)(num_gc-1)));
     }
-  /*    fprintf(stderr,"rp_total %d\n", rp_total);*/
 #endif /* ENABLE_GC */
 
   debug(printf("]\n"));
@@ -90,77 +77,52 @@ int terminateML (int status)
   exit (convertIntToC(status)); 
 }
 
-void uncaught_exception (StringDesc *exnStr) { 
-  /*    extern int rp_total; */
+void 
+uncaught_exception (StringDesc *exnStr) 
+{ 
   fprintf(stderr,"uncaught exception "); 
   fflush(stderr);
   outputStream(stderr, exnStr);
   fprintf(stderr, "\n"); 
   fflush(stderr);
+
 #ifdef PROFILING
   outputProfilePost();
   Statistics();        
 #endif
 
-#ifdef ENABLE_GC
-  /*    fprintf(stderr,"rp_total %d\n", rp_total);*/
-#endif /* ENABLE_GC */
   exit (-1); 
 }
 
 #ifdef TAG_VALUES
-/*----------------------------------------------------------------------*
- *equalTable:                                                           *
- *----------------------------------------------------------------------*/
-int cmpPrimTable(Prim_table *ptabpx, Prim_table *ptabpy) {
-  int i;
 
-  if (ptabpx == ptabpy)
-    return mlTRUE;
-  if (ptabpx == NULL)
-    return mlFALSE;
-  if (ptabpy == NULL)
-    return mlFALSE;
-
-  for (i=0;i<ALLOCATABLE_WORDS_IN_PRIM_ARRAY;i++)
-    if ( equalPolyML(*(((int *)ptabpx)+i),*(((int *)ptabpy)+i)) == mlFALSE )
+static inline int 
+equalTable(Table *x, Table *y) 
+{
+  int i, sz_x, *px, *py;
+  sz_x = get_table_size(x->size);
+  if ( sz_x != get_table_size(y->size))
+    {
       return mlFALSE;
-
+    }
+  px = &(x->data); 
+  py = &(y->data); 
+  for ( i = 0 ; i < sz_x ; i ++ )
+    {
+      if ( equalPolyML(*(px+i), *(py+i)) == mlFALSE )
+	{
+	  return mlFALSE;
+	}
+    }
   return mlTRUE;
-}
-
-int cmpTrees(Tree *treepx, Tree *treepy) {
-
-  /* Compare Primitive Table */
-  if (cmpPrimTable(&(treepx->prim_table), &(treepy->prim_table)) == mlFALSE)
-    return mlFALSE;
-
-  /* Compare Childs */
-  if (cmpTrees(treepx->child[0], treepy->child[0]) == mlFALSE)
-    return mlFALSE;
-  if (cmpTrees(treepx->child[1], treepy->child[1]) == mlFALSE)
-    return mlFALSE;
-
-  return mlTRUE;
-}
-
-int equalTable(int x, int y) {
-  Table *tabpx = (Table *)x;
-  Table *tabpy = (Table *)y;
-  Tree *treepx = &(tabpx->tree);
-  Tree *treepy = &(tabpy->tree);
-
-  if (get_table_size(tabpx->table_size) != get_table_size(tabpy->table_size))
-    return mlFALSE;
-
-  /* Compare Trees */
-  return cmpTrees(treepx, treepy);
 }
 
 /*----------------------------------------------------------------------*
  *equalPolyML:                                                            *
  *----------------------------------------------------------------------*/
-int equalPolyML(int x, int y) {
+int 
+equalPolyML(int x, int y) 
+{
   int i;
 
 L0:
@@ -212,7 +174,7 @@ L0:
 	return mlFALSE;
     }
     if (val_tag_kind(x) == TAG_TABLE) {
-      return equalTable(x,y);
+      return equalTable((Table*)x,(Table*)y);
     }
     die("equal_poly - No matching tag!");
   }
@@ -220,21 +182,20 @@ L0:
 
 #endif /* TAG_VALUES */
 
-void sig_handler_int(void) {
-/*  printf("INTERRUPT\n"); */
-  // BUG: we may not call raise_exn if we are doing gc. The we should record, that
-  // we are gc'ing, set a flag, and then call raise_exn from the gc-procedure. 2001-01-07, Niels
+void 
+sig_handler_int(void) 
+{
   signal(SIGINT, (SignalHandler)sig_handler_int);    /* setup handler again */
 
 #ifdef ENABLE_GC
-  if (doing_gc) {
+  if ( doing_gc ) {
     raised_exn_interupt=1;
     return;
   }
 #endif /* ENABLE_GC */
 
 #ifdef PROFILING
-  if (doing_prof) {
+  if ( doing_prof ) {
     raised_exn_interupt_prof=1;
     return;
   }
@@ -244,19 +205,20 @@ void sig_handler_int(void) {
   return; /* never comes here */
 }
 
-void sig_handler_fpe(void) {
-/*  printf("OVERFLOW\n"); */
+void 
+sig_handler_fpe(void) 
+{
   signal(SIGFPE, (SignalHandler)sig_handler_fpe);    /* setup handler again */
 
 #ifdef ENABLE_GC
-  if (doing_gc) {
+  if ( doing_gc ) {
     raised_exn_overflow=1;
     return;
   }
 #endif /* ENABLE_GC */
 
 #ifdef PROFILING
-  if (doing_prof) {
+  if ( doing_prof ) {
     raised_exn_overflow_prof=1;
     return;
   }
@@ -266,8 +228,9 @@ void sig_handler_fpe(void) {
   return; /* never comes here */
 }
 
-int main(int argc, char *argv[]) {
-
+int 
+main(int argc, char *argv[]) 
+{
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))
     die("integer configuration is erroneous");
 
@@ -288,14 +251,5 @@ int main(int argc, char *argv[]) {
   code();
   return (0);   /* never comes here (i.e., exits through 
 		 * terminateML or uncaught_exception) */
-
-  /*
-  debug(printf("Finish execution.\n"));
-  #ifdef PROFILING
-  Statistics();
-  #endif
-  */
-
 #endif
-
 }

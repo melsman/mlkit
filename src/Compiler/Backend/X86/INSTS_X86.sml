@@ -5,6 +5,7 @@ signature INSTS_X86 =
     
     datatype reg = eax | ebx | ecx | edx | esi | edi | ebp | esp 
                  | ah (* for float conditionals *)
+                 | al (* for byte operations *)
                  | cl (* for shift operations *)
 
     val tmp_reg0 : reg (*=ecx*)
@@ -28,12 +29,14 @@ signature INSTS_X86 =
                 | LA of lab  (* label address *)
                 | I of string   (* immediate *)
                 | D of string * reg   (* displaced *)
-
+                | DD of string * reg * reg * string (* double displaced *)
     val pr_ea : ea -> string
     val eq_ea : ea * ea -> bool
 
     datatype inst =                 (* general instructions *)
       movl of ea * ea
+    | movb of ea * ea
+    | movzbl of ea * ea
     | pushl of ea
     | leal of ea * ea
     | popl of ea

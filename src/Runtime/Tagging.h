@@ -30,6 +30,15 @@
 #define TAG_TABLE        0x07
 #define TAG_TABLE_CONST  0x27
 
+#ifdef PROFILING
+#define is_large_string(x)  (((x)&TAG_STRING) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE-8)))
+#define is_large_table(x)   (((x)&TAG_TABLE) && (((x)>>6) > (ALLOCATABLE_WORDS_IN_REGION_PAGE-8)))
+#else
+#define is_large_string(x)  (((x)&TAG_STRING) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE)))
+#define is_large_table(x)   (((x)&TAG_TABLE) && (((x)>>6) > ALLOCATABLE_WORDS_IN_REGION_PAGE))
+#endif
+#define is_large_obj(x)     (is_large_string(x) || is_large_table(x))
+
 #define val_tag_string(s)   (gen_string_tag((s),0,1))
 #define get_string_size(s)  ((s) >> 6)
 #define val_tag_con0(c_tag) (gen_string_tag((c_tag),0,2))
@@ -67,12 +76,11 @@
 #define i32ub_to_i31(i)   (((i) << 1) + 1)
 #define i31_to_i32ub(i)   ((i) >> 1)
 
-#ifdef TAG_INTEGERS
+#ifdef TAG_VALUES
 #define convertIntToC(i)  ((i) >> 1)
 #define convertIntToML(i) (((i) << 1) + 1)
 #define get_i32b(b)       (* (((int *)b)+1))
 #define set_i32b_tag(b)   (* (int *)(b) = val_tag_i32b)
-
 #else
 #define convertIntToC(i)  (i)
 #define convertIntToML(i) (i)

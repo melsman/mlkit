@@ -816,7 +816,7 @@ struct
 		   
 		  | "__int31_to_int32b"    => not_impl name
 		  | "__int31_to_int32ub"   => Primi31Toi
-		  | "__int32b_to_int31"   => not_impl name
+		  | "__int32b_to_int31"    => not_impl name
 		  | "__int32ub_to_int31"   => PrimiToi31
 
 		  | "__word31_to_word32b"  => not_impl name
@@ -827,15 +827,23 @@ struct
 		  | "__word31_to_word32ub_X" => Primw31TowX
 		  | "__word31_to_word32b_X"  => not_impl name
 
-		  | "__word32b_to_int32b"  => not_impl name
-		  | "__word32b_to_int32b_X"  => not_impl name
-		  | "__int32b_to_word32b"    => not_impl name
-		  | "__word32ub_to_int32ub"    => PrimwToi
+		  | "__word32b_to_int32b"   => not_impl name
+		  | "__word32b_to_int32b_X" => not_impl name
+		  | "__int32b_to_word32b"   => not_impl name
+		  | "__word32ub_to_int32ub" => PrimwToi
 		  | "__word32b_to_int31"    => not_impl name
 		  | "__int32b_to_word31"    => not_impl name
-		  | "__word32b_to_int31_X"    => not_impl name
+		  | "__word32b_to_int31_X"  => not_impl name
 		   
-		  | "__fresh_exname"      => PrimFreshExname
+		  | "__fresh_exname"       => PrimFreshExname
+
+		  | "__bytetable_sub"      => PrimByteTableSub
+		  | "__bytetable_update"   => PrimByteTableUpdate
+		  | "__bytetable_size"     => PrimTableSize
+
+		  | "word_sub0"            => PrimWordTableSub
+		  | "word_update0"         => PrimWordTableUpdate
+		  | "table_size"           => PrimTableSize
 
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in

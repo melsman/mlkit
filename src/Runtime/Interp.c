@@ -27,6 +27,8 @@
 #include "List.h"
 #include "Exception.h"
 #include "Interp.h"
+#include "String.h"
+#include "Table.h"
 
 #ifdef KAM
 Exception *exn_OVERFLOW;   // Initialized in Interp.c
@@ -301,11 +303,12 @@ resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable []) {
     case -1: 
       {
 	int str_size;
-	int str_size_bytes = *(real_code + i + 2);
+	int str_size_bytes = get_string_size(*(real_code + i + 1));
+	str_size_bytes += 1;            // zero-termination
 	if (str_size_bytes % 4 != 0)
 	  str_size_bytes += (4 - (str_size_bytes % 4));
 	str_size = str_size_bytes / 4;	
-	arity = str_size + 3;   /*tag,size,frac-ptr*/
+	arity = str_size + 1;   /*tag*/
 	break;
       } 
     case -2: 
@@ -640,13 +643,10 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(IMMED_STRING): {
 	acc = (int) pc; 
-	inc32pc; /* tag */
-	temp = s32pc;
-	inc32pc; /* size of string */
-	inc32pc; /* next frag ptr */
+	temp = get_string_size(s32pc) + 1;  // zero-termination
 	if (temp % 4 != 0) 
 	  temp += (4 - (temp % 4));
-	pc += temp;
+	pc += (temp + 4);
 	debug(printf("IMMED STRING with aligned size %d and acc %d\n", temp, acc));
 	Next;
       }
@@ -1239,6 +1239,38 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 	debug(printf("PRIM_W_TO_I\n"));
 	if ( acc < 0 ) 
 	  goto raise_overflow;
+	Next;
+      }
+
+      Instruct(PRIM_BYTETABLE_SUB): {
+	debug(printf("PRIM_BYTETABLE_SUB(%d,%d)\n", selectStackDef(-1), acc));
+	acc = (int)(*(&(((StringDesc*)(popValDef))->data) + acc));
+	Next;
+      }
+
+      Instruct(PRIM_BYTETABLE_UPDATE): {
+	debug(printf("PRIM_BYTETABLE_UPDATE(%d,%d,%d)\n", selectStackDef(-2), selectStackDef(-1), acc));
+	*(&(((StringDesc*)(selectStackDef(-2)))->data) + (selectStackDef(-1))) = (unsigned char)acc;
+	popNDef(2);
+	Next;
+      }
+
+      Instruct(PRIM_WORDTABLE_SUB): {
+	debug(printf("PRIM_WORDTABLE_SUB(%d,%d)\n", selectStackDef(-1), acc));
+	acc = *(&(((Table*)(popValDef))->data) + acc);
+	Next;
+      }
+
+      Instruct(PRIM_WORDTABLE_UPDATE): {
+	debug(printf("PRIM_WORDTABLE_UPDATE(%d,%d,%d)\n", selectStackDef(-2), selectStackDef(-1), acc));
+	*(&(((Table*)(selectStackDef(-2)))->data) + (selectStackDef(-1))) = acc;
+	popNDef(2);
+	Next;
+      }
+
+      Instruct(PRIM_TABLE_SIZE): {
+	debug(printf("PRIM_TABLE_SIZE\n"));
+	acc = get_table_size(((StringDesc*)acc)->size);  // get_table_size == get_string_size
 	Next;
       }
 

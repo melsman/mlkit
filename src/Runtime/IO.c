@@ -94,13 +94,15 @@ openAppendBinStream(StringDesc *path, int exn)             /* SML Basis */
 int
 input1Stream(FILE *is)
 {
-  char ch;
+  int ch;
+
+  is = (FILE *)untag_scalar(is);
   ch = fgetc(is);
   if ( ch == EOF )
     {
       return -1;
     }
-  return (int)ch;
+  return ch;
 }
 
 
@@ -115,7 +117,7 @@ inputStreamProfiling(int rd, FILE *is, int n, int pPoint)
 inputStream(int rd, FILE *is, int n) 
 #endif
 {
-  unsigned char buf[66];
+  unsigned char buf[100];
   int i, ch;
 
   n = convertIntToC(n);
@@ -139,6 +141,7 @@ inputStream(int rd, FILE *is, int n)
 
   // i characters read
   buf[i] = '\0';
+
 #ifdef PROFILING
   return convertStringToMLProfiling(rd, buf, pPoint);
 #else

@@ -3,51 +3,8 @@
 signature KAM =
   sig
     
-    (*----------------------------------------------------------*)
-    (*                  Register definitions.                   *)
-    (*----------------------------------------------------------*)
-
-    (*----------------------------------------------------------*)
-    (*                     HPPA RISC Syntax                     *)
-    (*                                                          *)
-    (* We do not specify cache hints in instructions...         *)
-    (*                                                          *)
-    (*----------------------------------------------------------*)
-
-(*    val is_im5  : int -> bool
-    val is_im11 : int -> bool
-    val is_im12 : int -> bool
-    val is_im14 : int -> bool
-    val is_im17 : int -> bool
-    val is_im19 : int -> bool 18/09-2000, Niels *)
-
     type label
     val eq_lab : label * label -> bool
-(*    datatype lab = 
-        DatLab of label      (* For data to propagate across program units *)
-      | LocalLab of label    (* Local label inside a block *)
-      | NameLab of string    (* For ml strings, jumps to runtime system,
-			        code label, finish label, etc. *)
-      | MLFunLab of label    (* Labels on ML Functions *)
-
-
-18/09-2000, Niels*)
-(*    datatype cond = NEVER
-                  | ALWAYS
-                  | EQUAL
-                  | NOTEQUAL
-                  | GREATERTHAN
-                  | GREATEREQUAL
-                  | LESSTHAN
-                  | LESSEQUAL
-                  | GREATERTHAN_UNSIGNED
-                  | GREATEREQUAL_UNSIGNED
-                  | LESSTHAN_UNSIGNED
-                  | LESSEQUAL_UNSIGNED
-                  | ODD
-                  | EVEN 18/09-2000, Niels *)
-
-(*    val revCond : cond -> cond 18/09-2000, Niels *)
  
     datatype KamInst = 
         Alloc of int
@@ -199,6 +156,12 @@ signature KAM =
 
       | PrimFreshExname
 
+      | PrimByteTableSub
+      | PrimByteTableUpdate
+      | PrimWordTableSub
+      | PrimWordTableUpdate
+      | PrimTableSize
+
     datatype TopDecl =
         FUN of label * KamInst list
       | FN of label * KamInst list
@@ -219,7 +182,5 @@ signature KAM =
     (* To Emit Code *)
     val pr_inst        : KamInst -> string
     val pp_lab         : label -> string
-(*    val output_AsmPrg : TextIO.outstream * AsmPrg -> unit *)
-
   end
 

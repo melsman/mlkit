@@ -188,7 +188,9 @@ end
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
 			       (tyName_FRAG, [Con.con_QUOTE, Con.con_ANTIQUOTE]),
-			       (tyName_WORD_TABLE, []),
+			       (tyName_CHARARRAY, []),
+			       (tyName_ARRAY, []),
+			       (tyName_VECTOR, []),
 			       (tyName_REF, [(*Con.con_REF*)]),
 			       (tyName_EXN, [])]
 

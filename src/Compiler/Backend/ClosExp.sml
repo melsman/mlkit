@@ -2076,8 +2076,12 @@ struct
 		 val ce =
 		   (case tau of
 		      RType.CONSTYPE(tn,_,_,_) =>
-                        if TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
-                          eq_prim "__equal_int32ub"
+                        if (TyName.eq(tn,TyName.tyName_BOOL) 
+			    orelse TyName.eq(tn,TyName.tyName_REF)
+			    orelse TyName.eq(tn,TyName.tyName_ARRAY)
+			    orelse TyName.eq(tn,TyName.tyName_CHARARRAY))
+			  then
+			    eq_prim "__equal_int32ub"
 			else if TyName.eq(tn,TyName.tyName_INT31) then 
 			  eq_prim "__equal_int31"
 			else if TyName.eq(tn,TyName.tyName_INT32) then 
@@ -2090,10 +2094,8 @@ struct
 			   else eq_prim "__equal_word32ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"
-		        else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
-			       die "`=' on word_tables! EliminateEq should have dealt with this"
-				  (*TODO 11/02/1998 13:47. tho.  You can delete these two
-				   die's when EliminateEq has been changed.*)
+		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
+			       die "`=' on vectors! EliminateEq should have dealt with this"
 			else eq_prim "equalPolyML"
 		    | RType.RECORD [] => eq_prim "__equal_int32ub"
 		    | _ => eq_prim "equalPolyML")
@@ -2738,8 +2740,12 @@ struct
 	       in
 		   (case tau of
 		      RType.CONSTYPE(tn,_,_,_) =>
-                        if TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
-                          eq_prim "__equal_int32ub"
+                        if (TyName.eq(tn,TyName.tyName_BOOL) 
+			    orelse TyName.eq(tn,TyName.tyName_REF)
+			    orelse TyName.eq(tn,TyName.tyName_CHARARRAY)
+			    orelse TyName.eq(tn,TyName.tyName_ARRAY))
+			  then
+			    eq_prim "__equal_int32ub"
 			else if TyName.eq(tn,TyName.tyName_INT31) then 
 			  eq_prim "__equal_int31"
 			else if TyName.eq(tn,TyName.tyName_INT32) then 
@@ -2752,10 +2758,8 @@ struct
 			   else eq_prim "__equal_word32ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"
-		        else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
-			       die "`=' on word_tables! EliminateEq should have dealt with this"
-				  (*TODO 11/02/1998 13:47. tho.  You can delete these two
-				   die's when EliminateEq has been changed.*)
+		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
+			  die "`=' on vectors! EliminateEq should have dealt with this"
 			else eq_prim "equalPolyML"
 		    | RType.RECORD [] => eq_prim "__equal_int32ub"
 		    | _ => eq_prim "equalPolyML")
