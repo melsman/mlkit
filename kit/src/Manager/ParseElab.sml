@@ -52,6 +52,19 @@ functor ParseElab(structure Parse: PARSE
     type Report = Report.Report
     type topdec = PostElabTopdecGrammar.topdec
 
+    fun log s = output(!Flags.log, s)
+    fun chat s = if !Flags.chat then log s else ()
+
+    (* -----------------------------------------------------------------
+     * Dynamic flags
+     * ----------------------------------------------------------------- *)
+
+    val report_file_sig = ref false
+    val _ = Flags.add_flag_to_menu
+          (["Control"], "report_file_sig",
+	   "report program unit signatures", report_file_sig)
+
+
     infix //
     val op // = Report.//
 
@@ -76,7 +89,9 @@ functor ParseElab(structure Parse: PARSE
 			     ((PP.reportStringTree(ElabTopdec.layoutStaticBasis elabB'))
 			      // (PP.reportStringTree(PostElabTopdecGrammar.layoutTopdec topdec')))
 			   else Report.null
-		     val report = TopLevelReport.report {infB=infB, elabB=elabB', bindings=false}
+		     val report = if !report_file_sig then
+			             TopLevelReport.report {infB=infB, elabB=elabB', bindings=false}
+				  else Report.null
 		 in
 		   SUCCESS {report = debugParse // debugElab // report // warnings,
 			    infB = infB, elabB = elabB', topdec = topdec'}
@@ -128,9 +143,15 @@ functor ParseElab(structure Parse: PARSE
 				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
 
     fun parse_elab {infB: InfixBasis, elabB: ElabBasis, file : string} : Result =
-          (case parse (*may raise Parse*) (infB, file)
-	     of (infB, Some topdec) => elab (infB, elabB, topdec)
-	      | (infB, None) => empty_success)
-	     handle Parse report => FAILURE report
+      let val _ = chat "[parsing begin...]\n"
+	  val parse_res = parse (infB, file)  (*may raise Parse*) 
+	  val _ = chat "[parsing end...]\n"
+	  val _ = chat "[elaboration begin...]\n"
+	  val elab_res = case parse_res 
+			   of (infB, Some topdec) => elab (infB, elabB, topdec)
+			    | (infB, None) => empty_success
+	  val _ = chat "[elaboration end...]\n"
+      in elab_res
+      end handle Parse report => (chat "[parsing end...]\n"; FAILURE report)
 
   end
