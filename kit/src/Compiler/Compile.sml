@@ -174,8 +174,8 @@ functor Compile(structure Excon : EXCON
 
     fun length l = List.foldR (fn _ => fn n => n+1) 0 l
 
-    fun msg(s: string) = (output(!Flags.log, s); NonStandard.flush_out (!Flags.log);
-                          output(std_out, s))
+    fun msg(s: string) = (output(!Flags.log, s); NonStandard.flush_out (!Flags.log)
+			  (*; output(std_out, s)*))
 
     fun chat(s: string) = if !Flags.chat then msg s else ()
 
