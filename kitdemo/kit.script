@@ -3,7 +3,7 @@
  *
  * syntax: 
  *
- *   DEC   ::= val ID : TYPE = CONST REST <DEC>
+ *   DEC   ::= val ID : TYPE = CONST <DEC>
  *   ID    ::= sequence_of_letters_underbars_and_primes
  *   TYPE  ::= int |  string  |  bool
  *   CONST ::= ml_integer_constant  |  ml_string_constant  

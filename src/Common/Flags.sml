@@ -75,11 +75,23 @@ functor Flags (structure Crash : CRASH
     val all_multiplicities_infinite = ref false   
     (* attop/atbot inference *)
 
+    (* Optimiser *)
     val statistics_after_optimisation = ref false
+    val minimize_fixs = ref true
+    val fix_conversion = ref true
+    val contract = ref true
+    val specialize_recursive_functions = ref true
+    val eliminate_explicit_records = ref true
+    val maximum_inline_size = ref 20            
+    val maximum_specialise_size = ref 200
+
+    (* Printing of intermediate forms *)
+    val print_opt_lambda_expression = ref false
     val print_attop_atbot_expression = ref false
     val print_drop_regions_expression = ref false
-    val print_call_explicit_expression = ref false
+    val print_drop_regions_expression_with_storage_modes = ref false
     val print_physical_size_inference_expression = ref false
+    val print_call_explicit_expression = ref false
 
     val disable_atbot_analysis = ref false
     val print_K_normal_forms = ref false
@@ -458,7 +470,9 @@ struct
 
 
   val _ = List.apply add_int_entry
-        [("colwidth", colwidth)]
+        [("colwidth", colwidth),
+	 ("maximum_inline_size", maximum_inline_size),
+	 ("maximum_specialise_size", maximum_specialise_size)]
 
   val _ = List.apply add_bool_entry (* MEMO: Not all flags added...  (martin) *)
     [("type_check_lambda",type_check_lambda),
@@ -467,8 +481,15 @@ struct
      ("tag_integers", tag_integers),
      ("tag_values", tag_values), 
      ("statistics_after_optimisation", statistics_after_optimisation),
+     ("minimize_fixs", minimize_fixs),
+     ("fix_conversion", fix_conversion),
+     ("contract", contract),
+     ("specialize_recursive_functions",specialize_recursive_functions),
+     ("eliminate_explicit_records", eliminate_explicit_records),
+     ("print_opt_lambda_expression", print_opt_lambda_expression),
      ("print_attop_atbot_expression", print_attop_atbot_expression),
      ("print_drop_regions_expression", print_drop_regions_expression),
+     ("print_drop_regions_expression_with_storage_modes", print_drop_regions_expression_with_storage_modes),
      ("print_call_explicit_expression", print_call_explicit_expression),
      ("print_physical_size_inference_expression", print_physical_size_inference_expression),
      ("disable_atbot_analysis", disable_atbot_analysis),
@@ -938,12 +959,12 @@ struct
     val printing_of_intermediate_forms_item : item =
           mk_header "Printing of intermediate forms"
 	  (DISPLAY
-	   [mk_toggle ("statistics after optimisation", statistics_after_optimisation),
+	   [mk_toggle ("print optimised lambda expression", print_opt_lambda_expression),
 	    mk_toggle ("print atbot expression", print_attop_atbot_expression),
 	    mk_toggle ("print drop regions expression", print_drop_regions_expression),
-	    mk_toggle ("print call-explicit expression", print_call_explicit_expression),
-	    mk_toggle ("print physical size inference expression",
-		       print_physical_size_inference_expression)])
+	    mk_toggle ("print drop regions expression with storage modes", print_drop_regions_expression_with_storage_modes),
+	    mk_toggle ("print physical size inference expression", print_physical_size_inference_expression),
+	    mk_toggle ("print call-explicit expression", print_call_explicit_expression)])
     
 
   (*2. Layout*)
@@ -951,13 +972,14 @@ struct
     val layout_item : item = mk_header "Layout"
           (DISPLAY
 	   [mk_toggle ("print types", print_types),
-	    mk_toggle ("print type name stamps and attributes", print_type_name_stamps),
 	    mk_toggle ("print effects", print_effects),
 	    mk_toggle ("print regions ", print_regions),
-	    mk_toggle ("print word regions ", print_word_regions),
 	    mk_toggle ("print in K-Normal Form", print_K_normal_forms),
 	    mk_toggle ("ragged right margin in pretty-printing", raggedRight),
-	    mk_int_action (colwidth, "text width")])
+	    mk_int_action (colwidth, "text width"),
+	    mk_toggle ("print type name stamps and attributes", print_type_name_stamps),
+	    mk_toggle ("print word regions ", print_word_regions)
+	    ])
 
 
   (*3. Control*)
@@ -967,13 +989,23 @@ struct
           [mk_toggle ("all multiplicities infinite (for POPL 96)", all_multiplicities_infinite)]
     val storage_mode_analysis_items : item list =
           [mk_toggle ("all storage modes attop  (for POPL 96)", disable_atbot_analysis)]
+    val optimiser_item : item = mk_header "Optimiser"
+      (DISPLAY
+       [mk_toggle ("optimiser", optimiser),
+	mk_toggle ("statistics after optimisation", statistics_after_optimisation),
+	mk_toggle ("minimize fixs", minimize_fixs), 	
+	mk_toggle ("fix conversion", fix_conversion), 
+	mk_toggle ("contract", contract), 
+	mk_toggle ("specialize recursive functions", specialize_recursive_functions), 
+	mk_toggle ("eliminate explicit records", eliminate_explicit_records),
+	mk_int_action (maximum_inline_size, "maximum inline size"),
+	mk_int_action (maximum_specialise_size, "maximum specialise size")
+	])
   in
     val control_item : item = mk_header "Control"
           (DISPLAY
 	   ([mk_toggle ("chat", chat),
-	    {text = "Optimiser", attr = noop_attr,
-	     below = DISPLAY
-	     [mk_toggle ("optimiser ", optimiser)]},
+	    optimiser_item,
 	    {text = "print entire menu", attr = noop_attr,
 	     below = ACTION (!show_full_menu_r)},
 	    {text = "print all flags and variables", attr = noop_attr,

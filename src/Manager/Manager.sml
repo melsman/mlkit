@@ -50,6 +50,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun die s = Crash.impossible ("Manager." ^ s)
 
+    val region_profiling = Flags.lookup_flag_entry "region_profiling"
+
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); raise PARSE_ELAB_ERROR[])
     fun quot s = "`" ^ s ^ "'"
@@ -180,21 +182,30 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  | is_whitesp #" " = true
 	  | is_whitesp #"\t" = true
 	  | is_whitesp _ = false
-	    
+
+	fun is_colon #":" = true
+	  | is_colon _ = false
+
+	fun lex_colon (#":"::chs) = SOME chs
+	  | lex_colon _ = NONE
+
 	fun lex_whitesp (all as c::rest) = if is_whitesp c then lex_whitesp rest
 					   else all 
 	  | lex_whitesp [] = []
 
-	fun lex_string(c::rest, acc) = if is_whitesp c then (implode(rev acc), rest)
-				       else lex_string (rest, c::acc)
+	fun lex_string (c::rest, acc) = if is_colon c then (implode(rev acc), c::rest)
+					else if is_whitesp c then (implode(rev acc), rest)
+					     else lex_string (rest, c::acc)
 	  | lex_string ([], acc) = (implode(rev acc), [])
 
 	fun lex (chs : char list, acc) : string list =
 	  case lex_whitesp chs
 	    of [] => rev acc
-	     | chs => lex let val (s, chs) = lex_string(chs,[])
-		          in (chs, s::acc) 
-			  end
+	     | chs => lex (case lex_colon chs
+			     of SOME chs => (chs, ":"::acc)
+			      | NONE => let val (s, chs) = lex_string(chs,[])
+					in (chs, s::acc) 
+					end)
 	val lex = fn chs => lex(chs,[])
 
 	fun parse_body_opt (ss : string list) : (body * string list) option =
@@ -263,9 +274,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  of SOME({prjids,objs},ss) => SOME({prjids=s::prjids,objs=objs}, ss)
 		   | NONE => SOME({prjids=[s],objs=[]}, ss)
 	      else if has_ext(s, "o") then
-		case parse_prjids_opt ss
-		  of SOME({prjids,objs},ss) => SOME({prjids=prjids,objs=s::objs}, ss)
-		   | NONE => SOME({prjids=[],objs=[s]}, ss)
+		let fun parse_with_obj(obj, ss) =
+		      case parse_prjids_opt ss
+			of SOME({prjids,objs},ss) => SOME({prjids=prjids,objs=obj::objs}, ss)
+			 | NONE => SOME({prjids=[],objs=[obj]}, ss)
+		in case ss
+		     of ":"::s'::ss' =>
+		       if has_ext(s', "o") then
+			 let val s'' = if !region_profiling then s' else s
+			 in parse_with_obj(s'', ss')
+			 end
+		       else parse_error("I expected " ^ s' ^ " (occuring after a `:') to have extension `.o'.")
+		      | _ => 
+			 if !region_profiling then 
+			   parse_error("I expected a `:' and an external object (.o file) to use\n" ^
+				       "now when profiling is enabled.")
+			 else parse_with_obj(s, ss)
+		end 
 	      else NONE
 	     | _  => NONE
 
@@ -558,11 +583,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * PM/NoProf/ directory.
      * ---------------------------------------------------- *)
 
-    local
-      val region_profiling = Flags.lookup_flag_entry "region_profiling"
-    in fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
-    end
-
+    fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
 
     type absprjid = string
 

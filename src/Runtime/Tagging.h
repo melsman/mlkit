@@ -60,7 +60,20 @@
 #define set_dtag(d)  /* nothing */
 #define convertRealToC(mlReal)  (get_d((mlReal)))
 #define convertRealToML(cReal, mlReal) {get_d((mlReal)) = (cReal);}
+
+#ifdef PROFILING
+#define allocRealProf(realRho, realPtr, pPoint) {\
+  realPtr = alloc(realRho, 2+sizeObjectDesc);\
+  ((ObjectDesc *) realPtr)->atId = pPoint; \
+  ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
+  realPtr = (int *)(((ObjectDesc *)realPtr)+1); \
+}
+#else 
+#define allocReal(realRho, realPtr) {realPtr = alloc(realRho,2);}
 #endif
+
+#endif
+
 
 /*----------------------------------------------------------------*
  * Converting booleans.                                           * 
@@ -71,7 +84,7 @@
 /*----------------------------------------------------------------*
  * Converting units.                                              *
  *----------------------------------------------------------------*/
-#define convertUnitToC(u) ()
+#define convertUnitToC(u)
 #define convertUnitToML(u) (mlUNIT)
 
 /*----------------------------------------------------------------*
