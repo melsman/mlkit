@@ -1,2 +1,0 @@
-takeanddrop.sml
-trees.sml

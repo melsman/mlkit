@@ -1,6 +1,0 @@
-The way things are done now, the registration of runtime system addresses
-is always done.  For stand-alone systems, this shouldn't be necessary.
-We might be able to avoid this by using function pointers to the CGlobals
-functions, which get set to the right functions in the heap-io library.
-Thus, if the heap-io stuff isn't included, then the CGlobals stuff won't
-be linked either.

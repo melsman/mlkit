@@ -1,2 +1,0 @@
- val print_drop_regions_expression : bool = true 
- val maximum_inline_size : int = 0  (* disable in-lining *)

@@ -1,4 +1,0 @@
-(* Initial allows for other modules to be discharged at link time *)
-
-A.sml
-B.sml

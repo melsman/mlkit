@@ -1,8 +1,0 @@
-
-
-********** weeks2.sml *************
-
-weeks2.sml, line 2, column 9:
-  datatype t = K of t    (* this one should not be accepted *)
-           ^
-type constructor t is bound by both datatype binding and withtype binding

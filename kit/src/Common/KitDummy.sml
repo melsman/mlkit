@@ -1,1 +1,0 @@
-functor KitDummy() = KitCompiler(ExecutionDummy(ExecutionArgs))
