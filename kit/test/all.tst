@@ -7,6 +7,7 @@ consists of a file name path (with extension sml, sig, or pm) followed
 by a list of tokens. The following tokens are supported:
 
  nobasislib     ; do not import basis library
+ nooptimiser    ; disable lambda optimiser
  ccl            ; compare compiler logs
  tx             ; time executable
  tc             ; time compiler

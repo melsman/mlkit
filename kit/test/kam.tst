@@ -44,6 +44,7 @@ layout.sml
 anoq_Exception.sml
 danwang.pm                    tc
 testmatc.sml        ccl
+dangle4.sml
 
 (* Tests of some benchmark programs *)
 
@@ -83,6 +84,7 @@ check_arrays.sml
 array.sml                     
 general.sml                   
 int.sml                       
+int_2.sml
 int31.sml                     
 int31_2.sml                      
 int32.sml                      
