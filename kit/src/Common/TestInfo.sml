@@ -151,7 +151,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				     ("testdyn1",None),
 				     ("testdyn2",Some "../Sources/input_to_testdyn2"),
 				     ("scan_rev1", None),
-				     ("scan_rev2", None)]
+				     ("scan_rev2", None),
+				     ("vpprob", None)]
 
     (*--------------------------------------------*)
     (* Variables controlling the PERFORMANCE test *)
