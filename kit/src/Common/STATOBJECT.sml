@@ -172,20 +172,18 @@ signature STATOBJECT =
 	 the list of types which the generic type variables of the type
 	 scheme have been instantiated to.*)
 
+	exception InstanceError of string
 	val instance                : TypeScheme -> Type
 	val instance''              : TypeScheme -> Type * Type list  
 	val generalises_TypeScheme  : TypeScheme * TypeScheme -> bool
 	val generalises_Type        : TypeScheme * Type -> bool
 
-	(*close imp sigma = generalise generic type variables in sigma except
-	  overload tyvars; used by Environment.
-	  close_and_return_escaping_tyvars is similar, except it also returns
-	  a list of tyvars that were not generalised but could have been
-	  generalised if there were no value polymorphism restriction.  If
-	  there are any such tyvars, we give a type error `Provide type
-	  annotation for <ids>' where <ids> are the identifiers containing
-	  one of the tyvars in their type.  See ElabDec.elab_dec (VALdec
-	  ...)*)
+	(*close imp sigma = generalise generic type variables in sigma
+	  except overload tyvars; used by Environment.
+	  close_and_return_escaping_tyvars is similar, except it also
+	  returns a list of tyvars that were not generalised but could
+	  have been generalised if there were no value polymorphism
+	  restriction.  See ElabDec.elab_dec (VALdec ...)*)
 
 	val close                   : bool -> TypeScheme -> TypeScheme
 	val close_and_return_escaping_tyvars
