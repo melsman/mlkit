@@ -645,6 +645,7 @@ struct
 	       | "mul_word__"             => PrimMulw
 		       
 	       | "__fresh_exname"         => PrimFreshExname
+	       | "__get_conn"             => PrimGetConn
 	       | _ => die ("PRIM(" ^ name ^ ") not implemented"))
 
 	  in

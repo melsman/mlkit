@@ -108,5 +108,7 @@ functor BuiltInCFunctionsKAM () : BUILT_IN_C_FUNCTIONS_KAM =
       | "sml_mktime" => 97
       | "sml_asctime" => 98
       | "sml_strftime" => 99
+      | "nssml_ConnReturnHtml" => 100
+      | "nssml_log" => 101
       | _ => ~1
   end

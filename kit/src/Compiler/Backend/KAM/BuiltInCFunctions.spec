@@ -98,7 +98,8 @@ sml_gmtime
 sml_mktime
 sml_asctime
 sml_strftime
-
+nssml_ConnReturnHtml
+nssml_log
 
 
 

@@ -24,7 +24,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 		  structure Crash = Crash
 		  val down_growing_stack : bool = false         (* false for KAM *)
 		  val double_alignment_required : bool = true   (* true for KAM?? *)
-		  val extra_prims = ["__mul_int", "mul_word8__", "mul_word__"])
+		  val extra_prims = ["__mul_int", "mul_word8__", "mul_word__", "__get_conn"])
 
     structure Kam = Kam (structure Labels = Labels
 			 structure PP = PP
@@ -114,9 +114,14 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 					  structure PP = PP
 					  structure Flags = Flags)
 
-
     structure Compile = BuildCompile.Compile
     structure CompilerEnv = BuildCompile.CompilerEnv
+
+    (* Maybe create a file with all uo-files listed in order; we get the name 
+     * of the file from the Flags variable uolistfile *)
+    val kam_uolistfile = ref ""
+    val _ = Flags.add_string_to_menu(["Control"], "kam_uolistfile", 
+				     "KAM uo-list file", kam_uolistfile);
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = BuildCompile.CompilerEnv.CEnv
@@ -165,19 +170,30 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     fun emit (arg as {target, filename:string}) : unit = EmitCode.emit arg
 
     fun assemble _ = ()
+
+    fun mk_uolistfile uofiles =
+      case !kam_uolistfile
+	of "" => ()
+	 | s => let val os = TextIO.openOut s
+		in app (fn f => TextIO.output(os, f ^ "\n")) uofiles;
+		  TextIO.closeOut os;
+		  print("[Created file " ^ s ^ "]\n")
+		end
+	      
     fun link_files_with_runtime_system _ files run = 
       let fun modify s = case rev (explode s)
 			   of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
 			    | _ => s
 	  val files = map modify files
-	  val os = TextIO.openOut run
+	  val os = TextIO.openOut run	    
       in
 (*	print ("[Creating file " ^ run ^ " begin ...]\n"); *)
 	TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/src/RuntimeWithGC/kam ");
 	app (fn f => TextIO.output(os, f ^ " ")) files;
 	TextIO.closeOut os;
 	OS.Process.system "chmod a+x run";
-	print("[Created file " ^ run ^ "]\n")
+	print("[Created file " ^ run ^ "]\n");
+	mk_uolistfile files
 (* 	; app (print o (fn s => "   " ^ s ^ "\n")) files *)
       end
   end
