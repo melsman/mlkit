@@ -21,12 +21,17 @@ signature TEST_INFO =
     val acceptance_strategies  : unit -> strategy list
     val performance_strategies : unit -> strategy list
 
-    val acceptance_suite_files     : (string*string Option) list
-    val acceptance_suite_projects  : (string*string Option) list
+    val acceptance_suite_files     : unit -> (string*string Option) list
+    val acceptance_suite_projects  : unit -> (string*string Option) list
     val performance_suite_files    : (string*string Option) list
     val performance_suite_projects : (string*string Option) list
 
     (*The reason some values are suspended (e.g., the `runtime_system' field)
      is that they depend on ref's from Flags that may be updated, and we want
-     TestEnv to be sensitive to these updates.*)
+     TestEnv to be sensitive to these updates.
+
+     When the dynamic flag "quicker_acceptance_test" is on,
+     the two suites of test programs (acceptance_suite_projects &
+     acceptance_suite_files) are smaller and there are fewer
+     acceptance strategies (acceptance_strategies).*)
   end

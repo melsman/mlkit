@@ -37,6 +37,11 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
     fun path_to_runtime_prof_suspension () = !(Flags.lookup_string_entry "path_to_runtime_prof")
     val test_env_directory = Flags.lookup_string_entry "test_env_directory"
     val kit_version = Flags.lookup_string_entry "kit_version"
+    val _ = Flags.add_flag_to_menu
+              (["Test environment"],
+	       "quicker_acceptance_test", "quicker acceptance test", ref true)
+    val quicker_acceptance_test = Flags.lookup_flag_entry "quicker_acceptance_test"
+    fun leave_out_if_quicker xs = if !quicker_acceptance_test then [] else xs
 
     (*-------------------------------------------*)
     (* Variables controlling the ACCEPTANCE test *)
@@ -103,56 +108,60 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
     in
       fun acceptance_strategies () = (*USER*)
 	    (case !kit_version of
-	       "ML_to_C_on_HPUX" => [acceptance_strategy_HPUX_C (),
-				     acceptance_strategy_HPUX_C_prof ()]
+	       "ML_to_C_on_HPUX" => [acceptance_strategy_HPUX_C ()]
+		 @ leave_out_if_quicker [acceptance_strategy_HPUX_C_prof ()]
 	     | "ML_to_C_on_SUN_OS4" => [acceptance_strategy_SUN_OS4_C ()]
-	     | "ML_to_HPPA_on_HPUX" => [acceptance_strategy_HPUX_HPPA (),
-					acceptance_strategy_HPUX_HPPA_prof ()]
+	     | "ML_to_HPPA_on_HPUX" => [acceptance_strategy_HPUX_HPPA ()]
+		 @ leave_out_if_quicker [acceptance_strategy_HPUX_HPPA_prof ()]
 	     | _ => [])
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
-    val acceptance_suite_files = [
-				  ("kitfib35",None),
-				  ("kitdangle",None),
-				  ("kitdangle3",None)] (*--USER--*)
+    fun acceptance_suite_files () =
+          [("kitfib12",None),
+	   ("kitdangle",None)] (*--USER--*)
 
-    val acceptance_suite_projects = [
-				     ("kitreynolds2",None),
-				     ("kitreynolds3",None), 
-				     ("kitloop2",None), 
-				     ("kittmergesort",None), 
-				     ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
-				     ("kitmandelbrot",None),
-				     ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
-				     ("klife_eq",None),
-				     ("kitkbjul9",None), 
-				     ("kkb_eq",None), 
-				     ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*) 
-				     ("kitsimple",None),
-
-				     ("tststrcmp",None),
-				     ("FuhMishra",None),
-				     ("life",None),
-				     ("compose",None),
-				     ("minilist",None),
-				     ("sma",None),
-				     ("fromto",None),
-				     ("nlength10000",None),
-				     ("scan",Some "../Sources/scanfiles"),
-				     ("effect", None),
-				     ("exceptions",None),
-				     ("hello",None),
-				     ("proj",None),
-				     ("tail",None),
-				     ("refs",None),
-				     ("trees",None),
-				     ("fold",None),
-				     ("testdyn1",None),
-				     ("testdyn2",Some "../Sources/input_to_testdyn2"),
-				     ("scan_rev1", None),
-				     ("scan_rev2", None),
-				     ("vpprob", None)]
+    fun acceptance_suite_projects () =
+          [("kitreynolds2_fast",None),
+	   ("kitreynolds3_fast",None),
+	   ("kitloop2",None), 
+	   ("kittmergesort",None), 
+	   ("kitqsort36c",None),
+	   ("kitmandelbrot_fast",None)]
+	@ leave_out_if_quicker
+	  [("kitlife35u",None)]
+	@ [("klife_eq_fast",None),
+	   ("kitkbjul9_fast",None)]
+        @ leave_out_if_quicker
+	  [("kkb_eq",None),
+	   ("kitknuth_bendix36c",None)]
+	@ [("kitsimple",None),
+	   ("tststrcmp",None),
+	   ("FuhMishra",None),
+	   ("life",None)]
+	@ leave_out_if_quicker
+	  [("compose",None),
+	   ("minilist",None),
+	   ("sma",None),
+	   ("fromto",None)]
+	@ [("nlength10000",None),
+	   ("scan",Some "../Sources/scanfiles"),
+	   ("effect", None)]
+	@ leave_out_if_quicker
+	  [("exceptions",None),
+	   ("hello",None),
+	   ("proj",None),
+	   ("tail",None),
+	   ("refs",None),
+	   ("trees",None),
+	   ("fold",None)]
+	@ [("testdyn1",None),
+	   ("testdyn2",Some "../Sources/input_to_testdyn2")]
+	@ leave_out_if_quicker
+	  [("scan_rev1", None),
+	   ("scan_rev2", None),
+	   ("vpprob", None),
+	   ("fft", None)]
 
     (*--------------------------------------------*)
     (* Variables controlling the PERFORMANCE test *)
@@ -184,28 +193,27 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
-    val performance_suite_files = [
-				   ("kitfib35",None),
-				   ("kitdangle",None),
-				   ("kitdangle3",None)
-				   ] (*--USER--*)
+    val performance_suite_files =
+          [("kitfib35",None),
+	   ("kitdangle",None),
+	   ("kitdangle3",None)] (*--USER--*)
 
-    val performance_suite_projects = [
-				      ("kitreynolds2",None),
-				      ("kitreynolds3",None),
-				      ("kitloop2",None),
-				      ("kittmergesort",None),
-				      ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
-				      ("kitmandelbrot",None),
-				      ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
-				      ("klife_eq",None), 
-				      ("kitkbjul9",None),
-				      ("kkb_eq",None),
-				      ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*)
-				      ("kitsimple",None),
-				      
-				      ("msort", None) 
-				      ]
+    val performance_suite_projects =
+          [("kitreynolds2",None),
+	   ("kitreynolds3",None),
+	   ("kitloop2",None),
+	   ("kittmergesort",None),
+	   ("kitqsort36c",None),
+	   ("kitmandelbrot",None),
+	   ("kitlife35u",None),
+	   ("klife_eq",None), 
+	   ("kitkbjul9",None),
+	   ("kkb_eq",None),
+	   ("kitknuth_bendix36c",None),
+	   ("kitsimple",None),
+	   ("fft",None),
+	   
+	   ("msort", None)]
 
   end (*functor TestInfo*)
 

@@ -47,7 +47,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     val _ = map (fn (x,y,r) => Flags.add_flag_to_menu (["Test environment"],x,y,r)) 
       [("size_of_ml_kit_test", "ML Kit size test", ref false),
        ("acceptance_test", "acceptance test", ref true),
-       ("performance_test", "performance test", ref true)]
+       ("performance_test", "performance test", ref false)]
 
     val test_log_string = Flags.lookup_string_entry "test_log"
     val size_of_ml_kit_test_flag = Flags.lookup_flag_entry "size_of_ml_kit_test"
@@ -152,36 +152,11 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* Create directory d, with specified acces rights. *)
     val access_rights = 505
     fun create_dir d = SML_NJ.Unsafe.SysIO.mkdir (d,access_rights)
-      handle _ => raise Crash_test("Connot create directory: " ^ d ^ ".")
-
-    (* Check for directory d, and if exists, then stop with error. *)
-    (* If the directory does not exists, then create it.           *)
-    fun read_string () = read_string0 ""
-    and read_string0 s =
-      let val ch = input (std_in, 1)
-      in
-	if ch = "\n" then s else read_string0 (s ^ ch)
-      end
-
-    fun check_and_create_directory (d, error_msg) =
-      if exists_file d then
-	(pr ("\n\n\n   Files in directory\n\n        "
-	     ^ d ^ "\n\n   may be overwritten.  Shall I proceed anyway (y/n)?  ");
-	 while (let val s = String.upper (read_string ())
-		in
-		  s <> "Y" andalso
-		  (s <> "N" orelse
-		   raise Crash_test ("File or directory " ^ d ^ " exists."
-				     ^ new_line ^ error_msg))
-		end) do ())
-      else
-	(ok_log_report ("Directory " ^ shorten_filename d ^ " will be created.");
-	 create_dir d;
-	 ())
+      handle _ => raise Crash_test("Cannot create directory: " ^ d ^ ".")
 
     (* Check for directory d, and if exists, then continue. *)
     (* If the directory does not exists, then create it.    *)
-    fun create_directory d =
+    fun ensure_dir_exists d =
       if exists_file d then 
 	ok_log ("File or directory " ^ (shorten_filename d) ^ " exists and will be used.")
       else
@@ -192,16 +167,17 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
     (* Execute shell command and return the result code. *)
     fun execute_shell_command command =
-      let
-	val error_code = SML_NJ.system command
-      in
-	if error_code <> 0 then
-	  raise Crash_test ("Error (" ^ (Int.string error_code) ^ ") in executing shell command " ^ ((*shorten_string*) command (*35*)) ^ ".")
-	else
-	  ()
-      end
-    handle SML_NJ.Unsafe.CInterface.SystemCall s => raise Crash_test ("Error in executing shell command " ^ ((*shorten_string*) command (*35*)) ^ "." ^ 
-								      new_line ^ "Reported error: " ^ s)
+          (case SML_NJ.system command of
+	     0 => ()
+	   | error_code => 
+	       raise Crash_test ("Error no. " ^ Int.string error_code
+				 ^ " when executing shell command " ^ command ^ "."))
+	  handle SML_NJ.Unsafe.CInterface.SystemCall s =>
+	    raise Crash_test ("Error in executing shell command " ^ command ^ "."
+			      ^ new_line ^ "Reported error: " ^ s)
+	       | _ =>
+	    raise Crash_test ("Unknown exception when executing shell command "
+			      ^ command ^ ".")
 
     (* time_command times the command.     *)
     (* The time information is read from a *)
@@ -316,9 +292,40 @@ functor TestEnv(structure TestInfo: TEST_INFO
     fun delete_file filename =
       execute_shell_command ("rm -f " ^ filename)
 
-    (* Copy file. *)
-    fun mv_file filename1 filename2 =
-      execute_shell_command ("mv " ^ filename1 ^ " " ^ filename2)
+    (*mv: rename file*)
+    fun mv filename1 filename2 =
+          execute_shell_command ("mv " ^ filename1 ^ " " ^ filename2)
+
+    (*create_dir_and_maybe_rename_old d = Create directory d.
+     If d already exists, rename it to something else first.*)
+
+    local
+      fun new_name d = if exists_file d then new_name (d ^ "-") else d
+      fun rename d =
+          let val d' = new_name d
+	  in
+	    (ok_log_report
+	       ("\n\nThe directory\n\n        "
+		^ d ^ "\n\nalready exists.  I will rename it to\n\n        "
+	        ^ d' ^ "\n\n");
+	     mv d d')
+	  end
+
+      fun remove_trailing_slashes s =
+	    (case rev (explode s) of
+	       "/" :: ss => implode (rev ss)
+	     | _ => s)
+    in
+      fun create_dir_and_maybe_rename_old d =
+	    let val d = remove_trailing_slashes d 
+	    in
+	      (if exists_file d then rename d else ();
+	       ok_log_report ("Directory " ^ shorten_filename d
+			      ^ " will be created.");
+	       create_dir d;
+	       ())
+	    end
+    end (*local*) 
 
     (* Compare two files, and return the first line     *)
     (* in which there is a mitch match.                 *)
@@ -798,7 +805,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   val _ = ok_log_report ("Starting new strategy: " ^ strategy_name)
 	    
 	   val new_compile_strategy_dir = new_acceptance_dir () ^ strategy_name ^ "/"
-	   val _ = check_and_create_directory (new_compile_strategy_dir, "Remove directory.")
+	   val _ = create_dir new_compile_strategy_dir
 
 	   val _ = add_acceptance_strategy_test_report strategy
 
@@ -885,13 +892,13 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
            (* Acceptance test on files. *)
 	   val _ = add_lines_test_report ["\\subsubsection{Acceptance test on single source files}"]
-	   val _ = map acceptance_test_file acceptance_suite_files
+	   val _ = map acceptance_test_file (acceptance_suite_files ())
 	   val _ = log_table acceptance_table_files
 	   val _ = latex_table acceptance_table_files
 
            (* Acceptance test on projects. *)
 	   val _ = add_lines_test_report ["\\subsubsection{Acceptance test on projects}"]
-	   val _ = map acceptance_test_project acceptance_suite_projects	 
+	   val _ = map acceptance_test_project (acceptance_suite_projects ())
 	   val _ = log_table acceptance_table_projects
 	   val _ = latex_table acceptance_table_projects
 	    
@@ -916,7 +923,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
 	  val _ = ok_log_report (new_line ^ "*************Now starting ACCEPTANCE test.***************")
 	    
-	  val _ = create_directory (new_acceptance_dir ())
+	  val _ = ensure_dir_exists (new_acceptance_dir ())
 	    
 	  val _ = map acceptance_test_strategy (acceptance_strategies ())
 	    
@@ -973,7 +980,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   val _ = ok_log_report ("Starting new strategy: " ^ strategy_name)
 	    
 	   val new_compile_strategy_dir = new_target_program_dir () ^ strategy_name ^ "/"
-	   val _ = check_and_create_directory (new_compile_strategy_dir, "Remove directory.")
+	   val _ = create_dir new_compile_strategy_dir
 
 	   val _ = add_performance_strategy_test_report strategy
 
@@ -1036,7 +1043,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       handle X => (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val exe_file =  "run"
-(*	       val _ = mv_file "run" out_file *)
+(*	       val _ = mv "run" out_file *)
 	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
@@ -1146,7 +1153,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
 	  val _ = ok_log_report (new_line ^ "*************Now starting PERFORMANCE test.***************")
 	    
-	  val _ = create_directory (new_target_program_dir ())
+	  val _ = ensure_dir_exists (new_target_program_dir ())
 	    
 	  val _ = map performance_test_strategy (performance_strategies ())
 	    
@@ -1183,14 +1190,17 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		  else
 		    raise Crash_test ("Bin directory: " ^ shorten_filename (bin_directory ()) ^ " does not exists.")
 
+(*KILL 17/10/1997 18:42. tho.:
 	  val _ = 
 	    if exists_file (new_version_dir ()) then 
 	      ok_log_report  ("File or directory " ^ shorten_filename (new_version_dir ()) ^ " exists," ^ 
 			      new_line ^ "and will be used by the test environment.")
 	    else
 	      (ok_log_report ("Directory " ^ shorten_filename (new_version_dir ()) ^ " will be created.");
-	       create_directory (new_version_dir ());
+	       ensure_dir_exists (new_version_dir ());
 	       ())
+*)
+	  val _ = create_dir_and_maybe_rename_old (new_version_dir ())
 
 	  val _ = test_report_stream := open_test_report()
 
