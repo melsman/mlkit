@@ -3,6 +3,7 @@ local
       let val {base,ext} = OS.Path.splitBaseExt src
 	  val t = base ^ extension
 	  val cmd = "mlkit " ^ args ^ " -o " ^ t ^ " " ^ src
+	  val cmd = "../bin/mlkit " ^ args ^ " -o " ^ t ^ " " ^ src (*Niels*)
       in if OS.Process.system cmd = OS.Process.success then SOME (src,t)
 	 else NONE
       end
