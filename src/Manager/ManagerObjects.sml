@@ -110,8 +110,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 *-------------------------------- *)
 
 	fun assemble (file_s, file_o) =
-          (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
-	   delete_file file_s)
+          (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)
+(*TODO 25/02/1998 21:22. tho.:
+	   ;
+	   delete_file file_s
+*)
+	   )
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
 
