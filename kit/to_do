@@ -9,7 +9,14 @@ REPORTED BY: (MT|ME|FAXE) + date
 TO BE FIXED BY: (MT|ME|FAXE)
 
 =============================== BUGS ===============================
-
+ERROR: ElabDec datatype error
+SYMPTOM: Compilation crashes: 
+           Impossible: Environments.ExplicitTyVar_lookup 
+TESTFILE: kit/test/freedatatype.sml
+PRIORITY: MEDIUM
+REPORTED BY: ME 1999-05-05
+TO BE FIXED BY: ME
+--------------------------------------------------------------------
 ERROR: CompileDec `val rec pat' error
 SYMPTOM: Compilation crashes: 
            Impossible: CompileDec.compileREC.id_sigma
@@ -17,15 +24,13 @@ TESTFILE: kit/test/valrecpat.sml
 PRIORITY: MEDIUM
 REPORTED BY: ME 1999-04-12
 TO BE FIXED BY: ME
-
+--------------------------------------------------------------------
 ERROR: ElabDec `val rec pat' error
 SYMPTOM: Elaboration fails to succeed (see The Def. page 24)
 TESTFILE: test/valrecpat2.sml
 PRIORITY: MEDIUM
 REPORTED BY: ME 1999-04-12
 TO BE FIXED BY: ME
-
-
 =============================== WAIT ===============================
 
 So as to make printing of profile graphs use less ink, modify rp2ps
