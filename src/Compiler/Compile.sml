@@ -289,6 +289,7 @@ functor Compile(structure Excon : EXCON
       let open LambdaExp
       in case lamb
 	   of PGM(DATBINDS [[]], FRAME {declared_lvars=[], declared_excons=[]}) => true
+	    | PGM(DATBINDS [], FRAME {declared_lvars=[], declared_excons=[]}) => true
 	    | _ => false
       end
 
@@ -672,6 +673,9 @@ functor Compile(structure Excon : EXCON
     (* This is the main function; It invokes all the passes of the back end *)
     (************************************************************************)
 
+    datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
+                 | CEnvOnlyRes of CEnv
+
     fun compile(CEnv, Basis, strdecs, vcg_file) =
       let
 	(* It is necessary to reset the timer because only 
@@ -691,14 +695,14 @@ functor Compile(structure Excon : EXCON
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
-	if isEmptyLambdaPgm lamb_opt then None
+	if isEmptyLambdaPgm lamb_opt then CEnvOnlyRes CEnv1
 	else
 	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo) = 
 	       comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, l2kam_ce, lamb_opt, vcg_file)
 	      val Basis' = CompileBasis.mk_CompileBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 							 rse=rse1,mulenv=mulenv1,mularefmap=mularefmap1,
 							 drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1}
-	  in Some (CEnv1, Basis', target, linkinfo)
+	  in CodeRes (CEnv1, Basis', target, linkinfo)
 	  end
       end
 

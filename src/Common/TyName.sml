@@ -50,7 +50,7 @@ functor TyName(
 	       val id = Int.string (Name.key (name tn))
 	   in str ^ "(" ^ eq ^ id ^ ")"
 	   end
-	 else str
+	 else str ^ (Int.string (Name.key (name tn)))
       end
 
     val tyName_BOOL = freshTyName{tycon=TyCon.tycon_BOOL, arity=0, equality=true}

@@ -294,6 +294,25 @@ functor ModuleStatObject(structure StrId  : STRID
 	      E''
 	    end
 
+      fun rename_Sig (SIGMA{T,E}) =
+	let val phi = Realisation.renaming T
+	in SIGMA{T=Realisation.on_TyName_set phi T,
+		 E=Realisation.on_Env phi E}
+	end
+
+      fun eq_Env(E1,E2) = (check_enrichment(E1,E2);
+			   check_enrichment(E2,E1);
+			   true) handle _ => false
+
+      fun eq (Sig1,Sig2) =
+	let val Sig1 as SIGMA{T=T1,E=E1} = rename_Sig Sig1
+	    val Sig2 as SIGMA{T=T2,E=E2} = rename_Sig Sig2
+	    val phi1 = sigMatchRea (Sig2,E1)
+	    val phi2 = sigMatchRea (Sig1,E2)
+	in eq_Env(Realisation.on_Env phi1 E2, E1) andalso
+	   eq_Env(Realisation.on_Env phi2 E1, E2)
+	end handle _ => false
+
       fun layout (SIGMA {T, E}) =
 	    if !Flags.DEBUG_STATOBJECTS then
 	      let val Ttree = PP.NODE {start="(", finish=")", indent=1,
@@ -367,11 +386,31 @@ functor ModuleStatObject(structure StrId  : STRID
 						 if E' does not enrich E''*)
 	      let val phi_rename = Realisation.renaming T'
 		  val phi' = Realisation.oo (phi_rename, phi)
+		  fun Sigma_on(rea,SIGMA{T,E}) =              (* Avoid the mysterious Sigma.on; the interpreter *)
+		    SIGMA{T=Realisation.on_TyName_set rea T,  (* is very picky on type name rebinding in functor *)
+			  E=Realisation.on_Env rea E}         (* signatures. - Martin *)
 	      in
-		(Sigma.on (phi', Sig'), phi')
-	      end
-	    end
+		(Sigma_on (phi', Sig'), phi')      (* The elaborator must maintain the invariant that *)
+	      end                                  (* (Supp(phi') U Yield(phi')) \cap (T of Sig') = 0 *)
+	    end                                    (* -- I believe it does -- Martin *)
 
+      fun rename_FunSig (FUNSIG{T,E,T'E'}) =
+	let val phi = Realisation.renaming T
+	in FUNSIG{T=Realisation.on_TyName_set phi T,
+		  E=Realisation.on_Env phi E,
+		  T'E'=Sigma.rename_Sig (Sigma.on(phi,T'E'))}
+	end
+
+      fun eq(funsig1, funsig2) =
+	let val FUNSIG{T=T1,E=E1,T'E'=Sig1'} = rename_FunSig funsig1
+	    val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
+	    val Sig1 = SIGMA{T=T1,E=E1}
+	    val Sig2 = SIGMA{T=T2,E=E2}
+	    val phi = sigMatchRea(Sig1, E2)
+	in Sigma.eq(Sig1,Sig2) andalso
+	  Sigma.eq(Sigma.on(phi,Sig1'),Sig2')
+	end handle _ => false 
+       
       fun layout (FUNSIG{T, E, T'E'}) =
 	    let
 	      val argsig = PP.NODE {start="(", finish="", indent=1,

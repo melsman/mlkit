@@ -10,19 +10,6 @@ signature MANAGER =
 
     val build : unit -> unit                  (* build the project *)
 
-(*
-    val comp : string -> unit                 (* comp(filename)  compiles file 
-					       * (!source_dir ^ filename) *) 
-
-    val compile : {sourcename: string,        (* compile{sourcename,targetname,linkname,logname} *)
-		   targetname: string,        (* compiles file sourcename and writes     *)
-		   linkname: string,          (* the result into files linkname and      *)
-                   logname : string,          (* targetname. Log information is printed  *) 
-                   vcgname : string} -> bool  (* on file named logname.                  *)
-                                              (* The strings are absolute paths. Returns  *)
-                                              (* true if the program is not empty.       *)
-*)
-
     exception PARSE_ELAB_ERROR
     val comp : string -> unit   (* comp s  compiles (!Flags.source_directory ^ s ^ ".sml")
 				 * into (!Flags.target_directory ^ s ^ ".exe") 

@@ -329,6 +329,7 @@ functor BuildCompile (structure TyName : TYNAME
                   structure FinMap = FinMap
 		  structure FinMapEq = FinMapEq
                   structure PP = PP
+		  structure Flags = Flags
                   structure Crash = Crash
                  )
 

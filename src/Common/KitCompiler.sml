@@ -800,10 +800,13 @@ functor KitCompiler() : sig include MANAGER
        structure Crash = Tools.Crash)
 
     structure IntModules = 
-      IntModules(structure ManagerObjects = ManagerObjects
+      IntModules(structure Name = Basics.Name
+		 structure ManagerObjects = ManagerObjects
 		 structure CompilerEnv = Execution.CompilerEnv
 		 structure ElabInfo = AllInfo.ElabInfo
+		 structure Environments = StaticObjects.Environments
 		 structure CompileBasis = Execution.CompileBasis
+		 structure FreeIds = Execution.FreeIds
 		 structure Compile = Execution.Compile
 		 structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		 structure Crash = Tools.Crash

@@ -104,7 +104,7 @@ functor TopdecGrammar(structure FunId: FUNID
       | info_on_strexp (TRANSPARENT_CONSTRAINTstrexp (info, strexp, sigexp)) = info
       | info_on_strexp (OPAQUE_CONSTRAINTstrexp (info, strexp, sigexp)) = info
       | info_on_strexp (APPstrexp (info, funid, strexp)) = info
-      | info_on_strexp (LETstrexp (info, strdec, strexp)) = info
+      | info_on_strexp (LETstrexp (info, strdec, strexp)) = info 
 					   
     fun info_on_strdec (DECstrdec (info, dec)) = info
       | info_on_strdec (STRUCTUREstrdec (info, strbind)) = info
@@ -154,6 +154,39 @@ functor TopdecGrammar(structure FunId: FUNID
     fun info_on_topdec (STRtopdec (info, strdec, topdec_opt)) = info
       | info_on_topdec (SIGtopdec (info, sigdec, topdec_opt)) = info
       | info_on_topdec (FUNtopdec (info, fundec, topdec_opt)) = info
+
+
+    (* map on info *)
+    fun map_strexp_info f strexp =
+      case strexp
+	of STRUCTstrexp (info, strdec) => STRUCTstrexp(f info, map_strdec_info f strdec)
+	 | LONGSTRIDstrexp (info, longstrid) => LONGSTRIDstrexp(f info, longstrid)
+	 | TRANSPARENT_CONSTRAINTstrexp (info, strexp, sigexp) => 
+	  TRANSPARENT_CONSTRAINTstrexp(f info, map_strexp_info f strexp, sigexp)
+	 | OPAQUE_CONSTRAINTstrexp (info, strexp, sigexp) => 
+	  OPAQUE_CONSTRAINTstrexp(f info, map_strexp_info f strexp, sigexp)
+	 | APPstrexp (info, funid, strexp) =>
+	  APPstrexp (f info, funid, map_strexp_info f strexp)
+	 | LETstrexp (info, strdec, strexp) =>
+	  LETstrexp (f info, map_strdec_info f strdec,map_strexp_info f strexp)
+    and map_strdec_info f strdec =
+      case strdec
+	of DECstrdec (info, dec) => DECstrdec(f info, DecGrammar.map_dec_info f dec)
+	 | STRUCTUREstrdec (info, strbind) => STRUCTUREstrdec(f info, map_strbind_info f strbind)
+	 | LOCALstrdec (info, strdec1, strdec2) => 
+	  LOCALstrdec(f info, map_strdec_info f strdec1, map_strdec_info f strdec2)
+	 | EMPTYstrdec info => EMPTYstrdec (f info)
+	 | SEQstrdec (info, strdec1, strdec2) => 
+	  SEQstrdec(f info, map_strdec_info f strdec1, map_strdec_info f strdec2)
+    and map_strbind_info f strbind =
+      case strbind
+	of STRBIND (info, strid, strexp, strbind_opt) => 
+	  STRBIND(f info, strid, map_strexp_info f strexp, 
+		  case strbind_opt
+		    of Some strbind => Some (map_strbind_info f strbind)
+		     | None => None) 
+
+    (* pretty-printing *)
 
     local
       fun f res (CONDESC(_, _, tyopt, conopt)) =

@@ -191,6 +191,19 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	         (SystemTools.emit(target,filename) :: tfiles, li::lis)
 	  in SystemTools.link(get(modc,([],[])), run)
 	  end
+
+	fun all_emitted modc : bool =
+	  case modc
+	    of NOTEMITTED_MODC _ => false
+	     | SEQ_MODC(mc1,mc2) => all_emitted mc1 andalso all_emitted mc2
+	     | _ => true
+
+	fun emitted_files(mc,acc) =
+	  case mc
+	    of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
+	     | EMITTED_MODC(tfile,_) => tfile::acc
+	     | _ => acc   
+
 	fun delete_files (SEQ_MODC(mc1,mc2)) = (delete_files mc1; delete_files mc2)
 	  | delete_files (EMITTED_MODC(fp,_)) = SystemTools.delete_file fp
 	  | delete_files _ = ()
@@ -250,8 +263,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       case FinMap.lookup ife funid
 			 of Some e => FinMap.add(funid,e,acc)
 			  | None => die "IntFunEnv.restrict") FinMap.empty funids)
-	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; MEMO: should we check ib-components? *)
-	  FinMap.Fold(fn ((funid, obj), b) => b andalso 
+	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; enrichment for free variables is checked *)
+	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
 			of Some obj0 => FunStamp.eq(#1 obj,#1 obj0)
 			 | None => false) true ife
@@ -348,7 +361,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type name = Name.name
     structure Repository =
       struct
-	type elabRep = (funid, (InfixBasis * ElabBasis * (name list * InfixBasis * ElabBasis)) list) FinMap.map ref
+	type elabRep = (funid, (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) list) FinMap.map ref
 	type intRep = (funid, (funstamp * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
 	val elabRep : elabRep = ref FinMap.empty
 	val intRep : intRep = ref FinMap.empty
@@ -358,17 +371,22 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun delete_rep rep funid = case FinMap.remove (funid, !rep)
 				     of OK res => rep := res
 				      | _ => ()
-	fun delete_entry funid = (delete_rep elabRep funid; 
-				  (case FinMap.lookup (!intRep) funid
-				     of Some res => List.apply (ModCode.delete_files o #4) res
-				      | None => ()); 
-				  delete_rep intRep funid)
+	fun delete_entries funid = (delete_rep elabRep funid; 
+(*				    (case FinMap.lookup (!intRep) funid
+				       of Some res => List.apply (ModCode.delete_files o #4) res
+					| None => ()); 
+*)
+				    delete_rep intRep funid)
 	fun lookup_rep rep exportnames_from_entry funid =
 	  let val all_gen = List.foldR (fn n => fn b => b andalso
 					Name.is_gen n) true
+	      fun find ([], n) = None
+		| find (entry::entries, n) = 
+		if (all_gen o exportnames_from_entry) entry then Some(n,entry)
+		else find(entries,n+1)
 	  in case FinMap.lookup (!rep) funid
-	       of Some entries => List.all (all_gen o exportnames_from_entry) entries
-		| None => []
+	       of Some entries => find(entries, 0)
+		| None => None
 	  end
 	fun add_rep rep (funid,entry) : unit =
 	  rep := let val r = !rep 
@@ -376,18 +394,47 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		      of Some res => FinMap.add(funid,res @ [entry],r)
 		       | None => FinMap.add(funid,[entry],r)
 		 end
-	val lookup_elabRep = lookup_rep elabRep (#1 o #3) 
-	val lookup_intRep = lookup_rep intRep (#3)
-	val add_elabRep = add_rep elabRep
-	val add_intRep = add_rep intRep
+	fun owr_rep rep (funid,n,entry) : unit =
+	  rep := let val r = !rep
+	             fun owr(0,entry::res,entry') = entry'::res
+		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
+		       | owr _ = die "owr_rep.owr"
+		 in case FinMap.lookup r funid
+		      of Some res => FinMap.add(funid,owr(n,res,entry),r)
+		       | None => die "owr_rep.None"
+		 end
+	val lookup_elab = lookup_rep elabRep #3 
+	val lookup_int = lookup_rep intRep #3
+	val add_elab = add_rep elabRep
+
+	fun add_int (funid,entry) = 
+	  if ModCode.all_emitted (#4 entry) then  (* just make sure... *)
+	    add_rep intRep (funid, entry)
+	  else die "add_int"
+
+	val owr_elab = owr_rep elabRep
+
+	fun owr_int (funid,n,entry) =
+	  if ModCode.all_emitted (#4 entry) then  (* just make sure... *)
+	    owr_rep intRep (funid,n,entry)
+	  else die "owr_int"
+
 	fun recover_elabrep() =
 	  List.apply 
-	  (List.apply (fn entry => List.apply Name.mark_gen (#1(#3 entry))))
+	  (List.apply (fn entry => List.apply Name.mark_gen (#3 entry)))
 	  (FinMap.range (!elabRep))
 	fun recover_intrep() =
 	  List.apply 
 	  (List.apply (fn entry => List.apply Name.mark_gen (#3 entry)))
 	  (FinMap.range (!intRep))
+
+	fun emitted_files() =
+	  let fun files_entries ([],acc) = acc
+		| files_entries ((_,_,_,mc,_)::entries,acc) = 
+		    files_entries(entries,ModCode.emitted_files(mc,acc))
+	  in FinMap.fold files_entries [] (!intRep)
+	  end
+	  
 	fun recover() = (recover_elabrep(); recover_intrep())
       end
     

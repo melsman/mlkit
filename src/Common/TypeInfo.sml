@@ -46,13 +46,15 @@ functor TypeInfo (structure Ident: IDENT
     | MATCH_INFO of {Type:Type}
     | PLAINvalbind_INFO of {tyvars: TyVar list, escaping: TyVar list, Type: Type}
     | OPEN_INFO of strid list * tycon list * id list
+    | INCLUDE_INFO of strid list * tycon list
     | FUNCTOR_APP_INFO of realisation
+    | FUNBIND_INFO of Env
     | TRANS_CONSTRAINT_INFO of Env
       
     fun on_TypeInfo (phi,ti) =
       let val phi_on_Type   = StatObject.Realisation.on_Type phi
-	  val phi_on_TE     = (* Environments.tyrea_on_TE *) fn TE => TE
-	  val phi_on_E      = Environments.Realisation.on_Env phi
+	  val phi_on_TE     = Environments.Realisation.on_TyEnv phi (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
+	  val phi_on_E      = Environments.Realisation.on_Env phi         (* it used to be the identity *)
       in case ti 
 	   of LAB_INFO {index, tyvars, Type} => LAB_INFO {index=index,tyvars=tyvars,
 							  Type=phi_on_Type Type}
@@ -72,7 +74,9 @@ functor TypeInfo (structure Ident: IDENT
 	    | PLAINvalbind_INFO {tyvars, escaping, Type} =>
 	     PLAINvalbind_INFO {tyvars=tyvars, escaping = escaping,Type=phi_on_Type Type}
 	    | OPEN_INFO i => OPEN_INFO i
+	    | INCLUDE_INFO i => INCLUDE_INFO i
 	    | FUNCTOR_APP_INFO phi' => FUNCTOR_APP_INFO (StatObject.Realisation.oo(phi,phi'))
+            | FUNBIND_INFO E => FUNBIND_INFO (phi_on_E E)
             | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO(phi_on_E E)
       end
 
@@ -176,7 +180,13 @@ functor TypeInfo (structure Ident: IDENT
 						    children=[layout_strids strids,
 							      layout_tycons tycons,
 							      layout_ids ids]}
+	 | INCLUDE_INFO (strids,tycons) => PP.NODE{start="INCLUDE_INFO(",finish=")",indent=2,childsep=PP.RIGHT ", ",
+						   children=[layout_strids strids,
+							     layout_tycons tycons]}
 	 | FUNCTOR_APP_INFO realisation => PP.LEAF "FUNCTOR_APP_INFO(rea)"
+	 | FUNBIND_INFO Env => PP.NODE{start="FUNBIND_INFO(", finish=")",
+				       indent=2,childsep=PP.NONE,
+				       children=[layoutEnv Env]}
 	 | TRANS_CONSTRAINT_INFO Env => PP.NODE{start="TRANS_CONSTRAINT_INFO(", finish=")",
 						indent=2,childsep=PP.NONE,
 						children=[layoutEnv Env]}

@@ -2160,8 +2160,10 @@ let
 	    PLAINvalbind_INFO {tyvars=tyvars, escaping=escaping,
 			       Type=S on_repeated Type}
       | S on_TypeInfo (OPEN_INFO i) = OPEN_INFO i  (*only identifiers*)
+      | S on_TypeInfo (INCLUDE_INFO i) = INCLUDE_INFO i  (*only identifiers*)
       | S on_TypeInfo (FUNCTOR_APP_INFO rea) = 
 	    FUNCTOR_APP_INFO rea   (* type functions are closed *)
+      | S on_TypeInfo (FUNBIND_INFO E) = FUNBIND_INFO E (* signatures are closed *)
       | S on_TypeInfo (TRANS_CONSTRAINT_INFO E) =
 	    TRANS_CONSTRAINT_INFO E (* signatures are closed *)
   in

@@ -4,6 +4,11 @@ signature MANAGER_OBJECTS =
   sig
     type modcode and target and linkinfo and StringTree
 
+    structure SystemTools :
+      sig
+	val delete_file : string -> unit
+      end
+
     structure ModCode :
       sig
 	val empty : modcode
@@ -75,19 +80,28 @@ signature MANAGER_OBJECTS =
     structure Repository :
       sig
 	val clear : unit -> unit
-	val delete_entry : funid -> unit
-	val lookup_elabRep : funid -> 
-	  (InfixBasis * ElabBasis * (name list * InfixBasis * ElabBasis)) list
+	val delete_entries : funid -> unit
 
-	  (* Repository lookup's only return entries which are
-	   * reusable (i.e. where all export (ty-)names are marked
-	   * generative.) In particular, this means that entries which
-	   * have just been added, are not returned by a lookup, prior
-	   * to ``recovering.'' *)
+	  (* Repository lookup's return the first entry for a funid
+	   * which is reusable (i.e. where all export (ty-)names are
+	   * marked generative.) In particular, this means that an
+	   * entry which has been added, cannot be returned by a
+	   * lookup, prior to executing `recover().' The integer
+	   * provided by the lookup functions can be given to the
+	   * overwrite functions for owerwriting a particular
+	   * entry. *)
 
-	val add_elabRep : funid * (InfixBasis * ElabBasis * (name list * InfixBasis * ElabBasis)) -> unit
-	val add_intRep : funid * (funstamp * IntBasis * name list * modcode * IntBasis) -> unit
-	val lookup_intRep : funid -> (funstamp * IntBasis * name list * modcode * IntBasis) list
+	val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis)) Option
+	val lookup_int : funid -> (int * (funstamp * IntBasis * name list * modcode * IntBasis)) Option
+
+	val add_elab : funid * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
+	val add_int : funid * (funstamp * IntBasis * name list * modcode * IntBasis) -> unit
+
+	val owr_elab : funid * int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
+	val owr_int : funid * int * (funstamp * IntBasis * name list * modcode * IntBasis) -> unit
+
+	val emitted_files : unit -> string list   (* returns the emitted files mentioned in the repository; *)
+                                                  (* used for deleting files which are no longer mentioned. *)
 	val recover : unit -> unit
 
           (* Before building a project the repository should be

@@ -193,20 +193,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * those in repository for a given funid *)
 
     fun match_elab(names_elab, elabB, funid) =
-      case Repository.lookup_elabRep funid
-	of [(_,_,(names_elab',_,elabB'))] =>         (* names_elab' are already marked generative - lookup *)
+      case Repository.lookup_elab funid
+	of Some (_,(_,_,names_elab',_,elabB')) =>    (* names_elab' are already marked generative - lookup *)
 	  (List.apply Name.mark_gen names_elab;      (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');           (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_elab)
-	 | _ => () (*bad luck*)
+	 | None => () (*bad luck*)
 
     fun match_int(names_int, intB, funid) =
-      case Repository.lookup_intRep funid
-	of [(_,_,names_int',_,intB')] =>           (* names_int' are already marked generative - lookup *)
+      case Repository.lookup_int funid
+	of Some(_,(_,_,names_int',_,intB')) =>     (* names_int' are already marked generative - lookup *)
 	  (List.apply Name.mark_gen names_int;     (* returned the entry. The invariant is that every *)
 	   IntBasis.match(intB, intB');            (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_int)
-	 | _ => () (*bad luck*)
+	 | None => () (*bad luck*)
 
     (* --------------------------------
      * Parse, elaborate and interpret
@@ -214,16 +214,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * -------------------------------- *)
 
     exception PARSE_ELAB_ERROR
-    fun parse_elab_interp (B, funid, source_filepath, elabrep_entries,
-			   intrep_entries, funstamp_now) : Basis * modcode =
-          let 
-	    val _ = Timing.reset_timings()
-	    val _ = Timing.new_file(source_filepath)
-	    val (infB, elabB, intB) = Basis.un B
-	    val filename = ManagerObjects.funid_to_filename funid
-	    val log_cleanup = log_init filename
-	    val _ = Name.bucket := []
-	    val _ = reset_warnings ()
+    fun parse_elab_interp (B, funid, source_filepath, funstamp_now) : Basis * modcode =
+          let val _ = Timing.reset_timings()
+	      val _ = Timing.new_file(source_filepath)
+	      val (infB, elabB, intB) = Basis.un B
+	      val filename = ManagerObjects.funid_to_filename funid
+	      val log_cleanup = log_init filename
+	      val _ = Name.bucket := []
+	      val _ = reset_warnings ()
 	  in (case ParseElab.parse_elab {infB=infB,elabB=elabB, file=source_filepath} 
 		of ParseElab.FAILURE report => (print_error_report report; raise PARSE_ELAB_ERROR)
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
@@ -253,18 +251,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val _ = match_elab(names_elab, elabB', funid)
 		      val _ = match_int(names_int, intB', funid)
 
-		      val _ = Repository.delete_entry funid
+		      val _ = Repository.delete_entries funid
 
-		      val _ = Repository.add_elabRep (funid, (infB, elabB_im, (names_elab, infB', elabB')))
+		      val _ = Repository.add_elab (funid, (infB, elabB_im, names_elab, infB', elabB'))
 		      val modc = ModCode.emit modc  (* When module code is inserted in repository,
 						     * names become rigid, so we emit the module code. *)
-		      val _ = Repository.add_intRep (funid, (funstamp_now, intB_im, names_int, modc, intB'))
+		      val _ = Repository.add_int (funid, (funstamp_now, intB_im, names_int, modc, intB'))
 		      val B' = Basis.mk(infB',elabB',intB')
 		  in print_result_report report;
 		    log_cleanup();
 		    (B',modc)
 		  end
-		) handle E => (log_cleanup(); raise E)
+		) handle XX => (log_cleanup(); raise XX)
 	  end  
 
     (* ----------------
@@ -272,15 +270,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ---------------- *)
 
     fun build_unit(B, (funid, filepath): punit) : Basis * modcode =
-      let val elabrep_entries = Repository.lookup_elabRep funid 
-	  val intrep_entries = Repository.lookup_intRep funid 
-	  val funstamp_now = FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
+      let val funstamp_now = FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
 	  exception CAN'T_REUSE
-      in (case (elabrep_entries, intrep_entries)
-	    of ([(infB, elabB,(names_elab,infB',elabB'))], [(funstamp,intB,names_int,modc,intB')]) =>
+      in (case (Repository.lookup_elab funid, Repository.lookup_int funid)
+	    of (Some(_,(infB, elabB,names_elab,infB',elabB')), 
+		Some(_,(funstamp,intB,names_int,modc,intB'))) =>
 	      let val B_im = Basis.mk(infB,elabB,intB)
 	      in if FunStamp.eq(funstamp,funstamp_now) andalso Basis.enrich(B, B_im) then 
-		    let val B_ex = Basis.mk(infB',elabB',intB')
+		    let val _ = print ("[reusing code for: \t" ^ filepath ^ "]\n")
+		        val B_ex = Basis.mk(infB',elabB',intB')
 		    in List.apply Name.unmark_gen names_elab;    (* unmark names - they where *)
 		       List.apply Name.unmark_gen names_int;     (* marked in the repository. *)
 		       (B_ex, modc)
@@ -289,8 +287,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      end
 	     | _ =>  raise CAN'T_REUSE)
 	handle CAN'T_REUSE =>
-	  parse_elab_interp (B, funid, filepath, elabrep_entries, 
-			     intrep_entries, funstamp_now)
+	  parse_elab_interp (B, funid, filepath, funstamp_now)
       end 
 
     (* ----------------
@@ -313,10 +310,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			
     fun build() =
       let val _ = Repository.recover()
-	  val modc = build_proj(Basis.initial, !project)
-      in ModCode.mk_exe (modc, "run")
+	  val emitted_files = EqSet.fromList (Repository.emitted_files())
+	  val _ = let val modc = build_proj(Basis.initial, !project)
+		  in ModCode.mk_exe (modc, "run")
+		  end handle PARSE_ELAB_ERROR => output(std_out, "\n ** Parse or elaboration error occurred. **\n")
+	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
+    	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
+      in List.apply ManagerObjects.SystemTools.delete_file files_to_delete
       end
-
 
     (* -----------------------------
      * Compile a single file 
@@ -338,7 +339,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		 log_cleanup()
 	      end
 	     | ParseElab.FAILURE report => (print_error_report report; raise PARSE_ELAB_ERROR)
-         ) handle E => (log_cleanup(); raise E)
+         ) handle XX => (log_cleanup(); raise XX)
       end 
 
 
@@ -364,22 +365,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     val _ = Flags.build_ref := build
     val _ = Flags.show_ref := show
     val _ = Flags.load_ref := load
-    val _ = Flags.comp_ref := comp
+    val _ = 
+      let val comp = fn a => 
+	((comp a) handle PARSE_ELAB_ERROR => output(std_out, "\n ** Parse or elaboration error occurred. **\n"))
+      in Flags.comp_ref := comp
+      end
 
     val interact = Flags.interact
     val read_script = Flags.read_script
 
   end
-
-
-(* SAVED CODE *)
-
-(*
-
-    fun pr_name n = "n" ^ Int.string (Name.key n)
-    fun pr_names ns = "[" ^ pr_names' ns ^ "]"
-    and pr_names' [] = ""
-      | pr_names' [n] = pr_name n
-      | pr_names' (n::ns) = pr_name n ^ "," ^ pr_names' ns
- 
-*)

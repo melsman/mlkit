@@ -329,9 +329,6 @@ functor ModuleEnvironments(
 	in dom1 = dom2 andalso enrich_StrEnv (SE1,SE2)
 	end
 
-      fun enrich_FunEnv(F1,F2) = EqSet.isEmpty (F.dom F2)
-      fun enrich_SigEnv(G1,G2) = EqSet.isEmpty (G.dom G2)
-
       fun enrich_Env(E1,E2) =
 	let val (SE1,TE1,VE1) = E.un E1
 	    val (SE2,TE2,VE2) = E.un E2
@@ -339,6 +336,18 @@ functor ModuleEnvironments(
 	  andalso enrich_TyEnv(TE1,TE2)
 	  andalso enrich_VarEnv(VE1,VE2)
 	end
+
+      fun enrich_SigEnv(SIGENV G1,SIGENV G2) = 
+	FinMap.Fold (fn ((sigid2,Sig2), b) => b andalso
+		     case FinMap.lookup G1 sigid2 
+		       of Some Sig1 => Sigma.eq(Sig1,Sig2)
+			| None => false) true G2
+
+      fun enrich_FunEnv(FUNENV F1,FUNENV F2) =
+	FinMap.Fold (fn ((funid2,FunSig2),b) => b andalso
+		     case FinMap.lookup F1 funid2 
+		       of Some FunSig1 => Phi.eq(FunSig1,FunSig2)
+			| None => false) true F2
 
 
       fun enrichB(BASIS{T=T1,F=F1,G=G1,E=E1}, BASIS{T=T2,F=F2,G=G2,E=E2}) = 

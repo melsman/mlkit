@@ -567,7 +567,7 @@ functor LambdaBasics (structure Lvars : LVARS
 		 | (RECORDtype taus, RECORDtype taus') => match_taus(S,taus,taus')
 		 | (CONStype(taus,tn), CONStype(taus', tn')) =>
 		  if TyName.eq(tn,tn') then match_taus(S,taus,taus')
-		  else die "match_tau2"
+		  else die ("match_tau.CONStype: type name " ^ TyName.pr_TyName tn ^ " <> " ^ TyName.pr_TyName tn')
 		 | _ => die "match_tau3"
 
 	    and match_taus(S,[],[]) = S

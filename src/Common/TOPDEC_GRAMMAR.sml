@@ -131,6 +131,9 @@ signature TOPDEC_GRAMMAR =
     val info_on_funbind : funbind -> info
     val info_on_topdec : topdec -> info
 
+    val map_strexp_info : (info -> info) -> strexp -> strexp
+      (* does not proceed into sigexp's *)
+
     type StringTree sharing type StringTree = DecGrammar.StringTree
 
     val layoutStrexp  : strexp  -> StringTree

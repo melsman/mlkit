@@ -47,6 +47,8 @@ signature MODULE_STATOBJECT =
 	 match will raise No_match if there is no match*)
 
 	val match                  : Sig * Env -> Env
+
+	val eq : Sig * Sig -> bool
       end
 
 
@@ -69,5 +71,7 @@ signature MODULE_STATOBJECT =
 
 	val match                  : FunSig * Env -> Sig
 	val match_via              : FunSig * Env -> Sig * realisation
+
+	val eq : FunSig * FunSig -> bool
       end
   end;
