@@ -271,6 +271,23 @@ hashfold(hashtable *tinfo, void *(*f)(void *, void *), void *first)
   return t;
 }
 
+// Fold
+void *
+hashFold(hashtable *tinfo, void *(*f)(void *, void *, void *), void *first)
+{
+  hashmember *table = tinfo->table;
+  int i;
+  void *t = first;
+  for(i = 0; i < tinfo->hashTableSize; i++)
+  {
+    if (table[i].used)
+    {
+      t = (*f)(table[i].key, table[i].value, t);
+    }
+  }
+  return t;
+}
+
 // char * -> unsigned long 
 unsigned long
 charhashfunction (char *key)
