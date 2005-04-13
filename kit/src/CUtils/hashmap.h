@@ -69,7 +69,7 @@ int hashfind (hashtable * tinfo, void *key, void **returnValue);
 void *hashfold(hashtable *tinfo, void *(*f)(void *value, void *acc), void *first);
 
 // Fold
-void *hashfold(hashtable *tinfo, void *(*f)(void *key, void *value, void *acc), void *first);
+void *hashFold(hashtable *tinfo, void *(*f)(void *key, void *value, void *acc), void *first);
 
 // apply
 void hashapply(hashtable *tinfo, void (*f)(void *value));
