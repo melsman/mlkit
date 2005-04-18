@@ -61,9 +61,9 @@ hashfind (hashtable * tinfo, void *key, void **returnValue)
     {
       hashval %= tinfo->hashTableSize;
       if (table[hashval].used == 0)
-  {
-    return hash_DNE;
-  }
+	{
+	  return hash_DNE;
+	}
       hashval++;
     }
   while (!((*(tinfo->equal_function)) (table[hashval - 1].key, key)));
