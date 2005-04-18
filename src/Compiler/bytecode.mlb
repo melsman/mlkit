@@ -24,18 +24,27 @@ in
   local open Tools 
   in
      Backend/KAM/BuiltInCFunctionsKAM.sml
-     Backend/KAM/Kam.sml
+     local open CompilerObjects
+     in Backend/KAM/Kam.sml
+     end
      Backend/KAM/OpcodesKAM.sml
-     Backend/KAM/BuffCode.sml
-     Backend/KAM/ResolveLocalLabels.sml
-     Backend/KAM/EmitCode.sml
-     Backend/KAM/CodeGenKAM.sml
+     Backend/KAM/BuffCode.sml    
+     local open CompilerObjects
+     in Backend/KAM/ResolveLocalLabels.sml
+        local open Regions
+        in Backend/KAM/EmitCode.sml
+           local open CompilerObjects
+           in Backend/KAM/CodeGenKAM.sml
+           end
+        end
+        local open Manager Pickle Compiler Regions Basics
+        in Backend/KAM/ExecutionKAM.sml
+        end
+     end
   end
 
-  local open CompilerObjects
-  in Backend/KAM/ExecutionKAM.sml
+  local open Compiler
+  in ../Common/KitKam.sml
   end
-
-  ../Common/KitKAM.sml
 
 end
