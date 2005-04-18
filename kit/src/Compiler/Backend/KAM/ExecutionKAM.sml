@@ -89,13 +89,19 @@ structure ExecutionKAM : EXECUTION =
     fun link_files_with_runtime_system _ files run = 
       if !Flags.SMLserver then ()
       else 
-	let val os = TextIO.openOut run	    
+	let 
+	    (* It would be preferable to truly link together the files
+	     * and the runtime system "kam", so as to produce a movable
+	     * executable. mael 2005-04-18 *)
+	    val files = 
+		map (fn f => OS.Path.mkAbsolute{relativeTo=OS.FileSys.getDir(),path=f}) files
+	    val os = TextIO.openOut run
 	in (* print ("[Creating file " ^ run ^ " begin ...]\n"); *)
 	  TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
 	  app (fn f => TextIO.output(os, f ^ " ")) files;
 	  TextIO.output(os, "--args $0 $*");
 	  TextIO.closeOut os;
-	  OS.Process.system "chmod a+x run";
+	  OS.Process.system ("chmod a+x " ^ run);
 	  print("[Created file " ^ run ^ "]\n")
 	  (* ; app (print o (fn s => "   " ^ s ^ "\n")) files  *)
 	end

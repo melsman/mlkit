@@ -444,7 +444,7 @@ struct
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp,acc)
-      | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
+      | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = acc (* die "DROPPED_RVAR not implemented" *)
       | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
       | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, storeData lab :: acc)
       | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedIntMaybeTag (i, acc)

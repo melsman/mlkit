@@ -156,7 +156,7 @@ install:
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
-bootstrap: install
+bootstrap0:
 	$(INSTALL) -a test $(INSTDIR)/test
 	cd $(INSTDIR)/test; ln -sf README testlink
 	cd $(INSTDIR)/test; ln -sf testcycl testcycl
@@ -176,6 +176,10 @@ bootstrap: install
 	chmod -R o+r $(INSTDIR)
 	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
 
+bootstrap: install bootstrap0
+
+bootstrap_kam: install_kam bootstrap0
+
 install_kam:
 	rm -rf $(INSTDIR_KAM)
 	$(MKDIR) $(INSTDIR_KAM)
@@ -183,6 +187,7 @@ install_kam:
 	$(MKDIR) $(INSTDIR_KAM)/doc
 	$(INSTALL) bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM)/bin
 	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
+	$(INSTALL) version $(INSTDIR)
 	$(INSTALL) copyright $(INSTDIR_KAM)
 	$(INSTALL) README $(INSTDIR_KAM)
 	$(INSTALL) -R kitdemo $(INSTDIR_KAM)/kitdemo 
@@ -196,8 +201,8 @@ install_kam:
 	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
 	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
 	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
-	rm -f /usr/bin/mlkit_kam
-	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
+#	rm -f /usr/bin/mlkit_kam
+#	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
 
 install_barry:
 	rm -rf $(INSTDIR_BARRY)

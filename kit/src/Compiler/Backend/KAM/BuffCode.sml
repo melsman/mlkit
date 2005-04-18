@@ -36,7 +36,7 @@ structure BuffCode : BUFF_CODE =
 	  incr out_position)
 	end
 
-      fun wtow8 (w : Word.word) = Word8.fromLargeWord (Word31.toLargeWord w)
+      fun wtow8 (w : Word.word) = Word8.fromLargeWord (Word.toLargeWord w)
       fun w32tow8 (w : Word32.word) = Word8.fromLargeWord (Word32.toLargeWord w)
       fun itow8 (i : int) = Word8.fromInt i
 
@@ -80,46 +80,48 @@ structure BuffCode : BUFF_CODE =
 	 BinIO.output1 (os, w32tow8 (Word32.>> (l,Word.fromInt 24))))
 
       fun out_real (r : real) : unit =
-	let
-	  (* Contributed by John H. Reppy <jhr@research.bell-labs.com> 
-	   * and Allen Leung <leunga@cs.nyu.edu> - very SML/NJ specific *)
-	  fun realToBytes r =   
-	    let val ra = RealArray.array(1, r)
-	      val ba : Word8Array.array = Unsafe.cast ra
-	      fun b i = Unsafe.Word8Array.sub(ba, i)
-	    in
-	      [b 0, b 1, b 2, b 3, b 4, b 5, b 6, b 7]
-	    end
-	in app out_w8 (realToBytes r)
-	end
+	  Word8Vector.app out_w8 (PackRealLittle.toBytes r)
 
-      fun out_pairs (os, ps) =
-	app (fn (a,b) => ( (* print ("  (" ^ Int.toString a ^ ", " ^ Int.toString b ^ ")\n"); *)
-			  out_long_w32'(os, Word32.fromInt a);
-			  out_long_w32'(os, Word32.fromInt b))) ps
+      fun out_string (os,s:string) : unit =
+	  let val sz = size s
+	  in out_long_w32' (os, Word32.fromInt sz)
+	      ; BinIO.output (os, Byte.stringToBytes s)
+	      
+	  end
+
+      fun out_lab (os, lab) =
+	  let val (i,s) = lab
+	  in out_long_w32'(os, Word32.fromInt i)
+	      ; out_string(os, s)
+	  end
+
+      fun out_addr (os, addr) =
+	  out_long_w32'(os, Word32.fromInt addr)
+
+      fun out_addr_lab_pairs (os, ps) =
+	  app (fn (addr,lab) => (out_addr (os,addr) ; out_lab(os,lab))) ps
+
+      fun out_lab_addr_pairs (os, ps) =
+	  app (fn (lab,addr) => (out_lab(os,lab); out_addr (os,addr))) ps
 
       fun dump_buffer {filename : string, 
 		       main_lab_opt : key option,
-		       map_import_code : (int * key) list,      (* (address,label)-pairs *)
+		       map_import_code : (int * key) list,      (* (address,label)-pairs *) (* meaning: at address in bytecode, there is a use of the label *)
 		       map_import_data : (int * key) list,      (* (address,label)-pairs *)
-		       map_export_code : (key * int) list,      (* (label,address)-pairs *)
+		       map_export_code : (key * int) list,      (* (label,address)-pairs *) (* meaning: function labeled label is defined at address *)
 		       map_export_data : (key * int) list} =    (* (label,address)-pairs *)
 	let
 	  val os : BinIO.outstream = BinIO.openOut filename
 	  val main_lab = case main_lab_opt
-			   of SOME i => #1 i
-			    | NONE => 0
+			   of SOME lab => lab
+			    | NONE => (0,"")
 	  val magic = case Word32.fromString "0x4b303031" (*K001*)
 			of SOME magic => magic
 			 | NONE => raise Fail "NO WAY!"
-	  val map_import_code = map (fn (x,y) => (x, #1 y)) map_import_code   (* MEMO: this does not *)
-	  val map_import_data = map (fn (x,y) => (x, #1 y)) map_import_data   (* work with mlb-files! mael 2004-03-18 *)
-	  val map_export_code = map (fn (x,y) => (#1 x, y)) map_export_code
-	  val map_export_data = map (fn (x,y) => (#1 x, y)) map_export_data
 	in
 (*	  print ("Out position is " ^ Int.toString (!out_position) ^ "\n"); *)
 	  (out_long_w32'(os, Word32.fromInt (!out_position));
-	   out_long_w32'(os, Word32.fromInt main_lab);
+	   out_lab(os, main_lab);
 	   out_long_w32'(os, Word32.fromInt (List.length map_import_code));
 	   out_long_w32'(os, Word32.fromInt (List.length map_import_data));
 	   out_long_w32'(os, Word32.fromInt (List.length map_export_code));
@@ -127,13 +129,13 @@ structure BuffCode : BUFF_CODE =
 	   out_long_w32'(os, magic);
 	   BinIO.output(os, Word8Array.extract(!out_buffer, 0, SOME (!out_position)));
 (*	   print ("Writing code import (address,label)-pairs\n"); *)
-	   out_pairs(os, map_import_code);
+	   out_addr_lab_pairs(os, map_import_code);
 (*	   print ("Writing data import (address,label)-pairs\n"); *)
-	   out_pairs(os, map_import_data);
+	   out_addr_lab_pairs(os, map_import_data);
 (*	   print ("Writing code export (label,address)-pairs\n"); *)
-	   out_pairs(os, map_export_code);
+	   out_lab_addr_pairs(os, map_export_code);
 (*	   print ("Writing data export (label,address)-pairs\n"); *)
-	   out_pairs(os, map_export_data);
+	   out_lab_addr_pairs(os, map_export_data);
 	   BinIO.closeOut os) handle E => (BinIO.closeOut os; raise E)
 	end 
     end
