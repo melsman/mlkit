@@ -1,5 +1,6 @@
 (* Generic pickle module
  * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
  *)
 
 signature PICKLE =

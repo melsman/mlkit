@@ -1,3 +1,7 @@
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
 import
 in
   POLYHASH.sml
