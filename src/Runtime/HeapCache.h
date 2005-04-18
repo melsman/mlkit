@@ -22,7 +22,7 @@ typedef struct regionCopy {
 #define HSTAT_DIRTY          1
 #define HSTAT_CLEAN          2
 
-#define STACK_SIZE_INIT      (20 * 1024 * 1024)
+#define STACK_SIZE_INIT      (40 * 1024 * 1024)
 
 // In the case that the global exception handler is triggered, the
 // bottom of the stack is destroyed by the raise instruction; therefore
