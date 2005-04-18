@@ -1,3 +1,8 @@
+(* Dynamic types with support for equality and hashing
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
+
 signature EQ_HASH_DYN =
     sig
 	type dyn

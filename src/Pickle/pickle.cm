@@ -1,8 +1,13 @@
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
 Group
 
 structure Pickle
 signature PICKLE
 structure Polyhash
+structure PackRealLittle
 
 is
 
@@ -17,4 +22,4 @@ PackRealBigSMLNJ.sml
 pickle.sig
 pickle.sml
 
-(* ../../test/pickle.sml *)
+(* pickletest.sml *)

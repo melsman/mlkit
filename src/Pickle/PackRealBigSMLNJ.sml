@@ -1,3 +1,7 @@
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
 structure PackRealBig : PACK_REAL =
     struct
 	type real = real

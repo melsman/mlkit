@@ -1,3 +1,8 @@
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
+
 signature PACK_REAL =
     sig
 	type real

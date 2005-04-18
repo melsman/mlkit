@@ -1,5 +1,11 @@
-(* Polyhash -- polymorphic hashtables as in the SML/NJ Library *)
-(* -- modified for the ML Kit, 2001-06-07                      *)
+(* Polyhash -- polymorphic hashtables as in the SML/NJ Library
+ * -- modified for the ML Kit, 2001-06-07                     
+ *
+ * COPYRIGHT (c) 1992 by AT&T Bell Laboratories.
+ * See file copyrght.att for details.
+ *
+ * Original author: John Reppy, AT&T Bell Laboratories, Murray Hill, NJ 07974
+ *)
 
 signature POLYHASH =
   sig
@@ -27,9 +33,8 @@ signature POLYHASH =
     (* Look for an item and return the number of values with the same hash *)
     val peekSameHash: ('key, 'data) hash_table -> 'key -> int * int
 
-    (* Polymorphic hash primitives from Caml Light *)
-
-(*not supported by the ML Kit Runtime System 
+(* Polymorphic hash primitives from Caml Light 
+ * not supported by the ML Kit Runtime System
     val hash        : 'key -> int
     val hash_param  : int -> int -> 'key -> int
     val mkPolyTable : int * exn -> (''key, 'data) hash_table
