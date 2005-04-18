@@ -1,1 +1,1 @@
-structure K = = KitMain(KitCompiler(ExecutionKAM))
+structure K = KitMain(KitCompiler(ExecutionKAM))
