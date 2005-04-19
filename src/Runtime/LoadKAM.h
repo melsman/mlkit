@@ -64,7 +64,7 @@ typedef unsigned char * bytecode_t;
 DECLARE_HASHMAP(strToCodeMap,char*,bytecode_t)
 void strToCodeMapInsert(strToCodeMap m, char* s, bytecode_t code);
 bytecode_t strToCodeMapLookup(strToCodeMap m, char* s);
-void strToCodeMapClear(strToCodeMap m);
+strToCodeMap strToCodeMapClear(strToCodeMap m);
 #endif
 
 

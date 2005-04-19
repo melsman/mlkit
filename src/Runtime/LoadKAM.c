@@ -15,6 +15,10 @@
 #include "Interp.h"
 #include "../CUtils/hashmap_typed.h"
 
+#if ( THREADS && CODE_CACHE )
+#include <string.h>
+#endif
+
 #ifdef DEBUG
 #define debug(Arg) Arg
 #else
