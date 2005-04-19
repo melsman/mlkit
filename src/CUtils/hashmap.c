@@ -254,6 +254,38 @@ hashApply(hashtable *tinfo, void (*f)(void *key,void *value))
   return;
 }
 
+// map
+void 
+hashmap(hashtable *tinfo, void* (*f)(void *value))
+{
+  hashmember *table = tinfo->table;
+  int i;
+  for (i = 0; i < tinfo->hashTableSize; i++)
+  {
+    if (table[i].used)
+    {
+      table[i].value = (*f)(table[i].value);
+    }
+  }
+  return;
+}
+
+// Map
+void 
+hashMap(hashtable *tinfo, void* (*f)(void *key,void *value))
+{
+  hashmember *table = tinfo->table;
+  int i;
+  for (i = 0; i < tinfo->hashTableSize; i++)
+  {
+    if (table[i].used)
+    {
+      table[i].value = (*f)(table[i].key,table[i].value);
+    }
+  }
+  return;
+}
+
 // fold
 void *
 hashfold(hashtable *tinfo, void *(*f)(void *, void *), void *first)
