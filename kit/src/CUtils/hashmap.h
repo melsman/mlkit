@@ -77,6 +77,12 @@ void hashapply(hashtable *tinfo, void (*f)(void *value));
 // Apply
 void hashApply(hashtable *tinfo, void (*f)(void *key,void *value));
 
+// Map
+void hashMap(hashtable *tinfo, void* (*f)(void *key, void *value));
+
+// map
+void hashmap(hashtable *tinfo, void* (*f)(void *value));
+
 // an efficient hashfunction on char arrays
 unsigned long charhashfunction (char *key);
 #endif
