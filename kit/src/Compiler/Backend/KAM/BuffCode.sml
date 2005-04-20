@@ -16,9 +16,10 @@ structure BuffCode : BUFF_CODE =
 	  val len = Word8Array.length (!out_buffer)
 	  val new_buffer = make_buffer (2 * len)
 	in
-	  Word8Array.copy { src = !out_buffer, si = 0, len = NONE,
-			  dst = new_buffer, di = 0 };
-	  out_buffer := new_buffer
+	    Word8Array.foldl (fn (e,i) => 
+			      (Word8Array.update(new_buffer,i,e); i+1)) 
+	    0 (!out_buffer);
+	    out_buffer := new_buffer
 	end
 
       fun init_out_code () = (out_position := 0)
@@ -71,7 +72,7 @@ structure BuffCode : BUFF_CODE =
 	 out_w8 (w32tow8 (Word32.>> (l,Word.fromInt 24))))
 
       fun out_long_i32 (l : Int32.int) =
-	out_long_w32 (Word32.fromLargeInt l)
+	out_long_w32 (Word32.fromLargeInt (Int32.toLarge l))
 
       fun out_long_w32' (os, l : Word32.word) = 
 	(BinIO.output1 (os, w32tow8 l);
@@ -104,6 +105,9 @@ structure BuffCode : BUFF_CODE =
       fun out_lab_addr_pairs (os, ps) =
 	  app (fn (lab,addr) => (out_lab(os,lab); out_addr (os,addr))) ps
 
+      fun extract(a,n) =
+	  Word8Vector.tabulate(n,fn i => Word8Array.sub(a,i))
+
       fun dump_buffer {filename : string, 
 		       main_lab_opt : key option,
 		       map_import_code : (int * key) list,      (* (address,label)-pairs *) (* meaning: at address in bytecode, there is a use of the label *)
@@ -127,7 +131,7 @@ structure BuffCode : BUFF_CODE =
 	   out_long_w32'(os, Word32.fromInt (List.length map_export_code));
 	   out_long_w32'(os, Word32.fromInt (List.length map_export_data));
 	   out_long_w32'(os, magic);
-	   BinIO.output(os, Word8Array.extract(!out_buffer, 0, SOME (!out_position)));
+	   BinIO.output(os, extract(!out_buffer, !out_position));
 (*	   print ("Writing code import (address,label)-pairs\n"); *)
 	   out_addr_lab_pairs(os, map_import_code);
 (*	   print ("Writing data import (address,label)-pairs\n"); *)

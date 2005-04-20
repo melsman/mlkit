@@ -282,7 +282,7 @@ struct
        | _ => ImmedInt i :: acc
 
   fun immedWord (w : Word32.word, acc) =
-    let val i = Word32.toLargeIntX w
+    let val i = Int32.fromLarge (Word32.toLargeIntX w)
     in case acc
 	 of Push :: acc => ImmedIntPush i :: acc
 	  | _ => ImmedInt i :: acc
@@ -622,7 +622,7 @@ struct
 			  fn (lab,i,C) => IfGreaterThanJmpRelImmed (lab,i) :: C,
 			  fn (ce,C) => CG_ce(ce,env,sp,cc,C),
 			  precision,
-			  Word32.toLargeIntX,
+			  Int32.fromLarge o Word32.toLargeIntX,
 			  acc))
       | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S is unfolded in ClosExp"
       | CG_ce(ClosExp.SWITCH_C (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) =
