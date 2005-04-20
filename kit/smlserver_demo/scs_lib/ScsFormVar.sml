@@ -1013,9 +1013,10 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		 | _ => false))
 	   handle _ => false      
 
-      val datePat1 = "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
+      val datePat1 = Quot.toString `([0-9][0-9]?)[/\-]([0-9][0-9]?)[/\-]([0-9][0-9][0-9][0-9])`
+(* 2005-04-19, knp: OBSOLETE
       val datePat2 = "([0-9][0-9]?)-([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
-
+*)
       fun chkMth v =
 	case regExpExtract "([0-9][0-9]?)" v of
 	  SOME [m] => 
@@ -1047,32 +1048,20 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  SOME [y] => if (ScsError.valOf o Int.fromString) y > 1900 then true else false
 	| _ => false
 
-      fun chkDate v =
-	(case regExpExtract datePat1 v of
-	   SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-	 | _ => ( case regExpExtract datePat2 v of
-	   	      SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-		    | _ 		=> chkDateIso v 
-		)
-(* 2004-01-09, knp: inserted chkDateIso v instead
-case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
-		   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-		 | _ => false)
-*)
-	)
-	handle _ => false   
+      fun chkDate v = ( case regExpExtract datePat1 v of
+	  SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
+	| _		    => chkDateIso v 
+      )
+      handle _ => false   
 
       fun convDate v = (case regExpExtract datePat1 v of
 	  SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
-	| _		    => (case regExpExtract datePat2 v of
-	    SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
-	  | _		      => (case regExpExtract isoDatePat1 v of
-	      SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
-	    | _		        => ( 
-	      ScsError.panic `ScsFormVar.convDate failed on ^v`
-	    )
+	| _		    => (case regExpExtract isoDatePat1 v of
+	    SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
+	  | _		        => ( 
+	    ScsError.panic `ScsFormVar.convDate failed on ^v`
 	  )
-        )
+	)
       )
       handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
 

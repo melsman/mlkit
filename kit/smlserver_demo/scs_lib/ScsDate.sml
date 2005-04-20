@@ -99,6 +99,9 @@ signature SCS_DATE =
     val weekday_from_DB : string -> Date.weekday option
     val weekday_to_DB   : Date.weekday -> string
 
+    (* [prior (d1,d2)] returns true if d1 occurs before d2 *)
+    val prior : Date.date*Date.date -> bool
+
     (* Widgets *)
 
   end
@@ -597,6 +600,9 @@ structure ScsDate :> SCS_DATE =
         else
           loop (start_date)
       end
+
+    fun prior(d1,d2) = Date.compare(d1,d2)=General.LESS
+
   end (* of structure *)
 
 
