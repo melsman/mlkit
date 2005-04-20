@@ -381,6 +381,7 @@ structure ScsDict :> SCS_DICT =
 
 
     (* april 1. version *)
+(*
     fun s dict = 
       if (ScsLogin.loggedIn()) then 
         case Date.compare( 
@@ -400,7 +401,7 @@ structure ScsDict :> SCS_DICT =
 
     (* april 1. version *)
     fun s' dict = `^(s dict)`
-
+*)
 
     fun subst phrase args =
       Quot.fromString (subst' phrase
