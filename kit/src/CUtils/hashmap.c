@@ -74,32 +74,32 @@ hashfind (hashtable * tinfo, void *key, void **returnValue)
 int
 hasherase (hashtable * tinfo, void *key)
 {
+  unsigned long i, tmp;
   hashmember *table = tinfo->table;
   unsigned long hashval = (*(tinfo->hash_function)) (key);
   do
     {
       hashval %= tinfo->hashTableSize;
       if (table[hashval].used == 0)
-  {
-    return hash_DNE;
-  }
+	{
+	  return hash_DNE;
+	}
       hashval++;
     }
   while (!((*(tinfo->equal_function)) (table[hashval - 1].key, key)));
   hashval--;
-  unsigned long i = (hashval + 1) % tinfo->hashTableSize;
-  unsigned long tmp;
+  i = (hashval + 1) % tinfo->hashTableSize;
   while (table[i].used)
     {
       tmp = (*(tinfo->hash_function)) (table[i].key) % tinfo->hashTableSize;
       if (!((hashval < tmp && tmp <= i) ||
-      (tmp <= i && i < hashval) || (i < hashval && hashval < tmp)))
-  {
-    table[hashval].value = table[i].value;
-    table[hashval].key = table[i].key;
-    table[hashval].used = table[i].used;
-    hashval = i;
-  }
+	    (tmp <= i && i < hashval) || (i < hashval && hashval < tmp)))
+	{
+	  table[hashval].value = table[i].value;
+	  table[hashval].key = table[i].key;
+	  table[hashval].used = table[i].used;
+	  hashval = i;
+	}
       i = (i + 1) % tinfo->hashTableSize;
     };
   table[hashval].used = 0;
@@ -111,32 +111,33 @@ hasherase (hashtable * tinfo, void *key)
 int
 hashupdate (hashtable * tinfo, void *key, void *value)
 {
+  hashmember *table;
+  unsigned long hashval;
   if (hashrehash (tinfo)) return hash_OUTOFMEM;
-  hashmember *table = tinfo->table;
-  unsigned long hashval =
-    (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;
+  table = tinfo->table;
+  hashval = (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;
   while (1)
-  {
-    if (table[hashval].used == 0)
     {
-      table[hashval].key = key;
-      table[hashval].value = value;
-      table[hashval].used = 1;
-      tinfo->hashTableUsed++;
-      return hash_OK;
+      if (table[hashval].used == 0)
+	{
+	  table[hashval].key = key;
+	  table[hashval].value = value;
+	  table[hashval].used = 1;
+	  tinfo->hashTableUsed++;
+	  return hash_OK;
+	}
+      else if ((*(tinfo->equal_function)) (table[hashval].key, key))
+	{
+	  table[hashval].key = key;
+	  table[hashval].value = value;
+	  return hash_OK;
+	}
+      else
+	{
+	  hashval++;
+	  hashval = hashval % tinfo->hashTableSize;
+	}
     }
-    else if ((*(tinfo->equal_function)) (table[hashval].key, key))
-    {
-      table[hashval].key = key;
-      table[hashval].value = value;
-      return hash_OK;
-    }
-    else
-    {
-      hashval++;
-      hashval = hashval % tinfo->hashTableSize;
-    }
-  }
   // Never reached
   return hash_ERR;
 }
@@ -144,17 +145,18 @@ hashupdate (hashtable * tinfo, void *key, void *value)
 int
 hashinsert (hashtable * tinfo, void *key, void *value)
 {
+  hashmember *table;
+  unsigned long hashval;
   if (hashrehash (tinfo))
     return hash_OUTOFMEM;
-  hashmember *table = tinfo->table;
-  unsigned long hashval =
-    (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;
+  table = tinfo->table;
+  hashval = (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;
   while (table[hashval].used)
     {
       if ((*(tinfo->equal_function)) (table[hashval].key, key))
-  {
-    return hash_AE;
-  }
+	{
+	  return hash_AE;
+	}
       hashval++;
       hashval = hashval % tinfo->hashTableSize;
     };
@@ -171,51 +173,50 @@ hashrehash (hashtable * tinfo)
 {
 //      char a[1000];
   unsigned long newsize;
+  hashmember *newtable;
+  unsigned long i, hashval;
   unsigned long tmpupper = tinfo->hashTableSize / 1024;
   unsigned long tmplower = tinfo->hashTableSize % 1024;
+
   if (tinfo->hashTableUsed >=
       (tmpupper * MAXHASH + (tmplower * MAXHASH) / 1024))
-  {
-    newsize = 2 * tinfo->hashTableSize + 3;
-  }
+    {
+      newsize = 2 * tinfo->hashTableSize + 3;
+    }
   else 
-  {
-    if ((tinfo->hashTableUsed >= ((tinfo->hashTableSize / 1024) * MINHASH))
-     || tinfo->hashTableSize == MINHASHSIZE)
     {
-      return 0;
+      if ((tinfo->hashTableUsed >= ((tinfo->hashTableSize / 1024) * MINHASH))
+	  || tinfo->hashTableSize == MINHASHSIZE)
+	{
+	  return 0;
+	}
+      else
+	{
+	  newsize = (tinfo->hashTableSize - 3) / 2;
+	}
     }
-    else
-    {
-      newsize = (tinfo->hashTableSize - 3) / 2;
-    }
-  }
-  hashmember *newtable;
   newtable = (hashmember *) malloc (sizeof (hashmember) * newsize);
   if (newtable == NULL)
     return 1;
-  unsigned long i;
   for (i = 0; i < newsize; i++)
     {
       newtable[i].used = 0;
     }
-
-  unsigned long hashval;
   for (i = 0; i < tinfo->hashTableSize; i++)
-  {
-    if (tinfo->table[i].used)
-  {
-    hashval = (*(tinfo->hash_function)) (tinfo->table[i].key) % newsize;
-    while (newtable[hashval].used)
     {
-      hashval++;
-      hashval %= newsize;
+      if (tinfo->table[i].used)
+	{
+	  hashval = (*(tinfo->hash_function)) (tinfo->table[i].key) % newsize;
+	  while (newtable[hashval].used)
+	    {
+	      hashval++;
+	      hashval %= newsize;
+	    }
+	  newtable[hashval].key = tinfo->table[i].key;
+	  newtable[hashval].value = tinfo->table[i].value;
+	  newtable[hashval].used = 1;
+	}
     }
-    newtable[hashval].key = tinfo->table[i].key;
-    newtable[hashval].value = tinfo->table[i].value;
-    newtable[hashval].used = 1;
-    }
-  }
   free (tinfo->table);
   tinfo->table = newtable;
   tinfo->hashTableSize = newsize;

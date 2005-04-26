@@ -23,12 +23,13 @@ streq(char* s1,char* s2)
 int
 main(void)
 {
+  stringToIntMap m;
   char* k1 = "Martin";
   char* k2 = "Carsten";
   int r, v;
   r = -1; 
   v = -1;
-  stringToIntMap m = new_stringToIntMap(charhashfunction,streq);
+  m = new_stringToIntMap(charhashfunction,streq);
   stringToIntMap_upd(m,k1,3);
   stringToIntMap_upd(m,k2,8);
   stringToIntMap_apply(m,pr);
