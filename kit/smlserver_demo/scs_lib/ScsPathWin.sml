@@ -138,7 +138,7 @@ structure ScsPathWin : OS_PATH =
       fun parentize []      = []
 	| parentize (_::ar) = parentArc :: parentize ar;
 
-      fun mkRelative (p1, p2) =
+      fun mkRelative {path=p1, relativeTo=p2} =
 	case (fromString p1, fromString (mkCanonical p2)) of
 	  (_ ,                {isAbs=false,...}) => raise Path
 	| ({isAbs=false,...}, _                ) => p1
@@ -154,7 +154,7 @@ structure ScsPathWin : OS_PATH =
 	      else toString {isAbs=false, vol="", arcs=h arcs1 arcs2}
             end;
 
-      fun mkAbsolute (p1, p2) =
+      fun mkAbsolute {path=p1, relativeTo=p2} =
 	if isRelative p2 then raise Path
 	else if isAbsolute p1 then p1
 	     else mkCanonical(concat(p2, p1));

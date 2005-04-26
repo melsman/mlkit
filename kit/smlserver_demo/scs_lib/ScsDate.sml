@@ -52,6 +52,8 @@ signature SCS_DATE =
     val semester         : Date.date -> Date.date * Date.date
     val add_secs         : Date.date -> int -> Date.date
     val add_days         : Date.date -> int -> Date.date
+    val add_mths         : Date.date -> int -> Date.date
+    val add_years        : Date.date -> int -> Date.date
     val getWeekNo        : Date.date -> int     (* Monday as first day of week *)
     val getDayOfWeek     : Date.date -> int (* Monday = 0, ..., Sunday = 6 *)
     val firstDateInWeek  : Date.date -> Date.date
@@ -476,12 +478,42 @@ structure ScsDate :> SCS_DATE =
 				    " secs to the date " ^ (ppIso d))
 
     fun add_days d n = add_secs d (n * 24 * 3600)
-(*      (if n < 0 then
-	 Date.fromTimeLocal(Time.- (Date.toTime d, Time.fromSeconds(Int.abs n * 24 * 3600)))
-       else
-	 Date.fromTimeLocal (Time.+ (Time.fromSeconds(n * 24 * 3600),Date.toTime d)))
-	 handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ 
-				    " days to the date " ^ (ppIso d)) 2004-10-04, nh *)
+
+    (* Add n months to the date d. If the result month m' has fewer
+       days than the date d then the result date is ajusted to the number
+       of days in month m'. Works also for negative months m. *)
+    fun add_mths d n =
+      let
+	val m = mthFromName (Date.month d)
+	val m' = m + n
+      in
+	if m' = 0 then (* We know that n must be in the interval [~12,~1] *)
+	  Date.date
+	  {year=Date.year d-1,month=mthToName 12,day=Date.day d,
+	   hour=Date.hour d,minute=Date.minute d,second=Date.second d,offset=Date.offset d}
+	else
+	  let  (* 12 -> 12 13 -> 1 24 -> 1 25 -> 2*)
+	    val y = Date.year d + Int.div(m'-1,12)
+	    val m = Int.mod(m'-1,12)+1
+	  in
+	    Date.date
+	    {year=y,month=mthToName m,day=Int.min(Date.day d,daysInMonth y m),
+	     hour=Date.hour d,minute=Date.minute d,second=Date.second d,offset=Date.offset d}
+          end
+      end
+
+    (* Add n years to the date d. If the result date is not a valid
+       date, e.g., 29/02-1999 then we ajust the date e.g., 28/02-1999
+       *)
+    fun add_years d n =
+      let
+	val y = Date.year d + n
+	val m = Date.month d
+      in
+	Date.date
+	  {year=y,month=m,day=Int.min(Date.day d,daysInMonth y (mthFromName m)),
+	   hour=Date.hour d,minute=Date.minute d,second=Date.second d,offset=Date.offset d}
+      end
 
     fun half_year d =
       let
