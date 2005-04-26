@@ -48,7 +48,7 @@ signature SCS_STRING =
     (* [toOpt str] if str is empty then returns NONE otherwise SOME str *)
     val toOpt     : string -> string option
 
-    (* [ml_search_pattern pat] returns a pattern with % added at each
+    (* [mk_search_pattern pat] returns a pattern with % added at each
         space and pattern lowered case *)
     val mk_search_pattern : string -> string
 
