@@ -103,7 +103,10 @@ kitbench:
 	cd Tools/Benchmark; $(MAKE)
 
 heap2exec: heap2exec/heap2exec
-	cd heap2exec; $(MAKE)
+	cp heap2exec/heap2exec.copy heap2exec/heap2exec;
+	cp heap2exec/run.x86-linux.copy heap2exec/run.x86-linux
+
+#$(MAKE) uncommented by NH because heap2exec doesn't compile on FC3
 
 clean:
 	$(CLEAN) run $(GENOPCODES_TARGETS) Version.sml
