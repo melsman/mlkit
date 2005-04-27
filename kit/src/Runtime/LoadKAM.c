@@ -67,12 +67,20 @@ strToCodeMapClear_fn(char* k,bytecode_t code)
   free(code);
 }
 
+static int
+streq(char*s1, char*s2)
+{
+  if ( strcmp(s1,s2) == 0 )
+    return 1;
+  return 0;
+}
+
 strToCodeMap
 strToCodeMapClear(strToCodeMap m)
 {
   strToCodeMap_apply(m,strToCodeMapClear_fn);
   strToCodeMap_drop(m);
-  return new_strToCodeMap(charhashfunction,(int(*)(char*,char*))strcmp);
+  return new_strToCodeMap(charhashfunction,streq);
 }
 
 #endif
@@ -97,14 +105,6 @@ label_hash(label lab)
   unsigned long acc;
   acc = charhashfunction(&(lab->base));
   return acc + lab->id;
-}
-
-int
-streq(char* s1,char* s2)
-{
-  if ( strcmp(s1,s2) == 0 )
-    return 1;
-  return 0;
 }
 
 int
@@ -185,7 +185,7 @@ interpNew(void)
   interp->exeList = NULL;
   interp->data_size = INTERP_INITIAL_DATASIZE;
 #if ( THREADS && CODE_CACHE )
-  interp->codeCache = new_strToCodeMap(charhashfunction,(int(*)(char*,char*))strcmp);
+  interp->codeCache = new_strToCodeMap(charhashfunction,streq);
 #endif
   /*  debug(printf("interpNew4\n")); */
   return interp;
