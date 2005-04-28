@@ -197,7 +197,33 @@ structure ScsPathMac : OS_PATH =
 	      else toString {isAbs=false, vol="", arcs=h arcs1 arcs2}
             end;
 
+(* 2005-04-27, knp: fun mkRelative (p1, p2) version is to be removed *)
+      fun mkRelative (p1, p2) =
+	case (fromString p1, canonize p2) of
+	  (_ ,                {isAbs=false,...}) => raise Path
+	| ({isAbs=false,...}, _                ) => p1
+	| ({vol=vol1, arcs=arcs1,...}, {vol=vol2, arcs=arcs2, ...}) =>
+            let fun h []      []  = [""]
+                  | h a1      []  = a1
+                  | h a1 (""::[]) = a1
+                  | h (""::[]) a2 = parentize' a2
+                  | h      []  a2 = parentize' a2
+                  | h (a1 as (a11::a1r)) (a2 as (a21::a2r)) =
+                    if a11=a21 then h a1r a2r
+                    else parentize a2 @ a1
+            in
+	      if vol1 <> vol2 then raise Path 
+	      else toString {isAbs=false, vol="", arcs=h arcs1 arcs2}
+            end;
+
+
       fun mkAbsolute {path=p1, relativeTo=p2} =
+	if isRelative p2 then raise Path
+	else if isAbsolute p1 then p1
+	     else mkCanonical(concat(p2, p1));
+
+(* 2005-04-27, knp: fun mkAbsolute (p1, p2) version is to be removed *)
+      fun mkAbsolute (p1, p2) =
 	if isRelative p2 then raise Path
 	else if isAbsolute p1 then p1
 	     else mkCanonical(concat(p2, p1));
