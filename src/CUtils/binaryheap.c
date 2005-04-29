@@ -2,7 +2,7 @@
 #define RIGHT(pos) ((pos + 1)*2)
 #define PARENT(pos) (((pos + 1) / 2) - 1)
 
-// #include "stdlib.h"
+#include "stdlib.h"
 #include "string.h"
 
 #define MAX(a,b) (a < b ? b : a)

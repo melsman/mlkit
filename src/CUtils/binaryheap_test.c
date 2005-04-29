@@ -1,13 +1,14 @@
-//#include "stdlib.h"
+#include "stdlib.h"
+#include "stdio.h"
 #include "binaryheap.h"
+
+/* Try running this program with a sequence of numbers on the command line */
 
 typedef struct 
 {
   int pos;
   long key;
 } elem_t;
-
-
 
 int order (elem_t *a, elem_t *b) 
 {
@@ -48,5 +49,5 @@ int main(int argc, char **argv)
     printf ("%d ", tmp.pos);
   }
   printf("\n");
-  return 0;
+  return EXIT_SUCCESS;
 }
