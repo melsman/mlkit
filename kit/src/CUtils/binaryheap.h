@@ -1,8 +1,6 @@
 #ifndef _BINARYHEAP_H
 #define _BINARYHEAP_H
 
-// #include "stdlib.h"
-
 /* Smallest posible heaparray */
 #define MINHEAPARRAY 10
 /* When to descrease heaparray */
@@ -11,9 +9,9 @@
 enum
 {
   heap_OK = 0,
-  heap_OUTOFMEM,		// Out Of memory
+  heap_OUTOFMEM,     /* Out Of memory */
   heap_UNDERFLOW,
-  heap_DNE			// Do not exists
+  heap_DNE           /* Do not exists */
 };
 
 #define DECLARE_BINARYHEAP(name,elemtype,keytype) \
