@@ -28,16 +28,16 @@ void setkey (elem_t *a, long newkey)
   return;
 }
 
-DECLARE_BINARYHEAP(test,elem_t,long);
+DECLARE_BINARYHEAP(test,elem_t,long)
 
-DEFINE_BINARYMAP(test,order,newpos,setkey);
+DEFINE_BINARYMAP(test,order,newpos,setkey)
 
 int main(int argc, char **argv)
 {
   int i, n;
   test_binaryheap_t heap;
-  test_heapinit(&heap);
   elem_t tmp;
+  test_heapinit(&heap);
   for (i=1;i<argc;i++) 
   {
     sscanf(argv[i], "%d", &n);

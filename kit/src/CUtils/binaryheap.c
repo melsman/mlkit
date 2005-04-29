@@ -7,7 +7,7 @@
 
 #define MAX(a,b) (a < b ? b : a)
 
-#define DEFINE_BINARYMAP(name,myorder,mynewpos,mysetkey)                             \
+#define DEFINE_BINARYMAP(name,order,newpos,setkey)                                   \
 static int                                                                           \
 name ## _heapresize (name ## _binaryheap_t *heap)                                    \
 {                                                                                    \
@@ -64,13 +64,13 @@ void static                                                                     
 name ## _heapex (name ## _binaryheap_t *heap, unsigned long pos, unsigned long smallest) \
 {                                                                                    \
   name ## _heapelement_t *table;                                                     \
-  name ## _heapelement_t temp;                                                         \
+  name ## _heapelement_t temp;                                                       \
   table = heap->heaptable;                                                           \
   temp = table[pos];                                                                 \
   table[pos] = table[smallest];                                                      \
   table[smallest] = temp;                                                            \
-  mynewpos (&(table[pos]), pos);                                                 \
-  mynewpos (&(table[smallest]), smallest);                                       \
+  newpos(&(table[pos]), pos);                                                        \
+  newpos(&(table[smallest]), smallest);                                              \
   return;                                                                            \
 }                                                                                    \
                                                                                      \
@@ -83,7 +83,7 @@ name ## _heapify (name ## _binaryheap_t *heap, unsigned long pos)               
   unsigned long l = LEFT (pos);                                                      \
   unsigned long r = RIGHT (pos);                                                      \
   unsigned long smallest;                                                             \
-  if (l < size && (myorder (&(table[l]), &(table[pos]))) < 0)                         \
+  if (l < size && (order (&(table[l]), &(table[pos]))) < 0)                           \
   {                                                                                   \
     smallest = l;                                                                     \
   }                                                                                   \
@@ -91,7 +91,7 @@ name ## _heapify (name ## _binaryheap_t *heap, unsigned long pos)               
   {                                                                                   \
     smallest = pos;                                                                   \
   }                                                                                   \
-  if (r < size && (myorder  (&(table[r]), &(table[smallest]))) < 0)                   \
+  if (r < size && (order  (&(table[r]), &(table[smallest]))) < 0)                     \
   {                                                                                   \
     smallest = r;                                                                     \
   }                                                                                   \
@@ -130,24 +130,24 @@ name ## _heapchangekey (name ## _binaryheap_t *heap, unsigned long pos,         
 {                                                                                      \
   unsigned long p;                                                                     \
   if (pos >= heap->size) return heap_DNE;                                              \
-  mysetkey(&(heap->heaptable[pos]), newkey);                                       \
+  setkey(&(heap->heaptable[pos]), newkey);                                             \
   name ## _heapify (heap, pos);                                                        \
-  while (pos > 0 && (myorder (&(heap->heaptable[pos]),                           \
+  while (pos > 0 && (order (&(heap->heaptable[pos]),                                   \
 	                                  &(heap->heaptable[(p = PARENT (pos))]))) < 0)      \
   {                                                                                    \
-    name ## _heapex (heap, pos, p);                                                             \
+    name ## _heapex (heap, pos, p);                                                    \
     pos = p;                                                                           \
   }                                                                                    \
   return heap_OK;                                                                       \
 }                                                                                       \
                                                                                         \
 int                                                                                     \
-name ## _heapdelete (name ## _binaryheap_t *heap, unsigned long pos)                      \
+name ## _heapdelete (name ## _binaryheap_t *heap, unsigned long pos)                    \
 {                                                                                       \
   if (pos >= heap->size) return heap_DNE;                                               \
-  name ## _heapex (heap, pos, heap->size - 1);                                                   \
+  name ## _heapex (heap, pos, heap->size - 1);                                          \
   heap->size--;                                                                         \
-  name ## _heapify (heap, pos);                                                                  \
+  name ## _heapify (heap, pos);                                                         \
   name ## _heapresize(heap);                                                            \
   return heap_OK;                                                                       \
 }                                                                                       \
@@ -162,5 +162,5 @@ name ## _heapinsert (name ## _binaryheap_t *heap, name ## _heapelement_t data, n
     return heap_OUTOFMEM;                                                               \
   }                                                                                     \
   heap->heaptable[heap->size-1] = data;                                                 \
-  return name ## _heapchangekey (heap, heap->size - 1, key);                                     \
+  return name ## _heapchangekey (heap, heap->size - 1, key);                            \
 }

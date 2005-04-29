@@ -3,9 +3,9 @@
 
 // #include "stdlib.h"
 
-// Smallest posible heaparray
+/* Smallest posible heaparray */
 #define MINHEAPARRAY 10
-// When to descrease heaparray
+/* When to descrease heaparray */
 #define MINHEAP 8
 
 enum
