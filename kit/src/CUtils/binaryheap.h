@@ -24,9 +24,6 @@ enum
     name ## _heapelement_t *heaptable; \
     unsigned long size; \
     unsigned long maxsize; \
-    int (*order) (name ## _heapelement_t *elem1, name ## _heapelement_t *elem2); \
-    void (*newpos) (name ## _heapelement_t *elem, unsigned long pos); \
-    void (*setkey) (name ## _heapelement_t *elem, name ## _keytype_t newkey); \
   } name ## _binaryheap_t; \
 int \
 name ## _heapinit (name ## _binaryheap_t *heap); \
