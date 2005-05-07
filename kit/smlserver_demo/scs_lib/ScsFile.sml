@@ -11,6 +11,10 @@ signature SCS_FILE =
        on error. An already existing file i erased *)
     val save : quot -> string -> unit
 
+    (* [save' source_lines path] saves source_lines into the file represented 
+       as path using save. *)
+    val save' : string list -> string -> unit
+
     (* [mk_dir dir] creates directory dir - sub-directories are created if they do not
        already exist. Does nothing if dir already exists. Raises ScsError.Fail on error. *)
     val mkDir : string -> unit
@@ -71,6 +75,14 @@ structure ScsFile :> SCS_FILE =
 	TextIO.output (texstream,Quot.toString source);
 	TextIO.closeOut texstream
       end
+
+    fun save' source_lines path = 
+      let
+        val source = Quot.fromString (String.concatWith "\n" source_lines)
+      in
+        save source path
+      end
+
 
     local 
       fun uniqueFile_ dir (c: int) : string =
