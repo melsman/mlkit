@@ -30,7 +30,7 @@ void setkey (elem_t *a, long newkey)
 
 DECLARE_BINARYHEAP(test,elem_t,long)
 
-DEFINE_BINARYMAP(test,order,newpos,setkey)
+DEFINE_BINARYHEAP(test,order,newpos,setkey)
 
 int main(int argc, char **argv)
 {

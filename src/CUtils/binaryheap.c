@@ -7,7 +7,7 @@
 
 #define MAX(a,b) (a < b ? b : a)
 
-#define DEFINE_BINARYMAP(name,order,newpos,setkey)                                   \
+#define DEFINE_BINARYHEAP(name,order,newpos,setkey)                                   \
 static int                                                                           \
 name ## _heapresize (name ## _binaryheap_t *heap)                                    \
 {                                                                                    \
