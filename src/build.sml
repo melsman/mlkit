@@ -46,6 +46,12 @@ local
     []
     Main.build_basislib
 
+  fun comp_RI_no_opt() =
+    enable_disable 
+    [] 
+    ["opt"]
+    Main.build_basislib
+
   fun comp_RI_GenGC() =
     enable_disable 
     ["generational_garbage_collection", "garbage_collection"] 
@@ -108,9 +114,13 @@ in
 (*  val _ = comp_contractregions() *)
 
   val _ = comp_RI()
+
+(*
   val _ = comp_RI_GC()
+  val _ = comp_RI_no_opt()
   val _ = comp_RI_PROF()
   val _ = comp_RI_GC_PROF()  
+*)
 (*
   val _ = comp_RI_GenGC()
 *)

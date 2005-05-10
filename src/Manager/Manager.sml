@@ -1053,11 +1053,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	    ; map #ebfile (List.filter (! o #used) elabBasesInfo)
 	end
 
-    (* ----------------------------------------------------------
-     * Build file for mlb-project ; flag compile_only enabled 
-     * ---------------------------------------------------------- *)
+    (* -------------------------------------------------------------------
+     * Build SML source file for mlb-project ; flag compile_only enabled 
+     * ------------------------------------------------------------------- *)
 
-    fun build_mlb_one2 mlbfile ebfiles smlfile : unit =
+    fun build_mlb_one2 (mlbfile, ebfiles, smlfile) : unit =
 	let (* load the bases that smlfile depends on *)
 	    val _ = print("[reading source file:\t" ^ smlfile)
 	    val (unpickleStream, elabBasesInfo) = doUnpickleBases0 ebfiles
@@ -1587,6 +1587,46 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	ModCode.mk_exe(absprjid, modc, extobjs_basislib, !run_file)
       end
 
+    (* ----------------------------
+     * Build an MLB project
+     * ---------------------------- *)
+
+    fun isolate (f : 'a -> unit) (a:'a) : unit =
+	case Posix.Process.fork() of
+	    SOME pid => 
+		let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
+		in if pid2 = pid andalso status = Posix.Process.W_EXITED then ()
+		   else ()
+		end
+	  | NONE => f a before Posix.Process.exit 0w0
+
+    structure MlbPlugIn : MLB_PLUGIN  =
+	struct
+	    fun compile0 target a =
+		(Flags.turn_on "compile_only";
+		 Flags.lookup_string_entry "output" := target;
+		 build_mlb_one2 a)
+
+	    fun compile verbose {basisFiles,source,namebase,target,flags=""} :unit =
+		isolate (compile0 target) (namebase, basisFiles, source)
+	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
+
+	    fun link0 target lnkFiles () =
+		(Flags.lookup_string_entry "output" := target;
+		 Flags.lookup_stringlist_entry "link" := lnkFiles;
+		 link_lnk_files ())
+
+	    fun link verbose {target,lnkFiles,flags=""} :unit =
+		isolate (link0 target lnkFiles) ()
+	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
+
+	    fun mlbdir() = "MLB/MLKit"
+	    fun objFileExt() = if MO.backend_name = "native" then ".o" else ".uo"	    
+	end
+
+    structure MlbMake = MlbMake(structure P = MlbPlugIn
+				val verbose = Flags.is_on0 "chat"
+				val oneSrcFile : string option ref = ref NONE)
 
     (* -----------------------------
      * Elaborate a single file 
@@ -1603,13 +1643,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	 ) handle E => (log_cleanup(); raise E)
       end 
 
-    datatype source = SML of string | PM of string | WRONG_FILETYPE of string 
+    datatype source = SML of string | PM of string | MLB of string | WRONG_FILETYPE of string 
 
     fun determine_source (s:string) : source = 
 	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.pm', '.mlb', '.sml', '.sig', or '.fun'.\n" ^
 					  "The file name you gave me has " ^ s)
 	in case OS.Path.ext s of 
 	    SOME "pm" => PM s
+	  | SOME "mlb" => MLB s
 	  | SOME ext => if Flags.has_sml_source_ext ext then SML s
 			else wrong ("extension " ^ quot ext ^ ".")
 	  | NONE => wrong ("no extension.")
@@ -1626,10 +1667,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			     if Flags.is_on "compile_only" then
 				 let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
 				     val namebase = Flags.get_string_entry "namebase"
-				 in build_mlb_one2 namebase ebfiles s 
+				 in build_mlb_one2 (namebase, ebfiles, s)
 				 end
 			     else comp_file s
 		       | PM s => build s
+		       | MLB s => MlbMake.build{flags="",mlbfile=s}
 		       | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil))
 	      | _ => raise Fail "I expect at most one file name"
 			     

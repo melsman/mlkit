@@ -8,6 +8,8 @@ signature MANAGER_OBJECTS =
 
     type absprjid  
 
+    val backend_name : string (* native or kam *)
+
     (* Absolute project identifiers; project identifiers with absolute
        path information (e.g.,
        /home/mael/kit/ml-yacc-lib/ml-yacc-lib.pm); there is one

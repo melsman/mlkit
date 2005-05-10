@@ -29,6 +29,7 @@ signature FLAGS =
 
     val get_string_entry    : string -> string
     val lookup_string_entry : string -> string ref
+    val lookup_stringlist_entry : string -> string list ref
     val get_stringlist_entry: string -> string list
     val lookup_int_entry    : string -> int ref
 

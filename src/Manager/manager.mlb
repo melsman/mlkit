@@ -7,6 +7,8 @@ local
   basis SpecialObjects = bas ../Common/special_objects.mlb end
   basis Basics = bas ../Common/basics.mlb end
   basis CompilerObjects = bas ../Compiler/compiler_objects.mlb end
+  basis MlbMake = bas ../Tools/MlbMake/mlbmake.mlb end
+
   open BasLib
 in
   local open Pickle Tools SyntaxObjects SpecialObjects Basics CompilerObjects
@@ -34,7 +36,7 @@ in
      end     
      MspComp.sml
      Scriptlet.sml
-     local open Edlib SyntaxObjects in Manager.sml end
+     local open Edlib SyntaxObjects MlbMake in Manager.sml end
   end
 end
 

@@ -1,5 +1,9 @@
 ML Kit NEWS file
 
+mael 2005-05-10: Integrated mlb-file support in mlkit executable. For
+full isolation, the implementation forks a different process for each
+compilation of a source file.
+
 mael 2005-02-22: The scheme for mlb-files (shown below) is now also
 used for cm-files when the MLKit is compiled with SML/NJ. See
 e.g. kit/src/build.sml and kit/src/build_kam.sml.

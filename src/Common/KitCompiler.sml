@@ -55,7 +55,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun print_greetings() =
 	  if !Flags.SMLserver then
 	    print("SMLserver (" ^ !Flags.WEBserver ^ ") version " ^ Version.version ^ ", " ^ date ^ "\n" ^
-		  "Based on the ML Kit [" ^ backend_name ^ " Backend]\n")
+		  "Based on the MLKit [" ^ backend_name ^ " Backend]\n")
 	  else 
 	    print("ML Kit version " ^ Version.version ^ ", " ^ date ^ " [" ^
 		  backend_name ^ " Backend]\n")
@@ -65,11 +65,11 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  else if backend_name = "native" then "mlkit" 
 	       else "mlkit_kam"
 	    
-	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.pm]\n\n" ^
+	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.pm | file.mlb]\n\n" ^
 				   "Options:\n\n")
 
 	val options = [("-script file", ["Read compiler options from `file'."]),
-		       ("-version", ["Print ML Kit version information and exit."]),
+		       ("-version", ["Print MLKit version information and exit."]),
 		       ("-help s", ["Print help information about an option and exit."]),
 		       ("-help", ["Print help information and exit."]),
 		       ("-load f1.eb ... fn.eb", ["Load export bases."]),
@@ -82,6 +82,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
       	fun print_options() = app (fn (t, l) => (print(t ^ "\n"); print_indent l; print "\n")) options
  
 	local 
+	    (* is overloading of options allowed? *)
 	    val unary_options =
 		[("script", Flags.read_script),
 		 ("help", fn s => (print "\n"; 
@@ -104,7 +105,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		
 	    fun go_files files = ((Manager.comp files; OS.Process.success) 
 				   handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
-
 	    fun go_options options =
 		let val rest = Flags.read_options{options=options, nullary=nullary_options,
 						  unary=unary_options}

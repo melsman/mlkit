@@ -1,6 +1,31 @@
 Possible things to do
 ---------------------
 
+  mael 2005-04-18:
+   MLB files for smlserver scriptlets.
+  
+    features:
+      1) make it possible to compose mlb-files
+
+                         /\
+                        /  \
+                       /    \
+                      /      \
+                     /        \
+                    /          \
+                   /            \
+                  /\          [s6,s7]
+                 /  \
+                /    \
+               /      \
+              /        \
+             /          \
+            /            \
+         [s1,s2]       [s3,s4,s5] 
+
+
+      2) Add mlb-construct "scripts ... end"
+
   2002-10-21, Niels: 
    In NS_CACHE.sml, function cacheForAwhile:
 

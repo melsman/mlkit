@@ -7,6 +7,7 @@ is
   ../Common/special_objects.cm
   ../Common/basics.cm
   ../Compiler/compiler_objects.cm
+  ../Tools/MlbMake/mlbmake.cm
 
   MANAGER_OBJECTS.sml
 

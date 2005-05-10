@@ -335,6 +335,7 @@ structure Directory : sig
 			val add_bool_entry      : string * bool ref -> (unit -> bool)
 			val get_string_entry    : string -> string
 			val get_stringlist_entry: string -> string list
+			val lookup_stringlist_entry : string -> string list ref
 			val lookup_string_entry : string -> string ref
 			val lookup_flag_entry   : string -> bool ref
 			val lookup_int_entry    : string -> int ref
@@ -1064,6 +1065,7 @@ val lookup_flag_entry = Directory.lookup_flag_entry
 val get_string_entry = Directory.get_string_entry
 val get_stringlist_entry = Directory.get_stringlist_entry
 val lookup_string_entry = Directory.lookup_string_entry
+val lookup_stringlist_entry = Directory.lookup_stringlist_entry
 val lookup_int_entry = Directory.lookup_int_entry
 val read_script = Directory.readScript
 val show_script_entries = Directory.show_script_entries

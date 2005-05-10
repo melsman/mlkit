@@ -1,5 +1,4 @@
 Group is
-  MLB_PROJECT.sml  
-  MlbProject.sml
-  MlbMake.sml
+  mlbmake.cm
+  MlbStandAlone.sml
   SmlNj.sml
