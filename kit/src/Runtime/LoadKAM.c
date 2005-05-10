@@ -25,6 +25,14 @@
 #define debug(Arg) {}
 #endif
 
+static int
+streq(char*s1, char*s2)
+{
+  if ( strcmp(s1,s2) == 0 )
+    return 1;
+  return 0;
+}
+
 /* -----------------------------------------------------
  * String to Code Map
  * ----------------------------------------------------- */
@@ -65,14 +73,6 @@ strToCodeMapClear_fn(char* k,bytecode_t code)
 {
   free(k);
   free(code);
-}
-
-static int
-streq(char*s1, char*s2)
-{
-  if ( strcmp(s1,s2) == 0 )
-    return 1;
-  return 0;
 }
 
 strToCodeMap

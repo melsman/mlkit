@@ -12,6 +12,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
     structure CompileBasis = Execution.CompileBasis
     structure Labels = AddressLabels
 
+    val backend_name = Execution.backend_name
     val compile_only = Flags.is_on0 "compile_only"
 
     fun die s = Crash.impossible("ManagerObjects." ^ s)
