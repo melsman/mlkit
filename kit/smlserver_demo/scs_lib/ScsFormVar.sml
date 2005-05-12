@@ -144,6 +144,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getHtmlErr             : string formvar_fn
     val getUrlErr              : string formvar_fn
     val getCprErr              : string formvar_fn
+    val getEanErr              : string formvar_fn
     val getISSNErr             : string formvar_fn
     val getISBNErr             : string formvar_fn
     val getEnumErr             : string list -> string formvar_fn
@@ -414,6 +415,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  (ScsLang.da,`tekststreng eller den er for kort - minimum %0 tegn`)] [Int.toString l])
 	(fn v => if size v = 0 orelse size v < l then NONE else SOME v)
 
+
       val getWeekdayErr = getErrWithOverflow Date.Mon [(ScsLang.da,`Ugedag`),(ScsLang.en,`Day of Week`)] (fn str => ScsDate.weekday_from_DB str)
 
 
@@ -434,6 +436,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	else
 	  (0,errs')
       end
+
 
     fun getRealRangeErr a b (args as (fv:string,emsg:string,errs:errs)) =
       let
@@ -629,6 +632,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     ved navn Claes Anders Fredrik Moren, født den
 	     31. august 1975, skal skrive: <b>310875-CLM1</b>.
 	     </blockquote>`)
+
+      fun msgEan s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     An EAN number must be 13 digits
+	     </blockquote>`
+	 | ScsLang.da => `^s
+	     <blockquote>
+	     Et EAN-nummer skal være på 13 cifre.
+	     </blockquote>`)
+
+
       fun msgISSN s = 
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
@@ -886,6 +902,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	end
       handle _ => false
 
+      fun convEan ean = ean
+
+      fun chkEan ean = 
+        let
+	  val exploded = String.explode ean
+	in 
+	  case exploded of
+	      d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: d10 :: 
+	      d11 :: d12 :: d13 :: [] => List.all Char.isDigit exploded
+	    | _ => false
+	end
+
+
 	(* Calculating the check digit
 	 Excerpted from the ISSN Manual, a publication of the ISSN International Network 
 
@@ -1128,6 +1157,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 				  String.size url <= 200)
 
       val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
+
+      val getEanErr = getErr "" convEan [(ScsLang.en,`EAN number`),(ScsLang.da,`EAN nummer`)] msgEan chkEan
       val getISSNErr = getErr "" convISSN [(ScsLang.en,`ISSN number`),(ScsLang.da,`ISSN nummer`)] 
 			      msgISSN chkISSN
       val getISBNErr = getErr "" convISBN [(ScsLang.en,`ISBN number`),(ScsLang.da,`ISBN nummer`)] 
