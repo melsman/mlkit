@@ -5,19 +5,20 @@ structure MLKitPlugIn : MLB_PLUGIN =
 	    case OS.Process.getEnv "MLB_MLKIT" of
 		SOME exe => exe
 	      | NONE => default_mlkitexe
-	fun compile verbose {basisFiles: string list, 
-			     source: string, 
-			     target: string,  (* file.o -> file.o.lnk, file.o, file.o.eb *)
-			     namebase: string,
-			     flags: string} : unit =
+	fun compile {verbose} {basisFiles: string list, 
+			       source: string, 
+			       target: string,  (* file.o -> file.o.lnk, file.o, file.o.eb *)
+			       namebase: string,
+			       flags: string} : unit =
 	    MlbUtil.system verbose
 	    let val s = mlkitexe() ^ " -c -no_cross_opt -namebase " ^ namebase ^ " -o " ^ target
 		val s = if flags = "" then s else s ^ " " ^ flags
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ MlbUtil.pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link verbose {target: string, lnkFiles: string list, flags:string} : unit =
+	fun link {verbose} {target: string, lnkFiles: string list, lnkFilesScripts=nil, flags:string} : unit =
 	    MlbUtil.system verbose (mlkitexe() ^ " " ^ flags ^ " -o " ^ target ^ " -link " ^ MlbUtil.pp_list " " lnkFiles)
+	  | link _ _ = raise Fail "MLKitPlugIn: lnkFilesScripts not empty"
 
 	fun mlbdir() = "MLB/MLKit"
 	fun objFileExt() = ".o"
@@ -26,11 +27,11 @@ structure MLKitPlugIn : MLB_PLUGIN =
 structure BarryPlugIn : MLB_PLUGIN =
     struct
 	val default_barryexe = "/usr/bin/barry"
-	fun compile verbose {basisFiles: string list, 
-			     source: string, 
-			     target: string,  (* file.o -> file.o.lnk, file.o, file.o.eb *)
-			     namebase: string,
-			     flags: string} : unit =
+	fun compile {verbose} {basisFiles: string list, 
+			       source: string, 
+			       target: string,  (* file.o -> file.o.lnk, file.o, file.o.eb *)
+			       namebase: string,
+			       flags: string} : unit =
 	    MlbUtil.system verbose
 	    let fun barryexe() = 
 		  case OS.Process.getEnv "MLB_BARRY" of
@@ -41,7 +42,8 @@ structure BarryPlugIn : MLB_PLUGIN =
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ MlbUtil.pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link verbose {target: string, lnkFiles: string list, flags: string} : unit = ()
+	fun link {verbose} {target: string, lnkFiles: string list, lnkFilesScripts=nil, flags: string} : unit = ()
+	  | link _ _ = raise Fail "BarryPlugIn: lnkFilesScripts not empty"
 
 	fun mlbdir() = "MLB/Barry"
 	fun objFileExt() = ".b"
@@ -163,7 +165,7 @@ struct
 	       | sappend [x] = x
 	       | sappend (x::xs) = x ^ " " ^ sappend xs
 	 in case rest of
-	    mlbfile :: flags => (build {flags=sappend flags,mlbfile=mlbfile}; OS.Process.success) 
+	    mlbfile :: flags => (build {flags=sappend flags,mlbfile=mlbfile,target="a.out"}; OS.Process.success) 
 	  | _ => error "I expect exactly one mlb-file as argument"
 	 end handle _ => OS.Process.failure)
 end

@@ -78,6 +78,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	\executable."}
 
     val _ = Flags.add_stringlist_entry 
+      {long="link_code_scripts", short=SOME "link_scripts", item=ref nil,
+       menu=["File", "link files scripts"],
+       desc="Link-files for SMLserver scripts; link-files\n\
+	\specified with -link represent libraries when\n\
+	\mlkit is used with SMLserver."}
+
+    val _ = Flags.add_stringlist_entry 
       {long="load_basis_files", short=SOME "load", item=ref nil,
        menu=["File", "Basis files to load before compilation"],
        desc="Basis files to be loaded before compilation\n\
@@ -1336,7 +1343,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			of SOME _ => ()
 			 | NONE => 
 			    if body3 = EMPTYbody andalso isPAR body2 then 
-				MO.ModCode.makeUlfile (absprjid,modc1,modc)
+				MO.ModCode.makeUlfile (MO.ModCode.ulfile absprjid,modc1,modc)
 			    else ()
 (*
 				let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
@@ -1560,8 +1567,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     fun link_lnk_files() : unit =  
 	let val lnkFiles = Flags.get_stringlist_entry "link"
 	    val modc = readLinkFiles lnkFiles
-	    val _ = ModCode.mk_exe_all_emitted(modc, nil, !run_file)
-	in ()
+	in if !Flags.SMLserver then
+	    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
+		val modc_scripts = readLinkFiles lnkFilesScripts		
+	    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
+	    end
+	   else ModCode.mk_exe_all_emitted(modc, nil, !run_file)
 	end
 
     (* -----------------------------
@@ -1595,10 +1606,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	case Posix.Process.fork() of
 	    SOME pid => 
 		let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
-		in if pid2 = pid andalso status = Posix.Process.W_EXITED then ()
-		   else ()
+		in if pid2 = pid then 
+		    (case status of
+			 Posix.Process.W_EXITED => ()
+		       | Posix.Process.W_EXITSTATUS w => raise Fail "isolate error"
+		       | _ => raise Fail "isolate error 3")
+		   else raise Fail "isolate error 2"
 		end
-	  | NONE => f a before Posix.Process.exit 0w0
+	  | NONE => (f a before Posix.Process.exit 0w0
+		     handle _ => Posix.Process.exit 0w1)
 
     structure MlbPlugIn : MLB_PLUGIN  =
 	struct
@@ -1607,17 +1623,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		 Flags.lookup_string_entry "output" := target;
 		 build_mlb_one2 a)
 
-	    fun compile verbose {basisFiles,source,namebase,target,flags=""} :unit =
+	    fun compile {verbose} {basisFiles,source,namebase,target,flags=""} :unit =
 		isolate (compile0 target) (namebase, basisFiles, source)
 	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
 
-	    fun link0 target lnkFiles () =
+	    fun link0 target lnkFiles lnkFilesScripts () =
 		(Flags.lookup_string_entry "output" := target;
 		 Flags.lookup_stringlist_entry "link" := lnkFiles;
+		 Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
 		 link_lnk_files ())
 
-	    fun link verbose {target,lnkFiles,flags=""} :unit =
-		isolate (link0 target lnkFiles) ()
+	    fun link {verbose} {target,lnkFiles,lnkFilesScripts,flags=""} :unit =
+		isolate (link0 target lnkFiles lnkFilesScripts) ()
 	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
 
 	    fun mlbdir() = "MLB/MLKit"
@@ -1671,7 +1688,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 				 end
 			     else comp_file s
 		       | PM s => build s
-		       | MLB s => MlbMake.build{flags="",mlbfile=s}
+		       | MLB s => 
+				 let val target =
+				     if !Flags.SMLserver then
+					 let val {dir,file} = OS.Path.splitDirFile s
+					     val op ## = OS.Path.concat infix ##
+					 in dir ## "MLB" ## (OS.Path.base file ^ ".ul")
+					 end
+				     else Flags.get_string_entry "output"
+				 in  
+				     (MlbMake.build{flags="",mlbfile=s,target=target} 
+				      handle _ => 
+					  (print "Stopping MLB compilation due to errors.\n";
+					   raise PARSE_ELAB_ERROR nil))
+				 end
 		       | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil))
 	      | _ => raise Fail "I expect at most one file name"
 			     

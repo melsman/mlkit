@@ -20,6 +20,7 @@ functor MlbProject () : MLB_PROJECT =
 	    fun explode ss = ss
 	end
 
+	type atbdec = string (* path.{sml,sig} *)
 	datatype bexp = BASbexp of bdec
                       | LETbexp of bdec * bexp
                       | LONGBIDbexp of Bid.longbid
@@ -29,8 +30,9 @@ functor MlbProject () : MLB_PROJECT =
                       | LOCALbdec of bdec * bdec
                       | BASISbdec of Bid.bid * bexp
                       | OPENbdec of Bid.longbid list
-	              | SMLFILEbdec of string  (* path.{sml,sig} *)
+	              | ATBDECbdec of atbdec
 		      | MLBFILEbdec of string  (* path.mlb *)
+	              | SCRIPTSbdec of atbdec list
 
 	val depDir : string ref = ref "PM"
 
@@ -252,8 +254,19 @@ functor MlbProject () : MLB_PROJECT =
 			     val (longbids,ss) = readBids (ss,nil)
 			 in parse_bdec_more mlbfile (OPENbdec longbids,ss)
 			 end
+	      | "scripts" :: ss => 
+			 let 
+			     fun readSrcs (nil,_) = 
+				 parse_error1 mlbfile ("Missing 'end' in 'scripts ... end' at end of file",nil)
+			       | readSrcs ("end"::ss,acc) = (rev acc,ss)
+			       | readSrcs (ss_all as (s::ss),acc) =				 
+				 if is_smlfile s then readSrcs(ss,s::acc)
+				 else parse_error1 mlbfile ("Expecting src-file or 'end' in 'scripts ... end' construct",ss)
+			     val (srcs,ss) = readSrcs (ss,nil)
+			 in parse_bdec_more mlbfile (SCRIPTSbdec srcs,ss)
+			 end
 	      | s :: ss =>
-			 if is_smlfile s then parse_bdec_more mlbfile (SMLFILEbdec (expand mlbfile s),ss)
+			 if is_smlfile s then parse_bdec_more mlbfile (ATBDECbdec (expand mlbfile s),ss)
 			 else if is_mlbfile s then parse_bdec_more mlbfile (MLBFILEbdec (expand mlbfile s),ss)
 			      else NONE
 	      | nil => NONE
@@ -315,7 +328,7 @@ functor MlbProject () : MLB_PROJECT =
 		    end
 	    end
 
-	val older = Time.<
+	fun timeMax(t1,t2) = if Time.<(t1,t2) then t2 else t1
 
 	fun maybe_create_dir d : unit = 
 	    if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
@@ -345,10 +358,10 @@ functor MlbProject () : MLB_PROJECT =
 		 ; TextIO.closeOut os
 		 (* ; print ("File " ^ pathfile ^ " updated\n") *)
                 ) handle ? => (TextIO.closeOut os; raise ?)
-	     end handle _ => error("Failed to write dependencies to file " ^ quot pathfile))
+	     end handle _ => error("Failed to write dependencies to file " ^ quot pathfile))		 
 
-	fun mlbFileIsOlder modTimeMlbFile file : bool =
-	    older (modTimeMlbFile, OS.FileSys.modTime file) handle _ => false
+	fun fileNewer t file : bool =
+	    Time.>(OS.FileSys.modTime file,t) handle _ => false
 
 	fun mkAbs file = OS.Path.mkAbsolute(file,OS.FileSys.getDir())
 
@@ -361,13 +374,13 @@ functor MlbProject () : MLB_PROJECT =
 		end
 	    end
 
-	fun maybeWriteDep smlfile modTimeMlbFile D : unit =
+	fun maybeWriteDep smlfile (modTimeMlbFileMax:Time.time) D : unit =
 	    let val {dir,file} = OS.Path.splitDirFile smlfile
 		infix ## 
 		val op ## = OS.Path.concat
 		val file = dir ## (!depDir) ## (file ^ ".d")
-	    in if mlbFileIsOlder modTimeMlbFile file then ()         (* Don't write .d-file if the current .d-file *)
-	       else                                                  (*  is newer than the mlb-file! *) 
+	    in if fileNewer modTimeMlbFileMax file then ()         (* Don't write .d-file if the current .d-file *)
+	       else                                                  (*  is newer than the mlb-file or any imported mlb-file. *)
 		   let val L = DepEnv.getL D
 		       val L = map (subtractDir dir) L
 		       val s = concat (map (fn s => s ^ " ") L)
@@ -393,9 +406,9 @@ functor MlbProject () : MLB_PROJECT =
 	    
 	val op + = DepEnv.plus
 	type D = DepEnv.D
-	type A = {modTimeMlbFile: Time.time option, mlbfiles: (string * D) list}
-	val emptyA = {modTimeMlbFile=NONE,mlbfiles=nil}
-	fun lookupA {modTimeMlbFile, mlbfiles} mlbfile : D option =
+	type A = {modTimeMlbFileMax: Time.time, mlbfiles: (string * D) list}   (* max-modtime of mlb-files met so far *)
+	val emptyA = {modTimeMlbFileMax=Time.zeroTime,mlbfiles=nil}
+	fun lookupA {modTimeMlbFileMax, mlbfiles} mlbfile : D option =
 	    let fun look nil = NONE
 		  | look ((x,D)::xs) = if mlbfile = x then SOME D
 				       else look xs
@@ -444,15 +457,19 @@ functor MlbProject () : MLB_PROJECT =
 						  ^ " is undefined")) DepEnv.empty longbids
 		    in (D',A)
 		    end
-	      | SMLFILEbdec smlfile =>
-		    (case #modTimeMlbFile A of
-			 SOME t => (  maybeWriteDep smlfile t D
-				    ; (DepEnv.singleFile smlfile, A))
-		       | NONE => error "No modification time available for the basis file")
+	      | ATBDECbdec smlfile =>
+		    let val _ = maybeWriteDep smlfile (#modTimeMlbFileMax A) D
+		    in (DepEnv.singleFile smlfile, A)
+		    end
 	      | MLBFILEbdec mlbfile => 
-			 let val (D,A) = dep_bdec_file A mlbfile
-			 in (DepEnv.dirModify (OS.Path.dir mlbfile, D), A)
-			 end
+	            let val (D,A) = dep_bdec_file A mlbfile
+		    in (DepEnv.dirModify (OS.Path.dir mlbfile, D), A)
+		    end
+	      | SCRIPTSbdec smlfiles => 
+		    let val t = #modTimeMlbFileMax A
+			val _ = app (fn f => maybeWriteDep f t D) smlfiles
+		    in (DepEnv.empty, A)
+		    end
 
 	and dep_bdec_file (A:A) mlbfile_rel : D * A =
 	    let val mlbfile_abs = mkAbs mlbfile_rel
@@ -463,15 +480,15 @@ functor MlbProject () : MLB_PROJECT =
 			let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
 			in let val _ = maybe_create_depdir ""
 			       val bdec = parse mlbfile
-			       val modTimeMlbFileTmp = #modTimeMlbFile A
-			       val modTimeMlbFile = OS.FileSys.modTime mlbfile
+			       val modTimeMlbFileMaxOld = #modTimeMlbFileMax A
+			       val modTimeMlbFileMaxNew = OS.FileSys.modTime mlbfile
 				   handle _ => error ("Failed to read the modification time of the basis file " ^
 						      mlbfile)
-			       val A = {modTimeMlbFile=SOME(modTimeMlbFile),
+			       val A = {modTimeMlbFileMax=modTimeMlbFileMaxNew,
 					mlbfiles= #mlbfiles A}
 			       val (D,A) = dep_bdec DepEnv.empty A bdec
 			   in  cd_old() ; 
-			       (D, {modTimeMlbFile = modTimeMlbFileTmp,
+			       (D, {modTimeMlbFileMax=timeMax(modTimeMlbFileMaxOld,modTimeMlbFileMaxNew),
 				    mlbfiles=(mlbfile_abs,D) :: #mlbfiles A})
 			   end handle X => (cd_old(); raise X)
 			end
@@ -483,13 +500,16 @@ functor MlbProject () : MLB_PROJECT =
 	fun map2 f ss = map (fn (x,y) => (f x, f y)) ss
 
 	(* Support for finding the source files of a basis file *)
-	fun srcs_bdec_file mlbs mlbfile_rel =
+
+	datatype srctype = SRCTYPE_ALL | SRCTYPE_SCRIPTSONLY | SRCTYPE_ALLBUTSCRIPTS
+
+	fun srcs_bdec_file T mlbs mlbfile_rel =
 	    let val mlbfile_abs = mkAbs mlbfile_rel
 	    in if member mlbfile_abs mlbs then (nil,mlbs)
 	       else let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
 		    in 
 			let val bdec = parse mlbfile
-			    val (ss, mlbs) = srcs_bdec mlbfile mlbs bdec
+			    val (ss, mlbs) = srcs_bdec T mlbfile mlbs bdec
 			    val ss = map2 (dirMod (OS.Path.dir mlbfile_rel)) ss
 			in cd_old()
 			    ; (ss,mlbfile_abs::mlbs)
@@ -497,36 +517,45 @@ functor MlbProject () : MLB_PROJECT =
 		    end 
 	    end
 
-	and srcs_bdec mlbfile mlbs bdec =
+	and srcs_bdec T mlbfile mlbs bdec =
 	    case bdec of 
 		SEQbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs) = srcs_bdec mlbfile mlbs bdec1
-			val (ss2,mlbs) = srcs_bdec mlbfile mlbs bdec2
+		    let val (ss1,mlbs) = srcs_bdec T mlbfile mlbs bdec1
+			val (ss2,mlbs) = srcs_bdec T mlbfile mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
 	      | EMPTYbdec => (nil,mlbs)
 	      | LOCALbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs) = srcs_bdec mlbfile mlbs bdec1
-			val (ss2,mlbs) = srcs_bdec mlbfile mlbs bdec2
+		    let val (ss1,mlbs) = srcs_bdec T mlbfile mlbs bdec1
+			val (ss2,mlbs) = srcs_bdec T mlbfile mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
-	      | BASISbdec (bid,bexp) => srcs_bexp mlbfile mlbs bexp
+	      | BASISbdec (bid,bexp) => srcs_bexp T mlbfile mlbs bexp
 	      | OPENbdec _ => (nil,mlbs)
-	      | SMLFILEbdec smlfile => ([(smlfile,mlbfile)],mlbs)
-	      | MLBFILEbdec mlbfile => srcs_bdec_file mlbs mlbfile
-		    
-	and srcs_bexp mlbfile mlbs bexp =
+	      | ATBDECbdec smlfile => 
+		    let val L = case T of SRCTYPE_SCRIPTSONLY => nil
+		                        | _ => [(smlfile,mlbfile)]
+		    in (L,mlbs)
+		    end
+	      | MLBFILEbdec mlbfile => srcs_bdec_file T mlbs mlbfile
+	      | SCRIPTSbdec smlfiles => 
+		    let val L = case T of SRCTYPE_ALLBUTSCRIPTS => nil
+		                        | _ => map (fn f => (f,mlbfile)) smlfiles
+		    in (L,mlbs)
+		    end
+
+	and srcs_bexp T mlbfile mlbs bexp =
 	    case bexp of
-		BASbexp bdec => srcs_bdec mlbfile mlbs bdec
+		BASbexp bdec => srcs_bdec T mlbfile mlbs bdec
 	      | LETbexp (bdec,bexp) =>
-		    let val (ss1,mlbs) = srcs_bdec mlbfile mlbs bdec
-			val (ss2,mlbs) = srcs_bexp mlbfile mlbs bexp
+		    let val (ss1,mlbs) = srcs_bdec T mlbfile mlbs bdec
+			val (ss2,mlbs) = srcs_bexp T mlbfile mlbs bexp
 		    in (ss1@ss2,mlbs)
 		    end
 	      | LONGBIDbexp _ => (nil,mlbs)
 	
-	fun sources (mlbfile : string) : (string * string) list =
-	    #1 (srcs_bdec_file nil mlbfile)
+	fun sources (T:srctype) (mlbfile : string) : (string * string) list =
+	    #1 (srcs_bdec_file T nil mlbfile)
     
     end
 	

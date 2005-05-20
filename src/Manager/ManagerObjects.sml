@@ -49,9 +49,9 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
     in 
 	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
       fun pmdir() = 
-	if !Flags.SMLserver then "PM/"
-	else
 	if Flags.is_on "compile_only" orelse Flags.get_stringlist_entry "link" <> nil then "MLB/MLKit/"
+	else
+	if !Flags.SMLserver then "PM/"
 	else
 	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
 	else case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p())
@@ -329,7 +329,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	    else die "list_minus.prefix error1"
 	  | list_minus _ = die "list_minus.prefix error2"
 
-	fun makeUlfile (absprjid: absprjid, modc, modc') : unit =
+	fun makeUlfile (ulfile: string, modc, modc') : unit =
 	  if not(!Flags.SMLserver) then ()
 	  else
 	      (* modc is a prefix of modc' *)
@@ -348,8 +348,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	      val uofiles_local = uofiles(modc,nil)
 	      val uofiles_local_and_scripts = uofiles(modc',nil)
 	      val uofiles_scripts = list_minus(uofiles_local_and_scripts,uofiles_local)
-	      val uofiles_scripts = map OS.Path.file uofiles_scripts
-	      val ulfile = ulfile absprjid
+(*	      val uofiles_scripts = map OS.Path.file uofiles_scripts *)
 	      val _ = 
 		  let val os = TextIO.openOut ulfile
 		  in    app (fn f => TextIO.output(os, f ^ "\n")) uofiles_local
