@@ -1,9 +1,6 @@
 (* Overloading information *)
 
-functor OverloadingInfo (structure StatObject : STATOBJECT
-			 structure PrettyPrint : PRETTYPRINT
-			 structure Flags : FLAGS
-			   ) : OVERLOADING_INFO =
+structure OverloadingInfo: OVERLOADING_INFO =
   struct
     type RecType = StatObject.RecType
     type TyVar = StatObject.TyVar

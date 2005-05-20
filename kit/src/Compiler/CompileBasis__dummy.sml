@@ -1,10 +1,10 @@
 
-functor CompileBasisDummy(structure TyName : TYNAME
-		          structure PP: PRETTYPRINT) : COMPILE_BASIS =
+structure CompileBasisDummy: COMPILE_BASIS =
   struct
-    type lvar = unit
-    type con = unit
-    type excon = unit
+    structure PP = PrettyPrint
+    type lvar = Lvars.lvar
+    type con = Con.con
+    type excon = Excon.excon
     type TyName = TyName.TyName
     type CompileBasis = unit
     type CompBasis = unit

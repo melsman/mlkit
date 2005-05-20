@@ -1,0 +1,125 @@
+local
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Edlib = bas ../Edlib/edlib.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas tools.mlb end
+  basis SyntaxObjects = bas syntax_objects.mlb end
+  basis SpecialObjects = bas special_objects.mlb end
+  open BasLib SyntaxObjects SpecialObjects
+in
+  local open Pickle Tools
+  in INFIXBASIS.sml
+     local open Edlib in InfixBasis.sml end
+  end
+
+  local open Tools
+  in ../Parsing/LEX_BASICS.sml
+     ../Parsing/LexBasics.sml
+  end
+  DF_INFO.sml
+  SOURCE_INFO.sml
+  PARSE_INFO.sml
+  local open Tools
+  in DFInfo.sml
+     SourceInfo.sml
+     ParseInfo.sml  
+  end
+  local open SyntaxObjects
+  in DEC_GRAMMAR.sml
+     TOPDEC_GRAMMAR.sml
+  end
+  local open Tools SyntaxObjects
+  in DecGrammar.sml
+     TopdecGrammar.sml
+  end 
+  PreElabDecGrammar.sml
+  PreElabTopdecGrammar.sml
+
+  local open Edlib Pickle 
+  in ENVIRONMENTS.sml 
+     STATOBJECT.sml
+     EfficientElab/MODULE_STATOBJECT.sml
+     MODULE_ENVIRONMENTS.sml 
+     local open Tools 
+     in EfficientElab/StatObject.sml 
+        EfficientElab/Environments.sml
+        EfficientElab/ModuleStatObject.sml
+        EfficientElab/ModuleEnvironments.sml
+     end
+  end
+
+  local open Pickle Tools
+  in ../Manager/OpacityEnv.sml
+  end
+  ERROR_CODE.sml
+  local
+    ERROR_INFO.sml
+    TYPE_INFO.sml
+    OVERLOADING_INFO.sml
+    ELAB_INFO.sml
+    local open Tools
+    in TypeInfo.sml
+       OverloadingInfo.sml
+       ErrorInfo.sml
+       ElabInfo.sml
+    end
+  in ALL_INFO.sml
+     AllInfo.sml
+  end
+
+  ../Parsing/INFIX_STACK.sml
+  local open Tools in ../Parsing/InfixStack.sml end
+
+  ../Parsing/GRAMMAR_UTILS.sml
+  ../Parsing/INFIXING.sml
+  local open Tools 
+  in ../Parsing/GrammarUtils.sml 
+     ../Parsing/Infixing.sml
+  end
+  
+  ../Parsing/PARSE.sml
+  ../Parsing/MyBase.sml
+  ../Parsing/Topdec.grm.sig (*../Parsing/Topdec.grm*)
+  ../Parsing/Topdec.grm.sml 
+  ../Parsing/LEX_UTILS.sml
+  local open Tools
+  in ../Parsing/LexUtils.sml
+     ../Parsing/Topdec.lex.sml  (*../Parsing/Topdec.lex*)
+     ../Parsing/Parse.sml
+  end
+
+  local open Tools
+  in PostElabGrammar.sml
+     local open Pickle
+     in ELAB_REPOSITORY.sml
+        ElabRepository.sml
+     end
+  end
+
+  ELABDEC.sml
+  ELABTOPDEC.sml
+  local open Edlib Tools 
+  in ElabDec.sml
+     EfficientElab/ElabTopdec.sml
+  end
+
+  ERROR_TRAVERSE.sml
+  TOP_LEVEL_REPORT.sml
+  local open Tools 
+  in ErrorTraverse.sml
+     TopLevelReport.sml
+  end
+
+  ../Manager/PARSE_ELAB.sml
+  local open Tools
+  in ../Manager/ParseElab.sml
+     ../Manager/OPACITY_ELIM.sml
+     ../Manager/OpacityElim.sml
+  end
+
+  ../Manager/FREE_IDS.sml
+  local open Edlib Tools
+  in ../Manager/FreeIds.sml
+  end
+
+end

@@ -1,0 +1,2 @@
+Changes the closure property of ctx to a global InterpContext pointer. As ctx
+was only read, this is fine.

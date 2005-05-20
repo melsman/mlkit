@@ -7,7 +7,7 @@ SHELL=/bin/sh
 # Some commands
 MKDIR=mkdir -p
 INSTALL=cp -p
-CLEAN=rm -rf PM CM *~ .\#*
+CLEAN=rm -rf MLB PM CM *~ .\#* a.out
 CLEAN_MLB=rm -rf MLB
 
 BINDIR=../bin
@@ -74,7 +74,13 @@ barry: basics
 	cd ..; echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
 	chmod a+x $(BINDIR)/barry
 
-basics: genopcodes heap2exec
+basics: genopcodes heap2exec version
+
+version: Version.sml
+
+Version.sml: Version.sml.in ../version
+	sed -e "s+@VERSION@+`cat ../version`+g" < $< > $@
+
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -97,10 +103,13 @@ kitbench:
 	cd Tools/Benchmark; $(MAKE)
 
 heap2exec: heap2exec/heap2exec
-	cd heap2exec; $(MAKE)
+	cp heap2exec/heap2exec.copy heap2exec/heap2exec;
+	cp heap2exec/run.x86-linux.copy heap2exec/run.x86-linux
+
+#$(MAKE) uncommented by NH because heap2exec doesn't compile on FC3
 
 clean:
-	$(CLEAN) run $(GENOPCODES_TARGETS)
+	$(CLEAN) run $(GENOPCODES_TARGETS) Version.sml
 	cd Pickle; $(CLEAN)
 	cd Common; $(CLEAN)
 	cd Common/EfficientElab; $(CLEAN)

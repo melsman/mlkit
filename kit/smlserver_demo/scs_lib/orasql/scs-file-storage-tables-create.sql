@@ -96,9 +96,9 @@ create table scs_fs_folders (
     constraint scs_fs_fold_last_mod_user_nn not null 
     constraint scs_fs_fold_last_mod_user_rf 
       references scs_users,
-  -- Sub-folders must have different names in the same folder
-  constraint scs_fs_folders_label_un unique (parent_id,label),
-  constraint scs_fs_folders_folder_un unique (parent_id,foldername)
+  -- Sub-folders must have different names in the same folder/instance
+  constraint scs_fs_folders_label_un unique (instance_id,parent_id,label),
+  constraint scs_fs_folders_folder_un unique (instance_id,parent_id,foldername)
 );  
 
 create table scs_fs_files (

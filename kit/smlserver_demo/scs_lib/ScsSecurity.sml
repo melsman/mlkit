@@ -239,5 +239,16 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
       in
         (implode o rev) ( Substring.foldl f [] (Substring.all text) )
       end      
+
+    (* [xssRemoveGtLtTags s] removes the characters < and > from s. *)
+    fun xssRemoveGtLtTags (text:string) =
+      let
+	fun f (c, acc) = case c of
+            #"<"  => acc
+          | #">"  => acc
+	  | other => other::acc
+      in
+        (implode o rev) ( Substring.foldl f [] (Substring.all text) )
+      end      
   end
 

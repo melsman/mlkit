@@ -49,6 +49,7 @@ PACK_WORD.sml Pack32Little.sml Pack32Big.sml
 
 (* Reals *)
 MATH.sml Math.sml REAL.sml Real.sml
+PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
 
 (* IntInf -- makes use of Real *)
 INT_INF.sml IntInf.sml
@@ -57,12 +58,12 @@ INT_INF.sml IntInf.sml
 POLYHASH.sml Polyhash.sml
 
 (* IO *)
-IO.sml TEXT_IO-1997.sml TextIO-1997.sml BIN_IO.sml BinIO.sml
+IO.sml TEXT_IO.sml TextIO.sml BIN_IO.sml BinIO.sml
 
 (* System *)
-TIME.sml Time.sml RANDOM.sml Random.sml OS_PATH-1997.sml Path-1997.sml
+TIME.sml Time.sml RANDOM.sml Random.sml OS_PATH.sml Path.sml
 OS_FILE_SYS.sml FileSys.sml OS_PROCESS.sml Process.sml OS.sml
-COMMAND_LINE.sml CommandLine.sml DATE.sml Date.sml TIMER-1997.sml Timer-1997.sml
+COMMAND_LINE.sml CommandLine.sml DATE.sml Date.sml TIMER.sml Timer.sml
 
 (* Suspension *)
 SUSP.sml Susp.sml

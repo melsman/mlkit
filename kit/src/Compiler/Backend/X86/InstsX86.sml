@@ -1,10 +1,7 @@
-functor InstsX86(structure Labels : ADDRESS_LABELS
-		 structure Lvars : LVARS
-		 structure Lvarset : LVARSET
-		   sharing type Lvarset.lvar = Lvars.lvar
-		 structure Crash : CRASH
-		 structure PP : PRETTYPRINT) : INSTS_X86 =
+structure InstsX86: INSTS_X86 =
   struct
+    structure PP = PrettyPrint
+    structure Labels = AddressLabels
 
     fun die s = Crash.impossible("X86Inst." ^ s)
 
@@ -133,15 +130,15 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_reg al = "%al"
       | pr_reg cl = "%cl"
 
-    fun remove_ctrl s = "Lab" ^ 
+    fun remove_ctrl s = 
 	String.implode (List.filter (fn c =>
 				     Char.isAlphaNum c orelse
 				     c = #"_" orelse c = #".") (String.explode s))
 
-    fun pr_lab (DatLab l) = remove_ctrl(Labels.pr_label l)
-      | pr_lab (LocalLab l) = "." ^ remove_ctrl(Labels.pr_label l)
-      | pr_lab (NameLab s) = s
-      | pr_lab (MLFunLab l) = "fun." ^ remove_ctrl(Labels.pr_label l)
+    fun pr_lab (DatLab l) = "DLab." ^ remove_ctrl(Labels.pr_label l)
+      | pr_lab (LocalLab l) = ".LLab." ^ remove_ctrl(Labels.pr_label l)
+      | pr_lab (NameLab s) = (* "NLab." ^ *)  remove_ctrl s
+      | pr_lab (MLFunLab l) = "FLab." ^ remove_ctrl(Labels.pr_label l)
 
     (* Convert ~n to -n *)
     fun int_to_string i = if i >= 0 then Int.toString i

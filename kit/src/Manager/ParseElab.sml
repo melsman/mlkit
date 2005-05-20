@@ -1,52 +1,7 @@
 
-functor ParseElab(structure Parse: PARSE
-		  structure Timing : TIMING
-		  structure ElabTopdec: ELABTOPDEC
-		    sharing type ElabTopdec.PreElabTopdec = Parse.topdec
-
- 	          structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		    sharing type ElabTopdec.StaticBasis = ModuleEnvironments.Basis
-                    sharing type ElabTopdec.absprjid = ModuleEnvironments.absprjid			  
-		  structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
-		    sharing type PreElabTopdecGrammar.topdec
-				      = ElabTopdec.PreElabTopdec
-		  structure PostElabTopdecGrammar: TOPDEC_GRAMMAR
-		    sharing type PostElabTopdecGrammar.topdec
-				      = ElabTopdec.PostElabTopdec
-
-		  structure ErrorTraverse: ERROR_TRAVERSE
-		    sharing type ErrorTraverse.topdec
-					= ElabTopdec.PostElabTopdec
-
-		  structure InfixBasis: INFIX_BASIS
-		    sharing type InfixBasis.Basis = Parse.InfixBasis
-
-		  structure TopLevelReport: TOP_LEVEL_REPORT
-		    sharing type TopLevelReport.ElabBasis = ElabTopdec.StaticBasis
-		    sharing type TopLevelReport.InfixBasis = InfixBasis.Basis
-
-		  structure BasicIO: BASIC_IO
-
-		  structure Report: REPORT
-		    sharing type InfixBasis.Report
-					= Parse.Report
-					= ErrorTraverse.Report
-					= TopLevelReport.Report
-					= Report.Report
-
-		  structure PP: PRETTYPRINT
-		    sharing type PP.Report = Report.Report
-		    sharing type InfixBasis.StringTree
-					= PreElabTopdecGrammar.StringTree
-					= PostElabTopdecGrammar.StringTree
-					= ElabTopdec.StringTree
-					= PP.StringTree
-
-		  structure Flags: FLAGS
-		  structure Crash: CRASH
-		    ): PARSE_ELAB =
+structure ParseElab: PARSE_ELAB =
   struct
-
+    structure PP = PrettyPrint
     structure ErrorCode = ErrorTraverse.ErrorCode
 
     type Report = Report.Report
@@ -149,6 +104,8 @@ functor ParseElab(structure Parse: PARSE
 	  val _ = Timing.timing_end "Parse" 
 	  val _ = chat "]\n"
 	  val _ = chat "[elaboration..."
+          (*val _ = Compiler.Profile.reset(); mads*)
+          (*val _ = Compiler.Profile.setTimingMode true; mads*)
 	  val _ = Timing.timing_begin()
 	  val elab_res = case parse_res 
 			   of (infB, SOME topdec) => (maybe_print_topdec topdec;
@@ -156,6 +113,14 @@ functor ParseElab(structure Parse: PARSE
 						      handle E => (Timing.timing_end "Elab" ; raise E))
 			    | (infB, NONE) => empty_success
 	  val _ = Timing.timing_end "Elab" 
+      (*  val _ = Compiler.Profile.setTimingMode false; 
+          val _ = if Flags.is_on0 "compiler_timings" ()
+                  then let val os = TextIO.openOut "elabprofile"
+                       in Compiler.Profile.report os;
+                          TextIO.closeOut os
+                       end
+                   else ()
+      mads*)
 	  val _ = chat "]\n"
       in elab_res
       end handle Parse report => (chat "[parsing end...]\n"; FAILURE (report, [ErrorCode.error_code_parse]))

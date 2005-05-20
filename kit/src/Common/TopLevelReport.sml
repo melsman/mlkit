@@ -1,44 +1,7 @@
 (* Top-level reporting: ties static and dynamic basis together, generates
    a report of bindings. *)
 
-functor TopLevelReport(structure FunId: FUNID
-		       structure SigId: SIGID
-		       structure StrId: STRID
-		       structure Ident: IDENT
-
-		       structure InfixBasis: INFIX_BASIS
-
-		       structure StatObject: STATOBJECT
-
-		       structure Environments: ENVIRONMENTS
-			 sharing type Environments.strid = StrId.strid
-			 sharing type Environments.id = Ident.id
-			 sharing type Environments.Type = StatObject.Type
-			 sharing type Environments.TypeScheme
-				      = StatObject.TypeScheme
-
-		       structure ModuleStatObject: MODULE_STATOBJECT
-			 sharing type ModuleStatObject.Env
-				      = Environments.Env
-
-		       structure ModuleEnvironments: MODULE_ENVIRONMENTS
-			 sharing type ModuleEnvironments.sigid = SigId.sigid
-			 sharing type ModuleEnvironments.funid = FunId.funid
-			 sharing type ModuleEnvironments.Sig
-				      = ModuleStatObject.Sig
-			 sharing type ModuleEnvironments.FunSig
-				      = ModuleStatObject.FunSig
-			 sharing type ModuleEnvironments.Env
-			              = Environments.Env
-
-		       structure Report: REPORT
-			 sharing type InfixBasis.Report
-				      = Environments.Report
-			   	      = ModuleEnvironments.Report
-				      = Report.Report
-
-		       structure Crash: CRASH
-		      ): TOP_LEVEL_REPORT =
+structure TopLevelReport: TOP_LEVEL_REPORT =
   struct
     type ElabBasis = ModuleEnvironments.Basis
     type InfixBasis = InfixBasis.Basis
@@ -63,7 +26,6 @@ functor TopLevelReport(structure FunId: FUNID
 
     (*import from StatObject:*)
     structure TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     structure Substitution = StatObject.Substitution

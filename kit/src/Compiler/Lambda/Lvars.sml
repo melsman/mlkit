@@ -1,12 +1,8 @@
 (* Lambda variables *)
 
-functor Lvars(structure Name : NAME
-	      structure Report : REPORT
-	      structure Crash : CRASH
-	      structure PP : PRETTYPRINT
-	      structure IntStringFinMap : MONO_FINMAP where type dom = int * string
-		) : LVARS =
+structure Lvars: LVARS =
   struct
+    structure PP = PrettyPrint
 
     (* Lambda variables are based on names which may be `matched'. In
      * particular, if two lambda variables, lv1 and lv2, are
@@ -69,12 +65,7 @@ functor Lvars(structure Name : NAME
 	val pp = pr_lvar
       end
 
-    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
-			     structure Name = Name
-			     structure Crash = Crash
-			     structure PP = PP
-			     structure Report = Report
-			     structure QD = QD)
+    structure Map = QuasiMap(QD)
 
     (* For the KAM machine *)
     val env_lvar = new_named_lvar("env")
@@ -100,7 +91,7 @@ functor Lvars(structure Name : NAME
   sestoft@dina.kvl.dk
 ***********************************************************************)
 
-functor Lvarset(structure Lvars : LVARS) : LVARSET = 
+structure Lvarset: LVARSET = 
 struct 
 
   val xorb = Word.xorb

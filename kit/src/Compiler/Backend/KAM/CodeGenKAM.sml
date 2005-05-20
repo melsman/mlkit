@@ -1,44 +1,24 @@
-functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
-		   structure Con : CON
-		   structure Excon : EXCON
-		   structure Lvars : LVARS
-		   structure Effect : EFFECT
-		   structure Labels : ADDRESS_LABELS
-		   structure RegvarFinMap : MONO_FINMAP
-                     sharing type RegvarFinMap.dom =
-		                  Effect.effect =
-				  Effect.place =
-				  PhysSizeInf.place
-		   structure CallConv: CALL_CONV
+functor CodeGenKAM(structure CallConv: CALL_CONV
+                     where type lvar = Lvars.lvar
 		   structure ClosExp: CLOS_EXP
- 	             sharing type Con.con = ClosExp.con
-		     sharing type Excon.excon = ClosExp.excon
-                     sharing type Lvars.lvar = ClosExp.lvar = CallConv.lvar
-                     sharing type Effect.effect = Effect.place = ClosExp.place
-                     sharing type Labels.label = ClosExp.label
-                     sharing type CallConv.cc = ClosExp.cc
-		     sharing type ClosExp.phsize = PhysSizeInf.phsize
+ 	             where type con = Con.con
+		     where type excon = Excon.excon
+                     where type lvar = Lvars.lvar
+                     where type place = Effect.place
+                     where type label = AddressLabels.label
+		     where type phsize = PhysSizeInf.phsize
+		   sharing type CallConv.cc = ClosExp.cc
 		   structure BI : BACKEND_INFO
                    structure JumpTables : JUMP_TABLES
-		   structure Lvarset: LVARSET
-		     sharing type Lvarset.lvar = Lvars.lvar
-		   structure Kam: KAM
-                     sharing type Kam.label = Labels.label
-		   structure BuiltInCFunctions : BUILT_IN_C_FUNCTIONS_KAM
-		   structure PP : PRETTYPRINT
-		     sharing type PP.StringTree = 
-		                  Effect.StringTree = 
-				  ClosExp.StringTree =
-                                  Kam.StringTree =
-				  RegvarFinMap.StringTree =
-				  Lvars.Map.StringTree
-                   structure Flags : FLAGS
-		   structure Report : REPORT
-		     sharing type Report.Report = Flags.Report
-		   structure Crash : CRASH) : CODE_GEN_KAM (* : sig end *) =
+		       ) : CODE_GEN_KAM (* : sig end *) =
 
 struct
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   structure LvarFinMap = Lvars.Map
+  structure RegvarFinMap = EffVarEnv
+  structure BuiltInCFunctions = BuiltInCFunctionsKAM
+  structure Opcodes = OpcodesKAM
 
   open Kam
 
@@ -86,7 +66,13 @@ struct
     {long="comments_in_kam_code", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "comments in KAM code"],
      desc=""}
-				  
+
+  val webserver : string ref = ref "AOLserver"
+  val _ = Flags.add_string_entry 
+      {long="webserver", short=NONE, menu=["Control", "webserver"], 
+       item=webserver,
+       desc="Webserver used with SMLserver. Possibilities are\n\
+	\Apache and AOLserver."}
 
   val comments_in_kam_code = Flags.lookup_flag_entry "comments_in_kam_code"
   val jump_tables = true
@@ -302,7 +288,7 @@ struct
        | _ => ImmedInt i :: acc
 
   fun immedWord (w : Word32.word, acc) =
-    let val i = Word32.toLargeIntX w
+    let val i = Int32.fromLarge (Word32.toLargeIntX w)
     in case acc
 	 of Push :: acc => ImmedIntPush i :: acc
 	  | _ => ImmedInt i :: acc
@@ -454,9 +440,10 @@ struct
 	 | ClosExp.ForeignPtr => acc
 	 | ClosExp.Unit => acc
 
+    val webserver = Flags.lookup_string_entry "webserver"
     fun name_to_built_in_C_function_index name = 
       if !Flags.SMLserver then 
-        if !Flags.WEBserver = "Apache" then 
+        if !webserver = "Apache" then 
 	  BuiltInCFunctions.name_to_built_in_C_function_index_apsml name
 	else
 	  BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
@@ -464,7 +451,7 @@ struct
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp,acc)
-      | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
+      | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = acc (* die "DROPPED_RVAR not implemented" *)
       | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
       | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, storeData lab :: acc)
       | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedIntMaybeTag (i, acc)
@@ -642,7 +629,7 @@ struct
 			  fn (lab,i,C) => IfGreaterThanJmpRelImmed (lab,i) :: C,
 			  fn (ce,C) => CG_ce(ce,env,sp,cc,C),
 			  precision,
-			  Word32.toLargeIntX,
+			  Int32.fromLarge o Word32.toLargeIntX,
 			  acc))
       | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S is unfolded in ClosExp"
       | CG_ce(ClosExp.SWITCH_C (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) =
@@ -873,6 +860,8 @@ struct
 		  | "__is_null"            => PrimIsNull
 
 		  | "terminateML"          => Halt
+
+		  | "__serverGetCtx"       => GetContext
 
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in	    

@@ -1,10 +1,7 @@
 
-functor CompileBasisBarry
-                    (structure CompBasisBarry : COMP_BASIS_BARRY
-		     structure PP: PRETTYPRINT
-		       sharing type PP.StringTree = CompBasisBarry.StringTree
-		     structure Flags : FLAGS) : COMPILE_BASIS =
+structure CompileBasisBarry : COMPILE_BASIS =
   struct
+    structure PP = PrettyPrint
 
     fun log s = TextIO.output(TextIO.stdOut,s)
     fun say s = log s

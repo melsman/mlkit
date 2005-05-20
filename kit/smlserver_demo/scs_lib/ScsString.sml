@@ -9,6 +9,7 @@ signature SCS_STRING =
     val upper      : string -> string
     val lowerFirst : string -> string
     val upperFirst : string -> string
+    val inverse	   : string -> string
 
     (* [upperFirstInEveryWord str] transforms 
        ""                                 -> ""
@@ -47,7 +48,7 @@ signature SCS_STRING =
     (* [toOpt str] if str is empty then returns NONE otherwise SOME str *)
     val toOpt     : string -> string option
 
-    (* [ml_search_pattern pat] returns a pattern with % added at each
+    (* [mk_search_pattern pat] returns a pattern with % added at each
         space and pattern lowered case *)
     val mk_search_pattern : string -> string
 
@@ -61,6 +62,7 @@ structure ScsString =
     fun translate f s  = concat (map f (explode s))
     fun lower s = CharVector.fromList (List.map Char.toLower (explode s))
     fun upper s = CharVector.fromList (List.map Char.toUpper (explode s))
+    val inverse = CharVector.fromList o rev o explode
 
     fun lowerFirst str = 
       let
@@ -114,7 +116,7 @@ structure ScsString =
 		    (rest, first :: acc)
 		  else  (
 		    Substring.triml (size from) rest,
-		    first :: substr_to :: acc)
+		    substr_to :: first :: acc)
 	      in
 		repl(new_rest, new_acc)
 	      end

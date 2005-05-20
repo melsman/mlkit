@@ -1,3 +1,6 @@
-val _ = OS.Process.exit 
-    (Main.mlbmake(Main.cmdName(),
-		  CommandLine.arguments()))
+local structure M = MlbStandAlone()
+in
+    val _ = OS.Process.exit 
+	(M.mlbmake(M.cmdName(),
+		      CommandLine.arguments()))
+end

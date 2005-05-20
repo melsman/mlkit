@@ -1,28 +1,8 @@
 
-functor StatObject (structure SortedFinMap : SORTED_FINMAP
-		    structure Ident : IDENT
-		    structure SCon : SCON
-		    structure Lab : LAB
-		    structure TyName : TYNAME
-		    structure Name : NAME
-		      sharing type Name.name = TyName.name
-		    structure IntFinMap : MONO_FINMAP where type dom = int
-		    structure TyCon : TYCON
-		      sharing type TyCon.tycon = TyName.tycon
-		    structure ExplicitTyVar : TYVAR
-		    structure Timestamp : TIMESTAMP
-		    structure Flags : FLAGS
-		    structure Report : REPORT
-		    structure FinMap : FINMAP
-		    structure FinMapEq : FINMAPEQ
-		    structure PP : PRETTYPRINT
-		      sharing type PP.Report = Report.Report
-		      sharing type SortedFinMap.StringTree = PP.StringTree = IntFinMap.StringTree
-		       = TyName.StringTree
-		    structure Crash : CRASH
-		      ) : STATOBJECT =
+structure StatObject: STATOBJECT =
   struct
-
+    structure PP = PrettyPrint
+    structure ExplicitTyVar = SyntaxTyVar
     structure EdList = Edlib.List
 
     val print_type_levels = ref false     (* for debugging *)

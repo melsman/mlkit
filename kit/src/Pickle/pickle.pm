@@ -1,15 +1,18 @@
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
 import
 in
+  POLYHASH.sml
+  Polyhash.sml
   local
-    POLYHASH.sml
-    Polyhash.sml
     eqhashdyn2.sml
     stream.sig
     stream.sml
   in
     pickle.sig
     pickle.sml
-    ../../test/pickle.sml
   end
 end
 

@@ -65,6 +65,10 @@ above), to preserve left justification.
 
 signature PRETTYPRINT =
   sig
+    val raggedRight : bool ref
+    val colwidth : int ref
+
+
     datatype StringTree = LEAF of string
                         | NODE of {start : string, finish: string, indent: int,
                                    children: StringTree list,

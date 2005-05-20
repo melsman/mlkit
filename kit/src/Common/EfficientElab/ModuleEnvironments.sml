@@ -1,59 +1,13 @@
 
-functor ModuleEnvironments(
-	  structure StrId  : STRID
-	  structure SigId  : SIGID
-	  structure FunId  : FUNID
-	  structure TyCon  : TYCON
-	  structure Ident  : IDENT
-
-	  structure StatObject : STATOBJECT
-
-	  structure Environments : ENVIRONMENTS 
-	    sharing Environments.TyName = StatObject.TyName
-	    sharing type Environments.longstrid = StrId.longstrid
-	    sharing type Environments.strid      = StrId.strid = TyCon.strid
-	    sharing type Environments.tycon      = TyCon.tycon
-	    sharing type Environments.longtycon      = TyCon.longtycon
-	    sharing type Environments.TypeScheme = StatObject.TypeScheme
-	    sharing type Environments.TyVar = StatObject.TyVar
-	    sharing type Environments.Type = StatObject.Type
-	    sharing type Environments.realisation = StatObject.realisation
-	    sharing type Environments.id = Ident.id
-	    sharing type Environments.longid = Ident.longid
-
-	  structure ModuleStatObject : MODULE_STATOBJECT
-	    sharing Environments.TyName = ModuleStatObject.TyName
-	    sharing type Environments.TypeFcn = StatObject.TypeFcn
-	    sharing type ModuleStatObject.id = Environments.id
-	    sharing type ModuleStatObject.Env = Environments.Env
-	    sharing type ModuleStatObject.realisation = StatObject.realisation
-	    sharing type ModuleStatObject.TyVar = StatObject.TyVar
-
-	  structure PP : PRETTYPRINT
-	    sharing type ModuleStatObject.StringTree = PP.StringTree
-
-	  structure Report: REPORT
-	  structure Flags : FLAGS
-
-	  structure FinMap : FINMAP
-	    sharing type FinMap.StringTree = PP.StringTree
-	    sharing type FinMap.Report = Report.Report
-
-	  structure FinMapEq : FINMAPEQ
-	    sharing type FinMapEq.StringTree = PP.StringTree
-	    sharing type FinMapEq.Report = Report.Report
-
-	  structure Crash : CRASH
-          ) : MODULE_ENVIRONMENTS =
+structure ModuleEnvironments: MODULE_ENVIRONMENTS =
   struct
-
+    structure PP = PrettyPrint
     fun die s = Crash.impossible ("ModuleEnvironments."^s)
 
     (*import from StatObject:*)
     type TyName            = StatObject.TyName
     type TyVar             = StatObject.TyVar
     structure TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     type realisation       = StatObject.realisation
@@ -156,13 +110,13 @@ functor ModuleEnvironments(
       OS.Path.file absprjid = "basis.pm"
       
     fun strip_install_dir absprjid =
-      if is_absprjid_basislib absprjid then OS.Path.mkRelative(absprjid, !Flags.install_dir)
+      if is_absprjid_basislib absprjid then OS.Path.mkRelative{path=absprjid, relativeTo= !Flags.install_dir}
       else absprjid
 
     fun strip_install_dir' (p as (absprjid, funid)) =
       if is_absprjid_basislib absprjid then 
-	(OS.Path.mkRelative(absprjid, !Flags.install_dir),
-	 FunId.mk_FunId (OS.Path.mkRelative(FunId.pr_FunId funid, !Flags.install_dir)))
+	(OS.Path.mkRelative{path=absprjid, relativeTo= !Flags.install_dir},
+	 FunId.mk_FunId (OS.Path.mkRelative{path=FunId.pr_FunId funid, relativeTo= !Flags.install_dir}))
       else p
 
     val pu_absprjid = Pickle.string

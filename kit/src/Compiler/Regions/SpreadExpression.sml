@@ -10,57 +10,15 @@
 *)
 
 
-functor SpreadExpression(
-  structure Con: CON
-  structure ExCon: EXCON
-  structure E: LAMBDA_EXP
-  structure LB : LAMBDA_BASICS
-    sharing type LB.lvar = E.lvar
-    sharing type LB.LambdaExp = E.LambdaExp
-    sharing type LB.excon = E.excon
-  structure E': REGION_EXP
-    sharing type E.con = E'.con = Con.con
-    sharing type E.TyName = E'.TyName 
-    sharing type E.excon = E'.excon = ExCon.excon
-  structure Eff: EFFECT
-  structure R: RTYPE
-    sharing type E'.tyvar = R.tyvar = E.tyvar
-    sharing type R.cone = Eff.cone
-    sharing type R.LambdaType  = E.Type 
-    sharing type R.place = Eff.place = E'.place = E'.effect 
-    sharing type R.il = E'.il 
-    sharing type R.Type = E'.Type
-    sharing type R.runType = Eff.runType
-  structure RSE: REGION_STAT_ENV
-    sharing type RSE.TypeAndPlaceScheme = R.sigma = E'.sigma
-    sharing type RSE.place = Eff.place
-    sharing type RSE.Type = R.Type
-    sharing type RSE.runType = R.runType
-    sharing type RSE.con = Con.con 
-    sharing type RSE.excon = ExCon.excon
-    sharing type RSE.il = R.il
-    sharing type RSE.cone = R.cone = E'.cone
-  structure SpreadDatatype: SPREAD_DATATYPE
-    sharing type RSE.regionStatEnv = SpreadDatatype.rse
-    sharing type SpreadDatatype.LambdaExp.datbinds = E.datbinds
-    sharing type SpreadDatatype.cone = Eff.cone
-    sharing type SpreadDatatype.RegionExp.datbinds = E'.datbinds
-  structure FinMap : FINMAP
-  structure Flags: FLAGS
-  structure Report : REPORT
-  sharing type Report.Report = Flags.Report
-  structure Lvars: LVARS
-    sharing type Lvars.lvar = E.lvar = E'.lvar = RSE.lvar
-  structure TyName: TYNAME
-    sharing type TyName.TyName = E'.TyName = RSE.TyName =  R.tyname
-  structure Crash: CRASH
-  structure PP: PRETTYPRINT
-    sharing type PP.StringTree =  E.StringTree = RSE.StringTree  = R.StringTree = Eff.StringTree
-(*  structure CConst : C_CONST
-    sharing TyName = CConst.TyName 2001-01-18, Niels*)
-): SPREAD_EXPRESSION =
+structure SpreadExpression: SPREAD_EXPRESSION =
 struct
-
+  structure PP = PrettyPrint
+  structure RSE = RegionStatEnv
+  structure R = RType
+  structure E = LambdaExp
+  structure E' = RegionExp
+  structure Eff = Effect
+  structure LB = LambdaBasics
   structure EdList = Edlib.List
 
   fun uncurry f (a,b) = f a b

@@ -1,0 +1,6 @@
+Testing structure PackRealBig...
+[r = 0.0, sz(vector) = 8, sz(bs) 8, r' = 0.0]
+[r = 2.0, sz(vector) = 8, sz(bs) 8, r' = 2.0]
+[r = 43.23, sz(vector) = 8, sz(bs) 8, r' = 43.23]
+[r = ~43.2, sz(vector) = 8, sz(bs) 8, r' = ~43.2]
+test1    	OK

@@ -2,7 +2,7 @@
  *    -- modified for the ML Kit, 2001-06-07
  *
  * COPYRIGHT (c) 1992 by AT&T Bell Laboratories.
- * See file mosml/copyrght/copyrght.att for details.
+ * See file copyrght.att for details.
  *
  * Original author: John Reppy, AT&T Bell Laboratories, Murray Hill, NJ 07974
  *)

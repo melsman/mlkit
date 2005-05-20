@@ -6,36 +6,11 @@
       (*   "finite" means "statically known finite size" *)        
       (***************************************************)
 
-functor MulInf(
-  structure TyName: TYNAME
-  structure RType: RTYPE
-  structure MulExp: MUL_EXP
-  structure Mul: MUL
-  structure Eff: EFFECT
-    sharing type Eff.cone = MulExp.cone = Mul.Effect.cone
-    sharing type Eff.place = MulExp.place = RType.place = Mul.place 
-	         = MulExp.effect = MulExp.ateffect
-                 = Mul.effectvar 
-    sharing type Mul.mularefmap = MulExp.mularefmap
-    sharing type Mul.dependency_map = MulExp.dependency_map
-    sharing type RType.il = MulExp.il
-    sharing type Mul.lvar = MulExp.lvar
-    sharing type Mul.mulef = MulExp.mulef
-    sharing type RType.Type  = MulExp.Type
-    sharing type Mul.mul = MulExp.mul
-    sharing type MulExp.qmularefset = Mul.qmularefset 
-    sharing type TyName.TyName = RType.tyname
-    sharing type Mul.efenv = MulExp.efenv
-    sharing type Mul.mularef = MulExp.mularef
-  structure Lvar: LVARS
-    sharing type Lvar.lvar = Mul.lvar
-  structure Flags: FLAGS
-  structure Crash: CRASH
-  structure PP: PRETTYPRINT
-    sharing type Mul.StringTree = PP.StringTree = MulExp.StringTree = Eff.StringTree
-  ): MUL_INF =
+structure MulInf: MUL_INF =
 struct
-
+  structure PP = PrettyPrint
+  structure Eff = Effect 
+  structure Lvar = Lvars
   structure RegionExp = MulExp.RegionExp
 
   type ('a,'b)LambdaPgm_phi = ('a,'b) RegionExp.LambdaPgm
@@ -150,11 +125,13 @@ struct
                 val (_,places,_) = RType.un_il il
                 val qmul = Mul.instantiateRegions(places,!other)
                 val arreffs = Mul.make_arroweffects plain_arreffs
-                (*val _ = say "\nMulInf.VAR: calling instantiateeffects with"
+(*
+                val _ = say ("\nMulInf.VAR " ^ Lvars.pr_lvar lvar ^ ": calling instantiateeffects with")
                 val _ = say "\narrow effects: " 
                 val _ = outtree (Mul.layout_Phi arreffs)
                 val _ = say "\n and qmul : " 
-                val _ = outtree (Mul.layout_qmularefset qmul) *)
+                val _ = outtree (Mul.layout_qmularefset qmul)
+*)
                 val _ = Mul.instantiateeffects(arreffs,
                                                qmul, Psi, dep) (* updates 
                                                                  shared semantic objects *)
@@ -181,7 +158,7 @@ struct
           | FN{pat,body,free,alloc} =>
              (case mu of
                RegionExp.Mus[(RType.FUN(_,eps,_),_)] =>
-                let 
+                let 		    
                    val _ = infer_trip(body) 
                    val psi = get_psi body
                    val psi_eps = #2(Mul.un_mularef(Mul.nf(!(
@@ -189,14 +166,18 @@ struct
                    val almost_new_psi = Mul.maxef(psi,psi_eps)
                    (* eps.almost_new_psi is not necessarily acyclic; so normalise it: *)
                    val (_,new_psi) = Mul.un_mularef(Mul.nf(Mul.makearef(eps,almost_new_psi)))
-  		 val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep) handle X =>
-                         (say "\nMulInf(FN) fails:\n";
-                          say "eps = \n" ; outtree(Eff.layout_effect eps);
-                          say "\npsi =\n" ; outtree(Mul.layout_mulef psi);
-                          say "\npsi_eps =\n"; outtree(Mul.layout_mulef psi_eps);
-                          say "\nalmost_new_psi=\n";  outtree(Mul.layout_mulef almost_new_psi);
-                          say "\nnew_psi=\n"; outtree(Mul.layout_mulef new_psi);
-                          say "\n"; raise X)
+		   fun debug() =
+		       (print "DEBUG FN\n";
+			print " eps = \n" ; outtree(Eff.layout_effect eps);
+			print "\n psi =\n" ; outtree(Mul.layout_mulef psi);
+			print "\n psi_eps =\n"; outtree(Mul.layout_mulef psi_eps);
+			print "\n almost_new_psi=\n";  outtree(Mul.layout_mulef almost_new_psi);
+			print "\n new_psi=\n"; outtree(Mul.layout_mulef new_psi);
+			print "\n")
+		   val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep) 
+		       handle X =>
+			   (say "\nMulInf(FN) fails:\n";
+			    debug(); raise X)
   		in
   		    psi_r:= Mul.put alloc
   		end

@@ -1,138 +1,39 @@
 
-functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
+structure ExecutionKAM : EXECUTION =
   struct
-    open BuildCompile
-    open ExecutionArgs
-
-    structure Basics = Elaboration.Basics
-    structure TyName = Basics.TyName
-    structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
-    structure Tools = Basics.Tools
-    structure AllInfo = Basics.AllInfo
-    structure PP = Tools.PrettyPrint
-    structure Name = Basics.Name
-    structure IntStringFinMap = Tools.IntStringFinMap
-    structure Flags = Tools.Flags
-    structure Report = Tools.Report
-    structure Crash = Tools.Crash
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure Labels = AddressLabels
+    structure PP = PrettyPrint
 
     structure BackendInfo = 
-      BackendInfo(structure Labels = Labels
-		  structure PP = PP
-		  structure Flags = Flags
-		  structure Report = Report
-		  structure Crash = Crash
-		  structure RegConst = BuildCompile.RegConst
-		  val down_growing_stack : bool = false         (* false for KAM *)
-		  val double_alignment_required : bool = true)   (* true for KAM?? *)
+      BackendInfo(val down_growing_stack : bool = false)         (* false for KAM *)
 
-    structure Kam = Kam (structure Labels = Labels
-			 structure PP = PP
-			 structure Crash = Crash)
+    structure ClosConvEnv = ClosConvEnv(BackendInfo)
 
-    structure ClosConvEnv = ClosConvEnv(structure Lvars = Lvars
-					structure Con = Con
-					structure Excon = Excon
-					structure Effect = Effect
-					structure MulExp = MulExp
-					structure RegvarFinMap = EffVarEnv
-					structure PhysSizeInf = PhysSizeInf
-					structure Labels = Labels
-					structure BI = BackendInfo
-					structure PP = PP
-					structure Crash = Crash)
+    structure CallConv = CallConv(BackendInfo)
 
-    structure CallConv = CallConv(structure Lvars = Lvars
-				  structure BI = BackendInfo
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
-
-    structure RegionFlowGraphProfiling =
-      RegionFlowGraphProfiling(structure Effect = Effect
-			       structure AtInf = AtInf
-			       structure PhySizeInf = PhysSizeInf
-			       structure PP = PP
-			       structure Flags = Flags
-			       structure Crash = Crash
-			       structure Report = Report)
-
-
-    structure ClosExp = ClosExp(structure Con = Con
-				structure Excon = Excon
-				structure Lvars = Lvars
-				structure TyName = TyName
-				structure Effect = Effect
-				structure RType = RType
-				structure MulExp = MulExp
-				structure Mul = Mul
-				structure AtInf = AtInf
-				structure PhysSizeInf = PhysSizeInf
-				structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
-				structure Labels = Labels
-				structure ClosConvEnv = ClosConvEnv
+    structure ClosExp = ClosExp(structure ClosConvEnv = ClosConvEnv
 				structure BI = BackendInfo
-				structure CallConv = CallConv
-				structure PP = PP
-				structure Flags = Flags
-				structure Report = Report
-				structure Crash = Crash)
+				structure CallConv = CallConv)
 
-    structure JumpTables = JumpTables(structure BI = BackendInfo
-				      structure Crash = Crash)
+    structure JumpTables = JumpTables(BackendInfo)
 
-    structure BuiltInCFunctions = BuiltInCFunctionsKAM()
-
-    structure CodeGen = CodeGenKAM(structure PhysSizeInf = PhysSizeInf
-				   structure Con = Con
-				   structure Excon = Excon
-				   structure Lvars = Lvars
-				   structure Effect = Effect
-				   structure Labels = Labels
-				   structure RegvarFinMap = EffVarEnv
-				   structure CallConv = CallConv
+    structure CodeGen = CodeGenKAM(structure CallConv = CallConv
 				   structure ClosExp = ClosExp
 				   structure BI = BackendInfo
-				   structure JumpTables = JumpTables
-				   structure Lvarset = Lvarset
-				   structure Kam = Kam
-				   structure BuiltInCFunctions = BuiltInCFunctions
-				   structure PP = PP
-				   structure Report = Report
-				   structure Flags = Flags
-				   structure Crash = Crash)
+				   structure JumpTables = JumpTables)
 
-    structure Opcodes = OpcodesKAM()
-    structure BuffCode = BuffCode()
-    structure ResolveLocalLabels = ResolveLocalLabels(structure BC = BuffCode
-						      structure IntStringFinMap = IntStringFinMap
-						      structure Labels = Labels
-						      structure Crash = Crash)
-
-    structure EmitCode = EmitCode(structure Labels = Labels
-				  structure CG = CodeGen
-				  structure Opcodes = Opcodes
-				  structure BC = BuffCode
-				  structure RLL = ResolveLocalLabels
-				  structure Kam = Kam
-				  structure BI = BackendInfo
-				  structure Flags = Flags
-				  structure Crash = Crash)
+    structure EmitCode = EmitCode(structure CG = CodeGen
+				  structure BI = BackendInfo)
 
     structure CompileBasis = CompileBasis(structure CompBasis = CompBasis
-					  structure ClosExp = ClosExp
-					  structure PP = PP
-					  structure Flags = Flags)
-
-    structure Compile = BuildCompile.Compile
-    structure CompilerEnv = BuildCompile.CompilerEnv
+					  structure ClosExp = ClosExp)
 
     val backend_name = "KAM"
 
     type CompileBasis = CompileBasis.CompileBasis
-    type CEnv = BuildCompile.CompilerEnv.CEnv
-    type Env = BuildCompile.CompilerEnv.ElabEnv
+    type CEnv = CompilerEnv.CEnv
+    type Env = CompilerEnv.ElabEnv
     type strdec = TopdecGrammar.strdec
     type strexp = TopdecGrammar.strexp
     type funid = TopdecGrammar.funid
@@ -161,7 +62,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 	      val {main_lab, code, imports, exports, env} = ClosExp.lift(closenv,target)
 (* 	      val _ = print "Returning from lift...\n" *)
 	      val asm_prg = 
-		Tools.Timing.timing "CG" CodeGen.CG 
+	       Timing.timing "CG" CodeGen.CG 
 		{main_lab_opt= (* if safe then NONE else*) SOME main_lab, 
 		 code=code, 
 		 imports=imports, 
@@ -188,13 +89,19 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     fun link_files_with_runtime_system _ files run = 
       if !Flags.SMLserver then ()
       else 
-	let val os = TextIO.openOut run	    
+	let 
+	    (* It would be preferable to truly link together the files
+	     * and the runtime system "kam", so as to produce a movable
+	     * executable. mael 2005-04-18 *)
+	    val files = 
+		map (fn f => OS.Path.mkAbsolute{relativeTo=OS.FileSys.getDir(),path=f}) files
+	    val os = TextIO.openOut run
 	in (* print ("[Creating file " ^ run ^ " begin ...]\n"); *)
 	  TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
 	  app (fn f => TextIO.output(os, f ^ " ")) files;
 	  TextIO.output(os, "--args $0 $*");
 	  TextIO.closeOut os;
-	  OS.Process.system "chmod a+x run";
+	  OS.Process.system ("chmod a+x " ^ run);
 	  print("[Created file " ^ run ^ "]\n")
 	  (* ; app (print o (fn s => "   " ^ s ^ "\n")) files  *)
 	end

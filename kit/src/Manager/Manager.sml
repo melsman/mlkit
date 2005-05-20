@@ -1,49 +1,11 @@
 
-functor Manager(structure StrId : STRID
-		structure TyCon : TYCON sharing type TyCon.strid = StrId.strid
-		structure Ident : IDENT sharing type Ident.strid = StrId.strid
-                structure ManagerObjects : MANAGER_OBJECTS
-		structure Name : NAME
-		  sharing type Name.name = ManagerObjects.name
-		structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		  sharing type ModuleEnvironments.Basis = ManagerObjects.ElabBasis
-		structure Environments : ENVIRONMENTS
-		  sharing type Environments.Env = ManagerObjects.ElabEnv = ModuleEnvironments.Env
-		  sharing type Environments.id = Ident.id
-		  sharing type Environments.tycon = TyCon.tycon
-		  sharing type Environments.strid = TyCon.strid
-		structure ParseElab : PARSE_ELAB
-		  sharing type ParseElab.InfixBasis = ManagerObjects.InfixBasis
-		  sharing type ParseElab.ElabBasis = ManagerObjects.ElabBasis
-	        structure IntModules : INT_MODULES
-		  sharing type IntModules.IntBasis = ManagerObjects.IntBasis
-		  sharing type IntModules.topdec = ParseElab.topdec
-		  sharing type IntModules.modcode = ManagerObjects.modcode
-		structure FreeIds : FREE_IDS
-		  sharing type FreeIds.topdec = ParseElab.topdec
-		  sharing type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = Environments.longid = Ident.longid
-		  sharing type FreeIds.longtycon = ManagerObjects.longtycon = ModuleEnvironments.longtycon = Environments.longtycon = TyCon.longtycon
-		  sharing type FreeIds.longstrid = ManagerObjects.longstrid = ModuleEnvironments.longstrid = Environments.longstrid = StrId.longstrid
-		  sharing type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
-		  sharing type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
-		structure OpacityElim : OPACITY_ELIM
-		  sharing OpacityElim.TyName = Environments.TyName = ManagerObjects.TyName = ModuleEnvironments.TyName
-		  sharing type OpacityElim.topdec = ParseElab.topdec
-		  sharing type OpacityElim.opaq_env = ManagerObjects.opaq_env
-		  sharing type OpacityElim.OpacityEnv.funid = FreeIds.funid
-	        structure Timing : TIMING
-		structure Crash : CRASH
-		structure Report : REPORT
-		  sharing type Report.Report = ParseElab.Report
-		structure PP : PRETTYPRINT
-		  sharing type PP.StringTree = FreeIds.StringTree = ManagerObjects.StringTree = OpacityElim.OpacityEnv.StringTree
-                structure Flags : FLAGS
-		  sharing type ModuleEnvironments.absprjid = ManagerObjects.absprjid = 
-		    IntModules.absprjid = ParseElab.absprjid
-		    
-		    ) : MANAGER =
+functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid = string
+		structure IntModules : INT_MODULES where type absprjid = string
+		sharing type ManagerObjects.IntBasis = IntModules.IntBasis
+		sharing type ManagerObjects.modcode = IntModules.modcode) 
+    : MANAGER =
   struct
-
+    structure PP = PrettyPrint
     structure MO = ManagerObjects
     structure Basis = MO.Basis
     structure FunStamp = MO.FunStamp
@@ -116,6 +78,13 @@ functor Manager(structure StrId : STRID
 	\executable."}
 
     val _ = Flags.add_stringlist_entry 
+      {long="link_code_scripts", short=SOME "link_scripts", item=ref nil,
+       menu=["File", "link files scripts"],
+       desc="Link-files for SMLserver scripts; link-files\n\
+	\specified with -link represent libraries when\n\
+	\mlkit is used with SMLserver."}
+
+    val _ = Flags.add_stringlist_entry 
       {long="load_basis_files", short=SOME "load", item=ref nil,
        menu=["File", "Basis files to load before compilation"],
        desc="Basis files to be loaded before compilation\n\
@@ -166,7 +135,7 @@ functor Manager(structure StrId : STRID
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
-    fun mk_absolute p = OS.Path.mkAbsolute(p,OS.FileSys.getDir())
+    fun mk_absolute p = OS.Path.mkAbsolute{path=p,relativeTo=OS.FileSys.getDir()}
     fun mk_absprjid_from_path s = ModuleEnvironments.mk_absprjid(mk_absolute s)
 
     (* ----------------------------------------------------
@@ -580,7 +549,7 @@ functor Manager(structure StrId : STRID
 	of SOME (_,(_,_,_,_,names_elab',_,elabB',opaq_env')) => (* names_elab' are already marked generative - lookup *)
 	  (List.app Name.mark_gen names_elab;                   (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
-	   OpacityElim.OpacityEnv.match(opaq_env,opaq_env');
+	   OpacityEnv.match(opaq_env,opaq_env');
 	   List.app Name.unmark_gen names_elab;
 	   List.app Name.mk_rigid names_elab)
 	 | NONE => (List.app Name.mk_rigid names_elab) (*bad luck*)
@@ -616,10 +585,9 @@ functor Manager(structure StrId : STRID
 	    (s,Timer.startCPUTimer(),Timer.startRealTimer())
 	    
 	fun timerReport ((s,cputimer,realtimer):timer) : unit = 
-	    let fun showTimerResult (s,{usr,gc,sys},real) =
+	    let fun showTimerResult (s,{usr,sys},real) =
 		print ("\nTiming " ^ s ^ ":" 
 		       ^ "\n  usr  = " ^ Time.toString usr 
-		       ^ "\n  gc   = " ^ Time.toString gc
 		       ^ "\n  sys  = " ^ Time.toString sys
 		       ^ "\n  real = " ^ Time.toString real
 		       ^ "\n")
@@ -687,7 +655,6 @@ functor Manager(structure StrId : STRID
 	    end
 
 	fun 'a doPickleNGen 
-	    (show : (string -> unit) -> 'a -> unit)
 	    (smlfile : string) 
 	    (pu : (name list *'a) Pickle.pu) 
 	    (ext : string)
@@ -716,12 +683,6 @@ functor Manager(structure StrId : STRID
 			val _ = app (fn n => H.insert H (#1(Name.key n),())) (#1 N0B0)
 			val _ = renameN 1 H (#1 NB)
 			val NB = matchGen match (NB,N0B0)
-(*
-			val _ = pchat ("Basis from file " ^ smlfile ^ ":")
-			val _ = show print (#2 N0B0)
-			val _ = pchat ("New computed Basis:")
-			val _ = show print (#2 NB)
-*)
 		    in if length (#1 NB) = length (#1 N0B0) andalso eq (#2 NB, #2 N0B0) then 
 			(  List.app Name.mk_rigid (#1 NB)
 			 ; pchat "identical NB in eb-file"
@@ -738,10 +699,10 @@ functor Manager(structure StrId : STRID
 	val pu_NB = Pickle.pairGen(pu_names,Basis.pu)
 *)
 	fun doPickleNB0 smlfile (NB0:Name.name list * Basis.Basis0) : unit = 
-	    doPickleNGen Basis.showBasis0 smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
+	    doPickleNGen smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
 
 	fun doPickleNB1 smlfile (NB1:Name.name list * Basis.Basis1) : unit = 
-	    doPickleNGen Basis.showBasis1 smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
+	    doPickleNGen smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
 (*
 	fun doPickleNB smlfile (NB:Name.name list * Basis) : unit = 
 	    doPickleNGen smlfile pu_NB "eb" Basis.match Basis.eq NB
@@ -808,9 +769,10 @@ functor Manager(structure StrId : STRID
 	    let val _ = pchat "\n [Begin unpickling elaboration bases...]\n"
 		fun process (nil,is,acc) = (is, rev acc)
 		  | process (ebfile::ebfiles,is,acc) =
-		    let val s = readFile ebfile
+		    let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
 			val ((_,infixElabBasis),is) = Pickle.unpickler pu_NB0
 			    (Pickle.fromStringHashCons is s)
+			    handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile)
 			val entry = {ebfile=ebfile,infixElabBasis=infixElabBasis,
 				     used=ref false}
 		    in process(ebfiles,is,entry::acc)
@@ -819,9 +781,11 @@ functor Manager(structure StrId : STRID
 		case ebfiles of 
 		    nil => (NONE,nil)
 		  | ebfile::ebfiles => 
-			let val s = readFile ebfile
+			let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
 			    val ((_,infixElabBasis),is) = 
 				Pickle.unpickler pu_NB0 (Pickle.fromString s)
+				handle Fail st => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
+				     | e => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile ^ ": " ^ General.exnMessage e)
 			    val (is, entries) = 
 				process(ebfiles,is,[{ebfile=ebfile,
 						     infixElabBasis=infixElabBasis,
@@ -902,7 +866,15 @@ functor Manager(structure StrId : STRID
 		val _ = chat "[interpretation begin...]"
 		val names_elab = !Name.bucket
 		val _ = Name.bucket := []
+(*         	val _ = Compiler.Profile.reset()  mads *)
 		val (intB', modc) = IntModules.interp(fi,absprjid, intB_im, topdec', unitname)
+(*              val _ = if Flags.is_on0 "compiler_timings" ()
+                  then let val os = TextIO.openOut "compileprofile"
+                       in Compiler.Profile.report os;
+                          TextIO.closeOut os
+                       end
+                   else ()
+*)
 		val names_int = !Name.bucket
 		val _ = Name.bucket := []
 		val _ = chat "[interpretation end...]"
@@ -1088,11 +1060,11 @@ functor Manager(structure StrId : STRID
 	    ; map #ebfile (List.filter (! o #used) elabBasesInfo)
 	end
 
-    (* ----------------------------------------------------------
-     * Build file for mlb-project ; flag compile_only enabled 
-     * ---------------------------------------------------------- *)
+    (* -------------------------------------------------------------------
+     * Build SML source file for mlb-project ; flag compile_only enabled 
+     * ------------------------------------------------------------------- *)
 
-    fun build_mlb_one2 mlbfile ebfiles smlfile : unit =
+    fun build_mlb_one2 (mlbfile, ebfiles, smlfile) : unit =
 	let (* load the bases that smlfile depends on *)
 	    val _ = print("[reading source file:\t" ^ smlfile)
 	    val (unpickleStream, elabBasesInfo) = doUnpickleBases0 ebfiles
@@ -1371,7 +1343,7 @@ functor Manager(structure StrId : STRID
 			of SOME _ => ()
 			 | NONE => 
 			    if body3 = EMPTYbody andalso isPAR body2 then 
-				MO.ModCode.makeUlfile (absprjid,modc1,modc)
+				MO.ModCode.makeUlfile (MO.ModCode.ulfile absprjid,modc1,modc)
 			    else ()
 (*
 				let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
@@ -1595,8 +1567,12 @@ functor Manager(structure StrId : STRID
     fun link_lnk_files() : unit =  
 	let val lnkFiles = Flags.get_stringlist_entry "link"
 	    val modc = readLinkFiles lnkFiles
-	    val _ = ModCode.mk_exe_all_emitted(modc, nil, !run_file)
-	in ()
+	in if !Flags.SMLserver then
+	    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
+		val modc_scripts = readLinkFiles lnkFilesScripts		
+	    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
+	    end
+	   else ModCode.mk_exe_all_emitted(modc, nil, !run_file)
 	end
 
     (* -----------------------------
@@ -1622,6 +1598,52 @@ functor Manager(structure StrId : STRID
 	ModCode.mk_exe(absprjid, modc, extobjs_basislib, !run_file)
       end
 
+    (* ----------------------------
+     * Build an MLB project
+     * ---------------------------- *)
+
+    fun isolate (f : 'a -> unit) (a:'a) : unit =
+	case Posix.Process.fork() of
+	    SOME pid => 
+		let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
+		in if pid2 = pid then 
+		    (case status of
+			 Posix.Process.W_EXITED => ()
+		       | Posix.Process.W_EXITSTATUS w => raise Fail "isolate error"
+		       | _ => raise Fail "isolate error 3")
+		   else raise Fail "isolate error 2"
+		end
+	  | NONE => (f a before Posix.Process.exit 0w0
+		     handle _ => Posix.Process.exit 0w1)
+
+    structure MlbPlugIn : MLB_PLUGIN  =
+	struct
+	    fun compile0 target a =
+		(Flags.turn_on "compile_only";
+		 Flags.lookup_string_entry "output" := target;
+		 build_mlb_one2 a)
+
+	    fun compile {verbose} {basisFiles,source,namebase,target,flags=""} :unit =
+		isolate (compile0 target) (namebase, basisFiles, source)
+	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
+
+	    fun link0 target lnkFiles lnkFilesScripts () =
+		(Flags.lookup_string_entry "output" := target;
+		 Flags.lookup_stringlist_entry "link" := lnkFiles;
+		 Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
+		 link_lnk_files ())
+
+	    fun link {verbose} {target,lnkFiles,lnkFilesScripts,flags=""} :unit =
+		isolate (link0 target lnkFiles lnkFilesScripts) ()
+	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
+
+	    fun mlbdir() = "MLB/MLKit"
+	    fun objFileExt() = if MO.backend_name = "native" then ".o" else ".uo"	    
+	end
+
+    structure MlbMake = MlbMake(structure P = MlbPlugIn
+				val verbose = Flags.is_on0 "chat"
+				val oneSrcFile : string option ref = ref NONE)
 
     (* -----------------------------
      * Elaborate a single file 
@@ -1638,13 +1660,14 @@ functor Manager(structure StrId : STRID
 	 ) handle E => (log_cleanup(); raise E)
       end 
 
-    datatype source = SML of string | PM of string | WRONG_FILETYPE of string 
+    datatype source = SML of string | PM of string | MLB of string | WRONG_FILETYPE of string 
 
     fun determine_source (s:string) : source = 
 	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.pm', '.mlb', '.sml', '.sig', or '.fun'.\n" ^
 					  "The file name you gave me has " ^ s)
 	in case OS.Path.ext s of 
 	    SOME "pm" => PM s
+	  | SOME "mlb" => MLB s
 	  | SOME ext => if Flags.has_sml_source_ext ext then SML s
 			else wrong ("extension " ^ quot ext ^ ".")
 	  | NONE => wrong ("no extension.")
@@ -1661,10 +1684,24 @@ functor Manager(structure StrId : STRID
 			     if Flags.is_on "compile_only" then
 				 let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
 				     val namebase = Flags.get_string_entry "namebase"
-				 in build_mlb_one2 namebase ebfiles s 
+				 in build_mlb_one2 (namebase, ebfiles, s)
 				 end
 			     else comp_file s
 		       | PM s => build s
+		       | MLB s => 
+				 let val target =
+				     if !Flags.SMLserver then
+					 let val {dir,file} = OS.Path.splitDirFile s
+					     val op ## = OS.Path.concat infix ##
+					 in dir ## "MLB" ## (OS.Path.base file ^ ".ul")
+					 end
+				     else Flags.get_string_entry "output"
+				 in  
+				     (MlbMake.build{flags="",mlbfile=s,target=target} 
+				      handle _ => 
+					  (print "Stopping MLB compilation due to errors.\n";
+					   raise PARSE_ELAB_ERROR nil))
+				 end
 		       | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil))
 	      | _ => raise Fail "I expect at most one file name"
 			     

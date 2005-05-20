@@ -8,11 +8,16 @@
 #include "GC.h"
 #include "CommandLine.h"
 
-#ifdef THREADS
+#if defined(THREADS) && defined(AOLSERVER)
 #include "/usr/share/aolserver/include/ns.h"
 extern Ns_Mutex freelistMutex;
 #define FREELIST_MUTEX_LOCK     Ns_LockMutex(&freelistMutex);
 #define FREELIST_MUTEX_UNLOCK   Ns_UnlockMutex(&freelistMutex);
+#elif defined(THREADS) && defined(APACHE)
+#include "apr_thread_mutex.h"
+extern apr_thread_mutex_t *freelistMutex;
+#define FREELIST_MUTEX_LOCK     apr_thread_mutex_lock(freelistMutex);
+#define FREELIST_MUTEX_UNLOCK   apr_thread_mutex_unlock(freelistMutex);
 #else
 #define FREELIST_MUTEX_LOCK
 #define FREELIST_MUTEX_UNLOCK
@@ -445,7 +450,7 @@ void alloc_new_block(Gen *gen) {
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
-    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )
+    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )            // inherit to-space bit
       (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
   // ToDo: GenGC only if tospace bit is set already
     else
@@ -821,15 +826,14 @@ int *allocGen (Gen *gen, int n) {
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
       Lobjs* lobjs;
+      // fprintf(stderr,"Allocating large object of %d words\n", n);
       r = get_ro_from_gen(*gen);
       lobjs = alloc_lobjs(n);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
-      //      die("Allocating Large Object \n"); // ToDo: GenGC remove
-      #ifdef PROFILING
-          fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
+    #ifdef PROFILING
       allocatedLobjs++;
-      #endif
+    #endif
 #ifdef ENABLE_GC
       lobjs_current += 4*n;
       lobjs_period += 4*n;
@@ -864,7 +868,6 @@ int *allocGen (Gen *gen, int n) {
   }
   gen->a = t2;
 
-  //  chk_obj_in_gen(gen, (unsigned int*) t1, "allocGen");   // ToDo: GenGC remove when GC works
   debug(printf("]\n"));
 
   return t1;

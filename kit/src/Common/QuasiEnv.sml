@@ -3,13 +3,11 @@
  * be used locally for each program unit ('a qmap).  
  *)
 
-functor QuasiEnv(structure OFinMap : MONO_FINMAP
+functor QuasiEnv(structure OFinMap : MONO_FINMAP where type StringTree = PrettyPrint.StringTree
 		 val key : OFinMap.dom -> int
-		 val eq  : OFinMap.dom * OFinMap.dom -> bool
-		 structure PP : PRETTYPRINT
-		   sharing type PP.StringTree = OFinMap.StringTree
-		 structure Crash : CRASH) : QUASI_ENV =
+		 val eq  : OFinMap.dom * OFinMap.dom -> bool) : QUASI_ENV =
   struct
+    structure PP = PrettyPrint
     structure H = Polyhash
     structure Env = OFinMap
 
@@ -41,7 +39,7 @@ functor QuasiEnv(structure OFinMap : MONO_FINMAP
 	    case H.peek h a of SOME _ => false | NONE => true	  	        (* First, filter out things in *)
 	  val m' = Env.filter not_in_hash_table m				(* map that are in hash table  *)
 	  val acc' = Env.Fold f acc m' 	                                        (*******************************)
-      in List.foldl f acc (H.listItems h)
+      in List.foldl f acc' (H.listItems h)  (* was acc ; mael 2005-02-08 *)
       end
 
     fun combine(m_pure, m_imp as (discard, h)) = (m_pure, h)

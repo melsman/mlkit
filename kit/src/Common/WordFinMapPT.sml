@@ -4,10 +4,9 @@
  * NH 1998-12-08. Based on IntFinMapPT.sml
  *)
 
-functor WordFinMap(structure PP : PRETTYPRINT
-		   structure Report : REPORT) : MONO_FINMAP =
+structure WordFinMap: MONO_FINMAP =
 struct
-  
+  structure PP = PrettyPrint
   type dom = word
   
   (* helper functions *)

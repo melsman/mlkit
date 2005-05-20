@@ -1,6 +1,6 @@
 (* Labels - Definition v3 page 4 *)
 
-functor Lab(): LAB =
+structure Lab: LAB =
   struct
       
     datatype lab = LAB of string

@@ -1,11 +1,15 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit Version 4.1.4
+# RPM Spec File for the ML Kit
 # ---------------------------------------------------------------------
+#
+# Do NOT modify the file "kit/mlkit.spec" directly - it is generated
+# from "kit/mlkit.spec.in" and based on the file "kit/version"; See 
+# the file "kit/Makefile" for details.
 #
 # Here is a short description of how to build an RPM File for the ML
 # Kit. First, check that you can build the Kit with the shell command
 #
-#   % make
+#   $ make
 #
 # from within the ML Kit root directory. You must also be able to
 # install the Kit in /usr/share/mlkit with the command (you need to be
@@ -23,25 +27,33 @@
 # have such a gzipped tar file. To create the gzipped tar file, execute 
 # the command
 #
-#   % make tgz
+#   $ make tgz
 #
-# from within the ML Kit root directory. As root, copy the 
-# specification file mlkit.spec to /usr/src/redhat/SPECS/mlkit-x.y.z.spec 
-# and copy the file mlkit-x.y.z.tgz to /usr/src/redhat/SOURCES/. You are 
-# now ready for the build:
+# from within the ML Kit root directory. Also, execute the command:
+#
+#   $ make mlkit.spec
+#
+# which will generate the mlkit.spec file from the generic file 
+# mlkit.spec.in. Now (as root) copy the generated spec-file and
+# generated tgz-file:
+#
+#   # cp mlkit.spec /usr/src/redhat/SPECS/mlkit-@VERSION@.spec
+#   # cp ../mlkit-@VERSION@.tgz /usr/src/redhat/SOURCES/
+#
+# You are now ready for the build:
 #
 #   # cd /usr/src/redhat/SPECS
-#   # rpm -ba mlkit-x.y.z.spec
+#   # rpm -ba mlkit-@VERSION@.spec
 # 
 # ---------------------------------------------------------------------
 
 Summary: A Standard ML compiler
 Name: mlkit
-Version: 4.1.4
+Version: @VERSION@
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.itu.dk/research/mlkit/download/mlkit-4.1.4.tgz
+Source: http://www.itu.dk/research/mlkit/download/mlkit-@VERSION@.tgz
 URL: http://www.itu.dk/research/mlkit
 Vendor: IT University of Copenhagen
 Packager: Martin Elsman (mael@itu.dk)
@@ -56,9 +68,9 @@ programming language Standard ML. The Kit covers all of Standard
 ML, as defined in the 1997 edition of the Definition of Standard ML
 and supports most of the Standard ML Basis Library. The Kit uses a
 region based memory management scheme in which allocation and
-deallocation primitives are added to the program at compile time. The
-Kit also makes it possible to combine the region based memory
-management scheme with traditional pointer tracing garbage
+deallocation primitives are inserted into the program at compile 
+time. The Kit also makes it possible to combine the region based 
+memory management scheme with traditional pointer tracing garbage
 collection. Two versions of the the Kit are available, one that
 generates efficient native code for the x86 architecture and one that
 generates portable bytecode to be interpreted by an abstract

@@ -9,9 +9,6 @@ signature TOPDEC_GRAMMAR =
 
     (* Various kinds of module identifiers. *)
 
-    structure StrId : STRID sharing StrId = DecGrammar.StrId
-    structure FunId : FUNID
-    structure SigId : SIGID
     type strid = StrId.strid
     type longstrid = StrId.longstrid 
     type funid = FunId.funid
@@ -22,12 +19,12 @@ signature TOPDEC_GRAMMAR =
     type id = DecGrammar.id
     type tyvar = DecGrammar.tyvar
     type ty = DecGrammar.ty
-    eqtype tycon sharing type tycon = DecGrammar.tycon
+    type tycon = DecGrammar.tycon
     type longtycon = DecGrammar.longtycon
 
     (* info place-holder. *)
 
-    type info      sharing type info = DecGrammar.info
+    type info = DecGrammar.info
 
     datatype 'a WithInfo = WITH_INFO of info * 'a
       sharing type WithInfo = DecGrammar.WithInfo
@@ -133,7 +130,7 @@ signature TOPDEC_GRAMMAR =
     val map_strexp_info : (info -> info) -> strexp -> strexp
       (* does not proceed into sigexp's *)
 
-    type StringTree sharing type StringTree = DecGrammar.StringTree
+    type StringTree = DecGrammar.StringTree
 
     val layoutStrexp  : strexp  -> StringTree
     and layoutStrdec  : strdec  -> StringTree

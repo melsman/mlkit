@@ -1,31 +1,10 @@
 (* Error information *)
 
-functor ErrorInfo(structure StatObject : STATOBJECT
-		  structure ModuleStatObject : MODULE_STATOBJECT
-		    sharing ModuleStatObject.TyName = StatObject.TyName
-		    sharing type ModuleStatObject.TyVar = StatObject.TyVar
-		    sharing type ModuleStatObject.Type = StatObject.Type
-		    sharing type ModuleStatObject.TypeScheme = StatObject.TypeScheme
-		    sharing type ModuleStatObject.TypeFcn = StatObject.TypeFcn
-                  structure Ident: IDENT
-		    sharing type Ident.id = ModuleStatObject.id
-                  structure Lab:   LAB
-                  structure TyCon: TYCON
-		    sharing type TyCon.longtycon = ModuleStatObject.longtycon
-                  structure SigId: SIGID
-                  structure StrId: STRID
-		    sharing type StrId.strid = ModuleStatObject.strid
-		    sharing type StrId.longstrid = ModuleStatObject.longstrid
-                  structure FunId: FUNID
-                  structure Report: REPORT
-		  structure PrettyPrint : PRETTYPRINT
-		    sharing type StatObject.StringTree = PrettyPrint.StringTree
-		    ) : ERROR_INFO =
+structure ErrorInfo: ERROR_INFO =
   struct
 
     (*import from StatObject:*)
     structure TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     structure TypeFcn      = StatObject.TypeFcn

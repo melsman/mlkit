@@ -1,7 +1,8 @@
 (* Finite sets using balanced AVL trees *)
 
-functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
+structure IntSet: KIT_MONO_SET =
   struct
+    structure PP = PrettyPrint
 
     infix ==
 

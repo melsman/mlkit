@@ -457,7 +457,8 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
                         structure PrettyPrint = PP
                         structure Report = Report
                         structure Flags = Flags
-                        structure Crash = Crash)
+                        structure Crash = Crash
+                        structure Timing= Tools.Timing)
 
     structure Compile =
       Compile(structure RegionExp = RegionExp

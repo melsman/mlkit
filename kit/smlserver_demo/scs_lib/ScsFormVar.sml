@@ -120,6 +120,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val buildErrMsg : errs -> quot
     val anyErrors : errs -> unit
     val isErrors  : errs -> bool
+    val mergeErrs : errs * errs -> errs
 
     val getIntErr              : int formvar_fn
     val getIntTrimErr          : int formvar_fn
@@ -143,9 +144,11 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getHtmlErr             : string formvar_fn
     val getUrlErr              : string formvar_fn
     val getCprErr              : string formvar_fn
+    val getEanErr              : string formvar_fn
     val getISSNErr             : string formvar_fn
     val getISBNErr             : string formvar_fn
     val getEnumErr             : string list -> string formvar_fn
+    val getEnumsErr            : string list -> string list formvar_fn
     val getYesNoErr            : string formvar_fn
     val getMthErr              : int formvar_fn
     val getWeekErr              : int formvar_fn
@@ -195,6 +198,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     val emptyErr : errs = []
 
+    fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
+
     fun addErr (emsg:quot,errs:errs) = emsg :: errs
     fun genErrMsg (f_msg:string,msg:quot) : quot = 
        `^(ScsDict.s [(ScsLang.en, `Field:`),(ScsLang.da, `Felt:`)]) <b>^(f_msg)</b>. ` ^^ msg
@@ -236,6 +241,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     fun isErrors ([]:errs) = false
       | isErrors (errs) = true
+
+    fun mergeErrs (e1,e2) = e1 @ e2
 
     fun wrapQQ (f : string formvar_fn) : string * string * errs -> (string * string) * errs =
       fn arg =>
@@ -408,6 +415,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  (ScsLang.da,`tekststreng eller den er for kort - minimum %0 tegn`)] [Int.toString l])
 	(fn v => if size v = 0 orelse size v < l then NONE else SOME v)
 
+
       val getWeekdayErr = getErrWithOverflow Date.Mon [(ScsLang.da,`Ugedag`),(ScsLang.en,`Day of Week`)] (fn str => ScsDate.weekday_from_DB str)
 
 
@@ -428,6 +436,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	else
 	  (0,errs')
       end
+
 
     fun getRealRangeErr a b (args as (fv:string,emsg:string,errs:errs)) =
       let
@@ -623,6 +632,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     ved navn Claes Anders Fredrik Moren, født den
 	     31. august 1975, skal skrive: <b>310875-CLM1</b>.
 	     </blockquote>`)
+
+      fun msgEan s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     An EAN number must be 13 digits
+	     </blockquote>`
+	 | ScsLang.da => `^s
+	     <blockquote>
+	     Et EAN-nummer skal være på 13 cifre.
+	     </blockquote>`)
+
+
       fun msgISSN s = 
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
@@ -880,6 +902,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	end
       handle _ => false
 
+      fun convEan ean = ean
+
+      fun chkEan ean = 
+        let
+	  val exploded = String.explode ean
+	in 
+	  case exploded of
+	      d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: d10 :: 
+	      d11 :: d12 :: d13 :: [] => List.all Char.isDigit exploded
+	    | _ => false
+	end
+
+
 	(* Calculating the check digit
 	 Excerpted from the ISSN Manual, a publication of the ISSN International Network 
 
@@ -1007,9 +1042,10 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		 | _ => false))
 	   handle _ => false      
 
-      val datePat1 = "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
+      val datePat1 = Quot.toString `([0-9][0-9]?)[/\-]([0-9][0-9]?)[/\-]([0-9][0-9][0-9][0-9])`
+(* 2005-04-19, knp: OBSOLETE
       val datePat2 = "([0-9][0-9]?)-([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
-
+*)
       fun chkMth v =
 	case regExpExtract "([0-9][0-9]?)" v of
 	  SOME [m] => 
@@ -1041,32 +1077,20 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  SOME [y] => if (ScsError.valOf o Int.fromString) y > 1900 then true else false
 	| _ => false
 
-      fun chkDate v =
-	(case regExpExtract datePat1 v of
-	   SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-	 | _ => ( case regExpExtract datePat2 v of
-	   	      SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-		    | _ 		=> chkDateIso v 
-		)
-(* 2004-01-09, knp: inserted chkDateIso v instead
-case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
-		   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-		 | _ => false)
-*)
-	)
-	handle _ => false   
+      fun chkDate v = ( case regExpExtract datePat1 v of
+	  SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
+	| _		    => chkDateIso v 
+      )
+      handle _ => false   
 
       fun convDate v = (case regExpExtract datePat1 v of
 	  SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
-	| _		    => (case regExpExtract datePat2 v of
-	    SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
-	  | _		      => (case regExpExtract isoDatePat1 v of
-	      SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
-	    | _		        => ( 
-	      ScsError.panic `ScsFormVar.convDate failed on ^v`
-	    )
+	| _		    => (case regExpExtract isoDatePat1 v of
+	    SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
+	  | _		        => ( 
+	    ScsError.panic `ScsFormVar.convDate failed on ^v`
 	  )
-        )
+	)
       )
       handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
 
@@ -1133,10 +1157,31 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 				  String.size url <= 200)
 
       val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
-      val getISSNErr = getErr "" convISSN [(ScsLang.en,`ISSN number`),(ScsLang.da,`ISSN nummer`)] msgISSN chkISSN
-      val getISBNErr = getErr "" convISBN [(ScsLang.en,`ISBN number`),(ScsLang.da,`ISBN nummer`)] msgISBN chkISBN
+
+      val getEanErr = getErr "" convEan [(ScsLang.en,`EAN number`),(ScsLang.da,`EAN nummer`)] msgEan chkEan
+      val getISSNErr = getErr "" convISSN [(ScsLang.en,`ISSN number`),(ScsLang.da,`ISSN nummer`)] 
+			      msgISSN chkISSN
+      val getISBNErr = getErr "" convISBN [(ScsLang.en,`ISBN number`),(ScsLang.da,`ISBN nummer`)] 
+			      msgISBN chkISBN
       val getEnumErr = fn enums => getErr' [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] 
                                      (msgEnum enums) (chkEnum enums)
+      fun getEnumsErr enums (fv,title,errs) =
+	let
+	  val sels = getStrings fv
+	  val errs = 
+	    if List.null sels then
+	      addErr(ScsDict.s' [(ScsLang.da,`<b>^title</b>: Du skal angive mindst et valg`),
+				 (ScsLang.en,`<b>^title</b>: You must make atleast one choise.`)],errs)
+	    else
+	      errs
+	  fun chkEnumErr (enum,(acc,errs)) =
+	    if chkEnum enums enum then 
+	      (enum::acc,errs)
+	    else 
+	      (acc,addErr(msgEnum enums title,errs))
+	in
+	  List.foldr chkEnumErr ([],errs) sels
+	end
       fun getYesNoErr args =
 	let val enums = [ScsDict.s [(ScsLang.en,`Yes`),(ScsLang.da,`Ja`)],
 			 ScsDict.s [(ScsLang.en,`No`),(ScsLang.da, `Nej`)]] 
@@ -1243,10 +1288,6 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 		   else false)
 
     end (* of local block *)
-
-    fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
-
-
 
     fun getRoleIdErr (fv,errs) = getIntErr(fv,ScsDict.s [(ScsLang.en,`Role id`),(ScsLang.da,`Rolle id`)],errs)
 

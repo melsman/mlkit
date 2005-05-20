@@ -68,6 +68,7 @@ structure Quot : QUOT =
     end
 
     fun valOf q_opt = case q_opt of SOME q => q | NONE => ``
+
   end
 
 type quot = Quot.quot

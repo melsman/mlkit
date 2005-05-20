@@ -1,42 +1,13 @@
 
 (* Storage Mode Analysis *)
 
-functor AtInf(structure Lvars: LVARS
-              structure Excon: EXCON
-              structure MulExp: MUL_EXP
-	      structure Mul: MUL
-	      structure Eff: EFFECT
-              structure RType: RTYPE
-              structure LLV: LOCALLY_LIVE_VARIABLES
-              structure RegFlow: REG_FLOW
-              structure BT: MONO_FINMAP (* finite maps with domain = keys of lvars *)
-                            where type dom = int * string 
-              structure RegvarBT: MONO_FINMAP 
-	      structure PP: PRETTYPRINT
-		sharing type PP.StringTree = Mul.StringTree 
-		           = MulExp.StringTree = Eff.StringTree = LLV.StringTree
-                           = RType.StringTree
-	      structure Flags: FLAGS
-	      structure Crash: CRASH
-	      structure Report: REPORT
-	      sharing type Report.Report = Flags.Report = PP.Report
-              structure Timing: TIMING
-      	        sharing type Eff.place = MulExp.place = MulExp.effect 
-                        = LLV.place = RegFlow.place = RegFlow.effect  
-                        = RegvarBT.dom = RType.place = RType.effect 
-                        = Eff.place = Eff.effect 
-	        sharing type Mul.mul = MulExp.mul = LLV.mul = RegFlow.mul
-                sharing type LLV.qmularefset = Mul.qmularefset 
-                        = RegFlow.qmularefset = MulExp.qmularefset
-                sharing type LLV.LambdaPgm = MulExp.LambdaPgm = RegFlow.LambdaPgm
-                sharing type LLV.lvar = Lvars.lvar = MulExp.lvar
-                sharing type Excon.excon = MulExp.excon = LLV.excon
-                sharing type RType.Type = MulExp.Type 
-                sharing type RType.tyvar = MulExp.tyvar
-                sharing type RType.sigma = MulExp.sigma
-) : AT_INF =
+structure AtInf: AT_INF =
   struct
-
+    structure PP = PrettyPrint
+    structure Eff = Effect
+    structure LLV = LocallyLiveVariables
+    structure BT = IntStringFinMap
+    structure RegvarBT = EffVarEnv
     structure EdList = Edlib.List
     
     (* In the old storage mode analysis an environment was propagated to later

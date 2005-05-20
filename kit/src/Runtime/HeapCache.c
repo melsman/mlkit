@@ -36,30 +36,43 @@ static int restoreRegion(RegionCopy *rc);
 
 static int heapid_counter = 0;
 
-#ifdef THREADS
+#if defined(THREADS) && defined(AOLSERVER)
 #include "/usr/share/aolserver/include/ns.h"
 extern Ns_Mutex stackPoolMutex;
 #define HEAP_POOL_MUTEX_LOCK     Ns_LockMutex(&stackPoolMutex);
 #define HEAP_POOL_MUTEX_UNLOCK   Ns_UnlockMutex(&stackPoolMutex);
 
-static void 
-dienow(char *s)
-{
-  Ns_Log(Notice,"die2: %s",s);
-  die(s);
-}
+#elif defined(THREADS) && defined(APACHE)
+#include "apr_thread_mutex.h"
+extern apr_thread_mutex_t *stackPoolMutex;
+#define HEAP_POOL_MUTEX_LOCK     apr_thread_mutex_lock(stackPoolMutex);
+#define HEAP_POOL_MUTEX_UNLOCK    apr_thread_mutex_unlock(stackPoolMutex);
 
 #else
+
 #define HEAP_POOL_MUTEX_LOCK
 #define HEAP_POOL_MUTEX_UNLOCK
 
+#endif
+
+static void
+dienow(char *s)
+{
+#if defined(AOLSERVER)
+  Ns_Log(Notice,"die2: %s",s);
+#elif defined(APACHE)
+  logMsg(s);
+#endif
+  die(s);
+}
+
+/*
 static void 
 dienow(char *s)
 {
   die(s);
 }
-
-#endif
+*/
 
 static Heap* heapPool[MAX_HEAP_POOL_SZ];
 static int heapPoolIndex = 0;
