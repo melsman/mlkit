@@ -26,12 +26,18 @@ structure Listsort =
 
 signature MLB_PLUGIN =
   sig
-     val compile : (unit->bool) -> {basisFiles: string list, 
-				    source: string, 
-				    namebase: string,     (* for uniqueness of type names, etc *)
-				    target: string, 
-				    flags: string} -> unit
-     val link : (unit->bool) -> {target: string, lnkFiles: string list, flags: string} 
+     val compile : {verbose:unit->bool} 
+	 -> {basisFiles: string list, 
+	     source: string, 
+	     namebase: string,     (* for uniqueness of type names, etc *)
+	     target: string, 
+	     flags: string} 
+	 -> unit
+     val link : {verbose:unit->bool} 
+	 -> {target: string, 
+	     lnkFiles: string list, 
+	     lnkFilesScripts: string list, 
+	     flags: string} 
 	 -> unit
 
      val mlbdir : unit -> string
@@ -82,7 +88,7 @@ structure MlbUtil =
 functor MlbMake(structure P: MLB_PLUGIN
 		val verbose : unit->bool
 		val oneSrcFile : string option ref)
-    : sig val build : {flags:string,mlbfile:string} -> unit 
+    : sig val build : {flags:string,mlbfile:string,target:string} -> unit 
       end =
 struct
     structure MlbProject = MlbProject()
@@ -101,14 +107,14 @@ struct
 	    in dir ## P.mlbdir () ## (file ^ ext)
 	    end
     in
-	fun objFileFromSmlFile mlbfile smlfile =
+	fun objFileFromSmlFile smlfile =
 	    fileFromSmlFile smlfile (P.objFileExt())
 
-	fun lnkFileFromSmlFile mlbfile smlfile = 
-	    objFileFromSmlFile mlbfile smlfile ^ ".lnk"
+	fun lnkFileFromSmlFile smlfile = 
+	    objFileFromSmlFile smlfile ^ ".lnk"
 
-	fun ebFileFromSmlFile mlbfile smlfile = 
-	    objFileFromSmlFile mlbfile smlfile ^ ".eb"
+	fun ebFileFromSmlFile smlfile = 
+	    objFileFromSmlFile smlfile ^ ".eb"
 
 	fun depFileFromSmlFile smlfile =
 	    fileFromSmlFile smlfile ".d"
@@ -167,34 +173,46 @@ struct
 	in let val all = TextIO.inputAll is handle _ => ""
 	       val smlfiles = String.tokens Char.isSpace all
 	       val smlfiles = map (dirMod dir) smlfiles   
-	       val _ = vchat ("Dependencies for " ^ smlfile ^ ": " ^ all)
+	       val _ = vchat ("Dependencies for " ^ smlfile ^ ": " ^ MlbUtil.pp_list " " smlfiles)
 	   in TextIO.closeIn is; smlfiles
 	   end handle _ => (TextIO.closeIn is; nil)
 	end handle _ => nil
 
+    exception Recompile of string
+
     fun recompileUnnecessary mlbfile smlfile : bool =
-    (* f.sml<f.{lnk,eb} and f.d<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.lnk *)
-	let val _ = vchat ("Checking necessity of recompiling " ^ smlfile)
+    (* f.{sml,d}<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.lnk *)
+	let fun rchat s = vchat ("Recompilation necessary: " ^ s)
+	    fun mchat s = rchat ("cannot determine modification time of " ^ MlbUtil.quot s)
+	    val _ = vchat ("Checking necessity of recompiling " ^ smlfile)
 	    fun modTime f = OS.FileSys.modTime f
-	    val op < = Time.<=
-	    val lnkFile = lnkFileFromSmlFile mlbfile smlfile
-	    val ebFile = ebFileFromSmlFile mlbfile smlfile
+		handle X => (mchat f; raise X)
+	    val op <= = Time.<=
+	    val lnkFile = lnkFileFromSmlFile smlfile
+	    val ebFile = ebFileFromSmlFile smlfile
 	    val depFile = depFileFromSmlFile smlfile
-	    val modTimeSmlFile = modTime smlfile handle X => (vchat "modTime SMLfile"; raise X)
-	    val modTimeLnkFile = modTime lnkFile handle X => (vchat "modTime lnkFile"; raise X)
+	    val modTimeSmlFile = modTime smlfile 
+	    val modTimeLnkFile = modTime lnkFile 
 	    fun debug(s,b) = (vchat(s ^ ":" ^ Bool.toString b); b)
-	in modTimeSmlFile < modTimeLnkFile 
+	    fun reportBool true s = true
+	      | reportBool false s = (rchat s; false)
+	in reportBool (modTimeSmlFile <= modTimeLnkFile) "sml-file newer than lnk-file"
 	    andalso
-	    let val modTimeEbFile = modTime ebFile handle X => (vchat ("modTime ebFile " ^ ebFile); raise X)
-	    in modTimeSmlFile < modTimeEbFile 
-		andalso
-		let val modTimeDepFile = modTime depFile handle X => (vchat "modTime depFile"; raise X)
-		in modTimeDepFile < modTimeLnkFile
+	    let val modTimeEbFile = modTime ebFile 
+	    in (*reportBool (modTimeSmlFile <= modTimeEbFile) "sml-file newer than eb-file"
+		andalso *)
+		let val modTimeDepFile = modTime depFile 
+		in reportBool(modTimeDepFile <= modTimeLnkFile) "d-file newer than lnk-file"
 		    andalso
-		    modTimeDepFile < modTimeEbFile
-		    andalso
-		    List.all (fn smlfile => modTime (ebFileFromSmlFile mlbfile smlfile) < modTimeLnkFile)
-		    (readDependencies smlfile)
+(*		    reportBool(modTimeDepFile <= modTimeEbFile) "d-file newer than eb-file"
+		    andalso *)
+		    let val debs = readDependencies smlfile (* does not raise exception *)
+		    in List.all (fn smlfile => 
+				 let val ebFile = ebFileFromSmlFile smlfile
+				 in reportBool(modTime ebFile <= modTimeLnkFile)
+				     ("Dependent file " ^ MlbUtil.quot ebFile ^ " newer than lnk-file")
+				 end) debs
+		    end
 		end
 	    end
 	end handle _ => false
@@ -204,11 +222,12 @@ struct
 	else 
 	let val _ = vchat ("Reading dependencies for " ^ smlfile)
 	    val deps = readDependencies smlfile
-	    val basisFiles = map (ebFileFromSmlFile mlbfile) deps
-	in P.compile verbose {basisFiles=basisFiles,source=smlfile,
-			      target=objFileFromSmlFile mlbfile smlfile,
-			      namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
-			      flags=flags}
+	    val basisFiles = map ebFileFromSmlFile deps
+	in P.compile {verbose=verbose} 
+	    {basisFiles=basisFiles,source=smlfile,
+	     target=objFileFromSmlFile smlfile,
+	     namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
+	     flags=flags}
 	end
 
     fun map2 f ss = map (fn (x,y) => (f x,f y)) ss
@@ -281,14 +300,23 @@ struct
 		in del f; app w ss; raise Exit
 		end
 
-    fun build {flags, mlbfile} : unit =
+    fun build {flags, mlbfile, target} : unit =
 	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
 	    val _ = vchat ("Finding sources...\n")		
-	    val srcs_mlbs : (string * string) list = MlbProject.sources mlbfile
-	    val _ = check_sources srcs_mlbs
-	    val ss = map #1 srcs_mlbs
+	    val srcs_all = 
+		let val srcs_mlbs_all : (string * string) list = 
+		       MlbProject.sources MlbProject.SRCTYPE_ALL mlbfile
+		    val _ = check_sources srcs_mlbs_all
+		in
+		    map #1 srcs_mlbs_all
+		end
 
-	    val _ = maybeWriteOneSourceFile ss
+	    val srcs_scriptsonly = 
+		map #1 (MlbProject.sources MlbProject.SRCTYPE_SCRIPTSONLY mlbfile)
+	    val srcs_allbutscripts =
+		map #1 (MlbProject.sources MlbProject.SRCTYPE_ALLBUTSCRIPTS mlbfile)
+
+	    val _ = maybeWriteOneSourceFile srcs_all
 
 	    val _ = vchat ("Updating dependencies...\n")
 	    val _ = maybe_create_mlbdir()
@@ -296,10 +324,12 @@ struct
 	    val _ = MlbProject.dep mlbfile
 		
 	    val _ = vchat ("Compiling...\n")		
-	    val _ = app (build_mlb_one flags mlbfile) ss
+	    val _ = app (build_mlb_one flags mlbfile) srcs_all
 
 	    val _ = vchat ("Linking...\n")		
-	    val lnkFiles = map (lnkFileFromSmlFile mlbfile) ss
-	in P.link verbose {target="a.out",lnkFiles=lnkFiles,flags=flags}
+	    val lnkFiles = map lnkFileFromSmlFile srcs_allbutscripts
+	    val lnkFilesScripts = map lnkFileFromSmlFile srcs_scriptsonly
+	in P.link {verbose=verbose} 
+	    {target=target,lnkFiles=lnkFiles,lnkFilesScripts=lnkFilesScripts,flags=flags}
 	end handle Exit => () (*exit on purpose*)
 end (* functor MlbMake *)

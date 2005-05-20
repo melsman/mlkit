@@ -40,8 +40,11 @@ signature MANAGER_OBJECTS =
 	val mk_exe_all_emitted : modcode * string list * string -> unit  
 	val size : modcode -> int (* for debugging *)
 	(* write the file absprjid[.pm -> .ul] *)
-	val makeUlfile : absprjid * modcode * modcode -> unit
-	(* [makeUlfile (p,mc1,mc2)] stores a file containing the names
+	val ulfile : absprjid -> string
+	(* [ulfile absprjid] returns the name of the ul-file corresponding to the
+	 * absprjid. *)
+	val makeUlfile : string * modcode * modcode -> unit
+	(* [makeUlfile (ulfile,mc1,mc2)] stores a file ulfile containing the names
 	 * of uo-files in mc1, followed by the line ``scripts:'', followed
 	 * by the uo-files in mc2 with the prefix consisting of the uo-files 
 	 * in mc1 removed. *)
