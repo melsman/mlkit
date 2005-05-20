@@ -36,14 +36,6 @@
 
 #define is_string(x)        (tag_kind(x) == TAG_STRING) 
 #define is_table(x)         (tag_kind(x) == TAG_TABLE) 
-#ifdef PROFILING
-#define is_large_string(x)  (is_string(x) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE-12)))
-#define is_large_table(x)   (is_table(x) && (((x)>>6) > (ALLOCATABLE_WORDS_IN_REGION_PAGE-3)))
-#else
-#define is_large_string(x)  (is_string(x) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE-4)))
-#define is_large_table(x)   (is_table(x) && (((x)>>6) > ALLOCATABLE_WORDS_IN_REGION_PAGE-1))
-#endif
-#define is_large_obj(x)     (is_large_string(x) || is_large_table(x))
 
 #define val_tag_string(s)   (gen_string_tag((s),0,1))
 #define get_string_size(s)  ((s) >> 6)

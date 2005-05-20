@@ -1,0 +1,11 @@
+Testing stream structure (part of Pickle library)...
+sz(s) = 8112
+test1    	OK
+sz(s) = 5900
+test2    	OK
+sz(s) = 7006
+test3    	OK
+sz(s) = 7006
+test4    	OK
+sz(s) = 6
+test5    	OK

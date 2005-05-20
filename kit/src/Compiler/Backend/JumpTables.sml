@@ -1,5 +1,4 @@
-functor JumpTables(structure BI : BACKEND_INFO
-		   structure Crash : CRASH) : JUMP_TABLES =
+functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
   struct
 
     (***********)

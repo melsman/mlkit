@@ -1,30 +1,8 @@
 (* Locally live variables: second pass of Storage Mode Analysis *)
 
-
-functor LocallyLiveVariables(    
-    structure Lvars: LVARS
-    structure Lvarset: LVARSET
-    structure Con : CON
-    structure Excon: EXCON
-    structure PrettyPrint: PRETTYPRINT
-    structure Crash: CRASH
-    structure Flags: FLAGS
-    structure Eff: EFFECT
-    structure RType: RTYPE
-    structure MulExp: MUL_EXP
-    structure MulInf: MUL_INF
-      sharing type PrettyPrint.StringTree=Eff.StringTree= MulExp.StringTree = MulInf.StringTree
-      sharing type RType.effect = Eff.effect = Eff.place = MulExp.effect = MulExp.place = MulInf.place
-      sharing type RType.Type = MulExp.Type
-      sharing type Lvars.lvar = MulExp.lvar = Lvarset.lvar
-      sharing type Excon.excon = MulExp.excon
-      sharing type MulInf.LambdaExp = MulExp.LambdaExp
-      sharing type MulInf.qmularefset = MulExp.qmularefset
-      sharing type MulInf.mul = MulExp.mul
-    ) : LOCALLY_LIVE_VARIABLES = 
-
+structure LocallyLiveVariables: LOCALLY_LIVE_VARIABLES = 
 struct
-
+  structure Eff = Effect
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
   type lvarset = Lvarset.lvarset

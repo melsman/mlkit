@@ -521,3 +521,27 @@ printReal(int f)
   printf("Num: %5.2f\n",get_d(f));
   return;
 }
+
+String
+REG_POLY_FUN_HDR(sml_real_to_bytes, Region rAddr, int f)
+{
+  int i;
+  double a[1];
+  unsigned char v[9];
+  a[0] = get_d(f);
+  for (i = 0; i < 8 ; i++)
+    v[i] = ((unsigned char*)a)[i];
+  v[8] = 0;
+  return REG_POLY_CALL(convertBinStringToML, rAddr, 8, v);
+}
+
+int 
+sml_bytes_to_real(int d, String s)
+{
+  double r;
+  unsigned char* a = &(s->data);
+  r = ((double*)a)[0];
+  get_d(d) = r;
+  set_dtag(d);
+  return d;
+}

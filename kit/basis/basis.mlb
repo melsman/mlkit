@@ -66,7 +66,11 @@ local
 
     basis Real =
        let open General String Int
-       in bas MATH.sml Math.sml REAL.sml Real.sml end
+       in bas MATH.sml Math.sml REAL.sml Real.sml 
+	    local open Byte Array
+            in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
+            end
+	  end
        end
 
     basis IntInf =

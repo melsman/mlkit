@@ -1,28 +1,10 @@
 
-functor Infixing(structure InfixBasis: INFIX_BASIS
-                 structure GrammarUtils: GRAMMAR_UTILS
-                   sharing type GrammarUtils.TopdecGrammar.DecGrammar.id = InfixBasis.id
-
-		 structure Report: REPORT
-		 sharing type InfixBasis.Report
-		   = GrammarUtils.Report 
-		   = Report.Report 
-
-		 structure ParseInfo : PARSE_INFO
-		   sharing type ParseInfo.ParseInfo = GrammarUtils.TopdecGrammar.info
-		   sharing type ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
-
-                 structure PP: PRETTYPRINT
-                   sharing type GrammarUtils.TopdecGrammar.DecGrammar.StringTree = PP.StringTree
-		   sharing type PP.Report = Report.Report
-
-                 structure Crash: CRASH
-		   ) : INFIXING =
+structure Infixing: INFIXING =
   struct
-
+    structure PP = PrettyPrint
     fun impossible s = Crash.impossible ("Infixing." ^ s)
-    open GrammarUtils.TopdecGrammar
-    open GrammarUtils.TopdecGrammar.DecGrammar
+    open GrammarUtils.M
+    open GrammarUtils.M.DecGrammar
 
     type Report = Report.Report
     val // = Report.//
@@ -40,9 +22,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
       another for patterns. *)
 
     structure ExpStack =
-      InfixStack(structure InfixBasis = InfixBasis
-
-                 type FullObject = exp
+      InfixStack(type FullObject = exp
                  type AtomObject = atexp
 
                  type id = Ident.id
@@ -84,13 +64,10 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		               exp, atexp)
 
 		 exception InfixStack_error = InfixStack_error
-                 structure Crash = Crash
                 )
 
     structure PatStack =
-      InfixStack(structure InfixBasis = InfixBasis
-
-                 type FullObject = pat
+      InfixStack(type FullObject = pat
                  type AtomObject = atpat
 
                  type id = Ident.id
@@ -129,7 +106,6 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		       | _ =>
 			error_string (get_info_pat pat) "must be an identifier.")
 		 exception InfixStack_error = InfixStack_error
-                 structure Crash = Crash
                 )
 
     open InfixBasis

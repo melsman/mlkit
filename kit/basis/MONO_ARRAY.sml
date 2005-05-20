@@ -16,8 +16,8 @@ signature MONO_ARRAY = sig
   val copyVec : {src : Vector.vector, si : int, len : int option, dst : array, di : int} -> unit 
   val appi : ((int * elem) -> unit) -> (array * int * int option) -> unit 
   val app : (elem -> unit) -> array -> unit 
-  val foldli : ((int * elem * 'b) -> 'b) -> 'b -> (array * int * int option) -> 'b 
-  val foldri : ((int * elem * 'b) -> 'b) -> 'b -> (array * int * int option) -> 'b 
+  val foldli : ((int * elem * 'b) -> 'b) -> 'b -> array -> 'b 
+  val foldri : ((int * elem * 'b) -> 'b) -> 'b -> array -> 'b 
   val foldl : ((elem * 'b) -> 'b) -> 'b -> array -> 'b 
   val foldr : ((elem * 'b) -> 'b) -> 'b -> array -> 'b 
   val modifyi : ((int * elem) -> elem) -> (array * int * int option) -> unit 

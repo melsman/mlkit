@@ -1,46 +1,15 @@
 
-functor ModuleStatObject(structure StrId  : STRID
-			 structure SigId  : SIGID
-			 structure FunId  : FUNID
-			 structure TyName : TYNAME
-			 structure Name   : NAME
-			   sharing type Name.name = TyName.name
-			 structure TyCon : TYCON
-			   sharing type TyCon.strid = StrId.strid
-			   sharing type TyCon.tycon = TyName.tycon
-
-			 structure StatObject : STATOBJECT
-			   sharing StatObject.TyName = TyName
-
-			 structure Environments : ENVIRONMENTS
-			   sharing Environments.TyName = StatObject.TyName
-			   sharing type Environments.TypeFcn    = StatObject.TypeFcn
-			   sharing type Environments.Type       = StatObject.Type
-			   sharing type Environments.TyVar      = StatObject.TyVar
-			   sharing type Environments.TypeScheme = StatObject.TypeScheme
-			   sharing type Environments.strid      = StrId.strid
-			   sharing type Environments.realisation = StatObject.realisation
-			   sharing type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
-
-			 structure PP : PRETTYPRINT
-			   sharing type PP.StringTree (*= Environments.StringTree*)
-				 = TyName.Set.StringTree (*= StatObject.StringTree*)
-
-			 structure Flags : FLAGS
-			 structure Crash : CRASH
-			) : MODULE_STATOBJECT =
+structure ModuleStatObject: MODULE_STATOBJECT =
   struct
-    fun die s = Crash.impossible ("ModuleStatObject." ^ s)
-
+    structure PP = PrettyPrint
     (*import from StatObject:*)
     type realisation       = StatObject.realisation
-    type TyName            = StatObject.TyName.TyName
+    type TyName            = TyName.TyName
     type TyVar             = StatObject.TyVar
     type Type              = StatObject.Type
     type TypeScheme        = StatObject.TypeScheme
     type TypeFcn           = StatObject.TypeFcn
     structure TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     structure TypeFcn      = StatObject.TypeFcn
@@ -365,17 +334,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	if TyName.Set.size T1 <> TyName.Set.size T then false
 	else (* First rename bound names of Sig2 and then match E2 against E1 and
 	      * then check for equality of E1 and E2. *)
-	  let fun check s tn =
-	        if Name.is_gen (TyName.name tn) then
-		    die ("eq.check" ^ s ^ ".TyName " ^ TyName.pr_TyName tn ^ " is generative already.")
-		else ()
-	      fun checkT2 tn = 
-	        if Name.rigid(TyName.name tn) then
-		    die ("eq.checkT2.TyName " ^ TyName.pr_TyName tn ^ " is rigid.")
-		else check "T2" tn
-	      val _ = app (check "") (TyName.Set.list T1)
-	      val SIGMA{T=T2,E=E2} = rename_Sig Sig2
-	      val _ = app checkT2 (TyName.Set.list T2)
+	  let val SIGMA{T=T2,E=E2} = rename_Sig Sig2
 	      val T1 = TyName.Set.list T1
 	      val T2 = TyName.Set.list T2
 	      val _ = mark_names T1
@@ -383,9 +342,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	      val _ = E_match(E2,E1)
 	      val _ = unmark_names T1
 	      val _ = unmark_names T2
-	      val b = E_eq(E1,E2)
-	      val _ = print ("eq: result= " ^ Bool.toString b ^ "\n")
-	  in b
+	  in E_eq(E1,E2)
 	  end
 *)
 		  

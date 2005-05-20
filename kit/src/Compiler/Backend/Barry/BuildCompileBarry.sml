@@ -206,7 +206,8 @@ functor BuildCompileBarry (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE_BARRY
                         structure PrettyPrint = PP
                         structure Report = Report
                         structure Flags = Flags
-                        structure Crash = Crash)
+                        structure Crash = Crash
+                        structure Timing=Tools.Timing)
 
     structure Compile = CompileBarry
              (structure Excon = Excon

@@ -1,5 +1,9 @@
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
 local 
-  $(MLKIT_ROOT)/basislib/basislib.mlb
+  $(SML_LIB)/basis/basis.mlb
   basis Polyhash = 
     bas 
         POLYHASH.sml Polyhash.sml 
@@ -11,6 +15,6 @@ in
   pickle.sig
   open Polyhash
   pickle.sml
-(*  ../../test/pickle.sml *)
+(*  pickletest.sml *)
 end
 

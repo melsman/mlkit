@@ -1,6 +1,6 @@
 (* Functor identifiers *)
 
-functor FunId(): FUNID =
+structure FunId: FUNID =
   struct
     datatype funid = FUNID of string
 

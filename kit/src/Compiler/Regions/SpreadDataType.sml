@@ -9,37 +9,13 @@
 *   
 *)
 
-functor SpreadDatatype(
-  structure Con: CON
-  structure ExCon: EXCON
-  structure FinMap: FINMAP
-  structure Effect: EFFECT
-  structure E: LAMBDA_EXP
-   sharing type E.con = Con.con
-  structure R: RTYPE
-   sharing type R.tyvar = E.tyvar
-   sharing type R.cone = Effect.cone
-  structure TyName: TYNAME
-  structure E': REGION_EXP
-    sharing type E'.sigma = R.sigma 
-    sharing type E'.con = Con.con
-    sharing type E'.TyName = TyName.TyName
-  structure RSE: REGION_STAT_ENV
-    sharing type RSE.TypeAndPlaceScheme = R.sigma
-    sharing type RSE.place = R.effect = Effect.effect
-    sharing type RSE.Type = R.Type
-    sharing type RSE.runType = Effect.runType = R.runType
-    sharing type RSE.con = Con.con 
-    sharing type RSE.excon = E.excon 
-  sharing type TyName.TyName = E.TyName = E'.TyName = 
-           RSE.TyName = R.tyname
-  structure Flags : FLAGS
-  structure Crash: CRASH
-  structure PP: PRETTYPRINT
-    sharing type PP.StringTree = FinMap.StringTree = E.StringTree = RSE.StringTree = R.StringTree
-): SPREAD_DATATYPE =
+structure SpreadDatatype: SPREAD_DATATYPE =
 struct
-
+  structure R = RType
+  structure PP = PrettyPrint
+  structure RSE = RegionStatEnv
+  structure E' = RegionExp
+  structure E = LambdaExp
   structure E = E
   structure E' = E'
   structure LambdaExp = E

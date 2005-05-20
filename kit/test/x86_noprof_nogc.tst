@@ -54,6 +54,10 @@ danwang.pm                    tc
 testmatc.sml        ccl
 excon.sml
 dangle4.sml
+ftv.sml
+elabDecBug.sml      ccl ecte
+oh-no.sml           ccl       nobasislib
+oh-no2.sml          ccl       nobasislib
 
 (* Tests of some benchmark programs *)
 
@@ -125,4 +129,10 @@ word31.sml
 word32.sml 
 regexp1.sml
 regexp2.sml
-
+pickle.pm
+packreal.sml
+patricia.sml
+stream.pm
+natset.sml
+fns.sml
+datatypes.sml

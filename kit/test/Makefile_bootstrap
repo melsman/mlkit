@@ -3,10 +3,14 @@ MKDIR=mkdir -p
 INSTALL=cp -p
 RUNTIME_FLAGS=
 COMP_FLAGS=
+KITDIR=$(shell pwd)
+
+test:
+	echo $(KITDIR)
 
 bootstrap:
 	cd src; make genopcodes
-	cd src; ../bin/mlkit -gc $(COMP_FLAGS) sources.pm
+	cd src; ../bin/mlkit -gc $(COMP_FLAGS) Compiler/native.pm
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
@@ -30,14 +34,87 @@ bootstrap:
 	$(INSTALL) -a src $(INSTDIR)/src
 	cd $(INSTDIR)/src; make clean
 	$(INSTALL) -a ml-yacc-lib $(INSTDIR)/ml-yacc-lib
-	$(INSTALL) -a basislib $(INSTDIR)/basislib
+	$(INSTALL) -a basis $(INSTDIR)/basis
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
 	chmod a+x $(INSTDIR)/bin/mlkit.img
 	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
 
+clean_mlb:
+	rm -rf MLB */MLB */*/MLB */*/*/MLB */*/*/*/MLB */*/*/*/*/MLB */*/*/*/*/*/MLB 
+
+bootstrap_mlb: clean_mlb
+	cd src; make genopcodes
+	cd src; make version
+	cd src/Compiler; export SML_LIB=$(KITDIR); export MLB_MLKIT=$(KITDIR)/bin/mlkit; $(KITDIR)/bin/mlbmake native.mlb -gc
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGenGC.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGenGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
+	$(INSTALL) src/Compiler/a.out $(INSTDIR)/bin/mlkit.img
+	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
+	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
+	chmod a+x $(INSTDIR)/bin/mlkit
+	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
+	chmod a+x $(INSTDIR)/bin/kittester
+	$(INSTALL) bin/mlbmake.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/mlbmake.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/mlbmake
+	chmod a+x $(INSTDIR)/bin/mlbmake
+	$(INSTALL) version $(INSTDIR)
+	$(INSTALL) copyright $(INSTDIR)
+	$(INSTALL) README $(INSTDIR)
+	$(INSTALL) -a kitdemo $(INSTDIR)/kitdemo 
+	$(INSTALL) -a test $(INSTDIR)/test
+	$(INSTALL) -a src $(INSTDIR)/src
+	cd $(INSTDIR)/src; make clean
+	$(INSTALL) -a ml-yacc-lib $(INSTDIR)/ml-yacc-lib
+	$(INSTALL) -a basis $(INSTDIR)/basis
+	chown -R `whoami`.`whoami` $(INSTDIR)
+	chmod -R ug+rw $(INSTDIR)
+	chmod -R o+r $(INSTDIR)
+	chmod a+x $(INSTDIR)/bin/mlkit.img
+	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
+
+bootstrap_mlb_kam: clean_mlb
+	cd src; make genopcodes
+	cd src; make version
+	cd src/Compiler; export SML_LIB=$(KITDIR); export MLB_MLKIT=$(KITDIR)/bin/mlkit_kam; $(KITDIR)/bin/mlbmake bytecode.mlb
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(INSTDIR)/bin
+	$(INSTALL) bin/kam $(INSTDIR)/bin
+	$(INSTALL) src/Compiler/a.out $(INSTDIR)/bin/mlkit_kam.img
+	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit_kam
+	echo -e '$(INSTDIR)/bin/mlkit_kam.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit_kam
+	chmod a+x $(INSTDIR)/bin/mlkit_kam
+	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
+	chmod a+x $(INSTDIR)/bin/kittester
+	$(INSTALL) bin/mlbmake.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/mlbmake.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/mlbmake
+	chmod a+x $(INSTDIR)/bin/mlbmake
+	$(INSTALL) version $(INSTDIR)
+	$(INSTALL) copyright $(INSTDIR)
+	$(INSTALL) README $(INSTDIR)
+	$(INSTALL) -a kitdemo $(INSTDIR)/kitdemo 
+	$(INSTALL) -a test $(INSTDIR)/test
+	$(INSTALL) -a src $(INSTDIR)/src
+	cd $(INSTDIR)/src; make clean
+	$(INSTALL) -a ml-yacc-lib $(INSTDIR)/ml-yacc-lib
+	$(INSTALL) -a basis $(INSTDIR)/basis
+	chown -R `whoami`.`whoami` $(INSTDIR)
+	chmod -R ug+rw $(INSTDIR)
+	chmod -R o+r $(INSTDIR)
+	chmod a+x $(INSTDIR)/bin/mlkit_kam.img
+	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
+
 all_test:
 	cd test; ../bin/kittester ../bin/mlkit all.tst
 
-all: all_test bootstrap
+#all: all_test bootstrap

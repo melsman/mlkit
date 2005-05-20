@@ -137,9 +137,7 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
     }
 
   // i characters read
-  buf[i] = '\0';
-
-  return REG_POLY_CALL(convertStringToML, rd, buf);
+  return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
 }
 
 int

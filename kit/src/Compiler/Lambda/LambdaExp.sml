@@ -1,17 +1,10 @@
 
-functor LambdaExp(structure Lvars: LVARS
-		  structure Con: CON
-		  structure Excon: EXCON
-		  structure TyName: TYNAME
-		  structure PP: PRETTYPRINT  
-		  structure Crash: CRASH
-		  structure Flags: FLAGS) : LAMBDA_EXP =
+structure LambdaExp: LAMBDA_EXP =
   struct
-
-    structure StrSet = OrderSet(structure Order = struct type T = string
-							 fun lt (a:string) b = a < b
-						  end
-				structure PP = PP)
+    structure PP = PrettyPrint
+    structure StrSet = OrderSet(struct type T = string
+				       fun lt (a:string) b = a < b
+				end)
 
     fun uncurry f (x,y) = f x y
 

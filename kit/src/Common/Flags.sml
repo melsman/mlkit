@@ -1,12 +1,8 @@
 (* Global flags *)
 
-functor Flags (structure Crash : CRASH
-	       structure Report : REPORT
-	       structure PP : PRETTYPRINT
-	       val raggedRight : bool ref
-	       val colwidth : int ref) : FLAGS =
+structure Flags: FLAGS =
   struct
-
+    structure PP = PrettyPrint
     fun outLine (s) = print(s ^ "\n")
     fun quote s = "\"" ^ String.toString s ^ "\""
     fun die s = Crash.impossible ("Flags." ^ s)
@@ -38,7 +34,7 @@ functor Flags (structure Crash : CRASH
      
     (* Pretty Printing *)
 
-    val raggedRight = raggedRight
+    val raggedRight = PrettyPrint.raggedRight
 
     (* Debugging Flags *)
     val DEBUG_COMPILER          = ref false
@@ -70,7 +66,7 @@ functor Flags (structure Crash : CRASH
     val log_to_file = ref false
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
 
-    val colwidth = colwidth
+    val colwidth = PrettyPrint.colwidth
 
     val log = ref TextIO.stdOut
 (*
@@ -339,6 +335,7 @@ structure Directory : sig
 			val add_bool_entry      : string * bool ref -> (unit -> bool)
 			val get_string_entry    : string -> string
 			val get_stringlist_entry: string -> string list
+			val lookup_stringlist_entry : string -> string list ref
 			val lookup_string_entry : string -> string ref
 			val lookup_flag_entry   : string -> bool ref
 			val lookup_int_entry    : string -> int ref
@@ -366,13 +363,9 @@ struct
                     | STRING_ENTRY of string entry
                     | STRINGLIST_ENTRY of string list entry
 
-    structure M = OrderFinMap (structure Order = struct type T = string
-							fun lt a (b:string) = a < b
-						 end
-			       structure PP = PP
-			       structure Report = Report
-			       structure Crash = Crash
-			       val pu_dom = Pickle.string)
+    structure M = OrderFinMap (struct type T = string
+				      fun lt a (b:string) = a < b
+			       end)
 
     val dir : entry0 M.map ref = ref M.empty
 
@@ -716,9 +709,7 @@ struct
 
 end (* Directory *)
 
-structure Menu = Menu(structure Crash = Crash
-		      val help_topic = Directory.help)
-
+structure Menu = Menu(val help_topic = Directory.help)
 
 fun add_bool_entry e = 
   case #menu e
@@ -1074,6 +1065,7 @@ val lookup_flag_entry = Directory.lookup_flag_entry
 val get_string_entry = Directory.get_string_entry
 val get_stringlist_entry = Directory.get_stringlist_entry
 val lookup_string_entry = Directory.lookup_string_entry
+val lookup_stringlist_entry = Directory.lookup_stringlist_entry
 val lookup_int_entry = Directory.lookup_int_entry
 val read_script = Directory.readScript
 val show_script_entries = Directory.show_script_entries
@@ -1084,7 +1076,6 @@ val help_all = Directory.help_all
 val interact = Menu.interact
 
 val SMLserver = ref false
-val WEBserver = ref "AOLserver"
 
 datatype compiler_mode = 
     LINK_MODE of string list  (* lnk-files *)

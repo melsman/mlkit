@@ -3,121 +3,13 @@
 (*   Section 5 of the Definition, v3                         *)
 (*************************************************************)
 
-functor ElabTopdec
-  (structure PrettyPrint : PRETTYPRINT
-   structure StrId : STRID
-   structure SigId : SIGID
-   structure StatObject : STATOBJECT
-   structure ParseInfo : PARSE_INFO
-   structure ElabInfo : ELAB_INFO
-   structure IG : TOPDEC_GRAMMAR
-   sharing type IG.tycon = ElabInfo.TypeInfo.tycon
-   structure OG : TOPDEC_GRAMMAR
-   sharing type OG.tycon = IG.tycon 
-
-   structure Environments : ENVIRONMENTS
-   structure ModuleStatObject: MODULE_STATOBJECT
-   structure ModuleEnvironments : MODULE_ENVIRONMENTS
-   structure Name : NAME
-   structure ElabRep : ELAB_REPOSITORY
-   structure ElabDec : ELABDEC
-   structure FinMap : FINMAP
-   structure Flags : FLAGS
-   structure Crash : CRASH
-
-   sharing type ElabRep.absprjid = ModuleEnvironments.absprjid
-   sharing ElabInfo.ParseInfo = ParseInfo
-   sharing ElabInfo.TypeInfo.TyName = StatObject.TyName
-   sharing Environments.TyName = StatObject.TyName
-   sharing ModuleEnvironments.TyName = StatObject.TyName
-   sharing ModuleStatObject.TyName = StatObject.TyName
-   sharing ElabRep.TyName = ModuleEnvironments.TyName
-
-   sharing type ElabInfo.ErrorInfo.TyName = StatObject.TyName
-   sharing type ElabInfo.ErrorInfo.TyVar = StatObject.TyVar
-   sharing type ElabInfo.ErrorInfo.TypeFcn = StatObject.TypeFcn
-   sharing type ElabInfo.ErrorInfo.Type = StatObject.Type
-   sharing type ElabInfo.ErrorInfo.strid = StrId.strid
-   sharing type ElabInfo.ErrorInfo.sigid = SigId.sigid
-   sharing type ElabInfo.ErrorInfo.longstrid = StrId.longstrid
-   sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
-   sharing type ElabInfo.TypeInfo.strid = StrId.strid
-
-   sharing type IG.strid = StrId.strid
-   sharing type IG.longstrid = StrId.longstrid 
-   sharing type IG.sigid = SigId.sigid
-   sharing type IG.info = ParseInfo.ParseInfo
-   sharing type IG.tyvar = StatObject.ExplicitTyVar
-   sharing type ElabInfo.ErrorInfo.id = IG.id
-   sharing type ElabInfo.ErrorInfo.tycon = IG.tycon
-   sharing type ElabInfo.ErrorInfo.funid = IG.funid
-   sharing type ElabInfo.ErrorInfo.longtycon = IG.longtycon
-   sharing type IG.StringTree = PrettyPrint.StringTree
-
-   sharing type OG.funid = IG.funid
-   sharing type OG.strid = IG.strid
-   sharing type OG.sigid = SigId.sigid
-   sharing type OG.longstrid = StrId.longstrid
-   sharing type OG.longtycon = IG.longtycon
-   sharing type OG.tyvar = IG.tyvar
-   sharing type OG.id = IG.id
-   sharing type OG.info = ElabInfo.ElabInfo
-   sharing type OG.StringTree = PrettyPrint.StringTree
-
-   sharing type Environments.TyVar = StatObject.TyVar
-   sharing type Environments.Type = StatObject.Type
-   sharing type Environments.TypeScheme = StatObject.TypeScheme
-   sharing type Environments.Substitution = StatObject.Substitution
-   sharing type Environments.TypeFcn = StatObject.TypeFcn
-   sharing type Environments.level = StatObject.level
-   sharing type Environments.realisation = StatObject.realisation
-   sharing type Environments.id = IG.id
-   sharing type Environments.strid = IG.strid
-   sharing type Environments.tycon = IG.tycon
-   sharing type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
-   sharing type Environments.longtycon = IG.longtycon
-   sharing type Environments.longstrid = IG.longstrid
-   sharing type Environments.ty = IG.ty
-   sharing type Environments.Env = ElabInfo.TypeInfo.Env
-
-   sharing type ModuleStatObject.Env = Environments.Env
-   sharing type ModuleStatObject.realisation = StatObject.realisation
-   sharing type ModuleStatObject.StringTree = PrettyPrint.StringTree
-   sharing type ModuleStatObject.SigMatchError = ElabInfo.ErrorInfo.SigMatchError
-
-   sharing type ModuleEnvironments.TyVar = StatObject.TyVar
-   sharing type ModuleEnvironments.TyStr = Environments.TyStr
-   sharing type ModuleEnvironments.Env = Environments.Env
-   sharing type ModuleEnvironments.Sig = ModuleStatObject.Sig
-   sharing type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
-   sharing type ModuleEnvironments.Context = Environments.Context
-   sharing type ModuleEnvironments.realisation = StatObject.realisation
-   sharing type ModuleEnvironments.id = IG.id
-   sharing type ModuleEnvironments.strid = IG.strid
-   sharing type ModuleEnvironments.tycon = IG.tycon
-   sharing type ModuleEnvironments.longstrid = IG.longstrid
-   sharing type ModuleEnvironments.longtycon = IG.longtycon
-   sharing type ModuleEnvironments.sigid = IG.sigid
-   sharing type ModuleEnvironments.funid = IG.funid
-   sharing type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
-
-   sharing type Name.name = StatObject.TyName.name
-
-   sharing type ElabRep.name = Name.name
-   sharing type ElabRep.ElabBasis = ModuleEnvironments.Basis
-   sharing type ElabRep.funid = IG.funid
-
-   sharing type ElabDec.PreElabDec = IG.dec
-   sharing type ElabDec.PostElabDec = OG.dec
-   sharing type ElabDec.PreElabTy = IG.ty
-   sharing type ElabDec.PostElabTy = OG.ty
-   sharing type ElabDec.Env = Environments.Env
-   sharing type ElabDec.Context = Environments.Context
-   sharing type ElabDec.Type = StatObject.Type
-   sharing type ElabDec.TyName = StatObject.TyName
-
-     ) : ELABTOPDEC  =
+structure ElabTopdec: ELABTOPDEC  =
   struct
+    structure ParseInfo = AllInfo.ParseInfo
+    structure ElabInfo = AllInfo.ElabInfo
+    structure IG = PreElabTopdecGrammar
+    structure OG = PostElabTopdecGrammar
+    structure ElabRep = ElabRepository
 
     structure EdList = Edlib.List
 
@@ -136,10 +28,9 @@ functor ElabTopdec
     (*import from StatObject:*)
     structure Level        = StatObject.Level
     structure TyVar        = StatObject.TyVar
-         type TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
-         type TyName       = TyName.TyName
-         type Type         = StatObject.Type
+    type TyVar             = StatObject.TyVar
+    type TyName            = TyName.TyName
+    type Type              = StatObject.Type
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     structure TypeFcn      = StatObject.TypeFcn
@@ -184,8 +75,6 @@ functor ElabTopdec
     type tycon             = IG.tycon
     type strid             = IG.strid
 
-    structure Ident        = IG.DecGrammar.Ident
-    structure TyCon        = IG.DecGrammar.TyCon
     structure ErrorInfo    = ElabInfo.ErrorInfo
     structure TypeInfo     = ElabInfo.TypeInfo
 
@@ -305,9 +194,14 @@ functor ElabTopdec
 
     exception Share of ErrorInfo.ErrorInfo
 
-    fun update(a,b,m) = case FinMap.lookup m a
+    fun update(a,b,m) = (case FinMap.lookup m a
 				  of SOME bs => FinMap.add(a,b::bs,m)
 				   | NONE => FinMap.add(a,[b],m)
+                        ) (*handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "ElabTopdec.update\n");
+                             raise Crash.CRASH
+                            )
+                          *)
 
     (* We first collect a list of tyname lists which must be identified. *)
 
@@ -443,18 +337,15 @@ functor ElabTopdec
      * -------------------------------------------- *)
 
     local
-      structure VIdSet = OrderSet(structure Order = struct type T = Ident.id
-							   val lt = fn x => fn y => Ident.< (x,y)
-						    end
-				  structure PP = PrettyPrint)
-      structure TyConSet = OrderSet(structure Order = struct type T = TyCon.tycon
-							     val lt = fn x => fn y => TyCon.< (x,y)
-						      end
-				    structure PP = PrettyPrint)
-      structure StrIdSet = OrderSet(structure Order = struct type T = StrId.strid
-							     val lt = fn x => fn y => StrId.< (x,y)
-						      end
-				    structure PP = PrettyPrint)
+      structure VIdSet = OrderSet(struct type T = Ident.id
+					 val lt = fn x => fn y => Ident.< (x,y)
+				  end)
+      structure TyConSet = OrderSet(struct type T = TyCon.tycon
+					   val lt = fn x => fn y => TyCon.< (x,y)
+				    end)
+      structure StrIdSet = OrderSet(struct type T = StrId.strid
+					   val lt = fn x => fn y => StrId.< (x,y)
+				    end)
     in
       type ids = StrIdSet.Set * TyConSet.Set * VIdSet.Set
       val ids_empty = (StrIdSet.empty, TyConSet.empty, VIdSet.empty)
@@ -622,13 +513,41 @@ functor ElabTopdec
 
 	(* Sequential declaration *)                        (*rule 60*)
       | IG.SEQstrdec (i, strdec1, strdec2) =>
-	  let
+(*	  let
 	    val (T1, E1, out_strdec1) = elab_strdec (B, strdec1)
 	    val (T2, E2, out_strdec2) = elab_strdec (B B_plus_E E1, strdec2)
 	  in
 	    (T1 @ T2, E1 E_plus_E E2,
 	     OG.SEQstrdec (okConv i, out_strdec1, out_strdec2))
-	  end)
+	  end
+*)
+          let
+            val (T1, E1, Bres, out_strdec1) = elab_strdecs(B,strdec)
+          in
+            (T1,E1,out_strdec1)
+          end
+       )
+
+    and elab_strdecs(B, strdec) = (* fast elaboration when SEQ associates to the left *)
+      (case strdec of
+         IG.SEQstrdec (i, strdec1, strdec2) =>
+	  let
+	    val (T1, E1, B1res, out_strdec1) = elab_strdecs (B, strdec1)
+                   (* B1res = B B_plus_E E1 *)
+	    val (T2, E2, out_strdec2) = elab_strdec (B1res, strdec2)
+	  in
+	    (T1 @ T2, E1 E_plus_E E2,
+             B1res B_plus_E E2,
+	     OG.SEQstrdec (okConv i, out_strdec1, out_strdec2))
+	  end
+       | strdec1 => 
+          let
+            val (T1, E1, out_strdec1) = elab_strdec(B,strdec1)
+          in
+            (T1, E1, B B_plus_E E1, out_strdec1)
+          end
+      )
+         
 
     (**********************************************)
     (* Structure Bindings - Definition v3 page 38 *)
@@ -1105,7 +1024,7 @@ functor ElabTopdec
 		       | _ => 
 			( (VE', TE') ,
 			 OG.DATDESC (errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ
-					       (map IG.DecGrammar.TyVar.pr_tyvar tyvars_not_bound)),
+					       (map SyntaxTyVar.pr_tyvar tyvars_not_bound)),
 				     explicittyvars, tycon, out_condesc,
 				     out_datdesc_opt), ids ))
 		  | repeated_ids_errorinfos => 
@@ -1294,9 +1213,13 @@ functor ElabTopdec
 
     and elab_topdec (absprjid : absprjid, B : Basis, topdec : IG.topdec)    (* we check for free tyvars later *)
           : (Basis * OG.topdec) =
-      case topdec 
-	of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
-	  let val (_, E, out_strdec) = elab_strdec(B, strdec)
+      case topdec of
+	    IG.STRtopdec (i, strdec, SOME _) =>                                      (* 87 *)
+	  let val (Bs, out_topdec) = elab_topdec_seq(absprjid, B, topdec) 
+	  in (List.foldl (fn(x,acc) => acc B_plus_B x) B.empty Bs, out_topdec)
+	  end
+	 |  IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
+	  let val (_, E, out_strdec) = elab_strdec(B, strdec) 
 	      val (B', out_topdec_opt) = elab_topdec_opt(absprjid, B B_plus_E E, topdec_opt)
 	      val B'' = (B.from_E E) B_plus_B B'
 	  in (B'', OG.STRtopdec(okConv i, out_strdec, out_topdec_opt))
@@ -1320,6 +1243,28 @@ functor ElabTopdec
 			  in (B', SOME out_topdec)
 			  end
 	 | NONE => (B.empty, NONE)
+
+    and elab_topdec_seq(absprjid, B, topdec): 
+        (Basis list  * OG.topdec) =  (* fast elaboration that exploits that topdecs associate to the right *)
+      (case topdec of
+	 IG.STRtopdec (i, strdec1, SOME topdec2) =>                                      (* 87 *)
+           let
+             val (_, E1,  out_strdec1) = elab_strdec(B, strdec1) 
+             val B1 = B.from_E E1 
+             val (Bs2, out_strdec2) = elab_topdec_seq(absprjid, B B_plus_B B1, topdec2)
+           in
+              (B1:: Bs2,
+               OG.STRtopdec(okConv i, out_strdec1, SOME out_strdec2)
+              )
+           end
+       | topdec1 =>
+           let
+             val (B1, out_strdec1) = elab_topdec(absprjid, B, topdec1)
+           in
+             ([B1], out_strdec1)
+           end
+      )
+
 
     (* Check for free type variables: Free type variables are not
      * allowed in the basis resulting from elaborating a top-level
@@ -1361,3 +1306,5 @@ functor ElabTopdec
 
     val layoutStaticBasis = B.layout
   end;
+
+

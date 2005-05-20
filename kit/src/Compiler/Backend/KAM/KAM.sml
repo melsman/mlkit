@@ -165,6 +165,8 @@ signature KAM =
 
       | PrimIsNull
 
+      | GetContext
+
     datatype TopDecl =
         FUN of label * KamInst list
       | FN of label * KamInst list

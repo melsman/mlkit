@@ -5,7 +5,11 @@ signature COMPILE_BASIS =
     (* CompileBasis is a product of all environments in the backend of
      * the compiler. *)
 
-    type CompileBasis and TyName and lvar and con and excon
+    type CompileBasis 
+    type TyName = TyName.TyName
+    type lvar = Lvars.lvar
+    type con = Con.con
+    type excon = Excon.excon
     type CompBasis
     type BackendEnv     (* Closure Conversion Enviroment, e.g *)
 
@@ -26,7 +30,7 @@ signature COMPILE_BASIS =
 
     val de_CompileBasis: CompileBasis -> CompBasis * BackendEnv
 
-    type StringTree
+    type StringTree = PrettyPrint.StringTree
     val layout_CompileBasis: CompileBasis -> StringTree
 
     val pu : CompileBasis Pickle.pu

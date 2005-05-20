@@ -1,83 +1,16 @@
 
-functor IntModules(structure Name : NAME
-
-		   structure ManagerObjects : MANAGER_OBJECTS
-		     sharing type ManagerObjects.name = Name.name
-		   structure CompilerEnv : COMPILER_ENV
-		     sharing type CompilerEnv.CEnv = ManagerObjects.CEnv
-		   structure ElabInfo : ELAB_INFO
-		     sharing type ElabInfo.TypeInfo.Env = CompilerEnv.ElabEnv 
-		                                        = ManagerObjects.ElabEnv
-		   structure LexBasics : LEX_BASICS
-		     sharing type LexBasics.pos = ElabInfo.ParseInfo.SourceInfo.pos
-
-		   structure Environments : ENVIRONMENTS
-		     sharing Environments.TyName = ElabInfo.TypeInfo.TyName = ManagerObjects.TyName
-		     sharing type Environments.realisation = ElabInfo.TypeInfo.realisation
-		     sharing type Environments.Env = CompilerEnv.ElabEnv
-		     sharing type Environments.TyName.name = Name.name
-		     sharing type Environments.strid = ElabInfo.TypeInfo.strid
-		     sharing type Environments.tycon = ElabInfo.TypeInfo.tycon
-		     sharing type Environments.id = ElabInfo.TypeInfo.id
-
-		   structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		     sharing type ModuleEnvironments.Env = Environments.Env
-		     sharing type ModuleEnvironments.Basis = ManagerObjects.ElabBasis 
-			                                   = ElabInfo.TypeInfo.Basis
-		     sharing type ModuleEnvironments.strid = Environments.strid
-
-	           structure ParseElab : PARSE_ELAB
-		     sharing type ParseElab.InfixBasis = ManagerObjects.InfixBasis =
-		               ElabInfo.ParseInfo.DFInfo.InfixBasis
-		     sharing type ParseElab.ElabBasis = ManagerObjects.ElabBasis
-
-		   structure OpacityElim : OPACITY_ELIM
-		     sharing type OpacityElim.topdec = ParseElab.topdec
-		     sharing type OpacityElim.opaq_env = ElabInfo.TypeInfo.opaq_env = ManagerObjects.opaq_env
-		     sharing OpacityElim.TyName = ElabInfo.TypeInfo.TyName = Environments.TyName
-		     sharing type OpacityElim.OpacityEnv.realisation = Environments.realisation
-
-		   structure CompileBasis : COMPILE_BASIS
-		     sharing type CompileBasis.CompileBasis = ManagerObjects.CompileBasis 
-
+functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
+		       where type absprjid = string
 		   structure Execution : EXECUTION
-		     sharing type Execution.CEnv = ManagerObjects.CEnv
-		     sharing type Execution.Env = Environments.Env
-		     sharing type Execution.CompileBasis = ManagerObjects.CompileBasis
-		     sharing type Execution.linkinfo = ManagerObjects.linkinfo
-		     sharing type Execution.target = ManagerObjects.target
-
-		   structure TopdecGrammar : TOPDEC_GRAMMAR
-		     sharing type TopdecGrammar.strdec = Execution.strdec
-		     sharing type TopdecGrammar.strexp = Execution.strexp
-		     sharing type TopdecGrammar.funid = Execution.funid
-		     sharing type TopdecGrammar.strid = CompilerEnv.strid = ModuleEnvironments.strid = Execution.strid
-		     sharing type TopdecGrammar.longstrid = CompilerEnv.longstrid = ModuleEnvironments.longstrid
-		     sharing type TopdecGrammar.longtycon = CompilerEnv.longtycon = ModuleEnvironments.longtycon
-		     sharing type TopdecGrammar.info = ElabInfo.ElabInfo
-		     sharing type TopdecGrammar.topdec = ParseElab.topdec
-
-		   structure FreeIds : FREE_IDS
-		     sharing type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = TopdecGrammar.DecGrammar.Ident.longid = Environments.longid
-		     sharing type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
-		     sharing type FreeIds.longstrid = ManagerObjects.longstrid = TopdecGrammar.longstrid
-		     sharing type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid = ModuleEnvironments.funid
-		     sharing type FreeIds.sigid = ManagerObjects.sigid = TopdecGrammar.sigid = ModuleEnvironments.sigid
-		     sharing type FreeIds.longtycon = ManagerObjects.longtycon = TopdecGrammar.longtycon
-		     sharing type FreeIds.strexp = TopdecGrammar.strexp = ManagerObjects.strexp
-		     sharing type FreeIds.sigexp = TopdecGrammar.sigexp
-
-		   structure Crash : CRASH
-		   structure Report : REPORT
-		     sharing type Report.Report = ParseElab.Report
-	           structure PP : PRETTYPRINT
-		     sharing type PP.StringTree = Environments.StringTree = ModuleEnvironments.StringTree
-		       = ManagerObjects.StringTree
-		   structure Flags: FLAGS
-                   sharing type ModuleEnvironments.absprjid = ManagerObjects.absprjid  = ParseElab.absprjid
-		   ) : INT_MODULES =
+		   sharing type Execution.CompileBasis = ManagerObjects.CompileBasis
+		   sharing type Execution.target = ManagerObjects.target
+		   sharing type Execution.linkinfo = ManagerObjects.linkinfo)
+    : INT_MODULES =
   struct
-
+    structure CompileBasis = Execution.CompileBasis
+    structure PP = PrettyPrint
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure ElabInfo = AllInfo.ElabInfo
     structure FunStamp = ManagerObjects.FunStamp
     structure Repository = ManagerObjects.Repository
     structure IntBasis = ManagerObjects.IntBasis
@@ -87,7 +20,6 @@ functor IntModules(structure Name : NAME
     structure CE = CompilerEnv
     structure ElabEnv = Environments.E
     structure ElabBasis = ModuleEnvironments.B
-    structure TyName = Environments.TyName
     type BodyBuilderClos = ManagerObjects.BodyBuilderClos
     type TyName = TyName.TyName
     type realisation = Environments.realisation
@@ -284,8 +216,8 @@ functor IntModules(structure Name : NAME
 			 val _ = chat "[opacity elimination begin...]"
 			 val (topdec, opaq_env') = opacity_elimination(#opaq_env BBC, topdec)
 			 val _ = chat "[opacity elimination end...]"
-			 val resE' = Environments.Realisation.on_Env (OpacityElim.OpacityEnv.rea_of opaq_env') resE'
-			 val resE' = Environments.Realisation.on_Env (OpacityElim.OpacityEnv.rea_of (#opaq_env BBC)) resE'
+			 val resE' = Environments.Realisation.on_Env (OpacityEnv.rea_of opaq_env') resE'
+			 val resE' = Environments.Realisation.on_Env (OpacityEnv.rea_of (#opaq_env BBC)) resE'
 
 			 val names_elab = !Name.bucket
 			 val _ = Name.bucket := names_old  (* re-install old names *)
@@ -608,7 +540,7 @@ functor IntModules(structure Name : NAME
 	   let val funid_string = FunId.pr_FunId funid
 	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))  
 		              ^ "." ^ funid_string ^ ".bdy" 
-	       val filename = OS.Path.mkAbsolute(filename,OS.Path.concat(OS.FileSys.getDir(), pmdir()))
+	       val filename = OS.Path.mkAbsolute{path=filename,relativeTo=OS.Path.concat(OS.FileSys.getDir(), pmdir())}
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =
 		 (ElabInfo.ParseInfo.SourceInfo.to_positions o 
@@ -676,8 +608,14 @@ functor IntModules(structure Name : NAME
 
     fun int_sigdec (SIGNATUREsigdec (_,sigbind)) = int_sigbind sigbind
 
+    datatype IntBasisTree = LEAF of IntBasis
+                          | PLUS of IntBasisTree  * IntBasisTree
+
+    fun flatten(LEAF e,acc) = e:: acc
+      | flatten(PLUS(e1,e2), acc) = flatten(e1, flatten(e2,acc))
+
     fun int_topdec (fi:bool,unitnameOpt:string option, absprjid: absprjid, intB: IntBasis, topdec: topdec) 
-	: IntBasis * modcode =   (* may modify repository *)
+	: IntBasisTree * modcode =   (* may modify repository *)
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
 	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,unitnameOpt)
@@ -685,9 +623,9 @@ functor IntModules(structure Name : NAME
 	  in case topdec_opt
 	       of SOME topdec2 =>
 		 let val (intB2,modc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1),topdec2)
-		 in (IntBasis.plus(intB1,intB2), ModCode.seq(modc1,modc2))
+		 in (PLUS(LEAF intB1,intB2), ModCode.seq(modc1,modc2))
 		 end
-		| NONE => (intB1,modc1)
+		| NONE => (LEAF intB1,modc1)
 	  end
 	 | SIGtopdec(i, sigdec, topdec_opt) =>
 	  let val ise = int_sigdec(sigdec)      (* collect tynames *)
@@ -695,9 +633,9 @@ functor IntModules(structure Name : NAME
 	  in case topdec_opt
 	       of SOME topdec2 =>
 		 let val (intB2,modc2) = int_topdec(fi,unitnameOpt,absprjid,IntBasis.plus(intB,intB1),topdec2)
-		 in (IntBasis.plus(intB1,intB2), modc2)
+		 in (PLUS(LEAF intB1,intB2), modc2)
 		 end
-		| NONE => (intB1,ModCode.empty)
+		| NONE => (LEAF intB1,ModCode.empty)
 	  end
 	 | FUNtopdec(i,FUNCTORfundec (i', funbind),topdec_opt) => 
 	  let val fe = int_funbind(absprjid, intB, funbind)
@@ -705,9 +643,9 @@ functor IntModules(structure Name : NAME
 	  in case topdec_opt
 	       of SOME topdec2 =>
 		 let val (intB2,modc2) = int_topdec(fi,unitnameOpt,absprjid,IntBasis.plus(intB,intB1),topdec2)
-		 in (IntBasis.plus(intB1,intB2), modc2)
+		 in (PLUS(LEAF intB1,intB2), modc2)
 		 end
-		| NONE => (intB1,ModCode.empty)
+		| NONE => (LEAF intB1,ModCode.empty)
 	  end
 
     (* ----------------------------------------------------
@@ -727,18 +665,31 @@ functor IntModules(structure Name : NAME
   (* fi:bool specifies whether functor applications in the topdec should be
    * inlined. *)
 
-    fun interp(fi:bool,absprjid,intB,topdec, unitname) =
+
+    fun interp_aux(fi:bool,absprjid,intB,topdec, unitname) =
       case push_topdec topdec
 	of (SOME strdec, topdec_opt) => 
-	  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname)
-	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
-	  in case topdec_opt
-	       of SOME topdec => 
-		 let val (intB2, mc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1), topdec)
-		 in (IntBasis.plus(intB1,intB2), ModCode.seq(mc1,mc2))
-		 end
-		| NONE => (intB1, mc1)
-	  end 
-	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
+        	  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname)
+	              val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
+          	  in case topdec_opt
+	             of SOME topdec => 
+        		 let val (intB2, mc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1), topdec)
+           		 in (PLUS(LEAF intB1,intB2)(*IntBasis.plus(intB1,intB2)*), ModCode.seq(mc1,mc2))
+		         end
+         		| NONE => (LEAF intB1, mc1)
+	           end 
+	 | (NONE, NONE) => (LEAF IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
+
+    fun interp(fi:bool,absprjid,intB,topdec, unitname) =
+      let 
+        val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
+        val intBs = flatten(t,[])
+      in
+        (List.foldl (fn(x, acc)=> IntBasis.plus(acc,x)) IntBasis.empty intBs, mc)
+      end
+
   end
+
+
+

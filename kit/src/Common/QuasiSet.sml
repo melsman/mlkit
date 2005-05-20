@@ -1,11 +1,6 @@
-functor QuasiSet(structure IntStringFinMap : MONO_FINMAP where type dom = int * string
-		 structure QD : QUASI_DOM
-	         structure Name : NAME
-		   sharing type Name.name = QD.name
-		 structure Crash : CRASH
-		 structure PP : PRETTYPRINT) : KIT_MONO_SET =
+functor QuasiSet(QD : QUASI_DOM) : KIT_MONO_SET =
   struct
-
+    structure PP = PrettyPrint
     structure M = IntStringFinMap
 
     fun die s = Crash.impossible ("QuasiSet." ^ s)

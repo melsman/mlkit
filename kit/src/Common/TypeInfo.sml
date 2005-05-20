@@ -1,21 +1,8 @@
 (* Type information for compiler *)
 
-functor TypeInfo (structure Crash: CRASH
-                  structure Ident: IDENT
-		  structure StrId: STRID
-		  structure TyCon: TYCON
-		  structure PP: PRETTYPRINT
-		  structure OpacityEnv : OPACITY_ENV
-		  structure StatObject : STATOBJECT
-		    sharing type PP.StringTree = StatObject.StringTree
-		  structure Environments : ENVIRONMENTS
-		    sharing type Environments.StringTree = PP.StringTree = StatObject.TyName.StringTree
-		    sharing type Environments.realisation = StatObject.realisation
-		  structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		    sharing type ModuleEnvironments.StringTree = PP.StringTree
-		    ) : TYPE_INFO =
+structure TypeInfo: TYPE_INFO =
   struct
-
+    structure PP = PrettyPrint
     fun die s = Crash.impossible ("TypeInfo." ^ s)
 
     type longid = Ident.longid
@@ -29,7 +16,6 @@ functor TypeInfo (structure Crash: CRASH
     type tycon = TyCon.tycon
     type id = Ident.id
     type Basis = ModuleEnvironments.Basis
-    structure TyName = StatObject.TyName
     type TyName = TyName.TyName
 
     fun map_opt f (SOME a) = SOME (f a)

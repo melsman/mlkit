@@ -82,7 +82,7 @@ int posInfFloat(int d);
 int negInfFloat(int d);
 
 #ifdef PROFILING
-String stringOfFloatProf(Region rAddr, int f, int pPlint);
+String stringOfFloatProf(Region rAddr, int f, int pPoint);
 String generalStringOfFloatProf(Region rAddr, String str, int f, int pPoint);
 #else
 String stringOfFloat(Region rAddr, int f);
@@ -91,6 +91,14 @@ String generalStringOfFloat(Region rAddr, String str, int f);
 
 /* For basislib Math structure */
 int sml_sqrt(int d, int s);
+
+/* For basislib PackReal{Big,Little} structures */
+#ifdef PROFILING
+String sml_real_to_bytes(Region rAddr, int f, int pPoint);
+#else
+String sml_real_to_bytes(Region rAddr, int f);
+#endif
+int sml_bytes_to_real(int d, String s);
 
 void printReal(int f);
 

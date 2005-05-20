@@ -1,0 +1,34 @@
+group
+is
+  ../Edlib/edlib.cm
+  ../Pickle/pickle.cm
+  ../Common/tools.cm
+  ../Common/syntax_objects.cm
+  ../Common/special_objects.cm
+  compiler_objects.cm
+  ../Common/basics.cm
+  ../Manager/manager.cm
+  compiler.cm
+  regions.cm
+
+  (* Native Backend *)
+  Backend/LINE_STMT.sml
+  Backend/REG_ALLOC.sml
+  Backend/FETCH_AND_FLUSH.sml
+  Backend/CALC_OFFSET.sml
+  Backend/SUBST_AND_SIMPLIFY.sml
+  Backend/LineStmt.sml
+  Backend/RegAlloc.sml
+  Backend/FetchAndFlush.sml
+  Backend/CalcOffset.sml
+  Backend/SubstAndSimplify.sml
+  Backend/NativeCompile.sml
+
+  (* X86 Backend *)
+  Backend/CODE_GEN.sml
+  Backend/X86/INSTS_X86.sml
+  Backend/X86/InstsX86.sml
+  Backend/X86/CodeGenX86.sml
+  Backend/X86/ExecutionX86.sml
+  ../Common/KitMainSMLNJ.sml
+  ../Common/KitX86SMLNJ.sml

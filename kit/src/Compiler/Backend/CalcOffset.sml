@@ -1,35 +1,23 @@
-functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
-		      structure Con : CON
-		      structure Excon : EXCON
-		      structure Lvars : LVARS
-		      structure Effect : EFFECT
-		      structure Labels : ADDRESS_LABELS
-		      structure CallConv: CALL_CONV
-		      structure LineStmt: LINE_STMT
-		        sharing type Con.con = LineStmt.con
-		        sharing type Excon.excon = LineStmt.excon
-		        sharing type Lvars.lvar = LineStmt.lvar = CallConv.lvar
-                        sharing type Effect.effect = Effect.place = LineStmt.place
-                        sharing type Labels.label = LineStmt.label
-                        sharing type CallConv.cc = LineStmt.cc
-		        sharing type LineStmt.phsize = PhysSizeInf.phsize
-		      structure FetchAndFlush: FETCH_AND_FLUSH
-                        sharing type FetchAndFlush.lvar = LineStmt.lvar
-                        sharing type FetchAndFlush.Atom = LineStmt.Atom
-			sharing type FetchAndFlush.label = LineStmt.label
-		      structure BI : BACKEND_INFO
-		      structure IntSet: KIT_MONO_SET where type elt = int
-		      structure PP : PRETTYPRINT
-		        sharing type PP.StringTree = 
-                                   Effect.StringTree = 
-				   LineStmt.StringTree
-                      structure Flags : FLAGS
-		      structure Report : REPORT
-		        sharing type Report.Report = Flags.Report
-		      structure Crash : CRASH
-			) : CALC_OFFSET =
+functor CalcOffset(structure CallConv: CALL_CONV
+		       where type lvar = Lvars.lvar
+		   structure LineStmt: LINE_STMT
+		       where type con = Con.con
+		       where type excon = Excon.excon
+		       where type lvar = Lvars.lvar
+		       where type place = Effect.effect
+		       where type label = AddressLabels.label
+		       where type phsize = PhysSizeInf.phsize
+		       where type StringTree = PrettyPrint.StringTree
+		   sharing type CallConv.cc = LineStmt.cc
+		   structure FetchAndFlush: FETCH_AND_FLUSH
+		       where type lvar = Lvars.lvar
+ 		       where type label = AddressLabels.label
+                   sharing type FetchAndFlush.Atom = LineStmt.Atom
+		   structure BI : BACKEND_INFO) 
+    : CALC_OFFSET =
 struct
-
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   val _ = Flags.add_bool_entry 
     {long="print_calc_offset_program", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "print program with activation record offsets (LineStmt)"],

@@ -1,12 +1,9 @@
 functor TopdecLex(structure Tokens: Topdec_TOKENS
-			   structure LexBasics: LEX_BASICS
 			   structure LexUtils: LEX_UTILS
+			     where type pos = LexBasics.pos
+			     where type SourceReader = LexBasics.SourceReader
 			     sharing type LexUtils.svalue = Tokens.svalue
 			     sharing type LexUtils.token = Tokens.token
-			     sharing type LexUtils.pos = LexBasics.pos
-			     sharing type LexUtils.SourceReader
-					  = LexBasics.SourceReader
-                           structure Flags : FLAGS
 			  )
 	=
    struct

@@ -61,7 +61,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val out_stream = TextIO.openOut(tmp_file)
 	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes; it is based *)\n")
 	val _ = TextIO.output(out_stream, "(* on the file " ^ spec_file ^ " *)\n\n")
-	val _ = TextIO.output(out_stream, "functor OpcodesKAM () : OPCODES_KAM = \n")
+	val _ = TextIO.output(out_stream, "structure OpcodesKAM : OPCODES_KAM = \n")
 	val _ = TextIO.output(out_stream, "  struct\n");
 	fun write_opcode((opcode,arity),n) = 
 	 (TextIO.output(out_stream, "    val " ^ opcode ^ " = " ^ (Int.toString n) ^ "\n");
@@ -196,7 +196,7 @@ structure GenOpcodes : GEN_OPCODES =
 	out "    val name_to_built_in_C_function_index_apsml : string -> int\n";
 	out "  end\n\n";
 
-	out "functor BuiltInCFunctionsKAM () : BUILT_IN_C_FUNCTIONS_KAM = \n";
+	out "structure BuiltInCFunctionsKAM : BUILT_IN_C_FUNCTIONS_KAM = \n";
 	out "  struct\n";
 	out_fun "name_to_built_in_C_function_index" spec_insts;
 	out_fun "name_to_built_in_C_function_index_nssml" (spec_insts @ spec_insts_nssml);

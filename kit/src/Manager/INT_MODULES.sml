@@ -1,7 +1,9 @@
 
 signature INT_MODULES =
   sig
-    type IntBasis and topdec and modcode
+    type IntBasis 
+    type topdec = PostElabTopdecGrammar.topdec
+    type modcode
 
     type absprjid
 

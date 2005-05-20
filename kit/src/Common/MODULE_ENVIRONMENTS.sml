@@ -9,7 +9,6 @@ signature MODULE_ENVIRONMENTS =
     type SigEnv 
 
     (*types from other modules:*)
-    structure TyName : TYNAME
     type TyName = TyName.TyName
     type TyVar
     type TyStr

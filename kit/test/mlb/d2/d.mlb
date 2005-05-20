@@ -1,0 +1,4 @@
+$(MLKIT_ROOT)/basislib/basislib_small2.mlb
+d2.mlb
+../A.sml
+b.sml

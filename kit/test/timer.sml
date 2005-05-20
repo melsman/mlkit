@@ -46,8 +46,8 @@ val test2 = tst "test2" (checkRealTimer rtmr <= checkRealTimer rtmr
 end
 
 local
-    val op <= = fn ({usr=usr1, sys=sys1, gc=gc1}, {usr=usr2, sys=sys2, gc=gc2})
-	=> usr1 <= usr2 andalso sys1 <= sys2 andalso gc1 <= gc1;
+    val op <= = fn ({usr=usr1, sys=sys1}, {usr=usr2, sys=sys2})
+	=> usr1 <= usr2 andalso sys1 <= sys2
     fun cput1 < cput2 = (cput1 <= cput2) andalso (cput1 <> cput2);
 in
 

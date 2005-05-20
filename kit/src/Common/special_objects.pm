@@ -1,0 +1,12 @@
+import
+  ../Pickle/pickle.pm
+  tools.pm
+  syntax_objects.pm
+in
+  NAME.sml
+  TYNAME.sml
+  Name.sml
+  QuasiMap.sml
+  QuasiSet.sml
+  TyName.sml
+end

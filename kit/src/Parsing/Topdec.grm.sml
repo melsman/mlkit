@@ -1,10 +1,5 @@
 
-functor TopdecLrVals(
-           structure Token: TOKEN
-           structure LexBasics: LEX_BASICS
-           structure GrammarUtils: GRAMMAR_UTILS
-             sharing type GrammarUtils.pos = LexBasics.pos
-         )
+functor TopdecLrVals(Token: TOKEN)
          = 
 struct
 structure ParserData=
@@ -105,7 +100,7 @@ struct
  *)
 
 open GrammarUtils 
-open TopdecGrammar (*from inside GrammarUtils*)
+open M (*from inside GrammarUtils*)
 open DecGrammar (*from inside TopdecGrammar*)
 open LexBasics
 type arg = unit

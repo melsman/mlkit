@@ -1,6 +1,5 @@
 (* Labels - Definition v3 page 4 *)
 
-(*$LAB*)
 signature LAB =
   sig
     eqtype lab

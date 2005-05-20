@@ -122,23 +122,25 @@ functor ByteTable(eqtype table
       | sliceend (a, i, SOME n) = if i < 0 orelse n < 0 orelse i+n > length a then raise Subscript
 				  else i+n
 
-    fun foldli f e (slice as (a, i, _)) =
-      let fun loop stop =
+    fun foldli f e a =
+      let val i = 0
+	  fun loop stop =
 	    let fun lr(j, res) = if j < stop then lr (j+1, f(j, sub_unsafe(a,j), res))
 				 else res
 	    in lr (i, e) 
 	    end
-      in loop (sliceend slice) 
+      in loop (length a) 
       end
 
-    fun foldri f e (slice as (a, i, _)) =
-      let fun loop start =
+    fun foldri f e a =
+      let val i = 0
+	  fun loop start =
 	    let fun rl(j, res) =
 		    if j >= i then rl (j-1, f(j, sub_unsafe(a,j), res))
 		    else res
 	    in rl (start, e) 
 	    end
-      in loop (sliceend slice - 1) 
+      in loop (length a - 1) 
       end
 
     fun appi f (slice as (a, i, _)) =

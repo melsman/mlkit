@@ -1,0 +1,42 @@
+local
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Edlib = bas ../Edlib/edlib.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas ../Common/tools.mlb end
+  basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
+  basis SpecialObjects = bas ../Common/special_objects.mlb end
+  basis Basics = bas ../Common/basics.mlb end
+  basis CompilerObjects = bas ../Compiler/compiler_objects.mlb end
+  basis MlbMake = bas ../Tools/MlbMake/mlbmake.mlb end
+
+  open BasLib
+in
+  local open Pickle Tools SyntaxObjects SpecialObjects Basics CompilerObjects
+  in MANAGER_OBJECTS.sml
+  end
+
+  local open Basics 
+  in INT_MODULES.sml 
+     MANAGER.sml
+  end
+
+  local open Pickle CompilerObjects
+  in local open Tools 
+     in ../Compiler/COMPILE_BASIS.sml 
+     end
+     local open SyntaxObjects Basics
+     in EXECUTION.sml
+     end
+  end
+
+  local open Pickle Tools Basics CompilerObjects
+  in local open SyntaxObjects 
+     in ManagerObjects.sml 
+        local open Edlib in IntModules.sml end
+     end     
+     MspComp.sml
+     Scriptlet.sml
+     local open Edlib SyntaxObjects MlbMake in Manager.sml end
+  end
+end
+

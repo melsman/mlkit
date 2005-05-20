@@ -1,12 +1,7 @@
-functor BackendInfo(structure Labels : ADDRESS_LABELS
-		    structure PP : PRETTYPRINT
-		    structure Flags : FLAGS
-		    structure Report : REPORT
-		    sharing type Report.Report = Flags.Report
-		    structure Crash : CRASH
-		    structure RegConst : REG_CONST
-		    val down_growing_stack : bool) : BACKEND_INFO =
+functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
   struct
+    structure PP = PrettyPrint
+    structure Labels = AddressLabels
     fun die s  = Crash.impossible ("BackendInfo." ^ s)
 
     type label = Labels.label
@@ -135,11 +130,9 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
      * those primitives that are implemented as C calls *)
 
     local
-      structure S = OrderSet(structure Order = 
-			       struct type T = string
-				 fun lt (a: T) b = a < b
-			       end
-			     structure PP = PP)
+      structure S = OrderSet(struct type T = string
+				    fun lt (a: T) b = a < b
+			     end)
 
       val S_flow = S.fromList
 	["__equal_int31", "__equal_int32ub", "__equal_int32b", 
@@ -189,7 +182,9 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 
 	 "word_sub0", "word_update0", "table_size",
 	 
-	 "__is_null"]
+	 "__is_null",
+
+	 "__serverGetCtx"]
     in
       fun is_prim name = S.member name S orelse S.member name S_flow
       fun is_flow_prim name = S.member name S_flow

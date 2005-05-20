@@ -6,6 +6,7 @@
  */
 
 #include "Region.h"
+#include "Stack.h"
 
 // Pages are layed out in continuous memory, where each page 
 // (ALLOCATABLE_WORDS_IN_REGION_PAGE words) is prefixed with a 
@@ -21,8 +22,6 @@ typedef struct regionCopy {
 #define HSTAT_UNINITIALIZED  0
 #define HSTAT_DIRTY          1
 #define HSTAT_CLEAN          2
-
-#define STACK_SIZE_INIT      (20 * 1024 * 1024)
 
 // In the case that the global exception handler is triggered, the
 // bottom of the stack is destroyed by the raise instruction; therefore

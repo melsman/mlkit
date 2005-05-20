@@ -1,11 +1,10 @@
 (* The pretty-printer *)
 
-functor PrettyPrint(structure Report: REPORT
-                    structure Crash: CRASH
-                    val raggedRight : bool ref
-		    val colwidth : int ref
-                   ): PRETTYPRINT =
+structure PrettyPrint: PRETTYPRINT =
   struct
+
+    val raggedRight : bool ref = ref true
+    val colwidth : int ref = ref 100
 
     structure EdList = Edlib.List
 

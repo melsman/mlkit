@@ -110,12 +110,12 @@ structure FileSys : OS_FILE_SYS =
 		in
 		    if islink_ file then
 			(incrlink();
-			 expand(mkAbsolute(readlink_ file, p)))
+			 expand(mkAbsolute{path=readlink_ file, relativeTo=p}))
 		    else
 			file
 		end
 	in
-	    (expand(mkAbsolute(p, getDir())))
+	    (expand(mkAbsolute{path=p, relativeTo=getDir()}))
 	    handle Fail s => raiseSys "fullPath" (SOME p) s
 	end;
 
@@ -139,7 +139,7 @@ structure FileSys : OS_FILE_SYS =
 
     fun realPath p =
 	if Path.isAbsolute p then fullPath p
-	else Path.mkRelative(fullPath p, getDir());
+	else Path.mkRelative{path=fullPath p, relativeTo=getDir()};
 
     fun rmDir p = (rmdir_ p) handle Fail s => raiseSys "rmDir" (SOME p) s;
 

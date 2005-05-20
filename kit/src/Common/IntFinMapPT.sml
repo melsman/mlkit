@@ -3,10 +3,10 @@
  * ME 1998-10-21.
  *)
 
-functor IntFinMap(structure PP : PRETTYPRINT
-		  structure Report : REPORT) : MONO_FINMAP =
+structure IntFinMap: MONO_FINMAP =
 struct
   
+  structure PP = PrettyPrint
   type dom = int
   
   (* helper functions *)

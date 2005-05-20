@@ -1,12 +1,8 @@
 (* Constructors for the lambda language *)
 
-functor Con(structure Name : NAME
-	    structure Report : REPORT
-	    structure Crash : CRASH
-	    structure PP : PRETTYPRINT
-	    structure IntStringFinMap : MONO_FINMAP where type dom = int * string
-	      ) : CON =
+structure Con: CON =
   struct
+    structure PP = PrettyPrint
 
     (* Constructors are based on names which may be `matched'. In
      * particular, if two constructors, c1 and c2, are successfully
@@ -70,11 +66,6 @@ functor Con(structure Name : NAME
 	val pp = pr_con
       end
 
-    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
-			     structure Name = Name
-			     structure Crash = Crash
-			     structure PP = PP
-			     structure Report = Report
-			     structure QD = QD)
+    structure Map = QuasiMap(QD)
 
   end

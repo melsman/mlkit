@@ -1,6 +1,6 @@
 (* Signature identifiers *)
 
-functor SigId(): SIGID =
+structure SigId: SIGID =
   struct
     datatype sigid = SIGID of string
 
