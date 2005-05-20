@@ -10,30 +10,34 @@ signature SCS_ROLE =
     | StudAdm
     | SysAdm
     | OaAdm
-    | UcsPbSupervisorAdm  (* Created in ucs-pb-supervisor-lists-initialdata-create.sql *)
-    | UcsPbProjectAdm     (* Created in ucs-pb-initialdata-create.sql *)
-    | UcsEbEventEditor    (* Created in ucs-eb-initialdata-create.sql *)
-    | ScsPersonAdm        (* Created in scs-users-initialdata-create.sql *)
-    | UcsEduInfo          (* Created in ucs-edus-patch006.sql *)
-    | PhdAdm              (* Created in ucs-edus-patch006.sql *)
-    | PortraitAdm         (* Created in ucs-edus-patch006.sql *)
-    | UcsPrPersonaleAdm   (* Created in ucs-pr-patch002.sql *)
-    | UcsPrAdm		  (* Created in ucs-pr-patch002.sql *)
-    | UcsPrITAdm	  (* Created in ucs-pr-patch002.sql *)
-    | UcsPrInternAdm      (* Created in ucs-pr-patch002.sql *)
-    | UcsTrTimeRecordAdm  (* Created in ucs-tr-initialdata-create.sql *)
-    | UcsObOptagAdm  	  (* Created in ucs-ob-initialdata-create.sql *)
-    | UcsCbCourseAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
-    | UcsCbITUAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
-    | UcsCbTITAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
-    | UcsCbEBUSSAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
-    | UcsCbRoomAdm	  (* Created in ucs-cb-initialdata-create.sql *)
-    | UcsCbItSupportAdm   (* Created in ucs-cb-release2-create.sql *)
-    | UcsCbLinjeAdm       (* Created in ucs-cb-release3-create.sql *)
-    | UcsCbHsasAdm        (* Created in ucs-cb-release4-create.sql *)
-    | UcsPrRucAdm	  (* Created in ucs-pr-patch005.sql.sql *)
-    | UcsPrEbussAdm	  (* Created in ucs-pr-patch005.sql.sql *)
-    | UcsStudieVejleder	  (* Created in ucs-edus-patch018.sql.sql *)
+    | UcsPbSupervisorAdm     (* Created in ucs-pb-supervisor-lists-initialdata-create.sql *)
+    | UcsPbProjectAdm        (* Created in ucs-pb-initialdata-create.sql *)
+    | UcsEbEventEditor       (* Created in ucs-eb-initialdata-create.sql *)
+    | ScsPersonAdm           (* Created in scs-users-initialdata-create.sql *)
+    | UcsEduInfo             (* Created in ucs-edus-patch006.sql *)
+    | PhdAdm                 (* Created in ucs-edus-patch006.sql *)
+    | PortraitAdm            (* Created in ucs-edus-patch006.sql *)
+    | UcsPrPersonaleAdm      (* Created in ucs-pr-patch002.sql *)
+    | UcsPrAdm		     (* Created in ucs-pr-patch002.sql *)
+    | UcsPrITAdm	     (* Created in ucs-pr-patch002.sql *)
+    | UcsPrInternAdm         (* Created in ucs-pr-patch002.sql *)
+    | UcsTrTimeRecordAdm     (* Created in ucs-tr-initialdata-create.sql *)
+    | UcsObOptagAdm  	     (* Created in ucs-ob-initialdata-create.sql *)
+    | UcsCbCourseAdm  	     (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbITUAdm  	     (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbTITAdm  	     (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbEBUSSAdm  	     (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbRoomAdm	     (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbItSupportAdm      (* Created in ucs-cb-release2-create.sql *)
+    | UcsCbLinjeAdm          (* Created in ucs-cb-release3-create.sql *)
+    | UcsCbHsasAdm           (* Created in ucs-cb-release4-create.sql *)
+    | UcsPrRucAdm	     (* Created in ucs-pr-patch005.sql.sql *)
+    | UcsPrEbussAdm	     (* Created in ucs-pr-patch005.sql.sql *)
+    | UcsStudieVejleder	     (* Created in ucs-edus-patch018.sql.sql *)
+    | UcsRbQueryEditor       (* Created in ucs-rb-initialdata-create.sql *)
+    | UcsRbQueryAccess       (* Created in ucs-rb-initialdata-create.sql *)
+    | UcsFifthFloorAdm       (* Creteed in ucs-fifth-floor-initialdata-create.sql *)
+    | UcsFifthFloorReception (* Created in ucs-fifth-floor-initialdata-create.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -99,72 +103,84 @@ structure ScsRole :> SCS_ROLE =
     | UcsPrRucAdm	  
     | UcsPrEbussAdm	  
     | UcsStudieVejleder
+    | UcsRbQueryEditor 
+    | UcsRbQueryAccess 
+    | UcsFifthFloorAdm      
+    | UcsFifthFloorReception
     | Other of string
 
     fun fromString str = 
       case str of
-        "SiteAdm"            => SiteAdm
-      | "SysAdm"	     => SysAdm
-      | "StudAdm"	     => StudAdm
-      | "UcsPbVejlederAdm"   => UcsPbSupervisorAdm
-      | "UcsPbProjectAdm"    => UcsPbProjectAdm
-      | "OaAdm"		     => OaAdm
-      | "UcsEbEventEditor"   => UcsEbEventEditor
-      | "ScsPersonAdm"	     => ScsPersonAdm
-      | "UcsEduInfo"	     => UcsEduInfo
-      | "PhdAdm"	     => PhdAdm
-      | "PortraitAdm"	     => PortraitAdm
-      | "UcsPrPersonaleAdm"  => UcsPrPersonaleAdm
-      | "UcsPrAdm"	     => UcsPrAdm		
-      | "UcsPrITAdm"	     => UcsPrITAdm	
-      | "UcsPrInternAdm"     => UcsPrInternAdm    
-      | "UcsTrTimeRecordAdm" => UcsTrTimeRecordAdm
-      | "UcsObOptagAdm"      => UcsObOptagAdm 
-      | "UcsCbCourseAdm"     => UcsCbCourseAdm
-      | "UcsPrRucAdm"	     => UcsPrRucAdm  
-      | "UcsPrEbussAdm"	     => UcsPrEbussAdm
-      | "UcsStudieVejleder"  => UcsStudieVejleder
-      | "UcsCbITUAdm"  	     => UcsCbITUAdm     
-      | "UcsCbTITAdm"  	     =>	UcsCbTITAdm     
-      | "UcsCbEBUSSAdm"	     =>	UcsCbEBUSSAdm   
-      | "UcsCbRoomAdm"	     => UcsCbRoomAdm
-      | "UcsCbItSupportAdm"  => UcsCbItSupportAdm
-      | "UcsCbLinjeAdm"      => UcsCbLinjeAdm
-      | "UcsCbHsasAdm"       => UcsCbHsasAdm
+        "SiteAdm"                => SiteAdm
+      | "SysAdm"	         => SysAdm
+      | "StudAdm"	         => StudAdm
+      | "UcsPbVejlederAdm"       => UcsPbSupervisorAdm
+      | "UcsPbProjectAdm"        => UcsPbProjectAdm
+      | "OaAdm"		         => OaAdm
+      | "UcsEbEventEditor"       => UcsEbEventEditor
+      | "ScsPersonAdm"	         => ScsPersonAdm
+      | "UcsEduInfo"	         => UcsEduInfo
+      | "PhdAdm"	         => PhdAdm
+      | "PortraitAdm"	         => PortraitAdm
+      | "UcsPrPersonaleAdm"      => UcsPrPersonaleAdm
+      | "UcsPrAdm"	         => UcsPrAdm		
+      | "UcsPrITAdm"	         => UcsPrITAdm	
+      | "UcsPrInternAdm"         => UcsPrInternAdm    
+      | "UcsTrTimeRecordAdm"     => UcsTrTimeRecordAdm
+      | "UcsObOptagAdm"          => UcsObOptagAdm 
+      | "UcsCbCourseAdm"         => UcsCbCourseAdm
+      | "UcsPrRucAdm"	         => UcsPrRucAdm  
+      | "UcsPrEbussAdm"	         => UcsPrEbussAdm
+      | "UcsStudieVejleder"      => UcsStudieVejleder
+      | "UcsCbITUAdm"  	         => UcsCbITUAdm     
+      | "UcsCbTITAdm"  	         => UcsCbTITAdm     
+      | "UcsCbEBUSSAdm"	         => UcsCbEBUSSAdm   
+      | "UcsCbRoomAdm"	         => UcsCbRoomAdm
+      | "UcsCbItSupportAdm"      => UcsCbItSupportAdm
+      | "UcsCbLinjeAdm"          => UcsCbLinjeAdm
+      | "UcsCbHsasAdm"           => UcsCbHsasAdm
+      | "UcsRbQueryEditor"       => UcsRbQueryEditor
+      | "UcsRbQueryAccess"       => UcsRbQueryAccess
+      | "UcsFifthFloorAdm"       => UcsFifthFloorAdm
+      | "UcsFifthFloorReception" => UcsFifthFloorReception
       | s => Other s
  
     (* [toString role] returns the string representation of the role
        as stored in the database. *)
     fun toString (role:role) =
       case role of
-        SiteAdm            => "SiteAdm"
-      | StudAdm		   => "StudAdm"
-      | SysAdm		   => "SysAdm"
-      | OaAdm		   => "OaAdm"
-      | UcsPbSupervisorAdm => "UcsPbVejlederAdm"
-      | UcsPbProjectAdm	   => "UcsPbProjectAdm"
-      | UcsEbEventEditor   => "UcsEbEventEditor"
-      | ScsPersonAdm	   => "ScsPersonAdm"
-      | UcsEduInfo	   => "UcsEduInfo"
-      | PhdAdm		   => "PhdAdm"
-      | PortraitAdm	   => "PortraitAdm"
-      | UcsPrPersonaleAdm  => "UcsPrPersonaleAdm"
-      | UcsPrAdm	   => "UcsPrAdm"		
-      | UcsPrITAdm	   => "UcsPrITAdm"	
-      | UcsPrInternAdm     => "UcsPrInternAdm"    
-      | UcsTrTimeRecordAdm => "UcsTrTimeRecordAdm"
-      | UcsObOptagAdm	   => "UcsObOptagAdm"
-      | UcsCbCourseAdm	   => "UcsCbCourseAdm"
-      | UcsCbITUAdm  	   => "UcsCbITUAdm"     
-      | UcsCbTITAdm  	   => "UcsCbTITAdm"     
-      | UcsCbEBUSSAdm      => "UcsCbEBUSSAdm"   
-      | UcsCbRoomAdm	   => "UcsCbRoomAdm"
-      | UcsCbItSupportAdm  => "UcsCbItSupportAdm"
-      | UcsCbLinjeAdm      => "UcsCbLinjeAdm"
-      | UcsCbHsasAdm       => "UcsCbHsasAdm"
-      | UcsPrRucAdm	   => "UcsPrRucAdm"  
-      | UcsPrEbussAdm	   => "UcsPrEbussAdm"
-      | UcsStudieVejleder  => "UcsStudieVejleder"
+        SiteAdm                => "SiteAdm"
+      | StudAdm		       => "StudAdm"
+      | SysAdm		       => "SysAdm"
+      | OaAdm		       => "OaAdm"
+      | UcsPbSupervisorAdm     => "UcsPbVejlederAdm"
+      | UcsPbProjectAdm	       => "UcsPbProjectAdm"
+      | UcsEbEventEditor       => "UcsEbEventEditor"
+      | ScsPersonAdm	       => "ScsPersonAdm"
+      | UcsEduInfo	       => "UcsEduInfo"
+      | PhdAdm		       => "PhdAdm"
+      | PortraitAdm	       => "PortraitAdm"
+      | UcsPrPersonaleAdm      => "UcsPrPersonaleAdm"
+      | UcsPrAdm	       => "UcsPrAdm"		
+      | UcsPrITAdm	       => "UcsPrITAdm"	
+      | UcsPrInternAdm         => "UcsPrInternAdm"    
+      | UcsTrTimeRecordAdm     => "UcsTrTimeRecordAdm"
+      | UcsObOptagAdm	       => "UcsObOptagAdm"
+      | UcsCbCourseAdm	       => "UcsCbCourseAdm"
+      | UcsCbITUAdm  	       => "UcsCbITUAdm"     
+      | UcsCbTITAdm  	       => "UcsCbTITAdm"     
+      | UcsCbEBUSSAdm          => "UcsCbEBUSSAdm"   
+      | UcsCbRoomAdm	       => "UcsCbRoomAdm"
+      | UcsCbItSupportAdm      => "UcsCbItSupportAdm"
+      | UcsCbLinjeAdm          => "UcsCbLinjeAdm"
+      | UcsCbHsasAdm           => "UcsCbHsasAdm"
+      | UcsPrRucAdm	       => "UcsPrRucAdm"  
+      | UcsPrEbussAdm	       => "UcsPrEbussAdm"
+      | UcsStudieVejleder      => "UcsStudieVejleder"
+      | UcsRbQueryEditor       => "UcsRbQueryEditor"
+      | UcsRbQueryAccess       => "UcsRbQueryAccess"
+      | UcsFifthFloorAdm       => "UcsFifthFloorAdm"
+      | UcsFifthFloorReception => "UcsFifthFloorReception"
       | Other s => s
 	  
     (* We cache the result for 5 minutes.

@@ -1,5 +1,5 @@
 
-functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
+structure AddressLabels: ADDRESS_LABELS =
   struct
 
     (* Address labels are based on names which may be `matched'. In

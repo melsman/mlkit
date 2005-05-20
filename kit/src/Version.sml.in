@@ -1,0 +1,7 @@
+(* Do NOT modify the file "kit/src/Version.sml" directly - it is generated
+ * from "kit/src/Version.sml.in" and based on the file "kit/version"; See 
+ * the file "kit/src/Makefile" for details. *)
+structure Version =
+  struct
+    val version = "@VERSION@"
+  end

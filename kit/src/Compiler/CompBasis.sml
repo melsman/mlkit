@@ -1,46 +1,7 @@
 
-functor CompBasis(structure Con : CON 
-		  structure Excon : EXCON 
-		  structure Lvars : LVARS
-		  structure TyName : TYNAME
-		  structure LambdaStatSem : LAMBDA_STAT_SEM
-		    sharing type LambdaStatSem.con = Con.con
-		    sharing type LambdaStatSem.excon = Excon.excon
-		  structure EliminateEq : ELIMINATE_EQ
-		    sharing type EliminateEq.lvar = LambdaStatSem.lvar = Lvars.lvar
-		    sharing type EliminateEq.TyName = LambdaStatSem.TyName = TyName.TyName
-		  structure OptLambda : OPT_LAMBDA
-		    sharing type OptLambda.lvar = LambdaStatSem.lvar
-                    sharing type OptLambda.con = Con.con
-                    sharing type OptLambda.TyName = TyName.TyName
-		  structure RegionStatEnv: REGION_STAT_ENV
-		    sharing type RegionStatEnv.lvar = LambdaStatSem.lvar
-		    sharing type RegionStatEnv.excon = Excon.excon
-		    sharing type RegionStatEnv.con = Con.con
-		    sharing type RegionStatEnv.TyName = TyName.TyName
-		  structure Mul: MUL
-		    sharing type Mul.lvar = LambdaStatSem.lvar
-		    sharing type Mul.effectvar = RegionStatEnv.effectvar
-		    sharing type Mul.regionStatEnv = RegionStatEnv.regionStatEnv
-		  structure Effect: EFFECT
-		    sharing type Effect.effect = RegionStatEnv.place = RegionStatEnv.effectvar
-		  structure DropRegions: DROP_REGIONS
-		    sharing type DropRegions.lvar = LambdaStatSem.lvar
-		    sharing type DropRegions.place = RegionStatEnv.place
-		  structure PhysSizeInf : PHYS_SIZE_INF
-		    sharing type PhysSizeInf.lvar = LambdaStatSem.lvar
-		  structure PP: PRETTYPRINT
-		    sharing type PP.StringTree
-				       = OptLambda.StringTree
-				       = LambdaStatSem.StringTree
-				       = EliminateEq.StringTree
-				       = RegionStatEnv.StringTree
-				       = PhysSizeInf.StringTree
-				       = Mul.StringTree
-				       = DropRegions.StringTree 
-		  structure Flags : FLAGS
-			  ): COMP_BASIS =
+structure CompBasis: COMP_BASIS =
   struct
+    structure PP = PrettyPrint
 
     fun log s = TextIO.output(TextIO.stdOut,s)
     fun say s = log s

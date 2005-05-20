@@ -1,41 +1,13 @@
 
-functor MulExp(
-  structure Flags: FLAGS
-  structure Report : REPORT
-  sharing type Report.Report = Flags.Report
-  structure Con: CON
-  structure Excon: EXCON
-  structure RegionExp: REGION_EXP
-    sharing type RegionExp.con = Con.con
-    sharing type RegionExp.excon = Excon.excon    
-  structure Eff: EFFECT
-    sharing type Eff.cone = RegionExp.cone
-  structure Mul: MUL
-    sharing type Mul.effectvar = Eff.effect = RegionExp.effect
-  structure R: RTYPE
-    sharing type R.place = Eff.place = RegionExp.place = Mul.place
-    sharing type R.Type = RegionExp.Type
-    sharing type R.il = RegionExp.il
-    sharing type R.sigma = RegionExp.sigma
-  structure TyName: TYNAME
-    sharing type TyName.TyName = RegionExp.TyName
-  structure Crash: CRASH
-  structure PP: PRETTYPRINT
-    sharing type PP.StringTree = R.StringTree = Eff.StringTree = Mul.StringTree = RegionExp.StringTree
-  structure Lvar : LVARS
-  structure Lam: LAMBDA_EXP
-    sharing type Lam.lvar = Lvar.lvar = RegionExp.lvar  = Mul.lvar
-    sharing type Lam.tyvar = R.tyvar = RegionExp.tyvar
-  structure RSE: REGION_STAT_ENV
-    sharing type RSE.excon = Excon.excon 
-    sharing type RSE.lvar = Lvar.lvar
-    sharing type RSE.TypeAndPlaceScheme = R.sigma
-    sharing type RSE.Type = R.Type
-    sharing type RSE.place = R.place 
-) : MUL_EXP = 
+structure MulExp: MUL_EXP = 
 struct
-  
+    structure Eff = Effect
+    structure R = RType
+    structure RSE = RegionStatEnv
+    structure Lvar = Lvars  
+    structure Lam = LambdaExp
     structure RegionExp = RegionExp
+    structure PP = PrettyPrint
 
     val print_regions = Flags.is_on0 "print_regions"
     val print_effects = Flags.is_on0 "print_effects"

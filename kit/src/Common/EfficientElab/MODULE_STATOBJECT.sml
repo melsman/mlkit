@@ -8,8 +8,7 @@ signature MODULE_STATOBJECT =
     type FunSig
 
     (*types from other modules:*)
-    structure TyName : TYNAME
-    type TyName sharing type TyName = TyName.TyName
+    type TyName = TyName.TyName
 
     type TyVar
     type Type
@@ -23,7 +22,7 @@ signature MODULE_STATOBJECT =
     type longstrid
     type longtycon
 
-    type StringTree sharing type StringTree = TyName.Set.StringTree
+    type StringTree = TyName.Set.StringTree
 
     datatype SigMatchError =
       MISSINGSTR  of longstrid

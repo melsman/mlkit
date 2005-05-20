@@ -480,24 +480,29 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  if priv = no_priv orelse (priv = read andalso null files) then
 	    `` (* No need to show table *)
 	  else
-	    UcsPage.lineTable {hdcolor = "white",
-			       width = "100%",
-			       header = pre_header ^^ `
-			       <tr bgcolor="#999999">
-			       <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_filename_dict)</td>
-			       <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_desc_dict)</td>
-			       <td class="headercell" align="right">
-			       ^(ScsDict.s UcsDict.scs_file_storage_filesize_dict)</td>
-			       <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_upload_date_dict)</td>
-			       <td class="headercell">^(if mayDelFile_p priv then
-							  ScsDict.s UcsDict.del_dict
-							else 
-							  "&nbsp;")</td>
-			       </tr>`,
-			       row_col1 = "#FFFFFF", 
-			       row_col2 = "#EEEEEE",
-			       align = "",
-			       footer = pre_footer} upload_fn_row files
+	    UcsPage.lineTable {
+	      hdcolor = "white",
+	      width = "100%",
+	      header = pre_header ^^ (
+	        if null files then `` 
+		else `
+		  <tr bgcolor="#999999">
+		  <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_filename_dict)</td>
+		  <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_desc_dict)</td>
+		  <td class="headercell" align="right">
+		  ^(ScsDict.s UcsDict.scs_file_storage_filesize_dict)</td>
+		  <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_upload_date_dict)</td>
+		  <td class="headercell">^(if mayDelFile_p priv then
+					     ScsDict.s UcsDict.del_dict
+					   else 
+					     "&nbsp;")</td>
+		  </tr>`
+	      ),
+	      row_col1 = "#FFFFFF", 
+	      row_col2 = "#EEEEEE",
+	      align = "",
+	      footer = pre_footer
+	    } upload_fn_row files
       in
 	(List.length files,table)
       end

@@ -1,12 +1,7 @@
 
-functor LexBasics(structure BasicIO: BASIC_IO
-		  structure Report: REPORT
-		  structure PP: PRETTYPRINT
-		    sharing type PP.Report = Report.Report
-		  structure Flags: FLAGS
-		  structure Crash: CRASH
-		 ): LEX_BASICS =
+structure LexBasics: LEX_BASICS =
   struct
+    structure PP = PrettyPrint
 
     datatype pos = POSITION of unit -> {file: string, line: int, column: int,
 					getLine: int -> string
@@ -215,7 +210,8 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	    val _ = BasicIO.print prompt
 
 	    val line =
-	      untabify (String.size prompt) (TextIO.inputLine TextIO.stdIn)
+	      untabify (String.size prompt) (case TextIO.inputLine TextIO.stdIn of
+						 NONE => "" | SOME s => s)
 
 	   (* The lines (and character positions) that we've got so far,
 	      in reverse order (latest at front of list): *)

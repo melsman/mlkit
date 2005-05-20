@@ -1,16 +1,13 @@
-functor EmitCode (structure Labels : ADDRESS_LABELS
-		  structure CG : CODE_GEN_KAM
-		  structure Opcodes : OPCODES_KAM
-		  structure BC : BUFF_CODE
-		  structure RLL : RESOLVE_LOCAL_LABELS
-                    sharing type Labels.label = RLL.label
-		  structure Kam : KAM
-		    sharing type Kam.AsmPrg = CG.AsmPrg
-                    sharing type Kam.label = Labels.label
-		  structure BI : BACKEND_INFO
-		  structure Flags : FLAGS
-		  structure Crash : CRASH) : EMIT_CODE =
+functor EmitCode (structure CG : CODE_GEN_KAM
+		      where type AsmPrg = Kam.AsmPrg
+		  structure BI : BACKEND_INFO) : EMIT_CODE =
   struct
+    structure Labels = AddressLabels
+    structure BC = BuffCode
+    structure Opcodes = OpcodesKAM
+    structure Kam = Kam
+    structure RLL = ResolveLocalLabels
+
     fun msg s = TextIO.output(TextIO.stdOut, s)
     fun chat(s: string) = if !Flags.chat then msg (s) else ()
     fun die s  = Crash.impossible ("EmitCode." ^ s)
@@ -257,6 +254,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimWordTableUpdate => out_opcode PRIM_WORDTABLE_UPDATE
       | PrimTableSize => out_opcode PRIM_TABLE_SIZE
       | PrimIsNull => out_opcode PRIM_IS_NULL
+
+	  | GetContext => out_opcode GET_CONTEXT
 
     end
 

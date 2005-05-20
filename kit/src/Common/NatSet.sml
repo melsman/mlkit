@@ -12,8 +12,9 @@
   hold containment information.
 ***********************************************************************)
 
-functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
+structure NatSet: KIT_MONO_SET =
   struct 
+    structure PP = PrettyPrint
 
     structure Bits =
       struct

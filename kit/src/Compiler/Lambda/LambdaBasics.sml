@@ -1,19 +1,8 @@
 
-functor LambdaBasics (structure Lvars : LVARS 
-		      structure Excon : EXCON
-		      structure TyName : TYNAME
-		      structure TLE : LAMBDA_EXP
-			sharing type TLE.lvar = Lvars.lvar
-			sharing type TLE.TyName = TyName.TyName
-			sharing type TLE.excon = Excon.excon
-		      structure Crash : CRASH
-		      structure FinMap : FINMAP
-		      structure FinMapEq : FINMAPEQ
-		      structure Flags : FLAGS
-		      structure PP : PRETTYPRINT
-			sharing type PP.StringTree = TLE.StringTree) : LAMBDA_BASICS =
+structure LambdaBasics: LAMBDA_BASICS =
   struct
-
+    structure PP = PrettyPrint
+    structure TLE = LambdaExp
     open TLE
 
     fun die s = Crash.impossible ("LambdaBasics." ^ s)

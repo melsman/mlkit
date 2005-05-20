@@ -1,126 +1,24 @@
-Group is
+group
+is
+  ../Edlib/edlib.cm
+  ../Pickle/pickle.cm
+  ../Common/tools.cm
+  ../Common/syntax_objects.cm
+  ../Common/special_objects.cm
+  compiler_objects.cm
+  ../Common/basics.cm
+  ../Manager/manager.cm
 
-../Common/common.cm
-
-Lambda/CON.sml
-Lambda/Con.sml
-Lambda/EXCON.sml
-Lambda/Excon.sml
-Lambda/LVARS.sml
-Lambda/Lvars.sml
-
-Lambda/COMPILER_ENV.sml
-COMPILE_BASIS.sml
-COMP_BASIS.sml
-
-Lambda/CompilerEnv__dummy.sml
-CompileBasis__dummy.sml
-CompileBasis.sml
-
-CompBasis.sml
-COMPILE.sml
-Compile.sml
-
-Backend/Barry/COMP_BASIS_BARRY.sml
-Backend/Barry/CompBasisBarry.sml
-Backend/Barry/CompileBasisBarry.sml
-Backend/Barry/CompileBarry.sml
-
-Lambda/LAMBDA_EXP.sml
-Lambda/LambdaExp.sml
-Lambda/LAMBDA_BASICS.sml
-Lambda/LambdaBasics.sml
-Lambda/OPT_LAMBDA.sml
-Lambda/OptLambda.sml
-Lambda/LAMBDA_STAT_SEM.sml
-Lambda/LambdaStatSem.sml
-Lambda/CompilerEnv.sml
-Lambda/ELIMINATE_EQ.sml
-Lambda/EliminateEq.sml
-Lambda/COMPILE_DEC.sml
-Lambda/CompileDec.sml
-
-Regions/REG_CONST.sml
-Regions/RegConst.sml
-Regions/AT_INF.sml
-Regions/AtInf.sml
-Regions/DROP_REGIONS.sml
-Regions/DropRegions.sml
-Regions/EFFECT.sml
-Regions/Effect.sml
-Regions/LOCALLY_LIVE_VARIABLES.sml
-Regions/LocallyLiveVariables.sml
-Regions/MUL.sml
-Regions/MUL_EXP.sml
-Regions/MUL_INF.sml
-Regions/Mul.sml
-Regions/MulExp.sml
-Regions/MulInf.sml
-Regions/REGINF.sml
-Regions/REGION_EXP.sml
-Regions/REGION_STAT_ENV.sml
-Regions/REG_FLOW.sml
-Regions/RTYPE.sml
-Regions/RType.sml
-Regions/RegFlow.sml
-Regions/RegInf.sml
-Regions/RegionExp.sml
-Regions/RegionStatEnv.sml
-Regions/SPREAD_DATATYPE.sml
-Regions/SPREAD_EXPRESSION.sml
-Regions/SpreadDataType.sml
-Regions/SpreadExpression.sml
-Regions/TestSpreadDataType.sml
-Regions/TestSpreadExp.sml
-
-(* For all backends *)
-Regions/ADDRESS_LABELS.sml
-Regions/AddressLabels.sml
-Regions/PHYS_SIZE_INF.sml
-Regions/PhysSizeInf.sml
-Regions/REGION_FLOW_GRAPH_PROFILING.sml
-Regions/RegionFlowGraphProfiling.sml
-
-(* Bytecode Backend *)
-Backend/KAM/KAM.sml
-Backend/KAM/Kam.sml
-Backend/KAM/CodeGenKAM.sml
-Backend/KAM/CODE_GEN_KAM.sml
-Backend/KAM/OPCODES_KAM.sml
-Backend/KAM/OpcodesKAM.sml
-Backend/KAM/BUFF_CODE.sml
-Backend/KAM/BuffCode.sml
-Backend/KAM/RESOLVE_LOCAL_LABELS.sml
-Backend/KAM/ResolveLocalLabels.sml
-Backend/KAM/EMIT_CODE.sml
-Backend/KAM/EmitCode.sml
-Backend/KAM/BuiltInCFunctionsKAM.sml
-
-(* Native Backend *)
-Backend/CLOS_CONV_ENV.sml
-Backend/ClosConvEnv.sml
-Backend/CALL_CONV.sml
-Backend/CallConv.sml
-Backend/CLOS_EXP.sml
-Backend/ClosExp.sml
-Backend/LINE_STMT.sml
-Backend/LineStmt.sml
-Backend/BACKEND_INFO.sml 
-Backend/BackendInfo.sml
-Backend/REGISTER_INFO.sml 
-Backend/REG_ALLOC.sml
-Backend/RegAlloc.sml
-Backend/FETCH_AND_FLUSH.sml
-Backend/FetchAndFlush.sml
-Backend/CALC_OFFSET.sml
-Backend/CalcOffset.sml
-Backend/SUBST_AND_SIMPLIFY.sml
-Backend/SubstAndSimplify.sml
-Backend/CODE_GEN.sml
-Backend/JUMP_TABLES.sml
-Backend/JumpTables.sml
-
-(* X86 Backend *)
-Backend/X86/CodeGenX86.sml
-Backend/X86/INSTS_X86.sml
-Backend/X86/InstsX86.sml
+  COMP_BASIS.sml
+  COMPILE.sml
+  Lambda/OPT_LAMBDA.sml 
+  Lambda/LAMBDA_STAT_SEM.sml
+  Lambda/ELIMINATE_EQ.sml
+  Lambda/COMPILE_DEC.sml
+  Lambda/OptLambda.sml
+  Lambda/LambdaStatSem.sml
+  Lambda/EliminateEq.sml
+  Lambda/CompileDec.sml
+  ../Version.sml
+  ../Common/KitCompiler.sml
+  ../Common/KitMain.sml

@@ -1,5 +1,4 @@
-
-functor Crash(structure BasicIO: BASIC_IO): CRASH =
+structure Crash: CRASH =
   struct
     exception CRASH
 
@@ -28,4 +27,4 @@ functor Crash(structure BasicIO: BASIC_IO): CRASH =
 	BasicIO.println msg;
 	raise CRASH
       end
-  end;
+  end

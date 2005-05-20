@@ -1,0 +1,41 @@
+local
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Edlib = bas ../Edlib/edlib.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas ../Common/tools.mlb end
+  basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
+  basis SpecialObjects = bas ../Common/special_objects.mlb end
+  basis CompilerObjects = bas compiler_objects.mlb end
+  basis Basics = bas ../Common/basics.mlb end
+  basis Manager = bas ../Manager/manager.mlb end
+  basis Compiler = bas compiler.mlb end
+  basis Regions = bas regions.mlb end
+  open BasLib
+in
+  (* Bytecode Backend *)
+
+  Backend/KAM/KAM.sml
+  Backend/KAM/CODE_GEN_KAM.sml
+  Backend/KAM/OPCODES_KAM.sml
+  Backend/KAM/BUFF_CODE.sml
+  Backend/KAM/RESOLVE_LOCAL_LABELS.sml
+  Backend/KAM/EMIT_CODE.sml
+
+  local open Tools 
+  in
+     Backend/KAM/BuiltInCFunctionsKAM.sml
+     Backend/KAM/Kam.sml
+     Backend/KAM/OpcodesKAM.sml
+     Backend/KAM/BuffCode.sml
+     Backend/KAM/ResolveLocalLabels.sml
+     Backend/KAM/EmitCode.sml
+     Backend/KAM/CodeGenKAM.sml
+  end
+
+  local open CompilerObjects
+  in Backend/KAM/ExecutionKAM.sml
+  end
+
+  ../Common/KitKAM.sml
+
+end

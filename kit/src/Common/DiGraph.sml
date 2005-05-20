@@ -5,14 +5,10 @@
  *)
 
 
-functor DiGraph(structure UF : UNION_FIND_POLY 
-                structure Stack : STACK
-                structure PP : PRETTYPRINT
-                structure Flags : FLAGS
-                structure Crash : CRASH
-               ): DIGRAPH  =
+structure DiGraph: DIGRAPH  =
   struct
-
+    structure PP = PrettyPrint
+    structure UF = UnionFindPoly
     structure EdList = Edlib.List
 
     fun say s = TextIO.output(TextIO.stdOut, s ^ "\n")
@@ -45,7 +41,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
      * invoked, all nodes must have status of being not visited.
      *)
 
-    abstype 'info graphnode = 
+    datatype 'info graphnode = 
       GRAPHNODE of {info: 'info,
                     visited: bool ref,
                     df_num : int ref, (* depth-first search sequence number; used in scc *)
@@ -54,7 +50,6 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     withtype 'info node  = 'info graphnode UF.Element
          and 'info graph = 'info graphnode UF.Element list
       
-    with (* abstype *)
     fun mk_graph () : '_info graph = []
 
     val add_node_to_graph : 'info node * 'info graph -> 'info graph = (op ::)
@@ -267,8 +262,6 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 	in (pu_node pu_graphnode, pu_graph pu_graphnode)
 	end
     end
-
-    end (* abstype *)
 
     (* ---------------------------------------------------------------------- *)
     (*   Graph algorithms                                                     *)

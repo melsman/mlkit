@@ -2,7 +2,6 @@
    nature of the MLLex and MLYacc interfaces. You really don't want to see
    them. *)
 
-(*$PARSE*)
 signature PARSE =
   sig
     type InfixBasis

@@ -1,25 +1,14 @@
 
-functor ExecutionBarry(BuildCompileBarry : BUILD_COMPILE_BARRY) : EXECUTION =
+structure ExecutionBarry : EXECUTION =
   struct
-    open BuildCompileBarry
-    open ExecutionArgs
+    structure Compile = CompileBarry
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure PP = PrettyPrint
+    structure Labels = AddressLabels
 
-    structure Basics = Elaboration.Basics
-    structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
-    structure Tools = Basics.Tools
-    structure PP = Tools.PrettyPrint
-    structure Crash = Tools.Crash
-
-    structure TyName = Basics.ModuleEnvironments.TyName
     structure DecGrammar = TopdecGrammar.DecGrammar
-    structure TyVar = DecGrammar.TyVar
-    structure Ident = DecGrammar.Ident
-    structure StrId = DecGrammar.StrId
-    structure TyCon = DecGrammar.TyCon
 
-    structure CompileBasis = CompileBasisBarry (structure CompBasisBarry = CompBasis
-						structure PP = PP
-						structure Flags = Tools.Flags)
+    structure CompileBasis = CompileBasisBarry
 
     val backend_name = "Barry"
     val backend_longname = "Barry - the Standard ML barifier"

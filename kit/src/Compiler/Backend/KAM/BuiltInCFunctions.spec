@@ -56,6 +56,8 @@ stringOfFloat
 isnanFloat
 realInt
 generalStringOfFloat
+sml_real_to_bytes
+sml_bytes_to_real
 closeStream
 openInStream
 openOutStream

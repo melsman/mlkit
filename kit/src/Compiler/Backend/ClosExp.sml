@@ -1,54 +1,16 @@
-functor ClosExp(structure Con : CON
-		structure Excon : EXCON
-		structure Lvars : LVARS
-		structure TyName : TYNAME
-		structure Effect : EFFECT
-		structure RType : RTYPE
-		  sharing type RType.effect = Effect.effect
-		  sharing type RType.tyname = TyName.TyName
-                structure Mul : MUL
-                  sharing type Mul.effectvar = Effect.effect 
-                structure MulExp : MUL_EXP
-		  sharing type MulExp.con = Con.con 
-		  sharing type MulExp.Type = RType.Type 
-		  sharing type MulExp.effect = Effect.effect
-		  sharing type MulExp.lvar = Lvars.lvar 
-		  sharing type MulExp.excon = Excon.excon
-                  sharing type MulExp.il = RType.il
-		  sharing type MulExp.qmularefset = Mul.qmularefset
-                  sharing type MulExp.mulef = Mul.mulef
-                  sharing type MulExp.lvar = Lvars.lvar = Mul.lvar
-		  sharing type MulExp.RegionExp.TyName = TyName.TyName
-	        structure PhysSizeInf : PHYS_SIZE_INF
-		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
-                structure AtInf : AT_INF
-                  sharing type AtInf.place = Effect.effect = MulExp.place = Mul.place = 
-                               RType.place = Effect.place = 
-			       PhysSizeInf.place
-		  sharing type PhysSizeInf.at = AtInf.at
-		structure Labels : ADDRESS_LABELS
-	        structure CallConv: CALL_CONV
-		  sharing type CallConv.lvar = Lvars.lvar
+functor ClosExp(structure CallConv: CALL_CONV where type lvar = Lvars.lvar
 		structure ClosConvEnv: CLOS_CONV_ENV
-                  sharing type ClosConvEnv.con = Con.con
-                  sharing type ClosConvEnv.place = AtInf.place
-                  sharing type ClosConvEnv.excon = Excon.excon
-                  sharing type ClosConvEnv.lvar = Lvars.lvar
-                  sharing type ClosConvEnv.label = Labels.label
-		structure BI : BACKEND_INFO
-	        structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING 
-		   sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place = MulExp.place
-		   sharing type RegionFlowGraphProfiling.at = AtInf.at
-		   sharing type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize = ClosConvEnv.phsize
-	        structure PP : PRETTYPRINT
-		  sharing type PP.StringTree = Effect.StringTree = AtInf.StringTree = PhysSizeInf.StringTree =
-		               ClosConvEnv.StringTree
-                structure Flags : FLAGS
-		structure Report : REPORT
-		  sharing type Report.Report = Flags.Report
-		structure Crash : CRASH) : CLOS_EXP = 
+                  where type con = Con.con
+                  where type place = AtInf.place
+                  where type excon = Excon.excon
+                  where type lvar = Lvars.lvar
+                  where type label = AddressLabels.label
+		  where type phsize = PhysSizeInf.phsize
+		  where type StringTree = PrettyPrint.StringTree
+		structure BI : BACKEND_INFO) : CLOS_EXP = 
 struct
-
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   structure RegionExp = MulExp.RegionExp
   type place = Effect.place
   type excon = Excon.excon
@@ -692,15 +654,10 @@ struct
     | FIX of args * free
 
     structure FuncEnv =
-      OrderFinMap(structure Order =
-		    struct
+      OrderFinMap(struct
 		      type T = lvar
 		      fun lt(l1: T) l2 = Lvars.lt(l1,l2)
-		    end
-		  structure PP =PP
-		  structure Report = Report
-		  structure Crash = Crash)
-
+		  end)
     local
       fun pp_dom lvar = PP.LEAF (Lvars.pr_lvar lvar)
       fun pp_ran (FN(args,free)) = 
@@ -739,31 +696,22 @@ struct
     (* Env *)
     (*******)
     structure EnvLvar =
-      OrderSet(structure Order =
-		 struct
-		   type T = lvar
-		   fun lt(l1: T) l2 = Lvars.lt(l1,l2)
-		 end
-	       structure PP =PP
-	       structure Report = Report)
+	OrderSet(struct
+		     type T = lvar
+		     fun lt(l1: T) l2 = Lvars.lt(l1,l2)
+		 end)
 
     structure EnvExCon =
-      OrderSet(structure Order =
-		 struct
-		   type T = excon
-		   fun lt(e1: T) e2 = Excon.< (e1,e2)
-		 end
-	       structure PP =PP
-	       structure Report = Report)
+	OrderSet(struct
+		     type T = excon
+		     fun lt(e1: T) e2 = Excon.< (e1,e2)
+		 end)
 
     structure EnvRho =
-      OrderSet(structure Order =
-		 struct
-		   type T = place
-		   fun lt(r1: T) r2 = Effect.lt_eps_or_rho(r1,r2)
-		 end
-	       structure PP =PP
-	       structure Report = Report)
+	OrderSet(struct
+		     type T = place
+		     fun lt(r1: T) r2 = Effect.lt_eps_or_rho(r1,r2)
+		 end)
 
     fun add_Env (Lvar, ExCon, Rho) (lvars, excons, rhos) =
       (EnvLvar.addList lvars Lvar, EnvExCon.addList excons ExCon, EnvRho.addList rhos Rho)
@@ -1131,14 +1079,10 @@ struct
 		false
 
     structure SEMap = (* The map (se --> ce) is used temporarily by unify_ce_se and unify_sma_se only *)
-      OrderFinMap(structure Order =
-		    struct
-		      type T = select_exp
-		      fun lt(se1: T) se2 = lt_se(se1,se2)
-		    end
-		  structure PP =PP
-		  structure Report = Report
-		  structure Crash = Crash)
+	OrderFinMap(struct
+			type T = select_exp
+			fun lt(se1: T) se2 = lt_se(se1,se2)
+		    end)
 
     fun unify_ce_se ces_and_ses se_map =
       let

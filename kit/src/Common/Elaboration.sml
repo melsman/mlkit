@@ -79,6 +79,7 @@ functor Tools(): TOOLS =
 
     structure FinMap = FinMap(structure Report = Report
 			      structure PP = PrettyPrint
+                              structure Crash = Crash
 			     )
 
     structure FinMapEq = FinMapEq(structure Report = Report
@@ -365,6 +366,14 @@ functor Basics(structure Tools: TOOLS): BASICS =
        structure PP = Tools.PrettyPrint
        structure SortedFinMap = Tools.SortedFinMap
        structure FinMap = Tools.FinMap
+       structure OrderFinMap = OrderFinMap(structure Order = 
+                                             struct
+                                               type T = Ident.id
+                                               fun lt x y = Ident.<(x,y)
+                                             end
+                                           structure PP = Tools.PrettyPrint 
+                                           structure Report= Tools.Report
+                                           structure Crash = Tools.Crash)
        structure Timestamp = Tools.Timestamp
        structure Report = Tools.Report
        structure Flags = Tools.Flags

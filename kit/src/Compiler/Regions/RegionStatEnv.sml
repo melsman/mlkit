@@ -1,34 +1,12 @@
 
-functor RegionStatEnv(structure Name : NAME
-                      structure R: RTYPE
-		      structure E: EFFECT
-                        sharing type R.cone = E.cone
-			sharing type R.effect = E.effect
-			sharing type R.runType = E.runType
-                      structure TyName: TYNAME
-                        sharing type TyName.TyName = R.tyname
-                        sharing type TyName.name = Name.name
-		      structure Con: CON
-			sharing type Con.name = Name.name
-		      structure Excon: EXCON
-			sharing type Excon.name = Name.name
-		      structure Lvar: LVARS
-			sharing type Lvar.name = Name.name
-		      structure Crash: CRASH
-		      structure L: LAMBDA_EXP
-			sharing type L.tyvar = R.tyvar
-			sharing type L.Type = R.LambdaType
-                      structure Flags: FLAGS
-		      structure PP: PRETTYPRINT
-			sharing type PP.StringTree = R.StringTree = 
-			  E.StringTree = Con.Map.StringTree = Excon.Map.StringTree =
-			  TyName.Map.StringTree = Lvar.Map.StringTree
-		        sharing type L.TyName = TyName.TyName)
-
-  : REGION_STAT_ENV =
+structure RegionStatEnv: REGION_STAT_ENV =
 
   struct
-
+    structure E = Effect
+    structure R = RType 
+    structure L = LambdaExp
+    structure PP = PrettyPrint
+    structure Lvar = Lvars
     structure ConMap = Con.Map
     structure TyNameMap = TyName.Map
     structure ExconMap = Excon.Map

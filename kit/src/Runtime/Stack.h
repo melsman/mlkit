@@ -14,7 +14,7 @@
  *                          address on the stack.                          *
  * ----------------------------------------------------------------------- */
 
-#define STACK_SIZE_INIT  (20 * 1024 * 1024)
+#define STACK_SIZE_INIT  (40 * 1024 * 1024)
 
 #define popValDef (*--sp)
 #define popNDef(N) { sp -= (N); }

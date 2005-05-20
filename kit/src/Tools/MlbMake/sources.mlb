@@ -1,5 +1,4 @@
-$(MLKIT_ROOT)/basislib/basislib.mlb
-MLB_PROJECT.sml  
-MlbProject.sml
-MlbMake.sml
+$(MLKIT_ROOT)/basis/basis-1997.mlb
+mlbmake.mlb
+MlbStandAlone.sml
 MLKit.sml

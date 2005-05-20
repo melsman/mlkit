@@ -1,1 +1,1 @@
-bin testprogs
+bin testprogs mlkit.spec smlserver.spec

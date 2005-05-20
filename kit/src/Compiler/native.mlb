@@ -1,0 +1,50 @@
+local
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Edlib = bas ../Edlib/edlib.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas ../Common/tools.mlb end
+  basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
+  basis SpecialObjects = bas ../Common/special_objects.mlb end
+  basis CompilerObjects = bas compiler_objects.mlb end
+  basis Basics = bas ../Common/basics.mlb end
+  basis Manager = bas ../Manager/manager.mlb end
+  basis Compiler = bas compiler.mlb end
+  basis Regions = bas regions.mlb end
+  open BasLib Compiler Regions
+in
+  (* Native Backend *)
+
+  Backend/LINE_STMT.sml
+  Backend/REG_ALLOC.sml
+  Backend/FETCH_AND_FLUSH.sml
+  Backend/CALC_OFFSET.sml
+  Backend/SUBST_AND_SIMPLIFY.sml
+  local open Tools
+  in
+     local open CompilerObjects
+     in Backend/LineStmt.sml
+        Backend/RegAlloc.sml
+        Backend/FetchAndFlush.sml
+        local open Edlib in Backend/CalcOffset.sml end
+        Backend/SubstAndSimplify.sml
+        Backend/NativeCompile.sml
+     end
+  end
+ 
+  (* X86 Backend *)
+  Backend/CODE_GEN.sml
+  Backend/X86/INSTS_X86.sml
+  local open Tools
+  in
+     local open CompilerObjects
+     in Backend/X86/InstsX86.sml
+        Backend/X86/CodeGenX86.sml
+        local open Pickle Basics Manager 
+        in Backend/X86/ExecutionX86.sml
+        end
+     end
+
+     ../Common/KitX86.sml
+     
+  end
+end

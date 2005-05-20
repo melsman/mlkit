@@ -1,21 +1,11 @@
 
-functor RegionExp(
-  structure Flags: FLAGS
-  structure Con: CON
-  structure Excon: EXCON
-  structure Eff: EFFECT
-  structure R: RTYPE
-    sharing type R.place = Eff.place
-  structure TyName: TYNAME
-  structure Crash: CRASH
-  structure PP: PRETTYPRINT
-    sharing type PP.StringTree = R.StringTree = Eff.StringTree
-  structure Lvar : LVARS
-  structure Lam: LAMBDA_EXP
-    sharing type Lam.lvar = Lvar.lvar
-    sharing type Lam.tyvar = R.tyvar
-) : REGION_EXP = 
+structure RegionExp: REGION_EXP = 
 struct
+    structure Lam = LambdaExp
+    structure R = RType
+    structure Eff = Effect
+    structure Lvar = Lvars
+    structure PP = PrettyPrint
 
     val print_regions = Flags.is_on0 "print_regions"
     val print_word_regions = Flags.is_on0 "print_word_regions"

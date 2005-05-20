@@ -12,7 +12,7 @@
 
 (* 24 Feb 1996: modified ElementNode type by replacing   'info ref    by  'info *)
 
-functor UF_with_path_halving_and_union_by_rank() : UNION_FIND_POLY =
+structure UnionFindPoly: UNION_FIND_POLY =
 struct
 
   type rank = int ref    

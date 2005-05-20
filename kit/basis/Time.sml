@@ -27,17 +27,20 @@ structure Time : TIME =
 
     fun fromMilliseconds ms = 
 	if ms < 0 then raise Time else 
-	    {sec=LargeInt.toInt ms div 1000+timebase, usec=LargeInt.toInt ms mod 1000 * 1000};
+	    {sec=LargeInt.toInt ms div 1000+timebase, usec=LargeInt.toInt ms mod 1000 * 1000}
 
     fun fromMicroseconds us = 
 	if us < 0 then raise Time else 
-	    {sec=LargeInt.toInt us div 1000000+timebase, usec=LargeInt.toInt us mod 1000000};
+	    {sec=LargeInt.toInt us div 1000000+timebase, usec=LargeInt.toInt us mod 1000000}
 
-    fun toSeconds {sec, usec} = LargeInt.fromInt (sec-timebase);
+    fun toSeconds {sec, usec} = 
+	LargeInt.fromInt sec - LargeInt.fromInt timebase
 
-    fun toMilliseconds {sec, usec} = LargeInt.fromInt((sec-timebase) * 1000 + usec div 1000)
+    fun toMilliseconds {sec, usec} = 
+	(LargeInt.fromInt sec - LargeInt.fromInt timebase) * 1000 + LargeInt.fromInt usec div 1000
 
-    fun toMicroseconds {sec, usec} = LargeInt.fromInt((sec-timebase) * 1000000 + usec)
+    fun toMicroseconds {sec, usec} = 
+	(LargeInt.fromInt sec - LargeInt.fromInt timebase) * 1000000 + LargeInt.fromInt usec
 
     fun fromReal r =		       
 	let 
@@ -51,6 +54,10 @@ structure Time : TIME =
 
     fun timeToUnits (t, p) = floor(toReal t * negpow10 p + 0.5);
 
+    fun fmt p t =
+	Real.fmt (StringCvt.FIX (SOME (if p > 0 then p else 0))) (toReal t)
+
+(* Y2004 bug-fix
     fun fmt p {sec, usec} =
 	let fun frac r = r - real (floor r) 
 	    val rnd  = if p < 0 then 0.5 
@@ -66,7 +73,7 @@ structure Time : TIME =
 					     (if p > 6 then 6 else p))
 	    else ints
 	end;
-
+*)
     fun toString t = fmt 3 t;
 
     fun scan getc source =
@@ -119,9 +126,17 @@ structure Time : TIME =
 
     val op + = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
 	let val usecs = usec1 + usec2 in
+	    {sec  = trunc(real sec1 - real timebase 
+			  + real sec2 + real(usecs div 1000000)),
+	     usec = usecs mod 1000000}
+	end 
+(*Y2004 bug-fix; mael 2005-03-16
+    val op + = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
+	let val usecs = usec1 + usec2 in
 	    {sec  = sec1 - timebase + sec2 + usecs div 1000000,
 	     usec = usecs mod 1000000}
 	end 
+*)
     and op - = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
 	let val usecs = usec1 - usec2 
 	    val secs  = sec1 - sec2 + usecs div 1000000

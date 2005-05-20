@@ -1,8 +1,6 @@
 (* Identifiers - variables or constructors *)
 
-functor Ident(structure StrId: STRID
-	      structure Crash: CRASH
-	     ): IDENT =
+structure Ident: IDENT =
   struct
 
     type strid = StrId.strid

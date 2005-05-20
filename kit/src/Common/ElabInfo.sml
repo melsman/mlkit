@@ -1,14 +1,5 @@
 
-functor ElabInfo (structure ParseInfo : PARSE_INFO
-		  structure ErrorInfo : ERROR_INFO
-		    sharing type ErrorInfo.Report = ParseInfo.SourceInfo.Report
-		  structure TypeInfo : TYPE_INFO
-		  structure OverloadingInfo : OVERLOADING_INFO
-		  structure PrettyPrint : PRETTYPRINT
-		  sharing type ParseInfo.StringTree = TypeInfo.StringTree
-			            = OverloadingInfo.StringTree = PrettyPrint.StringTree 
-		  structure Crash : CRASH
-		    ) : ELAB_INFO =
+structure ElabInfo: ELAB_INFO =
   struct
     fun impossible s = Crash.impossible ("ElabInfo." ^ s)
 

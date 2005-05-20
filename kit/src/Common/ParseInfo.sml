@@ -1,13 +1,4 @@
-(*$ParseInfo : SOURCE_INFO DF_INFO CRASH PRETTYPRINT PARSE_INFO*)
-
-functor ParseInfo
-  (structure SourceInfo : SOURCE_INFO
-   structure DFInfo : DF_INFO
-   structure PrettyPrint : PRETTYPRINT
-   sharing type SourceInfo.StringTree
-     = DFInfo.StringTree = PrettyPrint.StringTree 
-   structure Crash : CRASH
-     ) : PARSE_INFO =
+structure ParseInfo: PARSE_INFO =
   struct
     fun impossible s = Crash.impossible ("ParseInfo." ^ s)
 

@@ -2,15 +2,9 @@
  * patricia trees (for efficient concatenation) and AVL 
  * trees for distinguishing entries with the same integer values. *)
 
-functor IntStringFinMap(structure IntFinMap : MONO_FINMAP 
-			    where type dom = int
-			structure StringFinMap : MONO_FINMAP 
-			    where type dom = string
-			structure PP : PRETTYPRINT
-			structure Report : REPORT
-			structure Crash : CRASH) : MONO_FINMAP (*where type dom = int * string *) =
+structure IntStringFinMap: MONO_FINMAP (*where type dom = int * string *) =
   struct
-
+      structure PP = PrettyPrint
       structure IM = IntFinMap
       structure SM = StringFinMap
 
