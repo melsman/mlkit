@@ -154,7 +154,7 @@ structure ScsPathWin : OS_PATH =
 	      else toString {isAbs=false, vol="", arcs=h arcs1 arcs2}
             end;
 
-(* 2005-04-27, knp: fun mkRelative (p1, p2) version is to be removed *)
+(* 2005-04-27, knp: fun mkRelative (p1, p2) version is to be removed
       fun mkRelative (p1, p2) =
 	case (fromString p1, fromString (mkCanonical p2)) of
 	  (_ ,                {isAbs=false,...}) => raise Path
@@ -170,7 +170,7 @@ structure ScsPathWin : OS_PATH =
 	      if vol1 <> vol2 then raise Path 
 	      else toString {isAbs=false, vol="", arcs=h arcs1 arcs2}
             end;
-
+*)
 
 
       fun mkAbsolute {path=p1, relativeTo=p2} =
@@ -178,12 +178,12 @@ structure ScsPathWin : OS_PATH =
 	else if isAbsolute p1 then p1
 	     else mkCanonical(concat(p2, p1));
 
-(* 2005-04-27, knp: fun mkAbsolute (p1, p2) version is to be removed *)
+(* 2005-04-27, knp: fun mkAbsolute (p1, p2) version is to be removed
       fun mkAbsolute (p1, p2) =
 	if isRelative p2 then raise Path
 	else if isAbsolute p1 then p1
 	     else mkCanonical(concat(p2, p1));
-
+*)
 
       fun isCanonical p = mkCanonical p = p;
 	
