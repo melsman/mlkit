@@ -483,9 +483,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	    UcsPage.lineTable {
 	      hdcolor = "white",
 	      width = "100%",
-	      header = pre_header ^^ (
-	        if null files then `` 
-		else `
+	      header = pre_header ^^ (`
 		  <tr bgcolor="#999999">
 		  <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_filename_dict)</td>
 		  <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_desc_dict)</td>
