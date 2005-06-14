@@ -18,5 +18,5 @@ update scs_fs_mime_types
  where file_extension = 'doc';
 
 update scs_fs_mime_types 
-   set file_icon = '/ucs/images/icon_xls.gif'
+   set file_icon = '/ucs/images/icon_Excel.gif'
  where file_extension = 'xls';
