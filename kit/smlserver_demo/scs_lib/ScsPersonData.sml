@@ -16,6 +16,8 @@ signature SCS_PERSON_DATA =
          - if email is of form login => login@itu.dk
      *)
     val fix_email : string -> string
+
+    val getEmailCache : (int,string) Ns.Cache.cache
   end
 
 structure ScsPersonData :> SCS_PERSON_DATA =
@@ -37,14 +39,18 @@ structure ScsPersonData :> SCS_PERSON_DATA =
       fun name user_id = Ns.Cache.memoize name_cache name' user_id
     end
 
+    val getEmailCache = Ns.Cache.get(
+      Ns.Cache.Int,
+      Ns.Cache.String,
+      "ScsPersonEmail",
+      Ns.Cache.TimeOut 900 (*15 min*)
+    )
+
     local
       (* Emails only change in external sources once a day. Hence, it
          shouldn't be a big problem not updating the cache. *)
-      val email_cache = 	
-	Ns.Cache.get(Ns.Cache.Int,
-		     Ns.Cache.String,
-		     "ScsPersonEmail",
-		     Ns.Cache.TimeOut 900 (*15 min*))
+      val email_cache = getEmailCache	
+
       fun email' user_id = 
 	Db.oneField `
 	  select scs_party.email(^(Int.toString user_id))
