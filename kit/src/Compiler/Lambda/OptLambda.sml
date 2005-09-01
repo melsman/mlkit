@@ -1,35 +1,19 @@
 (* OptLambda - lambda code optimiser. *)
 
-functor OptLambda(structure Lvars: LVARS
-		  structure Name : NAME
-		    sharing type Name.name = Lvars.name
-		  structure LambdaExp: LAMBDA_EXP
-		    sharing type LambdaExp.lvar = Lvars.lvar
-		  structure LvarDiGraphScc : DIGRAPH_SCC
-		    where type edgeInfo = unit
-		      and type nodeId = Lvars.lvar
-		      and type info = Lvars.lvar
- 	          structure LambdaBasics : LAMBDA_BASICS
-		    sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
-		    sharing type LambdaBasics.lvar = Lvars.lvar 
-		    sharing type LambdaBasics.excon = LambdaExp.excon
-		    sharing type LambdaBasics.Type = LambdaExp.Type
-		    sharing type LambdaBasics.tyvar = LambdaExp.tyvar
-		  structure FinMap : FINMAP (* for statistics *)
-		  structure BasicIO: BASIC_IO
-                  structure Con : CON
-                    sharing type Con.con = LambdaExp.con
-                  structure Excon : EXCON
-                    sharing type Excon.excon = LambdaExp.excon  
-                  structure TyName : TYNAME
-                    sharing type TyName.TyName = LambdaExp.TyName
-		  structure Flags: FLAGS
-		  structure Crash: CRASH
-                  structure PP: PRETTYPRINT
-                    sharing type PP.StringTree = LambdaExp.StringTree = 
-		                 FinMap.StringTree = Lvars.Map.StringTree
-		 ): OPT_LAMBDA =
+structure OptLambda: OPT_LAMBDA =
   struct
+
+    structure LvarDiGraphScc =
+      DiGraphScc(struct
+		     type nodeId = Lvars.lvar
+		     type info = Lvars.lvar
+		     type edgeInfo = unit
+		     val lt = fn a => fn b => Lvars.lt(a,b)
+		     fun getId lv = lv
+		     val pu = Lvars.pu
+		 end)
+
+    structure PP = PrettyPrint
 
     structure EdList = Edlib.List
 

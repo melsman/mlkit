@@ -1,5 +1,6 @@
 (* Stream module
  * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
  *)
 
 structure Stream : STREAM =

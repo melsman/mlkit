@@ -1,1 +1,2 @@
-functor KitX86() = KitCompiler(ExecutionX86(BuildCompile))
+structure K = KitMain(KitCompiler(ExecutionX86))
+	    

@@ -6,84 +6,13 @@
  * multible compilation units (inlining of primitives will happen
  * automatically)). (martin) *)
 
-functor CompileDec(structure Con: CON   
-                   structure Excon: EXCON
-                   structure TyName: TYNAME
-                   structure Lvars: LVARS
-
-		   structure TopdecGrammar: TOPDEC_GRAMMAR
-
-                   structure StatObject : STATOBJECT
-                     sharing type StatObject.TyName = TyName.TyName
-
- 		   structure Environments : ENVIRONMENTS
-		     sharing type Environments.TypeFcn = StatObject.TypeFcn
-		     sharing type Environments.TypeScheme = StatObject.TypeScheme
-		     sharing type Environments.Type = StatObject.Type
-		     sharing type Environments.TyVar = StatObject.TyVar
-		     sharing type Environments.id = TopdecGrammar.id
-		     sharing type Environments.strid = TopdecGrammar.strid
-		     sharing Environments.TyName = TyName
-
-                   structure LambdaExp: LAMBDA_EXP
-                     sharing type LambdaExp.lvar = Lvars.lvar
-                     sharing type LambdaExp.con = Con.con
-                     sharing type LambdaExp.excon = Excon.excon
-		     sharing type LambdaExp.TyName = TyName.TyName
-		     sharing type LambdaExp.StringTree = Environments.StringTree = StatObject.StringTree
-
-		   structure LambdaBasics : LAMBDA_BASICS
-		     sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
-		     sharing type LambdaBasics.excon = LambdaExp.excon
-		     sharing type LambdaBasics.lvar = LambdaExp.lvar
-		     sharing type LambdaBasics.tyvar = LambdaExp.tyvar
-		     sharing type LambdaBasics.Type = LambdaExp.Type
-
-                   structure CompilerEnv: COMPILER_ENV
-                     sharing type CompilerEnv.con = Con.con
-                     sharing type CompilerEnv.excon = Excon.excon
-                     sharing type CompilerEnv.lvar = Lvars.lvar
-                     sharing type CompilerEnv.Type = LambdaExp.Type
-		     sharing type CompilerEnv.tyvar = LambdaExp.tyvar
-		     sharing type CompilerEnv.id = TopdecGrammar.id
-		     sharing type CompilerEnv.longid = TopdecGrammar.DecGrammar.longid
-		     sharing type CompilerEnv.TypeScheme = StatObject.TypeScheme
-		     sharing type CompilerEnv.strid = TopdecGrammar.strid
-		     sharing type CompilerEnv.longstrid = TopdecGrammar.longstrid
-		     sharing type CompilerEnv.ElabEnv = Environments.Env
-		     sharing type CompilerEnv.TyName = TyName.TyName
-		     sharing type CompilerEnv.tycon = Environments.tycon
-		     sharing type CompilerEnv.longtycon = TopdecGrammar.longtycon
-
-		   structure ElabInfo : ELAB_INFO
-                     sharing type ElabInfo.ElabInfo = TopdecGrammar.info
-                     sharing type ElabInfo.TypeInfo.longid = TopdecGrammar.DecGrammar.longid
-                     sharing type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
-                     sharing type ElabInfo.TypeInfo.TyVar = StatObject.TyVar
-                     sharing type ElabInfo.TypeInfo.realisation = Environments.realisation
-		     sharing type ElabInfo.TypeInfo.Type = StatObject.Type
-		     sharing type ElabInfo.TypeInfo.Env = Environments.Env
-		     sharing type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-		     sharing type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = CompilerEnv.tycon
-		     sharing type ElabInfo.TypeInfo.id = TopdecGrammar.id
-
-	           structure FinMapEq: FINMAPEQ
-
-                   structure Flags : FLAGS
-                   structure PrettyPrint : PRETTYPRINT
-                     sharing type PrettyPrint.StringTree = CompilerEnv.StringTree
-		       = LambdaExp.StringTree = ElabInfo.StringTree
-                   structure Report : REPORT
-		     sharing type Report.Report = Flags.Report
-		       = PrettyPrint.Report
-		       = ElabInfo.ParseInfo.SourceInfo.Report
-                   structure Crash: CRASH
-
-                  ): COMPILE_DEC =
+structure CompileDec: COMPILE_DEC =
   struct
 
+    structure TopdecGrammar = PostElabTopdecGrammar
     structure DecGrammar = TopdecGrammar.DecGrammar
-      
+    structure ElabInfo = AllInfo.ElabInfo
+
     val tag_values = Flags.is_on0 "tag_values"
 
     fun chat s = if !Flags.chat then print (s ^ "\n")
@@ -814,11 +743,10 @@ Report: Opt:
   fun string_from_rhs' (_, rhs) = string_from_rhs rhs
 
   structure conset : KIT_MONO_SET = OrderSet
-    (structure Order : ORDERING = struct
-       type T = con
-       fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
-     end (*structure Order*)
-     structure PP = PrettyPrint)
+      (struct
+	   type T = con
+	   fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
+       end) (*structure Order*)
 
   structure negset = struct
     type negset = int (*number of cons in the set*) * conset.Set (*the cons*)
@@ -924,7 +852,7 @@ Report: Opt:
 					     
   local
     structure map = OrderFinMap
-      (structure Order : ORDERING = struct
+      (struct
 	 type T = ifeq
 	 (*lt ifeq1 ifeq2 = lexicographic ordering of the components of the
 	  tuples.  As long as it is a linear order, I can choose any
@@ -932,10 +860,7 @@ Report: Opt:
 	  frequent cases it is determined as quickly as possible whether
 	  ifeq1 < ifeq2.*)
 	 fun lt ifeq1 ifeq2 = lt_from_cmp ifeq_cmp (ifeq1, ifeq2)
-       end (*structure Order*)
-       structure PP = PrettyPrint
-       structure Report = Report
-       structure Crash = Crash)
+       end)
 
     type mapr = node map.map ref
     val mapr : mapr = ref map.empty
@@ -1643,14 +1568,10 @@ end; (*match compiler local*)
        here. *)
 
     local
-      structure CNameMap = OrderFinMap(structure Order = 
-					 struct 
-					   type T = string
-					   val lt : T -> T -> bool = fn a => fn b => a < b
-					 end
-				       structure PP = PrettyPrint
-				       structure Report = Report
-				       structure Crash = Crash)
+	structure CNameMap = OrderFinMap(struct 
+					     type T = string
+					     val lt : T -> T -> bool = fn a => fn b => a < b
+					 end)
 
       (* 32-bit primitives are resolved to primitives working on either 
        * boxed or unboxed representations *)
@@ -2589,10 +2510,16 @@ the 12 lines above are very similar to the code below
 	     end
  
          | SEQdec(_, dec1, dec2) =>
+             let val (env, env', f1) = compileDecs env (topLevel,dec)
+	     in (env, f1)
+	     end
+(*
+         | SEQdec(_, dec1, dec2) =>
              let val (env1, f1) = compileDec env (topLevel,dec1)
 	         val (env2, f2) = compileDec (env plus env1) (topLevel,dec2)
 	     in (env1 plus env2, f1 o f2)
 	     end
+*)
 
         (* INFIX/NONFIX declarations have no effect on execution. *)
 
@@ -2602,6 +2529,22 @@ the 12 lines above are very similar to the code below
 
          | EMPTYdec _ => (CE.emptyCEnv, fn x => x)
 
+   and compileDecs env (topLevel,dec) = (* fast compilation when SEQ associates to the left *)
+     (case dec of 
+        SEQdec(_, dec1, dec2) =>
+             let val (env1, env1', f1) = compileDecs env (topLevel,dec1)
+                            (* env1' = env plus env1 *)
+	         val (env2, f2) = compileDec env1' (topLevel,dec2)
+	     in (env1 plus env2, env1' plus env2, f1 o f2)
+	     end
+
+      | dec1 => 
+             let
+               val (env1, f1) = compileDec env (topLevel,dec1)
+             in
+               (env1, env plus env1, f1)
+             end
+    )
    (* compileValbind - although there may be `rec' prefixes nested anywhere
       in the valbind, the effect is a single non-recursive layer of
       binding, together with a second layer of several distinct recursive
@@ -2969,11 +2912,30 @@ the 12 lines above are very similar to the code below
 	  end
 	 | EMPTYstrdec info => (CE.emptyCEnv, fn x => x)
 	 | SEQstrdec(info, strdec1, strdec2) =>
-	  let val (ce1, f1) = comp_strdec(fe,ce,strdec1)
+(*	  let val (ce1, f1) = comp_strdec(fe,ce,strdec1)
 	      val (ce2, f2) = comp_strdec(fe,CE.plus(ce,ce1), strdec2)
 	  in (CE.plus(ce1,ce2), f1 o f2)
 	  end
+*)
+           let val (env1, env',f1) = comp_strdecs(fe,ce,strdec)
+           in (env1,f1)
+           end
 
+    and comp_strdecs(fe,ce,strdec) = (*fast compilation when SEQ associates to the left *)
+       (case strdec of
+	   SEQstrdec(info, strdec1, strdec2) =>
+             let val (ce1, ce1', f1) = comp_strdecs(fe,ce,strdec1)
+                             (* ce1' = ce plus ce1 *)
+                 val (ce2, f2) = comp_strdec(fe,ce1',strdec2)
+             in (CE.plus(ce1,ce2), CE.plus(ce1',ce2), f1 o f2)
+             end
+         | strdec1 =>
+             let
+               val (ce1,f1) = comp_strdec(fe,ce,strdec1)
+             in
+               (ce1, CE.plus(ce,ce1),f1)
+             end
+       )
     and comp_strbind(fe,ce,STRBIND(info,strid,strexp,strbind_opt)) =
       let val (ce1, f1) = comp_strexp(fe,ce,strexp)
 	  val ce1 = CE.declare_strid(strid,ce1,CE.emptyCEnv) 
@@ -2986,14 +2948,27 @@ the 12 lines above are very similar to the code below
       end 
 
   in (*local*)
-
+(*
     fun comp_strdecs(fe,ce,[]) = (CE.emptyCEnv, fn x => x)
       | comp_strdecs(fe,ce, strdec::strdecs) =
       let val (ce1,f1) = comp_strdec(fe,ce,strdec)
 	  val (ce2,f2) = comp_strdecs(fe,CE.plus(ce,ce1),strdecs)
       in (CE.plus(ce1,ce2), f1 o f2)
       end
-
+*)
+    fun comp_strdecs_aux(fe,ce,[]) = ([CE.emptyCEnv], fn x => x)
+      | comp_strdecs_aux(fe,ce, strdec::strdecs) =
+      let val (ce1,f1) = comp_strdec(fe,ce,strdec)
+	  val (ce2s,f2) = comp_strdecs_aux(fe,CE.plus(ce,ce1),strdecs)
+      in (ce1::ce2s, f1 o f2)
+      end
+ 
+    fun comp_strdecs(fe,ce,strdecs) = 
+      let
+        val (ces, f) = comp_strdecs_aux(fe,ce,strdecs)
+      in
+        (List.foldl(fn(ce',acc)=> CE.plus(acc,ce')) CE.emptyCEnv ces, f)
+      end
   end (*local*)
 
   fun remove_dubs eq nil = nil
@@ -3007,20 +2982,57 @@ the 12 lines above are very similar to the code below
   (* Determine the scope of the declaration. Those lvars and
    * excons which are declared by the declarations are those
    * that appear in env1 but not in env. *)
+
   fun typed_declared_lvars env env1 = 
     (* we associated the declared_lvars with dummy type schemes;
      * the real type schemes are put in later; actually, now we 
      * could put them in... *)
-    let val lvars_env = CE.lvarsOfCEnv env
+    let 
+      fun rm_dups_sorted(lv:: (l1 as (lv'::rest))) = 
+             if Lvars.eq(lv,lv') then 
+               rm_dups_sorted l1
+             else lv :: rm_dups_sorted l1
+        | rm_dups_sorted l = l
+
+      val lvars_env = CE.lvarsOfCEnv env
+      val lvars_env_sorted = rm_dups_sorted(ListSort.sort (fn lv => fn lv' => Lvars.lt(lv,lv')) lvars_env)
+
+      val lvars_env1 = CE.lvarsOfCEnv env1
+      val lvars_env1_sorted = rm_dups_sorted(ListSort.sort (fn lv => fn lv' => Lvars.lt(lv,lv')) lvars_env1)
+       
+      fun minus(l1 as x::xs,l2 as y::ys) = 
+            if Lvars.eq(x,y) then minus(xs,ys)
+            else if Lvars.lt(x,y) then x:: minus(xs, l2)
+            else (* x> y *) minus(l1, ys)
+        | minus([], l2) = []
+        | minus(l1, []) = l1
+
+
+                       (* env1 \ env *)
+      val lvars_decl = minus(lvars_env1_sorted, lvars_env_sorted)
+      val alpha = fresh_tyvar()
+    in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
+      lvars_decl
+    end
+(*old
+  fun typed_declared_lvars env env1 = 
+    (* we associated the declared_lvars with dummy type schemes;
+     * the real type schemes are put in later; actually, now we 
+     * could put them in... *)
+    let 
+      fun is_this_eq(lv, lv') = Lvars.eq(lv,lv')      
+      val lvars_env = CE.lvarsOfCEnv env
       val lvars_decl = 
 	foldl (fn (lv1, lvs) =>
-	       if List.exists (fn lv => Lvars.eq(lv,lv1)) lvars_env then lvs
+	       if List.exists (fn lv => is_this_eq(lv,lv1)) lvars_env then lvs
 	       else lv1::lvs) [] (CE.lvarsOfCEnv env1)
       val lvars_decl = remove_dubs Lvars.eq lvars_decl
       val alpha = fresh_tyvar()
     in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
       lvars_decl
     end
+old*)
+
   fun declared_excons env env1 : (Excon.excon * Type option) list =
     let val excons_env = CompilerEnv.exconsOfCEnv env
       val excons_decl = 
@@ -3039,10 +3051,10 @@ the 12 lines above are very similar to the code below
   fun compileStrdecs fe env strdecs = 
     let val _ = DatBinds.reset()
         val _ = TV.reset()
-(*	val _ = Compiler.Profile.reset()
-	val _ = Compiler.Profile.setTimingMode true
-*)
+ (* 	val _ = Compiler.Profile.reset() *)
+
 	(* val _ = chat "[comp_strdecs begin]" *)
+        val _ = Timing.timing_begin()
         val (env1, f1) = comp_strdecs(fe,env,strdecs)
 	(* val _ = chat "[comp_strdecs end]" *)
 
@@ -3054,7 +3066,9 @@ the 12 lines above are very similar to the code below
        (* val _ = chat "[building term begin]" *)
        fun mk_lamb() = f1 scope
        val lamb = mk_lamb()
-(*
+       val _ = Timing.timing_end "CompileDec"
+(*       val _ = Compiler.Profile.setTimingMode false *)
+(* 
        val _ = let val name = OS.FileSys.tmpName ()
 		   val os = TextIO.openOut name
 	       in Compiler.Profile.report os; TextIO.closeOut os;

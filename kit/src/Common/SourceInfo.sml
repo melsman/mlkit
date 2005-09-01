@@ -1,10 +1,4 @@
-(*$SourceInfo: LEX_BASICS PRETTYPRINT CRASH SOURCE_INFO*)
-
-functor SourceInfo (structure LexBasics : LEX_BASICS
-		    structure PrettyPrint : PRETTYPRINT
-		    sharing type LexBasics.StringTree = PrettyPrint.StringTree
-		    structure Crash: CRASH
-		      ) : SOURCE_INFO =
+structure SourceInfo: SOURCE_INFO =
   struct
     type pos = LexBasics.pos
     type Report = LexBasics.Report

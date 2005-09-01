@@ -1,37 +1,24 @@
-functor FetchAndFlush(structure PhysSizeInf : PHYS_SIZE_INF
-		      structure Con : CON
-		      structure Excon : EXCON
-		      structure Lvars : LVARS
-		      structure Effect : EFFECT
-		      structure Labels : ADDRESS_LABELS
-		      structure CallConv: CALL_CONV
+functor FetchAndFlush(structure CallConv: CALL_CONV
+			where type lvar = Lvars.lvar
 		      structure LineStmt: LINE_STMT
-		        sharing type Con.con = LineStmt.con
-		        sharing type Excon.excon = LineStmt.excon
-		        sharing type Lvars.lvar = LineStmt.lvar = CallConv.lvar
-                        sharing type Effect.effect = Effect.place = LineStmt.place
-                        sharing type Labels.label = LineStmt.label
+		        where type con = Con.con
+		        where type excon = Excon.excon
+		        where type lvar = Lvars.lvar
+                        where type place = Effect.effect
+                        where type label = AddressLabels.label
+		        where type phsize = PhysSizeInf.phsize
+                        where type StringTree = PrettyPrint.StringTree
                         sharing type CallConv.cc = LineStmt.cc
-		        sharing type LineStmt.phsize = PhysSizeInf.phsize
 		      structure RegAlloc: REG_ALLOC
-                        sharing type RegAlloc.lvar = LineStmt.lvar
+                        where type lvar = Lvars.lvar
+                        where type label = AddressLabels.label
 			sharing type RegAlloc.Atom = LineStmt.Atom
-                        sharing type RegAlloc.label = LineStmt.label
 		      structure RI : REGISTER_INFO
-                        sharing type RI.lvar = Lvars.lvar
-		      structure Lvarset: LVARSET
-		        sharing type Lvarset.lvar = LineStmt.lvar
-			sharing type Lvarset.lvarset= RI.lvarset
-		      structure PP : PRETTYPRINT
-		        sharing type PP.StringTree = 
-                                   Effect.StringTree = 
-				   LineStmt.StringTree
-                      structure Flags : FLAGS
-		      structure Report : REPORT
-		        sharing type Report.Report = Flags.Report
-		      structure Crash : CRASH) : FETCH_AND_FLUSH =
+                        where type lvar = Lvars.lvar) 
+    : FETCH_AND_FLUSH =
 struct
-
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con

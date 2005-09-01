@@ -1,17 +1,11 @@
 (* Grammar for modules (modules version) - Definition v3 pages 12-14 *)
 
-functor TopdecGrammar(structure FunId: FUNID
-		      structure SigId: SIGID
-		      structure DecGrammar : DEC_GRAMMAR
-		      structure PrettyPrint : PRETTYPRINT
-		        sharing type DecGrammar.StringTree = PrettyPrint.StringTree
-			  ) : TOPDEC_GRAMMAR =
+functor TopdecGrammar(DecGrammar : DEC_GRAMMAR 
+		      where type StringTree = PrettyPrint.StringTree)
+    : TOPDEC_GRAMMAR =
   struct
 
     structure DecGrammar = DecGrammar
-    structure StrId = DecGrammar.StrId
-    structure FunId = FunId
-    structure SigId = SigId
     open DecGrammar
 
     type strid = StrId.strid
@@ -267,7 +261,7 @@ functor TopdecGrammar(structure FunId: FUNID
 	     LEAF ""
 
 	 | SEQstrdec(_, strdec, strdec') =>
-	     NODE{start="", finish="", indent=0,
+	     NODE{start="(", finish=")", indent=0,
 		     children=[layoutStrdec strdec, layoutStrdec strdec'],
 		     childsep=RIGHT "; "
 		    }

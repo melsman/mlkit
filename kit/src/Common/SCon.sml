@@ -1,6 +1,6 @@
 (* special constants - Definition v3 page 3 *)
 
-functor SCon(): SCON =
+structure SCon: SCON =
 struct
 
   datatype scon = INTEGER of Int32.int | STRING of string | REAL of string

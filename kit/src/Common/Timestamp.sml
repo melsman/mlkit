@@ -1,5 +1,4 @@
-(*$Timestamp: TIMESTAMP*)
-functor Timestamp(): TIMESTAMP =
+structure Timestamp: TIMESTAMP =
   struct
     type stamp = int
 

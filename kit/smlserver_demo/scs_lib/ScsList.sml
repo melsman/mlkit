@@ -32,6 +32,10 @@ signature SCS_LIST =
         otherwise returns false. *)
     val contains : ''a -> ''a list -> bool
 
+    (* [partition fn_get_id xs] returns xs as a list of groups with
+       all elements with the same fn_get_id in the same group. Assume
+       that the elements are ordered by fn_get_id *)
+     val partition : ('a -> ''b) -> 'a list -> 'a list list
 
     (* A few functions taken from:
        http://aleph0.clarku.edu/~djoyce/cs170/mlexample3.html *)
@@ -110,6 +114,21 @@ structure ScsList :> SCS_LIST =
       List.foldr (fn (x,acc) => case x of NONE => acc | SOME e => e::acc) [] xs
 
     fun contains x xs = List.exists (fn y => x = y) xs
+
+    fun partition fn_get_id xs =
+      let
+	fun eq (x1,x2) = (fn_get_id x1) = (fn_get_id x2)
+	fun p ([],[],acc) = rev acc
+	  | p ([],gs,acc) = rev (rev gs::acc)
+	  | p (x::xs,[],acc) = p(xs,[x],acc)
+	  | p (x::xs, g::gs,acc) =
+	    if eq(x,g) then
+	      p (xs,x::g::gs,acc)
+	    else
+	      p (xs,[x],rev((g::gs))::acc)
+      in
+	p (xs,[],[])
+      end
 
     (* A few functions taken from: http://aleph0.clarku.edu/~djoyce/cs170/mlexample3.html *)
 

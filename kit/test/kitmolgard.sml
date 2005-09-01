@@ -117,6 +117,7 @@
 
 local 
   (* Added 2001-02-17, Niels *)
+
   local
     val kitnoiter = ref 0
     fun incr() = (kitnoiter := !kitnoiter + 1)
@@ -144,7 +145,7 @@ local
       val inputAll_4 = TextIO.inputAll
       val input1_4 = TextIO.input1
       val inputN_4 = TextIO.inputN
-      val inputLine_2 = TextIO.inputLine
+      val inputLine_2 = fn is => getOpt(TextIO.inputLine is,"")
       val endOfStream_4 = TextIO.endOfStream
       val lookahead_3 = TextIO.lookahead
       val openOut_2 = TextIO.openOut
@@ -717,9 +718,9 @@ local
       fun CPN'report_timing_0 msg_3 =
 	  (case ! timer_0 of
 	     (SOME t_23) =>
-	     let val {gc = gc_1, sys = sys_1, usr = usr_1} =
+	     let val {sys = sys_1, usr = usr_1} =
 		     Timer.checkCPUTimer t_23
-		 val total_0 = Time.+ (usr_1, Time.+ (gc_1, sys_1))
+		 val total_0 = Time.+ (usr_1, sys_1)
 		 val text_0 =
 		     concat
 		     [msg_3,
@@ -727,8 +728,6 @@ local
 		      Time.toString total_0,
 		      "=",
 		      Time.toString usr_1,
-		      "+",
-		      Time.toString gc_1,
 		      "+",
 		      Time.toString sys_1,
 		      "\n"]
@@ -2982,7 +2981,7 @@ local
 	  end
       val CPN'fold_1 = fold_30
       val CPN'concat_1 = concat
-      val tod_0 = fn () => (Int.fromLarge (Time.toSeconds (Time.now ())))
+      val tod_0 = fn () => Time.now ()
       val list_to_ms_0 = fn x_215 => x_215
       fun CPN'bootstrap_0 (timetype_1, starttime_1, _) =
 	  (case timetype_1 of
@@ -4517,7 +4516,7 @@ local
 	   generate_instances_0 := false ;
 	   instances_changed_0 := true ;
 	   stop_crits_0 := [])
-      val time_store_0 = ref 0
+      val time_store_0 = ref Time.zeroTime
       val log_stream_0 = ref stdOut_2
       fun init_time_0 () =
 	  (time_store_0 := (tod_0 ()) ;
@@ -4526,7 +4525,7 @@ local
 	  (output_5 (! log_stream_0, st_2) ; flushOut_4 (! log_stream_0))
       fun rel_time_0 () =
 	  let val nt_0 = tod_0 ()
-	  in (nt_0 - (! time_store_0)) before (time_store_0 := nt_0)
+	  in (LargeInt.toInt(Time.toSeconds(Time.-(nt_0,! time_store_0)))) before (time_store_0 := nt_0)
 	  end
       val maxcnt_0 = 100000
       val base_25 = (base_21, base_21, base_21, base_21)

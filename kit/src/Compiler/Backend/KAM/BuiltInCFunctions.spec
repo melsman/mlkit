@@ -56,6 +56,8 @@ stringOfFloat
 isnanFloat
 realInt
 generalStringOfFloat
+sml_real_to_bytes
+sml_bytes_to_real
 closeStream
 openInStream
 openOutStream
@@ -104,3 +106,7 @@ precision
 get_time_base
 min_fixed_int
 max_fixed_int
+sml_dlopen
+resolveFun
+fromCtoMLstring
+

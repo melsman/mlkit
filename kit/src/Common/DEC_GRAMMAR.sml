@@ -5,20 +5,12 @@
 
 signature DEC_GRAMMAR =
 sig
-  structure Lab   : LAB   (* labels *)
-  structure SCon  : SCON  (* special constants *)                            
-  structure Ident : IDENT (* identifiers - variables or constructors *)      
-  structure TyVar : TYVAR (* type variables *)                               
-  structure TyCon : TYCON (* type constructors *)                            
-  structure StrId : STRID (* structure identifiers *)
-                 sharing type StrId.strid = Ident.strid = TyCon.strid
-
   type lab = Lab.lab
   type scon = SCon.scon
   type id = Ident.id
   type longid = Ident.longid
-  type tyvar = TyVar.SyntaxTyVar (*very confusing*)
-  eqtype tycon sharing type tycon = TyCon.tycon
+  type tyvar = SyntaxTyVar.SyntaxTyVar (*very confusing*)
+  type tycon = TyCon.tycon
   type longtycon = TyCon.longtycon
   type longstrid = StrId.longstrid
 

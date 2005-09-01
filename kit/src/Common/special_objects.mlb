@@ -1,0 +1,18 @@
+local 
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas tools.mlb end
+  basis SyntaxObjects = bas syntax_objects.mlb end
+  open BasLib 
+in
+  local open Pickle SyntaxObjects
+  in NAME.sml
+     local open Tools
+     in TYNAME.sml
+	Name.sml
+	QuasiMap.sml
+	QuasiSet.sml
+	TyName.sml
+     end
+  end
+end

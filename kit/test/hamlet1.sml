@@ -1,0 +1,1 @@
+fn r => let datatype t = C in r := C end

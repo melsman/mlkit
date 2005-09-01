@@ -59,7 +59,9 @@ testmatc.sml        ccl
 excon.sml
 dangle4.sml                   gc gengc prof
 ftv.sml
-elabDecBug.sml      
+elabDecBug.sml      ccl ecte
+oh-no.sml           ccl       gc nobasislib
+oh-no2.sml          ccl       gc nobasislib
 
 (* Tests of some benchmark programs *)
 
@@ -131,3 +133,10 @@ word31.sml                    gc gengc prof
 word32.sml                    gc gengc prof
 regexp1.sml                   gc gengc prof
 regexp2.sml                   gc gengc prof
+pickle.pm                     gc gengc prof
+packreal.sml                  gc gengc prof
+patricia.sml                  gc gengc prof
+stream.pm                     gc gengc prof
+natset.sml                    gc gengc prof
+fns.sml                       gc gengc prof
+datatypes.sml                 gc gengc prof

@@ -1,8 +1,6 @@
 (* Structure identifiers *)
 
-functor StrId(structure Timestamp: TIMESTAMP
-	      structure Crash: CRASH
-	     ): STRID =
+structure StrId: STRID =
   struct
     
     datatype strid = STRID of string

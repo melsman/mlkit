@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <setjmp.h>       /* to allow user-defined C-functions to raise exceptions using
 			   * the raise_exn primitive */
+#include <dlfcn.h> /* Dynamic linking */
 
 #include "Runtime.h"
 #include "Stack.h"
@@ -30,10 +31,14 @@
 #include "String.h"
 #include "Math.h"
 #include "Table.h"
+#include "Locks.h"
 
 #ifdef KAM
 Exception *exn_OVERFLOW;   // Initialized in Interp.c
 Exception *exn_INTERRUPT;  // Initialized in Interp.c
+Exception *exn_BIND;       // Initialized in Interp.c
+Exception *exn_DIV;        // Initialized in Interp.c
+Exception *exn_MATCH;      // Initialized in Interp.c
 jmp_buf global_exn_env;    // 
 void raise_exn(int exn) { 
   longjmp(global_exn_env, exn);   // never returns 
@@ -62,6 +67,8 @@ typedef unsigned int uint32;
 #define s32(p) (* (int32 *) (p))
 #define s32_1(p) (* (int32 *) (p+4))
 #define s32_2(p) (* (int32 *) (p+8))
+#define u32_1(p) (* (uint32 *) (p+4))
+#define u32_2(p) (* (uint32 *) (p+8))
 #define u32(p) (* (uint32 *) (p))
 
 #define u8pc  (unsigned char)(*pc)
@@ -69,7 +76,10 @@ typedef unsigned int uint32;
 #define s32_1pc s32_1(pc)
 #define s32_2pc s32_2(pc)
 #define u32pc u32(pc)
+#define u32_1pc u32_1(pc)
+#define u32_2pc u32_2(pc)
 #define inc32pc pc += 4
+#define inc2_32pc pc += 8
 
 #define Raise(EXNVALUE) {                                                                 \
  	debug(printf("RAISE; EXNVALUE = %x\n", EXNVALUE));                                \
@@ -284,8 +294,9 @@ typedef unsigned int uint32;
 
 /* replace instruction numbers with instruction addresses */
 void 
-resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable []) {
+resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable [], void *ccalltable[]) {
   unsigned long *real_code;
+  int tmp, tmp2;
   int i = 0;
   real_code = (unsigned long*)start_code;
 
@@ -300,6 +311,19 @@ resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable []) {
       die ("resolveInstructions: Hmm - inst number > 1000");
     }
     *(real_code + i) = (unsigned long)(jumptable[inst]);
+    for (tmp = 0, tmp2 = 0; tmp < 7; tmp++)
+    {
+      if (jumptable[inst] == ccalltable[tmp]) tmp2 = 1;
+    }
+    if (tmp2)
+    {
+      inst = real_code[i+1];
+      if (inst != 0) // Static Ccall
+      {
+        //printf("converting %d to %x\n", inst, cprim[inst-1]);
+        real_code[i+1] = (unsigned long) cprim[inst-1];
+      }
+    }
     switch (arity) {  /* IMMED_STRING -- compute arity... */
     case -1: 
       {
@@ -349,7 +373,8 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
        unsigned long *exnCnt,  // Exception name counter
        bytecode_t b_prog,      // The actual code
        int sizeW,              // Size of code in words
-       int interp_mode)        // Mode: RESOLVEINSTS or INTERPRET
+       int interp_mode,        // Mode: RESOLVEINSTS or INTERPRET
+	   void *serverCtx)        // Apache request_rec pointer
 {
 
 /* Declarations for the registers of the abstract machine.
@@ -375,10 +400,22 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
   int *env = NULL;
   uint32 cur_instr;
   int temp;
+  c_primitive primtmp;
+
 
 #ifdef LAB_THREADED
   static void * jumptable[] = {
 #   include "jumptbl.h"
+  };
+  static void *ccalltable[] = 
+  {
+    &&lbl_C_CALL0,
+    &&lbl_C_CALL1,
+    &&lbl_C_CALL2,
+    &&lbl_C_CALL3,
+    &&lbl_C_CALL4,
+    &&lbl_C_CALL5,
+    &&lbl_C_CALL6
   };
 #endif
 
@@ -390,7 +427,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
   if ( interp_mode == RESOLVEINSTS ) {
 #ifdef LAB_THREADED
-    resolveInstructions(sizeW, b_prog, jumptable);
+    resolveInstructions(sizeW, b_prog, jumptable, ccalltable);
     debug(printf("returning from interp\n"));
 #endif
     return 0;
@@ -660,8 +697,20 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
 
+    raise_bind:
+      acc = (int)&exn_BIND;
+      goto raise_exception;
+    raise_match:
+      acc = (int)&exn_MATCH;
+      goto raise_exception;
+    raise_div:
+      acc = (int)&exn_DIV;
+      goto raise_exception;
     raise_overflow:
       acc = (int)&exn_OVERFLOW;
+      goto raise_exception;
+    raise_interrupt:
+      acc = (int)&exn_INTERRUPT;
       goto raise_exception;
 
       Instruct(PRIM_ABS_I): {
@@ -822,8 +871,8 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(C_CALL0): { 
 	Setup_for_c_call;
-	debug(printf("C_CALL0(%d)\n", cprim[u32pc]));
-	acc = (cprim[u32pc])();
+	debug(printf("C_CALL0(%d)\n", u32pc));
+	acc = ((c_primitive) u32pc)();
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
 	debug(printf("C_CALL0 end\n"));
@@ -831,8 +880,9 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(C_CALL1): { 
 	Setup_for_c_call;
-	debug(printf("C_CALL1(%d) with acc %d (0x%x)\n", cprim[u32pc], acc, acc));
-	acc = (cprim[u32pc])(acc);
+	//debug(printf("C_CALL1(%d) with acc %d (0x%x)\n", cprim[u32pc], acc, acc));
+	debug(printf("C_CALL1(%d) with acc %d (0x%x)\n", u32pc, acc, acc));
+	acc = ((c_primitive) u32pc)(acc);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
 	debug(printf("C_CALL1 end\n"));
@@ -840,8 +890,9 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(C_CALL2): { 
 	Setup_for_c_call;
-	debug(printf("C_CALL2(%d) with acc %d and arg %d\n", cprim[u32pc], acc, selectStackDef(-1)));
-	acc = (cprim[u32pc])(popValDef, acc);
+	debug(printf("C_CALL2(%d) with acc %d and arg %d\n", u32pc, acc, selectStackDef(-1)));
+	//debug(printf("C_CALL2(%d) with acc %d and arg %d\n", cprim[u32pc], acc, selectStackDef(-1)));
+	acc = ((c_primitive) u32pc)(popValDef, acc);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
 	debug(printf("C_CALL2 end\n"));
@@ -849,9 +900,9 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(C_CALL3): { 
 	Setup_for_c_call;
-	debug(printf("C_CALL3(%d) with acc %d and arg %d\n", cprim[u32pc], acc, selectStackDef(-1)));
+	debug(printf("C_CALL3(%d) with acc %d and arg %d\n", u32pc, acc, selectStackDef(-1)));
 	temp = popValDef;
-	acc = (cprim[u32pc])(popValDef, temp, acc);
+	acc = ((c_primitive) u32pc)(popValDef, temp, acc);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
 	debug(printf("C_CALL3 end\n"));
@@ -860,7 +911,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       Instruct(C_CALL4): { 
 	Setup_for_c_call;
 	debug(printf("C_CALL4 - %d - (%d,%d,%d,%d)\n", u32pc, selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
-	acc = (cprim[u32pc])(selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
+	acc = ((c_primitive) u32pc)(selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
 	popNDef(3);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
@@ -872,11 +923,24 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Setup_for_c_call;
 	debug(printf("C_CALL5 - %d - (%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-4), 
 		     selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
-	acc = (cprim[u32pc])(selectStackDef(-4), selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
+	acc = ((c_primitive) u32pc)(selectStackDef(-4), selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
 	popNDef(4);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
 	debug(printf("C_CALL5 end\n"));
+	Next;
+      }
+
+      Instruct(C_CALL6): { 
+	Setup_for_c_call;
+	debug(printf("C_CALL6 - %d - (%d,%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-5), 
+		     selectStackDef(-4), selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
+	acc = ((c_primitive) u32pc)(selectStackDef(-5), selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),
+                       selectStackDef(-1), acc);
+	popNDef(5);
+	inc32pc; /* index in c_prim */
+	Restore_after_c_call;
+	debug(printf("C_CALL6 end\n"));
 	Next;
       }
 
@@ -1316,6 +1380,43 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
 
+	  // Passing state around; used in apache to pass request_rec with the connection
+      Instruct(GET_CONTEXT): {
+	 debug(printf("GET_CONTEXT\n"));
+	 acc = (int) serverCtx;
+	 Next;
+	  }
+      
+      Instruct(CHECK_LINKAGE): {
+		if (u32pc == 0)
+		{
+			acc = popValDef;
+			inc32pc;  /* Index in dynamic_funcs */
+			Next;
+		}
+		else 
+		{
+			Setup_for_c_call;
+			if (u32pc == 1) 
+			{
+				localResolveLibFnAuto(((void **) pc)+2, (char *) (&(((String) acc)->data)));
+			}
+			else if (u32pc == 2)
+			{
+				localResolveLibFnAuto(((void **) pc)+2, (char *) acc);
+			}
+      if (u32_2pc == 0) 
+      {
+        raise_exn((int) &exn_MATCH);
+      }
+			u32pc = 0;
+			acc = popValDef;
+			inc32pc;  /* Index in dynamic_funcs */
+			Restore_after_c_call;
+			Next;
+		}
+      }
+
 #ifdef LAB_THREADED
     lbl_EVENT:
     lbl_DOT_LABEL:
@@ -1346,9 +1447,10 @@ interpCode(Interp* interpreter,         // The interpreter
 	   Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
 	   char ** errorStr,            // Cell to store error-string in case of an uncaught exception
 	   unsigned long *exnCnt,       // Exception name counter
-	   bytecode_t b_prog) {         // The actual code
+	   bytecode_t b_prog,           // The actual code
+	   void *serverCtx)  {          // Apache request_rec pointer
   int res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
-		   exnCnt, b_prog, 0, INTERPRET);    
+		   exnCnt, b_prog, 0, INTERPRET, serverCtx);    
                                             // sizeW not used when mode is INTERPRET
   return res;
 }
@@ -1359,7 +1461,7 @@ interpCode(Interp* interpreter,         // The interpreter
 void
 resolveCode(bytecode_t b_prog,              // Code to resolve
 	    int sizeW) {                    // Size of code in words
-  interp(NULL, NULL, NULL, NULL, NULL, NULL, 0, b_prog, sizeW, RESOLVEINSTS);  
+  interp(NULL, NULL, NULL, NULL, NULL, NULL, 0, b_prog, sizeW, RESOLVEINSTS, NULL);  
 }
 
 void print_code(bytecode_t b_prog, int code_size) {
@@ -1408,7 +1510,7 @@ int main_interp(int argc, char * argv[]) {
   commandline_argv = argv;
 
   debug(printf("[Running interpreter]\n"));
-  res = interpRun(interp, NULL, &errorStr);
+  res = interpRun(interp, NULL, &errorStr, NULL);
   debug(printf ("[Result of running interpreter is %d]\n", res));
 
   if ( res < 0 ) {     // uncaught exception

@@ -24,7 +24,7 @@ local
               end
         in bas
               open Poly   
-              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
+              MONO_VECTOR-1997.sml MONO_ARRAY-1997.sml ByteTable-1997.sml 
            end
         end
 
@@ -93,7 +93,7 @@ local
        in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH-1997.sml Path-1997.sml end end
-              basis FileSys = let open List Time Random Path in bas OS_FILE_SYS.sml FileSys.sml end end
+              basis FileSys = let open List Time Random Path in bas OS_FILE_SYS.sml FileSys-1997.sml end end
               basis Process = bas OS_PROCESS.sml local open List in Process.sml end end
               basis Os = let open FileSys Path Process in bas OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end

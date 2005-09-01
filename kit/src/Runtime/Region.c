@@ -7,17 +7,24 @@
 #include "Profiling.h"
 #include "GC.h"
 #include "CommandLine.h"
+#include "Locks.h"
 
-#ifdef THREADS
-#include "/usr/share/aolserver/include/ns.h"
+/*
+#if defined(THREADS) && defined(AOLSERVER)
+#include "/opt/aolserver/include/ns.h"
 extern Ns_Mutex freelistMutex;
 #define FREELIST_MUTEX_LOCK     Ns_LockMutex(&freelistMutex);
 #define FREELIST_MUTEX_UNLOCK   Ns_UnlockMutex(&freelistMutex);
+#elif defined(THREADS) && defined(APACHE)
+#include "apr_thread_mutex.h"
+extern apr_thread_mutex_t *freelistMutex;
+#define FREELIST_MUTEX_LOCK     apr_thread_mutex_lock(freelistMutex);
+#define FREELIST_MUTEX_UNLOCK   apr_thread_mutex_unlock(freelistMutex);
 #else
 #define FREELIST_MUTEX_LOCK
 #define FREELIST_MUTEX_UNLOCK
 #endif
-
+*/
 /*----------------------------------------------------*
  * Hash table to collect region page reuse statistics *
  *  region_page_addr -> int                           *
@@ -341,6 +348,7 @@ void printFreeList() {
 }
 */
 
+
 #ifdef ENABLE_GC
 int 
 size_free_list() 
@@ -348,12 +356,12 @@ size_free_list()
   Rp *rp;
   int i=0;
 
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
 
   for ( rp = freelist ; rp ; rp = rp-> n )
     i++;
 
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
 
   return i;
 }
@@ -415,14 +423,14 @@ void alloc_new_block(Gen *gen) {
     }
   #endif /* ENABLE_GC */
 
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
   if ( freelist == NULL ) callSbrk(); 
   np = freelist;
   freelist = freelist->n;
 
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
 
 #ifdef ENABLE_GEN_GC
   // update colorPtr so that all new objects are considered to be in
@@ -445,7 +453,7 @@ void alloc_new_block(Gen *gen) {
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
-    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )
+    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )            // inherit to-space bit
       (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
   // ToDo: GenGC only if tospace bit is set already
     else
@@ -630,14 +638,14 @@ void deallocateRegion(
 
   /* Insert the region pages in the freelist; there is always 
    * at least one page in a generation. */  
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
   (((Rp *)TOP_REGION->g0.b)-1)->n = freelist;  // Free pages in generation 0
   freelist = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
   (((Rp *)TOP_REGION->g1.b)-1)->n = freelist;  // Free pages in generation 1
   freelist = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
 
   TOP_REGION=TOP_REGION->p;
 
@@ -821,15 +829,14 @@ int *allocGen (Gen *gen, int n) {
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
       Lobjs* lobjs;
+      // fprintf(stderr,"Allocating large object of %d words\n", n);
       r = get_ro_from_gen(*gen);
       lobjs = alloc_lobjs(n);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
-      //      die("Allocating Large Object \n"); // ToDo: GenGC remove
-      #ifdef PROFILING
-          fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
+    #ifdef PROFILING
       allocatedLobjs++;
-      #endif
+    #endif
 #ifdef ENABLE_GC
       lobjs_current += 4*n;
       lobjs_period += 4*n;
@@ -864,7 +871,6 @@ int *allocGen (Gen *gen, int n) {
   }
   gen->a = t2;
 
-  //  chk_obj_in_gen(gen, (unsigned int*) t1, "allocGen");   // ToDo: GenGC remove when GC works
   debug(printf("]\n"));
 
   return t1;
@@ -894,10 +900,10 @@ void resetGen(Gen *gen)
 #endif /* SIMPLE_MEMPROF */
 #endif /* ENABLE_GC */  
 
-    FREELIST_MUTEX_LOCK;
+    LOCK_LOCK(FREELISTMUTEX);
     (((Rp *)(gen->b))-1)->n = freelist;
     freelist = (clear_fp(gen->fp))->n;
-    FREELIST_MUTEX_UNLOCK;
+    LOCK_UNLOCK(FREELISTMUTEX);
     (clear_fp(gen->fp))->n = NULL;
   }
 
@@ -1311,10 +1317,10 @@ void free_region_pages(Rp* first, Rp* last)
 {
   if ( first == 0 )
     return;
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
   last->n = freelist;
   freelist = first;
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
   return;
 }
 #endif /*KAM*/

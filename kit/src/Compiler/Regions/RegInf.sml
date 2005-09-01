@@ -1,32 +1,13 @@
+(***************)
+(* Algorithm R *)
+(* Mads Tofte  *)
+(***************)
 
-functor RegInf(
-                                               (***************)
-  structure TyName: TYNAME                     (* Algorithm R *)
-  structure Exp: REGION_EXP                    (* Mads Tofte  *)
-                                               (***************)
-  structure RType: RTYPE
-  structure Effect: EFFECT
-  structure RSE: REGION_STAT_ENV
-  structure Lvar : LVARS
-    sharing type Lvar.lvar = RSE.lvar = Exp.lvar
-  structure Crash: CRASH
-  structure PrettyPrint : PRETTYPRINT
-     sharing type PrettyPrint.StringTree
-                  = RType.StringTree = RSE.StringTree 
-                  = Effect.StringTree = Exp.StringTree 
-  structure Flags: FLAGS
-    sharing type RSE.place = RType.place = Exp.place = Effect.effect = RSE.effectvar
-    sharing type Exp.effect = RType.effect = RType.place = Effect.effect
-    sharing type RSE.Type = RType.Type = Exp.Type
-    sharing type RSE.TypeAndPlaceScheme = RType.sigma = Exp.sigma
-    sharing type RSE.excon = Exp.excon
-    sharing type RType.il = Exp.il = RSE.il
-    sharing type RType.cone= Effect.cone = Exp.cone = RSE.cone
-    sharing type Exp.tyvar = RType.tyvar
-    sharing type RType.delta_phi = Effect.delta_phi
-):REGINF =
+structure RegInf : REGINF =
 struct
-
+  structure RSE = RegionStatEnv
+  structure Exp = RegionExp
+  structure Lvar = Lvars
   type cone = RType.cone
   type place = RType.place
   type effect = RType.effect
@@ -124,8 +105,8 @@ struct
                                         else (fn rho => NONE))
                                        (fn () => NONE)
     fun sayCone B = PrettyPrint.outputTree(device,Effect.layoutCone B,!Flags.colwidth);
-    fun sayLn s = (TextIO.output(TextIO.stdOut, s ^ "\n");
-                   device(s ^ "\n"))
+    fun sayLn s = (TextIO.output(TextIO.stdOut, s ^ "\n") (* ;
+                   device(s ^ "\n") *))
     fun logtree(t:PrettyPrint.StringTree) = PrettyPrint.outputTree(device, t, !Flags.colwidth)
     fun log_sigma(sigma_5hat, f) = 
       (case RType.bv sigma_5hat of 
@@ -150,36 +131,42 @@ struct
      device ("RegEffGen (number of times called during R)" ^ Int.toString(! count_RegEffClos) ^ "\n");
      result)
 
-    (* When garbage collection is enabled, we must make sure that no dangling pointers
-     * are introduced; a way to ensure this is to enforce the following side condition in
-     * rule 22 of TT'93:
+    (*     
+     * When garbage collection is enabled, we must make sure that no
+     * dangling pointers are introduced; a way to ensure this is to
+     * enforce the following side condition in rule 22 of TT'93:
      *
      *     forall y in fv(\x.e) . frev(TE(y)) \subseteq frev(mu)
      *
-     * As Mads pointed out at a meeting June 1st 2001, for the algorithm to work
-     * correctly, it is important that the side condition is closed under substitution, 
-     * which is not the case for the weaker side condition mentioned on page 50 of 
-     * Tofte & Talpin, A Theory of Stack Allocation in Polymorphically Typed Languages. 
-     * 1993. Technical Report. 
+     * As Mads pointed out at a meeting June 1st 2001, for the
+     * algorithm to work correctly, it is important that the side
+     * condition is closed under substitution, which is not the case
+     * for the weaker side condition mentioned on page 50 of Tofte &
+     * Talpin, A Theory of Stack Allocation in Polymorphically Typed
+     * Languages.  1993. Technical Report.  
      *
-     * -- anyway, we do *not* (currently) implement the side condition that is closed 
-     * under substitution because this side condition has an effect on multiplicity 
-     * inference, as not only get-effects are added but also arroweffects (epsilons), 
-     * which may contribute to put effects. The right thing to do, of course, is to 
-     * modify multiplicity inference also. mael 2001-06-06 *)
+     * When an arrow effect within the body of a FIX-function is
+     * updated, it is necessary to rerun R on the entire FIX to make
+     * sure that dependent effects are updated correctly (this
+     * happens during effectinstantiation). The ref gc_arrow_effect_update 
+     * is used for this; the ref last_gc_arrow_effect_update is used
+     * for ensuring that R is rerun accordingly also in the presence of
+     * nested FIX's. mael 2005-02-11...
+     *)
 
-
+    val gc_arrow_effect_update = ref false
     fun gc_compute_delta(rse,free,(ty0,rho0)) = 
       if dangling_pointers() then Effect.Lf[]
       else 
 	let 
+          val fv_sigma = RType.ferv_sigma    (*was: frv_sigma*)
 	  fun effects_lv (lv, acc: effect list) : effect list = 
 	    case RSE.lookupLvar rse lv
-	      of SOME(_,_,sigma,p,_,_) => p :: RType.frv_sigma sigma @ acc   (*should be: ferv_sigma*)
+	      of SOME(_,_,sigma,p,_,_) => p :: fv_sigma sigma @ acc
 	       | NONE => die "gc_compute_delta.effects_lv"
 	  fun effects_ex (ex, acc: effect list) : effect list = 
 	    case RSE.lookupExcon rse ex
-	      of SOME (ty,p) => p :: RType.frv_sigma(RType.type_to_scheme ty) @ acc  (*should be: ferv_sigma*)
+	      of SOME (ty,p) => p :: fv_sigma (RType.type_to_scheme ty) @ acc
 	       | NONE => die "gc_compute_delta.effects_ex"
 	  val (lvs,exs) = case free 
 			    of SOME p => p 
@@ -213,7 +200,8 @@ struct
 	  (* Statistics *)
 	  fun incr r n = r := !r + n
 	  val _ = if length effects > 0 then
-                     (incr Flags.Statistics.no_dangling_pointers_changes 1;
+                     (gc_arrow_effect_update := true;
+		      incr Flags.Statistics.no_dangling_pointers_changes 1;
 		      incr Flags.Statistics.no_dangling_pointers_changes_total (length effects))
 		  else ()
 	in Effect.Lf effects
@@ -345,9 +333,11 @@ struct
               let
                     fun Rrec(B3,sigma_3hat,previous_functions_ok:bool) =
                       let
-                        (* val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f ^ ":" ^ show_sigma sigma_3hat) *)
-                       (* val _ = sayCone B3*)
-			(* val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))*)
+(*
+                        val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f ^ ":" ^ show_sigma sigma_3hat)
+                        val _ = sayCone B3
+                        val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))
+*)
                         val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking 
                                                                                    alpha_equality below *)
                                handle _ => die("failed to rename type scheme " ^ 
@@ -400,13 +390,15 @@ struct
                    (fn B => Rrec(B, RType.FORALL([],rhovec,epsvec,tau0),true))
                end
 		| doOneRhs _ _ = die "doOneRhs.wrong bind"
-              
-              fun loop(B, [], true, rse) = B
-                | loop(B, [], false, rse) = loop(B,functions,true,rse)
-                | loop(B, fcn::rest, previous_were_ok,rse) =
-                    let val (B, rhs_was_ok) = doOneRhs rse fcn B 
-                    in loop(B, rest, previous_were_ok andalso rhs_was_ok, 
-                            addBindingForRhs fcn rse)
+
+              fun loop{B, fcn=[], previous_were_ok=true, rse, gc_update} = (B,gc_update)
+                | loop{B, fcn=[], previous_were_ok=false, rse, gc_update} = loop{B=B,fcn=functions,previous_were_ok=true,rse=rse,gc_update=gc_update}
+                | loop{B, fcn=fcn::rest, previous_were_ok,rse,gc_update} =
+                    let (* val _ = gc_arrow_effect_update := false *)
+			val (B, rhs_was_ok) = doOneRhs rse fcn B 
+                    in loop{B=B, fcn=rest, previous_were_ok=previous_were_ok andalso rhs_was_ok (*andalso not(!gc_arrow_effect_update) *),
+                            rse=addBindingForRhs fcn rse,
+			    gc_update=gc_update (*orelse !gc_arrow_effect_update*)}
                     end                
 
               fun addBindingForScope {lvar = f, occ, tyvars = alphavec, 
@@ -417,11 +409,16 @@ struct
                   in RSE.declareLvar(f,(true,true,sigma1hat', rho0, SOME occ, NONE),rse)
                   end
 
-              val B1 = loop(B,functions,true, foldl (uncurry addBindingForRhs) rse functions)
+              val (B1,gc_update) = loop{B=B,fcn=functions,previous_were_ok=true, rse=foldl (uncurry addBindingForRhs) rse functions, gc_update=false}
 
               val rse' = foldl (uncurry addBindingForScope) rse functions
             in
-              R(B1, rse', t2)  (*was B; mael 2001-06-03*)
+(*		gc_arrow_effect_update := false;  *)
+		R(B1, rse', t2)  
+(*
+		before 
+	      gc_arrow_effect_update := (gc_update orelse !gc_arrow_effect_update)
+*)
             end
    
        | Exp.APP(t1,t2) => 
@@ -496,13 +493,20 @@ struct
           )
 
       end (* let fun R_sw ...*)
+
+    fun loopR (B,rse,tr) =
+	let val _ = gc_arrow_effect_update := false
+	    val _ = Effect.reset(); 
+	    val B = #1(R (B,rse,tr)) handle AbortExp => Crash.impossible "R failed"
+  	    (* for toplas submission: insert call show_visited *)
+	    val B = (* show_visited *) B
+	in if !gc_arrow_effect_update then loopR (B,rse,tr)
+	   else B
+	end
   in
      Effect.algorithm_R:=true;
-     Effect.reset(); (* in order to reset list of effect updates in Effect *)
-     (* for toplas submission: insert call show_visited *)
-     (fn x => (* show_visited *) (#1(R x)) handle AbortExp => Crash.impossible "R failed")
-  end;
-
+     loopR
+  end
 
   type ('a,'b)trip = ('a,'b)Exp.trip
           

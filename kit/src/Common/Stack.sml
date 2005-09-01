@@ -1,4 +1,3 @@
-(*$Stack: STACK*)
 
 functor Stack() : STACK =
   struct

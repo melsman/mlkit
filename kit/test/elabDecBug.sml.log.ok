@@ -1,0 +1,11 @@
+
+
+********** elabDecBug.sml *************
+
+
+elabDecBug.sml, line 2, column 4:
+  fun f ([]:pair list) = "Hi There"
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  and f (xs as x::_ : pair list) = "Hi There again"
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Repeated identifier f.

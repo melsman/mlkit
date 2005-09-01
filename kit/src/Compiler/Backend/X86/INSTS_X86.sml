@@ -86,6 +86,7 @@ signature INSTS_X86 =
     | jo of lab         (* jump on overflow *)
 
     | call of lab       (* C function calls and returns *)
+    | call' of ea       (* C function calls and returns *)
     | ret
     | leave
 

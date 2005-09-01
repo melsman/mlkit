@@ -1,22 +1,33 @@
 SHELL=/bin/sh
 
-KITVERSION=4.1.4
+KITVERSION=4.1.5
+
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
-INSTDIR=/usr/share/mlkit
-INSTDIR_KAM=/usr/share/mlkit_kam
-INSTDIR_BARRY=/usr/share/barry
-INSTDIR_SMLSERVER=/usr/share/smlserver
+
+srcdir=.
+top_srcdir=.
+prefix=/usr/local
+
+
+INSTDIR=$(DESTDIR)${prefix}/mlkit
+INSTDIR_KAM=$(DESTDIR)${prefix}/mlkit_kam
+INSTDIR_BARRY=$(DESTDIR)${prefix}barry
+INSTDIR_SMLSERVER=$(DESTDIR)${prefix}/smlserver
 RPMDIR=/usr/src/rpm
 #RPMDIR=/usr/src/redhat
 
 # Some commands
-MKDIR=mkdir -p
-INSTALL=cp -p
+#MKDIR=mkdir -p
+MKDIR=$(top_srcdir)/mkinstalldirs
+#INSTALL=cp -p
+INSTALL=/usr/bin/install -c
 
-CLEAN=rm -rf PM CM *~ .\#*
 
-.PHONY: smlserver
+
+CLEAN=rm -rf MLB PM CM *~ .\#*
+
+.PHONY: smlserver install
 mlkit:
 	$(MKDIR) bin
 	cd src; $(MAKE)
@@ -34,7 +45,7 @@ barry:
 	cd src; $(MAKE) barry
 
 clean:
-	$(CLEAN) bin run
+	$(CLEAN) bin run mlkit.spec smlserver.spec
 	cd basis; $(MAKE) clean
 	cd doc/manual; $(MAKE) clean
 	cd kitlib; $(CLEAN) run
@@ -66,6 +77,9 @@ clean:
 	cd smlserver/xt/libxt; $(CLEAN)
 	cd smlserver/xt/www; $(CLEAN)
 
+clean_mlb:
+	rm -rf MLB */MLB */*/MLB */*/*/MLB */*/*/*/MLB */*/*/*/*/MLB */*/*/*/*/*/MLB 
+
 tgz_export:
 	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
 	cd ..; cvs -d linux.it.edu:/cvsroot -q export -D now -d mlkit-$(KITVERSION) mlkit/kit
@@ -96,14 +110,17 @@ tgz_smlserver:
 	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
 	cd ..; rm -rf smlserver-$(KITVERSION)
 
-rpm_smlserver:
+%.spec: %.spec.in
+	sed -e "s+@VERSION@+$(KITVERSION)+g" < $< > $@
+
+rpm_smlserver: smlserver.spec
 	# assume that ``make tgz_smlserver'' has been run 
 	# as a user other than root!
 	cp -f ../smlserver-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
 	cp -f smlserver.spec $(RPMDIR)/SPECS/smlserver-$(KITVERSION).spec
 	(cd $(RPMDIR)/SPECS; rpm -ba smlserver-$(KITVERSION).spec)
 
-rpm:
+rpm: mlkit.spec
 	# assume that ``make tgz'' has been run 
 	# as a user other than root!
 	cp -f ../mlkit-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
@@ -111,7 +128,7 @@ rpm:
 	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
 install:
-	rm -rf $(INSTDIR)
+#	rm -rf $(INSTDIR)
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
@@ -126,15 +143,16 @@ install:
 	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
+	$(INSTALL) version $(INSTDIR)
 	$(INSTALL) copyright $(INSTDIR)
 	$(INSTALL) README $(INSTDIR)
 	$(INSTALL) -R kitdemo $(INSTDIR)/kitdemo 
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR)/ml-yacc-lib
 	$(INSTALL) -R basis $(INSTDIR)/basis
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR)
-	chmod -R ug+rw $(INSTDIR)
-	chmod -R o+r $(INSTDIR)
+#	chown -R `whoami`.`whoami` $(INSTDIR)
+#	chmod -R ug+rw $(INSTDIR)
+#	chmod -R o+r $(INSTDIR)
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
@@ -143,13 +161,13 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
-	rm -f /usr/bin/mlkit /usr/bin/rp2ps
-	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
-	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
+#	rm -f /usr/bin/mlkit /usr/bin/rp2ps
+#	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
+#	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
-bootstrap:
+bootstrap0:
 	$(INSTALL) -a test $(INSTDIR)/test
 	cd $(INSTDIR)/test; ln -sf README testlink
 	cd $(INSTDIR)/test; ln -sf testcycl testcycl
@@ -161,10 +179,17 @@ bootstrap:
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
+	$(INSTALL) bin/mlbmake.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/mlbmake.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/mlbmake
+	chmod a+x $(INSTDIR)/bin/mlbmake
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
 	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
+
+bootstrap: install bootstrap0
+
+bootstrap_kam: install_kam bootstrap0
 
 install_kam:
 	rm -rf $(INSTDIR_KAM)
@@ -173,6 +198,7 @@ install_kam:
 	$(MKDIR) $(INSTDIR_KAM)/doc
 	$(INSTALL) bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM)/bin
 	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
+	$(INSTALL) version $(INSTDIR)
 	$(INSTALL) copyright $(INSTDIR_KAM)
 	$(INSTALL) README $(INSTDIR_KAM)
 	$(INSTALL) -R kitdemo $(INSTDIR_KAM)/kitdemo 
@@ -186,8 +212,8 @@ install_kam:
 	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
 	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
 	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
-	rm -f /usr/bin/mlkit_kam
-	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
+#	rm -f /usr/bin/mlkit_kam
+#	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
 
 install_barry:
 	rm -rf $(INSTDIR_BARRY)

@@ -1,36 +1,8 @@
 
-functor PhysSizeInf(structure Name : NAME
-		    structure MulExp : MUL_EXP
-		    structure ExCon : EXCON
-		      sharing type ExCon.excon = MulExp.excon
-	            structure Mul : MUL
-		      sharing type Mul.mul = MulExp.mul
-	            structure DiGraph : DIGRAPH
-		    structure AtInf : AT_INF
-		      sharing type AtInf.place = MulExp.place
-		    structure Effect : EFFECT
-		      sharing type Effect.effect = MulExp.place
-		    structure RType : RTYPE
-		      sharing type RType.Type = MulExp.Type
-		      sharing type RType.place = MulExp.place = Effect.place = Effect.effect = Mul.place
-		    structure TyName : TYNAME
-		      sharing type TyName.TyName = MulExp.TyName = RType.tyname
-		    structure Lvars : LVARS
-		      sharing type Lvars.lvar = MulExp.lvar
-                      sharing type Lvars.name = Name.name
-		    structure RegvarFinMap : MONO_FINMAP
-		      sharing type RegvarFinMap.dom = MulExp.place
-		    structure Flags : FLAGS
-		    structure Crash : CRASH
-		    structure PP : PRETTYPRINT
-		      sharing type PP.StringTree = MulExp.StringTree
-			= RegvarFinMap.StringTree = Lvars.Map.StringTree
-			= DiGraph.StringTree = Effect.StringTree = AtInf.StringTree
-		    structure RegConst : REG_CONST
-
-                      ) : PHYS_SIZE_INF =
+structure PhysSizeInf: PHYS_SIZE_INF =
   struct
-
+    structure RegvarFinMap = EffVarEnv
+    structure PP = PrettyPrint
     structure LvarMap = Lvars.Map
 
     open MulExp
@@ -78,7 +50,7 @@ functor PhysSizeInf(structure Name : NAME
     local (* free vars *)
       type fvs = lvar list * place list * excon list
       fun layout_lvar lv = PP.LEAF (Lvars.pr_lvar lv)
-      fun layout_excon excon = PP.LEAF (ExCon.pr_excon excon)
+      fun layout_excon excon = PP.LEAF (Excon.pr_excon excon)
       fun layout_fvs (s,(lvars, excons, places)) =
 	PP.NODE{start=s ^ " {",finish=" }",indent=1,childsep=PP.RIGHT ", ",
 		children=(map layout_lvar lvars) @ (map layout_excon excons) @ (map E.layout_effect places)}
@@ -110,7 +82,7 @@ functor PhysSizeInf(structure Name : NAME
 	val (mark_lvar, unmark_lvar, add_lvar) = gen_marker(lvar_bucket, Lvars.is_free)
 
 	fun add_excon (excon:excon) : unit =
-	  if List.exists (fn excon' => ExCon.eq(excon,excon')) (!excon_bucket) then ()
+	  if List.exists (fn excon' => Excon.eq(excon,excon')) (!excon_bucket) then ()
 	  else excon_bucket := excon :: (!excon_bucket)
 	    
 	fun add_atp atp = case place_atplace atp
@@ -125,7 +97,7 @@ functor PhysSizeInf(structure Name : NAME
 
 	fun kill_excon (excon:excon) : unit =
 	  let fun kill [] = []
-		| kill (excon'::excons) = if ExCon.eq(excon',excon) then excons
+		| kill (excon'::excons) = if Excon.eq(excon',excon) then excons
 					  else excon'::kill excons
 	  in excon_bucket := kill (!excon_bucket)
 	  end
@@ -876,7 +848,7 @@ functor PhysSizeInf(structure Name : NAME
           let val t1 = PP.HNODE{start = "lvars:", finish = "end of lvars;", 
                                childsep = PP.RIGHT " ", children = map (PP.LEAF o Lvars.pr_lvar) lvars}
             val t2 =  PP.HNODE{start = "excons:", finish = "end of excons;", 
-                               childsep = PP.RIGHT " ", children = map (PP.LEAF o ExCon.pr_excon) excons}
+                               childsep = PP.RIGHT " ", children = map (PP.LEAF o Excon.pr_excon) excons}
             val t3 =  PP.HNODE{start = "region variables:", finish = "end of region variables;", 
                                childsep = PP.RIGHT " ", children = map Effect.layout_effect places}
           in

@@ -1,11 +1,6 @@
 (* General lexing utilities. *)
 
-functor LexUtils(structure LexBasics: LEX_BASICS
-		 structure Token: Topdec_TOKENS
-		 structure BasicIO: BASIC_IO
-		 structure Flags: FLAGS
-		 structure Crash: CRASH
-		): LEX_UTILS =
+functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
   struct
     
     open LexBasics Token

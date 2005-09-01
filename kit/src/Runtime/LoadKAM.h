@@ -1,3 +1,5 @@
+#include "../CUtils/hashmap_typed.h"
+
 /* LoadKAM.h : format of bytecode files */
 /* This module loads a KAM module into the code segment, being */
 /* a flat memory area containing KAM instructions.             */
@@ -19,11 +21,18 @@
 #define TRUNCATED_FILE (-2)
 #define BAD_MAGIC_NUM (-3)
 
+// Labels
+typedef struct {
+  unsigned long id;
+  char base;
+} Label;
+typedef Label* label;
+
 /* Compared to Moscow ML, we put the various information in front of the file. */
 
 struct exec_header {
   unsigned long code_size;           /* Size of the code block (in bytes) */
-  unsigned long main_lab_opt;        /* Optional main label; 0 is NONE */
+  label main_lab_opt;                /* Optional main label; (0,"") is NONE */
   unsigned long import_size_code;    /* Number of code import entries */
   unsigned long import_size_data;    /* Number of data import entries */
   unsigned long export_size_code;    /* Number of code export entries */
@@ -42,56 +51,47 @@ struct exec_header {
  */
 typedef unsigned char * bytecode_t;
 
-/* Support for HashTables mapping strings to loaded bytecode */
 
-/* --------------------------------------------------
- * The following type definition is for 
- * holding elements of the mapping from strings 
- * (file names) to loaded byte code.
- * -------------------------------------------------- */
+/* ----------------------------------------------------------
+ * Support for HashTables mapping strings to loaded bytecode
+ *
+ * The following type definition is for holding elements of 
+ * the mapping from strings (file names) to loaded byte code.
+ * See hashmap_typed.h
+ * ---------------------------------------------------------- */
 
 #ifdef CODE_CACHE
-typedef struct stringMapHashList {
-  char* name;                           /* string (file name) */
-  bytecode_t code;                      /* loaded byte code */
-  struct stringMapHashList * next;      /* next hashed element */
-} StringMapHashList;
-
-typedef StringMapHashList* StringMap;
-
-/* Size of string map hash table in entries -- (2^n-1) */
-#define STRING_MAP_HASH_TABLE_SIZE 511
-
+DECLARE_HASHMAP(strToCodeMap,char*,bytecode_t)
+void strToCodeMapInsert(strToCodeMap m, char* s, bytecode_t code);
+bytecode_t strToCodeMapLookup(strToCodeMap m, char* s);
+strToCodeMap strToCodeMapClear(strToCodeMap m);
 #endif
 
-/* Support for HashTables mapping labels to absolute addresses */
 
 /* --------------------------------------------------
- * The following type definition is for 
- * holding elements of the mapping from labels to 
- * resolved absolute addresses.
+ * Support for HashTables mapping labels to absolute addresses
+ *
+ * The following type definition is for holding elements 
+ * of the mapping from labels to resolved absolute addresses.
+ * See hashmap_typed.h
  * -------------------------------------------------- */
 
-typedef struct labelMapHashList {
-  unsigned long label;                  /* label that is resolved */
-  unsigned long address;                /* resolved absolute address */
-  struct labelMapHashList * next;       /* next hashed element */
-} LabelMapHashList;
-
-typedef LabelMapHashList* LabelMap;
-
-/* Size of label map hash table in entries -- (2^n-1) */
-#define LABEL_MAP_HASH_TABLE_SIZE 4095
+DECLARE_HASHMAP(labelMap,label,unsigned long)
+void labelMapInsert(labelMap labelMap, label label, unsigned long address);
+labelMap labelMapNew(void);
+unsigned long labelMapLookup(labelMap labelMap, label label);
+void labelMapFree(labelMap labelMap);
 
 typedef struct longList {
   unsigned long elem;        /* the element */
   struct longList * next;    /* the remainder of the list; terminated 
 			      * with a NULL pointer */
 } LongList;
+void longListFree(LongList* longList);
 
 typedef struct {
-  LabelMap* codeMap;         /* Mapping code labels to absolute addresses */
-  LabelMap* dataMap;         /* Mapping data labels to relative addresses 
+  labelMap codeMap;          /* Mapping code labels to absolute addresses */
+  labelMap dataMap;          /* Mapping data labels to relative addresses 
 			      * with respect to a data segment */
   LongList* codeList;        /* Addresses of all malloc'ed 
 			      * code elements; used for freeing memory 
@@ -99,7 +99,7 @@ typedef struct {
   LongList* exeList;         /* Labels for those program units that need be 
 			      * initialized by running some code. */
 #ifdef CODE_CACHE
-  StringMap* codeCache;      /* Caching support for loaded leafs. */
+  strToCodeMap codeCache;    /* Caching support for loaded leafs. */
 #endif
   unsigned long data_size;   /* Accumulated size (in entries) of data segment */
 } Interp;
@@ -108,31 +108,6 @@ typedef struct {
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
 
-#ifdef CODE_CACHE
-
-StringMap* stringMapInsert(StringMap* stringMap, 
-			   char* s, 
-			   bytecode_t code);
-
-StringMap* stringMapNew(void);
-
-bytecode_t stringMapLookup(StringMap* stringMap, char* s);
-
-void stringMapClear(StringMap* stringMap);
-
-#endif /*CODE_CACHE*/
-
-LabelMap* labelMapInsert(LabelMap* labelMap, 
-			 unsigned long label, 
-			 unsigned long address);
-
-LabelMap* labelMapNew(void);
-
-unsigned long labelMapLookup(LabelMap* labelMap, 
-			     unsigned long label);
-
-void labelMapFree(LabelMap* labelMap);
-void longListFree(LongList* longList);
 
 /* Create a new interpreter */
 Interp *interpNew(void);
@@ -143,10 +118,10 @@ int interpLoadExtend(Interp* interp, char* file);
 /* Load a bytecode file and run it, then release the loaded code;
  * later we can provide a version of this function that caches the
  * loaded code. */
-int interpLoadRun(Interp* interp, char* file, char** errorStr);
+int interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState);
 
 /* Run an interpreter */ 
-int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr);
+int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr, void *serverState);
 
 /* Free all loaded code */
 void interpClear(Interp* interp);

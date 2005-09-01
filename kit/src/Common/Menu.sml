@@ -26,8 +26,7 @@ signature MENU =
     val interact: unit -> unit
   end   
 
-functor Menu(structure Crash : CRASH
-	     val help_topic : string -> string) : MENU =
+functor Menu(val help_topic : string -> string) : MENU =
 struct
 
   type 'a entry = string * string list * 'a ref
@@ -140,7 +139,7 @@ struct
   fun read_string r () =
       (u_or_q_from_read_string := false ;
        outLine "<string in double quotes>, Up (u), or Quit (quit): >" ;
-       let val cs = explode(TextIO.inputLine TextIO.stdIn)
+       let val cs = explode(Option.getOpt(TextIO.inputLine TextIO.stdIn,""))
 	   val cs = StringCvt.skipWS getc cs
        in
 	 case cs of 
@@ -156,7 +155,7 @@ struct
 
   fun read_int r () =
     (outLine "<number> or up (u): >";
-     let val cs = explode(TextIO.inputLine TextIO.stdIn)
+     let val cs = explode(Option.getOpt(TextIO.inputLine TextIO.stdIn,""))
          val cs = StringCvt.skipWS getc cs
      in case cs 
 	  of [] => (help(); read_int r ())
@@ -317,7 +316,7 @@ struct
   
   fun read_display_cmd(): cmd =
     (print "\n>";
-     let val cs = explode(TextIO.inputLine TextIO.stdIn)
+     let val cs = explode(Option.getOpt(TextIO.inputLine TextIO.stdIn,""))
          val cs = StringCvt.skipWS getc cs
      in case cs of
           [] => HELP
@@ -338,7 +337,7 @@ struct
   fun read_int_list r () =
     (outLine "<type an int list, e.g. [4,3]> or up (u): >";
      let
-       val s = TextIO.inputLine TextIO.stdIn
+       val s = Option.getOpt(TextIO.inputLine TextIO.stdIn,"")
        val cs = explode s
      in
        case cs
@@ -355,7 +354,7 @@ struct
     (outLine "<type an int pair list of region variables,\n\
 	  \e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> or up (u): >" ;
      let
-       val s = TextIO.inputLine TextIO.stdIn
+       val s = Option.getOpt(TextIO.inputLine TextIO.stdIn,"")
        val cs = explode s
      in
        case cs

@@ -1,9 +1,8 @@
 (* Finite maps *)
 
-functor FinMap(structure Report: REPORT
-	       structure PP: PRETTYPRINT
-	      ): FINMAP =
+structure FinMap: FINMAP =
   struct
+    structure PP = PrettyPrint
 
     datatype (''a, 'b) map = FM of {elts: (''a * 'b) list, unique : bool ref}
 
@@ -19,6 +18,8 @@ functor FinMap(structure Report: REPORT
 	let fun look [] = NONE
 	      | look ((x',y)::rest) = if x=x' then SOME(y) else look rest
 	in
+            (*if List.length l > 500 then Crash.impossible ("FinMap.lookup on list of length"  ^ Int.toString(List.length l))
+            else *)
 	    look l
 	end
 

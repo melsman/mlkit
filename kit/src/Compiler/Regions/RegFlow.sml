@@ -1,24 +1,8 @@
 (* Region Flow Analysis: first pass of Storage Mode Analysis *)
 
-
-functor RegFlow(    
-    structure Lvars: LVARS
-    structure Con : CON
-    structure Excon: EXCON
-    structure PrettyPrint: PRETTYPRINT
-    structure Crash: CRASH
-    structure Flags: FLAGS
-    structure Eff: EFFECT
-    structure RType: RTYPE
-    structure MulExp: MUL_EXP
-      sharing type PrettyPrint.StringTree=Eff.StringTree
-      sharing type RType.effect = Eff.effect = Eff.place = MulExp.effect = MulExp.place
-      sharing type Lvars.lvar = MulExp.lvar
-      sharing type MulExp.il = RType.il
-    ): REG_FLOW = 
-
+structure RegFlow: REG_FLOW = 
 struct
-
+  structure Eff = Effect
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
   type place = Eff.place

@@ -187,10 +187,9 @@ val test12o = check(w2i (i2w ~1 mod i2w 2) = 1);
 val _ = pr_ln "test12o" test12o
 val test12p = check(w2i (i2w ~1 div i2w 100) = idiv(maxposint, 50));
 val _ = pr_ln "test12p" test12p
-(*31bit
-val test12q = check(w2i (i2w ~1 mod i2w 10) = 7);
+(*5 on 32bit; 7 on 31bit*)
+val test12q = check(w2i (i2w ~1 mod i2w 10) = 5);
 val _ = pr_ln "test12q" test12q
-*)
 val test12r = (i2w 17 div i2w 0 seq "WRONG") 
               handle Div => "OK" | _ => "WRONG";
 val _ = pr_ln "test12r" test12r

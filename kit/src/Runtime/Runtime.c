@@ -25,14 +25,14 @@
 int 
 die (char *s) 
 { 
-  fprintf(stdout,"Runtime Error: %s\n",s); 
+  fprintf(stderr,"Runtime Error: %s\n",s); 
   exit(-1); 
 }
 
 int 
 die2 (char *s1, char* s2) 
 { 
-    fprintf(stderr,"Runtime Error: %s\n%s",s1,s2); 
+    fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2); 
     exit(-1); 
 }
 

@@ -1,9 +1,9 @@
 (* Specification of the Kit Abstract Machine (Byte code machine). *)
 
-functor Kam(structure Labels : ADDRESS_LABELS
-	    structure PP : PRETTYPRINT
-	    structure Crash : CRASH):KAM =
+structure Kam : KAM =
   struct
+    structure Labels = AddressLabels
+    structure PP = PrettyPrint
 
     (***********)
     (* Logging *)
@@ -62,6 +62,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | Return of int * int
 
       | Ccall of int * int
+      | DCcall of int * int
 
       | Label of label
       | JmpRel of label
@@ -179,6 +180,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | PrimIsNull
 
+      | GetContext
 
     datatype TopDecl =
         FUN of label * KamInst list
@@ -262,7 +264,9 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | ApplyFunJmp(lab,n1,n2) => "ApplyFunJmp(" :: (pp_lab lab) :: "," :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
       | Return(n1,n2) => "Return(" :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
 
-      | Ccall(idx,arity) => "Ccall(" :: (pp_i idx) :: "," :: (pp_i arity) :: ")" :: acc
+      | Ccall(idx,arity) => "Ccall(" :: (pp_i idx) :: "," :: (pp_i arity) ::")" :: acc
+      | DCcall(kind,idx) => "CheckLinkage(" :: (pp_i kind) :: ")"
+	                              :: "Ccall(" :: (pp_i idx) :: "," :: (pp_i 0) :: ")" :: acc
 
       | Label(lab) => "Label(" :: (pp_lab lab) :: ")" :: acc
       | JmpRel(lab) => "JmpRel(" :: (pp_lab lab) :: ")" :: acc
@@ -378,6 +382,8 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimWordTableUpdate => "PrimWordTableUpdate" :: acc
       | PrimTableSize => "PrimTableSize" :: acc
       | PrimIsNull => "PrimIsNull" :: acc
+
+      | GetContext => "GetContext" :: acc
 
     fun pr_inst i = concat(pp_inst(i,[]))
 

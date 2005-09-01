@@ -14,7 +14,6 @@ signature ENVIRONMENTS =
     type constructor_map
 
     (*types from other modules:*)
-    structure TyName : TYNAME
     type TyName = TyName.TyName
     type TyVar
     type Type

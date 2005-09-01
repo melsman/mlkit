@@ -1,0 +1,7 @@
+local
+  $(MLKIT_ROOT)/basis/basis-1997.mlb
+  MLB_PROJECT.sml  
+  MlbProject.sml
+in
+  MlbMake.sml
+end

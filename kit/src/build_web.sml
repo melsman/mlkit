@@ -1,22 +1,21 @@
 
 val _ = (SMLofNJ.Internals.GC.messages false;
 	 print "\n ** Building the ML Kit compiler [SMLserver] **\n\n";
+	 CM.make' "Compiler/bytecode.cm");
+
+(*
+val _ = (SMLofNJ.Internals.GC.messages false;
+	 print "\n ** Building the ML Kit compiler [SMLserver] with SML-NJ profiling enabled **\n\n";
+         Compiler.Profile.setProfMode true;
 	 CM.make());
-
-local
-  structure K = KitKAM()
-  fun enable s = K.Flags.turn_on s
-  fun disable s =  K.Flags.turn_off s
-
-in
-  val _ = (disable "garbage_collection";
-	   disable "cross_module_opt";   (* better module reuse *)
-	   K.Flags.SMLserver := true;
-           K.Flags.WEBserver := "AOLServer";
-           (*K.Flags.WEBserver := "Apache";*)
-	   enable "quotation";    (* support for quotation-antiquotation *)
-(*	   enable "formtyping";  *) (* support for form typing *)
-	   K.build_basislib() ;
-	   K.install() 
-	   )
-end
+*)
+val _ = (Main.disable "garbage_collection";
+	 Main.disable "cross_module_opt";   (* better module reuse *)
+	 Main.enable "quotation";           (* support for quotation-antiquotation *)
+	 Flags.SMLserver := true;
+(*	 Flags.lookup_string_entry "output" := "MLB/ulfile.ul"; *)
+(*         Flags.WEBserver := "AOLServer"; (*"Apache"*) *)
+	 (* Main.enable "formtyping";  *) (* support for form typing *)
+	 Main.build_basislib(); 
+	 Main.install() 
+	 )

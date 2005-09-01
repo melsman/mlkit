@@ -1,27 +1,7 @@
 (* Standard ML Barifyer *)
-functor CompBasisBarry
-                 (structure Con : CON 
-		  structure Excon : EXCON 
-		  structure Lvars : LVARS
-		  structure TyName : TYNAME
-		  structure LambdaStatSem : LAMBDA_STAT_SEM
-		    sharing type LambdaStatSem.con = Con.con
-		    sharing type LambdaStatSem.excon = Excon.excon
-		  structure EliminateEq : ELIMINATE_EQ
-		    sharing type EliminateEq.lvar = LambdaStatSem.lvar = Lvars.lvar
-		    sharing type EliminateEq.TyName = LambdaStatSem.TyName = TyName.TyName
-		  structure OptLambda : OPT_LAMBDA
-		    sharing type OptLambda.lvar = LambdaStatSem.lvar
-                    sharing type OptLambda.con = Con.con
-                    sharing type OptLambda.TyName = TyName.TyName
-		  structure PP: PRETTYPRINT
-		    sharing type PP.StringTree
-				       = OptLambda.StringTree
-				       = LambdaStatSem.StringTree
-				       = EliminateEq.StringTree
-		  structure Flags : FLAGS
-			  ): COMP_BASIS_BARRY =
+structure CompBasisBarry : COMP_BASIS_BARRY =
   struct
+    structure PP = PrettyPrint
 
     fun log s = TextIO.output(TextIO.stdOut,s)
     fun say s = log s

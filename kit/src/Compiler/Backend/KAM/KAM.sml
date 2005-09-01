@@ -51,6 +51,7 @@ signature KAM =
       | Return of int * int
 
       | Ccall of int * int
+      | DCcall of int * int
 
       | Label of label
       | JmpRel of label
@@ -164,6 +165,8 @@ signature KAM =
       | PrimTableSize
 
       | PrimIsNull
+
+      | GetContext
 
     datatype TopDecl =
         FUN of label * KamInst list

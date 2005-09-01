@@ -1,44 +1,24 @@
-functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
-		   structure Con : CON
-		   structure Excon : EXCON
-		   structure Lvars : LVARS
-		   structure Effect : EFFECT
-		   structure Labels : ADDRESS_LABELS
-		   structure RegvarFinMap : MONO_FINMAP
-                     sharing type RegvarFinMap.dom =
-		                  Effect.effect =
-				  Effect.place =
-				  PhysSizeInf.place
-		   structure CallConv: CALL_CONV
+functor CodeGenKAM(structure CallConv: CALL_CONV
+                     where type lvar = Lvars.lvar
 		   structure ClosExp: CLOS_EXP
- 	             sharing type Con.con = ClosExp.con
-		     sharing type Excon.excon = ClosExp.excon
-                     sharing type Lvars.lvar = ClosExp.lvar = CallConv.lvar
-                     sharing type Effect.effect = Effect.place = ClosExp.place
-                     sharing type Labels.label = ClosExp.label
-                     sharing type CallConv.cc = ClosExp.cc
-		     sharing type ClosExp.phsize = PhysSizeInf.phsize
+ 	             where type con = Con.con
+		     where type excon = Excon.excon
+                     where type lvar = Lvars.lvar
+                     where type place = Effect.place
+                     where type label = AddressLabels.label
+		     where type phsize = PhysSizeInf.phsize
+		   sharing type CallConv.cc = ClosExp.cc
 		   structure BI : BACKEND_INFO
                    structure JumpTables : JUMP_TABLES
-		   structure Lvarset: LVARSET
-		     sharing type Lvarset.lvar = Lvars.lvar
-		   structure Kam: KAM
-                     sharing type Kam.label = Labels.label
-		   structure BuiltInCFunctions : BUILT_IN_C_FUNCTIONS_KAM
-		   structure PP : PRETTYPRINT
-		     sharing type PP.StringTree = 
-		                  Effect.StringTree = 
-				  ClosExp.StringTree =
-                                  Kam.StringTree =
-				  RegvarFinMap.StringTree =
-				  Lvars.Map.StringTree
-                   structure Flags : FLAGS
-		   structure Report : REPORT
-		     sharing type Report.Report = Flags.Report
-		   structure Crash : CRASH) : CODE_GEN_KAM (* : sig end *) =
+		       ) : CODE_GEN_KAM (* : sig end *) =
 
 struct
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   structure LvarFinMap = Lvars.Map
+  structure RegvarFinMap = EffVarEnv
+  structure BuiltInCFunctions = BuiltInCFunctionsKAM
+  structure Opcodes = OpcodesKAM
 
   open Kam
 
@@ -86,7 +66,13 @@ struct
     {long="comments_in_kam_code", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "comments in KAM code"],
      desc=""}
-				  
+
+  val webserver : string ref = ref "AOLserver"
+  val _ = Flags.add_string_entry 
+      {long="webserver", short=NONE, menu=["Control", "webserver"], 
+       item=webserver,
+       desc="Webserver used with SMLserver. Possibilities are\n\
+	\Apache and AOLserver."}
 
   val comments_in_kam_code = Flags.lookup_flag_entry "comments_in_kam_code"
   val jump_tables = true
@@ -302,7 +288,7 @@ struct
        | _ => ImmedInt i :: acc
 
   fun immedWord (w : Word32.word, acc) =
-    let val i = Word32.toLargeIntX w
+    let val i = Int32.fromLarge (Word32.toLargeIntX w)
     in case acc
 	 of Push :: acc => ImmedIntPush i :: acc
 	  | _ => ImmedInt i :: acc
@@ -454,9 +440,10 @@ struct
 	 | ClosExp.ForeignPtr => acc
 	 | ClosExp.Unit => acc
 
+    val webserver = Flags.lookup_string_entry "webserver"
     fun name_to_built_in_C_function_index name = 
       if !Flags.SMLserver then 
-        if !Flags.WEBserver = "Apache" then 
+        if !webserver = "Apache" then 
 	  BuiltInCFunctions.name_to_built_in_C_function_index_apsml name
 	else
 	  BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
@@ -464,7 +451,7 @@ struct
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp,acc)
-      | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
+      | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = acc (* die "DROPPED_RVAR not implemented" *)
       | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
       | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, storeData lab :: acc)
       | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedIntMaybeTag (i, acc)
@@ -642,7 +629,7 @@ struct
 			  fn (lab,i,C) => IfGreaterThanJmpRelImmed (lab,i) :: C,
 			  fn (ce,C) => CG_ce(ce,env,sp,cc,C),
 			  precision,
-			  Word32.toLargeIntX,
+			  Int32.fromLarge o Word32.toLargeIntX,
 			  acc))
       | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S is unfolded in ClosExp"
       | CG_ce(ClosExp.SWITCH_C (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) =
@@ -874,6 +861,8 @@ struct
 
 		  | "terminateML"          => Halt
 
+		  | "__serverGetCtx"       => GetContext
+
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in	    
 	    if BI.is_prim name orelse name = "terminateML" then 
@@ -885,23 +874,47 @@ struct
 	      let
 	      (* rhos_for_result comes before args, because that is what the C *)
 	      (* functions expects. *)
-		val all_args = rhos_for_result @ args
-		val i = name_to_built_in_C_function_index name
+		datatype StaDyn = Dyn | Sta
+		val (i,k) = case name of ":" => (0,Dyn)
+		                       | _ => (name_to_built_in_C_function_index name,Sta)
+		val all_args = case k 
+		               of Dyn => (let val (a1,ar) = Option.valOf (List.getItem args)
+					              in rhos_for_result @ ar @ [a1]
+								  end handle Option.Option => 
+								    die ("You must give the function to call as the first"^
+									     "arguemnt to :"))
+		                | Sta => rhos_for_result @ args
 	      in
-		if i >= 0 then
-		  comp_ces(all_args,env,sp,cc,
-			   Ccall(i, List.length all_args) :: acc)
+		if i >= 0 then 
+        comp_ces(all_args,env,sp,cc,
+           (case name 
+		    of ":" => DCcall(1, (List.length all_args)-1)
+		       | _ =>  Ccall(i, List.length all_args)) :: acc)
 		else die ("Couldn't generate code for a C-call to " ^ name ^
 			  "; you probably need to insert the function name in the " ^
 			  "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")
 	      end
 	  end
       | CG_ce(ClosExp.CCALL_AUTO{name,args,res}, env,sp,cc,acc) =
-	  let val i = name_to_built_in_C_function_index name
+	  let 
+		datatype StaDyn = Dyn | Sta
+		val (i,k) = case name of ":" => (0,Dyn)
+		                       | _ => (name_to_built_in_C_function_index name,Sta)
+		val args = 
+		  case k 
+		  of Dyn => 
+			  let val (a1,ar) = Option.valOf (List.getItem args)  handle Option.Option => 
+										die ("You must give the function to call as the first"^
+											 "arguemnt to :")
+			  in ar @ [a1]
+			  end
+		   | Sta => args 
 	  in 
-	    if i >= 0 then
-	      comp_ces_ccall_auto(args,env,sp,cc,Ccall(i, List.length args) :: 
-				  cconvert_res res acc)
+	    if i >= 0 then 
+	      (comp_ces_ccall_auto(args,env,sp,cc,
+		      (case k of Sta => Ccall(i,List.length args)
+			           | Dyn => DCcall(2, List.length args - 1)) ::
+				  cconvert_res res acc))
 	    else die ("Couldn't generate code for a C-autocall to " ^ name ^
 		      "; you probably need to insert the function name in the " ^
 		      "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")

@@ -72,6 +72,14 @@ RegionPageMap* regionPageMapNew(void);
 extern RegionPageMap* rpMap;
 #endif /* REGION_PAGE_STAT */
 
+/* 
+ * Number of words that can be allocated in each regionpage and number
+ * of words in the header part of each region page.
+ *
+ * ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must
+ * be one 1Kb - used by GC.
+ */
+
 #ifdef ENABLE_GEN_GC
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 253
 #define HEADER_WORDS_IN_REGION_PAGE 3
@@ -79,10 +87,6 @@ extern RegionPageMap* rpMap;
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
 #define HEADER_WORDS_IN_REGION_PAGE 2 
 #endif /* ENABLE_GEN_GC */
-
-/* Number of words that can be allocated in each regionpage.  If you
- * change this, remember also to change
- * src/Compiler/Backend/X86/BackendInfo.sml. */
 
 typedef struct rp {
   struct rp *n;                   /* NULL or pointer to next page. */
@@ -92,15 +96,6 @@ typedef struct rp {
   #endif /* ENABLE_GEN_GC */
   int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Rp;
-
-
-
-/* Number of words in the header part of a region page. If you 
- * change this, remember also to change
- * src/Compiler/Backend/X86/BackendInfo.sml.
- *
- * ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must
- * be one 1Kb, used by GC.  */
 
 #define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
 
@@ -177,17 +172,17 @@ typedef struct lobjs {
    pointers controlling the allocation into a generation: fp, a and b */
 
 typedef struct gen {
-  int * a;             /* Pointer to first unused word in the newest region page
-                          of the region. */
-  int * b;             /* Pointer to the border of the newest region page, defined as the address
-                          of the first word to follow the region page. One maintains
-                          the invariant a<=b;  a=b means the region page is full.*/
-  Rp *fp;              /* Pointer to the oldest (first allocated) page of the region. 
-                          The beginning of the newest page of the region can be calculated
-                          as a fixed offset from b. Thus the region descriptor gives
-                          direct access to both the first and the last region page
-                          of the region. This makes it possible to de-allocate the
-                          entire region in constant time, by appending it to the free list.*/
+  int * a;    /* Pointer to first unused word in the newest region page
+                 of the region. */
+  int * b;    /* Pointer to the border of the newest region page, defined as the 
+                 address of the first word to follow the region page. One maintains
+                 the invariant a<=b;  a=b means the region page is full.*/
+  Rp *fp;     /* Pointer to the oldest (first allocated) page of the region. 
+                 The beginning of the newest page of the region can be calculated
+                 as a fixed offset from b. Thus the region descriptor gives
+                 direct access to both the first and the last region page
+                 of the region. This makes it possible to de-allocate the
+                 entire region in constant time, by appending it to the free list.*/
 } Gen;
 
 /* 
@@ -201,11 +196,11 @@ are raised) */
 /* Important: don't mess with Ro unless you also redefine the constants below. */
 #define offsetG0InRo 0
 #ifdef ENABLE_GEN_GC
-#define offsetG1InRo 12  /* bytes */
+#define offsetG1InRo (sizeof(Gen))  /* bytes */
 #endif
 typedef struct ro {
-  Gen g0;              /* g0 is the only generation when ordinary GC is used. g0 is the
-                          yougest generation when using genrational GC. */
+  Gen g0;              /* g0 is the only generation when ordinary GC is used. g0 
+                          is the youngest generation when using generational GC. */
 
   #ifdef ENABLE_GEN_GC
   Gen g1;              /* g1 is the old generation. */
@@ -216,8 +211,8 @@ typedef struct ro {
 
   /* here are the extra fields that are used when profiling is turned on: */
   #ifdef PROFILING
-  unsigned int allocNow;     /* Number of words allocated in region (excl. profiling data). */
-  unsigned int allocProfNow; /* Number of words allocated in region for profiling data. */
+  unsigned int allocNow;     /* Words allocated in region (excl. profiling data). */
+  unsigned int allocProfNow; /* Words allocated in region for profiling data. */
   unsigned int regionId;     /* Id on region. */
   #endif
 
@@ -499,5 +494,7 @@ void pp_gen(Gen *gen);
 void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s);
 
 void free_lobjs(Lobjs* lobjs);
+
+void RegionLocksInit(void);
 
 #endif /*REGION_H*/

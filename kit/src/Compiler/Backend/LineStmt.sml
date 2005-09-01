@@ -1,33 +1,21 @@
-functor LineStmt(structure PhysSizeInf : PHYS_SIZE_INF
-                 structure Con : CON
-		 structure Excon : EXCON
-		 structure Lvars : LVARS
-		 structure Effect : EFFECT
-		 structure Labels : ADDRESS_LABELS
-		 structure CallConv: CALL_CONV
+functor LineStmt(structure CallConv: CALL_CONV 
+		   where type lvar = Lvars.lvar
 		 structure ClosExp: CLOS_EXP
-	           sharing type Con.con = ClosExp.con
-                   sharing type Excon.excon = ClosExp.excon
-                   sharing type Lvars.lvar = ClosExp.lvar = CallConv.lvar
-                   sharing type Effect.effect = Effect.place = ClosExp.place
-                   sharing type Labels.label = ClosExp.label
-                   sharing type CallConv.cc = ClosExp.cc
-		   sharing type ClosExp.phsize = PhysSizeInf.phsize
+	           where type con = Con.con
+                   where type excon = Excon.excon
+                   where type lvar = Lvars.lvar
+                   where type place = Effect.effect
+                   where type label = AddressLabels.label
+		   where type phsize = PhysSizeInf.phsize
+                   where type StringTree = PrettyPrint.StringTree
+		 sharing type CallConv.cc = ClosExp.cc
 	         structure BI : BACKEND_INFO
 	         structure RI : REGISTER_INFO
-                   sharing type RI.lvar = Lvars.lvar
-		 structure Lvarset: LVARSET
-		   sharing type Lvarset.lvar = Lvars.lvar
-		 structure PP : PRETTYPRINT
-		   sharing type PP.StringTree = 
-                                Effect.StringTree = 
-				ClosExp.StringTree
-                 structure Flags : FLAGS
-		 structure Report : REPORT
-		   sharing type Report.Report = Flags.Report
-		 structure Crash : CRASH) : LINE_STMT = 
+                   where type lvar = Lvars.lvar) 
+    : LINE_STMT = 
 struct
-
+  structure Labels = AddressLabels
+  structure PP = PrettyPrint
   val _ = Flags.add_bool_entry
     {long="print_linearised_program", short=NONE, item=ref false,neg=false,
      menu=["Printing of intermediate forms", "print linearised program (LineStmt)"],

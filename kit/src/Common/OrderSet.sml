@@ -1,8 +1,8 @@
 (* Finite sets using balanced AVL trees *)
 
-functor OrderSet(structure Order : ORDERING
-		 structure PP : PRETTYPRINT): KIT_MONO_SET =
+functor OrderSet(Order : ORDERING): KIT_MONO_SET =
   struct
+    structure PP = PrettyPrint
 
     infix ==
 

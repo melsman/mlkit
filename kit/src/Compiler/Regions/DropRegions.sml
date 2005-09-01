@@ -1,35 +1,9 @@
 
-functor DropRegions(structure Name : NAME
-		    structure ExCon: EXCON
-                    structure MulExp : MUL_EXP
-                    structure Mul: MUL
-                      sharing type Mul.mulef = MulExp.mulef
-                      sharing type Mul.mul = MulExp.mul
-		    structure AtInf : AT_INF
-		      sharing type AtInf.LambdaPgm = MulExp.LambdaPgm 
-                      sharing type AtInf.LambdaExp = MulExp.LambdaExp
-                      sharing type AtInf.mul = Mul.mul
-		    structure RSE : REGION_STAT_ENV
-		      sharing type RSE.lvar = MulExp.lvar
-		    structure RType : RTYPE
-		      sharing type RType.sigma = RSE.TypeAndPlaceScheme
-                      sharing type MulExp.Type = RType.Type
-		    structure Lvars : LVARS
-		      sharing type Lvars.lvar = MulExp.lvar
-		      sharing type Lvars.name = Name.name
-		    structure Crash : CRASH
-		    structure FinMapEq : FINMAPEQ
-		    structure Eff : EFFECT
-		      sharing type Eff.place = MulExp.place = MulExp.effect =
-                                   RType.place = RSE.place = AtInf.place
-		    structure PP : PRETTYPRINT
-		      sharing type PP.StringTree = Eff.StringTree = FinMapEq.StringTree = MulExp.StringTree
-                                   = AtInf.StringTree = Lvars.Map.StringTree
-		    structure Flags : FLAGS
-                    sharing type ExCon.excon = MulExp.excon
-		      ) : DROP_REGIONS =
+structure DropRegions: DROP_REGIONS =
   struct
-
+    structure PP = PrettyPrint
+    structure Eff = Effect
+    structure RSE = RegionStatEnv
     structure EdList = Edlib.List
 
     structure LvarMap = Lvars.Map

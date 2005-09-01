@@ -1,16 +1,13 @@
-functor EmitCode (structure Labels : ADDRESS_LABELS
-		  structure CG : CODE_GEN_KAM
-		  structure Opcodes : OPCODES_KAM
-		  structure BC : BUFF_CODE
-		  structure RLL : RESOLVE_LOCAL_LABELS
-                    sharing type Labels.label = RLL.label
-		  structure Kam : KAM
-		    sharing type Kam.AsmPrg = CG.AsmPrg
-                    sharing type Kam.label = Labels.label
-		  structure BI : BACKEND_INFO
-		  structure Flags : FLAGS
-		  structure Crash : CRASH) : EMIT_CODE =
+functor EmitCode (structure CG : CODE_GEN_KAM
+		      where type AsmPrg = Kam.AsmPrg
+		  structure BI : BACKEND_INFO) : EMIT_CODE =
   struct
+    structure Labels = AddressLabels
+    structure BC = BuffCode
+    structure Opcodes = OpcodesKAM
+    structure Kam = Kam
+    structure RLL = ResolveLocalLabels
+
     fun msg s = TextIO.output(TextIO.stdOut, s)
     fun chat(s: string) = if !Flags.chat then msg (s) else ()
     fun die s  = Crash.impossible ("EmitCode." ^ s)
@@ -125,13 +122,15 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | Return(n1,1) => (out_opcode RETURN_N_1; out_int n1)
       | Return(n1,n2) => (out_opcode RETURN; out_int n1; out_int n2)
 
-      | Ccall(idx,0) => (out_opcode C_CALL0; out_int idx)
-      | Ccall(idx,1) => (out_opcode C_CALL1; out_int idx)
-      | Ccall(idx,2) => (out_opcode C_CALL2; out_int idx)
-      | Ccall(idx,3) => (out_opcode C_CALL3; out_int idx)
-      | Ccall(idx,4) => (out_opcode C_CALL4; out_int idx)
-      | Ccall(idx,5) => (out_opcode C_CALL5; out_int idx)
+      | Ccall(idx,0) => (out_opcode C_CALL0; out_int (idx+1))
+      | Ccall(idx,1) => (out_opcode C_CALL1; out_int (idx+1))
+      | Ccall(idx,2) => (out_opcode C_CALL2; out_int (idx+1))
+      | Ccall(idx,3) => (out_opcode C_CALL3; out_int (idx+1))
+      | Ccall(idx,4) => (out_opcode C_CALL4; out_int (idx+1))
+      | Ccall(idx,5) => (out_opcode C_CALL5; out_int (idx+1))
+      | Ccall(idx,6) => (out_opcode C_CALL6; out_int (idx+1))
       | Ccall(idx,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted (n=" ^ Int.toString n ^ ")")
+      | DCcall(kind,n) => (out_opcode CHECK_LINKAGE; out_int kind; emit_kam_inst (Ccall(~1,n)))
 
       | Label(lab) => RLL.define_label lab
       | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
@@ -258,6 +257,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimTableSize => out_opcode PRIM_TABLE_SIZE
       | PrimIsNull => out_opcode PRIM_IS_NULL
 
+	  | GetContext => out_opcode GET_CONTEXT
+    
     end
 
     fun emit_kam_insts insts = List.app emit_kam_inst insts

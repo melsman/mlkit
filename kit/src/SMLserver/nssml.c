@@ -122,18 +122,7 @@ nssml_processSmlFile(InterpContext* ctx, char* url);
 Ns_Mutex stackPoolMutex;
 Ns_Mutex freelistMutex;
 Ns_Mutex codeCacheMutex;
-
-void
-codeCacheMutexLock()
-{
-  Ns_LockMutex(&codeCacheMutex);
-}
-
-void
-codeCacheMutexUnlock()
-{
-  Ns_UnlockMutex(&codeCacheMutex);
-}
+Ns_Mutex functionTableMutex;
 
 void
 logLoading(char *file)
@@ -162,6 +151,7 @@ rpMap = regionPageMapNew();
   Ns_InitializeMutex(&stackPoolMutex);
   Ns_InitializeMutex(&freelistMutex);
   Ns_InitializeMutex(&codeCacheMutex);
+  Ns_InitializeMutex(&functionTableMutex);
 
   resolveGlobalCodeFragments();
 
@@ -277,9 +267,14 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid, int path_
 	uo[i++] = 'e';
 	uo[i++] = 'n';
       }
-      c = '%';
+      if ( *(p+1) == '.' )
+	{
+	  c = '%';
+	  p++;
+	}
     } 
-    if ( c == '/' ) c = '+';    
+    if ( c == '/' ) 
+	c = '+';    
     uo[i++] = c;
     p++;
   }
@@ -402,12 +397,13 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
       return NSSML_FILENOTFOUND;
     }
 
+#if 0
   if ( ! lookupHashTable(ctx->scripts, uo_file) )
     {
       int i;
-      // Ns_Log(Notice, "nssml: Request not script: %s", uo_file);
-      // Ns_Log(Notice, "nssml: Size of hash table: %d", ctx->scripts->size);
-      // Ns_Log(Notice, "nssml: Size of hash table array: %d", ctx->scripts->arraySize);
+      Ns_Log(Notice, "nssml: Request not script: %s", uo_file);
+      Ns_Log(Notice, "nssml: Size of hash table: %d", ctx->scripts->size);
+      Ns_Log(Notice, "nssml: Size of hash table array: %d", ctx->scripts->arraySize);
       for ( i = 0 ; i < ctx->scripts->arraySize ; i ++ )
 	{
 	  ObjectListHashTable* ol;
@@ -421,12 +417,13 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
 	}
       return NSSML_FILENOTFOUND;
     }
+#endif
 
-  // Ns_Log(Notice, "Starting interpreter on file %s", uo_file);
+  Ns_Log(Notice, "Starting interpreter on file %s", uo_file);
 
-  res = interpLoadRun(ctx->interp, uo, &errorStr);
+  res = interpLoadRun(ctx->interp, uo, &errorStr, NULL);
 
-  // Ns_Log(Notice, "Interpretation ended on file %s", uo_file);
+  Ns_Log(Notice, "Interpretation ended on file %s", uo_file);
 
   if ( res < 0 ) {    // uncaught exception; errorStr allocated
     if ( res == -1 )  // exception other than Interrupt raised

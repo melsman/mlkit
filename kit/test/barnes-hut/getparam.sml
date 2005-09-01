@@ -39,9 +39,9 @@ structure GetParam : sig
 		    else SOME(SS.string(SS.triml (size name+1) suffix))
 		end
 	  fun get default = (case (TextIO.inputLine TextIO.stdIn)
-		 of "" => raise EOF
-		  | "\n" => default
-		  | s => substring(s, 0, size s - 1)
+		 of NONE => raise EOF
+		  | SOME "\n" => default
+		  | SOME s => substring(s, 0, size s - 1)
 		(* end case *))
 	  in
 	    if (null (! defaults))
