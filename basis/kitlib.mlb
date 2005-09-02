@@ -1,6 +1,7 @@
 local
 
   $(SML_LIB)/basis/basis.mlb
+  basis ListUtil = bas LISTSORT.sml Listsort.sml end
   basis Polyhash = bas POLYHASH.sml Polyhash.sml end
 
   basis SetsAndMaps = 
@@ -18,6 +19,6 @@ local
   basis Regexp =  (* Regular expression support *)
     bas REG_EXP.sml local open SetsAndMaps in RegExp.sml end end
 
-in open Polyhash SetsAndMaps Regexp
+in open ListUtil Polyhash SetsAndMaps Regexp
 end
 

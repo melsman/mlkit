@@ -1,3 +1,4 @@
+$(SML_LIB)/basis/basis.mlb
 PolySet.sml
 INT_SET.sml
 IntSet.sml

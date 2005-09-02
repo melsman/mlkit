@@ -20,6 +20,7 @@ local
               let wordtables.sml
               in bas 
                     VECTOR.sml Vector.sml ARRAY.sml Array.sml
+                    ARRAY2.sml Array2.sml
                  end
               end
         in bas
