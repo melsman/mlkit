@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2005/09/02 11:59:10  mael
+ * from pm to mlb compilation
+ *
  * Revision 1.1  2001/02/14 16:28:08  mael
  * added mlyacc to test
  *
@@ -22,6 +25,7 @@ functor ParseGenParserFun
      and type lexarg = Header.inputSource
      and type result = Header.parseResult) : PARSE_GEN_PARSER =
  struct
+(*     val _ = print "hello\n" *)
       structure Header = Header
       val parse = fn file =>
           let

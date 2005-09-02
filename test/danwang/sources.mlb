@@ -1,3 +1,4 @@
+$(SML_LIB)/basis/basis.mlb
 sobj-cps.sig
 sobj-cps.sml
 sprogs.sml

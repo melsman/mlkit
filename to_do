@@ -1,25 +1,99 @@
-mael 2004-12-14: The definition of a "basis closure" is too strong. At
-the moment too much is included in the closure, which means that
-serialized bases take up a large amount of space on disk.
+mael 2005-09-02: Both "make mlkit", "make smlserver", and "make
+mlkit_kam" works. Running the regression tests on mlkit and mlkit_kam
+also works:
+
+ > cd kit/test
+ > export SML_LIB=/home/mael/mlkit/kit
+ > rm -rf MLB ../basis/MLB
+ > make test_mlkit
+ > rm -rf MLB ../basis/MLB
+ > make test_kam
+
+To run "make smlserver", first the AOLserver rpm must be
+installed. Then, after the build of smlserverc, do as follows:
+
+   cd kit/smlserver_demo/www
+   export SML_LIB=/home/mael/mlkit/kit
+   ../../bin/smlserverc demo.mlb
+
+This should construct a file www/MLB/demo.ul. Currently, msp-files are
+not supported.
+
+Things to do:
+ 
+  - Upgrade to Apache. (Carsten)
+  - Add support for msp-files. (Martin)
+  - Add support for region profiling. Add option "-regvar N" to mlkit
+    executable and add support for passing a global counter around in
+    the MLB-system. (Martin)
+  - Setup regression testing for different compile time options, such 
+    as "-gc", "-prof", "-gc -prof" (Martin)
+  - Fix bug: Currently the following test programs fail (in kit/test):
+    wordN.sml, testmatc.sml, vector.sml, kitsimple.sml, nucleic.sml,
+    bytechar.sml, and array.sml.
+
+Notice that pm-files are no longer supported.
+
+mael 2004-12-14: The definition of a "basis closure" is
+inappropriately strong. More information than necessary is included in
+the closure, which means that serialized bases take up a large amount
+of space on disk.
 
 mael 2005-05-09: New strategy for ML Kit executables:
 
-  mlkit: The MLKit executable, which accepts files with the following
+  mlkit: The MLKit executable now accepts files with the following
     extensions:
 
-     .{sml,sig}: compile a single file into an executable
-        a.out. Options allow for specifying a different output
+     .{sml,sig,fun}: compile a single file into an executable
+        a.out. Option -o allows for specifying a different output
         file. If option -c is specified, no executable is generated;
         instead interface files (extensions .{eb,eb1}) are generated. The
         option -load may be used for loading interface files before
         compilation.
 
-     .pm: in-memory compilation of projects following the pm-syntax.
-
      .mlb: batch-based compilation of projects following the
         mlb-syntax; starts a new process for each source-file
-        compilation. A separate compilation tool "mlbmake" is also
-        available.
+        compilation.
+
+mael 2005-05-27: Things to do to carry the above work through:
+
+ - Profiling: how do we make sure that region variables are unique?
+   One solution: add flag to mlkit: -regionvar N. With this flag, the
+   first generated region variable gets id N+1. The compiler stores a
+   pair (first regionvar, last regionvar) in a file f.rv. For each
+   compilation, mlbmake reads the last regionvar from the previous
+   fn.rv-file, which is then used with -regionvar (+1000) in
+   compilation of f(n+1).sml.
+
+ - With different combinations of options, code should be stored in
+   different MLB sub-directories. There are different kinds of options:
+
+    1) Options that influence the generated code and which runtime system
+       is used:
+         region profiling, gc, gengc, tagging schemes
+
+    2) Options that influence the generated code, but not which runtime
+       system is used:
+         lambda optimizations, enabling/disabling of storage mode
+         analysis/multiplicity inference
+
+    3) Options that do not influence the generated code:
+         pretty-printing options
+         verbosity options (chat,debug)
+       
+   For computing a subdirectory of MLB to store target code, etc., we
+   sort all options in category (1) and (2); call this list of options
+   L and the list of option values V.
+
+    val s = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+    val sz = size s (*=64*)
+   
+   This allows for the encoding of 6 option values for each character.
+   Divide V into lists of 6-tuples (pad with true values for possible
+   missing entries in the last tuple). Interpret each tuple as a
+   number between 0 and 64 (binary interpretation;
+   TRUE=1;FALSE=0). Index into s to get a character for each 6-tuple.
+
 
   mlbmake: Make tool that calls mlkit for each source file in the
            mlb-file hierachy. When a single sml-file f.sml is given as

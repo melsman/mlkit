@@ -16,7 +16,7 @@ signature TESTFILE =
     | Tags
     | UncaughtException
 *)      
-    datatype entry = PM of string * opt list
+    datatype entry = MLB of string * opt list
                    | SML of string * opt list
       
     val parse : string -> (string * entry list) option     (* returns NONE if parse error occurs *)
@@ -41,7 +41,7 @@ structure TestFile : TESTFILE =
     | Tags
     | UncaughtException
 *)      
-    datatype entry = PM of string * opt list
+    datatype entry = MLB of string * opt list
                    | SML of string * opt list
       
     exception ParseFile of string
@@ -107,8 +107,8 @@ structure TestFile : TESTFILE =
 	     | SOME "sig" => let val (opts,rest) = read_opts (rest,[])
 			     in SOME(SML(s,opts),rest)
 			     end
-	     | SOME "pm" => let val (opts,rest) = read_opts (rest,[])
-			    in SOME(PM(s,opts),rest)
+	     | SOME "mlb" => let val (opts,rest) = read_opts (rest,[])
+			    in SOME(MLB(s,opts),rest)
 			    end
 	     | SOME ext => raise ParseFile ("file name with unknown extension `" ^ ext ^ "'")
 	     | NONE => raise ParseFile ("file name expected, but found `" ^ s ^ "'")

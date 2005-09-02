@@ -519,21 +519,7 @@ signature ELABORATION =
   sig
     structure Basics : BASICS
 
-    structure ElabRepository : ELAB_REPOSITORY
-      sharing type ElabRepository.funid = Basics.FunId.funid
-      sharing type ElabRepository.name = Basics.Name.name
-      sharing type ElabRepository.ElabBasis = Basics.ModuleEnvironments.Basis 
-      sharing type ElabRepository.absprjid = Basics.ModuleEnvironments.absprjid
-      sharing type ElabRepository.longstrid = Basics.ModuleEnvironments.longstrid
-      sharing type ElabRepository.InfixBasis = Basics.InfixBasis.Basis
-      sharing type ElabRepository.opaq_env = Basics.OpacityEnv.opaq_env
-      sharing ElabRepository.TyName = Basics.TyName
-
-    structure RepositoryFinMap : MONO_FINMAP
-      where type dom = Basics.ModuleEnvironments.absprjid * Basics.FunId.funid
-
     structure ElabTopdec : ELABTOPDEC
-      sharing type ElabTopdec.StaticBasis = ElabRepository.ElabBasis
       sharing type ElabTopdec.StringTree = Basics.Tools.PrettyPrint.StringTree
       sharing type ElabTopdec.absprjid = Basics.ModuleEnvironments.absprjid
 (*
@@ -595,71 +581,6 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 		      structure FunId = Basics.FunId
 		      structure PrettyPrint = Tools.PrettyPrint)
 
-      structure RepositoryFinMap = 
-	struct
-	  type absprjid = Basics.ModuleEnvironments.absprjid
-	  type funid = Basics.FunId.funid
-
-	  fun b_lt (false, true) = true
-	    | b_lt _ = false
-	  fun bs_lt(_,[]) = false
-	    | bs_lt([],_) = true
-	    | bs_lt(b::bs,c::cs) = b_lt(b,c) orelse (b = c andalso bs_lt(bs,cs))
-
-	  structure M = OrderFinMap(structure Report = Basics.Tools.Report
-				    structure PP = Tools.PrettyPrint
-				    structure Order = struct
-							type T = (absprjid * funid) * bool list
-							fun lt ((a,f),bs) ((a',f'),bs') = 
-							    Basics.ModuleEnvironments.lt_absprjid(a,a')
-							    orelse (a = a' andalso (Basics.FunId.< (f,f') orelse
-										    f = f' andalso bs_lt (bs,bs')))
-						      end
-				    structure Crash = Tools.Crash)
-
-	  val prof_p : unit->bool = Basics.Tools.Flags.is_on0 "region_profiling"
-	  val gengc_p : unit->bool = Basics.Tools.Flags.is_on0 "generational_garbage_collection"
-	  val gc_p : unit->bool = Basics.Tools.Flags.is_on0 "garbage_collection"
-	  val scratch : unit->bool = Basics.Tools.Flags.is_on0 "recompile_basislib"
-	  val tag_pairs_p : unit->bool = Basics.Tools.Flags.is_on0 "tag_pairs"
-	    
-	  fun Tr p = (p,[scratch(),prof_p(),gc_p(),gengc_p(),tag_pairs_p()])
-	  fun die s = Basics.Tools.Crash.impossible ("Elaboration.RepositoryFinMap." ^ s)
-
-	  open M
-	  type dom = absprjid * funid
-	  fun singleton (d,b) = M.singleton(Tr d,b)
-	  fun lookup m d = M.lookup m (Tr d)
-	  fun add (d, b, m) = M.add (Tr d, b, m)
-	  fun remove (d,m) = M.remove(Tr d,m)
-	  fun dom m = die "dom"
-	  fun list _ = die "list"
-	  fun fromList _ = die "fromList"
-	  fun ComposeMap _ = die "ComposeMap"
-	  fun Fold _ = die "Fold"
-	  fun filter _ = die "filter"
-	  fun addList _ = die "addList"
-	  fun filter _ = die "filter"
-	  fun restrict _ = die "restrict"
-	  fun layoutMap _ = die "layoutMap"
-	  fun reportMap _ = die "reportMap"
-	  val pu = fn pu_d => fn pu_r =>
-	      let val pu_d = Pickle.pairGen(pu_d,Pickle.listGen Pickle.bool)
-	      in pu pu_d pu_r
-	      end
-	end
-
-      structure ElabRepository = ElabRepository(structure Name = Basics.Name
-						structure InfixBasis = TopdecParsing.InfixBasis
-						structure TyName = Basics.TyName
-						structure OpacityEnv = Basics.OpacityEnv
-						structure Flags = Tools.Flags
-						structure FunId = Basics.FunId
-						structure StrId = Basics.StrId
-						structure ModuleEnvironments = Basics.ModuleEnvironments
-						structure Crash =  Tools.Crash
-						structure RepositoryFinMap = RepositoryFinMap)
-
       structure ElabTopdec =
 	ElabTopdec(structure PrettyPrint = Tools.PrettyPrint
 		   structure IG = TopdecParsing.PreElabTopdecGrammar
@@ -669,7 +590,6 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 		   structure StatObject = Basics.StatObject
 		   structure ModuleStatObject = Basics.ModuleStatObject
 		   structure Name = Basics.Name
-		   structure ElabRep = ElabRepository
 		   structure ElabDec =
 		     ElabDec (structure ParseInfo = AllInfo.ParseInfo
 			      structure ElabInfo = AllInfo.ElabInfo

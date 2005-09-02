@@ -12,6 +12,8 @@ val _ = (SMLofNJ.Internals.GC.messages false;
 *)
 
 local
+
+(*
   fun enable_disable enables disables f =
     (app Main.enable enables; app Main.disable disables; f();
      app Main.disable enables; app Main.enable disables)
@@ -90,7 +92,7 @@ local
     ["region_profiling", "garbage_collection", "tag_pairs"]
     []
     Main.build_basislib
-in
+*)
 (*  val _ = (enable "print_types"; enable "print_rho_types") *)
 
 (*
@@ -113,8 +115,9 @@ in
 
 (*  val _ = comp_contractregions() *)
 
+(*
   val _ = comp_RI()
-
+*)
 (*
   val _ = comp_RI_GC()
   val _ = comp_RI_no_opt()
@@ -127,6 +130,6 @@ in
 (*
   val _ = comp_RI_GenGC_PROF()
 *)
+in
   val _ = Main.install()
-
 end

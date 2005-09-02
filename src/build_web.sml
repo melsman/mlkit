@@ -16,7 +16,6 @@ val _ = (Main.disable "garbage_collection";
 (*	 Flags.lookup_string_entry "output" := "MLB/ulfile.ul"; *)
          Flags.WEBserver := "AOLServer"; (*"Apache"*)
 	 (* Main.enable "formtyping";  *) (* support for form typing *)
-(*	 Main.build_basislib(); *)
 	 Main.install() 
 	 )
 

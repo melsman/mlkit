@@ -3,7 +3,7 @@
 
 A test file is a file that mentions a set of Standard ML sources and
 projects. A test file has extension `.tst'.  Entries in a test file
-consists of a file name path (with extension sml, sig, or pm) followed
+consists of a file name path (with extension sml, sig, or mlb) followed
 by a list of tokens. The following tokens are supported:
 
  nobasislib     ; do not import basis library
@@ -12,10 +12,6 @@ by a list of tokens. The following tokens are supported:
  tx             ; time executable
  tc             ; time compiler
  ecte           ; expect compile time error
- prof           ; also compile and compare runtime output with 
-                  profiling enabled
- gc             ; also activate garbage collection
- gengc          ; also activate generational collection
  ue             ; expect uncaught exception
 
 Test files may contain Standard ML like comments.
@@ -54,89 +50,89 @@ constraint.sml
 lex.sml                               nobasislib
 layout.sml
 anoq_Exception.sml
-danwang.pm                    tc
+danwang.mlb
 testmatc.sml        ccl
 excon.sml
-dangle4.sml                   gc gengc prof
+dangle4.sml                   
 ftv.sml
 elabDecBug.sml      ccl ecte
-oh-no.sml           ccl       gc nobasislib
-oh-no2.sml          ccl       gc nobasislib
+oh-no.sml           ccl       nobasislib
+oh-no2.sml          ccl       nobasislib
 
 (* Tests of some benchmark programs *)
 
-kitfib35.sml            tx    gc gengc prof   nobasislib
-kitdangle.sml           tx             prof   nobasislib
-kitdangle3.sml          tx             prof   nobasislib
-kitreynolds2.sml        tx    gc gengc prof
-kitreynolds3.sml        tx    gc gengc prof
-kitloop2.sml            tx    gc gengc prof
-kittmergesort.sml       tx tc gc gengc prof
-kitqsort.sml            tx tc gc gengc prof
-kitmandelbrot.sml       tx tc gc gengc prof
-kitlife35u.sml          tx tc gc gengc prof
-klife_eq.sml            tx tc gc gengc prof
-kitkbjul9.sml           tx tc gc gengc prof
-kkb_eq.sml              tx tc gc gengc prof
-kkb36c.sml              tx tc gc gengc prof
-kitsimple.sml           tx tc gc gengc prof
-fft.sml                 tx tc gc gengc prof
-vliw.sml                tx tc gc gengc prof
-lexgen.sml              tx tc gc gengc prof
-mlyacc.pm               tx tc gc gengc prof
-logic.pm                tx tc gc gengc prof
-barnes-hut.pm           tx tc gc gengc prof
-nucleic.pm              tx tc gc gengc prof
-ray.pm                  tx tc gc gengc prof
-ratio-regions.sml       tx tc gc gengc prof
-kitmolgard.sml          tx tc gc gengc prof
-msort.pm                tx tc gc gengc prof
-tststrcmp.sml                 gc gengc prof
-FuhMishra.pm            tx tc gc gengc prof
+kitfib35.sml            tx    nobasislib
+kitdangle.sml           tx    nobasislib
+kitdangle3.sml          tx    nobasislib
+kitreynolds2.sml        tx    
+kitreynolds3.sml        tx    
+kitloop2.sml            tx    
+kittmergesort.sml       tx tc 
+kitqsort.sml            tx tc 
+kitmandelbrot.sml       tx tc 
+kitlife35u.sml          tx tc 
+klife_eq.sml            tx tc 
+kitkbjul9.sml           tx tc 
+kkb_eq.sml              tx tc 
+kkb36c.sml              tx tc 
+kitsimple.sml           tx tc 
+fft.sml                 tx tc 
+vliw.sml                tx tc 
+lexgen.sml              tx tc 
+mlyacc.mlb              tx tc 
+logic.mlb               tx tc 
+barnes-hut.mlb          tx tc 
+nucleic.mlb             tx tc 
+ray.mlb                 tx tc 
+ratio-regions.sml       tx tc 
+kitmolgard.sml          tx tc 
+msort.mlb               tx tc 
+tststrcmp.sml                 
+FuhMishra.mlb           tx tc 
 
 (* Tests of dynamic semantics and the Basis Library *)
 
-testdyn1.sml               tc gc gengc prof
-check_arrays.sml              gc gengc prof
-array.sml                     gc gengc prof
-array2.sml                    gc gengc prof
-general.sml                   gc gengc prof
-int.sml                       gc gengc prof
-int_2.sml                     gc gengc prof
-int31.sml                     gc gengc prof
-int31_2.sml                   gc gengc prof 
-int32.sml                     gc gengc prof
-int32_2.sml                   gc gengc prof
-list.sml                      gc gengc prof
-listpair.sml                  gc gengc prof
-string.sml                    gc gengc prof
-stringcvt.sml                 gc gengc prof
-textio.sml                    gc gengc prof
-vector.sml                    gc gengc prof
-word8vector.sml               gc gengc prof
-word8array.sml                gc gengc prof
-bytechar.sml                  gc gengc prof
-time.sml                      gc gengc prof
-math.sml                      gc gengc prof    (* ok, but not quite the 
+testdyn1.sml               tc 
+check_arrays.sml              
+array.sml                     
+array2.sml                    
+general.sml                   
+int.sml                       
+int_2.sml                     
+int31.sml                     
+int31_2.sml                   
+int32.sml                     
+int32_2.sml                   
+list.sml                      
+listpair.sml                  
+string.sml                    
+stringcvt.sml                 
+textio.sml                    
+vector.sml                    
+word8vector.sml               
+word8array.sml                
+bytechar.sml                  
+time.sml                      
+math.sml                                       (* ok, but not quite the 
                                                   semantics of the basis 
                                                   library specification *)
-listsort.sml                  gc gengc prof
-date.sml                      gc gengc prof
-timer.sml                     gc gengc prof
-unixpath.sml                  gc gengc prof
-cmdline.sml                   gc gengc prof
-filesys.sml                   gc gengc prof    (* See test/README *)
-real.sml                      gc gengc prof
-word.sml                      gc gengc prof
-word8.sml                     gc gengc prof
-word31.sml                    gc gengc prof
-word32.sml                    gc gengc prof
-regexp1.sml                   gc gengc prof
-regexp2.sml                   gc gengc prof
-pickle.pm                     gc gengc prof
-packreal.sml                  gc gengc prof
-patricia.sml                  gc gengc prof
-stream.pm                     gc gengc prof
-natset.sml                    gc gengc prof
-fns.sml                       gc gengc prof
-datatypes.sml                 gc gengc prof
+listsort.mlb                  
+date.sml                      
+timer.sml                     
+unixpath.sml                  
+cmdline.sml                   
+filesys.sml                                    (* See test/README *)
+real.sml                      
+word.sml                      
+word8.sml                     
+word31.sml                    
+word32.sml                    
+regexp1.mlb                   
+regexp2.mlb                   
+pickle.mlb                    
+packreal.sml                  
+patricia.sml                  
+stream.mlb                    
+natset.sml                    
+fns.sml                       
+datatypes.sml                 

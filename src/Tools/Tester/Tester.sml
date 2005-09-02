@@ -43,7 +43,7 @@ structure Tester : TESTER =
     fun process_entry (filepath, opts, kitexe) =
       let
 	val _ = msg ("Processing file `" ^ filepath ^ "'")
-	val _ = OS.Process.system "rm -f -r PM"     (* first delete PM directory *)
+	val _ = OS.Process.system "rm -f -r MLB"     (* first delete MLB directories *)
 	fun opt t = List.exists (fn a => a=t) opts
 	val recover : unit -> unit = 
 	  let val memdir = OS.FileSys.getDir()
@@ -53,16 +53,10 @@ structure Tester : TESTER =
 	val _ = if dir="" then () else OS.FileSys.chDir dir
 	val compile_command_base = kitexe ^ " --log_to_file " ^ 
 	  (if opt "nobasislib" then "-no_basislib " else "") ^
-          (if opt "nooptimiser" then "--no_optimiser " else "") ^
 	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
           (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "")
 
 	val compile_command = compile_command_base ^ file	  
-	val compile_command_prof = compile_command_base ^ "-prof " ^ file
-	val compile_command_gc = compile_command_base ^ "-gc " ^ file
-	val compile_command_gc_prof = compile_command_base ^ "-gc -prof " ^ file
-	val compile_command_gengc = compile_command_base ^ "-gengc " ^ file
-	val compile_command_gengc_prof = compile_command_base ^ "-gengc -prof " ^ file
 
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
@@ -140,128 +134,12 @@ structure Tester : TESTER =
 	    end
 	  else (msgErr "rename (mv) failure";
 		TestReport.add_runtime_bare_line(filepath,false))
-
-	fun maybe_trywith(file,out_file, outok_file, test_option, compile_command, add_line_testreport, exe_cmd_args) =
-	  let
-	    fun test_output () =
-	      if files_equal (file^out_file, file^outok_file) then
-		(msgOk (out_file ^ " equal to " ^ outok_file); true)
-	      else (msgErr (out_file ^ " not equal to " ^ outok_file); false)
-	  in
-	    if test_option() then
-	      (msg' (" executing command `" ^ compile_command ^ "'");
-	       if OS.Process.system compile_command = OS.Process.success then
-		 if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
-		   let val res = OS.Process.system (exe_file ^ " " ^ exe_cmd_args ^ " > " ^ file^out_file)
-		   in
-		     if (not(opt "ue" (*Uncaught Exception*) ) andalso res = OS.Process.success)
-		       orelse (opt "ue" (*Uncaught Exception*) andalso res <> OS.Process.success) then
-		       add_line_testreport (filepath,test_output())
-		     else (msgErr "run failure";
-			   add_line_testreport (filepath,false))
-		   end
-		 else (msgErr "rename (mv) failure";
-		       add_line_testreport (filepath,false))
-	       else (msgErr "compile failure";
-		     add_line_testreport (filepath,false)))
-	    else ()
-	  end
-
-	fun maybe_trywithprof() = maybe_trywith(file,
-						".outp",
-						".out.ok",
-						fn () => opt "prof" (*Profiling*),
-						compile_command_prof,
-						TestReport.add_profile_line, 
-						"")
-(*	fun maybe_trywithprof() =
-	  let
-	    val outp_file = file ^ ".outp"
-	    val outok_file = file ^ ".out.ok"
-	    fun test_output () =
-	      if files_equal (outp_file, outok_file) then
-		(msgOk "outp equal to out.ok"; true)
-	      else (msgErr "outp not equal to out.ok"; false)
-	  in
-	    if opt TestFile.Profiling then
-	      (msg' (" executing command `" ^ compile_command_prof ^ "'");
-	       if OS.Process.system compile_command_prof = OS.Process.success then
-		 if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
-		   if OS.Process.system (exe_file ^ " > " ^ outp_file) = OS.Process.success then
-		     TestReport.add_profile_line (filepath,test_output())
-		   else (msgErr "run failure";
-			 TestReport.add_profile_line (filepath,false))
-		 else (msgErr "rename (mv) failure";
-		       TestReport.add_profile_line (filepath,false))
-	       else (msgErr "compile failure";
-		     TestReport.add_profile_line (filepath,false)))
-	    else ()
-	  end 20/04/1999, Niels*)
-
-	fun maybe_trywithgengc() = maybe_trywith(file,
-						 ".outgengc",
-						 ".out.ok",
-						 fn () => opt "gengc",
-						 compile_command_gengc,
-						 TestReport.add_gengc_line,
-						 " ")
-	fun maybe_trywithgengcprof() = maybe_trywith(file,
-						     ".outgengcp",
-						     ".out.ok",
-						     fn () => opt "gengc" andalso opt "prof",
-						     compile_command_gengc_prof,
-						     TestReport.add_gengc_profile_line,
-						     " -realtime -microsec 1000 ")
-	fun maybe_trywithgc() = maybe_trywith(file,
-					      ".outgc",
-					      ".out.ok",
-					      fn () => opt "gc",
-					      compile_command_gc,
-					      TestReport.add_gc_line,
-					      " ")
-	fun maybe_trywithgcprof() = maybe_trywith(file,
-						  ".outgcp",
-						  ".out.ok",
-						  fn () => opt "gc" andalso opt "prof",
-						  compile_command_gc_prof,
-						  TestReport.add_gc_profile_line,
-						  " -realtime -microsec 1000 ")
-	fun maybe_trywithtags() = maybe_trywith(file,
-						".outtags",
-						".out.ok",
-						fn () => opt "tags",
-						compile_command_gc,
-						TestReport.add_tags_line,
-						" -disable_gc ")
-	fun maybe_trywithtagsprof() = maybe_trywith(file,
-						    ".outtagsp",
-						    ".out.ok",
-						    fn () => opt "tags" andalso opt "prof",
-						    compile_command_gc_prof,
-						    TestReport.add_tags_profile_line,
-						    " -disable_gc ")
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
         if OS.Process.system compile_command = OS.Process.success then
 	  (maybe_compare_complogs true; 
 	   maybe_report_comptimes();
-	   rename_and_run(" ri ",".out",".out.ok");
-	   maybe_trywithprof();
-	   maybe_trywithgengc();
-	   maybe_trywithgengcprof();
-           maybe_trywithgc();  
-(*mads	GC tested with possibility for timing:
-           if opt "gc" then
-              (msg' (" executing command `" ^ compile_command_gc ^ "'");
-               if OS.Process.system compile_command_gc = OS.Process.success then
-                 rename_and_run(" ri and gc ", ".outgc", ".out.ok")
-               else ()
-              )
-           else 
-           ();
-mads *)	   maybe_trywithgcprof();
-	   maybe_trywithtags();
-	   maybe_trywithtagsprof()
+	   rename_and_run(" ri ",".out",".out.ok")
           )
 	else
 	  maybe_compare_complogs false;
@@ -286,7 +164,7 @@ mads *)	   maybe_trywithgcprof();
 		of NONE => OS.Process.failure
 		 | SOME (testfile_string,entries) => 
 		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
-		                          | TestFile.PM (filepath,opt) => (filepath,opt,kitexe)) entries
+		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
 		  in app process_entry entries;
 		    msgErrors();
 		    TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe};

@@ -77,8 +77,6 @@ is
   ../Parsing/Parse.sml
 
   PostElabGrammar.sml
-  ELAB_REPOSITORY.sml
-  ElabRepository.sml
 
   ELABDEC.sml
   ELABTOPDEC.sml

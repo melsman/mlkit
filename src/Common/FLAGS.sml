@@ -76,8 +76,6 @@ signature FLAGS =
 
     val comp_ref : (string -> unit)ref
 
-    val basislib_project : string ref                  (* absolute path to basislib.pm *)
-
     val timings_stream : TextIO.outstream option ref   (* optional stream for exporting 
 							  timings (`KITtimings') 
 						       *)

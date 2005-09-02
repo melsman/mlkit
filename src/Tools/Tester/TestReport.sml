@@ -79,7 +79,7 @@ structure TestReport : TEST_REPORT =
       let val is = TextIO.openIn s
       in let val res = TextIO.inputAll is
 	 in TextIO.closeIn is; res
-	 end handle _ => (TextIO.closeIn is; "could not read file `KITversion'\n")
+	 end handle _ => (TextIO.closeIn is; "could not read file `" ^ s ^ "'\n")
       end
 
     fun kitversion kitexe =
@@ -91,12 +91,13 @@ structure TestReport : TEST_REPORT =
     fun get_env_var env_name = 
       case OS.Process.getEnv env_name
 	of SOME s => s 
-	 | NONE => "Error: environment name `" ^ env_name ^ "' does not exist."
+	 | NONE => (* let's try something else *)
+	    read_all "/etc/hostname"
 
     fun machine() = get_env_var "HOST"
 
     fun latex file =
-      if OS.Process.system ("latex " ^ file) = OS.Process.success then ()
+      if OS.Process.system ("pdflatex " ^ file) = OS.Process.success then ()
       else print "Latex error.\n"
 
     type comptime_table_line = {name:string, total:Time.time, entries: (string * Time.time * real) list}
@@ -206,7 +207,7 @@ structure TestReport : TEST_REPORT =
 
 	    in section "Comparison of Compiler Messages";
 	       outln "This section compares compiler messages (e.g., elaboration results) with";
-	       outln "exspected compiler messages (column ``Compare''). The column ``Success as expected'' shows if";
+	       outln "expected compiler messages (column ``Compare''). The column ``Success as expected'' shows if";
 	       outln "compilation succeeded or failed as expected.";
 	       outln "";
 	       outln "\\vspace{4mm}";
@@ -216,14 +217,22 @@ structure TestReport : TEST_REPORT =
 	       endenv "tabular"
 	    end
 
+	  fun entriesOfL (nil:comptime_table,(_,acc)) = acc
+	    | entriesOfL ({entries,...}::l,(n,acc)) =
+	      let val n' = length entries
+	      in entriesOfL(l,
+			    if n' > n then (n',entries)
+			    else (n,acc))
+	      end
 
 	  fun comptime_section [] = ()
 	    | comptime_section(lines: {name: string, entries: (string * Time.time) list} list) =
 	    let val table : comptime_table = map process_comptime_line lines
 		val tables : comptime_table list = split_comptime_table table		  
 		fun mktable [] = ()
-		  | mktable (l as {entries,...}::_) =
-		  let val header = foldl (fn (s,a) => a ^ " & " ^ s) "\\hline Source & Total" (map #1 entries) ^ "\\\\ \\hline"
+		  | mktable (l as {entries,...}::l') =
+		  let val entries = entriesOfL (l',(length entries,entries))
+		      val header = foldl (fn (s,a) => a ^ " & " ^ s) "\\hline Source & Total" (map #1 entries) ^ "\\\\ \\hline"
 		    fun entry (s, t, r) = Time.fmt 2 t ^ "/" ^ Real.fmt (StringCvt.FIX (SOME 1)) r
 		    fun line {name,total,entries} =
 		      foldl (fn (e,a) => a ^ " & " ^ entry e) (verb name ^ " & " ^ Time.fmt 2 total) entries ^ "\\\\ \\hline"

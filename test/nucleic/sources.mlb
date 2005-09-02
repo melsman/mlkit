@@ -1,4 +1,4 @@
 $(SML_LIB)/basis/basis.mlb
-d2.mlb
-../A.sml
-b.sml
+nucleic.sml
+main.sml
+

@@ -1,18 +1,47 @@
 ML Kit NEWS file
 
-mael 2005-05-10: Integrated mlb-file support in mlkit executable. For
-full isolation, the implementation forks a different process for each
-compilation of a source file.
+ * mael 2005-07-15: Fixed KitTester (src/Tools/Tester) so that it
+   accepts mlb-files in the grammar for tst-files instead of
+   pm-files. Also, simplify the system to allow only the following
+   annotations:
 
-mael 2005-02-22: The scheme for mlb-files (shown below) is now also
-used for cm-files when the MLKit is compiled with SML/NJ. See
-e.g. kit/src/build.sml and kit/src/build_kam.sml.
+       nobasislib     ; do not import basis library
+       ccl            ; compare compiler logs
+       tx             ; time executable
+       tc             ; time compiler
+       ecte           ; expect compile time error
+       ue             ; expect uncaught exception
 
-mael 2004-12-17: To actually split sources so that Barry, SMLserver,
-Kit(native) and Kit(bytecode) can be built independently, we have the
-following mlb-hierachy (transitive dependencies are omitted), where
-the mlb-files in boxes denote main mlb-files that, when built, result
-in mlkit executables:
+    The annotations "prof", "gc", and "gengc" should not be supported
+    - in this way, the same tst-file can be used for all tests
+    (kam-backend,native-backend,test of gengc, test of gc, test of
+    profiling, etc). For this to work, KitTester should accept options
+    that can be redirected to the MLKit executable for each test
+    program compilation.
+
+ * mael 2005-07-15: Fixed bug related to recompilation of functors. If
+   a functor is modified, the .bdy-file for the functor body is
+   modified, but the eb-file for the file in which the functor was
+   declared was not necessarily modified upon a change in the source
+   file (which could cause a lack of recompilation). The fix inserts
+   an md5-sum of the .bdy-file in the functor closure in the eb-file
+   for the file in which the functor is declared. Thus a change in the
+   source code for the function will now result in a change in the
+   eb-file.
+
+ * mael 2005-05-10: Integrated mlb-file support in mlkit
+   executable. For full isolation, the implementation forks a
+   different process for each compilation of a source file.
+
+ * mael 2005-02-22: The scheme for mlb-files (shown below) is now also
+   used for cm-files when the MLKit is compiled with SML/NJ. See
+   e.g. kit/src/build.sml and kit/src/build_kam.sml.
+
+ * mael 2004-12-17: To actually split sources so that Barry,
+   SMLserver, Kit(native) and Kit(bytecode) can be built
+   independently, we have the following mlb-hierachy (transitive
+   dependencies are omitted), where the mlb-files in boxes denote main
+   mlb-files that, when built, result in mlkit executables:
 
           pickle.mlb      edlib.mlb
               \             /  

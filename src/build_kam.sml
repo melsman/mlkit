@@ -4,6 +4,5 @@ val _ = (SMLofNJ.Internals.GC.messages false;
 	 CM.make' "Compiler/bytecode.cm");
 
 val _ = (Main.disable "garbage_collection";
-	 Main.build_basislib();	   
 	 Main.install() 
 	 )
