@@ -1,0 +1,4 @@
+$(SML_LIB)/basis/basis.mlb
+(* my_lib.o:my_lib-prof.o *)
+my_lib.sml 
+test_my_lib.sml
