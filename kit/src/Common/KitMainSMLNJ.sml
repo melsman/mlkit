@@ -30,5 +30,4 @@ functor KitMainSMLNJ (Kit : KIT_COMPILER) =
 	    end
 	fun enable s = Flags.turn_on s
 	fun disable s = Flags.turn_off s
-	fun build_basislib() = Kit.build_basislib()
     end

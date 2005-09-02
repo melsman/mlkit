@@ -46,18 +46,18 @@ testbasic_mlkit:
 	/bin/mv test_report.dvi testbasic_report-native-`/bin/date -I`.dvi
 
 test_mlkit:
-	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
+	../bin/kittester ../bin/mlkit all.tst
+#	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
 #	../bin/kittester ../bin/mlkit all_gengc.tst
-#	../bin/kittester ../bin/mlkit all.tst
 #	../bin/kittester ../bin/mlkit all_nogengc.tst
 	/bin/mv test_report.dvi test_report-native-`/bin/date -I`.dvi
 
 test_kam:
-	../bin/kittester ../bin/mlkit_kam kam.tst
+	../bin/kittester ../bin/mlkit_kam all.tst
 	/bin/mv test_report.dvi test_report-kam-`/bin/date -I`.dvi
 
 clean:
 	rm -f *.exe.x86-linux *.exe.out.txt *.exe.png *.exe run *~ */*~
 	rm -f runexe *.log *.outgcp *.outgengcp *.out *.outgc *.outgengc *.outp profile.rp
 	rm -f *.aux
-	rm -rf PM CM */PM */CM */*.log
+	rm -rf PM CM */PM */CM */*.log MLB */MLB */*/MLB */*/*/MLB

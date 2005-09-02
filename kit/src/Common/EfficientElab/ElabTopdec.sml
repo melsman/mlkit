@@ -9,7 +9,6 @@ structure ElabTopdec: ELABTOPDEC  =
     structure ElabInfo = AllInfo.ElabInfo
     structure IG = PreElabTopdecGrammar
     structure OG = PostElabTopdecGrammar
-    structure ElabRep = ElabRepository
 
     structure EdList = Edlib.List
 
@@ -302,36 +301,6 @@ structure ElabTopdec: ELABTOPDEC  =
      val share = StructureSharing.share
      exception Share = StructureSharing.Share
 
-    (* ------------------------------------------------
-     * Match object in repository (for recompilation)
-     * ------------------------------------------------ *)
-
-     local
-	 val repository = Flags.is_on0 "repository"
-	 val compile_only = Flags.is_on0 "compile_only"
-     in
-	 fun use_repository() = repository() andalso not(compile_only())
-     end
-
-    fun match_and_update_repository (absprjid_and_funid,T',E') : unit =
-      if not(use_repository()) then ()
-      else
-      let val N' = map TyName.name (TyName.Set.list T')
-	  val B' = B.from_E E'
-	  val obj = (ElabRep.empty_infix_basis,B.empty,[],(ElabRep.empty_opaq_env, TyName.Set.empty), 
-		     N',ElabRep.empty_infix_basis,B', ElabRep.empty_opaq_env)
-      in case ElabRep.lookup_elab absprjid_and_funid
-	   of SOME (index,(_,_,_,_,N,_,B,_)) =>  (* Names in N already marked generative, 
-						  * because the object is returned by lookup. *)
-	     (List.app Name.mark_gen N';
-	      B.match(B',B);
-	      List.app Name.unmark_gen N';
-	      List.app Name.mk_rigid N';
-	      ElabRep.owr_elab(absprjid_and_funid,index,obj))
-
-	    | NONE => ElabRep.add_elab(absprjid_and_funid,obj)
-      end
-
     (* --------------------------------------------
      *  Checking for respecifications
      * -------------------------------------------- *)
@@ -449,7 +418,6 @@ structure ElabTopdec: ELABTOPDEC  =
 		     val _ = (print "**Functor argument E = \n"; pr_Env E; print "\n")
 		     val _ = (print "**Functor result E = \n"; pr_Env E'; print "\n")
 *)
-		     val _:{} = match_and_update_repository ((absprjid,funid),T',E')
 		 in (T @ (TyName.Set.list T'), E', OG.APPstrexp (out_i, funid, out_strexp)) 
 		 end handle No_match reason =>                       (* We bind the argument names in error_result *)
 		   let	                                             (* so that the argument signature returned is *)

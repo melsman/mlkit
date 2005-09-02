@@ -8,9 +8,15 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
   struct
     structure PP = PrettyPrint
     structure TopdecGrammar = PostElabTopdecGrammar
-    structure ElabRep = ElabRepository
     structure CompileBasis = Execution.CompileBasis
     structure Labels = AddressLabels
+
+    structure ErrorCode = ParseElab.ErrorCode
+    exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
+    fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); raise PARSE_ELAB_ERROR[])
+    fun warn (s : string) = print ("\nWarning: " ^ s ^ ".\n\n")
+    fun quot s = "`" ^ s ^ "'"
+    val op ## = OS.Path.concat infix ##
 
     val backend_name = Execution.backend_name
     val compile_only = Flags.is_on0 "compile_only"
@@ -18,7 +24,10 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
-    val link_time_dead_code_elimination = true
+    val link_time_dead_code_elimination = 
+	Flags.add_bool_entry {long="link_time_dead_code_elimination", short=SOME "ltdce", item=ref true,
+			      menu=["Control", "link time dead code elimination"], neg=true,
+			      desc="Link time dead code elimination."}
     local
       val debug_linking = Flags.lookup_flag_entry "debug_linking"
     in
@@ -48,22 +57,23 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
       val tag_pairs_p = Flags.is_on0 "tag_pairs"
     in 
 	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
-      fun pmdir() = 
-	if Flags.is_on "compile_only" orelse Flags.get_stringlist_entry "link" <> nil then "MLB/MLKit/"
-	else
-	if !Flags.SMLserver then "PM/"
-	else
-	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
-	else case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p())
-	       of (false, true,   true,               false) => "PM/RI_GC_PROF/"
-		| (false, true,   false,              false) => "PM/RI_GC/"
-		| (false, true,   true,               true)  => "PM/RI_GC_TP_PROF/"
-		| (false, true,   false,              true)  => "PM/RI_GC_TP/"
-                | (true,  true,   true,              false)  => "PM/RI_GEN_GC_PROF/"
-   	        | (true,  true,   false,             false)  => "PM/RI_GEN_GC/"
-                | (true,  _,      _,                 _    )  => die "Illegal combination of generational garbagecollection and tagged pairs"
-		| (false, false,  true,               _)     => "PM/RI_PROF/"
-		| (false, false,  false,              _)     => "PM/RI/"
+      fun mlbdir() = 
+	  let val subdir =
+	      if !Flags.SMLserver then "SMLserver"
+	      else if recompile_basislib() then "Scratch"   (* avoid overwriting other files *)
+	      else 
+		  case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p()) of 
+		      (false,     true,   true,               false) => "RI_GC_PROF"
+		    | (false,     true,   false,              false) => "RI_GC"
+		    | (false,     true,   true,               true)  => "RI_GC_TP_PROF"
+		    | (false,     true,   false,              true)  => "RI_GC_TP"
+		    | (true,      true,   true,               false) => "RI_GEN_GC_PROF"
+		    | (true,      true,   false,              false) => "RI_GEN_GC"
+		    | (true,      _,      _,                  _)     => die "Illegal combination of generational garbage collection and tagged pairs"
+		    | (false,     false,  true,               _)     => "RI_PROF"
+		    | (false,     false,  false,              _)     => "RI"
+	  in "MLB" ## subdir
+	  end
     end
 
     type linkinfo = Execution.linkinfo
@@ -92,7 +102,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 		  die "no runtime system supports tagging of values with tagging of pairs"             else
               if tag_values()                                           then "runtimeSystemTag.a"      else
 		                                                             "runtimeSystem.a"
-	  in OS.Path.concat(OS.Path.concat(!Flags.install_dir, "bin"), file())
+	  in !Flags.install_dir ## "bin" ## file()
 	  end
 
       	(* --------------------
@@ -100,6 +110,49 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	 * -------------------- *)
 
 	fun delete_file f = OS.FileSys.remove f handle _ => ()
+
+
+	(* --------------------
+	 * Changing directories
+	 * 
+	 * -------------------- *)
+
+	fun change_dir p : {cd_old : unit -> unit, file : string} =
+	    let val {dir,file} = OS.Path.splitDirFile p
+	    in if dir = "" then {cd_old = fn()=>(),file=file}
+	       else let val old_dir = OS.FileSys.getDir()
+			val _ = OS.FileSys.chDir dir
+		    in {cd_old=fn()=>(OS.FileSys.chDir old_dir), file=file}
+		    end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
+	    end
+	(* [change_dir p] cd's to the dir part of p and returns the
+	 * file part of p together with a function for changing to the
+	 * original directory. *)
+	
+	(* -----------------------------------------------
+	 * Creating directories for target code
+	 * ----------------------------------------------- *)
+
+	fun maybe_create_dir d : unit = 
+	    if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
+		if OS.FileSys.isDir d then ()
+		else error ("The file " ^ quot d ^ " is not a directory")
+	    else ((OS.FileSys.mkDir d;()) handle _ => 
+		  error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ 
+			 OS.FileSys.getDir()))
+		
+	fun maybe_create_dirs {prepath:string,dirs:string} : unit =
+	    let val dirs = String.tokens (fn c => c = #"/") dirs
+		fun loop (p, nil) = ()
+		  | loop (p, d::ds) = let val p = p ## d
+				      in maybe_create_dir p; loop(p, ds)
+				      end
+	    in loop(prepath, dirs)
+	    end
+
+	fun maybe_create_mlbdir {prepath:string} : unit = 
+	    maybe_create_dirs {prepath=prepath,dirs=mlbdir()}
+
 
 	(* -----------------------------------------------
 	 * Emit assembler code and assemble it. 
@@ -120,12 +173,22 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 		       in if OS.Path.file p = filename then p else p ^ "." ^ filename
 		       end
 		   else
+(*
 		       let 
 			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ esc filename
 			   val target_filename = pmdir() ^ target_filename
 		       in OS.Path.mkAbsolute{path=target_filename, relativeTo=OS.FileSys.getDir()}
 		       end
-	    in Execution.emit {target=target,filename=target_filename}
+*)
+		       let val {dir,file} = OS.Path.splitDirFile filename
+			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ file
+			   val target_filename = mlbdir() ## target_filename
+			   val _ = maybe_create_mlbdir {prepath=dir}
+		       in dir ## target_filename
+		       end
+		   val f0 = Execution.emit {target=target,filename=target_filename}
+		   val f = OS.Path.file f0
+	    in mlbdir() ## f (* strip the initial dir in the recorded code file *)
 	    end
 
 	(* -------------------------------------------------------------
@@ -177,8 +240,19 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	  let 
 	    val _ = pr_debug_linking "[Link time dead code elimination begin...]\n"
 	    val table = labelTable.mk()
+	    val allexports = labelTable.mk()
 	    fun require (f_labs,d_labs) : unit = (List.app (fn lab => labelTable.insert(table,lab)) f_labs;
 						  List.app (fn lab => labelTable.insert(table,lab)) d_labs) (* 2001-01-09, Niels *)
+	    fun add_exports_to_allexports (f_labs,d_labs) =
+		let fun look l = 
+			if labelTable.look(allexports, l) then
+			    die ("Label " ^ Labels.pr_label l ^ " allready exported")
+			else ()
+		in
+		    (List.app (fn lab => (look lab ; labelTable.insert(allexports,lab))) f_labs;
+		     List.app (fn lab => (look lab ; labelTable.insert(allexports,lab))) d_labs)		
+		end
+		
 	    fun required (f_labs,d_labs) : bool = 
 	      foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab))
 	      (foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab)) false f_labs) d_labs  (* 2001-01-09, Niels *)
@@ -188,7 +262,10 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 		  fun pp_unsafe true = " (unsafe)"
 		    | pp_unsafe false = " (safe)"
 	      in if unsafe obj orelse required (exports obj) then 
-		      (pr_debug_linking ("Using       " ^ #1 obj ^ pp_unsafe(unsafe obj) ^ "\n"); require (imports obj); obj::rest')
+		     (pr_debug_linking ("Using       " ^ #1 obj ^ pp_unsafe(unsafe obj) ^ "\n")
+		      ; require (imports obj)
+		      ; add_exports_to_allexports (exports obj)
+		      ; obj::rest')
 		 else (pr_debug_linking ("Discharging " ^ #1 obj ^ "\n"); rest')
 	      end
 	    val res = reduce tfiles_with_linkinfos
@@ -211,7 +288,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	fun link (tfiles_with_linkinfos, extobjs, run) : unit =
 	  let 
 	    val tfiles_with_linkinfos = 
-	      if link_time_dead_code_elimination then dead_code_elim tfiles_with_linkinfos
+	      if link_time_dead_code_elimination() then dead_code_elim tfiles_with_linkinfos
 	      else tfiles_with_linkinfos
 	    val linkinfos = map #2 tfiles_with_linkinfos
 	    val target_files = map #1 tfiles_with_linkinfos
@@ -387,14 +464,26 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 					       fun_NOTEMITTED_MODC])
 	    end
 
-	fun dirMod d EMPTY_MODC = EMPTY_MODC
-	  | dirMod d (SEQ_MODC(modc1,modc2)) = SEQ_MODC(dirMod d modc1, dirMod d modc2)
-	  | dirMod d (EMITTED_MODC(fp,li)) = 
-	    let val f = OS.Path.file fp
-	        val fp = OS.Path.concat (d,f)
-	    in EMITTED_MODC(fp,li)
-	    end
-	  | dirMod _ _ = die "dirMod applied to non-emitted modcode"
+	fun dirMod0 f EMPTY_MODC = EMPTY_MODC
+	  | dirMod0 f (SEQ_MODC(modc1,modc2)) = SEQ_MODC(dirMod0 f modc1, dirMod0 f modc2)
+	  | dirMod0 f (EMITTED_MODC(fp,li)) = EMITTED_MODC(f fp,li)
+	  | dirMod0 f (NOTEMITTED_MODC(t,li,fp)) = NOTEMITTED_MODC(t,li,f fp)
+
+	fun subtract_mlbdir s =
+	    (OS.Path.getParent o OS.Path.getParent) s
+
+	fun dirMod d m =
+	    dirMod0 (fn fp => 
+		     let val p = d ## OS.Path.file fp
+			 val p = 
+			     if OS.Path.isAbsolute d then p
+			     else subtract_mlbdir(OS.Path.dir fp) ## p
+		     in p
+		     end) m
+
+	fun absDirMod absd m =
+	    dirMod0 (fn fp => absd ## OS.Path.file fp) m
+	    
       end
 
 
@@ -451,10 +540,12 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
     type InfixBasis = InfixBasis.Basis
     type opaq_env = OpacityElim.opaq_env     
 
+    type md5 = string
     type BodyBuilderClos = {infB: InfixBasis,
 			    elabB: ElabBasis,
 			    absprjid: absprjid,
 			    filename: string,
+			    filemd5: md5,
 			    opaq_env: opaq_env,
 			    T: TyName.TyName list,
 			    resE: ElabEnv}
@@ -497,15 +588,15 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
     (* Picklers *)
 
     val pu_BodyBuilderClos =
-	let fun to ((infB,elabB,absprjid),(filename,opaq_env,T),resE) = 
-		{infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
+	let fun to ((infB,elabB,absprjid),(filename,opaq_env,T),(resE,filemd5)) = 
+		{infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,filemd5=filemd5,
 		 opaq_env=opaq_env,T=T,resE=resE}
-	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
-		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),resE)
+	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,filemd5=filemd5,
+		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),(resE,filemd5))
 	in Pickle.convert (to,from)
 	    (Pickle.tup3Gen0(Pickle.tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
 			     Pickle.tup3Gen0(Pickle.string,OpacityEnv.pu,Pickle.listGen TyName.pu), 
-			     Environments.E.pu))
+			     Pickle.pairGen0(Environments.E.pu,Pickle.string)))
 	end
 
     val pu_IntSigEnv =
@@ -548,7 +639,10 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; enrichment for free variables is checked *)
 	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
-			of SOME obj0 => FunStamp.eq(#2 obj,#2 obj0) andalso #1 obj = #1 obj0
+			of SOME obj0 => 
+			            FunStamp.eq(#2 obj,#2 obj0)            (* modtime *)
+			    andalso #1 obj = #1 obj0                       (* absprjid *)
+			    andalso #filemd5 (#5 obj) = #filemd5 (#5 obj0) (* md5 of functor body *)
 			 | NONE => false) true ife
 
 	val layout = layoutIntFunEnv
@@ -903,177 +997,6 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 
       end
 
-
     type name = Name.name
-    structure Repository =
-      struct	  
-	structure RM = RepositoryFinMap
-	 
-	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
-	  name list * InfixBasis * ElabBasis * opaq_env
-
-	type int_entry = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
-	  modcode * IntBasis
-
-	type int_entry' = int_entry
-
-	type intRep = int_entry list RM.map
-	type intRep' = int_entry' list RM.map
-
-	val intRep : intRep ref = ref RM.empty
-	val intRep' : intRep' ref = ref RM.empty
-
-	val repository_chat = false
-	fun rchat s = if repository_chat then print("Repository: calling " ^ s ^ "\n")
-		      else ()
-
-	fun clear() = (rchat "clear";
-		       ElabRep.clear();
-		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep));  
-		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep'));  
-		       intRep := RM.empty;
-		       intRep' := RM.empty)
-
-	val strip_install_dir' = ModuleEnvironments.strip_install_dir'
-	val is_absprjid_basislib = ModuleEnvironments.is_absprjid_basislib
-
-	fun delete_rep rep absprjid_and_funid = 
-	    let val _ = rchat "delete_rep"
-	    in
-		case RM.remove (strip_install_dir' absprjid_and_funid, !rep)
-		    of SOME res => rep := res
-		  | _ => ()
-	    end
-
-	fun delete_entries absprjid_and_funid = (rchat "delete_entries";
-						 ElabRep.delete_entries absprjid_and_funid; 
-						 delete_rep intRep absprjid_and_funid;
-						 delete_rep intRep' absprjid_and_funid)
-
-	(* To allow the binary distribution of the Kit to be stored in
-	  different directories on different systems---to make the Kit
-	  relocatable---we must allow the object files for the basis
-	  library to be moved to another location after building the
-	  system, and still have the object files being reused. To
-	  this end, we pass as an argument to the Kit executable the
-	  directory in which the Kit is located (installed). The
-	  string ref Flags.install_dir is set to this directory during
-	  launch of the Kit. *)
-	  
-	fun prepend_install_dir (funstamp, ElabEnv, IntBasis, longstrids, names, modcode, IntBasis') =
-	  let 
-	    fun prepend_install_dir_modcode modcode = 
-	      case modcode
-		of EMPTY_MODC => EMPTY_MODC
-		 | SEQ_MODC(modc1,modc2) => SEQ_MODC(prepend_install_dir_modcode modc1, 
-						     prepend_install_dir_modcode modc2)
-		 | EMITTED_MODC(fp,li) => EMITTED_MODC(OS.Path.concat(!Flags.install_dir,fp),li)
-		 | NOTEMITTED_MODC(target,linkinfo,filename) => die "prepend_install_dir_modcode" 
-	  in (funstamp, ElabEnv, IntBasis, longstrids, names, prepend_install_dir_modcode modcode, IntBasis')
-	  end
-
-	fun remove_install_dir (funstamp, ElabEnv, IntBasis, longstrids, names, modcode, IntBasis') =
-	  let 
-	    fun remove_install_dir_modcode modcode = 
-	      case modcode
-		of EMPTY_MODC => EMPTY_MODC
-		 | SEQ_MODC(modc1,modc2) => SEQ_MODC(remove_install_dir_modcode modc1, 
-						     remove_install_dir_modcode modc2)
-		 | EMITTED_MODC(fp,li) => EMITTED_MODC(OS.Path.mkRelative{path=fp, relativeTo= !Flags.install_dir},li)
-		 | NOTEMITTED_MODC(target,linkinfo,filename) => die "remove_install_dir_modcode" 
-	  in (funstamp, ElabEnv, IntBasis, longstrids, names, remove_install_dir_modcode modcode, IntBasis')
-	  end
-
-	fun lookup_rep rep exportnames_from_entry (absprjid_and_funid as (absprjid,_)) =
-	  let val _ = rchat "lookup_rep"
-	      val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
-	      fun find ([], n) = NONE
-		| find (entry::entries, n) = 
-		if (all_gen o exportnames_from_entry) entry then 
-		  (* if absprjid is "basis.pm" then we prepend to the entry the 
-		   * directory in which the o.-files are located (the install_dir). *)
-		  if is_absprjid_basislib absprjid then
-		    SOME(n, prepend_install_dir entry)
-		  else SOME(n,entry)
-		else find(entries,n+1)
-	  in case RM.lookup (!rep) (strip_install_dir' absprjid_and_funid)
-	       of SOME entries => find(entries, 0)
-		| NONE => NONE
-	  end
-
-	fun add_rep rep (absprjid_and_funid as (absprjid,_),entry) : unit =
-	  rep := let val _ = rchat "add_rep"
-		     val r = !rep 
-		     val i = strip_install_dir' absprjid_and_funid
-		 in case RM.lookup r i
-		      of SOME res => RM.add(i,res @ [entry],r)
-		       | NONE => RM.add(i, [if is_absprjid_basislib absprjid then
-					      remove_install_dir entry
-					    else entry], r)
-		 end
-
-	fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
-	  rep := let val _ = rchat "owr_rep"
-		     val r = !rep
-		     val i = strip_install_dir' absprjid_and_funid
-	             fun owr(0,entry::res,entry') = entry'::res
-		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
-		       | owr _ = die "owr_rep.owr"
-		 in case RM.lookup r i
-		      of SOME res => RM.add(i,owr(n,res,entry),r)
-		       | NONE => die "owr_rep.NONE"
-		 end
-	val lookup_int = lookup_rep intRep #5
-	val lookup_int' = lookup_rep intRep' #5
-
-	fun add_int (absprjid_and_funid,entry) = 
-	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
-	    add_rep intRep (absprjid_and_funid, entry)
-	  else die "add_int"
-
-	fun add_int' (absprjid_and_funid,entry) = 
-	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
-	    add_rep intRep' (absprjid_and_funid, entry)
-	  else die "add_int'"
-
-	fun owr_int (absprjid_and_funid,n,entry) =
-	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
-	    owr_rep intRep (absprjid_and_funid,n,entry)
-	  else die "owr_int"
-
-	fun recover_intrep ir =
-	    (rchat "recover_intrep";
-	     List.app 
-	     (List.app (fn entry : 'a1*'a2*'a3*'a4*(name list)*'a6*'a7 => List.app Name.mark_gen (#5 entry)))
-	     (RM.range ir))
-
-	fun emitted_files() =
-	  let fun files_entries ([],acc) = acc
-		| files_entries ((_,_,_,_,_,mc,_)::entries,acc) = 
-		    files_entries(entries,ModCode.emitted_files(mc,acc))
-	  in RM.fold files_entries (RM.fold files_entries [] (!intRep)) (!intRep')
-	  end
-	val lookup_elab = ElabRep.lookup_elab
-	val add_elab = ElabRep.add_elab
-	val owr_elab = ElabRep.owr_elab
-	fun recover() = (rchat "recover"; ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
-(*
-	val pu_int_entry =
-	    Pickle.convert (fn ((a1,a2,a3,a4),(a5,a6,a7)) => (a1,a2,a3,a4,a5,a6,a7),
-			    fn (a1,a2,a3,a4,a5,a6,a7) => ((a1,a2,a3,a4),(a5,a6,a7)))
-	    (Pickle.pairGen0(Pickle.tup4Gen0(FunStamp.pu,Environments.E.pu,IntBasis.pu,Pickle.listGen StrId.pu_longstrid),
-			     Pickle.tup3Gen0(Pickle.listGen Name.pu,ModCode.pu,IntBasis.pu)))
-	val pu_intRep : intRep Pickle.pu = 
-	    RM.pu ElabRep.pu_dom (Pickle.listGen pu_int_entry)
-*)
-	type repository = ElabRep.elabRep * intRep * intRep'
-	fun getIntRep() = !intRep
-	fun getIntRep'() = !intRep'
-	fun setIntRep r = intRep := r
-	fun setIntRep' r = intRep' := r
-	fun getRepository() = (ElabRep.getElabRep(),getIntRep(),getIntRep'())
-	fun setRepository(er,ir,ir') = (ElabRep.setElabRep er; setIntRep ir; setIntRep' ir')
-(*	val pu = Pickle.tup3Gen(ElabRep.pu,pu_intRep,pu_intRep) *)
-      end
     
   end

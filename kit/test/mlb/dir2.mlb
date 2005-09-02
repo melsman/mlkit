@@ -1,4 +1,3 @@
 $(SML_LIB)/basis/basis.mlb
-d2.mlb
-../A.sml
-b.sml
+d1/a.sml
+dir2.sml

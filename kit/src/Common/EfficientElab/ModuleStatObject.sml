@@ -375,10 +375,15 @@ structure ModuleStatObject: MODULE_STATOBJECT =
     structure Phi = struct
       fun from_T_and_E_and_Sigma (T, E, T'E') = FUNSIG {T = T, E = E, T'E' = T'E'}
       fun to_T_and_E_and_Sigma (FUNSIG {T, E, T'E'}) = (T, E, T'E')
-      fun tynames (FUNSIG {T, E, T'E' = SIGMA {T = T', E = E'}}) =
-	    TyName.Set.union 
+      fun tynames (FUNSIG {T, E, T'E' (*= SIGMA {T = T', E = E'} *)}) =
+(*	    TyName.Set.union 
 	      (TyName.Set.union (E.tynames E) T)
-	      (TyName.Set.difference (E.tynames E') (TyName.Set.union T T'))
+	      (TyName.Set.difference (E.tynames E') (TyName.Set.union T T')) 
+*)
+	  TyName.Set.difference 
+	  (TyName.Set.union (Sigma.tynames T'E') (E.tynames E))
+	  T
+
       fun tyvars Phi = 
 	    let val (_, E, Sig) = to_T_and_E_and_Sigma Phi
 	    in

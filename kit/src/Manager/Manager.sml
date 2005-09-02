@@ -10,7 +10,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     structure Basis = MO.Basis
     structure FunStamp = MO.FunStamp
     structure ModCode = MO.ModCode
-    structure Repository = MO.Repository
     structure IntBasis = MO.IntBasis
     structure ElabBasis = ModuleEnvironments.B
     structure ErrorCode = ParseElab.ErrorCode
@@ -20,14 +19,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     fun testouttree(t:PP.StringTree) = PP.outputTree(testout,t,80)
 
     type absprjid = ModuleEnvironments.absprjid
-    type prjid = string
-    type longprjid = string
     type InfixBasis = ManagerObjects.InfixBasis
     type ElabBasis = ManagerObjects.ElabBasis
     type IntBasis = ManagerObjects.IntBasis
     type opaq_env = ManagerObjects.opaq_env
 
     fun die s = Crash.impossible ("Manager." ^ s)
+
+    val op ## = OS.Path.concat infix ##
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
 
@@ -96,14 +95,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
        desc="Name base to enforce unique names when compiling\n\
 	\mlb-files."}
 
-    exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
-    fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); raise PARSE_ELAB_ERROR[])
-    fun warn (s : string) = print ("\nWarning: " ^ s ^ ".\n\n")
-    fun quot s = "`" ^ s ^ "'"
-
-    fun has_ext(s: string,ext) = case OS.Path.ext s
-				   of SOME ext' => ext = ext'
-				    | NONE => false
+    exception PARSE_ELAB_ERROR = MO.PARSE_ELAB_ERROR
+    fun error a = MO.error a
+    val quot = MO.quot
 
     (* SMLserver components *)
     structure MspComp = MspComp(val error = error
@@ -112,31 +106,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                                           \val print = Ns.Conn.write\n\n")
 
     (* Support for parsing scriptlet form argument - i.e., functor
-     arguments *)
+     * arguments *)
     structure Scriptlet = Scriptlet(val error = error)
-
-    fun member s l = let fun m [] = false
-			   | m (x::xs) = x = s orelse m xs
-		     in m l
-		     end
 
     (* -----------------------------------------
      * Unit names, file names and directories
      * ----------------------------------------- *)
 
-    type filename = MO.filename   (* At some point we should use *)
-                                                  (* abstract types for these things *)
-    type funid = MO.funid             (* so that we correctly distinguish *)
-     and funstamp = MO.funstamp       (* unit names and file names. *)
+    type filename = MO.filename       (* At some point we should use *)
+                                      (* abstract types for these things *)
+                                      (* so that we correctly distinguish *)
+                                      (* unit names and file names. *)
 
     fun unitname_to_logfile unitname = unitname ^ ".log"
     fun unitname_to_sourcefile unitname = MO.mk_filename unitname (*mads ^ ".sml"*)
     fun filename_to_unitname (f:filename) : string = MO.filename_to_string f
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
-
-    fun mk_absolute p = OS.Path.mkAbsolute{path=p,relativeTo=OS.FileSys.getDir()}
-    fun mk_absprjid_from_path s = ModuleEnvironments.mk_absprjid(mk_absolute s)
 
     (* ----------------------------------------------------
      * log_init  gives you back a function for cleaning up
@@ -182,386 +168,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     fun print_result_report report = (Report.print' report (!Flags.log);
 				      Flags.report_warnings ())
 
-
-    (* ----------
-     * Projects
-     * ---------- *)
-
-    structure Project : 
-      sig
-	type extobj = string   (* externally compiled objects; .o-files *)
-	type unitid = string
-	datatype body = EMPTYbody
-	              | LOCALbody of body * body * body
-	              | INLINEbody of body * body
-	              | UNITbody of unitid * body
-	              | PARbody of unitid list  (* parallel interpretation *)
-	type prj = {imports : absprjid list, extobjs: extobj list, body : body}
-
-	val getParbody             : prj -> unitid list option (* for SMLserver *)
-	val prependUnit            : unitid * prj -> prj       (* for SMLserver *)
-	val appendFunctorInstances : prj -> prj
-	val parse_project          : absprjid -> prj      
-	val local_check_project    : absprjid * prj -> unit
-	val pmdep                  : absprjid -> unit
-      end =
-    struct
-      type extobj = string   (* externally compiled objects; .o-files *)
-      type unitid = string
-      datatype body = EMPTYbody
-                    | LOCALbody of body * body * body
-	            | INLINEbody of body * body
-                    | UNITbody of unitid * body
-                    | PARbody of unitid list  (* parallel interpretation *)
-      type prj = {imports : absprjid list, extobjs: extobj list, body : body}
-
-      fun layout_body (b: body): PP.StringTree = 
-	case layout_body' b of
-	  nil => PP.LEAF ""
-	| l => PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", children = l}
-      and layout_body' (b: body) : PP.StringTree list =
-	case b of
-	  EMPTYbody => []
-	| LOCALbody(b1,b2,b3) => PP.NODE{start = "local ", finish = " end", 
-					 indent = 2, childsep = PP.LEFT " in ",
-					 children = map layout_body [b1,b2]}:: layout_body' b3
-	| INLINEbody(b1,b2) => PP.NODE{start = "inline funapps in ", finish = " end", 
-				       indent = 2, childsep = PP.NOSEP,
-				       children = [layout_body b1]} :: layout_body' b2
-	| UNITbody(uid,b') => PP.LEAF uid :: layout_body' b'
-	| PARbody uids => [PP.NODE{start="[", finish="]",indent=2, childsep=PP.RIGHT " ",
-				   children=map PP.LEAF uids}]
-	  
-      fun layout_prj{imports, extobjs, body} = 
-	let val t1 = PP.NODE{start="imports= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
-			     children = map (PP.LEAF o ModuleEnvironments.absprjid_to_string) imports}
-          val t2 = PP.NODE{start="extobjs= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
-                           children = map PP.LEAF extobjs}
-          val t3 = PP.NODE{start="body= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
-                           children = [layout_body body]}
-	in
-	  PP.NODE{start = "project ", finish = " end", childsep = PP.RIGHT " ", indent =1,
-		  children = [t1,t2,t3]}
-	end 
-
-      fun fromFile (filename:string) =
-	let val is = TextIO.openIn filename 
-          (*val _ = TextIO.output(TextIO.stdOut, "opened " ^filename^"\n")*)
-	  val s = TextIO.inputAll is handle E => (TextIO.closeIn is; raise E)
-	in TextIO.closeIn is; s
-	end
-    
-      (* [parse_project absprjid] This function requires the current directory to
-       * be the directory that holds the project to be parsed;
-       * otherwise, incorrect absolute paths are made. *)     
-      fun parse_project (absprjid : absprjid) : prj =  
-      let
-	val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
-
-        fun parse_error s' = error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s')
-        fun parse_error1(s', rest: string list) = 
-          case rest of 
-            [] => error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s' ^ "(reached end of file)")
-          | s::_ => error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s' ^ "(reached `" ^ s ^ "')")
-             
-	val _ = if has_ext(absprjid_s, "pm") then ()
-		else error ("Your project file " ^ quot absprjid_s ^ " does not have extension `pm'")
-
-	fun is_symbol #":" = true
-	  | is_symbol #"[" = true
-	  | is_symbol #"]" = true
-	  | is_symbol _ = false
-
-	fun lex_symbol (c::chs) =
-	  if is_symbol c then SOME (c,chs)
-	  else NONE
-	  | lex_symbol nil = NONE
-
-	fun lex_whitesp (all as c::rest) = if Char.isSpace c then lex_whitesp rest
-					   else all 
-	  | lex_whitesp [] = []
-
-	fun lex_string (c::rest, acc) = if is_symbol c then (implode(rev acc), c::rest)
-					else if Char.isSpace c then (implode(rev acc), rest)
-					     else lex_string (rest, c::acc)
-	  | lex_string ([], acc) = (implode(rev acc), [])
-
-	fun lex (chs : char list, acc) : string list =
-	  case lex_whitesp chs
-	    of [] => rev acc
-	     | chs => lex (case lex_symbol chs
-			     of SOME (c,chs) => (chs, Char.toString c :: acc)
-			      | NONE => let val (s, chs) = lex_string(chs,[])
-					in (chs, s::acc) 
-					end)
-	val lex = fn chs => lex(chs,[])
-
-	fun drop_comments (absprjid:absprjid) (l: char list) : char list =
-	  let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
-		| loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
-		| loop(0, ch ::rest) = ch :: loop (0,rest)
-		| loop(0, []) = []
-		| loop(n, ch ::rest) = loop(n,rest)
-		| loop(n, []) = error ("Unclosed comment in project " ^
-				     quot(ModuleEnvironments.absprjid_to_string absprjid))
-	  in loop(0,l)
-	  end
-
-	fun smlFileExtOk s = 
-	  has_ext(s,"sml") orelse has_ext(s,"sig") orelse has_ext(s,"fun") orelse has_ext(s,"msp")
-
-	fun parse_body_opt (ss : string list) : (body * string list) option =
-	  case ss
-	    of [] => NONE
-	     | "inline" :: "funapps" :: "in" :: ss => 
-	      let fun parse_rest(body,"end" :: ss) =
-		    (case parse_body_opt ss of 
-			 SOME(body',ss) => SOME(INLINEbody(body,body'), ss)
-		       | NONE => SOME(INLINEbody(body,EMPTYbody), ss))
-		    | parse_rest (body,ss) = parse_error1 ("I expect an `end'", ss)
-	      in case parse_body_opt ss of 
-		  SOME(body,ss) => parse_rest(body,ss)
-		| NONE => parse_rest(EMPTYbody,ss)
-	      end
-	     | "local" :: ss =>
-	      let fun parse_rest'(body1,body2,ss) =
-		    case ss
-		      of "end" :: ss => 
-			(case parse_body_opt ss
-			   of SOME(body',ss) => SOME(LOCALbody(body1,body2,body'), ss)
-			    | NONE => SOME(LOCALbody(body1,body2,EMPTYbody), ss))
-		       | _ => parse_error1 ("I expect an `end'", ss)
-
-		  fun parse_rest(body1,ss) =
-		    case ss
-		      of "in" :: ss => 
-			(case parse_body_opt ss
-			   of SOME(body2,ss) => parse_rest'(body1,body2,ss)
-			    | NONE => parse_rest'(body1,EMPTYbody,ss))
-		       | _ => parse_error1("I expect an `in'", ss)
-	      in case parse_body_opt ss
-		   of SOME(body1,ss) => parse_rest(body1,ss)
-		    | NONE => parse_rest(EMPTYbody,ss)
-	      end
-	     | "[" :: ss => 
-	      let fun parse_par (ss,uids) =
-		    case ss
-		      of "]" :: ss => (rev uids, ss)
-		       | uid :: ss =>
-			if smlFileExtOk uid then parse_par(ss, uid::uids)
-			else parse_error "Unit identifier or `]' expected"
-		       | nil => parse_error "End of file reached - unit identifier or `]' expected"
-		  val (uids,ss) = parse_par(ss,nil)
-	      in SOME(PARbody uids, ss)
-	      end
-	     | s :: ss => 
-	      if smlFileExtOk s then 
-	        (case parse_body_opt ss
-		  of SOME (body', ss) => SOME(UNITbody(s,body'), ss)
-		   | NONE => SOME(UNITbody(s:string,EMPTYbody), ss))
-	      else NONE 
-		
-        fun parse_prj (ss : string list) : prj =
-	  let fun parse_end({absprjids,objs}, body, ss) =
-	        case ss
-		  of [] => {imports=absprjids,extobjs=objs,body=body}
-		   | _ => parse_error1("I expect end of file", ss)
-	  in case ss
-	       of [] => {imports=[],extobjs=[],body=EMPTYbody}
-		| "import" :: ss =>
-		 let fun parse_rest'(absprjids_objs,body,ss) =
-		       case ss
-			 of "end" :: ss => parse_end(absprjids_objs,body,ss)
-			  | _ => parse_error1("I expect an `end'", ss)
-		     fun parse_rest(absprjids_objs, ss) =
-		       case ss
-			 of "in" :: ss =>
-			   (case parse_body_opt ss
-			      of SOME(body, ss) => parse_rest'(absprjids_objs,body,ss)
-			       | NONE => parse_rest'(absprjids_objs,EMPTYbody,ss))
-			  | _ => parse_error1("I expect an `in'", ss)
-		 in case parse_absprjids_opt ss
-		      of SOME(absprjids_objs,ss) => parse_rest(absprjids_objs,ss)
-		       | NONE => parse_rest({absprjids=[],objs=[]},ss)
-		 end
-		| _ => (case parse_body_opt ss
-			  of SOME(body,ss) => parse_end({absprjids=[],objs=[]},body,ss)
-			   | NONE => parse_error("I expect an `import' or a body"))
-	  end
-
-	and parse_absprjids_opt (ss: string list) : ({absprjids:absprjid list, objs:string list} * string list) option =
-	  case ss
-	    of s :: ss =>
-	      if has_ext(s,"pm") then 
-		case parse_absprjids_opt ss
-		  of SOME({absprjids,objs},ss) => SOME({absprjids=mk_absprjid_from_path s::absprjids, objs=objs}, ss)
-		   | NONE => SOME({absprjids=[mk_absprjid_from_path s],objs=[]}, ss)
-	      else if has_ext(s, "o") then
-		let fun parse_with_obj(obj, ss) =
-		      case parse_absprjids_opt ss
-			of SOME({absprjids,objs},ss) => SOME({absprjids=absprjids,objs=mk_absolute obj::objs}, ss)
-			 | NONE => SOME({absprjids=[],objs=[mk_absolute obj]}, ss)
-		in case ss
-		     of ":"::s'::ss' =>
-		       if has_ext(s', "o") then
-			 let val s'' = if !region_profiling then s' else s
-			 in parse_with_obj(s'', ss')
-			 end
-		       else parse_error("I expected " ^ s' ^ " (occuring after a `:') to have extension `.o'.")
-		      | _ => 
-			 if !region_profiling then 
-			   parse_error("I expected a `:' and an external object (.o file) to use\n" ^
-				       "now when profiling is enabled.")
-			 else parse_with_obj(s, ss)
-		end 
-	      else NONE
-	     | _  => NONE
-      in
-	(parse_prj o lex o (drop_comments absprjid) o explode o fromFile) absprjid_s
-	handle IO.Io {name=io_s,...} => error ("The project " ^ quot absprjid_s ^ " cannot be opened")
-      end
-
-      (* local_check_project  checks that a project file (1) mentions a
-       * program unit atmost once, (2) mentions a project file atmost once,
-       * and (3) mentions only existing external object files (o-files). *)
-
-      fun local_check_project (absprjid0:absprjid, {imports,extobjs,body}:prj) : unit =
-	let fun check_imports (_,[]) = ()
-	      | check_imports (P, absprjid :: rest) =
-	       if member absprjid P then 
-		 error ("The project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid) ^ 
-			" is imported twice in project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid0))
-		else check_imports(absprjid::P,rest)
-	    fun check_extobj extobj =
-	     let val extobj = OS.Path.file extobj
-	         fun exists file = OS.FileSys.access(file,[])
-	     in if not(exists extobj) then 
-	       error ("The external object file " ^ quot extobj ^ " imported in project " ^ 
-		      quot(ModuleEnvironments.absprjid_to_string absprjid0) ^ 
-		      " does not exist; first, compile this file.") 
-		else ()
-	     end
-	    fun check_body (U, body) =    (* Hmm; we do not allow two program units residing
-					   * in different directories to have the same name!
-					   * - now we do;  mael 2001-09-26 *)
-	    case body                   
-	      of EMPTYbody => U
-	       | LOCALbody(b1,b2,b3) => check_body(check_body(check_body(U,b1), b2), b3)
-	       | INLINEbody(b1,b2) => check_body(check_body(U,b1),b2)
-	       | UNITbody (longuid, body') => check_longuid(U,longuid,body')
-	       | PARbody nil => U
-	       | PARbody (longuid::rest) => check_longuid(U,longuid,PARbody rest)
-	    and check_longuid (U, longuid,body) =
-	    let val unitid = (* OS.Path.file*) longuid
-	    in 
-	      if member unitid U then 
-		error ("The program unit " ^ quot unitid ^ " is included twice in project " ^ 
-		       quot(ModuleEnvironments.absprjid_to_string absprjid0))
-	      else check_body(unitid::U,body)
-	    end
-	in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
-	end
-
-      (* for SMLserver *)
-      fun getParbody ({body,...} : prj) : unitid list option = 
-	  let fun look EMPTYbody = NONE
-		| look (LOCALbody(_,b,EMPTYbody)) = look b
-		| look (LOCALbody(_,_,b)) = look b
-		| look (INLINEbody(_,b)) = look b
-		| look (UNITbody(_,b)) = look b
-		| look (PARbody unitids) = SOME unitids
-	  in look body
-	  end
-
-      (* for SMLserver *)	  
-      fun prependUnit (unitid:unitid,prj:prj) : prj =
-	  let val {imports, extobjs, body} = prj
-	  in {imports=imports, extobjs=extobjs,
-	      body=LOCALbody(UNITbody(unitid,EMPTYbody),body,EMPTYbody)}
-	  end
-
-      fun appendFunctorInstances (prj) = 
-	  let val {imports, extobjs, body} = prj
-	      fun expand unitids = 
-		  let val unitbodies = foldr UNITbody EMPTYbody unitids 
-		      fun gen s = 
-			  case OS.Path.splitBaseExt s of
-			      {base,ext=SOME ext} => (base ^ ".gen" ^ "." ^ ext)
-			    | _ => error "The file name '" ^ s ^ "' must have extension .sml, .sig, or .fun"
-		  in LOCALbody(unitbodies, PARbody (map gen unitids), EMPTYbody)
-		  end
-	      fun substPAR f b =
-		  case b of
-		      LOCALbody(b1,b2,EMPTYbody) => LOCALbody(b1,substPAR f b2,EMPTYbody)
-		    | LOCALbody(b1,b2,b3) => LOCALbody(b1,b2,substPAR f b3)
-		    | PARbody unitids => f unitids
-		    | INLINEbody _ => b
-		    | UNITbody _ => b
-		    | EMPTYbody => b
-	      val body = substPAR expand body
-	  in {imports=imports,extobjs=extobjs,body=body}
-	  end
-
-      fun pmdep0 absprjid =
-	 let val {imports,body,...} = parse_project absprjid
-	     val uidss = map pmdep0 imports		 
-	     fun dep b uids =
-		 case b of
-		     EMPTYbody => nil
-		   | UNITbody (uid,b) =>
-			 let val os = TextIO.openOut ("PM/" ^ uid ^ ".d")
-			 in (  app (fn u => TextIO.output(os,u^" ")) uids
-			     ; TextIO.closeOut os
-			     ; dep b (uids @ [uid]) @ [uid]
-			    ) handle ? => (TextIO.closeOut os; raise ?)
-			 end
-		   | INLINEbody (b1,b2) =>
-			 let val uids1 = dep b1 uids
-			     val uids2 = dep b2 (uids @ uids1)
-			 in uids1 @ uids2
-			 end
-		   | LOCALbody (b1,b2,b3) =>
-			 let val uids1 = dep b1 uids
-			     val uids2 = dep b2 (uids@uids1)
-			     val uids3 = dep b3 (uids@uids2)
-			 in uids2 @ uids3
-			 end
-		   | PARbody uids' =>
-			 (app (fn uid => (dep (UNITbody(uid,EMPTYbody)) uids; ())) uids'; 
-			  nil)
-	 in dep body (List.concat uidss)
-	 end
-
-      fun pmdep absprjid = (pmdep0 absprjid; ())
-
-    end (*structure Project*)
-
-    datatype body = datatype Project.body
-
     type Basis = MO.Basis
     type modcode = MO.modcode
-
-    (* Matching of export elaboration and interpretation bases to
-     * those in repository for a given funid *)
-
-    fun match_elab(names_elab, elabB, opaq_env, absprjid, funid) =
-      case Repository.lookup_elab (absprjid,funid)
-	of SOME (_,(_,_,_,_,names_elab',_,elabB',opaq_env')) => (* names_elab' are already marked generative - lookup *)
-	  (List.app Name.mark_gen names_elab;                   (* returned the entry. The invariant is that every *)
-	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
-	   OpacityEnv.match(opaq_env,opaq_env');
-	   List.app Name.unmark_gen names_elab;
-	   List.app Name.mk_rigid names_elab)
-	 | NONE => (List.app Name.mk_rigid names_elab) (*bad luck*)
-
-    fun match_int(names_int, intB, absprjid, funid) =
-      case Repository.lookup_int' (absprjid,funid)
-	of SOME(_,(_,_,_,_,names_int',_,tintB')) =>   (* names_int' are already marked generative - lookup *)
-	  (List.app Name.mark_gen names_int;          (* returned the entry. The invariant is that every *)
-	   IntBasis.match(intB, tintB');              (* name in the bucket is generative. *)
-	   List.app Name.unmark_gen names_int;
-	   List.app Name.mk_rigid names_int)
-	 | NONE => (List.app Name.mk_rigid names_int) (*bad luck*)
 
     local (* Pickling *)
 
@@ -596,32 +204,40 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	    end handle _ => print "\ntimerReport.Uncaught exception\n"
     in
 	fun targetFromSmlFile smlfile ext =
-	    let val file = 
-		  if Flags.is_on "compile_only" then 
-		      Flags.get_string_entry "output"
-		  else "PM/" ^ smlfile
+	    let val file = Flags.get_string_entry "output"
 	    in file ^ "." ^ ext
 	    end
 
-	fun writePickleStream punit pStream ext =
-	    let val pStream_s = Pickle.toString pStream
-		val _ = pchat (" [End pickling " ^ ext ^ " (sz = " ^ sizeToStr (size pStream_s) ^ ")]")
-		val file = targetFromSmlFile punit ext
-		val os = BinIO.openOut file
-	    in (  BinIO.output(os,Byte.stringToBytes pStream_s)
+	fun isFileContentStringBIN f s =
+	    let val is = BinIO.openIn f
+	    in ((Byte.bytesToString (BinIO.inputAll is) = s)
+		handle _ => (BinIO.closeIn is; false))
+		before BinIO.closeIn is
+	    end handle _ => false
+
+	fun writePickle file pickleString =
+	    let val os = BinIO.openOut file
+		val _ = pchat (" [Writing pickle to file " ^ file ^ "...]")
+	    in (  BinIO.output(os,Byte.stringToBytes pickleString)
 		; BinIO.closeOut os
 		) handle X => (BinIO.closeOut os; raise X)
 	    end
 
-	fun 'a doPickleGen (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
+	fun 'a doPickleGen0 (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) : string =
 	    let val os : Pickle.outstream = Pickle.empty()
 		val _ = pchat (" [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
 		(*  val timer = timerStart "Pickler" *)
 		val os : Pickle.outstream = Pickle.pickler pu_obj obj os
 		(* val _ = timerReport timer *)
-	    in
-		  pchat (" [Writing " ^ ext ^ "-result to file...]")
-		; writePickleStream punit os ext
+		val res = Pickle.toString os
+		val _ = pchat (" [End pickling " ^ ext ^ " (sz = " ^ sizeToStr (size res) ^ ")]")
+	    in res
+	    end
+
+	fun 'a doPickleGen (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
+	    let val res = doPickleGen0 punit pu_obj ext obj
+		val file = targetFromSmlFile punit ext		
+	    in writePickle file res
 	    end
 
 	fun unpickleGen smlfile pu ext : 'a option =    (* MEMO: perhaps use hashconsing *)
@@ -632,7 +248,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
 	val Hexn = Fail "Manager.Polyhash.failure"
 
-	fun renameN i H N =
+	fun renameN H N i =
 	    let fun nextAvailableKey(H,i) =
 		  case H.peek H i of
 		      SOME _ => nextAvailableKey(H,i+1)
@@ -646,79 +262,89 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
 	type name = Name.name
 
+	fun app2 f l1 l2 = (List.app f l1 ; List.app f l2)		
 	fun 'a matchGen (match:'a*'a->'a) ((N,B:'a),(N0,B0:'a)) : name list * 'a =
-	    let fun app2 f l1 l2 = (List.app f l1 ; List.app f l2)
-		val _ = app2 Name.mark_gen N N0
+	    let val _ = app2 Name.mark_gen N N0
 		val B = match(B,B0)
 		val _ = app2 Name.unmark_gen N N0
 	    in (N,B)
 	    end
 
-	fun 'a doPickleNGen 
-	    (smlfile : string) 
-	    (pu : (name list *'a) Pickle.pu) 
-	    (ext : string)
-	    (match : 'a * 'a -> 'a)
-	    (eq : 'a*'a->bool)
-	    (NB : Name.name list * 'a) : unit = 
-	    let fun doPickle NB = 
-		  (  List.app Name.mk_rigid (#1 NB) 
-		   ; doPickleGen smlfile pu ext NB)		
-	    in case unpickleGen smlfile pu ext of
-		SOME N0B0 => 
-		    let (*   How do we make sure that N and N0 are disjoint?
-			 * We do this by an explicit capture-free renaming of 
-			 * N to N' such that (N)(B,m) = (N')(B',m') and 
-			 * N0 \cap N = \emptyset. 
-			 *   Idea: insert keys of members of N0 in a hashSet; 
-			 * for each member n in N, starting with 1, 
-			 * pick a new key k not in hashSet and reset key(n) 
-			 * to k. This implements a capture free renaming of 
-			 * (N)(B,m) because basenames((N)(B,m)) \cap basenames(N) 
-			 * = \emptyset. This last assumption holds only because
-			 * different basenames are used for eb and eb1 export 
-			 * bases. *)
-			val H : (int,unit) H.hash_table = 
-			    H.mkTable (fn x => x, op =) (31, Hexn)
-			val _ = app (fn n => H.insert H (#1(Name.key n),())) (#1 N0B0)
-			val _ = renameN 1 H (#1 NB)
-			val NB = matchGen match (NB,N0B0)
-		    in if length (#1 NB) = length (#1 N0B0) andalso eq (#2 NB, #2 N0B0) then 
-			(  List.app Name.mk_rigid (#1 NB)
-			 ; pchat "identical NB in eb-file"
-			 )
-		       else doPickle NB
-		    end
-	      | NONE => doPickle NB
-	    end
-
 	val pu_names = Pickle.listGen Name.pu
 	val pu_NB0 = Pickle.pairGen(pu_names,Basis.pu_Basis0)
 	val pu_NB1 = Pickle.pairGen(pu_names,Basis.pu_Basis1)
-(*
-	val pu_NB = Pickle.pairGen(pu_names,Basis.pu)
-*)
-	fun doPickleNB0 smlfile (NB0:Name.name list * Basis.Basis0) : unit = 
-	    doPickleNGen smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
+	    
+	(* Before we determine not to write to disk, we need to check
+	 * that *both* NB0's and NB1's are identical. *)
 
-	fun doPickleNB1 smlfile (NB1:Name.name list * Basis.Basis1) : unit = 
-	    doPickleNGen smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
-(*
-	fun doPickleNB smlfile (NB:Name.name list * Basis) : unit = 
-	    doPickleNGen smlfile pu_NB "eb" Basis.match Basis.eq NB
-*)
+	(* We need to read in both NB0_0 and NB1_0 from disk in order
+	 * to choose fresh names for NB0_1 and NB1_1 *)
+
+	fun rename (N,N') (N0,N1) =
+	    let (* How do we make sure that (N of NB0) U (N of NB1) are disjoint from
+		 * (N U N') ? We do this by an explicit renaming of 
+		 * (N of NB0) to N0' and (N of NB1) to N1 such that (N0 U N1)(B0,B1,m) = (N0' U N1')(B0',B1',m') and 
+		 * N0 \cap N1 = \emptyset and (N0 U N1) \cap (N U N') = \emptyset. 
+		 *   Idea: insert keys of members of N and N' in a hashSet; 
+		 * for each member n in (N of NB0 U N of NB1), starting with 1, 
+		 * pick a new key k not in hashSet and reset key(n) 
+		 * to k. This implements a capture free renaming of 
+		 * (N)(B,m) because basenames((N)(B,m)) \cap basenames(N) 
+		 * = \emptyset. This last assumption holds only because
+		 * different basenames are used for eb and eb1 export 
+		 * bases. *)
+		val H : (int,unit) H.hash_table = 
+		    H.mkTable (fn x => x, op =) (31, Hexn)
+		val _ = app2 (fn n => H.insert H (#1(Name.key n),())) N N'
+		val _ = renameN H N1 
+		         (renameN H N0 1)
+	    in ()
+	    end			    
+
+	fun eqNB eqB ((N,B),(N',B')) =
+	    length N = length N' andalso eqB (B,B')
+
+	datatype when_to_pickle = NOT_STRING_EQUAL | NOT_ALPHA_EQUAL | ALWAYS
+
+	val whenToPickle : when_to_pickle = NOT_STRING_EQUAL
+	fun doPickleNB smlfile (NB0,NB1) : unit = 
+	    let val (ext0,ext1) = ("eb","eb1")	       
+		fun pickleBoth(NB0,NB1) =
+		    (doPickleGen smlfile pu_NB0 ext0 NB0;
+		     doPickleGen smlfile pu_NB1 ext1 NB1)
+	    in case whenToPickle of 
+		ALWAYS => pickleBoth(NB0,NB1)
+	      | NOT_STRING_EQUAL => 
+		    let val f0 = targetFromSmlFile smlfile ext0
+			val f1 = targetFromSmlFile smlfile ext1
+			val p0 = doPickleGen0 smlfile pu_NB0 ext0 NB0
+			val p1 = doPickleGen0 smlfile pu_NB1 ext1 NB1
+		    in if (isFileContentStringBIN f0 p0 
+			   andalso isFileContentStringBIN f1 p1) then 
+			(pchat "[No writing: valid pickle strings already in eb-files.]")
+		       else (writePickle f0 p0 ; writePickle f1 p1)
+		    end
+	      | NOT_ALPHA_EQUAL => 
+		case (unpickleGen smlfile pu_NB0 ext0,
+		      unpickleGen smlfile pu_NB1 ext1) of
+		(SOME NB0_0, SOME NB1_0) =>
+		    let val (NB0,NB1) =			
+			    let val () = rename (#1 NB0_0,#1 NB1_0) (#1 NB0,#1 NB1) 
+				val NB0 = matchGen Basis.matchBasis0 (NB0,NB0_0)
+				val _ = List.app Name.mk_rigid (#1 NB0)
+				val NB1 = matchGen Basis.matchBasis1 (NB1,NB1_0)
+				val _ = List.app Name.mk_rigid (#1 NB1)
+			    in (NB0,NB1)
+			    end
+		    in if eqNB Basis.eqBasis0 (NB0,NB0_0) andalso 
+			  eqNB Basis.eqBasis1 (NB1,NB1_0) then ()
+		       else pickleBoth(NB0,NB1)
+		    end
+	      | _ => pickleBoth(NB0,NB1)
+	    end
+
 	fun doPickleLnkFile punit (modc: modcode) : unit =
 	    doPickleGen punit ModCode.pu "lnk" modc 
-
-	fun readDependencies uid = 
-	    let val is = TextIO.openIn ("PM/" ^ uid ^ ".d") 
-	    in let 
-		   val all = TextIO.inputAll is handle _ => ""
-		   val uids = String.tokens Char.isSpace all
-		   val _ = pchat ("Dependencies for " ^ uid ^ ": " ^ all ^ "\n")
-	       in TextIO.closeIn is; uids
-	       end handle _ => (TextIO.closeIn is; nil)
-	    end handle _ => nil
 
 	fun readLinkFiles lnkFiles =
 	    let fun process (nil,is,modc) = modc
@@ -729,6 +355,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			    (Pickle.fromStringHashCons is s)
 			    handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
 			val modc' = ModCode.dirMod (OS.Path.dir lf) modc'
+			    handle _ => die ("readLinkFiles.error during dirMod modc'")
 		    in process(lfs,is,ModCode.seq(modc,modc'))
 		    end
 	    in case lnkFiles of 
@@ -739,6 +366,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			val (modc,is) = Pickle.unpickler ModCode.pu (Pickle.fromString s)
 			    handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
 			val modc = ModCode.dirMod (OS.Path.dir lf) modc
+			    handle _ => die ("readLinkFiles.error during dirMod modc")
 		    in process(lfs,is,modc) 
 		    end 
 	    end
@@ -781,15 +409,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		case ebfiles of 
 		    nil => (NONE,nil)
 		  | ebfile::ebfiles => 
-			let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
+			let val s = readFile ebfile handle _ => 
+			      die("doUnpickleBases0.error reading file " ^ ebfile)
 			    val ((_,infixElabBasis),is) = 
-				Pickle.unpickler pu_NB0 (Pickle.fromString s)
-				handle Fail st => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
-				     | e => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile ^ ": " ^ General.exnMessage e)
+			      Pickle.unpickler pu_NB0 (Pickle.fromString s)
+				handle Fail st => 
+				         die("doUnpickleBases0.error unpickling infixElabBasis from file " 
+					     ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
+				     | e => 
+					 die("doUnpickleBases0.error unpickling infixElabBasis from file " 
+					     ^ ebfile ^ ": " ^ General.exnMessage e)
 			    val (is, entries) = 
-				process(ebfiles,is,[{ebfile=ebfile,
-						     infixElabBasis=infixElabBasis,
-						     used=ref false}])
+			      process(ebfiles,is,[{ebfile=ebfile,
+						   infixElabBasis=infixElabBasis,
+						   used=ref false}])
 			in (SOME is, entries)
 			end handle _ => die ("doUnpickleBases. error \n")
 	    end 
@@ -820,182 +453,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	    
     end (* Pickling *)
 
-    (* --------------------------------
-     * Parse, elaborate and interpret
-     * (may raise PARSE_ELAB_ERROR)
-     * -------------------------------- *)
-
     fun fid_topdec a = FreeIds.fid_topdec a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
-
-    fun parse_elab_interp (fi:bool,absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
-      let 
-	 val unitname = (filename_to_unitname o MO.funid_to_filename) funid
-	 val _ = Timing.reset_timings()
-	 val _ = Timing.new_file punit	 
-	 val log_cleanup = log_init unitname
-	 val _ = Name.bucket := []
-	 val _ = Flags.reset_warnings ()
-	 val _ = print("[reading source file:\t" ^ punit ^ "]\n")
-	 val (punit, maybedelete: unit->unit) = 
-	   if has_ext(punit, "msp") then 
-	     let val punit' = MspComp.msp_comp punit
-	     in (punit', fn () => (OS.FileSys.remove punit' handle _ => ()))
-	     end
-	   else (punit, fn () => ())
-	 val (infB, elabB, opaq_env, topIntB) = Basis.un B
-	 val res = ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=punit} 
-      in (case res
-	    of ParseElab.FAILURE (report, error_codes) => (print_error_report report; 
-							   maybedelete();
-							   raise PARSE_ELAB_ERROR error_codes)
-	     | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
-	      let 
-		val _ = maybedelete()
-		val _ = chat "[finding free identifiers begin...]"
-		val freelongids as {longstrids,...} = fid_topdec topdec
-		val _ = chat "[finding free identifiers end...]"
-
-		val (B_im,tynames_elabB_im) = Basis.restrict(B,freelongids)
-		val (infB_im,elabB_im,opaq_env_im,intB_im) = Basis.un B_im
-
-		val _ = chat "[opacity elimination begin...]"
-		val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
-		val _ = chat "[opacity elimination end...]"
-		  
-		val _ = chat "[interpretation begin...]"
-		val names_elab = !Name.bucket
-		val _ = Name.bucket := []
-(*         	val _ = Compiler.Profile.reset()  mads *)
-		val (intB', modc) = IntModules.interp(fi,absprjid, intB_im, topdec', unitname)
-(*              val _ = if Flags.is_on0 "compiler_timings" ()
-                  then let val os = TextIO.openOut "compileprofile"
-                       in Compiler.Profile.report os;
-                          TextIO.closeOut os
-                       end
-                   else ()
-*)
-		val names_int = !Name.bucket
-		val _ = Name.bucket := []
-		val _ = chat "[interpretation end...]"
-
-		(* match export elaboration and interpretation
-		 * bases to those found in repository. *)
-
-		val _ = chat "[matching begin...]"
-		val _ = match_elab(names_elab, elabB', opaq_env', absprjid, funid)
-		val _ = match_int(names_int, intB', absprjid, funid)
-		val _ = chat "[matching end...]"
-		  
-		val _ = Repository.delete_entries (absprjid,funid)
-		  
-		val _ = Repository.add_elab ((absprjid,funid), (infB_im, elabB_im, longstrids, 
-								(opaq_env_im,tynames_elabB_im), 
-								names_elab, infB', elabB', opaq_env'))
-		val modc = ModCode.emit (absprjid,modc)  (* When module code is inserted in repository,
-							  * names become rigid, so we emit the module code. *)
-		val elabE' = ElabBasis.to_E elabB'
-		val _ = Repository.add_int' ((absprjid,funid),(funstamp_now,elabE',intB_im,
-							       longstrids,names_int,modc,intB'))
-		val B' = Basis.mk(infB',elabB',opaq_env',intB')
-
-	      in print_result_report report;
-		log_cleanup();
-		(B',modc)
-	      end handle ? => (print_result_report report; log_cleanup(); raise ?)
-		) handle XX => (log_cleanup(); raise XX)
-      end  
-
-    (* ----------------
-     * build a unit
-     * ---------------- *)
-
-    fun Repository_lookup_elab a = Repository.lookup_elab a
-    fun Repository_lookup_int' a = Repository.lookup_int' a
-    fun Basis_enrich a = Basis.enrich a
-    fun Basis_agree a = Basis.agree a
-
-    fun build_punit(absprjid: absprjid, B: Basis, punit: string, fi: bool, clean: bool) 
-	: Basis * modcode * bool * Time.time =
-      (* The clean:bool flag denotes whether previous program units were recompiled -
-       * The fi:bool flag specifies whether functor applications should be inlined
-       * in this punit. *)
-      let
-          val funid = MO.funid_from_filename(MO.mk_filename punit)
-          val (modtime, funstamp_now) = 
-	    case (SOME(OS.FileSys.modTime punit) handle _ => NONE, 
-		  FunStamp.from_filemodtime(MO.mk_filename punit))   (*always get funstamp before reading content*)
-	      of (SOME modtime, SOME fs) => (modtime, fs)
-	       | _ => error ("The program unit " ^ quot punit ^ " does not exist")
-	  exception CAN'T_REUSE of string
-      in (case (Repository_lookup_elab (absprjid,funid), Repository_lookup_int' (absprjid,funid))
-	    of (SOME(_,(infB, elabB, longstrids, (opaq_env,dom_opaq_env), names_elab, infB', elabB', opaq_env')), 
-		SOME(_,(funstamp, elabE, tintB, _, names_int, modc, tintB'))) =>
-	      if FunStamp.eq(funstamp,funstamp_now) then
-		if ModCode.exist modc then
-		  (if clean then (if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ "]\n") else ();
-				    (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
-		   else if
-		        let
-			  val B_im = Basis.mk(infB,elabB,opaq_env,tintB)
-			  fun unmark_names () = (List.app Name.unmark_gen names_elab;    (* Unmark names - they where *)
-						 List.app Name.unmark_gen names_int)     (* marked in the repository. *)
-			  fun remark_names () = (List.app Name.mark_gen names_elab;      (*  If enrichment fails we remark *)
-						 List.app Name.mark_gen names_int)       (* names; notice that enrichment of *)
-		                                                                         (* elaboration bases requires all *)
-			  val _ = unmark_names()                                         (* names be unmarked. Names in the *)
-			  val res = Basis_enrich(B, (B_im, dom_opaq_env)) andalso        (* global basis are always unmarked. *)
-			    Basis_agree(longstrids,B,(B_im, dom_opaq_env))
-			in (if res then () else remark_names() ; res)
-			end then 
-			(if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ " *]\n") else ();
-			   (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
-			   
-			else raise CAN'T_REUSE "enrichment failed")
-		else raise CAN'T_REUSE "object file does not exist"
-	      else raise CAN'T_REUSE "program unit is modified"
-		
-	      | _ => raise CAN'T_REUSE "no repository info")
-
-	handle CAN'T_REUSE s =>
-	  let val _ = case s of "no repository info" => ()
-	                      | _ => print ("[cannot reuse code for " ^ quot punit ^ " -- " ^ s ^ ".]\n")
-	      val (Bex, modc) = parse_elab_interp (fi,absprjid,B, funid, punit, funstamp_now)
-	  in (Bex, modc, false, modtime) (*not clean*)
-	  end
-      end 
-
-    (* -------------------------------
-     * Some operations on directories
-     * ------------------------------- *)
-
-    fun maybe_create_dir d : unit = 
-      if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
-	if OS.FileSys.isDir d then ()
-	else error ("The file " ^ quot d ^ " is not a directory")
-      else ((OS.FileSys.mkDir d;()) handle _ => 
-	    error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ 
-		   OS.FileSys.getDir()))
-
-    fun maybe_create_pmdir() =
-      let val dirs = String.tokens (fn c => c = #"/") (MO.pmdir())
-	fun append_path "" d = d
-	  | append_path p d = p ^ "/" ^ d
-	fun loop (p, nil) = ()
-	  | loop (p, d::ds) = let val p = append_path p d
-			      in maybe_create_dir p; loop(p, ds)
-			      end
-      in loop("", dirs)
-      end
-
-    fun change_dir p : {cd_old : unit -> unit, file : string} =
-      let val {dir,file} = OS.Path.splitDirFile p
-      in if dir = "" then {cd_old = fn()=>(),file=file}
-	 else let val old_dir = OS.FileSys.getDir()
-	          val _ = OS.FileSys.chDir dir
-	      in {cd_old=fn()=>OS.FileSys.chDir old_dir, file=file}
-	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
-      end
 
     (* -------------------------------
      * Compute actual dependencies 
@@ -1064,20 +523,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
      * Build SML source file for mlb-project ; flag compile_only enabled 
      * ------------------------------------------------------------------- *)
 
-    fun build_mlb_one2 (mlbfile, ebfiles, smlfile) : unit =
+    fun build_mlb_one (mlbfile, ebfiles, smlfile) : unit =
 	let (* load the bases that smlfile depends on *)
 	    val _ = print("[reading source file:\t" ^ smlfile)
 	    val (unpickleStream, elabBasesInfo) = doUnpickleBases0 ebfiles
 	    val initialBasis0 = Basis.initialBasis0()
 	    val (infB,elabB) = 
 		List.foldl (fn ({infixElabBasis,...}, acc) =>
-			    Basis.plusBasis0(acc,infixElabBasis)) 
+			    Basis.plusBasis0(acc,infixElabBasis))
 		initialBasis0
 		elabBasesInfo
 	    val _ = print("]")
 	    val log_cleanup = log_init smlfile
 	    val _ = Flags.reset_warnings ()
 	    val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
+(*	    val _ = (print "Names generated prior to compilation: ";
+		     PP.printTree (PP.layout_list (PP.LEAF o (fn (i,s) => s ^ "#" ^ Int.toString i) o Name.key) (!Name.bucket));
+		     print "\n")
+*)
 	    val _ = Name.bucket := []
 	    val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
 	    val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
@@ -1111,6 +574,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
 		(* Setting up for generation of second export basis (eb1) *)
 		val names_elab = !Name.bucket
+		val _ = List.app Name.mk_rigid names_elab
 		val _ = Name.bucket := []
 		val _ = Name.baseSet (mlbfile ^ "." ^ smlfile ^ "1")
 
@@ -1124,6 +588,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		    IntModules.interp(functor_inline, abs_mlbfile, 
 				      intB_im, topdec', smlfile)
 		val names_int = !Name.bucket
+		val _ = List.app Name.mk_rigid names_int
 		val _ = Name.bucket := []
 		val _ = chat "[interpretation end...]"
 
@@ -1156,8 +621,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
 		(* Write export bases to disk if there are not 
 		 * already identical export bases on disk *)
-		val _ = doPickleNB0 smlfile NB0'
-		val _ = doPickleNB1 smlfile NB1'
+		val _ = doPickleNB smlfile (NB0',NB1')
 
 		val modc = ModCode.emit (abs_mlbfile,modc)
 		val _ = doPickleLnkFile smlfile modc
@@ -1168,281 +632,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		) handle XX => (log_cleanup(); raise XX)
       end  
 
-(*
-    fun build_mlb_one mlbfile ebfiles smlfile : unit =
-	let (* load the bases that smlfile depends on *)
-	    val _ = print("[reading source file:\t" ^ smlfile)
-	    val B = doUnpickleBases ebfiles
-	    val _ = print("]\n")
-	    val log_cleanup = log_init smlfile
-	    val _ = Flags.reset_warnings ()
-	    val (infB, elabB, _, _) = Basis.un B
-	    val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
-	    val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
-	    val _ = Name.bucket := []
-	    val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
-					    file = smlfile,
-					    infB = infB, elabB = elabB} 
-	in (case res of 
-		ParseElab.FAILURE (report, error_codes) => 
-		    (  print_error_report report
-		     ; raise PARSE_ELAB_ERROR error_codes)
-	      | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
-	      let 
-		val _ = chat "[finding free identifiers begin...]"
-		val freelongids = fid_topdec topdec
-		val _ = chat "[finding free identifiers end...]"
-
-		val (B_im,_) = Basis.restrict(B,freelongids)
-		val (_,_,opaq_env_im,intB_im) = Basis.un B_im
-
-		val _ = chat "[opacity elimination begin...]"
-		val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
-		val _ = chat "[opacity elimination end...]"
-		  
-		val _ = chat "[interpretation begin...]"
-		val names_elab = !Name.bucket
-		val _ = Name.bucket := []
-		val functor_inline = false
-		val (intB', modc) = 
-		    IntModules.interp(functor_inline, abs_mlbfile, 
-				      intB_im, topdec', smlfile)
-		val names_int = !Name.bucket
-		val _ = Name.bucket := []
-		val _ = chat "[interpretation end...]"
-
-		(* compute result basis *)
-		val B' = Basis.mk(infB',elabB',opaq_env',intB')
-
-		(* match result basis to the one on disk, if there is one (todo) *)
-(*
-		val _ = print ("\n [Basis for " ^ punit ^ " before closure...]\n")
-                val _ = pr_st (MO.Basis.layout B')
-*)
-
-		(* Construct export basis *)
-		val NB'' = (names_int @ names_elab, Basis.closure (B_im,B'))
-
-		(* Write export basis to disk if there is not 
-		 * already an identical export basis on disk *)
-		val _ = doPickleNB smlfile NB''
-
-		val modc = ModCode.emit (abs_mlbfile,modc)
-		val _ = doPickleLnkFile smlfile modc
-
-	      in print_result_report report;
-		log_cleanup()
-	      end handle ? => (print_result_report report; raise ?)
-		) handle XX => (log_cleanup(); raise XX)
-      end  
-*)
-
-    (* ----------------
-     * build a project
-     * ---------------- *)
-
-    fun Basis_plus (B,B') = Basis.plus(B,B')		    
-
-    fun collect_units(body,acc) =
-      case body
-	of UNITbody(uid,body) => collect_units(body,uid::acc)
-	 | EMPTYbody => (rev acc, NONE)
-	 | _ => (rev acc, SOME body)
-	           (*collect_units(body,uids @ acc) *)
-	    
-    (* Build a single unit; the bool is a `clean' flag; it is true if
-     * all entries of the project so far have been reused.  The
-     * (string*Time.time)list provides modification times for each of
-     * the source files mentioned in the project. *)
-
-    fun build_unitid(fi, absprjid, B, unitid:string, clean, modtimes) 
-      : Basis * modcode * bool * (string * Time.time) list =  
-      let val _ = maybe_create_pmdir()
-	  val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, fi, clean)
-      in (B', modc, clean, (unitid,modtime)::modtimes)
-      end
-
-    (* Build a sequence of units *)
-    fun build_unitids(fi:bool, absprjid, B, Bacc, unitids, clean, modtimes)
-      : Basis * modcode * bool * (string * Time.time) list =  
-      case unitids
-	of [] => (Bacc, ModCode.empty, clean, modtimes)
-	 | [unitid] => 
-	  let val (B', modc, clean, modtimes) = build_unitid(fi, absprjid, B, unitid, clean, modtimes)
-	  in (Basis_plus(Bacc, B'), modc, clean, modtimes)
-	  end
-	 | unitid::unitids => 
-	  let val (B1, modc1, clean, modtimes) = build_unitid(fi, absprjid, B, unitid, clean, modtimes)
-	      val (B2, modc2, clean, modtimes) = build_unitids(fi, absprjid, Basis_plus(B, B1), 
-							       Basis_plus(Bacc,B1), 
-							       unitids, clean, modtimes)
-	  in (B2, ModCode.seq(modc1, modc2), clean, modtimes)
-	  end
-
-    fun build_unitids_par(absprjid, B, unitids, clean, modtimes)
-      : modcode * bool * (string * Time.time) list =  
-      case unitids of 
-	  nil => (ModCode.empty, clean, modtimes)
-	| unitid::unitids => 
-	  let val (_, modc1, clean, modtimes) = build_unitid(true,absprjid, B, unitid, clean, modtimes)
-	      val (modc2, clean, modtimes) = build_unitids_par(absprjid, B, unitids, clean, modtimes)
-	  in (ModCode.seq(modc1, modc2), clean, modtimes)
-	  end
-	  
-    local val emptyInfB = #1 (Basis.un Basis.empty)
-          val emptyCEnv = #3 (IntBasis.un IntBasis.empty)
-    in 
-      fun drop_toplevel B = 
-	let val (_, _, phi, tintB)  = Basis.un B	  
-	    val (_, _, _, tcb) = IntBasis.un tintB
-	    val tintB' = IntBasis.mk(MO.IntFunEnv.empty, MO.IntSigEnv.empty, emptyCEnv, tcb)
-	in Basis.mk(emptyInfB, ElabBasis.empty, phi, tintB')
-	end
-    end
-
-    fun Basis_plus_opt (B,SOME B') = Basis_plus(B,B')
-      | Basis_plus_opt (B,NONE) = error "I do not allow parallelization where you use it"
-
-    fun Basis_plus_opt' (B,SOME B') = SOME(Basis_plus(B,B'))
-      | Basis_plus_opt' (B,NONE) = NONE
-
-    (* Optionally returns a basis; NONE is returned if the body is ended 
-     * with a parallel body - PARbody; otherwise SOME basis is returned.
-     * The fi:bool flag specifies whether functor applications are inlined
-     * and is controlled by the INLINEbody construct. *)
-    fun build_body (fi:bool, absprjid:absprjid, B: Basis, body, clean, modtimes, modc:modcode) 
-      : Basis option * modcode * bool * (string * Time.time) list =  
-      case body
-	of EMPTYbody => (SOME Basis.empty, modc, clean, modtimes)
-         | INLINEbody (b1,b2) =>
-	  let val (B1_opt, modc, clean, modtimes) = 
-	          build_body(true,absprjid, B, b1, clean, modtimes, modc)
-	  in case b2 of
-	      EMPTYbody => (B1_opt, modc, clean, modtimes)
-	    | _ => 
-		  let 
-		      fun unOpt (SOME b) = b
-			| unOpt NONE = error "Parallelization of units is not allowed in inline-constructs"
-		      val B1 = unOpt B1_opt
-		      val (B2_opt, modc, clean, modtimes) = 
-			  build_body(fi,absprjid, Basis_plus(B,B1), b2, clean, modtimes, modc)
-		  in (Basis_plus_opt'(B1,B2_opt), modc, clean, modtimes)
-		  end
-	  end
-	 | LOCALbody (body1,body2,body3) => 
-	  let val (B1_opt, modc1, clean, modtimes) = build_body(fi, absprjid, B, body1, clean, modtimes, modc)
-	      val B1 = case B1_opt 
-			 of SOME B1 => B1
-			  | NONE => error "Parallelization of units is not allowed in the local\
-	                                  \part of a local-construct"
-              val (B2_opt, modc, clean, modtimes) = 
-		build_body(fi, absprjid, Basis_plus(B,B1), body2, clean, modtimes, modc1)
-	      fun isPAR (PARbody _) = true
-		| isPAR _ = false
-	      val _ = case B2_opt
-			of SOME _ => ()
-			 | NONE => 
-			    if body3 = EMPTYbody andalso isPAR body2 then 
-				MO.ModCode.makeUlfile (MO.ModCode.ulfile absprjid,modc1,modc)
-			    else ()
-(*
-				let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
-				in 
-				    error ("Problem with the project " ^ quot absprjid_s ^ ": \n\
-				     \  A parallel-construct [...] is allowed to appear only in the \n\
-				     \  scope of a local-construct, appearing at the end of a project.")
-				end
-*)
-	      val B1' = drop_toplevel B1
-	  in case body3
-	       of EMPTYbody => (Basis_plus_opt'(B1', B2_opt), modc, clean, modtimes)
-		| _ => 
-		 let val B' = Basis_plus_opt (B1', B2_opt)
-		   val (B3_opt, modc, clean, modtimes) = 
-		     build_body(fi, absprjid, Basis_plus(B,B'), body3, clean, modtimes, modc)
-		 in (Basis_plus_opt'(B',B3_opt), modc, clean, modtimes)
-		 end
-	  end 
-	 | UNITbody(unitid,body) => 
-	  (case collect_units(body, [unitid])
-	     of (unitids, NONE) => 
-	       let val (B1, modc1, clean, modtimes) = 
-		     build_unitids(fi, absprjid, B, Basis.empty, unitids, clean, modtimes)
-	       in (SOME B1, ModCode.seq(modc,modc1), clean, modtimes)
-	       end
-	      | (unitids, SOME body) => 
-	       let val (B1, modc1, clean, modtimes) = 
-		     build_unitids(fi, absprjid, B, Basis.empty, unitids, clean, modtimes)
-		   val (B2_opt, modc, clean, modtimes) = 
-		     build_body(fi, absprjid, Basis_plus(B,B1), body, clean, modtimes, ModCode.seq(modc,modc1))
-	       in (Basis_plus_opt'(B1,B2_opt), modc, clean, modtimes)
-	       end)
-	 | PARbody uids => 
-	     let val (modc1, clean, modtimes) = build_unitids_par(absprjid, B, uids, clean, modtimes)
-	     in (NONE, ModCode.seq(modc,modc1), clean, modtimes)
-	     end
-
-    (* Write a dummy file for the project into the actual pm-directory. The date of this dummy
-     * file tells when the project was last modified. *)
-
-    fun output_date_file date_file =
-      let val _ = maybe_create_pmdir()
-	  val os = TextIO.openOut date_file
-      in TextIO.output(os, "date"); TextIO.closeOut os
-      end
-
-    val older = Time.<
-
-    (* We use two schemes for avoiding unnecessary recompilation. First, we use the modification time of a source
-     * to avoid recompilation when nothing that comes earlier in a project has changed. A `clean' flag is used
-     * to denote that nothing that comes earlier in a project has changed. Note that projects are closed, so
-     * initially, when building a project, the clean flag is true. For each project file `file.pm' we associate
-     * a dummy date file `file.pm.date' in the `PM/RI' or `PM/RI_PROF' directory. The clean flag is preserved if
-     *
-     *    (1) file.pm > file.pm.date
-     *    (2) building project f.pm returns true, for all f.pm \in file.pm
-     *    (3) f.pm.date > file.pm.date, for all f.pm \in file.pm
-     *
-     * Now, when processing the body of the project the clean flag is preserved until the modification time
-     * of a source is different from (newer than) the modification time found in the repository.
-     *
-     * Second, if the first approach fails we use enrichment to tell if the source actually depends on the 
-     * changes.
-     *
-     * The result of building a project is propagated to other projects. We use a project map for this.
-     *
-     *       prjid     ::= name.pm
-     *       longprjid ::= prjid | name/longprjid
-     *       absprjid  ::= /longprjid
-     *)
-
-    val strip_install_dir = ModuleEnvironments.strip_install_dir
-
-    type projectmap = (absprjid * Project.extobj list * Basis) list
-
-    fun projectmap_lookup map absprjid =
-      let fun look [] = NONE
-	    | look ((absprjid',extobjs,basis)::rest) = 
-	        if strip_install_dir absprjid = absprjid' then SOME(extobjs,basis)
-		else look rest
-      in look map
-      end
-      
-    fun projectmap_add (absprjid, extobjs, basis, map) : projectmap =
-      (strip_install_dir absprjid, extobjs, basis) :: map
-
-    (* Add basislib project if auto import is enabled *)
-
-    val import_basislib = Flags.lookup_flag_entry "import_basislib"
-
-    fun maybe_add_basislib (absprjid:absprjid) (imports:absprjid list) : absprjid list = 
-      let val absprjid_basislib = ModuleEnvironments.mk_absprjid(!Flags.basislib_project)
-      in if !import_basislib andalso absprjid <> absprjid_basislib 
-	   andalso not(member absprjid_basislib imports) then absprjid_basislib :: imports
-	 else imports
-      end 
-	
-    (* Called only for SMLserver *)
+(*	
     fun smlserver_preprocess prj = 
 	if not(extendedtyping()) then prj
 	else
@@ -1464,139 +654,25 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			; Scriptlet.genFormInterface formIfaceFile formIfaces
 			; prj 
 		    end
-
-    (* Build a project *)
-    fun build_project {cycleset : absprjid list, pmap : projectmap, 
-		       absprjid : absprjid, modc:modcode} 
-      : {res_basis_opt : Basis option, modc : modcode, 
-	 pmap : projectmap, extobjs : Project.extobj list, clean : bool} =
-
-      let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
-	  val {cd_old, file=prjid} = change_dir absprjid_s
-	  val _ = ModCode.deleteUlfile absprjid (* for KAM/AOLserver binding/compilation *)
-      in let val _ = if member absprjid cycleset then
-	               error ("There is a cycle in your project; problematic project identifier: " 
-			      ^ quot absprjid_s)
-		     else ()
-	     val prj = Project.parse_project absprjid
-	     val prj = if !Flags.SMLserver then smlserver_preprocess prj
-		       else prj
-	     val {imports, extobjs, body} = prj
-(*             val _ = (testout("Parsed project:\n"); testouttree(layout_prj prj); testout "\n") *)
-	     val imports = maybe_add_basislib absprjid imports
-	     val prj = {imports=imports,extobjs=extobjs,body=body}
-	     val prjid_date_file = MO.pmdir() ^ prjid ^ ".date"
-	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
-(*	     val _ = print (absprjid_s ^ ": clean0 " ^ Bool.toString clean ^ "\n") *)
-	     val _ = if clean then () else Project.local_check_project (absprjid, prj)
-	     val (B, modc, pmap, extobjs, clean) = 
-	       foldl(fn (absprjid1:absprjid,(B, modc, pmap, extobjs, clean0)) => 
-		     case projectmap_lookup pmap absprjid1
-		       of SOME(extobjs', B') => (Basis_plus(B,B'), modc, pmap, extobjs' @ extobjs, clean0)
-			| NONE => 
-			 let val {res_basis_opt, modc, pmap, extobjs=extobjs', clean} = 
-			       build_project {cycleset=absprjid :: cycleset, pmap=pmap, absprjid= absprjid1, modc=modc}
-			     val res_basis = case res_basis_opt
-					       of SOME res_basis => res_basis
-						| NONE => error ("Importing a project that uses parallel\ 
-								 \ units [ ... ] is not supported. Problematic\
-		                                                 \ project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid1))
-						 
-			     val pmap = projectmap_add(absprjid1,extobjs,res_basis,pmap)
-			 in (Basis_plus (B, res_basis), modc, 
-			     pmap, extobjs' @ extobjs, clean0 andalso clean)
-			 end
-		       ) (Basis.initial(), modc, pmap, extobjs, clean) imports
-	       
-	       (* Now, check that date files associated with imported projects are older than
-		* the date file for the current project. *)
-(*	     val _ = print (absprjid_s ^ ": clean1 " ^ Bool.toString clean ^ "\n")*)
-
-	     val clean = foldl (fn (absprjid':absprjid, clean) => clean andalso
-				let val {dir,file} = OS.Path.splitDirFile(ModuleEnvironments.absprjid_to_string absprjid')
-				    val absprjid'_date = OS.Path.concat(dir, MO.pmdir() ^ file ^ ".date")
-				in older (OS.FileSys.modTime absprjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
-				end) clean imports
-
-(*	     val _ = print (absprjid_s ^ ": clean2 " ^ Bool.toString clean ^ "\n") *)
-	     val (B'_opt, modc, clean, modtimes) = build_body (false, absprjid, B, body, clean, [], modc)
-(*	       handle x => (testout "Basis at failing call to build_body:\n";
-			    testouttree(MO.Basis.layout B); testout"\n"; raise x) 
 *)
-
-(*	     val _ = print (absprjid_s ^ ": clean3 " ^ Bool.toString clean ^ "\n") *)
-	 in 
-	    if clean then () else output_date_file prjid_date_file;
-	    cd_old();
-	    {res_basis_opt=B'_opt, modc=modc, pmap=pmap, extobjs=extobjs, clean=clean}
-	 end handle E => (cd_old(); raise E)
-      end 
-
-    (* -----------------------------------------
-     * build longprjid  builds a project
-     * ----------------------------------------- *)
-
-    fun build (longprjid_s:string) =   (* May raise PARSE_ELAB_ERROR *)
-      let val absprjid = mk_absprjid_from_path longprjid_s
-
-(* ;mael 2004-03-10
-	  val _ = print ("[Running pmdep...]\n")
-	  val _ = Project.pmdep absprjid
-	  val _ = print ("[Finished running pmdep]\n")
-*)
-          val _ = Repository.recover()
-	  val emitted_files = EqSet.fromList (Repository.emitted_files())
-	  val _ = let val {modc, clean, extobjs, ...} = 
-	                build_project{cycleset=[], pmap=[], 
-				      absprjid=absprjid, modc=ModCode.empty}
-
-		  (* MEMO: If clean is true then I do not need to rebuild binary. *)
-
-		  in (* print("mk_exe: Size of modc is " ^ Int.toString (ModCode.size modc)^ "\n"); *)
-		    ModCode.mk_exe(absprjid, modc, extobjs, !run_file)
-		  end
-	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
-    	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
-      in List.app MO.SystemTools.delete_file files_to_delete
-      end
 
     (* ------------------------------------------------
-     * Link together lnk-filea and generate executable
+     * Link together lnk-files and generate executable
      * ------------------------------------------------ *)
 
     fun link_lnk_files() : unit =  
-	let val lnkFiles = Flags.get_stringlist_entry "link"
+	let val _ = chat "reading link files"
+	    val lnkFiles = Flags.get_stringlist_entry "link"
 	    val modc = readLinkFiles lnkFiles
 	in if !Flags.SMLserver then
 	    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
 		val modc_scripts = readLinkFiles lnkFilesScripts		
 	    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
 	    end
-	   else ModCode.mk_exe_all_emitted(modc, nil, !run_file)
+	   else 
+	       (chat "making executable";
+		ModCode.mk_exe_all_emitted(modc, nil, !run_file))
 	end
-
-    (* -----------------------------
-     * Compile a single file 
-     * ----------------------------- *)
-
-    fun comp_file (filepath : string) : unit =
-      let val _ = Repository.recover()
-	  val emitted_files = EqSet.fromList (Repository.emitted_files())
-	  val absprjid = mk_absprjid_from_path (filepath ^ ".pm")   (* a pseudo project *)
-	    (* make sure that the source file is indeed compiled *)
-	  val _ = Repository.delete_entries (absprjid, MO.funid_from_filename(MO.mk_filename filepath))
-	  val _ = maybe_create_pmdir()
-	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
-	    if !import_basislib then 
-	      let val {modc, res_basis_opt, extobjs, ...} = 
-		build_project{cycleset=[], pmap=[], absprjid= ModuleEnvironments.mk_absprjid(!Flags.basislib_project), modc=ModCode.empty}
-	      in (modc, Basis_plus_opt(Basis.initial(),res_basis_opt), extobjs)
-	      end
-	    else (ModCode.empty, Basis.initial(), [])
-	  val (_, modc, _, _) = build_body(false, absprjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [], modc_basislib)
-      in  
-	ModCode.mk_exe(absprjid, modc, extobjs_basislib, !run_file)
-      end
 
     (* ----------------------------
      * Build an MLB project
@@ -1621,7 +697,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	    fun compile0 target a =
 		(Flags.turn_on "compile_only";
 		 Flags.lookup_string_entry "output" := target;
-		 build_mlb_one2 a)
+		 build_mlb_one a)
 
 	    fun compile {verbose} {basisFiles,source,namebase,target,flags=""} :unit =
 		isolate (compile0 target) (namebase, basisFiles, source)
@@ -1637,57 +713,62 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		isolate (link0 target lnkFiles lnkFilesScripts) ()
 	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
 
-	    fun mlbdir() = "MLB/MLKit"
-	    fun objFileExt() = if MO.backend_name = "native" then ".o" else ".uo"	    
+	    fun mlbdir() = MO.mlbdir()
+	    fun objFileExt() = if MO.backend_name = "KAM" then ".uo" else ".o"	    
 	end
 
     structure MlbMake = MlbMake(structure P = MlbPlugIn
 				val verbose = Flags.is_on0 "chat"
 				val oneSrcFile : string option ref = ref NONE)
 
-    (* -----------------------------
-     * Elaborate a single file 
-     * ----------------------------- *)
-
-    fun elab (filepath : string) : unit =
-      let val absprjid = mk_absprjid_from_path (filepath ^ ".pm")   (* a pseudo project *)
-	  val (infB,elabB,_,_) = Basis.un (Basis.initial())
-	  val _ = Flags.reset_warnings ()
-	  val log_cleanup = log_init filepath
-      in (case ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=filepath} 
-	    of ParseElab.SUCCESS {report, ...} => (print_result_report report; log_cleanup())
-	     | ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
-	 ) handle E => (log_cleanup(); raise E)
-      end 
-
-    datatype source = SML of string | PM of string | MLB of string | WRONG_FILETYPE of string 
+    datatype source = SML of string | MLB of string | WRONG_FILETYPE of string 
 
     fun determine_source (s:string) : source = 
-	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.pm', '.mlb', '.sml', '.sig', or '.fun'.\n" ^
+	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.mlb', '.sml', '.sig', or '.fun'.\n" ^
 					  "The file name you gave me has " ^ s)
 	in case OS.Path.ext s of 
-	    SOME "pm" => PM s
-	  | SOME "mlb" => MLB s
+	    SOME "mlb" => MLB s
 	  | SOME ext => if Flags.has_sml_source_ext ext then SML s
 			else wrong ("extension " ^ quot ext ^ ".")
 	  | NONE => wrong ("no extension.")
 	end
-	  
+    
+    val import_basislib = Flags.is_on0 "import_basislib"
+    fun gen_wrap_mlb filepath =
+	let val mlb_file = OS.Path.base filepath ^ ".auto.mlb"
+	    val _ = chat ("Generating MLB-file " ^ mlb_file)
+	    val os = TextIO.openOut mlb_file
+	    val basislib = !Flags.install_dir ## "basis/basis.mlb"
+	    val _ = chat ("Using basis library " ^ quot basislib)
+	    val body = 
+		if import_basislib() then
+		    "local " ^ basislib ^ " in " ^ filepath ^ " end"
+		else filepath
+	in 
+	    let val _ = TextIO.output(os, body)
+		val _ = TextIO.closeOut os
+	    in mlb_file
+	    end handle X => (TextIO.closeOut os; raise X)
+	end
+
     fun comp0 files : unit =
 	if Flags.get_stringlist_entry "link" <> nil then link_lnk_files()
 	else
 	    case files of
-		nil => Flags.interact()
-	      | [file] => 
+		[file] => 
 		    (case determine_source file of 
 			 SML s => 
 			     if Flags.is_on "compile_only" then
 				 let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
 				     val namebase = Flags.get_string_entry "namebase"
-				 in build_mlb_one2 (namebase, ebfiles, s)
+				 in build_mlb_one (namebase, ebfiles, s)
 				 end
-			     else comp_file s
-		       | PM s => build s
+			     else 
+				 let val mlb_file = gen_wrap_mlb s
+				     val _ = comp0 [mlb_file]
+					 handle X => (OS.FileSys.remove mlb_file; raise X)
+				 in OS.FileSys.remove mlb_file
+				 end
 		       | MLB s => 
 				 let val target =
 				     if !Flags.SMLserver then
@@ -1699,11 +780,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 				 in  
 				     (MlbMake.build{flags="",mlbfile=s,target=target} 
 				      handle _ => 
-					  (print "Stopping MLB compilation due to errors.\n";
+					  (print "Stopping compilation due to errors.\n";
 					   raise PARSE_ELAB_ERROR nil))
 				 end
 		       | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil))
-	      | _ => raise Fail "I expect at most one file name"
+	      | _ => raise Fail "I expect exactly one file name"
 			     
     val timingfile = "KITtimings"
     fun comp files : unit =

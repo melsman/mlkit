@@ -8,7 +8,6 @@
 signature KIT_COMPILER = 
   sig include MANAGER 
     val kitexe : string * string list -> OS.Process.status
-    val build_basislib : unit -> unit
   end 
     
 functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
@@ -29,26 +28,17 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
     val import_basislib = Flags.lookup_flag_entry "import_basislib"
 
     local
-
 	(* Directories and files *)
 
+	val op ## = OS.Path.concat infix ##
+
 	val kitsrc_path = OS.FileSys.getDir()   (* assumes we are in kit/src/ directory *)
-	val _ = Flags.install_dir := OS.Path.mkCanonical(OS.Path.concat(kitsrc_path, ".."))
-	val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../bin"))
+	val _ = Flags.install_dir := OS.Path.mkCanonical(kitsrc_path ## "..")
+	val kitbin_path = OS.Path.mkCanonical (kitsrc_path ## "../bin")
 	val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"}
-	val basislib_file = "basis.pm"
 
 	fun set_paths install_dir =
-	  let 
-	    val bindir = OS.Path.concat(install_dir, "bin")
-	    fun set_path entry file = 
-	      Flags.lookup_string_entry entry := OS.Path.concat(bindir, file);
-	  in
-	    Flags.install_dir := install_dir;
-	    
-	    Flags.basislib_project := 
-	    (OS.Path.mkCanonical (OS.Path.concat(install_dir, "basis/" ^ basislib_file)))
-	  end
+	    Flags.install_dir := install_dir
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
 
@@ -65,7 +55,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  else if backend_name = "native" then "mlkit" 
 	       else "mlkit_kam"
 	    
-	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.pm | file.mlb]\n\n" ^
+	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
 				   "Options:\n\n")
 
 	val options = [("-script file", ["Read compiler options from `file'."]),
@@ -122,22 +112,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	 * in which the Kit is built. When the Kit is properly installed this directory can be changed
 	 * by passing another directory than this to the Kit executable; we assume we are in the 
 	 * kit/src directory... *)
-	val default_root_dir = OS.Path.mkCanonical(OS.Path.concat(OS.FileSys.getDir(), ".."))
 	fun die s = Crash.impossible ("KitCompiler." ^ s)
       in
 	open Manager
 
-	fun build_basislib() =
-	  let val memo = !import_basislib
-	    fun postjob() = (OS.FileSys.chDir "../src"; import_basislib := memo) 
-	  in (import_basislib := false;
-	      print "\n ** Building basis library **\n\n";
-	      OS.FileSys.chDir "../basis";
-	      set_paths (OS.Path.mkCanonical(OS.Path.concat(OS.FileSys.getDir(),"..")));
-	      Manager.comp [basislib_file];
-	      postjob()) handle exn => (postjob(); raise exn)
-	  end
-		    
 	(* the first argument is the Kit installation directory *)
 	val kitexe = fn a => 
 	  let fun strip_install_dir (_, install_dir :: rest) = (install_dir, rest)

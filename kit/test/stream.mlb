@@ -1,3 +1,4 @@
+$(SML_LIB)/basis/basis.mlb
 ../src/Pickle/stream.sig
 ../src/Pickle/stream.sml
 streamtest.sml

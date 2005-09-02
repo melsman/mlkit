@@ -196,7 +196,7 @@ structure Benchmark =
 			    of NONE => raise Fail "Parse Error"
 			     | SOME (_,l) => 
 			      let val ps = map (fn TestFile.SML p => p
-			                         | TestFile.PM p => p) l
+			                         | TestFile.MLB p => p) l
 			      in ps @ sourceFiles inputs
 			      end)
 	 | SOME ext => raise Fail ("Unknown extension " ^ ext)

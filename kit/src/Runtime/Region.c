@@ -480,7 +480,7 @@ allocateRegion0(Region r
 #endif
 		) 
 { 
-  debug(printf("[allocateRegion..."));  
+  debug(printf("[allocateRegion (rAddr=%x)...",r));  
 
   r = clearStatusBits(r);
 

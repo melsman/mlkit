@@ -78,7 +78,6 @@ structure Flags: FLAGS =
     val comp_ref: (string -> unit)ref  = ref dummy
     val current_source_file = ref "sources.pm"
     val import_basislib = ref true
-    val basislib_project = ref "You_did_not_set_basislib_project"
 
     val timings_stream : TextIO.outstream option ref = ref NONE
 

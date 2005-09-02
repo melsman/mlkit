@@ -16,7 +16,8 @@ is
 
   ../Compiler/COMPILE_BASIS.sml 
   EXECUTION.sml
-
+  
+  ../Common/MD5.sml
   ManagerObjects.sml 
   IntModules.sml
 

@@ -55,6 +55,7 @@ structure Name: NAME =
       fun new () : name = 
 	let val key = (incr(),baseGet())
 	    val name = ref {key=key,rigid=false,gen_mark=ref false}
+(*	    val _ = print ("Name generated: " ^ #2 key ^ "#" ^ Int.toString (#1 key) ^ "\n") *)
 	in bucket := name :: !bucket; name
 	end
     end
@@ -68,7 +69,7 @@ structure Name: NAME =
 
     fun match(n1 as ref {gen_mark=ref true,rigid=false,key=k1} : name, 
 	      ref (n0 as {gen_mark=gen_mark as ref true,key=k2,...})) =
-	if #2 k1 = #2 k2 orelse !rematching then
+	if  #2 k1 = #2 k2 orelse !rematching then
 	    (gen_mark := false;
 	     n1 := n0;
 	     incr_matchcount() (* ; print ".\n"*) )

@@ -1,6 +1,6 @@
 local
-   open $(SML_LIB)/basis/basis.mlb
-   open ../src/Pickle/pickle.mlb
+   $(SML_LIB)/basis/basis.mlb
+   ../src/Pickle/pickle.mlb
 in
    pickle.sml
 end

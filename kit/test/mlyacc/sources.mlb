@@ -1,3 +1,4 @@
+$(SML_LIB)/basis/basis.mlb
 base.sig
 stream.sml
 lrtable.sml

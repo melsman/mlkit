@@ -125,6 +125,7 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
   String res;
   unsigned char *s, *p;
   int i, sz;
+  debug(printf("[enter concatStringML (rAddr=%x,str1=%x,str2=%x)]\n", rAddr,str1,str2);)
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
   res = REG_POLY_CALL(allocString, rAddr, sz);
   p = &(res->data);

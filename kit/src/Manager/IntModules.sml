@@ -12,7 +12,6 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
     structure TopdecGrammar = PostElabTopdecGrammar
     structure ElabInfo = AllInfo.ElabInfo
     structure FunStamp = ManagerObjects.FunStamp
-    structure Repository = ManagerObjects.Repository
     structure IntBasis = ManagerObjects.IntBasis
     structure IntFunEnv = ManagerObjects.IntFunEnv
     structure IntSigEnv = ManagerObjects.IntSigEnv
@@ -59,20 +58,6 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     type absprjid = ModuleEnvironments.absprjid
 
-    local 
-	val repository = Flags.is_on0 "repository"
-	val compile_only = Flags.is_on0 "compile_only"
-	fun use_repository() = repository() andalso not(compile_only())
-    in
-	fun Repository_lookup_int a =
-	    if use_repository() then Repository.lookup_int a
-	    else NONE
-		
-	fun Repository_add_int a : unit =
-	    if use_repository() then Repository.add_int a
-	    else ()
-    end
-
     open TopdecGrammar (*declares StrId*)
 
     fun to_TypeInfo i =
@@ -94,7 +79,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
     (* ----------------------------------------------------
      * Determine where to put target files
      * ---------------------------------------------------- *)
-    val pmdir = ManagerObjects.pmdir
+    val mlbdir = ManagerObjects.mlbdir
 
     type funid = TopdecGrammar.funid
     type strexp = TopdecGrammar.strexp
@@ -427,102 +412,52 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	      val ce = CE.constrain(ce,E')
 	      val _ = chat "[constraining argument end...]"
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,CE.declare_strid(strid,ce,CE.emptyCEnv),
-				      CompileBasis.plus(#4 (IntBasis.un intB), cb))             (* The argument may use things *)
-		                                                                                (* that are not in intB0 *)
+				      CompileBasis.plus(#4 (IntBasis.un intB), cb))  (* The argument may use things *)
+		                                                                     (* that are not in intB0 *)
 	      fun reuse_msg s = (print("[cannot reuse instance code for functor `" 
 				       ^ FunId.pr_FunId funid ^ "' -- " ^ s ^ "]\n"); NONE)
-		
-	      (* We now check if there is code in the repository
-	       * we can reuse. *)
-	      fun reuse_code () =		
-		  case Repository_lookup_int (absprjid,funid) of 
-		      SOME(_,(funstamp',Eres',tintB',longstrids,N',mc',intB'')) =>
-			 if FunStamp.eq(funstamp,funstamp') then
-			     if let val tintB0 = intB0
-				    val tintB1 = intB1
-				    val tintB0' = IntBasis.plus(tintB0,tintB1)
-				in IntBasis.enrich(tintB0',tintB') andalso IntBasis.agree(longstrids,tintB0',tintB')
-				end then
-				if ElabEnv.eq(Eres,Eres') then
-				    if ModCode.exist mc' then 
-					let val _ = chat ("[reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]")
-					    val (_,_,ce',cb') = IntBasis.un intB''
-					    val _ = List.app Name.unmark_gen N'   (* unmark names - they where *)
-					in SOME(ce',cb',mc')                        (* marked in the repository. *)
-					end
-				    else reuse_msg "object code is missing"
-				else reuse_msg "result environment has changed"
-			     else reuse_msg "assumptions have changed"
-			 else reuse_msg "functor is modified"
-		    | NONE => NONE
 
-	  in case reuse_code ()
-	       of SOME(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
-		| NONE => 
-		 let val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
-				   " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
-(*		     val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
+	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
+			    " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
+(* 	      val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
 
-		     val _ = chat "[recreating functor body begin...]"
-		     val strexp0 = reelaborate(funid,strid,BBC)
-		     val _ = chat "[recreating functor body end...]"
-		     val (intB', longstrids) = 
-		       let
-			   val _ = chat "[finding free identifiers begin...]"
-                           val {funids,longstrids,longtycons,longvids,sigids} = FreeIds.fid_strexp strexp0
-			   val _ = chat "[finding free identifiers end...]"
-			   val _ = chat "[restricting interpretation basis begin...]"
-			   val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), 
-							 {funids=funids,sigids=sigids,longtycons=longtycons,
-							  longstrids=longstrids,longvids=longvids}, TyName.Set.empty   (* MEMO: Potential error!!! mael 2004-11-17 *)  )
-			   val _ = chat "[restricting interpretation basis end...]"
-		       in (intB', longstrids)
-		       end
-		     val strexp0' = TopdecGrammar.map_strexp_info (on_ElabInfo phi) strexp0
+	      val _ = chat "[recreating functor body begin...]"
+	      val strexp0 = reelaborate(funid,strid,BBC)
+	      val _ = chat "[recreating functor body end...]"
+	      val (intB', longstrids) = 
+		  let
+		      val _ = chat "[finding free identifiers begin...]"
+		      val {funids,longstrids,longtycons,longvids,sigids} = FreeIds.fid_strexp strexp0
+		      val _ = chat "[finding free identifiers end...]"
+		      val _ = chat "[restricting interpretation basis begin...]"
+		      val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), 
+						    {funids=funids,sigids=sigids,longtycons=longtycons,
+						     longstrids=longstrids,longvids=longvids}, TyName.Set.empty   (* MEMO: Potential error!!! mael 2004-11-17 *)  )
+		      val _ = chat "[restricting interpretation basis end...]"
+		  in (intB', longstrids)
+		  end
+	      val strexp0' = TopdecGrammar.map_strexp_info (on_ElabInfo phi) strexp0
 
 		     (* Before we interpret strexp0' we force generated names
 		      * to be `rigid' by emptying the generative names
 		      * bucket, located in Name. This might lead to some
 		      * unnecessary recompilation - but for now it'll do. -
 		      * Martin *)
-		     val _ = Name.bucket := []
-		     val _ = chat "[interpreting functor body begin...]"
-		     val (ce',cb',mc') = int_strexp(intB', strexp0')
-		     val _ = chat "[interpreting functor body end...]"
-		     val N' = !Name.bucket
-		     val _ = Name.bucket := []
+	      val _ = List.app Name.mk_rigid (!Name.bucket)
+	      val _ = Name.bucket := []
+	      val _ = chat "[interpreting functor body begin...]"
+	      val (ce',cb',mc') = int_strexp(intB', strexp0')
+	      val _ = chat "[interpreting functor body end...]"
+	      val N' = !Name.bucket
+	      val _ = Name.bucket := []
+	      val _ = List.app Name.mk_rigid N'
 		       
-		     val intB'' = IntBasis.mk(IntFunEnv.empty, IntSigEnv.empty, ce', cb')
+	      val intB'' = IntBasis.mk(IntFunEnv.empty, IntSigEnv.empty, ce', cb')
 
-		     val cb'' = CompileBasis.plus(cb,cb')
-
-		     (* We now try to see if there is something in the
-		      * repository we can match against. We also store the
-		      * entry in the repository and we emit the generated code,
-		      * since all names now have become rigid. *)
-		     val mc' = case Repository_lookup_int (absprjid,funid)
-			       of SOME(entry_no, (_,_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
-				 (List.app Name.mark_gen N';              (* N2 is returned by lookup_int *)
-				  IntBasis.match(intB'', intB2);
-				  List.app Name.unmark_gen N';
-				  List.app Name.mk_rigid N';
-				  let val mc' = ModCode.emit (absprjid, mc')
-                                      val tintB' = intB'
-				  in Repository.owr_int((absprjid,funid),entry_no,(funstamp,Eres,tintB',longstrids,N',mc',intB''));
-				     mc'
-				  end)
-				| NONE => let val mc' = ModCode.emit (absprjid, mc')
-					      val tintB' = intB'
-					  in List.app Name.mk_rigid N';
-					     Repository_add_int((absprjid,funid),(funstamp,Eres,tintB',longstrids,N',mc',intB''));
-					     mc'
-					  end
-		     val mc'' = ModCode.seq(mc,mc')
-                     infix footnote
-                     fun op footnote(x,y)= x
-		 in (ce', cb'', ModCode.emit (absprjid, mc''))     (* we also emit code for arg.. see comment above *)
-                    footnote print("[compiling body of functor " ^ FunId.pr_FunId funid ^ " end]\n")
-		 end
+	      val cb'' = CompileBasis.plus(cb,cb')
+	      val mc'' = ModCode.seq(mc,mc')
+	  in (ce', cb'', ModCode.emit (absprjid, mc''))     (* we also emit code for arg.. see comment above *)
+	      before print("[compiling body of functor " ^ FunId.pr_FunId funid ^ " end]\n")
 	  end
 
 	| LETstrexp(info, strdec, strexp) => 
@@ -531,16 +466,16 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	      val (ce2,cb2,mc2) = int_strexp(IntBasis.plus(intB,intB1),strexp)
 	  in (ce2, CompileBasis.plus(cb1,cb2), ModCode.seq(mc1,mc2))
 	  end
-
-
+    
     fun generate_BBC(absprjid : absprjid, funid, strid_arg,
 			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list, 
 			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp) 
        : BodyBuilderClos =
 	   let val funid_string = FunId.pr_FunId funid
 	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))  
-		              ^ "." ^ funid_string ^ ".bdy" 
-	       val filename = OS.Path.mkAbsolute{path=filename,relativeTo=OS.Path.concat(OS.FileSys.getDir(), pmdir())}
+		              ^ "." ^ funid_string ^ ".bdy"
+	       val filename = OS.Path.concat(mlbdir(), filename)
+(*	       val filename = OS.Path.mkAbsolute{path=filename,relativeTo=OS.Path.concat(OS.FileSys.getDir(), pmdir())} *)
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =
 		 (ElabInfo.ParseInfo.SourceInfo.to_positions o 
@@ -556,18 +491,21 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	       (* Explicit environment for the closure (function) below *)
 	       val BBC : BodyBuilderClos = 
 		   {infB=infB,elabB=elabB,absprjid=absprjid,
-		    filename=filename,opaq_env=opaq_env,T=T,resE=resE}
+		    filename=filename,filemd5=MD5.fromFile filename,opaq_env=opaq_env,T=T,resE=resE}
 	   in BBC
-	   end handle (X as IO.Io {name=s,...}) => (print ("Error while blasting out functor body for " ^ 
-							   (FunId.pr_FunId funid) ^ "\n" ^ s);
-						    raise X)
+	   end handle (X as IO.Io {name=s,...}) => 
+	       (print ("Error while blasting out functor body for " ^ 
+		       (FunId.pr_FunId funid) ^ "\n" ^ s);
+		raise X)
 
-
-
-    fun int_funbind (absprjid: absprjid, intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
+    fun int_funbind (absprjid: absprjid, intB: IntBasis, 
+		     FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) 
+	: IntFunEnv =
       let val {funids,longtycons,longstrids,longvids,sigids} = FreeIds.fid_strexp_sigexp strid strexp sigexp
-	  val intB0 = IntBasis.restrict(intB, {funids=funids,sigids=sigids,longstrids=longstrids,
-					       longvids=longvids,longtycons=longtycons}, TyName.Set.empty)
+	  val intB0 = IntBasis.restrict(intB, {funids=funids,sigids=sigids,
+					       longstrids=longstrids,
+					       longvids=longvids,longtycons=longtycons}, 
+					TyName.Set.empty)
 	  val funstamp = FunStamp.new funid
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i
@@ -615,7 +553,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
       | flatten(PLUS(e1,e2), acc) = flatten(e1, flatten(e2,acc))
 
     fun int_topdec (fi:bool,unitnameOpt:string option, absprjid: absprjid, intB: IntBasis, topdec: topdec) 
-	: IntBasisTree * modcode =   (* may modify repository *)
+	: IntBasisTree * modcode =
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
 	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,unitnameOpt)

@@ -90,10 +90,6 @@ in
 
   local open Tools
   in PostElabGrammar.sml
-     local open Pickle
-     in ELAB_REPOSITORY.sml
-        ElabRepository.sml
-     end
   end
 
   ELABDEC.sml

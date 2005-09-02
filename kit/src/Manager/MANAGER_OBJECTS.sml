@@ -19,9 +19,21 @@ signature MANAGER_OBJECTS =
        to relocate the distribution of the kit, with the basis library
        compiled. *)
 		    
+    exception PARSE_ELAB_ERROR of ParseElab.ErrorCode.ErrorCode list
+    val error : string -> 'a    (* raises PARSE_ELAB_ERROR[] *)
+    val warn : string -> unit   (* prints warning *)
+    val quot : string -> string (* surrounds string with single quotes *)
+
     structure SystemTools :
       sig
+        val change_dir : string -> {cd_old:unit->unit,file:string}
+	(* [change_dir p] cd's to the dir part of p and returns the
+	 * file part of p together with a function for changing to the
+	 * original directory. *)
+
 	val delete_file : string -> unit
+	val maybe_create_dirs : {prepath:string,dirs:string} -> unit
+	val maybe_create_mlbdir : {prepath:string} -> unit
       end
 
     structure ModCode :
@@ -58,8 +70,8 @@ signature MANAGER_OBJECTS =
     type filename (*= string*)
     val mk_filename : string -> filename
     val filename_to_string : filename -> string
-    val pmdir : unit -> string (* based on flags, returns a relative path to a directory
-				* in which to store object code. *)
+    val mlbdir : unit -> string (* based on flags, returns a relative path to a directory
+				 * in which to store object code. *)
 
     type funstamp 
     type funid = FunId.funid
@@ -82,11 +94,12 @@ signature MANAGER_OBJECTS =
     type InfixBasis = InfixBasis.Basis
     type ElabBasis = ModuleEnvironments.Basis
     type opaq_env = OpacityElim.opaq_env
-
+    type md5 = string
     type BodyBuilderClos = {infB: InfixBasis,
 			    elabB: ElabBasis,
 			    absprjid: absprjid,
 			    filename: string,
+			    filemd5: md5,
 			    opaq_env: opaq_env,
 			    T: TyName.TyName list,
 			    resE: ElabEnv}
@@ -186,67 +199,5 @@ signature MANAGER_OBJECTS =
 	val initialBasis1 : unit -> Basis1
 	val matchBasis1 : Basis1 * Basis1 -> Basis1
 	val eqBasis1 : Basis1 * Basis1 -> bool
-      end
-
-    structure Repository :
-      sig
-
-	(* Repositories map pairs of an absolute project identifier and a
-           functor identifier to a repository object. Thus, a functor
-           identifier (and hence a source file name) can be
-           declared only once in each project. However, different functors
-           with the same functor identifier may co-exist in different
-           projects (similarly, for source file names). *)
-
-	val clear : unit -> unit
-	val delete_entries : absprjid * funid -> unit
-
-	  (* Repository lookup's return the first entry for a (absprjid,funid)
-	   * that is reusable (i.e. where all export (ty-)names are
-	   * marked generative.) In particular, entries that have been added, 
-	   * cannot be returned by a lookup, prior to executing `recover().' 
-	   * The integer provided by the lookup functions can be given to the
-	   * overwrite functions for owerwriting a particular entry. *)
-
-	  (* The elaboration environment in the interpretation
-	   * repository is supposed to be the elaboration result of
-	   * the functor application/ unit; the environment is necessary 
-	   * for checking if reuse is allowed. *)
-
-	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
-	  name list * InfixBasis * ElabBasis * opaq_env
-
-	type int_entry = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
-	  modcode * IntBasis
-
-	type int_entry' = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
-	  modcode * IntBasis
-	  
-	val lookup_elab : (absprjid * funid) -> (int * elab_entry) option
-	val lookup_int : (absprjid * funid) -> (int * int_entry) option    (* IntModules *) 
-	val lookup_int' : (absprjid * funid) -> (int * int_entry') option  (* Manager *) 
-	  
-	val add_elab : (absprjid * funid) * elab_entry -> unit
-	val add_int : (absprjid * funid) * int_entry -> unit          (* IntModules *) 
-	val add_int' : (absprjid * funid) * int_entry' -> unit        (* Manager *)
-
-	val owr_elab : (absprjid * funid) * int * elab_entry -> unit
-	val owr_int : (absprjid * funid) * int * int_entry -> unit    (* IntModules *)
-
-	val emitted_files : unit -> string list   (* returns the emitted files mentioned in the repository; *)
-                                                  (* used for deleting files which are no longer mentioned. *)
-	val recover : unit -> unit
-
-          (* Before building a project the repository should be
-	   * ``recovered'' meaning that all export names are marked
-	   * generative (see NAME). Then, when an entry is reused,
-	   * export names are marked non-generative; for an entry to
-	   * be reused, all export names must be marked generative. *)
-
-	type repository
-	val getRepository : unit -> repository
-	val setRepository : repository -> unit
-(*	val pu            : repository Pickle.pu *)
-      end
-    
+      end    
   end
