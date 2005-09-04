@@ -1,0 +1,17 @@
+cd mlkit/kit
+make smlserver
+cd src/SMLserver/apache
+make install
+
+cat README
+
+To get Apache2 to process .sml files add the following to httpd.conf
+
+LoadModule sml_module         modules/mod_sml.so
+
+<IfModule mod_sml.c>
+AddHandler sml-module .sml
+AddHandler sml-module .msp
+SmlPrjId "web"
+SmlPath "/home/varming/apache2/htdocs/web/www"
+</IfModule>

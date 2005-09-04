@@ -180,6 +180,7 @@ structure Kam : KAM =
 
       | PrimIsNull
 
+      | GetContext
 
     datatype TopDecl =
         FUN of label * KamInst list
@@ -381,6 +382,8 @@ structure Kam : KAM =
       | PrimWordTableUpdate => "PrimWordTableUpdate" :: acc
       | PrimTableSize => "PrimTableSize" :: acc
       | PrimIsNull => "PrimIsNull" :: acc
+
+      | GetContext => "GetContext" :: acc
 
     fun pr_inst i = concat(pp_inst(i,[]))
 

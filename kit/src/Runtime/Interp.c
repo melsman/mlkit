@@ -373,7 +373,8 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
        unsigned long *exnCnt,  // Exception name counter
        bytecode_t b_prog,      // The actual code
        int sizeW,              // Size of code in words
-       int interp_mode)        // Mode: RESOLVEINSTS or INTERPRET
+       int interp_mode,        // Mode: RESOLVEINSTS or INTERPRET
+	   void *serverCtx)        // Apache request_rec pointer
 {
 
 /* Declarations for the registers of the abstract machine.
@@ -1446,9 +1447,10 @@ interpCode(Interp* interpreter,         // The interpreter
 	   Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
 	   char ** errorStr,            // Cell to store error-string in case of an uncaught exception
 	   unsigned long *exnCnt,       // Exception name counter
-	   bytecode_t b_prog) {         // The actual code
+	   bytecode_t b_prog,           // The actual code
+	   void *serverCtx)  {          // Apache request_rec pointer
   int res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
-		   exnCnt, b_prog, 0, INTERPRET);    
+		   exnCnt, b_prog, 0, INTERPRET, serverCtx);    
                                             // sizeW not used when mode is INTERPRET
   return res;
 }
@@ -1459,7 +1461,7 @@ interpCode(Interp* interpreter,         // The interpreter
 void
 resolveCode(bytecode_t b_prog,              // Code to resolve
 	    int sizeW) {                    // Size of code in words
-  interp(NULL, NULL, NULL, NULL, NULL, NULL, 0, b_prog, sizeW, RESOLVEINSTS);  
+  interp(NULL, NULL, NULL, NULL, NULL, NULL, 0, b_prog, sizeW, RESOLVEINSTS, NULL);  
 }
 
 void print_code(bytecode_t b_prog, int code_size) {
@@ -1508,7 +1510,7 @@ int main_interp(int argc, char * argv[]) {
   commandline_argv = argv;
 
   debug(printf("[Running interpreter]\n"));
-  res = interpRun(interp, NULL, &errorStr);
+  res = interpRun(interp, NULL, &errorStr, NULL);
   debug(printf ("[Result of running interpreter is %d]\n", res));
 
   if ( res < 0 ) {     // uncaught exception
