@@ -14,7 +14,7 @@ val _ = (Main.disable "garbage_collection";
 	 Main.enable "quotation";           (* support for quotation-antiquotation *)
 	 Flags.SMLserver := true;
 (*	 Flags.lookup_string_entry "output" := "MLB/ulfile.ul"; *)
-         Flags.WEBserver := "AOLServer"; (*"Apache"*)
+(*         Flags.WEBserver := "AOLServer"; (*"Apache"*) *)
 	 (* Main.enable "formtyping";  *) (* support for form typing *)
 (*	 Main.build_basislib();  *)
 	 Main.install() 

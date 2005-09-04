@@ -44,8 +44,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 	fun print_greetings() =
 	  if !Flags.SMLserver then
-	    print("SMLserver (" ^ !Flags.WEBserver ^ ") version " ^ Version.version ^ ", " ^ date ^ "\n" ^
-		  "Based on the MLKit [" ^ backend_name ^ " Backend]\n")
+	    print("SMLserver (" ^ Flags.get_string_entry "webserver" ^ ") version " ^ Version.version ^ ", " ^ date ^ "\n" ^
+		  "Based on the ML Kit [" ^ backend_name ^ " Backend]\n")
 	  else 
 	    print("ML Kit version " ^ Version.version ^ ", " ^ date ^ " [" ^
 		  backend_name ^ " Backend]\n")

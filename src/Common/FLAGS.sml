@@ -63,9 +63,6 @@ signature FLAGS =
     val SMLserver : bool ref              (* true when SMLserver for KAM backend
 					     is enabled.
 					  *)
-
-    val WEBserver : string ref            (* May be Apache or AOLserver *)
-
     val log : TextIO.outstream ref
     val colwidth : int ref
 
