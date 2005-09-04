@@ -62,21 +62,21 @@ extern apr_thread_mutex_t *stackPoolMutex;
 static void
 dienow(char *s)
 {
+#if defined(AOLSERVER)
   Ns_Log(Notice,"die2: %s",s);
+#elif defined(APACHE)
+  logMsg(s);
+#endif
   die(s);
 }
 
-#else
-#define HEAP_POOL_MUTEX_LOCK
-#define HEAP_POOL_MUTEX_UNLOCK
-
+/*
 static void 
 dienow(char *s)
 {
   die(s);
 }
-
-#endif
+*/
 
 static Heap* heapPool[MAX_HEAP_POOL_SZ];
 static int heapPoolIndex = 0;

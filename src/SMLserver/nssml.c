@@ -421,7 +421,7 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
 
   Ns_Log(Notice, "Starting interpreter on file %s", uo_file);
 
-  res = interpLoadRun(ctx->interp, uo, &errorStr);
+  res = interpLoadRun(ctx->interp, uo, &errorStr, NULL);
 
   Ns_Log(Notice, "Interpretation ended on file %s", uo_file);
 
