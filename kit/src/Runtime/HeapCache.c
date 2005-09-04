@@ -36,13 +36,30 @@ static int restoreRegion(RegionCopy *rc);
 
 static int heapid_counter = 0;
 
-#ifdef THREADS
-#include "/usr/share/aolserver/include/ns.h"
+#include "Locks.h"
+
+/*
+#if defined(THREADS) && defined(AOLSERVER)
+#include "/opt/aolserver/include/ns.h"
 extern Ns_Mutex stackPoolMutex;
 #define HEAP_POOL_MUTEX_LOCK     Ns_LockMutex(&stackPoolMutex);
 #define HEAP_POOL_MUTEX_UNLOCK   Ns_UnlockMutex(&stackPoolMutex);
 
-static void 
+#elif defined(THREADS) && defined(APACHE)
+#include "apr_thread_mutex.h"
+extern apr_thread_mutex_t *stackPoolMutex;
+#define HEAP_POOL_MUTEX_LOCK     apr_thread_mutex_lock(stackPoolMutex);
+#define HEAP_POOL_MUTEX_UNLOCK    apr_thread_mutex_unlock(stackPoolMutex);
+
+#else
+
+#define HEAP_POOL_MUTEX_LOCK
+#define HEAP_POOL_MUTEX_UNLOCK
+
+#endif
+*/
+
+static void
 dienow(char *s)
 {
   Ns_Log(Notice,"die2: %s",s);
@@ -164,16 +181,16 @@ Heap* getHeap(void)
 {
   Heap* h;
 
-  HEAP_POOL_MUTEX_LOCK;
+  LOCK_LOCK(STACKPOOLMUTEX);
   if ( heapPoolIndex )
     {
       h = heapPool[--heapPoolIndex];
-      HEAP_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
     }
   else   // allocate new heap
     { 
       int hid = heapid_counter++;
-      HEAP_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
       h = newHeap();
       h->heapid = hid;
     }
@@ -211,15 +228,15 @@ void deleteHeap(Heap *h)
 void releaseHeap(Heap *h)
 {
   restoreHeap(h);
-  HEAP_POOL_MUTEX_LOCK;
+  LOCK_LOCK(STACKPOOLMUTEX);
   if ( heapPoolIndex < MAX_HEAP_POOL_SZ ) 
     {
       heapPool[heapPoolIndex++] = h;
-      HEAP_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
     }
   else
     {
-      HEAP_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
       deleteHeap(h);
     } 
 }
@@ -297,12 +314,12 @@ clearHeapCache()
 {
   Heap *h;
 
-  HEAP_POOL_MUTEX_LOCK;
+  LOCK_LOCK(STACKPOOLMUTEX);
   while ( heapPoolIndex )
     {
       h = heapPool[--heapPoolIndex];
       deleteHeap(h);      
     }
-  HEAP_POOL_MUTEX_UNLOCK;
+  LOCK_UNLOCK(STACKPOOLMUTEX);
   return;
 }

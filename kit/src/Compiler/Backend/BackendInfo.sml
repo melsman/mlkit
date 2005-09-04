@@ -182,7 +182,10 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
 
 	 "word_sub0", "word_update0", "table_size",
 	 
-	 "__is_null"]
+	 "__is_null",
+
+	 "__serverGetCtx"]
+   
     in
       fun is_prim name = S.member name S orelse S.member name S_flow
       fun is_flow_prim name = S.member name S_flow

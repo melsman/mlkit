@@ -1,22 +1,33 @@
 SHELL=/bin/sh
 
-KITVERSION=$(shell cat version)
+KITVERSION=4.1.5
+
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
-INSTDIR=/usr/share/mlkit
-INSTDIR_KAM=/usr/share/mlkit_kam
-INSTDIR_BARRY=/usr/share/barry
-INSTDIR_SMLSERVER=/usr/share/smlserver
+
+srcdir=.
+top_srcdir=.
+prefix=/usr/local
+
+
+INSTDIR=$(DESTDIR)${prefix}/mlkit
+INSTDIR_KAM=$(DESTDIR)${prefix}/mlkit_kam
+INSTDIR_BARRY=$(DESTDIR)${prefix}barry
+INSTDIR_SMLSERVER=$(DESTDIR)${prefix}/smlserver
 RPMDIR=/usr/src/rpm
 #RPMDIR=/usr/src/redhat
 
 # Some commands
-MKDIR=mkdir -p
-INSTALL=cp -p
+#MKDIR=mkdir -p
+MKDIR=$(top_srcdir)/mkinstalldirs
+#INSTALL=cp -p
+INSTALL=/usr/bin/install -c
+
+
 
 CLEAN=rm -rf MLB PM CM *~ .\#*
 
-.PHONY: smlserver
+.PHONY: smlserver install
 mlkit:
 	$(MKDIR) bin
 	cd src; $(MAKE)
@@ -117,7 +128,7 @@ rpm: mlkit.spec
 	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
 install:
-	rm -rf $(INSTDIR)
+#	rm -rf $(INSTDIR)
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
@@ -139,9 +150,9 @@ install:
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR)/ml-yacc-lib
 	$(INSTALL) -R basis $(INSTDIR)/basis
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR)
-	chmod -R ug+rw $(INSTDIR)
-	chmod -R o+r $(INSTDIR)
+#	chown -R `whoami`.`whoami` $(INSTDIR)
+#	chmod -R ug+rw $(INSTDIR)
+#	chmod -R o+r $(INSTDIR)
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 

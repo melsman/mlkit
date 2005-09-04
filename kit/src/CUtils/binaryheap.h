@@ -31,7 +31,9 @@ int name ## _heapextractmin (name ## _binaryheap_t *heap, name ## _heapelement_t
 int name ## _heapchangekey (name ## _binaryheap_t *heap, unsigned long pos, name ## _keytype_t newkey); \
 int name ## _heapdelete (name ## _binaryheap_t *heap, unsigned long pos); \
 int name ## _heapinsert (name ## _binaryheap_t *heap, name ## _heapelement_t elem, \
-                         name ## _keytype_t key);
+                         name ## _keytype_t key);                                   \
+void                                                                                \
+name ## _heapapply (name ## _binaryheap_t *heap, void (*f)(name ## _heapelement_t *));
 
 #include "binaryheap.c"
 

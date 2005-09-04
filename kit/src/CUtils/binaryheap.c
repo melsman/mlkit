@@ -5,9 +5,12 @@
 #include "stdlib.h"
 #include "string.h"
 
+#ifdef MAX
+#undef MAX
+#endif 
 #define MAX(a,b) (a < b ? b : a)
 
-#define DEFINE_BINARYHEAP(name,order,newpos,setkey)                                   \
+#define DEFINE_BINARYHEAP(name,order,newpos,setkey)                                  \
 static int                                                                           \
 name ## _heapresize (name ## _binaryheap_t *heap)                                    \
 {                                                                                    \
@@ -43,21 +46,26 @@ name ## _heapresize (name ## _binaryheap_t *heap)                               
 }                                                                                    \
                                                                                      \
 int                                                                                  \
-name ## _heapinit (name ## _binaryheap_t *heap)                                      \
-{                                                                                    \
-  heap->heaptable = NULL;                                                            \
-  heap->size = 0;                                                                    \
-  heap->maxsize = 0;                                                                 \
-  return name ## _heapresize (heap);                                                 \
-}                                                                                    \
-                                                                                     \
-int                                                                                  \
 name ## _reinit (name ## _binaryheap_t *heap)                                        \
 {                                                                                    \
   heap->size = 0;                                                                    \
   heap->maxsize = 0;                                                                 \
   if (name ## _heapresize(heap)) return heap_OUTOFMEM;                               \
   return heap_OK;                                                                    \
+}                                                                                    \
+                                                                                     \
+int                                                                                  \
+name ## _heapinit (name ## _binaryheap_t *heap)                                      \
+{                                                                                    \
+  heap->heaptable = NULL;                                                            \
+  return name ## _reinit (heap);                                                     \
+}                                                                                    \
+                                                                                     \
+void                                                                                 \
+name ## _heapclose (name ## _binaryheap_t *heap)                                     \
+{                                                                                    \
+  free(heap->heaptable);                                                             \
+  return;                                                                            \
 }                                                                                    \
                                                                                      \
 void static                                                                          \
@@ -162,5 +170,17 @@ name ## _heapinsert (name ## _binaryheap_t *heap, name ## _heapelement_t data, n
     return heap_OUTOFMEM;                                                               \
   }                                                                                     \
   heap->heaptable[heap->size-1] = data;                                                 \
+  newpos(&(heap->heaptable[heap->size-1]), heap->size-1);                               \
   return name ## _heapchangekey (heap, heap->size - 1, key);                            \
+}                                                                                       \
+                                                                                        \
+void                                                                                    \
+name ## _heapapply (name ## _binaryheap_t *heap, void (*f)(name ## _heapelement_t *))   \
+{                                                                                       \
+  int i;                                                                                \
+  for (i = 0; i < heap->size; i++)                                                      \
+  {                                                                                     \
+    (*f)(&(heap->heaptable[i]));                                                        \
+  }                                                                                     \
+  return;                                                                               \
 }

@@ -1,0 +1,33 @@
+APACHE=@apache_dir@
+ORACLE=@oracle_dir@
+CC=@CC@
+LN=@LN_S@
+SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o
+TARGET=mod_sml.la
+
+.PHONY: install all clean oracle
+
+ALL=${TARGET}
+ifneq (${ORACLE},no)
+ALL+= oracle 
+endif
+
+all: ${ALL}
+
+${TARGET}: ${SOURCE}
+	${APACHE}/bin/apxs -Wall -c -lresolv -L. ${SOURCE}
+# -Wl,-rpath=`pwd`,-rpath=/home/oracle/inst/10.1.0/lib 
+
+oracle: libsmloracle.so.1.0
+
+libsmloracle.so.1.0: oracle.c
+	${CC} -Wall -I ${ORACLE}/rdbms/public -c -fPIC oracle.c
+	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L ${ORACLE}/lib -lclntsh oracle.o -o libsmloracle.so.1.0
+	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
+	${LN}f libsmloracle.so.1 libsmloracle.so
+
+install: ${TARGET}
+	${APACHE}/bin/apxs -i -a -n sml mod_sml.la
+
+clean: 
+	rm -f mod_sml.la libsmloracle.so.1.0

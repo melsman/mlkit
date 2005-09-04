@@ -1,14 +1,16 @@
 #include "Stack.h"
 
+#include "Locks.h"
+/*
 #ifdef THREADS
-#include "/usr/share/aolserver/include/ns.h"
+#include "/opt/aolserver/include/ns.h"
 extern Ns_Mutex stackPoolMutex;
 #define STACK_POOL_MUTEX_LOCK     Ns_LockMutex(&stackPoolMutex);
 #define STACK_POOL_MUTEX_UNLOCK   Ns_UnlockMutex(&stackPoolMutex);
 #else
 #define STACK_POOL_MUTEX_LOCK
 #define STACK_POOL_MUTEX_UNLOCK
-#endif
+#endif */
 
 #define MAX_LIVE_STACKS 8
 unsigned long* stackPool[MAX_LIVE_STACKS];
@@ -24,16 +26,16 @@ allocate_stack()
 {
   unsigned long* sp;
 
-  STACK_POOL_MUTEX_LOCK;
+  LOCK_LOCK(STACKPOOLMUTEX);
 
   if ( stackPoolIndex >= 0 )
     {
       sp = stackPool[stackPoolIndex--];
-      STACK_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
     }
   else   // allocate new stack       
     { 
-      STACK_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
       if ( (sp = (unsigned long *) malloc(STACK_SIZE_INIT)) == 0 ) 
 	{
 	  die("Stack.allocate_stack: Cannot allocated new stack\n");
@@ -45,15 +47,15 @@ allocate_stack()
 void
 release_stack(unsigned long* sp) 
 {
-  STACK_POOL_MUTEX_LOCK;
+  LOCK_LOCK(STACKPOOLMUTEX);
   if ( stackPoolIndex < MAX_LIVE_STACKS ) 
     {
       stackPool[++stackPoolIndex] = sp;
-      STACK_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
     }
   else
     {
-      STACK_POOL_MUTEX_UNLOCK;
+      LOCK_UNLOCK(STACKPOOLMUTEX);
       free(sp);
     } 
 }

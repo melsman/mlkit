@@ -4,31 +4,31 @@
 
 /* Try running this program with a sequence of numbers on the command line */
 
-typedef struct 
+struct elem_t
 {
   int pos;
   long key;
-} elem_t;
+};
 
-int order (elem_t *a, elem_t *b) 
+int order (struct elem_t *a, struct elem_t *b) 
 {
   if (a->key == b->key) return 0;
   if (a->key < b->key) return -1;
   return 1;
 }
 
-void newpos (elem_t *a, unsigned long pos)
+void newpos (struct elem_t *a, unsigned long pos)
 {
   return;
 }
 
-void setkey (elem_t *a, long newkey)
+void setkey (struct elem_t *a, long newkey)
 {
   a->key = newkey;
   return;
 }
 
-DECLARE_BINARYHEAP(test,elem_t,long)
+DECLARE_BINARYHEAP(test,struct elem_t,long)
 
 DEFINE_BINARYHEAP(test,order,newpos,setkey)
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 {
   int i, n;
   test_binaryheap_t heap;
-  elem_t tmp;
+  struct elem_t tmp;
   test_heapinit(&heap);
   for (i=1;i<argc;i++) 
   {

@@ -6,29 +6,27 @@ signature MSP_COMP =
   end
 
 functor MspComp (val error : string -> 'a
-		 val pr : string
-		 val pre : string) : MSP_COMP =
+		 val pr : unit -> string
+		 val pre : unit -> string ) : MSP_COMP =
   struct
-
     fun getc (nil) = NONE
       | getc (c::cs) = SOME(c,cs)
-
     fun putc (c, cs) = c::cs
 
     fun tr #"\n" = "\\n\\\n\\ "
       | tr c = Char.toString c
 
     fun out_html (html, os) = 
-      TextIO.output(os, "val _ = " ^ pr ^ " \"" ^ String.translate tr html ^ "\"\n")
+      TextIO.output(os, "val _ = " ^ pr() ^ " \"" ^ String.translate tr html ^ "\"\n")
 
     fun out_msp_string(msp, os) =
-      TextIO.output(os, "val _ = " ^ pr ^ " ( " ^ msp ^ " )\n")
+      TextIO.output(os, "val _ = " ^ pr() ^ " ( " ^ msp ^ " )\n")
 
     fun out_msp_wseq(msp, os) =
-      TextIO.output(os, "val _ = " ^ pr ^ " (Msp.flatten ( " ^ msp ^ " ))\n")
+      TextIO.output(os, "val _ = " ^ pr() ^ " (Msp.flatten ( " ^ msp ^ " ))\n")
 
     fun out_msp_int(msp, os) =
-      TextIO.output(os, "val _ = " ^ pr ^ " (Int.toString ( " ^ msp ^ " ))\n")
+      TextIO.output(os, "val _ = " ^ pr() ^ " (Int.toString ( " ^ msp ^ " ))\n")
 
     fun out_msp_dec(msp, os) = 
       (TextIO.output(os, msp); TextIO.output(os, "\n"))
@@ -87,7 +85,7 @@ functor MspComp (val error : string -> 'a
 	val is = fromFile msp_file 
 	  handle _ => (TextIO.closeOut os;
 		       error ("Msp-compilation: failed to open file `" ^ msp_file ^ "' for reading"))
-      in TextIO.output(os, pre ^ "\n\n");
+      in TextIO.output(os, pre() ^ "\n\n");
 	read_html (is, nil, os) handle E => (TextIO.closeOut os; raise E); 
 	TextIO.closeOut os; sml_file
       end 

@@ -495,4 +495,6 @@ void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s);
 
 void free_lobjs(Lobjs* lobjs);
 
+void RegionLocksInit(void);
+
 #endif /*REGION_H*/

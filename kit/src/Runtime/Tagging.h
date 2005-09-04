@@ -64,7 +64,9 @@
 #define mlFALSE 1
 #define mlUNIT 1
 
+#undef TRUE
 #define TRUE 1
+#undef FALSE
 #define FALSE 0
 
 /*----------------------------------------------------------------*

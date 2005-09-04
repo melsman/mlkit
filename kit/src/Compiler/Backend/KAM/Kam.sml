@@ -62,6 +62,7 @@ structure Kam : KAM =
       | Return of int * int
 
       | Ccall of int * int
+      | DCcall of int * int
 
       | Label of label
       | JmpRel of label
@@ -262,7 +263,9 @@ structure Kam : KAM =
       | ApplyFunJmp(lab,n1,n2) => "ApplyFunJmp(" :: (pp_lab lab) :: "," :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
       | Return(n1,n2) => "Return(" :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
 
-      | Ccall(idx,arity) => "Ccall(" :: (pp_i idx) :: "," :: (pp_i arity) :: ")" :: acc
+      | Ccall(idx,arity) => "Ccall(" :: (pp_i idx) :: "," :: (pp_i arity) ::")" :: acc
+      | DCcall(kind,idx) => "CheckLinkage(" :: (pp_i kind) :: ")"
+	                              :: "Ccall(" :: (pp_i idx) :: "," :: (pp_i 0) :: ")" :: acc
 
       | Label(lab) => "Label(" :: (pp_lab lab) :: ")" :: acc
       | JmpRel(lab) => "JmpRel(" :: (pp_lab lab) :: ")" :: acc

@@ -28,6 +28,8 @@ is
   Backend/CODE_GEN.sml
   Backend/X86/INSTS_X86.sml
   Backend/X86/InstsX86.sml
+  ../../basis/BINARYMAP.sml
+  ../../basis/Binarymap.sml
   Backend/X86/CodeGenX86.sml
   Backend/X86/ExecutionX86.sml
   ../Common/KitMainSMLNJ.sml
