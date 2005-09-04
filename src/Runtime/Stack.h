@@ -30,6 +30,8 @@
 unsigned long * allocate_stack();
 void release_stack(unsigned long* sp);
 
+void StackLockInit(void);
+
 #endif /* __Stack_h__ */
 
 

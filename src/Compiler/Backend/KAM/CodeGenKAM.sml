@@ -865,23 +865,47 @@ struct
 	      let
 	      (* rhos_for_result comes before args, because that is what the C *)
 	      (* functions expects. *)
-		val all_args = rhos_for_result @ args
-		val i = name_to_built_in_C_function_index name
+		datatype StaDyn = Dyn | Sta
+		val (i,k) = case name of ":" => (0,Dyn)
+		                       | _ => (name_to_built_in_C_function_index name,Sta)
+		val all_args = case k 
+		               of Dyn => (let val (a1,ar) = Option.valOf (List.getItem args)
+					              in rhos_for_result @ ar @ [a1]
+								  end handle Option.Option => 
+								    die ("You must give the function to call as the first"^
+									     "arguemnt to :"))
+		                | Sta => rhos_for_result @ args
 	      in
-		if i >= 0 then
-		  comp_ces(all_args,env,sp,cc,
-			   Ccall(i, List.length all_args) :: acc)
+		if i >= 0 then 
+        comp_ces(all_args,env,sp,cc,
+           (case name 
+		    of ":" => DCcall(1, (List.length all_args)-1)
+		       | _ =>  Ccall(i, List.length all_args)) :: acc)
 		else die ("Couldn't generate code for a C-call to " ^ name ^
 			  "; you probably need to insert the function name in the " ^
 			  "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")
 	      end
 	  end
       | CG_ce(ClosExp.CCALL_AUTO{name,args,res}, env,sp,cc,acc) =
-	  let val i = name_to_built_in_C_function_index name
+	  let 
+		datatype StaDyn = Dyn | Sta
+		val (i,k) = case name of ":" => (0,Dyn)
+		                       | _ => (name_to_built_in_C_function_index name,Sta)
+		val args = 
+		  case k 
+		  of Dyn => 
+			  let val (a1,ar) = Option.valOf (List.getItem args)  handle Option.Option => 
+										die ("You must give the function to call as the first"^
+											 "arguemnt to :")
+			  in ar @ [a1]
+			  end
+		   | Sta => args 
 	  in 
-	    if i >= 0 then
-	      comp_ces_ccall_auto(args,env,sp,cc,Ccall(i, List.length args) :: 
-				  cconvert_res res acc)
+	    if i >= 0 then 
+	      (comp_ces_ccall_auto(args,env,sp,cc,
+		      (case k of Sta => Ccall(i,List.length args)
+			           | Dyn => DCcall(2, List.length args - 1)) ::
+				  cconvert_res res acc))
 	    else die ("Couldn't generate code for a C-autocall to " ^ name ^
 		      "; you probably need to insert the function name in the " ^
 		      "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")

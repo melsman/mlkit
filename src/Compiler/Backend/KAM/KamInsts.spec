@@ -63,6 +63,7 @@ C_CALL2			    1
 C_CALL3			    1
 C_CALL4			    1
 C_CALL5			    1
+C_CALL6			    1
 LABEL			    ~4
 JMP_REL			    1
 IF_NOT_EQ_JMP_REL_IMMED3       1
@@ -165,3 +166,6 @@ PRIM_WORDTABLE_UPDATE       0
 PRIM_TABLE_SIZE             0
 
 PRIM_IS_NULL                0
+GET_CONTEXT                 0
+
+CHECK_LINKAGE               1

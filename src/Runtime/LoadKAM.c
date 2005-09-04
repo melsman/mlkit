@@ -17,6 +17,7 @@
 
 #if ( THREADS && CODE_CACHE )
 #include <string.h>
+#include "Locks.h"
 #endif
 
 #ifdef DEBUG
@@ -37,8 +38,16 @@ streq(char*s1, char*s2)
  * String to Code Map
  * ----------------------------------------------------- */
 
+static int
+streq(char* s1,char* s2)
+{
+  if ( strcmp(s1,s2) == 0 )
+    return 1;
+  return 0;
+}
+
 #if ( THREADS && CODE_CACHE )
-extern void logMsg(char* msg);
+extern void logMsg1(char* msg, void *serverState);
 
 DEFINE_HASHMAP(strToCodeMap,char*,bytecode_t)
 
@@ -738,6 +747,9 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
       GLOBAL_EXCON(10,"Overflow");
       GLOBAL_EXCON(11,"Interrupt");
 
+      exn_DIV = (Exception*)**(unsigned long**)(ds+7);
+      exn_MATCH = (Exception*)**(unsigned long**)(ds+8);
+      exn_BIND = (Exception*)**(unsigned long**)(ds+9);
       exn_OVERFLOW = (Exception*)**(unsigned long**)(ds+10);
       exn_INTERRUPT = (Exception*)**(unsigned long**)(ds+11);
 
@@ -770,17 +782,17 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
 		       &exnCnt,(bytecode_t)init_code);
   
       if ( res >= 0 && extra_code )
-	{
-	  initializeHeap(h,(int*)sp0,(int*)exnPtr, exnCnt);
-	}
+      {
+        initializeHeap(h,(int*)sp0,(int*)exnPtr, exnCnt);
+      }
       else 
-	{
+      {
 #ifdef THREADS
-	  logMsg("Exception raised during execution of library code");
+        logMsg1("Exception raised during execution of library code",serverState);
 #endif
-	  deleteHeap(h);
-	  return res;
-	}
+        deleteHeap(h);
+        return res;
+      }
     }
   
   // no exception raised by code so far; perhaps jump to the extra bytecode
@@ -810,8 +822,6 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
  * ------------------------------------------------------ */
 
 #if ( THREADS && CODE_CACHE )
-extern void codeCacheMutexLock(void);
-extern void codeCacheMutexUnlock(void);
 extern void logLoading(char *file);
 #endif
 
@@ -822,7 +832,7 @@ interpLoadRun(Interp* interp, char* file, char** errorStr)
   int res;
 
 #if ( THREADS && CODE_CACHE )
-  codeCacheMutexLock();
+  LOCK_LOCK(CODECACHEMUTEX);
   start_code = strToCodeMapLookup(interp->codeCache,file);  
   if ( start_code == NULL )
     {
@@ -835,7 +845,7 @@ interpLoadRun(Interp* interp, char* file, char** errorStr)
       strToCodeMapInsert(interp->codeCache,file,start_code);
       logLoading(file);
     }
-  codeCacheMutexUnlock();
+  LOCK_UNLOCK(CODECACHEMUTEX);
 #endif
 
   /*

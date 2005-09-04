@@ -22,7 +22,7 @@ structure ExecutionX86: EXECUTION =
 				   structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
     val _ = Flags.add_string_entry 
-      {long="clibs", short=NONE, item=ref "-lm -lc",
+      {long="clibs", short=NONE, item=ref "-lm -lc -ldl",
        menu=["Control", "c libraries (archives)"],
        desc="If you have added your own object files to a project,\n\
 	\you might also need to link with libraries other\n\

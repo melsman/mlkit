@@ -122,18 +122,7 @@ nssml_processSmlFile(InterpContext* ctx, char* url);
 Ns_Mutex stackPoolMutex;
 Ns_Mutex freelistMutex;
 Ns_Mutex codeCacheMutex;
-
-void
-codeCacheMutexLock()
-{
-  Ns_LockMutex(&codeCacheMutex);
-}
-
-void
-codeCacheMutexUnlock()
-{
-  Ns_UnlockMutex(&codeCacheMutex);
-}
+Ns_Mutex functionTableMutex;
 
 void
 logLoading(char *file)
@@ -162,6 +151,7 @@ rpMap = regionPageMapNew();
   Ns_InitializeMutex(&stackPoolMutex);
   Ns_InitializeMutex(&freelistMutex);
   Ns_InitializeMutex(&codeCacheMutex);
+  Ns_InitializeMutex(&functionTableMutex);
 
   resolveGlobalCodeFragments();
 

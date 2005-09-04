@@ -23,6 +23,7 @@ GENOPCODES_TARGETS=Runtime/Prims.c Runtime/PrimsNsSml.c \
 
 GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec \
+ Compiler/Backend/KAM/BuiltInCFunctionsApSml.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
 # Whether request profiling is enabled 

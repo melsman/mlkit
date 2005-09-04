@@ -110,6 +110,15 @@ struct
   (********************************)
 
   local
+  (******************************)
+  (* Dynamicly linked functions *)
+  (******************************)
+
+  local val dynamic = ref (Binarymap.mkDict String.compare)
+  in fun add_dynamic (name,l1,l2) = dynamic := Binarymap.insert(!dynamic, name, (l1,l2))
+     val get_dynamic = fn x=> Binarymap.peek (!dynamic, x)
+  end
+
 
     (* Global Labels *)
     val exn_ptr_lab = NameLab "exn_ptr"
@@ -132,6 +141,7 @@ struct
       val counter = ref 0
       fun incr() = (counter := !counter + 1; !counter)
     in
+      fun new_dynamicFn_lab() : lab = DatLab(Labels.new_named ("DynLab" ^ Int.toString(incr())))
       fun new_string_lab() : lab = DatLab(Labels.new_named ("StringLab" ^ Int.toString(incr())))
       fun new_float_lab() : lab = DatLab(Labels.new_named ("FloatLab" ^ Int.toString(incr())))
       fun new_num_lab() : lab = DatLab(Labels.new_named ("BoxedNumLab" ^ Int.toString(incr())))
@@ -500,6 +510,51 @@ struct
     (* Calling C Functions *)
     (***********************)
 
+    local 
+
+      fun call_static_or_dynamic (name : string, args, fnlab, C) = 
+      case name
+      of ":" => (
+            let 
+                val (arg1,args) = Option.valOf (List.getItem args) 
+                                      handle Option.Option =>
+                                         die ("Dynamic liking requires a string as first argument.")
+                val fp = new_dynamicFn_lab()
+                val fcall = new_dynamicFn_lab()
+                val nfcall = new_dynamicFn_lab()
+                val finish = new_dynamicFn_lab()
+            in 
+                I.movl(L fp, R eax)::
+                I.cmpl(I("0"),R(eax))::
+                I.je(nfcall)::
+              I.lab(fcall)::
+                I.addl(I "4",R esp)::
+                I.call'(R(eax))::
+                I.jmp(L(finish))::
+              I.lab(nfcall)::
+                I.subl(I("4"), R(esp))::
+                I.movl(LA(fp), R(edx))::
+                I.movl(R(edx), D("0",esp))::
+                I.call fnlab::
+                I.addl(I("4"),R(esp))::
+                I.movl(L fp, R eax)::
+                I.cmpl(I("0"),R eax)::
+                I.jne fcall::
+                I.addl(I "4",R esp)::
+                I.call(NameLab "__raise_match")::
+                I.jmp (L finish)::
+                I.dot_data::
+                I.dot_align 4::
+                I.dot_size (fp,4)::
+              I.lab fp::
+                I.dot_long "0"::
+                I.dot_text ::
+              I.lab(finish)::C
+            end
+         )
+       | _ => I.call(NameLab name) :: C
+    in
+
     fun compile_c_call_prim(name: string,args: SS.Aty list,opt_ret: SS.Aty option,size_ff:int,tmp:reg,C) =
       let
 (*	  val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
@@ -516,18 +571,24 @@ struct
 	  in loop(rev args, size_ff)
 	  end
 
+  (* With dynamic linking there must be at least one argument (the name to be bound). *)
+  (* This name is poped off the stack before the function is called, therefore this   *)
+  (* is okey                                                                          *)
+
 	fun pop_args C = 
 	  case List.length args
 	    of 0 => C
-	     | n => I.addl(I (int_to_string (4*n)), R esp) :: C
+	     | n => I.addl(I (int_to_string (4*(case name of ":" => n-1 | _ => n))), R esp) :: C
+
 
 	fun store_ret(SOME d,C) = move_reg_into_aty(eax,d,size_ff,C)
 	  | store_ret(NONE,C) = C
       in
 	push_args(args,
-	I.call(NameLab name) ::
-	pop_args(store_ret(opt_ret,C)))
+  call_static_or_dynamic (name,args, NameLab "localResolveLibFnManual",
+	pop_args(store_ret(opt_ret,C))))
       end
+
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
      * convert the C result to an ML result. *)
@@ -599,7 +660,7 @@ struct
 	fun pop_args C = 
 	  case List.length args
 	    of 0 => C
-	     | n => I.addl(I (int_to_string (4*n)), R esp) :: C
+	     | n => I.addl(I (int_to_string (4* (case name of ":" => n-1 | _ => n))), R esp) :: C
 
 	fun convert_result ft =
 	  case ft
@@ -615,8 +676,9 @@ struct
 	     | _ => convert_result ft (eax, move_reg_into_aty(eax,aty,size_ff,C))
       in
 	push_args(args,
-	I.call(NameLab name) ::
-	pop_args(store_result(opt_res,C)))
+	call_static_or_dynamic (name, args, NameLab "localResolveLibFnAuto",
+	pop_args (store_result(opt_res,C))))
+      end
       end
       
 
@@ -2609,10 +2671,21 @@ struct
 			       "region arguments.")
 			 | _ => ()
 		  in
+
+        (* the first argument in a dynamic function call, is the name of the function, *)
+        (* that argument must be on the top of the stack, as it is poped just before   *)
+        (* function invocation.                                                        *)
+        (* It is used to bind an address the first time the function is called         *)
+
 		    comment_fn (fn () => "CCALL: " ^ pr_ls ls,
-		     (case (name, rhos_for_result@args, res)
-			of (_,all_args,[]) => comp_c_call(all_args, NONE, C)
-			 | (_,all_args, [res_aty]) => comp_c_call(all_args, SOME res_aty, C)
+		   (case (case name of ":" => (let val (a1,ar) = valOf (List.getItem args) 
+                                  in a1 ::(rhos_for_result@ar)
+                                  end
+                                  handle Option.Option =>
+                                         die ("Dynamic liking requires a string as first argument."))
+                     | _ => (rhos_for_result@args), res)
+			of (all_args,[]) => comp_c_call(all_args, NONE, C)
+			 | (all_args, [res_aty]) => comp_c_call(all_args, SOME res_aty, C)
 			 | _ => die "CCall with more than one result variable"))
 		  end
 	       | LS.CCALL_AUTO{name, args, res} => 
@@ -2623,6 +2696,11 @@ struct
 			     "- but it is not dealt with!")
 		      else ()
 		  in
+
+        (* With dynamicly linked functions the first argument must be the name of   *)
+        (* the function. If we where to implement automatic conversion into regions *)
+        (* this must be taken care of, like in the non-automatic case               *)
+
 		    comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
 				compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C))
 		  end
@@ -2974,12 +3052,19 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  else C
 
 	fun overflow_stub C =
-	  let val stublab = NameLab "__raise_overflow"
-	  in I.dot_text ::
-	     I.dot_globl stublab ::
+	  let val stublab = [(NameLab "__raise_overflow",BI.exn_OVERFLOW_lab),
+                       (NameLab "__raise_div",BI.exn_DIV_lab),
+                       (NameLab "__raise_match",BI.exn_MATCH_lab),
+                       (NameLab "__raise_bind",BI.exn_BIND_lab),
+                       (NameLab "__raise_interrupt", BI.exn_INTERRUPT_lab)]
+	  in I.dot_text ::(List.foldr (fn ((nl,dl),C') => I.dot_globl nl ::
+                                                    I.lab nl::
+                                                       I.pushl(L(DatLab dl))::
+                                                       I.call(NameLab "raise_exn")::C') C stublab)
+	   (*  I.dot_globl stublab ::
 	     I.lab stublab ::
              I.pushl(L(DatLab BI.exn_OVERFLOW_lab)) ::
-             I.call(NameLab "raise_exn") :: C   (*the call never returns *)
+             I.call(NameLab "raise_exn") :: C*)   (*the call never returns *)
 	  end
 
 	fun gc_stub C = (* tmp_reg1 must contain the register map and tmp_reg0 the return address. *)

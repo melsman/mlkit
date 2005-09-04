@@ -95,6 +95,7 @@ structure InstsX86: INSTS_X86 =
       | jo of lab         (* jump on overflow *)
 
       | call of lab       (* C function calls and returns *)
+      | call' of ea       (* C function calls and returns *)
       | ret
       | leave
 
@@ -223,6 +224,7 @@ structure InstsX86: INSTS_X86 =
                | jo l => emit_jump("jo", l)
 
 	       | call l => emit_jump("call", l)
+         | call' ea => (emit "\tcall *"; emit(pr_ea ea); emit_nl())
 	       | ret => emit_nullary "ret"
 	       | leave => emit_nullary "leave"
 

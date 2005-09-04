@@ -7,9 +7,11 @@
 #include "Profiling.h"
 #include "GC.h"
 #include "CommandLine.h"
+#include "Locks.h"
 
-#ifdef THREADS
-#include "/usr/share/aolserver/include/ns.h"
+/*
+#if defined(THREADS) && defined(AOLSERVER)
+#include "/opt/aolserver/include/ns.h"
 extern Ns_Mutex freelistMutex;
 #define FREELIST_MUTEX_LOCK     Ns_LockMutex(&freelistMutex);
 #define FREELIST_MUTEX_UNLOCK   Ns_UnlockMutex(&freelistMutex);
@@ -17,7 +19,7 @@ extern Ns_Mutex freelistMutex;
 #define FREELIST_MUTEX_LOCK
 #define FREELIST_MUTEX_UNLOCK
 #endif
-
+*/
 /*----------------------------------------------------*
  * Hash table to collect region page reuse statistics *
  *  region_page_addr -> int                           *
@@ -341,6 +343,7 @@ void printFreeList() {
 }
 */
 
+
 #ifdef ENABLE_GC
 int 
 size_free_list() 
@@ -348,12 +351,12 @@ size_free_list()
   Rp *rp;
   int i=0;
 
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
 
   for ( rp = freelist ; rp ; rp = rp-> n )
     i++;
 
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
 
   return i;
 }
@@ -415,14 +418,14 @@ void alloc_new_block(Gen *gen) {
     }
   #endif /* ENABLE_GC */
 
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
   if ( freelist == NULL ) callSbrk(); 
   np = freelist;
   freelist = freelist->n;
 
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
 
 #ifdef ENABLE_GEN_GC
   // update colorPtr so that all new objects are considered to be in
@@ -630,14 +633,14 @@ void deallocateRegion(
 
   /* Insert the region pages in the freelist; there is always 
    * at least one page in a generation. */  
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
   (((Rp *)TOP_REGION->g0.b)-1)->n = freelist;  // Free pages in generation 0
   freelist = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
   (((Rp *)TOP_REGION->g1.b)-1)->n = freelist;  // Free pages in generation 1
   freelist = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
 
   TOP_REGION=TOP_REGION->p;
 
@@ -892,10 +895,10 @@ void resetGen(Gen *gen)
 #endif /* SIMPLE_MEMPROF */
 #endif /* ENABLE_GC */  
 
-    FREELIST_MUTEX_LOCK;
+    LOCK_LOCK(FREELISTMUTEX);
     (((Rp *)(gen->b))-1)->n = freelist;
     freelist = (clear_fp(gen->fp))->n;
-    FREELIST_MUTEX_UNLOCK;
+    LOCK_UNLOCK(FREELISTMUTEX);
     (clear_fp(gen->fp))->n = NULL;
   }
 
@@ -1309,10 +1312,10 @@ void free_region_pages(Rp* first, Rp* last)
 {
   if ( first == 0 )
     return;
-  FREELIST_MUTEX_LOCK;
+  LOCK_LOCK(FREELISTMUTEX);
   last->n = freelist;
   freelist = first;
-  FREELIST_MUTEX_UNLOCK;
+  LOCK_UNLOCK(FREELISTMUTEX);
   return;
 }
 #endif /*KAM*/
