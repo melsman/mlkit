@@ -1,5 +1,5 @@
 APACHE=/home/varming/apache2worker
-ORACLE=/home/oracle/inst/10.1.0
+ORACLE=
 CC=gcc
 LN=ln -s
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o
