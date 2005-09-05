@@ -840,7 +840,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
     "apsml: server->path is %s", s->path);
 
-  sprintf (ctx->ulFileName, "%s/MLB/%s.ul", ctx->smlpath, ctx->prjid);
+  sprintf (ctx->ulFileName, "%sMLB/%s.ul", ctx->smlpath, ctx->prjid);
 
   ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
 
@@ -1129,6 +1129,46 @@ apsml_next_sml0 (char *p) //{{{
 
 apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int path_p)
 {
+  char *pageRoot;
+  char *file;
+  char c, *p, *lp, *lu;
+  InterpContext *ctx = rd->ctx;
+  pageRoot = ctx->smlpath;
+  if (strstr (url, pageRoot) != url)
+  {
+    if (rd->request)
+    {
+    ap_log_rerror (__FILE__, __LINE__, LOG_ERR, 0, rd->request,
+       "pageRoot %s is not a substring of the requested url %s",
+       pageRoot, url);
+    }
+    else
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
+        "pageRoot %s is not a substring of the requested url %s",
+        pageRoot, url);
+    }
+    return -1;
+  }
+  p = url;
+  lp = NULL;
+  lu = NULL;
+  while ((c = *p))
+  {
+    if (c == '/')
+    {
+      lp = p;
+      lu = uo;
+    }
+    *uo = c;
+    uo++;
+    p++;
+  }
+  strcpy(lu,"/MLB/SMLserver");
+  while (*lu) lu++;
+  strcpy(lu,lp);
+  strcat(lu,".uo");
+  return 0;
 }
 
 static int
