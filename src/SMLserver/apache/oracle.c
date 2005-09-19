@@ -25,8 +25,9 @@ typedef struct
   ub4 poolNameLength;
   int dbid;
   char msg[MAXMSG];
+  void *freeSessionsGlobal;
   unsigned int number_of_sessions;
-  unsigned char about_to_shutdown; // !0 if we are shutting this environment down
+  unsigned char about_to_shutdown; // != 0 if we are shutting this environment down
 } oDb_t;
 
 typedef struct oSes
@@ -49,12 +50,15 @@ typedef struct
   char *TNSname;
   char *username;
   char *password;
-  proc_lock plock;
-  char *plockname;
+//  proc_lock plock;
+//  char *plockname;
   thread_lock tlock;
-  unsigned long *totalNsessions;
-  unsigned long limit;
+  cond_var cvar;
+  
+//  unsigned long *totalNsessions;
+//  unsigned long limit;
   int maxdepth;
+  int maxsessions;
   oDb_t *dbspec;
 } db_conf;
 
@@ -182,6 +186,7 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
       ctx
       )
   db->dbid = dbid;
+  db->freeSessionsGlobal = NULL;
   db->envhp = envhp;
   db->errhp = NULL;
   db->number_of_sessions = 0;
@@ -647,8 +652,11 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
   oSes_t *tmpses, *rses;
-  int dbid = ses->db->dbid;
+  int dbid;
+  oDb_t *db;
   if (ses == NULL || rd == NULL) return DBError;
+  dbid = ses->db->dbid;
+  db = ses->db;
   dbdata = (dbOraData *) getDbData(dbid, rd);
   if (dbdata == NULL) return DBError;
   if (dbdata->dbSessions == ses)
@@ -671,36 +679,59 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
     }
   }
   db_conf *dbc = (db_conf *) apsmlGetDBData(dbid, rd);
+  lock_thread(dbc->tlock);
   if (dbdata->theOne)
   {
-    ses->next = dbdata->freeSessions;
-    dbdata->freeSessions = ses;
-    lock_proc(dbc->plock);
-    if (*(dbc->totalNsessions) < dbc->limit)
+    if (db->number_of_sessions < dbc->maxsessions - dbc->maxdepth)
     {
       dbdata->theOne = 0;
+      ses->next = dbdata->freeSessions;
+      dbdata->freeSessions = ses;
       while ((ses = dbdata->freeSessions))
       {
         dbdata->freeSessions = ses->next;
         DBReturnSession(ses, rd);
-        (*(dbc->totalNsessions))--;
+      }
+      while ((ses = db->freeSessionsGlobal))
+      {
+        db->freeSessionsGlobal = ses->next;
+        DBReturnSession(ses,rd);
+      }
+      broadcast_cond(dbc->cvar);
+    }
+    else 
+    {
+      if (!dbdata->dbSessions)
+      {
+        dbdata->theOne = 0;
+        ses->next = dbdata->freeSessions;
+        dbdata->freeSessions = NULL;
+        while ((rses = db->freeSessionsGlobal))
+        {
+          db->freeSessionsGlobal = ((oSes_t *)db->freeSessionsGlobal)->next;
+          DBReturnSession(rses, rd);
+        }
+        db->freeSessionsGlobal = ses;
+        broadcast_cond(dbc->cvar);
+      }
+      else
+      {
+        ses->next = dbdata->freeSessions;
+        dbdata->freeSessions = ses;
       }
     }
-    unlock_proc(dbc->plock);
   }
   else 
   {
-    lock_proc(dbc->plock);
     DBReturnSession(ses,rd);
-    (*(dbc->totalNsessions))--;
     while ((ses = dbdata->freeSessions))
     {
       dbdata->freeSessions = ses->next;
       DBReturnSession(ses, rd);
-      (*(dbc->totalNsessions))--;
     }
-    unlock_proc(dbc->plock);
+    broadcast_cond(dbc->cvar);
   }
+  unlock_thread(dbc->tlock);
   if (dbdata->dbSessions == NULL) 
   {
     removeDbData(dbid, rd);
@@ -713,6 +744,7 @@ oSes_t *
 apsmlGetSession(int dbid, void *rd)/*{{{*/
 {
   oSes_t *ses;
+  oDb_t *db;
   int i;
   dbOraData *dbdata = (dbOraData *) getDbData(dbid, rd);
   if (!dbdata) 
@@ -728,11 +760,11 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       return NULL;
     }
   }
-  if (dbdata->theOne && dbdata->freeSessions == NULL)
-  {
-    dblog1(rd, "Depth boundary exceeded");
-    return NULL;
-  }
+//  if (dbdata->theOne && dbdata->freeSessions == NULL)
+//  {
+//    dblog1(rd, "Depth boundary exceeded");
+//    return NULL;
+//  }
   dblog1(rd, "1");
   if (dbdata->freeSessions)
   {
@@ -770,66 +802,84 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
     dblog1(rd, "Database did not start");
     return NULL;
   }
-  lock_proc(dbc->plock);
   dblog1(rd, "4");
-  if (dbc->limit && *(dbc->totalNsessions) == dbc->limit)
+  db = dbc->dbspec;
+  if (db->number_of_sessions < dbc->maxsessions - dbc->maxdepth)
   {
-    dblog1(rd, "5");
-    dbdata->theOne = 1;
-    for (i = 0; i < dbc->maxdepth; i++)
-    {
-      ses = DBgetSession(dbc->dbspec, rd);
-      if (ses == NULL) 
-      {
-        dblog1(rd, "Could not get session");
-        while ((ses = dbdata->freeSessions))
-        {
-          dbdata->freeSessions = ses->next;
-          DBReturnSession(ses, rd);
-        }
-        unlock_proc(dbc->plock);
-        unlock_thread(dbc->tlock);
-        return NULL;
-
-      }
-      ses->next = dbdata->freeSessions;
-      dbdata->freeSessions = ses;
-    }
-    (*(dbc->totalNsessions)) += i;
-  }
-  else 
-  {
-    dblog1(rd, "6");
-    ses = DBgetSession(dbc->dbspec,rd);
+    ses = DBgetSession(dbc->dbspec, rd);
     if (ses == NULL)
     {
       dblog1(rd, "Could not get session");
-      unlock_proc(dbc->plock);
       unlock_thread(dbc->tlock);
       return NULL;
     }
-    ses->next = dbdata->freeSessions;
-    dbdata->freeSessions = ses;
-    (*(dbc->totalNsessions))++;
+    unlock_thread(dbc->tlock);
+    return ses;
   }
-  unlock_proc(dbc->plock);
+  else
+  {
+    if (db->freeSessionsGlobal)
+    {
+      dbdata->theOne = 1;
+      ses = db->freeSessionsGlobal;
+      dbdata->freeSessions = ses->next;
+      db->freeSessionsGlobal = NULL;
+      unlock_thread(dbc->tlock);
+      return ses;
+    }
+    else
+    {
+      if (db->number_of_sessions == dbc->maxsessions - dbc->maxdepth)
+      {
+        dbdata->theOne = 1;
+        for (i = 0; i < dbc->maxdepth; i++)
+        {
+          ses = DBgetSession(dbc->dbspec, rd);
+          if (ses == NULL) 
+          {
+            dblog1(rd, "Could not get session");
+            while ((ses = dbdata->freeSessions))
+            {
+              dbdata->freeSessions = ses->next;
+              DBReturnSession(ses, rd);
+            }
+            dbdata->theOne = 0;
+            unlock_thread(dbc->tlock);
+            return NULL;
+          }
+          ses->next = dbdata->freeSessions;
+          dbdata->freeSessions = ses;
+        }
+        dbdata->freeSessions = ses->next;
+        unlock_thread(dbc->tlock);
+        return ses;
+      }
+      else
+      {
+        ses = DBgetSession(dbc->dbspec,rd);
+        if (ses == NULL)
+        {
+          dblog1(rd, "Could not get session");
+          wait_cond(dbc->cvar);
+          unlock_thread(dbc->tlock);
+          return apsmlGetSession(dbid, rd);
+        }
+        unlock_thread(dbc->tlock);
+        return ses;
+      }
+    }
+  }
   unlock_thread(dbc->tlock);
-    dblog1(rd, "7");
-  ses = dbdata->freeSessions;
-  dbdata->freeSessions = ses->next;
-  ses->next = (oSes_t *) dbdata->dbSessions;
-  dbdata->dbSessions = ses;
-   dblog1(rd, "Got a session");
   return ses;
 }/*}}}*/
 
-void
-apsmlORAChildInit(void *cd1, int num, void *pool, void *server)/*{{{*/
-{
-  db_conf *cd = (db_conf *) cd1;
-  proc_lock_child_init(&(cd->plock), cd->plockname, pool);
-  return;
-}/*}}}*/
+//void
+//apsmlORAChildInit(void *cd1, int num, void *pool, void *server)/*{{{*/
+//{
+//  db_conf *cd = (db_conf *) cd1;
+//  proc_lock_child_init(&(cd->plock), cd->plockname, pool);
+//  return;
+//}/*}}}*/
 
 void
 apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
@@ -844,6 +894,12 @@ apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
   }
   return;
 }/*}}}*/
+
+void 
+apsmlORAChildInit(void *c1, int num, void *pool, void *server)
+{
+  return;
+}
 
 int 
 apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
@@ -862,34 +918,24 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
     cd->password = NULL;
     cd->TNSname = NULL;
     cd->maxdepth = 0;
-    cd->limit = 0;
-    cd->totalNsessions = getSharedMem(rd, sizeof(unsigned long));
+    cd->maxsessions = 0;
     cd->dbspec = NULL;
-    cd->plockname = (char *) tempnam(NULL, NULL);
-    if (cd->plockname == NULL)
-    {
-      free(cd);
-      return 2;
-    }
-    if (create_proc_lock(&(cd->plock), cd->plockname, rd))
-    {
-      free(cd->plockname);
-      free(cd);
-      return 2;
-    }
     if (create_thread_lock(&(cd->tlock), rd))
     {
-      free(cd->plockname);
-      destroy_proc_lock(cd->plock);
+      free(cd);
+      return 2;
+    }
+    if (create_cond_variable(&(cd->cvar), cd->tlock, rd))
+    {
+      destroy_thread_lock(cd->tlock);
       free(cd);
       return 2;
     }
     if (apsmlPutDBData (i,(void *) cd, apsmlORAChildInit, DBShutDownWconf, apsmlDbCleanUpReq, rd))
     {
-      free(cd->plockname);
-      destroy_proc_lock(cd->plock);
       destroy_thread_lock(cd->tlock);
       free(cd);
+      return 2;
     }
     cd = (db_conf *) apsmlGetDBData (i,rd);
   }
