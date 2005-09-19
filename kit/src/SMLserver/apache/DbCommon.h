@@ -1,21 +1,28 @@
 
-typedef void * proc_lock;
+//typedef void * proc_lock;
 typedef void * thread_lock;
+typedef void * cond_var;
 
-int create_proc_lock(proc_lock *plock, char *plockname, void *rd);
-void destroy_proc_lock(proc_lock plock);
+//int create_proc_lock(proc_lock *plock, char *plockname, void *rd);
+//void destroy_proc_lock(proc_lock plock);
 
 int create_thread_lock(thread_lock *tlock, void *rd);
 void destroy_thread_lock(thread_lock tlock);
 
-void lock_proc(proc_lock plock);
-void unlock_proc(proc_lock plock);
+//void lock_proc(proc_lock plock);
+//void unlock_proc(proc_lock plock);
 
 void lock_thread(thread_lock tlock);
 void unlock_thread(thread_lock tlock);
 
-void * getSharedMem(void *rd, int size);
-void proc_lock_child_init(proc_lock *plock, char *plockname, void *pool);
+int create_cond_variable(cond_var *, thread_lock, void *rd);
+void destroy_cond_variable(cond_var);
+void signal_cond(cond_var);
+void wait_cond(cond_var);
+void broadcast_cond(cond_var);
+
+// void * getSharedMem(void *rd, int size);
+//void proc_lock_child_init(proc_lock *plock, char *plockname, void *pool);
 
 void raise_overflow(void);
 
