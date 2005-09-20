@@ -59,6 +59,7 @@ typedef struct
 //  unsigned long limit;
   int maxdepth;
   int maxsessions;
+  int minsessions;
   oDb_t *dbspec;
 } db_conf;
 
@@ -171,6 +172,8 @@ putmsg(oDb_t *db, sword status, sb4 *errcode, ub4 t, char *msg, int msgLength, O
   return OCI_ERROR;
 }/*}}}*/
 
+static ub1 spool_getmode = OCI_SPOOL_ATTRVAL_FORCEGET;
+
 static oDb_t * 
 DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int max, int dbid)/*{{{*/
 {
@@ -213,6 +216,15 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
       &(db->poolNameLength), (CONST OraText *) TNSname, (ub4) strlen(TNSname),
       (ub4) min, (ub4) max, (ub4) 1, (OraText *) userid, (ub4) strlen(userid), 
       (OraText *) password, (ub4) strlen(password), OCI_SPC_STMTCACHE | OCI_SPC_HOMOGENEOUS);
+  ErrorCheck(status, OCI_HTYPE_ERROR, db,
+      OCIHandleFree(db->poolhp, OCI_HTYPE_SPOOL);
+      OCIHandleFree(db->errhp, OCI_HTYPE_ERROR);
+      OCIHandleFree(db->envhp, OCI_HTYPE_ENV);
+      return NULL;,
+      ctx
+      )
+  status = OCIAttrSet((dvoid *) db->poolhp, OCI_HTYPE_SPOOL, &spool_getmode, 0, 
+                       OCI_ATTR_SPOOL_GETMODE, db->errhp);
   ErrorCheck(status, OCI_HTYPE_ERROR, db,
       OCIHandleFree(db->poolhp, OCI_HTYPE_SPOOL);
       OCIHandleFree(db->errhp, OCI_HTYPE_ERROR);
@@ -783,7 +795,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   if (!dbc->dbspec)
   {
     if (!dbc->TNSname || !dbc->username || !dbc->password || 
-         dbc->maxdepth < 1)
+         dbc->maxdepth < 1 || dbc->minsessions < 1 || dbc->maxsessions < 1)
     {
       unlock_thread(dbc->tlock);
       dblog1(rd, 
@@ -792,7 +804,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
     }
     dblog1(rd, "Initializing database connection");
     dbc->dbspec = DBinitConn(rd, dbc->TNSname, dbc->username, 
-                                    dbc->password, 5, 10, dbid);
+                                    dbc->password, dbc->minsessions, dbc->maxsessions, dbid);
     dblog1(rd, "Database initialized");
   }
   dblog1(rd, "3");
@@ -919,6 +931,7 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
     cd->TNSname = NULL;
     cd->maxdepth = 0;
     cd->maxsessions = 0;
+    cd->minsessions = 0;
     cd->dbspec = NULL;
     if (create_thread_lock(&(cd->tlock), rd))
     {
@@ -948,12 +961,23 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
     case 5:
       id = (int) val;
       cd->maxdepth = id;
+      if (cd->maxsessions && cd->maxsessions < cd->maxdepth) return 3;
+      break;
+    case 6:
+      id = (int) val;
+      cd->minsessions = id;
+      break;
+    case 7:
+      id = (int) val;
+      cd->maxsessions = id;
+      if (cd->maxdepth && cd->maxsessions < cd->maxdepth) return 3;
       break;
     case 2:
     case 3:
     case 4:
       sd = (char *) val;
       target = (char *) malloc (strlen (sd)+1);
+      if (!target) return 2;
       strcpy(target, sd);
       switch (pos)
       {
