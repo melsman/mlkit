@@ -2,7 +2,7 @@ all: test_kam test_mlkit
 
 test_small_nh:
 	../bin/kittester ../bin/mlkit small_nh.tst
-	/bin/mv test_report.dvi test_report-native-small-nh-`/bin/date -I`.dvi
+	/bin/mv test_report.pdf test_report-native-small-nh-`/bin/date -I`.pdf
 
 bench_gengc:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gengc -prof: -mlkit:-gc -prof: -mlkit:-gc: -mlkit:-gengc: -o gengc.html gcregions.tst)' | tcsh -s
@@ -43,18 +43,18 @@ gcregions4:
 
 testbasic_mlkit:
 	../bin/kittester ../bin/mlkit allbasic.tst
-	/bin/mv test_report.dvi testbasic_report-native-`/bin/date -I`.dvi
+	/bin/mv test_report.pdf testbasic_report-native-`/bin/date -I`.pdf
 
 test_mlkit:
 	../bin/kittester ../bin/mlkit all.tst
 #	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
 #	../bin/kittester ../bin/mlkit all_gengc.tst
 #	../bin/kittester ../bin/mlkit all_nogengc.tst
-	/bin/mv test_report.dvi test_report-native-`/bin/date -I`.dvi
+	/bin/mv test_report.pdf test_report-native-`/bin/date -I`.pdf
 
 test_kam:
 	../bin/kittester ../bin/mlkit_kam all.tst
-	/bin/mv test_report.dvi test_report-kam-`/bin/date -I`.dvi
+	/bin/mv test_report.pdf test_report-kam-`/bin/date -I`.pdf
 
 clean:
 	rm -f *.exe.x86-linux *.exe.out.txt *.exe.png *.exe run *~ */*~
