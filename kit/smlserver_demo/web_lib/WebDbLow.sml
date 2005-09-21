@@ -103,33 +103,41 @@ functor DbOracleBackend(type conn = int
     structure DbBasic = NsDbBasicOra
     val first = ref true
     fun config (i:int) (t : 'a Info.Type.Type, d : string, v : 'a) : unit = 
-                           let fun setInt (p : int) : unit = 
+                           let fun handRes (res : int) = case res 
+                                                     of 0 => ()
+                                                      | 1 => raise Fail "Unknown option"
+                                                      | 2 => raise Fail "Out of memory"
+                                                      | 3 => raise Fail "MaximumNumberOfConnections must be larger than SessionMaxDepth" 
+                                                      | _ => raise Fail "Unknown problem in oracle driver"
+
+                           
+                               fun setInt (p : int) : unit = 
                                      if #name t = #name Info.Type.Int
                                      then 
                                      let 
                                        val res : int = 
                                         prim("@:", ("apsmlORASetVal",i,getReqRec(),p,
                                                 (#from_string Info.Type.Int (#to_string t v))))
-                                       in if res = 0 then () else raise Fail "Out of mem"
+                                       in handRes res
                                        end
                                      else raise Domain
                                fun setString (p : int) : unit = 
                                      if #name t = #name Info.Type.String
                                      then 
-                                     let val res : int = prim("@:", ("apsmlORASetVal",i,getReqRec(),p,
-                                                  (#from_string Info.Type.String (#to_string t v))))
-                                     in if res = 0 then () else raise Fail "Out of mem"
-                                     end
+                                       let val res : int = prim("@:", ("apsmlORASetVal",i,getReqRec(),p,
+                                                    (#from_string Info.Type.String (#to_string t v))))
+                                       in handRes res
+                                       end
                                      else raise Domain
                                fun setBool (p : int) : unit = 
                                      if #name t = #name Info.Type.Bool
                                      then 
-                                     let val res : int = prim("@:", ("apsmlORASetVal",i,getReqRec(),p,
-                                                  if (#from_string Info.Type.Bool (#to_string t v))
-                                                  then 1 
-                                                  else 0))
-                                     in if res = 0 then () else raise Fail "Out of mem"
-                                     end
+                                       let val res : int = prim("@:", ("apsmlORASetVal",i,getReqRec(),p,
+                                                    if (#from_string Info.Type.Bool (#to_string t v))
+                                                    then 1 
+                                                    else 0))
+                                       in handRes res
+                                       end
                                      else raise Domain
                            in ((
                                if !first then 
@@ -157,12 +165,16 @@ functor DbOracleBackend(type conn = int
                             | "PassWord" => setString 3
                             | "TNSname"  => setString 4
                             | "SessionMaxDepth" => setInt 5
+                            | "MinimumNumberOfConnections" => setInt 6
+                            | "MaximumNumberOfConnections" => setInt 7
                             | _ => (log "Unknown setting :" ^ d; raise Domain))
                            end
     fun getHandle (i:int) : DbHandle = let val res : int = (log "apsmlGetSession" ; prim(":", ("apsmlGetSession",i,getReqRec()))) before (log("apsmlGetSession DONE");())
                                  in if res = 0
                                     then raise Fail "Could not get database session"
-                                    else ref (SOME res)
+                                    else (if res = 1 
+                                    then raise Fail "Maximum nesting of oracle connections reached"
+                                    else ref (SOME res))
                                  end
     fun putHandle (h:DbHandle) : unit = 
                case !h of NONE => ()
