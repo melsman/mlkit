@@ -922,7 +922,8 @@ struct
 	      (Pickle.con1 (fn ((k,p,g,l),px,t) => RHO {key=k,put=p,get=g,level=l,
 							instance=ref NONE,pix=px,ty=t})
 	       (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t} =>
-		((k,p,g,l),px,t)
+		((* print ("Pickling rho(" ^ Int.toString (!k) ^ ") with level \t" ^ Int.toString (!l) ^ "\n"); *)
+		 ((k,p,g,l),px,t))
 	         | _ => die "pu_einfo.fun_RHO")
 	       (Pickle.tup3Gen0(Pickle.tup4Gen0(pu_intref, Pickle.nameGen "put" (pu_nodeopt pu_einfo),
 						Pickle.nameGen "get" (pu_nodeopt pu_einfo),

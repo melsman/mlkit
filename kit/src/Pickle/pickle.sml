@@ -472,7 +472,8 @@ structure Pickle :> PICKLE = (* was : *)
 
     fun dataGen (name, toInt: 'a -> int, fs : ('a pu -> 'a pu) list) : 'a pu =
 	debug "dataGen"
-	let val hash_data = newHashCount()
+	let (* val _ = print ("Generated pickler for " ^ name ^ "\n") *)
+	    val hash_data = newHashCount()
 	    val res : 'a pu option ref = ref NONE
 	    val ps : 'a pu Vector.vector cache ref = ref NoCache
 	    fun p v (s,pe) =
@@ -522,7 +523,8 @@ structure Pickle :> PICKLE = (* was : *)
     fun data2Gen (aname, aToInt: 'a -> int, afs : ('a pu * 'b pu -> 'a pu) list,
 		  bname, bToInt: 'b -> int, bfs : ('a pu * 'b pu -> 'b pu) list) 
 	: 'a pu * 'b pu =
-	let val aHashData = newHashCount()
+	let (* val _ = print ("Generated pickler for " ^ aname ^ "/" ^ bname ^ "\n") *)
+	    val aHashData = newHashCount()
 	    val bHashData = newHashCount()
 	    val aRes : 'a pu option ref = ref NONE
 	    val bRes : 'b pu option ref = ref NONE
@@ -617,7 +619,8 @@ structure Pickle :> PICKLE = (* was : *)
 		  bname, bToInt: 'b->int, bfs : ('a pu*'b pu*'c pu->'b pu)list,
 		  cname, cToInt: 'c->int, cfs : ('a pu*'b pu*'c pu->'c pu)list) 
 	: 'a pu * 'b pu * 'c pu =
-	let val aHashData = newHashCount()
+	let (* val _ = print ("Generated pickler for " ^ aname ^ "/" ^ bname ^ "/" ^ cname ^ "\n") *)
+	    val aHashData = newHashCount()
 	    val bHashData = newHashCount()
 	    val cHashData = newHashCount()
 	    val aRes : 'a pu option ref = ref NONE
