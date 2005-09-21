@@ -3,7 +3,7 @@ fun out s = (TextIO.output(TextIO.stdOut, s ^ "\n"); TextIO.flushOut TextIO.stdO
 fun isNullFP(s : foreignptr) : bool = prim("__is_null", s)
 
 val b = Dynlib.dlopen (SOME "libcrack.so", Dynlib.NOW, false)
-val _ = Dynlib.dlsym ("testdyn","FascistCheck",b) 
+val _ = Dynlib.dlsym ("testdyn","FascistCheck",b)
 
 fun fascistCheck a : string option = 
              let val b : foreignptr = prim("@:", ("testdyn", a : string, "/usr/lib/cracklib_dict"))
