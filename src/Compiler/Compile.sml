@@ -26,6 +26,13 @@ structure Compile: COMPILE =
 
     val region_profiling_p = Flags.is_on0 "region_profiling"
 
+    val rse_0 = Flags.add_bool_entry 
+	{long="print_region_static_env0", short=SOME "Prse0", 
+	 menu=["Printing of RSE0","print imported region static environment"],
+	 item=ref false, neg=false, desc=
+	 "Print imported region static environment prior to\n\
+	  \region inference."}
+
     val print_storage_mode_expression = Flags.add_bool_entry 
 	{long="print_storage_mode_expression", short=SOME "Psme", 
 	 menu=["Printing of intermediate forms","print storage mode expression"],
@@ -123,7 +130,7 @@ structure Compile: COMPILE =
 
     type arity = int
 
-
+(*
     (* -----------------------------------------
      * Effect `recounter'; for normalisation
      * ----------------------------------------- *)
@@ -135,7 +142,7 @@ structure Compile: COMPILE =
       fun effect_counter() = (effect_count := !effect_count + 1; !effect_count)
       fun reset_effect_count() = effect_count := effect_init
     end
-
+*)
 
     (* --------------------------------------------
      * Program point counter
@@ -297,8 +304,10 @@ structure Compile: COMPILE =
 	val _ = if !profRegInf.b then (Compiler.Profile.reset(); Compiler.Profile.setTimingMode true) else ()
 *)
         val rse_with_con = SpreadExp.RegionStatEnv.plus(rse,rse_con)
+
+	val _ = if rse_0() then display ("Region static environment 0",SpreadExp.RegionStatEnv.layout(rse_with_con))
+		else ()
 (*
-	val _ = display ("Region static environment 0",SpreadExp.RegionStatEnv.layout(rse_with_con))
 	val effects_rse0 = SpreadExp.RegionStatEnv.FoldLvar (fn ((lv,(_,_,s,r,_,_)),acc) => if Lvars.pr_lvar lv = "revAcc" then r :: RType.frv_sigma s @ acc else acc) nil rse_with_con
 	val _ = print ("Checking effects; size = " ^ Int.toString(List.length effects_rse0) ^ "\n")
 	val _ = out_layer (Effect.layoutEtas effects_rse0)
@@ -339,12 +348,14 @@ structure Compile: COMPILE =
                       export_basis= new_layer  (* list of region variables and arrow effects *)}
 
 	(* call of normPgm no longer commented out; mads *)
+(*
         val _ = if region_profiling_p() then ()
 		else
 		  ((*print "RegInf.Normalising program ...\n";*)
 		   reset_effect_count();      (* inserted; mads *)
 		   RegionExp.normPgm(pgm',effect_counter) 
 		   )
+*)
 (*	val _ = print "RegInf.Computing rse' ...\n"  *)
 	val rse' =
 	  case spread_lamb_exp
