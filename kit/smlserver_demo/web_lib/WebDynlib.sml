@@ -34,5 +34,9 @@ functor Dynlib(Cache : WEB_CACHE) :> WEB_DYNLIB =
             let val a : string = prim("resolveFun", (primname, cname, lib))
             in if isNull a then (Cache.insert (mySymCache, primname, (), NONE); ()) else raise Fail a
             end
+    fun isLinked (name : string) = 
+            let val a : int = prim("@isResolvedFun", name)
+            in a = 1
+            end
     end
   end

@@ -25,5 +25,9 @@ structure Dynlib :> DYNLIB =
             let val a : string = prim("resolveFun", (primname, cname, lib))
             in if isNull a then () else raise Fail a
             end
+    fun isLinked (primname : string) = 
+            let val a : int = prim ("@isResolvedFun", primname)
+            in a = 1
+            end
     end
   end
