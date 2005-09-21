@@ -8074,10 +8074,51 @@ It may be necessary to modify the string entry \texttt{link with
   library} in the {\tt Control} menu so as to link in additional C
 libraries.
 
+\section{Linking at Runtime}
+\label{link_at_runtime.sec}
+The Kit support dynamic linking at runtime.
+This is done using the \texttt{dlopen} and \texttt{dlsym} functions from the
+kit library. The function \texttt{dlopen} opens a given library and
+the function \texttt{dlsym} associates a name to a given function in the
+library. If the name already has an association the exception `Fail' is
+raised.
+
+Using \texttt{dlopen} and \texttt{dlsym} as in figure~\ref{dynlib.fig},
+you can call a dynamically linked library function by a primitive call
+to `:'.
+
+If you call `:' with a name without any association \texttt{Match} is
+raised.
+\begin{figure}
+\hrule \medskip
+\begin{verbatim}
+  fun isNullFP(s : foreignptr) : bool = prim("__is_null", s)
+  val b = Dynlib.dlopen (SOME "libcrack.so", Dynlib.NOW, false)
+  val _ = Dynlib.dlsym ("testdyn","FascistCheck",b)
+  fun fascistCheck a : string option =
+    let val b : foreignptr = 
+      prim("@:", ("testdyn", a : string, 
+                            "/usr/lib/cracklib_dict"))
+    in if isNullFP b 
+       then NONE 
+       else SOME(prim ("fromCtoMLstring", b))
+    end
+\end{verbatim}
+\caption{Dynamic linking of the function ``FascistCheck'' from the library ``libcrack.so''.
+  The ml-function fascistCheck calls FascistCheck with the argument
+  (a,/usr/lib/cracklib\_ dict) and converts the resulting c-string into
+  an ml-string.
+  This example uses the auto conversion feature as described in
+  the next section.}
+\label{dynlib.fig}
+\medskip \hrule
+\end{figure}
+
 %=============================================
 \section{Auto Conversion} 
 %=============================================
 \index{auto conversion}% 
+\label{auto_conversion.sec}
 For C functions that are simple, in a sense
 that we shall soon define, the Kit can generate code that
 automatically converts representations of arguments from ML to C and
