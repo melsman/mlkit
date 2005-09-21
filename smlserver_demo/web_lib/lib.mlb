@@ -21,7 +21,6 @@
     WebLowMail.sml
     WebDbLow.sml
   in
-      RegExp.sml
     WEB.sml
     Web.sml  
     DbFunctor.sml 
