@@ -9,6 +9,8 @@ val _ = Db.config(Web.Info.Type.String, "UserName", "testuser")
 val _ = Db.config(Web.Info.Type.String, "TNSname", "localhost/test")
 val _ = Db.config(Web.Info.Type.String, "PassWord", "test")
 val _ = Db.config(Web.Info.Type.Int, "SessionMaxDepth", 3)
+val _ = Db.config(Web.Info.Type.Int, "MinimumNumberOfConnections", 4)
+val _ = Db.config(Web.Info.Type.Int, "MaximumNumberOfConnections", 10)
 (*
 *)
 val _ = Web.log (Web.Notice, "...done executing init.sml")
