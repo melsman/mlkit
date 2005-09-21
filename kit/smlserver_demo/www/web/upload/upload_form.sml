@@ -1,4 +1,4 @@
-val os_dir = FileSys.openDir (Web.Info.pageRoot() ^ "/apache/upload/files/")
+val os_dir = FileSys.openDir (Web.Info.pageRoot() ^ "/web/upload/files/")
 fun load_files acc =
   let
     val filename = FileSys.readDir os_dir
