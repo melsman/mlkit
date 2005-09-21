@@ -4,4 +4,5 @@ signature WEB_DYNLIB =
     type ForeignLib
     val dlopen : string option * flag * bool -> ForeignLib
     val dlsym  : string * string * ForeignLib -> unit
+    val isLinked : string -> bool
   end
