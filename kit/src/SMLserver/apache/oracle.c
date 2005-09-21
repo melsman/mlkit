@@ -54,7 +54,6 @@ typedef struct
 //  char *plockname;
   thread_lock tlock;
   cond_var cvar;
-  
 //  unsigned long *totalNsessions;
 //  unsigned long limit;
   int maxdepth;
@@ -68,6 +67,7 @@ typedef struct
   void *dbSessions;
   void *freeSessions;
   int theOne;
+  int depth;
 } dbOraData;
 
 
@@ -183,11 +183,17 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
   oDb_t *db;
   status = OCIEnvCreate(&envhp, OCI_THREADED | OCI_NEW_LENGTH_SEMANTICS, 
                         (dvoid *) 0, 0, 0, 0, sizeof(oDb_t), (dvoid **) &db);
+  if (!db)
+  {
+    dblog1(ctx, "DataBase init failed; are you sure you have set ORACLE_HOME in your environment");
+    return NULL;
+  }
   ErrorCheck(status, OCI_HTYPE_ENV, db, 
       dblog1(ctx, "DataBase init failed; are you sure you have set ORACLE_HOME in your environment");
       return NULL;,
       ctx
       )
+  dblog1(ctx, "dbinit2");
   db->dbid = dbid;
   db->freeSessionsGlobal = NULL;
   db->envhp = envhp;
@@ -203,6 +209,7 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
       return NULL;,
       ctx
       )
+  dblog1(ctx, "dbinit3");
   status = OCIHandleAlloc ((dvoid *) db->envhp, (dvoid **) &(db->errhp), 
       OCI_HTYPE_ERROR, (size_t) 0, (dvoid **) 0);
   ErrorCheck(status, OCI_HTYPE_ENV, db,
@@ -690,6 +697,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
       tmpses = tmpses->next;
     }
   }
+  dbdata->depth--;
   db_conf *dbc = (db_conf *) apsmlGetDBData(dbid, rd);
   lock_thread(dbc->tlock);
   if (dbdata->theOne)
@@ -766,6 +774,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
     dbdata->freeSessions = NULL;
     dbdata->dbSessions = NULL;
     dbdata->theOne = 0;
+    dbdata->depth = 0;
     if (putDbData(dbid, dbdata, rd)) 
     {
       free(dbdata);
@@ -780,6 +789,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   dblog1(rd, "1");
   if (dbdata->freeSessions)
   {
+    dbdata->depth++;
     ses = dbdata->freeSessions;
     dbdata->freeSessions = ses->next;
     return ses;
@@ -790,6 +800,10 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   {
     dblog1(rd, "Database not configred");
     return NULL;
+  }
+  if (dbdata->depth >= dbc->maxdepth) 
+  {
+    return (oSes_t *) 1;
   }
   lock_thread(dbc->tlock);
   if (!dbc->dbspec)
@@ -825,6 +839,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       unlock_thread(dbc->tlock);
       return NULL;
     }
+    dbdata->depth++;
     unlock_thread(dbc->tlock);
     return ses;
   }
@@ -837,6 +852,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       dbdata->freeSessions = ses->next;
       db->freeSessionsGlobal = NULL;
       unlock_thread(dbc->tlock);
+      dbdata->depth++;
       return ses;
     }
     else
@@ -864,6 +880,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
         }
         dbdata->freeSessions = ses->next;
         unlock_thread(dbc->tlock);
+        dbdata->depth++;
         return ses;
       }
       else
@@ -877,12 +894,14 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
           return apsmlGetSession(dbid, rd);
         }
         unlock_thread(dbc->tlock);
+        dbdata->depth++;
         return ses;
       }
     }
   }
+  dblog1(rd, "Oracle driver: End of apsmlGetSession reached. This is not suppose to happend");
   unlock_thread(dbc->tlock);
-  return ses;
+  return NULL;
 }/*}}}*/
 
 //void
