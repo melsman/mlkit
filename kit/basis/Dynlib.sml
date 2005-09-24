@@ -18,7 +18,9 @@ structure Dynlib :> DYNLIB =
                                          | SOME l => (Word.fromInt 0, l)
                 val (b : foreignptr, s: string) = 
                          prim("sml_dlopen", (lib', Word.toInt (Word.orb(Word.orb(b0,b1),b2))))
-            in if isNullFP b then (if isNull s then raise Fail "Unknown error" else raise Fail s) 
+            in if isNullFP b then (if isNull s then 
+				       raise Fail "Dynlib.dlopen:Unknown error" 
+				   else raise Fail s) 
                else b
             end
     fun dlsym (primname : string, cname : string, lib : foreignptr) = 
