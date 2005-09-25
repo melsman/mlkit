@@ -28,20 +28,23 @@ structure Compile: COMPILE =
 
     val rse_0 = Flags.add_bool_entry 
 	{long="print_region_static_env0", short=SOME "Prse0", 
-	 menu=["Printing of RSE0","print imported region static environment"],
+	 menu=["Printing of RSE0",
+	       "print imported region static environment"],
 	 item=ref false, neg=false, desc=
 	 "Print imported region static environment prior to\n\
 	  \region inference."}
 
     val print_storage_mode_expression = Flags.add_bool_entry 
 	{long="print_storage_mode_expression", short=SOME "Psme", 
-	 menu=["Printing of intermediate forms","print storage mode expression"],
+	 menu=["Printing of intermediate forms",
+	       "print storage mode expression"],
 	 item=ref false, neg=false, desc=
 	 "Print Region Expression after storage mode analysis"}
 
     val print_drop_regions_expression_with_storage_modes = Flags.add_bool_entry 
 	{long="print_drop_regions_expression_with_storage_modes", short=SOME "Pdresm", 
-	 menu=["Printing of intermediate forms","print drop regions expression with storage modes"],
+	 menu=["Printing of intermediate forms",
+	       "print drop regions expression with storage modes"],
 	 item=ref false, neg=false, desc=
 	 "Print Region Expression after dropping word regions and\n\
 	  \regions arguments with only get-effects. Also print\n\
@@ -57,7 +60,8 @@ structure Compile: COMPILE =
 
     val print_physical_size_inference_expression = Flags.add_bool_entry 
 	 {long="print_physical_size_inference_expression", short=SOME "Ppse", 
-	  menu=["Printing of intermediate forms","print physical size inference expression"],
+	  menu=["Printing of intermediate forms",
+		"print physical size inference expression"],
 	  item=ref false, neg=false, desc=
 	  "Print Region Expression after physical size inference."}
 
@@ -83,16 +87,17 @@ structure Compile: COMPILE =
     fun length l = foldr (fn (_, n) => n+1) 0 l
 
     local
-      fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log)
-      (*; TextIO.output(TextIO.stdOut, s)*))
+      fun msg(s: string) = 
+	  (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     in
       fun chat(s: string) = if !Flags.chat then msg (s^"\n") else ()
     end
 
     fun fast_pr stringtree = 
-           (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
-            TextIO.output(!Flags.log, "\n\n"))
-
+	(PP.outputTree ((fn s => TextIO.output(!Flags.log, s)),
+			stringtree, !Flags.colwidth);
+	 TextIO.output(!Flags.log, "\n\n"))
+	
     fun display(title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
@@ -116,33 +121,24 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
       
     val layoutLambdaPgm = LambdaExp.layoutLambdaPgm 
-    fun layoutRegionPgm  x = (RegionExp.layoutLambdaPgm 
-                            (if print_regions() then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
-                             else fn _ => NONE)
+    fun layoutRegionPgm x = 
+	(RegionExp.layoutLambdaPgm 
+	 (if print_regions() then 
+	      (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
+	  else fn _ => NONE)
                             (fn _ => NONE)) x
-    fun layoutRegionExp x = (RegionExp.layoutLambdaExp 
-                            (if print_regions() then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
-                             else fn _ => NONE)
-                             (fn _ => NONE)) x
+    fun layoutRegionExp x = 
+	(RegionExp.layoutLambdaExp 
+	 (if print_regions() then 
+	      (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
+	  else fn _ => NONE)
+	      (fn _ => NONE)) x
 
     fun say x = TextIO.output(!Flags.log, x)
-    fun sayenv rse = PP.outputTree(say, SpreadExp.RegionStatEnv.layout rse, !Flags.colwidth)
+    fun sayenv rse = 
+	PP.outputTree(say, SpreadExp.RegionStatEnv.layout rse, !Flags.colwidth)
 
     type arity = int
-
-(*
-    (* -----------------------------------------
-     * Effect `recounter'; for normalisation
-     * ----------------------------------------- *)
-
-    local 
-      val effect_init = 9   (* there are six free variables (global_regions) in init_rse. *)
-      val effect_count = ref effect_init
-    in
-      fun effect_counter() = (effect_count := !effect_count + 1; !effect_count)
-      fun reset_effect_count() = effect_count := effect_init
-    end
-*)
 
     (* --------------------------------------------
      * Program point counter
@@ -271,7 +267,12 @@ structure Compile: COMPILE =
          Profile.profileOn();*)
          let 
 (*	     val _ = display ("Region static environment 0",SpreadExp.RegionStatEnv.layout rse) *)
-	     val effects_rse = SpreadExp.RegionStatEnv.FoldLvar (fn ((lv,(_,_,s,r,_,_)),acc) => if Lvars.pr_lvar lv = "revAcc" then r :: RType.frv_sigma s @ acc else acc) nil rse
+	     val effects_rse = 
+		 SpreadExp.RegionStatEnv.FoldLvar 
+		 (fn ((lv,(_,_,s,r,_,_)),acc) => 
+		  if Lvars.pr_lvar lv = "revAcc" then 
+		      r :: RType.frv_sigma s @ acc 
+		  else acc) nil rse
 (*	     val _ = out_layer (Effect.layoutEtas effects_rse) *)
 	     val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
          in 
@@ -281,8 +282,10 @@ structure Compile: COMPILE =
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
 	   if !Flags.DEBUG_COMPILER 
-	     then (display("\nReport: Spread; program", layoutRegionPgm spread_lamb) ;
-		   display("\nReport: Spread; entire cone after Spreading", Effect.layoutCone cone) )
+	     then (display("\nReport: Spread; program", 
+			   layoutRegionPgm spread_lamb) ;
+		   display("\nReport: Spread; entire cone after Spreading", 
+			   Effect.layoutCone cone) )
 	   else ();
 	   (cone,rse_con, spread_lamb)
          end) 
@@ -435,7 +438,8 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
 
     fun SpreadRegMul(rse, Psi, mulenv, opt_pgm) =
-      let val cone = Effect.push (SpreadExp.RegionStatEnv.mkConeToplevel rse)
+      let (* regionvar id is initialized by call in Manager.sml *)
+	  val cone = Effect.push (SpreadExp.RegionStatEnv.mkConeToplevel rse)
 	  val (cone, rse_con, spread_pgm) = spread(cone,rse,opt_pgm)
 	  val (cone, rse', reginf_pgm) = inferRegions(cone,rse,rse_con,spread_pgm)
 	  val (mul_pgm, mulenv', Psi') = mulInf(reginf_pgm,Psi,cone,mulenv)
@@ -614,4 +618,36 @@ structure Compile: COMPILE =
 	  end
       end
 
+    (* Hook to be run before any compilation *)
+    fun preHook():unit =
+	let (* val _ = print ("In preHook\n") *)
+	in
+	    Effect.resetCount() (* if "-regionvar n" is provided, 
+				 * the first effectvar/regionvar 
+				 * gets id n. *)
+(*	    before print "[Exiting preHook]\n" *)
+	end
+    
+    
+    fun pairToFile (a,b) file =
+	let
+	    fun outString {file:string,s:string} =
+		let (* val _ = print ("[Trying to write string to file " ^ file ^ "]\n") *)
+		    val os = TextIO.openOut file
+		in TextIO.output(os,s) before TextIO.closeOut os
+		    handle X => (TextIO.closeOut os ; raise X)
+		end
+	in
+	    outString {file=file, s=Int.toString a ^ " " ^ Int.toString b}
+	end
+
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    fun postHook {unitname:string} : unit =
+	if !(Flags.lookup_int_entry "regionvar") = ~1 then ()
+	else
+	let (* val _ = print "[In postHook]\n" *)
+	    val pair = Effect.getCountFirstLast()
+	    val file = unitname ^ ".rev" (* region/effect variable *)
+	in pairToFile pair file
+	end
   end;

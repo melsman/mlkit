@@ -9,6 +9,18 @@ struct
   structure G = DiGraph
 
   (* Add some dynamic flags for pretty-printing region variables. *) 
+
+  val regionvarInitial = Flags.add_int_entry
+      {long="regionvar", short=NONE, item=ref ~1, 
+       menu=["Control", "region variable initial value"], desc=
+       "Uses the provided number as the id of the first\n\
+        \generated region variable. When this option is\n\
+	\provided together with the -c option, a file f.rv\n\
+	\is written in the MLB/ directory with two numbers\n\
+	\in it: the id for the first region variable\n\
+	\generated and the id for the last region variable\n\
+	\generated. The number given must be greater than\n\
+	\any id for a top-level region/effect variable (>9)."}
   
   val print_rho_levels = Flags.add_bool_entry
       {long="print_rho_levels", short=NONE, item=ref false, neg=false,
@@ -621,13 +633,35 @@ struct
   fun popAndClean(cone:cone): effect list  * cone =
       (topLayer cone, #2(pop cone))    
 
+  fun max (n,m):int = if n > m then n else m
+
   local
-    val init_count = 9    (* 9 top-level predefined rhos/eps declared below! *)
-    val count = ref 0
+    val init_count : int option ref = ref NONE    (* 9 (1-9) top-level predefined rhos/eps declared below! *)
+    val count = ref 1
     fun inc r = r:= !r + 1;
+    val firstRef : int option ref = ref NONE      (* first rho/eps declared in a program unit *)
   in
-    fun resetCount _ = count:= init_count
-    fun freshInt _ = (inc count; !count)
+    fun set_init_count() = (* to be called after declaration of top-level effects below *)
+	case !init_count of
+	    NONE => init_count := SOME (!count)
+	  | SOME _ => die "init_count already set"
+
+    fun resetCount() = (* to be called before region inference in Compile.sml *)
+	case !init_count of
+	    SOME c => 
+		let val first = max (c, regionvarInitial())
+		in count := first ; firstRef := SOME first
+		end
+	  | NONE => die "init_count not set"
+
+    fun freshInt() = !count before inc count
+	
+    fun getCountFirstLast() =
+	let val last = !count
+	in case !firstRef of 
+	    SOME first => (first,last)
+	  | NONE => die "getCountFirstLast: error"
+	end	    
   end
 
   (* freshRho(cone): Generate a fresh region variable
@@ -768,6 +802,7 @@ struct
     val (toplevel_region_withtype_ref, initCone) = freshRhoWithTy(REF_RT,initCone)         (*7*)
     val (toplevel_region_withtype_triple, initCone) = freshRhoWithTy(TRIPLE_RT,initCone)   (*8*)
     val (toplevel_arreff, initCone) = freshEps(initCone)                                   (*9*)
+    val _ = set_init_count()
 
     val toplevel_effects = [toplevel_region_withtype_top, toplevel_region_withtype_word,
 			    toplevel_region_withtype_bot, toplevel_region_withtype_string,

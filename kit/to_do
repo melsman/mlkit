@@ -35,15 +35,13 @@ not supported.
 Things to do:
  
   - Upgrade to Apache. (Carsten)
-  - Add support for msp-files. (Martin)
   - Add support for region profiling. Add option "-regvar N" to mlkit
     executable and add support for passing a global counter around in
     the MLB-system. (Martin)
+  - Add support for msp-files. (Martin)
+  - Setup and test separate compilation mechanisms
   - Setup regression testing for different compile time options, such 
     as "-gc", "-prof", "-gc -prof" (Martin)
-  - Fix bug: Currently the following test programs fail (in kit/test):
-    wordN.sml, testmatc.sml, vector.sml, kitsimple.sml, nucleic.sml,
-    bytechar.sml, and array.sml.
 
 Notice that pm-files are no longer supported.
 
@@ -52,31 +50,7 @@ inappropriately strong. More information than necessary is included in
 the closure, which means that serialized bases take up a large amount
 of space on disk.
 
-mael 2005-05-09: New strategy for ML Kit executables:
-
-  mlkit: The MLKit executable now accepts files with the following
-    extensions:
-
-     .{sml,sig,fun}: compile a single file into an executable
-        a.out. Option -o allows for specifying a different output
-        file. If option -c is specified, no executable is generated;
-        instead interface files (extensions .{eb,eb1}) are generated. The
-        option -load may be used for loading interface files before
-        compilation.
-
-     .mlb: batch-based compilation of projects following the
-        mlb-syntax; starts a new process for each source-file
-        compilation.
-
-mael 2005-05-27: Things to do to carry the above work through:
-
- - Profiling: how do we make sure that region variables are unique?
-   One solution: add flag to mlkit: -regionvar N. With this flag, the
-   first generated region variable gets id N+1. The compiler stores a
-   pair (first regionvar, last regionvar) in a file f.rv. For each
-   compilation, mlbmake reads the last regionvar from the previous
-   fn.rv-file, which is then used with -regionvar (+1000) in
-   compilation of f(n+1).sml.
+mael 2005-05-27: Things to do:
 
  - With different combinations of options, code should be stored in
    different MLB sub-directories. There are different kinds of options:

@@ -49,6 +49,12 @@ structure ExecutionKAM : EXECUTION =
     fun unsafe_linkinfo (li:linkinfo) = #unsafe li
     fun mk_linkinfo a : linkinfo = a
 
+    (* Hook to be run before any compilation *)
+    val preHook : unit -> unit = Compile.preHook
+	
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    val postHook : {unitname:string} -> unit = Compile.postHook
+
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
 

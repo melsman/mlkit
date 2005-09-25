@@ -128,7 +128,11 @@ sig
 
   val level: cone -> int
 
-  val resetCount: 'a -> unit
+  val resetCount: unit -> unit (* set initial regionid/effectid to that provided 
+				* on command-line with "-regionvar n". *)
+  val getCountFirstLast: unit -> int * int (* used for storing count numbers in MLB/f.rv file
+					    * when "-c -regionvar N" is given as argument to
+					    * mlkit executable; used for region profiling. *)
   val freshRho: cone -> effect * cone
   val freshRhos: place list * cone -> place list * cone
   val freshRhosPreserveRT: place list * cone -> place list * cone
@@ -170,7 +174,6 @@ sig
 
   val update_increment: effect * delta_phi -> unit
   val update_areff: effect -> unit
-
 
   val computeIncrement: delta_phi -> effect list
   val current_increment: effect -> delta_phi (* the increment currently associated with an effect variable*)

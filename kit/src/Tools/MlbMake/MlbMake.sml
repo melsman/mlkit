@@ -42,6 +42,7 @@ signature MLB_PLUGIN =
 
      val mlbdir : unit -> string
      val objFileExt : unit -> string (* e.g., .o *)
+     val maybeSetRegionEffectVarCounter : int -> bool
   end
 
 structure MlbUtil =
@@ -118,6 +119,11 @@ struct
 
 	fun depFileFromSmlFile smlfile =
 	    fileFromSmlFile smlfile ".d"
+
+	fun revFileFromSmlFile smlfile = (* used when profiling is enabled for threading
+					  * region/effect variable counter through 
+					  * compilation. *)
+	    fileFromSmlFile smlfile ".rev"
     end
 
     fun maybe_create_dir d : unit = 
@@ -300,6 +306,28 @@ struct
 		in del f; app w ss; raise Exit
 		end
 
+    val initialRev = 100
+    fun readRevFromRevFile src =
+	let infix ##
+	    val op ## = OS.Path.concat
+	    val revFile = 
+		let val {dir,file} = OS.Path.splitDirFile src
+		in dir ## P.mlbdir() ## (file ^ ".rev")
+		end
+	    fun err() = MlbUtil.error ("Failed to read threaded region/effect variable counter from file " 
+				       ^ revFile ^ ", for profiling.")
+	    val is = TextIO.openIn revFile
+	in 
+	    ((case String.tokens Char.isSpace (TextIO.inputAll is) of
+		  [a,b] => let val _ = vchat ("First regvar/effvar used has id " ^ a ^ "; last has id " ^ b)
+			       val (a,b) = (Option.valOf (Int.fromString a), 
+					    Option.valOf (Int.fromString b))
+			   in b
+			   end
+		| _ => err()) before TextIO.closeIn is)
+   	    handle X => (TextIO.closeIn is; raise X)
+	end
+
     fun build {flags, mlbfile, target} : unit =
 	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
 	    val _ = vchat ("Finding sources...\n")		
@@ -324,7 +352,13 @@ struct
 	    val _ = MlbProject.dep mlbfile
 		
 	    val _ = vchat ("Compiling...\n")		
-	    val _ = app (build_mlb_one flags mlbfile) srcs_all
+	    val _ = foldl (fn (src,acc:int) =>
+			   let 
+			       (* val _ = print ("[Acc = " ^ Int.toString acc ^ "\n") *)
+			       val b = P.maybeSetRegionEffectVarCounter acc
+			       val () = build_mlb_one flags mlbfile src
+			   in if b then readRevFromRevFile src else initialRev
+			   end) initialRev srcs_all
 
 	    val _ = vchat ("Linking...\n")		
 	    val lnkFiles = map lnkFileFromSmlFile srcs_allbutscripts

@@ -1,5 +1,41 @@
 ML Kit NEWS file
 
+ * mael 2005-09-25: Region profiling now supported with mlb-files.
+   When "-prof" is passed to the mlkit executable, each region/
+   effect variable gets a unique id (threaded through the 
+   compilation). The solution applied is to add an option to the
+   mlkit executable: -regionvar N. With this option, the first
+   generated region variable gets id N+1. The compiler stores a
+   pair (first regionvar, last regionvar) in a file f.rev after having
+   compiled f.sml. For each compilation, mlbmake reads the last
+   regionvar from the previous fn.rev-file M, which is then used with
+   -regionvar M in compilation of f(n+1).sml.
+
+ * mael 2005-09-24: The mlkit nolonger accepts .pm-files. The
+   mlkit executable accepts files with the following extensions:
+
+     .mlb: batch-based compilation of projects following the
+        mlb-syntax; starts a new process for each source-file
+        compilation. The mlb-subsystem uses the -c, -load, and -link
+        options for compiling individual source files into object code
+        and for linking object code.
+
+     .{sml,sig}: Compiling a file F with extension .sml or .sig, without
+        use of the -c flag, is similar to compiling the .mlb-file:
+
+           local $(SML_LIB)/basis/basis.sml
+           in F
+           end
+         
+        If the flag -c is used, no executable is generated;
+        instead interface files (extensions .{eb,eb1}) are generated
+        together with linkable object code. The option -load may be
+        used for loading interface files before compilation. These
+        options are used by the MLB compilation subsystem.
+
+   For both .mlb-files and .sml-files, the -o flag allows for
+   specifying a different output file than a.out.
+
  * mael 2005-07-15: Fixed KitTester (src/Tools/Tester) so that it
    accepts mlb-files in the grammar for tst-files instead of
    pm-files. Also, simplify the system to allow only the following
@@ -33,9 +69,9 @@ ML Kit NEWS file
    executable. For full isolation, the implementation forks a
    different process for each compilation of a source file.
 
- * mael 2005-02-22: The scheme for mlb-files (shown below) is now also
-   used for cm-files when the MLKit is compiled with SML/NJ. See
-   e.g. kit/src/build.sml and kit/src/build_kam.sml.
+ * mael 2005-02-22: The grouping of source code for mlb-files (shown
+   below) is now also used for cm-files when the MLKit is compiled
+   with SML/NJ. See e.g. kit/src/build.sml and kit/src/build_kam.sml.
 
  * mael 2004-12-17: To actually split sources so that Barry,
    SMLserver, Kit(native) and Kit(bytecode) can be built
