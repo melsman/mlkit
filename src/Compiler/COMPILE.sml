@@ -16,6 +16,12 @@ signature COMPILE =
     type phsize
     type ('a,'b,'c) LambdaPgm
 
+    (* Hook to be run before any compilation *)
+    val preHook : unit -> unit
+	
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    val postHook : {unitname:string} -> unit
+
     datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
                  | CEnvOnlyRes of CEnv      (* the boolean is true (safe) if the code has no side-effects *)
 

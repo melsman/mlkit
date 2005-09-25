@@ -22,6 +22,7 @@ structure MLKitPlugIn : MLB_PLUGIN =
 
 	fun mlbdir() = "MLB/MLKit"
 	fun objFileExt() = ".o"
+	fun maybeSetRegionEffectVarCounter _ = false
     end
 
 structure BarryPlugIn : MLB_PLUGIN =
@@ -47,6 +48,7 @@ structure BarryPlugIn : MLB_PLUGIN =
 
 	fun mlbdir() = "MLB/Barry"
 	fun objFileExt() = ".b"
+	fun maybeSetRegionEffectVarCounter _ = false
     end
 
 structure Options =

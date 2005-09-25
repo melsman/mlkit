@@ -30,6 +30,12 @@ structure ExecutionBarry : EXECUTION =
     val exports_of_linkinfo : linkinfo -> (label list * label list) = fn _ => (nil,nil)
     fun unsafe_linkinfo (li: linkinfo) : bool =  #unsafe li
 
+    (* Hook to be run before any compilation *)
+    val preHook = fn _ => ()
+	
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    val postHook = fn _ => ()
+
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
     fun compile fe (ce,CB,strdecs,vcg_file) =

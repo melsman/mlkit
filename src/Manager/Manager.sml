@@ -28,7 +28,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
     val op ## = OS.Path.concat infix ##
 
-    val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    val region_profiling = Flags.is_on0 "region_profiling"
 
     val extendedtyping = 
 	(Flags.add_bool_entry 
@@ -100,22 +100,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     val quot = MO.quot
 
     (* SMLserver components *)
-	local 
-		fun webserver () = Flags.lookup_string_entry "webserver" 
-		fun pr (ref "AOLserver") = "Ns.Conn.write"
-		  | pr (ref "Apache") = "Web.Conn.write"
-		  | pr _ = raise Fail "Webserver not implemented"
-		                                 
-		fun pre (ref "AOLserver") = "val _ = Ns.returnHeaders()\n\
-                                   \val print = Ns.Conn.write\n\n"
-		  | pre (ref "Apache") = "val _ = Web.Conn.setMimeType(\"text/html\") \n\
-		                          \val print = Web.Conn.write\n\n"
-		  | pre _ = raise Fail "Webserver not implemented"
-	in
-    structure MspComp = MspComp(val error = error
-				val pr = fn () => pr (webserver ())
-				val pre = fn () => pre (webserver ()))
-	end
+    local 
+	fun webserver () = Flags.get_string_entry "webserver" 
+	fun pr "AOLserver" = "Ns.Conn.write"
+	  | pr "Apache"    = "Web.Conn.write"
+	  | pr _ = raise Fail "Webserver not implemented"
+	    
+	fun pre "AOLserver" = 
+	    "val _ = Ns.returnHeaders()\n\
+	     \val print = Ns.Conn.write\n\n"
+	  | pre "Apache" = 
+	    "val _ = Web.Conn.setMimeType(\"text/html\") \n\
+	     \val print = Web.Conn.write\n\n"
+	  | pre _ = raise Fail "Webserver not implemented"
+    in
+	structure MspComp = MspComp(val error = error
+				    val pr = fn () => pr (webserver ())
+				    val pre = fn () => pre (webserver ()))
+    end
 
     (* Support for parsing scriptlet form argument - i.e., functor
      * arguments *)
@@ -727,11 +729,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
 	    fun mlbdir() = MO.mlbdir()
 	    fun objFileExt() = if MO.backend_name = "KAM" then ".uo" else ".o"	    
+
+	    fun maybeSetRegionEffectVarCounter n =
+		let val b = region_profiling()
+		    val _ = if b then Flags.lookup_int_entry "regionvar" := n
+			    else ()
+		in b 
+		end
 	end
+
 
     structure MlbMake = MlbMake(structure P = MlbPlugIn
 				val verbose = Flags.is_on0 "chat"
-				val oneSrcFile : string option ref = ref NONE)
+				val oneSrcFile : string option ref = ref NONE)		   
 
     datatype source = SML of string | MLB of string | WRONG_FILETYPE of string 
 

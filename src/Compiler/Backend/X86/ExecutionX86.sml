@@ -26,7 +26,7 @@ structure ExecutionX86: EXECUTION =
        menu=["Control", "c libraries (archives)"],
        desc="If you have added your own object files to a project,\n\
 	\you might also need to link with libraries other\n\
-	\than libm.a and libc.a (\"-lm -lc\")."}
+	\than libm.a, libc.a, and libdl.a (\"-lm -lc -ldl\")."}
 
     val strip_p = ref false
     val _ = Flags.add_bool_entry 
@@ -91,6 +91,12 @@ structure ExecutionX86: EXECUTION =
     fun imports_of_linkinfo (li:linkinfo) = #imports li
     fun unsafe_linkinfo (li:linkinfo) = #unsafe li
     fun mk_linkinfo a : linkinfo = a
+
+    (* Hook to be run before any compilation *)
+    val preHook : unit -> unit = Compile.preHook
+	
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    val postHook : {unitname:string} -> unit = Compile.postHook
 
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv

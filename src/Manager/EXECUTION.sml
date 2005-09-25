@@ -23,6 +23,12 @@ signature EXECUTION =
     val exports_of_linkinfo : linkinfo -> label list * label list
     val unsafe_linkinfo : linkinfo -> bool
 
+    (* Hook to be run before any compilation *)
+    val preHook : unit -> unit
+	
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    val postHook : {unitname:string} -> unit
+
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
 

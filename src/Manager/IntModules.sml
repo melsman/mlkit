@@ -593,16 +593,12 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
      * resulting strdecs are compiled as usual. 
      * ---------------------------------------------------- *)
 
-    (* MEMO: we'll do this later... *)
-
-
     (* ----------------------------------------------------
      * The main interpretation function
      * ---------------------------------------------------- *)
 
-  (* fi:bool specifies whether functor applications in the topdec should be
-   * inlined. *)
-
+    (* fi:bool specifies whether functor applications in the topdec
+     * should be inlined. *)
 
     fun interp_aux(fi:bool,absprjid,intB,topdec, unitname) =
       case push_topdec topdec
@@ -621,7 +617,15 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     fun interp(fi:bool,absprjid,intB,topdec, unitname) =
       let 
+	infix ##
+	val op ## = OS.Path.concat
+	val _ = Execution.preHook()
         val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
+	val MLB_slash_unitname = 
+	    let val {dir,file} = OS.Path.splitDirFile unitname
+	    in dir ## ManagerObjects.mlbdir() ## file handle _ => die "concat"
+	    end
+	val _ = Execution.postHook {unitname=MLB_slash_unitname} handle _ => die "postHook"
         val intBs = flatten(t,[])
       in
         (List.foldl (fn(x, acc)=> IntBasis.plus(acc,x)) IntBasis.empty intBs, mc)

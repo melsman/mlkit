@@ -48,6 +48,12 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     val exports_of_linkinfo : linkinfo -> (label list * label list) = fn _ => (nil,nil)
     val unsafe_linkinfo : linkinfo -> bool = fn _ => false
 
+    (* Hook to be run before any compilation *)
+    val preHook = fn _ => ()
+	
+    (* Hook to be run after all compilations (for one compilation unit) *)
+    val postHook = fn _ => ()
+
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
     fun compile _ _ = CodeRes (CompilerEnv.emptyCEnv, CompileBasis.empty, (), ())
