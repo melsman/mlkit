@@ -1,5 +1,8 @@
 ML Kit NEWS file
 
+ * mael 2005-09-27: Added very limited Posix support necessary for
+   bootstrapping. See basis/POSIX.sml.
+
  * mael 2005-09-25: Region profiling now supported with mlb-files.
    When "-prof" is passed to the mlkit executable, each region/
    effect variable gets a unique id (threaded through the 
