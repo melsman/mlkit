@@ -109,4 +109,12 @@ max_fixed_int
 sml_dlopen
 resolveFun
 fromCtoMLstring
-
+sml_WIFEXITED
+sml_WIFSIGNALED
+sml_WIFSTOPPED
+sml_WEXITSTATUS
+sml_WTERMSIG
+sml_WSTOPSIG
+sml_waitpid
+exit
+fork

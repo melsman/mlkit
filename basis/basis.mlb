@@ -140,6 +140,10 @@ local
        in bas SML90.sml end
        end
 
+    basis Posix = 
+       let open General Word
+       in bas POSIX_PROCESS.sml POSIX.sml Posix.sml end
+       end
 in
-  open General List Array String Bool Word Byte Int Real IntInf Io System Sml90
+  open General List Array String Bool Word Byte Int Real IntInf Io System Sml90 Posix
 end
