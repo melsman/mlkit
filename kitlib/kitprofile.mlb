@@ -1,0 +1,6 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+in
+  kitprofile.sig
+  kitprofile.sml
+end

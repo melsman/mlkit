@@ -1,2 +1,0 @@
-  kitprofile.sig
-  kitprofile.sml
