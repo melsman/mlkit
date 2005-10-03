@@ -1,0 +1,8 @@
+local $(SML_LIB)/basis/basis.mlb
+      $(SML_LIB)/src/Pickle/pickle.mlb
+      $(SML_LIB)/basis/kitlib/pp.mlb
+      finmap_impl.mlb
+in
+   MONO_FINMAP_EXT.sml
+   IntFinMapPTExt.sml
+end

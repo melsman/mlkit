@@ -1,0 +1,10 @@
+local $(SML_LIB)/basis/basis.mlb
+      $(SML_LIB)/src/Pickle/pickle.mlb
+      $(SML_LIB)/basis/kitlib/pp.mlb
+      set_impl.mlb
+in
+   MONO_SET_EXT.sml
+   IntSetExt.sml
+   NatSetExt.sml
+   OrderSetExt.sml
+end

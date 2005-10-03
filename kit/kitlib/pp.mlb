@@ -1,0 +1,6 @@
+local $(SML_LIB)/basis/basis.mlb
+in
+  CRASH.sml Crash.sml
+  REPORT.sml Report.sml
+  PRETTYPRINT.sml PrettyPrint.sml
+end

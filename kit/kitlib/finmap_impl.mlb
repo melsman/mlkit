@@ -1,0 +1,5 @@
+local $(SML_LIB)/basis/basis.mlb
+in
+   MONO_FINMAP.sml
+   IntFinMapPTImpl.sml
+end
