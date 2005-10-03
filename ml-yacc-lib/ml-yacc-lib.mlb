@@ -1,0 +1,10 @@
+(* load file for ML-Yacc library *)
+local
+  $(SML_LIB)/basis/basis.mlb
+in
+  base.sig
+  join.sml
+  lrtable.sml
+  stream.sml
+  parser2.sml
+end
