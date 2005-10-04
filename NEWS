@@ -1,5 +1,27 @@
 ML Kit NEWS file
 
+ * mael 2005-10-04: Bootstrapping. Bootstrapping now works with the
+   native backend:
+
+     > cd kit
+     > make clean
+     > ./configure
+     > make mlkit
+     > rm -rf ~/mlkit-v1
+     > make bootstrap_first INSTDIR=$HOME/mlkit-v1
+     > cd ~/mlkit-v1
+     > rm -rf ~/mlkit-v2
+     > ulimit -s unlimited
+     > make bootstrap_next INSTDIR=$HOME/mlkit-v2
+     > cd ~/mlkit-v2
+     > rm -rf ~/mlkit-v3 
+     > make bootstrap_next INSTDIR=$HOME/mlkit-v3
+     > cd ..
+     > strip ~/mlkit-v2/bin/mlkit.img
+     > strip ~/mlkit-v3/bin/mlkit.img
+     > diff ~/mlkit-v2/bin/mlkit.img ~/mlkit-v3/bin/mlkit.img
+     >
+
  * mael 2005-09-27: Added very limited Posix support necessary for
    bootstrapping. See basis/POSIX.sml.
 
@@ -14,7 +36,7 @@ ML Kit NEWS file
    regionvar from the previous fn.rev-file M, which is then used with
    -regionvar M in compilation of f(n+1).sml.
 
- * mael 2005-09-24: The mlkit nolonger accepts .pm-files. The
+ * mael 2005-09-24: The mlkit no longer accepts .pm-files. The
    mlkit executable accepts files with the following extensions:
 
      .mlb: batch-based compilation of projects following the

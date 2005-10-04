@@ -1,3 +1,7 @@
+mael 2005-10-04: Better mlkit error reporting in case a src-file does
+not exist. Also, before src-files in an mlb-file are compiled, check
+that the files do indeed exist.
+
 varming 2005-09-05: Upgraded SMLserver to Apache. Started work on 
 configuration prior to compilation (autoconf).
 

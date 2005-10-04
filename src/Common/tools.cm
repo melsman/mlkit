@@ -2,8 +2,7 @@ group
 is
   ../Edlib/edlib.cm
   ../Pickle/pickle.cm
-
-  PatchBasisLib-SMLNJ-110.0.07.sml
+  patch-smlnj-110.0.7.cm
   BASIC_IO.sml 
   BasicIO.sml
   CRASH.sml

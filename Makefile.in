@@ -12,7 +12,7 @@ VPATH=@srcdir@
 
 INSTDIR=$(DESTDIR)@exec_prefix@/mlkit
 INSTDIR_KAM=$(DESTDIR)@exec_prefix@/mlkit_kam
-INSTDIR_BARRY=$(DESTDIR)@exec_prefix@barry
+INSTDIR_BARRY=$(DESTDIR)@exec_prefix@/barry
 INSTDIR_SMLSERVER=$(DESTDIR)@exec_prefix@/smlserver
 RPMDIR=/usr/src/rpm
 #RPMDIR=/usr/src/redhat
@@ -127,11 +127,26 @@ rpm: mlkit.spec
 	cp -f mlkit.spec $(RPMDIR)/SPECS/mlkit-$(KITVERSION).spec
 	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
-install:
-#	rm -rf $(INSTDIR)
+install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
+	$(MKDIR) $(INSTDIR)/ml-yacc-lib
+	$(MKDIR) $(INSTDIR)/basis
+	$(MKDIR) $(INSTDIR)/kitlib
+	$(MKDIR) $(INSTDIR)/kitdemo
+	$(MKDIR) $(INSTDIR)/kitdemo/utils
+	$(INSTALL) version $(INSTDIR)
+	$(INSTALL) copyright $(INSTDIR)
+	$(INSTALL) README $(INSTDIR)
+	$(INSTALL) Makefile $(INSTDIR)
+	$(INSTALL) mkinstalldirs $(INSTDIR)
+	$(INSTALL) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
+	$(INSTALL) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
+	$(INSTALL) ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
+	$(INSTALL) basis/*.{sml,mlb} $(INSTDIR)/basis
+
+install_runtime:
 	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
@@ -142,17 +157,10 @@ install:
 	$(INSTALL) bin/runtimeSystemGCTPProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
+
+install: install_top install_runtime
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
-	$(INSTALL) version $(INSTDIR)
-	$(INSTALL) copyright $(INSTDIR)
-	$(INSTALL) README $(INSTDIR)
-	$(INSTALL) -R kitdemo $(INSTDIR)/kitdemo 
-	$(INSTALL) -R ml-yacc-lib $(INSTDIR)/ml-yacc-lib
-	$(INSTALL) -R basis $(INSTDIR)/basis
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
-#	chown -R `whoami`.`whoami` $(INSTDIR)
-#	chmod -R ug+rw $(INSTDIR)
-#	chmod -R o+r $(INSTDIR)
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
@@ -161,34 +169,107 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
-#	rm -f /usr/bin/mlkit /usr/bin/rp2ps
-#	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
-#	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
-bootstrap0:
-	$(INSTALL) -a test $(INSTDIR)/test
+
+install_test:
+	$(MKDIR) $(INSTDIR)/test
+	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang 
+	$(MKDIR) $(INSTDIR)/test/DATA $(INSTDIR)/test/LEXGEN_DATA $(INSTDIR)/test/VLIW_DATA
+	$(MKDIR) $(INSTDIR)/test/ray/DATA $(INSTDIR)/test/mlyacc/DATA
+	$(INSTALL) test/Makefile test/Makefile_bootstrap $(INSTDIR)/test
+	$(INSTALL) test/Makefile test/*.{tst,sml,mlb,out.ok,log.ok,txt,dat,c} $(INSTDIR)/test
+	$(INSTALL) test/README $(INSTDIR)/test 
+	$(INSTALL) test/DATA/*.{gml,sml} $(INSTDIR)/test/DATA
+	$(INSTALL) test/LEXGEN_DATA/*.{lex,sml} $(INSTDIR)/test/LEXGEN_DATA 
+	$(INSTALL) test/VLIW_DATA/*.s $(INSTDIR)/test/VLIW_DATA 
+	$(INSTALL) test/ray/DATA/TEST $(INSTDIR)/test/ray/DATA
+	$(INSTALL) test/ray/input test/ray/README test/ray/output test/ray/load test/ray/*.{sml,mlb} $(INSTDIR)/test/ray
+	$(INSTALL) test/mlyacc/DATA/*.{grm,sml,sig} $(INSTDIR)/test/mlyacc/DATA
+	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(INSTDIR)/test/mlyacc
+	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(INSTDIR)/test/nucleic
+	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(INSTDIR)/test/danwang
 	cd $(INSTDIR)/test; ln -sf README testlink
 	cd $(INSTDIR)/test; ln -sf testcycl testcycl
 	cd $(INSTDIR)/test; ln -sf exists.not testbadl
 	cd $(INSTDIR)/test; echo -e 'hardlinkA' >> hardlinkA
 	cd $(INSTDIR)/test; ln -f hardlinkA hardlinkB
-	$(INSTALL) -a src $(INSTDIR)/src
-	cd $(INSTDIR)/src; $(MAKE) clean
+
+install_src:
+	$(MKDIR) $(INSTDIR)/src
+	$(MKDIR) $(INSTDIR)/src/Common $(INSTDIR)/src/Compiler $(INSTDIR)/src/Manager $(INSTDIR)/src/Pickle 
+	$(MKDIR) $(INSTDIR)/src/CUtils $(INSTDIR)/src/Edlib $(INSTDIR)/src/Parsing $(INSTDIR)/src/Runtime 
+	$(MKDIR) $(INSTDIR)/src/SMLserver $(INSTDIR)/src/Tools
+	$(MKDIR) $(INSTDIR)/src/SMLserver/apache
+	$(MKDIR) $(INSTDIR)/src/SMLserver/apache/test
+	$(MKDIR) $(INSTDIR)/src/Common/EfficientElab
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend $(INSTDIR)/src/Compiler/Lambda $(INSTDIR)/src/Compiler/Regions
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy $(INSTDIR)/src/Compiler/Backend/KAM
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X86
+	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
+	$(MKDIR) $(INSTDIR)/src/Tools/Tester
+	$(MKDIR) $(INSTDIR)/src/heap2exec
+	$(INSTALL) src/Makefile src/*.{mlb,sml,in} $(INSTDIR)/src
+	$(INSTALL) src/Common/*.{mlb,sml} $(INSTDIR)/src/Common
+	$(INSTALL) src/Common/EfficientElab/*.sml $(INSTDIR)/src/Common/EfficientElab
+	$(INSTALL) src/Compiler/*.{mlb,sml} $(INSTDIR)/src/Compiler
+	$(INSTALL) src/Compiler/Lambda/*.sml $(INSTDIR)/src/Compiler/Lambda
+	$(INSTALL) src/Compiler/Regions/*.sml $(INSTDIR)/src/Compiler/Regions
+	$(INSTALL) src/Compiler/Backend/*.sml $(INSTDIR)/src/Compiler/Backend
+	$(INSTALL) src/Compiler/Backend/Barry/*.sml $(INSTDIR)/src/Compiler/Backend/Barry
+	$(INSTALL) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
+	$(INSTALL) src/Compiler/Backend/KAM/*.{sml,spec} $(INSTDIR)/src/Compiler/Backend/KAM
+	$(INSTALL) src/Compiler/Backend/X86/*.sml $(INSTDIR)/src/Compiler/Backend/X86
+	$(INSTALL) src/Manager/*.{sml,mlb} $(INSTDIR)/src/Manager
+	$(INSTALL) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
+	$(INSTALL) src/CUtils/Makefile src/CUtils/*.{c,h} $(INSTDIR)/src/CUtils
+	$(INSTALL) src/Edlib/Makefile src/Edlib/*.{sml,mlb} $(INSTDIR)/src/Edlib
+	$(INSTALL) src/Parsing/*.{sml,sig,grm,lex,desc} $(INSTDIR)/src/Parsing
+	$(INSTALL) src/Runtime/Makefile src/Runtime/*.{c,h} $(INSTDIR)/src/Runtime
+	$(INSTALL) src/SMLserver/Makefile src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
+	$(INSTALL) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
+	$(INSTALL) src/SMLserver/apache/Notes src/SMLserver/apache/*.{c,h,in} $(INSTDIR)/src/SMLserver/apache
+	$(INSTALL) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
+	$(INSTALL) src/Tools/Benchmark/*.{sml,cm} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
+	$(INSTALL) src/Tools/GenOpcodes/*.{sml,cm} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
+	$(INSTALL) src/Tools/MlbMake/*.{sml,cm,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
+	$(INSTALL) src/Tools/Rp2ps/*.{c,h} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
+	$(INSTALL) src/Tools/Tester/*.{sml,cm} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
+	$(INSTALL) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
+
+bootstrap0: install_test install_src
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
-	$(INSTALL) bin/mlbmake.$(ARCH-OS) $(INSTDIR)/bin
-	echo -e 'sml @SMLload=$(INSTDIR)/bin/mlbmake.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/mlbmake
-	chmod a+x $(INSTDIR)/bin/mlbmake
-	chown -R `whoami`.`whoami` $(INSTDIR)
-	chmod -R ug+rw $(INSTDIR)
-	chmod -R o+r $(INSTDIR)
-	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
 
-bootstrap: install bootstrap0
+bootstrap_first: install bootstrap0
 
+bootstrap_next_build:
+	cd src; $(MAKE) genopcodes
+	cd src; $(MAKE) version
+	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
+
+bootstrap_next_install: 
+	$(MAKE) install_top
+	$(INSTALL) doc/mlkit.pdf $(INSTDIR)/doc
+	$(MAKE) install_runtime
+	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit.img
+	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
+	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
+	chmod a+x $(INSTDIR)/bin/mlkit
+	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
+	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
+	chmod a+x $(INSTDIR)/bin/kittester
+	$(MAKE) install_test
+	$(MAKE) install_src
+
+bootstrap_next: 
+	$(MAKE) bootstrap_next_build
+	$(MAKE) bootstrap_next_install
+
+
+# The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0
 
 install_kam:
