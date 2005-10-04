@@ -1,6 +1,20 @@
-local
-   $(SML_LIB)/basis/basis.mlb
-   ../src/Pickle/pickle.mlb
+(*
+ * Copyright, Martin Elsman 2003-01-07 
+ * GPL Licence
+ *)
+local 
+  $(SML_LIB)/basis/basis.mlb
+  basis Polyhash = 
+    bas 
+        POLYHASH.sml Polyhash.sml 
+    end
+  eqhashdyn2.sml
+  stream.sig
+  stream.sml
 in
-   pickle.sml
+  pickle.sig
+  open Polyhash
+  pickle.sml
+(*  pickletest.sml *)
 end
+

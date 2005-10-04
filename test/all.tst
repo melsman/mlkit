@@ -129,7 +129,7 @@ word31.sml
 word32.sml                    
 regexp1.mlb                   
 regexp2.mlb                   
-pickle.mlb                    
+pickletest.mlb                    
 packreal.sml                  
 patricia.sml                  
 stream.mlb                    

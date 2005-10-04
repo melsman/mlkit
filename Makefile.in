@@ -175,7 +175,8 @@ install: install_top install_runtime
 
 install_test:
 	$(MKDIR) $(INSTDIR)/test
-	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang 
+	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang
+	$(MKDIR) $(INSTDIR)/test/barnes-hut $(INSTDIR)/test/logic
 	$(MKDIR) $(INSTDIR)/test/DATA $(INSTDIR)/test/LEXGEN_DATA $(INSTDIR)/test/VLIW_DATA
 	$(MKDIR) $(INSTDIR)/test/ray/DATA $(INSTDIR)/test/mlyacc/DATA
 	$(INSTALL) test/Makefile test/Makefile_bootstrap $(INSTDIR)/test
@@ -190,6 +191,8 @@ install_test:
 	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(INSTDIR)/test/mlyacc
 	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(INSTDIR)/test/nucleic
 	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(INSTDIR)/test/danwang
+	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(INSTDIR)/test/barnes-hut
+	$(INSTALL) test/logic/*.{sml,mlb} $(INSTDIR)/test/logic
 	cd $(INSTDIR)/test; ln -sf README testlink
 	cd $(INSTDIR)/test; ln -sf testcycl testcycl
 	cd $(INSTDIR)/test; ln -sf exists.not testbadl
