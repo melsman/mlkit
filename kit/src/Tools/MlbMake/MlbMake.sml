@@ -154,14 +154,14 @@ struct
 	      end handle OS.SysErr _ => MlbUtil.error ("I cannot access directory " ^ MlbUtil.quot dir)
       end
 
-    fun mkAbs file = OS.Path.mkAbsolute(file,OS.FileSys.getDir())
+    fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
 
     fun subDir "" = (fn p => p)
       | subDir dir =
 	let val dir_abs = mkAbs dir
 	    in fn p =>
 		let val p_abs = mkAbs p
-		in OS.Path.mkRelative(p_abs,dir_abs)
+		in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
 		end
 	end
 

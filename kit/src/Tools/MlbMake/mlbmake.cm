@@ -1,4 +1,6 @@
-Group is
+Group 
+is
+  ../../Common/patch-smlnj-110.0.7.cm
   MLB_PROJECT.sml  
   MlbProject.sml
   MlbMake.sml

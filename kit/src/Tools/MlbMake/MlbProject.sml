@@ -363,14 +363,14 @@ functor MlbProject () : MLB_PROJECT =
 	fun fileNewer t file : bool =
 	    Time.>(OS.FileSys.modTime file,t) handle _ => false
 
-	fun mkAbs file = OS.Path.mkAbsolute(file,OS.FileSys.getDir())
+	fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
 
 	fun subtractDir "" = (fn p => p)
 	  | subtractDir dir =
 	    let val dir_abs = mkAbs dir
 	    in fn p =>
 		let val p_abs = mkAbs p
-		in OS.Path.mkRelative(p_abs,dir_abs)
+		in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
 		end
 	    end
 

@@ -29,6 +29,8 @@ in
      end
   end
 
+  ../Common/MD5.sml
+
   local open Pickle Tools Basics CompilerObjects
   in local open SyntaxObjects 
      in ManagerObjects.sml 
