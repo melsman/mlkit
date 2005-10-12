@@ -52,6 +52,10 @@ test_mlkit:
 #	../bin/kittester ../bin/mlkit all_nogengc.tst
 	/bin/mv test_report.pdf test_report-native-`/bin/date -I`.pdf
 
+test_mlkit_gc:
+	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gc)
+	/bin/mv test_report.pdf test_report-native-gc-`/bin/date -I`.pdf
+
 test_kam:
 	(export SML_LIB=`(cd ..; pwd)`;	../bin/kittester ../bin/mlkit_kam all.tst)
 	/bin/mv test_report.pdf test_report-kam-`/bin/date -I`.pdf
@@ -61,3 +65,10 @@ clean:
 	rm -f runexe *.log *.outgcp *.outgengcp *.out *.outgc *.outgengc *.outp profile.rp
 	rm -f *.aux
 	rm -rf PM CM */PM */CM */*.log MLB */MLB */*/MLB */*/*/MLB
+
+prepare:
+	ln -s README testlink
+	ln -s testcycl testcycl
+	ln -s exists.not testbadl
+	echo '' > hardlinkA
+	ln hardlinkA hardlinkB
