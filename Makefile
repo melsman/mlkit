@@ -141,7 +141,6 @@ install_top:
 	$(INSTALL) README $(INSTDIR)
 	$(INSTALL) Makefile $(INSTDIR)
 	$(INSTALL) mkinstalldirs $(INSTDIR)
-	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
 	$(INSTALL) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
 	$(INSTALL) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
 	$(INSTALL) ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
@@ -161,6 +160,7 @@ install_runtime:
 
 install: install_top install_runtime
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
+	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
@@ -175,7 +175,8 @@ install: install_top install_runtime
 
 install_test:
 	$(MKDIR) $(INSTDIR)/test
-	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang 
+	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang
+	$(MKDIR) $(INSTDIR)/test/barnes-hut $(INSTDIR)/test/logic
 	$(MKDIR) $(INSTDIR)/test/DATA $(INSTDIR)/test/LEXGEN_DATA $(INSTDIR)/test/VLIW_DATA
 	$(MKDIR) $(INSTDIR)/test/ray/DATA $(INSTDIR)/test/mlyacc/DATA
 	$(INSTALL) test/Makefile test/Makefile_bootstrap $(INSTDIR)/test
@@ -190,6 +191,8 @@ install_test:
 	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(INSTDIR)/test/mlyacc
 	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(INSTDIR)/test/nucleic
 	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(INSTDIR)/test/danwang
+	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(INSTDIR)/test/barnes-hut
+	$(INSTALL) test/logic/*.{sml,mlb} $(INSTDIR)/test/logic
 	cd $(INSTDIR)/test; ln -sf README testlink
 	cd $(INSTDIR)/test; ln -sf testcycl testcycl
 	cd $(INSTDIR)/test; ln -sf exists.not testbadl
@@ -243,15 +246,16 @@ bootstrap0: install_test install_src
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
 
-bootstrap: install bootstrap0
+bootstrap_first: install bootstrap0
 
-bootstrap_step2_build:
+bootstrap_next_build:
 	cd src; $(MAKE) genopcodes
 	cd src; $(MAKE) version
 	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
 
-bootstrap_step2_install: bootstrap_step2_build
+bootstrap_next_install: 
 	$(MAKE) install_top
+	$(INSTALL) doc/mlkit.pdf $(INSTDIR)/doc
 	$(MAKE) install_runtime
 	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit.img
 	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
@@ -263,8 +267,12 @@ bootstrap_step2_install: bootstrap_step2_build
 	$(MAKE) install_test
 	$(MAKE) install_src
 
-bootstrap_step2: bootstrap_step2_build bootstrap_step2_install
+bootstrap_next: 
+	$(MAKE) bootstrap_next_build
+	$(MAKE) bootstrap_next_install
 
+
+# The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0
 
 install_kam:

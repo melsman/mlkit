@@ -1,45 +1,45 @@
-The ML Kit README file
+The MLKit README file
 
-        ML Kit home page: http://www.itu.dk/research/mlkit/
+        MLKit home page: http://www.itu.dk/research/mlkit/
 
 0. Introduction
 ---------------
-The ML Kit (henceforth refered to as the Kit) is a compiler for the
-programming language Standard ML. The Kit covers all of Standard ML,
-as defined in the 1997 edition of the Definition of Standard ML and
-supports most of the Standard ML Basis Library. The Kit uses a region
-based memory management scheme in which allocation and deallocation
-primitives are added to the program at compile time. The Kit also
-makes it possible to combine the region based memory management scheme
-with traditional reference tracing garbage collection. Two versions of
-the ML Kit are available, one that generates efficient native code for
-the x86 architecture and one that generates portable bytecode to be
-interpreted by an abstract machine. The largest program compiled with
-the Kit is the Kit itself (around 80.000 lines of SML, plus the Basis
-Library).
+
+The MLKit is a compiler for the programming language Standard ML. The
+MLKit covers all of Standard ML, as defined in the 1997 edition of the
+Definition of Standard ML and supports most of the Standard ML Basis
+Library. The MLKit uses a region based memory management scheme in which
+allocation and deallocation primitives are added to the program at
+compile time. The MLKit also makes it possible to combine the region
+based memory management scheme with traditional reference tracing
+garbage collection. Two versions of the MLKit are available, one that
+generates efficient native code for the x86 architecture and one that
+generates portable bytecode to be interpreted by an abstract
+machine. The largest program compiled with the MLKit is the MLKit itself
+(around 80.000 lines of SML, plus the Basis Library).
 
 Features:
 
   * Region based memory management in combination with reference
     tracing garbage collection.
  
-  * All of Standard ML. The Kit compiles all of Standard ML, including
-    Modules, as specified by the Definition of Standard ML. The Kit
+  * All of Standard ML. The MLKit compiles all of Standard ML, including
+    Modules, as specified by the Definition of Standard ML. The MLKit
     also supports large parts of the Standard ML Basis Library.
 
   * Native backend for the x86 architecture and a bytecode backend 
     for creating portable code.
 
-  * Compilation of large programs. The largest program the Kit
-    has compiled is the Kit itself, which is approximately 80,000
+  * Compilation of large programs. The largest program the MLKit
+    has compiled is the MLKit itself, which is approximately 80,000
     lines of code.
 
   * Documentation. A comprehensive guide on programming with regions
-    in the ML Kit is available in the doc/ directory.
+    in the MLKit is available in the doc/ directory.
 
 1. Release Numbers
 ------------------
-The Kit follows the convention that releases with odd minor release
+The MLKit follows the convention that releases with odd minor release
 numbers (e.g., 3.1.12) are experimental releases whereas releases with
 even minor release numbers (e.g., 3.0.1) are stable releases. The
 convention only applies to the minor number. If x.y.z is a release
@@ -48,7 +48,7 @@ number, y is called the minor release number.
 2. License and Copyright
 ------------------------
 
-The ML Kit compiler is distributed under the GNU Public License. See
+The MLKit compiler is distributed under the GNU Public License. See
 the file copyright for details. The runtime system (kit/src/Runtime/)
 and libraries (kit/basis/) is distributed under the more liberal
 MIT License.
@@ -59,9 +59,9 @@ See the INSTALL file in the source distribution.
 
 4. Try It
 ---------
-Assuming the ML Kit is already installed on your system, this
+Assuming the MLKit is already installed on your system, this
 directory contains binaries and documentation for compiling and
-running Standard ML programs with the ML Kit. Copy the kitdemo/
+running Standard ML programs with the MLKit. Copy the kitdemo/
 directory to your home directory and try compile the helloworld.sml
 program:
 
@@ -69,12 +69,12 @@ program:
   % cd ~/kitdemo
   % mlkit helloworld.sml
 
-The ML Kit should produce an executable file "run":  
+The MLKit should produce an executable file "run":  
 
   % ./run
   hello world
 
-Documentation for the ML Kit is located in the `doc' directory.
+Documentation for the MLKit is located in the `doc' directory.
 
 5. Support for Other Platforms and How You Can Help
 ---------------------------------------------------
@@ -85,7 +85,7 @@ system to other platforms, please let us know; the runtime system and
 bytecode interpreter is written in C (see the src/Runtime/ directory
 in the source distribution.)
 
-For the native x86 backend, the Kit calls the gcc compiler to assemble
+For the native x86 backend, the MLKit calls the gcc compiler to assemble
 and link the x86 code files it generates. The native backend for the
 HP PA-RISC architecture is no longer supported. We do not plan to
 support other native backends than the x86 backend. Suggestions for
@@ -94,7 +94,7 @@ improving the x86 assembler code generated by the x86 native backend
 --delete_target_files can be used to disable the deletion of the
 .s-files generated by the backend.
 
-To use the ML Kit for the FreeBSD/x86 platform, please alter the files
+To use the MLKit for the FreeBSD/x86 platform, please alter the files
 
   kit/Makefile
   kit/src/Makefile
@@ -139,4 +139,4 @@ Polymorphic equality:
 -------
 Have fun!
 
-The ML Kit Development Team
+The MLKit Development Team
