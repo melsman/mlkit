@@ -146,16 +146,18 @@ structure Tester : TESTER =
 	recover()
       end
 
-    fun process_args [kitexe,testfile] = SOME (kitexe,testfile)
+    fun process_args (kitexe::testfile::flags) = SOME (kitexe,testfile,flags)
       | process_args _ = NONE
 
-    fun print_usage progname = print("\nUsage: kittester kit testfile\n\
-				     \  kit: path to executable kit\n\
-				     \  testfile: path to test file.\n")
+    fun print_usage progname = print("\nUsage: kittester mlkit testfile [OPTION...]\n\
+				     \  mlkit: path to executable MLKit\n\
+				     \  testfile: path to test file.\n\
+				     \  Options are passed on to the MLKit for each\n\
+				     \    compilation.\n")
 
     fun main (progname, args) =
       case process_args args
-	of SOME (kitexe,testfile) =>
+	of SOME (kitexe,testfile,flags) =>
 	  let val log = "TESTmessages"
 	    val _ = reset_error_counter()
 	    val _ = TestReport.reset()
@@ -163,8 +165,8 @@ structure Tester : TESTER =
 	      case TestFile.parse testfile
 		of NONE => OS.Process.failure
 		 | SOME (testfile_string,entries) => 
-		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
-		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
+		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt@flags,kitexe)
+		                          | TestFile.MLB (filepath,opt) => (filepath,opt@flags,kitexe)) entries
 		  in app process_entry entries;
 		    msgErrors();
 		    TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe};
