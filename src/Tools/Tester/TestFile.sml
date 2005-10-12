@@ -3,19 +3,6 @@ signature TESTFILE =
   sig
 
     type opt = string
-(*
-    datatype opt = 
-      NoBasisLib 
-    | NoOptimiser 
-    | CompareCompilerLogs
-    | TimeExecutable 
-    | TimeCompiler
-    | ExpectCompileTimeError 
-    | Profiling
-    | GC
-    | Tags
-    | UncaughtException
-*)      
     datatype entry = MLB of string * opt list
                    | SML of string * opt list
       
@@ -28,19 +15,6 @@ structure TestFile : TESTFILE =
   struct
 
     type opt = string
-(*
-    datatype opt = 
-      NoBasisLib 
-    | NoOptimiser
-    | CompareCompilerLogs
-    | TimeExecutable 
-    | TimeCompiler
-    | ExpectCompileTimeError 
-    | Profiling
-    | GC
-    | Tags
-    | UncaughtException
-*)      
     datatype entry = MLB of string * opt list
                    | SML of string * opt list
       
@@ -79,20 +53,6 @@ structure TestFile : TESTFILE =
 	fun read_opt [] = (NONE,[])
 	  | read_opt (all as s::rest) = if contains #"." s then (NONE,all)
 					else (SOME s, rest)
-(*
-	  case s
-	    of "nobasislib" => (SOME NoBasisLib, rest)
-	     | "nooptimiser" => (SOME NoOptimiser, rest)
-	     | "ccl" => (SOME CompareCompilerLogs, rest)
-	     | "tx" => (SOME TimeExecutable, rest)
-	     | "tc" => (SOME TimeCompiler, rest)
-	     | "ecte" => (SOME ExpectCompileTimeError, rest)
-	     | "prof" => (SOME Profiling, rest)
-	     | "gc" => (SOME GC, rest)
-	     | "tags" => (SOME Tags, rest)
-	     | "ue" => (SOME UncaughtException, rest)
-	     | _ => (NONE, all)
-*)
 	fun read_opts (l, acc) =
 	  case read_opt l
 	    of (SOME opt, rest) => read_opts(rest,opt::acc)
