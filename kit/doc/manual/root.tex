@@ -11,8 +11,8 @@
 \input{genericmac}
 \input{mac}
 \newcommand{\rhoword}{\rho_{\rm w}}
-\title{Programming with Regions in the ML Kit\\
-(for Version 4.1.1)}
+\title{Programming with Regions in the MLKit\\
+(for Version 4.1.5)}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
@@ -35,7 +35,7 @@ Peter Sestoft}
 
 % \vspace{3.5cm}
 
-% {\LARGE Programming with Regions in the ML Kit}\vspace{2mm}
+% {\LARGE Programming with Regions in the MLKit}\vspace{2mm}
 
 % {\LARGE (for Version~4.1.1)}\vspace{1cm}
 
@@ -129,7 +129,7 @@ Infinite (\boxml{$\rho$:INF})& All other regions. At runtime, an infinite region
 %---------------------------------------------------------
 \chapter*{Preface}
 %---------------------------------------------------------
-The ML Kit with Regions is a compiler for full
+The MLKit with Regions is a compiler for full
 \index{Standard ML}%
 Standard ML, including Modules and the SML Basis Library.  It is
 intended for the development of stand-alone applications that must be
@@ -141,7 +141,7 @@ understand programs at the operational level. Very likely, if a
 resource conscious programmer is forced to make a choice between the
 two, he will choose the latter.
 
-The ML Kit with Regions is the result of a research and development
+The MLKit with Regions is the result of a research and development
 effort, which was initiated at the University of Copenhagen in 1992.
 The goal of the project has been to develop implementation technology
 that combines the advantages of using a high-level programming
@@ -188,7 +188,7 @@ mostly used reference tracing garbage collection techniques.
 The reader we have in mind is a person with a Computer Science
 background who is interested in developing reliable and efficient
 applications written in Standard ML. Also, the report may be of
-interest to researchers of programming languages, since the ML Kit
+interest to researchers of programming languages, since the MLKit
 with Regions is a fairly bold exercise in program analysis. We should
 emphasize, however, that this report is very much intended as a user's
 guide, not a scientific publication.
@@ -196,20 +196,20 @@ guide, not a scientific publication.
 This report consists of three parts:
 \begin{description}
 \item[Part I, Overview:] This part gives an overview of the ideas
-  that underlie programming with regions in the Kit.
+  that underlie programming with regions in the MLKit.
 \item[Part II, Understanding Regions:] The second part of the report
   systematically presents the language constructs of the Standard ML
   Language, showing for each construct how it can be used when
   programming with regions.
 \item[Part III, System Reference:] In this part, we explain how to
   interact with the system, how to use the region profiler and how to
-  call C functions from the ML Kit.
+  call C functions from the MLKit.
 \end{description}
 
 The present report describes the 
-\index{ML Kit!Version 4}%
-ML Kit Version~4. This version of the ML Kit extends the 
-ML Kit Version~3 with
+\index{MLKit!Version 4}%
+MLKit Version~4. This version of the MLKit extends the 
+MLKit Version~3 with
 \begin{enumerate}
 \item Support for pointer tracing garbage collection. Pointer tracing
   garbage collection works well together with the region memory model.
@@ -226,7 +226,7 @@ ML Kit Version~3 with
 \item A 
   \index{backend!bytecode}%
   \index{bytecode}%
-  bytecode backend. To improve portability of programs, the Kit now
+  bytecode backend. To improve portability of programs, the MLKit now
   has a bytecode backend, which generates code that can be executed on
   a stack machine with region primitives. The stack machine closely
   resembles the stack machine used in the O'Caml and Moscow ML
@@ -234,20 +234,20 @@ ML Kit Version~3 with
 \end{enumerate}
 
 The 
-\index{ML Kit!Version 3}%
-ML Kit Version~3 extends the ML Kit Version~2 with support for the
+\index{MLKit!Version 3}%
+MLKit Version~3 extends the MLKit Version~2 with support for the
 Standard ML Modules language. The
-\index{ML Kit!Version 2}%
-ML Kit Version~2 is a further development of the 
-\index{ML Kit!Version 1}%
-ML Kit Version~1, which was developed at Edinburgh University and
-University of Copenhagen \cite{brtt93}.  The ML Kit (after Version~1)
-is also called the ML Kit with Regions.  We hope you will enjoy using
-the ML Kit with Regions as much as we have enjoyed developing it. If
-your experience with the Kit gives rise to comments and suggestions,
+\index{MLKit!Version 2}%
+MLKit Version~2 is a further development of the 
+\index{MLKit!Version 1}%
+MLKit Version~1, which was developed at Edinburgh University and
+University of Copenhagen \cite{brtt93}.  The MLKit (after Version~1)
+is also called the MLKit with Regions.  We hope you will enjoy using
+the MLKit with Regions as much as we have enjoyed developing it. If
+your experience with the MLKit gives rise to comments and suggestions,
 specifically with relation to the goals and visions expressed here,
-please feel free to write.  Further information is available at the ML
-Kit
+please feel free to write.  Further information is available at the
+MLKit
 \index{web site}%
 web site:
 \begin{tabbing}
@@ -264,17 +264,17 @@ and Peter Sestoft
 \newpage
 
 \section*{Contributions}
-Many people have contributed to the development of the ML Kit,
+Many people have contributed to the development of the MLKit,
 including Peter Bertelsen, Lars Birkedal, Martin Elsman, Niels
 Hallenberg, Tommy H\o jfeld Olesen, Nick Rothwell, Mads Tofte, David
-N.\@ Turner, and Peter Sestoft.
+N.\@ Turner, Peter Sestoft, and Carsten Varming.
 
 People who have contributed with bug reports and patches includes, but
 are not limited to (in alphabetical order) Johnny Andersen, Koshy A
 Joseph, Ken Friis Larsen, Daniel Wang, and Stephen Weeks.
 
 \section*{License}
-The ML Kit is released under the GNU General Public License.  
+The MLKit is released under the GNU General Public License.  
 
 {\sc
 \begin{quote}
@@ -423,7 +423,7 @@ same region or in other regions. Both forward pointers (i.e., pointers
 from a region into a region closer to the stack top) and backwards
 pointers (i.e., pointers to an older region) occur.
 
-As mentioned in the preface, the present version of the ML Kit
+As mentioned in the preface, the present version of the MLKit
 supports reference-tracing 
 \index{garbage collection}%
 garbage collection in combination with region memory management
@@ -451,7 +451,7 @@ heap with no garbage collection, which again would not be sufficient.
 
 But when one has many regions, one obtains the possibility of
 distinguishing between values according to what region they reside in.
-The ML Kit has operations for allocating, de-allocating, and extending
+The MLKit has operations for allocating, de-allocating, and extending
 regions. But it also has an explicit operation for
 \index{region!resetting}%
 resetting an existing region, that is, reclaiming all the memory
@@ -524,11 +524,11 @@ $\boxml{r}_4$;
 \label{slideshow.fig}
 \end{figure}
 
-In the ML Kit the vast majority of region management is done
+In the MLKit the vast majority of region management is done
 automatically by the compiler and the runtime system.  Indeed, with
 one exception, source programs are written in Standard ML, with no
 added syntax or special directives. The exception has to do with
-resetting of regions. The Kit provides two built-in functions
+resetting of regions. The MLKit provides two built-in functions
 \index{resetRegions@$\resetr$}%
 \index{forceResetting@$\resetf$}%
 ($\resetr$ and $\resetf$), which instruct the program to reset
@@ -554,7 +554,7 @@ the central one, called
 language. Although the formal rules that govern region inference and
 the other program analyses are complex, we have on purpose restricted
 attention to program analyses that we feel capture natural programming
-intuitions.  Moreover, the Kit implementation is such that, with one
+intuitions.  Moreover, the MLKit implementation is such that, with one
 exception\footnote{The exception has to do with exceptions. When an
   exception is raised, a search down the stack for a handler takes
   place; this search is not constant time and it involves popping of
@@ -566,7 +566,7 @@ lengths of time gives a nice smooth experience when programs are run
 and should make the scheme attractive for real-time programming.
 
 To help programmers get used to the idea of programming with regions,
-the ML Kit can print region-annotated programs, that is, source programs
+the MLKit can print region-annotated programs, that is, source programs
 it has annotated with region directives. Also, it provides a 
 \index{region profiling}%
 {\em region profiler\/} for examining run-time behavior.  The region
@@ -862,11 +862,11 @@ yourself in it, and start the kit:\footnote{We assume that you have added
 \begin{verbatim}
    mlkit
 \end{verbatim}
-Select \boxml{Profiling} from the Kit menu (type 4, then carriage
+Select \boxml{Profiling} from the MLKit menu (type 4, then carriage
 return).  Toggle \boxml{region profiling} (type 0, then carriage
 return). Go up one level (type \boxml{u}, then carriage return).
 Select \boxml{Compile file or project}.  Type \boxml{"life.sml"}
-(including the quotes, then return). After the Kit has compiled
+(including the quotes, then return). After the MLKit has compiled
 \boxml{life.sml}, type \boxml{quit}. The executable life program is
 \boxml{kitdemo/run}.\footnote{Alternatively, you can generate the
   executable file {\tt run} by typing {\tt mlkit -prof life.sml} in
@@ -943,7 +943,7 @@ general there is no way of knowing how long a given list is going to
 be.
 
 
-For efficiency reasons, however, the Kit distinguishes between two
+For efficiency reasons, however, the MLKit distinguishes between two
 kinds of regions: those regions whose size it can determine at
 compile-time and those it cannot.
 \index{region size}%
@@ -980,7 +980,7 @@ descriptor of the region.
 
 The \index{multiplicity}{\em multiplicity} of a region is a statically
 determined upper bound on the number of times a value is put into the
-region. The Kit operates with three multiplicities: 0, 1 and $\infty$,
+region. The MLKit operates with three multiplicities: 0, 1 and $\infty$,
 ordered by $0<1<\infty$. Multiplicities annotate binding occurrences
 of region variables. An expression of the form
 $$\boxml{letregion $\rho:m$ in $e$ end}$$
@@ -1034,7 +1034,7 @@ put.
 
 We emphasize that region variables and {\tt letregion} expressions are
 not present in source programs. The source language is unadulterated
-Standard ML, so programs that run on the Kit should be easy to port to
+Standard ML, so programs that run on the MLKit should be easy to port to
 any other Standard ML implementation.
 
 %Conceptually, there is also a normal runtime stack, which holds temporary values,
@@ -1044,7 +1044,7 @@ any other Standard ML implementation.
 \section{Two Backends}
 \index{backend!native}%
 \index{backend!bytecode}%
-The ML Kit provides two different backends, one that generates native
+The MLKit provides two different backends, one that generates native
 code for the x86 architecture (running Linux), the {\em native
   backend\/} and one that generates bytecode to be executed by a
 region based abstract machine, the {\em bytecode backend}.
@@ -1088,8 +1088,8 @@ register or a machine word. A {\em boxed value\/} is one that is
 represented by a word-size pointer to the value itself, which is
 stored in one or more regions.
 
-The Kit uses unboxed representation for integers, booleans, words, the
-unit value, and characters.  The Kit uses boxed representation for
+The MLKit uses unboxed representation for integers, booleans, words, the
+unit value, and characters.  The MLKit uses boxed representation for
 pairs, records (with at least one element), reals, exception values,
 function closures, and constructed values (i.e., data types, except
 lists and booleans).
@@ -1104,7 +1104,7 @@ binary representation of 3 and the second of which contains the binary
 representation of 4.
 
 \section{Intermediate Languages}
-The Kit compiles Standard ML programs via a sequence of typed
+The MLKit compiles Standard ML programs via a sequence of typed
 intermediate languages into either bytecode instructions, using the
 bytecode backend, or x86 machine code, using the native backend.
 
@@ -1142,11 +1142,11 @@ The intermediate languages that we shall refer to in the following are
   \index{multiplicity analysis}%
   {\em multiplicity analysis}.
 \end{description}
-%The Kit compiles SML records into $\Lam$-tuples and compiles 
+%The MLKit compiles SML records into $\Lam$-tuples and compiles 
 %SML-matches and other constructs containing patterns
 %into simpler $\Lam$-constructs. 
 
-The Kit contains a
+The MLKit contains a
 \index{Lambda optimiser}%
 $\Lam$ optimiser, which will happily rewrite $\Lam$ terms when it is
 clear that this rewrite results in faster programs (as long as the
@@ -1162,8 +1162,8 @@ and the intermediate languages of the compiler if one wants to read
 programs in their intermediate forms. Moreover, 
 \index{Standard ML!Modules}% 
 Modules Language constructs are eliminated during compilation from the
-intermediate languages (see Chapter~\ref{modules_and_projects.chap}
-for details of compiling with Modules in the ML Kit).
+intermediate languages (see Chapter~\ref{mlb_and_modules.chap}
+for details of compiling with Modules in the MLKit).
 
 When we want to show the result of the analyses, we usually show a
 $\MulExp$ expression.
@@ -1180,27 +1180,27 @@ Library.
 
 It is possible to call 
 \index{C!calling}%
-C functions from ML Kit code if you use the native backend.  The Kit
+C functions from MLKit code if you use the native backend.  The MLKit
 takes care of the memory allocation, by allocating regions for the
 result of the call before the call and de-allocating the regions at
 some point after the call.  The C functions can build ML data
 structures such as lists through abstract operations provided by the
-Kit runtime system. See Chapter~\ref{ccall.sec} for further details.
+MLKit runtime system. See Chapter~\ref{ccall.sec} for further details.
 
-\section{Compiling Programs with the Kit}
+\section{Compiling Programs with the MLKit}
 \label{tryit.sec}
 
-The Kit is a 
+The MLKit is a 
 \index{batch compilation}%
 batch compiler. Thus, executing a program consists of first compiling
 the program and then running the generated target program. Because the
-Kit stores files in the directories where your source files are
+MLKit stores files in the directories where your source files are
 located, you should make a personal copy of these directories.  Before
 you try any of the examples below, make a personal copy of the {\tt
   kitdemo} directory, which is part of the distribution, and run the
 kit on your own copy.
 
-The Kit provides two mechanisms for compiling programs. The first
+The MLKit provides two mechanisms for compiling programs. The first
 mechanism is based on a
 \index{menu interaction}%
 interactive menu-driven dialog system, which allows you to toggle
@@ -1209,14 +1209,14 @@ The second mechanism is simply to pass
 \index{mlkit@\texttt{mlkit}!executable}%
 command-line options to the {\tt mlkit} executable.
 
-In both cases, you need an executable version of the Kit; let us
+In both cases, you need an executable version of the MLKit; let us
 assume it is available on your system as a UNIX program called {\tt
   mlkit}.\footnote{The {\tt INSTALL} file in the distribution tells you
-  how to install the Kit.}
+  how to install the MLKit.}
 
 Compiling a project is similar to compiling a single SML source file,
 however, we shall postpone the in-depth discussion of how to compile
-projects to Chapter~\ref{modules_and_projects.chap}.
+MLB-files to Chapter~\ref{mlb_and_modules.chap}.
 
 \section{Using the Interactive Menu System}
 
@@ -1225,10 +1225,10 @@ programs in Chapter~\ref{records.sec} came about.
 
 To compile the SML source file {\tt projection.sml} of
 Example~\ref{proj.ex}, place yourself in your own copy of the {\tt
-  kitdemo} directory and start the Kit with the shell command {\tt
-  kit}.
+  kitdemo} directory and start the MLKit with the shell command {\tt
+  mlkit}.
 
-After the Kit has uttered various greetings, you will find yourself in
+After the MLKit has uttered various greetings, you will find yourself in
 a rudimentary menu-driven dialog, see Figure~\ref{dialogue.fig}.
 \begin{figure}
 \hrule \medskip
@@ -1246,11 +1246,11 @@ Select (<number>), Help (h <number>), Up (u), or Quit (quit):
 
 >
 \end{verbatim}
-\caption{The top-most Kit menu}
+\caption{The top-most MLKit menu}
 \medskip \hrule 
 \label{dialogue.fig}
 \end{figure}
-First, you are going to ask the Kit to print one of the intermediate
+First, you are going to ask the MLKit to print one of the intermediate
 forms that arise under compilation (this is how the annotated programs
 shown in  Section~\ref{proj.ex} were obtained). 
 Choose \texttt{Printing of intermediate forms} (i.e., type \texttt{0}
@@ -1261,13 +1261,13 @@ and you are back in the main menu.
 
 Now, choose \texttt{Compile file or project}; then type
 \boxml{"projection.sml"} (including the quotes) followed by return.
-The Kit outputs (among other things) the $\MulExp$ program shown in
+The MLKit outputs (among other things) the $\MulExp$ program shown in
 Section~\ref{proj.ex}. 
 
 Printing of the region-annotated types can now be enabled by selecting
 \boxml{Layout} from the main menu, and then \texttt{print types}.
 Thereafter, choose \texttt{Compile it again} from the main menu to
-compile the source file {\tt projection.sml} again. This time, the Kit
+compile the source file {\tt projection.sml} again. This time, the MLKit
 outputs the $\MulExp$ program shown in Section~\ref{reganntypes.sec}.
 If the formatting appears too wide for your screen, you can enter
 another value for the pretty-printing width by selecting \texttt{text
@@ -1278,7 +1278,7 @@ Next, you can try the example in Section~\ref{effects.sec}; select
 \boxml{"elimpair.sml"}.
 
 \section{Compiling from the Command-Line}
-As mentioned earlier, it is possible to compile programs with the Kit
+As mentioned earlier, it is possible to compile programs with the MLKit
 by passing command-line arguments to the {\tt mlkit} executable. It is
 also possible to pass 
 \index{options!command-line}%
@@ -1296,15 +1296,15 @@ A shorter version of this command is
 \begin{verbatim}
    mlkit -Ptypes -Pdre projection.sml
 \end{verbatim}
-To get more information about which options you can pass to the Kit at
+To get more information about which options you can pass to the MLKit at
 the command-line, try executing \boxml{mlkit -help}. The output of
 executing this command is shown in Appendix~\ref{mlkithelp.app}.
 
 \section{Running Compiled Programs}
-If no errors were found during compilation, the Kit produces a
+If no errors were found during compilation, the MLKit produces a
 \index{target program}%
 {\em target program} in the form of an executable file, called {\tt
-  run}. The Kit places {\tt run} in the working directory.
+  run}. The MLKit places {\tt run} in the working directory.
 
 Running the target program is done from the UNIX shell by typing
 \index{run@\texttt{run}}%
@@ -1313,7 +1313,7 @@ Running the target program is done from the UNIX shell by typing
 \end{verbatim}
 For small programs, the file will probably be around 50Kb large, even
 for the trivial examples considered in this chapter.  This is because
-it contains the Kit runtime system and compiled code for the parts of
+it contains the MLKit runtime system and compiled code for the parts of
 the SML Basis Library that are needed for linking.
 
 Running the programs presented in this chapter is not particularly
@@ -1429,7 +1429,7 @@ $\rhoword$, which denotes a non-existing global region.
 \index{value!unboxed}%
 As an abbreviation, we shall often omit the region variable $\rhoword$
 from region-annotated types and from region-annotated types with
-places; and so shall the Kit.
+places; and so shall the MLKit.
 
 Here are some examples of region-annotated types with places:
 \begin{description}
@@ -1446,7 +1446,7 @@ Here are some examples of region-annotated types with places:
   region $\rho_1$.
 \end{description}
 
-One can get the Kit to print the region-annotated types with places
+One can get the MLKit to print the region-annotated types with places
 that it infers for binding occurrences of variables.  The above
 example then becomes
 \begin{verbatim}
@@ -1458,7 +1458,7 @@ example then becomes
 
 \section{Effects and \texttt{letregion}}
 \label{effects.sec}
-We now describe the general principle that the Kit uses to decide when
+We now describe the general principle that the MLKit uses to decide when
 it is safe to put 
 \index{letregion@\texttt{letregion}}%
 \boxml{letregion} around an expression.
@@ -1474,7 +1474,7 @@ garbage:\footnote{Program \boxml{kitdemo/elimpair.sml}.}
               #1 pair
            end;
 \end{verbatim}
-The Kit compiles the declaration into the $\MulExp$ program shown in
+The MLKit compiles the declaration into the $\MulExp$ program shown in
 Figure~\ref{elimpair.fig}.  The compiler compiles the program as it
 is, without reducing the conditional to its {\tt then} branch.
 \begin{figure}
@@ -1513,13 +1513,13 @@ from the {\tt then} branch and at most one store from the {\tt else}
 branch and that at most one of the branches will be chosen.) Thus, the
 pair will be allocated in a little region on the runtime stack.
 
-But how does the Kit know that it is safe to 
+But how does the MLKit know that it is safe to 
 \index{region!de-allocation}%
 de-allocate {\tt r7} where the
 \index{letregion@\texttt{letregion}}%
 {\tt letregion} ends?
 
-The answer lies in the fact that the Kit infers for every expression
+The answer lies in the fact that the MLKit infers for every expression
 not just a region-annotated type with place, but also a so-called 
 \index{effect}%
 {\em effect}.  An effect is a finite set of 
@@ -1581,13 +1581,13 @@ objects at runtime \cite{ElsmanTIC98}.
 
 $\Lam$, $\RegExp$, and $\MulExp$ allow one to express unboxed tuples,
 also in the case of function calls and returns. For functions that
-take a tuple as parameter, the Kit passes the argument tuple unboxed
+take a tuple as parameter, the MLKit passes the argument tuple unboxed
 \index{arguments!multiple}%
 \index{multiple function arguments}%
 \index{function arguments!multiple}%
 \index{record!unboxed}%
 if it can see that the boxed representation of the tuple is not needed
-by the function. The Kit does not at present unbox records returned
+by the function. The MLKit does not at present unbox records returned
 from functions. See Section~\ref{region-polymorphic-functions.sec} on
 page~\pageref{region-polymorphic-functions.sec} for details about
 unboxed function arguments.
@@ -1598,11 +1598,11 @@ A tuple is not allocated until its components have been evaluated.
 \chapter{Basic Values}
 %---------------------------------------------------------
 In this chapter we describe how basic values such as integers, reals,
-strings, and booleans are represented in the Kit. The Kit complies to
+strings, and booleans are represented in the MLKit. The MLKit complies to
 the Definition of Standard ML (Revised)
 \index{Standard ML!{1997 revision}}%
 and to large parts of the Standard ML Basis
-Library;\footnote{See the Kit web site for a link to the Standard ML
+Library;\footnote{See the MLKit web site for a link to the Standard ML
   Basis Library.}
 \index{Standard ML!{Basis Library}}%
 that is, as a programmer, you can refer to components of the Standard
@@ -1617,13 +1617,13 @@ provided by the initial basis.
 Values of type 
 \index{integer}%
 {\tt int} are represented as unboxed 32-bit signed integers. When
-reference tracing garbage collection is enabled in the Kit, one bit is
+reference tracing garbage collection is enabled in the MLKit, one bit is
 used for tagging, thus in this case values of type {\tt int} are
 really 31-bit signed integers; Chapter~\ref{gc.chap} describes how to
 compile programs with garbage collection enabled. The structure {\tt
   Int} provides many useful operations on integers of type {\tt
   int}.\footnote{To see what operations are available in the {\tt Int}
-  structure, consult the file {\tt basis/INTEGER.sml}.}  The Kit
+  structure, consult the file {\tt basis/INTEGER.sml}.}  The MLKit
 also defines the structures 
 \index{Int31 structure@{\tt Int31} structure}%
 {\tt Int31} and 
@@ -2000,7 +2000,7 @@ Similarly, the type forces the auxiliary pairs to be in one region
 
 \section{Example: Basic List Operations}
 \label{listexamples.sec}
-The Kit compiles the program\footnote{Program \texttt{kitdemo/onetwothree.sml}.}  
+The MLKit compiles the program\footnote{Program \texttt{kitdemo/onetwothree.sml}.}  
 \begin{verbatim}
    let val l = [1, 2, 3];
        val (x::_) = l
@@ -2056,7 +2056,7 @@ scheme.
 It would be a serious limitation if all lists produced by a series of
 calls to a function were stored in the same region, for then all those
 lists would have to be kept alive till the last time one of them were
-used. The solution that the Kit offers to this problem is {\em
+used. The solution that the MLKit offers to this problem is {\em
   region-polymorphic functions}, that is, functions that are passed
 regions at runtime.
 
@@ -2150,7 +2150,7 @@ First, notice that the function {\tt fromto} represents its argument
 \index{arguments!multiple}%
 \index{multiple function arguments}%
 \index{function arguments!multiple}%
-unboxed; the Kit figures out that the function does not
+unboxed; the MLKit figures out that the function does not
 use the boxed representation of the argument and transforms all calls
 to the function to pass the argument unboxed (on the runtime stack and
 in registers if possible).
@@ -2329,7 +2329,7 @@ $$[ (\boxml{int},[\rho_{19}])\boxml{list},
       (\boxml{int},[\rho_1])\boxml{list} ]
 \ar{\epsilon'.\{\Get(\rho_{19}),\Put(\rho_1)\}} (\boxml{int},[\rho_1])\boxml{list} $$
 
-To avoid passing regions that are never used, the Kit introduces only
+To avoid passing regions that are never used, the MLKit introduces only
 formal region variables for those bound region variables in the type
 scheme for which there appears at least one
 \index{put@{$\Put$}}%
@@ -2341,7 +2341,7 @@ of region parameters explains why $\rho_8$ does not become a formal
 region parameter of \boxml{@} and why $\rho_{19}$ is not passed to
 \boxml{@} at the call site. This optimisation, which is called
 \index{region!dropping of}%
-{\em dropping of regions}, is the key reason why the Kit takes the
+{\em dropping of regions}, is the key reason why the MLKit takes the
 trouble to distinguish between $\Put$ and 
 \index{get@{$\Get$}}%
 $\Get$ \label{bother-to-distinguish-get-n-put}effects.
@@ -2437,14 +2437,13 @@ ideas is listed in
 \index{merge sort}%
 \index{projects!compiling}%
 \index{projects!running}%
-Figure~\ref{msort.fig}.\footnote{Project
-  {\tt kitdemo/msort.pm}, file {\tt kitdemo/msort.sml}. To compile the
-  project, choose {\tt Compile file or project} from the main menu.
-  Then type \boxml{"msort.pm"} (including the quotes) followed by
-  return. The Kit
-  places an executable file \boxml{run} in the \boxml{kitdemo}
-  directory. For an in-depth description of how to compile and run
-  projects, see Chapter~\ref{modules_and_projects.chap}.}
+Figure~\ref{msort.fig}.\footnote{MLB-file {\tt kitdemo/msort.mlb}, file
+  {\tt kitdemo/msort.sml}. To compile the project, goto the
+  \boxml{kitdemo} directory and execute \boxml{"mlkit msort.mlb"} from
+  the shell. The MLKit places an executable file \boxml{run} in the
+  \boxml{kitdemo} directory. For an in-depth description of how to
+  compile and run MLB-files and SML-files, see
+  Chapter~\ref{mlb_and_modules.chap}.}
 \begin{figure}[hbt]
 \hrule
 \medskip
@@ -2565,7 +2564,7 @@ equivalent in their input-output behavior can easily have very
 different memory behavior. In this chapter, we discuss how to write
 \index{declaration!value}%
 declarations so as to obtain good results with region inference. The
-region inference rules that underlie the ML Kit with Regions are
+region inference rules that underlie the MLKit with Regions are
 related to the scope rules of ML, so we start by a (very informal)
 summary of the scope rules of ML declarations.
 
@@ -2854,16 +2853,16 @@ $\boxml{r5}$ is free in the region-annotated type scheme and appears
 with a $\Put$ effect.
 
 \section{Warnings About Space Leaks}
-The Kit can be instrumented to issue a warning each time it meets a
+The MLKit can be instrumented to issue a warning each time it meets a
 function that is declared using {\tt fun} and has a free $\Put$ effect
-occurring somewhere in its type scheme. The way to tell the Kit to
+occurring somewhere in its type scheme. The way to tell the MLKit to
 issue the warnings is by toggling the entry 
 \index{put-effect!escaping}%
 {\tt warn on escaping put
   effects} in the {\tt Control} menu. In practice, this warning
 mechanism is a valuable device for predicting space leaks.  The
 region-annotated version of our example function {\tt g} is listed in
-Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the Kit
+Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the MLKit
 issues the following warning:\footnote{To provoke the warning, one has
   to disable in-lining in the
   \index{optimiser}%
@@ -3033,7 +3032,7 @@ Because {\tt x} and {\tt z} are aliases, the result of the {\tt let}
 expression is the contents of the store at address $r$ (i.e., 6).
 
 \section{Runtime Representation of References}
-The Kit translates an SML expression of the form $\boxml{ref
+The MLKit translates an SML expression of the form $\boxml{ref
   $\exp$}$\/ into an expression of the form (assuming $\exp$
 translates into $e$)
 $$\boxml{ref $\at\,\rho~ e$}$$
@@ -3240,7 +3239,7 @@ those functions that are applied once,\footnote{To restrict the
    in  {|z: (_,r4), y: (_,r4), memo_id: (_,r1), r: (_,r1)|}
    end 
 \end{verbatim}
-and the Kit warns us that there is a possible space
+and the MLKit warns us that there is a possible space
 leak:\footnote{Warnings are printed only if we have enabled the entry
   {\tt warn on escaping put effects} in the {\tt Control} menu. See
   Chapter~\ref{spaceleak.sec}.}
@@ -3266,7 +3265,7 @@ long-lived references that are assigned many different large values.
 \chapter{Recursive Data Types}
 \label{datatypes.sec}
 %---------------------------------------------------------
-This chapter describes how the Kit treats recursive data types. We
+This chapter describes how the MLKit treats recursive data types. We
 have already seen how one recursive datatype, namely lists, is
 handled. This chapter deals with the general case.
 %Standard ML \index{tree!binary}
@@ -3280,7 +3279,7 @@ handled. This chapter deals with the general case.
 %\end{verbatim}
 
 \section{Spreading Data Types}
-The Kit performs an analysis called 
+The MLKit performs an analysis called 
 \index{spreading}%
 ``spreading of data types''.  Spreading of datatypes analyses {\tt
   datatype} declarations.  This analysis of a {\tt datatype}
@@ -3308,7 +3307,7 @@ trees has arity 1:
    datatype 'a tree = Lf | Br of 'a * 'a tree * 'a tree;
 \end{verbatim}
 
-The Kit extends the notion of arity (in it's internal languages) to
+The MLKit extends the notion of arity (in it's internal languages) to
 account for regions and effects. For lists, for example, we need a
 region for holding the pairs to which {\tt ::} is applied. For the
 data type
@@ -3389,8 +3388,8 @@ For simplicity, constructed values except lists
 (Chapter~\ref{lists.sec}) are always boxed.
 
 \section{Example: Balanced Trees}
-Consider the program in Figure~\ref{balpre.fig}.\footnote{Project:
-  \boxml{kitdemo/trees.pm}, file \boxml{kitdemo/trees.sml}.}
+Consider the program in Figure~\ref{balpre.fig}.\footnote{MLB-file:
+  \boxml{kitdemo/trees.mlb}, file \boxml{kitdemo/trees.sml}.}
 \begin{figure} 
 \hrule 
 \medskip
@@ -3416,7 +3415,7 @@ Consider the program in Figure~\ref{balpre.fig}.\footnote{Project:
    (* preord o balpre is the identity: *)
 
    val it = print(implode(preord(balpre(explode 
-       "Greetings from the Kit\n"),[])));
+       "Greetings from the MLKit\n"),[])));
 \end{verbatim}
 \caption{Example showing recycling of memory used for an intermediate 
   data structure. The function {\tt balpre} builds a balanced binary
@@ -3440,7 +3439,7 @@ indeed it is. Here is the proof:
                  in balpre[r61,r62] 
                     letregion r66:1 
                     in explode[r64] 
-                       "Greetings from the Kit\n"at r66 
+                       "Greetings from the MLKit\n"at r66 
                     end (*r66:1*) 
                  end (*r64:INF*), 
                  nil
@@ -3491,7 +3490,7 @@ Each evaluation of an exception declaration creates a fresh
 is sometimes referred to as the {\em generative\/} nature of Standard
 ML exceptions.
 
-In the ML Kit, an exception name is implemented as a pointer to a pair
+In the MLKit, an exception name is implemented as a pointer to a pair
 consisting of an integer and a string pointer; the string pointer
 points to the name of the exception, which is a global constant in the
 target program. The string is used for printing the name of the
@@ -3521,7 +3520,7 @@ constructs a constructed exception value. The memory cost of such an
 application is two words for holding the pair $(\ename, v)$.
 
 The distinction between nullary and unary exception constructors is
-important in the Kit because our region inference analysis takes a
+important in the MLKit because our region inference analysis takes a
 simple-minded approach to exceptions:
 \begin{quote}
   All exception names and nullary exception values are put into a
@@ -3600,7 +3599,7 @@ cannot be determined statically, provided one admits arithmetic
 operations as constant-time operations.
 
 \section{Example: Prudent Use of Exceptions}
-Here is an example of prudent use of exceptions in the ML Kit:
+Here is an example of prudent use of exceptions in the MLKit:
 \index{hd@\texttt{hd}}%
 \index{tl@\texttt{tl}}%
 \bigskip
@@ -3647,7 +3646,7 @@ Section~\ref{checked.sec}.
 
 This chapter gives an informal explanation of the rules that govern
 resetting. Knowing these rules is useful, irrespective of whether one
-makes the Kit decide on region resetting, or prefers to control
+makes the MLKit decide on region resetting, or prefers to control
 resetting explicitly in the program.
 
 Resetting only makes sense for infinite regions.  Resetting a region
@@ -3655,7 +3654,7 @@ is a constant-time operation.  Because the same region variable can be
 bound sometimes to a finite region and sometimes to an infinite region
 at runtime, resetting a region can involve a test at runtime.
 
-The Kit contains an analysis, called the {\em storage mode analysis},
+The MLKit contains an analysis, called the {\em storage mode analysis},
 which has two purposes:
 \begin{enumerate}
 \item inserting automatic resetting of infinite regions, when possible
@@ -3752,12 +3751,12 @@ By contrast, consider\footnote{Program \boxml{kitdemo/sma1.sml}.}
 When {\tt f} creates the empty list, it is welcome to reset the region
 that holds \boxml{l1}, for by that time, \boxml{l1} is no longer
 needed! ({\tt f} traverses {\tt l1}, but when it reaches the end of
-the list, {\tt l1} is no longer used.)  Indeed, the Kit will replace
+the list, {\tt l1} is no longer used.)  Indeed, the MLKit will replace
 the list \boxml{[1,2,3]} by \boxml{[2,3,4]}. The ability to replace
 data in regions is crucial in many situations (as we illustrated with
 the game of Life in Section~\ref{life.sec}).
 
-Because the Kit allows for separate compilation, it cannot know all
+Because the MLKit allows for separate compilation, it cannot know all
 the call sites of a region-polymorphic function, when it is declared.
 Therefore, when considering an allocation point $\at\,\rho$ inside the
 body of some region-polymorphic function $f$ that has $\rho$ as a
@@ -3850,7 +3849,7 @@ that exists before the call of {\tt f} and is needed after the call of
 {\tt f} is {\tt length}, which is declared in a different compilation
 unit and therefore obviously does not reside in {\tt r16}.
 
-Within every lambda abstraction, the Kit performs a backwards flow
+Within every lambda abstraction, the MLKit performs a backwards flow
 analysis that determines, for every allocation point, a set of
 \index{variable!locally live}%
 {\em locally live variables}, that is, a set of variables used by the
@@ -3869,7 +3868,7 @@ necessary.)\footnote{K-normalisation is transparent to users: although
   to eliminate the extra {\tt let} bindings before they are presented
   to the user.}
 
-The Kit also computes a set of locally live variables for those
+The MLKit also computes a set of locally live variables for those
 allocation points that do not occur inside functions.
 
 We now give an informal explanation of the rules that assign storage
@@ -3881,7 +3880,7 @@ be given.
 \bigskip
 
 \noindent{\bf CASE A:} $\rho$ is a global region. Then $\attop$ is used. 
-There is a deficiency we have to admit here. The Kit only puts {\tt
+There is a deficiency we have to admit here. The MLKit only puts {\tt
   letregion} around expressions, not around declarations. Thus, if one
 writes
 \begin{verbatim}
@@ -4014,7 +4013,7 @@ We refer to the phenomenon that two different region variables in the
 program may denote the same region at runtime as
 \index{region aliasing}%
 {\em region aliasing}. To determine whether to use {\tt sat} or {\tt
-  attop} in case (B3), the Kit builds a
+  attop} in case (B3), the MLKit builds a
 \index{region flow graph}%
 \label{region flow graph}%
 {\em region flow graph\/} for the entire compilation unit. (This
@@ -4164,10 +4163,10 @@ does not use regions. The peak in stack size is caused by the stacking
 of a return address.
 
 Next, we see that {\tt tlength} is an improvement over {\tt nlength},
-the main reason being that the Kit has figured out that the argument
+the main reason being that the MLKit has figured out that the argument
 to {\tt tlength} can be passed unboxed; thus no regions are used to
 hold the argument pair. However, if we chose to disable the unboxing
-of arguments that the Kit performs,\footnote{Unboxing of function
+of arguments that the MLKit performs,\footnote{Unboxing of function
   arguments can be disabled by toggling the {\tt unbox function
     arguments} entry in the {\tt Control/Optimiser} menu.} the
 function would become region-polymorphic and the polymorphic recursion
@@ -4318,8 +4317,8 @@ over three runs.}
 \section{\texttt{resetRegions} and \texttt{forceResetting}}
 It is often the case that there are only a few places in the program
 where resetting is really essential, for example in some main loop.
-Therefore, the Kit provides two operations that the programmer can use
-to encourage (or force) the Kit to perform resetting at particular
+Therefore, the MLKit provides two operations that the programmer can use
+to encourage (or force) the MLKit to perform resetting at particular
 places in the program. The two operations are
 \index{resetRegions@\texttt{resetRegions}}
 $$\resetr\; {\it vid}$$
@@ -4332,7 +4331,7 @@ identifier.  To port programs that contain {\tt resetRegions} and {\tt
    fun resetRegions _ = ()
    fun forceResetting _ = ()
 \end{verbatim}
-before compiling the program developed using the Kit.
+before compiling the program developed using the MLKit.
 
 Let $\rho$ be a region variable that occurs free in the
 region-annotated type scheme with place of {\it vid}.  Let $m$ be the
@@ -4378,8 +4377,8 @@ region it resides in can be reset. Similarly, when the two smaller
 lists have been sorted (into new regions) the regions of the smaller
 lists can be reset. These three simple observations lead to the
 variant of {\tt msort} listed in
-Figure~\ref{msortreset1.fig}.\footnote{Project:
-  \boxml{kitdemo/msortreset1.pm}, file
+Figure~\ref{msortreset1.fig}.\footnote{MLB-file:
+  \boxml{kitdemo/msortreset1.mlb}, file
   \boxml{kitdemo/msortreset1.sml}.}
 \begin{figure}
 \hrule
@@ -4419,7 +4418,7 @@ Figure~\ref{msortreset1.fig}.\footnote{Project:
    end
 \end{verbatim}
 \caption{Variant of {\tt msort} that uses {\tt resetRegions} to improve 
-  memory usage. The Kit fails to infer that the region holding the
+  memory usage. The MLKit fails to infer that the region holding the
   argument list {\tt xs} can be reset after {\tt xs} is split.}
 \label{msortreset1.fig}
 \medskip \hrule
@@ -4452,8 +4451,8 @@ analysis, for using {\tt sat} would really be sound. (The problem is
 that, unlike polymorphic recursion, the region flow graph does not
 distinguish between different calls of the same function.)  Seeing
 that this is the problem, we decide to put $\resetf$ to work, see
-Figure~\ref{force.fig}.\footnote{Project:
-  \boxml{kitdemo/msortreset2.pm}, file
+Figure~\ref{force.fig}.\footnote{MLB-file:
+  \boxml{kitdemo/msortreset2.mlb}, file
   \boxml{kitdemo/msortreset2.sml}.}
 \begin{figure}
 \hrule\medskip
@@ -4547,8 +4546,8 @@ hold the current input character and then reset that region before we proceed
 to the next character. The iteration is done by tail recursion, using region
 endomorphisms to ensure constant space usage.
 
-The bulk of the program appears below.\footnote{Project:
-  \boxml{kitdemo/scan.pm}, file: \boxml{kitdemo/scan.sml}.} The
+The bulk of the program appears below.\footnote{MLB-file:
+  \boxml{kitdemo/scan.mlb}, file: \boxml{kitdemo/scan.sml}.} The
 scanning of a single file is done by {\tt scan}, which contains three
 mutually recursive region endomorphisms ({\tt count}, {\tt
   after\_lparen}, and {\tt after\_star}) written in accordance with
@@ -4675,7 +4674,7 @@ connected to global regions in the region flow graph (cf., rule B3).
 
 The program was compiled both with and without profiling turned on.
 The output from running the program on 10 of the source files for the
-Kit is shown here:
+MLKit is shown here:
 \begin{verbatim}
    Parsing/INFIX_STACK.sml: size = 487 comments: 321 (65%)
    Parsing/InfixStack.sml: size = 7544 comments: 3025 (40%)
@@ -4730,7 +4729,7 @@ informally, the variables that occur in {\it pat\/} are said to be
 {\em lambda-bound\/} with scope {\it exp}.
 
 Lambda abstractions are represented by closures, both in the language
-definition and in the Kit. In the Kit, a closure for a lambda
+definition and in the MLKit. In the MLKit, a closure for a lambda
 abstraction consists of a code pointer plus one word for each free
 variable of the lambda abstraction. Closures are not tagged except
 when garbage collection is enabled, in which case a closure contains
@@ -4767,7 +4766,7 @@ region-polymorphic.\footnote{The reason for this is that the
   region parameters.} However, in the special case where the
 right-hand side of the value declaration is a
 \index{lambda abstraction}%
-lambda abstraction, the Kit automatically converts the declaration
+lambda abstraction, the MLKit automatically converts the declaration
 into a {\tt fun} declaration, thereby making the function
 region-polymorphic after all.
 
@@ -4794,7 +4793,7 @@ $\mu_1,\cdots\mu_n$ are the type with places of the arguments, $\mu'$
 is the type with place of the result, and $\rho$ is the region
 containing the closure for the function. When a function type has only
 one argument type, we shall often write it on the form $(\mu
-\ar{\epsilon.\rea} \mu', \rho)$, and so shall the Kit.
+\ar{\epsilon.\rea} \mu', \rho)$, and so shall the MLKit.
 
 As mentioned in Section~\ref{listtypes.sec}, the unusual looking
 object $\epsilon.\rea$ is called an
@@ -4952,7 +4951,7 @@ region variables. An
 \index{effect!definition}%
 {\em effect\/} is a finite set of atomic effects.
 
-One can get the Kit to print region-annotated 
+One can get the MLKit to print region-annotated 
 \index{type!region-annotated}%
 \index{region-annotated type scheme!printing of}%
 type schemes with places of all binding occurrences of value
@@ -5015,7 +5014,7 @@ Figure~\ref{apply.fig}.
 \label{apply.fig}
 \end{figure}
 
-In reading the output, it is useful to know that the Kit represents
+In reading the output, it is useful to know that the MLKit represents
 effects and arrow effects as graphs, the nodes of which are region
 variables, effect variables, $\Put$, $\Get$, or \boxml{U} (for
 ``union''; \boxml{U} by itself means the empty set).  Region variables
@@ -5082,9 +5081,9 @@ Consider the program\footnote{Program \boxml{kitdemo/map.sml}.}
    val x = map (fn x => x+1) [7,11]
 \end{verbatim}
 This formulation of {\tt map} is not the most efficient one in the
-Kit, because it will create one closure for each element in the list,
+MLKit, because it will create one closure for each element in the list,
 due to currying.\footnote{When {\tt map} and the application of {\tt
-    map} appear in the same compilation unit, the Kit will
+    map} appear in the same compilation unit, the MLKit will
   automatically specialise {\tt map} to a recursive function that does
   not have this defect. This specialisation is the result of a general
   optimisation of curried functions that are invariant in their first
@@ -5215,14 +5214,14 @@ particular, iteration is often achieved by function calls. Not
 surprisingly, careful compilation of function calls is essential for
 obtaining good performance.
 
-The Kit partitions function calls into four kinds, which are
+The MLKit partitions function calls into four kinds, which are
 implemented in different ways.  At best, a function call is simply
 realised by a jump in the target code.  The resource conscious
 programmer will want to know the special cases; for example, when
 doing an iterative computation, it is important to know whether the
 space usage is going to be independent of the number of iterations.
 
-The Kit performs a backwards flow analysis, called 
+The MLKit performs a backwards flow analysis, called 
 \index{call conversion}%
 {\em call conversion}, to determine what function calls are tail calls
 and, more generally, what function calls fall into the four special
@@ -5256,7 +5255,7 @@ passed on the runtime stack or in registers.
 \section{Tail Calls and Non-Tail Calls}
 \label{tailcall.sec}
 A call that is the last action of a function is referred to as a {\em
-  tail call}. After region inference, the Kit performs a tail call
+  tail call}. After region inference, the MLKit performs a tail call
 analysis (in one backwards scan through the program). It is
 significant that the tail call analysis happens after region
 inference; as we saw in Section~\ref{length.sec}, a function call that
@@ -5284,7 +5283,7 @@ $$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] <$e_1,\ldots,e_m$>}$$
 where $\rho_1$, $\ldots$, $\rho_n$ are actual region parameters to the
 function, $f$ is the name of a region-polymorphic function, and
 $e_1 \cdots e_m$, $m \geq 1$ are value arguments to the function (we
-often omit the brackets $\verb+<+ \cdots \verb+>+$ when $m = 1$.) The Kit
+often omit the brackets $\verb+<+ \cdots \verb+>+$ when $m = 1$.) The MLKit
 turns such a function call into the form
 $$\boxml{jmp $f$ [$\rho_1$, $\ldots$, $\rho_n$] <$e_1,\ldots,e_m$>}$$
 if the call
@@ -5330,14 +5329,14 @@ Figure~\ref{tail.fig}.
 \end{figure}
 
 There is a more efficient version of the function {\tt f} that
-exploits the Kit's unboxing of function arguments, but in general, one
+exploits the MLKit's unboxing of function arguments, but in general, one
 can rely on unboxing to ensure tail-calls only when the elements of
 the argument tuple themselves are unboxed; otherwise there is a risk
 that, for each invocation, fresh regions are introduced to hold the
 arguments to the call, and the call would need to return to
 de-allocate these regions.
 
-The Kit can transform a call into a \boxml{jmp} tail call even in the
+The MLKit can transform a call into a \boxml{jmp} tail call even in the
 case that the call appears in the body of a \boxml{fn} expression.
 Consider the following two mutually recursive functions {\tt g} and
 {\tt h}:\footnote{Program {\tt kitdemo/tail2.sml}.}
@@ -5370,7 +5369,7 @@ indeed, the call to {\tt g} is recognized as a tail call.
 \medskip \hrule
 \label{tail2.fig}
 \end{figure}
-Also notice that the Kit does not try to in-line {\tt g} in {\tt h}
+Also notice that the MLKit does not try to in-line {\tt g} in {\tt h}
 (or vice-versa), although such an optimisation would certainly improve
 on the efficiency of the generated code. Another example of a {\tt
   jmp} tail call is shown in Section~\ref{foldl.sec}.
@@ -5449,7 +5448,7 @@ follows\footnote{Program \boxml{kitdemo/compose.sml}.}
 \begin{verbatim}
    fun (f o g) x = f(g x)
 \end{verbatim}
-The resulting call-explicit expression produced by the Kit is
+The resulting call-explicit expression produced by the MLKit is
 \begin{verbatim}
    fun o attop r1 [r7:3] (f, g)= 
        fn attop r7 x => fnjmp f (fncall g x)
@@ -5578,105 +5577,112 @@ assumes that {\tt f} takes a pair as an argument:\footnote{Program
      end
 \end{verbatim}
 Interestingly, this program contains a potential space leak. Can you
-detect it? If not, the Kit will tell you when you compile the program.
+detect it? If not, the MLKit will tell you when you compile the program.
 (Remember to enable {\tt warn on escaping put effects} in the {\tt
   Control} menu.)
 
 %---------------------------------------------
-\chapter{Modules and Projects}
-\label{modules_and_projects.chap}
+\chapter{ML Basis Files and Modules}
+\label{mlb_and_modules.chap}
 %---------------------------------------------
 In Section \ref{tryit.sec} we described how to compile and run single
 file programs. In this chapter we describe how to program in the
-large with the Kit, using 
+large with the MLKit, using 
 \index{Standard ML!Modules}% 
 Standard ML Modules and the possibility of organising source files
-into project files. The Kit fully supports Standard ML Modules and it
+into project files. The MLKit fully supports Standard ML Modules and it
 has a sophisticated system for avoiding unnecessary recompilation. In
 the following section, we describe the notion of projects. We then
 turn to show how to program with structures, signatures, and functors.
 To enable the programmer to write efficient programs using the Modules
-language, we shall also explain how the Kit compiles Modules language
+language, we shall also explain how the MLKit compiles Modules language
 constructs.
 
 
-\section{Projects \label{projects.sec}}
-A 
-\index{project}%
-\index{project file}%
-{\em project file\/} is a file that lists the SML source files
-that make up a project. A project file can also 
-\index{importing a project}%
-{\em import\/} other project files, so one can organise projects in a
-hierarchical manner.  The Kit enforces the restriction that projects
-may not be cyclic.
+\section{ML Basis Files}
+An ML Basis File, in short MLB-file,  
+\index{ML Basis File}%
+\index{MLB-file}%
+is a file that lists the SML source files
+that make up a project or a library. An MLB-file can also 
+\index{referencing an MLB-file}%
+\emph{reference} other MLB-files, so one can organise projects in a
+hierarchical manner.  MLB-files are enforced not to be cyclic.
 
-Project files have file extension \index{.pm@\texttt{.pm}}{\tt .pm}. The 
-\index{project file!grammar}%
-grammar for project files ({\it pm}) is given in Figure~\ref{pm_grammar.fig}.
+MLB-files have file extension \index{.mlb@\texttt{.mlb}}{\tt .mlb}.
+The content of an MLB-file is a \emph{basis declaration}, for which
+the 
+\index{MLB-file!grammar}%
+grammar is given in Figure~\ref{mlb_grammar.fig}. We assume a
+denumerable infinite set of \emph{basis identifiers} Bid, ranged over
+by \id{bid}. We use \id{longbid} to range over \emph{long basis
+  identifiers}, that is, non-empty lists of basis identifiers
+separated by a punctuation letter (\texttt{.}).
+
 \begin{figure}
 \hrule\medskip
-$$\begin{array}{lcll}
-  {\it imports} & \verb+::=+ & {\it path}{\tt .o} ~\langle~{\tt :} {\it path}{\tt .o}~\rangle ~ 
-                                  {\it imports} & \mbox{external object} \\
-                & \verb+|+   & {\it path}{\tt .pm} ~ {\it imports} & \mbox{project} \\
-                & \verb+|+   & & \mbox{empty} \\
-  {\it body}  & \verb+::=+ & {\it path}{\tt .sml} ~{\it body} & \mbox{source} \\
-                & \verb+|+   & {\it path}{\tt .sig} ~{\it body} & \mbox{source} \\
-                & \verb+|+   & {\tt local}~{\it body}~{\tt in}~{\it body}~{\tt end}~{\it body} & \mbox{local} \\
-                & \verb+|+   & & \mbox{empty} \\
-  {\it pm}      & \verb+::=+ & {\tt import} ~{\it imports}~ {\tt in} ~ {\it body}~ {\tt end} & \mbox{with import} \\
-                & \verb+|+   & {\it body} & \mbox{basic} 
-  \end{array}$$
-\caption{Grammar for project files, i.e., files with extension {\tt .pm}. 
-  Optional phrases are included in angle brackets
-  $\langle\cdots\rangle$. For some file extension {\tt .}{\it ext},
+\[
+\begin{array}{rcll}
+  \emph{bdec} & ::= & \emph{bdec}~ \emph{bdec} & \mbox{sequential~basis~declaration} \\
+            & |   & \varepsilon & \mbox{empty~basis~declaration} \\
+            & |   & \texttt{local}~ \emph{bdec}~\texttt{in}~\emph{bdec}~\texttt{end} & \mbox{local~declaration} \\
+            & |   & \texttt{basis} ~\emph{bid}~\texttt{=}~\emph{bexp} & \mbox{basis~identifier~binding} \\
+            & |   & \texttt{open} ~\emph{longbid}* & \mbox{opening~of~a~basis}\\
+            & |   & \emph{atbdec} \\
+            & |   & \emph{path}.\texttt{mlb} & \mbox{include} \\ \\
+  \emph{atbdec} & ::= & \emph{path}.\texttt{sml} & \mbox{source~file} \\
+              & |   & \emph{path}.\texttt{sig} & \mbox{source~file} \\ \\
+  \emph{bexp} & ::= & \texttt{bas}~ \emph{bdec}~ \texttt{end} & \mbox{basis~declaration~grouping} \\
+            & |   & \texttt{let}~\emph{bdec}~\texttt{in}~\emph{bexp}~\texttt{end} & \mbox{let~expression} \\
+            & |   & \emph{longbid}
+\end{array}
+\]
+\caption{Grammar for MLB-files, i.e., files with extension {\tt .mlb}. 
+  For some file extension {\tt .}{\it ext}, 
   {\it path}{\tt .}{\it ext\/} denotes either an absolute path or a
   relative path (relative to the directory in which the project file
-  is located) to a file on the underlying file system. Imports of
-  external objects are supported only in the native backend version of
-  the ML Kit.}
-\label{pm_grammar.fig}
+  is located) to a file on the underlying file system.}
+\label{mlb_grammar.fig}
 \medskip \hrule
 \end{figure}
-In a project file, one can import source files, other project files,
-and object files (see below), using absolute or relative
+In an MLB-file, one can reference source files and other MLB-files using absolute or relative
 \index{path!absolute}%
 \index{path!relative}%
-paths.  Relative paths are relative to the location of the project
-file.  Until now, we have seen a few examples of project files with no
-imports (see Section~\ref{polyrec.sec} for such an example). In
-Section~\ref{functors.sec}, we present an example of a project that
-imports other projects. Object files are {\tt .o} files stemming from
-compiling C code; in Section~\ref{comp_and_link_with_C.sec}, we shall
-see an example of a project that imports object files (this feature is
-not supported in the bytecode backend version of the ML Kit.) Project
-files may contain Standard ML style
-\index{project file!comments in}%
-\index{comments!in project file}%
-comments. The declared identifiers of a project is the union of the
-identifiers being declared by a source file of the project, excluding
+paths.  Relative paths are relative to the location of the MLB-file.
+Paths can reference environment variables using the
+\texttt{\$(ENVVAR)} notation, where \texttt{ENVVAR} is an environment
+variable. Until now, we have seen a few examples of MLB-files that
+reference the Basis Library, using the \texttt{\$(SML\_LIB)}
+environment variable (see Section~\ref{polyrec.sec} for such an
+example). In Section~\ref{functors.sec}, we present an example of an
+MLB-file that reference other MLB-files. In
+Section~\ref{comp_and_link_with_C.sec}, we shall see an example of how an MLB-file can be compiled and linked with external object files, produced with a C compiler, for instance. MLB-files may contain
+Standard ML style
+\index{MLB-file!comments in}%
+\index{comments!in MLB-file}%
+comments. The declared identifiers of an MLB-file is the union of the
+identifiers being declared by source files in the MLB-file, excluding
 source files that are included using {\tt local}. As an example of
 the use of {\tt local} to limit what identifiers are declared by a
-project, consult the project file {\tt basis/basis.pm}.
+project, consult the MLB-file {\tt basis/basis.mlb}.
 
 Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
-mentioned in the project file and all other projects that import this
-project file. Thus, a source file may depend on source files mentioned
-earlier in the project file and on other imported projects.  The
-meaning of an entire project is the meaning of the top-level
-declaration that would arise by first expanding all imported projects
-and then concatenating all the source files listed in the project file
+mentioned in the MLB-file and all other MLB-files that reference this
+MLB-file. Thus, a source file may depend on source files mentioned
+earlier in the MLB-file and on other referenced MLB-files.  The
+meaning of an entire MLB-file is the meaning of the top-level
+declaration that would arise by expanding all referenced MLB-files
+and then concatenating all the source files listed in the MLB-file
 (with appropriate renaming of declared identifiers of source files that are
 included using {\tt local}), in the order they are listed, except that
-each project is executed only the first time it is imported.
+each MLB-file is executed only the first time it is imported.
 
-The Kit has a system for managing compilation and recompilation of
-\index{projects}%
-projects.  The system guarantees that the result of first modifying
-one or more source files of a project and then using the separate
-compilation system to rebuild the project is the same as if all 
+The MLKit has a system for managing compilation and recompilation of
+\index{MLB-files}%
+MLB-files.  The system guarantees that the result of first modifying
+one or more source files and then using the separate
+compilation system to rebuild the executable is the same as if all 
 \index{source file}%
 source files were
 \index{recompilation}%
@@ -5685,49 +5691,49 @@ recompiled.
 Thus, the separate compilation system is a way of avoiding recompiling
 parts of a (possibly) long sequence of declarations, while ensuring
 that the result is always the same as if one had compiled the entire
-program from scratch.  As an example, consider the project file
-(\boxml{kitdemo/scan.pm}) for the text scanning example of
-Section~\ref{scan.sec}. It contains the following two lines:
+program from scratch.  As an example, consider the MLB-file
+(\boxml{kitdemo/scan.mlb}) for the text scanning example of
+Section~\ref{scan.sec}. It contains the following three lines:
 \begin{verbatim}
-   lib.sml
-   scan.sml
+  $(SML_LIB)/basis/basis.mlb
+  lib.sml
+  scan.sml
 \end{verbatim}
 
 \noindent 
 The source files for the project are {\tt lib.sml} and {\tt scan.sml},
-which are both located in the directory where {\tt scan.pm} is
+which are both located in the directory where {\tt scan.mlb} is
 located. Whereas each of the source files {\tt lib.sml} and {\tt
   scan.sml} depends on the Basis Library, the source file {\tt
   scan.sml} also depends on {\tt lib.sml}.
 
 
-Compiling a project is easy; select the entry {\tt Compile file
-  or project} from the main menu and type in the path to the {\tt .pm}
-file for the project you want to compile. When the project is first
-compiled, the Kit detects automatically when a source file has been
-modified (by checking file modification dates). After a project has
-been successfully compiled and linked, it can be executed by running
-the command
+Compiling an MLB-file is easy; simply give it as an argument to the
+MLKit executable. When the MLB-file is first compiled, the MLKit
+detects automatically when a source file has been modified (by
+checking file modification dates). After a project has been
+successfully compiled and linked, it can be executed by running the
+command
 \index{run@\texttt{run}}%
 \begin{verbatim}
    run
 \end{verbatim}
 in the working directory.  
 
-The Kit compiles each source file of a project one at a time, in the
+The MLKit compiles each source file of an MLB-file one at a time, in the
 order mentioned in the project file. A source file is compiled under
 a given set of assumptions, which provides, for instance, region-annotated type
 schemes with places for free variables of the source file. Also, compilation of a
 source file gives rise to exported information about declared
 identifiers. Exported information may occur in assumptions for source
-files mentioned later in the project file.
+files mentioned later in the MLB-file.
 
 There are two rules that govern when a source file is recompiled.  A
 source file is recompiled if either (1) the user has modified the
 source file or (2) the assumptions under which the source file was
 previously compiled have changed. To avoid unnecessary recompilation,
-assumptions for a source file depend on only the free identifiers.
-Moreover, if a source file has been compiled earlier, the Kit seeks to
+assumptions for a source file depend on only its free identifiers.
+Moreover, if a source file has been compiled earlier, the MLKit seeks to
 \index{matching}%
 {\em match\/} the new exported information to the old exported
 information by renaming generated names to names generated when the
@@ -5739,13 +5745,13 @@ recompiled even though source files, on which it depends, are
 modified.
 
 Let us assume that we modify the source file {\tt lib.sml} of the text
-scanning example.  Selecting {\tt Compile it again} from the main menu
-causes {\tt lib.sml} to be recompiled.  The Kit checks whether the
-assumptions under which the source file {\tt scan.sml} was compiled
-have changed, and if so, recompiles {\tt scan.sml}.  Modifying only
-comments or string constants inside {\tt lib.sml} or extending its set
-of declared identifiers does not trigger recompilation of {\tt
-  scan.sml}.
+scanning example, after having compiled the MLB-file
+\texttt{kitdemo/scan.mlb} once. When compiling the MLB-file again, the
+MLKit checks whether the assumptions under which the source file {\tt
+  scan.sml} was compiled have changed, and if so, recompiles {\tt
+  scan.sml}.  Modifying only comments or string constants inside {\tt
+  lib.sml} or extending its set of declared identifiers does not
+trigger recompilation of {\tt scan.sml}.
 
 Some of the information a source file depends on is the ML type
 schemes of its free variables. It also depends on, for example, the
@@ -5768,17 +5774,16 @@ functions may also trigger recompilation.
 \section{Structures}
 The support for Modules together with the possibility of dividing
 top-level declarations into different source files provide a mechanism
-for programming in the large. In the Kit, structures exist only at
+for programming in the large. In the MLKit, structures exist only at
 compile time.  Thus one need not worry where
 \index{structure declaration}%
 structures live at runtime.
 
 We illustrate the compile-time nature of structures with the following
-example. Consider the project {\tt PolySet.pm},\footnote{Project
-  \boxml{kitdemo/PolySet.pm}.} which mentions the source files {\tt
+example. Consider the MLB-file {\tt PolySet.mlb},\footnote{MLB-file:
+  \boxml{kitdemo/PolySet.mlb}.} which mentions the source files {\tt
   PolySet.sml}, {\tt INT\_SET.sml}, and {\tt IntSet.sml}. The source
 file {\tt PolySet.sml} contains the following top-level declaration:
-\newpage
 \begin{verbatim}
    structure PolySet =
      struct
@@ -5792,7 +5797,7 @@ file {\tt PolySet.sml} contains the following top-level declaration:
                              else x::union(s1,s2)
      end
 \end{verbatim}
-The code generated by the Kit for the {\tt PolySet} structure is
+The code generated by the MLKit for the {\tt PolySet} structure is
 exactly as if the declarations were written outside of a structure.
 As a consequence, when you refer to a component of a structure using
 qualified identifiers (e.g., {\tt PolySet.mem}), no code is generated
@@ -5804,10 +5809,10 @@ identifiers that become visible.
 
 \section{Signatures}
 \index{signature declaration}%
-In the Kit, signature declarations exist only at compile time. That
+In the MLKit, signature declarations exist only at compile time. That
 is, a signature declaration does not result in any code being
-generated. The source file {\tt INT\_SET.sml} in the project {\tt
-  PolySet.pm}, mentioned earlier, contains the signature declaration
+generated. The source file {\tt INT\_SET.sml} in the MLB-file {\tt
+  PolySet.mlb}, mentioned earlier, contains the signature declaration
 \begin{verbatim}
    signature INT_SET =
      sig
@@ -5831,8 +5836,7 @@ Section~\ref{functors.sec}.
 Transparent signature constraints may both restrict components from a
 structure and make polymorphic components less polymorphic. Moreover,
 opaque signature constraints may also make type components of
-structures abstract. Consider the structure 
-declarations
+structures abstract. Consider the structure declarations
 \begin{verbatim}
    structure IntSet1 : INT_SET = PolySet
    structure IntSet2 :> INT_SET = PolySet
@@ -5852,11 +5856,11 @@ transparent signature constraints.
 \section{Functors \label{functors.sec}}
 \index{functor}%
 \index{specialisation!functor}%
-Functors map structures to structures. The Kit specialises a functor
+Functors map structures to structures. The MLKit specialises a functor
 every time it is applied.  Thus, types that are abstract for the
 programmer (inside a functor body) become visible to the compiler.
 Region-annotated type schemes and other information about identifiers
-in the actual functor argument are available when the Kit compiles the
+in the actual functor argument are available when the MLKit compiles the
 functor body.
 
 For practical reasons, it is important that not all functor
@@ -5870,16 +5874,17 @@ Assumptions for compiling these structure declarations are memorised,
 so that the generated code can be reused upon modification of source
 files if the assumptions do not change.
 
-Consider the following project:\footnote{Project
-  \boxml{kitdemo/Set.pm}.}
+Consider the following MLB-file:\footnote{MLB-file:
+  \boxml{kitdemo/Set.mlb}.}
 \begin{verbatim}
-   import utils/utils.pm
+   $(SML_LIB)/basis/basis.mlb
+   local utils/utils.mlb
    in SET.sml Set.sml SetApp.sml
    end
 \end{verbatim}
-The project imports the sub-project {\tt utils.pm} from the {\tt util}
-directory.\footnote{Project \boxml{kitdemo/utils/utils.pm}.} This
-project provides a structure {\tt ListUtils} that contains the
+The MLB-file reference the MLB-file {\tt utils.mlb} from the {\tt utils}
+directory.\footnote{MLB-file: \boxml{kitdemo/utils/utils.mlb}.} This
+MLB-file provides a structure {\tt ListUtils} that contains the
 function {\tt pr\_list} with type scheme {\tt ('a -> string) -> 'a
   list -> string}. The content of the file {\tt Set.sml} is listed in
 Figure~\ref{Set.fig}. It declares the functor {\tt Set}, which takes
@@ -5976,10 +5981,10 @@ into a $\MulExp$ program. The $\MulExp$ call-explicit code for the
 \end{figure}
 
 Notice that the code for the {\tt mem}~function refers to compiled
-code for the {\tt lt}~function; the Kit does not currently propagate
+code for the {\tt lt}~function; the MLKit does not by default propagate
 enough information accross module boundaries that the use of the {\tt
   lt}~function is reduced to a built-in comparison on integers.
-Instead, for simplicity, the Kit compiles the argument to the {\tt
+Instead, for simplicity, the MLKit compiles the argument to the {\tt
   Set}~functor in the source file \boxml{SetApp.sml} into separate
 code:
 \begin{verbatim}
@@ -5990,7 +5995,7 @@ code:
    in  {|pr: (_,r1), lt: (_,r1)|}
    end 
 \end{verbatim}
-Here, the \boxml{toString} function stems from the \boxml{Int}
+Here, the \boxml{toString} function comes from the \boxml{Int}
 structure of the Standard ML Basis Library and the primitive
 operation~\boxml{<} provides a built-in comparison on integers.
 
@@ -5998,25 +6003,24 @@ operation~\boxml{<} provides a built-in comparison on integers.
 \chapter{Garbage Collection}
 \label{gc.chap}
 %---------------------------------------------------------
-The ML Kit supports reference tracing garbage collection in
-combination with the region memory model \cite{hallenberg99}.
+The MLKit supports reference tracing garbage collection in
+combination with the region memory model \cite{hallenberg99,het02}.
 Currently, only the native backend supports garbage collection.
 Garbage collection is also possible with region profiling enabled.
 
 The way to tell the compiler to generate code that supports garbage
-collection is to enable the option {\tt garbage collection}, either
-from the command-line (use the short option {\tt -gc}) or from the
-interactive menu.
+collection is to pass the option \texttt{-gc} to the MLKit compiler.
 
 \section{Dangling Pointers}
-The region type system supports de-allocation of memory that is not
+The region type system supports deallocation of memory that is not
 accessed in the remainder of the execution of the program. Because of
 this principle, the execution model may lead to {\em dangling
   pointers}, that is, pointers that point into memory that has been
 discharged. When garbage collection is enabled, the region type system
 is modified slightly so as to guarantee that no dangling pointers
-occur during execution. The following example illustrates how the
-enabling of garbage collection changes the way programs are compiled:
+occur during execution \cite{elsman:tldi03}. The following example
+illustrates how the enabling of garbage collection changes the way
+programs are compiled:
 \begin{verbatim}
   val f = let val x = ref (2, [1])
           in fn y => (#1 (!x), y)
@@ -6081,11 +6085,11 @@ garbage collection is enabled.\footnote{Compiled with {\tt mlkit -gc
   itself.}  \medskip \hrule
 \label{dangling_gc.fig}
 \end{figure}
-When garbage collection is enabled, the Kit makes sure that whenever a
-closure is live all values stored in the closure are kept live as long
-as the closure is live.  Assume that the type with place $\mu$
-of the function associated with the closure is on the form $(\mu_1
-\ar{\epsilon.\varphi} \mu_2, \rho_0)$.  The Kit enforces the
+When garbage collection is enabled, the MLKit makes sure that whenever
+a closure is live all values stored in the closure are kept live as
+long as the closure is live.  Assume that the type with place $\mu$ of
+the function associated with the closure is on the form $(\mu_1
+\ar{\epsilon.\varphi} \mu_2, \rho_0)$.  The MLKit enforces the
 restriction by requiring that for each region variable $\rho$ that
 occur free in the type of free variables of the function (those
 variables for which values are stored in the closure at runtime),
@@ -6094,11 +6098,12 @@ lead to extra $\Get$ effects being added to $\epsilon.\varphi$ when
 garbage collection is enabled. In the example, an imposed $\Get$
 effect on the arrow effect in the type for {\tt f} makes it impossible
 to wrap a {\tt letregion} around the binding for {\tt f}. (See
-\cite[page 50]{total93} for more information about this requirement.)
+\cite[page 50]{total93} and \cite{elsman:tldi03} for more information
+about this requirement.)
 
 \section{Instrumenting the Executable}
-Executables produced by the Kit with garbage collection enabled can be
-instrumented by use of command-line options. For instance, if the Kit
+Executables produced by the MLKit with garbage collection enabled can be
+instrumented by use of command-line options. For instance, if the MLKit
 has produced a file {\tt run}, one can pass the option {\tt
   -verbose\_gc} to {\tt run} to enable the printing of garbage
 collection information at runtime. An overview of available
@@ -6259,7 +6264,7 @@ The profiling process is sketched in Figure~\ref{profStrategy.fig}.
 %\begin{center}
 %\begin{picture}(29,8)
 %\put(0,4){\picbox{Choose \\ Compile-Time \\ Profiling \\ Strategy}}
-%\put(6,4){\picbox{Compile ML Source Program with Kit compiler}}
+%\put(6,4){\picbox{Compile ML Source Program with MLKit compiler}}
 %\put(12,4){\picbox{Choose Target \\ Profiling Strategy}}
 %\put(18,4){\picbox{Execute Target Program \\ (\texttt{run} $\ldots$)}}
 %\put(24,4){\picbox{Generate \\ Profiles \\ with the graph \\ generator \texttt{rp2ps}}}
@@ -6282,7 +6287,7 @@ The profiling process is sketched in Figure~\ref{profStrategy.fig}.
 %\put(17.3,1.5){\scriptsize \texttt{.rp}\index{rp@\texttt{.rp}}}
 %\put(23.3,1.5){\scriptsize \texttt{.ps}\index{ps@\texttt{.ps}}}
 %\end{picture}
-%\caption{Overview of the ML Kit profiler. Dotted boxes
+%\caption{Overview of the MLKit profiler. Dotted boxes
 %        represent output from the profiler. The file containing the output
 %        is also shown, e.g. a profile goes into a \texttt{.ps} file.}
 %\label{profStrategy.fig}
@@ -6300,13 +6305,13 @@ profiling strategies and how the profiles are generated.
 %-------------------------------------------------
 
 In this section, we concentrate on the general principles of
-profiling. As an example, we investigate a revised version of the {\tt
-  kitdemo/scan.pm} project (see Section~\ref{scan.sec}). Instead of
-asking for a list of input files to scan (as project \texttt{scan.pm}
+profiling. As an example, we investigate a revised version of the peoject {\tt
+  kitdemo/scan.mlb} (see Section~\ref{scan.sec}). Instead of
+asking for a list of input files to scan (as project \texttt{scan.mlb}
 does), the revised version of the scan project asks for only one input
 file, which it then scans
-\index{scan_rev1.pm@\texttt{scan\_rev1.pm}}%
-50~times.\footnote{Project {\tt kitdemo/scan\_rev1.pm}.}
+\index{scan_rev1.mlb@\texttt{scan\_rev1.mlb}}%
+50~times.\footnote{Project {\tt kitdemo/scan\_rev1.mlb}.}
 
 The first thing to do is to get an overview of the memory usage of the
 program. A region profile of the program gives you just that. See
@@ -6318,7 +6323,7 @@ Figure~\ref{scan_rev1_1.fig}.
 \caption{Memory is accumulated in the top two
   bands. The global regions \texttt{r1} and \texttt{r211397} hold the
   largets amount of memory. The graph was generated by first
-  compiling the {\tt kitdemo/scan\_rev1.pm} project with profiling
+  compiling the {\tt kitdemo/scan\_rev1.mlb} project with profiling
   enabled. Then by executing \texttt{echo life.sml | run -realtime -microsec 1000} and finally by
   typing \texttt{rp2ps -region -name scan\_rev1}.}
 \label{scan_rev1_1.fig}
@@ -6451,10 +6456,10 @@ at the call to {\tt report\_file} in function {\tt scan\_file}:
        (writeln(name^" failed."); NONE)
 \end{verbatim}
 Project 
-\index{scan_rev2@\texttt{scan\_rev2.pm}}%
-{\tt kitdemo/scan\_rev2.pm} implements the modification.
+\index{scan_rev2@\texttt{scan\_rev2.mlb}}%
+{\tt kitdemo/scan\_rev2.mlb} implements the modification.
 Figure~\ref{scan_rev2_1.fig} shows a region profile of the
-\texttt{scan\_rev2.pm} project.
+\texttt{scan\_rev2.mlb} project.
 \begin{figure}
 \begin{center}
 \includegraphics{scan_rev2_1.ps}
@@ -6507,7 +6512,7 @@ The compile-time profiling strategy is set up in the
 \noindent
 Region profiling is enabled by toggling the item
 \index{region profiling@\texttt{region profiling}}%
-\mbox{{\tt region profiling}}. If you want the Kit to report
+\mbox{{\tt region profiling}}. If you want the MLKit to report
 region-annotated programs with program points, you should enable
 either 
 \index{print physical size inference expression@\texttt{print physical size inference expression}}%
@@ -6541,7 +6546,7 @@ sub-menu together with the option {\tt print call-explicit
 
 By enabling the option {\tt Log to file} from the {\tt File} sub-menu
 and by compiling the program using the {\tt Compile file or project} entry in
-the main-menu, the Kit now generates several files of which we have
+the main-menu, the MLKit now generates several files of which we have
 {\tt life.log} (containing, among other things, the call-explicit
 region-annotated program with program points and the region flow graph
 in text layout), {\tt life.vcg} (the region flow graph to be
@@ -6638,7 +6643,7 @@ variable \texttt{r212427}.
 % %--------------------------------------------------------
 % If you are interested in the possible paths
 % \index{region flow path}%
-% from one region variable to another, the Kit can find them for you.
+% from one region variable to another, the MLKit can find them for you.
 % Assume that you have an object profile for some region variable $\rho$
 % showing that a certain allocation point is responsible for the
 % allocations and that the region variable written at the allocation
@@ -6675,7 +6680,7 @@ variable \texttt{r212427}.
 % Compiling the source program again gives a new log file where you can
 % search for \texttt{Starting layout of paths}:\footnote{Because region
 %   variables may change when recompiling a source file, it may be
-%   necessary to start all over by starting the Kit again and recompile
+%   necessary to start all over by starting the MLKit again and recompile
 %   the program to make sure that the regions you have specified will
 %   match the regions in a region flow graph of a previous compilation.}
 % \begin{verbatim}
@@ -7113,32 +7118,32 @@ here. Help on these options is obtained by typing \texttt{rp2ps -h} or
 \index{rp2ps@\texttt{rp2ps} options|)}%
 
 %---------------------------------------------------------
-\chapter{Interacting with the Kit}
+\chapter{Interacting with the MLKit}
 \label{controlkit.sec}
 \label{startup.sec}
 %---------------------------------------------------------
 
-Starting the Kit was described in Section~\ref{tryit.sec}.  To
-\index{leaving the Kit}%
-\index{exit from the Kit}%
-\index{quitting from the Kit}%
-leave the Kit, type 
+Starting the MLKit was described in Section~\ref{tryit.sec}.  To
+\index{leaving the MLKit}%
+\index{exit from the MLKit}%
+\index{quitting from the MLKit}%
+leave the MLKit, type 
 \index{quit@\texttt{quit}}%
 \boxml{quit} followed by a return character.
 
 We have already described how to compile and run single source files
 (Section~\ref{tryit.sec}) and projects
-(Chapter~\ref{modules_and_projects.chap}).  In the following sections,
-we give an overview of the Kit sub-menus that control printing and
+(Chapter~\ref{mlb_and_modules.chap}).  In the following sections,
+we give an overview of the MLKit sub-menus that control printing and
 layout of intermediate forms. In Section~\ref{scriptfiles.sec}, we
 explain how to use a so-called script file to set personal preferences
-for menu entries in the Kit. The settings that can be controlled using
+for menu entries in the MLKit. The settings that can be controlled using
 the menu and script files can also be controlled using command-line
-options to the ML Kit executables. One useful command-line option is
+options to the MLKit executables. One useful command-line option is
 the 
 \index{help@\texttt{-help} option to \texttt{mlkit}}%
 {\tt -help} option; Appendix~\ref{mlkithelp.app} shows the output of
-executing \boxml{mlkit -help} in a version of the Kit that uses the
+executing \boxml{mlkit -help} in a version of the MLKit that uses the
 native x86 backend.
 
 
@@ -7153,7 +7158,7 @@ The menu
 forms are printed when a program is compiled.
 A summary of the major phases that produce printable intermediate
 forms is shown in Figure~\ref{phases.fig}. The phases are listed in
-the order they take place in the Kit.
+the order they take place in the MLKit.
 \begin{figure}
 \begin{center}
 \begin{tabular}{|l|l|l|}
@@ -7178,8 +7183,8 @@ the order they take place in the Kit.
 \caption{The table shows how the menu items in the 
   \index{intermediate forms}%
   {\tt Printing of Intermediate Forms} menu correspond to the phases
-  in the Kit.  Enabling \boxml{debug compiler} from the \boxml{Debug
-    Kit} menu causes all intermediate forms marked $(\ast)$ to be
+  in the MLKit.  Enabling \boxml{debug compiler} from the \boxml{Debug
+    MLKit} menu causes all intermediate forms marked $(\ast)$ to be
   printed.  Thus, one can select phases individually or ask to have all
   printed.  The phases that follow K-normalisation all work on
   K-normal forms, but, for readablity, terms are printed as though
@@ -7234,7 +7239,7 @@ the
 \index{backend!bytecode}%
 bytecode backend, toggling of entries in the \texttt{Printing of
   intermediate forms} menu allows you to inspect the bytecode
-generated by the Kit.
+generated by the MLKit.
 
 \section{Layout of Intermediate Forms}
 \label{layout_intermediate_forms.sec}
@@ -7266,17 +7271,17 @@ simplified form in which they are normally presented.
 
 \section{Using Script Files for Preferences}
 \label{scriptfiles.sec}
-The Kit allows you to create a so-called 
+The MLKit allows you to create a so-called 
 \index{script file}%
 {\em script file}, which can hold preferences for most of the entries
-found in the Kit menu. A script file can be provided either when the
-Kit is started or dynamically from within the Kit menu when the Kit is
-running. To provide a script file {\tt script} at the time the Kit is
+found in the MLKit menu. A script file can be provided either when the
+MLKit is started or dynamically from within the MLKit menu when the MLKit is
+running. To provide a script file {\tt script} at the time the MLKit is
 started, type
 \begin{verbatim}
    mlkit -script script
 \end{verbatim}
-from the shell. During a session with the Kit, a script file can be
+from the shell. During a session with the MLKit, a script file can be
 read using the menu entry {\tt Read a script file} from the {\tt File}
 menu.
 
@@ -7295,7 +7300,7 @@ Here is a script file that enables the boolean entry {\tt print drop
 Notice that spaces in the menu entries are replaced with scores in the
 script file and that script files may include ML style comments. By
 selecting {\tt print all flags and variables} from the {\tt Control}
-sub-menu, the Kit prints a table of all entries that may be set from a
+sub-menu, the MLKit prints a table of all entries that may be set from a
 script file.
 
 Enabling 
@@ -7311,31 +7316,31 @@ normally presented.
 \label{ccall.sec}
 %---------------------------------------------------------
 
-In this chapter, we describe how the Kit programmer can call 
+In this chapter, we describe how the MLKit programmer can call 
 \index{C!calling}%
-C functions from within Standard ML programs.  The Kit allows ML
+C functions from within Standard ML programs.  The MLKit allows ML
 values to be passed to C functions, which again may return ML values.
 Not all ML values are represented as if they were C values. For
 instance, C strings are null-terminated arrays of characters, whereas
-ML strings in the Kit are represented as a linked list of bounded
+ML strings in the MLKit are represented as a linked list of bounded
 sized character arrays. To allow the programmer to conveniently
-convert between C values and ML values, the Kit provides conversion
+convert between C values and ML values, the MLKit provides conversion
 functions and macros for commonly used data structures.
 
-When the Kit calls a C function, data structures returned by the
-function are stored in regions that are allocated by the Kit. For
+When the MLKit calls a C function, data structures returned by the
+function are stored in regions that are allocated by the MLKit. For
 dynamically sized objects of the resulting value, such as strings and
-lists, regions are allocated by the Kit and passed to the C function
+lists, regions are allocated by the MLKit and passed to the C function
 as additional arguments; the C function must then itself allocate
 space in these regions for the dynamically sized data
 structures. Moreover, for those parts of the resulting value for which
 the size can be determined statically, pointers to already allocated
 space are passed to the C function as additional arguments.
 
-In both cases, the Kit uses region inference to infer the lifetime of
+In both cases, the MLKit uses region inference to infer the lifetime of
 regions that are passed to the C function.  The region inference
-algorithm does not analyse C functions. Instead, the Kit inspects the
-ML type provided by the programmer. The Kit assumes that functions
+algorithm does not analyse C functions. Instead, the MLKit inspects the
+ML type provided by the programmer. The MLKit assumes that functions
 with monomorphic types are 
 \index{region exomorphism}%
 region exomorphisms;
@@ -7357,21 +7362,21 @@ Examples of existing libraries that can be accessed from within ML
 programs include the X Window System and standard UNIX libraries
 providing functions such as {\tt time}, {\tt cp}, and {\tt
 fork}. There are limitations to the scheme, however. First, because C
-and the Kit do not share value representations, transmitting large
+and the MLKit do not share value representations, transmitting large
 data structures between C and ML will often involve significant
 copying. Second, some C libraries require the user to set up
 \index{call-back function}%
 call-back functions to be executed when specific events occur. It is
-not currently possible with the Kit to have a C function call an ML
+not currently possible with the MLKit to have a C function call an ML
 function.
 
 %========================================================
 \section{Declaring Primitives and C Functions}
 \label{parPassing.sec}
 %========================================================
-The Kit conforms in large parts to the Standard ML Basis Library. Part
+The MLKit conforms in large parts to the Standard ML Basis Library. Part
 of the functionality found in this library is programmed in C and
-linked to the Kit runtime system.  The declarations in system
+linked to the MLKit runtime system.  The declarations in system
 dependent parts of the library use a special built-in identifier
 called \index{prim@\texttt{prim}}\texttt{prim}, which is declared to have type
 scheme $\forall \alpha \beta .  \texttt{string} 
@@ -7387,10 +7392,10 @@ explicitly stated so as to give the primitive the correct type scheme.
 The string \boxml{"concatString"} denotes a C function
 identifier.\footnote{Some primitives (e.g., \boxml{"="} and
   \boxml{":="}) are recognised and implemented in assembler by the
-  compiler.} For the example declaration, the Kit generates a call to
+  compiler.} For the example declaration, the MLKit generates a call to
 the C function \boxml{concatString} with arguments {\tt s} and {\tt
   s'}. The C function must then of course be present at link-time; if
-not, the Kit complains.\footnote{When profiling is enabled, the Kit
+not, the MLKit complains.\footnote{When profiling is enabled, the MLKit
   automatically appends the extension \texttt{Prof} for those
   functions that take regions (and thus a program point) as argument;
   see Section~\ref{prof.sec}.}%
@@ -7412,11 +7417,11 @@ If the result type is one of $\alpha$, {\tt int}, {\tt bool}, or ${\tt unit}$ th
 result value can be returned in a single register. Contrary, if the result type represents an allocated
 value, the C function must be told where to store the value. For
 any type that is either {\tt real} or a non-empty tuple type, and
-does not occur in a list type of the result type $\tau$, the Kit
+does not occur in a list type of the result type $\tau$, the MLKit
 allocates space for the value and passes a pointer to the allocated
 space as an additional argument to the C function. For any type
 representing an allocated value that is either {\tt string} or occurs in a
-list type of the result type $\tau$, the Kit cannot statically
+list type of the result type $\tau$, the MLKit cannot statically
 determine the amount of space needed to store the value. Instead,
 regions are passed to the C function as additional arguments and the C
 function must then explicitly allocate space in these regions as
@@ -7617,7 +7622,7 @@ Section~\ref{Cexamples.sec}.
 %--------------------
 Four constants provide the values of true and false in ML and in C.
 These constants are defined by the following macros:\footnote{For
-  historical reasons, booleans in the Kit are tagged even when garbage
+  historical reasons, booleans in the MLKit are tagged even when garbage
   collection is disabled.}
 \index{mlTRUE@\texttt{mlTRUE}}%
 \index{mlFALSE@\texttt{mlFALSE}}%
@@ -7793,7 +7798,7 @@ First, we create the \texttt{NIL} constructor, which marks the end of
 the list. Then, each time we have an element, we allocate a pair. We
 store the element in the first cell of the pair. A pointer to the list
 constructed so far is put in the second cell of the pair. (In this
-release of the Kit, the \boxml{makeCONS} macro simply assigns its
+release of the MLKit, the \boxml{makeCONS} macro simply assigns its
 second argument the value of its first argument.) In the example, we
 have assumed that the elements are unboxed, thus, no regions are
 necessary for the elements.
@@ -7873,7 +7878,7 @@ function \boxml{raiseif0} may be defined thus:
    }
 \end{verbatim}
 There is no need to make the function return the value \boxml{mlUNIT};
-in case the type of the return value is \boxml{unit} then the Kit
+in case the type of the return value is \boxml{unit} then the MLKit
 automatically inserts code for returning the ML value \boxml{()} after
 the call to the C function.
 
@@ -8004,22 +8009,22 @@ file {\tt Tagging.h} by the macro definition
    #define second(x)  (*((int *)(x)+1))
 \end{verbatim}
 
-Now, for the Kit to make correct, that is safe, decisions about when
+Now, for the MLKit to make correct, that is safe, decisions about when
 to de-allocate regions, the endomorphic properties of a C function
 must be expressed in the region-annotated type scheme for value identifiers
-to which the C function is bound. The programmer can tell the Kit
+to which the C function is bound. The programmer can tell the MLKit
 about region endomorphic behavior of a C function by using type
 variables.  For example, here is an ML declaration that binds a value
 identifier {\tt second} to the C function
-\verb|select_second|:\footnote{Project {\tt kitdemo/select\_second.pm}. The C
+\verb|select_second|:\footnote{MLB-file: {\tt kitdemo/select\_second.mlb}. The C
   file {\tt select\_second.c} must be compiled (using {\tt gcc}) to
   form the object file {\tt select\_second.o} before the project can
-  be compiled; if you forget, the Kit will complain.}
+  be compiled; if you forget, the MLKit will complain.}
 \begin{verbatim}
    fun second(pair : 'a * 'b) : 'b =
      prim("select_second", pair)
 \end{verbatim}
-The Kit associates the following region-annotated type scheme to the value
+The MLKit associates the following region-annotated type scheme to the value
 identifier {\tt second}:
 $$\forall \alpha_1\alpha_2\rho_1\rho_2\rho_3\epsilon.((\alpha_1,
 \rho_1) * (\alpha_2, \rho_2), \rho_3) \ar{\epsilon.\{\Get(\rho_3)\}} (\alpha_2,
@@ -8047,7 +8052,7 @@ profiling, type
    gcc -DPROFILING -o my_lib_prof.o -c my_lib.c
 \end{verbatim}
 
-The project \verb|my_lib.pm|, which is listed in Figure~\ref{my_lib.pm.fig},
+The MLB-file \verb|my_lib.mlb|, which is listed in Figure~\ref{my_lib.mlb.fig},
 expresses that, when profiling is disabled, the object file
 \verb|my_lib.o| is linked in to form the executable file {\tt run}.
 When profiling is enabled, the object file \verb|my_lib_prof.o| is
@@ -8066,7 +8071,7 @@ required only when profiling is enabled.)
   file {\tt my\_lib.o} is linked in when forming the executable file
   {\tt run}. When profiling is enabled, the external object file {\tt
     my\_lib\_prof.o} is used instead.}
-\label{my_lib.pm.fig}
+\label{my_lib.mlb.fig}
 \medskip \hrule
 \end{figure}
 
@@ -8076,7 +8081,7 @@ libraries.
 
 \section{Linking at Runtime}
 \label{link_at_runtime.sec}
-The Kit support dynamic linking at runtime.
+The MLKit support dynamic linking at runtime.
 This is done using the \texttt{dlopen} and \texttt{dlsym} functions from the
 kit library. The function \texttt{dlopen} opens a given library and
 the function \texttt{dlsym} associates a name to a given function in the
@@ -8120,7 +8125,7 @@ raised.
 \index{auto conversion}% 
 \label{auto_conversion.sec}
 For C functions that are simple, in a sense
-that we shall soon define, the Kit can generate code that
+that we shall soon define, the MLKit can generate code that
 automatically converts representations of arguments from ML to C and
 representations of results from C back to ML.
 
@@ -8148,7 +8153,7 @@ supported when the arguments of the ML function are of type {\tt int} or
   bool}. It works also when profiling is enabled.
 
 The example shown here is example~\ref{power_auto.ex} of
-Section~\ref{Cexamples.sec}; it is part of the \verb|my_lib.pm|
+Section~\ref{Cexamples.sec}; it is part of the \verb|my_lib.mlb|
 project.
 
 %--------------------------------------
@@ -8158,11 +8163,11 @@ project.
 \index{my_lib.c@\texttt{my\_lib.c}}%
 \index{my_lib.sml@\texttt{my\_lib.sml}}%
 Several example C functions are located in the file
-\verb|kitdemo/my_lib.c|. The project \verb|kitdemo/my_lib.pm|, which
-is listed in Figure~\ref{my_lib.pm.fig}, makes use of these functions.
+\verb|kitdemo/my_lib.c|. The MLB-file \verb|kitdemo/my_lib.mlb|, which
+is listed in Figure~\ref{my_lib.mlb.fig}, makes use of these functions.
 
 The source file \verb|my_lib.sml|, which is part of the
-\verb|my_lib.pm| project, contains the following ML declarations:
+\verb|my_lib.mlb| project, contains the following ML declarations:
 \begin{verbatim}
    fun power(base: int, n: int) : int = 
      prim ("power", (base, n))
@@ -8251,7 +8256,7 @@ for detailed comments.)
 \begin{example}\label{change_elem.ex}
   Function \index{change_elem@\texttt{change\_elem}}\texttt{change\_elem} shows the use of
   the macro \texttt{elemRecordML}. The result type is \texttt{string*int}. The
-  function swaps the two elements in the pair. The Kit passes an address to
+  function swaps the two elements in the pair. The MLKit passes an address to
   pre-allocated space for the result pair, and an infinite region for the
   result string.
   
@@ -8275,300 +8280,6 @@ for detailed comments.)
   returned pair is still live. The safe version of \verb|change_elem| is
   found in \verb|my_lib.c|.
 \end{example}
-
-%---------------------------------------------------------
-\chapter{Bootstrapping}
-\label{bootstrap.sec}
-%---------------------------------------------------------
-
-\index{bootstrap}%
-\index{bootstrap!overview}%
-
-In this chapter, we demonstrate the process of generating an
-executable ML Kit that uses regions itself for compiling Standard ML
-programs. An overview of the bootstrapping process is pictured in
-Figure~\ref{bootstrap.fig}.
-
-\begin{figure}
-\hrule\medskip
-\begin{center}
-  \scalebox{0.5}{\includegraphics{bootstrap.eps}}
-\end{center}
-\caption{The bootstrapping process illustrated using T-diagrams. Each compiler 
-  in the diagram is characterized by three languages: the source
-  language that it compiles, the target language that it generates
-  code for, and the implementation language that it is written in.}
-\label{bootstrap.fig}
-\medskip\hrule
-\end{figure}
-
-The lowest block in the picture denotes the SML/NJ compiler, which is
-used to compile the ML Kit sources to a version of the ML Kit that,
-when running, uses SML/NJ's runtime system. This version of the ML Kit
-is pictured to the right of the SML/NJ executable and is named
-\emph{kit\_v1}.
-
-To build \emph{kit\_v1} 
-\index{bootstrap!\emph{kit\_v1}}%
-enter the directory \texttt{kit} (i.e., the directory containing the
-file \texttt{copyright}). The \texttt{kit} directory contains a {\tt
-  Makefile} that automates the bootstrapping process.  Assuming, that
-the ML Kit is installed in the directory
-\texttt{\$HOME/mlkit}, from within this directory,
-type the following commands so as to generate the \emph{kit\_v1}
-compiler:
-\begin{verbatim}
-  # make clean
-  ...
-  # make
-  ...
-\end{verbatim}
-
-The {\tt make} command produces a file \texttt{bin/kit.x86-linux},
-which is an SML/NJ image that can be executed using the shell script
-\texttt{bin/mlkit}. The image is compiled using the Basis Library of
-SML/NJ and executes using the runtime system of SML/NJ. We now install
-\texttt{kit\_v1} in a new directory, say \texttt{mlkit-v1}:
-\begin{verbatim}
-  # make install INSTDIR=$HOME/mlkit-v1
-  ...
-  # unlimit stacksize
-  # make bootstrap INSTDIR=$HOME/mlkit-v1
-\end{verbatim}
-These commands create the directory \texttt{mlkit-v1} with files
-necessary to bootstrap and test \emph{kit\_v1}. The command
-\index{unlimit stacksize}%
-\texttt{unlimit stacksize} is necessary because the ML Kit stores lots
-of data on the stack (i.e., in finite regions).
-
-Compiling the ML Kit source with \emph{kit\_v1} generates
-\index{bootstrap!\emph{kit\_v2}}%
-\emph{kit\_v2}. The \emph{kit\_v2} executable runs on the runtime
-system of the ML Kit using region inference. However, \emph{kit\_v2}
-is still affected by SML/NJ, for instance, many constants including
-bit-vectors are calculated using the Basis Library of SML/NJ.  Thus,
-the \emph{kit\_v2} executable may work even if the ML Kit
-implementation of the Basis Library is buggy.
-
-Unfortunately, because of the engineering of the recompilation scheme
-used in the ML Kit, it is not at present possible to memorize 
-\label{memorize_bootstrap.sec}
-the compilation of the Standard ML Basis Library
-\index{bootstrap!Standard ML Basis Library}%
-when using a bootstrapped version of the compiler (i.e.,
-\emph{kit\_v2} $\ldots$ \emph{kit\_v4}), the Basis Library is compiled
-every time a program is compiled.
-
-Another reason that the two executables \emph{kit\_v2} and
-\emph{kit\_v3} are different is that machine code labels are chosen
-different when memorization of the Basis Library is used compared
-to when memorization is not used.
-
-To generate the \emph{kit\_v2} compiler, enter the directory
-\texttt{mlkit-v1}. Here you find a {\tt Makefile} with a {\tt
-  bootstrap} entry.  Using the {\tt bootstrap} entry (and specifying
-the directory where \emph{kit\_v2} is to be installed) generates and
-installs \texttt{kit\_v2}. This process may take several hours
-depending on your machine:\footnote{Your machine should have at least
-  1 Gb of RAM to avoid swapping during the entire bootstrapping
-  process.}
-\begin{verbatim}
-  # cd $HOME/mlkit-v1
-  ...
-  # unlimit stacksize
-  # make bootstrap INSTDIR=$HOME/mlkit-v2
-\end{verbatim}
-To generate 
-\index{bootstrap!\emph{kit\_v3}}%
-the \emph{kit\_v3} compiler, enter the \texttt{mlkit-v2} directory and
-bootstrap once more by using the {\tt Makefile} located in
-\texttt{mlkit-v2}:
-\begin{verbatim}
-  # cd $HOME/mlkit-v2
-  # unlimit stacksize
-  # make bootstrap INSTDIR=$HOME/mlkit-v3
-  ...
-\end{verbatim}
-To generate 
-\index{bootstrap!\emph{kit\_v4}}%
-the \emph{kit\_v4} compiler, enter the \texttt{mlkit-v3} directory and
-bootstrap yet another time by using the {\tt Makefile} located in
-\texttt{mlkit-v3}:
-\begin{verbatim}
-  # cd $HOME/mlkit-v3
-  # unlimit stacksize
-  # make bootstrap INSTDIR=$HOME/mlkit-v4
-  ...
-\end{verbatim}
-To see that the two executables \emph{kit\_v3} and \emph{kit\_v4} are
-identical, you can apply the \texttt{diff} command on the two
-binaries:
-\begin{verbatim}
-  # diff $HOME/mlkit-v3/bin/mlkit.img \
-         $HOME/mlkit-v4/bin/mlkit.img
-  #
-\end{verbatim}
-
-% # ll /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img 
-% ...  8867248 Jun  8 11:02 /import/.../mlkit-v3/bin/mlkit.img*
-
-\section{Compiling the ML Kit with Itself}
-
-To compile the ML Kit with the ML Kit, each {\tt Makefile} takes the
-approach of launching the appropriate ML Kit compiler with the file 
-\index{bootstrap!\texttt{sources.pm}}%
-{\tt src/sources.pm} as argument. Assuming the ML Kit compiler is
-launched from within the {\tt src} directory and that the compilation
-works out fine, a new executable version of the ML Kit is available as
-the file {\tt run} in the \texttt{src} directory:
-
-%If you are using one of the versions: \emph{kit\_v2}, $\ldots$,
-%\emph{kit\_v4} you must supply an install directory:
-
-\begin{verbatim}
-  # cd $HOME/mlkit-v3/src
-  # ../bin/mlkit sources.pm
-  ...
-\end{verbatim}
-
-% The install directory is necessary for the ML Kit to find the runtime
-% system when building the executable file \texttt{run}.
-
-\section{Testing the Bootstrapped Compiler}
-\index{bootstrap!testing}%
-
-It is possible to apply all the ML Kit tests in the test directory to
-the bootstrapped versions of the ML Kit.  The regression test performs
-a test on the following four configurations of the ML Kit:
-
-\begin{enumerate}
-\item with region inference alone
-\item with region inference and profiling
-\item with region inference and garbage collection
-\item with region inference, garbage collection, and profiling
-\end{enumerate}
-
-To make a regression test of the \emph{kit\_v3} compiler, execute the
-following commands:
-
-\begin{verbatim}
-  # cd $HOME/mlkit-v3
-  # make all_test
-  ...
-\end{verbatim}
-If you look in the \texttt{all\_test} entry in the {\tt Makefile}, you
-find that the entry calls a program called \texttt{kittester} with a
-file \texttt{all.tst} given as argument.  The file \texttt{all.tst}
-contains information about the programs that are tested and under what configurations.
-The program \texttt{kittester} performs the test, that is, each
-program is compiled, executed and output is compared to the expected
-output.  Finally a \LaTeX{} report with the result of the test is
-written to the file \texttt{test\_report.dvi}.
-
-When you inspect the test report \texttt{test\_report.dvi}, you may
-notice that {\tt kittester} reports some errors (at the time of
-writing 16 errors are reported but that may change as the test suite
-is extended). All files resulting in compile time errors (option
-\texttt{ecte} in file \texttt{all.tst}) are reported twice with an
-error in \texttt{test\_report.dvi}. The errors are reported because
-the Basis Library is compiled for each program and compiler output
-therefore differs from expected compiler output (see the discussion
-about memorization of the Basis Library on page
-\pageref{memorize_bootstrap.sec}).
-
-\section{Profiling the ML Kit}
-
-The Kit can compile itself only when the compiler is produced with
-garbage collection enabled.  The memory usage is similar for all the
-ML Kit compilers generated during the bootstrapping process.
-
-To profile the ML Kit, we generate a version of the ML Kit compiler
-with profiling enabled; we call it 
-\index{bootstrap!\emph{kit\_v4prof}}%
-$\emph{kit\_v4prof}$ and build it using $\emph{kit}_{v4}$:
-\begin{verbatim}
-  # cd $HOME/mlkit-v4
-  # unlimit stacksize
-  # make bootstrap COMP_FLAGS=-prof INSTDIR=$HOME/mlkit-v4prof
-  ...
-\end{verbatim}
-To generate a region profile of the ML Kit we use $\emph{kit\_v4prof}$
-to compile a smaller program \texttt{kitkbjul9.sml} found in the
-\texttt{test} directory of the source distribution. We enter the
-\texttt{test} directory and compile \texttt{kitkbjul9.sml} using the
-\texttt{mlkit} program (with profiling enabled), located in the
-\texttt{bin} directory:
-
-\begin{verbatim}
-  # cd $HOME/mlkit-v4prof/test
-  # unlimit stacksize
-  # ../bin/mlkit kitkbjul9.sml
-  ...
-  [wrote executable file: run]
-  # rp2ps -region -name "ML Kit compiling kitkbjul9" \
-         -sampleMax 2000 -eps 137 mm
-  Region profiling to output file region.ps.
-  Using name ML Kit compiling kitkbjul9.
-  Using 2000 samples.
-  Using encapsulated postscript with width 388 pt.
-  # gv -seascape region.ps
-\end{verbatim}
-
-Figure~\ref{mlkit_compiling_kitkbjul9.fig} shows the region
-profile obtained with the commands shown above.
-\begin{figure}
-%\hrule \medskip
-\begin{center}
-\includegraphics{mlkit_compiling_kitkbjul9.eps}
-\end{center}
-\caption{A region profile of the ML Kit compiling the program \texttt{kitkbjul9.sml}, 
-which is located in the \texttt{test} directory of the source distribution.}
-\label{mlkit_compiling_kitkbjul9.fig}
-\medskip\hrule
-\end{figure}
-
-
-\section{Controlling Profiling Options}
-
-To control the profiling options at runtime as described in
-Chapter~\ref{useOfProf.sec}, we use the program \texttt{mlkit.img} in
-the \texttt{bin} directory and supply all command line parameters
-necessary, which includes an install directory (i.e., the directory
-specified when building this particular version of the ML Kit). You
-can look in the file \texttt{bin/mlkit} to find the install directory.
-
-The Figure~\ref{mlkit_compiling_kitkbjul9_400msec.fig} shows a region
-profile similar to Figure~\ref{mlkit_compiling_kitkbjul9.fig} except
-that the number of profile ticks is increased using the option
-(\texttt{-microsec 100000}):
-
-\begin{verbatim}
-  # unlimit stacksize
-  # cd $HOME/mlkit-v4prof/test
-  # ../bin/mlkit.img -realtime -microsec 100000 \
-    $HOME/mlkit-v4prof/ kitkbjul9.sml 
-  ...
-  [wrote executable file: run]
-  # rp2ps -region -sampleMax 2000 -eps 137 mm \
-          -name "ML Kit compiling kitkbjul9 (100000 microsec)"         
-  Region profiling to output file region.ps.
-  Using name ML Kit compiling kitkbjul9 (100000 microsec).
-  Using 2000 samples.
-  Using encapsulated postscript with width 388 pt.
-  # gv -seascape region.ps
-\end{verbatim}
-
-\begin{figure}
-%\hrule \medskip
-\begin{center}
-\includegraphics{mlkit_compiling_kitkbjul9_400msec.eps}
-\end{center}
-\caption{A region profile of the ML Kit compiling the program \texttt{kitkbjul9.sml}. 
- Memory is traversed once every 0.1 second.}
-\label{mlkit_compiling_kitkbjul9_400msec.fig}
-%\medskip\hrule
-\end{figure}
-
                                 
 
 %---------------------------------------------------------
@@ -8577,24 +8288,24 @@ that the number of profile ticks is increased using the option
 
 \section{Changes Since Version 3}
 \index{changes!since version 3}%
-This chapter provides an overview of the main changes to the ML Kit
+This chapter provides an overview of the main changes to the MLKit
 since version 3.0.
 
 \subsubsection*{Garbage Collection}
 \index{garbage collection}%
-The ML Kit supports reference tracing garbage collection in
+The MLKit supports reference tracing garbage collection in
 combination with the region memory model. Garbage collection is
-supported only in the native backend version of the Kit. To enable
+supported only in the native backend version of the MLKit. To enable
 garbage collection, toggle the entry {\tt garbage collection} in the
-{\tt Control} menu or start the Kit with the option {\tt -gc}. Garbage
+{\tt Control} menu or start the MLKit with the option {\tt -gc}. Garbage
 collection is also possible with region profiling enabled. See
 Chapter~\ref{gc.chap} for more information about garbage collection
-with the Kit.
+with the MLKit.
 
 \subsubsection*{X86 Backend}
 The 
 \index{backend!hppa}%
-HPPA backend of the ML Kit version 3.0 and earlier has been replaced
+HPPA backend of the MLKit version 3.0 and earlier has been replaced
 with an
 \index{backend!x86}%
 x86 native backend, which uses the GNU assembler to create native
@@ -8602,17 +8313,17 @@ machine code on x86 machines.
 
 \subsubsection*{Bytecode Backend}
 \index{backend!bytecode}%
-For portability, the ML Kit now provides a bytecode backend and a
-bytecode interpreter. Which backend is used by the ML Kit compiler is
-determined when the Kit itself is compiled, but it is possible to have
-both a native version and a bytecode version of the ML Kit compiler
+For portability, the MLKit now provides a bytecode backend and a
+bytecode interpreter. Which backend is used by the MLKit compiler is
+determined when the MLKit itself is compiled, but it is possible to have
+both a native version and a bytecode version of the MLKit compiler
 installed on the same system.
 
 \subsubsection*{Unboxing of Function Arguments}
 \index{arguments!multiple}%
 \index{multiple function arguments}%
 \index{function arguments!multiple}%
-By default, the Kit performs a simple local unboxing analysis to
+By default, the MLKit performs a simple local unboxing analysis to
 figure out if a function taking a tuple as argument can be transformed
 into a function taking multiple arguments. Only functions that use
 only the individual elements of the argument tuple undergo
@@ -8621,7 +8332,7 @@ transformation. The optimisation can be disabled by toggling the entry
 
 \subsubsection*{Removal of Region Vectors}
 \index{region vector!removed}%
-In the ML Kit version 3.0 and earlier, actual region parameters were
+In the MLKit version 3.0 and earlier, actual region parameters were
 passed to a region polymorphic function in a {\em region vector},
 which itself was allocated in a region. In version 4.0, actual region
 parameters to
@@ -8633,8 +8344,8 @@ Section~\ref{simplejump.sec}).
 
 \section{Changes Since Version 2}
 \index{changes!since version 2}%
-This section provides an overview of the main changes to the ML Kit
-since version 2.0 but before version 3.0 of the Kit.
+This section provides an overview of the main changes to the MLKit
+since version 2.0 but before version 3.0 of the MLKit.
 
 \subsubsection*{Modules and Separate Compilation}
 The most important development since Version 2 is the ability to
@@ -8642,18 +8353,18 @@ compile Modules and the discipline of separate compilation. A
 distinguished feature of the way modules are compiled is that module
 constructs do not give rise to any code, so there is no runtime
 overhead in using modules \cite{ElsmanICFP99,ElsmanThesis}. See
-Chapter~\ref{modules_and_projects.chap}.
+Chapter~\ref{mlb_and_modules.chap}.
 
 \subsubsection*{Standard ML Basis Library}
-The ML Kit now contains (a large portion of) the \index{Standard ML
+The MLKit support a large portion of the \index{Standard ML
   Basis Library} Standard ML Basis Library, based on the Moscow ML
 version of the library. To see exactly what parts of the Standard ML
-Basis Library are supported, consult the project file {\tt
-  basis.pm} located in the directory {\tt basis}.
+Basis Library are supported, consult the MLB-file {\tt
+  basis.mlb} located in the directory {\tt basis}.
 
 \subsubsection*{Scalability}
-The Kit now compiles fairly large programs, including Hafnium's AnnoDomini
-(58.000 lines of SML) and the ML Kit itself (around 80.000 lines).
+The MLKit now compiles fairly large programs, including Hafnium's AnnoDomini
+(58.000 lines of SML) and the MLKit itself (around 80.000 lines).
 
 \subsubsection*{New Match Compiler}
 The pattern compiler has been rewritten, based on Sestoft's 
@@ -8661,16 +8372,16 @@ method~\cite{sestoft96}, which is also the basis of the Moscow ML
 match compiler. 
 
 \subsubsection*{New StatObject Module}
-The Kit contains a module, 
+The MLKit contains a module, 
 \index{StatObject}%
 {\tt StatObject}, which implements the semantic objects of the static
 semantics of the Core.  Originally, this was a very clean and very
-inefficient implementation of the Defininion. In version 2 of the Kit,
+inefficient implementation of the Defininion. In version 2 of the MLKit,
 {\tt StatObject} was replaced by an imperative and efficient, but
 complicated module.  In version 3, {\tt StatObject} uses a clean,
 efficient and imperative implementation of {\tt StatObject}. This is
 particularly useful for those who want to reuse the front-end of the
-Kit for other purposes.
+MLKit for other purposes.
 
 \subsubsection*{Unboxed Representation of Lists}
 \index{list} List constructors are now represented unboxed, that is,
@@ -8693,14 +8404,14 @@ list. Consult Chapter~\ref{lists.sec} for details.
 %---------------------------------------------------------
 This appendix shows the output of executing 
 \index{help@\texttt{-help} option to \texttt{mlkit}}%
-\boxml{mlkit -help}, where \boxml{mlkit} is the version of the ML Kit
+\boxml{mlkit -help}, where \boxml{mlkit} is the version of the MLKit
 compiler that uses the 
 \index{backend!x86}%
 x86 native backend. The options are slightly different for the version
-of the ML Kit compiler that uses the bytecode backend.
+of the MLKit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 4.1.1, Aug 25, 2002 [X86 Backend]
+MLKit version 4.1.1, Aug 25, 2002 [X86 Backend]
 
 Usage: mlkit_kam [OPTION]... [file.sml | file.sig | file.pm]
 
@@ -8710,7 +8421,7 @@ Options:
      Read compiler options from `file'.
 
 -version
-     Print ML Kit version information and exit.
+     Print MLKit version information and exit.
 
 -help s
      Print help information about an option and exit.
@@ -8777,7 +8488,7 @@ Options:
 
 --debug_man_enrich                                        (off)
      During interactive use, show information about why a
-     program unit need be recompiled. In the ML Kit, a
+     program unit need be recompiled. In the MLKit, a
      program unit (or a functor body) is recompiled if
      either (a) the program unit is modified, or (b)
      information about an identifier for which the program
@@ -8845,12 +8556,12 @@ Options:
      Opposite of --import_basislib, -basislib.
 
 --install_dir S                            ("/usr/share/mlkit")
-     Installation directory for the ML Kit. For normal
+     Installation directory for the MLKit. For normal
      execution you should not modify this value. However,
-     if you wish to use the ML Kit with an altered runtime
+     if you wish to use the MLKit with an altered runtime
      system and you do not wish to exchange the .o-files in
      the bin-subdirectory (for example because you are running
-     the ML Kit on a shared system), you can update this
+     the MLKit on a shared system), you can update this
      setting and the system will try to link to a runtime
      system in the bin-subdirectory found in the new install
      directory.
@@ -8904,7 +8615,7 @@ Options:
 
 --output S, -o S                                        ("run")
      The name of the executable file generated by
-     the Kit.
+     the MLKit.
 
 --preserve_tail_calls, -ptc                               (off)
      Avoid the wrapping of letregion constructs around
@@ -9053,7 +8764,7 @@ Options:
      is instrumented with profiling information. When a program
      compiled with region profiling enabled is run, the program
      produces a profile file run.rp, which can then be read
-     by the profiling tool rp2ps that comes with the ML Kit to
+     by the profiling tool rp2ps that comes with the MLKit to
      produce profiling graphs of various forms.
 
 --register_allocation                                      (on)
@@ -9082,7 +8793,7 @@ Options:
      Lambda Expression.
 
 --strip                                                   (off)
-     If enabled, the Kit strips the generated executable.
+     If enabled, the MLKit strips the generated executable.
 
 --tag_values, -tag                                        (off)
      Enable tagging of values as used when garbage
