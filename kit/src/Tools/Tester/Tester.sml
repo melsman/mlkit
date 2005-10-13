@@ -40,7 +40,13 @@ structure Tester : TESTER =
       Int.toString ((OS.FileSys.fileSize filename) div 1024) ^ "K"
       handle _ => (msgErr("failed to obtain size of file `" ^ filename ^ "'"); "err")
 
-    fun process_entry (filepath, opts, kitexe) =
+    fun concatWith sep l = (* not as String.concatWith! *)
+	let fun cw (nil,acc) = concat(rev acc)
+	      | cw (x::xs,acc) = cw(xs, sep::x::acc)
+	in cw (l,nil)
+	end
+
+    fun process_entry flags (filepath, opts, kitexe) =
       let
 	val _ = msg ("Processing file `" ^ filepath ^ "'")
 	val _ = OS.Process.system "rm -f -r MLB"     (* first delete MLB directories *)
@@ -54,7 +60,8 @@ structure Tester : TESTER =
 	val compile_command_base = kitexe ^ " --log_to_file " ^ 
 	  (if opt "nobasislib" then "-no_basislib " else "") ^
 	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
-          (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "")
+          (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "") 
+	       ^ concatWith " " flags
 
 	val compile_command = compile_command_base ^ file	  
 
@@ -165,9 +172,9 @@ structure Tester : TESTER =
 	      case TestFile.parse testfile
 		of NONE => OS.Process.failure
 		 | SOME (testfile_string,entries) => 
-		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt@flags,kitexe)
-		                          | TestFile.MLB (filepath,opt) => (filepath,opt@flags,kitexe)) entries
-		  in app process_entry entries;
+		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
+		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
+		  in app (process_entry flags) entries;
 		    msgErrors();
 		    TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe};
 (*		    if noOfErrors() = 0 then OS.Process.success else OS.Process.failure *)
@@ -177,7 +184,7 @@ structure Tester : TESTER =
 	 | NONE => (print_usage progname; OS.Process.failure)
 
     fun install() =
-      let val _ = print "\n ** Installing Kit Tester, a tool for testing the Kit **\n\n"
+      let val _ = print "\n ** Installing KitTester, a tool for testing the MLKit **\n\n"
 
 	  val kit_src_tools_tester_path = OS.FileSys.getDir()   (* assumes we are in kit/src/Tools/Tester directory *)
 	  val kit_bin_path = OS.Path.mkCanonical (OS.Path.concat(kit_src_tools_tester_path, "../../../bin"))
