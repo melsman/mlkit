@@ -6,13 +6,14 @@
 %\usepackage{times}                % times font
 \usepackage{type1cm}               % traditional font - quite thin for screen reading
 \renewcommand{\ttdefault}{cmtt}    % smaller tt-font
+\newcommand{\docversion}{4.1.5}
 \usepackage{alltt}
 \makeindex
 \input{genericmac}
 \input{mac}
 \newcommand{\rhoword}{\rho_{\rm w}}
 \title{Programming with Regions in the MLKit\\
-(for Version 4.1.5)}
+(for Version \docversion)}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
@@ -21,40 +22,6 @@ Peter Sestoft}
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
 
 \begin{document}
-%\setcounter{page}{0}
-% \thispagestyle{empty}
-% \begin{center}
-
-% \vfill
-% {\bf Technical Report DIKU-TR-98/25\\
-% Department of Computer Science\\ 
-% University of Copenhagen\\
-% Universitetsparken 1\\
-% DK-2100 KBH \O\\
-% DENMARK}
-
-% \vspace{3.5cm}
-
-% {\LARGE Programming with Regions in the MLKit}\vspace{2mm}
-
-% {\LARGE (for Version~4.1.1)}\vspace{1cm}
-
-% {\large Mads Tofte ~~~ Lars Birkedal ~~~ Martin Elsman}\vspace{2mm}
-
-% {\large Niels Hallenberg ~~~ Tommy H{\o}jfeld Olesen ~~~ Peter Sestoft} \vspace{2mm}
-
-% {\large Peter Bertelsen}
-
-% \vspace{1cm}
-% {\large \today}
-
-% \vfill
-% \newpage
-
-% \end{center}
-%\pagestyle{empty}
-
-%\cleardoublepage
 \maketitle
 
 \pagestyle{headings}
@@ -161,9 +128,9 @@ memory recycling is done by a
 stack mechanism or by pointer tracing garbage collection.
 
 In the stack discipline, every point of allocation is matched by a
-point of de-allocation and these points are obvious from the
+point of deallocation and these points are obvious from the
 program. By contrast, garbage collection techniques usually separate
-allocation, which is done by the programmer, from de-allocation, which
+allocation, which is done by the programmer, from deallocation, which
 is done by a garbage collector.  The advantage of using reference
 tracing 
 \index{garbage collection}%
@@ -207,8 +174,23 @@ This report consists of three parts:
 \end{description}
 
 The present report describes the 
-\index{MLKit!Version 4}%
-MLKit Version~4. This version of the MLKit extends the 
+\index{MLKit!Version \docversion}%
+MLKit Version~{\docversion}. This version of the MLKit extends the MLKit
+Version~4 with
+\begin{enumerate}
+\item Support for compiling 
+\index{ML Basis Files}%
+ML Basis Files. ML Basis Files allows for
+  expressing source dependencies, exactly (as a directed acyclic
+  graph). ML Basis Files thus provides a mechanism for programming
+  ``in the very large''.
+
+\item File-based 
+\index{separate compilation}%
+separate compilation, based on ML Basis Files.
+\end{enumerate}
+
+MLKit Version~4 extends
 MLKit Version~3 with
 \begin{enumerate}
 \item Support for pointer tracing garbage collection. Pointer tracing
@@ -217,7 +199,7 @@ MLKit Version~3 with
   de-allocation, there are some uses of memory for which life time
   prediction is difficult. In these cases pointer tracing garbage
   collection does a good job in collaboration with region memory
-  management \cite{hallenberg99}.
+  management \cite{hallenberg99,het02}.
 \item An x86 native backend. The 
   \index{backend!native}%
   backend support has switched from HP PA-RISC to Linux on x86
@@ -5525,19 +5507,18 @@ program if you pass the compiler the option
 \chapter{ML Basis Files and Modules}
 \label{mlb_and_modules.chap}
 %---------------------------------------------
-In Section \ref{tryit.sec} we described how to compile and run single
-file programs. In this chapter we describe how to program in the
-large with the MLKit, using 
+In Section \ref{tryit.sec} we described how to compile and run
+single-file programs. In this chapter, we describe how to program in
+the large with the MLKit, using
 \index{Standard ML!Modules}% 
 Standard ML Modules and the possibility of organising source files
-into project files. The MLKit fully supports Standard ML Modules and it
+in ML Basis Files. The MLKit fully supports Standard ML Modules and it
 has a sophisticated system for avoiding unnecessary recompilation. In
-the following section, we describe the notion of projects. We then
+the following section, we describe the notion of ML Basis Files. We then
 turn to show how to program with structures, signatures, and functors.
 To enable the programmer to write efficient programs using the Modules
 language, we shall also explain how the MLKit compiles Modules language
 constructs.
-
 
 \section{ML Basis Files}
 An ML Basis File, in short MLB-file,  
@@ -5547,7 +5528,7 @@ is a file that lists the SML source files
 that make up a project or a library. An MLB-file can also 
 \index{referencing an MLB-file}%
 \emph{reference} other MLB-files, so one can organise projects in a
-hierarchical manner.  MLB-files are enforced not to be cyclic.
+hierarchical manner. MLB-files are enforced not to be cyclic.
 
 MLB-files have file extension \index{.mlb@\texttt{.mlb}}{\tt .mlb}.
 The content of an MLB-file is a \emph{basis declaration}, for which
@@ -5557,7 +5538,10 @@ grammar is given in Figure~\ref{mlb_grammar.fig}. We assume a
 denumerable infinite set of \emph{basis identifiers} Bid, ranged over
 by \id{bid}. We use \id{longbid} to range over \emph{long basis
   identifiers}, that is, non-empty lists of basis identifiers
-separated by a punctuation letter (\texttt{.}).
+separated by a punctuation letter (\texttt{.}). Basis identifiers can
+be used for giving a name to a group of compilation units and allows
+for expressing source dependencies, exactly, as a directed acyclic
+graph, within one MLB-file.
 
 \begin{figure}
 \hrule\medskip
@@ -5578,33 +5562,37 @@ separated by a punctuation letter (\texttt{.}).
 \end{array}
 \]
 \caption{Grammar for MLB-files, i.e., files with extension {\tt .mlb}. 
-  For some file extension {\tt .}{\it ext}, 
-  {\it path}{\tt .}{\it ext\/} denotes either an absolute path or a
-  relative path (relative to the directory in which the project file
-  is located) to a file on the underlying file system.}
+  For some file extension {\tt .}{\it ext}, {\it path}{\tt .}{\it
+    ext\/} denotes either an absolute path or a relative path
+  (relative to the directory in which the project file is located) to
+  a file on the underlying file system.}
 \label{mlb_grammar.fig}
 \medskip \hrule
 \end{figure}
-In an MLB-file, one can reference source files and other MLB-files using absolute or relative
+In an MLB-file, one can reference source files and other MLB-files
+using absolute or relative
 \index{path!absolute}%
 \index{path!relative}%
 paths.  Relative paths are relative to the location of the MLB-file.
 Paths can reference environment variables using the
 \texttt{\$(ENVVAR)} notation, where \texttt{ENVVAR} is an environment
-variable. Until now, we have seen a few examples of MLB-files that
-reference the Basis Library, using the \texttt{\$(SML\_LIB)}
-environment variable (see Section~\ref{polyrec.sec} for such an
-example). In Section~\ref{functors.sec}, we present an example of an
-MLB-file that reference other MLB-files. In
-Section~\ref{comp_and_link_with_C.sec}, we shall see an example of how an MLB-file can be compiled and linked with external object files, produced with a C compiler, for instance. MLB-files may contain
-Standard ML style
+variable. 
+
+Until now, we have seen a few examples of MLB-files that reference the
+Basis Library, using the \texttt{\$(SML\_LIB)} environment variable
+(see Section~\ref{polyrec.sec} for such an example). In
+Section~\ref{functors.sec}, we present an example of an MLB-file that
+reference other MLB-files. In Section~\ref{comp_and_link_with_C.sec},
+we shall see an example of how an MLB-file can be compiled and linked
+with external object files, produced with a C compiler, for instance.
+MLB-files may contain Standard ML style
 \index{MLB-file!comments in}%
 \index{comments!in MLB-file}%
 comments. The declared identifiers of an MLB-file is the union of the
 identifiers being declared by source files in the MLB-file, excluding
-source files that are included using {\tt local}. As an example of
-the use of {\tt local} to limit what identifiers are declared by a
-project, consult the MLB-file {\tt basis/basis.mlb}.
+source files that are included using {\tt local}. As an example of the
+use of basis identifiers and {\tt local} to limit what identifiers are
+declared by an MLB-file, consult the MLB-file {\tt basis/basis.mlb}.
 
 Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
@@ -5612,9 +5600,9 @@ mentioned in the MLB-file and all other MLB-files that reference this
 MLB-file. Thus, a source file may depend on source files mentioned
 earlier in the MLB-file and on other referenced MLB-files.  The
 meaning of an entire MLB-file is the meaning of the top-level
-declaration that would arise by expanding all referenced MLB-files
-and then concatenating all the source files listed in the MLB-file
-(with appropriate renaming of declared identifiers of source files that are
+declaration that would arise by expanding all referenced MLB-files and
+then concatenating all the source files listed in the MLB-file (with
+appropriate renaming of declared identifiers of source files that are
 included using {\tt local}), in the order they are listed, except that
 each MLB-file is executed only the first time it is imported.
 
@@ -8017,10 +8005,29 @@ for detailed comments.)
 \chapter{Summary of Changes}
 %---------------------------------------------------------
 
+\section{Changes Since Version 4}
+\index{changes!since version 4}%
+This section provides an overview of the main changes to the MLKit
+since version 4.
+
+\subsection{Support for compiling ML Basis Files}
+\index{ML Basis Files}%
+ML Basis Files allows for expressing source dependencies, exactly (as
+a directed acyclic graph). ML Basis Files thus provides a mechanism
+for programming ``in the very large''.
+
+\subsection{File-based Separate Compilation}
+\index{separate compilation}%
+The MLKit now supports file-based separate compilation, based on
+dependencies established from ML Basis Files. The compiler serializes
+symbol table information to disk for each compilation unit, so that
+this information can be deserialized and used when compiling other
+compilation units.
+
 \section{Changes Since Version 3}
 \index{changes!since version 3}%
-This chapter provides an overview of the main changes to the MLKit
-since version 3.0.
+This section provides an overview of the main changes to the MLKit
+since version 3, but before version 4.
 
 \subsubsection*{Garbage Collection}
 \index{garbage collection}%
