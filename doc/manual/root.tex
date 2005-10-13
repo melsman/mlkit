@@ -857,26 +857,21 @@ above.
 
 Compile the SML program \boxml{kitdemo/life.sml} as follows. First,
 make a personal copy of the {\tt kit/kitdemo} directory, place
-yourself in it, and start the kit:\footnote{We assume that you have added
-  the {\tt kit/bin} directory to your {\tt PATH} shell variable.}
+yourself in it, and execute the command:\footnote{We assume that the
+  MLKit compiler command \texttt{mlkit} is somehow available through
+  your {\tt PATH} environment variable.}
 \begin{verbatim}
-   mlkit
+   mlkit -prof life.sml
 \end{verbatim}
-Select \boxml{Profiling} from the MLKit menu (type 4, then carriage
-return).  Toggle \boxml{region profiling} (type 0, then carriage
-return). Go up one level (type \boxml{u}, then carriage return).
-Select \boxml{Compile file or project}.  Type \boxml{"life.sml"}
-(including the quotes, then return). After the MLKit has compiled
-\boxml{life.sml}, type \boxml{quit}. The executable life program is
-\boxml{kitdemo/run}.\footnote{Alternatively, you can generate the
-  executable file {\tt run} by typing {\tt mlkit -prof life.sml} in
-  the shell.}
+The option \texttt{-prof} enables region profiling. After the MLKit
+has compiled the program \boxml{life.sml}, the executable life
+program is available as \boxml{kitdemo/run}.
 
-Next, you run \boxml{run}, as follows:
+Next, you may execute \boxml{run}, as follows:
 \begin{verbatim}
    ./run -realtimer -microsec 10000
 \end{verbatim}
-This will make a profiling snapshot every 10,000 microseconds (i.e.,
+This command will make a profiling snapshot every 10,000 microseconds (i.e.,
 every ten milliseconds). If you are satisfied with less fine-grained
 information, choose a larger number; it will speed up execution. If
 you just type
@@ -893,8 +888,8 @@ follows:\footnote{The program {\tt rp2ps} can be found in the {\tt
    rp2ps -region -name life -sampleMax 80 
    gv -seascape region.ps
 \end{verbatim}
-The option \boxml{-sampleMax $n$} instructs \boxml{rp2ps} to show at
-most $n$ snapshots (evenly distributed over the duration of the
+The option \boxml{-sampleMax $N$} instructs \boxml{rp2ps} to show at
+most $N$ snapshots (evenly distributed over the duration of the
 computation).
 
 \section{Including a Profile in a \LaTeX\ Document}
@@ -1198,107 +1193,55 @@ MLKit stores files in the directories where your source files are
 located, you should make a personal copy of these directories.  Before
 you try any of the examples below, make a personal copy of the {\tt
   kitdemo} directory, which is part of the distribution, and run the
-kit on your own copy.
+MLKit on your own copy.
 
-The MLKit provides two mechanisms for compiling programs. The first
-mechanism is based on a
-\index{menu interaction}%
-interactive menu-driven dialog system, which allows you to toggle
-flags, alter compiler settings, and compile programs interactively.
-The second mechanism is simply to pass
+\section{Compiling with the MLKit Compiler}
+
+The mechanism the MLKit provides for compiling programs is to give the
+program source(s) as argument to the MLKit command 
 \index{mlkit@\texttt{mlkit}!executable}%
-command-line options to the {\tt mlkit} executable.
+\texttt{mlkit}.  Together with the sources, a series of options may be
+passed to the \texttt{mlkit} command. Let us assume that the UNIX
+command \texttt{mlkit} is available on your system.\footnote{The {\tt
+    INSTALL} file in the distribution tells you how to install the
+  MLKit.}
 
-In both cases, you need an executable version of the MLKit; let us
-assume it is available on your system as a UNIX program called {\tt
-  mlkit}.\footnote{The {\tt INSTALL} file in the distribution tells you
-  how to install the MLKit.}
+Compiling an MLB-file (which may list several SML source files) is
+similar to compiling a single SML source file. However, we shall
+postpone the in-depth discussion of how to compile MLB-files to
+Chapter~\ref{mlb_and_modules.chap}.
 
-Compiling a project is similar to compiling a single SML source file,
-however, we shall postpone the in-depth discussion of how to compile
-MLB-files to Chapter~\ref{mlb_and_modules.chap}.
-
-\section{Using the Interactive Menu System}
-
-As a concrete example, we show how some of the region-annotated
-programs in Chapter~\ref{records.sec} came about.
-
-To compile the SML source file {\tt projection.sml} of
-Example~\ref{proj.ex}, place yourself in your own copy of the {\tt
-  kitdemo} directory and start the MLKit with the shell command {\tt
-  mlkit}.
-
-After the MLKit has uttered various greetings, you will find yourself in
-a rudimentary menu-driven dialog, see Figure~\ref{dialogue.fig}.
-\begin{figure}
-\hrule \medskip
+As an example, to compile the file \boxml{projection.sml} located in
+the \texttt{kitdemo} directory, first goto this directory and execute
+the following command:
 \begin{verbatim}
-      0      Printing of intermediate forms  >>>
-      1      Layout........................  >>>
-      2      Control.......................  >>>
-      3      File..........................  >>>
-      4      Profiling.....................  >>>
-      5      Debug.........................  >>>
-      6      Compile file or project.......  >>>
-      7      Compile it again.............. ("sources.pm") >>>
-
-Select (<number>), Help (h <number>), Up (u), or Quit (quit): 
-
->
+   mlkit projection.sml
 \end{verbatim}
-\caption{The top-most MLKit menu}
-\medskip \hrule 
-\label{dialogue.fig}
-\end{figure}
-First, you are going to ask the MLKit to print one of the intermediate
-forms that arise under compilation (this is how the annotated programs
-shown in  Section~\ref{proj.ex} were obtained). 
-Choose \texttt{Printing of intermediate forms} (i.e., type \texttt{0}
-followed by carriage return), and then \texttt{print drop regions
-expression} to toggle on the printing of the $\MulExp$ program.
-Go up one level in the menu tree by typing \texttt{u} followed by return,
-and you are back in the main menu.
+Execution of this command will result in an executable file
+\texttt{run}, placed in the \texttt{kitdemo} directory.
 
-Now, choose \texttt{Compile file or project}; then type
-\boxml{"projection.sml"} (including the quotes) followed by return.
-The MLKit outputs (among other things) the $\MulExp$ program shown in
-Section~\ref{proj.ex}. 
-
-Printing of the region-annotated types can now be enabled by selecting
-\boxml{Layout} from the main menu, and then \texttt{print types}.
-Thereafter, choose \texttt{Compile it again} from the main menu to
-compile the source file {\tt projection.sml} again. This time, the MLKit
-outputs the $\MulExp$ program shown in Section~\ref{reganntypes.sec}.
-If the formatting appears too wide for your screen, you can enter
-another value for the pretty-printing width by selecting \texttt{text
-  width in pretty-printing} in the \texttt{Layout} menu.
-
-Next, you can try the example in Section~\ref{effects.sec}; select
-\texttt{Compile file or project} from the top-most menu and enter
-\boxml{"elimpair.sml"}.
-
-\section{Compiling from the Command-Line}
-As mentioned earlier, it is possible to compile programs with the MLKit
-by passing command-line arguments to the {\tt mlkit} executable. It is
-also possible to pass 
-\index{options!command-line}%
-\index{mlkit@\texttt{mlkit}!command-line options}%
-options to the {\tt mlkit} executable to toggle some flags prior to the
-compilation proper. Here is how one can compile the
-\boxml{projection.sml} file from the command-line with the
-\boxml{--print\_types} and \boxml{--print\_drop\_regions\_expression}
-options enabled, provided you are located in your copy of the
-\boxml{kitdemo} directory:
+To see some internal representations of the \texttt{projection.sml}
+program, as produced during compilation, try pass the command-line
+options \boxml{--print\_types} and
+\boxml{--print\_drop\_regions\_expression} to the \texttt{mlkit}
+command, as follows:
 \begin{verbatim}
-   mlkit --print_types --print_drop_regions_expression projection.sml
+   rm -rf MLB
+   mlkit -print_types \
+         -print_drop_regions_expression \
+         projection.sml
 \end{verbatim}
-A shorter version of this command is
+Removing the \texttt{MLB} directory is necessary to avoid the MLKit to
+recognise that it can reuse the previous result of compiling the
+\texttt{projection.sml} program.  A shorter version of the compilation
+command is
 \begin{verbatim}
    mlkit -Ptypes -Pdre projection.sml
 \end{verbatim}
-To get more information about which options you can pass to the MLKit at
-the command-line, try executing \boxml{mlkit -help}. The output of
-executing this command is shown in Appendix~\ref{mlkithelp.app}.
+To get more information about which options you can pass to the MLKit
+at the command-line, try executing \boxml{mlkit -help}. The output of
+executing this command is shown in Appendix~\ref{mlkithelp.app} (for a
+version of the MLKit that uses the native X86 backend).
 
 \section{Running Compiled Programs}
 If no errors were found during compilation, the MLKit produces a
@@ -2136,9 +2079,8 @@ Figure~\ref{fromto.fig}.
 \end{verbatim}
 \caption{The region-annotated version of {\tt fromto} shows that {\tt fromto}
   is region-polymorphic. (Program: \boxml{kitdemo/fromto.sml}, printed
-  by selecting {\tt print drop regions expression} from the {\tt
-    Printing of intermediate forms} menu and then selecting {\tt
-    Compile file or project} from the main menu.)}  \medskip
+  by passing the option {\tt -print\_drop\_regions\_expression} to the
+  MLKit compiler.)}  \medskip
 
 \hrule
 \label{fromto.fig}
@@ -2856,18 +2798,18 @@ with a $\Put$ effect.
 The MLKit can be instrumented to issue a warning each time it meets a
 function that is declared using {\tt fun} and has a free $\Put$ effect
 occurring somewhere in its type scheme. The way to tell the MLKit to
-issue the warnings is by toggling the entry 
+issue the warnings is by passing the option
 \index{put-effect!escaping}%
-{\tt warn on escaping put
-  effects} in the {\tt Control} menu. In practice, this warning
+\texttt{-warn\_on\_escaping\_puts} to the MLKit compiler. In practice, this warning
 mechanism is a valuable device for predicting space leaks.  The
 region-annotated version of our example function {\tt g} is listed in
 Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the MLKit
 issues the following warning:\footnote{To provoke the warning, one has
   to disable in-lining in the
   \index{optimiser}%
-  {\Lam} optimiser; this is done by setting the {\tt Maximum in-line
-    size}, found in the {\tt Control/Optimiser} sub-menu, to {\tt 0}.}
+  {\Lam} optimiser; this is done by passing the option
+  \texttt{-maximum\_inline\_size 0} to the MLKit compiler together
+  with the option \texttt{-warn\_on\_escaping\_puts}.}
 \begin{figure}
 \hrule
 \medskip
@@ -3228,8 +3170,9 @@ of the function.)\footnote{Program \boxml{kitdemo/refs2.sml}.}
 \end{verbatim}
 Provided that in-lining by the optimiser is restricted to in-line only
 those functions that are applied once,\footnote{To restrict the
-  optimiser accordingly, set the menu entry {\tt Control/Compiler/maximum
-    in-line size} to {\tt 0}.} this example compiles into
+  optimiser accordingly, provide the option
+  \texttt{-maximum\_inline\_size 0} to the MLKit compiler.} this example
+compiles into
 \begin{verbatim}
    let val r = let val v39399 = nil in ref at r1 v39399 end ; 
        fun memo_id at r1 [] (x)= 
@@ -3240,8 +3183,9 @@ those functions that are applied once,\footnote{To restrict the
    end 
 \end{verbatim}
 and the MLKit warns us that there is a possible space
-leak:\footnote{Warnings are printed only if we have enabled the entry
-  {\tt warn on escaping put effects} in the {\tt Control} menu. See
+leak:\footnote{Warnings are printed only if the option {\tt
+    -warn\_on\_escaping\_puts} is passed to the MLKit compiler along
+  with the option \texttt{-maximum\_inline\_size 0}. See
   Chapter~\ref{spaceleak.sec}.}
 \begin{verbatim}
     *** Warnings ***
@@ -3786,11 +3730,10 @@ be stored at the top or at the bottom.\footnote{When $\rho$ has
   omitted.}
 
 The relevant parts of the result of compiling the last example are
-shown in Figure~\ref{sma1.fig}.  To see the storage modes, switch on
-the flag
-\index{print drop regions expression with storage modes@\texttt{print drop regions expression with storage modes}}%
-$$\boxml{print drop regions expression with storage modes}$$
-in the menu \boxml{Printing of intermediate forms}.
+shown in Figure~\ref{sma1.fig}.  To see the storage modes, pass the option
+\index{print drop regions expression with storage modes@\texttt{-print\_drop\_regions\_expression\_with\_storage\_modes}}%
+$$\boxml{-print\_drop\_regions\_expression\_with\_storage\_modes}$$
+to the MLKit compiler.
 
 %The intermediate form obtained by enabling this flag is from before
 %the optimisation that drops non-put regions (page
@@ -4167,8 +4110,8 @@ the main reason being that the MLKit has figured out that the argument
 to {\tt tlength} can be passed unboxed; thus no regions are used to
 hold the argument pair. However, if we chose to disable the unboxing
 of arguments that the MLKit performs,\footnote{Unboxing of function
-  arguments can be disabled by toggling the {\tt unbox function
-    arguments} entry in the {\tt Control/Optimiser} menu.} the
+  arguments can be disabled by passing the option
+  \texttt{-no\_unbox\_function\_arguments} to the MLKit compiler.} the
 function would become region-polymorphic and the polymorphic recursion
 in regions would allow the pair \boxml{(xs, acc+1)} to be stored in a
 region different from the argument pair to {\tt tlength'}. In this
@@ -4182,8 +4125,8 @@ disabled, we would see a sharp increase in stack size for {\tt
 situation, we cannot always expect it to do so; if we were to collect
 boxed data in an accumulating parameters to the function and this data
 is not to be returned by the function, there is a danger that the
-recursive call would not become a tail call due to the introduction of a
-{\tt letregion} construct being wrapped around the recursive call.
+recursive call would not become a tail call due to the introduction of
+a {\tt letregion} construct being wrapped around the recursive call.
 
 The next function, {\tt klength}, deserves careful study, because it
 is a prototype of a particular schema that can be used again and again
@@ -4956,12 +4899,11 @@ One can get the MLKit to print region-annotated
 \index{region-annotated type scheme!printing of}%
 type schemes with places of all binding occurrences of value
 variables.  Also, one can choose to have arrow effects included in the
-printout by enabling the flags ~\texttt{print types}~ and
-~\texttt{print effects}~ in the ~\texttt{Layout}~ menu. Although
-enabling these flags gives very verbose output, it is instructive to
-look at such a term at least once, to see how arrow effects are
-instantiated. We show the full output for the {\tt apply} example in
-Figure~\ref{apply.fig}.
+printout by passing the options \texttt{print\_types} and
+\texttt{print\_effects} to the MLKit compiler. Although passing these
+options gives very verbose output, it is instructive to look at such a
+term at least once, to see how arrow effects are instantiated. We show
+the full output for the {\tt apply} example in Figure~\ref{apply.fig}.
 
 \begin{figure}
 \hrule \medskip
@@ -5007,10 +4949,9 @@ Figure~\ref{apply.fig}.
 \end{verbatim}
 \caption{The instantiation of arrow effects keeps different applications of
   the same function (here {\tt apply}) apart. The output was obtained
-  by compiling the program \boxml{kitdemo/apply.sml} with {\tt
-    Control/Optimiser/maximum inline size} menu entry set to {\tt 0}
-  and with the flags \boxml{print types} and \boxml{print effects}
-  enabled.}  \medskip \hrule
+  by compiling the program \boxml{kitdemo/apply.sml} with options
+  \texttt{-print\_types}, \texttt{-print\_effects}, and
+  \texttt{-maximum\_inline\_size 0}.}  \medskip \hrule
 \label{apply.fig}
 \end{figure}
 
@@ -5081,18 +5022,18 @@ Consider the program\footnote{Program \boxml{kitdemo/map.sml}.}
    val x = map (fn x => x+1) [7,11]
 \end{verbatim}
 This formulation of {\tt map} is not the most efficient one in the
-MLKit, because it will create one closure for each element in the list,
-due to currying.\footnote{When {\tt map} and the application of {\tt
-    map} appear in the same compilation unit, the MLKit will
+MLKit, because it will create one closure for each element in the
+list, due to currying.\footnote{When {\tt map} and the application of
+  {\tt map} appear in the same compilation unit, the MLKit will
   automatically specialise {\tt map} to a recursive function that does
   not have this defect. This specialisation is the result of a general
   optimisation of curried functions that are invariant in their first
   argument. The output we present in this section was obtained by
-  setting the entry {\tt maximum specialise size} to {\tt 0} in the
-  {\tt Control/Optimiser} menu.} However it serves to illustrate the
-point made in the previous section about allocating regions in
-connection with higher-order functions. The region-annotated version
-is listed in Figure~\ref{map.fig}.
+  passing to the MLKit compiler the option
+  \texttt{-maximum\_specialise\_size 0}.} However it serves to
+illustrate the point made in the previous section about allocating
+regions in connection with higher-order functions. The
+region-annotated version is listed in Figure~\ref{map.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
@@ -5229,15 +5170,14 @@ cases. We say that expressions produced by this analysis are
 \index{function call!call-explicit}%
 \label{call-explicit}%
 {\em call-explicit}. One can inspect call-explicit programs by
-enabling the flag
-\index{print call-explicit expression@\texttt{print call-explicit expression}}%
-$$\boxml{print call-explicit expression}$$
-in the menu~~
-\texttt{Printing of intermediate forms}, and thus check whether
-specific function calls in the code turn out the way one intended.
-Call-explicit expressions are produced after regions have been dropped
-(page~\pageref{bother-to-distinguish-get-n-put}) but before native
-code generation.
+passing the option
+\index{print call-explicit expression@\texttt{-print\_call\_explicit\_expression}}%
+$$\boxml{-print\_call\_explicit\_expression}$$
+to the MLKit compiler,
+and thus check whether specific function calls in the code turn out as
+intended.  Call-explicit expressions are produced after regions have
+been dropped (page~\pageref{bother-to-distinguish-get-n-put}) but
+before native code generation.
 
 We shall first give a brief description of the parameter passing
 mechanism in general and then discuss the different kinds of function
@@ -5577,9 +5517,9 @@ assumes that {\tt f} takes a pair as an argument:\footnote{Program
      end
 \end{verbatim}
 Interestingly, this program contains a potential space leak. Can you
-detect it? If not, the MLKit will tell you when you compile the program.
-(Remember to enable {\tt warn on escaping put effects} in the {\tt
-  Control} menu.)
+detect it? If not, the MLKit will tell you when you compile the
+program if you pass the compiler the option
+\texttt{-warn\_on\_escaping\_puts}.
 
 %---------------------------------------------
 \chapter{ML Basis Files and Modules}
@@ -6165,11 +6105,10 @@ different kinds of graphs may be created:
   allocation.\footnote{Program points are unique. In particular, for a
     project with two program units, the program points in the
     region-annotated programs for the two units will be distinct.}  To
-  inspect region-annotated programs with program points, enable the
-  flag {\tt print program points} found in the {\tt Layout} sub-menu
-  in addition to the flag {\tt print call-explicit expression}, say,
-  from the {\tt Printing of intermediate forms}
-  sub-menu.\footnote{Program points are annotated during physical size
+  inspect region-annotated programs with program points, pass the
+  MLKit compiler the option \texttt{-print\_program\_points} in
+  addition to the option \texttt{-print\_call\_explicit\_expression},
+  say.\footnote{Program points are annotated during physical size
     inference.}
   
   If you have an object profile showing that program point
@@ -6478,56 +6417,30 @@ Figure~\ref{scan_rev2_1.fig} shows a region profile of the
 
 Before compiling a program for the purpose of profiling, one must decide on a
 \index{profile strategy!compile-time}%
-{\em compile-time profiling strategy}, see
+{\em compile-time profiling strategy}; see
 Figure~\ref{profStrategy.fig}.  The compile-time profiling strategy
 directs the embedding of profiling instructions in the generated code
 and instructs the compiler whether to report a region flow graph.
 
-The compile-time profiling strategy is set up in the 
-\index{Profiling@\texttt{Profiling} sub-menu}%
-{\tt Profiling} sub-menu:
+Region profiling is enabled by passing the option 
+\index{region profiling@\texttt{-region\_profiling}}%
+\texttt{-region\_profiling} (or simply \texttt{-prof}) to the MLKit
+compiler. If you want the MLKit to report region-annotated programs
+with program points, you should pass the option
+\index{print all program points@\texttt{-print\_all\_program\_points}}%
+\texttt{-print\_all\_program\_points}
+to the MLKit compiler together with one or more of the options
+\index{print physical size inference expression@\texttt{-print\_physical\_size\_inference\_expression}}%
+\texttt{-print\_physical\_size\_inference\_expression} and
+\index{print call-explicit expression@\texttt{-print\_call\_explicit\_expression}}%
+\texttt{-print\_call\_explicit\_expression}..
 
-%\index{instruction count
-%  profiling@\texttt{instruction count profiling}}\footnote{The
-%  \texttt{instruction count profiling} option is available only with
-%  the native backend and has nothing to do with region profiling; it
-%  simply counts the number of executed instructions in the target
-%  program excluding runtime calls and instructions in the link file.
-%  It should be used only when region profiling is disabled. If the
-%  number of instructions executed gets too large, the {\tt Overflow}
-%  exception is raised.}
-
-%\begin{quote}
-%\begin{footnotesize}
-\begin{verbatim}
-   Profiling
-
-   0     region profiling............................ off
-   1     print region flow graph..................... off
-   2     print all program points.................... off
-   3     print program points........................ [] >>>
-\end{verbatim}
-%\end{footnotesize}
-%\end{quote}
-\noindent
-Region profiling is enabled by toggling the item
-\index{region profiling@\texttt{region profiling}}%
-\mbox{{\tt region profiling}}. If you want the MLKit to report
-region-annotated programs with program points, you should enable
-either 
-\index{print physical size inference expression@\texttt{print physical size inference expression}}%
-{\tt print physical size inference expression} or
-\index{print call-explicit expression@\texttt{print call-explicit expression}}%
-{\tt print call\-explicit expression} from the {\tt Printing of
-  intermediate forms} sub-menu together with the item 
-\index{print program points@\texttt{print program points}}%
-{\tt print all program points}.
-
-To make the compiler report a region flow graph, enable
-\index{print region flow graph@\texttt{print region flow graph}}%
-{\tt print region flow graph}. The region flow
-graph is reported both in text layout and in a {\tt .vcg} file, which,
-when interpreted by the 
+To make the compiler report a region flow graph, pass the option
+\index{print region flow graph@\texttt{-print\_region\_flow\_graph}}%
+$$\texttt{-print\_region\_flow\_graph}$$ 
+to the MLKit compiler at compile
+time. The region flow graph is reported both in text format and in a
+{\tt .vcg} file, which, when interpreted by the
 \index{VCG tool}%
 VCG tool, provides a graphical version of the graph.\footnote{The VCG
   tool (Visualization of Compiler Graphs) can be obtained from
@@ -6537,20 +6450,18 @@ VCG tool, provides a graphical version of the graph.\footnote{The VCG
 
 As a running example, we use the 
 \index{life@\texttt{life}}%
-{\tt life} program.\footnote{Program {\tt kitdemo/life.sml}.}  We
-enable the {\tt region profiling} option, the {\tt print all program points} option, and the {\tt print region flow
-  graph} option from the {\tt Profiling}
-sub-menu together with the option {\tt print call-explicit
-  expression} from the sub-menu {\tt
-  Printing of intermediate forms}.
+{\tt life} program.\footnote{Program: \texttt{kitdemo/life.sml}.}  We
+assume that the options \texttt{-prof},
+\texttt{-print\_all\_program\_points}, and
+\texttt{-print\_region\_flow\_graph} are passed to the MLKit compiler
+together with the option $$\texttt{-print\_call\_explicit\_expression}$$
 
-By enabling the option {\tt Log to file} from the {\tt File} sub-menu
-and by compiling the program using the {\tt Compile file or project} entry in
-the main-menu, the MLKit now generates several files of which we have
-{\tt life.log} (containing, among other things, the call-explicit
+By also passing the option \texttt{-log\_to\_file} to the MLKit
+compiler, the MLKit generates several files, of which we have {\tt
+  life.log} (containing, among other things, the call-explicit
 region-annotated program with program points and the region flow graph
-in text layout), {\tt life.vcg} (the region flow graph to be
-displayed with the VCG tool) and the executable file {\tt run}.
+in text layout), {\tt life.vcg} (the region flow graph to be displayed
+with the VCG tool) and the executable file {\tt run}.
 
 %-------------------------------------------------
 \section{The Log File}
@@ -6606,20 +6517,6 @@ find something like
            end
 \end{verbatim}
 
-%\noindent
-%It is important to look inside the edge for the from node. Consider for
-%example:
-%%\begin{footnotesize}
-%\begin{verbatim}
-%...
-% LETREGION[r3621:2];   --r3480 atbot-->   LETREGION[r3627:2];
-%...
-%\end{verbatim}
-%%\end{footnotesize}  
-%\noindent
-%We do not have an edge from the \texttt{letregion}-bound region variable
-%(\texttt{r3621}) to the other \texttt{letregion}-bound variable (\texttt{r3627}).
-
 The region flow graph can get very complicated to read because we may have
 mutually recursive functions, which give many edges and cycles.  If the
 graphs get too complicated, you may find help in the 
@@ -6637,74 +6534,6 @@ the region flow graph for the {\tt life} program:
 Here, we have a scc node (id 97) containing region variable
 \texttt{r211904} and an edge to scc node (id 96) containing region
 variable \texttt{r212427}.
-
-% %--------------------------------------------------------
-% \section{Region Flow Paths\label{regFlowPath.sec}}
-% %--------------------------------------------------------
-% If you are interested in the possible paths
-% \index{region flow path}%
-% from one region variable to another, the MLKit can find them for you.
-% Assume that you have an object profile for some region variable $\rho$
-% showing that a certain allocation point is responsible for the
-% allocations and that the region variable written at the allocation
-% point is not $\rho$, but some other region variable $\rho'$. In this
-% case, $\rho'$ must be a formal region variable of some
-% region-polymorphic function; it is now interesting to find out how
-% $\rho'$ has been instantiated to $\rho$.
-
-% You can specify the from and to nodes that you want the paths for in
-% the menu item
-% \index{paths between two nodes in region flow graph@\texttt{paths between two nodes in region flow graph}}%
-% {\tt paths between two nodes in region flow graph} in the {\tt Profiling}
-% sub-menu:
-% \begin{verbatim}
-%    Profiling
-
-%    0     region profiling............................ on
-%    1     print region flow graph..................... on
-%    2     print all program points.................... on
-%    3     print program points........................ [] >>>
-%    4     paths between two nodes in region flow graph [] >>>
-
-%    Select (<number>), Help (h <number>), Up (u), or Quit (quit): 
-
-%    >4
-%    <type an int pair list of region variables,
-%    e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> 
-%    or up (u): >
-% \end{verbatim}
-
-% At this point, you can type a list of integer pairs, that is, you
-% can specify several pairs of nodes that you want the paths for.
-
-% Compiling the source program again gives a new log file where you can
-% search for \texttt{Starting layout of paths}:\footnote{Because region
-%   variables may change when recompiling a source file, it may be
-%   necessary to start all over by starting the MLKit again and recompile
-%   the program to make sure that the regions you have specified will
-%   match the regions in a region flow graph of a previous compilation.}
-% \begin{verbatim}
-%    [Starting layout of paths...
-%        [Start path: 
-%            [sccNo 63: r89698,]--->
-%            [sccNo 62: r90246,]--->
-%            [sccNo 61: r90812,]
-%        ]
-%    ...Finishing layout of paths]
-% \end{verbatim}
-% If you look at the region flow graph on
-% page~\pageref{reg_flow_graph.ex}, you see that the only path from
-% region \texttt{r89698} to region \texttt{r90812} goes through function
-% \texttt{nthgen'}, that is, \texttt{nthgen'} calls \texttt{cp\_list}. If
-% you look in the file \texttt{life.sml} you may notice that
-% \texttt{nthgen'} actually calls a function \texttt{copy} and not
-% \texttt{cp\_list}. The function \texttt{copy} is declared as
-% \begin{verbatim}
-%    fun copy (GEN l) = GEN(cp_list l)
-% \end{verbatim}
-% If you look at the call-explicit region-annotated program in file
-% \texttt{life.log}, you may notice that the function \texttt{copy} has
-% been in-lined by the optimiser.
 
 %---------------------------------
 \section{Using the VCG Tool}
@@ -6754,37 +6583,6 @@ file. It can be printed out, scaled, and so on from the pull-down
 menu. The graph is folded again by choosing {\tt Fold Subgraph} and
 clicking on one of the nodes. All nodes in the graph then turn black;
 clicking on the right mouse button then folds the graph.
-
-% Region flow paths are also exported together with the region flow
-% graph. Each path is numbered and can be viewed by the {\tt Expose/Hide
-%   edges} facility in the VCG pull-down menu, see Figure~\ref{vcg3.fig}.
-% \begin{figure}
-% \begin{center}
-%   \scalebox{0.6}{\includegraphics{vcg3.ps}}
-% \end{center}
-% \caption{After choosing the
-%   {\tt Expose/Hide edges} facility you get this window. The window
-%   shows that there are two classes of edges in the graph; one for the
-%   region flow graph and one for the path from node \texttt{r89698} to node
-%   \texttt{r90812}. 
-%   %If you have generated the path from Section~\ref{regFlowPath.sec}, the option
-%   %\texttt{Path2(r89698,r90812)} is present.
-%   }
-% \label{vcg3.fig}
-% \end{figure}
-
-% Each path is numbered because there can be several paths between the same
-% two nodes. Clicking on the {\tt Graph} edge class will hide the edges in the
-% region flow graph so that edges in the generated path are the only edges
-% shown, see Figure~\ref{vcg4.fig}.
-% \begin{figure}
-% \begin{center}
-%   \scalebox{0.6}{\includegraphics{vcg4.ps}}
-% \end{center}
-% \caption{The figure shows the path between
-%   node \texttt{r89698} and \texttt{r90812}.}
-% \label{vcg4.fig}
-% \end{figure}
 
 %----------------------------------
 \section{Runtime Profiling Strategy}
@@ -7118,28 +6916,16 @@ here. Help on these options is obtained by typing \texttt{rp2ps -h} or
 \index{rp2ps@\texttt{rp2ps} options|)}%
 
 %---------------------------------------------------------
-\chapter{Interacting with the MLKit}
+\chapter{Controling MLKit Compilation with Options}
 \label{controlkit.sec}
 \label{startup.sec}
 %---------------------------------------------------------
 
-Starting the MLKit was described in Section~\ref{tryit.sec}.  To
-\index{leaving the MLKit}%
-\index{exit from the MLKit}%
-\index{quitting from the MLKit}%
-leave the MLKit, type 
-\index{quit@\texttt{quit}}%
-\boxml{quit} followed by a return character.
-
 We have already described how to compile and run single source files
-(Section~\ref{tryit.sec}) and projects
+(Section~\ref{tryit.sec}) and MLB-files
 (Chapter~\ref{mlb_and_modules.chap}).  In the following sections,
-we give an overview of the MLKit sub-menus that control printing and
-layout of intermediate forms. In Section~\ref{scriptfiles.sec}, we
-explain how to use a so-called script file to set personal preferences
-for menu entries in the MLKit. The settings that can be controlled using
-the menu and script files can also be controlled using command-line
-options to the MLKit executables. One useful command-line option is
+we give an overview of MLKit options for controling printing and
+layout of intermediate forms. One useful command-line option is
 the 
 \index{help@\texttt{-help} option to \texttt{mlkit}}%
 {\tt -help} option; Appendix~\ref{mlkithelp.app} shows the output of
@@ -7152,10 +6938,9 @@ native x86 backend.
 \section{Printing of Intermediate Forms}
 \label{printing_intermediate_forms.sec}
 %------------------------------------------------
-The menu 
-\index{Printing of intermediate forms@\texttt{Printing of intermediate forms}}%
-\texttt{Printing of intermediate forms} controls what intermediate
-forms are printed when a program is compiled.
+A series of options may be used to control
+\index{Printing of intermediate forms}%
+printing of intermediate forms during compilation.
 A summary of the major phases that produce printable intermediate
 forms is shown in Figure~\ref{phases.fig}. The phases are listed in
 the order they take place in the MLKit.
@@ -7167,149 +6952,94 @@ the order they take place in the MLKit.
 \hline
  Elaboration            & $\Lam$    & \hfill \boxml{$(\ast)$}\\
  Elim. of Poly. Eq.     & $\Lam$    & \hfill \boxml{$(\ast)$}\\
- Lambda Optimiser       & $\Lam$    & \boxml{print optimised}\\&&~~\boxml{lambda expression} \hfill $(\ast)$\\
+ Lambda Optimiser       & $\Lam$    & \boxml{-Pole} \hfill $(\ast)$\\
  Spreading              & $\RegExp$ & \hfill \boxml{$(\ast)$}\\
  Region Inference       & $\RegExp$ & \hfill \boxml{$(\ast)$}\\
  Multiplicity Inference & $\MulExp$ & \hfill \boxml{$(\ast)$}\\
  K-normalisation        & $\MulExp$ & \\
- Storage Mode Analysis  & $\MulExp$ & \boxml{print storage mode}\\&&~~\boxml{expression} \hfill $(\ast)$\\
- Dropping of Regions    & $\MulExp$ & \boxml{print drop regions}\\&&~~\boxml{expression} \hfill $(\ast)$\\
-                        &           & \boxml{print drop regions}\\&&~~\boxml{expression with}\\&&~~\boxml{storage modes} \\
- Physical Size Inference& $\MulExp$ & \boxml{print physical size}\\&&~~\boxml{inference expression} \hfill $(\ast)$\\
- Call Conversion        & $\MulExp$ & \boxml{print call-explicit}\\&&~~\boxml{expression} \hfill $(\ast)$\\
+ Storage Mode Analysis  & $\MulExp$ & \boxml{-Psme} \hfill $(\ast)$\\
+ Dropping of Regions    & $\MulExp$ & \boxml{-Pdre} \hfill $(\ast)$\\
+                        &           & \boxml{-Pdresm} \\
+ Physical Size Inference& $\MulExp$ & \boxml{-Ppse} \hfill $(\ast)$\\
+ Call Conversion        & $\MulExp$ & \boxml{-Pcee} \hfill $(\ast)$\\
 \hline
 \end{tabular}
 \end{center}
-\caption{The table shows how the menu items in the 
-  \index{intermediate forms}%
-  {\tt Printing of Intermediate Forms} menu correspond to the phases
-  in the MLKit.  Enabling \boxml{debug compiler} from the \boxml{Debug
-    MLKit} menu causes all intermediate forms marked $(\ast)$ to be
-  printed.  Thus, one can select phases individually or ask to have all
-  printed.  The phases that follow K-normalisation all work on
-  K-normal forms, but, for readablity, terms are printed as though
-  they had not been normalised (unless \boxml{Print in K-normal Form}
-  from the {\tt Layout} menu is enabled).}
+\caption{The table shows how different options correspond to printing 
+  different intermediate program representations.  The option
+  \boxml{-debug} causes all intermediate forms marked $(\ast)$ to be
+  printed.  Thus, one can select phases individually or ask to have
+  all intermediate forms printed.  The phases that follow
+  K-normalisation all work on K-normal forms, but, for readablity,
+  terms are printed as if they had not been normalised.}
 \label{phases.fig}
 \end{figure}
 
 The optimiser, which rewrites a $\Lam$\index{Lambda@$\Lam$}
 program, collects statistics about the optimisation. This statistics
-can be printed by turning on the flag
-\index{statistics after optimisation@\texttt{statistics after optimisation}}%
+is printed if the option $$\texttt{-statistics\_after\_optimisation}$$ %
+\index{statistics after optimisation@\texttt{-statistics\_after\_optimisation}}%
 \index{optimisation!statistics}%
-\texttt{statistics after optimisation} in the
-\texttt{Control/Optimiser} menu; the other flags found in this menu
-controls the optimiser.
+is provided.
 
 Storage mode analysis (see Chapter~\ref{storagemodes.sec}) results in
-a $\MulExp$\index{MulExp@$\MulExp$} expression, which can be printed
-by turning on the flag
-\index{print storage mode expression@\texttt{print storage mode expression}}%
-\texttt{print storage mode expression}.  After that, region parameters
+a $\MulExp$\index{MulExp@$\MulExp$} expression, which can be printed if the option
+\index{print storage mode expression@\texttt{-print\_storage\_mode\_expression}}%
+\texttt{-print\_storage\_mode\_expression} is provided.  After that, region parameters
 for which there are only $\Get$ effects on in the type scheme for a
 region polymorphic function are removed from the $\MulExp$ expression
 (see page~\pageref{bother-to-distinguish-get-n-put}).  To see the
 resulting expression, turn on
-\index{print drop regions expression@\texttt{print drop regions expression}}%
-\texttt{print drop regions expression} or \texttt{print drop regions
-  expression with storage modes}. (The latter flag also prints storage
-modes.)
+\index{print drop regions expression@\texttt{-print\_drop\_regions\_expression}}%
+\texttt{-print\_drop\_regions\_expression} or
+$$\texttt{-print\_drop\_regions\_expression\_with\_storage\_modes}$$
+The latter flag also prints storage modes.
+
 \index{physical size inference}%
 \index{region size}%
 Physical size inference then determines the size in words of finite
 region variables.  For instance, a finite region that will contain a
 pair will have physical size two words.  To see the expression after
-physical size inference, turn on
-\index{print physical size inference expression@\texttt{print physical size inference expression}}%
-\texttt{print physical size inference expression}.  After that,
+physical size inference, provide the option
+\index{print physical size inference expression@\texttt{-print\_physical\_size\_inference\_expression}}%
+\texttt{-print\_physical\_size\_inference\_expression}.  After that,
 \index{call conversion}%
 call conversion converts the $\MulExp$ expression to a
 \index{expression!call-explicit}call-explicit expression (see
-page~\pageref{call-explicit}).  To see the result, enable the flag
-\texttt{print call-explicit expression}.  
+page~\pageref{call-explicit}).  To see the result, provide the option
+$$\texttt{-print\_call\_explicit\_expression}$$ 
 
 After that, dependent on which backend is used, either 
 \index{backend!native}%
 native machine code or bytecode is generated. If you use the native
 backend you can inspect the code at different steps of the
-transformation into machine code by toggling entries in the
-\texttt{Printing of intermediate forms} menu. Similarly, if you use
-the
+transformation into machine code by providing different options (use
+the \texttt{-help} option to see which. Similarly, if you use the
 \index{backend!bytecode}%
-bytecode backend, toggling of entries in the \texttt{Printing of
-  intermediate forms} menu allows you to inspect the bytecode
-generated by the MLKit.
+bytecode backend, different options control printing the bytecode
+generated by the MLKit; again, use the \texttt{-help} option to see
+which flags are available.
 
 \section{Layout of Intermediate Forms}
 \label{layout_intermediate_forms.sec}
 While the switches described in the previous section concern which
-intermediate forms to print, the switches in the sub-menu
-\texttt{Layout}\index{Layout@\texttt{Layout}} control how these forms
+intermediate forms to print, the switches described in this section
+\texttt{Layout}\index{Layout@\texttt{Layout}} control how the different forms
 are printed.
 
-The flags 
-\index{print types@\texttt{print types}}%
-\texttt{print types},
-\index{print effects@\texttt{print effects}}%
-\texttt{print effects}, and
-\index{print regions@\texttt{print regions}}%
-\texttt{print regions} control the printing of region-annotated types,
+The options
+\index{print types@\texttt{-print\_types}}%
+\texttt{-print\_types},
+\index{print effects@\texttt{-print\_effects}}%
+\texttt{-print\_effects}, and
+\index{print regions@\texttt{-print\_regions}}%
+\texttt{-print\_regions} control the printing of region-annotated types,
 effects, and region allocation points (e.g., $\at\,\rho$).
 All eight combinations of these three flags are possible, but if
-\index{print effects@\texttt{print effects}}%
-{\tt print effects} is turned on it is best also to turn the two
+\index{print effects@\texttt{-print\_effects}}%
+{\tt -print\_effects} is turned on, it is best also to turn the two
 others on so that one can see where the effect variables and region variables
 that appear in arrow effects are bound.
-
-Enabling the flag
-\index{print in K-Normal Form@\texttt{print in K-Normal Form}}%
-\texttt{print in K-Normal Form}
-\index{K-normalisation}%
-causes expressions to be output in K-Normal Form instead of the
-simplified form in which they are normally presented.
-
-\section{Using Script Files for Preferences}
-\label{scriptfiles.sec}
-The MLKit allows you to create a so-called 
-\index{script file}%
-{\em script file}, which can hold preferences for most of the entries
-found in the MLKit menu. A script file can be provided either when the
-MLKit is started or dynamically from within the MLKit menu when the MLKit is
-running. To provide a script file {\tt script} at the time the MLKit is
-started, type
-\begin{verbatim}
-   mlkit -script script
-\end{verbatim}
-from the shell. During a session with the MLKit, a script file can be
-read using the menu entry {\tt Read a script file} from the {\tt File}
-menu.
-
-A script file is comprised by a sequence of 
-\index{preferences}%
-{\em preferences}, each of which provides a setting for a given entry.
-Here is a script file that enables the boolean entry {\tt print drop
-  regions expression} (located in the {\tt Printing of intermediate
-  forms} sub-menu) and sets the integer entry {\tt maximum inline
-  size} (located in the sub-menu {\tt Control/Optimiser}) to {\tt
-  0}:\footnote{Script file {\tt kitdemo/ex.script}.}
-\begin{verbatim}
-   val print_drop_regions_expression : bool = true 
-   val maximum_inline_size : int = 0  (* disable in-lining *)
-\end{verbatim}
-Notice that spaces in the menu entries are replaced with scores in the
-script file and that script files may include ML style comments. By
-selecting {\tt print all flags and variables} from the {\tt Control}
-sub-menu, the MLKit prints a table of all entries that may be set from a
-script file.
-
-Enabling 
-\index{print in K-Normal Form@\texttt{print in K-Normal Form}}%
-\index{K-normalisation}%
-\texttt{print in K-Normal Form} causes expressions to be output in
-K-Normal Form instead of the simplified form in which they are
-normally presented.
-
 
 %---------------------------------------------------------
 \chapter{Calling C Functions}
@@ -8075,22 +7805,23 @@ required only when profiling is enabled.)
 \medskip \hrule
 \end{figure}
 
-It may be necessary to modify the string entry \texttt{link with
-  library} in the {\tt Control} menu so as to link in additional C
-libraries.
+It may be necessary to pass a different ``link string'' than the
+default value as an argument to the \texttt{-clibs} option passed to
+the MLKit compiler at compile time (for linking with additional C
+libraries).
 
-\section{Linking at Runtime}
+\section{Dynamic Linking}
 \label{link_at_runtime.sec}
-The MLKit support dynamic linking at runtime.
-This is done using the \texttt{dlopen} and \texttt{dlsym} functions from the
-kit library. The function \texttt{dlopen} opens a given library and
-the function \texttt{dlsym} associates a name to a given function in the
-library. If the name already has an association the exception `Fail' is
-raised.
+The MLKit support dynamic linking at runtime.  This is done using the
+\texttt{dlopen} and \texttt{dlsym} functions from the MLKit library
+\texttt{basis/dynlink.mlb}. The function \texttt{dlopen} opens a given
+library and the function \texttt{dlsym} associates a name with a given
+function in the library. If the name is already linked, the exception
+\texttt{Fail} is raised.
 
-Using \texttt{dlopen} and \texttt{dlsym} as in figure~\ref{dynlib.fig},
-you can call a dynamically linked library function by a primitive call
-to `:'.
+Using the functions \texttt{dlopen} and \texttt{dlsym}, as shown in
+Figure~\ref{dynlib.fig}, you can call a dynamically linked library
+function using a primitive call to `:'.
 
 If you call `:' with a name without any association \texttt{Match} is
 raised.
@@ -8103,16 +7834,16 @@ raised.
   fun fascistCheck a : string option =
     let val b : foreignptr = 
       prim("@:", ("testdyn", a : string, 
-                            "/usr/lib/cracklib_dict"))
+                  "/usr/lib/cracklib_dict"))
     in if isNullFP b 
        then NONE 
        else SOME(prim ("fromCtoMLstring", b))
     end
 \end{verbatim}
-\caption{Dynamic linking of the function ``FascistCheck'' from the library ``libcrack.so''.
-  The ml-function fascistCheck calls FascistCheck with the argument
-  (a,/usr/lib/cracklib\_ dict) and converts the resulting c-string into
-  an ml-string.
+\caption{Dynamic linking of the function \texttt{FascistCheck} from the library \texttt{libcrack.so}.
+  The ML function \texttt{fascistCheck} calls \texttt{FascistCheck} with the argument
+  \texttt{(a,/usr/lib/cracklib\_dict)} and converts the resulting C string into
+  an ML string.
   This example uses the auto conversion feature as described in
   the next section.}
 \label{dynlib.fig}
@@ -8296,8 +8027,7 @@ since version 3.0.
 The MLKit supports reference tracing garbage collection in
 combination with the region memory model. Garbage collection is
 supported only in the native backend version of the MLKit. To enable
-garbage collection, toggle the entry {\tt garbage collection} in the
-{\tt Control} menu or start the MLKit with the option {\tt -gc}. Garbage
+garbage collection, pass the option \texttt{-gc} to the MLKit compiler. Garbage
 collection is also possible with region profiling enabled. See
 Chapter~\ref{gc.chap} for more information about garbage collection
 with the MLKit.
@@ -8327,8 +8057,8 @@ By default, the MLKit performs a simple local unboxing analysis to
 figure out if a function taking a tuple as argument can be transformed
 into a function taking multiple arguments. Only functions that use
 only the individual elements of the argument tuple undergo
-transformation. The optimisation can be disabled by toggling the entry
-{\tt unbox function arguments} in the {\tt Control/Optimiser} menu.
+transformation. The optimisation can be disabled by passing the option
+\texttt{-no\_unbox\_function\_arguments} to the MLKit compiler.
 
 \subsubsection*{Removal of Region Vectors}
 \index{region vector!removed}%
@@ -8416,9 +8146,6 @@ MLKit version 4.1.1, Aug 25, 2002 [X86 Backend]
 Usage: mlkit_kam [OPTION]... [file.sml | file.sig | file.pm]
 
 Options:
-
--script file
-     Read compiler options from `file'.
 
 -version
      Print MLKit version information and exit.
