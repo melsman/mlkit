@@ -87,9 +87,10 @@ signature FLAGS =
 					       *)
     val region_paths : (int*int) list ref 
 
-    
+(*
     exception ParseScript of string            (* Reading script *)
     val read_script : string -> unit           (* May raise ParseScript *)
+*)
     val show_script_entries : unit -> unit
     
 
