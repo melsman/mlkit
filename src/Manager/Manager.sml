@@ -746,8 +746,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     datatype source = SML of string | MLB of string | WRONG_FILETYPE of string 
 
     fun determine_source (s:string) : source = 
-	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.mlb', '.sml', '.sig', or '.fun'.\n" ^
-					  "The file name you gave me has " ^ s)
+	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.mlb', '.sml', or '.sig'.\n" ^
+					  "*** The file name you gave me has " ^ s)
 	in case OS.Path.ext s of 
 	    SOME "mlb" => MLB s
 	  | SOME ext => if Flags.has_sml_source_ext ext then SML s
@@ -801,11 +801,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 				     else Flags.get_string_entry "output"
 				 in  
 				     (MlbMake.build{flags="",mlbfile=s,target=target} 
-				      handle _ => 
-					  (print "Stopping compilation due to errors.\n";
-					   raise PARSE_ELAB_ERROR nil))
+				      handle Fail s => raise Fail s
+					   | _ => (print "Stopping compilation due to errors.\n";
+						   raise PARSE_ELAB_ERROR nil))
 				 end
-		       | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil))
+		       | WRONG_FILETYPE s => raise Fail s)
 	      | _ => raise Fail "I expect exactly one file name"
 			     
     val timingfile = "KITtimings"

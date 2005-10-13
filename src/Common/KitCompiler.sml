@@ -60,9 +60,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 	val options = [("-version", ["Print MLKit version information and exit."]),
 		       ("-help", ["Print help information and exit."]),
-		       ("-help s", ["Print help information about an option and exit."]),
-		       ("-load f1.eb ... fn.eb", ["Load export bases."]),
-		       ("-link f1.lnk ... fn.lnk", ["Construct executable."])
+		       ("-help s", ["Print help information about an option and exit."])
 		       ]
 
 	fun print_indent nil = ()
@@ -102,7 +100,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    fun kitexe(root_dir, args) = 
 		(set_paths root_dir; go_options args)
 		handle Fail "" => OS.Process.success
-		     | Fail s => (print ("Error: " ^ s ^ "\n"); 
+		     | Fail s => (print ("*** Error: " ^ s ^ "\n"); 
+				  print_greetings();
+				  print_usage();
+				  print_options();
 				  OS.Process.failure)
 	end
 

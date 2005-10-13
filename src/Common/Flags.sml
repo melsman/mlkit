@@ -27,7 +27,6 @@ structure Flags: FLAGS =
 	case s of 
 	    "sml" => true
 	  | "sig" => true
-	  | "fun" => true
 	  | _ => false
 
     val install_dir = ref "You_did_not_set_path_to_install_dir"
@@ -977,9 +976,7 @@ in
      \the xvcg program."),
      ("print_all_program_points", SOME "Ppp", "print all program points", print_all_program_points,
       "Print all program points when printing physical size\n\
-       \inference expressions. Use the menu item\n\
-       \``print program points'' to print only some program\n\
-       \points.")]
+       \inference expressions.")]
 end
 
 val _ = Menu.add_int_list_to_menu ("", ["Profiling", "print program points"], program_points)
