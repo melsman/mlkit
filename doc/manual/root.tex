@@ -7074,7 +7074,7 @@ booleans, reals, strings, integers, and type variables.
 When profiling is enabled, yet another additional argument, a program
 point, is passed to the C function. This argument provides allocation
 primitives with information about what points in the program
-contributes with allocation, see Section~\ref{prof.sec}.
+contributes with allocation; see Section~\ref{prof.sec}.
 
 Examples of existing libraries that can be accessed from within ML
 programs include the X Window System and standard UNIX libraries
@@ -8148,38 +8148,34 @@ x86 native backend. The options are slightly different for the version
 of the MLKit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-MLKit version 4.1.1, Aug 25, 2002 [X86 Backend]
+MLKit version 4.1.5, Oct 14, 2005 [X86 Backend]
 
-Usage: mlkit_kam [OPTION]... [file.sml | file.sig | file.pm]
+Usage: mlkit [OPTION]... [file.sml | file.sig | file.mlb]
 
 Options:
 
 -version
      Print MLKit version information and exit.
 
--help s
-     Print help information about an option and exit.
-
 -help
      Print help information and exit.
 
---all_multiplicities_infinite                             (off)
-     Use only infinite regions. That is, store all values in
-     infinite regions, which do not reside on the stack, but
-     in the heap. With this flag disabled, all regions that
-     can be inferred that values are allocated in them at
-     most once are allocated on the stack.
+-help s
+     Print help information about an option and exit.
 
 --chat, -verbose                                          (off)
      Print a message for each compilation step in the compiler.
 
---clibs S                                           ("-lm -lc")
+--clibs S                                      ("-lm -lc -ldl")
      If you have added your own object files to a project,
      you might also need to link with libraries other
-     than libm.a and libc.a ("-lm -lc").
+     than libm.a, libc.a, and libdl.a ("-lm -lc -ldl").
 
 --comments_in_x86_asmcode                                 (off)
      Insert comments in x86 assembler code.
+
+--compile_only, -c                                        (off)
+     Compile only. Suppresses generation of executable
 
 --compiler_timings, -timings                              (off)
      Show compiler timings for each compilation phase.
@@ -8191,6 +8187,13 @@ Options:
 
 --no_contract
      Opposite of --contract.
+
+--contract_regions, -cr                                   (off)
+     When this option is enabled, identically typed
+     regions bound by the same letregion construct
+     are unified. Moreover, region parameters to
+     non-exported functions are trimmed whenever
+     possible.
 
 --cross_module_opt, -cross_opt                             (on)
      Enable cross-module optimisation including in-lining
@@ -8213,6 +8216,13 @@ Options:
 --no_dangling_pointers, -no_dangle
      Opposite of --dangling_pointers, -dangle.
 
+--dangling_pointers_statistics                            (off)
+     When enabled, the compiler prints statistics about
+     the number of times strengthening of the region typing
+     rules (to avoid dangling pointers during evaluation)
+     effects the target program. This flag is useful only
+     when the flag -gc or -no_dangle is enabled.
+
 --debug_compiler, -debug                                  (off)
      Print intermediate forms of a program during compilation.
 
@@ -8222,7 +8232,7 @@ Options:
 
 --debug_man_enrich                                        (off)
      During interactive use, show information about why a
-     program unit need be recompiled. In the MLKit, a
+     program unit need be recompiled. In the ML Kit, a
      program unit (or a functor body) is recompiled if
      either (a) the program unit is modified, or (b)
      information about an identifier for which the program
@@ -8256,6 +8266,18 @@ Options:
 --no_eliminate_explicit_records
      Opposite of --eliminate_explicit_records.
 
+--extended_typing, -xt                                    (off)
+     When this flag is enabled, SMLserver requires
+     scripts to be functor SCRIPTLET's, which are
+     automatically instantiated by SMLserver in a
+     type safe way. To construct and link to XHTML
+     forms in a type safe way, SMLserver constructs an
+     abstract interface to the forms from the functor
+     arguments of the scriptlets. This interface is
+     constructed and written to the file scripts.gen.sml
+     prior to the actual type checking and compilation
+     of the project.
+
 --garbage_collection, -gc                                 (off)
      Enable garbage collection. When enabled, regions are
      garbage collected during execution of the program. When
@@ -8279,6 +8301,14 @@ Options:
      option to `as' makes it possible to step through
      the generated program using gdb (The GNU Debugger).
 
+--generational_garbage_collection, -gengc                 (off)
+     Enable generational garbage collection. Same as option
+     garbage collection except that two generations are used
+     for each region.
+
+--no_generational_garbage_collection, -no_gengc
+     Opposite of --generational_garbage_collection, -gengc.
+
 --import_basislib, -basislib                               (on)
      Import Basis Library automatically in your projects. If 
      you wish to make use of the Standard ML Basis Library
@@ -8289,28 +8319,35 @@ Options:
 --no_import_basislib, -no_basislib
      Opposite of --import_basislib, -basislib.
 
---install_dir S                            ("/usr/share/mlkit")
-     Installation directory for the MLKit. For normal
+--install_dir S                        ("/home/mael/mlkit/kit")
+     Installation directory for the ML Kit. For normal
      execution you should not modify this value. However,
-     if you wish to use the MLKit with an altered runtime
+     if you wish to use the ML Kit with an altered runtime
      system and you do not wish to exchange the .o-files in
      the bin-subdirectory (for example because you are running
-     the MLKit on a shared system), you can update this
+     the ML Kit on a shared system), you can update this
      setting and the system will try to link to a runtime
      system in the bin-subdirectory found in the new install
      directory.
 
---keep_functor_bodies_in_memory                           (off)
-     With this flag enabled, functor bodies are kept in
-     memory, for the compilation of future applications of
-     the functors. Keeping functor bodies in memory causes
-     the memory consumptions of the compiler to grow
-     dramatically. With the flag disabled (which is the
-     default), the compiler writes the functor body to disk
-     and reparses and reelaborates the functor body for each
-     application. Reelaboration is necessary because the
-     compiler uses type information in many of its backend
-     phases.
+--link_code S, -link S                                    (...)
+     Link-files to be linked together to form an
+     executable.
+
+--link_code_scripts S, -link_scripts S                    (...)
+     Link-files for SMLserver scripts; link-files
+     specified with -link represent libraries when
+     mlkit is used with SMLserver.
+
+--link_time_dead_code_elimination, -ltdce                  (on)
+     Link time dead code elimination.
+
+--no_link_time_dead_code_elimination, -no_ltdce
+     Opposite of --link_time_dead_code_elimination, -ltdce.
+
+--load_basis_files S, -load S                             (...)
+     Basis files to be loaded before compilation
+     proper.
 
 --log_to_file                                             (off)
      Log to files instead of stdout.
@@ -8336,6 +8373,10 @@ Options:
 --no_minimize_fixs
      Opposite of --minimize_fixs.
 
+--namebase S                                      ("dummyBase")
+     Name base to enforce unique names when compiling
+     mlb-files.
+
 --optimiser, -opt                                          (on)
      Enable optimisation of intermediate language code
      (Lambda Expressions). Which optimisations are performed
@@ -8349,7 +8390,7 @@ Options:
 
 --output S, -o S                                        ("run")
      The name of the executable file generated by
-     the MLKit.
+     the Kit.
 
 --preserve_tail_calls, -ptc                               (off)
      Avoid the wrapping of letregion constructs around
@@ -8365,9 +8406,7 @@ Options:
 
 --print_all_program_points, -Ppp                          (off)
      Print all program points when printing physical size
-     inference expressions. Use the menu item
-     ``print program points'' to print only some program
-     points.
+     inference expressions.
 
 --print_bit_vectors                                       (off)
 
@@ -8378,6 +8417,9 @@ Options:
 
 --print_clos_conv_program, -Pccp                          (off)
      Print Region Expression after closure conversion.
+
+--print_closed_export_bases, -Pceb                        (off)
+     Controls printing of closed export bases.
 
 --print_drop_regions_expression, -Pdre                    (off)
      Print Region Expression after dropping word regions and
@@ -8391,6 +8433,9 @@ Options:
 
 --print_effects, -Peffects                                (off)
      Print effects in region types.
+
+--print_export_bases, -Peb                                (off)
+     Controls printing of export bases.
 
 --print_fetch_and_flush_program                           (off)
      Print program with instructions for activation
@@ -8416,6 +8461,10 @@ Options:
      and generate a .vcg-file, which can be viewed using
      the xvcg program.
 
+--print_region_static_env0, -Prse0                        (off)
+     Print imported region static environment prior to
+     region inference.
+
 --print_regions, -Pregions                                 (on)
      Print region variables in types and expressions.
 
@@ -8436,8 +8485,13 @@ Options:
             regions are dropped from the program because word
             values are represented unboxed.
          p  Type of regions containing pairs.
-         s  Type of regions containing only strings.
-         t  Type of regions containing other than the above
+         a  Type of regions containing arrays.
+         r  Type of regions containing references.
+         t  Type of regions containing triples.
+         s  Type of regions containing strings.
+         B  Type of regions associated with type variables.
+            Regions of this type do not exist at runtime.
+         T  Type of regions containing other than the above
             kinds of values.
 
 --print_simplified_program                                (off)
@@ -8482,9 +8536,6 @@ Options:
      is useful together with other options that control
      code generation.
 
---no_recompile_basislib, -no_scratch
-     Opposite of --recompile_basislib, -scratch.
-
 --region_inference, -ri                                    (on)
      With this flag disabled, all values are allocated in
      global regions.
@@ -8498,8 +8549,18 @@ Options:
      is instrumented with profiling information. When a program
      compiled with region profiling enabled is run, the program
      produces a profile file run.rp, which can then be read
-     by the profiling tool rp2ps that comes with the MLKit to
+     by the profiling tool rp2ps that comes with the ML Kit to
      produce profiling graphs of various forms.
+
+--regionvar N                                              (~1)
+     Uses the provided number as the id of the first
+     generated region variable. When this option is
+     provided together with the -c option, a file f.rv
+     is written in the MLB/ directory with two numbers
+     in it: the id for the first region variable
+     generated and the id for the last region variable
+     generated. The number given must be greater than
+     any id for a top-level region/effect variable (>9).
 
 --register_allocation                                      (on)
      Perform register allocation. Without register allocation
@@ -8511,6 +8572,15 @@ Options:
 
 --report_file_sig, -sig                                   (off)
      Report signatures for each file read.
+
+--repository, -rep                                         (on)
+     Use in-memory repository to avoid unnecessary
+     recompilation. This flag should be disabled when
+     compiling mlb-files, which make use of the file system
+     as a repository.
+
+--no_repository, -no_rep
+     Opposite of --repository, -rep.
 
 --specialize_recursive_functions                           (on)
      Specialise recursive functions. Use the option
@@ -8527,7 +8597,13 @@ Options:
      Lambda Expression.
 
 --strip                                                   (off)
-     If enabled, the MLKit strips the generated executable.
+     If enabled, the Kit strips the generated executable.
+
+--tag_pairs                                               (off)
+     Use a tagged representation of pairs for garbage
+     collection. Garbage collection works fine with a
+     tag-free representation of pairs, so this option
+     is here for measurement purposes.
 
 --tag_values, -tag                                        (off)
      Enable tagging of values as used when garbage
@@ -8552,6 +8628,16 @@ Options:
 
 --no_unbox_function_arguments
      Opposite of --unbox_function_arguments.
+
+--uncurrying, -uncurry                                     (on)
+     Enable uncurrying of curried functions. The uncurried
+     function takes its arguments unboxed in registers or
+     on the stack. For partial applications and non-
+     application uses of the function, appropriate eta-
+     expansions are applied.
+
+--no_uncurrying, -no_uncurry
+     Opposite of --uncurrying, -uncurry.
 
 --warn_on_escaping_puts                                   (off)
      Enable the compiler to issue a warning whenever a 
