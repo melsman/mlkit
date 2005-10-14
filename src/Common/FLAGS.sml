@@ -4,7 +4,7 @@ signature FLAGS =
   sig
 
     (* 
-     * Warnings: collected during compilation and printed all at once at
+     * MLKit warnings: collected during compilation and printed all at once at
      * the end of the compilation of a program.  The printing is done in
      * Manager which also resets the warnings. 
      *)
@@ -41,7 +41,8 @@ signature FLAGS =
      this end, we pass as an argument to the Kit executable the
      directory in which the Kit is located (installed). The
      string ref Flags.install_dir is set to this directory during
-     launch of the Kit. *)
+     launch of the Kit. The install_dir reference is also used for
+     locating the runtime system and the bytecode interpreter. *)
 
     val install_dir : string ref
 
@@ -86,13 +87,6 @@ signature FLAGS =
 						  should be included in program listing 
 					       *)
     val region_paths : (int*int) list ref 
-
-(*
-    exception ParseScript of string            (* Reading script *)
-    val read_script : string -> unit           (* May raise ParseScript *)
-*)
-    val show_script_entries : unit -> unit
-    
 
     val interact: unit -> unit                 (* interactive menu *)
 

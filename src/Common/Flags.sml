@@ -133,147 +133,6 @@ structure Flags: FLAGS =
     fun getc [] = NONE
       | getc (c::cs) = SOME(c,cs)
 
-
-
-          (*************************************************)
-          (*           structure ParseScript               *)
-          (*                                               *)
-          (* Parsing settings (filenames and directories)  *)
-          (* from a script file                            *)
-          (*************************************************)
-
-structure ParseScript: sig 
-			 datatype const = INT of int | STRING of string | BOOL of bool
-			 exception ParseScript of string
-			 val parseScript : string -> (string * const) list 
-		       end =
-
-  (* syntax: 
-
-     DEC::= val ID : TYPE  = CONST REST 
-     REST::= ;
-         |  DEC
-     ID  ::= sequence_of_letters_underbars_and_primes
-     TYPE::= int | string | bool
-     CONST::= ml_integer_constant | ml_string_constant | ml_bool_constant
-  
-     blanks, tabs and newlines are separators;
-     comments are enclosed in (* and *) and can be nested.
-  *)
-
-struct
-  datatype ty = Int | String | Bool
-  datatype const = INT of int | STRING of string | BOOL of bool
-  type parse_result = (string * const) list
-  type state  = string list * parse_result 
-  type parser = state -> state
-  exception ParseScript of string
-
-  fun scan_token getc cs = 
-    let val cs = StringCvt.skipWS getc cs
-        fun loop (cs, acc) =
-          case getc cs
-	    of SOME (c,cs') => if Char.isAlphaNum c orelse c= #"_" orelse c= #"'" then loop(cs',c::acc)
-			       else SOME(implode (rev acc), cs)  
-	     | NONE => if acc=nil then NONE else SOME(implode(rev acc),cs)
-    in loop (cs, [])
-    end
-
-  fun scan_id getc cs = 
-    case scan_token getc cs
-      of SOME res => res
-       | NONE => raise ParseScript "I expect an identifier"
-
-  fun scan_ty getc cs =
-    let val cs = StringCvt.skipWS getc cs
-    in case scan_token getc cs
-	 of SOME("int",cs) => (Int,cs)
-	  | SOME("string",cs) => (String,cs)
-	  | SOME("bool",cs) => (Bool,cs)
-	  | _ => raise ParseScript "I expect one of `int', `string', or `bool'"
-    end
-
-  fun scan_colon getc cs =
-    let val cs = StringCvt.skipWS getc cs
-    in case getc cs
-	 of SOME(#":", cs) => cs
-	  | _ => raise ParseScript "I expect `:'"
-    end
-
-  fun scan_eq getc cs =
-    let val cs = StringCvt.skipWS getc cs
-    in case getc cs
-	 of SOME(#"=", cs) => cs
-	  | _ => raise ParseScript "I expect `='"
-    end
-
-  fun scan_val getc cs =
-    case scan_token getc cs
-      of SOME("val",cs) => SOME cs
-       | _ => NONE
-
-  fun scan_dec getc cs =
-    case scan_val getc cs
-      of SOME cs =>
-	let val (id, cs) = scan_id getc cs
-	    val cs = scan_colon getc cs
-	    val (ty, cs) = scan_ty getc cs
-	    val cs = scan_eq getc cs
-	    val (const, cs) =
-	      case ty
-		of Int => (case Int.scan StringCvt.DEC getc cs
-			     of SOME(i,cs) => (INT i,cs)
-			      | NONE => raise ParseScript "I expect an integer constant")
-		 | String => (case scan_string getc cs
-				of SOME(s,cs) => (STRING s,cs)
-				 | NONE => raise ParseScript "I expect a string constant")
-		 | Bool => (case Bool.scan getc cs
-			      of SOME(b,cs) => (BOOL b,cs)
-			       | NONE => raise ParseScript "I expect a bool constant")
-	in SOME((id,const),cs)
-	end
-       | NONE => NONE
-
-  fun scan_decs getc cs =
-    case scan_dec getc cs
-      of SOME(dec,cs) =>
-	let val decs = scan_decs getc cs
-	in dec::decs
-	end
-       | NONE => 
-	let val cs = StringCvt.skipWS getc cs
-	in case getc cs
-	     of SOME (#";", cs) => scan_decs getc cs
-	      | SOME _ => raise ParseScript "I expect `;' or `val' or `end of file'"
-	      | NONE => []
-	end
-  
-  fun drop_comments (l: char list) : char list =
-    let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
-          | loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
-          | loop(0, ch ::rest) = ch :: loop (0,rest)	  
-          | loop(0, []) = []
-          | loop(n, ch ::rest) = loop(n,rest)
-          | loop(n, []) = raise ParseScript "unclosed comment"
-    in
-        loop(0,l)
-    end;
-  
-  fun fromFile filename =
-    let val is = TextIO.openIn filename 
-        val s = TextIO.inputAll is handle E => (TextIO.closeIn is; raise E)
-    in TextIO.closeIn is; s
-    end
-
-  fun parseScript(filename: string) = 
-    ((scan_decs getc (drop_comments(explode(fromFile filename))))
-     handle IO.Io {name,function,...} => raise ParseScript (name ^":"^function))
-    handle ParseScript s => (TextIO.output(!log, "\n *parse error*: " ^ s ^ "\n");
-			     raise ParseScript s)
-
-end (* ParseScript *)
-
-
            
           (**************************************************)
           (*           structure Directory                  *)
@@ -337,8 +196,6 @@ structure Directory : sig
 			val lookup_string_entry : string -> string ref
 			val lookup_flag_entry   : string -> bool ref
 			val lookup_int_entry    : string -> int ref
-			val readScript          : string -> unit
-			val show_script_entries : unit -> unit
 
 			(* read and interpret option list by looking in directory and
 			 * the extra nullary list and unary list *)
@@ -481,67 +338,6 @@ struct
 
   fun add_bool_entry (long, item) = 
     bool_entry {long=long, short=NONE, desc="", item=item, menu=nil, neg=false} 
-
-  (* Read and interpret script and update directory according to 
-   * parse result. *)
-  local
-    fun update_string (key, v) = lookup_string_entry key := v
-    fun update_int (key, v) = lookup_int_entry key := v
-    fun update_bool (key, v) = lookup_flag_entry key := v
-
-    fun interpret (l:(string*ParseScript.const) list) : unit = 
-      List.app (fn (s, ParseScript.STRING newval) => update_string(s,newval)
-                 | (s, ParseScript.INT newval) => update_int(s,newval)
-                 | (s, ParseScript.BOOL newval) => update_bool(s,newval)) l;
-  in
-    fun readScript script_file : unit = 
-      if OS.FileSys.access (script_file, []) then
-	    (print ("Reading script file " ^ quote script_file ^ "\n");
-	     interpret (ParseScript.parseScript script_file) 
-	     handle _ => print ("Error while reading script file\n"))
-      else print ("No script file " ^ quote script_file ^ " present\n")
-  end
-
-  (* Write all possible entries which can be changed from *)
-  (* the script file.                                     *)
-  fun show_script_entries () =
-    let
-      fun value_s (BOOL_ENTRY {item=ref b,...}) = Bool.toString b
-	| value_s (BOOLA_ENTRY {item=ref b,...}) = Bool.toString b
-	| value_s (STRING_ENTRY {item=ref s,...}) = s
-	| value_s (STRINGLIST_ENTRY {item=ref s,...}) = "..."
-	| value_s (INT_ENTRY {item=ref i,...}) = Int.toString i
-
-      val (dirEntriesName, dirEntriesValue) = 
-	M.Fold (fn ((s,v),(l1,l2)) => (s::l1, value_s v::l2)) (nil,nil) (!dir)
-
-      fun calc_width w [] = w
-	| calc_width w (s::xs) = 
-	    if w < (String.size s) then
-	      calc_width (String.size s) xs
-	    else
-	      calc_width w xs
-
-      val column_width = calc_width 0 (dirEntriesName @ dirEntriesValue)
-
-      fun make_field s = StringCvt.padRight #" " column_width s
-      
-      val horizontal_column_line = StringCvt.padRight #"-" column_width ""
-      fun horizontal_line 0 res = res ^ "+"
-	| horizontal_line n res = horizontal_line (n-1) (res ^ "+" ^ horizontal_column_line)
-      
-      fun make_row [] s = s ^ "|"
-	| make_row (x::xs) s = make_row xs (s ^ "|" ^ (make_field x))
-      
-    in
-      (outLine (horizontal_line 2 "");
-       outLine (make_row ["Name to use in script file", "Value of variable now"] "");
-       outLine (horizontal_line 2 "");
-       map (fn  (name, value) => outLine (make_row [name, value] ""))
-       (BasisCompat.ListPair.zipEq (dirEntriesName, dirEntriesValue))
-           handle BasisCompat.ListPair.UnequalLengths => die "zip" ;
-       outLine (horizontal_line 2 ""))
-    end
 
   fun lookup_notnull_menu dir key =
     let fun ok (BOOL_ENTRY{menu=nil,...}) = false
@@ -922,8 +718,7 @@ end
 
 val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))
   [
-   ("print entire menu", Menu.show_full_menu),
-   ("print all flags and variables", Directory.show_script_entries)
+   ("print entire menu", Menu.show_full_menu)
    ]
 
   (*4. File menu*)
@@ -943,16 +738,6 @@ val _ = add_string_entry
        \setting and the system will try to link to a runtime\n\
        \system in the bin-subdirectory found in the new install\n\
        \directory."}
-
-local 
-  val script = ref "kit.script"
-  fun read_script () = Directory.readScript (!script)
-  fun value () = "(" ^ quote (!script) ^ ")"
-in
-  val _ = Menu.add_action_read_to_menu ("", ["File", "Read a script file"], 
-					read_script, script)
-  val _ = Menu.add_action_with_value_to_menu ("", ["File", "Read it again"], read_script, value)
-end
 
   (*5. Profiling menu*)
 
@@ -1051,8 +836,6 @@ end
        item=ref false, neg=false, desc=
        "Compile only. Suppresses generation of executable"}
 
-exception ParseScript = ParseScript.ParseScript
-
 val is_on = Directory.is_on
 val is_on0 = Directory.is_on0
 val turn_on = Directory.turn_on
@@ -1063,8 +846,6 @@ val get_stringlist_entry = Directory.get_stringlist_entry
 val lookup_string_entry = Directory.lookup_string_entry
 val lookup_stringlist_entry = Directory.lookup_stringlist_entry
 val lookup_int_entry = Directory.lookup_int_entry
-val read_script = Directory.readScript
-val show_script_entries = Directory.show_script_entries
 val read_options = Directory.read_options
 val help = Directory.help
 val help_all = Directory.help_all
