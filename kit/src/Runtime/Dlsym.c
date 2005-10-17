@@ -74,6 +74,22 @@ resolveFun(Region sAddr, String our_name, String cname, void *libhandle)
   return NULL;
 }
 
+int
+isResolvedFun (char *name)
+{
+  void *fp = NULL;
+  if (!fnmap) return 0;
+  if (dynamic_function_res_map_find(fnmap, name, &fp) == hash_DNE)
+  {
+    return 0;
+  }
+  else
+  {
+    return 1;
+  }
+  return 0;
+}
+
 void
 localResolveLibFnAuto(void **fp, char *fname)
 {

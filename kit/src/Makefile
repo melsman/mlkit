@@ -27,8 +27,8 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
 # Whether request profiling is enabled 
-#REQUEST_PROFILING=
-REQUEST_PROFILING=true
+REQUEST_PROFILING=
+#REQUEST_PROFILING=true
 
 mlkit: basics rp2ps tester mlbmake kitbench
 	cd Runtime; $(MAKE) runtimeSystem.a
