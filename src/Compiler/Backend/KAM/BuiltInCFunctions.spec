@@ -108,6 +108,7 @@ min_fixed_int
 max_fixed_int
 sml_dlopen
 resolveFun
+isResolvedFun
 fromCtoMLstring
 sml_WIFEXITED
 sml_WIFSIGNALED

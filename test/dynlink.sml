@@ -2,8 +2,14 @@
 fun out s = (TextIO.output(TextIO.stdOut, s ^ "\n"); TextIO.flushOut TextIO.stdOut)
 fun isNullFP(s : foreignptr) : bool = prim("__is_null", s)
 
+val c = Dynlib.isLinked "testdyn"
+val _ = if c then out "Dynlib.isLinked is faulty" else ()
+
 val b = Dynlib.dlopen (SOME "libcrack.so", Dynlib.NOW, false)
 val _ = Dynlib.dlsym ("testdyn","FascistCheck",b)
+
+val c = Dynlib.isLinked "testdyn"
+val _ = if not c then out "Dynlib.isLinked is faulty" else ()
 
 fun fascistCheck a : string option = 
              let val b : foreignptr = prim("@:", ("testdyn", a : string, "/usr/lib/cracklib_dict"))
