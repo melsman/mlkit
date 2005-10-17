@@ -8,7 +8,7 @@ TARGET=mod_sml.la
 .PHONY: install all clean oracle
 
 ALL=${TARGET}
-ifneq (${ORACLE},no)
+ifneq (${ORACLE},)
 ALL+= oracle 
 endif
 
