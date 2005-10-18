@@ -2,6 +2,41 @@ This is file README_SMLSERVER
 
      SMLserver home page: http://www.smlserver.org
 
+Get upN'running without database access:
+cd mlkit/kit
+./autobuild
+./configure --enable-SMLserver --with-apache=/abs/path/to/apache
+make smlserver
+cd src/smlserver/apache
+make install
+edit /abs/path/to/initscript (remove Db conf lines)
+smlserverrc --webserver Apache /abs/path/to/web.mlb
+edit aapche/conf/httpd.conf
+  Listen (port of your choice)
+  DocumentRoot "/abs/path/to/root" (eg. /home/testuser/apache/htdocs/web/www)
+  DirectoryIndex (add index.sml)
+
+    after LoadMudule sml_module insert something like:
+   
+  <IfModule mod_sml.c>
+  AddHandler sml-module .sml
+  AddHandler sml-module .msp
+  SmlPrjId "web"
+  SmlPath "/home/varming/apache2worker/htdocs/web/www/"
+  SmlInitScript "/home/varming/apache2worker/htdocs/web/www/../web_sys/init.sml"
+  </IfModule>
+  <Directory /home/varming/apache2worker/htdocs/web/www/web/secret>
+  SetHandler None
+  RewriteEngine On
+  RewriteBase /web/secret
+  RewriteRule .* pub.sml
+  </Directory>
+
+apache/bin/apachectl start
+point your browswer to localhost:port/web/
+
+
+
 INTRODUCTION
 ------------
 
