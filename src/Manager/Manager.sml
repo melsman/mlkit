@@ -100,24 +100,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     val quot = MO.quot
 
     (* SMLserver components *)
-    local 
-	fun webserver () = Flags.get_string_entry "webserver" 
-	fun pr "AOLserver" = "Ns.Conn.write"
-	  | pr "Apache"    = "Web.Conn.write"
-	  | pr _ = raise Fail "Webserver not implemented"
-	    
-	fun pre "AOLserver" = 
-	    "val _ = Ns.returnHeaders()\n\
-	     \val print = Ns.Conn.write\n\n"
-	  | pre "Apache" = 
-	    "val _ = Web.Conn.setMimeType(\"text/html\") \n\
-	     \val print = Web.Conn.write\n\n"
-	  | pre _ = raise Fail "Webserver not implemented"
-    in
-	structure MspComp = MspComp(val error = error
-				    val pr = fn () => pr (webserver ())
-				    val pre = fn () => pre (webserver ()))
-    end
 
     (* Support for parsing scriptlet form argument - i.e., functor
      * arguments *)

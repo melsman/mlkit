@@ -36,7 +36,6 @@ in
      in ManagerObjects.sml 
         local open Edlib in IntModules.sml end
      end     
-     MspComp.sml
      Scriptlet.sml
      local open Edlib SyntaxObjects MlbMake in Manager.sml end
   end
