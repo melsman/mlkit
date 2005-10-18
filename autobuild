@@ -1,0 +1,2 @@
+autoconf -o configure configure.ac
+autoheader configure.ac
