@@ -63,12 +63,12 @@ in
     web/lowmail.sml
   (*  web/lmail.sml *)
    
-    web/secret/server.sml
-
     web/schedule.sml
 
     web/guest.sml
     web/guest_add.sml
+
+    web/secret/pub.sml
 
      web/employee/index.sml
      web/employee/update.sml
