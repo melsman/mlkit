@@ -21,7 +21,6 @@ is
   ManagerObjects.sml 
   IntModules.sml
 
-  MspComp.sml
   Scriptlet.sml
   Manager.sml
 
