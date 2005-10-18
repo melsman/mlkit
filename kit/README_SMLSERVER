@@ -37,6 +37,21 @@ edit aapche/conf/httpd.conf
 apache/bin/apachectl start
 point your browswer to localhost:port/web/
 
+to build Oracle interface:
+download Oracle Instant Client + SDK
+cd /abs/path/to/oracle/inst>>ant/client/and/sdk
+ln -s libclntsh.so.10.1 libclntsh.so
+cd mlkit/kit
+proceed as above with this configure command
+configure  --enable-SMLserver --with-apache=/abs/path/to/apache --with-oracle=/abs/path/to/oracle/instant/client/and/sdk
+
+before starting Apache:
+cd /abs/path/to/oracle/instant/client/and/sdk
+cp mlkit/kit/src/SMLserver/apache/libsmloracle.so.1.0 libsmloracle.so.1.0
+ln -s libsmloracle.so.1 libsmloracle.so.1.0
+ln -s libsmloracle.so libsmloracle.so.1
+
+set LD_LIBRARY_PATH to /abs/path/to/oracle/instant/client/and/sdk
 
 
 INTRODUCTION
