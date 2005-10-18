@@ -60,6 +60,7 @@ smlserver: basics
 	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
 	cd Runtime; $(MAKE) runtimeSystemKamApSml.o
 	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
+	cd SMLserver/apache; $(MAKE)
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/smlserverc.$(ARCH-OS)
 	rm -f $(BINDIR)/smlserverc
