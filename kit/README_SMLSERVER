@@ -3,6 +3,8 @@ This is file README_SMLSERVER
      SMLserver home page: http://www.smlserver.org
 
 Get upN'running without database access:
+Requirements: a working Apache webserver
+
 cd mlkit/kit
 ./autobuild
 ./configure --enable-SMLserver --with-apache=/abs/path/to/apache
