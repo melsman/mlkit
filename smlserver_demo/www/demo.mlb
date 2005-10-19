@@ -48,17 +48,13 @@ in
      demo/counter.sml
      demo/temp.sml
      demo/recipe.sml
-(*
-     demo/hello.msp
-     demo/calendar.msp
-     demo/test.msp
-*)
+     demo/hello.msp.sml     (* run "make" to create .msp.sml-files from .msp-files *)
+     demo/calendar.msp.sml
+     demo/test.msp.sml
      demo/server.sml
      demo/mail_form.sml
      demo/mail.sml
-(*
-     demo/mul.msp
-*)
+     demo/mul.msp.sml
      demo/currency_cache.sml
      demo/formvar.sml
      demo/formvar_chk.sml

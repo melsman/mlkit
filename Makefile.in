@@ -211,7 +211,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy $(INSTDIR)/src/Compiler/Backend/KAM
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X86
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
-	$(MKDIR) $(INSTDIR)/src/Tools/Tester
+	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(MKDIR) $(INSTDIR)/src/heap2exec
 	$(INSTALL) src/Makefile src/*.{mlb,sml,in} $(INSTDIR)/src
 	$(INSTALL) src/Common/*.{mlb,sml} $(INSTDIR)/src/Common
@@ -239,6 +239,7 @@ install_src:
 	$(INSTALL) src/Tools/MlbMake/*.{sml,cm,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALL) src/Tools/Rp2ps/*.{c,h} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALL) src/Tools/Tester/*.{sml,cm} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
+	$(INSTALL) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
 	$(INSTALL) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
@@ -328,6 +329,7 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/bin
 	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
 	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
+	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
 	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_SMLSERVER)/bin
 	$(INSTALL) copyright $(INSTDIR_SMLSERVER)
 	$(INSTALL) README $(INSTDIR_SMLSERVER)
