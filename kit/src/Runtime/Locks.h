@@ -8,13 +8,11 @@
 
 #define str(s)      # s
 #define xstr(s)     str(s)
-#include xstr(APACHEDIR/include/apr_pools.h)
-#include xstr(APACHEDIR/include/apr_thread_mutex.h)
 
-extern apr_thread_mutex_t *apache_locks[];
+#include "../SMLserver/apache/Locks.h"
 
-#define LOCK_LOCK(name) apr_thread_mutex_lock(apache_locks[name])
-#define LOCK_UNLOCK(name) apr_thread_mutex_unlock(apache_locks[name])
+#define LOCK_LOCK(name) runtime_lock(name)
+#define LOCK_UNLOCK(name) runtime_unlock(name)
 
 #define CODECACHEMUTEX     0
 #define FREELISTMUTEX      1

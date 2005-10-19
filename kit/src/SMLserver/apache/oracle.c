@@ -185,7 +185,7 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
                         (dvoid *) 0, 0, 0, 0, sizeof(oDb_t), (dvoid **) &db);
   if (!db)
   {
-    dblog1(ctx, "DataBase init failed; are you sure you have set ORACLE_HOME in your environment");
+    dblog1(ctx, "DataBase init failed; oracle environment could not be created");
     return NULL;
   }
   ErrorCheck(status, OCI_HTYPE_ENV, db, 
@@ -819,7 +819,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
     dblog1(rd, "Initializing database connection");
     dbc->dbspec = DBinitConn(rd, dbc->TNSname, dbc->username, 
                                     dbc->password, dbc->minsessions, dbc->maxsessions, dbid);
-    dblog1(rd, "Database initialized");
+    dblog1(rd, "Database initialization call done");
   }
   dblog1(rd, "3");
   if (!dbc->dbspec)
