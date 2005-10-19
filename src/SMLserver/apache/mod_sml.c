@@ -11,6 +11,7 @@
 #include "sys/types.h"
 #include "sys/socket.h"
 #include "netdb.h"
+#include "Locks.h"
 
 #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
@@ -781,7 +782,21 @@ dbinit (server_rec *s, apr_pool_t *p, InterpContext *ctx)/*{{{*/
   return 0;
 }/*}}}*/
 
-apr_thread_mutex_t *apache_locks[] = {NULL,NULL,NULL,NULL};
+static apr_thread_mutex_t *apache_locks[] = {NULL,NULL,NULL,NULL};
+
+void
+runtime_lock(unsigned int i)
+{
+  apr_thread_mutex_lock(apache_locks[i]);
+  return;
+}
+
+void
+runtime_unlock(unsigned int i)
+{
+  apr_thread_mutex_unlock(apache_locks[i]);
+  return;
+}
 
 static int
 apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s) //{{{
