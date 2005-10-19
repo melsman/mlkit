@@ -1,24 +1,25 @@
 AC_DEFUN([APACHE_DIR],[
 
   AC_ARG_WITH(
-    apache,
-    AS_HELP_STRING(--with-apache[=DIR],Apache server directory),
+    apxs,
+    AS_HELP_STRING(--with-apxs[=FILE],Apache build tool),
     ,
-    [with_apache="no"]
+    [with_apxs="no"]
   )
 
-  AC_MSG_CHECKING(for Apache directory)
+  AC_MSG_CHECKING('for Apache build tool (apxs)')
 
-  if test "$with_apache" = "no"; then
-    AC_MSG_ERROR( Specify the apache using --with-apache)
+  if test "$with_apxs" = "no"; then
+    AC_MSG_RESULT(--with-apxs not defined apxs should be in your PATH)
+    AC_SUBST(apxs,apxs)
   else
     # make sure that a well known include file exists
-    if test -e $with_apache/include/httpd.h; then
-      apache_dir=$with_apache
-      AC_DEFINE_UNQUOTED(APACHEDIR,$apache_dir,[Apache location])
+    if test -e $with_apxs; then
+      apxs=$with_apxs
+      AC_SUBST(apxs)
       AC_MSG_RESULT(APACHE found!)
     else
-      AC_MSG_ERROR(Apache not found in $with_apache.  Check the value you specified with --with-apache)
+      AC_MSG_ERROR(Apache not found in $with_apxs.  Check the value you specified with --with-apxs)
     fi
   fi
 
@@ -28,7 +29,7 @@ AC_DEFUN([ORACLE_DIR],[
 
   AC_ARG_WITH(
     oracle,
-    AS_HELP_STRING(--with-oracle[=DIR],[Oracle home directory (if you would like to compile the Oracle driver)]),
+    AS_HELP_STRING(--with-oracle[=DIR],[Oracle instant client sdk directory (if you would like to compile the Oracle driver)]),
     ,
     [with_oracle="no"]
   )
@@ -39,7 +40,7 @@ AC_DEFUN([ORACLE_DIR],[
     AC_MSG_RESULT( Not compiling Oracle driver)
   else
     # make sure that a well known include file exists
-    if test -e $with_oracle/rdbms/public/oci.h; then
+    if test -e $with_oracle/sdk/include/oci.h; then
       oracle_dir=$with_oracle
       AC_DEFINE_UNQUOTED(ORACLEDIR,$oracle_home,[Oracle location])
       AC_MSG_RESULT(Oracle found!)

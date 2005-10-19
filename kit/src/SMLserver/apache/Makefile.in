@@ -1,4 +1,4 @@
-APACHE=@apache_dir@
+APXS=@apxs@
 ORACLE=@oracle_dir@
 CC=@CC@
 LN=@LN_S@
@@ -15,7 +15,7 @@ endif
 all: ${ALL}
 
 ${TARGET}: ${SOURCE}
-	${APACHE}/bin/apxs -Wall -c -lresolv -L. ${SOURCE}
+	$(APXS) -Wall -c -lresolv -L. ${SOURCE}
 # -Wl,-rpath=`pwd`,-rpath=/home/oracle/inst/10.1.0/lib 
 
 oracle: libsmloracle.so.1.0
@@ -27,7 +27,7 @@ libsmloracle.so.1.0: oracle.c
 	${LN}f libsmloracle.so.1 libsmloracle.so
 
 install: ${TARGET}
-	${APACHE}/bin/apxs -i -a -n sml mod_sml.la
+	${APXS} -i -a -n sml mod_sml.la
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0
