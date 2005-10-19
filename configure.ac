@@ -27,7 +27,6 @@ AC_ARG_ENABLE(threaded,
 
 if test x"${enable_SMLserver}" != x && test "${enable_SMLserver}" = yes; then
   APACHE_DIR
-  AC_SUBST(apache_dir)
   ORACLE_DIR
   AC_SUBST(oracle_dir)
 fi;
