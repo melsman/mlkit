@@ -7,7 +7,7 @@ Requirements: a working Apache webserver
 
 cd mlkit/kit
 ./autobuild
-./configure --enable-SMLserver --with-apache=/abs/path/to/apache
+./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs
 make smlserver
 cd src/smlserver/apache
 make install
