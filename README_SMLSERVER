@@ -9,20 +9,19 @@ cd mlkit/kit
 ./autobuild
 ./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs
 make smlserver
-cd src/smlserver/apache
+cd src/SMLserver/apache
 make install
 edit /abs/path/to/initscript (remove Db conf lines)
-smlserverrc --webserver Apache /abs/path/to/web.mlb
-edit aapche/conf/httpd.conf
+smlserverc /abs/path/to/web.mlb
+edit apache/conf/httpd.conf
   Listen (port of your choice)
   DocumentRoot "/abs/path/to/root" (eg. /home/testuser/apache/htdocs/web/www)
   DirectoryIndex (add index.sml)
 
-    after LoadMudule sml_module insert something like:
+    after "LoadModule sml_module", insert something like:
    
   <IfModule mod_sml.c>
   AddHandler sml-module .sml
-  AddHandler sml-module .msp
   SmlPrjId "web"
   SmlPath "/home/varming/apache2worker/htdocs/web/www/"
   SmlInitScript "/home/varming/apache2worker/htdocs/web/www/../web_sys/init.sml"
