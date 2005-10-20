@@ -14,6 +14,7 @@ INSTDIR_SMLSERVER=$(DESTDIR)@exec_prefix@/smlserver
 
 MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
+LN=@LN_S@
 
 export INSTDIR
 export INSTDIR_KAM
@@ -336,15 +337,10 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
 	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
 	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
-#	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
-#	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_SMLSERVER)/bin
 	$(INSTALL) copyright $(INSTDIR_SMLSERVER)
 	$(INSTALL) README $(INSTDIR_SMLSERVER)
 	$(INSTALL) README_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
-#	$(INSTALL) -R smlserver/xt $(INSTDIR_SMLSERVER)/xt
-#	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
-#	$(MAKE) -C smlserver_demo INSTDIR_SMLSERVER=$(INSTDIR_SMLSERVER) install
 	$(MAKE) -C smlserver_demo install
 	$(INSTALL) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
 #	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
@@ -357,6 +353,12 @@ install_smlserver:
 	echo '#!/bin/sh' > $(INSTDIR_SMLSERVER)/bin/smlserverc
 	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
 	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
+
+install_smlserver_oracle:
+	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
+	$(INSTALL) src/SMLserver/apache/libsmloracle.so.1.0 $(INSTDIR_SMLSERVER)/lib
+	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1.0 lib/libsmloracle.so.1
+	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1 lib/libsmloracle.so
 
 SMLSERVER_HOST=hug.it.edu
 SMLSERVER_HOSTDIR=$(SMLSERVER_HOST):/web/smlserver/www/dist
