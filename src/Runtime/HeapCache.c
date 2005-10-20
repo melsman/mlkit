@@ -38,27 +38,6 @@ static int heapid_counter = 0;
 
 #include "Locks.h"
 
-/*
-#if defined(THREADS) && defined(AOLSERVER)
-#include "/opt/aolserver/include/ns.h"
-extern Ns_Mutex stackPoolMutex;
-#define HEAP_POOL_MUTEX_LOCK     Ns_LockMutex(&stackPoolMutex);
-#define HEAP_POOL_MUTEX_UNLOCK   Ns_UnlockMutex(&stackPoolMutex);
-
-#elif defined(THREADS) && defined(APACHE)
-#include "apr_thread_mutex.h"
-extern apr_thread_mutex_t *stackPoolMutex;
-#define HEAP_POOL_MUTEX_LOCK     apr_thread_mutex_lock(stackPoolMutex);
-#define HEAP_POOL_MUTEX_UNLOCK    apr_thread_mutex_unlock(stackPoolMutex);
-
-#else
-
-#define HEAP_POOL_MUTEX_LOCK
-#define HEAP_POOL_MUTEX_UNLOCK
-
-#endif
-*/
-
 static void
 dienow(char *s)
 {
