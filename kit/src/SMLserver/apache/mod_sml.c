@@ -855,7 +855,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
     "apsml: server->path is %s", s->path);
 
-  sprintf (ctx->ulFileName, "%sMLB/%s.ul", ctx->smlpath, ctx->prjid);
+  sprintf (ctx->ulFileName, "%s/MLB/%s.ul", ctx->smlpath, ctx->prjid);
 
   ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
 
