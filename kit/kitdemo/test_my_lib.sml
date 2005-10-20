@@ -52,7 +52,7 @@ fun print_string_list_test () =
     val strs = ["The", " ", "ML", " ", "Kit", "\n"]
   in
     print ("Test of the print_string_list function.\n");
-    print ("The string The ML Kit should be written.\n");
+    print ("The string The MLKit should be written.\n");
     print_string_list strs;
     print ("\n")
   end
@@ -86,11 +86,11 @@ fun real_list_test() =
 
 fun change_elem_test () =
   let
-    val p = (42, "The ML Kit")
+    val p = (42, "The MLKit")
     val (s,i) = change_elem p
   in
     print("Test of change_elem.\n");
-    print("The pair (42,The ML Kit) is changed into ");
+    print("The pair (42,The MLKit) is changed into ");
     print("("^s^","^Int.toString(i)^").\n")
   end
     

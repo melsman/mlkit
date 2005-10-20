@@ -1,6 +1,6 @@
 (* Splaytree -- Splay tree structure supporting Splaymap and Splayset *)
 (* From SML/NJ lib 0.2, copyright 1993 by AT&T Bell Laboratories      *)
-(* -- modified for the ML Kit, 2001-06-07                             *)
+(* -- modified for the MLKit, 2001-06-07                              *)
 
 signature SPLAYTREE =
   sig

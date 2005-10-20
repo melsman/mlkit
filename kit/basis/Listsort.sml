@@ -1,7 +1,7 @@
 (** Smooth Applicative Merge Sort, Richard O'Keefe 1982        **)
 (** From L.C. Paulson: ML for the Working Programmer, CUP 1991 **)
 (** Optimized for Moscow ML                                    **)
-(** modified for the ML Kit, 2001-06-07                        **)
+(** modified for the MLKit, 2001-06-07                         **)
 
 structure Listsort : LISTSORT =
   struct

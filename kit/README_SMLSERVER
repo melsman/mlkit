@@ -10,7 +10,7 @@ cd mlkit/kit
 ./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs
 make smlserver
 cd src/SMLserver/apache
-make install
+make install_smlserver
 edit /abs/path/to/initscript (remove Db conf lines)
 smlserverc /abs/path/to/web.mlb
 edit apache/conf/httpd.conf
@@ -58,7 +58,7 @@ INTRODUCTION
 
 SMLserver is an SML module for AOLserver, an Open Source Web server
 provided by America Online. SMLserver supports Web server
-interpretation of bytecode files compiled with the ML Kit. Both ML
+interpretation of bytecode files compiled with the MLKit. Both ML
 Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
 interface to the AOLserver API, are supported.
 
@@ -114,8 +114,8 @@ SMLserver home page; see the top of this file.
 
 We shall assume that AOLserver is already installed. To build the
 SMLserver module nssml.so, which contains the bytecode interpreter for
-interpreting compiled sml-files and msp-scripts, download the ML Kit
-source distribution from the ML Kit Web site.
+interpreting compiled sml-files and msp-scripts, download the MLKit
+source distribution from the MLKit Web site.
 
 After untaring the source distribution, make sure that the file
 mlkit/kit/src/SMLserver/Makefile contains the correct information

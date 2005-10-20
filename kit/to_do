@@ -105,7 +105,7 @@ mael 2005-01-31: Write MLKit users manual including:
 
 mael 2004-12-13: Status on MLB files.
 
-It is now possible to compile the ML Kit itself using
+It is now possible to compile the MLKit itself using
 MLB-files. Unfortunately, a segmentation fault occurs when compiling
 General.sml with the generated executable - compilation of Initial.sml
 goes well. 
@@ -126,7 +126,7 @@ Some things to do:
     argument. Its semantics should then be similar to
       local $(SML_LIB)/basis/basis.mlb in file.sml end 
 
-mael 2004-10-30 Plan for mlb-files implementation in the ML Kit.
+mael 2004-10-30 Plan for mlb-files implementation in the MLKit.
 
 Status: It is now possible to compile simple mlb-files and have
 export-basis information stored on disk for each compilation unit. A
@@ -136,9 +136,9 @@ depends on.
 
 Things to do:
 
- 1) Move the MLB implementation outside of the ML Kit, so that it can
+ 1) Move the MLB implementation outside of the MLKit, so that it can
     be used also by the Moscow ML compiler. Figure out what
-    command-line features should be supported by the ML Kit executable
+    command-line features should be supported by the MLKit executable
     (or Moscow ML):
 
         mlkit -c -o myfile -load u1.eb ... uN.eb file.sml   // generates myfile.{eb,o,li}
@@ -237,10 +237,10 @@ nh 2001-06-01: Fra url:
 
     The results were (sorted by decreasing speed):
 
-    1.4,393 secs: compiler: ML Kit; target code: no garbage collection (i.e., only regions) 
-    2.4,802 secs: compiler: ML Kit; target code: regions and garbage collection 
+    1.4,393 secs: compiler: MLKit; target code: no garbage collection (i.e., only regions) 
+    2.4,802 secs: compiler: MLKit; target code: regions and garbage collection 
     3.6,3 secs: compiler: mosml; target code: garbage collection, no regions 
-    4.8,131 secs: compiler: ML Kit; target code: regions, garbage collection and profiling.
+    4.8,131 secs: compiler: MLKit; target code: regions, garbage collection and profiling.
        Check the region profile graph and the object profil of the largest region. (The program
        points in the latter graph do not seem to be right: maybe the same program points are
        used in the basis library and in the evaluation system code?.) 

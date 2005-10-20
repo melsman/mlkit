@@ -1,5 +1,5 @@
 (* Susp -- support for lazy evaluation in Moscow ML 1995-05-22 *)
-(*      -- modified for the ML Kit, 2001-06-07                 *)
+(*      -- modified for the MLKit, 2001-06-07                  *)
 
 structure Susp : SUSP =
   struct

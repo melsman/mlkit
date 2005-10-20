@@ -1,5 +1,5 @@
 (* Splayset -- applicative sets implemented by splay-trees       *)
-(*          -- modified for the ML Kit, 2001-06-07               *)
+(*          -- modified for the MLKit, 2001-06-07                *)
 (* From SML/NJ lib 0.2, copyright 1993 by AT&T Bell Laboratories *)
 
 signature SPLAYSET =

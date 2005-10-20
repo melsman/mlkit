@@ -104,7 +104,7 @@ int print_string_list(int strs) {
  *        second(pair) = (int)cons;
  *        return res;
  * The algorithm is explained in the manual ``Programming With Regions
- * in the ML Kit'' found in the doc directory. Note, that we also try
+ * in the MLKit'' found in the doc directory. Note, that we also try
  * to reset the two infinite regions. */
 
 #ifndef PROFILING
@@ -193,7 +193,7 @@ int real_listProf(int pairRho, int realRho, int pPoint) {
  *        }
  *        return (int) resList;
  * The algorithm is explained in the manual ``Programming With Regions
- * in the ML Kit'' found in the doc directory. We have also made a
+ * in the MLKit'' found in the doc directory. We have also made a
  * profiling version of the function. Note, that we also try to reset
  * the two infinite regions. */
 

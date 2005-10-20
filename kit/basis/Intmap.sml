@@ -1,5 +1,5 @@
 (* Intmap -- modified for Moscow ML from SML/NJ library v. 0.2.
- *        -- modified for the ML Kit, 2001-06-07
+ *        -- modified for the MLKit, 2001-06-07
  *
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  
  * See file mosml/copyrght/copyrght.att for details.

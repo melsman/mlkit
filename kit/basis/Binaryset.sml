@@ -1,5 +1,5 @@
 (* Binaryset -- modified for Moscow ML 
- *           -- modified for the ML Kit, 2001-06-07
+ *           -- modified for the MLKit, 2001-06-07
  * from SML/NJ library v. 0.2 
  *
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  

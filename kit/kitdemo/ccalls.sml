@@ -48,8 +48,8 @@ fun power_auto(base : int, n : int) : int =
 fun power_real (base : real, n : int) : real = 
       prim ("power_real", "power_real", (base, n))
 
-(* The function print_string_list prints an ML Kit list of   *)
-(* ML Kit strings on stdout. The result value is unit so the *)
+(* The function print_string_list prints an MLKit list of    *)
+(* MLKit strings on stdout. The result value is unit so the  *)
 (* same C function may be used when profiling is enabled.    *)
 
 fun print_string_list (string_list : string list) : unit = 
@@ -144,7 +144,7 @@ fun print_string_list_test () =
     val strs = ["The", " ", "ML", " ", "Kit", "\n"]
   in
     print_string ("Test of the print_string_list function.\n");
-    print_string ("The string The ML Kit should be written.\n");
+    print_string ("The string The MLKit should be written.\n");
     print_string_list strs;
     print_string ("\n")
   end
@@ -176,11 +176,11 @@ fun real_list_test() =
 
 fun change_elem_test () =
   let
-    val p = (42, "The ML Kit")
+    val p = (42, "The MLKit")
     val (s,i) = change_elem p
   in
     print_string("Test of change_elem.\n");
-    print_string("The pair (42,The ML Kit) is changed into\n");
+    print_string("The pair (42,The MLKit) is changed into\n");
     print_string("     ("^s^","^string(i)^").\n")
   end
     

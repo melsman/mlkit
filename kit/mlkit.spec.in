@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit
+# RPM Spec File for the MLKit
 # ---------------------------------------------------------------------
 #
 # Do NOT modify the file "kit/mlkit.spec" directly - it is generated
@@ -11,7 +11,7 @@
 #
 #   $ make
 #
-# from within the ML Kit root directory. You must also be able to
+# from within the MLKit root directory. You must also be able to
 # install the Kit in /usr/share/mlkit with the command (you need to be
 # root to do this)
 # 
@@ -23,13 +23,13 @@
 # mentioned in the %files section of this spec file.
 #
 # Before you can actually build the rpm file, you need to construct a
-# gzipped tar file containing the ML Kit sources, unless you already
+# gzipped tar file containing the MLKit sources, unless you already
 # have such a gzipped tar file. To create the gzipped tar file, execute 
 # the command
 #
 #   $ make tgz
 #
-# from within the ML Kit root directory. Also, execute the command:
+# from within the MLKit root directory. Also, execute the command:
 #
 #   $ make mlkit.spec
 #
@@ -63,7 +63,7 @@ ExcludeArch: sparc alpha
 
 %description 
 
-The ML Kit (henceforth refered to as the Kit) is a compiler for the
+The MLKit (henceforth refered to as the Kit) is a compiler for the
 programming language Standard ML. The Kit covers all of Standard
 ML, as defined in the 1997 edition of the Definition of Standard ML
 and supports most of the Standard ML Basis Library. The Kit uses a
@@ -74,7 +74,7 @@ memory management scheme with traditional pointer tracing garbage
 collection. Two versions of the the Kit are available, one that
 generates efficient native code for the x86 architecture and one that
 generates portable bytecode to be interpreted by an abstract
-machine. The ML Kit has successfully compiled itself, around 80.000
+machine. The MLKit has successfully compiled itself, around 80.000
 lines of Standard ML, plus the Basis Library.
 
 %prep
@@ -99,7 +99,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc /usr/share/mlkit/README
 /usr/share/mlkit/copyright
 
-# ML Kit Executables
+# MLKit Executables
 /usr/share/mlkit/bin/mlkit.x86-linux
 /usr/share/mlkit/bin/mlkit
 /usr/share/mlkit/bin/rp2ps

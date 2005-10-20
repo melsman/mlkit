@@ -1,11 +1,11 @@
 
 val _ = (SMLofNJ.Internals.GC.messages false;
-	 print "\n ** Building the ML Kit compiler [SMLserver] **\n\n";
+	 print "\n ** Building the MLKit compiler [SMLserver] **\n\n";
 	 CM.make' "Compiler/bytecode.cm");
 
 (*
 val _ = (SMLofNJ.Internals.GC.messages false;
-	 print "\n ** Building the ML Kit compiler [SMLserver] with SML-NJ profiling enabled **\n\n";
+	 print "\n ** Building the MLKit compiler [SMLserver] with SML-NJ profiling enabled **\n\n";
          Compiler.Profile.setProfMode true;
 	 CM.make());
 *)
