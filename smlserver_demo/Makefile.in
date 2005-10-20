@@ -6,6 +6,7 @@ INSTALL=@INSTALL@
 install:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/web_lib
 	$(MKDIR) $(INSTDIR_SMLSERVER)/web_sys
+	$(MKDIR) $(INSTDIR_SMLSERVER)/web_demo_lib
 	$(MKDIR) $(INSTDIR_SMLSERVER)/www
 	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web
 	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/employee
@@ -24,3 +25,4 @@ install:
 	$(INSTALL) www/web/secret/*.sml $(INSTDIR_SMLSERVER)/www/web/secret
 	$(INSTALL) www/web/upload/*.sml $(INSTDIR_SMLSERVER)/www/web/upload
 	$(INSTALL) www/web/upload/files/*.png $(INSTDIR_SMLSERVER)/www/web/upload/files
+	$(INSTALL) web_demo_lib/*.sml $(INSTDIR_SMLSERVER)/web_demo_lib
