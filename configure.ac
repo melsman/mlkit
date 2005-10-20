@@ -1,7 +1,11 @@
 AC_INIT(MLKit, [4.1.5])
 AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
-AC_CONFIG_FILES([src/SMLserver/apache/Makefile Makefile version])
+AC_CONFIG_FILES([src/SMLserver/apache/Makefile 
+                 Makefile 
+                 smlserver_demo/Makefile 
+                 Makefilesystem
+                 version])
 
 AC_PROG_CC
 AC_PROG_LN_S

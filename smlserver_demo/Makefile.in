@@ -1,0 +1,26 @@
+MKDIR=@top_srcdir@/mkinstalldirs
+INSTALL=@INSTALL@
+
+.PHONY: install
+
+install:
+	$(MKDIR) $(INSTDIR_SMLSERVER)/web_lib
+	$(MKDIR) $(INSTDIR_SMLSERVER)/web_sys
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/employee
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/link
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/rating
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/secret
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/upload
+	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/upload/files
+	$(INSTALL) web_lib/*.{sml,mlb} $(INSTDIR_SMLSERVER)/web_lib
+	$(INSTALL) web_sys/*.sml $(INSTDIR_SMLSERVER)/web_sys
+	$(INSTALL) www/web.mlb $(INSTDIR_SMLSERVER)/www
+	$(INSTALL) www/web/*.{sml,msp} $(INSTDIR_SMLSERVER)/www/web
+	$(INSTALL) www/web/employee/*.{sql,sml} $(INSTDIR_SMLSERVER)/www/web/employee
+	$(INSTALL) www/web/link/*.sml $(INSTDIR_SMLSERVER)/www/web/link
+	$(INSTALL) www/web/rating/*.{sql,sml,jpg} $(INSTDIR_SMLSERVER)/www/web/rating
+	$(INSTALL) www/web/secret/*.sml $(INSTDIR_SMLSERVER)/www/web/secret
+	$(INSTALL) www/web/upload/*.sml $(INSTDIR_SMLSERVER)/www/web/upload
+	$(INSTALL) www/web/upload/files/*.png $(INSTDIR_SMLSERVER)/www/web/upload/files

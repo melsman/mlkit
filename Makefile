@@ -2,32 +2,39 @@ SHELL=/bin/sh
 
 KITVERSION=4.1.5
 
-ARCH-OS=x86-linux
-#ARCH-OS=x86-bsd
-
 srcdir=.
 top_srcdir=.
-prefix=/usr/local
+prefix=/home/varming/testsmlserver
 
 
 INSTDIR=$(DESTDIR)${prefix}/mlkit
 INSTDIR_KAM=$(DESTDIR)${prefix}/mlkit_kam
 INSTDIR_BARRY=$(DESTDIR)${prefix}/barry
 INSTDIR_SMLSERVER=$(DESTDIR)${prefix}/smlserver
+
+MKDIR=$(top_srcdir)/mkinstalldirs
+INSTALL=/usr/bin/install -c
+
+export INSTDIR
+export INSTDIR_KAM
+export INSTDIR_BARRY
+export INSTDIR_SMLSERVER
+
+
+ARCH-OS=x86-linux
+#ARCH-OS=x86-bsd
+
 RPMDIR=/usr/src/rpm
 #RPMDIR=/usr/src/redhat
 
 # Some commands
-#MKDIR=mkdir -p
-MKDIR=$(top_srcdir)/mkinstalldirs
-#INSTALL=cp -p
-INSTALL=/usr/bin/install -c
 
 
 
 CLEAN=rm -rf MLB PM CM *~ .\#*
 
 .PHONY: smlserver install
+
 mlkit:
 	$(MKDIR) bin
 	cd src; $(MAKE)
@@ -211,7 +218,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy $(INSTDIR)/src/Compiler/Backend/KAM
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X86
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
-	$(MKDIR) $(INSTDIR)/src/Tools/Tester
+	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(MKDIR) $(INSTDIR)/src/heap2exec
 	$(INSTALL) src/Makefile src/*.{mlb,sml,in} $(INSTDIR)/src
 	$(INSTALL) src/Common/*.{mlb,sml} $(INSTDIR)/src/Common
@@ -239,6 +246,7 @@ install_src:
 	$(INSTALL) src/Tools/MlbMake/*.{sml,cm,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALL) src/Tools/Rp2ps/*.{c,h} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALL) src/Tools/Tester/*.{sml,cm} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
+	$(INSTALL) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
 	$(INSTALL) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
@@ -323,24 +331,24 @@ install_barry:
 	cp -f -p $(INSTDIR_BARRY)/bin/barry /usr/bin/barry
 
 install_smlserver:
-	rm -rf $(INSTDIR_SMLSERVER)
 	$(MKDIR) $(INSTDIR_SMLSERVER)
 	$(MKDIR) $(INSTDIR_SMLSERVER)/bin
 	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
+	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
 	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
-	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_SMLSERVER)/bin
+#	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
+#	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_SMLSERVER)/bin
 	$(INSTALL) copyright $(INSTDIR_SMLSERVER)
 	$(INSTALL) README $(INSTDIR_SMLSERVER)
 	$(INSTALL) README_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
-	$(INSTALL) -R smlserver/xt $(INSTDIR_SMLSERVER)/xt
-	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
-	$(INSTALL) -R basis $(INSTDIR_SMLSERVER)/basis
+#	$(INSTALL) -R smlserver/xt $(INSTDIR_SMLSERVER)/xt
+#	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
+#	$(MAKE) -C smlserver_demo INSTDIR_SMLSERVER=$(INSTDIR_SMLSERVER) install
+	$(MAKE) -C smlserver_demo install
+	$(INSTALL) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
 #	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
 	$(INSTALL) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR_SMLSERVER)
-	chmod -R ug+rw $(INSTDIR_SMLSERVER)
-	chmod -R o+r $(INSTDIR_SMLSERVER)
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
@@ -349,8 +357,6 @@ install_smlserver:
 	echo '#!/bin/sh' > $(INSTDIR_SMLSERVER)/bin/smlserverc
 	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
 	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
-	rm -f /usr/bin/smlserverc
-	cp -f -p $(INSTDIR_SMLSERVER)/bin/smlserverc /usr/bin/smlserverc
 
 SMLSERVER_HOST=hug.it.edu
 SMLSERVER_HOSTDIR=$(SMLSERVER_HOST):/web/smlserver/www/dist
