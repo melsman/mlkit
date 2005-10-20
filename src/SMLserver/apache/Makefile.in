@@ -22,7 +22,7 @@ oracle: libsmloracle.so.1.0
 
 libsmloracle.so.1.0: oracle.c
 	${CC} -Wall -I ${ORACLE}/sdk/include -c -fPIC oracle.c
-	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L ${ORACLE} -lclntsh.so.1.0 oracle.o -o libsmloracle.so.1.0
+	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L ${ORACLE} -lclntsh.so oracle.o -o libsmloracle.so.1.0
 	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
 	${LN}f libsmloracle.so.1 libsmloracle.so
 
