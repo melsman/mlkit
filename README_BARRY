@@ -3,7 +3,7 @@ This is file README_BARRY                            mael 2002-10-29
 INTRODUCTION
 ------------
 Barry is a barifier (i.e., simplifier) for Standard ML, based on the
-frontend of the ML Kit. Barry transforms Standard ML, including
+frontend of the MLKit. Barry transforms Standard ML, including
 Modules, into a subset of Core Standard ML. Barry has the following
 features:
 
@@ -22,7 +22,7 @@ features:
 COMPILATION
 -----------
 Barry is known to work on a Debian Linux box with SML/NJ 110.0.7
-installed. To compile Barry from the ML Kit sources, simply type
+installed. To compile Barry from the MLKit sources, simply type
 
   # make barry
 
@@ -39,7 +39,7 @@ Started without arguments, Barry introduces itself with a rudimentary
 70's-style menu system. Using this menu system, it is possible to
 toggle flags (e.g., to control optimization) and compile projects and
 SML files. For detailed information about the menu system, consult the
-ML Kit user's manual in kit/doc/manual/.
+MLKit user's manual in kit/doc/manual/.
 
 If you do not want to use the manu system, all flags can be controlled
 by passing options to the barry executable at the command line. To see
@@ -62,7 +62,7 @@ compiling the Basis Library, to learn how Barry deals with primitives.
 MODIFYING THE BARRY PRETTY-PRINTER
 ----------------------------------
 Barry works by pretty-printing LambdaExp fragments (LambdaExp is an
-intermediate language in the ML Kit) as Standard ML code. If you want
+intermediate language in the MLKit) as Standard ML code. If you want
 to look at the code, see the file kit/src/Compiler/Lambda/LambdaExp.sml.
 
 COPYRIGHT AND LICENSE

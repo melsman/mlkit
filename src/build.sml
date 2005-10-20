@@ -1,12 +1,12 @@
 
 
 val _ = (SMLofNJ.Internals.GC.messages false;
-	 print "\n ** Building the ML Kit compiler [X86 Backend] **\n\n";
+	 print "\n ** Building the MLKit compiler [X86 Backend] **\n\n";
 	 CM.make' "Compiler/native.cm");
 
 (*
 val _ = (SMLofNJ.Internals.GC.messages false;
-	 print "\n ** Building the ML Kit compiler with SML-NJ profiling enabled [X86 Backend] **\n\n";
+	 print "\n ** Building the MLKit compiler with SML-NJ profiling enabled [X86 Backend] **\n\n";
          Compiler.Profile.setProfMode true;
 	 CM.make' "Compiler/native.cm");
 *)

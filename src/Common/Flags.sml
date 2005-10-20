@@ -729,12 +729,12 @@ val _ = add_bool_entry
 val _ = add_string_entry 
      {long="install_dir", short=NONE, menu=["File", "installation directory"], 
       item=install_dir,
-      desc="Installation directory for the ML Kit. For normal\n\
+      desc="Installation directory for the MLKit. For normal\n\
        \execution you should not modify this value. However,\n\
-       \if you wish to use the ML Kit with an altered runtime\n\
+       \if you wish to use the MLKit with an altered runtime\n\
        \system and you do not wish to exchange the .o-files in\n\
        \the bin-subdirectory (for example because you are running\n\
-       \the ML Kit on a shared system), you can update this\n\
+       \the MLKit on a shared system), you can update this\n\
        \setting and the system will try to link to a runtime\n\
        \system in the bin-subdirectory found in the new install\n\
        \directory."}
@@ -753,7 +753,7 @@ in
      \is instrumented with profiling information. When a program\n\
      \compiled with region profiling enabled is run, the program\n\
      \produces a profile file run.rp, which can then be read\n\
-     \by the profiling tool rp2ps that comes with the ML Kit to\n\
+     \by the profiling tool rp2ps that comes with the MLKit to\n\
      \produce profiling graphs of various forms."),
     ("print_region_flow_graph", SOME "Prfg", "print region flow graph", print_region_flow_graph,
      "Print a region flow graph for the program fragment\n\
@@ -792,7 +792,7 @@ in
      \files are linked together."),
    ("debug_man_enrich", NONE, "debug compilation manager enrichment", ref false,
     "During interactive use, show information about why a\n\
-     \program unit need be recompiled. In the ML Kit, a\n\
+     \program unit need be recompiled. In the MLKit, a\n\
      \program unit (or a functor body) is recompiled if\n\
      \either (a) the program unit is modified, or (b)\n\
      \information about an identifier for which the program\n\

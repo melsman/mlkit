@@ -11,7 +11,7 @@
 #
 #   $ make smlserver
 #
-# from within the ML Kit root directory. You must also be able to
+# from within the MLKit root directory. You must also be able to
 # install the Kit in /usr/share/smlserver with the command (you need to 
 # be root to do this)
 # 
@@ -23,13 +23,13 @@
 # mentioned in the %files section of this spec file.
 #
 # Before you can actually build the rpm file, you need to construct a
-# gzipped tar file containing the ML Kit sources, unless you already
+# gzipped tar file containing the MLKit sources, unless you already
 # have such a gzipped tar file. To create the gzipped tar file, execute 
 # the command
 #
 #   $ make tgz_smlserver
 #
-# from within the ML Kit root directory. Also, execute the command:
+# from within the MLKit root directory. Also, execute the command:
 #
 #   $ make smlserver.spec
 #
@@ -74,7 +74,7 @@ such as Oracle and Postgresql. The main features of SMLserver are:
 Standard ML '97: With SMLserver, you can write dynamic
   Web applications using your favorite programming language, without
   sacrificing efficiency and scalability of your
-  Web service. SMLserver is based on the ML Kit, which covers all of
+  Web service. SMLserver is based on the MLKit, which covers all of
   Standard ML '97, as defined in the Definition of Standard ML. In
   particular, SMLserver supports the use of Standard ML Modules and
   most of the Standard ML Basis Library.
@@ -129,7 +129,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc /usr/share/smlserver/NEWS_SMLSERVER
 /usr/share/smlserver/copyright
 
-# ML Kit Executables
+# MLKit Executables
 /usr/share/smlserver/bin/smlserverc.x86-linux
 /usr/share/smlserver/bin/smlserverc
 /usr/bin/smlserverc

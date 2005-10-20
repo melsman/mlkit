@@ -1,5 +1,5 @@
 # -----------------------------------------------------------
-# Build the ML Kit including tools, runtime systems, etc.
+# Build the MLKit including tools, runtime systems, etc.
 # -----------------------------------------------------------
 
 SHELL=/bin/sh
@@ -167,7 +167,7 @@ grm:
 
 # ----------------------------------------------------------
 # Support for measuring the code blowup resulting from
-# compiling functors in the ML Kit; not used by install!
+# compiling functors in the MLKit; not used by install!
 # ----------------------------------------------------------
 
 FILE = /home/mael/kit/src/bdys.txt

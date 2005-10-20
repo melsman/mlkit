@@ -1,5 +1,5 @@
 (* ARRAY2 -- SML Basis Library -- from Moscow ML                  *)
-(*        -- modified for the ML Kit, 2001-06-07                  *)
+(*        -- modified for the MLKit, 2001-06-07                  *)
 
 signature ARRAY2 =
   sig

@@ -9,7 +9,7 @@
 
 
 (* ==================================================
- * Prelude for the ML Kit with Regions   ME 17.12.96
+ * Prelude for the MLKit with Regions   ME 17.12.96
  * Changed CCALL primitive (31)          NH 10.02.97
  * ================================================== *)
 
@@ -116,8 +116,8 @@ fun power_auto(base : int, n : int) : int =
 fun power_real (base : real, n : int) : real = 
       prim(31, ("power_real", "power_real", base, n))
 
-(* The function print_string_list prints a ML Kit list of    *)
-(* ML Kit strings on stdout. The result value is unit so the *)
+(* The function print_string_list prints a MLKit list of     *)
+(* MLKit strings on stdout. The result value is unit so the  *)
 (* same C function may be used when profiling is enabled.    *)
 
 fun print_string_list (string_list) : unit = 
@@ -165,7 +165,7 @@ fun change_elem (p : int*string) : string*int =
 (* (3): Example use of the above.                            *)
 (*                                                           *)
 (* From here on only Standard ML code.                       *)
-(* We have now declared some ML Kit functions calling        *)
+(* We have now declared some MLKit functions calling         *)
 (* external C functions. Lets try the off...                 *)
 (*************************************************************)
 
@@ -216,7 +216,7 @@ fun print_string_list_test () =
     val strs = ["The", " ", "ML", " ", "Kit", "\n"]
   in
     print_string ("Test of the print_string_list function.\n");
-    print_string ("The string The ML Kit should be written.\n");
+    print_string ("The string The MLKit should be written.\n");
     print_string_list strs;
     print_string ("\n")
   end
@@ -248,11 +248,11 @@ fun real_list_test() =
 
 fun change_elem_test () =
   let
-    val p = (42, "The ML Kit")
+    val p = (42, "The MLKit")
     val (s,i) = change_elem p
   in
     print_string("Test of change_elem.\n");
-    print_string("The pair (42,The ML Kit) is changed into\n");
+    print_string("The pair (42,The MLKit) is changed into\n");
     print_string("     ("^s^","^string(i)^").\n")
   end
     

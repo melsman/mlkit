@@ -1,5 +1,5 @@
 (* Splaytree -- modified for Moscow ML from 
- * -- modified for the ML Kit, 2001-06-07
+ * -- modified for the MLKit, 2001-06-07
  * SML/NJ library which is 
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  
  * See file mosml/copyrght/copyrght.att for details.

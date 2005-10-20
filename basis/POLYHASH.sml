@@ -1,5 +1,5 @@
 (* Polyhash -- polymorphic hashtables as in the SML/NJ Library *)
-(* -- modified for the ML Kit, 2001-06-07                      *)
+(* -- modified for the MLKit, 2001-06-07                       *)
 
 signature POLYHASH =
   sig
@@ -26,7 +26,7 @@ signature POLYHASH =
 
     (* Polymorphic hash primitives from Caml Light *)
 
-(*not supported by the ML Kit Runtime System 
+(*not supported by the MLKit Runtime System 
     val hash        : 'key -> int
     val hash_param  : int -> int -> 'key -> int
     val mkPolyTable : int * exn -> (''key, 'data) hash_table
