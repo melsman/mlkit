@@ -4,7 +4,6 @@ AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/SMLserver/apache/Makefile 
                  Makefile 
                  smlserver_demo/Makefile 
-                 Makefilesystem
                  version])
 
 AC_PROG_CC
