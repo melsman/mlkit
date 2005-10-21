@@ -16,11 +16,14 @@ MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
 LN=@LN_S@
 
+MLCOMP=@mlcomp@
+
 export INSTDIR
 export INSTDIR_KAM
 export INSTDIR_BARRY
 export INSTDIR_SMLSERVER
 
+include Makefiledefault
 
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
@@ -35,6 +38,12 @@ RPMDIR=/usr/src/rpm
 CLEAN=rm -rf MLB PM CM *~ .\#*
 
 .PHONY: smlserver install
+
+all: mlkit
+
+mytest:
+	echo $(MLCOMP)
+	$(MAKE) -C src/Tools/MspComp mytest
 
 mlkit:
 	$(MKDIR) bin

@@ -1,11 +1,13 @@
 BINDIR=../../../bin
 
-#MLCOMP=$(BINDIR)/mlkit -o
-MLCOMP=mlton -output
+include ../../../Makefiledefault
 
 all:
-	$(MLCOMP) mspcomp MspComp.sml
+	$(MLCOMP) -output mspcomp MspComp.sml
 	cp mspcomp $(BINDIR)/
+
+mytest:
+	echo $(MLCOMP)
 
 clean:
 	rm -f mspcomp *~ MLB

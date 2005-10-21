@@ -1,0 +1,6 @@
+ifeq ($(MLCOMP)x,x)
+MLCOMP=mlton
+endif
+
+export MLCOMP
+

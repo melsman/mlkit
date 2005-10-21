@@ -142,6 +142,7 @@ clean:
 	cd Compiler/Cfg; $(CLEAN)
 	cd Compiler/Lambda; $(CLEAN)
 	cd SMLserver; $(CLEAN) nssml.so *.o
+	$(MAKE) -C SMLserver/apache clean
 
 clean_mlb:
 	cd ../basis; $(CLEAN_MLB)
