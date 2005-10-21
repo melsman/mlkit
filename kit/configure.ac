@@ -28,6 +28,13 @@ AC_ARG_ENABLE(threaded,
   AS_HELP_STRING(--disable-threaded,Don't use threaded interpreter),[],
   AC_DEFINE(THREADED,1,[Kam backend should be threaded]))
 
+AC_ARG_WITH(
+     compiler,
+     AS_HELP_STRING(--with-compiler[=FILE],[SML compiler to build tools and initial the mlkit compiler]),
+     AC_SUBST(mlcomp,${with_compiler})
+     ,
+     )
+
 if test x"${enable_SMLserver}" != x && test "${enable_SMLserver}" = yes; then
   APACHE_DIR
   ORACLE_DIR
