@@ -30,7 +30,7 @@ AC_ARG_ENABLE(threaded,
 
 AC_ARG_WITH(
      compiler,
-     AS_HELP_STRING(--with-compiler[=FILE],[SML compiler to build tools and initial the mlkit compiler]),
+     AS_HELP_STRING(--with-compiler[=FILE],[SML compiler to build tools and the initial mlkit compiler]),
      AC_SUBST(mlcomp,${with_compiler})
      ,
      )
