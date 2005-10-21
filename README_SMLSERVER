@@ -7,9 +7,9 @@ Requirements: a working Apache webserver
 
 cd mlkit/kit
 ./autobuild
-./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs
+./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs \
+            --with-compiler=/path/to/mlcompiler
 make smlserver
-cd src/SMLserver/apache
 make install_smlserver
 edit /abs/path/to/initscript (remove Db conf lines)
 smlserverc /abs/path/to/web.mlb
@@ -33,24 +33,24 @@ edit apache/conf/httpd.conf
   RewriteRule .* pub.sml
   </Directory>
 
+cd path/to/smlserver/lib && apxs -i -a -n sml mod_sml.so
 apache/bin/apachectl start
 point your browswer to localhost:port/web/
 
 to build Oracle interface:
 download Oracle Instant Client + SDK
-cd /abs/path/to/oracle/inst>>ant/client/and/sdk
+cd /abs/path/to/oracle/instant/client/sdk
 ln -s libclntsh.so.10.1 libclntsh.so
 cd mlkit/kit
 proceed as above with this configure command
-configure  --enable-SMLserver --with-apache=/abs/path/to/apache --with-oracle=/abs/path/to/oracle/instant/client/and/sdk
+configure  --enable-SMLserver --with-apache=/abs/path/to/apache \
+           --with-oracle=/abs/path/to/oracle/instant/client/and/sdk \
+           --with-compiler=/path/to/compiler
 
 before starting Apache:
-cd /abs/path/to/oracle/instant/client/and/sdk
-cp mlkit/kit/src/SMLserver/apache/libsmloracle.so.1.0 libsmloracle.so.1.0
-ln -s libsmloracle.so.1 libsmloracle.so.1.0
-ln -s libsmloracle.so libsmloracle.so.1
 
-set LD_LIBRARY_PATH to /abs/path/to/oracle/instant/client/and/sdk
+unzip instant_client /abs/path/to/smlserver/lib
+set LD_LIBRARY_PATH to /abs/path/to/smlserver/lib
 
 
 INTRODUCTION
