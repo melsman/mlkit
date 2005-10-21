@@ -1,5 +1,5 @@
 MKDIR=@top_srcdir@/mkinstalldirs
-INSTALL=@INSTALL@
+INSTALL=@INSTALL@ -m644
 
 .PHONY: install
 

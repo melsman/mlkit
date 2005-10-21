@@ -1,33 +1,52 @@
+SHELL=@SHELL@
+
 APXS=@apxs@
 ORACLE=@oracle_dir@
 CC=@CC@
 LN=@LN_S@
+MKDIR=@top_srcdir@/mkinstalldirs
+INSTALL=@INSTALL@
+INSTALLDATA=@INSTALL_DATA@
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o
 TARGET=mod_sml.la
+ORACLELIB=libsmloracle.so.1.0
 
-.PHONY: install all clean oracle
+@SET_MAKE@
+
+.PHONY: install all clean oracle installsml oracle_install
 
 ALL=${TARGET}
-ifneq (${ORACLE},)
+INST=installsml
+ifneq (${ORACLE}x,x)
 ALL+= oracle 
+INST+=oracle_install
 endif
 
 all: ${ALL}
 
+install: $(INST)
+
 ${TARGET}: ${SOURCE}
 	$(APXS) -Wall -c -lresolv -L. ${SOURCE}
-# -Wl,-rpath=`pwd`,-rpath=/home/oracle/inst/10.1.0/lib 
 
-oracle: libsmloracle.so.1.0
+oracle: $(ORACLELIB)
 
-libsmloracle.so.1.0: oracle.c
+$(ORACLELIB): oracle.c
 	${CC} -Wall -I ${ORACLE}/sdk/include -c -fPIC oracle.c
 	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L ${ORACLE} -lclntsh oracle.o -o libsmloracle.so.1.0
 	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
 	${LN}f libsmloracle.so.1 libsmloracle.so
 
-install: ${TARGET}
-	${APXS} -i -a -n sml mod_sml.la
+installsml: ${TARGET}
+#	${APXS} -i -a -n sml mod_sml.la
+	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
+	$(INSTALL) .libs/mod_sml.so $(INSTDIR_SMLSERVER)/lib
+
+oracle_install: oracle
+	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
+	$(INSTALL) $(ORACLELIB) $(INSTDIR_SMLSERVER)/lib
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN}f libsmloracle.so.1.0 libsmloracle.so.1
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN}f libsmloracle.so.1 libsmloracle.so
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0
