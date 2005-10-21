@@ -10,4 +10,4 @@ mytest:
 	echo $(MLCOMP)
 
 clean:
-	rm -f mspcomp *~ MLB
+	rm -Rf mspcomp *~ MLB

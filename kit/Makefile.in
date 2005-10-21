@@ -1,4 +1,4 @@
-SHELL=/bin/sh
+SHELL=@SHELL@
 
 KITVERSION=@PACKAGE_VERSION@
 
@@ -14,6 +14,7 @@ INSTDIR_SMLSERVER=$(DESTDIR)@exec_prefix@/smlserver
 
 MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
+INSTALLDATA=@INSTALL_DATA@
 LN=@LN_S@
 
 MLCOMP=@mlcomp@
@@ -153,31 +154,31 @@ install_top:
 	$(MKDIR) $(INSTDIR)/kitlib
 	$(MKDIR) $(INSTDIR)/kitdemo
 	$(MKDIR) $(INSTDIR)/kitdemo/utils
-	$(INSTALL) version $(INSTDIR)
-	$(INSTALL) copyright $(INSTDIR)
-	$(INSTALL) README $(INSTDIR)
-	$(INSTALL) Makefile $(INSTDIR)
-	$(INSTALL) mkinstalldirs $(INSTDIR)
-	$(INSTALL) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
-	$(INSTALL) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
-	$(INSTALL) ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
-	$(INSTALL) basis/*.{sml,mlb} $(INSTDIR)/basis
+	$(INSTALLDATA) version $(INSTDIR)
+	$(INSTALLDATA) copyright $(INSTDIR)
+	$(INSTALLDATA) README $(INSTDIR)
+	$(INSTALLDATA) Makefile $(INSTDIR)
+	$(INSTALLDATA) mkinstalldirs $(INSTDIR)
+	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
+	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
+	$(INSTALLDATA) ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
+	$(INSTALLDATA) basis/*.{sml,mlb} $(INSTDIR)/basis
 
 install_runtime:
-	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGenGC.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGenGCProf.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGCTP.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGCTPProf.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystem.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemProf.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemGC.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemGenGC.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemGenGCProf.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemGCTP.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemGCTPProf.a $(INSTDIR)/bin
+	$(INSTALLDATA) bin/runtimeSystemTag.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 
 install: install_top install_runtime
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
-	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
+	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR)/doc
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
@@ -230,37 +231,37 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(MKDIR) $(INSTDIR)/src/heap2exec
-	$(INSTALL) src/Makefile src/*.{mlb,sml,in} $(INSTDIR)/src
-	$(INSTALL) src/Common/*.{mlb,sml} $(INSTDIR)/src/Common
-	$(INSTALL) src/Common/EfficientElab/*.sml $(INSTDIR)/src/Common/EfficientElab
-	$(INSTALL) src/Compiler/*.{mlb,sml} $(INSTDIR)/src/Compiler
-	$(INSTALL) src/Compiler/Lambda/*.sml $(INSTDIR)/src/Compiler/Lambda
-	$(INSTALL) src/Compiler/Regions/*.sml $(INSTDIR)/src/Compiler/Regions
-	$(INSTALL) src/Compiler/Backend/*.sml $(INSTDIR)/src/Compiler/Backend
-	$(INSTALL) src/Compiler/Backend/Barry/*.sml $(INSTDIR)/src/Compiler/Backend/Barry
-	$(INSTALL) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
-	$(INSTALL) src/Compiler/Backend/KAM/*.{sml,spec} $(INSTDIR)/src/Compiler/Backend/KAM
-	$(INSTALL) src/Compiler/Backend/X86/*.sml $(INSTDIR)/src/Compiler/Backend/X86
-	$(INSTALL) src/Manager/*.{sml,mlb} $(INSTDIR)/src/Manager
-	$(INSTALL) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
-	$(INSTALL) src/CUtils/Makefile src/CUtils/*.{c,h} $(INSTDIR)/src/CUtils
-	$(INSTALL) src/Edlib/Makefile src/Edlib/*.{sml,mlb} $(INSTDIR)/src/Edlib
-	$(INSTALL) src/Parsing/*.{sml,sig,grm,lex,desc} $(INSTDIR)/src/Parsing
-	$(INSTALL) src/Runtime/Makefile src/Runtime/*.{c,h} $(INSTDIR)/src/Runtime
-	$(INSTALL) src/SMLserver/Makefile src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
-	$(INSTALL) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
-	$(INSTALL) src/SMLserver/apache/Notes src/SMLserver/apache/*.{c,h,in} $(INSTDIR)/src/SMLserver/apache
-	$(INSTALL) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
-	$(INSTALL) src/Tools/Benchmark/*.{sml,cm} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
-	$(INSTALL) src/Tools/GenOpcodes/*.{sml,cm} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
-	$(INSTALL) src/Tools/MlbMake/*.{sml,cm,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
-	$(INSTALL) src/Tools/Rp2ps/*.{c,h} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
-	$(INSTALL) src/Tools/Tester/*.{sml,cm} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
-	$(INSTALL) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
-	$(INSTALL) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
+	$(INSTALLDATA) src/Makefile src/*.{mlb,sml,in} $(INSTDIR)/src
+	$(INSTALLDATA) src/Common/*.{mlb,sml} $(INSTDIR)/src/Common
+	$(INSTALLDATA) src/Common/EfficientElab/*.sml $(INSTDIR)/src/Common/EfficientElab
+	$(INSTALLDATA) src/Compiler/*.{mlb,sml} $(INSTDIR)/src/Compiler
+	$(INSTALLDATA) src/Compiler/Lambda/*.sml $(INSTDIR)/src/Compiler/Lambda
+	$(INSTALLDATA) src/Compiler/Regions/*.sml $(INSTDIR)/src/Compiler/Regions
+	$(INSTALLDATA) src/Compiler/Backend/*.sml $(INSTDIR)/src/Compiler/Backend
+	$(INSTALLDATA) src/Compiler/Backend/Barry/*.sml $(INSTDIR)/src/Compiler/Backend/Barry
+	$(INSTALLDATA) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
+	$(INSTALLDATA) src/Compiler/Backend/KAM/*.{sml,spec} $(INSTDIR)/src/Compiler/Backend/KAM
+	$(INSTALLDATA) src/Compiler/Backend/X86/*.sml $(INSTDIR)/src/Compiler/Backend/X86
+	$(INSTALLDATA) src/Manager/*.{sml,mlb} $(INSTDIR)/src/Manager
+	$(INSTALLDATA) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
+	$(INSTALLDATA) src/CUtils/Makefile src/CUtils/*.{c,h} $(INSTDIR)/src/CUtils
+	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,mlb} $(INSTDIR)/src/Edlib
+	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex,desc} $(INSTDIR)/src/Parsing
+	$(INSTALLDATA) src/Runtime/Makefile src/Runtime/*.{c,h} $(INSTDIR)/src/Runtime
+	$(INSTALLDATA) src/SMLserver/Makefile src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
+	$(INSTALLDATA) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
+	$(INSTALLDATA) src/SMLserver/apache/Notes src/SMLserver/apache/*.{c,h,in} $(INSTDIR)/src/SMLserver/apache
+	$(INSTALLDATA) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
+	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,cm} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
+	$(INSTALLDATA) src/Tools/GenOpcodes/*.{sml,cm} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
+	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,cm,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
+	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
+	$(INSTALLDATA) src/Tools/Tester/*.{sml,cm} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
+	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
+	$(INSTALLDATA) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
-	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
+	$(INSTALLBIN) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
 
@@ -300,16 +301,13 @@ install_kam:
 	$(MKDIR) $(INSTDIR_KAM)/doc
 	$(INSTALL) bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM)/bin
 	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
-	$(INSTALL) version $(INSTDIR)
-	$(INSTALL) copyright $(INSTDIR_KAM)
-	$(INSTALL) README $(INSTDIR_KAM)
-	$(INSTALL) -R kitdemo $(INSTDIR_KAM)/kitdemo 
-	$(INSTALL) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
-	$(INSTALL) -R basis $(INSTDIR_KAM)/basis
-	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_KAM)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR_KAM)
-	chmod -R ug+rw $(INSTDIR_KAM)
-	chmod -R o+r $(INSTDIR_KAM)
+	$(INSTALLDATA) version $(INSTDIR)
+	$(INSTALLDATA) copyright $(INSTDIR_KAM)
+	$(INSTALLDATA) README $(INSTDIR_KAM)
+	$(INSTALLDATA) -R kitdemo $(INSTDIR_KAM)/kitdemo 
+	$(INSTALLDATA) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
+	$(INSTALLDATA) -R basis $(INSTDIR_KAM)/basis
+	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR_KAM)/doc
 
 	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
 	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
@@ -346,28 +344,29 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
 	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
 	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
-	$(INSTALL) copyright $(INSTDIR_SMLSERVER)
-	$(INSTALL) README $(INSTDIR_SMLSERVER)
-	$(INSTALL) README_SMLSERVER $(INSTDIR_SMLSERVER)
-	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
+	$(INSTALLDATA) copyright $(INSTDIR_SMLSERVER)
+	$(INSTALLDATA) README $(INSTDIR_SMLSERVER)
+	$(INSTALLDATA) README_SMLSERVER $(INSTDIR_SMLSERVER)
+	$(INSTALLDATA) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(MAKE) -C smlserver_demo install
-	$(INSTALL) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
-#	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
-	$(INSTALL) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
+	$(INSTALLDATA) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
+#	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
+	$(INSTALLDATA) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
+	$(MAKE) -C src/SMLserver/apache install
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
 # directory! 
 #
-	echo '#!/bin/sh' > $(INSTDIR_SMLSERVER)/bin/smlserverc
+	echo "#!$(SHELL)" > $(INSTDIR_SMLSERVER)/bin/smlserverc
 	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
 	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
 
-install_smlserver_oracle:
-	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
-	$(INSTALL) src/SMLserver/apache/libsmloracle.so.1.0 $(INSTDIR_SMLSERVER)/lib
-	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1.0 lib/libsmloracle.so.1
-	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1 lib/libsmloracle.so
+#install_smlserver_oracle:
+#	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
+#	$(INSTALLBIN) src/SMLserver/apache/libsmloracle.so.1.0 $(INSTDIR_SMLSERVER)/lib
+#	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1.0 lib/libsmloracle.so.1
+#	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1 lib/libsmloracle.so
 
 SMLSERVER_HOST=hug.it.edu
 SMLSERVER_HOSTDIR=$(SMLSERVER_HOST):/web/smlserver/www/dist
