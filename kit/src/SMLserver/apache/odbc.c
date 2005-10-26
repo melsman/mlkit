@@ -16,27 +16,30 @@ enum
   DBEod = 3
 } DBReturn;
 
+struct myString
+{
+  char *cstring;
+  unsigned int length;
+}
+
 typedef struct 
 {
-  OCIEnv *envhp;
-  OCIError *errhp;
-  OCISPool *poolhp;
-  OraText *poolName;
-  ub4 poolNameLength;
+  SQLHENV envhp;
   int dbid;
   char msg[MAXMSG];
   void *freeSessionsGlobal;
   unsigned int number_of_sessions;
   unsigned char about_to_shutdown; // != 0 if we are shutting this environment down
+  struct myString DSN;
+  struct myString UID;
+  struct myString PW;
 } oDb_t;
 
 typedef struct oSes
 {
   struct oSes *next;
-  struct oSes *prev;
-  OCISvcCtx *svchp;
-  OCIError *errhp;
-  OCIStmt *stmthp;
+  SQLHDBC connhp;
+  SQLHSTMT stmthp;
   oDb_t *db;
   ub4 mode;
   int *datasizes;
@@ -46,19 +49,12 @@ typedef struct oSes
 
 typedef struct
 {
-  int lazyInit;
-  char *TNSname;
+  char *DNS;
   char *username;
   char *password;
-//  proc_lock plock;
-//  char *plockname;
   thread_lock tlock;
   cond_var cvar;
-//  unsigned long *totalNsessions;
-//  unsigned long limit;
   int maxdepth;
-  int maxsessions;
-  int minsessions;
   oDb_t *dbspec;
 } db_conf;
 
@@ -171,15 +167,31 @@ static oDb_t *
 DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
 {
   SQLRETURN status;
-  oDb_t *db = (oDb_t *) malloc(sizeof(oDb_t));
+  oDb_t *db;
+  char *ctmp;
+  unsigned int dbsize = strlen(DSN) + strlen(userid) + strlen(password) + 3;
+  db = (oDb_t *) malloc(sizeof(oDb_t) + dbsize);
   if (!db) 
   {
     dblog1(ctx, "Malloc failed");
     return NULL;
   }
+  ctmp = (char *) db;
+  ctmp += sizeof(oDb_t);
+  db->DNS.cstring = ctmp;
+  db->DNS.length = strlen(DNS);
+  ctmp += db->DNS->length + 1;
+  db->UID.cstring = ctmp;
+  db->UID.length = strlen(userid);
+  ctmp += db->UID->length + 1;
+  db->PW.cstring = ctmp;
+  db->PW.length = strlen (password);
+  strcpy(db->DNS.cstring, DNS);
+  strcpy(db->UID.cstring, userid);
+  strcpy(db->PW.cstring, password);
+
   db->dbid = dbid;
   db->freeSessionsGlobal = NULL;
-  db->errhp = NULL;
   db->envhp = NULL;
   db->number_of_sessions = 0;
   db->about_to_shutdown = 0;
@@ -268,28 +280,44 @@ DBShutDownWconf(void *db2, void *ctx)/*{{{*/
 static oSes_t *
 DBgetSession (oDb_t *db, void *rd)/*{{{*/
 {
-  sb4 errcode = 0;
-  sword status;
-  OCIError *errhp;
+  SQLRETURN status;
   oSes_t *ses;
   if (db == NULL) return NULL;
-  status = OCIHandleAlloc ((dvoid *) db->envhp, (dvoid **) &errhp, 
-      OCI_HTYPE_ERROR, sizeof(oSes_t), (dvoid **) &ses); // allocating ses
+  ses = (oSes_t *) malloc (sizeof(oSes_t));
+  if (!ses) 
+  {
+    dblog1(rd, "malloc failed");
+    return NULL;
+  }
+  ses->db = db;
+  ses->mode = COMMIT_ON_SUCCESS;
+  ses->stmthp = NULL;
+  ses->datasizes = NULL;
+  ses->rowp = NULL;
+  ses->msg[0] = 0;
+  ses->connhp = NULL;
+  ses->next = NULL;
+  status = SQLAllocHandle(SQL_HANDLE_DBC, db->envhp, &ses->connhp);
   ErrorCheck(status, OCI_HTYPE_ENV, db,
       dblog1(rd, "oracleDB: DataBase alloc failed; are we out of memory?");
+      free(ses);
       return NULL;,
       rd
       )
-  ses->errhp = errhp;
-  ses->db = db;
-  ses->mode = OCI_COMMIT_ON_SUCCESS;
-  ses->stmthp = NULL;
-  ses->datasizes = NULL;
-  status = OCISessionGet(db->envhp, ses->errhp, &(ses->svchp), NULL, db->poolName, 
-      db->poolNameLength, NULL, 0, NULL, NULL, NULL, OCI_SESSGET_SPOOL);
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_QUIET_MODE, NULL, NULL);
+  ErrorCheck(status, OCI_HTYPE_ERROR, db,
+      SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
+      free(ses);
+      return NULL;,
+      rd
+      )
+  status = SQLConnect(ses->connhp, db->DSN.cstring, db->DSN.length,
+                                   db->UID.cstring, db->UID.length,
+                                   db->PW.cstring, db->PW.length);
   ErrorCheck(status, OCI_HTYPE_ERROR, db,
       DBCheckNSetIfServerGoneBad(db, status, rd, 0);
-      OCIHandleFree ((dvoid *) errhp, OCI_HTYPE_ERROR);
+      SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
+      free(ses);
       return NULL;,
       rd
       )
@@ -307,7 +335,7 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
   db = ses->db;
   if (ses->mode == OCI_DEFAULT)
   {
-    ses->mode = OCI_COMMIT_ON_SUCCESS;
+    ses->mode = COMMIT_ON_SUCCESS;
     status = OCITransRollback(ses->svchp, ses->errhp, OCI_DEFAULT);
     ErrorCheck(status, OCI_HTYPE_ERROR, ses, ;, ctx)
   }
@@ -333,7 +361,7 @@ int
 DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
-  sword status;
+  SQLRETURN status;
   ub4 type = 0;
   int count;
   dvoid *db;
@@ -537,12 +565,12 @@ DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
   dvoid *db;
   if (ses == NULL) return DBError;
   db = ses->db;
-  if (ses->mode == OCI_COMMIT_ON_SUCCESS) 
+  if (ses->mode == COMMIT_ON_SUCCESS) 
   {
     DBFlushStmt(ses,ctx);
     return DBError;
   }
-  ses->mode = OCI_COMMIT_ON_SUCCESS;
+  ses->mode = COMMIT_ON_SUCCESS;
   status = OCITransCommit(ses->svchp, ses->errhp, OCI_DEFAULT);
   ErrorCheck(status, OCI_HTYPE_ERROR, ses,
       DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
@@ -561,12 +589,12 @@ DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
   dvoid *db;
   if (ses == NULL) return DBError;
   db = ses->db;
-  if (ses->mode == OCI_COMMIT_ON_SUCCESS) 
+  if (ses->mode == COMMIT_ON_SUCCESS) 
   {
     DBFlushStmt(ses,ctx);
     return DBError;
   }
-  ses->mode = OCI_COMMIT_ON_SUCCESS;
+  ses->mode = COMMIT_ON_SUCCESS;
   status = OCITransRollback(ses->svchp, ses->errhp, OCI_DEFAULT);
   ErrorCheck(status, OCI_HTYPE_ERROR, ses,
       DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
@@ -667,53 +695,50 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
   lock_thread(dbc->tlock);
   if (dbdata->theOne)
   {
-    if (db->number_of_sessions < dbc->maxsessions - dbc->maxdepth)
+    ses->next = NULL;
+    tmpses = NULL;
+    for (rses = dbdata->freeSessions; rses; rses = rses->next) tmpses = rses;
+    if (tmpses)
+    {
+      tmpses->next = ses;
+    }
+    else
+    {
+      dbdata->freeSessions = ses;
+    }
+    if (!dbdata->dbSessions)
     {
       dbdata->theOne = 0;
-      ses->next = dbdata->freeSessions;
-      dbdata->freeSessions = ses;
-      while ((ses = dbdata->freeSessions))
+      ses = dbdata->freeSessions;
+      dbdata->freeSessions = NULL;
+      if (db->freeSessionsGlobal)
       {
-        dbdata->freeSessions = ses->next;
-        DBReturnSession(ses, rd);
+        while ((rses = db->freeSessionsGlobal))
+        {
+          db->freeSessionsGlobal = rses->next;
+          DBReturnSession(rses, rd);
+        }
       }
-      while ((ses = db->freeSessionsGlobal))
+      db->freeSessionsGlobal = ses;
+      i = db->maxdepth;
+      while((rses = db->freeSessionsGlobal))
       {
-        db->freeSessionsGlobal = ses->next;
+        if (i)
+        {
+          rses = rses->next;
+          i--;
+          continue;
+        }
+        ses = rses;
+        rses = rses->next;
         DBReturnSession(ses,rd);
       }
       broadcast_cond(dbc->cvar);
     }
-    else 
-    {
-      if (!dbdata->dbSessions)
-      {
-        dbdata->theOne = 0;
-        ses->next = dbdata->freeSessions;
-        dbdata->freeSessions = NULL;
-        while ((rses = db->freeSessionsGlobal))
-        {
-          db->freeSessionsGlobal = ((oSes_t *)db->freeSessionsGlobal)->next;
-          DBReturnSession(rses, rd);
-        }
-        db->freeSessionsGlobal = ses;
-        broadcast_cond(dbc->cvar);
-      }
-      else
-      {
-        ses->next = dbdata->freeSessions;
-        dbdata->freeSessions = ses;
-      }
-    }
   }
-  else 
+  else
   {
     DBReturnSession(ses,rd);
-    while ((ses = dbdata->freeSessions))
-    {
-      dbdata->freeSessions = ses->next;
-      DBReturnSession(ses, rd);
-    }
     broadcast_cond(dbc->cvar);
   }
   unlock_thread(dbc->tlock);
@@ -746,11 +771,6 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       return NULL;
     }
   }
-//  if (dbdata->theOne && dbdata->freeSessions == NULL)
-//  {
-//    dblog1(rd, "Depth boundary exceeded");
-//    return NULL;
-//  }
   dblog1(rd, "1");
   if (dbdata->freeSessions)
   {
@@ -773,17 +793,17 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   lock_thread(dbc->tlock);
   if (!dbc->dbspec)
   {
-    if (!dbc->TNSname || !dbc->username || !dbc->password || 
-         dbc->maxdepth < 1 || dbc->minsessions < 1 || dbc->maxsessions < 1)
+    if (!dbc->DSN || !dbc->username || !dbc->password || 
+         dbc->maxdepth < 1)
     {
       unlock_thread(dbc->tlock);
       dblog1(rd, 
-           "One or more of DBTNSname, DBUserName, DBPassWord and DBSessionMaxDepth not set");
+           "One or more of DSN, UserName, PassWord and SessionMaxDepth not set");
       return NULL;
     }
     dblog1(rd, "Initializing database connection");
-    dbc->dbspec = DBinitConn(rd, dbc->TNSname, dbc->username, 
-                                    dbc->password, dbc->minsessions, dbc->maxsessions, dbid);
+    dbc->dbspec = DBinitConn(rd, dbc->DNS, dbc->username, 
+                                    dbc->password, dbid);
     dblog1(rd, "Database initialization call done");
   }
   dblog1(rd, "3");
@@ -795,16 +815,32 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   }
   dblog1(rd, "4");
   db = dbc->dbspec;
-  if (db->number_of_sessions < dbc->maxsessions - dbc->maxdepth)
+  if (db->number_of_sessions == 0)
   {
-    ses = DBgetSession(dbc->dbspec, rd);
-    if (ses == NULL)
+    for (i = 0; i < dbc->maxdepth; i++)
     {
-      dblog1(rd, "Could not get session");
-      unlock_thread(dbc->tlock);
-      return NULL;
+      ses = DBgetSession(dbc->dbspec, rd);
+      if (ses == NULL)
+      {
+        while (dbdata->freeSessions)
+        {
+          ses = freeSessions->next;
+          DBReturnSession(dbdata->freeSessions,rd);
+          dbdata->freeSessions = ses;
+        }
+        dblog1(rd, "Could not get session");
+        unlock_thread(dbc->tlock);
+        return NULL;
+      }
+      ses->next = dbdata->freeSessions;
+      dbdata->freeSessions = ses;
     }
-    dbdata->depth++;
+    dbdata->depth = 1;
+    ses = dbdata->freeSessions;
+    dbdata->freeSessions = ses->next;
+    ses->next = NULL;
+    dbdata->dbSessions = ses;
+    dbdata->theOne = 1;
     unlock_thread(dbc->tlock);
     return ses;
   }
@@ -814,57 +850,35 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
     {
       dbdata->theOne = 1;
       ses = db->freeSessionsGlobal;
-      dbdata->freeSessions = ses->next;
       db->freeSessionsGlobal = NULL;
-      unlock_thread(dbc->tlock);
+      dbdata->freeSessions = ses->next;
+      ses->next = dbdata->dbSessions;
+      dbdata->dbSessions = ses;
       dbdata->depth++;
+      unlock_thread(dbc->tlock);
       return ses;
     }
     else
     {
-      if (db->number_of_sessions == dbc->maxsessions - dbc->maxdepth)
+      ses = DBgetSession(db,rd);
+      if (ses)
       {
-        dbdata->theOne = 1;
-        for (i = 0; i < dbc->maxdepth; i++)
-        {
-          ses = DBgetSession(dbc->dbspec, rd);
-          if (ses == NULL) 
-          {
-            dblog1(rd, "Could not get session");
-            while ((ses = dbdata->freeSessions))
-            {
-              dbdata->freeSessions = ses->next;
-              DBReturnSession(ses, rd);
-            }
-            dbdata->theOne = 0;
-            unlock_thread(dbc->tlock);
-            return NULL;
-          }
-          ses->next = dbdata->freeSessions;
-          dbdata->freeSessions = ses;
-        }
-        dbdata->freeSessions = ses->next;
-        unlock_thread(dbc->tlock);
+        ses->next = dbdata->dbSessions;
+        dbdata->dbSessions = ses;
         dbdata->depth++;
+        unlock_thread(dbc->tlock);
         return ses;
       }
-      else
+      else 
       {
-        ses = DBgetSession(dbc->dbspec,rd);
-        if (ses == NULL)
-        {
-          dblog1(rd, "Could not get session");
-          wait_cond(dbc->cvar);
-          unlock_thread(dbc->tlock);
-          return apsmlGetSession(dbid, rd);
-        }
+        dblog1(rd, "Could not get session");
+        wait_cond(dbc->cvar);
         unlock_thread(dbc->tlock);
-        dbdata->depth++;
-        return ses;
+        return apsmlGetSession(dbid, rd);
       }
     }
   }
-  dblog1(rd, "Oracle driver: End of apsmlGetSession reached. This is not suppose to happend");
+  dblog1(rd, "ODBC driver: End of apsmlGetSession reached. This is not suppose to happend");
   unlock_thread(dbc->tlock);
   return NULL;
 }/*}}}*/
@@ -909,7 +923,6 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
   {
     cd = (db_conf *) malloc (sizeof (db_conf));
     if (!cd) return 2;
-    cd->lazyInit = 1;
     cd->username = NULL;
     cd->password = NULL;
     cd->TNSname = NULL;
@@ -938,10 +951,6 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
   }
   switch (pos)
   {
-    case 1:
-      id = (int) val;
-      cd->lazyInit = id;
-      break;
     case 5:
       id = (int) val;
       cd->maxdepth = id;
