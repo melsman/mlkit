@@ -446,7 +446,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			in process(ebfiles,is,Basis.plusBasis1(basisPair0,basisPair))
 			end handle _ => die ("doUnpickleBases1. error \n")
 	    end 
-	    
+
+	fun lnkFileConsistent {lnkFile} =
+	    let val s = readFile lnkFile
+		val (mc,is) = Pickle.unpickler ModCode.pu 
+		    (Pickle.fromString s)
+	    in true
+	    end handle _ => false
+
     end (* Pickling *)
 
     fun fid_topdec a = FreeIds.fid_topdec a
@@ -718,6 +725,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			    else ()
 		in b 
 		end
+
+	    val lnkFileConsistent = lnkFileConsistent
 	end
 
 

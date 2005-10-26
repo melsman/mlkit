@@ -49,4 +49,4 @@ oracle_install: oracle
 	cd $(INSTDIR_SMLSERVER)/lib && ${LN}f libsmloracle.so.1 libsmloracle.so
 
 clean: 
-	rm -f mod_sml.la libsmloracle.so.1.0
+	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo

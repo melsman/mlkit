@@ -5,17 +5,25 @@ This is file README_SMLSERVER
 Get upN'running without database access:
 Requirements: a working Apache webserver
 
-cd mlkit/kit
-./autobuild
-./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs \
-            --with-compiler=/path/to/mlcompiler
-make smlserver
-make install_smlserver
+ $ cd mlkit/kit
+ $ ./autobuild
+ $ ./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs \
+               --with-compiler=/path/to/mlcompiler
+ $ make smlserver
+ $ make install_smlserver
+
 edit /abs/path/to/initscript (remove Db conf lines)
-smlserverc /abs/path/to/web.mlb
-edit apache/conf/httpd.conf
+
+ $ cp -p /usr/local/smlserver/www /.../mycopy/www
+ $ export SMLSERVER_DIR=/usr/local/smlserver
+ $ export SML_LIB=$(SMLSERVER_DIR)
+
+ $ smlserverc /abs/path/to/web.mlb
+
+edit apache/conf/httpd.conf:
+
   Listen (port of your choice)
-  DocumentRoot "/abs/path/to/root" (eg. /home/testuser/apache/htdocs/web/www)
+  DocumentRoot "/abs/path/to/docroot" (eg. /home/testuser/apache/htdocs/web/www)
   DirectoryIndex (add index.sml)
 
     after "LoadModule sml_module", insert something like:
@@ -33,8 +41,9 @@ edit apache/conf/httpd.conf
   RewriteRule .* pub.sml
   </Directory>
 
-cd path/to/smlserver/lib && apxs -i -a -n sml mod_sml.so
-apache/bin/apachectl start
+ $ cd path/to/smlserver/lib && apxs -i -a -n sml mod_sml.so
+ $ apache/bin/apachectl start
+
 point your browswer to localhost:port/web/
 
 to build Oracle interface:

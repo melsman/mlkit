@@ -43,6 +43,7 @@ signature MLB_PLUGIN =
      val mlbdir : unit -> string
      val objFileExt : unit -> string (* e.g., .o *)
      val maybeSetRegionEffectVarCounter : int -> bool
+     val lnkFileConsistent : {lnkFile:string} -> bool	
   end
 
 structure MlbUtil =
@@ -186,8 +187,23 @@ struct
 
     exception Recompile of string
 
+    (* Recompilation is unnecessary if both  
+     *
+     *  (1) f.{sml,d}<f.lnk 
+     *  (2) forall g \in F(f.d) . g.eb < f.lnk
+     *
+     * Assumption:
+     *
+     *  (A1) if f.sml is recompiled f.lnk is written to disk; f.eb need 
+     *       not be newer than f.sml after compilation (i.e., if there 
+     *       was an identical eb-file on disk already.)
+     *
+     *  (A2) The lnk-file is the last file being written during 
+     *       compilation. 
+     *)
+
     fun recompileUnnecessary mlbfile smlfile : bool =
-    (* f.{sml,d}<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.lnk *)
+    (* f.{sml,d}<f.lnk and forall g \in F(f.d) . g.eb < f.lnk *)
 	let fun rchat s = vchat ("Recompilation necessary: " ^ s)
 	    fun mchat s = rchat ("cannot determine modification time of " ^ MlbUtil.quot s)
 	    val _ = vchat ("Checking necessity of recompiling " ^ smlfile)
@@ -218,6 +234,8 @@ struct
 				 in reportBool(modTime ebFile <= modTimeLnkFile)
 				     ("Dependent file " ^ MlbUtil.quot ebFile ^ " newer than lnk-file")
 				 end) debs
+			andalso 
+			reportBool(P.lnkFileConsistent {lnkFile=lnkFile}) "lnk-file not consistent"
 		    end
 		end
 	    end
