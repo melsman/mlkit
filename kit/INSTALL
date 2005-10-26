@@ -59,21 +59,20 @@ in the previous section, proceed as follows:
   * Build the MLKit. Execute the commands:
 
       $ cd mlkit-x.y.z
-      $ autoconf -o configure configure.ac
-      $ autoheader configure.ac
+      $ ./autobuild
       $ ./configure
-      $ make
+      $ make mlkit_with_basislibs
 
   * Install the MLKit. If you have root access to your machine,
     execute
 
-      # make install
+      # make install_with_basislibs
 
     which installs the MLKit in the /usr/share/mlkit-x.y.z 
     directory. Alternatively, if you want to install the MLKit in
     your home directory, execute
    
-      $ make install INSTDIR=$(HOME)/mlkit-x.y.z
+      $ make install_with_basislibs INSTDIR=$(HOME)/mlkit-x.y.z
     
 Once installed, make a personal copy of the kitdemo/ directory and try
 to compile the kitdemo/helloworld.sml program. The commands
