@@ -72,96 +72,69 @@ typedef struct
 #endif
 #define MAX(a,b) ((a) < (b) ? (b) : (a))
 
-#define ErrorCheck(status,type,dbmsg,code,rd) {                                      \
+#define ErrorCheck(status,handletype,handle,buffer,code,rd) {                        \
   if (status != SQL_SUCCESS)                                                         \
   {                                                                                  \
-    if (putmsg(db, status, &errcode, type, dbmsg->msg, MAXMSG, dbmsg->errhp, rd)!=OCI_SUCCESS) \
+    if (putmsg(status, handletype, handle, buffer, MAXMSG, rd)!=SQL_SUCCESS)         \
     {                                                                                \
       code                                                                           \
     }                                                                                \
   }                                                                                  \
 }
 
-/*
-static void
-printErr(dvoid *err, sword i, ub4 t)//{{{
+static SQLRETURN
+putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, int msgLength, void *ctx)/*{{{*/
 {
-  char *s;
-  text errbuf[512];
-  sb4 errcode;
-  switch (i) 
+  int i;
+  SQLCHAR SQLstate;
+  SQLINTEGER naterrptr;
+  SQLSMALLINT msgl;
+  SQLRETURN stat;
+  switch (status)
   {
-    case OCI_SUCCESS:
-      s = "OCI_SUCCESS\n";
+    case SQL_SUCCESS:
+      msg[0] = 0;
+      return SQL_SUCCESS;
       break;
-    case OCI_SUCCESS_WITH_INFO:
-      OCIErrorGet(err, (ub4) 1, (text *) NULL, &errcode, errbuf, 512, t);
-      printf("err: %s\n", errbuf);
-      s = "OCI_SUCCESS_WITH_INFO\n";
-      break;
-    case OCI_NO_DATA:
-      s = "OCI_NO_DATA\n";
-      break;
-    case OCI_ERROR:
-      OCIErrorGet(err, (ub4) 1, (text *) NULL, &errcode, errbuf, 512, t);
-      printf("err: %s\n", errbuf);
-      s = "OCI_ERROR\n";
-      break;
-    case OCI_INVALID_HANDLE:
-      OCIErrorGet(err, (ub4) 1, (text *) NULL, &errcode, errbuf, 512, t);
-      printf("err: %s\n", errbuf);
-      s = "OCI_INVALID_HANDLE\n";
-      break;
-    case OCI_NEED_DATA:
-      s = "OCI_NEED_DATA\n";
-      break;
-    case OCI_STILL_EXECUTING:
-      s = "OCI_STILL_EXECUTING\n";
-      break;
-    case OCI_CONTINUE:
-      s = "OCI_CONTINUE\n";
+    case SQL_SUCCESS_WITH_INFO:
+      status = SQL_SUCCESS;
+      for (i = 1; status == SQL_SUCCESS || status = SQL_SUCCESS_WITH_INFO; i++)
+      {
+        msg[0] = 0;
+        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, msgLength - 1, &msgl);
+        if (msgl < msgLength)
+        {
+          msg[msgl] = 0;
+          dblog1(ctx, msg);
+        }
+        else
+        {
+          dblog1(ctx,"ErrorBuffer too small");
+        }
+      }
+      return SQL_SUCCESS;
       break;
     default:
-      s = "Not reconized\n";
+      stat = status;
+      status = SQL_SUCCESS;
+      for (i = 1; status == SQL_SUCCESS || status = SQL_SUCCESS_WITH_INFO; i++)
+      {
+        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, msgLength - 1, &msgl);
+        if (msgl < msgLength)
+        {
+          msg[msgl] = 0;
+          dblog1(ctx, msg);
+        }
+        else
+        {
+          dblog1(ctx,"ErrorBuffer too small");
+        }
+      }
+      return stat;
       break;
   }
-  printf ("status == %s", s);
-  return;
-}//}}}
-*/
-
-static sword
-putmsg(oDb_t *db, SQLRETURN status, sb4 *errcode, SQLSMALLINT t, char *msg, int msgLength, OCIError *errhp, void *ctx)/*{{{*/
-{
-    switch (status)
-    {
-      case SQL_SUCCESS:
-        msg[0] = 0;
-        return SQL_SUCCESS;
-        break;
-      case SQL_SUCCESS_WITH_INFO:
-        OCIErrorGet(errhp, (ub4) 1, (text *) NULL, errcode, msg, msgLength, t);
-        msg[msgLength-1] = 0;
-        dblog1(ctx, msg);
-        return OCI_SUCCESS;
-        break;
-      case OCI_ERROR:
-      case OCI_INVALID_HANDLE:
-        OCIErrorGet(errhp, (ub4) 1, (text *) NULL, errcode, msg, msgLength, t);
-        msg[msgLength-1] = 0;
-        dblog1(ctx, msg);
-        return OCI_ERROR;
-        break;
-      default:
-        msg[0] = 0;
-        return status;
-        break;
-    }
-  }
-  return OCI_ERROR;
+  return SQL_ERROR;
 }/*}}}*/
-
-static ub1 spool_getmode = OCI_SPOOL_ATTRVAL_FORCEGET;
 
 static oDb_t * 
 DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
@@ -196,7 +169,7 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
   db->number_of_sessions = 0;
   db->about_to_shutdown = 0;
   db->msg[0] = 0;
-  status = SQLSetEnvAttr(NULL, SQL_ATTR_CONNECTION_POOLING, SQL_CP_ONE_PER_HENV, 0)
+  status = SQLSetEnvAttr(SQL_NULL_HANDLE, SQL_ATTR_CONNECTION_POOLING, SQL_CP_ONE_PER_HENV, 0)
   ErrorCheck(status, SQL_HANDLE_ENV, db, 
       dblog1(ctx, "Connection pooling setup failed");
       return NULL;,
