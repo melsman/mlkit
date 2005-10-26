@@ -1,3 +1,3 @@
 all:
-	cd demo; $(MAKE)
-	../../bin/smlserverc demo.mlb
+	$(MAKE) -C web
+	$(SMLSERVER_DIR)/bin/smlserverc web.mlb

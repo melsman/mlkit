@@ -38,7 +38,30 @@ RPMDIR=/usr/src/rpm
 
 CLEAN=rm -rf MLB PM CM *~ .\#*
 
-.PHONY: smlserver install
+.PHONY: mlkit mlkit_kam smlserver barry clean clean_mlb install
+.PHONY: install_smlserver
+
+mlkit_basislibs:
+	(cd basis; rm -rf MLB)
+	(cd basis; ../bin/mlkit -c basis.mlb)
+	(cd basis; ../bin/mlkit -gc -c basis.mlb)
+	(cd basis; ../bin/mlkit -gc -prof -c basis.mlb)
+	(cd basis; ../bin/mlkit -prof -c basis.mlb)
+
+install_mlkit_basislibs:
+	$(MKDIR) $(INSTDIR)/basis/MLB
+	$(MKDIR) $(INSTDIR)/basis/MLB/RI
+	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC
+	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC_PROF
+	$(MKDIR) $(INSTDIR)/basis/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI
+	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI_GC
+	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_GC_PROF
+
+mlkit_with_basislibs:
+	$(MAKE) mlkit
+	$(MAKE) mlkit_basislibs
 
 all: mlkit
 
@@ -48,19 +71,19 @@ mytest:
 
 mlkit:
 	$(MKDIR) bin
-	cd src; $(MAKE)
+	$(MAKE) -C src
 
 mlkit_kam:
 	$(MKDIR) bin
-	cd src; $(MAKE) mlkit_kam
+	$(MAKE) -C src mlkit_kam
 
 smlserver:
 	$(MKDIR) bin
-	cd src; $(MAKE) smlserver
+	$(MAKE) -C src smlserver
 
 barry:
 	$(MKDIR) bin
-	cd src; $(MAKE) barry
+	$(MAKE) -C src barry
 
 clean:
 	$(CLEAN) bin run mlkit.spec smlserver.spec
@@ -158,11 +181,12 @@ install_top:
 	$(INSTALLDATA) copyright $(INSTDIR)
 	$(INSTALLDATA) README $(INSTDIR)
 	$(INSTALLDATA) Makefile $(INSTDIR)
-	$(INSTALLDATA) mkinstalldirs $(INSTDIR)
+	$(INSTALLDATA) Makefiledefault $(INSTDIR)
+	$(INSTALL) mkinstalldirs $(INSTDIR)
 	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
 	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
-	$(INSTALLDATA) ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
-	$(INSTALLDATA) basis/*.{sml,mlb} $(INSTDIR)/basis
+	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
+	$(INSTALLDATA) -p basis/*.{sml,mlb} $(INSTDIR)/basis
 
 install_runtime:
 	$(INSTALLDATA) bin/runtimeSystem.a $(INSTDIR)/bin
@@ -191,13 +215,17 @@ install: install_top install_runtime
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
 
+install_with_basislibs:
+	$(MAKE) install
+	$(MAKE) install_mlkit_basislibs
+
 install_test:
 	$(MKDIR) $(INSTDIR)/test
 	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang
 	$(MKDIR) $(INSTDIR)/test/barnes-hut $(INSTDIR)/test/logic
 	$(MKDIR) $(INSTDIR)/test/DATA $(INSTDIR)/test/LEXGEN_DATA $(INSTDIR)/test/VLIW_DATA
 	$(MKDIR) $(INSTDIR)/test/ray/DATA $(INSTDIR)/test/mlyacc/DATA
-	$(INSTALL) test/Makefile test/Makefile_bootstrap $(INSTDIR)/test
+	$(INSTALL) test/Makefile $(INSTDIR)/test
 	$(INSTALL) test/Makefile test/*.{tst,sml,mlb,out.ok,log.ok,txt,dat,c} $(INSTDIR)/test
 	$(INSTALL) test/README $(INSTDIR)/test 
 	$(INSTALL) test/DATA/*.{gml,sml} $(INSTDIR)/test/DATA
@@ -246,7 +274,7 @@ install_src:
 	$(INSTALLDATA) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
 	$(INSTALLDATA) src/CUtils/Makefile src/CUtils/*.{c,h} $(INSTDIR)/src/CUtils
 	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,mlb} $(INSTDIR)/src/Edlib
-	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex,desc} $(INSTDIR)/src/Parsing
+	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex} $(INSTDIR)/src/Parsing
 	$(INSTALLDATA) src/Runtime/Makefile src/Runtime/*.{c,h} $(INSTDIR)/src/Runtime
 	$(INSTALLDATA) src/SMLserver/Makefile src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
 	$(INSTALLDATA) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
@@ -261,7 +289,7 @@ install_src:
 	$(INSTALLDATA) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
-	$(INSTALLBIN) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
+	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester
 
@@ -343,6 +371,7 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/bin
 	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
 	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
+	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
 	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
 	$(INSTALLDATA) copyright $(INSTDIR_SMLSERVER)
 	$(INSTALLDATA) README $(INSTDIR_SMLSERVER)
@@ -364,7 +393,7 @@ install_smlserver:
 
 #install_smlserver_oracle:
 #	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
-#	$(INSTALLBIN) src/SMLserver/apache/libsmloracle.so.1.0 $(INSTDIR_SMLSERVER)/lib
+#	$(INSTALL) src/SMLserver/apache/libsmloracle.so.1.0 $(INSTDIR_SMLSERVER)/lib
 #	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1.0 lib/libsmloracle.so.1
 #	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1 lib/libsmloracle.so
 

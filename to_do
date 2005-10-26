@@ -1,3 +1,9 @@
+mael 2005-10-25: Add necessary Posix-support needed to compile
+Kittester with MLKit.
+
+mael 2005-10-25: MLB-make needs to check the integrity (e.g., size) of
+.eb1-files before concluding that recompilation is not needed. 
+
 mael 2005-10-04: Better mlkit error reporting in case a src-file does
 not exist. Also, before src-files in an mlb-file are compiled, check
 that the files do indeed exist.
@@ -37,15 +43,17 @@ This should construct a file www/MLB/demo.ul. Currently, msp-files are
 not supported.
 
 Things to do:
- 
+
+  - Eliminate the MLKit menu system (Martin) 
   - Upgrade to Apache. (Carsten)
-  - Add support for region profiling. Add option "-regvar N" to mlkit
-    executable and add support for passing a global counter around in
-    the MLB-system. (Martin)
-  - Add support for msp-files. (Martin)
   - Setup and test separate compilation mechanisms
   - Setup regression testing for different compile time options, such 
     as "-gc", "-prof", "-gc -prof" (Martin)
+
+  - Add support for region profiling. Add option "-regvar N" to mlkit
+    executable and add support for passing a global counter around in
+    the MLB-system. (Martin - DONE mael 2005-10-25)
+  - Add support for msp-files. (Martin - DONE mael 2005-10-25)
 
 Notice that pm-files are no longer supported.
 

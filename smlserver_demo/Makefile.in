@@ -22,7 +22,9 @@ install:
 	$(INSTALLDATA) web_lib/*.{sml,mlb} $(INSTDIR_SMLSERVER)/web_lib
 	$(INSTALLDATA) web_sys/*.sml $(INSTDIR_SMLSERVER)/web_sys
 	$(INSTALLDATA) www/web.mlb $(INSTDIR_SMLSERVER)/www
+	$(INSTALLDATA) www/Makefile $(INSTDIR_SMLSERVER)/www
 	$(INSTALLDATA) www/web/*.{sml,msp,html} $(INSTDIR_SMLSERVER)/www/web
+	$(INSTALLDATA) www/web/Makefile $(INSTDIR_SMLSERVER)/www/web
 	$(INSTALLDATA) www/web/employee/*.{sql,sml} $(INSTDIR_SMLSERVER)/www/web/employee
 	$(INSTALLDATA) www/web/link/*.sml $(INSTDIR_SMLSERVER)/www/web/link
 	$(INSTALLDATA) www/web/rating/*.{sql,sml,jpg} $(INSTDIR_SMLSERVER)/www/web/rating
@@ -30,3 +32,4 @@ install:
 	$(INSTALLDATA) www/web/upload/*.sml $(INSTDIR_SMLSERVER)/www/web/upload
 	$(INSTALLDATA) www/web/upload/files/*.png $(INSTDIR_SMLSERVER)/www/web/upload/files
 	$(INSTALLDATA) web_demo_lib/*.sml $(INSTDIR_SMLSERVER)/web_demo_lib
+
