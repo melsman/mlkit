@@ -226,7 +226,7 @@ install_test:
 	$(MKDIR) $(INSTDIR)/test/DATA $(INSTDIR)/test/LEXGEN_DATA $(INSTDIR)/test/VLIW_DATA
 	$(MKDIR) $(INSTDIR)/test/ray/DATA $(INSTDIR)/test/mlyacc/DATA
 	$(INSTALL) test/Makefile $(INSTDIR)/test
-	$(INSTALL) test/Makefile test/*.{tst,sml,mlb,out.ok,log.ok,txt,c} $(INSTDIR)/test
+	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(INSTDIR)/test
 	$(INSTALL) test/README $(INSTDIR)/test 
 	$(INSTALL) test/DATA/*.{gml,sml} $(INSTDIR)/test/DATA
 	$(INSTALL) test/LEXGEN_DATA/*.lex $(INSTDIR)/test/LEXGEN_DATA 
