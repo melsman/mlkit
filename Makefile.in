@@ -229,11 +229,11 @@ install_test:
 	$(INSTALL) test/Makefile test/*.{tst,sml,mlb,out.ok,log.ok,txt,c} $(INSTDIR)/test
 	$(INSTALL) test/README $(INSTDIR)/test 
 	$(INSTALL) test/DATA/*.{gml,sml} $(INSTDIR)/test/DATA
-	$(INSTALL) test/LEXGEN_DATA/*.{lex,sml} $(INSTDIR)/test/LEXGEN_DATA 
+	$(INSTALL) test/LEXGEN_DATA/*.lex $(INSTDIR)/test/LEXGEN_DATA 
 	$(INSTALL) test/VLIW_DATA/*.s $(INSTDIR)/test/VLIW_DATA 
 	$(INSTALL) test/ray/DATA/TEST $(INSTDIR)/test/ray/DATA
-	$(INSTALL) test/ray/input test/ray/README test/ray/output test/ray/load test/ray/*.{sml,mlb} $(INSTDIR)/test/ray
-	$(INSTALL) test/mlyacc/DATA/*.{grm,sml,sig} $(INSTDIR)/test/mlyacc/DATA
+	$(INSTALL) test/ray/input test/ray/README test/ray/load test/ray/*.{sml,mlb} $(INSTDIR)/test/ray
+	$(INSTALL) test/mlyacc/DATA/*.grm $(INSTDIR)/test/mlyacc/DATA
 	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(INSTDIR)/test/mlyacc
 	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(INSTDIR)/test/nucleic
 	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(INSTDIR)/test/danwang
