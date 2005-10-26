@@ -41,6 +41,8 @@ CLEAN=rm -rf MLB PM CM *~ .\#*
 .PHONY: mlkit mlkit_kam smlserver barry clean clean_mlb install
 .PHONY: install_smlserver
 
+all: mlkit
+
 mlkit_basislibs:
 	(cd basis; rm -rf MLB)
 	(cd basis; ../bin/mlkit -c basis.mlb)
@@ -62,8 +64,6 @@ install_mlkit_basislibs:
 mlkit_with_basislibs:
 	$(MAKE) mlkit
 	$(MAKE) mlkit_basislibs
-
-all: mlkit
 
 mytest:
 	echo $(MLCOMP)
