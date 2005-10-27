@@ -664,7 +664,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 oSes_t *
 apsmlGetSession(int dbid, void *rd)/*{{{*/
 {
-  oSes_t *ses, *rses;
+  oSes_t *ses;
   oDb_t *db;
   int i;
   dbOraData *dbdata = (dbOraData *) getDbData(dbid, rd);
