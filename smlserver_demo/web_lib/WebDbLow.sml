@@ -145,14 +145,14 @@ functor DbOracleBackend(type conn = int
                                    val b = Dynlib.dlopen (SOME "libsmloracle.so", Dynlib.NOW, false)
                                    val _ = 
                                           (log "Opened libsmloracle.so, performing resolvation" ;
-                                           Dynlib.dlsym("apsmlGetSession","apsmlGetSession",b);
-                                           Dynlib.dlsym("apsmlDropSession", "apsmlDropSession",b);
-                                           Dynlib.dlsym("DBExecuteSQL", "DBExecuteSQL",b);
-                                           Dynlib.dlsym("apsmlGetCNames", "apsmlGetCNames",b);
-                                           Dynlib.dlsym("apsmlGetRow","apsmlGetRow",b);
-                                           Dynlib.dlsym("DBTransStart", "DBTransStart", b);
-                                           Dynlib.dlsym("DBTransCommit", "DBTransCommit",b);
-                                           Dynlib.dlsym("DBTransRollBack","DBTransRollBack",b);
+                                           Dynlib.dlsym("apsmlORAGetSession","apsmlGetSession",b);
+                                           Dynlib.dlsym("apsmlORADropSession", "apsmlDropSession",b);
+                                           Dynlib.dlsym("DBORAExecuteSQL", "DBExecuteSQL",b);
+                                           Dynlib.dlsym("apsmlORAGetCNames", "apsmlGetCNames",b);
+                                           Dynlib.dlsym("apsmlORAGetRow","apsmlGetRow",b);
+                                           Dynlib.dlsym("DBORATransStart", "DBTransStart", b);
+                                           Dynlib.dlsym("DBORATransCommit", "DBTransCommit",b);
+                                           Dynlib.dlsym("DBORATransRollBack","DBTransRollBack",b);
                                            Dynlib.dlsym("apsmlORASetVal","apsmlORASetVal",b);
                                            log "resolvation done")
                                in first:=false
