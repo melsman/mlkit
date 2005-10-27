@@ -41,7 +41,7 @@ typedef struct oSes
   ub4 mode;
   int *datasizes;
   unsigned char *rowp;
-  char msg[MAXMSG];
+  unsigned char msg[MAXMSG];
 } oSes_t;
 
 typedef struct
@@ -78,7 +78,7 @@ typedef struct
 #define ErrorCheck(status,type,dbmsg,code,rd) {                                      \
   if (status != OCI_SUCCESS)                                                         \
   {                                                                                  \
-    if (putmsg(db, status, &errcode, type, (unsigned char *) (dbmsg->msg), MAXMSG,   \
+    if (putmsg(db, status, &errcode, type, dbmsg->msg, MAXMSG,   \
                dbmsg->errhp, rd)!=OCI_SUCCESS) \
     {                                                                                \
       code                                                                           \
