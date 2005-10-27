@@ -15,7 +15,7 @@ ODBCLIB=odbc.so.1.0
 
 @SET_MAKE@
 
-.PHONY: install all clean oracle installsml oracle_install odbc
+.PHONY: install all clean oracle installsml oracle_install odbc odbc_install
 
 ALL=${TARGET}
 INST=installsml
@@ -58,10 +58,14 @@ installsml: ${TARGET}
 oracle_install: oracle
 	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
 	$(INSTALL) $(ORACLELIB) $(INSTDIR_SMLSERVER)/lib
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN}f libsmloracle.so.1.0 libsmloracle.so.1
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN}f libsmloracle.so.1 libsmloracle.so
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1 libsmloracle.so
 
 odbc_install: odbc
+	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
+	$(INSTALL) $(ODBCLIB) $(INSTDIR_SMLSERVER)/lib
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1 libsmloracle.so
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo
