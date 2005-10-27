@@ -8,13 +8,13 @@
 
 #define MAXMSG 1024
 
-enum
+enum DBReturn
 {
   DBError = 0, 
   DBData = 1, 
   DBDml = 2,
   DBEod = 3
-} DBReturn;
+};
 
 typedef struct 
 {
@@ -24,7 +24,7 @@ typedef struct
   OraText *poolName;
   ub4 poolNameLength;
   int dbid;
-  char msg[MAXMSG];
+  unsigned char msg[MAXMSG];
   void *freeSessionsGlobal;
   unsigned int number_of_sessions;
   unsigned char about_to_shutdown; // != 0 if we are shutting this environment down
@@ -40,7 +40,7 @@ typedef struct oSes
   oDb_t *db;
   ub4 mode;
   int *datasizes;
-  char *rowp;
+  unsigned char *rowp;
   char msg[MAXMSG];
 } oSes_t;
 
@@ -70,7 +70,6 @@ typedef struct
   int depth;
 } dbOraData;
 
-
 #ifdef MAX
 #undef MAX
 #endif
@@ -79,63 +78,17 @@ typedef struct
 #define ErrorCheck(status,type,dbmsg,code,rd) {                                      \
   if (status != OCI_SUCCESS)                                                         \
   {                                                                                  \
-    if (putmsg(db, status, &errcode, type, dbmsg->msg, MAXMSG, dbmsg->errhp, rd)!=OCI_SUCCESS) \
+    if (putmsg(db, status, &errcode, type, (unsigned char *) (dbmsg->msg), MAXMSG,   \
+               dbmsg->errhp, rd)!=OCI_SUCCESS) \
     {                                                                                \
       code                                                                           \
     }                                                                                \
   }                                                                                  \
 }
 
-/*
-static void
-printErr(dvoid *err, sword i, ub4 t)//{{{
-{
-  char *s;
-  text errbuf[512];
-  sb4 errcode;
-  switch (i) 
-  {
-    case OCI_SUCCESS:
-      s = "OCI_SUCCESS\n";
-      break;
-    case OCI_SUCCESS_WITH_INFO:
-      OCIErrorGet(err, (ub4) 1, (text *) NULL, &errcode, errbuf, 512, t);
-      printf("err: %s\n", errbuf);
-      s = "OCI_SUCCESS_WITH_INFO\n";
-      break;
-    case OCI_NO_DATA:
-      s = "OCI_NO_DATA\n";
-      break;
-    case OCI_ERROR:
-      OCIErrorGet(err, (ub4) 1, (text *) NULL, &errcode, errbuf, 512, t);
-      printf("err: %s\n", errbuf);
-      s = "OCI_ERROR\n";
-      break;
-    case OCI_INVALID_HANDLE:
-      OCIErrorGet(err, (ub4) 1, (text *) NULL, &errcode, errbuf, 512, t);
-      printf("err: %s\n", errbuf);
-      s = "OCI_INVALID_HANDLE\n";
-      break;
-    case OCI_NEED_DATA:
-      s = "OCI_NEED_DATA\n";
-      break;
-    case OCI_STILL_EXECUTING:
-      s = "OCI_STILL_EXECUTING\n";
-      break;
-    case OCI_CONTINUE:
-      s = "OCI_CONTINUE\n";
-      break;
-    default:
-      s = "Not reconized\n";
-      break;
-  }
-  printf ("status == %s", s);
-  return;
-}//}}}
-*/
-
 static sword
-putmsg(oDb_t *db, sword status, sb4 *errcode, ub4 t, char *msg, int msgLength, OCIError *errhp, void *ctx)/*{{{*/
+putmsg(oDb_t *db, sword status, sb4 *errcode, ub4 t, unsigned char *msg, int msgLength, 
+       OCIError *errhp, void *ctx)/*{{{*/
 {
   if (t == OCI_HTYPE_ENV)
   {
@@ -153,14 +106,14 @@ putmsg(oDb_t *db, sword status, sb4 *errcode, ub4 t, char *msg, int msgLength, O
       case OCI_SUCCESS_WITH_INFO:
         OCIErrorGet(errhp, (ub4) 1, (text *) NULL, errcode, msg, msgLength, t);
         msg[msgLength-1] = 0;
-        dblog1(ctx, msg);
+        dblog1(ctx, (char *) msg);
         return OCI_SUCCESS;
         break;
       case OCI_ERROR:
       case OCI_INVALID_HANDLE:
         OCIErrorGet(errhp, (ub4) 1, (text *) NULL, errcode, msg, msgLength, t);
         msg[msgLength-1] = 0;
-        dblog1(ctx, msg);
+        dblog1(ctx, (char *) msg);
         return OCI_ERROR;
         break;
       default:
@@ -242,7 +195,7 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
   return db;
 }/*}}}*/
 
-void
+static void
 DBCheckNSetIfServerGoneBad(oDb_t *db, sb4 errcode, void *ctx, int lock)/*{{{*/
 {
   db_conf *dbc;
@@ -271,7 +224,7 @@ DBCheckNSetIfServerGoneBad(oDb_t *db, sb4 errcode, void *ctx, int lock)/*{{{*/
   return;
 }/*}}}*/
 
-void 
+static void 
 DBShutDown(oDb_t *db, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
@@ -288,7 +241,7 @@ DBShutDown(oDb_t *db, void *ctx)/*{{{*/
   return;
 }/*}}}*/
 
-void
+static void
 DBShutDownWconf(void *db2, void *ctx)/*{{{*/
 {
   oDb_t *db;
@@ -364,7 +317,7 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
   return;
 }/*}}}*/
 
-int
+enum DBReturn
 DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
@@ -415,7 +368,7 @@ DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 }/*}}}*/
 
 void *
-DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **columnCtx, 
+DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, unsigned char *), void **columnCtx, 
                  void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
@@ -425,8 +378,8 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
   sword status;
   ub2 type;
   sb4 coldatasize = 0;
-  char *colname;
-  sb4 colnamelength;
+  unsigned char *colname;
+  ub4 colnamelength;
   int *datasizes;
   db = ses->db;
   if (ses->stmthp == NULL) return NULL;
@@ -498,8 +451,8 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
   return *columnCtx;
 }/*}}}*/
 
-static int
-DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx)/*{{{*/
+static enum DBReturn
+DBGetRow (oSes_t *ses, void *dump(void *, int, unsigned char *), void **rowCtx, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
   ub4 i, n;
@@ -513,7 +466,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx
   if (!ses->rowp) 
   {
     for (i=1; i <= n; i++) size += ses->datasizes[i];
-    ses->rowp = (char *) malloc(size);
+    ses->rowp = (unsigned char *) malloc(size);
     if (!ses->rowp)
     {
       DBFlushStmt(ses, ctx);
@@ -523,7 +476,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx
     {
       status = OCIDefineByPos(ses->stmthp, &defnpp, ses->errhp, i, ses->rowp+size+sizeof(sb2), 
                               ses->datasizes[i] - sizeof(sb2), 
-                              SQLT_STR, (dvoid *) ses->rowp+size, NULL, NULL, OCI_DEFAULT);
+                              SQLT_STR, (dvoid *) (ses->rowp+size), NULL, NULL, OCI_DEFAULT);
       ErrorCheck(status, OCI_HTYPE_ERROR, ses,
           DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
           DBFlushStmt(ses,ctx);
@@ -556,7 +509,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx
   return DBData;
 }/*}}}*/
 
-int 
+enum DBReturn 
 DBTransStart (oSes_t *ses)/*{{{*/
 {
   if (ses == NULL || ses->mode == OCI_DEFAULT) return DBError;
@@ -564,7 +517,7 @@ DBTransStart (oSes_t *ses)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-int
+enum DBReturn
 DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 {
   sword status;
@@ -588,7 +541,7 @@ DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-int 
+enum DBReturn 
 DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
@@ -612,7 +565,7 @@ DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-static int
+static enum DBReturn
 DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
 {
   sword status;
@@ -666,10 +619,11 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   return DBEod;
 }/*}}}*/
 
-int
+enum DBReturn
 apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
+  db_conf *dbc;
   oSes_t *tmpses, *rses;
   int dbid;
   oDb_t *db;
@@ -698,7 +652,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
     }
   }
   dbdata->depth--;
-  db_conf *dbc = (db_conf *) apsmlGetDBData(dbid, rd);
+  dbc = (db_conf *) apsmlGetDBData(dbid, rd);
   lock_thread(dbc->tlock);
   if (dbdata->theOne)
   {
@@ -765,6 +719,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
 {
   oSes_t *ses;
   oDb_t *db;
+  db_conf *dbc;
   int i;
   dbOraData *dbdata = (dbOraData *) getDbData(dbid, rd);
   if (!dbdata) 
@@ -795,7 +750,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
     return ses;
   }
   dblog1(rd, "2");
-  db_conf *dbc = (db_conf *) apsmlGetDBData(dbid,rd);
+  dbc = (db_conf *) apsmlGetDBData(dbid,rd);
   if (dbc == NULL)
   {
     dblog1(rd, "Database not configred");
@@ -904,15 +859,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   return NULL;
 }/*}}}*/
 
-//void
-//apsmlORAChildInit(void *cd1, int num, void *pool, void *server)/*{{{*/
-//{
-//  db_conf *cd = (db_conf *) cd1;
-//  proc_lock_child_init(&(cd->plock), cd->plockname, pool);
-//  return;
-//}/*}}}*/
-
-void
+static void
 apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
 {
   oSes_t *ses;
@@ -926,7 +873,7 @@ apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
   return;
 }/*}}}*/
 
-void 
+static void 
 apsmlORAChildInit(void *c1, int num, void *pool, void *server)
 {
   return;
@@ -1031,7 +978,7 @@ typedef struct
 } cNames_t;
 
 static void *
-dumpCNames (void *ctx1, int pos, int length, char *data)/*{{{*/
+dumpCNames (void *ctx1, int pos, int length, unsigned char *data)/*{{{*/
 {
   String rs;
   int *pair;
@@ -1062,7 +1009,7 @@ apsmlGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, int pos, char *data)/*{{{*/
+dumpRows(void *ctx1, int pos, unsigned char *data)/*{{{*/
 {
   String rs;
   sb2 *ivarp;
