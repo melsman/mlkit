@@ -2,6 +2,7 @@ SHELL=@SHELL@
 
 APXS=@apxs@
 ORACLE=@oracle_dir@
+ODBC=@odbc@
 CC=@CC@
 LN=@LN_S@
 MKDIR=@top_srcdir@/mkinstalldirs
@@ -21,12 +22,12 @@ ALL=${TARGET}
 INST=installsml
 ifneq (${ORACLE}x,x)
 ALL+= oracle 
-INST+=oracle_install
+INST+= oracle_install
 endif
 
-ifneq ($(ODBC)x,x)
+ifneq ($(ODBC)x,nox)
 ALL+= odbc
-INST+=odbc_install
+INST+= odbc_install
 endif
 
 all: ${ALL}

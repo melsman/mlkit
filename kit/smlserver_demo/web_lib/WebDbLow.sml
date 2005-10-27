@@ -154,13 +154,11 @@ functor DbODBCBackend(type conn = int
                                else ()
                               ) ;
                            case d 
-                           of "LazyConnect" => setBool 1
-                            | "UserName" => setString 2
+                           of 
+                              "UserName" => setString 2
                             | "PassWord" => setString 3
-                            | "TNSname"  => setString 4
+                            | "DSN"  => setString 4
                             | "SessionMaxDepth" => setInt 5
-                            | "MinimumNumberOfConnections" => setInt 6
-                            | "MaximumNumberOfConnections" => setInt 7
                             | _ => (log "Unknown setting :" ^ d; raise Domain))
                            end
     fun getHandle (i:int) : DbHandle = let val res : int = (log "apsmlODBCGetSession" ; prim(":", ("apsmlODBCGetSession",i,getReqRec()))) before (log("apsmlODBCGetSession DONE");())
@@ -244,6 +242,7 @@ functor DbODBCBackend(type conn = int
                                                end
                                                   
   end
+
 
 
 functor DbOracleBackend(type conn = int
@@ -408,6 +407,7 @@ functor DbOracleBackend(type conn = int
                                                end
                                                   
   end
+
 
 signature WEB_DB_UNIQUE = 
   sig 

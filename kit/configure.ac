@@ -29,6 +29,11 @@ AC_ARG_ENABLE(threaded,
   AS_HELP_STRING(--disable-threaded,Don't use threaded interpreter),[],
   AC_DEFINE(THREADED,1,[Kam backend should be threaded]))
 
+AC_SUBST(odbc,no)
+AC_ARG_ENABLE(odbc,
+  AS_HELP_STRING(--enable-odbc,Compile ODBC functionality),
+  AC_SUBST(odbc,${enable_odbc}),)
+
 AC_ARG_WITH(
      compiler,
      AS_HELP_STRING(--with-compiler[=FILE],[SML compiler to build tools and the initial mlkit compiler]),
