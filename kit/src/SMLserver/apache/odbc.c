@@ -170,13 +170,13 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
   db->about_to_shutdown = 0;
   db->msg[0] = 0;
   status = SQLSetEnvAttr(SQL_NULL_HANDLE, SQL_ATTR_CONNECTION_POOLING, SQL_CP_ONE_PER_HENV, 0)
-  ErrorCheck(status, SQL_HANDLE_ENV, db, 
+  ErrorCheck(status, SQL_HANDLE_ENV, SQL_NULL_HANDLE, db->msg,
       dblog1(ctx, "Connection pooling setup failed");
       return NULL;,
       ctx
       )
   status = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &db->envhp);
-  ErrorCheck(status, OCI_HTYPE_ENV, db, 
+  ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
       dblog1(ctx, "SQLAllocHandle failed");
       return NULL;,
       ctx
@@ -184,7 +184,7 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
   dblog1(ctx, "dbinit2");
 
   status = SQLSetEnvAttr(db->envhp, SQL_ATTR_ODBC_VERSION, SQL_OV_ODBC3, 0);
-  ErrorCheck(status, SQL_HANDLE_ENV, db, 
+  ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
       dblog1(ctx, "ODBC version setup failed");
       return NULL;,
       ctx
@@ -271,14 +271,14 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   ses->connhp = NULL;
   ses->next = NULL;
   status = SQLAllocHandle(SQL_HANDLE_DBC, db->envhp, &ses->connhp);
-  ErrorCheck(status, OCI_HTYPE_ENV, db,
+  ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
       dblog1(rd, "oracleDB: DataBase alloc failed; are we out of memory?");
       free(ses);
       return NULL;,
       rd
       )
   status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_QUIET_MODE, NULL, NULL);
-  ErrorCheck(status, OCI_HTYPE_ERROR, db,
+  ErrorCheck(status, SQL_HANDLE_DBC, db->conn, db->msg,
       SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
       free(ses);
       return NULL;,
@@ -287,7 +287,15 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   status = SQLConnect(ses->connhp, db->DSN.cstring, db->DSN.length,
                                    db->UID.cstring, db->UID.length,
                                    db->PW.cstring, db->PW.length);
-  ErrorCheck(status, OCI_HTYPE_ERROR, db,
+  ErrorCheck(status, SQL_HANDLE_DBC, db->conn, db->msg,
+      DBCheckNSetIfServerGoneBad(db, status, rd, 0);
+      SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
+      free(ses);
+      return NULL;,
+      rd
+      )
+  status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
+  ErrorCheck(status, SQL_HANDLE_DBC, db->conn, db->msg,
       DBCheckNSetIfServerGoneBad(db, status, rd, 0);
       SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
       free(ses);
@@ -333,19 +341,17 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 int
 DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
-  sb4 errcode = 0;
   SQLRETURN status;
-  ub4 type = 0;
-  int count;
-  dvoid *db;
+  unsigned int count;
+  oDb_t *db;
   db = ses->db;
-  status = OCIStmtPrepare2 (ses->svchp, &(ses->stmthp), ses->errhp, (CONST OraText *) sql, 
-                            (ub4) strlen(sql), NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
+  status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
+  ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       return DBError;,
       ctx
       )
+    // SQLNumResultCols does this job. ( 0 => no result, >0 => select)
   status = OCIAttrGet((dvoid *) ses->stmthp, OCI_HTYPE_STMT, (dvoid *) &type, 
              NULL, OCI_ATTR_STMT_TYPE, ses->errhp);
   ErrorCheck(status, OCI_HTYPE_ERROR, ses,
@@ -412,6 +418,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
   for (i=1; i <= n; i++)
   {
     // Get column data
+  // SQLColAttribute with SQL_DESC_OCTET_LENGTH will do
     status = OCIParamGet((dvoid *) ses->stmthp, OCI_HTYPE_STMT, ses->errhp, (dvoid **) &colhd, i);
     ErrorCheck(status, OCI_HTYPE_ERROR, ses,
         DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
@@ -420,6 +427,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
         ctx
         )
     // Get column name
+  // SQLColAttribute with SQL_DESC_NAME will do
     status = OCIAttrGet ((dvoid *) colhd, OCI_DTYPE_PARAM, (dvoid *) &colname, &colnamelength, 
                          OCI_ATTR_NAME, ses->errhp);
     ErrorCheck(status, OCI_HTYPE_ERROR, ses,
