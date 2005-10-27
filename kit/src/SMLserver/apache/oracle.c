@@ -318,7 +318,7 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 enum DBReturn
-DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
+DBORAExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
   sword status;
@@ -367,7 +367,7 @@ DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-void *
+static void *
 DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, unsigned char *), void **columnCtx, 
                  void *ctx)/*{{{*/
 {
@@ -510,7 +510,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, unsigned char *), void **rowCtx, 
 }/*}}}*/
 
 enum DBReturn 
-DBTransStart (oSes_t *ses)/*{{{*/
+DBORATransStart (oSes_t *ses)/*{{{*/
 {
   if (ses == NULL || ses->mode == OCI_DEFAULT) return DBError;
   ses->mode = OCI_DEFAULT;
@@ -518,7 +518,7 @@ DBTransStart (oSes_t *ses)/*{{{*/
 }/*}}}*/
 
 enum DBReturn
-DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
+DBORATransCommit (oSes_t *ses, void *ctx)/*{{{*/
 {
   sword status;
   sb4 errcode = 0;
@@ -542,7 +542,7 @@ DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 enum DBReturn 
-DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
+DBORATransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 {
   sb4 errcode = 0;
   sword status;
@@ -620,7 +620,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 enum DBReturn
-apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
+apsmlORADropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
   db_conf *dbc;
@@ -715,7 +715,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 }/*}}}*/
 
 oSes_t *
-apsmlGetSession(int dbid, void *rd)/*{{{*/
+apsmlORAGetSession(int dbid, void *rd)/*{{{*/
 {
   oSes_t *ses;
   oDb_t *db;
@@ -846,7 +846,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
           dblog1(rd, "Could not get session");
           wait_cond(dbc->cvar);
           unlock_thread(dbc->tlock);
-          return apsmlGetSession(dbid, rd);
+          return apsmlORAGetSession(dbid, rd);
         }
         unlock_thread(dbc->tlock);
         dbdata->depth++;
@@ -854,7 +854,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       }
     }
   }
-  dblog1(rd, "Oracle driver: End of apsmlGetSession reached. This is not suppose to happend");
+  dblog1(rd, "Oracle driver: End of apsmlORAGetSession reached. This is not suppose to happend");
   unlock_thread(dbc->tlock);
   return NULL;
 }/*}}}*/
@@ -868,7 +868,7 @@ apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
   while ((ses = dbdata->dbSessions))
   {
     dbdata->theOne = 0;
-    apsmlDropSession(ses, rd);
+    apsmlORADropSession(ses, rd);
   }
   return;
 }/*}}}*/
@@ -992,7 +992,7 @@ dumpCNames (void *ctx1, int pos, int length, unsigned char *data)/*{{{*/
 }/*}}}*/
 
 int
-apsmlGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
+apsmlORAGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
   cNames_t *cn = &cn1;
@@ -1037,7 +1037,7 @@ dumpRows(void *ctx1, int pos, unsigned char *data)/*{{{*/
 }/*}}}*/
 
 int
-apsmlGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
+apsmlORAGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
             oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
