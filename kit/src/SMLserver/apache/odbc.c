@@ -9,13 +9,13 @@
 
 #define MAXMSG 1024
 
-enum
+enum DBReturn
 {
   DBError = 0, 
   DBData = 1, 
   DBDml = 2,
   DBEod = 3
-} DBReturn;
+};
 
 enum COMMIT_MODE
 {
@@ -342,7 +342,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
   SQLRETURN status;
   status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       return DBError;,
       ctx
       )
@@ -487,7 +487,7 @@ DBODBCTransStart (oSes_t *ses, void *ctx)/*{{{*/
   if (ses == NULL || ses->mode == MANUAL_COMMIT) return DBError;
   status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_OFF, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       return DBError;,
       ctx)
   ses->mode = MANUAL_COMMIT;

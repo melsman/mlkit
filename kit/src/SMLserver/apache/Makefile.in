@@ -11,7 +11,7 @@ SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
        ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
-ODBCLIB=odbc.so.1.0
+ODBCLIB=libsmlodbc.so.1.0
 
 @SET_MAKE@
 
@@ -41,11 +41,11 @@ odbc: $(ODBCLIB)
 
 $(ORACLELIB): oracle.c
 	${CC} -Wall -std=c99 -pedantic -I ${ORACLE}/sdk/include -c -fPIC oracle.c
-	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L $(ORACLE) -lclntsh oracle.o -o libsmloracle.so.1.0
+	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L $(ORACLE) -lclntsh oracle.o -o $(ORACLELIB)
 
 $(ODBCLIB): odbc.c
 	$(CC) -Wall -std=c99 -pedantic -c -fPIC odbc.c
-	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 odbc.o -o libsmloracle.so.1.0
+	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 -lodbc odbc.o -o $(ODBCLIB)
 
 #	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
 #	${LN}f libsmloracle.so.1 libsmloracle.so
@@ -64,8 +64,8 @@ oracle_install: oracle
 odbc_install: odbc
 	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
 	$(INSTALL) $(ODBCLIB) $(INSTDIR_SMLSERVER)/lib
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1 libsmloracle.so
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmlodbc.so.1.0 libsmlodbc.so.1
+	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmlodbc.so.1 libsmlodbc.so
 
 clean: 
-	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo
+	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0
