@@ -16,6 +16,12 @@ enum
   DBEod = 3
 } DBReturn;
 
+enum
+{
+  AUTO_COMMIT,
+  MANUAL_COMMIT
+} COMMIT_MODE;
+
 struct myString
 {
   char *cstring;
@@ -40,8 +46,10 @@ typedef struct oSes
   struct oSes *next;
   SQLHDBC connhp;
   SQLHSTMT stmthp;
+  SQLSMALLINT cols;
+  int needsClosing;
   oDb_t *db;
-  ub4 mode;
+  COMMIT_MODE mode;
   int *datasizes;
   char *rowp;
   char msg[MAXMSG];
@@ -193,7 +201,7 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
 }/*}}}*/
 
 void
-DBCheckNSetIfServerGoneBad(oDb_t *db, sb4 errcode, void *ctx, int lock)/*{{{*/
+DBCheckNSetIfServerGoneBad(oDb_t *db, SQLRETURN errcode, void *ctx, int lock)/*{{{*/
 {
   db_conf *dbc;
   switch (errcode)
@@ -205,7 +213,7 @@ DBCheckNSetIfServerGoneBad(oDb_t *db, sb4 errcode, void *ctx, int lock)/*{{{*/
     case 3114: // not connected to ORACLE
     case 12571: // TNS:packet writer failure
     case 24324: // service handle not initialized
-      dblog1(ctx, "Database gone bad. Oracle environment about to shutdown");
+      dblog1(ctx, "Database gone bad. ODBC environment about to shutdown");
       dbc = (db_conf *) apsmlGetDBData(db->dbid,ctx);
       if (!dbc) return;
       if (lock) lock_thread(dbc->tlock);
@@ -263,9 +271,10 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
     return NULL;
   }
   ses->db = db;
-  ses->mode = COMMIT_ON_SUCCESS;
-  ses->stmthp = NULL;
+  ses->mode = AUTO_COMMIT;
+  ses->stmthp = SQL_NULL_HANDLE;
   ses->datasizes = NULL;
+  ses->needsClosing = 0;
   ses->rowp = NULL;
   ses->msg[0] = 0;
   ses->connhp = NULL;
@@ -287,15 +296,7 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   status = SQLConnect(ses->connhp, db->DSN.cstring, db->DSN.length,
                                    db->UID.cstring, db->UID.length,
                                    db->PW.cstring, db->PW.length);
-  ErrorCheck(status, SQL_HANDLE_DBC, db->conn, db->msg,
-      DBCheckNSetIfServerGoneBad(db, status, rd, 0);
-      SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
-      free(ses);
-      return NULL;,
-      rd
-      )
-  status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
-  ErrorCheck(status, SQL_HANDLE_DBC, db->conn, db->msg,
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       DBCheckNSetIfServerGoneBad(db, status, rd, 0);
       SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
       free(ses);
@@ -341,48 +342,43 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 int
 DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
+  if (ses == NULL || sql = NULL) return DBError;
   SQLRETURN status;
-  unsigned int count;
-  oDb_t *db;
-  db = ses->db;
+  status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, db->msg,
+      DBCheckNSetIfServerGoneBad(db, status, rd, 0);
+      return DBError;,
+      rd
+      )
+  ses->needsClosing = 0;
   status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
+      ses->stmthp = SQL_NULL_HANDLE;
       return DBError;,
       ctx
       )
-    // SQLNumResultCols does this job. ( 0 => no result, >0 => select)
-  status = OCIAttrGet((dvoid *) ses->stmthp, OCI_HTYPE_STMT, (dvoid *) &type, 
-             NULL, OCI_ATTR_STMT_TYPE, ses->errhp);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
+  ses->needsClosing = 1;
+  status SQLNumResultCols(ses->stmthp, &ses->cols);
+  ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
-      status = OCIStmtRelease (ses->stmthp, ses->errhp, NULL, 0, OCI_STRLS_CACHE_DELETE);
+      DBFlushStmt(ses,ctx);
+      ses->stmthp = SQL_NULL_HANDLE;
       return DBError;,
       ctx
       )
-  switch (type) 
-  {
-    case OCI_STMT_SELECT:
-      count = 0;
-      break;
-    default:
-      count = 1;
-      break;
-  }
-  status = OCIStmtExecute(ses->svchp, ses->stmthp, ses->errhp, count, 0, NULL, NULL, ses->mode);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
+  if (ses->cols > 0) return DBData;
+  SQLCloseCursor(ses->stmthp);
+  ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
-      DBFlushStmt(ses, ctx);
+      ses->needsClosing = 0;
+      DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
       )
-  if (type == OCI_STMT_SELECT) return DBData;
-  status = OCIStmtRelease(ses->stmthp, ses->errhp, NULL, 0, OCI_DEFAULT);
-  ses->stmthp = NULL;
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses, 
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
-      return DBError;, 
-      ctx)
+  SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
+  ses->stmthp = SQL_NULL_HANDLE;
   return DBDml;
 }/*}}}*/
 
@@ -390,84 +386,40 @@ void *
 DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **columnCtx, 
                  void *ctx)/*{{{*/
 {
-  sb4 errcode = 0;
-  ub4 n, i;
-  OCIParam *colhd = (OCIParam *) NULL;
-  dvoid *db;
-  sword status;
-  ub2 type;
-  sb4 coldatasize = 0;
-  char *colname;
-  sb4 colnamelength;
+  SQLSMALLINT n, i;
+  SQLRETURN status;
+  SQLCHAR *colname;
+  SQLSMALLINT colnamelength;
   int *datasizes;
-  db = ses->db;
-  if (ses->stmthp == NULL) return NULL;
-  status = OCIAttrGet((dvoid *) ses->stmthp, OCI_HTYPE_STMT, (dvoid *) &n, 
-                        0, OCI_ATTR_PARAM_COUNT, ses->errhp);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
-      DBFlushStmt(ses,ctx);
-      return NULL;,
-      ctx
-      )
+  if (ses->stmthp == SQL_NULL_HANDLE) return NULL;
   ses->datasizes = (int *) malloc((n+1) * sizeof (int));
   
   if (ses->datasizes == NULL) return NULL;
   datasizes = ses->datasizes;
-  datasizes[0] = n;
-  for (i=1; i <= n; i++)
+  datasizes[0] = ses->cols;
+  for (i=1; i <= ses->cols; i++)
   {
     // Get column data
   // SQLColAttribute with SQL_DESC_OCTET_LENGTH will do
-    status = OCIParamGet((dvoid *) ses->stmthp, OCI_HTYPE_STMT, ses->errhp, (dvoid **) &colhd, i);
-    ErrorCheck(status, OCI_HTYPE_ERROR, ses,
-        DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
-        DBFlushStmt(ses,ctx);
-        return NULL;,
-        ctx
-        )
     // Get column name
-  // SQLColAttribute with SQL_DESC_NAME will do
-    status = OCIAttrGet ((dvoid *) colhd, OCI_DTYPE_PARAM, (dvoid *) &colname, &colnamelength, 
-                         OCI_ATTR_NAME, ses->errhp);
-    ErrorCheck(status, OCI_HTYPE_ERROR, ses,
+    status = SQLColAttribute(ses->stmthp, i, SQL_DESC_NAME, &colname, 
+                             SQL_IS_POINTER, &colnamelength, NULL);
+    ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
         DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
         )
     *columnCtx = dump(*columnCtx, i, (int) colnamelength, colname);
-    // Get column type
-    status = OCIAttrGet(colhd, OCI_DTYPE_PARAM, &type, NULL, OCI_ATTR_DATA_TYPE, ses->errhp);
-    ErrorCheck(status, OCI_HTYPE_ERROR, ses, 
-        DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
-        DBFlushStmt(ses,ctx);
-        return NULL;,
-        ctx
-        )
     // Get size of data
-    status = OCIAttrGet(colhd, OCI_DTYPE_PARAM, &coldatasize, NULL, OCI_ATTR_DATA_SIZE, ses->errhp);
-    ErrorCheck(status, OCI_HTYPE_ERROR, ses, 
+    status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH, 
+                             NULL, NULL, NULL, datasizes+i);
+    ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->smg,
         DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
         )
-    // correct size such that extraction as strings is possible without overflow
-    switch (type)
-    {
-      case SQLT_NUM:
-        // an over estimete of log_10(256^size) = size * log_10(256)
-        coldatasize = (coldatasize * 5) / 2 + 1 + sizeof(sb2);
-        break;
-      case SQLT_DAT:
-        coldatasize = 28;
-        break;
-      default:
-        coldatasize = coldatasize + 1 + sizeof(sb2);
-        break;
-    }
-    datasizes[i] = coldatasize;
   }
   return *columnCtx;
 }/*}}}*/
@@ -475,86 +427,91 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
 static int
 DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx)/*{{{*/
 {
-  sb4 errcode = 0;
-  ub4 i, n;
-  sword status;
-  int size = 0;
-  dvoid *db;
-  OCIDefine *defnpp = NULL;
-  db = ses->db;
+  unsigned int i, n;
+  SQLRETURN status;
+  unsigned int size = 0;
   if (ses->stmthp == NULL) return DBEod;
   n = ses->datasizes[0];
   if (!ses->rowp) 
   {
-    for (i=1; i <= n; i++) size += ses->datasizes[i];
+    for (i=1; i <= n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
     ses->rowp = (char *) malloc(size);
     if (!ses->rowp)
     {
       DBFlushStmt(ses, ctx);
       return DBError;
     }
-    for (i=1, size = 0; i <= n; i++)
+    for (i=1, size = n * sizeof(SQLLEN); i <= n; i++)
     {
-      status = OCIDefineByPos(ses->stmthp, &defnpp, ses->errhp, i, ses->rowp+size+sizeof(sb2), 
-                              ses->datasizes[i] - sizeof(sb2), 
-                              SQLT_STR, (dvoid *) ses->rowp+size, NULL, NULL, OCI_DEFAULT);
-      ErrorCheck(status, OCI_HTYPE_ERROR, ses,
+      status = SQLBindCol(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR,
+                              (SQLPOINTER) ses->rowp+size, 
+                              (SQLINTEGER) (ses->datasizes[i] + 1),
+                              (SQLLEN *) (ses->rowp + (i * sizeof(SQLLEN))));
+      ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
           DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
           DBFlushStmt(ses,ctx);
           return DBError;,
           ctx
           )
-      size += ses->datasizes[i];
+      size += ses->datasizes[i]+1;
     }
   }
-  status = OCIStmtFetch2(ses->stmthp, ses->errhp, (ub4) 1, OCI_FETCH_NEXT, 0, OCI_DEFAULT);
-  if (status == OCI_NO_DATA)
+  status = SQLFetch(ses->stmthp);
+  if (status == SQL_NO_DATA)
   {
     DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
     DBFlushStmt(ses,ctx);
     return DBEod;
   }
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
+  ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
         DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
         DBFlushStmt(ses,ctx);
         return DBError;,
         ctx
         )
-  for (i=1, size = 0; i < n; i++) size += ses->datasizes[i];
-  for (i=n; i > 0; i--)
+  for (i=1, size = 0; i < n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
+  SQLLEN *a;
+  for (i=n-1; i >= 0; i--)
   {
-//    dblog1(ses->db->ctx, "111");
-    *rowCtx = dump(*rowCtx, i, ses->rowp+size);
-    size -= ses->datasizes[i-1];
+    a = (SQLLEN *)(ses->rowp + (i * sizeof(SQLLEN)));
+    if (*a != SQL_NULL_DATA && *a > ses->datasizes[i]+1)
+    {
+      *a = -(*a - (ses->datasizes[i] + 1));
+    }
+    *rowCtx = dump(*rowCtx, a, ses->rowp+size);
+    size -= (ses->datasizes[i] + 1);
   }
   return DBData;
 }/*}}}*/
 
 int 
-DBTransStart (oSes_t *ses)/*{{{*/
+DBTransStart (oSes_t *ses, void *ctx)/*{{{*/
 {
-  if (ses == NULL || ses->mode == OCI_DEFAULT) return DBError;
-  ses->mode = OCI_DEFAULT;
+  SQLRETURN status;
+  if (ses == NULL || ses->mode == MANUAL_COMMIT) return DBError;
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_OFF, NULL);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);
+      return DBError;,
+      ctx)
+  ses->mode = MANUAL_COMMIT;
   return DBDml;
 }/*}}}*/
 
 int
 DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 {
-  sword status;
-  sb4 errcode = 0;
-  dvoid *db;
+  SQLRETURN status;
   if (ses == NULL) return DBError;
-  db = ses->db;
-  if (ses->mode == COMMIT_ON_SUCCESS) 
+  if (ses->mode == AUTO_COMMIT) 
   {
     DBFlushStmt(ses,ctx);
     return DBError;
   }
-  ses->mode = COMMIT_ON_SUCCESS;
-  status = OCITransCommit(ses->svchp, ses->errhp, OCI_DEFAULT);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+  ses->mode = AUTO_COMMIT;
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_ON, NULL);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
+      DBCheckNSetIfServerGoneBad(ses->db, status, rd, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -565,20 +522,24 @@ DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 int 
 DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 {
-  sb4 errcode = 0;
-  sword status;
-  dvoid *db;
+  SQLRETURN status;
   if (ses == NULL) return DBError;
-  db = ses->db;
-  if (ses->mode == COMMIT_ON_SUCCESS) 
+  if (ses->mode == AUTO_COMMIT) 
   {
     DBFlushStmt(ses,ctx);
     return DBError;
   }
-  ses->mode = COMMIT_ON_SUCCESS;
-  status = OCITransRollback(ses->svchp, ses->errhp, OCI_DEFAULT);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses,
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+  status = SQLEndTran(SQL_HANDLE_DBC, ses->connhp, SQL_ROLLBACK);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBFlushStmt(ses,ctx);
+      return DBError;,
+      ctx
+      )
+  ses->mode = AUTO_COMMIT;
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_ON, NULL);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
+      DBCheckNSetIfServerGoneBad(ses->db, status, rd, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -1017,24 +978,28 @@ apsmlGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, int pos, char *data)/*{{{*/
+dumpRows(void *ctx1, STRLEN data1, char *data2)/*{{{*/
 {
   String rs;
   sb2 *ivarp;
   int *pair, ivar, *pair2;
   cNames_t *ctx = (cNames_t *) ctx1;
-  ivarp = (sb2 *) data;
-  data += sizeof(sb2);
-  ivar = (int) *ivarp;
   allocRecordML(ctx->rListAddr, 2, pair);
   allocRecordML(ctx->rAddrEPairs, 2, pair2);
-  if (ivar != 0)
+  if (data1 == SQL_NULL_DATA)
   {
     rs = NULL;
+    ivar = -1;
+  }
+  else if (data1 < 0)
+  {
+    rs = NULL;
+    ivar = -data1;
   }
   else 
   {
-    rs = convertStringToML(ctx->rStringAddr, data);
+    rs = convertBinStringToML(ctx->rStringAddr, (int) data1, data2);
+    ival = 0;
   }
   first(pair2) = (int) rs;
   second(pair2) = ivar;
