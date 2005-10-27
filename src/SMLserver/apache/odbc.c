@@ -25,7 +25,7 @@ enum COMMIT_MODE
 
 struct myString
 {
-  char *cstring;
+  unsigned char *cstring;
   unsigned int length;
 };
 
@@ -33,7 +33,7 @@ typedef struct
 {
   SQLHENV envhp;
   int dbid;
-  char msg[MAXMSG];
+  unsigned char msg[MAXMSG];
   void *freeSessionsGlobal;
   unsigned int number_of_sessions;
   unsigned char about_to_shutdown; // != 0 if we are shutting this environment down
@@ -52,15 +52,15 @@ typedef struct oSes
   oDb_t *db;
   enum COMMIT_MODE mode;
   int *datasizes;
-  char *rowp;
-  char msg[MAXMSG];
+  unsigned char *rowp;
+  unsigned char msg[MAXMSG];
 } oSes_t;
 
 typedef struct
 {
-  char *DSN;
-  char *username;
-  char *password;
+  unsigned char *DSN;
+  unsigned char *username;
+  unsigned char *password;
   thread_lock tlock;
   cond_var cvar;
   int maxdepth;
@@ -92,7 +92,7 @@ typedef struct
 }
 
 static SQLRETURN
-putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, int msgLength, void *ctx)/*{{{*/
+putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char *msg, int msgLength, void *ctx)/*{{{*/
 {
   int i;
   SQLCHAR SQLstate;
@@ -114,7 +114,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
         if (msgl < msgLength)
         {
           msg[msgl] = 0;
-          dblog1(ctx, msg);
+          dblog1(ctx, (char *) msg);
         }
         else
         {
@@ -132,7 +132,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
         if (msgl < msgLength)
         {
           msg[msgl] = 0;
-          dblog1(ctx, msg);
+          dblog1(ctx, (char *) msg);
         }
         else
         {
@@ -146,31 +146,31 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
 }/*}}}*/
 
 static oDb_t * 
-DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
+DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char *password, int dbid)/*{{{*/
 {
   SQLRETURN status;
   oDb_t *db;
-  char *ctmp;
-  unsigned int dbsize = strlen(DSN) + strlen(userid) + strlen(password) + 3;
+  unsigned char *ctmp;
+  unsigned int dbsize = strlen((char *) DSN) + strlen((char *) userid) + strlen((char *) password) + 3;
   db = (oDb_t *) malloc(sizeof(oDb_t) + dbsize);
   if (!db) 
   {
     dblog1(ctx, "Malloc failed");
     return NULL;
   }
-  ctmp = (char *) db;
+  ctmp = (unsigned char *) db;
   ctmp += sizeof(oDb_t);
   db->DSN.cstring = ctmp;
-  db->DSN.length = strlen(DSN);
+  db->DSN.length = strlen((char *) DSN);
   ctmp += db->DSN.length + 1;
   db->UID.cstring = ctmp;
-  db->UID.length = strlen(userid);
+  db->UID.length = strlen((char *) userid);
   ctmp += db->UID.length + 1;
   db->PW.cstring = ctmp;
-  db->PW.length = strlen (password);
-  strcpy(db->DSN.cstring, DSN);
-  strcpy(db->UID.cstring, userid);
-  strcpy(db->PW.cstring, password);
+  db->PW.length = strlen ((char *) password);
+  strcpy((char *) db->DSN.cstring, (char *) DSN);
+  strcpy((char *) db->UID.cstring, (char *) userid);
+  strcpy((char *) db->PW.cstring, (char *) password);
 
   db->dbid = dbid;
   db->freeSessionsGlobal = NULL;
@@ -201,7 +201,7 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
   return db;
 }/*}}}*/
 
-void
+static void
 DBCheckNSetIfServerGoneBad(oDb_t *db, SQLRETURN errcode, void *ctx, int lock)/*{{{*/
 {
   db_conf *dbc;
@@ -230,7 +230,7 @@ DBCheckNSetIfServerGoneBad(oDb_t *db, SQLRETURN errcode, void *ctx, int lock)/*{
   return;
 }/*}}}*/
 
-void 
+static void 
 DBShutDown(oDb_t *db, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -245,7 +245,7 @@ DBShutDown(oDb_t *db, void *ctx)/*{{{*/
   return;
 }/*}}}*/
 
-void
+static void
 DBShutDownWconf(void *db2, void *ctx)/*{{{*/
 {
   oDb_t *db;
@@ -336,7 +336,7 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 int
-DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
+DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
 {
   if (ses == NULL || sql == NULL) return DBError;
   SQLRETURN status;
@@ -378,8 +378,8 @@ DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-void *
-DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **columnCtx, 
+static void *
+DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char *), void **columnCtx, 
                  void *ctx)/*{{{*/
 {
   SQLSMALLINT n, i;
@@ -406,7 +406,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
         return NULL;,
         ctx
         )
-    *columnCtx = dump(*columnCtx, i, (int) colnamelength, colname);
+    *columnCtx = dump(*columnCtx, i, colnamelength, colname);
     // Get size of data
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH, 
                              NULL, 0, NULL, datasizes+i);
@@ -421,7 +421,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
 }/*}}}*/
 
 static int
-DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *), void **rowCtx, void *ctx)/*{{{*/
+DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCtx, void *ctx)/*{{{*/
 {
   unsigned int i, n;
   SQLRETURN status;
@@ -431,7 +431,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *), void **rowCtx, void *
   if (!ses->rowp) 
   {
     for (i=1; i <= n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
-    ses->rowp = (char *) malloc(size);
+    ses->rowp = (unsigned char *) malloc(size);
     if (!ses->rowp)
     {
       DBFlushStmt(ses, ctx);
@@ -440,7 +440,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *), void **rowCtx, void *
     for (i=1, size = n * sizeof(SQLLEN); i <= n; i++)
     {
       status = SQLBindCol(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR,
-                              (SQLPOINTER) ses->rowp+size, 
+                              (SQLPOINTER) (ses->rowp+size), 
                               (SQLINTEGER) (ses->datasizes[i] + 1),
                               (SQLLEN *) (ses->rowp + (i * sizeof(SQLLEN))));
       ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
@@ -481,7 +481,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *), void **rowCtx, void *
 }/*}}}*/
 
 int 
-DBTransStart (oSes_t *ses, void *ctx)/*{{{*/
+DBODBCTransStart (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL || ses->mode == MANUAL_COMMIT) return DBError;
@@ -495,7 +495,7 @@ DBTransStart (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 int
-DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
+DBODBCTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL) return DBError;
@@ -516,7 +516,7 @@ DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 int 
-DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
+DBODBCTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL) return DBError;
@@ -571,7 +571,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 int
-apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
+apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
   oSes_t *tmpses, *rses;
@@ -662,7 +662,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 }/*}}}*/
 
 oSes_t *
-apsmlGetSession(int dbid, void *rd)/*{{{*/
+apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
 {
   oSes_t *ses;
   oDb_t *db;
@@ -785,7 +785,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
         dblog1(rd, "Could not get session");
         wait_cond(dbc->cvar);
         unlock_thread(dbc->tlock);
-        return apsmlGetSession(dbid, rd);
+        return apsmlODBCGetSession(dbid, rd);
       }
     }
   }
@@ -794,7 +794,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   return NULL;
 }/*}}}*/
 
-void
+static void
 apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
 {
   oSes_t *ses;
@@ -802,7 +802,7 @@ apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
   if (rd == NULL || dbdata == NULL) return;
   while ((ses = dbdata->dbSessions))
   {
-    apsmlDropSession(ses, rd);
+    apsmlODBCDropSession(ses, rd);
   }
   return;
 }/*}}}*/
@@ -814,10 +814,10 @@ apsmlORAChildInit(void *c1, int num, void *pool, void *server)
 }
 
 int 
-apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
+apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
 {
   int id;
-  char *sd, *target;
+  unsigned char *sd, *target;
   db_conf *cd;
   dblog1(rd, "apsmlORASetVal");
   cd = (db_conf *) apsmlGetDBData (i,rd);
@@ -858,10 +858,10 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
     case 2:
     case 3:
     case 4:
-      sd = (char *) val;
-      target = (char *) malloc (strlen (sd)+1);
+      sd = (unsigned char *) val;
+      target = (unsigned char *) malloc (strlen ((char *) sd)+1);
       if (!target) return 2;
-      strcpy(target, sd);
+      strcpy((char *) target,(char *) sd);
       switch (pos)
       {
         case 2:
@@ -895,7 +895,7 @@ typedef struct
 } cNames_t;
 
 static void *
-dumpCNames (void *ctx1, int pos, int length, char *data)/*{{{*/
+dumpCNames (void *ctx1, int pos, SQLSMALLINT length, unsigned char *data)/*{{{*/
 {
   String rs;
   int *pair;
@@ -909,7 +909,7 @@ dumpCNames (void *ctx1, int pos, int length, char *data)/*{{{*/
 }/*}}}*/
 
 int
-apsmlGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
+apsmlODBCGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
   cNames_t *cn = &cn1;
@@ -926,7 +926,7 @@ apsmlGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, SQLLEN data1, char *data2)/*{{{*/
+dumpRows(void *ctx1, SQLLEN data1, unsigned char *data2)/*{{{*/
 {
   String rs;
   int *pair, ivar, *pair2;
@@ -957,7 +957,7 @@ dumpRows(void *ctx1, SQLLEN data1, char *data2)/*{{{*/
 }/*}}}*/
 
 int
-apsmlGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
+apsmlODBCGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
             oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
