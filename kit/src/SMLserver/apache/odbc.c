@@ -2,6 +2,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "sql.h"
+#include "sqlext.h"
 #include "../../Runtime/List.h"
 #include "../../Runtime/String.h"
 #include "DbCommon.h"
@@ -16,17 +17,17 @@ enum
   DBEod = 3
 } DBReturn;
 
-enum
+enum COMMIT_MODE
 {
   AUTO_COMMIT,
   MANUAL_COMMIT
-} COMMIT_MODE;
+};
 
 struct myString
 {
   char *cstring;
   unsigned int length;
-}
+};
 
 typedef struct 
 {
@@ -49,7 +50,7 @@ typedef struct oSes
   SQLSMALLINT cols;
   int needsClosing;
   oDb_t *db;
-  COMMIT_MODE mode;
+  enum COMMIT_MODE mode;
   int *datasizes;
   char *rowp;
   char msg[MAXMSG];
@@ -57,7 +58,7 @@ typedef struct oSes
 
 typedef struct
 {
-  char *DNS;
+  char *DSN;
   char *username;
   char *password;
   thread_lock tlock;
@@ -106,7 +107,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
       break;
     case SQL_SUCCESS_WITH_INFO:
       status = SQL_SUCCESS;
-      for (i = 1; status == SQL_SUCCESS || status = SQL_SUCCESS_WITH_INFO; i++)
+      for (i = 1; status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO; i++)
       {
         msg[0] = 0;
         status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, msgLength - 1, &msgl);
@@ -125,7 +126,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
     default:
       stat = status;
       status = SQL_SUCCESS;
-      for (i = 1; status == SQL_SUCCESS || status = SQL_SUCCESS_WITH_INFO; i++)
+      for (i = 1; status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO; i++)
       {
         status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, msgLength - 1, &msgl);
         if (msgl < msgLength)
@@ -159,15 +160,15 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
   }
   ctmp = (char *) db;
   ctmp += sizeof(oDb_t);
-  db->DNS.cstring = ctmp;
-  db->DNS.length = strlen(DNS);
-  ctmp += db->DNS->length + 1;
+  db->DSN.cstring = ctmp;
+  db->DSN.length = strlen(DSN);
+  ctmp += db->DSN.length + 1;
   db->UID.cstring = ctmp;
   db->UID.length = strlen(userid);
-  ctmp += db->UID->length + 1;
+  ctmp += db->UID.length + 1;
   db->PW.cstring = ctmp;
   db->PW.length = strlen (password);
-  strcpy(db->DNS.cstring, DNS);
+  strcpy(db->DSN.cstring, DSN);
   strcpy(db->UID.cstring, userid);
   strcpy(db->PW.cstring, password);
 
@@ -177,7 +178,7 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
   db->number_of_sessions = 0;
   db->about_to_shutdown = 0;
   db->msg[0] = 0;
-  status = SQLSetEnvAttr(SQL_NULL_HANDLE, SQL_ATTR_CONNECTION_POOLING, SQL_CP_ONE_PER_HENV, 0)
+  status = SQLSetEnvAttr(SQL_NULL_HANDLE, SQL_ATTR_CONNECTION_POOLING, (SQLPOINTER) SQL_CP_ONE_PER_HENV, 0);
   ErrorCheck(status, SQL_HANDLE_ENV, SQL_NULL_HANDLE, db->msg,
       dblog1(ctx, "Connection pooling setup failed");
       return NULL;,
@@ -191,7 +192,7 @@ DBinitConn (void *ctx, char *DSN, char *userid, char *password, int dbid)/*{{{*/
       )
   dblog1(ctx, "dbinit2");
 
-  status = SQLSetEnvAttr(db->envhp, SQL_ATTR_ODBC_VERSION, SQL_OV_ODBC3, 0);
+  status = SQLSetEnvAttr(db->envhp, SQL_ATTR_ODBC_VERSION, (SQLPOINTER) SQL_OV_ODBC3, 0);
   ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
       dblog1(ctx, "ODBC version setup failed");
       return NULL;,
@@ -232,17 +233,15 @@ DBCheckNSetIfServerGoneBad(oDb_t *db, SQLRETURN errcode, void *ctx, int lock)/*{
 void 
 DBShutDown(oDb_t *db, void *ctx)/*{{{*/
 {
-  sb4 errcode = 0;
-  sword status;
+  SQLRETURN status;
   if (!db) return;
-  status = OCISessionPoolDestroy(db->poolhp, db->errhp, OCI_SPD_FORCE);
-  ErrorCheck(status, OCI_HTYPE_ERROR, db,
-      dblog1(ctx, "Closing down the session pool gave an error, but I am still shutting down");,
+  status = SQLFreeHandle(SQL_HANDLE_ENV, db->envhp);
+  ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
+      dblog1(ctx, "Closing down the session pool gave an error, we are loosing our reference to this memory");
+      free(db);,
       ctx
       )
-  status = OCIHandleFree(db->poolhp, OCI_HTYPE_SPOOL);
-  status = OCIHandleFree(db->errhp, OCI_HTYPE_ERROR);
-  status = OCIHandleFree(db->envhp, OCI_HTYPE_ENV);
+  free(db);
   return;
 }/*}}}*/
 
@@ -286,8 +285,8 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
       return NULL;,
       rd
       )
-  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_QUIET_MODE, NULL, NULL);
-  ErrorCheck(status, SQL_HANDLE_DBC, db->conn, db->msg,
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_QUIET_MODE, NULL, 0);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
       free(ses);
       return NULL;,
@@ -310,16 +309,13 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
 static void
 DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 {
-  sword status;
-  sb4 errcode = 0;
-  dvoid *db;
+  SQLRETURN status;
   if (ses == NULL) return;
-  db = ses->db;
-  if (ses->mode == OCI_DEFAULT)
+  if (ses->mode == MANUAL_COMMIT)
   {
-    ses->mode = COMMIT_ON_SUCCESS;
-    status = OCITransRollback(ses->svchp, ses->errhp, OCI_DEFAULT);
-    ErrorCheck(status, OCI_HTYPE_ERROR, ses, ;, ctx)
+    ses->mode = AUTO_COMMIT;
+    status = SQLEndTran(SQL_HANDLE_DBC, ses->connhp, SQL_ROLLBACK);
+    ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, ;, ctx)
   }
   if (ses->datasizes)
   {
@@ -331,10 +327,10 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
     free(ses->rowp);
     ses->rowp = NULL;
   }
-  if (ses->stmthp != NULL)
+  if (ses->stmthp != SQL_NULL_HANDLE)
   {
-    status = OCIStmtRelease(ses->stmthp, ses->errhp, NULL, 0, OCI_STRLS_CACHE_DELETE);
-    ses->stmthp = NULL;
+    status = SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
+    ses->stmthp = SQL_NULL_HANDLE;
   }
   return;
 }/*}}}*/
@@ -342,13 +338,13 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 int
 DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
-  if (ses == NULL || sql = NULL) return DBError;
+  if (ses == NULL || sql == NULL) return DBError;
   SQLRETURN status;
   status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
-  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, db->msg,
-      DBCheckNSetIfServerGoneBad(db, status, rd, 0);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);
       return DBError;,
-      rd
+      ctx
       )
   ses->needsClosing = 0;
   status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
@@ -360,9 +356,9 @@ DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
       ctx
       )
   ses->needsClosing = 1;
-  status SQLNumResultCols(ses->stmthp, &ses->cols);
+  status = SQLNumResultCols(ses->stmthp, &ses->cols);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       DBFlushStmt(ses,ctx);
       ses->stmthp = SQL_NULL_HANDLE;
       return DBError;,
@@ -371,7 +367,7 @@ DBExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
   if (ses->cols > 0) return DBData;
   SQLCloseCursor(ses->stmthp);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       ses->needsClosing = 0;
       DBFlushStmt(ses,ctx);
       return DBError;,
@@ -405,7 +401,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_NAME, &colname, 
                              SQL_IS_POINTER, &colnamelength, NULL);
     ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-        DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+        DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
@@ -413,9 +409,9 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
     *columnCtx = dump(*columnCtx, i, (int) colnamelength, colname);
     // Get size of data
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH, 
-                             NULL, NULL, NULL, datasizes+i);
-    ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->smg,
-        DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+                             NULL, 0, NULL, datasizes+i);
+    ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
+        DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
@@ -425,7 +421,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, int, char *), void **colum
 }/*}}}*/
 
 static int
-DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx)/*{{{*/
+DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *), void **rowCtx, void *ctx)/*{{{*/
 {
   unsigned int i, n;
   SQLRETURN status;
@@ -448,7 +444,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx
                               (SQLINTEGER) (ses->datasizes[i] + 1),
                               (SQLLEN *) (ses->rowp + (i * sizeof(SQLLEN))));
       ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-          DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+          DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
           DBFlushStmt(ses,ctx);
           return DBError;,
           ctx
@@ -459,12 +455,12 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx
   status = SQLFetch(ses->stmthp);
   if (status == SQL_NO_DATA)
   {
-    DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+    DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
     DBFlushStmt(ses,ctx);
     return DBEod;
   }
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-        DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
+        DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
         DBFlushStmt(ses,ctx);
         return DBError;,
         ctx
@@ -478,7 +474,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, int, char *), void **rowCtx, void *ctx
     {
       *a = -(*a - (ses->datasizes[i] + 1));
     }
-    *rowCtx = dump(*rowCtx, a, ses->rowp+size);
+    *rowCtx = dump(*rowCtx, *a, ses->rowp+size);
     size -= (ses->datasizes[i] + 1);
   }
   return DBData;
@@ -489,7 +485,7 @@ DBTransStart (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL || ses->mode == MANUAL_COMMIT) return DBError;
-  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_OFF, NULL);
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_OFF, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);
       return DBError;,
@@ -509,9 +505,9 @@ DBTransCommit (oSes_t *ses, void *ctx)/*{{{*/
     return DBError;
   }
   ses->mode = AUTO_COMMIT;
-  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_ON, NULL);
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER) SQL_AUTOCOMMIT_ON, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, rd, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -537,9 +533,9 @@ DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
       ctx
       )
   ses->mode = AUTO_COMMIT;
-  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_ON, NULL);
+  status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER) SQL_AUTOCOMMIT_ON, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, rd, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -550,53 +546,26 @@ DBTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 static int
 DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
 {
-  sword status;
-  sb4 errcode = 0;
-  dvoid *db;
-  OCIError *errhp;
+  SQLRETURN status;
   unsigned char should_we_shutdown;
   unsigned int number_of_sessions;
-  ub4 type = 0;
   if (ses == NULL) return DBError;
-  db = ses->db;
-  if (ses->mode == OCI_DEFAULT)
+  if (ses->stmthp != SQL_NULL_HANDLE || ses->mode == MANUAL_COMMIT)
   { // A transaction is open
     DBFlushStmt(ses,ctx);
   }
-  if (ses->stmthp)
-  {
-    status = OCIAttrGet((dvoid *) ses->stmthp, OCI_HTYPE_STMT, (dvoid *) &type, 
-                   NULL, OCI_ATTR_STMT_STATE, ses->errhp);
-    switch (type)
-    {
-      case OCI_STMT_STATE_INITIALIZED:
-        status = OCIStmtRelease(ses->stmthp, ses->errhp, NULL, 0, OCI_STRLS_CACHE_DELETE);
-        break;
-      case OCI_STMT_STATE_EXECUTED:
-        status = OCIStmtRelease(ses->stmthp, ses->errhp, NULL, 0, OCI_STRLS_CACHE_DELETE);
-        break;
-      case OCI_STMT_STATE_END_OF_FETCH:
-        status = OCIStmtRelease(ses->stmthp, ses->errhp, NULL, 0, OCI_DEFAULT);
-        break;
-      default:
-        status = OCIStmtRelease(ses->stmthp, ses->errhp, NULL, 0, OCI_STRLS_CACHE_DELETE);
-        break;
-    }
-    ses->stmthp = NULL;
-    DBFlushStmt(ses,ctx);
-  }
-  errhp = ses->errhp;
-  status = OCISessionRelease(ses->svchp, errhp, NULL, 0, OCI_DEFAULT);
-  ErrorCheck(status, OCI_HTYPE_ERROR, ses, 
-      DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 0);,
+  status = SQLDisconnect(ses->connhp);
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, 
+      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);,
       ctx)
   ses->db->number_of_sessions--;
   should_we_shutdown = ses->db->about_to_shutdown;
   number_of_sessions = ses->db->number_of_sessions;
-  status = OCIHandleFree(errhp, OCI_HTYPE_ERROR); // freeing ses
+  status = SQLFreeHandle(SQL_HANDLE_DBC, ses->connhp); // freeing ses
+  free(ses);
   if (should_we_shutdown && number_of_sessions == 0)
   {
-    DBShutDown((oDb_t *) db, ctx);
+    DBShutDown(ses->db, ctx);
   }
   return DBEod;
 }/*}}}*/
@@ -606,7 +575,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
   oSes_t *tmpses, *rses;
-  int dbid;
+  int dbid, i;
   oDb_t *db;
   if (ses == NULL || rd == NULL) return DBError;
   dbid = ses->db->dbid;
@@ -662,7 +631,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
         }
       }
       db->freeSessionsGlobal = ses;
-      i = db->maxdepth;
+      i = dbc->maxdepth;
       while((rses = db->freeSessionsGlobal))
       {
         if (i)
@@ -695,7 +664,7 @@ apsmlDropSession(oSes_t *ses, void *rd)/*{{{*/
 oSes_t *
 apsmlGetSession(int dbid, void *rd)/*{{{*/
 {
-  oSes_t *ses;
+  oSes_t *ses, *rses;
   oDb_t *db;
   int i;
   dbOraData *dbdata = (dbOraData *) getDbData(dbid, rd);
@@ -744,7 +713,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       return NULL;
     }
     dblog1(rd, "Initializing database connection");
-    dbc->dbspec = DBinitConn(rd, dbc->DNS, dbc->username, 
+    dbc->dbspec = DBinitConn(rd, dbc->DSN, dbc->username, 
                                     dbc->password, dbid);
     dblog1(rd, "Database initialization call done");
   }
@@ -766,7 +735,7 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
       {
         while (dbdata->freeSessions)
         {
-          ses = freeSessions->next;
+          ses = ((oSes_t *)(dbdata->freeSessions))->next;
           DBReturnSession(dbdata->freeSessions,rd);
           dbdata->freeSessions = ses;
         }
@@ -825,14 +794,6 @@ apsmlGetSession(int dbid, void *rd)/*{{{*/
   return NULL;
 }/*}}}*/
 
-//void
-//apsmlORAChildInit(void *cd1, int num, void *pool, void *server)/*{{{*/
-//{
-//  db_conf *cd = (db_conf *) cd1;
-//  proc_lock_child_init(&(cd->plock), cd->plockname, pool);
-//  return;
-//}/*}}}*/
-
 void
 apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
 {
@@ -841,7 +802,6 @@ apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
   if (rd == NULL || dbdata == NULL) return;
   while ((ses = dbdata->dbSessions))
   {
-    dbdata->theOne = 0;
     apsmlDropSession(ses, rd);
   }
   return;
@@ -867,10 +827,8 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
     if (!cd) return 2;
     cd->username = NULL;
     cd->password = NULL;
-    cd->TNSname = NULL;
+    cd->DSN = NULL;
     cd->maxdepth = 0;
-    cd->maxsessions = 0;
-    cd->minsessions = 0;
     cd->dbspec = NULL;
     if (create_thread_lock(&(cd->tlock), rd))
     {
@@ -896,16 +854,6 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
     case 5:
       id = (int) val;
       cd->maxdepth = id;
-      if (cd->maxsessions && cd->maxsessions < cd->maxdepth) return 3;
-      break;
-    case 6:
-      id = (int) val;
-      cd->minsessions = id;
-      break;
-    case 7:
-      id = (int) val;
-      cd->maxsessions = id;
-      if (cd->maxdepth && cd->maxsessions < cd->maxdepth) return 3;
       break;
     case 2:
     case 3:
@@ -925,8 +873,8 @@ apsmlORASetVal (int i, void *rd, int pos, void *val)/*{{{*/
           cd->password = target;
           break;
         case 4:
-          if (cd->TNSname) free(cd->TNSname);
-          cd->TNSname = target;
+          if (cd->DSN) free(cd->DSN);
+          cd->DSN = target;
           break;
       }
       break;
@@ -978,10 +926,9 @@ apsmlGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, STRLEN data1, char *data2)/*{{{*/
+dumpRows(void *ctx1, SQLLEN data1, char *data2)/*{{{*/
 {
   String rs;
-  sb2 *ivarp;
   int *pair, ivar, *pair2;
   cNames_t *ctx = (cNames_t *) ctx1;
   allocRecordML(ctx->rListAddr, 2, pair);
@@ -999,7 +946,7 @@ dumpRows(void *ctx1, STRLEN data1, char *data2)/*{{{*/
   else 
   {
     rs = convertBinStringToML(ctx->rStringAddr, (int) data1, data2);
-    ival = 0;
+    ivar = 0;
   }
   first(pair2) = (int) rs;
   second(pair2) = ivar;
