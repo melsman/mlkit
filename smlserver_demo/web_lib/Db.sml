@@ -3,7 +3,7 @@
 (*signature WEB_DB = WEB_DB where type 'a Type = 'a Web.Info.Type.Type*)
 
 structure Db : WEB_DB = DbFunctor(struct
-                                  structure DbBackend = Web.DbOraBackend
+                                  structure DbBackend = Web.DbMySqlBackend
                                   val name = "DefaultDatabase"
                                   end)
 

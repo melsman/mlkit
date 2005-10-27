@@ -66,6 +66,7 @@ signature WEB = sig
   structure LowMail  : WEB_LOW_MAIL 
 (*  structure DbOra    : WEB_DB where type 'a Type = 'a Info.Type.Type *)
   structure DbOraBackend : WEB_DB_BACKEND where type 'a Type = 'a Info.Type.Type 
+  structure DbMySqlBackend : WEB_DB_BACKEND where type 'a Type = 'a Info.Type.Type 
 (*
   structure DbPg     : WEB_DB where type set = Set.set
   structure DbMySQL  : WEB_DB where type set = Set.set

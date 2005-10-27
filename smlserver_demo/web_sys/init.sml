@@ -4,6 +4,7 @@ val _ = Web.log (Web.Notice, "executing init.sml...")
 val _ = Web.scheduleDaily "/web/log_time.sml" NONE {hour = 15, minute = 2} 
 val _ = Web.scheduleScript "/web/log_time.sml" NONE 20 *)
 val _ = Web.Info.configSetValue(Web.Info.Type.String, "MailRelay", "mail.itu.dk") 
+(*
 val _ = Db.config(Web.Info.Type.Bool, "LazyConnect", true)
 val _ = Db.config(Web.Info.Type.String, "UserName", "testuser")
 val _ = Db.config(Web.Info.Type.String, "TNSname", "//localhost/test")
@@ -11,6 +12,9 @@ val _ = Db.config(Web.Info.Type.String, "PassWord", "test")
 val _ = Db.config(Web.Info.Type.Int, "SessionMaxDepth", 3)
 val _ = Db.config(Web.Info.Type.Int, "MinimumNumberOfConnections", 4)
 val _ = Db.config(Web.Info.Type.Int, "MaximumNumberOfConnections", 10)
-(*
 *)
+val _ = Db.config(Web.Info.Type.String, "UserName", "testuser")
+val _ = Db.config(Web.Info.Type.String, "DSN", "myodbc3")
+val _ = Db.config(Web.Info.Type.String, "PassWord", "test")
+val _ = Db.config(Web.Info.Type.Int, "SessionMaxDepth", 3)
 val _ = Web.log (Web.Notice, "...done executing init.sml")
