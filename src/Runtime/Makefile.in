@@ -1,0 +1,347 @@
+# Makefile for the MLKit runtime system.
+
+CC=@CC@
+
+BINDIR=../../bin
+OFILES = Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
+         GC.o Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o
+CFILES = $(OFILES:%.o=%.c)
+OFILES_PROF = $(OFILES:%.o=%-p.o)
+OFILES_TAG = $(OFILES:%.o=%-tag.o)
+OFILES_GC = $(OFILES:%.o=%-gc.o)
+OFILES_GC_PROF = $(OFILES:%.o=%-gc-p.o)
+OFILES_GEN_GC = $(OFILES:%.o=%-gengc.o)
+OFILES_GEN_GC_PROF = $(OFILES:%.o=%-gengc-p.o)
+OFILES_GC_TP = $(OFILES:%.o=%-gc-tp.o)
+OFILES_GC_TP_PROF = $(OFILES:%.o=%-gc-tp-p.o)
+OFILES_KAM = $(OFILES:%.o=%-kam.o) Interp-kam.o LoadKAM-kam.o KamInsts-kam.o Prims.o \
+             HeapCache-kam.o 
+CFILES_KAM = $(CFILES) Interp.c LoadKAM.c KamInsts.c HeapCache.c 
+#OFILES_SMLSERVER_AOL = $(OFILES:%.o=%-smlserverAOL.o) Interp-smlserverAOL.o LoadKAM-smlserverAOL.o \
+#             HeapCache-smlserverAOL.o KamInsts-smlserverAOL.o PrimsNsSml.o 
+OFILES_SMLSERVER_AP = $(OFILES:%.o=%-smlserverAP.o) Interp-smlserverAP.o LoadKAM-smlserverAP.o \
+             HeapCache-smlserverAP.o KamInsts-smlserverAP.o PrimsApSml.o 
+CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
+
+OPT=
+AR=ar rc
+
+.PHONY: depend clean runtime
+
+%.o: %.c Makefile
+#	$(CC) -c $(OPT) -g -DDEBUG -o $*.o $<
+	$(CC) -Wall -pedantic -c $(OPT) -o $*.o $<
+
+%-tag.o: %.c
+	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS $(OPT) -o $*-tag.o $<
+
+%-kam.o: %.c
+	$(CC) -Wall -pedantic -c -g -DKAM -DLAB_THREADED $(OPT) -o $*-kam.o $<
+#	$(CC) -c -DKAM -DDEBUG -DLAB_THREADED $(OPT) -o $*-kam.o $<
+#	$(CC) -c -DKAM $(OPT) -o $*-kam.o $<
+
+%-smlserverAP.o: %.c Makefile
+	$(CC) -Wall -pedantic -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE $(OPT) -o $*-smlserverAP.o $<
+	#$(CC) -c -DKAM -DLAB_THREADED -DTHREADS -DAOLSERVER $(OPT) -o $*-smlserver.o $<
+
+%-smlserverAOL.o: %.c Makefile
+	$(CC) -c -DKAM -DLAB_THREADED -DTHREADS -DAOLSERVER $(OPT) -o $*-smlserverAOL.o $<
+
+%-p.o: %.c
+#	$(CC) -c -g -DPROFILING -DDEBUG -o $*-p.o $< 
+	$(CC) -c -DPROFILING $(OPT) -o $*-p.o $< 
+
+%-gc.o: %.c
+	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC $(OPT) -o $*-gc.o $<
+
+%-gc-p.o: %.c
+	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS -DPROFILING -DENABLE_GC $(OPT) -o $*-gc-p.o $<
+
+%-gengc.o: %.c
+	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -DENABLE_GEN_GC $(OPT) -o $*-gengc.o $<
+
+%-gengc-p.o: %.c
+	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS -DPROFILING -DENABLE_GC -DENABLE_GEN_GC $(OPT) -o $*-gengc-p.o $<
+
+%-gc-tp.o: %.c
+	$(CC) -c -g -DTAG_VALUES -DENABLE_GC $(OPT) -o $*-gc-tp.o $<
+
+%-gc-tp-p.o: %.c
+	$(CC) -c -DTAG_VALUES -DPROFILING -DENABLE_GC $(OPT) -o $*-gc-tp-p.o $<
+
+runtimeSystem.a: $(OFILES) Makefile
+	$(AR) $@ $(OFILES)
+	cp -p $@ ../../bin/
+
+runtimeSystemTag.a: $(OFILES_TAG)
+	$(AR) $@ $(OFILES_TAG)
+	cp -p $@ ../../bin/
+
+runtimeSystemProf.a: $(OFILES_PROF)
+	$(AR) $@ $(OFILES_PROF)
+	cp -p $@ ../../bin/
+
+runtimeSystemGC.a: $(OFILES_GC)
+	$(AR) $@ $(OFILES_GC)
+	cp -p $@ ../../bin/
+
+runtimeSystemGCProf.a: $(OFILES_GC_PROF)
+	$(AR) $@ $(OFILES_GC_PROF)
+	cp -p $@ ../../bin/
+
+runtimeSystemGenGC.a: $(OFILES_GEN_GC)
+	$(AR) $@ $(OFILES_GEN_GC)
+	cp -p $@ ../../bin/
+
+runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF)
+	$(AR) $@ $(OFILES_GEN_GC_PROF)
+	cp -p $@ ../../bin/
+
+kam: $(OFILES_KAM)
+	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
+	cp -p $@ ../../bin/
+
+#runtimeSystemKamNsSml.o: $(OFILES_SMLSERVER_AOL)
+#	(cd ../SMLserver; make clean)
+#	ld -r -o $@ $(OFILES_SMLSERVER_AOL)
+#	cp -p $@ ../../bin/
+
+runtimeSystemKamApSml.o: $(OFILES_SMLSERVER_AP)
+	ld -r -o $@ $(OFILES_SMLSERVER_AP)
+	cp -p $@ ../../bin/
+
+runtimeSystemGCTP.a: $(OFILES_GC_TP)
+	$(AR) $@ $(OFILES_GC_TP)
+	cp -p $@ ../../bin/
+
+runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF)
+	$(AR) $@ $(OFILES_GC_TP_PROF)
+	cp -p $@ ../../bin/
+
+all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
+ runtimeSystem.a runtimeSystemTag.a runtimeSystemGCTP.a \
+ runtimeSystemGCTPProf.a runtimeSystemGenGC.a runtimeSystemGenGCProf.a
+
+depend:
+	mv Makefile Makefile.bak
+	(sed -n -e '1,/^### DO NOT DELETE THIS LINE/p' Makefile.bak;	 \
+         $(CC) -MM $(CFILES); \
+         $(CC) -MM -DPROFILING $(CFILES) | sed -e 's/\.o/-p.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC $(CFILES) | sed -e 's/\.o/-gc.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC -DENABLE_GEN_GC $(CFILES) | sed -e 's/\.o/-gengc.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS -DPROFILING -DENABLE_GC $(CFILES) | sed -e 's/\.o/-gc-p.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS -DPROFILING -DENABLE_GC -DENABLE_GEN_GC $(CFILES) | sed -e 's/\.o/-gengc-p.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DENABLE_GC $(CFILES) | sed -e 's/\.o/-gc-tp.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DPROFILING -DENABLE_GC $(CFILES) | sed -e 's/\.o/-gc-tp-p.o/'; \
+	 $(CC) -MM -DKAM $(CFILES_KAM) | sed -e 's/\.o/-kam.o/'; \
+	 $(CC) -MM -DKAM $(CFILES_SMLSERVER) | sed -e 's/\.o/-smlserver.o/'; \
+	 $(CC) -MM -DTAG_VALUES -DTAG_FREE_PAIRS $(CFILES) | sed -e 's/\.o/-tag.o/') > Makefile
+	rm Makefile.bak
+
+clean:
+	rm -f $(OFILES) $(OFILES_TAG) $(OFILES_PROF) $(OFILES_GC) $(OFILES_GC_TP) 
+	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF) $(OFILES_KAM) $(OFILES_SMLSERVER_AP) 
+	rm -f $(OFILES_GEN_GC_PROF) $(OFILES_GEN_GC)
+	rm -f core a.out *~ *.bak 
+	rm -f runtimeSystemKamApSml.o kam runtimeSystemGCProf.a runtimeSystemGC.a 
+	rm -f runtimeSystemGCTPProf.a runtimeSystemGCTP.a 
+	rm -f runtimeSystemProf.a runtimeSystemTag.a runtimeSystem.a 
+	rm -f runtimeSystemGenGCProf.a runtimeSystemGenGC.a
+
+### DO NOT DELETE THIS LINE
+Runtime.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h
+IO.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp.o: Icp.c
+Table.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC.o: GC.c
+Runtime-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h Profiling.h
+IO-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-p.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-p.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-p.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-p.o: Icp.c
+Table-p.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-p.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-p.o: Profiling.c Profiling.h Flags.h Region.h Tagging.h String.h \
+  Exception.h
+CommandLine-p.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-p.o: GC.c
+Runtime-gc.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h GC.h
+IO-gc.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-gc.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-gc.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-gc.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-gc.o: Icp.c
+Table-gc.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-gc.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-gc.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine-gc.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-gc.o: GC.c Flags.h Tagging.h Region.h String.h CommandLine.h Table.h \
+  Exception.h Profiling.h GC.h
+Runtime-gengc.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h GC.h
+IO-gengc.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-gengc.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-gengc.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-gengc.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-gengc.o: Icp.c
+Table-gengc.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-gengc.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-gengc.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine-gengc.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-gengc.o: GC.c Flags.h Tagging.h Region.h String.h CommandLine.h Table.h \
+  Exception.h Profiling.h GC.h
+Runtime-gc-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h GC.h Profiling.h
+IO-gc-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-gc-p.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-gc-p.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-gc-p.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-gc-p.o: Icp.c
+Table-gc-p.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-gc-p.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-gc-p.o: Profiling.c Profiling.h Flags.h Region.h Tagging.h String.h \
+  Exception.h
+CommandLine-gc-p.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-gc-p.o: GC.c Flags.h Tagging.h Region.h String.h CommandLine.h Table.h \
+  Exception.h Profiling.h GC.h
+Runtime-gengc-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h GC.h Profiling.h
+IO-gengc-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-gengc-p.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-gengc-p.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-gengc-p.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-gengc-p.o: Icp.c
+Table-gengc-p.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-gengc-p.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-gengc-p.o: Profiling.c Profiling.h Flags.h Region.h Tagging.h String.h \
+  Exception.h
+CommandLine-gengc-p.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-gengc-p.o: GC.c Flags.h Tagging.h Region.h String.h CommandLine.h Table.h \
+  Exception.h Profiling.h GC.h
+Runtime-gc-tp.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h GC.h
+IO-gc-tp.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-gc-tp.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-gc-tp.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-gc-tp.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-gc-tp.o: Icp.c
+Table-gc-tp.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-gc-tp.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-gc-tp.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine-gc-tp.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-gc-tp.o: GC.c Flags.h Tagging.h Region.h String.h CommandLine.h Table.h \
+  Exception.h Profiling.h GC.h
+Runtime-gc-tp-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h GC.h Profiling.h
+IO-gc-tp-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-gc-tp-p.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-gc-tp-p.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-gc-tp-p.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-gc-tp-p.o: Icp.c
+Table-gc-tp-p.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-gc-tp-p.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-gc-tp-p.o: Profiling.c Profiling.h Flags.h Region.h Tagging.h String.h \
+  Exception.h
+CommandLine-gc-tp-p.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-gc-tp-p.o: GC.c Flags.h Tagging.h Region.h String.h CommandLine.h Table.h \
+  Exception.h Profiling.h GC.h
+Runtime-kam.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h
+IO-kam.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-kam.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-kam.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-kam.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-kam.o: Icp.c
+Table-kam.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-kam.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-kam.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine-kam.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-kam.o: GC.c
+Interp-kam.o: Interp.c Runtime.h String.h Flags.h Region.h Tagging.h Stack.h \
+  KamInsts.h Prims.h LoadKAM.h List.h Exception.h Interp.h Math.h Table.h
+LoadKAM-kam.o: LoadKAM.c LoadKAM.h Runtime.h String.h Flags.h Region.h \
+  Tagging.h KamInsts.h Stack.h HeapCache.h Exception.h Interp.h
+KamInsts-kam.o: KamInsts.c
+HeapCache-kam.o: HeapCache.c HeapCache.h Region.h Flags.h Runtime.h String.h \
+  Tagging.h
+Runtime-smlserver.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h
+IO-smlserver.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-smlserver.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-smlserver.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-smlserver.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-smlserver.o: Icp.c
+Table-smlserver.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-smlserver.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-smlserver.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine-smlserver.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-smlserver.o: GC.c
+Interp-smlserver.o: Interp.c Runtime.h String.h Flags.h Region.h Tagging.h Stack.h \
+  KamInsts.h Prims.h LoadKAM.h List.h Exception.h Interp.h Math.h Table.h
+LoadKAM-smlserver.o: LoadKAM.c LoadKAM.h Runtime.h String.h Flags.h Region.h \
+  Tagging.h KamInsts.h Stack.h HeapCache.h Exception.h Interp.h
+HeapCache-smlserver.o: HeapCache.c HeapCache.h Region.h Flags.h Runtime.h String.h \
+  Tagging.h
+KamInsts-smlserver.o: KamInsts.c
+Runtime-tag.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
+  Exception.h Table.h CommandLine.h
+IO-tag.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
+  Math.h
+String-tag.o: String.c String.h Flags.h Region.h Tagging.h List.h
+Math-tag.o: Math.c Math.h Flags.h Tagging.h Region.h String.h Exception.h
+Region-tag.o: Region.c Flags.h Region.h Math.h Tagging.h String.h Profiling.h \
+  GC.h CommandLine.h
+Icp-tag.o: Icp.c
+Table-tag.o: Table.c Table.h Region.h Flags.h Tagging.h
+Time-tag.o: Time.c Tagging.h Flags.h Region.h String.h Math.h
+Profiling-tag.o: Profiling.c Profiling.h Region.h Flags.h Tagging.h String.h \
+  Exception.h
+CommandLine-tag.o: CommandLine.c CommandLine.h Flags.h String.h Region.h \
+  Tagging.h List.h Profiling.h
+GC-tag.o: GC.c
