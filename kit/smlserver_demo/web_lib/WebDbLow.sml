@@ -211,12 +211,12 @@ functor DbODBCBackend(type conn = int
                         ~1 => NONE
                       |  x => if isNull s
                               then NONE
-                              else
+                              else (log s;
                                 if size s < x
                                 then raise Fail ("getRowListDb. Data has been truncated, it was " ^
                                   (Int.toString (size s)) ^ " bytes long, but it " ^
                                   "was suppose to be " ^ (Int.toString x) ^" bytes long")
-                              else SOME s)
+                                else SOME s))
 
 
     fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Session is closed"
