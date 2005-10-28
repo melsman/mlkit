@@ -53,6 +53,7 @@ typedef struct oSes
   enum COMMIT_MODE mode;
   int *datasizes;
   unsigned char *rowp;
+  int rowpSize;
   unsigned char msg[MAXMSG];
 } oSes_t;
 
@@ -444,15 +445,16 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCt
   dblog2(ctx, "DBGetRow n", n);
   if (!ses->rowp) 
   {
-    for (i=1; i <= n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
-    ses->rowp = (unsigned char *) malloc(size);
+    for (i=1; i <= n; i++) size = MAX(ses->datasizes[i],size);
+    ses->rowp = (unsigned char *) malloc(size+1+sizeof(SQLINTEGER) + MAXMSG);
     dblog2(ctx, "DBGetRow size", size);
     if (!ses->rowp)
     {
       DBFlushStmt(ses, ctx);
       return DBError;
     }
-    for (i=1, size = n * sizeof(SQLLEN); i <= n; i++)
+    ses->rowpSize = size;
+/*    for (i=1, size = n * sizeof(SQLLEN); i <= n; i++)
     {
       status = SQLBindCol(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR,
                               (SQLPOINTER) (ses->rowp+size), 
@@ -465,7 +467,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCt
           ctx
           )
       size += ses->datasizes[i]+1;
-    }
+    } */
   }
   dblog1(ctx, "DBGetRow fetch");
   status = SQLFetch(ses->stmthp);
@@ -482,18 +484,22 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCt
         return DBError;,
         ctx
         )
-  for (i=1, size = 0; i < n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
-  dblog2(ctx, "DBGetRow get Data", size);
+//  for (i=1, size = 0; i < n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
+//  dblog2(ctx, "DBGetRow get Data", size);
   SQLLEN *a;
     dblog2(ctx, "before n", n);
-  for (i=n-1; i >= 0; i--)
+  for (i = n; i > 0; i--)
   {
+      status = SQLGetData(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR, 
+                          (SQLPOINTER) (ses->rowp + sizeof(SQLINTEGER)), 
+                          (SQLINTEGER) ses->rowpSize, (SQLINTEGER *) ses->rowp);
     a = (SQLLEN *)(ses->rowp + (i * sizeof(SQLLEN)));
     dblog2(ctx, "i", i);
     dblog2(ctx, "a", (int) a);
     dblog2(ctx, "*a", (int) *a);
     dblog2(ctx, "size", size);
     dblog2(ctx, "rowp", (int) ses->rowp);
+    dblog1(ctx, ses->rowp+size);
     *rowCtx = dump(*rowCtx, *a, ses->rowp+size);
     size -= (ses->datasizes[i] + 1);
   }
