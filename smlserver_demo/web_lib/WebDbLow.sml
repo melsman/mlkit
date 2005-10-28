@@ -208,12 +208,16 @@ functor DbODBCBackend(type conn = int
                        | _ => raise Fail "selectDb: An error occured"
           end
     val toOption = List.map (fn (s,i) => case i of 
-                        ~2 => raise Fail "getRowListDb.Data has been truncated"
-                      | ~1 => NONE
-                      |  0 => if isNull s then NONE else SOME s
-                      |  x => if x>0 then raise Fail ("getRowListDb. Data has been truncated, it was "
-                                                      ^ (Int.toString x) ^ " bytes long")
-                              else raise Fail "getRowListDb.Data Error")
+                        ~1 => NONE
+                      |  x => if isNull s
+                              then NONE
+                              else
+                                if size s < x
+                                then raise Fail ("getRowListDb. Data has been truncated, it was " ^
+                                  (Int.toString (size s)) ^ " bytes long, but it " ^
+                                  "was suppose to be " ^ (Int.toString x) ^" bytes long")
+                              else SOME s)
+
 
     fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Session is closed"
                                         | SOME r => 
@@ -227,7 +231,7 @@ functor DbODBCBackend(type conn = int
                                      
     fun dmlTransDb h f = case !h of NONE => raise Fail "Session is closed"
                                   | SOME r => let val _ = log("TransStart")
-                                                  val res : int = prim("@:", ("DBODBCTransStart",r : int))
+                                                  val res : int = prim("@:", ("DBODBCTransStart",r : int, getReqRec()))
                                               in if res = 0 
                                                  then raise Fail "Transaction already started"
                                                  else 
