@@ -106,29 +106,38 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
       return SQL_SUCCESS;
       break;
     case SQL_SUCCESS_WITH_INFO:
+      dblog1(ctx,"putmsg->withInfo");
       status = SQL_SUCCESS;
-      for (i = 1; status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO; i++)
+      i = 1;
+      do
       {
+        dblog2(ctx,"msg count", i);
         msg[0] = 0;
-        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, msgLength - 1, &msgl);
+        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg,
+                               msgLength - 1, &msgl);
         if (msgl < msgLength)
         {
-          msg[msgl] = 0;
           dblog1(ctx, (char *) msg);
         }
         else
         {
           dblog1(ctx,"ErrorBuffer too small");
         }
+        i++;
       }
+      while (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO);
       return SQL_SUCCESS;
       break;
     default:
+      dblog1(ctx,"putmsg->error");
       stat = status;
       status = SQL_SUCCESS;
-      for (i = 1; status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO; i++)
+      i = 1;
+      do
       {
-        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, msgLength - 1, &msgl);
+        dblog2(ctx,"msg count", i);
+        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, 
+                               msgLength - 1, &msgl);
         if (msgl < msgLength)
         {
           msg[msgl] = 0;
@@ -138,7 +147,9 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
         {
           dblog1(ctx,"ErrorBuffer too small");
         }
+        i++;
       }
+      while (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO);
       return stat;
       break;
   }
@@ -190,7 +201,6 @@ DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char 
       return NULL;,
       ctx
       )
-  dblog1(ctx, "dbinit2");
 
   status = SQLSetEnvAttr(db->envhp, SQL_ATTR_ODBC_VERSION, (SQLPOINTER) SQL_OV_ODBC3, 0);
   ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
@@ -205,6 +215,7 @@ static void
 DBCheckNSetIfServerGoneBad(oDb_t *db, SQLRETURN errcode, void *ctx, int lock)/*{{{*/
 {
   db_conf *dbc;
+  return;
   switch (errcode)
   {
     case 28: // your session has been killed
@@ -303,6 +314,7 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
       rd
       )
   db->number_of_sessions++;
+  dblog2(rd, "DBgetSession numberOfSess", db->number_of_sessions);
   return ses;
 }/*}}}*/
 
@@ -379,12 +391,11 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
 }/*}}}*/
 
 static void *
-DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char *), void **columnCtx, 
-                 void *ctx)/*{{{*/
+DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char *), 
+                 void **columnCtx, void *ctx)/*{{{*/
 {
   SQLSMALLINT n, i;
   SQLRETURN status;
-  SQLCHAR *colname;
   SQLSMALLINT colnamelength;
   int *datasizes;
   if (ses->stmthp == SQL_NULL_HANDLE) return NULL;
@@ -398,15 +409,15 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
     // Get column data
   // SQLColAttribute with SQL_DESC_OCTET_LENGTH will do
     // Get column name
-    status = SQLColAttribute(ses->stmthp, i, SQL_DESC_NAME, &colname, 
-                             SQL_IS_POINTER, &colnamelength, NULL);
+    status = SQLColAttribute(ses->stmthp, i, SQL_DESC_NAME, ses->msg,
+                             MAXMSG - 1, &colnamelength, NULL);
     ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
         DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
         )
-    *columnCtx = dump(*columnCtx, i, colnamelength, colname);
+    *columnCtx = dump(*columnCtx, i, colnamelength, ses->msg);
     // Get size of data
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH, 
                              NULL, 0, NULL, datasizes+i);
@@ -416,6 +427,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
         return NULL;,
         ctx
         )
+    dblog2(ctx, "datasizes", datasizes[i]);
   }
   return *columnCtx;
 }/*}}}*/
@@ -423,15 +435,18 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
 static int
 DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCtx, void *ctx)/*{{{*/
 {
-  unsigned int i, n;
+  unsigned int n;
+  int i;
   SQLRETURN status;
   unsigned int size = 0;
   if (ses->stmthp == NULL) return DBEod;
   n = ses->datasizes[0];
+  dblog2(ctx, "DBGetRow n", n);
   if (!ses->rowp) 
   {
     for (i=1; i <= n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
     ses->rowp = (unsigned char *) malloc(size);
+    dblog2(ctx, "DBGetRow size", size);
     if (!ses->rowp)
     {
       DBFlushStmt(ses, ctx);
@@ -452,9 +467,11 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCt
       size += ses->datasizes[i]+1;
     }
   }
+  dblog1(ctx, "DBGetRow fetch");
   status = SQLFetch(ses->stmthp);
   if (status == SQL_NO_DATA)
   {
+  dblog1(ctx, "DBGetRow fetch NO DATA");
     DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
     DBFlushStmt(ses,ctx);
     return DBEod;
@@ -466,17 +483,21 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCt
         ctx
         )
   for (i=1, size = 0; i < n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
+  dblog2(ctx, "DBGetRow get Data", size);
   SQLLEN *a;
+    dblog2(ctx, "before n", n);
   for (i=n-1; i >= 0; i--)
   {
     a = (SQLLEN *)(ses->rowp + (i * sizeof(SQLLEN)));
-    if (*a != SQL_NULL_DATA && *a > ses->datasizes[i]+1)
-    {
-      *a = -(*a - (ses->datasizes[i] + 1));
-    }
+    dblog2(ctx, "i", i);
+    dblog2(ctx, "a", (int) a);
+    dblog2(ctx, "*a", (int) *a);
+    dblog2(ctx, "size", size);
+    dblog2(ctx, "rowp", (int) ses->rowp);
     *rowCtx = dump(*rowCtx, *a, ses->rowp+size);
     size -= (ses->datasizes[i] + 1);
   }
+  dblog1(ctx, "DBGetRow DONE");
   return DBData;
 }/*}}}*/
 
@@ -547,6 +568,7 @@ static int
 DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
+  oDb_t *db;
   unsigned char should_we_shutdown;
   unsigned int number_of_sessions;
   if (ses == NULL) return DBError;
@@ -562,10 +584,11 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   should_we_shutdown = ses->db->about_to_shutdown;
   number_of_sessions = ses->db->number_of_sessions;
   status = SQLFreeHandle(SQL_HANDLE_DBC, ses->connhp); // freeing ses
+  db = ses->db;
   free(ses);
   if (should_we_shutdown && number_of_sessions == 0)
   {
-    DBShutDown(ses->db, ctx);
+    DBShutDown(db, ctx);
   }
   return DBEod;
 }/*}}}*/
@@ -575,7 +598,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
   oSes_t *tmpses, *rses;
-  int dbid, i;
+  int dbid, i, numberOfSess;
   oDb_t *db;
   if (ses == NULL || rd == NULL) return DBError;
   dbid = ses->db->dbid;
@@ -604,11 +627,15 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
   dbdata->depth--;
   db_conf *dbc = (db_conf *) apsmlGetDBData(dbid, rd);
   lock_thread(dbc->tlock);
+  dblog2(rd, "numberOfSess", db->number_of_sessions);
   if (dbdata->theOne)
   {
     ses->next = NULL;
     tmpses = NULL;
-    for (rses = dbdata->freeSessions; rses; rses = rses->next) tmpses = rses;
+    for (rses = dbdata->freeSessions; rses; rses = rses->next)
+    {
+      tmpses = rses;
+    }
     if (tmpses)
     {
       tmpses->next = ses;
@@ -627,28 +654,47 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
         while ((rses = db->freeSessionsGlobal))
         {
           db->freeSessionsGlobal = rses->next;
+          numberOfSess = db->number_of_sessions;
           DBReturnSession(rses, rd);
         }
       }
       db->freeSessionsGlobal = ses;
       i = dbc->maxdepth;
-      while((rses = db->freeSessionsGlobal))
+      rses = db->freeSessionsGlobal;
+      tmpses = rses;
+      while(rses)
       {
         if (i)
         {
+          tmpses = rses;
           rses = rses->next;
           i--;
           continue;
         }
         ses = rses;
         rses = rses->next;
+          numberOfSess = db->number_of_sessions;
         DBReturnSession(ses,rd);
+      }
+      if (tmpses) tmpses->next = NULL;
+      if (db->number_of_sessions == dbc->maxdepth)
+      {
+        rses = db->freeSessionsGlobal;
+        while(rses)
+        {
+          ses = rses;
+          rses = rses->next;
+          numberOfSess = db->number_of_sessions;
+          DBReturnSession(ses,rd);
+        }
+        db->freeSessionsGlobal = NULL;
       }
       broadcast_cond(dbc->cvar);
     }
   }
   else
   {
+          numberOfSess = db->number_of_sessions;
     DBReturnSession(ses,rd);
     broadcast_cond(dbc->cvar);
   }
@@ -658,6 +704,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
     removeDbData(dbid, rd);
     free(dbdata);
   }
+  dblog2(rd, "DBReturn numberOfSess", numberOfSess);
   return DBEod;
 }/*}}}*/
 
@@ -682,7 +729,6 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
       return NULL;
     }
   }
-  dblog1(rd, "1");
   if (dbdata->freeSessions)
   {
     dbdata->depth++;
@@ -690,7 +736,6 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
     dbdata->freeSessions = ses->next;
     return ses;
   }
-  dblog1(rd, "2");
   db_conf *dbc = (db_conf *) apsmlGetDBData(dbid,rd);
   if (dbc == NULL)
   {
@@ -717,14 +762,12 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
                                     dbc->password, dbid);
     dblog1(rd, "Database initialization call done");
   }
-  dblog1(rd, "3");
   if (!dbc->dbspec)
   {
     unlock_thread(dbc->tlock);
     dblog1(rd, "Database did not start");
     return NULL;
   }
-  dblog1(rd, "4");
   db = dbc->dbspec;
   if (db->number_of_sessions == 0)
   {
@@ -936,17 +979,12 @@ dumpRows(void *ctx1, SQLLEN data1, unsigned char *data2)/*{{{*/
   if (data1 == SQL_NULL_DATA)
   {
     rs = NULL;
-    ivar = -1;
-  }
-  else if (data1 < 0)
-  {
-    rs = NULL;
-    ivar = -data1;
+    ivar = (int) -1;
   }
   else 
   {
     rs = convertBinStringToML(ctx->rStringAddr, (int) data1, data2);
-    ivar = 0;
+    ivar = (int) data1;
   }
   first(pair2) = (int) rs;
   second(pair2) = ivar;
