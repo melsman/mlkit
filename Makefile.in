@@ -91,23 +91,23 @@ clean:
 	cd test && $(MAKE) clean
 	cd test_dev && $(CLEAN) run *.out *.log
 	cd src && $(MAKE) clean
-	cd smlserver_demo && $(CLEAN) sources.pm nsd.mael.tcl
-	cd smlserver_demo/lib && $(CLEAN)
-	cd smlserver_demo/demo && $(CLEAN) 
-	cd smlserver_demo/demo/rating && $(CLEAN) 
-	cd smlserver_demo/demo/employee && $(CLEAN) 
-	cd smlserver_demo/demo/link && $(CLEAN) 
-	cd smlserver_demo/demo_lib && $(CLEAN) 
-	cd smlserver_demo/demo_lib/orasql && $(CLEAN) 
-	cd smlserver_demo/demo_lib/pgsql && $(CLEAN) 
-	cd smlserver_demo/scs_lib && $(CLEAN) 
-	cd smlserver_demo/scs_lib/pgsql && $(CLEAN)
-	cd smlserver_demo/log && rm -f server.log access* nspid*
-	cd smlserver_demo/www && $(CLEAN)
-	cd smlserver_demo/www/demo && $(CLEAN)
-	cd smlserver_demo/www/demo/rating && $(CLEAN)
-	cd smlserver_demo/www/demo/link && $(CLEAN)
-	cd smlserver_demo/www/demo/employee && $(CLEAN)
+#	cd smlserver_demo && $(CLEAN) sources.pm nsd.mael.tcl
+#	cd smlserver_demo/lib && $(CLEAN)
+#	cd smlserver_demo/demo && $(CLEAN) 
+#	cd smlserver_demo/demo/rating && $(CLEAN) 
+#	cd smlserver_demo/demo/employee && $(CLEAN) 
+#	cd smlserver_demo/demo/link && $(CLEAN) 
+#	cd smlserver_demo/demo_lib && $(CLEAN) 
+#	cd smlserver_demo/demo_lib/orasql && $(CLEAN) 
+#	cd smlserver_demo/demo_lib/pgsql && $(CLEAN) 
+#	cd smlserver_demo/scs_lib && $(CLEAN) 
+#	cd smlserver_demo/scs_lib/pgsql && $(CLEAN)
+#	cd smlserver_demo/log && rm -f server.log access* nspid*
+#	cd smlserver_demo/www && $(CLEAN)
+#	cd smlserver_demo/www/demo && $(CLEAN)
+#	cd smlserver_demo/www/demo/rating && $(CLEAN)
+#	cd smlserver_demo/www/demo/link && $(CLEAN)
+#	cd smlserver_demo/www/demo/employee && $(CLEAN)
 	cd smlserver && $(CLEAN)
 	cd smlserver/xt && $(CLEAN)
 	cd smlserver/xt/demolib && $(CLEAN)
