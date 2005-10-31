@@ -868,11 +868,12 @@ evacuate(unsigned int obj)
 
   if ( is_lobj_bit(rp->n) )
     {                                     // object immovable
+      fprintf(stderr, "Reaching large object %x ; region page header at %x\n", obj_ptr, rp);
       if ( is_constant(*obj_ptr) )
 	{
 	  return obj;
 	}
-      *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
+      *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bito
       push_scan_container(obj_ptr);
       return obj;
     }
@@ -953,8 +954,9 @@ evacuate(unsigned int obj)
 static unsigned int*
 scan_tagged_value(unsigned int *s)      // s is the scan pointer
 {
-  // All finite and large objects are temporarily annotated as immovable.
-  // We therefore use val_tag_kind and not val_tag_kind_const
+  // All large objects and objects in finite regions are temporarily 
+  // annotated as immovable. We therefore use val_tag_kind and not 
+  // val_tag_kind_const
 
   switch ( val_tag_kind(s) ) { 
   case TAG_STRING: {                        // Do not GC the content of a string but
@@ -1001,6 +1003,7 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
   }
   default: {
     pw("*s: ", *s);
+    fprintf(stderr, "scan_tagged_value: obj %x\n", s);
     die("scan_tagged_value: unrecognised object descriptor pointed to by scan pointer");
     return 0;
   }

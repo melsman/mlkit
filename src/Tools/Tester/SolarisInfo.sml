@@ -18,8 +18,8 @@ struct
 	let 
 	    val stat = BinIO.openIn ("/proc/" ^ pid ^ "/psinfo")
 	    val statContents = getInfo' stat
-	    val size = Word32.toInt (Pack32Big.subVec (statContents, 11))
-	    val rss = Word32.toInt (Pack32Big.subVec (statContents, 12))
+	    val size = Word32.toInt (PackWord32Big.subVec (statContents, 11))
+	    val rss = Word32.toInt (PackWord32Big.subVec (statContents, 12))
 	in
 	    {size = size * 1024,
 	     rss = rss * 1024}

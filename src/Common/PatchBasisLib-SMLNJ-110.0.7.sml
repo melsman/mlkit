@@ -36,3 +36,7 @@ structure CharVector =
 	open CharVector
 	val foldli = fn f => fn b => fn s => foldli f b (s,0,NONE)
     end
+
+structure PackWord32Little = Pack32Little
+
+structure PackWord32Big = Pack32Big
