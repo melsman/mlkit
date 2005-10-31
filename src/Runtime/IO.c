@@ -434,7 +434,7 @@ sml_islink(String path, int exn)              /* SML Basis */
     {
       raise_exn(exn);
     }
-  if ((S_IFLNK & buf.st_mode) == S_IFLNK) 
+  if (S_ISLNK(buf.st_mode)) 
     { 
       return mlTRUE;
     }

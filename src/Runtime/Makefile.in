@@ -23,25 +23,25 @@ OFILES_SMLSERVER_AP = $(OFILES:%.o=%-smlserverAP.o) Interp-smlserverAP.o LoadKAM
              HeapCache-smlserverAP.o KamInsts-smlserverAP.o PrimsApSml.o 
 CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
 
-OPT=
+OPT=-Wall -pedantic -std=c99
 AR=ar rc
 
 .PHONY: depend clean runtime
 
 %.o: %.c Makefile
 #	$(CC) -c $(OPT) -g -DDEBUG -o $*.o $<
-	$(CC) -Wall -pedantic -c $(OPT) -o $*.o $<
+	$(CC) -c $(OPT) -o $*.o $<
 
 %-tag.o: %.c
 	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS $(OPT) -o $*-tag.o $<
 
 %-kam.o: %.c
-	$(CC) -Wall -pedantic -c -g -DKAM -DLAB_THREADED $(OPT) -o $*-kam.o $<
+	$(CC) -c -g -DKAM -DLAB_THREADED $(OPT) -o $*-kam.o $<
 #	$(CC) -c -DKAM -DDEBUG -DLAB_THREADED $(OPT) -o $*-kam.o $<
 #	$(CC) -c -DKAM $(OPT) -o $*-kam.o $<
 
 %-smlserverAP.o: %.c Makefile
-	$(CC) -Wall -pedantic -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE $(OPT) -o $*-smlserverAP.o $<
+	$(CC) -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE $(OPT) -o $*-smlserverAP.o $<
 	#$(CC) -c -DKAM -DLAB_THREADED -DTHREADS -DAOLSERVER $(OPT) -o $*-smlserver.o $<
 
 %-smlserverAOL.o: %.c Makefile
