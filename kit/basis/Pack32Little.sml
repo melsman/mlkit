@@ -9,7 +9,7 @@
  *
  *)
 
-structure Pack32Little : PACK_WORD =
+structure PackWord32Little : PACK_WORD =
   struct
     structure W = LargeWord
     structure W8 = Word8

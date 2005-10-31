@@ -40,10 +40,11 @@ structure MD5 :> MD5 =
     fun packLittle wrds = let
       fun loop [] = []
 	| loop (w::ws) = let
-	    val b0 = Word8.fromLargeWord (w)
-	    val b1 = Word8.fromLargeWord (W32.>> (w,0w8))
-	    val b2 = Word8.fromLargeWord (W32.>> (w,0w16))
-	    val b3 = Word8.fromLargeWord (W32.>> (w,0w24))
+	    val toL = Word32.toLargeWord
+	    val b0 = Word8.fromLargeWord (toL w)
+	    val b1 = Word8.fromLargeWord (toL(W32.>> (w,0w8)))
+	    val b2 = Word8.fromLargeWord (toL(W32.>> (w,0w16)))
+	    val b3 = Word8.fromLargeWord (toL(W32.>> (w,0w24)))
 	  in b0::b1::b2::b3:: (loop ws)
 	  end
     in W8V.fromList (loop wrds)
@@ -96,6 +97,9 @@ structure MD5 :> MD5 =
 		mlen=w64_zero,
 		buf=empty_buf} : md5state
 
+    fun W8Vextract (s,a,b) = 
+	Byte.stringToBytes (String.extract(Byte.bytesToString s,a,b))
+
     fun update ({buf,digest,mlen}:md5state,input) = let
       val inputLen = W8V.length input
       val needBytes = 64 - W8V.length buf
@@ -105,12 +109,12 @@ structure MD5 :> MD5 =
 	else (i,digest)
       val (buf,(i,digest)) =
 	if inputLen >= needBytes then  let
-	  val buf = W8V.concat [buf,W8V.extract (input,0,SOME needBytes)]
+	  val buf = W8V.concat [buf,W8Vextract (input,0,SOME needBytes)]
 	  val digest = transform (digest,0,buf)
 	in (empty_buf,loop (needBytes,digest))
 	end
 	else (buf,(0,digest))
-      val buf = W8V.concat [buf, W8V.extract (input,i,SOME (inputLen-i))]
+      val buf = W8V.concat [buf, W8Vextract (input,i,SOME (inputLen-i))]
       val mlen = mul8add (mlen,inputLen)
     in {buf=buf,digest=digest,mlen=mlen}
     end
@@ -124,8 +128,8 @@ structure MD5 :> MD5 =
     in packLittle [A,B,C,D]
     end
     and transform ({A,B,C,D},i,buf) = let
-      val off = i div Pack32Little.bytesPerElem
-      fun x (n)  = Pack32Little.subVec (buf,n + off)
+      val off = i div PackWord32Little.bytesPerElem
+      fun x (n)  = Word32.fromLargeWord (PackWord32Little.subVec (buf,n + off))
       val (a,b,c,d) = (A,B,C,D)
       (* fetch to avoid range checks *)
       val x_00 = x (0)  val x_01 = x (1)  val x_02 = x (2)  val x_03 = x (3)

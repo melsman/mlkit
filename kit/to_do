@@ -1,8 +1,23 @@
+mael 2005-10-28: Fix bug in gengc: Errors in 
+  vliw.sml
+  lexgen.sml
+  mlyacc.mlb
+  ratio-regions.sml
+  pickletest.mlb
+
+Strings are never stack allocated. Is it ok to set the immovable-bit on a string? 
+
+
+
+mael 2005-10-26: Try compile the MLKit with MLTon.
+
 mael 2005-10-25: Add necessary Posix-support needed to compile
 Kittester with MLKit.
 
 mael 2005-10-25: MLB-make needs to check the integrity (e.g., size) of
-.eb1-files before concluding that recompilation is not needed. 
+.{eb1,eb,lnk,rev}-files before concluding that recompilation is not
+needed. It is sufficient to check the integrity of lnk-files since
+lnk-files are generated last. DONE.
 
 mael 2005-10-04: Better mlkit error reporting in case a src-file does
 not exist. Also, before src-files in an mlb-file are compiled, check
