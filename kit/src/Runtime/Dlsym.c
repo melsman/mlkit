@@ -3,12 +3,13 @@
 #include <stdlib.h>
 #include "String.h"
 #include "Region.h"
+#include "Tagging.h"
 #include <dlfcn.h>
 #include "../CUtils/hashmap_typed.h"
 #include "Locks.h"
 
 int
-sml_dlopen(int pair, Region s, String file1, int flags1)
+REG_POLY_FUN_HDR(sml_dlopen,int pair, Region s, String file1, int flags1)
 {
   char *file = &(file1->data);
   char *c;
@@ -26,7 +27,7 @@ sml_dlopen(int pair, Region s, String file1, int flags1)
   first(pair) = (int) p;
   if (c)
   {
-    second(pair) = (int) convertStringToML(s, c);
+    second(pair) = (int) REG_POLY_CALL(convertStringToML,s, c);
   } else 
   {
     second(pair) = 0;
@@ -46,7 +47,7 @@ mystreq(char *a, char *b)
 static dynamic_function_res_map fnmap = NULL;
 
 String 
-resolveFun(Region sAddr, String our_name, String cname, void *libhandle)
+REG_POLY_FUN_HDR(resolveFun,Region sAddr, String our_name, String cname, void *libhandle)
 {
   char *c;
   void *fp = NULL;
@@ -59,7 +60,7 @@ resolveFun(Region sAddr, String our_name, String cname, void *libhandle)
     c = dlerror();
     if (c)
     {
-      return (String) convertStringToML (sAddr,c);
+      return (String) REG_POLY_CALL(convertStringToML,sAddr,c);
     }
     dynamic_function_res_map_upd(fnmap, &(our_name->data), fp);
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
@@ -68,7 +69,7 @@ resolveFun(Region sAddr, String our_name, String cname, void *libhandle)
   else 
   { // hash_OK
     LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
-    return (String) convertStringToML(sAddr, "Dynamic function already resolved");
+    return (String) REG_POLY_CALL(convertStringToML,sAddr, "Dynamic function already resolved");
   }
   LOCK_UNLOCK(FUNCTIONTABLEMUTEX);
   return NULL;
@@ -117,8 +118,9 @@ localResolveLibFnManual(void **fp, String fname)
   localResolveLibFnAuto(fp, &(fname->data));
 }
 
-String fromCtoMLstring(Region sAddr, char *cs)
+String 
+REG_POLY_FUN_HDR(fromCtoMLstring,Region sAddr, char *cs)
 {
-  return (String) convertStringToML(sAddr,cs);
+  return (String) REG_POLY_CALL(convertStringToML,sAddr,cs);
 }
 
