@@ -571,8 +571,8 @@ allocateTripleRegion(Region r)
 
 void free_lobjs(Lobjs* lobjs)
 {
-  if ( lobjs )
-    fprintf(stderr, "Freeing large objs: lobjs=%x\n", lobjs);
+  //  if ( lobjs )
+  //    fprintf(stderr, "Freeing large objs: lobjs=%x\n", lobjs);
   while ( lobjs ) 
     {
       Lobjs* lobjsTmp;
@@ -667,7 +667,7 @@ alloc_lobjs(int n) {
   } else {
     lobjs = (Lobjs*)p;
   }
-  fprintf(stderr, "Allocated large obj: p=%x; r=%x; lobjs=%x; last_byte=%x; sz_bytes=%d\n", p, r, lobjs, p + sz_bytes, sz_bytes);
+  //  fprintf(stderr, "Allocated large obj: p=%x; r=%x; lobjs=%x; last_byte=%x; sz_bytes=%d\n", p, r, lobjs, p + sz_bytes, sz_bytes);
   if ( ! is_rp_aligned((unsigned int)lobjs) )
     die("alloc_lobjs: large object is not properly aligned.");
   lobjs->orig = p;
@@ -834,7 +834,7 @@ int *allocGen (Gen *gen, int n) {
       // fprintf(stderr,"Allocating large object of %d words\n", n);
       r = get_ro_from_gen(*gen);
       lobjs = alloc_lobjs(n);
-      fprintf(stderr,"Allocated large object of %d words (address: %x) ; header at %x\n", n, &(lobjs->value), lobjs);
+      // fprintf(stderr,"Allocated large object of %d words (address: %x) ; header at %x\n", n, &(lobjs->value), lobjs);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
     #ifdef PROFILING
