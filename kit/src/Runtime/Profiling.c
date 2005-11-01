@@ -6,8 +6,10 @@
  * function should be defined if PROFILING is not defined, however;
  * look at the bottom. */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>      // used by signal
+#include <time.h>        // used by clock
 #include <sys/time.h>    // used by setitimer
 
 #include "Profiling.h"

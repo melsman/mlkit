@@ -3,10 +3,12 @@
  *----------------------------------------------------------------*/
 
 #include <stdio.h>
+#include <string.h>
 #include "String.h"
 #include "Tagging.h"
 #include "List.h"
 #include "Region.h"
+#include "Exception.h"
 
 // allocString: Allocates a string of size in region rAddr. Returns a
 //     pointer to the string. Uses alloc to allocate memory for the string,
@@ -35,7 +37,7 @@ REG_POLY_FUN_HDR(allocString, Region rAddr, int size)
 void 
 convertStringToC(String mlStr, unsigned char *buf, int buflen, int exn) 
 {
-  int i, sz;
+  int sz;
   unsigned char *p;
 
   sz = sizeStringDefine(mlStr); 

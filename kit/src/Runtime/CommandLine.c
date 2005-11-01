@@ -1,4 +1,5 @@
-#include  <stdlib.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "CommandLine.h"
 #include "String.h"
