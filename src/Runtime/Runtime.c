@@ -95,7 +95,7 @@ uncaught_exception (String exnStr)
 { 
   fprintf(stderr,"uncaught exception "); 
   fflush(stderr);
-  outputStream(stderr, exnStr);
+  fputs(&(exnStr->data), stderr);
   fprintf(stderr, "\n"); 
   fflush(stderr);
 
