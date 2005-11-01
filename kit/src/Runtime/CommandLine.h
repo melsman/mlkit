@@ -45,4 +45,6 @@ String sml_commandline_name(Region rAddr);
 int sml_commandline_args(Region pairRho, Region strRho);
 #endif /* PROFILING */
 
+void parseCmdLineArgs(int argc, char *argv[]);
+
 #endif /* COMMAND_LINE_H */

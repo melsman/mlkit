@@ -102,7 +102,7 @@ void profileTick(int *stackTop);
 void profiling_on(void);
 void profiling_off(void);
 void AlarmHandler();
-void Statistik();
+//void Statistik();
 void resetProfiler();
 void queueMarkProf();  /* tell the time next time there is a profile tick */
 char *allocMemProfiling_xx(int i);
@@ -111,6 +111,8 @@ void outputProfilePre(void);
 void outputProfileTick(TickList *tick);
 void outputProfilePost(void);
 void calcAllocInGen(Gen *gen, int *alloc, int *allocProf);
+
+void Statistics(void);
 
 extern int noTimer;
 extern int profType;
