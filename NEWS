@@ -1,5 +1,40 @@
 MLKit NEWS file
 
+
+ * mael 2005-11-01: Using MLton 20050731, mlton successfully compiled
+   the MLKit, resulting in a very fast (but large) mlkit executable -
+   cool. Notice that MLton 20041109 is buggy and doesn't compile the
+   MLKit correctly; see http://mlton.org/Bugs20041109.
+
+   To compile the MLKit with mlton, the following commands were used
+   (on abacus.itu.dk):
+
+     $ cd /home/mael/kit/src/Compiler
+     $ /home/mael/mlton-20050731/build/bin/mlton @MLton ram-slop 0.7 gc-summary -- \
+	  -drop-pass deepFlatten -verbose 3 native.mlb
+     $ cp native /home/mael/kit/bin/mlkit_mlton2005
+     $ ls -l /home/mael/kit/bin/mlkit_mlton2005
+     -rwxr-xr-x  1 mael users 105135787 Nov  1 09:35 /home/mael/kit/bin/mlkit_mlton2005
+     $ strip /home/mael/kit/bin/mlkit_mlton2005
+     $ $ ls -l /home/mael/kit/bin/mlkit_mlton2005 
+     -rwxr-xr-x  1 mael users 58855368 Nov  1 13:51 /home/mael/kit/bin/mlkit_mlton2005
+
+   To compile the MLKit again with mlkit_mlton2005, use the following
+   command:
+
+     $ ../../bin/mlkit_mlton2005 /home/mael/kit -gc native.mlb
+
+   Executing this command generates an executable file run:
+
+     $ ls -l run
+     -rwxr-xr-x  1 mael users 11353914 Nov  1 14:22 ./run
+     $ strip ./run
+     $ ls -l run
+     -rwxr-xr-x  1 mael users 7603544 Nov  1 14:36 ./run
+
+   Thus, albeit faster, the size of the mlkit_mlton executable is 8
+   times the size of the mlkit_mlkit executable.
+
  * mael 2005-10-04: Bootstrapping. Bootstrapping now works with the
    native backend:
 
