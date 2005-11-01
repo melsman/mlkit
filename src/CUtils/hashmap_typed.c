@@ -1,4 +1,5 @@
 #include "hashmap_typed.h"
+#include <stdlib.h>
 #include <stdio.h>
 
 static void
