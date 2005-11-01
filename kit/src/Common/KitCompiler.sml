@@ -101,9 +101,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		(set_paths root_dir; go_options args)
 		handle Fail "" => OS.Process.success
 		     | Fail s => (print ("*** Error: " ^ s ^ "\n"); 
-				  print_greetings();
-				  print_usage();
-				  print_options();
 				  OS.Process.failure)
 	end
 
