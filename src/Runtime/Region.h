@@ -185,6 +185,7 @@ typedef struct gen {
                  entire region in constant time, by appending it to the free list.*/
 } Gen;
 
+
 /* 
 Region descriptors
 ------------------
@@ -365,6 +366,7 @@ void deallocateRegionsUntil_X86(Region rAddr);
 
 int *alloc (Region r, int n);
 int *allocGen (Gen *gen, int n);
+void alloc_new_block(Gen *gen);
 void callSbrk();
 
 #ifdef ENABLE_GC_OLD
