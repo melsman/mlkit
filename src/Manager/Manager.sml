@@ -681,6 +681,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
      * Build an MLB project
      * ---------------------------- *)
 
+    exception IsolateFunExn
     fun isolate (f : 'a -> unit) (a:'a) : unit =
 	case Posix.Process.fork() of
 	    SOME pid => 
@@ -688,7 +689,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		in if pid2 = pid then 
 		    (case status of
 			 Posix.Process.W_EXITED => ()
-		       | Posix.Process.W_EXITSTATUS w => raise Fail "isolate error"
+		       | Posix.Process.W_EXITSTATUS _ => raise IsolateFunExn
 		       | _ => raise Fail "isolate error 3")
 		   else raise Fail "isolate error 2"
 		end
@@ -793,6 +794,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 				 in  
 				     (MlbMake.build{flags="",mlbfile=s,target=target} 
 				      handle Fail s => raise Fail s
+					   | IsolateFunExn => 
+					      (print "Stopping compilation of MLB-file due to errors.\n";
+					       raise PARSE_ELAB_ERROR nil)
 					   | _ => (print "Stopping compilation due to errors.\n";
 						   raise PARSE_ELAB_ERROR nil))
 				 end
