@@ -1,6 +1,7 @@
 /*----------------------------------------------------------------*
  *                             IO                                 *
  *----------------------------------------------------------------*/
+#include <stdlib.h>
 #include <sys/param.h> 
 #include <sys/stat.h>
 #include <dirent.h>
@@ -18,6 +19,7 @@
 #include "Exception.h"
 #include "List.h"
 #include "Math.h"
+#include "Runtime.h"
 
 int 
 openInStream(String path, int exn)                    /* SML Basis */

@@ -1,6 +1,7 @@
 /*----------------------------------------------------------------*
  *                        Regions                                 *
  *----------------------------------------------------------------*/
+#include <stdlib.h>
 #include "Flags.h"
 #include "Region.h"
 #include "Math.h"
@@ -8,6 +9,7 @@
 #include "GC.h"
 #include "CommandLine.h"
 #include "Locks.h"
+#include "Runtime.h"
 
 /*
 #if defined(THREADS) && defined(AOLSERVER)
@@ -704,7 +706,7 @@ void callSbrk() {
   }
 
   /* alignment (martin) */
-  if ( temp = (int)sb % 1024 ) {
+  if (( temp = (int)sb % 1024 )) {
     sb = (char *) (((int)sb) + 1024 - temp);
   }
 

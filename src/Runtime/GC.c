@@ -20,6 +20,7 @@
 #include "Table.h"
 #include "Exception.h"
 #include "Profiling.h"
+#include "Runtime.h"
 #include "GC.h"
 
 int time_to_gc = 0;                   // set to 1 by alloc if GC should occur at next

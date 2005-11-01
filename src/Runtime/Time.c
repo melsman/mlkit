@@ -10,6 +10,7 @@
 #include "Tagging.h"
 #include "String.h"
 #include "Math.h"
+#include "Exception.h"
 
 #define tm2cal(tptr)   mktime(tptr)
 

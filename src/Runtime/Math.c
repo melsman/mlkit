@@ -2,16 +2,19 @@
  *                        Math                                    *
  *----------------------------------------------------------------*/
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include "Math.h"
 #include "Tagging.h"
 #include "Exception.h"
 
+/*
 static unsigned int 
 max(unsigned int a, unsigned int b) 
 {
   return (a<b)?b:a;
-}
+}*/
 
 /*------------------------------------------------------------------------*
  *                         ML Integer Functions                           *
