@@ -80,9 +80,9 @@ int raised_exn_interupt_prof = 0;
 int raised_exn_overflow_prof = 0;
 
 
-static unsigned int max(unsigned int a, unsigned int b) {
-  return (a<b)?b:a;
-}
+// static unsigned int max(unsigned int a, unsigned int b) {
+//  return (a<b)?b:a;
+// }
 
 static unsigned int min(unsigned int a, unsigned int b) {
   return (a<b)?a:b;
@@ -345,7 +345,7 @@ void
 queueMarkProf(StringDesc *str, int pPoint)
 {
     tellTime = 1;
-    fprintf(stderr,"Reached \"%s\"\n", str->data);
+    fprintf(stderr,"Reached \"%s\"\n", &(str->data));
     return;
 }
 
@@ -370,10 +370,10 @@ PrintGen(Gen *gen)
   Rp *p;
   if ( gen )
     {
-      fprintf(stderr,"\n  Address of Gen %0x, First free word %0x, Border of region %0x\n     ",gen,gen->a,gen->b);
+      fprintf(stderr,"\n  Address of Gen: %p, First free word: %p, Border of region: %p\n     ",gen,gen->a,gen->b);
       for ( p = clear_fp(gen->fp) , i = 1 ; p ; p = p->n , i++ ) 
 	{
-	  fprintf(stderr,"-->Page%2d:%d",i,p);
+	  fprintf(stderr,"-->Page%2d:%p",i,p);
 	  if (i%3 == 0)
 	    fprintf(stderr,"\n     ");      
 	}
@@ -385,7 +385,7 @@ PrintGen(Gen *gen)
 void 
 PrintRegion(Region r)
 { 
-  fprintf(stderr,"\nAddress of Ro %0x\n     ",r);
+  fprintf(stderr,"\nAddress of Ro: %p\n     ",r);
 
   PrintGen(&(r->g0));
 #ifdef ENABLE_GEN_GC
@@ -498,8 +498,6 @@ printProfTab()
 void 
 Statistics()
 { 
-  Rp *ptr;
-  int i,ii;
   double Mb = 1024.0*1024.0;
 
   if (showStat) {
@@ -634,7 +632,7 @@ pp_infinite_region_gen (Gen *gen)
   ObjectDesc *fObj;
   Rp *rp;
 
-  fprintf(stderr,"Generation %d at address %x\n", generation(*gen),gen);
+  fprintf(stderr,"Generation %d at address %p\n", generation(*gen),gen);
   for( rp = clear_fp(gen->fp) ; rp ; rp = rp->n ) 
     {
       fObj = (ObjectDesc *) (((int *)rp)+HEADER_WORDS_IN_REGION_PAGE);
@@ -857,14 +855,12 @@ profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
 void 
 profileTick(int *stackTop) 
 {
-  int i;
   TickList *newTick;
   FiniteRegionDesc *frd;
   ObjectDesc *fObj;
   ObjectList *newObj, *tempObj;
   RegionList *newRegion;
   Ro *rd;                        /* Used as pointer to infinite region. */
-  Rp *crp;                       /* Pointer to a region page. */
 
   int finiteRegionDescUse;       /* Words used on finite region descriptors. */
   int finiteObjectDescUse;       /* Words used on object descriptors in finite regions. */
@@ -914,7 +910,7 @@ profileTick(int *stackTop)
 
   if ( newTick->stackUse < 0 ) 
     {
-      sprintf(errorStr, "ERROR1 - PROFILE_TICK -- stackUse in profileTick less than zero %d (bot %x, top %x)\n",
+      sprintf(errorStr, "ERROR1 - PROFILE_TICK -- stackUse in profileTick less than zero %d (bot %p, top %p)\n",
 	      newTick->stackUse, stackBot, stackTop);
       profileERROR(errorStr);
     }
@@ -974,7 +970,7 @@ profileTick(int *stackTop)
       if ( newTick->stackUse < 0 ) 
 	{
 	  fprintf(stderr,"ERROR3 - PROFILE_TICK -- stackUse in profileTick less than \
-             zero %d, after object with size %d and pp %d, stackBot: %x, stackTop: %x\n",
+             zero %d, after object with size %d and pp %d, stackBot: %p, stackTop: %p\n",
 		  newTick->stackUse, fObj->size, fObj->atId, stackBot, stackTop);
 	  profileERROR(errorStr);
 	}

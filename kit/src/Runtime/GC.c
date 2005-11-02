@@ -294,11 +294,11 @@ void pp_from_space()
   for (rp = from_space_begin ; rp ; rp = rp->n )
 #ifdef ENABLE_GEN_GC
     fprintf(stderr,
-	    "[rp: %x, rp->i: %x, rp+1: %x, rp->colorPtr: %x, rp->n: %x]\n",
+	    "[rp: %p, rp->i: %p, rp+1: %p, rp->colorPtr: %p, rp->n: %p]\n",
 	    rp, &(rp->i), rp+1, rp->colorPtr, rp->n);
 #else
     fprintf(stderr,
-	    "[rp: %x, rp->i: %x, rp+1: %x, rp->n: %x]\n",
+	    "[rp: %p, rp->i: %p, rp+1: %p, rp->n: %p]\n",
 	    rp, &(rp->i), rp+1, rp->n);
 #endif /* ENABLE_GEN_GC */
   return;
@@ -316,7 +316,7 @@ mk_from_space_gen(Gen *gen)
   // Allocate new region page
   {
     int rt;
-    if ( rt = all_marks_fp(*gen) )
+    if ( (rt = all_marks_fp(*gen)) )
       {
 	gen->fp = NULL;
 	set_fp(*gen,rt);
@@ -351,7 +351,7 @@ static void mk_from_space()
 	  noOfPages -= j;
 	  profTabDecrNoOfPages(r->regionId, j);
 	  allocNowInf -= r->allocNow;
-	  profTabDecrAllocNow(r->regionId, r->allocNow);
+	  profTabDecrAllocNow(r->regionId, r->allocNow, "mk_from_space");
 	  allocProfNowInf -= r->allocProfNow;
 	  r->allocNow = 0;
 	  r->allocProfNow = 0;
@@ -365,7 +365,7 @@ static void mk_from_space()
 	  profTabDecrNoOfPages(r->regionId, j);
 	  calcAllocInGen(&(r->g0),&allocNowG0, &allocProfNowG0);
 	  allocNowInf -= allocNowG0;
-	  profTabDecrAllocNow(r->regionId, allocNowG0);
+	  profTabDecrAllocNow(r->regionId, allocNowG0, "mk_from_space");
 	  allocProfNowInf -= allocProfNowG0;
 	  r->allocNow -= allocNowG0;
 	  r->allocProfNow -= allocProfNowG0;
@@ -513,7 +513,7 @@ allocated_bytes_in_gen(Gen *gen)
     default: {
       Rp* rp = get_rp_header(s);
       pw("*s: ",*s);
-      printf("s: %x, gen->a: %x, diff(s,gen->a): %d, rp: %x, diff(s,rp): %x\n",
+      printf("s: %p, gen->a: %p, diff(s,gen->a): %d, rp: %p, diff(s,rp): %d\n",
 	     s,
 	     gen->a,
 	     ((int *)gen->a-(int *)s),
@@ -637,6 +637,7 @@ get_size_obj(unsigned int *obj_ptr)
       pw("Tag: ", *obj_ptr);
       print(obj_ptr);
       die("GC.get_size_obj: can't recognize tag");
+      return -1;  // never gets here
     }
   }
 }
@@ -650,7 +651,7 @@ void print_tagged_rp_content(Rp *rp)
 	; obj_ptr < (unsigned int*)(rp+1) && obj_ptr != notPP
 	; obj_ptr = obj_ptr + get_size_obj(obj_ptr))
    { 
-     fprintf(stderr,"Addr: %x - ",obj_ptr);
+     fprintf(stderr,"Addr: %p - ",obj_ptr);
      print(obj_ptr);
    }
  fprintf(stderr,"]\n");
@@ -819,7 +820,7 @@ target_gen(Gen *gen, Rp *rp, unsigned int *obj_ptr)
     else
       { 
 	if is_gen_1(*gen) {
-	  fprintf(stderr,"target_gen: obj_ptr: %x\n",obj_ptr);
+	  fprintf(stderr,"target_gen: obj_ptr: %p\n",obj_ptr);
 	  pp_gen(gen); // ToDo: GenGC remove test
 	  die("not g0"); // ToDo: GenGC remove test
 	}
@@ -1004,7 +1005,7 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
   }
   default: {
     pw("*s: ", *s);
-    fprintf(stderr, "scan_tagged_value: obj %x\n", s);
+    fprintf(stderr, "scan_tagged_value: obj %p\n", s);
     die("scan_tagged_value: unrecognised object descriptor pointed to by scan pointer");
     return 0;
   }
@@ -1132,14 +1133,10 @@ gc(unsigned int **sp, unsigned int reg_map)
   unsigned int w;
   int offset;
   unsigned int *value_ptr;
-  unsigned int **d_lab_ptr;
   int num_d_labs;
   int size_rcf, size_ccf, size_spilled_region_args;
-  Rp *rp, *p;
   extern int rp_used;
   extern int rp_total;
-  double ratio;
-  double to_allocate;
   struct rusage rusage_begin;
   struct rusage rusage_end;
   unsigned int size_from_space = 0;
@@ -1569,7 +1566,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 
 void
 report_dataspace(void) {
-  printf ("data_begin_addr = %d\ndata_end_addr = %d\ndifference = %d\n",
+  printf ("data_begin_addr = %p\ndata_end_addr = %p\ndifference = %d\n",
 	  data_begin_addr, data_end_addr,
 	  data_end_addr - data_begin_addr);
   return;

@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <utime.h>
 #include <string.h>
+#include <stdio.h>
+
 
 #include "IO.h"
 #include "String.h"
@@ -117,7 +119,8 @@ String
 REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n) 
 {
   unsigned char buf[100];
-  int i, ch;
+  int i;
+  int ch;
 
   n = convertIntToC(n);
 
@@ -133,12 +136,13 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
       resetRegion(rd);
     }
 
+  //  i = fread(buf,1,n,is); 
+  //  return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
+    
   for ( i = 0; i < n && ((ch = fgetc(is)) != EOF); i++ )
     {
       buf[i] = (unsigned char)ch;
     }
-
-  // i characters read
   return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
 }
 

@@ -390,7 +390,9 @@ Region allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regio
 #endif /* PROFILING */
 #endif /* ENABLE_GC */
 
-Region resetRegion(Region rAddr);
+Region resetRegion(Region r);
+int NoOfPagesInRegion(Region r);
+int NoOfPagesInGen(Gen* gen);
 
 /*----------------------------------------------------------------*
  *        Declarations to support profiling                       *

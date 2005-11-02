@@ -129,7 +129,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val _ = outln "int getInstArity(unsigned long inst) {"
 	val _ = outln "  switch(inst) {"
 	fun i_to_a i = if i < 0 then "-" ^ Int.toString (~i) else Int.toString i
-	fun out_entries([]) = (outln "  }"; outln "};")
+	fun out_entries([]) = (outln "  }"; outln "  return -100;"; outln "};")
 	  | out_entries((i,a)::rest) = (outln("  case " ^ i ^ ": return " ^ i_to_a a ^ ";"); 
 					out_entries rest)
 	val _ = out_entries spec_insts
