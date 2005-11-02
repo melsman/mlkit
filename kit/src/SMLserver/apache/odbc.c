@@ -395,12 +395,13 @@ static void *
 DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char *), 
                  void **columnCtx, void *ctx)/*{{{*/
 {
-  SQLSMALLINT n, i;
+  SQLSMALLINT i;
   SQLRETURN status;
   SQLSMALLINT colnamelength;
   int *datasizes;
+  dblog1(ctx,"Checking for NULL_HANDLE");
   if (ses->stmthp == SQL_NULL_HANDLE) return NULL;
-  ses->datasizes = (int *) malloc((n+1) * sizeof (int));
+  ses->datasizes = (int *) malloc((ses->cols+1) * sizeof (int));
   
   if (ses->datasizes == NULL) return NULL;
   datasizes = ses->datasizes;
