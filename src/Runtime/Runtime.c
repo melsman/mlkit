@@ -270,7 +270,7 @@ rpMap = regionPageMapNew();
   return (main_interp(argc, argv));
 #else
   code();
-  return (0);   /* never comes here (i.e., exits through 
+  return (EXIT_FAILURE);   /* never comes here (i.e., exits through 
 		 * terminateML or uncaught_exception) */
 #endif
 }
