@@ -22,6 +22,10 @@
 #include "Profiling.h"
 #endif
 
+#ifdef KAM
+#include "Interp.h"
+#endif
+
 int 
 die (char *s) 
 { 

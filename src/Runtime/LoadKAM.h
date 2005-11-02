@@ -1,3 +1,6 @@
+#ifndef LOADKAM_H
+#define LOADKAM_H
+
 #include "../CUtils/hashmap_typed.h"
 
 /* LoadKAM.h : format of bytecode files */
@@ -128,3 +131,5 @@ void interpClear(Interp* interp);
 
 /* Initialize global code fragments */
 void resolveGlobalCodeFragments(void);
+
+#endif /* LOADKAM_H */
