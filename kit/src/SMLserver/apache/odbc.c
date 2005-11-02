@@ -114,7 +114,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
       {
         dblog2(ctx,"msg count", i);
         msg[0] = 0;
-        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg,
+        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, &SQLstate, &naterrptr, msg,
                                msgLength - 1, &msgl);
         if (msgl < msgLength)
         {
@@ -434,7 +434,8 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
 }/*}}}*/
 
 static int
-DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCtx, void *ctx)/*{{{*/
+DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int), 
+          void **rowCtx, void *ctx)/*{{{*/
 {
   unsigned int n;
   int i;
@@ -486,22 +487,40 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *), void **rowCt
         )
 //  for (i=1, size = 0; i < n; i++) size += ses->datasizes[i] + 1 + sizeof(SQLLEN);
 //  dblog2(ctx, "DBGetRow get Data", size);
-  SQLLEN *a;
+  SQLRETURN stat;
+  char smallbuf[10];
+  SQLSMALLINT smallbufLength = 0;
     dblog2(ctx, "before n", n);
-  for (i = n; i > 0; i--)
+  for (i = 1; i <= n; i++)
   {
-      status = SQLGetData(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR, 
-                          (SQLPOINTER) (ses->rowp + sizeof(SQLINTEGER)), 
-                          (SQLINTEGER) ses->rowpSize, (SQLINTEGER *) ses->rowp);
-    a = (SQLLEN *)(ses->rowp + (i * sizeof(SQLLEN)));
-    dblog2(ctx, "i", i);
-    dblog2(ctx, "a", (int) a);
-    dblog2(ctx, "*a", (int) *a);
-    dblog2(ctx, "size", size);
-    dblog2(ctx, "rowp", (int) ses->rowp);
-    dblog1(ctx, ses->rowp+size);
-    *rowCtx = dump(*rowCtx, *a, ses->rowp+size);
-    size -= (ses->datasizes[i] + 1);
+    status = SQLGetData(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR, 
+                        (SQLPOINTER) (ses->rowp + sizeof(SQLINTEGER)), 
+                        (SQLINTEGER) ses->rowpSize - 1 - sizeof(SQLINTEGER), 
+                        (SQLINTEGER *) ses->rowp);
+    switch (status)
+    { 
+      case SQL_SUCCESS:
+        *rowCtx = dump(*rowCtx, *((SQLINTEGER *) ses->rowp),
+                       ses->rowp + sizeof(SQLINTEGER), 0);
+        break;
+      case SQL_SUCCESS_WITH_INFO:
+        stat = SQLGetDiagField (SQL_HANDLE_STMT, ses->stmthp, 1, SQL_DIAG_SQLSTATE, 
+                                  smallbuf, 9, &smallbufLength);
+        if (stat == SQL_SUCCESS && !strncmp(smallbuf, "01004", 5))
+        {
+          *rowCtx = dump(*rowCtx, *((SQLINTEGER *) ses->rowp),
+                         ses->rowp + sizeof(SQLINTEGER), ses->rowpSize - 1 - sizeof(SQLINTEGER) - 1);
+          continue;
+        }
+        // NO break on purpose;
+      default:
+        ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg, 
+            DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+            DBFlushStmt(ses,ctx);
+            return DBError;,
+            ctx)
+        break;
+    }
   }
   dblog1(ctx, "DBGetRow DONE");
   return DBData;
@@ -937,10 +956,11 @@ apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
 
 typedef struct
 {
-  Region rListAddr;
+  Region rList1Addr;
   Region rStringAddr;
-  Region rAddrEPairs;
-  int *list;
+  Region rList2Addr;
+  int *list1;
+  int *list2;
 } cNames_t;
 
 static void *
@@ -950,69 +970,82 @@ dumpCNames (void *ctx1, int pos, SQLSMALLINT length, unsigned char *data)/*{{{*/
   int *pair;
   cNames_t *ctx = (cNames_t *) ctx1;
   rs = convertBinStringToML(ctx->rStringAddr, length, data);
-  allocRecordML(ctx->rListAddr, 2, pair);
+  allocRecordML(ctx->rList1Addr, 2, pair);
   first(pair) = (int) rs;
-  second(pair) = (int) ctx->list;
-  makeCONS(pair, ctx->list);
+  second(pair) = (int) ctx->list1;
+  makeCONS(pair, ctx->list1);
   return ctx;
 }/*}}}*/
 
 int
-apsmlODBCGetCNames(Region rListAddr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
+apsmlODBCGetCNames(Region rList1Addr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
   cNames_t *cn = &cn1;
-  cn->rListAddr = rListAddr;
+  cn->rList1Addr = rList1Addr;
   cn->rStringAddr = rStringAddr;
-  cn->rAddrEPairs = NULL;
-  makeNIL(cn->list);
+  cn->rList2Addr = NULL;
+  makeNIL(cn->list1);
   if (DBGetColumnInfo(ses, dumpCNames, (void **) &cn, rd) == NULL)
   {
     raise_overflow();
-    return (int) cn1.list;
+    return (int) cn1.list1;
   }
-  return (int) cn1.list;
+  return (int) cn1.list1;
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, SQLLEN data1, unsigned char *data2)/*{{{*/
+dumpRows(void *ctx1, SQLLEN data1, unsigned char *data2, unsigned int next)/*{{{*/
 {
   String rs;
-  int *pair, ivar, *pair2;
+  int *pair, *pair2;
   cNames_t *ctx = (cNames_t *) ctx1;
-  allocRecordML(ctx->rListAddr, 2, pair);
-  allocRecordML(ctx->rAddrEPairs, 2, pair2);
-  if (data1 == SQL_NULL_DATA)
+  if (next)
   {
-    rs = NULL;
-    ivar = (int) -1;
+    allocRecordML(ctx->rList2Addr, 2, pair2);
+    rs = convertStringToML(ctx->rStringAddr, data2);
+    first(pair2) = (int) rs;
+    second(pair2) = (int) ctx->list2;
+    makeCONS(pair2, ctx->list2);
+    return ctx;
   }
-  else 
+  else
   {
-    rs = convertBinStringToML(ctx->rStringAddr, (int) data1, data2);
-    ivar = (int) data1;
+    allocRecordML(ctx->rList1Addr, 2, pair);
+    if (data1 == SQL_NULL_DATA)
+    {
+      makeNIL(ctx->list2);
+    }
+    else 
+    {
+      allocRecordML(ctx->rList2Addr, 2, pair2);
+      rs = convertStringToML(ctx->rStringAddr, data2);
+      first(pair2) = (int) rs;
+      second(pair2) = (int) ctx->list2;
+      makeCONS(pair2, ctx->list2);
+    }
+    first(pair) = (int) ctx->list2;
+    makeNIL(ctx->list2);
+    second(pair) = (int) ctx->list1;
+    makeCONS(pair, ctx->list1);
   }
-  first(pair2) = (int) rs;
-  second(pair2) = ivar;
-  first(pair) = (int) pair2;
-  second(pair) = (int) ctx->list;
-  makeCONS(pair, ctx->list);
   return ctx;
 }/*}}}*/
 
 int
-apsmlODBCGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
+apsmlODBCGetRow(int vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, Region rAddrString, 
             oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
   int res;
   cNames_t *cn = &cn1;
-  cn->rListAddr = rAddrLPairs;
+  cn->rList1Addr = rAddrL1Pairs;
   cn->rStringAddr = rAddrString;
-  cn->rAddrEPairs = rAddrEPairs;
-  makeNIL(cn->list);
+  cn->rList2Addr = rAddrL2Pairs;
+  makeNIL(cn->list1);
+  makeNIL(cn->list2);
   res = DBGetRow(ses, dumpRows, (void **) &cn, rd);
-  first(vAddrPair) = (int) cn1.list;
+  first(vAddrPair) = (int) cn1.list1;
   second(vAddrPair) = res;
   return vAddrPair;
 }/*}}}*/
