@@ -342,7 +342,7 @@ NoOfPagesInGen(Gen *gen)
 
 /* Calculate number of pages in an infinite region. */
 int 
-NoOfPagesInRegion(Ro *r) 
+NoOfPagesInRegion(Region r) 
 {
 #ifdef ENABLE_GEN_GC
   return NoOfPagesInGen(&(r->g0)) + NoOfPagesInGen(&(r->g1));
@@ -486,7 +486,7 @@ alloc_new_block(Gen *gen)
   else {
 #ifdef ENABLE_GC
     int rt;
-    if ( rt = all_marks_fp(*gen) /* was rtype(*gen) 2003-08-06, nh */ )
+    if ( (rt = all_marks_fp(*gen)) /* was rtype(*gen) 2003-08-06, nh */ )
       {
 	gen->fp = np;           /* Update pointer to the first page. */
 	set_fp(*gen,rt);
@@ -693,7 +693,7 @@ alloc_lobjs(int n) {
   p = (char*)malloc(sz_bytes);
   if ( p == NULL )
     die("alloc_lobjs: malloc returned NULL");
-  if ( r = (int)p % 1024 ) {
+  if ( (r = (int)p % 1024) ) {
     lobjs = (Lobjs*)(p + 1024 - r);
   } else {
     lobjs = (Lobjs*)p;
@@ -956,8 +956,6 @@ resetRegion(Region rAdr)
   Ro *r;
   
 #ifdef PROFILING
-  int *i;
-  Rp *temp;
   int j;
 #endif
 
@@ -1097,9 +1095,8 @@ deallocateRegionsUntil_X86(Region r)
  *  roAddr points at.                                                   *
  *----------------------------------------------------------------------*/
 Region
-allocRegionInfiniteProfiling(Region r, unsigned int regionId) { 
-  Rp *rp;
-
+allocRegionInfiniteProfiling(Region r, unsigned int regionId) 
+{ 
   /* printf("[allocRegionInfiniteProfiling r=%x, regionId=%d...", r, regionId);*/
 
   callsOfAllocateRegionInf++;
@@ -1253,8 +1250,6 @@ void
 allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size)
 {
   ObjectDesc *objPtr;  
-  ProfTabList* p;
-  int index;
 /*
   printf("[Entering allocRegionFiniteProfiling, rdAddr=%x, regionId=%d, size=%d ...\n", rdAddr, regionId, size);
 */

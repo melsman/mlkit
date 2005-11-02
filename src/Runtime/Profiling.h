@@ -112,6 +112,12 @@ void outputProfileTick(TickList *tick);
 void outputProfilePost(void);
 void calcAllocInGen(Gen *gen, int *alloc, int *allocProf);
 
+void profTabIncrNoOfPages(int regionId, int i);
+void profTabMaybeIncrMaxNoOfPages(int regionId);
+void profTabDecrNoOfPages(int regionId, int i);
+void profTabDecrAllocNow(int regionId, int i, char *s);
+void profTabIncrAllocNow(int regionId, int i);
+
 void Statistics(void);
 
 extern int noTimer;
