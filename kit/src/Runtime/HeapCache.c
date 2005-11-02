@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "HeapCache.h"
 #include "Region.h"
 #include "Runtime.h"
@@ -121,7 +122,7 @@ static int restoreRegion(RegionCopy *rc)
   Rp *p_next = 0;
   int i = 0;
 
-  while ( p_next = (Rp*)(rc->pages[i++]) )   // pointer to original region page is stored in copy!
+  while ( ( p_next = (Rp*)(rc->pages[i++]) ) )   // pointer to original region page is stored in copy!
     {
       int j = 0;
       p = p_next;
