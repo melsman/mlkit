@@ -214,6 +214,7 @@ max(unsigned int a, unsigned int b)
 /*------------------------------------------------------*
  * If an error occurs, then print the error and stop.   *
  *------------------------------------------------------*/
+/*
 char errorStr[255];
 void printERROR(char *errorStr) {
   printf("\n***********************ERROR*****************************\n");
@@ -221,6 +222,7 @@ void printERROR(char *errorStr) {
   printf("\n***********************ERROR*****************************\n");
   exit(-1);
 }
+*/
 
 /* Print info about a region. */
 /*
@@ -245,28 +247,44 @@ void printTopRegInfo() {
 */
 
 /* Print info about a region. */
-void pp_gen(Gen *gen)
+void 
+pp_gen(Gen *gen)
 {
   Rp* rp;
 
-  fprintf(stderr,"\n[Gen g%d at addr: %x, fp:%x, a:%x, b:%x\n",(is_gen_1(*gen)?1:0),gen,gen->fp, gen->a,gen->b);  
+  fprintf(stderr,"\n[Gen g%d at addr: %p, fp:%p, a:%p, b:%p\n",
+	  (is_gen_1(*gen)?1:0),
+	  gen,
+	  gen->fp, 
+	  gen->a,
+	  gen->b);  
   for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
 #ifdef ENABLE_GEN_GC
-    fprintf(stderr,"  Rp at addr %x, n:%x, colorPtr:%x, i: %x, rp+1: %x\n",rp,rp->n,rp->colorPtr,&(rp->i), rp+1);
+    fprintf(stderr,"  Rp at addr %p, n:%p, colorPtr:%p, i: %p, rp+1: %p\n",
+	    rp,
+	    rp->n,
+	    rp->colorPtr,
+	    &(rp->i), 
+	    rp+1);
 #else
-    fprintf(stderr,"  Rp at addr %x, n:%x, i: %x, rp+1: %x\n",rp,rp->n,&(rp->i),rp+1);
+    fprintf(stderr,"  Rp at addr %p, n:%p, i: %p, rp+1: %p\n",
+	    rp,
+	    rp->n,
+	    &(rp->i),
+	    rp+1);
 #endif /* ENABLE_GEN_GC */
   }
   fprintf(stderr,"]\n");
 }
 
-void pp_reg(int rAddr,  char *str) {
+void 
+pp_reg(int rAddr,  char *str) 
+{
   Ro *r;
-  Rp *kp;
 
   r = (Ro *) clearStatusBits(rAddr);
   fprintf(stderr,"printRegionInfo called from: %s\n",str);
-  fprintf(stderr,"Region at address: %0x\n", r);
+  fprintf(stderr,"Region at address: %p\n", r);
   pp_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
   pp_gen(&(r->g1));
@@ -275,7 +293,9 @@ void pp_reg(int rAddr,  char *str) {
   return;
 }
 
-void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s) {
+void 
+chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s) 
+{
   Rp* rp;
   int found = 0;
   return;  // ToDo: GenGC remove
@@ -284,7 +304,7 @@ void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s) {
       found = 1;
   }
   if (! found) {
-    fprintf(stderr,"chk_obj_in_gen, obj_ptr: %x not in gen:\n",obj_ptr);
+    fprintf(stderr,"chk_obj_in_gen, obj_ptr: %p not in gen:\n",obj_ptr);
     pp_reg((int)(get_ro_from_gen(*gen)),"chk_obj_in_gen");
     fprintf(stderr,"STOP:%s\n",s);
     die("");
@@ -304,8 +324,9 @@ void printRegionStack() {
 */
 
 /* Calculate number of pages in a generation */
-inline
-int NoOfPagesInGen(Gen *gen) {
+inline int 
+NoOfPagesInGen(Gen *gen) 
+{
   int i;
   Rp *rp;
 
@@ -320,7 +341,9 @@ int NoOfPagesInGen(Gen *gen) {
 }
 
 /* Calculate number of pages in an infinite region. */
-int NoOfPagesInRegion(Ro *r) {
+int 
+NoOfPagesInRegion(Ro *r) 
+{
 #ifdef ENABLE_GEN_GC
   return NoOfPagesInGen(&(r->g0)) + NoOfPagesInGen(&(r->g1));
 #else
@@ -329,7 +352,9 @@ int NoOfPagesInRegion(Ro *r) {
 }
 
 /*
-void printFreeList() {
+void 
+printFreeList() 
+{
   Rp *kp;
 
   printf("Enter printFreeList\n");
@@ -382,7 +407,9 @@ size_free_list()
  *  The second argument is a pointer to the generation in r to use      *
  *  Important: alloc_new_block must preserve all marks in fp (Region.h) *
  *----------------------------------------------------------------------*/
-void alloc_new_block(Gen *gen) { 
+void 
+alloc_new_block(Gen *gen) 
+{ 
   Rp* np;
 #ifdef PROFILING  
   Ro *r;
@@ -610,7 +637,9 @@ void deallocateRegion(
 		      Region* topRegionCell
 #endif
 		     ) { 
+#ifdef PROFILING
   int i;
+#endif
 
   debug(printf("[deallocateRegion... top region: %x\n", TOP_REGION));
 

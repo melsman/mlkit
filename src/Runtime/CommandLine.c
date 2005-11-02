@@ -28,7 +28,9 @@ int report_gc = 0;
 double heap_to_live_ratio = HEAP_TO_LIVE_RATIO;
 #endif
 
-void printUsage(void) {
+void 
+printUsage(void) 
+{
   fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
   fprintf(stderr,"      [-help, -h] \n");
 #ifdef ENABLE_GC
@@ -72,8 +74,13 @@ void printUsage(void) {
   exit(0);
 }
 
-void parseCmdLineArgs(int argc, char *argv[]) {
+void 
+parseCmdLineArgs(int argc, char *argv[]) 
+{
+
+#if ( PROFILING || ENABLE_GC )
   int match;
+#endif
 
   /* initialize global variables to hold command line arguments */
   commandline_argc = argc;
