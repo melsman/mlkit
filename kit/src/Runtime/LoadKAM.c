@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "LoadKAM.h"
 #include "Runtime.h"
@@ -126,7 +128,7 @@ labelMapNew(void)
 void
 printLabelId(label lab,unsigned long id)
 {
-  printf(" Lab(%d,%s) -> %d\n",lab->id,&(lab->base),id);
+  printf(" Lab(%ld,%s) -> %ld\n",lab->id,&(lab->base),id);
 }
 
 void
@@ -213,7 +215,7 @@ longListFreeElem(LongList* longList)
   while ( longList )
     {
       l = longList->next;
-      free(longList->elem);
+      free((void*)(longList->elem));
       free(longList);
       longList = l;
     }
@@ -291,17 +293,18 @@ read_label(FILE* fd, label* lab_ptr)
 }
 
 // For debugging
+/*
 static void  
 print_exec_header(struct exec_header* exec_header) 
 {
   printf("Header:\n\
-             code_size: %d\n\
-             main_lab: Lab(%d,%s)\n\
-             import_size_code: %d\n\
-             import_size_data: %d\n\
-             export_size_code: %d\n\
-             export_size_data: %d\n\
-             magic: %x\n", 
+             code_size: %ld\n\
+             main_lab: Lab(%ld,%s)\n\
+             import_size_code: %ld\n\
+             import_size_data: %ld\n\
+             export_size_code: %ld\n\
+             export_size_data: %ld\n\
+             magic: %lx\n", 
 	 exec_header->code_size,
 	 exec_header->main_lab_opt->id,
 	 &(exec_header->main_lab_opt->base),	 
@@ -311,6 +314,7 @@ print_exec_header(struct exec_header* exec_header)
 	 exec_header->export_size_data,
 	 exec_header->magic);
 }
+*/
   
 // read_exec_header: Leaves fd at the beginning of the code 
 // segment on success

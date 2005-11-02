@@ -32,6 +32,8 @@ typedef StringDesc* String;
 
 #define sizeStringDefine(str)    ((((String)(str))->size) >> 6) /* Remove stringtag. We do not tag the size. */
 
+void convertStringToC(String mlStr, unsigned char *buf, int buflen, int exn);
+
 /******************************************************************
  * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
  ******************************************************************/
