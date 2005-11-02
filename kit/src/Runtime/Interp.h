@@ -1,4 +1,9 @@
 
+#ifndef INTERP_H
+#define INTERP_H
+
+#include "LoadKAM.h"
+
 /* Interpret code; assumes that code is already resolved; i.e., that
  * instruction numbers are turned into instruction addresses. */
 int 
@@ -18,4 +23,8 @@ interpCode(Interp* interpreter,          // Interpreter
 void 
 resolveCode(bytecode_t b_prog,              // Code to resolve
 	    int sizeW);                     // Size of code in words
-	    
+
+int 
+main_interp(int argc, char * argv[]);
+
+#endif /* INTERP_H */

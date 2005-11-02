@@ -118,7 +118,7 @@ chrCharML(int charNrML, int exn)
       return convertIntToML (charNrC); 
     }
   raise_exn(exn);
-  return;
+  return 0;        // never reached
 }
 
 String

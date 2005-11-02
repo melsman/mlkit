@@ -44,12 +44,12 @@ __div_int31(int x, int y, int exn)                   /* ML */
   if (y == 1) 
     { 
       raise_exn(exn);
-      return;
+      return 0;                         // never reached
     }
   if ( y == -1 && x == -2147483647 )    // -2147483647 = 2 * Int31.minInt + 1
     {   
       raise_exn((int)&exn_OVERFLOW);
-      return;
+      return 0;                         // never reached
     }
   if (x == 1) return 1;
   if (x < 1 && y > 1)
@@ -65,12 +65,12 @@ __div_int32ub(int x, int y, int exn)                 /* ML */
   if (y == 0) 
     {
       raise_exn(exn);
-      return;
+      return 0;                                // never reached
     }
   if ( y == -1 && x == (-2147483647 - 1) ) 
     {
       raise_exn((int)&exn_OVERFLOW);
-      return;
+      return 0;                                // never reached
     }
   if (x < 0 && y > 0)
     return ((x + 1) / y) - 1;
@@ -85,7 +85,7 @@ __div_word32ub(unsigned int x, unsigned int y, int exn)          /* ML */
   if ( y == 0 ) 
     {
       raise_exn(exn);
-      return;
+      return 0;                               // never reached
     } 
   return (x / y);
 }
@@ -99,7 +99,7 @@ __div_word31(unsigned int x, unsigned int y, int exn)            /* ML */
   if ( yC == 0 ) 
     {
       raise_exn(exn);
-      return;
+      return 0;                               // never reached
     }
   return i32ub_to_i31(xC / yC);
 }
@@ -110,7 +110,7 @@ __mod_int31(int xML, int yML, int exn)
   if ( yML == 1 ) 
     {
       raise_exn(exn);
-      return;
+      return 0;                               // never reached
     }
   if ((xML-1)%(yML-1) == 0 || (xML>1 && yML>1) || (xML<1 && yML<1))
     return ((xML-1)%(yML-1))+1;
@@ -124,6 +124,7 @@ __mod_int32ub(int x, int y, int exn)
   if ( y == 0 ) 
     {
       raise_exn(exn);
+      return 0;                               // never reached
     }
   if ( (x > 0 && y > 0) || (x < 0 && y < 0) || (x % y == 0) ) 
     {
@@ -138,6 +139,7 @@ __mod_word32ub(unsigned int x, unsigned int y, int exn)
   if ( y == 0 ) 
     {
       raise_exn(exn);
+      return 0;                              // never reached
     }
   return (x % y);
 }
@@ -151,6 +153,7 @@ __mod_word31(unsigned int x, unsigned int y, int exn)
   if ( yC == 0 ) 
     {
       raise_exn(exn);
+      return 0;                              // never reached
     }
   return i32ub_to_i31(xC % yC);
 }
@@ -327,7 +330,7 @@ ceilFloat(int f)
 
  raise_ceil:
   raise_exn((int)&exn_OVERFLOW);
-  return;
+  return 0;                          // never reached
 }
 
 int 
