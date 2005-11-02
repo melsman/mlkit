@@ -193,7 +193,7 @@ functor DbODBCBackend(type conn = int
       | selector [] (r::rr) x = raise Fail "Oracle driver corruption"
       | selector (h::hr) [] x = raise Fail "Oracle driver corruption" 
       | selector (h::hr) (r::rr) x = if String.compare(toLower x, h) = EQUAL then r else selector hr rr x
-    fun selectDb (h : DbHandle) q = 
+    fun selectDb' (h : DbHandle) q = 
        case !h of NONE => raise Fail "Session closed"
                 | SOME r => 
         let val res : int = (log "DBODBCExecuteSQL" ; prim("@:",("DBODBCExecuteSQL",r, Quot.toString q, getReqRec())))
@@ -217,7 +217,8 @@ functor DbODBCBackend(type conn = int
                                         | 3 => NONE
                                         | i => raise Fail ("getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
                              end 
-    val getRowDb = fn (h,f,l) => Option.map f (getRowListDb (h,f,l))
+    fun selectDb x y = (selectDb' x y) handle Fail z => (log z; raise Fail z)
+    val getRowDb = fn (h,f,l) => (Option.map f (getRowListDb (h,f,l))) handle Fail z => (log z; raise Fail z)
                                      
     fun dmlTransDb h f = case !h of NONE => raise Fail "Session is closed"
                                   | SOME r => let val _ = log("TransStart")
