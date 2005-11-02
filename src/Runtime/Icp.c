@@ -13,6 +13,6 @@
 void print_icp_result(int iCount) {
   long base = -2147483647; /* -(2^31 - 1) */
   long val = iCount;
-  printf("Result of Instruction Count Profiling: %d.\n", val - base);
+  printf("Result of Instruction Count Profiling: %ld.\n", val - base);
   return;
 }
