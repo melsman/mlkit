@@ -9,6 +9,7 @@
 	freelist   pointer to the free list -- declared in Region.h
 */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <sys/types.h>
@@ -17,6 +18,7 @@
 #include <setjmp.h>       /* to allow user-defined C-functions to raise exceptions using
 			   * the raise_exn primitive */
 #include <dlfcn.h> /* Dynamic linking */
+#include <string.h>
 
 #include "Runtime.h"
 #include "Stack.h"
@@ -32,6 +34,7 @@
 #include "Math.h"
 #include "Table.h"
 #include "Locks.h"
+#include "Dlsym.h"
 
 #ifdef KAM
 Exception *exn_OVERFLOW;   // Initialized in Interp.c
@@ -305,9 +308,14 @@ resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable [], void 
     unsigned long inst;
     inst = *(real_code + i);
     arity = getInstArity(inst);
+    if ( arity == -100 )
+      {
+	fprintf(stderr, "No arity for inst %ld\n", inst);
+	die("Interp.resolveInstructions");
+      }
     debug(printf("i=%d ; inst = %d; arity = %d\n", i, inst, arity));
     if (inst > 1000) {
-      printf ("sizeW = %d, i= %d, inst = %d\n", sizeW, i, inst);
+      printf ("sizeW = %d, i= %d, inst = %ld\n", sizeW, i, inst);
       die ("resolveInstructions: Hmm - inst number > 1000");
     }
     *(real_code + i) = (unsigned long)(jumptable[inst]);
@@ -382,9 +390,8 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
    For reasonable performance, "pc" MUST reside in a register.
    Many ``optimizing'' compilers underestimate the importance of "pc",
    and don't put it in a register. 
-   For GCC users, I've hand-assigned registers for some architectures. 
-
-   -- from Moscow ML... */
+   For GCC users, registers are hans-assigned for some architectures. 
+*/
 
   register int acc;
   
@@ -400,7 +407,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
   int *env = NULL;
   uint32 cur_instr;
   int temp;
-  c_primitive primtmp;
+  //  c_primitive primtmp;
 
 
 #ifdef LAB_THREADED
@@ -696,7 +703,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	debug(printf("PRIM_NEG_I gives %d\n", acc));
 	Next;
       }
-
+/*
     raise_bind:
       acc = (int)&exn_BIND;
       goto raise_exception;
@@ -706,13 +713,15 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
     raise_div:
       acc = (int)&exn_DIV;
       goto raise_exception;
+*/
     raise_overflow:
       acc = (int)&exn_OVERFLOW;
       goto raise_exception;
+/*
     raise_interrupt:
       acc = (int)&exn_INTERRUPT;
       goto raise_exception;
-
+*/
       Instruct(PRIM_ABS_I): {
 	if ( acc < 0 ) {
 	  if ( acc == -2147483647 - 1)
@@ -1418,15 +1427,15 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
 
 #ifdef LAB_THREADED
-    lbl_EVENT:
+//  lbl_EVENT:
     lbl_DOT_LABEL:
     lbl_LABEL:
 #else
     default: {
 #endif /*LAB_THREADED*/ 
 	printf("Default: Instruction %d(hex %x) not recognized\n", cur_instr, cur_instr);
-	printf("Stack pointer sp = 0x%x\n", sp);
-	printf("Code pointer pc = 0x%x\n", pc);
+	printf("Stack pointer sp = %p\n", sp);
+	printf("Code pointer pc = %p\n", pc);
 	die("Instruction not recognized");
 	return -1;
 #ifndef LAB_THREADED

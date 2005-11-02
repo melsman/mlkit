@@ -150,7 +150,10 @@ L0:
   if (x & 1) {
     if (y & 1) {
       return mlFALSE;
-    } else die("equal_polyF - unboxed vs. boxed...");
+    } else {
+      die("equal_polyF - unboxed vs. boxed...");
+      return mlFALSE; // never comes here
+    }
   } else {
     if (y & 1) die("equal_polyF - boxed vs. unboxed...");
 
@@ -194,6 +197,7 @@ L0:
       return equalTable((Table)x,(Table)y);
     }
     die("equal_poly - No matching tag!");
+    return mlFALSE;  // never comes here
   }
 } 
 
@@ -245,6 +249,10 @@ sig_handler_fpe(void)
   return; /* never comes here */
 }
 
+#ifndef KAM
+extern void code(void);
+#endif
+
 int 
 main(int argc, char *argv[]) 
 {
@@ -271,6 +279,6 @@ rpMap = regionPageMapNew();
 #else
   code();
   return (EXIT_FAILURE);   /* never comes here (i.e., exits through 
-		 * terminateML or uncaught_exception) */
+		            * terminateML or uncaught_exception) */
 #endif
 }

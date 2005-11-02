@@ -39,6 +39,10 @@ static int heapid_counter = 0;
 
 #include "Locks.h"
 
+#ifdef APACHE
+extern void logMsg(char* msg);
+#endif
+
 static void
 dienow(char *s)
 {

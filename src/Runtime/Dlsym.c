@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 #include "../CUtils/hashmap_typed.h"
 #include "Locks.h"
+#include "Dlsym.h"
 
 int
 REG_POLY_FUN_HDR(sml_dlopen,int pair, Region s, String file1, int flags1)
