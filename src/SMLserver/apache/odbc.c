@@ -108,23 +108,24 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
       break;
     case SQL_SUCCESS_WITH_INFO:
       dblog1(ctx,"putmsg->withInfo");
-      status = SQL_SUCCESS;
-      i = 1;
+      i = 0;
       do
       {
-        dblog2(ctx,"msg count", i);
-        msg[0] = 0;
-        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, &SQLstate, &naterrptr, msg,
-                               msgLength - 1, &msgl);
-        if (msgl < msgLength)
+        if (i != 0)
         {
-          dblog1(ctx, (char *) msg);
-        }
-        else
-        {
-          dblog1(ctx,"ErrorBuffer too small");
+          if (msgl < msgLength)
+          {
+            msg[msgl] = 0;
+            dblog1(ctx, (char *) msg);
+          }
+          else
+          {
+            dblog1(ctx,"ErrorBuffer too small");
+          }
         }
         i++;
+        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, &SQLstate, &naterrptr, msg,
+                               msgLength - 1, &msgl);
       }
       while (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO);
       return SQL_SUCCESS;
@@ -132,23 +133,24 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
     default:
       dblog1(ctx,"putmsg->error");
       stat = status;
-      status = SQL_SUCCESS;
-      i = 1;
+      i = 0;
       do
       {
-        dblog2(ctx,"msg count", i);
-        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, 
-                               msgLength - 1, &msgl);
-        if (msgl < msgLength)
+        if (i != 0)
         {
-          msg[msgl] = 0;
-          dblog1(ctx, (char *) msg);
-        }
-        else
-        {
-          dblog1(ctx,"ErrorBuffer too small");
+          if (msgl < msgLength)
+          {
+            msg[msgl] = 0;
+            dblog1(ctx, (char *) msg);
+          }
+          else
+          {
+            dblog1(ctx,"ErrorBuffer too small");
+          }
         }
         i++;
+        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, 
+                               msgLength - 1, &msgl);
       }
       while (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO);
       return stat;
