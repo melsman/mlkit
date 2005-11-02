@@ -83,7 +83,7 @@ terminateML (int status)
       alloc_total += lobjs_period;
       gc = 100.0 * ((double)gc_total) / ((double)alloc_total);
       ri = 100.0 - gc;
-      fprintf(stderr, "[GC(%dms): %d garbage collections, %d kb rpages, RI: %4.1f%, GC: %4.1f%, Frag avg: %4.1f%]\n", 
+      fprintf(stderr, "[GC(%dms): %d garbage collections, %d kb rpages, RI: %4.1f%%, GC: %4.1f%%, Frag avg: %4.1f%%]\n", 
 	      time_gc_all_ms, num_gc, rp_total,
 	      ri, gc, FRAG_sum / (double)(num_gc-1));
     }
