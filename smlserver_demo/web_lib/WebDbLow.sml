@@ -207,21 +207,11 @@ functor DbODBCBackend(type conn = int
                        | 2 => raise Fail "selectDb: SQL was not a select statement"
                        | _ => raise Fail "selectDb: An error occured"
           end
-    val toOption = List.map (fn (s,i) => case i of 
-                        ~1 => NONE
-                      |  x => if isNull s
-                              then NONE
-                              else (log s;
-                                if size s < x
-                                then raise Fail ("getRowListDb. Data has been truncated, it was " ^
-                                  (Int.toString (size s)) ^ " bytes long, but it " ^
-                                  "was suppose to be " ^ (Int.toString x) ^" bytes long")
-                                else SOME s))
-
+    val toOption = List.rev o (List.map (fn [] => NONE | l as (_::_) => SOME(String.concat (List.rev l))))
 
     fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Session is closed"
                                         | SOME r => 
-                             let val (res,res2) : ((string * int) list * int) = (log "apsmlODBCGetRow" ; prim(":", ("apsmlODBCGetRow",r,getReqRec())))
+                             let val (res,res2) : ((string list) list * int) = (log "apsmlODBCGetRow" ; prim(":", ("apsmlODBCGetRow",r,getReqRec())))
                              in 
                              case res2 of 1 => SOME (toOption res)
                                         | 3 => NONE
