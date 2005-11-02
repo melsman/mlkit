@@ -869,7 +869,7 @@ evacuate(unsigned int obj)
 
   if ( is_lobj_bit(rp->n) )
     {                                     // object immovable
-      fprintf(stderr, "Reaching large object %x ; region page header at %x\n", obj_ptr, rp);
+      // fprintf(stderr, "Reaching large object %x ; region page header at %x\n", obj_ptr, rp);
       if ( is_constant(*obj_ptr) )
 	{
 	  return obj;
@@ -1172,7 +1172,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 #ifdef ENABLE_GEN_GC
       fprintf(stderr,"%s",(is_major_p)?("Major"):("Minor"));
 #endif // ENABLE_GEN_GC
-      fflush(stdout);
+      fflush(stderr);
       size_from_space = allocated_bytes_in_regions();
       lobjs_beforegc = allocated_bytes_in_lobjs();
       alloc_period_save = alloc_period;
@@ -1534,7 +1534,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	  FRAG_sum = FRAG_sum + FRAG;
 	}
 
-      fprintf(stderr,"%dkb(%dkb) +L%dkb (%4.1f%) -> %dkb(%dkb) +L%dkb, free-list: %dkb, ",
+      fprintf(stderr,"%dkb(%dkb) +L%dkb (%4.1f%%) -> %dkb(%dkb) +L%dkb, free-list: %dkb, ",
 	      size_from_space / 1024,
 	      rp_from_space,
 	      lobjs_beforegc / 1024,
@@ -1543,7 +1543,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	      rp_used,
 	      lobjs_aftergc / 1024,
 	      size_free_list());
-      fprintf(stderr, "alloc: %dkb +L%dkb, RI: %4.1f%, GC: %4.1f%]\n",
+      fprintf(stderr, "alloc: %dkb +L%dkb, RI: %4.1f%%, GC: %4.1f%%]\n",
 	      alloc_period / 1024,
 	      lobjs_period / 1024,
 	      RI, GC);	     

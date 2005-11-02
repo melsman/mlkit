@@ -484,7 +484,7 @@ Region allocRegionInfiniteProfiling(Region roAddr, unsigned int regionId);
 Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int regionId);
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
-int *deallocRegionFiniteProfiling(void);
+void deallocRegionFiniteProfiling(void);
 int *allocProfiling(Region r,int n, int pPoint);  // used by Table.c
 int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
 #endif /*Profiling*/

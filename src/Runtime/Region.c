@@ -1220,7 +1220,9 @@ allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId)
  * object descriptor. rdAddr points at the region descriptor when called.        *
  *-------------------------------------------------------------------------------*/
 #define notPrgPoint 1 
-void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size) { 
+void 
+allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size)
+{
   ObjectDesc *objPtr;  
   ProfTabList* p;
   int index;
@@ -1257,8 +1259,11 @@ void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId,
 
 /* In CodeGenX86, we use a generic function to compile a C-call. The regionId */
 /* and size may therefore be tagged, which this stub-function takes care of.  */
-void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size) { 
-  return allocRegionFiniteProfiling(rdAddr, convertIntToC(regionId), convertIntToC(size));
+void 
+allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size) 
+{ 
+  allocRegionFiniteProfiling(rdAddr, convertIntToC(regionId), convertIntToC(size));
+  return;
 }
 
 /*-----------------------------------------------------------------*
@@ -1266,7 +1271,9 @@ void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int
  * topFiniteRegion has to point at the bottom address of the       *
  * finite region descriptor, which will be the new stack address.  *
  *-----------------------------------------------------------------*/
-int *deallocRegionFiniteProfiling(void) { 
+void
+deallocRegionFiniteProfiling(void) 
+{ 
   int size;
 
   /*
@@ -1296,7 +1303,9 @@ int *deallocRegionFiniteProfiling(void) {
  * and takes care of allocating it, returning a pointer to the     *
  * beginning of the user value, as if profiling is not enabled.    *
  *-----------------------------------------------------------------*/
-int *allocGenProfiling(Gen *gen, int n, int pPoint) {
+int *
+allocGenProfiling(Gen *gen, int n, int pPoint) 
+{
   int *res;
 
   debug(printf("[Entering allocProfiling... gen:%x, n:%d, pp:%d.", gen, n, pPoint));
@@ -1312,13 +1321,16 @@ int *allocGenProfiling(Gen *gen, int n, int pPoint) {
   return res;
 }
 
-int *allocProfiling(Region r, int n, int pPoint) {
+int *
+allocProfiling(Region r, int n, int pPoint) 
+{
   return allocGenProfiling(&(clearStatusBits(r)->g0),n,pPoint);
 }
 #endif /*PROFILING*/
 
 #ifdef KAM
-void free_region_pages(Rp* first, Rp* last)
+void 
+free_region_pages(Rp* first, Rp* last)
 {
   if ( first == 0 )
     return;
