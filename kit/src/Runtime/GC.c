@@ -223,9 +223,9 @@ pop_scan_stack()
   return scan_stack[scan_sp];
 }
 
-/*********************************/
-/* SCAN CONTAINER FINITE REGIONS */
-/*********************************/
+/***************************************************/
+/* SCAN CONTAINER FINITE REGIONS AND LARGE OBJECTS */
+/***************************************************/
 unsigned int **scan_container = NULL;
 #define INIT_CONTAINER_SIZE_W 1024
 int size_scan_container;
@@ -471,7 +471,7 @@ allocated_bytes_in_gen(Gen *gen)
   rp = clear_fp(gen->fp); // Maybe the generation-bit is set
   s = (unsigned int*) &(rp->i);
   while (((int *)s) != gen->a) {
-    #if PROFILING
+    #ifdef PROFILING
     s += sizeObjectDesc;
     #endif
     switch (val_tag_kind_const(s)) {
@@ -643,20 +643,25 @@ get_size_obj(unsigned int *obj_ptr)
 }
 
 // ToDo: GenGC remove print_tagged_rp_content
-void print_tagged_rp_content(Rp *rp)
-{ unsigned int *obj_ptr;
+/*
+void 
+print_tagged_rp_content(Rp *rp)
+{ 
+  unsigned int *obj_ptr;
 
- fprintf(stderr,"[tagged rp content...\n");
- for (obj_ptr = (unsigned int*)(&(rp->i)) 
-	; obj_ptr < (unsigned int*)(rp+1) && obj_ptr != notPP
-	; obj_ptr = obj_ptr + get_size_obj(obj_ptr))
-   { 
-     fprintf(stderr,"Addr: %p - ",obj_ptr);
-     print(obj_ptr);
-   }
- fprintf(stderr,"]\n");
- return;
+  fprintf(stderr,"[tagged rp content...\n");
+  for (obj_ptr = (unsigned int*)(&(rp->i)) 
+	 ; obj_ptr < (unsigned int*)(rp+1) && obj_ptr != notPP
+	 ; obj_ptr = obj_ptr + get_size_obj(obj_ptr))
+    { 
+      fprintf(stderr,"Addr: %p - ",obj_ptr);
+      print(obj_ptr);
+    }
+  fprintf(stderr,"]\n");
+  return;
 }
+*/
+
 
 /* ToDo: GenGC (1) allok skal tage højde for colorPtr
                (2) allok skal tage højde for om g1 indeholder en klump. 
@@ -670,12 +675,12 @@ acopy(Gen *gen, unsigned int *obj_ptr)
   unsigned int *new_obj_ptr;
 #ifdef PROFILING
   int pPoint;
-  pPoint = (((ObjectDesc *)(obj_ptr))-1)->atId;
-#endif // PROFILING
+#endif
 
   size = get_size_obj(obj_ptr);     // size includes tag
 
 #ifdef PROFILING
+  pPoint = (((ObjectDesc *)(obj_ptr))-1)->atId;
   new_obj_ptr = allocGenProfiling(gen,size,pPoint);
 #else
   new_obj_ptr = allocGen(gen,size);
@@ -693,9 +698,6 @@ acopy_pair(Gen *gen, unsigned int *obj_ptr)
 #ifdef PROFILING
   int pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
-#endif
-
-#ifdef PROFILING
   new_obj_ptr = allocGenProfiling(gen,2,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,2) - 1;
@@ -713,9 +715,6 @@ acopy_ref(Gen *gen, unsigned int *obj_ptr)
 #ifdef PROFILING
   int pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
-#endif
-
-#ifdef PROFILING
   new_obj_ptr = allocGenProfiling(gen,1,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,1) - 1;
@@ -732,9 +731,6 @@ acopy_triple(Gen *gen, unsigned int *obj_ptr)
 #ifdef PROFILING
   int pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
-#endif
-
-#ifdef PROFILING
   new_obj_ptr = allocGenProfiling(gen,3,pPoint) - 1;
 #else
   new_obj_ptr = allocGen(gen,3) - 1;
@@ -875,7 +871,7 @@ evacuate(unsigned int obj)
 	{
 	  return obj;
 	}
-      *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bito
+      *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
       push_scan_container(obj_ptr);
       return obj;
     }
