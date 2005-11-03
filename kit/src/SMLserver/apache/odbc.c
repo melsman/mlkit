@@ -29,6 +29,18 @@ struct myString
   unsigned int length;
 };
 
+struct freeDBC
+{
+  SQLHDBC dbc;
+  struct freeDBC *next;
+};
+
+struct bugs
+{
+  int QfreeDBCs;
+  struct freeDBC *freeDBC;
+};
+
 typedef struct 
 {
   SQLHENV envhp;
@@ -40,6 +52,7 @@ typedef struct
   struct myString DSN;
   struct myString UID;
   struct myString PW;
+  struct bugs bugs;
 } oDb_t;
 
 typedef struct oSes
@@ -191,6 +204,8 @@ DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char 
   db->envhp = NULL;
   db->number_of_sessions = 0;
   db->about_to_shutdown = 0;
+  db->bugs.QfreeDBCs = 1;
+  db->bugs.freeDBC = NULL;
   db->msg[0] = 0;
   status = SQLSetEnvAttr(SQL_NULL_HANDLE, SQL_ATTR_CONNECTION_POOLING, (SQLPOINTER) SQL_CP_ONE_PER_HENV, 0);
   ErrorCheck(status, SQL_HANDLE_ENV, SQL_NULL_HANDLE, db->msg,
@@ -275,6 +290,7 @@ static oSes_t *
 DBgetSession (oDb_t *db, void *rd)/*{{{*/
 {
   SQLRETURN status;
+  struct freeDBC *dbcElement;
   oSes_t *ses;
   if (db == NULL) return NULL;
   ses = (oSes_t *) malloc (sizeof(oSes_t));
@@ -292,13 +308,23 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   ses->msg[0] = 0;
   ses->connhp = NULL;
   ses->next = NULL;
-  status = SQLAllocHandle(SQL_HANDLE_DBC, db->envhp, &ses->connhp);
-  ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
-      dblog1(rd, "oracleDB: DataBase alloc failed; are we out of memory?");
-      free(ses);
-      return NULL;,
-      rd
-      )
+  if (db->bugs.QfreeDBCs && db->bugs.freeDBC)  // MySQL freeHandle workaround
+  {
+    dbcElement = db->bugs.freeDBC;
+    ses->connhp = dbcElement->dbc;
+    db->bugs.freeDBC = dbcElement->next;
+    free(dbcElement);
+  }
+  else
+  {
+    status = SQLAllocHandle(SQL_HANDLE_DBC, db->envhp, &ses->connhp);
+    ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
+        dblog1(rd, "oracleDB: DataBase alloc failed; are we out of memory?");
+        free(ses);
+        return NULL;,
+        rd
+        )
+  }
   status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_QUIET_MODE, NULL, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
@@ -611,7 +637,22 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   ses->db->number_of_sessions--;
   should_we_shutdown = ses->db->about_to_shutdown;
   number_of_sessions = ses->db->number_of_sessions;
-  status = SQLFreeHandle(SQL_HANDLE_DBC, ses->connhp); // freeing ses
+  struct freeDBC *dbcElement;
+  if (ses->db->bugs.QfreeDBCs)
+  {
+    dbcElement = (struct freeDBC *) malloc(sizeof(struct freeDBC));
+    if (dbcElement) // Memory leak intended (we are already out of mem)
+    {
+      dbcElement->dbc = ses->connhp;
+      dbcElement->next = ses->db->bugs.freeDBC;
+      ses->db->bugs.freeDBC = dbcElement;
+    }
+  }
+  else
+  {
+    dblog(ctx,"Freeing Connection handle");
+    status = SQLFreeHandle(SQL_HANDLE_DBC, ses->connhp);
+  }
   db = ses->db;
   free(ses);
   if (should_we_shutdown && number_of_sessions == 0)
