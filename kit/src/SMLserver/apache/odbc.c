@@ -204,7 +204,7 @@ DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char 
   db->envhp = NULL;
   db->number_of_sessions = 0;
   db->about_to_shutdown = 0;
-  db->bugs.QfreeDBCs = 1;
+  db->bugs.QfreeDBCs = 0;
   db->bugs.freeDBC = NULL;
   db->msg[0] = 0;
   status = SQLSetEnvAttr(SQL_NULL_HANDLE, SQL_ATTR_CONNECTION_POOLING, (SQLPOINTER) SQL_CP_ONE_PER_HENV, 0);
@@ -388,7 +388,10 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       ctx
       )
   ses->needsClosing = 0;
+  dblog1(ctx, "Executing:");
+  dblog1(ctx, sql);
   status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
+  if (status == SQL_NO_DATA) goto closing;
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
@@ -396,6 +399,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
+  dblog1(ctx, "Executed fine");
   ses->needsClosing = 1;
   status = SQLNumResultCols(ses->stmthp, &ses->cols);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
@@ -405,6 +409,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
+  dblog2(ctx, "SQLNumResultCols :", ses->cols);
   if (ses->cols > 0) return DBData;
   SQLCloseCursor(ses->stmthp);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
@@ -414,6 +419,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
+closing:
   SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
   ses->stmthp = SQL_NULL_HANDLE;
   return DBDml;
@@ -640,6 +646,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   struct freeDBC *dbcElement;
   if (ses->db->bugs.QfreeDBCs)
   {
+    dblog1(ctx,"Not freeing Connection handle");
     dbcElement = (struct freeDBC *) malloc(sizeof(struct freeDBC));
     if (dbcElement) // Memory leak intended (we are already out of mem)
     {
@@ -650,7 +657,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   }
   else
   {
-    dblog(ctx,"Freeing Connection handle");
+    dblog1(ctx,"Freeing Connection handle");
     status = SQLFreeHandle(SQL_HANDLE_DBC, ses->connhp);
   }
   db = ses->db;
