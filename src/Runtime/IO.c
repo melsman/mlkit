@@ -121,6 +121,7 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
   unsigned char buf[100];
   int i;
   int ch;
+  int terminal;
 
   n = convertIntToC(n);
 
@@ -139,9 +140,12 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
   //  i = fread(buf,1,n,is); 
   //  return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
     
+  terminal = isatty(fileno(is));
   for ( i = 0; i < n && ((ch = fgetc(is)) != EOF); i++ )
     {
       buf[i] = (unsigned char)ch;
+      if ( terminal > 0 && ch == '\n' )
+	break;
     }
   return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
 }
