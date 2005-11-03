@@ -475,7 +475,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
   unsigned int n;
   int i;
   SQLRETURN status;
-  unsigned int size = 0;
+  unsigned int size = MAXMSG;
   if (ses->stmthp == NULL) return DBEod;
   n = ses->datasizes[0];
   dblog2(ctx, "DBGetRow n", n);
@@ -537,6 +537,14 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
       case SQL_SUCCESS:
         *rowCtx = dump(*rowCtx, *((SQLINTEGER *) ses->rowp),
                        ses->rowp + sizeof(SQLINTEGER), 0);
+        if (*((SQLINTEGER *) ses->rowp) == SQL_NULL_DATA) 
+        {
+          dblog1(ctx, "data was NULL");
+        }
+        else
+        {
+          dblog1(ctx,ses->rowp+sizeof(SQLINTEGER));
+        }
         break;
       case SQL_SUCCESS_WITH_INFO:
         stat = SQLGetDiagField (SQL_HANDLE_STMT, ses->stmthp, 1, SQL_DIAG_SQLSTATE, 
