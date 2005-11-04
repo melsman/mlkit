@@ -174,8 +174,38 @@ structure Posix :> POSIX =
         val stdout = Initial.stdOut_stream
         val stderr = Initial.stdErr_stream
 
-        structure O = Posix_File_Sys.O
-        structure S = Posix_File_Sys.S
+        structure O = 
+          struct 
+            type mode = SysWord.word
+            type flags = mode
+
+            open Posix_File_Sys.O
+
+            fun toWord x = x
+            val fromWord = toWord
+            val flags = List.foldl SysWord.orb 0wx0
+            val all = flags [irwxu,irusr,iwusr,ixusr,irwxg,irgrp,iwgrp,
+                             ixgrp,irwxo,iroth,iwoth,ixoth,isuid,isgid]
+            val intersect = List.foldl SysWord.andb 0wx3F
+            fun clear (f1,f2) = SysWord.andb (SysWord.notb f1,f2)
+            fun allSet (f1,f2) = SysWord.andb (f1,f2) = f1
+            fun anySet (f1,f2) = SysWord.andb (f1,f2) <> 0wx0
+          end
+        structure S = 
+          struct
+            type flags = SysWord.word
+             
+            open Posix_File_Sys.S
+
+            fun toWord x = x
+            val fromWord = toWord
+            val flags = List.foldl SysWord.orb 0wx0
+            val all = flags [append,excl,noctty,nonblock,sync,trunc]
+            val intersect = List.foldl SysWord.andb 0wx3F
+            fun clear (f1,f2) = SysWord.andb (SysWord.notb f1,f2)
+            fun allSet (f1,f2) = SysWord.andb (f1,f2) = f1
+            fun anySet (f1,f2) = SysWord.andb (f1,f2) <> 0wx0
+          end
 
         datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
 
