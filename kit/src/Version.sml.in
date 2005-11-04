@@ -1,7 +1,8 @@
 (* Do NOT modify the file "kit/src/Version.sml" directly - it is generated
- * from "kit/src/Version.sml.in" and based on the file "kit/version"; See 
- * the file "kit/src/Makefile" for details. *)
+ * from "kit/src/Version.sml.in" when executing kit/configure. To modify the
+ * version, change the file kit/configure.ac before executing kit/autobuild
+ * and kit/configure. *)
 structure Version =
   struct
-    val version = "@VERSION@"
+    val version = "@PACKAGE_VERSION@"
   end

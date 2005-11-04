@@ -77,13 +77,7 @@ barry: basics
 	cd ..; echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
 	chmod a+x $(BINDIR)/barry
 
-basics: genopcodes heap2exec version
-
-version: Version.sml
-
-Version.sml: Version.sml.in ../version
-	sed -e "s+@VERSION@+`cat ../version`+g" < $< > $@
-
+basics: genopcodes heap2exec
 
 genopcodes: $(GENOPCODES_TARGETS)
 
