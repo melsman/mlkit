@@ -1,4 +1,4 @@
-# Makefile for the ML-Kit region profiler.
+# Makefile for the MLKit region profiler.
 # Type `gmake' to make rp2ps
 
 OFILES = Rp2Ps.o ProfileData.o Sample.o Graph.o Curves.o Output.o PostScript.o Error.o Alloc.o
