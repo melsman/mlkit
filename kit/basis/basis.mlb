@@ -145,7 +145,7 @@ local
 
     basis Posix = 
        let open General Word System List
-       in bas InitialPosix.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
+       in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
               POSIX_FILE_SYS.sml POSIX.sml Posix.sml 
           end
        end
