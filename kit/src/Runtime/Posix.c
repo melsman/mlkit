@@ -130,14 +130,14 @@ sml_open(char *name, int rwx_mode, int flags, int perm)
   switch (rwx_mode)
   {
     case 1:
-      f = O_WRONLY;
+      f |= O_WRONLY;
       break;
     case 2:
-      f = O_RDWR;
+      f |= O_RDWR;
       break;
     case 0:
     default:
-      f = O_RDONLY;
+      f |= O_RDONLY;
       break;
   }
   if (flags & 0x1) f |= O_APPEND;
@@ -195,4 +195,13 @@ int
 sml_dupfd(int f, int arg)
 {
   return fcntl(f, F_DUPFD, (long) arg);
+}
+
+int
+sml_getStdNumbers(int pair)
+{
+  elemRecordML(pair,0) = STDIN_FILENO;
+  elemRecordML(pair,1) = STDOUT_FILENO;
+  elemRecordML(pair,2) = STDERR_FILENO;
+  return pair;
 }
