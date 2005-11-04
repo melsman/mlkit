@@ -1,0 +1,11 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+  INFO.sml
+  LinuxInfo.sml
+  MemUsage.sml
+  TestFile.sml
+  CompilerTimings.sml
+  TestReport.sml
+in 
+  Tester.sml
+end
