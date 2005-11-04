@@ -391,7 +391,12 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
   dblog1(ctx, "Executing:");
   dblog1(ctx, sql);
   status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
-  if (status == SQL_NO_DATA) goto closing;
+  if (status == SQL_NO_DATA)
+  {
+    SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
+    ses->stmthp = SQL_NULL_HANDLE;
+    return DBDml;
+  }
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
       SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
@@ -419,7 +424,6 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
-closing:
   SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
   ses->stmthp = SQL_NULL_HANDLE;
   return DBDml;

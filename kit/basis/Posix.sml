@@ -1,5 +1,27 @@
 structure Posix :> POSIX =
     struct
+
+    fun mkerrno_ (i : int) : OS.syserror =               prim("id", i)
+    fun errno_ () : OS.syserror =                        prim("sml_errno", ())
+    fun formatErr mlOp (SOME operand) reason =
+	mlOp ^ " failed on `" ^ operand ^ "': " ^ reason
+      | formatErr mlOp NONE reason =
+	mlOp ^ " failed: " ^ reason
+
+    (* Raise SysErr from ML function *)
+    fun raiseSysML mlOp operand reason =
+	raise OS.SysErr (formatErr mlOp operand reason, NONE)
+
+    (* Raise SysErr with OS specific explanation if errno <> 0 *)
+    fun raiseSys mlOp operand reason =
+	let val errno = errno_ ()
+	in
+	    if errno = 0 then raiseSysML mlOp operand reason
+	    else raise OS.SysErr
+		(formatErr mlOp operand (OS.errorMsg errno),
+		 SOME (mkerrno_ errno))
+	end
+
 	structure Process =
 	    struct
 		type pid = int
@@ -18,6 +40,8 @@ structure Posix :> POSIX =
 		    struct
 			type flags = unit
 		    end
+
+    val pidToWord = SysWord.fromInt
 
 		fun fork() : pid option =
 		    let val ret : int = prim("@fork",())
@@ -81,6 +105,109 @@ structure Posix :> POSIX =
 			   in (pid,es)
 			   end	    
 		    end
+
+     fun wait () = waitpid (W_ANY_CHILD, [])
+
+     fun exec (s : string, sl : string list) = let val a = prim("sml_exec", (s,sl)) : int
+                                               in if a = 0 
+                                                  then raiseSysML "exec" NONE ""
+                                                  else raiseSys "exec" NONE ""
+                                               end
+
 	    end
+    
+    structure ProcEnv : POSIX_PROCENV = 
+      struct 
+        type uid = int
+        type gid = int
+        type pid = int
+        type file_desc = int
+        fun sysconf (s : string) =
+            let
+              fun rsys i = (prim ("sml_sysconf", i : int) : int)
+                  handle Overflow => raise OS.SysErr ("Not supported", NONE)
+            in
+              SysWord.fromInt (
+                case s 
+                of "ARG_MAX" => rsys 1
+                 | "CHILD_MAX" => rsys 2
+                 | "CLK_TCK" => rsys 3
+                 | "NGROUPS_MAX" => rsys 4
+                 | "OPEN_MAX" => rsys 5
+                 | "STREAM_MAX" => rsys 6
+                 | "TZNAME_MAX" => rsys 7
+                 | "JOB_CONTROL" => rsys 8
+                 | "SAVED_IDS" => rsys 9
+                 | "VERSION" => rsys 10
+                 | _ => raise OS.SysErr ("Not supported", NONE))
+             end
+
+        fun times () =
+            let
+              val (elapsed : int,
+                   utime : int,
+                   stime : int,
+                   cutime : int,
+                   cstime : int) = (prim ("sml_times", ())) 
+                                    handle Overflow => 
+                                      raiseSys "Posix.ProcEnv.times" NONE ""
+              val cps = SysWord.toInt(sysconf "CLK_TCK")
+              fun split t = (t div cps, (1000000000 div cps) * (t mod cps))
+              val toTime = (fn (s,n) => Time.+(Time.fromSeconds s,Time.fromMicroseconds n)) o 
+                                        split
+            in
+              {elapsed = toTime elapsed,
+               utime = toTime utime, 
+               stime = toTime stime, 
+               cutime = toTime cutime, 
+               cstime = toTime cstime}
+            end
+      end
+
+    structure FileSys : POSIX_FILE_SYS = 
+      struct 
+        type uid = ProcEnv.uid
+        type gid = ProcEnv.gid
+        type file_desc = int
+
+        val stdin = Initial.stdIn_stream
+        val stdout = Initial.stdOut_stream
+        val stderr = Initial.stdErr_stream
+
+        structure O = Posix_File_Sys.O
+        structure S = Posix_File_Sys.S
+
+        datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
+
+        fun createf (name,omode,flags,mo) = 
+            let val a = prim("@sml_open", (name : string,
+                                  case omode of O_RDONLY => 0
+                                              | O_WRONLY => 1
+                                              | O_RDWR => 2,
+                                  SysWord.toInt(O.toWord flags),
+                                  SysWord.toInt(S.toWord mo))) : int
+            in 
+              if a = ~1 then raiseSys "createf" NONE "" else a
+            end
+                                                                  
+        fun creat (name,mode) = createf(name,O_WRONLY, O.trunc, mode)
+      end
+
+    structure IO : POSIX_IO = 
+      struct
+        type pid = int
+        type file_desc = FileSys.file_desc
+        type open_mode = FileSys.open_mode
+
+        fun close f = let val a = prim("@close", f : int) : int
+                      in if a = ~1 then raiseSys "close" NONE "" else ()
+                      end
+
+        fun dupfd {old,base} = let val a = prim ("@sml_dupfd", (old : int,base : int)) : int
+                               in if a = ~1 then raiseSys "dupfd" NONE "" else a
+                               end
+
+        fun dup f = dupfd {old = f, base = 0}
+      end
 	
     end

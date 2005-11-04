@@ -26,5 +26,11 @@ structure Process : OS_PROCESS =
 	(List.app (fn f => f ()) (!exittasks);
 	 terminate status)
     end
+
+    fun sleep t = 
+                  let val s = Time.toSeconds t
+                      val u = Time.toMicroseconds(Time.-(t,Time.fromSeconds s))
+                  in prim("@sml_microsleep", (s : int, u : int)) : unit
+                  end
   end
 

@@ -11,7 +11,7 @@ structure Initial =
     type word0 = word         (* used by WORD signature *)
 
     exception Fail of string
- 
+
     (* Time structure *)
     val timebase : int = prim("get_time_base", 0)
 (*    val timebase = ~1073741820 - 4 13/04/1999, Niels*)
@@ -76,4 +76,6 @@ structure Initial =
 
     (* Process *)
     val exittasks = (ref []) : (unit -> unit) list ref
+  
+
   end

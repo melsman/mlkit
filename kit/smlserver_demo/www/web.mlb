@@ -80,6 +80,7 @@ in
      web/link/delete.sml
     
      web/db_test.sml
+     web/db_testPostgreSQL.sml
 
      web/auth_form.sml
      web/auth_logout.sml

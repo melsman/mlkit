@@ -1347,6 +1347,16 @@ structure Web :> WEB =
                                                  end) :> WEB_DB_BACKEND 
                                                  where type 'a Type = 'a Info.Type.Type
 
+     structure DbPostgreSQLBackend = DbODBCBackend(struct 
+                                                 type conn = int
+                                                 val getReqRec = getReqRec
+                                                 val log = (fn x => (log(Debug, x); x))
+                                                 val isNull = isNull
+                                                 structure Info = Info
+                                                 structure Dynlib = WebDynlib
+                                                 end) :> WEB_DB_BACKEND 
+                                                 where type 'a Type = 'a Info.Type.Type
+
      structure DbMySqlBackend = DbODBCBackend(struct 
                                                  type conn = int
                                                  val getReqRec = getReqRec

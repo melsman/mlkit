@@ -32,7 +32,7 @@ structure NsDbBasicPG : WEB_DB_BASIC =
     fun fromDate d = "'" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "'"
     fun toDateExp n = "to_char(" ^ n ^ ",'YYYY-MM-DD')"  (* Needs testing *)
     fun toTimestampExp d = "to_char(" ^ d ^ ",'YYYY-MM-DD HH24:MI:SS')"
-    val timestampType = "datetime"
+    val timestampType = "timestamp"
   end
 
 structure NsDbBasicMySQL : WEB_DB_BASIC =
@@ -94,7 +94,7 @@ functor DbODBCBackend(type conn = int
     type DbHandle = int option ref
     type DbResultSet = DbHandle * (string option list -> string -> string option) * string list
     type 'a Type = 'a Info.Type.Type
-    structure DbBasic = NsDbBasicMySQL
+    structure DbBasic = NsDbBasicPG
     val first = ref true
     fun config (i:int) (t : 'a Info.Type.Type, d : string, v : 'a) : unit = 
                            let fun handRes (res : int) = case res 

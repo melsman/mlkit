@@ -20,5 +20,8 @@ signature POSIX_PROCESS =
 	val fork : unit -> pid option
 	val exit : Word8.word -> 'a	    
 	val waitpid : waitpid_arg * W.flags list -> pid * exit_status
+  val wait : unit -> pid * exit_status
+  val pidToWord : pid -> SysWord.word
+  val exec : string * string list -> 'a
 
     end
