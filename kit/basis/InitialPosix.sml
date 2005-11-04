@@ -1,4 +1,4 @@
-      structure Posix_File_Sys= 
+      structure Posix_File_Sys =
         struct
         structure O = 
           struct
@@ -10,21 +10,7 @@
             val trunc    = 0wx20
           end
 
-        structure S : sig val irwxu : word
-                          val irusr : word
-                          val iwusr : word
-                          val ixusr : word
-                          val irwxg : word
-                          val irgrp : word
-                          val iwgrp : word
-                          val ixgrp : word
-                          val irwxo : word
-                          val iroth : word
-                          val iwoth : word
-                          val ixoth : word
-                          val isuid : word
-                          val isgid : word
-                       end  = 
+        structure S =
           struct
             val irwxu =    0wx1
             val irusr =    0wx2
