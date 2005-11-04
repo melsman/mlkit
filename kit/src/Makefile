@@ -91,7 +91,7 @@ rp2ps:
 	cd Tools/Rp2ps; $(MAKE)
 
 tester:
-#	$(MAKE) -C Tools/Tester
+	$(MAKE) -C Tools/Tester
 
 mlbmake:
 	$(MAKE) -C Tools/MlbMake
@@ -106,7 +106,7 @@ heap2exec: heap2exec/heap2exec
 #$(MAKE) uncommented by NH because heap2exec doesn't compile on FC3
 
 clean:
-	$(CLEAN) run $(GENOPCODES_TARGETS) Version.sml
+	$(CLEAN) run $(GENOPCODES_TARGETS)
 	cd Pickle; $(CLEAN)
 	cd Common; $(CLEAN)
 	cd Common/EfficientElab; $(CLEAN)

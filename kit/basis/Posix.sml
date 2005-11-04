@@ -152,7 +152,7 @@ structure Posix :> POSIX =
                                     handle Overflow => 
                                       raiseSys "Posix.ProcEnv.times" NONE ""
               val cps = SysWord.toInt(sysconf "CLK_TCK")
-              fun split t = (t div cps, (1000000000 div cps) * (t mod cps))
+              fun split t = (t div cps, Real.floor(1000000.0 * Real.fromInt(t mod cps)) div cps) 
               val toTime = (fn (s,n) => Time.+(Time.fromSeconds s,Time.fromMicroseconds n)) o 
                                         split
             in
@@ -170,9 +170,9 @@ structure Posix :> POSIX =
         type gid = ProcEnv.gid
         type file_desc = int
 
-        val stdin = Initial.stdIn_stream
-        val stdout = Initial.stdOut_stream
-        val stderr = Initial.stdErr_stream
+        val stdin = Initial.Posix_File_Sys.stdin
+        val stdout = Initial.Posix_File_Sys.stdout
+        val stderr = Initial.Posix_File_Sys.stderr
 
         structure S = 
           struct 
@@ -217,7 +217,7 @@ structure Posix :> POSIX =
                                   SysWord.toInt(O.toWord flags),
                                   SysWord.toInt(S.toWord mo))) : int
             in 
-              if a = ~1 then raiseSys "createf" NONE "" else a
+              if a = ~1 then raiseSys "Posix.IO.createf" NONE "" else a
             end
                                                                   
         fun creat (name,mode) = createf(name,O_WRONLY, O.trunc, mode)

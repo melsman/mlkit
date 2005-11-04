@@ -82,6 +82,7 @@ structure Initial =
 
       structure Posix_File_Sys =
         struct
+        val (stdin,stdout,stderr) = prim ("sml_getStdNumbers", ()) : (int * int * int)
         structure O = 
           struct
             val append   =  0wx1

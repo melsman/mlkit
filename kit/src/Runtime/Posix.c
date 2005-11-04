@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -114,11 +115,11 @@ sml_times(int pair)
   clock_t r;
   r = times(&buf);
   if (r == (clock_t) -1) raise_exn((int)&exn_OVERFLOW);
-  elemRecordML(pair,0) = convertIntToML(r);
-  elemRecordML(pair,1) = convertIntToML(buf.tms_utime);
-  elemRecordML(pair,2) = convertIntToML(buf.tms_stime);
-  elemRecordML(pair,3) = convertIntToML(buf.tms_cutime);
-  elemRecordML(pair,4) = convertIntToML(buf.tms_cstime);
+  elemRecordML(pair,0) = convertIntToML(r & (SIZE_MAX / 4));
+  elemRecordML(pair,1) = convertIntToML(buf.tms_utime & (SIZE_MAX / 4));
+  elemRecordML(pair,2) = convertIntToML(buf.tms_stime & (SIZE_MAX / 4));
+  elemRecordML(pair,3) = convertIntToML(buf.tms_cutime & (SIZE_MAX / 4));
+  elemRecordML(pair,4) = convertIntToML(buf.tms_cstime & (SIZE_MAX / 4));
   return pair;
 }
 
@@ -200,8 +201,8 @@ sml_dupfd(int f, int arg)
 int
 sml_getStdNumbers(int pair)
 {
-  elemRecordML(pair,0) = STDIN_FILENO;
-  elemRecordML(pair,1) = STDOUT_FILENO;
-  elemRecordML(pair,2) = STDERR_FILENO;
+  elemRecordML(pair,0) = convertIntToML(STDIN_FILENO);
+  elemRecordML(pair,1) = convertIntToML(STDOUT_FILENO);
+  elemRecordML(pair,2) = convertIntToML(STDERR_FILENO);
   return pair;
 }

@@ -69,18 +69,19 @@ structure MemUsage : MEM_USAGE =
       in
 	case Posix.Process.fork () 
 	  of SOME pid =>                          (* We're in the parent process *)
-	    loop_and_monitor_child pid {cstime0=cstime0,cutime0=cutime0,
-					realtimer=Timer.startRealTimer()}
+	    ((loop_and_monitor_child pid {cstime0=cstime0,cutime0=cutime0,
+					realtimer=Timer.startRealTimer()}) handle OS.SysErr(s,_) => raise Fail s)
 	   | NONE =>                              (* We're in the child process *)
 	    let val fd = Posix.FileSys.creat(out_file, Posix.FileSys.S.irwxu)
-	      handle _ => raise Fail "memUsage.child.openf failed"
+	      handle OS.SysErr(s,e) => raise Fail ("Dealing with: "^ out_file ^ " " ^ s)
+             | _ => raise Fail "memUsage.child.openf failed"
 	    in (* convert stdout, etc to file out_file *)
-	      Posix.IO.close Posix.FileSys.stdout;
+	      (Posix.IO.close Posix.FileSys.stdout;
 	      Posix.IO.dup fd;
 	      Posix.IO.close Posix.FileSys.stderr;
 	      Posix.IO.dup fd;
 	      Posix.IO.close Posix.FileSys.stdin;
-	      Posix.Process.exec (cmd, cmd::args)
+	      Posix.Process.exec (cmd, cmd::args)) handle OS.SysErr (s,_) => raise Fail s
 	    end
       end
   end
