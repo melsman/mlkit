@@ -27,16 +27,16 @@ struct
 
     fun loopFile nil acc is = SOME (rev acc)
       | loopFile (all as e::es) acc is =
-      case TextIO.inputLine is
-	of "" => NONE
-	 | line => case readEntry e line
-		     of SOME res => loopFile es (res::acc) is
-		      | NONE => loopFile all acc is
-  in
-    fun getProcStatusEntries pid es =    
-      withFile ("/proc/" ^ pid ^ "/status") 
-      (loopFile es nil)
-  end
+        Option.mapPartial 
+           (fn line => case readEntry e line
+                       of SOME res => loopFile es (res::acc) is
+                        | NONE => loopFile all acc is)
+           (TextIO.inputLine is)
+    in
+      fun getProcStatusEntries pid es =    
+        withFile ("/proc/" ^ pid ^ "/status") 
+        (loopFile es nil)
+    end
 
   fun getInfo pid =
     case getProcStatusEntries pid ["VmSize", "VmRSS", "VmData", "VmStk", "VmExe"]
