@@ -1,1 +1,2 @@
-bin testprogs mlkit.spec smlserver.spec Makefile
+bin testprogs mlkit.spec smlserver.spec Makefile autom4te.cache
+config.log config.status configure

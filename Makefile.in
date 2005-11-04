@@ -173,7 +173,6 @@ install_top:
 	$(MKDIR) $(INSTDIR)/kitlib
 	$(MKDIR) $(INSTDIR)/kitdemo
 	$(MKDIR) $(INSTDIR)/kitdemo/utils
-	$(INSTALLDATA) version $(INSTDIR)
 	$(INSTALLDATA) copyright $(INSTDIR)
 	$(INSTALLDATA) README $(INSTDIR)
 	$(INSTALLDATA) Makefile $(INSTDIR)
@@ -293,7 +292,6 @@ bootstrap_first: install bootstrap0
 
 bootstrap_next_build:
 	cd src; $(MAKE) genopcodes
-	cd src; $(MAKE) version
 	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
 
 bootstrap_next_install: 
@@ -325,7 +323,6 @@ install_kam:
 	$(MKDIR) $(INSTDIR_KAM)/doc
 	$(INSTALL) bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM)/bin
 	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
-	$(INSTALLDATA) version $(INSTDIR)
 	$(INSTALLDATA) copyright $(INSTDIR_KAM)
 	$(INSTALLDATA) README $(INSTDIR_KAM)
 	$(INSTALLDATA) -R kitdemo $(INSTDIR_KAM)/kitdemo 
