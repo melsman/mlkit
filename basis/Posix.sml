@@ -179,7 +179,7 @@ structure Posix :> POSIX =
             type mode = SysWord.word
             type flags = mode
 
-            open Posix_File_Sys.S 
+            open Initial.Posix_File_Sys.S 
 
             fun toWord x = x
             val fromWord = toWord
@@ -195,7 +195,7 @@ structure Posix :> POSIX =
           struct
             type flags = SysWord.word
              
-            open Posix_File_Sys.O
+            open Initial.Posix_File_Sys.O
 
             fun toWord x = x
             val fromWord = toWord
