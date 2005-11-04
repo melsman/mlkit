@@ -10,8 +10,8 @@
 #include <sys/types.h>
 #include <utime.h>
 #include <string.h>
+#include <time.h>
 #include <stdio.h>
-
 
 #include "IO.h"
 #include "String.h"
@@ -532,4 +532,20 @@ outputBinStream(FILE *os, String s, int exn)
       raise_exn(exn);
     }
   return mlUNIT;
+}
+
+void
+sml_microsleep(int s, int u)
+{
+  int r;
+  struct timespec req, rem;
+  while (u > 1000000) 
+  {
+    s++;
+    u -= 1000000;
+  }
+  req.tv_sec = s;
+  req.tv_nsec = (u * 1000);
+  r = nanosleep(&req, &rem);
+  return;
 }

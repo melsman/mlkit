@@ -26,6 +26,7 @@ val examples =
    ("Calendars (MSP)", "calendar.msp", []),
    ("Tables (MSP)", "test.msp", []),
    ("Database testing (DB)", "db_test.sml", []),
+   ("Database testing (DB PostgreSQL)", "db_testPostgreSQL.sml", []),
    ("SMLserver images", "images/index.html", []),
    ("Trap","trap.txt", []),
    ("Upload", "upload/upload_form.sml",[]),

@@ -98,8 +98,11 @@ local
        in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
-              basis FileSys = let open List Time Random Path in bas OS_FILE_SYS.sml FileSys.sml end end
-              basis Process = bas OS_PROCESS.sml local open List in Process.sml end end
+              basis FileSys = let open List Time Random Path 
+                              in bas OS_FILE_SYS.sml FileSys.sml end 
+                              end
+              basis Process = let open Time in 
+                                bas OS_PROCESS.sml local open List in Process.sml end end end
               basis Os = let open FileSys Path Process in bas OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
               basis Date = let open Int Real Time in bas DATE.sml Date.sml end end
@@ -141,8 +144,10 @@ local
        end
 
     basis Posix = 
-       let open General Word
-       in bas POSIX_PROCESS.sml POSIX.sml Posix.sml end
+       let open General Word System List
+       in bas InitialPosix.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
+              POSIX_FILE_SYS.sml POSIX.sml Posix.sml 
+          end
        end
 in
   open General List Array String Bool Word Byte Int Real IntInf Io System Sml90 Posix

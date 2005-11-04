@@ -57,9 +57,9 @@ mlkit_kam: basics tester kitbench
 	chmod a+x $(BINDIR)/mlkit_kam
 
 smlserver: basics
-	cd Tools/MspComp; $(MAKE)
+	$(MAKE) -C Tools/MspComp
 #	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
-	cd Runtime; $(MAKE) runtimeSystemKamApSml.o
+	$(MAKE) -C Runtime runtimeSystemKamApSml.o
 #	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
 	$(MAKE) -C SMLserver/apache
 	echo 'use "build_web.sml";' | sml
@@ -91,10 +91,10 @@ rp2ps:
 	cd Tools/Rp2ps; $(MAKE)
 
 tester:
-	cd Tools/Tester; $(MAKE)
+#	$(MAKE) -C Tools/Tester
 
 mlbmake:
-	cd Tools/MlbMake; $(MAKE)
+	$(MAKE) -C Tools/MlbMake
 
 kitbench:
 	cd Tools/Benchmark; $(MAKE)

@@ -310,17 +310,19 @@ val seqTest =
   let
     fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
   in
+  Db.Handle.wrapDb 
+  (fn db => 
     [tstOk "create sequence" (fn () => Db.dml `create sequence t`),
      tstOk "drop table" (fn () => Db.dml `drop table db_test`),
      tstOk "create table" (fn () =>Db.dml `create table db_test ( id int primary key )`),
-     tstOk "seqNextvalExp" (fn () => Db.dml `insert into db_test values (^(Db.seqNextvalExp "t"))`),
-     tstBool "seqNextvalExp" (fn () => db_testL() = ["1"]),
-     tstFail "seqCurrvalExp" (fn () => Db.dml `insert into db_test values (^(Db.seqCurrvalExp "t"))`),
-     tstBool "seqCurrvalExp" (fn () => db_testL() = ["1"]),
-     tstBool "seqNextval" (fn () => Db.seqNextval "t" = 2),
-     tstBool "seqCurrval" (fn () => Db.seqCurrval "t" = 2),
+     tstOk "seqNextvalExp" (fn () => Db.Handle.dmlDb db `insert into db_test values (^(Db.seqNextvalExp "t"))`),
+     tstBool "seqNextvalExp" (fn () => db_testL () = ["1"]),
+     tstFail "seqCurrvalExp" (fn () => Db.Handle.dmlDb db `insert into db_test values (^(Db.seqCurrvalExp "t"))`),
+     tstBool "seqCurrvalExp" (fn () => db_testL () = ["1"]),
+     tstBool "seqNextval" (fn () => Db.Handle.seqNextvalDb db "t" = 2),
+     tstBool "seqCurrval" (fn () => Db.Handle.seqCurrvalDb db "t" = 2),
      tstOk "drop sequence" (fn () => Db.dml `drop sequence t`),
-     tstOk "drop table" (fn () => Db.dml `drop table db_test`)]
+     tstOk "drop table" (fn () => Db.dml `drop table db_test`)])
   end
 
 (*** Testing Various Functions ***)

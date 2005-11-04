@@ -6,7 +6,7 @@ signature TESTER =
 
 structure Tester : TESTER =
   struct
-    val _ = SMLofNJ.Internals.GC.messages false;
+(*    val _ = SMLofNJ.Internals.GC.messages false; *)
   
     fun files_equal (s1,s2) =
       let fun open_file s = TextIO.openIn s 
@@ -37,7 +37,7 @@ structure Tester : TESTER =
     end
 
     fun size_of_file filename =
-      Int.toString ((OS.FileSys.fileSize filename) div 1024) ^ "K"
+      Position.toString ((OS.FileSys.fileSize filename) div 1024) ^ "K"
       handle _ => (msgErr("failed to obtain size of file `" ^ filename ^ "'"); "err")
 
     fun concatWith sep l = (* not as String.concatWith! *)
@@ -183,6 +183,7 @@ structure Tester : TESTER =
 	  end
 	 | NONE => (print_usage progname; OS.Process.failure)
 
+(*
     fun install() =
       let val _ = print "\n ** Installing KitTester, a tool for testing the MLKit **\n\n"
 
@@ -190,7 +191,7 @@ structure Tester : TESTER =
 	  val kit_bin_path = OS.Path.mkCanonical (OS.Path.concat(kit_src_tools_tester_path, "../../../bin"))
 	  val kit_bin_kittester_path = OS.Path.joinDirFile{dir=kit_bin_path, file="kittester"}
 
-          fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
+(*          fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
 	  fun kittester_image() =
 	    case arch_os()
 	      of ("X86", "Linux") => "kittester.x86-linux"
@@ -198,7 +199,8 @@ structure Tester : TESTER =
 	       | ("HPPA", "HPUX") => "kittester.hppa-hpux"
 	       | ("SPARC", "Solaris") => "kittester.sparc-solaris"
 	       | ("SUN", "OS4") => "unknown"
-	       | _ => "unknown"
+	       | _ => "unknown" *)
+(*
 	  val kit_bin_kittester_image_path = OS.Path.joinDirFile{dir=kit_bin_path, file=kittester_image()}
 	  val os = TextIO.openOut kit_bin_kittester_path
 	  val _ = (TextIO.output(os, "sml @SMLload=" ^ kit_bin_kittester_image_path ^ " $*"); TextIO.closeOut os)
@@ -206,8 +208,10 @@ structure Tester : TESTER =
 	    handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ kit_bin_kittester_path ^ "' failed***\n");
 			 OS.Process.failure)
       in SMLofNJ.exportFn(kit_bin_kittester_path,main)
-      end
+*)
+      in () 
+      end *)
 
-    val _ = install()
 
+    val _ = main(CommandLine.name (), CommandLine.arguments ())
   end

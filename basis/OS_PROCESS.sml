@@ -14,6 +14,7 @@ signature OS_PROCESS =
     val terminate : status -> 'a
 
     val getEnv    : string -> string option
+    val sleep     : Time.time -> unit
   end
 
 (* Portable functions for manipulating processes.
