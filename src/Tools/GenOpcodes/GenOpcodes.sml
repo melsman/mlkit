@@ -28,22 +28,22 @@ structure GenOpcodes : GEN_OPCODES =
 	  | skip nil = nil
 	fun skipWs (s : string ) : string = implode (skip (explode s))
 	fun read() =
-	  let val l = TextIO.inputLine(is)
-	  in if l = "" then nil
-	     else case String.tokens Char.isSpace (skipWs l)
-		    of [i,a] => (case Int.fromString a
-				   of SOME a => (i, a) :: read()
+	    case TextIO.inputLine(is) of 
+		NONE => nil
+	      | SOME l =>  
+		    case String.tokens Char.isSpace (skipWs l) of 
+			[i,a] => (case Int.fromString a
+				      of SOME a => (i, a) :: read()
 				    | NONE => die ("gen_spec_insts: " ^ i ^ 
 						   " listed with invalid arity information in file " ^ 
 						   spec_file))
-		     | [i] => die ("gen_spec_insts: " ^ i ^ 
+		      | [i] => die ("gen_spec_insts: " ^ i ^ 
 				   " not listed with arity information in file " ^ 
-				   spec_file)
-		     | nil => read()
-		     | l => die ("gen_spec_insts: entry listed without \
-		      \arity information in file " ^ spec_file ^ "; " ^ Int.toString (List.length l) ^
-				 " tokens")
-	  end
+				    spec_file)
+		      | nil => read()
+		      | l => die ("gen_spec_insts: entry listed without \
+		       \arity information in file " ^ spec_file ^ "; " ^ Int.toString (List.length l) ^
+				  " tokens")
         val res = read()
       in TextIO.closeIn is; res
       end
@@ -269,6 +269,7 @@ structure GenOpcodes : GEN_OPCODES =
 	     OS.Process.success
       end handle _ => OS.Process.failure
 
+(*
     fun install() =
       let 
 	val _ = print "\n ** Installing Gen Opcodes, a tool for building SML and C files"
@@ -296,4 +297,10 @@ structure GenOpcodes : GEN_OPCODES =
       end
 
     val _ = install()
+*)
   end
+
+structure Main : sig end =
+struct
+    val _ = GenOpcodes.main(CommandLine.name(), CommandLine.arguments())
+end

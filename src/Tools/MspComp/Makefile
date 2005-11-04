@@ -2,12 +2,11 @@ BINDIR=../../../bin
 
 include ../../../Makefiledefault
 
-all:
-	$(MLCOMP) -output mspcomp MspComp.sml
+$(BINDIR)/mspcomp: mspcomp
 	cp mspcomp $(BINDIR)/
 
-mytest:
-	echo $(MLCOMP)
+mspcomp: Makefile MspComp.sml
+	$(MLCOMP) -output mspcomp MspComp.sml
 
 clean:
-	rm -Rf mspcomp *~ MLB
+	rm -rf mspcomp *~ MLB

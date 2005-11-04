@@ -1,0 +1,7 @@
+local
+    $(SML_LIB)/basis/basis.mlb    
+    ../../../basis/LISTSORT.sml
+    ../../../basis/Listsort.sml
+in
+    GenOpcodes.sml
+end

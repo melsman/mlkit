@@ -1,5 +1,12 @@
-../../../bin/kitgen_opcodes: Makefile sources.cm *.sml
-	echo 'CM.make();' | sml
+BINDIR=../../../bin
+
+include ../../../Makefiledefault
+
+$(BINDIR)/kitgen_opcodes: kitgen_opcodes
+	cp kitgen_opcodes $(BINDIR)/
+
+kitgen_opcodes: Makefile sources.mlb *.sml
+	$(MLCOMP) -output kitgen_opcodes sources.mlb	
 
 clean:
-	rm -rf CM PM *~ ../../../bin/kitgen_opcodes
+	rm -rf CM MLB *~ kitgen_opcodes
