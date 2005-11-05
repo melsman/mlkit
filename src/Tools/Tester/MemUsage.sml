@@ -41,7 +41,7 @@ structure MemUsage : MEM_USAGE =
 
     fun loop_and_monitor_child (pid:Posix.Process.pid) {cutime0,cstime0,realtimer} =
       let 
-	val pid_s = (Int.toString o Word32.toInt o Posix.Process.pidToWord) pid
+	val pid_s = (Int.toString o SysWord.toInt o Posix.Process.pidToWord) pid
 	  
 	val delay = Time.fromMilliseconds 50
 	fun sleep() = (* OS.IO.poll(nil,SOME delay)  *)
