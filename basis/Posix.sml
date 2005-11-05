@@ -209,31 +209,67 @@ structure Posix :> POSIX =
 
         datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
         
-        fun lower s (name,omode,flags,mo,kind) = 
+        fun lower s (name,omode,flags,mo,i,kind) = 
             let val a = prim("@sml_lower", (name : string,
                                   case omode of O_RDONLY => 0
                                               | O_WRONLY => 1
                                               | O_RDWR => 2,
                                   SysWord.toInt(O.toWord flags) : int,
                                   SysWord.toInt(S.toWord mo) : int,
+                                  i : int,
                                   kind : int)) : int
             in 
               if a = ~1 then raiseSys ("Posix.FileSys." ^ s) NONE "" else a
             end
                                                                   
 
-        fun createf (n,m,f,m2) = lower "createf" (n,m,f,m2,1)
-        fun openf (n,m,f) = lower "openf" (n,m,f,S.irwxo,2)
-        fun creat (name,mode) = lower "creat" (name,O_WRONLY, O.trunc, mode, 1)
-        fun umask m = S.fromWord(SysWord.fromInt(lower "umask" ("", O_WRONLY, O.trunc, m, 3)))
+        fun createf (n,m,f,m2) = lower "createf" (n,m,f,m2, 0, 1)
+        fun openf (n,m,f) = lower "openf" (n,m,f,S.irwxo, 0, 2)
+        fun creat (name,mode) = lower "creat" (name,O_WRONLY, O.trunc, mode, 0, 1)
+        fun umask m = S.fromWord(SysWord.fromInt(lower "umask" ("", O_WRONLY, O.trunc, m, 0, 3)))
 
         fun link {old : string, new : string} =
              let val a = prim("@link", (old,new)) : int
              in if a = ~1 then raiseSys "Posix.FileSys.link" NONE "" else ()
              end
 
-        fun mkdir (n,s) = (lower "mkdir" (n,O_WRONLY, O.trunc, s, 4); ())
-        fun mkfifo (n,s) = (lower "mkfifo" (n,O_WRONLY, O.trunc, s, 5); ())
+        fun rename {old : string, new : string} =
+             let val a = prim("@rename", (old,new)) : int
+             in if a = ~1 then raiseSys "Posix.FileSys.rename" NONE "" else ()
+             end
+
+        fun symlink {old : string, new : string} =
+             let val a = prim("@symlink", (old,new)) : int
+             in if a = ~1 then raiseSys "Posix.FileSys.symlink" NONE "" else ()
+             end
+
+        fun unlink (path : string) =
+             let val a = prim("@unlink", path) : int
+             in if a = ~1 then raiseSys "Posix.FileSys.unlink" NONE "" else ()
+             end
+
+        fun rmdir (path : string) =
+             let val a = prim("@rmdir", path) : int
+             in if a = ~1 then raiseSys "Posix.FileSys.rmdir" NONE "" else ()
+             end
+
+        fun mkdir (n,s) = (lower "mkdir" (n,O_WRONLY, O.trunc, s, 0, 4); ())
+        fun mkfifo (n,s) = (lower "mkfifo" (n,O_WRONLY, O.trunc, s, 0, 5); ())
+
+        val readlink = OS.FileSys.readLink
+
+        fun chmod (name : string, m) = (lower "chmod" (name, O_WRONLY, O.trunc, m, 0, 6);())
+        fun fchmod (f,m) = (lower "fchmod" ("",O_WRONLY, O.trunc, m, f, 7);())
+
+        fun chown (name : string, uid : uid, gid : gid) = 
+             let val a = prim("@chown", (name,uid,gid)) : int
+             in if a = ~1 then raiseSys "Posix.FileSys.chown" NONE "" else ()
+             end
+
+        fun fchown (f : file_desc, uid : uid, gid : gid) = 
+             let val a = prim("@fchown", (f,uid,gid)) : int
+             in if a = ~1 then raiseSys "Posix.FileSys.fchown" NONE "" else ()
+             end
       end
 
     structure IO : POSIX_IO = 

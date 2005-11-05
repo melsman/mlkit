@@ -53,4 +53,14 @@ signature POSIX_FILE_SYS =
     val link : {old : string, new : string} -> unit
     val mkdir : string * S.mode -> unit
     val mkfifo : string * S.mode -> unit
+    val unlink : string -> unit
+    val rmdir : string -> unit
+    val rename : {old : string, new : string} -> unit
+    val symlink : {old : string, new : string} -> unit
+    val readlink : string -> string
+
+    val chmod : string * S.mode -> unit
+    val fchmod : file_desc * S.mode -> unit
+    val chown : string * uid * gid -> unit
+    val fchown : file_desc * uid * gid -> unit
   end
