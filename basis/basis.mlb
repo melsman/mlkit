@@ -101,7 +101,7 @@ local
               basis FileSys = let open List Time Random Path 
                               in bas OS_FILE_SYS.sml FileSys.sml end 
                               end
-              basis Process = let open Time in 
+              basis Process = let open Time Int in 
                                 bas OS_PROCESS.sml local open List in Process.sml end end end
               basis Os = let open FileSys Path Process in bas OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end

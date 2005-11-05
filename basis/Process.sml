@@ -28,8 +28,9 @@ structure Process : OS_PROCESS =
     end
 
     fun sleep t = 
-                  let val s = Time.toSeconds t
-                      val u = Time.toMicroseconds(Time.-(t,Time.fromSeconds s))
+                  let val s = Int.fromLarge(Time.toSeconds t)
+                      val u = Int.fromLarge(Time.toMicroseconds(
+                                     Time.-(t,Time.fromSeconds (Int.toLarge s))))
                   in prim("@sml_microsleep", (s : int, u : int)) : unit
                   end
   end
