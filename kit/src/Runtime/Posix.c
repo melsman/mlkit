@@ -124,18 +124,11 @@ sml_times(int pair)
 }
 
 int
-sml_open(char *name, int rwx_mode, int flags, int perm, int kind)
+sml_lower(char *name, int rwx_mode, int flags, int perm, int kind)
 {
   int mode = 0x0;
-  int f;
-  if (kind)
-  {
-  f = O_CREAT;
-  }
-  else 
-  {
-    f = 0;
-  }
+  int f = 0x0;
+
   switch (rwx_mode)
   {
     case 1:
@@ -149,6 +142,7 @@ sml_open(char *name, int rwx_mode, int flags, int perm, int kind)
       f |= O_RDONLY;
       break;
   }
+
   if (flags & 0x1) f |= O_APPEND;
   if (flags & 0x2) f |= O_EXCL;
   if (flags & 0x4) f |= O_NOCTTY;
@@ -156,29 +150,41 @@ sml_open(char *name, int rwx_mode, int flags, int perm, int kind)
   if (flags & 0x10) f |= O_SYNC;
   if (flags & 0x20) f |= O_TRUNC;
 
-  if (kind)
-  {
-    return open(name,f);
-  }
+  if (perm & 0x1) mode |= S_IRWXU;
+  if (perm & 0x2) mode |= S_IRUSR;
+  if (perm & 0x4) mode |= S_IWUSR;
+  if (perm & 0x8) mode |= S_IXUSR;
+  if (perm & 0x10) mode |= S_IRWXG;
+  if (perm & 0x20) mode |= S_IRGRP;
+  if (perm & 0x40) mode |= S_IWGRP;
+  if (perm & 0x80) mode |= S_IXGRP;
+  if (perm & 0x100) mode |= S_IRWXO;
+  if (perm & 0x200) mode |= S_IROTH;
+  if (perm & 0x400) mode |= S_IWOTH;
+  if (perm & 0x800) mode |= S_IXOTH;
+  if (perm & 0x1000) mode |= S_ISUID;
+  if (perm & 0x2000) mode |= S_ISGID;
 
-  else
+  switch (kind)
   {
-    if (perm & 0x1) mode |= S_IRWXU;
-    if (perm & 0x2) mode |= S_IRUSR;
-    if (perm & 0x4) mode |= S_IWUSR;
-    if (perm & 0x8) mode |= S_IXUSR;
-    if (perm & 0x10) mode |= S_IRWXG;
-    if (perm & 0x20) mode |= S_IRGRP;
-    if (perm & 0x40) mode |= S_IWGRP;
-    if (perm & 0x80) mode |= S_IXGRP;
-    if (perm & 0x100) mode |= S_IRWXO;
-    if (perm & 0x200) mode |= S_IROTH;
-    if (perm & 0x400) mode |= S_IWOTH;
-    if (perm & 0x800) mode |= S_IXOTH;
-    if (perm & 0x1000) mode |= S_ISUID;
-    if (perm & 0x2000) mode |= S_ISGID;
-    return open(name, f, mode);
+    case 1:
+      f = O_CREAT;
+      return open(name, f, mode);
+      break;
+    case 2:
+      return open(name,f);
+      break;
+    case 3:
+      return umask(mode);
+      break;
+    case 4:
+      return mkdir(name, mode);
+      break;
+    case 5:
+      return mkfifo(name, mode);
+      break;
   }
+  return 0;
 }
 
 int
