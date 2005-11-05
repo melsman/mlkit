@@ -208,7 +208,7 @@ structure Posix :> POSIX =
           end
 
         datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
-
+        
         fun createf (name,omode,flags,mo) = 
             let val a = prim("@sml_open", (name : string,
                                   case omode of O_RDONLY => 0
@@ -228,6 +228,10 @@ structure Posix :> POSIX =
         type pid = int
         type file_desc = FileSys.file_desc
         type open_mode = FileSys.open_mode
+
+        fun pipe () = let val (r,a,b) = prim("sml_pipe",()) : (int * int * int)
+                      in if r = ~1 then raiseSys "Posix.IO.pipe" NONE "" else {infd = a, outfd = b}
+                      end
 
         fun close f = let val a = prim("@close", f : int) : int
                       in if a = ~1 then raiseSys "close" NONE "" else ()

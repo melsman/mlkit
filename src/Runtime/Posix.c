@@ -206,3 +206,14 @@ sml_getStdNumbers(int pair)
   elemRecordML(pair,2) = convertIntToML(STDERR_FILENO);
   return pair;
 }
+
+int
+sml_pipe(int pair)
+{
+  int a[2];
+  int r = pipe(a);
+  elemRecordML(pair,0) = convertIntToML(r);
+  elemRecordML(pair,1) = convertIntToML(a[0]);
+  elemRecordML(pair,2) = convertIntToML(a[1]);
+  return pair;
+}
