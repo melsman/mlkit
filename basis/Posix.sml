@@ -209,17 +209,30 @@ structure Posix :> POSIX =
 
         datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
         
-        fun createf (name,omode,flags,mo) = 
-            let val a = prim("@sml_open", (name : string,
+        fun fopen' (name,omode,flags,mo) = 
+            let val a = case mo of SOME mo' => 
+                          prim("@sml_open", (name : string,
                                   case omode of O_RDONLY => 0
                                               | O_WRONLY => 1
                                               | O_RDWR => 2,
                                   SysWord.toInt(O.toWord flags),
-                                  SysWord.toInt(S.toWord mo))) : int
+                                  SysWord.toInt(S.toWord mo'),
+                                  1)) : int
+                          | NONE => 
+                          prim("@sml_open", (name : string,
+                                  case omode of O_RDONLY => 0
+                                              | O_WRONLY => 1
+                                              | O_RDWR => 2,
+                                  SysWord.toInt(O.toWord flags),
+                                  0, 1)) : int
             in 
               if a = ~1 then raiseSys "Posix.IO.createf" NONE "" else a
             end
                                                                   
+
+        fun createf (n,m,f,m2) = fopen' (n,m,f,SOME m2)
+        fun openf (n,m,f) = fopen' (n,m,f,NONE)
+
         fun creat (name,mode) = createf(name,O_WRONLY, O.trunc, mode)
       end
 
