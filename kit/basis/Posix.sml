@@ -153,7 +153,8 @@ structure Posix :> POSIX =
                                       raiseSys "Posix.ProcEnv.times" NONE ""
               val cps = SysWord.toInt(sysconf "CLK_TCK")
               fun split t = (t div cps, Real.floor(1000000.0 * Real.fromInt(t mod cps)) div cps) 
-              val toTime = (fn (s,n) => Time.+(Time.fromSeconds s,Time.fromMicroseconds n)) o 
+              val toTime = (fn (s,n) => Time.+(Time.fromSeconds (Int.toLarge s),
+                                               Time.fromMicroseconds (Int.toLarge n))) o 
                                         split
             in
               {elapsed = toTime elapsed,
