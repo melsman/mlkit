@@ -26,6 +26,7 @@ valrecpat1.sml
 valrecpat2.sml
 valrecpat3.sml
 valrecpat4.sml
+posix.sml
 unbox.sml
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
