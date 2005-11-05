@@ -1,5 +1,8 @@
 MLKit NEWS file
 
+ * varming 2005-11-01 Added some Posix support needed to build KitTester +
+   some more.
+
  * mael 2005-11-01: Using MLton 20050731, mlton successfully compiled
    the MLKit, resulting in a very fast (but large) mlkit executable -
    cool. Notice that MLton 20041109 is buggy and doesn't compile the

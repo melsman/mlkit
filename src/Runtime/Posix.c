@@ -124,7 +124,7 @@ sml_times(int pair)
 }
 
 int
-sml_lower(char *name, int rwx_mode, int flags, int perm, int kind)
+sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
 {
   int mode = 0x0;
   int f = 0x0;
@@ -183,6 +183,11 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int kind)
     case 5:
       return mkfifo(name, mode);
       break;
+    case 6:
+      return chmod(name,f);
+      break;
+    case 7:
+      return fchmod(i,f);
   }
   return 0;
 }
