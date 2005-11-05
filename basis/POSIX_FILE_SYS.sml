@@ -41,10 +41,16 @@ signature POSIX_FILE_SYS =
       | O_WRONLY
       | O_RDWR
 
-    val createf : string * open_mode * O.flags * S.mode -> file_desc
-    val creat : string * S.mode -> file_desc
-
     val stdin : file_desc
     val stdout : file_desc
     val stderr : file_desc
+
+    val openf : string * open_mode * O.flags -> file_desc
+    val createf : string * open_mode * O.flags * S.mode -> file_desc
+    val creat : string * S.mode -> file_desc
+    val umask : S.mode -> S.mode
+
+    val link : {old : string, new : string} -> unit
+    val mkdir : string * S.mode -> unit
+    val mkfifo : string * S.mode -> unit
   end
