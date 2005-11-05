@@ -208,6 +208,7 @@ structure Posix :> POSIX =
           end
 
         datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
+        datatype access_mode = A_READ | A_WRITE | A_EXEC
         
         fun lower s (name,omode,flags,mo,i,kind) = 
             let val a = prim("@sml_lower", (name : string,

@@ -41,6 +41,8 @@ signature POSIX_FILE_SYS =
       | O_WRONLY
       | O_RDWR
 
+    datatype access_mode = A_READ | A_WRITE | A_EXEC
+
     val stdin : file_desc
     val stdout : file_desc
     val stderr : file_desc
@@ -63,4 +65,5 @@ signature POSIX_FILE_SYS =
     val fchmod : file_desc * S.mode -> unit
     val chown : string * uid * gid -> unit
     val fchown : file_desc * uid * gid -> unit
+    (*val access : string * access_mode list -> bool *)
   end
