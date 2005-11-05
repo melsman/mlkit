@@ -1,0 +1,9 @@
+
+File posix.sml: Testing structure Posix...
+
+File posix.sml: Testing structure Posix.IO...
+Posix.IO.pipe    	OK
+Posix.Process.fork    	OK
+Posix.IO.close    	OK
+Posix.Process.fork    	OK
+Posix.IO.close    	OK
