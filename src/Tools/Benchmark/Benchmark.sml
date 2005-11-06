@@ -95,8 +95,9 @@ structure Benchmark =
 	  if OS.Path.ext p = SOME "sml" then
 	    let val is = TextIO.openIn p
 	      fun read (n) =
-		if TextIO.inputLine is = "" then n
-		else read(n+1)
+		  case TextIO.inputLine is of 
+		      NONE => n
+		    | SOME _ => read(n+1)
 	    in (Int.toString(read 0) before TextIO.closeIn is)
 	      handle _ => (TextIO.closeIn is; "&nbsp;")
 	    end
@@ -191,7 +192,7 @@ structure Benchmark =
       case OS.Path.ext input
 	of NONE => raise Fail ("Missing extension on file " ^ input)
 	 | SOME "sml" => (input,nil) :: sourceFiles inputs
-	 | SOME "pm" => (input,nil) :: sourceFiles inputs 
+	 | SOME "mlb" => (input,nil) :: sourceFiles inputs 
 	 | SOME "tst" => (case TestFile.parse input
 			    of NONE => raise Fail "Parse Error"
 			     | SOME (_,l) => 
@@ -295,7 +296,7 @@ structure Benchmark =
 	   ; print "  the compiler.\n"
 	   ; print "FILES:\n"
 	   ; print "  file.sml         Standard ML source file.\n"
-	   ; print "  file.pm          Project file.\n"
+	   ; print "  file.mlb         ML Basis file.\n"
 	   ; print "  file.tst         Test file.\n"
 	   ; print "\n"
 	   ; print "EXAMPLE:\n"
@@ -318,6 +319,7 @@ structure Benchmark =
 	    ; OS.Process.success
 	  end
       end
+(*
     fun arch_os() = 
       case SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
 	of "X86-Linux" => "x86-linux"
@@ -326,8 +328,6 @@ structure Benchmark =
 	 | s => s
     fun install() =
       let val _ = print "\n ** Installing KitBench, a tool for benchmarking SML compilers **\n\n"
-	  val srcPath = OS.FileSys.getDir()   (* assumes we are in kit/src/Tools/KitBench directory *)
-	  val kitdir = OS.Path.mkCanonical (OS.Path.concat(srcPath, "../../.."))
 	  val binPath = OS.Path.concat(kitdir, "bin")
 	  val kitbenchPath = OS.Path.joinDirFile{dir=binPath, file="kitbench"}
 
@@ -344,4 +344,13 @@ structure Benchmark =
       end
 
     val _ = install()
+*)
   end
+
+structure Main : sig end =
+struct
+    val srcPath = OS.FileSys.getDir()   (* assumes we are in kit/src/Tools/KitBench directory *)
+    val kitdir = OS.Path.mkCanonical (OS.Path.concat(srcPath, "../../.."))
+    val res = Benchmark.main kitdir (CommandLine.name(), CommandLine.arguments())
+    val _ = OS.Process.exit(res)
+end

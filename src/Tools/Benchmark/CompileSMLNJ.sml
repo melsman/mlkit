@@ -1,13 +1,14 @@
 structure CompileSMLNJ : COMPILE =
   struct
 
-    fun arch_os() = 
+    fun arch_os() = "x86-linux"
+(*
       case SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
 	of "X86-Linux" => "x86-linux"
 	 | "HPPA-HPUX" => "hppa-hpux"
 	 | "X86-BSD" => "x86-bsd"
 	 | s => s
-
+*)
     fun compile kitdir compileflags src opts =
       let 
 	  val heap2execDir = kitdir ^ "/src/heap2exec/"
