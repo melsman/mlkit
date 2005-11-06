@@ -4,7 +4,7 @@ BINDIR=../../../bin
 include ../../../Makefiledefault
 
 $(BINDIR)/kittester: kittester
-	cp KitTester $(BINDIR)/kittester
+	cp kittester $(BINDIR)/kittester
 
 kittester: KitTester.mlb Makefile *.sml
 	$(MLCOMP) -output kittester KitTester.mlb

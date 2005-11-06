@@ -1,5 +1,6 @@
 ifeq ($(MLCOMP)x,x)
-MLCOMP=mlton
+MLCOMP=mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten
+#mlton @MLton ram-slop 0.7 gc-summary -- -drop-pass deepFlatten -verbose 3
 endif
 
 export MLCOMP
