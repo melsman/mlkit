@@ -1,9 +1,13 @@
-../../../bin/mlbmake: Makefile sources.cm *.sml
-	echo 'CM.make();' | sml
+BINDIR=../../../bin
+TARGET=mlbmake
+
+include ../../../Makefiledefault
+
+$(BINDIR)/$(TARGET): $(TARGET)
+	cp $(TARGET) $(BINDIR)/$(TARGET)
+
+$(TARGET): sources.mlb Makefile *.sml
+	$(MLCOMP) -output $(TARGET) sources.mlb
 
 clean:
-	rm -rf CM PM MLB *~
-
-mlbmake: Makefile sources.mlb *.sml
-	../../../bin/mlbmake sources.mlb
-	mv a.out mlbmake
+	rm -rf MLB *~ $(TARGET)
