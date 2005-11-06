@@ -3,13 +3,11 @@ BINDIR=../../../bin
 
 include ../../../Makefiledefault
 
-$(BINDIR)/kittester: KitTester
+$(BINDIR)/kittester: kittester
 	cp KitTester $(BINDIR)/kittester
 
-KitTester: KitTester.mlb Makefile *.sml
-	$(MLCOMP) KitTester.mlb
-	mv run KitTester
-	
+kittester: KitTester.mlb Makefile *.sml
+	$(MLCOMP) -output kittester KitTester.mlb
 
 clean:
-	rm -rf MLB *~ KitTester
+	rm -rf MLB *~ kittester
