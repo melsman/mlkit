@@ -1,5 +1,13 @@
-../../../bin/kitbench: Makefile sources.cm *.sml
-	echo 'CM.make();' | sml
+BINDIR=../../../bin
+TARGET=kitbench
+
+include ../../../Makefiledefault
+
+$(BINDIR)/$(TARGET): $(TARGET)
+	cp $(TARGET) $(BINDIR)/$(TARGET)
+
+$(TARGET): KitBench.mlb Makefile *.sml
+	$(MLCOMP) -output $(TARGET) KitBench.mlb
 
 clean:
-	rm -rf CM PM *~
+	rm -rf MLB *~ $(TARGET)
