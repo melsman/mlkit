@@ -239,10 +239,8 @@ sml_dupfd(int f, int arg)
 int
 sml_getStdNumbers(int triple)
 {
-#ifndef TAG_FREE_PAIRS
   // Triples are also tag-free when pairs are!
-  mkTagRecordML(triple, 3);
-#endif
+  mkTagTripleML(triple);
   elemRecordML(triple,0) = convertIntToML(STDIN_FILENO);
   elemRecordML(triple,1) = convertIntToML(STDOUT_FILENO);
   elemRecordML(triple,2) = convertIntToML(STDERR_FILENO);
@@ -253,10 +251,8 @@ int
 sml_pipe(int triple)
 {
   int a[2], r;
-#ifndef TAG_FREE_PAIRS
   // Triples are also tag-free when pairs are!
-  mkTagRecordML(triple, 3);
-#endif
+  mkTagTripleML(triple);
   r = pipe(a);
   elemRecordML(triple,0) = convertIntToML(r);
   elemRecordML(triple,1) = convertIntToML(a[0]);
