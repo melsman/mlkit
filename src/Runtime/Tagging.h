@@ -161,9 +161,13 @@
 #ifdef TAG_FREE_PAIRS
 #define allocPairML(rAddr, recAddr)               (recAddr = alloc(rAddr,2) - 1)
 #define mkTagPairML(recAddr)
+#define allocTripleML(rAddr, recAddr)               (recAddr = alloc(rAddr,3) - 1)
+#define mkTagTripleML(recAddr)
 #else
 #define allocPairML(rAddr, recAddr)               allocRecordML(rAddr, 2, recAddr)
 #define mkTagPairML(recAddr)                      (*((int *)recAddr) = val_tag_record(2))
+#define allocTripleML(rAddr, recAddr)               allocRecordML(rAddr, 3, recAddr)
+#define mkTagTripleML(recAddr)                      (*((int *)recAddr) = val_tag_record(3))
 #endif
 
 #define first(x)   (*((int *)(x)+1))
