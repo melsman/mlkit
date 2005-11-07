@@ -109,27 +109,34 @@ sml_sysconf(int t)
 }
 
 int
-sml_times(int pair)
+sml_times(int tuple)
 {
   struct tms buf;
   clock_t r;
-  mkTagRecordML(pair, 5);
+  mkTagRecordML(tuple, 5);
   r = times(&buf);
   if (r == (clock_t) -1) raise_exn((int)&exn_OVERFLOW);
-  elemRecordML(pair,0) = convertIntToML(r & (SIZE_MAX / 4));
-  elemRecordML(pair,1) = convertIntToML(buf.tms_utime & (SIZE_MAX / 4));
-  elemRecordML(pair,2) = convertIntToML(buf.tms_stime & (SIZE_MAX / 4));
-  elemRecordML(pair,3) = convertIntToML(buf.tms_cutime & (SIZE_MAX / 4));
-  elemRecordML(pair,4) = convertIntToML(buf.tms_cstime & (SIZE_MAX / 4));
-  return pair;
+  elemRecordML(tuple,0) = convertIntToML(r & (SIZE_MAX / 4));
+  elemRecordML(tuple,1) = convertIntToML(buf.tms_utime & (SIZE_MAX / 4));
+  elemRecordML(tuple,2) = convertIntToML(buf.tms_stime & (SIZE_MAX / 4));
+  elemRecordML(tuple,3) = convertIntToML(buf.tms_cutime & (SIZE_MAX / 4));
+  elemRecordML(tuple,4) = convertIntToML(buf.tms_cstime & (SIZE_MAX / 4));
+  return tuple;
 }
 
 int
-sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
+sml_lower(String name_ml, int rwx_mode, int flags, int perm, int i, int kind)
 {
+  char* name;
+  int res;
   int mode = 0x0;
   int f = 0x0;
-
+  rwx_mode = convertIntToC(rwx_mode);
+  flags = convertIntToC(flags);
+  perm = convertIntToC(perm);
+  i = convertIntToC(i);
+  kind = convertIntToC(kind);
+  name = &(name_ml->data);
   switch (rwx_mode)
   {
     case 1:
@@ -167,30 +174,33 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
   if (perm & 0x2000) mode |= S_ISGID;
 
   switch (kind)
-  {
+    {
     case 1:
       f = O_CREAT;
-      return open(name, f, mode);
+      res = open(name, f, mode);
       break;
     case 2:
-      return open(name,f);
+      res = open(name,f);
       break;
     case 3:
-      return umask(mode);
+      res = umask(mode);
       break;
     case 4:
-      return mkdir(name, mode);
+      res = mkdir(name, mode);
       break;
     case 5:
-      return mkfifo(name, mode);
+      res = mkfifo(name, mode);
       break;
     case 6:
-      return chmod(name,f);
+      res = chmod(name,f);
       break;
     case 7:
-      return fchmod(i,f);
+      res = fchmod(i,f);
+      break;
+    default:
+      res = 0;      
   }
-  return 0;
+  return convertIntToML(res);
 }
 
 int
@@ -227,23 +237,29 @@ sml_dupfd(int f, int arg)
 }
 
 int
-sml_getStdNumbers(int pair)
+sml_getStdNumbers(int triple)
 {
-  mkTagRecordML(pair, 3);
-  elemRecordML(pair,0) = convertIntToML(STDIN_FILENO);
-  elemRecordML(pair,1) = convertIntToML(STDOUT_FILENO);
-  elemRecordML(pair,2) = convertIntToML(STDERR_FILENO);
-  return pair;
+#ifndef TAG_FREE_PAIRS
+  // Triples are also tag-free when pairs are!
+  mkTagRecordML(triple, 3);
+#endif
+  elemRecordML(triple,0) = convertIntToML(STDIN_FILENO);
+  elemRecordML(triple,1) = convertIntToML(STDOUT_FILENO);
+  elemRecordML(triple,2) = convertIntToML(STDERR_FILENO);
+  return triple;
 }
 
 int
-sml_pipe(int pair)
+sml_pipe(int triple)
 {
   int a[2], r;
-  mkTagRecordML(pair, 3);
+#ifndef TAG_FREE_PAIRS
+  // Triples are also tag-free when pairs are!
+  mkTagRecordML(triple, 3);
+#endif
   r = pipe(a);
-  elemRecordML(pair,0) = convertIntToML(r);
-  elemRecordML(pair,1) = convertIntToML(a[0]);
-  elemRecordML(pair,2) = convertIntToML(a[1]);
-  return pair;
+  elemRecordML(triple,0) = convertIntToML(r);
+  elemRecordML(triple,1) = convertIntToML(a[0]);
+  elemRecordML(triple,2) = convertIntToML(a[1]);
+  return triple;
 }
