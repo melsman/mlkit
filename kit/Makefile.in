@@ -284,9 +284,7 @@ install_src:
 	$(INSTALLDATA) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
-	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
-	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
-	chmod a+x $(INSTDIR)/bin/kittester
+	$(INSTALL) bin/kittester $(INSTDIR)/bin
 
 bootstrap_first: install bootstrap0
 
@@ -302,9 +300,7 @@ bootstrap_next_install:
 	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
-	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
-	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
-	chmod a+x $(INSTDIR)/bin/kittester
+	$(INSTALL) bin/kittester $(INSTDIR)/bin
 	$(MAKE) install_test
 	$(MAKE) install_src
 
