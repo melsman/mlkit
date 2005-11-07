@@ -113,7 +113,7 @@ sml_times(int pair)
 {
   struct tms buf;
   clock_t r;
-  mkTagPairML(pair);
+  mkTagRecordML(pair, 5);
   r = times(&buf);
   if (r == (clock_t) -1) raise_exn((int)&exn_OVERFLOW);
   elemRecordML(pair,0) = convertIntToML(r & (SIZE_MAX / 4));
@@ -229,7 +229,7 @@ sml_dupfd(int f, int arg)
 int
 sml_getStdNumbers(int pair)
 {
-  mkTagPairML(pair);
+  mkTagRecordML(pair, 3);
   elemRecordML(pair,0) = convertIntToML(STDIN_FILENO);
   elemRecordML(pair,1) = convertIntToML(STDOUT_FILENO);
   elemRecordML(pair,2) = convertIntToML(STDERR_FILENO);
@@ -240,7 +240,7 @@ int
 sml_pipe(int pair)
 {
   int a[2], r;
-  mkTagPairML(pair);
+  mkTagRecordML(pair, 3);
   r = pipe(a);
   elemRecordML(pair,0) = convertIntToML(r);
   elemRecordML(pair,1) = convertIntToML(a[0]);
