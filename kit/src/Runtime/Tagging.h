@@ -188,6 +188,12 @@
    ((ObjectDesc *) recAddr)->size = 2; \
    recAddr = ((int *)(((ObjectDesc *)recAddr)+1)) - 1; \
 }
+#define allocTripleMLProf(rAddr, recAddr, pPoint) { \
+   recAddr = alloc(rAddr, 3+sizeObjectDesc); \
+   ((ObjectDesc *) recAddr)->atId = pPoint; \
+   ((ObjectDesc *) recAddr)->size = 3; \
+   recAddr = ((int *)(((ObjectDesc *)recAddr)+1)) - 1; \
+}
 #else
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
    recAddr = alloc(rAddr, 3+sizeObjectDesc); \
@@ -196,6 +202,13 @@
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
    mkTagRecordML(recAddr, 2); \
 }
+#define allocTripleMLProf(rAddr, recAddr, pPoint) { \
+   recAddr = alloc(rAddr, 4+sizeObjectDesc); \
+   ((ObjectDesc *) recAddr)->atId = pPoint; \
+   ((ObjectDesc *) recAddr)->size = 4; \
+   recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
+   mkTagRecordML(recAddr, 3); \
+}
 #endif
 #endif /*PROFILING*/
 
@@ -203,10 +216,12 @@
 #define mkTagRecordML(recAddr, size)
 #define mkScalarTagRecordML(recAddr,size)
 #define mkTagPairML(recAddr)
+#define mkTagTripleML(recAddr)
 #define elemRecordML(recAddr, offset) (*((int *)(recAddr)+(offset)))
 #define storeElemRecordML(recAddr, offset, mlVal) (*(((int *)recAddr)+(offset))=(mlVal))
 #define allocRecordML(rAddr, size, recAddr) {recAddr=alloc(rAddr, size);}
 #define allocPairML(rAddr, recAddr) {recAddr=alloc(rAddr, 2);}
+#define allocTripleML(rAddr, recAddr) {recAddr=alloc(rAddr, 3);}
 #define first(x)   (*(int *)(x))
 #define second(x)  (*((int *)(x)+1))
 
@@ -221,6 +236,12 @@
    recAddr = alloc(rAddr, 2+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 2; \
+   recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
+}
+#define allocTripleMLProf(rAddr, recAddr, pPoint) { \
+   recAddr = alloc(rAddr, 3+sizeObjectDesc); \
+   ((ObjectDesc *) recAddr)->atId = pPoint; \
+   ((ObjectDesc *) recAddr)->size = 3; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
 }
 #endif /*PROFILING*/
