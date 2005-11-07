@@ -275,11 +275,11 @@ install_src:
 	$(INSTALLDATA) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
 	$(INSTALLDATA) src/SMLserver/apache/Notes src/SMLserver/apache/*.{c,h,in} $(INSTDIR)/src/SMLserver/apache
 	$(INSTALLDATA) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
-	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,cm} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
-	$(INSTALLDATA) src/Tools/GenOpcodes/*.{sml,cm} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
-	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,cm,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
+	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,mlb} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
+	$(INSTALLDATA) src/Tools/GenOpcodes/*.{sml,mlb} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
+	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,mlb} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
-	$(INSTALLDATA) src/Tools/Tester/*.{sml,cm} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
+	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
 	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
 	$(INSTALLDATA) src/heap2exec/heap2exec src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
 
