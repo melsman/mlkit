@@ -10,7 +10,7 @@
 #define tag_kind(x)                 ((x) & 0x1F)         /* Least 5 significant bits    */
 #define val_tag(x)                  (*(int *)x)
 #define val_tag_kind(x)             ((*(int *)x) & 0x1F) /* Least 5 significant bits    */
-#define is_const(x)                 (((int *)x) & 0x20)  /* Bit 6 is the constant bit   */
+#define is_const(x)                 (((unsigned int)x) & 0x20)  /* Bit 6 is the constant bit   */
 #define set_tag_const(x)            ((x) | 0x20)         /* Set bit 6, the constant bit */
 #define clear_tag_const(x)          ((x) & 0xFFFFFFDF)   /* Clear bit 6                 */
 #define val_tag_kind_const(x)       ((*(int *)x) & 0x3F) /* Least 6 significant bits    */

@@ -137,12 +137,12 @@ typedef struct rp {
  * word-vectors and word-arrays take time which is logarithmic in the
  * index parameter.  -- mael 2001-09-13 */
 
-/* For tag-free garbage collection of pairs, we make sure that large
- * objects are aligned on 1K boundaries, which makes it possible to
- * determine if a pointer points into the stack, constants in data
- * space, a region in from-space, or a region in to-space. The orig
- * pointer points back to the memory allocated by malloc (which holds
- * the large object). */
+/* For tag-free garbage collection of pairs, triples, and refs, we
+ * make sure that large objects are aligned on 1K boundaries, which
+ * makes it possible to determine if a pointer points into the stack,
+ * constants in data space, a region in from-space, or a region in
+ * to-space. The orig pointer points back to the memory allocated by
+ * malloc (which holds the large object). */
 
 typedef struct lobjs {
   struct lobjs* next;     // pointer to next large object or NULL
@@ -259,12 +259,13 @@ typedef Ro* Region;
 //       region descriptor.
 //    X1XXX status SOME saying that the generation is on the scan stack
 //    X0XXX status NONE saying that the generation is not on the scan stack
-//    0XXXX this is generation 0
-//    1XXXX this is generation 1
+//    0XXXX this is generation 0  (young generation)
+//    1XXXX this is generation 1  (old generation)
 // Notice, that the generation g0 is always used no matter what mode
 // the compiler is in (no gc, gc or gen gc). The generation g1 is only
-// used when generational gc is enabled. It is always possible to
-// write r->g0.
+// used when generational gc is enabled. It is thus always possible to
+// write r->g0, whereas r->g1 makes sense only when generational gc is
+// enabled.
 // We do not explicitly set the generation 0 bit when allocating a
 // region because the bit is 0 by default, that is, set_gen_0 is not
 // used in Region.c
@@ -493,7 +494,7 @@ int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
 
 void printTopRegInfo();
 int size_free_list();
-void pp_reg(int rAddr,  char *str);
+void pp_reg(Region r,  char *str);
 void pp_gen(Gen *gen);
 void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s);
 
