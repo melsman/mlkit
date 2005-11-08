@@ -1,0 +1,46 @@
+%%
+
+%name UlGrammar
+
+%term ULFILES | END | CODEFILES | SCRIPTS | AS | ULFILE of string
+              | SMLFILE of string | UOFILE of string | EOF | LOC of string
+
+%nonterm Res | Fil | UlIncludeList | UoIncludeList | SmlIncludeList | SmlOption
+
+%pos int
+
+%eop EOF
+
+%noshift EOF
+
+%start Res
+
+%verbose
+
+
+%%
+
+Res: Fil ()
+
+Fil:
+  (* empty *) ( [] )
+  | ULFILES UlIncludeList END Fil ( )
+  | CODEFILES UoIncludeList END Fil () 
+  | SCRIPTS SmlIncludeList END Fil ()
+
+UlIncludeList:
+   (* empty *) ()
+ | ULFILE SCRIPTS AS LOC UlIncludeList ()
+
+UoIncludeList:
+   (* empty *) ()
+ | UOFILE UoIncludeList ()
+
+SmlIncludeList:
+   (* empty *) ()
+ | SMLFILE SmlOption SmlIncludeList ()
+
+SmlOption:
+   (* empty *) ()
+ | AS SMLFILE ()
+
