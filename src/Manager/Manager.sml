@@ -702,6 +702,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		(Flags.turn_on "compile_only";
 		 Flags.lookup_string_entry "output" := target;
 		 build_mlb_one a)
+		handle Fail s => print ("Compile error: " ^ s ^ "\n")
 
 	    fun compile {verbose} {basisFiles,source,namebase,target,flags=""} :unit =
 		isolate (compile0 target) (namebase, basisFiles, source)
