@@ -12,6 +12,8 @@ CLEAN_MLB=rm -rf MLB
 
 BINDIR=../bin
 
+include ../Makefiledefault
+
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
 HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
@@ -30,7 +32,27 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
 REQUEST_PROFILING=
 #REQUEST_PROFILING=true
 
-mlkit: basics rp2ps tester mlbmake kitbench
+mlkit: mlkit_nj
+
+mlkit_kit: basics rp2ps tester mlbmake kitbench
+	cd Runtime; $(MAKE) runtimeSystem.a
+	cd Runtime; $(MAKE) runtimeSystemProf.a
+	cd Runtime; $(MAKE) runtimeSystemGC.a
+	cd Runtime; $(MAKE) runtimeSystemGCProf.a
+	cd Runtime; $(MAKE) runtimeSystemGenGC.a
+	cd Runtime; $(MAKE) runtimeSystemGenGCProf.a
+	cd Runtime; $(MAKE) runtimeSystemGCTP.a
+	cd Runtime; $(MAKE) runtimeSystemGCTPProf.a
+	cd Runtime; $(MAKE) runtimeSystemTag.a
+	$(MLCOMP) Compiler/native.mlb
+	rm -f $(BINDIR)/mlkit
+	cp -f run ../bin/mlkit.img
+	cd ..; echo '#!/bin/sh' > bin/mlkit
+	cd ..; echo `pwd`/bin/mlkit.img `pwd` \$$* >> bin/mlkit
+	chmod a+x $(BINDIR)/mlkit
+	chmod a+x $(BINDIR)/mlkit.img
+
+mlkit_nj: basics rp2ps tester mlbmake kitbench
 	cd Runtime; $(MAKE) runtimeSystem.a
 	cd Runtime; $(MAKE) runtimeSystemProf.a
 	cd Runtime; $(MAKE) runtimeSystemGC.a
