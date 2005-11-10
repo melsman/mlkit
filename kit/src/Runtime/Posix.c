@@ -177,7 +177,7 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
     {
     case 1:
       f = O_CREAT;
-      printf("O_CREAT: %s, %x, %x\n", name, f, mode);
+  //    printf("O_CREAT: %s, %x, %x\n", name, f, mode);
       res = open(name, f, mode);
       break;
     case 2:
