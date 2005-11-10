@@ -3,6 +3,7 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/SMLserver/apache/Makefile 
                  src/Runtime/Makefile
+                 src/Makefile
                  Makefile 
                  smlserver_demo/Makefile 
                  src/Version.sml])

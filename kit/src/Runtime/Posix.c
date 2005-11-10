@@ -104,6 +104,7 @@ sml_sysconf(int t)
       break;
     default:
       raise_exn((int)&exn_OVERFLOW);
+      res = 0;
       break;
   }
   return convertIntToML((int) res);
@@ -208,12 +209,11 @@ sml_exec (String path, int sl)
   {
     n++;
   }
-  if (n > 0)
-  {
-    args = (char **) malloc(sizeof(char *) * (n+1));
-    if (!args) return convertIntToML(0);
-  }
+  args = (char **) malloc(sizeof(char *) * (n+1));
+  if (!args) return convertIntToML(0);
+  
   list = sl;
+  
   for (i = 0; isCONS(list); list = tl(list), i++)
   {
     elemML = (String) hd(list);

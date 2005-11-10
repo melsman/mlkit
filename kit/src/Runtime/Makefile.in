@@ -1,8 +1,13 @@
 # Makefile for the MLKit runtime system.
 
 CC=@CC@
+CFLAGS=@CFLAGS@
+INSTALL=@INSTALL@
+INSTALLDATA=@INSTALL_DATA@
+INSTALLPROGRAM=@INSTALL_PROGRAM@
 
-BINDIR=../../bin
+BINDIR=@top_srcdir@/bin
+
 OFILES = Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
          GC.o Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o
 CFILES = $(OFILES:%.o=%.c)
@@ -22,7 +27,7 @@ OFILES_SMLSERVER_AP = $(OFILES:%.o=%-smlserverAP.o) Interp-smlserverAP.o LoadKAM
 CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
 
 #OPT=-Wall -pedantic -std=c99
-OPT=-Wall -std=gnu99
+OPT=-Wall -std=gnu99 $(CFLAGS)
 AR=ar rc
 
 .PHONY: depend clean runtime
@@ -66,47 +71,47 @@ AR=ar rc
 
 runtimeSystem.a: $(OFILES) Makefile
 	$(AR) $@ $(OFILES)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemTag.a: $(OFILES_TAG)
 	$(AR) $@ $(OFILES_TAG)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemProf.a: $(OFILES_PROF)
 	$(AR) $@ $(OFILES_PROF)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemGC.a: $(OFILES_GC)
 	$(AR) $@ $(OFILES_GC)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemGCProf.a: $(OFILES_GC_PROF)
 	$(AR) $@ $(OFILES_GC_PROF)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemGenGC.a: $(OFILES_GEN_GC)
 	$(AR) $@ $(OFILES_GEN_GC)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF)
 	$(AR) $@ $(OFILES_GEN_GC_PROF)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 kam: $(OFILES_KAM)
 	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemKamApSml.o: $(OFILES_SMLSERVER_AP)
 	ld -r -o $@ $(OFILES_SMLSERVER_AP)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemGCTP.a: $(OFILES_GC_TP)
 	$(AR) $@ $(OFILES_GC_TP)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF)
 	$(AR) $@ $(OFILES_GC_TP_PROF)
-	cp -p $@ ../../bin/
+	$(INSTALLDATA) $@ $(BINDIR)
 
 all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
  runtimeSystem.a runtimeSystemTag.a runtimeSystemGCTP.a \
