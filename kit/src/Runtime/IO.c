@@ -549,3 +549,11 @@ sml_microsleep(int s, int u)
   r = nanosleep(&req, &rem);
   return;
 }
+
+int
+sml_poll(int time)
+{
+  int r;
+  r = poll(0,0,time);
+  return r;
+}

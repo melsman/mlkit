@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -125,18 +126,17 @@ sml_times(int tuple)
 }
 
 int
-sml_lower(String name_ml, int rwx_mode, int flags, int perm, int i, int kind)
+sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
 {
-  char* name;
   int res;
   int mode = 0x0;
   int f = 0x0;
-  rwx_mode = convertIntToC(rwx_mode);
+/*  rwx_mode = convertIntToC(rwx_mode);
   flags = convertIntToC(flags);
   perm = convertIntToC(perm);
   i = convertIntToC(i);
   kind = convertIntToC(kind);
-  name = &(name_ml->data);
+  name = &(name_ml->data);*/
   switch (rwx_mode)
   {
     case 1:
@@ -177,6 +177,7 @@ sml_lower(String name_ml, int rwx_mode, int flags, int perm, int i, int kind)
     {
     case 1:
       f = O_CREAT;
+      printf("O_CREAT: %s, %x, %x\n", name, f, mode);
       res = open(name, f, mode);
       break;
     case 2:
@@ -200,7 +201,7 @@ sml_lower(String name_ml, int rwx_mode, int flags, int perm, int i, int kind)
     default:
       res = 0;      
   }
-  return convertIntToML(res);
+  return res;
 }
 
 int
