@@ -1,2 +1,2 @@
 .config PM run MLB a.out Version.sml CM
-config.h
+config.h Makefile
