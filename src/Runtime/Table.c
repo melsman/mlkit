@@ -36,11 +36,11 @@ word_table0 (Region rAddr, int n)
 // word_table_init(rAddr, n, x): return a pointer to a table 
 // with n initialized (=x) elements allocated in the region 
 // indicated by rAddr
-Table
+/* 'a */ Table
 #ifdef PROFILING
 word_table_initProf (Region rAddr, int n, int x, int pPoint)
 #else
-word_table_init (Region rAddr, int n, int x)
+word_table_init (Region rAddr, int n, int x /* :'a */)
 #endif
 {
   Table res;
