@@ -61,18 +61,7 @@ terminateML (int status)
 #ifdef ENABLE_GC
   if ( report_gc )
     { 
-#ifdef SIMPLE_MEMPROF
-      int kb_max_total, kb_max_stack, kb_max_lobjs;
-      kb_max_lobjs = lobjs_max_used / 1024;
-      kb_max_stack = ((int)stack_bot_gc - stack_min) / 1024;  // stack grows downwards
-      kb_max_total = kb_max_stack + kb_max_lobjs + rp_max_used;
-      fprintf(stderr, "[GC(%dms): %d garbage collections", time_gc_all_ms, num_gc);
-      fprintf(stderr, ", %d kb freelist", rp_total);
-      fprintf(stderr, ", %d kb max (stk=%d,lobjs=%d,rp=%d)]\n", kb_max_total,
-	      kb_max_stack, kb_max_lobjs, rp_max_used);
-#else
-      fprintf(stderr, "[GC(%dms): %d garbage collections, %d kb rpages]\n", time_gc_all_ms, num_gc, rp_total);
-#endif
+      fprintf(stderr, "[GC(%dms): %d collections, %dkb rpages]\n", time_gc_all_ms, num_gc, rp_total);
       alloc_total += alloc_period;
     }
   if ( verbose_gc ) 
@@ -83,7 +72,7 @@ terminateML (int status)
       alloc_total += lobjs_period;
       gc = 100.0 * ((double)gc_total) / ((double)alloc_total);
       ri = 100.0 - gc;
-      fprintf(stderr, "[GC(%dms): %d garbage collections, %d kb rpages, RI: %4.1f%%, GC: %4.1f%%, Frag avg: %4.1f%%]\n", 
+      fprintf(stderr, "[GC(%dms): %d collections, %dkb rpages, RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n", 
 	      time_gc_all_ms, num_gc, rp_total,
 	      ri, gc, FRAG_sum / (double)(num_gc-1));
     }
