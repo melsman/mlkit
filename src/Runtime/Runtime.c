@@ -44,7 +44,6 @@ int
 terminateML (int status) 
 { 
 #ifdef ENABLE_GC
-  extern int num_gc;
   extern int gc_total;
   extern int rp_total;
   extern unsigned int alloc_total;
@@ -59,21 +58,29 @@ terminateML (int status)
 #endif
 
 #ifdef ENABLE_GC
+  if ( report_gc || verbose_gc )
+    { 
+      alloc_total += alloc_period;
+      fprintf(stderr, "[GC(%dms): %d collections", time_gc_all_ms, num_gc);
+#ifdef ENABLE_GEN_GC
+      fprintf(stderr, " (%d major)", num_gc_major);
+#endif
+      fprintf(stderr, ", %dkb rpages", rp_total);
+    }
+
   if ( report_gc )
     { 
-      fprintf(stderr, "[GC(%dms): %d collections, %dkb rpages]\n", time_gc_all_ms, num_gc, rp_total);
-      alloc_total += alloc_period;
+      fprintf(stderr, "]\n");
     }
+
   if ( verbose_gc ) 
     {
       double ri = 0.0;
       double gc = 0.0;
-      alloc_total += alloc_period;
       alloc_total += lobjs_period;
       gc = 100.0 * ((double)gc_total) / ((double)alloc_total);
       ri = 100.0 - gc;
-      fprintf(stderr, "[GC(%dms): %d collections, %dkb rpages, RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n", 
-	      time_gc_all_ms, num_gc, rp_total,
+      fprintf(stderr, ", RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n", 
 	      ri, gc, FRAG_sum / (double)(num_gc-1));
     }
 #endif /* ENABLE_GC */

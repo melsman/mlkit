@@ -52,7 +52,9 @@ double FRAG_sum = 0.0;                // fragmentation denotes how much of regio
 
 int *data_lab_ptr = NULL;             // pointer at exported data labels part of the root-set
 int num_gc = 0;                       // number of garbage collections
-
+#ifdef ENABLE_GEN_GC
+int num_gc_major = 0;                 // number of major garbage collections
+#endif
 int doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
 int raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
 int raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
@@ -1268,7 +1270,6 @@ gc(unsigned int **sp, unsigned int reg_map)
 {
   int time_gc_one_ms;
   extern Rp* freelist;
-  extern int rp_to_space;
   unsigned int **sp_ptr;
   unsigned int *fd_ptr;
   unsigned int fd_size, fd_mark, fd_offset_to_return;
@@ -1297,6 +1298,8 @@ gc(unsigned int **sp, unsigned int reg_map)
   // See code below after GC proper
   //  major_p = (major_p==0)?(1):(0);
   //  major_p = 0;
+  if ( only_major_gc )
+    major_p = 1;
 #endif
 
   stack_top_gc = (unsigned int*)sp;
@@ -1313,6 +1316,10 @@ gc(unsigned int **sp, unsigned int reg_map)
   if ( verbose_gc || report_gc )
     {
       getrusage(RUSAGE_SELF, &rusage_begin);
+#ifdef ENABLE_GEN_GC
+      if ( major_p )
+	num_gc_major++;
+#endif // ENABLE_GEN_GC
     }
 
   if ( verbose_gc ) 
@@ -1331,8 +1338,6 @@ gc(unsigned int **sp, unsigned int reg_map)
       alloc_period_save = alloc_period;
       alloc_period = 0;
     }
-
-  rp_to_space = 0;
 
   // Initialize the scan stack (for Infinite Regions) and the
   // container (for Finite Regions and large objects)
@@ -1644,7 +1649,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   check_all_lobjs();  // debugging
 #endif // CHECK_GC
 
-  rp_used = rp_to_space;
+  rp_used = rp_total - size_free_list();
 
   // Update the GC treshold for region pages - we add -1.0 to
   // leave room for copying...
@@ -1663,6 +1668,12 @@ gc(unsigned int **sp, unsigned int reg_map)
 	}
 #endif // ENABLE_GEN_GC
     }
+#ifdef ENABLE_GEN_GC
+  else
+    {
+      major_p = 0;
+    }
+#endif // ENABLE_GEN_GC
 
   // ratio = (double)rp_total / (double)rp_used;
   // if ( ratio < heap_to_live_ratio ) {
