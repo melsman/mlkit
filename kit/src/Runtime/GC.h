@@ -19,6 +19,10 @@ extern unsigned int lobjs_gc_treshold;
 extern unsigned int lobjs_period;
 
 extern int doing_gc;
+#ifdef ENABLE_GEN_GC
+extern int major_p;
+#endif
+
 extern int raised_exn_interupt;
 extern int raised_exn_overflow;
 
@@ -30,13 +34,6 @@ extern unsigned int *data_end_addr;
 unsigned int size_lobj(unsigned int tag);
 
 void gc(unsigned int **sp, unsigned int reg_map);
-
-#ifdef SIMPLE_MEMPROF
-extern int stack_min;
-extern int lobjs_max_used;
-extern int rp_really_used;
-extern int rp_max_used;
-#endif /*SIMPLE_MEMPROF*/
 
 #endif /*ENABLE_GC*/
 

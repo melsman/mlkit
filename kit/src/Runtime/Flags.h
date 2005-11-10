@@ -34,10 +34,6 @@
 #define REGION_PAGE_BAG_SIZE 30
 #define HEAP_TO_LIVE_RATIO 3.0
 
-// Simple memory profiling - remember to enable the flag
-// simple_memprof_p in X86/CodeGenX86.sml if you enable this flag.
-// #define SIMPLE_MEMPROF 1
-
 #ifdef DEBUG
 #define debug(Arg) Arg
 #else

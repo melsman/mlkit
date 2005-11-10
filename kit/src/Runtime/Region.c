@@ -130,27 +130,6 @@ RegionPageMap* rpMap = NULL;
 #define REGION_PAGE_MAP_INCR(rp) 
 #endif /* REGION_PAGE_STAT */
 
-#if defined(SIMPLE_MEMPROF) && defined(ENABLE_GC)
-int stack_min = 0; // updated by mutator - stack grows downwards
-int lobjs_max_used = 0;
-int rp_max_used = 0;
-int rp_really_used = 0;
-
-inline static void rp_max_check()
-{
-  if ( rp_really_used > rp_max_used )
-    rp_max_used = rp_really_used;
-  return;
-}
-
-inline static void lobjs_max_check()
-{
-  if ( lobjs_current > lobjs_max_used )
-    lobjs_max_used = (int)lobjs_current;
-  return;
-}
-#endif
-
 /*----------------------------------------------------------------*
  * Global declarations                                            *
  *----------------------------------------------------------------*/
@@ -421,10 +400,6 @@ alloc_new_block(Gen *gen)
 #endif
 
   #ifdef ENABLE_GC
-  #ifdef SIMPLE_MEMPROF
-  rp_really_used++;
-  rp_max_check();
-  #endif
   rp_to_space++;
   rp_used++;
   if ( (!disable_gc) && (!time_to_gc) ) 
@@ -466,7 +441,11 @@ alloc_new_block(Gen *gen)
 #endif /* ENABLE_GEN_GC */
 
 #ifdef ENABLE_GC
-  if ( doing_gc )
+  if ( doing_gc  
+#ifdef ENABLE_GEN_GC
+      && ( major_p || !is_gen_1(*gen) )
+#endif
+       )
     np->n = set_tospace_bit(NULL);     // to-space bit
   else 
 #endif
@@ -475,12 +454,12 @@ alloc_new_block(Gen *gen)
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
-    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )            // inherit to-space bit
-      (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
-  // ToDo: GenGC only if tospace bit is set already
+    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) ) // keep to-space bit
+      (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); // updates the next field in the last
+                                                     // region page, but keeps the bit
     else
 #endif
-      (((Rp *)(gen->b))-1)->n = np; /* Updates the next field in the last region page. */
+      (((Rp *)(gen->b))-1)->n = np; // Updates the next field in the last region page.
   else {
 #ifdef ENABLE_GC
     int rt;
@@ -655,9 +634,6 @@ void deallocateRegion(
 
   #ifdef ENABLE_GC
   rp_used -= MIN_NO_OF_PAGES_IN_REGION;
-  #ifdef SIMPLE_MEMPROF
-  rp_really_used -= NoOfPagesInRegion(TOP_REGION);
-  #endif
   #endif /* ENABLE_GC */
 
   free_lobjs(TOP_REGION->lobjs);
@@ -877,13 +853,10 @@ int *allocGen (Gen *gen, int n) {
 	  time_to_gc = 1;
 	}
 #endif
-#if defined(SIMPLE_MEMPROF) && defined(ENABLE_GC)
-      lobjs_max_check();
-#endif
       // set the constant bit so that GC won't run 
       // through the thing before there is data in the
-      // object.
-      lobjs->value = set_tag_const(lobjs->value);
+      // object. This shouldn't be necessary; mael 2005-11-09
+//    lobjs->value = set_tag_const(lobjs->value);
       return &(lobjs->value);
     }
 
@@ -931,9 +904,6 @@ void resetGen(Gen *gen)
 #ifdef ENABLE_GC
     rp_used--;              // at least one page is freed; see comment in alloc_new_block
                             //   concerning conservative computation.
-#ifdef SIMPLE_MEMPROF
-    rp_really_used -= NoOfPagesInGen(gen) - 1;
-#endif /* SIMPLE_MEMPROF */
 #endif /* ENABLE_GC */  
 
     LOCK_LOCK(FREELISTMUTEX);
