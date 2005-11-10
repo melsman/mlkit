@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/param.h> 
 #include <sys/stat.h>
+#include <sys/poll.h>
 #include <dirent.h>
 #include <errno.h>
 #include <unistd.h>
