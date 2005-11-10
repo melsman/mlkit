@@ -140,7 +140,6 @@ Ro * topRegion;
 #endif
 
 #ifdef ENABLE_GC
-int rp_to_space = 0;
 int rp_used = 0;
 #endif /* ENABLE_GC */
 int rp_total = 0;
@@ -400,7 +399,6 @@ alloc_new_block(Gen *gen)
 #endif
 
   #ifdef ENABLE_GC
-  rp_to_space++;
   rp_used++;
   if ( (!disable_gc) && (!time_to_gc) ) 
     {

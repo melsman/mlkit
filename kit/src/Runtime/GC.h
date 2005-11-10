@@ -21,7 +21,9 @@ extern unsigned int lobjs_period;
 extern int doing_gc;
 #ifdef ENABLE_GEN_GC
 extern int major_p;
+extern int num_gc_major;
 #endif
+extern int num_gc;
 
 extern int raised_exn_interupt;
 extern int raised_exn_overflow;

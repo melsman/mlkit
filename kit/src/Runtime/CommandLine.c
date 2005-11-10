@@ -26,6 +26,9 @@ int disable_gc = 0;
 int verbose_gc = 0;
 int report_gc = 0;
 double heap_to_live_ratio = HEAP_TO_LIVE_RATIO;
+#ifdef ENABLE_GEN_GC
+int only_major_gc = 0;
+#endif
 #endif
 
 void 
@@ -35,6 +38,9 @@ printUsage(void)
   fprintf(stderr,"      [-help, -h] \n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      [-disable_gc | -verbose_gc | -report_gc] [-heap_to_live_ratio d] \n");
+#ifdef ENABLE_GENGC
+  fprintf(stderr,"      [-only_major_gc] \n");
+#endif // ENABLE_GEN_GC
 #endif /*ENABLE_GC*/
 #ifdef PROFILING
   fprintf(stderr,"      [-notimer n | -realtime | -virtualtime | -profiletime] \n");
@@ -48,7 +54,11 @@ printUsage(void)
   fprintf(stderr,"      -disable_gc              Disable garbage collector.\n");
   fprintf(stderr,"      -verbose_gc              Show info after each garbage collection.\n");
   fprintf(stderr,"      -report_gc               Show info when program terminates.\n");
-  fprintf(stderr,"      -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.\n\n");
+  fprintf(stderr,"      -heap_to_live_ratio d    Use heap to live ratio d (default: %f).\n", heap_to_live_ratio);
+#ifdef ENABLE_GEN_GC
+  fprintf(stderr,"      -only_major_gc           Use only major collections.\n");
+#endif // ENABLE_GEN_GC
+  fprintf(stderr, "\n");
 #endif /*ENABLE_GC*/
 #ifdef PROFILING
   fprintf(stderr,"      -notimer n               Profile every n'th function call.\n");
@@ -114,6 +124,13 @@ parseCmdLineArgs(int argc, char *argv[])
       report_gc = 1;
       match = 1;
     }
+
+#ifdef ENABLE_GEN_GC
+    if (strcmp((char *)argv[0],"-only_major_gc")==0) {
+      only_major_gc = 1;
+      match = 1;
+    }
+#endif // ENABLE_GEN_GC
 
     if (strcmp((char *)argv[0],"-heap_to_live_ratio")==0) {
       if (--argc > 0 && (*++argv)[0]) { /* Is there a number. */
