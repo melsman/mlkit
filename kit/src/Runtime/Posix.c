@@ -130,24 +130,18 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
 {
   int res;
   int mode = 0x0;
-  int f = 0x0;
-/*  rwx_mode = convertIntToC(rwx_mode);
-  flags = convertIntToC(flags);
-  perm = convertIntToC(perm);
-  i = convertIntToC(i);
-  kind = convertIntToC(kind);
-  name = &(name_ml->data);*/
+  int f;
   switch (rwx_mode)
   {
     case 1:
-      f |= O_WRONLY;
+      f = O_WRONLY;
       break;
     case 2:
-      f |= O_RDWR;
+      f = O_RDWR;
       break;
     case 0:
     default:
-      f |= O_RDONLY;
+      f = O_RDONLY;
       break;
   }
 
@@ -176,8 +170,7 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
   switch (kind)
     {
     case 1:
-      f = O_CREAT;
-  //    printf("O_CREAT: %s, %x, %x\n", name, f, mode);
+      f |= O_CREAT;
       res = open(name, f, mode);
       break;
     case 2:
