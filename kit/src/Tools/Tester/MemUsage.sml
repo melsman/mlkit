@@ -44,7 +44,7 @@ structure MemUsage : MEM_USAGE =
 	val pid_s = (Int.toString o SysWord.toInt o Posix.Process.pidToWord) pid
 	  
 	val delay = Time.fromMilliseconds 50
-	fun sleep() = (* OS.IO.poll(nil,SOME delay)  *)
+	fun sleep() = (*OS.IO.poll(nil,SOME delay)  *)
                 OS.Process.sleep delay
 
 	fun loop acc = case (sleep(); Info.getInfo pid_s)
@@ -65,7 +65,8 @@ structure MemUsage : MEM_USAGE =
       end
 
     fun memUsage {cmd, args, out_file} : report =
-      let val {cstime=cstime0, cutime=cutime0,...} = Posix.ProcEnv.times()
+      let
+          val {cstime=cstime0, cutime=cutime0,...} = Posix.ProcEnv.times()
       in
 	case Posix.Process.fork () 
 	  of SOME pid =>                          (* We're in the parent process *)
@@ -75,8 +76,12 @@ structure MemUsage : MEM_USAGE =
 	    let val fd = Posix.FileSys.creat(out_file, Posix.FileSys.S.irwxu)
 	      handle OS.SysErr(s,e) => raise Fail ("Dealing with: "^ out_file ^ " " ^ s)
              | _ => raise Fail "memUsage.child.openf failed"
+        (* val fd2 = Posix.FileSys.creat(out_file^"cv_test", Posix.FileSys.S.irwxu)
+	      handle OS.SysErr(s,e) => raise Fail ("Dealing with: "^ out_file ^ " " ^ s)
+             | _ => raise Fail "memUsage.child.openf failed" *)
 	    in (* convert stdout, etc to file out_file *)
-	      (Posix.IO.close Posix.FileSys.stdout;
+	     (
+        Posix.IO.close Posix.FileSys.stdout;
 	      Posix.IO.dup fd;
 	      Posix.IO.close Posix.FileSys.stderr;
 	      Posix.IO.dup fd;

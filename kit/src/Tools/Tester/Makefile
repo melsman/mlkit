@@ -3,6 +3,8 @@ BINDIR=../../../bin
 
 include ../../../Makefiledefault
 
+all: $(BINDIR)/kittester
+
 $(BINDIR)/kittester: kittester
 	cp kittester $(BINDIR)/kittester
 
