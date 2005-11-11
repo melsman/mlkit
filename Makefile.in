@@ -46,8 +46,8 @@ all: mlkit
 mlkit_basislibs:
 	(cd basis; rm -rf MLB)
 	(cd basis; ../bin/mlkit -c basis.mlb)
-	(cd basis; ../bin/mlkit -gc -c basis.mlb)
-	(cd basis; ../bin/mlkit -gc -prof -c basis.mlb)
+	(cd basis; ../bin/mlkit -gengc -c basis.mlb)
+	(cd basis; ../bin/mlkit -gengc -prof -c basis.mlb)
 	(cd basis; ../bin/mlkit -prof -c basis.mlb)
 
 install_mlkit_basislibs:
@@ -67,7 +67,7 @@ mlkit_with_basislibs:
 
 mlkit:
 	$(MKDIR) bin
-	$(MAKE) -C src
+	$(MAKE) -C src mlkit_nj
 
 mlkit_kam:
 	$(MKDIR) bin
@@ -290,7 +290,7 @@ bootstrap_first: install bootstrap0
 
 bootstrap_next_build:
 	cd src; $(MAKE) genopcodes
-	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
+	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gengc native.mlb
 
 bootstrap_next_install: 
 	$(MAKE) install_top

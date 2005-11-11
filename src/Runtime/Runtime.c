@@ -71,6 +71,7 @@ terminateML (int status)
   if ( report_gc )
     { 
       fprintf(stderr, "]\n");
+      fflush(stderr);
     }
 
   if ( verbose_gc ) 
@@ -82,6 +83,7 @@ terminateML (int status)
       ri = 100.0 - gc;
       fprintf(stderr, ", RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n", 
 	      ri, gc, FRAG_sum / (double)(num_gc-1));
+      fflush(stderr);
     }
 #endif /* ENABLE_GC */
 

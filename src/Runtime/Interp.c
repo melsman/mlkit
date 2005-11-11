@@ -405,7 +405,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
   bytecode_t pc_temp;
   int *env = NULL;
-  uint32 cur_instr;
+  uint32 cur_instr = 0;
   int temp;
   //  c_primitive primtmp;
 

@@ -1,5 +1,14 @@
 MLKit NEWS file
 
+ * mael 2005-11-11: Finished work on generational garbage
+   collection. The mlkit option -gengc can now be used to construct
+   executables that combines generational garbage collection and
+   regions. Pass the -help option to the generated executable to see
+   which runtime options are available; the option -only_major_gc can
+   be used to disable minor garbage collections. Statistics can be
+   printed on stderr using the options -verbose_gc or -report_gc (the
+   option -verbose_gc somewhat slows down the executable).
+
  * varming 2005-11-01 Added some Posix support needed to build KitTester +
    some more.
 

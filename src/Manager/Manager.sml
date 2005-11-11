@@ -690,7 +690,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		    (case status of
 			 Posix.Process.W_EXITED => ()
 		       | Posix.Process.W_EXITSTATUS _ => raise IsolateFunExn
-		       | _ => raise Fail "isolate error 3")
+		       | Posix.Process.W_STOPPED s => raise Fail "isolate error: W_STOPPED"
+		       | Posix.Process.W_SIGNALED s => raise Fail "isolate error: W_SIGNALED")
 		   else raise Fail "isolate error 2"
 		end
 	  | NONE => (f a before Posix.Process.exit 0w0
