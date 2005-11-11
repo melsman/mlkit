@@ -36,6 +36,7 @@ REQUEST_PROFILING=
 
 mlkit: mlkit_kit
 
+.PHONY: mlkit_kit
 mlkit_kit: basics rp2ps tester mlbmake kitbench
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
@@ -52,6 +53,19 @@ mlkit_kit: basics rp2ps tester mlbmake kitbench
 	cd $(LIBDIR) && echo `pwd`/bin/mlkit.img `pwd` \$$* >> bin/mlkit
 	chmod a+x $(BINDIR)/mlkit
 
+mlkit_kam: mlkit_kam_kit
+
+.PHONY: mlkit_kam_kit
+mlkit_kam_kit: basics tester kitbench
+	$(MAKE) -C Runtime kam
+	$(MLCOMP) -output mlkit_kam.img Compiler/bytecode.mlb
+	$(INSTALL) -p mlkit_kam.img $(BINDIR)
+	cd $(BINDIR) && echo "#!$(SHELL)" > mlkit_kam
+	cd $(LIBDIR) && echo `pwd`/bin/mlkit_kam.img `pwd` \$$* >> bin/mlkit_kam
+	chmod a+x $(BINDIR)/mlkit_kam
+
+
+.PHONY: mlkit_nj
 mlkit_nj: basics rp2ps tester mlbmake kitbench
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
@@ -69,7 +83,8 @@ mlkit_nj: basics rp2ps tester mlbmake kitbench
 	cd .. && echo `pwd`/bin/mlkit.$(ARCH-OS) `pwd` \$$* >> bin/mlkit
 	chmod a+x $(BINDIR)/mlkit
 
-mlkit_kam: basics tester kitbench
+.PHONY: mlkit_kam_nj
+mlkit_kam_nj: basics tester kitbench
 	$(MAKE) -C Runtime kam
 	echo 'use "build_kam.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam.$(ARCH-OS)
@@ -78,7 +93,19 @@ mlkit_kam: basics tester kitbench
 	cd .. && echo `pwd`/bin/mlkit_kam.$(ARCH-OS) `pwd` \$$* >> bin/mlkit_kam
 	chmod a+x $(BINDIR)/mlkit_kam
 
-smlserver: basics
+smlserver: smlserver_nj
+
+smlserver_kit: basics 
+	$(MAKE) -C Tools/MspComp
+	$(MAKE) -C Runtime runtimeSystemKamApSml.o
+#	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
+	$(MAKE) -C SMLserver/apache
+	rm -f $(BINDIR)/smlserverc
+	cd .. && echo '#!/bin/sh' > bin/smlserverc
+	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
+	chmod a+x $(BINDIR)/smlserverc
+
+smlserver_nj: basics
 	$(MAKE) -C Tools/MspComp
 #	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
@@ -159,6 +186,7 @@ clean:
 	cd Compiler/Lambda && $(CLEAN)
 	cd SMLserver && $(CLEAN) nssml.so *.o
 	$(MAKE) -C SMLserver/apache clean
+	rm mlkit.img
 
 clean_mlb:
 	cd ../basis && $(CLEAN_MLB)
