@@ -712,7 +712,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serv
   unsigned long *ds, *sp, *exnPtr, *sp0;
   unsigned long exnCnt = 0;
   Heap* h;
-  int res;
+  int res = 0;
   LongList* p;
   Ro* topRegion = NULL;
 

@@ -1268,7 +1268,7 @@ region_utilize(int pages, int bytes)
 void 
 gc(unsigned int **sp, unsigned int reg_map) 
 {
-  int time_gc_one_ms;
+  int time_gc_one_ms = 0;
   extern Rp* freelist;
   unsigned int **sp_ptr;
   unsigned int *fd_ptr;
@@ -1286,7 +1286,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   struct rusage rusage_end;
   unsigned int bytes_from_space = 0;
   unsigned int pages_from_space = 0;
-  unsigned int alloc_period_save;
+  unsigned int alloc_period_save = 0;
   Ro *r;
 
   // Mutex on the garbage collector; used by alloc_new_block in
