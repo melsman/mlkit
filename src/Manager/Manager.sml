@@ -682,20 +682,27 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
      * ---------------------------- *)
 
     exception IsolateFunExn
-    fun isolate (f : 'a -> unit) (a:'a) : unit =
-	case Posix.Process.fork() of
-	    SOME pid => 
-		let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
-		in if pid2 = pid then 
-		    (case status of
-			 Posix.Process.W_EXITED => ()
-		       | Posix.Process.W_EXITSTATUS _ => raise IsolateFunExn
-		       | Posix.Process.W_STOPPED s => raise Fail "isolate error: W_STOPPED"
-		       | Posix.Process.W_SIGNALED s => raise Fail "isolate error: W_SIGNALED")
+
+    local
+	fun failSig s signal =
+	    raise Fail ("isolate error: " ^ s ^ "(" ^ 
+			SysWord.toString (Posix.Signal.toWord signal) ^ ")")
+    in
+	fun isolate (f : 'a -> unit) (a:'a) : unit =
+	    case Posix.Process.fork() of
+		SOME pid => 
+		    let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
+		    in if pid2 = pid then 
+			(case status of
+			     Posix.Process.W_EXITED => ()
+			   | Posix.Process.W_EXITSTATUS _ => raise IsolateFunExn
+			   | Posix.Process.W_STOPPED s => failSig "W_STOPPED" s
+			   | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED" s)
 		   else raise Fail "isolate error 2"
 		end
 	  | NONE => (f a before Posix.Process.exit 0w0
 		     handle _ => Posix.Process.exit 0w1)
+    end
 
     structure MlbPlugIn : MLB_PLUGIN  =
 	struct
