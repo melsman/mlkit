@@ -65,9 +65,13 @@ mlkit_with_basislibs:
 	$(MAKE) mlkit
 	$(MAKE) mlkit_basislibs
 
-mlkit:
+nj:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit_nj
+
+mlkit:
+	$(MKDIR) bin
+	$(MAKE) -C src mlkit
 
 mlkit_kam:
 	$(MKDIR) bin
