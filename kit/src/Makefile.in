@@ -9,7 +9,7 @@ MKDIR=@top_srcdir@/mkinstalldirs
 LIBDIR=@top_srcdir@
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
-CLEAN=rm -rf MLB PM CM *~ .\#* a.out
+CLEAN=rm -rf MLB PM CM *~ .\#* a.out run
 CLEAN_MLB=rm -rf MLB
 
 BINDIR=@top_srcdir@/bin
@@ -179,14 +179,10 @@ clean:
 	cd Compiler/Backend/KAM && $(CLEAN)
 	cd Compiler/Backend/Barry && $(CLEAN)
 	cd Compiler/Regions && $(CLEAN)
-	cd Compiler/C && $(CLEAN)
-	cd Compiler/Hppa && $(CLEAN)
-	cd Compiler/Kam && $(CLEAN)
-	cd Compiler/Cfg && $(CLEAN)
 	cd Compiler/Lambda && $(CLEAN)
 	cd SMLserver && $(CLEAN) nssml.so *.o
 	$(MAKE) -C SMLserver/apache clean
-	rm mlkit.img
+	rm -f mlkit.img
 
 clean_mlb:
 	cd ../basis && $(CLEAN_MLB)
