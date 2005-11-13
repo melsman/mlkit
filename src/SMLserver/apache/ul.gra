@@ -1,46 +1,59 @@
-%%
+%{
+#include "parsertree.h"
+%}
 
-%name UlGrammar
 
-%term ULFILES | END | CODEFILES | SCRIPTS | AS | ULFILE of string
-              | SMLFILE of string | UOFILE of string | EOF | LOC of string
+%pure-parser
 
-%nonterm Res | Fil | UlIncludeList | UoIncludeList | SmlIncludeList | SmlOption
+%union 
+{
+  struct parsertree *pt;
+  struct smlList *sml;
+  struct uoList *uo;
+  struct ulList *ul;
+  char *string;
+}
 
-%pos int
+%token <string> ULFILE SMLFILE UOFILE LOC
 
-%eop EOF
+%token <intval> ULFILES END CODEFILES SCRIPTS AS 
 
-%noshift EOF
+%type <sml> SmlIncludeList 
+%type <uo> UoIncludeList 
+%type <ul> UlIncludeList 
+%type <string> SmlOption
+%type <pt> Fil
 
-%start Res
+%start Fil
+
+%locations
+
+%parse-param {parsertree *pt}
 
 %verbose
 
 
 %%
 
-Res: Fil ()
-
 Fil:
-  (* empty *) ( [] )
-  | ULFILES UlIncludeList END Fil ( )
-  | CODEFILES UoIncludeList END Fil () 
-  | SCRIPTS SmlIncludeList END Fil ()
-
+  /* empty */ { $$ = NULL; }
+  | ULFILES UlIncludeList END Fil {} 
+  | CODEFILES UoIncludeList END Fil {} 
+  | SCRIPTS SmlIncludeList END Fil {}
+;
 UlIncludeList:
-   (* empty *) ()
- | ULFILE SCRIPTS AS LOC UlIncludeList ()
-
+   /* empty */ { $$ = NULL; }
+ | ULFILE SCRIPTS AS LOC UlIncludeList {}
+;
 UoIncludeList:
-   (* empty *) ()
- | UOFILE UoIncludeList ()
-
+   /* empty */ { $$ = NULL; }
+ | UOFILE UoIncludeList {}
+;
 SmlIncludeList:
-   (* empty *) ()
- | SMLFILE SmlOption SmlIncludeList ()
-
+   /* empty */ { $$ = NULL; }
+ | SMLFILE SmlOption SmlIncludeList {}
+;
 SmlOption:
-   (* empty *) ()
- | AS SMLFILE ()
-
+   /* empty */ { $$ = NULL; }
+ | AS SMLFILE { $$ = $2; }
+;
