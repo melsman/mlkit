@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h> 
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <errno.h>
+#include <string.h>
 #include "Runtime.h"
 #include "Flags.h"
 #include "Tagging.h"
@@ -38,6 +42,29 @@ die2 (char *s1, char* s2)
 { 
     fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2); 
     exit(-1); 
+}
+
+void
+setStackSize(rlim_t size)
+{
+  int res;
+  char *bad;
+  struct rlimit lim;
+  lim.rlim_cur = size;
+  lim.rlim_max = size;
+  res = setrlimit(RLIMIT_STACK, &lim);
+  if (res == -1)
+  {
+    bad = strerror(errno);
+    die(bad);
+  }
+  return;
+}
+
+void
+setStackSizeUnlimited(void)
+{
+  return setStackSize(RLIM_INFINITY);
 }
 
 int 
@@ -257,6 +284,8 @@ main(int argc, char *argv[])
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))
     die("integer configuration is erroneous");
 
+  setStackSizeUnlimited();
+
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
 
 #ifdef REGION_PAGE_STAT
@@ -277,6 +306,6 @@ rpMap = regionPageMapNew();
 #else
   code();
   return (EXIT_FAILURE);   /* never comes here (i.e., exits through 
-		            * terminateML or uncaught_exception) */
+		                        * terminateML or uncaught_exception) */
 #endif
 }
