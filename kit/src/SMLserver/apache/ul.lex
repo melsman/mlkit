@@ -1,9 +1,7 @@
 %{
 
-#include "ul.tab.gra.h"
 #include "string.h"
-
-#define YY_DECL int yylex (YYSTYPE *lvalp, YYLTYPE *llocp)
+#include "parseFuncs.h"
 
 %}
 %pointer
@@ -16,9 +14,9 @@ filechars [a-zA-Z0-9/\._-];
 %%
 
 {ws}+ 
-{filechars}+".ul" lvalp->string = strndup(yytext, yyleng); return ULFILE;
-{filechars}*".uo" lvalp->string = strndup(yytext, yyleng); return UOFILE;
-[a-zA-Z0-9/_-]*"/" lvalp->string = strndup(yytext, yyleng); return LOC;
+{filechars}*".ul" lvalp->ptr = yytext; lvalp->len = yyleng; return ULFILE;
+{filechars}*".uo" lvalp->ptr = yytext; lvalp->len = yyleng; return UOFILE;
+[a-zA-Z0-9/_-]*"/" lvalp->ptr = yytext; lvalp->len = yyleng; return LOC;
 "As" return AS;
 "End" return END;
 "Ulfiles" return ULFILES;
