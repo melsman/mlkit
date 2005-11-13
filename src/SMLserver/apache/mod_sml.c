@@ -2,6 +2,9 @@
 
 
 #include <sys/stat.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 #include "httpd.h"
 #include "http_config.h"
 #include "http_log.h"
@@ -12,6 +15,7 @@
 #include "sys/socket.h"
 #include "netdb.h"
 #include "Locks.h"
+#include "parseFuncs.h"
 
 #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
@@ -269,6 +273,8 @@ getpage(char *server, char *address, unsigned short port)/*{{{*/
     return;
   }
   myaddr = addr;
+  sock = -1;
+  c = -1;
   while (myaddr)
   {
     sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
@@ -377,7 +383,6 @@ int getpackage(int infile, struct buflist **blist, struct scriptsched_t **rv, in
   int tmp, i,j;
   struct buflist *myblist, *myblist1;
   schedHeader *sched;
-  char *tmpdata;
   time_t timetmp;
   myblist1 = *blist;
   while (myblist1 && myblist1->next)
@@ -609,12 +614,12 @@ forkandgetpage(char *server, char *script, unsigned short port,
 static void 
 scheduleproc (const char *server, int port, int infile)/*{{{*/
 {
-  int bufsize;
+//  int bufsize;
   int logfile;
   int tmp;
   apr_status_t stat;
   apr_pool_t *pool;
-  int curpackage = 0;
+//  int curpackage = 0;
   apr_threadattr_t *schedthread_attr;
   timeheap_binaryheap_t heap;
   hashtable map;
@@ -622,7 +627,7 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
   time_t curtime;
   fd_set readfd;
   struct timeval tv;
-  unsigned int nexttimeout = 0;
+//  unsigned int nexttimeout = 0;
   struct buflist *blist = NULL;
   timeheap_heapinit(&heap);
   hashinit(&map, hashfunc, hashequal);
@@ -765,6 +770,8 @@ shutdownServer (void *ctx1) /*{{{*/
   }
   interpClear(ctx->interp);
   clearHeapCache ();
+  freeHashTable (ctx->scripts);
+  ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
   return APR_SUCCESS;
 }/*}}}*/
 
@@ -1148,6 +1155,7 @@ apsml_next_sml0 (char *p) //{{{
 //  return 0;
 //}       //}}}
 
+int
 apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int path_p)/*{{{*/
 {
   char *pageRoot;
@@ -1467,3 +1475,115 @@ apsml_ppheaders (request_data * rd) /*{{{ */
 {
   ppTable (rd->request->headers_in, rd);
 }       /*}}} */
+
+char *
+contractPath1(char *path, char *lastSlash)
+{
+  char *b, c;
+  int len = strlen(path);
+  if (!*path) return path;
+  if (*path == '/')
+  {
+    memmove(path, path+1, len);
+    return contractPath1(path, lastSlash);
+  }
+  if (*path == '.' && path[1] == '.' && path[2] == '/')
+  {
+    if (lastSlash == NULL)
+    {
+      return NULL;
+    }
+    memmove(lastSlash, path+2, len - 1);
+    return lastSlash+1;
+  }
+  if (*path == '.' && path[1] == '/')
+  {
+    memmove(path, path+2, len - 1);
+    return contractPath1(path, lastSlash);
+  }
+  b = path - 1;
+  while ((c = *path))
+  {
+    if (c == '/') 
+    {
+      b = contractPath1(path+1, b);
+      if (b == NULL) return NULL;
+      path = b - 1;
+    }
+    path++;
+  }
+  return path;
+}
+
+char *
+contractPath(char *path)
+{
+  return contractPath1(path, NULL);
+}
+
+int
+parseUl(char *ul, char *prefix, char *fileprefix, hashtable *htUl, hashtable *htSml)
+{
+}
+
+struct uoHashEntry
+{
+  unsigned long hashval;
+  char *c;
+};
+
+void
+toUlHashTable(void *ctx1, char *ul, int ulLength,
+              char *loc, int locLength, char *fileprefix, int fpl)
+{
+  InterpContext *ctx = (InterpContext *) ctx1;
+}
+
+void 
+toSmlHashTable(void *ctx1, char *uo, int uoLength, char *mlop, int mlopLength,
+               char *prefix, char *fileprefix, int fpl)
+{
+  InterpContext *ctx = (InterpContext *) ctx1;
+}
+
+void parsedie(void)
+{
+  return;
+}
+
+int
+extendInterp (void *ctx1, char *yy, int len, char *fileprefix, int fpl)/*{{{*/
+{
+  InterpContext *ctx;
+  struct uoHashEntry *he, he1;
+  void *r;
+  char *tmp;
+  ctx = (InterpContext *) ctx1;
+  if (*yy == '/')
+  {
+    tmp = (char *) alloca(len+1);
+    tmp[len] = 0;
+  }
+  else
+  {
+    tmp = (char *) alloca(len+1+fpl);
+    strcpy(tmp,fileprefix);
+    strncpy(tmp+fpl,yy,len);
+    tmp[fpl+len] = 0;
+  }
+  if (!contractPath(tmp)) parsedie;
+  he1.hashval = charhashfunction(tmp);
+  he1.c = tmp;
+  if (!he) parsedie;
+  if (hashfind(&(ctx->code.uoTable), &he1, &r) == hash_DNE)
+  {
+    he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
+    he->c = (char *)(he+1);
+    strcpy(he->c, tmp);
+    he->hashval = he1.hashval;
+    hashupdate(&(ctx->code.uoTable), he, NULL);
+    interpLoadExtend(ctx->interp, tmp);
+  }
+  return 0;
+}/*}}}*/
+

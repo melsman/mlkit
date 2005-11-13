@@ -1,57 +1,55 @@
 %{
-#include "parsertree.h"
+#include <stdlib.h>
+#include <alloca.h>
+#include "parseFuncs.h"
+#include "mod_sml.h"
+
 %}
 
 %pure-parser
 
-%union 
-{
-  struct parsertree *pt;
-  struct smlList *sml;
-  struct uoList *uo;
-  struct ulList *ul;
-  char *string;
-}
+%token ULFILE UOFILE LOC
 
-%token <string> ULFILE UOFILE LOC
+%token ULFILES END CODEFILES SCRIPTS AS 
 
-%token <intval> ULFILES END CODEFILES SCRIPTS AS 
+//Fil UlIncludeList SmlIncludeList UoIncludeList SmlOption
 
-%type <sml> SmlIncludeList 
-%type <uo> UoIncludeList 
-%type <ul> UlIncludeList 
-%type <string> SmlOption
-%type <pt> Fil
+
 
 %start Fil
 
 %locations
 
-%parse-param {parsertree *pt}
+%parse-param {void *ctx}
+%parse-param {char *prefix}
+%parse-param {char *fileprefix}
+%parse-param {int fpl}
+%parse-param {struct data *s}
 
 %verbose
 
 %%
 
 Fil:
-  /* empty */ { $$ = NULL; }
+  /* empty */ {}
   | ULFILES UlIncludeList END Fil {} 
   | CODEFILES UoIncludeList END Fil {} 
   | SCRIPTS SmlIncludeList END Fil {}
 ;
 UlIncludeList:
-   /* empty */ { $$ = NULL; }
- | ULFILE SCRIPTS AS LOC UlIncludeList {}
+   /* empty */ { }
+ | ULFILE SCRIPTS AS LOC UlIncludeList { toUlHashTable (ctx, $1.ptr,$1.len,$4.ptr,$4.len, fileprefix, fpl) }
 ;
 UoIncludeList:
-   /* empty */ { $$ = NULL; }
- | UOFILE UoIncludeList {}
+   /* empty */ { }
+ | UOFILE UoIncludeList { extendInterp(ctx, $1.ptr, $1.len, fileprefix, fpl) }
 ;
 SmlIncludeList:
-   /* empty */ { $$ = NULL; }
- | UOFILE SmlOption SmlIncludeList {}
+   /* empty */ { }
+ | UOFILE SmlOption SmlIncludeList { toSmlHashTable(ctx, $1.ptr,$1.len,$2.ptr,$2.len,prefix, fileprefix, fpl); }
 ;
 SmlOption:
-   /* empty */ { $$ = NULL; }
- | AS UOFILE { $$ = $2; }
+   /* empty */ { s->ptr = NULL; s->len = 0; $$ = *s; }
+ | AS UOFILE { $$ = $2 }
 ;
+

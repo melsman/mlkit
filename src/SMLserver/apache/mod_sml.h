@@ -51,6 +51,13 @@ struct db_t
   void (*req_cleanup)(void *, void *);
 };
 
+struct codeTables
+{
+  hashtable uoTable;
+  hashtable smlTable;
+  hashtable ulTable;
+};
+
 typedef struct
 {
   Interp *interp;
@@ -72,6 +79,7 @@ typedef struct
   schedule_t sched;
   struct db_t *db;
   apr_thread_mutex_t *dblock;
+  struct codeTables code;
 } InterpContext;
 
 struct request_db
@@ -100,5 +108,6 @@ typedef struct
   uint32_t port;
   uint32_t serverlength;
 } schedHeader;
+
 
 #endif
