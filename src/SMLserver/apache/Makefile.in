@@ -9,7 +9,7 @@ MKDIR=@top_srcdir@/mkinstalldirs
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
-       ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o
+       ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o ul.tab.gra.c yy.lex.c
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
@@ -67,6 +67,14 @@ odbc_install: odbc
 	$(INSTALL) $(ODBCLIB) $(INSTDIR_SMLSERVER)/lib
 	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmlodbc.so.1.0 libsmlodbc.so.1
 	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmlodbc.so.1 libsmlodbc.so
+
+ul.tab.gra.h: ul.gra
+	bison -d ul.gra
+
+ul.tab.gra.c: ul.tab.gra.h
+
+yy.lex.c: ul.lex ul.tab.gra.h
+	flex ul.lex
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0

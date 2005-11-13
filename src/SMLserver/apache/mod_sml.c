@@ -756,15 +756,20 @@ startsched (const char *server, apr_port_t port, int infile)/*{{{*/
 }/*}}}*/
 
 apr_status_t 
-killschedproc (void *p1) /*{{{*/
+shutdownServer (void *ctx1) /*{{{*/
 {
-  pid_t *p = (pid_t *) p1;
-  kill(*p, SIGTERM);
+  InterpContext *ctx = (InterpContext *) ctx1;
+  if (ctx->sched.pid)
+  {
+    kill(ctx->sched.pid, SIGTERM);
+  }
+  interpClear(ctx->interp);
+  clearHeapCache ();
   return APR_SUCCESS;
 }/*}}}*/
 
 apr_status_t 
-killschedprocchild (void *rd)/*{{{*/
+shutdownChild (void *rd)/*{{{*/
 {
   return APR_SUCCESS;
 }/*}}}*/
@@ -825,6 +830,8 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   rd->ctx = ctx;
   rd->ctx->initDone = 0;
   rd->dbdata = NULL;
+  rd->ctx->sched.pid = 0;
+  apr_pool_cleanup_register(pconf, rd->ctx, shutdownServer, shutdownChild);
 
 #ifdef REGION_PAGE_STAT
   rpMap = regionPageMapNew ();
@@ -930,7 +937,6 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
       "apsml: test 5");
   rd->ctx->sched.pid = tmp;
-  apr_pool_cleanup_register(pconf, &(rd->ctx->sched.pid), killschedproc, killschedprocchild);
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: created process %d", rd->ctx->sched.pid);
   rd->pool = ptemp;
@@ -1142,7 +1148,7 @@ apsml_next_sml0 (char *p) //{{{
 //  return 0;
 //}       //}}}
 
-apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int path_p)
+apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int path_p)/*{{{*/
 {
   char *pageRoot;
   char *file;
@@ -1184,7 +1190,7 @@ apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int pa
   strcpy(lu,lp);
   strcat(lu,".uo");
   return 0;
-}
+}/*}}}*/
 
 static int
 apsml_processSmlFile (request_data * rd, char *urlfile) //{{{

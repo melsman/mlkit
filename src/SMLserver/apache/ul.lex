@@ -17,7 +17,6 @@ filechars [a-zA-Z0-9/\._-];
 
 {ws}+ 
 {filechars}+".ul" lvalp->string = strndup(yytext, yyleng); return ULFILE;
-{filechars}*".sml" lvalp->string = strndup(yytext, yyleng); return SMLFILE;
 {filechars}*".uo" lvalp->string = strndup(yytext, yyleng); return UOFILE;
 [a-zA-Z0-9/_-]*"/" lvalp->string = strndup(yytext, yyleng); return LOC;
 "As" return AS;

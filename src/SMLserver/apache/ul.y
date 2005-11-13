@@ -2,7 +2,6 @@
 #include "parsertree.h"
 %}
 
-
 %pure-parser
 
 %union 
@@ -14,7 +13,7 @@
   char *string;
 }
 
-%token <string> ULFILE SMLFILE UOFILE LOC
+%token <string> ULFILE UOFILE LOC
 
 %token <intval> ULFILES END CODEFILES SCRIPTS AS 
 
@@ -31,7 +30,6 @@
 %parse-param {parsertree *pt}
 
 %verbose
-
 
 %%
 
@@ -51,9 +49,9 @@ UoIncludeList:
 ;
 SmlIncludeList:
    /* empty */ { $$ = NULL; }
- | SMLFILE SmlOption SmlIncludeList {}
+ | UOFILE SmlOption SmlIncludeList {}
 ;
 SmlOption:
    /* empty */ { $$ = NULL; }
- | AS SMLFILE { $$ = $2; }
+ | AS UOFILE { $$ = $2; }
 ;
