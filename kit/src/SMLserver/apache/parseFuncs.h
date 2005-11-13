@@ -9,13 +9,11 @@ struct data
 
 #define YYSTYPE struct data
 
-void toUlHashTable(void *, char *ul, int ulLength, char *loc, int locLength,
-                   char *fileprefix, int fpl);
+void toUlHashTable(void *, char *ul, int ulLength, char *loc, int locLength);
 
-void toSmlHashTable(void *, char *uo, int uoLength, char *mlop,
-                    int mlopLength, char *prefix, char *fileprefix, int fpl);
+void toSmlHashTable(void *, char *uo, int uoLength, char *mlop, int mlopLength);
 
-int extendInterp(void *, char *, int, char *fileprefix, int fpl);
+int extendInterp(void *, char *, int);
 
 int yylex (YYSTYPE *, YYLTYPE *);
 

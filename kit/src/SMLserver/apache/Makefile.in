@@ -36,7 +36,7 @@ all: ${ALL}
 install: $(INST)
 
 ${TARGET}: ${SOURCE}
-	$(APXS) -std=c99 -Wall -c -lresolv -L. ${SOURCE}
+	$(APXS) -Wc,-std=c99 -Wc,-Wall -c -lresolv -L. ${SOURCE}
 
 oracle: $(ORACLELIB)
 odbc: $(ODBCLIB)

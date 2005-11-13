@@ -1532,18 +1532,25 @@ struct uoHashEntry
   char *c;
 };
 
-void
-toUlHashTable(void *ctx1, char *ul, int ulLength,
-              char *loc, int locLength, char *fileprefix, int fpl)
+struct parseCtx
 {
-  InterpContext *ctx = (InterpContext *) ctx1;
+  char *fileprefix;
+  int fpl;
+  char *mapprefix;
+  int mpl;
+  InterpContext *ctx;
+};
+
+void
+toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)
+{
+  struct parseCtx *pctx = (struct parseCtx *) pctx1;
 }
 
 void 
-toSmlHashTable(void *ctx1, char *uo, int uoLength, char *mlop, int mlopLength,
-               char *prefix, char *fileprefix, int fpl)
+toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
 {
-  InterpContext *ctx = (InterpContext *) ctx1;
+  struct parseCtx *pctx = (struct parseCtx *) pctx1;
 }
 
 void parsedie(void)
@@ -1552,13 +1559,15 @@ void parsedie(void)
 }
 
 int
-extendInterp (void *ctx1, char *yy, int len, char *fileprefix, int fpl)/*{{{*/
+extendInterp (void *pctx1, char *yy, int len)/*{{{*/
 {
+  struct parseCtx *pctx;
   InterpContext *ctx;
   struct uoHashEntry *he, he1;
   void *r;
   char *tmp;
-  ctx = (InterpContext *) ctx1;
+  pctx = (struct parseCtx *) pctx1;
+  ctx = pctx->ctx;
   if (*yy == '/')
   {
     tmp = (char *) alloca(len+1);
@@ -1566,10 +1575,10 @@ extendInterp (void *ctx1, char *yy, int len, char *fileprefix, int fpl)/*{{{*/
   }
   else
   {
-    tmp = (char *) alloca(len+1+fpl);
-    strcpy(tmp,fileprefix);
-    strncpy(tmp+fpl,yy,len);
-    tmp[fpl+len] = 0;
+    tmp = (char *) alloca(len+1+pctx->fpl);
+    strcpy(tmp,pctx->fileprefix);
+    strncpy(tmp+pctx->fpl,yy,len);
+    tmp[pctx->fpl+len] = 0;
   }
   if (!contractPath(tmp)) parsedie;
   he1.hashval = charhashfunction(tmp);
