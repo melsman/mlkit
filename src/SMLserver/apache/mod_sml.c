@@ -1482,7 +1482,7 @@ apsml_ppheaders (request_data * rd) /*{{{ */
 }       /*}}} */
 
 char *
-contractPath1(char *path, char *lastSlash)
+contractPath1(char *path, char *lastSlash)/*{{{*/
 {
   char *b, c;
   int len = strlen(path);
@@ -1518,7 +1518,7 @@ contractPath1(char *path, char *lastSlash)
     path++;
   }
   return path;
-}
+}/*}}}*/
 
 char *
 contractPath(char *path)
@@ -1561,6 +1561,35 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)
   struct parseCtx *pctx = (struct parseCtx *) pctx1;
 }
 
+void parsedie(void)
+{
+  return;
+}
+
+char *
+addMlb(char *context, char *in)/*{{{*/
+{
+  char c, *p, *ls, *tmp;
+  p = context;
+  ls = NULL;
+  while ((c = *p))
+  {
+    if (c == '/')
+    {
+      ls = p;
+    }
+    p++;
+  }
+  if (ls == NULL) ls = context;
+  tmp = alloca(strlen(ls) + 1);
+  if (!tmp) return NULL;
+  strcpy(tmp, ls);
+  strcpy(ls,in);
+  ls += strlen(in);
+  strcpy(ls,tmp);
+  return ls;
+}/*}}}*/
+
 void 
 toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
 {
@@ -1568,27 +1597,30 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
   InterpContext *ctx;
   struct char_charHashEntry *he, he1;
   void *r;
-  char *tmp, *tmp2;
+  char *tmp, *tmp2, *smlname;
   int i,n;
   pctx = (struct parseCtx *) pctx1;
   ctx = pctx->ctx;
   const char *mlb = "MLB/SMLserver";
-  if (*yy == '/')
+  if (*uo == '/')
   {
-    tmp = (char *) alloca(len+1);
-    tmp[len] = 0;
+    tmp = (char *) alloca(uoLength+1+strlen(mlb));
+    strncpy(tmp, uo, uoLength);
+    tmp[uoLength] = 0;
+    addMlb(tmp,mlb)
   }
   else
   {
-    tmp = (char *) alloca(len + 1 + pctx->fpl);
+    tmp = (char *) alloca(uoLength + 1 + pctx->fpl + strlen(mlb));
     strcpy(tmp,pctx->fileprefix);
-    strncpy(tmp + pctx->fpl, yy, len);
-    tmp[pctx->fpl + len] = 0;
+    strncpy(tmp + pctx->fpl, uo, uoLength);
+    tmp[pctx->fpl + uoLength] = 0;
+    addMlb(tmp,mlb)
   }
-  if (!contractPath(tmp)) parsedie;
+  if (!contractPath(tmp)) parsedie();
   he1.hashval = charhashfunction(tmp);
   he1.c = tmp;
-  if (!he) parsedie;
+  if (!he) parsedie();
   if (hashfind(&(ctx->code.smlTable), &he1, &r) == hash_DNE)
   {
     if (mlop)
@@ -1625,11 +1657,6 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
   return 0;
 }
 
-void parsedie(void)
-{
-  return;
-}
-
 int
 extendInterp (void *pctx1, char *yy, int len)/*{{{*/
 {
@@ -1652,19 +1679,19 @@ extendInterp (void *pctx1, char *yy, int len)/*{{{*/
     strncpy(tmp+pctx->fpl,yy,len);
     tmp[pctx->fpl+len] = 0;
   }
-  if (!contractPath(tmp)) parsedie;
+  if (!contractPath(tmp)) parsedie();
   he1.hashval = charhashfunction(tmp);
   he1.c = tmp;
-  if (!he) parsedie;
   if (hashfind(&(ctx->code.uoTable), &he1, &r) == hash_DNE)
   {
     he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
+    if (!he) parsedie();
     he->c = (char *)(he+1);
     strcpy(he->c, tmp);
     he->hashval = he1.hashval;
     hashupdate(&(ctx->code.uoTable), he, NULL);
     interpLoadExtend(ctx->interp, tmp);
-  }
+  } // if already in the interpreter then skip
   return 0;
 }/*}}}*/
 
