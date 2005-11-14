@@ -1590,68 +1590,127 @@ addMlb(char *context, char *in)/*{{{*/
   return ls;
 }/*}}}*/
 
+// trashes uo and mlop
+char *
+formLoc(char *uo, int uoLength, char *fileprefix, int fplm, char *mapprefix, int mpl,
+        char *mlop, int mlopLength, char *root, int rootLength, char *res)
+{
+  char *tmp;
+  if (mlop == NULL)
+  {
+    if (uo[0] == '/')
+    {
+      strncpy(res,uo,uoLength);
+      res[uoLength] = 0;
+      if (strstr(res,fileprefix) == fileprefix)
+      {
+        tmp = res+fpl;
+        strcpy(uo,tmp);
+        strcpy(res,mapprefix);
+        strcpy(res+mpl, "/");
+        strcpy(res+mpl+1, uo);
+        return contractPath(res);
+      }
+      else
+      {
+        return NULL;
+      }
+    }
+    else
+    {
+      strncpy(res,uo,uoLength);
+      res[uoLength] = 0;
+      if (!contractPath(res)) return NULL;
+      strncpy(uo,res, uoLength);
+      strcpy(res,mapprefix);
+      strcpy(res+mpl, "/");
+      strncpy(res+mpl+1, uo, uoLength);
+      res[mpl+1+uoLength] = 0;
+      return contractPath(res);
+    }
+  }
+  else
+  {
+    if (mlop[0] == '/')
+    {
+      strncpy(res,mlop,mlopLength);
+      res[mlopLength] = 0;
+      if (!contractPath(res)) return NULL;
+      strncpy(mlop,res,mlopLength);
+      strcpy(res,root);
+      strncpy(res+rootLength,mlop,mlopLength);
+      res[mlopLength+rootLength] = 0;
+      return contractPath(res);
+    }
+    else
+    {
+      strncpy(res,mlop,mlopLength);
+      res[mlopLength] = 0;
+      if (!contractPath(res)) return NULL;
+      strncpy(mlop,res,mlopLength);
+      strcpy(res,mapprefix);
+      strcpy(res+mpl,"/");
+      strncpy(res+mpl+1,mlop,mlopLength);
+      res[mpl+1+mlopLength] = 0;
+      return contractPath(res);
+    }
+  }
+}
+
+char *
+formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)
+{
+  char *mlb = "MLB/SMLserver";
+  if (uo[0] == '/')
+  {
+    strncpy(res, uo, uoLength);
+    tmp[uoLength] = 0;
+    addMlb(res,mlb);
+  }
+  else
+  {
+    strcpy(res,fileprefix);
+    res[fpl] = '/';
+    res[fpl+1] = 0;
+    strncpy(tmp + fpl+1, uo, uoLength);
+    tmp[fpl + 1 + uoLength] = 0;
+    addMlb(tmp,mlb);
+  }
+  return contractPath(tmp);
+}
+
 int 
 toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
 {
   struct parseCtx *pctx;
   InterpContext *ctx;
   struct char_charHashEntry *he, he1;
-  void *r;
-  char *tmp, *tmp2, *smlname;
+  char *tmp, *tmp2, *smlname, *tmp3;
   int i,n;
   pctx = (struct parseCtx *) pctx1;
   ctx = pctx->ctx;
-  const char *mlb = "MLB/SMLserver";
-  if (*uo == '/')
+  tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
+  tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rootLength + pctx->mpl);
+  if (!tmp || !tmp2) return 1;
+  if (!formUo(uo, uoLength, pctx->fileprefix, pctx->fpl, tmp)) return 2;
+  if (!formLoc(uo,uoLength, pctx->fileprefix, pctx->fpl, pctx->mapprefix, pctx->mpl,
+          mlop, mlopLength, pctx->root, pctx->rootLength, tmp2)) return 3;
+  he1.key = tmp2;
+  he1.hashval = charhashfunction(he1.key);
+  if (hashfind(&(ctx->code.smlTable), &he1, &tmp3) == hash_DNE)
   {
-    tmp = (char *) alloca(uoLength+1+strlen(mlb));
-    strncpy(tmp, uo, uoLength);
-    tmp[uoLength] = 0;
-    addMlb(tmp,mlb);
-  }
-  else
-  {
-    tmp = (char *) alloca(uoLength + 1 + pctx->fpl + strlen(mlb));
-    strcpy(tmp,pctx->fileprefix);
-    strncpy(tmp + pctx->fpl, uo, uoLength);
-    tmp[pctx->fpl + uoLength] = 0;
-    addMlb(tmp,mlb);
-  }
-  if (!contractPath(tmp)) parsedie();
-  he1.hashval = charhashfunction(tmp);
-  he1.key = tmp;
-  if (hashfind(&(ctx->code.smlTable), &he1, &r) == hash_DNE)
-  {
-    if (mlop)
-    {
-      
-    }
-    else
-    {
-      if (strstr(tmp,pctx->fileprefix) == tmp)
-      {
-        tmp2 = tmp + pctx->fpl;
-        //     key size
-        //     tmp2   mappingprefix    /   \0
-        n = strlen(tmp2) + pctx->mpl + 1 + 1;
-        //     value size
-        n+= strlen (tmp) + strlen(mlb) + 1;
-        he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) + n);
-        if (!he) return 0;
-      }
-      else
-      {
-      // don't put in map of script
-      // This way the initscript is not put you there
-        return 0;
-      }
-    }
-    he = (struct char_charHashEntry*) malloc(sizeof (struct char_charHashEntry) + strlen(tmp) + 1);
+    he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) + strlen(tmp) + strlen(tmp2) + 2);
+    if (!he) return 2;
     he->key = (char *)(he+1);
-    strcpy(he->key, tmp);
+    strcpy(he->key, he1.key);
     he->hashval = he1.hashval;
-    hashupdate(&(ctx->code.uoTable), he, NULL);
-    interpLoadExtend(ctx->interp, tmp);
+    he->val = he->key + strlen(he->key) + 1;
+    strcpy(he->val,tmp);
+    hashupdate(&(ctx->code.smlTable), he, he->val);
+  }
+  else 
+  {
+    return 4;
   }
   return 0;
 }
