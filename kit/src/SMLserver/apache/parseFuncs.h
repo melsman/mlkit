@@ -9,9 +9,9 @@ struct data
 
 #define YYSTYPE struct data
 
-void toUlHashTable(void *, char *ul, int ulLength, char *loc, int locLength);
+int toUlHashTable(void *, char *ul, int ulLength, char *loc, int locLength);
 
-void toSmlHashTable(void *, char *uo, int uoLength, char *mlop, int mlopLength);
+int toSmlHashTable(void *, char *uo, int uoLength, char *mlop, int mlopLength);
 
 int extendInterp(void *, char *, int);
 

@@ -1607,7 +1607,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
     tmp = (char *) alloca(uoLength+1+strlen(mlb));
     strncpy(tmp, uo, uoLength);
     tmp[uoLength] = 0;
-    addMlb(tmp,mlb)
+    addMlb(tmp,mlb);
   }
   else
   {
@@ -1615,11 +1615,11 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
     strcpy(tmp,pctx->fileprefix);
     strncpy(tmp + pctx->fpl, uo, uoLength);
     tmp[pctx->fpl + uoLength] = 0;
-    addMlb(tmp,mlb)
+    addMlb(tmp,mlb);
   }
   if (!contractPath(tmp)) parsedie();
   he1.hashval = charhashfunction(tmp);
-  he1.c = tmp;
+  he1.key = tmp;
   if (!he) parsedie();
   if (hashfind(&(ctx->code.smlTable), &he1, &r) == hash_DNE)
   {
@@ -1648,8 +1648,8 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
       }
     }
     he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
-    he->c = (char *)(he+1);
-    strcpy(he->c, tmp);
+    he->key = (char *)(he+1);
+    strcpy(he->key, tmp);
     he->hashval = he1.hashval;
     hashupdate(&(ctx->code.uoTable), he, NULL);
     interpLoadExtend(ctx->interp, tmp);
