@@ -1555,7 +1555,7 @@ struct char_charHashEntry
   unsigned long hashval;
 };
 
-void
+int
 toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)
 {
   struct parseCtx *pctx = (struct parseCtx *) pctx1;
@@ -1590,7 +1590,7 @@ addMlb(char *context, char *in)/*{{{*/
   return ls;
 }/*}}}*/
 
-void 
+int 
 toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
 {
   struct parseCtx *pctx;
@@ -1620,7 +1620,6 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
   if (!contractPath(tmp)) parsedie();
   he1.hashval = charhashfunction(tmp);
   he1.key = tmp;
-  if (!he) parsedie();
   if (hashfind(&(ctx->code.smlTable), &he1, &r) == hash_DNE)
   {
     if (mlop)
@@ -1647,7 +1646,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
         return 0;
       }
     }
-    he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
+    he = (struct char_charHashEntry*) malloc(sizeof (struct char_charHashEntry) + strlen(tmp) + 1);
     he->key = (char *)(he+1);
     strcpy(he->key, tmp);
     he->hashval = he1.hashval;
