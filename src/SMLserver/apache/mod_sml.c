@@ -776,8 +776,13 @@ shutdownServer (void *ctx1) /*{{{*/
 }/*}}}*/
 
 apr_status_t 
-shutdownChild (void *rd)/*{{{*/
+shutdownChild (void *ctx1)/*{{{*/
 {
+  InterpContext *ctx = (InterpContext *) ctx1;
+  interpClear(ctx->interp);
+  clearHeapCache ();
+  freeHashTable (ctx->scripts);
+  ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
   return APR_SUCCESS;
 }/*}}}*/
 
@@ -1538,7 +1543,16 @@ struct parseCtx
   int fpl;
   char *mapprefix;
   int mpl;
+  char *root;
+  int rl;
   InterpContext *ctx;
+};
+
+struct char_charHashEntry
+{
+  char *key;
+  char *val;
+  unsigned long hashval;
 };
 
 void
@@ -1550,7 +1564,65 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)
 void 
 toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
 {
-  struct parseCtx *pctx = (struct parseCtx *) pctx1;
+  struct parseCtx *pctx;
+  InterpContext *ctx;
+  struct char_charHashEntry *he, he1;
+  void *r;
+  char *tmp, *tmp2;
+  int i,n;
+  pctx = (struct parseCtx *) pctx1;
+  ctx = pctx->ctx;
+  const char *mlb = "MLB/SMLserver";
+  if (*yy == '/')
+  {
+    tmp = (char *) alloca(len+1);
+    tmp[len] = 0;
+  }
+  else
+  {
+    tmp = (char *) alloca(len + 1 + pctx->fpl);
+    strcpy(tmp,pctx->fileprefix);
+    strncpy(tmp + pctx->fpl, yy, len);
+    tmp[pctx->fpl + len] = 0;
+  }
+  if (!contractPath(tmp)) parsedie;
+  he1.hashval = charhashfunction(tmp);
+  he1.c = tmp;
+  if (!he) parsedie;
+  if (hashfind(&(ctx->code.smlTable), &he1, &r) == hash_DNE)
+  {
+    if (mlop)
+    {
+      
+    }
+    else
+    {
+      if (strstr(tmp,pctx->fileprefix) == tmp)
+      {
+        tmp2 = tmp + pctx->fpl;
+        //     key size
+        //     tmp2   mappingprefix    /   \0
+        n = strlen(tmp2) + pctx->mpl + 1 + 1;
+        //     value size
+        n+= strlen (tmp) + strlen(mlb) + 1;
+        he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) + n);
+        if (!he) return 0;
+      }
+      else
+      {
+      // don't put in map of script
+      // This way the initscript is not put you there
+        return 0;
+      }
+    }
+    he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
+    he->c = (char *)(he+1);
+    strcpy(he->c, tmp);
+    he->hashval = he1.hashval;
+    hashupdate(&(ctx->code.uoTable), he, NULL);
+    interpLoadExtend(ctx->interp, tmp);
+  }
+  return 0;
 }
 
 void parsedie(void)
