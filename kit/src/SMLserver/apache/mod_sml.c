@@ -1592,7 +1592,7 @@ addMlb(char *context, char *in)/*{{{*/
 
 // trashes uo and mlop
 char *
-formLoc(char *uo, int uoLength, char *fileprefix, int fplm, char *mapprefix, int mpl,
+formLoc(char *uo, int uoLength, char *fileprefix, int fpl, char *mapprefix, int mpl,
         char *mlop, int mlopLength, char *root, int rootLength, char *res)
 {
   char *tmp;
@@ -1657,14 +1657,15 @@ formLoc(char *uo, int uoLength, char *fileprefix, int fplm, char *mapprefix, int
   }
 }
 
+char *mlb = "MLB/SMLserver";
+
 char *
 formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)
 {
-  char *mlb = "MLB/SMLserver";
   if (uo[0] == '/')
   {
     strncpy(res, uo, uoLength);
-    tmp[uoLength] = 0;
+    res[uoLength] = 0;
     addMlb(res,mlb);
   }
   else
@@ -1672,11 +1673,11 @@ formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)
     strcpy(res,fileprefix);
     res[fpl] = '/';
     res[fpl+1] = 0;
-    strncpy(tmp + fpl+1, uo, uoLength);
-    tmp[fpl + 1 + uoLength] = 0;
-    addMlb(tmp,mlb);
+    strncpy(res + fpl+1, uo, uoLength);
+    res[fpl + 1 + uoLength] = 0;
+    addMlb(res,mlb);
   }
-  return contractPath(tmp);
+  return contractPath(res);
 }
 
 int 
@@ -1686,18 +1687,19 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
   InterpContext *ctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *smlname, *tmp3;
+  void **voidp;
   int i,n;
   pctx = (struct parseCtx *) pctx1;
   ctx = pctx->ctx;
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
-  tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rootLength + pctx->mpl);
+  tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
   if (!tmp || !tmp2) return 1;
   if (!formUo(uo, uoLength, pctx->fileprefix, pctx->fpl, tmp)) return 2;
   if (!formLoc(uo,uoLength, pctx->fileprefix, pctx->fpl, pctx->mapprefix, pctx->mpl,
-          mlop, mlopLength, pctx->root, pctx->rootLength, tmp2)) return 3;
+          mlop, mlopLength, pctx->root, pctx->rl, tmp2)) return 3;
   he1.key = tmp2;
   he1.hashval = charhashfunction(he1.key);
-  if (hashfind(&(ctx->code.smlTable), &he1, &tmp3) == hash_DNE)
+  if (hashfind(&(ctx->code.smlTable), &he1, (void **) &tmp3) == hash_DNE)
   {
     he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) + strlen(tmp) + strlen(tmp2) + 2);
     if (!he) return 2;
