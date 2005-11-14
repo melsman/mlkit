@@ -2,7 +2,7 @@
  *                     Garbage Collection                         *
  *----------------------------------------------------------------*/
 
-#undef CHECK_GC
+#define CHECK_GC 1
 #ifdef ENABLE_GC 
 
 #include <stdio.h>
@@ -880,9 +880,12 @@ points_into_tospace (unsigned int x)
 	}
     } else
 #endif // ENABLE_GEN_GC
-      // Here is the story about the tospace bit:
-      // By default, the tospace-bit on region pages is set during region page allocation (Region.c
-
+      // Here is the story about the tospace bit: By default, the
+      // tospace-bit on region pages is set during region page
+      // allocation (Region.c) when gc is enabled. For the old
+      // generation, however, it is not sufficient to check the
+      // tospace-bit in a region page to determine if the object (in
+      // the page) is part of to-space (see comment above). 
       return is_tospace_bit(rp->n);
 }
 
@@ -894,17 +897,14 @@ target_gen(Gen *gen, Rp *rp, unsigned int *obj_ptr)
   //  - in this case we could return gen immediately
     if ( obj_ptr < rp->colorPtr ) 
       return &(get_ro_from_gen(*gen)->g1);  // old gen
-    else
-      { 
 #ifdef CHECK_GC
-	if is_gen_1(*gen) {
-	  fprintf(stderr,"target_gen: obj_ptr: %p\n",obj_ptr);
-	  pp_gen(gen); // ToDo: GenGC remove test
-	  die("not g0"); // ToDo: GenGC remove test
-	}
+    if ( is_gen_1(*gen) )
+      {
+	fprintf(stderr,"target_gen: obj_ptr: %p\n",obj_ptr);
+	pp_gen(gen);
+	die("not g0");
+      }
 #endif // CHECK_GC
-	return gen;   // Will always be g0 (young generation)
-      } 
 #endif // ENABLE_GEN_GC
     return gen;
 }
@@ -1017,7 +1017,10 @@ evacuate(unsigned int obj)
 	  // object already copied
 #ifdef CHECK_GC
 	  if ( ! points_into_tospace(*obj_ptr) )
-	    die ("forward ptr check failed\n");
+	    {
+	      printf("*obj_ptr=0x%x - obj_ptr=%p - rp=%p - gen=%p - rtype(*gen)=%x\n", *obj_ptr, obj_ptr, rp, gen, rtype(*gen));
+	      die ("forward ptr check failed\n");
+	    }
 	  else
 #endif // CHECK_GC
 	    return clear_forward_ptr(*obj_ptr);             
@@ -1427,19 +1430,17 @@ gc(unsigned int **sp, unsigned int reg_map)
             #ifdef PROFILING
 	    value_ptr += sizeObjectDesc;
             #endif
-#ifdef CHECK_GC
-	    // We can assume that the const-bit is not set at this 
-	    // point - no previous visits are possible
-	    if ( is_const(*value_ptr) )
+
+	    // The const-bit could have been set already; the previous calls to
+	    // evacuate could have caused large objects to be be pushed onto the
+	    // scan container! mael 2005-11-14
+	    if ( ! is_const(*value_ptr) )
 	      {
-		fprintf(stderr, "Array %p is already marked as visited (0x%x)\n", value_ptr, *value_ptr);
-		die("Array already visited");
+		//fprintf(stderr, "Array %p is NOT visited (0x%x)\n", value_ptr, *value_ptr);
+		*value_ptr = set_tag_const(*value_ptr); // set immovable-bit
+		//fprintf(stderr, "Array %p is NOW visited (0x%x)\n", value_ptr, *value_ptr);
+		push_scan_container(value_ptr);
 	      }
-#endif // CHECK_GC
-	    //fprintf(stderr, "Array %p is NOT visited (0x%x)\n", value_ptr, *value_ptr);
-	    *value_ptr = set_tag_const(*value_ptr); // set immovable-bit
-	    //fprintf(stderr, "Array %p is NOW visited (0x%x)\n", value_ptr, *value_ptr);
-	    push_scan_container(value_ptr);  	    
 	  }
 	break;
       }
