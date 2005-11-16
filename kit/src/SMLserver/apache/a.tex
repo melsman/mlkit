@@ -1,0 +1,91 @@
+
+\documentclass[a4paper]{article}
+
+\usepackage[latin1]{inputenc}         % Dansk tegnsæt: ÆØÅæøå er lækre at have.
+\usepackage{amsmath,amssymb}          % amsmath og amssymb er rare når matematik optræder
+\usepackage[english]{babel}            % Danske navne. Contents -> Indhold, osv.
+\usepackage{a4wide}                   % Brug lidt mere af papiret.
+\usepackage{semantic}
+
+\newcommand{\bfandup}[1]{\textbf{\textup{#1}}}
+\newcommand{\dom}{\textup{dom}}
+\reservestyle{\command}{\bfandup}
+\command{ULFILES,UOFILES,END,CODEFILES,SCRIPT,SCRIPTS,AS,LOC}
+
+
+\begin{document}
+\begin{gather*}
+\inference
+{
+  \Gamma |- uo \Downarrow \Gamma' & name.uo \notin\dom(\Gamma')
+}
+{
+  \Gamma |- uo \quad name.uo \Downarrow \Gamma',f(name.uo)
+}\\
+\inference
+{
+  \Delta |- sml \Downarrow \Delta';\zeta' & l(name.sml) \notin\dom(\Delta')
+}
+{
+  \Delta |- sml \quad name.sml.uo \Downarrow \Delta',
+  l(name.sml) : f(name.sml.uo);\zeta',l(name.sml)
+}\\
+\inference
+{
+  \Delta |- sml \Downarrow \Delta';\zeta' & l(loc,name.sml) \notin\dom(\Delta') & loc[0] \neq '/'
+}
+{
+  \Delta |- sml \quad name.sml.uo \quad \<AS> \quad loc \Downarrow \Delta',
+  l(loc,name.sml) : f(name.sml.uo);\zeta',l(loc,name.sml)
+}\\
+\inference
+{
+  \Delta |- sml \Downarrow \Delta';\zeta' & l(loc,name.sml) \notin\dom(\Delta') & loc[0] = '/'
+}
+{
+  \Delta |- sml \quad name.sml.uo \quad \<AS> \quad loc \Downarrow \Delta',
+  l(loc,name.sml) : f(name.sml.uo);\zeta'
+}\\
+\inference
+{ 
+  f(name.ul) \notin \Psi'\\
+  \Psi;\Gamma;\Delta |- ul \Downarrow \Psi';\Gamma';\Delta' &
+  \Psi',f(name.ul); \Gamma';\Delta' |- open (f(name.ul)) \Downarrow
+  \Psi'';\Gamma'';\Delta'';\zeta
+}
+{
+  \Psi;\Gamma;\Delta |- ul \quad name.ul \quad \<SCRIPT> \quad \<AS> \quad loc \Downarrow
+  \Psi'';\Gamma'';append_\zeta(loc,\Delta'')
+}\\
+\inference
+{
+  \Psi;\Gamma;\Delta |- fil \Downarrow \Psi';\Gamma';\Delta';\zeta' &
+  \Psi'; \Gamma';\Delta' |- ullist \Downarrow
+  \Psi'';\Gamma'';\Delta''
+}
+{
+  \Psi;\Gamma;\Delta |- fil \quad \<ULFILES> \quad ullist \quad \<END> \Downarrow
+  \Psi'';\Gamma'';\Delta'';\zeta'
+}\\
+\inference
+{
+  \Psi;\Gamma;\Delta |- fil \Downarrow \Psi';\Gamma';\Delta';\zeta' &
+   \Gamma' |- uolist \Downarrow
+  \Gamma''
+}
+{
+  \Psi;\Gamma;\Delta |- fil \quad \<UOFILES> \quad uolist \quad \<END> \Downarrow
+  \Psi';\Gamma'';\Delta';\zeta'
+}\\
+\inference
+{
+  \Psi;\Gamma;\Delta |- fil \Downarrow \Psi';\Gamma';\Delta';\zeta' &
+   \Delta' |- smllist \Downarrow
+  \Delta'',\zeta''
+}
+{
+  \Psi;\Gamma;\Delta |- fil \quad \<SCRIPTS> \quad smllist \quad \<END> \Downarrow
+  \Psi';\Gamma'';\Delta';\zeta' \cup \zeta''
+}\\
+\end{gather*}
+\end{document}
