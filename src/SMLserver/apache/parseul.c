@@ -372,8 +372,8 @@ extendInterp (void *pctx1, char *uo)/*{{{*/
 
 
 void
-yyerror(YYLTYPE *loc, void *ctx, const char *msg)
+yyerror(YYLTYPE *loc, void *ctx, const char *msg)/*{{{*/
 {
   printf("Parse Error: %s\n", msg);
   return;
-}
+}/*}}}*/
