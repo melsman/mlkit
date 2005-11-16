@@ -1,24 +1,19 @@
 
 #include "ul.tab.h"
+#include "string.h"
 
-struct data
-{
-  void *ptr;
-  int len;
-};
+#define YYSTYPE char *
 
-#define YYSTYPE struct data
+int toUlHashTable(void *, char *, char *);
 
-int toUlHashTable(void *, char *ul, int ulLength, char *loc, int locLength);
+int toSmlHashTable(void *, char *, char *);
 
-int toSmlHashTable(void *, char *uo, int uoLength, char *mlop, int mlopLength);
-
-int extendInterp(void *, char *, int);
+int extendInterp(void *, char *);
 
 int yylex (YYSTYPE *, YYLTYPE *);
 
-int yyparse (void *, struct data *);
+int yyparse (void *); 
 
-void yyerror(YYLTYPE *, void *, struct data *, const char *);
+void yyerror(YYLTYPE *, void *, const char *);
 
 #define YY_DECL int yylex (YYSTYPE *lvalp, YYLTYPE *llocp)

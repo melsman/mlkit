@@ -1,7 +1,9 @@
 %{
 #include <stdlib.h>
+#include <stdio.h>
 #include <alloca.h>
 #include "parseFuncs.h"
+#define YYDEBUG 1
 
 %}
 
@@ -20,34 +22,35 @@
 %locations
 
 %parse-param {void *ctx}
-%parse-param {struct data *s}
 
 %verbose
+
+%debug
 
 %%
 
 // By using left recursion the semantics actions are performed top down in the file
 
 Fil:
-  /* empty */ {}
-  | Fil ULFILES UlIncludeList END {} 
-  | Fil CODEFILES UoIncludeList END {} 
-  | Fil SCRIPTS SmlIncludeList END {}
+  /* empty */ {$$ = NULL}
+  | Fil ULFILES UlIncludeList END { $$ = NULL} 
+  | Fil CODEFILES UoIncludeList END {$$ = NULL} 
+  | Fil SCRIPTS SmlIncludeList END {$$ = NULL}
 ;
 UlIncludeList:
-   /* empty */ { }
- | UlIncludeList ULFILE SCRIPTS AS LOC { toUlHashTable (ctx, $2.ptr,$2.len,$5.ptr,$5.len) }
+   /* empty */ { $$ = NULL}
+ | UlIncludeList ULFILE SCRIPTS AS LOC { toUlHashTable (ctx,$2,$5); $$=NULL; }
 ;
 UoIncludeList: 
-   /* empty */ { }
- | UoIncludeList UOFILE { extendInterp(ctx, $2.ptr, $2.len) }
+   /* empty */ { $$ = NULL}
+ | UoIncludeList UOFILE { extendInterp(ctx, $2); $$=NULL;}
 ;
 SmlIncludeList:
-   /* empty */ { }
- | SmlIncludeList UOFILE SmlOption { toSmlHashTable(ctx, $2.ptr,$2.len,$3.ptr,$3.len); }
+   /* empty */ { $$ = NULL}
+ | SmlIncludeList UOFILE SmlOption { toSmlHashTable(ctx,$2,$3); $$=NULL; }
 ;
 SmlOption:
-   /* empty */ { s->ptr = NULL; s->len = 0; $$ = *s; }
+   /* empty */ { $$ = NULL; }
  | AS UOFILE { $$ = $2 }
 ;
 
