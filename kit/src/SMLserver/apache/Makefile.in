@@ -14,6 +14,7 @@ SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
+CFLAGS= -Wall -std=gnu99
 
 @SET_MAKE@
 
@@ -36,17 +37,17 @@ all: ${ALL}
 install: $(INST)
 
 ${TARGET}: ${SOURCE}
-	$(APXS) -Wc,-std=c99 -Wc,-Wall -c -lresolv -L. ${SOURCE}
+	$(APXS) -Wc,"${CFLAGS}" -c -lresolv -L. ${SOURCE}
 
 oracle: $(ORACLELIB)
 odbc: $(ODBCLIB)
 
 $(ORACLELIB): oracle.c
-	${CC} -Wall -std=c99 -pedantic -I ${ORACLE}/sdk/include -c -fPIC oracle.c
+	${CC} ${CFLAGS} -I ${ORACLE}/sdk/include -c -fPIC oracle.c
 	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L $(ORACLE) -lclntsh oracle.o -o $(ORACLELIB)
 
 $(ODBCLIB): odbc.c
-	$(CC) -Wall -std=c99 -pedantic -c -fPIC odbc.c
+	$(CC) ${CFLAGS} -c -fPIC odbc.c
 	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 -lodbc odbc.o -o $(ODBCLIB)
 
 #	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
@@ -75,7 +76,10 @@ ul.tab.h: ul.y
 ul.tab.c: ul.tab.h
 
 lex.yy.c: ul.lex ul.tab.h
-	flex ul.lex
+	flex -s ul.lex
+
+t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o a.o
+	$(CC) -o t $(CFLAGS) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o a.o
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0
