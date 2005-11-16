@@ -1,9 +1,11 @@
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <alloca.h>
 #include "../../CUtils/hashmap.h"
 #include "parseul.h"
+#include "ul.tab.h"
 
 char *
 contractPath1(char *path, char *lastSlash)/*{{{*/
@@ -48,24 +50,6 @@ char *
 contractPath(char *path)
 {
   return contractPath1(path, NULL);
-}
-
-struct uoHashEntry
-{
-  unsigned long hashval;
-  char *key;
-};
-
-struct char_charHashEntry
-{
-  char *key;
-  char *val;
-  unsigned long hashval;
-};
-
-void parsedie(void)
-{
-  return;
 }
 
 char *
@@ -224,38 +208,38 @@ path(char *file)/*{{{*/
 }/*}}}*/
 
 unsigned long
-uoHashEntry_HashFun(void *key1)
+uoHashEntry_HashFun(void *key1)/*{{{*/
 {
   struct uoHashEntry *key = (struct uoHashEntry *) key1;
   return key->hashval;
-}
+}/*}}}*/
 
 int
-uoHashEntry_EqualFun(void *key1, void *key2)
+uoHashEntry_EqualFun(void *key1, void *key2)/*{{{*/
 {
   struct uoHashEntry *he1;
   struct uoHashEntry *he2;
   he1 = (struct uoHashEntry *) key1;
   he2 = (struct uoHashEntry *) key2;
   return (he1->hashval == he2->hashval && !strcmp(he1->key, he2->key));
-}
+}/*}}}*/
 
 unsigned long
-char_charHashFun (void *key1)
+char_charHashFun (void *key1)/*{{{*/
 {
   struct char_charHashEntry *he = (struct char_charHashEntry *) key1;
   return he->hashval;
-}
+}/*}}}*/
 
 int
-char_charEqualFun(void *key1, void *key2)
+char_charEqualFun(void *key1, void *key2)/*{{{*/
 {
   struct char_charHashEntry *he1;
   struct char_charHashEntry *he2;
   he1 = (struct char_charHashEntry *) key1;
   he2 = (struct char_charHashEntry *) key2;
   return (he1->hashval == he2->hashval && !strcmp(he1->key, he2->key));
-}
+}/*}}}*/
 
 int
 toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{{*/
@@ -269,8 +253,8 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   tmp = (char *) alloca(ulLength+1+pctx->fpl);
   tmp2 = (char *) alloca(locLength+1+pctx->mpl);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
-  if (!formUl(ul,ulLength, pctx->fileprefix, pctx->fpl, tmp)) return 2;
-  if (!formMap(loc,locLength, pctx->mapprefix, pctx->mpl, tmp2)) return 3;
+  if (!formUl(ul,ulLength, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
+  if (!formMap(loc,locLength, pctx->mapprefix, pctx->mpl, tmp2)) return Parse_FORMMAPERROR;
   he1.key = tmp;
   he1.hashval = charhashfunction(he1.key);
   r = (void **) (&tmp3);
@@ -288,7 +272,8 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   }
   else
   {
-    return 4;
+	printf("%s already visited\n", tmp);
+    return Parse_DUPLICATE;
   }
   tmp = (char *) alloca(strlen(he->key) + 1 + strlen(he->val) + 1);
   if (!tmp) return Parse_ALLOCERROR;
@@ -307,6 +292,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   rpctx.uoTable = pctx->uoTable;
   rpctx.smlTable = pctx->smlTable;
   rpctx.ulTable = pctx->ulTable;
+  printf("Recursing into %s\n", he->key);
   recurseParse(&rpctx, he->key);
   return Parse_OK;
 }/*}}}*/
@@ -321,9 +307,9 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
-  if (!formUo(uo, uoLength, pctx->fileprefix, pctx->fpl, tmp)) return 2;
+  if (!formUo(uo, uoLength, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   if (!formLoc(uo,uoLength, pctx->fileprefix, pctx->fpl, pctx->mapprefix, pctx->mpl,
-          mlop, mlopLength, pctx->root, pctx->rl, tmp2)) return 3;
+          mlop, mlopLength, pctx->root, pctx->rl, tmp2)) return Parse_FORMLOCERROR;
   he1.key = tmp2;
   he1.hashval = charhashfunction(he1.key);
   if (hashfind(pctx->smlTable, &he1, (void **) &tmp3) == hash_DNE)
@@ -336,6 +322,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
     he->hashval = he1.hashval;
     he->val = he->key + strlen(he->key) + 1;
     strcpy(he->val,tmp);
+	printf("Mapping %s to %s\n", he->key, he->val);
     hashupdate(pctx->smlTable, he, he->val);
   }
   else 
@@ -355,7 +342,7 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(len+1+pctx->fpl);
   if (!tmp) return Parse_ALLOCERROR;
-  if (!formUo(uo, len, pctx->fileprefix, pctx->fpl, tmp)) return 2;
+  if (!formUo(uo, len, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   he1.key = tmp;
   he1.hashval = charhashfunction(tmp);
   if (hashfind(pctx->uoTable, &he1, &r) == hash_DNE)
@@ -367,8 +354,16 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
     he->hashval = he1.hashval;
     hashupdate(pctx->uoTable, he, NULL);
 //    interpLoadExtend(ctx->interp, tmp);
+    printf("Extending interpreter with %s\n", tmp);
   } // if already in the interpreter then skip
+  else printf("Skipping %s", tmp);
   return Parse_OK;
 }/*}}}*/
 
 
+void
+yyerror(YYLTYPE *loc, void *ctx, void *null, char *msg)
+{
+  printf("Parse Error: %s\n", msg);
+  return;
+}

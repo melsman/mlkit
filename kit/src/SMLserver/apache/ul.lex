@@ -33,23 +33,26 @@ filechars [a-zA-Z0-9/\._-];
 int
 recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
 {
+  struct data n;
   YY_BUFFER_STATE newState, oldState;
   FILE *file;
   int i, top;
   top = 0;
+  printf("recurseParse called with %x, %s\n", ctx, filename);
   if (!ctx->uoTable)
   {
     top = 1;
-    ctx->uoTable = (hashtable *) malloc (sizeof(hashtable) * 3);
+    ctx->uoTable = (hashtable *) calloc (3, sizeof(hashtable));
     if (!ctx->uoTable) return Parse_ALLOCERROR;
     ctx->smlTable = ctx->uoTable+1;
     ctx->ulTable = ctx->uoTable+2;
     if (hashinit(ctx->uoTable, uoHashEntry_HashFun, uoHashEntry_EqualFun) != hash_OK)
       return Parse_ALLOCERROR;
-    if (hashinit(ctx->smlTable, char_charHashFun, char_charEqualFun) != hash_OK);
+    if (hashinit(ctx->smlTable, char_charHashFun, char_charEqualFun) != hash_OK)
       return Parse_ALLOCERROR;
-    if (hashinit(ctx->ulTable, char_charHashFun, char_charEqualFun) != hash_OK);
+    if (hashinit(ctx->ulTable, char_charHashFun, char_charEqualFun) != hash_OK)
       return Parse_ALLOCERROR;
+    printf("recurseParse hash tables initialized\n");
   }
   file = fopen (filename, "r");
   if (!file) return Parse_FILEDOESNOTEXISTS;
@@ -63,8 +66,11 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
     newState = yy_create_buffer(file, YY_BUF_SIZE);
     yy_switch_to_buffer(newState);
   }
-  i = yyparse(ctx);
-  if (top)
+  n.ptr = NULL;
+  n.len = 0;
+  i = yyparse(ctx, &n);
+  printf("yyparse returned: %d\n", i);
+  if (!top)
   {
     yy_switch_to_buffer(oldState);
     yy_delete_buffer(newState);

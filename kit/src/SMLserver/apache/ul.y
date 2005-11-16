@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <alloca.h>
 #include "parseFuncs.h"
-#include "mod_sml.h"
 
 %}
 
@@ -21,6 +20,7 @@
 %locations
 
 %parse-param {void *ctx}
+%parse-param {struct data *s}
 
 %verbose
 
