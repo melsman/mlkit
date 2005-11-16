@@ -29,24 +29,24 @@
 %verbose
 
 %%
-
+// By using left recursion the semantics actions are performed top down in the file
 Fil:
   /* empty */ {}
-  | ULFILES UlIncludeList END Fil {} 
-  | CODEFILES UoIncludeList END Fil {} 
-  | SCRIPTS SmlIncludeList END Fil {}
+  | Fil ULFILES UlIncludeList END {} 
+  | Fil CODEFILES UoIncludeList END {} 
+  | Fil SCRIPTS SmlIncludeList END {}
 ;
 UlIncludeList:
    /* empty */ { }
- | ULFILE SCRIPTS AS LOC UlIncludeList { toUlHashTable (ctx, $1.ptr,$1.len,$4.ptr,$4.len, fileprefix, fpl) }
+ | UlIncludeList ULFILE SCRIPTS AS LOC { toUlHashTable (ctx, $2.ptr,$2.len,$5.ptr,$5.len) }
 ;
-UoIncludeList:
+UoIncludeList: 
    /* empty */ { }
- | UOFILE UoIncludeList { extendInterp(ctx, $1.ptr, $1.len, fileprefix, fpl) }
+ | UoIncludeList UOFILE { extendInterp(ctx, $2.ptr, $2.len) }
 ;
 SmlIncludeList:
    /* empty */ { }
- | UOFILE SmlOption SmlIncludeList { toSmlHashTable(ctx, $1.ptr,$1.len,$2.ptr,$2.len,prefix, fileprefix, fpl); }
+ | SmlIncludeList UOFILE SmlOption { toSmlHashTable(ctx, $2.ptr,$2.len,$3.ptr,$3.len); }
 ;
 SmlOption:
    /* empty */ { s->ptr = NULL; s->len = 0; $$ = *s; }
