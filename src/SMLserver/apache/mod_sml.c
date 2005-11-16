@@ -1534,7 +1534,7 @@ parseUl(char *ul, char *prefix, char *fileprefix, hashtable *htUl, hashtable *ht
 struct uoHashEntry
 {
   unsigned long hashval;
-  char *c;
+  char *key;
 };
 
 struct parseCtx
@@ -1546,6 +1546,9 @@ struct parseCtx
   char *root;
   int rl;
   InterpContext *ctx;
+  hashtable *uoTable;
+  hashtable *smlTable;
+  hashtable *ulTable;
 };
 
 struct char_charHashEntry
@@ -1554,12 +1557,6 @@ struct char_charHashEntry
   char *val;
   unsigned long hashval;
 };
-
-int
-toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)
-{
-  struct parseCtx *pctx = (struct parseCtx *) pctx1;
-}
 
 void parsedie(void)
 {
@@ -1592,7 +1589,7 @@ addMlb(char *context, char *in)/*{{{*/
 
 // trashes uo and mlop
 char *
-formLoc(char *uo, int uoLength, char *fileprefix, int fpl, char *mapprefix, int mpl,
+formLoc(char *uo, int uoLength, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
         char *mlop, int mlopLength, char *root, int rootLength, char *res)
 {
   char *tmp;
@@ -1655,12 +1652,12 @@ formLoc(char *uo, int uoLength, char *fileprefix, int fpl, char *mapprefix, int 
       return contractPath(res);
     }
   }
-}
+}/*}}}*/
 
 char *mlb = "MLB/SMLserver";
 
 char *
-formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)
+formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)/*{{{*/
 {
   if (uo[0] == '/')
   {
@@ -1678,10 +1675,43 @@ formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)
     addMlb(res,mlb);
   }
   return contractPath(res);
-}
+}/*}}}*/
+
+int
+toUlHashTable(void pctx1, ul, ulLength, loc, locLength)/*{{{*/
+{
+  struct parseCtx *pctx;
+  struct char_charHashEntry *he, he1;
+  char *tmp, *tmp2, *tmp3;
+  void **r;
+  tmp = (char *) alloca(ulLength+1+pctx->fpl);
+  tmp2 = (char *) alloca(locLength+1+pctx->mpl);
+  if (!tmp || !tmp2) return 1;
+  if (!formUl(ul,ulLength, pctx->fileprefix, pctx->fpl, tmp)) return 2;
+  if (!formMap(loc,locLength, pctx->mapprefix, pctx->mpl, tmp2)) return 3;
+  he1.key = tmp;
+  he1.hashval = charhashfunction(he1.key);
+  r = (void **) (&tmp3);
+  if (hashfind(&(pctx->ctx->code.ulTable), &he1, r) == hash_DNE)
+  {
+    he = (struct char_charHashEntry *) malloc(sizeof(struct char_charHashEntry + strlen(tmp) + 1 +
+                                                     strlen(tmp2) + 1));
+    if (!he) return 1;
+    he->key = (char *) (he+1);
+    he->val = he->key + strlen(tmp) + 1;
+    strcpy(he->key, tmp);
+    strcpy(he->val, tmp2);
+    he->hashval = he1.hashval;
+    hashupdate(&(pctx->ctx->code.ulTable), he, he->val);
+  }
+  else
+  {
+    return 4;
+  }
+}/*}}}*/
 
 int 
-toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
+toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/*{{{*/
 {
   struct parseCtx *pctx;
   InterpContext *ctx;
@@ -1701,7 +1731,8 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
   he1.hashval = charhashfunction(he1.key);
   if (hashfind(&(ctx->code.smlTable), &he1, (void **) &tmp3) == hash_DNE)
   {
-    he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) + strlen(tmp) + strlen(tmp2) + 2);
+    he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) +
+                                              strlen(tmp) + strlen(tmp2) + 2);
     if (!he) return 2;
     he->key = (char *)(he+1);
     strcpy(he->key, he1.key);
@@ -1715,10 +1746,10 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)
     return 4;
   }
   return 0;
-}
+}/*}}}*/
 
 int
-extendInterp (void *pctx1, char *yy, int len)/*{{{*/
+extendInterp (void *pctx1, char *uo, int len)/*{{{*/
 {
   struct parseCtx *pctx;
   InterpContext *ctx;
@@ -1727,27 +1758,17 @@ extendInterp (void *pctx1, char *yy, int len)/*{{{*/
   char *tmp;
   pctx = (struct parseCtx *) pctx1;
   ctx = pctx->ctx;
-  if (*yy == '/')
-  {
-    tmp = (char *) alloca(len+1);
-    tmp[len] = 0;
-  }
-  else
-  {
-    tmp = (char *) alloca(len+1+pctx->fpl);
-    strcpy(tmp,pctx->fileprefix);
-    strncpy(tmp+pctx->fpl,yy,len);
-    tmp[pctx->fpl+len] = 0;
-  }
-  if (!contractPath(tmp)) parsedie();
+  tmp = (char *) alloca(len+1+pctx->fpl);
+  if (!tmp) return 1;
+  if (!formUo(uo, len, pctx->fileprefix, pctx->fpl, tmp)) return 2;
+  he1.key = tmp;
   he1.hashval = charhashfunction(tmp);
-  he1.c = tmp;
   if (hashfind(&(ctx->code.uoTable), &he1, &r) == hash_DNE)
   {
     he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
-    if (!he) parsedie();
-    he->c = (char *)(he+1);
-    strcpy(he->c, tmp);
+    if (!he) return 1;
+    he->key = (char *)(he+1);
+    strcpy(he->key, tmp);
     he->hashval = he1.hashval;
     hashupdate(&(ctx->code.uoTable), he, NULL);
     interpLoadExtend(ctx->interp, tmp);
