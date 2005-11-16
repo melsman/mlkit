@@ -1,4 +1,7 @@
 
+#include <stdlib.h>
+#include "../../CUtils/hashmap.h"
+
 char *
 contractPath1(char *path, char *lastSlash)/*{{{*/
 {
@@ -58,7 +61,6 @@ struct parseCtx
   int mpl;
   char *root;
   int rl;
-  InterpContext *ctx;
   hashtable *uoTable;
   hashtable *smlTable;
   hashtable *ulTable;
@@ -238,7 +240,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   he1.key = tmp;
   he1.hashval = charhashfunction(he1.key);
   r = (void **) (&tmp3);
-  if (hashfind(&(pctx->ctx->code.ulTable), &he1, r) == hash_DNE)
+  if (hashfind(pctx->ulTable, &he1, r) == hash_DNE)
   {
     he = (struct char_charHashEntry *) malloc(sizeof(struct char_charHashEntry) + strlen(tmp) + 1 +
                                                      strlen(tmp2) + 1);
@@ -248,7 +250,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
     strcpy(he->key, tmp);
     strcpy(he->val, tmp2);
     he->hashval = he1.hashval;
-    if (hashupdate(&(pctx->ctx->code.ulTable), he, he->val) != hash_OK) return Parse_ALLOCERROR;
+    if (hashupdate(pctx->ulTable, he, he->val) != hash_OK) return Parse_ALLOCERROR;
   }
   else
   {
@@ -272,7 +274,6 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   rpctx.mpl = strlen(rpctx.mapprefix);
   rpctx.root = pctx->root;
   rpctx.rl = pctx->rl;
-  rpctx.ctx = pctx->ctx;
   rpctx.uoTable = pctx->uoTable;
   rpctx.smlTable = pctx->smlTable;
   rpctx.ulTable = pctx->ulTable;
@@ -284,11 +285,9 @@ int
 toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/*{{{*/
 {
   struct parseCtx *pctx;
-  InterpContext *ctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *tmp3;
   pctx = (struct parseCtx *) pctx1;
-  ctx = pctx->ctx;
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
@@ -297,7 +296,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
           mlop, mlopLength, pctx->root, pctx->rl, tmp2)) return 3;
   he1.key = tmp2;
   he1.hashval = charhashfunction(he1.key);
-  if (hashfind(&(ctx->code.smlTable), &he1, (void **) &tmp3) == hash_DNE)
+  if (hashfind(pctx->smlTable, &he1, (void **) &tmp3) == hash_DNE)
   {
     he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) +
                                               strlen(tmp) + strlen(tmp2) + 2);
@@ -307,7 +306,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
     he->hashval = he1.hashval;
     he->val = he->key + strlen(he->key) + 1;
     strcpy(he->val,tmp);
-    hashupdate(&(ctx->code.smlTable), he, he->val);
+    hashupdate(pctx->smlTable, he, he->val);
   }
   else 
   {
@@ -320,25 +319,23 @@ int
 extendInterp (void *pctx1, char *uo, int len)/*{{{*/
 {
   struct parseCtx *pctx;
-  InterpContext *ctx;
   struct uoHashEntry *he, he1;
   void *r;
   char *tmp;
   pctx = (struct parseCtx *) pctx1;
-  ctx = pctx->ctx;
   tmp = (char *) alloca(len+1+pctx->fpl);
   if (!tmp) return Parse_ALLOCERROR;
   if (!formUo(uo, len, pctx->fileprefix, pctx->fpl, tmp)) return 2;
   he1.key = tmp;
   he1.hashval = charhashfunction(tmp);
-  if (hashfind(&(ctx->code.uoTable), &he1, &r) == hash_DNE)
+  if (hashfind(pctx->uoTable, &he1, &r) == hash_DNE)
   {
     he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
     if (!he) return Parse_ALLOCERROR;
     he->key = (char *)(he+1);
     strcpy(he->key, tmp);
     he->hashval = he1.hashval;
-    hashupdate(&(ctx->code.uoTable), he, NULL);
+    hashupdate(pctx->uoTable, he, NULL);
 //    interpLoadExtend(ctx->interp, tmp);
   } // if already in the interpreter then skip
   return Parse_OK;
