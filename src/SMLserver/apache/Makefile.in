@@ -79,7 +79,7 @@ lex.yy.c: ul.lex ul.tab.h
 	flex -s ul.lex
 
 t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o a.o
-	$(CC) -o t $(CFLAGS) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o a.o
+	$(CC) -o t $(CFLAGS) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0
