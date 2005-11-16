@@ -1,44 +1,41 @@
 %{
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "parseFuncs.h"
 #include "parseul.h"
-
 #define YY_NO_UNPUT
-
 %}
-%pointer
 
-ws [\ \t\r\n];
-filechars [a-zA-Z0-9/\._-];
+
+FILECHARS [a-zA-Z0-9_\-\.]*
 
 %option noyywrap
 
 %%
-
-{ws}+ 
-{filechars}*".ul" lvalp->ptr = yytext; lvalp->len = yyleng; return ULFILE;
-{filechars}*".uo" lvalp->ptr = yytext; lvalp->len = yyleng; return UOFILE;
-[a-zA-Z0-9/_-]*"/" lvalp->ptr = yytext; lvalp->len = yyleng; return LOC;
-"As" return AS;
-"End" return END;
+{FILECHARS}".ul"	*lvalp = yytext; return ULFILE;
+{FILECHARS}".uo"	*lvalp = yytext; return UOFILE;
+[a-zA-Z0-9/]*"/"	*lvalp = yytext; return LOC;
+"As"	return AS;
+"End"	return END;
 "Ulfiles" return ULFILES;
 "Codefiles" return CODEFILES;
 "Scripts" return SCRIPTS;
+[ \t\n]+ 
 
 %%
+
+extern int yydebug;
 
 int
 recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
 {
-  struct data n;
   YY_BUFFER_STATE newState, oldState;
   FILE *file;
   int i, top;
   top = 0;
-  printf("recurseParse called with %x, %s\n", ctx, filename);
+  printf("recurseParse called with %p, %s\n", ctx, filename);
+  yydebug = 1;
   if (!ctx->uoTable)
   {
     top = 1;
@@ -66,9 +63,7 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
     newState = yy_create_buffer(file, YY_BUF_SIZE);
     yy_switch_to_buffer(newState);
   }
-  n.ptr = NULL;
-  n.len = 0;
-  i = yyparse(ctx, &n);
+  i = yyparse(ctx);
   printf("yyparse returned: %d\n", i);
   if (!top)
   {

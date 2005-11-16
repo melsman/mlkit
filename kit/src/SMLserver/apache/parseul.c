@@ -5,6 +5,7 @@
 #include <alloca.h>
 #include "../../CUtils/hashmap.h"
 #include "parseul.h"
+#include "parseFuncs.h"
 #include "ul.tab.h"
 
 char *
@@ -66,6 +67,7 @@ addMlb(char *context, const char *in)/*{{{*/
     }
     p++;
   }
+  ls++;
   if (ls == NULL) ls = context;
   tmp = alloca(strlen(ls) + 1);
   if (!tmp) return NULL;
@@ -242,13 +244,15 @@ char_charEqualFun(void *key1, void *key2)/*{{{*/
 }/*}}}*/
 
 int
-toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{{*/
+toUlHashTable(void *pctx1, char *ul, char *loc)/*{{{*/
 {
   struct parseCtx *pctx, rpctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *tmp3;
   void **r;
-  int i;
+  int i, ulLength, locLength;
+  ulLength = strlen(ul);
+  locLength = strlen(loc);
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(ulLength+1+pctx->fpl);
   tmp2 = (char *) alloca(locLength+1+pctx->mpl);
@@ -298,12 +302,15 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
 }/*}}}*/
 
 int 
-toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/*{{{*/
+toSmlHashTable(void *pctx1, char *uo, char *mlop)/*{{{*/
 {
   struct parseCtx *pctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *tmp3;
+  int mlopLength, uoLength;
   pctx = (struct parseCtx *) pctx1;
+  mlopLength = strlen(mlop);
+  uoLength = strlen(uo);
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
@@ -333,14 +340,17 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
 }/*}}}*/
 
 int
-extendInterp (void *pctx1, char *uo, int len)/*{{{*/
+extendInterp (void *pctx1, char *uo)/*{{{*/
 {
   struct parseCtx *pctx;
   struct uoHashEntry *he, he1;
   void *r;
   char *tmp;
+  int len;
+  len = strlen(uo);
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(len+1+pctx->fpl);
+  printf("extendInterp %s %i\n", uo, len);
   if (!tmp) return Parse_ALLOCERROR;
   if (!formUo(uo, len, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   he1.key = tmp;
@@ -362,7 +372,7 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
 
 
 void
-yyerror(YYLTYPE *loc, void *ctx, void *null, char *msg)
+yyerror(YYLTYPE *loc, void *ctx, const char *msg)
 {
   printf("Parse Error: %s\n", msg);
   return;
