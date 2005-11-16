@@ -7,10 +7,12 @@
 #define YY_NO_UNPUT
 %}
 
+%pointer
 
 FILECHARS [a-zA-Z0-9_\-\.]*
 
 %option noyywrap
+%option nostdinit
 
 %%
 {FILECHARS}".ul"	*lvalp = yytext; return ULFILE;
