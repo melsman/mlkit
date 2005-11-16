@@ -17,4 +17,7 @@ int extendInterp(void *, char *, int);
 
 int yylex (YYSTYPE *, YYLTYPE *);
 
+int yyparse (void *);
+
+
 #define YY_DECL int yylex (YYSTYPE *lvalp, YYLTYPE *llocp)

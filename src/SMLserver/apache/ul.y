@@ -21,10 +21,6 @@
 %locations
 
 %parse-param {void *ctx}
-%parse-param {char *prefix}
-%parse-param {char *fileprefix}
-%parse-param {int fpl}
-%parse-param {struct data *s}
 
 %verbose
 

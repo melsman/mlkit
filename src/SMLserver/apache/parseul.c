@@ -1,6 +1,9 @@
 
 #include <stdlib.h>
+#include <string.h>
+#include <alloca.h>
 #include "../../CUtils/hashmap.h"
+#include "parseul.h"
 
 char *
 contractPath1(char *path, char *lastSlash)/*{{{*/
@@ -53,19 +56,6 @@ struct uoHashEntry
   char *key;
 };
 
-struct parseCtx
-{
-  char *fileprefix;
-  int fpl;
-  char *mapprefix;
-  int mpl;
-  char *root;
-  int rl;
-  hashtable *uoTable;
-  hashtable *smlTable;
-  hashtable *ulTable;
-};
-
 struct char_charHashEntry
 {
   char *key;
@@ -77,14 +67,6 @@ void parsedie(void)
 {
   return;
 }
-
-enum ParseRV
-{
-  Parse_OK = 0,
-  Parse_ALLOCERROR = 1,
-  Parse_DUPLICATE = 4,
-  Parse_INTERMALERROR = 6
-};
 
 char *
 addMlb(char *context, const char *in)/*{{{*/
@@ -211,6 +193,24 @@ formUl(char *ul, int ulLength, char *fileprefix, int fpl, char *res)/*{{{*/
   return formUoUl(ul, ulLength, fileprefix, fpl, res);
 }/*}}}*/
 
+char *
+formMap(char *loc, int locLength, char *mapprefix, int mpl, char *res)/*{{{*/
+{
+  if (loc[0] == '/')
+  {
+    strncpy(res, loc, locLength);
+    res[locLength] = 0;
+    return contractPath(res);
+  }
+  else
+  {
+    strcpy(res,mapprefix);
+    strncpy(res+strlen(mapprefix), loc, locLength);
+    res[strlen(mapprefix) + locLength] = 0;
+    return contractPath(res);
+  }
+}/*}}}*/
+
 int
 path(char *file)/*{{{*/
 {
@@ -222,6 +222,40 @@ path(char *file)/*{{{*/
   }
   return ls;
 }/*}}}*/
+
+unsigned long
+uoHashEntry_HashFun(void *key1)
+{
+  struct uoHashEntry *key = (struct uoHashEntry *) key1;
+  return key->hashval;
+}
+
+int
+uoHashEntry_EqualFun(void *key1, void *key2)
+{
+  struct uoHashEntry *he1;
+  struct uoHashEntry *he2;
+  he1 = (struct uoHashEntry *) key1;
+  he2 = (struct uoHashEntry *) key2;
+  return (he1->hashval == he2->hashval && !strcmp(he1->key, he2->key));
+}
+
+unsigned long
+char_charHashFun (void *key1)
+{
+  struct char_charHashEntry *he = (struct char_charHashEntry *) key1;
+  return he->hashval;
+}
+
+int
+char_charEqualFun(void *key1, void *key2)
+{
+  struct char_charHashEntry *he1;
+  struct char_charHashEntry *he2;
+  he1 = (struct char_charHashEntry *) key1;
+  he2 = (struct char_charHashEntry *) key2;
+  return (he1->hashval == he2->hashval && !strcmp(he1->key, he2->key));
+}
 
 int
 toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{{*/
@@ -263,11 +297,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   if (i == -1) return Parse_INTERMALERROR;
   strncpy(tmp, he->key, i+1);
   tmp[i+1] = 0;
-  i = path(he->val);
-  if (i == -1) return Parse_INTERMALERROR;
-  strncpy(tmp2, he->val, i+1);
-  tmp[i+1] = 0;
-
+  strcpy(tmp2, he->val);
   rpctx.fileprefix = tmp;
   rpctx.fpl = strlen(rpctx.fileprefix);
   rpctx.mapprefix = tmp2;
