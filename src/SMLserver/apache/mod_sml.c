@@ -1678,7 +1678,7 @@ formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)/*{{{*/
 }/*}}}*/
 
 int
-toUlHashTable(void pctx1, ul, ulLength, loc, locLength)/*{{{*/
+toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{{*/
 {
   struct parseCtx *pctx;
   struct char_charHashEntry *he, he1;
@@ -1694,8 +1694,8 @@ toUlHashTable(void pctx1, ul, ulLength, loc, locLength)/*{{{*/
   r = (void **) (&tmp3);
   if (hashfind(&(pctx->ctx->code.ulTable), &he1, r) == hash_DNE)
   {
-    he = (struct char_charHashEntry *) malloc(sizeof(struct char_charHashEntry + strlen(tmp) + 1 +
-                                                     strlen(tmp2) + 1));
+    he = (struct char_charHashEntry *) malloc(sizeof(struct char_charHashEntry) + strlen(tmp) + 1 +
+                                                     strlen(tmp2) + 1);
     if (!he) return 1;
     he->key = (char *) (he+1);
     he->val = he->key + strlen(tmp) + 1;
