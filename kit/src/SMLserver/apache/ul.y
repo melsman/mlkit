@@ -9,7 +9,7 @@
 
 %pure-parser
 
-%token <t> ULFILE UOFILE LOC
+%token <t> ULFILE UOFILE LOC GARBAGE
 
 %token <p> ULFILES END CODEFILES SCRIPTS AS 
 
