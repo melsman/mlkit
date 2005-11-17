@@ -9,13 +9,11 @@
 
 %pure-parser
 
-%token ULFILE UOFILE LOC
+%token <t> ULFILE UOFILE LOC
 
-%token ULFILES END CODEFILES SCRIPTS AS 
+%token <p> ULFILES END CODEFILES SCRIPTS AS 
 
 //Fil UlIncludeList SmlIncludeList UoIncludeList SmlOption
-
-
 
 %start Fil
 
@@ -24,6 +22,16 @@
 %parse-param {void *ctx}
 
 %verbose
+
+/*
+%union
+{
+  struct tokens t;
+  void *p;
+};*/
+
+//%type <tokens> UOFILE ULFILE LOC
+%type <p> Fil UlIncludeList UoIncludeList SmlIncludeList 
 
 //%debug
 
@@ -39,14 +47,14 @@ Fil:
 ;
 UlIncludeList:
    /* empty */ { $$ = NULL}
- | UlIncludeList ULFILE SCRIPTS AS LOC { toUlHashTable (ctx,$2,$5); $$=NULL; }
+ | UlIncludeList ULFILE SCRIPTS AS LOC { toUlHashTable (ctx,$2.ptr, $2.len, $5.ptr, $5.len); $$=NULL; }
 ;
 UoIncludeList: 
    /* empty */ { $$ = NULL}
- | UoIncludeList UOFILE { extendInterp(ctx, $2); $$=NULL;}
+ | UoIncludeList UOFILE { extendInterp(ctx, $2.ptr, $2.len); $$=NULL;}
 ;
 SmlIncludeList:
    /* empty */ { $$ = NULL}
- | SmlIncludeList UOFILE AS UOFILE { toSmlHashTable(ctx,$2,$4); $$=NULL; }
- | SmlIncludeList UOFILE { toSmlHashTable(ctx,$2,NULL); $$=NULL; }
+ | SmlIncludeList UOFILE AS UOFILE { toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len); $$=NULL; }
+ | SmlIncludeList UOFILE { toSmlHashTable(ctx,$2.ptr,$2.len,NULL, 0); $$=NULL; }
 ;
