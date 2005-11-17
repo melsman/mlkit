@@ -73,7 +73,7 @@ odbc_install: odbc
 ul.tab.h: ul.y
 	bison -d ul.y
 
-ul.tab.c: ul.tab.h
+ul.tab.c: ul.tab.h ul.y
 
 lex.yy.c: ul.lex ul.tab.h
 	flex -s ul.lex
