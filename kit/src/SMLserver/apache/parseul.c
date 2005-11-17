@@ -84,6 +84,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
         char *mlop, char *root, int rootLength, char *res)
 {
   char *tmp;
+  printf("formLoc: %s, %s, %s, %s %s\n", uo, fileprefix, mapprefix, mlop, root);
   if (mlop == NULL)
   {
     if (uo[0] == '/')
@@ -106,7 +107,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
     else
     {
       strcpy(res,uo);
-      if (!contractPath(res)) return NULL;
+      if (!contractPath1(res, NULL)) return NULL;
       strcpy(uo,res);
       strcpy(res,mapprefix);
       strcpy(res+mpl, "/");
@@ -128,7 +129,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
     else
     {
       strcpy(res,mlop);
-      if (!contractPath(res)) return NULL;
+      if (!contractPath1(res,NULL)) return NULL;
       strcpy(mlop,res);
       strcpy(res,mapprefix);
       strcpy(res+mpl,"/");
@@ -138,7 +139,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
   }
 }/*}}}*/
 
-const char *mlb = "MLB/SMLserver";
+const char *mlb = "/MLB/SMLserver";
 
 char *
 formUoUl(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
@@ -302,7 +303,7 @@ toSmlHashTable(void *pctx1, char *uo, char *mlop)/*{{{*/
   char *tmp, *tmp2, *tmp3;
   int mlopLength, uoLength;
   pctx = (struct parseCtx *) pctx1;
-  mlopLength = strlen(mlop);
+  mlopLength = mlop ? strlen(mlop) : 0;
   uoLength = strlen(uo);
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
