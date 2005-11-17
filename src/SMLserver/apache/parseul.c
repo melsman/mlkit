@@ -51,7 +51,14 @@ contractPath1(char *path, char *lastSlash)/*{{{*/
 char *
 contractPath(char *path)/*{{{*/
 {
-  return contractPath1(path+1, NULL);
+  if (path && path[0] == '/')
+  {
+    return contractPath1(path + 1, NULL);
+  }
+  else
+  {
+    return contractPath1(path, NULL);
+  }
 }/*}}}*/
 
 char *
@@ -107,7 +114,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
     else
     {
       strcpy(res,uo);
-      if (!contractPath1(res, NULL)) return NULL;
+      if (!contractPath(res)) return NULL;
       strcpy(uo,res);
       strcpy(res,mapprefix);
       strcpy(res+mpl, "/");
@@ -129,7 +136,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
     else
     {
       strcpy(res,mlop);
-      if (!contractPath1(res,NULL)) return NULL;
+      if (!contractPath(res)) return NULL;
       strcpy(mlop,res);
       strcpy(res,mapprefix);
       strcpy(res+mpl,"/");
