@@ -36,7 +36,7 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   FILE *file;
   int i, top;
   top = 0;
-  printf("recurseParse called with %p, %s\n", ctx, filename);
+  printf("recurseParse called upon %s\n", filename);
 //  yydebug = 1;
   if (!ctx->uoTable)
   {
@@ -66,7 +66,7 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
     yy_switch_to_buffer(newState);
   }
   i = yyparse(ctx);
-  printf("yyparse returned: %d\n", i);
+//  printf("yyparse returned: %d\n", i);
   if (!top)
   {
     yy_switch_to_buffer(oldState);

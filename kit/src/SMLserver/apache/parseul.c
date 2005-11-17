@@ -13,21 +13,21 @@ contractPath1(char *path, char *lastSlash)/*{{{*/
 {
   char *b, c;
   int len = strlen(path);
-  printf("contractPath1: %p, %p, %s, %i\n", path, lastSlash, path, lastSlash - path);
+//  printf("contractPath1: %p, %p, %s, %i\n", path, lastSlash, path, lastSlash - path);
   if (!*path) return path;
   if (*path == '/')
   {
     memmove(path, path+1, len);
     return contractPath1(path, lastSlash);
   }
-  if (*path == '.' && path[1] == '.' && path[2] == '/')
+  if (path[0] == '.' && path[1] == '.' && path[2] == '/')
   {
     if (lastSlash == NULL)
     {
       return NULL;
     }
     memmove(lastSlash, path+2, len - 1);
-    return lastSlash+1;
+    return lastSlash + 1;
   }
   if (*path == '.' && path[1] == '/')
   {
@@ -41,7 +41,7 @@ contractPath1(char *path, char *lastSlash)/*{{{*/
     {
       b = contractPath1(path+1, b);
       if (b == NULL) return NULL;
-      path = b - 1;
+      return contractPath1(b, lastSlash);
     }
     path++;
   }
@@ -51,13 +51,18 @@ contractPath1(char *path, char *lastSlash)/*{{{*/
 char *
 contractPath(char *path)/*{{{*/
 {
+  char *res;
   if (path && path[0] == '/')
   {
-    return contractPath1(path + 1, NULL);
+    res = contractPath1(path + 1, NULL);
+//    printf("contractPath %s\n", path);
+    return res;
   }
   else
   {
-    return contractPath1(path, NULL);
+    res = contractPath1(path, NULL);
+//    printf("contractPath %s\n", path);
+    return res;
   }
 }/*}}}*/
 
@@ -91,7 +96,7 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
         char *mlop, char *root, int rootLength, char *res)
 {
   char *tmp;
-  printf("formLoc: %s, %s, %s, %s %s\n", uo, fileprefix, mapprefix, mlop, root);
+//  printf("formLoc: %s, %s, %s, %s %s\n", uo, fileprefix, mapprefix, mlop, root);
   if (mlop == NULL)
   {
     if (uo[0] == '/')
@@ -164,7 +169,7 @@ formUoUl(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
     strcpy(res + fpl+1, uo);
   }
   r = contractPath(res);
-  printf("formUoUl: %s, %s -> %s\n", uo, fileprefix, res);
+//  printf("formUoUl: %s, %s -> %s\n", uo, fileprefix, res);
   return r;
 }/*}}}*/
 
@@ -270,7 +275,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(ulLength+1+pctx->fpl + 1);
   tmp2 = (char *) alloca(locLength+1+pctx->mpl + 1);
-  printf("toUlHashTable: %s, %s\n", ul, loc);
+//  printf("toUlHashTable: %s, %s\n", ul, loc);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
   if (!formUl(ul,pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
   if (!formMap(loc,pctx->mapprefix, pctx->mpl, tmp2)) return Parse_FORMMAPERROR;
@@ -311,7 +316,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   rpctx.uoTable = pctx->uoTable;
   rpctx.smlTable = pctx->smlTable;
   rpctx.ulTable = pctx->ulTable;
-  printf("Recursing into %s\nwith fp: %s, mp: %s, root: %s\n", he->key,rpctx.fileprefix, rpctx.mapprefix, rpctx.root);
+  printf("Recursing into %s\n  with fp: %s, mp: %s, root: %s\n", he->key,rpctx.fileprefix, rpctx.mapprefix, rpctx.root);
   i = recurseParse(&rpctx, he->key);
   printf("Done with %s\n", he->key);
   return Parse_OK;
@@ -338,7 +343,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
-  printf("toSmlHashTable: %s, %s\n", uo, mlop);
+//  printf("toSmlHashTable: %s, %s\n", uo, mlop);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
   if (!formUo(uo, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   if (!formLoc(uo, pctx->fileprefix, pctx->fpl, pctx->mapprefix, pctx->mpl,
@@ -379,7 +384,7 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
   uo = tmp;
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(len+1+pctx->fpl);
-  printf("extendInterp %s\n", uo);
+//  printf("extendInterp %s\n", uo);
   if (!tmp) return Parse_ALLOCERROR;
   if (!formUo(uo, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   he1.key = tmp;
