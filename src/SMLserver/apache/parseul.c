@@ -13,6 +13,7 @@ contractPath1(char *path, char *lastSlash)/*{{{*/
 {
   char *b, c;
   int len = strlen(path);
+  printf("contractPath1: %p, %p, %s, %i\n", path, lastSlash, path, lastSlash - path);
   if (!*path) return path;
   if (*path == '/')
   {
@@ -48,10 +49,10 @@ contractPath1(char *path, char *lastSlash)/*{{{*/
 }/*}}}*/
 
 char *
-contractPath(char *path)
+contractPath(char *path)/*{{{*/
 {
-  return contractPath1(path, NULL);
-}
+  return contractPath1(path+1, NULL);
+}/*}}}*/
 
 char *
 addMlb(char *context, const char *in)/*{{{*/
@@ -67,7 +68,6 @@ addMlb(char *context, const char *in)/*{{{*/
     }
     p++;
   }
-  ls++;
   if (ls == NULL) ls = context;
   tmp = alloca(strlen(ls) + 1);
   if (!tmp) return NULL;
@@ -83,16 +83,12 @@ char *
 formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
         char *mlop, char *root, int rootLength, char *res)
 {
-  int uoLength, mlopLength;
   char *tmp;
-  uoLength = strlen(uo);
-  mlopLength = strlen(mlop);
   if (mlop == NULL)
   {
     if (uo[0] == '/')
     {
-      strncpy(res,uo,uoLength);
-      res[uoLength] = 0;
+      strcpy(res,uo);
       if (strstr(res,fileprefix) == fileprefix)
       {
         tmp = res+fpl;
@@ -109,14 +105,12 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
     }
     else
     {
-      strncpy(res,uo,uoLength);
-      res[uoLength] = 0;
+      strcpy(res,uo);
       if (!contractPath(res)) return NULL;
-      strncpy(uo,res, uoLength);
+      strcpy(uo,res);
       strcpy(res,mapprefix);
       strcpy(res+mpl, "/");
-      strncpy(res+mpl+1, uo, uoLength);
-      res[mpl+1+uoLength] = 0;
+      strcpy(res+mpl+1, uo);
       return contractPath(res);
     }
   }
@@ -124,25 +118,21 @@ formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
   {
     if (mlop[0] == '/')
     {
-      strncpy(res,mlop,mlopLength);
-      res[mlopLength] = 0;
+      strcpy(res,mlop);
       if (!contractPath(res)) return NULL;
-      strncpy(mlop,res,mlopLength);
+      strcpy(mlop,res);
       strcpy(res,root);
-      strncpy(res+rootLength,mlop,mlopLength);
-      res[mlopLength+rootLength] = 0;
+      strcpy(res+rootLength,mlop);
       return contractPath(res);
     }
     else
     {
-      strncpy(res,mlop,mlopLength);
-      res[mlopLength] = 0;
+      strcpy(res,mlop);
       if (!contractPath(res)) return NULL;
-      strncpy(mlop,res,mlopLength);
+      strcpy(mlop,res);
       strcpy(res,mapprefix);
       strcpy(res+mpl,"/");
-      strncpy(res+mpl+1,mlop,mlopLength);
-      res[mpl+1+mlopLength] = 0;
+      strcpy(res+mpl+1,mlop);
       return contractPath(res);
     }
   }
@@ -184,19 +174,17 @@ formUl(char *ul, char *fileprefix, int fpl, char *res)/*{{{*/
 }/*}}}*/
 
 char *
-formMap(char *loc, int locLength, char *mapprefix, int mpl, char *res)/*{{{*/
+formMap(char *loc, char *mapprefix, int mpl, char *res)/*{{{*/
 {
   if (loc[0] == '/')
   {
-    strncpy(res, loc, locLength);
-    res[locLength] = 0;
+    strcpy(res, loc);
     return contractPath(res);
   }
   else
   {
     strcpy(res,mapprefix);
-    strncpy(res+strlen(mapprefix), loc, locLength);
-    res[strlen(mapprefix) + locLength] = 0;
+    strcpy(res+strlen(mapprefix), loc);
     return contractPath(res);
   }
 }/*}}}*/
@@ -263,7 +251,7 @@ toUlHashTable(void *pctx1, char *ul, char *loc)/*{{{*/
   printf("toUlHashTable: %s, %s\n", ul, loc);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
   if (!formUl(ul,pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
-  if (!formMap(loc,locLength, pctx->mapprefix, pctx->mpl, tmp2)) return Parse_FORMMAPERROR;
+  if (!formMap(loc,pctx->mapprefix, pctx->mpl, tmp2)) return Parse_FORMMAPERROR;
   he1.key = tmp;
   he1.hashval = charhashfunction(he1.key);
   r = (void **) (&tmp3);
@@ -356,7 +344,7 @@ extendInterp (void *pctx1, char *uo)/*{{{*/
   len = strlen(uo);
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(len+1+pctx->fpl);
-  printf("extendInterp %s %i\n", uo, len);
+  printf("extendInterp %s\n", uo);
   if (!tmp) return Parse_ALLOCERROR;
   if (!formUo(uo, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   he1.key = tmp;
@@ -375,7 +363,6 @@ extendInterp (void *pctx1, char *uo)/*{{{*/
   else printf("Skipping %s", tmp);
   return Parse_OK;
 }/*}}}*/
-
 
 void
 yyerror(YYLTYPE *loc, void *ctx, const char *msg)/*{{{*/
