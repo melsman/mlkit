@@ -7,9 +7,9 @@
 #define YY_NO_UNPUT
 %}
 
-%array
+%pointer
 
-FILECHARS [a-zA-Z0-9_\-./]*
+FILECHARS ([a-zA-Z0-9_/]|"."|"-")*
 
 %option noyywrap
 %option nostdinit
