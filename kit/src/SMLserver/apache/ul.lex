@@ -15,9 +15,9 @@ FILECHARS ([a-zA-Z0-9_/]|"."|"-")*
 %option nostdinit
 
 %%
-{FILECHARS}".ul"	*lvalp = yytext; return ULFILE;
-{FILECHARS}".uo"	*lvalp = yytext; return UOFILE;
-[a-zA-Z0-9/]*"/"	*lvalp = yytext; return LOC;
+{FILECHARS}".ul"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return ULFILE;
+{FILECHARS}".uo"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return UOFILE;
+[a-zA-Z0-9/]*"/"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return LOC;
 "As"	return AS;
 "End"	return END;
 "Ulfiles" return ULFILES;

@@ -237,15 +237,22 @@ char_charEqualFun(void *key1, void *key2)/*{{{*/
 }/*}}}*/
 
 int
-toUlHashTable(void *pctx1, char *ul, char *loc)/*{{{*/
+toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{{*/
 {
   struct parseCtx *pctx, rpctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *tmp3;
   void **r;
-  int i, ulLength, locLength;
-  ulLength = strlen(ul);
-  locLength = strlen(loc);
+  int i;
+  tmp = (char *) alloca(ulLength + 1 + locLength + 1);
+  if (!tmp) return Parse_ALLOCERROR;
+  strncpy(tmp, ul, ulLength);
+  ul = tmp;
+  tmp[ulLength] = 0;
+  tmp += ulLength + 1;
+  loc = tmp;
+  strncpy(tmp, loc, locLength);
+  tmp[locLength] = 0;
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(ulLength+1+pctx->fpl);
   tmp2 = (char *) alloca(locLength+1+pctx->mpl);
@@ -296,15 +303,24 @@ toUlHashTable(void *pctx1, char *ul, char *loc)/*{{{*/
 }/*}}}*/
 
 int 
-toSmlHashTable(void *pctx1, char *uo, char *mlop)/*{{{*/
+toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/*{{{*/
 {
   struct parseCtx *pctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *tmp3;
-  int mlopLength, uoLength;
+  tmp = (char *) alloca(uoLength + mlopLength + 2);
+  if (!tmp) return Parse_ALLOCERROR;
+  strncpy(tmp, uo, uoLength);
+  tmp[uoLength] = 0;
+  uo = tmp;
+  if (mlop)
+  {
+    tmp = uo + uoLength + 1;
+    strncpy(tmp, mlop, mlopLength);
+    mlop = tmp;
+    mlop[mlopLength] = 0;
+  }
   pctx = (struct parseCtx *) pctx1;
-  mlopLength = mlop ? strlen(mlop) : 0;
-  uoLength = strlen(uo);
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
   printf("toSmlHashTable: %s, %s\n", uo, mlop);
@@ -335,14 +351,17 @@ toSmlHashTable(void *pctx1, char *uo, char *mlop)/*{{{*/
 }/*}}}*/
 
 int
-extendInterp (void *pctx1, char *uo)/*{{{*/
+extendInterp (void *pctx1, char *uo, int len)/*{{{*/
 {
   struct parseCtx *pctx;
   struct uoHashEntry *he, he1;
   void *r;
   char *tmp;
-  int len;
-  len = strlen(uo);
+  tmp = (char *) alloca (len + 1);
+  if (!tmp) return Parse_ALLOCERROR;
+  strncpy(tmp, uo, len);
+  tmp[len] = 0;
+  uo = tmp;
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(len+1+pctx->fpl);
   printf("extendInterp %s\n", uo);

@@ -2,13 +2,25 @@
 #include "ul.tab.h"
 #include "string.h"
 
-#define YYSTYPE char *
+struct tokens
+{
+  char *ptr;
+  int len;
+};
 
-int toUlHashTable(void *, char *, char *);
+union hat
+{
+  struct tokens t;
+  void *p;
+};
 
-int toSmlHashTable(void *, char *, char *);
+#define YYSTYPE union hat
 
-int extendInterp(void *, char *);
+int toUlHashTable(void *, char *, int, char *, int);
+
+int toSmlHashTable(void *, char *, int, char *, int);
+
+int extendInterp(void *, char *, int);
 
 int yylex (YYSTYPE *, YYLTYPE *);
 
