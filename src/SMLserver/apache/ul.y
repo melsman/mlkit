@@ -25,7 +25,7 @@
 
 %verbose
 
-%debug
+//%debug
 
 %%
 

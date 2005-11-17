@@ -80,10 +80,13 @@ addMlb(char *context, const char *in)/*{{{*/
 
 // trashes uo and mlop
 char *
-formLoc(char *uo, int uoLength, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
-        char *mlop, int mlopLength, char *root, int rootLength, char *res)
+formLoc(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
+        char *mlop, char *root, int rootLength, char *res)
 {
+  int uoLength, mlopLength;
   char *tmp;
+  uoLength = strlen(uo);
+  mlopLength = strlen(mlop);
   if (mlop == NULL)
   {
     if (uo[0] == '/')
@@ -148,35 +151,36 @@ formLoc(char *uo, int uoLength, char *fileprefix, int fpl, char *mapprefix, int 
 const char *mlb = "MLB/SMLserver";
 
 char *
-formUoUl(char *uo, int uoLength, char *fileprefix, int fpl, char *res)/*{{{*/
+formUoUl(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
 {
+  char *r;
   if (uo[0] == '/')
   {
-    strncpy(res, uo, uoLength);
-    res[uoLength] = 0;
+    strcpy(res, uo);
   }
   else
   {
     strcpy(res,fileprefix);
     res[fpl] = '/';
     res[fpl+1] = 0;
-    strncpy(res + fpl+1, uo, uoLength);
-    res[fpl + 1 + uoLength] = 0;
+    strcpy(res + fpl+1, uo);
   }
-  return contractPath(res);
+  r = contractPath(res);
+  printf("formUoUl: %s, %s -> %s\n", uo, fileprefix, res);
+  return r;
 }/*}}}*/
 
 char *
-formUo(char *uo, int uoLength, char *fileprefix, int fpl, char *res)/*{{{*/
+formUo(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
 {
-  formUoUl(uo,uoLength,fileprefix,fpl,res);
+  formUoUl(uo,fileprefix,fpl,res);
   return addMlb(res,mlb);
 }/*}}}*/
 
 char *
-formUl(char *ul, int ulLength, char *fileprefix, int fpl, char *res)/*{{{*/
+formUl(char *ul, char *fileprefix, int fpl, char *res)/*{{{*/
 {
-  return formUoUl(ul, ulLength, fileprefix, fpl, res);
+  return formUoUl(ul, fileprefix, fpl, res);
 }/*}}}*/
 
 char *
@@ -256,8 +260,9 @@ toUlHashTable(void *pctx1, char *ul, char *loc)/*{{{*/
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(ulLength+1+pctx->fpl);
   tmp2 = (char *) alloca(locLength+1+pctx->mpl);
+  printf("toUlHashTable: %s, %s\n", ul, loc);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
-  if (!formUl(ul,ulLength, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
+  if (!formUl(ul,pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
   if (!formMap(loc,locLength, pctx->mapprefix, pctx->mpl, tmp2)) return Parse_FORMMAPERROR;
   he1.key = tmp;
   he1.hashval = charhashfunction(he1.key);
@@ -313,10 +318,11 @@ toSmlHashTable(void *pctx1, char *uo, char *mlop)/*{{{*/
   uoLength = strlen(uo);
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
   tmp2 = (char *) alloca(uoLength + 2 + pctx->fpl + mlopLength + pctx->rl + pctx->mpl);
+  printf("toSmlHashTable: %s, %s\n", uo, mlop);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
-  if (!formUo(uo, uoLength, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
-  if (!formLoc(uo,uoLength, pctx->fileprefix, pctx->fpl, pctx->mapprefix, pctx->mpl,
-          mlop, mlopLength, pctx->root, pctx->rl, tmp2)) return Parse_FORMLOCERROR;
+  if (!formUo(uo, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
+  if (!formLoc(uo, pctx->fileprefix, pctx->fpl, pctx->mapprefix, pctx->mpl,
+          mlop, pctx->root, pctx->rl, tmp2)) return Parse_FORMLOCERROR;
   he1.key = tmp2;
   he1.hashval = charhashfunction(he1.key);
   if (hashfind(pctx->smlTable, &he1, (void **) &tmp3) == hash_DNE)
@@ -352,7 +358,7 @@ extendInterp (void *pctx1, char *uo)/*{{{*/
   tmp = (char *) alloca(len+1+pctx->fpl);
   printf("extendInterp %s %i\n", uo, len);
   if (!tmp) return Parse_ALLOCERROR;
-  if (!formUo(uo, len, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
+  if (!formUo(uo, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
   he1.key = tmp;
   he1.hashval = charhashfunction(tmp);
   if (hashfind(pctx->uoTable, &he1, &r) == hash_DNE)
