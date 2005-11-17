@@ -177,6 +177,7 @@ formUl(char *ul, char *fileprefix, int fpl, char *res)/*{{{*/
 char *
 formMap(char *loc, char *mapprefix, int mpl, char *res)/*{{{*/
 {
+  int i;
   if (loc[0] == '/')
   {
     strcpy(res, loc);
@@ -185,7 +186,13 @@ formMap(char *loc, char *mapprefix, int mpl, char *res)/*{{{*/
   else
   {
     strcpy(res,mapprefix);
-    strcpy(res+strlen(mapprefix), loc);
+    i = mpl;
+    if (res[mpl - 1] != '/')
+    {
+      res[mpl] = '/';
+      i++;
+    }
+    strcpy(res+i, loc);
     return contractPath(res);
   }
 }/*}}}*/
@@ -250,12 +257,12 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   ul = tmp;
   tmp[ulLength] = 0;
   tmp += ulLength + 1;
-  loc = tmp;
   strncpy(tmp, loc, locLength);
-  tmp[locLength] = 0;
+  loc = tmp;
+  loc[locLength] = 0;
   pctx = (struct parseCtx *) pctx1;
-  tmp = (char *) alloca(ulLength+1+pctx->fpl);
-  tmp2 = (char *) alloca(locLength+1+pctx->mpl);
+  tmp = (char *) alloca(ulLength+1+pctx->fpl + 1);
+  tmp2 = (char *) alloca(locLength+1+pctx->mpl + 1);
   printf("toUlHashTable: %s, %s\n", ul, loc);
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
   if (!formUl(ul,pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
@@ -266,10 +273,10 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   if (hashfind(pctx->ulTable, &he1, r) == hash_DNE)
   {
     he = (struct char_charHashEntry *) malloc(sizeof(struct char_charHashEntry) + strlen(tmp) + 1 +
-                                                     strlen(tmp2) + 1);
+                                                     strlen(tmp2) + 3);
     if (!he) return Parse_ALLOCERROR;
     he->key = (char *) (he+1);
-    he->val = he->key + strlen(tmp) + 1;
+    he->val = he->key + strlen(tmp) + i + 1;
     strcpy(he->key, tmp);
     strcpy(he->val, tmp2);
     he->hashval = he1.hashval;
@@ -280,7 +287,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
 	printf("%s already visited\n", tmp);
     return Parse_DUPLICATE;
   }
-  tmp = (char *) alloca(strlen(he->key) + 1 + strlen(he->val) + 1);
+  tmp = (char *) alloca(strlen(he->key) + 1 + strlen(he->val) + 3);
   if (!tmp) return Parse_ALLOCERROR;
   tmp2 = he->key + strlen(he->key) + 1;
   i = path(he->key);
@@ -297,8 +304,9 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   rpctx.uoTable = pctx->uoTable;
   rpctx.smlTable = pctx->smlTable;
   rpctx.ulTable = pctx->ulTable;
-  printf("Recursing into %s\n", he->key);
-  recurseParse(&rpctx, he->key);
+  printf("Recursing into %s\nwith fp: %s, mp: %s, root: %s\n", he->key,rpctx.fileprefix, rpctx.mapprefix, rpctx.root);
+  i = recurseParse(&rpctx, he->key);
+  printf("Done with %s\n", he->key);
   return Parse_OK;
 }/*}}}*/
 

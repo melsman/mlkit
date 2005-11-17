@@ -37,7 +37,7 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   int i, top;
   top = 0;
   printf("recurseParse called with %p, %s\n", ctx, filename);
-//  yydebug = 1;
+  yydebug = 1;
   if (!ctx->uoTable)
   {
     top = 1;

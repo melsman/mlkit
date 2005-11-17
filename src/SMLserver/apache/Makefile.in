@@ -10,7 +10,7 @@ INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
        ../HashTable.c ../../Runtime/runtimeSystemKamApSml.o ul.tab.c \
-			 lex.yy.c
+			 lex.yy.c parseul.c
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
@@ -77,6 +77,8 @@ ul.tab.c: ul.tab.h ul.y
 
 lex.yy.c: ul.lex ul.tab.h
 	flex -s ul.lex
+
+parseul.c: ul.tab.c
 
 t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 	$(CC) -o t $(CFLAGS) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
