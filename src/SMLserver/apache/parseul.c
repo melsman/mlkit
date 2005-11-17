@@ -276,7 +276,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
                                                      strlen(tmp2) + 3);
     if (!he) return Parse_ALLOCERROR;
     he->key = (char *) (he+1);
-    he->val = he->key + strlen(tmp) + i + 1;
+    he->val = he->key + strlen(tmp) + 1;
     strcpy(he->key, tmp);
     strcpy(he->val, tmp2);
     he->hashval = he1.hashval;
