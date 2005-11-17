@@ -78,7 +78,7 @@ ul.tab.c: ul.tab.h ul.y
 lex.yy.c: ul.lex ul.tab.h
 	flex -s ul.lex
 
-t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o a.o
+t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 	$(CC) -o t $(CFLAGS) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 
 clean: 
