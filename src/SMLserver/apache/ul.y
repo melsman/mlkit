@@ -47,10 +47,6 @@ UoIncludeList:
 ;
 SmlIncludeList:
    /* empty */ { $$ = NULL}
- | SmlIncludeList UOFILE SmlOption { toSmlHashTable(ctx,$2,$3); $$=NULL; }
+ | SmlIncludeList UOFILE AS UOFILE { toSmlHashTable(ctx,$2,$4); $$=NULL; }
+ | SmlIncludeList UOFILE { toSmlHashTable(ctx,$2,NULL); $$=NULL; }
 ;
-SmlOption:
-   /* empty */ { $$ = NULL; }
- | AS UOFILE { $$ = $2 }
-;
-

@@ -7,9 +7,9 @@
 #define YY_NO_UNPUT
 %}
 
-%pointer
+%array
 
-FILECHARS [a-zA-Z0-9_\-\.]*
+FILECHARS [a-zA-Z0-9_\-./]*
 
 %option noyywrap
 %option nostdinit
@@ -37,7 +37,7 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   int i, top;
   top = 0;
   printf("recurseParse called with %p, %s\n", ctx, filename);
-//  yydebug = 1;
+  yydebug = 1;
   if (!ctx->uoTable)
   {
     top = 1;

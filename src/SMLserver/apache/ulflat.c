@@ -9,8 +9,8 @@ main(int argc, char **argv)
   int r;
   struct parseCtx c;
   if (argc < 2) return EXIT_FAILURE;
-  c.fileprefix = "/fileprefix/path/";
-  c.mapprefix = "/mapprefix/path/";
+  c.fileprefix = "/fileprefix/path";
+  c.mapprefix = "/mapprefix/path";
   c.root = "/root//";
   c.fpl = strlen(c.fileprefix);
   c.mpl = strlen(c.mapprefix);
