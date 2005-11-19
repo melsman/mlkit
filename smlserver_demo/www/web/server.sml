@@ -45,5 +45,8 @@ val _ = Page.return "Server Information" (`
 <tr><th>MailRelay</th>  <td> ^(case Web.Info.configGetValue(Web.Info.Type.String, "MailRelay") 
                                 of NONE => " " 
                                  | SOME(s) => s) </td></tr>
+<tr><th>Number of heap caches</th><td> ^(Int.toString (Option.valOf
+                                           (Web.Info.configGetValue
+                                              (Web.Info.Type.Int,"MaxHeapPoolSz")))) </td></tr>
 </table>`
 )
