@@ -50,3 +50,5 @@ apsml_getpid
 apsml_getuptime
 apsml_reg_schedule
 apsml_getpage
+getMaxHeapPoolSz
+setMaxHeapPoolSz
