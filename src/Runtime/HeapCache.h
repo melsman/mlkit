@@ -29,11 +29,12 @@ typedef struct regionCopy {
 // allows the stack to be reestablished.
 #define LOWSTACK_COPY_SZ     6
 
-// Maximum number of allocated heaps (stacks and initial region pages)
-// in the heap pool - important only for the multi-threaded SMLserver.
-// The effect of using a heap from the heap pool is that execution of
-// library code is cached. To enable execution of library code for
-// every request, set MAX_HEAP_POOL_SZ to 0.
+// Initial maximum number of allocated heaps (stacks and initial region pages)
+// in the heap pool - important only for the multi-threaded SMLserver.  The
+// effect of using a heap from the heap pool is that execution of library code
+// is cached. To enable execution of library code for every request, set
+// MAX_HEAP_POOL_SZ to 0. This limit can be set dynamically by setMaxHeapPoolSz
+// and read dynamically by getMaxHeapPoolSz
 #define MAX_HEAP_POOL_SZ     6
 
 typedef struct heap {

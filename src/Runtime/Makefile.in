@@ -99,7 +99,7 @@ runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF)
 
 kam: $(OFILES_KAM)
 	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLPROGRAM) $@ $(BINDIR)
 
 runtimeSystemKamApSml.o: $(OFILES_SMLSERVER_AP)
 	ld -r -o $@ $(OFILES_SMLSERVER_AP)

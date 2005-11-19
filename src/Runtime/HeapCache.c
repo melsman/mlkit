@@ -62,13 +62,68 @@ dienow(char *s)
 }
 */
 
-static Heap* heapPool[MAX_HEAP_POOL_SZ];
+static Heap **heapPool = NULL; // [MAX_HEAP_POOL_SZ];
+static unsigned int maxHeapPoolSz = MAX_HEAP_POOL_SZ;
 static int heapPoolIndex = 0;
 
 // Invariant: if heapPoolIndex == 0 then there are no heaps in the
 // heapPool to choose from; otherwise, the heapPool contains a heap
 // we can use (index heapPoolIndex). Each heap in the pool has status
 // HSTAT_CLEAN.
+
+// If heapPool == NULL then heapPoolIndex == 0
+
+unsigned int
+getMaxHeapPoolSz(void)
+{
+  unsigned int i;
+  LOCK_LOCK(STACKPOOLMUTEX);
+  i = maxHeapPoolSz;
+  LOCK_UNLOCK(STACKPOOLMUTEX);
+  return i;
+}
+
+void
+setMaxHeapPoolSz(unsigned int i)
+{
+  unsigned int j;
+  static Heap **tmp;
+  LOCK_LOCK(STACKPOOLMUTEX);
+  if (maxHeapPoolSz == i)
+  {
+    LOCK_UNLOCK(STACKPOOLMUTEX);
+    return;
+  }
+  if (!heapPool)
+  {
+    maxHeapPoolSz = i;
+    LOCK_UNLOCK(STACKPOOLMUTEX);
+    return;
+  }
+  tmp = calloc(i, sizeof(Heap *));
+  if (!tmp)
+  {
+    LOCK_UNLOCK(STACKPOOLMUTEX);
+    // log something
+    return;
+  }
+  for (j = 0; j < maxHeapPoolSz; j++)
+  {
+    if (j < i)
+    {
+      tmp[j] = heapPool[j];
+    }
+    else
+    {
+      if (j < heapPoolIndex) deleteHeap(heapPool[j]);
+    }
+  }
+  heapPoolIndex = heapPoolIndex > i ? i : heapPoolIndex;
+  free(heapPool);
+  heapPool = tmp;
+  LOCK_UNLOCK(STACKPOOLMUTEX);
+  return;
+}
 
 // [pagesInRegion(r)] returns the number of pages associated with r.
 static int pagesInRegion(Ro *r)
@@ -168,6 +223,7 @@ Heap* getHeap(void)
   LOCK_LOCK(STACKPOOLMUTEX);
   if ( heapPoolIndex )
     {
+      // Sound as heapPoolIndex != 0 --> heapPool != NULL
       h = heapPool[--heapPoolIndex];
       LOCK_UNLOCK(STACKPOOLMUTEX);
     }
@@ -213,16 +269,28 @@ void releaseHeap(Heap *h)
 {
   restoreHeap(h);
   LOCK_LOCK(STACKPOOLMUTEX);
-  if ( heapPoolIndex < MAX_HEAP_POOL_SZ ) 
+//  if ( heapPoolIndex < MAX_HEAP_POOL_SZ ) 
+  if ( heapPoolIndex < maxHeapPoolSz ) 
+  {
+    if (!heapPool) 
     {
-      heapPool[heapPoolIndex++] = h;
-      LOCK_UNLOCK(STACKPOOLMUTEX);
+      heapPool = (Heap **) calloc(maxHeapPoolSz, sizeof(Heap *));
+      if (!heapPool) 
+      {
+        LOCK_UNLOCK(STACKPOOLMUTEX);
+        deleteHeap(h);
+        return;
+      }
     }
+    heapPool[heapPoolIndex++] = h;
+    LOCK_UNLOCK(STACKPOOLMUTEX);
+  }
   else
-    {
-      LOCK_UNLOCK(STACKPOOLMUTEX);
-      deleteHeap(h);
-    } 
+  {
+    LOCK_UNLOCK(STACKPOOLMUTEX);
+    deleteHeap(h);
+  } 
+  return;
 }
 
 static void restoreHeap(Heap *h)
@@ -301,6 +369,7 @@ clearHeapCache()
   LOCK_LOCK(STACKPOOLMUTEX);
   while ( heapPoolIndex )
     {
+      // Sound as heapPoolIndex != 0 --> heapPool != NULL
       h = heapPool[--heapPoolIndex];
       deleteHeap(h);      
     }

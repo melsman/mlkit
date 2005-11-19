@@ -297,10 +297,12 @@ typedef unsigned int uint32;
 
 /* replace instruction numbers with instruction addresses */
 void 
-resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable [], void *ccalltable[]) {
+resolveInstructions(int sizeW, bytecode_t start_code,
+                    void * jumptable [], unsigned int jumptableSize,
+                    void *ccalltable[]) {
   unsigned long *real_code;
   int tmp, tmp2;
-  int i = 0;
+  int j, i = 0;
   real_code = (unsigned long*)start_code;
 
   while ( i < sizeW ) {
@@ -309,10 +311,20 @@ resolveInstructions(int sizeW, bytecode_t start_code, void * jumptable [], void 
     inst = *(real_code + i);
     arity = getInstArity(inst);
     if ( arity == -100 )
+    { // Check to see if we already resolved this code
+      // This is not entirely sound, but it would be very coincidential 
+      // if an instrution number without an arity is the same as
+      // a pointer to an instruction in our interpreter.
+      for (j = 0; j < jumptableSize; j++)
       {
-	fprintf(stderr, "No arity for inst %ld\n", inst);
-	die("Interp.resolveInstructions");
+        if (((unsigned long) jumptable[j]) == inst)
+        {
+          return;
+        }
       }
+      fprintf(stderr, "No arity for inst %ld\n", inst);
+      die("Interp.resolveInstructions");
+    }
     debug(printf("i=%d ; inst = %d; arity = %d\n", i, inst, arity));
     if (inst > 1000) {
       printf ("sizeW = %d, i= %d, inst = %ld\n", sizeW, i, inst);
@@ -424,6 +436,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
     &&lbl_C_CALL5,
     &&lbl_C_CALL6
   };
+  static unsigned int jumptableSize = sizeof(jumptable) / sizeof(void *);
 #endif
 
   acc = convertIntToML(0);
@@ -434,7 +447,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
   if ( interp_mode == RESOLVEINSTS ) {
 #ifdef LAB_THREADED
-    resolveInstructions(sizeW, b_prog, jumptable, ccalltable);
+    resolveInstructions(sizeW, b_prog, jumptable, jumptableSize, ccalltable);
     debug(printf("returning from interp\n"));
 #endif
     return 0;
@@ -1489,6 +1502,7 @@ int main_interp(int argc, char * argv[]) {
   char* errorStr = NULL;
 
   debug(printf("[Resolving global code fragments]\n"));
+  resolveGlobalCodeFragments();
   resolveGlobalCodeFragments();
 
   debug(printf("[Creating new interpreter]\n"));
