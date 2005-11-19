@@ -17,8 +17,17 @@ functor WebInfo (type conn = int
     prim("apsml_PageRoot", (getReqRec()))
 
   fun configGetValue(rangeType : 'a Type.Type, k : string) = 
-  let val res : string = prim("apsml_conflookup", (k, getReqRec()))
-  in if isNull res  then NONE else 
+  let 
+    fun res () = prim("apsml_conflookup", (k : string, getReqRec())) : string
+    fun getMaxHeapPoolSz () = prim("@getMaxHeapPoolSz", ()) : int
+  in 
+    case k
+    of "MaxHeapPoolSz" =>
+          if #name rangeType = #name Type.Int
+          then SOME(#from_string rangeType (#to_string Type.Int (getMaxHeapPoolSz())))
+          else raise Domain
+     | _ => let val res = res() in
+     if isNull res then NONE else 
        let (*val _ = log("configGetValue: " ^ res) *)
            val (a,b) = Substring.splitl (fn x => x <> #":") (Substring.all res)
            val c = Substring.triml 1 b
@@ -27,6 +36,7 @@ functor WebInfo (type conn = int
               | _ => raise Domain
        in 
        SOME(#from_string rangeType (Substring.string c))
+       end
        end
   end
 
@@ -41,7 +51,12 @@ functor WebInfo (type conn = int
 	         prim("apsml_confinsert", (k, v, e, getReqRec())) : unit handle Overflow => raise Forbidden 
         fun setvalString (k:string,v:string,e:string) = 
 	         prim("apsml_confinsert", (k, v, e, getReqRec())) : unit handle Overflow => raise Forbidden 
-        fun setBool () = 
+        fun setMaxHeapPoolSz i = prim("@setMaxHeapPoolSz", i : int) : unit
+        fun setMaxHeapPoolSz' () = 
+              if #name rangeType = #name Type.Int
+              then setMaxHeapPoolSz(#from_string Type.Int s')
+              else raise Forbidden
+(*        fun setBool () = 
           if #name rangeType = #name Type.Bool 
           then setvalInt(key, s, if #from_string Type.Bool s' then 1 else 0)
           else raise Forbidden
@@ -52,15 +67,11 @@ functor WebInfo (type conn = int
         fun setInt () =
           if #name rangeType = #name Type.Int 
           then setvalInt(key, s, #from_string Type.Int s')
-          else raise Forbidden
+          else raise Forbidden *)
        (* val _ = log("configSetValue: " ^ s) *)
-    in 
-    case key of "DBLazyConnect" => setBool ()
-              | "DBUserName" => setString ()
-              | "DBPassWord" => setString ()
-              | "DBTNSname" => setString ()
-              | "DBSessionLimit" => setInt ()
-              | "DBSessionMaxDepth" => setInt ()
+    in
+    case key of
+                "MaxHeapPoolSz" => setMaxHeapPoolSz'()
               | _ => setvalInt(key,s,0)
     end
 
