@@ -60,10 +60,19 @@ struct
 
   local open TyName
   in
+
+      (* When Generational GC is used, vectors need to have runtype
+       ARRAY_RT due to the implementation of vectors using the
+       wordtable.sml file (WordTable functor) which updates the
+       content of the vector after creation. If a minor gc occurs
+       between the creation and the update, the new updated content
+       could be mistakenly garbage collected during the next
+       collection. *)
+
     fun runtype (CONSTYPE(tn, _, _, _)) =  
       if TyName.unboxed tn then E.WORD_RT
       else if eq(tn, tyName_REF) then E.REF_RT
-      else if eq(tn, tyName_ARRAY) then E.ARRAY_RT
+      else if eq(tn, tyName_ARRAY) orelse eq(tn, tyName_VECTOR) then E.ARRAY_RT
       else if eq(tn, tyName_STRING) orelse eq(tn, tyName_CHARARRAY) then E.STRING_RT
       else E.TOP_RT
     | runtype (TYVAR _) = E.BOT_RT
