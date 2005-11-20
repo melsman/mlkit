@@ -1,7 +1,6 @@
 local
   $(SML_LIB)/basis/basis.mlb
-  ../../../basis/BINARYMAP.sml
-  ../../../basis/Binarymap.sml
+  ../../../basis/binarymap.mlb
   local Confoptions.sml
   in
     MLB_PROJECT.sml  

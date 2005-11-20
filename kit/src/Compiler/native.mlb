@@ -34,8 +34,7 @@ in
   (* X86 Backend *)
   Backend/CODE_GEN.sml
   Backend/X86/INSTS_X86.sml
-  ../../basis/BINARYMAP.sml
-  ../../basis/Binarymap.sml
+  ../../basis/binarymap.mlb
   local open Tools
   in
      local open CompilerObjects
