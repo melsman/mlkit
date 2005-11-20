@@ -202,12 +202,15 @@ functor MlbProject () : MLB_PROJECT =
     fun readfile f =
           let
             val fh =  (TextIO.openIn f) handle IO.Io _ => raise FileNotFound
-            fun loop lc = (case TextIO.inputLine fh
+            fun close () = TextIO.closeIn fh 
+            fun loop lc = (case (TextIO.inputLine fh)
                            of SOME s => (toMap s;loop (lc + 1))
-                            | NONE => TextIO.closeIn fh)
-                         handle ParseErr s => (TextIO.closeIn fh ;
+                            | NONE => close())
+                         handle ParseErr s => ((close ()) handle _ => () ;
                            raise ParseErr ("On line " ^ (Int.toString lc) ^ ":" ^ s))
-                              | Exn => (TextIO.closeIn fh ; raise Exn)
+                              | IO.Io {cause,...} => (close (); raise ParseErr (exnMessage cause))
+                              | Option.Option => loop(lc+1)
+                              | Exn => (close (); raise Exn)
           in loop 0
           end
     fun fillMap () = 
@@ -215,20 +218,23 @@ functor MlbProject () : MLB_PROJECT =
           of NONE => 
               let
                 val _ = varMap := SOME(BM.mkDict String.compare)
-                val user = (Option.valOf (OS.Process.getEnv "HOME")) ^ "/.mlkit/mlb-path-map"
-                val system = Conf.etcdir ^ "/mlkit/mlb-path-map"
+                val user = Option.map (fn x=> x^"/.mlkit/mlb-path-map") (OS.Process.getEnv "HOME")
+                val system = SOME(Conf.etcdir ^ "/mlkit/mlb-path-map")
                 val files = [system,user]
-              in List.app (fn x => (readfile x) handle FileNotFound => ()
+              in List.app (fn x => (case x
+                                    of NONE => ()
+                                     | SOME x' => (readfile x')
+                                                handle FileNotFound => ()
                                                      | ParseErr s => 
-                                                         raise ParseErr ("In file: " ^ x ^ " " ^ s)
-                                                     | ? => raise ?) files
+                                                         raise ParseErr ("In file: " ^ x' ^ " " ^ s)
+                                                     | ? => raise ?)) files
               end
            | SOME _ => ()
   in
     fun getEnvVal key = (case OS.Process.getEnv(key)
                       of NONE => (fillMap (); Option.join (Option.map (fn v => BM.peek(v, key))
                                                                       (!varMap)))
-                       | SOME v => SOME v) 
+                       | SOME v => SOME v) handle ParseErr s => error s 
        (* Put in handler for exceptions: ParseErr, Io, Option.Option *)
   end
 
@@ -242,7 +248,7 @@ functor MlbProject () : MLB_PROJECT =
 				case cc of 
 				    #"/"::cc => cc
 				  | _ => cc
-			in case (getEnvVal (pathVar)) 
+			in case (getEnvVal (pathVar))
          of
 			    SOME path => OS.Path.concat(path, implode cc)
 			  | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
