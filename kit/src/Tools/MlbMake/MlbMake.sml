@@ -324,6 +324,7 @@ struct
 		in del f; app w ss; raise Exit
 		end
 
+    (* Rev: Region/Effect-variable ids *)
     val initialRev = 100
     fun readRevFromRevFile src =
 	let infix ##
