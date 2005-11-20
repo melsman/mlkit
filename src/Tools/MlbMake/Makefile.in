@@ -1,0 +1,30 @@
+
+SHELL=@SHELL@
+
+prefix=@prefix@
+sysconfdir=@sysconfdir@
+top_srcdir=@top_srcdir@
+
+INSTALL=@INSTALL@
+
+VPATH=@srcdir@
+
+BINDIR=${top_srcdir}/bin
+TARGET=mlbmake
+
+include ${top_srcdir}/Makefiledefault
+
+all: ${BINDIR}/${TARGET}
+
+$(BINDIR)/$(TARGET): $(TARGET)
+	${INSTALL} $(TARGET) $(BINDIR)/$(TARGET)
+
+Confoptions.sml: Confoptions.sml.in
+	rm -f Confoptions.sml
+	cp Confoptions.sml.in Confoptions.sml
+
+$(TARGET): sources.mlb Makefile *.sml Confoptions.sml
+	$(MLCOMP) -output $(TARGET) sources.mlb
+
+clean:
+	rm -rf MLB *~ $(TARGET)

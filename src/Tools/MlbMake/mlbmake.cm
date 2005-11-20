@@ -1,6 +1,9 @@
 Group 
 is
   ../../Common/patch-smlnj-110.0.7.cm
+  ../../../basis/BINARYMAP.sml
+  ../../../basis/Binarymap.sml
+  Confoptions.sml
   MLB_PROJECT.sml  
   MlbProject.sml
   MlbMake.sml

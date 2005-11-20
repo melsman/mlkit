@@ -5,7 +5,8 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  src/Runtime/Makefile
                  src/Makefile
                  Makefile 
-                 smlserver_demo/Makefile 
+                 smlserver_demo/Makefile
+                 src/Tools/MlbMake/Makefile
                  src/Version.sml])
 
 AC_PROG_CC

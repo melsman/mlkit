@@ -1,7 +1,7 @@
 local
   $(SML_LIB)/basis/basis.mlb
 
-  basis Dynamic = (* Dynamic linking support *)
+  basis Dynlib = (* Dynamic linking support *)
     bas DYNLIB.sml Dynlib.sml end
-in open Dynamic
+in open Dynlib
 end

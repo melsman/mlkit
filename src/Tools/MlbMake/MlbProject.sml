@@ -150,6 +150,69 @@ functor MlbProject () : MLB_PROJECT =
             [] => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached end of file)")
           | s::_ => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached " ^ quot s ^ ")")
 
+  local
+    datatype State = Out | In | Dollar | Esc of State
+    exception ParseErr
+    structure BM = Binarymap
+    val varMap = ref NONE : (string,string) BM.dict option ref
+
+    fun lookup l = let val n = String.implode(List.rev l)
+                   in
+                     List.rev(String.explode(
+                      case OS.Process.getEnv n
+                      of NONE => BM.find (Option.valOf(!varMap), n)
+                       | SOME v => v))
+                   end
+
+    fun myread Out [] [] acc = String.implode(List.rev acc)
+      | myread Out (#"$"::cc) [] acc = myread Dollar cc [] acc
+      | myread Out (#"\\"::cc) [] acc = myread (Esc Out) cc [] acc
+      | myread Out (c::cc) [] acc = myread Out cc [] (c::acc)
+      | myread Dollar (#"("::cc) [] acc = myread In cc [] acc
+      | myread In (#")"::cc) k acc = myread Out cc [] ((lookup k) @ acc)
+      | myread In (#"\\"::cc) k acc = myread (Esc In) cc k acc
+      | myread In (c::cc) k acc = myread In cc (c::k) acc
+      | myread (Esc In) (c::cc) k acc = (case c of #"$" => myread In cc (c :: k) acc
+                                                 | #"\\" => myread In cc (c :: k) acc
+                                                 | _ => raise ParseErr)
+      | myread (Esc Out) (c::cc) k acc = (case c of #"$" => myread Out cc (c :: k) acc
+                                                  | #"\\" => myread Out cc (c :: k) acc
+                                                  | _ => raise ParseErr)
+      | myread _ _ _ _ = raise ParseErr
+
+    fun toMap l =
+          let
+            val [lv,def] = String.tokens Char.isSpace l
+            val def' = myread Out (String.explode def) [] []
+          in varMap := SOME(BM.insert(Option.valOf (!varMap), lv, def'))
+          end
+    exception FileNotFound
+    fun readfile f =
+          let
+            val fh =  (TextIO.openIn f) handle IO.Io _ => raise FileNotFound
+            fun loop () = (case TextIO.inputLine fh
+                           of SOME s => (toMap s;loop())
+                            | NONE => TextIO.closeIn fh)
+          in loop ()
+          end
+    fun fillMap () = 
+          case !varMap
+          of NONE => 
+              let
+                val _ = varMap := SOME(BM.mkDict String.compare)
+                val user = (Option.valOf (OS.Process.getEnv "HOME")) ^ "/.mlkit/mlb-path-map"
+                val system = Conf.etcdir ^ "/mlkit/mlb-path-map"
+                val files = [user,system]
+              in List.app (fn x => (readfile x) handle FileNotFound => () | ? => raise ?) files
+              end
+           | SOME _ => ()
+  in
+    fun getEnvVal key = (case OS.Process.getEnv(key)
+                      of NONE => (fillMap (); Option.join (Option.map (fn v => BM.peek(v, key)) (!varMap)))
+                       | SOME v => SOME v) 
+       (* Put in handler for exception, ParseErr, Io, BM.NotFound, Bind, Option.Option *)
+  end
+
 	fun expand mlbfile s = 
 	    let 
 		fun readUntil c0 nil acc = parse_error mlbfile "malformed path-var"
@@ -160,7 +223,8 @@ functor MlbProject () : MLB_PROJECT =
 				case cc of 
 				    #"/"::cc => cc
 				  | _ => cc
-			in case OS.Process.getEnv(pathVar) of
+			in case (getEnvVal (pathVar)) 
+         of
 			    SOME path => OS.Path.concat(path, implode cc)
 			  | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
 			end

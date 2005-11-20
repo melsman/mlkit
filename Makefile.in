@@ -77,6 +77,10 @@ mlkit_kam:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit_kam
 
+mlkit_kam_nj:
+	$(MKDIR) bin
+	$(MAKE) -C src mlkit_kam_nj
+
 smlserver:
 	$(MKDIR) bin
 	$(MAKE) -C src smlserver
