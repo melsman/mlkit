@@ -202,7 +202,7 @@ functor MlbProject () : MLB_PROJECT =
                 val _ = varMap := SOME(BM.mkDict String.compare)
                 val user = (Option.valOf (OS.Process.getEnv "HOME")) ^ "/.mlkit/mlb-path-map"
                 val system = Conf.etcdir ^ "/mlkit/mlb-path-map"
-                val files = [user,system]
+                val files = [system,user]
               in List.app (fn x => (readfile x) handle FileNotFound => () | ? => raise ?) files
               end
            | SOME _ => ()
