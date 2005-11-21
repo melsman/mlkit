@@ -19,9 +19,11 @@ all: ${BINDIR}/${TARGET}
 $(BINDIR)/$(TARGET): $(TARGET)
 	${INSTALL} $(TARGET) $(BINDIR)/$(TARGET)
 
+.PHONY: Confoptions.sml
 Confoptions.sml: Confoptions.sml.in
-	rm -f Confoptions.sml
-	cp Confoptions.sml.in Confoptions.sml
+	cp -f Confoptions.sml.in Confoptions.sml
+	echo "    val etcdir = $(sysconfdir)" >> Confoptions.sml
+	echo "  end" >> Confoptions.sml
 
 $(TARGET): sources.mlb Makefile *.sml Confoptions.sml
 	$(MLCOMP) -output $(TARGET) sources.mlb

@@ -1,4 +1,2 @@
 structure Conf =
   struct
-    val etcdir = "/etc"
-  end
