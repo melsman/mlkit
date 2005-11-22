@@ -29,7 +29,7 @@
     (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+") *)
 
   val pattern = RegExp.fromString 
-    (".+Last Trade:" ^  ".+([0-9]+)\\.([0-9]+).+")
+    (".+Last Trade:" ^  ".+([0-9]+)\\.([0-9]+).+Trade Time.+")
 
   val cache = C.get (C.String,C.Option C.Real,"currency",
                  C.TimeOut (SOME(Time.fromSeconds(5*60)), SOME(10000)))
