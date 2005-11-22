@@ -22,7 +22,7 @@ $(BINDIR)/$(TARGET): $(TARGET)
 .PHONY: Confoptions.sml
 Confoptions.sml: Confoptions.sml.in
 	cp -f Confoptions.sml.in Confoptions.sml
-	echo "    val etcdir = $(sysconfdir)" >> Confoptions.sml
+	echo "    val etcdir = \"$(sysconfdir)\"" >> Confoptions.sml
 	echo "  end" >> Confoptions.sml
 
 $(TARGET): sources.mlb Makefile *.sml Confoptions.sml
