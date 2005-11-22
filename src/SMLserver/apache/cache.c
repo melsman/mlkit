@@ -9,6 +9,7 @@
 #include "mod_sml.h"
 #include "cache.h"
 #include "../../Runtime/String.h"
+#include <unistd.h>
 
 
 #define LINKEDLIST_REMOVE(ENTRY) {(ENTRY)->up->down = (ENTRY)->down; \
@@ -70,8 +71,9 @@ hashfunction (void *kn1)	/*{{{ */
 // void ppCache(cache *, request_data *);
 
 void
-globalCacheTableInit (request_data * rd)	/*{{{ */
+globalCacheTableInit (void *rd1)	/*{{{ */
 {
+  request_data *rd = (request_data *) rd1;
   rd->cachetable = (hashtable_with_lock *)
     apr_palloc (rd->pool, sizeof (hashtable_with_lock));
   rd->cachetable->ht = (hashtable *)
@@ -184,6 +186,42 @@ apsml_cacheFind (char *cacheName, request_data *rd)	/*{{{ */
   return c;
 }				/*}}} */
 
+void
+listremoveitem (cache * c, entry * e, request_data *rd)	/*{{{ */
+{
+  if (e->timeout) cacheheap_heapdelete (c->heap, e->heappos);
+  LINKEDLIST_REMOVE (e);
+  c->size -= e->size;
+  // free old entry
+//      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+//		    "apsml_cacheCreate: free 0x%x", (unsigned long) e);
+  free (e);
+}				/*}}} */
+
+int
+apsml_cacheFlush (cache * c, request_data *rd, int global)	/*{{{ */
+{
+  apr_thread_rwlock_wrlock (c->rwlock);
+  if (global)
+  {
+    apr_proc_mutex_lock(rd->ctx->cachelock.plock);
+    unsigned long cachehash = c->hashofname % rd->ctx->cachelock.shmsize;
+    rd->ctx->cachelock.version[cachehash]++;
+    apr_proc_mutex_unlock(rd->ctx->cachelock.plock);
+  }
+  while (c->sentinel->down != c->sentinel)
+  {
+    listremoveitem (c, c->sentinel->down, rd);
+  }
+  if (hashreinit (c->htable) == hash_OUTOFMEM)
+  {
+    apr_thread_rwlock_unlock (c->rwlock);
+    return 0;
+  }
+  c->size = c->htable->hashTableSize * sizeof (hashmember);
+  apr_thread_rwlock_unlock (c->rwlock);
+  return 1;
+}				/*}}} */
 
 // ML : cache * string -> string_ptr
 String
@@ -240,7 +278,7 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
 	    {			// entry too old
 	      too_old = 1;
 	      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-			    "apsml_cacheGet: Entry too old, ct == %i, entry->time == %i",
+			    "apsml_cacheGet: Entry too old, ct == %ld, entry->time == %ld",
 			    ct, entry->time);
 	      LINKEDLIST_INSERTOVER (c->sentinel, entry);
 	    }
@@ -273,18 +311,6 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
 }				/*}}} */
 
 void
-listremoveitem (cache * c, entry * e, request_data *rd)	/*{{{ */
-{
-  if (e->timeout) cacheheap_heapdelete (c->heap, e->heappos);
-  LINKEDLIST_REMOVE (e);
-  c->size -= e->size;
-  // free old entry
-//      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
-//		    "apsml_cacheCreate: free 0x%x", (unsigned long) e);
-  free (e);
-}				/*}}} */
-
-void
 cacheremoveitem (cache * c, entry * e, request_data *rd)	/*{{{ */
 {
   hasherase (c->htable, &(e->key));
@@ -300,13 +326,13 @@ ppCache (cache * c, request_data * rd)	/*{{{ */
   int i;
   hashmember *table = c->htable->table;
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-		"ppCache: pid %d, size %d, used %d", pid, htsize, htused);
+		"ppCache: pid %d, size %ld, used %ld", pid, htsize, htused);
   for (i = 0; i < htsize; i++)
   {
     if (table[i].used)
     {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-        "ppCache: index: %i, key: %s, keyhash: %i, value: %d, valuedata: %s, heappos: %d, time: %d",
+        "ppCache: index: %i, key: %s, keyhash: %li, value: %p, valuedata: %s, heappos: %ld, time: %ld",
         i, ((keyNhash *) (table[i].key))->key,
         ((keyNhash *) (table[i].key))->hash, table[i].value,
         ((entry *) table[i].value)->data,
@@ -316,7 +342,7 @@ ppCache (cache * c, request_data * rd)	/*{{{ */
     else
     {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-        "ppCache: index %i not used, value: %i", i,
+        "ppCache: index %i not used, value: %p", i,
         table[i].value);
     }
   }
@@ -331,20 +357,20 @@ ppGlobalCache (request_data * rd)	/*{{{ */
   int i;
   hashmember *table = rd->cachetable->ht->table;
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-		"ppGlobalCache: pid %d, size %d, used %d", pid, htsize,
+		"ppGlobalCache: pid %d, size %ld, used %ld", pid, htsize,
 		htused);
   for (i = 0; i < htsize; i++)
     {
       if (table[i].used)
 	{
 	  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-			"ppGlobalCache: index: %i, key: %s, value: %d", i,
+			"ppGlobalCache: index: %i, key: %s, value: %p", i,
 			((keyNhash *) (table[i].key))->key, table[i].value);
 	}
       else
 	{
 	  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-			"ppGlobalCache: index: %i not used, key: , value: %i",
+			"ppGlobalCache: index: %i not used, key: , value: %p",
 			i, table[i].value);
 	}
     }
@@ -515,31 +541,6 @@ apsml_cacheSet (int resultPair, Region sAddr, cache * c, int keyValPair, request
     }
   first (resultPair) = 0;
   return resultPair;
-}				/*}}} */
-
-int
-apsml_cacheFlush (cache * c, request_data *rd, int global)	/*{{{ */
-{
-  apr_thread_rwlock_wrlock (c->rwlock);
-  if (global)
-  {
-    apr_proc_mutex_lock(rd->ctx->cachelock.plock);
-    unsigned long cachehash = c->hashofname % rd->ctx->cachelock.shmsize;
-    rd->ctx->cachelock.version[cachehash]++;
-    apr_proc_mutex_unlock(rd->ctx->cachelock.plock);
-  }
-  while (c->sentinel->down != c->sentinel)
-  {
-    listremoveitem (c, c->sentinel->down, rd);
-  }
-  if (hashreinit (c->htable) == hash_OUTOFMEM)
-  {
-    apr_thread_rwlock_unlock (c->rwlock);
-    return 0;
-  }
-  c->size = c->htable->hashTableSize * sizeof (hashmember);
-  apr_thread_rwlock_unlock (c->rwlock);
-  return 1;
 }				/*}}} */
 
 void

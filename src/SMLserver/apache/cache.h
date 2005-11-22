@@ -43,4 +43,6 @@ typedef struct
   unsigned long version;
 } cache;
 
+void globalCacheTableInit (void *);
+
 #endif

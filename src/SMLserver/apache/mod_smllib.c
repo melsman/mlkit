@@ -4,14 +4,18 @@
 #include "../../Runtime/List.h"
 #include "httpd.h"
 #include "http_log.h"
+#include "http_protocol.h"
+#include "http_request.h"
+#include "http_core.h"
 #include "apr_file_io.h"
 #include "apr_file_info.h"
 #include "apr_uri.h"
 #include "mod_sml.h"
-#include "../../Runtime/Exception.h"	/*}}} */
-#include "sys/types.h"
-#include "sys/socket.h"
-#include "netdb.h"
+#include "../../Runtime/Exception.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netdb.h>  /*}}} */
 
 // Defines /*{{{*/
 #define BUFFERSIZE 10	/*}}} */
@@ -693,7 +697,7 @@ apsml_GetReqRec (int rd1)	/*{{{ */
 void
 apsml_confinsert (String k, String v, int extraval, request_data * rd)	/*{{{ */
 {
-  String extraString;
+//  String extraString;
   if (rd->ctx->initDone) raise_exn ((int) &exn_OVERFLOW);
   keyNhash *kn = (keyNhash *) apr_palloc (rd->ctx->conftable->pool,
 					  sizeof (keyNhash) + sizeStringDefine(v) +
@@ -869,6 +873,8 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
     return NULL;
   }
   myaddr = addr;
+  sock = -1;
+  c = -1;
   while (myaddr)
   {
     sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
@@ -1014,7 +1020,7 @@ apsmlPutDBData (int i, void *data, void child_init(void *, int, apr_pool_t *, se
                                    request_data *rd)
 {
   struct db_t *tmp, *prev_tmp;
-  void *tmp_data;
+//  void *tmp_data;
   apr_thread_mutex_lock(rd->ctx->dblock);
   tmp = rd->ctx->db;
   prev_tmp = NULL;

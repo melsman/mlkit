@@ -16,6 +16,7 @@
 #include "netdb.h"
 #include "Locks.h"
 #include "parseFuncs.h"
+#include "../../Runtime/HeapCache.h"
 
 #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
@@ -562,12 +563,12 @@ removeAndFree(timeheap_binaryheap_t *heap, hashtable *hashmap, struct scriptsche
 }/*}}}*/
 
 
-static void
-printheap(struct scriptsched_t **t)/*{{{*/
-{
-  dprintf(globallogfile, "heap: next: %x, nexttime: %d, interval: %d, script: %s, scripthash: %d, server: %s, pos: %d\n", (*t)->next, (*t)->nexttime, (*t)->interval, (*t)->script, (*t)->scripthash, (*t)->server, (*t)->pos);
-  return;
-}/*}}}*/
+//static void
+//printheap(struct scriptsched_t **t)/*{{{*/
+//{
+//  dprintf(globallogfile, "heap: next: %p, nexttime: %ld, interval: %d, script: %s, scripthash: %ld, server: %s, pos: %ld\n", (*t)->next, (*t)->nexttime, (*t)->interval, (*t)->script, (*t)->scripthash, (*t)->server, (*t)->pos);
+//  return;
+//}/*}}}*/
 
 struct threaddata/*{{{*/
 {
@@ -1164,7 +1165,6 @@ int
 apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int path_p)/*{{{*/
 {
   char *pageRoot;
-  char *file;
   char c, *p, *lp, *lu;
   InterpContext *ctx = rd->ctx;
   pageRoot = ctx->smlpath;
@@ -1227,19 +1227,19 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
   if (rd->request)
     {
       ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
-         "mod_sml: pid: %d, Notice ul-file has time %i", rd->ctx->pid, t);
+         "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
     }
   else
     {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-        "mod_sml: pid: %d, Notice ul-file has time %i", rd->ctx->pid, t);
+        "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
     }
 
   if (t == (time_t) - 1)
     {
       ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
         "mod_sml:Err ul-file %s does not exist - web service not working",
-        &ctx->ulFileName);
+        ctx->ulFileName);
       return APSML_ULFILENOTFOUND;
     }
 
@@ -1257,7 +1257,7 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
 
     // MEMO: somehow wait for all executions to finish!
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: (re)loading interpreter oldtime: %i newtime %i",
+       "apsml: (re)loading interpreter oldtime: %ld newtime %ld",
        ctx->timeStamp, t);
 
     // free all code elements present in the
@@ -1276,7 +1276,7 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
     {
       ap_log_perror (__FILE__, __LINE__, LOG_ERR, 0, rd->pool,
          "apsml: Failed to open file %s for reading",
-         &ctx->ulFileName);
+         ctx->ulFileName);
       return APSML_ULFILENOTFOUND;
     }
 
@@ -1315,7 +1315,7 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
     fclose (is);
     ctx->timeStamp = t;
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: (Re)loaded %d uo-files with timestamp %i", count,t);
+       "apsml: (Re)loaded %d uo-files with timestamp %ld", count,t);
   }
 
   if (apsml_smlFileToUoFile (rd, urlfile, uo, ctx->prjid, 1) == -1)

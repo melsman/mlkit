@@ -170,7 +170,7 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
   // i,j are used as loop counters
   // the dnspackage returned from the resolver is scanned from top to buttom
   // next is the package pointer relative to the start of the package
-  int i, j, next;
+  int j, next;
   char ans[NS_PACKETSZ + 1];
   char dnsnamesa[NS_MAXDNAME];
   char *dnsnames = dnsnamesa;
@@ -203,7 +203,7 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
   int rv;
   for (j = 0; j < head->anscount; j++)
     {
-      int a_name = next;
+//      int a_name = next;
       if (next >= n)
 	return list;
       next = skipname (ans, next, n);
