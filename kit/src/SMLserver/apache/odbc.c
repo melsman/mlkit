@@ -229,33 +229,37 @@ DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char 
   return db;
 }/*}}}*/
 
+#define ERRORCODETOINT(buf)(buf[0] * 256 + buf[1])
+
 static void
-DBCheckNSetIfServerGoneBad(oDb_t *db, SQLRETURN errcode, void *ctx, int lock)/*{{{*/
+DBCheckNSetIfServerGoneBad(oDb_t *db, SQLSMALLINT ht, SQLHANDLE h, void *ctx, int lock)/*{{{*/
 {
   db_conf *dbc;
-  return;
-  switch (errcode)
+  SQLRETURN stat;
+  SQLSMALLINT rvlength;
+  char buf[9];
+  stat = SQLGetDiagField(ht, h, 1, SQL_DIAG_SQLSTATE, buf, 9, &rvlength);
+  if (rvlength < 2) return;
+  switch (ERRORCODETOINT(buf))
   {
-    case 28: // your session has been killed
-    case 1012: // not logged on
-    case 1041: // internal error. hostdef extension doesn't exist
-    case 3113: // end-of-file on communication channel
-    case 3114: // not connected to ORACLE
-    case 12571: // TNS:packet writer failure
-    case 24324: // service handle not initialized
-      dblog1(ctx, "Database gone bad. ODBC environment about to shutdown");
-      dbc = (db_conf *) apsmlGetDBData(db->dbid,ctx);
-      if (!dbc) return;
-      if (lock) lock_thread(dbc->tlock);
-      if (db == dbc->dbspec) dbc->dbspec = NULL;
-      db->about_to_shutdown = 1;
-      if (lock) unlock_thread(dbc->tlock);
-      return;
+    case 12343: // SQLERROR 07xxx  :  bug
+      dblog1(ctx, "Database driver error. This indicates a bug in odbc.c");
+      break;
+    case 12344: // SQLERROR 08xxx  :  Bad Connection
+      dblog1(ctx, "Database connection gone bad. ODBC environment about to shutdown");
+      break;
+    case 18765: // SQLERROR IMxxx  :  Bad configuration
+      dblog1(ctx, "Database configuration gone bad. ODBC environment about to shutdown");
       break;
     default:
       return;
-      break;
   }
+  dbc = (db_conf *) apsmlGetDBData(db->dbid,ctx);
+  if (!dbc) return;
+  if (lock) lock_thread(dbc->tlock);
+  if (db == dbc->dbspec) dbc->dbspec = NULL;
+  db->about_to_shutdown = 1;
+  if (lock) unlock_thread(dbc->tlock);
   return;
 }/*}}}*/
 
@@ -319,7 +323,7 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   {
     status = SQLAllocHandle(SQL_HANDLE_DBC, db->envhp, &ses->connhp);
     ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
-        dblog1(rd, "oracleDB: DataBase alloc failed; are we out of memory?");
+        dblog1(rd, "odbc: DataBase alloc failed; are we out of memory?");
         free(ses);
         return NULL;,
         rd
@@ -336,14 +340,14 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
                                    db->UID.cstring, db->UID.length,
                                    db->PW.cstring, db->PW.length);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(db, status, rd, 0);
+      DBCheckNSetIfServerGoneBad(db, SQL_HANDLE_DBC, ses->connhp, rd, 0);
       SQLFreeHandle (SQL_HANDLE_DBC, ses->connhp);
       free(ses);
       return NULL;,
       rd
       )
   db->number_of_sessions++;
-  dblog2(rd, "DBgetSession numberOfSess", db->number_of_sessions);
+//  dblog2(rd, "DBgetSession numberOfSess", db->number_of_sessions);
   return ses;
 }/*}}}*/
 
@@ -383,13 +387,13 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
   SQLRETURN status;
   status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
       return DBError;,
       ctx
       )
   ses->needsClosing = 0;
-  dblog1(ctx, "Executing:");
-  dblog1(ctx, sql);
+//  dblog1(ctx, "Executing:");
+//  dblog1(ctx, sql);
   status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
   if (status == SQL_NO_DATA)
   {
@@ -398,27 +402,27 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
     return DBDml;
   }
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
       SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
       ses->stmthp = SQL_NULL_HANDLE;
       return DBError;,
       ctx
       )
-  dblog1(ctx, "Executed fine");
+//  dblog1(ctx, "Executed fine");
   ses->needsClosing = 1;
   status = SQLNumResultCols(ses->stmthp, &ses->cols);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
       DBFlushStmt(ses,ctx);
       ses->stmthp = SQL_NULL_HANDLE;
       return DBError;,
       ctx
       )
-  dblog2(ctx, "SQLNumResultCols :", ses->cols);
+//  dblog2(ctx, "SQLNumResultCols :", ses->cols);
   if (ses->cols > 0) return DBData;
   SQLCloseCursor(ses->stmthp);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
       ses->needsClosing = 0;
       DBFlushStmt(ses,ctx);
       return DBError;,
@@ -437,7 +441,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
   SQLRETURN status;
   SQLSMALLINT colnamelength;
   int *datasizes;
-  dblog1(ctx,"Checking for NULL_HANDLE");
+//  dblog1(ctx,"Checking for NULL_HANDLE");
   if (ses->stmthp == SQL_NULL_HANDLE) return NULL;
   ses->datasizes = (int *) malloc((ses->cols+1) * sizeof (int));
   
@@ -452,7 +456,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_NAME, ses->msg,
                              MAXMSG - 1, &colnamelength, NULL);
     ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-        DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+        DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
@@ -462,12 +466,12 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH, 
                              NULL, 0, NULL, datasizes+i);
     ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-        DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+        DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
         DBFlushStmt(ses,ctx);
         return NULL;,
         ctx
         )
-    dblog2(ctx, "datasizes", datasizes[i]);
+//    dblog2(ctx, "datasizes", datasizes[i]);
   }
   return *columnCtx;
 }/*}}}*/
@@ -482,12 +486,12 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
   unsigned int size = MAXMSG;
   if (ses->stmthp == NULL) return DBEod;
   n = ses->datasizes[0];
-  dblog2(ctx, "DBGetRow n", n);
+//  dblog2(ctx, "DBGetRow n", n);
   if (!ses->rowp) 
   {
     for (i=1; i <= n; i++) size = MAX(ses->datasizes[i],size);
     ses->rowp = (unsigned char *) malloc(size+1+sizeof(SQLINTEGER) + MAXMSG);
-    dblog2(ctx, "DBGetRow size", size);
+//    dblog2(ctx, "DBGetRow size", size);
     if (!ses->rowp)
     {
       DBFlushStmt(ses, ctx);
@@ -509,17 +513,16 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
       size += ses->datasizes[i]+1;
     } */
   }
-  dblog1(ctx, "DBGetRow fetch");
+//  dblog1(ctx, "DBGetRow fetch");
   status = SQLFetch(ses->stmthp);
   if (status == SQL_NO_DATA)
   {
-  dblog1(ctx, "DBGetRow fetch NO DATA");
-    DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+//    dblog1(ctx, "DBGetRow fetch NO DATA");
     DBFlushStmt(ses,ctx);
     return DBEod;
   }
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
-        DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+        DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
         DBFlushStmt(ses,ctx);
         return DBError;,
         ctx
@@ -529,7 +532,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
   SQLRETURN stat;
   char smallbuf[10];
   SQLSMALLINT smallbufLength = 0;
-    dblog2(ctx, "before n", n);
+//    dblog2(ctx, "before n", n);
   for (i = 1; i <= n; i++)
   {
     status = SQLGetData(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR, 
@@ -541,14 +544,14 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
       case SQL_SUCCESS:
         *rowCtx = dump(*rowCtx, *((SQLINTEGER *) ses->rowp),
                        ses->rowp + sizeof(SQLINTEGER), 0);
-        if (*((SQLINTEGER *) ses->rowp) == SQL_NULL_DATA) 
-        {
-          dblog1(ctx, "data was NULL");
-        }
-        else
-        {
-          dblog1(ctx,ses->rowp+sizeof(SQLINTEGER));
-        }
+//        if (*((SQLINTEGER *) ses->rowp) == SQL_NULL_DATA) 
+//        {
+//          dblog1(ctx, "data was NULL");
+//        }
+//        else
+//        {
+//          dblog1(ctx,ses->rowp+sizeof(SQLINTEGER));
+//        }
         break;
       case SQL_SUCCESS_WITH_INFO:
         stat = SQLGetDiagField (SQL_HANDLE_STMT, ses->stmthp, 1, SQL_DIAG_SQLSTATE, 
@@ -562,14 +565,14 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
         // NO break on purpose;
       default:
         ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg, 
-            DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+            DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
             DBFlushStmt(ses,ctx);
             return DBError;,
             ctx)
         break;
     }
   }
-  dblog1(ctx, "DBGetRow DONE");
+//  dblog1(ctx, "DBGetRow DONE");
   return DBData;
 }/*}}}*/
 
@@ -580,7 +583,7 @@ DBODBCTransStart (oSes_t *ses, void *ctx)/*{{{*/
   if (ses == NULL || ses->mode == MANUAL_COMMIT) return DBError;
   status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, SQL_AUTOCOMMIT_OFF, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
       return DBError;,
       ctx)
   ses->mode = MANUAL_COMMIT;
@@ -600,7 +603,7 @@ DBODBCTransCommit (oSes_t *ses, void *ctx)/*{{{*/
   ses->mode = AUTO_COMMIT;
   status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER) SQL_AUTOCOMMIT_ON, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -620,7 +623,7 @@ DBODBCTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
   }
   status = SQLEndTran(SQL_HANDLE_DBC, ses->connhp, SQL_ROLLBACK);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -628,7 +631,7 @@ DBODBCTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
   ses->mode = AUTO_COMMIT;
   status = SQLSetConnectAttr(ses->connhp, SQL_ATTR_AUTOCOMMIT, (SQLPOINTER) SQL_AUTOCOMMIT_ON, 0);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 1);
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
       DBFlushStmt(ses,ctx);
       return DBError;,
       ctx
@@ -650,7 +653,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   }
   status = SQLDisconnect(ses->connhp);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, 
-      DBCheckNSetIfServerGoneBad(ses->db, status, ctx, 0);,
+      DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 0);,
       ctx)
   ses->db->number_of_sessions--;
   should_we_shutdown = ses->db->about_to_shutdown;
@@ -658,7 +661,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   struct freeDBC *dbcElement;
   if (ses->db->bugs.QfreeDBCs)
   {
-    dblog1(ctx,"Not freeing Connection handle");
+//    dblog1(ctx,"Not freeing Connection handle");
     dbcElement = (struct freeDBC *) malloc(sizeof(struct freeDBC));
     if (dbcElement) // Memory leak intended (we are already out of mem)
     {
@@ -669,7 +672,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   }
   else
   {
-    dblog1(ctx,"Freeing Connection handle");
+//    dblog1(ctx,"Freeing Connection handle");
     status = SQLFreeHandle(SQL_HANDLE_DBC, ses->connhp);
   }
   db = ses->db;
@@ -715,7 +718,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
   dbdata->depth--;
   db_conf *dbc = (db_conf *) apsmlGetDBData(dbid, rd);
   lock_thread(dbc->tlock);
-  dblog2(rd, "numberOfSess", db->number_of_sessions);
+//  dblog2(rd, "numberOfSess", db->number_of_sessions);
   if (dbdata->theOne)
   {
     ses->next = NULL;
@@ -792,7 +795,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
     removeDbData(dbid, rd);
     free(dbdata);
   }
-  dblog2(rd, "DBReturn numberOfSess", numberOfSess);
+//  dblog2(rd, "DBReturn numberOfSess", numberOfSess);
   return DBEod;
 }/*}}}*/
 
@@ -848,7 +851,7 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
     dblog1(rd, "Initializing database connection");
     dbc->dbspec = DBinitConn(rd, dbc->DSN, dbc->username, 
                                     dbc->password, dbid);
-    dblog1(rd, "Database initialization call done");
+//    dblog1(rd, "Database initialization call done");
   }
   if (!dbc->dbspec)
   {
@@ -950,7 +953,7 @@ apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
   int id;
   unsigned char *sd, *target;
   db_conf *cd;
-  dblog1(rd, "apsmlORASetVal");
+//  dblog1(rd, "apsmlORASetVal");
   cd = (db_conf *) apsmlGetDBData (i,rd);
   if (cd == NULL) 
   {
