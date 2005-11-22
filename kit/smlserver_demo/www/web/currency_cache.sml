@@ -7,8 +7,11 @@
   val s = getString ("s", "source currency")
   val t = getString ("t", "target currency")
 
-  val url = "http://uk.finance.yahoo.com/m5?s=" ^ 
-    Web.encodeUrl s ^ "&t=" ^ Web.encodeUrl t
+(*  val url = "http://uk.finance.yahoo.com/m5?s=" ^ 
+    Web.encodeUrl s ^ "&t=" ^ Web.encodeUrl t *)
+
+  val url = "http://uk.finance.yahoo.com/q?s=" ^
+    Web.encodeUrl s ^ Web.encodeUrl t ^ "=X"
 
   fun errPage () = 
     (Page.return "Currency Service Error"
@@ -22,8 +25,11 @@
 
   fun round r = Real.fmt (StringCvt.FIX(SOME 2)) r
 
+(*  val pattern = RegExp.fromString 
+    (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+") *)
+
   val pattern = RegExp.fromString 
-    (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
+    (".+Last Trade:" ^  ".+([0-9]+)\\.([0-9]+).+")
 
   val cache = C.get (C.String,C.Option C.Real,"currency",
                  C.TimeOut (SOME(Time.fromSeconds(5*60)), SOME(10000)))
