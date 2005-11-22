@@ -20,8 +20,11 @@ signature MLB_PROJECT =
                       | BASISbdec of Bid.bid * bexp
                       | OPENbdec of Bid.longbid list
 	              | ATBDECbdec of atbdec
-		      | MLBFILEbdec of string  (* path.mlb *)
+		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)		          
 		      | SCRIPTSbdec of atbdec list
+
+	(* scriptpath p is optional in MLBFILEbdec; only useful in the context of
+	 * SMLserver as SCRIPTSbdec. *)
 
 	val parse : string -> bdec 
 	(* [parse mlbfile] parses a basis file mlbfile. Prints an 

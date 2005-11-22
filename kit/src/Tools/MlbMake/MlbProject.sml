@@ -31,7 +31,7 @@ functor MlbProject () : MLB_PROJECT =
                       | BASISbdec of Bid.bid * bexp
                       | OPENbdec of Bid.longbid list
 	              | ATBDECbdec of atbdec
-		      | MLBFILEbdec of string  (* path.mlb *)
+		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)
 	              | SCRIPTSbdec of atbdec list
 
 	val depDir : string ref = ref "PM"
@@ -112,6 +112,13 @@ functor MlbProject () : MLB_PROJECT =
 				      orelse c = #"'") cs
 	      | _ => false
 
+	fun is_valid_path p =
+	    case String.fields (fn x => x = #"/") p of
+		f :: rest => (List.all (fn x => is_id x andalso not (is_mlbfile x orelse is_smlfile x)) rest
+			      andalso (is_id f andalso not (is_mlbfile f orelse is_smlfile f) 
+				       orelse f = ""))
+	      | _ => false
+
 	local
 	    fun is_keyword s = 
 		case s of
@@ -122,6 +129,7 @@ functor MlbProject () : MLB_PROJECT =
 		  | "end" => true
 		  | "bas" => true
 		  | "basis" => true
+		  | "scriptpath" => true
 		  | _ => false
 			
 	    fun is_fileext s =
@@ -356,8 +364,20 @@ functor MlbProject () : MLB_PROJECT =
 			 end
 	      | s :: ss =>
 			 if is_smlfile s then parse_bdec_more mlbfile (ATBDECbdec (expand mlbfile s),ss)
-			 else if is_mlbfile s then parse_bdec_more mlbfile (MLBFILEbdec (expand mlbfile s),ss)
-			      else NONE
+			 else 
+			     if is_mlbfile s then 
+				 let val (opt,ss) =
+				       (case ss of
+					    "scriptpath" :: ss =>
+						(case ss of
+						     p :: ss' => 
+							 if is_valid_path p then (SOME p,ss')
+							 else parse_error1 mlbfile ("invalid path following SCRIPTPATH keyword",ss)
+						   | _ => parse_error1 mlbfile ("missing path to follow SCRIPTPATH keyword",ss))
+					  | _ => (NONE,ss))
+				 in parse_bdec_more mlbfile (MLBFILEbdec (expand mlbfile s,opt),ss)
+				 end
+			     else NONE
 	      | nil => NONE
 
         fun fromFile (filename:string) =
@@ -550,7 +570,7 @@ functor MlbProject () : MLB_PROJECT =
 		    let val _ = maybeWriteDep smlfile (#modTimeMlbFileMax A) D
 		    in (DepEnv.singleFile smlfile, A)
 		    end
-	      | MLBFILEbdec mlbfile => 
+	      | MLBFILEbdec (mlbfile,_) => 
 	            let val (D,A) = dep_bdec_file A mlbfile
 		    in (DepEnv.dirModify (OS.Path.dir mlbfile, D), A)
 		    end
@@ -626,7 +646,7 @@ functor MlbProject () : MLB_PROJECT =
 		                        | _ => [(smlfile,mlbfile)]
 		    in (L,mlbs)
 		    end
-	      | MLBFILEbdec mlbfile => srcs_bdec_file T mlbs mlbfile
+	      | MLBFILEbdec (mlbfile,_) => srcs_bdec_file T mlbs mlbfile
 	      | SCRIPTSbdec smlfiles => 
 		    let val L = case T of SRCTYPE_ALLBUTSCRIPTS => nil
 		                        | _ => map (fn f => (f,mlbfile)) smlfiles
