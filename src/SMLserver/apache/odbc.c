@@ -483,7 +483,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
   unsigned int n;
   int i;
   SQLRETURN status;
-  unsigned int size = MAXMSG;
+  unsigned int size = MAXMSG; // 0; // <--- Hack to work with postgreSQL
   if (ses->stmthp == NULL) return DBEod;
   n = ses->datasizes[0];
 //  dblog2(ctx, "DBGetRow n", n);
@@ -1020,14 +1020,14 @@ apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
 }/*}}}*/
 
 
-typedef struct
+typedef struct/*{{{*/
 {
   Region rList1Addr;
   Region rStringAddr;
   Region rList2Addr;
   int *list1;
   int *list2;
-} cNames_t;
+} cNames_t;/*}}}*/
 
 static void *
 dumpCNames (void *ctx1, int pos, SQLSMALLINT length, unsigned char *data)/*{{{*/
