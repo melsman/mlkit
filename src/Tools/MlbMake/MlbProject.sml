@@ -4,6 +4,7 @@ functor MlbProject () : MLB_PROJECT =
 	    sig eqtype bid and longbid
 		val bid : string -> bid
 		val longbid : bid list -> longbid
+		val longopen : longbid -> bid * longbid option
 		val pp_bid : bid -> string
 		val pp_longbid : longbid -> string
 		val explode : longbid -> bid list
@@ -14,6 +15,9 @@ functor MlbProject () : MLB_PROJECT =
 	    fun bid s = s
 	    fun pp_bid s = s
 	    fun longbid (bids:bid list) : longbid = bids
+	    fun longopen nil = raise Fail "empty longbid"
+	      | longopen [bid] = (bid,NONE)
+	      | longopen (bid::longbid) = (bid, SOME longbid)
 	    fun pp_longbid nil = raise Fail "empty longbid"
 	      | pp_longbid [b] = pp_bid b
 	      | pp_longbid (b::bs) = pp_bid b ^ "." ^ pp_longbid bs
