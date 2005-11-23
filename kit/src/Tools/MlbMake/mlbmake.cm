@@ -6,4 +6,6 @@ is
   Confoptions.sml
   MLB_PROJECT.sml  
   MlbProject.sml
+  ULFILE.sml
+  UlFile.sml
   MlbMake.sml

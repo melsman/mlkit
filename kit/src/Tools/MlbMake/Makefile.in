@@ -19,7 +19,7 @@ all: ${BINDIR}/${TARGET}
 $(BINDIR)/$(TARGET): $(TARGET)
 	${INSTALL} $(TARGET) $(BINDIR)/$(TARGET)
 
-.PHONY: Confoptions.sml
+# .PHONY: Confoptions.sml
 Confoptions.sml: Confoptions.sml.in
 	cp -f Confoptions.sml.in Confoptions.sml
 	echo "    val etcdir = \"$(sysconfdir)\"" >> Confoptions.sml
