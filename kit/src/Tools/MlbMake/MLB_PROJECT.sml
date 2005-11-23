@@ -4,6 +4,7 @@ signature MLB_PROJECT =
 	    sig eqtype bid and longbid
 		val bid : string -> bid
 		val longbid : bid list -> longbid
+		val longopen : longbid -> bid * longbid option
 		val pp_bid : bid -> string
 		val pp_longbid : longbid -> string
 	    end
@@ -45,5 +46,4 @@ signature MLB_PROJECT =
 	 * .sig-files) mentioned in mlbfile, with the second components 
 	 * of the pairs being the hosting mlbfiles. The srctype specifies which
 	 * sources are included in the resulting list.  *)
-
     end
