@@ -16,7 +16,7 @@ structure MLKitPlugIn : MLB_PLUGIN =
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ MlbUtil.pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link {verbose} {target: string, lnkFiles: string list, lnkFilesScripts=nil, flags:string} : unit =
+	fun link {verbose} {mlbfile, target: string, lnkFiles: string list, lnkFilesScripts=nil, flags:string} : unit =
 	    MlbUtil.system verbose (mlkitexe() ^ " " ^ flags ^ " -o " ^ target ^ " -link " ^ MlbUtil.pp_list " " lnkFiles)
 	  | link _ _ = raise Fail "MLKitPlugIn: lnkFilesScripts not empty"
 
@@ -44,7 +44,7 @@ structure BarryPlugIn : MLB_PLUGIN =
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ MlbUtil.pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link {verbose} {target: string, lnkFiles: string list, lnkFilesScripts=nil, flags: string} : unit = ()
+	fun link {verbose} {mlbfile, target: string, lnkFiles: string list, lnkFilesScripts=nil, flags: string} : unit = ()
 	  | link _ _ = raise Fail "BarryPlugIn: lnkFilesScripts not empty"
 
 	fun mlbdir() = "MLB/Barry"

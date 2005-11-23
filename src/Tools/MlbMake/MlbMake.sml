@@ -34,7 +34,8 @@ signature MLB_PLUGIN =
 	     flags: string} 
 	 -> unit
      val link : {verbose:unit->bool} 
-	 -> {target: string, 
+	 -> {mlbfile: string,
+	     target: string, 
 	     lnkFiles: string list, 
 	     lnkFilesScripts: string list, 
 	     flags: string} 
@@ -91,9 +92,12 @@ functor MlbMake(structure P: MLB_PLUGIN
 		val verbose : unit->bool
 		val oneSrcFile : string option ref)
     : sig val build : {flags:string,mlbfile:string,target:string} -> unit 
+	  val mlb_to_ulfile : (string->string list) 
+	      -> {mlbfile:string} -> string
       end =
 struct
     structure MlbProject = MlbProject()
+    structure UlFile = UlFile(MlbProject)
 
     (* -------------------------------------------
      * Some operations on directories and files
@@ -383,6 +387,13 @@ struct
 	    val lnkFiles = map lnkFileFromSmlFile srcs_allbutscripts
 	    val lnkFilesScripts = map lnkFileFromSmlFile srcs_scriptsonly
 	in P.link {verbose=verbose} 
-	    {target=target,lnkFiles=lnkFiles,lnkFilesScripts=lnkFilesScripts,flags=flags}
+	    {mlbfile=mlbfile,target=target,lnkFiles=lnkFiles,lnkFilesScripts=lnkFilesScripts,flags=flags}
 	end handle Exit => () (*exit on purpose*)
+
+    fun mlb_to_ulfile (f:string->string list) 
+	{mlbfile:string} : string =
+	let val ul  = UlFile.from_bdec f (MlbProject.parse mlbfile)
+	in UlFile.pp_ul ul
+	end
+
 end (* functor MlbMake *)

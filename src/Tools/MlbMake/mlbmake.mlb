@@ -5,6 +5,8 @@ local
   in
     MLB_PROJECT.sml  
     MlbProject.sml
+    ULFILE.sml
+    UlFile.sml
   end
 in
   MlbMake.sml
