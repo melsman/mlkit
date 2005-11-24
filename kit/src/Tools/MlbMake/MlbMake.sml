@@ -87,17 +87,22 @@ structure MlbUtil =
  * -gc,-prof) could result in information being stored in different
  * subdirectories to MLB. *)
 
+signature MLB_MAKE =
+    sig
+	val build : {flags:string,mlbfile:string,target:string} -> unit 
+(*
+	val mlb_to_ulfile : (string->string list) 
+	    -> {mlbfile:string} -> string
+*)
+    end
 
-functor MlbMake(structure P: MLB_PLUGIN
+functor MlbMake(structure MlbProject : MLB_PROJECT
+                structure MlbPlugIn: MLB_PLUGIN
 		val verbose : unit->bool
 		val oneSrcFile : string option ref)
-    : sig val build : {flags:string,mlbfile:string,target:string} -> unit 
-	  val mlb_to_ulfile : (string->string list) 
-	      -> {mlbfile:string} -> string
-      end =
+    : MLB_MAKE =
 struct
-    structure MlbProject = MlbProject()
-    structure UlFile = UlFile(MlbProject)
+    structure P = MlbPlugIn
 
     (* -------------------------------------------
      * Some operations on directories and files
@@ -389,11 +394,5 @@ struct
 	in P.link {verbose=verbose} 
 	    {mlbfile=mlbfile,target=target,lnkFiles=lnkFiles,lnkFilesScripts=lnkFilesScripts,flags=flags}
 	end handle Exit => () (*exit on purpose*)
-
-    fun mlb_to_ulfile (f:string->string list) 
-	{mlbfile:string} : string =
-	let val ul  = UlFile.from_bdec f (MlbProject.parse mlbfile)
-	in UlFile.pp_ul ul
-	end
 
 end (* functor MlbMake *)

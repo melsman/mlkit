@@ -9,6 +9,22 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	    in print(s ^ "\n"); raise Fail s
 	    end
 
+	local
+	    fun change_dir dir : {cd_old : unit -> unit} =
+	        if dir = "" then {cd_old = fn()=>()}
+		else let val old_dir = OS.FileSys.getDir()
+			 val _ = OS.FileSys.chDir dir
+		     in {cd_old=fn()=>OS.FileSys.chDir old_dir}
+		     end handle OS.SysErr _ => die ("I cannot access directory " ^ dir)
+	in
+	    fun doCD dir (f : unit -> 'a) : 'a =
+		let val {cd_old} = change_dir dir
+		in (f() before cd_old())
+		    handle X => (cd_old(); raise X)
+		end
+	end
+	    
+
 	type bid = Bid.bid
 	type longbid = Bid.longbid
 	type bdec = Mlb.bdec
@@ -30,7 +46,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 
 	fun pp_ul0 ul : string list=
 	    case ul of
-		SEQul (ul1,ul2) => pp_ul0 ul1 @ ("\n" :: pp_ul0 ul2)
+		SEQul (ul1,ul2) => pp_ul0 ul1 @ pp_ul0 ul2
 	      | SCRIPTSul uo_loc_s => 
 		    ("Scripts\n" :: map pp_uo_loc uo_loc_s @ ["End\n"])
 	      | CODEFILESul uo_s =>
@@ -44,14 +60,24 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	type C = uofile list
 	datatype B = B0 of (Bid.bid * (B*S)) list
 	type M = (string * (B*S)option) list
-	structure M =
-	    struct	       
-		val empty : M = nil
-		fun insert (s,l,M:M):M = (s,l)::M
-		fun lookup s nil = NONE
-		  | lookup s ((x,l:(B*S)option)::xs) = if s=x then SOME l
-					   else lookup s xs
-	    end
+	 
+	fun norm(p,r) =
+	    if p = r orelse p="" then ""
+	    else let val {dir,file=arc} = OS.Path.splitDirFile p
+		     val tmp = norm(dir,r)
+		 in OS.Path.concat(tmp,arc)
+		 end
+
+	fun pathDownArrow(p,r) = 
+	    if OS.Path.isAbsolute p then p
+	    else OS.Path.mkCanonical (norm(p,r))
+	    handle _ => die ("pathDownArrow: p=" ^ p^ "; r=" ^ r)
+
+	fun pathUpArrow(p,p_pre) = 
+	    if OS.Path.isAbsolute p then p
+	    else OS.Path.mkCanonical(OS.Path.concat(p_pre,p))
+	    handle _ => die "pathUpArrow"
+
         structure S =
 	    struct
 		val empty : S = nil
@@ -60,6 +86,10 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		fun list (a:S):(uofile*location)list = rev a
 		fun extendLoc scriptpath S =
 		    map (fn (uo,loc) => (uo,OS.Path.concat(scriptpath,loc))) S
+		fun on f S =
+		    map (fn (uo,loc) => (f uo,loc)) S
+		fun upArrow(S,p) = 
+		    on (fn x => pathUpArrow(x,p)) S
 	    end
 	structure B =
 	    struct	       
@@ -82,6 +112,27 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		    B0(map (fn (bid,(Bsub,S)) => 
 			    (bid,(extendLoc scriptpath Bsub,S.extendLoc scriptpath S)))
 		       l)
+		fun on f (B0 l) =
+		    B0 (map (fn (bid,(Bsub,S)) => (bid,(on f Bsub,S.on f S))) l)
+		fun upArrow(B,p) = 
+		  on (fn x => pathUpArrow(x,p)) B
+	    end
+	structure M =
+	    struct	       
+		val empty : M = nil
+		fun insert (s,l,M:M):M = (s,l)::M
+		fun lookup s nil = NONE
+		  | lookup s ((x,l:(B*S)option)::xs) = if s=x then SOME l
+					   else lookup s xs
+		fun on f M =
+		    map (fn (s,l) =>
+			 (f s, Option.map (fn (B,S) => (B.on f B,S.on f S)) l)) 
+		    M
+					   
+		fun downArrow(M,p) = 
+		  on (fn x => pathDownArrow(x,p)) M
+		fun upArrow(M,p) = 
+		  on (fn x => pathUpArrow(x,p)) M
 	    end
         structure C =
 	    struct
@@ -90,6 +141,9 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		fun plus (C1,C2) = foldr insert C1 C2
 		fun fromList l = rev l
 		fun list a = rev a
+		fun on f C = map f C
+		fun upArrow(C,p) = 
+		    on (fn x => pathUpArrow(x,p)) C
 	    end
 
 	(* ulb:   M,B |- bdec => S,C,M',B' *)
@@ -112,12 +166,12 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		    in (S.empty,C,M.empty,B.insert((bid,(B1,S)),B.empty))
 		    end
 	      | Mlb.OPENbdec lbids =>
-		    let val (B,S) = foldl (fn (lbid,(B,S)) => 
-					   case B.lookupl lbid B of
-					       SOME (B',S') => (B.plus(B,B'),S.plus(S,S'))
-					     | NONE => die ("Failed to lookup " ^ Bid.pp_longbid lbid ^ " in B")) 
+		    let val (Ba,Sa) = foldl (fn (lbid,(Ba,Sa)) => 
+					     case B.lookupl lbid B of
+						 SOME (B',S') => (B.plus(Ba,B'),S.plus(Sa,S'))
+					       | NONE => die ("Failed to lookup " ^ Bid.pp_longbid lbid ^ " in B")) 
 			(B.empty,S.empty) lbids
-		    in (S,C.empty,M,B)
+		    in (Sa,C.empty,M,Ba)
 		    end
 	      | Mlb.ATBDECbdec smlfile =>
 		    let val uofiles = phi(smlfile)
@@ -145,7 +199,21 @@ functor UlFile (MlbProject : MLB_PROJECT)
 					    val B' = B.extendLoc scriptpath B
 					in (S',C,M,B')
 					end)
-	               | path => die "path in mlb-file not implemented")
+	               | dir => 
+			     let val phi = fn sml => 
+				 (map (fn uo => pathDownArrow(uo,dir))
+				  (phi (pathUpArrow(sml,dir))))
+(*
+				 val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n")
+				 val _ = print ("going into " ^ dir ^ "\n")
+*)
+				 val (S,C,M,B) = doCD dir (fn() => 
+				       ulb phi (M.downArrow (M,dir)) B 
+				       (Mlb.MLBFILEbdec (OS.Path.file mlbfile, SOME scriptpath)))
+(*				 val _ = print ("up again from " ^ dir ^ "\n") *)
+			     in (S.upArrow(S,dir),C.upArrow(C,dir),
+				 M.upArrow(M,dir),B.upArrow(B,dir))
+			     end)
 	      | Mlb.SCRIPTSbdec smlfiles =>
 		    let val S =
 			foldl (fn (smlfile,S) =>

@@ -55,6 +55,9 @@ signature MANAGER_OBJECTS =
 	val ulfile : absprjid -> string
 	(* [ulfile absprjid] returns the name of the ul-file corresponding to the
 	 * absprjid. *)
+	val target_files : modcode -> string list
+        (* [target_files mc] returns the paths to the emitted target_files 
+	 * for mc; dies if not all files are emitted. *)
 	val makeUlfile : string * modcode * modcode -> unit
 	(* [makeUlfile (ulfile,mc1,mc2)] stores a file ulfile containing the names
 	 * of uo-files in mc1, followed by the line ``scripts:'', followed
