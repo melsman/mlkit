@@ -59,7 +59,7 @@ typedef struct
   char *initscript;
   char *smlpath;
   int extendedtyping;
-  char ulFileName[APSML_PATH_MAX];
+  char *ulFileName;
   time_t timeStamp;
   HashTable scripts;
   hashtable_with_lock *cachetable;
