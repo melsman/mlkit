@@ -695,7 +695,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     structure UlFile = UlFile(MlbProject)
     fun mlb_to_ulfile (f:string->string list) 
 	{mlbfile:string} : string =
-	let val ul  = UlFile.from_bdec f (MlbProject.parse mlbfile)
+	let val ul  = UlFile.from_mlbfile f mlbfile
 	in UlFile.pp_ul ul
 	end
 
@@ -707,7 +707,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	    (case mlbfile_opt of
 		 SOME mlbfile =>
 		     let val s = mlb_to_ulfile getUoFiles {mlbfile=mlbfile}
-		     in writeAll(!run_file,s)
+			 val ulfile = !run_file
+		     in writeAll(ulfile,s) 
+		      ; print("[wrote file " ^ ulfile ^ "]\n")
 		     end
 	       | NONE => 
 		     let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
@@ -840,7 +842,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 				     if !Flags.SMLserver then
 					 let val {dir,file} = OS.Path.splitDirFile s
 					     val op ## = OS.Path.concat infix ##
-					 in dir ## "MLB" ## (OS.Path.base file ^ ".ul")
+					 in dir ## MO.mlbdir() ## (OS.Path.base file ^ ".ul")
 					 end
 				     else Flags.get_string_entry "output"
 				 in  

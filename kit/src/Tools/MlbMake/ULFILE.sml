@@ -1,9 +1,9 @@
 signature ULFILE =
     sig
-	type bdec
 	type location = string   (* request location (as seen in browser) *)
 	type uofile = string     (* path to uofile on file system *)
 	type smlfile = string
+	type mlbfile = string
 
 	datatype ul = SEQul of ul * ul
 	  | SCRIPTSul of (uofile * location) list
@@ -12,5 +12,5 @@ signature ULFILE =
 
 	val pp_ul : ul -> string
 
-	val from_bdec : (smlfile->uofile list) -> bdec -> ul
+	val from_mlbfile : (smlfile->uofile list) -> mlbfile -> ul
     end
