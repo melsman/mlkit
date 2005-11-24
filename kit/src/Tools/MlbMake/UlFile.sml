@@ -39,10 +39,10 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	  | EMPTYul
 
 	fun pp_uo_loc (uo,loc) : string =
-	    concat[" ", uo, " As ", loc, "\n"]
+	    concat[" ", OS.Path.mkCanonical uo, " As ", loc, "\n"]
 	    
 	fun pp_uo uo : string =
-	    concat[" ", uo, "\n"]
+	    concat[" ", OS.Path.mkCanonical uo, "\n"]
 
 	fun pp_ul0 ul : string list=
 	    case ul of
