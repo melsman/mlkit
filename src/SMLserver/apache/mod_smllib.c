@@ -11,6 +11,7 @@
 #include "apr_file_info.h"
 #include "apr_uri.h"
 #include "mod_sml.h"
+#include "plog.h"
 #include "../../Runtime/Exception.h"
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -1155,4 +1156,56 @@ apsml_GetMimeType(Region rAddr, String s, int rr)
       r->content_type = "";
     }
   return convertStringToML(rAddr, (char *) r->content_type);
-}*/
+
+
+}
+*/
+
+void
+plog1s(char *s, void *ctx)/*{{{*/
+{
+  request_data *rd = (request_data *) ctx;
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s", s);
+  return;
+}/*}}}*/
+
+void
+plog2s(char *s, char *t, void *ctx)/*{{{*/
+{
+  request_data *rd = (request_data *) ctx;
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s", s, t);
+  return;
+}/*}}}*/
+
+void
+plog3s(char *s, char *t, char *r, void *ctx)/*{{{*/
+{
+  request_data *rd = (request_data *) ctx;
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s", s, t, r);
+  return;
+}/*}}}*/
+
+void
+plog4s(char *s, char *t, char *r, char *v, void *ctx)/*{{{*/
+{
+  request_data *rd = (request_data *) ctx;
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s", s, t, r, v);
+  return;
+}/*}}}*/
+
+void
+plog5s(char *s, char *t, char *r, char *v, char *w, void *ctx)/*{{{*/
+{
+  request_data *rd = (request_data *) ctx;
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s%s", s, t, r, v, w);
+  return;
+}/*}}}*/
+
+void
+plog4s1i(char *s, char *t, char *r, char *v, unsigned long w, void *ctx)/*{{{*/
+{
+  request_data *rd = (request_data *) ctx;
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s%ld", s, t, r, v, w);
+  return;
+}/*}}}*/
+
