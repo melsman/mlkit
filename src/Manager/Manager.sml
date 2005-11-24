@@ -659,19 +659,61 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		    end
 *)
 
+     fun writeAll (f,s) =
+	 let val os = TextIO.openOut f
+	 in (TextIO.output(os,s);
+	     TextIO.closeOut os)
+	     handle X => (TextIO.closeOut os; raise X)
+	 end	       
+
     (* ------------------------------------------------
      * Link together lnk-files and generate executable
      * ------------------------------------------------ *)
+
+     fun objFileExt() = if MO.backend_name = "KAM" then ".uo" else ".o"	    
+     local
+	 fun fileFromSmlFile smlfile ext =
+	    let val {dir,file} = OS.Path.splitDirFile smlfile
+		infix ##
+		val op ## = OS.Path.concat
+	    in dir ## MO.mlbdir () ## (file ^ ext)
+	    end
+	 fun objFileFromSmlFile smlfile =
+	     fileFromSmlFile smlfile (objFileExt())
+	     
+	 fun lnkFileFromSmlFile smlfile = 
+	     objFileFromSmlFile smlfile ^ ".lnk"
+     in
+	 fun getUoFiles (smlfile:string) : string list =
+	     let val lnkfile = lnkFileFromSmlFile smlfile
+		 val modc = readLinkFiles [lnkfile]
+	     in ModCode.target_files modc
+	     end
+     end
+
+    structure MlbProject = MlbProject()
+    structure UlFile = UlFile(MlbProject)
+    fun mlb_to_ulfile (f:string->string list) 
+	{mlbfile:string} : string =
+	let val ul  = UlFile.from_bdec f (MlbProject.parse mlbfile)
+	in UlFile.pp_ul ul
+	end
 
     fun link_lnk_files (mlbfile_opt:string option) : unit =  
 	let val _ = chat "reading link files"
 	    val lnkFiles = Flags.get_stringlist_entry "link"
 	    val modc = readLinkFiles lnkFiles
 	in if !Flags.SMLserver then
-	    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
-		val modc_scripts = readLinkFiles lnkFilesScripts		
-	    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
-	    end
+	    (case mlbfile_opt of
+		 SOME mlbfile =>
+		     let val s = mlb_to_ulfile getUoFiles {mlbfile=mlbfile}
+		     in writeAll(!run_file,s)
+		     end
+	       | NONE => 
+		     let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
+			 val modc_scripts = readLinkFiles lnkFilesScripts		
+		     in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
+		     end)
 	   else 
 	       (chat "making executable";
 		ModCode.mk_exe_all_emitted(modc, nil, !run_file))
@@ -727,7 +769,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
 
 	    fun mlbdir() = MO.mlbdir()
-	    fun objFileExt() = if MO.backend_name = "KAM" then ".uo" else ".o"	    
+	    val objFileExt = objFileExt
 
 	    fun maybeSetRegionEffectVarCounter n =
 		let val b = region_profiling()
@@ -740,7 +782,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	end
 
 
-    structure MlbMake = MlbMake(structure P = MlbPlugIn
+    structure MlbMake = MlbMake(structure MlbProject = MlbProject
+                                structure MlbPlugIn = MlbPlugIn
 				val verbose = Flags.is_on0 "chat"
 				val oneSrcFile : string option ref = ref NONE)		   
 

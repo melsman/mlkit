@@ -398,7 +398,8 @@ functor MlbProject () : MLB_PROJECT =
 	    if not (has_ext(mlbfile, "mlb")) then 
 		error ("The basis file " ^ quot mlbfile ^ " does not have extension 'mlb'")	    
 	    else
-		let val ss = (lex o (drop_comments mlbfile) o explode o fromFile) mlbfile
+		let (* val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n") *)
+		    val ss = (lex o (drop_comments mlbfile) o explode o fromFile) mlbfile
 		    (* val _ = print_ss ss *)
 		in  case parse_bdec_opt mlbfile ss of
 		    SOME (bdec,nil) => bdec

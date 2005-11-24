@@ -1,6 +1,7 @@
 local
   $(SML_LIB)/basis/basis.mlb
   ../../../basis/binarymap.mlb
+in
   local Confoptions.sml
   in
     MLB_PROJECT.sml  
@@ -8,6 +9,5 @@ local
     ULFILE.sml
     UlFile.sml
   end
-in
   MlbMake.sml
 end

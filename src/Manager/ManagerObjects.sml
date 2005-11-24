@@ -406,6 +406,16 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	    else die "list_minus.prefix error1"
 	  | list_minus _ = die "list_minus.prefix error2"
 
+	fun target_files modc : string list =
+	    let fun files (mc,acc) =
+		case mc of 
+		    SEQ_MODC(mc1,mc2) => files(mc1,files(mc2,acc))
+		  | EMITTED_MODC(tfile,_) => tfile::acc
+		  | NOTEMITTED_MODC(target,li,filename) => die "target_files: file not emitted"
+		  | _ => acc  
+	    in files(modc,nil)
+	    end	    
+
 	fun makeUlfile (ulfile: string, modc, modc') : unit =
 	  if not(!Flags.SMLserver) then ()
 	  else
@@ -416,14 +426,8 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 			die "makeUlfile: not all emitted"
 		    else ()
 (*		val modc = emit (absprjid, modc') *)
-	      fun uofiles (mc,acc) =
-		case mc
-		  of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
-		   | EMITTED_MODC(tfile,_) => tfile::acc
-		   | NOTEMITTED_MODC(target,li,filename) => die "makeUlfile.uofiles.uo-file not emitted"
-		   | _ => acc  
-	      val uofiles_local = uofiles(modc,nil)
-	      val uofiles_local_and_scripts = uofiles(modc',nil)
+	      val uofiles_local = target_files modc
+	      val uofiles_local_and_scripts = target_files modc'
 	      val uofiles_scripts = list_minus(uofiles_local_and_scripts,uofiles_local)
 (*	      val uofiles_scripts = map OS.Path.file uofiles_scripts *)
 	      val _ = 
