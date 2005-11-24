@@ -883,7 +883,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ss = s;
   while (ss)
   {
-    printserver (ss);
+//    printserver (ss);
     ss = ss->next;
   }
 

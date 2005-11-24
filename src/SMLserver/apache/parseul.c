@@ -430,6 +430,7 @@ clearSmlMap(hashtable *t)/*{{{*/
   {
     hashApply(t, myfree);
     hashclose(t);
+    free(t);
   }
   return;
 }/*}}}*/
