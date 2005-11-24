@@ -67,6 +67,8 @@ val test7 = check'(fn _ => length e = 203);
 val _ = prtest("test7", test7);
 val test8 = check'(fn _ => length (concat []) = 0);
 val _ = prtest("test8", test8);
+
+(*
 val f = extract (e, 100, SOME 3);
 
 val test9 = check'(fn _ => f = b);
@@ -97,6 +99,7 @@ val _ = prtest("test9h", test9h);
 val test9i = check'(fn _ => fromList [] = extract(e, length e, SOME 0)
 		    andalso fromList [] = extract(e, length e, NONE));
 val _ = prtest("test9i", test9i);
+*)
 fun chkiter iter f vec reslast =
     check'(fn _ =>
 	   let val last = ref ~1
@@ -113,8 +116,9 @@ val test10a =
     chkiter map (fn x => 2*x) b (fromList [88,110,132], 66)
 val _ = prtest("test10a", test10a);
 val test11a = 
-    chkiteri mapi (fn x => 2*x) (b, 0, NONE) (fromList [88,110,132], 2)
+    chkiteri mapi (fn x => 2*x) (b) (fromList [88,110,132], 2)
 val _ = prtest("test11a", test11a);
+(*
 val test11b = 
     chkiteri mapi (fn x => 2*x) (b, 1, NONE) (fromList [110,132], 2)
 val _ = prtest("test11b", test11b);
@@ -143,6 +147,7 @@ val test11i =
     (mapi #2 (b, 4, NONE) seq "WRONG") 
     handle Subscript => "OK" | _ => "WRONG";
 val _ = prtest("test11i", test11i);
-end;
+*)
+end
 
 

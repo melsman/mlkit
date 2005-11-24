@@ -1,7 +1,7 @@
-(*VECTOR.sml*)
+(* SML Basis Library April 12, 2004 *)
 
 signature VECTOR = sig
-  eqtype 'a vector(*TODO 21/10/1997 16:06. tho.: = 'a vector*)
+  type 'a vector = 'a vector
 
   val maxLen   : int
 
@@ -10,119 +10,145 @@ signature VECTOR = sig
 
   val length   : 'a vector -> int
   val sub      : 'a vector * int -> 'a
-  val extract  : 'a vector * int * int option -> 'a vector
+  val update   : 'a vector * int * 'a -> 'a vector
   val concat   : 'a vector list -> 'a vector
 
+  val appi     : (int * 'a -> unit) -> 'a vector -> unit
   val app      : ('a -> unit) -> 'a vector -> unit
-  val appi     : (int * 'a -> unit) -> 'a vector * int * int option -> unit
+
+  val mapi     : (int * 'a -> 'b) -> 'a vector -> 'b vector
+  val map      : ('a -> 'b) -> 'a vector -> 'b vector
+
+  val foldli   : (int * 'a * 'b -> 'b) -> 'b -> 'a vector -> 'b
+  val foldri   : (int * 'a * 'b -> 'b) -> 'b -> 'a vector -> 'b
 
   val foldl    : ('a * 'b -> 'b) -> 'b -> 'a vector -> 'b
-  val foldli   : (int * 'a * 'b -> 'b) -> 'b -> 'a vector*int*int option -> 'b
-
   val foldr    : ('a * 'b -> 'b) -> 'b -> 'a vector -> 'b
-  val foldri   : (int * 'a * 'b -> 'b) -> 'b -> 'a vector*int*int option -> 'b
 
-  val map      : ('a -> 'b) -> 'a vector -> 'b vector
-  val mapi     : (int * 'a -> 'b) -> 'a vector * int * int option -> 'b vector
+  val findi    : (int * 'a -> bool) -> 'a vector -> (int * 'a) option
+  val find     : ('a -> bool) -> 'a vector -> 'a option
+  val exists   : ('a -> bool) -> 'a vector -> bool
+  val all      : ('a -> bool) -> 'a vector -> bool
+  val collate  : ('a * 'a -> order) -> 'a vector * 'a vector -> order 
+end
 
-end (*signature VECTOR*)
+(*
+Description
 
-(* Type [ty vector] is the type of one-dimensional, immutable,
-   zero-based constant-time-access vectors with elements of type ty.
-   Type ty vector admits equality if ty does.  Vectors v1 and v2
-   are equal if they have the same length and their elements are equal.
+val maxLen : int
 
-   [maxLen] is the maximal number of elements in a vector.
+    The maximum length of vectors supported by this
+    implementation. Attempts to create larger vectors will result in
+    the Size exception being raised.
 
-   [fromList xs] returns a vector whose elements are those of xs.
-   Raises Size if length xs > maxLen.
+fromList l
 
-   [tabulate(n, f)] returns a vector of length n whose elements
-   are f 0, f 1, ..., f (n-1), created from left to right.  Raises
-   Size if n<0 or n>maxLen.
+    creates a new vector from l, whose length is length l and with the
+    i(th) element of l used as the i(th) element of the vector. If the
+    length of the list is greater than maxLen, then the Size exception
+    is raised.
 
-   [length v] returns the number of elements in v.
+tabulate (n, f)
 
-   [sub(v, i)] returns the i'th element of v, counting from 0.
-   Raises Subscript if i<0 or i>=length v.
+    creates a vector of n elements, where the elements are defined in
+    order of increasing index by applying f to the element's
+    index. This is equivalent to the expression:
 
-   [extract(v, i, NONE)] returns a vector of the elements v[i..length v-1]
-   of v.  Raises Subscript if i<0 or i>length v.
+        fromList (List.tabulate (n, f))
 
-   [extract(v, i, SOME n)] returns a vector of the elements v[i..i+n-1]
-   of v.  Raises Subscript if i<0 or n<0 or i+n>length v.
+    If n < 0 or maxLen < n, then the Size exception is raised.
 
-   [concat vs] returns a vector which is the concatenation from left
-   to right og the vectors in vs.  Raises Size if the sum of the
-   sizes of the vectors in vs is larger than maxLen.
+length vec
 
-   [foldl f e v] folds function f over v from left to right.  That is,
-   computes f(v[len-1], f(v[len-2], ..., f(v[1], f(v[0], e)) ...)),
-   where len is the length of v.
+    returns |vec|, the length of the vector vec.
 
-   [foldr f e v] folds function f over v from right to left.  That is,
-   computes f(v[0], f(v[1], ..., f(v[len-2], f(v[len-1], e)) ...)),
-   where len is the length of v.
+sub (vec, i)
 
-   [app f v] applies f to v[j] for j=0,1,...,length v-1.
+    returns the i(th) element of the vector vec. If i < 0 or |vec| <=
+    i, then the Subscript exception is raised.
 
-   [map f v] applies f to v[j] for j=0,1,...,length v-1 and returns a 
-   new vector containing the results.
-   
+update (vec, i, x)
 
-   The following iterators generalize the above ones in two ways:
+    returns a new vector, identical to vec, except the i(th) element
+    of vec is set to x. If i < 0 or |vec| <= i, then the Subscript
+    exception is raised.
 
-    * the index j is also being passed to the function being iterated;
-    * the iterators work on a slice (subvector) of a vector.
+concat l
 
-   The slice (v, i, SOME n) denotes the subvector v[i..i+n-1].  That is,
-   v[i] is the first element of the slice, and n is the length of the
-   slice.  Valid only if 0 <= i <= i+n <= length v.
+    returns the vector that is the concatenation of the vectors in the
+    list l. If the total length of these vectors exceeds maxLen, then
+    the Size exception is raised.
 
-   The slice (v, i, NONE) denotes the subvector v[i..length v-1].  That
-   is, the slice denotes the suffix of the vector starting at i.  Valid
-   only if 0 <= i <= length v.  Equivalent to (v, i, SOME(length v - i)).
+appi f vec
+app f vec
 
-       slice             meaning 
-       ----------------------------------------------------------
-       (v, 0, NONE)      the whole vector             v[0..len-1]   
-       (v, 0, SOME n)    a left subvector (prefix)    v[0..n-1]
-       (v, i, NONE)      a right subvector (suffix)   v[i..len-1]
-       (v, i, SOME n)    a general slice              v[i..i+n-1] 
+    These apply the function f to the elements of a vector in left to
+    right order (i.e., in order of increasing indices). The more
+    general appi function supplies both the element and the element's
+    index to the function f. These are respectively equivalent to:
 
-   [foldli f e (v, i, SOME n)] folds function f over the subvector
-   v[i..i+n-1] from left to right.  That is, computes 
-   f(i+n-1, v[i+n-1], f(..., f(i+1, v[i+1], f(i, v[i], e)) ...)).  
-   Raises Subscript if i<0 or n<0 or i+n > length v.
+      List.app f (foldri (fn (i,a,l) => (i,a)::l) [] vec)
+      List.app f (foldr (fn (a,l) => a::l) [] vec)
+      
+mapi f vec
+map f vec
 
-   [foldli f e (v, i, NONE)] folds function f over the subvector
-   v[i..len-1] from left to right, where len =  length v.  That is, 
-   computes f(len-1, v[len-1], f(..., f(i+1, v[i+1], f(i, v[i], e)) ...)).  
-   Raises Subscript if i<0 or i > length v.
+    These functions produce new vectors by mapping the function f from
+    left to right over the argument vector. The more general form mapi
+    supplies f with the vector index of an element along with the
+    element. These are respectively equivalent to:
 
-   [foldri f e (v, i, SOME n)] folds function f over the subvector
-   v[i..i+n-1] from right to left.  That is, computes 
-   f(i, v[i], f(i+1, v[i+1], ..., f(i+n-1, v[i+n-1], e) ...)).
-   Raises Subscript if i<0 or n<0 or i+n > length v.
+      fromList (List.map f (foldri (fn (i,a,l) => (i,a)::l) [] vec))
+      fromList (List.map f (foldr (fn (a,l) => a::l) [] vec))
+      
+foldli f init vec
+foldri f init vec
+foldl f init vec
+foldr f init vec
 
-   [foldri f e (v, i, NONE)] folds function f over the subvector
-   v[i..len-1] from right to left, where len = length v.  That is, 
-   computes f(i, v[i], f(i+1, v[i+1], ..., f(len-1, v[len-1], e) ...)).
-   Raises Subscript if i<0 or i > length v.
+    These fold the function f over all the elements of a vector, using
+    the value init as the initial value. The functions foldli and
+    foldl apply the function f from left to right (increasing
+    indices), while the functions foldri and foldr work from right to
+    left (decreasing indices). The more general functions foldli and
+    foldri supply both the element and the element's index to the
+    function f.
 
-   [appi f (v, i, SOME n)] applies f to successive pairs (j, v[j]) for
-   j=i,i+1,...,i+n-1.  Raises Subscript if i<0 or n<0 or i+n > length v.
+    Refer to the MONO_ARRAY manual pages for reference implementations
+    of the indexed versions.
 
-   [appi f (v, i, NONE)] applies f to successive pairs (j, v[j]) for
-   j=i,i+1,...,len-1, where len = length v.  Raises Subscript if i<0
-   or i > length v.
+    The last two expressions are respectively equivalent to:
 
-   [mapi f (v, i, SOME n)] applies f to successive pairs (j, v[j]) for 
-   j=i,i+1,...,i+n-1 and returns a new vector (of length n) containing 
-   the results.  Raises Subscript if i<0 or n<0 or i+n > length v.
+      foldli (fn (_, a, x) => f(a, x)) init vec
+      foldri (fn (_, a, x) => f(a, x)) init vec
+      
+findi f vec
+find f vec
 
-   [mapi f (v, i, NONE)] applies f to successive pairs (j, v[j]) for 
-   j=i,i+1,...,len-1, where len = length v, and returns a new vector
-   (of length len-i) containing the results.  Raises Subscript if i<0
-   or i > length v.
+    These apply f to each element of the vector vec, from left to
+    right (i.e., increasing indices), until a true value is
+    returned. If this occurs, the functions return the element;
+    otherwise, they return NONE. The more general version findi also
+    supplies f with the vector index of the element and, upon finding
+    an entry satisfying the predicate, returns that index with the
+    element.
+
+exists f vec
+
+    applies f to each element x of the vector vec, from left to right
+    (i.e., increasing indices), until f(x) evaluates to true; it
+    returns true if such an x exists and false otherwise.
+
+all f vec
+
+    applies f to each element x of the vector vec, from left to right
+    (i.e., increasing indices), until f(x) evaluates to false; it
+    returns false if such an x exists and true otherwise. It is
+    equivalent to not(exists (not o f ) vec)).
+
+collate f (v1, v2)
+
+    performs lexicographic comparison of the two vectors using the
+    given ordering f on elements.
+
 *)

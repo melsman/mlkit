@@ -1,158 +1,171 @@
-(*ARRAY.sml*)
+(* Standard ML Basis Library April 12, 2004 *)
 
 signature ARRAY = sig
 
-  eqtype 'a array
+  type 'a array = 'a array
+  type 'a vector = 'a vector
 
   val maxLen   : int
-
-  val array    : int * '_a -> '_a array
-  val tabulate : int * (int -> '_a) -> '_a array
+  val array    : int * 'a -> 'a array
   val fromList : '_a list -> '_a array
+  val tabulate : int * (int -> 'a) -> 'a array
 
   val length  : 'a array -> int
   val sub     : 'a array * int -> 'a
   val update  : 'a array * int * 'a  -> unit
-  val extract : 'a array * int * int option -> 'a Vector.vector
+  val vector  : 'a array -> 'a vector
 
-  val copy    : {src: 'a array,  si: int, len: int option,
-		 dst: 'a array, di: int} -> unit
-  val copyVec : {src: 'a Vector.vector, si: int, len: int option, 
-		 dst: 'a array, di: int} -> unit
+  val copy    : {src: 'a array, dst: 'a array, di: int} -> unit
+  val copyVec : {src: 'a vector, dst: 'a array, di: int} -> unit
 
+  val appi    : (int * 'a -> unit) -> 'a array -> unit
   val app     : ('a -> unit) -> 'a array -> unit
-  val foldl   : ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
-  val foldr   : ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
+
+  val modifyi : (int * 'a -> 'a) -> 'a array -> unit
   val modify  : ('a -> 'a) -> 'a array -> unit
 
-  val appi    : (int * 'a -> unit) -> 'a array * int * int option -> unit
-  val foldli  : (int * 'a * 'b -> 'b) -> 'b -> 'a array * int * int option -> 'b
-  val foldri  : (int * 'a * 'b -> 'b) -> 'b -> 'a array * int * int option -> 'b
-  val modifyi : (int * 'a -> 'a) -> 'a array * int * int option -> unit
-end (*signature ARRAY*)
+  val foldl   : ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
+  val foldr   : ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
 
-(* Type [ty array] is the type of one-dimensional, mutable, zero-based
-   constant-time-access arrays with elements of type ty.  Type ty
-   array admits equality even if ty does not.  Arrays a1 and a2 are
-   equal if both were created by the same call to a primitive (array,
-   tabulate, fromList).
+  val foldli  : (int * 'a * 'b -> 'b) -> 'b -> 'a array -> 'b
+  val foldri  : (int * 'a * 'b -> 'b) -> 'b -> 'a array -> 'b
 
-   Some functions work on a *slice* of an array:
+  val findi   : (int * 'a -> bool) -> 'a array -> (int * 'a) option
+  val find    : ('a -> bool) -> 'a array -> 'a option
+  val exists  : ('a -> bool) -> 'a array -> bool
+  val all     : ('a -> bool) -> 'a array -> bool
+  val collate : ('a * 'a -> order) -> 'a array * 'a array -> order
+end
 
-   The slice (a, i, SOME n) denotes the subarray a[i..i+n-1].  That is,
-   a[i] is the first element of the slice, and n is the length of the
-   slice.  Valid only if 0 <= i <= i+n <= length a.
+(* 
+Description
 
-   The slice (a, i, NONE) denotes the subarray a[i..length a-1].  That
-   is, the slice denotes the suffix of the array starting at i.  Valid
-   only if 0 <= i <= length a.  Equivalent to (a, i, SOME(length a - i)).
+val maxLen : int
 
-       slice             meaning 
-       ----------------------------------------------------------
-       (a, 0, NONE)      the whole array              a[0..len-1]   
-       (a, 0, SOME n)    a left subarray (prefix)     a[0..n-1]
-       (a, i, NONE)      a right subarray (suffix)    a[i..len-1]
-       (a, i, SOME n)    a general slice              a[i..i+n-1] 
+    The maximum length of arrays supported by this
+    implementation. Attempts to create larger arrays will result in
+    the Size exception being raised.
 
-   [maxLen] is the maximal number of elements in an array.
+array (n, init)
 
-   [array(n, x)] returns a new array of length n whose elements are all x.
-   Raises Size if n<0 or n>maxLen.
+    creates a new array of length n; each element is initialized to
+    the value init. If n < 0 or maxLen < n, then the Size exception is
+    raised.
 
-   [tabulate(n, f)] returns a new array of length n whose elements
-   are f 0, f 1, ..., f (n-1), created from left to right.  Raises
-   Size if n<0 or n>maxLen.
+fromList l
 
-   [fromList xs] returns an array whose elements are those of xs.
-   Raises Size if length xs > maxLen.
+    creates a new array from l. The length of the array is length l
+    and the i(th) element of the array is the i(th) element of the the
+    list. If the length of the list is greater than maxLen, then the
+    Size exception is raised.
 
-   [array0] is a zero-length array.
+tabulate (n, f)
 
-   [length a] returns the number of elements in a.
+    creates an array of n elements, where the elements are defined in
+    order of increasing index by applying f to the element's
+    index. This is equivalent to the expression:
 
-   [sub(a, i)] returns the i'th element of a, counting from 0.  
-   Raises Subscript if i<0 or i>=length a.  To make `sub' infix, use
-   the declaration 
-                             infix 9 sub
+         fromList (List.tabulate (n, f))
 
-   [update(a, i, x)] destructively replaces the i'th element of a by x.
-   Raises Subscript if i<0 or i>=length a.
+    If n < 0 or maxLen < n, then the Size exception is raised.
 
-   [extract(a, i, NONE)] returns a vector of the elements a[i..length a-1] 
-   of a.  Raises Subscript if i<0 or i>length a.
+length arr
 
-   [extract(a, i, SOME len)] returns a vector of the elements a[i..i+len-1] 
-   of a.  Raises Subscript if i<0 or len<0 or i+len>length a or
-   len>Vector.maxLen.
+    returns |arr|, the length of the array arr.
 
-   [copy{src, si, len, dst, di}] destructively copies the slice
-   (src, si, len) to dst, starting at index di.  More precisely:
-   If len=NONE and n=length src, it copies src[si..n-1] to dst[di..di+n-si].
-   If len=SOME k, it copies src[si..si+k-1] to dst[di..di+k-1].  
-   Works also if src and dst are the same and the segments overlap.
-   Raises Subscript if si < 0 or di < 0, 
-   or if len=NONE and di + length src - si > length dst,
-   or if len=SOME k and k < 0 or si + k > length src or di + k > length dst.
+sub (arr, i)
 
-   [copyVec{src, si, len, dst, di}] destructively copies the slice
-   (src, si, len) to dst, starting at index di.  More precisely:
-   If len=NONE and n=length src, it copies src[si..n-1] to dst[di..di+n-si].
-   If len=SOME k, it copies src[si..si+k-1] to dst[di..di+k-1].  
-   Works also if src and dst are the same and the segments overlap.
-   Raises Subscript if si < 0 or di < 0, 
-   or if len=NONE and di + length src - si > length dst,
-   or if len=SOME k and k < 0 or si + k > length src or di + k > length dst.
+    returns the i(th) element of the array arr. If i < 0 or |arr| <=
+    i, then the Subscript exception is raised.
 
-   [foldl f e a] folds function f over a from left to right.  That is,
-   computes f(a[len-1], f(a[len-2], ..., f(a[1], f(a[0], e)) ...)),
-   where len is the length of a.
+update (arr, i, x)
 
-   [foldr f e a] folds function f over a from right to left.  That is,
-   computes f(a[0], f(a[1], ..., f(a[len-2], f(a[len-1], e)) ...)),
-   where len is the length of a.
+    sets the i(th) element of the array arr to x. If i < 0 or |arr| <=
+    i, then the Subscript exception is raised.
 
-   [app f a] applies f to a[j] for j=0,1,...,length a-1.
+vector arr
 
-   [modify f a] applies f to a[j] and updates a[j] with the result
-   f(a[j]) for j=0,1,...,length a-1. 
+    generates a vector from arr. Specifically, the result is
+    equivalent to
 
-   The following iterators generalize the above ones in two ways:
+          Vector.tabulate (length arr, fn i => sub (arr, i))
 
-    . the index j is also being passed to the function being iterated;
-    . the iterators work on a slice (subarray) of an array.
+copy {src, dst, di}
+copyVec {src, dst, di}
 
-   [foldli f e (a, i, SOME n)] folds function f over the subarray
-   a[i..i+n-1] from left to right.  That is, computes 
-   f(i+n-1, a[i+n-1], f(..., f(i+1, a[i+1], f(i, a[i], e)) ...)).  
-   Raises Subscript if i<0 or n<0 or i+n > length a.
+    These functions copy the entire array or vector src into the array
+    dst, with the i(th) element in src, for 0 <= i < |src|, being
+    copied to position di + i in the destination array. If di < 0 or
+    if |dst| < di+|src|, then the Subscript exception is raised.
 
-   [foldli f e (a, i, NONE)] folds function f over the subarray
-   a[i..len-1] from left to right, where len =  length a.  That is, 
-   computes f(len-1, a[len-1], f(..., f(i+1, a[i+1], f(i, a[i], e)) ...)).  
-   Raises Subscript if i<0 or i > length a.
+        Implementation note:
 
-   [foldri f e (a, i, SOME n)] folds function f over the subarray
-   a[i..i+n-1] from right to left.  That is, computes 
-   f(i, a[i], f(i+1, a[i+1], ..., f(i+n-1, a[i+n-1], e) ...)).
-   Raises Subscript if i<0 or n<0 or i+n > length a.
+        In copy, if dst and src are equal, we must have di = 0 to
+        avoid an exception, and copy is then the identity.
 
-   [foldri f e (a, i, NONE)] folds function f over the subarray
-   a[i..len-1] from right to left, where len = length a.  That is, 
-   computes f(i, a[i], f(i+1, a[i+1], ..., f(len-1, a[len-1], e) ...)).
-   Raises Subscript if i<0 or i > length a.
+appi f arr
+app f arr
 
-   [appi f (a, i, SOME n)] applies f to successive pairs (j, a[j]) for
-   j=i,i+1,...,i+n-1.  Raises Subscript if i<0 or n<0 or i+n > length a.
+    These apply the function f to the elements of the array arr in
+    order of increasing indices. The more general form appi supplies f
+    with the array index of the corresponding element.
 
-   [appi f (a, i, NONE)] applies f to successive pairs (j, a[j]) for
-   j=i,i+1,...,len-1, where len = length a.  Raises Subscript if i<0
-   or i > length a.
+modifyi f arr
+modify f arr
 
-   [modifyi f (a, i, SOME n)] applies f to (j, a[j]) and updates a[j]
-   with the result f(j, a[j]) for j=i,i+1,...,i+n-1.  Raises Subscript
-   if i<0 or n<0 or i+n > length a.
+    These apply the function f to the elements of the array arr in
+    order of increasing indices, and replace each element with the
+    result. The more general modifyi supplies f with the array index
+    of the corresponding element. The expression modify f arr is
+    equivalent to modifyi (f o #2) arr.
 
-   [modifyi f (a, i, NONE)] applies f to (j, a[j]) and updates a[j]
-   with the result f(j, a[j]) for j=i,i+1,...,len-1.  Raises Subscript
-   if i<0 or i > length a.
+foldli f init arr
+foldri f init arr
+foldl f init arr
+foldr f init arr
+
+    These fold the function f over all the elements of the array arr,
+    using the value init as the initial value. The functions foldli
+    and foldl apply the function f from left to right (increasing
+    indices), while the functions foldri and foldr work from right to
+    left (decreasing indices). The more general functions foldli and
+    foldri supply f with the array index of the corresponding element.
+
+    Refer to the MONO_ARRAY manual pages for reference implementations
+    of the indexed versions.
+
+    The expression foldl f init arr is equivalent to:
+
+           foldli (fn (_, a, x) => f(a, x)) init arr
+
+    The analogous equivalences hold for foldri and foldr.
+
+findi f arr
+find f arr
+
+    These functions apply f to each element of the array arr, from
+    left to right (i.e., increasing indices), until a true value is
+    returned. If this occurs, the functions return the element;
+    otherwise, they return NONE. The more general version findi also
+    supplies f with the array index of the element and, upon finding
+    an entry satisfying the predicate, returns that index with the
+    element.
+
+exists f arr
+
+    applies f to each element x of the array arr, from left to right
+    (i.e., increasing indices), until f x evaluates to true; it
+    returns true if such an x exists and false otherwise.
+
+all f arr
+
+    applies f to each element x of the array arr, from left to right
+    (i.e., increasing indices), until f x evaluates to false; it
+    returns false if such an x exists and true otherwise. It is
+    equivalent to not(exists (not o f) arr)).
+
+collate f (a1, a2)
+
+    performs lexicographic comparison of the two arrays using the
+    given ordering f on elements.
 *)

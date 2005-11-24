@@ -5,6 +5,9 @@
      update0: update element in table
      table0: construct new table
    The table type is defined in Runtime/Table.h.
+
+   Parts of the implementation is from Peter Sestoft's implementation
+   in Moscow ML.
 *)
 
 functor WordTable (eqtype 'a table) =
@@ -53,7 +56,7 @@ struct
 
   (* vector n returns an uninitialised vector with n elements.
    * Raise Size if n > maxLen. *)
-  fun vector n = (check_size n; vector0 n)
+  fun vectorv n = (check_size n; vector0 n)
 
   (* array n gives an initialised array with n elements. *)
   (* Raise Size if n > maxLen.                           *)
@@ -76,82 +79,43 @@ struct
     in init (table n, f, 0) 
     end
 
-  (* is a table slice valid? *)
-  fun check_slice slice = 
-    let fun valid (a, i, SOME n) = 0 <= i andalso i <= i+n andalso i+n <= length a
-	  | valid (a, i, NONE)   = 0 <= i andalso i <=                    length a
-    in
-      if valid slice then () else raise Subscript
+  fun tabulatev (n, f : int -> 'a) =
+    let fun init (t, f, i) = if i >= n then t
+			     else (update_vector0 (t, i, f i); init (t, f, i+1))
+    in init (vector0 n, f, 0) 
     end
 
-  (* extract always returns an vector *)
-  fun extract (t : 'a table, i, n_opt) : 'a vector =
-    let 
-      val l = length t
-      val n = (case n_opt of NONE => l - i | SOME n => n)
-      val v : 'a vector = 
-	if i < 0 orelse n < 0 orelse i+n > l then raise Subscript
-	else vector0 n
-      fun copy j =
-	if j < n then (update_vector0 (v, j, sub0 (t, (i+j))); copy (j+1))
-	else v
+  fun vector a = tabulatev (length a, fn i => sub0(a,i))
+
+  fun updatev (t, i, x) =
+      tabulate (length t,fn j => if i=j then x else sub0(t,j))
+
+  fun copy {src=a1: 'a table, dst=a2: 'a table, di=i2} =
+    let val n = length a1
     in
-      copy 0
+	if i2<0 orelse i2+n > length a2 then 
+	    raise Subscript
+	else		(* copy from high to low *)
+	    let fun hi2lo j = 
+		    if j >= 0 then
+			(update0(a2, i2+j,sub0(a1,j)); hi2lo (j-1))
+		    else ()
+	    in hi2lo (n-1) 
+	    end
     end
 
-  (* The source and destination array may be the same. We *)
-  (* copy from high index to low index if si < di and     *)
-  (* from low index to high index if di < si.             *)     
-  fun copy {src, si, len, dst, di} =
-    let 
-      val n_dst = length dst
-      val n_src = length src
-      val n = (case len of NONE => length src - si | SOME n => n)
+  fun copyVec {src=v: 'a vector, dst=a: 'a table, di=i2} =
+    let val n = length_vector v
     in
-      if n < 0 orelse si < 0 orelse si+n > n_src
-	orelse di < 0 orelse di+n > n_dst then 
-	raise Subscript
-      else 
-	if si < di then	(* copy from high to low *)
-	  let
-	    fun hdilo j =
-	      if j >= 0 then 
-		(update0 (dst, di+j, sub0 (src, si+j)); hdilo (j-1))
-	      else ()
-	  in 
-	    hdilo (n-1)
-	  end
-	else (* si >= di, copy from low to high *)
-	  let 
-	    fun lo2hi j =
-	      if j < n then
-		(update0 (dst, di+j, sub0 (src, si+j)); lo2hi (j+1))
-	      else ()
-	  in 
-	    lo2hi 0
-	  end
-    end
-
-  (* src and dst are never the same because src is an vector 
-   * and dst is an array *)
-  fun copyVec {src : 'a vector, si, len, dst : 'a table, di} : unit =
-    let 
-      val n_dst = length dst
-      val n_src = length_vector src
-      val n = case len of NONE => n_src - si | SOME k => k
-    in
-      if n < 0 orelse si < 0 orelse si+n > n_src
-	orelse di < 0 orelse di+n > n_dst then 
-	raise Subscript
-      else
-	let 
-	  fun lo2hi j =
-	    if j < n then
-	      (update0 (dst, di+j, sub_vector0 (src, si+j)); lo2hi (j+1))
-	    else ()
-	in 
-	  lo2hi 0
-	end
+	if i2<0 orelse i2+n > length a then 
+	    raise Subscript
+	else 
+	    let fun lo2hi j = 
+		    if j < n then
+			(update0(a,i2+j,sub_vector0(v,j)); lo2hi (j+1))
+		    else ()
+	    in lo2hi 0 
+	    end
     end
 
   (* apply f on the elements from left to right. *)
@@ -163,33 +127,38 @@ struct
     in lr 0
     end
 
-  (* sliceend returns the (index+1) of the last element in the slice *)
-  fun sliceend (a, i, NONE) =
-        if i < 0 orelse i > length a then raise Subscript else length a
-    | sliceend (a, i, SOME n) =
-	if i < 0 orelse n < 0 orelse i+n > length a then raise Subscript else i+n;
-
-  fun appi f (slice as (a, i, _)) =
-    let val stop = sliceend slice
-        fun lr j = if j < stop then (f (j, sub0 (a, j)); lr (j+1)) 
-		   else ()
-    in lr i
+  fun foldli f e a = 
+    let val stop = length a
+	fun lr j res = 
+	    if j < stop then lr (j+1) (f(j, sub0(a,j), res))
+	    else res
+    in lr 0 e 
     end
 
-  fun foldli f e (slice as (a, i, _)) =
-    let val stop = sliceend slice
-        fun lr (j, res) =
-	  if j < stop then lr (j+1, f (j, sub0 (a, j), res)) 
-	  else res
-    in lr (i, e)
+  fun foldri f e a = 
+    let fun rl j res = 
+	    if j >= 0 then rl (j-1) (f(j, sub0(a,j), res))
+	    else res
+    in rl (length a - 1) e 
     end
 
-  fun foldri f e (slice as (a, i, _)) =
-    let 
-      fun rl (j, res) = 
-	if j >= i then rl (j-1, f (j, sub0 (a, j), res))
-	else res
-    in rl (sliceend slice - 1, e)
+  fun appi f a = 
+    let val stop = length a
+	fun lr j = 
+	    if j < stop then (f(j, sub0(a,j)); lr (j+1)) 
+	    else ()
+    in lr 0 
+    end
+
+  fun mapi (f : int * 'a -> 'b) (a : 'a table) : 'b table = 
+    let val stop = length a
+	val newvec = table0 stop 
+	fun lr j = 
+	    if j < stop then 
+		(update0(newvec, j, f(j, sub0(a,j)));
+		 lr (j+1)) 
+	    else ()
+    in lr 0; newvec 
     end
 
   fun foldl f e a =
@@ -208,12 +177,12 @@ struct
     in rl (n-1, e)
     end
 
-  fun modifyi f (slice as (a, i, _)) =
-    let val stop = sliceend slice
-        fun lr j =
-	  if j < stop then (update0 (a, j, f (j, sub0 (a, j))); lr (j+1))
-	  else ()
-    in lr i
+  fun modifyi f a = 
+    let val stop = length a
+	fun lr j = 
+	    if j < stop then (update0(a,j,f(j, sub0(a,j))); lr (j+1))
+	    else ()
+    in lr 0 
     end
 
   fun modify f a =
@@ -234,13 +203,15 @@ struct
     in lr 0 
     end
 
-  fun mapi (f : int * 'a -> 'b) (slice as (a : 'a table, i, _)) : 'b table =
-    let val stop = sliceend slice
-        val b : 'b table = table (stop - i)
-	fun lr j =
-	  if j < stop then (update0 (b, j-i, f (j, sub0 (a, j))); lr (j+1))
-	  else b
-    in lr i
+  fun mapi (f : int * 'a -> 'b) (a : 'a table) : 'b table = 
+    let val stop = length a
+	val newvec = table0 stop 
+	fun lr j = 
+	    if j < stop then 
+		(update0(newvec, j, f(j, sub0(a,j))); 
+		 lr (j+1))
+	    else ()
+    in lr 0; newvec 
     end
 
   fun concat (vecs : 'a table list) =
@@ -260,4 +231,49 @@ struct
     in copyall (0, vecs)
     end
 
+  fun findi (p : int * 'a -> bool) (a : 'a table) : (int * 'a) option = 
+    let val stop = length a
+	fun lr j = 
+	    if j < stop then 
+		if p (j, sub0(a,j)) then SOME (j, sub0(a,j)) else lr (j+1)
+	    else NONE
+    in lr 0 
+    end
+
+  fun find (p : 'a -> bool) (a : 'a table) : 'a option = 
+    let val stop = length a
+	fun lr j = 
+	    if j < stop then 
+		if p (sub0(a,j)) then SOME (sub0 (a,j)) 
+		else lr (j+1)
+	    else NONE
+    in lr 0 
+    end
+
+  fun exists (p : 'a -> bool) (a : 'a table) : bool = 
+    let val stop = length a
+	fun lr j = j < stop andalso (p (sub0(a,j)) orelse lr (j+1))
+    in lr 0 
+    end
+
+  fun all (p : 'a -> bool) (a : 'a table) : bool = 
+    let val stop = length a
+	fun lr j = j >= stop orelse (p (sub0(a,j)) andalso lr (j+1))
+    in lr 0 
+    end
+
+  fun collate cmp (v1, v2) =
+    let val n1 = length v1 
+	and n2 = length v2
+	val stop = if n1 < n2 then n1 else n2
+	fun h j = (* At this point v1[0..j-1] = v2[0..j-1] *)
+	    if j = stop then if      n1 < n2 then LESS
+                             else if n1 > n2 then GREATER
+                             else                 EQUAL
+	    else
+		case cmp(sub0(v1,j), sub0(v2,j)) of
+		    EQUAL => h (j+1)
+		  | res   => res
+    in h 0 
+    end
 end; (*functor table*)

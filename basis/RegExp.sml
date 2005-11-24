@@ -189,7 +189,7 @@ fun parvector n par =
   let val A = Array.array (n, nil)
       fun add (a,b) = Array.update(A, a, b :: Array.sub(A,a))
   in  app add par
-    ; Array.extract(A,0,NONE)
+    ; Array.vector A
   end
 
 fun parnum v (a,b) : int =
