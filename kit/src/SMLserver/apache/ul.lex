@@ -4,6 +4,7 @@
 #include <string.h>
 #include "parseFuncs.h"
 #include "parseul.h"
+#include "plog.h"
 #define YY_NO_UNPUT
 %}
 
@@ -18,6 +19,7 @@ FILECHARS ([a-zA-Z0-9_/]|"."|"-")*
 {FILECHARS}".ul"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return ULFILE;
 {FILECHARS}".uo"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return UOFILE;
 [a-zA-Z0-9/]*"/"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return LOC;
+{FILECHARS}".sml" lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return SMLFILE;
 "As"	return AS;
 "End"	return END;
 "Ulfiles" return ULFILES;
@@ -36,22 +38,48 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   FILE *file;
   int i, top;
   top = 0;
-  printf("recurseParse called upon %s\n", filename);
+  plog2s("recurseParse called upon ", filename, ctx->ctx);
 //  yydebug = 1;
   if (!ctx->uoTable)
   {
     top = 1;
-    ctx->uoTable = (hashtable *) calloc (3, sizeof(hashtable));
+    ctx->uoTable = (hashtable *) calloc (1, sizeof(hashtable));
     if (!ctx->uoTable) return Parse_ALLOCERROR;
-    ctx->smlTable = ctx->uoTable+1;
-    ctx->ulTable = ctx->uoTable+2;
+    ctx->ulTable = (hashtable *) calloc (1, sizeof(hashtable));
+    if (!ctx->ulTable)
+    {
+      free(ctx->uoTable);
+      return Parse_ALLOCERROR;
+    }
+    ctx->smlTable = (hashtable *) calloc (1, sizeof(hashtable));
+    if (!ctx->smlTable)
+    {
+      free(ctx->ulTable);
+      free(ctx->uoTable);
+      return Parse_ALLOCERROR;
+    }
     if (hashinit(ctx->uoTable, uoHashEntry_HashFun, uoHashEntry_EqualFun) != hash_OK)
+    {
+      free(ctx->smlTable);
+      free(ctx->ulTable);
+      free(ctx->uoTable);
       return Parse_ALLOCERROR;
+    }
     if (hashinit(ctx->smlTable, char_charHashFun, char_charEqualFun) != hash_OK)
+    {
+      free(ctx->smlTable);
+      free(ctx->ulTable);
+      free(ctx->uoTable);
       return Parse_ALLOCERROR;
+    }
     if (hashinit(ctx->ulTable, char_charHashFun, char_charEqualFun) != hash_OK)
+    {
+      free(ctx->smlTable);
+      free(ctx->ulTable);
+      free(ctx->uoTable);
       return Parse_ALLOCERROR;
-    printf("recurseParse hash tables initialized\n");
+    }
+    plog2s("recurseParse hash tables initialized", "", ctx->ctx);
   }
   file = fopen (filename, "r");
   if (!file) return Parse_FILEDOESNOTEXISTS;

@@ -1,4 +1,6 @@
+
 #include "../../CUtils/hashmap.h"
+#include "../../Runtime/LoadKAM.h"
 
 enum ParseRV/*{{{*/
 {
@@ -16,12 +18,14 @@ enum ParseRV/*{{{*/
 
 struct parseCtx/*{{{*/
 {
+  void *ctx;
   char *fileprefix;
   int fpl;
   char *mapprefix;
   int mpl;
   char *root;
   int rl;
+  Interp *interp;
   hashtable *uoTable;
   hashtable *smlTable;
   hashtable *ulTable;
@@ -50,3 +54,8 @@ int char_charEqualFun(void *, void *);
 
 int recurseParse(struct parseCtx *ctx, char *filename);
 
+void clearSmlMap(hashtable *, void *);
+
+void clearPCtx(struct parseCtx *);
+
+void printSmlTable(hashtable *, void *);

@@ -9,7 +9,7 @@
 
 %pure-parser
 
-%token <t> ULFILE UOFILE LOC GARBAGE
+%token <t> ULFILE UOFILE LOC SMLFILE GARBAGE
 
 %token <p> ULFILES END CODEFILES SCRIPTS AS 
 
@@ -55,6 +55,6 @@ UoIncludeList:
 ;
 SmlIncludeList:
    /* empty */ { $$ = NULL}
- | SmlIncludeList UOFILE AS UOFILE { toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len); $$=NULL; }
+ | SmlIncludeList UOFILE AS SMLFILE { toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len); $$=NULL; }
  | SmlIncludeList UOFILE { toSmlHashTable(ctx,$2.ptr,$2.len,NULL, 0); $$=NULL; }
 ;

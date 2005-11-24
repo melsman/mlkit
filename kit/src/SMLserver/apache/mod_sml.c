@@ -17,6 +17,8 @@
 #include "Locks.h"
 #include "parseFuncs.h"
 #include "../../Runtime/HeapCache.h"
+#include "plog.h"
+#include "parseul.h"
 
 #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
@@ -46,7 +48,7 @@ enum
 module AP_MODULE_DECLARE_DATA sml_module;
 
 
-static int apsml_processSmlFile (request_data * rd, char *urlfile);
+static int apsml_processSmlFile (request_data * rd, char *uri, int kind);
 
 request_data *globalrd;
 
@@ -844,6 +846,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   rd->ctx->initDone = 0;
   rd->dbdata = NULL;
   rd->ctx->sched.pid = 0;
+  rd->ctx->smlTable = NULL;
   apr_pool_cleanup_register(pconf, rd->ctx, shutdownServer, shutdownChild);
 
 #ifdef REGION_PAGE_STAT
@@ -959,7 +962,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: init script: %s about to start", rd->ctx->initscript);
     rd->ctx->pid = getpid();
-    res = apsml_processSmlFile (rd, rd->ctx->initscript);
+    res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: init script executed with return code %d", res);
     struct db_t *db_tmp = rd->ctx->db;
@@ -1080,113 +1083,34 @@ apsml_fileModTime (char *file)  //{{{
 //  return apr_time_t
 //}/*}}}*/
 
-int
-apsml_next_sml0 (char *p) //{{{
-{
-  if (*(p + 1) == 's' && *(p + 2) == 'm'
-      && *(p + 3) == 'l' && *(p + 4) == '\0')
-    return 1;
-  else
-    return 0;
-}       //}}}
+static char mlb[] = "/MLB/SMLserver";
 
-//int
-//apsml_smlFileToUoFile (request_data * rd, char *url, char *uo, char *prjid, int path_p) //{{{
-//{
-////  request_rec *r = rd->request;
-//  const char *pageRoot;
-//  char *p;      /*  = strrchr(url, '/'); */
-//  int i;
-//  InterpContext *ctx = rd->ctx;
-////    ap_get_module_config (rd->server->module_config, &sml_module);
-//
-////  pageRoot = r->server->path;
-//  pageRoot = ctx->smlpath;
-//  if (strstr (url, pageRoot) != url)
-//    {
-//      if (rd->request)
-//  {
-//    ap_log_rerror (__FILE__, __LINE__, LOG_ERR, 0, rd->request,
-//       "pageRoot %s is not a substring of the requested url %s",
-//       pageRoot, url);
-//  }
-//      else
-//  {
-//    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
-//      "pageRoot %s is not a substring of the requested url %s",
-//      pageRoot, url);
-//  }
-//      return -1;
-//    }
-//  if (path_p)
-//    {
-//      strcpy (uo, pageRoot);
-//      strcat (uo, "/MLB/");
-//      strcat (uo, prjid);
-//    }
-//  else
-//    {
-//      strcpy (uo, prjid);
-//    }
-//  strcat (uo, "-");
-//  i = strlen (uo);
-//  p = url + strlen (pageRoot);
-//  if (*p == '/')
-//    p++;
-//  while (*p != '\0')
-//    {
-//      char c = *p;
-//      if (c == '.')
-//  {
-//    if (ctx->extendedtyping && apsml_next_sml0 (p))
-//      {
-//        uo[i++] = '%';
-//        uo[i++] = 'g';
-//        uo[i++] = 'e';
-//        uo[i++] = 'n';
-//      }
-//    if (*(p + 1) == '.')
-//      {
-//        c = '%';
-//        p++;
-//      }
-//  }
-//      if (c == '/')
-//  c = '+';
-//      uo[i++] = c;
-//      p++;
-//    }
-//  uo[i] = '\0';
-//  strcat (uo, ".uo");
-//  return 0;
-//}       //}}}
-
-int
-apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int path_p)/*{{{*/
+char *
+apsml_smlFileToUoFile(request_data *rd, char *smlfile, char *prjid,
+                      char **old, unsigned long *oldLength)/*{{{*/
 {
   char *pageRoot;
-  char c, *p, *lp, *lu;
+  char c, *p, *lp, *lu, *uo;
+  unsigned long length;
   InterpContext *ctx = rd->ctx;
   pageRoot = ctx->smlpath;
-  if (strstr (url, pageRoot) != url)
-  {
-    if (rd->request)
-    {
-    ap_log_rerror (__FILE__, __LINE__, LOG_ERR, 0, rd->request,
-       "pageRoot %s is not a substring of the requested url %s",
-       pageRoot, url);
-    }
-    else
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
-        "pageRoot %s is not a substring of the requested url %s",
-        pageRoot, url);
-    }
-    return -1;
-  }
-  p = url;
+  p = smlfile;
   lp = NULL;
   lu = NULL;
+  length = strlen(smlfile) + strlen(mlb) + 10;
+  if (length > *oldLength)
+  {
+    uo = *old;
+    *old = (char *) malloc(length);
+    if (!*old)
+    {
+      *old = uo;
+      return NULL;
+    }
+    free(uo);
+    *oldLength = length;
+  }
+  uo = *old;
   while ((c = *p))
   {
     if (c == '/')
@@ -1198,20 +1122,19 @@ apsml_smlFileToUoFile(request_data *rd, char *url, char *uo, char *prjid, int pa
     uo++;
     p++;
   }
-  strcpy(lu,"/MLB/SMLserver");
+  strcpy(lu,mlb);
   while (*lu) lu++;
   strcpy(lu,lp);
   strcat(lu,".uo");
-  return 0;
+  return *old;
 }/*}}}*/
 
 static int
-apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
+apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
 {
-//  request_rec *r = rd->request;
-//  char *urlfile = r->filename;        /* the requested url as file */
-  char uo[APSML_PATH_MAX];
-  char uo_file[APSML_PATH_MAX];
+  struct char_charHashEntry he;
+  char *file;
+  struct parseCtx pCtx;
   int res;
   time_t t;
   char *errorStr = NULL;
@@ -1225,23 +1148,23 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
   t = apsml_fileModTime (ctx->ulFileName);
 
   if (rd->request)
-    {
-      ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
-         "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
-    }
+  {
+    ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
+       "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
+  }
   else
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-        "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
-    }
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+      "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
+  }
 
   if (t == (time_t) - 1)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
-        "mod_sml:Err ul-file %s does not exist - web service not working",
-        ctx->ulFileName);
-      return APSML_ULFILENOTFOUND;
-    }
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
+      "mod_sml:Err ul-file %s does not exist - web service not working",
+      ctx->ulFileName);
+    return APSML_ULFILENOTFOUND;
+  }
 
   /*
    * (Re)load interpreter if timeStamps do not match
@@ -1251,9 +1174,6 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
   {
     // Reload the interpreter
 
-    FILE *is;
-    char buff[APSML_PATH_MAX];
-    int count = 0;
 
     // MEMO: somehow wait for all executions to finish!
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
@@ -1271,95 +1191,67 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
 
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
        "apsml: opening ul-file %s", ctx->ulFileName);
-    is = fopen (ctx->ulFileName, "r");
-    if (is == NULL)
-    {
-      ap_log_perror (__FILE__, __LINE__, LOG_ERR, 0, rd->pool,
-         "apsml: Failed to open file %s for reading",
-         ctx->ulFileName);
-      return APSML_ULFILENOTFOUND;
-    }
 
-    while (fgets (buff, APSML_PATH_MAX, is) != NULL)
-    {
-      if (buff[strlen (buff) - 1] == '\n')
-        buff[strlen (buff) - 1] = '\0';
+    clearSmlMap(rd->ctx->smlTable, rd);
 
-      if (!strcmp (buff, "scripts:")) break;
-
-      interpLoadExtend (ctx->interp, buff);
-//        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-//                       "apsml: Loading %s", buff);
-      count++;
-    }
-
-    // clear the script-name hash table
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: clearing script-name hash table");
-    freeHashTable (ctx->scripts);
-    ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
+       "apsml: setting up pCtx");
 
-    if (!strcmp (buff, "scripts:"))
-    {
-      while (fgets (buff, APSML_PATH_MAX, is) != NULL)
-      {
-        if (buff[strlen (buff) - 1] == '\n')
-          buff[strlen (buff) - 1] = '\0';
-        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-           "apsml: Accepting script: %s", buff);
-        insertHashTable (ctx->scripts, buff, "ok");
-      }
-    }
 
-    // close the ul-file
-    fclose (is);
+    pCtx.interp = rd->ctx->interp;
+    pCtx.ctx = rd;
+    pCtx.ulTable = NULL;
+    pCtx.smlTable = NULL;
+    pCtx.uoTable = NULL;
+    pCtx.fileprefix = rd->ctx->smlpath;
+    pCtx.fpl = strlen(pCtx.fileprefix);
+    pCtx.mapprefix = "/";
+    pCtx.mpl = strlen(pCtx.mapprefix);
+    pCtx.root = "/";
+    pCtx.rl = strlen(pCtx.root);
+    recurseParse(&pCtx, rd->ctx->ulFileName);
+    rd->ctx->smlTable = pCtx.smlTable;
+    pCtx.smlTable = NULL;
+    clearPCtx(&pCtx);
     ctx->timeStamp = t;
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: (Re)loaded %d uo-files with timestamp %ld", count,t);
   }
 
-  if (apsml_smlFileToUoFile (rd, urlfile, uo, ctx->prjid, 1) == -1)
+  switch (kind)
   {
-    return APSML_FILENOTFOUND;
-  }
-
-  // See if uo-file is a script that can be served
-  if (apsml_smlFileToUoFile (rd, urlfile, uo_file, ctx->prjid, 0) == -1)
-  {
-    return APSML_FILENOTFOUND;
-  }
-
-  if (!lookupHashTable (ctx->scripts, uo_file))
-  {
-    int i;
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: Request not script: %s", uo_file);
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: Size of hash table: %d", ctx->scripts->size);
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: Size of hash table array: %d",
-       ctx->scripts->arraySize);
-    for (i = 0; i < ctx->scripts->arraySize; i++)
-    {
-      ObjectListHashTable *ol;
-      if ((ol = ctx->scripts->array[i]) == 0)
-        continue;
-      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-         "apsml: array[%d]:", i);
-      for (; ol; ol = ol->next)
-        //  {
+    case 0:
+      he.key = uri;
+      he.hashval = charhashfunction(he.key);
+      if (hashfind(rd->ctx->smlTable, &he, (void **) &file) == hash_DNE)
+      {
         ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-           "apsml:   %s: %s", ol->key, (char *) (ol->value));
-      //  }
-    }
-    return APSML_FILENOTFOUND;
+           "apsml: Request not script: %s %ld %d", uri, he.hashval, strlen(uri));
+        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+           "apsml: Size of hash table: %ld", ctx->smlTable->hashTableUsed);
+        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+           "apsml: Scripts in table:");
+        printSmlTable(rd->ctx->smlTable, rd);
+        return APSML_FILENOTFOUND;
+      }
+      break;
+    case 1:
+      file = apsml_smlFileToUoFile (rd, uri, ctx->prjid, &(ctx->filebuf), &(ctx->filebufLength));
+      if (!file)
+      {
+        return APSML_FILENOTFOUND;
+      }
+      break;
+    default:
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+         "Internal errpr in mod_sml.c, apsml_processSmlFile called with kind == %d", kind);
+      return APSML_FILENOTFOUND;
+      break;
   }
 
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-     "Starting interpreter on file %s", uo_file);
+     "Starting interpreter on file %s", file);
 
   globalrd = rd;
-  res = interpLoadRun (ctx->interp, uo, &errorStr, (void *) rd);
+  res = interpLoadRun (ctx->interp, file, &errorStr, (void *) rd);
 
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 //     "Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
@@ -1373,7 +1265,7 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
     if (res == -1)    // exception other than Interrupt raised
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-        "%s raised %s", urlfile, errorStr);
+        "%s raised %s", file, errorStr);
     }
     free (errorStr);    // free the malloced string 
     errorStr = NULL;    // - and nullify field    
@@ -1397,16 +1289,13 @@ apsml_processSmlFile (request_data * rd, char *urlfile) //{{{
   {
     return APSML_INTERRUPTRAISED;
   }
-
   return APSML_OK;
-
 }       //}}}
 
 static int
 mod_sml_method_handler (request_rec * r)  //{{{
 {
-  if (strcmp (r->handler, "sml-module"))
-    return DECLINED;
+  if (strcmp (r->handler, "sml-module")) return DECLINED;
 //  printrequest (r);
 //  ppTable(r->headers_in, r);
   request_data rd1;
@@ -1425,7 +1314,7 @@ mod_sml_method_handler (request_rec * r)  //{{{
 //        ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, r, "apsml args: %s", r->args);
     }
   int res;
-  res = apsml_processSmlFile (rd, r->filename);
+  res = apsml_processSmlFile (rd, r->uri, 0);
   switch (res)
   {
   case APSML_FILENOTFOUND:
@@ -1479,4 +1368,6 @@ void
 apsml_ppheaders (request_data * rd) /*{{{ */
 {
   ppTable (rd->request->headers_in, rd);
-}       /*}}} */
+  return;
+} /*}}} */
+
