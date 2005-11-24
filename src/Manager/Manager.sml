@@ -663,7 +663,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
      * Link together lnk-files and generate executable
      * ------------------------------------------------ *)
 
-    fun link_lnk_files() : unit =  
+    fun link_lnk_files (mlbfile_opt:string option) : unit =  
 	let val _ = chat "reading link files"
 	    val lnkFiles = Flags.get_stringlist_entry "link"
 	    val modc = readLinkFiles lnkFiles
@@ -716,14 +716,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		isolate (compile0 target) (namebase, basisFiles, source)
 	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
 
-	    fun link0 target lnkFiles lnkFilesScripts () =
+	    fun link0 mlbfile target lnkFiles lnkFilesScripts () =
 		(Flags.lookup_string_entry "output" := target;
 		 Flags.lookup_stringlist_entry "link" := lnkFiles;
 		 Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
-		 link_lnk_files ())
+		 link_lnk_files (SOME mlbfile))
 
-	    fun link {verbose} {target,lnkFiles,lnkFilesScripts,flags=""} :unit =
-		isolate (link0 target lnkFiles lnkFilesScripts) ()
+	    fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
+		isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
 	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
 
 	    fun mlbdir() = MO.mlbdir()
@@ -775,7 +775,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	end
 
     fun comp0 files : unit =
-	if Flags.get_stringlist_entry "link" <> nil then link_lnk_files()
+	if Flags.get_stringlist_entry "link" <> nil then link_lnk_files NONE
 	else
 	    case files of
 		[file] => 
