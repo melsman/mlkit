@@ -878,6 +878,10 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
     "apsml: server->path is %s", s->path);
 
+  i = strlen(ctx->smlpath) + strlen(ctx->prjid) + 20;
+  ctx->ulFileName = (char *) malloc(i);
+  if (!ctx->ulFileName) return 5;
+
   sprintf (ctx->ulFileName, "%s/MLB/%s.ul", ctx->smlpath, ctx->prjid);
 
   ss = s;
