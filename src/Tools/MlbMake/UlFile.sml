@@ -1,5 +1,5 @@
 functor UlFile (MlbProject : MLB_PROJECT)
-    : ULFILE where type bdec = MlbProject.bdec =
+    : ULFILE (* where type bdec = MlbProject.bdec *) =
     struct
 	structure Mlb = MlbProject
 	structure Bid = Mlb.Bid
@@ -24,13 +24,13 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		end
 	end
 	    
-
 	type bid = Bid.bid
 	type longbid = Bid.longbid
 	type bdec = Mlb.bdec
 	type location = string   (* request location (as seen in browser) *)
 	type uofile = string     (* path to uofile on file system *)
 	type smlfile = string
+	type mlbfile = string
 	type phi = smlfile -> uofile list	   
 
 	datatype ul = SEQul of ul * ul
@@ -116,6 +116,8 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		    B0 (map (fn (bid,(Bsub,S)) => (bid,(on f Bsub,S.on f S))) l)
 		fun upArrow(B,p) = 
 		  on (fn x => pathUpArrow(x,p)) B
+		fun downArrow(B,p) = 
+		  on (fn x => pathDownArrow(x,p)) B
 	    end
 	structure M =
 	    struct	       
@@ -200,7 +202,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 					in (S',C,M,B')
 					end)
 	               | dir => 
-			     let val phi = fn sml => 
+			     let val phi = fn sml => 				 
 				 (map (fn uo => pathDownArrow(uo,dir))
 				  (phi (pathUpArrow(sml,dir))))
 (*
@@ -208,7 +210,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 				 val _ = print ("going into " ^ dir ^ "\n")
 *)
 				 val (S,C,M,B) = doCD dir (fn() => 
-				       ulb phi (M.downArrow (M,dir)) B 
+				       ulb phi (M.downArrow (M,dir)) (B.downArrow(B,dir)) 
 				       (Mlb.MLBFILEbdec (OS.Path.file mlbfile, SOME scriptpath)))
 (*				 val _ = print ("up again from " ^ dir ^ "\n") *)
 			     in (S.upArrow(S,dir),C.upArrow(C,dir),
@@ -240,8 +242,10 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		   SOME(B',S') => (S',C.empty,M,B')
 		 | NONE => die ("lookup of longbid " ^ Bid.pp_longbid lbid ^ " in B failed"))
 
-	fun from_bdec (phi:phi) bdec =
-	    let val (S,C,M,B) = ulb phi (M.empty) (B.empty) bdec
+	fun from_mlbfile (phi:phi) (mlbfile:mlbfile) : ul =
+	    let val bdec = Mlb.parse mlbfile 
+		val dir = OS.Path.dir mlbfile
+		val (S,C,M,B) = doCD dir (fn () => ulb phi (M.empty) (B.empty) bdec)
 		val ul = SEQul(CODEFILESul (C.list C),
 			       SCRIPTSul (S.list S))
 	    in ul
