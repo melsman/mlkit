@@ -773,8 +773,8 @@ shutdownServer (void *ctx1) /*{{{*/
   }
   interpClear(ctx->interp);
   clearHeapCache ();
-  freeHashTable (ctx->scripts);
-  ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
+  clearSmlMap (ctx->smlTable);
+  ctx->smlTable = NULL;
   return APR_SUCCESS;
 }/*}}}*/
 
@@ -784,8 +784,8 @@ shutdownChild (void *ctx1)/*{{{*/
   InterpContext *ctx = (InterpContext *) ctx1;
   interpClear(ctx->interp);
   clearHeapCache ();
-  freeHashTable (ctx->scripts);
-  ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
+  clearSmlMap (ctx->smlTable);
+  ctx->smlTable = NULL;
   return APR_SUCCESS;
 }/*}}}*/
 
@@ -879,8 +879,6 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     "apsml: server->path is %s", s->path);
 
   sprintf (ctx->ulFileName, "%s/MLB/%s.ul", ctx->smlpath, ctx->prjid);
-
-  ctx->scripts = emptyHashTable (APSML_SCRIPT_HASHTABLE_SZ);
 
   ss = s;
   while (ss)
@@ -1192,7 +1190,8 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
        "apsml: opening ul-file %s", ctx->ulFileName);
 
-    clearSmlMap(rd->ctx->smlTable, rd);
+    clearSmlMap(rd->ctx->smlTable);
+    rd->ctx->smlTable = NULL;
 
     ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
        "apsml: setting up pCtx");

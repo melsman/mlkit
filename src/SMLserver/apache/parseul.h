@@ -54,7 +54,7 @@ int char_charEqualFun(void *, void *);
 
 int recurseParse(struct parseCtx *ctx, char *filename);
 
-void clearSmlMap(hashtable *, void *);
+void clearSmlMap(hashtable *); 
 
 void clearPCtx(struct parseCtx *);
 

@@ -424,15 +424,12 @@ myfree(void *key, void *value)/*{{{*/
 }/*}}}*/
 
 void
-clearSmlMap(hashtable *t, void *ctx)/*{{{*/
+clearSmlMap(hashtable *t)/*{{{*/
 {
   if (t)
   {
-    plog2s("hashApply starting ", "", ctx);
     hashApply(t, myfree);
-    plog2s("hashApply done ", "", ctx);
     hashclose(t);
-    plog2s("hashclose dene", "", ctx);
   }
   return;
 }/*}}}*/
