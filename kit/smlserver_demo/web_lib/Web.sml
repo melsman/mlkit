@@ -1293,7 +1293,7 @@ structure Web :> WEB =
      * they should be. *)
 
     fun schedule' (f : string) (s : string option) (first : int) (interval : int) : unit = 
-            let val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"), 80)
+            let val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"), Conn.port())
             in
             case s of NONE =>
             prim("apsml_reg_schedule", (first, interval, 0, (f,"localhost",port), getReqRec()))

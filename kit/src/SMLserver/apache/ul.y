@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <alloca.h>
 #include "parseFuncs.h"
+#include "parseul.h"
 #define YYDEBUG 1
 
 %}
@@ -18,6 +19,8 @@
 %start Fil
 
 %locations
+
+%error-verbose
 
 %parse-param {void *ctx}
 
@@ -47,14 +50,14 @@ Fil:
 ;
 UlIncludeList:
    /* empty */ { $$ = NULL}
- | UlIncludeList ULFILE SCRIPTS AS LOC { toUlHashTable (ctx,$2.ptr, $2.len, $5.ptr, $5.len); $$=NULL; }
+ | UlIncludeList ULFILE SCRIPTS AS LOC { if (toUlHashTable (ctx,$2.ptr, $2.len, $5.ptr, $5.len) != Parse_OK) YYABORT; $$=NULL; }
 ;
 UoIncludeList: 
    /* empty */ { $$ = NULL}
- | UoIncludeList UOFILE { extendInterp(ctx, $2.ptr, $2.len); $$=NULL;}
+ | UoIncludeList UOFILE { if (extendInterp(ctx, $2.ptr, $2.len) != Parse_OK) YYABORT; $$=NULL;}
 ;
 SmlIncludeList:
    /* empty */ { $$ = NULL}
- | SmlIncludeList UOFILE AS SMLFILE { toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len); $$=NULL; }
- | SmlIncludeList UOFILE { toSmlHashTable(ctx,$2.ptr,$2.len,NULL, 0); $$=NULL; }
+ | SmlIncludeList UOFILE AS SMLFILE { if (toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len) != Parse_OK) YYABORT; $$=NULL; }
+ | SmlIncludeList UOFILE { if (toSmlHashTable(ctx,$2.ptr,$2.len,NULL, 0) != Parse_OK) YYABORT; $$=NULL; }
 ;

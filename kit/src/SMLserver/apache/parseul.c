@@ -319,7 +319,7 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
 //  plog5s("Recursing into %s\n  with fp: %s, mp: %s, root: %s\n", he->key,rpctx.fileprefix, rpctx.mapprefix, rpctx.root,pctx->ctx);
   i = recurseParse(&rpctx, he->key);
   plog2s("Done with ", he->key, pctx->ctx);
-  return Parse_OK;
+  return i;
 }/*}}}*/
 
 int 
@@ -401,7 +401,7 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
     strcpy(he->key, tmp);
     he->hashval = he1.hashval;
     hashupdate(pctx->uoTable, he, NULL);
-    interpLoadExtend(pctx->interp, tmp);
+    if (interpLoadExtend(pctx->interp, tmp)) return Parse_ERROR;
     plog2s("Extending interpreter with ", tmp, pctx->ctx);
   } // if already in the interpreter then skip
   else plog2s("Skipping ", tmp, pctx->ctx);

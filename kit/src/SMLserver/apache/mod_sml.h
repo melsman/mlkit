@@ -10,7 +10,6 @@
 #include "apr_shm.h"
 #include "../../CUtils/hashmap.h"
 #include "cache.h"
-#include "../HashTable.h"
 #include "../../Runtime/Exception.h"
 
 #define APSML_PATH_MAX 255
@@ -61,7 +60,6 @@ typedef struct
   int extendedtyping;
   char *ulFileName;
   time_t timeStamp;
-  HashTable scripts;
   hashtable_with_lock *cachetable;
   hashtable_with_lock *conftable;
   pid_t pid;
@@ -93,16 +91,5 @@ typedef struct
   InterpContext *ctx;
   struct request_db *dbdata;
 } request_data;			/*}}} */
-
-typedef struct
-{
-  uint32_t length;
-  uint32_t first;
-  uint32_t interval;
-  uint32_t type;
-  uint32_t port;
-  uint32_t serverlength;
-} schedHeader;
-
 
 #endif
