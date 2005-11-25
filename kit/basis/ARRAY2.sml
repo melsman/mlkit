@@ -1,191 +1,217 @@
-(* ARRAY2 -- SML Basis Library -- from Moscow ML                  *)
-(*        -- modified for the MLKit, 2001-06-07                  *)
-
 signature ARRAY2 =
   sig
     eqtype 'a array
-
+    type 'a region = {
+                       base : 'a array,
+                       row : int,
+                       col : int,
+                       nrows : int option,
+                       ncols : int option
+                     }
     datatype traversal = RowMajor | ColMajor
 
-    val array      : int * int * 'a -> 'a array
-    val fromList   : 'a list list -> 'a array
-    val tabulate   : traversal -> int * int * (int * int -> 'a) -> 'a array
+    val array    : int * int * 'a -> 'a array
+    val fromList : 'a list list -> 'a array
+    val tabulate : traversal 
+                   -> int * int * (int * int -> 'a) -> 'a array
+
+    val sub : 'a array * int * int -> 'a
+    val update : 'a array * int * int * 'a -> unit
 
     val dimensions : 'a array -> int * int
     val nCols      : 'a array -> int
     val nRows      : 'a array -> int
 
-    val sub        : 'a array * int * int -> 'a
-    val update     : 'a array * int * int * 'a -> unit
+    val row    : 'a array * int -> 'a Vector.vector
+    val column : 'a array * int -> 'a Vector.vector
 
-    val row        : 'a array * int -> 'a Vector.vector
-    val column     : 'a array * int -> 'a Vector.vector
+    val copy : {
+                   src : 'a region,
+                   dst : 'a array,
+                   dst_row : int,
+                   dst_col : int
+                 } -> unit
 
-    type 'a region = { base : 'a array, row : int, col : int, 
-		      nrows : int option, ncols : int option}
+    val appi : traversal
+                 -> (int * int * 'a -> unit)
+                   -> 'a region -> unit
+    val app  : traversal -> ('a -> unit) -> 'a array -> unit
+    val foldi : traversal
+                  -> (int * int * 'a * 'b -> 'b)
+                    -> 'b -> 'a region -> 'b
+    val fold  : traversal
+                  -> ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
+    val modifyi : traversal
+                    -> (int * int * 'a -> 'a)
+                      -> 'a region -> unit
+    val modify  : traversal -> ('a -> 'a) -> 'a array -> unit 
+end
 
-    val copy       : { src : 'a region, dst : 'a array, 
-		      dst_row : int, dst_col : int } -> unit
+(*
+Description
 
-    val app        : traversal -> ('a -> unit) -> 'a array -> unit
-    val modify     : traversal -> ('a -> 'a) -> 'a array -> unit
-    val fold       : traversal -> ('a * 'b -> 'b) -> 'b -> 'a array -> 'b
-      
-    val appi       : traversal -> (int * int * 'a -> unit) -> 'a region -> unit
-    val modifyi    : traversal -> (int * int * 'a -> 'a) -> 'a region -> unit
-    val foldi      : traversal -> (int * int * 'a * 'b -> 'b) -> 'b 
-                      -> 'a region -> 'b
-  end
+type 'a region = {
+                   base : 'a array,
+                   row : int,
+                   col : int,
+                   nrows : int option,
+                   ncols : int option
+                 }
 
-(* 
-   ['ty array] is the type of two-dimensional, mutable, zero-based
-   constant-time-access arrays with elements of type 'ty.  
-   Type 'ty array admits equality even if 'ty does not.  Arrays a1 and a2 
-   are equal if both were created by the same call to one of the
-   primitives array, fromList, and tabulate.
+    This type specifies a rectangular subregion of a 2-dimensional
+    array. If ncols equals SOME(w), with 0 <= w, the region includes
+    only those elements in columns with indices in the range from col
+    to col + (w - 1), inclusively. If ncols is NONE, the region
+    includes only those elements lying on or to the right of column
+    col. A similar interpretation holds for the row and nrows
+    fields. Thus, the region corresponds to all those elements with
+    position (i,j) such that i lies in the specified range of rows and
+    j lies in the specified range of columns.
 
-   [traversal] is the type of traversal orders: row major or column major.
+    A region reg is said to be valid if it denotes a legal subarray of
+    its base array. More specifically, reg is valid if
 
-   [RowMajor] specifies that an operation must be done in row-major
-   order, that is, one row at a time, from top to bottom, and from
-   left to right within each row.  Row-major traversal visits the
-   elements of an (m,n)-array with m rows and n columns in this 
-   order:
-            (0,0), (0,1), (0,2), ..., (0,n-1), 
-            (1,0), (1,1), (1,2), ..., (1,n-1), 
-                    ...
-   that is, in order of lexicographically increasing (i, j).  In
-   Moscow ML, row-major traversal is usually faster than column-major
-   traversal.
+        0 <= #row reg <= nRows (#base reg) 
 
-   [ColMajor] specifies that an operation must be done in column-major
-   order, that is, one column at a time, from left to right, and from
-   top to bottom within each column.  Column-major traversal visits
-   the elements of an (m,n)-array with m rows and n columns in this
-   order:
-            (0,0), (1,0), (2,0), ..., (m-1,0), 
-            (0,1), (1,1), (2,1), ..., (m-1,1), 
-                    ...
-   that is, in order of lexicographically increasing (j, i).  
+    when #nrows reg = NONE, or
 
-   [array(m, n, x)] returns a new m * n matrix whose elements are all x.  
-   Raises Size if n<0 or m<0.
+        0 <= #row reg <= (#row reg)+nr <= nRows (#base reg) 
 
-   [fromList xss] returns a new array whose first row has elements
-   xs1, second row has elements xs2, ..., where xss = [xs1,xs2,...,xsm].  
-   Raises Size if the lists in xss do not all have the same length.
+    when #nrows reg = SOME(nr), and the analogous conditions hold for
+    columns.
 
-   [tabulate RowMajor (m, n, f)] returns a new m-by-n array whose 
-   elements are f(0,0), f(0,1), ..., f(0, n-1), 
-                f(1,0), f(1,1), ..., f(1, n-1),
-                    ...
-                f(m-1,0),    ...,    f(m-1, n-1)
-   created in row-major order: f(0,0), f(0,1), ..., f(1,0), f(1,1), ...
-   Raises Size if n<0 or m<0.
+datatype traversal = RowMajor | ColMajor
 
-   [tabulate ColMajor (m, n, f)] returns a new m-by-n array whose 
-   elements are as above, but created in the column-major order:
-   f(0,0), f(1,0), ..., f(0, 1), f(1, 1), ...  Raises Size if n<0 or m<0.
+    This type specifies a way of traversing a region. Specifically,
+    RowMajor indicates that, given a region, the rows are traversed
+    from left to right (smallest column index to largest column
+    index), starting with the first row in the region, then the
+    second, and so on until the last row is traversed. ColMajor
+    reverses the roles of row and column, traversing the columns from
+    top down (smallest row index to largest row index), starting with
+    the first column, then the second, and so on until the last column
+    is traversed.
 
-   [dimensions a] returns the dimensions (m, n) of a, where m is the
-   number of rows and n the number of columns.
+array (r, c, init)
 
-   [nCols a] returns the number of n of columns of a.
+    creates a new array with r rows and c columns, with each element
+    initialized to the value init. If r < 0, c < 0 or the resulting
+    array would be too large, the Size exception is raised.
 
-   [nRows a] returns the number of m of rows of a.
+fromList l
 
-   [sub(a, i, j)] returns the i'th row's j'th element, counting from 0.
-   Raises Subscript if i<0 or j<0 or i>=m or j>=n 
-   where (m,n) = dimensions a.
+    creates a new array from a list of a list of elements. The
+    elements should be presented in row major form, i.e., hd l gives
+    the first row, hd (tl l) gives the second row, etc. This raises
+    the Size exception if the resulting array would be too large or if
+    the lists in l do not all have the same length.
 
-   [update(a, i, j, x)] destructively replaces the (i,j)'th element of a 
-   by x. Raises Subscript if i<0 or j<0 or i>=m or j>=n 
-   where (m,n) = dimensions a. 
+tabulate trv (r, c, f)
 
-   [row (a, i)] returns a vector containing the elements of the ith
-   row of a.  Raises Subscript if i < 0 or i >= height a.
+    creates a new array with r rows and c columns, with the (i,j)(th)
+    element initialized to f (i,j). The elements are initialized in
+    the traversal order specified by trv. If r < 0, c < 0 or the
+    resulting array would be too large, the Size exception is raised.
 
-   [column (a, j)] returns a vector containing the elements of the jth
-   column of a.  Raises Subscript if j < 0 or j >= width a.
+sub (arr, i, j)
 
-   [app RowMajor f a] applies f to the elements a[0,0], a[0,1], ...,
-   a[0,n-1], a[1,0], ..., a[m-1, n-1] of a, where (m, n) = dimensions a.
+    returns the (i,j)(th) element of the array arr. If i < 0, j < 0,
+    nRows arr <= i, or nCols arr <= j, then the Subscript exception is
+    raised.
 
-   [app ColMajor f a] applies f to the elements a[0,0], a[1,0], ...,
-   a[n-1,0], a[0,1], a[1,1], ..., a[m-1, n-1] of a, where (m, n) =
-   dimensions a.
+update (arr, i, j, a)
+    sets the (i,j)(th) element of the array arr to a. If i < 0, j < 0, nRows arr <= i, or nCols arr <= j, then the Subscript exception is raised.
 
-   [modify RowMajor f a] applies f to the elements a[0,0], a[0,1],
-   ..., a[0,n-1], a[1,0], ..., a[m-1, n-1] of a, updating each element
-   with the result of the application, where (m, n) = dimensions a.
+val dimensions : 'a array -> int * int
+val nCols : 'a array -> int
+val nRows : 'a array -> int
 
-   [modify ColMajor f a] applies f to the elements a[0,0], a[1,0],
-   ..., a[n-1,0], a[0,1], a[1,1], ..., a[m-1, n-1] of a, updating each
-   element with the result of the application, where (m, n) =
-   dimensions a.
+    These functions return size information concerning an array. nCols
+    returns the number of columns, nRows returns the number of rows,
+    and dimension returns a pair containing the number of rows and the
+    number of columns of the array. The functions nRows and nCols are
+    respectively equivalent to #1 o dimensions and #2 o dimensions
 
-   [fold RowMajor f b a] folds f left-right and top-down over the
-   elements of a in row-major order.  That is, computes
-        f(a[m-1, n-1], f(a[m-1, n-2], ..., f(a[0,1], f(a[0,0], b)) ...))
-   where (m, n) = dimensions a.
+row (arr, i)
 
-   [fold ColMajor f b a] folds f left-right and top-down over the
-   elements of a in column-major order.  That is, computes
-        f(a[m-1, n-1], f(a[m-2, n-1], ..., f(a[1,0], f(a[0,0], b)) ...))
-   where (m, n) = dimensions a.
+    returns row i of arr. If (nRows arr) <= i or i < 0, this raises
+    Subscript.
 
+column (arr, j)
 
-   The following iterators generalize the above ones in two ways:
+    returns column j of arr. This raises Subscript if j < 0 or nCols
+    arr <= j.
 
-     * the indexes i and j are also being passed to the function;
-     * the iterators work on a region (submatrix) of a matrix.          
+copy {src, dst, dst_row, dst_col}
 
-   [region] is the type of records { base, row, col, nrows, ncols }
-   determining the region or submatrix of array base whose upper left
-   corner has index (row, col).
+    copies the region src into the array dst, with the element at
+    position (#row src, #col src) copied into the destination array at
+    position (dst_row,dst_col). If the source region is not valid,
+    then the Subscript exception is raised. Similarly, if the derived
+    destination region (the source region src translated to
+    (dst_row,dst_col)) is not valid in dst, then the Subscript
+    exception is raised.
 
-   If nrows = SOME r, then the region has r rows: row, row+1, ..., row+r-1.
-   If nrows = NONE, then the region extends to the bottom of the matrix.
-   The field ncols similarly determines the number of columns.
+        Implementation note:
 
-   A region is valid for an array with dimensions (m, n) if 
-       (1) either nrows = NONE and 0 <= row <= m 
-           or nrows = SOME r and 0 <= row <= row + r <= m 
-   and (2) either ncols = NONE and 0 <= col <= n
-           or ncols = SOME c and 0 <= col <= col + c <= n.
+        The copy function must correctly handle the case in which the
+        #base src and the dst arrays are equal, and the source and
+        destination regions overlap.
 
-   [appi RowMajor f reg] applies f to (i, j, a[i, j]) in order of
-   lexicographically increasing (i, j) within the region reg.  Raises
-   Subscript if reg is not valid.  Note that app tr f a is equivalent
-   to appi tr (f o #3) {base=a, row=0, col=0, nrows=NONE, ncols=NONE}
+appi tr f reg
+app tr f arr
 
-   [appi ColMajor f reg] applies f to (i, j, a[i, j]) in order of
-   lexicographically increasing (j, i) within the region reg.  Raises
-   Subscript if reg is not valid.  
+    These functions apply the function f to the elements of an array
+    in the order specified by tr. The more general appi function
+    applies f to the elements of the region reg and supplies both the
+    element and the element's coordinates in the base array to the
+    function f. If reg is not valid, then the exception Subscript is
+    raised.
 
-   [modifyi RowMajor f reg)] applies f to (i, j, a[i, j]) in order of
-   lexicographically increasing (i, j) within the region reg.  Raises
-   Subscript if reg is not valid.  Note that modify tr f a is equivalent 
-   to modifyi (f o #3) {base=a, row=0, col=0, nrows=NONE, ncols=NONE}).
+    The function app applies f to the whole array and does not supply
+    the element's coordinates to f. Thus, the expression app tr f arr
+    is equivalent to:
 
-   [modifyi ColMajor f reg)] applies f to (i, j, a[i, j]) in order of
-   lexicographically increasing (j, i) within the region reg.  Raises
-   Subscript if reg is not valid.  
+       let
+	 val range = {base=arr,row=0,col=0,nrows=NONE,ncols=NONE}
+       in
+	 appi tr (f o #3) range
+       end
 
-   [foldi RowMajor f b a] folds f over (i, j, a[i, j]) in row-major
-   order within the region reg, that is, for lexicographically
-   increasing (i, j) in the region.  Raises Subscript if reg is not
-   valid.
+foldi tr f init reg
+fold tr f init arr
 
-   [foldi ColMajor f b a] folds f over (i, j, a[i, j]) in column-major
-   order within the region reg, that is, for lexicographically
-   increasing (j, i) in the region.  Raises Subscript if reg is not
-   valid.
+    These functions fold the function f over the elements of an array
+    arr, traversing the elements in tr order, and using the value init
+    as the initial value. The more general foldi function applies f to
+    the elements of the region reg and supplies both the element and
+    the element's coordinates in the base array to the function f. If
+    reg is not valid, then the exception Subscript is raised.
 
-   [copy { src, dst, dst_row, dst_col }] copies the region determined
-   by src to array dst such that the upper leftmost corner of src is
-   copied to dst[dst_row, dst_col].  Works correctly even when src and
-   dst are the same and the source and destination regions overlap.
-   Raises Subscript if the src region is invalid, or if src translated
-   to (dst_row, dst_col) is invalid for dst.
+    The function fold applies f to the whole array and does not supply
+    the element's coordinates to f. Thus, the expression fold tr f
+    init arr is equivalent to:
+
+       foldi tr (fn (_,_,a,b) => f (a,b)) init 
+		  {base=arr, row=0, col=0, nrows=NONE, ncols=NONE}
+
+modifyi tr f reg
+modify tr f arr
+
+    These functions apply the function f to the elements of an array
+    in the order specified by tr, and replace each element with the
+    result of f. The more general modifyi function applies f to the
+    elements of the region reg and supplies both the element and the
+    element's coordinates in the base array to the function f. If reg
+    is not valid, then the exception Subscript is raised.
+
+    The function modify applies f to the whole array and does not
+    supply the element's coordinates to f. Thus, the expression modify
+    tr f arr is equivalent to:
+
+	let
+	  val range = {base=arr,row=0,col=0,nrows=NONE,ncols=NONE}
+	in
+	  modifyi tr (f o #3) 
+	end
 *)

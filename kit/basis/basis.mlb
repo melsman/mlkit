@@ -17,10 +17,13 @@ local
     basis Array =
         let open General List
             basis Poly =
-              let wordtables.sml
+              let wordtables.sml TableSlice.sml
               in bas 
-                    VECTOR.sml Vector.sml ARRAY.sml Array.sml
-(*                    ARRAY2.sml Array2.sml *)
+                    VECTOR.sml Vector.sml 
+                    VECTOR_SLICE.sml VectorSlice.sml
+                    ARRAY.sml Array.sml
+                    ARRAY_SLICE.sml ArraySlice.sml
+                    ARRAY2.sml Array2.sml
                  end
               end
         in bas
