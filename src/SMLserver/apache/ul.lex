@@ -86,20 +86,18 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   if (top) 
   {
     yyin = file;
+    i = yyparse(ctx);
   }
   else
   {
     oldState = YY_CURRENT_BUFFER;
     newState = yy_create_buffer(file, YY_BUF_SIZE);
     yy_switch_to_buffer(newState);
-  }
-  i = yyparse(ctx);
-//  printf("yyparse returned: %d\n", i);
-  if (!top)
-  {
+    i = yyparse(ctx);
     yy_switch_to_buffer(oldState);
     yy_delete_buffer(newState);
   }
+//  printf("yyparse returned: %d\n", i);
   if (i == 0) return Parse_OK;
   if (i == 1) return Parse_ERROR;
   if (i == 2) return Parse_ALLOCERROR;

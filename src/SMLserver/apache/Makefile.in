@@ -8,8 +8,11 @@ LN=@LN_S@
 MKDIR=@top_srcdir@/mkinstalldirs
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
+prefix=@prefix@
+INSTDIR_SMLSERVER=$(DESTDIR)@exec_prefix@/smlserver
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
-       ../../Runtime/runtimeSystemKamApSml.o ul.tab.c lex.yy.c parseul.c
+       ../../Runtime/runtimeSystemKamApSml.o ul.tab.c lex.yy.c parseul.c \
+			 sched.c
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
@@ -35,7 +38,7 @@ all: ${ALL}
 
 install: $(INST)
 
-${TARGET}: ${SOURCE}
+${TARGET}: ${SOURCE} Makefile
 	$(APXS) -Wc,"${CFLAGS}" -c -lresolv -L. ${SOURCE}
 
 oracle: $(ORACLELIB)
