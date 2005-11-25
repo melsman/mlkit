@@ -1,11 +1,4 @@
-(* Array2 -- as of 1995-09-12, 1997-03-12, 1998-04-07 
- *        -- ported from Moscow ML, 2001-06-07 *)
-
-(* Representation of an m * n array: an m-vector of n-arrays (rows),
-   and the dimensions (m, n), m = number of rows, n = number of columns. *)
-
-(* The implementation below is pretty naive, using the Array and Vector 
-   operations and doing more bounds checks than strictly necessary.  *)
+(* Array2 -- ported from Moscow ML, 2005-11-25 *)
 
 structure Array2 : ARRAY2 =
   struct
@@ -40,13 +33,13 @@ structure Array2 : ARRAY2 =
 	    let val f00 = f(0, 0)
 		val arr = Vector.tabulate(m, fn i => Array.array(n, f00))
 		(* Column 0: do not apply f to (0,0) again: *)
-		val _ = Vector.appi (fn (r, a) => Array.update(a, 0, f(r, 0))) 
-				    (arr, 1, NONE); 		
+		val _ = VectorSlice.appi (fn (r, a) => Array.update(a, 0, f(r, 0))) 
+				    (VectorSlice.slice(arr, 1, NONE));
 		(* Remaining columns: loop, updating all rows: *)
 		fun loop c = 
 		    if c < n then  
 			(Vector.appi (fn (r, a) => Array.update(a, c, f(r, c))) 
-				     (arr, 0, NONE); 
+				     arr;
 			 loop (c+1))
 		    else ()
 	    in loop 1; ref (arr, m, n) end
@@ -64,7 +57,7 @@ structure Array2 : ARRAY2 =
     fun update(ref (a,m,n), i, j, x) = Array.update(Vector.sub(a, i), j, x);
 
     fun row (ref (a, _, _), i) = 
-	Array.extract(Vector.sub(a, i), 0, NONE);
+	Array.vector(Vector.sub(a, i));
 
     fun column (ref (a, m, n), j) = 
 	if j<0 orelse j>=n then raise Subscript
@@ -89,10 +82,11 @@ structure Array2 : ARRAY2 =
 	else i+n;
 
     fun foldi RowMajor f b { base = ref (a, m, n), row, col, nrows, ncols } = 
-	Vector.foldli 
+	VectorSlice.foldli 
 	       (fn (i, xs, res) => 
-		   Array.foldli (fn (j,x,res) => f(i,j,x,res)) res (xs,col,ncols))
-	       b (a, row, nrows)
+		   ArraySlice.foldli 
+		   (fn (j,x,res) => f(i,j,x,res)) res (ArraySlice.slice(xs,col,ncols)))
+	       b (VectorSlice.slice(a, row, nrows))
       | foldi ColMajor f b { base = ref (a, m, n), row, col, nrows, ncols } = 
 	let val stoprow = stop m row nrows
 	    val stopcol = stop n col ncols
@@ -110,9 +104,10 @@ structure Array2 : ARRAY2 =
 	fold ColMajor (fn (a, _) => f a) () arr
 
     fun appi RowMajor f { base = ref (a, _, _), row, col, nrows, ncols } =
-	Vector.appi 
-	      (fn (i, xs) => Array.appi (fn (j, x) => f(i, j, x)) (xs, col, ncols))
-	      (a, row, nrows)
+	VectorSlice.appi 
+	      (fn (i, xs) => ArraySlice.appi 
+	       (fn (j, x) => f(i, j, x)) (ArraySlice.slice(xs, col, ncols)))
+	      (VectorSlice.slice(a, row, nrows))
       | appi ColMajor f reg =
 	foldi ColMajor (fn (i, j, a, _) => f (i, j, a)) () reg
 
@@ -123,10 +118,10 @@ structure Array2 : ARRAY2 =
 	      {base=arr, row=0, col=0, nrows=NONE, ncols=NONE}
 
     fun modifyi RowMajor f { base = ref (a, _, _), row, col, nrows, ncols } =
-	Vector.appi 
-	      (fn (i, xs) => Array.modifyi (fn (j, x) => f(i, j, x)) 
-					   (xs, col, ncols))
-	      (a, row, nrows)
+	VectorSlice.appi 
+	      (fn (i, xs) => ArraySlice.modifyi (fn (j, x) => f(i, j, x)) 
+					   (ArraySlice.slice(xs, col, ncols)))
+	      (VectorSlice.slice(a, row, nrows))
       | modifyi ColMajor f (reg as {base, ...}) =
 	foldi ColMajor (fn (i, j, a, _) => update(base, i, j, f (i, j, a))) () reg
 
@@ -137,18 +132,18 @@ structure Array2 : ARRAY2 =
 	    fun bottomUp from_row to_row = 
 		if from_row < src_row then ()
 		else
-		    (Array.copy { src = Vector.sub(sa, from_row), 
-				  si = src_col, len = ncols,
-				  dst = Vector.sub(da, to_row),
-				  di = dst_col };
+		    (ArraySlice.copy { src = ArraySlice.slice
+					(Vector.sub(sa, from_row), src_col, ncols),
+				       dst = Vector.sub(da, to_row),
+				       di = dst_col };
 		     bottomUp (from_row-1) (to_row-1))
 	    fun topDown from_row to_row = 
 		if from_row >= stoprow then ()
 		else
-		    (Array.copy { src = Vector.sub(sa, from_row), 
-				  si = src_col, len = ncols,
-				  dst = Vector.sub(da, to_row),
-				  di = dst_col };
+		    (ArraySlice.copy { src = ArraySlice.slice
+					(Vector.sub(sa, from_row), src_col, ncols),
+				       dst = Vector.sub(da, to_row),
+				       di = dst_col };
 		     topDown (from_row+1) (to_row+1))
 	in
 	    if src_row <= dst_row then (* top dst overlaps with bot src; 
@@ -156,6 +151,6 @@ structure Array2 : ARRAY2 =
 		bottomUp (stoprow-1) (stoprow-1+dst_row-src_row)
 	    else (* bot dst overlaps with top src; copy top-down *)
 		topDown src_row dst_row
-	end
+	end       
   end
 
