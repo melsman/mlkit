@@ -279,9 +279,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   InterpContext *ctx = ap_get_module_config (s->module_config, &sml_module);
   request_data *rd =
     (request_data *) apr_pcalloc (ptemp, sizeof (request_data));
-//  scheddata_t *scheddata = (scheddata_t *) apr_pcalloc(pconf, sizeof(scheddata_t));
-  if (rd == NULL//  || scheddata == NULL) 
-    )return 5;
+  if (rd == NULL) return 5;
   rd->request = NULL;
   rd->server = s;
   rd->ctx = ctx;
@@ -329,7 +327,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ss = s;
   while (ss)
   {
-    printserver (ss);
+//    printserver (ss);
     ss = ss->next;
   }
 
