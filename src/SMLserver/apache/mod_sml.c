@@ -73,6 +73,7 @@ logLoading (char *file)
   fprintf (stderr, "Notice, apsml: loaded %s", file);
 }       /*}}} */
 
+#if 0
 void
 printserver (server_rec * s)  //{{{
 {
@@ -114,6 +115,7 @@ printserver (server_rec * s)  //{{{
 
   return;
 }       //}}}
+#endif
 
 static const char *
 set_projid (cmd_parms * cmd, void *mconfig, const char *prjid)  /*{{{ */
@@ -564,7 +566,6 @@ removeAndFree(timeheap_binaryheap_t *heap, hashtable *hashmap, struct scriptsche
   return;
 }/*}}}*/
 
-
 //static void
 //printheap(struct scriptsched_t **t)/*{{{*/
 //{
@@ -818,6 +819,8 @@ runtime_unlock(unsigned int i)
   return;
 }
 
+static char mlb[] = "/MLB/SMLserver";
+
 static int
 apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s) //{{{
 {
@@ -878,11 +881,11 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
     "apsml: server->path is %s", s->path);
 
-  i = strlen(ctx->smlpath) + strlen(ctx->prjid) + 20;
-  ctx->ulFileName = (char *) malloc(i);
+  i = strlen(ctx->smlpath) + strlen(ctx->prjid) + 20 + strlen(mlb);
+  ctx->ulFileName = (char *) apr_palloc(pconf, i);
   if (!ctx->ulFileName) return 5;
 
-  sprintf (ctx->ulFileName, "%s/MLB/%s.ul", ctx->smlpath, ctx->prjid);
+  sprintf (ctx->ulFileName, "%s%s/%s.ul", ctx->smlpath, mlb, ctx->prjid);
 
   ss = s;
   while (ss)
@@ -1009,6 +1012,7 @@ apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
       "apsml: childInit 3");
 }/*}}}*/
 
+#if 0
 void
 ppTable (apr_table_entry_t * table, request_data * rd)  //{{{
 {
@@ -1067,6 +1071,7 @@ printrequest (request_rec * r)  //{{{
      "apsml: request_rec->args is %s", r->args);
   return;
 }       //}}}
+#endif
 
 time_t
 apsml_fileModTime (char *file)  //{{{
@@ -1076,16 +1081,6 @@ apsml_fileModTime (char *file)  //{{{
     return (time_t) - 1;
   return buf.st_mtime;
 }       //}}}
-
-//apr_time_t
-//apsml_fileModTime (char *file,apr_pool_t *p)/*{{{*/
-//{
-//  apr_finfo_t f;
-//  if (apr_stat(&f, file, APR_FINFO_MTIME, p) == APR_SUCCESS) return f.mtime;
-//  return apr_time_t
-//}/*}}}*/
-
-static char mlb[] = "/MLB/SMLserver";
 
 char *
 apsml_smlFileToUoFile(request_data *rd, char *smlfile, char *prjid,
@@ -1264,7 +1259,7 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
 
 
   if (res < 0)
-  {       // uncaught exception; errorStr allocated
+  {                   // uncaught exception; errorStr allocated
     if (res == -1)    // exception other than Interrupt raised
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
@@ -1367,10 +1362,11 @@ module AP_MODULE_DECLARE_DATA sml_module =  //{{{
   mod_sml_register_hooks  /* register hooks                                   */
 };        //}}}
 
+#if 0
 void
 apsml_ppheaders (request_data * rd) /*{{{ */
 {
   ppTable (rd->request->headers_in, rd);
   return;
 } /*}}} */
-
+#endif

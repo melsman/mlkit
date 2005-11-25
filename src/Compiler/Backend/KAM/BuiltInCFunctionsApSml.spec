@@ -20,7 +20,6 @@ apsml_setUnique
 apsml_SetKey
 apsml_SetValue
 apsml_headers
-apsml_ppheaders
 apsml_add_headers_out
 apsml_PageRoot
 apsml_encodeUrl
