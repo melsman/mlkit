@@ -96,7 +96,7 @@ FuhMishra.mlb           tx tc
 testdyn1.sml               tc 
 check_arrays.sml              
 array.sml                     
-(*array2.sml -- implement slices first *)
+array2.sml
 general.sml                   
 int.sml                       
 int_2.sml                     
