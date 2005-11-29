@@ -108,33 +108,57 @@ functor ByteVector(eqtype elem) : MONO_VECTOR =
 	    end
       in loop (sliceend slice - 1) 
       end
-
-    fun appi f (slice as (a, i, _)) =
-      let fun loop stop =
-	    let	fun lr j =
-		    if j < stop then (f(j, sub_unsafe(a,j)); lr (j+1))
-		    else ()
-	    in lr i 
-	    end
-      in loop (sliceend slice) 
+  
+    fun appi f a = 
+      let val stop = length a 
+	  fun lr j = 
+	    if j < stop then (f(j, sub_unsafe(a,j)); lr (j+1)) 
+	    else ()
+      in lr 0 
       end
-    
-    fun mapi (f : int * elem -> elem) (slice as (a : vector, i, _)) : vector =
-      let val stop = sliceend slice
-	  val newvec = alloc_vector_unsafe (stop - i)
-	  fun loop stop =
-	    let	fun lr j =
-		    if j < stop then
-			(update_unsafe (newvec, j-i, f(j, sub_unsafe(a,j)));
-			 lr (j+1))
-		    else update_unsafe (newvec, j-i, null())
-	    in lr i 
-	    end
-      in loop stop; newvec 
+
+    fun mapi (f : int * elem -> elem) a : vector = 
+      let val stop = length a
+	  val newvec = alloc_vector_unsafe stop
+	  fun lr j = 
+	    if j < stop then 
+		(update_unsafe(newvec,j,f(j, sub_unsafe(a,j))); 
+		 lr (j+1)) 
+	    else ()
+      in lr 0; newvec 
+      end
+
+    fun find (p : elem -> bool) (a : vector) : elem option = 
+      let val stop = length a
+	fun lr j = 
+	    if j < stop then 
+		if p (sub_unsafe(a,j)) then SOME (sub_unsafe(a,j)) else lr (j+1)
+	    else NONE
+      in lr 0 
+      end
+
+    fun exists (p : elem -> bool) (a : vector) : bool = 
+      let val stop = length a
+	  fun lr j = j < stop andalso (p (sub_unsafe(a,j)) orelse lr (j+1))
+      in lr 0 
+      end
+
+    fun all (p : elem -> bool) (a : vector) : bool = 
+      let val stop = length a
+	  fun lr j = j >= stop orelse (p (sub_unsafe(a,j)) andalso lr (j+1))
+      in lr 0 
+      end
+
+    fun findi (p : int * elem -> bool) (a : vector) : (int * elem) option = 
+      let val stop = length a
+	  fun lr j = 
+	    if j < stop then 
+	      if p (j, sub_unsafe(a,j)) then SOME (j, sub_unsafe(a,j)) else lr (j+1)
+	    else NONE
+      in lr 0 
       end
 
   end
-
 
 structure CharVector = ByteVector(type elem = char) 
 structure Word8Vector = ByteVector(type elem = word8)

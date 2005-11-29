@@ -28,6 +28,8 @@ signature WORD = sig  (*requires StringCvt*)
   val min : word * word -> word
   val max : word * word -> word
 
+  val ~   : word -> word 
+
   val toString   : word -> string
   val fromString : string -> word option
   val scan : StringCvt.radix 

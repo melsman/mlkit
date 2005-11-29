@@ -88,7 +88,8 @@ struct
   fun vector a = tabulatev (length a, fn i => sub0(a,i))
 
   fun updatev (t, i, x) =
-      tabulate (length t,fn j => if i=j then x else sub0(t,j))
+      (check_index(length t, i); 
+       tabulate (length t,fn j => if i=j then x else sub0(t,j)))
 
   fun copy {src=a1: 'a table, dst=a2: 'a table, di=i2} =
     let val n = length a1

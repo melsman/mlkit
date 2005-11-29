@@ -1,51 +1,61 @@
-(*BYTE.sml*)
+signature BYTE = 
+  sig
+    val byteToChar      : Word8.word -> char
+    val charToByte      : char -> Word8.word
+    val bytesToString   : Word8Vector.vector -> string
+    val stringToBytes   : string -> Word8Vector.vector
+    val unpackStringVec : Word8VectorSlice.slice -> string
+    val unpackString    : Word8ArraySlice.slice -> string
+    val packString      : Word8Array.array * int * substring -> unit
+  end
 
-signature BYTE = sig
-  val byteToChar      : Word8.word -> Char.char
-  val charToByte      : Char.char -> Word8.word
-  val bytesToString   : Word8Vector.vector -> String.string
-  val stringToBytes   : String.string -> Word8Vector.vector
+(*
+Description
 
-  val unpackStringVec : Word8Vector.vector * int * int option -> string
-  val unpackString    : Word8Array.array * int * int option -> string
-  val packString      : Substring.substring * Word8Array.array * int -> unit
-end; (*signature BYTE*)
+byteToChar i
 
-(* Conversions between bytes and characters, and between byte vectors 
-   and strings (character vectors).  
+    returns the character whose code is i.
 
-   [byteToChar w] is the character corresponding to the byte w.
+charToByte c
 
-   [charToByte c] is the byte corresponding to character c.
+    returns an 8-bit word holding the code for the character c.
 
-   [bytesToString v] is the string whose character codes are the bytes 
-   from vector v.
+val bytesToString : Word8Vector.vector -> string
+val stringToBytes : string -> Word8Vector.vector
 
-   [stringToBytes s] is the byte vector of character codes of the string s.
+    These functions convert between a vector of character codes and
+    the corresponding string. Note that these functions do not perform
+    end-of-line, or other character, translations. The semantics of
+    these functions can be defined as follows, although one expects
+    actual implementations will be more efficient:
 
-   In Moscow ML, all the above operations take constant time.  That
-   is, no copying is done.
+	    fun bytesToString bv =
+		  CharVector.tabulate(
+        	    Word8Vector.length bv,
+        	    fn i => byteToChar(Word8Vector.sub(bv, i)))
+	    fun stringToBytes s =
+		  Word8Vector.tabulate(
+        	    String.size s,
+        	    fn i => charToByte(String.sub(s, i)))
+	  
+        Implementation note:
 
-   [unpackStringVec (v, i, NONE)] is the string whose character codes are
-   the bytes of v[i..length v-1].  Raises Subscript if i<0 or i>length v.
-   Equivalent to bytesToString(Word8Vector.extract (v, i, NONE)).
-   
-   [unpackStringV (v, i, SOME n)] is the string whose character codes are
-   the bytes of v[i..i+n-1].  Raises Subscript if i<0 or n<0 or i+n>length v.
-   Equivalent to bytesToString(Word8Vector.extract (v, i, SOME n)).
+        For implementations where the underlying representation of the
+        Word8Vector.vector and string types are the same, these
+        functions should be constant-time operations.
 
-   [unpackString (a, i, NONE)] is the string whose character codes are
-   the bytes of a[i..length a-1].  Raises Subscript if i<0 or i>length a.
-   Equivalent to bytesToString(Word8Array.extract (v, i, NONE)).
-   
-   [unpackString (a, i, SOME n)] is the string whose character codes are
-   the bytes of a[i..i+n-1].  Raises Subscript if i<0 or n<0 or i+n>length a.
-   Equivalent to bytesToString(Word8Array.extract (a, i, SOME n)).
+unpackStringVec slice
 
-   [packString (ss, a, i)] copies the character codes of substring ss into
-   the subarray a[i..i+n-1] where n = Substring.size ss.  Raises Subscript 
-   if i<0 or i+n > length a.
-   Equivalent to Word8Array.copyVec{src=s, si=si, len=SOME n, dst=a, di=i} 
-   when (s, si, n) = Substring.base ss.
+    returns the string consisting of characters whose codes are held
+    in the vector slice slice.
 
+unpackString slice
+
+    returns the string consisting of characters whose codes are held
+    in the array slice slice.
+
+packString (arr, i, s)
+
+    puts the substring s into the array arr starting at offset i. It
+    raises Subscript if i < 0 or size s + i > |arr|.
 *)

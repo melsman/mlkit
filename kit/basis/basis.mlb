@@ -14,7 +14,7 @@ local
          end
       end
 
-    basis Array =
+    basis ArrayVector =
         let open General List
             basis Poly =
               let wordtables.sml TableSlice.sml
@@ -29,17 +29,18 @@ local
         in bas
               open Poly   
               MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
+	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
            end
         end
 
     basis String = 
-       let open General Array
+       let open General ArrayVector
        in bas
              STRING_CVT.sml StringCvt.sml 
              local open List
                    STR_BASE.sml StrBase.sml 
              in
-                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml 
+                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml
              end
           end
        end
@@ -52,14 +53,14 @@ local
     basis Word =
        let open General String
            basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
-           basis PW = let open Array W 
+           basis PW = let open ArrayVector W 
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
                       end
        in bas open W PW end
        end
 
     basis Byte = 
-       let open General String Array Word
+       let open General String ArrayVector Word
        in bas BYTE.sml Byte.sml end
        end
  
@@ -71,26 +72,26 @@ local
     basis Real =
        let open General String Int
        in bas MATH.sml Math.sml REAL.sml Real.sml 
-	    local open Byte Array
+	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
 	  end
        end
 
     basis IntInf =
-       let open General List Array String Word Int Real
+       let open General List ArrayVector String Word Int Real
        in bas INT_INF.sml IntInf.sml end
        end
 (*  
     basis Polyhash =
-       let open General String Array Word
+       let open General String ArrayVector Word
        in bas POLYHASH.sml Polyhash.sml end
        end
 *)
     basis Io =
        let open General String List 
        in bas IO.sml TEXT_IO.sml TextIO.sml 
-              local open Word Array Byte
+              local open Word ArrayVector Byte
               in BIN_IO.sml BinIO.sml 
               end
           end
@@ -138,7 +139,7 @@ local
 
     basis Regexp =  (* Regular expression support *)
        let open General String 
-       in bas REG_EXP.sml local open Int Array List SetsAndMaps in RegExp.sml end end
+       in bas REG_EXP.sml local open Int ArrayVector List SetsAndMaps in RegExp.sml end end
        end
 *)    
     basis Sml90 = 
@@ -153,5 +154,5 @@ local
           end
        end
 in
-  open General List Array String Bool Word Byte Int Real IntInf Io System Sml90 Posix
+  open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Sml90 Posix
 end

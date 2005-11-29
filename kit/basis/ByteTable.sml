@@ -64,6 +64,10 @@ functor ByteTable(eqtype table
 	in loop 0; t
 	end
 
+    fun updatev(t : table, i, e : elem) : table = 
+      if i < 0 orelse i >= length t then raise Subscript
+      else tabulate (length t,fn j => if i=j then e else sub_unsafe(t,j))
+
     fun array (n, e:elem) : table =
       if n > maxLen then raise Size
       else 
@@ -72,21 +76,6 @@ functor ByteTable(eqtype table
 			 else update_unsafe(t, j, null())
 	in loop 0; t
 	end
-
-    fun extract (tab, i, slicelen) =
-      let val n = case slicelen of NONE => length tab - i | SOME n => n
-	  val newvec = 
-	    if i < 0 orelse n < 0 orelse n > maxLen 
-	      orelse i > length tab orelse i+n > length tab then raise Subscript
-	    else alloc_vector_unsafe n
-	  fun blit (i1, i2) =
-	    if i2 >= n then update_vector_unsafe(newvec, i2, null())
-	    else let val e = sub_unsafe(tab, i1)
-		 in update_vector_unsafe(newvec, i2, e);
-		    blit (i1+1, i2+1)
-		 end
-      in blit(i,0); newvec 
-      end
 
     fun foldl f e a =
       let val stop = length a
@@ -167,12 +156,12 @@ functor ByteTable(eqtype table
       in loop stop; newtab
       end
 
-    fun modifyi f (slice as (a, i, _)) =
-      let val stop = sliceend slice
-          fun lr j =
-	    if j < stop then (update_unsafe (a, j, f (j, sub_unsafe (a, j))); lr (j+1))
+    fun modifyi f a = 
+      let val stop = length a
+	  fun lr j = 
+	    if j < stop then (update_unsafe(a,j,f(j, sub_unsafe(a,j))); lr (j+1))
 	    else ()
-      in lr i
+      in lr 0 
       end
 
     fun modify f a =
@@ -182,6 +171,16 @@ functor ByteTable(eqtype table
 	    else ()
       in lr 0
       end
+
+    local
+	fun tabulatev (n, f : int -> elem) : vector =
+	    let fun init (t, f, i) = if i >= n then (update_vector_unsafe(t,n,null());t)
+				     else (update_vector_unsafe (t, i, f i); init (t, f, i+1))
+	    in init (alloc_vector_unsafe n, f, 0) 
+	    end
+    in
+	fun vector a = tabulatev (length a, fn i => sub_unsafe(a,i))
+    end
 
     (* The source and destination array may be the same. We *)
     (* copy from high index to low index if si < di and     *)
@@ -215,6 +214,7 @@ functor ByteTable(eqtype table
 	      lo2hi 0
 	    end
       end
+    val copy = fn {src,dst,di} => copy{src=src,dst=dst,di=di,si=0,len=NONE}
 
     (* src and dst are never the same because src is an vector 
      * and dst is an array *)
@@ -237,28 +237,108 @@ functor ByteTable(eqtype table
 	    lo2hi 0
 	  end
       end
+    val copyVec = fn {src,dst,di} => copyVec{src=src,dst=dst,di=di,si=0,len=NONE}
+
+    fun appi f a = 
+      let val stop = length a 
+	  fun lr j = 
+	    if j < stop then (f(j, sub_unsafe(a,j)); lr (j+1)) 
+	    else ()
+      in lr 0 
+      end
+
+    fun mapi (f : int * elem -> elem) a : table = 
+      let val stop = length a
+	  val newvec = alloc_table_unsafe stop
+	  fun lr j = 
+	    if j < stop then 
+		(update_unsafe(newvec,j,f(j, sub_unsafe(a,j))); 
+		 lr (j+1)) 
+	    else update_unsafe(newvec,j,null())
+      in lr 0; newvec 
+      end
+
+    fun find (p : elem -> bool) (a : table) : elem option = 
+      let val stop = length a
+	fun lr j = 
+	    if j < stop then 
+		if p (sub_unsafe(a,j)) then SOME (sub_unsafe(a,j)) else lr (j+1)
+	    else NONE
+      in lr 0 
+      end
+
+    fun exists (p : elem -> bool) (a : table) : bool = 
+      let val stop = length a
+	  fun lr j = j < stop andalso (p (sub_unsafe(a,j)) orelse lr (j+1))
+      in lr 0 
+      end
+
+    fun all (p : elem -> bool) (a : table) : bool = 
+      let val stop = length a
+	  fun lr j = j >= stop orelse (p (sub_unsafe(a,j)) andalso lr (j+1))
+      in lr 0 
+      end
+
+    fun findi (p : int * elem -> bool) (a : table) : (int * elem) option = 
+      let val stop = length a
+	  fun lr j = 
+	    if j < stop then 
+	      if p (j, sub_unsafe(a,j)) then SOME (j, sub_unsafe(a,j)) else lr (j+1)
+	    else NONE
+      in lr 0 
+      end
+
+    fun collate cmp (a1, a2) =
+      let val n1 = length a1 
+	  and n2 = length a2
+	  val stop = if n1 < n2 then n1 else n2
+	  fun h j = (* At this point a1[0..j-1] = a2[0..j-1] *)
+	      if j = stop then if      n1 < n2 then LESS
+			       else if n1 > n2 then GREATER
+ 			       else                 EQUAL
+	      else
+		case cmp(sub_unsafe(a1,j), sub_unsafe(a2,j)) of
+		    EQUAL => h (j+1)
+		  | res   => res
+      in h 0 
+      end
   end
 
-structure CharVector : MONO_VECTOR =   
-  ByteTable(type elem = char  type table = string) 
+structure CharVector 
+    :> MONO_VECTOR where type elem = char 
+		     and type vector = string =
+    let structure V = ByteTable(type elem = char  type table = string) 
+    in struct open V
+	      val update = updatev
+       end
+    end
   
-structure Word8Vector : MONO_VECTOR =  
-  ByteTable(type elem = word8 type table = string)
+structure CharArray :> MONO_ARRAY
+  where type vector = CharVector.vector
+  where type elem = char 
+  = ByteTable(type elem = char  type table = chararray)
 
-structure CharArray =    
-  ByteTable(type elem = char  type table = chararray)
+local
+    structure Word8Vector =
+	let structure V = ByteTable(type elem = word8  type table = string) 
+	in struct open V
+	          val update = updatev
+	   end
+	end
 
-structure Word8Array =   
-  ByteTable(type elem = word8 type table = chararray)
+    structure Word8Array = 
+	ByteTable(type elem = word8 type table = chararray)
 
-structure CharArray : MONO_ARRAY =
-  struct
-    structure Vector = CharVector
-    open CharArray
-  end
-
-structure Word8Array : MONO_ARRAY =
-  struct
-    structure Vector = Word8Vector
-    open Word8Array
-  end
+    structure Tmp =
+	struct
+	    structure Word8Array = Word8Array
+	    structure Word8Vector = Word8Vector
+	end
+    : sig
+	   structure Word8Vector : MONO_VECTOR where type elem = word8 
+	   structure Word8Array : MONO_ARRAY where type elem = word8
+	   sharing type Word8Vector.vector = Word8Array.vector
+       end
+in
+    open Tmp
+end

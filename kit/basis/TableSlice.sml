@@ -1,7 +1,9 @@
 (* VectorSlice and ArraySlice -- ported from Moscow ML, 2005-11-25 *)
 
 functor TableSlice (type 'a table
-		    val maxLen : int) =
+		    val maxLen : int
+		    type 'a vector_slice
+		    val vector_slice_base: 'a vector_slice -> 'a vector * int * int) =
 struct
   type 'a vector = 'a vector
   type 'a array = 'a array
@@ -25,7 +27,7 @@ struct
   fun array0 (n : int, x:'a) : 'a array = prim ("word_table_init", (n, x))    
 
   type 'a slice = 'a table * int * int
-  type 'a vector_slice = 'a vector * int * int
+  type 'a vector_slice = 'a vector_slice
 
   fun length (a, i, n) = n
 
@@ -86,7 +88,7 @@ struct
 	   end
 
   fun copyVec {src : 'a vector_slice, dst=a2: 'a table, di=i2} =
-    let val (a1, i1, n) = base src
+    let val (a1, i1, n) = vector_slice_base src
     in
 	if i2<0 orelse i2+n > length0 a2 then raise Subscript
 	else 
