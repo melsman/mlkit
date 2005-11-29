@@ -1,25 +1,32 @@
-(* Date -- SML Basis Library *)
-
-signature DATE = 
+signature DATE =
   sig
     datatype weekday = Mon | Tue | Wed | Thu | Fri | Sat | Sun
-
-    datatype month = Jan | Feb | Mar | Apr | May | Jun
-                   | Jul | Aug | Sep | Oct | Nov | Dec
-
+    datatype month
+      = Jan
+      | Feb
+      | Mar
+      | Apr
+      | May
+      | Jun
+      | Jul
+      | Aug
+      | Sep
+      | Oct
+      | Nov
+      | Dec
     type date
 
     exception Date
 
     val date : {
-             year   : int,              (* e.g. 1999                     *)
-             month  : month,            (* Jan, Feb, ...                 *)
-             day    : int,              (* 1-31                          *)
-             hour   : int,              (* 0-23                          *)
-             minute : int,              (* 0-59                          *)
-             second : int,              (* 0-61, permitting leap seconds *)
-             offset : Time.time option  (* time zone west of UTC         *)
-           } -> date
+                   year : int,
+                   month : month,
+                   day : int,
+                   hour : int,
+                   minute : int,
+                   second : int,
+                   offset : Time.time option
+                 } -> date
 
     val year    : date -> int
     val month   : date -> month
@@ -29,147 +36,169 @@ signature DATE =
     val second  : date -> int
     val weekDay : date -> weekday
     val yearDay : date -> int
-    val isDst   : date -> bool option
     val offset  : date -> Time.time option
+    val isDst   : date -> bool option
+
+    val localOffset : unit -> Time.time
 
     val fromTimeLocal : Time.time -> date
     val fromTimeUniv  : Time.time -> date
-    val toTime        : date -> Time.time
-    val localOffset   : unit -> Time.time
+    val toTime : date -> Time.time
 
-    val compare    : date * date -> order
-      
-    val toString   : date -> string
-    val fmt        : string -> date -> string
+    val compare : date * date -> order
+
+    val fmt      : string -> date -> string
+    val toString : date -> string
+    val scan       : (char, 'a) StringCvt.reader
+                       -> (date, 'a) StringCvt.reader
     val fromString : string -> date option
-    val scan       : (char, 'a) StringCvt.reader -> (date, 'a) StringCvt.reader
-
   end
 
-(* These functions convert times to dates and vice versa, and format
-   and scan dates.
+(*
+type date
+    An abstract type whose values represents an instant in a specific time zone.
 
-   A value of type [date] represents a point in time in a given time
-   zone.  If the offset is NONE, then the date is in the local time
-   zone.  If the offset is SOME t, then t is the offset of the main
-   timezone (ignoring daylight savings time) west of UTC.  
-        When 0 hours <= t < 12 hours, the represented time is to the
-   west of UTC and the local time is UTC-t.  
-        When 12 hours <= t < 23 hours, the represented time is to the
-   East of UTC and the local time is UTC+(24-t).
+val date : {
+               year : int,
+               month : month,
+               day : int,
+               hour : int,
+               minute : int,
+               second : int,
+               offset : Time.time option
+             } -> date
+    creates a canonical date from the given date information. If the resulting
+    date is outside the range supported by the implementation, the Date
+    exception is raised.
 
-   [date { year, month, day, hour, minute, second, offset }] returns a
-   canonical date value.  Seconds outside the range 0..59 are
-   converted to the equivalent minutes and added to the minutes
-   argument; leap seconds are ignored.  Similarly, excess minutes are
-   converted to hours, hours to days, days to months, and months to
-   years.  Then the weekday and day number in the year are computed.
-   Leap years are assumed in accordance with the Gregorian calendar,
-   for any year after year 0 A.D.
+    Seconds outside the range [0,59] are converted to the equivalent minutes
+    and added to the minutes argument. Similar conversions are performed for
+    minutes to hours, hours to days, days to months, and months to years.
+    Negative values are similarly translated into a canonical range, with the
+    extra borrowed from the next larger unit. Thus, minute = 10, second = ~140
+    becomes minute = 7, second = 40.
 
-   If the offset is greater than one day (24 hours), then the excess
-   days are added to the days, and the offset modulo 24 hours is used.
+    The offset argument provides time zone information. A value of NONE
+    represents the local time zone. A value of SOME(t) corresponds to time t
+    west of UTC. In particular, SOME(Time.zeroTime) is UTC.  Negative offsets
+    denote time zones to the east of UTC, as is traditional. Offsets are taken
+    modulo 24 hours. That is, we express t, in hours, as sgn(t)(24*d + r),
+    where d and r are non-negative, d is integral, and r < 24. The offset then
+    becomes sgn(t)*r and sgn(t)(24*d) is added to the hours (before converting
+    hours to days).
 
-   [year dt] returns the year of dt, e.g. 1999.
+    Leap years follow the Gregorian calendar. Leap seconds may or may not be
+    ignored. In an implementation that takes account of leap seconds, the
+    second function may return 60 or 61 in the rare cases that this is
+    appropriate.
 
-   [month dt] returns the month of dt.
+val year : date -> int
+val month : date -> month
+val day : date -> int
+val hour : date -> int
+val minute : date -> int
+val second : date -> int
+val weekDay : date -> weekday
+val yearDay : date -> int
+val offset : date -> Time.time option
+val isDst : date -> bool option
+    These functions extract the attributes of a date value. The year returned
+    by year uses year 0 as its base. Thus, the date Robin Milnerreceived the
+    Turing award would have year 1991. The function yearDay returns the day of
+    the year, starting from 0, i.e., 1 January is day 0. The value returned by
+    offset reports time zone information as the amount of time west of UTC. A
+    value of NONE represents the local time zone. The function isDst returns
+    NONE if the system has no information concerning daylight savings time.
+    Otherwise, it returns SOME(dst) where dst is true if daylight savings time
+    is in effect.
 
-   [day dt] returns the day of dt
+val localOffset : unit -> Time.time
+    The offset from UTC for the local time zone.
 
-   [hour dt] returns the hour of dt.
+fromTimeLocal t
+fromTimeUniv t
+    These convert the (UTC) time t into a corresponding date. fromTimeLocal
+    represents the date in the local time zone; it is the analogue of the ISO C
+    function localtime. The returned date will have offset=NONE. fromTimeUniv
+    returns the date in the UTC time zone; it is the analogue of the ISO C
+    function gmtime. The returned date will have offset=SOME(0).
 
-   [minute dt] returns the minute of dt.
+    If these functions are applied to the same time value, the resulting dates
+    will differ by the offset of the local time zone from UTC.
 
-   [second dt] returns the second of dt.
+toTime date
+    returns the (UTC) time corresponding to the date date. It raises Date if
+    the date date cannot be represented as a Time.time value. It is the
+    analogue of the ISO C function mktime.
 
-   [weekDay dt] returns the weekday of dt.
+compare (date1, date2)
+    returns LESS, EQUAL, or GREATER, according as date1 precedes, equals, or
+    follows date2 in time. It lexicographically compares the dates, using the
+    year, month, day, hour, minute, and second information, but ignoring the
+    offset and daylight savings time information. It does not detect invalid
+    dates.
 
-   [yearDay dt] returns the number of the day in the year of dt.
-   January 1 is day 0, and December 31 is day 364 (and 365 in leap years).
+    In order to compare dates in two different time zones, the user would have
+    to handle the normalization.
 
-   [isDst dt] returns SOME(true) if daylight savings time is in effect
-   at the date dt; returns SOME(false) if not; and returns NONE if
-   this information is unavailable.
+fmt s date
+toString date
+    These return a string representation of the date date. The result may be
+    wrong if the date is outside the representable Time.time range. They raise
+    Date if the given date is invalid.
 
-   [offset dt] returns NONE if the date dt is in the local time zone;
-   returns SOME t where t is the offset west of UTC otherwise.  Thus
-   SOME(Time.zeroTime) is UTC.
+    The former formats the date according to the format string s, following the
+    semantics of the ISO C function strftime. In particular, fmt is
+    locale-dependent. The allowed formats are:
+    %a 	locale's abbreviated weekday name
+    %A 	locale's full weekday name
+    %b 	locale's abbreviated month name
+    %B 	locale's full month name
+    %c 	locale's date and time representation (e.g., "Dec 2 06:55:15 1979")
+    %d 	day of month [01-31]
+    %H 	hour [00-23]
+    %I 	hour [01-12]
+    %j 	day of year [001-366]
+    %m 	month number [01-12]
+    %M 	minutes [00-59]
+    %p 	locale's equivalent of the AM/PM designation
+    %S 	seconds [00-61]
+    %U 	week number of year [00-53], with the first Sunday as the first day of week 01
+    %w 	day of week [0-6], with 0 representing Sunday
+    %W 	week number of year [00-53], with the first Monday as the first day of week 01
+    %x 	locale's appropriate date representation
+    %X 	locale's appropriate time representation
+    %y 	year of century [00-99]
+    %Y 	year including century (e.g., 1997)
+    %Z 	time zone name or abbreviation, or the empty string if no time zone information exists
+    %% 	the percent character
+    %c 	the character c, if c is not one of the format characters listed above
+    For instance, fmt "%A" date returns the full name of the weekday specified
+    by date (e.g., "Monday"). For a full description of the format-string
+    syntax, consult a description of strftime. Note, however, that unlike
+    strftime, the behavior of fmt is defined for the directive %c for any
+    character c.
 
-   [fromTimeLocal t] returns the local date at (UTC) time t.  The
-   resulting date will have offset = NONE.  The fields year, month,
-   day, hour, minute, and second are as expected.  The resulting isDst
-   may be NONE if the system cannot determine whether daylight savings
-   time is in effect at the given time.  Corresponds to the ANSI C
-   function `localtime'.
+    toString returns a 24-character string representing the date date in the
+    following format:
 
-   [fromTimeUniv t] is similar to fromTime, but returns the UTC date
-   at (UTC) time t.  The resulting date will have offset = SOME
-   Time.zeroTime.  Corresponds to the ANSI C function `gmtime'.
+    "Wed Mar 08 19:06:45 1995"
 
-   [toTime dt] returns the (UTC) time corresponding to the date dt.
-   Uses the isDst time field if it is present (SOME _) and cannot be
-   calculated from the given date.  May raise Date if the given date
-   is invalid.  Raises Time.Time if the Date cannot be represented as
-   a Time.time value.  At least the dates in the interval 1970-2030
-   can be represented as Time.time values.  Corresponds to the ANSI C
-   function `mktime'.
+    The function is equivalent to Date.fmt "%a %b %d %H:%M:%S %Y".
 
-   [localOffset ()] is the local time zone offset west of UTC.  
-   It holds that 0 hours <= localOffset () < 24 hours.
+scan getc strm
+fromString s
+    These scan a 24-character date from a character source after ignoring
+    possible initial whitespace. The format of the string must be precisely as
+    produced by toString. In particular, the functions do not parse time zone
+    abbreviations. No check of the consistency of the date (weekday, date in
+    the month, ...) is performed. If the scanning fails, NONE is returned.
 
-   [compare(dt1, dt2)] returns LESS, EQUAL, or GREATER, according as
-   date dt1 precedes, equals, or follows dt2 in time.
-   Lexicographically compares the dates.  Ignores timezone offset and
-   DST.  Does not detect invalid dates.
+    The function scan takes a character stream reader getc and a stream strm.
+    In case of success, it returns SOME(date, rest), where date is the scanned
+    date and rest is the remainder of the stream.
 
-   [toString dt] returns a 24 character string representing the date dt
-   in the following format:   
-                       Wed Mar  8 19:06:45 1995
-   The result may be wrong if the date is not representable as a
-   Time.time value.  Raises Date if dt is an invalid date.
-   Corresponds to the ANSI C function `asctime'.
+    The function fromString takes a string s as its source of characters. It is
+    equivalent to StringCvt.scanString scan.
 
-   [fmt fmtstr dt] formats the date dt according to the format string
-   fmtstr.  The format string has the same meaning as with the ANSI C
-   function `strftime'.  These ANSI C format codes should work on all
-   platforms:
-
-      %a  abbreviated weekday name (e.g. "Mon")
-      %A  full weekday name (e.g. "Monday")
-      %b  abbreviated month name (e.g. "Oct")
-      %B  full month name (e.g. "October")
-      %c  date and time (e.g. "Dec  2 06:55:15 1979")
-      %d  day of month (01..31)
-      %H  hour (00..23)
-      %I  hour (01..12)
-      %j  day of year (001..366)
-      %m  month number (01..12)
-      %M  minutes (00..59)
-      %p  locale's equivalent of a.m./p.m.
-      %S  seconds (00..61, allowing for leap seconds)
-      %U  week number (00..53), with Sunday as the first day of week 01
-      %w  day of week, with 0 representing Sunday (0..6)
-      %W  week number (00..53), with Monday as the first day of week 01
-      %x  locale's appropriate date representation
-      %y  year of century (00..99)
-      %Y  year including century (e.g. 1997)
-      %Z  time zone name if it exists; otherwise the empty string
-      %%  the percent character   
-
-   Example: The current local date in ISO format (e.g. 1998-04-06) can
-   be obtained by using: 
-        fmt "%Y-%m-%d" (fromTimeLocal (Time.now ()))
-
-   [fromString s] scans a 24-character date from the string s, after
-   possible initial whitespace (blanks, tabs, newlines).  The format
-   of the string must be as produced by toString.  The fields isDst
-   and offset in the resulting date will be NONE.  No check of the
-   consistency of the date (weekday, date in the month, ...) is
-   performed. 
-
-   [scan getc src] scans a 24-character date from the stream src,
-   using the stream accessor getc.  Otherwise works as fromString.  In
-   case of success, returns SOME(date, rst) where date is the scanned
-   date and rst is the remainder of the stream; otherwise returns
-   NONE.
 *)
