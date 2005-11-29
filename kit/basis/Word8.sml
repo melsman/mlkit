@@ -15,11 +15,13 @@ structure Word8 : WORD =
     fun toInt (x : word8) : int = prim ("id", x)
 
     fun toLargeWord (w: word8) : word32 = prim ("__word_to_word32", w8_w w)
+    val toLarge = toLargeWord
 
     fun toLargeInt (w: word8) : int32 = prim ("__word32_to_int32", toLargeWord w)
       
     fun norm (w: word) : word = andb_w (0w255, w)
     fun fromLargeWord (w: word32) : word8 = w_w8(norm(prim ("__word32_to_word", w)))
+    val fromLarge = fromLargeWord
 	
     (* The rest does not make use of prim *)
 
@@ -52,7 +54,8 @@ structure Word8 : WORD =
     fun toLargeWordX (w: word8) = 
       if w < 0w128 then toLargeWord w               (* msbit = 0 *)
       else Word32.orb(toLargeWord w, 0wxFFFFFF00)   (* msbit = 1 *)
-	  
+    val toLargeX = toLargeWordX
+
     fun notb x = xorb(x, 0wxFF) 
       
     fun << (w:word8, k:word) = 
