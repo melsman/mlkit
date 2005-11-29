@@ -6,7 +6,7 @@ mael 2005-10-28: Fix bug in gengc: Errors when bootstrapping
 mael 2005-10-26: Try compile the MLKit with MLTon.
 
 mael 2005-10-25: Add necessary Posix-support needed to compile
-Kittester with MLKit.
+Kittester with MLKit. DONE (Varming)
 
 mael 2005-10-25: MLB-make needs to check the integrity (e.g., size) of
 .{eb1,eb,lnk,rev}-files before concluding that recompilation is not
