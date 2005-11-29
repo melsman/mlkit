@@ -315,6 +315,7 @@ resolveInstructions(int sizeW, bytecode_t start_code,
       // This is not entirely sound, but it would be very coincidential 
       // if an instrution number without an arity is the same as
       // a pointer to an instruction in our interpreter.
+      // This is needed to let apache restart without trouble
       for (j = 0; j < jumptableSize; j++)
       {
         if (((unsigned long) jumptable[j]) == inst)
