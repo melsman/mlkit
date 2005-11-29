@@ -1,17 +1,7 @@
+mael 2005-11-29: Fix bug related to where .bdy-files are stored. They
+should be stored in the MLB-directory of the functor-hosting mlb-file.
 
-
-mael 2005-11-08: Thoughts on generational collection: If a
-minor-collection didn't do much, let the next collection be a major
-collection. First, we need to get the statistics right.
-
-mael 2005-10-28: Fix bug in gengc: Errors in 
-  vliw.sml
-  lexgen.sml
-  mlyacc.mlb
-  ratio-regions.sml
-  pickletest.mlb
-
-Bug fixed.
+mael 2005-10-28: Fix bug in gengc: Errors when bootstrapping
 
 mael 2005-10-26: Try compile the MLKit with MLTon.
 
