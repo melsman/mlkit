@@ -116,6 +116,7 @@ word8vector.sml
 word8vectorslice.sml           
 word8array.sml                
 word8arrayslice.sml
+substring.sml
 bytechar.sml                  
 time.sml                      
 math.sml                                       (* ok, but not quite the 
