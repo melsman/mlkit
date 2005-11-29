@@ -11,8 +11,11 @@ structure Word32 : WORD =
     fun fromInt (i : int) : word32 = prim("__word_to_word32", cast_iw i)
 
     fun toLargeWord (w : word32) : word32 = w
+    val toLarge = toLargeWord
     fun toLargeWordX (w : word32) : word32 = w
+    val toLargeX = toLargeWordX
     fun fromLargeWord (w : word32) : word32 = w
+    val fromLarge = fromLargeWord
 
     fun toLargeInt (w : word32) : int32 = prim("__word32_to_int32", w)
     fun toLargeIntX (w : word32) : int32 = prim("__word32_to_int32_X", w)

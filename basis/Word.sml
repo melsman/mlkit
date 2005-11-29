@@ -17,6 +17,7 @@ structure Word : WORD =
     fun wordSize_w() = fromInt wordSize
 
     fun toLargeWord (w : word) : word32 = prim("__word_to_word32", w)
+    val toLarge = toLargeWord
 
     fun toLargeInt (w : word) : int32 = prim("__word32_to_int32", toLargeWord w)
 
@@ -24,9 +25,10 @@ structure Word : WORD =
 
     fun fromLargeInt (i : int32) : word = prim("__int32_to_word", i)
 
-
     fun toLargeWordX (w : word) : word32 = prim("__word_to_word32_X", w)
+    val toLargeX = toLargeWordX
     fun fromLargeWord (w : word32) : word = prim("__word32_to_word", w)
+    val fromLarge = fromLargeWord
 
     fun orb (x : word, y : word) : word = prim("__orb_word", (x, y))
     fun andb (x : word, y : word) : word = prim("__andb_word", (x, y))
