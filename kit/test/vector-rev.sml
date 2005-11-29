@@ -12,15 +12,17 @@ structure Main =
 	 end
 
       fun doit () =
-	 let
-	    val v = tabulate (10000, fn i => i)
+	 let	    
 	    fun loop n =
 	       if n < 0
 		  then ()
 	       else
-		  if 0 = sub (rev (rev v), 0)
-		     then loop (n - 1)
-		  else raise Fail "bug"
+		   let val v = tabulate (10000, fn i => (i,i))
+		   in
+		       if 0 = #1 (sub (rev (rev v), 0))
+			   then loop (n - 1)
+		       else raise Fail "bug"
+		   end
 	 in loop 10000
 	 end
    end

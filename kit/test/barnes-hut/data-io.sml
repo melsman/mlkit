@@ -44,10 +44,10 @@ functor DataIO (S : SPACE) : DATA_IO =
    *)
     fun inputData fname = let
 	  val strm = TextIO.openIn fname
-	  val buf = ref(SS.all "")
+	  val buf = ref(SS.full "")
 	  fun getLn () = (case (TextIO.inputLine strm)
 		 of NONE => raise Fail "inputData: EOF"
-		  | SOME s => buf := SS.all s
+		  | SOME s => buf := SS.full s
 		(* end case *))
 	  fun skipWS () = let
 		val buf' = SS.dropl Char.isSpace (!buf)

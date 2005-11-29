@@ -171,7 +171,7 @@ local
 	  (Word8Array.update (a_87, i_304, Word8.fromInt v_39))
       fun extract_9 (ba_0, s_109, n_205) =
 	  let fun tab_5 i_305 = (Word8Array.sub (ba_0, i_305 + s_109))
-	  in Byte.unpackString (Word8Array.tabulate (n_205, tab_5), 0, NONE)
+	  in Byte.unpackString (Word8Array.tabulate (n_205, tab_5), 0, n_205 (*NONE*))
 	  end
       exception InternalError_0  of string
       fun response_0 (blist_0 : bool list,

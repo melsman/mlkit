@@ -60,6 +60,11 @@ test_mlkit_gengc:
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gengc)
 	/bin/mv test_report.pdf test_report-native-gengc-`/bin/date -I`.pdf
 
+test_mlkit_gengc_pickle:
+	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit pickle.tst -gengc)
+	/bin/mv test_report.pdf test_report-native-gengc-`/bin/date -I`.pdf
+
+
 test_kam:
 	(export SML_LIB=`(cd ..; pwd)`;	../bin/kittester ../bin/mlkit_kam all.tst)
 	/bin/mv test_report.pdf test_report-kam-`/bin/date -I`.pdf

@@ -32,7 +32,7 @@ structure GetParam : sig
     fun getParam name = let
 	  fun scanBind [] = NONE
 	    | scanBind (s::r) = let
-		val (_, suffix) = SS.position name (SS.all s)
+		val (_, suffix) = SS.position name (SS.full s)
 		in
 		  if (SS.isEmpty suffix)
 		    then scanBind r
