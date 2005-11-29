@@ -120,6 +120,16 @@ structure List : LIST = struct
 
   fun getItem []        = NONE
     | getItem (x :: xr) = SOME (x, xr)
+
+  fun collate f ([], [])       = EQUAL
+    | collate f ([],_)         = LESS
+    | collate f (_,[])         = GREATER
+    | collate f (x::xr, y::yr) = 
+    case f (x,y)
+    of EQUAL => collate f (xr,yr)
+     | GREATER => GREATER
+     | LESS => LESS
+                                   
 end; (*structure List*)
 
 val null = List.null
