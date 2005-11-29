@@ -1,7 +1,5 @@
 ifeq ($(MLCOMP)x,x)
 MLCOMP=mlton @MLton ram-slop 0.7 -- -drop-pass deepFlatten -drop-pass refFlatten
-#MLCOMP=/home/varming/mlkit/kit/bin/mlkit -gc
-#MLCOMP=/home/varming/mlkit/kit/bin/mlkit -gc
 #mlton @MLton ram-slop 0.7 gc-summary -- -drop-pass deepFlatten -verbose 3
 endif
 
