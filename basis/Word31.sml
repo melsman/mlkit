@@ -53,6 +53,8 @@ structure Word31 : WORD =
     val op div = fn (w1:word31,w2) => w1 div w2
     val op mod = fn (w1:word31,w2) => w1 mod w2
 
+    val ~ = fn w => fromInt(~(toInt w)) 
+
     local 
       open StringCvt
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)

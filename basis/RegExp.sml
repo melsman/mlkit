@@ -440,7 +440,7 @@ local
 	| _ => read ts (fn _ => false)
       end
 
-    fun parse s = let val (re,ts) = alt (SS.all s)
+    fun parse s = let val (re,ts) = alt (SS.full s)
 		  in case get ts of
                          NONE => re
                        | _    => parse_err "expecting atom"

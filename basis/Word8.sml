@@ -26,6 +26,8 @@ structure Word8 : WORD =
     val wordSize = 8
 
     fun fromInt (x : int) : word8 = w_w8(norm(i_w x))
+
+    val ~ = fn w => fromInt(~(toInt w)) 
       
     (* Invariant for values w of type Word8.word: 0 <= toInt w < 256 *)
 

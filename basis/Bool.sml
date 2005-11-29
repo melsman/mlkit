@@ -3,7 +3,7 @@
 structure Bool : BOOL =    (* Depends on String and StringCvt *)
   struct
 
-    structure Char = String.Char
+    structure Char = Char
 
     type bool = bool
 
