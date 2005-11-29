@@ -1,76 +1,136 @@
-(*MATH.sml*)
+signature MATH =
+  sig
+    type real
+    val pi : real
+    val e : real
+    val sqrt : real -> real
+    val sin : real -> real
+    val cos : real -> real
+    val tan : real -> real
+    val asin : real -> real
+    val acos : real -> real
+    val atan : real -> real
+    val atan2 : real * real -> real
+    val exp : real -> real
+    val pow : real * real -> real
+    val ln    : real -> real
+    val log10 : real -> real
+    val sinh : real -> real
+    val cosh : real -> real
+    val tanh : real -> real
+  end
 
-signature MATH = sig
-  type real = real
+(*
+val pi : real
+    The constant pi (3.141592653...).
 
-  val pi : real
-  val e  : real
+val e : real
+    The base e (2.718281828...) of the natural logarithm.
 
-  val sqrt  : real -> real
-  val sin   : real -> real
-  val cos   : real -> real
-  val tan   : real -> real
-  val atan  : real -> real
-  val asin  : real -> real
-  val acos  : real -> real
-  val atan2 : real * real -> real
-  val exp   : real -> real
-  val pow   : real * real -> real
-  val ln    : real -> real
-  val log10 : real -> real
-  val sinh  : real -> real
-  val cosh  : real -> real
-  val tanh  : real -> real
-end; (*signature MATH*)
+sqrt x
+    returns the square root of x. sqrt (~0.0) = ~0.0. If x < 0, it returns NaN.
 
-(*  
-   [pi] is the circumference of the circle with diameter 1: 
-   3.14159265358979323846.
+sin x
+cos x
+tan x
+    These return the sine, cosine, and tangent, respectively, of x, measured in
+    radians. If x is an infinity, these functions return NaN. Note that tan
+    will produce infinities at various finite values, roughly corresponding to
+    the singularities of the tangent function.
 
-   [e] is the base of the natural logarithm: 2.7182818284590452354.
+asin x
+acos x
+    These return the arc sine and arc cosine, respectively, of x. asin is the
+    inverse of sin. Its result is guaranteed to be in the closed interval
+    [-pi/2,pi/2]. acos is the inverse of cos. Its result is guaranteed to be in
+    the closed interval [0,pi]. If the magnitude of x exceeds 1.0, they return
+    NaN.
 
-   [sqrt x] is the square root of x.  Returns NaN if x < 0.0.
+atan x
+    returns the arc tangent of x. atan is the inverse of tan. For finite
+    arguments, the result is guaranteed to be in the open interval
+    (-pi/2,pi/2). If x is +infinity, it returns pi/2; if x is -infinity, it
+    returns -pi/2.
 
-   [sin r] is the sine of r, where r is in radians.
+atan2 (y, x)
+    returns the arc tangent of (y/x) in the closed interval [-pi,pi],
+    corresponding to angles within +-180 degrees. The quadrant of the resulting
+    angle is determined using the signs of both x and y, and is the same as the
+    quadrant of the point (x,y). When x = 0, this corresponds to an angle of 90
+    degrees, and the result is (real (sign y)) * pi/2.0. It holds that
 
-   [cos r] is the cosine of r, where r is in radians.
+        sign ( cos ( atan2 (y,x))) = sign(x) 
 
-   [tan r] is the tangent of r, where r is in radians.  Returns NaN if 
-   r is a multiple of pi/2.
+    and
 
-   [atan t] is the arc tangent of t, in the open interval ] ~pi/2, pi/2 [.
+        sign ( sin ( atan2 (y,x))) = sign(y) 
 
-   [asin t] is the arc sine of t, in the closed interval [ ~pi/2, pi/2 ].  
-   Returns NaN if abs x > 1.
+    except for inaccuracies incurred by the finite precision of real and the
+    approximation algorithms used to compute the mathematical functions.
 
-   [acos t] is the arc cosine of t, in the closed interval [ 0, pi ].
-   Returns NaN if abs t > 1.
+    Rules for exceptional cases are specified in the following table.
+    y 	x 	atan2(y,x)
+    +-0 	0 < x 	+-0
+    +-0 	+0 	+-0
+    +-0 	x < 0 	+-pi
+    +-0 	-0 	+-pi
+    y, 0 < y 	+-0 	pi/2
+    y, y < 0 	+-0 	-pi/2
+    +-y, finite y > 0 	+infinity 	+-0
+    +-y, finite y > 0 	-infinity 	+-pi
+    +-infinity 	finite x 	+-pi/2
+    +-infinity 	+infinity 	+-pi/4
+    +-infinity 	-infinity 	+-3pi/4
 
-   [atan2(y, x)] is the arc tangent of y/x, in the interval ] ~pi, pi ],
-   except that atan2(y, 0) = sign y * pi/2.  The quadrant of the result
-   is the same as the quadrant of the point (x, y).
-   Hence sign(cos(atan2(y, x))) = sign x 
-   and   sign(sin(atan2(y, x))) = sign y. 
 
-   [exp x] is e to the x'th power.
+exp x
+    returns e(x), i.e., e raised to the x(th) power. If x is +infinity, it
+    returns +infinity; if x is -infinity, it returns 0.
 
-   [pow (x, y)] is x to the y'th power, defined when 
-      y >= 0 and (y integral or x >= 0)
-   or y < 0 and ((y integral and x <> 0.0) or x > 0).
+pow (x, y)
+    returns x(y), i.e., x raised to the y(th) power. For finite x and y, this
+    is well-defined when x > 0, or when x < 0 and y is integral. Rules for
+    exceptional cases are specified below.
+    x 	y 	pow(x,y)
+    x, including NaN 	0 	1
+    |x| > 1 	+infinity 	+infinity
+    |x| < 1 	+infinity 	+0
+    |x| > 1 	-infinity 	+0
+    |x| < 1 	-infinity 	+infinity
+    +infinity 	y > 0 	+infinity
+    +infinity 	y < 0 	+0
+    -infinity 	y > 0, odd integer 	-infinity
+    -infinity 	y > 0, not odd integer 	+infinity
+    -infinity 	y < 0, odd integer 	-0
+    -infinity 	y < 0, not odd integer 	+0
+    x 	NaN 	NaN
+    NaN 	y <> 0 	NaN
+    +-1 	+-infinity 	NaN
+    finite x < 0 	finite non-integer y 	NaN
+    +-0 	y < 0, odd integer 	+-infinity
+    +-0 	finite y < 0, not odd integer 	+infinity
+    +-0 	y > 0, odd integer 	+-0
+    +-0 	y > 0, not odd integer 	+0
 
-   We define pow(0, 0) = 1.
 
-   [ln x] is the natural logarithm of x (that is, with base e).
-   Returns NaN if x <= 0.0.
+ln x
+log10 r
+    These return the natural logarithm (base e) and decimal logarithm (base
+    10), respectively, of x. If x < 0, they return NaN; if x = 0, they return
+    -infinity; if x is infinity, they return infinity.
 
-   [log10 x] is the base-10 logarithm of x.  Returns NaN if x <= 0.0.
+sinh x
+cosh x
+tanh x
+    These return the hyperbolic sine, hyperbolic cosine, and hyperbolic
+    tangent, respectively, of x, that is, the values (e(x) - e(-x)) / 2, (e(x)
+    + e(-x)) / 2, and (sinh x)/(cosh x).
 
-   [sinh x] returns the hyperbolic sine of x, mathematically defined as
-   (exp x - exp (~x)) / 2.  Returns NaN if x is too large.
-
-   [cosh x] returns the hyperbolic cosine of x, mathematically defined as
-   (exp x + exp (~x)) / 2.  Returns NaN if x is too large.
-
-   [tanh x] returns the hyperbolic tangent of x, mathematically defined 
-   as (sinh x) / (cosh x).  Returns NaN if x is too large.
+    These functions have the following properties:
+    sinh +-0 	= 	+-0
+    sinh +-infinity 	= 	+-infinity
+    cosh +-0 	= 	1
+    cosh +-infinity 	= 	+-infinity
+    tanh +-0 	= 	+-0
+    tanh +-infinity 	= 	+-1
 *)
