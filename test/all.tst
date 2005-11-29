@@ -95,7 +95,8 @@ FuhMishra.mlb           tx tc
 
 testdyn1.sml               tc 
 check_arrays.sml              
-array.sml                     
+array.sml
+arrayslice.sml          
 array2.sml
 general.sml                   
 int.sml                       
@@ -109,9 +110,12 @@ listpair.sml
 string.sml                    
 stringcvt.sml                 
 textio.sml                    
-vector.sml                    
-word8vector.sml               
+vector.sml
+vectorslice.sml                
+word8vector.sml
+word8vectorslice.sml           
 word8array.sml                
+word8arrayslice.sml
 bytechar.sml                  
 time.sml                      
 math.sml                                       (* ok, but not quite the 
