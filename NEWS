@@ -1,4 +1,11 @@
 MLKit NEWS file
+ 
+ * mael 2005-11-29: Started work on updating the Standard ML Basis
+   Library implementation - see
+
+     http://www.itu.dk/research/mlkit/wiki/index.php/MLKit_Basis_Library_Implementation
+
+   for a grasp of the status.
 
  * mael 2005-11-11: Finished work on generational garbage
    collection. The mlkit option -gengc can now be used to construct
