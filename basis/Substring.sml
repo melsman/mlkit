@@ -206,7 +206,7 @@ structure Substring : SUBSTRING =
       in h i 
       end
 
-    exception Span
+    exception Span = General.Span
 
     fun span ((s, i, n), (s', i', n')) = 
       if i > i'+n' orelse s<>s' then 

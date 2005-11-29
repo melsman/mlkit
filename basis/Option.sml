@@ -1,9 +1,7 @@
-
 structure Option: OPTION =
   struct
-
-    exception Option = General.Option
-    datatype option = datatype General.option
+    exception Option = Option
+    datatype option = datatype option
 
     val getOpt = getOpt
     val isSome = isSome
@@ -13,6 +11,9 @@ structure Option: OPTION =
 
     fun map f NONE = NONE
       | map f (SOME x) = SOME (f x)
+
+    fun app f NONE = ()
+      | app f (SOME x) = f x
 
     fun join NONE = NONE
       | join (SOME x) = x

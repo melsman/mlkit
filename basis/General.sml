@@ -11,11 +11,11 @@ structure General : GENERAL =
   struct
     type unit = unit
     type exn = exn
-    type 'a ref = 'a ref
 
     exception Bind = Bind
     exception Match = Match
     exception Subscript
+    exception Span
     exception Size
     exception Overflow = Overflow
     exception Domain
@@ -26,7 +26,7 @@ structure General : GENERAL =
   
     fun exnName (e: exn) : string = prim("exnNameML", e)   (* exomorphic by copying *)
     fun exnMessage (e: exn) : string = exnName e 
-
+(*
     datatype 'a option = NONE | SOME of 'a
     exception Option
     fun getOpt (NONE, a) = a
@@ -35,7 +35,7 @@ structure General : GENERAL =
       | isSome _ = true
     fun valOf (SOME a) = a
       | valOf _ = raise Option
-
+*)
     datatype order = LESS | EQUAL | GREATER
 
     fun !(x: 'a ref): 'a = prim ("!", x) 
@@ -47,8 +47,16 @@ structure General : GENERAL =
 
 open General
 
-
 (* Top-level identifiers; Some are here - some are introduced later *)
+
+datatype 'a option = NONE | SOME of 'a
+exception Option
+fun getOpt (NONE, a) = a
+  | getOpt (SOME a, b) = a
+fun isSome NONE = false
+  | isSome _ = true
+fun valOf (SOME a) = a
+  | valOf _ = raise Option
 
 fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 
