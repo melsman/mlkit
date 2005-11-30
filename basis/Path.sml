@@ -2,6 +2,7 @@
 
 structure Path : OS_PATH = struct
   exception Path
+  exception InvalidArc
 
   (* It would make sense to use substrings for internal versions of
    * fromString and toString, and to allocate new strings only when
