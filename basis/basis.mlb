@@ -51,9 +51,9 @@ local
        end
 
     basis Word =
-       let open General String
+       let open General String 
            basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
-           basis PW = let open ArrayVector W 
+           basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
                       end
        in bas open W PW end
@@ -72,7 +72,7 @@ local
     basis Real =
        let open General String Int
        in bas MATH.sml Math.sml REAL.sml Real.sml 
-	    local open Byte ArrayVector
+	    local open Byte ArrayVector List
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
 	  end
