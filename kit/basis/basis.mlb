@@ -72,7 +72,7 @@ local
     basis Real =
        let open General String Int
        in bas MATH.sml Math.sml REAL.sml Real.sml 
-	    local open Byte ArrayVector List
+	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
 	  end
