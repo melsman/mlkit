@@ -152,6 +152,18 @@ local
        in bas SML90.sml end
        end
 
+(*    basis Socket =
+       let open General String System ArrayVector
+       in
+         bas NET_HOST_DB.sml SOCKET.sml end
+       end*)
+
+    basis Unix =
+       let open Word System Io
+       in
+         bas UNIX.sml (*UNIX_SOCK.sml*) end
+       end
+
     basis Posix = 
        let open General Word System List Int Real
        in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
