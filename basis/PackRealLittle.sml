@@ -14,16 +14,16 @@ structure PackRealLittle : PACK_REAL =
 
     fun subVec (v,i) =
         let
-          fun toL 8 l = List.rev l
-            | toL j l = toL (j+1) (Word8Vector.sub(v,i*bytesPerElem+j) :: l)
-        in fromBytes (Word8Vector.fromList (toL 0 []))
+          fun toL 9 l = l
+            | toL j l = toL (j+1) (Word8Vector.sub(v,(i+1)*bytesPerElem - j) :: l)
+        in fromBytes (Word8Vector.fromList (toL 1 []))
         end
 
     fun subArr(a,i) = 
         let
-          fun toL 8 l = List.rev l
-            | toL j l = toL (j+1) (Word8Array.sub(a,i*bytesPerElem+j) :: l)
-        in fromBytes (Word8Vector.fromList (toL 0 []))
+          fun toL 9 l = l
+            | toL j l = toL (j+1) (Word8Array.sub(a,(i+1)*bytesPerElem-j) :: l)
+        in fromBytes (Word8Vector.fromList (toL 1 []))
         end
     
     fun update(a,i,r) =
