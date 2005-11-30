@@ -45,6 +45,11 @@ local
           end
        end
 
+    basis Text =
+       let open String ArrayVector
+       in bas TEXT.sml Text.sml end
+       end
+
     basis Bool = 
        let open General String 
        in bas BOOL.sml Bool.sml end
