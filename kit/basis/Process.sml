@@ -7,6 +7,10 @@ structure Process : OS_PROCESS =
     val success : status = 0
     val failure : status = ~1
 
+  (* Make sure this function is in sync with Unix.fromStatus = Unix.W_EXITED *)
+    fun isSuccess 0 = true
+      | isSuccess _ = false
+
     local 
       val exn = Fail "Process"
       fun system_ (s: string) : status = prim("sml_system", (s,exn))
