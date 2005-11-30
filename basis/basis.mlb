@@ -103,7 +103,7 @@ local
        end
 
     basis System =
-       let open General String
+       let open General String Int
        in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end

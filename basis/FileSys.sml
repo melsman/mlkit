@@ -77,7 +77,7 @@ structure FileSys : OS_FILE_SYS =
 	end
 
     type dirstream  = dirstruct_ option ref;
-    datatype access = A_READ | A_WRITE | A_EXEC;
+    datatype access_mode = A_READ | A_WRITE | A_EXEC;
 
     fun access (path, perm) =
 	let fun mem p = if List.exists (fn q => p=q) perm then 1 else 0
@@ -172,15 +172,19 @@ structure FileSys : OS_FILE_SYS =
 	(ref (SOME (opendir_ path)))
 	handle Fail s => raiseSys "openDir" (SOME path) s;
 
+    fun isNull (s : string) = prim("__is_null", s) : bool
+
     fun readDir (ref NONE) =
 	raiseSysML "readDir" NONE "Directory stream is closed"
       | readDir (arg as ref (SOME dstr)) =
-	let val entry = readdir_ dstr
+	let val e' = readdir_ dstr
+      val e = if isNull e' then NONE else SOME e'
 	in
+    Option.join(Option.map(fn entry => 
 	    if entry <> Path.parentArc andalso entry <> Path.currentArc then
-		entry
+		SOME entry
 	    else
-		readDir arg
+		readDir arg) e)
 	end
 
     fun rewindDir (ref NONE) =
