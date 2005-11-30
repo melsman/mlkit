@@ -1,196 +1,310 @@
-(*OS_PATH.sml*)
+signature OS_PATH =
+  sig
+    exception Path
+    exception InvalidArc
 
-signature OS_PATH = sig
-  exception Path
+    val parentArc : string
+    val currentArc : string
 
-  val parentArc    : string
-  val currentArc   : string
+    val fromString : string
+                       -> {
+                         isAbs : bool,
+                         vol : string,
+                         arcs : string list
+                       }
+    val toString : {
+                       isAbs : bool,
+                       vol : string,
+                       arcs : string list
+                     } -> string
 
-  val fromString   : string -> {isAbs : bool, vol : string, arcs : string list}
-  val toString     : {isAbs : bool, vol : string, arcs : string list} -> string
+    val validVolume : {isAbs : bool, vol : string} -> bool
 
-  val getVolume    : string -> string 
-  val validVolume  : {isAbs : bool, vol : string} -> bool
-  val getParent    : string -> string
+    val getVolume : string -> string
+    val getParent : string -> string
 
-  val isAbsolute   : string -> bool
-  val isRelative   : string -> bool
-  val mkAbsolute   : {path:string, relativeTo:string} -> string
-  val mkRelative   : {path:string, relativeTo:string} -> string
+    val splitDirFile : string -> {dir : string, file : string}
+    val joinDirFile : {dir : string, file : string} -> string
+    val dir  : string -> string
+    val file : string -> string
 
-  val concat       : string * string -> string
+    val splitBaseExt : string
+                         -> {base : string, ext : string option
+                         }
+    val joinBaseExt : {base : string, ext : string option}
+                        -> string
+    val base : string -> string
+    val ext  : string -> string option
 
-  val mkCanonical  : string -> string
-  val isCanonical  : string -> bool
+    val mkCanonical : string -> string
+    val isCanonical : string -> bool
+    val mkAbsolute : {path : string, relativeTo : string}
+                       -> string
+    val mkRelative : {path : string, relativeTo : string}
+                       -> string
+    val isAbsolute : string -> bool
+    val isRelative : string -> bool
+    val isRoot : string -> bool
 
-  val splitDirFile : string -> {dir : string, file : string}
-  val joinDirFile  : {dir : string, file : string} -> string
-  val dir          : string -> string
-  val file         : string -> string
+    val concat : string * string -> string
 
-  val splitBaseExt : string -> {base : string, ext : string option}
-  val joinBaseExt  : {base : string, ext: string option} -> string
-  val base         : string -> string    
-  val ext          : string -> string option
-end; (*signature OS_PATH*)
+(*    val fromUnixPath : string -> string 
+    val toUnixPath : string -> string *)
+  end
 
-(* This module provides OS-independent functions for manipulating
-   strings that represent file names and paths in a directory
-   structure.  None of these functions accesses the actual filesystem.
-   
-   Definitions: 
+(*
+val parentArc : string
+    The string denoting the parent directory (e.g., ".." on Microsoft Windows
+    and Unix).
 
-   * An arc denotes a directory or file.  Under Unix or DOS, an arc may
-   have form "..", ".", "", or "abc", or similar.
+val currentArc : string
+    The string denoting the current directory (e.g., "." on Microsoft Windows
+    and Unix).
 
-   * An absolute path has a root: Unix examples include "/", "/a/b";
-   DOS examples include "\", "\a\b", "A:\a\b".  
+fromString path
+    returns the decomposition {isAbs, vol, arcs} of the path specified by path.
+    vol is the volume name and arcs is the list of (possibly empty) arcs of the
+    path. isAbs is true if the path is absolute. Under Unix, the volume name is
+    always the empty string; under Microsoft Windows, in addition it can have
+    the form "A:", "C:", etc.
 
-   * A relative path is one without a root: Unix examples include
-   "..", "a/b"; DOS examples include "..", "a\b", "A:a\b".
-
-   * A path has an associated volume.  Under Unix, there is only one
-   volume, whose name is "".  Under DOS, the volume names are "",
-   "A:", "C:", and similar.
-
-   * A canonical path contains no occurrences of the empty arc "" or
-   the current arc ".", and contains or the parent arc ".." only at
-   the beginning and only if the path is relative.  
-
-   * All functions (except concat) preserve canonical paths.  That is,
-   if all arguments are canonical, then so will the result be.
-
-   * All functions are defined so that they work sensibly on canonical 
-   paths.
-
-   * There are three groups of functions, corresponding to three ways
-   to look at paths, exemplified by the following paths:
-
-   	Unix:    d/e/f/a.b.c       and     /d/e/f/a.b.c 
-        DOS:     A:d\e\f\a.b.c     and     A:d\e\f\a.b.c     
-
-   (1) A path consists of a sequence of arcs, possibly preceded by a
-       volume and a root:
-
-                          vol  [--- arcs ---]        vol  root  [--- arcs ---]
-        ------------------------------------------------------------------ 
-	Unix examples:	       d  e  f  a.b.c               /   d  e  f  a.b.c
-	DOS examples:     A:   d  e  f  a.b	     A:     \   d  e  f  a.b
-
-   (2) A path consists of a directory part and a (last) file name part:
-
-                          directory   file            directory  file 
-        ------------------------------------------------------------------
-        Unix examples:    d/e/f       a.b.c           /d/e/f     a.b.c
-        DOS examples:     A:d\e\f     a.b             A:\d\e\f   a.b
-
-   (3) A path consists of a base and an extension:
-
-                          base       extension       base        extension
-        ------------------------------------------------------------------
-        Unix examples:    d/e/f/a.b      c           /d/e/f/a.b      c
-        DOS examples:     A:d\e\f\a      b           A:\d\e\f\a      b
+    Here are some examples for Unix paths:
+    path 	fromString path
+    "" 	{isAbs=false, vol="", arcs=[]}
+    "/" 	{isAbs=true, vol="", arcs=[""]}
+    "//" 	{isAbs=true, vol="", arcs=["", ""]}
+    "a" 	{isAbs=false, vol="", arcs=["a"]}
+    "/a" 	{isAbs=true, vol="", arcs=["a"]}
+    "//a" 	{isAbs=true, vol="", arcs=["","a"]}
+    "a/" 	{isAbs=false, vol="", arcs=["a", ""]}
+    "a//" 	{isAbs=false, vol="", arcs=["a", "", ""]}
+    "a/b" 	{isAbs=false, vol="", arcs=["a", "b"]}
 
 
-   GROUP 0: General functions on paths:
+toString {isAbs, vol, arcs}
+    makes a string out of a path represented as a list of arcs. isAbs specifies
+    whether or not the path is absolute, and vol provides a corresponding
+    volume. It returns "" when applied to {isAbs=false, vol="", arcs=[]}. The
+    exception Path is raised if validVolume{isAbs, vol} is false, or if isAbs
+    is false and arcs has an initial empty arc. The exception InvalidArc is
+    raised if any component in arcs is not a valid representation of an arc.
+    The exception Size is raised if the resulting string would have size
+    greater than String.maxSize.
 
-   [parentArc] is the arc denoting a parent directory: ".." under 
-   DOS and Unix.
+    toString o fromString is the identity. fromString o toString is also the
+    identity, provided no exception is raised and none of the strings in arcs
+    contains an embedded arc separator character. In addition,
+    isRelative(toString {isAbs=false, vol, arcs}) evaluates to true when
+    defined.
 
-   [currentArc] is the arc denoting the current directory: "." under 
-   DOS and Unix.
+validVolume {isAbs, vol}
+    returns true if vol is a valid volume name for an absolute or relative
+    path, respectively as isAbs is true or false. Under Unix, the only valid
+    volume name is "". Under Microsoft Windows, the valid volume names have the
+    form "a:", "A:", "b:", "B:", etc. and, if isAbs = false, also "". Under
+    MacOS, isAbs can be true if and only if vol is "".
 
-   [isRelative p] returns true if p is a relative path.
+getVolume path
+    returns the volume portion of the path path.
 
-   [isAbsolute p] returns true if p is an absolute path.  
-   Equals not (isRelative p).
+getParent path
+    returns a string denoting the parent directory of path. It holds that
+    getParent path = path if and only if path is a root. If the last arc is
+    empty or the parent arc, then getParent appends a parent arc. If the last
+    arc is the current arc, then it is replaced with the parent arc. Note that
+    if path is canonical, then the result of getParent will also be canonical.
 
-   [validVolume {isAbs, vol}] returns true if vol is a valid volume
-   name for an absolute path (if isAbs=true) resp. for a relative path
-   (if isAbs=false).  Under Unix, the only valid volume name is "";
-   under DOS the valid volume names are "", "a:", "b:", ..., and "A:",
-   "B:", ...
-
-   [getParent p] returns a string denoting the parent directory of p.
-   It holds that getParent p = p if and only if p is a root. 
-
-   [concat (p1, p2)] returns the path consisting of p1 followed by p2.
-   Does not preserve canonical paths: concat("a/b", "../c") equals
-   "a/b/../c".  This is because "a/b/../c" and "a/c" may not be
-   equivalent in the presence of symbolic links.  Raises Path if p2 is
-   not a relative path.
-
-   [mkAbsolute{path=p1, relativeTo=p2}] returns the absolute path made by taking path
-   p2, then p1.  That is, returns p1 if p1 is absolute; otherwise
-   returns the canonicalized concatenation of p2 and p1.  Raises Path
-   if p2 is not absolute (even if p1 is absolute).
-
-   [mkRelative{path=p1, relativeTo=p2}] returns p1 relative to p2.  That is, returns
-   p1 if p1 is already relative; otherwise returns the relative path
-   leading from p2 to p1.  Raises Path if p2 is not absolute (and even
-   if p1 is relative), or if p1 and p2 are both absolute but have
-   different roots.
-
-   [mkCanonical p] returns a canonical path which is equivalent to p.
-   Redundant occurrences of the parent arc, the current arc, and the
-   empty arc are removed.  The canonical path will never be the empty
-   string; the empty path is converted to the current directory path
-   ("." under Unix and DOS).  
-
-   [isCanonical p] is equal to (p = mkCanonical p).
+    Here are some examples for Unix paths:
+    path 	getParent path
+    "/" 	"/"
+    "a" 	"."
+    "a/" 	"a/.."
+    "a///" 	"a///.."
+    "a/b" 	"a"
+    "a/b/" 	"a/b/.."
+    ".." 	"../.."
+    "." 	".."
+    "" 	".."
 
 
-   GROUP 1: Manipulating volumes and arcs:
+splitDirFile path
+    splits the string path path into its directory and file parts, where the
+    file part is defined to be the last arc. The file will be "", if the last
+    arc is "".
 
-   [fromString s] returns {isAbs=false, vol, arcs} if the path p is
-   relative, and {isAbs=true, vol, arcs} if the path p is absolute.
-   In both cases vol is the volume name and arcs is the list of
-   (possibly empty) arcs of the path.  Under Unix, the volume name is
-   always the empty string ""; under DOS it will have form "A:", "C:",
-   or similar.
-
-   [toString path] reconstitutes a path from its root (if any) and
-   arcs.  Raises Path if applied to a relative path whose first arc is
-   empty.  It holds that toString(fromString p) = p, except that in MS
-   DOS, slashes "/" in p will be replaced by backslashes "\".  It
-   holds that fromString (toString p) = p when no exception is raised.
-   It holds that isRelative(toString {isAbs=false, vol, arcs}) = true
-   when no exception is raised.
+    Here are some examples for Unix paths:
+    path 	splitDirFile path
+    "" 	{dir = "", file = ""}
+    "." 	{dir = "", file = "."}
+    "b" 	{dir = "", file = "b"}
+    "b/" 	{dir = "b", file = ""}
+    "a/b" 	{dir = "a", file = "b"}
+    "/a" 	{dir = "/", file = "a"}
 
 
-   GROUP 2: Manipulating directory paths and file names:
+joinDirFile {dir, file}
+    creates a whole path out of a directory and a file by extending the path
+    dir with the arc file. If the string file does not correspond to an arc,
+    raises InvalidArc. The exception Size is raised if the resulting string
+    would have size greater than String.maxSize.
 
-   [splitDirFile p] returns {dir, file} where file is the last arc in
-   p, and dir is the path preceding that arc.  A typical use is to
-   split a path into the directory part (dir) and the filename (file).
+dir path
+file path
+    return the directory and file parts of a path, respectively. They are
+    equivalent to #dir o splitDirFile and #file o splitDirFile, respectively,
+    although they are probably more efficient.
 
-   [joinDirFile {dir, file}] returns the path p obtained by extending
-   the path dir with the arc file.
+splitBaseExt path
+    splits the path path into its base and extension parts. The extension is a
+    non-empty sequence of characters following the right-most, non-initial,
+    occurrence of "." in the last arc; NONE is returned if the extension is not
+    defined. The base part is everything to the left of the extension except
+    the final ".". Note that if there is no extension, a terminating "." is
+    included with the base part.
 
-   [dir p] equals #dir (splitDirFile p).
+    Here are some examples for Unix paths:
+    path 	splitBaseExt path
+    "" 	{base = "", ext = NONE}
+    ".login" 	{base = ".login", ext = NONE}
+    "/.login" 	{base = "/.login", ext = NONE}
+    "a" 	{base = "a", ext = NONE}
+    "a." 	{base = "a.", ext = NONE}
+    "a.b" 	{base = "a", ext = SOME "b"}
+    "a.b.c" 	{base = "a.b", ext = SOME "c"}
+    ".news/comp" 	{base = ".news/comp", ext = NONE}
 
-   [file p] equals #file (splitDirFile p).
+
+joinBaseExt {base, ext}
+    returns an arc composed of the base name and the extension (if different
+    from NONE). It is a left inverse of splitBaseExt, i.e., joinBaseExt o
+    splitBaseExt is the identity. The opposite does not hold, since the
+    extension may be empty, or may contain extension separators. Note that
+    although splitBaseExt will never return the extension SOME(""), joinBaseExt
+    treats this as equivalent to NONE. The exception Size is raised if the
+    resulting string would have size greater than String.maxSize.
+
+base path
+ext path
+    These return the base and extension parts of a path, respectively. They are
+    equivalent to #base o splitBaseExt and #ext o splitBaseExt, respectively,
+    although they are probably more efficient.
+
+mkCanonical path
+    returns the canonical path equivalent to path. Redundant occurrences of the
+    parent arc, the current arc, and the empty arc are removed. The canonical
+    path will never be the empty string; the empty path is converted to the
+    current directory path ("." under Unix and Microsoft Windows).
+
+    Note that the syntactic canonicalization provided by mkCanonical may not
+    preserve file system meaning in the presence of symbolic links (see
+    concat).
+
+isCanonical path
+    returns true if path is a canonical path. It is equivalent to (path =
+    mkCanonical path).
+
+mkAbsolute {path, relativeTo}
+    returns an absolute path that is equivalent to the path path relative to
+    the absolute path relativeTo. If path is already absolute, it is returned
+    unchanged. Otherwise, the function returns the canonical concatenation of
+    relativeTo with path, i.e., mkCanonical (concat (abs, p)). Thus, if path
+    and relativeTo are canonical, the result will be canonical. If relativeTo
+    is not absolute, or if the two paths refer to different volumes, then the
+    Path exception is raised. The exception Size is raised if the resulting
+    string would have size greater than String.maxSize.
+
+mkRelative {path, relativeTo}
+    returns a relative path p that, when taken relative to the canonical form
+    of the absolute path relativeTo, is equivalent to the path path. If path is
+    relative, it is returned unchanged. If path is absolute, the procedure for
+    computing the relative path is to first compute the canonical form abs of
+    relativeTo. If path and abs are equal, then the current arc is the result.
+    Otherwise, the common prefix is stripped from path and abs giving p' and
+    abs'.  The resulting path is then formed by appending p' to a path
+    consisting of one parent arc for each arc in abs'. Note that if both paths
+    are canonical, then the result will be canonical.
+
+    If relativeTo is not absolute, or if path and relativeTo are both absolute
+    but have different roots, the Path exception is raised. The exception Size
+    is raised if the resulting string would have size greater than
+    String.maxSize.
+
+    Here are some examples for Unix paths:
+    path 	relativeTo 	mkRelative{path, relativeTo}
+    "a/b" 	"/c/d" 	"a/b"
+    "/" 	"/a/b/c" 	"../../.."
+    "/a/b/" 	"/a/c" 	"../b/"
+    "/a/b" 	"/a/c" 	"../b"
+    "/a/b/" 	"/a/c/" 	"../b/"
+    "/a/b" 	"/a/c/" 	"../b"
+    "/" 	"/" 	"."
+    "/" 	"/." 	"."
+    "/" 	"/.." 	"."
+    "/a/b/../c" 	"/a/d" 	"../b/../c"
+    "/a/b" 	"/c/d" 	"../../a/b"
+    "/c/a/b" 	"/c/d" 	"../a/b"
+    "/c/d/a/b" 	"/c/d" 	"a/b"
 
 
-   GROUP 3: Manipulating file names and extensions:
+isAbsolute path
+isRelative path
+    These return true if path is, respectively, absolute or relative.
 
-   [splitBaseExt s] returns {base, ext} where ext = NONE if s has no
-   extension, and ext = SOME e if s has extension e; base is the part
-   of s preceding the extension.  A path s is considered having no
-   extension if its last arc contains no extension separator
-   (typically ".") or contains an extension separator only as its
-   leftmost character, or contains an extension separator as its
-   right-most character.  Hence none of "a.b/cd", "a/.login", "a.",
-   "..", "." and "." has an extension.
+isRoot path
+    returns true if path is a canonical specification of a root directory.
 
-   [joinBaseExt {base, ext}] returns an arc composed of the base name
-   and the extension (if different from NONE).  It is a left inverse
-   of splitBaseExt, so joinBaseExt (splitBaseExt s) = s, but the
-   opposite does not hold (since the extension may be empty, or may
-   contain extension separators).
+concat (path, t)
+    returns the path consisting of path followed by t. It raises the exception
+    Path if t is not a relative path or if path and t refer to different
+    volumes. The exception Size is raised if the resulting string would have
+    size greater than String.maxSize.
 
-   [ext s] equals #ext (splitBaseExt s).
+    A implementation of concat might be:
 
-   [base s] equals #base (splitBaseExt s).
+fun concat (p1, p2) = (case (fromString p1, fromString p2)
+       of (_, {isAbs=true, ...}) => raise Path
+        | ({isAbs, vol=v1, arcs=al1},
+           {vol=v2, arcs=al2, ...}
+          ) => if ((v2 = "") orelse (v1 = v2))
+              then toString{
+                  isAbs=isAbs, vol=v1,
+                  arcs=concatArcs(al1, al2)
+                }
+              else raise Path
+      (* end case *))
+
+    where concatArcs is like List.@, except that a trailing empty arc in the
+    first argument is dropped. Note that concat should not be confused with the
+    concatenation of two strings.
+
+    concat does not preserve canonical paths. For example, concat("a/b",
+    "../c") returns "a/b/../c". The parent arc is not removed because
+    "a/b/../c" and "a/c" may not be equivalent in the presence of symbolic
+    links.
+
+fromUnixPath s
+    converts the Unix-style path s to the path syntax of the host operating
+    system. Slash characters are translated to the directory separators of the
+    local system, as are parent arcs and current arcs. This function raises the
+    InvalidArc exception if any arc in the Unix path is invalid in the host
+    system's path syntax (e.g., an arc that has a backslash character in it
+    when the host system is Microsoft Windows).
+
+    Note that the syntax of Unix pathnames necessarily limits this function. It
+    is not possible to specify paths that have a non-empty volume name or paths
+    that have a slash in one of their arcs using this function.
+
+toUnixPath s
+    converts the path s, which is in the host operating system's syntax, to a
+    Unix-style path.  If the path s has a non-empty volume name, then the Path
+    exception is raised. Also, if any arc in the pathname contains the slash
+    character, then the InvalidArc exception is raised.
+
+Discussion
+
+    Syntactically, two paths can be checked for equality by applying string
+    equality to canonical versions of the paths. Since volumes and individual
+    arcs are just special classes of paths, an identical test for equality can
+    be applied to these classes. 
+
 *)
-
