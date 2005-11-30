@@ -20,6 +20,7 @@ structure StringCvt : STRING_CVT = struct
   | FIX of int option   (* fixed-point, arg = # dec. digits, dflt=6 *)
   | GEN of int option   (* auto choice of the above,                *)
                         (* arg = # significant digits, dflt=12      *)
+  | EXACT
 
   type cs = int	  (* the state of a string character source   *)
 
