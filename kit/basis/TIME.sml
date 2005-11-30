@@ -1,104 +1,162 @@
-(* Time -- SML Basis Library *)
-
 signature TIME =
   sig
     eqtype time
-    
     exception Time
-
     val zeroTime : time
-    val now      : unit -> time
-
-    val toSeconds        : time -> LargeInt.int
-    val toMilliseconds   : time -> LargeInt.int
-    val toMicroseconds   : time -> LargeInt.int
+    val fromReal : LargeReal.real -> time
+    val toReal : time -> LargeReal.real
+    val toSeconds      : time -> LargeInt.int
+    val toMilliseconds : time -> LargeInt.int
+    val toMicroseconds : time -> LargeInt.int
+(*    val toNanoseconds  : time -> LargeInt.int *)
     val fromSeconds      : LargeInt.int -> time
     val fromMilliseconds : LargeInt.int -> time
     val fromMicroseconds : LargeInt.int -> time
+(*    val fromNanoseconds  : LargeInt.int -> time *)
 
-    val fromReal : real -> time
-    val toReal   : time -> real
+    val + : time * time -> time
+    val - : time * time -> time
 
-    val toString   : time -> string	(* rounded to millisecond precision *)
-    val fmt        : int -> time -> string
-    val fromString : string -> time option
-    val scan       : (char, 'a) StringCvt.reader -> (time, 'a) StringCvt.reader
-
-    val +  : time * time -> time
-    val -  : time * time -> time
+    val compare : time * time -> order
     val <  : time * time -> bool
     val <= : time * time -> bool
     val >  : time * time -> bool
     val >= : time * time -> bool
 
-    val compare : time * time -> order
+    val now : unit -> time
 
+    val fmt      : int -> time -> string
+    val toString : time -> string
+    val scan       : (char, 'a) StringCvt.reader
+                       -> (time, 'a) StringCvt.reader
+    val fromString : string -> time option 
   end
 
-(* Values of type [time] represent durations as well as absolute points 
-   in time (which can be thought of as durations since some time zero).
+(*
+eqtype time
+    The type used to represent both absolute times and durations of time
+    intervals, including negative values moving to the past. Absolute times are
+    represented in the same way as time intervals, and can be thought of as
+    time intervals starting at some fixed reference point.  Their
+    discrimination is only conceptual. Consequently, operations can be applied
+    to all meaningful combinations (but also meaningless ones) of absolute
+    times and intervals.
 
-   [zeroTime] represents the 0-second duration, and the origin of time, 
-   so zeroTime + t = t + zeroTime = t for all t.
+exception Time
+    The exception raised when the result of conversions to time or of
+    operations over time is not representable, or when an illegal operation has
+    been attempted.
 
-   [now ()] returns the point in time at which the application occurs.
+val zeroTime : time
+    This denotes both the empty time interval and a common reference point for
+    specifying absolute time values. It is equivalent to fromReal(0.0).
 
-   [fromSeconds s] returns the time value corresponding to s seconds.  
-   Raises Time if s < 0.
+    Absolute points on the time scale can be thought of as being represented as
+    intervals starting at zeroTime. The function Date.fromTimeLocal can be used
+    to see what time zeroTime actually represents in the local timezone.
 
-   [fromMilliseconds ms] returns the time value corresponding to ms
-   milliseconds.  Raises Time if ms < 0.
+fromReal r
+    converts the real number r to the time value denoting r seconds. Depending
+    on the resolution of time, fractions of a microsecond may be lost. It
+    raises Time when the result is not representable.
 
-   [fromMicroseconds us] returns the time value corresponding to us
-   microseconds.  Raises Time if us < 0.
+toReal t
+    converts the time value t to a real number denoting the value of t in
+    seconds. When the type real has less precision than Time.time (for example,
+    when it is implemented as a single-precision float), information about
+    microseconds or, for very large values, even seconds, may be lost.
 
-   [toSeconds t] returns the number of seconds represented by t,
-   truncated.  Raises Overflow if that number is not representable as
-   an int.
+toSeconds t
+toMilliseconds t
+toMicroseconds t
+toNanoseconds t
+    These functions return the number of full seconds (respectively,
+    milliseconds, microseconds, or nanoseconds) in t; fractions of the time
+    unit are dropped, i.e., the values are rounded towards 0. Thus, if t
+    denotes 2.01 seconds, the functions return 2, 2010, 2010000, and 2010000000
+    respectively. When the result is not representable by LargeInt.int, the
+    exception Overflow is raised.
 
-   [toMilliseconds t] returns the number of milliseconds
-   represented by t, truncated.  Raises Overflow if that number is not
-   representable as an int.
+fromSeconds n
+fromMilliseconds n
+fromMicroseconds n
+fromNanoseconds n
+    These convert the number n to a time value denoting n seconds
+    (respectively, milliseconds, microseconds, or nanoseconds). If the result
+    is not representable by the time type, then the exception Time is raised.
 
-   [toMicroseconds t] returns the number of microseconds
-   represented by t, truncated.  Raises Overflow if t that number is
-   not representable as an int.
+t1 + t2
+    returns a time interval denoting the duration of t1 plus that of t2, when
+    both t1 and t2 are interpreted as intervals. Equivalently, when t1 is
+    interpreted as an absolute time and t2 as an interval, the absolute time
+    that is t2 later than t1 is returned. (Both views are equivalent as
+    absolute times are represented as intervals from zeroTime). When the result
+    is not representable as a time value, the exception Time is raised. This
+    operation is commutative.
 
-   [realToTime r] converts a real to a time value representing that
-   many seconds.  Raises Time if r < 0 or if r is not representable
-   as a time value.  It holds that realToTime 0.0 = zeroTime.  
+t1 - t2
+    returns a time interval denoting the duration of t1 minus that of t2, when
+    both t1 and t2 are interpreted as intervals. Equivalently, when t1 is
+    interpreted as an absolute time and t2 as an interval, the absolute time
+    that is t2 earlier than t1 is returned; when both t1 and t2 are interpreted
+    as absolute times, the interval between t1 and t2 is returned. (All views
+    are equivalent as absolute times are represented as intervals from
+    zeroTime). When the result is not representable as a time value, the
+    exception Time is raised.
 
-   [timeToReal t] converts a time the number of seconds it represents;
-   hence realToTime and timeToReal are inverses of each other when 
-   defined.  Raises Overflow if t is not representable as a real.
+compare (t1, t2)
+    returns LESS, EQUAL, or GREATER when the time interval t1 is shorter than,
+    of same length as, or longer than t2, respectively, or the absolute time t1
+    is earlier than, coincides with, or is later than the absolute time t2.
 
-   [fmt n t] returns as a string the number of seconds represented by
-   t, rounded to n decimal digits.  If n <= 0, then no decimal digits
-   are reported. 
+val < : time * time -> bool
+val <= : time * time -> bool
+val > : time * time -> bool
+val >= : time * time -> bool
+    These return true if the corresponding relation holds between the two
+    times.
 
-   [toString t] returns as a string the number of seconds represented
-   by t, rounded to 3 decimal digits.  Equivalent to (fmt 3 t).  
+val now : unit -> time
+    The current time. This is usually interpreted as an absolute time, the time
+    at which the function call was made. Although now does not normally raise
+    an exception, this may happen when it is called at a time that is not
+    representable.
 
-   [fromString s] returns SOME t where t is the time value represented
-   by the string s of form [\n\t ]*([0-9]+(\.[0-9]+)?)|(\.[0-9]+); 
-   or returns NONE if s cannot be parsed as a time value.
+fmt n t
+toString t
+    These return a string containing a decimal number representing t in
+    seconds. Using fmt, the fractional part is rounded to n decimal digits. If
+    n = 0, there should be no fractional part. Having n < 0 causes the Size
+    exception to be raised. toString rounds t to 3 decimal digits. It is
+    equivalent to fmt 3 t.
 
-   [scan getc src], where getc is a character accessor, returns SOME
-   (t, rest) where t is a time and rest is rest of the input, or NONE
-   if s cannot be parsed as a time value.
+        Example:
 
-   [t1 + t2] is the sum of the times t1 and t2.  For reals r1, r2 >= 0.0, 
-   realToTime r1 + realToTime r2 = realToTime(Real.+(r1,r2)).  Raises 
-   Overflow if the result is not representable as a time value.
+    fmt 3 (fromReal 1.8) = "1.800"
+    fmt 0 (fromReal 1.8) = "2"
+    fmt 0 zeroTime = "0"
 
-   [t1 - t2] is the t1 minus t2, that is, the duration from t2 to t1.
-   Raises Time if t1 < t2 or if the result is not representable as a
-   time value.  It holds that t - zeroTime = t.
 
-   [t1 < t2] asserts that t1 is strictly before t2.  Similarly for
-   <=, >, >=.  It holds for reals r1, r2 >= 0.0 that
-       realToTime r1 < realToTime r2  iff  Real.<(r1, r2) 
 
-   [compare(t1, t2)] returns LESS, EQUAL, or GREATER, according 
-   as t1 precedes, equals, or follows t2 in time.
+scan getc src
+fromString s
+    These functions scan a time value from a character stream or a string. They
+    recognize a number of seconds specified as a string that matches the
+    regular expression:
+
+        [+~-]?([0-9]+.[0-9]+? | .[0-9]+) 
+
+    Initial whitespace is ignored. Both functions raise Time when the value is
+    syntactically correct but not representable.
+
+    The function scan takes a character source src and an reader getc and tries
+    to parse a time value from src. It returns SOME(t,r) where t is the time
+    value denoted by a prefix of src and r is the rest of src; or it returns
+    NONE when no prefix of src is a representation of a time value.
+
+    The function fromString parses a time value from the string s, returning
+    SOME(t) where t is the time value denoted by a prefix of s or NONE when no
+    prefix of s is a representation of a time value. Note that this function is
+    equivalent to StringCvt.scanString scan.
+
 *)
