@@ -80,6 +80,11 @@ structure Initial =
 
     (* Posix *)
 
+     structure TextIO =
+       struct
+         val bufsize = 4000
+       end
+
       structure Posix_File_Sys =
         struct
         val (stdin,stdout,stderr) = prim ("sml_getStdNumbers", ()) : (int * int * int)
@@ -91,6 +96,8 @@ structure Initial =
             val nonblock =  0wx8
             val sync     = 0wx10
             val trunc    = 0wx20
+            val text     = 0wx40
+            val bin      = 0wx80
           end
 
         structure S =
