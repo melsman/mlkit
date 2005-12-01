@@ -1335,7 +1335,7 @@ structure Web :> WEB =
        in schedule' f s first (24*60*60*7)
        end
 
-        (* Creating the two supported database interfaces *)
+     (* Creating the supported database interfaces *)
         
      structure DbOraBackend = DbOracleBackend(struct 
                                                  type conn = int

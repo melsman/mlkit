@@ -84,8 +84,7 @@ fromString s
         integer constant. 
     a.b.c
         where a and b are 8-bit unsigned integer constants, and c is a 16-bit
-        integer 
-constant. 
+        integer constant. 
     a.b.c.d
         where a, b, c, and d are 8-bit integer constants. 
 
