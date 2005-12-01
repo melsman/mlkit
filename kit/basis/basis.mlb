@@ -112,7 +112,7 @@ local
                               end
               basis Process = let open Time Int in 
                                 bas OS_PROCESS.sml local open List in Process.sml end end end
-              basis Os = let open FileSys Path Process in bas OS.sml end end
+              basis Os = let open FileSys Path Process Word in bas OS_IO.sml OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
               basis Date = let open Int Real Time in bas DATE.sml Date.sml end end
               basis Timer = let open Int Time in bas TIMER.sml Timer.sml end end
@@ -164,12 +164,39 @@ local
          bas UNIX.sml (*UNIX_SOCK.sml*) end
        end
 
+     basis PrimIO =
+       let open General System ArrayVector Io Int String Word
+       in bas io/prim-io.sig io/prim-io.sml io/text-prim-io.sml io/bin-prim-io.sml end
+       end
+
     basis Posix = 
-       let open General Word System List Int Real
+       let open General Word System List Int Real PrimIO
        in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX.sml Posix.sml 
           end
        end
+
+(*    basis IO =
+       let open General
+         basis Cleaner = 
+           let open List 
+           in bas io/cleaner.sig io/cleaner.sml end
+           end
+         basis Stream =
+           let open Io Posix ArrayVector PrimIO List Int Cleaner
+           in bas io/stream-io.sig io/stream-io.sml end
+           end
+         basis Imperative =
+           let open Stream Posix String ArrayVector PrimIO Int Io List Cleaner
+           in bas io/imperative-io.sig io/imperative-io.sml end
+           end
+         basis Text =
+           let open Stream String ArrayVector PrimIO Int Posix Imperative
+           in bas io/text-stream-io.sig io/text-io.sig io/text-io.sml end
+           end
+       in Stream
+       end *)
+
 in
   open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Sml90 Posix
 end
