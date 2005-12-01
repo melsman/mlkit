@@ -13,4 +13,5 @@ signature POSIX_PROCENV =
                   cutime : Time.time,
                   cstime : Time.time
                 }
+    val isatty : file_desc -> bool
   end
