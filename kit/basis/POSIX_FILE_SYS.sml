@@ -43,6 +43,11 @@ signature POSIX_FILE_SYS =
 
     datatype access_mode = A_READ | A_WRITE | A_EXEC
 
+    val fdToWord : file_desc -> SysWord.word
+    val wordToFD : SysWord.word -> file_desc
+    val fdToIOD : file_desc -> OS.IO.iodesc
+    val iodToFD : OS.IO.iodesc -> file_desc option
+
     val stdin : file_desc
     val stdout : file_desc
     val stderr : file_desc

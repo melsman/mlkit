@@ -120,11 +120,12 @@ structure Posix :> POSIX =
 		end	    
 	end
 	
-    structure ProcEnv : POSIX_PROCENV = 
+    structure ProcEnv : POSIX_PROCENV 
+      where type pid = Process.pid = 
 	struct 
 	    type uid = int
 	    type gid = int
-	    type pid = int
+	    type pid = Process.pid
 	    type file_desc = int
 	    fun sysconf (s : string) =
 		let
@@ -167,9 +168,14 @@ structure Posix :> POSIX =
 		     cutime = toTime cutime, 
 		     cstime = toTime cstime}
 		end
+
+    fun isatty d = prim("@isatty", d : int) : bool
 	end
     
-    structure FileSys : POSIX_FILE_SYS = 
+    structure FileSys : POSIX_FILE_SYS
+      where type file_desc = ProcEnv.file_desc
+      where type uid = ProcEnv.uid 
+      where type gid = ProcEnv.gid = 
 	struct 
 	    type uid = ProcEnv.uid
 	    type gid = ProcEnv.gid
@@ -214,6 +220,11 @@ structure Posix :> POSIX =
 	    
 	    datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
 	    datatype access_mode = A_READ | A_WRITE | A_EXEC
+
+      fun iodToFD x = SOME x
+      fun wordToFD x = SysWord.toInt x
+      fun fdToIOD x = x
+      fun fdToWord x = SysWord.fromInt x
 		
 	    fun lower s (name,omode,flags,mo,i,kind) = 
 		let val a = prim("@sml_lower", (name : string,
@@ -279,11 +290,14 @@ structure Posix :> POSIX =
 		end
 	end
 
-    structure IO : POSIX_IO = 
+    structure IO : POSIX_IO
+      where type pid = Process.pid 
+      where type file_desc = ProcEnv.file_desc
+      where type open_mode = FileSys.open_mode = 
 	struct
 	    type pid = int
 	    type file_desc = FileSys.file_desc
-	    type open_mode = FileSys.open_mode
+      datatype open_mode = datatype FileSys.open_mode
 		
 	    fun pipe () = let val (r,a,b) = prim("sml_pipe",()) : (int * int * int)
 			  in if r = ~1 then raiseSys "Posix.IO.pipe" NONE "" else {infd = a, outfd = b}
