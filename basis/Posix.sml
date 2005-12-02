@@ -312,6 +312,23 @@ structure Posix :> POSIX =
 				   end
 			       
 	    fun dup f = dupfd {old = f, base = 0}
+
+      fun readVec (fd,n) = 
+           let
+             val _ = if n < 0 then raise Size else ()
+             val (s,j) = prim("readVec", (fd : int, n : int)) : string * int
+             val _ = if j = ~1 then raiseSys "sml_readVec" NONE "" else ()
+             val s' = Byte.stringToBytes s
+           in
+             if j = n
+             then s'
+             else Word8VectorSlice.vector(Word8VectorSlice.slice(s', 0, SOME j))
+           end
+     (* fun writeVec (fd, vs) =
+           let val r = prim ("@sml_writeVec", (fd : int, vs : Word8VectorSlice.slice,
+                                               Word8VectorSlice.length vs : int)) : int
+           in if r = ~1 then raiseSys "sml_writeVec" NONE "" else r
+           end *)
 	end
     
     structure Signal : POSIX_SIGNAL =

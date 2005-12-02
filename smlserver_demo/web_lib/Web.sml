@@ -302,7 +302,7 @@ structure Web :> WEB =
         | _ => raise Fail ("Web.Conn.parseContent: can't get boundary out of contentType: " ^ 
                contentType)
           val boundary = "--" ^ boundary
-          val content = Substring.all content
+          val content = Substring.full content
           fun loop content =
         case parseNextBoundary boundary content of
           NONE => []
@@ -326,7 +326,7 @@ structure Web :> WEB =
              val f1 = Substring.splitl (fn c => not(c = #"="))
              val f2 = fn (p1,p2) => (decodeUrl (Substring.string p1), 
                 decodeUrl (Substring.string (Substring.dropl (fn c => c = #"=") p2)))
-             val pairs = map (f2 o f1) (f0 (Substring.all s))
+             val pairs = map (f2 o f1) (f0 (Substring.full s))
            in ((app (fn (p1,p2) => WebSet.put(set, p1, p2))) pairs; set)
            end
           
@@ -511,7 +511,7 @@ structure Web :> WEB =
            decodeUrl (Substring.concat (Substring.fields (fn c => c = #" ") (Substring.triml 1 suff))))
         end
     in
-      List.map splitNameAndValue (Substring.tokens (fn c => c = #";") (Substring.all cv))
+      List.map splitNameAndValue (Substring.tokens (fn c => c = #";") (Substring.full cv))
     end
       | _ => raise CookieError "More than one Cookie line in the header")
 
@@ -615,7 +615,7 @@ structure Web :> WEB =
                 case get(c,k) of
                   NONE => NONE
                 | SOME t0_v => 
-                    (case scan Substring.getc (Substring.all t0_v)
+                    (case scan Substring.getc (Substring.full t0_v)
                        of SOME (t0,s) => 
                         (case Substring.getc s
                             of SOME (#":",v) => 
@@ -737,7 +737,7 @@ structure Web :> WEB =
                             else SOME (Substring.string v))
                 | _ => NONE)
          in 
-        case scan Substring.getc (Substring.all t0_v)
+        case scan Substring.getc (Substring.full t0_v)
           of SOME (t0,s) => 
              (case Substring.getc s
                of SOME (#":",s') => 
@@ -930,7 +930,7 @@ structure Web :> WEB =
                               (Substring.splitAt(d,73-sp-lst))
                               end
         fun headerEncode s x = if shouldencode (76-s) x 
-                               then encode s (Substring.all x) 
+                               then encode s (Substring.full x) 
                                else (x, s + (String.size x))
       end
 
@@ -1013,7 +1013,7 @@ structure Web :> WEB =
      
      (* quoted printable implementation (RFC 2045)  *)
      fun trawl f b s = Substring.foldl 
-                        (fn (c,n) => f(c,n,(Vector.sub(lookupTable (), ord c)))) b (Substring.all s)
+                        (fn (c,n) => f(c,n,(Vector.sub(lookupTable (), ord c)))) b (Substring.full s)
      
      fun countbit (li,s ,n,l,ls,offset) = 
                                  if l > 75 
@@ -1022,8 +1022,8 @@ structure Web :> WEB =
 
      fun qpencodebit array (li,s,n,l,ls,offset) =
                if l > 75  (*=\r\n*)
-               then (Byte.packString ((Substring.all ("=\r\n"^s)),array,n);(li,n+3+ls+offset,ls))
-               else (Byte.packString ((Substring.all s),array,n);(li,n+ls+offset,l))
+               then (Byte.packString (array,n,Substring.full ("=\r\n"^s));(li,n+3+ls+offset,ls))
+               else (Byte.packString (array,n,Substring.full s);(li,n+ls+offset,l))
 
 
      fun qpencode' f (cc,([],n,l),(s,ls)) = (case cc of  #"\r" => ([(cc,s,ls)],n,l)
@@ -1080,16 +1080,17 @@ structure Web :> WEB =
      in
      fun qpencode s = let val (_,n,_) =  qpencodefinal countbit ([],0,0) s
                         val array = Word8Array.array (n,Word8.fromInt 0)
-                    in (qpencodefinal (qpencodebit array) ([],0,0) s; Byte.unpackString(array,0,NONE))
+                    in (qpencodefinal (qpencodebit array) ([],0,0) s;
+                        Byte.unpackString (Word8ArraySlice.full array))
                     end
      end
     fun smtpencodeCount (#".",[#"\r",#"\n"],n) = ([],n+4)
       | smtpencodeCount (cc,li,n) = ([],List.length li + n + 1)
 
     fun smtpencodeEncode array (#".",[#"\r",#"\n"],n) = 
-                        (Byte.packString (Substring.all "\r\n..",array,n); ([],n+4))
+                        (Byte.packString (array,n,Substring.full "\r\n.."); ([],n+4))
       | smtpencodeEncode array (cc,li,n) = 
-                        (Byte.packString (Substring.all (implode (li@[cc])), array,n); 
+                        (Byte.packString (array,n,Substring.full (implode (li@[cc]))); 
                          ([],List.length li + n + 1))
 
     fun smtpencode' f (cc,([],n)) = (case cc 
@@ -1104,16 +1105,16 @@ structure Web :> WEB =
                                 in case List.rev li of [] => (li,n)
                                             | (x::xr) => f(x,xr,n)
                                 end
-    fun smtpencode s = let val (_,n) = smtpencodefinal smtpencodeCount ([],0) (Substring.all s)
+    fun smtpencode s = let val (_,n) = smtpencodefinal smtpencodeCount ([],0) (Substring.full s)
                            val tail = if size s > 1 
                                       then Substring.substring(s,size s - 2, 2)
-                                      else Substring.all ""
-                           val extra = Substring.compare(Substring.all "\r\n", tail) <> EQUAL
+                                      else Substring.full ""
+                           val extra = Substring.compare(Substring.full "\r\n", tail) <> EQUAL
                            val array = Word8Array.array (n+(if extra then 5 else 3),Word8.fromInt 0)
-                       in (smtpencodefinal (smtpencodeEncode array) ([],0) (Substring.all s);
+                       in (smtpencodefinal (smtpencodeEncode array) ([],0) (Substring.full s);
                            (if extra then smtpencodeEncode array (#"\n",[#"\r",#"\n",#".",#"\r"],n)
                                      else smtpencodeEncode array (#"\n",[#".",#"\r"],n));
-                           Byte.unpackString(array,0,NONE))
+                           Byte.unpackString (Word8ArraySlice.full array))
                        end
 
     fun prepareAndSend charset {to, cc, bcc, from, subject, body, extra_headers} = 
@@ -1251,11 +1252,11 @@ structure Web :> WEB =
 
   fun fetchUrlTime (timeout : int) (url : string) = (
            let 
-               val (sscheme,r1) = Substring.splitAt (Substring.all url, 7)
+               val (sscheme,r1) = Substring.splitAt (Substring.full url, 7)
                val (shp,r2) = Substring.splitl (fn x => x <> #"/") r1
                val (sserver,sport1) = Substring.splitl (fn x => x <> #":") shp 
                val (_,sport) = Substring.splitAt (sport1, 1) 
-                            handle Subscript => (Substring.all "", Substring.all "80")
+                            handle Subscript => (Substring.full "", Substring.full "80")
                val scheme = Substring.string sscheme
                val page = let val a = Substring.string r2 in if a = "" then "/" else a end
                val server = Substring.string sserver

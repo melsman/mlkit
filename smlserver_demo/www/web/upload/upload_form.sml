@@ -3,10 +3,8 @@ fun load_files acc =
   let
     val filename = FileSys.readDir os_dir
   in
-    if filename = "" then 
-      acc
-    else
-      load_files (filename::acc)
+    case filename of SOME filename => load_files(filename::acc)
+                   | NONE => acc
   end
 
 val uploaded_files =

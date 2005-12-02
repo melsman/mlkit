@@ -383,7 +383,7 @@ String
 REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
 {
   struct dirent *direntry;
-  char* res;
+  String res;
   DIR * dir_ptr;
   dir_ptr = (DIR *)untag_scalar(v);
   direntry = readdir(dir_ptr);
@@ -393,9 +393,9 @@ REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
     }
   else
     {
-      res = (*direntry).d_name;
+      res = REG_POLY_CALL(convertStringToML, rAddr, (*direntry).d_name);
     }
-  return REG_POLY_CALL(convertStringToML, rAddr, res);
+  return res;
 }
 
 void 

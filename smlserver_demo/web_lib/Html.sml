@@ -278,7 +278,7 @@ structure Html :> HTML =
             )
 	  | NONE => implode (rev acc) 
       in
-        parseHTML (Substring.all text) []
+        parseHTML (Substring.full text) []
       end
 
 
