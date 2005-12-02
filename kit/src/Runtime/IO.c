@@ -389,7 +389,7 @@ REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
   direntry = readdir(dir_ptr);
   if (direntry == NULL) 
     {
-      res = "";
+      res = NULL;
     }
   else
     {
@@ -558,3 +558,17 @@ sml_poll(int time)
   r = poll(0,0,time);
   return r;
 }
+
+int
+REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
+{
+  int r, n;
+  String s;
+  n = convertIntToC(n1);
+  s = REG_POLY_CALL(allocStringC, sr, n);
+  r = read(convertIntToC(fd), &(s->data), n);
+  first(pair) = s;
+  second(pair) = r;
+  return pair;
+}
+
