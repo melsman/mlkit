@@ -201,7 +201,6 @@ confinit (server_rec * s, apr_pool_t * pool, hashtable_with_lock ** ct) /*{{{ */
   return;
 }       /*}}} */
 
-
 apr_status_t 
 shutdownServer (void *ctx1) /*{{{*/
 {
@@ -263,6 +262,7 @@ static int
 apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s) //{{{
 {
   int i;
+  char *is;
   server_rec *ss;
   void *first_init_check = NULL;
   apr_pool_userdata_get (&first_init_check, "mod_sml_first_init_check_HACK",
@@ -404,7 +404,18 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: init script: %s about to start", rd->ctx->initscript);
     rd->ctx->pid = getpid();
-    res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
+    if (rd->ctx->initscript[0] == '/') 
+    {
+      res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
+    }
+    else
+    {
+      is = apr_palloc(ptemp, strlen(rd->ctx->initscript) + strlen(rd->ctx->smlpath) + 10);
+      strcpy(is, rd->ctx->smlpath);
+      strcat(is, "/");
+      strcat(is, rd->ctx->initscript);
+      res = apsml_processSmlFile (rd, is, 1);
+    }
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: init script executed with return code %d", res);
     struct db_t *db_tmp = rd->ctx->db;
