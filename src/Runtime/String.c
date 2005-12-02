@@ -109,6 +109,14 @@ REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML)
   return strPtr;
 }
 
+String
+REG_POLY_FUN_HDR(allocStringC, Region rAddr, int sizeC)
+{
+  String strPtr;
+  strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
+  return strPtr;
+}
+
 int 
 chrCharML(int charNrML, int exn) 
 {
