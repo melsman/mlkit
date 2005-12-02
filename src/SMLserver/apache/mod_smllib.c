@@ -472,7 +472,7 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
       "schedule : %s, first: %d, interval: %d, type %d", c, first_time, interval, type);
   while (e < packagelength)
   {
-    ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "schedule: e:%d", e);
+//    ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "schedule: e:%d", e);
     tmp = write(rd->ctx->sched.input, sh+e, packagelength-e);
     if (tmp == -1)
     {
@@ -486,7 +486,7 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
     e += tmp;
     packagelength -= tmp;
   }
-  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "sent this %s", c);
+//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "sent this %s", c);
   apr_global_mutex_unlock(rd->ctx->sched.lock);
   free (sh);
   return;
