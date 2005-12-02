@@ -135,3 +135,4 @@ fchown
 sml_pipe
 close
 sml_dupfd
+isatty
