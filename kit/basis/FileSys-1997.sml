@@ -172,10 +172,13 @@ structure FileSys : OS_FILE_SYS =
 	(ref (SOME (opendir_ path)))
 	handle Fail s => raiseSys "openDir" (SOME path) s;
 
+    fun isNull (s : string) = prim("__is_null", s) : bool
+
     fun readDir (ref NONE) =
 	raiseSysML "readDir" NONE "Directory stream is closed"
       | readDir (arg as ref (SOME dstr)) =
 	let val entry = readdir_ dstr
+      val entry = if isNull entry then "" else entry
 	in
 	    if entry <> Path.parentArc andalso entry <> Path.currentArc then
 		entry

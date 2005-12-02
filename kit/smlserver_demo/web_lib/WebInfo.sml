@@ -29,9 +29,9 @@ functor WebInfo (type conn = int
      | _ => let val res = res() in
      if isNull res then NONE else 
        let (*val _ = log("configGetValue: " ^ res) *)
-           val (a,b) = Substring.splitl (fn x => x <> #":") (Substring.all res)
+           val (a,b) = Substring.splitl (fn x => x <> #":") (Substring.full res)
            val c = Substring.triml 1 b
-           val _ = case Substring.compare (a, Substring.all(#name rangeType))
+           val _ = case Substring.compare (a, Substring.full(#name rangeType))
              of EQUAL => ()
               | _ => raise Domain
        in 

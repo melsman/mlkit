@@ -154,7 +154,7 @@ structure FormVar :> FORM_VAR =
 	|(_,[e]) => ("",addErr(e,errs))
 	| _ => Page.panic `FormVar.wrapIntAsString failed on ^fv`)
 
-    fun trim s = Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
+    fun trim s = Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.full s)))
     fun wrapMaybe (f : 'a formvar_fn) =
       (fn (fv,emsg,errs) => 
        (case Web.Conn.formvarAll fv of

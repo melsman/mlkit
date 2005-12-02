@@ -169,34 +169,34 @@ local
        in bas io/prim-io.sig io/prim-io.sml io/text-prim-io.sml io/bin-prim-io.sml end
        end
 
-    basis Posix = 
-       let open General Word System List Int Real PrimIO
+   (* basis Posix = 
+       let open General Word System List Int Real PrimIO Byte ArrayVector
        in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX.sml Posix.sml 
           end
-       end
-
-(*    basis IO =
-       let open General
-         basis Cleaner = 
-           let open List 
-           in bas io/cleaner.sig io/cleaner.sml end
-           end
-         basis Stream =
-           let open Io Posix ArrayVector PrimIO List Int Cleaner
-           in bas io/stream-io.sig io/stream-io.sml end
-           end
-         basis Imperative =
-           let open Stream Posix String ArrayVector PrimIO Int Io List Cleaner
-           in bas io/imperative-io.sig io/imperative-io.sml end
-           end
-         basis Text =
-           let open Stream String ArrayVector PrimIO Int Posix Imperative
-           in bas io/text-stream-io.sig io/text-io.sig io/text-io.sml end
-           end
-       in Stream
        end *)
+(*
+    basis IO =
+      let open General
+        basis Cleaner = 
+          let open List 
+          in bas io/cleaner.sig io/cleaner.sml end
+          end
+        basis Stream =
+          let open Io Posix ArrayVector PrimIO List Int Cleaner
+          in bas io/stream-io.sig io/stream-io.sml end
+          end
+        basis Imperative =
+          let open Stream Posix String ArrayVector PrimIO Int Io List Cleaner
+          in bas io/imperative-io.sig io/imperative-io.sml end
+          end
+        basis Text =
+          let open Stream String ArrayVector PrimIO Int Posix Imperative
+          in bas io/text-stream-io.sig io/text-io.sig io/text-io.sml end
+          end
+      in Stream
+      end *)
 
 in
-  open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Sml90 Posix
+  open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Sml90 (*Posix *)
 end

@@ -41,7 +41,7 @@ structure Substring : SUBSTRING =
 
     fun full s = (s, 0, size0 s)
 
-    fun all s = (s, 0, size0 s)		(* deprecated *)
+(*    fun all s = (s, 0, size0 s)		(* deprecated *) *)
 
     fun getc (s, i, 0) = NONE
       | getc (s, i, n) = SOME(sub_unsafe(s,i), (s, i+1, n-1))

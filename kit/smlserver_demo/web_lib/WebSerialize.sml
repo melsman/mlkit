@@ -19,7 +19,7 @@ struct
         end
       fun from_string s =
         let
-          val s' = Substring.all s
+          val s' = Substring.full s
           val (a_sz,rest) = 
             Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
           val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
@@ -51,7 +51,7 @@ struct
       end
       fun from_string s =
         let
-          val s' = Substring.all s
+          val s' = Substring.full s
           val (v_sz,rest) = 
             Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
           val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
@@ -99,7 +99,7 @@ struct
         in
           read_x (rest,((#from_string t) (Substring.string x_s)) :: acc)
         end
-    val s' = Substring.all s
+    val s' = Substring.full s
     val rest = #2(Option.valOf (Substring.getc s')) (* skip "[" *)
         in
     read_x (rest,[])
@@ -126,7 +126,7 @@ struct
         end
       fun from_string s =
         let
-    val s' = Substring.all s
+    val s' = Substring.full s
     val (a_sz,rest) = 
       Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
     val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
