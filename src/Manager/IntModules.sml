@@ -65,6 +65,10 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	of SOME ti => SOME(ElabInfo.TypeInfo.normalise ti)
 	 | NONE => NONE 
 
+    (* For path operations *)
+    infix ##
+    val op ## = OS.Path.concat
+
 
     (* ----------------------------------------------------
      * Fresh unit names; in case functors `splits' sources
@@ -474,7 +478,12 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	   let val funid_string = FunId.pr_FunId funid
 	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))  
 		              ^ "." ^ funid_string ^ ".bdy"
-	       val filename = OS.Path.concat(mlbdir(), filename)
+(*
+	       val filename = mlbdir() ## filename
+*)
+(* fix mael 2005-12-04: output contains something like: "basis/MLB/RI/file.o" *)
+	       val filename = OS.Path.dir (Flags.get_string_entry "output") ## filename
+
 (*	       val filename = OS.Path.mkAbsolute{path=filename,relativeTo=OS.Path.concat(OS.FileSys.getDir(), pmdir())} *)
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =
@@ -617,13 +626,11 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     fun interp(fi:bool,absprjid,intB,topdec, unitname) =
       let 
-	infix ##
-	val op ## = OS.Path.concat
 	val _ = Execution.preHook()
         val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
 	val MLB_slash_unitname = 
 	    let val {dir,file} = OS.Path.splitDirFile unitname
-	    in dir ## ManagerObjects.mlbdir() ## file handle _ => die "concat"
+	    in dir ## mlbdir() ## file handle _ => die "concat"
 	    end
 	val _ = Execution.postHook {unitname=MLB_slash_unitname} handle _ => die "postHook"
         val intBs = flatten(t,[])
