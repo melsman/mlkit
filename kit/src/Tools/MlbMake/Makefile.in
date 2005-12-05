@@ -29,4 +29,4 @@ $(TARGET): sources.mlb Makefile *.sml Confoptions.sml
 	$(MLCOMP) -output $(TARGET) sources.mlb
 
 clean:
-	rm -rf MLB *~ $(TARGET)
+	rm -rf MLB CM *~ $(TARGET)
