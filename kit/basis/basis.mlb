@@ -169,12 +169,12 @@ local
        in bas io/prim-io.sig io/prim-io.sml io/text-prim-io.sml io/bin-prim-io.sml end
        end
 
-   (* basis Posix = 
+     basis Posix = 
        let open General Word System List Int Real PrimIO Byte ArrayVector
        in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX.sml Posix.sml 
           end
-       end *)
+       end
 (*
     basis IO =
       let open General
@@ -198,5 +198,5 @@ local
       end *)
 
 in
-  open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Sml90 (*Posix *)
+  open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Sml90 Posix
 end
