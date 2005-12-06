@@ -55,51 +55,51 @@ val test8 =
 	  (Byte.bytesToString o Word8Vector.fromList o map Word8.fromInt)
 	   [65, 66, 68, 67]);
 
-val test9 = tst "test9" ("" = Byte.unpackString(Word8Array.fromList [], 0, SOME 0));
+val test9 = tst "test9" ("" = Byte.unpackString(Word8ArraySlice.full (Word8Array.fromList [])));
 
 local 
     val arr = Word8Array.tabulate(10, fn i => Word8.fromInt(i+65))
 in
-val test10a = tst "test10a" ("" = Byte.unpackString(arr, 0, SOME 0));
-val test10b = tst "test10b" ("" = Byte.unpackString(arr, 10, SOME 0) 
-			     andalso "" = Byte.unpackString(arr, 10, NONE));
-val test10c = tst "test10c" ("BCDE" = Byte.unpackString(arr, 1, SOME 4));
-val test10d = tst0 "test10d" ((Byte.unpackString(arr, ~1, SOME 0) seq "WRONG")
+val test10a = tst "test10a" ("" = Byte.unpackString(Word8ArraySlice.slice (arr, 0, SOME 0)));
+val test10b = tst "test10b" ("" = Byte.unpackString(Word8ArraySlice.slice (arr, 10, SOME 0)) 
+			     andalso "" = Byte.unpackString(Word8ArraySlice.slice (arr, 10, NONE)));
+val test10c = tst "test10c" ("BCDE" = Byte.unpackString(Word8ArraySlice.slice (arr, 1, SOME 4)));
+val test10d = tst0 "test10d" ((Byte.unpackString(Word8ArraySlice.slice (arr, ~1, SOME 0)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test10e = tst0 "test10e" ((Byte.unpackString(arr, 11, SOME 0) seq "WRONG")
+val test10e = tst0 "test10e" ((Byte.unpackString(Word8ArraySlice.slice (arr, 11, SOME 0)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test10f = tst0 "test10f" ((Byte.unpackString(arr, 0, SOME ~1) seq "WRONG")
+val test10f = tst0 "test10f" ((Byte.unpackString(Word8ArraySlice.slice (arr, 0, SOME ~1)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test10g = tst0 "test10g" ((Byte.unpackString(arr, 0, SOME 11) seq "WRONG")
+val test10g = tst0 "test10g" ((Byte.unpackString(Word8ArraySlice.slice (arr, 0, SOME 11)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test10h = tst0 "test10h" ((Byte.unpackString(arr, 10, SOME 1) seq "WRONG")
+val test10h = tst0 "test10h" ((Byte.unpackString(Word8ArraySlice.slice (arr, 10, SOME 1)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test10i = tst0 "test10i" ((Byte.unpackString(arr, ~1, NONE) seq "WRONG")
+val test10i = tst0 "test10i" ((Byte.unpackString(Word8ArraySlice.slice (arr, ~1, NONE)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test10j = tst0 "test10j" ((Byte.unpackString(arr, 11, NONE) seq "WRONG")
+val test10j = tst0 "test10j" ((Byte.unpackString(Word8ArraySlice.slice (arr, 11, NONE)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
 end
 
 local 
     val vec = Word8Vector.tabulate(10, fn i => Word8.fromInt(i+65))
 in
-val test11a = tst "test11a" ("" = Byte.unpackStringVec(vec, 0, SOME 0));
-val test11b = tst "test11b" ("" = Byte.unpackStringVec(vec, 10, SOME 0) 
-			     andalso "" = Byte.unpackStringVec(vec, 10, NONE));
-val test11c = tst "test11c" ("BCDE" = Byte.unpackStringVec(vec, 1, SOME 4));
-val test11d = tst0 "test11d" ((Byte.unpackStringVec(vec, ~1, SOME 0) seq "WRONG")
+val test11a = tst "test11a" ("" = Byte.unpackStringVec(Word8VectorSlice.slice(vec, 0, SOME 0)));
+val test11b = tst "test11b" ("" = Byte.unpackStringVec(Word8VectorSlice.slice(vec, 10, SOME 0))
+			     andalso "" = Byte.unpackStringVec(Word8VectorSlice.slice(vec, 10, NONE)));
+val test11c = tst "test11c" ("BCDE" = Byte.unpackStringVec(Word8VectorSlice.slice(vec, 1, SOME 4)));
+val test11d = tst0 "test11d" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, ~1, SOME 0)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test11e = tst0 "test11e" ((Byte.unpackStringVec(vec, 11, SOME 0) seq "WRONG")
+val test11e = tst0 "test11e" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, 11, SOME 0)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test11f = tst0 "test11f" ((Byte.unpackStringVec(vec, 0, SOME ~1) seq "WRONG")
+val test11f = tst0 "test11f" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, 0, SOME ~1)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test11g = tst0 "test11g" ((Byte.unpackStringVec(vec, 0, SOME 11) seq "WRONG")
+val test11g = tst0 "test11g" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, 0, SOME 11)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test11h = tst0 "test11h" ((Byte.unpackStringVec(vec, 10, SOME 1) seq "WRONG")
+val test11h = tst0 "test11h" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, 10, SOME 1)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
-val test11i = tst0 "test11i" ((Byte.unpackStringVec(vec, ~1, NONE) seq "WRONG")
+val test11i = tst0 "test11i" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, ~1, NONE)) seq "WRONG")
 			    handle Subscript => "OK" | _ => "WRONG")
-val test11j = tst0 "test11j" ((Byte.unpackStringVec(vec, 11, NONE) seq "WRONG")
+val test11j = tst0 "test11j" ((Byte.unpackStringVec(Word8VectorSlice.slice(vec, 11, NONE)) seq "WRONG")
 			      handle Subscript => "OK" | _ => "WRONG")
 end
 
