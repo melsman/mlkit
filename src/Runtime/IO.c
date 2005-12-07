@@ -452,6 +452,32 @@ sml_islink(String path, int exn)              /* SML Basis */
   return mlFALSE;
 }
 
+int 
+sml_isreg(int fd, int exn)              /* SML Basis */
+{
+  struct stat buf;
+  if (fstat(convertIntToC(fd), &buf) == -1) 
+    {
+      raise_exn(exn);
+    }
+  if (S_ISREG(buf.st_mode)) 
+    { 
+      return mlTRUE;
+    }
+  return mlFALSE;
+}
+
+int 
+sml_filesizefd(int fd, int exn)              /* SML Basis */
+{
+  struct stat buf;
+  if (fstat(convertIntToC(fd), &buf) == -1) 
+    {
+      raise_exn(exn);
+    }
+  return convertIntToML(buf.st_size);
+}
+
 String
 REG_POLY_FUN_HDR(sml_readlink, Region rAddr, String path, int exn)    /* SML Basis */
 {
@@ -557,18 +583,5 @@ sml_poll(int time)
   int r;
   r = poll(0,0,time);
   return r;
-}
-
-int
-REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
-{
-  int r, n;
-  String s;
-  n = convertIntToC(n1);
-  s = REG_POLY_CALL(allocStringC, sr, n);
-  r = read(convertIntToC(fd), &(s->data), n);
-  first(pair) = s;
-  second(pair) = r;
-  return pair;
 }
 

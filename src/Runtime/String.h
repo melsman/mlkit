@@ -50,6 +50,7 @@ int greatereqStringML(String str1, String str2);
 int equalStringML(String str1, String str2);
 
 String REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML);
+String REG_POLY_FUN_HDR(allocStringC, Region rAddr, int sizeC);
 String REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2);
 String REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs);
 String REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs);
