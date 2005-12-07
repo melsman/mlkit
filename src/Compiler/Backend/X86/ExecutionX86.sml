@@ -21,12 +21,43 @@ structure ExecutionX86: EXECUTION =
 				   structure LineStmt = NativeCompile.LineStmt
 				   structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
+    local
+	fun convertList option s =
+	    let val l = String.tokens(fn c => c = #",")s
+	    in map (fn s => option ^ s) l
+	    end
+    in
+	fun libConvertList s = concat(convertList " -l" s)
+	fun libdirsConvertList s = concat(convertList " -L" s)
+    end
+
+    local val default = "m,c,dl"
+    in
+	val _ = Flags.add_string_entry 
+	    {long="libs", short=NONE, item=ref default,
+	     menu=["Control", "foreign libraries (archives)"],
+	     desc="For accessing a foreign function residing in\n\
+	      \an archive named libNAME.a from Standard ML code\n\
+	      \(using prim), you need to add 'NAME' to this\n\
+	      \comma-separated list. Notice that an object file\n\
+	      \(with extension '.o') is an archive if it is\n\
+	      \renamed to have extension '.a'. You may need to\n\
+	      \use the -libdirs option for specifying\n\
+	      \directories for which ld should look for library\n\
+	      \archives. The libraries are passed to 'ld' using\n\
+	      \the -l option."}
+    end
+
     val _ = Flags.add_string_entry 
-      {long="clibs", short=NONE, item=ref "-lm -lc -ldl",
-       menu=["Control", "c libraries (archives)"],
-       desc="If you have added your own object files to a project,\n\
-	\you might also need to link with libraries other\n\
-	\than libm.a, libc.a, and libdl.a (\"-lm -lc -ldl\")."}
+      {long="libdirs", short=NONE, item=ref "",
+       menu=["Control", "library directories (paths to archives)"],
+       desc="This option controls where ld looks for\n\
+	\archives. The format is a comma-separated list\n\
+	\of directories; see the -libs entry. The default\n\
+	\is the empty list; thus 'ld' will look for\n\
+	\libraries in only the system specific default\n\
+	\directores. The directories are passed to 'ld'\n\
+	\using the -L option."}
 
     val strip_p = ref false
     val _ = Flags.add_bool_entry 
@@ -129,7 +160,7 @@ structure ExecutionX86: EXECUTION =
 
     val gdb_support = Flags.is_on0 "gdb_support"
     val delete_target_files = Flags.is_on0 "delete_target_files"
-    val clibs = Flags.lookup_string_entry "clibs"
+    val libs = Flags.lookup_string_entry "libs"
 
     fun gas() = if gdb_support() then "as --gstabs"
 		else "as"
@@ -166,8 +197,12 @@ structure ExecutionX86: EXECUTION =
 
     fun link_files_with_runtime_system path_to_runtime files run =
       let val files = map (fn s => s ^ " ") files
+	  val libdirs = 
+	      case !(Flags.lookup_string_entry "libdirs") of
+		  "" => ""
+		| libdirs => " " ^ libdirsConvertList libdirs
 	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
-	    concat files ^ path_to_runtime() ^ " " ^ !clibs
+	    concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(!libs)
 	  val debug_linking = Flags.lookup_flag_entry "debug_linking"
 	  fun pr_debug_linking s = if !debug_linking then print s else ()
       in 
