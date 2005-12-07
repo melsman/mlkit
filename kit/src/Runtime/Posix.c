@@ -10,6 +10,7 @@
 #include "Tagging.h"
 #include "Exception.h"
 #include "List.h"
+#include "String.h"
 
 int
 sml_WIFEXITED(int status)
@@ -252,4 +253,79 @@ sml_pipe(int triple)
   elemRecordML(triple,1) = convertIntToML(a[0]);
   elemRecordML(triple,2) = convertIntToML(a[1]);
   return triple;
+}
+
+int
+REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
+{
+  int r, n;
+  String s;
+  n = convertIntToC(n1);
+  s = REG_POLY_CALL(allocStringC, sr, n);
+  r = read(convertIntToC(fd), &(s->data), n);
+  first(pair) = (int) s;
+  second(pair) = r;
+  return pair;
+}
+
+int
+sml_writeVec(int fd, char *base, int start, int end)
+{
+  int r, length = end - start;
+  r = write(fd, base+start, length);
+  return r;
+}
+
+int
+sml_readArr (int fd, char *base, int start, int end)
+{
+  int r, length = end - start;
+  r = read(fd, base+start, length);
+  return r;
+}
+
+int
+sml_lseek (int fd, int p, int w)
+{
+  int r;
+  switch (convertIntToC(w))
+  {
+    case 0:
+      r = lseek(convertIntToC(fd), convertIntToC(p), SEEK_SET);
+      break;
+    case 1:
+      r = lseek(convertIntToC(fd), convertIntToC(p), SEEK_END);
+      break;
+    default:
+      r = lseek(convertIntToC(fd), convertIntToC(p), SEEK_CUR);
+      break;
+  }
+  return convertIntToML(r);
+}
+
+int
+sml_setfl (int fd, int flags)
+{
+  int r;
+  long arg = 0;
+  arg |= flags & 0x1 ? O_APPEND : 0;
+  arg |= flags & 0x8 ? O_NONBLOCK : 0;
+  arg |= flags & 0x10 ? O_SYNC : 0;
+  r = fcntl(fd, F_SETFL, arg);
+  return r;
+}
+
+int
+sml_getfl (int fd, int flags)
+{
+  int r,s;
+  r = fcntl(fd, F_GETFL);
+  s = 0;
+  s |= r & O_APPEND ? 0x1 : 0;
+  s |= r & O_NONBLOCK ? 0x8 : 0;
+  s |= r & O_SYNC ? 0x10 : 0;
+  s |= r & O_RDONLY ? 0x100 : 0;
+  s |= r & O_WRONLY ? 0x200 : 0;
+  s |= r & O_RDWR ? 0x400 : 0;
+  return s;
 }
