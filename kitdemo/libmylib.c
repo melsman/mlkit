@@ -75,7 +75,7 @@ int power_exn(int res, int base, int n, int exn) {
 int print_string_list(int strs) {
   int ys;
   for (ys=strs; isCONS(ys); ys=tl(ys))
-    printString((StringDesc *) hd(ys));
+    printStringML((StringDesc *) hd(ys));
   return;
 }
 
@@ -108,7 +108,7 @@ int print_string_list(int strs) {
  * to reset the two infinite regions. */
 
 #ifndef PROFILING
-int real_list(int pairRho, int realRho) {
+int real_list(Region pairRho, Region realRho) {
   double elem;
   int *realPtr, *pair, *consPtr, *temp_pair, i, res;
 
@@ -143,7 +143,7 @@ int real_list(int pairRho, int realRho) {
 
 #else /*PROFILING*/
 
-int real_listProf(int pairRho, int realRho, int pPoint) {
+int real_listProf(Region pairRho, Region realRho, int pPoint) {
   double elem;
   int *realPtr, *pair, *consPtr, *temp_pair, i, res;
 
@@ -198,7 +198,7 @@ int real_listProf(int pairRho, int realRho, int pPoint) {
  * the two infinite regions. */
 
 #ifndef PROFILING
-int dir(int pairRho, int strRho, StringDesc *mlDirName, int exn) {
+int dir(Region pairRho, Region strRho, String mlDirName, int exn) {
   char cDirName[1000];
   int *resList, *pairPtr;
   StringDesc *mlStr;
@@ -231,7 +231,7 @@ int dir(int pairRho, int strRho, StringDesc *mlDirName, int exn) {
 
 #else /*PROFILING*/
 
-int dirProf(int pairRho, int strRho, StringDesc *mlDirName, int exn, int pPoint) {
+int dirProf(Region pairRho, Region strRho, String mlDirName, int exn, int pPoint) {
   char cDirName[1000];
   int *resList, *pairPtr;
   StringDesc *mlStr;
@@ -251,7 +251,7 @@ int dirProf(int pairRho, int strRho, StringDesc *mlDirName, int exn, int pPoint)
 
   makeNIL(resList);  
   while ((dp = readdir(dfd)) != NULL) {
-    mlStr = convertStringToMLProfiling(strRho, dp->d_name, pPoint);
+    mlStr = convertStringToMLProf(strRho, dp->d_name, pPoint);
     allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
     first(pairPtr) = (int) mlStr;
     second(pairPtr) = (int) resList;
@@ -264,7 +264,8 @@ int dirProf(int pairRho, int strRho, StringDesc *mlDirName, int exn, int pPoint)
 
 #endif /*PROFILING*/
 
-int change_elem(int newPair, int stringRho, int pair, int exn) {
+#ifndef PROFILING
+int change_elem(int newPair, Region stringRho, int pair, int exn) {
   int firstElem_ml, secondElem_ml;
   char cStr[1000];
 
@@ -279,3 +280,20 @@ int change_elem(int newPair, int stringRho, int pair, int exn) {
 
   return newPair;
 }
+#else
+int change_elemProf(int newPair, Region stringRho, int pair, int exn, int pPoint) {
+  int firstElem_ml, secondElem_ml;
+  char cStr[1000];
+
+  firstElem_ml = elemRecordML(pair, 0);
+  secondElem_ml = elemRecordML(pair, 1);
+
+  convertStringToC((StringDesc *)secondElem_ml, cStr, 1000, exn);
+  secondElem_ml = (int) convertStringToMLProf(stringRho, cStr, pPoint);
+
+  elemRecordML(newPair, 0) = secondElem_ml;
+  elemRecordML(newPair, 1) = firstElem_ml;
+
+  return newPair;
+}
+#endif // PROFILING

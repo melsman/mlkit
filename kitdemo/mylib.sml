@@ -1,6 +1,6 @@
 
 (*---------------------------------------------------
- *  SML interface to the C functions in my_lib.c
+ *  SML interface to the C functions in mylib.c
  *---------------------------------------------------*)
 
 (* The function power calculates base^n. The result type int is
