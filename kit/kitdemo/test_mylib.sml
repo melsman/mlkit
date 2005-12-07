@@ -1,5 +1,5 @@
 (* ----------------------------------------------------------
- *   Test of my_lib.c
+ *   Test of mylib.c
  * ---------------------------------------------------------- *)
 
 fun power_test () =
@@ -49,7 +49,7 @@ fun power_exn_test () =
 
 fun print_string_list_test () =
   let
-    val strs = ["The", " ", "ML", " ", "Kit", "\n"]
+    val strs = ["The", " ", "ML", "Kit", "\n"]
   in
     print ("Test of the print_string_list function.\n");
     print ("The string The MLKit should be written.\n");
