@@ -7771,8 +7771,8 @@ variables.  For example, here is an ML declaration that binds a value
 identifier {\tt second} to the C function
 \verb|select_second|:\footnote{MLB-file: {\tt kitdemo/select\_second.mlb}. The C
   file {\tt select\_second.c} must be compiled (using {\tt gcc}) to
-  form the object file {\tt select\_second.o} before the project can
-  be compiled; if you forget, the MLKit will complain.}
+  form the object file (archive) {\tt libselect\_second.a} before the project can
+  be compiled: \texttt{mlkit -dirlibs "." -libs "m,dl,c,select\_second" select\_second.mlb}.}
 \begin{verbatim}
    fun second(pair : 'a * 'b) : 'b =
      prim("select_second", pair)
@@ -7794,44 +7794,58 @@ To use a set of C functions in the ML code, one must first compile the
 C functions into an object file. (Remember to include appropriate
 header files.)
 
-As an example, the file \verb|kitdemo/my_lib.c| holds a set of example
-C functions. This file is compiled by typing (from the shell)
+As an example, the file \verb|kitdemo/libmylib.c| holds a set of
+example C functions. This file is compiled into an archive (in the
+form of a single object file) by typing (from the shell)
 \begin{verbatim}
-   gcc -c my_lib.c
+  $ gcc -o libmylib.a -c libmylib.c
 \end{verbatim}
 in the {\tt kitdemo} directory. Now, to compile the file to work with
 profiling, type
 \begin{verbatim}
-   gcc -DPROFILING -o my_lib_prof.o -c my_lib.c
+  $ gcc -DPROFILING -o libmylib-p.a -c libmylib.c
 \end{verbatim}
 
-The MLB-file \verb|my_lib.mlb|, which is listed in Figure~\ref{my_lib.mlb.fig},
-expresses that, when profiling is disabled, the object file
-\verb|my_lib.o| is linked in to form the executable file {\tt run}.
-When profiling is enabled, the object file \verb|my_lib_prof.o| is
-linked in instead. (The \verb|: my_lib_prof.o| part of the project is
-required only when profiling is enabled.)
+The MLB-file \verb|mylib.mlb|, which is listed in
+Figure~\ref{mylib.mlb.fig}, mentions the file \verb|mylib.sml|, which
+declares a series of ML functions to be used in the file
+\verb|test_mylib.sml|.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-   import my_lib.o : my_lib_prof.o
-   in 
-      my_lib.sml 
-      test_my_lib.sml
-   end
+  $(SML_LIB)/basis/basis.mlb
+  mylib.sml 
+  test_mylib.sml
 \end{verbatim}
-\caption{Linking with external object files. The external object 
-  file {\tt my\_lib.o} is linked in when forming the executable file
-  {\tt run}. When profiling is enabled, the external object file {\tt
-    my\_lib\_prof.o} is used instead.}
-\label{my_lib.mlb.fig}
+\caption{Linking with external object files is done by use of the 
+  \texttt{prim} primitive, which in this case is used in the file
+  \texttt{mylib.sml} for declaring a series of ML functions.}
+\label{mylib.mlb.fig}
 \medskip \hrule
 \end{figure}
 
-It may be necessary to pass a different ``link string'' than the
-default value as an argument to the \texttt{-clibs} option passed to
-the MLKit compiler at compile time (for linking with additional C
-libraries).
+Once the archives have been generated, the appropriate archive can be
+passed to the \texttt{mlkit} compiler, using the options
+\texttt{-libs} and \texttt{-libdirs}, as follows: 
+\begin{verbatim}
+  $ mlkit -o mylibtest -libdirs "." \
+      \ -libs "m,c,dl,mylib" mylib.mlb
+  ...
+  $ mlkit -prof -o mylibtest-p -libdirs "." \
+      \ -libs "m,c,dl,mylib-p" mylib.mlb
+  ...
+\end{verbatim}
+
+\noindent
+To learn more about the options
+\texttt{-libs} and \texttt{-libdirs}, type
+\begin{verbatim}
+  $ mlkit --help
+\end{verbatim}
+on the command line.
+
+You may consult the file \texttt{kitdemo/Makefile} to see how one can
+further automate an appropriate build process.
 
 \section{Dynamic Linking}
 \label{link_at_runtime.sec}
