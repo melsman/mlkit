@@ -176,7 +176,7 @@ This report consists of three parts:
 The present report describes the 
 \index{MLKit!Version \docversion}%
 MLKit Version~{\docversion}. This version of the MLKit extends the MLKit
-Version~4 with
+Version~4 with the following features:
 \begin{enumerate}
 \item Support for compiling 
 \index{ML Basis Files}%
@@ -188,10 +188,14 @@ ML Basis Files. ML Basis Files allows for
 \item File-based 
 \index{separate compilation}%
 separate compilation, based on ML Basis Files.
+\item An updated Standard ML Basis Library conforming to the
+  specification published in \cite{basislib2004}.
+\item Untagged representation of heap-allocated pairs, triples, and
+  Standard ML references, even when garbage collection is enabled.
 \end{enumerate}
 
 MLKit Version~4 extends
-MLKit Version~3 with
+MLKit Version~3 with the following features:
 \begin{enumerate}
 \item Support for pointer tracing garbage collection. Pointer tracing
   garbage collection works well together with the region memory model.
@@ -256,7 +260,8 @@ are not limited to (in alphabetical order) Johnny Andersen, Koshy A
 Joseph, Ken Friis Larsen, Daniel Wang, and Stephen Weeks.
 
 \section*{License}
-The MLKit is released under the GNU General Public License.  
+The MLKit compiler and tools are released under the GNU General Public
+License:
 
 {\sc
 \begin{quote}
@@ -275,6 +280,38 @@ The MLKit is released under the GNU General Public License.
   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 \end{quote}
 }
+
+Parts of the MLKit (the runtime system and the Basis Library) is
+distributed under the MIT licence:
+{\sc
+\begin{quote}
+The MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+\end{quote}
+}
+
+For details, see the file \texttt{copyright} in the source
+distribution.
+
+%==============================
 
 \part{Overview}
 
@@ -851,10 +888,10 @@ program is available as \boxml{kitdemo/run}.
 
 Next, you may execute \boxml{run}, as follows:
 \begin{verbatim}
-   ./run -realtimer -microsec 10000
+   ./run -microsec 1000
 \end{verbatim}
-This command will make a profiling snapshot every 10,000 microseconds (i.e.,
-every ten milliseconds). If you are satisfied with less fine-grained
+This command will make a profiling snapshot every 1000 microseconds (i.e.,
+every one millisecond). If you are satisfied with less fine-grained
 information, choose a larger number; it will speed up execution. If
 you just type
 \begin{verbatim}
@@ -2822,12 +2859,13 @@ issues the following warning:\footnote{To provoke the warning, one has
 \hrule
 \label{escape_mulexp.fig}
 \end{figure}
-
+\begin{small}
 \begin{verbatim}
     *** Warnings ***
    f has a type scheme with escaping put effects on region(s): 
    r10, which is also free in the type schemes with places of :  x
 \end{verbatim}
+\end{small}
 We are told that the program might space leak in region \boxml{r10}.
 Looking at the function \boxml{f}, we see that this region is an
 actual region parameter to \boxml{@}. It follows that the problem is
@@ -4031,16 +4069,13 @@ declared outside {\tt llength}, using
      in #2(loop(l,0))
      end
 
-   local 
-     fun llength'(p as ([], acc)) = p
-       | llength'(_::xs, acc) = llength'(xs,acc+1)
-   in
-     fun llength(l) = #2(llength'(l, 0))
+   local fun llength'(p as ([], acc)) = p
+           | llength'(_::xs, acc) = llength'(xs,acc+1)
+   in fun llength(l) = #2(llength'(l, 0))
    end
 
    fun global(p as ([], acc)) = p
      | global(_::xs, acc) = global(xs, acc+1)
-
    fun glength(l) = #2(global(l, 0))
 
    val k = 500000
@@ -5536,10 +5571,10 @@ the
 \index{MLB-file!grammar}%
 grammar is given in Figure~\ref{mlb_grammar.fig}. We assume a
 denumerable infinite set of \emph{basis identifiers} Bid, ranged over
-by \id{bid}. We use \id{longbid} to range over \emph{long basis
+by \emph{bid}. We use \emph{longbid} to range over \emph{long basis
   identifiers}, that is, non-empty lists of basis identifiers
 separated by a punctuation letter (\texttt{.}). Basis identifiers can
-be used for giving a name to a group of compilation units and allows
+be used for giving a name to a group of compilation units and allow
 for expressing source dependencies, exactly, as a directed acyclic
 graph, within one MLB-file.
 
@@ -5564,7 +5599,7 @@ graph, within one MLB-file.
 \caption{Grammar for MLB-files, i.e., files with extension {\tt .mlb}. 
   For some file extension {\tt .}{\it ext}, {\it path}{\tt .}{\it
     ext\/} denotes either an absolute path or a relative path
-  (relative to the directory in which the project file is located) to
+  (relative to the directory in which the MLB-file is located) to
   a file on the underlying file system.}
 \label{mlb_grammar.fig}
 \medskip \hrule
