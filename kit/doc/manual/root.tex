@@ -6,14 +6,14 @@
 %\usepackage{times}                % times font
 \usepackage{type1cm}               % traditional font - quite thin for screen reading
 \renewcommand{\ttdefault}{cmtt}    % smaller tt-font
-\newcommand{\docversion}{4.1.5}
+\newcommand{\docversion}{4.2.0}
 \usepackage{alltt}
 \makeindex
 \input{genericmac}
 \input{mac}
 \newcommand{\rhoword}{\rho_{\rm w}}
-\title{Programming with Regions in the MLKit\\
-(for Version \docversion)}
+\title{Programming with Regions in the MLKit\\[5mm]
+\large {\sc Revised for version \docversion}}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
@@ -241,10 +241,10 @@ web site:
 \end{tabbing}
 
 \begin{flushright}
-September, 2001\\[1cm]
-Mads Tofte, Lars Birkedal, Martin Elsman,\\
-Niels Hallenberg, Tommy H\o jfeld Olesen,\\
-and Peter Sestoft
+September, 2001\\[5mm]
+Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, \\
+Tommy H\o jfeld Olesen, and Peter Sestoft \\[5mm]
+Revised 2002, 2004, 2005 by Martin Elsman
 \end{flushright}
 
 \newpage
@@ -257,7 +257,7 @@ N.\@ Turner, Peter Sestoft, and Carsten Varming.
 
 People who have contributed with bug reports and patches includes, but
 are not limited to (in alphabetical order) Johnny Andersen, Koshy A
-Joseph, Ken Friis Larsen, Daniel Wang, and Stephen Weeks.
+Joseph, Ken Friis Larsen, Henning Niss, Daniel Wang, and Stephen Weeks.
 
 \section*{License}
 The MLKit compiler and tools are released under the GNU General Public
@@ -880,7 +880,7 @@ yourself in it, and execute the command:\footnote{We assume that the
   MLKit compiler command \texttt{mlkit} is somehow available through
   your {\tt PATH} environment variable.}
 \begin{verbatim}
-   mlkit -prof life.sml
+   $ mlkit -prof life.sml
 \end{verbatim}
 The option \texttt{-prof} enables region profiling. After the MLKit
 has compiled the program \boxml{life.sml}, the executable life
@@ -888,7 +888,7 @@ program is available as \boxml{kitdemo/run}.
 
 Next, you may execute \boxml{run}, as follows:
 \begin{verbatim}
-   ./run -microsec 1000
+   $ ./run -microsec 1000
 \end{verbatim}
 This command will make a profiling snapshot every 1000 microseconds (i.e.,
 every one millisecond). If you are satisfied with less fine-grained
@@ -904,8 +904,8 @@ follows:\footnote{The program {\tt rp2ps} can be found in the {\tt
     kit/bin} directory.}
 \index{rp2ps@\texttt{rp2ps}}%
 \begin{verbatim}
-   rp2ps -region -name life -sampleMax 80 
-   gv -seascape region.ps
+   $ rp2ps -region -name life -sampleMax 80 
+   $ gv -seascape region.ps
 \end{verbatim}
 The option \boxml{-sampleMax $N$} instructs \boxml{rp2ps} to show at
 most $N$ snapshots (evenly distributed over the duration of the
@@ -919,7 +919,7 @@ executing the command
 \index{sampleMax@\texttt{-sampleMax} option}%
 \index{region@\texttt{-region} option}%
 \begin{verbatim}
-   rp2ps -region -name life -sampleMax 80 -eps 137 mm
+   $ rp2ps -region -name life -sampleMax 80 -eps 137 mm
 \end{verbatim}
 The option \boxml{-eps 137 mm} has the effect that 
 \index{region.ps@\texttt{region.ps}}%
@@ -1225,7 +1225,9 @@ command \texttt{mlkit} is available on your system.\footnote{The {\tt
     INSTALL} file in the distribution tells you how to install the
   MLKit.}
 
-Compiling an MLB-file (which may list several SML source files) is
+Compiling an 
+\index{MLB-file}%
+MLB-file (which may list several SML source files) is
 similar to compiling a single SML source file. However, we shall
 postpone the in-depth discussion of how to compile MLB-files to
 Chapter~\ref{mlb_and_modules.chap}.
@@ -1234,7 +1236,7 @@ As an example, to compile the file \boxml{projection.sml} located in
 the \texttt{kitdemo} directory, first goto this directory and execute
 the following command:
 \begin{verbatim}
-   mlkit projection.sml
+   $ mlkit projection.sml
 \end{verbatim}
 Execution of this command will result in an executable file
 \texttt{run}, placed in the \texttt{kitdemo} directory.
@@ -1245,17 +1247,17 @@ options \boxml{--print\_types} and
 \boxml{--print\_drop\_regions\_expression} to the \texttt{mlkit}
 command, as follows:
 \begin{verbatim}
-   rm -rf MLB
-   mlkit -print_types \
-         -print_drop_regions_expression \
-         projection.sml
+   $ rm -rf MLB
+   $ mlkit -print_types \
+           -print_drop_regions_expression \
+           projection.sml
 \end{verbatim}
 Removing the \texttt{MLB} directory is necessary to avoid the MLKit to
 recognise that it can reuse the previous result of compiling the
 \texttt{projection.sml} program.  A shorter version of the compilation
 command is
 \begin{verbatim}
-   mlkit -Ptypes -Pdre projection.sml
+   $ mlkit -Ptypes -Pdre projection.sml
 \end{verbatim}
 To get more information about which options you can pass to the MLKit
 at the command-line, try executing \boxml{mlkit -help}. The output of
@@ -1271,7 +1273,7 @@ If no errors were found during compilation, the MLKit produces a
 Running the target program is done from the UNIX shell by typing
 \index{run@\texttt{run}}%
 \begin{verbatim}
-   ./run
+   $ ./run
 \end{verbatim}
 For small programs, the file will probably be around 50Kb large, even
 for the trivial examples considered in this chapter.  This is because
@@ -1567,6 +1569,7 @@ and to large parts of the Standard ML Basis
 Library;\footnote{See the MLKit web site for a link to the Standard ML
   Basis Library.}
 \index{Standard ML!{Basis Library}}%
+\index{Basis Library}%
 that is, as a programmer, you can refer to components of the Standard
 ML Basis Library through the
 \index{initial basis}%
@@ -5558,7 +5561,7 @@ constructs.
 \section{ML Basis Files}
 An ML Basis File, in short MLB-file,  
 \index{ML Basis File}%
-\index{MLB-file}%
+\index{{MLB}-file}%
 is a file that lists the SML source files
 that make up a project or a library. An MLB-file can also 
 \index{referencing an MLB-file}%
@@ -6312,7 +6315,7 @@ continually allocates memory that is first freed when the program
 stops. We now search for \texttt{pp14788} in the log files of the basis
 library, that is, we execute the UNIX command
 \begin{verbatim}
-   fgrep pp14788 *.log
+   $ fgrep pp14788 *.log
 \end{verbatim}
 in the directory {\tt basis}, and find that the program point {\tt pp14788}
 appears in the file {\tt General.sml.log}, which contains the following
@@ -6804,7 +6807,7 @@ A
 \index{region@\texttt{-region} option}%
 region profile is produced by typing
 \begin{verbatim}
-   rp2ps -region
+   $ rp2ps -region
 \end{verbatim}
 at the command prompt. The program produces a PostScript file in
 file {\tt region.ps} by reading profile information from the 
@@ -6842,7 +6845,7 @@ The largest region shown in Figure~\ref{lifeprof80.fig} is {\tt
 \index{object@\texttt{-object} option}%
 object profile of region {\tt r212422} is produced by typing
 \begin{verbatim}
-   rp2ps -object 212422
+   $ rp2ps -object 212422
 \end{verbatim}
 at the command prompt. We obtain the object profile shown in
 Figure~\ref{prof_eks2.fig}.
@@ -6868,7 +6871,7 @@ usage on the stack, excluding space used by finite regions. A
 \index{stack@\texttt{-stack} option}%
 stack profile is generated by typing
 \begin{verbatim}
-   rp2ps -stack
+   $ rp2ps -stack
 \end{verbatim}
 at the command prompt.
 
@@ -6919,8 +6922,8 @@ file. It is printed as \texttt{Number of ticks:}.
 Figure~\ref{prof_eks4.fig} shows the profile for the following
 command line:
 \begin{verbatim}
-   rp2ps -region -sampleMax 50 -name life \
-         -comment 0.6 "A comment at time 0.6" -sortBySize
+   $ rp2ps -region -sampleMax 50 -name life \
+           -comment 0.6 "A comment at time 0.6" -sortBySize
 \end{verbatim}
 
 \begin{figure}
@@ -6939,7 +6942,7 @@ here. Help on these options is obtained by typing \texttt{rp2ps -h} or
 \index{rp2ps@\texttt{rp2ps} options|)}%
 
 %---------------------------------------------------------
-\chapter{Controling MLKit Compilation with Options}
+\chapter{Controling MLKit Compilation}
 \label{controlkit.sec}
 \label{startup.sec}
 %---------------------------------------------------------
@@ -7450,9 +7453,9 @@ The above macros are used in examples~\ref{real_list.ex},
 %-------------------
 Strings are boxed and always allocated in infinite regions. It is possible
 to print an ML string by using the C function
-\index{printString@\texttt{printString}}%
+\index{printStringML@\texttt{printStringML}}%
 \begin{verbatim}
-   void printString(StringDesc *str);
+   void printStringML(StringDesc *str);
 \end{verbatim}
 
 Strings are converted from ML to C and vice versa using the two C 
@@ -7829,10 +7832,10 @@ passed to the \texttt{mlkit} compiler, using the options
 \texttt{-libs} and \texttt{-libdirs}, as follows: 
 \begin{verbatim}
   $ mlkit -o mylibtest -libdirs "." \
-      \ -libs "m,c,dl,mylib" mylib.mlb
+          -libs "m,c,dl,mylib" mylib.mlb
   ...
   $ mlkit -prof -o mylibtest-p -libdirs "." \
-      \ -libs "m,c,dl,mylib-p" mylib.mlb
+          -libs "m,c,dl,mylib-p" mylib.mlb
   ...
 \end{verbatim}
 
@@ -7849,7 +7852,11 @@ further automate an appropriate build process.
 
 \section{Dynamic Linking}
 \label{link_at_runtime.sec}
-The MLKit support dynamic linking at runtime.  This is done using the
+The MLKit supports 
+\index{dynamic linking}%
+dynamic linking at runtime.  This is done using the
+\index{dlopen!\texttt{dlopen}}%
+\index{dlsym!\texttt{dlsym}}%
 \texttt{dlopen} and \texttt{dlsym} functions from the MLKit library
 \texttt{basis/dynlink.mlb}. The function \texttt{dlopen} opens a given
 library and the function \texttt{dlsym} associates a name with a given
@@ -7858,10 +7865,10 @@ function in the library. If the name is already linked, the exception
 
 Using the functions \texttt{dlopen} and \texttt{dlsym}, as shown in
 Figure~\ref{dynlib.fig}, you can call a dynamically linked library
-function using a primitive call to `:'.
+function using a primitive call to '\texttt{:}'.
 
-If you call `:' with a name without any association \texttt{Match} is
-raised.
+If '\texttt{:}' is called with a name that has no association,
+the exception \texttt{Match} is raised.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
@@ -7921,21 +7928,21 @@ supported when the arguments of the ML function are of type {\tt int} or
   bool}. It works also when profiling is enabled.
 
 The example shown here is example~\ref{power_auto.ex} of
-Section~\ref{Cexamples.sec}; it is part of the \verb|my_lib.mlb|
+Section~\ref{Cexamples.sec}; it is part of the \verb|mylib.mlb|
 project.
 
 %--------------------------------------
 \section{Examples\label{Cexamples.sec}}
 %--------------------------------------
 \index{C examples}%
-\index{my_lib.c@\texttt{my\_lib.c}}%
-\index{my_lib.sml@\texttt{my\_lib.sml}}%
+\index{libmylib.c@\texttt{libmylib.c}}%
+\index{mylib.sml@\texttt{mylib.sml}}%
 Several example C functions are located in the file
-\verb|kitdemo/my_lib.c|. The MLB-file \verb|kitdemo/my_lib.mlb|, which
-is listed in Figure~\ref{my_lib.mlb.fig}, makes use of these functions.
+\verb|kitdemo/libmylib.c|. The MLB-file \verb|kitdemo/mylib.mlb|, which
+is listed in Figure~\ref{mylib.mlb.fig}, makes use of these functions.
 
-The source file \verb|my_lib.sml|, which is part of the
-\verb|my_lib.mlb| project, contains the following ML declarations:
+The source file \verb|mylib.sml|, which is part of the
+\verb|mylib.mlb| project, contains the following ML declarations:
 \begin{verbatim}
    fun power(base: int, n: int) : int = 
      prim ("power", (base, n))
@@ -7965,7 +7972,7 @@ The source file \verb|my_lib.sml|, which is part of the
 \end{verbatim}
 
 The C function implementations are summarized below (see the files
-\verb|my_lib.c| and \verb|my_lib.sml| in the {\tt kitdemo} directory
+\verb|libmylib.c| and \verb|mylib.sml| in the {\tt kitdemo} directory
 for detailed comments.)
 
 \begin{example}\label{power.ex}
@@ -8043,10 +8050,12 @@ for detailed comments.)
 \end{verbatim}
   This function may work sometimes but it is not safe! Region
   inference expects the result string to be allocated in
-  \texttt{stringRho}, and may therefore de-allocate the region containing
-  the argument string, \verb|secondElem_ml|, while the string in the
-  returned pair is still live. The safe version of \verb|change_elem| is
-  found in \verb|my_lib.c|.
+  \texttt{stringRho}, and may therefore de-allocate the region
+  containing the argument string, \verb|secondElem_ml|, while the
+  string in the returned pair is still live. The safe version of
+  \verb|change_elem| is found in \verb|libmylib.c|. See
+  Section~\ref{C_polymorphism.sec} for inspiration to how a safe
+  non-copying swap function can be implemented.
 \end{example}
                                 
 
@@ -8059,19 +8068,34 @@ for detailed comments.)
 This section provides an overview of the main changes to the MLKit
 since version 4.
 
-\subsection{Support for compiling ML Basis Files}
+\subsubsection*{Support for compiling ML Basis Files}
 \index{ML Basis Files}%
 ML Basis Files allows for expressing source dependencies, exactly (as
 a directed acyclic graph). ML Basis Files thus provides a mechanism
 for programming ``in the very large''.
 
-\subsection{File-based Separate Compilation}
+\subsubsection*{File-based Separate Compilation}
 \index{separate compilation}%
 The MLKit now supports file-based separate compilation, based on
 dependencies established from ML Basis Files. The compiler serializes
 symbol table information to disk for each compilation unit, so that
 this information can be deserialized and used when compiling other
 compilation units.
+
+\subsubsection*{Updated Standard ML Basis Library}
+\index{Standard ML!{Basis Library}}%
+\index{Basis Library}%
+The MLKit implementation of the Standard ML Basis Library now conforms to the
+  specification published in \cite{basislib2004}. 
+
+\subsubsection*{Untagged Pairs, Triples and References}
+\index{untagging}%
+\index{tagging}%
+\index{garbage collection}%
+\index{value representation}%
+The MLKit now support untagged representations of heap-allocated
+pairs, triples, and Standard ML references, even when garbage
+collection is enabled.
 
 \section{Changes Since Version 3}
 \index{changes!since version 3}%
@@ -8197,7 +8221,7 @@ x86 native backend. The options are slightly different for the version
 of the MLKit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-MLKit version 4.1.5, Oct 14, 2005 [X86 Backend]
+MLKit version 4.2.0, Dec 07, 2005 [X86 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.mlb]
 
@@ -8214,11 +8238,6 @@ Options:
 
 --chat, -verbose                                          (off)
      Print a message for each compilation step in the compiler.
-
---clibs S                                      ("-lm -lc -ldl")
-     If you have added your own object files to a project,
-     you might also need to link with libraries other
-     than libm.a, libc.a, and libdl.a ("-lm -lc -ldl").
 
 --comments_in_x86_asmcode                                 (off)
      Insert comments in x86 assembler code.
@@ -8281,7 +8300,7 @@ Options:
 
 --debug_man_enrich                                        (off)
      During interactive use, show information about why a
-     program unit need be recompiled. In the ML Kit, a
+     program unit need be recompiled. In the MLKit, a
      program unit (or a functor body) is recompiled if
      either (a) the program unit is modified, or (b)
      information about an identifier for which the program
@@ -8314,18 +8333,6 @@ Options:
 
 --no_eliminate_explicit_records
      Opposite of --eliminate_explicit_records.
-
---extended_typing, -xt                                    (off)
-     When this flag is enabled, SMLserver requires
-     scripts to be functor SCRIPTLET's, which are
-     automatically instantiated by SMLserver in a
-     type safe way. To construct and link to XHTML
-     forms in a type safe way, SMLserver constructs an
-     abstract interface to the forms from the functor
-     arguments of the scriptlets. This interface is
-     constructed and written to the file scripts.gen.sml
-     prior to the actual type checking and compilation
-     of the project.
 
 --garbage_collection, -gc                                 (off)
      Enable garbage collection. When enabled, regions are
@@ -8369,15 +8376,36 @@ Options:
      Opposite of --import_basislib, -basislib.
 
 --install_dir S                        ("/home/mael/mlkit/kit")
-     Installation directory for the ML Kit. For normal
+     Installation directory for the MLKit. For normal
      execution you should not modify this value. However,
-     if you wish to use the ML Kit with an altered runtime
+     if you wish to use the MLKit with an altered runtime
      system and you do not wish to exchange the .o-files in
      the bin-subdirectory (for example because you are running
-     the ML Kit on a shared system), you can update this
+     the MLKit on a shared system), you can update this
      setting and the system will try to link to a runtime
      system in the bin-subdirectory found in the new install
      directory.
+
+--libdirs S                                                ("")
+     This option controls where ld looks for
+     archives. The format is a comma-separated list
+     of directories; see the -libs entry. The default
+     is the empty list; thus 'ld' will look for
+     libraries in only the system specific default
+     directores. The directories are passed to 'ld'
+     using the -L option.
+
+--libs S                                             ("m,c,dl")
+     For accessing a foreign function residing in
+     an archive named libNAME.a from Standard ML code
+     (using prim), you need to add 'NAME' to this
+     comma-separated list. Notice that an object file
+     (with extension '.o') is an archive if it is
+     renamed to have extension '.a'. You may need to
+     use the -libdirs option for specifying
+     directories for which ld should look for library
+     archives. The libraries are passed to 'ld' using
+     the -l option.
 
 --link_code S, -link S                                    (...)
      Link-files to be linked together to form an
@@ -8598,7 +8626,7 @@ Options:
      is instrumented with profiling information. When a program
      compiled with region profiling enabled is run, the program
      produces a profile file run.rp, which can then be read
-     by the profiling tool rp2ps that comes with the ML Kit to
+     by the profiling tool rp2ps that comes with the MLKit to
      produce profiling graphs of various forms.
 
 --regionvar N                                              (~1)
@@ -8723,7 +8751,10 @@ Options:
 {\tt bot}, this region contains no values. Region variables with region type {\tt bot} are used with
 type variables.\cr
 \boxml{r4}&Holds values of type {\tt string}.\cr
-\boxml{r5}&Holds values of type {\tt real}.\cr
+\boxml{r5}&Holds values of type $\tau_1 \times \tau_2$, for any types $\tau_1$ and $\tau_2$.\cr
+\boxml{r6}&Holds values of type $\tau~\texttt{array}$ and $\tau~\texttt{vector}$, for any type $\tau$.\cr
+\boxml{r7}&Holds values of type $\tau~\texttt{ref}$, for any type $\tau$.\cr
+\boxml{r8}&Holds values of $\tau_1 \times \tau_2 \times \tau_3$, for any types $\tau_1$, $\tau_2$, and $\tau_3$.\cr
 }
 \hrule
 \bigskip
