@@ -6,12 +6,13 @@ mael 2005-11-29: Things needed for the next release:
        Solution: use OS.Path.dir (Flags.get_string_entry "output") as
 	a prefix path to the bdy-file in IntModules.sml.
        Status: Fixed. mael 2005-12-04
+
    * mael 2005-11-29: Update Basis Library to a reasonable degree.
 
    * mael 2005-11-29: Fix bug related to recognizing already compiled
      mlb-files (Martin)
  
-   * mael 2005-11-29: MLKit Manual update (Martin)
+   * mael 2005-11-29: MLKit Manual update (Martin: DONE)
 
    * mael 2005-11-29: SMLserver Manual update (Martin)
 
@@ -37,7 +38,8 @@ mael 2005-11-29: Things needed for the next release:
 
 mael 2005-10-28: Fix bug in gengc: Errors when bootstrapping
 
-mael 2005-10-26: Try compile the MLKit with MLTon.
+mael 2005-10-26: Try compile the MLKit with MLTon. DONE (Martin). See
+NEWS file.
 
 mael 2005-10-25: Add necessary Posix-support needed to compile
 Kittester with MLKit. DONE (Varming)
