@@ -368,6 +368,7 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/bin
 	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
 	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
+	$(MKDIR) $(INSTDIR_SMLSERVER)/basis/io
 	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
 	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
 	$(INSTALLDATA) copyright $(INSTDIR_SMLSERVER)
@@ -376,6 +377,7 @@ install_smlserver:
 	$(INSTALLDATA) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(MAKE) -C smlserver_demo install
 	$(INSTALLDATA) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
+	$(INSTALLDATA) basis/io/*.{sml,sig} $(INSTDIR_SMLSERVER)/basis/io
 #	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
 	$(INSTALLDATA) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
 	$(MAKE) -C src/SMLserver/apache install
