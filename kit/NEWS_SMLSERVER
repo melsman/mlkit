@@ -1,5 +1,8 @@
 File NEWS_SMLSERVER
 
+ * ML Server Pages (msp-files) are now supported by the use of the
+   mspcomp tool, which compiles msp-files into sml-scripts.
+
            **** SMLserver version 4.1.4 is released ****
 
  * mael 2004-05-18: Finished work on "extended typing" in SMLserver,

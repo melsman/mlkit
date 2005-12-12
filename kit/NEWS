@@ -1,4 +1,17 @@
 MLKit NEWS file
+
+ * mael 2005-12-12: The MLKit menu system is no longer supported - it
+   has now been removed from the sources. Instead, the user of the
+   MLKit must provide options to the executable. To get an overview of
+   which options are available, type "mlkit -h" on the command line.
+
+ * mael 2005-12-12: The MLKit Manual (kit/doc/manual/mlkit.pdf) is
+   now updated to document the support for MLB-files. Notice that
+   pm-files are no longer supported; see below.
+
+ * mael 2005-12-04: Fixed bug related to where .bdy-files (functor
+   bodies) are stored. They are now stored in the MLB-directory of the
+   functor-hosting mlb-file.
  
  * mael 2005-11-29: Started work on updating the Standard ML Basis
    Library implementation - see
@@ -99,7 +112,7 @@ MLKit NEWS file
         and for linking object code.
 
      .{sml,sig}: Compiling a file F with extension .sml or .sig, without
-        use of the -c flag, is similar to compiling the .mlb-file:
+        use of the -c flag, is similar to compiling the mlb-file:
 
            local $(SML_LIB)/basis/basis.sml
            in F
