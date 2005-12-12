@@ -261,8 +261,13 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
   int r, n;
   String s;
   n = convertIntToC(n1);
-  s = REG_POLY_CALL(allocStringC, sr, n);
+  s = REG_POLY_CALL(allocStringC, sr, n+1);
+  ((char *)&(s->data))[n] = 0;
   r = read(convertIntToC(fd), &(s->data), n);
+  if (r > 0) 
+  {
+    ((char *)&(s->data))[r] = 0;
+  }
   first(pair) = (int) s;
   second(pair) = r;
   return pair;
