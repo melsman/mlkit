@@ -1,0 +1,33 @@
+.TH mlkit 1 "December 12, 2005" "version 4.1.6" "MLKit for Standard ML"
+.SH NAME
+mlkit \- A full blown Standard ML compiler
+.SH SYNOPSIS
+[\ --help] \
+infile.mlb ...
+.SH DESCRIPTION
+.B mlkit
+will when invoked, compile 
+.SH OPTIONS
+.IP \-\-help
+Gives a list of options
+.SH EXIT STATUS
+.SH ENVIRONMENT
+.IP SML_LIB
+mlkit
+uses SML_LIB from the environment to look up the location of the library
+.SH FILES
+.I /etc/mlkit/map
+.RS
+System wide configuration
+.RE
+.I ~/.mlkit/map
+.RS
+User configuration
+.SH DIAGNOSTICS
+The following diagnostics may be issued on stderr:
+.SH EXAMPLES
+.SH STANDARDS
+The MLKit implements the Standard ML of 1997 and has limited support of the Standard Library
+of 2002.
+.SH CREDITS
+.SH SEE ALSO
