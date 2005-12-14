@@ -97,6 +97,7 @@ smlserver: smlserver_nj
 
 smlserver_kit: basics 
 	$(MAKE) -C Tools/MspComp
+	$(MAKE) -C Tools/MlbMake
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
 #	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
 	$(MAKE) -C SMLserver/apache
@@ -107,6 +108,7 @@ smlserver_kit: basics
 
 smlserver_nj: basics
 	$(MAKE) -C Tools/MspComp
+	$(MAKE) -C Tools/MlbMake
 #	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
 #	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
