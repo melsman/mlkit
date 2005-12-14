@@ -560,22 +560,33 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
   exit(0);
 }/*}}}*/
 
-int 
-startsched (const char *server, apr_port_t port, int infile)/*{{{*/
+struct sched_init
+startsched (const char *server, apr_port_t port)/*{{{*/
 {
+  int tmp;
+  int mypipes[2];
   int s;
+  struct sched_init si;
+  tmp = pipe(mypipes);
+  if (tmp != 0)
+  {
+    si.pid = -1;
+    return si;
+  }
   s = fork();
   if (s == 0) 
   { // child
-    scheduleproc(server, port, infile);
+    scheduleproc(server, port, mypipes[0]);
     exit(0);
+    return si;
   }
   else 
   { // parent
-    close(infile);
-    return s;
+    close(mypipes[0]);
+    si.pid = s;
+    si.input = mypipes[1];
+    return si;
   }
-  return -1;
 }/*}}}*/
 
 

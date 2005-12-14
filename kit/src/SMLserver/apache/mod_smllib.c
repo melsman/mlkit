@@ -182,9 +182,7 @@ apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ 
 int
 apsml_getport (request_data * rd)	/*{{{ */
 {
-  // request_rec
   return convertIntToML (ap_get_server_port (rd->request));
-  //return convertIntToML(rd->server->addrs->host_port);
 }				/*}}} */
 
 // ML: request_rec -> string
@@ -442,6 +440,7 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   int e, l, serversize;
   String tmpstr;
   char *c, *tmpptr, *server = NULL;
+//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml_reg_schedule");
   tmpstr = (String) elemRecordML(pair, 0);
   c = &(tmpstr->data);
   l = sizeStringDefine (tmpstr);
@@ -449,11 +448,20 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   server = &(tmpstr->data);
   serversize = sizeStringDefine(tmpstr);
   l += serversize+1;
+//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//      "schedule : %s, first: %d, interval: %d, type %d", c, convertIntToC(first_time),
+//       convertIntToC(interval), convertIntToC(type));
   schedHeader *sh = (schedHeader *) malloc(sizeof(schedHeader) + l+1);
-  sh->first = first_time;
-  sh->port = elemRecordML(pair,2);
-  sh->interval = interval;
-  sh->type = type;
+  if (!sh)
+  {
+    ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+        "Malloc error, schedule : %s, first: %d, interval: %d, type %d could not be performed",
+        c, convertIntToC(first_time), convertIntToC(interval), convertIntToC(type));
+  }
+  sh->first = convertIntToC(first_time);
+  sh->port = convertIntToC(elemRecordML(pair,2));
+  sh->interval = convertIntToC(interval);
+  sh->type = convertIntToC(type);
   sh->serverlength = serversize;
   tmpptr = (char *) (sh+1);
   if (server)
@@ -468,8 +476,8 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   apr_global_mutex_lock(rd->ctx->sched.lock);
   tmp = 0;
   e = 0;
-  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
-      "schedule : %s, first: %d, interval: %d, type %d", c, first_time, interval, type);
+//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//      "schedule : %s, first: %d, interval: %d, type %d", c, first_time, interval, type);
   while (e < packagelength)
   {
 //    ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "schedule: e:%d", e);
@@ -647,9 +655,8 @@ apsml_contentlength (request_data * rd)	/*{{{ */
 
 // ML: request_rec -> bool
 int
-apsml_hasconnection (int rd1)	/*{{{ */
+apsml_hasconnection (request_data *rd)	/*{{{ */
 {
-  request_data *rd = (request_data *) rd;
   if (rd->request)
     return 1;
   return 0;

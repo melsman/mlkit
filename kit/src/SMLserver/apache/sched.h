@@ -1,6 +1,13 @@
 #include "httpd.h"
 
-int startsched (const char *server, apr_port_t port, int infile);
+struct sched_init
+{
+  int input;
+  int pid;
+};
+
+struct sched_init 
+startsched (const char *server, apr_port_t port);
 
 typedef struct
 {
