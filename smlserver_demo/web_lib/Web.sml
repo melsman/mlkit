@@ -116,7 +116,7 @@ structure Web :> WEB =
 
     fun contentLength () : int = prim("apsml_contentlength", getReqRec())
 
-    fun hasConnection () : bool = let val b :int = prim("apsml_hasconnection", getReqRec())
+    fun hasConnection () : bool = let val b :int = prim("@apsml_hasconnection", getReqRec())
                                   in (b = 1)
                     end
 
@@ -1294,12 +1294,18 @@ structure Web :> WEB =
      * they should be. *)
 
     fun schedule' (f : string) (s : string option) (first : int) (interval : int) : unit = 
-            let val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"), Conn.port())
+            let
+              val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"),
+                                      if Conn.hasConnection () then Conn.port() else 0)
+              val _ = if port = 0 then raise Fail "tried to schedule with an invalid port number" 
+                      else ()
             in
             case s of NONE =>
-            prim("apsml_reg_schedule", (first, interval, 0, (f,"localhost",port), getReqRec()))
+            prim("apsml_reg_schedule", (first : int, interval : int, 0,
+                                        (f : string ,"localhost",port : int), getReqRec()))
                    | SOME(server) =>
-            prim("apsml_reg_schedule", (first, interval, 0, (f,s,port), getReqRec()))
+            prim("apsml_reg_schedule", (first : int, interval : int, 0, 
+                                        (f : string, server : string, port : int), getReqRec()))
             end
 
     fun schedule f server first interval = 
