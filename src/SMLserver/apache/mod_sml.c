@@ -327,7 +327,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   ss = s;
   while (ss)
   {
-//    printserver (ss);
+    // printserver (ss);
     ss = ss->next;
   }
 
@@ -384,17 +384,14 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
       "apsml: global_mutex_create failed");
     return 5;
   }
-
-  int tmp;
-  int mypipes[2];
-  tmp = pipe(mypipes);
-  if (tmp != 0) return 5;
-  rd->ctx->sched.input = mypipes[1];
-  tmp = startsched(s->defn_name, s->port, mypipes[0]);
-  if (tmp == -1) return 5;
+  struct sched_init si;
+  si = startsched(s->defn_name, s->port);
+  if (si.pid == -1) return 5;
     ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
       "apsml: test 5");
-  rd->ctx->sched.pid = tmp;
+  rd->ctx->sched.pid = si.pid;
+  rd->ctx->sched.input = si.input;
+
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: created process %d", rd->ctx->sched.pid);
   rd->pool = ptemp;
@@ -410,11 +407,12 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     }
     else
     {
-      is = apr_palloc(ptemp, strlen(rd->ctx->initscript) + strlen(rd->ctx->smlpath) + 10);
+      is = malloc(strlen(rd->ctx->initscript) + strlen(rd->ctx->smlpath) + 10);
       strcpy(is, rd->ctx->smlpath);
       strcat(is, "/");
       strcat(is, rd->ctx->initscript);
       res = apsml_processSmlFile (rd, is, 1);
+      free(is);
     }
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: init script executed with return code %d", res);
