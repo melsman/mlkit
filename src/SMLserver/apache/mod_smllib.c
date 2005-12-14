@@ -182,6 +182,13 @@ apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ 
 int
 apsml_getport (request_data * rd)	/*{{{ */
 {
+  if (rd->request == 0)
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+      "apsml_getport called without a connection");
+    raise_exn ((int) &exn_OVERFLOW);
+    return 0;
+  }
   return convertIntToML (ap_get_server_port (rd->request));
 }				/*}}} */
 
@@ -681,9 +688,8 @@ apsml_setMimeType (char *s, int s_size, request_data * rd)	/*{{{ */
 }				/*}}} */
 
 request_rec *
-apsml_GetReqRec (int rd1)	/*{{{ */
+apsml_GetReqRec (request_data *rd)	/*{{{ */
 {
-  request_data *rd = (request_data *) rd1;
   return rd->request;
 }				/*}}} */
 
