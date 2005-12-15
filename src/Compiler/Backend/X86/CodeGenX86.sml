@@ -2895,9 +2895,12 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    val offset = if BI.tag_values() then 1 else 0
 	  in
 	      I.lab (NameLab "TopLevelHandlerLab") ::
+        I.movl (R arg_reg, R tmp_reg0)::
 	      load_indexed(R arg_reg,arg_reg,WORDS offset, 
+        load_indexed(R tmp_reg1,arg_reg, WORDS offset,
 	      load_indexed(R arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
-	      compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY arg_reg],NONE,0,tmp_reg1,C)))
+	      compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY arg_reg,SS.PHREG_ATY tmp_reg1,
+                                                  SS.PHREG_ATY tmp_reg0],NONE,0,tmp_reg1,C))))
 	  end
 
 	fun store_exported_data_for_gc (labs,C) =

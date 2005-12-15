@@ -136,3 +136,4 @@ sml_pipe
 close
 sml_dupfd
 isatty
+sml_setFailNumber

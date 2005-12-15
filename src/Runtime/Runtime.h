@@ -65,7 +65,7 @@ int die (char *);
 int die2 (char *, char *);
 int terminate (int status);    /* status is a C value */
 int terminateML (int status);  /* status is an ML value */
-void uncaught_exception (StringDesc *exnStr);
+void uncaught_exception (StringDesc *exnStr, unsigned long, String *);
 
 #endif /* RUNTIME_H */
 
