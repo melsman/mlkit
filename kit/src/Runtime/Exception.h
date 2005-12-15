@@ -28,4 +28,6 @@ extern Exception* exn_INTERRUPT;           /* Exception for user interrupt (Ctrl
 
 void raise_exn(int exn);
 
+extern unsigned long failNumber;
+
 #endif /* __EXCEPTION_H */

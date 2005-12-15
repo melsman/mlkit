@@ -420,6 +420,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
   int *env = NULL;
   uint32 cur_instr = 0;
   int temp;
+  unsigned long *tmp2;
   //  c_primitive primtmp;
 
 
@@ -1110,17 +1111,26 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       Instruct(GLOBAL_EXN_HANDLER_REPORT): {
 	int exn_sz;
 	debug(printf("GLOBAL_EXN_HANDLER_REPORT, acc = %d\n", acc));
+  tmp2 = (unsigned long *) acc+1;
 	acc = *(unsigned long *)acc;        
 	temp = *((unsigned long *)acc+1);        /* Fetch pointer to exception string */
 	acc = *((unsigned long *)acc);           /* Fetch exn number */	
 
 	/* write uncaught exception string into errorStr */
 	exn_sz = 1 + sizeStringDefine((String)temp);
+  if (acc == failNumber) exn_sz += 1 + sizeStringDefine((String) *tmp2);
 	if ( (*errorStr = (char*)malloc(exn_sz) ) <= 0 ) 
 	  {
 	    die ("GLOBAL_EXN_HANDLER_REPORT - malloc failed");
 	  }
 	convertStringToC ((String)temp, *errorStr, exn_sz, 0);
+  if (acc == failNumber)
+  {
+    (*errorStr)[sizeStringDefine((String)temp)] = ' ';
+    convertStringToC( (String) *tmp2, (*errorStr) + 1 + sizeStringDefine((String)temp), 
+                      1 + sizeStringDefine((String) *tmp2), 0);
+  }
+
 	if ( acc == 4 ) {
 	  acc = -2;         /* we return -2 for Interrupt */
 	} else {

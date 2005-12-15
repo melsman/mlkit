@@ -11,6 +11,7 @@ structure Initial =
     type word0 = word         (* used by WORD signature *)
 
     exception Fail of string
+    val _ = prim("sml_setFailNumber", Fail "hat" : exn) : unit;
 
     (* Time structure *)
     val timebase : int = prim("get_time_base", 0)
