@@ -122,23 +122,26 @@ terminateML (int status)
 unsigned long failNumber = (unsigned long) -1;
 
 void
-sml_setFailNumber(Exception **ep)
+sml_setFailNumber(int ep)
 {
-  failNumber = (*ep)->exn_number;
+  int e = first((int) ep);
+  failNumber = convertIntToC(first(e));
   return;
 }
 
 void 
-uncaught_exception (String exnStr, unsigned long n, String *sp) 
+uncaught_exception (String exnStr, unsigned long n, int ep) 
 { 
+  int a;
   fprintf(stderr,"uncaught exception "); 
   fflush(stderr);
   fputs(&(exnStr->data), stderr);
   fflush(stderr);
-  if (n == failNumber)
+  if (convertIntToC(n) == failNumber)
   {
+    a = second (ep);
     fputs(" ", stderr);
-    fputs(&(sp[1]->data),stderr);
+    fputs(&(((String) a)->data),stderr);
     fflush(stderr);
   }
   fprintf(stderr, "\n"); 
