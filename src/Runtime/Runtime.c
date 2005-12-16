@@ -120,12 +120,21 @@ terminateML (int status)
 }
 
 unsigned long failNumber = (unsigned long) -1;
+unsigned long syserrNumber = (unsigned long) -1;
 
 void
-sml_setFailNumber(int ep)
+sml_setFailNumber(int ep, int i)
 {
   int e = first((int) ep);
-  failNumber = convertIntToC(first(e));
+  switch (convertIntToC(i))
+  {
+    case 1:
+      failNumber = convertIntToC(first(e));
+      break;
+    case 2:
+      syserrNumber = convertIntToC(first(e));
+      break;
+  }
   return;
 }
 
@@ -140,6 +149,14 @@ uncaught_exception (String exnStr, unsigned long n, int ep)
   if (convertIntToC(n) == failNumber)
   {
     a = second (ep);
+    fputs(" ", stderr);
+    fputs(&(((String) a)->data),stderr);
+    fflush(stderr);
+  }
+  if (convertIntToC(n) == syserrNumber)
+  {
+    a = second(ep);
+    a = first(a);
     fputs(" ", stderr);
     fputs(&(((String) a)->data),stderr);
     fflush(stderr);
