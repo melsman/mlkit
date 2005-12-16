@@ -7,6 +7,7 @@ structure OS =
   struct
     type syserror = int
     exception SysErr of string * syserror option
+    val _ = prim ("sml_setFailNumber", (SysErr ("as",NONE) : exn, 2 : int)) : unit
     fun errorMsg (err : int) : string = prim("sml_errormsg", err)
   end
 
@@ -23,7 +24,7 @@ structure FileSys : OS_FILE_SYS =
       dev < dev' orelse (dev = dev' andalso ino < ino')
 
     (* Primitives from Runtime/IO.c -- raise Fail on error *)
-    val failexn = Initial.filesys_fail
+    val failexn = Initial.FileSys.filesys_fail
 
     fun chdir_ (s : string) : unit =                     prim("sml_chdir", (s, failexn))
     fun remove_ (s : string) : unit =                    prim("sml_remove", (s, failexn))

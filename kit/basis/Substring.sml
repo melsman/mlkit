@@ -37,9 +37,9 @@ structure Substring : SUBSTRING =
       if 0 <= i andalso 0 <= n andalso n <= size0 s - i then (s, i, n)
       else raise General.Subscript
 
-    fun substring (s, i, n) = extract(s, i, SOME n);
-
-    fun full s = (s, 0, size0 s)
+    fun substring (s, i, n) = extract(s, i, SOME n)
+      
+    fun full s = (s, 0, size s)
 
 (*    fun all s = (s, 0, size0 s)		(* deprecated *) *)
 

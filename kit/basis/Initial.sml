@@ -11,7 +11,7 @@ structure Initial =
     type word0 = word         (* used by WORD signature *)
 
     exception Fail of string
-    val _ = prim("sml_setFailNumber", Fail "hat" : exn) : unit;
+    val _ = prim("sml_setFailNumber", (Fail "hat" : exn, 1 : int)) : unit;
 
     (* Time structure *)
     val timebase : int = prim("get_time_base", 0)
@@ -73,7 +73,10 @@ structure Initial =
     val failscan : exn = Fail "scanStream: backtracking too far"
 
     (* FileSys *)
-    val filesys_fail : exn = Fail "FileSys"    
+    structure FileSys =
+      struct
+        val filesys_fail : exn = Fail "FileSys"    
+      end
 
     (* Process *)
     val exittasks = (ref []) : (unit -> unit) list ref
