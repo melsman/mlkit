@@ -22,10 +22,10 @@ structure Posix :> POSIX =
 		 SOME (mkerrno_ errno))
 	end
 
-    structure Process =
+    structure Process : POSIX_PROCESS=
 	struct
 	    type pid = int
-	    type signal = SysWord.word
+	    type signal = Int.int
 		
 	    datatype exit_status = 
 		W_EXITED
@@ -79,12 +79,12 @@ structure Posix :> POSIX =
 
 	    fun WTERMSIG(status:int) : signal =
 		let val i:int = prim("sml_WTERMSIG",status)
-		in SysWord.fromInt i
+		in i
 		end
 
 	    fun WSTOPSIG(status:int) : signal =
 		let val i:int = prim("sml_WSTOPSIG",status)
-		in SysWord.fromInt i
+		in i
 		end
 
 	    fun flags_to_int _ = 0
@@ -333,15 +333,16 @@ structure Posix :> POSIX =
     
     structure Signal : POSIX_SIGNAL =
 	struct
-	    type signal = SysWord.word
+	    type signal = Process.signal
 		
-	    val toWord   : signal -> SysWord.word = fn x => x
-	    val fromWord : SysWord.word -> signal = fn x => x
+	    fun toWord (s : signal) : SysWord.word = SysWord.fromInt s
+	    fun fromWord (w : SysWord.word) : signal = SysWord.toInt w
+      open Initial.Posix_Values.Signal
 	end
     structure Error : POSIX_ERROR = 
       struct
         type syserror = OS.syserror
-        open Initial.Posix_Error.Err
+        open Initial.Posix_Values.Err
         fun errorMsg s = OS.errorMsg s
         fun errorName s = OS.errorName s
         fun syserror s = OS.syserror s

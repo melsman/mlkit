@@ -170,7 +170,7 @@ local
        end
 
      basis Posix = 
-       let open General Word System List Int Real PrimIO Byte ArrayVector System
+       let open General Word System List Int Real PrimIO Byte ArrayVector 
        in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml POSIX.sml Posix.sml 
           end
