@@ -4,6 +4,12 @@ signature POSIX_PROCENV =
     eqtype gid
     eqtype pid
     eqtype file_desc
+
+    val wordToUid : SysWord.word -> uid
+    val uidToWord : uid -> SysWord.word
+    val wordToGid : SysWord.word -> gid
+    val gidToWord : gid -> SysWord.word
+
     val sysconf : string -> SysWord.word
     val times : unit ->
                 {

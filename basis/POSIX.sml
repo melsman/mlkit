@@ -14,4 +14,7 @@ signature POSIX =
       where type pid = Process.pid
       where type file_desc = ProcEnv.file_desc
       where type open_mode = FileSys.open_mode
+    structure SysDB : POSIX_SYS_DB
+      where type uid = ProcEnv.uid
+      where type gid = ProcEnv.gid
   end

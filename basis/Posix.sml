@@ -127,6 +127,12 @@ structure Posix :> POSIX =
 	    type gid = int
 	    type pid = Process.pid
 	    type file_desc = int
+
+      fun wordToUid w = SysWord.toInt w
+      fun uidToWord g = SysWord.fromInt g
+      fun wordToGid w = SysWord.toInt w
+      fun gidToWord g = SysWord.fromInt g
+
 	    fun sysconf (s : string) =
 		let
 		    fun rsys i = (prim ("sml_sysconf", i : int) : int)
@@ -144,6 +150,8 @@ structure Posix :> POSIX =
 		       | "JOB_CONTROL" => rsys 8
 		       | "SAVED_IDS" => rsys 9
 		       | "VERSION" => rsys 10
+           | "_SC_GETGR_R_SIZE_MAX" => rsys 11
+           | "_SC_GETPW_R_SIZE_MAX" => rsys 12
 		       | _ => raise OS.SysErr ("Not supported", NONE))
 		end
 	    
@@ -348,6 +356,67 @@ structure Posix :> POSIX =
         fun syserror s = OS.syserror s
         fun fromWord w = SysWord.toInt w
         fun toWord w = SysWord.fromInt w
+      end
+
+    structure SysDB : POSIX_SYS_DB =
+      struct
+        type uid = ProcEnv.uid
+        type gid = ProcEnv.gid
+
+        structure Passwd =
+          struct
+            type passwd = {n : string, u : uid, g : gid, h : string, s : string}
+            fun name ({n,...} : passwd) = n
+            fun uid ({u,...} : passwd) = u
+            fun gid ({g,...} : passwd) = g
+            fun home ({h,...} : passwd) = h
+            fun shell ({s,...} : passwd) = s
+          end
+        structure Group =
+          struct
+            type group = {n : string, g : gid, m : string list}
+            fun name ({n,...} : group) = n
+            fun gid ({g,...} : group) = g
+            fun members ({m,...} : group) = m
+          end
+        fun getgrgid g = 
+             let
+               val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETGR_R_SIZE_MAX")
+               val e = OS.SysErr ("getgrgid: no group with gid = " ^ (Int.toString g) ^ " found", NONE)
+               val (n,m,res) = prim("sml_getgrgid", (g : int, s : int, e : exn)) : (string * string list * int)
+               val res' = Error.fromWord(SysWord.fromInt res)
+             in
+               if res = 0 then {n = n, m = m, g = g} else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
+             end
+        fun getgrnam n = 
+             let
+               val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETGR_R_SIZE_MAX")
+               val e = OS.SysErr ("getgrnam: no group with groupname = " ^ n ^ " found", NONE)
+               val (g,m,res) = prim("sml_getgrnam", (n : string, s : int, e : exn)) : (int * string list * int)
+               val res' = Error.fromWord(SysWord.fromInt res)
+             in
+               if res = 0 then {n = n, m = m, g = g} else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
+             end
+        fun getpwnam n = 
+             let
+               val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETPW_R_SIZE_MAX")
+               val e = OS.SysErr ("getpwnam: no user with username = " ^ n ^ " found", NONE)
+               val (u,g,h,s,res) = prim("sml_getpwnam", (n : string, s : int, e : exn)) : (int * int * string * string * int)
+               val res' = Error.fromWord(SysWord.fromInt res)
+             in
+               if res = 0 then {n = n, u = u, g = g, s = s, h = h}
+               else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
+             end
+        fun getpwuid u = 
+             let
+               val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETPW_R_SIZE_MAX")
+               val e = OS.SysErr ("getpwuid: no user with uid = " ^ (Int.toString u) ^ " found", NONE)
+               val (n,g,h,s,res) = prim("sml_getpwuid", (u : int, s : int, e : exn)) : (string * int * string * string * int)
+               val res' = Error.fromWord(SysWord.fromInt res)
+             in
+               if res = 0 then {n = n, u = u, g = g, s = s, h = h}
+               else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
+             end
       end
 	
     end
