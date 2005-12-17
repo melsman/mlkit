@@ -7,8 +7,29 @@ structure OS =
   struct
     type syserror = int
     exception SysErr of string * syserror option
+    fun isNull (s : string) = prim("__is_null", s) : bool
+
     val _ = prim ("sml_setFailNumber", (SysErr ("as",NONE) : exn, 2 : int)) : unit
     fun errorMsg (err : int) : string = prim("sml_errormsg", err)
+    fun errorName (err : int) : string =
+         let
+           val s = prim("sml_errorName", err : int) : string 
+         in
+           if isNull s
+           then raise Fail ("OS.errorName: " ^ Int.toString err ^ " not a valid error number")
+           else
+             let 
+               val a = String.map Char.toLower (Byte.unpackStringVec(Word8VectorSlice.slice((Byte.stringToBytes s),1,NONE)))
+             in if a = "2big" then "toobig" else a
+             end
+         end
+    fun syserror (err : string) : syserror option = 
+         let
+           val err = if err = "toobig" then "E2BIG" else "E" ^ (String.map Char.toUpper err)
+           val s = prim("@sml_syserror", err : string) : int 
+         in
+           if s = ~1 then NONE else SOME s
+         end
   end
 
 structure FileSys : OS_FILE_SYS =
@@ -57,6 +78,9 @@ structure FileSys : OS_FILE_SYS =
     fun realpath_ (s : string) : string =                prim("sml_realpath", (s, failexn))
     fun devinode_ (s : string) : file_id =               prim("sml_devinode", (s, failexn))
     fun int_to_word_ (i : int) : word =                  prim("id", i)
+
+    fun isNull (s : string) = prim("__is_null", s) : bool
+
 
     fun formatErr mlOp (SOME operand) reason =
 	mlOp ^ " failed on `" ^ operand ^ "': " ^ reason
@@ -172,8 +196,6 @@ structure FileSys : OS_FILE_SYS =
     fun openDir path =
 	(ref (SOME (opendir_ path)))
 	handle Fail s => raiseSys "openDir" (SOME path) s;
-
-    fun isNull (s : string) = prim("__is_null", s) : bool
 
     fun readDir (ref NONE) =
 	raiseSysML "readDir" NONE "Directory stream is closed"

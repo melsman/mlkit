@@ -6,6 +6,8 @@ signature OS =
     exception SysErr of string * syserror option
 
     val errorMsg : syserror -> string
+    val errorName : syserror -> string
+    val syserror : string -> syserror option
 
     structure FileSys : OS_FILE_SYS
     structure Path : OS_PATH
@@ -25,6 +27,8 @@ structure OS : OS =
     type syserror = OS.syserror
     exception SysErr = OS.SysErr
     fun errorMsg (err : int) : string = OS.errorMsg err
+    fun errorName (err : int) : string = OS.errorName err
+    fun syserror (err : string) : syserror option = OS.syserror err
 
     structure FileSys = FileSys
     structure Path = Path

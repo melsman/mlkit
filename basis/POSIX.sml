@@ -1,5 +1,6 @@
 signature POSIX =
     sig
+  structure Error : POSIX_ERROR
 	structure Process : POSIX_PROCESS
 	structure ProcEnv : POSIX_PROCENV
 	    where type pid = Process.pid

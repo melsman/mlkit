@@ -89,6 +89,59 @@ structure Initial =
          val bufsize = 4000
        end
 
+
+     structure Posix_Error =
+       struct
+         fun getN s = prim("@sml_syserror", s : string) : int
+         structure Err =
+           struct
+             val acces = getN "EACCES"
+             val again = getN "EAGAIN"
+             val badf = getN "EBADF"
+             val badmsg = getN "EBADMSG"
+             val busy = getN "EBUSY"
+             val canceled = getN "ECANCELED"
+             val child = getN "ECHILD"
+             val deadlk = getN "EDEADLK"
+             val dom = getN "EDOM"
+             val exist = getN "EEXIST"
+             val fault = getN "EFAULT"
+             val fbig = getN "EFBIG"
+             val inprogress = getN "EINPROGRESS"
+             val intr = getN "EINTR"
+             val inval = getN "EINVAL"
+             val io = getN "EIO"
+             val isdir = getN "EISDIR"
+             val loop = getN "ELOOP"
+             val mfile = getN "EMFILE"
+             val mlink = getN "EMLINK"
+             val msgsize = getN "EMSGSIZE"
+             val nametoolong = getN "ENAMETOOLONG"
+             val nfile = getN "ENFILE"
+             val nodev = getN "ENODEV"
+             val noent = getN "ENOENT"
+             val noexec = getN "ENOEXEC"
+             val nolck = getN "ENOLCK"
+             val nomem = getN "ENOMEM"
+             val nospc = getN "ENOSPC"
+             val nosys = getN "ENOSYS"
+             val notdir = getN "ENOTDIR"
+             val notsup = getN "ENOTSUP"
+             val notsock = getN "ENOTSOCK"
+             val notempty = getN "ENOTEMPTY"
+             val notty = getN "ENOTTY"
+             val nxio = getN "ENXIO"
+             val perm = getN "EPERM"
+             val pipe = getN "EPIPE"
+             val range = getN "ERANGE"
+             val rofs = getN "EROFS"
+             val spipe = getN "ESPIPE"
+             val srch = getN "ESRCH"
+             val toobig = getN "E2BIG"
+             val xdev = getN "EXDEV"
+           end
+       end
+
       structure Posix_File_Sys =
         struct
         val (stdin,stdout,stderr) = prim ("sml_getStdNumbers", ()) : (int * int * int)
