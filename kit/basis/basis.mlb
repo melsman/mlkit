@@ -107,7 +107,7 @@ local
        in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
-              basis FileSys = let open List Time Random Path 
+              basis FileSys = let open List Time Random Path Byte ArrayVector
                               in bas OS_FILE_SYS.sml FileSys.sml end 
                               end
               basis Process = let open Time Int in 
@@ -170,9 +170,9 @@ local
        end
 
      basis Posix = 
-       let open General Word System List Int Real PrimIO Byte ArrayVector
+       let open General Word System List Int Real PrimIO Byte ArrayVector System
        in bas POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml BIT_FLAGS.sml 
-              POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX.sml Posix.sml 
+              POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml POSIX.sml Posix.sml 
           end
        end
 (*

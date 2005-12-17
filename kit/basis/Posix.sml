@@ -338,5 +338,15 @@ structure Posix :> POSIX =
 	    val toWord   : signal -> SysWord.word = fn x => x
 	    val fromWord : SysWord.word -> signal = fn x => x
 	end
+    structure Error : POSIX_ERROR = 
+      struct
+        type syserror = OS.syserror
+        open Initial.Posix_Error.Err
+        fun errorMsg s = OS.errorMsg s
+        fun errorName s = OS.errorName s
+        fun syserror s = OS.syserror s
+        fun fromWord w = SysWord.toInt w
+        fun toWord w = SysWord.fromInt w
+      end
 	
     end
