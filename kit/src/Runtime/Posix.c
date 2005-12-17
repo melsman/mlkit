@@ -9,6 +9,8 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
 #include "Tagging.h"
 #include "Exception.h"
 #include "List.h"
@@ -105,6 +107,12 @@ sml_sysconf(int t)
       break;
     case 10:
       res = sysconf(_SC_VERSION);
+      break;
+    case 11:
+      res = sysconf(_SC_GETGR_R_SIZE_MAX);
+      break;
+    case 12:
+      res = sysconf(_SC_GETPW_R_SIZE_MAX);
       break;
     default:
       raise_exn((int)&exn_OVERFLOW);
@@ -340,7 +348,7 @@ sml_getfl (int fd, int flags)
 
 #include "SysErrTable.h"
 
-int 
+static int 
 sml_posixFind(char *s, struct syserr_entry arr[], int amount)
 {
   int i = 0, j, k,n;
@@ -376,7 +384,7 @@ sml_findsignal(char *s)
   return sml_posixFind(s, syssigTableNumber, sml_numberofSignals);
 }
 
-String 
+static String 
 REG_POLY_FUN_HDR(sml_PosixName, Region rs, int e, struct syserr_entry arr[], int amount)
 {
   int i = 0, j, k,n;
@@ -410,4 +418,162 @@ REG_POLY_FUN_HDR(sml_errorName, Region rs, int e)
   return REG_POLY_CALL(sml_PosixName, rs, e, syserrTableNumber, sml_numberofErrors);
 }
 
+int
+REG_POLY_FUN_HDR(sml_getgrgid, int triple, Region nameR, Region memberListR, Region memberR, int g, int s, int exn)
+{
+  int res;
+  int *list, *pair;
+  char *b;
+  struct group gbuf, *gbuf2;
+  char  **members;
+  gid_t gid = (gid_t) convertIntToC(g);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    third(triple) = res;
+    return triple;
+  }
+  res = getgrgid_r(gid, &gbuf, b, s-1, &gbuf2);
+  third(triple) = res;
+  if (res) 
+  {
+    free(b);
+    return triple;
+  }
+  if (!gbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  first(triple) = (int) convertStringToML(nameR, gbuf2->gr_name);
+  members = gbuf2->gr_mem;
+  makeNIL(list);
+  while (*members)
+  {
+    allocRecordML(memberListR, 2, pair);
+    first(pair) = (int) convertStringToML(memberR, *members);
+    second(pair) = (int) list;
+    makeCONS(pair, list);
+    members++;
+  }
+  free(b);
+  second(triple) = (int) list;
+  return triple;
+}
 
+int
+REG_POLY_FUN_HDR(sml_getgrnam, int triple, Region memberListR, Region memberR, String nameML, int s, int exn)
+{
+  int res;
+  int *list, *pair;
+  char *b;
+  struct group gbuf, *gbuf2;
+  char  **members;
+  char *name = &(nameML->data);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    third(triple) = res;
+    return triple;
+  }
+  res = getgrnam_r(name, &gbuf, b, s-1, &gbuf2);
+  third(triple) = res;
+  if (res) 
+  {
+    free(b);
+    return triple;
+  }
+  if (!gbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  first(triple) = convertIntToML(gbuf2->gr_gid);
+  members = gbuf2->gr_mem;
+  makeNIL(list);
+  while (*members)
+  {
+    allocRecordML(memberListR, 2, pair);
+    first(pair) = (int) convertStringToML(memberR, *members);
+    second(pair) = (int) list;
+    makeCONS(pair, list);
+    members++;
+  }
+  free(b);
+  second(triple) = (int) list;
+  return triple;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getpwuid, int tuple, Region nameR, Region homeR, Region shellR, int u, int s, int exn)
+{
+  int res;
+  char *b;
+  struct passwd pbuf, *pbuf2;
+  uid_t uid = (uid_t) convertIntToC(u);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    elemRecordML(tuple,4) = res;
+    return tuple;
+  }
+  res = getpwuid_r(uid, &pbuf, b, s-1, &pbuf2);
+  elemRecordML(tuple,4) = res;
+  if (res) 
+  {
+    free(b);
+    return tuple;
+  }
+  if (!pbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  elemRecordML(tuple,0) = (int) convertStringToML(nameR, pbuf2->pw_name);
+  elemRecordML(tuple,1) = (int) pbuf2->pw_gid;
+  elemRecordML(tuple,2) = (int) convertStringToML(homeR, pbuf2->pw_dir);
+  elemRecordML(tuple,3) = (int) convertStringToML(shellR, pbuf2->pw_shell);
+  free(b);
+  return tuple;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getpwnam, int tuple, Region homeR, Region shellR, String nameML, int s, int exn)
+{
+  int res;
+  char *b;
+  struct passwd pbuf, *pbuf2;
+  char *name = &(nameML->data);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    elemRecordML(tuple,4) = res;
+    return tuple;
+  }
+  res = getpwnam_r(name, &pbuf, b, s-1, &pbuf2);
+  elemRecordML(tuple,4) = res;
+  if (res) 
+  {
+    free(b);
+    return tuple;
+  }
+  if (!pbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  elemRecordML(tuple,0) = (int) pbuf2->pw_uid;
+  elemRecordML(tuple,1) = (int) pbuf2->pw_gid;
+  elemRecordML(tuple,2) = (int) convertStringToML(homeR, pbuf2->pw_dir);
+  elemRecordML(tuple,3) = (int) convertStringToML(shellR, pbuf2->pw_shell);
+  free(b);
+  return tuple;
+}
