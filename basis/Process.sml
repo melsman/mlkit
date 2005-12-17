@@ -32,10 +32,12 @@ structure Process : OS_PROCESS =
     end
 
     fun sleep t = 
-                  let val s = Int.fromLarge(Time.toSeconds t)
-                      val u = Int.fromLarge(Time.toMicroseconds(
-                                     Time.-(t,Time.fromSeconds (Int.toLarge s))))
-                  in prim("@sml_microsleep", (s : int, u : int)) : unit
-                  end
+            let
+              val s = Int.fromLarge(Time.toSeconds t)
+              val m = Int.fromLarge(Time.toMicroseconds(Time.-(t, Time.fromSeconds (Int.toLarge s))))
+            in
+              if (s < 0 orelse m < 0) then () else 
+              (prim("sml_microsleep", (s : int, m : int)) : (int * int * int) ; ())
+            end
   end
 

@@ -561,11 +561,14 @@ outputBinStream(FILE *os, String s, int exn)
   return mlUNIT;
 }
 
-void
-sml_microsleep(int s, int u)
+int
+sml_microsleep(int pair, int s, int u)
 {
   int r;
   struct timespec req, rem;
+  mkTagPairML(pair);
+  u = convertIntToC(u);
+  s = convertIntToC(s);
   while (u > 1000000) 
   {
     s++;
@@ -574,7 +577,10 @@ sml_microsleep(int s, int u)
   req.tv_sec = s;
   req.tv_nsec = (u * 1000);
   r = nanosleep(&req, &rem);
-  return;
+  first(pair) = convertIntToML(r);
+  second(pair) = convertIntToML(rem.tv_sec);
+  third(pair) = convertIntToML(rem.tv_nsec);
+  return pair;
 }
 
 int
