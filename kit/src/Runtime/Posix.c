@@ -63,9 +63,12 @@ int
 sml_waitpid(int pair, int waitpid_arg, int flags) 
 {
   int status;
+  int f = 0x0;
+  flags = convertIntToC(flags);
+  if (flags & 0x1) f |= WUNTRACED;
+  if (flags & 0x2) f |= WNOHANG;
   int pid = waitpid(convertIntToC(waitpid_arg),
-		    &status, 
-		    convertIntToC(flags));
+		    &status, f);
   mkTagPairML(pair);
   first(pair) = convertIntToML(pid);
   second(pair) = convertIntToML(status);
@@ -210,19 +213,22 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
   return res;
 }
 
+extern char **environ;
+
 int
-sml_exec (String path, int sl)
+sml_exec (String path, int sl, int envl, int kind)
 {
   String elemML;
   int n, i;
-  char **args;
+  char **args, **env;
   int list = sl;
+  kind = convertIntToC(kind);
   for (n = 0; isCONS(list); list = tl(list))
   {
     n++;
   }
   args = (char **) malloc(sizeof(char *) * (n+1));
-  if (!args) return convertIntToML(0);
+  if (!args) return convertIntToML(-1);
   
   list = sl;
   
@@ -232,8 +238,42 @@ sml_exec (String path, int sl)
     args[i] = &(elemML->data);
   }
   args[i] = NULL;
-  n = execv(&(path->data), args);
+
+  list = envl;
+  if (isCONS(list)) 
+  {
+    for (n = 0; isCONS(list); list = tl(list))
+    {
+      n++;
+    }
+    env = (char **) malloc(sizeof(char *) * (n+1));
+    if (!env)
+    {
+      return convertIntToML(-1);
+    }
+    for (list = envl, i = 0; isCONS(list); list = tl(list), i++)
+    {
+      elemML = (String) hd(list);
+      env[i] = &(elemML->data);
+    }
+    env[i] = NULL;
+    environ = env;
+  }
+  if (kind)
+  {
+    n = execv(&(path->data), args);
+  }
+  else
+  {
+    n = execvp(&(path->data), args);
+  }
   return convertIntToML(n);
+}
+
+String
+sml_null(void)
+{
+  return NULL;
 }
 
 int
@@ -426,6 +466,7 @@ REG_POLY_FUN_HDR(sml_getgrgid, int triple, Region nameR, Region memberListR, Reg
   char *b;
   struct group gbuf, *gbuf2;
   char  **members;
+  mkTagTripleML(triple);
   gid_t gid = (gid_t) convertIntToC(g);
   s = convertIntToC(s) + 1;
   b = (char *) malloc(s);
@@ -447,13 +488,13 @@ REG_POLY_FUN_HDR(sml_getgrgid, int triple, Region nameR, Region memberListR, Reg
     free(b);
     raise_exn(exn);
   }
-  first(triple) = (int) convertStringToML(nameR, gbuf2->gr_name);
+  first(triple) = (int) REG_POLY_CALL(convertStringToML, nameR, gbuf2->gr_name);
   members = gbuf2->gr_mem;
   makeNIL(list);
   while (*members)
   {
     allocRecordML(memberListR, 2, pair);
-    first(pair) = (int) convertStringToML(memberR, *members);
+    first(pair) = (int) REG_POLY_CALL(convertStringToML, memberR, *members);
     second(pair) = (int) list;
     makeCONS(pair, list);
     members++;
@@ -472,6 +513,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, int triple, Region memberListR, Region memberR, S
   struct group gbuf, *gbuf2;
   char  **members;
   char *name = &(nameML->data);
+  mkTagTripleML(triple);
   s = convertIntToC(s) + 1;
   b = (char *) malloc(s);
   if (!b)
@@ -498,7 +540,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, int triple, Region memberListR, Region memberR, S
   while (*members)
   {
     allocRecordML(memberListR, 2, pair);
-    first(pair) = (int) convertStringToML(memberR, *members);
+    first(pair) = (int) REG_POLY_CALL(convertStringToML, memberR, *members);
     second(pair) = (int) list;
     makeCONS(pair, list);
     members++;
@@ -515,6 +557,7 @@ REG_POLY_FUN_HDR(sml_getpwuid, int tuple, Region nameR, Region homeR, Region she
   char *b;
   struct passwd pbuf, *pbuf2;
   uid_t uid = (uid_t) convertIntToC(u);
+  mkTagRecordML(tuple,5);
   s = convertIntToC(s) + 1;
   b = (char *) malloc(s);
   if (!b)
@@ -535,10 +578,10 @@ REG_POLY_FUN_HDR(sml_getpwuid, int tuple, Region nameR, Region homeR, Region she
     free(b);
     raise_exn(exn);
   }
-  elemRecordML(tuple,0) = (int) convertStringToML(nameR, pbuf2->pw_name);
+  elemRecordML(tuple,0) = (int) REG_POLY_CALL(convertStringToML, nameR, pbuf2->pw_name);
   elemRecordML(tuple,1) = (int) pbuf2->pw_gid;
-  elemRecordML(tuple,2) = (int) convertStringToML(homeR, pbuf2->pw_dir);
-  elemRecordML(tuple,3) = (int) convertStringToML(shellR, pbuf2->pw_shell);
+  elemRecordML(tuple,2) = (int) REG_POLY_CALL(convertStringToML, homeR, pbuf2->pw_dir);
+  elemRecordML(tuple,3) = (int) REG_POLY_CALL(convertStringToML, shellR, pbuf2->pw_shell);
   free(b);
   return tuple;
 }
@@ -550,6 +593,7 @@ REG_POLY_FUN_HDR(sml_getpwnam, int tuple, Region homeR, Region shellR, String na
   char *b;
   struct passwd pbuf, *pbuf2;
   char *name = &(nameML->data);
+  mkTagRecordML(tuple,5);
   s = convertIntToC(s) + 1;
   b = (char *) malloc(s);
   if (!b)
@@ -572,8 +616,8 @@ REG_POLY_FUN_HDR(sml_getpwnam, int tuple, Region homeR, Region shellR, String na
   }
   elemRecordML(tuple,0) = (int) pbuf2->pw_uid;
   elemRecordML(tuple,1) = (int) pbuf2->pw_gid;
-  elemRecordML(tuple,2) = (int) convertStringToML(homeR, pbuf2->pw_dir);
-  elemRecordML(tuple,3) = (int) convertStringToML(shellR, pbuf2->pw_shell);
+  elemRecordML(tuple,2) = (int) REG_POLY_CALL(convertStringToML, homeR, pbuf2->pw_dir);
+  elemRecordML(tuple,3) = (int) REG_POLY_CALL(convertStringToML, shellR, pbuf2->pw_shell);
   free(b);
   return tuple;
 }

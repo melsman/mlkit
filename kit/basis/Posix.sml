@@ -22,33 +22,79 @@ structure Posix :> POSIX =
 		 SOME (mkerrno_ errno))
 	end
 
+    structure Signal : POSIX_SIGNAL =
+	struct
+	    type signal = int
+		
+	    fun toWord (s : signal) : SysWord.word = SysWord.fromInt s
+	    fun fromWord (w : SysWord.word) : signal = SysWord.toInt w
+      open Initial.Posix_Values.Signal
+	end
+    structure Error : POSIX_ERROR = 
+      struct
+        type syserror = OS.syserror
+        open Initial.Posix_Values.Err
+        fun errorMsg s = OS.errorMsg s
+        fun errorName s = OS.errorName s
+        fun syserror s = OS.syserror s
+        fun fromWord w = SysWord.toInt w
+        fun toWord w = SysWord.fromInt w
+      end
+
+
     structure Process : POSIX_PROCESS=
 	struct
 	    type pid = int
-	    type signal = Int.int
+	    type signal = Signal.signal
 		
-	    datatype exit_status = 
-		W_EXITED
+      datatype waitpid_arg
+        = W_ANY_CHILD
+        | W_CHILD of pid
+        | W_SAME_GROUP
+        | W_GROUP of pid
+
+	   datatype exit_status = 
+          W_EXITED
 	      | W_EXITSTATUS of Word8.word
 	      | W_SIGNALED of signal
 	      | W_STOPPED of signal
+
+     datatype killpid_arg
+      = K_PROC of pid
+      | K_SAME_GROUP
+      | K_GROUP of pid
 		
 	    datatype waitpid_arg
 		= W_ANY_CHILD | W_CHILD of pid | W_GROUP of pid | W_SAME_GROUP
 		
 	    structure W =
 		struct
-		    type flags = unit
+		    type flags = SysWord.word
+        val untraced = 0wx1
+        val nohang = 0wx2
+
+		    fun toWord x = x
+		    val fromWord = toWord
+		    val flags = List.foldl SysWord.orb 0wx0
+		    val all = flags [untraced]
+		    val intersect = List.foldl SysWord.andb 0wx1
+        val union = List.foldl SysWord.orb 0wx0
+		    fun clear (f1,f2) = SysWord.andb (SysWord.notb f1,f2)
+		    fun allSet (f1,f2) = SysWord.andb (f1,f2) = f1
+		    fun anySet (f1,f2) = SysWord.andb (f1,f2) <> 0wx0
 		end
 	    
 	    val pidToWord = SysWord.fromInt
+	    val wordToPid = SysWord.toInt
 		
-	    fun fork() : pid option =
-		let val ret : int = prim("@fork",())
-		in if ret < 0 then raise Fail "Posix.fork"
-		   else if ret = 0 then NONE
-			else SOME ret
-		end
+      fun fork() : pid option =
+           let
+             val ret : int = prim("@fork",())
+           in
+             if ret < 0 then raiseSys ("Posix.FileSys.fork") NONE ""
+             else if ret = 0 then NONE
+             else SOME ret
+           end
 	    
 	    fun exit (w:Word8.word) : 'a = 
 		let val w = Word8.toInt w
@@ -78,46 +124,86 @@ structure Posix :> POSIX =
 		end
 
 	    fun WTERMSIG(status:int) : signal =
-		let val i:int = prim("sml_WTERMSIG",status)
-		in i
-		end
+		        prim("sml_WTERMSIG",status) : int
 
 	    fun WSTOPSIG(status:int) : signal =
-		let val i:int = prim("sml_WSTOPSIG",status)
-		in i
-		end
+		        prim("sml_WSTOPSIG",status) : int
 
-	    fun flags_to_int _ = 0
+	    fun flags_to_int l = SysWord.toInt(W.toWord (W.union l))
 
-	    fun waitpid (wpa: waitpid_arg,flags: W.flags list) : pid * exit_status =
-		let val (pid:int,status) = 
-		    prim("sml_waitpid",(waitpid_arg_to_int wpa,flags_to_int flags))
-		in if pid = 0 then raise Fail "waitpid error"
-		   else 
-		       let 
-			   val es = 
-			       if WIFSIGNALED(status) then W_SIGNALED(WTERMSIG(status))
-			       else 
-				   if WIFEXITED(status) then 
-				       let val e = WEXITSTATUS(status)
-				       in if e = 0w0 then W_EXITED
-					  else W_EXITSTATUS e
-				       end
-				   else if WIFSTOPPED(status) then W_STOPPED(WSTOPSIG(status))
-					else raise Fail "waitpid.error2"
-					    
-		       in (pid,es)
-		       end	    
-		end
+	    fun waitpid' (wpa: waitpid_arg,flags: W.flags list) : (pid * exit_status) option =
+           let
+             val (pid:int,status) = 
+                  prim("sml_waitpid",(waitpid_arg_to_int wpa,flags_to_int flags))
+             val _ = if pid = ~1 then raiseSys "Posix.Process.waitpid" NONE "" else ()
+           in
+             if (pid <> 0) 
+             then SOME(pid,
+               if WIFSIGNALED(status)
+               then W_SIGNALED(WTERMSIG(status))
+               else 
+               if WIFEXITED(status) then 
+                 let
+                   val e = WEXITSTATUS(status)
+                 in if e = 0w0 then W_EXITED else W_EXITSTATUS e
+                 end
+               else if WIFSTOPPED(status)
+               then W_STOPPED(WSTOPSIG(status))
+               else raise Fail "waitpid.error2")
+             else NONE
+           end
 	    
-	    fun wait () = waitpid (W_ANY_CHILD, [])
+      fun waitpid (wpa, flags) = Option.valOf(waitpid'(wpa,flags))
+	    fun wait () = Option.valOf(waitpid' (W_ANY_CHILD, []))
+      fun waitpid_nh (wpa, flags) = waitpid'(wpa, W.nohang :: flags)
 		
-	    fun exec (s : string, sl : string list) = 
-		let val a = prim("sml_exec", (s,sl)) : int
-		in if a = 0 then 
-		    raiseSysML "exec" NONE ""
-		   else raiseSys "exec" NONE ""
-		end	    
+      fun exec' (s, sl, env, path) = 
+           let
+             val a = prim("sml_exec", (s : string, sl : string list, env : string list, if path then 1 else 0)) : int
+           in
+             raiseSys "exec" NONE ""
+           end     
+      
+      fun exec (s : string, sl : string list) = exec'(s,sl,[],true)
+      fun exece (s : string, sl : string list, env : string list) = exec'(s,sl,env,true)
+      fun execp (s : string, sl : string list) = exec'(s,sl,[],false)
+
+      fun fromStatus 0 = W_EXITED
+        | fromStatus _ = W_EXITSTATUS 0wxFF
+
+      fun alarm t = 
+           let
+             val a = prim("@alarm", Time.toSeconds t)
+           in
+             if a = ~1
+             then raiseSys "Posix.Process.alarm" (SOME (Time.toString t)) ""
+             else Time.fromSeconds a
+           end
+
+      fun kill (a,s) = 
+            let 
+              val p = case a of K_PROC pid => pid
+                              | K_SAME_GROUP => 0
+                              | K_GROUP pid => ~pid
+
+              val r = prim("@kill", (p : int, SysWord.toInt(Signal.toWord s) : int))
+            in
+              if r = ~1 then raiseSys "Posix.Process.kill" (SOME (Int.toString p)) ""
+              else ()
+            end
+
+      fun pause () = prim("@pause", ()) : unit
+
+      fun sleep t = 
+            let
+              val s = Int.fromLarge(Time.toSeconds t)
+              val m = Int.fromLarge(Time.toMicroseconds(Time.-(t, Time.fromSeconds (Int.toLarge s))))
+              val (r,s,m) = prim("sml_microsleep", (s : int, m : int)) : (int * int * int)
+              val _ = if r = ~1 then raiseSys "Posix.Process.sleep" (SOME (Time.toString t)) "" else ()
+            in
+              Time.+(Time.fromSeconds (Int.toLarge s),Time.fromMicroseconds (Int.toLarge m))
+            end
+
 	end
 	
     structure ProcEnv : POSIX_PROCENV 
@@ -339,25 +425,6 @@ structure Posix :> POSIX =
            end *)
 	end
     
-    structure Signal : POSIX_SIGNAL =
-	struct
-	    type signal = Process.signal
-		
-	    fun toWord (s : signal) : SysWord.word = SysWord.fromInt s
-	    fun fromWord (w : SysWord.word) : signal = SysWord.toInt w
-      open Initial.Posix_Values.Signal
-	end
-    structure Error : POSIX_ERROR = 
-      struct
-        type syserror = OS.syserror
-        open Initial.Posix_Values.Err
-        fun errorMsg s = OS.errorMsg s
-        fun errorName s = OS.errorName s
-        fun syserror s = OS.syserror s
-        fun fromWord w = SysWord.toInt w
-        fun toWord w = SysWord.fromInt w
-      end
-
     structure SysDB : POSIX_SYS_DB =
       struct
         type uid = ProcEnv.uid
