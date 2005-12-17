@@ -6,11 +6,14 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/times.h>
+#include <string.h>
+#include <errno.h>
 #include <fcntl.h>
 #include "Tagging.h"
 #include "Exception.h"
 #include "List.h"
 #include "String.h"
+#include "Posix.h"
 
 int
 sml_WIFEXITED(int status)
@@ -334,3 +337,77 @@ sml_getfl (int fd, int flags)
   s |= r & O_RDWR ? 0x400 : 0;
   return s;
 }
+
+#include "SysErrTable.h"
+
+int 
+sml_posixFind(char *s, struct syserr_entry arr[], int amount)
+{
+  int i = 0, j, k,n;
+  j = amount;
+  while (i <= j)
+  {
+    k = i + (j-i) / 2;
+    n = strcmp(arr[k].name, s);
+    if (n == 0) return arr[k].number;
+    if (n < 0) 
+    {
+      i = k+1;
+      continue;
+    }
+    else
+    {
+      j = k-1;
+      continue;
+    }
+  }
+  return -1;
+}
+
+int
+sml_syserror(char *s)
+{
+  return sml_posixFind(s, syserrTableName, sml_numberofErrors);
+}
+
+int
+sml_findsignal(char *s)
+{
+  return sml_posixFind(s, syssigTableNumber, sml_numberofSignals);
+}
+
+String 
+REG_POLY_FUN_HDR(sml_PosixName, Region rs, int e, struct syserr_entry arr[], int amount)
+{
+  int i = 0, j, k,n;
+  j = amount;
+  e = convertIntToC(e);
+  while (i <= j)
+  {
+    k = i + (j-i) / 2;
+    n = arr[k].number - e;
+    if (n == 0)
+    {
+      return REG_POLY_CALL(convertStringToML, rs, arr[k].name);
+    }
+    if (n < 0) 
+    {
+      i = k+1;
+      continue;
+    }
+    else
+    {
+      j = k-1;
+      continue;
+    }
+  }
+  return NULL;
+}
+
+String
+REG_POLY_FUN_HDR(sml_errorName, Region rs, int e)
+{
+  return REG_POLY_CALL(sml_PosixName, rs, e, syserrTableNumber, sml_numberofErrors);
+}
+
+

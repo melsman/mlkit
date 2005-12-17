@@ -90,9 +90,10 @@ structure Initial =
        end
 
 
-     structure Posix_Error =
+     structure Posix_Values =
        struct
          fun getN s = prim("@sml_syserror", s : string) : int
+         fun getNS s = prim("@sml_findsignal", s : string) : int
          structure Err =
            struct
              val acces = getN "EACCES"
@@ -139,6 +140,29 @@ structure Initial =
              val srch = getN "ESRCH"
              val toobig = getN "E2BIG"
              val xdev = getN "EXDEV"
+           end
+         structure Signal =
+           struct
+             val abrt = getNS "SIGABRT"
+             val alrm = getNS "SIGALRM"
+             val bus  = getNS "SIGBUS"
+             val fpe  = getNS "SIGFPE"
+             val hup  = getNS "SIGHUP"
+             val ill  = getNS "SIGILL"
+             val int  = getNS "SIGINT"
+             val kill = getNS "SIGKILL"
+             val pipe = getNS "SIGPIPE"
+             val quit = getNS "SIGQUIT"
+             val segv = getNS "SIGSEGV"
+             val term = getNS "SIGTERM"
+             val usr1 = getNS "SIGUSR1"
+             val usr2 = getNS "SIGUSR2"
+             val chld = getNS "SIGCHLD"
+             val cont = getNS "SIGCONT"
+             val stop = getNS "SIGSTOP"
+             val tstp = getNS "SIGTSTP"
+             val ttin = getNS "SIGTTIN"
+             val ttou = getNS "SIGTTOU"
            end
        end
 
