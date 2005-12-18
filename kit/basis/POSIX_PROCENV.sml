@@ -1,23 +1,40 @@
 signature POSIX_PROCENV = 
   sig
+    eqtype pid
     eqtype uid
     eqtype gid
-    eqtype pid
     eqtype file_desc
-
-    val wordToUid : SysWord.word -> uid
     val uidToWord : uid -> SysWord.word
-    val wordToGid : SysWord.word -> gid
+    val wordToUid : SysWord.word -> uid
     val gidToWord : gid -> SysWord.word
-
-    val sysconf : string -> SysWord.word
-    val times : unit ->
-                {
-                  elapsed : Time.time,
-                  utime : Time.time,
-                  stime : Time.time,
-                  cutime : Time.time,
-                  cstime : Time.time
-                }
+    val wordToGid : SysWord.word -> gid
+    val getpid  : unit -> pid
+    val getppid : unit -> pid
+    val getuid  : unit -> uid
+    val geteuid : unit -> uid
+    val getgid  : unit -> gid
+    val getegid : unit -> gid
+    val setuid : uid -> unit
+    val setgid : gid -> unit
+    val getgroups : unit -> gid list
+    val getlogin : unit -> string
+    val getpgrp : unit -> pid
+    val setsid : unit -> pid
+    val setpgid : {pid : pid option, pgid : pid option} -> unit
+    val uname : unit -> (string * string) list
+    val time : unit -> Time.time
+    val times : unit
+                  -> {
+                    elapsed : Time.time,
+                    utime : Time.time,
+                    stime : Time.time,
+                    cutime : Time.time,
+                    cstime : Time.time
+                  }
+    val getenv : string -> string option
+    val environ : unit -> string list
+    val ctermid : unit -> string
+    val ttyname : file_desc -> string
     val isatty : file_desc -> bool
+    val sysconf : string -> SysWord.word
   end
