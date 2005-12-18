@@ -264,6 +264,119 @@ structure Posix :> POSIX =
 		end
 
     fun isatty d = prim("@isatty", d : int) : bool
+
+    fun isNull s = prim("__is_null",s : string) : bool
+
+    fun ctermid () =
+          let 
+            val r = prim("sml_ctermid", ()) : string
+          in
+            if isNull r then raiseSys "Posix.ProcEnv.ctermid" NONE "" else r
+          end
+
+    fun environ () = 
+          let
+            val r = prim("sml_environ", ()) : string list
+          in
+            r
+          end
+    fun getegid () = prim("@getegid", ()) : int
+    fun getgid () = prim("@getgid", ()) : int
+    fun geteuid () = prim("@geteuid", ()) : int
+    fun getuid () = prim("@getuid", ()) : int
+
+    fun getenv a = OS.Process.getEnv a
+
+    fun getgroups () = 
+          let
+            val e = OS.SysErr ("Posix.ProcEnv.getgroups", NONE)
+            val (r,l) = prim("sml_getgroups", e : exn) : (int * int list)
+          in
+            if r = ~1 then raiseSys "Posix.ProcEnv.getgroups" NONE "" else l
+          end
+
+    fun getlogin () = 
+          let
+            val s = prim("sml_getlogin", ()) : string
+          in
+            if isNull s then raiseSys "Posix.ProcEnv.getlogin" NONE "" else s
+          end
+
+    fun getpgrp () =
+           let
+             val r = prim("@getpgrp", ()) : int
+           in
+             if r = ~1 then raiseSys "Posix.ProcEnv.getpgrp" NONE "" else r
+           end
+
+    fun getpid () = 
+           let
+             val r = prim("@getpid", ()) : int
+           in
+             if r = ~1 then raiseSys "Posix.ProcEnv.getpid" NONE "" else r
+           end
+
+    fun getppid () = 
+           let
+             val r = prim("@getppid", ()) : int
+           in
+             if r = ~1 then raiseSys "Posix.ProcEnv.getppid" NONE "" else r
+           end
+
+    fun setgid g = 
+           let
+             val r = prim("@setgid", g : int) : int
+           in
+             if r = ~1 then raiseSys "Posix.ProcEnv.setpid" NONE "" else ()
+           end
+
+    fun setsid g = 
+           let
+             val r = prim("@setsid", ()) : int
+           in
+             if r = ~1 then raiseSys "Posix.ProcEnv.setsid" NONE "" else r
+           end
+
+    fun time () = 
+         let
+           val (l,s,r) = prim("sml_gettime", ()) : (int * int * int)
+         in
+           if r = ~1 then raiseSys "Posix.ProcEnv.time" NONE ""
+           else Time.+(Time.fromSeconds(LargeInt.*(LargeInt.fromInt 1000000000, (LargeInt.fromInt s))),
+                       Time.fromSeconds(LargeInt.fromInt r))
+         end
+
+    fun ttyname fd = 
+          let 
+            val (r,s) = prim("sml_ttyname", fd : int) : (int * string)
+          in
+            if isNull s then raise OS.SysErr(let val err = Error.fromWord(SysWord.fromInt r) in (Error.errorMsg err, SOME err) end)
+            else s
+          end
+
+    fun setuid g = 
+           let
+             val r = prim("@setuid", ()) : int
+           in
+             if r = ~1 then raiseSys "Posix.ProcEnv.setuid" NONE "" else ()
+           end
+
+    fun setpgid {pid : pid option, pgid : pid option} = 
+          let
+            val id = case pid of NONE => 0 | SOME p => p
+            val gid = case pgid of NONE => 0 | SOME p => p
+            val r = prim("@setpgid", (id,gid)) : int
+          in
+            if r = ~1 then raiseSys "Posix.ProcEnv.setpgid" NONE "" else ()
+          end
+     
+    fun uname () = 
+          let
+            val l = prim("sml_uname", ()) : (string * string) list
+          in
+            if l = [] then raiseSys "Posix.ProcEnv.uname" NONE "" else l
+          end
+    
 	end
     
     structure FileSys : POSIX_FILE_SYS

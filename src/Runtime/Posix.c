@@ -10,7 +10,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <time.h>
 #include <pwd.h>
+#include <sys/utsname.h>
 #include "Tagging.h"
 #include "Exception.h"
 #include "List.h"
@@ -621,3 +623,175 @@ REG_POLY_FUN_HDR(sml_getpwnam, int tuple, Region homeR, Region shellR, String na
   free(b);
   return tuple;
 }
+
+String 
+REG_POLY_FUN_HDR(sml_ctermid, Region r)
+{
+  String rs;
+  char *s;
+  s = malloc(L_ctermid+1);
+  if (!s) return NULL;
+  ctermid(s);
+  rs = REG_POLY_CALL(convertStringToML, r, s);
+  free(s);
+  return rs;
+}
+
+int *
+REG_POLY_FUN_HDR(sml_environ, Region rl, Region rs)
+{
+  char **m;
+  int *pair, *list;
+  makeNIL(list);
+  m = environ;
+  while (*m)
+  {
+    allocRecordML(rl, 2, pair);
+    first(pair) = (int) REG_POLY_CALL(convertStringToML, rs, *m);
+    second(pair) = (int) list;
+    makeCONS(pair,list);
+  }
+  return list;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getgroups, int rp, Region rs, int exn)
+{
+  int *pair, *list;
+  gid_t *tmp;
+  int r, i;
+  makeNIL(list);
+  mkTagPairML(rp);
+  r = getgroups(0, NULL);
+  if (r == -1)
+  {
+    first (rp) = r;
+    second(rp) = (int) list;
+    return rp;
+  }
+  tmp = (gid_t *) malloc(sizeof(gid_t) * r);
+  if (!tmp)
+  {
+    first (rp) = convertIntToML(-1);
+    second(rp) = (int) list;
+    return rp;
+  }
+  r = getgroups(r, tmp);
+  if (r == -1)
+  {
+    free(tmp);
+    raise_exn(exn);
+  }
+  for(i=0; i<r; i++)
+  {
+    REG_POLY_CALL(allocRecordML,rs, 2, pair);
+    first(pair) = (int) convertIntToML(tmp[i]);
+    second(pair) = (int) list;
+    makeCONS(pair, list)
+  }
+  free(tmp);
+  first(rp) = convertIntToML(0);
+  second(rp) = (int) list;
+  return rp;
+}
+
+String
+REG_POLY_FUN_HDR(sml_getlogin, Region rs)
+{
+  String s;
+  int r;
+  s = REG_POLY_CALL(allocStringC,rs, L_cuserid + 1);
+  r = getlogin_r(&(s->data), L_cuserid);
+  if (r != 0)
+  {
+    return NULL;
+  }
+  return s;
+}
+
+int
+sml_gettime(int pair)
+{
+  time_t t;
+  mkTagTripleML(pair);
+  t = time(NULL);
+  if (t == (time_t) -1)
+  {
+    third(pair) = convertIntToML(-1);
+    return pair;
+  }
+  first(pair) = convertIntToML(t % 1000000000);
+  second(pair) = convertIntToML(t / 1000000000);
+  third(pair) = convertIntToML(0);
+  return pair;
+}
+
+int
+REG_POLY_FUN_HDR(sml_ttyname, int pair, Region rs, int fd)
+{
+  char *buf;
+  int i = 100, r;
+  fd = convertIntToC(fd);
+  mkTagPairML(pair);
+  r = 0;
+  if (r == ERANGE) r++;
+  do
+  {
+    buf = (char *) malloc(i);
+    if (!buf)
+    {
+      first(pair) = convertIntToML(errno);
+      second(pair) = (int) NULL;
+    }
+    buf[i-1] = 0;
+    r = ttyname_r(fd, buf, i-1);
+    if (r == 0)
+    {
+      first(pair) = convertIntToML(0);
+      second(pair) = (int) REG_POLY_CALL(convertStringToML, rs, buf);
+      free(buf);
+      return pair;
+    }
+    r = errno;
+    free(buf);
+    i <<= 1;
+  } while (r == ERANGE);
+  first(pair) = convertIntToML(r);
+  second(pair) = (int) NULL;
+  return pair;
+}
+
+int *
+REG_POLY_FUN_HDR(sml_uname, Region rl, Region s1, Region s2)
+{
+  struct utsname i;
+  int *pair, *list;
+  int j;
+  makeNIL(list);
+  j = uname(&i);
+  if (j == -1) return list;
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.sysname);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "sysname");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.nodename);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "nodename");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.release);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "release");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.version);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "version");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.machine);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "machine");
+  makeCONS(pair,list);
+  return list;
+}
+
+
+
