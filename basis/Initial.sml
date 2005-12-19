@@ -179,6 +179,9 @@ structure Initial =
             val trunc    = 0wx20
             val text     = 0wx40
             val bin      = 0wx80
+            val rdonly   = 0wx100
+            val wronly   = 0wx200
+            val rdwr     = 0wx400
           end
 
         structure S =

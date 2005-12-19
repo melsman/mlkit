@@ -771,7 +771,7 @@ functor StreamIOExtra (S: STREAM_IO_EXTRA_ARG): STREAM_IO_EXTRA =
                                          else SOME (false, bufferContents),
                      closed = false, 
                      reader = reader}
-        
+
       fun getReader (is as In {common = {reader, tail, ...}, ...}) =
         case !(!tail) of
           End => (!tail := Truncated;

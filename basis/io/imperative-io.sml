@@ -10,14 +10,11 @@ signature IMPERATIVE_IO_EXTRA_ARG =
       structure Array: sig
                           include MONO_ARRAY
                           val rawArray: int -> array
-                          val unsafeSub: array * int -> elem
+                          (*val unsafeSub: array * int -> elem*)
                        end
       structure ArraySlice: MONO_ARRAY_SLICE
       structure PrimIO: PRIM_IO
-      structure Vector: sig 
-                           include MONO_VECTOR
-                           val fromArray: Array.array -> vector
-                        end
+      structure Vector: MONO_VECTOR
       structure VectorSlice: MONO_VECTOR_SLICE
       sharing type Array.array
          = ArraySlice.array
@@ -107,11 +104,20 @@ fun newOut {appendMode, bufferMode, closeAtExit, fd, name} =
 
 structure PFS = Posix.FileSys
 
-val stdErr = newOut {appendMode = true, 
+val stdErr = (newOut {appendMode = true, 
                      bufferMode = IO.NO_BUF,
                      closeAtExit = false,
                      fd = PFS.stderr,
-                     name = "<stderr>"}
+                     name = "<stderr>"})
+             handle OS.SysErr(m,SOME k) => (
+              if k = Posix.Error.badf
+              then Out (ref (SIO.mkOutstream'' {closeAtExit = false,
+                                                closed = true,
+                                                writer = PIO.nullWr(),
+                                                bufferMode = IO.NO_BUF}))
+              else 
+                raise OS.SysErr(m, SOME k))
+                  | OS.SysErr(m,NONE) => raise OS.SysErr(m,NONE)
          
 val newOut = fn {appendMode, closeAtExit, fd, name} =>
    newOut {appendMode = appendMode,
@@ -122,10 +128,19 @@ val newOut = fn {appendMode, closeAtExit, fd, name} =>
            fd = fd,
            name = name}
          
-val stdOut = newOut {appendMode = true,
+val stdOut = (newOut {appendMode = true,
                      closeAtExit = false,
                      fd = PFS.stdout, 
-                     name = "<stdout>"}
+                     name = "<stdout>"})
+             handle OS.SysErr(m,SOME k) => (
+              if k = Posix.Error.badf
+              then Out (ref (SIO.mkOutstream'' {closeAtExit = false,
+                                                closed = true,
+                                                writer = PIO.nullWr(),
+                                                bufferMode = IO.NO_BUF}))
+              else 
+                raise OS.SysErr(m, SOME k))
+                  | OS.SysErr(m,NONE) => raise OS.SysErr(m,NONE)
    
 val newOut = fn {appendMode, fd, name} =>
    newOut {appendMode = appendMode,
@@ -300,7 +315,7 @@ fun input1 (ib as In {buf, first, last, ...}) =
    in
       if f < !last
          then (first := f + 1
-               ; SOME (A.unsafeSub (buf, f)))
+               ; SOME (A.sub (buf, f)))
       else
          let
             val In {state, ...} = ib
@@ -378,7 +393,7 @@ fun inputN (ib as In {buf, first, last, ...}, n) =
                             val i = loop size
                          in
                             if i = n
-                               then V.fromArray inp
+                               then A.vector inp
                             else AS.vector (AS.slice (inp, 0, SOME i))
                          end)
                 | Stream s =>
@@ -549,7 +564,7 @@ fun lookahead (ib as In {buf, first, last, ...}) =
       val l = !last
    in
       if f < l
-         then SOME (A.unsafeSub (buf, f))
+         then SOME (A.sub (buf, f))
       else
          let
             val In {state, ...} = ib
@@ -717,7 +732,19 @@ val newIn = fn (fd, name) =>
           fd = fd,
           name = name}
 
-val stdIn = newIn (PFS.stdin, "<stdin>")
+val stdIn = (newIn (PFS.stdin, "<stdin>"))
+            handle OS.SysErr(m,SOME k) => (
+              if k = Posix.Error.badf
+              then 
+                In {augmentedReader = PIO.nullRd(),
+                    buf = A.rawArray 0,
+                    first = ref 0,
+                    last = ref 0,
+                    reader = PIO.nullRd (),
+                    state = ref Closed}
+              else
+                raise OS.SysErr(m, SOME k))
+                 | OS.SysErr(m,NONE) => raise OS.SysErr(m,NONE)
          
 fun openIn file =
    protect'
