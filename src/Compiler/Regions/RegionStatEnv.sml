@@ -69,11 +69,14 @@ structure RegionStatEnv: REGION_STAT_ENV =
 				   (* the auxiliary region is for a pair; hence PAIR_RT *)
 		     TyNameMap.add(TyName.tyName_FRAG, (1,[E.STRING_RT],0),
 				   (* the auxiliary region is for a string; hence STRING_RT *)
+		     TyNameMap.add(TyName.tyName_INTINF, (0,[E.PAIR_RT,E.PAIR_RT],0),
+				   (* the auxiliary region is for (1) auxiliary pairs for the digits-list
+				    * and (2) the pair of a boolean and the digits-list *)
 		     TyNameMap.add(TyName.tyName_CHARARRAY, (0,[],0),
 		     TyNameMap.add(TyName.tyName_FOREIGNPTR, (0,[],0),
 		     TyNameMap.add(TyName.tyName_ARRAY, (1,[],0),
 		     TyNameMap.add(TyName.tyName_VECTOR, (1,[],0),
-		     TyNameMap.empty)))))))))))))))))
+		     TyNameMap.empty))))))))))))))))))
 
     local
 
@@ -142,6 +145,26 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	in (c, bool_sigma)
 	end
 
+      fun mk_intinf_sigma c lev0 =
+	  let val (rInt31,c) = E.freshRhoWithTy(E.WORD_RT, c)
+	      val (rBool,c) = E.freshRhoWithTy(E.WORD_RT, c)
+	      val (rListPair,c) = E.freshRhoWithTy(E.PAIR_RT, c)
+	      val (rList,c) = E.freshRhoWithTy(E.WORD_RT, c)
+	      val (rIntInf,c) = E.freshRhoWithTy(E.WORD_RT, c)
+	      val (rRec,c) = E.freshRhoWithTy(E.PAIR_RT, c)
+	      val bool_mu = (R.CONSTYPE(TyName.tyName_BOOL,[],[],[]), rBool)
+	      val int31_mu = (R.CONSTYPE(TyName.tyName_INT31,[],[],[]),rInt31)
+	      val digits_mu = (mkListType(int31_mu,rListPair),rList)
+	      val arg_mu = (R.RECORD[(*digits= *)digits_mu, (*negative= *)bool_mu],rRec)
+	      val intinf_mu = (R.CONSTYPE(TyName.tyName_INTINF,[],[rRec,rListPair],[]), rIntInf)
+	      val (ae, c) = E.freshEps c
+	      val _ = E.edge(ae, E.mkPut rIntInf)
+	      val f = R.FUN([arg_mu],ae,[intinf_mu])
+	      val (c,intinf_sigma,_) =  
+		  R.generalize_all (c, lev0, [], f)
+	  in (c,intinf_sigma)
+	  end
+
       val c = E.initCone
       val lev0 = E.level c
       val c = E.push c
@@ -152,6 +175,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
       val (c, bool_sigma) = mk_bool_sigma c lev0
       val (c, quote_sigma) = mk_quote_sigma c lev0
       val (c, antiquote_sigma) = mk_antiquote_sigma c lev0
+      val (c, intinf_sigma) = mk_intinf_sigma c lev0
     in
       val cons_sigma_unboxed = cons_sigma_unboxed
       val conenv0 = ConMap.fromList [(Con.con_TRUE, bool_sigma),
@@ -159,7 +183,8 @@ structure RegionStatEnv: REGION_STAT_ENV =
 				     (Con.con_NIL, nil_sigma),
 				     (Con.con_CONS, cons_sigma),
 				     (Con.con_QUOTE, quote_sigma),
-				     (Con.con_ANTIQUOTE, antiquote_sigma)]
+				     (Con.con_ANTIQUOTE, antiquote_sigma),
+				     (Con.con_INTINF, intinf_sigma)]
     end
 
     val excon_env0 = ExconMap.fromList 

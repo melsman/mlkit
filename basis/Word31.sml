@@ -18,9 +18,12 @@ structure Word31 : WORD =
     fun fromLargeWord (w : word32) : word31 = prim("__word32_to_word31", w)
     val fromLarge = fromLargeWord
 
-    fun toLargeInt (w : word31) : int32 = Word32.toLargeInt(toLargeWord w)
-    fun toLargeIntX (w : word31) : int32 = Word32.toLargeInt(toLargeWordX w)
-    fun fromLargeInt (i : int32) : word31 = fromLargeWord (Word32.fromLargeInt i)
+    fun toLargeInt (w : word31) : intinf = 
+	IntInfRep.fromWord31 w
+    fun toLargeIntX (w : word31) : intinf = 
+	IntInfRep.fromWord31X w
+    fun fromLargeInt (i : intinf) : word31 = 
+	IntInfRep.toWord31 i
 
     fun orb (x : word31, y : word31) : word31 = prim("__orb_word31", (x, y))
     fun andb (x : word31, y : word31) : word31 = prim("__andb_word31", (x, y))

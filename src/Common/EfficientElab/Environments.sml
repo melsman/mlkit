@@ -1300,6 +1300,40 @@ old *)
 	  val listVE = listVE
 	end
 
+		 (* environments for intinf type constructor *)
+	local
+	  val int31Ty = 
+	      Type.from_ConsType (Type.mk_ConsType ([],TyName.tyName_INT31))
+
+	  val int31listTy =
+	      Type.from_ConsType (Type.mk_ConsType ([int31Ty],TyName.tyName_LIST))
+
+	  val boolTy = 
+	      Type.from_ConsType (Type.mk_ConsType ([],TyName.tyName_BOOL))	      
+
+	  val recordTy =
+	      let val negative = Lab.mk_IdentLab "negative"
+		  val digits = Lab.mk_IdentLab "digits"
+		  val rt = Type.RecType.empty
+		  val rt = Type.RecType.add_field(negative,boolTy)rt
+		  val rt = Type.RecType.add_field(digits,int31listTy)rt
+	      in 
+		  Type.from_RecType rt
+	      end
+
+	  val intinfTy = 
+	      Type.from_ConsType (Type.mk_ConsType ([],TyName.tyName_INTINF))
+
+	  val ve =
+	      VE.singleton_con (Ident.id_INTINF,
+				TypeScheme.from_Type (Type.mk_Arrow (recordTy, intinfTy)),
+				[Ident.id_INTINF])
+	in
+	    val TE_intinf = TE.singleton (TyCon.tycon_INTINF,
+					  mk_tystr (TyName.tyName_INTINF,
+						    VE.close ve))
+	    val VE_IntInf = ve
+	end
 
 		 (* environments for frag (quotation) type constructor *)
 	local
@@ -1359,6 +1393,7 @@ old *)
 
 	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT31,
 						  TyName.tyName_INT32,
+						  TyName.tyName_INTINF,
 						  TyName.tyName_WORD8,
 						  TyName.tyName_WORD31,
 						  TyName.tyName_WORD32,
@@ -1369,14 +1404,15 @@ old *)
 		Type.mk_Arrow (Type.from_pair (tau_num, tau_num), tau_num)
 
 	  val tyvar_realint =
-	    TyVar.fresh_overloaded [TyName.tyName_REAL, TyName.tyName_INT31, TyName.tyName_INT32]
+	    TyVar.fresh_overloaded [TyName.tyName_REAL, TyName.tyName_INT31, 
+				    TyName.tyName_INT32, TyName.tyName_INTINF]
 
 	  val tau_realint = Type.from_TyVar tyvar_realint
 
 	  val tau_realint_to_realint = Type.mk_Arrow (tau_realint, tau_realint)
 
 	  val tyvar_numtxt = TyVar.fresh_overloaded 
-	    [TyName.tyName_INT31, TyName.tyName_INT32, 
+	    [TyName.tyName_INT31, TyName.tyName_INT32, TyName.tyName_INTINF, 
 	     TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32,
 	     TyName.tyName_REAL, TyName.tyName_CHAR,
 	     TyName.tyName_STRING]
@@ -1387,7 +1423,7 @@ old *)
 			       Type.Bool)
 
 	  val tyvar_wordint = TyVar.fresh_overloaded 
-	    [TyName.tyName_INT31, TyName.tyName_INT32,
+	    [TyName.tyName_INT31, TyName.tyName_INT32, TyName.tyName_INTINF,
 	     TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32]
 
 	  val tau_wordint = Type.from_TyVar tyvar_wordint
@@ -1454,13 +1490,11 @@ old *)
 				      TyStr.from_theta_and_VE (theta_unit, VE_unit))
 	end
 
-(*	val TE_word_table = te (TyCon.tycon_WORD_TABLE, TyName.tyName_WORD_TABLE) *)
-
 	val TE_initial0 = joinTE [TE_unit, TE_char, TE_real,
-				  TE_int31, TE_int32, 
+				  TE_int31, TE_int32, TE_intinf,
 				  TE_word8, TE_word31, TE_word32,
 				  TE_string, TE_exn, TE_ref, TE_bool, TE_list,
-				  TE_array, TE_vector, TE_chararray, TE_foreignptr (*, TE_word_table*)]
+				  TE_array, TE_vector, TE_chararray, TE_foreignptr]
 
 	val tag_values = Flags.is_on0 "tag_values"
 
@@ -1499,15 +1533,16 @@ old *)
 	 calls:*)
 	val VEs =
 	  [VE.close refVE, VE.close boolVE, VE.close listVE,
-	   VE.close primVE, VE.close exportVE,
+	   VE.close primVE, VE.close exportVE, VE_IntInf,
 	   absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
 	   lessVE, greaterVE, lesseqVE, greatereqVE,
 	   resetRegionsVE, forceResettingVE, DivVE, 
 	   BindVE, MatchVE, OverflowVE, InterruptVE]
 	val fragVE = VE.close fragVE
 	fun VE_initial() = joinVE(if quotation() then fragVE :: VEs else VEs)
+	fun SE_initial() = SE.singleton(StrId.mk_StrId "IntInfRep",empty)  (* dummy *)
       in
-	fun initial() = ENV {SE=SE.empty, TE=TE_initial(), VE=VE_initial()}
+	fun initial() = ENV {SE=SE_initial(), TE=TE_initial(), VE=VE_initial()}
       end
 
 

@@ -522,6 +522,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	    ; map #ebfile (List.filter (! o #used) elabBasesInfo)
 	end
 
+    fun add_longstrid longstrid {funids, sigids, longstrids, longtycons, longvids} =
+	let val longstrids = longstrid::longstrids
+	in {funids=funids, sigids=sigids, longstrids=longstrids, 
+	    longtycons=longtycons, longvids=longvids}
+	end
+	
+    val intinfrep = StrId.mk_LongStrId ["IntInfRep"]
+
     (* -------------------------------------------------------------------
      * Build SML source file for mlb-project ; flag compile_only enabled 
      * ------------------------------------------------------------------- *)
@@ -557,7 +565,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	      | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
 	      let 
 		val _ = chat "[finding free identifiers begin...]"
-		val freelongids = fid_topdec topdec
+		val freelongids = add_longstrid intinfrep (fid_topdec topdec)
 		val _ = chat "[finding free identifiers end...]"
 
 		val _ = chat "[computing actual dependencies begin...]"

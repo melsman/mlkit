@@ -31,6 +31,7 @@ structure TyCon: TYCON =
     val tycon_INT    = TYCON "int"
     val tycon_INT31  = TYCON "int31"
     val tycon_INT32  = TYCON "int32"
+    val tycon_INTINF = TYCON "intinf"
     val tycon_WORD   = TYCON "word"
     val tycon_WORD8  = TYCON "word8"
     val tycon_WORD31  = TYCON "word31"

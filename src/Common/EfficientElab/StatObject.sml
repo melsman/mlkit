@@ -895,6 +895,7 @@ structure StatObject: STATOBJECT =
 
       val Int31        = mk_ConsType ([], TyName.tyName_INT31)
       val Int32        = mk_ConsType ([], TyName.tyName_INT32)
+      val IntInf       = mk_ConsType ([], TyName.tyName_INTINF)
       fun IntDefault() = if tag_values() then Int31 else Int32
 
       val Real         = mk_ConsType ([], TyName.tyName_REAL)
@@ -911,10 +912,16 @@ structure StatObject: STATOBJECT =
       fun of_scon sc =
 	case sc
 	  of SCon.INTEGER i =>
-	    if i > 1073741823 (* 2^30-1 *) then simple_scon Int32
-	    else let val tv = TyVar.fresh_overloaded [TyName.tyName_INT31, TyName.tyName_INT32]
-		 in {type_scon=from_TyVar tv, overloading=SOME tv}
-		 end 
+	    if IntInf.>(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.maxInt))) then 
+		simple_scon IntInf
+	    else if IntInf.>(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.maxInt))) then 
+		let val tv = TyVar.fresh_overloaded [TyName.tyName_INT32,TyName.tyName_INTINF]
+		in {type_scon=from_TyVar tv, overloading=SOME tv}
+		end 		
+	    else
+		let val tv = TyVar.fresh_overloaded [TyName.tyName_INT31,TyName.tyName_INT32,TyName.tyName_INTINF]
+		in {type_scon=from_TyVar tv, overloading=SOME tv}
+		end 		 
 	   | SCon.STRING _ => simple_scon String
 	   | SCon.REAL _ => simple_scon Real
 	   | SCon.CHAR _ => simple_scon Char

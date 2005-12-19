@@ -1846,6 +1846,7 @@ let
   val tau_to_overloadinginfo_alist =
         [(Type.Int31,  OverloadingInfo.RESOLVED_INT31),
 	 (Type.Int32,  OverloadingInfo.RESOLVED_INT32),
+	 (Type.IntInf, OverloadingInfo.RESOLVED_INTINF),
 	 (Type.Real,   OverloadingInfo.RESOLVED_REAL),
 	 (Type.String, OverloadingInfo.RESOLVED_STRING),
 	 (Type.Char,   OverloadingInfo.RESOLVED_CHAR),
@@ -1880,7 +1881,7 @@ let
 	     of NONE => tau_to_overloadinginfo tau'
 		 (*TODO 25/06/1997 10:11. tho.
 		  I'd rather do an impossible here: If tau' is not a
-		  tyvar, it must be one of {int31, int32, real, string, 
+		  tyvar, it must be one of {int31, int32, intinf, real, string, 
 		  char, word8, word31, word32}; everything else would 
 		  be a type error.  Well,
 		  perhaps it can occur then, namely when there is a

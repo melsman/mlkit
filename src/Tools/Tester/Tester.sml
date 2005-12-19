@@ -93,6 +93,7 @@ structure Tester : TESTER =
 	  else ()
 
 	val exe_file = "./runexe"
+	val runargs = nil (*["-heap_to_live_ratio", "2.5"]*)
 	fun rename_and_run(suffix, out_file, outok_file) =
 	  if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
 	    let 
@@ -113,7 +114,7 @@ structure Tester : TESTER =
 	      if opt "tx" (*Time Executable*) then
 		let val _ = msg' ("    executing target program: " ^ exe_file)
 	 	    val {count,size,rss,data,stk,exe,real,user,sys} =
-		      MemUsage.memUsage {cmd=exe_file,args=nil,out_file=file ^ out_file (*".out"*)}
+		      MemUsage.memUsage {cmd=exe_file,args=runargs,out_file=file ^ out_file (*".out"*)}
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped = 

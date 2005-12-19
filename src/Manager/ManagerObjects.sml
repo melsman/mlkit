@@ -740,8 +740,9 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 
 	fun restrict (ib, ids, tynames) = 
 	    let val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
-			       TyName.tyName_INT31,   (* int31, int32, word8, word31, word32 needed *)
+			       TyName.tyName_INT31,   (* int31, int32, intinf, word8, word31, word32 needed *)
 			       TyName.tyName_INT32,   (*     because of overloading *)
+			       TyName.tyName_INTINF,
 			       TyName.tyName_WORD8,
 			       TyName.tyName_WORD31,
 			       TyName.tyName_WORD32,
@@ -752,6 +753,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 		  @ TyName.Set.list tynames
 		val IB(ife,ise,ce,cb) = ib
 		val {funids, sigids, longstrids, longvids, longtycons} = ids
+		val longstrids = StrId.mk_LongStrId ["IntInfRep"] :: longstrids
 		val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})

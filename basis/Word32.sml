@@ -17,9 +17,14 @@ structure Word32 : WORD =
     fun fromLargeWord (w : word32) : word32 = w
     val fromLarge = fromLargeWord
 
-    fun toLargeInt (w : word32) : int32 = prim("__word32_to_int32", w)
-    fun toLargeIntX (w : word32) : int32 = prim("__word32_to_int32_X", w)
-    fun fromLargeInt (i : int32) : word32 = prim("__int32_to_word32", i)
+    fun toLargeInt (w : word32) : intinf =
+	IntInfRep.fromWord32 w
+
+    fun toLargeIntX (w : word32) : intinf = 
+	IntInfRep.fromWord32X w
+
+    fun fromLargeInt (i : intinf) : word32 = 
+	IntInfRep.toWord32 i
 
     fun orb (x : word32, y : word32) : word32 = prim("__orb_word32", (x, y))
     fun andb (x : word32, y : word32) : word32 = prim("__andb_word32", (x, y))
@@ -33,6 +38,8 @@ structure Word32 : WORD =
 	prim("__shift_right_signed_word32", (w,k))
       fun rshiftuns_ (w : word32, k : word) : word32 = 
 	prim("__shift_right_unsigned_word32", (w,k))
+      fun toInt32X (w : word32) : int32 =
+	  prim("__word32_to_int32_X", w)
     in
       fun << (w, k)  = if k >= wordSize_w then 0w0
 		       else lshift_(w, k)
@@ -42,7 +49,7 @@ structure Word32 : WORD =
 
       fun ~>> (w, k) = 
 	if k >= wordSize_w then 
-	  if toLargeIntX w >= 0 then 0w0    (* msbit = 0 *)
+	  if toInt32X w >= 0 then 0w0    (* msbit = 0 *)
 	  else fromInt ~1                   (* msbit = 1 *)
 	else rshiftsig_(w, k)
     end

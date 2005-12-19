@@ -46,6 +46,8 @@ structure Con: CON =
 	val con_QUOTE : con      = predef "QUOTE"
 	val con_ANTIQUOTE : con  = predef "ANTIQUOTE"
 
+	val con_INTINF : con     = predef "IntInf"
+
 	val consPredefined = !bucket
     end
 

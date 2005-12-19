@@ -66,17 +66,31 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
       fun exception_to_opt p x = SOME (p x) handle Overflow => NONE
     in
       local
-	fun chars_to_int cs : Int32.int =
-	  let fun chars_to_posint cs = Int32.fromLarge(Word32.toLargeInt(chars_to_w cs))
-	  in case cs
-	       of #"~" :: cs =>
-		 (let (* be careful here! ~Int32.minInt is not representable *)
-		    val w = chars_to_w cs
-		  in if w = 0w2147483648 (* ~Int32.minInt *) then Option.valOf Int32.minInt
-		     else ~ (chars_to_posint cs)
-		  end handle _ => impossible "chars_to_int")
-		| _ => chars_to_posint cs
-	  end
+	  fun ordi c = IntInf.fromInt(ord c)
+
+	  fun chars_to_i (#"0" :: #"x" :: chars) = chars_to_i_in_base (IntInf.fromInt 16) chars
+	    | chars_to_i chars = chars_to_i_in_base (IntInf.fromInt 10) chars
+	  and chars_to_i_in_base base chars = chars_to_i_in_base0 base (IntInf.fromInt 0) chars
+	  and chars_to_i_in_base0 base n [] = n
+	    | chars_to_i_in_base0 base n (char :: chars) =
+	      (case char_to_i_opt char of
+		   SOME i =>
+		       let val new = IntInf.+(IntInf.*(n, base), i)
+		       in chars_to_i_in_base0 base new chars
+		       end
+		 | NONE => n)
+	  and char_to_i_opt char =
+	      let val i = if Char.isUpper char then SOME(IntInf.+(IntInf.-(ordi char, ordi #"A"), IntInf.fromInt 10))
+			  else if Char.isLower char then SOME(IntInf.+(IntInf.-(ordi char, ordi #"a"), IntInf.fromInt 10))
+			    else if Char.isDigit char then SOME(IntInf.-(ordi char, ordi #"0"))
+				 else NONE
+	      in i
+	      end handle _ => NONE
+		  		  
+	fun chars_to_int cs : IntInf.int =
+	    case cs of 
+		#"~" :: cs => IntInf.~ (chars_to_i cs)
+	      | _ => chars_to_i cs
       in
 	val asInteger = exception_to_opt (chars_to_int o explode)
       end

@@ -126,6 +126,7 @@ signature STATOBJECT =
 	(* Special constants *)
 	val Int31                   : Type           
 	val Int32                   : Type
+	val IntInf                  : Type
 	val IntDefault              : unit -> Type   (* Either Int31 or Int32, 
 						      * dependent on tagging; used 
 						      * for resolving overloading. *) 

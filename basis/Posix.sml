@@ -173,11 +173,11 @@ structure Posix :> POSIX =
 
       fun alarm t = 
            let
-             val a = prim("@alarm", Time.toSeconds t)
+             val a : int = prim("@alarm", Int.fromLarge(Time.toSeconds t))
            in
              if a = ~1
              then raiseSys "Posix.Process.alarm" (SOME (Time.toString t)) ""
-             else Time.fromSeconds a
+             else Time.fromSeconds (Int.toLarge a)
            end
 
       fun kill (a,s) = 

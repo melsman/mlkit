@@ -141,6 +141,10 @@ end
 	      in close_Type (ARROWtype([TYVARtype tyvar],
 				       [CONStype([TYVARtype tyvar], tyName_FRAG)]))
 	      end
+	    val typescheme_INTINF =
+		close_Type(ARROWtype([RECORDtype[CONStype([CONStype([],tyName_INT31)],tyName_LIST),
+						 CONStype([],tyName_BOOL)]],
+				     [CONStype([], tyName_INTINF)]))
 	      
 	  in
 	    ConMap.fromList [ (Con.con_TRUE, typescheme_TRUE),
@@ -148,13 +152,15 @@ end
 			      (Con.con_NIL, typescheme_NIL),
 			      (Con.con_CONS, typescheme_CONS),
 			      (Con.con_QUOTE, typescheme_QUOTE),
-			      (Con.con_ANTIQUOTE, typescheme_ANTIQUOTE)]
+			      (Con.con_ANTIQUOTE, typescheme_ANTIQUOTE),
+			      (Con.con_INTINF, typescheme_INTINF)]
 	  end
 
 	val initial_tyname_env = 
 	  TyNameMap.fromList  [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
 			       (tyName_INT31, []),
 			       (tyName_INT32, []),
+			       (tyName_INTINF, [Con.con_INTINF]),
 			       (tyName_WORD8, []),
 			       (tyName_WORD31, []),
 			       (tyName_WORD32, []),
