@@ -316,6 +316,7 @@ structure CharVector
 structure CharArray :> MONO_ARRAY
   where type vector = CharVector.vector
   where type elem = char 
+  where type array = chararray
   = ByteTable(type elem = char  type table = chararray)
 
 local
