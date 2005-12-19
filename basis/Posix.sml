@@ -696,7 +696,7 @@ structure Posix :> POSIX =
                    if !blocking then blockingOff () else ();
                       (SOME (f x)
                        handle (e as OS.SysErr (_, SOME cause)) =>
-                          if cause = Posix.Error.again then NONE else raise e))
+                          if cause = Error.again then NONE else raise e))
                val close = 
                   fn () => if !closed then () else (closed := true; close fd)
                val avail = 
@@ -752,7 +752,7 @@ structure Posix :> POSIX =
                fun handleBlock writer arg = 
                   SOME(writer arg)
                   handle (e as OS.SysErr (_, SOME cause)) =>
-                     if cause = Initial.OS.EAGAIN then NONE else raise e
+                     if cause = Error.again then NONE else raise e
                val close = 
                   fn () => if !closed then () else (closed := true; close fd)
             in
