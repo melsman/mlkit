@@ -38,8 +38,8 @@ local
     val op > = gt and op < = lt and op >= = ge and op <= = le;
     val op + = add and op - = sub and op * = mul 
     and op div = idiv and op mod = imod;
-    val i2w = fromLargeInt
-    and w2i = toLargeIntX;
+    val i2w = fromLargeInt o Int32.toLarge
+    and w2i = Int32.fromLarge o toLargeIntX;
     fun pr_ln s s' = print (s ^ ": " ^ s' ^ "\n")
 in
 
@@ -48,7 +48,7 @@ val test1 = checkrange (0, 1025)
 val _ = pr_ln "test1" test1
 
 val test3 = checkrange (~1000, 1000) 
-    (fn i => i = toLargeIntX (i2w i));
+    (fn i => i = Int32.fromLarge(toLargeIntX (i2w i)));
 val _ = pr_ln "test3" test3
 
 val test5a = checkrange (0,15) 
@@ -86,40 +86,40 @@ fun rwp i 0 = i
   | rwp i n = rwp i (n-1) div 2;
 
 val test9a = checkrange (0,1)
-    (fn k => pwr2 k = w2i (<< (i2w 1, Word.fromLargeInt k)));
+    (fn k => pwr2 k = w2i (<< (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test9a" test9a
 val test9b = checkrange (32,65)
-    (fn k => 0 = w2i (<< (i2w 1, Word.fromLargeInt k)));
+    (fn k => 0 = w2i (<< (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test9b" test9b
 val test9c = check (maxnegint = w2i (<< (i2w 1, Word.fromInt (Int.-(wordSize,1)))));
 val _ = pr_ln "test9c" test9c
 val test9d = checkrange (0, 1025)
-    (fn i => 2 * i = w2i (<< (i2w i, Word.fromLargeInt 1)));
+    (fn i => 2 * i = w2i (<< (i2w i, Word.fromLargeInt (Int32.toLarge 1))));
 val _ = pr_ln "test9d" test9d
 val test9e = checkrange (0, 1025)
-    (fn i => i div 2 = w2i (>> (i2w i, Word.fromLargeInt 1)));
+    (fn i => i div 2 = w2i (>> (i2w i, Word.fromLargeInt (Int32.toLarge 1))));
 val _ = pr_ln "test9e" test9e
 val test9f = checkrange (0,65)
-    (fn k => rwp maxposint k = w2i (>> (i2w maxposint, Word.fromLargeInt k)));
+    (fn k => rwp maxposint k = w2i (>> (i2w maxposint, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test9f" test9f
 val test9g = checkrange (32,65)
-    (fn k => 0 = w2i (<< (i2w ~1, Word.fromLargeInt k)));
+    (fn k => 0 = w2i (<< (i2w ~1, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test9g" test9g
 val test9h = checkrange (1,65)
-    (fn k => 0 = w2i (>> (i2w 1, Word.fromLargeInt k)));
+    (fn k => 0 = w2i (>> (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test9h" test9h
 
 val test10a = checkrange (1,65)
-    (fn k => 0 = w2i (~>> (i2w 1, Word.fromLargeInt k)));
+    (fn k => 0 = w2i (~>> (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test10a" test10a
 val test10b = checkrange (1,65)
-    (fn k => ~1 = w2i (~>> (i2w ~1, Word.fromLargeInt k)));
+    (fn k => ~1 = w2i (~>> (i2w ~1, Word.fromLargeInt (Int32.toLarge k))));
 val _ = pr_ln "test10b" test10b
 val test10c = checkrange (~513, 513)
-    (fn i => i div 2 = toLargeIntX (~>> (i2w i, Word.fromLargeInt 1)));
+    (fn i => i div 2 = Int32.fromLarge(toLargeIntX (~>> (i2w i, Word.fromLargeInt (Int32.toLarge 1)))));
 val _ = pr_ln "test10c" test10c
 val test10d = checkrange (0,65)
-    (fn k => rwp maxnegint k = toLargeIntX (~>> (i2w maxnegint, Word.fromLargeInt k)));
+    (fn k => rwp maxnegint k = Int32.fromLarge(toLargeIntX (~>> (i2w maxnegint, Word.fromLargeInt (Int32.toLarge k)))));
 val _ = pr_ln "test10d" test10d
 local 
     open Word32
@@ -323,10 +323,10 @@ end;
 
 local 
     fun fromToString i = 
-	fromString (toString (fromLargeInt i)) = SOME (fromLargeInt i);
+	fromString (toString (fromLargeInt (Int32.toLarge i))) = SOME (fromLargeInt (Int32.toLarge i));
 
     fun scanFmt radix i = 
-	let val w = fromLargeInt i
+	let val w = fromLargeInt (Int32.toLarge i)
 	    val s = fmt radix w
 	in StringCvt.scanString (scan radix) s = SOME w end;
 
