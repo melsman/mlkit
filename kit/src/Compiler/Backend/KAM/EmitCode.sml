@@ -129,6 +129,7 @@ functor EmitCode (structure CG : CODE_GEN_KAM
       | Ccall(idx,4) => (out_opcode C_CALL4; out_int (idx+1))
       | Ccall(idx,5) => (out_opcode C_CALL5; out_int (idx+1))
       | Ccall(idx,6) => (out_opcode C_CALL6; out_int (idx+1))
+      | Ccall(idx,7) => (out_opcode C_CALL7; out_int (idx+1))
       | Ccall(idx,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted (n=" ^ Int.toString n ^ ")")
       | DCcall(kind,n) => (out_opcode CHECK_LINKAGE; out_int kind; emit_kam_inst (Ccall(~1,n)))
 

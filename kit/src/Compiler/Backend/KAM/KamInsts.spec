@@ -64,6 +64,7 @@ C_CALL3			    1
 C_CALL4			    1
 C_CALL5			    1
 C_CALL6			    1
+C_CALL7			    1
 LABEL			    ~4
 JMP_REL			    1
 IF_NOT_EQ_JMP_REL_IMMED3       1

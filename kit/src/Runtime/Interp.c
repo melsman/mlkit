@@ -436,7 +436,8 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
     &&lbl_C_CALL3,
     &&lbl_C_CALL4,
     &&lbl_C_CALL5,
-    &&lbl_C_CALL6
+    &&lbl_C_CALL6,
+    &&lbl_C_CALL7
   };
   static unsigned int jumptableSize = sizeof(jumptable) / sizeof(void *);
 #endif
@@ -965,6 +966,20 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
 	debug(printf("C_CALL6 end\n"));
+	Next;
+      }
+
+      Instruct(C_CALL7): { 
+	Setup_for_c_call;
+	debug(printf("C_CALL7 - %d - (%d,%d,%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-6), 
+		     selectStackDef(-5), selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),
+         selectStackDef(-1), acc));
+	acc = ((c_primitive) u32pc)(selectStackDef(-6), selectStackDef(-5), selectStackDef(-4),
+                              selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
+	popNDef(6);
+	inc32pc; /* index in c_prim */
+	Restore_after_c_call;
+	debug(printf("C_CALL7 end\n"));
 	Next;
       }
 
