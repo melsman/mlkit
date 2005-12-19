@@ -74,6 +74,7 @@ structure FileSys : OS_FILE_SYS =
     fun errormsg_ (err : OS.syserror) : string =         prim("sml_errormsg", err)
     fun mkerrno_ (i : int) : OS.syserror =               prim("id", i)
     fun islink_ (s : string) : bool =                    prim("sml_islink", (s, failexn))
+    fun isreg_ (s : string) : bool =                     prim("sml_isreg", (s, failexn))
     fun readlink_ (s : string) : string =                prim("sml_readlink", (s, failexn))
     fun realpath_ (s : string) : string =                prim("sml_realpath", (s, failexn))
     fun devinode_ (s : string) : file_id =               prim("sml_devinode", (s, failexn))

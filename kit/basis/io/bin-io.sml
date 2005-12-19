@@ -7,13 +7,17 @@
 
 structure BinIO: BIN_IO_EXTRA =
    ImperativeIOExtra
-   (structure Array = Word8Array
+   (structure Array =
+       struct
+         open Word8Array
+         fun rawArray i = array(i,0wx0)
+       end
     structure ArraySlice = Word8ArraySlice
     structure PrimIO = BinPrimIO
     structure Vector = Word8Vector
     structure VectorSlice = Word8VectorSlice
-    val chunkSize = Primitive.TextIO.bufSize
-    val fileTypeFlags = [PosixPrimitive.FileSys.O.binary]
+    val chunkSize = Initial.TextIO.bufsize
+    val fileTypeFlags = [Posix.FileSys.O.fromWord Initial.Posix_File_Sys.O.bin]
     val line = NONE
     val mkReader = Posix.IO.mkBinReader
     val mkWriter = Posix.IO.mkBinWriter

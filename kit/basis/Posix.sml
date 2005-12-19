@@ -505,6 +505,25 @@ structure Posix :> POSIX =
 	    type pid = int
 	    type file_desc = FileSys.file_desc
       datatype open_mode = datatype FileSys.open_mode
+
+    datatype whence
+      = SEEK_SET
+      | SEEK_CUR
+      | SEEK_END
+
+    datatype lock_type
+      = F_RDLCK
+      | F_WRLCK
+      | F_UNLCK
+
+    structure O :
+      sig
+        include BIT_FLAGS
+        val append : flags
+        val nonblock : flags
+        val sync : flags
+      end = FileSys.O
+
 		
 	    fun pipe () = let val (r,a,b) = prim("sml_pipe",()) : (int * int * int)
 			  in if r = ~1 then raiseSys "Posix.IO.pipe" NONE "" else {infd = a, outfd = b}
@@ -520,22 +539,263 @@ structure Posix :> POSIX =
 			       
 	    fun dup f = dupfd {old = f, base = 0}
 
+      fun lseek (fd, p, w) =
+             let
+               val k = case w of SEEK_SET => 0
+                               | SEEK_END => 1
+                               | SEEK_CUR => 2
+               val r = prim("sml_lseek", (fd, p : int, Position.toInt p, k)) : int
+             in if r = ~1 then raiseSys "lseek" NONE "" else Position.toInt r
+             end
+
       fun readVec (fd,n) = 
            let
              val _ = if n < 0 then raise Size else ()
-             val (s,j) = prim("readVec", (fd : int, n : int)) : string * int
+             val (s,j) = prim("sml_readVec", (fd : int, n : int)) : string * int
              val _ = if j = ~1 then raiseSys "sml_readVec" NONE "" else ()
              val s' = Byte.stringToBytes s
            in
-             if j = n
-             then s'
-             else Word8VectorSlice.vector(Word8VectorSlice.slice(s', 0, SOME j))
+             Word8VectorSlice.vector(Word8VectorSlice.slice(s', 0, SOME j))
            end
-     (* fun writeVec (fd, vs) =
-           let val r = prim ("@sml_writeVec", (fd : int, vs : Word8VectorSlice.slice,
-                                               Word8VectorSlice.length vs : int)) : int
-           in if r = ~1 then raiseSys "sml_writeVec" NONE "" else r
-           end *)
+
+      fun writeVec (fd, vs) =
+           let
+             val (b,s,l) = Word8VectorSlice.base vs
+             val _ = if (l < 0) then raise OS.SysErr("sml_writeVec with negative length", NONE)
+                     else ()
+             val r = prim ("@sml_writeVec", (fd : int, b : Word8Vector.vector, s : int, l : int)) : int
+           in if r = ~1
+              then raiseSys "sml_writeVec" NONE ""
+              else r
+           end
+
+      fun readArrWord8 (fd, arrs) =
+           let
+             val (b,s,l) = Word8ArraySlice.base arrs
+             val _ = if (l< 0) then raise OS.SysErr("sml_readArrWord8 with negative length", NONE)
+                     else ()
+             val r = prim("@sml_readArr", (fd : int, b : chararray, s : int, l : int)) : int
+           in if r = ~1 then raiseSys "sml_readArrWord8" (SOME (Int.toString fd ^ " " ^ (Int.toString s) ^ " " ^ (Int.toString l))) "" else r
+           end
+     
+      fun readArrChar (fd, arrs : CharArraySlice.slice) = 
+           let
+             val (b,s,l) = CharArraySlice.base arrs
+             val _ = if (l< 0) then raise OS.SysErr("sml_readArrChar with negative length", NONE)
+                     else ()
+             val r = prim("@sml_readArr", (fd : int, b : chararray, s : int, l: int)) : int
+           in if r = ~1 then raiseSys "sml_readArrChar" (SOME (Int.toString fd ^ " " ^ (Int.toString s) ^ " " ^ (Int.toString l))) "" else r
+           end
+
+      fun writeArrChar(fd, arrs) =
+           let
+             val (b,s,l) = CharArraySlice.base arrs
+             val _ = if (l< 0) then raise OS.SysErr("sml_writeArrChar with negative length", NONE)
+                     else ()
+             val r = prim("@sml_writeVec", (fd : int, b : CharArray.array, s : int, l: int)) : int
+           in if r = ~1 then raiseSys "sml_writeArr" NONE "" else r
+           end
+
+      fun writeArrWord8(fd, arrs) =
+           let 
+             val (b,s,l) = Word8ArraySlice.base arrs
+             val _ = if (l< 0) then raise OS.SysErr("sml_writeArrWord8 with negative length", NONE)
+                     else ()
+             val r = prim("@sml_writeVec", (fd : int, b : Word8Array.array, s : int, l: int)) : int
+           in if r = ~1 then raiseSys "sml_writeArr" NONE "" else r
+           end
+
+    val failexn = Initial.FileSys.filesys_fail
+    fun isreg_ (s : file_desc) : bool = prim("sml_isreg", (s, failexn))
+    fun isReg fd = (isreg_ fd) handle Fail s => raiseSys ("isReg " ^ (Int.toString fd)) NONE ""
+    fun filesize_ (s : file_desc) : int = prim("sml_filesizefd", (s, failexn))
+    fun fileSize fd = (filesize_ fd) handle Fail s => raiseSys "filesize" NONE ""
+
+    fun setfl(fd,fl) = 
+         let
+           val r = prim("@sml_setfl", (fd : file_desc, SysWord.toInt(O.toWord fl) : int)) : int
+         in if r = ~1 then raiseSys "setfl" NONE "" else ()
+         end
+
+
+    fun getfl fd =
+         let 
+           val r = prim("@sml_getfl", fd : file_desc)
+           val r = if r = ~1 then raiseSys "getfl" NONE "" else SysWord.fromInt r
+           val om = if SysWord.andb(r,0wx100) = 0wx100 then O_RDWR
+                    else if SysWord.andb(r,0wx200) = 0wx200 then O_WRONLY
+                    else O_RDONLY
+         in (O.intersect [O.flags [O.append, O.nonblock, O.sync], r], om)
+         end
+
+
+   exception ClosedStream
+   val pos0 = Position.fromInt 0
+   fun posFns (closed, fd) = 
+      if (isReg fd)
+         then let
+                 val pos = ref pos0
+                 fun getPos () = !pos
+                 fun setPos p = (if !closed 
+                                    then raise ClosedStream 
+                                 else ();
+                                    pos := lseek(fd,p,SEEK_SET))
+                 fun endPos () = (if !closed 
+                                     then raise ClosedStream 
+                                  else ();
+                                     fileSize fd)
+                 fun verifyPos () = let
+                                       val curPos = lseek(fd, pos0, SEEK_CUR)
+                                    in
+                                       pos := curPos; curPos
+                                    end
+                 val _ = verifyPos ()
+              in
+                 {pos = pos,
+                  getPos = SOME getPos,
+                  setPos = SOME setPos,
+                  endPos = SOME endPos,
+                  verifyPos = SOME verifyPos}
+              end
+      else {pos = ref pos0,
+            getPos = NONE, 
+            setPos = NONE, 
+            endPos = NONE, 
+            verifyPos = NONE}
+
+   fun make {RD, WR, readArr, writeArr,
+             vectorLength} =
+      let
+         fun mkReader {fd, name, initBlkMode} =
+            let
+               val closed = ref false
+               val {pos, getPos, setPos, endPos, verifyPos} =
+                  posFns (closed, fd)
+               val blocking = ref initBlkMode
+               fun blockingOn () = 
+                  (setfl(fd, O.flags[]); blocking := true)
+               fun blockingOff () = 
+                  (setfl(fd, O.nonblock); blocking := false)
+               fun ensureOpen () = 
+                  if !closed then raise ClosedStream else ()
+               fun incPos k = pos := Position.+ (!pos, Position.fromInt k)
+               val readVec = fn n => 
+                  let val v = readVec (fd, n)
+                  in incPos (vectorLength v); v
+                  end
+               val readArr = fn x => 
+                  let val k = readArr (fd, x)
+                  in incPos k; k
+                  end
+               fun blockWrap f x =
+                  (ensureOpen ();
+                   if !blocking then () else blockingOn ();
+                      f x)
+               fun noBlockWrap f x =
+                  (ensureOpen ();
+                   if !blocking then blockingOff () else ();
+                      (SOME (f x)
+                       handle (e as OS.SysErr (_, SOME cause)) =>
+                          if cause = Posix.Error.again then NONE else raise e))
+               val close = 
+                  fn () => if !closed then () else (closed := true; close fd)
+               val avail = 
+                  if isReg fd
+                     then fn () => if !closed 
+                                      then SOME 0
+                                   else SOME (Position.toInt
+                                              (Position.-
+                                               (fileSize fd,
+                                                !pos)))
+                  else fn () => if !closed then SOME 0 else NONE
+            in
+               RD {avail = avail,
+                   block = NONE,
+                   canInput = NONE,
+                   chunkSize = Initial.TextIO.bufsize,
+                   close = close,
+                   endPos = endPos,
+                   getPos = getPos,
+                   ioDesc = SOME (FileSys.fdToIOD fd),
+                   name = name,
+                   readArr = SOME (blockWrap readArr),
+                   readArrNB = SOME (noBlockWrap readArr),
+                   readVec = SOME (blockWrap readVec),
+                   readVecNB = SOME (noBlockWrap readVec),
+                   setPos = setPos,
+                   verifyPos = verifyPos}
+            end
+         fun mkWriter {fd, name, initBlkMode, appendMode, chunkSize} =
+            let
+               val closed = ref false
+               val {pos, getPos, setPos, endPos, verifyPos} =
+                  posFns (closed, fd)
+               fun incPos k = (pos := Position.+ (!pos, Position.fromInt k); k)
+               val blocking = ref initBlkMode
+               val appendFlgs = O.flags(if appendMode then [O.append] else [])
+               fun updateStatus () = 
+                  let
+                     val flgs = if !blocking
+                                   then appendFlgs
+                                else O.flags [O.nonblock, appendFlgs]
+                  in
+                     setfl(fd, flgs)
+                  end
+               fun ensureOpen () = 
+                  if !closed then raise ClosedStream else ()
+               fun ensureBlock x = 
+                  if !blocking then () else (blocking := x; updateStatus ())
+               fun putV x = incPos (writeVec x)
+               fun putA x = incPos (writeArr x)
+               fun write (put, block) arg = 
+                  (ensureOpen (); ensureBlock block; put (fd, arg))
+               fun handleBlock writer arg = 
+                  SOME(writer arg)
+                  handle (e as OS.SysErr (_, SOME cause)) =>
+                     if cause = Initial.OS.EAGAIN then NONE else raise e
+               val close = 
+                  fn () => if !closed then () else (closed := true; close fd)
+            in
+               WR {block = NONE,
+                   canOutput = NONE,
+                   chunkSize = chunkSize,
+                   close = close,
+                   endPos = endPos,
+                   getPos = getPos,
+                   ioDesc = SOME (FileSys.fdToIOD fd),
+                   name = name,
+                   setPos = setPos,
+                   verifyPos = verifyPos,
+                   writeArr = SOME (write (putA, true)),
+                   writeArrNB = SOME (handleBlock (write (putA, false))),
+                   writeVec = SOME (write (putV, true)),
+                   writeVecNB = SOME (handleBlock (write (putV, false)))}
+            end
+      in
+         {mkReader = mkReader,
+          mkWriter = mkWriter,
+          readArr = readArr,
+          readVec = readVec,
+          writeArr = writeArr,
+          writeVec = writeVec}
+      end
+        
+   val {mkReader = mkTextReader, mkWriter = mkTextWriter, 
+        readArr, readVec, writeArr, writeVec} =
+      make {RD = TextPrimIO.RD,
+            WR = TextPrimIO.WR,
+            readArr = readArrChar,
+            writeArr = writeArrChar,
+            vectorLength = CharVector.length}
+
+   val {mkReader = mkBinReader, mkWriter = mkBinWriter,
+        readArr, readVec, writeArr, writeVec} =
+      make {RD = BinPrimIO.RD,
+            WR = BinPrimIO.WR,
+            readArr = readArrWord8,
+            writeArr = writeArrWord8,
+            vectorLength = Word8Vector.length}
+
 	end
     
     structure SysDB : POSIX_SYS_DB =
