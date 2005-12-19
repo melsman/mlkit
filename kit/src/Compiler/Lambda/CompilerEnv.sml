@@ -93,7 +93,7 @@ structure CompilerEnv: COMPILER_ENV =
 
     fun initMap a = foldl (fn ((v,r), m) => FinMap.add(v,r,m)) FinMap.empty a
     fun initVE  a = foldl (fn ((v,r), m) => VarEnv.add(v,r,m)) VarEnv.empty a
-    val initialStrEnv = emptyStrEnv
+    val initialStrEnv = STRENV(FinMap.singleton(StrId.mk_StrId "IntInfRep", emptyCEnv))
 
     val boolType = LambdaExp.boolType
     val exnType = LambdaExp.exnType
@@ -118,6 +118,16 @@ structure CompilerEnv: COMPILER_ENV =
       let open LambdaExp
 	  val t = CONStype([TYVARtype tyvar_antiquote], TyName.tyName_FRAG)
       in ARROWtype([TYVARtype tyvar_antiquote],[t])
+      end
+
+    val intinfType = 
+      let open LambdaExp
+	  val t = CONStype([], TyName.tyName_INTINF)
+	  val int31 = CONStype([],TyName.tyName_INT31)
+	  val int31list = CONStype([int31],TyName.tyName_LIST)
+	  val bool = CONStype([],TyName.tyName_BOOL)
+	  val record = RECORDtype [int31list,bool]
+      in ARROWtype([record],[t])
       end
 
     val initialVarEnv : VarEnv = 
@@ -147,6 +157,7 @@ structure CompilerEnv: COMPILER_ENV =
 				    [LambdaExp.TYVARtype tyvar_quote])),
 	       (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
 					[LambdaExp.TYVARtype tyvar_antiquote])),		      
+	       (Ident.id_INTINF, CON(Con.con_INTINF,[],intinfType, [])),		      
 	       (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
 	       (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 	       (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
@@ -175,6 +186,7 @@ structure CompilerEnv: COMPILER_ENV =
 			  (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
 			  (tycon_LIST, ([tyName_LIST], emptyCEnv)),
 			  (tycon_FRAG, ([tyName_FRAG], emptyCEnv)),
+			  (tycon_INTINF, ([tyName_INTINF], emptyCEnv)),
 			  (*		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)), *)
 			  (tycon_UNIT, ([], emptyCEnv))
 			  ])
@@ -568,7 +580,7 @@ structure CompilerEnv: COMPILER_ENV =
 		      of SOME transRan => let val transRan' = constr_ran(transRan, elabRan)
 					  in VarEnv.add(id,transRan', ve')
 					  end
-		       | NONE => die "constr_ve") VarEnv.empty elabVE
+		       | NONE => die ("constr_ve: no " ^ Ident.pr_id id)) VarEnv.empty elabVE
 
 	 and constr_te(TYENV te, elabTE) =
 	     TYENV(TE.Fold(fn (tycon, _) => fn te' =>

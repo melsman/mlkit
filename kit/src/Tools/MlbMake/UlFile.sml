@@ -125,16 +125,17 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		fun insert (s,l,M:M):M = (s,l)::M
 		fun lookup s nil = NONE
 		  | lookup s ((x,l:(B*S)option)::xs) = if s=x then SOME l
-					   else lookup s xs
+						       else lookup s xs
 		fun on f M =
 		    map (fn (s,l) =>
 			 (f s, Option.map (fn (B,S) => (B.on f B,S.on f S)) l)) 
-		    M
-					   
+		    M					   
 		fun downArrow(M,p) = 
 		  on (fn x => pathDownArrow(x,p)) M
 		fun upArrow(M,p) = 
 		  on (fn x => pathUpArrow(x,p)) M
+		fun pp M =
+		    String.concat("{" :: map (fn (s,_) => s ^ ",") M @ ["}"])
 	    end
         structure C =
 	    struct
@@ -187,14 +188,16 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		    (case OS.Path.dir mlbfile of
 			 "" => (case M.lookup mlbfile M of
 				    SOME (SOME (B,S)) => 
-					let val S' = S.extendLoc scriptpath S
+					let val _ = print (mlbfile ^ " found in M: " ^ M.pp M ^ "\n")
+					    val S' = S.extendLoc scriptpath S
 					    val B' = B.extendLoc scriptpath B
 					in (S',C.empty,M,B')
 					end
 				  | SOME NONE =>
 					die ("cycle in mlb-file: problem with " ^ mlbfile)
 				  | NONE => 
-					let val bdec = Mlb.parse mlbfile
+					let val _ = print (mlbfile ^ " not found in M: " ^ M.pp M ^ "\n")
+					    val bdec = Mlb.parse mlbfile
 					    val (S,C,M,B) = ulb phi (M.insert(mlbfile,NONE,M)) B.empty bdec
 					    val M = M.insert(mlbfile,SOME(B,S),M)
 					    val S' = S.extendLoc scriptpath S

@@ -19,11 +19,14 @@ structure Word : WORD =
     fun toLargeWord (w : word) : word32 = prim("__word_to_word32", w)
     val toLarge = toLargeWord
 
-    fun toLargeInt (w : word) : int32 = prim("__word32_to_int32", toLargeWord w)
+    fun toLargeInt (w : word) : intinf = 
+	IntInfRep.fromWord w
 
-    fun toLargeIntX (w : word) : int32 = prim("__int_to_int32", toIntX w)
+    fun toLargeIntX (w : word) : intinf = 
+	IntInfRep.fromWordX w
 
-    fun fromLargeInt (i : int32) : word = prim("__int32_to_word", i)
+    fun fromLargeInt (i : intinf) : word = 
+	IntInfRep.toWord i
 
     fun toLargeWordX (w : word) : word32 = prim("__word_to_word32_X", w)
     val toLargeX = toLargeWordX

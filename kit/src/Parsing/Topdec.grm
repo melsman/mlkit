@@ -137,8 +137,8 @@ type arg = unit
  infix declarations, and positive, decimal integers (from
  integers in general) for labels.*)
 
-        | DECPOSINTEGER of Int32.int option | DECNEGINTEGER of Int32.int option
-	| HEXINTEGER of Int32.int option | DIGIT of int 
+        | DECPOSINTEGER of IntInf.int option | DECNEGINTEGER of IntInf.int option
+	| HEXINTEGER of IntInf.int option | DIGIT of int 
 	| WORD of Word32.word option
 	| REAL of string option | STRING of string
 	| BEGINQ | ENDQ of string | OBJL of string | AQID of string
@@ -149,9 +149,9 @@ type arg = unit
 
 %value  QUAL_ID         (["bogus"])
 %value  QUAL_STAR       (["bogus"])
-%value  DECPOSINTEGER   (SOME 0)
-%value  DECNEGINTEGER   (SOME 0)
-%value  HEXINTEGER      (SOME 0)
+%value  DECPOSINTEGER   (SOME (IntInf.fromInt 0))
+%value  DECNEGINTEGER   (SOME (IntInf.fromInt 0))
+%value  HEXINTEGER      (SOME (IntInf.fromInt 0))
 %value  WORD		(SOME 0w0)
 %value  REAL            (SOME "0.0")
 %value  STRING          ("")
@@ -352,8 +352,8 @@ type arg = unit
                    strid and all the rest). *)
 
 (*Integers & chars*)
-        | DecPosInteger                 of Int32.int
-        | Integer                       of Int32.int
+        | DecPosInteger                 of IntInf.int
+        | Integer                       of IntInf.int
         | Char                          of int
 
 %left   SHARING         (* L/R is arbitrary. *)
@@ -439,10 +439,10 @@ DIGIT_opt:
 DecPosInteger: 
 	  DECPOSINTEGER ( raise_lexical_error_if_none
 			    DECPOSINTEGERleft DECPOSINTEGER )
-        | DIGIT         ( Int32.fromInt DIGIT )
+        | DIGIT         ( IntInf.fromInt DIGIT )
 
 Label:    Ident         ( mk_IdentLab Ident )
-        | DecPosInteger ( mk_IntegerLab (Int32.toInt DecPosInteger) )
+        | DecPosInteger ( mk_IntegerLab (IntInf.toInt DecPosInteger) )
 
 (*KILL 07/08/1996 09:51. tho.:
 Ident_seq1:
@@ -1454,7 +1454,7 @@ Integer:  DECPOSINTEGER ( raise_lexical_error_if_none
 			    DECNEGINTEGERleft DECNEGINTEGER )
 	| HEXINTEGER    ( raise_lexical_error_if_none
 			    HEXINTEGERleft HEXINTEGER )
-        | DIGIT         ( Int32.fromInt DIGIT )
+        | DIGIT         ( IntInf.fromInt DIGIT )
 
 Char:     HASH STRING   ( case explode STRING
                             of [c] => ord c

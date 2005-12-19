@@ -868,7 +868,7 @@ Report: Opt:
     val counter = ref 0
     fun next () = (counter := 1 + !counter ; !counter)
     fun string_from_con (Con {longid, ...}) = Ident.pr_longid longid
-      | string_from_con (Scon (SCon.INTEGER i, _)) = Int32.toString i
+      | string_from_con (Scon (SCon.INTEGER i, _)) = IntInf.toString i
       | string_from_con (Scon (SCon.STRING s, _)) = "a_string"
       | string_from_con (Scon (SCon.REAL r, _)) = "a_real"
       | string_from_con (Scon (SCon.CHAR c, _)) = "a_char"
@@ -1263,9 +1263,10 @@ in
 				of CONStype(nil, tn) => tn
 				 | _ => die "precision.not CONStype"
 		     open TyName
-		 in if eq (tn, tyName_INT31) orelse eq (tn, tyName_WORD31) then 31
+		 in if eq (tn, tyName_INTINF) then ~1
+		    else if eq (tn, tyName_INT31) orelse eq (tn, tyName_WORD31) then 31
 		    else if eq (tn, tyName_INT32) orelse eq (tn, tyName_WORD32) then 32
-			 else die ("precision. tn = " ^ pr_TyName tn ^ " not expected")
+		    else die ("precision. tn = " ^ pr_TyName tn ^ " not expected")
 		 end
 	     in
 	       (case con of
@@ -1281,7 +1282,9 @@ in
 		      | _ => die "compile_node: fn Con =>")
 		| Scon (SCon.INTEGER _, tau) => switch
 		    (fn sw => SWITCH_I{switch=sw,precision=precision tau}, 
-		     fn (Scon (SCon.INTEGER i,_),env) => (i,env)
+		     fn (Scon (SCon.INTEGER i,_),env) => 
+		          ((Int32.fromLarge(IntInf.toLarge i),env)
+			   handle _ => die "IntInf in patterns not implemented")
 		      | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
 		| Scon (SCon.CHAR _, tau) => switch
 		    (fn sw => SWITCH_W {switch=sw, precision=precision tau}, 
@@ -1642,7 +1645,7 @@ end; (*match compiler local*)
 
     local 
 	
-      fun resolve err_str i args {int31, int32, word8, word31, word32, real, string} =
+      fun resolve err_str i args {int31, int32, intinf, word8, word31, word32, real, string} =
 	let fun no s (SOME e) = e args
 	      | no s NONE = die (err_str ^ ": " ^ s)
 	   (* int resolved to int31 or int32 and word resolved to 
@@ -1650,6 +1653,7 @@ end; (*match compiler local*)
 	in case NoSome err_str (ElabInfo.to_OverloadingInfo i) 
 	     of OverloadingInfo.RESOLVED_INT31 => no "int31" int31
 	      | OverloadingInfo.RESOLVED_INT32 => no "int32" int32
+	      | OverloadingInfo.RESOLVED_INTINF => no "intinf" intinf
 	      | OverloadingInfo.RESOLVED_REAL => no "real" real
 	      | OverloadingInfo.RESOLVED_WORD8 => no "word8" word8
 	      | OverloadingInfo.RESOLVED_WORD31 => no "word31" word31
@@ -1659,24 +1663,24 @@ end; (*match compiler local*)
 	      | _ => die (err_str ^ ": unresolved")
 	end
 
-      fun int_or_real i args {int31, int32, real} =
+      fun int_or_real i args {int31, int32, intinf, real} =
 	resolve "int_or_word" i args 
-	{int31=SOME int31, int32=SOME int32, word8=NONE, word31=NONE, 
+	{int31=SOME int31, int32=SOME int32, intinf=SOME intinf, word8=NONE, word31=NONE, 
 	 word32=NONE, real=SOME real, string=NONE}	      
 
-      fun int_or_word i args {int31, int32, word8, word31, word32} =
+      fun int_or_word i args {int31, int32, intinf, word8, word31, word32} =
 	resolve "int_or_word" i args
-	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
+	{int31=SOME int31, int32=SOME int32, intinf=SOME intinf, word8=SOME word8, word31=SOME word31, 
 	 word32=SOME word32, real=NONE, string=NONE}	
 
-      fun int_or_word_or_real i args {int31, int32, word8, word31, word32, real} =
+      fun int_or_word_or_real i args {int31, int32, intinf, word8, word31, word32, real} =
 	resolve "int_or_word_or_real" i args
-	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
+	{int31=SOME int31, int32=SOME int32, intinf=SOME intinf, word8=SOME word8, word31=SOME word31, 
 	 word32=SOME word32, real=SOME real, string=NONE}
 	
-      fun string_or_int_or_word_or_real i args {string, int31, int32, word8, word31, word32, real} =
+      fun string_or_int_or_word_or_real i args {string, int31, int32, intinf, word8, word31, word32, real} =
 	resolve "string_or_int_or_word_or_real" i args 
-	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
+	{int31=SOME int31, int32=SOME int32, intinf=SOME intinf, word8=SOME word8, word31=SOME word31, 
 	 word32=SOME word32, real=SOME real, string=SOME string}
 	
       fun binary_ccall t n args = 
@@ -1794,43 +1798,66 @@ end; (*match compiler local*)
       val lesseq_real = cmp_ccall realType "__lesseq_real"
       val greatereq_real = cmp_ccall realType "__greatereq_real"
 
-      fun unoverload i p args = 
+      (* IntInf operations *)
+      fun intInfOp opr e args =
+	  let val intInfLongId = Ident.mk_LongId ["IntInfRep",opr]
+	      val arg = (case args of
+			     [a] => a
+			   | args => PRIM(RECORDprim,args))
+	  in case CE.lookup_longid e intInfLongId of
+	      SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=nil},arg)
+	    | _ => die ("intinfOp: " ^ opr)
+	  end
+
+      val plus_intinf = intInfOp "+"
+      val minus_intinf = intInfOp "-"
+      val mul_intinf = intInfOp "*"
+      val div_intinf = intInfOp "div"
+      val mod_intinf = intInfOp "mod"
+      val abs_intinf = intInfOp "abs"
+      val neg_intinf = intInfOp "~"
+      val less_intinf = intInfOp "<"
+      val greater_intinf = intInfOp ">"
+      val lesseq_intinf = intInfOp "<="
+      val greatereq_intinf = intInfOp ">="
+
+      fun unoverload env i p args = 
 	case p
-	  of CE.ABS => int_or_real i args {int31=abs_int31, int32=abs_int32, real=abs_real} 
-	   | CE.NEG => int_or_real i args {int31=neg_int31, int32=neg_int32, real=neg_real}
-	   | CE.PLUS => int_or_word_or_real i args {int31=plus_int31, int32=plus_int32,
+	  of CE.ABS => int_or_real i args {int31=abs_int31, int32=abs_int32, intinf=abs_intinf env, real=abs_real} 
+	   | CE.NEG => int_or_real i args {int31=neg_int31, int32=neg_int32, intinf=neg_intinf env, real=neg_real}
+	   | CE.PLUS => int_or_word_or_real i args {int31=plus_int31, int32=plus_int32, intinf=plus_intinf env,
 						    word8=plus_word8, word31=plus_word31, 
 						    word32=plus_word32, real=plus_real}
-	   | CE.MINUS => int_or_word_or_real i args {int31=minus_int31, int32=minus_int32,
+	   | CE.MINUS => int_or_word_or_real i args {int31=minus_int31, int32=minus_int32, intinf=minus_intinf env,
 						     word8=minus_word8, word31=minus_word31,
 						     word32=minus_word32, real=minus_real}
-	   | CE.MUL => int_or_word_or_real i args {int31=mul_int31, int32=mul_int32,
+	   | CE.MUL => int_or_word_or_real i args {int31=mul_int31, int32=mul_int32, intinf=mul_intinf env,
 						   word8=mul_word8, word31=mul_word31,
 						   word32=mul_word32, real=mul_real}
-	   | CE.DIV => int_or_word i args {int31=div_int31, int32=div_int32, 
+	   | CE.DIV => int_or_word i args {int31=div_int31, int32=div_int32, intinf=div_intinf env, 
 					   word8=div_word8, word31=div_word31, word32=div_word32}
-	   | CE.MOD => int_or_word i args {int31=mod_int31, int32=mod_int32, 
+	   | CE.MOD => int_or_word i args {int31=mod_int31, int32=mod_int32, intinf=mod_intinf env, 
 					   word8=mod_word8, word31=mod_word31, word32=mod_word32}
 	   | CE.LESS => string_or_int_or_word_or_real i args 
-	    {string=less_string, int31=less_int31, int32=less_int32,
+	    {string=less_string, int31=less_int31, int32=less_int32, intinf=less_intinf env,
 	     word8=less_word8, word31=less_word31, word32=less_word32, real=less_real}
 	   | CE.GREATER => string_or_int_or_word_or_real i args
-	    {string=greater_string, int31=greater_int31, int32=greater_int32,
+	    {string=greater_string, int31=greater_int31, int32=greater_int32, intinf=greater_intinf env,
 	     word8=greater_word8, word31=greater_word31, word32=greater_word32, real=greater_real}
 	   | CE.LESSEQ => string_or_int_or_word_or_real i args
-	    {string=lesseq_string, int31=lesseq_int31, int32=lesseq_int32,
+	    {string=lesseq_string, int31=lesseq_int31, int32=lesseq_int32, intinf=lesseq_intinf env,
 	     word8=lesseq_word8, word31=lesseq_word31, word32=lesseq_word32, real=lesseq_real}
 	   | CE.GREATEREQ => string_or_int_or_word_or_real i args
-	    {string=greatereq_string, int31=greatereq_int31, int32=greatereq_int32,
+	    {string=greatereq_string, int31=greatereq_int31, int32=greatereq_int32, intinf=greatereq_intinf env,
 	     word8=greatereq_word8, word31=greatereq_word31, word32=greatereq_word32, real=greatereq_real}
 	   | _ => die "unoverload"
     in
-      fun overloaded_prim info result (*e.g., CE.ABS*)
+      fun overloaded_prim env info result (*e.g., CE.ABS*)
 	compilerAtexp compilerExp (arg: DecGrammar.atexp)
 	takes_one_argument exn_args =
 	    if takes_one_argument then
 	      let val arg' = compilerAtexp arg
-	      in unoverload info result [arg']
+	      in unoverload env info result [arg']
 	      end
 	    else
 	      (case arg of 
@@ -1839,36 +1866,38 @@ end; (*match compiler local*)
 					 SOME(EXPROW(_,_,exp2,NONE))))) =>
 		 let val exp1' = compilerExp exp1
 		     val exp2' = compilerExp exp2
-		 in unoverload info result (exp1' :: exp2' :: exn_args)
+		 in unoverload env info result (exp1' :: exp2' :: exn_args)
 		 end
 	       | _ => die "overloaded_prim")
 
-      fun overloaded_prim_fn info result (*e.g., CE.ABS*)
+      fun overloaded_prim_fn env info result (*e.g., CE.ABS*)
 	takes_one_argument exn_args =
 	    let 
 	      val ty = int_or_word_or_real info () 
 		{int31=fn() => int31Type, int32=fn() => int32Type,
+		 intinf=fn() => intinfType,
 		 word8=wordDefaultType, word31=fn() => word31Type,
 		 word32=fn() => word32Type, real=fn() => realType}
 	      val lvar1 = Lvars.newLvar ()
 	    in
 	      if takes_one_argument then
 		FN {pat=[(lvar1, ty)],
-		    body=unoverload info result [VAR{lvar=lvar1, instances=[]}]}
+		    body=unoverload env info result [VAR{lvar=lvar1, instances=[]}]}
 	      else (*takes two arguments*)
 		FN {pat=[(lvar1, RECORDtype [ty, ty])],
-		    body=unoverload info result
+		    body=unoverload env info result
 		    ([PRIM (SELECTprim 0,
 			    [VAR {lvar=lvar1, instances=[]}]),
 		      PRIM (SELECTprim 1,
 			    [VAR {lvar=lvar1, instances=[]}])]
 		     @ exn_args)}
 	    end
-      fun overloaded_prim_fn' info result = (*e.g., CE.LESS, ... *)
+      fun overloaded_prim_fn' env info result = (*e.g., CE.LESS, ... *)
 	    let val ty = CONStype ([], string_or_int_or_word_or_real info () 
 				   {string=fn()=>TyName.tyName_STRING, 
 				    int31=fn()=>TyName.tyName_INT31,
 				    int32=fn()=>TyName.tyName_INT32,
+				    intinf=fn()=>TyName.tyName_INTINF,
 				    word8=TyName.tyName_WordDefault,
 				    word31=fn()=>TyName.tyName_WORD31,
 				    word32=fn()=>TyName.tyName_WORD32,
@@ -1876,7 +1905,7 @@ end; (*match compiler local*)
 	        val lvar1 = Lvars.newLvar ()
 	    in (*takes two arguments*)
 	      FN {pat=[(lvar1, RECORDtype [ty, ty])],
-		  body=unoverload info result
+		  body=unoverload env info result
 		  [PRIM (SELECTprim 0,
 			 [VAR {lvar=lvar1, instances=[]}]),
 		   PRIM (SELECTprim 1,
@@ -1900,6 +1929,40 @@ end; (*match compiler local*)
     (*               Syntax directed compilation                               *)
     (* ----------------------------------------------------------------------- *)
 
+    fun digits (x:IntInf.int) : Int32.int list = 
+	if x = IntInf.fromInt 0 then nil
+	else
+	let val maxdigit = IntInf.fromLarge (Int32.toLarge 1073741824)  (* 2^30 *)
+	    val rest = IntInf.div(x,maxdigit)
+	    val d = IntInf.mod(x,maxdigit)
+	in Int32.fromLarge (IntInf.toLarge d) :: digits rest
+	end
+
+    fun buildIntInf (x : IntInf.int) =
+	let val a = IntInf.abs x
+	    val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
+		foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type]},
+					[PRIM(RECORDprim,[INTEGER(d,int31Type),
+							  C])]))
+		(PRIM(CONprim{con=Con.con_NIL,instances=[int31Type]},
+		      nil))
+		(digits a)
+	      
+	    val negativeCon =
+		if IntInf.<(x,IntInf.fromInt 0) then Con.con_TRUE
+		else Con.con_FALSE
+	    val negativeExp = 
+		PRIM(CONprim{con=negativeCon,
+			     instances=nil},nil)
+	in
+	    PRIM(CONprim{con=Con.con_INTINF,instances=nil},
+		 [PRIM(RECORDprim,[digitsExp,negativeExp])])
+	end
+
+    fun typeIsIntInf (CONStype(nil,tn)) =
+	TyName.eq(tn,TyName.tyName_INTINF)
+      | typeIsIntInf _ = false
+
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
 	     SCONatexp(info, SCon.INTEGER x) => 
@@ -1910,7 +1973,8 @@ end; (*match compiler local*)
 			    | _ => die "compileAtexp.SCON.INT.unresolved"
 *)
 		 val t = typeScon info
-	       in INTEGER (x, t)
+	       in if typeIsIntInf t then buildIntInf x
+		  else INTEGER (Int32.fromLarge (IntInf.toLarge x), t)
 	       end
 	   | SCONatexp(_, SCon.STRING x) => STRING x
 	   | SCONatexp(_, SCon.REAL x) => REAL x
@@ -1930,7 +1994,7 @@ end; (*match compiler local*)
 		 in WORD (x, t)
 		 end
 	   | IDENTatexp(info, OP_OPT(longid, _)) =>
-	       compile_ident info longid (lookupLongid env longid (NORMAL info))
+	       compile_ident env info longid (lookupLongid env longid (NORMAL info))
 
 	   (* records: the fields must be evaluated in their textual order,
 	    but the resulting record object must have the fields in a
@@ -1978,7 +2042,7 @@ end; (*match compiler local*)
 
 	   | PARatexp(_, exp) => compileExp env exp)
 
-    and compile_ident info longid result =
+    and compile_ident env info longid result =
           (case result of
 	     CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*) 
 	       (let val instances =
@@ -1993,19 +2057,19 @@ end; (*match compiler local*)
 		end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = "
 					^ Ident.pr_longid longid ^ "\n");
 		                 print " Reraising...\n"; raise X))
-	   | CE.ABS =>       overloaded_prim_fn info CE.ABS       true  []
-	   | CE.NEG =>       overloaded_prim_fn info CE.NEG       true  []
-	   | CE.PLUS =>      overloaded_prim_fn info CE.PLUS      false []
-	   | CE.MINUS =>     overloaded_prim_fn info CE.MINUS     false []
-	   | CE.MUL =>       overloaded_prim_fn info CE.MUL       false []
-	   | CE.DIV =>       overloaded_prim_fn info CE.DIV       false
+	   | CE.ABS =>       overloaded_prim_fn env info CE.ABS       true  []
+	   | CE.NEG =>       overloaded_prim_fn env info CE.NEG       true  []
+	   | CE.PLUS =>      overloaded_prim_fn env info CE.PLUS      false []
+	   | CE.MINUS =>     overloaded_prim_fn env info CE.MINUS     false []
+	   | CE.MUL =>       overloaded_prim_fn env info CE.MUL       false []
+	   | CE.DIV =>       overloaded_prim_fn env info CE.DIV       false
 		  [PRIM (EXCONprim Excon.ex_DIV, [])]
-	   | CE.MOD =>       overloaded_prim_fn info CE.MOD       false
+	   | CE.MOD =>       overloaded_prim_fn env info CE.MOD       false
 		  [PRIM (EXCONprim Excon.ex_DIV, [])]
-	   | CE.LESS =>      overloaded_prim_fn' info CE.LESS
-	   | CE.GREATER =>   overloaded_prim_fn' info CE.GREATER
-	   | CE.LESSEQ =>    overloaded_prim_fn' info CE.LESSEQ
-	   | CE.GREATEREQ => overloaded_prim_fn' info CE.GREATEREQ
+	   | CE.LESS =>      overloaded_prim_fn' env info CE.LESS
+	   | CE.GREATER =>   overloaded_prim_fn' env info CE.GREATER
+	   | CE.LESSEQ =>    overloaded_prim_fn' env info CE.LESSEQ
+	   | CE.GREATEREQ => overloaded_prim_fn' env info CE.GREATEREQ
 	   | CE.CON(con,tyvars,tau0,il) => (*See COMPILER_ENV*)
 	       let
 		 val instances = 
@@ -2174,19 +2238,19 @@ end; (*match compiler local*)
 		in PRIM(FORCE_RESET_REGIONSprim{instance = tau'}, [arg'])
 		end
 
-	    | CE.ABS =>       overloaded_prim info CE.ABS       (compileAtexp env) (compileExp env) arg true  []
-	    | CE.NEG =>       overloaded_prim info CE.NEG       (compileAtexp env) (compileExp env) arg true  []
-	    | CE.PLUS =>      overloaded_prim info CE.PLUS      (compileAtexp env) (compileExp env) arg false []
-	    | CE.MINUS =>     overloaded_prim info CE.MINUS     (compileAtexp env) (compileExp env) arg false []
-	    | CE.MUL =>       overloaded_prim info CE.MUL       (compileAtexp env) (compileExp env) arg false []
-	    | CE.DIV =>       overloaded_prim info CE.DIV       (compileAtexp env) (compileExp env) arg false
+	    | CE.ABS =>       overloaded_prim env info CE.ABS       (compileAtexp env) (compileExp env) arg true  []
+	    | CE.NEG =>       overloaded_prim env info CE.NEG       (compileAtexp env) (compileExp env) arg true  []
+	    | CE.PLUS =>      overloaded_prim env info CE.PLUS      (compileAtexp env) (compileExp env) arg false []
+	    | CE.MINUS =>     overloaded_prim env info CE.MINUS     (compileAtexp env) (compileExp env) arg false []
+	    | CE.MUL =>       overloaded_prim env info CE.MUL       (compileAtexp env) (compileExp env) arg false []
+	    | CE.DIV =>       overloaded_prim env info CE.DIV       (compileAtexp env) (compileExp env) arg false
 		[PRIM (EXCONprim Excon.ex_DIV, [])]
-	    | CE.MOD =>       overloaded_prim info CE.MOD       (compileAtexp env) (compileExp env) arg false 
+	    | CE.MOD =>       overloaded_prim env info CE.MOD       (compileAtexp env) (compileExp env) arg false 
 		[PRIM (EXCONprim Excon.ex_DIV, [])]
-	    | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false []
-	    | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false []
-	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
-	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
+	    | CE.LESS =>      overloaded_prim env info CE.LESS      (compileAtexp env) (compileExp env) arg false []
+	    | CE.GREATER =>   overloaded_prim env info CE.GREATER   (compileAtexp env) (compileExp env) arg false []
+	    | CE.LESSEQ =>    overloaded_prim env info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
+	    | CE.GREATEREQ => overloaded_prim env info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
 	    | CE.PRIM => compile_application_of_prim env info arg
 	    | CE.EXPORT => 
 		let val (name,args) = decompose_prim_call arg

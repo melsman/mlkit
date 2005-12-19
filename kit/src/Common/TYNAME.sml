@@ -61,6 +61,7 @@ signature TYNAME =
     val tyName_BOOL    : TyName
     val tyName_INT31   : TyName
     val tyName_INT32   : TyName
+    val tyName_INTINF  : TyName
     val tyName_IntDefault : unit -> TyName   (* int31 or int32 dependent on tagging *)
     val tyName_WORD8   : TyName
     val tyName_WORD31   : TyName

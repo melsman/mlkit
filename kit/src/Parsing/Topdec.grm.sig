@@ -13,9 +13,9 @@ val STRING: (string) *  'a * 'a -> (svalue,'a) token
 val REAL: (string option) *  'a * 'a -> (svalue,'a) token
 val WORD: (Word32.word option) *  'a * 'a -> (svalue,'a) token
 val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
-val HEXINTEGER: (Int32.int option) *  'a * 'a -> (svalue,'a) token
-val DECNEGINTEGER: (Int32.int option) *  'a * 'a -> (svalue,'a) token
-val DECPOSINTEGER: (Int32.int option) *  'a * 'a -> (svalue,'a) token
+val HEXINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
+val DECNEGINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
+val DECPOSINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
 val STAR:  'a * 'a -> (svalue,'a) token
 val EQUALS:  'a * 'a -> (svalue,'a) token
 val HASH:  'a * 'a -> (svalue,'a) token

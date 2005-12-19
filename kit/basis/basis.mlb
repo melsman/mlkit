@@ -55,8 +55,13 @@ local
        in bas BOOL.sml Bool.sml end
        end
 
+    basis IntInfRep =
+       let open General
+       in bas INT_INF_REP.sml IntInfRep.sml end
+       end
+
     basis Word =
-       let open General String 
+       let open General String IntInfRep
            basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
            basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
@@ -70,7 +75,7 @@ local
        end
  
     basis Int =
-       let open General String
+       let open General String IntInfRep
        in bas INTEGER.sml Int.sml Int32.sml Int31.sml end
        end
 
@@ -104,7 +109,7 @@ local
 
     basis System =
        let open General String Int
-       in let basis Time = let open Int Real in bas TIME.sml Time.sml end end
+       in let basis Time = let open Int Real IntInf in bas TIME.sml Time.sml end end
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
               basis FileSys = let open List Time Random Path Byte ArrayVector
@@ -114,8 +119,8 @@ local
                                 bas OS_PROCESS.sml local open List in Process.sml end end end
               basis Os = let open FileSys Path Process Word in bas OS_IO.sml OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
-              basis Date = let open Int Real Time in bas DATE.sml Date.sml end end
-              basis Timer = let open Int Time in bas TIMER.sml Timer.sml end end
+              basis Date = let open Int Real Time IntInf in bas DATE.sml Date.sml end end
+              basis Timer = let open Int Time IntInf in bas TIMER.sml Timer.sml end end
           in bas open Time Random Path FileSys 
                       Process Os CommandLine Date Timer
              end
@@ -166,7 +171,7 @@ local
        end
 
      basis Posix = 
-       let open General Word System List Int Real PrimIO Byte ArrayVector 
+       let open General Word System List Int Real PrimIO Byte ArrayVector IntInf
        in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml 
               POSIX_SYS_DB.sml POSIX.sml Posix.sml 
@@ -201,5 +206,6 @@ local
        end 
 
 in
-  open General List ArrayVector String Bool Word Byte Int Real IntInf Io System Posix IO Sml90
+  open General List ArrayVector String Bool Word Byte 
+       Int Real IntInf IntInfRep Io System Posix IO Sml90
 end

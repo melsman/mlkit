@@ -10,9 +10,9 @@ signature WORD =
     val toLargeWordX : word -> word32
     val fromLarge     : word32 -> word
     val fromLargeWord : word32 -> word
-    val toLargeInt  : word -> int32
-    val toLargeIntX : word -> int32
-    val fromLargeInt : int32 -> word
+    val toLargeInt  : word -> intinf
+    val toLargeIntX : word -> intinf
+    val fromLargeInt : intinf -> word
     val toInt  : word -> int
     val toIntX : word -> int
     val fromInt : int -> word

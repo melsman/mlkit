@@ -55,6 +55,7 @@ structure LambdaExp: LAMBDA_EXP =
 
     val int31Type = CONStype([], TyName.tyName_INT31)
     val int32Type = CONStype([], TyName.tyName_INT32)
+    val intinfType = CONStype([], TyName.tyName_INTINF)
     fun intDefaultType() = CONStype([], TyName.tyName_IntDefault())
     val word31Type = CONStype([], TyName.tyName_WORD31)
     val word32Type = CONStype([], TyName.tyName_WORD32)

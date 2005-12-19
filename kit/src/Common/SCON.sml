@@ -5,7 +5,7 @@
 
 signature SCON =    
 sig 
-  datatype scon = INTEGER of Int32.int
+  datatype scon = INTEGER of IntInf.int
   		| WORD of Word32.word
   		| STRING of string
   		| CHAR of int

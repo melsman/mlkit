@@ -444,11 +444,20 @@ structure EliminateEq: ELIMINATE_EQ =
 		   (Con.con_NIL, NONE)]
 	val dbss = [[([tv], tn_list,cbs)]]
 	val (f, e) = gen_datatype_eq empty dbss
-	val (f', e') = gen_datatype_for_table ()
-        val (f'', e'') = gen_datatype_for_quotation ()
+	val (f1, e1) = gen_datatype_for_table ()
+        val (f2, e2) = gen_datatype_for_quotation ()
+        val (f3, e3) = gen_datatype_for_intinf e (* list-env *)
       in 
-	(f o f' o f'', plus(plus(e,e'),e''))
+	(f o f1 o f2 o f3, plus(plus(plus(e,e1),e2),e3))
       end
+    and gen_datatype_for_intinf e =
+	let val int31 = CONStype([],TyName.tyName_INT31)
+	    val int31list = CONStype([int31],TyName.tyName_LIST)
+	    val bool = CONStype([],TyName.tyName_BOOL)
+	    val cbs = [(Con.con_INTINF, SOME (RECORDtype [int31list,bool]))]
+	    val dbss = [[([],TyName.tyName_INTINF,cbs)]]
+	in gen_datatype_eq e dbss
+	end
     and gen_datatype_for_quotation () =
       if quotation() then
         let

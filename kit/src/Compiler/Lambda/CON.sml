@@ -32,6 +32,8 @@ signature CON =
     val con_QUOTE : con
     val con_ANTIQUOTE : con
 
+    val con_INTINF : con
+
     val consPredefined : con list
 
     val pu : con Pickle.pu

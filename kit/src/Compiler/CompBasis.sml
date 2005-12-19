@@ -142,10 +142,10 @@ structure CompBasis: COMP_BASIS =
 	  val excons = Excon.ex_DIV :: 
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::
-	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
+	      Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cons   (* for elim eq *)
 	  val cons = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cons
                      else cons
-	  val tynames = TyName.tyName_LIST :: 
+	  val tynames = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
 	      TyName.tyName_VECTOR :: tynames     (* for elim eq *) 
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames

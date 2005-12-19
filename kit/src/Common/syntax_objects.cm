@@ -1,5 +1,7 @@
 group
+
 is
+  smlnj-lib.cm
   ../Pickle/pickle.cm
   tools.cm
   STRID.sml 

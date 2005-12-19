@@ -1,5 +1,6 @@
 group
 is
+  smlnj-lib.cm
   ../Edlib/edlib.cm
   ../Pickle/pickle.cm
   ../Common/tools.cm

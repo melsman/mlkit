@@ -23,24 +23,26 @@ structure Time : TIME =
     fun now () = getrealtime ();
 
     fun fromSeconds s = 
-	if s < 0 then raise Time else {sec=LargeInt.toInt s + timebase, usec=0};
+	if IntInf.<(s, 0) then raise Time else {sec=LargeInt.toInt s + timebase, usec=0};
 
     fun fromMilliseconds ms = 
-	if ms < 0 then raise Time else 
+	if IntInf.<(ms, 0) then raise Time else 
 	    {sec=LargeInt.toInt ms div 1000+timebase, usec=LargeInt.toInt ms mod 1000 * 1000}
 
     fun fromMicroseconds us = 
-	if us < 0 then raise Time else 
+	if IntInf.<(us, 0) then raise Time else 
 	    {sec=LargeInt.toInt us div 1000000+timebase, usec=LargeInt.toInt us mod 1000000}
 
     fun toSeconds {sec, usec} = 
-	LargeInt.fromInt sec - LargeInt.fromInt timebase
+	IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase)
 
     fun toMilliseconds {sec, usec} = 
-	(LargeInt.fromInt sec - LargeInt.fromInt timebase) * 1000 + LargeInt.fromInt usec div 1000
+	IntInf.+(IntInf.*(IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase), 1000), 
+		 IntInf.div(LargeInt.fromInt usec, 1000))
 
     fun toMicroseconds {sec, usec} = 
-	(LargeInt.fromInt sec - LargeInt.fromInt timebase) * 1000000 + LargeInt.fromInt usec
+	IntInf.+(IntInf.*(IntInf.-(LargeInt.fromInt sec, LargeInt.fromInt timebase), 1000000),
+		 LargeInt.fromInt usec)
 
     fun fromReal r =		       
 	let 

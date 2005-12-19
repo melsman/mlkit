@@ -557,7 +557,7 @@ end;
 	tokens left unparsed, a queue, and an action option.
 *)
 
-signature FIFO = 
+signature MYFIFO = 
   sig type 'a queue
       val empty : 'a queue
       exception Empty
@@ -589,7 +589,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 
       val println = fn s => TextIO.output(TextIO.stdOut, s ^ "\n")
 
-      structure (*abstraction*) Fifo : FIFO =
+      structure (*abstraction*) MyFifo : MYFIFO =
         struct
 	  type 'a queue = ('a list * 'a list)
 	  val empty = (nil,nil)
@@ -607,11 +607,11 @@ functor ParserGen(structure LrTable : LR_TABLE
       type ('a,'b) distanceParse =
 		 ('a,'b) lexpair *
 		 ('a,'b) stack * 
-		 (('a,'b) stack * ('a,'b) lexpair) Fifo.queue *
+		 (('a,'b) stack * ('a,'b) lexpair) MyFifo.queue *
 		 int ->
 		   ('a,'b) lexpair *
 		   ('a,'b) stack * 
-		   (('a,'b) stack * ('a,'b) lexpair) Fifo.queue *
+		   (('a,'b) stack * ('a,'b) lexpair) MyFifo.queue *
 		   int *
 		   action option
 
@@ -680,7 +680,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 		 of SHIFT s =>
 		  let val newStack = (s,value) :: stack
 		      val newLexPair = Stream.get lexer
-		      val (_,newQueue) =Fifo.get(Fifo.put((newStack,newLexPair),
+		      val (_,newQueue) =MyFifo.get(MyFifo.put((newStack,newLexPair),
 							    queue))
 		  in parseStep(newLexPair,(s,value)::stack,newQueue)
 		  end
@@ -730,7 +730,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 		  let val newStack = (s,value) :: stack
 		      val newLexPair = Stream.get lexer
 		  in parseStep(newLexPair,(s,value)::stack,
-			       Fifo.put((newStack,newLexPair),queue),distance-1)
+			       MyFifo.put((newStack,newLexPair),queue),distance-1)
 		  end
 		 | REDUCE i =>
 		    (case saction(i,leftPos,stack,arg)
@@ -767,9 +767,9 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	(* pull all the state * lexv elements from the queue *)
 
 	val stateList = 
-	   let fun f q = let val (elem,newQueue) = Fifo.get q
+	   let fun f q = let val (elem,newQueue) = MyFifo.get q
 			 in elem :: (f newQueue)
-			 end handle Fifo.Empty => nil
+			 end handle MyFifo.Empty => nil
 	   in f queue
 	   end
 
@@ -819,7 +819,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 
 	fun parse (lexPair,stack,queuePos : int) =
 	    let val (_,_,_,distance,action) =
-		  distanceParse(lexPair,stack,Fifo.empty,queuePos+maxAdvance+1)
+		  distanceParse(lexPair,stack,MyFifo.empty,queuePos+maxAdvance+1)
 	    in maxAdvance - distance - 1
 	    end
 
@@ -994,8 +994,8 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 			 | INSERT => (newLexV,Stream.cons lexPair)
 
 		    val restQueue = 
-		     Fifo.put((stack,newLexPair),
-			      foldl Fifo.put Fifo.empty queueFront)
+		     MyFifo.put((stack,newLexPair),
+			      foldl MyFifo.put MyFifo.empty queueFront)
 
 	 	   val (lexPair,stack,queue,_,_) =
 			distanceParse(newLexPair,stack,restQueue,pos)
@@ -1016,7 +1016,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	    val lexPair = Stream.get lexer
 	    val (TOKEN (_,(_,leftPos,_)),_) = lexPair
 	    val startStack = [(initialState table,(void,leftPos,leftPos))]
-	    val startQueue = Fifo.put((startStack,lexPair),Fifo.empty)
+	    val startQueue = MyFifo.put((startStack,lexPair),MyFifo.empty)
 	    val distanceParse = distanceParse(table,showTerminal,saction,arg)
 	    val fixError = mkFixError(ec,distanceParse,minAdvance,maxAdvance)
 	    val ssParse = ssParse(table,showTerminal,saction,fixError,arg)

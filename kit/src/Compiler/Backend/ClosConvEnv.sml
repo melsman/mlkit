@@ -141,6 +141,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
        (Con.con_TRUE, ENUM 1),          (* second nullary constructor *)
        (Con.con_NIL, UB_NULLARY 0),     (* first nullary constructor *)
        (Con.con_CONS, UB_UNARY 0),      (* first unary constructor *)
+       (Con.con_INTINF, UB_UNARY 0),    (* first unary constructor *)
        (Con.con_QUOTE, B_UNARY 0),      (* first unary constructor *)
        (Con.con_ANTIQUOTE, B_UNARY 1)]  (* second unary constructor *)
     val initialVarEnv : VarEnv = LvarFinMap.empty

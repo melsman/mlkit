@@ -15,6 +15,7 @@ signature TYCON =
     val tycon_INT    : tycon
     val tycon_INT31  : tycon
     val tycon_INT32  : tycon
+    val tycon_INTINF : tycon
     val tycon_WORD   : tycon
     val tycon_WORD8  : tycon
     val tycon_WORD31  : tycon

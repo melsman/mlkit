@@ -17,7 +17,8 @@ structure Word8 : WORD =
     fun toLargeWord (w: word8) : word32 = prim ("__word_to_word32", w8_w w)
     val toLarge = toLargeWord
 
-    fun toLargeInt (w: word8) : int32 = prim ("__word32_to_int32", toLargeWord w)
+    fun toLargeInt (w: word8) : intinf = 
+	IntInfRep.fromWord8 w
       
     fun norm (w: word) : word = andb_w (0w255, w)
     fun fromLargeWord (w: word32) : word8 = w_w8(norm(prim ("__word32_to_word", w)))
@@ -45,10 +46,10 @@ structure Word8 : WORD =
     fun toIntX w = if w < 0w128 then toInt w   (* msbit = 0 *) 
 		   else toInt w - 256          (* msbit = 1 *)
 	  
-    fun toLargeIntX (w : word8) : int32 = 
-      Word.toLargeInt (w8_w w)
+    fun toLargeIntX (w : word8) : intinf = 
+	IntInfRep.fromWord8X w
 
-    fun fromLargeInt (i:int32) : word8 = 
+    fun fromLargeInt (i:intinf) : word8 = 
       w_w8 (norm (Word.fromLargeInt i))
 	
     fun toLargeWordX (w: word8) = 

@@ -50,6 +50,8 @@ structure Ident: IDENT =
     and id_QUOTE = ID "QUOTE"
     and id_ANTIQUOTE = ID "ANTIQUOTE"
 
+    and id_INTINF = ID "IntInf"
+
     (* Identifiers for predefined overloaded variables *)
     val id_ABS = ID "abs"
     val id_NEG = ID "~"

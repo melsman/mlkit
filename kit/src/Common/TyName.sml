@@ -97,6 +97,7 @@ structure TyName: TYNAME =
 	val tyName_BOOL       = predef true {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}      
 	val tyName_INT31      = predef true {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
 	val tyName_INT32      = predef false{tycon=TyCon.tycon_INT32,      arity=0, equality=true}
+	val tyName_INTINF     = predef true {tycon=TyCon.tycon_INTINF,     arity=0, equality=true}
 	val tyName_WORD8      = predef true {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
 	val tyName_WORD31     = predef true {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
 	val tyName_WORD32     = predef false{tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
