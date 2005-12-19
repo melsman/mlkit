@@ -313,6 +313,7 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
 {
   int r, n;
   String s;
+  mkTagPairML(pair);
   n = convertIntToC(n1);
   s = REG_POLY_CALL(allocStringC, sr, n+1);
   ((char *)&(s->data))[n] = 0;
@@ -327,17 +328,17 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
 }
 
 int
-sml_writeVec(int fd, char *base, int start, int end)
+sml_writeVec(int fd, char *base, int start, int length)
 {
-  int r, length = end - start;
+  int r;
   r = write(fd, base+start, length);
   return r;
 }
 
 int
-sml_readArr (int fd, char *base, int start, int end)
+sml_readArr (int fd, char *base, int start, int length)
 {
-  int r, length = end - start;
+  int r;
   r = read(fd, base+start, length);
   return r;
 }
