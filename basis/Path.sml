@@ -194,4 +194,8 @@ structure Path : OS_PATH = struct
   fun base s = #base (splitBaseExt s);
 
   end
+
+  fun fromUnixPath (p: string): string = p
+  fun toUnixPath (p: string) : string = p
+
 end; (*structure Path*)
