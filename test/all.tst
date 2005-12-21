@@ -105,6 +105,7 @@ int31.sml
 int31_2.sml                   
 int32.sml                     
 int32_2.sml                   
+intinf.sml
 list.sml                      
 listpair.sml                  
 string.sml                    
