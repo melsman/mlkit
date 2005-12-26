@@ -42,6 +42,3 @@ structure TextIO : TEXT_IO_EXTRA =
 
       fun print (s: string) = (output (stdOut, s); flushOut stdOut)
    end
-
-structure TextIOGlobal: TEXT_IO_GLOBAL = TextIO
-open TextIOGlobal
