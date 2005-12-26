@@ -1,11 +1,6 @@
-signature TEXT_IO_GLOBAL =
-   sig
-      val print: string -> unit
-   end
-
 signature TEXT_IO =
-   sig
-      include TEXT_IO_GLOBAL
+  sig
+      val print: string -> unit
          
       structure StreamIO: TEXT_STREAM_IO
 (*       where type elem = Char.char *)  (* redundant *)
@@ -52,7 +47,7 @@ signature TEXT_IO =
       val stdErr: outstream 
       val stdIn: instream
       val stdOut: outstream 
-   end
+  end
 
 signature TEXT_IO_EXTRA =
    sig
