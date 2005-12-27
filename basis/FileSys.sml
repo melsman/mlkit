@@ -67,7 +67,7 @@ structure FileSys : OS_FILE_SYS =
     fun settime_ (s : string, r : real) : unit =         prim("sml_settime", (s,r,failexn))
     fun filesize_ (s : string) : int =                   prim("sml_filesize", (s, failexn))
     fun opendir_ (s : string) : dirstruct_ =             prim("sml_opendir", (s, failexn))
-    fun readdir_ (d : dirstruct_) : string =             prim("sml_readdir", d)
+    fun readdir_ (d : dirstruct_) : string =             prim("sml_readdir", (d,failexn))
     fun rewinddir_ (d : dirstruct_) : unit =             prim("sml_rewinddir", d)
     fun closedir_ (d : dirstruct_) : unit =              prim("sml_closedir", (d, failexn))
     fun errno_ () : OS.syserror =                        prim("sml_errno", ())
@@ -201,8 +201,7 @@ structure FileSys : OS_FILE_SYS =
     fun readDir (ref NONE) =
 	raiseSysML "readDir" NONE "Directory stream is closed"
       | readDir (arg as ref (SOME dstr)) =
-	let val e' = readdir_ dstr
-      val e = if isNull e' then NONE else SOME e'
+	let val e = (SOME (readdir_ dstr)) handle Fail _ => NONE
 	in
     Option.join(Option.map(fn entry => 
 	    if entry <> Path.parentArc andalso entry <> Path.currentArc then

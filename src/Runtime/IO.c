@@ -380,7 +380,7 @@ sml_opendir(String path, int exn)           /* SML Basis */
 }
 
 String
-REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
+REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v, int exn)    /* SML Basis */
 {
   struct dirent *direntry;
   String res;
@@ -389,11 +389,12 @@ REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
   direntry = readdir(dir_ptr);
   if (direntry == NULL) 
     {
-      res = NULL;
+      raise_exn(exn);
+      return NULL;
     }
   else
     {
-      res = REG_POLY_CALL(convertStringToML, rAddr, (*direntry).d_name);
+      res = REG_POLY_CALL(convertStringToML, rAddr, direntry->d_name);
     }
   return res;
 }
