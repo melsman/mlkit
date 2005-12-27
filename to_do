@@ -24,8 +24,8 @@ mael 2005-11-29: Things needed for the next release:
         6) Update Section 9.6?? OK CV
         7) Update Section 10.1?? OK CV
         8) Appendix A: insert part of sample httpd.conf file. 
-        9) Delete Appendix B & C; wouldn't this be ok?
-       10) Appendix E appears not to be upto date.
+        9) Delete Appendix B & C; wouldn't this be ok? OK CV
+       10) Appendix E appears not to be upto date. OK CV
 
 mael 2005-10-28: Fix bug in gengc: Errors when bootstrapping
 

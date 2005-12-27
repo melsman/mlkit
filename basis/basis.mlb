@@ -181,7 +181,7 @@ local
     basis IO =
       let open General
         basis Cleaner = 
-          let open List 
+          let open List System 
           in bas io/cleaner.sig io/cleaner.sml end
           end
         basis Stream =

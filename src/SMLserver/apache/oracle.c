@@ -768,7 +768,7 @@ apsmlORAGetSession(int dbid, void *rd)/*{{{*/
     {
       unlock_thread(dbc->tlock);
       dblog1(rd, 
-           "One or more of DBTNSname, DBUserName, DBPassWord and DBSessionMaxDepth not set");
+           "One or more of TNSname, UserName, PassWord, SessionMaxDepth,  not set");
       return NULL;
     }
     dblog1(rd, "Initializing database connection");

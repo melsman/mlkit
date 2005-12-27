@@ -144,9 +144,9 @@ signature WEB_DB =
  database. Returns NONE if d cannot be converted into a 
  Date.date. Only year, month and day are considered.
 
- [toBool b] returns the Bool.bool representation of a boolean, where b
- is the bool representation used in the particular database. Returns
- NONE if b cannot be converted into a Bool.bool.
+ [toBool b] returns the Bool.bool representation of a boolean,
+ where b is the bool representation used in the particular
+ database. Returns NONE if b cannot be converted into a Bool.bool.
 
  [timestampType] returns the database type (as a string) 
  representing a timestamp (to have your application support 
@@ -166,8 +166,8 @@ signature WEB_DB =
  [fromDate d] returns a string to be used in an SQL statement 
  to insert the date d in the database.
 
- [fromBool b] returns a Bool.bool used in an SQL statement to insert a
- bool b in the database
+ [fromBool b] returns a Bool.bool used in an SQL statement to 
+ insert a bool b in the database
 
  [valueList vs] returns a string formatted to be part of an
  insert statement:

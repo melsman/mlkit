@@ -21,4 +21,6 @@ val atExit = new ()
    
 val atLoadWorld = new ()
 
+val _ = OS.Process.atExit (fn () => clean atExit)
+
 end
