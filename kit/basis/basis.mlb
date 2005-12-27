@@ -100,8 +100,8 @@ local
 *)
     basis Io =
        let open General String List 
-       in bas IO.sml (*TEXT_IO.sml TextIO.sml *)
-             (* local open Word ArrayVector Byte
+       in bas IO.sml (* TEXT_IO.sml TextIO.sml 
+              local open Word ArrayVector Byte
               in BIN_IO.sml BinIO.sml 
               end *)
           end

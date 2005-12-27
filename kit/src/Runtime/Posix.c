@@ -323,7 +323,7 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
     ((char *)&(s->data))[r] = 0;
   }
   first(pair) = (int) s;
-  second(pair) = r;
+  second(pair) = convertIntToML(r);
   return pair;
 }
 
