@@ -1081,7 +1081,7 @@ structure Web :> WEB =
      fun qpencode s = let val (_,n,_) =  qpencodefinal countbit ([],0,0) s
                         val array = Word8Array.array (n,Word8.fromInt 0)
                     in (qpencodefinal (qpencodebit array) ([],0,0) s;
-                        Byte.unpackString (Word8ArraySlice.full array))
+                        Byte.unpackString (Word8ArraySlice.full array) (*array,0,NONE*))
                     end
      end
     fun smtpencodeCount (#".",[#"\r",#"\n"],n) = ([],n+4)
@@ -1114,7 +1114,7 @@ structure Web :> WEB =
                        in (smtpencodefinal (smtpencodeEncode array) ([],0) (Substring.full s);
                            (if extra then smtpencodeEncode array (#"\n",[#"\r",#"\n",#".",#"\r"],n)
                                      else smtpencodeEncode array (#"\n",[#".",#"\r"],n));
-                           Byte.unpackString (Word8ArraySlice.full array))
+                           Byte.unpackString (Word8ArraySlice.full array) (*array,0,NONE*))
                        end
 
     fun prepareAndSend charset {to, cc, bcc, from, subject, body, extra_headers} = 

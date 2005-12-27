@@ -16,7 +16,7 @@ SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
-CFLAGS= -Wall -std=gnu99
+CFLAGS= -Wall -std=gnu99 -g
 
 @SET_MAKE@
 
