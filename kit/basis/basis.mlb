@@ -56,7 +56,7 @@ local
        end
 
     basis IntInfRep =
-       let open General
+       let open General List
        in bas INT_INF_REP.sml IntInfRep.sml end
        end
 

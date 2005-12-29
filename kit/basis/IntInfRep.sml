@@ -63,6 +63,9 @@ structure IntInfRep : INT_INF_REP =
       fun quoti31(x:int31,y:int31) : int31 = 
 	  if y = 0 then raise Div
 	  else prim ("__quot_int31", (x, y)) 
+      fun remi31(x:int31,y:int31) : int31 = 
+	  if y = 0 then raise Div
+	  else prim ("__rem_int31", (x,y))
 
       fun lshiftw31 (w : word31, k) : word31 =
 	  if k >= cast_iw 31 then 0w0
@@ -116,6 +119,12 @@ structure IntInfRep : INT_INF_REP =
 	      and addc (m, []) : bignat = addOne m
 		| addc ([], n) = addOne n
 		| addc (dm::rm, dn::rn) = addd (nbase+dm+dn+1, rm, rn)
+
+	      fun subtOne (0::mr) : bignat = maxDigit()::(subtOne mr)
+		| subtOne [1] = []
+		| subtOne (n::mr) = (n-1)::mr
+		| subtOne [] = raise Fail ""
+
 	      exception Negative
 	      fun consd (0:int31, []) = []
 		| consd (d, r) = d::r
@@ -164,11 +173,84 @@ structure IntInfRep : INT_INF_REP =
 			| muln (d::r) = add (muld (n, d), consd (0, muln r))
 		  in muln m 
 		  end	      
+
+	      fun quotrem (i, j) = (quoti31 (i, j), remi31 (i, j))
+	      fun scale i : int31 = if i = maxDigit() then 1 else (nbase div (~(i+1)))
+
+	      (* divide DP number by digit; assumes u < i , i >= base/2 *)
+	      fun divmod2 ((u,v), i) = let
+		    val (vh,vl) = hl v
+		    val (ih,il) = hl i
+		    fun adj (q,r) = if r<0 then adj (q-1, r+i) else (q, r)
+		    val (q1,r1) = quotrem (u, ih)
+		    val (q1,r1) = adj (q1, sh r1+vh-q1*il)
+		    val (q0,r0) = quotrem (r1, ih)
+		    val (q0,r0) = adj (q0, sh r0+vl-q0*il)
+		    in (sh q1+q0, r0) end
+
+		  (* divide bignat by digit>0 *)
+	      fun divmodd (m, 1) = (m, 0:int31) (* speedup *)
+		| divmodd (m, i) = let
+		    val scale = scale i
+		    val i' = i * scale
+		    val m' = muld (m, scale)
+		    fun dmi [] = ([], 0)
+		      | dmi (d::r) = let 
+			  val (qt,rm) = dmi r
+			  val (q1,r1) = divmod2 ((rm,d), i')
+			  in (consd (q1,qt), r1) end
+		    val (q,r) = dmi m'
+		    val _ = if scale = 0 then raise Fail "divmodd" else ()
+		    in (q, r div scale) end
+
+		  (* From Knuth Vol II, 4.3.1, but without opt. in step D3 *)
+	      fun divmod (m, []) = raise Div
+		| divmod ([], n) = ([], []) (* speedup *)
+		| divmod (d::r, 0::s) = let 
+		    val (qt,rm) = divmod (r,s)
+		    in (qt, consd (d, rm)) end (* speedup *)
+		| divmod (m, [d]) = let 
+		    val (qt, rm) = divmodd (m, d)
+		    in (qt, if rm=0 then [] else [rm]) end
+		| divmod (m, n) = let
+		    val ln = length n (* >= 2 *)
+		    val scale = scale(List.nth (n,ln-1))
+		    val m' = muld (m, scale)
+		    val n' = muld (n, scale)
+		    val n1 = List.nth (n', ln-1) (* >= base/2 *)
+		    fun divl [] = ([], [])
+		      | divl (d::r) = let
+			  val (qt,rm) = divl r
+			  val m = consd (d, rm)
+			  fun msds ([],_) = (0,0)
+			    | msds ([d],1) = (0,d)
+			    | msds ([d2,d1],1) = (d1,d2)
+			    | msds (d::r,i) = msds (r,i-1)
+			  val (m1,m2) = msds (m, ln)
+			  val tq = if m1 = n1 then maxDigit()
+				   else #1 (divmod2 ((m1,m2), n1))
+			  fun try (q,qn') = (q, subt (m,qn'))
+				handle Negative => try (q-1, subt (qn', n'))
+			  val (q,rr) = try (tq, muld (n',tq))
+			  in (consd (q,qt), rr) end
+		    val (qt,rm') = divl m'
+		    val (rm,_(*0*)) = divmodd (rm',scale)
+		    in (qt,rm) end
+
+	      fun cmp ([],[]) = EQUAL
+		| cmp (_,[]) = GREATER
+		| cmp ([],_) = LESS
+		| cmp ((i : int31)::ri,j::rj) =
+		    case cmp (ri,rj) of
+		      EQUAL => if i = j then EQUAL 
+			       else if i < j then LESS 
+			       else GREATER
+		    | c => c
 	  end
 
       (* the IntInf datatype *)	  
       datatype intinf = datatype intinf 
-      (* = IntInf of {negative : bool, digits : int31 list} *)
+      (* = _IntInf of {negative : bool, digits : int31 list} *)
 
       local
 	  fun minNeg() : int32 = ~2147483648 
@@ -195,23 +277,23 @@ structure IntInfRep : INT_INF_REP =
 	  | natInfToI32 (d::r) = ~(nbase()*natInfToI32 r) + i31_i32 d
 
 	fun bigNatMinNeg() = BN.addOne (natInfFromI32 (~(minNeg()+1)))
-	fun negi digits = IntInf{negative=true, digits=digits}
+	fun negi digits = _IntInf{negative=true, digits=digits}
 	fun bigIntMinNeg() = negi (bigNatMinNeg())
 
-	fun intInfToI32 (IntInf{digits=[], ...}) = 0
-	  | intInfToI32 (IntInf{negative=false, digits}) = natInfToI32 digits
-	  | intInfToI32 (IntInf{negative=true, digits}) =
+	fun intInfToI32 (_IntInf{digits=[], ...}) = 0
+	  | intInfToI32 (_IntInf{negative=false, digits}) = natInfToI32 digits
+	  | intInfToI32 (_IntInf{negative=true, digits}) =
 	    (~(natInfToI32 digits)) handle _ =>
                 if digits = bigNatMinNeg() then minNeg() 
 		else raise Overflow
 
-	fun zero() = IntInf{negative=false, digits=BN.zero()}
+	fun zero() = _IntInf{negative=false, digits=BN.zero()}
 	fun i32ToIntInf (0:int32) = zero()
 	  | i32ToIntInf i =
 	    if i < 0 then 
 		if (i = minNeg()) then bigIntMinNeg()
-		else IntInf{negative=true, digits= natInfFromI32 (~i)}
-            else IntInf{negative=false, digits= natInfFromI32 i}
+		else _IntInf{negative=true, digits= natInfFromI32 (~i)}
+            else _IntInf{negative=false, digits= natInfFromI32 i}
       in
 	  val zero = zero
 	  fun toInt31 x = i32_i31(intInfToI32 x)
@@ -229,21 +311,21 @@ structure IntInfRep : INT_INF_REP =
 	  ({negative=false,digits = BN.subt(m,n)})
 	  handle BN.Negative => ({negative=true,digits = BN.subt(n,m)})
 
-      fun IntInfPlus (IntInf{digits=[], ...}, i2) = i2
-	| IntInfPlus (i1, IntInf{digits=[], ...}) = i1
-	| IntInfPlus (IntInf{negative=false, digits=d1}, IntInf{negative=true, digits=d2}) =
-          IntInf(subtNat(d1, d2))
-	| IntInfPlus (IntInf{negative=true, digits=d1}, IntInf{negative=false, digits=d2}) =
-          IntInf(subtNat(d2, d1))
-	| IntInfPlus (IntInf{negative, digits=d1}, IntInf{digits=d2, ...}) =
-          IntInf{negative=negative, digits=BN.add(d1, d2)}
+      fun IntInfPlus (_IntInf{digits=[], ...}, i2) = i2
+	| IntInfPlus (i1, _IntInf{digits=[], ...}) = i1
+	| IntInfPlus (_IntInf{negative=false, digits=d1}, _IntInf{negative=true, digits=d2}) =
+          _IntInf(subtNat(d1, d2))
+	| IntInfPlus (_IntInf{negative=true, digits=d1}, _IntInf{negative=false, digits=d2}) =
+          _IntInf(subtNat(d2, d1))
+	| IntInfPlus (_IntInf{negative, digits=d1}, _IntInf{digits=d2, ...}) =
+          _IntInf{negative=negative, digits=BN.add(d1, d2)}
 
       fun negSign false = true
 	| negSign true = false
 	  
-      fun neg (i as IntInf{digits=[], ...}) = i
-	| neg (IntInf{negative=false, digits}) = IntInf{negative=true, digits=digits}
-	| neg (IntInf{negative=true, digits}) = IntInf{negative=false, digits=digits}
+      fun neg (i as _IntInf{digits=[], ...}) = i
+	| neg (_IntInf{negative=false, digits}) = _IntInf{negative=true, digits=digits}
+	| neg (_IntInf{negative=true, digits}) = _IntInf{negative=false, digits=digits}
 
       val maxInt32W : word32 = 0w2147483647 
       fun fromWord32 (w : word32) : intinf =	  
@@ -293,34 +375,57 @@ structure IntInfRep : INT_INF_REP =
       (* for overloading *)
       val ~ = neg
 
-      fun op * (_,IntInf{digits=[], ...}) = zero()
-	| op * (IntInf{digits=[], ...},_) = zero()
-	| op * (IntInf{negative=false, digits=d1}, IntInf{negative=true, digits=d2}) =
-          IntInf{negative=true,digits=BN.mult(d1,d2)}
-	| op * (IntInf{negative=true, digits=d1}, IntInf{negative=false, digits=d2}) =
-          IntInf{negative=true,digits=BN.mult(d1,d2)}
-	| op * (IntInf{digits=d1,...}, IntInf{digits=d2,...}) =
-          IntInf{negative=false,digits=BN.mult(d1,d2)}
+      fun op * (_,_IntInf{digits=[], ...}) = zero()
+	| op * (_IntInf{digits=[], ...},_) = zero()
+	| op * (_IntInf{negative=false, digits=d1}, _IntInf{negative=true, digits=d2}) =
+          _IntInf{negative=true,digits=BN.mult(d1,d2)}
+	| op * (_IntInf{negative=true, digits=d1}, _IntInf{negative=false, digits=d2}) =
+          _IntInf{negative=true,digits=BN.mult(d1,d2)}
+	| op * (_IntInf{digits=d1,...}, _IntInf{digits=d2,...}) =
+          _IntInf{negative=false,digits=BN.mult(d1,d2)}
 
       val op + = IntInfPlus
 
-      fun op - (i1, IntInf{digits=[], ...}) = i1
-	| op - (IntInf{digits=[], ...}, IntInf{negative, digits}) =
-          IntInf{negative=negSign negative, digits=digits}
-	| op - (IntInf{negative=false, digits=d1}, IntInf{negative=false, digits=d2}) =
-	  IntInf(subtNat(d1, d2))
-	| op - (IntInf{negative=true, digits=d1}, IntInf{negative=true, digits=d2}) =
-	  IntInf(subtNat(d2, d1))
-	| op - (IntInf{negative, digits=d1}, IntInf{digits=d2, ...}) =
-          IntInf{negative=negative, digits=BN.add(d1, d2)}
+      fun op - (i1, _IntInf{digits=[], ...}) = i1
+	| op - (_IntInf{digits=[], ...}, _IntInf{negative, digits}) =
+          _IntInf{negative=negSign negative, digits=digits}
+	| op - (_IntInf{negative=false, digits=d1}, _IntInf{negative=false, digits=d2}) =
+	  _IntInf(subtNat(d1, d2))
+	| op - (_IntInf{negative=true, digits=d1}, _IntInf{negative=true, digits=d2}) =
+	  _IntInf(subtNat(d2, d1))
+	| op - (_IntInf{negative, digits=d1}, _IntInf{digits=d2, ...}) =
+          _IntInf{negative=negative, digits=BN.add(d1, d2)}
 
-(*
-      val div : intinf * intinf -> intinf
-      val mod : intinf * intinf -> intinf
-      val abs : intinf -> intinf
-      val <   : intinf * intinf -> intinf
-      val >   : intinf * intinf -> intinf
-      val <=  : intinf * intinf -> intinf
-      val >=  : intinf * intinf -> intinf
-*)
+      fun posi digits = _IntInf{negative=false, digits=digits}
+      fun negi digits = _IntInf{negative=true, digits=digits}
+      fun zneg [] = zero()
+	| zneg digits = _IntInf{negative=true, digits=digits}
+
+      fun divmod (_IntInf{negative=false,digits=m},_IntInf{negative=false,digits=n}) =
+          (case BN.divmod (m,n) of (q,r) => (posi q, posi r))
+      | divmod (_IntInf{negative=false,digits=[]},_IntInf{negative=true,digits=n}) = (zero(),zero())
+	| divmod (_IntInf{negative=false,digits=m},_IntInf{negative=true,digits=n}) = let
+          val (q,r) = BN.divmod (BN.subtOne m, n)
+          in (negi(BN.addOne q), zneg(BN.subtOne(BN.subt(n,r)))) end
+      | divmod (_IntInf{negative=true,digits=m},_IntInf{negative=false,digits=n}) = let
+          val (q,r) = BN.divmod (BN.subtOne m, n)
+          in (negi(BN.addOne q), posi(BN.subtOne(BN.subt(n,r)))) end
+      | divmod (_IntInf{negative=true,digits=m},_IntInf{negative=true,digits=n}) =
+          (case BN.divmod (m,n) of (q,r) => (posi q, zneg r))
+
+      fun op div arg = #1(divmod arg)
+      fun op mod arg = #2(divmod arg)
+
+      fun abs (_IntInf{negative=true, digits}) = _IntInf{negative=false, digits=digits}
+	| abs i = i
+	  
+      fun compare (_IntInf{negative=true,...},_IntInf{negative=false,...}) = LESS
+	| compare (_IntInf{negative=false,...},_IntInf{negative=true,...}) = GREATER
+	| compare (_IntInf{negative=false,digits=d},_IntInf{negative=false,digits=d'}) = BN.cmp (d,d')
+	| compare (_IntInf{negative=true,digits=d},_IntInf{negative=true,digits=d'}) = BN.cmp (d',d)
+
+      fun op < arg = case compare arg of LESS => true | _ => false
+      fun op > arg = case compare arg of GREATER => true | _ => false
+      fun op <= arg = case compare arg of GREATER => false | _ => true
+      fun op >= arg = case compare arg of LESS => false | _ => true
   end

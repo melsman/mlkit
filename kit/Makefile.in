@@ -60,6 +60,10 @@ install_mlkit_basislibs:
 	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI_GC
 	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_PROF
 	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI_GC
+	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_GC_PROF
 
 mlkit_with_basislibs:
 	$(MAKE) mlkit
@@ -178,6 +182,7 @@ install_top:
 	$(MKDIR) $(INSTDIR)/doc
 	$(MKDIR) $(INSTDIR)/ml-yacc-lib
 	$(MKDIR) $(INSTDIR)/basis
+	$(MKDIR) $(INSTDIR)/basis/io
 	$(MKDIR) $(INSTDIR)/kitlib
 	$(MKDIR) $(INSTDIR)/kitdemo
 	$(MKDIR) $(INSTDIR)/kitdemo/utils
@@ -190,6 +195,7 @@ install_top:
 	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
 	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
 	$(INSTALLDATA) -p basis/*.{sml,mlb} $(INSTDIR)/basis
+	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
 
 install_runtime:
 	$(INSTALLDATA) bin/runtimeSystem.a $(INSTDIR)/bin
@@ -298,7 +304,8 @@ bootstrap_first: install bootstrap0
 
 bootstrap_next_build:
 	cd src; $(MAKE) genopcodes
-	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gengc native.mlb
+#	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gengc native.mlb
+	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
 
 bootstrap_next_install: 
 	$(MAKE) install_top
