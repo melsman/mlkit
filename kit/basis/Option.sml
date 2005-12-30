@@ -31,3 +31,4 @@ structure Option: OPTION =
 	of NONE => NONE
 	 | SOME y => f y
   end
+

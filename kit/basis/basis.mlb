@@ -7,6 +7,11 @@ local
         GENERAL.sml General.sml OPTION.sml Option.sml 
       end
 
+    basis Initial2 =
+      let open General
+      in bas Initial2.sml end
+      end
+
     basis List =
       let open General
       in bas
@@ -112,7 +117,7 @@ local
        in let basis Time = let open Int Real IntInf in bas TIME.sml Time.sml end end
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
-              basis FileSys = let open List Time Random Path Byte ArrayVector
+              basis FileSys = let open List Time Random Path Byte ArrayVector Initial2
                               in bas OS_FILE_SYS.sml FileSys.sml end 
                               end
               basis Process = let open Time Int in 
@@ -126,6 +131,11 @@ local
              end
           end
        end
+
+    basis OSError = 
+        let open General System
+        in bas OSError.sml end
+        end
 (*
     basis Susp =  (* Suspension *) 
        let open General String 
@@ -171,7 +181,7 @@ local
        end
 
      basis Posix = 
-       let open General Word System List Int Real PrimIO Byte ArrayVector IntInf
+       let open General Word System List Int Real PrimIO Byte ArrayVector IntInf OSError
        in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml 
               POSIX_SYS_DB.sml POSIX.sml Posix.sml 

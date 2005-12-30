@@ -6,10 +6,9 @@
 structure OS = 
   struct
     type syserror = int
-    exception SysErr of string * syserror option
+    exception SysErr = Initial2.SysErr
     fun isNull (s : string) = prim("__is_null", s) : bool
 
-    val _ = prim ("sml_setFailNumber", (SysErr ("as",NONE) : exn, 2 : int)) : unit
     fun errorMsg (err : int) : string = prim("sml_errormsg", err)
     fun errorName (err : int) : string =
          let
