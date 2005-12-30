@@ -80,6 +80,10 @@ structure Initial =
 
     (* Process *)
     val exittasks = (ref []) : (unit -> unit) list ref
+
+    val clearnerAtExit = (ref []) : (unit -> unit) list ref
+    val addedclearner = ref false
+   exception ClosedStream
   
 
     (* Posix *)
@@ -164,6 +168,13 @@ structure Initial =
              val ttin = getNS "SIGTTIN"
              val ttou = getNS "SIGTTOU"
            end
+
+         structure Process = 
+           struct
+             val untraced = 0wx1
+             val nohang = 0wx2
+             val all = untraced (* untraced *)
+           end
        end
 
       structure Posix_File_Sys =
@@ -182,6 +193,8 @@ structure Initial =
             val rdonly   = 0wx100
             val wronly   = 0wx200
             val rdwr     = 0wx400
+            
+            val all      = 0wx3F (* [append,excl,noctty,nonblock,sync,trunc] *)
           end
 
         structure S =
@@ -200,6 +213,8 @@ structure Initial =
             val ixoth =  0wx800
             val isuid = 0wx1000
             val isgid = 0wx2000
+
+            val all   = 0wx3FFF
           end
         end
  
