@@ -1,1 +1,1 @@
-PM MLB *.log run profile.rp region.ps mylibtest-pt mylibtest mylibtest-t mylibtest-p
+PM MLB *.log run profile.rp region.ps mylibtest-pt mylibtest mylibtest-t mylibtest-p *.auto.mlb
