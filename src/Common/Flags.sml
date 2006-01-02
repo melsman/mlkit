@@ -208,6 +208,8 @@ structure Directory : sig
 
 			(* help_all()  provides help on all options in the directory *)
 			val help_all : unit -> string
+			val help_man_option : unit -> string
+			val help_man_defaults : unit -> string
 
 		      end =
 struct
@@ -435,9 +437,12 @@ struct
     in loop options
     end
 
+  datatype kindOfHelp = HELP | OPTIONS | DEFAULTS
+
   (* help key  provides help information for the key *)
-  fun help (key: string) :string =
-    let fun opt (SOME s) = ", -" ^ s
+  fun help' kind (key: string) :string =
+    let 
+  fun opt (SOME s) = ", -" ^ s
 	  | opt NONE = ""
 	fun opt' (s0,SOME s) = ", -" ^ s0 ^ s
 	  | opt' (s0,NONE) = ""
@@ -450,45 +455,80 @@ struct
 	fun indent s = 
 	  map (fn s => "     " ^ s ^ "\n") (String.tokens (fn c => c = #"\n") s)
 	val width = 60
-	fun default(s, d) = StringCvt.padRight #" " (width - (String.size d)) s ^ " (" ^ d ^ ")\n"
+	fun default(s, d) = SOME(StringCvt.padRight #" " (width - (String.size d)) s ^ " (" ^ d ^ ")\n")
+  fun defaultMan (s,d) = SOME (String.concat [".IP \"\\fB", s, "\\fR\" 4\n",".IX Item \"", s, "\"\n"])
+  fun defaultDefaults (s,d) = if d = "..."
+                              then NONE
+                              else SOME(String.concat ["\\fB", s, "\\fR", " ", d,",\\n"])
+  fun indentMan s = [s]
+  fun none s = ""
+  fun noneList s = []
+
+  fun get f f' f'' = case kind of HELP => f | OPTIONS => f' | DEFAULTS => f''
+  val default = get default defaultMan defaultDefaults
+  val someList = List.map SOME
+  val indent = (get (someList o indent) (someList o indentMan) (fn x => []))
+
 	fun negation (e:bentry) =
 	  if not(#neg e) then nil
-	  else ["\n--no_", #long e, opt'("no_", #short e),"\n"] @
+	  else (List.map SOME ["\n--no_", #long e, opt'("no_", #short e),"\n"]) @
 	    indent ("Opposite of --" ^ #long e ^ opt(#short e) ^ ".")
 	fun negation' (e:baentry) =
-	  ["\n--no_", #long e, opt'("no_", #short e),"\n"] @
+	  List.map SOME ["\n--no_", #long e, opt'("no_", #short e),"\n"] @
 	  indent ("Opposite of --" ^ #long e ^ opt(#short e) ^ ".")
+
+  fun formatName (BOOL_ENTRY e) = "--" ^ #long e ^ opt(#short e)
+    | formatName (BOOLA_ENTRY e) = "--" ^ #long e ^ opt(#short e)
+    | formatName (STRING_ENTRY e) = "--" ^ #long e ^ opts(#short e)
+    | formatName (STRINGLIST_ENTRY e) = "--" ^ #long e ^ opts(#short e)
+    | formatName (INT_ENTRY e) = "--" ^ #long e ^ opti(#short e)
+
+  fun ff (l,NONE) = "--" ^ l
+    | ff (_,SOME s) = "-" ^ s
+
+  fun formatNameDef (BOOL_ENTRY e) = ff (#long e, #short e)
+    | formatNameDef (BOOLA_ENTRY e) = ff (#long e, #short e)
+    | formatNameDef (STRING_ENTRY e) = ff (#long e, #short e)
+    | formatNameDef (STRINGLIST_ENTRY e) = ff (#long e, #short e)
+    | formatNameDef (INT_ENTRY e) = ff (#long e, #short e)
+
+  val formatName = get formatName formatName formatNameDef
+  val negation = get negation negation noneList
+  val negation' = get negation' negation' noneList
+
     in
-      String.concat
+      String.concat (List.mapPartial (fn x => x)
       (case lookup_notnull_menu (!dir) key 
 	 of SOME (BOOL_ENTRY e) =>
-	   default("--" ^ #long e ^ opt(#short e), bitem (!(#item e))) ::
-	   indent (#desc e) @ negation e
+	   default(formatName (BOOL_ENTRY e), bitem (!(#item e))) ::
+	   (indent (#desc e)) @ (negation e)
 	  | SOME (BOOLA_ENTRY e) => 
-	   default("--" ^ #long e ^ opt(#short e), bitem (!(#item e))) ::
-	   indent (#desc e) @ negation' e
+	   default(formatName (BOOLA_ENTRY e), bitem (!(#item e))) ::
+	   (indent (#desc e) @ negation' e)
 	  | SOME (STRING_ENTRY e) => 
-	   default("--" ^ #long e ^ opts(#short e), "\"" ^ String.toString(!(#item e)) ^ "\"") ::
-	   indent (#desc e)
+	   default(formatName (STRING_ENTRY e), "\"" ^ String.toString(!(#item e)) ^ "\"") ::
+	   (indent (#desc e))
 	  | SOME (STRINGLIST_ENTRY e) => 
-	   default("--" ^ #long e ^ opts(#short e), "...") ::
-	   indent (#desc e)
+	   default(formatName (STRINGLIST_ENTRY e), "...") ::
+	   (indent (#desc e))
 	  | SOME (INT_ENTRY e) =>
-	   default("--" ^ #long e ^ opti(#short e), Int.toString (!(#item e))) ::
-	   indent (#desc e)
-	  | NONE => raise Fail ("no help available for option: " ^ key))
+	   default(formatName (INT_ENTRY e), Int.toString (!(#item e))) ::
+	   (indent (#desc e))
+	  | NONE => raise Fail ("no help available for option: " ^ key)))
     end
-	  
+
+  val help = help' HELP
 	
   (* help_all()  provides help on all options in the directory *)
-  fun help_all () : string =
+  fun help_all' kind : string =
     let val dom = rev(M.dom (!dir))
+      val printFun = help' kind 
       fun add (key, acc) =
 	let                                (* add only if menu is non-empty and
 					    * the entry is not a short key *)
 	  fun check (SOME k) = if k = key then acc
-			       else help key :: "\n" :: acc
-	    | check NONE = help key :: "\n" :: acc
+			       else let val a = printFun key in if a = "" then acc else a :: "\n" :: acc end
+	    | check NONE = let val a = printFun key in if a = "" then acc else a :: "\n" :: acc end
 	in
 	  case lookup_notnull_menu (!dir) key
 	    of SOME (INT_ENTRY e) => check(#short e)
@@ -500,6 +540,11 @@ struct
 	end
     in String.concat (foldl add nil dom)
     end
+
+
+  fun help_all () = help_all' HELP
+  fun help_man_option () = help_all' OPTIONS
+  fun help_man_defaults () = help_all' DEFAULTS
 
 end (* Directory *)
 
@@ -849,6 +894,8 @@ val lookup_int_entry = Directory.lookup_int_entry
 val read_options = Directory.read_options
 val help = Directory.help
 val help_all = Directory.help_all
+val help_man_option = Directory.help_man_option
+val help_man_defaults = Directory.help_man_defaults
 
 val interact = Menu.interact
 
