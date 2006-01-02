@@ -133,6 +133,8 @@ signature FLAGS =
 
     (* help_all()  provides help on all options in the directory *)
     val help_all : unit -> string
+    val help_man_option : unit -> string
+    val help_man_defaults : unit -> string
 
     structure Statistics :
       sig
