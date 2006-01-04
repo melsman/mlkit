@@ -733,7 +733,8 @@ structure Posix :> POSIX =
              val (b,s,l) = Word8VectorSlice.base vs
              val _ = if (l < 0) then raise OS.SysErr("sml_writeVec with negative length", NONE)
                      else ()
-             val r = prim ("@sml_writeVec", (fd : int, b : Word8Vector.vector, s : int, l : int)) : int
+             val r = prim ("@sml_writeVec", (fd : int, b : Word8Vector.vector, s : int, l : int))
+                   : int
            in if r = ~1
               then raiseSys "sml_writeVec" NONE ""
               else r
@@ -745,7 +746,9 @@ structure Posix :> POSIX =
              val _ = if (l< 0) then raise OS.SysErr("sml_readArrWord8 with negative length", NONE)
                      else ()
              val r = prim("@sml_readArr", (fd : int, b : chararray, s : int, l : int)) : int
-           in if r = ~1 then raiseSys "sml_readArrWord8" (SOME (Int.toString fd ^ " " ^ (Int.toString s) ^ " " ^ (Int.toString l))) "" else r
+           in if r = ~1 then raiseSys "sml_readArrWord8"
+                                (SOME (Int.toString fd ^ " " ^
+                                        (Int.toString s) ^ " " ^ (Int.toString l))) "" else r
            end
      
       fun readArrChar (fd, arrs : CharArraySlice.slice) = 
@@ -754,7 +757,9 @@ structure Posix :> POSIX =
              val _ = if (l< 0) then raise OS.SysErr("sml_readArrChar with negative length", NONE)
                      else ()
              val r = prim("@sml_readArr", (fd : int, b : chararray, s : int, l: int)) : int
-           in if r = ~1 then raiseSys "sml_readArrChar" (SOME (Int.toString fd ^ " " ^ (Int.toString s) ^ " " ^ (Int.toString l))) "" else r
+           in if r = ~1 then raiseSys "sml_readArrChar"
+                                (SOME (Int.toString fd ^ " " ^ (Int.toString s) ^ " " ^
+                                         (Int.toString l))) "" else r
            end
 
       fun writeArrChar(fd, arrs) =
@@ -878,41 +883,91 @@ structure Posix :> POSIX =
         fun getgrgid g = 
              let
                val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETGR_R_SIZE_MAX")
-               val e = OS.SysErr ("getgrgid: no group with gid = " ^ (Int.toString g) ^ " found", NONE)
-               val (n,m,res) = prim("sml_getgrgid", (g : int, s : int, e : exn)) : (string * string list * int)
+               val e = OS.SysErr ("getgrgid: no group with gid = " ^
+                                   (Int.toString g) ^ " found", NONE)
+               val (n,m,res) = prim("sml_getgrgid", (g : int, s : int, e : exn))
+                             : (string * string list * int)
                val res' = Error.fromWord(SysWord.fromInt res)
              in
-               if res = 0 then {n = n, m = m, g = g} else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
+               if res = 0
+               then {n = n, m = m, g = g}
+               else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
              end
         fun getgrnam n = 
              let
                val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETGR_R_SIZE_MAX")
                val e = OS.SysErr ("getgrnam: no group with groupname = " ^ n ^ " found", NONE)
-               val (g,m,res) = prim("sml_getgrnam", (n : string, s : int, e : exn)) : (int * string list * int)
+               val (g,m,res) = prim("sml_getgrnam", (n : string, s : int, e : exn))
+                             : (int * string list * int)
                val res' = Error.fromWord(SysWord.fromInt res)
              in
-               if res = 0 then {n = n, m = m, g = g} else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
+               if res = 0
+               then {n = n, m = m, g = g}
+               else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
              end
         fun getpwnam n = 
              let
                val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETPW_R_SIZE_MAX")
                val e = OS.SysErr ("getpwnam: no user with username = " ^ n ^ " found", NONE)
-               val (u,g,h,s,res) = prim("sml_getpwnam", (n : string, s : int, e : exn)) : (int * int * string * string * int)
+               val (u,g,h,s,res) = prim("sml_getpwnam", (n : string, s : int, e : exn))
+                                 : (int * int * string * string * int)
                val res' = Error.fromWord(SysWord.fromInt res)
              in
-               if res = 0 then {n = n, u = u, g = g, s = s, h = h}
+               if res = 0
+               then {n = n, u = u, g = g, s = s, h = h}
                else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
              end
         fun getpwuid u = 
              let
                val s = SysWord.toInt(ProcEnv.sysconf "_SC_GETPW_R_SIZE_MAX")
                val e = OS.SysErr ("getpwuid: no user with uid = " ^ (Int.toString u) ^ " found", NONE)
-               val (n,g,h,s,res) = prim("sml_getpwuid", (u : int, s : int, e : exn)) : (string * int * string * string * int)
+               val (n,g,h,s,res) = prim("sml_getpwuid", (u : int, s : int, e : exn))
+                                 : (string * int * string * string * int)
                val res' = Error.fromWord(SysWord.fromInt res)
              in
                if res = 0 then {n = n, u = u, g = g, s = s, h = h}
                else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
              end
       end
+
+      structure TTY =
+        struct
+          type pid = Process.pid
+          type file_desc = ProcEnv.file_desc
+
+          structure V = 
+            struct
+              open Initial.Posix_Values.Tty.V
+            end
+
+          structure I =
+            struct
+              open Initial.Posix_Values.Tty.I
+              structure A = BitFlags(Initial.Posix_Values.Tty.I)
+              open A
+            end
+
+          structure O =
+            struct
+              open Initial.Posix_Values.Tty.O
+              structure A = BitFlags(Initial.Posix_Values.Tty.O)
+              open A
+            end
+
+          structure C =
+            struct
+              open Initial.Posix_Values.Tty.C
+              structure A = BitFlags(Initial.Posix_Values.Tty.C)
+              open A
+            end
+
+          structure L =
+            struct
+              open Initial.Posix_Values.Tty.L
+              structure A = BitFlags(Initial.Posix_Values.Tty.L)
+              open A
+            end
+
+        end
 	
     end
