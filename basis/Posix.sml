@@ -267,20 +267,12 @@ structure Posix :> POSIX =
 		= W_ANY_CHILD | W_CHILD of pid | W_GROUP of pid | W_SAME_GROUP
 		
 	    structure W =
-		struct
-		    type flags = SysWord.word
-        open Initial.Posix_Values.Process
+        struct
+          open Initial.Posix_Values.Process
+          structure A = BitFlags(Initial.Posix_Values.Process)
+          open A
+        end
 
-		    fun toWord x = x
-		    fun fromWord x = x
-		    fun flags x = List.foldl SysWord.orb 0wx0 x
-		    fun intersect x = List.foldl SysWord.andb 0wx1 x
-        fun union x = List.foldl SysWord.orb 0wx0 x
-		    fun clear (f1,f2) = SysWord.andb (SysWord.notb f1,f2)
-		    fun allSet (f1,f2) = SysWord.andb (f1,f2) = f1
-		    fun anySet (f1,f2) = SysWord.andb (f1,f2) <> 0wx0
-		end
-	    
 	    fun pidToWord x = SysWord.fromInt x
 	    fun wordToPid x = SysWord.toInt x
 		
@@ -326,7 +318,7 @@ structure Posix :> POSIX =
 	    fun WSTOPSIG(status:int) : signal =
 		        prim("sml_WSTOPSIG",status) : int
 
-	    fun flags_to_int l = SysWord.toInt(W.toWord (W.union l))
+	    fun flags_to_int l = SysWord.toInt(W.toWord (W.flags l))
 
 	    fun waitpid' (wpa: waitpid_arg,flags: W.flags list) : (pid * exit_status) option =
            let
@@ -589,36 +581,21 @@ structure Posix :> POSIX =
 	    val stdout = Initial.Posix_File_Sys.stdout
 	    val stderr = Initial.Posix_File_Sys.stderr
 		
-	    structure S = 
-		struct 
-		    type mode = SysWord.word
-		    type flags = mode
-			
-		    open Initial.Posix_File_Sys.S 
-			
-		    fun toWord x = x
-		    fun fromWord x = x
-		    fun flags x = List.foldl SysWord.orb 0wx0 x
-		    fun intersect x = List.foldl SysWord.andb all x
-		    fun clear (f1,f2) = SysWord.andb (SysWord.notb f1,f2)
-		    fun allSet (f1,f2) = SysWord.andb (f1,f2) = f1
-		    fun anySet (f1,f2) = SysWord.andb (f1,f2) <> 0wx0
-		end
-	    structure O = 
-		struct
-		    type flags = SysWord.word
-			
-		    open Initial.Posix_File_Sys.O
-			
-		    fun toWord x = x
-		    fun fromWord x = x
-		    fun flags x = List.foldl SysWord.orb 0wx0 x
-		    fun intersect x = List.foldl SysWord.andb all x
-		    fun clear (f1,f2) = SysWord.andb (SysWord.notb f1,f2)
-		    fun allSet (f1,f2) = SysWord.andb (f1,f2) = f1
-		    fun anySet (f1,f2) = SysWord.andb (f1,f2) <> 0wx0
-		end
-	    
+	    structure S =
+        struct
+          open Initial.Posix_File_Sys.S
+          structure A = BitFlags(Initial.Posix_File_Sys.S)
+          open A
+          type mode = flags
+        end
+
+      structure O =
+        struct
+          open Initial.Posix_File_Sys.O
+          structure A = BitFlags(Initial.Posix_File_Sys.O)
+          open A
+        end
+
 	    datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
 	    datatype access_mode = A_READ | A_WRITE | A_EXEC
 
