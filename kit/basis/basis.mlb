@@ -180,8 +180,14 @@ local
        in bas io/prim-io.sig io/prim-io.sml io/text-prim-io.sml io/bin-prim-io.sml end
        end
 
+     basis BitFlags =
+       let open General Word List
+       in bas BitFlags.sml end
+       end
+
      basis Posix = 
-       let open General Word System List Int Real PrimIO Byte ArrayVector IntInf OSError
+       let open General Word System List Int Real PrimIO Byte ArrayVector
+                IntInf OSError BitFlags
        in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml 
               POSIX_SYS_DB.sml POSIX.sml Posix.sml 
