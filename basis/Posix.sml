@@ -929,7 +929,7 @@ structure Posix :> POSIX =
                else raise OS.SysErr (Error.errorName res' ^ ": "^ (Error.errorMsg res'),SOME res)
              end
       end
-
+(*
       structure TTY =
         struct
           type pid = Process.pid
@@ -969,5 +969,5 @@ structure Posix :> POSIX =
             end
 
         end
-	
+	*)
     end
