@@ -190,7 +190,7 @@ local
                 IntInf OSError BitFlags
        in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml 
-              POSIX_SYS_DB.sml POSIX.sml Posix.sml 
+              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sml Posix.sml 
           end
        end
 

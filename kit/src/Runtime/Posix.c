@@ -12,6 +12,7 @@
 #include <grp.h>
 #include <time.h>
 #include <pwd.h>
+#include <termios.h>
 #include <sys/utsname.h>
 #include "Tagging.h"
 #include "Exception.h"
@@ -387,6 +388,86 @@ sml_getfl (int fd, int flags)
   s |= r & O_WRONLY ? 0x200 : 0;
   s |= r & O_RDWR ? 0x400 : 0;
   return s;
+}
+
+static int sml_ttyVals[] = {
+  VEOF, // 0
+  VEOL,
+  VERASE,
+  VINTR,
+  VKILL,
+  VMIN,
+  VQUIT,
+  VSUSP,
+  VTIME,
+  VSTART,
+  VSTOP, // 10
+  BRKINT,
+  ICRNL,
+  IGNBRK,
+  IGNCR,
+  IGNPAR,
+  INLCR,
+  INPCK,
+  ISTRIP,
+  IXOFF,
+  IXON, // 20
+  PARMRK,
+  OPOST,
+  CLOCAL,
+  CREAD,
+  CS5,
+  CS6,
+  CS7,
+  CS8,
+  CSIZE,
+  CSTOPB, // 30
+  HUPCL,
+  PARENB,
+  PARODD,
+  ECHO,
+  ECHOE,
+  ECHOK,
+  ECHONL,
+  ICANON,
+  IEXTEN,
+  ISIG, // 40
+  NOFLSH,
+  TOSTOP,
+  0,
+  BRKINT | ICRNL | IGNBRK | IGNCR | IGNPAR | INLCR | INPCK | ISTRIP | IXOFF | IXON | PARMRK,
+  CLOCAL | CREAD | CS5 | CS6 | CS7 | CS8 | CSIZE | CSTOPB | HUPCL | PARENB | PARODD,
+  ECHO | ECHOE | ECHOK | ECHONL | ICANON | IEXTEN | ISIG | NOFLSH | TOSTOP,
+  0,
+  B0,
+  B50,
+  B75, // 50
+  B110,
+  B134,
+  B150,
+  B200,
+  B300,
+  B600,
+  B1200,
+  B1800,
+  B2400,
+  B4800, // 60
+  B9600,
+  B19200,
+  B38400,
+  B57600,
+  B115200,
+  B230400,
+  0,
+  0,
+  0,
+  NCCS // 70
+};
+
+int
+sml_getTty(int i)
+{
+  return sml_ttyVals[i];
 }
 
 #include "SysErrTable.h"

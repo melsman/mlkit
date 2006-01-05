@@ -80,12 +80,13 @@ structure Initial =
 
     (* Process *)
     val exittasks = (ref []) : (unit -> unit) list ref
+    val exitCalled = ref false
+    exception RaisedInExit
 
     val clearnerAtExit = (ref []) : (unit -> unit) list ref
     val addedclearner = ref false
    exception ClosedStream
   
-
     (* Posix *)
 
      structure TextIO =
@@ -93,11 +94,101 @@ structure Initial =
          val bufsize = 4000
        end
 
-
      structure Posix_Values =
        struct
-         fun getN s = prim("@sml_syserror", s : string) : int
-         fun getNS s = prim("@sml_findsignal", s : string) : int
+         fun getN s =  prim("@sml_syserror", s : string) : int
+         fun getNS s =  prim("@sml_findsignal", s : string) : int
+         fun getT i =   prim("@sml_getTty", i : int) : word
+         fun getTi i = prim("@sml_getTty", i : int) : int
+         structure Tty = 
+           struct
+             structure V =
+               struct
+                 val eof = getTi 0
+                 val eol = getTi 1
+                 val erase = getTi 2
+                 val intr = getTi 3
+                 val kill = getTi 4
+                 val min = getTi 5
+                 val quit = getTi 6
+                 val susp = getTi 7
+                 val time = getTi 8
+                 val start = getTi 9
+                 val stop = getTi 10
+                 val nccs = getTi 70
+               end
+             structure I =
+               struct
+                 val brkint = getT 11
+                 val icrnl = getT 12
+                 val ignbrk =  getT 13
+                 val igncr =  getT 14
+                 val ignpar =  getT 15
+                 val inlcr =  getT 16
+                 val inpck =  getT 17
+                 val istrip =  getT 18
+                 val ixoff =  getT 19
+                 val ixon =  getT 20
+                 val parmrk =  getT 21
+                 val all = getT 44
+               end
+             structure O =
+               struct
+                 val opost = getT 22
+                 val all = opost
+               end
+             structure C =
+               struct
+                 val clocal = getT 23
+                 val cread = getT 24
+                 val cs5 = getT 25
+                 val cs6 = getT 26
+                 val cs7 = getT 27
+                 val cs8 = getT 28
+                 val csize = getT 29
+                 val cstopb = getT 30
+                 val hupcl = getT 31
+                 val parenb = getT 32
+                 val parodd = getT 33
+                 val all = getT 45
+               end
+             structure L =
+               struct
+                 val echo = getT 34
+                 val echoe = getT 35
+                 val echok = getT 36
+                 val echonl = getT 37
+                 val icanon = getT 38
+                 val iexten = getT 39
+                 val isig = getT 40
+                 val noflsh = getT 41
+                 val tostop = getT 42
+                 val all = getT 46
+               end
+             structure Speed =
+               struct
+                 val b0 = getT 48
+                 val b50 = getT 49 
+                 val b75 = getT 50
+                 val b110 = getT 51
+                 val b134 = getT 52
+                 val b150 = getT 53
+                 val b200 = getT 54
+                 val b300 = getT 55
+                 val b600 = getT 56
+                 val b1200 = getT 57
+                 val b1800 = getT 58
+                 val b2400 = getT 59
+                 val b4800 = getT 60
+                 val b9600 = getT 61
+                 val b19200 = getT 62
+                 val b38400 = getT 63
+                 val b57600 = getT 64
+                 val b115200 = getT 65
+                 val b230400 = getT 66
+               end
+           end
+
          structure Err =
            struct
              val acces = getN "EACCES"

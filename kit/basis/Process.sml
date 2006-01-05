@@ -24,11 +24,17 @@ structure Process : OS_PROCESS =
 
     local 
       val exittasks = Initial.exittasks
+      val exitCalled = Initial.exitCalled
+      val exp = Initial.RaisedInExit
     in 
-      fun atExit newtask = exittasks := newtask :: !exittasks
+      fun atExit newtask = if !exitCalled then () else exittasks := newtask :: !exittasks
+
       fun exit status =
-	(List.app (fn f => f ()) (!exittasks);
-	 terminate status)
+        if (!exitCalled) then raise exp else 
+        (exitCalled := true ; 
+         List.app (fn f => (f ()) handle _ => ()) (!exittasks);
+         exittasks := [] ; 
+         terminate status)
     end
 
     fun sleep t = 
