@@ -17,4 +17,7 @@ signature POSIX =
     structure SysDB : POSIX_SYS_DB
       where type uid = ProcEnv.uid
       where type gid = ProcEnv.gid
+(*    structure TTY : POSIX_TTY
+      where type pid = Process.pid
+      where type file_desc = ProcEnv.file_desc *)
   end

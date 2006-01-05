@@ -173,3 +173,4 @@ sml_getgrgid
 sml_getgrnam
 sml_getpwnam
 sml_getpwuid
+sml_getTty

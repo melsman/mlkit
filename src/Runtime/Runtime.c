@@ -67,9 +67,13 @@ setStackSizeUnlimited(void)
   return setStackSize(RLIM_INFINITY);
 }
 
+extern int exitCallback(int);
+
 int 
 terminateML (int status) 
 { 
+  exitCallback(1); // exported in Initial2.sml
+
 #ifdef ENABLE_GC
   extern int gc_total;
   extern int rp_total;
