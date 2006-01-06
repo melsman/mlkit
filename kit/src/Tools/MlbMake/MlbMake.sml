@@ -263,11 +263,11 @@ struct
 	     flags=flags}
 	end
 
-    fun map2 f ss = map (fn (x,y) => (f x,f y)) ss
+    fun map2 f ss = map (fn (x,y,a) => (f x,f y)) ss
 
-    fun check_sources srcs_mlbs =
+    fun check_sources srcs_mlbs_ann =
 	let (* first canonicalize paths *)
-	    val srcs_mlbs = map2 OS.Path.mkCanonical srcs_mlbs
+	    val srcs_mlbs = map2 OS.Path.mkCanonical srcs_mlbs_ann
 	    fun report(s,m1,m2) =
 		let val first = "The file " ^ MlbUtil.quot s ^ " is referenced "
 		in if m1 = m2 then first ^ "more than once in " ^ MlbUtil.quot m1
@@ -359,13 +359,14 @@ struct
     fun build {flags, mlbfile, target} : unit =
 	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
 	    val _ = vchat ("Finding sources...\n")		
-	    val srcs_all = 
-		let val srcs_mlbs_all : (string * string) list = 
+	    val srcs_anns_all = 
+		let val srcs_mlbs_ann_all : (string * string * string list) list = 
 		       MlbProject.sources MlbProject.SRCTYPE_ALL mlbfile
-		    val _ = check_sources srcs_mlbs_all
+		    val _ = check_sources srcs_mlbs_ann_all
 		in
-		    map #1 srcs_mlbs_all
+		    map (fn (x,_,z) => (x,z)) srcs_mlbs_ann_all
 		end
+	    val srcs_all = map #1 srcs_anns_all
 
 	    val srcs_scriptsonly = 
 		map #1 (MlbProject.sources MlbProject.SRCTYPE_SCRIPTSONLY mlbfile)
@@ -380,13 +381,15 @@ struct
 	    val _ = MlbProject.dep mlbfile
 		
 	    val _ = vchat ("Compiling...\n")		
-	    val _ = foldl (fn (src,acc:int) =>
+	    val _ = foldl (fn ((src,anns),acc:int) =>
 			   let 
 			       (* val _ = print ("[Acc = " ^ Int.toString acc ^ "\n") *)
 			       val b = P.maybeSetRegionEffectVarCounter acc
+			       val anns = MlbUtil.pp_list " " anns
+			       val flags = anns ^ " " ^ flags
 			       val () = build_mlb_one flags mlbfile src
 			   in if b then readRevFromRevFile src else initialRev
-			   end) initialRev srcs_all
+			   end) initialRev srcs_anns_all
 
 	    val _ = vchat ("Linking...\n")		
 	    val lnkFiles = map lnkFileFromSmlFile srcs_allbutscripts

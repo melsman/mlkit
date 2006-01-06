@@ -23,6 +23,7 @@ signature MLB_PROJECT =
 	              | ATBDECbdec of atbdec
 		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)		          
 		      | SCRIPTSbdec of atbdec list
+	              | ANNbdec of string * bdec
 
 	(* scriptpath p is optional in MLBFILEbdec; only useful in the context of
 	 * SMLserver as SCRIPTSbdec. *)
@@ -41,9 +42,11 @@ signature MLB_PROJECT =
 
 	datatype srctype = SRCTYPE_ALL | SRCTYPE_SCRIPTSONLY | SRCTYPE_ALLBUTSCRIPTS
 
-	val sources : srctype -> string -> (string * string) list  
+	val sources : srctype -> string -> (string * string * string list) list  
         (* [sources srctype mlbfile] returns the list of sources (.sml- and
 	 * .sig-files) mentioned in mlbfile, with the second components 
-	 * of the pairs being the hosting mlbfiles. The srctype specifies which
-	 * sources are included in the resulting list.  *)
+	 * of the pairs being the hosting mlbfiles (the third components 
+	 * contains annotations, that is, flags that the compiler should 
+	 * apply during compilation of the source file). The srctype specifies 
+	 * which sources are included in the resulting list.  *)
     end

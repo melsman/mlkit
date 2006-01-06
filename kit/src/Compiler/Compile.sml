@@ -34,6 +34,14 @@ structure Compile: COMPILE =
 	 "Print imported region static environment prior to\n\
 	  \region inference."}
 
+    val safeLinkTimeElimination = Flags.add_bool_entry 
+	{long="safeLinkTimeElimination", short=NONE, 
+	 menu=["Control",
+	       "safeLinkTimeElimination"],
+	 item=ref false, neg=false, desc=
+	 "Threat this module as a library in the sense that\n\
+	  \the code can be eliminated if it is not used."}
+
     val print_storage_mode_expression = Flags.add_bool_entry 
 	{long="print_storage_mode_expression", short=SOME "Psme", 
 	 menu=["Printing of intermediate forms",
@@ -614,7 +622,7 @@ structure Compile: COMPILE =
 	    val Basis' = CompBasis.mk_CompBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 						 rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
 						 drop_env=drop_env1,psi_env=psi_env1}
-	  in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe)
+	  in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe orelse safeLinkTimeElimination())
 	  end
       end
 
