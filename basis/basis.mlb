@@ -95,7 +95,10 @@ local
 
     basis IntInf =
        let open General List ArrayVector String Word Int Real
-       in bas INT_INF.sml IntInf.sml end
+       in bas ann safeLinkTimeElimination
+              in INT_INF.sml IntInf.sml 
+              end
+          end
        end
 (*  
     basis Polyhash =
@@ -210,8 +213,11 @@ local
           end
         basis BinTextIO =
           let open Stream String ArrayVector PrimIO Int Posix Imperative Word
-          in bas io/text-stream-io.sig io/text-io.sig io/text-io.sml 
-                 io/bin-stream-io.sig io/bin-io.sig io/bin-io.sml end
+          in bas ann safeLinkTimeElimination
+                 in io/text-stream-io.sig io/text-io.sig io/text-io.sml 
+                    io/bin-stream-io.sig io/bin-io.sig io/bin-io.sml 
+                 end
+             end
           end
       in bas open Stream BinTextIO Imperative end
       end

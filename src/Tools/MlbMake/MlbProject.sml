@@ -24,6 +24,11 @@ functor MlbProject () : MLB_PROJECT =
 	    fun explode ss = ss
 	end
 
+	fun supported_annotation s =
+	    case s of
+		"safeLinkTimeElimination" => true
+	      | _ => false
+
 	type atbdec = string (* path.{sml,sig} *)
 	datatype bexp = BASbexp of bdec
                       | LETbexp of bdec * bexp
@@ -37,6 +42,7 @@ functor MlbProject () : MLB_PROJECT =
 	              | ATBDECbdec of atbdec
 		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)
 	              | SCRIPTSbdec of atbdec list
+	              | ANNbdec of string * bdec
 
 	val depDir : string ref = ref "PM"
 
@@ -134,6 +140,7 @@ functor MlbProject () : MLB_PROJECT =
 		  | "bas" => true
 		  | "basis" => true
 		  | "scriptpath" => true
+		  | "ann" => true
 		  | _ => false
 			
 	    fun is_fileext s =
@@ -243,7 +250,7 @@ functor MlbProject () : MLB_PROJECT =
               end
            | SOME _ => ()
   in
-    fun getEnvVal key = (case OS.Process.getEnv(key)
+      fun getEnvVal key = (case OS.Process.getEnv(key)
                       of NONE => (fillMap (); Option.join (Option.map (fn v => BM.peek(v, key))
                                                                       (!varMap)))
                        | SOME v => SOME v) handle ParseErr s => error s 
@@ -260,8 +267,7 @@ functor MlbProject () : MLB_PROJECT =
 				case cc of 
 				    #"/"::cc => cc
 				  | _ => cc
-			in case (getEnvVal (pathVar))
-         of
+			in case (getEnvVal (pathVar)) of
 			    SOME path => OS.Path.concat(path, implode cc)
 			  | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
 			end
@@ -313,6 +319,13 @@ functor MlbProject () : MLB_PROJECT =
 			 SOME longbid => (LONGBIDbexp longbid,ss')
 		       | NONE => parse_error1 mlbfile ("invalid basis expression", ss))
 
+	and parse_ann mlbfile ss =
+	    case ss of
+		s::ss => 
+		    if supported_annotation s then (s,ss)
+		    else parse_error1 mlbfile ("non-supported annotation after 'ann'", ss)
+	      | _ => parse_error1 mlbfile ("missing annotation after 'ann'", ss)
+			
 	and parse_bdec_opt mlbfile ss =
 	    case ss of
 		"local" :: ss => 
@@ -366,7 +379,23 @@ functor MlbProject () : MLB_PROJECT =
 			     val (srcs,ss) = readSrcs (ss,nil)
 			 in parse_bdec_more mlbfile (SCRIPTSbdec srcs,ss)
 			 end
-	      | s :: ss =>
+	      | "ann" :: ss =>
+		    let 
+			fun parse_rest'(ann,bdec,ss) =
+			    case ss of 
+				"end" :: ss => parse_bdec_more mlbfile (ANNbdec(ann,bdec),ss)
+			      | _ => parse_error1 mlbfile ("I expect an 'end'", ss)
+			fun parse_rest(ann,ss) =
+			    case ss of 
+				"in" :: ss => 
+				    (case parse_bdec_opt mlbfile ss of 
+					 NONE => parse_rest'(ann,EMPTYbdec,ss)
+				       | SOME(bdec,ss) => parse_rest'(ann,bdec,ss))
+			      | _ => parse_error1 mlbfile ("I expect an 'in'", ss)
+		    in case parse_ann mlbfile ss of 
+		         (ann,ss) => parse_rest(ann,ss)
+		    end
+ 	      | s :: ss =>
 			 if is_smlfile s then parse_bdec_more mlbfile (ATBDECbdec (expand mlbfile s),ss)
 			 else 
 			     if is_mlbfile s then 
@@ -584,6 +613,7 @@ functor MlbProject () : MLB_PROJECT =
 			val _ = app (fn f => maybeWriteDep f t D) smlfiles
 		    in (DepEnv.empty, A)
 		    end
+	      | ANNbdec (s,bdec) => dep_bdec D A bdec
 
 	and dep_bdec_file (A:A) mlbfile_rel : D * A =
 	    let val mlbfile_abs = mkAbs mlbfile_rel
@@ -611,11 +641,13 @@ functor MlbProject () : MLB_PROJECT =
 	fun dep (mlbfile : string) : unit =
 	    (dep_bdec_file emptyA mlbfile; ())
 
-	fun map2 f ss = map (fn (x,y) => (f x, f y)) ss
+	fun map2 f ss = map (fn (x,y,a) => (f x, f y,a)) ss
 
 	(* Support for finding the source files of a basis file *)
 
 	datatype srctype = SRCTYPE_ALL | SRCTYPE_SCRIPTSONLY | SRCTYPE_ALLBUTSCRIPTS
+
+	val emptyA = nil
 
 	fun srcs_bdec_file T mlbs mlbfile_rel =
 	    let val mlbfile_abs = mkAbs mlbfile_rel
@@ -623,7 +655,7 @@ functor MlbProject () : MLB_PROJECT =
 	       else let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
 		    in 
 			let val bdec = parse mlbfile
-			    val (ss, mlbs) = srcs_bdec T mlbfile mlbs bdec
+			    val (ss, mlbs) = srcs_bdec T emptyA mlbfile mlbs bdec
 			    val ss = map2 (dirMod (OS.Path.dir mlbfile_rel)) ss
 			in cd_old()
 			    ; (ss,mlbfile_abs::mlbs)
@@ -631,44 +663,45 @@ functor MlbProject () : MLB_PROJECT =
 		    end 
 	    end
 
-	and srcs_bdec T mlbfile mlbs bdec =
+	and srcs_bdec T A mlbfile mlbs bdec =
 	    case bdec of 
 		SEQbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs) = srcs_bdec T mlbfile mlbs bdec1
-			val (ss2,mlbs) = srcs_bdec T mlbfile mlbs bdec2
+		    let val (ss1,mlbs) = srcs_bdec T A mlbfile mlbs bdec1
+			val (ss2,mlbs) = srcs_bdec T A mlbfile mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
 	      | EMPTYbdec => (nil,mlbs)
 	      | LOCALbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs) = srcs_bdec T mlbfile mlbs bdec1
-			val (ss2,mlbs) = srcs_bdec T mlbfile mlbs bdec2
+		    let val (ss1,mlbs) = srcs_bdec T A mlbfile mlbs bdec1
+			val (ss2,mlbs) = srcs_bdec T A mlbfile mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
-	      | BASISbdec (bid,bexp) => srcs_bexp T mlbfile mlbs bexp
+	      | BASISbdec (bid,bexp) => srcs_bexp T A mlbfile mlbs bexp
 	      | OPENbdec _ => (nil,mlbs)
 	      | ATBDECbdec smlfile => 
 		    let val L = case T of SRCTYPE_SCRIPTSONLY => nil
-		                        | _ => [(smlfile,mlbfile)]
+		                        | _ => [(smlfile,mlbfile,A)]
 		    in (L,mlbs)
 		    end
 	      | MLBFILEbdec (mlbfile,_) => srcs_bdec_file T mlbs mlbfile
 	      | SCRIPTSbdec smlfiles => 
 		    let val L = case T of SRCTYPE_ALLBUTSCRIPTS => nil
-		                        | _ => map (fn f => (f,mlbfile)) smlfiles
+		                        | _ => map (fn f => (f,mlbfile,A)) smlfiles
 		    in (L,mlbs)
 		    end
+	      | ANNbdec (ann,bdec) => srcs_bdec T (ann::A) mlbfile mlbs bdec
 
-	and srcs_bexp T mlbfile mlbs bexp =
+	and srcs_bexp T A mlbfile mlbs bexp =
 	    case bexp of
-		BASbexp bdec => srcs_bdec T mlbfile mlbs bdec
+		BASbexp bdec => srcs_bdec T A mlbfile mlbs bdec
 	      | LETbexp (bdec,bexp) =>
-		    let val (ss1,mlbs) = srcs_bdec T mlbfile mlbs bdec
-			val (ss2,mlbs) = srcs_bexp T mlbfile mlbs bexp
+		    let val (ss1,mlbs) = srcs_bdec T A mlbfile mlbs bdec
+			val (ss2,mlbs) = srcs_bexp T A mlbfile mlbs bexp
 		    in (ss1@ss2,mlbs)
 		    end
 	      | LONGBIDbexp _ => (nil,mlbs)
 	
-	fun sources (T:srctype) (mlbfile : string) : (string * string) list =
+	fun sources (T:srctype) (mlbfile : string) : (string * string * string list) list =
 	    #1 (srcs_bdec_file T nil mlbfile)
     
     end

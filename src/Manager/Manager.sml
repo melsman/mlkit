@@ -758,16 +758,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
     structure MlbPlugIn : MLB_PLUGIN  =
 	struct
-	    fun compile0 target a =
-		(Flags.turn_on "compile_only";
-		 Flags.lookup_string_entry "output" := target;
-		 build_mlb_one a)
-		handle Fail s => print ("Compile error: " ^ s ^ "\n")
+	    fun compile0 target flags a =
+		let
+		    (* deal with annotations (from mlb-file) *)
+		    val flags = String.tokens Char.isSpace flags
+		    val () = List.app Flags.turn_on flags
+		    val () = Flags.turn_on "compile_only"
+		    val () = Flags.lookup_string_entry "output" := target
+		in build_mlb_one a
+		end handle Fail s => print ("Compile error: " ^ s ^ "\n")
 
-	    fun compile {verbose} {basisFiles,source,namebase,target,flags=""} :unit =
-		isolate (compile0 target) (namebase, basisFiles, source)
+	    fun compile {verbose} {basisFiles,source,namebase,target,flags} :unit =
+		isolate (compile0 target flags) (namebase, basisFiles, source)
+(*
 	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
-
+*)
 	    fun link0 mlbfile target lnkFiles lnkFilesScripts () =
 		(Flags.lookup_string_entry "output" := target;
 		 Flags.lookup_stringlist_entry "link" := lnkFiles;

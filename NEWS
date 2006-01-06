@@ -1,5 +1,10 @@
 MLKit NEWS file
 
+ * mael 2006-01-06: Added support for annotations in
+   mlb-files. Currently, only the flag safeLinkTimeElimination is
+   supported, which helps linking in parts of the basis library only
+   when it is needed. See the file basis/basis.mlb for an example.
+
  * mael 2005-12-12: The MLKit menu system is no longer supported - it
    has now been removed from the sources. Instead, the user of the
    MLKit must provide options to the executable. To get an overview of
@@ -228,7 +233,7 @@ MLKit NEWS file
    functions to C. Only functions of type int->int may be exported at
    present and the support works only with pure region based memory
    management (i.e., without reference tracing garbage
-   collection). See the example export.pm in the test directory.
+   collection). See the example export.mlb in the test directory.
 
  * mael 2004-08-02: Initiated work on supporting export of ML
    functions to C. The special identifier "_export" is now declared in

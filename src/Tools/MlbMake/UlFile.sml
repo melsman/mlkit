@@ -230,6 +230,8 @@ functor UlFile (MlbProject : MLB_PROJECT)
 			       end) S.empty smlfiles
 		    in (S,C.empty,M,B.empty)
 		    end
+	      | Mlb.ANNbdec (ann,bdec) => ulb phi M B bdec
+
         (* ule:   M,B |- bexp => S,C,M',B' *)
         and ule (phi:phi) (M:M) (B:B) bexp
           : S * C * M * B =

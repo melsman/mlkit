@@ -1,10 +1,9 @@
 (* Compile and run this project as follows:
-   > gcc -c export.c
-   > mlkit export.pm
+   > gcc -c -o export.a export.c
+   > mlkit export.mlb
    > ./run
 *)
 
-import export.o
-in
-   export.sml
+local $SML_LIB/basis/basis.mlb
+in export.sml
 end
