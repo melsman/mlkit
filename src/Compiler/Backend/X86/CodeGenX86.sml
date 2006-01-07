@@ -2707,6 +2707,7 @@ struct
 	       | LS.EXPORT{name,arg=(aty,ft1,ft2)} =>
 		  let val clos_lab = DatLab(Labels.new_named ("ExportClosLab_" ^ name))
 		      val return_lab = new_local_lab ("return_" ^ name)
+          val offset_codeptr = if BI.tag_values() then "4" else "0"
 		      val lab = NameLab name
 		      val _ = 
 			  if ft1 <> LS.Int orelse ft2 <> LS.Int then 
@@ -2725,7 +2726,7 @@ struct
 			    I.movl(D("8",ebp),R ebx),
 			    I.movl(L clos_lab, R eax), (* load closure into %eax*)
 					     
-			    I.movl(D("0",eax), R ebp), (* extract code pointer into %ebp *)
+			    I.movl(D(offset_codeptr,eax), R ebp), (* extract code pointer into %ebp *)
 			    I.pushl (LA return_lab),   (* push return address *)
 			    I.jmp (R ebp),             (* call ML function *)
 			    I.lab return_lab,
