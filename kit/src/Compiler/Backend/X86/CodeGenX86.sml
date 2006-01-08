@@ -2709,6 +2709,7 @@ struct
 		      val return_lab = new_local_lab ("return_" ^ name)
           val offset_codeptr = if BI.tag_values() then "4" else "0"
 		      val lab = NameLab name
+          val stringlab = gen_string_lab name
 		      val _ = 
 			  if ft1 <> LS.Int orelse ft2 <> LS.Int then 
 			      die "Export of ML function with type other than (int->int) not supported"
@@ -2722,20 +2723,24 @@ struct
 			    I.dot_globl lab,
 			    I.lab lab,
 			    I.pushl (R ebp),           (* save %ebp *)
-			    I.movl(R esp, R ebp),      (* load argument into %ebx *)
-			    I.movl(D("8",ebp),R ebx),
+			    I.movl(R esp, R ebp)]        (* load argument into %ebx *)
+       @  (map (fn r => I.pushl (R r)) [ebx,edi,esi])
+			 @ [I.movl(D("8",ebp),R ebx),
 			    I.movl(L clos_lab, R eax), (* load closure into %eax*)
 					     
 			    I.movl(D(offset_codeptr,eax), R ebp), (* extract code pointer into %ebp *)
 			    I.pushl (LA return_lab),   (* push return address *)
 			    I.jmp (R ebp),             (* call ML function *)
 			    I.lab return_lab,
-			    I.movl(R edi, R eax),      (* result is in %edi *)
-			    I.popl(R ebp),             (* restore %ebp *)
+			    I.movl(R edi, R eax)]      (* result is in %edi *)
+       @  (map (fn r => I.popl (R r)) [esi,edi,ebx]) (* I found a calling C convention at                  *
+                                                      * http://www.agner.org/assem/calling_conventions.pdf *)
+			 @ [I.popl(R ebp),             (* restore %ebp *)
 			    I.ret])
 
 		  in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
-				 store_in_label(aty,clos_lab,tmp_reg1,size_ff,C))
+				 store_in_label(aty,clos_lab,tmp_reg1,size_ff, (I.movl (LA lab, R tmp_reg0)) :: (I.movl (LA stringlab, R tmp_reg1)) ::
+           compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1, SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1, C)))
 		  end
 		)
        in

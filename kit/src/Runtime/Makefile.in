@@ -9,7 +9,7 @@ INSTALLPROGRAM=@INSTALL_PROGRAM@
 BINDIR=@top_srcdir@/bin
 
 OFILES = Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
-         GC.o Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o
+         GC.o Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o
 CFILES = $(OFILES:%.o=%.c)
 OFILES_PROF = $(OFILES:%.o=%-p.o)
 OFILES_TAG = $(OFILES:%.o=%-tag.o)
