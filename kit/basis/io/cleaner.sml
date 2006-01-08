@@ -11,14 +11,14 @@ struct
 
 type t = (unit -> unit) list ref
 
-fun new (): t = ref []
-
-fun addNew (cs, f) = cs := f :: (!cs)
+val atExit = Initial.clearnerAtExit
 
 fun clean cs = app (fn c => c () handle _ => ()) (!cs)
-   
-val atExit = new ()
-   
-val atLoadWorld = new ()
+
+fun addNew (cs, f) =
+  ((if !Initial.addedclearner
+    then () 
+    else (OS.Process.atExit (fn () => clean atExit) ; Initial.addedclearner := true))
+    ; cs := f :: (!cs))
 
 end

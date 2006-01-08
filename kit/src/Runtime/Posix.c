@@ -6,11 +6,19 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/times.h>
+#include <string.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
+#include <time.h>
+#include <pwd.h>
+#include <termios.h>
+#include <sys/utsname.h>
 #include "Tagging.h"
 #include "Exception.h"
 #include "List.h"
 #include "String.h"
+#include "Posix.h"
 
 int
 sml_WIFEXITED(int status)
@@ -58,9 +66,12 @@ int
 sml_waitpid(int pair, int waitpid_arg, int flags) 
 {
   int status;
+  int f = 0x0;
+  flags = convertIntToC(flags);
+  if (flags & 0x1) f |= WUNTRACED;
+  if (flags & 0x2) f |= WNOHANG;
   int pid = waitpid(convertIntToC(waitpid_arg),
-		    &status, 
-		    convertIntToC(flags));
+		    &status, f);
   mkTagPairML(pair);
   first(pair) = convertIntToML(pid);
   second(pair) = convertIntToML(status);
@@ -102,6 +113,12 @@ sml_sysconf(int t)
       break;
     case 10:
       res = sysconf(_SC_VERSION);
+      break;
+    case 11:
+      res = sysconf(_SC_GETGR_R_SIZE_MAX);
+      break;
+    case 12:
+      res = sysconf(_SC_GETPW_R_SIZE_MAX);
       break;
     default:
       raise_exn((int)&exn_OVERFLOW);
@@ -199,19 +216,22 @@ sml_lower(char *name, int rwx_mode, int flags, int perm, int i, int kind)
   return res;
 }
 
+extern char **environ;
+
 int
-sml_exec (String path, int sl)
+sml_exec (String path, int sl, int envl, int kind)
 {
   String elemML;
   int n, i;
-  char **args;
+  char **args, **env;
   int list = sl;
+  kind = convertIntToC(kind);
   for (n = 0; isCONS(list); list = tl(list))
   {
     n++;
   }
   args = (char **) malloc(sizeof(char *) * (n+1));
-  if (!args) return convertIntToML(0);
+  if (!args) return convertIntToML(-1);
   
   list = sl;
   
@@ -221,8 +241,42 @@ sml_exec (String path, int sl)
     args[i] = &(elemML->data);
   }
   args[i] = NULL;
-  n = execv(&(path->data), args);
+
+  list = envl;
+  if (isCONS(list)) 
+  {
+    for (n = 0; isCONS(list); list = tl(list))
+    {
+      n++;
+    }
+    env = (char **) malloc(sizeof(char *) * (n+1));
+    if (!env)
+    {
+      return convertIntToML(-1);
+    }
+    for (list = envl, i = 0; isCONS(list); list = tl(list), i++)
+    {
+      elemML = (String) hd(list);
+      env[i] = &(elemML->data);
+    }
+    env[i] = NULL;
+    environ = env;
+  }
+  if (kind)
+  {
+    n = execv(&(path->data), args);
+  }
+  else
+  {
+    n = execvp(&(path->data), args);
+  }
   return convertIntToML(n);
+}
+
+String
+sml_null(void)
+{
+  return NULL;
 }
 
 int
@@ -260,6 +314,7 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
 {
   int r, n;
   String s;
+  mkTagPairML(pair);
   n = convertIntToC(n1);
   s = REG_POLY_CALL(allocStringC, sr, n+1);
   ((char *)&(s->data))[n] = 0;
@@ -269,22 +324,22 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
     ((char *)&(s->data))[r] = 0;
   }
   first(pair) = (int) s;
-  second(pair) = r;
+  second(pair) = convertIntToML(r);
   return pair;
 }
 
 int
-sml_writeVec(int fd, char *base, int start, int end)
+sml_writeVec(int fd, char *base, int start, int length)
 {
-  int r, length = end - start;
+  int r;
   r = write(fd, base+start, length);
   return r;
 }
 
 int
-sml_readArr (int fd, char *base, int start, int end)
+sml_readArr (int fd, char *base, int start, int length)
 {
-  int r, length = end - start;
+  int r;
   r = read(fd, base+start, length);
   return r;
 }
@@ -334,3 +389,491 @@ sml_getfl (int fd, int flags)
   s |= r & O_RDWR ? 0x400 : 0;
   return s;
 }
+
+static int sml_ttyVals[] = {
+  VEOF, // 0
+  VEOL,
+  VERASE,
+  VINTR,
+  VKILL,
+  VMIN,
+  VQUIT,
+  VSUSP,
+  VTIME,
+  VSTART,
+  VSTOP, // 10
+  BRKINT,
+  ICRNL,
+  IGNBRK,
+  IGNCR,
+  IGNPAR,
+  INLCR,
+  INPCK,
+  ISTRIP,
+  IXOFF,
+  IXON, // 20
+  PARMRK,
+  OPOST,
+  CLOCAL,
+  CREAD,
+  CS5,
+  CS6,
+  CS7,
+  CS8,
+  CSIZE,
+  CSTOPB, // 30
+  HUPCL,
+  PARENB,
+  PARODD,
+  ECHO,
+  ECHOE,
+  ECHOK,
+  ECHONL,
+  ICANON,
+  IEXTEN,
+  ISIG, // 40
+  NOFLSH,
+  TOSTOP,
+  0,
+  BRKINT | ICRNL | IGNBRK | IGNCR | IGNPAR | INLCR | INPCK | ISTRIP | IXOFF | IXON | PARMRK,
+  CLOCAL | CREAD | CS5 | CS6 | CS7 | CS8 | CSIZE | CSTOPB | HUPCL | PARENB | PARODD,
+  ECHO | ECHOE | ECHOK | ECHONL | ICANON | IEXTEN | ISIG | NOFLSH | TOSTOP,
+  0,
+  B0,
+  B50,
+  B75, // 50
+  B110,
+  B134,
+  B150,
+  B200,
+  B300,
+  B600,
+  B1200,
+  B1800,
+  B2400,
+  B4800, // 60
+  B9600,
+  B19200,
+  B38400,
+  B57600,
+  B115200,
+  B230400,
+  0,
+  0,
+  0,
+  NCCS // 70
+};
+
+int
+sml_getTty(int i)
+{
+  return sml_ttyVals[i];
+}
+
+#include "SysErrTable.h"
+
+static int 
+sml_posixFind(char *s, struct syserr_entry arr[], int amount)
+{
+  int i = 0, j, k,n;
+  j = amount;
+  while (i <= j)
+  {
+    k = i + (j-i) / 2;
+    n = strcmp(arr[k].name, s);
+    if (n == 0) return arr[k].number;
+    if (n < 0) 
+    {
+      i = k+1;
+      continue;
+    }
+    else
+    {
+      j = k-1;
+      continue;
+    }
+  }
+  return -1;
+}
+
+int
+sml_syserror(char *s)
+{
+  return sml_posixFind(s, syserrTableName, sml_numberofErrors);
+}
+
+int
+sml_findsignal(char *s)
+{
+  return sml_posixFind(s, syssigTableNumber, sml_numberofSignals);
+}
+
+static String 
+REG_POLY_FUN_HDR(sml_PosixName, Region rs, int e, struct syserr_entry arr[], int amount)
+{
+  int i = 0, j, k,n;
+  j = amount;
+  e = convertIntToC(e);
+  while (i <= j)
+  {
+    k = i + (j-i) / 2;
+    n = arr[k].number - e;
+    if (n == 0)
+    {
+      return REG_POLY_CALL(convertStringToML, rs, arr[k].name);
+    }
+    if (n < 0) 
+    {
+      i = k+1;
+      continue;
+    }
+    else
+    {
+      j = k-1;
+      continue;
+    }
+  }
+  return NULL;
+}
+
+String
+REG_POLY_FUN_HDR(sml_errorName, Region rs, int e)
+{
+  return REG_POLY_CALL(sml_PosixName, rs, e, syserrTableNumber, sml_numberofErrors);
+}
+
+int
+REG_POLY_FUN_HDR(sml_getgrgid, int triple, Region nameR, Region memberListR, Region memberR, int g, int s, int exn)
+{
+  int res;
+  int *list, *pair;
+  char *b;
+  struct group gbuf, *gbuf2;
+  char  **members;
+  mkTagTripleML(triple);
+  gid_t gid = (gid_t) convertIntToC(g);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    third(triple) = res;
+    return triple;
+  }
+  res = getgrgid_r(gid, &gbuf, b, s-1, &gbuf2);
+  third(triple) = res;
+  if (res) 
+  {
+    free(b);
+    return triple;
+  }
+  if (!gbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  first(triple) = (int) REG_POLY_CALL(convertStringToML, nameR, gbuf2->gr_name);
+  members = gbuf2->gr_mem;
+  makeNIL(list);
+  while (*members)
+  {
+    allocRecordML(memberListR, 2, pair);
+    first(pair) = (int) REG_POLY_CALL(convertStringToML, memberR, *members);
+    second(pair) = (int) list;
+    makeCONS(pair, list);
+    members++;
+  }
+  free(b);
+  second(triple) = (int) list;
+  return triple;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getgrnam, int triple, Region memberListR, Region memberR, String nameML, int s, int exn)
+{
+  int res;
+  int *list, *pair;
+  char *b;
+  struct group gbuf, *gbuf2;
+  char  **members;
+  char *name = &(nameML->data);
+  mkTagTripleML(triple);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    third(triple) = res;
+    return triple;
+  }
+  res = getgrnam_r(name, &gbuf, b, s-1, &gbuf2);
+  third(triple) = res;
+  if (res) 
+  {
+    free(b);
+    return triple;
+  }
+  if (!gbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  first(triple) = convertIntToML(gbuf2->gr_gid);
+  members = gbuf2->gr_mem;
+  makeNIL(list);
+  while (*members)
+  {
+    allocRecordML(memberListR, 2, pair);
+    first(pair) = (int) REG_POLY_CALL(convertStringToML, memberR, *members);
+    second(pair) = (int) list;
+    makeCONS(pair, list);
+    members++;
+  }
+  free(b);
+  second(triple) = (int) list;
+  return triple;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getpwuid, int tuple, Region nameR, Region homeR, Region shellR, int u, int s, int exn)
+{
+  int res;
+  char *b;
+  struct passwd pbuf, *pbuf2;
+  uid_t uid = (uid_t) convertIntToC(u);
+  mkTagRecordML(tuple,5);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    elemRecordML(tuple,4) = res;
+    return tuple;
+  }
+  res = getpwuid_r(uid, &pbuf, b, s-1, &pbuf2);
+  elemRecordML(tuple,4) = res;
+  if (res) 
+  {
+    free(b);
+    return tuple;
+  }
+  if (!pbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  elemRecordML(tuple,0) = (int) REG_POLY_CALL(convertStringToML, nameR, pbuf2->pw_name);
+  elemRecordML(tuple,1) = (int) pbuf2->pw_gid;
+  elemRecordML(tuple,2) = (int) REG_POLY_CALL(convertStringToML, homeR, pbuf2->pw_dir);
+  elemRecordML(tuple,3) = (int) REG_POLY_CALL(convertStringToML, shellR, pbuf2->pw_shell);
+  free(b);
+  return tuple;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getpwnam, int tuple, Region homeR, Region shellR, String nameML, int s, int exn)
+{
+  int res;
+  char *b;
+  struct passwd pbuf, *pbuf2;
+  char *name = &(nameML->data);
+  mkTagRecordML(tuple,5);
+  s = convertIntToC(s) + 1;
+  b = (char *) malloc(s);
+  if (!b)
+  {
+    res = errno;
+    elemRecordML(tuple,4) = res;
+    return tuple;
+  }
+  res = getpwnam_r(name, &pbuf, b, s-1, &pbuf2);
+  elemRecordML(tuple,4) = res;
+  if (res) 
+  {
+    free(b);
+    return tuple;
+  }
+  if (!pbuf2)
+  {
+    free(b);
+    raise_exn(exn);
+  }
+  elemRecordML(tuple,0) = (int) pbuf2->pw_uid;
+  elemRecordML(tuple,1) = (int) pbuf2->pw_gid;
+  elemRecordML(tuple,2) = (int) REG_POLY_CALL(convertStringToML, homeR, pbuf2->pw_dir);
+  elemRecordML(tuple,3) = (int) REG_POLY_CALL(convertStringToML, shellR, pbuf2->pw_shell);
+  free(b);
+  return tuple;
+}
+
+String 
+REG_POLY_FUN_HDR(sml_ctermid, Region r)
+{
+  String rs;
+  char *s;
+  s = malloc(L_ctermid+1);
+  if (!s) return NULL;
+  ctermid(s);
+  rs = REG_POLY_CALL(convertStringToML, r, s);
+  free(s);
+  return rs;
+}
+
+int *
+REG_POLY_FUN_HDR(sml_environ, Region rl, Region rs)
+{
+  char **m;
+  int *pair, *list;
+  makeNIL(list);
+  m = environ;
+  while (*m)
+  {
+    allocRecordML(rl, 2, pair);
+    first(pair) = (int) REG_POLY_CALL(convertStringToML, rs, *m);
+    second(pair) = (int) list;
+    makeCONS(pair,list);
+  }
+  return list;
+}
+
+int
+REG_POLY_FUN_HDR(sml_getgroups, int rp, Region rs, int exn)
+{
+  int *pair, *list;
+  gid_t *tmp;
+  int r, i;
+  makeNIL(list);
+  mkTagPairML(rp);
+  r = getgroups(0, NULL);
+  if (r == -1)
+  {
+    first (rp) = r;
+    second(rp) = (int) list;
+    return rp;
+  }
+  tmp = (gid_t *) malloc(sizeof(gid_t) * r);
+  if (!tmp)
+  {
+    first (rp) = convertIntToML(-1);
+    second(rp) = (int) list;
+    return rp;
+  }
+  r = getgroups(r, tmp);
+  if (r == -1)
+  {
+    free(tmp);
+    raise_exn(exn);
+  }
+  for(i=0; i<r; i++)
+  {
+    REG_POLY_CALL(allocRecordML,rs, 2, pair);
+    first(pair) = (int) convertIntToML(tmp[i]);
+    second(pair) = (int) list;
+    makeCONS(pair, list)
+  }
+  free(tmp);
+  first(rp) = convertIntToML(0);
+  second(rp) = (int) list;
+  return rp;
+}
+
+String
+REG_POLY_FUN_HDR(sml_getlogin, Region rs)
+{
+  String s;
+  int r;
+  s = REG_POLY_CALL(allocStringC,rs, L_cuserid + 1);
+  r = getlogin_r(&(s->data), L_cuserid);
+  if (r != 0)
+  {
+    return NULL;
+  }
+  return s;
+}
+
+int
+sml_gettime(int pair)
+{
+  time_t t;
+  mkTagTripleML(pair);
+  t = time(NULL);
+  if (t == (time_t) -1)
+  {
+    third(pair) = convertIntToML(-1);
+    return pair;
+  }
+  first(pair) = convertIntToML(t % 1000000000);
+  second(pair) = convertIntToML(t / 1000000000);
+  third(pair) = convertIntToML(0);
+  return pair;
+}
+
+int
+REG_POLY_FUN_HDR(sml_ttyname, int pair, Region rs, int fd)
+{
+  char *buf;
+  int i = 100, r;
+  fd = convertIntToC(fd);
+  mkTagPairML(pair);
+  r = 0;
+  if (r == ERANGE) r++;
+  do
+  {
+    buf = (char *) malloc(i);
+    if (!buf)
+    {
+      first(pair) = convertIntToML(errno);
+      second(pair) = (int) NULL;
+    }
+    buf[i-1] = 0;
+    r = ttyname_r(fd, buf, i-1);
+    if (r == 0)
+    {
+      first(pair) = convertIntToML(0);
+      second(pair) = (int) REG_POLY_CALL(convertStringToML, rs, buf);
+      free(buf);
+      return pair;
+    }
+    r = errno;
+    free(buf);
+    i <<= 1;
+  } while (r == ERANGE);
+  first(pair) = convertIntToML(r);
+  second(pair) = (int) NULL;
+  return pair;
+}
+
+int *
+REG_POLY_FUN_HDR(sml_uname, Region rl, Region s1, Region s2)
+{
+  struct utsname i;
+  int *pair, *list;
+  int j;
+  makeNIL(list);
+  j = uname(&i);
+  if (j == -1) return list;
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.sysname);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "sysname");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.nodename);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "nodename");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.release);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "release");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.version);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "version");
+  makeCONS(pair,list);
+  allocRecordML(rl, 2, pair);
+  second(pair) = (int) REG_POLY_CALL(convertStringToML, s2, i.machine);
+  first(pair) = (int) REG_POLY_CALL(convertStringToML, s1, "machine");
+  makeCONS(pair,list);
+  return list;
+}
+
+
+

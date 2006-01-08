@@ -380,7 +380,7 @@ sml_opendir(String path, int exn)           /* SML Basis */
 }
 
 String
-REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
+REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v, int exn)    /* SML Basis */
 {
   struct dirent *direntry;
   String res;
@@ -389,11 +389,12 @@ REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
   direntry = readdir(dir_ptr);
   if (direntry == NULL) 
     {
-      res = NULL;
+      raise_exn(exn);
+      return NULL;
     }
   else
     {
-      res = REG_POLY_CALL(convertStringToML, rAddr, (*direntry).d_name);
+      res = REG_POLY_CALL(convertStringToML, rAddr, direntry->d_name);
     }
   return res;
 }
@@ -561,11 +562,14 @@ outputBinStream(FILE *os, String s, int exn)
   return mlUNIT;
 }
 
-void
-sml_microsleep(int s, int u)
+int
+sml_microsleep(int pair, int s, int u)
 {
   int r;
   struct timespec req, rem;
+  mkTagPairML(pair);
+  u = convertIntToC(u);
+  s = convertIntToC(s);
   while (u > 1000000) 
   {
     s++;
@@ -574,7 +578,10 @@ sml_microsleep(int s, int u)
   req.tv_sec = s;
   req.tv_nsec = (u * 1000);
   r = nanosleep(&req, &rem);
-  return;
+  first(pair) = convertIntToML(r);
+  second(pair) = convertIntToML(rem.tv_sec);
+  third(pair) = convertIntToML(rem.tv_nsec);
+  return pair;
 }
 
 int

@@ -1,36 +1,42 @@
 signature STREAM_IO =
-   sig
-      type elem
-      type instream
-      type out_pos
-      type outstream
-      type pos
-      type reader
-      type vector
-      type writer
+  sig
+    type elem
+    type vector
 
-      val canInput: instream * int -> int option
-      val closeIn: instream -> unit
-      val closeOut: outstream -> unit
-      val endOfStream: instream -> bool
-      val filePosIn: instream -> pos
-      val filePosOut: out_pos -> pos
-      val flushOut: outstream -> unit
-      val getBufferMode: outstream -> IO.buffer_mode
-      val getPosOut: outstream -> out_pos
-      val getReader: instream -> reader * vector
-      val getWriter: outstream -> writer * IO.buffer_mode
-      val input1: instream -> (elem * instream) option
-      val input: instream -> vector * instream
-      val inputAll: instream -> vector * instream
-      val inputN: instream * int -> vector * instream
-      val mkInstream: reader * vector -> instream
-      val mkOutstream: writer * IO.buffer_mode -> outstream
-      val output1: outstream * elem -> unit
-      val output: outstream * vector -> unit
-      val setBufferMode: outstream * IO.buffer_mode -> unit
-      val setPosOut: out_pos -> outstream
-   end
+    type instream
+    type outstream
+    type out_pos
+
+    type reader
+    type writer
+    type pos
+
+    val input : instream -> vector * instream
+    val input1 : instream -> (elem * instream) option
+    val inputN : instream * int -> vector * instream
+    val inputAll : instream -> vector * instream
+    val canInput : instream * int -> int option
+    val closeIn : instream -> unit
+    val endOfStream : instream -> bool
+
+    val output : outstream * vector -> unit
+    val output1 : outstream * elem -> unit
+    val flushOut : outstream -> unit
+    val closeOut : outstream -> unit
+
+    val mkInstream : reader * vector -> instream
+    val getReader : instream -> reader * vector
+    val filePosIn : instream -> pos
+
+    val setBufferMode : outstream * IO.buffer_mode -> unit
+    val getBufferMode : outstream -> IO.buffer_mode
+
+    val mkOutstream : writer * IO.buffer_mode -> outstream
+    val getWriter : outstream -> writer * IO.buffer_mode
+    val getPosOut : outstream -> out_pos
+    val setPosOut : out_pos -> outstream
+    val filePosOut : out_pos -> pos
+  end
 
 signature STREAM_IO_EXTRA =
    sig
@@ -59,6 +65,7 @@ signature STREAM_IO_EXTRA =
                          writer: writer} -> outstream
       val outputSlice: outstream * vector_slice -> unit
       val outstreamWriter: outstream -> writer
+(*      val closedThing : string -> instream *)
    end
 
 signature STREAM_IO_EXTRA_FILE =

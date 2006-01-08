@@ -6,8 +6,29 @@
 structure OS = 
   struct
     type syserror = int
-    exception SysErr of string * syserror option
+    exception SysErr = Initial2.SysErr
+    fun isNull (s : string) = prim("__is_null", s) : bool
+
     fun errorMsg (err : int) : string = prim("sml_errormsg", err)
+    fun errorName (err : int) : string =
+         let
+           val s = prim("sml_errorName", err : int) : string 
+         in
+           if isNull s
+           then raise Fail ("OS.errorName: " ^ Int.toString err ^ " not a valid error number")
+           else
+             let 
+               val a = String.map Char.toLower (Byte.unpackStringVec(Word8VectorSlice.slice((Byte.stringToBytes s),1,NONE)))
+             in if a = "2big" then "toobig" else a
+             end
+         end
+    fun syserror (err : string) : syserror option = 
+         let
+           val err = if err = "toobig" then "E2BIG" else "E" ^ (String.map Char.toUpper err)
+           val s = prim("@sml_syserror", err : string) : int 
+         in
+           if s = ~1 then NONE else SOME s
+         end
   end
 
 structure FileSys : OS_FILE_SYS =
@@ -23,7 +44,7 @@ structure FileSys : OS_FILE_SYS =
       dev < dev' orelse (dev = dev' andalso ino < ino')
 
     (* Primitives from Runtime/IO.c -- raise Fail on error *)
-    val failexn = Initial.filesys_fail
+    val failexn = Initial.FileSys.filesys_fail
 
     fun chdir_ (s : string) : unit =                     prim("sml_chdir", (s, failexn))
     fun remove_ (s : string) : unit =                    prim("sml_remove", (s, failexn))
@@ -45,17 +66,21 @@ structure FileSys : OS_FILE_SYS =
     fun settime_ (s : string, r : real) : unit =         prim("sml_settime", (s,r,failexn))
     fun filesize_ (s : string) : int =                   prim("sml_filesize", (s, failexn))
     fun opendir_ (s : string) : dirstruct_ =             prim("sml_opendir", (s, failexn))
-    fun readdir_ (d : dirstruct_) : string =             prim("sml_readdir", d)
+    fun readdir_ (d : dirstruct_) : string =             prim("sml_readdir", (d,failexn))
     fun rewinddir_ (d : dirstruct_) : unit =             prim("sml_rewinddir", d)
     fun closedir_ (d : dirstruct_) : unit =              prim("sml_closedir", (d, failexn))
     fun errno_ () : OS.syserror =                        prim("sml_errno", ())
     fun errormsg_ (err : OS.syserror) : string =         prim("sml_errormsg", err)
     fun mkerrno_ (i : int) : OS.syserror =               prim("id", i)
     fun islink_ (s : string) : bool =                    prim("sml_islink", (s, failexn))
+    fun isreg_ (s : string) : bool =                     prim("sml_isreg", (s, failexn))
     fun readlink_ (s : string) : string =                prim("sml_readlink", (s, failexn))
     fun realpath_ (s : string) : string =                prim("sml_realpath", (s, failexn))
     fun devinode_ (s : string) : file_id =               prim("sml_devinode", (s, failexn))
     fun int_to_word_ (i : int) : word =                  prim("id", i)
+
+    fun isNull (s : string) = prim("__is_null", s) : bool
+
 
     fun formatErr mlOp (SOME operand) reason =
 	mlOp ^ " failed on `" ^ operand ^ "': " ^ reason
@@ -172,13 +197,10 @@ structure FileSys : OS_FILE_SYS =
 	(ref (SOME (opendir_ path)))
 	handle Fail s => raiseSys "openDir" (SOME path) s;
 
-    fun isNull (s : string) = prim("__is_null", s) : bool
-
     fun readDir (ref NONE) =
 	raiseSysML "readDir" NONE "Directory stream is closed"
       | readDir (arg as ref (SOME dstr)) =
-	let val e' = readdir_ dstr
-      val e = if isNull e' then NONE else SOME e'
+	let val e = (SOME (readdir_ dstr)) handle Fail _ => NONE
 	in
     Option.join(Option.map(fn entry => 
 	    if entry <> Path.parentArc andalso entry <> Path.currentArc then

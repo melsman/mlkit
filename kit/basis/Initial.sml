@@ -11,6 +11,7 @@ structure Initial =
     type word0 = word         (* used by WORD signature *)
 
     exception Fail of string
+    val _ = prim("sml_setFailNumber", (Fail "hat" : exn, 1 : int)) : unit;
 
     (* Time structure *)
     val timebase : int = prim("get_time_base", 0)
@@ -72,17 +73,199 @@ structure Initial =
     val failscan : exn = Fail "scanStream: backtracking too far"
 
     (* FileSys *)
-    val filesys_fail : exn = Fail "FileSys"    
+    structure FileSys =
+      struct
+        val filesys_fail : exn = Fail "FileSys"    
+      end
 
     (* Process *)
     val exittasks = (ref []) : (unit -> unit) list ref
-  
+    val exitCalled = ref false
+    exception RaisedInExit
 
+    val clearnerAtExit = (ref []) : (unit -> unit) list ref
+    val addedclearner = ref false
+   exception ClosedStream
+  
     (* Posix *)
 
      structure TextIO =
        struct
          val bufsize = 4000
+       end
+
+     structure Posix_Values =
+       struct
+         fun getN s =  prim("@sml_syserror", s : string) : int
+         fun getNS s =  prim("@sml_findsignal", s : string) : int
+         fun getT i =   prim("@sml_getTty", i : int) : word
+         fun getTi i = prim("@sml_getTty", i : int) : int
+         structure Tty = 
+           struct
+             structure V =
+               struct
+                 val eof = getTi 0
+                 val eol = getTi 1
+                 val erase = getTi 2
+                 val intr = getTi 3
+                 val kill = getTi 4
+                 val min = getTi 5
+                 val quit = getTi 6
+                 val susp = getTi 7
+                 val time = getTi 8
+                 val start = getTi 9
+                 val stop = getTi 10
+                 val nccs = getTi 70
+               end
+             structure I =
+               struct
+                 val brkint = getT 11
+                 val icrnl = getT 12
+                 val ignbrk =  getT 13
+                 val igncr =  getT 14
+                 val ignpar =  getT 15
+                 val inlcr =  getT 16
+                 val inpck =  getT 17
+                 val istrip =  getT 18
+                 val ixoff =  getT 19
+                 val ixon =  getT 20
+                 val parmrk =  getT 21
+                 val all = getT 44
+               end
+             structure O =
+               struct
+                 val opost = getT 22
+                 val all = opost
+               end
+             structure C =
+               struct
+                 val clocal = getT 23
+                 val cread = getT 24
+                 val cs5 = getT 25
+                 val cs6 = getT 26
+                 val cs7 = getT 27
+                 val cs8 = getT 28
+                 val csize = getT 29
+                 val cstopb = getT 30
+                 val hupcl = getT 31
+                 val parenb = getT 32
+                 val parodd = getT 33
+                 val all = getT 45
+               end
+             structure L =
+               struct
+                 val echo = getT 34
+                 val echoe = getT 35
+                 val echok = getT 36
+                 val echonl = getT 37
+                 val icanon = getT 38
+                 val iexten = getT 39
+                 val isig = getT 40
+                 val noflsh = getT 41
+                 val tostop = getT 42
+                 val all = getT 46
+               end
+             structure Speed =
+               struct
+                 val b0 = getT 48
+                 val b50 = getT 49 
+                 val b75 = getT 50
+                 val b110 = getT 51
+                 val b134 = getT 52
+                 val b150 = getT 53
+                 val b200 = getT 54
+                 val b300 = getT 55
+                 val b600 = getT 56
+                 val b1200 = getT 57
+                 val b1800 = getT 58
+                 val b2400 = getT 59
+                 val b4800 = getT 60
+                 val b9600 = getT 61
+                 val b19200 = getT 62
+                 val b38400 = getT 63
+                 val b57600 = getT 64
+                 val b115200 = getT 65
+                 val b230400 = getT 66
+               end
+           end
+
+         structure Err =
+           struct
+             val acces = getN "EACCES"
+             val again = getN "EAGAIN"
+             val badf = getN "EBADF"
+             val badmsg = getN "EBADMSG"
+             val busy = getN "EBUSY"
+             val canceled = getN "ECANCELED"
+             val child = getN "ECHILD"
+             val deadlk = getN "EDEADLK"
+             val dom = getN "EDOM"
+             val exist = getN "EEXIST"
+             val fault = getN "EFAULT"
+             val fbig = getN "EFBIG"
+             val inprogress = getN "EINPROGRESS"
+             val intr = getN "EINTR"
+             val inval = getN "EINVAL"
+             val io = getN "EIO"
+             val isdir = getN "EISDIR"
+             val loop = getN "ELOOP"
+             val mfile = getN "EMFILE"
+             val mlink = getN "EMLINK"
+             val msgsize = getN "EMSGSIZE"
+             val nametoolong = getN "ENAMETOOLONG"
+             val nfile = getN "ENFILE"
+             val nodev = getN "ENODEV"
+             val noent = getN "ENOENT"
+             val noexec = getN "ENOEXEC"
+             val nolck = getN "ENOLCK"
+             val nomem = getN "ENOMEM"
+             val nospc = getN "ENOSPC"
+             val nosys = getN "ENOSYS"
+             val notdir = getN "ENOTDIR"
+             val notsup = getN "ENOTSUP"
+             val notsock = getN "ENOTSOCK"
+             val notempty = getN "ENOTEMPTY"
+             val notty = getN "ENOTTY"
+             val nxio = getN "ENXIO"
+             val perm = getN "EPERM"
+             val pipe = getN "EPIPE"
+             val range = getN "ERANGE"
+             val rofs = getN "EROFS"
+             val spipe = getN "ESPIPE"
+             val srch = getN "ESRCH"
+             val toobig = getN "E2BIG"
+             val xdev = getN "EXDEV"
+           end
+         structure Signal =
+           struct
+             val abrt = getNS "SIGABRT"
+             val alrm = getNS "SIGALRM"
+             val bus  = getNS "SIGBUS"
+             val fpe  = getNS "SIGFPE"
+             val hup  = getNS "SIGHUP"
+             val ill  = getNS "SIGILL"
+             val int  = getNS "SIGINT"
+             val kill = getNS "SIGKILL"
+             val pipe = getNS "SIGPIPE"
+             val quit = getNS "SIGQUIT"
+             val segv = getNS "SIGSEGV"
+             val term = getNS "SIGTERM"
+             val usr1 = getNS "SIGUSR1"
+             val usr2 = getNS "SIGUSR2"
+             val chld = getNS "SIGCHLD"
+             val cont = getNS "SIGCONT"
+             val stop = getNS "SIGSTOP"
+             val tstp = getNS "SIGTSTP"
+             val ttin = getNS "SIGTTIN"
+             val ttou = getNS "SIGTTOU"
+           end
+
+         structure Process = 
+           struct
+             val untraced = 0wx1
+             val nohang = 0wx2
+             val all = untraced (* untraced *)
+           end
        end
 
       structure Posix_File_Sys =
@@ -98,6 +281,11 @@ structure Initial =
             val trunc    = 0wx20
             val text     = 0wx40
             val bin      = 0wx80
+            val rdonly   = 0wx100
+            val wronly   = 0wx200
+            val rdwr     = 0wx400
+            
+            val all      = 0wx3F (* [append,excl,noctty,nonblock,sync,trunc] *)
           end
 
         structure S =
@@ -116,6 +304,8 @@ structure Initial =
             val ixoth =  0wx800
             val isuid = 0wx1000
             val isgid = 0wx2000
+
+            val all   = 0wx3FFF
           end
         end
  

@@ -6,17 +6,20 @@
  * See the file MLton-LICENSE for details.
  *)
 
-structure TextIO: TEXT_IO_EXTRA =
+structure TextIO : TEXT_IO_EXTRA =
    struct
       structure IO =
          ImperativeIOExtra
-         (structure Array = CharArray
+         (structure Array = struct
+                              open CharArray
+                              fun rawArray i = array (i,Char.chr 0)
+                            end
           structure ArraySlice = CharArraySlice
           structure PrimIO = TextPrimIO
           structure Vector = CharVector
           structure VectorSlice = CharVectorSlice
           val chunkSize = Initial.TextIO.bufsize
-          val fileTypeFlags = [Initial.Posix_File_Sys.O.text]
+          val fileTypeFlags = [Posix.FileSys.O.fromWord Initial.Posix_File_Sys.O.text]
           val line = SOME {isLine = fn c => c = #"\n",
                            lineElem = #"\n"}
           val mkReader = Posix.IO.mkTextReader
@@ -39,6 +42,3 @@ structure TextIO: TEXT_IO_EXTRA =
 
       fun print (s: string) = (output (stdOut, s); flushOut stdOut)
    end
-
-structure TextIOGlobal: TEXT_IO_GLOBAL = TextIO
-open TextIOGlobal

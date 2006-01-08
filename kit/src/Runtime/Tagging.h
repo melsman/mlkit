@@ -179,6 +179,7 @@
 
 #define first(x)   (*((int *)(x)+1))
 #define second(x)  (*((int *)(x)+2))
+#define third(x)   (*((int *)(x)+3))
 
 #ifdef PROFILING
 #define allocRecordMLProf(rAddr, ssize, recAddr, pPoint) { \
@@ -231,6 +232,7 @@
 #define allocTripleML(rAddr, recAddr) {recAddr=alloc(rAddr, 3);}
 #define first(x)   (*(int *)(x))
 #define second(x)  (*((int *)(x)+1))
+#define third(x)   (*((int *)(x)+2))
 
 #ifdef PROFILING
 #define allocRecordMLProf(rAddr, ssize, recAddr, pPoint) { \
