@@ -17,7 +17,8 @@ structure Man =
     val exit = String.concat [".SH EXIT STATUS\n"]
     val environment = String.concat [".SH ENVIRONMENT\n"]
     val files = String.concat [".SH FILES\n",
-                               String.concat (List.map (fn (f,e) => ".I " ^ f ^ "\n.RS\n" ^ e ^ "\n" ) files)
+                               String.concat
+                                 (List.map (fn (f,e) => ".I " ^ f ^ "\n.RS\n" ^ e ^ "\n" ) files)
                               ]
     val diag = String.concat [".SH DIAGNOSTICS\n",
                               "The following diagnostics may be ussued on stderr:\n"]
