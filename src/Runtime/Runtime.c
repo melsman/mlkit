@@ -17,6 +17,7 @@
 #include "Region.h"
 #include "Table.h"
 #include "CommandLine.h"
+#include "Export.h"
 
 #ifdef ENABLE_GC
 #include "GC.h"

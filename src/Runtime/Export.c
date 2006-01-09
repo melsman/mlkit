@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "String.h"
 #include "../CUtils/hashmap.h"
+#include "Export.h"
 
 static hashtable *exportmap = NULL;
 
