@@ -58,15 +58,19 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
 				   "Options:\n\n")
 
-	val options = [("-version", ["Print MLKit version information and exit."]),
-		       ("-help", ["Print help information and exit."]),
-		       ("-help s", ["Print help information about an option and exit."])
+	val options = [("version", ["v","V"], ["Print MLKit version information and exit."]),
+		       ("help", [], ["Print help information and exit."]),
+		       ("help S", [], ["Print help information about an option and exit."])
 		       ]
 
 	fun print_indent nil = ()
 	  | print_indent (s::ss) = (print ("     " ^ s ^ "\n"); print_indent ss)
 
-      	fun print_options() = app (fn (t, l) => (print(t ^ "\n"); print_indent l; print "\n")) options
+      	fun print_options() = 
+              app (fn (t, s, l) => (print("--" ^ t ^ 
+                                           (String.concat (List.map (fn x => ", -" ^ x) s)) ^
+                                           "\n"); print_indent l; print "\n"))
+                                  options
  
 	local 
 	    (* is overloading of options allowed? *)
