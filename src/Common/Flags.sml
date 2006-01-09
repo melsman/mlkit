@@ -477,6 +477,15 @@ struct
 	  List.map SOME ["\n--no_", #long e, opt'("no_", #short e),"\n"] @
 	  indent ("Opposite of --" ^ #long e ^ opt(#short e) ^ ".")
 
+  fun negationOpt (e : bentry) =
+	  if not(#neg e) then nil
+	  else ([SOME "\n", defaultMan(String.concat ["--no_", #long e, opt'("no_", #short e)],"")]) @
+	    indent ("Opposite of --" ^ #long e ^ opt(#short e) ^ ".")
+	fun negationOpt' (e:baentry) =
+	  [SOME "\n", defaultMan(String.concat["--no_", #long e, opt'("no_", #short e)],"")] @
+	  indent ("Opposite of --" ^ #long e ^ opt(#short e) ^ ".")
+
+
   fun formatName (BOOL_ENTRY e) = "--" ^ #long e ^ opt(#short e)
     | formatName (BOOLA_ENTRY e) = "--" ^ #long e ^ opt(#short e)
     | formatName (STRING_ENTRY e) = "--" ^ #long e ^ opts(#short e)
@@ -493,8 +502,8 @@ struct
     | formatNameDef (INT_ENTRY e) = ff (#long e, #short e)
 
   val formatName = get formatName formatName formatNameDef
-  val negation = get negation negation noneList
-  val negation' = get negation' negation' noneList
+  val negation = get negation negationOpt noneList
+  val negation' = get negation' negationOpt' noneList
 
     in
       String.concat (List.mapPartial (fn x => x)
@@ -524,8 +533,8 @@ struct
     let val dom = rev(M.dom (!dir))
       val printFun = help' kind 
       fun add (key, acc) =
-	let                                (* add only if menu is non-empty and
-					    * the entry is not a short key *)
+	let        (* add only if menu is non-empty and
+              * the entry is not a short key *)
 	  fun check (SOME k) = if k = key then acc
 			       else let val a = printFun key in if a = "" then acc else a :: "\n" :: acc end
 	    | check NONE = let val a = printFun key in if a = "" then acc else a :: "\n" :: acc end
