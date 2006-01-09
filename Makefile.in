@@ -127,7 +127,8 @@ clean:
 	cd smlserver/xt/www && $(CLEAN)
 
 clean_mlb:
-	rm -rf MLB */MLB */*/MLB */*/*/MLB */*/*/*/MLB */*/*/*/*/MLB */*/*/*/*/*/MLB 
+#	rm -rf MLB */MLB */*/MLB */*/*/MLB */*/*/*/MLB */*/*/*/*/MLB */*/*/*/*/*/MLB 
+	find . -name "MLB" -type d | xargs rm -Rf
 
 tgz_export:
 	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
