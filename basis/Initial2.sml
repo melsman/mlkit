@@ -16,7 +16,7 @@ structure Initial2 =
               ; 0+i)
     end
 
-    val _ = _export ("exitCallback", exitCallback)
+    val _ = _export ("sml_exitCallback", exitCallback)
 
   end
 
