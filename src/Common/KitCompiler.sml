@@ -7,6 +7,7 @@
 
 signature KIT_COMPILER = 
   sig include MANAGER 
+    val extraOptions : (string * string list * string list) list
     val kitexe : string * string list -> OS.Process.status
   end 
     
@@ -115,6 +116,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun die s = Crash.impossible ("KitCompiler." ^ s)
       in
 	open Manager
+  val extraOptions = options
 
 	(* the first argument is the Kit installation directory *)
 	val kitexe = fn a => 

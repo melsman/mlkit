@@ -12,16 +12,16 @@ structure Man =
                                  ]
     val synopsis = String.concat [".SH SYNOPSIS\n"]
     val desciption = ".SH DESCRIPTION\n.B mlkit\nwill when invoked, compile\n"
+
     fun printExtra (long, short, desc) = 
           let val name = "--" ^ long ^  (String.concat (map (fn x => ", -" ^ x) short))
           in
             String.concat [".IP \"\\fB", name,
                            "\\fR\" 4\n",
                            ".IX Item \"", name, "\"\n",
-                           desc, "\n"]
+                           String.concat desc, "\n"]
           end
-    val extraOptions = List.map printExtra
-                          [("version", ["v","V"], "print version.")]
+    val extraOptions = List.map printExtra Main.extraOptions
     val options = String.concat [".SH OPTIONS\n", 
                                  String.concat extraOptions,
                                  Flags.help_man_option ()]
