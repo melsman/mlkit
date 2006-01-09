@@ -13,6 +13,8 @@ functor KitMainSMLNJ (Kit : KIT_COMPILER) =
 	 * kit/src directory... *)
 	val default_root_dir = OS.Path.mkCanonical(OS.Path.concat(OS.FileSys.getDir(), ".."))
 	    
+  val extraOptions = Kit.extraOptions
+
 	fun install() =
 	    let 
 		val _ = print "\n ** Exporting compiler executable **\n\n"			
