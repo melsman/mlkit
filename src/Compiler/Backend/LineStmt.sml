@@ -19,12 +19,14 @@ struct
   val _ = Flags.add_bool_entry
     {long="print_linearised_program", short=NONE, item=ref false,neg=false,
      menu=["Printing of intermediate forms", "print linearised program (LineStmt)"],
-     desc=""}
+     desc="Print a linearlised representation of the\n\
+      \program unit."}
 
   val _ = Flags.add_bool_entry
     {long="disable_flow_var", short=NONE, item=ref false,neg=false,
      menu=["Debug", "Disable Flow Variables (LineStmt)"],
-     desc=""}
+     desc="Disable optimised compilation of control-flow\n\
+      \code, such as conditional expressions."}
 
   type place = Effect.place
   type excon = Excon.excon
