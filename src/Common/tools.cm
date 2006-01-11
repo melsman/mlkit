@@ -25,6 +25,7 @@ is
   BasisCompat.sml
   Menu.sml
   Flags.sml 
+  Man.sml
   StringFinMap.sml
 
   IntStringFinMap.sml

@@ -60,6 +60,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				   "Options:\n\n")
 
 	val options = [("version", ["v","V"], ["Print MLKit version information and exit."]),
+		       ("man", [], ["Print man-page and exit."]),
 		       ("help", [], ["Print help information and exit."]),
 		       ("help S", [], ["Print help information about an option and exit."])
 		       ]
@@ -72,7 +73,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
                                            (String.concat (List.map (fn x => ", -" ^ x) s)) ^
                                            "\n"); print_indent l; print "\n"))
                                   options
- 
 	local 
 	    (* is overloading of options allowed? *)
 	    val unary_options =
@@ -84,6 +84,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    val nullary_options =
 		[("version", fn () => (print_greetings(); 
 				       raise Fail "")),
+		 ("man", fn () => (print(Man.gen {cmd=cmd_name,date=date,
+						  extraOptions=options,
+						  version=Version.version});
+				   raise Fail "")),
 		 ("v", fn () => (print_greetings(); 
 				 raise Fail "")),
 		 ("V", fn () => (print_greetings(); 
@@ -116,7 +120,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun die s = Crash.impossible ("KitCompiler." ^ s)
       in
 	open Manager
-  val extraOptions = options
+	val extraOptions = options
 
 	(* the first argument is the Kit installation directory *)
 	val kitexe = fn a => 
