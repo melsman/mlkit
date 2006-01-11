@@ -27,6 +27,7 @@ in
   BasisCompat.sml
   Menu.sml
   Flags.sml 
+  Man.sml
   StringFinMap.sml
   local open Pickle 
   in IntStringFinMap.sml
