@@ -285,8 +285,8 @@ struct
 	  LS.CCALL_AUTO{name=name,args=map (fn (a,ft) => (atom_to_aty' a,ft)) args,
 			res=case res of (a,ft) => (atom_to_aty' a,ft)} :: 
 	  SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.EXPORT{name,arg=(a,ft1,ft2)}::lss) = 
-	  LS.EXPORT{name=name,arg=(atom_to_aty' a,ft1,ft2)} :: 
+	  | SS_lss'(LS.EXPORT{name,clos_lab,arg=(a,ft1,ft2)}::lss) = 
+	  LS.EXPORT{name=name,clos_lab=clos_lab,arg=(atom_to_aty' a,ft1,ft2)} :: 
 	  SS_lss(lss,ATYmap,RHOmap)
       in
 	SS_lss' lss

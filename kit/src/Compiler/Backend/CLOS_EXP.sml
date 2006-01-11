@@ -100,6 +100,7 @@ signature CLOS_EXP =
 			  args: (ClosExp * foreign_type) list,
 			  res: foreign_type}
     | EXPORT          of {name: string,
+			  clos_lab: label,
 			  arg: ClosExp * foreign_type * foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
 			  declared_excons: {excon: excon, label: label} list}

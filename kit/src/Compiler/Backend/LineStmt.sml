@@ -140,7 +140,7 @@ struct
 			rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
 			res: 'aty * foreign_type}
-    | EXPORT        of {name: string, arg: 'aty * foreign_type * foreign_type}
+    | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
 
   and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 
@@ -475,7 +475,7 @@ struct
 			 childsep=RIGHT ",",
 			 children=map layout_pair args}
 		 end
-	   | EXPORT{name,arg=(aty,ft1,ft2)} => 
+	   | EXPORT{name,clos_lab, arg=(aty,ft1,ft2)} => 
 		 HNODE{start="_export(" ^ name ^ ",",
 		       finish=")",
 		       childsep=RIGHT ",",
@@ -721,8 +721,8 @@ struct
 		val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
 	    in CCALL_AUTO{name=name, args=args, res=res}::acc
 	    end
-	 | ClosExp.EXPORT{name,arg=(ce,ft1,ft2)} => 
-	    EXPORT{name=name,arg=(ce_to_atom ce,ft1,ft2)}::
+	 | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} => 
+	    EXPORT{name=name,clos_lab=clos_lab,arg=(ce_to_atom ce,ft1,ft2)}::
 	    maybe_assign (lvars_res, ATOM UNIT, acc)
 	 | ClosExp.FRAME{declared_lvars,declared_excons} => acc
 
@@ -848,7 +848,7 @@ struct
     | get_phreg_ls(PRIM{name,args,res}) = get_phreg_atoms(args,[])
     | get_phreg_ls(CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls(CCALL_AUTO{name,args,res}) = get_phreg_atoms(map #1 args,[])
-    | get_phreg_ls(EXPORT{name,arg}) = get_phreg_atom(#1 arg,[])
+    | get_phreg_ls(EXPORT{name,clos_lab,arg}) = get_phreg_atom(#1 arg,[])
     | get_phreg_ls _ = die "get_phreg_ls: statement contains statements itself."
 
   (**************************************************************)
@@ -1014,7 +1014,7 @@ struct
 	| (PRIM{name,args,res}) => get_var_atoms(args,[])
 	| (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
 	| (CCALL_AUTO{name,args,res}) => get_var_atoms(map #1 args,[])
-	| (EXPORT{name,arg}) => get_var_atom(#1 arg,[])
+	| (EXPORT{name,clos_lab,arg}) => get_var_atom(#1 arg,[])
 	|  _ => die "use_var_ls: statement contains statements itself."
       end
 
@@ -1168,8 +1168,8 @@ struct
 	  CCALL{name=name,args=map_atys args,rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
 	  | map_lss'(CCALL_AUTO{name,args,res}::lss) = 
 	  CCALL_AUTO{name=name,args=map_pair_atys args,res=map_pair_aty res} :: map_lss' lss
-	  | map_lss'(EXPORT{name,arg=(aty,ft1,ft2)}::lss) =
-	  EXPORT{name=name,arg=(map_aty aty,ft1,ft2)} :: map_lss' lss
+	  | map_lss'(EXPORT{name,clos_lab,arg=(aty,ft1,ft2)}::lss) =
+	  EXPORT{name=name,clos_lab=clos_lab,arg=(map_aty aty,ft1,ft2)} :: map_lss' lss
       in
 	map_lss' lss
       end

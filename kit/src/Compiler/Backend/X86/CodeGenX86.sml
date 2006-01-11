@@ -2704,12 +2704,14 @@ struct
 		    comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
 				compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C))
 		  end
-	       | LS.EXPORT{name,arg=(aty,ft1,ft2)} =>
-		  let val clos_lab = DatLab(Labels.new_named ("ExportClosLab_" ^ name))
+	       | LS.EXPORT{name,
+			   clos_lab,
+			   arg=(aty,ft1,ft2)} =>
+		  let val clos_lab = DatLab clos_lab
 		      val return_lab = new_local_lab ("return_" ^ name)
-          val offset_codeptr = if BI.tag_values() then "4" else "0"
-		      val lab = NameLab name
-          val stringlab = gen_string_lab name
+		      val offset_codeptr = if BI.tag_values() then "4" else "0"
+		      val lab = NameLab name   (* lab is the C function to call after the hook has been setup *)
+		      val stringlab = gen_string_lab name
 		      val _ = 
 			  if ft1 <> LS.Int orelse ft2 <> LS.Int then 
 			      die "Export of ML function with type other than (int->int) not supported"
@@ -2717,10 +2719,11 @@ struct
 		      val _ = add_static_data 
 			  ([I.dot_data,
 			    I.dot_align 4,
-			    I.lab clos_lab,
+			    I.lab clos_lab,  (* Slot for storing a pointer to the ML closure; the 
+					      * ML closure object may move due to GCs. *)
 			    I.dot_long "0",
 			    I.dot_text,
-			    I.dot_globl lab,
+			    I.dot_globl lab, (* The C function entry *)
 			    I.lab lab,
 			    I.pushl (R ebp),           (* save %ebp *)
 			    I.movl(R esp, R ebp)]        (* load argument into %ebx *)

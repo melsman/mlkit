@@ -122,7 +122,7 @@ signature LINE_STMT =
 			rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
 			res: 'aty * foreign_type}
-    | EXPORT        of {name: string, arg: 'aty * foreign_type * foreign_type}
+    | EXPORT        of {name: string, clos_lab: label, arg: 'aty * foreign_type * foreign_type}
 
     and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 

@@ -117,6 +117,7 @@ struct
 			  args: (ClosExp * foreign_type) list,
 			  res: foreign_type}
     | EXPORT          of {name: string,
+			  clos_lab: label,
 			  arg: ClosExp * foreign_type * foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
 			  declared_excons: {excon: excon, label: label} list}
@@ -367,7 +368,7 @@ struct
 		finish=">)",
 		childsep=RIGHT ",",
 		children=(map (layout_ce_f layout_ce) args) @ [layout_f res]}
-      | layout_ce(EXPORT{name,arg=(ce,ft1,ft2)}) =
+      | layout_ce(EXPORT{name,clos_lab,arg=(ce,ft1,ft2)}) =
 	  HNODE{start="_export(\"" ^ name ^ "\", <",
 		finish=">)",
 		childsep=RIGHT ",",
@@ -1339,6 +1340,18 @@ struct
       fun get_top_decls() = !top_decl
     end
 
+    (* ------------------------------------------------------ *)
+    (*    Add EXPORT labels (for exporting ML functions to C) *)
+    (* ------------------------------------------------------ *)
+    local
+      val exports : label list ref = ref []
+    in
+      fun reset_exports() = exports := []
+      fun add_new_export(lab)  = exports := lab :: (!exports)
+      fun get_exports() = !exports
+    end
+
+
     fun precisionNumType t =
       case t
 	of RType.CONSTYPE(tn,_,_,_) => 
@@ -2249,9 +2262,12 @@ struct
 						      tag=BI.tag_ignore,
 						      maybeuntag=false}})
 		       else (fn ce => ce)
+		   val lab = Labels.new_named ("ExportClosLab_" ^ name)
+		   val _ = add_new_export lab
 	       in
 		   (maybe_return_unit
 		    (insert_se (EXPORT{name=name,
+				       clos_lab=lab,
 				       arg=(ce,toForeignType mu_arg, toForeignType mu_res)},
 				se))
 		    , NONE_SE)
@@ -2937,6 +2953,7 @@ struct
 			 | _ => die "EXPORT.toForeignType"
 	       in
 		   EXPORT{name=name,
+			  clos_lab=Labels.new_named ("ExportClosLab_" ^ name),
 			  arg=(ce,toForeignType mu_arg,toForeignType mu_res)}
 	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
@@ -3019,6 +3036,7 @@ struct
 	val _ = reset_lvars()
 	val _ = reset_labs()
 	val _ = reset_top_decls()
+	val _ = reset_exports()
 	val import_labs = 
 	  find_globals_in_env (valOf(!import_vars)) l2clos_exp_env
 	  handle _ => die "clos_conv: import_vars not specified."
@@ -3030,6 +3048,7 @@ struct
 	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[]),clos_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
+	val export_labs = (#1 export_labs @ get_exports(), #2 export_labs)
       (* val _ = display("\nReport: export_env:", CE.layoutEnv export_env)*)
       in
 	{main_lab=main_lab,
