@@ -80,7 +80,7 @@ structure TestReport : TEST_REPORT =
       in let val res = TextIO.inputAll is
 	 in TextIO.closeIn is; res
 	 end handle _ => (TextIO.closeIn is; "could not read file `" ^ s ^ "'\n")
-      end
+      end handle _ => ("could not open or close file `" ^ s ^ "'\n")
 
     fun kitversion kitexe =
       if OS.Process.system (kitexe ^ " --version > KITversion") = OS.Process.success then
@@ -88,13 +88,15 @@ structure TestReport : TEST_REPORT =
       else "failure while executing `" ^ kitexe ^ " --version'\n"
 
     (* Get entry for a UNIX environment variable *)
-    fun get_env_var env_name = 
+(*    fun get_env_var env_name = 
       case OS.Process.getEnv env_name
 	of SOME s => s 
 	 | NONE => (* let's try something else *)
-	    read_all "/etc/hostname"
+	    read_all "/etc/hostname" *)
 
-    fun machine() = get_env_var "HOST"
+    fun machine() = case OS.Process.getEnv "HOSTNAME"
+                    of SOME x => x
+                     | NONE => "localhost"
 
     fun latex file =
       if OS.Process.system ("pdflatex " ^ file) = OS.Process.success then ()
