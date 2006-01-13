@@ -2262,6 +2262,7 @@ struct
 						      tag=BI.tag_ignore,
 						      maybeuntag=false}})
 		       else (fn ce => ce)
+
 		   val lab = Labels.new_named ("ExportClosLab_" ^ name)
 		   val _ = add_new_export lab
 	       in
@@ -3048,7 +3049,7 @@ struct
 	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[]),clos_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
-	val export_labs = (#1 export_labs @ get_exports(), #2 export_labs)
+	val export_labs = (#1 export_labs, #2 export_labs @ get_exports())
       (* val _ = display("\nReport: export_env:", CE.layoutEnv export_env)*)
       in
 	{main_lab=main_lab,

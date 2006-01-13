@@ -33,6 +33,7 @@ sml_regCfuns(String name,void *f)
 {
   struct e_map e, *e1;
   void *f1;
+  //  printf("sml_regCfuns %s\n", &(name->data));
   if (!exportmap) 
   {
     exportmap = (hashtable *) malloc(sizeof (hashtable));
@@ -56,6 +57,7 @@ sml_regCfuns(String name,void *f)
 int
 callExportFun(char *fun, int i)
 {
+  //  printf("callExportFun %s\n", fun);
   if (!exportmap) return -1;
   struct e_map e;
   void *f1;
