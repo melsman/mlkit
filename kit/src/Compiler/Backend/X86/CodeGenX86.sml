@@ -2708,6 +2708,7 @@ struct
 			   clos_lab,
 			   arg=(aty,ft1,ft2)} =>
 		  let val clos_lab = DatLab clos_lab
+		      (*val clos_lab = NameLab (name ^ "_clos")*)
 		      val return_lab = new_local_lab ("return_" ^ name)
 		      val offset_codeptr = if BI.tag_values() then "4" else "0"
 		      val lab = NameLab name   (* lab is the C function to call after the hook has been setup *)
@@ -2716,12 +2717,14 @@ struct
 			  if ft1 <> LS.Int orelse ft2 <> LS.Int then 
 			      die "Export of ML function with type other than (int->int) not supported"
 			  else ()
+
 		      val _ = add_static_data 
 			  ([I.dot_data,
 			    I.dot_align 4,
+			    I.dot_globl clos_lab,
 			    I.lab clos_lab,  (* Slot for storing a pointer to the ML closure; the 
 					      * ML closure object may move due to GCs. *)
-			    I.dot_long "0",
+			    I.dot_long (int_to_string BI.ml_unit),
 			    I.dot_text,
 			    I.dot_globl lab, (* The C function entry *)
 			    I.lab lab,
@@ -2741,9 +2744,19 @@ struct
 			 @ [I.popl(R ebp),             (* restore %ebp *)
 			    I.ret])
 
+  	             fun push_callersave_regs C = 
+			 foldl (fn (r, C) => I.pushl(R r) :: C) C caller_save_regs_ccall
+	             fun pop_callersave_regs C = 
+			 foldr (fn (r, C) => I.popl(R r) :: C) C caller_save_regs_ccall
+
 		  in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
-				 store_in_label(aty,clos_lab,tmp_reg1,size_ff, (I.movl (LA lab, R tmp_reg0)) :: (I.movl (LA stringlab, R tmp_reg1)) ::
-           compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1, SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1, C)))
+				 store_in_label(aty,clos_lab,tmp_reg1,size_ff, 
+						I.movl (LA lab, R tmp_reg0) :: 
+						I.movl (LA stringlab, R tmp_reg1) ::
+						push_callersave_regs
+						(compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1, 
+										     SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
+						pop_callersave_regs C))))
 		  end
 		)
        in
@@ -2861,8 +2874,8 @@ struct
 	val _ = chat "[X86 Code Generation..."
 	val _ = reset_static_data()
 	val _ = reset_label_counter()
-	val _ = add_static_data (map (fn lab => I.dot_globl(MLFunLab lab)) (main_lab::(#1 exports))) 
-	val _ = add_static_data (map (fn lab => I.dot_globl(DatLab lab)) (#2 exports)) 
+	val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(MLFunLab lab)) (main_lab::(#1 exports)))
+	val _ = add_static_data (I.dot_data :: map (fn lab => I.dot_globl(DatLab lab)) (#2 exports)) 
 	val x86_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
 		       init_code = init_x86_code(),
 		       static_data = static_data main_lab}
