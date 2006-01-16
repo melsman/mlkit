@@ -1,6 +1,7 @@
 Group 
 is
   ../../Common/patch-smlnj-110.0.7.cm
+  ../../Common/tools.cm
   ../../../basis/BINARYMAP.sml
   ../../../basis/Binarymap.sml
   Confoptions.sml
