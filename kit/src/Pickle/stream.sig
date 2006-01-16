@@ -5,21 +5,32 @@
 
 signature STREAM =
   sig
-    type IN and OUT
-    type 'k stream
+    type instream
+    type outstream
     type loc = word
 
-    val getLoc : 'k stream -> loc 
-    val out    : char * OUT stream -> OUT stream
-    val get    : IN stream -> char * IN stream
+    val getLocIn  : instream -> loc 
+    val getLocOut : outstream -> loc 	
 
-    val outw   : Word32.word * OUT stream -> OUT stream
-    val getw   : IN stream -> Word32.word * IN stream
+    val out    : char * outstream -> outstream
+    val get    : instream -> char * instream
 
-    val outcw  : Word32.word * OUT stream -> OUT stream
-    val getcw  : IN stream -> Word32.word * IN stream
+    val outw   : word * outstream -> outstream
+    val getw   : instream -> word * instream
 
-    val toString : OUT stream -> string
-    val openOut  : unit -> OUT stream
-    val openIn   : string -> IN stream
+    val outcw  : word * outstream -> outstream
+    val getcw  : instream -> word * instream
+
+    val outcw2  : word * outstream -> outstream
+    val getcw2  : instream -> word * instream
+
+    val outw32  : Word32.word * outstream -> outstream
+    val getw32  : instream -> Word32.word * instream
+
+    val outcw32 : Word32.word * outstream -> outstream
+    val getcw32 : instream -> Word32.word * instream
+
+    val toString : outstream -> string
+    val openOut  : unit -> outstream
+    val openIn   : string -> instream
   end

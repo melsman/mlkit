@@ -156,8 +156,8 @@ structure Pickle :> PICKLE = (* was : *)
     type upe = UnpickleEnv.upe
     type hce = HashConsEnv.hce
 
-    type instream = S.IN S.stream * upe * hce
-    type outstream = S.OUT S.stream * pe
+    type instream = S.instream * upe * hce
+    type outstream = S.outstream * pe
     type 'a pickler = 'a -> outstream -> outstream
     type 'a unpickler = instream -> 'a * instream
     type 'a hasher = 'a -> word*int -> word*int    (* int: hash depth *)
@@ -191,11 +191,11 @@ structure Pickle :> PICKLE = (* was : *)
 	    let val c = new()
 	    in PU 
 	       {pickler = (fn v => fn (s,pe) =>
-			   let val s = S.outw (c,s)
+			   let val s = S.outw32 (c,s)
 			   in pickler pu v (s,pe)
 			   end),
 		unpickler = (fn (s,upe,hce) => 
-			     let val (w,s) = S.getw s
+			     let val (w,s) = S.getw32 s
 			     in if w <> c then fail ("debug.expected " ^ str)
 				else unpickler pu (s,upe,hce)
 			     end),
@@ -205,31 +205,51 @@ structure Pickle :> PICKLE = (* was : *)
 	    end
     end
 
-    fun wordGen s (toWord:''a->Word32.word, fromWord:Word32.word->''a) : ''a pu =
+    fun word32Gen s (toWord:''a->Word32.word, fromWord:Word32.word->''a) : ''a pu =
 	debug s (PU
-	{pickler = fn w => fn (s,pe) => (S.outcw (toWord w,s), pe),
-	 unpickler = fn (s,upe,hce) => let val (w,s) = S.getcw s
+	{pickler = fn w => fn (s,pe) => (S.outcw32 (toWord w,s), pe),
+	 unpickler = fn (s,upe,hce) => let val (w,s) = S.getcw32 s
 				       in (fromWord w, (s,upe,hce))
 				       end,
 	 hasher = fn a => hashComb (fn p => hashAdd (w32_to_w(toWord a)) p),
 	 eq = op =,
 	 typ = s})
+
+    fun wordGen s (toWord:''a->Word.word, fromWord:Word.word->''a) : ''a pu =
+	debug s (PU
+	{pickler = fn w => fn (s,pe) => (S.outcw (toWord w,s), pe),
+	 unpickler = fn (s,upe,hce) => let val (w,s) = S.getcw s
+				       in (fromWord w, (s,upe,hce))
+				       end,
+	 hasher = fn a => hashComb (fn p => hashAdd (toWord a) p),
+	 eq = op =,
+	 typ = s})
+
+    fun charGen s (toChar:''a->char, fromChar:char->''a) : ''a pu =
+	debug s (PU
+	{pickler = fn v => fn (s,pe) => (S.out (toChar v,s), pe),
+	 unpickler = fn (s,upe,hce) => let val (c,s) = S.get s
+				       in (fromChar c, (s,upe,hce))
+				       end,
+	 hasher = fn a => hashComb (fn p => hashAdd (Word.fromInt(Char.ord(toChar a))) p),
+	 eq = op =,
+	 typ = s})
 	
-    val word = wordGen "word" (w_to_w32, w32_to_w)
-    val word32 = wordGen "word32" (fn x => x, fn x => x)
-    val int = wordGen "int" (Word32.fromInt, Word32.toIntX)
-    val int32 = wordGen "int32" (Word32.fromLargeInt o Int32.toLarge, 
-				 Int32.fromLarge o Word32.toLargeIntX)
+    val word = wordGen "word" (fn x => x, fn x => x)
+    val word32 = word32Gen "word32" (fn x => x, fn x => x)
+    val int = wordGen "int" (Word.fromInt, Word.toIntX)
+    val int32 = word32Gen "int32" (Word32.fromLargeInt o Int32.toLarge, 
+				   Int32.fromLarge o Word32.toLargeIntX)
 	
-    val bool = wordGen "bool" (fn true => 0w1 | false => 0w0,
-			       fn 0w0 => false | _ => true)
-    val char = wordGen "char" (Word32.fromInt o Char.ord, 
-			       Char.chr o Word32.toIntX)
+    val char = charGen "char" (fn c => c, fn c => c)
+
+    val bool = charGen "bool" (fn true => #"\001" | false => #"\000",
+			       fn #"\000" => false | _ => true)
 
     fun shareGen0 (pp: 'a -> string) (pu:'a pu) : 'a pu =
       if not sharing_p then pu else
       debug "shareGen0"
-      let val REF = 0w0 and DEF = 0w1           
+      let val REF = #"\000" and DEF = #"\001"           
 	  val hash_share = newHashCount()
 	  val typ = "SH(" ^ typ pu ^ ")"
           val (toDyn,fromDyn) = 
@@ -241,13 +261,13 @@ structure Pickle :> PICKLE = (* was : *)
 		      let val d = toDyn v
 		      in case PickleEnv.lookup pe d of
 			  SOME loc => 
-			      let val s = S.outcw(REF,s)
-				  val s = S.outw(w_to_w32 loc,s)
+			      let val s = S.out(REF,s)
+				  val s = S.outcw2(loc,s)
 			      in (s,pe)
 			      end
 			| NONE =>
-			      let val s = S.outcw(DEF,s)
-				  val loc = S.getLoc s
+			      let val s = S.out(DEF,s)
+				  val loc = S.getLocOut s
 				  (* do insert after the pickling    *)
 	  		          (*  - otherwise there are problems *)
 			          (*    with cycles.                 *)
@@ -271,18 +291,16 @@ structure Pickle :> PICKLE = (* was : *)
 			      end
 		      end),
 	   unpickler = (fn (s,upe,hce) =>
-			let val (tag,s) = S.getcw s
+			let val (tag,s) = S.get s
 			in if tag = REF then
-			    let val (loc,s) = S.getw s
-				val loc' = w32_to_w loc
-			    in case UnpickleEnv.lookup upe loc' of
+			    let val (loc,s) = S.getcw2 s
+			    in case UnpickleEnv.lookup upe loc of
 				SOME d => (fromDyn d, (s,upe,hce))
 			      | NONE => fail ("shareGen.impossible, loc=" 
-					      ^ Word32.toString loc ^ ", loc'=" 
-					      ^ Word.toString loc')
+					      ^ Word.toString loc)
 			    end
 			   else if tag = DEF then
-			       let val loc = S.getLoc s
+			       let val loc = S.getLocIn s
 				   val (v,(s,upe,hce)) = unpickler pu (s,upe,hce)
 				   val _ = case UnpickleEnv.lookup upe loc of
 				       NONE => ()
@@ -305,13 +323,13 @@ structure Pickle :> PICKLE = (* was : *)
 	(shareGen o debug "string" o PU)
 	{pickler = (fn st => fn (s, pe) =>
 		    let val sz = size st
-			val s = S.outcw(Word32.fromInt sz, s)
+			val s = S.outcw(Word.fromInt sz, s)
 			val s = CharVector.foldl (fn (c,cs) => S.out(c,cs)) s st
 		    in (s, pe)
 		    end),
 	 unpickler = (fn (s,upe,hce) =>
 		      let val (sz,s) = S.getcw s
-			  val sz = Word32.toInt sz
+			  val sz = Word.toInt sz
 			  fun read (0,s,acc) = (implode(rev acc), s)
 			    | read (n,s,acc) = 
 			      let val (c,s) = S.get s
@@ -355,7 +373,7 @@ structure Pickle :> PICKLE = (* was : *)
 	(v_dummy:'a) (pu:'a pu) : 'a ref pu =
       debug "refEqGen"
       let (*val eq = if very_safe_p then op = else eq *)
-	  val REF_LOC = 0w0 and REF_DEF = 0w1           
+	  val REF_LOC = #"\000" and REF_DEF = #"\001"           
 	  val hash_ref = newHashCount()
 	  fun href (ref a) = hashComb (fn p => hashAddSmall hash_ref (hasher pu a p))
 	  val typ = "ref(" ^ typ pu ^ ")"
@@ -365,28 +383,28 @@ structure Pickle :> PICKLE = (* was : *)
 		      let val d = toDyn r
 		      in case PickleEnv.lookup pe d of
 			  SOME loc => 
-			      let val s = S.outcw(REF_LOC,s)
-				  val s = S.outw(w_to_w32 loc,s)
+			      let val s = S.out(REF_LOC,s)
+				  val s = S.outcw2(loc,s)
 			      in (s,pe)
 			      end
 			| NONE =>
 			      let val _ = PickleEnv.reportBucket "RefEqGen" (pe,d,typ)
-				  val s = S.outcw(REF_DEF,s)
-				  val loc = S.getLoc s
+				  val s = S.out(REF_DEF,s)
+				  val loc = S.getLocOut s
 			      in PickleEnv.insert pe (d,loc)
 			       ; pickler pu v (s, pe)
 			      end
 		      end),
 	   unpickler = (fn (s,upe,hce) =>
-			let val (tag,s) = S.getcw s
+			let val (tag,s) = S.get s
 			in if tag = REF_LOC then
-			    let val (loc,s) = S.getw s
-			    in case UnpickleEnv.lookup upe (w32_to_w loc) of
+			    let val (loc,s) = S.getcw2 s
+			    in case UnpickleEnv.lookup upe loc of
 				SOME d => (fromDyn d, (s,upe,hce))
 			      | NONE => fail "ref.impossible"
 			    end
 			   else (* tag = REF_DEF *)
-			       let val loc = S.getLoc s
+			       let val loc = S.getLocIn s
 				   val r = ref v_dummy
 				   val _ = UnpickleEnv.insert upe (loc,toDyn r)
 				   val (v,(s,upe,hce)) = unpickler pu (s,upe,hce)
@@ -404,7 +422,7 @@ structure Pickle :> PICKLE = (* was : *)
     fun ref0EqGen (eq: 'a ref * 'a ref ->bool) (pu:'a pu) : 'a ref pu =      
       debug "ref0EqGen"
       let val eq = if very_safe_p then op = else eq
-	  val REF_LOC = 0w0 and REF_DEF = 0w1           
+	  val REF_LOC = #"\000" and REF_DEF = #"\001"           
 	  val hash_ref = newHashCount()
 	  fun href (ref a) = hashComb (fn p => hashAddSmall hash_ref (hasher pu a p))
 	  val typ = "ref0(" ^ typ pu ^ ")"
@@ -414,28 +432,28 @@ structure Pickle :> PICKLE = (* was : *)
 		      let val d = toDyn r
 		      in case PickleEnv.lookup pe d of
 			  SOME loc => 
-			      let val s = S.outcw(REF_LOC,s)
-				  val s = S.outw(w_to_w32 loc,s)
+			      let val s = S.out(REF_LOC,s)
+				  val s = S.outcw2(loc,s)
 			      in (s,pe)
 			      end
 			| NONE =>
 			      let val _ = PickleEnv.reportBucket "Ref0EqGen" (pe,d,typ)
-				  val s = S.outcw(REF_DEF,s)
-				  val loc = S.getLoc s
+				  val s = S.out(REF_DEF,s)
+				  val loc = S.getLocOut s
 			      in PickleEnv.insert pe (d,loc)
 			       ; pickler pu v (s, pe)
 			      end
 		      end),
 	   unpickler = (fn (s,upe,hce) =>
-			let val (tag,s) = S.getcw s
+			let val (tag,s) = S.get s
 			in if tag = REF_LOC then
-			    let val (loc,s) = S.getw s
-			    in case UnpickleEnv.lookup upe (w32_to_w loc) of
+			    let val (loc,s) = S.getcw2 s
+			    in case UnpickleEnv.lookup upe loc of
 				SOME d => (fromDyn d, (s,upe,hce))
 			      | NONE => fail "ref.impossible"
 			    end
 			   else (* tag = REF_DEF *)
-			       let val loc = S.getLoc s
+			       let val loc = S.getLocIn s
 				   val (v,(s,upe,hce)) = unpickler pu (s,upe,hce)
 				   val r = ref v
 			       in UnpickleEnv.insert upe (loc,toDyn r) 
@@ -478,12 +496,12 @@ structure Pickle :> PICKLE = (* was : *)
 	    val ps : 'a pu Vector.vector cache ref = ref NoCache
 	    fun p v (s,pe) =
 	      let val i = toInt v
-		  val s = S.outcw (Word32.fromInt i, s)
+		  val s = S.outcw (Word.fromInt i, s)
 	      in pickler(getPUPI i) v (s,pe)
 	      end
             and up (s,upe,hce) =
 	      let val (w,s) = S.getcw s
-	      in unpickler(getPUPI (Word32.toInt w)) (s,upe,hce)
+	      in unpickler(getPUPI (Word.toInt w)) (s,upe,hce)
 	      end
 	    and eq(a1:'a,a2:'a) : bool =
 		a1 == a2 orelse
@@ -532,12 +550,12 @@ structure Pickle :> PICKLE = (* was : *)
 	    val bPs : 'b pu Vector.vector cache ref = ref NoCache
 	    fun aP v (s,pe) =
 	      let val i = aToInt v
-		  val s = S.outcw (Word32.fromInt i, s)
+		  val s = S.outcw (Word.fromInt i, s)
 	      in pickler(aGetPUPI i) v (s,pe)
 	      end
             and aUp (s,upe,hce) =
 	      let val (w,s) = S.getcw s
-	      in unpickler(aGetPUPI (Word32.toInt w)) (s,upe,hce)
+	      in unpickler(aGetPUPI (Word.toInt w)) (s,upe,hce)
 	      end
 	    and aEq(a1:'a,a2:'a) : bool =
 		a1==a2 orelse
@@ -566,12 +584,12 @@ structure Pickle :> PICKLE = (* was : *)
 		  | Caching => fail ("dataGen2.Caching.a: " ^ aname)
 	    and bP v (s,pe) =
 	      let val i = bToInt v
-		  val s = S.outcw (Word32.fromInt i, s)
+		  val s = S.outcw (Word.fromInt i, s)
 	      in pickler(bGetPUPI i) v (s,pe)
 	      end
             and bUp (s,upe,hce) =
 	      let val (w,s) = S.getcw s
-	      in unpickler(bGetPUPI (Word32.toInt w)) (s,upe,hce)
+	      in unpickler(bGetPUPI (Word.toInt w)) (s,upe,hce)
 	      end
 	    and bEq(b1:'b,b2:'b) : bool =
 		b1==b2 orelse
@@ -631,12 +649,12 @@ structure Pickle :> PICKLE = (* was : *)
 	    val cPs : 'c pu Vector.vector cache ref = ref NoCache
 	    fun aP v (s,pe) =
 	      let val i = aToInt v
-		  val s = S.outcw (Word32.fromInt i, s)
+		  val s = S.outcw (Word.fromInt i, s)
 	      in pickler(aGetPUPI i) v (s,pe)
 	      end
             and aUp (s,upe,hce) =
 	      let val (w,s) = S.getcw s
-	      in unpickler(aGetPUPI (Word32.toInt w)) (s,upe,hce)
+	      in unpickler(aGetPUPI (Word.toInt w)) (s,upe,hce)
 	      end
 	    and aEq(a1:'a,a2:'a) : bool =
 		a1==a2 orelse
@@ -666,12 +684,12 @@ structure Pickle :> PICKLE = (* was : *)
 		  | Caching => fail ("dataGen3.Caching.a: " ^ aname)
 	    and bP v (s,pe) =
 	      let val i = bToInt v
-		  val s = S.outcw (Word32.fromInt i, s)
+		  val s = S.outcw (Word.fromInt i, s)
 	      in pickler(bGetPUPI i) v (s,pe)
 	      end
             and bUp (s,upe,hce) =
 	      let val (w,s) = S.getcw s
-	      in unpickler(bGetPUPI (Word32.toInt w)) (s,upe,hce)
+	      in unpickler(bGetPUPI (Word.toInt w)) (s,upe,hce)
 	      end
 	    and bEq(b1:'b,b2:'b) : bool =
 		b1==b2 orelse
@@ -701,12 +719,12 @@ structure Pickle :> PICKLE = (* was : *)
 		  | Caching => fail ("dataGen3.Caching.b: " ^ bname)
 	    and cP v (s,pe) =
 	      let val i = cToInt v
-		  val s = S.outcw (Word32.fromInt i, s)
+		  val s = S.outcw (Word.fromInt i, s)
 	      in pickler(cGetPUPI i) v (s,pe)
 	      end
             and cUp (s,upe,hce) =
 	      let val (w,s) = S.getcw s
-	      in unpickler(cGetPUPI (Word32.toInt w)) (s,upe,hce)
+	      in unpickler(cGetPUPI (Word.toInt w)) (s,upe,hce)
 	      end
 	    and cEq(c1:'c,c2:'c) : bool =
 		c1==c2 orelse
@@ -837,10 +855,10 @@ structure Pickle :> PICKLE = (* was : *)
 	      | lookupv ((x,w)::xs) w0 = if w=w0 then x else lookupv xs w0
 	    val hash_enum = newHashCount()
 	in PU
-	    {pickler = fn v => fn (s,pe) => (S.outcw(w_to_w32(lookupw wxs v),s),pe),
+	    {pickler = fn v => fn (s,pe) => (S.outcw(lookupw wxs v,s),pe),
 	     unpickler = (fn (s,upe,hce) =>
 			  let val (w,s) = S.getcw s
-			  in (lookupv wxs (w32_to_w w), (s,upe,hce))
+			  in (lookupv wxs w, (s,upe,hce))
 			  end),
 	     hasher = (fn v => hashComb (fn p => hashAddSmallNoCount hash_enum
 					 (hashAddSmallNoCount (lookupw wxs v) p))),
@@ -962,13 +980,12 @@ structure Pickle :> PICKLE = (* was : *)
 	in PU 
 	   {pickler = (fn v => fn (s,pe) => 
 		       case H.peek h v of
-			   SOME w => (S.outcw(w_to_w32 w,s),pe)
-			 | NONE => let val s = S.outcw(w_to_w32 NOT_THERE,s)
+			   SOME w => (S.outcw(w,s),pe)
+			 | NONE => let val s = S.outcw(NOT_THERE,s)
 				   in pickler pu v (s,pe)
 				   end),
 	    unpickler = (fn (s,upe,hce) =>
 			 let val (w,s) = S.getcw s
-			     val w = w32_to_w w
 			 in if w = NOT_THERE then unpickler pu (s,upe,hce)
 			    else let val v = lookup w
 				 in (v,(s,upe,hce))
@@ -1017,11 +1034,11 @@ structure Pickle :> PICKLE = (* was : *)
 	if not comments_p then pu
 	else PU
 	{pickler = (fn a => fn spe => 
-		    let val pos = (S.getLoc o #1) spe
+		    let val pos = (S.getLocOut o #1) spe
 			val _ = print ("\n[Begin pickling: " ^ s ^ " - pos=" 
 				       ^ (Int.toString o Word.toInt) pos ^ "]\n") 
 			val spe = pickler pu a spe
-			val pos' = (S.getLoc o #1) spe
+			val pos' = (S.getLocOut o #1) spe
 			val _ = print ("\n[End pickling  : " ^ s ^ " - pos=" 
 				       ^ (Int.toString o Word.toInt) pos' ^ ", diff=" 
 				       ^ Int.toString(Word.toInt pos' - Word.toInt pos) 
