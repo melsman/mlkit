@@ -139,32 +139,6 @@ local
         let open General System
         in bas OSError.sml end
         end
-(*
-    basis Susp =  (* Suspension *) 
-       let open General String 
-       in bas SUSP.sml Susp.sml end
-       end
-
-    basis SetsAndMaps = 
-       let open General String 
-       in let basis Splay = let SPLAYTREE.sml Splaytree.sml
-                            in bas SPLAYMAP.sml Splaymap.sml SPLAYSET.sml 
-                                   local open List in Splayset.sml end 
-                               end
-                            end
-              basis BinMap = bas BINARYMAP.sml Binarymap.sml INTMAP.sml Intmap.sml end
-              basis BinSet = bas BINARYSET.sml INTSET.sml 
-                                 local open List in Binaryset.sml Intset.sml end
-                             end
-          in bas open Splay BinMap BinSet end
-          end
-       end
-
-    basis Regexp =  (* Regular expression support *)
-       let open General String 
-       in bas REG_EXP.sml local open Int ArrayVector List SetsAndMaps in RegExp.sml end end
-       end
-*)    
 
 (*    basis Socket =
        let open General String System ArrayVector
@@ -221,13 +195,13 @@ local
           end
       in bas open Stream BinTextIO Imperative end
       end
-
+(*
     basis Sml90 = 
        let open General List String Real IO
        in bas SML90.sml end
        end 
-
+*)
 in
   open General List ArrayVector String Bool Word Byte 
-       Int Real IntInf IntInfRep Io System Posix IO Sml90
+       Int Real IntInf IntInfRep Io System Posix IO (* Sml90 *)
 end

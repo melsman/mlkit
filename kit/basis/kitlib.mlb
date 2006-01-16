@@ -19,6 +19,12 @@ local
   basis Regexp =  (* Regular expression support *)
     bas REG_EXP.sml local open SetsAndMaps in RegExp.sml end end
 
-in open ListUtil Polyhash SetsAndMaps Regexp
+  basis Susp =  (* Suspension *) 
+    bas SUSP.sml Susp.sml end
+
+  basis Sml90 = 
+    bas SML90.sml end
+
+in open ListUtil Polyhash SetsAndMaps Regexp Susp Sml90
 end
 
