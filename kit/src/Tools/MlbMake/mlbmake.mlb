@@ -1,5 +1,6 @@
 local
   $(SML_LIB)/basis/basis.mlb
+  ../../../basis/listsort.mlb
   ../../../basis/binarymap.mlb
 in
   local Confoptions.sml

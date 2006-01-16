@@ -1,4 +1,4 @@
-structure Listsort =
+(*structure Listsort =
   struct
     fun sort ordr xs =
       let 
@@ -22,7 +22,7 @@ structure Listsort =
 	  end
       in sorting xs [] 0 
       end
-  end	
+  end*)
 
 signature MLB_PLUGIN =
   sig
