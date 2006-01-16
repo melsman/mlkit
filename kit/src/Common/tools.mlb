@@ -2,6 +2,7 @@ local
   basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
   basis Edlib = bas ../Edlib/edlib.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
+  local open BasLib in basis Listsort = bas ../../basis/LISTSORT.sml ../../basis/Listsort.sml end end
   open BasLib
 in 
   BASIC_IO.sml 
@@ -26,8 +27,11 @@ in
   FLAGS.sml
   BasisCompat.sml
   Menu.sml
-  Flags.sml 
-  Man.sml
+  local open Listsort
+  in
+    Flags.sml
+    Man.sml
+  end
   StringFinMap.sml
   local open Pickle 
   in IntStringFinMap.sml
