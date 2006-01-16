@@ -908,7 +908,7 @@ struct
 		      "; you probably need to insert the function name in the " ^
 		      "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")
 	  end
-      | CG_ce(ClosExp.EXPORT {name, arg = (aty, ft1, ft2)},env,sp,cc,acc) =
+      | CG_ce(ClosExp.EXPORT {name, clos_lab, arg = (aty, ft1, ft2)},env,sp,cc,acc) =
          let
          in
            die "_export unsupported in the KAM backend"
