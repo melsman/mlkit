@@ -221,4 +221,5 @@ structure Tester : TESTER =
 
     val _ = (main(CommandLine.name (), CommandLine.arguments ()))
             handle Time.Time => (print "bad time\n" ; raise Fail "bad")
+                 | IO.Io{function, name, cause} => raise Fail (function ^ ", " ^ name ^ ", " ^ (General.exnMessage cause))
   end
