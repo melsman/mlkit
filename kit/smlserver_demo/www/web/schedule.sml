@@ -15,8 +15,8 @@ val _ = case kind of NONE => ()
          case (first,interval,script) of
              (SOME(f), SOME(i), SOME(s)) => 
                Web.schedule s NONE 
-                  (Date.fromTimeUniv(Time.+(Time.now(), Time.fromSeconds f))) 
-                  (Time.fromSeconds i)
+                  (Date.fromTimeUniv(Time.+(Time.now(), Time.fromSeconds (LargeInt.fromInt f)))) 
+                  (Time.fromSeconds (LargeInt.fromInt i))
              | _ => ())
                    | SOME ("cancel") => optionapp Web.deSchedule script
                    | SOME _ => ()

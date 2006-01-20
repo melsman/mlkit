@@ -10,7 +10,7 @@ val cn = case FV.wrapOpt FV.getStringErr "cookie_name"
 
 val clt = case FV.wrapOpt FV.getIntErr "cookie_lt" 
 	    of NONE => 60
-	     | SOME clt => clt
+	     | SOME clt => LargeInt.fromInt clt
 
 val cs = case FV.wrapOpt FV.getStringErr "cookie_secure" 
 	   of SOME "Yes" => true

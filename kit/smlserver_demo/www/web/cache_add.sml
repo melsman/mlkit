@@ -18,7 +18,7 @@ val new_p = (* new_p true if new value added *)
         Web.Conn.formvar "timeout") of
     (SOME email, SOME name, SOME uid, SOME timeout) => 
       Web.Cache.insert(cache,email,(Option.getOpt(Int.fromString uid,0) ,name), 
-      Option.map Time.fromSeconds (Int.fromString timeout))
+      Option.map Time.fromSeconds (LargeInt.fromString timeout))
   | _ => false
 
 val head = if new_p then "New Value added" 
