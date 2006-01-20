@@ -13,7 +13,7 @@ signature WEB_INFO = sig
   val uptime              : unit -> int
   val configGetValue      : ('a Type.Type * string) -> 'a option
   val configSetValue      : ('a Type.Type * string * 'a) -> unit
-  val configSetSpecialValue : ((('a Type.Type * string * 'a) -e
+  val configSetSpecialValue : ((('a Type.Type * string * 'a) ->
                                  unit)
                                * 'a Type.Type * string * 'a) ->
                                  unit

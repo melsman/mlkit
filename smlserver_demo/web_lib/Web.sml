@@ -619,7 +619,7 @@ structure Web :> WEB =
                        of SOME (t0,s) => 
                         (case Substring.getc s
                             of SOME (#":",v) => 
-                              if now() > t0 + (fromSeconds t)
+                              if now() > t0 + (fromSeconds (Int.toLarge t))
                               then NONE 
                               else SOME (Substring.string v)
                              | _ => NONE)
@@ -658,7 +658,7 @@ structure Web :> WEB =
   fun pp_kind kind =
     case kind of
       WhileUsed (t,s) => 
-        let val time = case Option.map Int.toString (Option.map Time.toSeconds t)
+        let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
                        of NONE => "No timeout" | SOME(t') => "timeout: " ^ t'
             val size = case Option.map Int.toString s 
                        of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
@@ -666,7 +666,7 @@ structure Web :> WEB =
           "WhileUsed(" ^ time ^ " " ^ size ^ ")"
         end
     | TimeOut (t,s) => 
-        let val time = case Option.map Int.toString (Option.map Time.toSeconds t)
+        let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
                        of SOME(t') => "Time to live: " ^ t' | NONE => "No time limit"
             val size = case Option.map Int.toString s 
                        of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
@@ -697,10 +697,10 @@ structure Web :> WEB =
       val cache = 
         case kind of
           WhileUsed (t,s) =>  
-             StringCache.findTmSz(c_name, getOpt(Option.map Time.toSeconds t,0),
+             StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
                                   getOpt(s, ~1))
         | TimeOut (t,s) => 
-             StringCache.findTmSz(c_name, getOpt(Option.map Time.toSeconds t,0),
+             StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
                                   getOpt(s, ~1))
 (*        | Size n => StringCache.findTmSz(c_name,0,n)  *)
 
@@ -775,7 +775,7 @@ structure Web :> WEB =
     let fun min (a,b) = if a < b then a else b
         fun zeroTo1 a = if Time.toSeconds a = 0 then Time.fromSeconds ~1 else a
         val t' = (case to of NONE => 0
-                           | SOME(s) => if Time.toSeconds s = 0 then ~1 else Time.toSeconds s)
+                           | SOME(s) => if Time.toSeconds s = 0 then ~1 else (LargeInt.toInt o Time.toSeconds) s) : int
     in
     case #kind c of
       WhileUsed (_,_) => #1(StringCache.set(#cache c,
@@ -841,7 +841,7 @@ structure Web :> WEB =
                 val (li,time) = reduce (LowMail.getFQDN_MX(addr))
             in if li = [] 
                then ([],SOME(Time.fromSeconds(0)))
-               else ((List.rev li),(SOME(Time.fromSeconds time)))
+               else ((List.rev li),(SOME(Time.fromSeconds (LargeInt.fromInt time))))
             end)
 
     (* Limits; addresses must be like as@as.dk not Varming <ca@a.dk> *)
@@ -1132,7 +1132,8 @@ structure Web :> WEB =
                val (to_ready, to_failed) = List.partition checkaddr to   
                val (cc_ready, cc_failed) = List.partition checkaddr cc
                val (bcc_ready, bcc_failed) = List.partition checkaddr bcc
-               fun offsetstring i = let fun f x = 
+               fun offsetstring i = let val i = LargeInt.toInt i
+                                        fun f x = 
                                               let val t = x div 3600
                                                   val m = (x mod 3600) div 60
                                                   val tt = if t < 10 then "0" ^ Int.toString t
@@ -1312,9 +1313,9 @@ structure Web :> WEB =
                   let fun next t1 t2 = if Time.>=(t1,t2) 
                                        then Time.-(t1, t2) 
                                        else next (Time.+(t1, interval)) t2
-                      val fir = Time.toSeconds(next (Date.toTime first) (Time.now()))
+                      val fir = LargeInt.toInt (Time.toSeconds(next (Date.toTime first) (Time.now())))
                   in
-                    schedule' f server fir (Time.toSeconds interval)
+                    schedule' f server fir (LargeInt.toInt(Time.toSeconds interval))
                   end
 
     fun deSchedule (f:string) : unit = 
