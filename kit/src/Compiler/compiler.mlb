@@ -8,6 +8,7 @@ local
   basis CompilerObjects = bas compiler_objects.mlb end
   basis Basics = bas ../Common/basics.mlb end
   basis Manager = bas ../Manager/manager.mlb end
+  basis Environment = bas ../Tools/MlbMake/environment.mlb end
   open BasLib
 in
   local open Pickle 
@@ -32,7 +33,7 @@ in
   in Lambda/CompileDec.sml
   end
 
-  local open Tools Manager 
+  local open Tools Manager Environment
         ../Version.sml
   in ../Common/KitCompiler.sml
   end
