@@ -333,7 +333,7 @@ install_kam:
 	$(MKDIR) $(INSTDIR_KAM)
 	$(MKDIR) $(INSTDIR_KAM)/bin
 	$(MKDIR) $(INSTDIR_KAM)/doc
-	$(INSTALL) bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM)/bin
+	$(INSTALL) bin/mlkit_kam $(INSTDIR_KAM)/bin
 	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
 	$(INSTALLDATA) copyright $(INSTDIR_KAM)
 	$(INSTALLDATA) README $(INSTDIR_KAM)
@@ -342,9 +342,9 @@ install_kam:
 	$(INSTALLDATA) -R basis $(INSTDIR_KAM)/basis
 	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR_KAM)/doc
 
-	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
-	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
-	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
+#	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
+#	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
+#	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
 #	rm -f /usr/bin/mlkit_kam
 #	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
 
@@ -378,7 +378,7 @@ install_smlserver:
 	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
 	$(MKDIR) $(INSTDIR_SMLSERVER)/basis/io
 	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
-	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
+	$(INSTALL) bin/smlserverc $(INSTDIR_SMLSERVER)/bin
 	$(INSTALLDATA) copyright $(INSTDIR_SMLSERVER)
 	$(INSTALLDATA) README $(INSTDIR_SMLSERVER)
 	$(INSTALLDATA) README_SMLSERVER $(INSTDIR_SMLSERVER)
@@ -394,9 +394,9 @@ install_smlserver:
 # because the --prefix option to rpm can change the installation 
 # directory! 
 #
-	echo "#!$(SHELL)" > $(INSTDIR_SMLSERVER)/bin/smlserverc
-	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
-	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
+#	echo "#!$(SHELL)" > $(INSTDIR_SMLSERVER)/bin/smlserverc
+#	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
+#	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
 
 #install_smlserver_oracle:
 #	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
