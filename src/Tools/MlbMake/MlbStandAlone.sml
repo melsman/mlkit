@@ -102,12 +102,12 @@ struct
     fun vchat0 s = if !verbose then print s else ()
 
     val oneSrcFile : string option ref = ref NONE
-    structure MlbMLKit = MlbMake(structure MlbProject = MlbProject()
+    structure MlbMLKit = MlbMake(structure MlbProject = MlbProject(Environment)
                                  structure MlbPlugIn = MLKitPlugIn
 				 val verbose = fn () => !verbose
 				 val oneSrcFile = oneSrcFile) 
 
-    structure MlbBarry = MlbMake(structure MlbProject = MlbProject()
+    structure MlbBarry = MlbMake(structure MlbProject = MlbProject(Environment)
                                  structure MlbPlugIn = BarryPlugIn
 				 val verbose = fn () => !verbose
 				 val oneSrcFile = oneSrcFile) 

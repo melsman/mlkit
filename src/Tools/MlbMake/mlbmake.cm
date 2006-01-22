@@ -4,6 +4,8 @@ is
   ../../Common/tools.cm
   ../../../basis/BINARYMAP.sml
   ../../../basis/Binarymap.sml
+  ENVIRONMENT.sml
+  Environment.sml
   Confoptions.sml
   MLB_PROJECT.sml  
   MlbProject.sml

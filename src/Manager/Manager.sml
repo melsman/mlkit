@@ -699,7 +699,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	     end
      end
 
-    structure MlbProject = MlbProject()
+    structure MlbProject = MlbProject(Environment)
     structure UlFile = UlFile(MlbProject)
     fun mlb_to_ulfile (f:string->string list) 
 	{mlbfile:string} : string =

@@ -77,11 +77,11 @@ mlkit_nj: basics rp2ps tester mlbmake kitbench
 	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
 	$(MAKE) -C Runtime runtimeSystemTag.a
 	echo 'use "build.sml";' | sml
-	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit.$(ARCH-OS)
-	rm -f $(BINDIR)/mlkit
-	cd .. && echo '#!/bin/sh' > bin/mlkit
-	cd .. && echo `pwd`/bin/mlkit.$(ARCH-OS) `pwd` \$$* >> bin/mlkit
-	chmod a+x $(BINDIR)/mlkit
+	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit
+#	rm -f $(BINDIR)/mlkit
+#	cd .. && echo '#!/bin/sh' > bin/mlkit
+#	cd .. && echo `pwd`/bin/mlkit.$(ARCH-OS) `pwd` \$$* >> bin/mlkit
+#	chmod a+x $(BINDIR)/mlkit
 
 .PHONY: mlkit_kam_nj
 mlkit_kam_nj: basics tester kitbench
