@@ -910,8 +910,9 @@ struct
 	  end
       | CG_ce(ClosExp.EXPORT {name, clos_lab, arg = (aty, ft1, ft2)},env,sp,cc,acc) =
          let
+           val _ = chat "_export not supported, ignoring..."
          in
-           die "_export unsupported in the KAM backend"
+           acc
          end
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 
 	  comment ("FRAME - this is a nop", acc)

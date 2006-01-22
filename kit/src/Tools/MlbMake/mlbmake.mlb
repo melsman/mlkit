@@ -2,8 +2,10 @@ local
   $(SML_LIB)/basis/basis.mlb
   ../../../basis/listsort.mlb
   ../../../basis/binarymap.mlb
+  environment.mlb
 in
-  local Confoptions.sml
+  local
+    open Environment
   in
     MLB_PROJECT.sml  
     MlbProject.sml

@@ -2,7 +2,7 @@ local
   basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
   basis Edlib = bas ../Edlib/edlib.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
-  local open BasLib in basis Listsort = bas ../../basis/LISTSORT.sml ../../basis/Listsort.sml end end
+  basis Listsort = bas ../../basis/listsort.mlb end
   open BasLib
 in 
   BASIC_IO.sml 
