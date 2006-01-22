@@ -8,6 +8,7 @@ local
   basis Basics = bas ../Common/basics.mlb end
   basis CompilerObjects = bas ../Compiler/compiler_objects.mlb end
   basis MlbMake = bas ../Tools/MlbMake/mlbmake.mlb end
+  basis Environment = bas ../Tools/MlbMake/environment.mlb end
 
   open BasLib
 in
@@ -37,7 +38,7 @@ in
         local open Edlib in IntModules.sml end
      end     
      Scriptlet.sml
-     local open Edlib SyntaxObjects MlbMake in Manager.sml end
+     local open Edlib SyntaxObjects MlbMake Environment in Manager.sml end
   end
 end
 

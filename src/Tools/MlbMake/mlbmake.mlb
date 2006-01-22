@@ -2,7 +2,7 @@ local
   $(SML_LIB)/basis/basis.mlb
   ../../../basis/listsort.mlb
   ../../../basis/binarymap.mlb
-  environment.mlb
+  basis Environment = bas environment.mlb end
 in
   local
     open Environment
