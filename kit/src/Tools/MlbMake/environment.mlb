@@ -1,6 +1,7 @@
-$(SML_LIB)/basis/basis.mlb
-../../../basis/binarymap.mlb
-local Confoptions.sml
+local 
+  $(SML_LIB)/basis/basis.mlb
+  ../../../basis/binarymap.mlb
+  Confoptions.sml
 in
-  basis Environment = bas ENVIRONMENT.sml Environment.sml end
+  ENVIRONMENT.sml Environment.sml
 end
