@@ -38,13 +38,11 @@ signature INT_INF_REP =
       val -   : intinf * intinf -> intinf
       val *   : intinf * intinf -> intinf
       val ~   : intinf -> intinf
-(*
       val div : intinf * intinf -> intinf
       val mod : intinf * intinf -> intinf
       val abs : intinf -> intinf
-      val <   : intinf * intinf -> intinf
-      val >   : intinf * intinf -> intinf
-      val <=  : intinf * intinf -> intinf
-      val >=  : intinf * intinf -> intinf
-*)
+      val <   : intinf * intinf -> bool
+      val >   : intinf * intinf -> bool
+      val <=  : intinf * intinf -> bool
+      val >=  : intinf * intinf -> bool
   end
