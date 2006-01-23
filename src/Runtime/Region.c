@@ -656,27 +656,30 @@ void deallocateRegion(
 
 inline static Lobjs *
 alloc_lobjs(int n) {
-#ifdef ENABLE_GC
   Lobjs* lobjs;
+#ifdef ENABLE_GC
   char *p;
-  int r;  
-  int sz_bytes;
-  sz_bytes = 4*(n+3) + 1024;
+  size_t r;  
+  size_t sz_bytes;
+  sz_bytes = 4*n + sizeof(Lobjs) + 1024;
   p = (char*)malloc(sz_bytes);
   if ( p == NULL )
     die("alloc_lobjs: malloc returned NULL");
-  if ( (r = (int)p % 1024) ) {
+  if ( (r = (size_t)p % 1024) ) {
     lobjs = (Lobjs*)(p + 1024 - r);
   } else {
     lobjs = (Lobjs*)p;
   }
   //fprintf(stderr, "Allocated large obj: p=%p; r=%x; lobjs=%p; last_byte=%p; sz_bytes=%d\n", p, r, lobjs, p + sz_bytes, sz_bytes);
-  if ( ! is_rp_aligned((unsigned int)lobjs) )
+  if ( ! is_rp_aligned((size_t)lobjs) )
     die("alloc_lobjs: large object is not properly aligned.");
   lobjs->orig = p;
   return lobjs;
 #else
-  return (Lobjs*)malloc(4*(n+1));
+  lobjs = (Lobjs*)malloc(4*n + sizeof(void *));
+  if ( p == NULL )
+    die("alloc_lobjs: malloc returned NULL");
+  return lobjs;
 #endif /* ENABLE_GC */
 }
 
