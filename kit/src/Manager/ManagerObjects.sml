@@ -102,7 +102,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 		  die "no runtime system supports tagging of values with tagging of pairs"             else
               if tag_values()                                           then "runtimeSystemTag.a"      else
 		                                                             "runtimeSystem.a"
-	  in !Flags.install_dir ## "bin" ## file()
+	  in !Flags.install_dir ## "lib" ## file()
 	  end
 
       	(* --------------------

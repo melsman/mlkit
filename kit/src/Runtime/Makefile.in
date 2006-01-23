@@ -7,6 +7,7 @@ INSTALLDATA=@INSTALL_DATA@
 INSTALLPROGRAM=@INSTALL_PROGRAM@
 
 BINDIR=@top_srcdir@/bin
+LIBDIR=@top_srcdir@/lib
 
 OFILES = Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
          GC.o Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o
@@ -79,31 +80,31 @@ gen_syserror: gen_syserror.c
 
 runtimeSystem.a: $(OFILES) Makefile
 	$(AR) $@ $(OFILES)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemTag.a: $(OFILES_TAG)
 	$(AR) $@ $(OFILES_TAG)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemProf.a: $(OFILES_PROF)
 	$(AR) $@ $(OFILES_PROF)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGC.a: $(OFILES_GC)
 	$(AR) $@ $(OFILES_GC)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGCProf.a: $(OFILES_GC_PROF)
 	$(AR) $@ $(OFILES_GC_PROF)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGenGC.a: $(OFILES_GEN_GC)
 	$(AR) $@ $(OFILES_GEN_GC)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF)
 	$(AR) $@ $(OFILES_GEN_GC_PROF)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 kam: $(OFILES_KAM)
 	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
@@ -111,15 +112,15 @@ kam: $(OFILES_KAM)
 
 runtimeSystemKamApSml.o: $(OFILES_SMLSERVER_AP)
 	ld -r -o $@ $(OFILES_SMLSERVER_AP)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGCTP.a: $(OFILES_GC_TP)
 	$(AR) $@ $(OFILES_GC_TP)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF)
 	$(AR) $@ $(OFILES_GC_TP_PROF)
-	$(INSTALLDATA) $@ $(BINDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
  runtimeSystem.a runtimeSystemTag.a runtimeSystemGCTP.a \
