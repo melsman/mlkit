@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 #include "Flags.h"
 #include "Rp2Ps.h"
 #include "ProfileData.h"

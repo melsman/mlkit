@@ -2,7 +2,7 @@
 /* profiling data.                                 */
 #include <stdio.h>
 #include <time.h>
-
+#include <stdlib.h>
 #include "Flags.h"
 #include "Error.h"
 #include "Alloc.h"
