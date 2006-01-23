@@ -313,10 +313,10 @@ bootstrap_next_install:
 	$(MAKE) install_top
 	$(INSTALL) doc/mlkit.pdf $(INSTDIR)/doc
 	$(MAKE) install_runtime
-	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit.img
-	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
-	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
-	chmod a+x $(INSTDIR)/bin/mlkit
+	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit
+#	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
+#	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
+#	chmod a+x $(INSTDIR)/bin/mlkit
 	$(INSTALL) bin/kittester $(INSTDIR)/bin
 	$(MAKE) install_test
 	$(MAKE) install_src
