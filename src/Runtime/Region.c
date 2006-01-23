@@ -677,7 +677,7 @@ alloc_lobjs(int n) {
   return lobjs;
 #else
   lobjs = (Lobjs*)malloc(4*n + sizeof(void *));
-  if ( p == NULL )
+  if ( lobjs == NULL )
     die("alloc_lobjs: malloc returned NULL");
   return lobjs;
 #endif /* ENABLE_GC */
