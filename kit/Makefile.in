@@ -199,6 +199,7 @@ install_top:
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
 
 install_runtime:
+	$(MKDIR) $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystem.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemProf.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGC.a $(INSTDIR)/lib
