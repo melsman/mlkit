@@ -199,15 +199,15 @@ install_top:
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
 
 install_runtime:
-	$(INSTALLDATA) bin/runtimeSystem.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemProf.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemGC.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemGenGC.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemGenGCProf.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemGCTP.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemGCTPProf.a $(INSTDIR)/bin
-	$(INSTALLDATA) bin/runtimeSystemTag.a $(INSTDIR)/bin
+	$(INSTALLDATA) lib/runtimeSystem.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemProf.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGC.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGCTP.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGCTPProf.a $(INSTDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemTag.a $(INSTDIR)/lib
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 
 install: install_top install_runtime
