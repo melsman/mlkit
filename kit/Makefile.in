@@ -94,7 +94,7 @@ barry:
 	$(MAKE) -C src barry
 
 clean:
-	$(CLEAN) bin run mlkit.spec smlserver.spec
+	$(CLEAN) bin run mlkit.spec smlserver.spec lib
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run

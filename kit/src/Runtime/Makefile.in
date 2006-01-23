@@ -80,46 +80,57 @@ gen_syserror: gen_syserror.c
 
 runtimeSystem.a: $(OFILES) Makefile
 	$(AR) $@ $(OFILES)
-	$(INSTALLDATA) $@ $(LIBDIR)
+	$(INSTALL) -d $(LIBDIR)
+	$(INSTALLDATA)  $@ $(LIBDIR)
 
 runtimeSystemTag.a: $(OFILES_TAG)
 	$(AR) $@ $(OFILES_TAG)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemProf.a: $(OFILES_PROF)
 	$(AR) $@ $(OFILES_PROF)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGC.a: $(OFILES_GC)
 	$(AR) $@ $(OFILES_GC)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGCProf.a: $(OFILES_GC_PROF)
 	$(AR) $@ $(OFILES_GC_PROF)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGenGC.a: $(OFILES_GEN_GC)
 	$(AR) $@ $(OFILES_GEN_GC)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF)
 	$(AR) $@ $(OFILES_GEN_GC_PROF)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 kam: $(OFILES_KAM)
 	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
-	$(INSTALLPROGRAM) $@ $(BINDIR)
+	$(INSTALL) -d $(LIBDIR)
+	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemKamApSml.o: $(OFILES_SMLSERVER_AP)
 	ld -r -o $@ $(OFILES_SMLSERVER_AP)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGCTP.a: $(OFILES_GC_TP)
 	$(AR) $@ $(OFILES_GC_TP)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF)
 	$(AR) $@ $(OFILES_GC_TP_PROF)
+	$(INSTALL) -d $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
