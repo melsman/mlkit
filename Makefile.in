@@ -326,6 +326,7 @@ bootstrap_next:
 	$(MAKE) bootstrap_next_build
 	$(MAKE) bootstrap_next_install
 
+.PHONY: bootstrap
 bootstrap:
 	$(INSTALL) -d bootstrap
 	$(CLEAN) bootstrap/mlkit-v1
@@ -337,6 +338,10 @@ bootstrap:
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
 	$(DIFF) bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit
+
+.PHONY: man_mlkit
+man_mlkit:
+	bin/mlkit -man > man/man1/mlkit.1
 
 # The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0
