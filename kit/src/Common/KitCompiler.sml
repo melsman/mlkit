@@ -106,10 +106,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		     val baseDir = 
 			 case Environment.getEnvVal "SML_LIB" of 
 			     SOME v => v
-			   | NONE => raise Fail ("An install directory must be provided\n" ^
+			   | NONE => raise Fail ("An MLKit library install directory must be provided\n" ^
 						 "in an environment variable SML_LIB or as a path-definition\n" ^
 						 "in either the system wide path-map /etc/mlkit/mlb-path-map\n" ^
-						 "or your personal path-map ~/.mlkit/mlb-path-map.")
+						 "or in your personal path-map ~/.mlkit/mlb-path-map.")
 		 in
 		     (set_paths baseDir; go_options args)
 		 end

@@ -81,7 +81,7 @@ structure Man :
     fun synopsis exe = String.concat [".SH SYNOPSIS\n",
 				  exe, " [OPTION]... [file.sml | file.sig | file.mlb]\n\n",
 				  "All possible options are listed below.\n"]
-    fun description exe = String.concat[".SH DESCRIPTION\nWhen invoked, \n.B ", exe, "\nwill compile the specified sources into an execuatable file ",
+    fun description exe = String.concat[".SH DESCRIPTION\nWhen invoked, \n.B ", exe, "\nwill compile the specified sources into an executable file ",
 				    "\n.B run\nthrough a series of translation phases. Various options (see below) can be used to control the ",
 				    "printing of intermediate forms and to which degree various optimizations are performed. If source files ",
 				    "are organised in ML Basis Files (files with extension .mlb), the compiler will memoize symbol table ",
@@ -92,8 +92,12 @@ structure Man :
 
     fun options extraOptions = String.concat [".SH OPTIONS\n", printOpts extraOptions]
           
-    val exit = String.concat [".SH EXIT STATUS\n"]
-    val environment = String.concat [".SH ENVIRONMENT\n"]
+    val exit = String.concat [".SH EXIT STATUS\nExits with status 0 on success and -1 on failure."]
+    val environment = String.concat [".SH ENVIRONMENT\n",
+				     "An MLKit library install directory must be provided ",
+				     "in an environment variable SML_LIB or as a path-definition ",
+				     "in either the system wide path-map /etc/mlkit/mlb-path-map ",
+				     "or in the user's personal path-map ~/.mlkit/mlb-path-map."]
     val files = String.concat [".SH FILES\n",
                                String.concat
                                  (List.map (fn (f,e) => ".I " ^ f ^ "\n.RS\n" ^ e ^ "\n" ) files)
@@ -126,13 +130,13 @@ structure Man :
 			synopsis exe,
 			defaults(),
 			description exe,
+			standard,
+			examples,
 			options extraOptions,
 			exit,
 			environment,
 			files,
 (*			diag, *)
-			examples,
-			standard,
 			credits,
 			seealso
 			]
