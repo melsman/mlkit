@@ -1,6 +1,8 @@
 root.dvi: root.tex Makefile
 	latex root
 	bibtex root
+	latex root
+	latex root
 	makeindex root
 	latex root
 	latex root
