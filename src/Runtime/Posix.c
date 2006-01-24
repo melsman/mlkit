@@ -777,6 +777,10 @@ REG_POLY_FUN_HDR(sml_getgroups, int rp, Region rs, int exn)
   return rp;
 }
 
+// the function getlogin_r is not declared in unistd.h on my linux-box,
+// so we declare it here... mael 2006-01-24
+int getlogin_r(char *buf, size_t bufsize);
+
 String
 REG_POLY_FUN_HDR(sml_getlogin, Region rs)
 {

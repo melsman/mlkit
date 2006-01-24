@@ -823,7 +823,7 @@ acopy_triple(Gen *gen, unsigned int *obj_ptr)
   return new_obj_ptr;
 }
 
-inline static int
+static int
 points_into_tospace (unsigned int x) 
 {
   unsigned int *p;

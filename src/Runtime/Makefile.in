@@ -28,7 +28,7 @@ OFILES_SMLSERVER_AP = $(OFILES:%.o=%-smlserverAP.o) Interp-smlserverAP.o LoadKAM
 CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
 
 #OPT=-Wall -pedantic -std=c99
-OPT=-Wall -std=gnu99 $(CFLAGS)
+OPT=-Wall -std=gnu99 -Wno-pointer-sign $(CFLAGS)
 AR=ar rc
 
 .PHONY: depend clean runtime
