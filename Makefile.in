@@ -338,8 +338,6 @@ bootstrap:
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
 	$(DIFF) bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit
 
-bootstrap2: bootstrap1 bootstrap2
-
 # The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0
 
