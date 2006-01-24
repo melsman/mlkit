@@ -39,6 +39,7 @@ structure TextIO : TEXT_IO_EXTRA =
       val outputSubstr = outputSlice
 
       val openString = openVector
+      val _ = Initial.TextIO.flushStdOut := (fn () => flushOut stdOut)
 
       fun print (s: string) = (output (stdOut, s); flushOut stdOut)
    end

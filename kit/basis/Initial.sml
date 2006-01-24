@@ -92,6 +92,7 @@ structure Initial =
      structure TextIO =
        struct
          val bufsize = 4000
+         val flushStdOut = ref (fn x => x) : (unit -> unit) ref
        end
 
      structure Posix_Values =
