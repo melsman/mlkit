@@ -52,8 +52,8 @@ test_mlkit:
 #	../bin/kittester ../bin/mlkit all_nogengc.tst
 	/bin/mv test_report.pdf test_report-native-`/bin/date -I`.pdf
 
-test_mlkit_gc:
-	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gc)
+test_mlkit_no_gc:
+	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
 	/bin/mv test_report.pdf test_report-native-gc-`/bin/date -I`.pdf
 
 test_mlkit_gengc:

@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+ * mael 2006-01-24: garbage collection is now used by default in
+   combination with gc. To disable garbage collection, the flag -no_gc
+   should be passed to the mlkit executable.
+
  * mael 2006-01-06: Added support for annotations in
    mlb-files. Currently, only the flag safeLinkTimeElimination is
    supported, which helps linking in parts of the basis library only
@@ -21,7 +25,7 @@ MLKit NEWS file
  * mael 2005-11-29: Started work on updating the Standard ML Basis
    Library implementation - see
 
-     http://www.itu.dk/research/mlkit/wiki/index.php/MLKit_Basis_Library_Implementation
+     http://www.itu.dk/research/mlkit/index.php/MLKit_Basis_Library_Implementation
 
    for a grasp of the status.
 
@@ -34,8 +38,8 @@ MLKit NEWS file
    printed on stderr using the options -verbose_gc or -report_gc (the
    option -verbose_gc somewhat slows down the executable).
 
- * varming 2005-11-01 Added some Posix support needed to build KitTester +
-   some more.
+ * varming 2005-11-01 Added some Posix support needed to build
+   KitTester + some more.
 
  * mael 2005-11-01: Using MLton 20050731, mlton successfully compiled
    the MLKit, resulting in a very fast (but large) mlkit executable -
