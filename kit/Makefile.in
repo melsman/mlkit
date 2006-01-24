@@ -16,7 +16,8 @@ MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 LN=@LN_S@
-
+STRIP=strip
+DIFF=diff
 MLCOMP=@mlcomp@
 
 export INSTDIR
@@ -94,7 +95,7 @@ barry:
 	$(MAKE) -C src barry
 
 clean:
-	$(CLEAN) bin run mlkit.spec smlserver.spec lib
+	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
@@ -325,6 +326,19 @@ bootstrap_next:
 	$(MAKE) bootstrap_next_build
 	$(MAKE) bootstrap_next_install
 
+bootstrap:
+	$(INSTALL) -d bootstrap
+	$(CLEAN) bootstrap/mlkit-v1
+	$(MAKE) bootstrap_first INSTDIR=bootstrap/mlkit-v1
+	$(CLEAN) bootstrap/mlkit-v2
+	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2
+	$(CLEAN) bootstrap/mlkit-v3
+	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3
+	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
+	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
+	$(DIFF) bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit
+
+bootstrap2: bootstrap1 bootstrap2
 
 # The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0

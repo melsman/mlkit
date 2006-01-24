@@ -690,8 +690,8 @@ alloc_lobjs(int n) {
  *----------------------------------------------------------------------*/
 void callSbrk() { 
   Rp *np, *old_free_list;
-  char *sb;
-  int temp;
+  void *sb;
+  size_t temp;
 
 #ifdef PROFILING
   callsOfSbrk++;
@@ -702,7 +702,7 @@ void callSbrk() {
 
   /* For GC we require 1Kb alignments, that is the size of a region page! */
 
-  sb = (char *)malloc(BYTES_ALLOC_BY_SBRK + 1024 /*8*/);
+  sb = malloc(BYTES_ALLOC_BY_SBRK + 1024 /*8*/);
 
   if ( sb == NULL ) {
     perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
@@ -710,11 +710,11 @@ void callSbrk() {
   }
 
   /* alignment (martin) */
-  if (( temp = (int)sb % 1024 )) {
-    sb = (char *) (((int)sb) + 1024 - temp);
+  if (( temp = (size_t)sb % 1024 )) {
+    sb = sb + 1024 - temp;
   }
 
-  if ( ! is_rp_aligned((unsigned int)sb) )
+  if ( ! is_rp_aligned((size_t)sb) )
     die("SBRK region page is not properly aligned.");
 
   old_free_list = freelist;
@@ -724,7 +724,7 @@ void callSbrk() {
   rp_total++;
 
   /* fragment the SBRK-chunk into region pages */
-  while ((char *)(np+1) < ((char *)freelist)+BYTES_ALLOC_BY_SBRK) { 
+  while ((void *)(np+1) < ((void *)freelist)+BYTES_ALLOC_BY_SBRK) { 
     np++;
     (np-1)->n = np;
     rp_total++;
@@ -738,62 +738,6 @@ void callSbrk() {
 
   return;
 }
-
-#ifdef ENABLE_GC_OLD
-void callSbrkArg(int no_of_region_pages) { 
-  Rp *np, *old_free_list;
-  char *sb;
-  int temp;
-  int bytes_to_alloc;
-
-#ifdef PROFILING
-  callsOfSbrk++;
-#endif
-
-  /* We must manually insure double alignment. Some operating systems (like *
-   * HP UX) does not return a double aligned address...                     */
-
-  /* For GC we require 1Kb alignments, that is the size of a region page! */
-  if (no_of_region_pages < REGION_PAGE_BAG_SIZE)
-    no_of_region_pages = REGION_PAGE_BAG_SIZE;
-  bytes_to_alloc = no_of_region_pages*sizeof(Rp);
-
-  sb = (char *)malloc(bytes_to_alloc + 1024 /*8*/);
-
-  if (sb == (char *)NULL) {
-    perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
-    exit(-1);
-  }
-
-  /* alignment (martin) */
-  if (temp=((int)sb % 1024 /*8*/)) {
-    sb = (char *) (((int)sb) + 1024 /*8*/ - temp);
-  }
-
-  if (!is_rp_aligned((unsigned int)sb))
-    die("SBRK region page is not properly aligned.");
-
-  /* The free list is not necessarily empty */
-  old_free_list = freelist;
-  np = (Rp *) sb;
-  freelist = np;
-
-  rp_total++;
-
-  /* We have to fragment the SBRK-chunk into region pages. */
-  while ((char *)(np+1) < ((char *)freelist)+bytes_to_alloc) { 
-    np++;
-    (np-1)->n = np;
-    rp_total++;
-  }
-  np->n = old_free_list;
-
-  if (!disable_gc)
-    time_to_gc = 1;
-
-  return;
-}
-#endif /* ENABLE_GC_OLD */
 
 /*----------------------------------------------------------------------*
  *alloc:                                                                *
