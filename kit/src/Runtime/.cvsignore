@@ -1,2 +1,2 @@
-kam KamInsts.h KamInsts.c jumptbl.h Prims.c PrimsNsSml.c PrimsApSml.c Makefile
+kam KamInsts.h KamInsts.c jumptbl.h Prims.c PrimsNsSml.c PrimsApSml.c Makefile SysErrTable.h gen_syserror
 
