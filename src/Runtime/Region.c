@@ -658,11 +658,11 @@ inline static Lobjs *
 alloc_lobjs(int n) {
   Lobjs* lobjs;
 #ifdef ENABLE_GC
-  char *p;
+  void *p;
   size_t r;  
   size_t sz_bytes;
   sz_bytes = 4*n + sizeof(Lobjs) + 1024;
-  p = (char*)malloc(sz_bytes);
+  p = malloc(sz_bytes);
   if ( p == NULL )
     die("alloc_lobjs: malloc returned NULL");
   if ( (r = (size_t)p % 1024) ) {
