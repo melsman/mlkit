@@ -32,11 +32,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 	val op ## = OS.Path.concat infix ##
 
-(*	val kitsrc_path = OS.FileSys.getDir()   (* assumes we are in kit/src/ directory *)
-(*	val _ = Flags.install_dir := OS.Path.mkCanonical(kitsrc_path ## "..") *)
-	val kitbin_path = OS.Path.mkCanonical (kitsrc_path ## "../bin")
-	val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"} *)
-
 	fun set_paths install_dir =
 	    Flags.install_dir := install_dir
 
@@ -105,38 +100,27 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		in go_files rest
 		end
 	in
-      fun die s = Crash.impossible ("KitCompiler." ^ s)
-	    fun kitexe(root_dir, args) = 
-           let 
-             val baseDir = case Environment.getEnvVal "SML_LIB"
-                           of SOME v => v
-                            | NONE => die ("strip_install_dir: An install directory must be " ^
-                                           "provided as in the environment variable SML_LIB or in " ^ 
-                                           "a path-map!")
-           in
-
-		(set_paths baseDir; go_options args)
-		handle Fail "" => OS.Process.success
-		     | Fail s => (print ("*** Error: " ^ s ^ "\n"); 
-				  OS.Process.failure)
-           end
+  	    (* fun die s = Crash.impossible ("KitCompiler." ^ s) *)
+  	    fun kitexe(root_dir, args) = 
+		(let 
+		     val baseDir = 
+			 case Environment.getEnvVal "SML_LIB" of 
+			     SOME v => v
+			   | NONE => raise Fail ("An install directory must be provided\n" ^
+						 "in an environment variable SML_LIB or as a path-definition\n" ^
+						 "in either the system wide path-map /etc/mlkit/mlb-path-map\n" ^
+						 "or your personal path-map ~/.mlkit/mlb-path-map.")
+		 in
+		     (set_paths baseDir; go_options args)
+		 end
+		 handle Fail "" => OS.Process.success
+		      | Fail s => (print ("*** Error: " ^ s ^ "\n"); 
+				   OS.Process.failure))
+		
 	end
-
-	(* As default root directory we use the absolute path that corresponds to the kit-directory 
-	 * in which the Kit is built. When the Kit is properly installed this directory can be changed
-	 * by passing another directory than this to the Kit executable; we assume we are in the 
-	 * kit/src directory... *)
-      in
+    in
 	open Manager
-  val kitexe = kitexe
-
-	(* the first argument is the Kit installation directory *)
-(*	val kitexe = fn a => 
-	  let fun strip_install_dir (_, install_dir :: rest) = (install_dir, rest)
-		| strip_install_dir _ = die ("strip_install_dir: An install directory must be " ^
-					     "provided as an argument to the executable!")
-	  in (kitexe o strip_install_dir) a
-	  end *)
-      end
+	val kitexe = kitexe
+    end
 	
   end (*KitCompiler*)
