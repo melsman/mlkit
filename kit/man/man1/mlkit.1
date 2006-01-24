@@ -1,4 +1,4 @@
-.TH mlkit 1 "Jan 11, 2006" "version 4.2.0" "MLKit - a compiler for Standard ML"
+.TH mlkit 1 "Jan 25, 2006" "version 4.3.0" "MLKit - a compiler for Standard ML"
 .SH NAME
 mlkit \- A fullblown Standard ML compiler
 .SH SYNOPSIS
@@ -6,111 +6,102 @@ mlkit [OPTION]... [file.sml | file.sig | file.mlb]
 
 All possible options are listed below.
 .SH DEFAULTS
-\fB-verbose\fR off,\n
-\fB--comments_in_x86_asmcode\fR off,\n
-\fB-c\fR off,\n
-\fB-timings\fR off,\n
-\fB--contract\fR on,\n
-\fB-cr\fR off,\n
-\fB-cross_opt\fR on,\n
-\fB-dangle\fR on,\n
-\fB--dangling_pointers_statistics\fR off,\n
-\fB-debug\fR off,\n
-\fB--debug_linking\fR off,\n
-\fB--debug_man_enrich\fR off,\n
-\fB--debug_which_at\fR off,\n
-\fB--delete_target_files\fR on,\n
-\fB--disable_atbot_analysis\fR off,\n
-\fB--disable_flow_var\fR off,\n
-\fB--eliminate_explicit_records\fR on,\n
-\fB-xt\fR off,\n
-\fB-gc\fR off,\n
-\fB-g\fR off,\n
-\fB-gengc\fR off,\n
-\fB-basislib\fR on,\n
-\fB--install_dir\fR "/home/mael/mlkit/kit",\n
-\fB--libdirs\fR "",\n
-\fB--libs\fR "m,c,dl",\n
-\fB-ltdce\fR on,\n
-\fB--log_to_file\fR off,\n
-\fB--maximum_inline_size\fR 50,\n
-\fB--maximum_specialise_size\fR 200,\n
-\fB--minimize_fixs\fR on,\n
-\fB--namebase\fR "dummyBase",\n
-\fB-opt\fR on,\n
-\fB-o\fR "run",\n
-\fB-ptc\fR off,\n
-\fB--print_K_normal_forms\fR off,\n
-\fB-Ppp\fR off,\n
-\fB--print_bit_vectors\fR off,\n
-\fB--print_calc_offset_program\fR off,\n
-\fB-Pcee\fR off,\n
-\fB-Pccp\fR off,\n
-\fB-Pceb\fR off,\n
-\fB-Pdre\fR off,\n
-\fB-Pdresm\fR off,\n
-\fB-Peffects\fR off,\n
-\fB-Peb\fR off,\n
-\fB--print_fetch_and_flush_program\fR off,\n
-\fB-Plcp\fR off,\n
-\fB--print_linearised_program\fR off,\n
-\fB--print_normalized_program\fR off,\n
-\fB-Pole\fR off,\n
-\fB-Ppse\fR off,\n
-\fB-Prfg\fR off,\n
-\fB-Prse0\fR off,\n
-\fB-Pregions\fR on,\n
-\fB--print_register_allocated_program\fR off,\n
-\fB--print_rho_levels\fR off,\n
-\fB--print_rho_types\fR off,\n
-\fB--print_simplified_program\fR off,\n
-\fB-Psme\fR off,\n
-\fB-Ptypestamps\fR off,\n
-\fB-Ptypes\fR off,\n
-\fB-Pwordregions\fR off,\n
-\fB-quot\fR off,\n
-\fB--raggedRight\fR on,\n
-\fB-scratch\fR off,\n
-\fB-ri\fR on,\n
-\fB-prof\fR off,\n
-\fB--regionvar\fR ~1,\n
-\fB--register_allocation\fR on,\n
-\fB-sig\fR off,\n
-\fB-rep\fR on,\n
-\fB--safeLinkTimeElimination\fR off,\n
-\fB--specialize_recursive_functions\fR on,\n
-\fB--statistics_after_optimisation\fR off,\n
-\fB--strip\fR off,\n
-\fB--tag_pairs\fR off,\n
-\fB-tag\fR off,\n
-\fB--type_check_lambda\fR on,\n
-\fB--unbox_function_arguments\fR on,\n
-\fB-uncurry\fR on,\n
-\fB--warn_on_escaping_puts\fR off,\n
-\fB-w\fR 100,\n
+\fB-verbose\fR off,
+\fB--comments_in_x86_asmcode\fR off,
+\fB-c\fR off,
+\fB-timings\fR off,
+\fB--contract\fR on,
+\fB-cr\fR off,
+\fB-cross_opt\fR on,
+\fB-dangle\fR off,
+\fB--dangling_pointers_statistics\fR off,
+\fB-debug\fR off,
+\fB--debug_linking\fR off,
+\fB--debug_man_enrich\fR off,
+\fB--debug_which_at\fR off,
+\fB--delete_target_files\fR on,
+\fB--disable_atbot_analysis\fR off,
+\fB--disable_flow_var\fR off,
+\fB--eliminate_explicit_records\fR on,
+\fB-xt\fR off,
+\fB-gc\fR on,
+\fB-g\fR off,
+\fB-gengc\fR off,
+\fB-basislib\fR on,
+\fB--install_dir\fR /home/mael/mlkit/kit,
+\fB--libs\fR m,c,dl,
+\fB-ltdce\fR on,
+\fB--log_to_file\fR off,
+\fB--maximum_inline_size\fR 50,
+\fB--maximum_specialise_size\fR 200,
+\fB--minimize_fixs\fR on,
+\fB--namebase\fR dummyBase,
+\fB-opt\fR on,
+\fB-o\fR run,
+\fB-ptc\fR on,
+\fB--print_K_normal_forms\fR off,
+\fB-Ppp\fR off,
+\fB--print_bit_vectors\fR off,
+\fB--print_calc_offset_program\fR off,
+\fB-Pcee\fR off,
+\fB-Pccp\fR off,
+\fB-Pceb\fR off,
+\fB-Pdre\fR off,
+\fB-Pdresm\fR off,
+\fB-Peffects\fR off,
+\fB-Peb\fR off,
+\fB--print_fetch_and_flush_program\fR off,
+\fB-Plcp\fR off,
+\fB--print_linearised_program\fR off,
+\fB--print_normalized_program\fR off,
+\fB-Pole\fR off,
+\fB-Ppse\fR off,
+\fB-Prfg\fR off,
+\fB-Prse0\fR off,
+\fB-Pregions\fR on,
+\fB--print_register_allocated_program\fR off,
+\fB--print_rho_levels\fR off,
+\fB--print_rho_types\fR off,
+\fB--print_simplified_program\fR off,
+\fB-Psme\fR off,
+\fB-Ptypestamps\fR off,
+\fB-Ptypes\fR off,
+\fB-Pwordregions\fR off,
+\fB-quot\fR off,
+\fB--raggedRight\fR on,
+\fB-scratch\fR off,
+\fB-ri\fR on,
+\fB-prof\fR off,
+\fB--regionvar\fR ~1,
+\fB--register_allocation\fR on,
+\fB-sig\fR off,
+\fB-rep\fR on,
+\fB--safeLinkTimeElimination\fR off,
+\fB--specialize_recursive_functions\fR on,
+\fB--statistics_after_optimisation\fR off,
+\fB--strip\fR off,
+\fB--tag_pairs\fR off,
+\fB-tag\fR on,
+\fB--type_check_lambda\fR on,
+\fB--unbox_function_arguments\fR on,
+\fB-uncurry\fR on,
+\fB--warn_on_escaping_puts\fR off,
+\fB-w\fR 100.
 .SH DESCRIPTION
 When invoked, 
 .B mlkit
-will compile the specified sources into an execuatable file 
+will compile the specified sources into an executable file 
 .B run
 through a series of translation phases. Various options (see below) can be used to control the printing of intermediate forms and to which degree various optimizations are performed. If source files are organised in ML Basis Files (files with extension .mlb), the compiler will memoize symbol table information and object code in the dedicated MLB directories located together with the source files, so as to minimize necessary recompilation upon changes of source code.
 
 To learn more about programming with the MLKit, consult the MLKit web page at
 
 .B http://www.itu.dk/research/mlkit
+.SH STANDARDS
+The MLKit implements Standard ML (Revised 1997) and has almost full support for the Standard ML Basis Library (version of 2002). See the MLKit home page for a detailed overview of the support for the Standard ML Basis Library.
+.SH EXAMPLES
+For examples, consult the MLKit manual "Programming with Regions in the MLKit", which is available from the MLKit home page.
 .SH OPTIONS
-.IP "\fB--version, -v, -V\fR" 4
-.IX Item "--version, -v, -V"
-Print MLKit version information and exit.
-.IP "\fB--man\fR" 4
-.IX Item "--man"
-Print man-page and exit.
-.IP "\fB--help\fR" 4
-.IX Item "--help"
-Print help information and exit.
-.IP "\fB--help S\fR" 4
-.IX Item "--help S"
-Print help information about an option and exit.
 .IP "\fB--chat, -verbose\fR" 4
 .IX Item "--chat, -verbose"
 Print a message for each compilation step in the compiler.
@@ -128,9 +119,6 @@ Show compiler timings for each compilation phase.
 Contract is responsible for in-lining, specialization,
 elimination of dead code, and much else (Lambda
 Expression Optimiser).
-.IP "\fB--no_contract\fR" 4
-.IX Item "--no_contract"
-Opposite of --contract.
 .IP "\fB--contract_regions, -cr\fR" 4
 .IX Item "--contract_regions, -cr"
 When this option is enabled, identically typed
@@ -145,9 +133,6 @@ of small functions and specialisation of small
 recursive functions. Which optimisations are performed
 across modules is controlled by individual optimisation
 flags.
-.IP "\fB--no_cross_module_opt, -no_cross_opt\fR" 4
-.IX Item "--no_cross_module_opt, -no_cross_opt"
-Opposite of --cross_module_opt, -cross_opt.
 .IP "\fB--dangling_pointers, -dangle\fR" 4
 .IX Item "--dangling_pointers, -dangle"
 When this option is disabled, dangling pointers
@@ -156,9 +141,6 @@ closures to live at-least as long as the closure
 itself. So as to make garbage collection sound,
 this option is disabled by default when garbage
 collection is enabled.
-.IP "\fB--no_dangling_pointers, -no_dangle\fR" 4
-.IX Item "--no_dangling_pointers, -no_dangle"
-Opposite of --dangling_pointers, -dangle.
 .IP "\fB--dangling_pointers_statistics\fR" 4
 .IX Item "--dangling_pointers_statistics"
 When enabled, the compiler prints statistics about
@@ -189,9 +171,6 @@ Debug storage mode analysis.
 Delete assembler files produced by the compiler. If you
 disable this flag, you can inspect the assembler code
 produced by the compiler.
-.IP "\fB--no_delete_target_files\fR" 4
-.IX Item "--no_delete_target_files"
-Opposite of --delete_target_files.
 .IP "\fB--disable_atbot_analysis\fR" 4
 .IX Item "--disable_atbot_analysis"
 Disable storage mode analysis. That is, turn all
@@ -208,9 +187,6 @@ selections. Transform
 into
       let x1=e1 in ... let xn=en in ... xi .. xj ...
 (Lambda Expression Optimiser).
-.IP "\fB--no_eliminate_explicit_records\fR" 4
-.IX Item "--no_eliminate_explicit_records"
-Opposite of --eliminate_explicit_records.
 .IP "\fB--extended_typing, -xt\fR" 4
 .IX Item "--extended_typing, -xt"
 When this flag is enabled, SMLserver requires
@@ -236,9 +212,6 @@ forcing values captured in closures to live at-least as
 long as the closure. Moreover, enabling garbage
 collection implicitly enables the preservation of tail
 calls (see the option ``preserve_tail_calls''.)
-.IP "\fB--no_garbage_collection, -no_gc\fR" 4
-.IX Item "--no_garbage_collection, -no_gc"
-Opposite of --garbage_collection, -gc.
 .IP "\fB--gdb_support, -g\fR" 4
 .IX Item "--gdb_support, -g"
 When enabled, the compiler passes the option --gstabs
@@ -251,9 +224,12 @@ the generated program using gdb (The GNU Debugger).
 Enable generational garbage collection. Same as option
 garbage collection except that two generations are used
 for each region.
-.IP "\fB--no_generational_garbage_collection, -no_gengc\fR" 4
-.IX Item "--no_generational_garbage_collection, -no_gengc"
-Opposite of --generational_garbage_collection, -gengc.
+.IP "\fB--help\fR" 4
+.IX Item "--help"
+Print help information and exit.
+.IP "\fB--help S\fR" 4
+.IX Item "--help S"
+Print help information about an option and exit.
 .IP "\fB--import_basislib, -basislib\fR" 4
 .IX Item "--import_basislib, -basislib"
 Import Basis Library automatically in your projects. If 
@@ -261,9 +237,6 @@ you wish to make use of the Standard ML Basis Library
 in your projects, this option should be turned on, unless
 you wish to import the Basis Library manually in your
 projects.
-.IP "\fB--no_import_basislib, -no_basislib\fR" 4
-.IX Item "--no_import_basislib, -no_basislib"
-Opposite of --import_basislib, -basislib.
 .IP "\fB--install_dir S\fR" 4
 .IX Item "--install_dir S"
 Installation directory for the MLKit. For normal
@@ -308,9 +281,6 @@ mlkit is used with SMLserver.
 .IP "\fB--link_time_dead_code_elimination, -ltdce\fR" 4
 .IX Item "--link_time_dead_code_elimination, -ltdce"
 Link time dead code elimination.
-.IP "\fB--no_link_time_dead_code_elimination, -no_ltdce\fR" 4
-.IX Item "--no_link_time_dead_code_elimination, -no_ltdce"
-Opposite of --link_time_dead_code_elimination, -ltdce.
 .IP "\fB--load_basis_files S, -load S\fR" 4
 .IX Item "--load_basis_files S, -load S"
 Basis files to be loaded before compilation
@@ -318,6 +288,9 @@ proper.
 .IP "\fB--log_to_file\fR" 4
 .IX Item "--log_to_file"
 Log to files instead of stdout.
+.IP "\fB--man\fR" 4
+.IX Item "--man"
+Print man-page and exit.
 .IP "\fB--maximum_inline_size N\fR" 4
 .IX Item "--maximum_inline_size N"
 Functions smaller than this size (counted in abstract
@@ -336,13 +309,73 @@ specialised no matter their size. See also the option
 .IP "\fB--minimize_fixs\fR" 4
 .IX Item "--minimize_fixs"
 Minimize fix constructs (Lambda Expression Optimiser).
-.IP "\fB--no_minimize_fixs\fR" 4
-.IX Item "--no_minimize_fixs"
-Opposite of --minimize_fixs.
 .IP "\fB--namebase S\fR" 4
 .IX Item "--namebase S"
 Name base to enforce unique names when compiling
 mlb-files.
+.IP "\fB--no_contract\fR" 4
+.IX Item "--no_contract"
+Opposite of --contract.
+.IP "\fB--no_cross_module_opt, -no_cross_opt\fR" 4
+.IX Item "--no_cross_module_opt, -no_cross_opt"
+Opposite of --cross_module_opt, -cross_opt.
+.IP "\fB--no_dangling_pointers, -no_dangle\fR" 4
+.IX Item "--no_dangling_pointers, -no_dangle"
+Opposite of --dangling_pointers, -dangle.
+.IP "\fB--no_delete_target_files\fR" 4
+.IX Item "--no_delete_target_files"
+Opposite of --delete_target_files.
+.IP "\fB--no_eliminate_explicit_records\fR" 4
+.IX Item "--no_eliminate_explicit_records"
+Opposite of --eliminate_explicit_records.
+.IP "\fB--no_garbage_collection, -no_gc\fR" 4
+.IX Item "--no_garbage_collection, -no_gc"
+Opposite of --garbage_collection, -gc.
+.IP "\fB--no_generational_garbage_collection, -no_gengc\fR" 4
+.IX Item "--no_generational_garbage_collection, -no_gengc"
+Opposite of --generational_garbage_collection, -gengc.
+.IP "\fB--no_import_basislib, -no_basislib\fR" 4
+.IX Item "--no_import_basislib, -no_basislib"
+Opposite of --import_basislib, -basislib.
+.IP "\fB--no_link_time_dead_code_elimination, -no_ltdce\fR" 4
+.IX Item "--no_link_time_dead_code_elimination, -no_ltdce"
+Opposite of --link_time_dead_code_elimination, -ltdce.
+.IP "\fB--no_minimize_fixs\fR" 4
+.IX Item "--no_minimize_fixs"
+Opposite of --minimize_fixs.
+.IP "\fB--no_optimiser, -no_opt\fR" 4
+.IX Item "--no_optimiser, -no_opt"
+Opposite of --optimiser, -opt.
+.IP "\fB--no_preserve_tail_calls, -no_ptc\fR" 4
+.IX Item "--no_preserve_tail_calls, -no_ptc"
+Opposite of --preserve_tail_calls, -ptc.
+.IP "\fB--no_print_regions, -no_Pregions\fR" 4
+.IX Item "--no_print_regions, -no_Pregions"
+Opposite of --print_regions, -Pregions.
+.IP "\fB--no_raggedRight\fR" 4
+.IX Item "--no_raggedRight"
+Opposite of --raggedRight.
+.IP "\fB--no_region_inference, -no_ri\fR" 4
+.IX Item "--no_region_inference, -no_ri"
+Opposite of --region_inference, -ri.
+.IP "\fB--no_register_allocation\fR" 4
+.IX Item "--no_register_allocation"
+Opposite of --register_allocation.
+.IP "\fB--no_repository, -no_rep\fR" 4
+.IX Item "--no_repository, -no_rep"
+Opposite of --repository, -rep.
+.IP "\fB--no_specialize_recursive_functions\fR" 4
+.IX Item "--no_specialize_recursive_functions"
+Opposite of --specialize_recursive_functions.
+.IP "\fB--no_type_check_lambda\fR" 4
+.IX Item "--no_type_check_lambda"
+Opposite of --type_check_lambda.
+.IP "\fB--no_unbox_function_arguments\fR" 4
+.IX Item "--no_unbox_function_arguments"
+Opposite of --unbox_function_arguments.
+.IP "\fB--no_uncurrying, -no_uncurry\fR" 4
+.IX Item "--no_uncurrying, -no_uncurry"
+Opposite of --uncurrying, -uncurry.
 .IP "\fB--optimiser, -opt\fR" 4
 .IX Item "--optimiser, -opt"
 Enable optimisation of intermediate language code
@@ -351,9 +384,6 @@ is controlled by individual flags. The optimisations
 include function in-lining, function specialisation,
 fix-minimization, unboxing of function arguments, and
 elimination of unnecessary record constructions.
-.IP "\fB--no_optimiser, -no_opt\fR" 4
-.IX Item "--no_optimiser, -no_opt"
-Opposite of --optimiser, -opt.
 .IP "\fB--output S, -o S\fR" 4
 .IX Item "--output S, -o S"
 The name of the executable file generated by
@@ -363,9 +393,6 @@ the Kit.
 Avoid the wrapping of letregion constructs around
 tail calls. Turning on garbage collection
 automatically turns on this option.
-.IP "\fB--no_preserve_tail_calls, -no_ptc\fR" 4
-.IX Item "--no_preserve_tail_calls, -no_ptc"
-Opposite of --preserve_tail_calls, -ptc.
 .IP "\fB--print_K_normal_forms\fR" 4
 .IX Item "--print_K_normal_forms"
 Print Region Expressions in K-Normal Form. Applicable,
@@ -438,9 +465,6 @@ region inference.
 .IP "\fB--print_regions, -Pregions\fR" 4
 .IX Item "--print_regions, -Pregions"
 Print region variables in types and expressions.
-.IP "\fB--no_print_regions, -no_Pregions\fR" 4
-.IX Item "--no_print_regions, -no_Pregions"
-Opposite of --print_regions, -Pregions.
 .IP "\fB--print_register_allocated_program\fR" 4
 .IX Item "--print_register_allocated_program"
 
@@ -499,9 +523,6 @@ the quotation/antiquotation syntax:
 .IX Item "--raggedRight"
 Use ragged right margin in pretty-printing of
 expressions and types.
-.IP "\fB--no_raggedRight\fR" 4
-.IX Item "--no_raggedRight"
-Opposite of --raggedRight.
 .IP "\fB--recompile_basislib, -scratch\fR" 4
 .IX Item "--recompile_basislib, -scratch"
 Recompile basis library from scratch. This option
@@ -511,9 +532,6 @@ code generation.
 .IX Item "--region_inference, -ri"
 With this flag disabled, all values are allocated in
 global regions.
-.IP "\fB--no_region_inference, -no_ri\fR" 4
-.IX Item "--no_region_inference, -no_ri"
-Opposite of --region_inference, -ri.
 .IP "\fB--region_profiling, -prof\fR" 4
 .IX Item "--region_profiling, -prof"
 Enable region profiling. Object code stemming
@@ -538,9 +556,6 @@ any id for a top-level region/effect variable (>9).
 Perform register allocation. Without register allocation
 enabled, programs run somewhat slower--but they run and
 you save about 15 percent on compile time.
-.IP "\fB--no_register_allocation\fR" 4
-.IX Item "--no_register_allocation"
-Opposite of --register_allocation.
 .IP "\fB--report_file_sig, -sig\fR" 4
 .IX Item "--report_file_sig, -sig"
 Report signatures for each file read.
@@ -550,9 +565,6 @@ Use in-memory repository to avoid unnecessary
 recompilation. This flag should be disabled when
 compiling mlb-files, which make use of the file system
 as a repository.
-.IP "\fB--no_repository, -no_rep\fR" 4
-.IX Item "--no_repository, -no_rep"
-Opposite of --repository, -rep.
 .IP "\fB--safeLinkTimeElimination\fR" 4
 .IX Item "--safeLinkTimeElimination"
 Threat this module as a library in the sense that
@@ -564,9 +576,6 @@ maximum_specialise_size to control which functions
 are specialised. If this flag is on, functions that are
 applied only once are specialised, no matter the setting
 of maximum_specialise_size (Lambda Expression Optimiser).
-.IP "\fB--no_specialize_recursive_functions\fR" 4
-.IX Item "--no_specialize_recursive_functions"
-Opposite of --specialize_recursive_functions.
 .IP "\fB--statistics_after_optimisation\fR" 4
 .IX Item "--statistics_after_optimisation"
 Report optimisation statistics after optimisation of
@@ -592,18 +601,12 @@ inference. Type checking is very fast and for normal use
 you should not disable this option. Type checking
 intermediate forms is very powerful for eliminating bugs
 in the compiler.
-.IP "\fB--no_type_check_lambda\fR" 4
-.IX Item "--no_type_check_lambda"
-Opposite of --type_check_lambda.
 .IP "\fB--unbox_function_arguments\fR" 4
 .IX Item "--unbox_function_arguments"
 Unbox arguments to fix-bound functions, for which the
 argument `a' is used only in contexts `#i a'. All call 
 sites are transformed to match the new function (Lambda
 Expression Optimiser).
-.IP "\fB--no_unbox_function_arguments\fR" 4
-.IX Item "--no_unbox_function_arguments"
-Opposite of --unbox_function_arguments.
 .IP "\fB--uncurrying, -uncurry\fR" 4
 .IX Item "--uncurrying, -uncurry"
 Enable uncurrying of curried functions. The uncurried
@@ -611,9 +614,9 @@ function takes its arguments unboxed in registers or
 on the stack. For partial applications and non-
 application uses of the function, appropriate eta-
 expansions are applied.
-.IP "\fB--no_uncurrying, -no_uncurry\fR" 4
-.IX Item "--no_uncurrying, -no_uncurry"
-Opposite of --uncurrying, -uncurry.
+.IP "\fB--version, -v, -V\fR" 4
+.IX Item "--version, -v, -V"
+Print MLKit version information and exit.
 .IP "\fB--warn_on_escaping_puts\fR" 4
 .IX Item "--warn_on_escaping_puts"
 Enable the compiler to issue a warning whenever a 
@@ -623,15 +626,11 @@ that is not quantified.
 .IX Item "--width N, -w N"
 Column width used when pretty printing intermediate code.
 .SH EXIT STATUS
-.SH ENVIRONMENT
-.SH FILES
+Exits with status 0 on success and -1 on failure..SH ENVIRONMENT
+An MLKit library install directory must be provided in an environment variable SML_LIB or as a path-definition in either the system wide path-map /etc/mlkit/mlb-path-map or in the user's personal path-map ~/.mlkit/mlb-path-map..SH FILES
 .I /etc/mlkit/map
 .RS
 User configuration
-.SH EXAMPLES
-For examples, consult the MLKit manual "Programming with Regions in the MLKit",which is available from the MLKit home page.
-.SH STANDARDS
-The MLKit implements Standard ML (Revised 1997) and has almost full support for the Standard ML Basis Library (version of 2002). See the MLKit home page for a detailed overview of the support for the Standard ML Basis Library.
 .SH CREDITS
 The MLKit (version 2 and beyond) was developed by Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy H. Olesen, Mads Tofte, and Carsten Varming. People who have contributed with bug-fixes and improvements include Peter Bertelsen, Ken Friis Larsen, Henning Niss, and Peter Sestoft. Nick Rothwell and David N. Turner took part in the development of the MLKit version 1.
 .SH SEE ALSO
