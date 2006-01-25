@@ -165,7 +165,7 @@ clean:
 
 ### DO NOT DELETE THIS LINE
 Runtime.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h
+  Exception.h Table.h CommandLine.h Export.h
 IO.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -188,8 +188,10 @@ Dlsym.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h Profiling.h
+  Exception.h Table.h CommandLine.h Export.h Profiling.h
 IO-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-p.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -212,8 +214,10 @@ Dlsym-p.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-p.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-p.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-p.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-gc.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h GC.h
+  Exception.h Table.h CommandLine.h Export.h GC.h
 IO-gc.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-gc.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -237,8 +241,10 @@ Dlsym-gc.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-gc.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-gc.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-gc.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-gengc.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h GC.h
+  Exception.h Table.h CommandLine.h Export.h GC.h
 IO-gengc.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-gengc.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -262,8 +268,10 @@ Dlsym-gengc.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-gengc.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-gengc.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-gengc.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-gc-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h GC.h Profiling.h
+  Exception.h Table.h CommandLine.h Export.h GC.h Profiling.h
 IO-gc-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-gc-p.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -287,8 +295,10 @@ Dlsym-gc-p.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-gc-p.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-gc-p.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-gc-p.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-gengc-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h GC.h Profiling.h
+  Exception.h Table.h CommandLine.h Export.h GC.h Profiling.h
 IO-gengc-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-gengc-p.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -312,8 +322,10 @@ Dlsym-gengc-p.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-gengc-p.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-gengc-p.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-gengc-p.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-gc-tp.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h GC.h
+  Exception.h Table.h CommandLine.h Export.h GC.h
 IO-gc-tp.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-gc-tp.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -337,8 +349,10 @@ Dlsym-gc-tp.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-gc-tp.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-gc-tp.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-gc-tp.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-gc-tp-p.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h GC.h Profiling.h
+  Exception.h Table.h CommandLine.h Export.h GC.h Profiling.h
 IO-gc-tp-p.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-gc-tp-p.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -362,8 +376,10 @@ Dlsym-gc-tp-p.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-gc-tp-p.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-gc-tp-p.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-gc-tp-p.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Runtime-kam.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h Interp.h LoadKAM.h \
+  Exception.h Table.h CommandLine.h Export.h Interp.h LoadKAM.h \
   ../CUtils/hashmap_typed.h ../CUtils/hashmap.h
 IO-kam.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
@@ -387,6 +403,8 @@ Dlsym-kam.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-kam.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-kam.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-kam.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Interp-kam.o: Interp.c Runtime.h String.h Flags.h Region.h Tagging.h Stack.h \
   KamInsts.h Prims.h LoadKAM.h ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h List.h Exception.h Interp.h Math.h Table.h Locks.h \
@@ -397,8 +415,9 @@ LoadKAM-kam.o: LoadKAM.c LoadKAM.h ../CUtils/hashmap_typed.h \
 KamInsts-kam.o: KamInsts.c
 HeapCache-kam.o: HeapCache.c HeapCache.h Region.h Flags.h Stack.h Runtime.h \
   String.h Tagging.h Locks.h ../config.h
+SysErrTable-kam.o: SysErrTable.h
 Runtime-smlserver.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h Interp.h LoadKAM.h \
+  Exception.h Table.h CommandLine.h Export.h Interp.h LoadKAM.h \
   ../CUtils/hashmap_typed.h ../CUtils/hashmap.h
 IO-smlserver.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
@@ -422,6 +441,8 @@ Dlsym-smlserver.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-smlserver.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-smlserver.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-smlserver.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
 Interp-smlserver.o: Interp.c Runtime.h String.h Flags.h Region.h Tagging.h Stack.h \
   KamInsts.h Prims.h LoadKAM.h ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h List.h Exception.h Interp.h Math.h Table.h Locks.h \
@@ -433,7 +454,7 @@ HeapCache-smlserver.o: HeapCache.c HeapCache.h Region.h Flags.h Stack.h Runtime.
   String.h Tagging.h Locks.h ../config.h
 KamInsts-smlserver.o: KamInsts.c
 Runtime-tag.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
-  Exception.h Table.h CommandLine.h
+  Exception.h Table.h CommandLine.h Export.h
 IO-tag.o: IO.c IO.h Flags.h String.h Region.h Tagging.h Exception.h List.h \
   Math.h Runtime.h
 String-tag.o: String.c String.h Flags.h Region.h Tagging.h List.h Exception.h
@@ -456,3 +477,5 @@ Dlsym-tag.o: Dlsym.c String.h Flags.h Region.h Tagging.h \
 hashmap-tag.o: ../CUtils/hashmap.c ../CUtils/hashmap.h
 hashmap_typed-tag.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h
+Export-tag.o: Export.c String.h Flags.h Region.h Tagging.h \
+  ../CUtils/hashmap.h Export.h
