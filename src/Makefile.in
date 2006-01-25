@@ -133,7 +133,7 @@ basics: genopcodes heap2exec
 genopcodes: $(GENOPCODES_TARGETS)
 
 $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
-	mkdir -p $(BINDIR)
+	$(MKDIR) $(BINDIR)
 	$(MAKE) -C Tools/GenOpcodes
 # kitgen_opcodes assumes it's run from the src-directory
 	$(BINDIR)/kitgen_opcodes
