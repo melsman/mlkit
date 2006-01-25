@@ -7,7 +7,7 @@ INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 INSTALLPROGRAM=@INSTALL_PROGRAM@
 
-include ../../../Makefiledefault
+include $(top_srcdir)/Makefiledefault
 
 $(BINDIR)/kitgen_opcodes: kitgen_opcodes
 	$(MKDIR) $(BINDIR)

@@ -13,6 +13,8 @@ MKDIR=$(top_srcdir)/mkinstalldirs
 OFILES = Rp2Ps.o ProfileData.o Sample.o Graph.o Curves.o Output.o PostScript.o Error.o Alloc.o
 CFILES = $(OFILES:%.o=%.c)
 
+BINDIR=$(top_srcdir)/bin
+
 OPT=-Wall -std=gnu99 $(CFLAGS)
 
 .PHONY: clean depend
@@ -20,11 +22,11 @@ OPT=-Wall -std=gnu99 $(CFLAGS)
 %.o: %.c
 	$(CC) -c $(OPT) -o $*.o $<
 
-all: ../../../bin/rp2ps
+all: $(BINDIR)/rp2ps
 
-../../../bin/rp2ps: rp2ps
-	$(MKDIR) ../../../bin
-	$(INSTALLPROGRAM) rp2ps ../../../bin/
+$(BINDIR)/rp2ps: rp2ps
+	$(MKDIR) $(BINDIR)
+	$(INSTALLPROGRAM) rp2ps $(BINDIR)
 
 rp2ps: $(OFILES)
 	$(CC) -o rp2ps $(OFILES) -lm
