@@ -47,10 +47,10 @@ all: mlkit
 SRCDIR=.
 mlkit_basislibs:
 	(cd $(SRCDIR)/basis; rm -rf MLB)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -c basis.mlb)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -gengc -c basis.mlb)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -gengc -prof -c basis.mlb)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -prof -c basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -c -no_gc basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -c -gc basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -c -gc -prof basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -c -no_gc -prof basis.mlb)
 
 install_mlkit_basislibs:
 	$(MKDIR) $(INSTDIR)/basis/MLB
@@ -58,6 +58,11 @@ install_mlkit_basislibs:
 	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC
 	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC_PROF
 	$(MKDIR) $(INSTDIR)/basis/MLB/RI_PROF
+	$(MKDIR) $(INSTDIR)/basis/io/MLB
+	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI
+	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI_GC
+	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI_GC_PROF
+	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI_PROF
 	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI
 	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI_GC
 	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_PROF
@@ -188,8 +193,8 @@ install_kitdemo:
 install_basis:
 	$(MKDIR) $(INSTDIR)/basis
 	$(MKDIR) $(INSTDIR)/basis/io
-	$(INSTALLDATA) -p basis/*.{sml,mlb} $(INSTDIR)/basis
-	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
+	$(INSTALLDATA) -p $(SRCDIR)/basis/*.{sml,mlb} $(INSTDIR)/basis
+	$(INSTALLDATA) -p $(SRCDIR)/basis/io/*.{sml,sig} $(INSTDIR)/basis/io
 
 install_man:
 	$(MKDIR) $(INSTDIR)/man
@@ -320,7 +325,6 @@ bootstrap_first: install bootstrap0
 
 bootstrap_next_build:
 	cd src; $(MAKE) genopcodes
-#	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gengc native.mlb
 	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
 
 bootstrap_next_install: 
@@ -348,6 +352,7 @@ bootstrap:
 	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
+	$(MAKE) mlkit_basislibs SRCDIR=bootstrap/mlkit-v3
 	$(DIFF) bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit
 
 .PHONY: man_mlkit
@@ -356,13 +361,14 @@ man_mlkit:
 
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
+# assumes that make bootstrap has been run
 mlkit_i386_tgz:
 	$(MKDIR) dist
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/bin
 	$(INSTALL) bin/rp2ps dist/$(MLKIT_DIST_BIN)/bin
 	$(INSTALL) bin/kittester dist/$(MLKIT_DIST_BIN)/bin
-#	$(INSTALL) bootstrap/mlkit-v3/bin/mlkit dist/$(MLKIT_DIST_BIN)/bin
+	$(INSTALL) bootstrap/mlkit-v3/bin/mlkit dist/$(MLKIT_DIST_BIN)/bin
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
@@ -373,10 +379,10 @@ mlkit_i386_tgz:
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib/mlkit
 	$(MAKE) install_runtime INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit
-#	$(MAKE) install_basis INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit \
-#                              SRCDIR=bootstrap/mlkit-v3
-#	$(MAKE) install_mlkit_basislibs INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit \
-#                                        SRCDIR=bootstrap/mlkit-v3
+	$(MAKE) install_basis INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit \
+                              SRCDIR=bootstrap/mlkit-v3
+	$(MAKE) install_mlkit_basislibs INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit \
+                                        SRCDIR=bootstrap/mlkit-v3
 	$(MAKE) install_man INSTDIR=dist/$(MLKIT_DIST_BIN)
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/mlkit
 	$(MAKE) install_test INSTDIR=dist/$(MLKIT_DIST_BIN)/share/mlkit
