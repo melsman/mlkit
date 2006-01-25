@@ -1,0 +1,21 @@
+
+top_srcdir=@top_srcdir@
+
+INSTALL=@INSTALL@
+INSTALLDATA=@INSTALL_DATA@
+INSTALLPROGRAM=@INSTALL_PROGRAM@
+
+BINDIR=$(top_srcdir)/bin
+
+include $(top_srcdir)/Makefiledefault
+
+all: $(BINDIR)/kittester
+
+$(BINDIR)/kittester: kittester
+	$(INSTALLPROGRAM) kittester $(BINDIR)
+
+kittester: KitTester.mlb Makefile *.sml
+	$(MLCOMP) -output kittester KitTester.mlb
+
+clean:
+	rm -rf MLB *~ kittester
