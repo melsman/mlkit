@@ -1,0 +1,115 @@
+.TH rp2ps 1 "Jan 25, 2006" "MLKit version 4.3.0" "Region-profile to Postscript generator"
+.SH NAME
+rp2ps - Region-profile to Postscript generator.
+
+Part of the MLKit Standard ML compiler.
+.SH SYNOPSIS
+rp2ps 
+[-region [filename]] 
+      [-stack [filename]] 
+      [-object regionNo [filename]]
+      [-sampleMax n] 
+      [-sortByTime | -sortBySize]
+      [-vert] [-eps width (in|mm|pt)] 
+      [-noOfBands n]
+      [-comment time string] [-mark time]
+      [-pregion regionNo] [-print] [-stat] [-findPrgPoint n]
+      [-source filename] [-name name] [-interact] [-help]
+
+A description of the options are given below.
+.SH DESCRIPTION
+When invoked, 
+.B rp2ps
+reads a profile data file (default is profile.rp) and outputs a Postscript file according to the provided options. Given a profile data file profile.rp, executing
+
+.B rp2ps -region
+
+will generate a region profile, which will be stored in a file region.ps. To get an overview of which program points allocate data in a particular region, use the -object option (see below). 
+
+For the MLKit compiler to generate a profile data file to process with 
+.B rp2ps
+, it is necessary to pass the option -prof to the MLKit executable.
+
+To learn more about region profiling with the MLKit, consult the MLKit manual "Programming with Regions in the MLKit", which is available from the MLKit home page and from the distributions. For more information about the MLKit, consult the MLKit home page:
+
+.B http://www.itu.dk/research/mlkit
+
+.SH EXAMPLES
+For examples, consult the MLKit manual "Programming with Regions in the MLKit", which is available from the MLKit home page and from the distributions.
+
+.SH OPTIONS
+.IP "\fB-region\fR" 4
+.IX Item "-region"
+Profile all regions with respect to size (default output filename is region.ps).
+.IP "\fB-stack\fR" 4
+.IX Item "-stack"
+Profile stack with respect to size (default output filename is stack.ps).
+.IP "\fB-object N\fR" 4
+.IX Item "-object N"
+Profile all objects in region N. (default output filename is objectN.ps, where N is a region number (region variable id).
+.IP "\fB-sampleMax\fR" 4
+.IX Item "-sampleMax"
+Use only n samples (default is 64).
+.IP "\fB-sortByTime\fR" 4
+.IX Item "-sortByTime"
+Choose samples equally distributed over sample time. This is the default behavior.
+.IP "\fB-sortBySize\fR" 4
+.IX Item "-sortBySize"
+Choose the largest samples. This is not the default behavior.
+.IP "\fB-vert\fR" 4
+.IX Item "-vert"
+Put a vertical line in the region graph for each sample used.
+.IP "\fB-eps\fR" 4
+.IX Item "-eps w"
+Produce encapsulated postscript with specified width w in inches (in), 
+millimeters (mm) or points(pt).
+.IP "\fB-noOfBands N\fR" 4
+.IX Item "-noOfBands N"
+Maximum number of bands shown on the region graph. Default (and possible maximum) is 20.
+.IP "\fB-fixedYRange N\fR" 4
+.IX Item "-fixedYRange N"
+Use N (bytes) as fixed range of y-axis, -1 means no fixed range on y-axis.
+.IP "\fB-useTickNo\fR" 4
+.IX Item "-useTickNo"
+Use tick numbers on x-axis instead of elapsed time.
+.IP "\fB-comment t str\fR" 4
+.IX Item "-comment t str"
+Insert comment str (one word only) at time t in the region graph.
+.IP "\fB-mark t\fR" 4
+.IX Item "-mark t"
+Insert mark at time t in the region graph.
+.IP "\fB-pregion N\fR" 4
+.IX Item "-pregion N"
+Print region information about region variable N on stdout.
+.IP "\fB-print\fR" 4
+.IX Item "-print"
+Print all profiling data on stdout.
+.IP "\fB-stat\fR" 4
+.IX Item "-stat"
+Print statistics on stdout.
+.IP "\fB-findPrgPoint N\fR" 4
+.IX Item "-findPrgPoint N"
+Print regions containing program point N.
+.IP "\fB-source name\fR" 4
+.IX Item "-source name"
+Specify name of profile data file (default is profile.rp).
+.IP "\fB-name name\fR" 4
+.IX Item "-name name"
+Name to print on top of region graph (default is rp2ps).
+.IP "\fB-interactive\fR" 4
+.IX Item "-interactive"
+Enter interactive mode.
+.IP "\fB-help\fR" 4
+.IX Item "-help"
+Print help information and exit.
+.SH EXIT STATUS
+Exits with status 0 on success and -1 on failure.
+.SH CREDITS
+The MLKit (version 2 and beyond) was developed by Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy H. Olesen, Mads Tofte, and Carsten Varming. People who have contributed with bug-fixes and improvements include Peter Bertelsen, Ken Friis Larsen, Henning Niss, and Peter Sestoft. Nick Rothwell and David N. Turner took part in the development of the MLKit version 1.
+.SH SEE ALSO
+
+.B mlkit(1)
+
+The MLKit manual "Programming with Regions in the MLKit", available from the MLKit home page
+
+.B http://www.itu.dk/research/mlkit
