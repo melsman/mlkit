@@ -44,12 +44,13 @@ CLEAN=rm -rf MLB PM CM *~ .\#*
 
 all: mlkit
 
+SRCDIR=.
 mlkit_basislibs:
-	(cd basis; rm -rf MLB)
-	(cd basis; ../bin/mlkit -c basis.mlb)
-	(cd basis; ../bin/mlkit -gengc -c basis.mlb)
-	(cd basis; ../bin/mlkit -gengc -prof -c basis.mlb)
-	(cd basis; ../bin/mlkit -prof -c basis.mlb)
+	(cd $(SRCDIR)/basis; rm -rf MLB)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -c basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -gengc -c basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -gengc -prof -c basis.mlb)
+	(cd $(SRCDIR)/basis; ../bin/mlkit -prof -c basis.mlb)
 
 install_mlkit_basislibs:
 	$(MKDIR) $(INSTDIR)/basis/MLB
@@ -57,14 +58,14 @@ install_mlkit_basislibs:
 	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC
 	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC_PROF
 	$(MKDIR) $(INSTDIR)/basis/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI
-	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI_GC
-	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_GC_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI_GC
-	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI
+	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI_GC
+	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_PROF
+	$(INSTALLDATA) -p $(SRCDIR)/basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p $(SRCDIR)/basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI
+	$(INSTALLDATA) -p $(SRCDIR)/basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI_GC
+	$(INSTALLDATA) -p $(SRCDIR)/basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_PROF
+	$(INSTALLDATA) -p $(SRCDIR)/basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_GC_PROF
 
 mlkit_with_basislibs:
 	$(MAKE) mlkit
@@ -95,7 +96,7 @@ barry:
 	$(MAKE) -C src barry
 
 clean:
-	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap
+	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap dist
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
@@ -178,26 +179,38 @@ rpm: mlkit.spec
 	cp -f mlkit.spec $(RPMDIR)/SPECS/mlkit-$(KITVERSION).spec
 	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
+install_kitdemo:
+	$(MKDIR) $(INSTDIR)/kitdemo
+	$(MKDIR) $(INSTDIR)/kitdemo/utils
+	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
+	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
+
+install_basis:
+	$(MKDIR) $(INSTDIR)/basis
+	$(MKDIR) $(INSTDIR)/basis/io
+	$(INSTALLDATA) -p basis/*.{sml,mlb} $(INSTDIR)/basis
+	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
+
+install_man:
+	$(MKDIR) $(INSTDIR)/man
+	$(MKDIR) $(INSTDIR)/man/man1
+	$(INSTALLDATA) man/man1/*.1 $(INSTDIR)/man/man1
+
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
 	$(MKDIR) $(INSTDIR)/ml-yacc-lib
-	$(MKDIR) $(INSTDIR)/basis
-	$(MKDIR) $(INSTDIR)/basis/io
 	$(MKDIR) $(INSTDIR)/kitlib
-	$(MKDIR) $(INSTDIR)/kitdemo
-	$(MKDIR) $(INSTDIR)/kitdemo/utils
 	$(INSTALLDATA) copyright $(INSTDIR)
 	$(INSTALLDATA) README $(INSTDIR)
 	$(INSTALLDATA) Makefile $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
 	$(INSTALL) mkinstalldirs $(INSTDIR)
-	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
-	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
 	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
-	$(INSTALLDATA) -p basis/*.{sml,mlb} $(INSTDIR)/basis
-	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
+	$(MAKE) install_kitdemo
+	$(MAKE) install_basis
+	$(MAKE) install_man
 
 install_runtime:
 	$(INSTALL) -d $(INSTDIR)/lib
@@ -207,13 +220,13 @@ install_runtime:
 	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemGCTP.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemGCTPProf.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemTag.a $(INSTDIR)/lib
-	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
+#	$(INSTALLDATA) lib/runtimeSystemGCTP.a $(INSTDIR)/lib
+#	$(INSTALLDATA) lib/runtimeSystemGCTPProf.a $(INSTDIR)/lib
+#	$(INSTALLDATA) lib/runtimeSystemTag.a $(INSTDIR)/lib
 
 install: install_top install_runtime
 	$(INSTALL) bin/mlkit $(INSTDIR)/bin
+	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR)/doc
 #
 # The following is also done in the %post section in the rpm file, 
@@ -314,10 +327,8 @@ bootstrap_next_install:
 	$(MAKE) install_top
 	$(INSTALL) doc/mlkit.pdf $(INSTDIR)/doc
 	$(MAKE) install_runtime
+	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit
-#	echo -e '#!/bin/sh' >> $(INSTDIR)/bin/mlkit
-#	echo -e '$(INSTDIR)/bin/mlkit.img $(RUNTIME_FLAGS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
-#	chmod a+x $(INSTDIR)/bin/mlkit
 	$(INSTALL) bin/kittester $(INSTDIR)/bin
 	$(MAKE) install_test
 	$(MAKE) install_src
@@ -342,6 +353,35 @@ bootstrap:
 .PHONY: man_mlkit
 man_mlkit:
 	bin/mlkit -man > man/man1/mlkit.1
+
+MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
+.PHONY: mlkit_i386_tgz
+mlkit_i386_tgz:
+	$(MKDIR) dist
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/bin
+	$(INSTALL) bin/rp2ps dist/$(MLKIT_DIST_BIN)/bin
+	$(INSTALL) bin/kittester dist/$(MLKIT_DIST_BIN)/bin
+#	$(INSTALL) bootstrap/mlkit-v3/bin/mlkit dist/$(MLKIT_DIST_BIN)/bin
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
+	$(INSTALLDATA) README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
+	$(INSTALLDATA) doc/manual/mlkit.pdf dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc/mlkit/licence
+	$(INSTALLDATA) copyright dist/$(MLKIT_DIST_BIN)/share/doc/mlkit/licence
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib/mlkit
+	$(MAKE) install_runtime INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit
+#	$(MAKE) install_basis INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit \
+#                              SRCDIR=bootstrap/mlkit-v3
+#	$(MAKE) install_mlkit_basislibs INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit \
+#                                        SRCDIR=bootstrap/mlkit-v3
+	$(MAKE) install_man INSTDIR=dist/$(MLKIT_DIST_BIN)
+	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/mlkit
+	$(MAKE) install_test INSTDIR=dist/$(MLKIT_DIST_BIN)/share/mlkit
+	$(MAKE) install_kitdemo INSTDIR=dist/$(MLKIT_DIST_BIN)/share/mlkit 
+	(cd dist; tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
 
 # The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0

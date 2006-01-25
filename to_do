@@ -16,7 +16,7 @@ mael 2005-11-29: Things needed for the next release:
          mlkit-4.3.0-i386/
            bin/mlkit
               /rp2ps
-              ...
+              /kittester
            lib/mlkit/lib/runtimeSystem.a
                         /runtimeSystemGC.a
                         ...
@@ -24,11 +24,12 @@ mael 2005-11-29: Things needed for the next release:
                           /kitlib.mlb
                           /...
            man/man1/mlkit.1
+                   /rp2ps.1
            share/doc/mlkit/mlkit.pdf
-                          /README_BIN    <- create file mlb-path-map
+                          /README_BIN
                           /licence/
-                          /test/
-                          /kitdemo/
+                /mlkit/test/
+                      /kitdemo/
 
    * mael 2005-11-29: Makefile target for generating source package
      (tgz) with README_SRC file
