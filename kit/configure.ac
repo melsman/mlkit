@@ -8,6 +8,7 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  README_BIN
                  smlserver_demo/Makefile
                  src/Tools/MlbMake/Makefile
+                 src/Tools/Rp2ps/Makefile
                  src/Version.sml])
 
 AC_PROG_CC

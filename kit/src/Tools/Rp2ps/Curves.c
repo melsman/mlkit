@@ -2,6 +2,7 @@
 #include "Curves.h"
 #include "Output.h"
 #include "Rp2Ps.h"
+#include "Alloc.h"
 
 #define MB (1024.0 * 1024.0)
 #define KB 1024.0

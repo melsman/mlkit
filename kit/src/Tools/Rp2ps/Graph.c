@@ -11,6 +11,7 @@
 #include "Alloc.h"
 #include "PostScript.h"
 #include "Curves.h"
+#include "Sample.h"
 
 static double maxDouble (double d1, double d2) {
   if (d1<d2)
