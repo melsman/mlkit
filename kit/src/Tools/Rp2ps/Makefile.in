@@ -1,11 +1,14 @@
 # Makefile for the MLKit region profiler.
 # Type `gmake' to make rp2ps
 
+top_srcdir=@top_srcdir@
+
 CC=@CC@
 CFLAGS=@CFLAGS@
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 INSTALLPROGRAM=@INSTALL_PROGRAM@
+MKDIR=$(top_srcdir)/mkinstalldirs
 
 OFILES = Rp2Ps.o ProfileData.o Sample.o Graph.o Curves.o Output.o PostScript.o Error.o Alloc.o
 CFILES = $(OFILES:%.o=%.c)
@@ -20,7 +23,7 @@ OPT=-Wall -std=gnu99 $(CFLAGS)
 all: ../../../bin/rp2ps
 
 ../../../bin/rp2ps: rp2ps
-	$(INSTALL) -d ../../../bin
+	$(MKDIR) ../../../bin
 	$(INSTALLPROGRAM) rp2ps ../../../bin/
 
 rp2ps: $(OFILES)
