@@ -36,7 +36,7 @@ regionPageMapInsert(RegionPageMap* regionPageMap, unsigned int addr)
   RegionPageMapHashList* newElem;
 
   newElem = (RegionPageMapHashList*)malloc(sizeof(RegionPageMapHashList));
-  if ( newElem <= (RegionPageMapHashList*)0 ) {
+  if ( newElem == NULL ) {
     die("regionPageMapInsert error");
   }
 
@@ -68,7 +68,7 @@ regionPageMapNew(void)
   RegionPageMap* regionPageMap;
 
   regionPageMap = (RegionPageMap*)malloc(sizeof(unsigned long) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
-  if ( regionPageMap <= 0 ) {
+  if ( regionPageMap == NULL ) {
     die("Unable to allocate memory for RegionPageMapHashTable");
   }
 
