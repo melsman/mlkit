@@ -1,5 +1,9 @@
 mael 2005-11-29: Things needed for the next release:
 
+   * mael 2005-10-04: Better mlkit error reporting in case a src-file
+     does not exist. Also, before src-files in an mlb-file are
+     compiled, check that the files do indeed exist.
+
    * mael 2006-01-24: Don't do a gc during exit...
 
    * mael 2005-11-29: Update Basis Library to a reasonable degree.
@@ -32,19 +36,20 @@ mael 2005-11-29: Things needed for the next release:
                       /kitdemo/
 
    * mael 2005-11-29: Makefile target for generating source package
-     (tgz) with README_SRC file
+     (tgz) with README file
 
        mlkit-4.3.0-src.tgz
-          src/
-          configure
-          autobuild
           Makefile.in
-          README_SRC
+          README
+          README_BIN.in          
+          configure
+          src/
           basis/
           test/
           kitdemo/
           doc/
           man/
+          licence/
 
    * mael 2005-12-01: papers/smlserver/root.tex (Carsten): Almost Done
         1) Revise the text in table in Section 3.8 OK
@@ -69,10 +74,6 @@ mael 2005-10-25: MLB-make needs to check the integrity (e.g., size) of
 .{eb1,eb,lnk,rev}-files before concluding that recompilation is not
 needed. It is sufficient to check the integrity of lnk-files since
 lnk-files are generated last. DONE.
-
-mael 2005-10-04: Better mlkit error reporting in case a src-file does
-not exist. Also, before src-files in an mlb-file are compiled, check
-that the files do indeed exist.
 
 varming 2005-09-05: Upgraded SMLserver to Apache. Started work on 
 configuration prior to compilation (autoconf).
