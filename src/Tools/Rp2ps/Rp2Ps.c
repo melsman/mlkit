@@ -519,6 +519,7 @@ static void checkArgs(int argc, char *argv[]) {
   return;
 }
 
+int
 main(int argc, char *argv[]) {
 
   checkArgs(argc, argv);
@@ -543,6 +544,6 @@ main(int argc, char *argv[]) {
     FindProgramPoint(prgPoint);
   if (interact)
     interactive();
-  return;
+  return EXIT_SUCCESS;
 }
 

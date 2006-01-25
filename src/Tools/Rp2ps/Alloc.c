@@ -27,7 +27,7 @@ void* xmalloc(int n)
 {
   void *r;
 
-  r = (void*) malloc(n);
+  r = malloc(n);
   if (!r) {
     /*NOTREACHED*/
     Disaster("sorry, out of memory");

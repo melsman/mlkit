@@ -3,6 +3,8 @@
 #include "Sample.h"
 #include "Alloc.h"
 #include "Rp2Ps.h"
+#include <string.h>
+#include <stdlib.h>
 
 /***************************************************************************
  * Functions for constructing rp2graph structure.                          *
@@ -61,7 +63,7 @@ static ENTRYPTR GetEntry(char* name)
  *                     but it becomes a liability thereafter. The code
  *                     below converts it to a more easily processed table.
  */
-void MakeIdentTable()
+void MakeIdentTable(void)
 {
   int i;
   ENTRYPTR e;

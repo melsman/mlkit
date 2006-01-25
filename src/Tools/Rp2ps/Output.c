@@ -146,7 +146,8 @@ double StringSize(char *s)
 void Prologue(void)
 {
   double scale;
-  if (eflag) scale = epsfwidth / (double) borderwidth;
+  /*if (eflag) scale = epsfwidth / (double) borderwidth; */
+  scale = epsfwidth / (double) borderwidth;
 
   /*printf("eflag: %d, gflag: %d, scale: %8.2f\n", eflag, gflag, scale);*/
 
