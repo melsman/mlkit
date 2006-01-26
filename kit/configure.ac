@@ -5,7 +5,7 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  src/Runtime/Makefile
                  src/Makefile
                  Makefile 
-                 README_BIN
+                 doc/README_BIN
                  smlserver_demo/Makefile
                  src/Tools/MlbMake/Makefile
                  src/Tools/Rp2ps/Makefile

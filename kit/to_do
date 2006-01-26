@@ -8,48 +8,11 @@ mael 2005-11-29: Things needed for the next release:
 
    * mael 2005-11-29: Update Basis Library to a reasonable degree.
 
-   * mael 2005-11-29: Fix bug related to recognizing already compiled
-     mlb-files (Martin)
- 
-   * mael 2005-11-29: SMLserver Manual update (Martin)
-
    * mael 2005-11-29: Makefile target for generating binary package
-     (tgz) with README_BIN file
-
-       mlkit-4.3.0-i386.tgz:
-         mlkit-4.3.0-i386/
-           bin/mlkit
-              /rp2ps
-              /kittester
-           lib/mlkit/lib/runtimeSystem.a
-                        /runtimeSystemGC.a
-                        ...
-                    /basis/basis.mlb
-                          /kitlib.mlb
-                          /...
-           man/man1/mlkit.1
-                   /rp2ps.1
-           share/doc/mlkit/mlkit.pdf
-                          /README_BIN
-                          /licence/
-                /mlkit/test/
-                      /kitdemo/
+     (tgz) with README_BIN file. DONE mael 2006-01-26.
 
    * mael 2005-11-29: Makefile target for generating source package
      (tgz) with README file
-
-       mlkit-4.3.0-src.tgz
-          Makefile.in
-          README
-          README_BIN.in          
-          configure
-          src/
-          basis/
-          test/
-          kitdemo/
-          doc/
-          man/
-          licence/
 
    * mael 2005-12-01: papers/smlserver/root.tex (Carsten): Almost Done
         1) Revise the text in table in Section 3.8 OK
@@ -159,18 +122,6 @@ mael 2005-05-27: Things to do:
            mlb-file hierachy. When a single sml-file f.sml is given as
            argument to mlbmake, the following mlb-file is constructed
            and compiled: 'local $(SML_LIB)/basis/basis.mlb in f.sml end'.
-
-mael 2005-01-31: Write MLKit users manual including:
-   Compiling
-     MLB files
-   Interfacing with C
-     Calling C from ML
-     Calling ML from C
-   Bootstrapping
-   Profiling
-   Garbage Collection
-
- Should this be in a Wiki?  
 
 mael 2004-12-13: Status on MLB files.
 
@@ -396,144 +347,3 @@ system not tested for resetting automatically (in CompLamb);
 currently, the user must do the resetting in the C function. Is there
 a reason? What about Mogensens idea about resetting?
 
-============================= DONE ================================
-
-ERROR:
-SYMPTOM:
-TESTFILE: (file in TestEnv, added to acceptance test)
-PRIORITY: (HIGH|MEDIUM|LOW)
-REPORTED BY: (MT|ME|FAXE) + date
-TO BE FIXED BY: (MT|ME|FAXE)
-FIXED BY: (MT|ME|FAXE) + date
-
--------------------------------------------------------------------
-
-mael 2003-04-16: Impossible: Environments.ExplicitTyVar_lookup occurs
-for free type variables in type abbreviations. [Resolved, mael
-2003-05-08.]
-
--------------------------------------------------------------------
-
-mael 2001-08-07: improvement of pattern-matching; matching against a
-pair ((a,b),c) can be optimized by reusing part of the path to a for
-b.
-
--------------------------------------------------------------------
-
-[(ME 1998-08-21): Eliminate generated object code that is never used
-by applying a backward use-analysis. We cannot eliminate object code
-for units with side-effects, however.]
-
--------------------------------------------------------------------
-
-[(ME 1998-08-21): Delete the TestEnv/Output_X_on_Y directories and
-replace them by one directory expected_output. The output from running
-the tests should be the same on different machines. Moreover, the
-output should be the same even if profiling is enabled (profiling
-messages should be directed to stdErr).]
-
--------------------------------------------------------------------
-
-[(ME 1998-09-26): Remove the problematic value space (valspace). It
-seems that kam variables are local to each target unit; currently,
-however, we allocate a global store (in data space) for these
-variables and this store grows, infinitely, when the project is
-recompiled. Instead, we can associate spilled registers to local slots
-in each compilation unit.]
-
--------------------------------------------------------------------
-
-ERROR: reelaboration of functor fails for overloading
-SYMPTOM: 
-	  Impossible: StatObject.instance'.fresh
-	  Error while reconstructing functor body for Util
-	  *** CRASH raised *
-
-TESTFILE: ~mael/kit_projects/modules/util.sml
-PRIORITY: HIGH
-REPORTED BY: ME 1998-10-08
-TO BE FIXED BY: ME
-FIXED BY: ME and MT
-COMMENT: realisations were not meant to be applied to type schemes for
-overloaded functions. However, Elsmans implementation of opacity
-elimination applies realisations to bases annotated in the ast
-during elaboration.
-
--------------------------------------------------------------------
-
-ERROR: basis restriction crashes compilation
-SYMPTOM: 
-  [compiling body of functor F (from project interp.pm) begin]
-  problems with tyname environment
-  tyname: t
-  is not in the domain of the environment:
-  ...
-TESTFILE: ~mael/kit_projects/modules/interp.pm
-PRIORITY: HIGH
-REPORTED BY: ME 1998-10-12
-TO BE FIXED BY: ME
-FIXED BY: ME 1998-10-12
-COMMENT: When restricting an interpretation basis, then associations
-for tynames that occur free in the restricted interpretation functor
-environment must be kept (ManagerObjects.IntBasis.restr).
-
--------------------------------------------------------------------
-
-ERROR: bdy truncation
-SYMPTOM: compilation crashes because .bdy file for 
-functor is truncated:
-
-                   structure F : sig end
-
-TESTFILE: ~mael/kit_projects/modules/bdy_truncate.sml
-PRIORITY: HIGH
-REPORTED BY: ME 1998-10-12
-TO BE FIXED BY: ME
-FIXED BY: ME 1998-10-12
-COMMENT: The position info annotated on the body of functor
-bindings were wrong! I inserted a LETstrexp around the
-body, so that the info on sigexp constraints did not have
-to be altered (which would make error-reporting disastrous).
-
--------------------------------------------------------------------
-
-ERROR: pattern match incorrect redundancy
-SYMPTOM: The Kit reports that the second rule of the program
-
-  fun f {a=1, b} = 1
-    | f {b=1, a} = 2
-    | f _ = 3
-
-is redundant and generates incorrect code for the function.
-
-TESTFILE: ~mael/kit_projects/modules/patterns.sml
-PRIORITY: HIGH
-REPORTED BY: ME 1998-10-13
-TO BE FIXED BY: ME
-FIXED BY: ME 1998-10-21
-COMMENT: There was a problem with the ordering of record elements in 
-patterns (file CompileDec.sml).
-
---------------------------------------------------------------------
-
-[(ME 1998-10-21): Allow `local' source files in projects.  DONE]
-
---------------------------------------------------------------------
-
-[(ME 1998-11-17): String.toString(s) does not surround s with
-quotation marks, as String.string from the Edinburgh Library does. So,
-we need to surround strings with quotation marks in prettyprinting,
-and so on.  DONE]
-
---------------------------------------------------------------------
-
-ERROR: ElabDec datatype error
-SYMPTOM: Compilation crashes: 
-           Impossible: Environments.ExplicitTyVar_lookup 
-TESTFILE: kit/test/freedatatype.sml
-PRIORITY: MEDIUM
-REPORTED BY: ME 1999-05-05
-TO BE FIXED BY: ME
-FIXED BY: ME 2001-03-10
-COMMENT: See the file kit/test/freedatatype.sml for comments.
---------------------------------------------------------------------

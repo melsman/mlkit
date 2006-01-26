@@ -74,17 +74,21 @@ install_mlkit_basislibs:
 	$(INSTALLDATA) -p $(SRCDIR)/basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_PROF
 	$(INSTALLDATA) -p $(SRCDIR)/basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_GC_PROF
 
-mlkit_with_basislibs:
-	$(MAKE) mlkit
-	$(MAKE) mlkit_basislibs
-
 nj:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit_nj
 
+nj_with_basislibs:
+	$(MAKE) nj
+	$(MAKE) mlkit_basislibs
+
 mlkit:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit
+
+mlkit_with_basislibs:
+	$(MAKE) mlkit
+	$(MAKE) mlkit_basislibs
 
 mlkit_kam:
 	$(MKDIR) bin
@@ -378,7 +382,7 @@ mlkit_i386_tgz:
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
-	$(INSTALLDATA) README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
+	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	$(INSTALLDATA) doc/manual/mlkit.pdf dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib/mlkit
