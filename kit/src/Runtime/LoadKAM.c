@@ -254,7 +254,7 @@ read_unsigned_long(FILE* fd, unsigned long* v_ptr)
 }
 
 static int
-read_string_buf(FILE* fd,unsigned long n,unsigned char* buf)
+read_string_buf(FILE* fd,unsigned long n,char* buf)
 {
   unsigned long i;
   int c;
@@ -262,9 +262,9 @@ read_string_buf(FILE* fd,unsigned long n,unsigned char* buf)
     {
       if ( (c = fgetc(fd)) == EOF)
 	return READ_ERROR;
-      buf[i] = (unsigned char)c;
+      buf[i] = (char)c;
     }
-  buf[i] = (unsigned char)0;
+  buf[i] = 0;
   return READ_OK;
 }
 
