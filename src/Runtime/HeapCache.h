@@ -13,10 +13,10 @@
 // pointer to the origin region page.
 
 typedef struct regionCopy {
-  int *a; // allocation pointer
-  int *b; // border pointer
+  unsigned int *a; // allocation pointer
+  unsigned int *b; // border pointer
   Ro *r;  // origin region
-  int pages[0];
+  unsigned int pages[0];
 } RegionCopy;
   
 #define HSTAT_UNINITIALIZED  0

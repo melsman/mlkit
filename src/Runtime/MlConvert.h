@@ -68,9 +68,9 @@ int *alloc (int rAdr, int n);
 #define first(x)   (*(int *)(x))
 #define second(x)  (*((int *)(x)+1))
 
-#define allocRecordML(rhoRec, size, recAddr) {recAddr=alloc(rhoRec, size);}
+#define allocRecordML(rhoRec, size, recAddr) {recAddr= (int *) alloc(rhoRec, size);}
 #define allocRecordMLProf(rhoRec, ssize, recAddr, pPoint) { \
-   recAddr = alloc(rhoRec, ssize+sizeObjectDesc); \
+   recAddr = (int *) alloc(rhoRec, ssize+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = ssize; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \

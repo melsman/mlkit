@@ -470,8 +470,8 @@ alloc_new_block(Gen *gen)
 #endif
       gen->fp = np;                /* Update pointer to the first page. */
   }
-  gen->a = (int *)(&(np->i));      /* Updates the allocation pointer. */
-  gen->b = (int *)(np+1);          /* Updates the border pointer. */
+  gen->a = (unsigned int*) (&(np->i));      /* Updates the allocation pointer. */
+  gen->b = (unsigned int*) (np+1);          /* Updates the border pointer. */
 }
 
 /*----------------------------------------------------------------------*
@@ -747,15 +747,15 @@ void callSbrk() {
  *  allocated in region pages; larger objects are allocated using       *
  *  malloc.                                                             *
  *----------------------------------------------------------------------*/
-inline 
-int *allocGen (Gen *gen, int n) { 
-  int *t1;
-  int *t2;
-  int *t3;
+inline unsigned int *
+allocGen (Gen *gen, int n) { 
+  unsigned int *t1;
+  unsigned int *t2;
+  unsigned int *t3;
   Ro *r;
 
 #if defined(PROFILING) || defined(ENABLE_GC)
-  int *i;
+  unsigned int *i;
 #endif
 
   debug(printf("[allocGen... generation: %x", gen));
@@ -830,7 +830,7 @@ int *allocGen (Gen *gen, int n) {
   return t1;
 }
 
-int *alloc (Region r, int n) {
+unsigned int *alloc (Region r, int n) {
   return allocGen(&(clearStatusBits(r)->g0),n);
 }
 
@@ -858,11 +858,11 @@ void resetGen(Gen *gen)
     (clear_fp(gen->fp))->n = NULL;
   }
 
-  gen->a = (int *)(&((clear_fp(gen->fp))->i));   /* beginning of data in first page */
+  gen->a = (unsigned int *)(&((clear_fp(gen->fp))->i));   /* beginning of data in first page */
 #ifdef ENABLE_GEN_GC
   (clear_fp(gen->fp))->colorPtr = gen->a;      /* beginning of data in first page */
 #endif /* ENABLE_GEN_GC */
-  gen->b = (int *)((clear_fp(gen->fp))+1);     /* end of data in first page */
+  gen->b = (unsigned int *)((clear_fp(gen->fp))+1);     /* end of data in first page */
 
   return;
 }
@@ -1244,10 +1244,10 @@ deallocRegionFiniteProfiling(void)
  * and takes care of allocating it, returning a pointer to the     *
  * beginning of the user value, as if profiling is not enabled.    *
  *-----------------------------------------------------------------*/
-int *
+unsigned int *
 allocGenProfiling(Gen *gen, int n, int pPoint) 
 {
-  int *res;
+  unsigned int *res;
 
   debug(printf("[Entering allocProfiling... gen:%x, n:%d, pp:%d.", gen, n, pPoint));
 
@@ -1256,13 +1256,13 @@ allocGenProfiling(Gen *gen, int n, int pPoint)
   ((ObjectDesc *)res)->atId = pPoint;     // initialize object descriptor
   ((ObjectDesc *)res)->size = n;
   
-  res = (int *)(((ObjectDesc *)res) + 1); // return pointer to user data
+  res = (unsigned int *)(((ObjectDesc *)res) + 1); // return pointer to user data
 
   debug(printf("exiting]\n"));
   return res;
 }
 
-int *
+unsigned int *
 allocProfiling(Region r, int n, int pPoint) 
 {
   return allocGenProfiling(&(clearStatusBits(r)->g0),n,pPoint);
