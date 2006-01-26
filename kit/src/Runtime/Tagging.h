@@ -113,13 +113,13 @@
 					set_dtag((mlReal));}
 #ifdef PROFILING
 #define allocRealProf(realRho, realPtr, pPoint) {\
-  realPtr = alloc(realRho, 3+sizeObjectDesc);\
+  realPtr = (int *) alloc(realRho, 3+sizeObjectDesc);\
   ((ObjectDesc *) realPtr)->atId = pPoint; \
   ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
   realPtr = (int *)(((ObjectDesc *)realPtr)+1); \
 }
 #else
-#define allocReal(realRho, realPtr) {realPtr = alloc(realRho,3);}
+#define allocReal(realRho, realPtr) {realPtr = (int *) alloc(realRho,3);}
 #endif
 #else // NO TAGGING
 #define get_d(s)     (* (double *)(((int *)s)))
@@ -128,13 +128,13 @@
 #define convertRealToML(cReal, mlReal) {get_d((mlReal)) = (cReal);}
 #ifdef PROFILING
 #define allocRealProf(realRho, realPtr, pPoint) {\
-  realPtr = alloc(realRho, 2+sizeObjectDesc);\
+  realPtr = (int *) alloc(realRho, 2+sizeObjectDesc);\
   ((ObjectDesc *) realPtr)->atId = pPoint; \
   ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
   realPtr = (int *)(((ObjectDesc *)realPtr)+1); \
 }
 #else 
-#define allocReal(realRho, realPtr) {realPtr = alloc(realRho,2);}
+#define allocReal(realRho, realPtr) {realPtr = (int *) alloc(realRho,2);}
 #endif
 #endif
 
@@ -163,12 +163,12 @@
 #define mkScalarTagRecordML(recAddr,size)         (*((int *)recAddr) = val_tag_scalar_record(size))
 #define elemRecordML(recAddr, offset)             (*((int *)(recAddr)+(offset+1)))
 #define storeElemRecordML(recAddr, offset, mlVal) (*(((int *)recAddr)+(offset+1))=(mlVal))
-#define allocRecordML(rAddr, size, recAddr)       {recAddr=alloc(rAddr, size+1);\
+#define allocRecordML(rAddr, size, recAddr)       {recAddr= (int *) alloc(rAddr, size+1);\
         				           mkTagRecordML(recAddr, size);}
 #ifdef TAG_FREE_PAIRS
-#define allocPairML(rAddr, recAddr)               (recAddr = alloc(rAddr,2) - 1)
+#define allocPairML(rAddr, recAddr)               (recAddr = (int *) alloc(rAddr,2) - 1)
 #define mkTagPairML(recAddr)
-#define allocTripleML(rAddr, recAddr)               (recAddr = alloc(rAddr,3) - 1)
+#define allocTripleML(rAddr, recAddr)               (recAddr = (int *) alloc(rAddr,3) - 1)
 #define mkTagTripleML(recAddr)
 #else
 #define allocPairML(rAddr, recAddr)               allocRecordML(rAddr, 2, recAddr)
@@ -183,7 +183,7 @@
 
 #ifdef PROFILING
 #define allocRecordMLProf(rAddr, ssize, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, ssize+1+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, ssize+1+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = ssize+1; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
@@ -191,27 +191,27 @@
 }
 #ifdef TAG_FREE_PAIRS
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, 2+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, 2+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 2; \
    recAddr = ((int *)(((ObjectDesc *)recAddr)+1)) - 1; \
 }
 #define allocTripleMLProf(rAddr, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, 3+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, 3+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 3; \
    recAddr = ((int *)(((ObjectDesc *)recAddr)+1)) - 1; \
 }
 #else
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, 3+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, 3+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 3; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
    mkTagRecordML(recAddr, 2); \
 }
 #define allocTripleMLProf(rAddr, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, 4+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, 4+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 4; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
@@ -227,28 +227,28 @@
 #define mkTagTripleML(recAddr)
 #define elemRecordML(recAddr, offset) (*((int *)(recAddr)+(offset)))
 #define storeElemRecordML(recAddr, offset, mlVal) (*(((int *)recAddr)+(offset))=(mlVal))
-#define allocRecordML(rAddr, size, recAddr) {recAddr=alloc(rAddr, size);}
-#define allocPairML(rAddr, recAddr) {recAddr=alloc(rAddr, 2);}
-#define allocTripleML(rAddr, recAddr) {recAddr=alloc(rAddr, 3);}
+#define allocRecordML(rAddr, size, recAddr) {recAddr=(int *) alloc(rAddr, size);}
+#define allocPairML(rAddr, recAddr) {recAddr= (int *) alloc(rAddr, 2);}
+#define allocTripleML(rAddr, recAddr) {recAddr= (int *) alloc(rAddr, 3);}
 #define first(x)   (*(int *)(x))
 #define second(x)  (*((int *)(x)+1))
 #define third(x)   (*((int *)(x)+2))
 
 #ifdef PROFILING
 #define allocRecordMLProf(rAddr, ssize, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, ssize+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, ssize+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = ssize; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
 }
 #define allocPairMLProf(rAddr, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, 2+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, 2+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 2; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
 }
 #define allocTripleMLProf(rAddr, recAddr, pPoint) { \
-   recAddr = alloc(rAddr, 3+sizeObjectDesc); \
+   recAddr = (int *) alloc(rAddr, 3+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = 3; \
    recAddr = (int *)(((ObjectDesc *)recAddr)+1); \

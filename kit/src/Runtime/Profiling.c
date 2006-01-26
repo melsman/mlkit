@@ -839,7 +839,7 @@ profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
    * to by crp (crp is a Rp) */
   fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE);
 
-  while ( (int *)fObj < gen->a ) 
+  while ( (unsigned int *)fObj < gen->a ) 
     {
       profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
       fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
@@ -1332,7 +1332,7 @@ void calcAllocInGen(Gen *gen,int *alloc, int *allocProf)
   /* Now we need to traverse the last region page, now pointed 
    * to by crp (crp is a Rp) */
   fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE);
-  while ( (int *)fObj < gen->a ) 
+  while ( (unsigned int *)fObj < gen->a ) 
     {
       *alloc += fObj->size;
       *allocProf += sizeObjectDesc;

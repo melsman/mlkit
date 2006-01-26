@@ -94,7 +94,7 @@ typedef struct rp {
   #ifdef ENABLE_GEN_GC
   unsigned int *colorPtr;         /* Color pointer used by generational GC */
   #endif /* ENABLE_GEN_GC */
-  int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
+  unsigned int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Rp;
 
 #define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
@@ -172,9 +172,9 @@ typedef struct lobjs {
    pointers controlling the allocation into a generation: fp, a and b */
 
 typedef struct gen {
-  int * a;    /* Pointer to first unused word in the newest region page
+  unsigned int * a;    /* Pointer to first unused word in the newest region page
                  of the region. */
-  int * b;    /* Pointer to the border of the newest region page, defined as the 
+  unsigned int * b;    /* Pointer to the border of the newest region page, defined as the 
                  address of the first word to follow the region page. One maintains
                  the invariant a<=b;  a=b means the region page is full.*/
   Rp *fp;     /* Pointer to the oldest (first allocated) page of the region. 
@@ -365,8 +365,8 @@ void deallocateRegionsUntil(Region rAddr);
 void deallocateRegionsUntil_X86(Region rAddr);
 #endif
 
-int *alloc (Region r, int n);
-int *allocGen (Gen *gen, int n);
+unsigned int *alloc (Region r, int n);
+unsigned int *allocGen (Gen *gen, int n);
 void alloc_new_block(Gen *gen);
 void callSbrk();
 
@@ -488,8 +488,8 @@ Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int region
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 void deallocRegionFiniteProfiling(void);
-int *allocProfiling(Region r,int n, int pPoint);  // used by Table.c
-int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
+unsigned int *allocProfiling(Region r,int n, int pPoint);  // used by Table.c
+unsigned int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
 #endif /*Profiling*/
 
 void printTopRegInfo();

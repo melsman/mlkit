@@ -421,15 +421,15 @@ size_lobj (unsigned int tag)
 
 // Return FALSE if we're at the last page and s=a.
 static inline int
-end_of_region_page_or_full(unsigned int* s, int* a, Rp* rp)
+end_of_region_page_or_full(unsigned int* s, unsigned int* a, Rp* rp)
 {
-  return (((int *)s) != a) 
-    && ((((int *)s) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-	|| (*((int *)s) == notPP)); 
+  return (s != a) 
+    && ((s == ((unsigned int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+	|| (*s == notPP)); 
 }
 
 inline static unsigned int*
-next_value(unsigned int* s, int* a) {
+next_value(unsigned int* s, unsigned int* a) {
   // If at end of region page or the region page is full,
   // go to next region page. Otherwise, s points to the next value or
   // there is no next value (s == a)
@@ -442,7 +442,7 @@ next_value(unsigned int* s, int* a) {
 }
 
 inline static unsigned int*
-next_untagged_value(unsigned int* s, int* a) {
+next_untagged_value(unsigned int* s, unsigned int* a) {
   // If at end of region page or the region page is full,
   // go to next region page. Otherwise, s points to the next value or
   // there is no next value (s+1 == a)
@@ -467,7 +467,7 @@ allocated_bytes_in_gen(Gen *gen)
 
   rp = clear_fp(gen->fp); // Maybe the generation-bit is set
   s = (unsigned int*) &(rp->i);
-  while (((int *)s) != gen->a) {
+  while (s != gen->a) {
     #ifdef PROFILING
     s += sizeObjectDesc;
     #endif
@@ -1137,7 +1137,7 @@ do_scan_stack()
 	  {
 	  case RTYPE_PAIR:
 	    {
-	      while ( ((int *)s+1) != gen->a ) 
+	      while ( s+1 != gen->a ) 
 		{
 		  #if PROFILING
 		   s += sizeObjectDesc;
@@ -1150,7 +1150,7 @@ do_scan_stack()
 	    }
 	  case RTYPE_REF:
 	    {
-	      while ( ((int *)s+1) != gen->a ) 
+	      while ( s+1 != gen->a ) 
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
@@ -1162,7 +1162,7 @@ do_scan_stack()
 	    }
 	  case RTYPE_TRIPLE:
 	    {
-	      while ( ((int *)s+1) != gen->a ) 
+	      while ( s+1 != gen->a ) 
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
@@ -1180,7 +1180,7 @@ do_scan_stack()
 	    }
 	  default:
 	    {
-	      while ( ((int *)s) != gen->a ) 
+	      while ( s != gen->a ) 
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
@@ -1391,7 +1391,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE - 1;
 	// evacuate content of refs in g1
 	// refs occupies one word only!
-	while ( ((int *)value_ptr + 1) != r->g1.a ) 
+	while ( (value_ptr + 1) != r->g1.a ) 
 	  {
            #if PROFILING
 	    value_ptr += sizeObjectDesc;
@@ -1408,7 +1408,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	
 	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
 	// evacuate content of arrays in g1
-	while ( ((int *)value_ptr) != r->g1.a ) 
+	while ( (value_ptr) != r->g1.a ) 
 	  { 
            #if PROFILING
 	    value_ptr += sizeObjectDesc;

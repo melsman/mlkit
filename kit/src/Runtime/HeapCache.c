@@ -137,7 +137,8 @@ static int pagesInRegion(Ro *r)
 
 static RegionCopy* copyRegion(Ro *r)
 {
-  int np, bytes, *q;
+  int np, bytes;
+  unsigned int *q;
   Rp *p;
   RegionCopy *rc;
 
