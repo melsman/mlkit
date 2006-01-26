@@ -71,10 +71,11 @@ void profTabSetMaxAlloc(int regionId, int no) {
   return;
 }
 
-
+/*
 static unsigned int max(unsigned int a, unsigned int b) {
   return (a<b)?b:a;
 }
+*/
 
 static unsigned int min(unsigned int a, unsigned int b) {
   return (a<b)?a:b;
