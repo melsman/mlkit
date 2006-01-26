@@ -1,0 +1,47 @@
+This is the license for the MLKit, a compiler for the Standard ML
+programming language.
+
+MLKit COPYRIGHT NOTICE, LICENSE AND DISCLAIMER.
+
+Copyright (c) 1998-2004 by Copenhagen University, Edinburgh
+   University, and the IT University of Copenhagen
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details; see the file GPL-LICENSE.
+
+For the source distributions, the files in the directories
+src/Runtime/ and basis/ are distributed under the MIT license; see the
+file MIT-LICENSE. All other files are distributed under the GPL
+license; see the file GPL-LICENSE.
+
+For the binary distributions, the files in the directory lib/ are
+distributed under the MIT license; see the file MIT-LICENSE. All other
+files are distributed under the GPL license; see the file GPL-LICENSE.
+
+Below is an overview of uses of other packages and their licenses:
+
+Package     License                       Use
+---------------------------------------------------------------------
+SML/NJ      SMLNJ-LICENSE (BSD-style)     Ported some libraries for
+                                          basis.mlb: IntInf, 
+                                          Pack32Big, Pack32Big 
+                                          (in basis/).
+
+SML/NJ Lib  SMLNJ-LIB-LICENSE (BSD-style) Ported some libraries for 
+                                          kitlib.mlb (in basis/); see
+                                          individual files for 
+                                          details.
+
+MLton       MLton-LICENSE (BSD-style)     Ported some libraries for
+                                          basis.mlb: PrimIO, StreamIO, 
+                                          TextIO, ImperativeIO, BinIO
+                                          (in basis/).
+
+
