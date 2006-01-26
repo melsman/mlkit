@@ -1,6 +1,12 @@
 Possible things to do
 ---------------------
 
+   * mael 2005-11-29: Fix bug related to recognizing already compiled
+     mlb-files (Martin)
+ 
+   * mael 2005-11-29: SMLserver Manual update (Martin)
+
+
   mael 2005-04-18:
    MLB files for smlserver scriptlets.
   

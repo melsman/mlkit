@@ -15,16 +15,19 @@ is given in Appendix A.
 Provided you have downloaded the binary distribution to the /tmp
 directory, execute the following commands in a bash-shell - as root:
  
- $ cd /tmp
- $ tar xzvf mlkit-@PACKAGE_VERSION@-i386.tgz
- $ cd mlkit-@PACKAGE_VERSION@-i386
- $ cp -pa bin/* /usr/bin/
- $ cp -pa man/man1/* /usr/man/man1/
- $ cp -pa lib/mlkit /usr/lib/mlkit
- $ cp -pa share/mlkit /usr/share/mlkit
- $ cp -pa share/doc/mlkit /usr/share/doc/mlkit
- $ mkdir /etc/mlkit
- $ echo "SML_LIB=/usr/lib/mlkit" > /etc/mlkit/mlb-path-map
+ % cd /tmp
+ % tar xzvf mlkit-@PACKAGE_VERSION@-i386.tgz
+ % cd mlkit-@PACKAGE_VERSION@-i386
+ % cp -pa bin/* /usr/bin/
+ % cp -pa man/man1/* /usr/man/man1/
+ % cp -pa lib/mlkit /usr/lib/mlkit
+ % cp -pa share/mlkit /usr/share/mlkit
+ % cp -pa share/doc/mlkit /usr/share/doc/mlkit
+ % mkdir /etc/mlkit
+ % echo "SML_LIB=/usr/lib/mlkit" > /etc/mlkit/mlb-path-map
+
+All locations, except the system wide path-map /etc/mlkit/mlb-path-map
+can be changed at will.
 
 Any user on the system should now be able to run the commands mlkit,
 rp2ps, and kittester.
@@ -32,13 +35,13 @@ rp2ps, and kittester.
 2. Personal Installation
 ------------------------
 Provided you have downloaded the binary distribution to your home
-directory $(HOME), execute the following commands in a bash-shell:
+directory $HOME, execute the following commands:
  
  $ cd $HOME
  $ tar xzvf mlkit-@PACKAGE_VERSION@-i386.tgz
  $ ln -s mlkit-@PACKAGE_VERSION@-i386 mlkit
  $ mkdir .mlkit
- $ echo "SML_LIB=$HOME/mlkit/lib/mlkit/lib" > .mlkit/mlb-path-map
+ $ echo "SML_LIB=$HOME/mlkit/lib/mlkit" > .mlkit/mlb-path-map
 
 You can now either run the mlkit command directly by specifying the
 complete path or you can modify your personal PATH environment
