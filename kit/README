@@ -100,17 +100,17 @@ of the package. Execute the commands under (a), (b), or (c):
   a. Compile with MLton and SML/NJ  (Works with 1Gb RAM)
   ------------------------------------------------------
    $ ./configure --sysconfdir=/etc --prefix=/usr
-   $ make nj_with_basislibs
+   $ make nj
 
   b. Compile with MLton alone (Works with 3Gb RAM)
   ------------------------------------------------
    $ ./configure --sysconfdir=/etc --prefix=/usr
-   $ make mlkit_with_basislibs
+   $ make mlkit
 
   c. Compile with existing MLKit (Works with 1Gb RAM)
   ---------------------------------------------------
    $ ./configure --sysconfdir=/etc --prefix=/usr --with-compiler=mlkit
-   $ make mlkit_with_basislibs
+   $ make mlkit
 
 5. Bootstrapping (optional - works with 1Gb RAM)
 ------------------------------------------------
@@ -121,7 +121,13 @@ to be bootstrapped (compiled with itself), execute the command:
 
 Be aware that this step takes some time.
 
-6. Installation
+6. Pre-compile Basis Library and Kit-Library
+--------------------------------------------
+Execute the following commands:
+
+ $ make mlkit_libs
+
+7. Installation
 ---------------
 To install the MLKit, including man-pages and tools,
 execute the command - as root:
@@ -137,17 +143,17 @@ your home directory, for instance:
  $ mkdir $HOME/.mlkit
  $ echo "SML_LIB=$HOME/mlkit/lib/mlkit" > $HOME/.mlkit/mlb-path-map
 
-7. Making a Binary Package
+8. Making a Binary Package
 --------------------------
 To build a binary package, execute the command
 
  $ make mlkit_i386_tgz
 
 This command leaves a package mlkit-X.Y.Z-i386.tgz in the dist/
-directory. For building a binary package, step 6 is not needed and
+directory. For building a binary package, step 7 is not needed and
 step 5 is optional.
 
-8. Try It
+9. Try It
 ---------
 To test the installation, copy the directory /usr/share/mlkit/kitdemo to
 somewhere in your own directory, say $HOME/kitdemo:
@@ -161,7 +167,7 @@ The MLKit should produce an executable file "run":
  $ ./run
  hello world
 
-9. More Information
+10. More Information
 -------------------
 See the MLKit home page http://www.itu.dk/research/mlkit/
 
@@ -169,12 +175,12 @@ Documentation for the MLKit is located in the directories doc/mlkit
 and man/man1. License information is located in the file
 doc/license/MLKit-LICENSE.
 
-10. VCG
+11. VCG
 ------
 The VCG tool, which is used to show region flow graphs, can be found
 at http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
 
-11. Comments and Bug Reports
+12. Comments and Bug Reports
 ---------------------------
 Please see the MLKit home page for a list of known bugs and
 limitations. Send bug reports to mlkit@itu.dk.
