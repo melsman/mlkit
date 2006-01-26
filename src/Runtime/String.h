@@ -25,14 +25,14 @@
 
 typedef struct stringDesc {
   unsigned int size;             // Size of string (tagged)
-  unsigned char data;            // C String (null-terminated)
+  char data;            // C String (null-terminated)
 } StringDesc;
 
 typedef StringDesc* String;
 
 #define sizeStringDefine(str)    ((((String)(str))->size) >> 6) /* Remove stringtag. We do not tag the size. */
 
-void convertStringToC(String mlStr, unsigned char *buf, int buflen, int exn);
+void convertStringToC(String mlStr, char *buf, int buflen, int exn);
 
 /******************************************************************
  * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
@@ -54,8 +54,8 @@ String REG_POLY_FUN_HDR(allocStringC, Region rAddr, int sizeC);
 String REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2);
 String REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs);
 String REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs);
-String REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr);
-String REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, unsigned char *cStr);
+String REG_POLY_FUN_HDR(convertStringToML, Region rAddr, char *cStr);
+String REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, char *cStr);
 String REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e);
 int * REG_POLY_FUN_HDR(explodeStringML, Region rAddr2, String str);  // no region for the cons cells
 

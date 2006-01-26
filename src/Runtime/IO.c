@@ -119,7 +119,7 @@ input1Stream(FILE *is)
 String
 REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n) 
 {
-  unsigned char buf[100];
+  char buf[100];
   int i;
   int ch;
   int terminal;
@@ -144,7 +144,7 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
   terminal = isatty(fileno(is));
   for ( i = 0; i < n && ((ch = fgetc(is)) != EOF); i++ )
     {
-      buf[i] = (unsigned char)ch;
+      buf[i] = (char) ((unsigned char)ch);
       if ( terminal > 0 && ch == '\n' )
 	break;
     }
