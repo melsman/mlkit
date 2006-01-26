@@ -1,6 +1,17 @@
 MLKit NEWS file
 
- * mael 2006-01-24: garbage collection is now used by default in
+ * mael 2006-01-26: Constructed Makefile entry for constructing a
+   binary distribution (in directory kit/dist/). After running 'make
+   bootstrap' (see below), run 'make mlkit_i386_tgz'.
+
+ * mael 2006-01-26: Simplified the bootstrap process: after runnig
+   './configure' and 'make nj', simply run 'make bootstrap'; see the
+   wiki for details.
+
+ * mael 2006-01-26: Updated license information, which is now
+   available in the doc/license directory; see the file MLKit-LICENSE.
+
+ * mael 2006-01-24: Garbage collection is now used by default in
    combination with gc. To disable garbage collection, the flag -no_gc
    should be passed to the mlkit executable.
 
@@ -27,7 +38,7 @@ MLKit NEWS file
 
      http://www.itu.dk/research/mlkit/index.php/MLKit_Basis_Library_Implementation
 
-   for a grasp of the status.
+   for getting an overview of the status.
 
  * mael 2005-11-11: Finished work on generational garbage
    collection. The mlkit option -gengc can now be used to construct
@@ -36,7 +47,9 @@ MLKit NEWS file
    which runtime options are available; the option -only_major_gc can
    be used to disable minor garbage collections. Statistics can be
    printed on stderr using the options -verbose_gc or -report_gc (the
-   option -verbose_gc somewhat slows down the executable).
+   option -verbose_gc somewhat slows down the executable). NOTE:
+   generational gc is still experimental - there is at least one bug we
+   need to track down.
 
  * varming 2005-11-01 Added some Posix support needed to build
    KitTester + some more.
