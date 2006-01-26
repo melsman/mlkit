@@ -44,13 +44,13 @@ CLEAN=rm -rf MLB PM CM *~ .\#*
 
 all: mlkit
 
-SRCDIR=.
+SRCDIR=$(top_srcdir)
 mlkit_basislibs:
-	(cd $(SRCDIR)/basis; rm -rf MLB)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -c -no_gc basis.mlb)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -c -gc basis.mlb)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -c -gc -prof basis.mlb)
-	(cd $(SRCDIR)/basis; ../bin/mlkit -c -no_gc -prof basis.mlb)
+	(cd $(SRCDIR)/basis && find -name MLB -type d | xargs rm -rf)
+	(cd $(SRCDIR)/basis && SML_LIB=$(SRCDIR) ../bin/mlkit -c -no_gc basis.mlb)
+	(cd $(SRCDIR)/basis && SML_LIB=$(SRCDIR) ../bin/mlkit -c -gc basis.mlb)
+	(cd $(SRCDIR)/basis && SML_LIB=$(SRCDIR) ../bin/mlkit -c -gc -prof basis.mlb)
+	(cd $(SRCDIR)/basis && SML_LIB=$(SRCDIR) ../bin/mlkit -c -no_gc -prof basis.mlb)
 
 install_mlkit_basislibs:
 	$(MKDIR) $(INSTDIR)/basis/MLB
@@ -218,7 +218,7 @@ install_top:
 	$(MAKE) install_man
 
 install_runtime:
-	$(INSTALL) -d $(INSTDIR)/lib
+	$(MKDIR) $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystem.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemProf.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGC.a $(INSTDIR)/lib
@@ -269,11 +269,11 @@ install_test:
 	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(INSTDIR)/test/danwang
 	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(INSTDIR)/test/barnes-hut
 	$(INSTALL) test/logic/*.{sml,mlb} $(INSTDIR)/test/logic
-	cd $(INSTDIR)/test; ln -sf README testlink
-	cd $(INSTDIR)/test; ln -sf testcycl testcycl
-	cd $(INSTDIR)/test; ln -sf exists.not testbadl
-	cd $(INSTDIR)/test; echo -e 'hardlinkA' >> hardlinkA
-	cd $(INSTDIR)/test; ln -f hardlinkA hardlinkB
+	cd $(INSTDIR)/test && ln -sf README testlink
+	cd $(INSTDIR)/test && ln -sf testcycl testcycl
+	cd $(INSTDIR)/test && ln -sf exists.not testbadl
+	cd $(INSTDIR)/test && echo -e 'hardlinkA' >> hardlinkA
+	cd $(INSTDIR)/test && ln -f hardlinkA hardlinkB
 
 install_src:
 	$(MKDIR) $(INSTDIR)/src
@@ -325,11 +325,11 @@ bootstrap_first: install bootstrap0
 
 bootstrap_next_build:
 	cd src; $(MAKE) genopcodes
-	export SML_LIB=$(shell pwd); cd src/Compiler; ../../bin/mlkit -gc native.mlb
+	export SML_LIB=$(shell pwd) && cd src/Compiler && ../../bin/mlkit -gc native.mlb
 
 bootstrap_next_install: 
 	$(MAKE) install_top
-	$(INSTALL) doc/mlkit.pdf $(INSTDIR)/doc
+	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/doc
 	$(MAKE) install_runtime
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit
@@ -343,7 +343,7 @@ bootstrap_next:
 
 .PHONY: bootstrap
 bootstrap:
-	$(INSTALL) -d bootstrap
+	$(MKDIR) bootstrap
 	$(CLEAN) bootstrap/mlkit-v1
 	$(MAKE) bootstrap_first INSTDIR=bootstrap/mlkit-v1
 	$(CLEAN) bootstrap/mlkit-v2
