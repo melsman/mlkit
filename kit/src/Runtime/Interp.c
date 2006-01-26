@@ -24,7 +24,6 @@
 #include "Stack.h"
 #include "Tagging.h"
 #include "KamInsts.h"
-#include "Prims.h"
 #include "Region.h"
 #include "LoadKAM.h"
 #include "List.h"
@@ -35,6 +34,7 @@
 #include "Table.h"
 #include "Locks.h"
 #include "Dlsym.h"
+#include "Prims.h"
 
 #ifdef KAM
 Exception *exn_OVERFLOW;   // Initialized in Interp.c
@@ -1526,6 +1526,11 @@ int main_interp(int argc, char * argv[]) {
   int res, start, c;
   Interp* interp;
   char* errorStr = NULL;
+
+  if (argc < 2)
+  { // No argument... Nothing to do.
+    return EXIT_SUCCESS;
+  }
 
   debug(printf("[Resolving global code fragments]\n"));
   resolveGlobalCodeFragments();
