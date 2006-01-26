@@ -219,7 +219,7 @@ install_top:
 	$(MAKE) install_kitdemo
 	$(MAKE) install_basis
 	$(MAKE) install_man
-	$(MAKE) install_license INSTDIR=$INSTDIR/doc
+	$(MAKE) install_license INSTDIR=$(INSTDIR)/doc
 
 install_runtime:
 	$(MKDIR) $(INSTDIR)/lib
