@@ -64,7 +64,8 @@ The MLKit should produce an executable file "run":
 See the MLKit home page http://www.itu.dk/research/mlkit/
 
 Documentation for the MLKit is located in the distribution in the
-directories share/doc/mlkit and man/man1.
+directories share/doc/mlkit and man/man1. License information is
+located in the file share/doc/mlkit/license/MLKit-LICENSE.
 
 5. VCG
 ------

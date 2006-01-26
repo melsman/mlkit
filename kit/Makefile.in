@@ -201,13 +201,16 @@ install_man:
 	$(MKDIR) $(INSTDIR)/man/man1
 	$(INSTALLDATA) man/man1/*.1 $(INSTDIR)/man/man1
 
+install_license:
+	$(MKDIR) $(INSTDIR)/license
+	$(INSTALLDATA) doc/license/{GPL-LICENSE,MLKit-LICENSE,MLton-LICENSE,SMLNJ-LIB-LICENSE,SMLNJ-LICENSE} $(INSTDIR)/license
+
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
 	$(MKDIR) $(INSTDIR)/ml-yacc-lib
 	$(MKDIR) $(INSTDIR)/kitlib
-	$(INSTALLDATA) copyright $(INSTDIR)
 	$(INSTALLDATA) README $(INSTDIR)
 	$(INSTALLDATA) Makefile $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
@@ -216,6 +219,7 @@ install_top:
 	$(MAKE) install_kitdemo
 	$(MAKE) install_basis
 	$(MAKE) install_man
+	$(MAKE) install_license INSTDIR=$INSTDIR/doc
 
 install_runtime:
 	$(MKDIR) $(INSTDIR)/lib
@@ -374,8 +378,6 @@ mlkit_i386_tgz:
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	$(INSTALLDATA) README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	$(INSTALLDATA) doc/manual/mlkit.pdf dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
-	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/doc/mlkit/licence
-	$(INSTALLDATA) copyright dist/$(MLKIT_DIST_BIN)/share/doc/mlkit/licence
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/lib/mlkit
 	$(MAKE) install_runtime INSTDIR=dist/$(MLKIT_DIST_BIN)/lib/mlkit
@@ -387,6 +389,7 @@ mlkit_i386_tgz:
 	$(MKDIR) dist/$(MLKIT_DIST_BIN)/share/mlkit
 	$(MAKE) install_test INSTDIR=dist/$(MLKIT_DIST_BIN)/share/mlkit
 	$(MAKE) install_kitdemo INSTDIR=dist/$(MLKIT_DIST_BIN)/share/mlkit 
+	$(MAKE) install_license INSTDIR=dist/$(MLKIT_DIST_BIN)/share/doc/mlkit 
 	(cd dist; tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
 
 # The following is obsolete!!
