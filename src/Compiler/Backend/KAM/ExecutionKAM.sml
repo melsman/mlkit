@@ -103,7 +103,7 @@ structure ExecutionKAM : EXECUTION =
 		map (fn f => OS.Path.mkAbsolute{relativeTo=OS.FileSys.getDir(),path=f}) files
 	    val os = TextIO.openOut run
 	in (* print ("[Creating file " ^ run ^ " begin ...]\n"); *)
-	  TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
+	  TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/lib/kam ");
 	  app (fn f => TextIO.output(os, f ^ " ")) files;
 	  TextIO.output(os, "--args $0 $*");
 	  TextIO.closeOut os;
