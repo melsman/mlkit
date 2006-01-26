@@ -658,7 +658,7 @@ inline static Lobjs *
 alloc_lobjs(int n) {
   Lobjs* lobjs;
 #ifdef ENABLE_GC
-  void *p;
+  char *p;
   size_t r;  
   size_t sz_bytes;
   sz_bytes = 4*n + sizeof(Lobjs) + 1024;
@@ -690,7 +690,7 @@ alloc_lobjs(int n) {
  *----------------------------------------------------------------------*/
 void callSbrk() { 
   Rp *np, *old_free_list;
-  void *sb;
+  char *sb;
   size_t temp;
 
 #ifdef PROFILING
