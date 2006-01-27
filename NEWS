@@ -1,12 +1,29 @@
 MLKit NEWS file
 
- * mael 2006-01-26: Constructed Makefile entry for constructing a
-   binary distribution (in directory kit/dist/). After running 'make
+              **** MLKit version 4.3.0 is released ****
+
+ * mael 2006-01-27: Summary of major changes since 4.1.4
+
+      - Updated Basis Library
+
+      - Support for separate compilation with MLB-files
+
+      - Garbage collection of regions is now the default
+
+      - Improved documentation - man-pages, wiki, etc.
+
+      - Various bug-fixes
+
+ * mael 2006-01-27: Added Makefile entry for constructing a source
+   distribution (in directory kit/dist/). Run 'make mlkit_src_tgz'.
+
+ * mael 2006-01-26: Added Makefile entry for constructing a binary
+   distribution (in directory kit/dist/). After running 'make
    bootstrap' (see below), run 'make mlkit_i386_tgz'.
 
  * mael 2006-01-26: Simplified the bootstrap process: after runnig
    './configure' and 'make nj', simply run 'make bootstrap'; see the
-   wiki for details.
+   README file for details.
 
  * mael 2006-01-26: Updated license information, which is now
    available in the doc/license directory; see the file MLKit-LICENSE.
