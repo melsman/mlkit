@@ -3,11 +3,12 @@
 	              mlkit-X.Y.Z-src
 
 This readme file describes the structure of the MLKit source
-distribution as well as necessary steps for compilation and proper
-personal and system wide installation.
+distribution as well as necessary steps for compilation and either
+personal or system wide installation.
 
-An overview of the directory structure of the distribution
-is given in Appendix A.
+An overview of the directory structure of the distribution is given in
+Appendix A. For a quick compilation and installation guide, see
+Appendix B.
 
 1. Introduction
 ---------------
@@ -59,7 +60,7 @@ more liberal MIT License.
 ---------------------------
 To compile, install, and use the MLKit, a Linux box running Ubuntu
 Linux, Debian, gentoo, or similar is needed. The MLKit has also earlier
-been reported to run on the FreeBSD/x86 platform.
+been reported to run on the FreeBSD/x86 platform, with little tweaking.
 
 To compile the MLKit, a Standard ML compiler is needed, which needs to
 be one of the following:
@@ -99,18 +100,21 @@ of the package. Execute the commands under (a), (b), or (c):
 
   a. Compile with MLton and SML/NJ  (Works with 1Gb RAM)
   ------------------------------------------------------
-   $ ./configure --sysconfdir=/etc --prefix=/usr
+   $ ./configure --sysconfdir=/etc 
    $ make nj
 
   b. Compile with MLton alone (Works with 3Gb RAM)
   ------------------------------------------------
-   $ ./configure --sysconfdir=/etc --prefix=/usr
+   $ ./configure --sysconfdir=/etc 
    $ make mlkit
 
   c. Compile with existing MLKit (Works with 1Gb RAM)
   ---------------------------------------------------
-   $ ./configure --sysconfdir=/etc --prefix=/usr --with-compiler=mlkit
+   $ ./configure --sysconfdir=/etc --with-compiler=mlkit
    $ make mlkit
+
+If you later want to install the MLKit in your own home directory, you
+should also pass the option --prefix=$HOME/mlkit to ./configure above.
 
 5. Bootstrapping (optional - works with 1Gb RAM)
 ------------------------------------------------
@@ -129,15 +133,17 @@ Execute the following commands:
 
 7. Installation
 ---------------
-To install the MLKit, including man-pages and tools,
-execute the command - as root:
+For a system wide installation of the MLKit, installation including
+man-pages and tools, execute the commands - as root:
 
  % make install
  % mkdir /etc/mlkit
- % echo "SML_LIB=/usr/lib/mlkit" > /etc/mlkit/mlb-path-map
+ % echo "SML_LIB=/usr/local/lib/mlkit" > /etc/mlkit/mlb-path-map
 
-If you do not have root access, you may choose to install the mlkit in
-your home directory, for instance:
+The last command assumes that no --prefix was given to ./configure.
+
+For a personal installation, with --prefix=$HOME/mlkit, execute the
+following commands:
 
  $ make install INSTDIR=$HOME/mlkit
  $ mkdir $HOME/.mlkit
@@ -176,12 +182,12 @@ and man/man1. License information is located in the file
 doc/license/MLKit-LICENSE.
 
 11. VCG
-------
+-------
 The VCG tool, which is used to show region flow graphs, can be found
 at http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
 
 12. Comments and Bug Reports
----------------------------
+----------------------------
 Please see the MLKit home page for a list of known bugs and
 limitations. Send bug reports to mlkit@itu.dk.
 
@@ -199,3 +205,23 @@ Appendix A: Directory Structure of the Source Distribution
         man/man1/rp2ps.1                
         kitdemo/
         test/
+
+Appendix B: Quick Compilation and Installation Guide
+----------------------------------------------------
+We assume that SML/NJ 110.0.7 and MLton >= 20051202 are installed on
+the system as described in Section 3.
+
+To compile and install the MLKit, execute the following commands:
+
+ $ ./configure --sysconfdir=/etc
+ $ make nj
+ $ make bootstrap
+ $ make mlkit_libs
+
+Execute as root:
+
+ % make install
+ % mkdir /etc/mlkit
+ % echo "SML_LIB=/usr/local/lib/mlkit" > /etc/mlkit/mlb-path-map
+
+See Section 9 for how to test the installation.
