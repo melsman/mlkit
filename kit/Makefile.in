@@ -219,9 +219,9 @@ install_top:
 #	$(MKDIR) $(INSTDIR)/ml-yacc-lib
 #	$(MKDIR) $(INSTDIR)/kitlib
 	$(INSTALLDATA) README $(INSTDIR)
-	$(INSTALLDATA) Makefile $(INSTDIR)
+	$(INSTALLDATA) Makefile Makefile.in $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
-	$(INSTALL) mkinstalldirs $(INSTDIR)
+	$(INSTALL) mkinstalldirs configure $(INSTDIR)
 #	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
 	$(MAKE) install_kitdemo
 	$(MAKE) install_basis
@@ -339,7 +339,12 @@ install_src:
 bootstrap0: install_test install_src
 	$(INSTALL) bin/kittester $(INSTDIR)/bin
 
-bootstrap_first: install bootstrap0
+bootstrap_first: 
+	$(MAKE) install_top
+	$(MAKE) install_runtime
+	$(INSTALL) bin/{mlkit,rp2ps} $(INSTDIR)/bin
+	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/doc
+	$(MAKE) bootstrap0
 
 bootstrap_next_build:
 	cd src && $(MAKE) genopcodes
@@ -349,9 +354,8 @@ bootstrap_next_install:
 	$(MAKE) install_top
 	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/doc
 	$(MAKE) install_runtime
-	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
+	$(INSTALL) bin/{rp2ps,kittester} $(INSTDIR)/bin
 	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit
-	$(INSTALL) bin/kittester $(INSTDIR)/bin
 	$(MAKE) install_test
 	$(MAKE) install_src
 
