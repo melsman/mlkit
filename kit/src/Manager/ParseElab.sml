@@ -81,7 +81,8 @@ structure ParseElab: PARSE_ELAB =
 					 (*may raise Io s*))
 	        val (infB', topdecs) = parse0 (infB, state)
 	    in (infB', append_topdecs topdecs)
-	    end handle IO.Io {name,...} => raise Parse (Report.line name)
+	    end handle IO.Io {name,...} => 
+		       raise Parse (Report.line ("Failed to read file " ^ name))
 
     end (*local*)
 
