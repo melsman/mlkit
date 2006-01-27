@@ -6,8 +6,8 @@ srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 prefix=@prefix@
 VPATH=@srcdir@
-sysconfdir=@sysconfdir@
 
+SYSCONFDIR=$(DESTDIR)@sysconfdir@
 INSTDIR=$(DESTDIR)@exec_prefix@/mlkit
 INSTDIR_KAM=$(DESTDIR)@exec_prefix@/mlkit_kam
 INSTDIR_BARRY=$(DESTDIR)@exec_prefix@/barry
@@ -238,7 +238,7 @@ install_runtime:
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(INSTDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(INSTDIR)/lib
 
-install:
+install0:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(INSTALL) bin/mlkit $(INSTDIR)/bin
@@ -259,18 +259,14 @@ install:
 	$(MAKE) install_license INSTDIR=$(INSTDIR)/share/doc/mlkit
 	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/share/doc/mlkit/
 	$(INSTALLDATA) NEWS $(INSTDIR)/share/doc/mlkit/
-	$(MKDIR) $(sysconfdir)/mlkit
-	if [ -e $(sysconfdir)/mlkit/mlb-path-map ]; \
+
+install:
+	$(MAKE) install0
+	$(MKDIR) $(SYSCONFDIR)/mlkit
+	if [ -e $(SYSCONFDIR)/mlkit/mlb-path-map ]; \
            then true; \
-           else echo "SML_LIB=$(INSTDIR)/lib/mlkit" > $(sysconfdir)/mlkit/mlb-path-map; \
+           else echo "SML_LIB=@exec_prefix@/mlkit/lib/mlkit" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
         fi
-
-# The following is necessary if you want to either run kittester
-# or bootstrap the Kit.
-
-install_with_basislibs:
-	$(MAKE) install
-	$(MAKE) install_mlkit_basislibs
 
 install_test:
 	$(MKDIR) $(INSTDIR)/test
@@ -392,9 +388,9 @@ MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 mlkit_i386_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(MLKIT_DIST_BIN)
-	$(MAKE) install INSTDIR=dist/$(MLKIT_DIST_BIN)
+	$(MAKE) install0 INSTDIR=dist/$(MLKIT_DIST_BIN)
 	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
-	(cd dist; tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
+	(cd dist && tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
 
 MLKIT_DIST_SRC=mlkit-$(KITVERSION)-src
 .PHONY: mlkit_src_tgz
@@ -420,7 +416,7 @@ mlkit_src_tgz:
 	$(MKDIR) dist/$(MLKIT_DIST_SRC)/doc
 	$(MAKE) install_license INSTDIR=dist/$(MLKIT_DIST_SRC)/doc
 	$(INSTALLDATA) doc/{README_BIN.in,mlkit.pdf} dist/$(MLKIT_DIST_SRC)/doc
-	(cd dist; tar czvf $(MLKIT_DIST_SRC).tgz $(MLKIT_DIST_SRC))
+	(cd dist && tar czvf $(MLKIT_DIST_SRC).tgz $(MLKIT_DIST_SRC))
 
 # The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0
