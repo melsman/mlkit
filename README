@@ -116,6 +116,10 @@ of the package. Execute the commands under (a), (b), or (c):
 If you later want to install the MLKit in your own home directory, you
 should also pass the option --prefix=$HOME/mlkit to ./configure above.
 
+For binary packages, we use
+
+   $ ./configure --sysconfdir=/etc --prefix=/usr
+
 5. Bootstrapping (optional - works with 1Gb RAM)
 ------------------------------------------------
 This step is optional. If you want the resulting executable compiler
