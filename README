@@ -211,7 +211,7 @@ the system as described in Section 3.
 
 To compile and install the MLKit, execute the following commands:
 
- $ ./configure --sysconfdir=/etc
+ $ ./configure
  $ make nj
  $ make bootstrap
  $ make mlkit_libs
@@ -219,7 +219,5 @@ To compile and install the MLKit, execute the following commands:
 Execute as root:
 
  % make install
- % mkdir /etc/mlkit
- % echo "SML_LIB=/usr/local/lib/mlkit" > /etc/mlkit/mlb-path-map
 
 See Section 9 for how to test the installation.
