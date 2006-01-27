@@ -98,19 +98,19 @@ Gcc is needed for compiling the runtime system and related tools.
 Unpack the package mlkit-X.Y.Z-src.tgz, cd to the toplevel directory
 of the package. Execute the commands under (a), (b), or (c):
 
-  a. Compile with MLton and SML/NJ  (Works with 1Gb RAM)
-  ------------------------------------------------------
-   $ ./configure --sysconfdir=/etc 
+  a. Compile with MLton and SML/NJ  (Tested with 1Gb RAM)
+  -------------------------------------------------------
+   $ ./configure 
    $ make nj
 
-  b. Compile with MLton alone (Works with 3Gb RAM)
-  ------------------------------------------------
-   $ ./configure --sysconfdir=/etc 
+  b. Compile with MLton alone (Tested with 3Gb RAM)
+  -------------------------------------------------
+   $ ./configure 
    $ make mlkit
 
-  c. Compile with existing MLKit (Works with 1Gb RAM)
-  ---------------------------------------------------
-   $ ./configure --sysconfdir=/etc --with-compiler=mlkit
+  c. Compile with existing MLKit (Tested with 1Gb RAM)
+  ----------------------------------------------------
+   $ ./configure --with-compiler=mlkit
    $ make mlkit
 
 If you later want to install the MLKit in your own home directory, you
@@ -141,17 +141,11 @@ For a system wide installation of the MLKit, installation including
 man-pages and tools, execute the commands - as root:
 
  % make install
- % mkdir /etc/mlkit
- % echo "SML_LIB=/usr/local/lib/mlkit" > /etc/mlkit/mlb-path-map
 
-The last command assumes that no --prefix was given to ./configure.
+For a personal installation, with --prefix=$HOME/mlkit given to
+./configure, execute the following commands:
 
-For a personal installation, with --prefix=$HOME/mlkit, execute the
-following commands:
-
- $ make install INSTDIR=$HOME/mlkit
- $ mkdir $HOME/.mlkit
- $ echo "SML_LIB=$HOME/mlkit/lib/mlkit" > $HOME/.mlkit/mlb-path-map
+ $ make install
 
 8. Making a Binary Package
 --------------------------

@@ -6,6 +6,7 @@ srcdir=@srcdir@
 top_srcdir=@top_srcdir@
 prefix=@prefix@
 VPATH=@srcdir@
+sysconfdir=@sysconfdir@
 
 INSTDIR=$(DESTDIR)@exec_prefix@/mlkit
 INSTDIR_KAM=$(DESTDIR)@exec_prefix@/mlkit_kam
@@ -258,6 +259,11 @@ install:
 	$(MAKE) install_license INSTDIR=$(INSTDIR)/share/doc/mlkit
 	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/share/doc/mlkit/
 	$(INSTALLDATA) NEWS $(INSTDIR)/share/doc/mlkit/
+	$(MKDIR) $(sysconfdir)/mlkit
+	if [ -e $(sysconfdir)/mlkit/mlb-path-map ]; \
+           then true; \
+           else echo "SML_LIB=$(INSTDIR)/lib/mlkit" > $(sysconfdir)/mlkit/mlb-path-map; \
+        fi
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
@@ -374,7 +380,7 @@ bootstrap:
 	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
-	$(DIFF) bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit
+	if diff bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit > /dev/null; then true; else false; fi
 	$(INSTALL) bootstrap/mlkit-v3/bin/mlkit bin/mlkit
 
 .PHONY: man_mlkit
