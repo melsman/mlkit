@@ -256,7 +256,7 @@ install:
 	$(MKDIR) $(INSTDIR)/share/doc
 	$(MKDIR) $(INSTDIR)/share/doc/mlkit
 	$(MAKE) install_license INSTDIR=$(INSTDIR)/share/doc/mlkit
-	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR)/share/doc/mlkit/
+	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/share/doc/mlkit/
 	$(INSTALLDATA) NEWS $(INSTDIR)/share/doc/mlkit/
 
 # The following is necessary if you want to either run kittester
@@ -425,7 +425,7 @@ install_kam:
 	$(INSTALLDATA) -R kitdemo $(INSTDIR_KAM)/kitdemo 
 	$(INSTALLDATA) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
 	$(INSTALLDATA) -R basis $(INSTDIR_KAM)/basis
-	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR_KAM)/doc
+	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR_KAM)/doc
 
 #	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
 #	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
@@ -445,7 +445,7 @@ install_barry:
 	$(INSTALL) -R kitdemo $(INSTDIR_BARRY)/kitdemo 
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR_BARRY)/ml-yacc-lib
 	$(INSTALL) -R basis $(INSTDIR_BARRY)/basis
-	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_BARRY)/doc
+	$(INSTALL) doc/mlkit.pdf $(INSTDIR_BARRY)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR_BARRY)
 	chmod -R ug+rw $(INSTDIR_BARRY)
 	chmod -R o+r $(INSTDIR_BARRY)
@@ -471,7 +471,7 @@ install_smlserver:
 	$(MAKE) -C smlserver_demo install
 	$(INSTALLDATA) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
 	$(INSTALLDATA) basis/io/*.{sml,sig} $(INSTDIR_SMLSERVER)/basis/io
-#	$(INSTALLDATA) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
+#	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
 	$(INSTALLDATA) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
 	$(MAKE) -C src/SMLserver/apache install
 #
@@ -509,7 +509,7 @@ dist_mlkit:
 	scp NEWS $(MLKIT_HOSTDIR)/NEWS-$(KITVERSION).txt
 	scp README $(MLKIT_HOSTDIR)/README-$(KITVERSION).txt
 	scp INSTALL $(MLKIT_HOSTDIR)/INSTALL-$(KITVERSION).txt
-	scp doc/manual/mlkit.pdf $(MLKIT_HOSTDIR)/mlkit-$(KITVERSION).pdf
+	scp doc/mlkit.pdf $(MLKIT_HOSTDIR)/mlkit-$(KITVERSION).pdf
 	scp ../test_reports/test_report-native-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).dvi
 	scp ../test_reports/test_report-kam-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).dvi
 	scp ../mlkit-$(KITVERSION).tgz $(MLKIT_HOSTDIR)/
