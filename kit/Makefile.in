@@ -381,6 +381,7 @@ MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
 mlkit_i386_tgz:
 	$(MKDIR) dist
+	rm -rf dist/$(MLKIT_DIST_BIN)
 	$(MAKE) install INSTDIR=dist/$(MLKIT_DIST_BIN)
 	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	(cd dist; tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
@@ -390,6 +391,7 @@ MLKIT_DIST_SRC=mlkit-$(KITVERSION)-src
 mlkit_src_tgz:
 	./autobuild
 	$(MKDIR) dist
+	rm -rf dist/$(MLKIT_DIST_SRC)
 	$(MKDIR) dist/$(MLKIT_DIST_SRC)
 	$(MAKE) install_src INSTDIR=dist/$(MLKIT_DIST_SRC)
 	$(MAKE) install_test INSTDIR=dist/$(MLKIT_DIST_SRC)
@@ -407,7 +409,7 @@ mlkit_src_tgz:
 	$(INSTALL) smlserver_demo/Makefile.in dist/$(MLKIT_DIST_SRC)/smlserver_demo
 	$(MKDIR) dist/$(MLKIT_DIST_SRC)/doc
 	$(MAKE) install_license INSTDIR=dist/$(MLKIT_DIST_SRC)/doc
-	$(INSTALLDATA) doc/README_BIN.in dist/$(MLKIT_DIST_SRC)/doc
+	$(INSTALLDATA) doc/{README_BIN.in,mlkit.pdf} dist/$(MLKIT_DIST_SRC)/doc
 	(cd dist; tar czvf $(MLKIT_DIST_SRC).tgz $(MLKIT_DIST_SRC))
 
 # The following is obsolete!!
