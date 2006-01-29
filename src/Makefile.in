@@ -38,6 +38,7 @@ mlkit: mlkit_kit
 
 .PHONY: mlkit_kit
 mlkit_kit: basics rp2ps tester mlbmake kitbench
+	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
