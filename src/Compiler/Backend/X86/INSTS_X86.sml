@@ -94,6 +94,7 @@ signature INSTS_X86 =
     | dot_globl of lab
     | dot_text
     | dot_data
+    | dot_section of string
     | dot_byte of string
     | dot_long of string
     | dot_double of string

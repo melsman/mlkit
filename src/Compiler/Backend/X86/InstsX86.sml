@@ -103,6 +103,7 @@ structure InstsX86: INSTS_X86 =
       | dot_globl of lab
       | dot_text
       | dot_data
+      | dot_section of string
       | dot_byte of string
       | dot_long of string
       | dot_double of string
@@ -236,6 +237,7 @@ structure InstsX86: INSTS_X86 =
 	       | dot_long s => (emit "\t.long "; emit s; emit_nl())
 	       | dot_double s => (emit "\t.double "; emit s; emit_nl())
 	       | dot_string s => (emit "\t.string \""; emit s; emit "\""; emit_nl())
+         | dot_section s => (emit ".section \t"; emit s; emit_nl())
 	       | dot_size (l, i) => (emit "\t.size "; emit(pr_lab l); emit ","; 
 				     emit_n i; emit_nl())
 	       | lab l => (emit(pr_lab l); emit":"; emit_nl())
@@ -251,7 +253,9 @@ structure InstsX86: INSTS_X86 =
     fun emit ({top_decls: top_decl list,
 	       init_code: inst list,
 	       static_data: inst list}, filename) =
-      let val os : TextIO.outstream = TextIO.openOut filename
+      let
+        val os : TextIO.outstream = TextIO.openOut filename
+        val static_data = (dot_section ".note.GNU-stack,\"\",@progbits") :: static_data
       in (emit_insts (os, init_code);
 	  app (emit_topdecl os) top_decls;
 	  emit_insts (os, static_data);
