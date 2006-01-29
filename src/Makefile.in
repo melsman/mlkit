@@ -37,22 +37,19 @@ REQUEST_PROFILING=
 mlkit: mlkit_kit
 
 .PHONY: mlkit_kit
-mlkit_kit: basics rp2ps tester mlbmake kitbench
-	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
+mlkit_kit: basics rp2ps tester kitbench
+#	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
 	$(MAKE) -C Runtime runtimeSystemGCProf.a
 	$(MAKE) -C Runtime runtimeSystemGenGC.a
 	$(MAKE) -C Runtime runtimeSystemGenGCProf.a
-	$(MAKE) -C Runtime runtimeSystemGCTP.a
-	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
-	$(MAKE) -C Runtime runtimeSystemTag.a
+#	$(MAKE) -C Runtime runtimeSystemGCTP.a
+#	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
+#	$(MAKE) -C Runtime runtimeSystemTag.a
 	$(MLCOMP) -output mlkit Compiler/native.mlb
 	$(INSTALL) -p mlkit $(BINDIR)
-#	cd $(BINDIR) && echo "#!$(SHELL)" > mlkit
-#	cd $(LIBDIR) && echo `pwd`/bin/mlkit.img `pwd` \$$* >> bin/mlkit
-#	chmod a+x $(BINDIR)/mlkit
 
 mlkit_kam: mlkit_kam_kit
 
@@ -61,38 +58,26 @@ mlkit_kam_kit: basics tester kitbench
 	$(MAKE) -C Runtime kam
 	$(MLCOMP) -output mlkit_kam Compiler/bytecode.mlb
 	$(INSTALL) -p mlkit_kam $(BINDIR)
-#	cd $(BINDIR) && echo "#!$(SHELL)" > mlkit_kam
-#	cd $(LIBDIR) && echo `pwd`/bin/mlkit_kam.img `pwd` \$$* >> bin/mlkit_kam
-#	chmod a+x $(BINDIR)/mlkit_kam
-
 
 .PHONY: mlkit_nj
-mlkit_nj: basics rp2ps tester mlbmake kitbench
+mlkit_nj: basics rp2ps tester kitbench
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
 	$(MAKE) -C Runtime runtimeSystemGCProf.a
 	$(MAKE) -C Runtime runtimeSystemGenGC.a
 	$(MAKE) -C Runtime runtimeSystemGenGCProf.a
-	$(MAKE) -C Runtime runtimeSystemGCTP.a
-	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
-	$(MAKE) -C Runtime runtimeSystemTag.a
+#	$(MAKE) -C Runtime runtimeSystemGCTP.a
+#	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
+#	$(MAKE) -C Runtime runtimeSystemTag.a
 	echo 'use "build.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit
-#	rm -f $(BINDIR)/mlkit
-#	cd .. && echo '#!/bin/sh' > bin/mlkit
-#	cd .. && echo `pwd`/bin/mlkit.$(ARCH-OS) `pwd` \$$* >> bin/mlkit
-#	chmod a+x $(BINDIR)/mlkit
 
 .PHONY: mlkit_kam_nj
 mlkit_kam_nj: basics tester kitbench
 	$(MAKE) -C Runtime kam
 	echo 'use "build_kam.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam
-#	rm -f $(BINDIR)/mlkit_kam
-#	cd .. && echo '#!/bin/sh' > bin/mlkit_kam
-#	cd .. && echo `pwd`/bin/mlkit_kam.$(ARCH-OS) `pwd` \$$* >> bin/mlkit_kam
-#	chmod a+x $(BINDIR)/mlkit_kam
 
 smlserver: smlserver_nj
 
