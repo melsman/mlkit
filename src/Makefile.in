@@ -37,7 +37,7 @@ REQUEST_PROFILING=
 mlkit: mlkit_kit
 
 .PHONY: mlkit_kit
-mlkit_kit: basics rp2ps tester kitbench
+mlkit_kit: basics rp2ps tester kitbench mlbmake
 #	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
@@ -60,7 +60,7 @@ mlkit_kam_kit: basics tester kitbench
 	$(INSTALL) -p mlkit_kam $(BINDIR)
 
 .PHONY: mlkit_nj
-mlkit_nj: basics rp2ps tester kitbench
+mlkit_nj: basics rp2ps tester kitbench mlbmake
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
@@ -131,7 +131,7 @@ tester:
 	$(MAKE) -C Tools/Tester
 
 mlbmake:
-	$(MAKE) -C Tools/MlbMake
+	$(MAKE) -C Tools/MlbMake Confoptions.sml
 
 kitbench:
 	$(MAKE) -C Tools/Benchmark
