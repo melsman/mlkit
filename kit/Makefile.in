@@ -47,6 +47,13 @@ CLEAN=rm -rf MLB PM CM *~ .\#*
 
 all: mlkit
 
+.PHONY: smlserver_basislibs smlserver_libs smlserver_kitlibs
+smlserver_basislibs:
+	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c basis.mlb)
+
+smlserver_kitlibs:
+	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c kitlib.mlb)
+
 mlkit_basislibs:
 	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc basis.mlb)
 	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -gc basis.mlb)
@@ -59,10 +66,23 @@ mlkit_kitlibs:
 	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -gc -prof kitlib.mlb)
 	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc -prof kitlib.mlb)
 
+smlserver_libs:
+	(cd basis && find -name MLB -type d | xargs rm -rf)
+	$(MAKE) smlserver_basislibs
+	$(MAKE) smlserver_kitlibs
+
 mlkit_libs:
 	(cd basis && find -name MLB -type d | xargs rm -rf)
 	$(MAKE) mlkit_basislibs
 	$(MAKE) mlkit_kitlibs
+
+install_smlserver_basislibs:
+	$(MKDIR) $(INSTDIR)/basis/MLB
+	$(MKDIR) $(INSTDIR)/basis/MLB/SMLserver
+	$(MKDIR) $(INSTDIR)/basis/io/MLB
+	$(MKDIR) $(INSTDIR)/basis/io/MLB/SMLserver
+	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(INSTDIR)/basis/MLB/SMLserver
+	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(INSTDIR)/basis/io/MLB/SMLserver
 
 install_mlkit_basislibs:
 	$(MKDIR) $(INSTDIR)/basis/MLB
@@ -470,6 +490,7 @@ install_smlserver0:
 	$(INSTALL) bin/smlserverc $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/lib
 	$(MKDIR) $(INSTDIR)/lib/smlserver
+	$(MAKE) install_smlserver_basislibs INSTDIR=$(INSTDIR)/lib/smlserver
 	$(MAKE) install_basis INSTDIR=$(INSTDIR)/lib/smlserver
 	$(MAKE) install_man
 	$(MKDIR) $(INSTDIR)/share
