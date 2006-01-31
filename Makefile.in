@@ -43,7 +43,7 @@ RPMDIR=/usr/src/rpm
 CLEAN=rm -rf MLB PM CM *~ .\#*
 
 .PHONY: mlkit mlkit_kam smlserver barry clean clean_mlb install
-.PHONY: install_smlserver
+.PHONY: install_smlserver install_smlserver0
 
 all: mlkit
 
@@ -464,25 +464,27 @@ install_barry:
 	rm -f /usr/bin/barry
 	cp -f -p $(INSTDIR_BARRY)/bin/barry /usr/bin/barry
 
-install_smlserver:
-	$(MKDIR) $(INSTDIR_SMLSERVER)
-	$(MKDIR) $(INSTDIR_SMLSERVER)/bin
-	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
-	$(MKDIR) $(INSTDIR_SMLSERVER)/basis
-	$(MKDIR) $(INSTDIR_SMLSERVER)/basis/io
-	$(INSTALL) bin/mspcomp $(INSTDIR_SMLSERVER)/bin
-	$(INSTALL) bin/smlserverc $(INSTDIR_SMLSERVER)/bin
-	$(INSTALLDATA) copyright $(INSTDIR_SMLSERVER)
-	$(INSTALLDATA) README $(INSTDIR_SMLSERVER)
-	$(INSTALLDATA) README_SMLSERVER $(INSTDIR_SMLSERVER)
-	$(INSTALLDATA) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
-	$(MAKE) -C smlserver_demo install
-	$(INSTALLDATA) basis/*.{sml,mlb} $(INSTDIR_SMLSERVER)/basis
-	$(INSTALLDATA) basis/io/*.{sml,sig} $(INSTDIR_SMLSERVER)/basis/io
-#	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
-	$(INSTALLDATA) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
-	$(MAKE) -C src/SMLserver/apache install
-#
+install_smlserver0:
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(INSTDIR)/bin
+	$(INSTALL) bin/smlserverc $(INSTDIR)/bin
+	$(MKDIR) $(INSTDIR)/lib
+	$(MKDIR) $(INSTDIR)/lib/smlserver
+	$(MAKE) install_basis INSTDIR=$(INSTDIR)/lib/smlserver
+	$(MAKE) install_man
+	$(MKDIR) $(INSTDIR)/share
+	$(MKDIR) $(INSTDIR)/share/smlserver
+	$(MKDIR) $(INSTDIR)/share/doc
+	$(MKDIR) $(INSTDIR)/share/doc/smlserver
+	$(MAKE) install_license INSTDIR=$(INSTDIR)/share/doc/smlserver
+	$(INSTALLDATA) doc/smlserver.pdf $(INSTDIR)/share/doc/smlserver
+	$(INSTALLDATA) README_SMLSERVER $(INSTDIR)/share/doc/smlserver
+	$(INSTALLDATA) NEWS_SMLSERVER $(INSTDIR)/share/doc/smlserver
+	$(MAKE) -C smlserver_demo install INSTDIR=$(INSTDIR)/lib/smlserver
+	$(MAKE) -C src/SMLserver/apache install INSTDIR=$(INSTDIR)/lib/smlserver
+
+install_smlserver:install_smlserver0
+
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
 # directory! 
