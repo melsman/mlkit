@@ -9,14 +9,15 @@ MKDIR=@top_srcdir@/mkinstalldirs
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 prefix=@prefix@
-INSTDIR_SMLSERVER=$(DESTDIR)@exec_prefix@/smlserver
+INSTDIR=$(DESTDIR)@exec_prefix@/smlserver
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
        ../../Runtime/runtimeSystemKamApSml.o ul.tab.c lex.yy.c parseul.c \
 			 sched.c
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
-CFLAGS= -Wall -std=gnu99 -g
+CFLAGS=@CFLAGS@
+OPT= -Wall -std=gnu99 -g $(CFLAGS)
 
 @SET_MAKE@
 
@@ -39,17 +40,17 @@ all: ${ALL}
 install: $(INST)
 
 ${TARGET}: ${SOURCE} Makefile
-	$(APXS) -Wc,"${CFLAGS}" -c -lresolv -L. ${SOURCE}
+	$(APXS) -Wc,"$(OPT)" -c -lresolv -L. ${SOURCE}
 
 oracle: $(ORACLELIB)
 odbc: $(ODBCLIB)
 
 $(ORACLELIB): oracle.c
-	${CC} ${CFLAGS} -I ${ORACLE}/sdk/include -c -fPIC oracle.c
+	${CC} $(OPT) -I ${ORACLE}/sdk/include -c -fPIC oracle.c
 	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L $(ORACLE) -lclntsh oracle.o -o $(ORACLELIB)
 
 $(ODBCLIB): odbc.c
-	$(CC) ${CFLAGS} -c -fPIC odbc.c
+	$(CC) $(OPT) -c -fPIC odbc.c
 	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 -lodbc odbc.o -o $(ODBCLIB)
 
 #	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
@@ -57,20 +58,20 @@ $(ODBCLIB): odbc.c
 
 installsml: ${TARGET}
 #	${APXS} -i -a -n sml mod_sml.la
-	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
-	$(INSTALL) .libs/mod_sml.so $(INSTDIR_SMLSERVER)/lib
+	$(MKDIR) $(INSTDIR)/lib
+	$(INSTALL) .libs/mod_sml.so $(INSTDIR)/lib
 
 oracle_install: oracle
-	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
-	$(INSTALL) $(ORACLELIB) $(INSTDIR_SMLSERVER)/lib
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmloracle.so.1 libsmloracle.so
+	$(MKDIR) $(INSTDIR)/lib
+	$(INSTALL) $(ORACLELIB) $(INSTDIR)/lib
+	cd $(INSTDIR)/lib && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
+	cd $(INSTDIR)/lib && ${LN} -f libsmloracle.so.1 libsmloracle.so
 
 odbc_install: odbc
-	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
-	$(INSTALL) $(ODBCLIB) $(INSTDIR_SMLSERVER)/lib
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmlodbc.so.1.0 libsmlodbc.so.1
-	cd $(INSTDIR_SMLSERVER)/lib && ${LN} -f libsmlodbc.so.1 libsmlodbc.so
+	$(MKDIR) $(INSTDIR)/lib
+	$(INSTALL) $(ODBCLIB) $(INSTDIR)/lib
+	cd $(INSTDIR)/lib && ${LN} -f libsmlodbc.so.1.0 libsmlodbc.so.1
+	cd $(INSTDIR)/lib && ${LN} -f libsmlodbc.so.1 libsmlodbc.so
 
 ul.tab.h: ul.y
 	bison -d ul.y
@@ -83,7 +84,7 @@ lex.yy.c: ul.lex ul.tab.h
 parseul.c: ul.tab.c
 
 t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
-	$(CC) -o t $(CFLAGS) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
+	$(CC) -o t $(OPT) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 
 clean: 
 	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0

@@ -24,10 +24,12 @@ OFILES_GC_TP = $(OFILES:%.o=%-gc-tp.o)
 OFILES_GC_TP_PROF = $(OFILES:%.o=%-gc-tp-p.o)
 OFILES_KAM = $(OFILES:%.o=%-kam.o) Interp-kam.o LoadKAM-kam.o KamInsts-kam.o Prims.o \
              HeapCache-kam.o 
-CFILES_KAM = $(CFILES) Interp.c LoadKAM.c KamInsts.c HeapCache.c SysErrTable.h
-OFILES_SMLSERVER_AP = $(OFILES:%.o=%-smlserverAP.o) Interp-smlserverAP.o LoadKAM-smlserverAP.o \
-             HeapCache-smlserverAP.o KamInsts-smlserverAP.o PrimsApSml.o 
+CFILES_KAM = $(CFILES) Interp.c LoadKAM.c KamInsts.c HeapCache.c
+OFILES_SMLSERVER = $(OFILES:%.o=%-smlserver.o) Interp-smlserver.o LoadKAM-smlserver.o \
+             HeapCache-smlserver.o KamInsts-smlserver.o PrimsApSml.o 
 CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
+
+HEADER_FILES=SysErrTable.h
 
 #OPT=-Wall -pedantic -std=c99
 OPT=-Wall -std=gnu99 $(CFLAGS)
@@ -55,8 +57,8 @@ gen_syserror: gen_syserror.c
 #	$(CC) -c -DKAM -DDEBUG -DLAB_THREADED $(OPT) -o $*-kam.o $<
 #	$(CC) -c -DKAM $(OPT) -o $*-kam.o $<
 
-%-smlserverAP.o: %.c Makefile
-	$(CC) -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE $(OPT) -o $*-smlserverAP.o $<
+%-smlserver.o: %.c Makefile
+	$(CC) -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE $(OPT) -o $*-smlserver.o $<
 
 %-p.o: %.c
 #	$(CC) -c -g -DPROFILING -DDEBUG -o $*-p.o $< 
@@ -80,57 +82,57 @@ gen_syserror: gen_syserror.c
 %-gc-tp-p.o: %.c
 	$(CC) -c -DTAG_VALUES -DPROFILING -DENABLE_GC $(OPT) -o $*-gc-tp-p.o $<
 
-runtimeSystem.a: $(OFILES) Makefile
+runtimeSystem.a: $(OFILES) Makefile $(HEADER_FILES)
 	$(AR) $@ $(OFILES)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA)  $@ $(LIBDIR)
 
-runtimeSystemTag.a: $(OFILES_TAG)
+runtimeSystemTag.a: $(OFILES_TAG) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_TAG)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemProf.a: $(OFILES_PROF)
+runtimeSystemProf.a: $(OFILES_PROF) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_PROF)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemGC.a: $(OFILES_GC)
+runtimeSystemGC.a: $(OFILES_GC) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GC)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemGCProf.a: $(OFILES_GC_PROF)
+runtimeSystemGCProf.a: $(OFILES_GC_PROF) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GC_PROF)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemGenGC.a: $(OFILES_GEN_GC)
+runtimeSystemGenGC.a: $(OFILES_GEN_GC) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GEN_GC)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF)
+runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GEN_GC_PROF)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-kam: $(OFILES_KAM)
+kam: $(OFILES_KAM) $(HEADER_FILES)
 	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
 	$(MKDIR) $(LIBDIR)
 	$(INSTALL) $@ $(LIBDIR)
 
-runtimeSystemKamApSml.o: $(OFILES_SMLSERVER_AP)
-	ld -r -o $@ $(OFILES_SMLSERVER_AP)
+runtimeSystemKamApSml.o: $(OFILES_SMLSERVER) $(HEADER_FILES)
+	ld -r -o $@ $(OFILES_SMLSERVER)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemGCTP.a: $(OFILES_GC_TP)
+runtimeSystemGCTP.a: $(OFILES_GC_TP) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GC_TP)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
-runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF)
+runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GC_TP_PROF)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
@@ -408,16 +410,15 @@ hashmap_typed-kam.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
 Export-kam.o: Export.c String.h Flags.h Region.h Tagging.h \
   ../CUtils/hashmap.h Export.h
 Interp-kam.o: Interp.c Runtime.h String.h Flags.h Region.h Tagging.h Stack.h \
-  KamInsts.h Prims.h LoadKAM.h ../CUtils/hashmap_typed.h \
-  ../CUtils/hashmap.h List.h Exception.h Interp.h Math.h Table.h Locks.h \
-  ../config.h Dlsym.h
+  KamInsts.h LoadKAM.h ../CUtils/hashmap_typed.h ../CUtils/hashmap.h \
+  List.h Exception.h Interp.h Math.h Table.h Locks.h ../config.h Dlsym.h \
+  Prims.h
 LoadKAM-kam.o: LoadKAM.c LoadKAM.h ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h Runtime.h String.h Flags.h Region.h Tagging.h \
   KamInsts.h Stack.h HeapCache.h Exception.h Interp.h
 KamInsts-kam.o: KamInsts.c
 HeapCache-kam.o: HeapCache.c HeapCache.h Region.h Flags.h Stack.h Runtime.h \
   String.h Tagging.h Locks.h ../config.h
-SysErrTable-kam.o: SysErrTable.h
 Runtime-smlserver.o: Runtime.c Runtime.h String.h Flags.h Region.h Tagging.h Math.h \
   Exception.h Table.h CommandLine.h Export.h Interp.h LoadKAM.h \
   ../CUtils/hashmap_typed.h ../CUtils/hashmap.h
@@ -446,9 +447,9 @@ hashmap_typed-smlserver.o: ../CUtils/hashmap_typed.c ../CUtils/hashmap_typed.h \
 Export-smlserver.o: Export.c String.h Flags.h Region.h Tagging.h \
   ../CUtils/hashmap.h Export.h
 Interp-smlserver.o: Interp.c Runtime.h String.h Flags.h Region.h Tagging.h Stack.h \
-  KamInsts.h Prims.h LoadKAM.h ../CUtils/hashmap_typed.h \
-  ../CUtils/hashmap.h List.h Exception.h Interp.h Math.h Table.h Locks.h \
-  ../config.h Dlsym.h
+  KamInsts.h LoadKAM.h ../CUtils/hashmap_typed.h ../CUtils/hashmap.h \
+  List.h Exception.h Interp.h Math.h Table.h Locks.h ../config.h Dlsym.h \
+  Prims.h
 LoadKAM-smlserver.o: LoadKAM.c LoadKAM.h ../CUtils/hashmap_typed.h \
   ../CUtils/hashmap.h Runtime.h String.h Flags.h Region.h Tagging.h \
   KamInsts.h Stack.h HeapCache.h Exception.h Interp.h

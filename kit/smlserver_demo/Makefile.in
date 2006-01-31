@@ -8,28 +8,28 @@ INSTALLDATA=@INSTALL_DATA@
 .PHONY: install
 
 install:
-	$(MKDIR) $(INSTDIR_SMLSERVER)/web_lib
-	$(MKDIR) $(INSTDIR_SMLSERVER)/web_sys
-	$(MKDIR) $(INSTDIR_SMLSERVER)/web_demo_lib
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/employee
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/link
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/rating
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/secret
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/upload
-	$(MKDIR) $(INSTDIR_SMLSERVER)/www/web/upload/files
-	$(INSTALLDATA) web_lib/*.{sml,mlb} $(INSTDIR_SMLSERVER)/web_lib
-	$(INSTALLDATA) web_sys/*.sml $(INSTDIR_SMLSERVER)/web_sys
-	$(INSTALLDATA) www/web.mlb $(INSTDIR_SMLSERVER)/www
-	$(INSTALLDATA) www/Makefile $(INSTDIR_SMLSERVER)/www
-	$(INSTALLDATA) www/web/*.{sml,msp,html} $(INSTDIR_SMLSERVER)/www/web
-	$(INSTALLDATA) www/web/Makefile $(INSTDIR_SMLSERVER)/www/web
-	$(INSTALLDATA) www/web/employee/*.{sql,sml} $(INSTDIR_SMLSERVER)/www/web/employee
-	$(INSTALLDATA) www/web/link/*.sml $(INSTDIR_SMLSERVER)/www/web/link
-	$(INSTALLDATA) www/web/rating/*.{sql,sml,jpg} $(INSTDIR_SMLSERVER)/www/web/rating
-	$(INSTALLDATA) www/web/secret/*.sml $(INSTDIR_SMLSERVER)/www/web/secret
-	$(INSTALLDATA) www/web/upload/*.sml $(INSTDIR_SMLSERVER)/www/web/upload
-	$(INSTALLDATA) www/web/upload/files/*.png $(INSTDIR_SMLSERVER)/www/web/upload/files
-	$(INSTALLDATA) web_demo_lib/*.sml $(INSTDIR_SMLSERVER)/web_demo_lib
+	$(MKDIR) $(INSTDIR)/web_lib
+	$(MKDIR) $(INSTDIR)/web_sys
+	$(MKDIR) $(INSTDIR)/web_demo_lib
+	$(MKDIR) $(INSTDIR)/www
+	$(MKDIR) $(INSTDIR)/www/web
+	$(MKDIR) $(INSTDIR)/www/web/employee
+	$(MKDIR) $(INSTDIR)/www/web/link
+	$(MKDIR) $(INSTDIR)/www/web/rating
+	$(MKDIR) $(INSTDIR)/www/web/secret
+	$(MKDIR) $(INSTDIR)/www/web/upload
+	$(MKDIR) $(INSTDIR)/www/web/upload/files
+	$(INSTALLDATA) web_lib/*.{sml,mlb} $(INSTDIR)/web_lib
+	$(INSTALLDATA) web_sys/*.sml $(INSTDIR)/web_sys
+	$(INSTALLDATA) www/web.mlb $(INSTDIR)/www
+	$(INSTALLDATA) www/Makefile $(INSTDIR)/www
+	$(INSTALLDATA) www/web/*.{sml,msp,html} $(INSTDIR)/www/web
+	$(INSTALLDATA) www/web/Makefile $(INSTDIR)/www/web
+	$(INSTALLDATA) www/web/employee/*.{sql,sml} $(INSTDIR)/www/web/employee
+	$(INSTALLDATA) www/web/link/*.sml $(INSTDIR)/www/web/link
+	$(INSTALLDATA) www/web/rating/*.{sql,sml,jpg} $(INSTDIR)/www/web/rating
+	$(INSTALLDATA) www/web/secret/*.sml $(INSTDIR)/www/web/secret
+	$(INSTALLDATA) www/web/upload/*.sml $(INSTDIR)/www/web/upload
+	$(INSTALLDATA) www/web/upload/files/*.png $(INSTDIR)/www/web/upload/files
+	$(INSTALLDATA) web_demo_lib/*.sml $(INSTDIR)/web_demo_lib
 
