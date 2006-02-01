@@ -69,7 +69,7 @@ structure Environment :> ENVIRONMENT =
               let
                 val _ = varMap := SOME(BM.mkDict String.compare)
                 val user = Option.map (fn x=> x^"/.mlkit/mlb-path-map") (OS.Process.getEnv "HOME")
-                val system = SOME(Conf.etcdir ^ "/mlkit/mlb-path-map")
+                val system = SOME(Configuration.etcdir ^ "/mlkit/mlb-path-map")
                 val files = [system,user]
               in List.app (fn x => (case x
                                     of NONE => ()
