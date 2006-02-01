@@ -26,11 +26,12 @@ signature MANAGER_OBJECTS =
 
     structure SystemTools :
       sig
+(*
         val change_dir : string -> {cd_old:unit->unit,file:string}
 	(* [change_dir p] cd's to the dir part of p and returns the
 	 * file part of p together with a function for changing to the
 	 * original directory. *)
-
+*)
 	val delete_file : string -> unit
 	val maybe_create_dirs : {prepath:string,dirs:string} -> unit
 	val maybe_create_mlbdir : {prepath:string} -> unit
