@@ -56,7 +56,7 @@ mlkit_kam: mlkit_kam_kit
 .PHONY: mlkit_kam_kit
 mlkit_kam_kit: basics tester kitbench
 	$(MAKE) -C Runtime kam
-	$(MLCOMP) -output mlkit_kam Compiler/bytecode.mlb
+	$(MLCOMP) -output mlkit_kam Compiler/kitkam.mlb
 	$(INSTALL) -p mlkit_kam $(BINDIR)
 
 .PHONY: mlkit_nj
@@ -87,7 +87,7 @@ smlserver_kit: basics
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
 #	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
 	$(MAKE) -C SMLserver/apache
-	$(MLCOMP) -output smlserverc Compiler/bytecode.mlb
+	$(MLCOMP) -output smlserverc Compiler/smlserver.mlb
 	$(INSTALL) -p smlserverc $(BINDIR)
 #	rm -f $(BINDIR)/smlserverc
 #	cd .. && echo '#!/bin/sh' > bin/smlserverc

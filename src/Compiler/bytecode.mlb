@@ -43,8 +43,6 @@ in
      end
   end
 
-  local open Compiler
-  in ../Common/KitKam.sml
-  end
+  open Compiler Tools
 
 end
