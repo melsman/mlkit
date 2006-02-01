@@ -2,6 +2,6 @@ local
   $(SML_LIB)/basis/basis.mlb
   ../../../basis/binarymap.mlb
 in
-  CONFIGURATION.sml Confoptions.sml
+  CONFIGURATION.sml Configuration.sml
   ENVIRONMENT.sml Environment.sml
 end

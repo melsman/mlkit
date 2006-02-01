@@ -131,7 +131,7 @@ tester:
 	$(MAKE) -C Tools/Tester
 
 mlbmake:
-	$(MAKE) -C Tools/MlbMake Confoptions.sml
+	$(MAKE) -C Tools/MlbMake Configuration.sml
 
 kitbench:
 	$(MAKE) -C Tools/Benchmark
