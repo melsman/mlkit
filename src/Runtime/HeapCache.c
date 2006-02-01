@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include "HeapCache.h"
 #include "Region.h"
 #include "Runtime.h"
@@ -46,9 +48,7 @@ extern void logMsg(char* msg);
 static void
 dienow(char *s)
 {
-#if defined(AOLSERVER)
-  Ns_Log(Notice,"die2: %s",s);
-#elif defined(APACHE)
+#if defined(APACHE)
   logMsg(s);
 #endif
   die(s);
@@ -137,19 +137,21 @@ static int pagesInRegion(Ro *r)
 
 static RegionCopy* copyRegion(Ro *r)
 {
-  int np, bytes;
+  unsigned int np, bytes;
   unsigned int *q;
   Rp *p;
   RegionCopy *rc;
+  size_t lobjSize = 0;
+  unsigned int nL = 0;
+  unsigned int padding = 0;
+  Lobjs *lobjs = NULL, *lobjs2 = NULL;
 
-  if ( r->lobjs ) 
-    {
-      int c = 0;
-      Lobjs* lobjs;
-      for ( lobjs = r->lobjs ; lobjs ; lobjs = lobjs->next )
-	c++;
-      dienow ("copyRegion: copying of large objects not supported");
-    }
+  for ( lobjs = r->lobjs ; lobjs ; lobjs = lobjs->next )
+  {
+    lobjSize += sizeof(Lobjs) + lobjs->sizeOfLobj;
+    nL++;
+  }
+
   // printf("entering copyRegion r = %x\n", r);
 
   np = pagesInRegion(r);
@@ -158,12 +160,15 @@ static RegionCopy* copyRegion(Ro *r)
 
   bytes = sizeof(RegionCopy) + 4                             // for final null-pointer
     + np * (4 * (ALLOCATABLE_WORDS_IN_REGION_PAGE + 1));     // + 1 is for page pointer 
-  rc = (RegionCopy*)malloc(bytes);
-  
+  padding = bytes % sizeof(void *) ? sizeof(void *) - (bytes % sizeof(void *)) : 0;
+  rc = (RegionCopy*)malloc(bytes + padding + lobjSize);
+  rc->lobjs = r->lobjs ? (Lobjs *) (((char *) rc) + (bytes + padding)) : NULL;
+
   rc->r = r;     // not really necessary
   rc->a = r->g0.a;
   rc->b = r->g0.b;
 
+  rc->numOfLobjs = nL;
   q = rc->pages;
   for ( p = r->g0.fp ; p ; p = p->n )
     {
@@ -173,6 +178,17 @@ static RegionCopy* copyRegion(Ro *r)
 	*q++ = p->i[i++];
     }
   *q = 0;    // final null-pointer
+
+  char *tmp = rc->lobjs ? (char *) (rc->lobjs + rc->numOfLobjs) : NULL;
+  lobjs2 = rc->lobjs;
+  for ( lobjs = r->lobjs ; lobjs ; lobjs = lobjs->next )
+  {
+    lobjs2->next = (struct lobjs*) tmp;
+    memcpy(tmp, &(lobjs->value), lobjs->sizeOfLobj);
+    lobjs2->sizeOfLobj = lobjs->sizeOfLobj;
+    lobjs2++;
+    tmp += lobjs->sizeOfLobj;
+  }
   return rc;
 }
 
@@ -181,7 +197,6 @@ static int restoreRegion(RegionCopy *rc)
   Rp *p = 0;
   Rp *p_next = 0;
   int i = 0;
-
   while ( ( p_next = (Rp*)(rc->pages[i++]) ) )   // pointer to original region page is stored in copy!
     {
       int j = 0;
@@ -195,8 +210,24 @@ static int restoreRegion(RegionCopy *rc)
   p->n = NULL;                // there is at least one page
   rc->r->g0.a = rc->a;
   rc->r->g0.b = rc->b;
-  free_lobjs(rc->r->lobjs);
-  rc->r->lobjs = NULL;
+  unsigned int nL;
+  Lobjs *lobjs, *lobjs2 = NULL;
+  for (nL = 0, lobjs = rc->r->lobjs; lobjs; lobjs = lobjs->next) nL++;
+  for (lobjs = rc->r->lobjs; nL > rc->numOfLobjs; nL--)
+  {
+    lobjs2 = lobjs;
+    lobjs = lobjs->next;
+  }
+  if (lobjs2)
+  {
+    lobjs2->next = NULL;
+    free_lobjs(rc->r->lobjs);
+    rc->r->lobjs = lobjs;
+  }
+  for(nL = 0; nL < rc->numOfLobjs; nL++, lobjs = lobjs->next)
+  {
+    memcpy(&(lobjs->value), (rc->lobjs + nL)->next, (rc->lobjs + nL)->sizeOfLobj);
+  }
   return 0;
 }
 

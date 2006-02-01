@@ -674,13 +674,15 @@ alloc_lobjs(int n) {
   if ( ! is_rp_aligned((size_t)lobjs) )
     die("alloc_lobjs: large object is not properly aligned.");
   lobjs->orig = p;
-  return lobjs;
 #else
-  lobjs = (Lobjs*)malloc(4*n + sizeof(void *));
+  lobjs = (Lobjs*)malloc(4*n + sizeof(Lobjs));
   if ( lobjs == NULL )
     die("alloc_lobjs: malloc returned NULL");
-  return lobjs;
 #endif /* ENABLE_GC */
+#ifdef KAM
+  lobjs->sizeOfLobj = 4*n;
+#endif
+  return lobjs;
 }
 
 /*----------------------------------------------------------------------*

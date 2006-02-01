@@ -149,6 +149,9 @@ typedef struct lobjs {
 #ifdef ENABLE_GC
   char* orig;             // pointer to memory allocated by malloc - for freeing
 #endif
+#ifdef KAM
+  size_t sizeOfLobj;      // size of this object
+#endif
   unsigned int value;     // a large object; inlined to avoid pointer-indirection
 } Lobjs;
 
