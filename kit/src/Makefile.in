@@ -83,10 +83,12 @@ smlserver: smlserver_nj
 
 smlserver_kit: basics 
 	$(MAKE) -C Tools/MspComp
-	$(MAKE) -C Tools/MlbMake
+#	$(MAKE) -C Tools/MlbMake
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
 #	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
 	$(MAKE) -C SMLserver/apache
+	$(MLCOMP) -output smlserverc Compiler/bytecode.mlb
+	$(INSTALL) -p smlserverc $(BINDIR)
 #	rm -f $(BINDIR)/smlserverc
 #	cd .. && echo '#!/bin/sh' > bin/smlserverc
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
