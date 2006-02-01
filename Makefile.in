@@ -2,16 +2,16 @@ SHELL=@SHELL@
 
 KITVERSION=@PACKAGE_VERSION@
 
+prefix=@prefix@
 srcdir=@srcdir@
 top_srcdir=@top_srcdir@
-prefix=@prefix@
+exec_prefix=@exec_prefix@
 VPATH=@srcdir@
 
 SYSCONFDIR=$(DESTDIR)@sysconfdir@
-INSTDIR=$(DESTDIR)@exec_prefix@
+INSTDIR=$(DESTDIR)$(exec_prefix)
 INSTDIR_KAM=$(DESTDIR)@exec_prefix@
 INSTDIR_BARRY=$(DESTDIR)@exec_prefix@
-INSTDIR_SMLSERVER=$(DESTDIR)@exec_prefix@
 
 MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
@@ -26,7 +26,6 @@ CWD=$(shell pwd)
 export INSTDIR
 export INSTDIR_KAM
 export INSTDIR_BARRY
-export INSTDIR_SMLSERVER
 
 include Makefiledefault
 
@@ -285,7 +284,7 @@ install:
 	$(MKDIR) $(SYSCONFDIR)/mlkit
 	if [ -e $(SYSCONFDIR)/mlkit/mlb-path-map ]; \
            then true; \
-           else echo "SML_LIB=@exec_prefix@/mlkit/lib/mlkit" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
+           else echo "SML_LIB $(exec_prefix)/mlkit/lib/mlkit" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
         fi
 
 install_test:
@@ -505,14 +504,11 @@ install_smlserver0:
 	$(MAKE) -C src/SMLserver/apache install INSTDIR=$(INSTDIR)/lib/smlserver
 
 install_smlserver:install_smlserver0
-
-# The following is also done in the %post section in the rpm file, 
-# because the --prefix option to rpm can change the installation 
-# directory! 
-#
-#	echo "#!$(SHELL)" > $(INSTDIR_SMLSERVER)/bin/smlserverc
-#	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
-#	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
+	$(MKDIR) $(SYSCONFDIR)/mlkit
+	if [ -e $(SYSCONFDIR)/mlkit/mlb-path-map ]; \
+           then true; \
+           else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
+        fi
 
 #install_smlserver_oracle:
 #	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
