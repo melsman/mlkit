@@ -7,7 +7,7 @@ is
   ENVIRONMENT.sml
   Environment.sml
   CONFIGURATION.sml
-  Confoptions.sml
+  Configuration.sml
   MLB_PROJECT.sml  
   MlbProject.sml
   ULFILE.sml
