@@ -815,20 +815,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	end
     
     val import_basislib = Flags.is_on0 "import_basislib"
-    fun gen_wrap_mlb filepath =
-	let val mlb_file = OS.Path.base filepath ^ ".auto.mlb"
-	    val _ = chat ("Generating MLB-file " ^ mlb_file)
-	    val os = TextIO.openOut mlb_file
+    fun gen_wrap_mlb smlfilepath =
+	let val mlb_filepath = OS.Path.base smlfilepath ^ ".auto.mlb"
+	    val _ = chat ("Generating MLB-file " ^ mlb_filepath)
+	    val os = TextIO.openOut mlb_filepath
 	    val basislib = !Flags.install_dir ## "basis/basis.mlb"
 	    val _ = chat ("Using basis library " ^ quot basislib)
+	    val smlfile = OS.Path.file smlfilepath
 	    val body = 
 		if import_basislib() then
-		    "local " ^ basislib ^ " in " ^ filepath ^ " end"
-		else filepath
+		    "local " ^ basislib ^ " in " ^ smlfile ^ " end"
+		else smlfile
 	in 
 	    let val _ = TextIO.output(os, body)
 		val _ = TextIO.closeOut os
-	    in mlb_file
+	    in mlb_filepath
 	    end handle X => (TextIO.closeOut os; raise X)
 	end
 
