@@ -108,7 +108,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 			     SOME v => v
 			   | NONE => raise Fail ("An MLKit library install directory must be provided\n" ^
 						 "in an environment variable SML_LIB or as a path-definition\n" ^
-						 "in either the system wide path-map /etc/mlkit/mlb-path-map\n" ^
+						 "in either the system wide path-map " ^ Configuration.etcdir ^ "/mlkit/mlb-path-map\n" ^
 						 "or in your personal path-map ~/.mlkit/mlb-path-map.")
 		 in
 		     (set_paths baseDir; go_options args)
