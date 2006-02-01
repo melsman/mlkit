@@ -188,7 +188,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		    (case OS.Path.dir mlbfile of
 			 "" => (case M.lookup mlbfile M of
 				    SOME (SOME (B,S)) => 
-					let val _ = print (mlbfile ^ " found in M: " ^ M.pp M ^ "\n")
+					let (* val _ = print (mlbfile ^ " found in M: " ^ M.pp M ^ "\n") *)
 					    val S' = S.extendLoc scriptpath S
 					    val B' = B.extendLoc scriptpath B
 					in (S',C.empty,M,B')
@@ -196,7 +196,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 				  | SOME NONE =>
 					die ("cycle in mlb-file: problem with " ^ mlbfile)
 				  | NONE => 
-					let val _ = print (mlbfile ^ " not found in M: " ^ M.pp M ^ "\n")
+					let (* val _ = print (mlbfile ^ " not found in M: " ^ M.pp M ^ "\n") *)
 					    val bdec = Mlb.parse mlbfile
 					    val (S,C,M,B) = ulb phi (M.insert(mlbfile,NONE,M)) B.empty bdec
 					    val M = M.insert(mlbfile,SOME(B,S),M)
