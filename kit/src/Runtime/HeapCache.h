@@ -16,6 +16,8 @@ typedef struct regionCopy {
   unsigned int *a; // allocation pointer
   unsigned int *b; // border pointer
   Ro *r;  // origin region
+  Lobjs *lobjs; // Large objects
+  unsigned int numOfLobjs;
   unsigned int pages[0];
 } RegionCopy;
   

@@ -19,22 +19,7 @@
 #define STACKPOOLMUTEX     2
 #define FUNCTIONTABLEMUTEX 3
 
-#elif AOLSERVER // APACHE
-
-#define CODECACHEMUTEX     codeCacheMutex
-#define FREELISTMUTEX      freelistMutex
-#define STACKPOOLMUTEX     stackPoolMutex
-#define FUNCTIONTABLEMUTEX functionTableMutex
-
-#include "/opt/aolserver/include/ns.h"
-extern Ns_Mutex freelistMutex;
-extern Ns_Mutex stackPoolMutex;
-extern Ns_Mutex functionTableMutex;
-extern Ns_Mutex codeCacheMutex;
-#define LOCK_LOCK(name) Ns_LockMutex(&name)
-#define LOCK_UNLOCK(name) Ns_UnlockMutex(&name)
-
-#elif PTHREADS  // AOLSERVER
+#elif PTHREADS  // APACHE
 
 #define CODECACHEMUTEX     0
 #define FREELISTMUTEX      1
