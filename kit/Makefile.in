@@ -12,6 +12,7 @@ SYSCONFDIR=$(DESTDIR)@sysconfdir@
 INSTDIR=$(DESTDIR)$(exec_prefix)
 INSTDIR_KAM=$(DESTDIR)@exec_prefix@
 INSTDIR_BARRY=$(DESTDIR)@exec_prefix@
+MANDIR=$(DESTDIR)@mandir@
 
 MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
@@ -123,6 +124,10 @@ smlserver:
 	$(MKDIR) bin
 	$(MAKE) -C src smlserver
 
+smlserver_nj:
+	$(MKDIR) bin
+	$(MAKE) -C src smlserver_nj
+
 barry:
 	$(MKDIR) bin
 	$(MAKE) -C src barry
@@ -224,9 +229,9 @@ install_basis:
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
 
 install_man:
-	$(MKDIR) $(INSTDIR)/man
-	$(MKDIR) $(INSTDIR)/man/man1
-	$(INSTALLDATA) man/man1/*.1 $(INSTDIR)/man/man1
+	$(MKDIR) $(MANDIR)
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/*.1 $(MANDIR)/man1
 
 install_license:
 	$(MKDIR) $(INSTDIR)/license
