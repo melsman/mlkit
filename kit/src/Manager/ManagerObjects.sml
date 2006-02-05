@@ -112,23 +112,6 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	fun delete_file f = OS.FileSys.remove f handle _ => ()
 
 
-	(* --------------------
-	 * Changing directories
-	 * 
-	 * -------------------- *)
-(*
-	fun change_dir p : {cd_old : unit -> unit, file : string} =
-	    let val {dir,file} = OS.Path.splitDirFile p
-	    in if dir = "" then {cd_old = fn()=>(),file=file}
-	       else let val old_dir = OS.FileSys.getDir()
-			val _ = OS.FileSys.chDir dir
-		    in {cd_old=fn()=>(OS.FileSys.chDir old_dir), file=file}
-		    end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
-	    end
-	(* [change_dir p] cd's to the dir part of p and returns the
-	 * file part of p together with a function for changing to the
-	 * original directory. *)
-*)	
 	(* -----------------------------------------------
 	 * Creating directories for target code
 	 * ----------------------------------------------- *)

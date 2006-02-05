@@ -155,25 +155,19 @@ struct
       in loop("", dirs)
       end
 
-    fun change_dir p : {cd_old : unit -> unit, file : string} =
-      let val {dir,file} = OS.Path.splitDirFile p
-      in if dir = "" then {cd_old = fn()=>(),file=file}
-	 else let val old_dir = OS.FileSys.getDir()
-	          val _ = OS.FileSys.chDir dir
-	      in {cd_old=fn()=>OS.FileSys.chDir old_dir, file=file}
-	      end handle OS.SysErr _ => MlbUtil.error ("I cannot access directory " ^ MlbUtil.quot dir)
-      end
 
-    fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
-
+(*
     fun subDir "" = (fn p => p)
       | subDir dir =
-	let val dir_abs = mkAbs dir
+	let 
+    fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
+    val dir_abs = mkAbs dir
 	    in fn p =>
 		let val p_abs = mkAbs p
 		in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
 		end
 	end
+*)
 
     fun dirMod dir file = if OS.Path.isAbsolute file then file
 			  else OS.Path.concat(dir,file)

@@ -3,9 +3,11 @@ local
   ../../../basis/listsort.mlb
   ../../../basis/binarymap.mlb
   basis Environment = bas environment.mlb end
+  basis FileSys = 
+                  bas MLB_FILESYS.sml MlbFileSys.sml end
 in
   local
-    open Environment
+    open Environment FileSys
   in
     MLB_PROJECT.sml  
     MlbProject.sml

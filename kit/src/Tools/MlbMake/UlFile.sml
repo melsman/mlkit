@@ -9,19 +9,10 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	    in print(s ^ "\n"); raise Fail s
 	    end
 
-	local
-	    fun change_dir dir : {cd_old : unit -> unit} =
-	        if dir = "" then {cd_old = fn()=>()}
-		else let val old_dir = OS.FileSys.getDir()
-			 val _ = OS.FileSys.chDir dir
-		     in {cd_old=fn()=>OS.FileSys.chDir old_dir}
-		     end handle OS.SysErr _ => die ("I cannot access directory " ^ dir)
-	in
 	    fun doCD dir (f : unit -> 'a) : 'a =
-		let val {cd_old} = change_dir dir
+		let val {cd_old,...} = MlbFileSys.change_dir (dir^"/a")
 		in (f() before cd_old())
 		    handle X => (cd_old(); raise X)
-		end
 	end
 	    
 	type bid = Bid.bid

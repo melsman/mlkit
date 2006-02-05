@@ -8,6 +8,8 @@ is
   Environment.sml
   CONFIGURATION.sml
   Configuration.sml
+  MLB_FILESYS.sml
+  MlbFileSys.sml
   MLB_PROJECT.sml  
   MlbProject.sml
   ULFILE.sml

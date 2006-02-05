@@ -326,29 +326,22 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 			     else NONE
 	      | nil => NONE
 
-        fun fromFile (filename:string) =
-	    let val is = TextIO.openIn filename 
-		(*val _ = TextIO.output(TextIO.stdOut, "opened " ^filename^"\n")*)
-		val s = TextIO.inputAll is handle E => (TextIO.closeIn is; raise E)
-	    in TextIO.closeIn is; s
-	    end
-
 	fun fromFile' (filename:string) : string option =
-	    SOME(fromFile filename) handle _ => NONE
+	    SOME(MlbFileSys.fromFile filename) handle _ => NONE
 
 	fun parse (mlbfile: string) : bdec =
 	    if not (has_ext(mlbfile, "mlb")) then 
 		error ("The basis file " ^ quot mlbfile ^ " does not have extension 'mlb'")	    
 	    else
 		let (* val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n") *)
-		    val ss = (lex o (drop_comments mlbfile) o explode o fromFile) mlbfile
+		    val ss = (lex o (drop_comments mlbfile) o explode o MlbFileSys.fromFile) mlbfile
 		    (* val _ = print_ss ss *)
 		in  case parse_bdec_opt mlbfile ss of
 		    SOME (bdec,nil) => bdec
 		  | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
 		  | NONE => parse_error1 mlbfile ("missing basis declaration", ss)
 		end
-	    handle IO.Io {name=io_s,...} => error ("The basis file " ^ quot mlbfile ^ " cannot be opened")
+	    handle IO.Io {name=io_s,cause,...} => error ("The basis file " ^ quot mlbfile ^ " cannot be opened")
 
 
 	(* Support for writing dependency information to disk in .d-files. *)
@@ -421,15 +414,38 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 
 	fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
 
-	fun subtractDir "" = (fn p => p)
-	  | subtractDir dir =
+	fun subtractDir _ "" = (fn p => p)
+	  | subtractDir hasLink dir =
+      if hasLink
+      then fn p => if OS.Path.isAbsolute p
+                   then p
+                   else OS.Path.concat (MlbFileSys.getCurrentDir (),p)
+      else
 	    let val dir_abs = mkAbs dir
 	    in fn p =>
 		let val p_abs = mkAbs p
+        val _ = if OS.Path.isAbsolute dir then print ("mkAbs: " ^ p ^ " " ^ p_abs ^ " " ^ dir ^ "\n") else ()
 		in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
 		end
 	    end
 
+  local
+    fun hasLinks d = 
+          let 
+            val {arcs,vol,isAbs} = OS.Path.fromString d
+          in
+            case arcs 
+            of [] => false
+             | (x::xr) => #2(List.foldl (fn (x,(y,b)) =>
+                                             let val y' = OS.Path.concat (y,x)
+                                             in (y',b orelse (OS.FileSys.isLink y'))
+                                             end)
+                            (let val a = OS.Path.toString {vol = vol, isAbs = isAbs, arcs = [x]}
+                                 in (a, OS.FileSys.isLink a)
+                                 end)
+                            xr)
+          end
+  in
 	fun maybeWriteDep smlfile (modTimeMlbFileMax:Time.time) D : unit =
 	    let val {dir,file} = OS.Path.splitDirFile smlfile
 		infix ## 
@@ -438,7 +454,7 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 	    in if fileNewer modTimeMlbFileMax file then ()         (* Don't write .d-file if the current .d-file *)
 	       else                                                  (*  is newer than the mlb-file or any imported mlb-file. *)
 		   let val L = DepEnv.getL D
-		       val L = map (subtractDir dir) L
+		       val L = map (subtractDir (hasLinks dir) dir) L
 		       val s = concat (map (fn s => s ^ " ") L)
 		       fun write() =
 			   ((if dir = "" then ()
@@ -450,16 +466,8 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 		     | NONE => write()
 		   end
 	    end
+  end
 
-	fun change_dir path : {cd_old : unit -> unit, file : string} =
-	    let val {dir,file} = OS.Path.splitDirFile path
-	    in if dir = "" then {cd_old = fn()=>(),file=file}
-	       else let val old_dir = OS.FileSys.getDir()
-			val _ = OS.FileSys.chDir dir
-		    in {cd_old=fn()=>OS.FileSys.chDir old_dir, file=file}
-		    end handle OS.SysErr _ => error ("Failed to access directory " ^ quot dir)
-	    end
-	    
 	val op + = DepEnv.plus
 	type D = DepEnv.D
 	type A = {modTimeMlbFileMax: Time.time, mlbfiles: (string * D) list}   (* max-modtime of mlb-files met so far *)
@@ -534,7 +542,7 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 		case lookupA A mlbfile_abs of
 		    SOME D => (D,A)
 		  | NONE =>
-			let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
+			let val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
 			in let val _ = maybe_create_depdir ""
 			       val bdec = parse mlbfile
 			       val modTimeMlbFileMaxOld = #modTimeMlbFileMax A
@@ -565,7 +573,7 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 	fun srcs_bdec_file T mlbs mlbfile_rel =
 	    let val mlbfile_abs = mkAbs mlbfile_rel
 	    in if member mlbfile_abs mlbs then (nil,mlbs)
-	       else let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
+	       else let val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
 		    in 
 			let val bdec = parse mlbfile
 			    val (ss, mlbs) = srcs_bdec T emptyA mlbfile mlbs bdec
