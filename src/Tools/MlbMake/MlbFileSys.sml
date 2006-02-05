@@ -29,11 +29,14 @@ structure MlbFileSys :> MLB_FILESYS =
       in if dir = "" then {cd_old = fn()=>(),file=file}
 	 else let val _ = conditionalInit ()
 	          val _ = OS.FileSys.chDir dir
+        (*    val _ = print ("Changed dir to: " ^ dir ^ "\n") *)
             val old_dir = !lib_list
             val _ = if OS.Path.isAbsolute dir
                     then lib_list := [dir]
                     else lib_list := dir :: old_dir
-	      in {cd_old=fn()=>(OS.FileSys.chDir (getDir old_dir) ; lib_list := old_dir), file=file}
+	      in {cd_old=fn()=>(OS.FileSys.chDir (getDir old_dir)
+                          (* ; print ("Changed dir to: " ^ (getDir old_dir) ^ "\n") *)
+                          ; lib_list := old_dir), file=file}
 	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
       end
     end

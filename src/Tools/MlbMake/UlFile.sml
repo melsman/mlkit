@@ -9,8 +9,8 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	    in print(s ^ "\n"); raise Fail s
 	    end
 
-	    fun doCD dir (f : unit -> 'a) : 'a =
-		let val {cd_old,...} = MlbFileSys.change_dir (dir^"/a")
+	    fun doCD file (f : unit -> 'a) : 'a =
+		let val {cd_old,...} = MlbFileSys.change_dir file
 		in (f() before cd_old())
 		    handle X => (cd_old(); raise X)
 	end
@@ -203,7 +203,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 				 val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n")
 				 val _ = print ("going into " ^ dir ^ "\n")
 *)
-				 val (S,C,M,B) = doCD dir (fn() => 
+				 val (S,C,M,B) = doCD mlbfile (fn() => 
 				       ulb phi (M.downArrow (M,dir)) (B.downArrow(B,dir)) 
 				       (Mlb.MLBFILEbdec (OS.Path.file mlbfile, SOME scriptpath)))
 (*				 val _ = print ("up again from " ^ dir ^ "\n") *)
@@ -240,8 +240,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 
 	fun from_mlbfile (phi:phi) (mlbfile:mlbfile) : ul =
 	    let val bdec = Mlb.parse mlbfile 
-		val dir = OS.Path.dir mlbfile
-		val (S,C,M,B) = doCD dir (fn () => ulb phi (M.empty) (B.empty) bdec)
+		val (S,C,M,B) = doCD mlbfile (fn () => ulb phi (M.empty) (B.empty) bdec)
 		val ul = SEQul(CODEFILESul (C.list C),
 			       SCRIPTSul (S.list S))
 	    in ul
