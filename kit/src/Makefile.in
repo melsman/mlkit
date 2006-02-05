@@ -81,7 +81,7 @@ mlkit_kam_nj: basics tester kitbench
 
 smlserver: smlserver_nj
 
-smlserver_kit: basics 
+smlserver_kit: basics mlbmake
 	$(MAKE) -C Tools/MspComp
 #	$(MAKE) -C Tools/MlbMake
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
@@ -94,7 +94,7 @@ smlserver_kit: basics
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 #	chmod a+x $(BINDIR)/smlserverc
 
-smlserver_nj: basics
+smlserver_nj: basics mlbmake
 	$(MAKE) -C Tools/MspComp
 	$(MAKE) -C Tools/MlbMake
 #	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
