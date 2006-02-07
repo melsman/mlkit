@@ -2,6 +2,12 @@ signature WEB_DB_HANDLE =
   sig
     (* Database handles *)
     type db
+    structure Lin : (* A linear order *) 
+      sig
+        type lin
+        val foldInc : ((string * string) * 'a -> 'a) -> 'a -> lin -> 'a
+        val foldDec : ((string * string) * 'a -> 'a) -> 'a -> lin -> 'a
+      end
 
     val getHandle       : unit -> db
     val putHandle       : db -> unit
@@ -28,6 +34,12 @@ signature WEB_DB_HANDLE =
                           -> quot -> unit
     val listDb          : db -> ((string->string)->'a) 
                           -> quot -> 'a list
+    val foldDbLin       : db -> ((string * string -> order) option * (Lin.lin * 'a->'a))  
+                          -> 'a -> quot -> 'a
+    val appDbLin        : db -> ((string * string -> order) option * (Lin.lin->'a))
+                          -> quot -> unit
+    val listDbLin       : db -> ((string * string -> order) option * (Lin.lin->'a))
+                          -> quot -> 'a list 
     val zeroOrOneRowDb  : db -> quot -> string list option
     val oneFieldDb      : db -> quot -> string 
     val zeroOrOneFieldDb: db -> quot -> string option
