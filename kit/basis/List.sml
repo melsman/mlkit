@@ -142,3 +142,4 @@ val app = List.app
 val map = List.map
 val foldr = List.foldr
 val foldl = List.foldl
+exception Empty = List.Empty
