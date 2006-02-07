@@ -155,20 +155,6 @@ struct
       in loop("", dirs)
       end
 
-
-(*
-    fun subDir "" = (fn p => p)
-      | subDir dir =
-	let 
-    fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
-    val dir_abs = mkAbs dir
-	    in fn p =>
-		let val p_abs = mkAbs p
-		in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
-		end
-	end
-*)
-
     fun dirMod dir file = if OS.Path.isAbsolute file then file
 			  else OS.Path.concat(dir,file)
 
