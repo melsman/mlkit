@@ -62,6 +62,7 @@ signature WEB_DB_BACKEND =
     val selectDb      : DbHandle -> quot -> DbResultSet
 	  val getRowDb      : DbResultSet -> (string -> (string option)) option
 	  val getRowListDb  : DbResultSet -> (string option list) option
+    val getRowListDb2 : DbResultSet -> (string list * (string option list) option)
     val dmlTransDb    : DbHandle -> (DbHandle -> 'a) -> 'a
   end
 
@@ -79,6 +80,7 @@ structure DbDummyBackend :> WEB_DB_BACKEND =
     val selectDb = getHandle
     val getRowDb = getHandle
     val getRowListDb = getHandle
+    val getRowListDb2 = getHandle
     val dmlTransDb = getHandle
   end
 
@@ -217,6 +219,9 @@ functor DbODBCBackend(type conn = int
                                         | 3 => NONE
                                         | i => raise Fail ("getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
                              end 
+
+    fun getRowListDb2 (h,f,l) = (l,getRowListDb(h,f,l))
+
     fun selectDb x y = (selectDb' x y) handle Fail z => (log z; raise Fail z)
     val getRowDb = fn (h,f,l) => (Option.map f (getRowListDb (h,f,l))) handle Fail z => (log z; raise Fail z)
                                      
@@ -383,6 +388,9 @@ functor DbOracleBackend(type conn = int
                                         | 3 => NONE
                                         | i => raise Fail ("getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
                              end 
+
+    fun getRowListDb2 (h,f,l) = (l,getRowListDb(h,f,l))
+
     val getRowDb = fn (h,f,l) => Option.map f (getRowListDb (h,f,l))
                                      
     fun dmlTransDb h f = case !h of NONE => raise Fail "Session is closed"

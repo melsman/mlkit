@@ -122,6 +122,61 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
  
   fun listDb db f sql = listDbN db (fn g => f(fn x=> getOpt(g x, "##"))) sql
 
+  structure Lin =
+    struct
+      type lin = (string * string) list
+      fun sort2 order l = Listsort.sort (fn ((a,x),(b,y)) => case order (x,y)
+                                                             of LESS => LESS 
+                                                              | GREATER => GREATER
+                                                              | EQUAL => String.compare (a,b)) l
+      val foldInc = List.foldl
+      val foldDec = List.foldr
+    end
+
+  fun foldDbLin db (order,f) acc sql = 
+       let
+         val s = DbBackend.selectDb db sql
+         fun loop acc = 
+           case DbBackend.getRowListDb2 s
+           of (l,SOME x) => f ((case order
+                               of NONE => (fn x => x)
+                                | SOME order => Lin.sort2 order)
+                              (ListPair.zip (l, List.map (fn i => Option.getOpt (i,"##")) x)),acc)
+
+            | (_,NONE) => acc 
+       in
+         loop acc
+       end
+           
+	fun appDbLin db (order,f) sql : unit =
+	  let 
+	    val s = DbBackend.selectDb db sql
+	    fun loop () : unit =
+	      case DbBackend.getRowListDb2 s
+        of (l,SOME x) => (f ((case order
+                             of NONE => (fn x => x)
+                              | SOME order => Lin.sort2 order)
+                              (ListPair.zip (l, List.map (fn i => Option.getOpt (i,"##")) x))); loop ())
+         | (_,NONE) => ()
+	  in loop ()
+	  end
+  
+	fun listDbLin db (order,f) sql : 'a list = 
+	  let 
+	    val s = DbBackend.selectDb db sql
+	    fun loop () : 'a list =
+	      case DbBackend.getRowListDb2 s
+        of (l,SOME x) => (f ((case order
+                             of NONE => (fn x => x)
+                              | SOME order => Lin.sort2 order)
+                              (ListPair.zip (l, List.map (fn i => Option.getOpt (i,"##")) x)) ):: loop())
+         | (_,NONE) => []
+	  in 
+	    loop ()
+	  end
+ 
+
+
   fun oneWrap f m db sql = let val s = DbBackend.selectDb db sql 
                              val res = f s
                          in case DbBackend.getRowDb s of NONE => res
@@ -199,6 +254,8 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
          end
     end (* structure Handle *)
 
+    structure Lin = Handle.Lin
+
     fun dml (q: quot) : unit = Handle.wrapDb (fn db => Handle.dmlDb db q)
     fun exec (q: quot) : unit = Handle.wrapDb (fn db => Handle.execDb db q)    
     
@@ -218,6 +275,15 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 
     fun list (f:(string->string)->'a) (sql:quot) : 'a list = 
       Handle.wrapDb (fn db => Handle.listDb db f sql)
+
+    fun foldLin (order,f) (acc:'a) (sql:quot) : 'a =
+      Handle.wrapDb (fn db => Handle.foldDbLin db (order,f) acc sql)
+
+    fun appLin (order,f) (sql:quot) : unit =
+      Handle.wrapDb (fn db => Handle.appDbLin db (order,f) sql)
+
+    fun listLin (order,f) (sql:quot) : 'a list = 
+      Handle.wrapDb (fn db => Handle.listDbLin db (order,f) sql)
 
     fun oneField (sql : quot) : string = 
       Handle.wrapDb (fn db => Handle.oneFieldDb db sql)
