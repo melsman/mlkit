@@ -97,8 +97,6 @@ signature STATOBJECT =
 	          (*needed by compiler. the returned list is sorted
 		   (non-ascending) with respect to Lab.<*)
 	    val to_pair             : RecType -> Type * Type
-
-	    val pu                  : RecType Pickle.pu
 	  end
 	val from_pair               : Type * Type -> Type
 	val from_triple             : Type * Type * Type -> Type

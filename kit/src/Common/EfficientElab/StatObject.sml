@@ -182,7 +182,7 @@ structure StatObject: STATOBJECT =
 
     and norm_RecType rt =
 	case findRecType rt of
-	    NILrec => rt
+	    NILrec => NILrec
 	  | VARrec _ => die "norm_RecType.uninstantiated rowvar"
 	  | ROWrec (l,t,rt) => ROWrec(l,norm_Type t, norm_RecType rt)
 
@@ -218,7 +218,8 @@ structure StatObject: STATOBJECT =
 
     fun swap (x,y) = (y,x)
 	
-    val (pu_TypeDesc, pu_RecType) =
+    local
+      val (pu_TypeDesc, _) =
 	let fun TypeDescToInt (TYVAR _) = 0
 	      | TypeDescToInt (ARROW _) = 1
 	      | TypeDescToInt (RECTYPE _) = 2
@@ -252,8 +253,9 @@ structure StatObject: STATOBJECT =
 	in Pickle.data2Gen("StatObject.TypeDesc",TypeDescToInt,TypeDescFuns,
 			   "StatObject.RecType",RecTypeToInt,RecTypeFuns)
 	end
-
-    val pu_Type = pu_Type pu_TypeDesc
+    in
+      val pu_Type = pu_Type pu_TypeDesc
+    end
 
     structure TyVar = 
       struct
@@ -771,8 +773,6 @@ structure StatObject: STATOBJECT =
 		       | NONE => NILrec)
 			   (BasisCompat.ListPair.zipEq (dom,range))
 	  end handle BasisCompat.ListPair.UnequalLengths => die "RecType.sort"
-
-	val pu = pu_RecType
 
       end (*RecType*)
 
