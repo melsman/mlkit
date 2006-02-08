@@ -25,6 +25,7 @@
     Web.sml  
     DbFunctor.sml 
     Db.sml
+    DbClob.sml
   end
     
   HTML.sml
