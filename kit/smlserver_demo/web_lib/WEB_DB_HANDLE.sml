@@ -7,7 +7,8 @@ signature WEB_DB_HANDLE =
         type lin
         val foldInc : ((string * string option) * 'a -> 'a) -> 'a -> lin -> 'a
         val foldDec : ((string * string option) * 'a -> 'a) -> 'a -> lin -> 'a
-        val toFun : lin -> string -> string option option
+        val toFun   : lin -> string -> string option option
+        val toList  : lin -> (string * string option) list
       end
 
     val getHandle       : unit -> db
