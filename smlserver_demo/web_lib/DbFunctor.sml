@@ -131,6 +131,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
                                                               | EQUAL => String.compare (a,b)) l
       val foldInc = List.foldl
       val foldDec = List.foldr
+      fun toList x = x
       local
         fun find f [] = NONE
           | find f ((x,y)::xr) = if f x then SOME y else find f xr
