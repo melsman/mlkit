@@ -4,9 +4,10 @@ signature WEB_DB_HANDLE =
     type db
     structure Lin : (* A linear order *) 
       sig
-        type lin
-        val foldInc : ((string * string) * 'a -> 'a) -> 'a -> lin -> 'a
-        val foldDec : ((string * string) * 'a -> 'a) -> 'a -> lin -> 'a
+        type 'b lin
+        val foldInc : ('b * 'a -> 'a) -> 'a -> 'b lin -> 'a
+        val foldDec : ('b * 'a -> 'a) -> 'a -> 'b lin -> 'a
+        val toFun : lin -> string -> string option option
       end
 
     val getHandle       : unit -> db
@@ -34,11 +35,11 @@ signature WEB_DB_HANDLE =
                           -> quot -> unit
     val listDb          : db -> ((string->string)->'a) 
                           -> quot -> 'a list
-    val foldDbLin       : db -> ((string * string -> order) option * (Lin.lin * 'a->'a))  
+    val foldDbLin       : db -> ((string option * string option -> order) option * (Lin.lin * 'a->'a))  
                           -> 'a -> quot -> 'a
-    val appDbLin        : db -> ((string * string -> order) option * (Lin.lin->'a))
+    val appDbLin        : db -> ((string option * string option -> order) option * (Lin.lin->'a))
                           -> quot -> unit
-    val listDbLin       : db -> ((string * string -> order) option * (Lin.lin->'a))
+    val listDbLin       : db -> ((string option * string option -> order) option * (Lin.lin->'a))
                           -> quot -> 'a list 
     val zeroOrOneRowDb  : db -> quot -> string list option
     val oneFieldDb      : db -> quot -> string 

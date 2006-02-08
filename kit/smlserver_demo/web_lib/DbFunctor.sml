@@ -124,13 +124,19 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 
   structure Lin =
     struct
-      type lin = (string * string) list
+      type lin = (string * string option) list
       fun sort2 order l = Listsort.sort (fn ((a,x),(b,y)) => case order (x,y)
                                                              of LESS => LESS 
                                                               | GREATER => GREATER
                                                               | EQUAL => String.compare (a,b)) l
       val foldInc = List.foldl
       val foldDec = List.foldr
+      local
+        fun find f [] = NONE
+          | find f ((x,y)::xr) = if f x then SOME y else find f xr
+      in
+        fun toFun l x = find (fn y => y = x) l
+      end
     end
 
   fun foldDbLin db (order,f) acc sql = 
@@ -141,7 +147,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
            of (l,SOME x) => f ((case order
                                of NONE => (fn x => x)
                                 | SOME order => Lin.sort2 order)
-                              (ListPair.zip (l, List.map (fn i => Option.getOpt (i,"##")) x)),acc)
+                              (ListPair.zip (l,x)),acc)
 
             | (_,NONE) => acc 
        in
@@ -156,7 +162,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
         of (l,SOME x) => (f ((case order
                              of NONE => (fn x => x)
                               | SOME order => Lin.sort2 order)
-                              (ListPair.zip (l, List.map (fn i => Option.getOpt (i,"##")) x))); loop ())
+                              (ListPair.zip (l, x))); loop ())
          | (_,NONE) => ()
 	  in loop ()
 	  end
@@ -169,7 +175,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
         of (l,SOME x) => (f ((case order
                              of NONE => (fn x => x)
                               | SOME order => Lin.sort2 order)
-                              (ListPair.zip (l, List.map (fn i => Option.getOpt (i,"##")) x)) ):: loop())
+                              (ListPair.zip (l, x))):: loop())
          | (_,NONE) => []
 	  in 
 	    loop ()

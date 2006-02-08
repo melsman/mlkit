@@ -24,11 +24,11 @@ signature WEB_DB =
                         -> unit
     val list          : ((string->string)->'a) -> quot 
                         -> 'a list
-    val foldLin       : ((string * string -> order) option * (Handle.Lin.lin * 'a->'a))  
+    val foldLin       : ((string option * string option -> order) option * (Handle.Lin.lin * 'a->'a))  
                           -> 'a -> quot -> 'a
-    val appLin        : ((string * string -> order) option * (Handle.Lin.lin->'a))
+    val appLin        : ((string option * string option -> order) option * (Handle.Lin.lin->'a))
                           -> quot -> unit
-    val listLin       : ((string * string -> order) option * (Handle.Lin.lin->'a))
+    val listLin       : ((string option * string option -> order) option * (Handle.Lin.lin->'a))
                           -> quot -> 'a list 
     val oneField      : quot -> string 
     val zeroOrOneField: quot -> string option
