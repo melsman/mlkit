@@ -268,7 +268,13 @@ val _ = ptest "test20c" test20c
 val test20d = testbin StringCvt.HEX (op andb) "ffffffffffff" "ffaffffffffa" "ffaffffffffa"
 val _ = ptest "test20d" test20d
 
-
-
 end
+
+(* overloading resolution *)
+
+val test21a = check ( (4:intinf) div 2 = 2 )
+val _ = ptest "test21a" test21a
+
+val test21b = check ( (4:intinf) mod 2 = 0 )
+val _ = ptest "test21b" test21b
 
