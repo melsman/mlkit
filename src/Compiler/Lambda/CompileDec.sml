@@ -1860,7 +1860,11 @@ end; (*match compiler local*)
 	      in unoverload env info result [arg']
 	      end
 	    else
-	      (case arg of 
+              let val exn_args = case ElabInfo.to_OverloadingInfo info of
+	                            NONE => die "overloaded_prim.no overloading info"
+                                  | SOME OverloadingInfo.RESOLVED_INTINF => nil
+                                  | SOME _ => exn_args
+              in case arg of 
 		 RECORDatexp(_,
 			     SOME(EXPROW(_,_,exp1,
 					 SOME(EXPROW(_,_,exp2,NONE))))) =>
@@ -1868,7 +1872,8 @@ end; (*match compiler local*)
 		     val exp2' = compilerExp exp2
 		 in unoverload env info result (exp1' :: exp2' :: exn_args)
 		 end
-	       | _ => die "overloaded_prim")
+	       | _ => die "overloaded_prim"
+              end
 
       fun overloaded_prim_fn env info result (*e.g., CE.ABS*)
 	takes_one_argument exn_args =
@@ -1878,6 +1883,8 @@ end; (*match compiler local*)
 		 intinf=fn() => intinfType,
 		 word8=wordDefaultType, word31=fn() => word31Type,
 		 word32=fn() => word32Type, real=fn() => realType}
+	      val exn_args = if LambdaBasics.eq_Type(LambdaExp.intinfType,ty) then nil
+	                     else exn_args
 	      val lvar1 = Lvars.newLvar ()
 	    in
 	      if takes_one_argument then
