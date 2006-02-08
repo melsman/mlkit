@@ -4,9 +4,9 @@ signature WEB_DB_HANDLE =
     type db
     structure Lin : (* A linear order *) 
       sig
-        type 'b lin
-        val foldInc : ('b * 'a -> 'a) -> 'a -> 'b lin -> 'a
-        val foldDec : ('b * 'a -> 'a) -> 'a -> 'b lin -> 'a
+        type lin
+        val foldInc : ((string * string option) * 'a -> 'a) -> 'a -> 'b lin -> 'a
+        val foldDec : ((string * string option) * 'a -> 'a) -> 'a -> 'b lin -> 'a
         val toFun : lin -> string -> string option option
       end
 
