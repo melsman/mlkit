@@ -125,68 +125,6 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
  
   fun listDb db f sql = listDbCol db (fn _ => fn g => f(fn x=> getOpt(g x, "##"))) sql
 
-  (*structure Lin =
-    struct
-      type lin = (string * string option) list
-      fun sort2 order l = Listsort.sort (fn ((a,x),(b,y)) => case order (x,y)
-                                                             of LESS => LESS 
-                                                              | GREATER => GREATER
-                                                              | EQUAL => String.compare (a,b)) l
-      val foldInc = List.foldl
-      val foldDec = List.foldr
-      fun toList x = x
-      local
-        fun find f [] = NONE
-          | find f ((x,y)::xr) = if f x then SOME y else find f xr
-      in
-        fun toFun l x = find (fn y => y = x) l
-      end
-    end
-
-  fun foldDbLin db (order,f) acc sql = 
-       let
-         val s = DbBackend.selectDb db sql
-         fun loop acc = 
-           case DbBackend.getRowListDb2 s
-           of (l,SOME x) => f ((case order
-                               of NONE => (fn x => x)
-                                | SOME order => Lin.sort2 order)
-                              (ListPair.zip (l,x)),acc)
-
-            | (_,NONE) => acc 
-       in
-         loop acc
-       end
-           
-	fun appDbLin db (order,f) sql : unit =
-	  let 
-	    val s = DbBackend.selectDb db sql
-	    fun loop () : unit =
-	      case DbBackend.getRowListDb2 s
-        of (l,SOME x) => (f ((case order
-                             of NONE => (fn x => x)
-                              | SOME order => Lin.sort2 order)
-                              (ListPair.zip (l, x))); loop ())
-         | (_,NONE) => ()
-	  in loop ()
-	  end
-  
-	fun listDbLin db (order,f) sql : 'a list = 
-	  let 
-	    val s = DbBackend.selectDb db sql
-	    fun loop () : 'a list =
-	      case DbBackend.getRowListDb2 s
-        of (l,SOME x) => (f ((case order
-                             of NONE => (fn x => x)
-                              | SOME order => Lin.sort2 order)
-                              (ListPair.zip (l, x))):: loop())
-         | (_,NONE) => []
-	  in 
-	    loop ()
-	  end *)
- 
-
-
   fun oneWrap f m db sql = let val (s,r) = DbBackend.selectDb db sql 
                              val res = f s
                          in case DbBackend.getRowDb s of NONE => res

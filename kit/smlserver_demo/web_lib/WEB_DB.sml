@@ -30,12 +30,6 @@ signature WEB_DB =
                         -> 'a list
     val listCol       : (string list -> (string->string option)->'a) -> quot 
                         -> 'a list
-(*    val foldLin       : ((string option * string option -> order) option * (Handle.Lin.lin * 'a->'a))  
-                          -> 'a -> quot -> 'a
-    val appLin        : ((string option * string option -> order) option * (Handle.Lin.lin->'a))
-                          -> quot -> unit
-    val listLin       : ((string option * string option -> order) option * (Handle.Lin.lin->'a))
-                          -> quot -> 'a list  *)
     val oneField      : quot -> string 
     val zeroOrOneField: quot -> string option
     val oneRow        : quot -> string list
