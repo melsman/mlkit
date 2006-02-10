@@ -88,41 +88,44 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
 	  dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
-	fun foldDbN (db:db) (f:(string->string option)*'a->'a) (acc:'a) (sql:quot) : 'a =
+	fun foldDbCol (db:db) (f:string list -> (string->string option)*'a->'a) (acc:'a) (sql:quot) : 'a =
 	  let 
-	    val s = DbBackend.selectDb db sql
+	    val (s,r) = DbBackend.selectDb db sql
+      val f' = f r
 	    fun loop (acc:'a) : 'a =
-	      case DbBackend.getRowDb s of SOME g => loop (f(g,acc))
+	      case DbBackend.getRowDb s of SOME g => loop (f'(g,acc))
                                    | NONE => acc
 	  in loop acc
 	  end
 
-  fun foldDb (db : db) f acc sql = foldDbN db (fn (g,a) => f(fn x => getOpt(g x, "##"),a)) acc sql
+  fun foldDb (db : db) f acc sql = foldDbCol db (fn _ => fn (g,a) => f (fn x => getOpt(g x, "##"),a)) acc sql
 
-	fun appDbN (db:db) (f:(string->string option)->'a) (sql:quot) : unit =
+	fun appDbCol (db:db) (f:string list -> (string->string option)->'a) (sql:quot) : unit =
 	  let 
-	    val s = DbBackend.selectDb db sql
+	    val (s,r) = DbBackend.selectDb db sql
+      val f' = f r
 	    fun loop () : unit =
-	      case DbBackend.getRowDb s of SOME g => (f g; loop ())
+	      case DbBackend.getRowDb s of SOME g => (f' g; loop ())
                                    | NONE => ()
 	  in loop ()
 	  end
   
-  fun appDb db f sql = appDbN db (fn g => f(fn x=> getOpt(g x, "##"))) sql
+  fun appDb db f sql = appDbCol db (fn _ => fn g => f(fn x=> getOpt(g x, "##"))) sql
 
-	fun listDbN (db:db) (f:(string->string option)->'a) (sql: quot) : 'a list = 
+	fun listDbCol (db:db) (f:string list -> (string->string option)->'a) (sql: quot) : 'a list = 
 	  let 
-	    val s = DbBackend.selectDb db sql
+	    val (s,r) = DbBackend.selectDb db sql
+      val f' = f r
 	    fun loop () : 'a list =
-	      case DbBackend.getRowDb s of SOME g => f g :: loop()
+	      case DbBackend.getRowDb s of SOME g => f' g :: loop()
                                    | NONE => []
 	  in 
 	    loop ()
 	  end
  
-  fun listDb db f sql = listDbN db (fn g => f(fn x=> getOpt(g x, "##"))) sql
+  fun listDb db f sql = listDbCol db (fn _ => fn g => f(fn x=> getOpt(g x, "##"))) sql
 
-  structure Lin =
+  (*structure Lin =
     struct
       type lin = (string * string option) list
       fun sort2 order l = Listsort.sort (fn ((a,x),(b,y)) => case order (x,y)
@@ -180,11 +183,11 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
          | (_,NONE) => []
 	  in 
 	    loop ()
-	  end
+	  end *)
  
 
 
-  fun oneWrap f m db sql = let val s = DbBackend.selectDb db sql 
+  fun oneWrap f m db sql = let val (s,r) = DbBackend.selectDb db sql 
                              val res = f s
                          in case DbBackend.getRowDb s of NONE => res
                                                        | SOME _ => raise Fail (m ^ ".more than one row")
@@ -210,7 +213,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
   
 	fun oneRowDb' db (f:(string->string)->'a) (sql:quot) : 'a =
 	  let 
-	    val s = DbBackend.selectDb db sql
+	    val (s,_) = DbBackend.selectDb db sql
 	    val res =
 	      case DbBackend.getRowDb s of NONE => raise Fail "Db.oneRowDb'.no rows"
                                    | SOME g => f(fn x=> getOpt(g x,"##"))
@@ -224,7 +227,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 
 	fun zeroOrOneRowDb' db f sql : 'a option =
 	  let 
-	    val s = DbBackend.selectDb db sql
+	    val (s,_) = DbBackend.selectDb db sql
       val res = Option.map (fn g => f(fn y => getOpt(g y, "##"))) (DbBackend.getRowDb s)
 	  in
 	    case DbBackend.getRowDb s of NONE => res
@@ -232,7 +235,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	  end
 
 	fun existsOneRowDb db sql : bool =
-	  let val s = DbBackend.selectDb db sql
+	  let val (s,_) = DbBackend.selectDb db sql
     in case DbBackend.getRowDb s of NONE => false
                                   | SOME _ => true
 	  end
@@ -261,8 +264,6 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
          end
     end (* structure Handle *)
 
-    structure Lin = Handle.Lin
-
     fun dml (q: quot) : unit = Handle.wrapDb (fn db => Handle.dmlDb db q)
     fun exec (q: quot) : unit = Handle.wrapDb (fn db => Handle.execDb db q)    
     
@@ -277,20 +278,20 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
     fun fold (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
       Handle.wrapDb (fn db => Handle.foldDb db f acc sql)
 
+    fun foldCol (f:string list -> (string->string option)*'a->'a) (acc:'a) (sql:quot) : 'a =
+      Handle.wrapDb (fn db => Handle.foldDbCol db f acc sql)
+
     fun app (f:(string->string)->'a) (sql:quot) : unit =
       Handle.wrapDb (fn db => Handle.appDb db f sql)
+
+    fun appCol (f:string list -> (string->string option)->'a) (sql:quot) : unit =
+      Handle.wrapDb (fn db => Handle.appDbCol db f sql)
 
     fun list (f:(string->string)->'a) (sql:quot) : 'a list = 
       Handle.wrapDb (fn db => Handle.listDb db f sql)
 
-    fun foldLin (order,f) (acc:'a) (sql:quot) : 'a =
-      Handle.wrapDb (fn db => Handle.foldDbLin db (order,f) acc sql)
-
-    fun appLin (order,f) (sql:quot) : unit =
-      Handle.wrapDb (fn db => Handle.appDbLin db (order,f) sql)
-
-    fun listLin (order,f) (sql:quot) : 'a list = 
-      Handle.wrapDb (fn db => Handle.listDbLin db (order,f) sql)
+    fun listCol (f:string list -> (string->string option)->'a) (sql:quot) : 'a list = 
+      Handle.wrapDb (fn db => Handle.listDbCol db f sql)
 
     fun oneField (sql : quot) : string = 
       Handle.wrapDb (fn db => Handle.oneFieldDb db sql)

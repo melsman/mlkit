@@ -2,14 +2,14 @@ signature WEB_DB_HANDLE =
   sig
     (* Database handles *)
     type db
-    structure Lin : (* A linear order *) 
+(*    structure Lin : (* A linear order *) 
       sig
         type lin
         val foldInc : ((string * string option) * 'a -> 'a) -> 'a -> lin -> 'a
         val foldDec : ((string * string option) * 'a -> 'a) -> 'a -> lin -> 'a
         val toFun   : lin -> string -> string option option
         val toList  : lin -> (string * string option) list
-      end
+      end*)
 
     val getHandle       : unit -> db
     val putHandle       : db -> unit
@@ -32,16 +32,22 @@ signature WEB_DB_HANDLE =
     (* Queries *)
     val foldDb          : db -> ((string->string)*'a->'a)  
                           -> 'a -> quot -> 'a
+    val foldDbCol       : db -> (string list -> (string -> string option) * 'a -> 'a)
+                             -> 'a -> quot -> 'a
     val appDb           : db -> ((string->string)->'a) 
+                          -> quot -> unit
+    val appDbCol        : db -> (string list -> (string->string option)->'a) 
                           -> quot -> unit
     val listDb          : db -> ((string->string)->'a) 
                           -> quot -> 'a list
-    val foldDbLin       : db -> ((string option * string option -> order) option * (Lin.lin * 'a->'a))  
+    val listDbCol       : db -> (string list -> (string->string option)->'a) 
+                          -> quot -> 'a list
+ (*   val foldDbLin       : db -> ((string option * string option -> order) option * (Lin.lin * 'a->'a))  
                           -> 'a -> quot -> 'a
     val appDbLin        : db -> ((string option * string option -> order) option * (Lin.lin->'a))
                           -> quot -> unit
     val listDbLin       : db -> ((string option * string option -> order) option * (Lin.lin->'a))
-                          -> quot -> 'a list 
+                          -> quot -> 'a list *)
     val zeroOrOneRowDb  : db -> quot -> string list option
     val oneFieldDb      : db -> quot -> string 
     val zeroOrOneFieldDb: db -> quot -> string option

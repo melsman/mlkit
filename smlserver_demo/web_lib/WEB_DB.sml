@@ -20,16 +20,22 @@ signature WEB_DB =
     (* Queries *)
     val fold          : ((string->string)*'a->'a) -> 'a 
                         -> quot -> 'a
+    val foldCol       : (string list -> (string->string option)*'a->'a) -> 'a 
+                        -> quot -> 'a
     val app           : ((string->string)->'a) -> quot 
+                        -> unit
+    val appCol        : (string list -> (string->string option)->'a) -> quot 
                         -> unit
     val list          : ((string->string)->'a) -> quot 
                         -> 'a list
-    val foldLin       : ((string option * string option -> order) option * (Handle.Lin.lin * 'a->'a))  
+    val listCol       : (string list -> (string->string option)->'a) -> quot 
+                        -> 'a list
+(*    val foldLin       : ((string option * string option -> order) option * (Handle.Lin.lin * 'a->'a))  
                           -> 'a -> quot -> 'a
     val appLin        : ((string option * string option -> order) option * (Handle.Lin.lin->'a))
                           -> quot -> unit
     val listLin       : ((string option * string option -> order) option * (Handle.Lin.lin->'a))
-                          -> quot -> 'a list 
+                          -> quot -> 'a list  *)
     val oneField      : quot -> string 
     val zeroOrOneField: quot -> string option
     val oneRow        : quot -> string list
