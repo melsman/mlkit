@@ -59,7 +59,7 @@ signature WEB_DB_BACKEND =
     val putHandle     : DbHandle -> unit
     val dmlDb         : DbHandle -> quot -> unit
 	  val execDb        : DbHandle -> quot -> unit
-    val selectDb      : DbHandle -> quot -> DbResultSet
+    val selectDb      : DbHandle -> quot -> (DbResultSet * string list)
 	  val getRowDb      : DbResultSet -> (string -> (string option)) option
 	  val getRowListDb  : DbResultSet -> (string option list) option
     val getRowListDb2 : DbResultSet -> (string list * (string option list) option)
@@ -203,7 +203,7 @@ functor DbODBCBackend(type conn = int
           in case res of 1 => (*DBData*) 
                              (let val res2 : string list = (log "apsmlODBCGetCNames" ;prim(":", ("apsmlODBCGetCNames",r,getReqRec())))
                                   val res3 = List.map toLower (List.rev res2)
-                              in (h, selector res3, res3)
+                              in ((h, selector res3, res3),res3)
                               end handle Overflow => 
                                      raise Fail "selectDb.Database connection failed")
                        | 2 => raise Fail "selectDb: SQL was not a select statement"
@@ -366,7 +366,7 @@ functor DbOracleBackend(type conn = int
           in case res of 1 => (*DBData*) 
                              (let val res2 : string list = (log "apsmlORAGetCNames" ;prim(":", ("apsmlORAGetCNames",r,getReqRec())))
                                   val res3 = List.map toLower (List.rev res2)
-                              in (h, selector res3, res3)
+                              in ((h, selector res3, res3),res3)
                               end handle Overflow => 
                                      raise Fail "selectDb.Database connection failed")
                        | 2 => raise Fail "selectDb: SQL was not a select statement"
