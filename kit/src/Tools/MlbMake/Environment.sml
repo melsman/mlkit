@@ -6,32 +6,39 @@ structure Environment :> ENVIRONMENT =
     structure BM = Binarymap
     val varMap = ref NONE : (string,string) BM.dict option ref
 
-    fun lookup l =(let val n = String.implode(List.rev l)
+    fun lookup l =(let
+                     val n = String.implode(List.rev l)
                    in
                      List.rev(String.explode(
-                      case OS.Process.getEnv n
-                      of NONE => ((BM.find (Option.valOf(!varMap), n))
-                                 handle BM.NotFound => raise ParseErr (n ^ " not defined"))
+                      case BM.peek (Option.valOf(!varMap), n)
+                      of NONE => (case OS.Process.getEnv n
+                                  of NONE => raise ParseErr (n ^ " not defined")
+                                   | SOME v => v)
                        | SOME v => v))
                    end)
 
-    fun myread Out [] [] acc = String.implode(List.rev acc)
-      | myread Out (#"$"::cc) [] acc = myread Dollar cc [] acc
-      | myread Out (#"\\"::cc) [] acc = myread (Esc Out) cc [] acc
-      | myread Out (c::cc) [] acc = myread Out cc [] (c::acc)
-      | myread Dollar (#"("::cc) [] acc = myread In cc [] acc
-      | myread In (#")"::cc) k acc = myread Out cc [] ((lookup k) @ acc)
-      | myread In (#"\\"::cc) k acc = myread (Esc In) cc k acc
-      | myread In (c::cc) k acc = myread In cc (c::k) acc
-      | myread (Esc In) (c::cc) k acc = (case c of #"$" => myread In cc (c :: k) acc
-                                                 | #"\\" => myread In cc (c :: k) acc
-                                                 | _ => raise ParseErr ("\\" ^ (Char.toString c) ^
-                                                                         " not an escape character"))
-      | myread (Esc Out) (c::cc) k acc = (case c of #"$" => myread Out cc (c :: k) acc
-                                                  | #"\\" => myread Out cc (c :: k) acc
-                                                  | _ => raise ParseErr ("\\" ^ (Char.toString c) ^
-                                                                         " not an escape character"))
-      | myread _ _ _ _ = raise ParseErr "Invalid character sequence"
+    fun escapeChars #"\\" = #"\\"
+      | escapeChars #"$" = #"$"
+      | escapeChars #"n" = #"\n"
+      | escapeChars #"r" = #"\r"
+      | escapeChars #"t" = #"\t"
+      | escapeChars c = raise ParseErr ("\\" ^ (Char.toString c) ^ " not an escape character")
+
+    fun myread x =
+      let
+        fun
+        myread (#"$",(Out,[],acc)) = (Dollar,[],acc)
+      | myread (#"\\",(Out,[],acc)) = (Esc Out,[],acc)
+      | myread (c,(Out,[],acc)) = (Out,[],(c::acc))
+      | myread (#"(",(Dollar,[],acc)) = (In,[],acc)
+      | myread (#")",(In,k,acc)) = (Out,[],(lookup k) @ acc)
+      | myread (#"\\",(In,k,acc)) = ((Esc In),k,acc)
+      | myread (c,(In,k,acc)) = (In,(c::k),acc)
+      | myread (c,((Esc In),k,acc)) = (In,(escapeChars c :: k),acc)
+      | myread (c,((Esc Out),k,acc)) = (Out,(escapeChars c :: k),acc)
+      | myread _ = raise ParseErr "Invalid character sequence"
+      in CharVector.fromList (List.rev (#3 (CharVector.foldl myread (Out,[],[]) x)))
+      end
 
     fun toMap l =
           let
@@ -43,7 +50,7 @@ structure Environment :> ENVIRONMENT =
                            raise ParseErr ("Bad sequence of tokens in definition of: " ^
                                            (List.nth(tokens,0)))
             val (lv,def) = Option.valOf line
-            val def' = myread Out (String.explode def) [] []
+            val def' = myread def
           in varMap := SOME(BM.insert(Option.valOf (!varMap), lv, def'))
           end
 
@@ -77,7 +84,7 @@ structure Environment :> ENVIRONMENT =
                                                 handle FileNotFound => ()
                                                      | ParseErr s => 
                                                          raise ParseErr ("In file: " ^ x' ^ " " ^ s)
-                                                     | ? => raise ?)) files
+                                    )) files
               end
            | SOME _ => ()
 
