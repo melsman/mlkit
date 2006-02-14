@@ -149,6 +149,15 @@ set_sml_path (cmd_parms * cmd, void *mconfig, const char *path)       /*{{{ */
   return NULL;
 }       /*}}} */
 
+static const char *
+set_auxdata(cmd_parms *cmd, void *mconfig, const char *aux)
+{
+  InterpContext *ctx =
+    ap_get_module_config (cmd->server->module_config, &sml_module);
+  ctx->auxdata = (char *) aux;
+  return NULL;
+}
+
 static const 
 command_rec mod_sml_cmds[] = /*{{{ */
 {
@@ -162,22 +171,20 @@ command_rec mod_sml_cmds[] = /*{{{ */
      "SMLSYNTAX ERR SmlPath"),
   AP_INIT_FLAG ("SmlExtendedTyping", setXt, NULL, RSRC_CONF,
     "SMLSYNTAX ERR SmlExtendedTyping"),
+  AP_INIT_TAKE1 ("SmlAuxData", set_auxdata, NULL, RSRC_CONF,
+      "SMLSYNTAX ERR SmlAuxData"),
   {NULL}
 };        /*}}} */
 
 static void *
 perserver_init (apr_pool_t * p, server_rec * s) //{{{
 {
+  // apr_pcalloc return memory reset to 0
   InterpContext *ctx =
     (InterpContext *) apr_pcalloc (p, sizeof (InterpContext));
 
   ctx->prjid = DEFAULT_PRJID;
   ctx->extendedtyping = DEFAULT_XT;
-  ctx->initscript = NULL;
-  ctx->trapscript = NULL;
-  ctx->smlpath = NULL;
-  ctx->conftable = NULL;
-  ctx->cachetable = NULL;
   return (void *) ctx;
 }       //}}}
 
@@ -593,7 +600,7 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   if (rd->request)
   {
     ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
-       "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
+       "mod_sml: pid: %ld, Notice ul-file has time %ld", (long) rd->ctx->pid, (long) t);
   }
   else
   {

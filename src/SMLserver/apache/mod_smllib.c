@@ -281,6 +281,22 @@ apsml_PageRoot (Region rAddr, request_data * rd)	/*{{{ */
 
 // ML: () -> string ptr_option
 String
+sml_getAuxData(Region r, request_data *rd)
+{
+  String s;
+  if (rd->ctx->auxdata)
+  {
+    s = convertStringToML(r, rd->ctx->auxdata);
+  }
+  else
+  {
+    s = NULL;
+  }
+  return s;
+}
+
+// ML: () -> string ptr_option
+String
 apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)

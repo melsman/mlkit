@@ -40,6 +40,13 @@ functor WebInfo (type conn = int
        end
   end
 
+  fun getAuxConfigData () = 
+        let
+          val a = prim("sml_getAuxData", getReqRec()) : string
+        in
+          if isNull a then NONE else SOME a
+        end
+
 (*
   val safeNameCheck = RegExp.fromString "[ -9;-~]+" (* ascii 0x20 - 0x39 or 0x3B - 0x7E *) 
 *)                                                    (* Thus any printable char <> :     *)

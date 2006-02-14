@@ -18,6 +18,7 @@ signature WEB_INFO = sig
                                * 'a Type.Type * string * 'a) ->
                                  unit
   val pageRoot            : unit -> string
+  val getAuxConfigData    : unit -> string option
 end
 
 (*
@@ -45,5 +46,8 @@ end
 
  [pageRoot()] returns the directory for which the server
  serves pages.
+
+ [getAuxConfigData()] returns some string if SmlAuxData is defined 
+ in you webserver configuration file and NONE otherwise.
 
 *)
