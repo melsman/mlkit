@@ -1,0 +1,64 @@
+open MlbSyntax
+
+%%
+
+%term OPEN | LET | LOCAL | IN | END | BAS | BASIS | SCRIPTPATH | ANN | EQUALOP | EOF
+    | SCRIPTS
+    | STRING of string | FILE of string | BID of string | PATH of string
+
+%nonterm annPlus of string list
+       | fileStar of string list
+       | bidPlus of string list
+       | scriptPathQMark of string option
+       | basexp of bexp
+       | basdec of bdec
+       | basdecStar of bdec
+       | mlb of bdec
+
+%pos int
+
+%name MLB
+
+%keyword OPEN LET LOCAL IN END BAS BASIS SCRIPTPATH ANN 
+%verbose
+%eop EOF
+%noshift EOF
+
+
+%%
+
+mlb:
+    basdecStar                                  ( basdecStar )
+basdecStar:                          
+    (* empty *)                                 ( EMPTYbdec )
+  | basdec basdecStar                           ( SEQbdec(basdec,basdecStar) )
+basdec:
+    LOCAL basdecStar IN basdecStar END          ( LOCALbdec(basdecStar1, basdecStar2) )
+  | BASIS BID EQUALOP basexp                    ( BASISbdec (BID, basexp) )
+  | OPEN bidPlus                                ( OPENbdec bidPlus )
+  | SCRIPTS fileStar END                        ( SCRIPTSbdec fileStar )
+  | ANN annPlus IN basdecStar END                 ( ANNbdec (annPlus, basdecStar) )
+  | FILE scriptPathQMark                        ( let
+                                                    val f = FILE
+                                                    val f' = expand FILE
+                                                  in if is_mlb f'
+                                                     then MLBFILEbdec (f', scriptPathQMark)
+                                                     else ATBDECbdec f'
+                                                  end )
+basexp:
+    LET basdecStar IN basexp END                ( LETbexp (basdecStar, basexp) )
+  | BAS basdecStar END                          ( BASbexp basdecStar )
+  | BID                                         ( LONGBIDbexp BID )
+scriptPathQMark:
+    (* empty *)                                 ( NONE )
+  | SCRIPTPATH PATH                             ( SOME PATH )
+bidPlus:
+    BID                                         ( [BID] )
+  | BID bidPlus                                 ( BID :: bidPlus )
+fileStar:                             
+    (* empty *)                                 ( [] )
+  | FILE fileStar                               ( FILE :: fileStar )
+annPlus:
+    STRING                                      ( [STRING] )
+  | STRING annPlus                              ( STRING::annPlus )
+
