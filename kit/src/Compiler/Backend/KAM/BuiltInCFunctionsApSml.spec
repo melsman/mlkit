@@ -51,3 +51,4 @@ apsml_reg_schedule
 apsml_getpage
 getMaxHeapPoolSz
 setMaxHeapPoolSz
+sml_getAuxData

@@ -57,6 +57,7 @@ typedef struct
   char *trapscript;
   char *initscript;
   char *smlpath;
+  char *auxdata;
   int extendedtyping;
   char *ulFileName;
   time_t timeStamp;
