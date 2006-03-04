@@ -376,10 +376,10 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{
 
 // ML () -> set
 int
-apsml_setCreate (request_data * rd)	/*{{{ */
+apsml_setCreate (request_data * rd,int n)	/*{{{ */
 {
 //      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml_setCreate");
-  apr_table_t *t = apr_table_make (rd->pool, 5);
+  apr_table_t *t = apr_table_make (rd->pool, n);
   return (int) t;
 }				/*}}} */
 
@@ -525,11 +525,17 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
 
 // ML: unit -> set
 int
-apsml_headers (int rd1)		/*{{{ */
+apsml_headers (request_data *rd)		/*{{{ */
 {
-  request_data *rd = (request_data *) rd1;
   request_rec *r = rd->request;
 //  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
+  if (!r) 
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+		  "apsml_headers called without a connection");
+    raise_exn ((int) &exn_OVERFLOW);
+    return 0;
+  }
   if (r->headers_in)
   {
 //                ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers in exists");
@@ -538,7 +544,7 @@ apsml_headers (int rd1)		/*{{{ */
   else
   {
 //                ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers in creating");
-    return apsml_setCreate (rd);
+    return apsml_setCreate (rd,0);
   }
 }				/*}}} */
 
@@ -655,7 +661,7 @@ apsml_scheme (Region rAddr, request_data * rd)	/*{{{ */
   if (rd->request == 0)
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_method called without a connection");
+		    "apsml_scheme called without a connection");
       raise_exn ((int) &exn_OVERFLOW);
       return 0;
     }

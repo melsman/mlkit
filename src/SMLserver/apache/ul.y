@@ -50,14 +50,18 @@ Fil:
 ;
 UlIncludeList:
    /* empty */ { $$ = NULL}
- | UlIncludeList ULFILE SCRIPTS AS LOC { if (toUlHashTable (ctx,$2.ptr, $2.len, $5.ptr, $5.len) != Parse_OK) YYABORT; $$=NULL; }
+ | UlIncludeList ULFILE SCRIPTS AS LOC { if (toUlHashTable (ctx,$2.ptr, $2.len, $5.ptr, $5.len) != Parse_OK) YYABORT;
+                                         $$=NULL; free($2.ptr); free($5.ptr); }
 ;
 UoIncludeList: 
    /* empty */ { $$ = NULL}
- | UoIncludeList UOFILE { if (extendInterp(ctx, $2.ptr, $2.len) != Parse_OK) YYABORT; $$=NULL;}
+ | UoIncludeList UOFILE { if (extendInterp(ctx, $2.ptr, $2.len) != Parse_OK) YYABORT;
+                          $$=NULL; free($2.ptr);}
 ;
 SmlIncludeList:
    /* empty */ { $$ = NULL}
- | SmlIncludeList UOFILE AS SMLFILE { if (toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len) != Parse_OK) YYABORT; $$=NULL; }
- | SmlIncludeList UOFILE { if (toSmlHashTable(ctx,$2.ptr,$2.len,NULL, 0) != Parse_OK) YYABORT; $$=NULL; }
+ | SmlIncludeList UOFILE AS SMLFILE { if (toSmlHashTable(ctx,$2.ptr, $2.len, $4.ptr, $4.len) != Parse_OK) YYABORT;
+                                      $$=NULL; free($2.ptr); free($4.ptr);}
+ | SmlIncludeList UOFILE { if (toSmlHashTable(ctx,$2.ptr,$2.len,NULL, 0) != Parse_OK) YYABORT;
+                           $$=NULL; free($2.ptr);}
 ;

@@ -150,13 +150,13 @@ set_sml_path (cmd_parms * cmd, void *mconfig, const char *path)       /*{{{ */
 }       /*}}} */
 
 static const char *
-set_auxdata(cmd_parms *cmd, void *mconfig, const char *aux)
+set_auxdata(cmd_parms *cmd, void *mconfig, const char *aux)/*{{{*/
 {
   InterpContext *ctx =
     ap_get_module_config (cmd->server->module_config, &sml_module);
   ctx->auxdata = (char *) aux;
   return NULL;
-}
+}/*}}}*/
 
 static const 
 command_rec mod_sml_cmds[] = /*{{{ */
