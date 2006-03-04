@@ -96,7 +96,7 @@ smlserver_kit: basics mlbmake
 
 smlserver_nj: basics mlbmake
 	$(MAKE) -C Tools/MspComp
-	$(MAKE) -C Tools/MlbMake
+#	$(MAKE) -C Tools/MlbMake
 #	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
 #	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)

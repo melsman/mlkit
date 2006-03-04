@@ -13,6 +13,9 @@ INSTDIR=$(DESTDIR)$(exec_prefix)
 INSTDIR_KAM=$(DESTDIR)@exec_prefix@
 INSTDIR_BARRY=$(DESTDIR)@exec_prefix@
 MANDIR=$(DESTDIR)@mandir@
+LIBDIR=$(DESTDIR)@libdir@
+BINDIR=$(DESTDIR)@bindir@
+DATADIR=$(DESTDIR)@datadir@
 
 MKDIR=$(top_srcdir)/mkinstalldirs
 INSTALL=@INSTALL@
@@ -77,40 +80,42 @@ mlkit_libs:
 	$(MAKE) mlkit_kitlibs
 
 install_smlserver_basislibs:
-	$(MKDIR) $(INSTDIR)/basis/MLB
-	$(MKDIR) $(INSTDIR)/basis/MLB/SMLserver
-	$(MKDIR) $(INSTDIR)/basis/io/MLB
-	$(MKDIR) $(INSTDIR)/basis/io/MLB/SMLserver
-	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(INSTDIR)/basis/MLB/SMLserver
-	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(INSTDIR)/basis/io/MLB/SMLserver
+#	$(MKDIR) $(LIBDIR)/basis/MLB
+	$(MKDIR) $(LIBDIR)/basis/MLB/SMLserver
+#	$(MKDIR) $(LIBDIR)/basis/io/MLB
+	$(MKDIR) $(LIBDIR)/basis/io/MLB/SMLserver
+	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/MLB/SMLserver
+	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/io/MLB/SMLserver
 
 install_mlkit_basislibs:
-	$(MKDIR) $(INSTDIR)/basis/MLB
-	$(MKDIR) $(INSTDIR)/basis/MLB/RI
-	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC
-	$(MKDIR) $(INSTDIR)/basis/MLB/RI_GC_PROF
-	$(MKDIR) $(INSTDIR)/basis/MLB/RI_PROF
-	$(MKDIR) $(INSTDIR)/basis/io/MLB
-	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI
-	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI_GC
-	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI_GC_PROF
-	$(MKDIR) $(INSTDIR)/basis/io/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI
-	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/MLB/RI_GC
-	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/MLB/RI_GC_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(INSTDIR)/basis/io/MLB/RI_GC
-	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(INSTDIR)/basis/io/MLB/RI_GC_PROF
+	$(MKDIR) $(LIBDIR)/basis/MLB
+	$(MKDIR) $(LIBDIR)/basis/MLB/RI
+	$(MKDIR) $(LIBDIR)/basis/MLB/RI_GC
+	$(MKDIR) $(LIBDIR)/basis/MLB/RI_GC_PROF
+	$(MKDIR) $(LIBDIR)/basis/MLB/RI_PROF
+	$(MKDIR) $(LIBDIR)/basis/io/MLB
+	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI
+	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_GC
+	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_GC_PROF
+	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/MLB/RI
+	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/MLB/RI_GC
+	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/io/MLB/RI
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/io/MLB/RI_GC
+	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 
 nj:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit_nj
+	$(MAKE) man_mlkit
 
 mlkit:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit
+	$(MAKE) man_mlkit
 
 mlkit_kam:
 	$(MKDIR) bin
@@ -123,17 +128,19 @@ mlkit_kam_nj:
 smlserver:
 	$(MKDIR) bin
 	$(MAKE) -C src smlserver
+	$(MAKE) man_smlserver
 
 smlserver_nj:
 	$(MKDIR) bin
 	$(MAKE) -C src smlserver_nj
+	$(MAKE) man_smlserver
 
 barry:
 	$(MKDIR) bin
 	$(MAKE) -C src barry
 
 clean:
-	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap dist
+	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap dist man
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
@@ -223,10 +230,10 @@ install_kitdemo:
 	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
 
 install_basis:
-	$(MKDIR) $(INSTDIR)/basis
-	$(MKDIR) $(INSTDIR)/basis/io
-	$(INSTALLDATA) -p basis/*.{sml,mlb} $(INSTDIR)/basis
-	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(INSTDIR)/basis/io
+	$(MKDIR) $(LIBDIR)/basis
+	$(MKDIR) $(LIBDIR)/basis/io
+	$(INSTALLDATA) -p basis/*.{sml,mlb} $(LIBDIR)/basis
+	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
 
 install_man:
 	$(MKDIR) $(MANDIR)
@@ -234,16 +241,16 @@ install_man:
 	$(INSTALLDATA) man/man1/*.1 $(MANDIR)/man1
 
 install_license:
-	$(MKDIR) $(INSTDIR)/license
-	$(INSTALLDATA) doc/license/{GPL-LICENSE,MLKit-LICENSE,MLton-LICENSE,SMLNJ-LIB-LICENSE,SMLNJ-LICENSE} $(INSTDIR)/license
+	$(MKDIR) $(DATADIR)/doc/$(KIND)/license
+	$(INSTALLDATA) doc/license/{GPL-LICENSE,MLKit-LICENSE,MLton-LICENSE,SMLNJ-LIB-LICENSE,SMLNJ-LICENSE} $(DATADIR)/doc/$(KIND)/license
 
 install_top:
 	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(INSTDIR)/bin
-	$(MKDIR) $(INSTDIR)/doc
+	$(MKDIR) $(BINDIR)
+	$(MKDIR) $(DATADIR)/doc
 #	$(MKDIR) $(INSTDIR)/ml-yacc-lib
 #	$(MKDIR) $(INSTDIR)/kitlib
-	$(INSTALLDATA) README $(INSTDIR)
+	$(INSTALLDATA) README $(DATADIR)/doc/mlkit
 	$(INSTALLDATA) Makefile Makefile.in $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
 	$(INSTALL) mkinstalldirs configure $(INSTDIR)
@@ -251,31 +258,30 @@ install_top:
 	$(MAKE) install_kitdemo
 	$(MAKE) install_basis
 	$(MAKE) install_man
-	$(MAKE) install_license INSTDIR=$(INSTDIR)/doc
+	$(MAKE) install_license
 
 install_runtime:
-	$(MKDIR) $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystem.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemProf.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemGC.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(INSTDIR)/lib
-	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(INSTDIR)/lib
+	$(MKDIR) $(LIBDIR)
+	$(INSTALLDATA) lib/runtimeSystem.a $(LIBDIR)
+	$(INSTALLDATA) lib/runtimeSystemProf.a $(LIBDIR)
+	$(INSTALLDATA) lib/runtimeSystemGC.a $(LIBDIR)
+	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(LIBDIR)
+	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)
+	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)
 
 install0:
 	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(INSTDIR)/bin
-	$(INSTALL) bin/mlkit $(INSTDIR)/bin
-	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
-	$(INSTALL) bin/kittester $(INSTDIR)/bin
-	$(MKDIR) $(INSTDIR)/lib
-	$(MKDIR) $(INSTDIR)/lib/mlkit
-	$(MAKE) install_runtime INSTDIR=$(INSTDIR)/lib/mlkit
-	$(MAKE) install_basis INSTDIR=$(INSTDIR)/lib/mlkit
-	$(MAKE) install_mlkit_basislibs INSTDIR=$(INSTDIR)/lib/mlkit
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/mlkit $(BINDIR)
+	$(INSTALL) bin/rp2ps $(BINDIR)
+	$(INSTALL) bin/kittester $(BINDIR)
+	$(MKDIR) $(LIBDIR)
+	$(MKDIR) $(LIBDIR)/mlkit
+	$(MAKE) install_runtime LIBDIR=$(LIBDIR)/mlkit
+	$(MAKE) install_basis LIBDIR=$(LIBDIR)/mlkit
+	$(MAKE) install_mlkit_basislibs LIBDIR=$(LIBDIR)/mlkit
 	$(MAKE) install_man
-	$(MKDIR) $(INSTDIR)/share
-	$(MKDIR) $(INSTDIR)/share/mlkit
+	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo INSTDIR=$(INSTDIR)/share/mlkit
 	$(MAKE) install_test INSTDIR=$(INSTDIR)/share/mlkit
 	$(MKDIR) $(INSTDIR)/share/doc
@@ -407,6 +413,10 @@ bootstrap:
 man_mlkit:
 	bin/mlkit -man > man/man1/mlkit.1
 
+.PHONY: man_smlserver
+man_smlserver:
+	bin/smlserver -man > man/man1/smlserver.1
+
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
 mlkit_i386_tgz:
@@ -490,23 +500,22 @@ install_barry:
 
 install_smlserver0:
 	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(INSTDIR)/bin
-	$(INSTALL) bin/smlserverc $(INSTDIR)/bin
-	$(MKDIR) $(INSTDIR)/lib
-	$(MKDIR) $(INSTDIR)/lib/smlserver
-	$(MAKE) install_smlserver_basislibs INSTDIR=$(INSTDIR)/lib/smlserver
-	$(MAKE) install_basis INSTDIR=$(INSTDIR)/lib/smlserver
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/smlserverc $(BINDIR)
+	$(MKDIR) $(LIBDIR)/smlserver
+	$(MAKE) install_smlserver_basislibs LIBDIR=$(LIBDIR)/smlserver
+	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
 	$(MAKE) install_man
-	$(MKDIR) $(INSTDIR)/share
+#	$(MKDIR) $(INSTDIR)/share
 	$(MKDIR) $(INSTDIR)/share/smlserver
-	$(MKDIR) $(INSTDIR)/share/doc
+#	$(MKDIR) $(INSTDIR)/share/doc
 	$(MKDIR) $(INSTDIR)/share/doc/smlserver
-	$(MAKE) install_license INSTDIR=$(INSTDIR)/share/doc/smlserver
-	$(INSTALLDATA) doc/smlserver.pdf $(INSTDIR)/share/doc/smlserver
-	$(INSTALLDATA) README_SMLSERVER $(INSTDIR)/share/doc/smlserver
-	$(INSTALLDATA) NEWS_SMLSERVER $(INSTDIR)/share/doc/smlserver
-	$(MAKE) -C smlserver_demo install INSTDIR=$(INSTDIR)/lib/smlserver
-	$(MAKE) -C src/SMLserver/apache install INSTDIR=$(INSTDIR)/lib/smlserver
+	$(MAKE) install_license KIND=smlserver
+	$(INSTALLDATA) doc/smlserver.pdf $(DATADIR)/doc/smlserver
+	$(INSTALLDATA) README_SMLSERVER $(DATADIR)/doc/smlserver
+	$(INSTALLDATA) NEWS_SMLSERVER $(DATADIR)/doc/smlserver
+	$(MAKE) -C smlserver_demo install LIBDIR=$(LIBDIR)/smlserver
+	$(MAKE) -C src/SMLserver/apache install LIBDIR=$(LIBDIR)/smlserver/lib
 
 install_smlserver:install_smlserver0
 	$(MKDIR) $(SYSCONFDIR)/mlkit
