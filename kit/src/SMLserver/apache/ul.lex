@@ -6,6 +6,25 @@
 #include "parseul.h"
 #include "plog.h"
 #define YY_NO_UNPUT
+
+int
+pack(char *in, int size, int kind, YYSTYPE *lv)/*{{{*/
+{
+  char *tmp;
+  tmp = (char *) malloc(size + 1);
+  if (!tmp)
+  {
+    lv->t.ptr = NULL;
+    lv->t.len = 0;
+    return kind;
+  }
+  lv->t.ptr = tmp;
+  lv->t.len = size;
+  strncpy(tmp, in, size);
+  tmp[size] = 0;
+  return kind;
+}/*}}}*/
+
 %}
 
 %pointer
@@ -16,10 +35,10 @@ FILECHARS ([a-zA-Z0-9_/]|"."|"-")*
 %option nostdinit
 
 %%
-{FILECHARS}".ul"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return ULFILE;
-{FILECHARS}".uo"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return UOFILE;
-[a-zA-Z0-9/]*"/"	lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return LOC;
-{FILECHARS}".sml" lvalp->t.ptr = yytext; lvalp->t.len = yyleng; return SMLFILE;
+{FILECHARS}".ul"	return pack(yytext,yyleng,ULFILE, lvalp);
+{FILECHARS}".uo"	return pack(yytext,yyleng,UOFILE, lvalp);
+[a-zA-Z0-9/]*"/"	return pack(yytext,yyleng,LOC, lvalp);
+{FILECHARS}".sml" return pack(yytext,yyleng,SMLFILE, lvalp);
 "As"	return AS;
 "End"	return END;
 "Ulfiles" return ULFILES;

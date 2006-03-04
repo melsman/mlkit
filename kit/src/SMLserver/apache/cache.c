@@ -277,9 +277,9 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
       if (ct > entry->time)
 	    {			// entry too old
 	      too_old = 1;
-	      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+	     /* ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 			    "apsml_cacheGet: Entry too old, ct == %ld, entry->time == %ld",
-			    ct, entry->time);
+			    ct, entry->time); */
 	      LINKEDLIST_INSERTOVER (c->sentinel, entry);
 	    }
       else

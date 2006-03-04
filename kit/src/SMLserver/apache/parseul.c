@@ -261,6 +261,8 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   char *tmp, *tmp2, *tmp3;
   void **r;
   int i;
+  if (!ul) return Parse_ALLOCERROR;
+  if (!loc) return Parse_ALLOCERROR;
   tmp = (char *) alloca(ulLength + 1 + locLength + 1);
   if (!tmp) return Parse_ALLOCERROR;
   strncpy(tmp, ul, ulLength);
@@ -328,6 +330,7 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
   struct parseCtx *pctx;
   struct char_charHashEntry *he, he1;
   char *tmp, *tmp2, *tmp3;
+  if (!uo) return Parse_ALLOCERROR;
   tmp = (char *) alloca(uoLength + mlopLength + 2);
   if (!tmp) return Parse_ALLOCERROR;
   strncpy(tmp, uo, uoLength);
@@ -381,6 +384,7 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
   struct uoHashEntry *he, he1;
   void *r;
   char *tmp;
+  if (!uo) return Parse_ALLOCERROR;
   tmp = (char *) alloca (len + 1);
   if (!tmp) return Parse_ALLOCERROR;
   strncpy(tmp, uo, len);

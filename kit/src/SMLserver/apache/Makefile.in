@@ -9,7 +9,7 @@ MKDIR=@top_srcdir@/mkinstalldirs
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 prefix=@prefix@
-INSTDIR=$(DESTDIR)@exec_prefix@/smlserver
+LIBDIR=$(DESTDIR)@libdir@
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
        ../../Runtime/runtimeSystemKamApSml.o ul.tab.c lex.yy.c parseul.c \
 			 sched.c
@@ -58,20 +58,20 @@ $(ODBCLIB): odbc.c
 
 installsml: ${TARGET}
 #	${APXS} -i -a -n sml mod_sml.la
-	$(MKDIR) $(INSTDIR)/lib
-	$(INSTALL) .libs/mod_sml.so $(INSTDIR)/lib
+	$(MKDIR) $(LIBDIR)
+	$(INSTALL) .libs/mod_sml.so $(LIBDIR)
 
 oracle_install: oracle
-	$(MKDIR) $(INSTDIR)/lib
-	$(INSTALL) $(ORACLELIB) $(INSTDIR)/lib
-	cd $(INSTDIR)/lib && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
-	cd $(INSTDIR)/lib && ${LN} -f libsmloracle.so.1 libsmloracle.so
+	$(MKDIR) $(LIBDIR)
+	$(INSTALL) $(ORACLELIB) $(LIBDIR)
+	cd $(LIBDIR) && ${LN} -f libsmloracle.so.1.0 libsmloracle.so.1
+	cd $(LIBDIR) && ${LN} -f libsmloracle.so.1 libsmloracle.so
 
 odbc_install: odbc
-	$(MKDIR) $(INSTDIR)/lib
-	$(INSTALL) $(ODBCLIB) $(INSTDIR)/lib
-	cd $(INSTDIR)/lib && ${LN} -f libsmlodbc.so.1.0 libsmlodbc.so.1
-	cd $(INSTDIR)/lib && ${LN} -f libsmlodbc.so.1 libsmlodbc.so
+	$(MKDIR) $(LIBDIR)
+	$(INSTALL) $(ODBCLIB) $(LIBDIR)
+	cd $(LIBDIR) && ${LN} -f libsmlodbc.so.1.0 libsmlodbc.so.1
+	cd $(LIBDIR) && ${LN} -f libsmlodbc.so.1 libsmlodbc.so
 
 ul.tab.h: ul.y
 	bison -d ul.y
