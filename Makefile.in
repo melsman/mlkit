@@ -25,7 +25,7 @@ STRIP=strip
 DIFF=diff
 MLCOMP=@mlcomp@
 
-CWD=$(shell pwd) 
+CWD=$(shell pwd)
 
 export INSTDIR
 export INSTDIR_KAM
@@ -224,10 +224,10 @@ rpm: mlkit.spec
 	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
 install_kitdemo:
-	$(MKDIR) $(INSTDIR)/kitdemo
-	$(MKDIR) $(INSTDIR)/kitdemo/utils
-	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(INSTDIR)/kitdemo 
-	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(INSTDIR)/kitdemo/utils 
+	$(MKDIR) $(DATADIR)/kitdemo
+	$(MKDIR) $(DATADIR)/kitdemo/utils
+	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(DATADIR)/kitdemo 
+	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(DATADIR)/kitdemo/utils 
 
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
@@ -247,7 +247,7 @@ install_license:
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
-	$(MKDIR) $(DATADIR)/doc
+	$(MKDIR) $(DATADIR)/doc/mlkit
 #	$(MKDIR) $(INSTDIR)/ml-yacc-lib
 #	$(MKDIR) $(INSTDIR)/kitlib
 	$(INSTALLDATA) README $(DATADIR)/doc/mlkit
@@ -258,16 +258,16 @@ install_top:
 	$(MAKE) install_kitdemo
 	$(MAKE) install_basis
 	$(MAKE) install_man
-	$(MAKE) install_license
+	$(MAKE) install_license 
 
 install_runtime:
-	$(MKDIR) $(LIBDIR)
-	$(INSTALLDATA) lib/runtimeSystem.a $(LIBDIR)
-	$(INSTALLDATA) lib/runtimeSystemProf.a $(LIBDIR)
-	$(INSTALLDATA) lib/runtimeSystemGC.a $(LIBDIR)
-	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(LIBDIR)
-	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)
-	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)
+	$(MKDIR) $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystem.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemProf.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGC.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGCProf.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
+	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
 
 install0:
 	$(MKDIR) $(INSTDIR)
@@ -282,13 +282,13 @@ install0:
 	$(MAKE) install_mlkit_basislibs LIBDIR=$(LIBDIR)/mlkit
 	$(MAKE) install_man
 	$(MKDIR) $(DATADIR)/mlkit
-	$(MAKE) install_kitdemo INSTDIR=$(INSTDIR)/share/mlkit
-	$(MAKE) install_test INSTDIR=$(INSTDIR)/share/mlkit
+	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
+	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
 	$(MKDIR) $(INSTDIR)/share/doc
 	$(MKDIR) $(INSTDIR)/share/doc/mlkit
-	$(MAKE) install_license INSTDIR=$(INSTDIR)/share/doc/mlkit
-	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/share/doc/mlkit/
-	$(INSTALLDATA) NEWS $(INSTDIR)/share/doc/mlkit/
+	$(MAKE) install_license KIND=mlkit
+	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc/mlkit/
+	$(INSTALLDATA) NEWS $(DATADIR)/doc/mlkit/
 
 install:
 	$(MAKE) install0
@@ -299,30 +299,30 @@ install:
         fi
 
 install_test:
-	$(MKDIR) $(INSTDIR)/test
-	$(MKDIR) $(INSTDIR)/test/mlyacc $(INSTDIR)/test/ray $(INSTDIR)/test/nucleic $(INSTDIR)/test/danwang
-	$(MKDIR) $(INSTDIR)/test/barnes-hut $(INSTDIR)/test/logic
-	$(MKDIR) $(INSTDIR)/test/DATA $(INSTDIR)/test/LEXGEN_DATA $(INSTDIR)/test/VLIW_DATA
-	$(MKDIR) $(INSTDIR)/test/ray/DATA $(INSTDIR)/test/mlyacc/DATA
-	$(INSTALL) test/Makefile $(INSTDIR)/test
-	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(INSTDIR)/test
-	$(INSTALL) test/README $(INSTDIR)/test 
-	$(INSTALL) test/DATA/*.{gml,sml} $(INSTDIR)/test/DATA
-	$(INSTALL) test/LEXGEN_DATA/*.lex $(INSTDIR)/test/LEXGEN_DATA 
-	$(INSTALL) test/VLIW_DATA/*.s $(INSTDIR)/test/VLIW_DATA 
-	$(INSTALL) test/ray/DATA/TEST $(INSTDIR)/test/ray/DATA
-	$(INSTALL) test/ray/input test/ray/README test/ray/load test/ray/*.{sml,mlb} $(INSTDIR)/test/ray
-	$(INSTALL) test/mlyacc/DATA/*.grm $(INSTDIR)/test/mlyacc/DATA
-	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(INSTDIR)/test/mlyacc
-	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(INSTDIR)/test/nucleic
-	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(INSTDIR)/test/danwang
-	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(INSTDIR)/test/barnes-hut
-	$(INSTALL) test/logic/*.{sml,mlb} $(INSTDIR)/test/logic
-	cd $(INSTDIR)/test && ln -sf README testlink
-	cd $(INSTDIR)/test && ln -sf testcycl testcycl
-	cd $(INSTDIR)/test && ln -sf exists.not testbadl
-	cd $(INSTDIR)/test && echo -e 'hardlinkA' >> hardlinkA
-	cd $(INSTDIR)/test && ln -f hardlinkA hardlinkB
+	$(MKDIR) $(DATADIR)/test
+	$(MKDIR) $(DATADIR)/test/mlyacc $(DATADIR)/test/ray $(DATADIR)/test/nucleic $(DATADIR)/test/danwang
+	$(MKDIR) $(DATADIR)/test/barnes-hut $(DATADIR)/test/logic
+	$(MKDIR) $(DATADIR)/test/DATA $(DATADIR)/test/LEXGEN_DATA $(DATADIR)/test/VLIW_DATA
+	$(MKDIR) $(DATADIR)/test/ray/DATA $(DATADIR)/test/mlyacc/DATA
+	$(INSTALL) test/Makefile $(DATADIR)/test
+	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(DATADIR)/test
+	$(INSTALL) test/README $(DATADIR)/test 
+	$(INSTALL) test/DATA/*.{gml,sml} $(DATADIR)/test/DATA
+	$(INSTALL) test/LEXGEN_DATA/*.lex $(DATADIR)/test/LEXGEN_DATA 
+	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA 
+	$(INSTALL) test/ray/DATA/TEST $(DATADIR)/test/ray/DATA
+	$(INSTALL) test/ray/input test/ray/README test/ray/load test/ray/*.{sml,mlb} $(DATADIR)/test/ray
+	$(INSTALL) test/mlyacc/DATA/*.grm $(DATADIR)/test/mlyacc/DATA
+	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(DATADIR)/test/mlyacc
+	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(DATADIR)/test/nucleic
+	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(DATADIR)/test/danwang
+	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(DATADIR)/test/barnes-hut
+	$(INSTALL) test/logic/*.{sml,mlb} $(DATADIR)/test/logic
+	cd $(DATADIR)/test && ln -sf README testlink
+	cd $(DATADIR)/test && ln -sf testcycl testcycl
+	cd $(DATADIR)/test && ln -sf exists.not testbadl
+	cd $(DATADIR)/test && echo -e 'hardlinkA' >> hardlinkA
+	cd $(DATADIR)/test && ln -f hardlinkA hardlinkB
 
 install_src:
 	$(MKDIR) $(INSTDIR)/src
@@ -369,13 +369,13 @@ install_src:
 	$(INSTALL) src/heap2exec/heap2exec $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
-	$(INSTALL) bin/kittester $(INSTDIR)/bin
+	$(INSTALL) bin/kittester $(BINDIR)
 
 bootstrap_first: 
 	$(MAKE) install_top
 	$(MAKE) install_runtime
-	$(INSTALL) bin/{mlkit,rp2ps} $(INSTDIR)/bin
-	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/doc
+	$(INSTALL) bin/{mlkit,rp2ps} $(BINDIR)
+	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc
 	$(MAKE) bootstrap0
 
 bootstrap_next_build:
@@ -399,11 +399,14 @@ bootstrap_next:
 bootstrap:
 	$(MKDIR) bootstrap
 	$(CLEAN) bootstrap/mlkit-v1
-	$(MAKE) bootstrap_first INSTDIR=bootstrap/mlkit-v1
+	$(MAKE) bootstrap_first INSTDIR=bootstrap/mlkit-v1 DATADIR=bootstrap/mlkit-v1 LIBDIR=bootstrap/mlkit-v1 \
+	                        MANDIR=bootstrap/mlkit-v1/man BINDIR=bootstrap/mlkit-v1/bin
 	$(CLEAN) bootstrap/mlkit-v2
-	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2
+	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2 DATADIR=../mlkit-v2 LIBDIR=../mlkit-v2/lib \
+	                        MANDIR=../mlkit-v2/man BINDIR=../mlkit-v2/bin
 	$(CLEAN) bootstrap/mlkit-v3
-	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3
+	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3 DATADIR=../mlkit-v3 LIBDIR=../mlkit-v3/lib \
+	                        MANDIR=../mlkit-v3/man BINDIR=../mlkit-v3/bin
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
 	if diff bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit > /dev/null; then true; else false; fi
@@ -411,11 +414,11 @@ bootstrap:
 
 .PHONY: man_mlkit
 man_mlkit:
-	bin/mlkit -man > man/man1/mlkit.1
+	SML_LIB=$(exec_prefix)/mlkit/lib bin/mlkit -man > man/man1/mlkit.1
 
 .PHONY: man_smlserver
 man_smlserver:
-	bin/smlserver -man > man/man1/smlserver.1
+	SML_LIB=$(exec_prefix)/mlkit/lib bin/smlserver -man > man/man1/smlserver.1
 
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
@@ -434,10 +437,10 @@ mlkit_src_tgz:
 	rm -rf dist/$(MLKIT_DIST_SRC)
 	$(MKDIR) dist/$(MLKIT_DIST_SRC)
 	$(MAKE) install_src INSTDIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_test INSTDIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_basis INSTDIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_kitdemo INSTDIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_man INSTDIR=dist/$(MLKIT_DIST_SRC)
+	$(MAKE) install_test DATADIR=dist/$(MLKIT_DIST_SRC)
+	$(MAKE) install_basis LIBDIR=dist/$(MLKIT_DIST_SRC)
+	$(MAKE) install_kitdemo DATADIR=dist/$(MLKIT_DIST_SRC)
+	$(MAKE) install_man MANDIR=dist/$(MLKIT_DIST_SRC)/man
 	$(INSTALLDATA) README dist/$(MLKIT_DIST_SRC)
 	$(INSTALLDATA) NEWS dist/$(MLKIT_DIST_SRC)
 	$(INSTALLDATA) Makefile.in dist/$(MLKIT_DIST_SRC)
@@ -448,7 +451,7 @@ mlkit_src_tgz:
 	$(MKDIR) dist/$(MLKIT_DIST_SRC)/smlserver_demo
 	$(INSTALL) smlserver_demo/Makefile.in dist/$(MLKIT_DIST_SRC)/smlserver_demo
 	$(MKDIR) dist/$(MLKIT_DIST_SRC)/doc
-	$(MAKE) install_license INSTDIR=dist/$(MLKIT_DIST_SRC)/doc
+	$(MAKE) install_license DATADIR=dist/$(MLKIT_DIST_SRC)
 	$(INSTALLDATA) doc/{README_BIN.in,mlkit.pdf} dist/$(MLKIT_DIST_SRC)/doc
 	(cd dist && tar czvf $(MLKIT_DIST_SRC).tgz $(MLKIT_DIST_SRC))
 
