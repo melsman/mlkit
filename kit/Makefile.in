@@ -140,7 +140,7 @@ barry:
 	$(MAKE) -C src barry
 
 clean:
-	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap dist man
+	$(CLEAN) bin run mlkit.spec smlserver.spec lib bootstrap dist man/man1/mlkit.1 man/man1/smlserverc.1
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
@@ -392,10 +392,10 @@ bootstrap:
 	$(MAKE) bootstrap_first INSTDIR=bootstrap/mlkit-v1 DATADIR=bootstrap/mlkit-v1 LIBDIR=bootstrap/mlkit-v1 \
 	                        MANDIR=bootstrap/mlkit-v1/man BINDIR=bootstrap/mlkit-v1/bin
 	$(CLEAN) bootstrap/mlkit-v2
-	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2 DATADIR=../mlkit-v2 LIBDIR=../mlkit-v2/lib \
+	$(MAKE) -C bootstrap/mlkit-v1 bootstrap_next INSTDIR=../mlkit-v2 DATADIR=../mlkit-v2 LIBDIR=../mlkit-v2 \
 	                        MANDIR=../mlkit-v2/man BINDIR=../mlkit-v2/bin
 	$(CLEAN) bootstrap/mlkit-v3
-	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3 DATADIR=../mlkit-v3 LIBDIR=../mlkit-v3/lib \
+	$(MAKE) -C bootstrap/mlkit-v2 bootstrap_next INSTDIR=../mlkit-v3 DATADIR=../mlkit-v3 LIBDIR=../mlkit-v3 \
 	                        MANDIR=../mlkit-v3/man BINDIR=../mlkit-v3/bin
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
