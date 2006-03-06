@@ -247,18 +247,10 @@ install_license:
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
-	$(MKDIR) $(DATADIR)/doc/mlkit
-#	$(MKDIR) $(INSTDIR)/ml-yacc-lib
-#	$(MKDIR) $(INSTDIR)/kitlib
-	$(INSTALLDATA) README $(DATADIR)/doc/mlkit
 	$(INSTALLDATA) Makefile Makefile.in $(INSTDIR)
 	$(INSTALLDATA) Makefiledefault $(INSTDIR)
 	$(INSTALL) mkinstalldirs configure $(INSTDIR)
-#	$(INSTALLDATA) -p ml-yacc-lib/*.{sml,mlb} $(INSTDIR)/ml-yacc-lib
-	$(MAKE) install_kitdemo
 	$(MAKE) install_basis
-	$(MAKE) install_man
-	$(MAKE) install_license 
 
 install_runtime:
 	$(MKDIR) $(LIBDIR)/lib
@@ -284,8 +276,8 @@ install0:
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
 	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
-	$(MKDIR) $(INSTDIR)/share/doc
-	$(MKDIR) $(INSTDIR)/share/doc/mlkit
+	$(MKDIR) $(DATADIR)/doc
+	$(MKDIR) $(DATADIR)/doc/mlkit
 	$(MAKE) install_license KIND=mlkit
 	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc/mlkit/
 	$(INSTALLDATA) NEWS $(DATADIR)/doc/mlkit/
@@ -375,7 +367,6 @@ bootstrap_first:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
 	$(INSTALL) bin/{mlkit,rp2ps} $(BINDIR)
-	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc
 	$(MAKE) bootstrap0
 
 bootstrap_next_build:
@@ -384,10 +375,9 @@ bootstrap_next_build:
 
 bootstrap_next_install: 
 	$(MAKE) install_top
-	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR)/doc
 	$(MAKE) install_runtime
-	$(INSTALL) bin/{rp2ps,kittester} $(INSTDIR)/bin
-	$(INSTALL) src/Compiler/run $(INSTDIR)/bin/mlkit
+	$(INSTALL) bin/{rp2ps,kittester} $(BINDIR)
+	$(INSTALL) src/Compiler/run $(BINDIR)/mlkit
 	$(MAKE) install_test
 	$(MAKE) install_src
 
