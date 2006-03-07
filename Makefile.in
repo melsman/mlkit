@@ -404,10 +404,12 @@ bootstrap:
 
 .PHONY: man_mlkit
 man_mlkit:
+	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/mlkit/lib bin/mlkit -man > man/man1/mlkit.1
 
 .PHONY: man_smlserver
 man_smlserver:
+	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/mlkit/lib bin/smlserver -man > man/man1/smlserver.1
 
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
