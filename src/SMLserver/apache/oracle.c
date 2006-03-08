@@ -146,7 +146,7 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
       return NULL;,
       ctx
       )
-  dblog1(ctx, "dbinit2");
+//  dblog1(ctx, "dbinit2");
   db->dbid = dbid;
   db->freeSessionsGlobal = NULL;
   db->envhp = envhp;
@@ -162,7 +162,7 @@ DBinitConn (void *ctx, char *TNSname, char *userid, char *password, int min, int
       return NULL;,
       ctx
       )
-  dblog1(ctx, "dbinit3");
+//  dblog1(ctx, "dbinit3");
   status = OCIHandleAlloc ((dvoid *) db->envhp, (dvoid **) &(db->errhp), 
       OCI_HTYPE_ERROR, (size_t) 0, (dvoid **) 0);
   ErrorCheck(status, OCI_HTYPE_ENV, db,
@@ -741,7 +741,7 @@ apsmlORAGetSession(int dbid, void *rd)/*{{{*/
 //    dblog1(rd, "Depth boundary exceeded");
 //    return NULL;
 //  }
-  dblog1(rd, "1");
+//  dblog1(rd, "1");
   if (dbdata->freeSessions)
   {
     dbdata->depth++;
@@ -749,7 +749,7 @@ apsmlORAGetSession(int dbid, void *rd)/*{{{*/
     dbdata->freeSessions = ses->next;
     return ses;
   }
-  dblog1(rd, "2");
+//  dblog1(rd, "2");
   dbc = (db_conf *) apsmlGetDBData(dbid,rd);
   if (dbc == NULL)
   {
@@ -774,16 +774,16 @@ apsmlORAGetSession(int dbid, void *rd)/*{{{*/
     dblog1(rd, "Initializing database connection");
     dbc->dbspec = DBinitConn(rd, dbc->TNSname, dbc->username, 
                                     dbc->password, dbc->minsessions, dbc->maxsessions, dbid);
-    dblog1(rd, "Database initialization call done");
+//    dblog1(rd, "Database initialization call done");
   }
-  dblog1(rd, "3");
+//  dblog1(rd, "3");
   if (!dbc->dbspec)
   {
     unlock_thread(dbc->tlock);
     dblog1(rd, "Database did not start");
     return NULL;
   }
-  dblog1(rd, "4");
+//  dblog1(rd, "4");
   db = dbc->dbspec;
   if (db->number_of_sessions < dbc->maxsessions - dbc->maxdepth)
   {
