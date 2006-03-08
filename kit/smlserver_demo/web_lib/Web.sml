@@ -21,6 +21,7 @@ structure Web :> WEB =
 
   open WebBasics
 
+  exception MissingConnection;
   fun encodeUrl (s : string) : string = prim("apsml_encodeUrl", (s,getReqRec()))
   fun decodeUrl (s : string) : string = prim("apsml_decodeUrl", (s,getReqRec()))
 
@@ -112,15 +113,15 @@ structure Web :> WEB =
 
     val log = WebBasics.log
     
-    fun method () : string  = prim("apsml_method", getReqRec())
+    fun method () : string  = (prim("apsml_method", getReqRec())) handle Overflow => raise MissingConnection
 
-    fun contentLength () : int = prim("apsml_contentlength", getReqRec())
+    fun contentLength () : int = (prim("apsml_contentlength", getReqRec())) handle Overflow => raise MissingConnection
 
     fun hasConnection () : bool = let val b :int = prim("@apsml_hasconnection", getReqRec())
                                   in (b = 1)
                     end
 
-    fun headers () : set = prim("apsml_headers", getReqRec())
+    fun headers () : set = (prim("apsml_headers", getReqRec())) handle Overflow => raise MissingConnection
     
     fun setMimeType(s : string) : unit = prim("@apsml_setMimeType",(s, size s, getReqRec()))
 
@@ -412,6 +413,8 @@ structure Web :> WEB =
     end 
 
     fun return (s: string) : status = returnHtml(~1,s)
+    (*fun return (s: string) : status = 
+      prim("@apsml_returnHtml", (~1,s,size s, getReqRec())) *)
 
     fun returnRedirectWithCode(i: int, s: string) : status = 
       prim("@apsml_returnRedirect",(i, s, getReqRec()))
@@ -430,13 +433,13 @@ structure Web :> WEB =
      prim("@ap_internal_redirect", (url, getReqRecP()))
      )
 
-    fun port () : int = prim("apsml_getport", (getReqRec()))
+    fun port () : int = (prim("apsml_getport", (getReqRec()))) handle Overflow => raise MissingConnection
 
-    fun host () : string = prim("apsml_gethost",(getReqRec()))
+    fun host () : string = (prim("apsml_gethost",(getReqRec()))) handle Overflow => raise MissingConnection
     
-    fun server () : string = prim("apsml_getserver",(getReqRec()))
+    fun server () : string = (prim("apsml_getserver",(getReqRec()))) handle Overflow => raise MissingConnection
 
-    fun scheme () : string = prim("apsml_scheme",getReqRec())
+    fun scheme () : string = (prim("apsml_scheme",getReqRec())) handle Overflow => raise MissingConnection
 
     fun location () = scheme() ^ "://" ^ server() ^ ":" ^ (Int.toString (port()))
 
@@ -1241,7 +1244,6 @@ structure Web :> WEB =
   end
 
   
-  exception MissingConnection;
     type status = Conn.status
 
   val log = WebBasics.log
