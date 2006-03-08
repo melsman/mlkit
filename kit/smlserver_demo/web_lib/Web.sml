@@ -128,7 +128,7 @@ structure Web :> WEB =
       prim("@apsml_returnFile", (status, mt, f, getReqRec()))
 
     fun returnHtml (i:int, s: string) : status = 
-      prim("@apsml_returnHtml", (i,s,size s, getReqRec()))
+      prim("@apsml_returnHtml", (i,s,size s, "text/html; charset=iso-8859-1", getReqRec()))
 
     local 
         val (form_data : set option option ref) = ref NONE
@@ -411,8 +411,7 @@ structure Web :> WEB =
 
     end 
 
-    fun return (s: string) : status = 
-      prim("@apsml_returnHtml", (~1,s,size s, getReqRec()))
+    fun return (s: string) : status = returnHtml(~1,s)
 
     fun returnRedirectWithCode(i: int, s: string) : status = 
       prim("@apsml_returnRedirect",(i, s, getReqRec()))

@@ -35,7 +35,7 @@ struct stringbuffer
 
 // ML: int * string * int * request_rec -> status
 int
-apsml_returnHtml (int status, char *s, int len, request_data * rd)	/*{{{ */
+apsml_returnHtml (int status, char *s, int len, char *content_type, request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)
   {
@@ -52,7 +52,7 @@ apsml_returnHtml (int status, char *s, int len, request_data * rd)	/*{{{ */
   }
   apr_off_t content_length = len;
   ap_set_content_length (r, content_length);
-  r->content_type = "text/html";
+  r->content_type = content_type; 
 //      ap_log_rerror(__FILE__,__LINE__, LOG_DEBUG, 0, r, 
 //                      "apsml_returnHtml C: status == %i, len == %i, data: %s", status, len, s);
   ap_rputs (s, r);
