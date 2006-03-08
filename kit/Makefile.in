@@ -410,7 +410,7 @@ man_mlkit:
 .PHONY: man_smlserver
 man_smlserver:
 	$(MKDIR) man/man1
-	SML_LIB=$(exec_prefix)/mlkit/lib bin/smlserver -man > man/man1/smlserver.1
+	SML_LIB=$(exec_prefix)/mlkit/lib bin/smlserverc -man > man/man1/smlserverc.1
 
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
