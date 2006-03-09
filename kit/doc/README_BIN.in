@@ -24,7 +24,7 @@ directory, execute the following commands in a bash-shell - as root:
  % cp -pa share/mlkit /usr/share/mlkit
  % cp -pa share/doc/mlkit /usr/share/doc/mlkit
  % mkdir /etc/mlkit
- % echo "SML_LIB=/usr/lib/mlkit" > /etc/mlkit/mlb-path-map
+ % echo "SML_LIB /usr/lib/mlkit" > /etc/mlkit/mlb-path-map
 
 All locations, except the system wide path-map /etc/mlkit/mlb-path-map
 can be changed at will.
@@ -41,7 +41,7 @@ directory $HOME, execute the following commands:
  $ tar xzvf mlkit-@PACKAGE_VERSION@-i386.tgz
  $ ln -s mlkit-@PACKAGE_VERSION@-i386 mlkit
  $ mkdir .mlkit
- $ echo "SML_LIB=$HOME/mlkit/lib/mlkit" > .mlkit/mlb-path-map
+ $ echo "SML_LIB $HOME/mlkit/lib/mlkit" > .mlkit/mlb-path-map
 
 You can now either run the mlkit command directly by specifying the
 complete path or you can modify your personal PATH environment
