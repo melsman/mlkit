@@ -72,7 +72,7 @@ structure DbDummyBackend :> WEB_DB_BACKEND =
     type DbResultSet = int
     type 'a Type = unit
     structure DbBasic = NsDbBasicOra
-    fun config _ = raise Fail("This is a dummy driver")
+    fun config _ = raise Fail("This is a dummy database driver")
     val getHandle = config
     val putHandle = getHandle
     val dmlDb = getHandle
@@ -101,10 +101,10 @@ functor DbODBCBackend(type conn = int
     fun config (i:int) (t : 'a Info.Type.Type, d : string, v : 'a) : unit = 
                            let fun handRes (res : int) = case res 
                                                      of 0 => ()
-                                                      | 1 => raise Fail "Unknown option"
-                                                      | 2 => raise Fail "Out of memory"
-                                                      | 3 => raise Fail "MaximumNumberOfConnections must be larger than SessionMaxDepth" 
-                                                      | _ => raise Fail "Unknown problem in oracle driver"
+                                                      | 1 => raise Fail "ODBC Driver: Unknown option"
+                                                      | 2 => raise Fail "ODBC Driver: Out of memory"
+                                                      | 3 => raise Fail "ODBC Driver: MaximumNumberOfConnections must be larger than SessionMaxDepth" 
+                                                      | _ => raise Fail "ODBC Driver: Unknown problem in oracle driver"
 
                            
                                fun setInt (p : int) : unit = 
@@ -165,9 +165,9 @@ functor DbODBCBackend(type conn = int
                            end
     fun getHandle (i:int) : DbHandle = let val res : int = (log "apsmlODBCGetSession" ; prim(":", ("apsmlODBCGetSession",i,getReqRec()))) before (log("apsmlODBCGetSession DONE");())
                                  in if res = 0
-                                    then raise Fail "Could not get database session"
+                                    then raise Fail "ODBC Driver: Could not get database session"
                                     else (if res = 1 
-                                    then raise Fail "Maximum nesting of oracle connections reached"
+                                    then raise Fail "ODBC Driver: Maximum nesting of odbc connections reached"
                                     else ref (SOME res))
                                  end
     fun putHandle (h:DbHandle) : unit = 
@@ -175,28 +175,28 @@ functor DbODBCBackend(type conn = int
                         | SOME  r => (log "apsmlODBCDropSession" ; prim(":", ("apsmlODBCDropSession",r : int,getReqRec()));
                                       h:= NONE)
     fun dmlDb (h : DbHandle) q : unit = 
-       case !h of NONE => raise Fail "Session closed"
+       case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
                 | SOME r => let val  res : int = prim("@:", ("DBODBCExecuteSQL",r : int, Quot.toString q : string, getReqRec()))
                             in if res <> 2
                                then (* not DBDml *) 
-                                  raise Fail ("dml: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("ODBC Driver: dml: " ^ Quot.toString q ^ " failed")
                                else ()
                             end
     fun execDb (h : DbHandle) q : unit = 
-       case !h of NONE => raise Fail "Session closed"
+       case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
                 | SOME r => let val res : int = prim("@:", ("DBODBCExecuteSQL",r,Quot.toString q, getReqRec()))
                             in if res = 0
                                then (* DBError *) 
-                                  raise Fail ("exec: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("ODBC Driver: exec: " ^ Quot.toString q ^ " failed")
                                else ()
                             end
     val toLower = String.map Char.toLower
     fun selector ([] : string list)  ([] : string option list)  (x : string) = NONE : string option
-      | selector [] (r::rr) x = raise Fail "Oracle driver corruption"
-      | selector (h::hr) [] x = raise Fail "Oracle driver corruption" 
+      | selector [] (r::rr) x = raise Fail "ODBC Driver: ODBC driver corruption"
+      | selector (h::hr) [] x = raise Fail "ODBC Driver: ODBC driver corruption" 
       | selector (h::hr) (r::rr) x = if String.compare(toLower x, h) = EQUAL then r else selector hr rr x
     fun selectDb' (h : DbHandle) q = 
-       case !h of NONE => raise Fail "Session closed"
+       case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
                 | SOME r => 
         let val res : int = (log "DBODBCExecuteSQL" ; prim("@:",("DBODBCExecuteSQL",r, Quot.toString q, getReqRec())))
               val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`)
@@ -205,19 +205,19 @@ functor DbODBCBackend(type conn = int
                                   val res3 = List.map toLower (List.rev res2)
                               in ((h, selector res3, res3),res3)
                               end handle Overflow => 
-                                     raise Fail "selectDb.Database connection failed")
-                       | 2 => raise Fail "selectDb: SQL was not a select statement"
-                       | _ => raise Fail "selectDb: An error occured"
+                                     raise Fail "ODBC Driver: selectDb.Database connection failed")
+                       | 2 => raise Fail "ODBC Driver: selectDb: SQL was not a select statement"
+                       | _ => raise Fail "ODBC Driver: selectDb: An error occured"
           end
     val toOption = List.rev o (List.map (fn [] => NONE | l as (_::_) => SOME(String.concat (List.rev l))))
 
-    fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Session is closed"
+    fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "ODBC Driver: Abuse, session is closed"
                                         | SOME r => 
                              let val (res,res2) : ((string list) list * int) = (log "apsmlODBCGetRow" ; prim(":", ("apsmlODBCGetRow",r,getReqRec())))
                              in 
                              case res2 of 1 => SOME (toOption res)
                                         | 3 => NONE
-                                        | i => raise Fail ("getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
+                                        | i => raise Fail ("ODBC Driver: getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
                              end 
 
     fun getRowListDb2 (h,f,l) = (l,getRowListDb(h,f,l))
@@ -225,18 +225,18 @@ functor DbODBCBackend(type conn = int
     fun selectDb x y = (selectDb' x y) handle Fail z => (log z; raise Fail z)
     val getRowDb = fn (h,f,l) => (Option.map f (getRowListDb (h,f,l))) handle Fail z => (log z; raise Fail z)
                                      
-    fun dmlTransDb h f = case !h of NONE => raise Fail "Session is closed"
+    fun dmlTransDb h f = case !h of NONE => raise Fail "ODBC Driver: Abuse, session is closed"
                                   | SOME r => let val _ = log("TransStart")
                                                   val res : int = prim("@:", ("DBODBCTransStart",r : int, getReqRec()))
                                               in if res = 0 
-                                                 then raise Fail "Transaction already started"
+                                                 then raise Fail "ODBC Driver: Transaction already started"
                                                  else 
                     (((f h) handle X => (log "TransRollBack"; prim("@:", ("DBODBCTransRollBack",r : int, getReqRec())) : int; raise X)) before ( 
-                         case !h of NONE => raise Fail "Session closed prematurely"
+                         case !h of NONE => raise Fail "ODBC Driver: Session closed prematurely"
                                   | SOME r2 => let val _ = log "TransCommit"
                                                    val res2 : int = prim("@:", ("DBODBCTransCommit",r : int,getReqRec()))
                                                in if res2 <> 2 (* DBDml *) 
-                                                  then raise Fail "dmlTransDb.Database connection failed"
+                                                  then raise Fail "ODBC Driver: dmlTransDb.Database connection failed"
                                                   else ()
                                                end))
                                                end
@@ -262,10 +262,10 @@ functor DbOracleBackend(type conn = int
     fun config (i:int) (t : 'a Info.Type.Type, d : string, v : 'a) : unit = 
                            let fun handRes (res : int) = case res 
                                                      of 0 => ()
-                                                      | 1 => raise Fail "Unknown option"
-                                                      | 2 => raise Fail "Out of memory"
-                                                      | 3 => raise Fail "MaximumNumberOfConnections must be larger than SessionMaxDepth" 
-                                                      | _ => raise Fail "Unknown problem in oracle driver"
+                                                      | 1 => raise Fail "Oracle Driver: Unknown option"
+                                                      | 2 => raise Fail "Oracle Driver: Out of memory"
+                                                      | 3 => raise Fail "Oracle Driver: MaximumNumberOfConnections must be larger than SessionMaxDepth" 
+                                                      | _ => raise Fail "Oracle Driver: Unknown problem in oracle driver"
 
                            
                                fun setInt (p : int) : unit = 
@@ -328,9 +328,9 @@ functor DbOracleBackend(type conn = int
                            end
     fun getHandle (i:int) : DbHandle = let val res : int = (log "apsmlORAGetSession" ; prim(":", ("apsmlORAGetSession",i,getReqRec()))) before (log("apsmlORAGetSession DONE");())
                                  in if res = 0
-                                    then raise Fail "Could not get database session"
+                                    then raise Fail "Oracle Driver: Could not get database session"
                                     else (if res = 1 
-                                    then raise Fail "Maximum nesting of oracle connections reached"
+                                    then raise Fail "Oracle Driver: Maximum nesting of oracle connections reached"
                                     else ref (SOME res))
                                  end
     fun putHandle (h:DbHandle) : unit = 
@@ -338,28 +338,28 @@ functor DbOracleBackend(type conn = int
                         | SOME  r => (log "apsmlORADropSession" ; prim(":", ("apsmlORADropSession",r : int,getReqRec()));
                                       h:= NONE)
     fun dmlDb (h : DbHandle) q : unit = 
-       case !h of NONE => raise Fail "Session closed"
+       case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
                 | SOME r => let val  res : int = prim("@:", ("DBORAExecuteSQL",r : int, Quot.toString q : string, getReqRec()))
                             in if res <> 2
                                then (* not DBDml *) 
-                                  raise Fail ("dml: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("Oracle Driver: dml: " ^ Quot.toString q ^ " failed")
                                else ()
                             end
     fun execDb (h : DbHandle) q : unit = 
-       case !h of NONE => raise Fail "Session closed"
+       case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
                 | SOME r => let val res : int = prim("@:", ("DBORAExecuteSQL",r,Quot.toString q, getReqRec()))
                             in if res = 0
                                then (* DBError *) 
-                                  raise Fail ("exec: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("Oracle Driver: exec: " ^ Quot.toString q ^ " failed")
                                else ()
                             end
     val toLower = String.map Char.toLower
     fun selector ([] : string list)  ([] : string option list)  (x : string) = NONE : string option
-      | selector [] (r::rr) x = raise Fail "Oracle driver corruption"
-      | selector (h::hr) [] x = raise Fail "Oracle driver corruption" 
+      | selector [] (r::rr) x = raise Fail "Oracle Driver: Oracle driver corruption"
+      | selector (h::hr) [] x = raise Fail "Oracle Driver: Oracle driver corruption" 
       | selector (h::hr) (r::rr) x = if String.compare(toLower x, h) = EQUAL then r else selector hr rr x
     fun selectDb (h : DbHandle) q = 
-       case !h of NONE => raise Fail "Session closed"
+       case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
                 | SOME r => 
         let val res : int = (log "DBORAExecuteSQL" ; prim("@:",("DBORAExecuteSQL",r, Quot.toString q, getReqRec())))
               val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`)
@@ -368,43 +368,43 @@ functor DbOracleBackend(type conn = int
                                   val res3 = List.map toLower (List.rev res2)
                               in ((h, selector res3, res3),res3)
                               end handle Overflow => 
-                                     raise Fail "selectDb.Database connection failed")
-                       | 2 => raise Fail "selectDb: SQL was not a select statement"
-                       | _ => raise Fail "selectDb: An error occured"
+                                     raise Fail "Oracle Driver: selectDb.Database connection failed")
+                       | 2 => raise Fail "Oracle Driver: selectDb: SQL was not a select statement"
+                       | _ => raise Fail "Oracle Driver: selectDb: An error occured"
           end
     val toOption = List.map (fn (s,i) => case i of 
-                        ~2 => raise Fail "getRowListDb.Data has been truncated"
+                        ~2 => raise Fail "Oracle Driver: getRowListDb.Data has been truncated"
                       | ~1 => NONE
                       |  0 => if isNull s then NONE else SOME s
-                      |  x => if x>0 then raise Fail ("getRowListDb. Data has been truncated, it was "
+                      |  x => if x>0 then raise Fail ("Oracle Driver: getRowListDb. Data has been truncated, it was "
                                                       ^ (Int.toString x) ^ " bytes long")
-                              else raise Fail "getRowListDb.Data Error")
+                              else raise Fail "Oracle Driver: getRowListDb.Data Error")
 
-    fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Session is closed"
+    fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Oracle Driver: Session is closed"
                                         | SOME r => 
                              let val (res,res2) : ((string * int) list * int) = (log "apsmlORAGetRow" ; prim(":", ("apsmlORAGetRow",r,getReqRec())))
                              in 
                              case res2 of 1 => SOME (toOption res)
                                         | 3 => NONE
-                                        | i => raise Fail ("getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
+                                        | i => raise Fail ("Oracle Driver: getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
                              end 
 
     fun getRowListDb2 (h,f,l) = (l,getRowListDb(h,f,l))
 
     val getRowDb = fn (h,f,l) => Option.map f (getRowListDb (h,f,l))
                                      
-    fun dmlTransDb h f = case !h of NONE => raise Fail "Session is closed"
+    fun dmlTransDb h f = case !h of NONE => raise Fail "Oracle Driver: Abuse, session is closed"
                                   | SOME r => let val _ = log("TransStart")
                                                   val res : int = prim("@:", ("DBORATransStart",r : int))
                                               in if res = 0 
-                                                 then raise Fail "Transaction already started"
+                                                 then raise Fail "Oracle Driver: Transaction already started"
                                                  else 
                     (((f h) handle X => (log "TransRollBack"; prim("@:", ("DBORATransRollBack",r : int, getReqRec())) : int; raise X)) before ( 
-                         case !h of NONE => raise Fail "Session closed prematurely"
+                         case !h of NONE => raise Fail "Oracle Driver: Session closed prematurely"
                                   | SOME r2 => let val _ = log "TransCommit"
                                                    val res2 : int = prim("@:", ("DBORATransCommit",r : int,getReqRec()))
                                                in if res2 <> 2 (* DBDml *) 
-                                                  then raise Fail "dmlTransDb.Database connection failed"
+                                                  then raise Fail "Oracle Driver: dmlTransDb.Database connection failed"
                                                   else ()
                                                end))
                                                end

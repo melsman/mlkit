@@ -1,4 +1,4 @@
-structure Environment :> ENVIRONMENT =
+functor Environment(val program_name : unit -> string) :> ENVIRONMENT =
   struct
   local
     datatype State = Out | In | Dollar | Esc of State
@@ -75,8 +75,8 @@ structure Environment :> ENVIRONMENT =
           of NONE => 
               let
                 val _ = varMap := SOME(BM.mkDict String.compare)
-                val user = Option.map (fn x=> x^"/.mlkit/mlb-path-map") (OS.Process.getEnv "HOME")
-                val system = SOME(Configuration.etcdir ^ "/mlkit/mlb-path-map")
+                val user = Option.map (fn x=> x^"/." ^ (program_name()) ^ "/mlb-path-map") (OS.Process.getEnv "HOME")
+                val system = SOME(Configuration.etcdir ^ "/" ^ (program_name()) ^ "/mlb-path-map")
                 val files = [system,user]
               in List.app (fn x => (case x
                                     of NONE => ()

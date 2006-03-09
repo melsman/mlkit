@@ -4,12 +4,17 @@
 (* COMPILE_BASIS is the combined basis of all environments in 
  * the backend *) 
 
-functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
+functor ManagerObjects(
+                         structure Execution : EXECUTION
+                         val program_name : unit -> string
+                       ) : MANAGER_OBJECTS =
   struct
     structure PP = PrettyPrint
     structure TopdecGrammar = PostElabTopdecGrammar
     structure CompileBasis = Execution.CompileBasis
     structure Labels = AddressLabels
+
+    structure Environment = Environment(struct val program_name = program_name end)
 
     structure ErrorCode = ParseElab.ErrorCode
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
