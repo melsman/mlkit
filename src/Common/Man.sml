@@ -68,7 +68,8 @@ structure Man :
 			  "Ken Friis Larsen", 
 			  "Henning Niss",
 			  "Peter Sestoft"]
-    val files = [("/etc/mlkit/map", "User configuration")]
+    val files = [("/etc/mlkit/mlb-path-map", "System-wide configuration of library and runtime system locations"),
+		 ("~/.mlkit/mlb-path-map", "User specific configuration of library and runtime system locations")]
     fun header exe date version = String.concat [".TH ", exe, " 1 \"", 
 						 date,
 						 "\" \"version ", version, "\" ",
@@ -92,15 +93,15 @@ structure Man :
 
     fun options extraOptions = String.concat [".SH OPTIONS\n", printOpts extraOptions]
           
-    val exit = String.concat [".SH EXIT STATUS\nExits with status 0 on success and -1 on failure."]
+    val exit = String.concat [".SH EXIT STATUS\nExits with status 0 on success and -1 on failure.\n"]
     val environment = String.concat [".SH ENVIRONMENT\n",
 				     "An MLKit library install directory must be provided ",
 				     "in an environment variable SML_LIB or as a path-definition ",
 				     "in either the system wide path-map /etc/mlkit/mlb-path-map ",
-				     "or in the user's personal path-map ~/.mlkit/mlb-path-map."]
+				     "or in the user's personal path-map ~/.mlkit/mlb-path-map.\n"]
     val files = String.concat [".SH FILES\n",
                                String.concat
-                                 (List.map (fn (f,e) => ".I " ^ f ^ "\n.RS\n" ^ e ^ "\n" ) files)
+                                 (List.map (fn (f,e) => ".IP " ^ f ^ "\n" ^ e ^ "\n" ) files)
                               ]
 (*
     val diag = String.concat [".SH DIAGNOSTICS\n",
