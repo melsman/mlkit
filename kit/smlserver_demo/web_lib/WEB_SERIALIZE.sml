@@ -13,5 +13,6 @@ sig
   val Bool : bool Type
   val Char : char Type
   val String : string Type
+  val Time : Time.time Type
 end
 

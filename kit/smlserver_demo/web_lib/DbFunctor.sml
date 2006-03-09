@@ -98,7 +98,10 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	  in loop acc
 	  end
 
-  fun foldDb (db : db) f acc sql = foldDbCol db (fn _ => fn (g,a) => f (fn x => getOpt(g x, "##"),a)) acc sql
+  fun foldDb (db : db) f acc sql = foldDbCol db (fn c => fn (g,a) => f (fn x => if List.exists (fn c' => c' = x) c
+                                                                                then Option.getOpt(g x, "")
+                                                                                else "##",
+                                                                        a)) acc sql
 
 	fun appDbCol (db:db) (f:string list -> (string->string option)->'a) (sql:quot) : unit =
 	  let 
@@ -110,7 +113,9 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	  in loop ()
 	  end
   
-  fun appDb db f sql = appDbCol db (fn _ => fn g => f(fn x=> getOpt(g x, "##"))) sql
+  fun appDb db f sql = appDbCol db (fn c => fn g => f(fn x=> if List.exists (fn c' => x = c') c
+                                                             then Option.getOpt (g x,"")
+                                                             else "##")) sql
 
 	fun listDbCol (db:db) (f:string list -> (string->string option)->'a) (sql: quot) : 'a list = 
 	  let 
@@ -123,7 +128,9 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	    loop ()
 	  end
  
-  fun listDb db f sql = listDbCol db (fn _ => fn g => f(fn x=> getOpt(g x, "##"))) sql
+  fun listDb db f sql = listDbCol db (fn c => fn g => f(fn x=> if List.exists (fn c' => x = c') c
+                                                               then getOpt(g x, "")
+                                                               else "##")) sql
 
   fun oneWrap f m db sql = let val (s,r) = DbBackend.selectDb db sql 
                              val res = f s
@@ -134,39 +141,43 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
   val oneFieldDb = oneWrap
        (fn s => 
 	      case DbBackend.getRowListDb s of NONE => raise Fail "Db.oneFieldDb.no rows"
-                                       | SOME [x] => getOpt(x,"##")
+                                       | SOME [x] => getOpt(x,"")
                                        | SOME _ => raise Fail "Db.oneFieldDb.size of result not one")
        "oneFieldDb"
 
   val zeroOrOneFieldDb = oneWrap
        (fn s => case DbBackend.getRowListDb s of NONE => NONE
-                                     | SOME [x] => SOME (getOpt(x,"##"))
+                                     | SOME [x] => SOME (getOpt(x,""))
                                      | SOME _ => raise Fail "zeroOrOneFieldDb.size of set is not one")
        "zeroOrOneFieldDb"
 
   val oneRowDb = oneWrap
        (fn s => case DbBackend.getRowListDb s of NONE => raise Fail "Db.oneRowDb.no rows"
-                                               | SOME l => map (fn x => getOpt(x, "##")) l)
+                                               | SOME l => map (fn x => getOpt(x, "")) l)
        "oneRowDb"
   
 	fun oneRowDb' db (f:(string->string)->'a) (sql:quot) : 'a =
 	  let 
-	    val (s,_) = DbBackend.selectDb db sql
+	    val (s,c) = DbBackend.selectDb db sql
 	    val res =
 	      case DbBackend.getRowDb s of NONE => raise Fail "Db.oneRowDb'.no rows"
-                                   | SOME g => f(fn x=> getOpt(g x,"##"))
+                                   | SOME g => f(fn x=> if List.exists (fn c' => c' = x) c
+                                                        then getOpt(g x,"")
+                                                        else "##")
 	  in
 	    case DbBackend.getRowDb s of NONE => res
                                  | SOME _ => raise Fail "oneRowDb'.more that one row"
 	  end
 	
-  val zeroOrOneRowDb = oneWrap (fn r=> Option.map (map (fn x => getOpt(x,"##")))
+  val zeroOrOneRowDb = oneWrap (fn r=> Option.map (map (fn x => getOpt(x,"")))
                                 (DbBackend.getRowListDb r)) "zeroOrOneRowDb"
 
 	fun zeroOrOneRowDb' db f sql : 'a option =
 	  let 
-	    val (s,_) = DbBackend.selectDb db sql
-      val res = Option.map (fn g => f(fn y => getOpt(g y, "##"))) (DbBackend.getRowDb s)
+	    val (s,c) = DbBackend.selectDb db sql
+      val res = Option.map (fn g => f(fn y => if List.exists (fn c' => c' = y) c 
+                                              then getOpt(g y, "")
+                                              else "##")) (DbBackend.getRowDb s)
 	  in
 	    case DbBackend.getRowDb s of NONE => res
                                  | SOME _ => raise Fail "zeroOrOneRowDb'.more than one row"
