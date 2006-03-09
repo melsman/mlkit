@@ -14,8 +14,17 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
   struct
     open Execution
 
+
+	fun cmd_name() = 
+	  if !Flags.SMLserver then "smlserverc"
+	  else if backend_name = "X86" then "mlkit" 
+	       else "mlkit_kam"
+
     structure ManagerObjects =
-	ManagerObjects(Execution)
+	ManagerObjects(struct
+                   structure Execution = Execution
+                   val program_name = cmd_name
+                 end)
       
     structure IntModules = 
 	IntModules(structure ManagerObjects = ManagerObjects
@@ -44,11 +53,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  else 
 	    print("MLKit version " ^ Version.version ^ ", " ^ date ^ " [" ^
 		  backend_name ^ " Backend]\n")
-
-	fun cmd_name() = 
-	  if !Flags.SMLserver then "smlserverc"
-	  else if backend_name = "X86" then "mlkit" 
-	       else "mlkit_kam"
 	    
 	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
 				   "Options:\n\n")
@@ -104,12 +108,12 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
   	    fun kitexe(root_dir, args) = 
 		(let 
 		     val baseDir = 
-			 case Environment.getEnvVal "SML_LIB" of 
+			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of 
 			     SOME v => v
 			   | NONE => raise Fail ("An MLKit library install directory must be provided\n" ^
 						 "in an environment variable SML_LIB or as a path-definition\n" ^
-						 "in either the system wide path-map " ^ Configuration.etcdir ^ "/mlkit/mlb-path-map\n" ^
-						 "or in your personal path-map ~/.mlkit/mlb-path-map.")
+						 "in either the system wide path-map " ^ Configuration.etcdir ^ "/" ^ (cmd_name()) ^ "/mlb-path-map\n" ^
+						 "or in your personal path-map ~/." ^ (cmd_name()) ^ "/mlb-path-map.")
 		 in
 		     (set_paths baseDir; go_options args)
 		 end

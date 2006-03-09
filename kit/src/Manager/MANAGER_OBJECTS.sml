@@ -24,6 +24,8 @@ signature MANAGER_OBJECTS =
     val warn : string -> unit   (* prints warning *)
     val quot : string -> string (* surrounds string with single quotes *)
 
+    structure Environment : ENVIRONMENT
+
     structure SystemTools :
       sig
 (*
