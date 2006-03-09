@@ -155,5 +155,6 @@ struct
   val Bool   = {name="B",to_string=Bool.toString,from_string=Option.valOf o Bool.fromString}
   val Char   = {name="C",to_string=Char.toString,from_string=Option.valOf o Char.fromString}
   val String = {name="S",to_string=(fn s => s),from_string=(fn s => s)}
+  val Time   = {name="T",to_string=Time.toString,from_string=Option.valOf o Time.fromString}
 
 end
