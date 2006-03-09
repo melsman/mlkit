@@ -51,6 +51,7 @@ signature WEB = sig
   structure Info     : WEB_INFO
   structure Mail     : WEB_MAIL
   structure Cache    : WEB_CACHE
+  structure Mime     : WEB_MIME
   structure LowMail  : WEB_LOW_MAIL 
   structure DbOraBackend : WEB_DB_BACKEND where
                            type 'a Type = 'a Info.Type.Type 

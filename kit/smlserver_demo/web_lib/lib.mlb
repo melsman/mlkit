@@ -14,6 +14,7 @@
     WEB_DB_HANDLE.sml
     WEB_DB.sml
     WEB_DYNLIB.sml
+    WEB_MIME.sml
     WebDynlib.sml
     WebSerialize.sml
     WebInfo.sml
