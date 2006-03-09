@@ -818,6 +818,61 @@ structure Web :> WEB =
 
       end
 
+
+  structure Mime :> WEB_MIME =
+    struct
+      structure BM = Binarymap
+      val empty = fn () => BM.mkDict Substring.compare
+
+      exception ParseErr of string
+      fun toMap m l =
+            let
+              val l = Substring.dropl Char.isSpace (Substring.full l)
+              val (lv,def) = Substring.splitl (not o Char.isSpace) l
+              val def = Substring.tokens Char.isSpace def
+            in case def of [] => raise ParseErr (Substring.string lv ^ " has no extensions") 
+                         | _ => List.foldl (fn (x,m) => BM.insert (m, x, lv)) m def
+            end
+
+      exception FileNotFound
+
+      local
+        exception ParseErrLine of (int * string)
+      in
+      fun readfile f : (Substring.substring, Substring.substring) BM.dict =
+            let
+              val fh =  (TextIO.openIn f) handle IO.Io _ => raise FileNotFound
+              fun close () = (TextIO.closeIn fh) handle _ => ()
+              val _ = WebBasics.log (WebBasics.Notice,"Reading Mime-Type configuration file: " ^ f)
+              fun loop m lc = (case (TextIO.inputLine fh)
+                             of SOME s => ((if CharVector.sub(s,0) = #"#" then m else toMap m s);loop m (lc + 1))
+                              | NONE => (close() ; m))
+                           handle ParseErr s => raise ParseErrLine (lc,s)
+                                | IO.Io {cause,...} => raise ParseErrLine (lc,exnMessage cause)
+            in (loop (empty ()) 1) handle ParseErrLine (i,s) => (close () ; raise ParseErr ("Parse Error on line " ^ (Int.toString i) ^ ": " ^ s))
+            end
+      end
+
+      fun readConf f = (readfile f) handle FileNotFound => empty ()
+                                         | ParseErr s => raise Fail ("In file: " ^ f ^ ", " ^ s)
+
+      fun mimeMap x = case Info.configGetValue(Cache.String, "MimeTypeFile")
+                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: MimeTypeFile not defined, using application/octet-stream")
+                                  ; SOME "application/octet-stream")
+                       | SOME f => Option.map Substring.string (BM.peek (readConf f, Substring.full x))
+      
+      structure WC = Cache
+
+      val mimeCache = WC.get (WC.String, WC.String, "smlserver_mimetype_cache",
+                              WC.WhileUsed (SOME (Time.fromSeconds (60*60)), NONE))
+      val mimeMap' = WC.memoizePartial mimeCache mimeMap
+
+      fun getMime x = case mimeMap' x 
+                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: Extension " ^ x ^ " not defined, unsing application/octet-stream")
+                                 ; "application/octet-stream")
+                       | SOME mime => mime
+    end
+
   structure WebDynlib = Dynlib(Cache)
    
 
@@ -1286,7 +1341,7 @@ structure Web :> WEB =
     (*fun getMimeType(s: string) : string = prim("apsml_GetMimeType", (s,getReqRec()))*)
 
     fun returnFileMime mimetype file = Conn.returnFile(~1, mimetype, file )
-    fun returnFile file = Conn.returnFile(~1, "application/octet-stream", file)
+    fun returnFile file = Conn.returnFile(~1, Mime.getMime file, file)
 
     fun exit() = raise Interrupt
     (* By raising Interrupt, the web-server is not killed as it
