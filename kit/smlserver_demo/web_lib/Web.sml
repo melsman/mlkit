@@ -830,8 +830,10 @@ structure Web :> WEB =
               val l = Substring.dropl Char.isSpace (Substring.full l)
               val (lv,def) = Substring.splitl (not o Char.isSpace) l
               val def = Substring.tokens Char.isSpace def
-            in case def of [] => raise ParseErr (Substring.string lv ^ " has no extensions") 
-                         | _ => List.foldl (fn (x,m) => BM.insert (m, x, lv)) m def
+            in case (Substring.size lv,def)
+               of (0,[]) => m
+                | (_,[]) => raise ParseErr (Substring.string lv ^ " has no extensions") 
+                |  _     => List.foldl (fn (x,m) => BM.insert (m, x, lv)) m def
             end
 
       exception FileNotFound
@@ -845,7 +847,7 @@ structure Web :> WEB =
               fun close () = (TextIO.closeIn fh) handle _ => ()
               val _ = WebBasics.log (WebBasics.Notice,"Reading Mime-Type configuration file: " ^ f)
               fun loop m lc = (case (TextIO.inputLine fh)
-                             of SOME s => ((if CharVector.sub(s,0) = #"#" then m else toMap m s);loop m (lc + 1))
+                             of SOME s => (loop (if CharVector.sub(s,0) = #"#" then m else toMap m s) (lc + 1))
                               | NONE => (close() ; m))
                            handle ParseErr s => raise ParseErrLine (lc,s)
                                 | IO.Io {cause,...} => raise ParseErrLine (lc,exnMessage cause)
@@ -867,8 +869,8 @@ structure Web :> WEB =
                               WC.WhileUsed (SOME (Time.fromSeconds (60*60)), NONE))
       val mimeMap' = WC.memoizePartial mimeCache mimeMap
 
-      fun getMime x = case mimeMap' x 
-                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: Extension " ^ x ^ " not defined, unsing application/octet-stream")
+      fun getMime x = case Option.join (Option.map mimeMap' (OS.Path.ext x))
+                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: File " ^ x ^ " not defined, unsing application/octet-stream")
                                  ; "application/octet-stream")
                        | SOME mime => mime
     end
