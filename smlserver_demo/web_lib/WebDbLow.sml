@@ -339,7 +339,7 @@ functor DbOracleBackend(type conn = int
                                       h:= NONE)
     fun dmlDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
-                | SOME r => let val  res : int = prim("@:", ("DBORAExecuteSQL",r : int, Quot.toString q : string, getReqRec()))
+                | SOME r => let val  res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r : int, Quot.toString q : string, getReqRec())))
                             in if res <> 2
                                then (* not DBDml *) 
                                   raise Fail ("Oracle Driver: dml: " ^ Quot.toString q ^ " failed")
@@ -347,7 +347,7 @@ functor DbOracleBackend(type conn = int
                             end
     fun execDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
-                | SOME r => let val res : int = prim("@:", ("DBORAExecuteSQL",r,Quot.toString q, getReqRec()))
+                | SOME r => let val res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r,Quot.toString q, getReqRec())))
                             in if res = 0
                                then (* DBError *) 
                                   raise Fail ("Oracle Driver: exec: " ^ Quot.toString q ^ " failed")
