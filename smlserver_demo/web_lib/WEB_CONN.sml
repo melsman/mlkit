@@ -2,6 +2,7 @@ signature WEB_CONN = sig
   eqtype status
   type set
   val returnHtml         : int * string -> status
+  val returnXhtml        : int * string -> status
   val return             : string -> status
   val returnFile         : int * string * string -> status
   val write              : string -> status

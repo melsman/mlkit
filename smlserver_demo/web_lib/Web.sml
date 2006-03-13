@@ -103,6 +103,329 @@ structure Web :> WEB =
 
   structure Set : WEB_SET = WebSet 
 
+    structure StringCache :> WEB_STRING_CACHE =
+      struct
+      type cache = int
+        fun create(n : string, t: int, sz : int) : cache =  (* sz is in bytes, t is in seconds *)
+          let val c : cache = prim("apsml_cacheCreate", (n,sz, t, getReqRec()))
+          in if c = 0 then raise InternalSmlServerErrorOutOfMemory else c
+          end
+          
+        fun find (n : string) : cache option = (*log(Debug, "cacheFind"); *)
+          let val res : int = prim("@apsml_cacheFind", (n, getReqRec()))
+          in if res = 0 then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
+             else (*log(Debug, "cacheFind SOME, pid:"^ Int.toString(Info.pid()));*) SOME res
+          end
+        fun findTmSz(cn: string, t: int, sz : int) : cache =
+          case find cn of
+            NONE => create(cn,t,sz)
+          | SOME c => c
+        fun flush(c:cache) : unit = (*log(Debug, "cacheFlush");*)
+          let val c : cache = prim("@apsml_cacheFlush", (c,getReqRec(), 1))
+          in if c = 0 then raise InternalSmlServerErrorOutOfMemory else ()
+          end
+        fun set(c:cache, k:string, v:string, t:int) : (bool * string option) = 
+          let 
+            (*val _ = log(Debug, "key: "^ k ^", value: " ^ v) *)
+            val (res,value) : (int * string) = prim("apsml_cacheSet", (c,(k,v,t),getReqRec()))
+            (*val _ = log(Debug, "apsml_cacheSet DONE") *)
+          in if res = 1 
+             then (if isNull(value) then (false,NONE) else (false, SOME(value)))
+           else if res = 2 
+           then (true, NONE)
+           else raise InternalSmlServerErrorOutOfMemory
+          end 
+        fun get(c:cache, k:string) : string option = (*log(Notice, "cacheGet"); *)
+          let val res : string = prim("apsml_cacheGet", (c,k, getReqRec()))
+          in if isNull res then NONE
+             else SOME res
+          end
+
+        local
+          fun cache_fn (f:string->string, cn: string,t: int, sz : int) set get =
+            (fn k =>
+               case find cn of 
+               NONE => let val v = f k in (set (create(cn,t,sz),k,v,0);v) end
+             | SOME c => (case get (c,k) of 
+                NONE => let val v = f k in (set (c,k,v,t);v) end 
+              | SOME v => v))
+        in
+          fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int, sz : int)) = 
+            cache_fn arg set get
+          fun cacheForAwhile (arg as (f:string->string, cn: string, t: int, sz : int)) =
+            let
+              open Time
+              fun set'(c,k,v,t) = set(c,k, toString (now()) ^ ":" ^ v,t)
+              fun get'(c,k) = 
+                case get(c,k) of
+                  NONE => NONE
+                | SOME t0_v => 
+                    (case scan Substring.getc (Substring.full t0_v)
+                       of SOME (t0,s) => 
+                        (case Substring.getc s
+                            of SOME (#":",v) => 
+                              if now() > t0 + (fromSeconds (Int.toLarge t))
+                              then NONE 
+                              else SOME (Substring.string v)
+                             | _ => NONE)
+                        | NONE => NONE)
+            in
+              cache_fn arg set' get'
+            end
+        end
+      end
+
+    structure Cache : WEB_CACHE =
+      struct
+  (* This module uses the basic cache functionalities
+       implemented in WEB_STRING_CACHE *)
+  open WebSerialize
+
+  type name = string
+
+(*  val max_cache_name_size = 31 (* Max size of cache name supported by AOLserver pre version 4 is 
+                                  *     32 and we leave one slot for the terminating \0. 
+                  * In the current implementation there is no limit                            *) *)
+
+  datatype kind =
+    WhileUsed of Time.time option * int option
+  | TimeOut of Time.time option * int option
+(*  | Size of int *)
+
+
+  type ('a,'b) cache = {name: string,
+            kind: kind,
+            domType: 'a Type,
+            rangeType: 'b Type,
+            cache: StringCache.cache}
+
+  (* Cache info *)
+  fun pp_kind kind =
+    case kind of
+      WhileUsed (t,s) => 
+        let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
+                       of NONE => "No timeout" | SOME(t') => "timeout: " ^ t'
+            val size = case Option.map Int.toString s 
+                       of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
+        in 
+          "WhileUsed(" ^ time ^ " " ^ size ^ ")"
+        end
+    | TimeOut (t,s) => 
+        let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
+                       of SOME(t') => "Time to live: " ^ t' | NONE => "No time limit"
+            val size = case Option.map Int.toString s 
+                       of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
+            in
+              "TimeOut(" ^ time ^ " " ^ size ^ ")"
+            end
+(*    | Size n => "Size(" ^ (Int.toString n) ^ ")" *)
+
+  fun pp_type (t: 'a Type) = #name t
+  fun pp_cache (c: ('a,'b)cache) = 
+    "[name:" ^ (#name c) ^ ",kind:" ^ (pp_kind(#kind c)) ^ 
+    ",domType: " ^ (pp_type (#domType c)) ^ 
+    ",rangeType: " ^ (pp_type (#rangeType c)) ^ "]"
+    
+  fun get (domType:'a Type,rangeType: 'b Type,name,kind) =
+    let
+      fun pp_kind kind =
+        case kind of
+          WhileUsed t => "W"
+        | TimeOut t => "T"
+(*        | Size n => "S" *)
+      val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
+(*      val _ = 
+        if String.size c_name > max_cache_name_size then
+    raise Fail ("Ns.Cache.get: Can't create cache because cache name " ^ 
+          c_name ^ " is larger than "  ^ (Int.toString max_cache_name_size))
+        else () *)
+      val cache = 
+        case kind of
+          WhileUsed (t,s) =>  
+             StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
+                                  getOpt(s, ~1))
+        | TimeOut (t,s) => 
+             StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
+                                  getOpt(s, ~1))
+(*        | Size n => StringCache.findTmSz(c_name,0,n)  *)
+
+    in
+      {name=c_name,
+       kind=kind,
+       domType=domType,
+       rangeType=rangeType,
+       cache=cache}
+    end
+  
+  local
+    open Time
+    fun getWhileUsed (c: ('a,'b) cache) k =
+      StringCache.get(#cache c,#to_string(#domType c) k)
+      fun getTimeOut' t' t0_v = 
+        let fun getT (s1, t0, t1) = 
+             (case Substring.getc s1
+               of SOME(#":",v) => (
+                 case (t',t1) of (NONE,SOME(t1')) => 
+                            (*log(Debug, "NONE,SOME("^ Time.toString t1' ^")");*)
+                             if now() > t0 + t1'
+                             then NONE
+                             else SOME(Substring.string v)
+                          | (SOME(t),SOME(t1')) =>
+                            (*(log(Debug,"SOME("^Time.toString t^"),SOME("^Time.toString t1' ^")");*)
+                             if now() > t0 + t orelse now() > t0 + t1'
+                             then NONE
+                             else SOME (Substring.string v)
+                          | (NONE,NONE) => (*log(Debug,"NONE,NONE");*)SOME(Substring.string v)
+                          | (SOME(t),NONE) => 
+                           (*log(Debug, "SOME("^ Time.toString t ^"), NONE");*)
+                            if now() > t0 + t then NONE
+                            else SOME (Substring.string v))
+                | _ => NONE)
+         in 
+        case scan Substring.getc (Substring.full t0_v)
+          of SOME (t0,s) => 
+             (case Substring.getc s
+               of SOME (#":",s') => 
+                  (case scan Substring.getc s'
+                    of SOME(t1,s1) => getT(s1,t0,SOME(t1))
+                     | _ => (
+                       case Substring.getc s'
+                       of SOME(#"-", s1) => getT(s1, t0, NONE)
+                        | _ => NONE))
+                | _ => NONE)
+           | _ => NONE
+          end
+
+    fun getTimeOut (c: ('a,'b) cache) k t v = case v of 
+      NONE => (
+        case StringCache.get(#cache c,#to_string(#domType c) k) of
+          NONE => NONE
+        | SOME t0_v =>  getTimeOut' t t0_v)
+    | SOME(t0_v) => getTimeOut' t t0_v
+  in
+    fun lookup (c:('a,'b) cache) (k: 'a) =
+      let
+        val v = 
+          case #kind c of
+            WhileUsed (t,_) => getWhileUsed c k 
+          | TimeOut (t,_) => getTimeOut c k t NONE
+(*          | Size n => StringCache.get(#cache c,#to_string(#domType c) k) *)
+      in
+        case v of
+          NONE => NONE
+        | SOME s => SOME ((#from_string (#rangeType c)) s)
+      end
+
+  fun insert (c: ('a,'b) cache, k: 'a, v: 'b, to : Time.time option) =
+    let fun min (a,b) = if a < b then a else b
+        fun zeroTo1 a = if Time.toSeconds a = 0 then Time.fromSeconds ~1 else a
+        val t' = (case to of NONE => 0
+                           | SOME(s) => if Time.toSeconds s = 0 then ~1 else (LargeInt.toInt o Time.toSeconds) s) : int
+    in
+    case #kind c of
+      WhileUsed (_,_) => #1(StringCache.set(#cache c,
+             #to_string (#domType c) k,
+             #to_string (#rangeType c) v,
+             t'))
+    | TimeOut (t,_) => case (StringCache.set(#cache c,
+           #to_string(#domType c) k,
+           Time.toString (Time.now()) ^ ":" ^ 
+           (case (to,t) of (NONE,SOME(t')) => Time.toString (zeroTo1 t')
+                     | (SOME(to'),SOME(t')) => Time.toString (min(to',zeroTo1 t'))
+                     | (NONE,NONE) => "-"
+                     | (SOME(to'),NONE) => Time.toString to')
+               ^ ":" ^ ((#to_string (#rangeType c)) v), t'))
+           of (true,_) => true
+            | (false, NONE) => false
+            | (false, SOME(oldvalue)) => 
+              case getTimeOut' t oldvalue of NONE => true
+                                           | SOME(_) => false
+     end
+  end
+
+  fun flush (c: ('a,'b) cache) = StringCache.flush (#cache c)
+    
+  fun memoizePartialTime (c: ('a,'b) cache) (f:('a -> ('b * Time.time option) option)) =
+    (fn k =>
+     (case lookup c k of 
+        NONE => let val v' = f k in (Option.map (fn (v,time) => insert (c,k,v,time)) v';
+                                     Option.map (fn (v,_) => v) v') end 
+      | SOME v => SOME v))
+
+  fun memoizePartial c (f: ('a -> 'b option)) = 
+            memoizePartialTime c (fn x => Option.map (fn y => (y,NONE)) (f x)) 
+
+  fun memoizeTime c f = fn k => valOf(memoizePartialTime c (fn x => SOME (f x)) k)
+
+  fun memoize c f = fn k => valOf(memoizePartial c (fn x => SOME (f x)) k)
+
+      end
+
+
+  structure Mime :> WEB_MIME =
+    struct
+      structure BM = Binarymap
+      val empty = fn () => BM.mkDict Substring.compare
+
+      exception ParseErr of string
+      fun toMap m l =
+            let
+              val l = Substring.dropl Char.isSpace (Substring.full l)
+              val (lv,def) = Substring.splitl (not o Char.isSpace) l
+              val def = Substring.tokens Char.isSpace def
+            in case (Substring.size lv,def)
+               of (0,[]) => m
+                | (_,[]) => raise ParseErr (Substring.string lv ^ " has no extensions") 
+                |  _     => List.foldl (fn (x,m) => BM.insert (m, x, lv)) m def
+            end
+
+      exception FileNotFound
+
+      local
+        exception ParseErrLine of (int * string)
+      in
+      fun readfile f : (Substring.substring, Substring.substring) BM.dict =
+            let
+              val fh =  (TextIO.openIn f) handle IO.Io _ => raise FileNotFound
+              fun close () = (TextIO.closeIn fh) handle _ => ()
+              val _ = WebBasics.log (WebBasics.Notice,"Reading Mime-Type configuration file: " ^ f)
+              fun loop m lc = (case (TextIO.inputLine fh)
+                             of SOME s => (loop (if CharVector.sub(s,0) = #"#" then m else toMap m s) (lc + 1))
+                              | NONE => (close() ; m))
+                           handle ParseErr s => raise ParseErrLine (lc,s)
+                                | IO.Io {cause,...} => raise ParseErrLine (lc,exnMessage cause)
+            in (loop (empty ()) 1) handle ParseErrLine (i,s) => (close () ; raise ParseErr ("Parse Error on line " ^ (Int.toString i) ^ ": " ^ s))
+            end
+      end
+
+      fun readConf f = (readfile f) handle FileNotFound => empty ()
+                                         | ParseErr s => raise Fail ("In file: " ^ f ^ ", " ^ s)
+
+      fun mimeMap x = case Info.configGetValue(Cache.String, "MimeTypeFile")
+                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: MimeTypeFile not defined, using application/octet-stream")
+                                  ; SOME "application/octet-stream")
+                       | SOME f => Option.map Substring.string (BM.peek (readConf f, Substring.full x))
+      
+      structure WC = Cache
+
+      val mimeCache = WC.get (WC.String, WC.String, "smlserver_mimetype_cache",
+                              WC.WhileUsed (SOME (Time.fromSeconds (60*60)), NONE))
+      val mimeMap' = WC.memoizePartial mimeCache mimeMap
+
+      fun getMime x = case Option.join (Option.map mimeMap' (OS.Path.ext x))
+                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: File " ^ x ^ " not defined, unsing application/octet-stream")
+                                 ; "application/octet-stream")
+                       | SOME mime => mime
+      fun addEncoding x = let
+                            val enc = "; charset=" ^ (Option.getOpt (Info.configGetValue(Info.Type.String, "standardFileEncoding"), "ISO-8859-1"))
+                            fun ae (a as "text/html") = a ^ enc
+                              | ae (a as "text/plain") = a ^ enc
+                              | ae (a as "application/xhtml+xml") = a ^ enc
+                              | ae a = a
+                          in ae x end
+    end
+
+
   structure Conn : WEB_CONN = 
     struct 
     type status = int
@@ -129,7 +452,10 @@ structure Web :> WEB =
       prim("@apsml_returnFile", (status, mt, f, getReqRec()))
 
     fun returnHtml (i:int, s: string) : status = 
-      prim("@apsml_returnHtml", (i,s,size s, "text/html; charset=iso-8859-1", getReqRec()))
+      prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRec()))
+
+    fun returnXhtml (i : int,s : string) : status = 
+      prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRec()))
 
     local 
         val (form_data : set option option ref) = ref NONE
@@ -559,322 +885,6 @@ structure Web :> WEB =
   end
       end
   
-
-    structure StringCache :> WEB_STRING_CACHE =
-      struct
-      type cache = int
-        fun create(n : string, t: int, sz : int) : cache =  (* sz is in bytes, t is in seconds *)
-          let val c : cache = prim("apsml_cacheCreate", (n,sz, t, getReqRec()))
-          in if c = 0 then raise InternalSmlServerErrorOutOfMemory else c
-          end
-          
-        fun find (n : string) : cache option = (*log(Debug, "cacheFind"); *)
-          let val res : int = prim("@apsml_cacheFind", (n, getReqRec()))
-          in if res = 0 then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
-             else (*log(Debug, "cacheFind SOME, pid:"^ Int.toString(Info.pid()));*) SOME res
-          end
-        fun findTmSz(cn: string, t: int, sz : int) : cache =
-          case find cn of
-            NONE => create(cn,t,sz)
-          | SOME c => c
-        fun flush(c:cache) : unit = (*log(Debug, "cacheFlush");*)
-          let val c : cache = prim("@apsml_cacheFlush", (c,getReqRec(), 1))
-          in if c = 0 then raise InternalSmlServerErrorOutOfMemory else ()
-          end
-        fun set(c:cache, k:string, v:string, t:int) : (bool * string option) = 
-          let 
-            (*val _ = log(Debug, "key: "^ k ^", value: " ^ v) *)
-            val (res,value) : (int * string) = prim("apsml_cacheSet", (c,(k,v,t),getReqRec()))
-            (*val _ = log(Debug, "apsml_cacheSet DONE") *)
-          in if res = 1 
-             then (if isNull(value) then (false,NONE) else (false, SOME(value)))
-           else if res = 2 
-           then (true, NONE)
-           else raise InternalSmlServerErrorOutOfMemory
-          end 
-        fun get(c:cache, k:string) : string option = (*log(Notice, "cacheGet"); *)
-          let val res : string = prim("apsml_cacheGet", (c,k, getReqRec()))
-          in if isNull res then NONE
-             else SOME res
-          end
-
-        local
-          fun cache_fn (f:string->string, cn: string,t: int, sz : int) set get =
-            (fn k =>
-               case find cn of 
-               NONE => let val v = f k in (set (create(cn,t,sz),k,v,0);v) end
-             | SOME c => (case get (c,k) of 
-                NONE => let val v = f k in (set (c,k,v,t);v) end 
-              | SOME v => v))
-        in
-          fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int, sz : int)) = 
-            cache_fn arg set get
-          fun cacheForAwhile (arg as (f:string->string, cn: string, t: int, sz : int)) =
-            let
-              open Time
-              fun set'(c,k,v,t) = set(c,k, toString (now()) ^ ":" ^ v,t)
-              fun get'(c,k) = 
-                case get(c,k) of
-                  NONE => NONE
-                | SOME t0_v => 
-                    (case scan Substring.getc (Substring.full t0_v)
-                       of SOME (t0,s) => 
-                        (case Substring.getc s
-                            of SOME (#":",v) => 
-                              if now() > t0 + (fromSeconds (Int.toLarge t))
-                              then NONE 
-                              else SOME (Substring.string v)
-                             | _ => NONE)
-                        | NONE => NONE)
-            in
-              cache_fn arg set' get'
-            end
-        end
-      end
-
-    structure Cache : WEB_CACHE =
-      struct
-  (* This module uses the basic cache functionalities
-       implemented in WEB_STRING_CACHE *)
-  open WebSerialize
-
-  type name = string
-
-(*  val max_cache_name_size = 31 (* Max size of cache name supported by AOLserver pre version 4 is 
-                                  *     32 and we leave one slot for the terminating \0. 
-                  * In the current implementation there is no limit                            *) *)
-
-  datatype kind =
-    WhileUsed of Time.time option * int option
-  | TimeOut of Time.time option * int option
-(*  | Size of int *)
-
-
-  type ('a,'b) cache = {name: string,
-            kind: kind,
-            domType: 'a Type,
-            rangeType: 'b Type,
-            cache: StringCache.cache}
-
-  (* Cache info *)
-  fun pp_kind kind =
-    case kind of
-      WhileUsed (t,s) => 
-        let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
-                       of NONE => "No timeout" | SOME(t') => "timeout: " ^ t'
-            val size = case Option.map Int.toString s 
-                       of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
-        in 
-          "WhileUsed(" ^ time ^ " " ^ size ^ ")"
-        end
-    | TimeOut (t,s) => 
-        let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
-                       of SOME(t') => "Time to live: " ^ t' | NONE => "No time limit"
-            val size = case Option.map Int.toString s 
-                       of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
-            in
-              "TimeOut(" ^ time ^ " " ^ size ^ ")"
-            end
-(*    | Size n => "Size(" ^ (Int.toString n) ^ ")" *)
-
-  fun pp_type (t: 'a Type) = #name t
-  fun pp_cache (c: ('a,'b)cache) = 
-    "[name:" ^ (#name c) ^ ",kind:" ^ (pp_kind(#kind c)) ^ 
-    ",domType: " ^ (pp_type (#domType c)) ^ 
-    ",rangeType: " ^ (pp_type (#rangeType c)) ^ "]"
-    
-  fun get (domType:'a Type,rangeType: 'b Type,name,kind) =
-    let
-      fun pp_kind kind =
-        case kind of
-          WhileUsed t => "W"
-        | TimeOut t => "T"
-(*        | Size n => "S" *)
-      val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
-(*      val _ = 
-        if String.size c_name > max_cache_name_size then
-    raise Fail ("Ns.Cache.get: Can't create cache because cache name " ^ 
-          c_name ^ " is larger than "  ^ (Int.toString max_cache_name_size))
-        else () *)
-      val cache = 
-        case kind of
-          WhileUsed (t,s) =>  
-             StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
-                                  getOpt(s, ~1))
-        | TimeOut (t,s) => 
-             StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
-                                  getOpt(s, ~1))
-(*        | Size n => StringCache.findTmSz(c_name,0,n)  *)
-
-    in
-      {name=c_name,
-       kind=kind,
-       domType=domType,
-       rangeType=rangeType,
-       cache=cache}
-    end
-  
-  local
-    open Time
-    fun getWhileUsed (c: ('a,'b) cache) k =
-      StringCache.get(#cache c,#to_string(#domType c) k)
-      fun getTimeOut' t' t0_v = 
-        let fun getT (s1, t0, t1) = 
-             (case Substring.getc s1
-               of SOME(#":",v) => (
-                 case (t',t1) of (NONE,SOME(t1')) => 
-                            (*log(Debug, "NONE,SOME("^ Time.toString t1' ^")");*)
-                             if now() > t0 + t1'
-                             then NONE
-                             else SOME(Substring.string v)
-                          | (SOME(t),SOME(t1')) =>
-                            (*(log(Debug,"SOME("^Time.toString t^"),SOME("^Time.toString t1' ^")");*)
-                             if now() > t0 + t orelse now() > t0 + t1'
-                             then NONE
-                             else SOME (Substring.string v)
-                          | (NONE,NONE) => (*log(Debug,"NONE,NONE");*)SOME(Substring.string v)
-                          | (SOME(t),NONE) => 
-                           (*log(Debug, "SOME("^ Time.toString t ^"), NONE");*)
-                            if now() > t0 + t then NONE
-                            else SOME (Substring.string v))
-                | _ => NONE)
-         in 
-        case scan Substring.getc (Substring.full t0_v)
-          of SOME (t0,s) => 
-             (case Substring.getc s
-               of SOME (#":",s') => 
-                  (case scan Substring.getc s'
-                    of SOME(t1,s1) => getT(s1,t0,SOME(t1))
-                     | _ => (
-                       case Substring.getc s'
-                       of SOME(#"-", s1) => getT(s1, t0, NONE)
-                        | _ => NONE))
-                | _ => NONE)
-           | _ => NONE
-          end
-
-    fun getTimeOut (c: ('a,'b) cache) k t v = case v of 
-      NONE => (
-        case StringCache.get(#cache c,#to_string(#domType c) k) of
-          NONE => NONE
-        | SOME t0_v =>  getTimeOut' t t0_v)
-    | SOME(t0_v) => getTimeOut' t t0_v
-  in
-    fun lookup (c:('a,'b) cache) (k: 'a) =
-      let
-        val v = 
-          case #kind c of
-            WhileUsed (t,_) => getWhileUsed c k 
-          | TimeOut (t,_) => getTimeOut c k t NONE
-(*          | Size n => StringCache.get(#cache c,#to_string(#domType c) k) *)
-      in
-        case v of
-          NONE => NONE
-        | SOME s => SOME ((#from_string (#rangeType c)) s)
-      end
-
-  fun insert (c: ('a,'b) cache, k: 'a, v: 'b, to : Time.time option) =
-    let fun min (a,b) = if a < b then a else b
-        fun zeroTo1 a = if Time.toSeconds a = 0 then Time.fromSeconds ~1 else a
-        val t' = (case to of NONE => 0
-                           | SOME(s) => if Time.toSeconds s = 0 then ~1 else (LargeInt.toInt o Time.toSeconds) s) : int
-    in
-    case #kind c of
-      WhileUsed (_,_) => #1(StringCache.set(#cache c,
-             #to_string (#domType c) k,
-             #to_string (#rangeType c) v,
-             t'))
-    | TimeOut (t,_) => case (StringCache.set(#cache c,
-           #to_string(#domType c) k,
-           Time.toString (Time.now()) ^ ":" ^ 
-           (case (to,t) of (NONE,SOME(t')) => Time.toString (zeroTo1 t')
-                     | (SOME(to'),SOME(t')) => Time.toString (min(to',zeroTo1 t'))
-                     | (NONE,NONE) => "-"
-                     | (SOME(to'),NONE) => Time.toString to')
-               ^ ":" ^ ((#to_string (#rangeType c)) v), t'))
-           of (true,_) => true
-            | (false, NONE) => false
-            | (false, SOME(oldvalue)) => 
-              case getTimeOut' t oldvalue of NONE => true
-                                           | SOME(_) => false
-     end
-  end
-
-  fun flush (c: ('a,'b) cache) = StringCache.flush (#cache c)
-    
-  fun memoizePartialTime (c: ('a,'b) cache) (f:('a -> ('b * Time.time option) option)) =
-    (fn k =>
-     (case lookup c k of 
-        NONE => let val v' = f k in (Option.map (fn (v,time) => insert (c,k,v,time)) v';
-                                     Option.map (fn (v,_) => v) v') end 
-      | SOME v => SOME v))
-
-  fun memoizePartial c (f: ('a -> 'b option)) = 
-            memoizePartialTime c (fn x => Option.map (fn y => (y,NONE)) (f x)) 
-
-  fun memoizeTime c f = fn k => valOf(memoizePartialTime c (fn x => SOME (f x)) k)
-
-  fun memoize c f = fn k => valOf(memoizePartial c (fn x => SOME (f x)) k)
-
-      end
-
-
-  structure Mime :> WEB_MIME =
-    struct
-      structure BM = Binarymap
-      val empty = fn () => BM.mkDict Substring.compare
-
-      exception ParseErr of string
-      fun toMap m l =
-            let
-              val l = Substring.dropl Char.isSpace (Substring.full l)
-              val (lv,def) = Substring.splitl (not o Char.isSpace) l
-              val def = Substring.tokens Char.isSpace def
-            in case (Substring.size lv,def)
-               of (0,[]) => m
-                | (_,[]) => raise ParseErr (Substring.string lv ^ " has no extensions") 
-                |  _     => List.foldl (fn (x,m) => BM.insert (m, x, lv)) m def
-            end
-
-      exception FileNotFound
-
-      local
-        exception ParseErrLine of (int * string)
-      in
-      fun readfile f : (Substring.substring, Substring.substring) BM.dict =
-            let
-              val fh =  (TextIO.openIn f) handle IO.Io _ => raise FileNotFound
-              fun close () = (TextIO.closeIn fh) handle _ => ()
-              val _ = WebBasics.log (WebBasics.Notice,"Reading Mime-Type configuration file: " ^ f)
-              fun loop m lc = (case (TextIO.inputLine fh)
-                             of SOME s => (loop (if CharVector.sub(s,0) = #"#" then m else toMap m s) (lc + 1))
-                              | NONE => (close() ; m))
-                           handle ParseErr s => raise ParseErrLine (lc,s)
-                                | IO.Io {cause,...} => raise ParseErrLine (lc,exnMessage cause)
-            in (loop (empty ()) 1) handle ParseErrLine (i,s) => (close () ; raise ParseErr ("Parse Error on line " ^ (Int.toString i) ^ ": " ^ s))
-            end
-      end
-
-      fun readConf f = (readfile f) handle FileNotFound => empty ()
-                                         | ParseErr s => raise Fail ("In file: " ^ f ^ ", " ^ s)
-
-      fun mimeMap x = case Info.configGetValue(Cache.String, "MimeTypeFile")
-                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: MimeTypeFile not defined, using application/octet-stream")
-                                  ; SOME "application/octet-stream")
-                       | SOME f => Option.map Substring.string (BM.peek (readConf f, Substring.full x))
-      
-      structure WC = Cache
-
-      val mimeCache = WC.get (WC.String, WC.String, "smlserver_mimetype_cache",
-                              WC.WhileUsed (SOME (Time.fromSeconds (60*60)), NONE))
-      val mimeMap' = WC.memoizePartial mimeCache mimeMap
-
-      fun getMime x = case Option.join (Option.map mimeMap' (OS.Path.ext x))
-                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: File " ^ x ^ " not defined, unsing application/octet-stream")
-                                 ; "application/octet-stream")
-                       | SOME mime => mime
-    end
-
   structure WebDynlib = Dynlib(Cache)
    
 
@@ -1292,7 +1302,7 @@ structure Web :> WEB =
           else raise Fail "")
         handle X => 
           (FileSys.remove tmpf;
-           raise Fail ("Failed to send email from " ^ from ^ " using Ns.sendmail."))
+           raise Fail ("Failed to send email from " ^ from ^ " using Web.sendmail."))
       end
 
     fun send {to: string, from: string, subject: string, body: string} : unit =
@@ -1343,7 +1353,7 @@ structure Web :> WEB =
     (*fun getMimeType(s: string) : string = prim("apsml_GetMimeType", (s,getReqRec()))*)
 
     fun returnFileMime mimetype file = Conn.returnFile(~1, mimetype, file )
-    fun returnFile file = Conn.returnFile(~1, Mime.getMime file, file)
+    fun returnFile file = Conn.returnFile(~1, Mime.addEncoding (Mime.getMime file), file)
 
     fun exit() = raise Interrupt
     (* By raising Interrupt, the web-server is not killed as it
