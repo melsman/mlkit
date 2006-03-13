@@ -356,12 +356,12 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL) return;
-  if (ses->mode == MANUAL_COMMIT)
-  {
-    ses->mode = AUTO_COMMIT;
-    status = SQLEndTran(SQL_HANDLE_DBC, ses->connhp, SQL_ROLLBACK);
-    ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, ;, ctx)
-  }
+//  if (ses->mode == MANUAL_COMMIT)
+//  {
+//    ses->mode = AUTO_COMMIT;
+//    status = SQLEndTran(SQL_HANDLE_DBC, ses->connhp, SQL_ROLLBACK);
+//    ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, ;, ctx)
+//  }
   if (ses->datasizes)
   {
     free(ses->datasizes);
@@ -649,7 +649,8 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   if (ses == NULL) return DBError;
   if (ses->stmthp != SQL_NULL_HANDLE || ses->mode == MANUAL_COMMIT)
   { // A transaction is open
-    DBFlushStmt(ses,ctx);
+    DBODBCTransRollBack(ses,ctx);
+    dblog1(ctx, "ODBC Driver: DBReturnSession, a transaction was in flight");
   }
   status = SQLDisconnect(ses->connhp);
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, 

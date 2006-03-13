@@ -586,6 +586,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   if (ses->mode == OCI_DEFAULT)
   { // A transaction is open
 //    DBFlushStmt(ses,ctx);
+    dblog1(ctx, "Oracle Driver: DBReturnSession, Session in the midle of a Transaction");
     DBORATransRollBack(ses, ctx);
   }
   if (ses->stmthp)
