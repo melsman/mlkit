@@ -293,12 +293,12 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
   dvoid *db;
   if (ses == NULL) return;
   db = ses->db;
-  if (ses->mode == OCI_DEFAULT)
-  {
-    ses->mode = OCI_COMMIT_ON_SUCCESS;
-    status = OCITransRollback(ses->svchp, ses->errhp, OCI_DEFAULT);
-    ErrorCheck(status, OCI_HTYPE_ERROR, ses, ;, ctx)
-  }
+//  if (ses->mode == OCI_DEFAULT)
+//  {
+//    ses->mode = OCI_COMMIT_ON_SUCCESS;
+//    status = OCITransRollback(ses->svchp, ses->errhp, OCI_DEFAULT);
+//    ErrorCheck(status, OCI_HTYPE_ERROR, ses, ;, ctx)
+//  }
   if (ses->datasizes)
   {
     free(ses->datasizes);
@@ -523,10 +523,15 @@ DBORATransCommit (oSes_t *ses, void *ctx)/*{{{*/
   sword status;
   sb4 errcode = 0;
   dvoid *db;
-  if (ses == NULL) return DBError;
+  if (ses == NULL)
+  {
+    dblog1(ctx, "Oracle Driver: DBORATransCommit, ses == NULL");
+    return DBError;
+  }
   db = ses->db;
   if (ses->mode == OCI_COMMIT_ON_SUCCESS) 
   {
+    dblog1(ctx, "Oracle Driver: DBORATransCommit, ses->mode == OCI_COMMIT_ON_SUCCESS");
     DBFlushStmt(ses,ctx);
     return DBError;
   }
@@ -535,6 +540,7 @@ DBORATransCommit (oSes_t *ses, void *ctx)/*{{{*/
   ErrorCheck(status, OCI_HTYPE_ERROR, ses,
       DBCheckNSetIfServerGoneBad(ses->db, errcode, ctx, 1);
       DBFlushStmt(ses,ctx);
+      dblog1(ctx, "Oracle Driver: DBORATransCommit, OCITransCommit: some error occured");
       return DBError;,
       ctx
       )
@@ -579,7 +585,8 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   db = ses->db;
   if (ses->mode == OCI_DEFAULT)
   { // A transaction is open
-    DBFlushStmt(ses,ctx);
+//    DBFlushStmt(ses,ctx);
+    DBORATransRollBack(ses, ctx);
   }
   if (ses->stmthp)
   {
