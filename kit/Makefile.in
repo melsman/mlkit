@@ -513,10 +513,10 @@ install_smlserver0:
 	$(MAKE) -C src/SMLserver/apache install LIBDIR=$(LIBDIR)/smlserver/lib
 
 install_smlserver:install_smlserver0
-	$(MKDIR) $(SYSCONFDIR)/mlkit
-	if [ -e $(SYSCONFDIR)/mlkit/mlb-path-map ]; \
+	$(MKDIR) $(SYSCONFDIR)/smlserverc
+	if [ -e $(SYSCONFDIR)/smlserverc/mlb-path-map ]; \
            then true; \
-           else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
+           else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
         fi
 
 #install_smlserver_oracle:
