@@ -1274,7 +1274,7 @@ structure Web :> WEB =
                              end
               
 
-    fun sendmail {to: string list, cc: string list, bcc: string list,
+(*    fun sendmail {to: string list, cc: string list, bcc: string list,
             from: string, subject: string, body: string,
             extra_headers: string list} : unit =
       let
@@ -1303,7 +1303,23 @@ structure Web :> WEB =
         handle X => 
           (FileSys.remove tmpf;
            raise Fail ("Failed to send email from " ^ from ^ " using Web.sendmail."))
-      end
+      end*)
+
+      fun stdEnc () = Option.getOpt(Option.join
+                         (Option.map (fn "iso-8859-1" => SOME ISO88591
+                                       | "utf-8" => SOME UTF8
+                                       | "ascii" => SOME USASCII
+                                       | _ => NONE) (Info.configGetValue(Info.Type.String, "standardEmailEncoding"))),ISO88591)
+      fun sendmail (e : email) : unit =
+               ignore(
+                 mail
+                   (fn false => NONE
+                     | true  => SOME(e, false, stdEnc()))
+                   (fn (em,err,()) => WebBasics.log(WebBasics.Warning, String.concat
+                                                 ("tried to mail: " :: (List.foldl (fn (x,l) => x::", "::l) [] (#to em)) @
+                                                                  [" but I got the following errors: "] @
+                                                 (List.foldl (fn ((x,y),z) => "; " :: x :: " " :: y :: z) [] err))))
+                   true ())
 
     fun send {to: string, from: string, subject: string, body: string} : unit =
       sendmail {to=[to],from=from,cc=nil,bcc=nil,subject=subject,
