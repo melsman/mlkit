@@ -13,6 +13,7 @@ local
   open BasLib
 in
   local open Pickle Tools SyntaxObjects SpecialObjects Basics CompilerObjects
+             Environment
   in MANAGER_OBJECTS.sml
   end
 
@@ -33,12 +34,12 @@ in
   ../Common/MD5.sml
 
   local open Pickle Tools Basics CompilerObjects
-  in local open SyntaxObjects 
+  in local open SyntaxObjects Environment 
      in ManagerObjects.sml 
         local open Edlib in IntModules.sml end
      end     
      Scriptlet.sml
-     local open Edlib SyntaxObjects MlbMake Environment in Manager.sml end
+     local open Edlib SyntaxObjects MlbMake in Manager.sml end
   end
 end
 
