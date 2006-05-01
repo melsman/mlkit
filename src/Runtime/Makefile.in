@@ -58,7 +58,7 @@ gen_syserror: gen_syserror.c
 #	$(CC) -c -DKAM $(OPT) -o $*-kam.o $<
 
 %-smlserver.o: %.c Makefile
-	$(CC) -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE $(OPT) -o $*-smlserver.o $<
+	$(CC) -c -g -DKAM -DLAB_THREADED -DTHREADS -DAPACHE -fpic $(OPT) -o $*-smlserver.o $<
 
 %-p.o: %.c
 #	$(CC) -c -g -DPROFILING -DDEBUG -o $*-p.o $< 

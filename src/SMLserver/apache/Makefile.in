@@ -46,11 +46,11 @@ oracle: $(ORACLELIB)
 odbc: $(ODBCLIB)
 
 $(ORACLELIB): oracle.c
-	${CC} $(OPT) -I ${ORACLE}/sdk/include -c -fPIC oracle.c
+	${CC} $(OPT) -I ${ORACLE}/sdk/include -c -fpic oracle.c
 	${CC} -shared -Wl,-soname,libsmloracle.so.1 -L $(ORACLE) -lclntsh oracle.o -o $(ORACLELIB)
 
 $(ODBCLIB): odbc.c
-	$(CC) $(OPT) -c -fPIC odbc.c
+	$(CC) $(OPT) -c -fpic odbc.c
 	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 -lodbc odbc.o -o $(ODBCLIB)
 
 #	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
