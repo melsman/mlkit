@@ -2,6 +2,7 @@
 // Includes /*{{{*/
 #include "../../Runtime/String.h"
 #include "../../Runtime/List.h"
+#include "ap_release.h"
 #include "httpd.h"
 #include "http_log.h"
 #include "http_protocol.h"
@@ -10,6 +11,7 @@
 #include "apr_file_io.h"
 #include "apr_file_info.h"
 #include "apr_uri.h"
+#include <apr_errno.h>
 #include "mod_sml.h"
 #include "plog.h"
 #include "../../Runtime/Exception.h"
@@ -80,7 +82,7 @@ apsml_returnFile (int status, char *mt, char *file, request_data * rd)	//{{{
   apr_finfo_t finfo;
   apr_status_t s = apr_file_open (&fd, file, APR_READ | APR_SENDFILE_ENABLED,
 				  0, r->pool);
-  if (APR_STATUS_IS_SUCCESS (s))
+  if (s == APR_SUCCESS)
     {
       r->content_type = mt;
       apr_file_info_get (&finfo, APR_FINFO_MTIME | APR_FINFO_SIZE, fd);
@@ -665,7 +667,12 @@ apsml_scheme (Region rAddr, request_data * rd)	/*{{{ */
       raise_exn ((int) &exn_OVERFLOW);
       return 0;
     }
+/* Apache changed the name of this procedure between 2.0 and 2.2  */
+#if (AP_SERVER_MINORVERSION_NUMBER > 0)
+  return convertStringToML (rAddr, (char *) ap_http_scheme(rd->request));
+#else
   return convertStringToML (rAddr, (char *) ap_run_http_method(rd->request));
+#endif
 }				/*}}} */
 
 // ML: request_rec -> int 

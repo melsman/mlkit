@@ -12,7 +12,7 @@ prefix=@prefix@
 LIBDIR=$(DESTDIR)@libdir@
 SOURCE=mod_sml.c mod_smllib.c DbCommon.c mailer.c cache.c dnsresolve.c \
        ../../Runtime/runtimeSystemKamApSml.o ul.tab.c lex.yy.c parseul.c \
-			 sched.c
+			 sched.c greeting.c
 TARGET=mod_sml.la
 ORACLELIB=libsmloracle.so.1.0
 ODBCLIB=libsmlodbc.so.1.0
