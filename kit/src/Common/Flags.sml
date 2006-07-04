@@ -773,17 +773,17 @@ val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))
 val _ = add_bool_entry 
      {long="log_to_file", short=NONE, menu=["File", "Log to file"], 
       neg=false, item=log_to_file, desc="Log to files instead of stdout."}
+
 val _ = add_string_entry 
-     {long="install_dir", short=NONE, menu=["File", "installation directory"], 
+     {long="SML_LIB", short=NONE, menu=["File", "installation directory"], 
       item=install_dir,
-      desc="Installation directory for the MLKit. For normal\n\
+      desc=
+       "Installation directory for the MLKit standard library. For normal\n\
        \execution you should not modify this value. However,\n\
        \if you wish to use the MLKit with an altered runtime\n\
-       \system and you do not wish to exchange the .o-files in\n\
-       \the bin-subdirectory (for example because you are running\n\
-       \the MLKit on a shared system), you can update this\n\
+       \system you can update this\n\
        \setting and the system will try to link to a runtime\n\
-       \system in the bin-subdirectory found in the new install\n\
+       \system found in the new install\n\
        \directory."}
 
   (*5. Profiling menu*)
