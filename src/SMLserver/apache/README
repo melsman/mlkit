@@ -1,7 +1,11 @@
 cd mlkit/kit
 make smlserver
-cd src/SMLserver/apache
-make install
+
+To generate a runtime for apache 2.0:
+  cd src/SMLServer/apache
+  make clean
+    edit Makefile
+  AP_SERVER_MINORVERSION_NUMBER=0 make
 
 cat README
 

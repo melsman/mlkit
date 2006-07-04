@@ -272,6 +272,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   char *is;
   server_rec *ss;
   void *first_init_check = NULL;
+  sml_greeting(s);
   apr_pool_userdata_get (&first_init_check, "mod_sml_first_init_check_HACK",
        s->process->pool);
   if (first_init_check == NULL)
