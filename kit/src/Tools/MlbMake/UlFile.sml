@@ -196,9 +196,13 @@ functor UlFile (MlbProject : MLB_PROJECT)
 					in (S',C,M,B')
 					end)
 	               | dir => 
-			     let val phi = fn sml => 				 
+			     let 
+(*             val phi = fn sml => 				     (* OLD definition *)
 				 (map (fn uo => pathDownArrow(uo,dir))
-				  (phi (pathUpArrow(sml,dir))))
+				  (phi (pathUpArrow(sml,dir)))) *)
+             val phi = fn sml => 				       (* varming: Mael please check this, correct? *)
+				 (map (fn uo => pathDownArrow(uo,dir))
+				  (phi sml))
 (*
 				 val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n")
 				 val _ = print ("going into " ^ dir ^ "\n")
