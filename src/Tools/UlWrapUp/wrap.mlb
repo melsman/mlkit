@@ -1,0 +1,28 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+
+  basis ParserLib = 
+    bas
+      lib/base.sig
+      lib/join.sml
+      lib/lrtable.sml
+      lib/stream.sml
+      lib/parser2.sml
+    end
+
+  basis Parser = 
+    bas
+      local open ParserLib UlSyntax.sml
+      in
+        Ul.grm.sig
+        Ul.lex.sml
+        Ul.grm.sml
+      end
+    end
+
+in
+  local open Parser ParserLib
+  in
+    Main.sml
+  end
+end
