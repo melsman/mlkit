@@ -7,7 +7,7 @@ state 0:
 	CODEFILES	shift 3
 	SCRIPTS	shift 2
 
-	Result	goto 26
+	Result	goto 25
 	Fil	goto 1
 
 	.	reduce by rule 1
@@ -68,21 +68,18 @@ state 5:
 state 6:
 
 	SmlInclude : UOFILE . AS SML SmlInclude 
-	SmlInclude : UOFILE . SmlInclude 
 
-	UOFILE	shift 6
-	AS	shift 13
+	AS	shift 12
 
-	SmlInclude	goto 12
 
-	.	reduce by rule 9
+	.	error
 
 
 state 7:
 
 	Fil : CODEFILES UoInclude . END Fil 
 
-	END	shift 14
+	END	shift 13
 
 
 	.	error
@@ -94,7 +91,7 @@ state 8:
 
 	UOFILE	shift 8
 
-	UoInclude	goto 15
+	UoInclude	goto 14
 
 	.	reduce by rule 7
 
@@ -103,7 +100,7 @@ state 9:
 
 	Fil : ULFILES UlInclude . END Fil 
 
-	END	shift 16
+	END	shift 15
 
 
 	.	error
@@ -113,7 +110,7 @@ state 10:
 
 	UlInclude : ULFILE . SCRIPTS AS LOC UlInclude 
 
-	SCRIPTS	shift 17
+	SCRIPTS	shift 16
 
 
 	.	error
@@ -127,33 +124,46 @@ state 11:
 	CODEFILES	shift 3
 	SCRIPTS	shift 2
 
-	Fil	goto 18
+	Fil	goto 17
 
 	.	reduce by rule 1
 
 
 state 12:
 
-	SmlInclude : UOFILE SmlInclude .  (reduce by rule 11)
-
-
-
-	.	reduce by rule 11
-
-
-state 13:
-
 	SmlInclude : UOFILE AS . SML SmlInclude 
 
-	SML	shift 19
+	SML	shift 18
 
 
 	.	error
 
 
-state 14:
+state 13:
 
 	Fil : CODEFILES UoInclude END . Fil 
+
+	ULFILES	shift 4
+	CODEFILES	shift 3
+	SCRIPTS	shift 2
+
+	Fil	goto 19
+
+	.	reduce by rule 1
+
+
+state 14:
+
+	UoInclude : UOFILE UoInclude .  (reduce by rule 8)
+
+
+
+	.	reduce by rule 8
+
+
+state 15:
+
+	Fil : ULFILES UlInclude END . Fil 
 
 	ULFILES	shift 4
 	CODEFILES	shift 3
@@ -164,39 +174,17 @@ state 14:
 	.	reduce by rule 1
 
 
-state 15:
-
-	UoInclude : UOFILE UoInclude .  (reduce by rule 8)
-
-
-
-	.	reduce by rule 8
-
-
 state 16:
-
-	Fil : ULFILES UlInclude END . Fil 
-
-	ULFILES	shift 4
-	CODEFILES	shift 3
-	SCRIPTS	shift 2
-
-	Fil	goto 21
-
-	.	reduce by rule 1
-
-
-state 17:
 
 	UlInclude : ULFILE SCRIPTS . AS LOC UlInclude 
 
-	AS	shift 22
+	AS	shift 21
 
 
 	.	error
 
 
-state 18:
+state 17:
 
 	Fil : SCRIPTS SmlInclude END Fil .  (reduce by rule 4)
 
@@ -205,18 +193,18 @@ state 18:
 	.	reduce by rule 4
 
 
-state 19:
+state 18:
 
 	SmlInclude : UOFILE AS SML . SmlInclude 
 
 	UOFILE	shift 6
 
-	SmlInclude	goto 23
+	SmlInclude	goto 22
 
 	.	reduce by rule 9
 
 
-state 20:
+state 19:
 
 	Fil : CODEFILES UoInclude END Fil .  (reduce by rule 3)
 
@@ -225,7 +213,7 @@ state 20:
 	.	reduce by rule 3
 
 
-state 21:
+state 20:
 
 	Fil : ULFILES UlInclude END Fil .  (reduce by rule 2)
 
@@ -234,17 +222,17 @@ state 21:
 	.	reduce by rule 2
 
 
-state 22:
+state 21:
 
 	UlInclude : ULFILE SCRIPTS AS . LOC UlInclude 
 
-	LOC	shift 24
+	LOC	shift 23
 
 
 	.	error
 
 
-state 23:
+state 22:
 
 	SmlInclude : UOFILE AS SML SmlInclude .  (reduce by rule 10)
 
@@ -253,18 +241,18 @@ state 23:
 	.	reduce by rule 10
 
 
-state 24:
+state 23:
 
 	UlInclude : ULFILE SCRIPTS AS LOC . UlInclude 
 
 	ULFILE	shift 10
 
-	UlInclude	goto 25
+	UlInclude	goto 24
 
 	.	reduce by rule 5
 
 
-state 25:
+state 24:
 
 	UlInclude : ULFILE SCRIPTS AS LOC UlInclude .  (reduce by rule 6)
 
@@ -273,7 +261,7 @@ state 25:
 	.	reduce by rule 6
 
 
-state 26:
+state 25:
 
 
 	EOF	accept
@@ -281,5 +269,5 @@ state 26:
 
 	.	error
 
-16 of 55 action table entries left after compaction
-12 goto table entries
+15 of 53 action table entries left after compaction
+11 goto table entries

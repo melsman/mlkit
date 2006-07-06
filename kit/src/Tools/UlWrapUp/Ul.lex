@@ -12,12 +12,12 @@
 %header (functor UlLexFun(structure Tokens: UL_TOKENS));
 
 ws=[\ \t\r];
-filechars=([a-zA-Z0-9_/]|"."|"-")*;
+filechars=([a-zA-Z0-9_/]|"\."|"-")*;
 
 %%
 
-{filechars}".ul"  => (Tokens.ULFILE (yytext,!pos,!pos));
-{filechars}".uo"  => (Tokens.UOFILE (yytext,!pos,!pos));
+{filechars}"\.ul"  => (Tokens.ULFILE (yytext,!pos,!pos));
+{filechars}"\.uo"  => (Tokens.UOFILE (yytext,!pos,!pos));
 [a-zA-Z0-9/]*"/"  => (Tokens.LOC (yytext,!pos,!pos));
 {filechars}".sml" => (Tokens.SML (yytext,!pos,!pos));
 "As"              => (Tokens.AS(!pos,!pos));
@@ -25,7 +25,7 @@ filechars=([a-zA-Z0-9_/]|"."|"-")*;
 "Ulfiles"         => (Tokens.ULFILES(!pos,!pos));
 "Codefiles"       => (Tokens.CODEFILES(!pos,!pos));
 "Scripts"         => (Tokens.SCRIPTS(!pos,!pos));
-ws                => (lex());
+{ws}+                => (lex());
 "\n"              => (pos:= (!pos) + 1; lex());
 EOF               => (Tokens.EOF (!pos,!pos));
 
