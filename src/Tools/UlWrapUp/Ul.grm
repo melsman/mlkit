@@ -12,7 +12,7 @@ structure UF = UlFile
        | Fil of UF.UlSyntax list
        | UlInclude of (UF.scripts * UF.location) list
        | UoInclude of UF.uofile list
-       | SmlInclude of (UF.uofile * UF.location option) list
+       | SmlInclude of (UF.uofile * UF.location) list
 
 %pos int
 
@@ -44,8 +44,7 @@ UoInclude:
 
 SmlInclude:
    (* empty *)               ( [] )
- | UOFILE AS SML SmlInclude  ( (UOFILE,SOME SML)::SmlInclude )
- | UOFILE SmlInclude         ( (UOFILE,NONE)::SmlInclude )
+ | UOFILE AS SML SmlInclude  ( (UOFILE,SML)::SmlInclude )
 
 
 

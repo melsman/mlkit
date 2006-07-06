@@ -1,5 +1,17 @@
 local
   $(SML_LIB)/basis/basis.mlb
+  basis KitLib =
+           bas
+             ../../../basis/BINARYSET.sml
+             ../../../basis/Binaryset.sml
+             ../../../basis/BINARYMAP.sml
+             ../../../basis/Binarymap.sml
+           end
+
+  basis Syntax =
+    bas
+      UlSyntax.sml
+    end
 
   basis ParserLib = 
     bas
@@ -12,7 +24,7 @@ local
 
   basis Parser = 
     bas
-      local open ParserLib UlSyntax.sml
+      local open ParserLib Syntax
       in
         Ul.grm.sig
         Ul.lex.sml
@@ -21,7 +33,7 @@ local
     end
 
 in
-  local open Parser ParserLib
+  local open Parser ParserLib Syntax KitLib
   in
     Main.sml
   end
