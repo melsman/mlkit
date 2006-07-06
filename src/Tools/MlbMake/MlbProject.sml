@@ -432,16 +432,18 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
   local
     fun hasLinks d = 
           let 
+            val islink = fn x => (OS.FileSys.isLink x handle OS.SysErr (s,e) => 
+                                 error ("Couldn't get status on " ^ x ^" : " ^ (Option.getOpt (Option.map OS.errorMsg e, ""))))
             val {arcs,vol,isAbs} = OS.Path.fromString d
           in
             case arcs 
             of [] => false
              | (x::xr) => #2(List.foldl (fn (x,(y,b)) =>
                                              let val y' = OS.Path.concat (y,x)
-                                             in (y',b orelse (OS.FileSys.isLink y'))
+                                             in (y',b orelse islink y')
                                              end)
                             (let val a = OS.Path.toString {vol = vol, isAbs = isAbs, arcs = [x]}
-                                 in (a, OS.FileSys.isLink a)
+                                 in (a, islink a)
                                  end)
                             xr)
           end
