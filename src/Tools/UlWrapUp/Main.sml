@@ -86,6 +86,35 @@ fun alreadyCopied' (i,out) =
                       of SOME a => SOME a
                        | NONE => (ac' := Binarymap.insert (!ac',i,out) ; NONE)
 
+local
+  val a = ref 48
+  val base = 60
+  fun gename' i q =
+        let
+          val l = i mod base
+          val k = i div base
+        in
+          if k > 0 
+          then gename' k (l::q)
+          else (l::q)
+        end
+  fun gename a = 
+    let
+      val a' = gename' a []
+      val b = List.map (fn x => if x > 25 
+                                then
+                                  if x > 50
+                                  then  chr(x + (ord #"0") - 50)
+                                  else chr(x + (ord #"a") - 25)
+                                else chr(x + (ord #"A"))) a'
+    in
+      implode b
+    end
+  fun newname () = (gename (!a)) before a:= (!a) + 1
+in
+  val newname = fn () => (newname ()) ^ ".uo"
+end
+
 fun cc_uofile infile f =
      let
        val f' = if OS.Path.isRelative f
@@ -96,7 +125,7 @@ fun cc_uofile infile f =
        then NONE
        else
        let
-         val out = OS.FileSys.tmpName ()
+         val out = newname()
          val _ = copyFile (f',out)
        in
          SOME out
@@ -112,7 +141,7 @@ fun cc_scripts infile (f,loc) =
        if not (alreadyCopied f')
        then 
          let
-           val out = OS.FileSys.tmpName ()
+           val out = newname()
          in
            case alreadyCopied' (f',out)
            of SOME a => raise Fail  ("the file: " ^ f' ^ " is suppose to be new, but I already know of it\n")
