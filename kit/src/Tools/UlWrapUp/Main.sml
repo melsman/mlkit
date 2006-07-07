@@ -169,9 +169,17 @@ fun run (infile,outfile) =
   end
 
 val _ = let 
-          val (infile::outfile::arg) = CommandLine.arguments()
+          val args = CommandLine.arguments()
+          val _ = if List.length args < 2 then raise Fail ("Less than two arguments where given to me.\n" ^
+                                                           "Please provide an ul-file as first argument and\n" ^
+                                                           "an output file for output. Then I fill up the current\n" ^
+                                                           "directory with a project described in the output file\n")
+                  else ()
+          val (infile::outfile::arg) = args
         in
           run (infile,outfile)
         end
+          handle Fail a => TextIO.output (TextIO.stdErr,a)
+               | OS.SysErr(s,e) => TextIO.output (TextIO.stdErr, "Something bad happened: " ^ s)
 
 
