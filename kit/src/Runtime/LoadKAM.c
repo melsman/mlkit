@@ -342,8 +342,8 @@ read_exec_header(FILE* fd, struct exec_header * exec_header)
  * read. 
  */
 
-static FILE*
-attempt_open(char* name, struct exec_header* exec_header, serverstate ss) 
+static int
+attempt_open(char* name, struct exec_header* exec_header, serverstate ss, FILE **result) 
 {
   FILE *fd;
   int res;
@@ -368,7 +368,8 @@ attempt_open(char* name, struct exec_header* exec_header, serverstate ss)
     }
     exit(-1);
   }
-  return fd;
+  *result = fd;
+  return 0;
 }
 
 static int 
@@ -582,9 +583,10 @@ interpLoadExtend(Interp* interp, char* file, serverstate ss)
 {
   FILE *fd;
   struct exec_header exec_header;
+  int tmp;
   bytecode_t start_code;
 
-  fd = attempt_open(file, &exec_header, ss);
+  tmp = attempt_open(file, &exec_header, ss, &fd);
 
   start_code = interpLoad(interp, file, fd, &exec_header, ss);
 
@@ -817,13 +819,15 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
 /* ------------------------------------------------------
  * interpLoadRun - load a bytecode file, run it, and release the
  * loaded code.  
+ * Returns 0 on success and 1 on error
  * ------------------------------------------------------ */
 
 int 
-interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss) 
+interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, int *res) 
 {
   bytecode_t start_code;
-  int res;
+  FILE *fd;
+  int tmp;
 
 #if ( THREADS && CODE_CACHE )
   LOCK_LOCK(CODECACHEMUTEX);
@@ -832,7 +836,7 @@ interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss)
     {
 #endif
       struct exec_header exec_header;
-      FILE *fd = attempt_open(file, &exec_header, ss);
+      tmp = attempt_open(file, &exec_header, ss, &fd);
       start_code = interpLoad(interp, file, fd, &exec_header, ss);
       fclose(fd);
 #if ( THREADS && CODE_CACHE )
@@ -847,13 +851,13 @@ interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss)
    *  loaded bytecode as an extra parameter. 
    */
 
-  res = interpRun(interp, start_code, errorStr, ss);
+  *res = interpRun(interp, start_code, errorStr, ss);
 
 #if !( THREADS && CODE_CACHE )
   free(start_code);
 #endif
 
-  return res;    // return whatever the bytecode interpreter returns
+  return 0;    // return whatever the bytecode interpreter returns
 }
 
 void
