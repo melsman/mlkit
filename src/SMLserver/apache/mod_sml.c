@@ -88,9 +88,7 @@ logMsg (enum reportLevel level, char *msg, void *rd1)    /*{{{ */
   ap_log_error (__FILE__, __LINE__, rep_lev, 0, rd->server,
     "apsml: Notice; apsml: %s", msg);
   return;
-}
-
-
+} /*}}}*/
 
 //#if 0
 void
@@ -738,11 +736,18 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
       break;
   }
 
-  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+  ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
      "Starting interpreter on file %s", file);
 
 //  globalrd = rd;
-  res = interpLoadRun (ctx->interp, file, &errorStr, (void *) rd);
+  if (interpLoadRun (ctx->interp, file, &errorStr, &ss, &res) != 0)
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+       "Interpretion on file %s went bad", file);
+    return APSML_ERROR;
+  }
+  ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+     "Interpretion on file %s was successful", file);
 
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 //     "Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
@@ -821,6 +826,7 @@ mod_sml_method_handler (request_rec * r)  //{{{
       break;
     }
   case APSML_INTERRUPTRAISED:
+  case APSML_ERROR:
     {
       return HTTP_INTERNAL_SERVER_ERROR;
       break;
