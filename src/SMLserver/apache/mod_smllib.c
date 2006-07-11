@@ -1207,7 +1207,8 @@ apsml_GetMimeType(Region rAddr, String s, int rr)
 void
 plog1s(char *s, void *ctx)/*{{{*/
 {
-  request_data *rd = (request_data *) ctx;
+  serverstate ss = (serverstate) ctx;
+  request_data *rd = (request_data *) ss->aux;
   ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s", s);
   return;
 }/*}}}*/
@@ -1215,7 +1216,8 @@ plog1s(char *s, void *ctx)/*{{{*/
 void
 plog2s(char *s, char *t, void *ctx)/*{{{*/
 {
-  request_data *rd = (request_data *) ctx;
+  serverstate ss = (serverstate) ctx;
+  request_data *rd = (request_data *) ss->aux;
   ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s", s, t);
   return;
 }/*}}}*/
@@ -1223,7 +1225,8 @@ plog2s(char *s, char *t, void *ctx)/*{{{*/
 void
 plog3s(char *s, char *t, char *r, void *ctx)/*{{{*/
 {
-  request_data *rd = (request_data *) ctx;
+  serverstate ss = (serverstate) ctx;
+  request_data *rd = (request_data *) ss->aux;
   ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s", s, t, r);
   return;
 }/*}}}*/
@@ -1231,7 +1234,8 @@ plog3s(char *s, char *t, char *r, void *ctx)/*{{{*/
 void
 plog4s(char *s, char *t, char *r, char *v, void *ctx)/*{{{*/
 {
-  request_data *rd = (request_data *) ctx;
+  serverstate ss = (serverstate) ctx;
+  request_data *rd = (request_data *) ss->aux;
   ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s", s, t, r, v);
   return;
 }/*}}}*/
@@ -1239,7 +1243,8 @@ plog4s(char *s, char *t, char *r, char *v, void *ctx)/*{{{*/
 void
 plog5s(char *s, char *t, char *r, char *v, char *w, void *ctx)/*{{{*/
 {
-  request_data *rd = (request_data *) ctx;
+  serverstate ss = (serverstate) ctx;
+  request_data *rd = (request_data *) ss->aux;
   ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s%s", s, t, r, v, w);
   return;
 }/*}}}*/
@@ -1247,7 +1252,8 @@ plog5s(char *s, char *t, char *r, char *v, char *w, void *ctx)/*{{{*/
 void
 plog4s1i(char *s, char *t, char *r, char *v, unsigned long w, void *ctx)/*{{{*/
 {
-  request_data *rd = (request_data *) ctx;
+  serverstate ss = (serverstate) ctx;
+  request_data *rd = (request_data *) ss->aux;
   ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s%ld", s, t, r, v, w);
   return;
 }/*}}}*/

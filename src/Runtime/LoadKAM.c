@@ -20,6 +20,7 @@
 #if ( THREADS && CODE_CACHE )
 #include <string.h>
 #include "Locks.h"
+#include "LogLevel.h"
 #endif
 
 #ifdef DEBUG
@@ -42,7 +43,7 @@ streq(char* s1,char* s2)
 }
 
 #if ( THREADS && CODE_CACHE )
-extern void logMsg1(char* msg, void *serverState);
+// extern void logMsg1(char* msg, void *serverState);
 
 DEFINE_HASHMAP(strToCodeMap,char*,bytecode_t)
 
@@ -342,7 +343,7 @@ read_exec_header(FILE* fd, struct exec_header * exec_header)
  */
 
 static FILE*
-attempt_open(char* name, struct exec_header* exec_header) 
+attempt_open(char* name, struct exec_header* exec_header, serverstate ss) 
 {
   FILE *fd;
   int res;
@@ -525,7 +526,7 @@ addDataExports(Interp* interp,
 
 static bytecode_t 
 interpLoad(Interp* interp, char* file, FILE* fd, 
-	   struct exec_header* exec_header_ptr) 
+	   struct exec_header* exec_header_ptr, serverstate ss) 
 {
   bytecode_t start_code;
 
@@ -577,15 +578,15 @@ interpLoad(Interp* interp, char* file, FILE* fd,
  *  declares.
  * ------------------------------------------------------------ */
 int 
-interpLoadExtend(Interp* interp, char* file) 
+interpLoadExtend(Interp* interp, char* file, serverstate ss) 
 {
   FILE *fd;
   struct exec_header exec_header;
   bytecode_t start_code;
 
-  fd = attempt_open(file, &exec_header);
+  fd = attempt_open(file, &exec_header, ss);
 
-  start_code = interpLoad(interp, file, fd, &exec_header);
+  start_code = interpLoad(interp, file, fd, &exec_header, ss);
 
   debug(printf("[Extend hash table with code exports]\n"));
   if ( addCodeExports(interp->codeMap, fd, 
@@ -707,7 +708,7 @@ resolveGlobalCodeFragments(void)
 }
 
 int 
-interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serverState) 
+interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstate ss) 
 {
   unsigned long *ds, *sp, *exnPtr, *sp0;
   unsigned long exnCnt = 0;
@@ -716,7 +717,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serv
   LongList* p;
   Ro* topRegion = NULL;
 
-  h = getHeap();
+  h = getHeap(ss);
   if ( h->status == HSTAT_UNINITIALIZED )
     {
       ds = (unsigned long*)(h->ds);
@@ -776,16 +777,16 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serv
 
       // start interpretation by interpreting the init_code
       res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		       &exnCnt,(bytecode_t)init_code, serverState);
+		       &exnCnt,(bytecode_t)init_code, ss);
   
       if ( res >= 0 && extra_code )
       {
-        initializeHeap(h,(int*)sp0,(int*)exnPtr, exnCnt);
+        initializeHeap(h,(int*)sp0,(int*)exnPtr, exnCnt, ss);
       }
       else 
       {
 #ifdef THREADS
-        logMsg1("Exception raised during execution of library code",serverState);
+        (*ss->report) (NOTICE, "Exception raised during execution of library code", ss->aux);
 #endif
         deleteHeap(h);
         return res;
@@ -802,12 +803,12 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serv
     exnCnt = h->exnCnt;
     topRegion = h->r6copy->r;
 
-    touchHeap(h);
+    touchHeap(h,ss);
 
     res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		     &exnCnt,(bytecode_t)extra_code, serverState);
+		     &exnCnt,(bytecode_t)extra_code, ss);
 
-    releaseHeap(h);
+    releaseHeap(h,ss);
   }    
 
   return res;   // return whatever the interpreter returns
@@ -818,12 +819,8 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serv
  * loaded code.  
  * ------------------------------------------------------ */
 
-#if ( THREADS && CODE_CACHE )
-extern void logLoading(char *file);
-#endif
-
 int 
-interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState) 
+interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss) 
 {
   bytecode_t start_code;
   int res;
@@ -835,12 +832,12 @@ interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState)
     {
 #endif
       struct exec_header exec_header;
-      FILE *fd = attempt_open(file, &exec_header);
-      start_code = interpLoad(interp, file, fd, &exec_header);
+      FILE *fd = attempt_open(file, &exec_header, ss);
+      start_code = interpLoad(interp, file, fd, &exec_header, ss);
       fclose(fd);
 #if ( THREADS && CODE_CACHE )
       strToCodeMapInsert(interp->codeCache,file,start_code);
-      logLoading(file);
+      (*ss->report) (INFO, file,ss->aux);
     }
   LOCK_UNLOCK(CODECACHEMUTEX);
 #endif
@@ -850,7 +847,7 @@ interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState)
    *  loaded bytecode as an extra parameter. 
    */
 
-  res = interpRun(interp, start_code, errorStr, serverState);
+  res = interpRun(interp, start_code, errorStr, ss);
 
 #if !( THREADS && CODE_CACHE )
   free(start_code);

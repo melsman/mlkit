@@ -16,6 +16,7 @@
 #include "parseul.h"
 #include "sched.h"
 #include "../../Runtime/HeapCache.h"
+#include "greeting.h"
 
 #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
@@ -39,8 +40,9 @@ module AP_MODULE_DECLARE_DATA sml_module;
 
 static int apsml_processSmlFile (request_data * rd, char *uri, int kind);
 
-request_data *globalrd;
+// request_data *globalrd;
 
+#if 0
 void
 logMsg (char *msg)
 {
@@ -61,6 +63,34 @@ logLoading (char *file)
 {
   fprintf (stderr, "Notice, apsml: loaded %s", file);
 }       /*}}} */
+#endif
+
+static void
+logMsg (enum reportLevel level, char *msg, void *rd1)    /*{{{ */
+{
+  int rep_lev = LOG_DEBUG;
+  request_data *rd = (request_data *) rd1;
+  switch (level)
+  {
+    case DEBUG:
+      rep_lev = LOG_DEBUG;
+      break;
+    case INFO:
+      rep_lev = LOG_INFO;
+      break;
+    case NOTICE:
+      rep_lev = LOG_NOTICE;
+      break;
+    case DIE:
+      rep_lev = LOG_EMERG;
+      break;
+  }
+  ap_log_error (__FILE__, __LINE__, rep_lev, 0, rd->server,
+    "apsml: Notice; apsml: %s", msg);
+  return;
+}
+
+
 
 //#if 0
 void
@@ -588,7 +618,11 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   struct parseCtx pCtx;
   int res;
   time_t t;
+  Serverstate ss;
   char *errorStr = NULL;
+
+  ss.report = logMsg;
+  ss.aux = (void *) rd;
 
   InterpContext *ctx = rd->ctx;
 
@@ -707,7 +741,7 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
      "Starting interpreter on file %s", file);
 
-  globalrd = rd;
+//  globalrd = rd;
   res = interpLoadRun (ctx->interp, file, &errorStr, (void *) rd);
 
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
