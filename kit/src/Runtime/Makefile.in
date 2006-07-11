@@ -159,7 +159,7 @@ depend:
 
 clean:
 	rm -f $(OFILES) $(OFILES_TAG) $(OFILES_PROF) $(OFILES_GC) $(OFILES_GC_TP) 
-	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF) $(OFILES_KAM) $(OFILES_SMLSERVER_AP) 
+	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF) $(OFILES_KAM) $(OFILES_SMLSERVER) 
 	rm -f $(OFILES_GEN_GC_PROF) $(OFILES_GEN_GC)
 	rm -f core a.out *~ *.bak gen_syserror SysErrTable.h
 	rm -f runtimeSystemKamApSml.o kam runtimeSystemGCProf.a runtimeSystemGC.a 

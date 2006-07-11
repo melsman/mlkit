@@ -317,6 +317,7 @@ sig_handler_fpe(void)
 extern void code(void);
 #endif
 
+#ifndef APACHE
 int 
 main(int argc, char *argv[]) 
 {
@@ -348,3 +349,5 @@ rpMap = regionPageMapNew();
 		                        * terminateML or uncaught_exception) */
 #endif
 }
+#endif
+

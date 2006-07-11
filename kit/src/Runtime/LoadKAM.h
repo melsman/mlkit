@@ -2,6 +2,7 @@
 #define LOADKAM_H
 
 #include "../CUtils/hashmap_typed.h"
+#include "LogLevel.h"
 
 /* LoadKAM.h : format of bytecode files */
 /* This module loads a KAM module into the code segment, being */
@@ -30,6 +31,13 @@ typedef struct {
   char base;
 } Label;
 typedef Label* label;
+
+// ServerState
+typedef struct {
+  void *aux;
+  void (*report) (enum reportLevel level, char *data, void *aux);
+} Serverstate;
+typedef Serverstate* serverstate;
 
 /* Compared to Moscow ML, we put the various information in front of the file. */
 
@@ -116,15 +124,15 @@ typedef struct {
 Interp *interpNew(void);
 
 /* Extend an interpreter by loading a bytecode file */
-int interpLoadExtend(Interp* interp, char* file);
+int interpLoadExtend(Interp* interp, char* file,serverstate ss);
 
 /* Load a bytecode file and run it, then release the loaded code;
  * later we can provide a version of this function that caches the
  * loaded code. */
-int interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState);
+int interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss);
 
 /* Run an interpreter */ 
-int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr, void *serverState);
+int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr, serverstate ss);
 
 /* Free all loaded code */
 void interpClear(Interp* interp);

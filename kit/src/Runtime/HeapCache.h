@@ -7,6 +7,7 @@
 
 #include "Region.h"
 #include "Stack.h"
+#include "LoadKAM.h"
 
 // Pages are layed out in continuous memory, where each page 
 // (ALLOCATABLE_WORDS_IN_REGION_PAGE words) is prefixed with a 
@@ -63,22 +64,22 @@ typedef struct heap {
 // to interpret the leaf bytecode. In the former case, library code
 // need first be executed, after which, the initializeHeap() function
 // should be called.
-Heap* getHeap(void);
+Heap* getHeap(serverstate ss);
 
 // [touchHeap(h)] changes the status of the heap h to HSTAT_DIRTY.
 // Requires the status to be HSTAT_CLEAN. 
-void touchHeap(Heap *h);
+void touchHeap(Heap *h, serverstate ss);
 
 // [releaseHeap(h)] restores the heap from the heap copy information
 // and gives back the heap h to the pool of heaps. Requires the heap
 // status to be HSTAT_DIRTY.
-void releaseHeap(Heap *h);
+void releaseHeap(Heap *h, serverstate ss);
 
 // [initializeHeap(h,sp,exnPtr,exnCnt)] This function should be
 // called after library code is executed, but before leaf bytecode is
 // executed. The function changes the status of the heap to
 // HSTAT_CLEAN. It requires the heap status to be HSTAT_UNINITIALIZED.
-void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt);
+void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt, serverstate ss);
 
 // [deleteHeap(h)] deletes the heap by freeing it. Also frees region
 // pages in the regions in the heap.

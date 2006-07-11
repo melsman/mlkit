@@ -24,7 +24,9 @@ void
 resolveCode(bytecode_t b_prog,              // Code to resolve
 	    int sizeW);                     // Size of code in words
 
+#ifndef APACHE
 int 
 main_interp(int argc, char * argv[]);
+#endif
 
 #endif /* INTERP_H */

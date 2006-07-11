@@ -405,7 +405,7 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
     strcpy(he->key, tmp);
     he->hashval = he1.hashval;
     hashupdate(pctx->uoTable, he, NULL);
-    if (interpLoadExtend(pctx->interp, tmp)) return Parse_ERROR;
+    if (interpLoadExtend(pctx->interp, tmp, pctx->ctx)) return Parse_ERROR;
     plog2s("Extending interpreter with ", tmp, pctx->ctx);
   } // if already in the interpreter then skip
   else plog2s("Skipping ", tmp, pctx->ctx);

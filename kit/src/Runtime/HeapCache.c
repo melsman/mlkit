@@ -4,6 +4,7 @@
 #include "HeapCache.h"
 #include "Region.h"
 #include "Runtime.h"
+#include "LoadKAM.h"
 
 /*
  * Checkpointing execution of library code
@@ -15,12 +16,12 @@
 
 // [newHeap()] returns an uninitialized heap - with status 
 // HSTAT_UNINITIALIZED.
-static Heap* newHeap(void);
+static Heap* newHeap(serverstate);
 
 // [restoreHeap(h)] restores the heap from the heap copy information.
 // Changes the heap status to HSTAT_CLEAN. Requires the heap status to
 // be HSTAT_DIRTY. 
-static void restoreHeap(Heap *h);
+static void restoreHeap(Heap *h, serverstate);
 
 // [pagesInRegion(r)] returns the number of pages associated with r.
 static int pagesInRegion(Ro *r);
@@ -40,27 +41,6 @@ static int restoreRegion(RegionCopy *rc);
 static int heapid_counter = 0;
 
 #include "Locks.h"
-
-#ifdef APACHE
-extern void logMsg(char* msg);
-#endif
-
-static void
-dienow(char *s)
-{
-#if defined(APACHE)
-  logMsg(s);
-#endif
-  die(s);
-}
-
-/*
-static void 
-dienow(char *s)
-{
-  die(s);
-}
-*/
 
 static Heap **heapPool = NULL; // [MAX_HEAP_POOL_SZ];
 static unsigned int maxHeapPoolSz = MAX_HEAP_POOL_SZ;
@@ -231,12 +211,12 @@ static int restoreRegion(RegionCopy *rc)
   return 0;
 }
 
-static Heap* newHeap(void)
+static Heap* newHeap(serverstate ss)
 {
   Heap* h;
   h = (Heap*)malloc(sizeof(Heap));
   if ( h == 0 )
-    dienow ("newHeap: couldn't allocate room for heap");
+    (*ss->report) (DIE, "newHeap: couldn't allocate room for heap",ss->aux);
   h->status = HSTAT_UNINITIALIZED;
   h->r0copy = NULL;
   h->r2copy = NULL;
@@ -248,7 +228,7 @@ static Heap* newHeap(void)
   return h;
 }
 
-Heap* getHeap(void)
+Heap* getHeap(serverstate ss)
 {
   Heap* h;
 
@@ -263,17 +243,17 @@ Heap* getHeap(void)
     { 
       int hid = heapid_counter++;
       LOCK_UNLOCK(STACKPOOLMUTEX);
-      h = newHeap();
+      h = newHeap(ss);
       h->heapid = hid;
     }
 
   return h;
 }
 
-void touchHeap(Heap* h)
+void touchHeap(Heap* h, serverstate ss)
 {
   if ( h->status != HSTAT_CLEAN )
-    dienow("touchHeap: status <> HSTAT_CLEAN");
+    (*ss->report) (DIE, "touchHeap: status <> HSTAT_CLEAN",ss->aux);
   h->status = HSTAT_DIRTY;
 }
 
@@ -297,9 +277,9 @@ void deleteHeap(Heap *h)
   free(h);
 }
 
-void releaseHeap(Heap *h)
+void releaseHeap(Heap *h, serverstate ss)
 {
-  restoreHeap(h);
+  restoreHeap(h,ss);
   LOCK_LOCK(STACKPOOLMUTEX);
 //  if ( heapPoolIndex < MAX_HEAP_POOL_SZ ) 
   if ( heapPoolIndex < maxHeapPoolSz ) 
@@ -325,29 +305,29 @@ void releaseHeap(Heap *h)
   return;
 }
 
-static void restoreHeap(Heap *h)
+static void restoreHeap(Heap *h, serverstate ss)
 {
   int i;
   if ( h->status != HSTAT_DIRTY )
-    dienow ("restoreHeap: status <> HSTAT_DIRTY");
+    (*ss->report) (DIE, "restoreHeap: status <> HSTAT_DIRTY",ss->aux);
  
   if ( restoreRegion(h->r0copy) == -1 )
-    dienow ("restoreHeap: failed to restore r0");
+    (*ss->report) (DIE, "restoreHeap: failed to restore r0",ss->aux);
 
   if ( restoreRegion(h->r2copy) == -1 )
-    dienow ("restoreHeap: failed to restore r2");
+    (*ss->report) (DIE, "restoreHeap: failed to restore r2",ss->aux);
 
   if ( restoreRegion(h->r3copy) == -1 )
-    dienow ("restoreHeap: failed to restore r3");
+    (*ss->report) (DIE, "restoreHeap: failed to restore r3",ss->aux);
 
   if ( restoreRegion(h->r4copy) == -1 )
-    dienow ("restoreHeap: failed to restore r4");
+    (*ss->report) (DIE, "restoreHeap: failed to restore r4",ss->aux);
 
   if ( restoreRegion(h->r5copy) == -1 )
-    dienow ("restoreHeap: failed to restore r5");
+    (*ss->report) (DIE, "restoreHeap: failed to restore r5",ss->aux);
 
   if ( restoreRegion(h->r6copy) == -1 )
-    dienow ("restoreHeap: failed to restore r6");
+    (*ss->report) (DIE, "restoreHeap: failed to restore r6",ss->aux);
 
   for ( i = 0 ; i < LOWSTACK_COPY_SZ ; i++ )
     {
@@ -357,13 +337,13 @@ static void restoreHeap(Heap *h)
   h->status = HSTAT_CLEAN;
 }
 
-void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
+void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt, serverstate ss)
 {
   int i;
   Ro *r0, *r2, *r3, *r4, *r5, *r6; 
 
   if ( h->status != HSTAT_UNINITIALIZED )
-    dienow ("initializeHeap: status <> HSTAT_UNINITIALIZED");
+    (*ss->report) (DIE, "initializeHeap: status <> HSTAT_UNINITIALIZED",ss->aux);
 
   r0 = clearStatusBits(*(Ro**)(h->ds));    // r0 is a pointer to a region description on the stack
   r2 = r0+1;                               // r2 is a pointer to the next region description on the stack

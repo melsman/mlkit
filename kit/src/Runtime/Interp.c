@@ -384,7 +384,7 @@ enum interp_mode {
   INTERPRET
 };
 
-int 
+static int 
 interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
        unsigned long * sp0,    // Stack pointer
        unsigned long * ds,     // Data segment pointer
@@ -395,7 +395,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
        bytecode_t b_prog,      // The actual code
        int sizeW,              // Size of code in words
        int interp_mode,        // Mode: RESOLVEINSTS or INTERPRET
-	   void *serverCtx)        // Apache request_rec pointer
+       serverstate serverCtx)        // Apache request_rec pointer
 {
 
 /* Declarations for the registers of the abstract machine.
@@ -1431,7 +1431,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	  // Passing state around; used in apache to pass request_rec with the connection
       Instruct(GET_CONTEXT): {
 	 debug(printf("GET_CONTEXT\n"));
-	 acc = (int) serverCtx;
+	 acc = (int) serverCtx->aux;
 	 Next;
 	  }
       
@@ -1522,15 +1522,35 @@ void print_code(bytecode_t b_prog, int code_size) {
 extern int  commandline_argc;
 extern char **commandline_argv;
 
+#ifndef APACHE
+void report(enum reportLevel level, char *data, void *notused)
+{
+  switch (level)
+  {
+    case DIE:
+      fprintf(stderr, "Runtime Error: %s\n", data); 
+      exit(-1); 
+      break;
+    case CONTINUE:
+      fprintf(stderr, "%s\n", data);
+      break;
+  }
+  return;
+}
+
 int main_interp(int argc, char * argv[]) {
   int res, start, c;
   Interp* interp;
   char* errorStr = NULL;
+  Serverstate ss;
 
   if (argc < 2)
   { // No argument... Nothing to do.
     return EXIT_SUCCESS;
   }
+  
+  ss.report = &report;
+  ss.aux = NULL;
 
   debug(printf("[Resolving global code fragments]\n"));
   resolveGlobalCodeFragments();
@@ -1546,7 +1566,7 @@ int main_interp(int argc, char * argv[]) {
 
   for (c = 1; c < argc && strcmp(argv[c], "--args") != 0; c ++) {
     debug(printf("[Loading bytecode file %s]\n", argv[c]));
-    interpLoadExtend(interp, argv[c]);
+    interpLoadExtend(interp, argv[c], &ss);
   }
 
   if ( strcmp(argv[c], "--args") != 0 ) {
@@ -1564,7 +1584,7 @@ int main_interp(int argc, char * argv[]) {
   commandline_argv = argv;
 
   debug(printf("[Running interpreter]\n"));
-  res = interpRun(interp, NULL, &errorStr, NULL);
+  res = interpRun(interp, NULL, &errorStr, &ss);
   debug(printf ("[Result of running interpreter is %d]\n", res));
 
   if ( res < 0 ) {     // uncaught exception
@@ -1575,3 +1595,5 @@ int main_interp(int argc, char * argv[]) {
   }
   return res;
 }
+#endif // APACHE
+
