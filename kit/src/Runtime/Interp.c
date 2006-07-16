@@ -1570,7 +1570,7 @@ int main_interp(int argc, char * argv[]) {
   }
 
   if ( strcmp(argv[c], "--args") != 0 ) {
-    (*ss.report) ("expecting ``--args'' option to command");
+    (*(ss.report)) (CONTINUE, "expecting ``--args'' option to command", ss.aux);
     return -1;
   }
   
