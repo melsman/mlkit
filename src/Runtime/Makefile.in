@@ -35,7 +35,11 @@ HEADER_FILES=SysErrTable.h
 OPT=-Wall -std=gnu99 $(CFLAGS)
 AR=ar rc
 
-.PHONY: depend clean runtime
+.PHONY: depend clean runtime all
+
+all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
+ runtimeSystem.a runtimeSystemTag.a runtimeSystemGCTP.a \
+ runtimeSystemGCTPProf.a runtimeSystemGenGC.a runtimeSystemGenGCProf.a
 
 %.o: %.c Makefile
 #	$(CC) -c $(OPT) -g -DDEBUG -o $*.o $<
@@ -136,10 +140,6 @@ runtimeSystemGCTPProf.a: $(OFILES_GC_TP_PROF) $(HEADER_FILES)
 	$(AR) $@ $(OFILES_GC_TP_PROF)
 	$(MKDIR) $(LIBDIR)
 	$(INSTALLDATA) $@ $(LIBDIR)
-
-all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
- runtimeSystem.a runtimeSystemTag.a runtimeSystemGCTP.a \
- runtimeSystemGCTPProf.a runtimeSystemGenGC.a runtimeSystemGenGCProf.a
 
 depend:
 	mv Makefile.in Makefile.in.bak
