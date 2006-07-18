@@ -22,12 +22,12 @@ static int app_arg_index = 1; /* index for first argument to application. Set by
  * Flags recognized by the runtime system *
  *----------------------------------------*/
 #ifdef ENABLE_GC
-int disable_gc = 0;
-int verbose_gc = 0;
-int report_gc = 0;
+long disable_gc = 0;
+long verbose_gc = 0;
+long report_gc = 0;
 double heap_to_live_ratio = HEAP_TO_LIVE_RATIO;
 #ifdef ENABLE_GEN_GC
-int only_major_gc = 0;
+long only_major_gc = 0;
 #endif
 #endif
 
@@ -89,7 +89,7 @@ parseCmdLineArgs(int argc, char *argv[])
 {
 
 #if ( PROFILING || ENABLE_GC )
-  int match;
+  long match;
 #endif
 
   /* initialize global variables to hold command line arguments */
@@ -263,10 +263,10 @@ REG_POLY_FUN_HDR(sml_commandline_name, Region rAddr)
   return REG_POLY_CALL(convertStringToML, rAddr, commandline_argv[0]);
 } 
 
-int 
+uintptr_t 
 REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho) 
 {
-  int *resList, *pairPtr;
+  uintptr_t *resList, *pairPtr;
   String mlStr;
   int counter = commandline_argc;
   makeNIL(resList);  
@@ -274,9 +274,9 @@ REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho)
     {
       mlStr = REG_POLY_CALL(convertStringToML, strRho, commandline_argv[--counter]);
       REG_POLY_CALL(allocPairML, pairRho, pairPtr);
-      first(pairPtr) = (int) mlStr;
-      second(pairPtr) = (int) resList;
+      first(pairPtr) = (size_t) mlStr;
+      second(pairPtr) = (size_t) resList;
       makeCONS(pairPtr, resList);
     }
-  return (int) resList;
+  return (uintptr_t) resList;
 }

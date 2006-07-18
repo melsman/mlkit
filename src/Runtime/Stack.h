@@ -27,8 +27,8 @@
 
 #define selectStackDef(N) (*(sp + (N)))
 
-unsigned long * allocate_stack();
-void release_stack(unsigned long* sp);
+uintptr_t * allocate_stack();
+void release_stack(uintptr_t *sp);
 
 void StackLockInit(void);
 

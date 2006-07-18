@@ -3,6 +3,7 @@
  *----------------------------------------------------------------*/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "String.h"
 #include "Tagging.h"
@@ -18,12 +19,12 @@
 //     content of the string is not initialized. 
 
 static inline String
-REG_POLY_FUN_HDR(allocString, Region rAddr, int size) 
+REG_POLY_FUN_HDR(allocString, Region rAddr, size_t size) 
 {
   String sd;
-  int szAlloc;                // size of string in words + tag
-  int size0 = size + 1;       // size with space for '\0'
-  szAlloc = 1 + ((size0 % 4) ? (size0 / 4)+1 : (size0 / 4));  // 1 is for the tag
+  size_t szAlloc;                // size of string in words + tag
+  size_t size0 = size + 1;       // size with space for '\0'
+  szAlloc = 1 + ((size0 % (sizeof(void *))) ? (size0 / (sizeof(void *)))+1 : (size0 / (sizeof(void *))));  // 1 is for the tag
 #ifdef PROFILING
   sd = (String) allocProfiling(rAddr, szAlloc, pPoint);
 #else
@@ -35,9 +36,9 @@ REG_POLY_FUN_HDR(allocString, Region rAddr, int size)
 
 // convertStringToC: Copy ML string to 'buf' of size 'buflen'
 void 
-convertStringToC(String mlStr, char *buf, int buflen, int exn) 
+convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn) 
 {
-  int sz;
+  size_t sz;
   char *p;
 
   sz = sizeStringDefine(mlStr); 
@@ -76,11 +77,11 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, char *cStr)
 // not test on \0 in during the copy. However, you must be sure that
 // the legth is correct.
 String
-REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, char *cStr) 
+REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, char *cStr) 
 {
   String res;
   char *p;
-  int i;
+  size_t i;
 
   res = REG_POLY_CALL(allocString, rAddr, l);   // sets size also
   p = &(res->data);
@@ -101,26 +102,26 @@ REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, char *cStr)
 //     string/W8vector/W8array is a scalar value so GC does not require
 //     that the string is initialized.
 String
-REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML)
+REG_POLY_FUN_HDR(allocStringML, Region rAddr, size_t sizeML)
 {
-  int sizeC = convertIntToC(sizeML);
+  size_t sizeC = convertIntToC(sizeML);
   String strPtr;
   strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
 
 String
-REG_POLY_FUN_HDR(allocStringC, Region rAddr, int sizeC)
+REG_POLY_FUN_HDR(allocStringC, Region rAddr, size_t sizeC)
 {
   String strPtr;
   strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
 
-int 
-chrCharML(int charNrML, int exn) 
+size_t 
+chrCharML(size_t charNrML, uintptr_t exn) 
 {
-  int charNrC = convertIntToC(charNrML); 
+  size_t charNrC = convertIntToC(charNrML); 
   if ( charNrC >= 0 && charNrC <= 255 ) 
     {
       return convertIntToML (charNrC); 
@@ -134,7 +135,7 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
 {
   String res;
   char *s, *p;
-  int i, sz;
+  size_t i, sz;
   debug(printf("[enter concatStringML (rAddr=%x,str1=%x,str2=%x)]\n", rAddr,str1,str2);)
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
   res = REG_POLY_CALL(allocString, rAddr, sz);
@@ -156,11 +157,11 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
 }
 
 String
-REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs) 
+REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs) 
 {
   String res;
-  int length = 0;
-  int ys;
+  size_t length = 0;
+  size_t ys;
   char *p;
 
   // maybe reset region
@@ -189,11 +190,11 @@ REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs)
 // Example: ["ABC","DEF","GHI","JKL"]                            
 //   = CONS("ABC",CONS("DEF",CONS("GHI",CONS("JKL",NIL))))
 String
-REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs) 
+REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs) 
 {
   String res;
-  int sz=0;
-  int ys;
+  size_t sz=0;
+  size_t ys;
   char *p;
 
   // calculate string length and allocate
@@ -207,7 +208,7 @@ REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs)
   for ( ys = xs; isCONS(ys); ys = tl(ys) )
     {
       String sd;
-      int i;
+      size_t i;
       char *s;
       sd = (String)hd(ys);
       s = &(sd->data);
@@ -231,7 +232,7 @@ printStringML(String str)
 static inline int
 mystrcmp (String s1, String s2) 
 {
-  int min, l1, l2, i;
+  size_t min, l1, l2, i;
   unsigned char *p1, *p2;
 
   if ( s1 == s2 ) return 0;
@@ -255,7 +256,7 @@ mystrcmp (String s1, String s2)
   return 0;
 }
 
-int 
+size_t 
 lessStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) < 0 )
@@ -265,7 +266,7 @@ lessStringML(String s1, String s2)
   return mlFALSE;
 }
 
-int 
+size_t 
 lesseqStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) <= 0 )
@@ -275,7 +276,7 @@ lesseqStringML(String s1, String s2)
   return mlFALSE;
 }
 
-int 
+size_t 
 greaterStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) > 0 )
@@ -285,7 +286,7 @@ greaterStringML(String s1, String s2)
   return mlFALSE;
 }
 
-int 
+size_t 
 greatereqStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) >= 0 )
@@ -295,11 +296,11 @@ greatereqStringML(String s1, String s2)
   return mlFALSE;
 }
 
-int 
+size_t 
 equalStringML(String s1, String s2) 
 {
   char *p1, *p2;
-  int sz;
+  size_t sz;
   if (s1 == s2) return mlTRUE;
   
   sz = sizeStringDefine(s1);  
@@ -313,14 +314,14 @@ equalStringML(String s1, String s2)
 // exnNameML: return name of exception; the function 
 // is exomorphic by copying
 String
-REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e) 
+REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e) 
 {
   String ml_s;
 
 #ifdef TAG_VALUES
-  ml_s = (String)(* ( (*((int **)e+1)) + 2));
+  ml_s = (String)(* ( (*((uintptr_t **)e+1)) + 2));
 #else
-  ml_s = (String)(* ( (*(int **)e) + 1));
+  ml_s = (String)(* ( (*(uintptr_t **)e) + 1));
 #endif
 
   return REG_POLY_CALL(convertStringToML, rAddr, &(ml_s->data));
@@ -329,10 +330,11 @@ REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e)
 /* explodeStringML(rAddr, str): convert a string to a char list. 
  * A list is kept in one region, pointed to by rAddr.  */
 
-int *
+uintptr_t *
 REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str) 
 {
-  int *res, *consPtr, *pair, *tpair, i, sz;
+  uintptr_t *res, *consPtr, *pair, *tpair;
+  size_t i, sz;
   char *p;
 
   sz = sizeStringDefine(str);
@@ -364,11 +366,11 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
 
       first(tpair) = convertIntToML (*p++);
       makeCONS(tpair, consPtr);
-      second(pair) = (int)consPtr;
+      second(pair) = (size_t)consPtr;
       pair = tpair;
     }
   makeNIL(consPtr);
-  second(pair) = (int)consPtr;
+  second(pair) = (size_t)consPtr;
   return res;
 }
 

@@ -67,7 +67,7 @@ regionPageMapNew(void)
 {
   RegionPageMap* regionPageMap;
 
-  regionPageMap = (RegionPageMap*)malloc(sizeof(unsigned long) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
+  regionPageMap = (RegionPageMap*)malloc(sizeof(void *) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
   if ( regionPageMap == NULL ) {
     die("Unable to allocate memory for RegionPageMapHashTable");
   }
@@ -91,8 +91,8 @@ regionPageMapIncr(RegionPageMap* regionPageMap, unsigned int addr)
   return regionPageMapInsert(regionPageMap,addr);
 }  
 
-unsigned int
-regionPageMapLookup(RegionPageMap* regionPageMap, unsigned int addr)
+uintptr_t
+regionPageMapLookup(RegionPageMap* regionPageMap, uintptr_t addr)
 {
   RegionPageMapHashList* p;
   for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next ) 
@@ -102,7 +102,7 @@ regionPageMapLookup(RegionPageMap* regionPageMap, unsigned int addr)
 	  return p->n;
 	}
     }
-  return (unsigned int) NULL;
+  return (uintptr_t) NULL;
 }
 
 void
@@ -147,7 +147,7 @@ int rp_total = 0;
 #ifdef PROFILING
 FiniteRegionDesc * topFiniteRegion = NULL;
 
-unsigned int callsOfDeallocateRegionInf=0,
+unsigned long callsOfDeallocateRegionInf=0,
              callsOfDeallocateRegionFin=0,
              callsOfAlloc=0,
              callsOfResetRegion=0,
@@ -270,13 +270,13 @@ pp_reg(Region r,  char *str)
 }
 
 void 
-chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s) 
+chk_obj_in_gen(Gen *gen, uintptr_t *obj_ptr, char* s) 
 {
   Rp* rp;
   int found = 0;
   return;  // ToDo: GenGC remove
   for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
-    if (obj_ptr < (unsigned int*)(rp+1) && obj_ptr >= (unsigned int*) &(rp->i))
+    if (obj_ptr < (uintptr_t*)(rp+1) && obj_ptr >= (uintptr_t*) &(rp->i))
       found = 1;
   }
   if (! found) {
@@ -300,10 +300,10 @@ void printRegionStack() {
 */
 
 /* Calculate number of pages in a generation */
-inline int 
+inline size_t 
 NoOfPagesInGen(Gen *gen) 
 {
-  int i;
+  size_t i;
   Rp *rp;
 
   debug(printf("[NoOfPagesInGen..."));  
@@ -317,7 +317,7 @@ NoOfPagesInGen(Gen *gen)
 }
 
 /* Calculate number of pages in an infinite region. */
-int 
+size_t 
 NoOfPagesInRegion(Region r) 
 {
 #ifdef ENABLE_GEN_GC
@@ -348,11 +348,11 @@ printFreeList()
 
 
 #ifdef ENABLE_GC
-int 
+size_t 
 size_free_list() 
 {
   Rp *rp;
-  int i=0;
+  size_t i=0;
 
   LOCK_LOCK(FREELISTMUTEX);
 
@@ -435,7 +435,7 @@ alloc_new_block(Gen *gen)
   // udefinerede? Det tror jeg faktisk ikke. Dem i g0 anvendes til at
   // angive farve ved what gen to alloc to og i g1 anvendes de i
   // points_in_tospace.
-  np->colorPtr = (unsigned int *)(&(np->i));  
+  np->colorPtr = (uintptr_t *)(&(np->i));  
 #endif /* ENABLE_GEN_GC */
 
 #ifdef ENABLE_GC
@@ -470,8 +470,8 @@ alloc_new_block(Gen *gen)
 #endif
       gen->fp = np;                /* Update pointer to the first page. */
   }
-  gen->a = (unsigned int*) (&(np->i));      /* Updates the allocation pointer. */
-  gen->b = (unsigned int*) (np+1);          /* Updates the border pointer. */
+  gen->a = (uintptr_t *) (&(np->i));      /* Updates the allocation pointer. */
+  gen->b = (uintptr_t *) (np+1);          /* Updates the border pointer. */
 }
 
 /*----------------------------------------------------------------------*
@@ -749,15 +749,15 @@ void callSbrk() {
  *  allocated in region pages; larger objects are allocated using       *
  *  malloc.                                                             *
  *----------------------------------------------------------------------*/
-inline unsigned int *
-allocGen (Gen *gen, int n) { 
-  unsigned int *t1;
-  unsigned int *t2;
-  unsigned int *t3;
+inline uintptr_t *
+allocGen (Gen *gen, size_t n) { 
+  uintptr_t *t1;
+  uintptr_t *t2;
+  uintptr_t *t3;
   Ro *r;
 
 #if defined(PROFILING) || defined(ENABLE_GC)
-  unsigned int *i;
+  uintptr_t *i;
 #endif
 
   debug(printf("[allocGen... generation: %x", gen));
@@ -832,7 +832,7 @@ allocGen (Gen *gen, int n) {
   return t1;
 }
 
-unsigned int *alloc (Region r, int n) {
+uintptr_t *alloc (Region r, size_t n) {
   return allocGen(&(clearStatusBits(r)->g0),n);
 }
 
@@ -860,11 +860,11 @@ void resetGen(Gen *gen)
     (clear_fp(gen->fp))->n = NULL;
   }
 
-  gen->a = (unsigned int *)(&((clear_fp(gen->fp))->i));   /* beginning of data in first page */
+  gen->a = (uintptr_t *)(&((clear_fp(gen->fp))->i));   /* beginning of data in first page */
 #ifdef ENABLE_GEN_GC
   (clear_fp(gen->fp))->colorPtr = gen->a;      /* beginning of data in first page */
 #endif /* ENABLE_GEN_GC */
-  gen->b = (unsigned int *)((clear_fp(gen->fp))+1);     /* end of data in first page */
+  gen->b = (uintptr_t *)((clear_fp(gen->fp))+1);     /* end of data in first page */
 
   return;
 }
@@ -1014,7 +1014,7 @@ deallocateRegionsUntil_X86(Region r)
  *  roAddr points at.                                                   *
  *----------------------------------------------------------------------*/
 Region
-allocRegionInfiniteProfiling(Region r, unsigned int regionId) 
+allocRegionInfiniteProfiling(Region r, size_t regionId) 
 { 
   /* printf("[allocRegionInfiniteProfiling r=%x, regionId=%d...", r, regionId);*/
 
@@ -1053,14 +1053,14 @@ allocRegionInfiniteProfiling(Region r, unsigned int regionId)
 /* In CodeGenX86, we use a generic function to compile a C-call. The regionId */
 /* may therefore be tagged, which this stub-function takes care of.           */
 Region
-allocRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+allocRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
 { 
   return allocRegionInfiniteProfiling(r, convertIntToC(regionId));
 }
 
 #ifdef ENABLE_GC
 Region
-allocPairRegionInfiniteProfiling(Region r, unsigned int regionId) 
+allocPairRegionInfiniteProfiling(Region r, size_t regionId) 
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_pairregion(clearStatusBits(r)->g0);
@@ -1071,7 +1071,7 @@ allocPairRegionInfiniteProfiling(Region r, unsigned int regionId)
 }
 
 Region
-allocArrayRegionInfiniteProfiling(Region r, unsigned int regionId) 
+allocArrayRegionInfiniteProfiling(Region r, size_t regionId) 
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_arrayregion(clearStatusBits(r)->g0);
@@ -1083,7 +1083,7 @@ allocArrayRegionInfiniteProfiling(Region r, unsigned int regionId)
 }
 
 Region
-allocRefRegionInfiniteProfiling(Region r, unsigned int regionId) 
+allocRefRegionInfiniteProfiling(Region r, size_t regionId) 
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_refregion(clearStatusBits(r)->g0);
@@ -1095,7 +1095,7 @@ allocRefRegionInfiniteProfiling(Region r, unsigned int regionId)
 }
 
 Region
-allocTripleRegionInfiniteProfiling(Region r, unsigned int regionId) 
+allocTripleRegionInfiniteProfiling(Region r, size_t regionId) 
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_tripleregion(clearStatusBits(r)->g0);
@@ -1107,7 +1107,7 @@ allocTripleRegionInfiniteProfiling(Region r, unsigned int regionId)
 }
 
 Region
-allocPairRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
 { 
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_pairregion(clearStatusBits(r)->g0);
@@ -1119,7 +1119,7 @@ allocPairRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId)
 }
 
 Region
-allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
 { 
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_arrayregion(clearStatusBits(r)->g0);
@@ -1131,7 +1131,7 @@ allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId)
 }
 
 Region
-allocRefRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
 { 
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_refregion(clearStatusBits(r)->g0);
@@ -1143,7 +1143,7 @@ allocRefRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId)
 }
 
 Region
-allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
 { 
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_tripleregion(clearStatusBits(r)->g0);
@@ -1166,7 +1166,7 @@ allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId)
  *-------------------------------------------------------------------------------*/
 #define notPrgPoint 1 
 void 
-allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size)
+allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size)
 {
   ObjectDesc *objPtr;  
 /*
@@ -1203,7 +1203,7 @@ allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int 
 /* In CodeGenX86, we use a generic function to compile a C-call. The regionId */
 /* and size may therefore be tagged, which this stub-function takes care of.  */
 void 
-allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size) 
+allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size) 
 { 
   allocRegionFiniteProfiling(rdAddr, convertIntToC(regionId), convertIntToC(size));
   return;
@@ -1246,10 +1246,10 @@ deallocRegionFiniteProfiling(void)
  * and takes care of allocating it, returning a pointer to the     *
  * beginning of the user value, as if profiling is not enabled.    *
  *-----------------------------------------------------------------*/
-unsigned int *
-allocGenProfiling(Gen *gen, int n, int pPoint) 
+uintptr_t *
+allocGenProfiling(Gen *gen, size_t n, size_t pPoint) 
 {
-  unsigned int *res;
+  uintptr_t *res;
 
   debug(printf("[Entering allocProfiling... gen:%x, n:%d, pp:%d.", gen, n, pPoint));
 
@@ -1258,14 +1258,14 @@ allocGenProfiling(Gen *gen, int n, int pPoint)
   ((ObjectDesc *)res)->atId = pPoint;     // initialize object descriptor
   ((ObjectDesc *)res)->size = n;
   
-  res = (unsigned int *)(((ObjectDesc *)res) + 1); // return pointer to user data
+  res = (uintptr_t *)(((ObjectDesc *)res) + 1); // return pointer to user data
 
   debug(printf("exiting]\n"));
   return res;
 }
 
-unsigned int *
-allocProfiling(Region r, int n, int pPoint) 
+uintptr_t *
+allocProfiling(Region r, size_t n, size_t pPoint) 
 {
   return allocGenProfiling(&(clearStatusBits(r)->g0),n,pPoint);
 }

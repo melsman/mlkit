@@ -63,8 +63,8 @@ int equalPolyML(int x, int y);
 
 int die (char *);
 int die2 (char *, char *);
-int terminate (int status);    /* status is a C value */
-int terminateML (int status);  /* status is an ML value */
+long terminate (long status);    /* status is a C value */
+long terminateML (long status);  /* status is an ML value */
 void uncaught_exception (StringDesc *exnStr, unsigned long, int);
 
 #endif /* RUNTIME_H */

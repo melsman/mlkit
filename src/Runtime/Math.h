@@ -5,6 +5,8 @@
 #ifndef __MATH_H
 #define __MATH_H
 
+#include <stdint.h>
+#include <stdlib.h>
 #include "Flags.h"
 #include "Tagging.h"
 #include "String.h"
@@ -42,73 +44,73 @@
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-int max_fixed_int(int dummy);
-int min_fixed_int(int dummy);
-int precision(int dummy);
-int __div_int32ub(int x, int y, int exn);
-int __div_int31(int x, int y, int exn);
-unsigned int __div_word32ub(unsigned int x, unsigned int y, int exn);
-unsigned int __div_word31(unsigned int x, unsigned int y, int exn);
-int __mod_int32ub(int x, int y, int exn);
-int __mod_int31(int x, int y, int exn);
-unsigned int __mod_word32ub(unsigned int x, unsigned int y, int exn);
-unsigned int __mod_word31(unsigned int x, unsigned int y, int exn);
-int __quot_int32ub(int x, int y);
-int __quot_int31(int x, int y);
-int __rem_int32ub(int x, int y);
-int __rem_int31(int x, int y);
-int realInt(int d, int x);
-int floorFloat(int f);
-int ceilFloat(int f);
-int roundFloat(int f);
-int truncFloat(int f);
-int divFloat(int d, int x, int y);
+ssize_t max_fixed_int(ssize_t dummy);
+ssize_t min_fixed_int(ssize_t dummy);
+ssize_t precision(ssize_t dummy);
+ssize_t __div_int32ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __div_int31(ssize_t x, ssize_t y, uintptr_t exn);
+size_t __div_word32ub(size_t x, size_t y, uintptr_t exn);
+size_t __div_word31(size_t x, size_t y, uintptr_t exn);
+ssize_t __mod_int32ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __mod_int31(ssize_t x, ssize_t y, uintptr_t exn);
+size_t __mod_word32ub(size_t x, size_t y, uintptr_t exn);
+size_t __mod_word31(size_t x, size_t y, uintptr_t exn);
+ssize_t __quot_int32ub(ssize_t x, ssize_t y);
+ssize_t __quot_int31(ssize_t x, ssize_t y);
+ssize_t __rem_int32ub(ssize_t x, ssize_t y);
+ssize_t __rem_int31(ssize_t x, ssize_t y);
+ssize_t realInt(ssize_t d, ssize_t x);
+ssize_t floorFloat(ssize_t f);
+ssize_t ceilFloat(ssize_t f);
+ssize_t roundFloat(ssize_t f);
+ssize_t truncFloat(ssize_t f);
+ssize_t divFloat(ssize_t d, ssize_t x, ssize_t y);
 
-int sqrtFloat(int d, int s);
-int sinFloat(int d, int s);
-int cosFloat(int d, int s);
-int atanFloat(int d, int s);
-int asinFloat(int d, int s);
-int acosFloat(int d, int s);
-int atan2Float(int d, int y, int x);
-int expFloat(int d, int s);
-int powFloat(int d, int x, int y);
-int lnFloat(int d, int s);
-int sinhFloat(int d, int s);
-int coshFloat(int d, int s);
-int tanhFloat(int d, int s);
-int isnanFloat(int s);
-int posInfFloat(int d);
-int negInfFloat(int d);
+ssize_t sqrtFloat(ssize_t d, ssize_t s);
+ssize_t sinFloat(ssize_t d, ssize_t s);
+ssize_t cosFloat(ssize_t d, ssize_t s);
+ssize_t atanFloat(ssize_t d, ssize_t s);
+ssize_t asinFloat(ssize_t d, ssize_t s);
+ssize_t acosFloat(ssize_t d, ssize_t s);
+ssize_t atan2Float(ssize_t d, ssize_t y, ssize_t x);
+ssize_t expFloat(ssize_t d, ssize_t s);
+ssize_t powFloat(ssize_t d, ssize_t x, ssize_t y);
+ssize_t lnFloat(ssize_t d, ssize_t s);
+ssize_t sinhFloat(ssize_t d, ssize_t s);
+ssize_t coshFloat(ssize_t d, ssize_t s);
+ssize_t tanhFloat(ssize_t d, ssize_t s);
+ssize_t isnanFloat(ssize_t s);
+ssize_t posInfFloat(ssize_t d);
+ssize_t negInfFloat(ssize_t d);
 
-#ifdef PROFILING
-String stringOfFloatProf(Region rAddr, int f, int pPoint);
-String generalStringOfFloatProf(Region rAddr, String str, int f, int pPoint);
-#else
-String stringOfFloat(Region rAddr, int f);
-String generalStringOfFloat(Region rAddr, String str, int f);
-#endif
+// #ifdef PROFILING
+// String stringOfFloatProf(Region rAddr, long f, uintptr_t pPoint);
+// String generalStringOfFloatProf(Region rAddr, String str, long f, long pPoint);
+// #else
+String REG_POLY_FUN_HDR(stringOfFloat,Region rAddr, size_t f);
+String REG_POLY_FUN_HDR(generalStringOfFloat,Region rAddr, String str, size_t f);
+// #endif
 
 /* For basislib Math structure */
-int sml_sqrt(int d, int s);
+ssize_t sml_sqrt(ssize_t d, ssize_t s);
 
 /* For basislib PackReal{Big,Little} structures */
-#ifdef PROFILING
-String sml_real_to_bytes(Region rAddr, int f, int pPoint);
-#else
-String sml_real_to_bytes(Region rAddr, int f);
-#endif
-int sml_bytes_to_real(int d, String s);
+//#ifdef PROFILING
+//String sml_real_to_bytes(Region rAddr, long f, long pPoint);
+//#else
+String REG_POLY_FUN_HDR(sml_real_to_bytes,Region rAddr, size_t f);
+//#endif
+size_t sml_bytes_to_real(size_t d, String s);
 
-void printReal(int f);
+void printReal(size_t f);
 
 #ifdef TAG_VALUES
-unsigned int* __div_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
-unsigned int* __div_word32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
-unsigned int* __mod_int32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
-unsigned int* __mod_word32b(unsigned int* b, unsigned int* x, unsigned int* y, int exn);
-unsigned int* __quot_int32b(unsigned int* b, unsigned int* x, unsigned int* y);
-unsigned int* __rem_int32b(unsigned int* b, unsigned int* x, unsigned int* y);
+size_t* __div_int32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __div_word32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __mod_int32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __mod_word32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __quot_int32b(size_t* b, size_t* x, size_t* y);
+size_t* __rem_int32b(size_t* b, size_t* x, size_t* y);
 #endif
 
 #endif /*__MATH_H*/

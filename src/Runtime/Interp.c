@@ -48,10 +48,11 @@ void raise_exn(int exn) {
 } 
 #endif
 
-int printList (int l) {    /* function to print out a list */
+size_t
+printList (uintptr_t l) {    /* function to print out a list */
   printf("\nList = [");
   for (; isCONS(l); l = tl(l))
-    printf("%x : elem = %d\n", l, hd(l));
+    printf("%x : elem = %d\n", l, (size_t) hd(l));
   printf("]\n");
   return mlUNIT;
 }
@@ -89,8 +90,8 @@ typedef unsigned int uint32;
 	deallocateRegionsUntil((Region)exnPtr, topRegionCell);                            \
 	debug(printf(" after deallocateRegionsUntil\n"));                                 \
                                                                                           \
-	sp = exnPtr - 1;                                /* reset stack pointer */         \
-	exnPtr = (unsigned long*)*exnPtr;               /* enable the previous handler */ \
+	sp = exnPtr - 1;                      /* reset stack pointer */         \
+	exnPtr = (uintptr_t *)*exnPtr;               /* enable the previous handler */ \
                                                                                           \
 	debug(printf(" now calling the handler function\n"));                             \
                                                         /* now do the function call! The  \ 
@@ -117,7 +118,7 @@ typedef unsigned int uint32;
 
 #ifdef LAB_THREADED
 #define Instruct(name) lbl_##name
-#define Next { temp = (int)pc; inc32pc;  goto **(void **)temp; }
+#define Next { temp = (uintptr_t)pc; inc32pc;  goto **(void **)temp; }
 #else
 #define Instruct(name) case name
 #define Next break
@@ -384,16 +385,16 @@ enum interp_mode {
   INTERPRET
 };
 
-static int 
+static ssize_t 
 interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
-       unsigned long * sp0,    // Stack pointer
-       unsigned long * ds,     // Data segment pointer
-       unsigned long * exnPtr, // Pointer to next exn-handler on stack
+       uintptr_t * sp0,    // Stack pointer
+       uintptr_t * ds,     // Data segment pointer
+       uintptr_t * exnPtr, // Pointer to next exn-handler on stack
        Ro ** topRegionCell,    // Cell for holding a pointer to the top-most region
        char ** errorStr,       // Cell to store error-string in case of an uncaught exception
-       unsigned long *exnCnt,  // Exception name counter
+       size_t *exnCnt,  // Exception name counter
        bytecode_t b_prog,      // The actual code
-       int sizeW,              // Size of code in words
+       size_t sizeW,              // Size of code in words
        int interp_mode,        // Mode: RESOLVEINSTS or INTERPRET
        serverstate serverCtx)        // Apache request_rec pointer
 {
@@ -406,21 +407,21 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
    For GCC users, registers are hans-assigned for some architectures. 
 */
 
-  register int acc;
+  register ssize_t acc;
   
 #if defined(__GNUC__) && defined(i386)
   register bytecode_t pc asm("%esi");
-  register unsigned long * sp asm("%edi");
+  register uintptr_t * sp asm("%edi");
 #else
   register bytecode_t pc;
-  register unsigned long * sp;
+  register uintptr_t * sp;
 #endif
 
   bytecode_t pc_temp;
   int *env = NULL;
   uint32 cur_instr = 0;
-  int temp;
-  unsigned long *tmp2;
+  ssize_t temp;
+  ssize_t *tmp2;
   //  c_primitive primtmp;
 
 
@@ -439,7 +440,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
     &&lbl_C_CALL6,
     &&lbl_C_CALL7
   };
-  static unsigned int jumptableSize = sizeof(jumptable) / sizeof(void *);
+  static size_t jumptableSize = sizeof(jumptable) / sizeof(void *);
 #endif
 
   acc = convertIntToML(0);
@@ -1119,17 +1120,17 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       
       Instruct(POP_EXN_PTR): {
 	debug(printf("POP_EXN_PTR\n"));
-	exnPtr = (unsigned long*)popValDef;
+	exnPtr = (uintptr_t *)popValDef;
 	Next;
       }
 
       Instruct(GLOBAL_EXN_HANDLER_REPORT): {
-	int exn_sz;
+	size_t exn_sz;
 	debug(printf("GLOBAL_EXN_HANDLER_REPORT, acc = %d\n", acc));
-  tmp2 = (unsigned long *) acc+1;
-	acc = *(unsigned long *)acc;        
-	temp = *((unsigned long *)acc+1);        /* Fetch pointer to exception string */
-	acc = *((unsigned long *)acc);           /* Fetch exn number */	
+  tmp2 = (ssize_t *) acc+1;
+	acc = *(ssize_t *)acc;        
+	temp = *((ssize_t *)acc+1);        /* Fetch pointer to exception string */
+	acc = *((ssize_t *)acc);           /* Fetch exn number */	
 
 	/* write uncaught exception string into errorStr */
 	exn_sz = 1 + sizeStringDefine((String)temp);
@@ -1186,13 +1187,13 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
 
-      Instruct(SELECT_PUSH0): {	pushDef(*(int *)acc); Next; }          /*mael*/
-      Instruct(SELECT_PUSH1): {	pushDef(*((int *)acc + 1)); Next; }    /*mael*/
-      Instruct(SELECT_PUSH2): {	pushDef(*((int *)acc + 2)); Next; }    /*mael*/
-      Instruct(SELECT_PUSH3): {	pushDef(*((int *)acc + 3)); Next; }    /*mael*/
+      Instruct(SELECT_PUSH0): {	pushDef(*(ssize_t *)acc); Next; }          /*mael*/
+      Instruct(SELECT_PUSH1): {	pushDef(*((ssize_t *)acc + 1)); Next; }    /*mael*/
+      Instruct(SELECT_PUSH2): {	pushDef(*((ssize_t *)acc + 2)); Next; }    /*mael*/
+      Instruct(SELECT_PUSH3): {	pushDef(*((ssize_t *)acc + 3)); Next; }    /*mael*/
       Instruct(SELECT_PUSH): {                                         /*mael*/
 	debug(printf("SELECT_PUSH(%d)\n", s32pc));	
-	pushDef(*(((int *)acc) + s32pc));
+	pushDef(*(((ssize_t *)acc) + s32pc));
 	inc32pc;
 	Next;
       }
@@ -1212,14 +1213,14 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
 
       Instruct(STACK_ADDR_PUSH): {   /*mael*/
-	pushDef((int)(sp + s32pc));
+	pushDef((ssize_t)(sp + s32pc));
 	debug(printf("STACK_ADDR_PUSH %d\n", s32pc));
 	inc32pc;
 	Next;
       }
 
       Instruct(STACK_ADDR_INF_BIT_ATBOT_BIT_PUSH): {   /*mael*/
-	pushDef(setStatusBits((int)(sp + s32pc)));
+	pushDef(setStatusBits((ssize_t)(sp + s32pc)));
 	debug(printf("STACK_ADDR_INF_BIT_ATBOT_BIT_PUSH(%d)\n", s32pc));
 	inc32pc;
 	Next;
@@ -1234,13 +1235,13 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(ENV_PUSH): {   /*mael*/
 	debug(printf("ENV_PUSH\n"));
-	pushDef((int)env);
+	pushDef((ssize_t)env);
 	Next;
       }
 
       Instruct(PRIM_SUB_I31): {
 	debug(printf("PRIM_SUB_I31\n"));
-	temp = i31_to_i32ub((int)(popValDef)) - i31_to_i32ub(acc);
+	temp = i31_to_i32ub((ssize_t)(popValDef)) - i31_to_i32ub(acc);
 	acc = i32ub_to_i31(temp);
 	if ( i31_to_i32ub(acc) != temp )
 	  goto raise_overflow;
@@ -1487,17 +1488,17 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
 /* Interpret code; assumes that code is already resolved; i.e., that
  * instruction numbers are turned into instruction addresses. */
-int 
+ssize_t 
 interpCode(Interp* interpreter,         // The interpreter
-	   register unsigned long * sp, // Stack pointer
-	   unsigned long * ds,          // Data segment pointer
-	   unsigned long * exnPtr,      // Pointer to next exn-handler on stack
-	   Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
-	   char ** errorStr,            // Cell to store error-string in case of an uncaught exception
-	   unsigned long *exnCnt,       // Exception name counter
-	   bytecode_t b_prog,           // The actual code
-	   void *serverCtx)  {          // Apache request_rec pointer
-  int res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
+       register uintptr_t * sp, // Stack pointer
+       uintptr_t * ds,          // Data segment pointer
+       uintptr_t * exnPtr,      // Pointer to next exn-handler on stack
+       Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
+       char ** errorStr,            // Cell to store error-string in case of an uncaught exception
+       size_t *exnCnt,       // Exception name counter
+       bytecode_t b_prog,           // The actual code
+       void *serverCtx)  {          // Apache request_rec pointer
+       ssize_t res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
 		   exnCnt, b_prog, 0, INTERPRET, serverCtx);    
                                             // sizeW not used when mode is INTERPRET
   return res;
@@ -1538,8 +1539,9 @@ void report(enum reportLevel level, char *data, void *notused)
   return;
 }
 
-int main_interp(int argc, char * argv[]) {
-  int res, start, c;
+ssize_t
+main_interp(int argc, char * argv[]) {
+  ssize_t res, start, c;
   Interp* interp;
   char* errorStr = NULL;
   Serverstate ss;

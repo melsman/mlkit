@@ -709,20 +709,20 @@ resolveGlobalCodeFragments(void)
   * global_exnhandler_closure = (unsigned long)global_exnhandler_code;    
 }
 
-int 
+ssize_t 
 interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstate ss) 
 {
-  unsigned long *ds, *sp, *exnPtr, *sp0;
-  unsigned long exnCnt = 0;
+  uintptr_t *ds, *sp, *exnPtr, *sp0;
+  size_t exnCnt = 0;
   Heap* h;
-  int res = 0;
+  ssize_t res = 0;
   LongList* p;
   Ro* topRegion = NULL;
 
   h = getHeap(ss);
   if ( h->status == HSTAT_UNINITIALIZED )
     {
-      ds = (unsigned long*)(h->ds);
+      ds = h->ds;
       sp = ds;
 
       // make room for data space on the stack
@@ -747,34 +747,34 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
       GLOBAL_EXCON(10,"Overflow");
       GLOBAL_EXCON(11,"Interrupt");
 
-      exn_DIV = (Exception*)**(unsigned long**)(ds+7);
-      exn_MATCH = (Exception*)**(unsigned long**)(ds+8);
-      exn_BIND = (Exception*)**(unsigned long**)(ds+9);
-      exn_OVERFLOW = (Exception*)**(unsigned long**)(ds+10);
-      exn_INTERRUPT = (Exception*)**(unsigned long**)(ds+11);
+      exn_DIV = (Exception*)**(size_t **)(ds+7);
+      exn_MATCH = (Exception*)**(size_t **)(ds+8);
+      exn_BIND = (Exception*)**(size_t **)(ds+9);
+      exn_OVERFLOW = (Exception*)**(size_t **)(ds+10);
+      exn_INTERRUPT = (Exception*)**(size_t **)(ds+11);
 
       // Push global exception handler on the stack
-      pushDef((unsigned long)exit_code);         // push return address on stack
-      pushDef((unsigned long) 0);                // Dummy env for exit_code
-      pushDef((unsigned long)global_exnhandler_closure); // push closure on stack (no env)
+      pushDef((size_t)exit_code);         // push return address on stack
+      pushDef((size_t) 0);                // Dummy env for exit_code
+      pushDef((size_t)global_exnhandler_closure); // push closure on stack (no env)
       pushDef(0);                                // no previous handler on stack
 
       exnPtr = sp - 1;                           // update exnPtr
 
       /* push address for exit-bytecode on the stack */
       debug(printf("Pushing exit-address %x on stack at sp = %x\n", 
-		   (unsigned long)exit_code, sp));
-      pushDef((unsigned long)exit_code);
-      pushDef((unsigned long)0);
+		   (size_t)exit_code, sp));
+      pushDef((size_t)exit_code);
+      pushDef((size_t)0);
 
       sp0 = sp;
 
       // push all execution addresses on the stack
       for (p = interpreter->exeList; p ; p = p->next) {
 	debug(printf("Pushing address %x on stack at sp = %x\n", 
-		     (unsigned long)p->elem, sp));
-	pushDef((unsigned long)p->elem);
-	pushDef((unsigned long)0);
+		     (size_t)p->elem, sp));
+	pushDef((size_t)p->elem);
+	pushDef((size_t)0);
       }
 
       // start interpretation by interpreting the init_code
@@ -783,7 +783,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
   
       if ( res >= 0 && extra_code )
       {
-        initializeHeap(h,(int*)sp0,(int*)exnPtr, exnCnt, ss);
+        initializeHeap(h,sp0,exnPtr, exnCnt, ss);
       }
       else 
       {
@@ -799,9 +799,9 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
   if ( extra_code ) {
 
     // fetch heap data
-    sp = (unsigned long*)(h->sp);
-    ds = (unsigned long*)(h->ds);
-    exnPtr = (unsigned long*)(h->exnPtr);
+    sp = (uintptr_t *)(h->sp);
+    ds = (uintptr_t *)(h->ds);
+    exnPtr = (uintptr_t *)(h->exnPtr);
     exnCnt = h->exnCnt;
     topRegion = h->r6copy->r;
 
@@ -822,8 +822,8 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
  * Returns 0 on success and 1 on error
  * ------------------------------------------------------ */
 
-int 
-interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, int *res) 
+ssize_t 
+interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, ssize_t *res) 
 {
   bytecode_t start_code;
   FILE *fd;

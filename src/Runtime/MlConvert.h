@@ -13,9 +13,9 @@
 /*----------------------------------------------------------------*
  * Allocating into infinite regions.                              *
  *----------------------------------------------------------------*/
-void resetRegion(int rAdr);
+void resetRegion(uintptr_t rAdr);
 #define is_inf_and_atbot(x) (((x) & 0x00000003)==0x00000003)
-int *alloc (int rAdr, int n);
+long *alloc (uintptr_t rAdr, size_t n);
 
 /*----------------------------------------------------------------*
  * Converting integers.                                           * 
@@ -28,7 +28,8 @@ int *alloc (int rAdr, int n);
  *----------------------------------------------------------------*/
 /* extract double from storable value. 
  * get_d may be used as l-value as well. */
-#define get_d(s)     (* (double *)(((int *)s)))
+
+#define get_d(s)     (* (double *)(((size_t *)s)))
 #define set_dtag(d)  /* nothing */
 #define convertRealToC(mlReal)  (get_d((mlReal)))
 #define convertRealToML(cReal, mlReal) {get_d((mlReal)) = (cReal);}
@@ -37,7 +38,7 @@ int *alloc (int rAdr, int n);
   realPtr = alloc(realRho, 2+sizeObjectDesc);\
   ((ObjectDesc *) realPtr)->atId = pPoint; \
   ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
-  realPtr = (int *)(((ObjectDesc *)realPtr)+1); \
+  realPtr = (uintptr_t *)(((ObjectDesc *)realPtr)+1); \
 }
 
 /*----------------------------------------------------------------*
@@ -64,16 +65,16 @@ int *alloc (int rAdr, int n);
  *                 has to be the value in ML representation.      *
  *                 First elem in record has offset 0.             *
  *----------------------------------------------------------------*/
-#define elemRecordML(recAddr, offset) (*((int *)(recAddr)+(offset)))
-#define first(x)   (*(int *)(x))
-#define second(x)  (*((int *)(x)+1))
+#define elemRecordML(recAddr, offset) (*((size_t *)(recAddr)+(offset)))
+#define first(x)   (*(size_t *)(x))
+#define second(x)  (*((size_t *)(x)+1))
 
-#define allocRecordML(rhoRec, size, recAddr) {recAddr= (int *) alloc(rhoRec, size);}
+#define allocRecordML(rhoRec, size, recAddr) {recAddr= (size_t *) alloc(rhoRec, size);}
 #define allocRecordMLProf(rhoRec, ssize, recAddr, pPoint) { \
-   recAddr = (int *) alloc(rhoRec, ssize+sizeObjectDesc); \
+   recAddr = (size_t *) alloc(rhoRec, ssize+sizeObjectDesc); \
    ((ObjectDesc *) recAddr)->atId = pPoint; \
    ((ObjectDesc *) recAddr)->size = ssize; \
-   recAddr = (int *)(((ObjectDesc *)recAddr)+1); \
+   recAddr = (size_t *)(((ObjectDesc *)recAddr)+1); \
 							 }
 
 /*----------------------------------------------------------------*
@@ -82,12 +83,12 @@ int *alloc (int rAdr, int n);
  *     /src/Runtime/Version#/String.c                             *
  *----------------------------------------------------------------*/
 #define valueTagString  1
-typedef int StringDesc;
+typedef size_t StringDesc;
 void printString(StringDesc *str);
-void convertStringToC(StringDesc *mlStr, char *cStr, int cStrLen, int exn);
-StringDesc *convertStringToML(int rhoString, char *cStr);
-StringDesc *convertStringToMLProfiling(int rhoString, char *cStr, int pPoint);
-int sizeStringML(StringDesc *str);
+void convertStringToC(StringDesc *mlStr, char *cStr, size_t cStrLen, uintptr_t exn);
+StringDesc *convertStringToML(Region rhoString, char *cStr);
+StringDesc *convertStringToMLProfiling(Region rhoString, char *cStr, size_t pPoint);
+size_t sizeStringML(StringDesc *str);
 
 /*-------------------------------------------------------------------*
  * Construction of (converting) lists.                               *
@@ -132,8 +133,8 @@ int sizeStringML(StringDesc *str);
 #define valueTagCon0    2
 #define valueTagCon1    3
 
-#define contag(x)  (*(int *)x)            /* Constructor tag of a value.   */
-#define conarg(x)  (*((int *)(x)+1))      /* Constructor arg of a value.   */
+#define contag(x)  (*(uintptr_t *)x)            /* Constructor tag of a value.   */
+#define conarg(x)  (*((uintptr_t *)(x)+1))      /* Constructor arg of a value.   */
 #define NIL        (8*0+valueTagCon0)     /* Tag for a NIL constructor.    */
 #define CONS       (8*0+valueTagCon1)     /* Tag for a CONS constructor.   */
 #define isNIL(x)   (contag(x) == NIL)     /* Is the con. tag NIL.          */
@@ -144,19 +145,19 @@ int sizeStringML(StringDesc *str);
 
 #define makeCONS(rAddr, pair, ptr) {ptr = alloc(rAddr, 2);\
 				    contag(ptr) = CONS;\
-				    conarg(ptr) = (int) pair;}
+				    conarg(ptr) = (uintptr_t) pair;}
 
 typedef struct objectDesc {
-  int atId;               /* Allocation point identifier. */
-  int size;               /* Size of object in bytes. */
+  size_t atId;               /* Allocation point identifier. */
+  size_t size;               /* Size of object in bytes. */
 } ObjectDesc;
-#define sizeObjectDesc (sizeof(ObjectDesc)/4)
+#define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(void *)))
 
 #define makeNILProf(rAddr, ptr, pPoint) {\
   ptr = alloc(rAddr, 1+sizeObjectDesc);\
   ((ObjectDesc *) ptr)->atId = pPoint; \
   ((ObjectDesc *) ptr)->size = 1; /* Size is one word. */ \
-  ptr = (int *)(((ObjectDesc *)ptr)+1); \
+  ptr = (uintptr_t *)(((ObjectDesc *)ptr)+1); \
   contag(ptr) = NIL;\
 }
 
@@ -164,9 +165,9 @@ typedef struct objectDesc {
   ptr = alloc(rAddr, 2+sizeObjectDesc);\
   ((ObjectDesc *) ptr)->atId = pPoint; \
   ((ObjectDesc *) ptr)->size = 2; /* Size is two words. */ \
-  ptr = (int *)(((ObjectDesc *)ptr)+1); \
+  ptr = (uintptr_t *)(((ObjectDesc *)ptr)+1); \
   contag(ptr) = CONS; \
-  conarg(ptr) = (int) pair; \
+  conarg(ptr) = (uintptr_t) pair; \
 }
 
 #define hd(x)      (first(conarg(x)))     /* Head of a list.               */
@@ -175,6 +176,6 @@ typedef struct objectDesc {
 /*----------------------------------------------------------------*
  * Exceptions.                                                    * 
  *----------------------------------------------------------------*/
-void raise_exn(int exn);
+void raise_exn(uintptr_t exn);
 
 #endif /*__ML_CONVERT*/

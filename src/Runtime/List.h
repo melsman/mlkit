@@ -22,7 +22,7 @@
 #define isNIL(x)        ((x) == NIL)
 #define isCONS(x)       (((x) & 3) == CONS)
 #define conarg(x)       (x)                   /* the cons tag is zero! */
-#define makeNIL(ptr)    {ptr = (int *)NIL;}
+#define makeNIL(ptr)    {ptr = (uintptr_t *)NIL;}
 #define makeCONS(pair,ptr)  {ptr = pair;}
 
 #define hd(x)      (first(conarg(x)))     /* Head of a list.               */

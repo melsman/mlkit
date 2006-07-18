@@ -68,16 +68,16 @@ setStackSizeUnlimited(void)
   return setStackSize(RLIM_INFINITY);
 }
 
-int 
-terminateML (int status) 
+long 
+terminateML (long status) 
 { 
   callExportFun("sml_exitCallback", convertIntToML(8)); // exported in Initial2.sml
 
 #ifdef ENABLE_GC
-  extern int gc_total;
-  extern int rp_total;
-  extern unsigned int alloc_total;
-  extern unsigned int alloc_period;
+  extern ssize_t gc_total;
+  extern ssize_t rp_total;
+  extern size_t alloc_total;
+  extern size_t alloc_period;
   extern double FRAG_sum;
 #endif
   debug(printf("[terminateML..."));
@@ -122,8 +122,8 @@ terminateML (int status)
   exit (convertIntToC(status)); 
 }
 
-unsigned long failNumber = (unsigned long) -1;
-unsigned long syserrNumber = (unsigned long) -1;
+size_t failNumber = SIZE_MAX;
+size_t syserrNumber = SIZE_MAX;
 
 void
 sml_setFailNumber(int ep, int i)
@@ -318,7 +318,7 @@ extern void code(void);
 #endif
 
 #ifndef APACHE
-int 
+ssize_t 
 main(int argc, char *argv[]) 
 {
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))

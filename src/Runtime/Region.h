@@ -4,6 +4,7 @@
 #ifndef REGION_H
 #define REGION_H
 
+#include <stdint.h>
 #include "Flags.h"
  
 /*
@@ -58,8 +59,8 @@ words in all.
 //#define REGION_PAGE_STAT 1
 #ifdef REGION_PAGE_STAT
 typedef struct regionPageMapHashList {
-  unsigned int n;                               /* reuse number */
-  unsigned int addr;                            /* address of region page */
+  unsigned long n;                               /* reuse number */
+  uintptr_t addr;                            /* address of region page */
   struct regionPageMapHashList * next; /* next hashed element */
 } RegionPageMapHashList;
 
@@ -91,13 +92,17 @@ extern RegionPageMap* rpMap;
 typedef struct rp {
   struct rp *n;                   /* NULL or pointer to next page. */
   struct gen *gen;                /* Pointer back to generation. Used by GC. */
-  #ifdef ENABLE_GEN_GC
-  unsigned int *colorPtr;         /* Color pointer used by generational GC */
-  #endif /* ENABLE_GEN_GC */
-  unsigned int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
+#ifdef ENABLE_GEN_GC
+  uintptr_t *colorPtr;         /* Color pointer used by generational GC */
+#endif /* ENABLE_GEN_GC */
+  uintptr_t i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Rp;
 
+#if defined(__LP64__) || (__WORDSIZE == 64)
+#define is_rp_aligned(rp)  (((rp) & 0x7FF) == 0)
+#else
 #define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
+#endif
 
 /* Free pages are kept in a free list. When the free list becomes
  * empty and more space is required, the runtime system calls the
@@ -115,9 +120,10 @@ typedef struct rp {
  * the region page descriptor. */
 
 #ifdef ENABLE_GC
-#define clear_tospace_bit(p)  (Rp*)((unsigned int)(p) & 0xFFFFFFFE)
-#define set_tospace_bit(p)    (Rp*)((unsigned int)(p) | 0x1)
-#define is_tospace_bit(p)     ((unsigned int)(p) & 0x1)
+#define clear_tospace_bit(p)  (Rp*)((uintptr_t)(p) & (UINTPTR_MAX ^ 0x1))
+// #define clear_tospace_bit(p)  (Rp*)((unsigned long)(p) & 0xFFFFFFFE)
+#define set_tospace_bit(p)    (Rp*)((uintptr_t)(p) | 0x1)
+#define is_tospace_bit(p)     ((uintptr_t)(p) & 0x1)
 #else
 #define clear_tospace_bit(p)  (p)
 #endif
@@ -147,12 +153,12 @@ typedef struct rp {
 typedef struct lobjs {
   struct lobjs* next;     // pointer to next large object or NULL
 #ifdef ENABLE_GC
-  char* orig;             // pointer to memory allocated by malloc - for freeing
+  void* orig;             // pointer to memory allocated by malloc - for freeing
 #endif
 #ifdef KAM
   size_t sizeOfLobj;      // size of this object
 #endif
-  unsigned int value;     // a large object; inlined to avoid pointer-indirection
+  uintptr_t value;     // a large object; inlined to avoid pointer-indirection
 } Lobjs;
 
 /* When garbage collection is enabled, a bit in a large object
@@ -161,9 +167,10 @@ typedef struct lobjs {
  * object, whether p points to a tag-free pair. */
 
 #ifdef ENABLE_GC
-#define clear_lobj_bit(p)     (Lobjs*)((unsigned int)(p) & 0xFFFFFFFD)
-#define set_lobj_bit(p)       (Lobjs*)((unsigned int)(p) | 0x2)
-#define is_lobj_bit(p)        ((unsigned int)(p) & 0x2)
+#define clear_lobj_bit(p)     (Lobjs*)((uintptr_t)(p) & (UINTPTR_MAX ^ 0x2))
+// #define clear_lobj_bit(p)     (Lobjs*)((unsigned long)(p) & 0xFFFFFFFD)
+#define set_lobj_bit(p)       (Lobjs*)((uintptr_t)(p) | 0x2)
+#define is_lobj_bit(p)        ((uintptr_t)(p) & 0x2)
 #else
 #define clear_lobj_bit(p)     (p)
 #define set_lobj_bit(p)       (p)
@@ -175,9 +182,9 @@ typedef struct lobjs {
    pointers controlling the allocation into a generation: fp, a and b */
 
 typedef struct gen {
-  unsigned int * a;    /* Pointer to first unused word in the newest region page
+  uintptr_t * a;    /* Pointer to first unused word in the newest region page
                  of the region. */
-  unsigned int * b;    /* Pointer to the border of the newest region page, defined as the 
+  uintptr_t * b;    /* Pointer to the border of the newest region page, defined as the 
                  address of the first word to follow the region page. One maintains
                  the invariant a<=b;  a=b means the region page is full.*/
   Rp *fp;     /* Pointer to the oldest (first allocated) page of the region. 
@@ -215,9 +222,9 @@ typedef struct ro {
 
   /* here are the extra fields that are used when profiling is turned on: */
   #ifdef PROFILING
-  unsigned int allocNow;     /* Words allocated in region (excl. profiling data). */
-  unsigned int allocProfNow; /* Words allocated in region for profiling data. */
-  unsigned int regionId;     /* Id on region. */
+  size_t allocNow;     /* Words allocated in region (excl. profiling data). */
+  size_t allocProfNow; /* Words allocated in region for profiling data. */
+  size_t regionId;     /* Id on region. */
   #endif
 
   Lobjs *lobjs;     // large objects: a list of malloced memory in each region
@@ -226,7 +233,7 @@ typedef struct ro {
 
 typedef Ro* Region;
 
-#define sizeRo (sizeof(Ro)/4) /* size of region descriptor in words */
+#define sizeRo (sizeof(Ro)/(sizeof(void *))) /* size of region descriptor in words */
 #define sizeRoProf (3)        /* We use three words extra when profiling. */
 
 #ifdef ENABLE_GEN_GC
@@ -280,24 +287,27 @@ typedef Ro* Region;
 #define RTYPE_TRIPLE        0x7
 #define GENERATION_STATUS   0x8
 #define GENERATION          0x10
-#define rtype(gen)           ((unsigned int)((gen).fp) & 0x07)
-#define all_marks_fp(gen)     ((unsigned int)((gen).fp) & 0x1F)
-#define gen_status(gen)      ((unsigned int)((gen).fp) & GENERATION_STATUS)
-#define generation(gen)      ((unsigned int)((gen).fp) & GENERATION)
-#define clear_fp(fp)        ((Rp*)((unsigned int)(fp) & 0xFFFFFFE0))
+#define rtype(gen)           ((uintptr_t)((gen).fp) & 0x07)
+#define all_marks_fp(gen)     ((uintptr_t)((gen).fp) & 0x1F)
+#define gen_status(gen)      ((uintptr_t)((gen).fp) & GENERATION_STATUS)
+#define generation(gen)      ((uintptr_t)((gen).fp) & GENERATION)
+#define clear_fp(fp)        ((Rp*)((uintptr_t)(fp) & (UINTPTR_MAX ^ 0x1F)))
+// #define clear_fp(fp)        ((Rp*)((unsigned long)(fp) & 0xFFFFFFE0))
 #define is_pairregion(gen)   (rtype(gen) == RTYPE_PAIR)
 #define is_arrayregion(gen)  (rtype(gen) == RTYPE_ARRAY)
 #define is_refregion(gen)    (rtype(gen) == RTYPE_REF)
 #define is_tripleregion(gen) (rtype(gen) == RTYPE_TRIPLE)
-#define set_fp(gen,rt)       ((gen).fp = (Rp*)(((unsigned int)((gen).fp)) | (rt)))
+#define set_fp(gen,rt)       ((gen).fp = (Rp*)(((uintptr_t)((gen).fp)) | (rt)))
 #define set_pairregion(gen)  (set_fp((gen),RTYPE_PAIR))
 #define set_arrayregion(gen) (set_fp((gen),RTYPE_ARRAY))
 #define set_refregion(gen)   (set_fp((gen),RTYPE_REF))
 #define set_tripleregion(gen) (set_fp((gen),RTYPE_TRIPLE))
 #define set_gen_status_SOME(gen) (set_fp((gen),GENERATION_STATUS))
-#define set_gen_status_NONE(gen) ((gen).fp = (Rp*)(((unsigned int)((gen).fp)) & 0xFFFFFFF7))
+#define set_gen_status_NONE(gen) ((gen).fp = (Rp*)(((uintptr_t)((gen).fp)) & (UINTPTR_MAX ^ 0x8)))
+// #define set_gen_status_NONE(gen) ((gen).fp = (Rp*)(((unsigned long)((gen).fp)) & 0xFFFFFFF7))
 #define is_gen_status_NONE(gen)  (gen_status(gen) == 0)
-#define set_gen_0(gen)           ((gen).fp = (Rp*)(((unsigned int)((gen).fp)) & 0xFFFFFFEF))
+#define set_gen_0(gen)           ((gen).fp = (Rp*)(((uintptr_t)((gen).fp)) & (UINTPTR_MAX ^ 0x10)))
+// #define set_gen_0(gen)           ((gen).fp = (Rp*)(((unsigned long)((gen).fp)) & 0xFFFFFFEF))
 #define set_gen_1(gen)           (set_fp((gen),GENERATION))
 #define is_gen_1(gen)            (generation(gen) == GENERATION)
 #else
@@ -306,9 +316,9 @@ typedef Ro* Region;
 #endif /*ENABLE_GC*/
 
 #ifdef ENABLE_GEN_GC
-#define get_ro_from_gen(gen)    ( (is_gen_1(gen)) ? ( (Ro*)(((unsigned int)(&(gen)))-offsetG1InRo) ) : ( (Ro*)(((unsigned int)(&(gen)))-offsetG0InRo) ) )
+#define get_ro_from_gen(gen)    ( (is_gen_1(gen)) ? ( (Ro*)(((uintptr_t)(&(gen)))-offsetG1InRo) ) : ( (Ro*)(((uintptr_t)(&(gen)))-offsetG0InRo) ) )
 #else
-#define get_ro_from_gen(gen)    ( (Ro*)(((unsigned int)(&(gen)))-offsetG0InRo) )
+#define get_ro_from_gen(gen)    ( (Ro*)(((uintptr_t)(&(gen)))-offsetG0InRo) )
 #endif /* ENABLE_GEN_GC */
 
 /*
@@ -327,14 +337,17 @@ of the region and is useful for, among other things, tail recursion).
 /* bits in a regionpointer.                  */
 /* C ~ 1100, D ~ 1101, E ~ 1110 og F ~ 1111. */
 #define setInfiniteBit(x)   ((x) | 0x00000001)
-#define clearInfiniteBit(x) ((x) & 0xFFFFFFFE)
+#define clearInfiniteBit(x) ((x) & (UINTPTR_MAX ^ 0x1))
+// #define clearInfiniteBit(x) ((x) & 0xFFFFFFFE)
 #define setAtbotBit(x)      ((x) | 0x00000002)
-#define clearAtbotBit(x)    ((x) & 0xFFFFFFFD)
+#define clearAtbotBit(x)    ((x) & (UINTPTR_MAX ^ 0x2))
+// #define clearAtbotBit(x)    ((x) & 0xFFFFFFFD)
 #define setStatusBits(x)    ((x) | 0x00000003)
-#define clearStatusBits(x)  ((Region)(((unsigned int)(x)) & 0xFFFFFFFC))
-#define is_inf_and_atbot(x) ((((unsigned int)(x)) & 0x00000003)==0x00000003)
-#define is_inf(x)           ((((unsigned int)(x)) & 0x00000001)==0x00000001)
-#define is_atbot(x)         ((((unsigned int)(x)) & 0x00000002)==0x00000002)
+#define clearStatusBits(x)  ((Region)(((uintptr_t)(x)) & (UINTPTR_MAX ^ 0x3)))
+// #define clearStatusBits(x)  ((Region)(((unsigned long)(x)) & 0xFFFFFFFC))
+#define is_inf_and_atbot(x) ((((uintptr_t)(x)) & 0x00000003)==0x00000003)
+#define is_inf(x)           ((((uintptr_t)(x)) & 0x00000001)==0x00000001)
+#define is_atbot(x)         ((((uintptr_t)(x)) & 0x00000002)==0x00000002)
 
 /*----------------------------------------------------------------*
  * Type of freelist and top-level region                          *
@@ -368,13 +381,13 @@ void deallocateRegionsUntil(Region rAddr);
 void deallocateRegionsUntil_X86(Region rAddr);
 #endif
 
-unsigned int *alloc (Region r, int n);
-unsigned int *allocGen (Gen *gen, int n);
+uintptr_t *alloc (Region r, size_t n);
+uintptr_t *allocGen (Gen *gen, size_t n);
 void alloc_new_block(Gen *gen);
 void callSbrk();
 
 #ifdef ENABLE_GC_OLD
-void callSbrkArg(int no_of_region_pages);
+void callSbrkArg(size_t no_of_region_pages);
 #endif
 
 #ifdef ENABLE_GC
@@ -383,20 +396,20 @@ Region allocateArrayRegion(Region roAddr);
 Region allocateRefRegion(Region roAddr);
 Region allocateTripleRegion(Region roAddr);
 #ifdef PROFILING
-Region allocPairRegionInfiniteProfiling(Region r, unsigned int regionId);
-Region allocPairRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
-Region allocArrayRegionInfiniteProfiling(Region r, unsigned int regionId);
-Region allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
-Region allocRefRegionInfiniteProfiling(Region r, unsigned int regionId);
-Region allocRefRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
-Region allocTripleRegionInfiniteProfiling(Region r, unsigned int regionId);
-Region allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
+Region allocPairRegionInfiniteProfiling(Region r, size_t regionId);
+Region allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
+Region allocArrayRegionInfiniteProfiling(Region r, size_t regionId);
+Region allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
+Region allocRefRegionInfiniteProfiling(Region r, size_t regionId);
+Region allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
+Region allocTripleRegionInfiniteProfiling(Region r, size_t regionId);
+Region allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
 #endif /* PROFILING */
 #endif /* ENABLE_GC */
 
 Region resetRegion(Region r);
-int NoOfPagesInRegion(Region r);
-int NoOfPagesInGen(Gen* gen);
+size_t NoOfPagesInRegion(Region r);
+size_t NoOfPagesInGen(Gen* gen);
 
 /*----------------------------------------------------------------*
  *        Declarations to support profiling                       *
@@ -412,9 +425,9 @@ profiling is enabled (see item (a)(ii) at the beginning of the file):
 typedef struct finiteRegionDesc {
   struct finiteRegionDesc * p;  /* Has to be in the bottom of the descriptor 
                                    for deallocation. */
-  int regionId;                 /* If msb. set then infinite region. (? - mads)*/
+  size_t regionId;                 /* If msb. set then infinite region. (? - mads)*/
 } FiniteRegionDesc;
-#define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/4)
+#define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/sizeof(void *))
 
 /* 
 Object descriptors
@@ -432,10 +445,10 @@ This applies irrespective of whether profiling is turned on or not.
 */
 
 typedef struct objectDesc {
-  int atId;               /* Allocation point. */
-  int size;               /* Size of object in bytes. */
+  size_t atId;               /* Allocation point. */
+  size_t size;               /* Size of object in bytes. */
 } ObjectDesc;
-#define sizeObjectDesc (sizeof(ObjectDesc)/4)
+#define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(void *)))
 
 /* 
 Profiling is done by scanning the store at regular intervals.
@@ -454,7 +467,7 @@ an object:
  * Extern declarations, mostly of global variables that store profiling *
  * information. See Hallenberg's report for details.
  * ---------------------------------------------------------------------*/
-extern unsigned int callsOfDeallocateRegionInf,
+extern unsigned long callsOfDeallocateRegionInf,
                     callsOfDeallocateRegionFin,
                     callsOfAlloc,
                     callsOfResetRegion,
@@ -483,23 +496,23 @@ extern unsigned int callsOfDeallocateRegionInf,
                     allocatedLobjs;
 
 extern FiniteRegionDesc * topFiniteRegion;
-extern int size_to_space;
+// extern uintptr_t size_to_space;
 
 /* Profiling functions. */
-Region allocRegionInfiniteProfiling(Region roAddr, unsigned int regionId);
-Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int regionId);
-void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
-void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
+Region allocRegionInfiniteProfiling(Region roAddr, size_t regionId);
+Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, size_t regionId);
+void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size);
+void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size);
 void deallocRegionFiniteProfiling(void);
-unsigned int *allocProfiling(Region r,int n, int pPoint);  // used by Table.c
-unsigned int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
+uintptr_t *allocProfiling(Region r,size_t n, size_t pPoint);  // used by Table.c
+uintptr_t *allocGenProfiling(Gen *gen, size_t n, size_t pPoint);  // used by Table.c
 #endif /*Profiling*/
 
 void printTopRegInfo();
-int size_free_list();
+size_t size_free_list();
 void pp_reg(Region r,  char *str);
 void pp_gen(Gen *gen);
-void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s);
+void chk_obj_in_gen(Gen *gen, uintptr_t *obj_ptr, char* s);
 
 void free_lobjs(Lobjs* lobjs);
 

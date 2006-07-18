@@ -12,26 +12,26 @@
 #define BYTES_ALLOC_TO_PROFILING 1024
 
 typedef struct objectList {
-  int atId;                /* Allocation point identifier. */
-  int size;                /* Size of object in bytes. */
+  long atId;                /* Allocation point identifier. */
+  long size;                /* Size of object in bytes. */
   struct objectList *nObj; /* Pointer to next object. */
 } ObjectList;
 
 typedef struct regionList {
-  int regionId;                /* id of region. */
-  int used;                    /* number of used words in the region.         */
-  int waste;                   /* number of not used words in the region.     */
-  int noObj;                   /* number of objects with different program points. */
-  int infinite;                /* is region finite of infinite. */
+  long regionId;                /* id of region. */
+  long used;                    /* number of used words in the region.         */
+  long waste;                   /* number of not used words in the region.     */
+  long noObj;                   /* number of objects with different program points. */
+  long infinite;                /* is region finite of infinite. */
   ObjectList *fObj;            /* Pointer to first object. */
   struct regionList * nRegion; /* Pointer to next region. */
 } RegionList;
 
 typedef struct tickList {
   RegionList * fRegion;    /* Pointer to first region. */
-  int stackUse;            /* Number of words used on the stack excl. regions. */
-  int regionDescUse;       /* Number of words used to infinite regiondescriptors on the stack. */
-  unsigned int time;       /* Number of 1/CLOCKS_PER_SEC seconds after start (excl. profiling.) */
+  long stackUse;            /* Number of words used on the stack excl. regions. */
+  long regionDescUse;       /* Number of words used to infinite regiondescriptors on the stack. */
+  unsigned long time;       /* Number of 1/CLOCKS_PER_SEC seconds after start (excl. profiling.) */
   struct tickList * nTick; /* Pointer to data for the next tick. */
 } TickList;
 
@@ -43,13 +43,13 @@ typedef struct tickList {
  * -------------------------------------------------- */
 
 typedef struct regionListHashList {
-  int regionId;
+  long regionId;
   struct regionList * rl;              /* entry */
   struct regionListHashList * next;    /* next hashed element */
 } RegionListHashList;
 
 typedef struct objectListHashList {
-  int atId;
+  long atId;
   struct objectList * ol;              /* entry */
   struct objectListHashList * next;    /* next hashed element */  
 } ObjectListHashList;
@@ -72,11 +72,11 @@ typedef struct objectListHashList {
  * --------------------------------------------------- */
 
 typedef struct profTabList {
-  int regionId;
-  int noOfPages;
-  int maxNoOfPages;
-  int allocNow;
-  int maxAlloc;
+  long regionId;
+  long noOfPages;
+  long maxNoOfPages;
+  long allocNow;
+  long maxAlloc;
   struct profTabList * next;
 } ProfTabList;
 
@@ -98,42 +98,42 @@ extern ProfTabList * profHashTab[];
 
 void checkProfTab(char* s);
 void printProfTab(void);
-void profileTick(int *stackTop);
+void profileTick(long *stackTop);
 void profiling_on(void);
 void profiling_off(void);
 void AlarmHandler();
 //void Statistik();
 void resetProfiler();
 void queueMarkProf();  /* tell the time next time there is a profile tick */
-char *allocMemProfiling_xx(int i);
-ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId);
+char *allocMemProfiling_xx(long i);
+ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, long regionId);
 void outputProfilePre(void);
 void outputProfileTick(TickList *tick);
 void outputProfilePost(void);
-void calcAllocInGen(Gen *gen, int *alloc, int *allocProf);
+void calcAllocInGen(Gen *gen, long *alloc, long *allocProf);
 
-void profTabIncrNoOfPages(int regionId, int i);
-void profTabMaybeIncrMaxNoOfPages(int regionId);
-void profTabDecrNoOfPages(int regionId, int i);
-void profTabDecrAllocNow(int regionId, int i, char *s);
-void profTabIncrAllocNow(int regionId, int i);
+void profTabIncrNoOfPages(long regionId, long i);
+void profTabMaybeIncrMaxNoOfPages(long regionId);
+void profTabDecrNoOfPages(long regionId, long i);
+void profTabDecrAllocNow(long regionId, long i, char *s);
+void profTabIncrAllocNow(long regionId, long i);
 
 void Statistics(void);
 
-extern int noTimer;
-extern int profType;
-extern int profNo;
-extern int signalType;
-extern int printProfileTab;
-extern int microsec;
-extern int sec;
+extern long noTimer;
+extern long profType;
+extern long profNo;
+extern long signalType;
+extern long printProfileTab;
+extern long microsec;
+extern long sec;
 extern char logName[100];
-extern int verboseProfileTick;
-extern int exportProfileDatafile;
-extern int showStat;
-extern int doing_prof;
-extern int raised_exn_interupt_prof;
-extern int raised_exn_overflow_prof;
+extern long verboseProfileTick;
+extern long exportProfileDatafile;
+extern long showStat;
+extern long doing_prof;
+extern long raised_exn_interupt_prof;
+extern long raised_exn_overflow_prof;
 
 
 #else /*PROFILING not defined */
