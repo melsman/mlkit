@@ -24,8 +24,8 @@
 #include "Math.h"
 #include "Runtime.h"
 
-int 
-openInStream(String path, int exn)                    /* SML Basis */
+uintptr_t 
+openInStream(String path, uintptr_t exn)                    /* SML Basis */
 {              
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "r")) == NULL) 
@@ -33,11 +33,11 @@ openInStream(String path, int exn)                    /* SML Basis */
       raise_exn(exn);
     }
   check_tag_scalar(fileDesc);
-  return (int)(tag_scalar(fileDesc));
+  return (uintptr_t)(tag_scalar(fileDesc));
 }
 
-int 
-openOutStream(String path, int exn)                   /* SML Basis */
+uintptr_t 
+openOutStream(String path, uintptr_t exn)                   /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "w")) == NULL) 
@@ -45,11 +45,11 @@ openOutStream(String path, int exn)                   /* SML Basis */
       raise_exn(exn);
     }
   check_tag_scalar(fileDesc);
-  return (int)(tag_scalar(fileDesc));
+  return (uintptr_t)(tag_scalar(fileDesc));
 }
 
-int 
-openAppendStream(String path, int exn)                /* SML Basis */
+uintptr_t 
+openAppendStream(String path, uintptr_t exn)                /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "a")) == NULL) 
@@ -57,11 +57,11 @@ openAppendStream(String path, int exn)                /* SML Basis */
       raise_exn(exn);
     }
   check_tag_scalar(fileDesc);
-  return (int)(tag_scalar(fileDesc));
+  return (uintptr_t)(tag_scalar(fileDesc));
 }
 
-int 
-openInBinStream(String path, int exn)                 /* SML Basis */
+uintptr_t 
+openInBinStream(String path, uintptr_t exn)                 /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "rb")) == NULL) 
@@ -69,11 +69,11 @@ openInBinStream(String path, int exn)                 /* SML Basis */
       raise_exn(exn);
     }
   check_tag_scalar(fileDesc);
-  return (int)(tag_scalar(fileDesc));
+  return (uintptr_t)(tag_scalar(fileDesc));
 }
 
-int 
-openOutBinStream(String path, int exn)                /* SML Basis */
+uintptr_t 
+openOutBinStream(String path, uintptr_t exn)                /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "wb")) == NULL) 
@@ -81,11 +81,11 @@ openOutBinStream(String path, int exn)                /* SML Basis */
       raise_exn(exn);
     }  
   check_tag_scalar(fileDesc);
-  return (int)(tag_scalar(fileDesc));
+  return (uintptr_t)(tag_scalar(fileDesc));
 }
 
-int 
-openAppendBinStream(String path, int exn)             /* SML Basis */
+uintptr_t 
+openAppendBinStream(String path, uintptr_t exn)             /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "ab")) == NULL) 
@@ -93,14 +93,15 @@ openAppendBinStream(String path, int exn)             /* SML Basis */
       raise_exn(exn);
     }
   check_tag_scalar(fileDesc);
-  return (int)(tag_scalar(fileDesc));
+  return (uintptr_t)(tag_scalar(fileDesc));
 }
 
 // input1Stream is; returns -1 if EOF else char
-int
-input1Stream(FILE *is)
+uintptr_t
+input1Stream(uintptr_t is1)
 {
-  int ch;
+  FILE *is = (FILE *) is1;
+  long ch;
 
   is = (FILE *)untag_scalar(is);
   ch = fgetc(is);
@@ -117,12 +118,13 @@ input1Stream(FILE *is)
 //   then a string less than n is returned.
 
 String
-REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n) 
+REG_POLY_FUN_HDR(inputStream, Region rd, uintptr_t is1, size_t n) 
 {
   char buf[100];
-  int i;
+  size_t i;
   int ch;
   int terminal;
+  FILE *is;
 
   n = convertIntToC(n);
 
@@ -131,7 +133,7 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
       die ("inputStream. n > 64");
     }
 
-  is = (FILE *)untag_scalar(is);
+  is = (FILE *)untag_scalar(is1);
 
   if ( is_inf_and_atbot(rd) )
     {
@@ -151,12 +153,13 @@ REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n)
   return REG_POLY_CALL(convertBinStringToML, rd, i, buf);
 }
 
-int
-lookaheadStream(FILE *is) 
+size_t
+lookaheadStream(uintptr_t is1) 
 {
   int ch;
+  FILE *is;
 
-  is = (FILE *)untag_scalar(is);
+  is = (FILE *)untag_scalar(is1);
   if ( (ch=getc(is)) == EOF )
     {
       return convertIntToML(-1);
@@ -166,10 +169,11 @@ lookaheadStream(FILE *is)
 }
 
 void 
-closeStream(FILE *stream) 
+closeStream(uintptr_t stream) 
 {
-  stream = (FILE *)untag_scalar(stream);
-  fclose(stream);
+  stream = untag_scalar(stream);
+  fclose((FILE *) stream);
+  return;
 }
 
 /*
@@ -189,10 +193,10 @@ endOfStream(FILE *stream)
 }
 */
 
-int 
-outputStream(FILE *os, String s, int exn) 
+size_t 
+outputStream(uintptr_t os1, String s, uintptr_t exn) 
 {
-  os = (FILE *)untag_scalar(os);
+  FILE *os = (FILE *)untag_scalar(os1);
   if ( fputs(&(s->data), os) == EOF )
     {
       fflush(os);
@@ -202,35 +206,35 @@ outputStream(FILE *os, String s, int exn)
 }
 
 void 
-flushStream(FILE *stream) 
+flushStream(uintptr_t stream) 
 {
-  stream = (FILE *)untag_scalar(stream);
-  fflush(stream); /* What about error. */
+  stream = untag_scalar(stream);
+  fflush((FILE *) stream); /* What about error. */
 }
 
-int 
-stdInStream(int dummy) 
+size_t 
+stdInStream(uintptr_t dummy) 
 {
   check_tag_scalar(stdin);
-  return (int)tag_scalar(stdin);
+  return (size_t)tag_scalar(stdin);
 }
 
-int 
-stdOutStream(int dummy) 
+size_t 
+stdOutStream(size_t dummy) 
 {
   check_tag_scalar(stdout);
-  return (int)tag_scalar(stdout);
+  return (size_t)tag_scalar(stdout);
 }
 
-int 
-stdErrStream(int dummy) 
+size_t 
+stdErrStream(uintptr_t dummy) 
 {
   check_tag_scalar(stderr);
-  return (int)tag_scalar(stderr);
+  return (size_t)tag_scalar(stderr);
 }
 
 void 
-sml_chdir(String dirname, int exn)              /* SML Basis */
+sml_chdir(String dirname, long exn)              /* SML Basis */
 {
   if ( chdir(&(dirname->data)) != 0 ) 
     {
@@ -548,10 +552,10 @@ REG_POLY_FUN_HDR(sml_getenv, Region rAddr, String var, int exn)  /* SML Basis */
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
-int 
-outputBinStream(FILE *os, String s, int exn) 
-{ int strsize;
-
+size_t 
+outputBinStream(uintptr_t os1, String s, uintptr_t exn) 
+{ long strsize;
+  FILE *os = (FILE *) os1;
   strsize = sizeStringDefine(s); 
   os = (FILE *)untag_scalar(os);
   if ( fwrite(&(s->data), 1, strsize, os) != strsize )

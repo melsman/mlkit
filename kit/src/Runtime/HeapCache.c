@@ -117,8 +117,8 @@ static int pagesInRegion(Ro *r)
 
 static RegionCopy* copyRegion(Ro *r)
 {
-  unsigned int np, bytes;
-  unsigned int *q;
+  size_t np, bytes;
+  uintptr_t *q;
   Rp *p;
   RegionCopy *rc;
   size_t lobjSize = 0;
@@ -138,8 +138,8 @@ static RegionCopy* copyRegion(Ro *r)
 
   // printf("%d pages\n", np);
 
-  bytes = sizeof(RegionCopy) + 4                             // for final null-pointer
-    + np * (4 * (ALLOCATABLE_WORDS_IN_REGION_PAGE + 1));     // + 1 is for page pointer 
+  bytes = sizeof(RegionCopy) + (sizeof(void *))                             // for final null-pointer
+    + np * ((sizeof(void *)) * (ALLOCATABLE_WORDS_IN_REGION_PAGE + 1));     // + 1 is for page pointer 
   padding = bytes % sizeof(void *) ? sizeof(void *) - (bytes % sizeof(void *)) : 0;
   rc = (RegionCopy*)malloc(bytes + padding + lobjSize);
   rc->lobjs = r->lobjs ? (Lobjs *) (((char *) rc) + (bytes + padding)) : NULL;
@@ -153,7 +153,7 @@ static RegionCopy* copyRegion(Ro *r)
   for ( p = r->g0.fp ; p ; p = p->n )
     {
       int i = 0;
-      *q++ = (int)p;                             // set pointer to original page
+      *q++ = (uintptr_t)p;                             // set pointer to original page
       while ( i < ALLOCATABLE_WORDS_IN_REGION_PAGE )
 	*q++ = p->i[i++];
     }
@@ -190,7 +190,7 @@ static int restoreRegion(RegionCopy *rc)
   p->n = NULL;                // there is at least one page
   rc->r->g0.a = rc->a;
   rc->r->g0.b = rc->b;
-  unsigned int nL;
+  size_t nL;
   Lobjs *lobjs, *lobjs2 = NULL;
   for (nL = 0, lobjs = rc->r->lobjs; lobjs; lobjs = lobjs->next) nL++;
   for (lobjs = rc->r->lobjs; nL > rc->numOfLobjs; nL--)
@@ -337,7 +337,7 @@ static void restoreHeap(Heap *h, serverstate ss)
   h->status = HSTAT_CLEAN;
 }
 
-void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt, serverstate ss)
+void initializeHeap(Heap *h, uintptr_t *sp, uintptr_t *exnPtr, size_t exnCnt, serverstate ss)
 {
   int i;
   Ro *r0, *r2, *r3, *r4, *r5, *r6; 

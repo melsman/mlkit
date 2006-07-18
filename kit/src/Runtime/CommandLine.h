@@ -29,24 +29,24 @@ the first commandline argument for the application is -arg1 because
 /*----------------------------------------*
  * Flags recognized by the runtime system *
  *----------------------------------------*/
-extern int disable_gc;
-extern int verbose_gc;
-extern int report_gc;
+extern long disable_gc;
+extern long verbose_gc;
+extern long report_gc;
 #ifdef ENABLE_GEN_GC
-extern int only_major_gc;
+extern long only_major_gc;
 #endif
 extern double heap_to_live_ratio;
 
 /*----------------------------------------*
  * Prototypes                             *
  *----------------------------------------*/
-#ifdef PROFILING
-String sml_commandline_nameProfiling(Region rAddr, int pPoint);
-int sml_commandline_argsProfiling(Region pairRho, Region strRho, int pPoint);
-#else
-String sml_commandline_name(Region rAddr);
-int sml_commandline_args(Region pairRho, Region strRho);
-#endif /* PROFILING */
+//#ifdef PROFILING
+//String sml_commandline_nameProfiling(Region rAddr, long pPoint);
+//long sml_commandline_argsProfiling(Region pairRho, Region strRho, long pPoint);
+//#else
+String REG_POLY_FUN_HDR(sml_commandline_name, Region rAddr);
+uintptr_t REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho);
+//#endif /* PROFILING */
 
 void parseCmdLineArgs(int argc, char *argv[]);
 

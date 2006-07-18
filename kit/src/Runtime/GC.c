@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #include "Flags.h"
 #include "Tagging.h"
@@ -24,23 +25,23 @@
 #include "Runtime.h"
 #include "GC.h"
 
-int time_to_gc = 0;                   // set to 1 by alloc if GC should occur at next
+size_t time_to_gc = 0;                   // set to 1 by alloc if GC should occur at next
                                       //   function invocation 
-unsigned int *stack_bot_gc = NULL;    // bottom and top of stack -- used during GC to
-unsigned int *stack_top_gc;           //   determine if a value is stack-allocated
-unsigned int to_space_old = 0;        // size of to-space (live) at previous GC
-unsigned int lobjs_aftergc_old = 0;   // size of large objects after previous GC
-unsigned int lobjs_aftergc = 0;       // size of large objects after GC
-unsigned int lobjs_beforegc = 0;      // size of large objects before GC
-unsigned int lobjs_period = 0;        // allocated bytes in large objects between GC's
-unsigned int alloc_period = 0;        // allocated bytes by alloc between GC's (excludes lobjs)
-unsigned int alloc_total = 0;         // allocated bytes by alloc (total, includes lobjs)
-unsigned int gc_total = 0;            // bytes recycled by GC (total)
-unsigned int lobjs_current = 0;       // bytes currently occupied by large objects
-unsigned int lobjs_gc_treshold = 0;   // set time_to_gc to 1 when lobjs_current exceeds
+size_t *stack_bot_gc = NULL;    // bottom and top of stack -- used during GC to
+size_t *stack_top_gc;           //   determine if a value is stack-allocated
+size_t to_space_old = 0;        // size of to-space (live) at previous GC
+size_t lobjs_aftergc_old = 0;   // size of large objects after previous GC
+size_t lobjs_aftergc = 0;       // size of large objects after GC
+size_t lobjs_beforegc = 0;      // size of large objects before GC
+size_t lobjs_period = 0;        // allocated bytes in large objects between GC's
+size_t alloc_period = 0;        // allocated bytes by alloc between GC's (excludes lobjs)
+size_t alloc_total = 0;         // allocated bytes by alloc (total, includes lobjs)
+size_t gc_total = 0;            // bytes recycled by GC (total)
+size_t lobjs_current = 0;       // bytes currently occupied by large objects
+size_t lobjs_gc_treshold = 0;   // set time_to_gc to 1 when lobjs_current exceeds
                                       //   lobjs_gc_treshold; this variable is adjusted
                                       //   after garbage collection.
-unsigned int rp_gc_treshold = 0;      // set time_to_gc to 1 when rp_used exceeds
+size_t rp_gc_treshold = 0;      // set time_to_gc to 1 when rp_used exceeds
                                       //   rp_gc_treshold; this variable is adjusted
                                       //   after garbage collection.
 double FRAG_sum = 0.0;                // fragmentation denotes how much of region
@@ -50,19 +51,19 @@ double FRAG_sum = 0.0;                // fragmentation denotes how much of regio
                                       //   that seldom garbage collect, the fragmentation
                                       //   figure makes little sense.
 
-int *data_lab_ptr = NULL;             // pointer at exported data labels part of the root-set
-int num_gc = 0;                       // number of garbage collections
+uintptr_t *data_lab_ptr = NULL;             // pointer at exported data labels part of the root-set
+ssize_t num_gc = 0;                       // number of garbage collections
 #ifdef ENABLE_GEN_GC
-int num_gc_major = 0;                 // number of major garbage collections
+ssize_t num_gc_major = 0;                 // number of major garbage collections
 #endif
-int doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
-int raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
-int raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
+ssize_t doing_gc = 0;                     // set to 1 when GC'ing; otherwise 0
+ssize_t raised_exn_interupt = 0;          // set to 1 if signal occurred during GC
+ssize_t raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
 
-int time_gc_all_ms = 0;               // total time of GC (in milliseconds)
+ssize_t time_gc_all_ms = 0;               // total time of GC (in milliseconds)
 
 #ifdef ENABLE_GEN_GC
-int major_p = 0;                      // flag to specify whether gc should be major or minor
+ssize_t major_p = 0;                      // flag to specify whether gc should be major or minor
 #define is_major_p (major_p == 1)
 #define is_minor_p (major_p == 0)
 #endif // ENABLE_GEN_GC
@@ -126,14 +127,14 @@ pw(char *s,unsigned int tag)
 }
 
 static void 
-print(unsigned int *value) 
+print(uintptr_t *value) 
 {
   char str[50];
-  unsigned int val;
+  size_t val;
 
-  if (((unsigned int)value) & 01) {
+  if (((size_t)value) & 0x1) {
     strcpy(str,"INTEGER");
-    val = (unsigned int)value;
+    val = (size_t)value;
   }
   else {
     switch (val_tag_kind_const(value)) {
@@ -163,9 +164,9 @@ print(unsigned int *value)
 // #define copy_words(from,to,w) (memcpy((to),(from),4*(w)))
 
 inline static void 
-copy_words(unsigned int *from,unsigned int *to,int num) 
+copy_words(uintptr_t *from,uintptr_t *to,size_t num) 
 {
-  int i;
+  size_t i;
   for ( i = 0 ; i < num ; i++ ) 
     *(to + i) = *(from + i);
   return;
@@ -174,17 +175,17 @@ copy_words(unsigned int *from,unsigned int *to,int num)
 /*******************************/
 /* SCAN STACK INFINITE REGIONS */
 /*******************************/
-unsigned int **scan_stack = NULL;
+uintptr_t **scan_stack = NULL;
 #define INIT_STACK_SIZE_W 1024
-int size_scan_stack;
-int scan_sp;
+long size_scan_stack;
+long scan_sp;
 
 inline static void 
 init_scan_stack() 
 {
   if (scan_stack == NULL) 
     {
-      scan_stack = (unsigned int **) realloc((void *)scan_stack, INIT_STACK_SIZE_W*4);
+      scan_stack = (uintptr_t **) realloc((void *)scan_stack, INIT_STACK_SIZE_W*(sizeof(void *)));
       if (scan_stack == NULL)
 	{
 	  die("GC.init_scan_stack: Unable to allocate scan_stack");
@@ -198,14 +199,14 @@ init_scan_stack()
 #define is_scan_stack_empty() (scan_sp == 0)
 
 inline static void 
-push_scan_stack(unsigned int *ptr) 
+push_scan_stack(uintptr_t *ptr) 
 {
   scan_stack[scan_sp] = ptr;
   scan_sp++;
   if ( scan_sp >= size_scan_stack ) 
     {
       size_scan_stack *= 2;
-      scan_stack = (unsigned int **) realloc((void *)scan_stack, size_scan_stack*4);
+      scan_stack = (uintptr_t **) realloc((void *)scan_stack, size_scan_stack*(sizeof(void *)));
       if (scan_stack == NULL)
 	{
 	  die("GC.push_scan_stack: Unable to increase scan_stack");
@@ -214,7 +215,7 @@ push_scan_stack(unsigned int *ptr)
   return;
 }
 
-inline static unsigned int *
+inline static uintptr_t *
 pop_scan_stack() 
 {
   if ( scan_sp < 1 ) 
@@ -228,18 +229,18 @@ pop_scan_stack()
 /***************************************************/
 /* SCAN CONTAINER FINITE REGIONS AND LARGE OBJECTS */
 /***************************************************/
-unsigned int **scan_container = NULL;
+uintptr_t **scan_container = NULL;
 #define INIT_CONTAINER_SIZE_W 1024
-int size_scan_container;
-int container_alloc;
-int container_scan;
+long size_scan_container;
+long container_alloc;
+long container_scan;
 
 inline static void 
 init_scan_container() 
 {
   if (scan_container == NULL) 
     {
-      scan_container = (unsigned int **) realloc((void *)scan_container, INIT_CONTAINER_SIZE_W*4);
+      scan_container = (uintptr_t **) realloc((void *)scan_container, INIT_CONTAINER_SIZE_W*(sizeof(void *)));
       if (scan_container == NULL)
 	{
 	  die("GC.init_scan_container: Unable to allocate scan_container");
@@ -254,7 +255,7 @@ init_scan_container()
 #define is_scan_container_empty() (container_scan == container_alloc)
 
 inline static void 
-push_scan_container(unsigned int *ptr) 
+push_scan_container(uintptr_t *ptr) 
 {
   //  printf("push_scan_container(%p) - size_scan_container=%d; container_alloc=%d; container_scan=%d\n", 
   //         ptr, size_scan_container, container_alloc, container_scan);
@@ -265,7 +266,7 @@ push_scan_container(unsigned int *ptr)
   if (container_alloc >= size_scan_container) 
     {
       size_scan_container *= 2;
-      scan_container = (unsigned int **) realloc((void *)scan_container, size_scan_container*4);
+      scan_container = (uintptr_t **) realloc((void *)scan_container, size_scan_container*4);
       if (scan_container == NULL)
 	{
 	  die("GC.push_scan_container: Unable to increase scan_container");
@@ -274,10 +275,10 @@ push_scan_container(unsigned int *ptr)
   return;
 }
 
-inline static unsigned int *
+inline static uintptr_t *
 pop_scan_container() 
 {
-  unsigned int *v;
+  uintptr_t *v;
   v = scan_container[container_scan];
   container_scan++;
   return v;
@@ -286,7 +287,7 @@ pop_scan_container()
 inline static void 
 clear_scan_container() 
 {
-  int i;
+  long i;
   for ( i = 0 ; i < container_alloc ; i ++ )
     {
       *scan_container[i] = clear_tag_const(*scan_container[i]);
@@ -363,8 +364,8 @@ static void mk_from_space()
      #ifdef ENABLE_GEN_GC
 	} else {
 	  // We only reset generation g0
-	  int allocNowG0 = 0;
-	  int allocProfNowG0 = 0;
+	  long allocNowG0 = 0;
+	  long allocProfNowG0 = 0;
 	  j = NoOfPagesInGen(&(r->g0));
 	  noOfPages -= j;
 	  profTabDecrNoOfPages(r->regionId, j);
@@ -388,7 +389,7 @@ static void mk_from_space()
 }
 
 inline static int 
-points_into_dataspace (unsigned int *p) {
+points_into_dataspace (uintptr_t *p) {
   return (p >= data_begin_addr) && (p <= data_end_addr);
 }
 
@@ -396,22 +397,22 @@ points_into_dataspace (unsigned int *p) {
 #define is_integer(obj_ptr)         ((obj_ptr) & 1)
 #define is_forward_ptr(x)           (((x) & 0x03) == 0)  /* Bit 0 and 1 must be zero */
 #define clear_forward_ptr(x)        (x)
-#define tag_forward_ptr(x)          ((unsigned int)(x))
+#define tag_forward_ptr(x)          ((unsigned long)(x))
 
 // Region pages are of size 1Kb and aligned
-#define get_rp_header(x)            ((Rp *)(((unsigned int)(x)) & 0xFFFFFC00))  
+#define get_rp_header(x)            ((Rp *)(((unsigned long)(x)) & 0xFFFFFC00))  
 
-unsigned int 
-size_lobj (unsigned int tag)
+size_t 
+size_lobj (size_t tag)
 {
   switch ( tag_kind(tag) ) {
   case TAG_STRING: {
-    unsigned int sz_bytes;
-    sz_bytes = get_string_size(tag) + 5;              // 1 for zero-termination, 4 for size field
-    return sz_bytes%4 ? 4+4*(sz_bytes/4) : sz_bytes;  // alignment
+    size_t sz_bytes;
+    sz_bytes = get_string_size(tag) + 1 + (sizeof(void *));              // 1 for zero-termination, 4 for size field
+    return sz_bytes%(sizeof(void *)) ? (sizeof(void *))+(sizeof(void *))*(sz_bytes/(sizeof(void *))) : sz_bytes;  // alignment
   }
   case TAG_TABLE:
-    return 4*(get_table_size(tag) + 1);
+    return (sizeof(void *))*(get_table_size(tag) + 1);
   default:
     printf("tag_kind(tag) = %x (%d) - tag = %d\n", tag_kind(tag), tag_kind(tag), tag);
     die("GC.size_lobj");
@@ -420,36 +421,36 @@ size_lobj (unsigned int tag)
 }
 
 // Return FALSE if we're at the last page and s=a.
-static inline int
-end_of_region_page_or_full(unsigned int* s, unsigned int* a, Rp* rp)
+static inline long
+end_of_region_page_or_full(uintptr_t* s, uintptr_t* a, Rp* rp)
 {
   return (s != a) 
-    && ((s == ((unsigned int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+    && ((s == ((uintptr_t *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 	|| (*s == notPP)); 
 }
 
-inline static unsigned int*
-next_value(unsigned int* s, unsigned int* a) {
+inline static uintptr_t*
+next_value(uintptr_t* s, uintptr_t* a) {
   // If at end of region page or the region page is full,
   // go to next region page. Otherwise, s points to the next value or
   // there is no next value (s == a)
   Rp* rp = get_rp_header(s-1);    // s may exceed the region page
   if ( end_of_region_page_or_full(s, a, rp) )
     {
-      s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+      s = ((uintptr_t*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
     }
   return s;
 }
 
-inline static unsigned int*
-next_untagged_value(unsigned int* s, unsigned int* a) {
+inline static uintptr_t*
+next_untagged_value(uintptr_t* s, uintptr_t* a) {
   // If at end of region page or the region page is full,
   // go to next region page. Otherwise, s points to the next value or
   // there is no next value (s+1 == a)
   Rp* rp = get_rp_header(s);    // s+1 may exceed the region page
   if ( end_of_region_page_or_full(s+1, a, rp) )
     {
-      s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
+      s = ((uintptr_t *) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
     }
   return s;
 }
@@ -461,12 +462,12 @@ next_untagged_value(unsigned int* s, unsigned int* a) {
 static int 
 allocated_bytes_in_gen(Gen *gen) 
 {
-  unsigned int *s;  // scan pointer
+  uintptr_t *s;  // scan pointer
   Rp *rp;
-  int allocated_bytes = 0;
+  size_t allocated_bytes = 0;
 
   rp = clear_fp(gen->fp); // Maybe the generation-bit is set
-  s = (unsigned int*) &(rp->i);
+  s = (uintptr_t *) &(rp->i);
   while (s != gen->a) {
     #ifdef PROFILING
     s += sizeObjectDesc;
@@ -474,31 +475,31 @@ allocated_bytes_in_gen(Gen *gen)
     switch (val_tag_kind_const(s)) {
     case TAG_STRING: {
       // adjust scan_ptr to after the string
-      int sz;
+      size_t sz;
       String str = (String)s;
-      sz = get_string_size(str->size) + 1 /*for zero*/ + 4 /*for tag*/;
-      sz = (sz%4) ? (1+sz/4) : (sz/4);
+      sz = get_string_size(str->size) + 1 /*for zero*/ + (sizeof(void *)) /*for tag*/;
+      sz = (sz%(sizeof(void *))) ? (1+sz/(sizeof(void *))) : (sz/(sizeof(void *)));
       s += sz;
-      allocated_bytes += (4*sz);
+      allocated_bytes += ((sizeof(void *))*sz);
       break;
     }
     case TAG_TABLE: {
-      int sz;
+      size_t sz;
       Table table = (Table)s;
       sz = get_table_size(table->size) + 1;
       s += sz;
-      allocated_bytes += (4*sz);
+      allocated_bytes += ((sizeof(void *))*sz);
       break;
     }
     case TAG_RECORD: {
-      int sz = get_record_size(*s); /* Size excludes descriptor */
+      size_t sz = get_record_size(*s); /* Size excludes descriptor */
       s += (1 + sz);
-      allocated_bytes += (4 + 4*sz);
+      allocated_bytes += ((sizeof(void *)) + (sizeof(void *))*sz);
       break;
     }
     case TAG_CON0: {
       s++;
-      allocated_bytes += 4;
+      allocated_bytes += (sizeof(void *));
       break;
     }
     case TAG_CON1: 
@@ -510,12 +511,12 @@ allocated_bytes_in_gen(Gen *gen)
     default: {
       Rp* rp = get_rp_header(s);
       pw("*s: ",*s);
-      printf("s: %p, gen->a: %p, diff(s,gen->a): %d, rp: %p, diff(s,rp): %d\n",
+      printf("s: %p, gen->a: %p, diff(s,gen->a): %ld, rp: %p, diff(s,rp): %ld\n",
 	     s,
 	     gen->a,
-	     ((int *)gen->a-(int *)s),
+	     (long)((long *)gen->a-(long *)s),
 	     rp,
-	     (int *)s-(int *)rp);
+	     (long)((long *)s-(long *)rp));
       if (is_lobj_bit(rp->n))
 	printf("large object!!\n");
       die("allocated_bytes_in_gen: unrecognised tag at *s");
@@ -695,8 +696,8 @@ chk_no_tospacebits_regions(void)
 // a descriptor at offset 0.  This function is never used to determine
 // the size of an untagged pair, an untagged triple, or an untagged
 // ref.
-inline static int 
-get_size_obj(unsigned int *obj_ptr) 
+inline static ssize_t 
+get_size_obj(uintptr_t *obj_ptr) 
 {
   switch (val_tag_kind_const(obj_ptr)) {
   case TAG_RECORD: return get_record_size(*obj_ptr) + 1;
@@ -706,8 +707,8 @@ get_size_obj(unsigned int *obj_ptr)
   case TAG_TABLE:  return get_table_size(*obj_ptr) + 1;
   case TAG_STRING: 
     {
-      int size = get_string_size(*obj_ptr) + 5;   // 1 for zero-termination, 4 for tag
-      return size%4 ? 1 + (size/4) : size/4;      // alignment
+      ssize_t size = get_string_size(*obj_ptr) + 1 + (sizeof(void *));   // 1 for zero-termination, 4 for tag
+      return size%(sizeof(void *)) ? 1 + (size/(sizeof(void *))) : size/(sizeof(void *));      // alignment
     }
   default: 
     {
@@ -745,13 +746,13 @@ print_tagged_rp_content(Rp *rp)
    gælder for alle acopy-funktioner
    MEMO: What does this comment mean?
 */
-inline unsigned int *
-acopy(Gen *gen, unsigned int *obj_ptr) 
+inline uintptr_t *
+acopy(Gen *gen, uintptr_t *obj_ptr) 
 {
-  int size;
-  unsigned int *new_obj_ptr;
+  ssize_t size;
+  uintptr_t *new_obj_ptr;
 #ifdef PROFILING
-  int pPoint;
+  long pPoint;
 #endif
 
   size = get_size_obj(obj_ptr);     // size includes tag
@@ -772,13 +773,13 @@ acopy(Gen *gen, unsigned int *obj_ptr)
   return new_obj_ptr;
 }
 
-inline unsigned int *
-acopy_pair(Gen *gen, unsigned int *obj_ptr) 
+inline uintptr_t *
+acopy_pair(Gen *gen, uintptr_t *obj_ptr) 
 {
-  unsigned int *new_obj_ptr;
+  uintptr_t *new_obj_ptr;
 
 #ifdef PROFILING
-  int pPoint;
+  long pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
   new_obj_ptr = allocGenProfiling(gen,2,pPoint) - 1;
 #else
@@ -789,13 +790,13 @@ acopy_pair(Gen *gen, unsigned int *obj_ptr)
   return new_obj_ptr;
 }
 
-inline unsigned int *
-acopy_ref(Gen *gen, unsigned int *obj_ptr) 
+inline uintptr_t *
+acopy_ref(Gen *gen, uintptr_t *obj_ptr) 
 {
-  unsigned int *new_obj_ptr;
+  uintptr_t *new_obj_ptr;
 
 #ifdef PROFILING
-  int pPoint;
+  long pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
   new_obj_ptr = allocGenProfiling(gen,1,pPoint) - 1;
 #else
@@ -805,13 +806,13 @@ acopy_ref(Gen *gen, unsigned int *obj_ptr)
   return new_obj_ptr;
 }
 
-inline unsigned int *
-acopy_triple(Gen *gen, unsigned int *obj_ptr) 
+inline uintptr_t *
+acopy_triple(Gen *gen, uintptr_t *obj_ptr) 
 {
-  unsigned int *new_obj_ptr;
+  uintptr_t *new_obj_ptr;
 
 #ifdef PROFILING
-  int pPoint;
+  long pPoint;
   pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
   new_obj_ptr = allocGenProfiling(gen,3,pPoint) - 1;
 #else
@@ -824,14 +825,14 @@ acopy_triple(Gen *gen, unsigned int *obj_ptr)
 }
 
 static int
-points_into_tospace (unsigned int x) 
+points_into_tospace (uintptr_t x) 
 {
-  unsigned int *p;
+  uintptr_t *p;
 
   Rp *rp;
   if ( is_integer(x) )
     return 0;
-  p = (unsigned int*)x;
+  p = (uintptr_t *)x;
   if ( is_stack_allocated(p) )
     return 0;
   if ( points_into_dataspace(p) )
@@ -890,7 +891,7 @@ points_into_tospace (unsigned int x)
 }
 
 inline static Gen * 
-target_gen(Gen *gen, Rp *rp, unsigned int *obj_ptr)
+target_gen(Gen *gen, Rp *rp, uintptr_t *obj_ptr)
 {
 #ifdef ENABLE_GEN_GC
   // We could also choose first to ask if gen is g1 (old generation)
@@ -909,20 +910,20 @@ target_gen(Gen *gen, Rp *rp, unsigned int *obj_ptr)
     return gen;
 }
 
-static unsigned int 
-evacuate(unsigned int obj) 
+static uintptr_t 
+evacuate(uintptr_t obj) 
 {
   Rp* rp;
   Gen* gen;
   Gen* copy_to_gen;
 
-  unsigned int *obj_ptr, *new_obj_ptr;
+  uintptr_t *obj_ptr, *new_obj_ptr;
   if (is_integer(obj)) 
     {
       return obj;                         // not subject to GC
     }
 
-  obj_ptr = (unsigned int *)obj;          // object is a pointer
+  obj_ptr = (uintptr_t *)obj;          // object is a pointer
 
   if ( points_into_dataspace(obj_ptr) )
     {
@@ -1048,23 +1049,22 @@ evacuate(unsigned int obj)
   return (unsigned int)new_obj_ptr;
 }
 
-static unsigned int*
-scan_tagged_value(unsigned int *s)      // s is the scan pointer
+static uintptr_t*
+scan_tagged_value(uintptr_t *s)      // s is the scan pointer
 {
   // All large objects and objects in finite regions are temporarily 
   // annotated as immovable. We therefore use val_tag_kind and not 
   // val_tag_kind_const
 
+  long sz;                                 // adjust s to point after the string
   switch ( val_tag_kind(s) ) { 
   case TAG_STRING: {                        // Do not GC the content of a string but
-    int sz;                                 // adjust s to point after the string
     String str = (String)s;
-    sz = get_string_size(str->size) + 5;    // 1 for zero, 4 for tag
-    sz = (sz%4) ? (1+sz/4) : (sz/4);
+    sz = get_string_size(str->size) + 1 + (sizeof(void *));    // 1 for zero, 4 for tag
+    sz = (sz%(sizeof(void *))) ? (1+sz/(sizeof(void *))) : (sz/(sizeof(void *)));
     return s + sz;
   }
   case TAG_TABLE: {
-    int sz;
     Table table = (Table)s;
     sz = get_table_size(table->size);
     s++;
@@ -1077,7 +1077,7 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
     return s;
   }
   case TAG_RECORD: {
-    int remaining, num_to_skip, sz;
+    size_t remaining, num_to_skip;
     sz = get_record_size(*s);          // Size excludes descriptor
     num_to_skip = get_record_skip(*s);
     s = s + 1 + num_to_skip;
@@ -1119,7 +1119,7 @@ do_scan_stack()
     // Run through container - FINITE REGIONS and LARGE OBJECTS
     while (!(is_scan_container_empty())) 
       {
-	unsigned int* tmp;
+	uintptr_t* tmp;
 	tmp = pop_scan_container();
 	//printf("pop_scan_container: %p\n", tmp);
         scan_tagged_value(tmp);
@@ -1127,7 +1127,7 @@ do_scan_stack()
 
     while (!(is_scan_stack_empty())) 
       {
-	unsigned int *s;   // scan pointer
+	uintptr_t *s;   // scan pointer
 	s = pop_scan_stack();
 	//printf("pop_scan_stack: %p\n", s);
 	// Get Region Page and Generation
@@ -1218,7 +1218,7 @@ clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen)
 #ifdef ENABLE_GEN_GC
       // Update colorPtr
       if ( p->n ) // tospace-bit has been cleared
-	p->colorPtr = (unsigned int*) (p+1); // Not last page so entire page is black
+	p->colorPtr = (uintptr_t *) (p+1); // Not last page so entire page is black
       else
 	p->colorPtr = gen->a; // Last page so only allocated part of page is black
 #endif // ENABLE_GEN_GC
@@ -1239,8 +1239,8 @@ check_all_lobjs(void)    // used for debugging
       Lobjs *lobjs;
       for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) )
 	{
-	  unsigned int* tag_ptr;
-	  unsigned int sz;
+	  uintptr_t* tag_ptr;
+	  uintptr_t sz;
 #ifdef PROFILING
 	  tag_ptr = &(*(&(lobjs->value) + sizeObjectDesc));
 #else
@@ -1259,7 +1259,7 @@ check_all_lobjs(void)    // used for debugging
 #endif // CHECK_GC
 
 double
-region_utilize(int pages, int bytes)
+region_utilize(long pages, long bytes)
 {
   if ( pages > 0.0 )
     return (100.0 * (double)bytes 
@@ -1269,27 +1269,27 @@ region_utilize(int pages, int bytes)
 }
  
 void 
-gc(unsigned int **sp, unsigned int reg_map) 
+gc(uintptr_t **sp, size_t reg_map) 
 {
-  int time_gc_one_ms = 0;
+  long time_gc_one_ms = 0;
   extern Rp* freelist;
-  unsigned int **sp_ptr;
-  unsigned int *fd_ptr;
-  unsigned int fd_size, fd_mark, fd_offset_to_return;
-  unsigned int *w_ptr;
-  int w_idx;
-  unsigned int w;
-  int offset;
-  unsigned int *value_ptr;
-  int num_d_labs;
-  int size_rcf, size_ccf, size_spilled_region_args;
-  extern int rp_used;
-  extern int rp_total;
+  uintptr_t **sp_ptr;
+  uintptr_t *fd_ptr;
+  unsigned long fd_size, fd_mark, fd_offset_to_return;
+  uintptr_t *w_ptr;
+  long w_idx;
+  unsigned long w;
+  long offset;
+  uintptr_t *value_ptr;
+  long num_d_labs;
+  long size_rcf, size_ccf, size_spilled_region_args;
+  extern long rp_used;
+  extern long rp_total;
   struct rusage rusage_begin;
   struct rusage rusage_end;
-  unsigned int bytes_from_space = 0;
-  unsigned int pages_from_space = 0;
-  unsigned int alloc_period_save = 0;
+  unsigned long bytes_from_space = 0;
+  unsigned long pages_from_space = 0;
+  unsigned long alloc_period_save = 0;
   Ro *r;
 
   // Mutex on the garbage collector; used by alloc_new_block in
@@ -1305,10 +1305,10 @@ gc(unsigned int **sp, unsigned int reg_map)
     major_p = 1;
 #endif
 
-  stack_top_gc = (unsigned int*)sp;
+  stack_top_gc = (uintptr_t *)sp;
 
 #ifdef CHECK_GC
-  if ((int)(stack_bot_gc - stack_top_gc) < 0)
+  if ((ssize_t)(stack_bot_gc - stack_top_gc) < 0)
     {
       die("gc: stack_top_gc larger than stack_bot_gc on down-growing stack");
     }
@@ -1358,7 +1358,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	{
 	  if ( clear_tospace_bit(rp->n) )
 	    {
-	      if ( rp->colorPtr != (unsigned int *)(rp+1) )
+	      if ( rp->colorPtr != (uintptr_t *)(rp+1) )
 		{
 		  pp_gen(&(r->g1));
 		  printf("r->g1.b=%p\n", r->g1.b);
@@ -1367,7 +1367,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	    }
 	  else 
 	    // last page
-	    if ( rp->colorPtr != (unsigned int*)(r->g1.a) )
+	    if ( rp->colorPtr != (uintptr_t *)(r->g1.a) )
 	      {
 		printf("rp->colorPtr=%p - r->g1.a=%p\n", rp->colorPtr, r->g1.a);
 		pp_gen(&(r->g1));
@@ -1388,7 +1388,7 @@ gc(unsigned int **sp, unsigned int reg_map)
     for ( r = TOP_REGION ; r ; r = r->p ) {
       switch ( rtype(r->g1) ) {
       case RTYPE_REF: {      // Refs are untagged
-	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE - 1;
+	value_ptr = ((uintptr_t *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE - 1;
 	// evacuate content of refs in g1
 	// refs occupies one word only!
 	while ( (value_ptr + 1) != r->g1.a ) 
@@ -1402,11 +1402,11 @@ gc(unsigned int **sp, unsigned int reg_map)
 	break;
       }
       case RTYPE_ARRAY: { 
-	unsigned int tag;
-	int i, sz;
+	size_t tag;
+	ssize_t i, sz;
 	Lobjs *lobjs;    
 	
-	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
+	value_ptr = ((uintptr_t *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
 	// evacuate content of arrays in g1
 	while ( (value_ptr) != r->g1.a ) 
 	  { 
@@ -1458,7 +1458,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   w = reg_map;
   for ( offset = 0 ; offset < NUM_REGS ; offset++ ) {
     if ( w & 1 ) {
-      value_ptr = ((unsigned int*)sp_ptr) + NUM_REGS - 1 - offset;  /* Address of live cell */
+      value_ptr = ((uintptr_t *)sp_ptr) + NUM_REGS - 1 - offset;  /* Address of live cell */
       *value_ptr = evacuate(*value_ptr);
     }
     w = w >> 1;
@@ -1468,16 +1468,16 @@ gc(unsigned int **sp, unsigned int reg_map)
   sp_ptr = sp;
   sp_ptr = sp_ptr + NUM_REGS;   // points at size_spilled_region_args
 
-  size_spilled_region_args = *((int *)sp_ptr);
+  size_spilled_region_args = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at size_rcf
-  size_rcf = *((int *)sp_ptr);
+  size_rcf = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at size_ccf
-  size_ccf = *((int *)sp_ptr);
+  size_ccf = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at last arg. to current function
 
   // All arguments to current function are live - except for region arguments.
   for ( offset = 0 ; offset < size_ccf ; offset++ ) {
-    value_ptr = ((unsigned int*)sp_ptr);
+    value_ptr = ((uintptr_t *)sp_ptr);
     predSPDef(sp_ptr,1);
     if ( offset >= size_spilled_region_args ) 
       {
@@ -1502,7 +1502,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   predSPDef(sp_ptr,size_rcf);
 
   // sp_ptr points at first address before FD
-  while ( fd_size != 0xFFFFFFFF ) 
+  while ( fd_size != /* 0xFFFFFFFF */ UINTPTR_MAX) 
     {
       // Analyse frame
       
@@ -1516,7 +1516,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	{
 	  if (w & 1) {
 	    // Evacuate value in frame
-	    value_ptr = ((unsigned int*)sp_ptr) + fd_size - offset;
+	    value_ptr = ((uintptr_t *)sp_ptr) + fd_size - offset;
 	    *value_ptr = evacuate(*value_ptr); 
 	  }
 	  w = w >> 1;
@@ -1542,7 +1542,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   num_d_labs = *data_lab_ptr; /* Number of data labels */
   for ( offset = 1 ; offset <= num_d_labs ; offset++ ) {
     // Evacuate value in data labels
-    value_ptr = *(((unsigned int**)data_lab_ptr) + offset);
+    value_ptr = *(((uintptr_t **)data_lab_ptr) + offset);
     *value_ptr = evacuate(*value_ptr);
   }
   
@@ -1564,12 +1564,12 @@ gc(unsigned int **sp, unsigned int reg_map)
   for( r = TOP_REGION ; r ; r = r->p ) 
       {
 	Lobjs *lobjs;
-	int first = 1;
+	long first = 1;
 	Lobjs **lobjs_ptr = &(r->lobjs); // last live next-slot
 	lobjs = r->lobjs;
 	while ( lobjs )
 	  {
-	    unsigned int* tag_ptr;
+	    uintptr_t* tag_ptr;
 #ifdef PROFILING
 	    tag_ptr = &(*(&(lobjs->value) + sizeObjectDesc));
 #else
@@ -1638,7 +1638,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 #endif /* ENABLE_GEN_GC */
     }
   
-  lobjs_gc_treshold = (int)(heap_to_live_ratio * (double)lobjs_current);
+  lobjs_gc_treshold = (long)(heap_to_live_ratio * (double)lobjs_current);
   
   // Reset all constant-bits in the scan container -- FINITE REGIONS 
   // and LARGE OBJECTS -- this clearance is safe because we have 
@@ -1696,8 +1696,8 @@ gc(unsigned int **sp, unsigned int reg_map)
   if ( verbose_gc ) 
     {
       double RI = 0.0, GC = 0.0, FRAG = 0.0;
-      unsigned int bytes_to_space;
-      unsigned int pages_to_space;
+      unsigned long bytes_to_space;
+      unsigned long pages_to_space;
 
       bytes_to_space = allocated_bytes_in_regions(); // ok gengc
       pages_to_space = allocated_pages_in_regions(); // ok gengc
@@ -1707,7 +1707,7 @@ gc(unsigned int **sp, unsigned int reg_map)
       alloc_total += lobjs_period;                 // ok gengc
       gc_total += (bytes_from_space + lobjs_beforegc - bytes_to_space - lobjs_aftergc);
 
-      fprintf(stderr,"(%dms)", time_gc_one_ms);
+      fprintf(stderr,"(%ldms)", time_gc_one_ms);
       /*
       fprintf(stderr, " rp_total: %d\n", rp_total);
       fprintf(stderr, " size_scan_stack: %d\n", (size_scan_stack*4) / 1024);
@@ -1740,7 +1740,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	  FRAG_sum = FRAG_sum + FRAG;
 	}
 
-      fprintf(stderr,"%dkb(%2.0f%%)+L%dkb -> %dkb(%2.0f%%)+L%dkb, FL:%dkb, ",
+      fprintf(stderr,"%ldkb(%2.0f%%)+L%dkb -> %ldkb(%2.0f%%)+L%dkb, FL:%dkb, ",
 	      pages_from_space,
 	      region_utilize(pages_from_space, bytes_from_space),
 	      lobjs_beforegc / 1024,

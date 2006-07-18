@@ -13,7 +13,7 @@ typedef void (*SignalHandler)(int);
 
 typedef struct {
   /*  unsigned long* next_word;  */
-  unsigned long exn_number;
+  size_t exn_number;
   StringDesc* string;
 } Exception;
 
@@ -28,6 +28,6 @@ extern Exception* exn_INTERRUPT;           /* Exception for user interrupt (Ctrl
 
 void raise_exn(int exn);
 
-extern unsigned long failNumber;
+extern size_t failNumber;
 
 #endif /* __EXCEPTION_H */

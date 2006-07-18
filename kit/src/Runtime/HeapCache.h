@@ -14,12 +14,12 @@
 // pointer to the origin region page.
 
 typedef struct regionCopy {
-  unsigned int *a; // allocation pointer
-  unsigned int *b; // border pointer
+  uintptr_t *a; // allocation pointer
+  uintptr_t *b; // border pointer
   Ro *r;  // origin region
   Lobjs *lobjs; // Large objects
-  unsigned int numOfLobjs;
-  unsigned int pages[0];
+  size_t numOfLobjs;
+  size_t pages[0];
 } RegionCopy;
   
 #define HSTAT_UNINITIALIZED  0
@@ -41,7 +41,7 @@ typedef struct regionCopy {
 #define MAX_HEAP_POOL_SZ     6
 
 typedef struct heap {
-  int heapid;               // unique heap id
+  size_t heapid;               // unique heap id
   int status;               // heap status
   RegionCopy *r0copy;       // rtype top
   RegionCopy *r2copy;       // rtype pair
@@ -49,11 +49,11 @@ typedef struct heap {
   RegionCopy *r4copy;       // rtype array
   RegionCopy *r5copy;       // rtype ref
   RegionCopy *r6copy;       // rtype triple
-  int *sp;                  // stack pointer
-  int *exnPtr;
-  unsigned long exnCnt;
-  int lowStack[LOWSTACK_COPY_SZ]; // copy of global exception handler, etc.
-  int ds[STACK_SIZE_INIT];  // start of data-space
+  size_t *sp;                  // stack pointer
+  uintptr_t *exnPtr;
+  size_t exnCnt;
+  uintptr_t lowStack[LOWSTACK_COPY_SZ]; // copy of global exception handler, etc.
+  uintptr_t ds[STACK_SIZE_INIT];  // start of data-space
                             //   followed by stack
 } Heap;
 
@@ -79,7 +79,7 @@ void releaseHeap(Heap *h, serverstate ss);
 // called after library code is executed, but before leaf bytecode is
 // executed. The function changes the status of the heap to
 // HSTAT_CLEAN. It requires the heap status to be HSTAT_UNINITIALIZED.
-void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt, serverstate ss);
+void initializeHeap(Heap *h, uintptr_t *sp, uintptr_t *exnPtr, size_t exnCnt, serverstate ss);
 
 // [deleteHeap(h)] deletes the heap by freeing it. Also frees region
 // pages in the regions in the heap.

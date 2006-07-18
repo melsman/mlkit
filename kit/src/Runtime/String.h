@@ -24,7 +24,7 @@
 // Representation of ML strings
 
 typedef struct stringDesc {
-  unsigned int size;             // Size of string (tagged)
+  size_t size;             // Size of string (tagged)
   char data;            // C String (null-terminated)
 } StringDesc;
 
@@ -32,31 +32,31 @@ typedef StringDesc* String;
 
 #define sizeStringDefine(str)    ((((String)(str))->size) >> 6) /* Remove stringtag. We do not tag the size. */
 
-void convertStringToC(String mlStr, char *buf, int buflen, int exn);
+void convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn);
 
 /******************************************************************
  * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
  ******************************************************************/
 
-int chrCharML(int charNrML, int exn);
+size_t chrCharML(size_t charNrML, uintptr_t exn);
 // int __bytetable_size(String str);
 // int __bytetable_sub(String str, int i);
 // void __bytetable_update(String str, int i, int c);
 void printStringML(String str);
-int lessStringML(String str1, String str2);
-int lesseqStringML(String str1, String str2);
-int greaterStringML(String str1, String str2);
-int greatereqStringML(String str1, String str2);
-int equalStringML(String str1, String str2);
+size_t lessStringML(String str1, String str2);
+size_t lesseqStringML(String str1, String str2);
+size_t greaterStringML(String str1, String str2);
+size_t greatereqStringML(String str1, String str2);
+size_t equalStringML(String str1, String str2);
 
-String REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML);
-String REG_POLY_FUN_HDR(allocStringC, Region rAddr, int sizeC);
+String REG_POLY_FUN_HDR(allocStringML, Region rAddr, size_t sizeML);
+String REG_POLY_FUN_HDR(allocStringC, Region rAddr, size_t sizeC);
 String REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2);
-String REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs);
-String REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs);
+String REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, size_t xs);
+String REG_POLY_FUN_HDR(implodeStringML, Region rAddr, size_t xs);
 String REG_POLY_FUN_HDR(convertStringToML, Region rAddr, char *cStr);
-String REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, char *cStr);
-String REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e);
-int * REG_POLY_FUN_HDR(explodeStringML, Region rAddr2, String str);  // no region for the cons cells
+String REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, char *cStr);
+String REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e);
+size_t * REG_POLY_FUN_HDR(explodeStringML, Region rAddr2, String str);  // no region for the cons cells
 
 #endif /* STRING_H */
