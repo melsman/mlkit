@@ -1,13 +1,15 @@
 signature MLB_PROJECT =
     sig
-	structure Bid :
-	    sig eqtype bid and longbid
-		val bid : string -> bid
-		val longbid : bid list -> longbid
-		val longopen : longbid -> bid * longbid option
-		val pp_bid : bid -> string
-		val pp_longbid : longbid -> string
-	    end
+  structure MS :
+    sig
+      structure Bid :
+        sig eqtype bid and longbid
+          val bid : string -> bid
+          val longbid : bid list -> longbid
+          val longopen : longbid -> bid * longbid option
+          val pp_bid : bid -> string
+          val pp_longbid : longbid -> string
+        end
 
 	type atbdec = string (* path.{sml,sig} *) 
 
@@ -24,11 +26,12 @@ signature MLB_PROJECT =
 		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)		          
 		      | SCRIPTSbdec of atbdec list
 	              | ANNbdec of string * bdec
+    end
 
 	(* scriptpath p is optional in MLBFILEbdec; only useful in the context of
 	 * SMLserver as SCRIPTSbdec. *)
 
-	val parse : string -> bdec 
+	val parse : string -> MS.bdec 
 	(* [parse mlbfile] parses a basis file mlbfile. Prints an 
 	 * error message and raises Fail on error. *)
 
@@ -42,7 +45,7 @@ signature MLB_PROJECT =
 
 	datatype srctype = SRCTYPE_ALL | SRCTYPE_SCRIPTSONLY | SRCTYPE_ALLBUTSCRIPTS
 
-	val sources : srctype -> string -> (string * string * string list) list  
+	val sources : srctype -> string -> (int * string * string * string list) list  
         (* [sources srctype mlbfile] returns the list of sources (.sml- and
 	 * .sig-files) mentioned in mlbfile, with the second components 
 	 * of the pairs being the hosting mlbfiles (the third components 

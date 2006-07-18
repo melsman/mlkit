@@ -2,7 +2,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
     : ULFILE (* where type bdec = MlbProject.bdec *) =
     struct
 	structure Mlb = MlbProject
-	structure Bid = Mlb.Bid
+	structure Bid = Mlb.MS.Bid
 
 	fun die s = 
 	    let val s = "UlFile.Error: " ^ s
@@ -17,7 +17,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	    
 	type bid = Bid.bid
 	type longbid = Bid.longbid
-	type bdec = Mlb.bdec
+	type bdec = Mlb.MS.bdec
 	type location = string   (* request location (as seen in browser) *)
 	type uofile = string     (* path to uofile on file system *)
 	type smlfile = string
@@ -144,22 +144,22 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	fun ulb (phi:phi) (M:M) (B:B) (bdec:bdec) 
 	    : S * C * M * B =
 	    case bdec of
-		Mlb.SEQbdec (bdec1, bdec2) =>
+		Mlb.MS.SEQbdec (bdec1, bdec2) =>
 		    let val (S1,C1,M,B1) = ulb phi M B bdec1
 			val (S2,C2,M,B2) = ulb phi M (B.plus(B,B1)) bdec2
 		    in (S.plus(S1,S2),C.plus(C1,C2),M,B.plus(B1,B2))
 		    end
-	      | Mlb.EMPTYbdec => (S.empty,C.empty,M,B.empty)
-	      | Mlb.LOCALbdec (bdec1, bdec2) =>
+	      | Mlb.MS.EMPTYbdec => (S.empty,C.empty,M,B.empty)
+	      | Mlb.MS.LOCALbdec (bdec1, bdec2) =>
 		    let val (S1,C1,M,B1) = ulb phi M B bdec1
 			val (S2,C2,M,B2) = ulb phi M (B.plus(B,B1)) bdec2
 		    in (S2,C.plus(C1,C2),M,B2)
 		    end
-	      | Mlb.BASISbdec (bid, bexp) =>
+	      | Mlb.MS.BASISbdec (bid, bexp) =>
 		    let val (S,C,M,B1) = ule phi M B bexp
 		    in (S.empty,C,M.empty,B.insert((bid,(B1,S)),B.empty))
 		    end
-	      | Mlb.OPENbdec lbids =>
+	      | Mlb.MS.OPENbdec lbids =>
 		    let val (Ba,Sa) = foldl (fn (lbid,(Ba,Sa)) => 
 					     case B.lookupl lbid B of
 						 SOME (B',S') => (B.plus(Ba,B'),S.plus(Sa,S'))
@@ -167,15 +167,15 @@ functor UlFile (MlbProject : MLB_PROJECT)
 			(B.empty,S.empty) lbids
 		    in (Sa,C.empty,M,Ba)
 		    end
-	      | Mlb.ATBDECbdec smlfile =>
+	      | Mlb.MS.ATBDECbdec smlfile =>
 		    let val uofiles = phi(smlfile)
 		    in (S.empty,C.fromList uofiles,M,B.empty)
 		    end
-	      | Mlb.MLBFILEbdec (mlbfile, NONE) =>  (* derived form *)
+	      | Mlb.MS.MLBFILEbdec (mlbfile, NONE) =>  (* derived form *)
 		    let val scriptpath = OS.Path.dir mlbfile
-		    in ulb phi M B (Mlb.MLBFILEbdec (mlbfile, SOME scriptpath))
+		    in ulb phi M B (Mlb.MS.MLBFILEbdec (mlbfile, SOME scriptpath))
 		    end
-	      | Mlb.MLBFILEbdec (mlbfile, SOME scriptpath) => 
+	      | Mlb.MS.MLBFILEbdec (mlbfile, SOME scriptpath) => 
 		    (case OS.Path.dir mlbfile of
 			 "" => (case M.lookup mlbfile M of
 				    SOME (SOME (B,S)) => 
@@ -209,12 +209,12 @@ functor UlFile (MlbProject : MLB_PROJECT)
 *)
 				 val (S,C,M,B) = doCD mlbfile (fn() => 
 				       ulb phi (M.downArrow (M,dir)) (B.downArrow(B,dir)) 
-				       (Mlb.MLBFILEbdec (OS.Path.file mlbfile, SOME scriptpath)))
+				       (Mlb.MS.MLBFILEbdec (OS.Path.file mlbfile, SOME scriptpath)))
 (*				 val _ = print ("up again from " ^ dir ^ "\n") *)
 			     in (S.upArrow(S,dir),C.upArrow(C,dir),
 				 M.upArrow(M,dir),B.upArrow(B,dir))
 			     end)
-	      | Mlb.SCRIPTSbdec smlfiles =>
+	      | Mlb.MS.SCRIPTSbdec smlfiles =>
 		    let val S =
 			foldl (fn (smlfile,S) =>
 			       let val uofile = 
@@ -225,19 +225,19 @@ functor UlFile (MlbProject : MLB_PROJECT)
 			       end) S.empty smlfiles
 		    in (S,C.empty,M,B.empty)
 		    end
-	      | Mlb.ANNbdec (ann,bdec) => ulb phi M B bdec
+	      | Mlb.MS.ANNbdec (ann,bdec) => ulb phi M B bdec
 
         (* ule:   M,B |- bexp => S,C,M',B' *)
         and ule (phi:phi) (M:M) (B:B) bexp
           : S * C * M * B =
           case bexp of
-	     Mlb.BASbexp bdec => ulb phi M B bdec
-	   | Mlb.LETbexp (bdec, bexp) =>
+	     Mlb.MS.BASbexp bdec => ulb phi M B bdec
+	   | Mlb.MS.LETbexp (bdec, bexp) =>
  	      let val (S1,C1,M,B1) = ulb phi M B bdec
 		  val (S2,C2,M,B2) = ule phi M (B.plus(B,B1)) bexp
 	      in (S2,C.plus(C1,C2),M,B.plus(B1,B2))
 	      end
-	   | Mlb.LONGBIDbexp lbid =>
+	   | Mlb.MS.LONGBIDbexp lbid =>
 	      (case B.lookupl lbid B of
 		   SOME(B',S') => (S',C.empty,M,B')
 		 | NONE => die ("lookup of longbid " ^ Bid.pp_longbid lbid ^ " in B failed"))

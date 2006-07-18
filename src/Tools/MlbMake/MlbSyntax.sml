@@ -28,4 +28,14 @@ struct
 		"safeLinkTimeElimination" => true
 	      | _ => false
 
+  fun fold (SEQbdec(a,b))         e seq bas loc fopen fatbdec fmlb script ann = seq(b,seq(a,e))
+    | fold EMPTYbdec              e seq bas loc fopen fatbdec fmlb script ann = e
+    | fold (LOCALbdec(a,b))       e seq bas loc fopen fatbdec fmlb script ann = loc(b,loc(a,e))
+    | fold (BASISbdec (bid,bexp)) e seq bas loc fopen fatbdec fmlb script ann = bas(bid,bexp,e)
+    | fold (OPENbdec l)           e seq bas loc fopen fatbdec fmlb script ann = List.foldl fopen e l
+    | fold (ATBDECbdec a)         e seq bas loc fopen fatbdec fmlb script ann = fatbdec(a,e)
+    | fold (MLBFILEbdec (s,so))   e seq bas loc fopen fatbdec fmlb script ann = fmlb(s,so,e)
+    | fold (SCRIPTSbdec l)        e seq bas loc fopen fatbdec fmlb script ann = List.foldl script e l 
+    | fold (ANNbdec (ann',bdec))  e seq bas loc fopen fatbdec fmlb script ann = ann(ann',bdec,e)
+
 end
