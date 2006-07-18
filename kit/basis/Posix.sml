@@ -571,11 +571,14 @@ structure Posix :> POSIX =
     structure FileSys : POSIX_FILE_SYS
       where type file_desc = ProcEnv.file_desc
       where type uid = ProcEnv.uid 
-      where type gid = ProcEnv.gid = 
+      where type gid = ProcEnv.gid
+      where type dirstream = OS.FileSys.dirstream =
 	struct 
 	    type uid = ProcEnv.uid
 	    type gid = ProcEnv.gid
 	    type file_desc = int
+      type dirstream = OS.FileSys.dirstream
+      datatype access_mode = datatype OS.FileSys.access_mode
 		
 	    val stdin = Initial.Posix_File_Sys.stdin
 	    val stdout = Initial.Posix_File_Sys.stdout
@@ -596,6 +599,34 @@ structure Posix :> POSIX =
           open A
         end
 
+      type ino = SysWord.word
+      fun wordToIno x = x
+      fun inoToWord x = x
+
+      type dev = SysWord.word
+      fun wordToDev x = x
+      fun devToWord x = x
+
+      structure ST =
+        struct
+          type stat = (int*int*int*int*int*int*int*int)
+          fun exBit j (i:int) = SysWord.andb(SysWord.fromInt i,SysWord.<<(0wx1,SysWord.fromInt j)) <> 0wx0
+          fun isDir (s:stat) = exBit 5 (#1 s)
+          fun isChr (s:stat) = exBit 4 (#1 s)
+          fun isBlk (s:stat) = exBit 3 (#1 s)
+          fun isReg (s:stat) = exBit 6 (#1 s)
+          fun isFIFO (s:stat) = exBit 2 (#1 s)
+          fun isLink (s:stat) = exBit 1 (#1 s)
+          fun isSock (s:stat) = exBit 0 (#1 s)
+          fun nlink (s:stat) = #5 s
+          fun uid (s:stat) = #7 s
+          fun gid (s:stat) = #8 s
+          fun size (s:stat) = Position.fromInt (#6 s)
+          fun dev (s:stat) = SysWord.fromInt (#4 s)
+          fun ino (s:stat) = SysWord.fromInt (#3 s)
+          fun mode (s:stat) = SysWord.fromInt (#2 s)
+        end
+
 	    datatype open_mode = O_RDONLY | O_WRONLY | O_RDWR
 	    datatype access_mode = A_READ | A_WRITE | A_EXEC
 
@@ -603,6 +634,67 @@ structure Posix :> POSIX =
       fun wordToFD x = SysWord.toInt x
       fun fdToIOD x = x
       fun fdToWord x = SysWord.fromInt x
+
+      fun chdir x = OS.FileSys.chDir x
+      fun closedir x = OS.FileSys.closeDir x
+      fun getcwd x = OS.FileSys.getDir x
+      fun opendir x = OS.FileSys.openDir x
+      fun readdir x = OS.FileSys.readDir x
+      fun rewinddir x = OS.FileSys.rewindDir x
+
+      local
+        fun toInt name =
+               case name
+               of "CHOWN_RESTRICTED" => 0
+                | "LINK_MAX" => 1
+                | "MAX_CANON" => 2
+                | "MAX_INPUT" => 3
+                | "NAME_MAX" => 4
+                | "NO_TRUNC" => 5
+                | "PATH_MAX" => 6
+                | "PIPE_BUF" => 7
+                | "VDISABLE" => 8
+                | "ASYNC_IO" => 9 
+                | "SYNC_IO" => 10
+                | "PRIO_IO" => 11
+                | _ => raiseSysML "Posix.FileSys.pathconf" (SOME name) ("is not a valid property")
+      in
+             
+      fun fpathconf (fd:file_desc,name:string) =
+             let
+               val res : int = prim ("@sml_fpathconf",(fd,toInt name : int))
+             in
+               if res = ~1 then raiseSys "Posix.FileSys.pathconf" NONE ""
+               else if res = ~2 then NONE
+               else SOME (SysWord.fromInt res)
+             end
+
+      fun pathconf (file,name) =
+             let
+               val res : int = prim ("@sml_pathconf",(file:string,toInt name : int))
+             in
+               if res = ~1 then raiseSys "Posix.FileSys.pathconf" NONE ""
+               else if res = ~2 then NONE
+               else SOME (SysWord.fromInt res)
+             end
+      end
+
+      fun ftruncate (fd:file_desc, i : Position.int) = 
+             let
+               val res : int = prim("@ftruncate",(fd,i))
+             in
+               if res = ~1 then raiseSys "Posix.FileSys.ftruncate" NONE ""
+               else ()
+             end
+
+
+      fun access (a,b) = 
+            let
+              fun cvt A_EXEC = OS.FileSys.A_EXEC
+                | cvt A_WRITE = OS.FileSys.A_WRITE
+                | cvt A_READ = OS.FileSys.A_READ
+            in OS.FileSys.access (a,List.map cvt b)
+            end
 		
 	    fun lower s (name,omode,flags,mo,i,kind) = 
 		let val a = prim("@sml_lower", (name : string,
@@ -643,6 +735,30 @@ structure Posix :> POSIX =
 		let val a = prim("@unlink", path) : int
 		in if a = ~1 then raiseSys "Posix.FileSys.unlink" NONE "" else ()
 		end
+
+      fun stat (path : string) =
+        let val (a,b,c,d,e,f,g,h) = prim("sml_stat",path) : (int*int*int*int*int*int*int*int)
+        in
+          if a = ~1
+          then raiseSys "Posix.FileSys.stat" NONE "" 
+          else (a,b,c,d,e,f,g,h) : ST.stat
+        end
+	    
+      fun fstat (fd : file_desc) =
+        let val (a,b,c,d,e,f,g,h) = prim("sml_fstat",fd) : (int*int*int*int*int*int*int*int)
+        in
+          if a = ~1
+          then raiseSys "Posix.FileSys.fstat" NONE "" 
+          else (a,b,c,d,e,f,g,h) : ST.stat
+        end
+	    
+      fun lstat (path : string) =
+        let val (a,b,c,d,e,f,g,h) = prim("sml_lstat",path) : (int*int*int*int*int*int*int*int)
+        in
+          if a = ~1
+          then raiseSys "Posix.FileSys.lstat" NONE "" 
+          else (a,b,c,d,e,f,g,h) : ST.stat
+        end
 	    
 	    fun rmdir (path : string) =
 		let val a = prim("@rmdir", path) : int
