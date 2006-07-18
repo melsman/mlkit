@@ -30,9 +30,11 @@ signature MLB_PLUGIN =
 	 -> {basisFiles: string list, 
 	     source: string, 
 	     namebase: string,     (* for uniqueness of type names, etc *)
-	     target: string, 
+	     target: string,
+       unique : int,
+       lockfile : string,
 	     flags: string} 
-	 -> unit
+	 -> bool
      val link : {verbose:unit->bool} 
 	 -> {mlbfile: string,
 	     target: string, 
@@ -126,6 +128,9 @@ struct
 
 	fun ebFileFromSmlFile smlfile = 
 	    objFileFromSmlFile smlfile ^ ".eb"
+
+	fun lockFileFromSmlFile smlfile =
+	    fileFromSmlFile smlfile ".lock"
 
 	fun depFileFromSmlFile smlfile =
 	    fileFromSmlFile smlfile ".d"
@@ -230,8 +235,8 @@ struct
 	    end
 	end handle _ => false
 
-    fun build_mlb_one (flags:string) (mlbfile:string) (smlfile:string) : unit =
-	if recompileUnnecessary mlbfile smlfile then ()
+    fun build_mlb_one (flags:string) (mlbfile:string) (smlfile:string) (unique:int) : bool =
+	if recompileUnnecessary mlbfile smlfile then true
 	else 
 	let val _ = vchat ("Reading dependencies for " ^ smlfile)
 	    val deps = readDependencies smlfile
@@ -239,6 +244,8 @@ struct
 	in P.compile {verbose=verbose} 
 	    {basisFiles=basisFiles,source=smlfile,
 	     target=objFileFromSmlFile smlfile,
+       unique = unique,
+       lockfile = lockFileFromSmlFile smlfile,
 	     namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
 	     flags=flags}
 	end
@@ -339,15 +346,16 @@ struct
     fun build {flags, mlbfile, target} : unit =
 	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
 	    val _ = vchat ("Finding sources...\n")		
-	    val srcs_mlbs_anns_all : (string * string * string list) list = 
+	    val srcs_mlbs_anns_all' : (int * string * string * string list) list = 
 		MlbProject.sources MlbProject.SRCTYPE_ALL mlbfile
+      val srcs_mlbs_anns_all = List.map (fn (a,b,c,d) => (b,c,d)) srcs_mlbs_anns_all'
 	    val _ = check_sources srcs_mlbs_anns_all
 	    val srcs_all = map #1 srcs_mlbs_anns_all
 
 	    val srcs_scriptsonly = 
-		map #1 (MlbProject.sources MlbProject.SRCTYPE_SCRIPTSONLY mlbfile)
+		map #2 (MlbProject.sources MlbProject.SRCTYPE_SCRIPTSONLY mlbfile)
 	    val srcs_allbutscripts =
-		map #1 (MlbProject.sources MlbProject.SRCTYPE_ALLBUTSCRIPTS mlbfile)
+		map #2 (MlbProject.sources MlbProject.SRCTYPE_ALLBUTSCRIPTS mlbfile)
 
 	    val _ = maybeWriteOneSourceFile srcs_all
 
@@ -357,15 +365,16 @@ struct
 	    val _ = MlbProject.dep mlbfile
 		
 	    val _ = vchat ("Compiling...\n")		
-	    val _ = foldl (fn ((src,mlb,anns),acc:int) =>
+	    val _ = foldl (fn ((priority,src,mlb,anns),acc:{regionVar:int,unique:int}) =>
 			   let 
 			       (* val _ = print ("[Acc = " ^ Int.toString acc ^ "\n") *)
-			       val b = P.maybeSetRegionEffectVarCounter acc
+			       val b = P.maybeSetRegionEffectVarCounter (#regionVar acc)
 			       val anns = MlbUtil.pp_list " " anns
 			       val flags = anns ^ " " ^ flags
-			       val () = build_mlb_one flags mlb src
-			   in if b then readRevFromRevFile src else initialRev
-			   end) initialRev srcs_mlbs_anns_all
+			       val _ = build_mlb_one flags mlb src (#unique acc)
+			   in if b then {regionVar=readRevFromRevFile src,unique = (#unique acc) + 1}
+                 else {regionVar=initialRev,unique =(#unique acc)+1}
+			   end) {regionVar=initialRev,unique=1} srcs_mlbs_anns_all'
 
 	    val _ = vchat ("Linking...\n")		
 	    val lnkFiles = map lnkFileFromSmlFile srcs_allbutscripts

@@ -1,7 +1,7 @@
 local
   $(SML_LIB)/basis/basis.mlb
   ../../../basis/listsort.mlb
-  ../../../basis/binarymap.mlb
+  basis Binarymap = bas ../../../basis/binarymap.mlb end
   basis Environment = bas environment.mlb end
   basis FileSys = 
                   bas MLB_FILESYS.sml MlbFileSys.sml end
@@ -10,7 +10,9 @@ in
     open Environment FileSys
   in
     MLB_PROJECT.sml  
-    MlbProject.sml
+    local open Binarymap
+    in MlbProject.sml
+    end
     ULFILE.sml
     UlFile.sml
   end

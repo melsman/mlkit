@@ -758,18 +758,25 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
     structure MlbPlugIn : MLB_PLUGIN  =
 	struct
-	    fun compile0 target flags a =
+      fun unlock unique lockfile = (Posix.FileSys.unlink lockfile; Posix.FileSys.unlink (lockfile ^ unique)) handle _ => ()
+      fun lock unique lockfile = 
+                                  (Posix.IO.close (Posix.FileSys.createf (lockfile ^ unique,Posix.FileSys.O_RDONLY, Posix.FileSys.O.flags [], Posix.FileSys.S.flags []));
+                                  ((Posix.FileSys.link{old=lockfile ^ unique, new=lockfile}; true)
+                                  handle OS.SysErr _ => ((Posix.FileSys.ST.nlink (Posix.FileSys.stat (lockfile ^ unique)) = 2)
+                                                         handle OS.SysErr _ => (unlock unique lockfile;false))))
+	    fun compile0 target flags lockfile unique a =
 		let
 		    (* deal with annotations (from mlb-file) *)
 		    val flags = String.tokens Char.isSpace flags
 		    val () = List.app Flags.turn_on flags
 		    val () = Flags.turn_on "compile_only"
 		    val () = Flags.lookup_string_entry "output" := target
-		in build_mlb_one a
-		end handle Fail s => print ("Compile error: " ^ s ^ "\n")
+		in (build_mlb_one a before (unlock unique lockfile))
+		end handle Fail s => (unlock unique lockfile ; print ("Compile error: " ^ s ^ "\n"))
 
-	    fun compile {verbose} {basisFiles,source,namebase,target,flags} :unit =
-		isolate (compile0 target flags) (namebase, basisFiles, source)
+	    fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : bool =
+		lock (Int.toString unique) lockfile andalso
+     (isolate (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source);true) 
 (*
 	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
 *)
