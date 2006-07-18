@@ -426,17 +426,17 @@ sml_closedir(int v, int exn)            /* SML Basis */
   return;
 }
 
-int 
+size_t 
 sml_errno(void)             /* SML Basis */
 {
-  return convertIntToML(errno);                 // not thread-safe!!
+  return convertIntToML((size_t) errno);                 // not thread-safe!!
 }
 
 String
 REG_POLY_FUN_HDR(sml_errormsg, Region rAddr, int errnum)    /* SML Basis */
 {
   char *res;
-  res = strerror(errnum);
+  res = strerror(convertIntToC(errnum));
   if ( (int)res == EINVAL )
     res = "(Unknown error)";
   return REG_POLY_CALL(convertStringToML, rAddr, res);
