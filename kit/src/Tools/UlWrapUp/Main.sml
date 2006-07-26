@@ -85,7 +85,7 @@ fun alreadyCopied' (i,out) =
                        | NONE => (ac' := Binarymap.insert (!ac',i,out) ; NONE)
 
 
-fun cc_uofile newname infile f =
+fun cc_uofile pres newname infile f =
      let
        val f' = if OS.Path.isRelative f
                 then OS.Path.concat(infile,f)
@@ -95,14 +95,14 @@ fun cc_uofile newname infile f =
        then NONE
        else
        let
-         val out = newname()
+         val out = if Binaryset.member (pres,f') then newname (SOME (#file (OS.Path.splitDirFile f'))) else newname NONE
          val _ = copyFile (f',out)
        in
          SOME out
        end
      end
 
-fun cc_scripts newname infile (f,loc) = 
+fun cc_scripts pres newname infile (f,loc) = 
      let
        val f' = if OS.Path.isRelative f
                 then OS.Path.concat(infile,f)
@@ -111,7 +111,8 @@ fun cc_scripts newname infile (f,loc) =
        if not (alreadyCopied f')
        then 
          let
-           val out = newname()
+           val out = if Binaryset.member (pres,f') then newname (SOME (#file(OS.Path.splitDirFile f'))) else newname NONE
+         (*  val _ = print (f' ^ " --> " ^ out ^ "\n") *)
          in
            case alreadyCopied' (f',out)
            of SOME a => raise Fail  ("the file: " ^ f' ^ " is suppose to be new, but I already know of it\n")
@@ -147,9 +148,29 @@ local
     in
       implode b
     end
-  fun newname () = (gename (!a)) before a:= (!a) + 1
+  fun newname pres = 
+       let
+         fun g () = 
+           let
+             val name = (gename (!a)) before a:= (!a) + 1
+           in
+             if Binaryset.member(pres,name)
+             then g ()
+             else name
+           end
+       in
+         g
+       end
 in
-  val newname = fn base => fn () => OS.Path.concat(base,(newname ()) ^ ".uo")
+  val newname = fn pres => 
+        let
+          val newname = newname (List.foldl (fn (p,acc) => (fn x =>
+                                                 if Binaryset.member (acc,x) then raise Fail ("Multiple files named " ^ x ^ " cannot be preserved")
+                                                 else Binaryset.add(acc,x)) (#file (OS.Path.splitDirFile p)))
+                                            (Binaryset.empty String.compare) pres)
+        in fn base => fn NONE => OS.Path.concat(base,(newname ()) ^ ".uo")
+                       | SOME n => OS.Path.concat(base,n)
+        end
 end
 
 fun mkdir file = 
@@ -183,7 +204,7 @@ fun run (pres,infile,os,newname) =
         val {dir=indir,...} = OS.Path.splitDirFile infile
         val infile' = OS.Path.mkCanonical(OS.Path.concat(indir,"../../"))
         val parseTree = parse infile
-        val npt = List.mapPartial (fn x => UlFile.mapPartial (fn y => SOME y) (cc_uofile newname infile') (cc_scripts newname infile') x) parseTree
+        val npt = List.mapPartial (fn x => UlFile.mapPartial (fn y => SOME y) (cc_uofile pres newname infile') (cc_scripts pres newname infile') x) parseTree
       in
         ignore(TextIO.StreamIO.output (os, String.concat (List.map pp_syntax npt)))
       end
@@ -192,15 +213,16 @@ in
 fun run' (_,[],_) = raise Fail "No input files ?"
   | run' (pres,l,outfile) = 
       let
-        val _ = mkdir outfile
         val {dir=outdir,...} = OS.Path.splitDirFile outfile
+        val newname = newname pres outdir
+        val pres = Binaryset.addList (Binaryset.empty String.compare, pres)
+        val _ = mkdir outfile
         val _ = if isEmpty outdir then () else raise Fail ("directory " ^ outdir ^ " is not empty\n")
         val fdout = (Posix.FileSys.createf(outfile,Posix.FileSys.O_WRONLY, Posix.FileSys.O.flags [], filepermission))
               handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ outfile ^ " for writing\n" ^ s)
         val writer = Posix.IO.mkTextWriter {fd=fdout,name=outfile,initBlkMode=true,appendMode=false,chunkSize=4000}
         val os = TextIO.StreamIO.mkOutstream (writer,IO.LINE_BUF)
         fun close () = TextIO.StreamIO.closeOut os
-        val newname = newname outdir
       in
         (List.app (fn i => run (pres,i,os,newname)) l ; close ()) handle ? => (close (); raise ?)
       end
