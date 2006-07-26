@@ -6,6 +6,10 @@ structure UlParser = Join(structure ParserData = ULLrVals.ParserData
                           structure Lex = ULLex
                           structure LrParser = LrParser);
 
+val filepermission = Posix.FileSys.S.flags [Posix.FileSys.S.irusr,Posix.FileSys.S.irgrp,Posix.FileSys.S.iroth]
+val dirpermission = Posix.FileSys.S.flags [Posix.FileSys.S.irwxu,Posix.FileSys.S.irgrp,Posix.FileSys.S.iroth,
+                                           Posix.FileSys.S.ixgrp,Posix.FileSys.S.ixoth]
+
 val pp_err = fn s => TextIO.output (TextIO.stdErr, s)
 
 fun createLexerStream (is : TextIO.instream) =
@@ -16,15 +20,21 @@ fun createLexerStream (is : TextIO.instream) =
                     name, ",\n! but got the error: ", c, "\n"]))
 
 fun parse file =
-    let val is     = TextIO.openIn file
-        val lexbuf = createLexerStream is
-        val (expr,lb) =
-                   (UlParser.parse (0,lexbuf, fn (s,p1,p2) =>
-                        List.app pp_err [s, " ", Int.toString p1,
-                                        ",", Int.toString p2], ()))
-                   handle exn => (TextIO.closeIn is; raise exn)
+    let 
+      val _ = List.app pp_err ["[opening file \"",file,"\"]\n"]
+      val is     = TextIO.openIn file handle
+                           IO.Io {cause = OS.SysErr(c,_), name = name, ...} =>
+                                    raise Fail (String.concat
+                                                  ["\n! IO Error, tried opening file: ",
+                                                   name, ",\n! but got the error: ", c, "\n"])
+      val lexbuf = createLexerStream is
+      val (expr,lb) =
+                 (UlParser.parse (0,lexbuf, fn (s,p1,p2) =>
+                      List.app pp_err [s, " ", Int.toString p1,
+                                      ",", Int.toString p2], ()))
+                 handle exn => (TextIO.closeIn is; raise exn)
     in
-      TextIO.closeIn is; expr
+      (List.app pp_err ["[closing file \"",file,"\"]\n"] ; TextIO.closeIn is; expr)
     end
 
 fun pp_uofile f = String.concat [" ", f, "\n"]
@@ -34,22 +44,10 @@ fun pp_scripts (f,loc) = String.concat [" ", f, " As ", loc, "\n"]
 fun pp_syntax (UlFile.UoFile l) = String.concat ["Codefiles\n", String.concat (List.map pp_uofile l), "End\n"]
   | pp_syntax (UlFile.Script l) = String.concat ["Scripts\n", String.concat (List.map pp_scripts l), "End\n"]
 
-
-fun openfile file =
-    let
-      val _ = List.app pp_err ["[opening file \"",file,"\"]\n"]
-      val is = (TextIO.openIn file) handle
-                           IO.Io {cause = OS.SysErr(c,_), name = name, ...} =>
-                                    raise Fail (String.concat
-                                                  ["\n! IO Error, tried opening file: ",
-                                                   name, ",\n! but got the error: ", c, "\n"])
-    in ref (SOME (createLexerStream is,is), file)
-    end
-
 fun copyFile (i,out) = 
      let
        fun errmsg s = ("copyFile : " ^ i ^ " --> " ^ out ^ " : " ^ s ^ "\n")
-       val fdout = (Posix.FileSys.creat(out,Posix.FileSys.S.flags [Posix.FileSys.S.irusr]))
+       val fdout = (Posix.FileSys.creat(out,filepermission))
                     handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ out ^ " for writing\n" ^ (errmsg s))
        val fdin = (Posix.FileSys.openf(i,Posix.FileSys.O_RDONLY,Posix.FileSys.O.flags []))
                     handle OS.SysErr (s,e) => raise Fail ("Couldn't open file: " ^ i ^ " for reading\n" ^ (errmsg s))
@@ -86,8 +84,47 @@ fun alreadyCopied' (i,out) =
                       of SOME a => SOME a
                        | NONE => (ac' := Binarymap.insert (!ac',i,out) ; NONE)
 
+
+fun cc_uofile newname infile f =
+     let
+       val f' = if OS.Path.isRelative f
+                then OS.Path.concat(infile,f)
+                else f
+     in
+       if alreadyCopied f'
+       then NONE
+       else
+       let
+         val out = newname()
+         val _ = copyFile (f',out)
+       in
+         SOME out
+       end
+     end
+
+fun cc_scripts newname infile (f,loc) = 
+     let
+       val f' = if OS.Path.isRelative f
+                then OS.Path.concat(infile,f)
+                else f
+     in
+       if not (alreadyCopied f')
+       then 
+         let
+           val out = newname()
+         in
+           case alreadyCopied' (f',out)
+           of SOME a => raise Fail  ("the file: " ^ f' ^ " is suppose to be new, but I already know of it\n")
+            | NONE => (copyFile (f',out); SOME (out,loc))
+          end
+        else
+           case Binarymap.peek (!ac',f')
+           of SOME out => SOME (f',out)
+            | NONE => raise Fail ("the file: " ^ f' ^ " is suppose to copied before, but I don't recall that\n")
+      end
+
 local
-  val a = ref 48
+  val a = ref 0
   val base = 60
   fun gename' i q =
         let
@@ -112,74 +149,71 @@ local
     end
   fun newname () = (gename (!a)) before a:= (!a) + 1
 in
-  val newname = fn () => (newname ()) ^ ".uo"
+  val newname = fn base => fn () => OS.Path.concat(base,(newname ()) ^ ".uo")
 end
 
-fun cc_uofile infile f =
-     let
-       val f' = if OS.Path.isRelative f
-                then OS.Path.concat(infile,f)
-                else f
-     in
-       if alreadyCopied f'
-       then NONE
-       else
-       let
-         val out = newname()
-         val _ = copyFile (f',out)
-       in
-         SOME out
-       end
-     end
-
-fun cc_scripts infile (f,loc) = 
-     let
-       val f' = if OS.Path.isRelative f
-                then OS.Path.concat(infile,f)
-                else f
-     in
-       if not (alreadyCopied f')
-       then 
-         let
-           val out = newname()
-         in
-           case alreadyCopied' (f',out)
-           of SOME a => raise Fail  ("the file: " ^ f' ^ " is suppose to be new, but I already know of it\n")
-            | NONE => (copyFile (f',out); SOME (out,loc))
-          end
-        else
-           case Binarymap.peek (!ac',f')
-           of SOME out => SOME (f',out)
-            | NONE => raise Fail ("the file: " ^ f' ^ " is suppose to copied before, but I don't recall that\n")
-      end
-
-fun run (infile,outfile) = 
+fun mkdir file = 
   let
-    val parseTree = parse infile
-    val {dir,file} = OS.Path.splitDirFile infile
-    val infile' = OS.Path.mkCanonical(OS.Path.concat(dir,"../../"))
-    val npt = List.mapPartial (fn x => UlFile.mapPartial (fn y => SOME y) (cc_uofile infile') (cc_scripts infile') x) parseTree
-    val fdout = (Posix.FileSys.createf(outfile,Posix.FileSys.O_WRONLY, Posix.FileSys.O.flags [], Posix.FileSys.S.flags [Posix.FileSys.S.irusr]))
-          handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ outfile ^ " for writing\n" ^ s)
-    val writer = Posix.IO.mkTextWriter {fd=fdout,name=outfile,initBlkMode=true,appendMode=false,chunkSize=4000}
-    val os = TextIO.StreamIO.mkOutstream (writer,IO.LINE_BUF)
-    val _ = TextIO.StreamIO.output (os, String.concat (List.map pp_syntax npt))
+    val {dir,file} = OS.Path.splitDirFile file
+    val {isAbs, vol, arcs} = OS.Path.fromString dir
+    fun loop (s,acc) = let
+                         val dir = OS.Path.concat (acc,s)
+                       in
+                         if ((Posix.FileSys.ST.isDir (Posix.FileSys.stat dir)) 
+                            handle OS.SysErr _ => ((Posix.FileSys.mkdir(dir,dirpermission);true)
+                               handle OS.SysErr (s,e) => raise Fail ("cannot create " ^ dir ^ " : " ^ s ^ "\n")))
+                         then dir
+                         else raise Fail ("cannot create " ^ dir ^ " as is already exists and it is not a directory\n")
+                       end
   in
-    TextIO.StreamIO.closeOut os
+    ignore (List.foldl loop (if isAbs then "/" else "") arcs)
   end
 
+fun isEmpty dir = 
+       let val d = (Posix.FileSys.opendir dir) handle OS.SysErr(s,e) => raise Fail ("cannot check " ^ dir ^ " : " ^ s ^ "\n")
+       in (case Posix.FileSys.readdir d
+          of NONE => (Posix.FileSys.closedir d ; true)
+           | SOME _ => (Posix.FileSys.closedir d ; false))
+             handle OS.SysErr (s,e) => (Posix.FileSys.closedir d ; raise Fail ("cannot check " ^ dir ^ " : " ^ s ^ "\n"))
+       end
+
+local
+fun run (pres,infile,os,newname) = 
+      let
+        val {dir=indir,...} = OS.Path.splitDirFile infile
+        val infile' = OS.Path.mkCanonical(OS.Path.concat(indir,"../../"))
+        val parseTree = parse infile
+        val npt = List.mapPartial (fn x => UlFile.mapPartial (fn y => SOME y) (cc_uofile newname infile') (cc_scripts newname infile') x) parseTree
+      in
+        ignore(TextIO.StreamIO.output (os, String.concat (List.map pp_syntax npt)))
+      end
+in
+
+fun run' (_,[],_) = raise Fail "No input files ?"
+  | run' (pres,l,outfile) = 
+      let
+        val _ = mkdir outfile
+        val {dir=outdir,...} = OS.Path.splitDirFile outfile
+        val _ = if isEmpty outdir then () else raise Fail ("directory " ^ outdir ^ " is not empty\n")
+        val fdout = (Posix.FileSys.createf(outfile,Posix.FileSys.O_WRONLY, Posix.FileSys.O.flags [], filepermission))
+              handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ outfile ^ " for writing\n" ^ s)
+        val writer = Posix.IO.mkTextWriter {fd=fdout,name=outfile,initBlkMode=true,appendMode=false,chunkSize=4000}
+        val os = TextIO.StreamIO.mkOutstream (writer,IO.LINE_BUF)
+        fun close () = TextIO.StreamIO.closeOut os
+        val newname = newname outdir
+      in
+        (List.app (fn i => run (pres,i,os,newname)) l ; close ()) handle ? => (close (); raise ?)
+      end
+end
+
+val run = run'
+
 val _ = let 
-          val args = CommandLine.arguments()
-          val _ = if List.length args < 2 then raise Fail ("Less than two arguments where given to me.\n" ^
-                                                           "Please provide an ul-file as first argument and\n" ^
-                                                           "an output file for output. Then I fill up the current\n" ^
-                                                           "directory with a project described in the output file\n")
-                  else ()
-          val (infile::outfile::arg) = args
+          val (pres,infiles,outfile) = Arg.parse (CommandLine.arguments())
         in
-          run (infile,outfile)
+          run (pres,infiles,outfile)
         end
-          handle Fail a => TextIO.output (TextIO.stdErr,a)
-               | OS.SysErr(s,e) => TextIO.output (TextIO.stdErr, "Something bad happened: " ^ s)
+          handle Fail a => TextIO.output (TextIO.stdErr,a ^ "\n")
+               | OS.SysErr(s,e) => TextIO.output (TextIO.stdErr, "Something bad happened: " ^ s ^ "\n")
 
 

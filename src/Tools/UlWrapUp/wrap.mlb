@@ -31,9 +31,13 @@ local
         Ul.grm.sml
       end
     end
+  basis ArgumentParser = 
+    bas
+      ParseArg.sml
+    end
 
 in
-  local open Parser ParserLib Syntax KitLib
+  local open Parser ParserLib Syntax KitLib ArgumentParser
   in
     Main.sml
   end
