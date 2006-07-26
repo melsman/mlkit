@@ -1,6 +1,7 @@
 #ifndef LOADKAM_H
 #define LOADKAM_H
 
+#include <stdlib.h>
 #include "../CUtils/hashmap_typed.h"
 #include "LogLevel.h"
 

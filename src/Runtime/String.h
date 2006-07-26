@@ -17,6 +17,7 @@
 #ifndef STRING_H
 #define STRING_H
 
+#include <stdlib.h>
 #include "Flags.h"
 #include "Region.h"
 #include "Tagging.h"

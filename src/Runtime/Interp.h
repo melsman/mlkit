@@ -6,7 +6,7 @@
 
 /* Interpret code; assumes that code is already resolved; i.e., that
  * instruction numbers are turned into instruction addresses. */
-int 
+ssize_t 
 interpCode(Interp* interpreter,          // Interpreter
 	   register uintptr_t * sp,  // Stack pointer
 	   uintptr_t * ds,           // Data segment pointer
