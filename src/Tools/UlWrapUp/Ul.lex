@@ -1,3 +1,6 @@
+(* $Id:$ *)
+(* Author: Carsten Varming 2006 *)
+
   structure Tokens = Tokens
   type pos = int
   type svalue = Tokens.svalue

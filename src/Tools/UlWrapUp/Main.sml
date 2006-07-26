@@ -1,3 +1,5 @@
+(* $Id:$ *)
+(* Author: Carsten Varming 2006 *)
 
 structure ULLrVals = ULLrValsFun(structure Token = LrParser.Token)
 structure ULLex = UlLexFun(structure Tokens = ULLrVals.Tokens)

@@ -1,3 +1,6 @@
+(* $Id:$ *)
+(* Author: Carsten Varming 2006 *)
+
 structure UlFile =
   struct
     type scripts = string

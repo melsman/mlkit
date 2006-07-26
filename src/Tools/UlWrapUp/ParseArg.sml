@@ -1,3 +1,6 @@
+(* $Id:$ *)
+(* Author: Carsten Varming 2006 *)
+
 structure Arg :>
   sig
     val parse : string list -> (string list * string list * string)
