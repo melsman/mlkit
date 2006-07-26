@@ -118,6 +118,8 @@ typedef unsigned int uint32;
 
 #ifdef LAB_THREADED
 #define Instruct(name) lbl_##name
+// #define Next { temp = (int)pc; inc32pc; if ((inst_count++ % 1000) == 0) debug_writer5 ("INST %d, %d, env 0x%x, *env 0x%x --- **(ds + 0x5fb) = 0x%x\n", inst_count, getInstNumber(jumptable, jumptableSize, *(void **) temp), (int) env, (uint) env > 100 ? *env : 0, debug_file != -1 ? *((unsigned long *)*(ds + 0x5fb)) : 0); goto **(void **)temp; }
+// #define Next { temp = (int)pc; inc32pc; inst_count++; /*if ((inst_count % 1) == 0)*/ debug_writer5 ("INST %d, %d, env 0x%x, *env 0x%x --- **(ds + 0x5fb) = 0x%x\n", inst_count, getInstNumber(jumptable, jumptableSize, *(void **) temp), (int) env, (uint) env > 100 ? *env : 0, debug_file != -1 ? *((unsigned long *)*(ds + 0x5fb)) : 0); goto **(void **)temp; }
 #define Next { temp = (uintptr_t)pc; inc32pc;  goto **(void **)temp; }
 #else
 #define Instruct(name) case name
@@ -296,6 +298,18 @@ typedef unsigned int uint32;
  * have been resolved already.
  */
 
+/*
+int
+getInstNumber(void *jumptable[], unsigned int jumptableSize, void *inst)
+{
+  unsigned int i;
+  for (i = 0; i < jumptableSize; i++) 
+  {
+    if (inst == jumptable[i]) return i;
+  }
+  return -1;
+} */
+
 /* replace instruction numbers with instruction addresses */
 void 
 resolveInstructions(int sizeW, bytecode_t start_code,
@@ -458,6 +472,8 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
   }
 
 #ifdef LAB_THREADED
+  debug_writer1("interp %d Jump to FIRST INSTRUCTION\n",0);
+  unsigned long inst_count = 0;
   Next;                 // jump to first instruction
 #else
   while (1) {
@@ -564,6 +580,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(PUSH_LBL): {
 	debug(printf("PUSH_LBL: %x\n", JUMPTGT(s32pc)));
+  debug_writer2 ("PUSH_LBL pc = 0x%x - *pc = 0x%x\n", (int) pc, (int) s32pc);
 	pushDef((int) JUMPTGT(s32pc));
 	inc32pc;
 	Next;
@@ -602,6 +619,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
       Instruct(APPLY_FUN_CALL1): {  /*mael: ok*/
+  debug_writer3("APPLY_FUN_CALL1 - env = 0x%x - stack[-1] = 0x%x - acc = 0x%x\n", (int) env, (int) selectStackDef(-1), acc);
 	temp = (int) env;
 	env = (int *) selectStackDef(-1);
 	selectStackDef(-1) = temp;
@@ -898,6 +916,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       Instruct(C_CALL0): { 
 	Setup_for_c_call;
 	debug(printf("C_CALL0(%d)\n", u32pc));
+  debug_writer1("C_CALL0(0x%x)\n", u32pc);
 	acc = ((c_primitive) u32pc)();
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
@@ -908,6 +927,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Setup_for_c_call;
 	//debug(printf("C_CALL1(%d) with acc %d (0x%x)\n", cprim[u32pc], acc, acc));
 	debug(printf("C_CALL1(%d) with acc %d (0x%x)\n", u32pc, acc, acc));
+  debug_writer2("C_CALL1(0x%x) with acc %d\n", u32pc, acc);
 	acc = ((c_primitive) u32pc)(acc);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
@@ -918,6 +938,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Setup_for_c_call;
 	debug(printf("C_CALL2(%d) with acc %d and arg %d\n", u32pc, acc, selectStackDef(-1)));
 	//debug(printf("C_CALL2(%d) with acc %d and arg %d\n", cprim[u32pc], acc, selectStackDef(-1)));
+  debug_writer3("C_CALL2(0x%x) with acc %d and arg %d\n", u32pc, acc, selectStackDef(-1));
 	acc = ((c_primitive) u32pc)(popValDef, acc);
 	inc32pc; /* index in c_prim */
 	Restore_after_c_call;
@@ -927,6 +948,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       Instruct(C_CALL3): { 
 	Setup_for_c_call;
 	debug(printf("C_CALL3(%d) with acc %d and arg %d\n", u32pc, acc, selectStackDef(-1)));
+  debug_writer4("C_CALL3(0x%x) with acc %d and args (%d,%d)\n", u32pc, acc, selectStackDef(-2), selectStackDef(-1));
 	temp = popValDef;
 	acc = ((c_primitive) u32pc)(popValDef, temp, acc);
 	inc32pc; /* index in c_prim */
@@ -937,6 +959,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       Instruct(C_CALL4): { 
 	Setup_for_c_call;
 	debug(printf("C_CALL4 - %d - (%d,%d,%d,%d)\n", u32pc, selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
+  debug_writer5("C_CALL4(0x%x) with acc %d and args (%d,%d,%d)\n", u32pc, acc, selectStackDef(-3), selectStackDef(-2),selectStackDef(-1));
 	acc = ((c_primitive) u32pc)(selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
 	popNDef(3);
 	inc32pc; /* index in c_prim */
@@ -949,6 +972,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Setup_for_c_call;
 	debug(printf("C_CALL5 - %d - (%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-4), 
 		     selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
+  debug_writer6("C_CALL5(0x%x) with acc %d and args (%d,%d,%d,%d)\n", u32pc, acc, selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),selectStackDef(-1));
 	acc = ((c_primitive) u32pc)(selectStackDef(-4), selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
 	popNDef(4);
 	inc32pc; /* index in c_prim */
@@ -961,6 +985,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	Setup_for_c_call;
 	debug(printf("C_CALL6 - %d - (%d,%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-5), 
 		     selectStackDef(-4), selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
+  debug_writer7("C_CALL6(0x%x) with acc %d and args (%d,%d,%d,%d,%d)\n", u32pc, acc, selectStackDef(-5), selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),selectStackDef(-1));
 	acc = ((c_primitive) u32pc)(selectStackDef(-5), selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),
                        selectStackDef(-1), acc);
 	popNDef(5);
@@ -975,6 +1000,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 	debug(printf("C_CALL7 - %d - (%d,%d,%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-6), 
 		     selectStackDef(-5), selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),
          selectStackDef(-1), acc));
+  debug_writer8("C_CALL7(0x%x) with acc %d and args (%d,%d,%d,%d,%d,%d)\n", u32pc, acc, selectStackDef(-6), selectStackDef(-5), selectStackDef(-4), selectStackDef(-3), selectStackDef(-2),selectStackDef(-1));
 	acc = ((c_primitive) u32pc)(selectStackDef(-6), selectStackDef(-5), selectStackDef(-4),
                               selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
 	popNDef(6);
@@ -1019,6 +1045,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(SELECT_ENV_N): {
 	debug(printf("SELECT_ENV_N %d - env = 0x%x\n", s32pc, env));
+  debug_writer2("SELECT_ENV_N %d - env = 0x%x\n", (int) s32pc, (int) env);
 	acc = *(env + s32pc);
 	inc32pc;
 	Next;
@@ -1087,12 +1114,14 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(STORE_DATA): { 
 	debug(printf("STORE_DATA(%x) (acc = %d; 0x%x) - slot = 0x%x - ds = 0x%x\n", s32pc, acc, acc, ds + s32pc, ds));
+  debug_writer4("STORE_DATA acc = 0x%x - ds = 0x%x - *pc = 0x%x - ds + s32pc = 0x%x\n", acc, (int) ds, s32pc, (int) (ds+s32pc));
 	*(ds + s32pc) = acc;
 	inc32pc;
 	Next;
       }
       Instruct(FETCH_DATA): { 
 	debug(printf("FETCH_DATA(%x)\n", s32pc));
+  debug_writer3("FETCH_DATA *pc = 0x%x - ds = 0x%x - *(ds + *pc) = 0x%x\n", s32pc, (int) ds, *(ds + s32pc));
 	acc = *(ds + s32pc);
 	inc32pc;
 	Next;
@@ -1200,6 +1229,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(SELECT_ENV_PUSH): {   /*mael*/
 	debug(printf("SELECT_ENV_PUSH %d - env = 0x%x\n", s32pc, env));
+  debug_writer3("SELECT_ENV_PUSH %d - env = 0x%x - newtop = 0x%x\n", s32pc, (int) env, *(env + s32pc));
 	pushDef(*(env + s32pc));
 	inc32pc;
 	Next;
@@ -1490,16 +1520,19 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
  * instruction numbers are turned into instruction addresses. */
 ssize_t 
 interpCode(Interp* interpreter,         // The interpreter
-       register uintptr_t * sp, // Stack pointer
-       uintptr_t * ds,          // Data segment pointer
-       uintptr_t * exnPtr,      // Pointer to next exn-handler on stack
-       Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
-       char ** errorStr,            // Cell to store error-string in case of an uncaught exception
-       size_t *exnCnt,       // Exception name counter
-       bytecode_t b_prog,           // The actual code
-       void *serverCtx)  {          // Apache request_rec pointer
-       ssize_t res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
-		   exnCnt, b_prog, 0, INTERPRET, serverCtx);    
+	   register unsigned long * sp, // Stack pointer
+	   unsigned long * ds,          // Data segment pointer
+	   unsigned long * exnPtr,      // Pointer to next exn-handler on stack
+	   Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
+	   char ** errorStr,            // Cell to store error-string in case of an uncaught exception
+	   unsigned long *exnCnt,       // Exception name counter
+	   bytecode_t b_prog,           // The actual code
+	   void *serverCtx)             // Apache request_rec pointer
+{
+  debug_writer1("interpCode %d interp\n",0);
+  int res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
+                   exnCnt, b_prog, 0, INTERPRET, serverCtx);    
+  debug_writer1("interpCode %d interp DONE\n",0);
                                             // sizeW not used when mode is INTERPRET
   return res;
 }

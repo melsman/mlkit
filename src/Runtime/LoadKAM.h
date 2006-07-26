@@ -140,4 +140,28 @@ void interpClear(Interp* interp);
 /* Initialize global code fragments */
 void resolveGlobalCodeFragments(void);
 
+#if 0 // APACHE
+extern int debug_file;
+extern void debug_writer1(char *, int);
+extern void debug_writer2(char *, int,int);
+extern void debug_writer3(char *, int,int,int);
+extern void debug_writer4(char *, int,int,int,int);
+extern void debug_writer5(char *, int,int,int,int,int);
+extern void debug_writer6(char *, int,int,int,int,int,int);
+extern void debug_writer7(char *, int,int,int,int,int,int,int);
+extern void debug_writer8(char *, int,int,int,int,int,int,int,int);
+#define debug_file_as(LV,EXP) {LV = EXP;}
+#else
+#define debug_writer1(Q,A) {}
+#define debug_writer2(Q,A,B) {}
+#define debug_writer3(Q,A,B,C) {}
+#define debug_writer4(Q,A,B,C,D) {}
+#define debug_writer5(Q,A,B,C,D,E) {}
+#define debug_writer6(Q,A,B,C,D,E,F) {}
+#define debug_writer7(Q,A,B,C,D,E,F,G) {}
+#define debug_writer8(Q,A,B,C,D,E,F,G,H) {}
+#define debug_file_as(LV,EXP) {}
+#endif
+
+
 #endif /* LOADKAM_H */

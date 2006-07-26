@@ -29,7 +29,6 @@
 #define debug(Arg) {}
 #endif
 
-
 /* -----------------------------------------------------
  * String to Code Map
  * ----------------------------------------------------- */
@@ -165,9 +164,10 @@ labelMapClear(labelMap m)
   return labelMapNew();
 }
 
-/* Global regions 0-6 and global exception 
- * constructors 7-11 are allocated in data segment */
-#define INTERP_INITIAL_DATASIZE 12
+/* Global regions 0-6, global exception 
+ * constructors 7-11 are allocated in data segment
+ * and a garbage field located in 12 */
+#define INTERP_INITIAL_DATASIZE 13
 
 /* Create a new interpreter:
  *   - We could perhaps allocate the interpreter stack when 
@@ -269,6 +269,19 @@ read_string_buf(FILE* fd,unsigned long n,char* buf)
   return READ_OK;
 }
 
+static int
+skip_string_buf(FILE* fd,unsigned long n)
+{
+  unsigned long i;
+  int c;
+  for ( i = 0 ; i < n ; i++ ) 
+  {
+    if ( (c = fgetc(fd)) == EOF)
+      return READ_ERROR;
+  }
+  return READ_OK;
+}
+
 // A label is layed out in the file as  |id;sz_str;chars| - no trailing zero
 static int
 read_label(FILE* fd, label* lab_ptr) 
@@ -290,6 +303,23 @@ read_label(FILE* fd, label* lab_ptr)
     }
   debug(printf("read_label: id = %d; str_sz = %d; base = %s\n", id, str_sz, &(lab->base)));
   *lab_ptr = lab;
+  return READ_OK;
+}
+
+// A label is layed out in the file as  |id;sz_str;chars| - no trailing zero
+static int
+skip_label(FILE* fd) 
+{
+  unsigned long str_sz;
+  if ( read_unsigned_long(fd, &str_sz) == READ_ERROR )
+    return READ_ERROR;
+  if ( read_unsigned_long(fd, &str_sz) == READ_ERROR )
+    return READ_ERROR;
+  if ( skip_string_buf(fd,str_sz) == READ_ERROR )
+    {
+      return READ_ERROR;
+    }
+  debug(printf("skip_label: str_sz = %d\n", str_sz));
   return READ_OK;
 }
 
@@ -355,7 +385,7 @@ attempt_open(char* name, struct exec_header* exec_header, serverstate ss, FILE *
     exit(-1);
   }
   if ( (res = read_exec_header(fd, exec_header)) < 0 ) {
-    switch ((int)res) {
+    switch (res) {
     case FILE_NOT_FOUND:
       die2("attempt_open: cannot find the file ", name);
       break;
@@ -441,6 +471,8 @@ resolveDataImports(labelMap labelMap,
 
     debug(printf("Importing relAddr = %d (0x%x), label = %d (0x%x) \n", 
 		 relAddr, relAddr, lab, lab));
+    debug_writer4("Importing relAddr = %d (0x%x), label = %d (0x%x) \n", 
+		 relAddr, relAddr, lab, lab);
 
     if ( (dsAddr = labelMapLookup(labelMap, lab)) == 0 ) {
       free(lab);
@@ -485,6 +517,26 @@ addCodeExports(labelMap m,
   return 0;
 }
 
+static int
+skipCodeExports(labelMap m, 
+	       FILE* fd, 
+	       unsigned long export_size)     // size is in entries
+{	   
+  unsigned long relAddr;
+
+  while ( export_size > 0 )
+  {
+    if ( skip_label(fd) == READ_ERROR )
+      return TRUNCATED_FILE;
+    if ( read_unsigned_long(fd, &relAddr) == READ_ERROR )
+    {
+      return TRUNCATED_FILE;
+    }
+    export_size --;
+  }
+  return 0;
+}
+
 /* Read entries (lab, relAddr), where lab is a compile time label for
  * a slot in the data segment and relAddr is the place in the bytecode
  * where lab appears in a `StoreData lab' instruction. For each pair,
@@ -516,9 +568,41 @@ addDataExports(Interp* interp,
 
     debug(printf("Export label = %d (0x%x), relAddr = %d (0x%x), newDsAddr = %d\n", 
 		 lab, lab, relAddr, relAddr, newDsAddr));
+    debug_writer5("Export label = %d (0x%x), relAddr = %d (0x%x), newDsAddr = %d\n", 
+		 lab, lab, relAddr, relAddr, newDsAddr);
 
     * (unsigned long*)(start_code + relAddr) = newDsAddr;
     labelMapInsert(interp->dataMap, lab, newDsAddr);
+    export_size --;
+  }
+  return 0;
+}
+
+/* alias data export labels with the garbage pointer */
+static int 
+garbageDataExports(Interp* interp, 
+	       FILE* fd, 
+	       unsigned long export_size,  // size is in entries
+	       bytecode_t start_code)     
+{
+  unsigned long relAddr;
+
+  while ( export_size > 0 )
+  {
+    if ( skip_label(fd) == READ_ERROR )
+      return TRUNCATED_FILE;
+    // relAddr is the relative address of `StoreData lab' address in bytecode
+    if ( read_unsigned_long(fd, &relAddr) == READ_ERROR )
+    {
+      return TRUNCATED_FILE;
+    }
+
+    debug(printf("Garbage export label relAddr = %d (0x%x), newDsAddr = %d\n", 
+                   relAddr, relAddr, INTERP_INITIAL_DATASIZE - 1));
+    debug_writer3("Garbage export label relAddr = %d (0x%x), newDsAddr = %d\n", 
+		               relAddr, relAddr, INTERP_INITIAL_DATASIZE -1);
+
+    * (unsigned long*)(start_code + relAddr) = INTERP_INITIAL_DATASIZE - 1;
     export_size --;
   }
   return 0;
@@ -719,9 +803,11 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
   LongList* p;
   Ro* topRegion = NULL;
 
+  debug_writer1("interpRun getHeap %d\n", 0);
   h = getHeap(ss);
   if ( h->status == HSTAT_UNINITIALIZED )
     {
+      debug_writer1("interpRun %d init heap\n", 0);
       ds = h->ds;
       sp = ds;
 
@@ -729,6 +815,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
       debug(printf("DATASPACE ds = 0x%x\n", ds));
       sp += interpreter->data_size;
       debug(printf("STACK sp = 0x%x, datasize = %d\n", sp, interpreter->data_size));
+      debug_writer3("interpRun data_size = 0x%x - sp = 0x%x - ds = 0x%x\n", interpreter->data_size, (int) sp, (int) ds);
 
       // Now, allocate global regions and store addresses in data segment
       // the indexes should be the same as those defined in Manager/Name.sml
@@ -746,6 +833,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
       GLOBAL_EXCON(9,"Bind");
       GLOBAL_EXCON(10,"Overflow");
       GLOBAL_EXCON(11,"Interrupt");
+      // 12 is used for garbage
 
       exn_DIV = (Exception*)**(size_t **)(ds+7);
       exn_MATCH = (Exception*)**(size_t **)(ds+8);
@@ -778,11 +866,18 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
       }
 
       // start interpretation by interpreting the init_code
+      debug_writer1("interpRun %d interpCode init_code\n", 0);
+      debug_file_as(int tmp,debug_file);
+      debug_file_as(debug_file,-1);
       res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
 		       &exnCnt,(bytecode_t)init_code, ss);
   
+      debug_file_as(debug_file,tmp);
+      debug_writer4("initializeHeap sp = 0x%x - sp0 = 0x%x - ds = 0x%x - topRegion = 0x%x\n", (int) sp, (int) sp0, (int) ds, (int) topRegion);
+
       if ( res >= 0 && extra_code )
       {
+      debug_writer1("interpRun %d initializeHeap\n", 0);
         initializeHeap(h,sp0,exnPtr, exnCnt, ss);
       }
       else 
@@ -807,9 +902,11 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
 
     touchHeap(h,ss);
 
+      debug_writer1("interpRun %d interpCode extra_code\n", 0);
     res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
 		     &exnCnt,(bytecode_t)extra_code, ss);
 
+      debug_writer1("interpRun %d releaseHeap\n", 0);
     releaseHeap(h,ss);
   }    
 
@@ -828,21 +925,42 @@ interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, ssize
   bytecode_t start_code;
   FILE *fd;
   int tmp;
+  debug_writer1("interpLoadRun %d starting\n", 0);
 
 #if ( THREADS && CODE_CACHE )
+  debug_writer1("interpLoadRun %d lock\n", 0);
   LOCK_LOCK(CODECACHEMUTEX);
+  debug_writer1("interpLoadRun %d find code\n", 0);
   start_code = strToCodeMapLookup(interp->codeCache,file);  
   if ( start_code == NULL )
     {
 #endif
       struct exec_header exec_header;
+  debug_writer1("interpLoadRun %d open file\n", 0);
       tmp = attempt_open(file, &exec_header, ss, &fd);
+  debug_writer1("interpLoadRun %d load\n", 0);
       start_code = interpLoad(interp, file, fd, &exec_header, ss);
-      fclose(fd);
+      debug(printf("[skip code exports]\n"));
+      if ( skipCodeExports(interp->codeMap, fd, 
+              exec_header.export_size_code) < 0 ) 
+      {
+        die2("interpLoadRun: Cannot extract code exports for ", file);
+      }
+
+      debug(printf("[alias data exports labels with garbage field]\n"));
+      if ( garbageDataExports(interp, fd, exec_header.export_size_data, 
+            start_code) < 0 ) 
+      {
+        die2("interpLoadRun: Cannot extract data exports for ", file);
+      }
+  debug_writer1("interpLoadRun %d close file\n", 0);
+      fclose(fd); // as we only read files we don't care about the return value
 #if ( THREADS && CODE_CACHE )
+  debug_writer1("interpLoadRun %d insert code\n", 0);
       strToCodeMapInsert(interp->codeCache,file,start_code);
       (*ss->report) (INFO, file,ss->aux);
     }
+  debug_writer1("interpLoadRun %d unlock\n", 0);
   LOCK_UNLOCK(CODECACHEMUTEX);
 #endif
 
@@ -851,12 +969,15 @@ interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, ssize
    *  loaded bytecode as an extra parameter. 
    */
 
+  debug_writer1("interpLoadRun %d run\n", 0);
   *res = interpRun(interp, start_code, errorStr, ss);
 
 #if !( THREADS && CODE_CACHE )
+  debug_writer1("interpLoadRun %d free\n", 0);
   free(start_code);
 #endif
 
+  debug_writer1("interpLoadRun %d done\n", 0);
   return 0;    // return whatever the bytecode interpreter returns
 }
 
