@@ -174,3 +174,10 @@ sml_getgrnam
 sml_getpwnam
 sml_getpwuid
 sml_getTty
+sml_fpathconf
+sml_pathconf
+ftruncate
+sml_stat
+sml_fstat
+sml_lstat
+
