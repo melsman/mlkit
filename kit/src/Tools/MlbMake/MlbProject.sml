@@ -670,7 +670,7 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
       datatype E = Empty 
                  | Map of (MS.Bid.bid,(E * int)) Binarymap.dict 
       type Q = (E * E)
-      val fresh = Binarymap.mkDict MS.Bid.bidCompare
+      val fresh = Binarymap.mkDict MS.Bid.bidCompare : (MS.Bid.bid,(E * int)) Binarymap.dict
       fun new (A,_) = (A,Empty)
       fun lookup (Empty,_) _  = NONE
         | lookup _ [] = NONE

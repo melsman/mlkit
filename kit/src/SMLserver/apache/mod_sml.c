@@ -18,7 +18,7 @@
 #include "../../Runtime/HeapCache.h"
 #include "greeting.h"
 
-#define APSML_SCRIPT_HASHTABLE_SZ 1023
+// #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
 #define DEFAULT_PRJID "sources"
 #define DEFAULT_XT 0
@@ -293,6 +293,8 @@ runtime_unlock(unsigned int i)/*{{{*/
 
 static char mlb[] = "/MLB/SMLserver";
 
+int debug_file = -1;
+
 static int
 apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s) //{{{
 {
@@ -394,11 +396,18 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
       "apsml: test 1");
   rd->ctx->cachelock.shmname = tempnam(NULL, NULL);
-  if (rd->ctx->cachelock.shmname == NULL) return 5;
+  if (rd->ctx->cachelock.shmname == NULL)
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+      "apsml: Unable to get temporary name from tempnam");
+    return APR_EINIT;
+  }
   stat = apr_shm_create(&(rd->ctx->cachelock.shm), SHMSIZE, rd->ctx->cachelock.shmname, pconf);
   if (stat != APR_SUCCESS)
   {
-    return 5;
+    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+      "apsml: Unable to create shared memory using apr_shm_create");
+    return stat;
   }
     ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
       "apsml: test 2");
@@ -437,6 +446,9 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
       "apsml: init script: %s about to start", rd->ctx->initscript);
     rd->ctx->pid = getpid();
+  char *name = (char *) malloc (120);
+  snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", rd->ctx->pid);
+  debug_file = mkstemp(name);
     if (rd->ctx->initscript[0] == '/') 
     {
       res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
@@ -472,6 +484,65 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   return OK;
 }       //}}}
 
+
+/*
+void
+debug_writer1(char *s, int a)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a);
+  return;
+}
+
+void
+debug_writer2(char *s, int a, int b)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b);
+  return;
+}
+
+void
+debug_writer3(char *s, int a, int b, int c)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b, c);
+  return;
+}
+
+void
+debug_writer4(char *s, int a, int b, int c, int d)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b, c, d);
+  return;
+}
+
+void
+debug_writer5(char *s, int a, int b, int c, int d, int e)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b, c, d, e);
+  return;
+}
+
+void
+debug_writer6(char *s, int a, int b, int c, int d, int e, int f)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b, c, d, e, f);
+  return;
+}
+
+void
+debug_writer7(char *s, int a, int b, int c, int d, int e, int f, int g)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b, c, d, e, f, g);
+  return;
+}
+
+void
+debug_writer8(char *s, int a, int b, int c, int d, int e, int f, int g, int h)
+{
+  if (debug_file != -1) dprintf (debug_file, s, a,b, c, d, e, f, g, h);
+  return;
+}
+*/
+
 static void
 apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
 {
@@ -492,6 +563,10 @@ apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
   apr_global_mutex_child_init(&(ctx->sched.lock), ctx->sched.glockname, p);
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
       "apsml: childInit 3");
+
+  char *name = (char *) malloc (120);
+  snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", ctx->pid);
+  debug_file = mkstemp(name);
 }/*}}}*/
 
 #if 0
@@ -736,18 +811,21 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
       break;
   }
 
+  debug_writer1("Starting new file %d\n", 0);
   ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-     "Starting interpreter on file %s", file);
+     "Starting interpreter on file %s, pid: %d", file, rd->ctx->pid);
 
 //  globalrd = rd;
   if (interpLoadRun (ctx->interp, file, &errorStr, &ss, &res) != 0)
   {
     ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-       "Interpretion on file %s went bad", file);
+       "Interpretion on file %s went bad, pid: %d", file, rd->ctx->pid);
+  debug_writer1("Stopping new file %d BAD\n", 0);
     return APSML_ERROR;
   }
   ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-     "Interpretion on file %s was successful", file);
+     "Interpretion on file %s was successful, pid: %d", file, rd->ctx->pid);
+  debug_writer1("Stopping new file %d GOOD\n", 0);
 
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 //     "Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);

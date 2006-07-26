@@ -473,7 +473,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
 #ifdef LAB_THREADED
   debug_writer1("interp %d Jump to FIRST INSTRUCTION\n",0);
-  unsigned long inst_count = 0;
+//  unsigned long inst_count = 0;
   Next;                 // jump to first instruction
 #else
   while (1) {
@@ -1520,12 +1520,12 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
  * instruction numbers are turned into instruction addresses. */
 ssize_t 
 interpCode(Interp* interpreter,         // The interpreter
-	   register unsigned long * sp, // Stack pointer
-	   unsigned long * ds,          // Data segment pointer
-	   unsigned long * exnPtr,      // Pointer to next exn-handler on stack
+	   register uintptr_t * sp, // Stack pointer
+	   uintptr_t * ds,          // Data segment pointer
+	   uintptr_t * exnPtr,      // Pointer to next exn-handler on stack
 	   Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
 	   char ** errorStr,            // Cell to store error-string in case of an uncaught exception
-	   unsigned long *exnCnt,       // Exception name counter
+	   uintptr_t *exnCnt,       // Exception name counter
 	   bytecode_t b_prog,           // The actual code
 	   void *serverCtx)             // Apache request_rec pointer
 {
