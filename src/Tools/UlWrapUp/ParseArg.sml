@@ -1,103 +1,247 @@
-(* $Id:$ *)
 (* Author: Carsten Varming 2006 *)
 
-structure Arg :>
-  sig
-    val parse : string list -> (string list * string list * string)
-                           (*   preserve      infiles       outfile *)
-  end = 
+functor QuickSort(Arg:
+                    sig
+                      type A
+                      type V
+                      val < : (A * A) -> bool
+                      val sub : V * int -> A
+                      val update : V * int * A -> V
+                      val length : V -> int
+                    end)
+                    :>
+                    sig
+                      val sort : Arg.V -> Arg.V
+                    end=
   struct
-    datatype Actions = Pres of string
-                     | In of string
-                     | Out of string
-    
-    local 
-      datatype Keywords = Preserve of string option
-                        | Infile of string option
-                        | Outfile of string option
-                        | UnKnown
-      
-      local
-        val state = ref false
-      in
-        fun keyword _ "--preserve" = SOME (Preserve NONE)
-          | keyword _ "-p" = SOME (Preserve NONE)
-          | keyword _ "--infile" = SOME(Infile NONE)
-          | keyword _ "-i" = SOME (Infile NONE)
-          | keyword _ "--outfile" = SOME(Outfile NONE)
-          | keyword _ "-o" = SOME(Outfile NONE)
-          | keyword _ "--" = (state:=true;NONE)
-          | keyword s x = 
-             if s 
-             then 
+    fun swap a i j = (fn (ja,ia) => Arg.update(Arg.update(a,i,ja),j,ia))
+                     (Arg.sub (a,j),Arg.sub(a,i))
+
+    fun split a i j k =
+      let 
+        val p = Arg.sub(a,j)
+        fun left i j = if i < j andalso (not (Arg.<(p,Arg.sub(a,i))))
+                     then left (i+1) j
+                     else i
+        fun right k j = if k > j andalso (not (Arg.<(Arg.sub(a,k),p)))
+                      then right (k-1) j
+                      else k
+        fun go a i j k = let 
+                         val i' = left i j 
+                         val k' = right k j
+                       in
+                         if i' = j andalso k' = j then (a,j)
+                         else (let val a = swap a i' k' 
+                               in if i' = j then go a i' k' k'
+                                  else if k' = j then go a i' i' k'
+                                  else go a i' j k'
+                               end)
+                       end
+      in 
+        go a i j k
+      end 
+
+    fun sort a i k = if i < k
+                     then 
+                       let
+                         val j = i + (k - i) div 2
+                         val (a,p) = split a i j k
+                         val a = sort a i (p - 1)
+                         val a = sort a (p+1) k
+                       in a
+                       end
+                     else a
+
+    val sort = fn a => sort a 0 (Arg.length a - 1)
+  end
+
+functor ArgType(Out : 
+  sig
+    type A
+  end) :>
+  sig
+    datatype ArgKind = 
+        Int of (int -> Out.A)
+      | String of (string -> Out.A)
+      | Binary of (bool -> Out.A)
+  end =
+  struct
+    datatype ArgKind = 
+        Int of (int -> Out.A)
+      | String of (string -> Out.A)
+      | Binary of (bool -> Out.A)
+  end
+
+functor Argument(Data :
+  sig
+    type A
+    structure Arg :
+      sig
+        datatype ArgKind = 
+          Int of (int -> A)
+        | String of (string -> A)
+        | Binary of (bool -> A)
+      end
+    val Default : string -> A
+    exception BadArg of string
+    val constructors : (string * Arg.ArgKind) list
+  end) :>
+  sig
+    val parse : string list -> Data.A list
+  end =
+  struct
+    structure Sort = QuickSort(struct 
+                                 type A = (string * Data.Arg.ArgKind)
+                                 fun op< ((s1,_),(s2,_)) = String.<(s1,s2)
+                                 type V = A Array.array
+                                 val sub = Array.sub
+                                 fun update (a,i,e) = (Array.update (a,i,e); a)
+                                 val length = Array.length
+                               end)
+
+    val constructors = Array.fromList Data.constructors
+    val _ = Sort.sort constructors
+    fun find (a : (string * Data.Arg.ArgKind) Array.array) s i j = if i < j 
+                       then
+                         let val p = i + (j - i) div 2
+                         in
+                           case String.compare(s,#1 (Array.sub(a,p)))
+                           of EQUAL => SOME (#2 (Array.sub(a,p)))
+                            | LESS => find a s i p
+                            | GREATER => find a s (p+1) j
+                         end
+                       else NONE
+    val find = fn (a,s) => find a s 0 (Array.length a)
+    local
+      val state = ref false
+    in
+      datatype Kind = Eq of Data.A
+                    | Int of int -> Data.A
+                    | String of string -> Data.A
+                    | Binary of bool -> Data.A
+                    | Unknown
+      fun toArgKind (Int f) = Data.Arg.Int f
+        | toArgKind (String f) = Data.Arg.String f
+        | toArgKind (Binary f) = Data.Arg.Binary f
+      fun getBinary "true" = SOME true
+        | getBinary "false" = SOME false
+        | getBinary x = case Int.fromString x
+                        of SOME 0 => SOME false
+                         | SOME x => SOME true
+                         | NONE => NONE
+
+      fun data k (Data.Arg.Int f) s = f (case Int.fromString s 
+                                      of NONE => raise Data.BadArg (s ^ " not a proper argument to " ^ k)
+                                       | SOME i => i)
+        | data _ (Data.Arg.String f) s = f s
+        | data k (Data.Arg.Binary f) s = f (case getBinary s
+                                         of SOME b => b
+                                          | NONE => raise Data.BadArg (s ^ " not a proper argument to " ^ k))
+
+      fun keyword s a =
+           if s
+           then SOME Unknown
+           else
+             case find (constructors,a)
+             of SOME (Data.Arg.Int v) => SOME (Int v)
+              | SOME (Data.Arg.String v) => SOME (String v)
+              | SOME (Data.Arg.Binary v) => SOME (Binary v)
+              | NONE =>
+           if a = "--"
+           then (state := true ; NONE)
+           else
                let
-                 val (k,v) = Substring.splitl (fn x => x <> #"=") (Substring.full x)
+                 val (k,v) = Substring.splitl (fn x => x <> #"=") (Substring.full a)
                  fun strip (l,n) = Substring.string (#2 (Substring.splitAt (l,n)))
+                 val k' = Substring.string k
                in
                  if Substring.size k = 0 
-                 then SOME UnKnown
+                 then SOME Unknown
                  else if Substring.isPrefix "-" k
-                 then case keyword false (Substring.string k)
-                      of NONE => NONE
-                       | SOME UnKnown => raise Fail ("Unknown option : " ^ (Substring.string k))
-                       | SOME (Preserve _) => SOME (Preserve (SOME (strip (v,1))))
-                       | SOME (Infile _) => SOME (Infile (SOME (strip (v,1))))
-                       | SOME (Outfile _) => SOME (Outfile (SOME (strip (v,1))))
-                 else SOME UnKnown
+                 then
+                   case find (constructors,k') 
+                   of NONE => raise Data.BadArg ("Unknown option : " ^ k')
+                    | SOME d => SOME (Eq (data k' d (strip (v,1))))
+                 else SOME Unknown
                end
-             else SOME UnKnown
-        val keyword = fn x => keyword true x
-        
-        fun next k [] = raise Fail (k ^ " takes one argument")
-          | next k (x::xr) = case keyword x 
-                             of SOME UnKnown => x
-                              | _ => raise Fail (x ^ " not a proper argument to " ^ k)
-        
-        datatype Actions = Pres' of string
-                         | In' of string
-                         | Out' of string
-                         | File' of string
-        
-        fun parseArgs [] = (state := false ; [])
-          | parseArgs (x::xr) = 
-                if not (!state) then case keyword x
-                                of SOME (Preserve NONE) => Pres' (next x xr):: (parseArgs (tl xr))
-                                 | SOME (Preserve (SOME v)) => Pres' v :: (parseArgs xr)
-                                 | SOME (Infile NONE) => In' (next x xr) :: (parseArgs (tl xr))
-                                 | SOME (Infile (SOME v)) => In' v :: (parseArgs xr)
-                                 | SOME (Outfile NONE) => Out' (next x xr) :: (parseArgs (tl xr))
-                                 | SOME (Outfile (SOME v)) => Out' v :: (parseArgs xr)
-                                 | SOME UnKnown => (File' x) :: (parseArgs xr)
-                                 | NONE => parseArgs xr
-                else (state := false ; List.map File' (x::xr))
+      val keyword = fn x => keyword (!state) x
+
+      fun next k x = case keyword x 
+                     of SOME Unknown => x
+                      | _ => raise Data.BadArg (x ^ " not a proper argument to " ^ k)
+    
+      fun parseArgs [] acc = List.rev acc
+        | parseArgs (x::xr) acc = 
+              if not (!state)
+              then
+                case keyword x
+                of NONE => parseArgs xr acc
+                 | SOME Unknown => parseArgs xr (Data.Default x :: acc)
+                 | SOME (Eq a) => parseArgs xr (a::acc)
+                 | SOME f => case xr of [] => raise Data.BadArg (x ^ " takes one argument")
+                              | (x'::xr') => parseArgs xr' ((data x (toArgKind f) (next x x')) :: acc)
+               else parseArgs xr (Data.Default x :: acc)
+
+      val parse = fn x => (state:=false ; parseArgs x []) 
+    end
+  end;
+
+structure Arg :> 
+  sig
+    val parse : string list -> (string list * string list * string)
+  end =
+  struct
+    structure D = 
+      struct
+        datatype A = Out of string
+                   | In of string
+                   | Pres of string
+                   | Undef of string
+        structure Arg = ArgType(struct
+                                  type A = A
+                                end)
+        val Default = Undef
+        exception BadArg of string
+        val constructors = [("-p",Arg.String Pres),("--preserve",Arg.String Pres),
+                            ("-i",Arg.String In),("--infile",Arg.String In),
+                            ("-o",Arg.String Out),("--outfile",Arg.String Out)]
       end
-      
-      fun checkArgs false [] = raise Fail "No output file ?"
-        | checkArgs true [] = []
-        | checkArgs out (File' x :: xr) = if out orelse List.exists (fn (File' _) => true
-                                                                     | (Out' _) => true
-                                                                     | _ => false) xr
-                                         then
-                                           (In x) :: (checkArgs out xr)
-                                         else
-                                           (Out x) :: (checkArgs true xr)
-        | checkArgs out (Pres' x :: xr) = (Pres x) :: (checkArgs out xr)
-        | checkArgs true (Out' _ :: _) = raise Fail "Multiple output files"
-        | checkArgs false (Out' x :: xr) = (Out x) :: (checkArgs true xr)
-        | checkArgs out (In' x :: xr) = (In x) :: (checkArgs out xr)
-    in
-      val checkArgs = fn a => checkArgs false (parseArgs a)
-    end
+    structure A = Argument(D)
     local
-      fun getOut l = case List.mapPartial (fn (Out x) => SOME x | _ => NONE) l
-                     of [x] => x
-                      | [] => raise Fail "No output file ?"
-                      | _ => raise Fail "Multiple output files"
-      fun getIn l = List.mapPartial (fn (In x) => SOME x | _ => NONE) l
-      fun getPres l = List.mapPartial (fn (Pres x) => SOME x | _ => NONE) l
+      local
+        fun add x (y,z) = (y, x::z)
+      in
+
+      fun def lu [] = (lu,[])
+        | def lu (D.Out x :: xr) = add (D.Out x) (def lu xr)
+        | def lu (D.In x :: xr) = add (D.In x) (def lu xr)
+        | def lu (D.Undef x :: xr) = def (x :: lu) xr
+        | def lu (D.Pres x :: xr) = add (D.Pres x) (def lu xr)
+      val def = fn l => def [] l
+
+        fun last y [x] = (SOME x,[])
+          | last x [] = (x,[])
+          | last lu (x::xr) = add x (last lu xr)
+        val last = fn l => last NONE l
+      end
+
+      fun getOut l = List.mapPartial (fn (D.Out x) => SOME x | _ => NONE) l
+      fun getIn l = List.mapPartial (fn (D.In x) => SOME x | _ => NONE) l
+      fun getPres l = List.mapPartial (fn (D.Pres x) => SOME x | _ => NONE) l
+      fun split l = let 
+                      val (lu,l) = def l
+                    in
+                      case getOut l
+                      of [] => 
+                        (case last lu
+                             of (NONE,_) => raise Fail "No output file ?"
+                              | (SOME x,lu) => (lu @ (getIn l),getPres l,x))
+                     | [out] => (lu @ (getIn l), getPres l, out)
+                     | out => raise Fail "Multiple output files ?"
+                      end
     in
-      fun split l = (getPres l, getIn l, getOut l)
+      fun parse l = split (A.parse l)
     end
-    fun parse l = split (checkArgs l)
   end
+
 

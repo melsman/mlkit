@@ -3,6 +3,9 @@ functor UlLexFun(structure Tokens: UL_TOKENS)=
    struct
     structure UserDeclarations =
       struct
+(* $Id:$ *)
+(* Author: Carsten Varming 2006 *)
+
   structure Tokens = Tokens
   type pos = int
   type svalue = Tokens.svalue

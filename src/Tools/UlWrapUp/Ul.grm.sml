@@ -8,6 +8,9 @@ structure ParserData=
 struct
 structure Header = 
 struct
+(* $Id:$ *)
+(* Author: Carsten Varming 2006 *)
+
 structure UF = UlFile
 ;
 
