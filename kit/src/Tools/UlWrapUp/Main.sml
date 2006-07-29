@@ -154,7 +154,7 @@ local
        let
          fun g () = 
            let
-             val name = (gename (!a)) before a:= (!a) + 1
+             val name = ((gename (!a)) before a:= (!a) + 1) ^ ".uo"
            in
              if Binaryset.member(pres,name)
              then g ()
@@ -170,7 +170,7 @@ in
                                                  if Binaryset.member (acc,x) then raise Fail ("Multiple files named " ^ x ^ " cannot be preserved")
                                                  else Binaryset.add(acc,x)) (#file (OS.Path.splitDirFile p)))
                                             (Binaryset.empty String.compare) pres)
-        in fn base => fn NONE => OS.Path.concat(base,(newname ()) ^ ".uo")
+        in fn base => fn NONE => OS.Path.concat(base,newname ())
                        | SOME n => OS.Path.concat(base,n)
         end
 end
