@@ -50,9 +50,9 @@ fun copyFile (i,out) =
      let
        fun errmsg s = ("copyFile : " ^ i ^ " --> " ^ out ^ " : " ^ s ^ "\n")
        val fdout = (Posix.FileSys.creat(out,filepermission))
-                    handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ out ^ " for writing\n" ^ (errmsg s))
+                    handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ out ^ " for writing" ^ (errmsg s))
        val fdin = (Posix.FileSys.openf(i,Posix.FileSys.O_RDONLY,Posix.FileSys.O.flags []))
-                    handle OS.SysErr (s,e) => raise Fail ("Couldn't open file: " ^ i ^ " for reading\n" ^ (errmsg s))
+                    handle OS.SysErr (s,e) => raise Fail ("Couldn't open file: " ^ i ^ " for reading" ^ (errmsg s))
        fun writeOut vc = 
             let
               val n = Posix.IO.writeVec (fdout,vc)
@@ -97,10 +97,12 @@ fun cc_uofile pres newname infile f =
        then NONE
        else
        let
-         val out = if Binaryset.member (pres,f') then newname (SOME (#file (OS.Path.splitDirFile f'))) else newname NONE
+         val out' = #file (OS.Path.splitDirFile f')
+         val out = if Binaryset.member (pres,f') then newname (SOME out') else newname NONE
+         val out' = #file (OS.Path.splitDirFile out)
          val _ = copyFile (f',out)
        in
-         SOME out
+         SOME (OS.Path.concat("MLB/SMLserver",out'))
        end
      end
 
@@ -113,17 +115,18 @@ fun cc_scripts pres newname infile (f,loc) =
        if not (alreadyCopied f')
        then 
          let
-           val out = if Binaryset.member (pres,f') then newname (SOME (#file(OS.Path.splitDirFile f'))) else newname NONE
-         (*  val _ = print (f' ^ " --> " ^ out ^ "\n") *)
+           val out' = #file(OS.Path.splitDirFile f')
+           val out = if Binaryset.member (pres,f') then newname (SOME out') else newname NONE
+           val out' = #file (OS.Path.splitDirFile out)
          in
            case alreadyCopied' (f',out)
-           of SOME a => raise Fail  ("the file: " ^ f' ^ " is suppose to be new, but I already know of it\n")
-            | NONE => (copyFile (f',out); SOME (out,loc))
+           of SOME a => raise Fail  ("the file: " ^ f' ^ " is suppose to be new, but I already know of it (this indicates a bug)\n")
+            | NONE => (copyFile (f',out); SOME (OS.Path.concat("MLB/SMLserver",out'),loc))
           end
         else
            case Binarymap.peek (!ac',f')
            of SOME out => SOME (f',out)
-            | NONE => raise Fail ("the file: " ^ f' ^ " is suppose to copied before, but I don't recall that\n")
+            | NONE => raise Fail ("the file: " ^ f' ^ " is suppose to copied before, but I don't recall that (this indicates a bug)\n")
       end
 
 local
@@ -145,7 +148,7 @@ local
                                 then
                                   if x > 50
                                   then  chr(x + (ord #"0") - 50)
-                                  else chr(x + (ord #"a") - 25)
+                                  else chr(x + (ord #"a") - 26)
                                 else chr(x + (ord #"A"))) a'
     in
       implode b
@@ -175,67 +178,69 @@ in
         end
 end
 
-fun mkdir file = 
+fun mkdir dir = 
   let
-    val {dir,file} = OS.Path.splitDirFile file
     val {isAbs, vol, arcs} = OS.Path.fromString dir
     fun loop (s,acc) = let
                          val dir = OS.Path.concat (acc,s)
                        in
                          if ((Posix.FileSys.ST.isDir (Posix.FileSys.stat dir)) 
                             handle OS.SysErr _ => ((Posix.FileSys.mkdir(dir,dirpermission);true)
-                               handle OS.SysErr (s,e) => raise Fail ("cannot create " ^ dir ^ " : " ^ s ^ "\n")))
+                               handle OS.SysErr (s,e) => raise Fail ("cannot create " ^ dir ^ " : " ^ s)))
                          then dir
-                         else raise Fail ("cannot create " ^ dir ^ " as is already exists and it is not a directory\n")
+                         else raise Fail ("cannot create " ^ dir ^ " as is already exists and it is not a directory")
                        end
   in
     ignore (List.foldl loop (if isAbs then "/" else "") arcs)
   end
 
 fun isEmpty dir = 
-       let val d = (Posix.FileSys.opendir dir) handle OS.SysErr(s,e) => raise Fail ("cannot check " ^ dir ^ " : " ^ s ^ "\n")
+       let val d = (Posix.FileSys.opendir dir) handle OS.SysErr(s,e) => raise Fail ("cannot check " ^ dir ^ " : " ^ s)
        in (case Posix.FileSys.readdir d
           of NONE => (Posix.FileSys.closedir d ; true)
            | SOME _ => (Posix.FileSys.closedir d ; false))
-             handle OS.SysErr (s,e) => (Posix.FileSys.closedir d ; raise Fail ("cannot check " ^ dir ^ " : " ^ s ^ "\n"))
+             handle OS.SysErr (s,e) => (Posix.FileSys.closedir d ; raise Fail ("cannot check " ^ dir ^ " : " ^ s))
        end
 
-local
-fun run (pres,infile,os,newname) = 
-      let
-        val {dir=indir,...} = OS.Path.splitDirFile infile
-        val infile' = OS.Path.mkCanonical(OS.Path.concat(indir,"../../"))
-        val parseTree = parse infile
-        val npt = List.mapPartial (fn x => UlFile.mapPartial (fn y => SOME y) (cc_uofile pres newname infile') (cc_scripts pres newname infile') x) parseTree
-      in
-        ignore(TextIO.StreamIO.output (os, String.concat (List.map pp_syntax npt)))
-      end
-in
+fun toUo x = 
+  let 
+    val {dir,file} = OS.Path.splitDirFile x
+  in
+    OS.Path.joinBaseExt {base = OS.Path.concat(dir,"MLB/SMLserver/" ^ file), ext = SOME "uo"}
+  end
 
-fun run' (_,[],_) = raise Fail "No input files ?"
-  | run' (pres,l,outfile) = 
+fun run (infile,pres,outdir) = 
       let
-        val {dir=outdir,...} = OS.Path.splitDirFile outfile
-        val newname = newname pres outdir
+        val outdir' = OS.Path.concat (outdir,"MLB/SMLserver")
+        val {dir=indir,file=infile'} = OS.Path.splitDirFile infile
+        val outfile = OS.Path.concat (outdir',infile')
+        val infile' = OS.Path.concat(indir,"MLB/SMLserver/" ^ infile')
+        val {base,ext} = OS.Path.splitBaseExt infile'
+        val _ = case ext
+                of SOME "mlb" => () 
+                 | _ => raise Fail (infile ^ " not an mlb-file ?")
+        val infile' = OS.Path.joinBaseExt {base = base, ext = SOME "ul"}
+        val pres = List.map toUo pres
+        val newname = newname pres outdir'
         val pres = Binaryset.addList (Binaryset.empty String.compare, pres)
-        val _ = mkdir outfile
-        val _ = if isEmpty outdir then () else raise Fail ("directory " ^ outdir ^ " is not empty\n")
+        val _ = mkdir outdir'
+        val _ = if isEmpty outdir' then () else raise Fail ("directory " ^ outdir' ^ " is not empty")
         val fdout = (Posix.FileSys.createf(outfile,Posix.FileSys.O_WRONLY, Posix.FileSys.O.flags [], filepermission))
-              handle OS.SysErr (s,e) => raise Fail ("Couldn'y open file: " ^ outfile ^ " for writing\n" ^ s)
+              handle OS.SysErr (s,e) => raise Fail ("Could not open file: " ^ outfile ^ " for writing" ^ s)
         val writer = Posix.IO.mkTextWriter {fd=fdout,name=outfile,initBlkMode=true,appendMode=false,chunkSize=4000}
         val os = TextIO.StreamIO.mkOutstream (writer,IO.LINE_BUF)
         fun close () = TextIO.StreamIO.closeOut os
+        val parseTree = parse infile'
+        val npt = List.mapPartial (fn x => UlFile.mapPartial (fn y => SOME y) (cc_uofile pres newname indir) (cc_scripts pres newname indir) x) parseTree
       in
-        (List.app (fn i => run (pres,i,os,newname)) l ; close ()) handle ? => (close (); raise ?)
+        (ignore(TextIO.StreamIO.output (os, String.concat (List.map pp_syntax npt)))
+         ; close ()) handle ? => (close (); raise ?)
       end
-end
-
-val run = run'
 
 val _ = let 
-          val (pres,infiles,outfile) = Arg.parse (CommandLine.arguments())
+          val (infile,pres,outdir) = Arg.parse (CommandLine.arguments())
         in
-          run (pres,infiles,outfile)
+          run (infile,pres,outdir)
         end
           handle Fail a => TextIO.output (TextIO.stdErr,a ^ "\n")
                | OS.SysErr(s,e) => TextIO.output (TextIO.stdErr, "Something bad happened: " ^ s ^ "\n")
