@@ -188,7 +188,7 @@ functor Argument(Data :
 
 structure Arg :> 
   sig
-    val parse : string list -> (string list * string list * string)
+    val parse : string list -> (string * string list * string)
   end =
   struct
     structure D = 
@@ -207,41 +207,30 @@ structure Arg :>
                             ("-o",Arg.String Out),("--outfile",Arg.String Out)]
       end
     structure A = Argument(D)
-    local
-      local
-        fun add x (y,z) = (y, x::z)
+    fun getPres l = List.foldr (fn (D.Pres i,acc) => i::acc | (_,acc) => acc) [] l
+    fun getIn l = List.foldr (fn (D.In i,acc) => i::acc | (_,acc) => acc) [] l
+    fun getOut l = List.foldr (fn (D.Out i,acc) => i::acc | (_,acc) => acc) [] l
+    fun getUndef l = List.foldr (fn (D.Undef i,acc) => i::acc | (_,acc) => acc) [] l
+    fun parse l = 
+      let
+        val tmp = A.parse l
+        val undef = getUndef tmp
+        val (infile,undef) = case getIn tmp
+                     of [i] => (i,undef)
+                      | [] => (case undef
+                              of [] => raise Fail "No input file ?"
+                               | (x::xr) => (x,xr))
+                      | _ => raise Fail "Multiple input files ?"
+        val (outfile,undef) = case getOut tmp
+                     of [i] => (i,undef)
+                      | [] => (case undef
+                              of [] => raise Fail "No output directory ?"
+                               | (x::xr) => (x,xr))
+                      | _ => raise Fail "Multiple output directories ?"
+        val _ = case undef of [] => () | _ => raise Fail "Undefined parameters ?"
       in
-
-      fun def lu [] = (lu,[])
-        | def lu (D.Out x :: xr) = add (D.Out x) (def lu xr)
-        | def lu (D.In x :: xr) = add (D.In x) (def lu xr)
-        | def lu (D.Undef x :: xr) = def (x :: lu) xr
-        | def lu (D.Pres x :: xr) = add (D.Pres x) (def lu xr)
-      val def = fn l => def [] l
-
-        fun last y [x] = (SOME x,[])
-          | last x [] = (x,[])
-          | last lu (x::xr) = add x (last lu xr)
-        val last = fn l => last NONE l
+        (infile,getPres tmp, outfile)
       end
-
-      fun getOut l = List.mapPartial (fn (D.Out x) => SOME x | _ => NONE) l
-      fun getIn l = List.mapPartial (fn (D.In x) => SOME x | _ => NONE) l
-      fun getPres l = List.mapPartial (fn (D.Pres x) => SOME x | _ => NONE) l
-      fun split l = let 
-                      val (lu,l) = def l
-                    in
-                      case getOut l
-                      of [] => 
-                        (case last lu
-                             of (NONE,_) => raise Fail "No output file ?"
-                              | (SOME x,lu) => (lu @ (getIn l),getPres l,x))
-                     | [out] => (lu @ (getIn l), getPres l, out)
-                     | out => raise Fail "Multiple output files ?"
-                      end
-    in
-      fun parse l = split (A.parse l)
-    end
   end
 
 
