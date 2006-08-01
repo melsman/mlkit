@@ -214,11 +214,13 @@ fun run (infile,pres,outdir) =
         val outdir' = OS.Path.concat (outdir,"MLB/SMLserver")
         val {dir=indir,file=infile'} = OS.Path.splitDirFile infile
         val outfile = OS.Path.concat (outdir',infile')
-        val infile' = OS.Path.concat(indir,"MLB/SMLserver/" ^ infile')
-        val {base,ext} = OS.Path.splitBaseExt infile'
+        val {base,ext} = OS.Path.splitBaseExt outfile
         val _ = case ext
                 of SOME "mlb" => () 
                  | _ => raise Fail (infile ^ " not an mlb-file ?")
+        val outfile = OS.Path.joinBaseExt {base = base, ext = SOME "ul"}
+        val infile' = OS.Path.concat(indir,"MLB/SMLserver/" ^ infile')
+        val {base,ext} = OS.Path.splitBaseExt infile'
         val infile' = OS.Path.joinBaseExt {base = base, ext = SOME "ul"}
         val pres = List.map toUo pres
         val newname = newname pres outdir'
