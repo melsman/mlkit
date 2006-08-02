@@ -445,6 +445,9 @@ structure Web :> WEB =
                     end
 
     fun headers () : set = (prim("apsml_headers", getReqRec())) handle Overflow => raise MissingConnection
+
+    fun add_headers (key,value) : unit = prim("@apsml_add_headers_out", (key : string, size key : int, value : string,
+                                                                         size value : int, getReqRec())) : unit
     
     fun setMimeType(s : string) : unit = prim("@apsml_setMimeType",(s, size s, getReqRec()))
 
@@ -452,10 +455,18 @@ structure Web :> WEB =
       prim("@apsml_returnFile", (status, mt, f, getReqRec()))
 
     fun returnHtml (i:int, s: string) : status = 
-      prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRec()))
+      let
+        val _ = add_headers("Cache-Control","no-cache")
+      in
+        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRec()))
+      end
 
     fun returnXhtml (i : int,s : string) : status = 
-      prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRec()))
+      let
+        val _ = add_headers("Cache-Control","must-revalidate")
+      in
+        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRec()))
+      end
 
     local 
         val (form_data : set option option ref) = ref NONE
@@ -865,9 +876,7 @@ structure Web :> WEB =
        concatOpt "; domain=" domain,
        concatOpt "; path=" path,
        "; ", if secure then "secure" else ""]
-             in 
-          prim("@apsml_add_headers_out", (header_out_key, size header_out_key, 
-            header_out_value, size header_out_value, getReqRec()))
+             in Conn.add_headers(header_out_key,header_out_value)
           end
       end
 
@@ -879,8 +888,7 @@ structure Web :> WEB =
                 "expires=Fri, 11-Feb-77 12:00:00 GMT",
                 concatOpt "; path=" path]
     in 
-      prim("@apsml_add_headers_out", (key_out , size key_out, 
-      val_out, size val_out, getReqRec()))
+      Conn.add_headers (key_out,val_out) 
     end
   end
       end

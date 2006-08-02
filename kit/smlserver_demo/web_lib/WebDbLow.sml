@@ -176,7 +176,12 @@ functor DbODBCBackend(type conn = int
                                       h:= NONE)
     fun dmlDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
-                | SOME r => let val  res : int = prim("@:", ("DBODBCExecuteSQL",r : int, Quot.toString q : string, getReqRec()))
+                | SOME r => let
+                              val sql = Quot.toString q
+                              val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_DML")
+                                      of SOME true => ignore (log sql)
+                                       | _ => () 
+                              val  res : int = prim("@:", ("DBODBCExecuteSQL",r : int, sql : string, getReqRec()))
                             in if res <> 2
                                then (* not DBDml *) 
                                   raise Fail ("ODBC Driver: dml: " ^ Quot.toString q ^ " failed")
@@ -184,10 +189,15 @@ functor DbODBCBackend(type conn = int
                             end
     fun execDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
-                | SOME r => let val res : int = prim("@:", ("DBODBCExecuteSQL",r,Quot.toString q, getReqRec()))
+                | SOME r => let
+                              val sql = Quot.toString q
+                              val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_EXEC")
+                                      of SOME true => ignore (log sql)
+                                       | _ => () 
+                              val res : int = prim("@:", ("DBODBCExecuteSQL",r,sql:string, getReqRec()))
                             in if res = 0
                                then (* DBError *) 
-                                  raise Fail ("ODBC Driver: exec: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("ODBC Driver: exec: " ^ sql ^ " failed")
                                else ()
                             end
     val toLower = String.map Char.toLower
@@ -198,8 +208,13 @@ functor DbODBCBackend(type conn = int
     fun selectDb' (h : DbHandle) q = 
        case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
                 | SOME r => 
-        let val res : int = (log "DBODBCExecuteSQL" ; prim("@:",("DBODBCExecuteSQL",r, Quot.toString q, getReqRec())))
-              val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`)
+        let
+          val sql = Quot.toString q
+          val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_SELECT")
+                  of SOME true => ignore (log sql)
+                   | _ => () 
+          val res : int = (log "DBODBCExecuteSQL" ; prim("@:",("DBODBCExecuteSQL",r, sql:string, getReqRec())))
+            (*  val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`) *)
           in case res of 1 => (*DBData*) 
                              (let val res2 : string list = (log "apsmlODBCGetCNames" ;prim(":", ("apsmlODBCGetCNames",r,getReqRec())))
                                   val res3 = List.map toLower (List.rev res2)
@@ -339,18 +354,28 @@ functor DbOracleBackend(type conn = int
                                       h:= NONE)
     fun dmlDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
-                | SOME r => let val  res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r : int, Quot.toString q : string, getReqRec())))
+                | SOME r => let 
+                              val sql = Quot.toString q
+                              val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_DML")
+                                      of SOME true => ignore (log sql)
+                                       | _ => () 
+                              val  res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r : int, sql : string, getReqRec())))
                             in if res <> 2
                                then (* not DBDml *) 
-                                  raise Fail ("Oracle Driver: dml: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("Oracle Driver: dml: " ^ sql ^ " failed")
                                else ()
                             end
     fun execDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
-                | SOME r => let val res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r,Quot.toString q, getReqRec())))
+                | SOME r => let 
+                              val sql = Quot.toString q : string
+                              val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_EXEC")
+                                      of SOME true => ignore (log sql)
+                                       | _ => () 
+                              val res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r,sql : string, getReqRec())))
                             in if res = 0
                                then (* DBError *) 
-                                  raise Fail ("Oracle Driver: exec: " ^ Quot.toString q ^ " failed")
+                                  raise Fail ("Oracle Driver: exec: " ^ sql ^ " failed")
                                else ()
                             end
     val toLower = String.map Char.toLower
@@ -361,8 +386,13 @@ functor DbOracleBackend(type conn = int
     fun selectDb (h : DbHandle) q = 
        case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
                 | SOME r => 
-        let val res : int = (log "DBORAExecuteSQL" ; prim("@:",("DBORAExecuteSQL",r, Quot.toString q, getReqRec())))
-              val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`)
+        let 
+          val sql = Quot.toString q : string
+          val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_SELECT")
+                  of SOME true => ignore (log sql)
+                   | _ => () 
+          val res : int = (log "DBORAExecuteSQL" ; prim("@:",("DBORAExecuteSQL",r,sql : string, getReqRec())))
+(*          val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`) *)
           in case res of 1 => (*DBData*) 
                              (let val res2 : string list = (log "apsmlORAGetCNames" ;prim(":", ("apsmlORAGetCNames",r,getReqRec())))
                                   val res3 = List.map toLower (List.rev res2)

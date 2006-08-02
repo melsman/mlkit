@@ -25,6 +25,7 @@ signature WEB_CONN = sig
   val method             : unit -> string
   val contentLength      : unit -> int
   val hasConnection      : unit -> bool
+  val add_headers        : (string * string) -> unit
 end
 
 (*
@@ -116,4 +117,6 @@ end
  and scheduled scripts, no connection is available. This 
  function may be used to protect execution of code that 
  requires a connection (e.g., execution of library code).
+  
+ [add_headers (key,value)] adds key:value to the http header
 *)
