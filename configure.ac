@@ -10,6 +10,7 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  src/Tools/MlbMake/Makefile
                  src/Tools/Rp2ps/Makefile
                  src/Tools/GenOpcodes/Makefile
+                 src/Tools/UlWrapUp/Makefile
                  src/Tools/Tester/Makefile
                  src/Version.sml])
 
