@@ -803,7 +803,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
   LongList* p;
   Ro* topRegion = NULL;
 
-  debug_writer1("interpRun getHeap %d\n", 0);
+//  debug_writer1("interpRun getHeap %d\n", 0);
   h = getHeap(ss);
   if ( h->status == HSTAT_UNINITIALIZED )
     {
@@ -815,7 +815,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
       debug(printf("DATASPACE ds = 0x%x\n", ds));
       sp += interpreter->data_size;
       debug(printf("STACK sp = 0x%x, datasize = %d\n", sp, interpreter->data_size));
-      debug_writer3("interpRun data_size = 0x%x - sp = 0x%x - ds = 0x%x\n", interpreter->data_size, (int) sp, (int) ds);
+//      debug_writer3("interpRun data_size = 0x%x - sp = 0x%x - ds = 0x%x\n", interpreter->data_size, (int) sp, (int) ds);
 
       // Now, allocate global regions and store addresses in data segment
       // the indexes should be the same as those defined in Manager/Name.sml
@@ -866,18 +866,19 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
       }
 
       // start interpretation by interpreting the init_code
-      debug_writer1("interpRun %d interpCode init_code\n", 0);
-      debug_file_as(int tmp,debug_file);
-      debug_file_as(debug_file,-1);
+//      debug_writer1("interpRun %d interpCode init_code\n", 0);
+   //   int tmp;
+   //   debug_file_as(tmp, debug_file);
+   //   debug_file_as(debug_file,-1);
       res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
 		       &exnCnt,(bytecode_t)init_code, ss);
   
-      debug_file_as(debug_file,tmp);
-      debug_writer4("initializeHeap sp = 0x%x - sp0 = 0x%x - ds = 0x%x - topRegion = 0x%x\n", (int) sp, (int) sp0, (int) ds, (int) topRegion);
+   //   debug_file_as(debug_file,tmp);
+//      debug_writer4("initializeHeap sp = 0x%x - sp0 = 0x%x - ds = 0x%x - topRegion = 0x%x\n", (int) sp, (int) sp0, (int) ds, (int) topRegion);
 
       if ( res >= 0 && extra_code )
       {
-      debug_writer1("interpRun %d initializeHeap\n", 0);
+//      debug_writer1("interpRun %d initializeHeap\n", 0);
         initializeHeap(h,sp0,exnPtr, exnCnt, ss);
       }
       else 

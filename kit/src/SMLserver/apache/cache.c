@@ -24,6 +24,93 @@
 #define MIN(a,b) (a < b ? a : b)
 #define MAX(a,b) (a < b ? b : a)
 
+static entry *
+ccL1(entry *e, entry *s)/*{{{*/
+{
+  if (e == s)
+  {
+    return s->down;
+  }
+  if (e == ccL1(e->up,s))
+  {
+    return e->down;
+  }
+  else
+  {
+    return NULL;
+  }
+}/*}}}*/
+
+static entry *
+ccL2(entry *e, entry *s)/*{{{*/
+{
+  if (e == s)
+  {
+    return s->up;
+  }
+  if (e == ccL2(e->down,s))
+  {
+    return e->up;
+  }
+  else
+  {
+    return NULL;
+  }
+}/*}}}*/
+
+static void
+checkList(cache *c)/*{{{*/
+{
+  if (c->sentinel == ccL1(c->sentinel->up,c->sentinel))
+  {
+    if (c->sentinel == ccL2(c->sentinel->down,c->sentinel))
+    {
+      return;
+    }
+    else
+    {
+      *((char *) 0) = 0;
+    }
+  }
+  else
+  {
+    *((char *) 0) = 0;
+  }
+  return;
+}/*}}}*/
+
+static void
+checkList1(void *c)/*{{{*/
+{
+  checkList((cache *) c);
+  return;
+}/*}}}*/
+
+static unsigned int 
+listLength(cache *c)/*{{{*/
+{
+  unsigned int r;
+  entry *cur;
+  for (r = 0, cur=c->sentinel->up; c->sentinel != cur; r++, cur=cur->up);
+  return r;
+}/*}}}*/
+
+static void
+checkList3(cache *c, int line, request_data *rd)/*{{{*/
+{
+  ap_log_error(__FILE__,line, LOG_DEBUG, 0, rd->server, "checkList3");
+  if (listLength(c) != c->htable->hashTableUsed) *(char *) 0 = 0;
+  return;
+}/*}}}*/
+
+static void
+checkList2(cache *c,int line,request_data *rd)/*{{{*/
+{
+  ap_log_error(__FILE__,line, LOG_DEBUG, 0, rd->server, "checkList2");
+  checkList(c);
+  return;
+}/*}}}*/
+
 void ppCache (cache * c, request_data * rd);
 
 static int 
@@ -83,13 +170,32 @@ globalCacheTableInit (void *rd1)	/*{{{ */
   hashinit (rd->cachetable->ht, hashfunction, keyNhashEqual);
 }				/*}}} */
 
+void
+checkCaches(request_data *rd)
+{
+  hashapply(rd->cachetable->ht, checkList1);
+  return;
+}
+
 static cache *
 cacheCreate (int maxsize, int timeout, unsigned long hash, request_data *rd)	/*{{{ */
 {
   // create pool for cache to live in
+  apr_status_t s;
   apr_pool_t *p;
-  apr_pool_create (&p, (apr_pool_t *) NULL);
+  s = apr_pool_create (&p, (apr_pool_t *) NULL);
+  if (s != APR_SUCCESS) 
+  {
+    ap_log_error(__FILE__,__LINE__,LOG_WARNING,0,rd->server,"cacheCreate: could not create memory pool");
+    raise_exn ((int) &exn_OVERFLOW);
+  }
   cache *c = (cache *) apr_palloc (p, sizeof (cache));
+  if (c == NULL)
+  {
+    ap_log_error(__FILE__,__LINE__,LOG_WARNING,0,rd->server,"cacheCreate: could not allocate memory from pool");
+    raise_exn ((int) &exn_OVERFLOW);
+  }
+  ap_log_error(__FILE__,__LINE__,LOG_DEBUG,0,rd->server,"cacheCreate: 0x%x", (unsigned int) c);
   c->pool = p;
   c->hashofname = hash;
   apr_proc_mutex_lock(rd->ctx->cachelock.plock);
@@ -293,6 +399,10 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
 	      //entry->time = MAX (ct + entry->timeout, entry->time);
 	    }
 	  }
+    else
+    {
+	    LINKEDLIST_INSERTUNDER (c->sentinel, entry);
+    }
 //    ap_log_rerror(__FILE__,__LINE__, LOG_NOTICE, 0, rd->request, "apsml_cacheGetFound: etime: %d, rtime: %d, too_old: %i key: %s, value %d, valuedata: %s", entry->time, time(NULL), too_old, key, entry, entry->data);
      apr_thread_mutex_unlock (c->mutex);
   }

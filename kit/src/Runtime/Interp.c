@@ -36,6 +36,8 @@
 #include "Dlsym.h"
 #include "Prims.h"
 
+// extern void checkCaches(void *);
+
 #ifdef KAM
 Exception *exn_OVERFLOW;   // Initialized in Interp.c
 Exception *exn_INTERRUPT;  // Initialized in Interp.c
@@ -119,7 +121,7 @@ typedef unsigned int uint32;
 #ifdef LAB_THREADED
 #define Instruct(name) lbl_##name
 // #define Next { temp = (int)pc; inc32pc; if ((inst_count++ % 1000) == 0) debug_writer5 ("INST %d, %d, env 0x%x, *env 0x%x --- **(ds + 0x5fb) = 0x%x\n", inst_count, getInstNumber(jumptable, jumptableSize, *(void **) temp), (int) env, (uint) env > 100 ? *env : 0, debug_file != -1 ? *((unsigned long *)*(ds + 0x5fb)) : 0); goto **(void **)temp; }
-// #define Next { temp = (int)pc; inc32pc; inst_count++; /*if ((inst_count % 1) == 0)*/ debug_writer5 ("INST %d, %d, env 0x%x, *env 0x%x --- **(ds + 0x5fb) = 0x%x\n", inst_count, getInstNumber(jumptable, jumptableSize, *(void **) temp), (int) env, (uint) env > 100 ? *env : 0, debug_file != -1 ? *((unsigned long *)*(ds + 0x5fb)) : 0); goto **(void **)temp; }
+// #define Next { temp = (int)pc; inc32pc; inst_count++; /*if ((inst_count % 1) == 0)*/ debug_writer2 ("INST %d, %d %x\n", inst_count, getInstNumber(jumptable, jumptableSize, *(void **) temp)); checkCaches(serverCtx->aux); goto **(void **)temp; }
 #define Next { temp = (uintptr_t)pc; inc32pc;  goto **(void **)temp; }
 #else
 #define Instruct(name) case name
@@ -298,8 +300,7 @@ typedef unsigned int uint32;
  * have been resolved already.
  */
 
-/*
-int
+static int
 getInstNumber(void *jumptable[], unsigned int jumptableSize, void *inst)
 {
   unsigned int i;
@@ -308,7 +309,7 @@ getInstNumber(void *jumptable[], unsigned int jumptableSize, void *inst)
     if (inst == jumptable[i]) return i;
   }
   return -1;
-} */
+}
 
 /* replace instruction numbers with instruction addresses */
 void 
@@ -473,7 +474,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
 #ifdef LAB_THREADED
   debug_writer1("interp %d Jump to FIRST INSTRUCTION\n",0);
-//  unsigned long inst_count = 0;
+  debug_file_as(unsigned long inst_count,0);
   Next;                 // jump to first instruction
 #else
   while (1) {
