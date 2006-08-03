@@ -287,7 +287,7 @@ install:
 	$(MKDIR) $(SYSCONFDIR)/mlkit
 	if [ -e $(SYSCONFDIR)/mlkit/mlb-path-map ]; \
            then true; \
-           else echo "SML_LIB $(exec_prefix)/mlkit/lib/mlkit" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
+           else echo "SML_LIB $(exec_prefix)/lib/mlkit" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
         fi
 
 install_test:
@@ -405,12 +405,12 @@ bootstrap:
 .PHONY: man_mlkit
 man_mlkit:
 	$(MKDIR) man/man1
-	SML_LIB=$(exec_prefix)/mlkit/lib bin/mlkit -man > man/man1/mlkit.1
+	SML_LIB=$(exec_prefix)/lib/mlkit bin/mlkit -man > man/man1/mlkit.1
 
 .PHONY: man_smlserver
 man_smlserver:
 	$(MKDIR) man/man1
-	SML_LIB=$(exec_prefix)/mlkit/lib bin/smlserverc -man > man/man1/smlserverc.1
+	SML_LIB=$(exec_prefix)/lib/smlserver bin/smlserverc -man > man/man1/smlserverc.1
 
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
