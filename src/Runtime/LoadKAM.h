@@ -151,7 +151,7 @@ extern void debug_writer5(char *, int,int,int,int,int);
 extern void debug_writer6(char *, int,int,int,int,int,int);
 extern void debug_writer7(char *, int,int,int,int,int,int,int);
 extern void debug_writer8(char *, int,int,int,int,int,int,int,int);
-#define debug_file_as(LV,EXP) {LV = EXP;}
+#define debug_file_as(LV,EXP) LV = EXP
 #else
 #define debug_writer1(Q,A) {}
 #define debug_writer2(Q,A,B) {}

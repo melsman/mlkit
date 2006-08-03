@@ -293,7 +293,7 @@ runtime_unlock(unsigned int i)/*{{{*/
 
 static char mlb[] = "/MLB/SMLserver";
 
-int debug_file = -1;
+// int debug_file = -1;
 
 static int
 apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, server_rec * s) //{{{
@@ -448,7 +448,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
     rd->ctx->pid = getpid();
   char *name = (char *) malloc (120);
   snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", rd->ctx->pid);
-  debug_file = mkstemp(name);
+  debug_file_as(debug_file,mkstemp(name));
     if (rd->ctx->initscript[0] == '/') 
     {
       res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
@@ -547,6 +547,7 @@ static void
 apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
 {
   struct db_t *tmp;
+  int i;
   InterpContext *ctx = ap_get_module_config (s->module_config, &sml_module);
   ctx->pid = getpid();
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
@@ -564,9 +565,9 @@ apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
       "apsml: childInit 3");
 
-  char *name = (char *) malloc (120);
-  snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", ctx->pid);
-  debug_file = mkstemp(name);
+  debug_file_as(char *name,(char *) malloc (120));
+  debug_file_as(i,snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", ctx->pid));
+  debug_file_as(debug_file,mkstemp(name));
 }/*}}}*/
 
 #if 0

@@ -283,7 +283,7 @@ apsml_PageRoot (Region rAddr, request_data * rd)	/*{{{ */
 
 // ML: () -> string ptr_option
 String
-sml_getAuxData(Region r, request_data *rd)
+sml_getAuxData(Region r, request_data *rd)/*{{{*/
 {
   String s;
   if (rd->ctx->auxdata)
@@ -295,7 +295,7 @@ sml_getAuxData(Region r, request_data *rd)
     s = NULL;
   }
   return s;
-}
+}/*}}}*/
 
 // ML: () -> string ptr_option
 String
