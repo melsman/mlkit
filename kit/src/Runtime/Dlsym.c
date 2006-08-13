@@ -9,8 +9,8 @@
 #include "Locks.h"
 #include "Dlsym.h"
 
-int
-REG_POLY_FUN_HDR(sml_dlopen,int pair, Region s, String file1, int flags1)
+uintptr_t
+REG_POLY_FUN_HDR(sml_dlopen,uintptr_t pair, Region s, String file1, size_t flags1)
 {
   char *file = &(file1->data);
   char *c;
@@ -25,10 +25,10 @@ REG_POLY_FUN_HDR(sml_dlopen,int pair, Region s, String file1, int flags1)
   dlerror();
   p = dlopen(myfile, use_global | use_lazy);
   c = dlerror();
-  first(pair) = (int) p;
+  first(pair) = (uintptr_t) p;
   if (c)
   {
-    second(pair) = (int) REG_POLY_CALL(convertStringToML,s, c);
+    second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML,s, c);
   } else 
   {
     second(pair) = 0;
@@ -76,7 +76,7 @@ REG_POLY_FUN_HDR(resolveFun,Region sAddr, String our_name, String cname, void *l
   return NULL;
 }
 
-int
+size_t
 isResolvedFun (char *name)
 {
   void *fp = NULL;

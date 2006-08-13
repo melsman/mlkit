@@ -20,66 +20,66 @@
 #include "String.h"
 #include "Posix.h"
 
-int
-sml_WIFEXITED(int status)
+size_t
+sml_WIFEXITED(size_t status)
 {
-  if (WIFEXITED(convertIntToC(status)))
+  if (WIFEXITED(convertIntToC((int) status)))
     return mlTRUE;
   else return mlFALSE;
 }
 
-int
-sml_WIFSIGNALED(int status)
+size_t
+sml_WIFSIGNALED(size_t status)
 {
-  if (WIFSIGNALED(convertIntToC(status)))
+  if (WIFSIGNALED(convertIntToC((int) status)))
     return mlTRUE;
   else return mlFALSE;
 }
 
-int
-sml_WIFSTOPPED(int status)
+size_t
+sml_WIFSTOPPED(size_t status)
 {
-  if (WIFSTOPPED(convertIntToC(status)))
+  if (WIFSTOPPED((int) convertIntToC(status)))
     return mlTRUE;
   else return mlFALSE;
 }
 
-int
-sml_WEXITSTATUS(int status)
+size_t
+sml_WEXITSTATUS(size_t status)
 {
-  return convertIntToML(WEXITSTATUS(convertIntToC(status)));
+  return convertIntToML(WEXITSTATUS((int) convertIntToC(status)));
 }
 
-int
-sml_WTERMSIG(int status)
+size_t
+sml_WTERMSIG(size_t status)
 {
-  return convertIntToML(WTERMSIG(convertIntToC(status)));
+  return convertIntToML(WTERMSIG((int) convertIntToC(status)));
 }
 
-int
-sml_WSTOPSIG(int status)
+size_t
+sml_WSTOPSIG(size_t status)
 {
-  return convertIntToML(WSTOPSIG(convertIntToC(status)));
+  return convertIntToML(WSTOPSIG((int) convertIntToC(status)));
 }
 
-int 
-sml_waitpid(int pair, int waitpid_arg, int flags) 
+uintptr_t 
+sml_waitpid(uintptr_t pair, size_t waitpid_arg, size_t flags) 
 {
   int status;
   int f = 0x0;
   flags = convertIntToC(flags);
   if (flags & 0x1) f |= WUNTRACED;
   if (flags & 0x2) f |= WNOHANG;
-  int pid = waitpid(convertIntToC(waitpid_arg),
+  int pid = waitpid(convertIntToC((pid_t) waitpid_arg),
 		    &status, f);
   mkTagPairML(pair);
-  first(pair) = convertIntToML(pid);
-  second(pair) = convertIntToML(status);
+  first(pair) = convertIntToML((size_t) pid);
+  second(pair) = convertIntToML((size_t) status);
   return pair;
 }
 
-size_t
-sml_sysconf(size_t t)
+ssize_t
+sml_sysconf(ssize_t t)
 {
   long res;
   switch (convertIntToC(t)) 
@@ -125,7 +125,7 @@ sml_sysconf(size_t t)
       res = 0;
       break;
   }
-  return convertIntToML((size_t) res);
+  return convertIntToML((ssize_t) res);
 }
 
 uintptr_t
@@ -279,14 +279,14 @@ sml_null(void)
   return NULL;
 }
 
-int
-sml_dupfd(int f, int arg)
+size_t
+sml_dupfd(size_t f, size_t arg)
 {
-  return fcntl(f, F_DUPFD, (long) arg);
+  return (size_t) fcntl((int) f, F_DUPFD, (long) arg);
 }
 
-int
-sml_getStdNumbers(int triple)
+uintptr_t
+sml_getStdNumbers(uintptr_t triple)
 {
   // Triples are also tag-free when pairs are!
   mkTagTripleML(triple);
@@ -296,8 +296,8 @@ sml_getStdNumbers(int triple)
   return triple;
 }
 
-int
-sml_pipe(int triple)
+uintptr_t
+sml_pipe(uintptr_t triple)
 {
   int a[2], r;
   // Triples are also tag-free when pairs are!
@@ -328,19 +328,19 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
   return pair;
 }
 
-int
-sml_writeVec(int fd, char *base, int start, int length)
+ssize_t
+sml_writeVec(size_t fd, char *base, size_t start, size_t length)
 {
-  int r;
-  r = write(fd, base+start, length);
+  ssize_t r;
+  r = write((int) fd, base+start, length);
   return r;
 }
 
-int
-sml_readArr (int fd, char *base, int start, int length)
+ssize_t
+sml_readArr (size_t fd, char *base, size_t start, size_t length)
 {
-  int r;
-  r = read(fd, base+start, length);
+  ssize_t r;
+  r = read((int) fd, base+start, length);
   return r;
 }
 

@@ -22,7 +22,7 @@ interpCode(Interp* interpreter,          // Interpreter
  * addresses. */
 void 
 resolveCode(bytecode_t b_prog,              // Code to resolve
-	    int sizeW);                     // Size of code in words
+	    size_t sizeW);                     // Size of code in words
 
 #ifndef APACHE
 ssize_t 
