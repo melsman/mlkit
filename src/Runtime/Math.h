@@ -28,17 +28,31 @@
 #define  minDefine(A,B) ((A<B)?A:B)
 
 #ifdef TAG_VALUES
+#if 0
 #define Max_Int 1073741823       /* remember [i] = 2 * i + 1 */
 #define Min_Int -1073741824
 #define Max_Int_d 1073741823.0
 #define Min_Int_d -1073741824.0
 #define val_precision 31
+#endif
+#define Max_Int (INTPTR_MAX >> 1)
+#define Min_Int (INTPTR_MIN >> 1)
+#define Max_Int_d ((INTPTR_MAX >> 1) * 1.0)
+#define Min_Int_d ((INTPTR_MIN >> 1) * 1.0)
+#define val_precision (__WORDSIZE - 1)
 #else
+#if 0
 #define Max_Int 2147483647
 #define Min_Int (-2147483647-1)
 #define Max_Int_d 2147483647.0
 #define Min_Int_d -2147483648.0
 #define val_precision 32
+#endif
+#define Max_Int INTPTR_MAX
+#define Min_Int INTPTR_MIN
+#define Max_Int_d (INTPTR_MAX * 1.0)
+#define Min_Int_d (INTPTR_MIN * 1.0)
+#define val_precision (__WORDSIZE)
 #endif
 
 /*----------------------------------------------------------------*

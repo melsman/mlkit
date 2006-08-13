@@ -15,7 +15,7 @@
  *----------------------------------------------------------------*/
 void resetRegion(uintptr_t rAdr);
 #define is_inf_and_atbot(x) (((x) & 0x00000003)==0x00000003)
-long *alloc (uintptr_t rAdr, size_t n);
+uintptr_t *alloc (uintptr_t rAdr, size_t n);
 
 /*----------------------------------------------------------------*
  * Converting integers.                                           * 

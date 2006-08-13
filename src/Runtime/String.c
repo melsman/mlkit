@@ -376,7 +376,7 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
 
 // for debugging */
 void 
-printNum(int n) 
+printNum(ssize_t n) 
 {
   printf("Num: %d\n",convertIntToC(n));
   return;
