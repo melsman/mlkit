@@ -49,6 +49,9 @@ val test6 = tst0 "test6" ((Char.chr (Char.maxOrd+1) seq "WRONG")
 			  handle Chr => "OK" | _ => "WRONG")
 	
 val test7 = tst "test7" ("" = Byte.bytesToString (Word8Vector.fromList []));
+val test7a = tst "test7a" (ord (CharVector.sub("\230",0)) = 230);
+val test7b = tst "test7b" (ord (CharVector.sub("\255",0)) = 255);
+
 
 val test8 = 
     tst "test8" ("ABDC" = 
@@ -403,3 +406,4 @@ val test43 =
 		"\\xG"])
     end;
 end
+
