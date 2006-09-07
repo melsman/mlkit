@@ -1543,7 +1543,7 @@ interpCode(Interp* interpreter,         // The interpreter
  * addresses. */
 void
 resolveCode(bytecode_t b_prog,              // Code to resolve
-	    int sizeW) {                    // Size of code in words
+	    size_t sizeW) {                    // Size of code in words
   interp(NULL, NULL, NULL, NULL, NULL, NULL, 0, b_prog, sizeW, RESOLVEINSTS, NULL);  
 }
 
