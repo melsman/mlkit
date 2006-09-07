@@ -322,9 +322,8 @@ skip_label(FILE* fd)
   debug(printf("skip_label: str_sz = %d\n", str_sz));
   return READ_OK;
 }
-
-// For debugging
 /*
+// For debugging
 static void  
 print_exec_header(struct exec_header* exec_header) 
 {
@@ -346,7 +345,6 @@ print_exec_header(struct exec_header* exec_header)
 	 exec_header->magic);
 }
 */
-  
 // read_exec_header: Leaves fd at the beginning of the code 
 // segment on success
 static int 

@@ -1423,7 +1423,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(PRIM_BYTETABLE_SUB): {
 	debug(printf("PRIM_BYTETABLE_SUB(%d,%d)\n", selectStackDef(-1), acc));
-	acc = (int)(*(&(((String)(popValDef))->data) + acc));
+	acc = (int)(*((unsigned char *)(&(((String)(popValDef))->data) + acc)));
 	Next;
       }
 

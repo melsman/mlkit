@@ -1,5 +1,7 @@
 #ifndef __Stack_h__ 
 #define __Stack_h__
+#include <stdlib.h>
+#include <stdint.h>
 
 /* This module is used by the KAM interpreter. */
 
