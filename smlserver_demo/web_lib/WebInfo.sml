@@ -7,7 +7,7 @@ functor WebInfo (type conn = int
   struct
   structure Type = WebSerialize
 
-  fun pid() : int = prim("apsml_getpid", getReqRec())
+  fun pid() : int = (SysWord.toInt o Posix.Process.pidToWord o Posix.ProcEnv.getpid) () (* prim("apsml_getpid", getReqRec()) *)
 
   val bbb = #name Type.Bool
 

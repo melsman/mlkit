@@ -12,8 +12,12 @@ structure Web :> WEB =
     type LogSeverity = int
     val Emergency=0 and Alert=1 and Critical=2 and Error=3
     and Warning=4 and Notice=5 and Info=6 and Debug=7
+    local 
+      val pid = (SysWord.toInt o Posix.Process.pidToWord o Posix.ProcEnv.getpid) ()
+    in
     fun log (ls: LogSeverity, s: string) : unit = 
-      prim("apsml_log", (ls, s, getReqRec(), InternalSmlServerError))
+      prim("apsml_log", (ls, "[pid: " ^ (Int.toString pid) ^ "] " ^ s, getReqRec(), InternalSmlServerError))
+    end
     fun advLog (ls, data, ppdata) = (log(ls, ppdata data);data)
     exception Forbidden
   end
