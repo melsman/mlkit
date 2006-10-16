@@ -224,12 +224,12 @@ int
 apsml_geturl (Region rListAddr, Region rStringAddr, request_data * rd)	/*{{{ */
 {
   request_rec *tmp;
-  int *pair, *cons, *temp_pair, res;
+  uintptr_t *pair, *cons, *temp_pair, res;
   if (rd->request == 0)
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_geturl called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
   allocRecordML(rListAddr, 2, pair);
@@ -261,7 +261,7 @@ apsml_getpeer (Region rAddr, request_data * rd)	/*{{{ */
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_getpeer called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
   return convertStringToML (rAddr, rd->request->connection->remote_ip);
@@ -275,7 +275,7 @@ apsml_PageRoot (Region rAddr, request_data * rd)	/*{{{ */
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_PageRoot called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
   return convertStringToML (rAddr, (char *) ap_document_root (rd->request));
@@ -305,7 +305,7 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_getQueryData called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
   request_rec *r = rd->request;
@@ -535,7 +535,7 @@ apsml_headers (request_data *rd)		/*{{{ */
   {
     ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		  "apsml_headers called without a connection");
-    raise_exn ((int) &exn_OVERFLOW);
+    raise_exn ((uintptr_t) &exn_OVERFLOW);
     return 0;
   }
   if (r->headers_in)
@@ -650,7 +650,7 @@ apsml_method (Region rAddr, request_data * rd)	/*{{{ */
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_method called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
   return convertStringToML (rAddr, (char *) rd->request->method);
@@ -664,7 +664,7 @@ apsml_scheme (Region rAddr, request_data * rd)	/*{{{ */
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_scheme called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
 /* Apache changed the name of this procedure between 2.0 and 2.2  */
@@ -683,7 +683,7 @@ apsml_contentlength (request_data * rd)	/*{{{ */
     {
       ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
 		    "apsml_method called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
+      raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
   return rd->request->clength;
@@ -1068,7 +1068,7 @@ apsmlPutDBData (int i, void *data, void child_init(void *, int, apr_pool_t *, se
   apr_thread_mutex_lock(rd->ctx->dblock);
   tmp = rd->ctx->db;
   prev_tmp = NULL;
-  for (;tmp;tmp->next)
+  for (; tmp ;tmp = tmp->next)
   {
     if (tmp->num == i)
     {
@@ -1112,6 +1112,7 @@ void *
 getDbData(int num, request_data *rd)/*{{{*/
 {
   struct request_db *tmp = rd->dbdata;
+  dblog1(rd, "getDbData");
   while (tmp)
   {
     if (num == tmp->num) return tmp->dbdata;

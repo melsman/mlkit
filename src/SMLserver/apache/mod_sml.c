@@ -547,7 +547,6 @@ static void
 apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
 {
   struct db_t *tmp;
-  int i;
   InterpContext *ctx = ap_get_module_config (s->module_config, &sml_module);
   ctx->pid = getpid();
     ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
@@ -820,12 +819,12 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   if (interpLoadRun (ctx->interp, file, &errorStr, &ss, &res) != 0)
   {
     ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-       "Interpretion on file %s went bad, pid: %d", file, rd->ctx->pid);
+       "Interpretation on file %s went bad, pid: %d", file, rd->ctx->pid);
   debug_writer1("Stopping new file %d BAD\n", 0);
     return APSML_ERROR;
   }
   ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-     "Interpretion on file %s was successful, pid: %d", file, rd->ctx->pid);
+     "Interpretation on file %s was successful, pid: %d", file, rd->ctx->pid);
   debug_writer1("Stopping new file %d GOOD\n", 0);
 
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,

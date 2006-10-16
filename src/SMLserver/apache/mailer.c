@@ -262,7 +262,7 @@ static int
 mailer_getline (char **line, int timeout, mailer * mail, int *tu, int blocking) //{{{
 {
   buffer *buf = &(mail->buf);
-  int timeused;
+  int timeused = 0;
   int n = buf->nextline;
   int t = buf->end;
   time_t before = time (NULL), now;
@@ -1095,7 +1095,7 @@ sendmail (mailer *mail, email *e, int *left) //{{{
         n = sendmailfrom(mail, e);
         if (n < 0) return n;
         sstate = 1;
-        *left++;
+        (*left)++;
         break; //}}}
       case 1: //{{{
         if (e->to != NULL)
@@ -1103,7 +1103,7 @@ sendmail (mailer *mail, email *e, int *left) //{{{
           // send rcpt to: and move from to -> tosend
           n = sendrcpt(mail, e);
           if (n < 0) return -2;
-          *left++;
+          (*left)++;
           if (e->to == NULL) sstate = 2;
         }
         break; //}}}
@@ -1111,7 +1111,7 @@ sendmail (mailer *mail, email *e, int *left) //{{{
         n = senddatacommand(mail, e);
         if (n < 0) return -2;
         blocking = 1;
-        *left++;
+        (*left)++;
         sstate = 3;
         break;  //}}}
       case 3: //{{{
@@ -1125,7 +1125,7 @@ sendmail (mailer *mail, email *e, int *left) //{{{
         if (r != NULL)
         {
           cstate = 1;
-          *left--;
+          (*left)--;
           switch (n / 100)
           {
             case 2:
@@ -1171,7 +1171,7 @@ sendmail (mailer *mail, email *e, int *left) //{{{
             }
             temp = e->tosend;
             temp->response = r;
-            *left--;
+            (*left)--;
             switch (n/100)
               {
               case 2:
@@ -1200,7 +1200,7 @@ sendmail (mailer *mail, email *e, int *left) //{{{
       case 2: // get DATA reply {{{
         n = getanswer (&r, mail->timeout.data, mail, 1);
         if (n < 0) return -2;
-        *left--;
+        (*left)--;
         switch (n/100)
         {
           case 3:
@@ -1425,14 +1425,14 @@ apsml_sendmail(int tolist, int tolistlength, String from, String data, mailer *m
   return n;
 } //}}}
 
-int *
+uintptr_t *
 apsml_mailget(Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
     int i, mailer *mail)  //{{{
 {
   struct rcptlist *temp;
   String rs;
   char *res;
-  int *pair, *listpair, *list;
+  uintptr_t *pair, *listpair, *list;
   makeNIL (list);
 //    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, mail->rd->server, 
 //        "apsml_mailget 1");
@@ -1451,6 +1451,7 @@ apsml_mailget(Region rAddrLPairs, Region rAddrEPairs, Region rAddrString,
       break;
     default:
       raise_exn ((int ) &exn_OVERFLOW);
+      return NULL; // Shut up
       break;
   }
   for ( ; temp != 0 ; temp = temp->next)
@@ -1475,9 +1476,9 @@ apsml_mailget(Region rAddrLPairs, Region rAddrEPairs, Region rAddrString,
     allocRecordML (rAddrEPairs, 2, pair);
     allocRecordML (rAddrLPairs, 2, listpair);
     first (pair) = temp->id;
-    second (pair) = (int) rs;
-    first (listpair) = (int) pair;
-    second (listpair) = (int) list;
+    second (pair) = (uintptr_t) rs;
+    first (listpair) = (uintptr_t) pair;
+    second (listpair) = (uintptr_t) list;
     makeCONS(listpair, list);
   }
   switch (i)
