@@ -571,6 +571,7 @@ startsched (const char *server, apr_port_t port)/*{{{*/
   if (tmp != 0)
   {
     si.pid = -1;
+    si.input = 0; // Shut Up
     return si;
   }
   s = fork();

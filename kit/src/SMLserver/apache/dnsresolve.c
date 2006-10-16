@@ -54,7 +54,7 @@ fourcharto32 (unsigned char l0, unsigned char l1, unsigned char l2,
 }
 
 static void
-ntohhead (unsigned char *c, dnshead *h)
+ntohhead (char *c, dnshead *h)
 {
   h->id = twocharto16 (c[0], c[1]);
   c += 2;
@@ -81,7 +81,7 @@ iflessthan (int a, int b)
 // skip the next domainname
 // Not trivial as dns uses a funny compression
 int
-skipname (unsigned char *first, int next, int l)
+skipname (char *first, int next, int l)
 {
   unsigned char len;
   while (1)
@@ -161,9 +161,9 @@ dumpname (char *dst, int dst_size, char *first, int next, int l)
   return -1;
 }
 
-static int *
+static uintptr_t *
 apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
-		    Region rAddrString, char *str, int *list, int depth, request_data *rd)
+		    Region rAddrString, char *str, uintptr_t *list, int depth, request_data *rd)
 {
   if (depth < 0)
     return list;
@@ -175,11 +175,11 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
   char dnsnamesa[NS_MAXDNAME];
   char *dnsnames = dnsnamesa;
   char *input = str;
-  int *pair, *listpair;
+  uintptr_t *pair, *listpair;
   String rs;
   dnshead *head = (dnshead *) ans;
   // get the dns package
-  int n = res_search (input, C_IN, T_MX, ans, NS_PACKETSZ + 1);
+  int n = res_search (input, C_IN, T_MX, (unsigned char *) ans, NS_PACKETSZ + 1);
   input = 0;
   if (n == -1)
     return list;
@@ -224,12 +224,12 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
 	  rv = dumpname (dnsnames, NS_MAXDNAME, ans, next + 2, n);
 	  rs = convertStringToML (rAddrString, dnsnames);
 	  allocRecordML (rAddrEPairs, 3, pair);
-	  elemRecordML (pair, 0) = (int) a_mx_pref;
-	  elemRecordML (pair, 1) = (int) a_ttl;
-	  elemRecordML (pair, 2) = (int) rs;
+	  elemRecordML (pair, 0) = (uintptr_t) a_mx_pref;
+	  elemRecordML (pair, 1) = (uintptr_t) a_ttl;
+	  elemRecordML (pair, 2) = (uintptr_t) rs;
 	  allocRecordML (rAddrLPairs, 2, listpair);
-	  first (listpair) = (int) pair;
-	  second (listpair) = (int) list;
+	  first (listpair) = (uintptr_t) pair;
+	  second (listpair) = (uintptr_t) list;
 	  makeCONS (listpair, list);
     ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
         "apdns_getFQDN_MX: pref %i, ttl %i, %s", a_mx_pref, a_ttl, dnsnames);
@@ -253,11 +253,11 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
   return list;
 }
 
-int *
+uintptr_t *
 apdns_getFQDN_MX (Region rAddrLPairs, Region rAddrEPairs, Region rAddrString,
 		  String str, request_data *rd)
 {
-  int *list;
+  uintptr_t *list;
   makeNIL (list);
   return apdns_getFQDN_MX_1 (rAddrLPairs, rAddrEPairs, rAddrString,
 			     &(str->data), list, 3, rd);
