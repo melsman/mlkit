@@ -339,9 +339,10 @@ functor DbOracleBackend(type conn = int
                             | "SessionMaxDepth" => setInt 5
                             | "MinimumNumberOfConnections" => setInt 6
                             | "MaximumNumberOfConnections" => setInt 7
+                            | "DebugLevel" => setInt 8
                             | _ => (log "Unknown setting :" ^ d; raise Domain))
                            end
-    fun getHandle (i:int) : DbHandle = let val res : int = (log "apsmlORAGetSession" ; prim(":", ("apsmlORAGetSession",i,getReqRec()))) before (log("apsmlORAGetSession DONE");())
+    fun getHandle (i:int) : DbHandle = let val res : int = prim(":", ("apsmlORAGetSession",i,getReqRec()))
                                  in if res = 0
                                     then raise Fail "Oracle Driver: Could not get database session"
                                     else (if res = 1 
@@ -350,7 +351,7 @@ functor DbOracleBackend(type conn = int
                                  end
     fun putHandle (h:DbHandle) : unit = 
                case !h of NONE => ()
-                        | SOME  r => (log "apsmlORADropSession" ; prim(":", ("apsmlORADropSession",r : int,getReqRec()));
+                        | SOME  r => (prim(":", ("apsmlORADropSession",r : int,getReqRec()));
                                       h:= NONE)
     fun dmlDb (h : DbHandle) q : unit = 
        case !h of NONE => raise Fail "Oracle Driver: Abuse, session closed"
@@ -359,7 +360,7 @@ functor DbOracleBackend(type conn = int
                               val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_DML")
                                       of SOME true => ignore (log sql)
                                        | _ => () 
-                              val  res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r : int, sql : string, getReqRec())))
+                              val  res : int = prim("@:", ("DBORAExecuteSQL",r : int, sql : string, getReqRec()))
                             in if res <> 2
                                then (* not DBDml *) 
                                   raise Fail ("Oracle Driver: dml: " ^ sql ^ " failed")
@@ -372,7 +373,7 @@ functor DbOracleBackend(type conn = int
                               val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_EXEC")
                                       of SOME true => ignore (log sql)
                                        | _ => () 
-                              val res : int = (log "DBORAExecuteSQL" ; prim("@:", ("DBORAExecuteSQL",r,sql : string, getReqRec())))
+                              val res : int = prim("@:", ("DBORAExecuteSQL",r,sql : string, getReqRec()))
                             in if res = 0
                                then (* DBError *) 
                                   raise Fail ("Oracle Driver: exec: " ^ sql ^ " failed")
@@ -391,10 +392,10 @@ functor DbOracleBackend(type conn = int
           val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_SELECT")
                   of SOME true => ignore (log sql)
                    | _ => () 
-          val res : int = (log "DBORAExecuteSQL" ; prim("@:",("DBORAExecuteSQL",r,sql : string, getReqRec())))
+          val res : int = prim("@:",("DBORAExecuteSQL",r,sql : string, getReqRec()))
 (*          val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`) *)
           in case res of 1 => (*DBData*) 
-                             (let val res2 : string list = (log "apsmlORAGetCNames" ;prim(":", ("apsmlORAGetCNames",r,getReqRec())))
+                             (let val res2 : string list = prim(":", ("apsmlORAGetCNames",r,getReqRec()))
                                   val res3 = List.map toLower (List.rev res2)
                               in ((h, selector res3, res3),res3)
                               end handle Overflow => 
@@ -412,7 +413,7 @@ functor DbOracleBackend(type conn = int
 
     fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "Oracle Driver: Session is closed"
                                         | SOME r => 
-                             let val (res,res2) : ((string * int) list * int) = (log "apsmlORAGetRow" ; prim(":", ("apsmlORAGetRow",r,getReqRec())))
+                             let val (res,res2) : ((string * int) list * int) = prim(":", ("apsmlORAGetRow",r,getReqRec()))
                              in 
                              case res2 of 1 => SOME (toOption res)
                                         | 3 => NONE
@@ -424,14 +425,14 @@ functor DbOracleBackend(type conn = int
     val getRowDb = fn (h,f,l) => Option.map f (getRowListDb (h,f,l))
                                      
     fun dmlTransDb h f = case !h of NONE => raise Fail "Oracle Driver: Abuse, session is closed"
-                                  | SOME r => let val _ = log("TransStart")
+                                  | SOME r => let 
                                                   val res : int = prim("@:", ("DBORATransStart",r : int))
                                               in if res = 0 
                                                  then raise Fail "Oracle Driver: Transaction already started"
                                                  else 
-                    (((f h) handle X => (log "TransRollBack"; prim("@:", ("DBORATransRollBack",r : int, getReqRec())) : int; raise X)) before ( 
+                    (((f h) handle X => prim("@:", ("DBORATransRollBack",r : int, getReqRec())) : int; raise X) before ( 
                          case !h of NONE => raise Fail "Oracle Driver: Session closed prematurely"
-                                  | SOME r2 => let val _ = log "TransCommit"
+                                  | SOME r2 => let
                                                    val res2 : int = prim("@:", ("DBORATransCommit",r : int,getReqRec()))
                                                in if res2 <> 2 (* DBDml *) 
                                                   then raise Fail "Oracle Driver: dmlTransDb.Database connection failed"
