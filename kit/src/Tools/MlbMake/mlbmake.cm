@@ -4,6 +4,8 @@ is
   ../../Common/tools.cm
   ../../../basis/BINARYMAP.sml
   ../../../basis/Binarymap.sml
+  ../../../basis/BINARYSET.sml
+  ../../../basis/Binaryset.sml
   ENVIRONMENT.sml
   Environment.sml
   CONFIGURATION.sml
@@ -14,4 +16,5 @@ is
   MlbProject.sml
   ULFILE.sml
   UlFile.sml
+  MLB_PLUGIN.sml
   MlbMake.sml

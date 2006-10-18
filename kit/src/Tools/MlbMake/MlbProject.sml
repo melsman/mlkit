@@ -412,7 +412,7 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 
 	fun dirMod dir file = if OS.Path.isAbsolute file then file
 			      else OS.Path.concat(dir,file)
-			
+
 	structure DepEnv = 
 	    struct
 		type L = string list	    
@@ -704,9 +704,28 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
       val fresh = (Empty,Empty)
     end
 
-	fun map2 f ss = Priority.map op@ (fn (k,b) => List.map (fn (x,y,a) => (f x, f y,a)) b) ss
+	fun map2 f f' ss = Priority.map op@ (fn (k,b) => List.map (fn (x,y,a) => (f x, f' y,a)) b) ss
 
   fun max (a,b) = if a < b then b else a
+
+    structure Atom = 
+      struct
+        type atom = string
+        val toString = fn x => x
+        val fromString = fn x => x
+        val compare = String.compare
+      end
+    datatype SmlFile = Script of Atom.atom
+                     | NonScript of Atom.atom
+    fun smlfilemap f (Script a) = Script (f a)
+      | smlfilemap f (NonScript a) = NonScript (f a)
+
+  fun stripFile (Script a) = a
+    | stripFile (NonScript a) = a
+
+	fun dirMod2 dir file = if OS.Path.isAbsolute (Atom.toString (stripFile file)) then file
+			      else smlfilemap (fn a => Atom.fromString (OS.Path.concat(dir,Atom.toString a))) file
+
 
 	fun srcs_bdec_file T mlbs mlbfile_rel =
 	    let val mlbfile_abs = mkAbs mlbfile_rel
@@ -715,8 +734,8 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 	        | NONE => let val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
 		    in 
 			let val bdec = parse mlbfile
-			    val (ss, mlbs,p,e) = srcs_bdec 0 Priority.fresh T emptyA mlbfile mlbs bdec
-			    val ss = map2 (dirMod (OS.Path.dir mlbfile_rel)) ss
+			    val (ss : (SmlFile * string * string list) list Priority.P , mlbs,p,e) = srcs_bdec 0 Priority.fresh T emptyA mlbfile mlbs bdec
+			    val ss = map2 (dirMod2 (OS.Path.dir mlbfile_rel)) (dirMod (OS.Path.dir mlbfile_rel)) ss
 			in cd_old()
 			    ; (ss,(mlbfile_abs,p)::mlbs,p,e)
 			end handle X => (cd_old(); raise X)
@@ -746,16 +765,16 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
                                                                               | SOME i' => max(i,i')) p l,
                                                      List.foldl (fn (a,e') => Priority.up (a,e')) e l)
 	      | MS.ATBDECbdec smlfile => 
-		    let val L = case T of SRCTYPE_SCRIPTSONLY => Priority.empty op@ 
-		                        | _ => Priority.single (p,[(smlfile,mlbfile,A)],op@)
+		    let val L = (* case T of SRCTYPE_SCRIPTSONLY => Priority.empty op@ 
+		                        | _ => *) Priority.single (p,[(NonScript (Atom.fromString smlfile),mlbfile,A)],op@)
 		    in (L,mlbs,Int.+(p,1),e)
 		    end
 	      | MS.MLBFILEbdec (mlbfile,_) => let val (ss,mlbs,p',e) = srcs_bdec_file T mlbs mlbfile
                                         in (ss,mlbs, max(p,p'), e)
                                         end
 	      | MS.SCRIPTSbdec smlfiles => 
-		    let val L = case T of SRCTYPE_ALLBUTSCRIPTS => Priority.empty op@
-		                        | _ => Priority.single (p,map (fn f => (f,mlbfile,A)) smlfiles,op@)
+		    let val L = (* case T of SRCTYPE_ALLBUTSCRIPTS => Priority.empty op@
+		                        | _  => *) Priority.single (p,map (fn f => (Script (Atom.fromString f),mlbfile,A)) smlfiles,op@)
 		    in (L,mlbs,p,e)
 		    end
 	      | MS.ANNbdec (ann,bdec) => srcs_bdec p e T (ann::A) mlbfile mlbs bdec
@@ -775,8 +794,31 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
   fun pp_prior k [] = ""
     | pp_prior k ((x,y,z)::r) = "priority: " ^ (Int.toString k) ^ " " ^ x ^ " " ^ y ^ "\n" ^ (pp_prior k r)
 	
-	fun sources (T:srctype) (mlbfile : string) : (int * string * string * string list) list =
-	    List.rev (Priority.fold (fn (k,a,acc) => ((*print (pp_prior k a);*) (List.map (fn (a,b,c) => (k,a,b,c)) a) @ acc)) [] (#1 (srcs_bdec_file T nil mlbfile)))
+	fun sources (* (T:srctype) *) (mlbfile : string) =
+	    List.rev (Priority.fold (fn (k,a,acc) => ((List.map (fn (a,b,c) => (k,a,b,c)) a) @ acc)) [] (#1 (srcs_bdec_file () nil mlbfile)))
     
+    type BG = (int * SmlFile * string * string list) list
+    type File = SmlFile * int
+    fun project (a,b) = a
+    val fold = fn f => List.foldl (fn ((_,file,s1,s2),acc) => f(file,s1,s2,acc))
+    fun take i = 
+      let 
+        fun t acc [] = acc
+          | t acc ((j,a,b,c)::r) = if j <= i then t (((a,j),b,c)::acc) r else acc
+      in
+       fn l => t [] l
+      end
+    fun initial [] = []
+      | initial g = take 0 g 
+    fun remove d [] = []
+      | remove d ((i,a,b,c)::r) = case Atom.compare (stripFile a,d)
+                                  of EQUAL => r
+                                   | _ => (i,a,b,c) :: (remove d r)
+    fun next i [] = ([],[])
+      | next i (l as ((j,_,_,_)::r)) = if i < j then (take j l,l) 
+                                       else ([], l)
+    fun done ((d,i),[]) = ([],[])
+      | done ((d,i),g) = next i (remove (stripFile d) g)
+
     end
 	
