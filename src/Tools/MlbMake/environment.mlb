@@ -1,6 +1,6 @@
 local 
   $(SML_LIB)/basis/basis.mlb
-  ../../../basis/binarymap.mlb
+  ../../../basis/kitlib2.mlb
 in
   CONFIGURATION.sml Configuration.sml
   ENVIRONMENT.sml Environment.sml

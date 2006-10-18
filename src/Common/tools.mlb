@@ -2,7 +2,7 @@ local
   basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
   basis Edlib = bas ../Edlib/edlib.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
-  basis Listsort = bas ../../basis/listsort.mlb end
+  basis Kitlib = bas ../../basis/kitlib2.mlb end
   open BasLib
 in 
   BASIC_IO.sml 
@@ -27,7 +27,7 @@ in
   FLAGS.sml
   BasisCompat.sml
   Menu.sml
-  local open Listsort
+  local open Kitlib
   in
     Flags.sml
     Man.sml

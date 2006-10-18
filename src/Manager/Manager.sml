@@ -76,6 +76,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
        desc="Link-files to be linked together to form an\n\
 	\executable."}
 
+    val parallel = Flags.add_int_entry
+      {long="parallel_compilation", short = SOME "j",
+       menu=["Control", "number of parallel compilation processes"],
+       item=ref 1, desc=
+       "The maximum number of parallel processes used\n\
+       \for compilation."}
+
     val _ = Flags.add_stringlist_entry 
       {long="link_code_scripts", short=SOME "link_scripts", item=ref nil,
        menu=["File", "link files scripts"],
@@ -714,9 +721,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 	in if !Flags.SMLserver then
 	    (case mlbfile_opt of
 		 SOME mlbfile =>
-		     let val s = mlb_to_ulfile getUoFiles {mlbfile=mlbfile}
-			 val ulfile = !run_file
-		     in writeAll(ulfile,s) 
+         let
+           val _ = chat "creating ul file"
+           val s = mlb_to_ulfile getUoFiles {mlbfile=mlbfile}
+           val ulfile = !run_file
+         in writeAll(ulfile,s) 
 		      ; print("[wrote file " ^ ulfile ^ "]\n")
 		     end
 	       | NONE => 
@@ -756,11 +765,44 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		     handle _ => Posix.Process.exit 0w1)
     end
 
+    local
+      local
+        val pids = ref []
+      in
+        fun add pid = pids := pid::(!pids)
+        fun remove pid = pids := (List.mapPartial (fn p => if p = pid then NONE else SOME p) (!pids))
+        fun killrest () = (List.app (fn p => Posix.Process.kill (Posix.Process.K_PROC p, Posix.Signal.term)) (!pids) ;
+                           List.app (fn p => ignore (Posix.Process.waitpid (Posix.Process.W_CHILD p,[]))) (!pids) ;
+                           pids := []) 
+      end
+      fun failSig s signal =
+            raise Fail ("isolate error: " ^ s ^ "(" ^ 
+                        SysWord.toString (Posix.Signal.toWord signal) ^ ")")
+    in
+      fun isolate2 (f : 'a -> unit) (a:'a) : Posix.Process.pid =
+	           case Posix.Process.fork()
+             of SOME pid => (add pid ; pid)
+              | NONE => ((f a ; Posix.Process.exit 0w0)
+		                     handle _ => Posix.Process.exit 0w1)
+
+      fun wait p = 
+         let
+           val (pid,st) = case p
+                          of NONE => Posix.Process.wait()
+                           | SOME p => Posix.Process.waitpid (Posix.Process.W_CHILD p,[])
+         in
+           case st 
+           of Posix.Process.W_EXITED => (remove pid ; pid)
+            | Posix.Process.W_EXITSTATUS _ => (remove pid ; killrest (); raise IsolateFunExn)
+            | Posix.Process.W_STOPPED s => (remove pid ; killrest (); failSig "W_STOPPED" s)
+            | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED" s)
+         end handle OS.SysErr t => (killrest (); failSig "OS.SysErr" (Posix.Signal.fromWord 0w0))
+    end
+
     structure MlbPlugIn : MLB_PLUGIN  =
 	struct
       fun unlock unique lockfile = (Posix.FileSys.unlink lockfile; Posix.FileSys.unlink (lockfile ^ unique)) handle _ => ()
-      fun lock unique lockfile = 
-                                  (Posix.IO.close (Posix.FileSys.createf (lockfile ^ unique,Posix.FileSys.O_RDONLY, Posix.FileSys.O.flags [], Posix.FileSys.S.flags []));
+      fun lock unique lockfile = (Posix.IO.close (Posix.FileSys.creat (lockfile ^ unique,Posix.FileSys.S.iwusr));
                                   ((Posix.FileSys.link{old=lockfile ^ unique, new=lockfile}; true)
                                   handle OS.SysErr _ => ((Posix.FileSys.ST.nlink (Posix.FileSys.stat (lockfile ^ unique)) = 2)
                                                          handle OS.SysErr _ => (unlock unique lockfile;false))))
@@ -771,12 +813,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		    val () = List.app Flags.turn_on flags
 		    val () = Flags.turn_on "compile_only"
 		    val () = Flags.lookup_string_entry "output" := target
-		in (build_mlb_one a before (unlock unique lockfile))
-		end handle Fail s => (unlock unique lockfile ; print ("Compile error: " ^ s ^ "\n"))
+		in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock unique lf))
+		end handle ? => ((case lockfile of NONE => () | SOME lf => unlock unique lf) ;
+                     case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
+                                                      | ? => raise ?)
 
-	    fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : bool =
-		lock (Int.toString unique) lockfile andalso
-     (isolate (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source);true) 
+	    fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
+		    (fn f => case lockfile
+                 of NONE => SOME (f ())
+                  | SOME lf => if lock (Int.toString unique) lf
+                               then SOME (f ())
+                               else NONE)
+        (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
+
+      val getParallelN = parallel
+      val wait = wait
 (*
 	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
 *)
