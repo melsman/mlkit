@@ -203,5 +203,5 @@ local
 *)
 in
   open General List ArrayVector String Bool Word Byte 
-       Int Real IntInf IntInfRep Io System Posix IO (* Sml90 *)
+       Int Real IntInf IntInfRep Io System Text Posix IO (* Sml90 *)
 end
