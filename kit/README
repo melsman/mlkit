@@ -209,6 +209,11 @@ Appendix B: Quick Compilation and Installation Guide
 We assume that SML/NJ 110.0.7 and MLton >= 20051202 are installed on
 the system as described in Section 3.
 
+If you checked out the sources from the sourceforge svn repository,
+execute the command:
+ 
+ $ ./autobuild
+
 To compile and install the MLKit, execute the following commands:
 
  $ ./configure

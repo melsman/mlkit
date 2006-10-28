@@ -140,7 +140,7 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 	fun is_symbol #"=" = true
 	  | is_symbol _ = false
 
-	fun lex chs : string list =
+	fun lex file chs : string list =
 	    let 
 		fun lex_symbol (c::chs) =
 		    if is_symbol c then SOME (c,chs) else NONE
@@ -156,14 +156,31 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 			 else lex_string (rest, c::acc)
 		  | lex_string ([], acc) = (implode(rev acc), [])
 
+                val lex_string_lit =
+                    fn #"\"" :: rest =>
+                       let fun lp acc =
+                               fn #"\"" :: rest => SOME (implode (rev acc), rest)
+                                | c :: rest => lp (c::acc) rest
+                                | [] =>
+                                  error ("Unclosed string literal in project " ^
+                                         quot(file))
+                       in lp [] rest
+                       end
+                     | _ => NONE
+
 		fun lex0 (chs : char list, acc) : string list =
 		    case lex_whitesp chs of 
 			[] => rev acc
-		      | chs => lex0 (case lex_symbol chs of 
-					 SOME (c,chs) => (chs, Char.toString c :: acc)
-				       | NONE => let val (s, chs) = lex_string(chs,[])
-						 in (chs, s::acc) 
-						 end)
+		      | chs =>
+                        lex0 (case lex_symbol chs of 
+				 SOME (c,chs) => (chs, Char.toString c :: acc)
+			       | NONE =>
+                                 case lex_string_lit chs of
+                                    SOME (s, chs) => (chs, s :: acc)
+                                  | NONE =>
+                                    let val (s, chs) = lex_string(chs,[])
+				    in (chs, s::acc) 
+				    end)
 	    in lex0(chs,[])
 	    end
 
@@ -193,20 +210,20 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 				       orelse f = ""))
 	      | _ => false
 
-	local
-	    fun is_keyword s = 
-		case s of
-		    "open" => true
-		  | "let" => true
-		  | "local" => true
-		  | "in" => true
-		  | "end" => true
-		  | "bas" => true
-		  | "basis" => true
-		  | "scriptpath" => true
-		  | "ann" => true
-		  | _ => false
-			
+	fun is_keyword s = 
+	    case s of
+	       "open" => true
+	     | "let" => true
+	     | "local" => true
+	     | "in" => true
+	     | "end" => true
+	     | "bas" => true
+	     | "basis" => true
+	     | "scriptpath" => true
+	     | "ann" => true
+	     | _ => false
+
+	local		
 	    fun is_fileext s =
 		case s of
 		    "mlb" => true
@@ -233,27 +250,35 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
             [] => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached end of file)")
           | s::_ => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached " ^ quot s ^ ")")
 
+        fun parse_warn1 mlbfile (msg, rest) =
+            warn (concat ["while parsing basis file ", quot mlbfile, " : ", msg,
+                          case rest of [] => "(reached end of file)"
+                                     | s::_ => "(reached " ^ quot s ^ ")"])
 
 	fun expand mlbfile s = 
 	    let 
-		fun readUntil c0 nil acc = parse_error mlbfile "malformed path-var"
-		  | readUntil c0 (c::cc) acc =
-		    if c = c0 then
-			let val pathVar = implode (rev acc)
-			    val cc = 
-				case cc of 
-				    #"/"::cc => cc
-				  | _ => cc
-			in case (Env.getEnvVal (pathVar)) of
-			    SOME path => OS.Path.concat(path, implode cc)
-			  | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
-			end
-		    else readUntil c0 cc (c::acc)
-	    in		
-		case explode s of
-		    #"$" :: #"(" :: cc => readUntil #")" cc nil
-		  | #"$" :: cc => readUntil #"/" cc nil
-		  | _ => s
+                val implodeRev = implode o rev
+
+                fun resolveVar pathVar =
+                    case Env.getEnvVal pathVar of
+		       SOME path => path
+		     | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
+
+                fun inVar strs cs =
+                    fn [] => parse_error mlbfile "malformed path-var"
+                     | #")" :: cc =>
+                       inLit (resolveVar (implodeRev cs)::strs) [] cc
+                     | cc as (#"/" :: _) =>
+                       inLit (resolveVar (implodeRev cs)::strs) [] cc
+                     | c::cc => inVar strs (c::cs) cc
+
+                and inLit strs cs =
+                    fn [] => concat (rev (implodeRev cs::strs))
+                     | #"$" :: #"(" :: cc => inVar (implodeRev cs::strs) [] cc
+                     | #"$" :: cc => inVar (implodeRev cs::strs) [] cc
+                     | c :: cc => inLit strs (c::cs) cc
+	    in
+               inLit [] [] (explode s)
 	    end
 
 	fun parse_bdec_more mlbfile (bdec,ss) =
@@ -297,12 +322,19 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 		       | NONE => parse_error1 mlbfile ("invalid basis expression", ss))
 
 	and parse_ann mlbfile ss =
-	    case ss of
-		s::ss => 
-		    if MS.supported_annotation s then (s,ss)
-		    else parse_error1 mlbfile ("non-supported annotation after 'ann'", ss)
-	      | _ => parse_error1 mlbfile ("missing annotation after 'ann'", ss)
-			
+            let
+               fun lp (anns, s::ss) =
+                   if is_keyword s then (anns, s::ss)
+                   else if MS.supported_annotation s then lp (s::anns,ss)
+		   else (parse_warn1 mlbfile ("non-supported annotation '"^s^
+                                              "' after", ss)
+                       ; lp (anns,ss))
+                 | lp (_, _) =
+                   parse_error1 mlbfile ("missing annotation after 'ann'", ss)
+	    in
+               lp ([], ss)
+            end
+
 	and parse_bdec_opt mlbfile ss =
 	    case ss of
 		"local" :: ss => 
@@ -358,19 +390,26 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 			 end
 	      | "ann" :: ss =>
 		    let 
-			fun parse_rest'(ann,bdec,ss) =
+			fun parse_rest'(anns,bdec,ss) =
 			    case ss of 
-				"end" :: ss => parse_bdec_more mlbfile (MS.ANNbdec(ann,bdec),ss)
+				"end" :: ss =>
+                                parse_bdec_more
+                                   mlbfile
+                                   (foldl (fn (ann, bdec) =>
+                                              MS.ANNbdec(ann,bdec))
+                                          bdec
+                                          anns,
+                                    ss)
 			      | _ => parse_error1 mlbfile ("I expect an 'end'", ss)
-			fun parse_rest(ann,ss) =
+			fun parse_rest(anns,ss) =
 			    case ss of 
 				"in" :: ss => 
 				    (case parse_bdec_opt mlbfile ss of 
-					 NONE => parse_rest'(ann,MS.EMPTYbdec,ss)
-				       | SOME(bdec,ss) => parse_rest'(ann,bdec,ss))
+					 NONE => parse_rest'(anns,MS.EMPTYbdec,ss)
+				       | SOME(bdec,ss) => parse_rest'(anns,bdec,ss))
 			      | _ => parse_error1 mlbfile ("I expect an 'in'", ss)
 		    in case parse_ann mlbfile ss of 
-		         (ann,ss) => parse_rest(ann,ss)
+		         (anns,ss) => parse_rest(anns,ss)
 		    end
  	      | s :: ss =>
 			 if is_smlfile s then parse_bdec_more mlbfile (MS.ATBDECbdec (expand mlbfile s),ss)
@@ -398,12 +437,13 @@ functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT =
 		error ("The basis file " ^ quot mlbfile ^ " does not have extension 'mlb'")	    
 	    else
 		let (* val _ = print ("currently at " ^ OS.FileSys.getDir() ^ "\n") *)
-		    val ss = (lex o (drop_comments mlbfile) o explode o MlbFileSys.fromFile) mlbfile
+		    val ss = (lex mlbfile o drop_comments mlbfile o
+                              explode o MlbFileSys.fromFile) mlbfile
 		    (* val _ = print_ss ss *)
 		in  case parse_bdec_opt mlbfile ss of
 		    SOME (bdec,nil) => bdec
 		  | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
-		  | NONE => parse_error1 mlbfile ("missing basis declaration", ss)
+		  | NONE => MS.EMPTYbdec
 		end
 	    handle IO.Io {name=io_s,cause,...} => error ("The basis file " ^ quot mlbfile ^ " cannot be opened")
 

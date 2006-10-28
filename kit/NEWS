@@ -1,5 +1,25 @@
 MLKit NEWS file
 
+ * mael 2006-10-29: Applied patch by Vesa Karvonen. The patch:
+
+     - Exposes the Basis library Text : TEXT module, which wasn't
+       exposed for some reason and also removes the opaque signature
+       ascription which would (incorrectly) generate new types char,
+       string, vector, ...
+
+     - Extends the MLB parser to handle an arbitrary number of
+       annotations in MLB files.  Unrecognized annotations result in a
+       warning and have no other semantic effect.
+
+     - Extends the MLB lexer to recognize simple quoted strings.  This
+       is required to parse MLton's annotations properly.
+
+     - Extends the expansion of MLB path variables so that path
+       variables are allowed at any position of a path rather than
+       just at the beginning.
+
+   --Vesa Karvonen
+
               **** MLKit version 4.3.0 is released ****
 
  * mael 2006-01-27: Summary of major changes since 4.1.4
@@ -21,7 +41,7 @@ MLKit NEWS file
    distribution (in directory kit/dist/). After running 'make
    bootstrap' (see below), run 'make mlkit_i386_tgz'.
 
- * mael 2006-01-26: Simplified the bootstrap process: after runnig
+ * mael 2006-01-26: Simplified the bootstrap process: after running
    './configure' and 'make nj', simply run 'make bootstrap'; see the
    README file for details.
 
