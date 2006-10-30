@@ -399,7 +399,7 @@ bootstrap:
 	                        MANDIR=../mlkit-v3/man BINDIR=../mlkit-v3/bin
 	$(STRIP) bootstrap/mlkit-v2/bin/mlkit
 	$(STRIP) bootstrap/mlkit-v3/bin/mlkit
-	if diff bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit > /dev/null; then true; else false; fi
+	if $(DIFF) -s bootstrap/mlkit-v2/bin/mlkit bootstrap/mlkit-v3/bin/mlkit ; then true; else false; fi
 	$(INSTALL) bootstrap/mlkit-v3/bin/mlkit bin/mlkit
 
 .PHONY: man_mlkit
