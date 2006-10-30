@@ -49,37 +49,6 @@ signature MLB_PLUGIN =
      val lnkFileConsistent : {lnkFile:string} -> bool	
   end
 *)
-structure MlbUtil =
-    struct
-	fun pp_list sep nil = ""
-	  | pp_list sep [x] = x 
-	  | pp_list sep (x::xs) = x ^ sep ^ pp_list sep xs
-	    
-	fun quot s = "'" ^ s ^ "'"
-	    
-	local
-	    fun err s = print ("\nError: " ^ s ^ ".\n\n"); 
-	in
-	    fun error (s : string) = (err s; raise Fail "error")	    
-	    fun errors (ss:string list) = 
-		(app err ss; raise Fail "error")
-	end
-    
-	fun vchat0 (verbose:unit -> bool) s = 
-	    if verbose() then print (" ++ " ^ s ^ "\n") 
-	    else ()
-		
-	fun system verbose cmd : unit = 
-	    (vchat0 verbose ("Executing command: " ^ cmd) ;
-	     let 
-		 val status = OS.Process.system cmd
-		     handle _ => error ("Command failed: " ^ quot cmd)
-	     in if status = OS.Process.failure then
-		 error ("Command failed: " ^ quot cmd)
-		else ()
-	     end
-	     )
-    end
 	
 (* [mlkit-mlb flags sources.mlb] Flags not recognized by mlkit-mlb are
  * sent to the compiler for each invocation. A directory MLB is
@@ -243,42 +212,12 @@ struct
 	    val deps = readDependencies smlfile
 	    val basisFiles = map ebFileFromSmlFile deps
 	in SOME(P.compile {verbose=verbose} 
-(*	in P.compile {verbose=verbose}  *)
 	    {basisFiles=basisFiles,source=smlfile,
 	     target=objFileFromSmlFile smlfile,
        unique = unique,
        lockfile = if force then NONE else SOME (lockFileFromSmlFile smlfile),
 	     namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
 	     flags=flags})
-	end
-
-    fun map2 f ss = map (fn (x,y,a) => (f x,f y)) ss
-
-    fun check_sources srcs_mlbs_ann =
-	let (* first canonicalize paths *)
-	    val srcs_mlbs = map2 OS.Path.mkCanonical srcs_mlbs_ann
-	    fun report(s,m1,m2) =
-		let val first = "The file " ^ MlbUtil.quot s ^ " is referenced "
-		in if m1 = m2 then first ^ "more than once in " ^ MlbUtil.quot m1
-		   else first ^ "in both " ^ MlbUtil.quot m1 
-		       ^ " and " ^ MlbUtil.quot m2
-		end
-	    fun porder ((s1,m1),(s2,m2)) =
-		if s1 < s2 then LESS
-		else if s1 = s2 then
-		        (if m1 < m2 then LESS
-			 else if m1 = m2 then EQUAL
-			      else GREATER)
-		     else GREATER				
-	    val srcs_mlbs = 
-	      Listsort.sort porder srcs_mlbs
-	    fun check ((s1,m1)::(s2,m2)::rest,acc) =
-		check((s2,m2)::rest,
-		      if s1 = s2 then (s1,m1,m2)::acc
-		      else acc)
-	      | check (_,nil) = ()
-	      | check (_,acc) =	(MlbUtil.errors (map report acc))
-	in check (srcs_mlbs,nil)
 	end
 
     fun writeFile f c =
@@ -406,58 +345,22 @@ struct
           val enqueue_problem : 'a * ('a Q) -> 'a Q
         end =
         struct
-          type 'a Q = 'a list * 'a list * 'a Binaryset.set
+          type 'a Q = 'a list * 'a list * 'a list * 'a Binaryset.set
           exception BadFile
           datatype 'a File = Go of 'a
                         | Problem of 'a
                         | Done
-          val empty = fn (cmp : ('a * 'a) -> order) => ([] : 'a list,[] : 'a list,Binaryset.empty cmp)
-          fun enqueue_problem (e,(q1,q2,p)) = (
+          val empty = fn (cmp : ('a * 'a) -> order) => ([] : 'a list, [] : 'a list, [] : 'a list,Binaryset.empty cmp)
+          fun enqueue_problem (e,(q0,q1,q2,p)) = (
                                        if Binaryset.member (p, e)
                                        then raise BadFile 
-                                       else (q1,e::q2,Binaryset.add(p, e)))
-          fun enqueue (e,(q1,q2,p)) = (e::q1,q2,p)
-          fun dequeue ([],[],p) = (([],[],p),Done)
-            | dequeue ([],a::ar,p) = (([],ar,p),Problem a)
-            | dequeue (a::ar,b,p) = ((ar,b,p),Go a)
+                                       else (q0,q1,e::q2,Binaryset.add(p, e)))
+          fun enqueue (e,(q0,q1,q2,p)) = (e::q0,q1,q2,p)
+          fun dequeue ([],[],[],p) = (([],[],[],p),Done)
+            | dequeue ([],[],a::ar,p) = (([],[],ar,p),Problem a)
+            | dequeue (q0,[],q2,p) = dequeue([],List.rev q0,q2,p)
+            | dequeue (q0,a::ar,b,p) = ((q0,ar,b,p),Go a)
         end
-
-(*    fun build {flags, mlbfile, target} : unit =
-	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
-	    val _ = vchat ("Finding sources...\n")		
-	    val srcs_mlbs_anns_all' : (int * string * string * string list) list = 
-		MlbProject.sources MlbProject.SRCTYPE_ALL mlbfile
-      val srcs_mlbs_anns_all = List.map (fn (a,b,c,d) => (b,c,d)) srcs_mlbs_anns_all'
-	    val _ = check_sources srcs_mlbs_anns_all
-	    val srcs_all = map #1 srcs_mlbs_anns_all
-
-	    val srcs_scriptsonly = 
-		map #2 (MlbProject.sources MlbProject.SRCTYPE_SCRIPTSONLY mlbfile)
-	    val srcs_allbutscripts =
-		map #2 (MlbProject.sources MlbProject.SRCTYPE_ALLBUTSCRIPTS mlbfile)
-
-	    val _ = maybeWriteOneSourceFile (fn () => srcs_all)
-
-	    val _ = vchat ("Updating dependencies...\n")
-	    val _ = maybe_create_mlbdir()
-	    val _ = MlbProject.depDir := P.mlbdir()
-	    val _ = MlbProject.dep mlbfile
-		
-	    val _ = vchat ("Compiling...\n")		
-	    val _ = foldl (fn ((priority,src,mlb,anns),acc:{regionVar:int,unique:int}) =>
-			   let 
-			       (* val _ = print ("[Acc = " ^ Int.toString acc ^ "\n") *)
-			       val b = P.maybeSetRegionEffectVarCounter (#regionVar acc)
-			       val anns = MlbUtil.pp_list " " anns
-			       val flags = anns ^ " " ^ flags
-			       val _ = build_mlb_one flags mlb src (#unique acc)
-			   in if b then {regionVar=readRevFromRevFile src,unique = (#unique acc) + 1}
-                 else {regionVar=initialRev,unique =(#unique acc)+1}
-			   end) {regionVar=initialRev,unique=1} srcs_mlbs_anns_all'
-
-	    val _ = vchat ("Linking...\n")		
-	    val lnkFiles = map lnkFileFromSmlFile srcs_allbutscripts
-	    val lnkFilesScripts = map lnkFileFromSmlFile srcs_scriptsonly *)
 
     fun build {flags, mlbfile, target} : unit =
 	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
@@ -494,7 +397,7 @@ struct
 		
 	    val _ = vchat ("Compiling...\n")		
 
-      val enqueue = Queue.enqueue (* (fn ((a,b,c),q) => Queue.enqueue ((a,b,c),q)) *)
+      val enqueue = Queue.enqueue
       val fileToString = MlbProject.Atom.toString o strip o MlbProject.project
 
       type Acc = {regionVar:unit -> int,unique:int,children:Running.R, bg:MlbProject.BG, queue : ((MlbProject.File * string * string list) Queue.Q)}
@@ -506,12 +409,12 @@ struct
                                       then Running.wait(#children acc, SOME 1)
                                       else Running.wait(#children acc, SOME maxN)
                                    | NONE => Running.wait (#children acc, NONE)
-        (*    val _ = print ("Child DONE: " ^ (String.concat (List.map (fn (a) => MlbProject.Atom.toString a ^ " ") done)) ^ "\n") *)
+       (*     val _ = print ("Child DONE: " ^ (String.concat (List.map (fn a => fileToString a ^ " ") done)) ^ "\n")  *)
             val (new,bg) = List.foldl (fn (s,(acc,bg)) =>
                                           let 
                                             val (new,bg) = MlbProject.done (s,bg)
-      (* val _ = print ("DONE: " ^ (MlbProject.Atom.toString s) ^ " got: " ^ 
-                     (String.concat (List.map (fn (a,_,_) => (MlbProject.Atom.toString (strip a) ^ " ")) new) ^ "\n")) *)
+    (*   val _ = print ("DONE: " ^ (fileToString s) ^ " got: " ^ 
+                     (String.concat (List.map (fn (a,_,_) => (fileToString a ^ " ")) new) ^ "\n")) *)
                                           in (new @ acc,bg)
                                           end) ([],#bg acc) done
             val queue = List.foldl enqueue (#queue acc) new
@@ -520,7 +423,7 @@ struct
             of NONE => {regionVar = #regionVar acc, unique = (#unique acc), children = children, bg = bg,queue = queue}
              | SOME (file,mlb,anns) =>
                  let 
-          (*  val _ =  print ("About to compile: " ^ (MlbProject.Atom.toString src) ^ "\n") *)
+         (*   val _ =  print ("About to compile: " ^ (fileToString file) ^ "\n")  *)
 			      val flags = (MlbUtil.pp_list "" anns) ^ " " ^ flags
             val b = if setRegionEffectVarCounter 
                     then P.maybeSetRegionEffectVarCounter(#regionVar acc ())
@@ -529,8 +432,8 @@ struct
             val (children,queue,bg) = (case res
                                of NONE => let
                                             val (new,bg) = MlbProject.done (file,bg)  (* already compiled *)
-     (* val _ = print ("DONE: " ^ (MlbProject.Atom.toString src) ^ " got: " ^ 
-                     (String.concat (List.map (fn (a,_,_) => (MlbProject.Atom.toString (strip a) ^ " ")) new) ^ "\n")) *)
+   (*   val _ = print ("DONE: " ^ (fileToString file) ^ " got: " ^ 
+                     (String.concat (List.map (fn (a,_,_) => (fileToString  a ^ " ")) new) ^ "\n")) *)
                                           in (children,List.foldl enqueue queue new,bg)
                                           end
                                 | SOME NONE => (children,Queue.enqueue_problem ((file,mlb,anns),queue),bg)  (* couldn't get lock, lets save it for later *)
@@ -555,7 +458,7 @@ struct
       fun strip (MlbProject.Script a) = a
         | strip (MlbProject.NonScript a) = a
       val first = MlbProject.initial srcs_mlbs_anns_all
-     (* val _ = print ("Initial: " ^ (String.concat (List.map (fn (a,_,_) => (MlbProject.Atom.toString (strip a) ^ " ")) first) ^ "\n")) *)
+     (* val _ = print ("Initial: " ^ (String.concat (List.map (fn (a,_,_) => (fileToString a ^ " ")) first) ^ "\n")) *)
       val left = run {regionVar = fn () => initialRev, unique = 1, children = Running.empty, bg = srcs_mlbs_anns_all,
                       queue = List.foldl enqueue
                          (Queue.empty (fn ((a,_,_),(b,_,_)) => (MlbProject.Atom.compare (strip (MlbProject.project a), strip (MlbProject.project b))))) first}

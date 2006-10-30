@@ -12,6 +12,7 @@ is
   Configuration.sml
   MLB_FILESYS.sml
   MlbFileSys.sml
+  MlbUtil.sml
   MLB_PROJECT.sml  
   MlbProject.sml
   ULFILE.sml

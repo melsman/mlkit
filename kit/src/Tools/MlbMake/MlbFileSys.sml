@@ -15,7 +15,8 @@ structure MlbFileSys :> MLB_FILESYS =
 
     local
       val lib_list = ref [] : string list ref
-      fun init () = lib_list := [case OS.Process.getEnv "PWD" of NONE => OS.FileSys.getDir() | SOME d => d]
+      fun init () = lib_list := [(*case OS.Process.getEnv "PWD" of NONE =>*)
+                                 OS.FileSys.getDir() (*| SOME d => d *)]
       fun conditionalInit () = case !lib_list of [] => init () | _ => ()
       fun getDir d = let
                        val SOME(h,r) = List.getItem (List.rev d)

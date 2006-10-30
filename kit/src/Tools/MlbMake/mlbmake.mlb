@@ -2,21 +2,21 @@ local
   $(SML_LIB)/basis/basis.mlb
   basis KitLib = bas ../../../basis/kitlib2.mlb end
   basis Environment = bas environment.mlb end
-  basis FileSys = 
-                  bas MLB_FILESYS.sml MlbFileSys.sml end
+  basis FileSys = bas MLB_FILESYS.sml MlbFileSys.sml end
+  basis Util = bas MlbUtil.sml end
 in
   local
     open Environment FileSys
   in
     MLB_PROJECT.sml  
-    local open KitLib
+    local open KitLib Util
     in MlbProject.sml
     end
     ULFILE.sml
     UlFile.sml
   end
   MLB_PLUGIN.sml
-  local open KitLib
+  local open KitLib Util
   in MlbMake.sml
   end
 end
