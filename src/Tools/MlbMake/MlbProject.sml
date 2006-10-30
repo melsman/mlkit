@@ -67,12 +67,16 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 
 	val depDir : string ref = ref "PM"
 
-	fun error (s : string) = 
+(*	fun error (s : string) = 
 	    (print ("\nError: " ^ s ^ ".\n\n"); raise Fail "MlbProject.error")
 
 	fun warn (s : string) = print ("\nWarning: " ^ s ^ ".\n\n")
 
-	fun quot s = "'" ^ s ^ "'"
+	fun quot s = "'" ^ s ^ "'" *)
+
+  val error = MlbUtil.error
+  val warn = MlbUtil.warn
+	val quot = MlbUtil.quot (*  "'" ^ s ^ "'" *)
 
 	fun has_ext(s: string,ext) = 
 	    case OS.Path.ext s of 
@@ -97,49 +101,48 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 	fun is_symbol #"=" = true
 	  | is_symbol _ = false
 
-	fun lex file chs : string list =
-	    let 
-		fun lex_symbol (c::chs) =
-		    if is_symbol c then SOME (c,chs) else NONE
-		  | lex_symbol nil = NONE
+  local
+    fun lex_symbol (c::chs) =
+        if is_symbol c then SOME (c,chs) else NONE
+      | lex_symbol nil = NONE
 
-		fun lex_whitesp (all as c::rest) = 
-		    if Char.isSpace c then lex_whitesp rest else all 
-		  | lex_whitesp [] = []
+    fun lex_whitesp (all as c::rest) = 
+        if Char.isSpace c then lex_whitesp rest else all 
+      | lex_whitesp [] = []
 
-		fun lex_string (c::rest, acc) = 
-		    if is_symbol c then (implode(rev acc), c::rest)
-		    else if Char.isSpace c then (implode(rev acc), rest)
-			 else lex_string (rest, c::acc)
-		  | lex_string ([], acc) = (implode(rev acc), [])
+    fun lex_string (c::rest, acc) = 
+        if is_symbol c then (implode(rev acc), c::rest)
+        else if Char.isSpace c then (implode(rev acc), rest)
+       else lex_string (rest, c::acc)
+      | lex_string ([], acc) = (implode(rev acc), [])
 
-                val lex_string_lit =
-                    fn #"\"" :: rest =>
-                       let fun lp acc =
-                               fn #"\"" :: rest => SOME (implode (rev acc), rest)
-                                | c :: rest => lp (c::acc) rest
-                                | [] =>
-                                  error ("Unclosed string literal in project " ^
-                                         quot(file))
-                       in lp [] rest
-                       end
-                     | _ => NONE
+    val lex_string_lit =
+        fn file => fn #"\"" :: rest =>
+           let fun lp acc =
+                   fn #"\"" :: rest => SOME (implode (rev acc), rest)
+                    | c :: rest => lp (c::acc) rest
+                    | [] =>
+                      error ("Unclosed string literal in project " ^
+                             quot(file))
+           in lp [] rest
+           end
+         | _ => NONE
 
-		fun lex0 (chs : char list, acc) : string list =
-		    case lex_whitesp chs of 
-			[] => rev acc
-		      | chs =>
-                        lex0 (case lex_symbol chs of 
-				 SOME (c,chs) => (chs, Char.toString c :: acc)
-			       | NONE =>
-                                 case lex_string_lit chs of
+    fun lex0 file (chs : char list, acc) : string list =
+        case lex_whitesp chs
+        of [] => rev acc
+        | chs => lex0 file (case lex_symbol chs
+                            of  SOME (c,chs) => (chs, Char.toString c :: acc)
+                              | NONE =>
+                                 case lex_string_lit file chs of
                                     SOME (s, chs) => (chs, s :: acc)
                                   | NONE =>
                                     let val (s, chs) = lex_string(chs,[])
-				    in (chs, s::acc) 
-				    end)
-	    in lex0(chs,[])
-	    end
+                                    in (chs, s::acc) 
+                                    end)
+  in
+    fun lex file chs : string list = lex0 file (chs,[])
+  end
 
 	fun is_symb s =
 	    case explode s of
@@ -212,31 +215,30 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
                           case rest of [] => "(reached end of file)"
                                      | s::_ => "(reached " ^ quot s ^ ")"])
 
-	fun expand mlbfile s = 
-	    let 
-                val implodeRev = implode o rev
+  fun expand mlbfile s = 
+      let 
+        val implodeRev = implode o rev
+        fun resolveVar pathVar =
+              case Env.getEnvVal pathVar
+              of SOME path => path
+               | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
 
-                fun resolveVar pathVar =
-                    case Env.getEnvVal pathVar of
-		       SOME path => path
-		     | NONE => parse_error mlbfile ("path variable $(" ^ pathVar ^") not in env")
+        fun inVar strs cs =
+            fn [] => parse_error mlbfile "malformed path-var"
+             | #")" :: cc =>
+               inLit (resolveVar (implodeRev cs)::strs) [] cc
+             | cc as (#"/" :: _) =>
+               inLit (resolveVar (implodeRev cs)::strs) [] cc
+             | c::cc => inVar strs (c::cs) cc
 
-                fun inVar strs cs =
-                    fn [] => parse_error mlbfile "malformed path-var"
-                     | #")" :: cc =>
-                       inLit (resolveVar (implodeRev cs)::strs) [] cc
-                     | cc as (#"/" :: _) =>
-                       inLit (resolveVar (implodeRev cs)::strs) [] cc
-                     | c::cc => inVar strs (c::cs) cc
-
-                and inLit strs cs =
-                    fn [] => concat (rev (implodeRev cs::strs))
-                     | #"$" :: #"(" :: cc => inVar (implodeRev cs::strs) [] cc
-                     | #"$" :: cc => inVar (implodeRev cs::strs) [] cc
-                     | c :: cc => inLit strs (c::cs) cc
-	    in
-               inLit [] [] (explode s)
-	    end
+        and inLit strs cs =
+            fn [] => concat (rev (implodeRev cs::strs))
+             | #"$" :: #"(" :: cc => inVar (implodeRev cs::strs) [] cc
+             | #"$" :: cc => inVar (implodeRev cs::strs) [] cc
+             | c :: cc => inLit strs (c::cs) cc
+      in
+        inLit [] [] (explode s)
+      end
 
 	fun parse_bdec_more mlbfile (bdec,ss) =
 	    case parse_bdec_opt mlbfile ss of
@@ -624,88 +626,16 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 
 	fun dep (mlbfile : string) : unit =
 	    (dep_bdec_file emptyA mlbfile; ())
-(*
-	fun map2 f ss = map (fn (x,y,a) => (f x, f y,a)) ss *)
 
 	(* Support for finding the source files of a basis file *)
 
-	datatype srctype = SRCTYPE_ALL | SRCTYPE_SCRIPTSONLY | SRCTYPE_ALLBUTSCRIPTS
-
-	val emptyA = nil
-
-  structure Priority :>
-    sig
-      type 'a P
-      val empty : (('a * 'a) -> 'a) -> 'a P
-      val single : (int * 'a * (('a * 'a) -> 'a)) -> 'a P
-      val union : ('a P * 'a P) -> 'a P
-      val map : ('b * 'b -> 'b) -> (int * 'a -> 'b) -> 'a P -> 'b P
-      val fold : (int * 'a * 'b -> 'b) -> 'b -> 'a P -> 'b
-      type Q
-      val fresh : Q
-      val new : Q -> Q
-      val lookup : Q -> MS.Bid.longbid -> int option
-      val extend : Q -> Q -> MS.Bid.bid -> int -> Q
-      val up : (MS.Bid.longbid * Q) -> Q
-      val loc : Q -> Q -> Q
-
-    end = 
-    struct
-      datatype 'a P = Pair of ((int,'a) Binarymap.dict * (('a * 'a) -> 'a))
-      val empty = fn comp => Pair (Binarymap.mkDict Int.compare, comp)
-      val single = fn (k,a,comp) => Pair (Binarymap.insert (case (empty comp) of Pair (b,_) => b,k,a),comp)
-      val union = fn (Pair(a,_),Pair(b,comp)) => Pair(Binarymap.foldl
-                     (fn (k,f,acc) =>
-                        case Binarymap.peek (acc,k)
-                        of NONE => (Binarymap.insert(acc,k,f))
-                         | SOME l => (Binarymap.insert(acc,k,comp(f,l)))) b a,
-                      comp)
-      val toList = fn Pair(a,_) => Binarymap.foldr (fn (k,b,acc) => b :: acc) [] a
-      val fold = fn f => fn e => fn Pair(a,_) => Binarymap.foldl f e a
-      val map = fn c => fn f => fn Pair(a,_) => Pair(Binarymap.map f a,c)
-
-      datatype E = Empty 
-                 | Map of (MS.Bid.bid,(E * int)) Binarymap.dict 
-      type Q = (E * E)
-      val fresh = Binarymap.mkDict MS.Bid.bidCompare : (MS.Bid.bid,(E * int)) Binarymap.dict
-      fun new (A,_) = (A,Empty)
-      fun lookup (Empty,_) _  = NONE
-        | lookup _ [] = NONE
-        | lookup (Map m,_) [b] = Option.map (fn (_,i) => i) (Binarymap.peek (m,b))
-        | lookup (Map m,A) (b::lb) = case Binarymap.peek (m,b)
-                                     of NONE => NONE
-                                      | SOME (m',_) => lookup (m',A) lb
-      val lookup = fn q => fn lb => lookup q (MS.Bid.explode lb)
-      fun update bid n A Empty = Map (Binarymap.insert (fresh,bid,(A,n)))
-        | update bid n A (Map m) = Map (Binarymap.insert (m,bid,(A,n)))
-      fun extend (M,A) (_,B) bid p = (update bid p B M, update bid p B A)
-      fun loc (M,A) (N,Empty) = (M,A)
-        | loc (Empty,Empty) (_,Map m) = (Map m, Map m)
-        | loc (m,Empty) (_,Map m') = (Binarymap.foldl (fn (bid,(e,i),acc) => update bid i e acc) m m', Map m')
-        | loc (Empty,m) (_,Map m') = (Map m', Binarymap.foldl (fn (bid,(e,i),acc) => update bid i e acc) m m')
-        | loc (M,A) (B,Map m) = let
-                                  val (a,_) = loc (M,Empty) (B,Map m)
-                                  val (_,b) = loc (Empty,A) (B,Map m)
-                                in (a,b) end
-      fun up Empty _ _ = Empty
-        | up (Map m) _ [] = Map m
-        | up (Map m) Empty _ = Map m
-        | up (Map m) (Map m') [b] = (case Binarymap.peek (m',b) 
-                                    of NONE => (Map m)
-                                     | SOME (e,n) => Map (Binarymap.insert (m,b,(e,n))))
-        | up (Map m) (Map m') (b::bl) = up (Map m) (case Binarymap.peek (m',b)
-                                                    of NONE => Empty
-                                                     | SOME (e,_) => e) 
-                                                   bl
-      val up = fn (lb,(q,e)) => (up q q (MS.Bid.explode lb), up e e (MS.Bid.explode lb))
-      val fresh = (Empty,Empty)
-    end
-
-	fun map2 f f' ss = Priority.map op@ (fn (k,b) => List.map (fn (x,y,a) => (f x, f' y,a)) b) ss
-
-  fun max (a,b) = if a < b then b else a
-
-    structure Atom = 
+    structure Atom :>
+      sig
+        type atom
+        val toString : atom -> string
+        val fromString : string -> atom
+        val compare : (atom * atom) -> order
+      end = 
       struct
         type atom = string
         val toString = fn x => x
@@ -714,108 +644,257 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
       end
     datatype SmlFile = Script of Atom.atom
                      | NonScript of Atom.atom
-    fun smlfilemap f (Script a) = Script (f a)
-      | smlfilemap f (NonScript a) = NonScript (f a)
 
   fun stripFile (Script a) = a
     | stripFile (NonScript a) = a
 
-	fun dirMod2 dir file = if OS.Path.isAbsolute (Atom.toString (stripFile file)) then file
-			      else smlfilemap (fn a => Atom.fromString (OS.Path.concat(dir,Atom.toString a))) file
+  structure BuildGraph : 
+    sig
+      type 'a A
+      type 'a B
+      type 'a Map
+      type DepToken
+      type I
+      val firstB : I
+      val emptyA : 'a A
+      val projectB : 'a B -> ('a * I) option
+      val foldB : (('a * 'b) -> 'b) -> 'b -> 'a B -> 'b
+      val add_first : 'a A -> DepToken list -> 'a -> ('a A * DepToken)
+      val turn : 'a A -> ('a B * 'a Map)
+      val fromMap : ('a Map * I) -> 'a B list
+      val done : I -> unit
+      val next : 'a B -> 'a B option
+    end = 
+    struct
+      type I = bool ref * int
+      type 'a A = {id:int, elem:'a, status:bool ref, depend_status: (bool ref * int) list} list
+      type 'a elem = {id:int, elem:'a, status:bool ref, queued : bool ref, depend_status: bool ref list}
+      type 'a B = 'a elem list
+      type 'a Map =  (int,'a B list) Binarymap.dict
+      type DepToken = bool ref * int
+      fun done (r,_) = r:= true
+      fun next x = ((Option.map #2) o List.getItem) x 
+      val firstB = (ref true,0)
+      fun projectB [] = NONE
+        | projectB (({elem,id,status,queued,depend_status}:'a elem) ::r) = 
+            if not (!queued) andalso List.all ! depend_status 
+            then (queued := true ; SOME (elem, (status,id)))
+            else NONE
+      fun fromMap (m,(_,i)) = case Binarymap.peek (m,i) 
+                          of NONE => []
+                           | SOME l => List.filter (fn [] => false
+                                                     | (elem::_) => not (!(#status (elem : 'a elem)))) l 
+      val emptyA = []
+      val foldB = fn f => List.foldl (fn ({elem,id,status,queued,depend_status},acc) => f (elem,acc))
+      fun add_first bg deps elem = 
+        let
+          val r = ref false
+          val i = case List.getItem bg
+                  of NONE => 1
+                   | SOME ({id,...},_) => Int.+(id,1)
+        in
+          ({id = i, elem = elem, status = r, depend_status = deps}::bg,(r,i))
+        end
+      local
+        fun updatesMap (m,i,l) = 
+              case Binarymap.peek(m,i)
+              of NONE => Binarymap.insert(m,i,[l])
+               | SOME bl => Binarymap.insert(m,i,l::bl)
+        fun turn' ({id,elem,status,depend_status},(acc,m)) = 
+         let
+           val acc = {id=id,elem=elem,status=status,queued = ref false,depend_status = List.map (#1) depend_status}::acc
+         in
+           (acc,
+            case List.partition (fn (br,i) => i <> id-1) depend_status
+            of ([],[]) => updatesMap (m,0,acc)
+             | ([],_) => m
+             | (l,_) => List.foldl (fn ((_,i),m) => updatesMap(m,i,acc)) m l
+            )
+          end
+      in
+        fun turn l = List.foldl turn' ([],Binarymap.mkDict Int.compare) l
+      end
+    end
+  structure BG = BuildGraph
+  datatype Deps = Dep of MS.Bid.bid * BG.DepToken list * Deps list
+  fun add_level_map [] = [[],[]]
+    | add_level_map m = []::m
+  fun wrap_level ([], bid,deps) = [[Dep(bid,deps,[])]]
+    | wrap_level (m::[], bid,deps) = [[Dep(bid,deps,m)]]
+    | wrap_level (m1::m2::r,bid,deps) = (Dep(bid,deps,m1)::m2)::r
+  local
+    fun wrap_local [] = []
+      | wrap_local (m::[]) = (m::[])
+      | wrap_local (m1::m2::r) = (m1 @ m2) :: r
+    fun find_in_map _ [] = NONE : BG.DepToken list option
+      | find_in_map lbid (Dep(b,deps,m)::r) = 
+          if #1(MS.Bid.longopen lbid) = b
+          then
+            case #2(MS.Bid.longopen lbid)
+            of NONE => SOME deps
+             | SOME lbid => find_in_map lbid m
+          else find_in_map lbid r
+  in
+    fun kill_local (m1::m2::r) = wrap_local(m1::r)
+      | kill_local r = r
+    and find_in_maps _ [] = NONE : BG.DepToken list option
+      | find_in_maps lbid (m::r) = case find_in_map lbid m
+                                   of NONE => find_in_maps lbid r
+                                    | SOME deps => SOME deps
+  end
+
+  local
+    fun unique link f = 
+      let
+        val s = if link then Posix.FileSys.lstat f else Posix.FileSys.stat f
+      in
+        (Posix.FileSys.inoToWord (Posix.FileSys.ST.ino s),Posix.FileSys.devToWord (Posix.FileSys.ST.dev s))
+      end
+  in
+  fun srcs_bdec_file dir state mlbs mlbfile_rel =
+      let 
+        val mlbfile_abs = unique true mlbfile_rel
+      in
+        case List.find (fn (a,_) => mlbfile_abs = a) mlbs
+        of SOME (_,deps) => (state,deps, mlbs)
+         | NONE => 
+           let
+             val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
+           in
+             let
+               val bdec = parse mlbfile
+               val dir = if OS.Path.isAbsolute mlbfile_rel
+                         then OS.Path.dir mlbfile_rel
+                         else OS.Path.concat(dir,OS.Path.dir mlbfile_rel)
+               val (state,deps,mlbs) = srcs_bdec state mlbfile mlbs dir [] [] bdec
+             in
+               (cd_old ()
+              ; (state, deps, (mlbfile_abs,deps)::mlbs))
+             end handle X => (cd_old (); raise X)
+           end
+      end
+  and srcs_bdec state mlbfile mlbs dir anns deps bdec =
+    case bdec
+    of MS.SEQbdec (bdec1, bdec2) => 
+      let
+        val (s1,deps,mlbs) = srcs_bdec state mlbfile mlbs dir anns deps bdec1
+      in
+        srcs_bdec s1 mlbfile mlbs dir anns deps bdec2
+      end
+     | MS.EMPTYbdec => (state,deps,mlbs)
+     | MS.LOCALbdec (bdec1,bdec2) => 
+         let 
+           val (s1,deps,mlbs) = srcs_bdec {bg = #bg state, bid_map = add_level_map (#bid_map state)} mlbfile mlbs dir anns deps bdec1
+           val (s2,deps,mlbs) = srcs_bdec {bg = #bg s1, bid_map = add_level_map (#bid_map s1)} mlbfile mlbs dir anns deps bdec2
+         in 
+           ({bg = #bg s2, bid_map = kill_local (#bid_map s2)},deps,mlbs)
+         end
+     | MS.BASISbdec (bid,bexp) => 
+       let
+         val (s1,deps1,mlbs) = srcs_bexp {bg = #bg state, bid_map = add_level_map (#bid_map state)} mlbfile dir mlbs anns deps bexp
+       in
+         ({bg = #bg s1, bid_map = wrap_level (#bid_map s1, bid, deps1)},deps,mlbs)
+       end
+     | MS.OPENbdec l => (state, 
+                        List.foldl (fn (lbid,acc) => (case find_in_maps lbid (#bid_map state)
+                                                      of NONE => [] 
+                                                       | SOME d => d) @ acc) deps l
+                         , mlbs)
+     | MS.ATBDECbdec smlfile => 
+       let
+         val smlfile = if OS.Path.isAbsolute smlfile 
+                       then smlfile
+                       else OS.Path.concat(dir,smlfile)
+         val (bg,deps) = BG.add_first (#bg state : (SmlFile * string * string list) BG.A) deps (NonScript (Atom.fromString smlfile), mlbfile, anns)
+       in
+         ({bg = bg, bid_map = #bid_map state}, [deps], mlbs)
+       end
+     | MS.MLBFILEbdec (mlbfile,_) =>
+       let
+         val (ss,deps2,mlbs) = srcs_bdec_file dir state mlbs mlbfile
+       in
+         (ss,deps @ deps2, mlbs)
+       end
+     | MS.SCRIPTSbdec smlfiles =>
+       let
+         val bg = List.foldl (fn (f,bg) => #1 (BG.add_first bg deps (Script (Atom.fromString f), mlbfile, anns))) (#bg state) smlfiles
+       in
+         ({bg = bg,bid_map = #bid_map state},deps,mlbs)
+       end
+     | MS.ANNbdec (ann,bdec) => srcs_bdec state mlbfile mlbs dir (ann::anns) deps bdec
+
+  and srcs_bexp state mlbfile dir mlbs anns deps bexp =
+    case bexp
+    of MS.BASbexp bdec => srcs_bdec state mlbfile mlbs dir anns deps bdec
+     | MS.LETbexp (bdec,bexp) =>
+       let
+         val (s1,deps,mlbs) = srcs_bdec state mlbfile mlbs dir anns deps bdec
+       in
+         srcs_bexp s1 mlbfile dir mlbs anns deps bexp
+       end
+     | MS.LONGBIDbexp bid => (state, case find_in_maps bid (#bid_map state) of NONE => [] | SOME d => d, mlbs)
 
 
-	fun srcs_bdec_file T mlbs mlbfile_rel =
-	    let val mlbfile_abs = mkAbs mlbfile_rel
-	    in case List.find (fn (a,_) => mlbfile_abs = a) mlbs 
-         of SOME(_,p) => (Priority.empty op@ ,mlbs,p,Priority.fresh)
-	        | NONE => let val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
-		    in 
-			let val bdec = parse mlbfile
-			    val (ss : (SmlFile * string * string list) list Priority.P , mlbs,p,e) = srcs_bdec 0 Priority.fresh T emptyA mlbfile mlbs bdec
-			    val ss = map2 (dirMod2 (OS.Path.dir mlbfile_rel)) (dirMod (OS.Path.dir mlbfile_rel)) ss
-			in cd_old()
-			    ; (ss,(mlbfile_abs,p)::mlbs,p,e)
-			end handle X => (cd_old(); raise X)
-		    end 
-	    end
-
-	and srcs_bdec p e T A mlbfile mlbs bdec =
-	    case bdec of 
-		MS.SEQbdec (bdec1,bdec2) =>
-		    let val (ss1, mlbs, p, e) = srcs_bdec p e T A mlbfile mlbs bdec1
-			val (ss2,mlbs,p,e) = srcs_bdec p e T A mlbfile mlbs bdec2
-		    in (Priority.union (ss1,ss2),mlbs,p,e)
-		    end
-	      | MS.EMPTYbdec => (Priority.empty op@,mlbs,p,e)
-	      | MS.LOCALbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs,p',e') = srcs_bdec p e T A mlbfile mlbs bdec1
-			val (ss2,mlbs,p',e') = srcs_bdec p' (Priority.new e') T A mlbfile mlbs bdec2
-		    in (Priority.union(ss1,ss2),mlbs, p', Priority.loc e e')
-		    end
-	      | MS.BASISbdec (bid,bexp) => let
-                                       val (ss,mlbs,p',e') = (srcs_bexp p (Priority.new e) T A mlbfile mlbs bexp)
-                                     in
-                                       (ss,mlbs,p, Priority.extend e e' bid p')
-                                     end
-	      | MS.OPENbdec l => (Priority.empty op@,mlbs, List.foldl (fn (x,i) => case Priority.lookup e x
-                                                                             of NONE => i
-                                                                              | SOME i' => max(i,i')) p l,
-                                                     List.foldl (fn (a,e') => Priority.up (a,e')) e l)
-	      | MS.ATBDECbdec smlfile => 
-		    let val L = (* case T of SRCTYPE_SCRIPTSONLY => Priority.empty op@ 
-		                        | _ => *) Priority.single (p,[(NonScript (Atom.fromString smlfile),mlbfile,A)],op@)
-		    in (L,mlbs,Int.+(p,1),e)
-		    end
-	      | MS.MLBFILEbdec (mlbfile,_) => let val (ss,mlbs,p',e) = srcs_bdec_file T mlbs mlbfile
-                                        in (ss,mlbs, max(p,p'), e)
-                                        end
-	      | MS.SCRIPTSbdec smlfiles => 
-		    let val L = (* case T of SRCTYPE_ALLBUTSCRIPTS => Priority.empty op@
-		                        | _  => *) Priority.single (p,map (fn f => (Script (Atom.fromString f),mlbfile,A)) smlfiles,op@)
-		    in (L,mlbs,p,e)
-		    end
-	      | MS.ANNbdec (ann,bdec) => srcs_bdec p e T (ann::A) mlbfile mlbs bdec
-
-	and srcs_bexp p e T A mlbfile mlbs bexp =
-	    case bexp of
-		MS.BASbexp bdec => srcs_bdec p e T A mlbfile mlbs bdec
-	      | MS.LETbexp (bdec,bexp) =>
-		    let val (ss1,mlbs,p,e) = srcs_bdec p e T A mlbfile mlbs bdec
-			val (ss2,mlbs,p,e) = srcs_bexp p e T A mlbfile mlbs bexp
-		    in (Priority.union(ss1,ss2),mlbs,p,e)
-		    end
-	      | MS.LONGBIDbexp bid => (Priority.empty op@,mlbs, case Priority.lookup e bid
-                                                          of NONE => p
-                                                           | SOME p' => max (p,p'),
-                                                          e)
   fun pp_prior k [] = ""
     | pp_prior k ((x,y,z)::r) = "priority: " ^ (Int.toString k) ^ " " ^ x ^ " " ^ y ^ "\n" ^ (pp_prior k r)
 	
-	fun sources (* (T:srctype) *) (mlbfile : string) =
-	    List.rev (Priority.fold (fn (k,a,acc) => ((List.map (fn (a,b,c) => (k,a,b,c)) a) @ acc)) [] (#1 (srcs_bdec_file () nil mlbfile)))
-    
-    type BG = (int * SmlFile * string * string list) list
-    type File = SmlFile * int
-    fun project (a,b) = a
-    val fold = fn f => List.foldl (fn ((_,file,s1,s2),acc) => f(file,s1,s2,acc))
-    fun take i = 
-      let 
-        fun t acc [] = acc
-          | t acc ((j,a,b,c)::r) = if j <= i then t (((a,j),b,c)::acc) r else acc
-      in
-       fn l => t [] l
-      end
-    fun initial [] = []
-      | initial g = take 0 g 
-    fun remove d [] = []
-      | remove d ((i,a,b,c)::r) = case Atom.compare (stripFile a,d)
-                                  of EQUAL => r
-                                   | _ => (i,a,b,c) :: (remove d r)
-    fun next i [] = ([],[])
-      | next i (l as ((j,_,_,_)::r)) = if i < j then (take j l,l) 
-                                       else ([], l)
-    fun done ((d,i),[]) = ([],[])
-      | done ((d,i),g) = next i (remove (stripFile d) g)
+    type Elem = SmlFile * string * string list
+    type BG = Elem BG.B * Elem BG.Map
+    type File = SmlFile * Elem BG.B * BG.I * (Elem BG.B) list 
 
+    local 
+      val list = BG.foldB (fn (e : Elem,acc) => (unique true ((Atom.toString o stripFile o #1) e), ((stripFile o #1) e, #2 e)) :: acc) []
+      fun cmp ((a,b),(c,d)) = case SysWord.compare (a,c) 
+                              of LESS => LESS
+                               | GREATER => GREATER
+                               | EQUAL => SysWord.compare (b,d)
+
+      val sort = Listsort.sort (fn ((a,_),(b,_)) => cmp (a,b))
+      fun fileCmp (f,g) = cmp (unique true f,unique true g)
+      fun report(s,m1,m2) =
+        let
+          val s = Atom.toString s
+          val first = "The file " ^ MlbUtil.quot s ^ " is referenced "
+        in 
+          case fileCmp(m1,m2) 
+          of EQUAL => first ^ "more than once in " ^ MlbUtil.quot m1
+           |     _ => first ^ "in both " ^ MlbUtil.quot m1 
+                            ^ " and " ^ MlbUtil.quot m2
+        end
+      fun check' [] = []
+        | check' [a] = [a]
+        | check' ((f1,(sml1 : Atom.atom,mlb1:string))::(a2 as (f2,(sml2,mlb2))):: r) = 
+            if f1 = f2
+            then MlbUtil.error (report (sml1,mlb1,mlb2))
+            else check' (a2::r)
+      fun check a = check' (sort (list a))
+    in
+    fun sources (mlbfile:string) = 
+          let
+            val (a,b) = BG.turn (#bg(#1 (srcs_bdec_file "" {bg = BG.emptyA, bid_map = []} [] mlbfile)))
+          in (ignore (check a); (a,b))
+          end
     end
+  end
+
+    fun project (a,_,_,_) = a
+    val fold = fn f => fn b => fn (a,_) => BG.foldB (fn ((file,s,sl),b) => f(file,s,sl,b)) b a
+    local
+      fun file m (x:Elem BG.B) = Option.map (fn ((f,s,sl),i) => ((f,x,i,BG.fromMap (m,i)),s,sl)) (BG.projectB x) : (File * string * string list) option
+    in
+      fun initial (_,m) = 
+         let
+           val l = BG.fromMap (m,BG.firstB)
+         in 
+           List.mapPartial (file m) l
+         end
+      fun done ((_,x,i,l),(ll,m)) = 
+          let
+            val _ = BG.done i
+            val n = BG.next x
+          in
+            (List.mapPartial (file m) (case n of NONE => l | SOME n => n::l),(ll,m))
+          end
+    end
+  end
 	
