@@ -1,48 +1,5 @@
-functor MlbProject (Env : ENVIRONMENT) : MLB_PROJECT = 
+functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT = 
     struct
-(*	structure Bid :>
-	    sig eqtype bid and longbid
-		val bid : string -> bid
-		val longbid : bid list -> longbid
-		val longopen : longbid -> bid * longbid option
-		val pp_bid : bid -> string
-		val pp_longbid : longbid -> string
-		val explode : longbid -> bid list
-	    end =
-	struct
-	    type bid = string 
-	    type longbid = bid list
-	    fun bid s = s
-	    fun pp_bid s = s
-	    fun longbid (bids:bid list) : longbid = bids
-	    fun longopen nil = raise Fail "empty longbid"
-	      | longopen [bid] = (bid,NONE)
-	      | longopen (bid::longbid) = (bid, SOME longbid)
-	    fun pp_longbid nil = raise Fail "empty longbid"
-	      | pp_longbid [b] = pp_bid b
-	      | pp_longbid (b::bs) = pp_bid b ^ "." ^ pp_longbid bs
-	    fun explode ss = ss
-	end
-
-	fun supported_annotation s =
-	    case s of
-		"safeLinkTimeElimination" => true
-	      | _ => false
-
-	type atbdec = string (* path.{sml,sig} *)
-	datatype bexp = BASbexp of bdec
-                      | LETbexp of bdec * bexp
-                      | LONGBIDbexp of Bid.longbid
-
-             and bdec = SEQbdec of bdec * bdec
-	              | EMPTYbdec 
-                      | LOCALbdec of bdec * bdec
-                      | BASISbdec of Bid.bid * bexp
-                      | OPENbdec of Bid.longbid list
-	              | ATBDECbdec of atbdec
-		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)
-	              | SCRIPTSbdec of atbdec list
-	              | ANNbdec of string * bdec *)
   
   structure MS =
   struct
