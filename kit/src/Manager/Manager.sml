@@ -801,11 +801,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
     structure MlbPlugIn : MLB_PLUGIN  =
 	struct
-      fun unlock unique lockfile = (Posix.FileSys.unlink lockfile; Posix.FileSys.unlink (lockfile ^ unique)) handle _ => ()
-      fun lock unique lockfile = (Posix.IO.close (Posix.FileSys.creat (lockfile ^ unique,Posix.FileSys.S.iwusr));
-                                  ((Posix.FileSys.link{old=lockfile ^ unique, new=lockfile}; true)
-                                  handle OS.SysErr _ => ((Posix.FileSys.ST.nlink (Posix.FileSys.stat (lockfile ^ unique)) = 2)
-                                                         handle OS.SysErr _ => (unlock unique lockfile;false))))
+    local
+      fun unlock lockfile = (Posix.FileSys.unlink lockfile) handle _ => ()
+      fun lock unique lockfile = 
+         let
+           val fu = (Posix.IO.close (Posix.FileSys.creat (lockfile ^ unique,Posix.FileSys.S.iwusr)) ; true) handle OS.SysErr _ => false
+           val f = if fu 
+                   then (Posix.FileSys.link{old=lockfile ^ unique, new=lockfile}; true)
+                        handle OS.SysErr _ => Posix.FileSys.ST.nlink (Posix.FileSys.stat (lockfile ^ unique)) = 2
+                   else false
+         in if fu then (Posix.FileSys.unlink (lockfile ^ unique); f) handle _ => f
+            else false
+         end
 	    fun compile0 target flags lockfile unique a =
 		let
 		    (* deal with annotations (from mlb-file) *)
@@ -813,11 +820,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		    val () = List.app Flags.turn_on flags
 		    val () = Flags.turn_on "compile_only"
 		    val () = Flags.lookup_string_entry "output" := target
-		in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock unique lf))
-		end handle ? => ((case lockfile of NONE => () | SOME lf => unlock unique lf) ;
+		in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock lf))
+		end handle ? => ((case lockfile of NONE => () | SOME lf => unlock lf) ;
                      case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
                                                       | ? => raise ?)
-
+    in
 	    fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
 		    (fn f => case lockfile
                  of NONE => SOME (f ())
@@ -825,21 +832,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                                then SOME (f ())
                                else NONE)
         (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
+    end
 
       val getParallelN = parallel
       val wait = wait
 (*
 	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
 *)
+  local
 	    fun link0 mlbfile target lnkFiles lnkFilesScripts () =
 		(Flags.lookup_string_entry "output" := target;
 		 Flags.lookup_stringlist_entry "link" := lnkFiles;
 		 Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
 		 link_lnk_files (SOME mlbfile))
-
+  in
 	    fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
 		isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
 	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
+  end
 
 	    fun mlbdir() = MO.mlbdir()
 	    val objFileExt = objFileExt
