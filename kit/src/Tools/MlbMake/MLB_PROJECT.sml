@@ -58,12 +58,13 @@ signature MLB_PROJECT =
   val fold : ((SmlFile * string * string list * 'a) -> 'a) -> 'a -> BG -> 'a
   val done : File * BG -> (File * string * string list) list * BG
   val initial : BG -> (File * string * string list) list
+  (* The second components of the pairs being the hosting mlbfiles (the third
+   * components contains annotations, that is, flags that the compiler should
+   * apply during compilation of the source file). *)
+
 (*  val pp_bg : BG -> string *)
-  val sources : string -> BG (*(SmlFile * string * string list) list  *)
-        (* [sources srctype mlbfile] returns the list of sources (.sml- and
-	 * .sig-files) mentioned in mlbfile, with the second components 
-	 * of the pairs being the hosting mlbfiles (the third components 
-	 * contains annotations, that is, flags that the compiler should 
-	 * apply during compilation of the source file). The srctype specifies 
-	 * which sources are included in the resulting list.  *)
-    end
+  val sources : string -> BG 
+  (* [sources mlbfile] returns the dependency graph of sources (.sml- and
+   * .sig-files) mentioned in mlbfile *)
+  end
+
