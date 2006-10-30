@@ -165,7 +165,7 @@ structure ExecutionX86: EXECUTION =
     fun gas() = if gdb_support() then "as --gstabs"
 		else "as"
     fun assemble (file_s, file_o) =
-      (execute_command (gas() ^ " -o " ^ file_o ^ " " ^ file_s);
+      (execute_command (gas() ^ " --32 -o " ^ file_o ^ " " ^ file_s);
        if delete_target_files() andalso not(gdb_support()) then delete_file file_s 
        else ())
 
@@ -201,7 +201,7 @@ structure ExecutionX86: EXECUTION =
 	      case !(Flags.lookup_string_entry "libdirs") of
 		  "" => ""
 		| libdirs => " " ^ libdirsConvertList libdirs
-	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
+	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -m32 -o " ^ run ^ " " ^ 
 	    concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(!libs)
 	  val debug_linking = Flags.lookup_flag_entry "debug_linking"
 	  fun pr_debug_linking s = if !debug_linking then print s else ()
