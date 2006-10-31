@@ -370,7 +370,7 @@ bootstrap_first:
 	$(MAKE) bootstrap0
 
 bootstrap_next_build:
-	cd src && $(MAKE) genopcodes
+	cd src && $(MAKE) genopcodes BINDIR=../$(BINDIR)
 	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native.mlb
 
 bootstrap_next_install: 

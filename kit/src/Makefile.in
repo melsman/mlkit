@@ -124,7 +124,7 @@ genopcodes: $(GENOPCODES_TARGETS)
 
 $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
 	$(MKDIR) $(BINDIR)
-	$(MAKE) -C Tools/GenOpcodes
+	$(MAKE) -C Tools/GenOpcodes BINDIR=../../$(BINDIR)
 # kitgen_opcodes assumes it's run from the src-directory
 	$(BINDIR)/kitgen_opcodes
 
