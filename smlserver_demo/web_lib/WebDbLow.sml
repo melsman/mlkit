@@ -430,7 +430,7 @@ functor DbOracleBackend(type conn = int
                                               in if res = 0 
                                                  then raise Fail "Oracle Driver: Transaction already started"
                                                  else 
-                    (((f h) handle X => prim("@:", ("DBORATransRollBack",r : int, getReqRec())) : int; raise X) before ( 
+                    (((f h) handle X => (prim("@:", ("DBORATransRollBack",r : int, getReqRec())) : int; raise X)) before ( 
                          case !h of NONE => raise Fail "Oracle Driver: Session closed prematurely"
                                   | SOME r2 => let
                                                    val res2 : int = prim("@:", ("DBORATransCommit",r : int,getReqRec()))
