@@ -498,6 +498,7 @@ install_smlserver0:
 	$(MKDIR) $(BINDIR)
 	$(INSTALL) bin/smlserverc $(BINDIR)
 	$(INSTALL) bin/smlserver-wrap $(BINDIR)
+	$(INSTALL) bin/mspcomp $(BINDIR)
 	$(MKDIR) $(LIBDIR)/smlserver
 	$(MAKE) install_smlserver_basislibs LIBDIR=$(LIBDIR)/smlserver
 	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver

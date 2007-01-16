@@ -3,45 +3,58 @@ This is file README_SMLSERVER
      SMLserver home page: http://www.smlserver.org
 
 Get upN'running without database access:
-Requirements: a working Apache webserver
+Requirements: 
 
- $ cd mlkit/kit
+ 1) a working Apache2 webserver 
+ 2) apxs2 installed (e.g., apache2-threaded-dev)
+ 3) mlkit >= 4.3.0 compiled and installed
+ 4) bison, flex
+
+Procedure:
+
+ $ cd kit
  $ ./autobuild
- $ ./configure --enable-SMLserver --with-apxs=/abs/path/to/apache/bin/apxs \
-               --with-compiler=/path/to/mlcompiler
+ $ ./configure --enable-SMLserver --with-apxs=`which apxs2` --with-compiler=`which mlkit`
  $ make smlserver
- $ make install_smlserver
+ $ make smlserver_libs
+ $ sudo make install_smlserver
 
 edit /abs/path/to/initscript (remove Db conf lines)
 
- $ cp -p /usr/local/smlserver/www /.../mycopy/www
- $ export SMLSERVER_DIR=/usr/local/smlserver
- $ export SML_LIB=$(SMLSERVER_DIR)
+ $ cd $HOME
+ $ mkdir web
+ $ cp -pa /usr/local/lib/smlserver/{www,web_sys,web_lib,web_demo_lib} web/ 
+ $ cd web/www
+ $ make
 
- $ smlserverc /abs/path/to/web.mlb
+edit /etc/apache2/apache2.conf: 
+  Add index.sml to DirectoryIndex list
 
-edit apache/conf/httpd.conf:
-
-  Listen (port of your choice)
-  DocumentRoot "/abs/path/to/docroot" (eg. /home/testuser/apache/htdocs/web/www)
-  DirectoryIndex (add index.sml)
-
-    after "LoadModule sml_module", insert something like:
+edit /etc/apache2/sites-available/default:
+  Change DocumentRoot to /home/mael/web/www
+  Change Directory path to /home/mael/web/www
    
+ $ sudo cp /usr/local/lib/smlserver/lib/mod_sml.so /usr/lib/apache2/modules/
+ $ sudo echo "LoadModule sml_module /usr/lib/apache2/modules/mod_sml.so" > /etc/apache2/mods-available/sml.load
+
+Create file /etc/apache2/mods-available/sml.conf with the following content:
+
   <IfModule mod_sml.c>
-  AddHandler sml-module .sml
-  SmlPrjId "web"
-  SmlPath "/home/varming/apache2worker/htdocs/web/www/"
-  SmlInitScript "/home/varming/apache2worker/htdocs/web/www/../web_sys/init.sml"
+    AddHandler sml-module .sml
+    SmlPrjId "web"
+    SmlPath "/home/mael/web/www/"
+    SmlInitScript "/home/mael/web/www/../web_sys/init.sml"
   </IfModule>
-  <Directory /home/varming/apache2worker/htdocs/web/www/web/secret>
-  SetHandler None
-  RewriteEngine On
-  RewriteBase /web/secret
-  RewriteRule .* pub.sml
+  <Directory /home/mael/web/www/web/secret>
+    SetHandler None
+    RewriteEngine On
+    RewriteBase /web/secret
+    RewriteRule .* pub.sml
   </Directory>
 
- $ cd path/to/smlserver/lib && apxs -i -a -n sml mod_sml.so
+ $ sudo ln -s /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
+ $ sudo ln -s /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
+
  $ apache/bin/apachectl start
 
 point your browswer to localhost:port/web/

@@ -1,3 +1,4 @@
+SMLSERVERC=smlserverc
 all:
 	$(MAKE) -C web
-	$(SMLSERVER_DIR)/bin/smlserverc web.mlb
+	$(SMLSERVERC) web.mlb
