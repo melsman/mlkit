@@ -1,5 +1,5 @@
 
-functor WebInfo (type conn = int
+functor WebInfo (type conn = foreignptr
 		val getReqRec : unit -> conn
 		val isNull : string -> bool
     val log : string -> unit

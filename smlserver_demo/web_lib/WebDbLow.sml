@@ -84,7 +84,7 @@ structure DbDummyBackend :> WEB_DB_BACKEND =
     val dmlTransDb = getHandle
   end
 
-functor DbODBCBackend(type conn = int
+functor DbODBCBackend(type conn = foreignptr
                         val getReqRec : unit -> conn
                         val log : string -> string
                         val isNull : string -> bool
@@ -260,7 +260,7 @@ functor DbODBCBackend(type conn = int
 
 
 
-functor DbOracleBackend(type conn = int
+functor DbOracleBackend(type conn = foreignptr
                         val getReqRec : unit -> conn
                         val log : string -> string
                         val isNull : string -> bool

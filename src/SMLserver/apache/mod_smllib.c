@@ -142,6 +142,7 @@ apsml_add_headers_out (char *key, int key_size, char *value, int value_size, req
   return;
 }				/*}}} */
 
+#if 0
 String
 apsml_location (Region rAddr, int rd1)	/*{{{ */
 {
@@ -157,6 +158,7 @@ apsml_location (Region rAddr, int rd1)	/*{{{ */
   strcpy (location, r->parsed_uri.hostinfo);
   return convertStringToML (rAddr, location);
 }				/*}}} */
+#endif
 
 void
 apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ */
@@ -181,17 +183,17 @@ apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ 
 }				/*}}} */
 
 // ML: request_rec -> int
-int
+uintptr_t
 apsml_getport (request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)
   {
     ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
       "apsml_getport called without a connection");
-    raise_exn ((int) &exn_OVERFLOW);
+    raise_exn ((uintptr_t) &exn_OVERFLOW);
     return 0;
   }
-  return convertIntToML (ap_get_server_port (rd->request));
+  return (uintptr_t) ap_get_server_port (rd->request);
 }				/*}}} */
 
 // ML: request_rec -> string
@@ -376,13 +378,14 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{
     return (String) NULL;
 }				/*}}} */
 
+#if 0
 // ML () -> set
-int
+static apr_table_t *
 apsml_setCreate (request_data * rd,int n)	/*{{{ */
 {
 //      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml_setCreate");
   apr_table_t *t = apr_table_make (rd->pool, n);
-  return (int) t;
+  return t;
 }				/*}}} */
 
 // ML: set * string -> string ptr_option
@@ -396,6 +399,7 @@ apsml_setGet (Region rAddr, apr_table_t * set, String key)	/*{{{ */
     }
   return convertStringToML (rAddr, res_c);
 }				/*}}} */
+#endif
 
 // ML: string ptr_option -> bool
 int
@@ -415,6 +419,7 @@ apsml_setcount (void *c, const char *a, const char *b)	/*{{{ */
   return 1;
 }				/*}}} */
 
+#if 0
 // ML: set -> int
 int
 apsml_SetSize (apr_table_t * set)	/*{{{ */
@@ -455,6 +460,121 @@ apsml_SetValue (Region rAddr, apr_table_t * set, int i)	/*{{{ */
       return convertStringToML (rAddr, (fields + i)->val);
     }
   return (String) NULL;
+}				/*}}} */
+#endif
+
+struct tableToListClosure
+{
+  Region rl;
+  Region rp;
+  Region rsk;
+  Region rsv;
+  uintptr_t *list;
+};
+
+static int
+tableToList(void *rec, const char *key, const char *val)
+{
+  struct tableToListClosure *c;
+  uintptr_t *l, *pair;
+  c = (struct tableToListClosure *) rec;
+  allocPairML(c->rp, pair);
+  mkTagPairML(pair);
+  first(pair) = (uintptr_t) convertStringToML(c->rsk, key);
+  second(pair) = (uintptr_t) convertStringToML(c->rsv, val);
+  allocPairML(c->rl, l);
+  mkTagPairML(l);
+  second(l) = (uintptr_t) c->list;
+  first(l) = (uintptr_t) pair;
+  makeCONS(l,c->list);
+  return 1;
+}
+
+#if 0
+// Return type: (string * string) list
+static uintptr_t *
+returnSet_old(Region rl, Region rp, Region rsk, Region rsv, apr_table_t *set)
+{
+  struct tableToListClosure c;
+  c.rl = rl;
+  c.rp = rp;
+  c.rsk = rsk;
+  c.rsv = rsv;
+  makeNIL(c.list);
+  apr_table_do(tableToList, &c, set);
+  return c.list;
+}
+#endif
+
+static uintptr_t *
+returnSet(Region rl, Region rp, Region rsk, Region rsv, apr_table_t *set)
+{
+  struct tableToListClosure c;
+  c.rl = rl;
+  c.rp = rp;
+  c.rsk = rsk;
+  c.rsv = rsv;
+  apr_table_entry_t *fields;
+  const apr_array_header_t *ah = apr_table_elts(set);
+  makeNIL(c.list);
+  if (!ah) return c.list;
+  int nelts = ah->nelts;
+  while (nelts--)
+  {
+    fields = (apr_table_entry_t *) ah->elts;
+    tableToList(&c, fields->key, fields->val);
+  }
+  return c.list;
+}
+
+// ML: unit -> (string * string) list
+static uintptr_t *
+apsml_headers_old (Region rl, Region rp, Region rsk, Region rsv, request_data *rd)		/*{{{ */
+{
+  request_rec *r = rd->request;
+  uintptr_t *list;
+//  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
+  if (!r) 
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+		  "apsml_headers called without a connection");
+    raise_exn ((uintptr_t) &exn_OVERFLOW);
+    return 0;
+  }
+  if (r->headers_in)
+  {
+    return returnSet(rl, rp, rsk, rsv, r->headers_in);
+  }
+  else
+  {
+    makeNIL(list);
+    return list;
+  }
+}				/*}}} */
+
+// ML: unit -> (string * string) list
+uintptr_t *
+apsml_headers (Region rl, Region rp, Region rsk, Region rsv, request_data *rd)		/*{{{ */
+{
+  request_rec *r = rd->request;
+  uintptr_t *list;
+//  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
+  if (!r) 
+  {
+    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+		  "apsml_headers called without a connection");
+    raise_exn ((uintptr_t) &exn_OVERFLOW);
+    return 0;
+  }
+  if (r->headers_in)
+  {
+    return returnSet(rl, rp, rsk, rsv, r->headers_in);
+  }
+  else
+  {
+    makeNIL(list);
+    return list;
+  }
 }				/*}}} */
 
 // 
@@ -525,30 +645,6 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   return;
 }/*}}}*/
 
-// ML: unit -> set
-int
-apsml_headers (request_data *rd)		/*{{{ */
-{
-  request_rec *r = rd->request;
-//  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
-  if (!r) 
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		  "apsml_headers called without a connection");
-    raise_exn ((uintptr_t) &exn_OVERFLOW);
-    return 0;
-  }
-  if (r->headers_in)
-  {
-//                ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers in exists");
-    return (int) r->headers_in;
-  }
-  else
-  {
-//                ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers in creating");
-    return apsml_setCreate (rd,0);
-  }
-}				/*}}} */
 
 /* 
  * Encoding and decoding of application/x-www-form-urlencoded data follow the recipe 
@@ -676,7 +772,7 @@ apsml_scheme (Region rAddr, request_data * rd)	/*{{{ */
 }				/*}}} */
 
 // ML: request_rec -> int 
-long
+uintptr_t
 apsml_contentlength (request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)
@@ -686,11 +782,11 @@ apsml_contentlength (request_data * rd)	/*{{{ */
       raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
     }
-  return rd->request->clength;
+  return (uintptr_t) rd->request->clength;
 }				/*}}} */
 
 // ML: request_rec -> bool
-int
+uintptr_t
 apsml_hasconnection (request_data *rd)	/*{{{ */
 {
   if (rd->request)

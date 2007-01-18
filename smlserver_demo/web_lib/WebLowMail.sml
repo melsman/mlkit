@@ -1,4 +1,4 @@
-functor WebLowMail (type conn = int 
+functor WebLowMail (type conn = foreignptr 
                    val getReqRec : unit -> conn 
                    val log : string -> unit 
                    structure Info : WEB_INFO
