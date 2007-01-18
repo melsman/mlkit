@@ -6,6 +6,8 @@ val _ = Page.return "Server Information" (`
 <tr><th>Pid</th>                <td> ^(Int.toString (Web.Info.pid())) </td></tr>
 <tr><th>Uptime (seconds)</th>   <td> ^(Int.toString (Web.Info.uptime())) </td></tr>
 <tr><th>Pageroot</th>           <td> ^(Web.Info.pageRoot()) </td></tr>
+<tr><th>User</th>               <td> ^(Option.getOpt(Web.Info.getUser(),"")) </td></tr> 
+<tr><th>AuthType</th>           <td> ^(Option.getOpt(Web.Info.getAuthType(),"")) </td></tr> 
 </table>
 
 <h2>Connection Information</h2>

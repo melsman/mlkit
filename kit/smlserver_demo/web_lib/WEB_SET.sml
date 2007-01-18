@@ -3,7 +3,8 @@ signature WEB_SET = sig
   val get    : set * string -> string option
   val iget   : set * string -> string option
   val getOpt : set * string * string -> string
-(*  val getAll : set * string -> string list *)
+  val getAll : set * string -> string list
+  val igetAll: set * string -> string list
   val size   : set -> int
 (*  val unique : set * string -> bool       
   val key    : set * int -> string option    

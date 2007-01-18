@@ -19,6 +19,8 @@ signature WEB_INFO = sig
                                  unit
   val pageRoot            : unit -> string
   val getAuxConfigData    : unit -> string option
+  val getUser             : unit -> string option
+  val getAuthType         : unit -> string option
 end
 
 (*

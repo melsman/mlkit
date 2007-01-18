@@ -1,20 +1,24 @@
 
 functor WebInfo (type conn = foreignptr
 		val getReqRec : unit -> conn
-		val isNull : string -> bool
+		val getReqRecP : unit -> foreignptr
+    exception MissingConnection
     val log : string -> unit
     exception Forbidden) : WEB_INFO =
   struct
   structure Type = WebSerialize
 
-  fun pid() : int = (SysWord.toInt o Posix.Process.pidToWord o Posix.ProcEnv.getpid) () (* prim("apsml_getpid", getReqRec()) *)
+  fun isNullFp (x : foreignptr) = prim("__is_null",x) : bool
+  fun isNull (x : string) = prim("__is_null",x) : bool
+
+  fun pid() : int = (SysWord.toInt o Posix.Process.pidToWord o Posix.ProcEnv.getpid) ()
 
   val bbb = #name Type.Bool
 
   fun uptime () : int = prim("apsml_getuptime", getReqRec())
 
   fun pageRoot() : string =
-    prim("apsml_PageRoot", (getReqRec()))
+    prim("apsml_PageRoot", (getReqRecP()))
 
   fun configGetValue(rangeType : 'a Type.Type, k : string) = 
   let 
@@ -47,10 +51,20 @@ functor WebInfo (type conn = foreignptr
           if isNull a then NONE else SOME a
         end
 
-(*
-  val safeNameCheck = RegExp.fromString "[ -9;-~]+" (* ascii 0x20 - 0x39 or 0x3B - 0x7E *) 
-*)                                                    (* Thus any printable char <> :     *)
-	
+  fun getAuthType () : string option = 
+         let 
+           val r = prim("@apsml_get_auth_type",getReqRecP()) : foreignptr
+         in
+           if isNullFp r then NONE else SOME(prim ("fromCtoMLstring", r : foreignptr) : string)
+         end
+  
+  fun getUser () : string option = 
+         let 
+           val r = prim("@apsml_getuser",getReqRecP()) : foreignptr
+         in
+           if isNullFp r then NONE else SOME(prim ("fromCtoMLstring", r : foreignptr) : string)
+         end
+
 	fun configSetValue (rangeType : 'a Type.Type, key, value : 'a) : unit = 
     let val s' : string = #to_string rangeType value
         val s : string =  #name rangeType ^":"^ s'

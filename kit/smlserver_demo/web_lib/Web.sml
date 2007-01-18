@@ -2,9 +2,18 @@ structure Web :> WEB =
   struct 
   exception InternalSmlServerError;
   exception InternalSmlServerErrorOutOfMemory;
+  exception MissingConnection;
+
+  fun isNull(s : string) : bool = prim("__is_null", s : string) : bool
+  fun isNullFp(s : foreignptr) : bool = prim("__is_null", s : foreignptr) : bool
   
   fun getReqRec () : foreignptr  = prim("__serverGetCtx", ())
-  fun getReqRecP () : foreignptr = prim("@apsml_GetReqRec", (getReqRec()))
+  fun getReqRecP () : foreignptr =
+       let 
+         val res = prim("@apsml_GetReqRec", (getReqRec())) : foreignptr
+       in
+         if isNullFp res then raise MissingConnection else res
+       end
 
     (* defined in http_log.h *)
   structure WebBasics : WEB_BASICS =
@@ -25,19 +34,18 @@ structure Web :> WEB =
 
   open WebBasics
 
-  exception MissingConnection;
   fun encodeUrl (s : string) : string = prim("apsml_encodeUrl", (s,getReqRec()))
   fun decodeUrl (s : string) : string = prim("apsml_decodeUrl", (s,getReqRec()))
 
   fun buildUrl action hvs =
     action ^ "?" ^ (String.concatWith "&" (List.map (fn (n,v) => n ^ "=" ^ encodeUrl v) hvs))
   
-  fun isNull(s : string) : bool = prim("apsml_isNullString", s)
 
     structure Info : WEB_INFO = WebInfo(struct
                type conn = foreignptr
                val getReqRec = getReqRec
-             val isNull = isNull
+               val getReqRecP = getReqRecP
+             exception MissingConnection = MissingConnection
              val log = (fn x => log(Debug, x))
              exception Forbidden = Forbidden
              end)
@@ -123,6 +131,14 @@ structure Web :> WEB =
         fun foldl f b s = List.foldl f b (list s)
         fun foldr f b s = List.foldl f b (List.rev (list s))
         fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) [] s
+        fun igetAll (s:set,key:string) : string list = 
+               case Polyhash.peek s key
+               of NONE => []
+                | SOME l => List.map (fn (k,v) => v) l
+        fun getAll (s:set,key:string) : string list = 
+               case Polyhash.peek s key
+               of NONE => []
+                | SOME l => List.mapPartial (fn (k,v) => if k = key then SOME v else NONE) l
     end
 
   structure Set : WEB_SET = WebSet 
@@ -130,15 +146,14 @@ structure Web :> WEB =
     structure StringCache :> WEB_STRING_CACHE =
       struct
       type cache = foreignptr
-        fun isNull x = prim("__is_null", x)
         fun create(n : string, t: int, sz : int) : cache =  (* sz is in bytes, t is in seconds *)
           let val c : cache = prim("@apsml_cacheCreate", (n,sz, t, getReqRec()))
-          in if isNull c then raise InternalSmlServerErrorOutOfMemory else c
+          in if isNullFp c then raise InternalSmlServerErrorOutOfMemory else c
           end
           
         fun find (n : string) : cache option = (*log(Debug, "cacheFind"); *)
           let val res : foreignptr = prim("@apsml_cacheFind", (n, getReqRec()))
-          in if isNull res then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
+          in if isNullFp res then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
              else (*log(Debug, "cacheFind SOME, pid:"^ Int.toString(Info.pid()));*) SOME res
           end
         fun findTmSz(cn: string, t: int, sz : int) : cache =
@@ -147,7 +162,7 @@ structure Web :> WEB =
           | SOME c => c
         fun flush(c:cache) : unit = (*log(Debug, "cacheFlush");*)
           let val c : cache = prim("@apsml_cacheFlush", (c,getReqRec(), 1))
-          in if isNull c then raise InternalSmlServerErrorOutOfMemory else ()
+          in if isNullFp c then raise InternalSmlServerErrorOutOfMemory else ()
           end
         fun set(c:cache, k:string, v:string, t:int) : (bool * string option) = 
           let 
@@ -461,13 +476,21 @@ structure Web :> WEB =
 
     val log = WebBasics.log
     
-    fun method () : string  = (prim("apsml_method", getReqRec())) handle Overflow => raise MissingConnection
+    (* fun method () : string  = (prim("apsml_method", getReqRec())) handle Overflow => raise MissingConnection *)
+    fun method () : string =
+          let 
+            val res = prim ("@apsml_method",getReqRecP ()) : foreignptr
+          in
+            if isNullFp res then "" else prim("fromCtoMLstring", res : foreignptr) : string
+          end
 
-    fun contentLength () : int = (prim("@apsml_contentlength", getReqRec())) handle Overflow => raise MissingConnection
+    fun contentLength () : int =  (*(prim("@apsml_contentlength", getReqRec())) handle Overflow => raise MissingConnection *)
+           prim("@apsml_contentlength", getReqRecP()) : int
 
-    fun hasConnection () : bool = let val b :int = prim("@apsml_hasconnection", getReqRec())
+    fun hasConnection () : bool = (*let val b :int = prim("@apsml_hasconnection", getReqRec())
                                   in (b = 1)
-                    end
+                                  end *)
+                          (ignore (getReqRecP()) ; true) handle MissingConnection => false
 
     local
       val table = ref NONE : set option ref
@@ -475,7 +498,7 @@ structure Web :> WEB =
       fun headers () : set =
           case !table of NONE =>
             let
-              val l = prim("apsml_headers", (getReqRec())) : (string * string) list
+              val l = prim("apsml_headers", (getReqRecP())) : (string * string) list
               val t = 
                 Polyhash.mkTable ((CharVector.foldl 
                                     (fn (c,hv) => (if hv > 69273666
@@ -489,25 +512,25 @@ structure Web :> WEB =
     end
 
     fun add_headers (key,value) : unit = prim("@apsml_add_headers_out", (key : string, size key : int, value : string,
-                                                                         size value : int, getReqRec())) : unit
+                                                                         size value : int, getReqRecP())) : unit
     
-    fun setMimeType(s : string) : unit = prim("@apsml_setMimeType",(s, size s, getReqRec()))
+    fun setMimeType(s : string) : unit = prim("@apsml_setMimeType",(s, size s, getReqRecP()))
 
     fun returnFile(status: int, mt: string, f: string) : status =
-      prim("@apsml_returnFile", (status, mt, f, getReqRec()))
+      prim("@apsml_returnFile", (status, mt, f, getReqRecP()))
 
     fun returnHtml (i:int, s: string) : status = 
       let
         val _ = add_headers("Cache-Control","no-cache")
       in
-        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRec()))
+        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRecP())) : int
       end
 
     fun returnXhtml (i : int,s : string) : status = 
       let
         val _ = add_headers("Cache-Control","must-revalidate")
       in
-        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRec()))
+        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRecP())) : int
       end
 
     local 
@@ -663,7 +686,7 @@ structure Web :> WEB =
         "" (* empty string if content size is too large *)
           else
         let
-          val s : string = prim("apsml_getQueryData", (maxsize, FORM, getReqRec()))
+          val s : string = prim("apsml_getQueryData", (maxsize, FORM, getReqRecP()))
         in
           if isNull s then "" else s (* empty string if no content *)
         end
@@ -693,7 +716,7 @@ structure Web :> WEB =
         handle Fail _ => ([],"boundary")
 
           fun getQueryData(i : int) : string option = 
-            let val res : string = prim("apsml_getQueryData", (~1, i, getReqRec()))
+            let val res : string = prim("apsml_getQueryData", (~1, i, getReqRecP()))
             in if isNull res then NONE
              else SOME res
             end
@@ -796,33 +819,38 @@ structure Web :> WEB =
       prim("@apsml_returnHtml", (~1,s,size s, getReqRec())) *)
 
     fun returnRedirectWithCode(i: int, s: string) : status = 
-      prim("@apsml_returnRedirect",(i, s, getReqRec()))
+      prim("@apsml_returnRedirect",(i, s, getReqRecP()))
 
     fun returnRedirect s = returnRedirectWithCode (302,s)
     (*fun returnRedirect(s: string) : status = 
       prim("@apsml_returnRedirect",(~1, s, getReqRec()))*)
 
     fun url () : string list = 
-      prim("apsml_geturl", getReqRec())
+      prim("apsml_geturl", getReqRecP())
 
     type status = status
     
     fun redirect(url: string) : status = 
-     (log(WebBasics.Notice, "Web.Conn.redirect"); 
-     prim("@ap_internal_redirect", (url, getReqRecP()))
+     ( (*log(WebBasics.Notice, "Web.Conn.redirect");  *)
+     prim("@ap_internal_redirect", (url : string, getReqRecP() : foreignptr)) : int
      )
 
-    fun port () : int = (prim("@apsml_getport", (getReqRec()))) handle Overflow => raise MissingConnection
+    fun port () : int = (prim("@apsml_getport", (getReqRecP() : foreignptr))) 
 
-    fun host () : string = (prim("apsml_gethost",(getReqRec()))) handle Overflow => raise MissingConnection
+    fun host () : string = (prim("apsml_gethost",(getReqRec())))
     
-    fun server () : string = (prim("apsml_getserver",(getReqRec()))) handle Overflow => raise MissingConnection
+    fun server () : string = (prim("apsml_getserver",(getReqRecP())))
 
-    fun scheme () : string = (prim("apsml_scheme",getReqRec())) handle Overflow => raise MissingConnection
+    fun scheme () : string = (* (prim("apsml_scheme",getReqRec())) handle Overflow => raise MissingConnection *)
+          let 
+            val res = prim ("@apsml_scheme",getReqRecP ()) : foreignptr
+          in
+            if isNullFp res then "" else prim("fromCtoMLstring", res : foreignptr) : string
+          end
 
     fun location () = scheme() ^ "://" ^ server() ^ ":" ^ (Int.toString (port()))
 
-    fun peer () : string = prim("apsml_getpeer", (getReqRec()))
+    fun peer () : string = prim("apsml_getpeer", (getReqRecP()))
 
     fun write (s: string) : status =
        prim("@ap_rputs", (s,getReqRecP()))
