@@ -20,6 +20,7 @@ install:
 	$(MKDIR) $(LIBDIR)/web_sys
 	$(MKDIR) $(LIBDIR)/web_demo_lib
 	$(MKDIR) $(LIBDIR)/www
+	$(MKDIR) $(LIBDIR)/www/images
 	$(MKDIR) $(LIBDIR)/www/web
 	$(MKDIR) $(LIBDIR)/www/web/employee
 	$(MKDIR) $(LIBDIR)/www/web/link
@@ -31,7 +32,7 @@ install:
 	$(INSTALLDATA) web_sys/*.sml $(LIBDIR)/web_sys
 	$(INSTALLDATA) www/web.mlb $(LIBDIR)/www
 	$(INSTALLDATA) www/Makefile $(LIBDIR)/www
-	$(INSTALLDATA) www/web/*.{sml,msp,html} $(LIBDIR)/www/web
+	$(INSTALLDATA) www/web/*.{sml,msp,html,jpg} $(LIBDIR)/www/web
 	$(INSTALLDATA) www/web/Makefile $(LIBDIR)/www/web
 	$(INSTALLDATA) www/web/employee/*.{sql,sml} $(LIBDIR)/www/web/employee
 	$(INSTALLDATA) www/web/link/*.sml $(LIBDIR)/www/web/link
@@ -39,5 +40,6 @@ install:
 	$(INSTALLDATA) www/web/secret/*.sml $(LIBDIR)/www/web/secret
 	$(INSTALLDATA) www/web/upload/*.sml $(LIBDIR)/www/web/upload
 	$(INSTALLDATA) www/web/upload/files/*.png $(LIBDIR)/www/web/upload/files
+	$(INSTALLDATA) www/images/*.{png,html,eps} $(LIBDIR)/www/images
 	$(INSTALLDATA) web_demo_lib/*.sml $(LIBDIR)/web_demo_lib
 
