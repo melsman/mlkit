@@ -1,5 +1,5 @@
 signature WEB_STRING_CACHE = sig
-  type cache = int
+  type cache = foreignptr
   val create    : string * int * int -> cache  
   val find      : string -> cache option
   val findTmSz    : string * int * int -> cache

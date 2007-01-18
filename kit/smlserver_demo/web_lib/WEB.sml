@@ -46,7 +46,7 @@ signature WEB = sig
 
   val exit           : unit -> 'a
   structure Conn     : WEB_CONN where type status = status 
-				 and type set = Set.set
+				 and type set = Set.set 
   structure Cookie   : WEB_COOKIE
   structure Info     : WEB_INFO
   structure Mail     : WEB_MAIL

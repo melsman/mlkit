@@ -57,7 +57,7 @@ convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
 // convertStringToML: The ML string is allocated in the region 
 // pointen at by rAddr.
 String
-REG_POLY_FUN_HDR(convertStringToML, Region rAddr, char *cStr) 
+REG_POLY_FUN_HDR(convertStringToML, Region rAddr, const char *cStr) 
 {
   String res;
   char *p;
@@ -77,7 +77,7 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, char *cStr)
 // not test on \0 in during the copy. However, you must be sure that
 // the legth is correct.
 String
-REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, char *cStr) 
+REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, const char *cStr) 
 {
   String res;
   char *p;

@@ -3,8 +3,8 @@ structure Web :> WEB =
   exception InternalSmlServerError;
   exception InternalSmlServerErrorOutOfMemory;
   
-  fun getReqRec () : int  = prim("__serverGetCtx", ())
-  fun getReqRecP () : int = prim("apsml_GetReqRec", (getReqRec()))
+  fun getReqRec () : foreignptr  = prim("__serverGetCtx", ())
+  fun getReqRecP () : foreignptr = prim("@apsml_GetReqRec", (getReqRec()))
 
     (* defined in http_log.h *)
   structure WebBasics : WEB_BASICS =
@@ -35,7 +35,7 @@ structure Web :> WEB =
   fun isNull(s : string) : bool = prim("apsml_isNullString", s)
 
     structure Info : WEB_INFO = WebInfo(struct
-               type conn = int
+               type conn = foreignptr
                val getReqRec = getReqRec
              val isNull = isNull
              val log = (fn x => log(Debug, x))
@@ -44,33 +44,45 @@ structure Web :> WEB =
 
     structure WebSet (* : WEB_SET *)=
       struct
-        type set = int
+        type set = (string,(string * string) list) Polyhash.hash_table
 
-        fun isNull(s : string) : bool = prim("apsml_isNullString", s)
+       (* fun isNull(s : string) : bool = prim("apsml_isNullString", s) *)
 
-        fun get (s :set, key: string): string option =
+     (*   fun get (s :set, key: string): string option =
         let val res : string = prim("apsml_setGet", (s,key))
         in if isNull res then NONE
            else SOME res
-        end
+        end *)
+      fun get (ph,s) = Option.join (Option.map (fn v => Option.map (#2 : string * string -> string) (List.find (fn (s',_) => s = s') v))
+                          (Polyhash.peek ph (CharVector.map Char.toLower s)))
 
-      val iget = get
+      fun iget (ph,s) = Option.join (Option.map (fn v => case v of [] => NONE | (_:string,e:string)::_ => SOME e)
+                          (Polyhash.peek ph (CharVector.map Char.toLower s)))
 
-        fun getOpt (s:set, key:string, dflt:string): string =
-          Option.getOpt(get (s, key), dflt)
+      fun getOpt (s:set, key:string, dflt:string): string =
+        Option.getOpt(get (s, key), dflt)
 
-        fun put (s: set, key: string, value: string) : unit = 
-          prim("@apr_table_add", (s,key,value))
+      fun put (s,k,v) : unit = 
+            let val k' = CharVector.map Char.toLower k
+            in case Polyhash.peek s k'
+               of NONE => Polyhash.insert s (k',[(k,v)])
+                | SOME l => Polyhash.insert s (k',(k,v)::l)
+            end
+
+    (*    fun put (s: set, key: string, value: string) : unit = 
+          prim("@apr_table_add", (s,key,value)) 
       
-        fun free (s: set) : unit = ()
+        fun free (s: set) : unit = () 
 
       fun create (rr : int) : set = 
-          prim("@apsml_setCreate", (rr))
+          (log (Debug,"apsml_setCreate called with arg: " ^ (Int.toString rr)); prim("@apsml_setCreate", (rr))) *)
       
-        fun size (s: set) : int = prim("@apsml_SetSize", s) 
+      (*  fun size (s: set) : int = prim("@apsml_SetSize", s)  *)
 
-        fun unique (s: set, key: string) : bool =
-          prim("@apsml_setUnique", (s,key))
+        val size = Polyhash.numItems
+
+      (*  fun unique (s: set, key: string) : bool =
+          prim("@apsml_setUnique", (s,key)) 
 
         fun key (s: set, index: int) : string option =
           let val res : string =  prim("apsml_SetKey", (s, index))
@@ -82,12 +94,12 @@ structure Web :> WEB =
           let val res : string =  prim("apsml_SetValue", (s, index))
           in if isNull res then NONE
        else SOME res
-          end
+          end *)
 
-        fun getPair(s,n) = 
+       (* fun getPair(s,n) = 
           case (key(s,n), value(s,n))
       of (SOME k,SOME v) => (k,v)
-          | _ => raise Fail "Web.getPair" 
+          | _ => raise Fail "Web.getPair"  
 
         fun foldr (f:(string * string) * 'a -> 'a) (b:'a) (s:set) : 'a =
           let fun loop (n,acc) = if n < 0 then acc
@@ -100,24 +112,33 @@ structure Web :> WEB =
           in loop (size s - 1, b)
           end
         fun getAll (s:set, key:string): string list = 
-          foldl (fn ((k,v),a) => if k = key then v :: a else a) nil s
-        fun list s = foldl (op ::) nil s
-        fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) nil s
+          foldl (fn ((k,v),a) => if k = key then v :: a else a) nil s 
+        fun list s = foldl (op ::) nil s *)
+        fun create () = Polyhash.mkTable ((CharVector.foldl 
+                                             (fn (c,hv) => (if hv > 69273666
+                                                            then (Char.ord c) + 31 * (hv div 64)
+                                                            else (Char.ord c) + 31 * hv) handle Overflow => 0) 0),
+                    op=) (10, Fail "No such field in header")
+        val list = List.concat o (List.map #2) o Polyhash.listItems  : set -> (string * string) list
+        fun foldl f b s = List.foldl f b (list s)
+        fun foldr f b s = List.foldl f b (List.rev (list s))
+        fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) [] s
     end
 
   structure Set : WEB_SET = WebSet 
 
     structure StringCache :> WEB_STRING_CACHE =
       struct
-      type cache = int
+      type cache = foreignptr
+        fun isNull x = prim("__is_null", x)
         fun create(n : string, t: int, sz : int) : cache =  (* sz is in bytes, t is in seconds *)
-          let val c : cache = prim("apsml_cacheCreate", (n,sz, t, getReqRec()))
-          in if c = 0 then raise InternalSmlServerErrorOutOfMemory else c
+          let val c : cache = prim("@apsml_cacheCreate", (n,sz, t, getReqRec()))
+          in if isNull c then raise InternalSmlServerErrorOutOfMemory else c
           end
           
         fun find (n : string) : cache option = (*log(Debug, "cacheFind"); *)
-          let val res : int = prim("@apsml_cacheFind", (n, getReqRec()))
-          in if res = 0 then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
+          let val res : foreignptr = prim("@apsml_cacheFind", (n, getReqRec()))
+          in if isNull res then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
              else (*log(Debug, "cacheFind SOME, pid:"^ Int.toString(Info.pid()));*) SOME res
           end
         fun findTmSz(cn: string, t: int, sz : int) : cache =
@@ -126,7 +147,7 @@ structure Web :> WEB =
           | SOME c => c
         fun flush(c:cache) : unit = (*log(Debug, "cacheFlush");*)
           let val c : cache = prim("@apsml_cacheFlush", (c,getReqRec(), 1))
-          in if c = 0 then raise InternalSmlServerErrorOutOfMemory else ()
+          in if isNull c then raise InternalSmlServerErrorOutOfMemory else ()
           end
         fun set(c:cache, k:string, v:string, t:int) : (bool * string option) = 
           let 
@@ -433,7 +454,7 @@ structure Web :> WEB =
   structure Conn : WEB_CONN = 
     struct 
     type status = int
-    type set = Set.set 
+    type set = (string,(string * string) list) Polyhash.hash_table
 
     val GET = 0
     val FORM = 1
@@ -442,13 +463,30 @@ structure Web :> WEB =
     
     fun method () : string  = (prim("apsml_method", getReqRec())) handle Overflow => raise MissingConnection
 
-    fun contentLength () : int = (prim("apsml_contentlength", getReqRec())) handle Overflow => raise MissingConnection
+    fun contentLength () : int = (prim("@apsml_contentlength", getReqRec())) handle Overflow => raise MissingConnection
 
     fun hasConnection () : bool = let val b :int = prim("@apsml_hasconnection", getReqRec())
                                   in (b = 1)
                     end
 
-    fun headers () : set = (prim("apsml_headers", getReqRec())) handle Overflow => raise MissingConnection
+    local
+      val table = ref NONE : set option ref
+    in
+      fun headers () : set =
+          case !table of NONE =>
+            let
+              val l = prim("apsml_headers", (getReqRec())) : (string * string) list
+              val t = 
+                Polyhash.mkTable ((CharVector.foldl 
+                                    (fn (c,hv) => (if hv > 69273666
+                                                   then Char.ord c + 31 * (hv div 64)
+                                                   else Char.ord c + 31 * hv) handle Overflow => 0) 0),
+                    op=) (List.length l, Fail "No such field in header")
+            in
+              (SOME (List.app (fn (a,b) => WebSet.put (t,a,b)) l) ; table := SOME t ; t)
+            end
+          | SOME t => t
+    end
 
     fun add_headers (key,value) : unit = prim("@apsml_add_headers_out", (key : string, size key : int, value : string,
                                                                          size value : int, getReqRec())) : unit
@@ -661,7 +699,7 @@ structure Web :> WEB =
             end
 
       fun parseFormData(NONE : set option, s : string) : set = 
-          parseFormData(SOME(WebSet.create(getReqRec())),s)
+          parseFormData(SOME(WebSet.create()),s)
         | parseFormData(SOME(set), s) = 
            let (*val _ = log(Notice, "parseFormData: " ^ s) *)
              val f0 = Substring.tokens (fn c => c = #"&")
@@ -691,7 +729,7 @@ structure Web :> WEB =
               [] => NONE
               | fvs => 
               let
-                val form = WebSet.create (getReqRec()) 
+                val form = WebSet.create ()
                 fun storeContentType fv_name (key,value) = 
               WebSet.put(form,
                   Substring.string fv_name ^ "." ^ 
@@ -774,7 +812,7 @@ structure Web :> WEB =
      prim("@ap_internal_redirect", (url, getReqRecP()))
      )
 
-    fun port () : int = (prim("apsml_getport", (getReqRec()))) handle Overflow => raise MissingConnection
+    fun port () : int = (prim("@apsml_getport", (getReqRec()))) handle Overflow => raise MissingConnection
 
     fun host () : string = (prim("apsml_gethost",(getReqRec()))) handle Overflow => raise MissingConnection
     
@@ -796,7 +834,9 @@ structure Web :> WEB =
 
     fun formvarAll s =
       case getQuery() of
-        SOME set => Set.getAll(set,s)
+        SOME set =>(case Set.get(set,s)
+                    of NONE => []
+                     | SOME e => [e])
       | NONE => []
 
 
@@ -806,7 +846,7 @@ structure Web :> WEB =
 
   
     structure LowMail : WEB_LOW_MAIL = WebLowMail(struct
-               type conn = int
+               type conn = foreignptr
                val getReqRec = getReqRec 
                structure Info = Info
                val log = fn s => log(Debug, s) 
@@ -1442,7 +1482,7 @@ structure Web :> WEB =
      (* Creating the supported database interfaces *)
         
      structure DbOraBackend = DbOracleBackend(struct 
-                                                 type conn = int
+                                                 type conn = foreignptr
                                                  val getReqRec = getReqRec
                                                  val log = (fn x => (log(Debug, x); x))
                                                  val isNull = isNull
@@ -1452,7 +1492,7 @@ structure Web :> WEB =
                                                  where type 'a Type = 'a Info.Type.Type
 
      structure DbPostgreSQLBackend = DbODBCBackend(struct 
-                                                 type conn = int
+                                                 type conn = foreignptr
                                                  val getReqRec = getReqRec
                                                  val log = (fn x => (log(Debug, x); x))
                                                  val isNull = isNull
@@ -1462,7 +1502,7 @@ structure Web :> WEB =
                                                  where type 'a Type = 'a Info.Type.Type
 
      structure DbMySqlBackend = DbODBCBackend(struct 
-                                                 type conn = int
+                                                 type conn = foreignptr
                                                  val getReqRec = getReqRec
                                                  val log = (fn x => (log(Debug, x); x))
                                                  val isNull = isNull
