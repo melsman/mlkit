@@ -1151,8 +1151,8 @@ dumpRows(void *ctx1, int pos, char *data)/*{{{*/
   return ctx;
 }/*}}}*/
 
-int
-apsmlORAGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
+uintptr_t
+apsmlORAGetRow(uintptr_t vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAddrString, 
             oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
@@ -1164,8 +1164,8 @@ apsmlORAGetRow(int vAddrPair, Region rAddrLPairs, Region rAddrEPairs, Region rAd
   cn->rAddrEPairs = rAddrEPairs;
   makeNIL(cn->list);
   res = DBGetRow(ses, dumpRows, (void **) &cn, rd);
-  first(vAddrPair) = (int) cn1.list;
-  second(vAddrPair) = res;
+  first(vAddrPair) = (uintptr_t) cn1.list;
+  second(vAddrPair) = (uintptr_t) res;
   return vAddrPair;
 }/*}}}*/
 

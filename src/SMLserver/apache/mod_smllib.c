@@ -36,17 +36,9 @@ struct stringbuffer
 
 
 // ML: int * string * int * request_rec -> status
-int
-apsml_returnHtml (int status, char *s, int len, char *content_type, request_data * rd)	/*{{{ */
+uintptr_t
+apsml_returnHtml (int status, char *s, int len, char *content_type, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-	    "apsml_returnHtml called without a connection");
-    raise_exn ((int) &exn_OVERFLOW);
-    return 0;
-  }
-  request_rec *r = rd->request;
   if (!(status == -1))
   {
     r->status_line = ap_get_status_line (status);
@@ -62,16 +54,8 @@ apsml_returnHtml (int status, char *s, int len, char *content_type, request_data
 }				/*}}} */
 
 int
-apsml_returnFile (int status, char *mt, char *file, request_data * rd)	//{{{
+apsml_returnFile (int status, char *mt, char *file, request_rec *r)	//{{{
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_returnFile called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
-      return 0;
-    }
-  request_rec *r = rd->request;
   apr_size_t amountsend;
   if (status != -1)
     {
@@ -98,16 +82,8 @@ apsml_returnFile (int status, char *mt, char *file, request_data * rd)	//{{{
 }				//}}}
 
 int
-apsml_returnRedirect (int i, char *url, request_data * rd)	/*{{{ */
+apsml_returnRedirect (int i, char *url, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_returnRedirect called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
-      return 0;
-    }
-  request_rec *r = rd->request;
   apr_table_set (r->headers_out, "Location", url);
   int status = i;
   if (status == -1)
@@ -121,16 +97,8 @@ apsml_returnRedirect (int i, char *url, request_data * rd)	/*{{{ */
 }				/*}}} */
 
 void
-apsml_add_headers_out (char *key, int key_size, char *value, int value_size, request_data * rd)	/*{{{ */
+apsml_add_headers_out (char *key, int key_size, char *value, int value_size, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_add_headers_out called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
-      return;
-    }
-  request_rec *r = rd->request;
 //      ap_log_rerror(__FILE__,__LINE__, LOG_NOTICE, 0, r, "key,value, key_size, value_size: %s, %s, %i, %i", key, value, key_size, value_size);
   char *kv = (char *) apr_palloc (r->pool, key_size + 1 + value_size + 1);
   strncpy (kv, key, key_size + 1);
@@ -184,103 +152,67 @@ apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ 
 
 // ML: request_rec -> int
 uintptr_t
-apsml_getport (request_data * rd)	/*{{{ */
+apsml_getport (request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-      "apsml_getport called without a connection");
-    raise_exn ((uintptr_t) &exn_OVERFLOW);
-    return 0;
-  }
-  return (uintptr_t) ap_get_server_port (rd->request);
+  return (uintptr_t) ap_get_server_port (r);
 }				/*}}} */
 
 // ML: request_rec -> string
 String
-apsml_gethost (Region rAddr, int rd1)	/*{{{ */
+apsml_gethost (Region rAddr, request_data *rd)	/*{{{ */
 {
   // request_rec
   return convertStringToML (rAddr,
 			    (char *)
-			    ap_get_local_host (((request_data *) rd1)->pool));
+			    ap_get_local_host (((request_data *) rd)->pool));
 }				/*}}} */
 
 // ML: request_rec -> string
 String
-apsml_getserver (Region rAddr, request_data * rd)	/*{{{ */
+apsml_getserver (Region rAddr, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_getserver called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
-      return 0;
-    }
-  // request_rec
-  return convertStringToML (rAddr, (char *) ap_get_server_name (rd->request));
+  return convertStringToML (rAddr, (char *) ap_get_server_name (r));
 }				/*}}} */
 
 // ML: request_rec -> string list
-int
-apsml_geturl (Region rListAddr, Region rStringAddr, request_data * rd)	/*{{{ */
+uintptr_t
+apsml_geturl (Region rListAddr, Region rStringAddr, request_rec *r)	/*{{{ */
 {
   request_rec *tmp;
   uintptr_t *pair, *cons, *temp_pair, res;
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_geturl called without a connection");
-      raise_exn ((uintptr_t) &exn_OVERFLOW);
-      return 0;
-    }
   allocRecordML(rListAddr, 2, pair);
-  first(pair) = (int) convertStringToML (rStringAddr, rd->request->uri);
+  first(pair) = (uintptr_t) convertStringToML (rStringAddr, r->uri);
   makeCONS(pair,cons);
-  res = (int) cons;
-  tmp = rd->request;
+  res = (uintptr_t) cons;
+  tmp = r;
   while (tmp->prev) 
   {
     tmp = tmp->prev;
     allocRecordML(rListAddr,2,temp_pair);
-    first(temp_pair) = (int) convertStringToML(rStringAddr, tmp->uri);
+    first(temp_pair) = (uintptr_t) convertStringToML(rStringAddr, tmp->uri);
     makeCONS(temp_pair,cons);
-    second(pair) = (int) cons;
+    second(pair) = (uintptr_t) cons;
     pair = temp_pair;
   }
   makeNIL(cons);
-  second(pair) = (int) cons;
+  second(pair) = (uintptr_t) cons;
   // request_rec
   return res;
 }				/*}}} */
 
 // ML: request_rec -> string
 String
-apsml_getpeer (Region rAddr, request_data * rd)	/*{{{ */
+apsml_getpeer (Region rAddr, request_rec *r)	/*{{{ */
 {
   // request_rec
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_getpeer called without a connection");
-      raise_exn ((uintptr_t) &exn_OVERFLOW);
-      return 0;
-    }
-  return convertStringToML (rAddr, rd->request->connection->remote_ip);
+  return convertStringToML (rAddr, r->connection->remote_ip);
 }				/*}}} */
 
 // ML: request_rec -> string
 String
-apsml_PageRoot (Region rAddr, request_data * rd)	/*{{{ */
+apsml_PageRoot (Region rAddr, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_PageRoot called without a connection");
-      raise_exn ((uintptr_t) &exn_OVERFLOW);
-      return 0;
-    }
-  return convertStringToML (rAddr, (char *) ap_document_root (rd->request));
+  return convertStringToML (rAddr, (char *) ap_document_root (r));
 }				/*}}} */
 
 // ML: () -> string ptr_option
@@ -301,16 +233,8 @@ sml_getAuxData(Region r, request_data *rd)/*{{{*/
 
 // ML: () -> string ptr_option
 String
-apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{{ */
+apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_getQueryData called without a connection");
-      raise_exn ((uintptr_t) &exn_OVERFLOW);
-      return 0;
-    }
-  request_rec *r = rd->request;
 //      ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, rd->request, "apsml: getFormData C init");
   if (type == GET)
     {
@@ -333,11 +257,11 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{
   if (ap_setup_client_block (r, REQUEST_CHUNKED_DECHUNK) == OK)
     {
       ap_should_client_block (r);
-      buf = (struct stringbuffer *) apr_palloc (rd->pool, sizeof (struct stringbuffer));
+      buf = (struct stringbuffer *) apr_palloc (r->pool, sizeof (struct stringbuffer));
       buf->next = NULL;
       startbuf = buf;
       while ((rds =
-	      ap_get_client_block (rd->request, buf->stringbuf,
+	      ap_get_client_block (r, buf->stringbuf,
 				   BUFFERSIZE)) != 0)
 	{
 	  if (rds == -1)
@@ -345,21 +269,21 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_data * rd)	/*{{
 	  buf->size = rds;
 	  totalsize += rds;
 	  nextbuf =
-	    (struct stringbuffer *) apr_palloc (rd->pool, sizeof (struct stringbuffer));
+	    (struct stringbuffer *) apr_palloc (r->pool, sizeof (struct stringbuffer));
 	  nextbuf->next = NULL;
 	  buf->next = nextbuf;
 	  if (totalsize > maxsize)
 	    {
 	      buf->size = rds - (totalsize - maxsize);
 	      totalsize = maxsize;
-	      ap_log_rerror (__FILE__, __LINE__, LOG_WARNING, 0, rd->request,
+	      ap_log_rerror (__FILE__, __LINE__, LOG_WARNING, 0, r,
 			     "apsml: User tried to send file larger than maxfilesize");
 	      break;
 	    }
 	  buf = nextbuf;
 	}
       buf = startbuf;
-      finalstring = (char *) apr_palloc (rd->pool, totalsize + 1);
+      finalstring = (char *) apr_palloc (r->pool, totalsize + 1);
       int count = 0;
       while (buf->next != NULL)
 	{
@@ -399,7 +323,6 @@ apsml_setGet (Region rAddr, apr_table_t * set, String key)	/*{{{ */
     }
   return convertStringToML (rAddr, res_c);
 }				/*}}} */
-#endif
 
 // ML: string ptr_option -> bool
 int
@@ -410,6 +333,7 @@ apsml_isNullString (String s)	/*{{{ */
   else
     return mlFALSE;
 }				/*}}} */
+#endif
 
 int
 apsml_setcount (void *c, const char *a, const char *b)	/*{{{ */
@@ -553,18 +477,10 @@ apsml_headers_old (Region rl, Region rp, Region rsk, Region rsv, request_data *r
 
 // ML: unit -> (string * string) list
 uintptr_t *
-apsml_headers (Region rl, Region rp, Region rsk, Region rsv, request_data *rd)		/*{{{ */
+apsml_headers (Region rl, Region rp, Region rsk, Region rsv, request_rec *r)		/*{{{ */
 {
-  request_rec *r = rd->request;
   uintptr_t *list;
 //  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
-  if (!r) 
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		  "apsml_headers called without a connection");
-    raise_exn ((uintptr_t) &exn_OVERFLOW);
-    return 0;
-  }
   if (r->headers_in)
   {
     return returnSet(rl, rp, rsk, rsv, r->headers_in);
@@ -737,6 +653,7 @@ apsml_decodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
   return convertStringToML (rAddr, to);
 }				/*}}} */
 
+#if 0
 // ML: request_rec -> string
 String
 apsml_method (Region rAddr, request_data * rd)	/*{{{ */
@@ -784,6 +701,32 @@ apsml_contentlength (request_data * rd)	/*{{{ */
   return (uintptr_t) rd->request->clength;
 }				/*}}} */
 
+#endif
+
+uintptr_t
+apsml_contentlength (request_rec *r)
+{
+  return (uintptr_t) r->clength;
+}
+
+const char *
+apsml_scheme (request_rec *r)
+{
+#if (AP_SERVER_MINORVERSION_NUMBER > 0)
+  return ap_http_scheme(r);
+#else
+  return ap_run_http_method(r);
+#endif
+}
+
+
+const char *
+apsml_method (request_rec *r)
+{
+  return r->method;
+}
+
+#if 0
 // ML: request_rec -> bool
 uintptr_t
 apsml_hasconnection (request_data *rd)	/*{{{ */
@@ -792,22 +735,16 @@ apsml_hasconnection (request_data *rd)	/*{{{ */
     return 1;
   return 0;
 }				/*}}} */
+#endif
 
 // ML: string * request_rec -> unit
 void
-apsml_setMimeType (char *s, int s_size, request_data * rd)	/*{{{ */
+apsml_setMimeType (char *s, int s_size, request_rec *r)	/*{{{ */
 {
-  if (rd->request == 0)
-    {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		    "apsml_method called without a connection");
-      raise_exn ((int) &exn_OVERFLOW);
-      return;
-    }
-  char *m = (char *) apr_palloc (rd->pool, s_size + 1);
+  char *m = (char *) apr_palloc (r->pool, s_size + 1);
   strncpy (m, s, s_size);
   m[s_size] = 0;
-  rd->request->content_type = m;
+  r->content_type = m;
   return;
 }				/*}}} */
 
@@ -898,11 +835,26 @@ apsml_getuptime(request_data *rd)/*{{{*/
   return convertIntToML(n - rd->ctx->starttime);
 }/*}}}*/
 
+#if 0
 int
 apsml_getpid(request_data *rd)/*{{{*/
 {
   return convertIntToML(rd->ctx->pid);
 }/*}}}*/
+#endif
+
+char *
+apsml_getuser(request_rec *r)
+{
+  return (r->user);
+}
+
+char *
+apsml_get_auth_type(request_rec *r)
+{
+  return (r->ap_auth_type);
+}
+
 
 static char *
 tail (char *p)/*{{{*/

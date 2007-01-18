@@ -10,7 +10,6 @@ apsml_getserver
 apsml_geturl
 apsml_getpeer
 apsml_getQueryData
-apsml_isNullString
 apsml_headers
 apsml_add_headers_out
 apsml_PageRoot
@@ -19,7 +18,6 @@ apsml_decodeUrl
 apsml_method
 apsml_scheme
 apsml_contentlength
-apsml_hasconnection
 apsml_setMimeType
 apsml_cacheCreate
 apsml_cacheFind
@@ -43,3 +41,5 @@ apsml_getpage
 getMaxHeapPoolSz
 setMaxHeapPoolSz
 sml_getAuxData
+apsml_getuser
+apsml_get_auth_type
