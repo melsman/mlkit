@@ -514,15 +514,14 @@ returnSet(Region rl, Region rp, Region rsk, Region rsv, apr_table_t *set)
   c.rp = rp;
   c.rsk = rsk;
   c.rsv = rsv;
-  apr_table_entry_t *fields;
   const apr_array_header_t *ah = apr_table_elts(set);
   makeNIL(c.list);
   if (!ah) return c.list;
   int nelts = ah->nelts;
-  while (nelts--)
+  apr_table_entry_t *elts = (apr_table_entry_t *) ah->elts;
+  for (int i = 0; i < nelts; i++)
   {
-    fields = (apr_table_entry_t *) ah->elts;
-    tableToList(&c, fields->key, fields->val);
+    tableToList(&c, elts[i].key, elts[i].val);
   }
   return c.list;
 }
