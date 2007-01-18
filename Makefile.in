@@ -310,6 +310,7 @@ install_test:
 	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(DATADIR)/test/danwang
 	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(DATADIR)/test/barnes-hut
 	$(INSTALL) test/logic/*.{sml,mlb} $(DATADIR)/test/logic
+	cd $(DATADIR)/test && rm -f testlink testcycl testbadl hardlinkA hardlinkB
 	cd $(DATADIR)/test && ln -sf README testlink
 	cd $(DATADIR)/test && ln -sf testcycl testcycl
 	cd $(DATADIR)/test && ln -sf exists.not testbadl
