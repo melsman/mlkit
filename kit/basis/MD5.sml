@@ -1,16 +1,17 @@
 (* Copyright (C) 2001 Daniel Wang. All rights reserved.
- Derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm.
+ * Derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm.
+ *
+ * From SML/NJ (BSD/MIT License)
+ *
  *)
 signature MD5 =
   sig
     type md5state
-(*    type slice = (Word8Vector.vector * int * int option) *)
     val init : md5state
-    (* val updateSlice : (md5state * slice) -> md5state
-    *)
     val update : (md5state * Word8Vector.vector) -> md5state
     val final  : md5state -> Word8Vector.vector
     val toHexString :  Word8Vector.vector -> string
+    val fromString : string -> string
     val fromFile : string -> string
   end
 
@@ -231,11 +232,13 @@ structure MD5 :> MD5 =
 	   end handle ? => (TextIO.closeIn is ; raise ?)
 	end 
       
-    fun fromFile f =
-      let val a = withFile TextIO.inputAll f
-	  val b = Byte.stringToBytes a
+    fun fromString a =
+      let val b = Byte.stringToBytes a
 	  val h = toHexString(final(update(init,b)))
       in h
       end
+
+    fun fromFile f =     
+      fromString (withFile TextIO.inputAll f)
 
   end
