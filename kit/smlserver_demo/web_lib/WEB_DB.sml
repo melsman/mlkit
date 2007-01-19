@@ -1,68 +1,64 @@
-signature WEB_DB =
-  sig
-    structure Handle : WEB_DB_HANDLE
+signature WEB_DB = sig
+  structure Handle : WEB_DB_HANDLE
+		     
+  type 'a Type
 
-    (* init *)
+  val config : 'a Type * string * 'a -> unit
 
-    type 'a Type
+  (* Data manipulation language *)
+  val dml           : quot -> unit
+  val exec          : quot -> unit
+  val maybeDml      : quot -> unit
+  val panicDml      : (quot -> 'a) -> quot -> unit
 
-    val config : 'a Type * string * 'a -> unit
-
-    (* Data manipulation language *)
-    val dml           : quot -> unit
-    val exec          : quot -> unit
-    val maybeDml      : quot -> unit
-    val panicDml      : (quot -> 'a) -> quot -> unit
-
-    (* Stored Procedure *)
-    val execSp        : quot list -> unit
-
-    (* Queries *)
-    val fold          : ((string->string)*'a->'a) -> 'a 
-                        -> quot -> 'a
-    val foldCol       : (string list -> (string->string option)*'a->'a) -> 'a 
-                        -> quot -> 'a
-    val app           : ((string->string)->'a) -> quot 
-                        -> unit
-    val appCol        : (string list -> (string->string option)->'a) -> quot 
-                        -> unit
-    val list          : ((string->string)->'a) -> quot 
-                        -> 'a list
-    val listCol       : (string list -> (string->string option)->'a) -> quot 
-                        -> 'a list
-    val oneField      : quot -> string 
-    val zeroOrOneField: quot -> string option
-    val oneRow        : quot -> string list
-    val oneRow'       : ((string->string)->'a) -> quot -> 'a
-    val zeroOrOneRow  : quot -> string list option
-    val zeroOrOneRow' : ((string->string)->'a) -> quot 
-                        -> 'a option
-    val existsOneRow  : quot -> bool
-
-    (* Sequences *)
-    val seqNextvalExp : string -> string
-    val seqNextval    : string -> int
-    val seqCurrvalExp : string -> string
-    val seqCurrval    : string -> int
-
-    (* Miscellaneous *)
-    val sysdateExp    : string
-    val qq            : string -> string
-    val qqq           : string -> string
-    val toDate        : string -> Date.date option
-    val timestampType : string
-    val toTimestampExp: string -> string
-    val toTimestamp   : string -> Date.date option
-    val fromDate      : Date.date -> string
-    val toDateExp     : string -> string
-    val valueList     : string list -> string
-    val setList       : (string*string) list -> string
-    val toBool        : string -> bool option
-    val fromBool      : bool -> string
-    val toReal        : string -> real option
-    val fromReal      : real -> string
-
-  end
+  (* Stored Procedure *)
+  val execSp        : quot list -> unit
+				   
+  (* Queries *)
+  val fold          : ((string->string)*'a->'a) -> 'a 
+                      -> quot -> 'a
+  val foldCol       : (string list -> (string->string option)*'a->'a) -> 'a 
+                      -> quot -> 'a
+  val app           : ((string->string)->'a) -> quot 
+						-> unit
+  val appCol        : (string list -> (string->string option)->'a) -> quot 
+								      -> unit
+  val list          : ((string->string)->'a) -> quot 
+						-> 'a list
+  val listCol       : (string list -> (string->string option)->'a) -> quot 
+								      -> 'a list
+  val oneField      : quot -> string 
+  val zeroOrOneField: quot -> string option
+  val oneRow        : quot -> string list
+  val oneRow'       : ((string->string)->'a) -> quot -> 'a
+  val zeroOrOneRow  : quot -> string list option
+  val zeroOrOneRow' : ((string->string)->'a) -> quot 
+						-> 'a option
+  val existsOneRow  : quot -> bool
+			      
+  (* Sequences *)
+  val seqNextvalExp : string -> string
+  val seqNextval    : string -> int
+  val seqCurrvalExp : string -> string
+  val seqCurrval    : string -> int
+				
+  (* Miscellaneous *)
+  val sysdateExp    : string
+  val qq            : string -> string
+  val qqq           : string -> string
+  val toDate        : string -> Date.date option
+  val timestampType : string
+  val toTimestampExp: string -> string
+  val toTimestamp   : string -> Date.date option
+  val fromDate      : Date.date -> string
+  val toDateExp     : string -> string
+  val valueList     : string list -> string
+  val setList       : (string*string) list -> string
+  val toBool        : string -> bool option
+  val fromBool      : bool -> string
+  val toReal        : string -> real option
+  val fromReal      : real -> string		      
+end
 
 (*
  [dml sql] executes the data manipulation language command 

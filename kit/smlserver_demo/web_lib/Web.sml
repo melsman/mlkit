@@ -1,8 +1,9 @@
 structure Web :> WEB = 
   struct 
-  exception InternalSmlServerError;
-  exception InternalSmlServerErrorOutOfMemory;
-  exception MissingConnection;
+  exception InternalSmlServerError
+  exception InternalSmlServerErrorOutOfMemory
+  exception MissingConnection
+  exception Forbidden
 
   fun isNull(s : string) : bool = prim("__is_null", s : string) : bool
   fun isNullFp(s : foreignptr) : bool = prim("__is_null", s : foreignptr) : bool
@@ -16,7 +17,7 @@ structure Web :> WEB =
        end
 
     (* defined in http_log.h *)
-  structure WebBasics : WEB_BASICS =
+  structure WebLog : WEB_LOG =
   struct 
     type LogSeverity = int
     val Emergency=0 and Alert=1 and Critical=2 and Error=3
@@ -28,11 +29,9 @@ structure Web :> WEB =
       prim("apsml_log", (ls, "[pid: " ^ (Int.toString pid) ^ "] " ^ s, getReqRec(), InternalSmlServerError))
     end
     fun advLog (ls, data, ppdata) = (log(ls, ppdata data);data)
-    exception Forbidden
   end
   
-
-  open WebBasics
+  open WebLog
 
   fun encodeUrl (s : string) : string = prim("apsml_encodeUrl", (s,getReqRec()))
   fun decodeUrl (s : string) : string = prim("apsml_decodeUrl", (s,getReqRec()))
@@ -143,7 +142,7 @@ structure Web :> WEB =
 
   structure Set : WEB_SET = WebSet 
 
-    structure StringCache :> WEB_STRING_CACHE =
+  structure StringCache :> WEB_STRING_CACHE =
       struct
       type cache = foreignptr
         fun create(n : string, t: int, sz : int) : cache =  (* sz is in bytes, t is in seconds *)
@@ -215,23 +214,17 @@ structure Web :> WEB =
         end
       end
 
-    structure Cache : WEB_CACHE =
-      struct
+  structure Cache : WEB_CACHE =
+  struct
   (* This module uses the basic cache functionalities
        implemented in WEB_STRING_CACHE *)
   open WebSerialize
 
   type name = string
 
-(*  val max_cache_name_size = 31 (* Max size of cache name supported by AOLserver pre version 4 is 
-                                  *     32 and we leave one slot for the terminating \0. 
-                  * In the current implementation there is no limit                            *) *)
-
   datatype kind =
     WhileUsed of Time.time option * int option
   | TimeOut of Time.time option * int option
-(*  | Size of int *)
-
 
   type ('a,'b) cache = {name: string,
             kind: kind,
@@ -258,7 +251,6 @@ structure Web :> WEB =
             in
               "TimeOut(" ^ time ^ " " ^ size ^ ")"
             end
-(*    | Size n => "Size(" ^ (Int.toString n) ^ ")" *)
 
   fun pp_type (t: 'a Type) = #name t
   fun pp_cache (c: ('a,'b)cache) = 
@@ -272,7 +264,6 @@ structure Web :> WEB =
         case kind of
           WhileUsed t => "W"
         | TimeOut t => "T"
-(*        | Size n => "S" *)
       val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
 (*      val _ = 
         if String.size c_name > max_cache_name_size then
@@ -287,8 +278,6 @@ structure Web :> WEB =
         | TimeOut (t,s) => 
              StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
                                   getOpt(s, ~1))
-(*        | Size n => StringCache.findTmSz(c_name,0,n)  *)
-
     in
       {name=c_name,
        kind=kind,
@@ -349,7 +338,6 @@ structure Web :> WEB =
           case #kind c of
             WhileUsed (t,_) => getWhileUsed c k 
           | TimeOut (t,_) => getTimeOut c k t NONE
-(*          | Size n => StringCache.get(#cache c,#to_string(#domType c) k) *)
       in
         case v of
           NONE => NONE
@@ -399,8 +387,8 @@ structure Web :> WEB =
 
   fun memoize c f = fn k => valOf(memoizePartial c (fn x => SOME (f x)) k)
 
-      end
-
+  end
+      
 
   structure Mime :> WEB_MIME =
     struct
@@ -428,7 +416,7 @@ structure Web :> WEB =
             let
               val fh =  (TextIO.openIn f) handle IO.Io _ => raise FileNotFound
               fun close () = (TextIO.closeIn fh) handle _ => ()
-              val _ = WebBasics.log (WebBasics.Notice,"Reading Mime-Type configuration file: " ^ f)
+              val _ = WebLog.log (WebLog.Notice,"Reading Mime-Type configuration file: " ^ f)
               fun loop m lc = (case (TextIO.inputLine fh)
                              of SOME s => (loop (if CharVector.sub(s,0) = #"#" then m else toMap m s) (lc + 1))
                               | NONE => (close() ; m))
@@ -442,7 +430,7 @@ structure Web :> WEB =
                                          | ParseErr s => raise Fail ("In file: " ^ f ^ ", " ^ s)
 
       fun mimeMap x = case Info.configGetValue(Cache.String, "MimeTypeFile")
-                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: MimeTypeFile not defined, using application/octet-stream")
+                      of NONE => (WebLog.log(WebLog.Notice, "SMLServer.MimeFinder: MimeTypeFile not defined, using application/octet-stream")
                                   ; SOME "application/octet-stream")
                        | SOME f => Option.map Substring.string (BM.peek (readConf f, Substring.full x))
       
@@ -453,7 +441,7 @@ structure Web :> WEB =
       val mimeMap' = WC.memoizePartial mimeCache mimeMap
 
       fun getMime x = case Option.join (Option.map mimeMap' (OS.Path.ext x))
-                      of NONE => (WebBasics.log(WebBasics.Notice, "SMLServer.MimeFinder: File " ^ x ^ " not defined, unsing application/octet-stream")
+                      of NONE => (WebLog.log(WebLog.Notice, "SMLServer.MimeFinder: File " ^ x ^ " not defined, unsing application/octet-stream")
                                  ; "application/octet-stream")
                        | SOME mime => mime
       fun addEncoding x = let
@@ -468,13 +456,12 @@ structure Web :> WEB =
 
   structure Conn : WEB_CONN = 
     struct 
-    type status = int
     type set = (string,(string * string) list) Polyhash.hash_table
 
     val GET = 0
     val FORM = 1
 
-    val log = WebBasics.log
+    val log = WebLog.log
     
     (* fun method () : string  = (prim("apsml_method", getReqRec())) handle Overflow => raise MissingConnection *)
     fun method () : string =
@@ -516,21 +503,24 @@ structure Web :> WEB =
     
     fun setMimeType(s : string) : unit = prim("@apsml_setMimeType",(s, size s, getReqRecP()))
 
-    fun returnFile(status: int, mt: string, f: string) : status =
-      prim("@apsml_returnFile", (status, mt, f, getReqRecP()))
+    fun returnFile(status: int, mt: string, f: string) : unit =
+	let val res = prim("@apsml_returnFile", (status, mt, f, getReqRecP()))
+	in if res = 0 then ()
+	   else raise Fail("Web.Conn.returnFile: Cannot access file " ^ f)
+	end
 
-    fun returnHtml (i:int, s: string) : status = 
+    fun returnHtml (i:int, s: string) : unit = 
       let
         val _ = add_headers("Cache-Control","no-cache")
       in
-        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRecP())) : int
+        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRecP())) : unit
       end
 
-    fun returnXhtml (i : int,s : string) : status = 
+    fun returnXhtml (i : int,s : string) : unit = 
       let
         val _ = add_headers("Cache-Control","must-revalidate")
       in
-        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRecP())) : int
+        prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRecP())) : unit
       end
 
     local 
@@ -814,11 +804,11 @@ structure Web :> WEB =
 
     end 
 
-    fun return (s: string) : status = returnHtml(~1,s)
+    fun return (s: string) : unit = returnHtml(~1,s)
     (*fun return (s: string) : status = 
       prim("@apsml_returnHtml", (~1,s,size s, getReqRec())) *)
 
-    fun returnRedirectWithCode(i: int, s: string) : status = 
+    fun returnRedirectWithCode(i: int, s: string) : unit = 
       prim("@apsml_returnRedirect",(i, s, getReqRecP()))
 
     fun returnRedirect s = returnRedirectWithCode (302,s)
@@ -828,11 +818,9 @@ structure Web :> WEB =
     fun url () : string list = 
       prim("apsml_geturl", getReqRecP())
 
-    type status = status
-    
-    fun redirect(url: string) : status = 
-     ( (*log(WebBasics.Notice, "Web.Conn.redirect");  *)
-     prim("@ap_internal_redirect", (url : string, getReqRecP() : foreignptr)) : int
+    fun redirect(url: string) : unit = 
+     ( (*log(WebLog.Notice, "Web.Conn.redirect");  *)
+     prim("@ap_internal_redirect", (url : string, getReqRecP() : foreignptr)) : unit
      )
 
     fun port () : int = (prim("@apsml_getport", (getReqRecP() : foreignptr))) 
@@ -852,7 +840,7 @@ structure Web :> WEB =
 
     fun peer () : string = prim("apsml_getpeer", (getReqRecP()))
 
-    fun write (s: string) : status =
+    fun write (s: string) : unit =
        prim("@ap_rputs", (s,getReqRecP()))
        
 
@@ -909,7 +897,7 @@ structure Web :> WEB =
        path   : string option, 
        secure : bool}
 
-    fun allCookies() : (string * string) list = (*WebBasics.log(Notice, "allCookies"); *)(
+    fun allCookies() : (string * string) list = (*WebLog.log(Notice, "allCookies"); *)(
       case Set.filter (fn (k,_) => k = "Cookie") (Conn.headers()) of
         [] => []
       | ([(k,cv)]) =>
@@ -1395,7 +1383,7 @@ structure Web :> WEB =
                  mail
                    (fn false => NONE
                      | true  => SOME(e, false, stdEnc()))
-                   (fn (em,err,()) => WebBasics.log(WebBasics.Warning, String.concat
+                   (fn (em,err,()) => WebLog.log(WebLog.Warning, String.concat
                                                  ("tried to mail: " :: (List.foldl (fn (x,l) => x::", "::l) [] (#to em)) @
                                                                   [" but I got the following errors: "] @
                                                  (List.foldl (fn ((x,y),z) => "; " :: x :: " " :: y :: z) [] err))))
@@ -1407,13 +1395,11 @@ structure Web :> WEB =
   end
 
   
-    type status = Conn.status
+  val log = WebLog.log
 
-  val log = WebBasics.log
-
-    type quot = Quot.quot
-    fun return (q : quot) : status =
-        Conn.return(Quot.toString q)
+  type quot = Quot.quot
+  fun return (q : quot) : unit =
+      Conn.return(Quot.toString q)
 
   fun fetchUrlTime (timeout : int) (url : string) = (
            let 
@@ -1443,7 +1429,7 @@ structure Web :> WEB =
     val returnRedirect =
       Conn.returnRedirect 
 
-    fun write (q : quot) : status = 
+    fun write (q : quot) : unit = 
       Conn.write (Quot.toString q)
 
     (*fun getMimeType(s: string) : string = prim("apsml_GetMimeType", (s,getReqRec()))*)
