@@ -5,7 +5,7 @@
     WEB_CONN.sml
     WEB_COOKIE.sml
     WEB_MAIL.sml
-    WEB_BASICS.sml
+    WEB_LOG.sml
     WEB_SERIALIZE.sml
     WEB_INFO.sml
     WEB_STRING_CACHE.sml

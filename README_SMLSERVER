@@ -19,11 +19,13 @@ Procedure:
  $ make smlserver_libs
  $ sudo make install_smlserver
 
-edit /abs/path/to/initscript (remove Db conf lines)
-
  $ cd $HOME
  $ mkdir web
  $ cp -pa /usr/local/lib/smlserver/{www,web_sys,web_lib,web_demo_lib} web/ 
+
+edit web/web_sys/init.sml:
+  Comment out Db.config lines.
+
  $ cd web/www
  $ make
 
@@ -45,19 +47,19 @@ Create file /etc/apache2/mods-available/sml.conf with the following content:
     SmlPath "/home/mael/web/www/"
     SmlInitScript "/home/mael/web/www/../web_sys/init.sml"
   </IfModule>
-  <Directory /home/mael/web/www/web/secret>
-    SetHandler None
-    RewriteEngine On
-    RewriteBase /web/secret
-    RewriteRule .* pub.sml
-  </Directory>
+  #<Directory /home/mael/web/www/web/secret>
+  #  SetHandler None
+  #  RewriteEngine On
+  #  RewriteBase /web/secret
+  #  RewriteRule .* pub.sml
+  #</Directory>
 
  $ sudo ln -s /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
  $ sudo ln -s /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
 
- $ apache/bin/apachectl start
+ $ apache2ctl restart
 
-point your browswer to localhost:port/web/
+point your browser to localhost:/web/
 
 to build Oracle interface:
 download Oracle Instant Client + SDK

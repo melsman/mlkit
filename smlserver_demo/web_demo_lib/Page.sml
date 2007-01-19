@@ -1,6 +1,6 @@
 signature PAGE =
   sig
-    val return : string -> quot -> Web.status
+    val return : string -> quot -> unit
     val panic : quot -> 'a
   end
 

@@ -1,13 +1,12 @@
 signature WEB_CONN = sig
-  eqtype status
   type set
-  val returnHtml         : int * string -> status
-  val returnXhtml        : int * string -> status
-  val return             : string -> status
-  val returnFile         : int * string * string -> status
-  val write              : string -> status
-  val returnRedirect     : string -> status
-  val returnRedirectWithCode     : int * string -> status
+  val returnHtml         : int * string -> unit
+  val returnXhtml        : int * string -> unit
+  val return             : string -> unit
+  val returnFile         : int * string * string -> unit
+  val write              : string -> unit
+  val returnRedirect     : string -> unit
+  val returnRedirectWithCode     : int * string -> unit
   val setMimeType        : string -> unit
   val getQuery           : unit -> set option
   val formvar            : string -> string option
@@ -19,7 +18,7 @@ signature WEB_CONN = sig
   val peer               : unit -> string 
   val scheme             : unit -> string
   val port               : unit -> int
-  val redirect           : string -> status
+  val redirect           : string -> unit
   val server             : unit -> string
   val url                : unit -> string list
   val method             : unit -> string
@@ -29,38 +28,41 @@ signature WEB_CONN = sig
 end
 
 (*
- [status] abstract type identical to Ns.status.
+ [set] abstract type identical to Web.Set.set.
 
- [set] abstract type identical to Ns.Set.set.
+ [returnHtml (sc,s)] sends HTML string s with status code sc and
+ mime-type text/html to client, including HTTP headers and
+ Cache-Control header set to no-cache. May raise MissingConnection.
 
- [returnHtml (sc,s)] sends HTML string s with status code sc 
- to client, including HTTP headers. Returns Ns.OK on success 
- and Ns.ERROR on failure.
+ [returnXHtml (sc,s)] sends XHTML string s with status code sc and
+ mime-type application/xhtml+xml to client, including HTTP headers and
+ Cache-Control header set to must-revalidate. May raise
+ MissingConnection.
 
  [return s] sends HTML string s with status code 200 to 
- client, including HTTP headers. Returns Ns.OK on success 
- and Ns.ERROR on failure.
+ client, including HTTP headers. May raise MissingConnection.
 
  [returnFile (sc,mt,f)] sends file f with status code sc to 
- client, including HTTP headers. The mime type is mt. 
- Returns Ns.OK on success and Ns.ERROR on failure.
+ client, including HTTP headers. The mime type is mt. Raises
+ MissingConnection if the execution is not associated with a
+ connection. Raises Fail(msg) if the file cannot be opened for
+ reading.
 
  [write s] sends string s to client, excluding HTTP headers. 
- Returns Ns.OK on success and Ns.ERROR on failure.
+ May raise MissingConnection.
 
  [returnRedirect loc] sends redirection HTTP response to 
  client (status code 302), with information that the client 
- should request location loc. Returns Ns.OK on success and 
- Ns.ERROR on failure.
+ should request location loc. May raise MissingConnection.
 
  [getQuery()] constructs and returns a set representing the 
  query data associated with the connection. It reads the POST 
  content or the query string. The POST content takes 
  precedence over the query string.
 
- [formvar k] returns the query data associated with the 
- connection and the key k; the function returns NONE if no 
- query data is present for the argument key k.
+ [formvar k] returns the first query data associated with the 
+ key k; the function returns NONE if no query data is present 
+ for the argument key k.
 
  [formvarAll k] returns all values associated with key k in 
  the query data; the function returns the empty list if no 

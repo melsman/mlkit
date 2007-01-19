@@ -18,4 +18,7 @@ end
 
  [send {to,from,subject,body}] abbreviated version of 
  sendmail.
+
+ [mail f g a b] Advanced mail interface that supports sending of
+ multiple emails using one SMTP connection.
 *)

@@ -2,10 +2,10 @@
 signature RATING_UTIL =
   sig
     val returnPage : string -> string frag list 
-      -> Web.status
+      -> unit
       
     val returnPageWithTitle : string 
-      -> string frag list -> Web.status
+      -> string frag list -> unit
       
     val bottleImgs : int -> string
       
