@@ -10,7 +10,7 @@ Requirements:
  3) mlkit >= 4.3.0 compiled and installed
  4) bison, flex
 
-Procedure:
+SMLserver installation:
 
  $ cd kit
  $ ./autobuild
@@ -19,13 +19,11 @@ Procedure:
  $ make smlserver_libs
  $ sudo make install_smlserver
 
+SMLserver configuration and demonstration:
+
  $ cd $HOME
  $ mkdir web
  $ cp -pa /usr/local/lib/smlserver/{www,web_sys,web_lib,web_demo_lib} web/ 
-
-edit web/web_sys/init.sml:
-  Comment out Db.config lines.
-
  $ cd web/www
  $ make
 

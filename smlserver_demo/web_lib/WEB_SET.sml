@@ -14,29 +14,26 @@ signature WEB_SET = sig
 end
 
 (*
- [set] abstract type of sequences of key-value pairs, 
- returned by some calls to the web-server.
+ [set] abstract type of sequences of key-value pairs, returned by some
+ calls to the web-server.
 
- [get (s,k)] returns SOME(v) if v is the first value 
- associated with key k in set s; returns NONE if no value is
- associated with k in s.
+ [get (s,k)] returns SOME(v) if v is the first value associated with
+ key k in set s; returns NONE if no value is associated with k in s.
 
  [iget (s,k)] is the insensitive counterpart to get.
 
- [getOpt (s,k,v)] returns the first value associated with key 
- k in set s; returns v if no value is associated with k in s.
+ [getOpt (s,k,v)] returns the first value associated with key k in set
+ s; returns v if no value is associated with k in s.
 
- [getAll (s,k)] returns all values associated with key k in
- set s; returns the empty list if no values are associated 
- with k in s.
+ [getAll (s,k)] returns all values associated with key k in set s;
+ returns the empty list if no values are associated with k in s.
  
  [size s] returns the number of elements in a set.
 
  [list s] returns the list representation of set s.
 
- [filter f s] returns the list of key-value pairs in s for 
- which applying f on the pairs (from left to right) returns 
- true.
+ [filter f s] returns the list of key-value pairs in s for which
+ applying f on the pairs (from left to right) returns true.
 
  [foldl f acc s] identical to (foldl o list).
 

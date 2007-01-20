@@ -80,7 +80,7 @@ fun mspmktable oprname opr n m =
 
 local
     open Substring
-    fun drop0 s = string (dropl (fn c => c = #"0") (all s))
+    fun drop0 s = string (dropl (fn c => c = #"0") (full s))
 in 
     val shortmon = drop0 (Date.fmt "%m" now)
     val shortday = drop0 (Date.fmt "%d" now)
