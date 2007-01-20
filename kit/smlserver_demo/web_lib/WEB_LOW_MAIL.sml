@@ -2,16 +2,16 @@ signature WEB_LOW_MAIL = sig
   type MX_FQDN
   type mailer
   exception ConnectionErr of 
-	    (string * (string * string) list 
-	     * (string * string) list * (string * string) list)
+       (string * (string * string) list 
+        * (string * string) list * (string * string) list)
   val getFQDN_MX : string -> (int * int * MX_FQDN) list 
   val FQDN_MX_toString : MX_FQDN -> string
   val FQDN_MX_fromString : string -> MX_FQDN
   val FQDN_MX_compare : MX_FQDN * MX_FQDN -> order
   val initConn : MX_FQDN -> mailer 
   val sendmail : string list * string * string * mailer -> 
-		 (string *string) list * (string * string) list 
-		 * (string * string) list
+                 (string *string) list * (string * string) list 
+                 * (string * string) list
   val closeConn : mailer -> unit
   val getDefaultServer : unit -> MX_FQDN option
 end

@@ -3,15 +3,15 @@ local
 in
   local
   $(SML_LIB)/basis/kitlib.mlb
-../web_sys/begin.sml
+  ../web_sys/begin.sml
        ../web_demo_lib/Page.sml
        ../web_demo_lib/FormVar.sml
        ../web_demo_lib/Auth.sml
        ../web_demo_lib/RatingUtil.sml
-../web_sys/end.sml
+  ../web_sys/end.sml
   in 
-  scripts
-	../web_sys/init.sml
+   scripts
+    ../web_sys/init.sml
 
     web/cookie_delete.sml
     web/cookie_set.sml
@@ -33,12 +33,12 @@ in
     web/time_of_day.sml
     web/index.sml
     web/return_file.sml
-(*    web/hello.msp
-    web/calendar.msp
-    web/mul.msp *)
-(*    web/mail.sml *)
+    web/hello.msp.sml
+    web/calendar.msp.sml
+    web/mul.msp.sml
+    web/mail.sml
     web/mail_form.sml
-(*    web/test.msp *)
+    web/test.msp.sml
     web/encode.sml
 
     web/currency_cache.sml
@@ -70,32 +70,32 @@ in
 
     web/secret/pub.sml
 
-     web/employee/index.sml
-     web/employee/update.sml
-     web/employee/search.sml
+    web/employee/index.sml
+    web/employee/update.sml
+    web/employee/search.sml
 
-     web/link/index.sml
-     web/link/add_form.sml
-     web/link/add.sml
-     web/link/delete.sml
+    web/link/index.sml
+    web/link/add_form.sml
+    web/link/add.sml
+    web/link/delete.sml
     
-     web/db_test.sml
-     web/db_testPostgreSQL.sml
+    web/db_test.sml
+    web/db_testPostgreSQL.sml
 
-     web/auth_form.sml
-     web/auth_logout.sml
-     web/auth.sml
-     web/auth_new_form.sml
-     web/auth_new.sml
-     web/auth_send_form.sml
-     web/auth_send.sml
+    web/auth_form.sml
+    web/auth_logout.sml
+    web/auth.sml
+    web/auth_new_form.sml
+    web/auth_new.sml
+    web/auth_send_form.sml
+    web/auth_send.sml
 
-     web/rating/index.sml
-     web/rating/add.sml
-     web/rating/add0.sml
-     web/rating/wine.sml
+    web/rating/index.sml
+    web/rating/add.sml
+    web/rating/add0.sml
+    web/rating/wine.sml
 
     web/pwcheck.sml
-    end (*scripts*)
+   end (*scripts*)
   end
 end
