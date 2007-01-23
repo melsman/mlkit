@@ -2,7 +2,9 @@ This is file README_SMLSERVER
 
      SMLserver home page: http://www.smlserver.org
 
-Get upN'running without database access:
+Get upN'running without database access
+---------------------------------------
+
 Requirements: 
 
  1) a working Apache2 webserver 
@@ -55,9 +57,71 @@ Create file /etc/apache2/mods-available/sml.conf with the following content:
  $ sudo ln -s /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
  $ sudo ln -s /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
 
- $ apache2ctl restart
+ $ sudo apache2ctl restart
 
-point your browser to localhost:/web/
+Point your browser to http://localhost/web/
+
+Get upN'running with Postgres access
+------------------------------------
+
+Requirements: 
+
+ postgresql (e.g., Debian package postgresql-8.1)
+ unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev)
+
+Add the following lines to /etc/odbc.ini (replace 'user' with your login
+name):
+
+ [psql]
+ Description = PostgreSQL
+ Driver      = /usr/lib/odbc/psqlodbca.so
+ Database    = user
+ Servername  = localhost
+ 
+Add --enable-odbc to ./configure command:
+
+ $ ./configure --enable-SMLserver --with-apxs=`which apxs2` --with-compiler=`which mlkit` --enable-odbc
+
+After make install_smlserver:
+
+ $ sudo ln -s /usr/local/lib/smlserver/lib/libsmlodbc.so /usr/lib/
+
+Make sure postgresql is started:
+
+ $ sudo /etc/init.d/postgresql-8.1 restart
+
+Create a database user with the same name as your login name on
+the Linux box:
+
+ $ sudo su - postgres
+ $ createuser -P user
+
+Invent a new password for the database user. Answer yes to the questions 
+asked by createuser.
+
+As user, create a database (also called user)
+as follows:
+
+ $ createdb $USER
+
+Install the data models for the sample web programs by executing:
+
+ $ cd $HOME/web/demo_lib/pgsql
+ $ psql -c "\i all.sql"
+
+Verify that the database is available using isql:
+
+ $ isql psql
+ > select * from guest;
+
+ (you should see a message from Homer Simpson...)
+
+ 
+
+
+
+
+
 
 to build Oracle interface:
 download Oracle Instant Client + SDK
