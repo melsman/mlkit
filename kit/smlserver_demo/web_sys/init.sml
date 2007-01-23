@@ -12,10 +12,18 @@ val _ = Db.config(Web.Info.Type.String, "PassWord", "test")
 val _ = Db.config(Web.Info.Type.Int, "SessionMaxDepth", 3)
 val _ = Db.config(Web.Info.Type.Int, "MinimumNumberOfConnections", 4)
 val _ = Db.config(Web.Info.Type.Int, "MaximumNumberOfConnections", 10)
-val _ = Db.config(Web.Info.Type.String, "UserName", "testuser")
-val _ = Db.config(Web.Info.Type.String, "DSN", "psql")
-val _ = Db.config(Web.Info.Type.String, "PassWord", "test")
-val _ = Db.config(Web.Info.Type.Int, "SessionMaxDepth", 3)
 *)
+
+local
+    fun conf t (k,v) =
+	(Web.log (Web.Notice, " Db.config: setting " ^ k);
+	 Db.config(t,k,v))
+in
+   (* Postgresql configuration *)
+   val _ = conf Web.Info.Type.String ("DSN", "psql")
+   val _ = conf Web.Info.Type.String ("UserName", "mael")
+   val _ = conf Web.Info.Type.String ("PassWord", "hi")
+   val _ = conf Web.Info.Type.Int ("SessionMaxDepth", 3)
+end
 
 val _ = Web.log (Web.Notice, "...done executing init.sml")
