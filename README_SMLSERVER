@@ -1,9 +1,54 @@
 This is file README_SMLSERVER
 
-     SMLserver home page: http://www.smlserver.org
+           SMLserver home page: http://www.smlserver.org
 
-Get upN'running without database access
----------------------------------------
+INTRODUCTION
+------------
+
+SMLserver is an SML module for Apache2. SMLserver supports Web server
+interpretation of bytecode compiled Standard ML scripts. Both ML
+Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
+interface to the Apache2 API, are supported.
+
+SMLserver uses a load-once-execute-many scheme for executing sml-files
+and msp-files. Together with database pooling, the scheme makes it
+possible to create database backed Web sites in Standard ML that are
+capable of responding to a high number of requests compared to systems
+using a traditional CGI based approach. The database API supports a
+variety of different RDBMS's, including Oracle, PostgreSQL, and MySQL.
+
+Project files (mlb-files) maintained by the Web programmer are used to
+keep track of library modules, msp-files, and sml-files that are part
+of the Web project. When a page is requested, SMLserver first checks
+if the library modules are loaded.  If the library modules are not
+loaded, SMLserver loads the library modules. Then the page requested
+is loaded and executed, leaving the library modules loaded for reuse
+by other requests. Only when the project is recompiled or Apache is
+restarted, the library modules are reloaded.
+
+
+SYSTEM REQUIREMENTS
+-------------------
+
+To use SMLserver you need the following:
+
+  * Linux Box (e.g. Debian)
+
+  * Apache2.
+
+  * SMLserver. Binary packages and source packages are available from
+    the SMLserver home page; see the top of this file. 
+
+  * An RDBMS. To get access to a database from within your Standard ML
+    scripts, you need to have an RDBMS system installed that is
+    supported by SMLserver - see below. One such RDBMS is PostgreSQL,
+    which you can fetch from www.postgresql.org. Detailed information
+    about setting up a database with PostgreSQL for the purpose of
+    using it with SMLserver is given below.
+
+
+BUILDING SMLSERVER FROM THE SOURCES WITHOUT DATABASE ACCESS
+-----------------------------------------------------------
 
 Requirements: 
 
@@ -12,7 +57,8 @@ Requirements:
  3) mlkit >= 4.3.0 compiled and installed
  4) bison, flex
 
-SMLserver installation:
+SMLserver installation after unpacking the SMLserver sources into
+directory kit:
 
  $ cd kit
  $ ./autobuild
@@ -21,25 +67,19 @@ SMLserver installation:
  $ make smlserver_libs
  $ sudo make install_smlserver
 
-SMLserver configuration and demonstration:
+Apache2 configuration for SMLserver:
 
- $ cd $HOME
- $ mkdir web
- $ cp -pa /usr/local/lib/smlserver/{www,web_sys,web_lib,web_demo_lib} web/ 
- $ cd web/www
- $ make
-
-edit /etc/apache2/apache2.conf: 
+ Edit /etc/apache2/apache2.conf: 
   Add index.sml to DirectoryIndex list
 
-edit /etc/apache2/sites-available/default:
+ Edit /etc/apache2/sites-available/default:
   Change DocumentRoot to /home/mael/web/www
   Change Directory path to /home/mael/web/www
    
  $ sudo cp /usr/local/lib/smlserver/lib/mod_sml.so /usr/lib/apache2/modules/
  $ sudo echo "LoadModule sml_module /usr/lib/apache2/modules/mod_sml.so" > /etc/apache2/mods-available/sml.load
 
-Create file /etc/apache2/mods-available/sml.conf with the following content:
+ Create the file /etc/apache2/mods-available/sml.conf with the following content:
 
   <IfModule mod_sml.c>
     AddHandler sml-module .sml
@@ -56,18 +96,31 @@ Create file /etc/apache2/mods-available/sml.conf with the following content:
 
  $ sudo ln -s /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
  $ sudo ln -s /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
-
  $ sudo apache2ctl restart
+
+SMLserver configuration and demonstration:
+
+ $ cd $HOME
+ $ mkdir web
+ $ cp -pa /usr/local/lib/smlserver/{www,web_sys,web_lib,web_demo_lib} web/ 
+
+ Make sure the database configuration lines in web/web_sys/init.sml
+ are commented out.
+
+ $ cd web/www
+ $ make
 
 Point your browser to http://localhost/web/
 
-Get upN'running with Postgres access
-------------------------------------
+BUILDING SMLSERVER FROM THE SOURCES WITH Postgresql ACCESS
+----------------------------------------------------------
 
-Requirements: 
+Additional requirements: 
 
- postgresql (e.g., Debian package postgresql-8.1)
- unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev)
+ 1) postgresql (e.g., Debian package postgresql-8.1)
+ 2) unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev)
+
+Do as above, but with the changes below.
 
 Add the following lines to /etc/odbc.ini (replace 'user' with your login
 name):
@@ -78,7 +131,7 @@ name):
  Database    = user
  Servername  = localhost
  
-Add --enable-odbc to ./configure command:
+Add --enable-odbc to the ./configure command:
 
  $ ./configure --enable-SMLserver --with-apxs=`which apxs2` --with-compiler=`which mlkit` --enable-odbc
 
@@ -104,7 +157,7 @@ as follows:
 
  $ createdb $USER
 
-Install the data models for the sample web programs by executing:
+Install the data models for the sample Web programs by executing:
 
  $ cd $HOME/web/demo_lib/pgsql
  $ psql -c "\i all.sql"
@@ -116,12 +169,26 @@ Verify that the database is available using isql:
 
  (you should see a message from Homer Simpson...)
 
- 
+Restart Apache2 by executing the command 
 
+ $ sudo /etc/init.d/apache2 restart
 
+After copying the sample Web directory to $HOME, as described above,
+edit the file $HOME/web/web_lib/Db.sml. Make sure that the structure
+DbBackend passed to the DbFunctor is the structure Web.DbPgBackend.
+The lines defining the Oracle structure and the MySQL structure should
+be commented out.
 
+Edit the file $HOME/web/web_sys/init.sml. Enable the Postgresql
+configuration lines.
 
+Compile the sample \web{} project as described above.
 
+Go start your Web browser and visit the database examples available
+from http://localhost/web/index.sml.
+
+BUILDING SMLSERVER FROM THE SOURCES WITH Oracle ACCESS
+------------------------------------------------------
 
 to build Oracle interface:
 download Oracle Instant Client + SDK
@@ -137,250 +204,6 @@ before starting Apache:
 
 unzip instant_client /abs/path/to/smlserver/lib
 set LD_LIBRARY_PATH to /abs/path/to/smlserver/lib
-
-
-INTRODUCTION
-------------
-
-SMLserver is an SML module for AOLserver, an Open Source Web server
-provided by America Online. SMLserver supports Web server
-interpretation of bytecode files compiled with the MLKit. Both ML
-Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
-interface to the AOLserver API, are supported.
-
-SMLserver uses a load-once-execute-many scheme for executing sml-files
-and msp-files. Together with database pooling, the scheme makes it
-possible to create database backed Web sites in SML that are capable
-of answering a high number of requests compared to systems using a
-traditional CGI based approach. The database API supports many
-different RDBMS's, including Oracle and PostgreSQL.
-
-A project file (pm-file) maintained by the Web programmer is used to
-keep track of library modules, msp-files, and sml-files that are part
-of the Web project. When a page is requested, SMLserver first checks
-if the library modules are loaded.  If the library modules are not
-loaded, SMLserver loads the library modules. Then the page requested
-is loaded and executed, leaving the library modules loaded for reuse
-by other requests. Only when the project is recompiled or AOLserver is
-restarted, the library modules are reloaded.
-
-
-SYSTEM REQUIREMENTS
--------------------
-
-To use SMLserver you need the following:
-
-  * Linux Box
-
-  * AOLserver/3.2 or later. AOLserver is Open Source. You can obtain a
-    version of AOLserver from http://www.aolserver.com or from
-    ArsDigita (http://www.arsdigita.com/acs-repository/), where you
-    can find versions of AOLserver patched with internationalization
-    features, etc.
-
-  * SMLserver. Binary RPMs, source RPMs, and tgz-packages are
-    available from the SMLserver home page; see the top of this 
-    file. 
-
-  * An RDBMS. To get access to a database from within your sml/msp
-    scripts, you need to have an RDBMS system installed that is
-    supported by AOLserver - see below. One such RDBMS is PostgreSQL,
-    which you can fetch from www.postgresql.org (if you're running
-    Redhat Linux, you can even find some rpm's there). Detailed
-    information about setting up a database with PostgreSQL for the
-    purpose of using it with SMLserver is given below.
-
-
-BUILDING SMLSERVER FROM THE TGZ-PACKAGE
----------------------------------------
-
-The remainder of this file applies only if you are not installing
-SMLserver using RPMs. To install SMLserver using RPMs, consult the
-SMLserver home page; see the top of this file.
-
-We shall assume that AOLserver is already installed. To build the
-SMLserver module nssml.so, which contains the bytecode interpreter for
-interpreting compiled sml-files and msp-scripts, download the MLKit
-source distribution from the MLKit Web site.
-
-After untaring the source distribution, make sure that the file
-mlkit/kit/src/SMLserver/Makefile contains the correct information
-about where AOLserver is installed. 
-
-Now, go to the mlkit/kit directory and type
-
-  # make smlserver
-
-which builds 
-
-  * the nssml.so module to load into AOLserver; its in the
-    src/SMLserver/ directory
-
-  * a compiler for compiling sml-files and msp-scripts into
-    bytecode; its available as bin/smlserverc
-
-INSTALLING SMLserver: To install SMLserver in /usr/share/smlserver
-type 
-
-  $ make install_smlserver:
-
-as user root. The installation requires, that the smlserver
-rpm-package is not installed. To remove the package, if it is already
-installed, type 
- 
-  $ rpm -e smlserver
-
-again as user root. 
-
-CONFIGURING AOLSERVER
----------------------
-
-To configure AOLserver to load the SMLserver module
-kit/src/SMLserver/nssml.so at startup time, first copy the nssml.so
-file to the place where AOLserver looks for modules. You must now edit
-your nsd.tcl-file -- the file given to the AOLserver executable `nsd'
-at startup. First, add the entry
-
-   ns_param nssml nssml.so
-
-to the section
-
-   ns_section "ns/server/${server}/modules"
-
-Then add the section
-
-   ns_section "ns/server/${server}/module/nssml"
-   ns_param prjid sources
-
-A sample nsd.tcl init file is available as
-smlserver_demo/nsd.scs.tcl.  After restarting AOLserver, you should
-inspect the AOLserver server.log file and see that AOLserver is
-running and that the nssml.so module is loaded. You should now be able
-to try the example project demo.pm.
-
-
-COMPILING THE EXAMPLE PROJECT demo.pm
------------------------------------------------------
-
-Start by copying the smlserver_demo/ directory to your personal
-server root directory. Also copy the content files of the
-smlserver_demo/www directory to your personal www directory. Your
-directory structure should now look as follows:
-
-   /web/user/
-      www/
-        demo.pm
-        index.sml ...
-      lib/
-        Ns.sml ...
-      log/
-        server.log ...
-      demo_lib/
-        ...
-      ...
-
-To make the msp-pages and sml-pages that appear in the demo.pm file
-in the www directory available to browsers, make demo.pm the *current
-Web project* by executing:
-  
-  # cd www
-  # ln -s demo.pm sources.pm
-
-Thereafter, compile the current SMLserver project by running:
-
-  # smlserverc sources.pm
-
-Assuming that you have AOLserver running with the SMLserver module
-loaded, you should now be able to fetch the page demo/index.sml from
-your browser using the url
-
-  http://127.0.0.1:8080/demo/index.sml
-
-which lists a series of examples.
-
-POSTGRESQL DETAILS
-------------------
-
-Postinstallation details for setting up Postgresql on a RedHat 7.x
-system with rpm's installed:
-
-  1. Start up the postmaster deamon process. Execute (as root) the
-     following command:
-
-         $ /etc/rc.d/init.d/postgresql start
-
-  2. Create a database user `dbuser' (or whatever login name you
-     have):
-
-         # su - postgres
-         $ createuser -P dbuser
-
-     Answer yes to both questions asked by createuser. 
-
-  3. As user `dbuser', create a database `yourdb' as follows:
-
-         # createdb yourdb
-         ...
-
-     You can now use the command `psql' to control your database and
-     submit sql-queries and commands to your database.
-
-  4. Insert the following sections in your nsd.tcl-file - the file
-     given to the Web server executable `nsd' at startup:
-
-         ns_section "ns/db/drivers" 
-         ns_param nspostgres ${bindir}/nspostgres.so
-
-         ns_section "ns/db/pools" 
-         ns_param main "Main Pool" 
-
-	 ns_section "ns/db/pool/main" 
-	 ns_param Driver nspostgres 
-	 ns_param Connections 5                 ;# 5 is a good number. Increase according to your needs
-	 ns_param DataSource localhost::yourdb  ;# Replace 'yourdb' with the name of your database in PG
-	 ns_param User dbuser                   ;# User and password AOLserver will use to connect
-	 ns_param Password yourpassword 
-	 ns_param Verbose Off                   ;# Set it to On to see all queries. Good for debugging SQL.
-	 ns_param LogSQLErrors On 
-	 ns_param ExtendedTableInfo On 
-
-	 ns_section "ns/server/${user}/db" 
-	 ns_param Pools "*" 
-	 ns_param DefaultPool "main"
-
-     Make sure that the driver nspostgres.so is located in AOLserver's
-     bin-directory.
-
-  5. Restart AOLserver.
-
-  6. Install data models for demonstration programs
-
-        # cd demo_lib/pgsql
-        # psql
-           ...
-        user=# \i all.sql
-           ...
-        user=# \q
-
-  7. Go visit the database examples from
-
-        http://127.0.0.1:8080/demo/index.sml
-
-
-TO DO
------
-
-  * Functor applications and functor declarations are not allowed in
-    leaf-files in projects. That is, for a project file (.pm-file):
-  
-	local
-	 a.sml b.sml
-	in
-	 [c.sml d.sml]
-	end
-
-    the files a.sml and b.sml may contain functor applications and
-    functor declarations whereas the files c.sml and d.sml may not.
 
 
 REFERENCES  
