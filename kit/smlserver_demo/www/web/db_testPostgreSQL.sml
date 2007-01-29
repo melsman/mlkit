@@ -11,7 +11,11 @@ in
     else
       "<b>There were " ^ (Int.toString (!errs)) ^ " error(s).</b>"
   fun e1 seq e2 = e2;
-  fun tst0 s s' = (s ^ "    \t" ^ s' ^ "\n")
+  fun tst0 s s' = 
+      let val s0 = s ^ "    \t" ^ s'
+	  val _ = Web.log(Web.Notice, s0)
+      in s0 ^ "\n"
+      end
   fun tstOk s f = tst0 s ((f () seq "OK") handle Fail s => add_err' s | _ => add_err())
   fun tstBool s f = tst0 s ((if f () then "OK" else add_err' "false") handle Fail s => add_err' s | _ => add_err())
   fun tstFail s f = tst0 s ((f () seq add_err()) handle Fail s => "OK - " ^ s | _ => add_err())
