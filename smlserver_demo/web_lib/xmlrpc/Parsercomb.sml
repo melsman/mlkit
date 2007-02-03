@@ -190,7 +190,7 @@ struct
 
     fun scanSubstr par sus = parse par (stream Substring.getc sus)
 
-    fun scanString par s = scanSubstr par (Substring.all s)
+    fun scanString par s = scanSubstr par (Substring.full s)
 
     fun scanList par cs = parse par (stream List.getItem cs)
 end

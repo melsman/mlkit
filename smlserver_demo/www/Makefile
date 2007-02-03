@@ -5,4 +5,4 @@ all:
 
 clean:
 	$(MAKE) -C web clean
-	rm -rf *~ MLB */MLB */*MLB */*/*/MLB 
+	rm -rf *~ MLB */MLB */*/MLB */*/*/MLB 

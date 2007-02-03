@@ -44,6 +44,8 @@ signature WEB = sig
                                   type 'a Type = 'a Info.Type.Type 
 
   structure WebDynlib : WEB_DYNLIB
+
+  structure XMLrpc : XMLRPC
 end
 
 (*

@@ -31,6 +31,7 @@ val examples =
    ("Trap","trap.txt", []),
    ("Upload", "upload/upload_form.sml",[]),
    ("Check a password", "pwcheck.sml",[]),
+   ("XML-RPC client and server", "xmlrpc_test_client.sml",["xmlrpc_test_server.sml"]),
    ("This index page", "index.sml", [])] 
 
 fun src_link n s = `<a href="return_file.sml?path=^(Web.encodeUrl ("web/" ^ s))">^(Int.toString n)</a>`

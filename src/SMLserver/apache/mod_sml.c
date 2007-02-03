@@ -304,12 +304,12 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   void *first_init_check = NULL;
   sml_greeting(s);
   apr_pool_userdata_get (&first_init_check, "mod_sml_first_init_check_HACK",
-       s->process->pool);
+			 s->process->pool);
   if (first_init_check == NULL)
     {       // first init round
       apr_pool_userdata_set ((const void *) 1,
-           "mod_sml_first_init_check_HACK",
-           apr_pool_cleanup_null, s->process->pool);
+			     "mod_sml_first_init_check_HACK",
+			     apr_pool_cleanup_null, s->process->pool);
       return OK;
     }
 
@@ -332,13 +332,13 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
 #endif /* REGION_PAGE_STAT */
 
   // initialize stackPool Mutex, freelist Mutex, and codeCache Mutex
-  for(i=0;i<4;i++)
-  {
-    apr_thread_mutex_create(&(apache_locks[i]), APR_THREAD_MUTEX_DEFAULT, pconf);
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: creating lock %i", i);
-  }
-//  apr_thread_mutex_create(&(codeCacheMutex), APR_THREAD_MUTEX_DEFAULT, pconf);
+  for( i=0 ; i<4 ; i++ )
+    {
+      apr_thread_mutex_create(&(apache_locks[i]), APR_THREAD_MUTEX_DEFAULT, pconf);
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		    "apsml: creating lock %i", i);
+    }
+  //  apr_thread_mutex_create(&(codeCacheMutex), APR_THREAD_MUTEX_DEFAULT, pconf);
 
   resolveGlobalCodeFragments ();
 
@@ -354,35 +354,35 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
 //  ppGlobalCache(rd);
 
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-    "apsml: server->path is %s", s->path);
+		"apsml: server->path is %s", s->path);
 
   i = strlen(ctx->smlpath) + strlen(ctx->prjid) + 20 + strlen(mlb);
   ctx->ulFileName = (char *) apr_palloc(pconf, i);
   if (!ctx->ulFileName) return 5;
-
+  
   sprintf (ctx->ulFileName, "%s%s/%s.ul", ctx->smlpath, mlb, ctx->prjid);
 
   ss = s;
   while (ss)
-  {
-    // printserver (ss);
-    ss = ss->next;
-  }
-
+    {
+      // printserver (ss);
+      ss = ss->next;
+    }
+  
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-    "apsml: module is now loaded");
-
+		"apsml: module is now loaded");
+  
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-    "apsml: ulFileName is %s", ctx->ulFileName);
-
+		"apsml: ulFileName is %s", ctx->ulFileName);
+  
   ctx->mainproc = getpid();
-
+  
   if (!ctx->smlpath)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: You must set SmlPath");
-    exit(0);
-  }
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		    "apsml: You must set SmlPath");
+      exit(0);
+    }
 
   apr_status_t stat;
   rd->ctx->cachelock.plockname = tempnam(NULL, NULL);
@@ -390,27 +390,29 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   stat = apr_proc_mutex_create(&(rd->ctx->cachelock.plock), rd->ctx->cachelock.plockname, 
                                APR_LOCK_DEFAULT, pconf);
   if (stat != APR_SUCCESS)
-  {
-    return 5;
-  }
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: test 1");
+    {
+      return 5;
+    }
+
+  //  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+  //                "apsml: test 1");
+
   rd->ctx->cachelock.shmname = tempnam(NULL, NULL);
   if (rd->ctx->cachelock.shmname == NULL)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: Unable to get temporary name from tempnam");
-    return APR_EINIT;
-  }
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		    "apsml: Unable to get temporary name from tempnam");
+      return APR_EINIT;
+    }
   stat = apr_shm_create(&(rd->ctx->cachelock.shm), SHMSIZE, rd->ctx->cachelock.shmname, pconf);
   if (stat != APR_SUCCESS)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: Unable to create shared memory using apr_shm_create");
-    return stat;
-  }
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: test 2");
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		    "apsml: Unable to create shared memory using apr_shm_create");
+      return stat;
+    }
+  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		"apsml: test 2");
   unsigned long *dbtmp = (unsigned long *) apr_shm_baseaddr_get(rd->ctx->cachelock.shm);
   *dbtmp = 0;
   rd->ctx->cachelock.version = dbtmp + 1;
@@ -418,67 +420,67 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   rd->ctx->starttime = time(NULL);
   rd->ctx->sched.glockname = tempnam(NULL,NULL);
   if (rd->ctx->sched.glockname == NULL) return 5;
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: test 3");
+  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		"apsml: test 3");
   stat = apr_global_mutex_create(&(rd->ctx->sched.lock), 
-                                   rd->ctx->sched.glockname, 
-                                   APR_LOCK_DEFAULT, pconf);
+				 rd->ctx->sched.glockname, 
+				 APR_LOCK_DEFAULT, pconf);
   if (stat != APR_SUCCESS)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: global_mutex_create failed");
-    return 5;
-  }
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		    "apsml: global_mutex_create failed");
+      return 5;
+    }
   struct sched_init si;
   si = startsched(s->defn_name, s->port);
   if (si.pid == -1) return 5;
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-      "apsml: test 5");
+  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+		"apsml: test 5");
   rd->ctx->sched.pid = si.pid;
   rd->ctx->sched.input = si.input;
 
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-      "apsml: created process %d", rd->ctx->sched.pid);
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+		"apsml: created process %d", rd->ctx->sched.pid);
   rd->pool = ptemp;
   int res = APSML_OK;
   if (rd->ctx->initscript != NULL)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-      "apsml: init script: %s about to start", rd->ctx->initscript);
-    rd->ctx->pid = getpid();
-  char *name = (char *) malloc (120);
-  snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", rd->ctx->pid);
-  debug_file_as(debug_file,mkstemp(name));
-    if (rd->ctx->initscript[0] == '/') 
     {
-      res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+		    "apsml: init script: %s about to start", rd->ctx->initscript);
+      rd->ctx->pid = getpid();
+      char *name = (char *) malloc (120);
+      snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", rd->ctx->pid);
+      debug_file_as(debug_file,mkstemp(name));
+      if (rd->ctx->initscript[0] == '/') 
+	{ // absolute path
+	  res = apsml_processSmlFile (rd, rd->ctx->initscript, 1);
+	}
+      else
+	{ // relative path
+	  is = malloc(strlen(rd->ctx->initscript) + strlen(rd->ctx->smlpath) + 10);
+	  strcpy(is, rd->ctx->smlpath);
+	  strcat(is, "/");
+	  strcat(is, rd->ctx->initscript);
+	  res = apsml_processSmlFile (rd, is, 1);
+	  free(is);
+	}
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+		    "apsml: init script executed with return code %d", res);
+      struct db_t *db_tmp = rd->ctx->db;
+      for (; db_tmp; db_tmp = db_tmp->next)
+	{
+	  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+			"apsml: shutdown 1");
+	  db_tmp->tmp_shutdown(db_tmp->dbspec, s);
+	}
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		    "apsml: shutdown 2");
     }
-    else
-    {
-      is = malloc(strlen(rd->ctx->initscript) + strlen(rd->ctx->smlpath) + 10);
-      strcpy(is, rd->ctx->smlpath);
-      strcat(is, "/");
-      strcat(is, rd->ctx->initscript);
-      res = apsml_processSmlFile (rd, is, 1);
-      free(is);
-    }
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-      "apsml: init script executed with return code %d", res);
-    struct db_t *db_tmp = rd->ctx->db;
-    for (; db_tmp; db_tmp = db_tmp->next)
-    {
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: shutdown 1");
-      db_tmp->tmp_shutdown(db_tmp->dbspec, s);
-    }
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: shutdown 2");
-  }
   else
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-      "apsml: No init script executed");
-  }
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+		    "apsml: No init script executed");
+    }
   rd->ctx->initDone = 1;
   if (res != APSML_OK) return 5;
   return OK;
@@ -549,21 +551,21 @@ apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
   struct db_t *tmp;
   InterpContext *ctx = ap_get_module_config (s->module_config, &sml_module);
   ctx->pid = getpid();
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: childInit; pid : %d", ctx->pid);
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: childInit; pid : %d", ctx->pid);
   apr_proc_mutex_child_init(&(ctx->cachelock.plock), ctx->cachelock.plockname, p);
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: childInit 1");
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: childInit 1");
   for(tmp = ctx->db; tmp; tmp = tmp->next)
-  {
-    (*(tmp->child_init))(tmp->dbspec, tmp->num, p, s);
-  }
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: childInit 2");
+    {
+      (*(tmp->child_init))(tmp->dbspec, tmp->num, p, s);
+    }
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: childInit 2");
   apr_global_mutex_child_init(&(ctx->sched.lock), ctx->sched.glockname, p);
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-      "apsml: childInit 3");
-
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: childInit 3");
+  
   debug_file_as(char *name,(char *) malloc (120));
   debug_file_as(i,snprintf (name, 119, "/tmp/SMLServer_debug_file_%d_XXXXXX", ctx->pid));
   debug_file_as(debug_file,mkstemp(name));
@@ -706,163 +708,162 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   t = apsml_fileModTime (ctx->ulFileName);
 
   if (rd->request)
-  {
-    ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
-       "mod_sml: pid: %ld, Notice ul-file has time %ld", (long) rd->ctx->pid, (long) t);
-  }
+    {
+      ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
+		     "mod_sml: pid: %ld, Notice ul-file has time %ld", (long) rd->ctx->pid, (long) t);
+    }
   else
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-      "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
-  }
-
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+		    "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
+    }
+  
   if (t == (time_t) - 1)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
-      "mod_sml:Err ul-file %s does not exist - web service not working",
-      ctx->ulFileName);
-    return APSML_ULFILENOTFOUND;
-  }
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
+		    "mod_sml:Err ul-file %s does not exist - web service not working",
+		    ctx->ulFileName);
+      return APSML_ULFILENOTFOUND;
+    }
 
   /*
    * (Re)load interpreter if timeStamps do not match
    */
 
   if (ctx->timeStamp != t)
-  {
-    // Reload the interpreter
-
-
-    // MEMO: somehow wait for all executions to finish!
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: (re)loading interpreter oldtime: %ld newtime %ld",
-       ctx->timeStamp, t);
-
-    // free all code elements present in the
-    // interpreter, including code cache entries...
-    interpClear (ctx->interp);
-
-    // clear the heap cache
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: clearing heap cache");
-    clearHeapCache ();
-
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: opening ul-file %s", ctx->ulFileName);
-
-    clearSmlMap(rd->ctx->smlTable);
-    rd->ctx->smlTable = NULL;
-
-    ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-       "apsml: setting up pCtx");
-
-
-    pCtx.interp = rd->ctx->interp;
-    pCtx.ctx = rd;
-    pCtx.ulTable = NULL;
-    pCtx.smlTable = NULL;
-    pCtx.uoTable = NULL;
-    pCtx.fileprefix = rd->ctx->smlpath;
-    pCtx.fpl = strlen(pCtx.fileprefix);
-    pCtx.mapprefix = "/";
-    pCtx.mpl = strlen(pCtx.mapprefix);
-    pCtx.root = "/";
-    pCtx.rl = strlen(pCtx.root);
-    res = recurseParse(&pCtx, rd->ctx->ulFileName);
-    if (res != Parse_OK) 
     {
+      // Reload the interpreter
+
+
+      // MEMO: somehow wait for all executions to finish!
+      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+		     "apsml: (re)loading interpreter oldtime: %ld newtime %ld",
+		     ctx->timeStamp, t);
+      
+      // free all code elements present in the
+      // interpreter, including code cache entries...
+      interpClear (ctx->interp);
+      
+      // clear the heap cache
+      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+		     "apsml: clearing heap cache");
+      clearHeapCache ();
+      
+      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+		     "apsml: opening ul-file %s", ctx->ulFileName);
+      
+      clearSmlMap(rd->ctx->smlTable);
+      rd->ctx->smlTable = NULL;
+
+      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+		     "apsml: setting up pCtx");
+
+      pCtx.interp = rd->ctx->interp;
+      pCtx.ctx = rd;
+      pCtx.ulTable = NULL;
+      pCtx.smlTable = NULL;
+      pCtx.uoTable = NULL;
+      pCtx.fileprefix = rd->ctx->smlpath;
+      pCtx.fpl = strlen(pCtx.fileprefix);
+      pCtx.mapprefix = "/";
+      pCtx.mpl = strlen(pCtx.mapprefix);
+      pCtx.root = "/";
+      pCtx.rl = strlen(pCtx.root);
+      res = recurseParse(&pCtx, rd->ctx->ulFileName);
+      if (res != Parse_OK) 
+	{
+	  clearPCtx(&pCtx);
+	  return APSML_ERROR;
+	}
+      rd->ctx->smlTable = pCtx.smlTable;
+      pCtx.smlTable = NULL;
       clearPCtx(&pCtx);
-      return APSML_ERROR;
+      ctx->timeStamp = t;
     }
-    rd->ctx->smlTable = pCtx.smlTable;
-    pCtx.smlTable = NULL;
-    clearPCtx(&pCtx);
-    ctx->timeStamp = t;
-  }
 
   switch (kind)
-  {
+    {
     case 0:
       he.key = uri;
       he.hashval = charhashfunction(he.key);
       if (hashfind(rd->ctx->smlTable, &he, (void **) &file) == hash_DNE)
-      {
-        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-           "apsml: Request not script: %s %ld %d", uri, he.hashval, strlen(uri));
-        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-           "apsml: Size of hash table: %ld", ctx->smlTable->hashTableUsed);
-        ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-           "apsml: Scripts in table:");
-        printSmlTable(rd->ctx->smlTable, rd);
-        return APSML_FILENOTFOUND;
-      }
+	{
+	  ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+			 "apsml: Request not script: %s %ld %d", uri, he.hashval, strlen(uri));
+	  ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+			 "apsml: Size of hash table: %ld", ctx->smlTable->hashTableUsed);
+	  ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+			 "apsml: Scripts in table:");
+	  printSmlTable(rd->ctx->smlTable, rd);
+	  return APSML_FILENOTFOUND;
+	}
       break;
     case 1:
       file = apsml_smlFileToUoFile (rd, uri, ctx->prjid, &(ctx->filebuf), &(ctx->filebufLength));
       if (!file)
-      {
-        return APSML_FILENOTFOUND;
-      }
+	{
+	  return APSML_FILENOTFOUND;
+	}
       break;
     default:
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-         "Internal errpr in mod_sml.c, apsml_processSmlFile called with kind == %d", kind);
+		    "Internal errpr in mod_sml.c, apsml_processSmlFile called with kind == %d", kind);
       return APSML_FILENOTFOUND;
       break;
-  }
-
+    }
+  
   debug_writer1("Starting new file %d\n", 0);
   ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-     "Starting interpreter on file %s, pid: %d", file, rd->ctx->pid);
-
-//  globalrd = rd;
+		"Starting interpreter on file %s, pid: %d", file, rd->ctx->pid);
+  
+  //  globalrd = rd;
   if (interpLoadRun (ctx->interp, file, &errorStr, &ss, &res) != 0)
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-       "Interpretation on file %s went bad, pid: %d", file, rd->ctx->pid);
-  debug_writer1("Stopping new file %d BAD\n", 0);
-    return APSML_ERROR;
-  }
-  ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-     "Interpretation on file %s was successful, pid: %d", file, rd->ctx->pid);
-  debug_writer1("Stopping new file %d GOOD\n", 0);
-
-//  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-//     "Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
-//  if (errorStr)
-//    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-//       "Interpretation ended on file %s with result %d, errorStr: %s", uo_file, res, errorStr);
-
-
-  if (res < 0)
-  {                   // uncaught exception; errorStr allocated
-    if (res == -1)    // exception other than Interrupt raised
     {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-        "%s raised %s", file, errorStr);
+      ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+		    "Interpretation on file %s went bad, pid: %d", file, rd->ctx->pid);
+      debug_writer1("Stopping new file %d BAD\n", 0);
+      return APSML_ERROR;
     }
-    free (errorStr);    // free the malloced string 
-    errorStr = NULL;    // - and nullify field    
-  }
-
+  ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+		"Interpretation on file %s was successful, pid: %d", file, rd->ctx->pid);
+  debug_writer1("Stopping new file %d GOOD\n", 0);
+  
+  //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+  //     "Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
+  //  if (errorStr)
+  //    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+  //       "Interpretation ended on file %s with result %d, errorStr: %s", uo_file, res, errorStr);
+  
+  
+  if (res < 0)
+    {                   // uncaught exception; errorStr allocated
+      if (res == -1)    // exception other than Interrupt raised
+	{
+	  ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+			"%s raised %s", file, errorStr);
+	}
+      free (errorStr);    // free the malloced string 
+      errorStr = NULL;    // - and nullify field    
+    }
+  
   // clean up database connections if user forgot
   struct request_db *tmp;
   struct db_t *db_tmp;
   for (tmp = rd->dbdata; tmp; tmp=tmp->next)
-  {
-    for(db_tmp = rd->ctx->db; db_tmp; db_tmp = db_tmp->next)
     {
-      if (tmp->num == db_tmp->num)
-      {
-        db_tmp->req_cleanup(rd,tmp->dbdata);
-        break;
-      }
+      for(db_tmp = rd->ctx->db; db_tmp; db_tmp = db_tmp->next)
+	{
+	  if (tmp->num == db_tmp->num)
+	    {
+	      db_tmp->req_cleanup(rd,tmp->dbdata);
+	      break;
+	    }
+	}
     }
-  }
   if (res == -1)
-  {
-    return APSML_INTERRUPTRAISED;
-  }
+    {
+      return APSML_INTERRUPTRAISED;
+    }
   return APSML_OK;
 }       //}}}
 
@@ -892,11 +893,6 @@ mod_sml_method_handler (request_rec * r)  //{{{
   switch (res)
   {
   case APSML_FILENOTFOUND:
-    {
-//    printrequest (r);
-      return HTTP_NOT_FOUND;
-      break;
-    }
   case APSML_ULFILENOTFOUND:
     {
 //    printrequest (r);
@@ -920,12 +916,40 @@ mod_sml_method_handler (request_rec * r)  //{{{
   return OK;
 }       //}}}
 
+// PostData filter for making available the entire POST 
+// request data to the ML side
+
+/*
+static const char s_szPostDataFilterName[] = "PostDataFilter";
+
+typedef struct
+{
+  apr_bucket_brigade *pbbTmp;
+} PostDataFilterInContext;
+
 static void
-mod_sml_register_hooks (apr_pool_t * p) //{{{
+PostDataFilterInInsertFilter(request_rec *r)
+{
+  PostDataFilterInContext *pCtx;
+
+  pCtx = apr_palloc(r->pool,sizeof *pCtx);
+  pCtx->pbbTmp = apr_brigade_create(r->pool);
+  ap_add_input_filter(s_szPostDataFilterName,pCtx,r,NULL);
+}
+*/
+
+static void
+mod_sml_register_hooks (apr_pool_t *p) //{{{
 {
   ap_hook_handler (mod_sml_method_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_config (apsml_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init (apsml_child_init, NULL, NULL, APR_HOOK_MIDDLE);
+
+/* 
+  ap_hook_insert_filter (PostDataFilterInInsertFilter, NULL, NULL, APR_HOOK_MIDDLE); 
+  ap_register_input_filter(s_szPostDataFilterName, PostDataFilterInFilter,
+                           AP_FTYPE_RESOURCE);
+*/
 }       //}}}
 
 module AP_MODULE_DECLARE_DATA sml_module =  //{{{

@@ -855,7 +855,6 @@ apsml_get_auth_type(request_rec *r)
   return (r->ap_auth_type);
 }
 
-
 static char *
 tail (char *p)/*{{{*/
 {
@@ -1086,6 +1085,164 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
   }
   return collectbuf(sAddr, startbuf, rd);
 }/*}}}*/
+
+// ML: string * string * int -> string_ptr
+String 
+apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
+{
+  char *server, *request;
+  unsigned short port;
+  struct addrinfo addr_hint, *addr, *myaddr;
+  struct stringbuffer *buf, *startbuf, *nextbuf;
+  fd_set writeset, readset, *wset;
+  struct timeval tv;
+  char sport[20];
+  int sock, c;
+  time_t now, curtime;
+  int tmp, left, right;
+  int timeout;
+  request_data *rd;
+  server = &(server1->data);
+  request = &(request1->data);
+  port = elemRecordML(pair,0);
+  rd = (request_data *) elemRecordML(pair,2);
+  timeout = elemRecordML(pair,1);
+  snprintf(sport, 19, "%d", port);
+  sport[19] = 0;
+  memset(&addr_hint, 0, sizeof(struct addrinfo));
+  startbuf = (struct stringbuffer *) malloc(sizeof(struct stringbuffer));
+  if (startbuf == NULL) 
+  {
+    return NULL;
+  }
+  startbuf->next = NULL;
+  startbuf->size = 0;
+  buf = startbuf;
+  addr_hint.ai_family = PF_UNSPEC;
+  addr_hint.ai_socktype = SOCK_STREAM;
+  if (getaddrinfo (server, sport, &addr_hint, &addr) != 0) 
+  {
+      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+		    "getaddrinfo failed on server: %s", server);
+    free(startbuf);
+    return NULL;
+  }
+  myaddr = addr;
+  sock = -1;
+  c = -1;
+  while (myaddr)
+  {
+    sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+    if (sock == -1)
+    {
+      myaddr = myaddr->ai_next;
+    }
+    else 
+    {
+      c = connect(sock, myaddr->ai_addr, myaddr->ai_addrlen);
+      if (c != 0)
+      {
+        close(sock);
+        myaddr = myaddr->ai_next;
+      }
+      else break;
+    }
+  }
+  freeaddrinfo (addr);
+  if (sock == -1 || c == -1)
+  {
+      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+		    "socket or connect failed on server: %s", server);
+    free(startbuf);
+    if (sock != -1) close(sock);
+    return NULL;
+  }
+  left = strlen(request);
+  right = 0;
+  curtime = time(NULL) + timeout;
+  wset = &writeset;
+  while (1)
+  {
+    now = time(NULL);
+    if (now > curtime)
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+		    "connection timeout on server: %s", server);
+      close(sock);
+      return collectbuf(sAddr, startbuf, rd);
+    }
+    FD_ZERO(&readset);
+    if (wset && left > 0)
+    {
+      FD_ZERO(wset);
+      FD_SET(sock, wset);
+    }
+    else 
+    {
+      wset = NULL;
+    }
+    FD_SET(sock, &readset);
+    tv.tv_sec = 60;
+    tv.tv_usec = 0;
+    tmp = select(sock + 1, &readset, wset, NULL, &tv);
+    if (tmp == -1)
+    {
+      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+		    "select failed: %s", server);
+      close(sock);
+      return collectbuf(sAddr, startbuf, rd);
+    }
+    if (FD_ISSET(sock, &readset))
+    {
+      if (BUFFERSIZE <= buf->size)
+      {
+        nextbuf = (struct stringbuffer *) malloc(sizeof(struct stringbuffer));
+        if (nextbuf == NULL)
+        {
+          close(sock);
+          return collectbuf(sAddr, startbuf, rd);
+        }
+        nextbuf->size = 0;
+        nextbuf->next = NULL;
+        buf->next = nextbuf;
+        buf = nextbuf;
+      }
+      tmp = recv(sock, buf->stringbuf+buf->size, BUFFERSIZE - buf->size, MSG_DONTWAIT);
+      if (tmp == -1)
+      {
+        tmp = errno;
+        if (tmp == EAGAIN) continue;
+        ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+            "socket recv error: %s", strerror(tmp));
+        close(sock);
+        return collectbuf(sAddr, startbuf, rd);
+      }
+      if (tmp == 0)
+      {
+        close(sock);
+        return collectbuf(sAddr, startbuf, rd);
+      }
+      buf->size += tmp;
+    }
+    if (wset && FD_ISSET(sock, wset))
+    {
+      tmp = send(sock, request+right, left, MSG_DONTWAIT);
+      if (tmp == -1)
+      {
+        tmp = errno;
+        if (tmp == EAGAIN || tmp == EWOULDBLOCK) continue;
+        ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+            "socket send error: %s", strerror(tmp));
+        close(sock);
+        return collectbuf(sAddr, startbuf, rd);
+      }
+      left -= tmp;
+      right += tmp;
+    }
+  }
+  return collectbuf(sAddr, startbuf, rd);
+}/*}}}*/
+
 
 void *
 apsmlGetDBData (int i, request_data *rd)/*{{{*/

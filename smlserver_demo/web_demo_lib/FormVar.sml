@@ -194,10 +194,10 @@ structure FormVar :> FORM_VAR =
 	   [] => (empty_val,addErr(errNoFormVar(emsg,ty),errs))
 	 | [""] => (empty_val,addErr(errNoFormVar(emsg,ty),errs))
 	 | [v] =>
-	     (case chk_fn v of
+	    ((case chk_fn v of
 		SOME v => (v,errs)
 	      | NONE => (empty_val, addErr(errTypeMismatch(emsg,ty,v),errs)))
-		handle Overflow => (empty_val, addErr(errTooLarge(emsg,ty,v),errs))
+		handle Overflow => (empty_val, addErr(errTooLarge(emsg,ty,v),errs)))
 	 | _ => (empty_val, addErr(errTooMany emsg,errs)))
     in
       val getIntErr = getErrWithOverflow 0 "number"

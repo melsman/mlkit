@@ -9,6 +9,7 @@ signature WEB_CONN = sig
   val returnRedirectWithCode     : int * string -> unit
   val setMimeType        : string -> unit
   val getQuery           : unit -> set option
+  val getRequestData     : unit -> string
   val formvar            : string -> string option
   val formvarAll         : string -> string list
   val storeMultiformData : string * string -> unit
@@ -110,4 +111,7 @@ end
  of library code).
   
  [add_headers (key,value)] adds key:value to the http header
+
+ [fullRequest()] returns the entire request as a string. Raises
+ exception MissingConnection if no connection is present.
 *)

@@ -17,6 +17,7 @@ INSTALLDATA=@INSTALL_DATA@
 
 install:
 	$(MKDIR) $(LIBDIR)/web_lib
+	$(MKDIR) $(LIBDIR)/web_lib/xmlrpc
 	$(MKDIR) $(LIBDIR)/web_sys
 	$(MKDIR) $(LIBDIR)/web_demo_lib
 	$(MKDIR) $(LIBDIR)/www
@@ -29,6 +30,7 @@ install:
 	$(MKDIR) $(LIBDIR)/www/web/upload
 	$(MKDIR) $(LIBDIR)/www/web/upload/files
 	$(INSTALLDATA) web_lib/*.{sml,mlb} $(LIBDIR)/web_lib
+	$(INSTALLDATA) web_lib/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/web_lib/xmlrpc
 	$(INSTALLDATA) web_sys/*.sml $(LIBDIR)/web_sys
 	$(INSTALLDATA) www/web.mlb $(LIBDIR)/www
 	$(INSTALLDATA) www/Makefile $(LIBDIR)/www
@@ -43,3 +45,6 @@ install:
 	$(INSTALLDATA) www/images/*.{png,html,eps} $(LIBDIR)/www/images
 	$(INSTALLDATA) web_demo_lib/*.sml $(LIBDIR)/web_demo_lib
 
+clean:
+	$(MAKE) -C www clean
+	rm -rf *~ MLB */MLB */*/MLB */*/*/MLB */*~ */*/*~ */*/*/*~

@@ -83,6 +83,15 @@ struct request_db
   void *dbdata;
 };
 
+/*
+struct slist
+{
+  struct slist *next;
+  int sz;
+  char data;
+};
+*/
+
 typedef struct
 {
   apr_pool_t *pool;
@@ -91,6 +100,7 @@ typedef struct
   hashtable_with_lock *cachetable;
   InterpContext *ctx;
   struct request_db *dbdata;
+  //  struct slist *postdata;
 } request_data;			/*}}} */
 
 #endif

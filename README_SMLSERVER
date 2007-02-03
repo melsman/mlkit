@@ -94,8 +94,8 @@ Apache2 configuration for SMLserver:
   #  RewriteRule .* pub.sml
   #</Directory>
 
- $ sudo ln -s /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
- $ sudo ln -s /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
+ $ sudo ln -sf /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
+ $ sudo ln -sf /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
  $ sudo apache2ctl restart
 
 SMLserver configuration and demonstration:
@@ -137,7 +137,7 @@ Add --enable-odbc to the ./configure command:
 
 After make install_smlserver:
 
- $ sudo ln -s /usr/local/lib/smlserver/lib/libsmlodbc.so /usr/lib/
+ $ sudo ln -sf /usr/local/lib/smlserver/lib/libsmlodbc.so /usr/lib/
 
 Make sure postgresql is started:
 
@@ -171,7 +171,7 @@ Verify that the database is available using isql:
 
 Restart Apache2 by executing the command 
 
- $ sudo /etc/init.d/apache2 restart
+ $ sudo apache2ctl restart
 
 After copying the sample Web directory to $HOME, as described above,
 edit the file $HOME/web/web_lib/Db.sml. Make sure that the structure
@@ -193,7 +193,7 @@ BUILDING SMLSERVER FROM THE SOURCES WITH Oracle ACCESS
 to build Oracle interface:
 download Oracle Instant Client + SDK
 cd /abs/path/to/oracle/instant/client/sdk
-ln -s libclntsh.so.10.1 libclntsh.so
+ln -sf libclntsh.so.10.1 libclntsh.so
 cd mlkit/kit
 proceed as above with this configure command
 configure  --enable-SMLserver --with-apache=/abs/path/to/apache \
