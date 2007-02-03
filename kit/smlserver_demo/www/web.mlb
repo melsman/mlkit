@@ -96,6 +96,9 @@ in
     web/rating/wine.sml
 
     web/pwcheck.sml
+
+    web/xmlrpc_test_server.sml
+    web/xmlrpc_test_client.sml
    end (*scripts*)
   end
 end

@@ -43,3 +43,4 @@ setMaxHeapPoolSz
 sml_getAuxData
 apsml_getuser
 apsml_get_auth_type
+apsml_mkrequest

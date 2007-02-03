@@ -4,9 +4,14 @@
    Version: 1.0 
 *)
 
-functor XMLRPCClient(exception Connection of string (* should be the only exception raised in getRequest *)
-		     val getRequest : string (* url *) -> string (* request *) -> string (* response *)) 
-    :> XMLRPCCLIENT = 
+functor XMLrpc 
+(X : sig exception Connection of string (* should be the only exception raised in makeRequest *)
+         val makeRequest : string (* url *) -> string (* request *) -> string (* response *)
+	 val getRequestData : unit -> string
+	 val write : string -> unit
+	 val log : string -> unit
+     end) 
+	:> XMLRPC = 
 
 struct
 
@@ -30,6 +35,7 @@ struct
     infix 0 ||
 	
     type 'a pu = bool -> (('a -> WSeq.wseq) * ((char, 'a) parser))
+    type 'a T = 'a pu
 	
     local 
 	fun elemU tag v = 
@@ -39,7 +45,7 @@ struct
 	fun valueP p = elemP "value" p
 	fun taggedValueU tag v = valueU (elemU tag v)
 	fun taggedValueP tag p = valueP (elemP tag p) 
-	fun param toplevel value x = if toplevel then elemP "param" (value x) else value x
+	fun param (toplevel:bool) value x = if toplevel then elemP "param" (value x) else value x
 	fun pu p u = fn toplevel => (param toplevel p, u) 
     in
 	
@@ -161,8 +167,9 @@ struct
 		fun memberP name p = elemP "member" ((elemP "name" (WSeq.$ name)) && p) 
 		val membersP = fn (x,y) => memberP "1" (apickle x) && memberP "2" (bpickle y)    
 		val valueP = taggedValueP "struct" o membersP
-		val pairUp = fn toplevel => if toplevel then (fn (x,y) => elemP "param" (apickle x && bpickle y), unpickle)
-					    else (valueP, unpickle)
+		val pairUp = (* fn toplevel => if toplevel then (fn (x,y) => elemP "param" (apickle x && bpickle y), unpickle)
+					    else (valueP, unpickle) *)
+		    pu valueP unpickle
 	    in
 		pairUp
 	    end
@@ -199,7 +206,7 @@ struct
 	    end
 	
 	
-	fun rpc a  b {url, method} = 
+	fun rpc a b {url, method} = 
 	    let 
 		val hostP = ($ "http://" || success "") #-- getChars1 (fn #":" => false | #"/" => false | _ => true)
 		val portP = getChars1 (fn #":" => true | _ => false) #-- scan(Int.scan StringCvt.DEC) || success 80
@@ -224,8 +231,8 @@ struct
 		    end  
 		
 		fun unwrap answ = 
-		    let 
-			val (header, methodResp) = Substring.position "<methodResponse>" (Substring.all(answ))
+		    let (* val _ = X.log ("answer: " ^ answ) *)
+			val (header, methodResp) = Substring.position "<methodResponse>" (Substring.full(answ))
 			val (_, u) =  pair(int, string) false
 			fun fault (c, s) = raise MethodInvocation (c, s)
 			val faultU = elemU "fault" u >> fault  
@@ -248,8 +255,64 @@ struct
 		    end
 	    in
 		(* FIXME should path be a part of the url (its already in the header) *)
-		fn x => (unwrap (getRequest url (mkReq x)))
-		handle Connection str => raise ServerConnection str
+		fn x => (unwrap (X.makeRequest url (mkReq x)))
+		handle X.Connection str => raise ServerConnection str
 	    end     
+
+	fun fault code str = 
+	    let val (intPickler, _) = int false
+		val (strPickler, _) = string false
+	    in
+		elemP "methodResponse" 
+		      (elemP "fault" 
+			     (taggedValueP "struct" 
+					   (elemP "member" 
+						  (elemP "name" (WSeq.$ "faultCode")) && 
+						  (intPickler code)) &&
+					   (elemP "member" 
+						  (elemP "name" (WSeq.$ "faultString")) &&
+							  (strPickler str))))
+	    end
+
+	fun sfault n s = WSeq.flatten(fault n s)
+
+	type method = {name: string, fnct: string -> string}
+
+	fun method name au bp func : method = 
+	    let val (_, unpickle) = au false
+		val (pickle, _) = bp true
+		fun unpick str = 
+		    let val ures = Parsercomb.scanString (elemU "params" (elemU "param" unpickle)) str
+		    in case ures of 
+			   SOME i => i
+			 | NONE => raise TypeConversion
+		    end
+ 		fun res call = 
+		    WSeq.flatten (elemP "methodResponse" (elemP "params" (pickle (func (unpick call)))))
+		    handle TypeConversion => sfault 4 "Invalid parameter(s)"
+			 | ex => sfault 5 ("Internal Error - The method raised: " 
+					   ^ (General.exnName ex)
+					   ^ " - with the following message: "
+					   ^ (General.exnMessage ex))
+	    in {name=name,fnct=res}
+	    end
+
+	fun dispatch (ms:method list) : unit =
+	    let val req = X.getRequestData()
+		(* val _ = X.log ("dispatch: req = " ^ req) *)
+		val re = RegExp.fromString ".*<methodName>(.*)</methodName>.*(<params><param>.*</param></params>).*"
+		val res = 
+		    case RegExp.extract re req of
+			SOME [name,params] =>
+			let fun call [] = sfault 1 ("No method '" ^ name ^ "'")
+			      | call (r::rest) = if #name r = name then #fnct r params
+						 else call rest
+			in call ms
+			end
+		      | _ => sfault 2 "Missing method name or wrong number of parameters"
+	    in X.write res
+	    end
+	    handle X.Connection str => raise ServerConnection str
+
     end (* local *)
 end (* struct *)

@@ -50,5 +50,12 @@ val _ = Page.return "Server Information" (`
 <tr><th>Number of heap caches</th><td> ^(Int.toString (Option.valOf
                                            (Web.Info.configGetValue
                                               (Web.Info.Type.Int,"MaxHeapPoolSz")))) </td></tr>
-</table>`
+</table>
+
+<h2>Request Data</h2>
+<table border=1>
+<tr><td>^(Web.Conn.getRequestData())
+</td>
+</tr></table>
+`
 )

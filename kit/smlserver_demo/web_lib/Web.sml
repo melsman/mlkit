@@ -667,62 +667,83 @@ structure Web :> WEB =
         end
         handle Fail _ => NONE
 
-        fun connCopy () : string =
-        let
-          val maxsize = getOpt(Info.configGetValue(Info.Type.Int, "maxFormDataSize"),50000)
-          (* val _ = log (Notice, "Max content length: " ^ Int.toString maxsize) *)
-        in
-          if contentLength() > maxsize then 
-        "" (* empty string if content size is too large *)
-          else
-        let
-          val s : string = prim("apsml_getQueryData", (maxsize, FORM, getReqRecP()))
-        in
-          if isNull s then "" else s (* empty string if no content *)
-        end
-        end
 
+	local 
+
+	    (* We now support two ways of accessing POST request data:
+	     * (1) through Web.Conn.getRequestData(), which returns
+	     * the unparsed, unmodified request data, and (2) through
+	     * Web.Conn.getQuery(), which returns a set of form variable
+	     * assignments. Both techniques are based on getQueryDataFORM()
+	     * below, which now caches the result so as to make the
+	     * result of calling one of the functions independent of
+	     * whether the other function has already been called. The
+	     * Web.Conn.getRequestData() functionality is used for
+	     * XML-RPC support, for instance. *)
+
+	    val cache : string option option ref = ref NONE
+	    fun assign r s = (r := SOME s; s)
+	in
+            fun getQueryDataFORM () : string option =
+		case !cache of 
+		    SOME s => s 
+		  | NONE => assign cache
+		   let val maxsize = getOpt(Info.configGetValue(Info.Type.Int, "maxFormDataSize"),50000)
+		       val cl = contentLength()
+		   in
+		       if cl > maxsize then 
+			   ( log (Notice, "Content length of " ^ Int.toString cl ^ 
+					  " exceeding max content length of " ^ 
+					  Int.toString maxsize);			  
+			     NONE (* content size is too large *)
+			   )
+		       else
+			   let val s : string = prim("apsml_getQueryData", (maxsize, FORM, getReqRecP()))
+			   in if isNull s then NONE else SOME s (* empty string if no content *)
+			   end
+		   end
+	end
 
         (* Parsing multipart/form-data: we have large and small chunks of data *)
         (* File Format: Content-Disposition: form-data; name="clientfile"; filename="to_do.txt" *)
         (* Ordinary FV: Content-Disposition: form-data; name="description" *)
         fun parseContent (content,contentType) =
-        let
-          (* Fetch boudary out of contentTypeHeader *)
-          val boundary =
-        case RegExp.extract (RegExp.fromString ".*[bB][oO][uU][Nn][Dd][Aa][Rr][Yy]=(.*)") contentType of
-          SOME [pat] => pat
-        | _ => raise Fail ("Web.Conn.parseContent: can't get boundary out of contentType: " ^ 
-               contentType)
-          val boundary = "--" ^ boundary
-          val content = Substring.full content
-          fun loop content =
-        case parseNextBoundary boundary content of
-          NONE => []
-        | SOME (fv,rest) => fv :: loop rest
-        in 
-          (loop content,boundary)
-        end
-        handle Fail _ => ([],"boundary")
+            let
+		(* Fetch boundary out of contentTypeHeader *)
+		val boundary =
+		    case RegExp.extract (RegExp.fromString ".*[bB][oO][uU][Nn][Dd][Aa][Rr][Yy]=(.*)") contentType of
+			SOME [pat] => pat
+		      | _ => raise Fail ("Web.Conn.parseContent: can't get boundary out of contentType: " ^ 
+					 contentType)
+		val boundary = "--" ^ boundary
+		val content = Substring.full content
+		fun loop content =
+		    case parseNextBoundary boundary content of
+			NONE => []
+		      | SOME (fv,rest) => fv :: loop rest
+            in 
+		(loop content,boundary)
+            end
+            handle Fail _ => ([],"boundary")
 
-          fun getQueryData(i : int) : string option = 
-            let val res : string = prim("apsml_getQueryData", (~1, i, getReqRecP()))
+        fun getQueryDataGET() : string option = 
+            let val res : string = prim("apsml_getQueryData", (~1, GET, getReqRecP()))
             in if isNull res then NONE
-             else SOME res
+               else SOME res
             end
 
-      fun parseFormData(NONE : set option, s : string) : set = 
-          parseFormData(SOME(WebSet.create()),s)
-        | parseFormData(SOME(set), s) = 
-           let (*val _ = log(Notice, "parseFormData: " ^ s) *)
-             val f0 = Substring.tokens (fn c => c = #"&")
-             val f1 = Substring.splitl (fn c => not(c = #"="))
-             val f2 = fn (p1,p2) => (decodeUrl (Substring.string p1), 
-                decodeUrl (Substring.string (Substring.dropl (fn c => c = #"=") p2)))
-             val pairs = map (f2 o f1) (f0 (Substring.full s))
-           in ((app (fn (p1,p2) => WebSet.put(set, p1, p2))) pairs; set)
-           end
-          
+	fun parseFormData(NONE : set option, s : string) : set = 
+            parseFormData(SOME(WebSet.create()),s)
+          | parseFormData(SOME(set), s) = 
+            let (*val _ = log(Notice, "parseFormData: " ^ s) *)
+		val f0 = Substring.tokens (fn c => c = #"&")
+		val f1 = Substring.splitl (fn c => not(c = #"="))
+		val f2 = fn (p1,p2) => (decodeUrl (Substring.string p1), 
+					decodeUrl (Substring.string (Substring.dropl (fn c => c = #"=") p2)))
+		val pairs = map (f2 o f1) (f0 (Substring.full s))
+            in ((app (fn (p1,p2) => WebSet.put(set, p1, p2))) pairs; set)
+            end
+            
     in 
       fun getQuery() : set option = 
         case !form_data of SOME data => data 
@@ -733,74 +754,75 @@ structure Web :> WEB =
             if method() = "POST" andalso
             RegExp.match (RegExp.fromString ".*multipart/form-data.*") (lower' content_type)
             then
-              let
-            val content = connCopy()
-            val (fvs,boundary) = parseContent(content,valOf content_type)
-            val _ = multiform_data := fvs
-              in
-            case fvs of
-              [] => NONE
-              | fvs => 
-              let
-                val form = WebSet.create ()
-                fun storeContentType fv_name (key,value) = 
-              WebSet.put(form,
-                  Substring.string fv_name ^ "." ^ 
-                  lower' (SOME (Substring.string key)),
-                  Substring.string value)
-                fun storeFV fv =
-              case fv of
-                large_fv {fv_name,filename,filesize,content,content_types} =>
-                (WebSet.put (form, Substring.string fv_name,Substring.string filename);
-                 WebSet.put (form, Substring.string fv_name ^ ".filesize", 
-                  Int.toString filesize);
-                 List.app (storeContentType fv_name) content_types)
-              | small_fv {fv_name,content,content_types} =>
-                (WebSet.put(form,Substring.string fv_name,Substring.string content);
-                 List.app (storeContentType fv_name) content_types)
-                val _ = List.app storeFV fvs
-              in
-                (form_data := SOME (SOME form);
-                 getQuery())
-              end
-              end
+		let
+		    val content = Option.getOpt(getQueryDataFORM(),"")
+		    val (fvs,boundary) = parseContent(content,valOf content_type)
+		    val _ = multiform_data := fvs
+		in
+		    case fvs of
+			[] => NONE
+		      | fvs => 
+			let
+			    val form = WebSet.create ()
+			    fun storeContentType fv_name (key,value) = 
+				WebSet.put(form,
+					   Substring.string fv_name ^ "." ^ 
+					   lower' (SOME (Substring.string key)),
+					   Substring.string value)
+			    fun storeFV fv =
+				case fv of
+				    large_fv {fv_name,filename,filesize,content,content_types} =>
+				    (WebSet.put (form, Substring.string fv_name,Substring.string filename);
+				     WebSet.put (form, Substring.string fv_name ^ ".filesize", 
+						 Int.toString filesize);
+				     List.app (storeContentType fv_name) content_types)
+				  | small_fv {fv_name,content,content_types} =>
+				    (WebSet.put(form,Substring.string fv_name,Substring.string content);
+				     List.app (storeContentType fv_name) content_types)
+			    val _ = List.app storeFV fvs
+			in
+			    (form_data := SOME (SOME form);
+			     getQuery())
+			end
+		end
             else
-            let val formdata = getQueryData(FORM)
-              val formset = case formdata of 
-                     NONE => NONE
-                     | SOME(s) => SOME(parseFormData(NONE, s))
-              val getdata = getQueryData(GET)
-              val finalset = case getdata of
-                     NONE => formset
-                     | SOME(s) => SOME(parseFormData(formset, s))
-            in (form_data := SOME(finalset); getQuery())
-            end
+		let val formdata = getQueryDataFORM()
+		    val formset = case formdata of 
+				      NONE => NONE
+				    | SOME(s) => SOME(parseFormData(NONE, s))
+		    val getdata = getQueryDataGET()
+		    val finalset = case getdata of
+				       NONE => formset
+				     | SOME(s) => SOME(parseFormData(formset, s))
+		in (form_data := SOME(finalset); getQuery())
+		end
           end
-
+	  
       fun storeMultiformData (fv,filename) =
-      let
-        val _ = getQuery() (* Make sure that formvariables have been read *)
-        val os = BinIO.openOut filename
-        fun r exn = (BinIO.closeOut os; raise exn)
-        fun storeFV [] = r (Fail ("Web.storeMultiformData. FV " ^ fv ^ " does not exists"))
-      | storeFV (x::xs) =
-      case x of
-        large_fv{fv_name,filename,content,...} =>
-        if Substring.string fv_name = fv then 
-          BinIO.output (os,Substring.string content) 
-        else 
-          storeFV xs
-      | small_fv{fv_name,...} =>
-          if Substring.string fv_name = fv then 
-          r (Fail ("Web.storeMultiformData. FV " ^ fv ^ " does not contain a file"))
-        else 
-          storeFV xs
-      in
-        storeFV (!multiform_data);
-        BinIO.closeOut os
-      end
-      handle _ => raise Fail ("Web.storeMultiformData. can't open filename: " ^ filename)
+	  let
+              val _ = getQuery() (* Make sure that formvariables have been read *)
+              val os = BinIO.openOut filename
+              fun r exn = (BinIO.closeOut os; raise exn)
+              fun storeFV [] = r (Fail ("Web.storeMultiformData. FV " ^ fv ^ " does not exists"))
+		| storeFV (x::xs) =
+		  case x of
+		      large_fv{fv_name,filename,content,...} =>
+		      if Substring.string fv_name = fv then 
+			  BinIO.output (os,Substring.string content) 
+		      else 
+			  storeFV xs
+		    | small_fv{fv_name,...} =>
+		      if Substring.string fv_name = fv then 
+			  r (Fail ("Web.storeMultiformData. FV " ^ fv ^ " does not contain a file"))
+		      else 
+			  storeFV xs
+	  in
+              storeFV (!multiform_data);
+              BinIO.closeOut os
+	  end
+	  handle _ => raise Fail ("Web.storeMultiformData. can't open filename: " ^ filename)
 
+      fun getRequestData () = Option.getOpt(getQueryDataFORM(),"")
 
     end 
 
@@ -830,11 +852,11 @@ structure Web :> WEB =
     fun server () : string = (prim("apsml_getserver",(getReqRecP())))
 
     fun scheme () : string = (* (prim("apsml_scheme",getReqRec())) handle Overflow => raise MissingConnection *)
-          let 
+        let 
             val res = prim ("@apsml_scheme",getReqRecP ()) : foreignptr
-          in
+        in
             if isNullFp res then "" else prim("fromCtoMLstring", res : foreignptr) : string
-          end
+        end
 
     fun location () = scheme() ^ "://" ^ server() ^ ":" ^ (Int.toString (port()))
 
@@ -843,7 +865,6 @@ structure Web :> WEB =
     fun write (s: string) : unit =
        prim("@ap_rputs", (s,getReqRecP()))
        
-
     fun formvar s =  case getQuery()
        of SOME set => Set.get(set,s)
         | NONE => NONE
@@ -854,7 +875,6 @@ structure Web :> WEB =
                     of NONE => []
                      | SOME e => [e])
       | NONE => []
-
 
   end
 
@@ -1379,152 +1399,171 @@ structure Web :> WEB =
                                        | "ascii" => SOME USASCII
                                        | _ => NONE) (Info.configGetValue(Info.Type.String, "standardEmailEncoding"))),ISO88591)
       fun sendmail (e : email) : unit =
-               ignore(
-                 mail
-                   (fn false => NONE
-                     | true  => SOME(e, false, stdEnc()))
-                   (fn (em,err,()) => WebLog.log(WebLog.Warning, String.concat
-                                                 ("tried to mail: " :: (List.foldl (fn (x,l) => x::", "::l) [] (#to em)) @
+          ignore(
+          mail
+              (fn false => NONE
+                | true  => SOME(e, false, stdEnc()))
+              (fn (em,err,()) => WebLog.log(WebLog.Warning, String.concat
+								("tried to mail: " :: (List.foldl (fn (x,l) => x::", "::l) [] (#to em)) @
                                                                   [" but I got the following errors: "] @
-                                                 (List.foldl (fn ((x,y),z) => "; " :: x :: " " :: y :: z) [] err))))
-                   true ())
-
-    fun send {to: string, from: string, subject: string, body: string} : unit =
-      sendmail {to=[to],from=from,cc=nil,bcc=nil,subject=subject,
-          extra_headers=nil,body=body}
+								 (List.foldl (fn ((x,y),z) => "; " :: x :: " " :: y :: z) [] err))))
+              true ())
+	  
+      fun send {to: string, from: string, subject: string, body: string} : unit =
+	  sendmail {to=[to],from=from,cc=nil,bcc=nil,subject=subject,
+		    extra_headers=nil,body=body}
   end
-
+  
   
   val log = WebLog.log
-
+	    
   type quot = Quot.quot
+
   fun return (q : quot) : unit =
       Conn.return(Quot.toString q)
+      
+  fun splitUrl (url:string) : {port: int, page: string, server: string} =
+      let val (sscheme,r1) = Substring.splitAt (Substring.full url, 7)
+          val (shp,r2) = Substring.splitl (fn x => x <> #"/") r1
+          val (sserver,sport1) = Substring.splitl (fn x => x <> #":") shp 
+          val (_,sport) = Substring.splitAt (sport1, 1) 
+              handle Subscript => (Substring.full "", Substring.full "80")
+          val scheme = Substring.string sscheme
+          val page = let val a = Substring.string r2 in if a = "" then "/" else a end
+          val server = Substring.string sserver
+          val port = getOpt(Int.fromString (Substring.string sport),80)
+          val _ = if port < 1 orelse port > 65535 then raise Subscript else 0
+          val _ = if scheme <> "http://" then raise Subscript else 0
+          val _ = if server = "" then raise Subscript else 0
+      in {server=server,port=port,page=page}
+      end
 
-  fun fetchUrlTime (timeout : int) (url : string) = (
-           let 
-               val (sscheme,r1) = Substring.splitAt (Substring.full url, 7)
-               val (shp,r2) = Substring.splitl (fn x => x <> #"/") r1
-               val (sserver,sport1) = Substring.splitl (fn x => x <> #":") shp 
-               val (_,sport) = Substring.splitAt (sport1, 1) 
-                            handle Subscript => (Substring.full "", Substring.full "80")
-               val scheme = Substring.string sscheme
-               val page = let val a = Substring.string r2 in if a = "" then "/" else a end
-               val server = Substring.string sserver
-               val port = getOpt(Int.fromString (Substring.string sport),80)
-               val _ = if port < 1 orelse port > 65535 then raise Subscript else 0
-               val _ = if scheme <> "http://" then raise Subscript else 0
-               val _ = if server = "" then raise Subscript else 0
-               val r : string = prim("apsml_getpage",(server,page,(port,timeout,getReqRec())))
-           in if isNull r then NONE else SOME r
-           end ) handle Subscript => (log(Debug, "fetchUrl: subscript raised");NONE)
+  fun fetchUrlTime (timeout : int) (url : string) =
+      let val {server,port,page} = splitUrl url
+          val r : string = prim("apsml_getpage",(server,page,(port,timeout,getReqRec())))
+      in if isNull r then NONE else SOME r
+      end handle Subscript => (log(Debug, "fetchUrlTime: subscript raised");NONE)
+			      
+  fun fetchUrl url = 
+      let val timeout = getOpt(Info.configGetValue (Info.Type.Int, "FetchUrlTimeOut"),60)
+      in fetchUrlTime timeout url
+      end
 
-    fun fetchUrl url = 
-           let
-               val timeout = getOpt(Info.configGetValue (Info.Type.Int, "FetchUrlTimeOut"),60)
-           in
-               fetchUrlTime timeout url
-           end
-
-    val returnRedirect =
+  val returnRedirect =
       Conn.returnRedirect 
 
-    fun write (q : quot) : unit = 
+  fun write (q : quot) : unit = 
       Conn.write (Quot.toString q)
 
-    (*fun getMimeType(s: string) : string = prim("apsml_GetMimeType", (s,getReqRec()))*)
+  (*fun getMimeType(s: string) : string = prim("apsml_GetMimeType", (s,getReqRec()))*)
 
-    fun returnFileMime mimetype file = Conn.returnFile(~1, mimetype, file )
-    fun returnFile file = Conn.returnFile(~1, Mime.addEncoding (Mime.getMime file), file)
+  fun returnFileMime mimetype file = Conn.returnFile(~1, mimetype, file )
+  fun returnFile file = Conn.returnFile(~1, Mime.addEncoding (Mime.getMime file), file)
 
-    fun exit() = raise Interrupt
+  fun exit() = raise Interrupt
     (* By raising Interrupt, the web-server is not killed as it
      * would be if we call OS.Process.exit. Also, handlers can
      * protect the freeing of resources such as file descriptors
      * and database handles. Moreover, region pages are freed as 
      * they should be. *)
 
-    fun schedule' (f : string) (s : string option) (first : int) (interval : int) : unit = 
-            let
-              val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"),
-                                      if Conn.hasConnection () then Conn.port() else 0)
-              val _ = if port = 0 then raise Fail "tried to schedule with an invalid port number" 
-                      else ()
-            in
-            case s of NONE =>
-            prim("apsml_reg_schedule", (first : int, interval : int, 0,
-                                        (f : string ,"localhost",port : int), getReqRec()))
-                   | SOME(server) =>
-            prim("apsml_reg_schedule", (first : int, interval : int, 0, 
-                                        (f : string, server : string, port : int), getReqRec()))
-            end
+  fun schedule' (f : string) (s : string option) (first : int) (interval : int) : unit = 
+      let
+          val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"),
+                                  if Conn.hasConnection () then Conn.port() else 0)
+          val _ = if port = 0 then raise Fail "tried to schedule with an invalid port number" 
+                  else ()
+      in
+          case s of NONE =>
+		    prim("apsml_reg_schedule", (first : int, interval : int, 0,
+						(f : string ,"localhost",port : int), getReqRec()))
+                  | SOME(server) =>
+		    prim("apsml_reg_schedule", (first : int, interval : int, 0, 
+						(f : string, server : string, port : int), getReqRec()))
+      end
 
-    fun schedule f server first interval = 
-                  let fun next t1 t2 = if Time.>=(t1,t2) 
-                                       then Time.-(t1, t2) 
-                                       else next (Time.+(t1, interval)) t2
-                      val fir = LargeInt.toInt (Time.toSeconds(next (Date.toTime first) (Time.now())))
-                  in
-                    schedule' f server fir (LargeInt.toInt(Time.toSeconds interval))
-                  end
+  fun schedule f server first interval = 
+      let fun next t1 t2 = if Time.>=(t1,t2) 
+                           then Time.-(t1, t2) 
+                           else next (Time.+(t1, interval)) t2
+          val fir = LargeInt.toInt (Time.toSeconds(next (Date.toTime first) (Time.now())))
+      in
+          schedule' f server fir (LargeInt.toInt(Time.toSeconds interval))
+      end
 
-    fun deSchedule (f:string) : unit = 
-            prim("apsml_reg_schedule", (0,0,1,(f,"",0),getReqRec()))
+  fun deSchedule (f:string) : unit = 
+      prim("apsml_reg_schedule", (0,0,1,(f,"",0),getReqRec()))
             
-    fun scheduleScript f s i = schedule' f s i i
-    fun scheduleDaily f s {hour, minute} = 
-       let val now = Date.fromTimeUniv (Time.now())
-           val first = ((hour - Date.hour now) mod 24) * 60*60 
+  fun scheduleScript f s i = schedule' f s i i
+  fun scheduleDaily f s {hour, minute} = 
+      let val now = Date.fromTimeUniv (Time.now())
+          val first = ((hour - Date.hour now) mod 24) * 60*60 
                       + ((minute - Date.minute now) mod 60) * 60
-       in schedule' f s first (24*60*60)
-       end
-    fun scheduleWeekly f s {day, hour, minute} = 
-       let fun weekday Date.Mon = 0
-             | weekday Date.Tue = 1
-             | weekday Date.Wed = 2
-             | weekday Date.Thu = 3
-             | weekday Date.Fri = 4
-             | weekday Date.Sat = 5
-             | weekday Date.Sun = 6
-           val now = Date.fromTimeUniv (Time.now())
-           val first = ((weekday day - weekday (Date.weekDay now)) mod 7) * 24 * 60 * 60
+      in schedule' f s first (24*60*60)
+      end
+  fun scheduleWeekly f s {day, hour, minute} = 
+      let fun weekday Date.Mon = 0
+            | weekday Date.Tue = 1
+            | weekday Date.Wed = 2
+            | weekday Date.Thu = 3
+            | weekday Date.Fri = 4
+            | weekday Date.Sat = 5
+            | weekday Date.Sun = 6
+          val now = Date.fromTimeUniv (Time.now())
+          val first = ((weekday day - weekday (Date.weekDay now)) mod 7) * 24 * 60 * 60
                       + ((hour - Date.hour now) mod 24) * 60*60 
                       + ((minute - Date.minute now) mod 60) * 60 
-       in schedule' f s first (24*60*60*7)
-       end
+      in schedule' f s first (24*60*60*7)
+      end
 
      (* Creating the supported database interfaces *)
         
-     structure DbOraBackend = DbOracleBackend(struct 
-                                                 type conn = foreignptr
-                                                 val getReqRec = getReqRec
-                                                 val log = (fn x => (log(Debug, x); x))
-                                                 val isNull = isNull
-                                                 structure Info = Info
-                                                 structure Dynlib = WebDynlib
-                                                 end) :> WEB_DB_BACKEND 
-                                                 where type 'a Type = 'a Info.Type.Type
+  structure DbOraBackend = DbOracleBackend(struct 
+                                           type conn = foreignptr
+                                           val getReqRec = getReqRec
+                                           val log = (fn x => (log(Debug, x); x))
+                                           val isNull = isNull
+                                           structure Info = Info
+                                           structure Dynlib = WebDynlib
+                                           end) :> WEB_DB_BACKEND 
+                                                       where type 'a Type = 'a Info.Type.Type
+									    
+  structure DbPostgreSQLBackend = DbODBCBackend(struct 
+                                                type conn = foreignptr
+                                                val getReqRec = getReqRec
+                                                val log = (fn x => (log(Debug, x); x))
+                                                val isNull = isNull
+                                                structure Info = Info
+                                                structure Dynlib = WebDynlib
+                                                end) :> WEB_DB_BACKEND 
+							    where type 'a Type = 'a Info.Type.Type
 
-     structure DbPostgreSQLBackend = DbODBCBackend(struct 
-                                                 type conn = foreignptr
-                                                 val getReqRec = getReqRec
-                                                 val log = (fn x => (log(Debug, x); x))
-                                                 val isNull = isNull
-                                                 structure Info = Info
-                                                 structure Dynlib = WebDynlib
-                                                 end) :> WEB_DB_BACKEND 
-                                                 where type 'a Type = 'a Info.Type.Type
+  structure DbMySqlBackend = DbODBCBackend(struct 
+                                           type conn = foreignptr
+                                           val getReqRec = getReqRec
+                                           val log = (fn x => (log(Debug, x); x))
+                                           val isNull = isNull
+                                           structure Info = Info
+                                           structure Dynlib = WebDynlib
+                                           end) :> WEB_DB_BACKEND 
+                                                       where type 'a Type = 'a Info.Type.Type
+									    
+  (*structure DbOra = DbFunctor(structure DbBackend = DbOraBackend)*)
 
-     structure DbMySqlBackend = DbODBCBackend(struct 
-                                                 type conn = foreignptr
-                                                 val getReqRec = getReqRec
-                                                 val log = (fn x => (log(Debug, x); x))
-                                                 val isNull = isNull
-                                                 structure Info = Info
-                                                 structure Dynlib = WebDynlib
-                                                 end) :> WEB_DB_BACKEND 
-                                                 where type 'a Type = 'a Info.Type.Type
-
-     (*structure DbOra = DbFunctor(structure DbBackend = DbOraBackend)*)
-
+  local
+      exception Connection of string
+      fun makeRequest (url:string) (req:string) : string =
+	  let val {server,port,page} = splitUrl url
+	      val timeout = getOpt(Info.configGetValue (Info.Type.Int, "FetchUrlTimeOut"),60)
+              val r : string = prim("apsml_mkrequest",(server,req,(port,timeout,getReqRec())))
+	  in if isNull r then raise Connection ("Failed request for " ^ url) else r
+	  end handle Subscript => ( log(Debug, "Web.sml: makeRequest: subscript raised")
+				  ; raise Connection ("Failed in parsing " ^ url))				  
+  in
+      structure XMLrpc = XMLrpc(exception Connection = Connection
+                                val makeRequest = makeRequest
+				val write = Conn.write
+				val getRequestData = Conn.getRequestData
+			        val log = fn s => log(Notice,s))
+  end	     
   end
