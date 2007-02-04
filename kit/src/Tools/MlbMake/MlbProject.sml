@@ -817,6 +817,11 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
        end
      | MS.SCRIPTSbdec smlfiles =>
        let
+         val smlfiles = List.map (fn smlfile => 
+                       if OS.Path.isAbsolute smlfile 
+                       then smlfile
+                       else OS.Path.concat(dir,smlfile)) smlfiles
+
          val bg = List.foldl (fn (f,bg) => #1 (BG.add_first bg deps (Script (Atom.fromString f), mlbfile, anns))) (#bg state) smlfiles
        in
          ({bg = bg,bid_map = #bid_map state},deps,mlbs)
