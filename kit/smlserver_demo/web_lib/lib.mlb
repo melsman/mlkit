@@ -22,7 +22,7 @@
     WebLowMail.sml
     WebDbLow.sml
   in
-    xmlrpc/xmlrpc.mlb
+    xmlrpc.mlb
     WEB.sml
     Web.sml  
     DbFunctor.sml 
