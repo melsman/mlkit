@@ -1,0 +1,2 @@
+basis Basis = bas $(SML_LIB)/basis/basis.mlb end
+basis KitLib = bas $(SML_LIB)/basis/kitlib.mlb end
