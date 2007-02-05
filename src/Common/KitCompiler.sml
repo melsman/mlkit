@@ -15,10 +15,10 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
     open Execution
 
 
-	fun cmd_name() = 
-	  if !Flags.SMLserver then "smlserverc"
-	  else if backend_name = "X86" then "mlkit" 
-	       else "mlkit_kam"
+    fun cmd_name() = 
+	if !Flags.SMLserver then "smlserverc"
+	else if backend_name = "X86" then "mlkit" 
+	else "mlkit_kam"
 
     structure ManagerObjects =
 	ManagerObjects(struct
@@ -44,15 +44,16 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun set_paths install_dir =
 	    Flags.install_dir := install_dir
 
-	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
+	val date = Version.configure_date
 
 	fun print_greetings() =
-	  if !Flags.SMLserver then
-	    print("SMLserver (Apache) version " ^ Version.version ^ ", " ^ date ^ "\n" ^
-		  "Based on the MLKit [" ^ backend_name ^ " Backend]\n")
-	  else 
-	    print("MLKit version " ^ Version.version ^ ", " ^ date ^ " [" ^
-		  backend_name ^ " Backend]\n")
+	    let val name = 
+		    if !Flags.SMLserver then "SMLserver"
+		    else "MLKit"
+	    in
+		print(name ^ " " ^ Version.version ^ " (rev " ^ Version.svn_rev ^ "; " ^ date ^ ") [" ^
+		      backend_name ^ " Backend]\n")
+	    end
 	    
 	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
 				   "Options:\n\n")
@@ -84,7 +85,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				       raise Fail "")),
 		 ("man", fn () => (print(Man.gen {cmd=cmd_name,date=date,
 						  extraOptions=options,
-						  version=Version.version});
+						  version=Version.version,
+					          smlserver= !Flags.SMLserver});
 				   raise Fail "")),
 		 ("v", fn () => (print_greetings(); 
 				 raise Fail "")),
