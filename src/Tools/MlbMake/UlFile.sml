@@ -46,11 +46,12 @@ functor UlFile (MlbProject : MLB_PROJECT)
 
 	fun pp_ul (ul:ul) : string = 
 	    concat(pp_ul0 ul)
+
 		
 	type S = (uofile*location)list
 	type C = uofile list
 	datatype B = B0 of (Bid.bid * (B*S)) list
-	type M = (string * (B*S)option) list
+	type M = (string * MlbFileSys.unique * (B*S)option) list
 	 
 	fun norm(p,r) =
 	    if p = r orelse p="" then ""
@@ -113,20 +114,23 @@ functor UlFile (MlbProject : MLB_PROJECT)
 	structure M =
 	    struct	       
 		val empty : M = nil
-		fun insert (s,l,M:M):M = (s,l)::M
+		fun insert (s,u,l,M:M):M = (s,u,l)::M
+    fun update (s,u,l,[]) = [(s,u,l)]
+		  | update (s,u,l,((s',u',l')::M):M):M = if u = u' then (s,u,l)::M
+                                           else (s',u',l')::(update (s,u,l,M))
 		fun lookup s nil = NONE
-		  | lookup s ((x,l:(B*S)option)::xs) = if s=x then SOME l
+		  | lookup s ((_,u,l:(B*S)option)::xs) = if s=u then SOME l
 						       else lookup s xs
 		fun on f M =
-		    map (fn (s,l) =>
-			 (f s, Option.map (fn (B,S) => (B.on f B,S.on f S)) l)) 
+		    map (fn (s,u,l) =>
+			 (f s, u, Option.map (fn (B,S) => (B.on f B,S.on f S)) l)) 
 		    M					   
 		fun downArrow(M,p) = 
 		  on (fn x => pathDownArrow(x,p)) M
 		fun upArrow(M,p) = 
 		  on (fn x => pathUpArrow(x,p)) M
 		fun pp M =
-		    String.concat("{" :: map (fn (s,_) => s ^ ",") M @ ["}"])
+		    String.concat("{" :: map (fn (s,_,_) => s ^ ",") M @ ["}"])
 	    end
         structure C =
 	    struct
@@ -177,7 +181,7 @@ functor UlFile (MlbProject : MLB_PROJECT)
 		    end
 	      | Mlb.MS.MLBFILEbdec (mlbfile, SOME scriptpath) => 
 		    (case OS.Path.dir mlbfile of
-			 "" => (case M.lookup mlbfile M of
+			 "" => (case M.lookup (MlbFileSys.unique true mlbfile) M of
 				    SOME (SOME (B,S)) => 
 					let (* val _ = print (mlbfile ^ " found in M: " ^ M.pp M ^ "\n") *)
 					    val S' = S.extendLoc scriptpath S
@@ -189,8 +193,9 @@ functor UlFile (MlbProject : MLB_PROJECT)
 				  | NONE => 
 					let (* val _ = print (mlbfile ^ " not found in M: " ^ M.pp M ^ "\n") *)
 					    val bdec = Mlb.parse mlbfile
-					    val (S,C,M,B) = ulb phi (M.insert(mlbfile,NONE,M)) B.empty bdec
-					    val M = M.insert(mlbfile,SOME(B,S),M)
+              val unique = MlbFileSys.unique true mlbfile
+					    val (S,C,M,B) = ulb phi (M.insert(mlbfile,unique,NONE,M)) B.empty bdec
+					    val M = M.update(mlbfile,unique,SOME(B,S),M)
 					    val S' = S.extendLoc scriptpath S
 					    val B' = B.extendLoc scriptpath B
 					in (S',C,M,B')

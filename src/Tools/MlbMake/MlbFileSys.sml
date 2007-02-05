@@ -42,6 +42,18 @@ structure MlbFileSys :> MLB_FILESYS =
       end
     end
 
+        type unique = word * word
+      fun cmp ((a,b),(c,d)) = case SysWord.compare (a,c) 
+                              of LESS => LESS
+                               | GREATER => GREATER
+                               | EQUAL => SysWord.compare (b,d)
+    fun unique link f = 
+      let
+        val s = if link then Posix.FileSys.lstat f else Posix.FileSys.stat f
+      in
+        (Posix.FileSys.inoToWord (Posix.FileSys.ST.ino s),Posix.FileSys.devToWord (Posix.FileSys.ST.dev s))
+      end
+
 
   end
 
