@@ -744,12 +744,7 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
   end
 
   local
-    fun unique link f = 
-      let
-        val s = if link then Posix.FileSys.lstat f else Posix.FileSys.stat f
-      in
-        (Posix.FileSys.inoToWord (Posix.FileSys.ST.ino s),Posix.FileSys.devToWord (Posix.FileSys.ST.dev s))
-      end
+    val unique = MlbFileSys.unique
   in
   fun srcs_bdec_file dir state mlbs mlbfile_rel =
       let 
@@ -849,13 +844,9 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 
     local 
       val list = BG.foldB (fn (e : Elem,acc) => (unique true ((Atom.toString o stripFile o #1) e), ((stripFile o #1) e, #2 e)) :: acc) []
-      fun cmp ((a,b),(c,d)) = case SysWord.compare (a,c) 
-                              of LESS => LESS
-                               | GREATER => GREATER
-                               | EQUAL => SysWord.compare (b,d)
 
-      val sort = Listsort.sort (fn ((a,_),(b,_)) => cmp (a,b))
-      fun fileCmp (f,g) = cmp (unique true f,unique true g)
+      val sort = Listsort.sort (fn ((a,_),(b,_)) => MlbFileSys.cmp (a,b))
+      fun fileCmp (f,g) = MlbFileSys.cmp (unique true f,unique true g)
       fun report(s,m1,m2) =
         let
           val s = Atom.toString s
