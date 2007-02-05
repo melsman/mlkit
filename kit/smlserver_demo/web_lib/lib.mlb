@@ -1,4 +1,5 @@
-  $(SML_LIB)/basis/basis.mlb
+basis.mlb
+open Basis
   Quot.sml
   local
     WEB_SET.sml
@@ -22,7 +23,7 @@
     WebLowMail.sml
     WebDbLow.sml
   in
-    xmlrpc.mlb
+    xmlrpc/xmlrpc.mlb
     WEB.sml
     Web.sml  
     DbFunctor.sml 
