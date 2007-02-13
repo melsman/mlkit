@@ -3,6 +3,7 @@ val _ = Web.log (Web.Notice, "executing init.sml...")
 (*val _ = Web.Info.configSetValue(Web.Info.Type.Int, "SchedulePort", 8040) 
 val _ = Web.scheduleDaily "/web/log_time.sml" NONE {hour = 15, minute = 2} 
 val _ = Web.scheduleScript "/web/log_time.sml" NONE 20 *)
+
 val _ = Web.Info.configSetValue(Web.Info.Type.String, "MailRelay", "mail.itu.dk") 
 (*
 val _ = Db.config(Web.Info.Type.Bool, "LazyConnect", true)
@@ -24,6 +25,11 @@ in
    val _ = conf Web.Info.Type.String ("UserName", "mael")
    val _ = conf Web.Info.Type.String ("PassWord", "hi")
    val _ = conf Web.Info.Type.Int ("SessionMaxDepth", 3)
+(*
+   val _ = Web.Info.configSetValue(Web.Info.Type.Bool, "DATABASE_PRINT_SELECT", true) 
+   val _ = Web.Info.configSetValue(Web.Info.Type.Bool, "DATABASE_PRINT_DML", true) 
+   val _ = Web.Info.configSetValue(Web.Info.Type.Bool, "DATABASE_PRINT_EXEC", true) 
+*)
 end
 
 val _ = Web.log (Web.Notice, "...done executing init.sml")
