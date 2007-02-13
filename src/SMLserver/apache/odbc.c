@@ -109,7 +109,7 @@ static SQLRETURN
 putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char *msg, int msgLength, void *ctx)/*{{{*/
 {
   int i;
-  SQLCHAR SQLstate;
+  SQLCHAR SQLstate_ptr[] = "123456"; // space for 5 characters in code
   SQLINTEGER naterrptr;
   SQLSMALLINT msgl;
   SQLRETURN stat;
@@ -120,7 +120,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
       return SQL_SUCCESS;
       break;
     case SQL_SUCCESS_WITH_INFO:
-      dblog1(ctx,"putmsg->withInfo");
+      // dblog1(ctx,"putmsg->withInfo");
       i = 0;
       do
       {
@@ -137,14 +137,17 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
           }
         }
         i++;
-        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, &SQLstate, &naterrptr, msg,
+        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, SQLstate_ptr, &naterrptr, msg,
                                msgLength - 1, &msgl);
+	// dblog2(ctx,"status = ", status);
+	// dblog1(ctx,"SQLstate = ");
+	// dblog1(ctx,SQLstate_ptr);
       }
       while (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO);
       return SQL_SUCCESS;
       break;
     default:
-      dblog1(ctx,"putmsg->error");
+      // dblog1(ctx,"putmsg->error");
       stat = status;
       i = 0;
       do
@@ -162,10 +165,17 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
           }
         }
         i++;
-        status = SQLGetDiagRec(handletype, handle, i, &SQLstate, &naterrptr, msg, 
+        status = SQLGetDiagRec(handletype, handle, i, SQLstate_ptr, &naterrptr, msg, 
                                msgLength - 1, &msgl);
+	// dblog2(ctx,"status = ", status);
+	// dblog2(ctx,"msgl = ", msgl);
+	// dblog1(ctx,"msg = ");
+	// dblog1(ctx,msg);
+	// dblog1(ctx,"SQLstate = ");
+	// dblog1(ctx,SQLstate_ptr);
       }
       while (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO);
+      // dblog1(ctx,"putmsg->error.end");
       return stat;
       break;
   }
@@ -383,8 +393,10 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 int
 DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
 {
+  // dblog1(ctx, "Enter: DBODBCExecuteSQL");
   if (ses == NULL || sql == NULL) return DBError;
   SQLRETURN status;
+  // dblog1(ctx, "Allocating handle");
   status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
@@ -392,9 +404,19 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       ctx
       )
   ses->needsClosing = 0;
-//  dblog1(ctx, "Executing:");
-//  dblog1(ctx, sql);
+  // dblog1(ctx, "Executing:");
+  // dblog1(ctx, sql);
   status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
+  // dblog1(ctx, "After SQLExecDirect");
+  // dblog2(ctx, "status = ", (int)status);
+  // dblog2(ctx, "SQL_SUCCESS = ", SQL_SUCCESS);
+  // dblog2(ctx, "SQL_SUCCESS_WITH_INFO = ", SQL_SUCCESS_WITH_INFO);
+  // dblog2(ctx, "SQL_ERROR = ", SQL_ERROR);
+  // dblog2(ctx, "SQL_NEED_DATA = ", SQL_NEED_DATA);
+  // dblog2(ctx, "SQL_STILL_EXECUTING = ", SQL_STILL_EXECUTING);
+  // dblog2(ctx, "SQL_INVALID_HANDLE = ", SQL_INVALID_HANDLE);
+  // dblog2(ctx, "SQL_NO_DATA = ", SQL_NO_DATA);
+  
   if (status == SQL_NO_DATA)
   {
     SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
@@ -408,7 +430,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
-//  dblog1(ctx, "Executed fine");
+  // dblog1(ctx, "Executed fine");
   ses->needsClosing = 1;
   status = SQLNumResultCols(ses->stmthp, &ses->cols);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
@@ -418,7 +440,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
-//  dblog2(ctx, "SQLNumResultCols :", ses->cols);
+  // dblog2(ctx, "SQLNumResultCols :", ses->cols);
   if (ses->cols > 0) return DBData;
   SQLCloseCursor(ses->stmthp);
   ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
@@ -428,8 +450,10 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
       return DBError;,
       ctx
       )
+  // dblog1(ctx, "Freeing handle");
   SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
   ses->stmthp = SQL_NULL_HANDLE;
+  // dblog1(ctx, "Exit: DBODBCExecuteSQL");
   return DBDml;
 }/*}}}*/
 
@@ -441,7 +465,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
   SQLRETURN status;
   SQLSMALLINT colnamelength;
   int *datasizes;
-//  dblog1(ctx,"Checking for NULL_HANDLE");
+  // dblog1(ctx,"Checking for NULL_HANDLE");
   if (ses->stmthp == SQL_NULL_HANDLE) return NULL;
   ses->datasizes = (int *) malloc((ses->cols+1) * sizeof (int));
   
@@ -451,7 +475,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
   for (i=1; i <= ses->cols; i++)
   {
     // Get column data
-  // SQLColAttribute with SQL_DESC_OCTET_LENGTH will do
+    // SQLColAttribute with SQL_DESC_OCTET_LENGTH will do
     // Get column name
     status = SQLColAttribute(ses->stmthp, i, SQL_DESC_NAME, ses->msg,
                              MAXMSG - 1, &colnamelength, NULL);
@@ -471,7 +495,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
         return NULL;,
         ctx
         )
-//    dblog2(ctx, "datasizes", datasizes[i]);
+    // dblog2(ctx, "datasizes", datasizes[i]);
   }
   return *columnCtx;
 }/*}}}*/

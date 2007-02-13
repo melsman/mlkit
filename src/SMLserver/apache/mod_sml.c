@@ -230,7 +230,7 @@ confinit (server_rec * s, apr_pool_t * pool, hashtable_with_lock ** ct) /*{{{ */
   if (hashinit (htwl->ht, hashfunction, keyNhashEqual) != hash_OK)
     {
       ap_log_error (__FILE__, __LINE__, LOG_EMERG, 0, s,
-        "Config hash failed");
+        "apsml: Config hash failed");
     }
   *ct = htwl;
   return;
@@ -394,8 +394,8 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
       return 5;
     }
 
-  //  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-  //                "apsml: test 1");
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: post config 1");
 
   rd->ctx->cachelock.shmname = tempnam(NULL, NULL);
   if (rd->ctx->cachelock.shmname == NULL)
@@ -411,8 +411,8 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
 		    "apsml: Unable to create shared memory using apr_shm_create");
       return stat;
     }
-  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-		"apsml: test 2");
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: post config 2");
   unsigned long *dbtmp = (unsigned long *) apr_shm_baseaddr_get(rd->ctx->cachelock.shm);
   *dbtmp = 0;
   rd->ctx->cachelock.version = dbtmp + 1;
@@ -420,8 +420,8 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   rd->ctx->starttime = time(NULL);
   rd->ctx->sched.glockname = tempnam(NULL,NULL);
   if (rd->ctx->sched.glockname == NULL) return 5;
-  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-		"apsml: test 3");
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: post config 3");
   stat = apr_global_mutex_create(&(rd->ctx->sched.lock), 
 				 rd->ctx->sched.glockname, 
 				 APR_LOCK_DEFAULT, pconf);
@@ -434,8 +434,8 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   struct sched_init si;
   si = startsched(s->defn_name, s->port);
   if (si.pid == -1) return 5;
-  ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
-		"apsml: test 5");
+  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+		"apsml: post config 4");
   rd->ctx->sched.pid = si.pid;
   rd->ctx->sched.input = si.input;
 
@@ -580,7 +580,7 @@ ppTable (apr_table_entry_t * table, request_data * rd)  //{{{
   for (i = 0; i < ah->nelts; i++)
     {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-        "table entry %i: (key,value) = (%s,%s)", i,
+        "apsml: table entry %i: (key,value) = (%s,%s)", i,
         (((apr_table_entry_t *) ah->elts) + i)->key,
         (((apr_table_entry_t *) ah->elts) + i)->val);
     }
@@ -710,18 +710,18 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   if (rd->request)
     {
       ap_log_rerror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->request,
-		     "mod_sml: pid: %ld, Notice ul-file has time %ld", (long) rd->ctx->pid, (long) t);
+		     "apsml: pid: %ld, Notice ul-file has time %ld", (long) rd->ctx->pid, (long) t);
     }
   else
     {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-		    "mod_sml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
+		    "apsml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
     }
   
   if (t == (time_t) - 1)
     {
       ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
-		    "mod_sml:Err ul-file %s does not exist - web service not working",
+		    "apsml: ul-file %s does not exist - web service not working",
 		    ctx->ulFileName);
       return APSML_ULFILENOTFOUND;
     }
@@ -807,32 +807,32 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
       break;
     default:
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-		    "Internal errpr in mod_sml.c, apsml_processSmlFile called with kind == %d", kind);
+		    "apsml: Internal error in mod_sml.c, apsml_processSmlFile called with kind == %d", kind);
       return APSML_FILENOTFOUND;
       break;
     }
   
   debug_writer1("Starting new file %d\n", 0);
   ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-		"Starting interpreter on file %s, pid: %d", file, rd->ctx->pid);
+		"apsml: Starting interpreter on file %s, pid: %d", file, rd->ctx->pid);
   
   //  globalrd = rd;
   if (interpLoadRun (ctx->interp, file, &errorStr, &ss, &res) != 0)
     {
       ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-		    "Interpretation on file %s went bad, pid: %d", file, rd->ctx->pid);
+		    "apsml: Interpretation on file %s went bad, pid: %d", file, rd->ctx->pid);
       debug_writer1("Stopping new file %d BAD\n", 0);
       return APSML_ERROR;
     }
   ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
-		"Interpretation on file %s was successful, pid: %d", file, rd->ctx->pid);
+		"apsml: Interpretation of file %s was successful, pid: %d", file, rd->ctx->pid);
   debug_writer1("Stopping new file %d GOOD\n", 0);
   
   //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-  //     "Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
+  //     "apsml: Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
   //  if (errorStr)
   //    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-  //       "Interpretation ended on file %s with result %d, errorStr: %s", uo_file, res, errorStr);
+  //       "apsml: Interpretation ended on file %s with result %d, errorStr: %s", uo_file, res, errorStr);
   
   
   if (res < 0)
@@ -840,7 +840,7 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
       if (res == -1)    // exception other than Interrupt raised
 	{
 	  ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-			"%s raised %s", file, errorStr);
+			"apsml: %s raised %s", file, errorStr);
 	}
       free (errorStr);    // free the malloced string 
       errorStr = NULL;    // - and nullify field    

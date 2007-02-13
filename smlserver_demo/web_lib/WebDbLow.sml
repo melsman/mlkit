@@ -58,10 +58,10 @@ signature WEB_DB_BACKEND =
     val getHandle     : int -> DbHandle
     val putHandle     : DbHandle -> unit
     val dmlDb         : DbHandle -> quot -> unit
-	  val execDb        : DbHandle -> quot -> unit
+    val execDb        : DbHandle -> quot -> unit
     val selectDb      : DbHandle -> quot -> (DbResultSet * string list)
-	  val getRowDb      : DbResultSet -> (string -> (string option)) option
-	  val getRowListDb  : DbResultSet -> (string option list) option
+    val getRowDb      : DbResultSet -> (string -> (string option)) option
+    val getRowListDb  : DbResultSet -> (string option list) option
     val getRowListDb2 : DbResultSet -> (string list * (string option list) option)
     val dmlTransDb    : DbHandle -> (DbHandle -> 'a) -> 'a
   end
@@ -98,164 +98,190 @@ functor DbODBCBackend(type conn = foreignptr
     type 'a Type = 'a Info.Type.Type
     structure DbBasic = NsDbBasicPG
     val first = ref true
-    fun config (i:int) (t : 'a Info.Type.Type, d : string, v : 'a) : unit = 
-                           let fun handRes (res : int) = case res 
-                                                     of 0 => ()
-                                                      | 1 => raise Fail "ODBC Driver: Unknown option"
-                                                      | 2 => raise Fail "ODBC Driver: Out of memory"
-                                                      | 3 => raise Fail "ODBC Driver: MaximumNumberOfConnections must be larger than SessionMaxDepth" 
-                                                      | _ => raise Fail "ODBC Driver: Unknown problem in oracle driver"
 
-                           
-                               fun setInt (p : int) : unit = 
-                                     if #name t = #name Info.Type.Int
-                                     then 
-                                     let 
-                                       val res : int = 
-                                        prim("@:", ("apsmlODBCSetVal",i,getReqRec(),p,
-                                                (#from_string Info.Type.Int (#to_string t v))))
-                                       in handRes res
-                                       end
-                                     else raise Domain
-                               fun setString (p : int) : unit = 
-                                     if #name t = #name Info.Type.String
-                                     then 
-                                       let val res : int = prim("@:", ("apsmlODBCSetVal",i,getReqRec(),p,
+    fun config (i:int) (t : 'a Info.Type.Type, d : string, v : 'a) : unit = 
+        let fun handRes (res : int) = 
+		case res of 
+		    0 => ()
+                  | 1 => raise Fail "ODBC Driver: Unknown option"
+                  | 2 => raise Fail "ODBC Driver: Out of memory"
+                  | 3 => raise Fail "ODBC Driver: MaximumNumberOfConnections must be larger than SessionMaxDepth" 
+                  | _ => raise Fail "ODBC Driver: Unknown problem in oracle driver"
+			       
+            fun setInt (p : int) : unit = 
+                if #name t = #name Info.Type.Int
+                then 
+                    let 
+                        val res : int = 
+                            prim("@:", ("apsmlODBCSetVal",i,getReqRec(),p,
+                                        (#from_string Info.Type.Int (#to_string t v))))
+                    in handRes res
+                    end
+                else raise Domain
+
+            fun setString (p : int) : unit = 
+                if #name t = #name Info.Type.String
+                then 
+                    let val res : int = prim("@:", ("apsmlODBCSetVal",i,getReqRec(),p,
                                                     (#from_string Info.Type.String (#to_string t v))))
-                                       in handRes res
-                                       end
-                                     else raise Domain
-                               fun setBool (p : int) : unit = 
-                                     if #name t = #name Info.Type.Bool
-                                     then 
-                                       let val res : int = prim("@:", ("apsmlODBCSetVal",i,getReqRec(),p,
+                    in handRes res
+                    end
+                else raise Domain
+
+            fun setBool (p : int) : unit = 
+                if #name t = #name Info.Type.Bool
+                then 
+                    let val res : int = prim("@:", ("apsmlODBCSetVal",i,getReqRec(),p,
                                                     if (#from_string Info.Type.Bool (#to_string t v))
                                                     then 1 
                                                     else 0))
-                                       in handRes res
-                                       end
-                                     else raise Domain
-                           in ((
-                               if !first then 
-                               (let 
-                                   val b = Dynlib.dlopen (SOME "libsmlodbc.so", Dynlib.NOW, false)
-                                   val _ = 
-                                          (log "Opened libsmlodbc.so, performing resolvation" ;
-                                           Dynlib.dlsym("apsmlODBCGetSession","apsmlODBCGetSession",b);
-                                           Dynlib.dlsym("apsmlODBCDropSession", "apsmlODBCDropSession",b);
-                                           Dynlib.dlsym("DBODBCExecuteSQL", "DBODBCExecuteSQL",b);
-                                           Dynlib.dlsym("apsmlODBCGetCNames", "apsmlODBCGetCNames",b);
-                                           Dynlib.dlsym("apsmlODBCGetRow","apsmlODBCGetRow",b);
-                                           Dynlib.dlsym("DBODBCTransStart", "DBODBCTransStart", b);
-                                           Dynlib.dlsym("DBODBCTransCommit", "DBODBCTransCommit",b);
-                                           Dynlib.dlsym("DBODBCTransRollBack","DBODBCTransRollBack",b);
-                                           Dynlib.dlsym("apsmlODBCSetVal","apsmlODBCSetVal",b);
-                                           log "resolvation done")
-                               in first:=false
-                               end) handle Fail x => (log x; raise Fail x)
-                               else ()
-                              ) ;
-                           case d 
-                           of 
-                              "UserName" => setString 2
-                            | "PassWord" => setString 3
-                            | "DSN"  => setString 4
-                            | "SessionMaxDepth" => setInt 5
-                            | _ => (log "Unknown setting :" ^ d; raise Domain))
-                           end
-    fun getHandle (i:int) : DbHandle = let val res : int = (log "apsmlODBCGetSession" ; prim(":", ("apsmlODBCGetSession",i,getReqRec()))) before (log("apsmlODBCGetSession DONE");())
-                                 in if res = 0
-                                    then raise Fail "ODBC Driver: Could not get database session"
-                                    else (if res = 1 
-                                    then raise Fail "ODBC Driver: Maximum nesting of odbc connections reached"
-                                    else ref (SOME res))
-                                 end
+                    in handRes res
+                    end
+                else raise Domain
+        in ((
+            if !first then 
+                (let 
+                     val b = Dynlib.dlopen (SOME "libsmlodbc.so", Dynlib.NOW, false)
+                     val _ = 
+                         (log "Opened libsmlodbc.so, performing resolvation" ;
+                          Dynlib.dlsym("apsmlODBCGetSession","apsmlODBCGetSession",b);
+                          Dynlib.dlsym("apsmlODBCDropSession", "apsmlODBCDropSession",b);
+                          Dynlib.dlsym("DBODBCExecuteSQL", "DBODBCExecuteSQL",b);
+                          Dynlib.dlsym("apsmlODBCGetCNames", "apsmlODBCGetCNames",b);
+                          Dynlib.dlsym("apsmlODBCGetRow","apsmlODBCGetRow",b);
+                          Dynlib.dlsym("DBODBCTransStart", "DBODBCTransStart", b);
+                          Dynlib.dlsym("DBODBCTransCommit", "DBODBCTransCommit",b);
+                          Dynlib.dlsym("DBODBCTransRollBack","DBODBCTransRollBack",b);
+                          Dynlib.dlsym("apsmlODBCSetVal","apsmlODBCSetVal",b);
+                          log "resolvation done")
+                 in first:=false
+                 end) handle Fail x => (log x; raise Fail x)
+            else ()
+            ) ;
+            case d of 
+                "UserName" => setString 2
+              | "PassWord" => setString 3
+              | "DSN"  => setString 4
+              | "SessionMaxDepth" => setInt 5
+              | _ => (log "Unknown setting :" ^ d; raise Domain))
+        end
+	
+    fun getHandle (i:int) : DbHandle = 
+	let val res : int = (log "apsmlODBCGetSession" ; 
+			     prim(":", ("apsmlODBCGetSession",i,getReqRec()))) 
+			    before (log("apsmlODBCGetSession DONE");())
+        in if res = 0
+           then raise Fail "ODBC Driver: Could not get database session"
+           else (if res = 1 
+                 then raise Fail "ODBC Driver: Maximum nesting of odbc connections reached"
+                 else ref (SOME res))
+        end
+
     fun putHandle (h:DbHandle) : unit = 
-               case !h of NONE => ()
-                        | SOME  r => (log "apsmlODBCDropSession" ; prim(":", ("apsmlODBCDropSession",r : int,getReqRec()));
-                                      h:= NONE)
+        case !h of 
+	    NONE => ()
+          | SOME  r => (log "apsmlODBCDropSession" ; 
+			prim(":", ("apsmlODBCDropSession",r : int,getReqRec()));
+                        h:= NONE)
+		       
     fun dmlDb (h : DbHandle) q : unit = 
-       case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
-                | SOME r => let
-                              val sql = Quot.toString q
-                              val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_DML")
-                                      of SOME true => ignore (log sql)
-                                       | _ => () 
-                              val  res : int = prim("@:", ("DBODBCExecuteSQL",r : int, sql : string, getReqRec()))
-                            in if res <> 2
-                               then (* not DBDml *) 
-                                  raise Fail ("ODBC Driver: dml: " ^ Quot.toString q ^ " failed")
-                               else ()
-                            end
+       case !h of 
+	   NONE => raise Fail "ODBC Driver: Abuse, session closed"
+         | SOME r => 
+	   let
+               val sql = Quot.toString q
+               val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_DML") of 
+			   SOME true => ignore (log ("ODBC Driver: dml: " ^ sql))
+			 | _ => () 
+               val  res : int = prim("@:", ("DBODBCExecuteSQL",r : int, sql : string, getReqRec()))
+           in if res <> 2
+              then (* not DBDml *) 
+                  raise Fail ("ODBC Driver: dml: " ^ sql ^ " failed")
+              else ()
+           end
+	   
     fun execDb (h : DbHandle) q : unit = 
-       case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
-                | SOME r => let
-                              val sql = Quot.toString q
-                              val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_EXEC")
-                                      of SOME true => ignore (log sql)
-                                       | _ => () 
-                              val res : int = prim("@:", ("DBODBCExecuteSQL",r,sql:string, getReqRec()))
-                            in if res = 0
-                               then (* DBError *) 
-                                  raise Fail ("ODBC Driver: exec: " ^ sql ^ " failed")
-                               else ()
-                            end
+       case !h of 
+	   NONE => raise Fail "ODBC Driver: Abuse, session closed"
+         | SOME r => 
+	   let
+               val sql = Quot.toString q
+               val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_EXEC")
+                        of SOME true => ignore (log ("ODBC Driver: exec: " ^ sql))
+                         | _ => () 
+               val res : int = prim("@:", ("DBODBCExecuteSQL",r,sql:string, getReqRec()))
+           in if res = 0
+              then (* DBError *) 
+                  raise Fail ("ODBC Driver: exec: " ^ sql ^ " failed")
+              else ()
+           end
+
     val toLower = String.map Char.toLower
+
     fun selector ([] : string list)  ([] : string option list)  (x : string) = NONE : string option
       | selector [] (r::rr) x = raise Fail "ODBC Driver: ODBC driver corruption"
       | selector (h::hr) [] x = raise Fail "ODBC Driver: ODBC driver corruption" 
       | selector (h::hr) (r::rr) x = if String.compare(toLower x, h) = EQUAL then r else selector hr rr x
+
     fun selectDb' (h : DbHandle) q = 
-       case !h of NONE => raise Fail "ODBC Driver: Abuse, session closed"
-                | SOME r => 
-        let
-          val sql = Quot.toString q
-          val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_SELECT")
-                  of SOME true => ignore (log sql)
-                   | _ => () 
-          val res : int = (log "DBODBCExecuteSQL" ; prim("@:",("DBODBCExecuteSQL",r, sql:string, getReqRec())))
+	case !h of 
+	    NONE => raise Fail "ODBC Driver: Abuse, session closed"
+          | SOME r => 
+	    let
+		val sql = Quot.toString q
+		val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_SELECT")
+			 of SOME true => ignore (log ("ODBC Driver: select: " ^ sql))
+			  | _ => () 
+		val res : int = (log "DBODBCExecuteSQL" ; prim("@:",("DBODBCExecuteSQL",r, sql:string, getReqRec())))
             (*  val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`) *)
-          in case res of 1 => (*DBData*) 
-                             (let val res2 : string list = (log "apsmlODBCGetCNames" ;prim(":", ("apsmlODBCGetCNames",r,getReqRec())))
-                                  val res3 = List.map toLower (List.rev res2)
-                              in ((h, selector res3, res3),res3)
-                              end handle Overflow => 
-                                     raise Fail "ODBC Driver: selectDb.Database connection failed")
-                       | 2 => raise Fail "ODBC Driver: selectDb: SQL was not a select statement"
-                       | _ => raise Fail "ODBC Driver: selectDb: An error occured"
-          end
+            in case res of 1 => (*DBData*) 
+                           (let val res2 : string list = (log "apsmlODBCGetCNames" ;prim(":", ("apsmlODBCGetCNames",r,getReqRec())))
+                                val res3 = List.map toLower (List.rev res2)
+                            in ((h, selector res3, res3),res3)
+                            end handle Overflow => 
+                                       raise Fail "ODBC Driver: selectDb.Database connection failed")
+			 | 2 => raise Fail "ODBC Driver: selectDb: SQL was not a select statement"
+			 | _ => raise Fail "ODBC Driver: selectDb: An error occured"
+            end
+
     val toOption = List.rev o (List.map (fn [] => NONE | l as (_::_) => SOME(String.concat (List.rev l))))
 
-    fun getRowListDb (h,f,l) = case !h of NONE => raise Fail "ODBC Driver: Abuse, session is closed"
-                                        | SOME r => 
-                             let val (res,res2) : ((string list) list * int) = (log "apsmlODBCGetRow" ; prim(":", ("apsmlODBCGetRow",r,getReqRec())))
-                             in 
-                             case res2 of 1 => SOME (toOption res)
-                                        | 3 => NONE
-                                        | i => raise Fail ("ODBC Driver: getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
-                             end 
+    fun getRowListDb (h,f,l) = 
+	case !h of 
+	    NONE => raise Fail "ODBC Driver: Abuse, session is closed"
+          | SOME r => 
+            let val (res,res2) : ((string list) list * int) = (log "apsmlODBCGetRow" ; prim(":", ("apsmlODBCGetRow",r,getReqRec())))
+            in 
+                case res2 of 1 => SOME (toOption res)
+                           | 3 => NONE
+                           | i => raise Fail ("ODBC Driver: getRowListDb.Database connection failed with error: " ^ (Int.toString i)) 
+            end 
 
     fun getRowListDb2 (h,f,l) = (l,getRowListDb(h,f,l))
 
     fun selectDb x y = (selectDb' x y) handle Fail z => (log z; raise Fail z)
+
     val getRowDb = fn (h,f,l) => (Option.map f (getRowListDb (h,f,l))) handle Fail z => (log z; raise Fail z)
                                      
-    fun dmlTransDb h f = case !h of NONE => raise Fail "ODBC Driver: Abuse, session is closed"
-                                  | SOME r => let val _ = log("TransStart")
-                                                  val res : int = prim("@:", ("DBODBCTransStart",r : int, getReqRec()))
-                                              in if res = 0 
-                                                 then raise Fail "ODBC Driver: Transaction already started"
-                                                 else 
-                    (((f h) handle X => (log "TransRollBack"; prim("@:", ("DBODBCTransRollBack",r : int, getReqRec())) : int; raise X)) before ( 
-                         case !h of NONE => raise Fail "ODBC Driver: Session closed prematurely"
-                                  | SOME r2 => let val _ = log "TransCommit"
-                                                   val res2 : int = prim("@:", ("DBODBCTransCommit",r : int,getReqRec()))
-                                               in if res2 <> 2 (* DBDml *) 
-                                                  then raise Fail "ODBC Driver: dmlTransDb.Database connection failed"
-                                                  else ()
-                                               end))
-                                               end
-                                                  
+    fun dmlTransDb h f = 
+	case !h of 
+	    NONE => raise Fail "ODBC Driver: Abuse, session is closed"
+          | SOME r => 
+	    let val _ = log("TransStart")
+                val res : int = prim("@:", ("DBODBCTransStart",r : int, getReqRec()))
+            in if res = 0 
+               then raise Fail "ODBC Driver: Transaction already started"
+               else 
+		   (((f h) handle X => (log "TransRollBack"; prim("@:", ("DBODBCTransRollBack",r : int, getReqRec())) : int; raise X)) before ( 
+                    case !h of 
+			NONE => raise Fail "ODBC Driver: Session closed prematurely"
+                      | SOME r2 => let val _ = log "TransCommit"
+                                       val res2 : int = prim("@:", ("DBODBCTransCommit",r : int,getReqRec()))
+                                   in if res2 <> 2 (* DBDml *) 
+                                      then raise Fail "ODBC Driver: dmlTransDb.Database connection failed"
+                                      else ()
+                                   end))
+            end            
   end
 
 

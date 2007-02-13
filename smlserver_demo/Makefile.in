@@ -13,7 +13,10 @@ MKDIR=@top_srcdir@/mkinstalldirs
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 
-.PHONY: install
+.PHONY: install all
+
+all:
+	$(MAKE) -C www
 
 install:
 	$(MKDIR) $(LIBDIR)/web_lib

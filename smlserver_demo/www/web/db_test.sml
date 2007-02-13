@@ -1,3 +1,16 @@
+val _ = Web.return
+`<html>
+  <head><title>Testing WEB_DB</title></head>
+  <body><h2>Testing the Database Interface (signature WEB_DB)</h2>
+
+The script sends a series of SQL statements to the database;
+the result is shown below.<p>
+
+<b>Notice:</b> If you are using MySQL, errors in
+the sections testing <i>sequences</i>, <i>panicDmlTrans</i>, and
+<i>dmlTrans</i> are expected due to the lack of sequences 
+and transactions in MySQL.<p>`
+
 infix 1 seq
 
 local
@@ -11,7 +24,9 @@ in
     else
       "<b>There were " ^ (Int.toString (!errs)) ^ " error(s).</b>"
   fun e1 seq e2 = e2;
-  fun tst0 s s' = (s ^ "    \t" ^ s' ^ "\n")
+  fun tst0 s s' = let val str = s ^ " &mdash; " ^ s' 
+		  in Web.log(Web.Notice,str); Web.Conn.write(str ^ "<br>\n")
+		  end
   fun tstOk s f = tst0 s ((f () seq "OK") handle Fail s => add_err' s | _ => add_err())
   fun tstBool s f = tst0 s ((if f () then "OK" else add_err' "false") handle Fail s => add_err' s | _ => add_err())
   fun tstFail s f = tst0 s ((f () seq add_err()) handle Fail s => "OK - " ^ s | _ => add_err())
@@ -19,37 +34,7 @@ end
 
 fun log x = Web.log(Web.Debug, x)
 
-fun ppTestRes [] = ""
-  | ppTestRes (x::xs) = x ^ "<br>\n" ^ (ppTestRes xs)
-
-(*
-<h1>Testing the <code>NS_POOL</code> interface</h1>
-
-The following pools are available: <b>^(Db.Handle.Pool.pp())</b>. <p>
-^(ppTestRes poolTest)
-
-(*** Testing Pools ***)
-local
-  val pp = Db.Handle.Pool.pp()
-  val pools = Db.Handle.Pool.toList()
-in
-  val poolTest = 
-    [(* fetch all pools *)
-     tstBool "poolA1" (fn () => List.map (fn _ => Db.Handle.Pool.getPool ()) pools = pools),
-     (* there are no more pools *)
-     tstBool "poolA2" (fn () => Db.Handle.Pool.toList () = []),
-     (* fail on fetching yet another pool *)
-     tstFail "poolA3" (fn () => Db.Handle.Pool.getPool()),
-     (* put pools back into the set of pools *)
-     tstOk "poolA4" (fn () => List.app Db.Handle.Pool.putPool (List.rev pools)),
-     (* all pools are available again. *)
-     tstBool "poolA5" (fn () => Db.Handle.Pool.toList() = pools),
-     (* pretty print pools *)
-     tstBool "poolA6" (fn () => Db.Handle.Pool.pp() = pp)]
-end
-*)
-
-(*** Testing dml ***)
+val _ = Web.write `<h2>The function <code>dml</code></h2>`
 val dmlTest =
   [tstOk "dmlA1" (fn () =>Db.dml `create table db_test ( id int primary key )`),
    (* Creating the same table again should fail *)
@@ -68,7 +53,7 @@ val dmlTest =
    (* Dropping the same table again should fail *)
    tstFail "dmlE2" (fn () => Db.dml `drop table db_test`)]
 
-(*** Testing maybeDml ***)
+val _ = Web.write `<h2>The function <code>maybeDml</code></h2>`
 val maybeDmlTest =
   [tstBool "maybeDmlA1" (fn () =>Db.maybeDml `create table db_test ( id int primary key )` = ()),
    (* Creating the same table again should fail but () is returned*)
@@ -88,7 +73,7 @@ val maybeDmlTest =
    (* Dropping the same table again should fail, but error is suppressed *)
    tstBool "maybeDmlE2" (fn () => Db.maybeDml `drop table db_test` = ())]
 
-(*** Testing panicDml ***)
+val _ = Web.write `<h2>The function <code>panicDml</code></h2>`
 local
   val f_count = ref 0
   fun f_panic _ = f_count := !f_count + 1
@@ -114,7 +99,7 @@ in
      tstBool "panicDmlE2" (fn () => panicDml `drop table db_test` = () andalso !f_count = 4)]
 end
 
-(*** Testing dmlTrans ***)
+val _ = Web.write `<h2>The function <code>dmlTrans</code></h2>`
 val dmlTransTest =
   let
     fun db_testL () = let val a = Db.list (fn g => g "id") `select id from db_test order by id` 
@@ -142,7 +127,7 @@ val dmlTransTest =
      tstBool "dmlTransA7" (fn () => db_testL() = ["3","4","5"])]
   end
 
-(*** Testing panicDmlTrans ***)
+val _ = Web.write `<h2>The function <code>panicDmlTrans</code></h2>`
 val panicDmlTransTest =
   let
     fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
@@ -174,7 +159,7 @@ val panicDmlTransTest =
      tstBool "panicDmlTransA7" (fn () => db_testL() = ["3","4","5"])]
   end
 
-(*** Testing fold ***)
+val _ = Web.write `<h2>The function <code>fold</code></h2>`
 val foldTest =
   [tstOk "delete" (fn () => Db.dml `delete from db_test`),
    tstOk "insert" (fn () => Db.dml `insert into db_test values ('3')`),
@@ -190,7 +175,7 @@ val foldTest =
    tstBool "foldA3" (fn () => Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`) ``
 					     `select id from db_test where id > 40 order by id`, ``))]
 
-(*** Testing list ***)
+val _ = Web.write `<h2>The function <code>list</code></h2>`
 val listTest = 
   [tstBool "listA1" (fn () => Db.list (fn g => g "id") `select id from db_test order by id` = ["3","4","5"]),
    (* Syntax Error *)
@@ -198,7 +183,7 @@ val listTest =
    (* Empty Result *)
    tstBool "listA3" (fn () => Db.list (fn g => g "id") `select id from db_test where id > 40 order by id` = [])]
 
-(*** Testing app ***)
+val _ = Web.write `<h2>The function <code>app</code></h2>`
 val appTest = 
 let
   val f_count = ref 0
@@ -213,7 +198,7 @@ in
 			      !f_count = 12))]
 end
 
-(*** Testing oneFieldDb ***)
+val _ = Web.write `<h2>The function <code>oneField</code></h2>`
 val oneFieldTest =
   [tstBool "oneFieldA1" (fn () => Db.oneField (`select id from db_test where id = '3'`) = "3"),
    (* Fail on zero rows *)
@@ -225,7 +210,7 @@ val oneFieldTest =
    (* Fail on more that one field*)
    tstFail "oneFieldA5" (fn () => Db.oneField (`select id, id+id as idd from db_test where id > '3'`))]
 
-(*** Testing zeroOrOneFieldDb ***)
+val _ = Web.write `<h2>The function <code>zeroOrOneField</code></h2>`
 val zeroOrOneFieldTest =
   [(* One row, one field *)
    tstBool "zeroOrOneFieldA1" (fn () => Db.zeroOrOneField (`select id from db_test where id = '3'`) = SOME "3"),
@@ -240,7 +225,7 @@ val zeroOrOneFieldTest =
    (* Fail on one row and more that one field *)
    tstFail "zeroOrOneFieldA6" (fn () => Db.zeroOrOneField (`select id, id+id as idd from db_test where id = '3'`))]
 
-(*** Testing oneRowDb ***)
+val _ = Web.write `<h2>The function <code>oneRow</code></h2>`
 val oneRowTest =
   [(* One row, one field *)
    tstBool "oneRowA1" (fn () => Db.oneRow (`select id from db_test where id = '3'`) = ["3"]),
@@ -253,7 +238,7 @@ val oneRowTest =
    (* One row, two fields *)
    tstBool "oneRowA5" (fn () => Db.oneRow (`select id, id+id as idd from db_test where id = '3'`) = ["3","6"])]
 
-(*** Testing oneRowDb' ***)
+val _ = Web.write `<h2>The function <code>oneRow'</code></h2>`
 val oneRow'Test =
   [(* One row, one field *)
    tstBool "oneRow'A1" (fn () => Db.oneRow' (fn g => g "id") `select id from db_test where id = '3'` = "3"),
@@ -267,7 +252,7 @@ val oneRow'Test =
    tstBool "oneRow'A5" (fn () => Db.oneRow' (fn g => (g "id", g "idd")) 
 			`select id, id+id as idd from db_test where id = '3'` = ("3","6"))]
 
-(*** Testing zeroOrOneRowDb ***)
+val _ = Web.write `<h2>The function <code>zeroOrOneRow</code></h2>`
 val zeroOrOneRowTest =
   [(* One row *)
    tstBool "zeroOrOneRowA1" (fn () => Db.zeroOrOneRow (`select id from db_test where id = '3'`) = SOME ["3"]),
@@ -280,7 +265,7 @@ val zeroOrOneRowTest =
    (* One row, two fields *)
    tstBool "zeroOrOneRowA5" (fn () => Db.zeroOrOneRow (`select id, id+id as idd from db_test where id = '3'`) = SOME ["3","6"])]
 
-(*** Testing zeroOrOneRowDb' ***)
+val _ = Web.write `<h2>The function <code>zeroOrOneRow'</code></h2>`
 val zeroOrOneRow'Test =
   [(* One row *)
    tstBool "zeroOrOneRow'A1" (fn () => Db.zeroOrOneRow' (fn g => g "id") `select id from db_test where id = '3'` = SOME "3"),
@@ -294,7 +279,7 @@ val zeroOrOneRow'Test =
    tstBool "zeroOrOneRow'A5" (fn () => Db.zeroOrOneRow' (fn g => (g "id",g "idd")) `select id, id+id as idd from db_test where id = '3'` 
 			      = SOME ("3","6"))]
 
-(*** Testing existsOneRowDb ***)
+val _ = Web.write `<h2>The function <code>existsOneRow</code></h2>`
 val existsOneRowTest =
   [(* Zero rows *)
    tstBool "existsOneRowA1" (fn () => Db.existsOneRow `select id from db_test where id > '40'` = false),
@@ -305,7 +290,7 @@ val existsOneRowTest =
    (* Fail on zero fields, syntax error *)
    tstFail "existsOneRowA4" (fn () => Db.existsOneRow `select from db_test where id > '3'`)]
 
-(*** Testing sequences ***)
+val _ = Web.write `<h2>Sequences</h2>`
 val seqTest =
   let
     fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
@@ -323,7 +308,7 @@ val seqTest =
      tstOk "drop table" (fn () => Db.dml `drop table db_test`)]
   end
 
-(*** Testing Various Functions ***)
+val _ = Web.write `<h2>Various Functions</h2>`
 val miscTest =
   let
     val d = Date.fromTimeLocal(Time.now())
@@ -360,74 +345,13 @@ val miscTest =
      tstBool "setList" (fn () => Db.oneField `select t from db_test` = "'h'i'")]
   end
 
-(*** End of test ***)
+val _ = Web.write `<h2>Table Dropping</h2>`
+
 val dmlTransE1 = tstOk "dmlTransE1" (fn () => Db.dml `drop table db_test`)
 
-val _ = Page.return "Testing the Database Interface (signature NS_DB)" `
+val _ = Web.write `<h2>Summary</h2>^(pp_errs())<p>`
 
-The script sends a series of SQL statements to the database;
-the result is shown below.<p>
-
-^(pp_errs())<p>
-
-<b>Notice:</b> If you are using MySQL, errors in
-the sections testing <i>sequences</i>, <i>panicDmlTrans</i>, and
-<i>dmlTrans</i> are expected due to the lack of sequences 
-and transactions in MySQL.<p>
-
-<h1>Testing the <code>NS_DB</code> interface</h1>
-
-<h2>The function <code>dml</code></h2>
-^(ppTestRes dmlTest)
-
-<h2>The function <code>maybeDml</code></h2>
-^(ppTestRes maybeDmlTest)
-
-<h2>The function <code>panicDml</code></h2>
-^(ppTestRes panicDmlTest)
-
-<h2>The function <code>dmlTrans</code></h2>
-^(ppTestRes dmlTransTest)
-
-<h2>The function <code>panicDmlTrans</code></h2>
-^(ppTestRes panicDmlTransTest)
-
-<h2>The function <code>fold</code></h2>
-^(ppTestRes foldTest)
-
-<h2>The function <code>list</code></h2>
-^(ppTestRes listTest)
-
-<h2>The function <code>app</code></h2>
-^(ppTestRes appTest)
-
-<h2>The function <code>oneField</code></h2>
-^(ppTestRes oneFieldTest)
-
-<h2>The function <code>zeroOrOneField</code></h2>
-^(ppTestRes zeroOrOneFieldTest)
-
-<h2>The function <code>oneRow</code></h2>
-^(ppTestRes oneRowTest)
-
-<h2>The function <code>oneRow'</code></h2>
-^(ppTestRes oneRow'Test)
-
-<h2>The function <code>zeroOrOneRow</code></h2>
-^(ppTestRes zeroOrOneRowTest)
-
-<h2>The function <code>zeroOrOneRow'</code></h2>
-^(ppTestRes zeroOrOneRow'Test)
-
-<h2>The function <code>existsOneRow</code></h2>
-^(ppTestRes existsOneRowTest)
-
-<h2>Testing sequences</h2>
-^(ppTestRes seqTest)
-
-<h2>Testing Various Functions</h2>
-^(ppTestRes miscTest)
-
-<h2>Dropping test table</h2>
-^dmlTransE1<br>
-`
+val _ = Web.write 
+`<hr><i>Served by <a href=http://www.smlserver.org>SMLserver</a></i>,
+<i><a href="/web/index.sml">Back to index page</a>.</i>
+</body></html>`
