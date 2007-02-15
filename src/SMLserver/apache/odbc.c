@@ -45,7 +45,7 @@ typedef struct
 {
   SQLHENV envhp;
   int dbid;
-  unsigned char msg[MAXMSG];
+  char msg[MAXMSG];
   void *freeSessionsGlobal;
   unsigned int number_of_sessions;
   unsigned char about_to_shutdown; // != 0 if we are shutting this environment down
@@ -65,16 +65,16 @@ typedef struct oSes
   oDb_t *db;
   enum COMMIT_MODE mode;
   int *datasizes;
-  unsigned char *rowp;
+  char *rowp;
   int rowpSize;
-  unsigned char msg[MAXMSG];
+  char msg[MAXMSG];
 } oSes_t;
 
 typedef struct
 {
-  unsigned char *DSN;
-  unsigned char *username;
-  unsigned char *password;
+  char *DSN;
+  char *username;
+  char *password;
   thread_lock tlock;
   cond_var cvar;
   int maxdepth;
@@ -106,7 +106,7 @@ typedef struct
 }
 
 static SQLRETURN
-putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char *msg, int msgLength, void *ctx)/*{{{*/
+putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, int msgLength, void *ctx)/*{{{*/
 {
   int i;
   SQLCHAR SQLstate_ptr[] = "123456"; // space for 5 characters in code
@@ -137,7 +137,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
           }
         }
         i++;
-        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, SQLstate_ptr, &naterrptr, msg,
+        status = SQLGetDiagRec(handletype, handle, (SQLSMALLINT) i, SQLstate_ptr, &naterrptr, (SQLCHAR *) msg,
                                msgLength - 1, &msgl);
 	// dblog2(ctx,"status = ", status);
 	// dblog1(ctx,"SQLstate = ");
@@ -157,7 +157,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
           if (msgl < msgLength)
           {
             msg[msgl] = 0;
-            dblog1(ctx, (char *) msg);
+            dblog1(ctx, msg);
           }
           else
           {
@@ -165,7 +165,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
           }
         }
         i++;
-        status = SQLGetDiagRec(handletype, handle, i, SQLstate_ptr, &naterrptr, msg, 
+        status = SQLGetDiagRec(handletype, handle, i, SQLstate_ptr, &naterrptr, (SQLCHAR *) msg, 
                                msgLength - 1, &msgl);
 	// dblog2(ctx,"status = ", status);
 	// dblog2(ctx,"msgl = ", msgl);
@@ -183,7 +183,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, unsigned char
 }/*}}}*/
 
 static oDb_t * 
-DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char *password, int dbid)/*{{{*/
+DBinitConn (void *ctx, SQLCHAR *DSN, SQLCHAR *userid, SQLCHAR *password, int dbid)/*{{{*/
 {
   SQLRETURN status;
   oDb_t *db;
@@ -221,7 +221,7 @@ DBinitConn (void *ctx, unsigned char *DSN, unsigned char *userid, unsigned char 
   ErrorCheck(status, SQL_HANDLE_ENV, SQL_NULL_HANDLE, db->msg,
       dblog1(ctx, "Connection pooling setup failed");
       return NULL;,
-      ctx
+      (SQLCHAR *) ctx
       )
   status = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &db->envhp);
   ErrorCheck(status, SQL_HANDLE_ENV, db->envhp, db->msg,
@@ -391,7 +391,7 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 }/*}}}*/
 
 int
-DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
+DBODBCExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 {
   // dblog1(ctx, "Enter: DBODBCExecuteSQL");
   if (ses == NULL || sql == NULL) return DBError;
@@ -406,7 +406,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
   ses->needsClosing = 0;
   // dblog1(ctx, "Executing:");
   // dblog1(ctx, sql);
-  status = SQLExecDirect(ses->stmthp, sql, SQL_NTS);
+  status = SQLExecDirect(ses->stmthp, (SQLCHAR *) sql, SQL_NTS);
   // dblog1(ctx, "After SQLExecDirect");
   // dblog2(ctx, "status = ", (int)status);
   // dblog2(ctx, "SQL_SUCCESS = ", SQL_SUCCESS);
@@ -458,7 +458,7 @@ DBODBCExecuteSQL (oSes_t *ses, unsigned char *sql, void *ctx)/*{{{*/
 }/*}}}*/
 
 static void *
-DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char *), 
+DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *), 
                  void **columnCtx, void *ctx)/*{{{*/
 {
   SQLSMALLINT i;
@@ -501,7 +501,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, unsigned char
 }/*}}}*/
 
 static int
-DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int), 
+DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int), 
           void **rowCtx, void *ctx)/*{{{*/
 {
   unsigned int n;
@@ -514,7 +514,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
   if (!ses->rowp) 
   {
     for (i=1; i <= n; i++) size = MAX(ses->datasizes[i],size);
-    ses->rowp = (unsigned char *) malloc(size+1+sizeof(SQLINTEGER) + MAXMSG);
+    ses->rowp = (char *) malloc(size+1+sizeof(SQLINTEGER) + MAXMSG);
 //    dblog2(ctx, "DBGetRow size", size);
     if (!ses->rowp)
     {
@@ -600,7 +600,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, unsigned char *, unsigned int)
   return DBData;
 }/*}}}*/
 
-int 
+uintptr_t 
 DBODBCTransStart (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -614,7 +614,7 @@ DBODBCTransStart (oSes_t *ses, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-int
+uintptr_t
 DBODBCTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -635,7 +635,7 @@ DBODBCTransCommit (oSes_t *ses, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-int 
+uintptr_t 
 DBODBCTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -663,7 +663,7 @@ DBODBCTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-static int
+static uintptr_t
 DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -709,7 +709,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
   return DBEod;
 }/*}}}*/
 
-int
+uintptr_t
 apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
@@ -874,8 +874,8 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
       return NULL;
     }
     dblog1(rd, "Initializing database connection");
-    dbc->dbspec = DBinitConn(rd, dbc->DSN, dbc->username, 
-                                    dbc->password, dbid);
+    dbc->dbspec = DBinitConn(rd, (SQLCHAR *) dbc->DSN, (SQLCHAR *) dbc->username, 
+                                    (SQLCHAR *) dbc->password, dbid);
 //    dblog1(rd, "Database initialization call done");
   }
   if (!dbc->dbspec)
@@ -976,7 +976,7 @@ int
 apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
 {
   int id;
-  unsigned char *sd, *target;
+  char *sd, *target;
   db_conf *cd;
 //  dblog1(rd, "apsmlORASetVal");
   cd = (db_conf *) apsmlGetDBData (i,rd);
@@ -1017,10 +1017,10 @@ apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
     case 2:
     case 3:
     case 4:
-      sd = (unsigned char *) val;
-      target = (unsigned char *) malloc (strlen ((char *) sd)+1);
+      sd = (char *) val;
+      target = (char *) malloc (strlen (sd)+1);
       if (!target) return 2;
-      strcpy((char *) target,(char *) sd);
+      strcpy(target, sd);
       switch (pos)
       {
         case 2:
@@ -1050,25 +1050,25 @@ typedef struct/*{{{*/
   Region rList1Addr;
   Region rStringAddr;
   Region rList2Addr;
-  int *list1;
-  int *list2;
+  uintptr_t *list1;
+  uintptr_t *list2;
 } cNames_t;/*}}}*/
 
 static void *
-dumpCNames (void *ctx1, int pos, SQLSMALLINT length, unsigned char *data)/*{{{*/
+dumpCNames (void *ctx1, int pos, SQLSMALLINT length, char *data)/*{{{*/
 {
   String rs;
-  int *pair;
+  uintptr_t *pair;
   cNames_t *ctx = (cNames_t *) ctx1;
   rs = convertBinStringToML(ctx->rStringAddr, length, data);
   allocRecordML(ctx->rList1Addr, 2, pair);
-  first(pair) = (int) rs;
-  second(pair) = (int) ctx->list1;
+  first(pair) = (uintptr_t) rs;
+  second(pair) = (uintptr_t) ctx->list1;
   makeCONS(pair, ctx->list1);
   return ctx;
 }/*}}}*/
 
-int
+uintptr_t
 apsmlODBCGetCNames(Region rList1Addr, Region rStringAddr, oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
@@ -1080,23 +1080,23 @@ apsmlODBCGetCNames(Region rList1Addr, Region rStringAddr, oSes_t *ses, void *rd)
   if (DBGetColumnInfo(ses, dumpCNames, (void **) &cn, rd) == NULL)
   {
     raise_overflow();
-    return (int) cn1.list1;
+    return (uintptr_t) cn1.list1;
   }
-  return (int) cn1.list1;
+  return (uintptr_t) cn1.list1;
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, SQLLEN data1, unsigned char *data2, unsigned int next)/*{{{*/
+dumpRows(void *ctx1, SQLLEN data1, char *data2, unsigned int next)/*{{{*/
 {
   String rs;
-  int *pair, *pair2;
+  uintptr_t *pair, *pair2;
   cNames_t *ctx = (cNames_t *) ctx1;
   if (next)
   {
     allocRecordML(ctx->rList2Addr, 2, pair2);
     rs = convertStringToML(ctx->rStringAddr, data2);
-    first(pair2) = (int) rs;
-    second(pair2) = (int) ctx->list2;
+    first(pair2) = (uintptr_t) rs;
+    second(pair2) = (uintptr_t) ctx->list2;
     makeCONS(pair2, ctx->list2);
     return ctx;
   }
@@ -1111,24 +1111,24 @@ dumpRows(void *ctx1, SQLLEN data1, unsigned char *data2, unsigned int next)/*{{{
     {
       allocRecordML(ctx->rList2Addr, 2, pair2);
       rs = convertStringToML(ctx->rStringAddr, data2);
-      first(pair2) = (int) rs;
-      second(pair2) = (int) ctx->list2;
+      first(pair2) = (uintptr_t) rs;
+      second(pair2) = (uintptr_t) ctx->list2;
       makeCONS(pair2, ctx->list2);
     }
-    first(pair) = (int) ctx->list2;
+    first(pair) = (uintptr_t) ctx->list2;
     makeNIL(ctx->list2);
-    second(pair) = (int) ctx->list1;
+    second(pair) = (uintptr_t) ctx->list1;
     makeCONS(pair, ctx->list1);
   }
   return ctx;
 }/*}}}*/
 
-int
-apsmlODBCGetRow(int vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, Region rAddrString, 
+uintptr_t
+apsmlODBCGetRow(uintptr_t vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, Region rAddrString, 
             oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
-  int res;
+  uintptr_t res;
   cNames_t *cn = &cn1;
   cn->rList1Addr = rAddrL1Pairs;
   cn->rStringAddr = rAddrString;
@@ -1136,7 +1136,7 @@ apsmlODBCGetRow(int vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, Region 
   makeNIL(cn->list1);
   makeNIL(cn->list2);
   res = DBGetRow(ses, dumpRows, (void **) &cn, rd);
-  first(vAddrPair) = (int) cn1.list1;
+  first(vAddrPair) = (uintptr_t) cn1.list1;
   second(vAddrPair) = res;
   return vAddrPair;
 }/*}}}*/
