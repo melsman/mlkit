@@ -78,9 +78,6 @@ kkb_eq.sml              tx tc
 kkb36c.sml              tx tc 
 kitsimple.sml           tx tc 
 fft.sml                 tx tc 
-vliw.sml                tx tc 
-lexgen.sml              tx tc 
-mlyacc.mlb              tx tc 
 logic.mlb               tx tc 
 barnes-hut.mlb          tx tc 
 nucleic.mlb             tx tc 

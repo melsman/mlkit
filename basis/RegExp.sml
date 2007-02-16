@@ -1,4 +1,6 @@
-(* Copyright (c) 2001, Ken Friis Larsen, Martin Elsman *)
+(* Copyright (c) 2001, Ken Friis Larsen, Martin Elsman
+ * License: MIT-license *)
+
 (* NFA implementation of regular expression matching by Ken Friis
  * Larsen. Support for regular expression classes and parenthesis
  * extraction by Martin Elsman. mael 2001-09-29. *)

@@ -8,6 +8,10 @@ File NEWS_SMLSERVER
    services and to call XMLrpc services using SMLserver. This work is
    primarily due to Martin Olsen (mol@itu.dk).
 
+ * mael 2007-02-05: WEB signature changes: Web.return, Web.write,
+   Web.returnRedirect, Web.Conn.write, Web.Conn.return (and friends)
+   now have return type unit.
+
  * mael 2007-02-05: SMLserver has now moved from AOLserver to Apache,
    due to work by Carsten Varming (varming@cmu.edu). Many new features
    have been added.
