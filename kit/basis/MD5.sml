@@ -1,8 +1,7 @@
 (* Copyright (C) 2001 Daniel Wang. All rights reserved.
  * Derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm.
- *
- * From SML/NJ (BSD/MIT License)
- *
+ * Taken from the MLton whole program Standard ML compiler; see the file
+ * doc/license/MLton-LICENSE for license information.
  *)
 signature MD5 =
   sig

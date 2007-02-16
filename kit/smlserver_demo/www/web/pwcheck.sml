@@ -1,3 +1,4 @@
+(* uses cracklib2 deb package *)
 
 fun isNullFP (x : foreignptr) = prim("__is_null",x) : bool
 
