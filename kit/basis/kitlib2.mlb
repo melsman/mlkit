@@ -4,17 +4,20 @@ local
   basis ListUtil = bas LISTSORT.sml Listsort.sml end
   basis Polyhash = bas POLYHASH.sml Polyhash.sml end
 
-  basis SetsAndMaps = 
-    let basis Splay = 
-          let SPLAYTREE.sml Splaytree.sml
-          in bas SPLAYMAP.sml Splaymap.sml SPLAYSET.sml Splayset.sml end
-          end
-        basis BinMap = 
-          bas BINARYMAP.sml Binarymap.sml INTMAP.sml Intmap.sml end
-        basis BinSet = 
-          bas BINARYSET.sml INTSET.sml Binaryset.sml Intset.sml end
-    in bas open Splay BinMap BinSet end
+  local
+    local SPLAYTREE.sml Splaytree.sml
+    in
+       basis Splay = 
+         bas SPLAYMAP.sml Splaymap.sml SPLAYSET.sml Splayset.sml end
     end
+    basis BinMap = 
+      bas BINARYMAP.sml Binarymap.sml INTMAP.sml Intmap.sml end
+    basis BinSet = 
+      bas BINARYSET.sml INTSET.sml Binaryset.sml Intset.sml end
+  in
+    basis SetsAndMaps = 
+      bas open Splay BinMap BinSet end
+  end
 
   basis Regexp =  (* Regular expression support *)
     bas REG_EXP.sml local open SetsAndMaps in RegExp.sml end end
