@@ -26,6 +26,8 @@ is loaded and executed, leaving the library modules loaded for reuse
 by other requests. Only when the project is recompiled or Apache is
 restarted, the library modules are reloaded.
 
+The book "SMLserver - A Functional Approach to Web Publishing (Second
+Edition)" [2] is available for download from the SMLserver home page.
 
 SYSTEM REQUIREMENTS
 -------------------
@@ -210,6 +212,10 @@ REFERENCES
 ----------
   
 [1] A system for running ML Server Pages using the Apache Web server
-CGI support was first implemented by Peter Sestoft. For information
-about this work, consult http://www.dina.kvl.dk/~sestoft/msp
+    CGI support was first implemented by Peter Sestoft. For
+    information about this work, consult
+    http://www.dina.kvl.dk/~sestoft/msp
 
+[2] Martin Elsman, Niels Hallenberg, and Carsten Varming. SMLserver -
+    A Functional Approach to Web Publishing. Second Edition. February
+    2007. Available from SMLserver home page (see above).
