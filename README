@@ -94,10 +94,17 @@ with more than 3GB of memory, you also need
 
 Gcc is needed for compiling the runtime system and related tools.
 
-4. Compiling 
-------------
-Unpack the package mlkit-X.Y.Z-src.tgz, cd to the toplevel directory
-of the package. Execute the commands under (a), (b), or (c):
+4. Compilation
+--------------
+If you checked out the sources from the sourceforge svn repository,
+execute the command:
+ 
+ $ ./autobuild
+
+Otherwise, unpack the package mlkit-X.Y.Z-src.tgz.
+
+Now, cd to the toplevel directory of the package. Execute the commands
+under (a), (b), or (c):
 
   a. Compile with MLton and SML/NJ  (Tested with 1Gb RAM)
   -------------------------------------------------------
