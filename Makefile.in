@@ -509,7 +509,6 @@ install_smlserver0:
 #	$(MKDIR) $(INSTDIR)/share/doc
 	$(MKDIR) $(INSTDIR)/share/doc/smlserver
 	$(MAKE) install_license KIND=smlserver
-	$(INSTALLDATA) doc/smlserver.pdf $(DATADIR)/doc/smlserver
 	$(INSTALLDATA) README_SMLSERVER $(DATADIR)/doc/smlserver
 	$(INSTALLDATA) NEWS_SMLSERVER $(DATADIR)/doc/smlserver
 	$(MAKE) -C smlserver_demo install LIBDIR=$(LIBDIR)/smlserver
