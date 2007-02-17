@@ -87,5 +87,5 @@ t: ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 	$(CC) -o t $(OPT) -g ../../CUtils/hashmap.o parseul.o ul.tab.o lex.yy.o ulflat.o
 
 clean: 
-	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0
+	rm -f mod_sml.la libsmloracle.so.1.0 *.o *~ *.lo *.slo libsmlodbc.so.1.0 ul.tab.c ul.output lex.yy.c ul.tab.h a.log
 

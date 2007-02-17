@@ -48,12 +48,10 @@ structure MlbFileSys :> MLB_FILESYS =
 	  | GREATER => GREATER
 	  | EQUAL => SysWord.compare (b,d)
 
-    val fromWord : Word32.word -> SysWord.word = SysWord.fromLargeWord
-
     fun unique link f = 
 	let val s = if link then Posix.FileSys.lstat f else Posix.FileSys.stat f
-	in ((fromWord o Posix.FileSys.inoToWord) (Posix.FileSys.ST.ino s),
-	    (fromWord o Posix.FileSys.devToWord) (Posix.FileSys.ST.dev s))
+	in (Posix.FileSys.inoToWord(Posix.FileSys.ST.ino s),
+	    Posix.FileSys.devToWord(Posix.FileSys.ST.dev s))
 	end
   end
 

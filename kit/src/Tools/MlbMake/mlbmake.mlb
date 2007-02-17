@@ -1,6 +1,6 @@
 local
   $(SML_LIB)/basis/basis.mlb
-  basis KitLib = bas ../../../basis/kitlib2.mlb end
+  basis KitLib = bas ../../../basis/kitlib.mlb end
   basis Environment = bas environment.mlb end
   basis FileSys = bas MLB_FILESYS.sml MlbFileSys.sml end
   basis Util = bas MlbUtil.sml end

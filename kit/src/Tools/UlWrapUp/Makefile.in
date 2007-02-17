@@ -24,7 +24,7 @@ Ul.grm.sml: Ul.grm
 	mlyacc Ul.grm
 
 clean:
-	rm -rf wrap *~ MLB
+	rm -rf wrap *~ MLB lib/MLB
 
 clean_all: clean
 	rm Ul.grm.sml

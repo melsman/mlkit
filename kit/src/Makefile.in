@@ -163,6 +163,7 @@ clean:
 	cd Tools/MlbMake && $(MAKE) clean
 	cd Tools/GenOpcodes && $(MAKE) clean
 	cd Tools/Benchmark && $(MAKE) clean
+	$(MAKE) -C Tools/UlWrapUp clean
 	cd Compiler && $(CLEAN)
 	cd Compiler/Backend && $(CLEAN)
 	cd Compiler/Backend/Dummy && $(CLEAN)

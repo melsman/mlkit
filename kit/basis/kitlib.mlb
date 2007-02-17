@@ -1,6 +1,6 @@
 local
 
-  basis.mlb
+  $(SML_LIB)/basis/basis.mlb
   basis ListUtil = bas LISTSORT.sml Listsort.sml end
   basis Polyhash = bas POLYHASH.sml Polyhash.sml end
 
