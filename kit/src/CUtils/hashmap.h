@@ -29,15 +29,15 @@ typedef struct
   hashmember *table;
   unsigned long hashTableSize;
   unsigned long hashTableUsed;
-  unsigned long (*hash_function) (void *key);
-  int (*equal_function) (void *key1, void *key2);
+  unsigned long (*hash_function) (const void *key);
+  int (*equal_function) (const void *key1, const void *key2);
 } hashtable;
 
 // allocate memory to table and setup things
 // Return: hash_OK or hash_OUTOFMEM
 int
-hashinit (hashtable * tinfo, unsigned long (*hash) (void *key),
-	  int (*equal) (void *key1, void *key2));
+hashinit (hashtable * tinfo, unsigned long (*hash) (const void *key),
+	  int (*equal) (const void *key1, const void *key2));
 
 // loose the old table and start over
 // Return: hash_OK or hash_OUTOFMEM
@@ -63,7 +63,7 @@ int hashclose (hashtable * tinfo);
 
 // lookup an entry
 // Return: hash_DNE or hash_OK
-int hashfind (hashtable * tinfo, void *key, void **returnValue);
+int hashfind (hashtable * tinfo, const void * const key, void ** const returnValue);
 
 // fold
 void *hashfold(hashtable *tinfo, void *(*f)(void *value, void *acc), void *first);
