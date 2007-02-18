@@ -26,6 +26,7 @@ typedef struct \
 { \
   name ## _keytype_tc key; \
   name ## _valuetype_tc value; \
+  unsigned long hashval; \
   int used; \
 } name ## _hashelement_t; \
 typedef struct \
