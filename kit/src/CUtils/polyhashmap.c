@@ -49,7 +49,8 @@ int \
 name ## _find (const name ## _hashtable_t *tinfo, name ## _keytype_tc key, name ## _valuetype_tc *returnValue) \
 { \
   name ## _hashelement_t *table = tinfo->table; \
-  unsigned long hashval = (*(tinfo->hash_function)) (key); \
+  unsigned long keyhashval = (*(tinfo->hash_function)) (key); \
+  unsigned long hashval = keyhashval ; \
   do \
     { \
       hashval %= tinfo->hashTableSize; \
@@ -59,7 +60,7 @@ name ## _find (const name ## _hashtable_t *tinfo, name ## _keytype_tc key, name 
 	} \
       hashval++; \
     } \
-  while (!((*(tinfo->equal_function)) (table[hashval - 1].key, key))); \
+  while (!((table[hashval-1].hashval == keyhashval) && ((*(tinfo->equal_function)) (table[hashval - 1].key, key)))); \
   *returnValue = table[hashval - 1].value; \
   return hash_OK; \
 } \
@@ -68,7 +69,8 @@ name ## _erase (name ## _hashtable_t * tinfo, name ## _keytype_tc key) \
 {                                                                         \
   unsigned long i, tmp;                                                   \
   name ## _hashelement_t *table = tinfo->table;                                       \
-  unsigned long hashval = (*(tinfo->hash_function)) (key);                \
+  unsigned long keyhashval = (*(tinfo->hash_function)) (key); \
+  unsigned long hashval = keyhashval;                \
   do                                                                      \
     {                                                                     \
       hashval %= tinfo->hashTableSize;                                    \
@@ -78,18 +80,19 @@ name ## _erase (name ## _hashtable_t * tinfo, name ## _keytype_tc key) \
 	}                                                                       \
       hashval++;                                                          \
     }                                                                     \
-  while (!((*(tinfo->equal_function)) (table[hashval - 1].key, key)));    \
+  while (!((table[hashval - 1].hashval == keyhashval) && ((*(tinfo->equal_function)) (table[hashval - 1].key, key))));    \
   hashval--;                                                              \
   i = (hashval + 1) % tinfo->hashTableSize;                               \
   while (table[i].used)                                                   \
     {                                                                     \
-      tmp = (*(tinfo->hash_function)) (table[i].key) % tinfo->hashTableSize; \
+      tmp = table[i].hashval; /* (*(tinfo->hash_function)) (table[i].key) % tinfo->hashTableSize; */ \
       if (!((hashval < tmp && tmp <= i) ||                                \
 	    (tmp <= i && i < hashval) || (i < hashval && hashval < tmp)))       \
 	{                                                                       \
 	  table[hashval].value = table[i].value;                                \
 	  table[hashval].key = table[i].key;                                    \
 	  table[hashval].used = table[i].used;                                  \
+    table[hashval].hashval = table[i].hashval; \
 	  hashval = i;                                                          \
 	}                                                                       \
       i = (i + 1) % tinfo->hashTableSize;                                 \
@@ -103,21 +106,23 @@ int                                                                       \
 name ## _update (name ## _hashtable_t *tinfo, name ## _keytype_tc key, name ## _valuetype_tc value) \
 {                                                                          \
   name ## _hashelement_t *table;                                                       \
-  unsigned long hashval;                                                   \
+  unsigned long hashval, keyhashval;                                                   \
   if (name ## _rehash (tinfo)) return hash_OUTOFMEM;                   \
   table = tinfo->table;                                                    \
-  hashval = (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;        \
+  keyhashval = (*(tinfo->hash_function)) (key); \
+  hashval = keyhashval % tinfo->hashTableSize;        \
   while (1)                                                                \
     {                                                                      \
       if (table[hashval].used == 0)                                        \
 	{                                                                        \
 	  table[hashval].key = key;                                              \
 	  table[hashval].value = value;                                          \
+    table[hashval].hashval = keyhashval;                                      \
 	  table[hashval].used = 1;                                               \
 	  tinfo->hashTableUsed++;                                                \
 	  return hash_OK;                                                        \
 	}                                                                        \
-      else if ((*(tinfo->equal_function)) (table[hashval].key, key))       \
+      else if ((table[hashval].hashval == keyhashval) && ((*(tinfo->equal_function)) (table[hashval].key, key)))       \
 	{                                                                        \
 	  table[hashval].key = key;                                              \
 	  table[hashval].value = value;                                          \
@@ -135,14 +140,15 @@ int                                                                        \
 name ## _insert (name ## _hashtable_t * tinfo, name ## _keytype_tc key, name ## _valuetype_tc value) \
 {                                                                          \
   name ## _hashelement_t *table;                                                       \
-  unsigned long hashval;                                                   \
+  unsigned long hashval, keyhashval;                                                   \
   if (name ## _rehash (tinfo))                                         \
     return hash_OUTOFMEM;                                                  \
   table = tinfo->table;                                                    \
-  hashval = (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;        \
+  keyhashval = (*(tinfo->hash_function)) (key); \
+  hashval = keyhashval % tinfo->hashTableSize;        \
   while (table[hashval].used)                                              \
     {                                                                      \
-      if ((*(tinfo->equal_function)) (table[hashval].key, key))            \
+      if ((table[hashval].hashval == keyhashval) && ((*(tinfo->equal_function)) (table[hashval].key, key)))            \
 	{                                                                        \
 	  return hash_AE;                                                        \
 	}                                                                        \
@@ -151,6 +157,7 @@ name ## _insert (name ## _hashtable_t * tinfo, name ## _keytype_tc key, name ## 
     };                                                                     \
   table[hashval].key = key;                                                \
   table[hashval].value = value;                                            \
+  table[hashval].hashval = keyhashval; \
   table[hashval].used = 1;                                                 \
   tinfo->hashTableUsed++;                                                  \
   return hash_OK;                                                          \
@@ -191,7 +198,7 @@ name ## _rehash (name ## _hashtable_t * tinfo) \
     { \
       if (tinfo->table[i].used) \
 	{ \
-	  hashval = (*(tinfo->hash_function)) (tinfo->table[i].key) % newsize; \
+	  hashval = tinfo->table[i].hashval; /* (*(tinfo->hash_function)) (tinfo->table[i].key) % newsize; */ \
 	  while (newtable[hashval].used) \
 	    { \
 	      hashval++; \
@@ -199,6 +206,7 @@ name ## _rehash (name ## _hashtable_t * tinfo) \
 	    } \
 	  newtable[hashval].key = tinfo->table[i].key; \
 	  newtable[hashval].value = tinfo->table[i].value; \
+    newtable[hashval].hashval = tinfo->table[i].hashval; \
 	  newtable[hashval].used = 1; \
 	} \
     } \
