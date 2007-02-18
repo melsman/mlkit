@@ -1,18 +1,17 @@
 #include <stdlib.h>
-// #include "hashmap.h"
 
 #define DEFINE_HASHMAP(name,hash,equal) \
-static int name ## _hashrehash (name ## _hashtable_t * tinfo); \
-int name ## _hashinit (name ## _hashtable_t * tinfo) \
+static int name ## _rehash (name ## _hashtable_t * tinfo); \
+int name ## _init (name ## _hashtable_t * tinfo) \
 { \
   tinfo->table = NULL; \
-  if (name ## _hashreinit (tinfo) == hash_OUTOFMEM) \
+  if (name ## _reinit (tinfo) == hash_OUTOFMEM) \
     return hash_OUTOFMEM; \
   tinfo->hash_function = hash; \
   tinfo->equal_function = equal; \
   return hash_OK; \
 } \
-int name ## _hashreinit (name ## _hashtable_t * tinfo) \
+int name ## _reinit (name ## _hashtable_t * tinfo) \
 { \
   int i; \
   name ## _hashelement_t *temp; \
@@ -41,13 +40,13 @@ int name ## _hashreinit (name ## _hashtable_t * tinfo) \
   return hash_OK; \
 } \
 int \
-name ## _hashclose (name ## _hashtable_t * tinfo) \
+name ## _close (name ## _hashtable_t * tinfo) \
 { \
   free (tinfo->table); \
   return hash_OK; \
 } \
 int \
-name ## _hashfind (const name ## _hashtable_t *tinfo, name ## _keytype_tc key, name ## _valuetype_tc *returnValue) \
+name ## _find (const name ## _hashtable_t *tinfo, name ## _keytype_tc key, name ## _valuetype_tc *returnValue) \
 { \
   name ## _hashelement_t *table = tinfo->table; \
   unsigned long hashval = (*(tinfo->hash_function)) (key); \
@@ -65,7 +64,7 @@ name ## _hashfind (const name ## _hashtable_t *tinfo, name ## _keytype_tc key, n
   return hash_OK; \
 } \
 int \
-name ## _hasherase (name ## _hashtable_t * tinfo, name ## _keytype_tc key) \
+name ## _erase (name ## _hashtable_t * tinfo, name ## _keytype_tc key) \
 {                                                                         \
   unsigned long i, tmp;                                                   \
   name ## _hashelement_t *table = tinfo->table;                                       \
@@ -97,15 +96,15 @@ name ## _hasherase (name ## _hashtable_t * tinfo, name ## _keytype_tc key) \
     };                                                                    \
   table[hashval].used = 0;                                                \
   tinfo->hashTableUsed--;                                                 \
-  name ## _hashrehash (tinfo);                                                     \
+  name ## _rehash (tinfo);                                                     \
   return hash_OK;                                                         \
 }                                                                         \
 int                                                                       \
-name ## _hashupdate (name ## _hashtable_t *tinfo, name ## _keytype_tc key, name ## _valuetype_tc value) \
+name ## _update (name ## _hashtable_t *tinfo, name ## _keytype_tc key, name ## _valuetype_tc value) \
 {                                                                          \
   name ## _hashelement_t *table;                                                       \
   unsigned long hashval;                                                   \
-  if (name ## _hashrehash (tinfo)) return hash_OUTOFMEM;                   \
+  if (name ## _rehash (tinfo)) return hash_OUTOFMEM;                   \
   table = tinfo->table;                                                    \
   hashval = (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;        \
   while (1)                                                                \
@@ -133,11 +132,11 @@ name ## _hashupdate (name ## _hashtable_t *tinfo, name ## _keytype_tc key, name 
   return hash_ERR;                                                         \
 }                                                                          \
 int                                                                        \
-name ## _hashinsert (name ## _hashtable_t * tinfo, name ## _keytype_tc key, name ## _valuetype_tc value) \
+name ## _insert (name ## _hashtable_t * tinfo, name ## _keytype_tc key, name ## _valuetype_tc value) \
 {                                                                          \
   name ## _hashelement_t *table;                                                       \
   unsigned long hashval;                                                   \
-  if (name ## _hashrehash (tinfo))                                         \
+  if (name ## _rehash (tinfo))                                         \
     return hash_OUTOFMEM;                                                  \
   table = tinfo->table;                                                    \
   hashval = (*(tinfo->hash_function)) (key) % tinfo->hashTableSize;        \
@@ -157,7 +156,7 @@ name ## _hashinsert (name ## _hashtable_t * tinfo, name ## _keytype_tc key, name
   return hash_OK;                                                          \
 } \
 static int \
-name ## _hashrehash (name ## _hashtable_t * tinfo) \
+name ## _rehash (name ## _hashtable_t * tinfo) \
 { \
   unsigned long newsize; \
   name ## _hashelement_t *newtable; \
@@ -209,7 +208,7 @@ name ## _hashrehash (name ## _hashtable_t * tinfo) \
   return 0; \
 } \
 void \
-name ## _hashapply(const name ## _hashtable_t *tinfo, void (*f)(name ## _valuetype_tc value)) \
+name ## _apply(const name ## _hashtable_t *tinfo, void (*f)(name ## _valuetype_tc value)) \
 { \
   name ## _hashelement_t *table = tinfo->table; \
   int i;                                                                                 \
@@ -223,7 +222,7 @@ name ## _hashapply(const name ## _hashtable_t *tinfo, void (*f)(name ## _valuety
   return;                                                                                \
 }                                                                                        \
                                                                                          \
-void name ## _hashApply(const name ## _hashtable_t *tinfo, void (*f)(name ## _keytype_tc key, name ## _valuetype_tc value)) \
+void name ## _Apply(const name ## _hashtable_t *tinfo, void (*f)(name ## _keytype_tc key, name ## _valuetype_tc value)) \
 {                                                                                        \
   name ## _hashelement_t *table = tinfo->table;                                                      \
   int i;                                                                                 \
@@ -238,7 +237,7 @@ void name ## _hashApply(const name ## _hashtable_t *tinfo, void (*f)(name ## _ke
 }                                                                                        \
                                                                                          \
 void                                                                                     \
-name ## _hashmap(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(name ## _valuetype_tc value)) \
+name ## _map(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(name ## _valuetype_tc value)) \
 {                                                                                        \
   name ## _hashelement_t *table = tinfo->table;                                                      \
   int i;                                                                                 \
@@ -253,7 +252,7 @@ name ## _hashmap(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(na
 }                                                                                        \
                                                                                          \
 void                                                                                     \
-name ## _hashMap(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(name ## _keytype_tc key, name ## _valuetype_tc value)) \
+name ## _Map(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(name ## _keytype_tc key, name ## _valuetype_tc value)) \
 {                                                                                        \
   name ## _hashelement_t *table = tinfo->table;                                                      \
   int i;                                                                                 \
@@ -268,7 +267,7 @@ name ## _hashMap(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(na
 }                                                                                        \
                                                                                          \
 void *                                                                                   \
-name ## _hashfold(const name ## _hashtable_t *tinfo, void *(*f)(name ## _valuetype_tc, void *), void *first) \
+name ## _fold(const name ## _hashtable_t *tinfo, void *(*f)(name ## _valuetype_tc, void *), void *first) \
 {                                                                                        \
   name ## _hashelement_t *table = tinfo->table;                                                      \
   int i;                                                                                 \
@@ -284,7 +283,7 @@ name ## _hashfold(const name ## _hashtable_t *tinfo, void *(*f)(name ## _valuety
 }                                                                                        \
                                                                                          \
 void *                                                                                   \
-name ## _hashFold(const name ## _hashtable_t *tinfo, void *(*f)(name ## _keytype_tc, name ## _valuetype_tc, void *), void *first) \
+name ## _Fold(const name ## _hashtable_t *tinfo, void *(*f)(name ## _keytype_tc, name ## _valuetype_tc, void *), void *first) \
 {                                                                                        \
   name ## _hashelement_t *table = tinfo->table;                                                      \
   int i;                                                                                 \
