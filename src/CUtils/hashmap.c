@@ -4,8 +4,8 @@
 static int hashrehash (hashtable * tinfo);
 
 int
-hashinit (hashtable * tinfo, unsigned long (*hash) (const void *key),
-    int (*equal) (const void *key1, const void *key2))
+hashinit (hashtable * tinfo, unsigned long (*hash) (void *key),
+    int (*equal) (void *key1, void *key2))
 {
   tinfo->table = NULL;
   if (hashreinit (tinfo) == hash_OUTOFMEM)
@@ -53,7 +53,7 @@ hashclose (hashtable * tinfo)
 }
 
 int
-hashfind (hashtable * tinfo, const void * const key, void ** const returnValue)
+hashfind (hashtable * tinfo, void *key, void **returnValue)
 {
   hashmember *table = tinfo->table;
   unsigned long hashval = (*(tinfo->hash_function)) (key);
