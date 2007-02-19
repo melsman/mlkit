@@ -45,7 +45,7 @@ testbasic_mlkit:
 	../bin/kittester ../bin/mlkit allbasic.tst
 	/bin/mv test_report.pdf testbasic_report-native-`/bin/date -I`.pdf
 
-test_mlkit:
+test_mlkit: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst)
 #	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
 #	../bin/kittester ../bin/mlkit all_gengc.tst
@@ -65,7 +65,7 @@ test_mlkit_gengc_pickle:
 	/bin/mv test_report.pdf test_report-native-gengc-`/bin/date -I`.pdf
 
 
-test_kam:
+test_kam: prepare
 	(export SML_LIB=`(cd ..; pwd)`;	../bin/kittester ../bin/mlkit_kam all.tst)
 	/bin/mv test_report.pdf test_report-kam-`/bin/date -I`.pdf
 
@@ -74,10 +74,18 @@ clean:
 	rm -f runexe *.log *.outgcp *.outgengcp *.out *.outgc *.outgengc *.outp profile.rp
 	rm -f *.aux
 	rm -rf PM CM */PM */CM */*.log MLB */MLB */*/MLB */*/*/MLB
+	rm -f testlink testcycl testbadl hardlinkA hardlinkB
 
-prepare:
+testlink:
 	ln -s README testlink
-	ln -s testcycl testcycl
-	ln -s exists.not testbadl
+
+hardlinkA:
 	echo '' > hardlinkA
+
+hardlinkB:
 	ln hardlinkA hardlinkB
+
+prepare: testlink hardlinkA hardlinkB
+	rm -f testcycl testbadl
+	ln -sf testcycl testcycl
+	ln -s exists.not testbadl
