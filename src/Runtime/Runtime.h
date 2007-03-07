@@ -61,8 +61,8 @@
 int equalPolyML(int x, int y);
 #endif
 
-int die (char *);
-int die2 (char *, char *);
+int die (const char *);
+int die2 (const char *, const char *);
 long terminate (long status);    /* status is a C value */
 long terminateML (long status);  /* status is an ML value */
 void uncaught_exception (StringDesc *exnStr, unsigned long, int);

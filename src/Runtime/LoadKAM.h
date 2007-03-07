@@ -2,7 +2,9 @@
 #define LOADKAM_H
 
 #include <stdlib.h>
-#include "../CUtils/hashmap_typed.h"
+#include <stdint.h>
+#include "../CUtils/polyhashmap.h"
+#include "../CUtils/hashfun.h"
 #include "LogLevel.h"
 
 /* LoadKAM.h : format of bytecode files */
@@ -36,7 +38,7 @@ typedef Label* label;
 // ServerState
 typedef struct {
   void *aux;
-  void (*report) (enum reportLevel level, char *data, void *aux);
+  void (*report) (enum reportLevel level, const char *data, void *aux);
 } Serverstate;
 typedef Serverstate* serverstate;
 
@@ -73,9 +75,10 @@ typedef unsigned char * bytecode_t;
  * ---------------------------------------------------------- */
 
 #ifdef CODE_CACHE
-DECLARE_HASHMAP(strToCodeMap,char*,bytecode_t)
-void strToCodeMapInsert(strToCodeMap m, char* s, bytecode_t code);
-bytecode_t strToCodeMapLookup(strToCodeMap m, char* s);
+DECLARE_NHASHMAP(strToCodeMap, bytecode_t, char *, , const)
+typedef strToCodeMap_hashtable_t * strToCodeMap;
+void strToCodeMapInsert(strToCodeMap m, const char* s, bytecode_t code);
+bytecode_t strToCodeMapLookup(strToCodeMap m, const char* s);
 strToCodeMap strToCodeMapClear(strToCodeMap m);
 #endif
 
@@ -85,13 +88,16 @@ strToCodeMap strToCodeMapClear(strToCodeMap m);
  *
  * The following type definition is for holding elements 
  * of the mapping from labels to resolved absolute addresses.
- * See hashmap_typed.h
+ * See polyhashmap.h
  * -------------------------------------------------- */
 
-DECLARE_HASHMAP(labelMap,label,unsigned long)
-void labelMapInsert(labelMap labelMap, label label, unsigned long address);
+DECLARE_NHASHMAP(labelMap,uintptr_t,label,,)
+
+typedef labelMap_hashtable_t * labelMap;
+
+void labelMapInsert(labelMap labelMap, label label, uintptr_t address);
 labelMap labelMapNew(void);
-unsigned long labelMapLookup(labelMap labelMap, label label);
+uintptr_t labelMapLookup(labelMap labelMap, label label);
 void labelMapFree(labelMap labelMap);
 
 typedef struct longList {
@@ -125,12 +131,12 @@ typedef struct {
 Interp *interpNew(void);
 
 /* Extend an interpreter by loading a bytecode file */
-int interpLoadExtend(Interp* interp, char* file,serverstate ss);
+int interpLoadExtend(Interp* interp, const char* file,serverstate ss);
 
 /* Load a bytecode file and run it, then release the loaded code;
  * later we can provide a version of this function that caches the
  * loaded code. */
-ssize_t interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, ssize_t *result);
+ssize_t interpLoadRun(Interp* interp, const char* file, char** errorStr, serverstate ss, ssize_t *result);
 
 /* Run an interpreter */ 
 ssize_t interpRun(Interp* interp, bytecode_t extra_code, char** errorStr, serverstate ss);

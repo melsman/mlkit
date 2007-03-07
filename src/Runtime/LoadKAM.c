@@ -15,7 +15,7 @@
 #include "HeapCache.h"
 #include "Exception.h"
 #include "Interp.h"
-#include "../CUtils/hashmap_typed.h"
+#include "../CUtils/polyhashmap.h"
 
 #if ( THREADS && CODE_CACHE )
 #include <string.h>
@@ -34,7 +34,7 @@
  * ----------------------------------------------------- */
 
 static int
-streq(char* s1,char* s2)
+streq(const char* s1,const char* s2)
 {
   if ( strcmp(s1,s2) == 0 )
     return 1;
@@ -44,10 +44,10 @@ streq(char* s1,char* s2)
 #if ( THREADS && CODE_CACHE )
 // extern void logMsg1(char* msg, void *serverState);
 
-DEFINE_HASHMAP(strToCodeMap,char*,bytecode_t)
+DEFINE_NHASHMAP(strToCodeMap, charhashfunction, streq)
 
 void
-strToCodeMapInsert(strToCodeMap m, char* name, bytecode_t code)
+strToCodeMapInsert(strToCodeMap m, const char* name, bytecode_t code)
 {
   char* name_copy;
   name_copy = (char*)malloc(strlen(name)+1);
@@ -56,14 +56,14 @@ strToCodeMapInsert(strToCodeMap m, char* name, bytecode_t code)
       die("strToCodeMapInsert: cannot allocate memory for name");
     }
   strcpy(name_copy,name);
-  strToCodeMap_upd(m,name_copy,code);
+  strToCodeMap_update(m,name_copy,code);
   return;
 }
 
 // lookup bytecode in a strToCodeMap; returns 0 on failure
 
 bytecode_t
-strToCodeMapLookup(strToCodeMap m, char* k)
+strToCodeMapLookup(strToCodeMap m, const char* k)
 {
   bytecode_t b;
   if ( strToCodeMap_find(m,k,&b) == hash_OK )
@@ -73,18 +73,18 @@ strToCodeMapLookup(strToCodeMap m, char* k)
 }
 
 void
-strToCodeMapClear_fn(char* k,bytecode_t code)
+strToCodeMapClear_fn(const char* k,bytecode_t code)
 {
-  free(k);
+  free((void *) k);
   free(code);
 }
 
 strToCodeMap
 strToCodeMapClear(strToCodeMap m)
 {
-  strToCodeMap_apply(m,strToCodeMapClear_fn);
-  strToCodeMap_drop(m);
-  return new_strToCodeMap(charhashfunction,streq);
+  strToCodeMap_Apply(m,strToCodeMapClear_fn);
+  strToCodeMap_reinit(m);
+  return strToCodeMap_new();
 }
 
 #endif
@@ -92,16 +92,6 @@ strToCodeMapClear(strToCodeMap m)
 /* -----------------------------------------------------
  * Label Map
  * ----------------------------------------------------- */
-
-DEFINE_HASHMAP(labelMap,label,unsigned long)
-
-void 
-labelMapInsert(labelMap m, 
-	       label k,
-	       unsigned long v) 
-{
-  labelMap_upd(m,k,v);
-}
 
 unsigned long
 label_hash(label lab)
@@ -119,39 +109,49 @@ label_eq(label lab1,label lab2)
   else return 0;
 }
 
+DEFINE_NHASHMAP(labelMap,label_hash,label_eq)
+
+void 
+labelMapInsert(labelMap m, 
+	       label k,
+	       const uintptr_t v) 
+{
+  labelMap_update(m,k,v);
+}
+
 labelMap 
 labelMapNew(void) 
 {
-  return new_labelMap(label_hash,label_eq);
+  return labelMap_new();
 }
 
 void
-printLabelId(label lab,unsigned long id)
+printLabelId(label lab,uintptr_t id)
 {
-  printf(" Lab(%ld,%s) -> %ld\n",lab->id,&(lab->base),id);
+  printf(" Lab(%ld,%s) -> %d\n",lab->id,&(lab->base),id);
 }
 
 void
 labelMapPrint(labelMap m)
 {
   printf("LabelMap = {\n");
-  labelMap_apply(m,printLabelId);
+  labelMap_Apply(m,printLabelId);
   printf("}\n");
 }
 
 // lookup a label in a labelMapHashTable; returns 0 on failure
 
-unsigned long 
+uintptr_t
 labelMapLookup(labelMap m, label lab) 
 {
-  unsigned long res;
+  uintptr_t res;
   if ( labelMap_find(m,lab,&res) == hash_OK )
     return res;
   else return 0;
 }
 
 void
-free_label(label lab,unsigned long res)
+free_label(label lab,uintptr_t res)
 {
   free(lab);
 }
@@ -159,9 +159,9 @@ free_label(label lab,unsigned long res)
 labelMap 
 labelMapClear(labelMap m)
 {
-  labelMap_apply(m,free_label);
-  labelMap_drop(m);
-  return labelMapNew();
+  labelMap_Apply(m,free_label);
+  labelMap_reinit(m);
+  return m;
 }
 
 /* Global regions 0-6, global exception 
@@ -190,7 +190,7 @@ interpNew(void)
   interp->exeList = NULL;
   interp->data_size = INTERP_INITIAL_DATASIZE;
 #if ( THREADS && CODE_CACHE )
-  interp->codeCache = new_strToCodeMap(charhashfunction,streq);
+  interp->codeCache = strToCodeMap_new();
 #endif
   /*  debug(printf("interpNew4\n")); */
   return interp;
@@ -371,7 +371,7 @@ read_exec_header(FILE* fd, struct exec_header * exec_header)
  */
 
 static int
-attempt_open(char* name, struct exec_header* exec_header, serverstate ss, FILE **result) 
+attempt_open(const char* restrict name, struct exec_header* restrict exec_header, serverstate ss, FILE **result) 
 {
   FILE *fd;
   int res;
@@ -608,7 +608,7 @@ garbageDataExports(Interp* interp,
 
 
 static bytecode_t 
-interpLoad(Interp* interp, char* file, FILE* fd, 
+interpLoad(Interp* interp, const char* file, FILE* fd, 
 	   struct exec_header* exec_header_ptr, serverstate ss) 
 {
   bytecode_t start_code;
@@ -661,7 +661,7 @@ interpLoad(Interp* interp, char* file, FILE* fd,
  *  declares.
  * ------------------------------------------------------------ */
 int 
-interpLoadExtend(Interp* interp, char* file, serverstate ss) 
+interpLoadExtend(Interp* interp, const char* file, serverstate ss) 
 {
   FILE *fd;
   struct exec_header exec_header;
@@ -919,7 +919,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, serverstat
  * ------------------------------------------------------ */
 
 ssize_t 
-interpLoadRun(Interp* interp, char* file, char** errorStr, serverstate ss, ssize_t *res) 
+interpLoadRun(Interp* interp, const char* file, char** errorStr, serverstate ss, ssize_t *res) 
 {
   bytecode_t start_code;
   FILE *fd;

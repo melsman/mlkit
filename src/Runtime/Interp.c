@@ -1479,11 +1479,11 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 			Setup_for_c_call;
 			if (u32pc == 1) 
 			{
-				localResolveLibFnAuto(((void **) pc)+2, (char *) (&(((String) acc)->data)));
+				localResolveLibFnAuto(((const void **) pc)+2, (const char *) (&(((String) acc)->data)));
 			}
 			else if (u32pc == 2)
 			{
-				localResolveLibFnAuto(((void **) pc)+2, (char *) acc);
+				localResolveLibFnAuto(((const void **) pc)+2, (const char *) acc);
 			}
       if (u32_2pc == 0) 
       {
@@ -1558,7 +1558,7 @@ extern int  commandline_argc;
 extern char **commandline_argv;
 
 #ifndef APACHE
-void report(enum reportLevel level, char *data, void *notused)
+void report(enum reportLevel level, const char *data, void *notused)
 {
   switch (level)
   {

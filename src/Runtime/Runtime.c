@@ -32,14 +32,14 @@
 #endif
 
 int 
-die (char *s) 
+die (const char *s) 
 { 
   fprintf(stderr,"Runtime Error: %s\n",s); 
   exit(-1); 
 }
 
 int 
-die2 (char *s1, char* s2) 
+die2 (const char *s1, const char* s2) 
 { 
     fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2); 
     exit(-1); 
