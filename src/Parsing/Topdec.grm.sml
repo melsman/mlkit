@@ -1,5 +1,7 @@
 
-functor TopdecLrVals(Token: TOKEN)
+functor TopdecLrVals(
+           structure Token: TOKEN
+         )
          = 
 struct
 structure ParserData=
