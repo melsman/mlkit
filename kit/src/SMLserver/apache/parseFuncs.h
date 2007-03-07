@@ -16,11 +16,11 @@ union hat
 
 #define YYSTYPE union hat
 
-int toUlHashTable(void *, char *, int, char *, int);
+int toUlHashTable(void *, const char *, int, const char *, int);
 
 int toSmlHashTable(void *, char *, int, char *, int);
 
-int extendInterp(void *, char *, int);
+int extendInterp(void *, const char *, int);
 
 int yylex (YYSTYPE *, YYLTYPE *);
 

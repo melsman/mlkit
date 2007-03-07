@@ -8,19 +8,31 @@
 #include "apr_proc_mutex.h"
 #include "apr_global_mutex.h"
 #include "apr_shm.h"
-#include "../../CUtils/hashmap.h"
+#include "../../CUtils/polyhashmap.h"
 #include "cache.h"
 #include "../../Runtime/Exception.h"
+#include "parseul.h"
 
 #define APSML_PATH_MAX 255
 
+int charEqual(const char *, const char *);
+
+DECLARE_NHASHMAP(cachetable, cache *, char *, const, const)
+DECLARE_NHASHMAP(conftable, char *, char *, const, const)
 
 typedef struct			/*{{{ */
 {
-  hashtable *ht;
+  cachetable_hashtable_t *ht;
   apr_pool_t *pool;
   apr_thread_rwlock_t *rwlock;
-} hashtable_with_lock;
+} cache_hashtable_with_lock;
+
+typedef struct			/*{{{ */
+{
+  conftable_hashtable_t *ht;
+  apr_pool_t *pool;
+  apr_thread_rwlock_t *rwlock;
+} conf_hashtable_with_lock;
 
 typedef struct 
 {
@@ -61,8 +73,8 @@ typedef struct
   int extendedtyping;
   char *ulFileName;
   time_t timeStamp;
-  hashtable_with_lock *cachetable;
-  hashtable_with_lock *conftable;
+  cache_hashtable_with_lock *cachetable;
+  conf_hashtable_with_lock *conftable;
   pid_t pid;
   pid_t mainproc;
   time_t starttime;
@@ -71,7 +83,7 @@ typedef struct
   schedule_t sched;
   struct db_t *db;
   apr_thread_mutex_t *dblock;
-  hashtable *smlTable;
+  parseul_hashtable_t *smlTable;
   char *filebuf;
   unsigned long filebufLength;
 } InterpContext;
@@ -97,7 +109,7 @@ typedef struct
   apr_pool_t *pool;
   request_rec *request;
   server_rec *server;
-  hashtable_with_lock *cachetable;
+  cache_hashtable_with_lock *cachetable;
   InterpContext *ctx;
   struct request_db *dbdata;
   //  struct slist *postdata;

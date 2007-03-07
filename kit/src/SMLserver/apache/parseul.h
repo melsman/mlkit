@@ -1,6 +1,7 @@
-
-#include "../../CUtils/hashmap.h"
+#ifndef PARSEUL_H
+#define PARSEUL_H
 #include "../../Runtime/LoadKAM.h"
+#include "../../CUtils/polyhashmap.h"
 
 enum ParseRV/*{{{*/
 {
@@ -11,10 +12,12 @@ enum ParseRV/*{{{*/
   Parse_FORMULERROR = 4,
   Parse_FORMMAPERROR = 5,
   Parse_DUPLICATE = 6,
-  Parse_INTERMALERROR = 7,
+  Parse_INTERNALERROR = 7,
   Parse_FILEDOESNOTEXISTS = 8,
   Parse_ERROR = 9
 };/*}}}*/
+
+DECLARE_NHASHMAP(parseul,char *, char *, const, const)
 
 struct parseCtx/*{{{*/
 {
@@ -26,11 +29,12 @@ struct parseCtx/*{{{*/
   char *root;
   int rl;
   Interp *interp;
-  hashtable *uoTable;
-  hashtable *smlTable;
-  hashtable *ulTable;
+  parseul_hashtable_t *uoTable;
+  parseul_hashtable_t *smlTable;
+  parseul_hashtable_t *ulTable;
 };/*}}}*/
 
+/*
 struct uoHashEntry
 {
   unsigned long hashval;
@@ -39,23 +43,25 @@ struct uoHashEntry
 
 struct char_charHashEntry
 {
-  unsigned long hashval;
+//  unsigned long hashval;
   char *key;
   char *val;
-};
+}; */
 
-unsigned long uoHashEntry_HashFun(void *);
+/*unsigned long uoHashEntry_HashFun(void *);
 
 int uoHashEntry_EqualFun(void *, void *);
 
 unsigned long char_charHashFun (void *);
 
-int char_charEqualFun(void *, void *);
+int char_charEqualFun(void *, void *); */
 
-int recurseParse(struct parseCtx *ctx, char *filename);
+int recurseParse(struct parseCtx *ctx, const char *filename);
 
-void clearSmlMap(hashtable *); 
+void clearSmlMap(parseul_hashtable_t *); 
 
 void clearPCtx(struct parseCtx *);
 
-void printSmlTable(hashtable *, void *);
+void printSmlTable(parseul_hashtable_t *, void *);
+
+#endif // PARSEUL_H

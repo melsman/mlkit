@@ -292,7 +292,7 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   ses->svchp = NULL;
   debugDbLog(db, 10, dblog2(rd, "&(ses->svchp) =", (uintptr_t) &(ses->svchp));)
   debugDbLog(db, 10, dblog2(rd, "db->poolNameLength", (uintptr_t) db->poolNameLength);)
-  debugDbLog(db, 10, dblog1(rd, db->poolName);)
+  debugDbLog(db, 10, dblog1(rd, (char *) db->poolName);)
   debugDbLog(db, 10, dblog2(rd, "OCI_SESSGET_SPOOL =", (uintptr_t) OCI_SESSGET_SPOOL);)
   status = OCISessionGet(db->envhp, ses->errhp, &(ses->svchp), NULL, db->poolName, 
       db->poolNameLength, NULL, 0, NULL, NULL, NULL, OCI_SESSGET_SPOOL);
@@ -315,7 +315,7 @@ static void
 DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 {
   sword status;
-  sb4 errcode = 0;
+//  sb4 errcode = 0;
   dvoid *db;
   if (ses == NULL) return;
   db = ses->db;

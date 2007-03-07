@@ -24,6 +24,8 @@
 #define MIN(a,b) (a < b ? a : b)
 #define MAX(a,b) (a < b ? b : a)
 
+DEFINE_NHASHMAP(entrytable, charhashfunction, charEqual)
+
 static entry *
 ccL1(entry *e, entry *s)/*{{{*/
 {
@@ -80,7 +82,7 @@ checkList(cache *c)/*{{{*/
 }/*}}}*/
 
 static void
-checkList1(void *c)/*{{{*/
+checkList1(const cache *c)/*{{{*/
 {
   checkList((cache *) c);
   return;
@@ -137,6 +139,7 @@ mysetkey (entry **e, time_t t)/*{{{*/
 
 DEFINE_BINARYHEAP(cacheheap, order, newpos, mysetkey)
 
+#if 0
 // return 1 if key1 == key2 and 0 if key1 <> key2
 int
 keyNhashEqual (void *key1, void *key2)	/*{{{ */
@@ -156,24 +159,25 @@ hashfunction (void *kn1)	/*{{{ */
 }				/*}}} */
 
 // void ppCache(cache *, request_data *);
+#endif
 
 void
 globalCacheTableInit (void *rd1)	/*{{{ */
 {
   request_data *rd = (request_data *) rd1;
-  rd->cachetable = (hashtable_with_lock *)
-    apr_palloc (rd->pool, sizeof (hashtable_with_lock));
-  rd->cachetable->ht = (hashtable *)
-    apr_palloc (rd->pool, sizeof (hashtable));
+  rd->cachetable = (cache_hashtable_with_lock *)
+    apr_palloc (rd->pool, sizeof (cache_hashtable_with_lock));
+  rd->cachetable->ht = (cachetable_hashtable_t *)
+    apr_palloc (rd->pool, sizeof (cachetable_hashtable_t));
   rd->cachetable->pool = rd->pool;
   apr_thread_rwlock_create (&(rd->cachetable->rwlock), rd->pool);
-  hashinit (rd->cachetable->ht, hashfunction, keyNhashEqual);
+  cachetable_init (rd->cachetable->ht);
 }				/*}}} */
 
 void
 checkCaches(request_data *rd)
 {
-  hashapply(rd->cachetable->ht, checkList1);
+  cachetable_apply(rd->cachetable->ht, checkList1);
   return;
 }
 
@@ -211,19 +215,19 @@ cacheCreate (int maxsize, int timeout, unsigned long hash, request_data *rd)	/*{
   c->sentinel = (entry *) apr_palloc (c->pool, sizeof (entry));
   c->sentinel->up = c->sentinel;
   c->sentinel->down = c->sentinel;
-  c->sentinel->key.key = NULL;
-  c->sentinel->key.hash = 0;
+  c->sentinel->key = NULL;
+//  c->sentinel->key.hash = 0;
   c->sentinel->data = NULL;
   c->sentinel->size = 0;
 
   // setup hashtable & binary heap
-  c->htable = (hashtable *) apr_palloc (c->pool, sizeof (hashtable) + sizeof(cacheheap_binaryheap_t));
+  c->htable = (entrytable_hashtable_t *) apr_palloc (c->pool, sizeof (entrytable_hashtable_t) + sizeof(cacheheap_binaryheap_t));
   c->heap = (cacheheap_binaryheap_t *) (c->htable + 1);
-  hashinit (c->htable, hashfunction, keyNhashEqual);
+  entrytable_init (c->htable);
   cacheheap_heapinit(c->heap);
 
   // calculate size
-  c->size = c->htable->hashTableSize * sizeof (hashmember);
+  c->size = c->htable->hashTableSize * sizeof (entrytable_hashelement_t);
   c->maxsize = maxsize;
 
   // set timeout scheme
@@ -232,32 +236,33 @@ cacheCreate (int maxsize, int timeout, unsigned long hash, request_data *rd)	/*{
 }				/*}}} */
 
 // ML: string * int * int -> cache ptr_option
-cache *
+const cache *
 apsml_cacheCreate (String cacheName1, int maxsize, int timeout, request_data * rd)	/*{{{ */
 {
-  keyNhash kn1;
-  kn1.key = &(cacheName1->data);
-  kn1.hash = charhashfunction (kn1.key);
+//  keyNhash kn1;
+//  kn1.key = &(cacheName1->data);
+//  kn1.hash = charhashfunction (kn1.key);
+  char *key = &(cacheName1->data);
   apr_thread_rwlock_wrlock (rd->cachetable->rwlock);
-  cache *c;
-  void **c1 = (void **) &c;
+  const cache *c;
+//  void **c1 = (void **) &c;
 //  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
 //    "apsml_cacheCreate: cacheName == %s, maxsize == %i, timeout == %i",
 //    &(cacheName1->data), maxsize, timeout);
-  if (hashfind (rd->cachetable->ht, &kn1, c1) == hash_DNE)
+  if (cachetable_find (rd->cachetable->ht, key, &c) == hash_DNE)
     {
-      int size = sizeStringDefine(cacheName1) + 1 + sizeof (keyNhash);
-      keyNhash *kn = malloc (size);
+      int size = sizeStringDefine(cacheName1) + 1;
+      char *kn = malloc (size);
 //      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
 //		    "apsml_cacheCreate: malloc 0x%x, length:%d", (unsigned long) kn, size);
       
       if (kn == NULL) return NULL;
-      kn->key = (char *) (kn + 1);
-      kn->hash = kn1.hash;
-      strncpy (kn->key, kn1.key, sizeStringDefine(cacheName1));
-      kn->key[sizeStringDefine(cacheName1)] = 0;
-      c = cacheCreate (maxsize, timeout, kn1.hash, rd);
-      hashinsert (rd->cachetable->ht, kn, c);
+//      kn->key = (char *) (kn + 1);
+//      kn->hash = kn1.hash;
+      strncpy (kn, key, sizeStringDefine(cacheName1));
+      kn[sizeStringDefine(cacheName1)] = 0;
+      c = cacheCreate (maxsize, timeout, charhashfunction(kn), rd);
+      cachetable_insert (rd->cachetable->ht, kn, c);
     }
   else
     {
@@ -271,18 +276,18 @@ apsml_cacheCreate (String cacheName1, int maxsize, int timeout, request_data * r
 }				/*}}} */
 
 // ML: string -> cache ptr_option
-cache *
+const cache *
 apsml_cacheFind (char *cacheName, request_data *rd)	/*{{{ */
 {
 //  ppGlobalCache(rd);
   apr_thread_rwlock_rdlock (rd->cachetable->rwlock);
-  cache *c;
-  void **c1 = (void **) &c;
+  const cache *c;
+//  void **c1 = (void **) &c;
 //  ap_log_error(__FILE__,__LINE__, LOG_DEBUG, 0, rd->server, "apsml_cacheFind: cacheName == %s", cacheName);
-  keyNhash kn;
-  kn.key = cacheName;
-  kn.hash = charhashfunction (cacheName);
-  if (hashfind (rd->cachetable->ht, &kn, c1) == hash_DNE)
+//  keyNhash kn;
+//  kn.key = cacheName;
+//  kn.hash = charhashfunction (cacheName);
+  if (cachetable_find (rd->cachetable->ht, cacheName, &c) == hash_DNE)
     {
 //        ap_log_error(__FILE__,__LINE__, LOG_NOTICE, 0, rd->server, "apsml_cacheFind: cacheName == %s not in main cache", cacheName);
       c = NULL;
@@ -319,12 +324,12 @@ apsml_cacheFlush (cache * c, request_data *rd, int global)	/*{{{ */
   {
     listremoveitem (c, c->sentinel->down, rd);
   }
-  if (hashreinit (c->htable) == hash_OUTOFMEM)
+  if (entrytable_reinit (c->htable) == hash_OUTOFMEM)
   {
     apr_thread_rwlock_unlock (c->rwlock);
     return 0;
   }
-  c->size = c->htable->hashTableSize * sizeof (hashmember);
+  c->size = c->htable->hashTableSize * sizeof (entrytable_hashelement_t);
   apr_thread_rwlock_unlock (c->rwlock);
   return 1;
 }				/*}}} */
@@ -336,9 +341,9 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
 //  ap_log_error(__FILE__,__LINE__, LOG_DEBUG, 0, rd->server, "apsml_cacheGet 1");
 //  ppCache (c, rd);
 
-  keyNhash kn;
-  kn.key = &(key1->data);
-  kn.hash = charhashfunction (kn.key);
+//  keyNhash kn;
+  char *key = &(key1->data);
+//  kn.hash = charhashfunction (kn.key);
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 //		"apsml_cacheGet: key == %s, hash: %i", kn.key, kn.hash);
   int too_old = 0;
@@ -359,8 +364,8 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
     return (String) NULL;
   }
   entry *entry;
-  void **entry1 = (void **) &entry;
-  if (hashfind (c->htable, &kn, entry1) == hash_DNE)
+//  void **entry1 = (void **) &entry;
+  if (entrytable_find (c->htable, key, &entry) == hash_DNE)
   {
     entry = NULL;
 //    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
@@ -423,7 +428,7 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
 void
 cacheremoveitem (cache * c, entry * e, request_data *rd)	/*{{{ */
 {
-  hasherase (c->htable, &(e->key));
+  entrytable_erase (c->htable, e->key);
   listremoveitem (c, e, rd);
 }				/*}}} */
 
@@ -434,7 +439,7 @@ ppCache (cache * c, request_data * rd)	/*{{{ */
   unsigned long htsize = c->htable->hashTableSize;
   unsigned long htused = c->htable->hashTableUsed;
   int i;
-  hashmember *table = c->htable->table;
+  entrytable_hashelement_t *table = c->htable->table;
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 		"ppCache: pid %d, size %ld, used %ld", pid, htsize, htused);
   for (i = 0; i < htsize; i++)
@@ -443,11 +448,11 @@ ppCache (cache * c, request_data * rd)	/*{{{ */
     {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
         "ppCache: index: %i, key: %s, keyhash: %li, value: %p, valuedata: %s, heappos: %ld, time: %ld",
-        i, ((keyNhash *) (table[i].key))->key,
-        ((keyNhash *) (table[i].key))->hash, table[i].value,
-        ((entry *) table[i].value)->data,
-        ((entry *) table[i].value)->heappos,
-        ((entry *) table[i].value)->time);
+        i, table[i].key,
+         table[i].hashval, table[i].value,
+        (table[i].value)->data,
+        (table[i].value)->heappos,
+        (table[i].value)->time);
     }
     else
     {
@@ -465,7 +470,7 @@ ppGlobalCache (request_data * rd)	/*{{{ */
   unsigned long htsize = rd->cachetable->ht->hashTableSize;
   unsigned long htused = rd->cachetable->ht->hashTableUsed;
   int i;
-  hashmember *table = rd->cachetable->ht->table;
+  cachetable_hashelement_t *table = rd->cachetable->ht->table;
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 		"ppGlobalCache: pid %d, size %ld, used %ld", pid, htsize,
 		htused);
@@ -475,7 +480,7 @@ ppGlobalCache (request_data * rd)	/*{{{ */
 	{
 	  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 			"ppGlobalCache: index: %i, key: %s, value: %p", i,
-			((keyNhash *) (table[i].key))->key, table[i].value);
+			table[i].key, (void *) table[i].value);
 	}
       else
 	{
@@ -514,8 +519,8 @@ apsml_cacheSet (int resultPair, Region sAddr, cache * c, int keyValPair, request
   newkey[keysize] = 0;
   strncpy (newvalue, value, valuesize);
   newvalue[valuesize] = 0;
-  newentry->key.key = newkey;
-  newentry->key.hash = charhashfunction (newkey);
+  newentry->key = newkey;
+//  newentry->key.hash = charhashfunction (newkey);
   newentry->data = newvalue;
   newentry->size = keysize + valuesize + sizeof (entry) + 2;
   time_t ct = time (NULL);
@@ -538,10 +543,10 @@ apsml_cacheSet (int resultPair, Region sAddr, cache * c, int keyValPair, request
   apr_thread_rwlock_wrlock (c->rwlock);
   int tmpsize = c->htable->hashTableSize;
   entry *oldentry = NULL;
-  void **oldentry1 = (void **) &oldentry;
+//  void **oldentry1 = (void **) &oldentry;
 //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 //		"apsml_cacheSet: key %s, hash: %i", key, newentry->key.hash);
-  if (hashfind (c->htable, &(newentry->key), oldentry1) == hash_DNE)
+  if (entrytable_find (c->htable, newentry->key, &oldentry) == hash_DNE)
   {
     // No old entry with that key 
     if ((newentry->timeout == -1 
@@ -554,7 +559,7 @@ apsml_cacheSet (int resultPair, Region sAddr, cache * c, int keyValPair, request
       free(newentry);
       newentry = 0;
     }
-    if (newentry && hashinsert (c->htable, &(newentry->key), newentry) == hash_OUTOFMEM)
+    if (newentry && entrytable_insert (c->htable, newentry->key, newentry) == hash_OUTOFMEM)
 	  {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
         "apsml_cacheSet: pid %d, received hash_OUTOFMEM", rd->ctx->pid);
@@ -577,7 +582,7 @@ apsml_cacheSet (int resultPair, Region sAddr, cache * c, int keyValPair, request
       free(newentry);
       newentry = 0;
     }
-    if (newentry && hashupdate (c->htable, &(newentry->key), newentry) == hash_OUTOFMEM)
+    if (newentry && entrytable_update (c->htable, newentry->key, newentry) == hash_OUTOFMEM)
 	  {
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
         "apsml_cacheSet: pid %d, received hash_OUTOFMEM", rd->ctx->pid);
@@ -589,7 +594,7 @@ apsml_cacheSet (int resultPair, Region sAddr, cache * c, int keyValPair, request
   if (newentry)
   {
     c->size += newentry->size;
-    c->size += (tmpsize - c->htable->hashTableSize) * sizeof (hashmember);
+    c->size += (tmpsize - c->htable->hashTableSize) * sizeof (entrytable_hashelement_t);
   }
 //  ppCache(c, rd);
   int too_old = 0;
@@ -661,7 +666,7 @@ cacheDestroy (cache * c, request_data *rd)	/*{{{ */
       listremoveitem (c, c->sentinel->down, rd);
     }
   cacheheap_heapclose(c->heap);
-  hashclose (c->htable);
+  entrytable_close (c->htable);
   apr_pool_clear (c->pool);
   return;
 }				/*}}} */

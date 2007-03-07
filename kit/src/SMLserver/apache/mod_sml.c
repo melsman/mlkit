@@ -34,6 +34,11 @@ enum APSML_RETURNVALUES   /*{{{ */
   APSML_OK = 0,
 };        /*}}} */
 
+int
+charEqual(const char *a, const char *b)
+{
+  return (strcmp(a,b) ? 0 : 1);
+}
 
 module AP_MODULE_DECLARE_DATA sml_module;
 
@@ -66,7 +71,7 @@ logLoading (char *file)
 #endif
 
 static void
-logMsg (enum reportLevel level, char *msg, void *rd1)    /*{{{ */
+logMsg (enum reportLevel level, const char *msg, void *rd1)    /*{{{ */
 {
   int rep_lev = LOG_DEBUG;
   request_data *rd = (request_data *) rd1;
@@ -220,14 +225,14 @@ unsigned long hashfunction (void *c2);
 int keyNhashEqual (void *c1, void *c2);
 
 void static
-confinit (server_rec * s, apr_pool_t * pool, hashtable_with_lock ** ct) /*{{{ */
+confinit (server_rec * s, apr_pool_t * pool, conf_hashtable_with_lock ** ct) /*{{{ */
 {
-  hashtable_with_lock *htwl = (hashtable_with_lock *)
-    apr_palloc (pool, sizeof (hashtable_with_lock));
+  conf_hashtable_with_lock *htwl = (conf_hashtable_with_lock *)
+    apr_palloc (pool, sizeof (conf_hashtable_with_lock));
   apr_thread_rwlock_create (&(htwl->rwlock), pool);
   htwl->pool = pool;
-  htwl->ht = (hashtable *) apr_palloc (pool, sizeof (hashtable));
-  if (hashinit (htwl->ht, hashfunction, keyNhashEqual) != hash_OK)
+  htwl->ht = (conftable_hashtable_t *) apr_palloc (pool, sizeof (conftable_hashtable_t));
+  if (conftable_init (htwl->ht) != hash_OK)
     {
       ap_log_error (__FILE__, __LINE__, LOG_EMERG, 0, s,
         "apsml: Config hash failed");
@@ -688,8 +693,9 @@ apsml_smlFileToUoFile(request_data *rd, char *smlfile, char *prjid,
 static int
 apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
 {
-  struct char_charHashEntry he;
-  char *file;
+//  struct char_charHashEntry he;
+  char *key;
+  const char *file;
   struct parseCtx pCtx;
   int res;
   time_t t;
@@ -784,12 +790,11 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
   switch (kind)
     {
     case 0:
-      he.key = uri;
-      he.hashval = charhashfunction(he.key);
-      if (hashfind(rd->ctx->smlTable, &he, (void **) &file) == hash_DNE)
+      key = uri;
+      if (parseul_find(rd->ctx->smlTable, key, &file) == hash_DNE)
 	{
 	  ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
-			 "apsml: Request not script: %s %ld %d", uri, he.hashval, strlen(uri));
+			 "apsml: Request not script: %s %d", uri, strlen(uri));
 	  ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
 			 "apsml: Size of hash table: %ld", ctx->smlTable->hashTableUsed);
 	  ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
