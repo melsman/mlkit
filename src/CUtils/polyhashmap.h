@@ -1,5 +1,5 @@
-#ifndef _HASHMAP_H
-#define _HASHMAP_H
+#ifndef _POLYHASHMAP_H
+#define _POLYHASHMAP_H
 
 /* Smallest possible hashtable */
 #define MINHASHSIZE 10
@@ -17,7 +17,7 @@ enum
   hash_OUTOFMEM			/* Out of memory */
 };
 
-#define DECLARE_HASHMAP(name,elemtype,keytype,elemqual,keyqual)\
+#define DECLARE_NHASHMAP(name,elemtype,keytype,elemqual,keyqual)\
 typedef elemtype name ## _valuetype_t; \
 typedef elemqual elemtype name ## _valuetype_tc; \
 typedef keytype name ## _keytype_t; \
@@ -40,6 +40,8 @@ typedef struct \
 /* allocate memory to table and setup things \
    Return: hash_OK or hash_OUTOFMEM */ \
 int name ## _init (name ## _hashtable_t *tinfo); \
+/* Alloc and init */ \
+name ## _hashtable_t * name ## _new(void); \
 /* loose the old table and start over \
    Return: hash_OK or hash_OUTOFMEM */\
 int name ## _reinit (name ## _hashtable_t *tinfo); \
@@ -68,4 +70,4 @@ void name ## _Map(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(n
 void name ## _map(const name ## _hashtable_t *tinfo, name ## _valuetype_t (*f)(name ## _valuetype_tc value));
 
 #include "polyhashmap.c"
-#endif
+#endif  /* POLYHASHMAP_H */

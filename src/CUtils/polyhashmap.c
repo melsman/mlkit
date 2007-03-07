@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#define DEFINE_HASHMAP(name,hash,equal) \
+#define DEFINE_NHASHMAP(name,hash,equal) \
 static int name ## _rehash (name ## _hashtable_t * tinfo); \
 int name ## _init (name ## _hashtable_t * tinfo) \
 { \
@@ -11,6 +11,20 @@ int name ## _init (name ## _hashtable_t * tinfo) \
   tinfo->equal_function = equal; \
   return hash_OK; \
 } \
+name ## _hashtable_t * name ## _new(void) \
+{                                                                                             \
+  name ## _hashtable_t *t = (name ## _hashtable_t *) malloc (sizeof (name ## _hashtable_t));  \
+  if (!t) return NULL;                                                                        \
+  if (name ## _init(t) == hash_OK)                                                                     \
+  {                                                                                           \
+    return t;                                                                                 \
+  }                                                                                           \
+  else                                                                                        \
+  {                                                                                           \
+    free(t);                                                                                  \
+    return NULL;                                                                              \
+  }                                                                                           \
+}                                                                                             \
 int name ## _reinit (name ## _hashtable_t * tinfo) \
 { \
   int i; \
