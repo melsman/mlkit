@@ -10,7 +10,8 @@
 #include "netdb.h"
 #include "sched.h"
 #include "../../CUtils/binaryheap.h"
-#include "../../CUtils/hashmap.h"
+#include "../../CUtils/polyhashmap.h"
+#include "../../CUtils/hashfun.h"
 #include "apr_thread_proc.h"
 #include "plog.h"
 
@@ -56,7 +57,7 @@ tail (char *p)/*{{{*/
 static int globallogfile;
 
 static void 
-getpage(char *server, char *address, unsigned short port)/*{{{*/
+getpage(const char *server, const char *address, unsigned short port)/*{{{*/
 {
   struct addrinfo addr_hint, *addr, *myaddr;
   char *head, *ptr;
@@ -189,14 +190,13 @@ struct scriptsched_t/*{{{*/
   struct scriptsched_t *next;
   time_t nexttime;
   unsigned int interval;
-  char *script;
-  unsigned long scripthash;
-  char *server;
+  const char *script;
+  const char *server;
   unsigned short port;
   unsigned long pos;
 };/*}}}*/
 
-int getpackage(int infile, struct buflist **blist, struct scriptsched_t **rv, int logfile)/*{{{*/
+int getpackage(int infile, struct buflist **blist, struct scriptsched_t * restrict * rv, int logfile)/*{{{*/
 {
   int tmp, i,j;
   struct buflist *myblist, *myblist1;
@@ -276,11 +276,10 @@ int getpackage(int infile, struct buflist **blist, struct scriptsched_t **rv, in
       {
         j -= i;
         i = MIN(j, myblist1->length);
-        memcpy((*rv)->server + tmp, myblist1->data, i);
+        memcpy((char *)(*rv)->server + tmp, myblist1->data, i);
         tmp += i;
       }
-      ((*rv)->server)[tmp] = 0;
-      (*rv)->scripthash = charhashfunction((*rv)->script);
+      ((char *)(*rv)->server)[tmp] = 0;
       for(myblist1 = *blist; myblist1->next; myblist1 = myblist1->next)
       {
         free(myblist1);
@@ -326,17 +325,14 @@ mysetkey (struct scriptsched_t **elem, time_t key)/*{{{*/
 }/*}}}*/
 
 static unsigned long 
-hashfunc(void *key)/*{{{*/
+hashfunc(struct scriptsched_t *key)/*{{{*/
 {
-  return ((struct scriptsched_t *) key)->scripthash;
+  return charhashfunction(key->script);
 }/*}}}*/
 
 static int 
-hashequal(void *k1, void *k2)/*{{{*/
+hashequal(struct scriptsched_t *key1, struct scriptsched_t *key2)/*{{{*/
 {
-  struct scriptsched_t *key1 = (struct scriptsched_t *) k1;
-  struct scriptsched_t *key2 = (struct scriptsched_t *) k2;
-  if (key1->scripthash != key2->scripthash) return 0;
   return !(strcmp(key1->script, key2->script));
 }/*}}}*/
 
@@ -344,19 +340,23 @@ DECLARE_BINARYHEAP(timeheap,struct scriptsched_t *, time_t)
 
 DEFINE_BINARYHEAP(timeheap,order,newpos,mysetkey)
 
+DECLARE_NHASHMAP(timehash, struct scriptsched_t *, struct scriptsched_t *,,)
+
+DEFINE_NHASHMAP(timehash, hashfunc, hashequal)
+
 void 
-removeAndFree(timeheap_binaryheap_t *heap, hashtable *hashmap, struct scriptsched_t *item)/*{{{*/
+removeAndFree(timeheap_binaryheap_t *heap, timehash_hashtable_t *hashmap, struct scriptsched_t *item)/*{{{*/
 {
   struct scriptsched_t *rv;
   timeheap_heapdelete(heap, item->pos);
-  if (hashfind(hashmap, item, (void **) &rv) == hash_OK)
+  if (timehash_find(hashmap, item, &rv) == hash_OK)
   {
     if (rv == item)
     {
-      hasherase(hashmap, item);
+      timehash_erase(hashmap, item);
       if (rv->next != 0)
       {
-        hashupdate(hashmap, rv->next, rv->next);
+        timehash_update(hashmap, rv->next, rv->next);
       }
     }
     else 
@@ -398,7 +398,7 @@ childgetpage(apr_thread_t *thread, void *d1)/*{{{*/
 }/*}}}*/
 
 void
-forkandgetpage(char *server, char *script, unsigned short port, 
+forkandgetpage(const char *server, const char *script, unsigned short port, 
                apr_pool_t *pool, apr_threadattr_t *schedthread_attr)/*{{{*/
 {
   int tmp;
@@ -424,7 +424,7 @@ forkandgetpage(char *server, char *script, unsigned short port,
 static void
 printheap(struct scriptsched_t **t)/*{{{*/
 {
-  dprintf(globallogfile, "heap: next: %p, nexttime: %ld, interval: %d, script: %s, scripthash: %ld, server: %s, pos: %ld\n", (*t)->next, (*t)->nexttime, (*t)->interval, (*t)->script, (*t)->scripthash, (*t)->server, (*t)->pos);
+  dprintf(globallogfile, "heap: next: %p, nexttime: %ld, interval: %d, script: %s, server: %s, pos: %ld\n", (*t)->next, (*t)->nexttime, (*t)->interval, (*t)->script, (*t)->server, (*t)->pos);
   return;
 }/*}}}*/
 
@@ -440,7 +440,7 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
 //  int curpackage = 0;
   apr_threadattr_t *schedthread_attr;
   timeheap_binaryheap_t heap;
-  hashtable map;
+  timehash_hashtable_t map;
   struct scriptsched_t *header = NULL, *tmpheader, *tmpheader2;
   time_t curtime;
   fd_set readfd;
@@ -448,7 +448,7 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
 //  unsigned int nexttimeout = 0;
   struct buflist *blist = NULL;
   timeheap_heapinit(&heap);
-  hashinit(&map, hashfunc, hashequal);
+  timehash_init(&map);
   char *buf = (char *) malloc(BUFSIZE);
   if (buf == NULL) exit(1);
   stat = apr_pool_create(&pool, NULL);
@@ -508,12 +508,12 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
       {
         if (header->nexttime == 0 && header->interval == 0) 
         {
-          if (hashfind(&map, header, (void **) &tmpheader2) == hash_OK)
+          if (timehash_find(&map, header, &tmpheader2) == hash_OK)
           {
             while (tmpheader2)
             {
               tmpheader = tmpheader2->next;
-              hasherase(&map, tmpheader2);
+              timehash_erase(&map, tmpheader2);
               timeheap_heapdelete (&heap, tmpheader2->pos);
               free (tmpheader2);
               tmpheader2 = tmpheader;
@@ -522,14 +522,14 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
         }
         else 
         {
-          if (hashfind(&map, header, (void **) &tmpheader2) == hash_OK)
+          if (timehash_find(&map, header, &tmpheader2) == hash_OK)
           {
             while (tmpheader2->next) tmpheader2 = tmpheader2->next;
             tmpheader2->next = header;
           }
           else 
           {
-            hashupdate(&map, header, header);
+            timehash_update(&map, header, header);
           }
           timeheap_heapinsert(&heap, header, header->nexttime);
         }

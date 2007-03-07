@@ -3,11 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <alloca.h>
-#include "../../CUtils/hashmap.h"
+#include "../../CUtils/polyhashmap.h"
 #include "parseul.h"
 #include "parseFuncs.h"
 #include "ul.tab.h"
 #include "plog.h"
+#include "mod_sml.h"
+
+DEFINE_NHASHMAP(parseul,charhashfunction,charEqual)
 
 char *
 contractPath1(char *path, char *lastSlash)/*{{{*/
@@ -93,8 +96,8 @@ addMlb(char *context, const char *in)/*{{{*/
 
 // trashes uo and mlop
 char *
-formSml(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
-        char *mlop, char *root, int rootLength, char *res)
+formSml(char *uo, const char *fileprefix, int fpl, const char *mapprefix, int mpl,/*{{{*/
+        char *mlop, const char *root, int rootLength, char *res)
 {
 //  printf("formSml: %s, %s, %s, %s %s\n", uo, fileprefix, mapprefix, mlop, root);
   if (mlop == NULL)
@@ -151,7 +154,7 @@ formSml(char *uo, char *fileprefix, int fpl, char *mapprefix, int mpl,/*{{{*/
 const char *mlb = "/MLB/SMLserver";
 
 char *
-formUoUl(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
+formUoUl(const char *uo, const char *fileprefix, int fpl, char *res)/*{{{*/
 {
   char *r;
   if (uo[0] == '/')
@@ -171,7 +174,7 @@ formUoUl(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
 }/*}}}*/
 
 char *
-formUo(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
+formUo(const char *uo, const char *fileprefix, int fpl, char *res)/*{{{*/
 {
   formUoUl(uo,fileprefix,fpl,res);
   return res;
@@ -179,13 +182,13 @@ formUo(char *uo, char *fileprefix, int fpl, char *res)/*{{{*/
 }/*}}}*/
 
 char *
-formUl(char *ul, char *fileprefix, int fpl, char *res)/*{{{*/
+formUl(const char *ul, const char *fileprefix, int fpl, char *res)/*{{{*/
 {
   return formUoUl(ul, fileprefix, fpl, res);
 }/*}}}*/
 
 char *
-formMap(char *loc, char *mapprefix, int mpl, char *res)/*{{{*/
+formMap(const char *loc, const char *mapprefix, int mpl, char *res)/*{{{*/
 {
   int i;
   if (loc[0] == '/')
@@ -208,7 +211,7 @@ formMap(char *loc, char *mapprefix, int mpl, char *res)/*{{{*/
 }/*}}}*/
 
 int
-path(char *file)/*{{{*/
+path(const char * restrict file)/*{{{*/
 {
   int i,ls;
   ls = -1;
@@ -219,6 +222,7 @@ path(char *file)/*{{{*/
   return ls;
 }/*}}}*/
 
+#if 0
 unsigned long
 uoHashEntry_HashFun(void *key1)/*{{{*/
 {
@@ -252,26 +256,28 @@ char_charEqualFun(void *key1, void *key2)/*{{{*/
   he2 = (struct char_charHashEntry *) key2;
   return (he1->hashval == he2->hashval && !strcmp(he1->key, he2->key));
 }/*}}}*/
+#endif
 
 int
-toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{{*/
+toUlHashTable(void *pctx1, const char *ul, int ulLength, const char *loc, int locLength)/*{{{*/
 {
   struct parseCtx *pctx, rpctx;
-  struct char_charHashEntry *he, he1;
-  char *tmp, *tmp2, *tmp3;
-  void **r;
+//  struct char_charHashEntry *he, he1;
+  char *tmp, *tmp2;
+  const char *tmp3;
+//  void **r;
   int i;
   if (!ul) return Parse_ALLOCERROR;
   if (!loc) return Parse_ALLOCERROR;
   tmp = (char *) alloca(ulLength + 1 + locLength + 1);
   if (!tmp) return Parse_ALLOCERROR;
   strncpy(tmp, ul, ulLength);
-  ul = tmp;
   tmp[ulLength] = 0;
+  ul = tmp;
   tmp += ulLength + 1;
   strncpy(tmp, loc, locLength);
+  tmp[locLength] = 0;
   loc = tmp;
-  loc[locLength] = 0;
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(ulLength+1+pctx->fpl + 1);
   tmp2 = (char *) alloca(locLength+1+pctx->mpl + 1);
@@ -279,34 +285,29 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   if (!tmp || !tmp2) return Parse_ALLOCERROR;
   if (!formUl(ul,pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMULERROR;
   if (!formMap(loc,pctx->mapprefix, pctx->mpl, tmp2)) return Parse_FORMMAPERROR;
-  he1.key = tmp;
-  he1.hashval = charhashfunction(he1.key);
-  r = (void **) (&tmp3);
-  if (hashfind(pctx->ulTable, &he1, r) == hash_DNE)
+  char * restrict key, * restrict val;
+  if (parseul_find(pctx->ulTable, tmp, &tmp3) == hash_DNE)
   {
-    he = (struct char_charHashEntry *) malloc(sizeof(struct char_charHashEntry) + strlen(tmp) + 1 +
-                                                     strlen(tmp2) + 3);
-    if (!he) return Parse_ALLOCERROR;
-    he->key = (char *) (he+1);
-    he->val = he->key + strlen(tmp) + 1;
-    strcpy(he->key, tmp);
-    strcpy(he->val, tmp2);
-    he->hashval = he1.hashval;
-    if (hashupdate(pctx->ulTable, he, he->val) != hash_OK) return Parse_ALLOCERROR;
+    key = malloc(strlen(tmp) + 1 + strlen(tmp2) + 3);
+    if (!key) return Parse_ALLOCERROR;
+    val = key + (strlen(tmp)) + 1;
+    strcpy(key, tmp);
+    strcpy(val, tmp2);
+    if (parseul_update(pctx->ulTable, key, val) != hash_OK) return Parse_ALLOCERROR;
   }
   else
   {
 	plog2s(tmp, " already visited", pctx->ctx);
     return Parse_DUPLICATE;
   }
-  tmp = (char *) alloca(strlen(he->key) + 1 + strlen(he->val) + 3);
+  tmp = (char *) alloca(strlen(key) + 1 + strlen(val) + 3);
   if (!tmp) return Parse_ALLOCERROR;
-  tmp2 = he->key + strlen(he->key) + 1;
-  i = path(he->key);
-  if (i == -1) return Parse_INTERMALERROR;
-  strncpy(tmp, he->key, i+1);
+  tmp2 = key + strlen(key) + 1;
+  i = path(key);
+  if (i == -1) return Parse_INTERNALERROR;
+  strncpy(tmp, key, i+1);
   tmp[i+1] = 0;
-  strcpy(tmp2, he->val);
+  strcpy(tmp2, val);
   rpctx.interp = pctx->interp;
   rpctx.ctx = pctx->ctx;
   rpctx.fileprefix = tmp;
@@ -319,8 +320,8 @@ toUlHashTable(void *pctx1, char *ul, int ulLength, char *loc, int locLength)/*{{
   rpctx.smlTable = pctx->smlTable;
   rpctx.ulTable = pctx->ulTable;
 //  plog5s("Recursing into %s\n  with fp: %s, mp: %s, root: %s\n", he->key,rpctx.fileprefix, rpctx.mapprefix, rpctx.root,pctx->ctx);
-  i = recurseParse(&rpctx, he->key);
-  plog2s("Done with ", he->key, pctx->ctx);
+  i = recurseParse(&rpctx, key);
+  plog2s("Done with ", key, pctx->ctx);
   return i;
 }/*}}}*/
 
@@ -328,8 +329,8 @@ int
 toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/*{{{*/
 {
   struct parseCtx *pctx;
-  struct char_charHashEntry *he, he1;
-  char *tmp, *tmp2, *tmp3;
+  char *tmp, *tmp2;
+  const char *tmp3;
   if (!uo) return Parse_ALLOCERROR;
   tmp = (char *) alloca(uoLength + mlopLength + 2);
   if (!tmp) return Parse_ALLOCERROR;
@@ -338,10 +339,10 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
   uo = tmp;
   if (mlop)
   {
-    tmp = uo + uoLength + 1;
+    tmp = tmp + uoLength + 1;
     strncpy(tmp, mlop, mlopLength);
+    tmp[mlopLength] = 0;
     mlop = tmp;
-    mlop[mlopLength] = 0;
   }
   pctx = (struct parseCtx *) pctx1;
   tmp = (char *) alloca(uoLength + 2 + pctx->fpl + strlen(mlb));
@@ -355,20 +356,17 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
     // Skipping not visible sml files
     return Parse_OK;
   }
-  he1.key = tmp2;
-  he1.hashval = charhashfunction(he1.key);
-  if (hashfind(pctx->smlTable, &he1, (void **) &tmp3) == hash_DNE)
+  char * restrict key;
+  char * restrict val;
+  if (parseul_find(pctx->smlTable, tmp2, &tmp3) == hash_DNE)
   {
-    he = (struct char_charHashEntry *) malloc(sizeof (struct char_charHashEntry) +
-                                              strlen(tmp) + strlen(tmp2) + 2);
-    if (!he) return Parse_ALLOCERROR;
-    he->key = (char *)(he+1);
-    strcpy(he->key, he1.key);
-    he->hashval = he1.hashval;
-    he->val = he->key + strlen(he->key) + 1;
-    strcpy(he->val,tmp);
-    plog4s("Mapping ", he->key, " ", he->val, pctx->ctx);
-    hashupdate(pctx->smlTable, he, he->val);
+    key = (char * restrict) malloc(strlen(tmp) + strlen(tmp2) + 2);
+    if (!key) return Parse_ALLOCERROR;
+    strcpy(key,tmp2);
+    val = key + strlen(key) + 1;
+    strcpy(val,tmp);
+    plog4s("Mapping ", key, " ", val, pctx->ctx);
+    parseul_update(pctx->smlTable, key, val);
   }
   else 
   {
@@ -378,12 +376,14 @@ toSmlHashTable(void *pctx1, char *uo, int uoLength, char *mlop, int mlopLength)/
 }/*}}}*/
 
 int
-extendInterp (void *pctx1, char *uo, int len)/*{{{*/
+extendInterp (void *pctx1, const char *uo, int len)/*{{{*/
 {
   struct parseCtx *pctx;
-  struct uoHashEntry *he, he1;
-  void *r;
+//  struct uoHashEntry *he, he1;
+//  void *r;
   char *tmp;
+  char * restrict key;
+  const char * val;
   if (!uo) return Parse_ALLOCERROR;
   tmp = (char *) alloca (len + 1);
   if (!tmp) return Parse_ALLOCERROR;
@@ -395,16 +395,12 @@ extendInterp (void *pctx1, char *uo, int len)/*{{{*/
 //  printf("extendInterp %s\n", uo);
   if (!tmp) return Parse_ALLOCERROR;
   if (!formUo(uo, pctx->fileprefix, pctx->fpl, tmp)) return Parse_FORMUOERROR;
-  he1.key = tmp;
-  he1.hashval = charhashfunction(tmp);
-  if (hashfind(pctx->uoTable, &he1, &r) == hash_DNE)
+  if (parseul_find(pctx->uoTable, tmp, &val) == hash_DNE)
   {
-    he = (struct uoHashEntry *) malloc(sizeof (struct uoHashEntry) + strlen(tmp) + 1);
-    if (!he) return Parse_ALLOCERROR;
-    he->key = (char *)(he+1);
-    strcpy(he->key, tmp);
-    he->hashval = he1.hashval;
-    hashupdate(pctx->uoTable, he, NULL);
+    key = (char * restrict) malloc(strlen(tmp) + 1);
+    if (!key) return Parse_ALLOCERROR;
+    strcpy(key, tmp);
+    parseul_update(pctx->uoTable, key, NULL);
     if (interpLoadExtend(pctx->interp, tmp, pctx->ctx)) return Parse_ERROR;
     plog2s("Extending interpreter with ", tmp, pctx->ctx);
   } // if already in the interpreter then skip
@@ -416,24 +412,24 @@ void
 yyerror(YYLTYPE *loc, void *ctx, const char *msg)/*{{{*/
 {
   struct parseCtx *pctx = (struct parseCtx *) ctx;
-  plog2s("Parse Error: ", (char *) msg, pctx->ctx);
+  plog2s("Parse Error: ", msg, pctx->ctx);
   return;
 }/*}}}*/
 
 void
-myfree(void *key, void *value)/*{{{*/
+myfree(const char *key, const char *value)/*{{{*/
 {
-  free(key);
+  free((void *) key);
   return;
 }/*}}}*/
 
 void
-clearSmlMap(hashtable *t)/*{{{*/
+clearSmlMap(parseul_hashtable_t *t)/*{{{*/
 {
   if (t)
   {
-    hashApply(t, myfree);
-    hashclose(t);
+    parseul_Apply(t, myfree);
+    parseul_close(t);
     free(t);
   }
   return;
@@ -444,22 +440,22 @@ clearPCtx(struct parseCtx *t)/*{{{*/
 {
   if (t->uoTable)
   {
-    hashApply(t->uoTable, myfree);
-    hashclose(t->uoTable);
+    parseul_Apply(t->uoTable, myfree);
+    parseul_close(t->uoTable);
     free(t->uoTable);
     t->uoTable = NULL;
   }
   if (t->ulTable)
   {
-    hashApply(t->ulTable, myfree);
-    hashclose(t->ulTable);
+    parseul_Apply(t->ulTable, myfree);
+    parseul_close(t->ulTable);
     free(t->ulTable);
     t->ulTable = NULL;
   }
   if (t->smlTable)
   {
-    hashApply(t->smlTable, myfree);
-    hashclose(t->smlTable);
+    parseul_Apply(t->smlTable, myfree);
+    parseul_close(t->smlTable);
     free(t->smlTable);
     t->smlTable = NULL;
   }
@@ -467,20 +463,16 @@ clearPCtx(struct parseCtx *t)/*{{{*/
 }/*}}}*/
 
 static void *
-ppSmlTable(void *key1, void *value1, void *ctx)/*{{{*/
+ppSmlTable(const char *key, const char *value, void *ctx)/*{{{*/
 {
-  char *value;
-  struct char_charHashEntry *he;
-  value = (char *) value1;
-  he = (struct char_charHashEntry *) key1;
-  plog4s("apsml: ", he->key, " Maps to ", value, ctx);
+  plog4s("apsml: ", key, " Maps to ", value, ctx);
   return ctx;
 }/*}}}*/
 
 void
-printSmlTable(hashtable *t, void *ctx)/*{{{*/
+printSmlTable(parseul_hashtable_t *t, void *ctx)/*{{{*/
 {
   if (!t) return;
-  hashFold(t, ppSmlTable, ctx);
+  parseul_Fold(t, ppSmlTable, ctx);
   return;
 }/*}}}*/

@@ -775,19 +775,16 @@ apsml_confinsert (String k, String v, int extraval, request_data * rd)	/*{{{ */
 {
 //  String extraString;
   if (rd->ctx->initDone) raise_exn ((int) &exn_OVERFLOW);
-  keyNhash *kn = (keyNhash *) apr_palloc (rd->ctx->conftable->pool,
-					  sizeof (keyNhash) + sizeStringDefine(v) +
+  char *key = (char *) apr_palloc (rd->ctx->conftable->pool,
+					  sizeStringDefine(v) +
 					  sizeStringDefine(k) + 2);
-  char *key = (char *) (kn + 1);
   char *value = key + (sizeStringDefine(k) + 1);
-  kn->key = key;
   strncpy (key, &(k->data), sizeStringDefine(k));
   key[sizeStringDefine(k)] = 0;
-  kn->hash = charhashfunction (key);
   strncpy (value, &(v->data), sizeStringDefine(v));
   value[sizeStringDefine(v)] = 0;
   apr_thread_rwlock_wrlock (rd->ctx->conftable->rwlock);
-  if (hashupdate (rd->ctx->conftable->ht, kn, value) != hash_OK)
+  if (conftable_update (rd->ctx->conftable->ht, key, value) != hash_OK)
   {
     ap_log_error (__FILE__, __LINE__, LOG_EMERG, 0, rd->server,
 	   "apsml_confinsert error, Out of memory");
@@ -800,15 +797,13 @@ apsml_confinsert (String k, String v, int extraval, request_data * rd)	/*{{{ */
 String
 apsml_conflookup (Region rAddr, String k, request_data * rd)	/*{{{ */
 {
-  char *value;
+  const char *value;
   String s;
   apr_thread_rwlock_rdlock (rd->ctx->conftable->rwlock);
-  keyNhash kn;
-  kn.key = &(k->data);
-  kn.hash = charhashfunction (kn.key);
+  char *key = &(k->data);
 //      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
 //		    "apsml_conflookup key:%s",kn.key);
-  if (hashfind (rd->ctx->conftable->ht, &kn, (void **) &value) != hash_OK)
+  if (conftable_find (rd->ctx->conftable->ht, key, &value) != hash_OK)
     {
       s = (String) NULL;
     }
@@ -1410,7 +1405,7 @@ apsml_GetMimeType(Region rAddr, String s, int rr)
 */
 
 void
-plog1s(char *s, void *ctx)/*{{{*/
+plog1s(const char *s, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
@@ -1419,7 +1414,7 @@ plog1s(char *s, void *ctx)/*{{{*/
 }/*}}}*/
 
 void
-plog2s(char *s, char *t, void *ctx)/*{{{*/
+plog2s(const char *s, const char *t, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
@@ -1428,7 +1423,7 @@ plog2s(char *s, char *t, void *ctx)/*{{{*/
 }/*}}}*/
 
 void
-plog3s(char *s, char *t, char *r, void *ctx)/*{{{*/
+plog3s(const char *s, const char *t, const char *r, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
@@ -1437,7 +1432,7 @@ plog3s(char *s, char *t, char *r, void *ctx)/*{{{*/
 }/*}}}*/
 
 void
-plog4s(char *s, char *t, char *r, char *v, void *ctx)/*{{{*/
+plog4s(const char *s, const char *t, const char *r, const char *v, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
@@ -1446,7 +1441,7 @@ plog4s(char *s, char *t, char *r, char *v, void *ctx)/*{{{*/
 }/*}}}*/
 
 void
-plog5s(char *s, char *t, char *r, char *v, char *w, void *ctx)/*{{{*/
+plog5s(const char *s, const char *t, const char *r, const char *v, const char *w, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
@@ -1455,7 +1450,7 @@ plog5s(char *s, char *t, char *r, char *v, char *w, void *ctx)/*{{{*/
 }/*}}}*/
 
 void
-plog4s1i(char *s, char *t, char *r, char *v, unsigned long w, void *ctx)/*{{{*/
+plog4s1i(const char *s, const char *t, const char *r, const char *v, unsigned long w, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;

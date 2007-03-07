@@ -51,7 +51,7 @@ FILECHARS ([a-zA-Z0-9_/]|"."|"-")*
 extern int yydebug;
 
 int
-recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
+recurseParse(struct parseCtx *ctx, const char *filename)/*{{{*/
 {
   YY_BUFFER_STATE newState, oldState;
   FILE *file;
@@ -62,36 +62,36 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   if (!ctx->uoTable)
   {
     top = 1;
-    ctx->uoTable = (hashtable *) calloc (1, sizeof(hashtable));
+    ctx->uoTable = (parseul_hashtable_t *) calloc (1, sizeof(parseul_hashtable_t));
     if (!ctx->uoTable) return Parse_ALLOCERROR;
-    ctx->ulTable = (hashtable *) calloc (1, sizeof(hashtable));
+    ctx->ulTable = (parseul_hashtable_t *) calloc (1, sizeof(parseul_hashtable_t));
     if (!ctx->ulTable)
     {
       free(ctx->uoTable);
       return Parse_ALLOCERROR;
     }
-    ctx->smlTable = (hashtable *) calloc (1, sizeof(hashtable));
+    ctx->smlTable = (parseul_hashtable_t *) calloc (1, sizeof(parseul_hashtable_t));
     if (!ctx->smlTable)
     {
       free(ctx->ulTable);
       free(ctx->uoTable);
       return Parse_ALLOCERROR;
     }
-    if (hashinit(ctx->uoTable, uoHashEntry_HashFun, uoHashEntry_EqualFun) != hash_OK)
+    if (parseul_init(ctx->uoTable) != hash_OK)
     {
       free(ctx->smlTable);
       free(ctx->ulTable);
       free(ctx->uoTable);
       return Parse_ALLOCERROR;
     }
-    if (hashinit(ctx->smlTable, char_charHashFun, char_charEqualFun) != hash_OK)
+    if (parseul_init(ctx->smlTable) != hash_OK)
     {
       free(ctx->smlTable);
       free(ctx->ulTable);
       free(ctx->uoTable);
       return Parse_ALLOCERROR;
     }
-    if (hashinit(ctx->ulTable, char_charHashFun, char_charEqualFun) != hash_OK)
+    if (parseul_init(ctx->ulTable) != hash_OK)
     {
       free(ctx->smlTable);
       free(ctx->ulTable);
@@ -120,5 +120,5 @@ recurseParse(struct parseCtx *ctx, char *filename)/*{{{*/
   if (i == 0) return Parse_OK;
   if (i == 1) return Parse_ERROR;
   if (i == 2) return Parse_ALLOCERROR;
-  return Parse_INTERMALERROR;
+  return Parse_INTERNALERROR;
 }/*}}}*/

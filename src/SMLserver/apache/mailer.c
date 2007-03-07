@@ -17,7 +17,7 @@
 #include "../../Runtime/String.h"
 #include "../../Runtime/Exception.h"
 #include "../../Runtime/List.h"
-#include "../../CUtils/hashmap.h"
+#include "../../CUtils/polyhashmap.h"
 #include "string.h"
 #include "mod_sml.h"
 
@@ -103,6 +103,8 @@ typedef struct //{{{
   reply *response;
 } email; //}}}
 
+DECLARE_NHASHMAP(answer_map, reply *, reply *,,)
+
 typedef struct //{{{
 {
   char *me;
@@ -115,7 +117,7 @@ typedef struct //{{{
   enum errtype etype;
   int err;
   buffer buf;
-  hashtable answers;
+  answer_map_hashtable_t answers;
   struct rcptlist *okeyed;
   struct rcptlist *lastokeyed;
   struct rcptlist *tempfailure;
@@ -127,12 +129,6 @@ typedef struct //{{{
   char tmp[512];
   request_data *rd;
 } mailer; //}}}
-
-typedef struct //{{{
-{
-  reply msg;
-  unsigned long hash;
-} htentry; //}}}
 
 void 
 setdefaulttimeouts (timeout *t) //{{{
@@ -147,18 +143,15 @@ setdefaulttimeouts (timeout *t) //{{{
 } //}}}
 
 static unsigned long
-hashfunc (void *entry) //{{{
+hashfunc (reply *r) //{{{
 {
-  return ((htentry *) entry)->hash;
+  return (charhashfunction(r->text) + (unsigned long) r->number);
 } //}}}
 
 static int
-htentryEqual (void *k1, void *k2) //{{{
+htentryEqual (reply *key1, reply *key2) //{{{
 {
-  htentry *key1 = (htentry *) k1;
-  htentry *key2 = (htentry *) k2;
-  if (key1->hash == key2->hash
-      && strcmp (key1->msg.text, key2->msg.text) == 0)
+  if (strcmp (key1->text, key2->text) == 0)
     return 1;
   return 0;
 } //}}}
@@ -401,6 +394,8 @@ mailer_send (char *data, mailer * mail, int timeout) //{{{
   return n;
 } //}}}
 
+DEFINE_NHASHMAP(answer_map, hashfunc, htentryEqual)
+
 static int
 getanswer (reply ** r, int timeout, mailer * mail, int blocking) //{{{
 {
@@ -409,7 +404,7 @@ getanswer (reply ** r, int timeout, mailer * mail, int blocking) //{{{
   int n, size;
   int timeleft = timeout;
   int timeused = 0;
-  htentry *entry, *e;
+  reply *entry, *e;
   do
   {
     timeleft = timeleft > timeused ? timeleft - timeused : 0;
@@ -466,7 +461,7 @@ getanswer (reply ** r, int timeout, mailer * mail, int blocking) //{{{
   entry = NULL;
   if (t != NULL) 
   {
-    entry = (htentry *) malloc (sizeof (htentry) + size + 1);
+    entry = (reply *) malloc (sizeof (reply) + size + 1);
     // if answer already exists then freed later in this function 
     // else it is put in the answer collection to be freed when closing down
     if (entry == NULL)
@@ -484,11 +479,11 @@ getanswer (reply ** r, int timeout, mailer * mail, int blocking) //{{{
       t = oldt;
     }
     mail->partialanswer = NULL;
-    if (entry != NULL) free (entry);
+    if (entry != NULL) free ((reply *) entry);
     return -2;
   }
 
-  entry->msg.text = ((char *) entry) + sizeof (htentry);
+  entry->text = ((char *) entry) + sizeof (reply);
   // lets turn the list around
   oldt = t->next;
   t->next = NULL;
@@ -504,19 +499,18 @@ getanswer (reply ** r, int timeout, mailer * mail, int blocking) //{{{
   n = 0;
   while (oldt != NULL)
     {
-      strcpy (entry->msg.text + n, oldt->text);
+      strcpy (entry->text + n, oldt->text);
       n += oldt->len;
       t2 = oldt->next;
       free (oldt);
       oldt = t2;
     }
   mail->partialanswer = NULL;
-  entry->msg.number = cmdnumber (entry->msg.text);
-  entry->hash = charhashfunction (entry->msg.text);
+  entry->number = cmdnumber (entry->text);
   // put the answer in the answer collection
-  if (hashfind (&(mail->answers), entry, (void **) &e) == hash_DNE)
+  if (answer_map_find (&(mail->answers), entry, &e) == hash_DNE)
   {
-    if (hashinsert (&(mail->answers), entry, entry) == hash_OUTOFMEM)
+    if (answer_map_insert (&(mail->answers), entry, entry) == hash_OUTOFMEM)
     {
       n = -3;
       mail->etype = mail_INTERNALERR;
@@ -531,7 +525,7 @@ getanswer (reply ** r, int timeout, mailer * mail, int blocking) //{{{
     entry = e;
   }
   if (n < 0) return n;
-  *r = &(entry->msg);
+  *r = entry;
   mail->lastreply.text = (*r)->text;
   mail->lastreply.number = (*r)->number;
   return (*r)->number;
@@ -546,7 +540,7 @@ mailer_initconn (char *serv, mailer *mail) //{{{
   char *buf = mail->tmp;
   reply *r;
   mail->me = ((char *) mail) + sizeof (mailer);
-  if (hashinit (&(mail->answers), hashfunc, htentryEqual) == hash_OUTOFMEM)
+  if (answer_map_init (&(mail->answers)) == hash_OUTOFMEM)
     {
       free (mail);
       return NULL;
@@ -1315,10 +1309,10 @@ apsml_closeconn (mailer *mail, request_data *rd)/*{{{*/
     n = getanswer(&r, mail->timeout.mail, mail, 1);
   }
   closeconn(mail, NULL);
-  hashapply(&(mail->answers), free);
+  answer_map_apply(&(mail->answers),  free);
 //    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn 6");
-  hashclose(&(mail->answers));
+  answer_map_close(&(mail->answers));
   p = mail->partialanswer;
   while (p)
   {
