@@ -41,38 +41,39 @@ sml_getrealtime (int vAddr)
 int 
 sml_localtime (int vAddr, int v) 
 {
-  struct tm *tmr;
+  struct tm tmr;
+  struct tm *tmrp;
   time_t clock = (long)(get_d(v));
-  tmr = localtime(&clock);
+  tmrp = localtime_r(&clock, &tmr);
   mkTagRecordML(vAddr,9);
-  elemRecordML(vAddr,0) = convertIntToML((*tmr).tm_hour);
-  elemRecordML(vAddr,1) = convertIntToML((*tmr).tm_isdst);
-  elemRecordML(vAddr,2) = convertIntToML((*tmr).tm_mday);
-  elemRecordML(vAddr,3) = convertIntToML((*tmr).tm_min);
-  elemRecordML(vAddr,4) = convertIntToML((*tmr).tm_mon);
-  elemRecordML(vAddr,5) = convertIntToML((*tmr).tm_sec);
-  elemRecordML(vAddr,6) = convertIntToML((*tmr).tm_wday);
-  elemRecordML(vAddr,7) = convertIntToML((*tmr).tm_yday);
-  elemRecordML(vAddr,8) = convertIntToML((*tmr).tm_year);
+  elemRecordML(vAddr,0) = convertIntToML(tmr.tm_hour);
+  elemRecordML(vAddr,1) = convertIntToML(tmr.tm_isdst);
+  elemRecordML(vAddr,2) = convertIntToML(tmr.tm_mday);
+  elemRecordML(vAddr,3) = convertIntToML(tmr.tm_min);
+  elemRecordML(vAddr,4) = convertIntToML(tmr.tm_mon);
+  elemRecordML(vAddr,5) = convertIntToML(tmr.tm_sec);
+  elemRecordML(vAddr,6) = convertIntToML(tmr.tm_wday);
+  elemRecordML(vAddr,7) = convertIntToML(tmr.tm_yday);
+  elemRecordML(vAddr,8) = convertIntToML(tmr.tm_year);
   return vAddr;
 }
 
 int 
 sml_gmtime (int vAddr, int r) 
 {
-  struct tm *tmr;
+  struct tm tmr, *tmrp;
   time_t clock = (long)(get_d(r));
-  tmr = gmtime(&clock);
+  tmrp = gmtime_r(&clock,&tmr);
   mkTagRecordML(vAddr,9);
-  elemRecordML(vAddr,0) = convertIntToML((*tmr).tm_hour);
-  elemRecordML(vAddr,1) = convertIntToML((*tmr).tm_isdst);
-  elemRecordML(vAddr,2) = convertIntToML((*tmr).tm_mday);
-  elemRecordML(vAddr,3) = convertIntToML((*tmr).tm_min);
-  elemRecordML(vAddr,4) = convertIntToML((*tmr).tm_mon);
-  elemRecordML(vAddr,5) = convertIntToML((*tmr).tm_sec);
-  elemRecordML(vAddr,6) = convertIntToML((*tmr).tm_wday);
-  elemRecordML(vAddr,7) = convertIntToML((*tmr).tm_yday);
-  elemRecordML(vAddr,8) = convertIntToML((*tmr).tm_year);
+  elemRecordML(vAddr,0) = convertIntToML(tmr.tm_hour);
+  elemRecordML(vAddr,1) = convertIntToML(tmr.tm_isdst);
+  elemRecordML(vAddr,2) = convertIntToML(tmr.tm_mday);
+  elemRecordML(vAddr,3) = convertIntToML(tmr.tm_min);
+  elemRecordML(vAddr,4) = convertIntToML(tmr.tm_mon);
+  elemRecordML(vAddr,5) = convertIntToML(tmr.tm_sec);
+  elemRecordML(vAddr,6) = convertIntToML(tmr.tm_wday);
+  elemRecordML(vAddr,7) = convertIntToML(tmr.tm_yday);
+  elemRecordML(vAddr,8) = convertIntToML(tmr.tm_year);
   return vAddr;
 }
 
@@ -98,7 +99,8 @@ String
 REG_POLY_FUN_HDR(sml_asctime, Region rAddr, int v, int exn) 
 {
   struct tm tmr;
-  char *res;
+  char *r;
+  char res[30]; /* Should at least be 26 + 0 termination according to man asctime */
   tmr.tm_hour = convertIntToC(elemRecordML(v,0));
   tmr.tm_isdst = convertIntToC(elemRecordML(v,1));
   tmr.tm_mday = convertIntToC(elemRecordML(v,2));
@@ -108,8 +110,8 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, int v, int exn)
   tmr.tm_wday = convertIntToC(elemRecordML(v,6));
   tmr.tm_yday = convertIntToC(elemRecordML(v,7));
   tmr.tm_year = convertIntToC(elemRecordML(v,8));
-  res = asctime(&tmr);
-  if ( res == NULL ) 
+  r = asctime_r(&tmr, res);
+  if ( r == NULL ) 
     {
       raise_exn(exn);
     }
@@ -144,12 +146,12 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, int v, int exn)
 int 
 sml_localoffset (int vAddr) 
 {
-  struct tm *gmt;
+  struct tm gmt;
   time_t t1, t2, td;
 
   t1 = time((time_t*)0);
-  gmt = gmtime (&t1);
-  t2 = tm2cal(gmt);
+  gmtime_r(&t1, &gmt);
+  t2 = tm2cal(&gmt);
   td = difftime(t2, t1);
   get_d(vAddr) = (double)td;
   set_dtag(vAddr);  
