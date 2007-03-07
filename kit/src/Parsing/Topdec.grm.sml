@@ -1,6 +1,5 @@
-
 functor TopdecLrVals(
-           structure Token: TOKEN
+           Token: TOKEN
          )
          = 
 struct
