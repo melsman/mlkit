@@ -475,8 +475,10 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 	fun fileNewer t file : bool =
 	    Time.>(OS.FileSys.modTime file,t) handle _ => false
 
+  local
 	fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
 
+  in
 	fun subtractDir _ "" = (fn p => p)
 	  | subtractDir hasLink dir =
       if hasLink
@@ -490,6 +492,7 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
         val _ = if OS.Path.isAbsolute dir then print ("mkAbs: " ^ p ^ " " ^ p_abs ^ " " ^ dir ^ "\n") else ()
 		in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
 		end
+   end
 	    end
 
   local
@@ -533,9 +536,10 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 	    end
   end
 
+  local
 	val op + = DepEnv.plus
 	type D = DepEnv.D
-	type A = {modTimeMlbFileMax: Time.time, mlbfiles: (string * D) list}   (* max-modtime of mlb-files met so far *)
+	type A = {modTimeMlbFileMax: Time.time, mlbfiles: (MlbFileSys.unique * D) list}   (* max-modtime of mlb-files met so far *)
 	val emptyA = {modTimeMlbFileMax=Time.zeroTime,mlbfiles=nil}
 	fun lookupA {modTimeMlbFileMax, mlbfiles} mlbfile : D option =
 	    let fun look nil = NONE
@@ -602,9 +606,11 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 	      | MS.ANNbdec (s,bdec) => dep_bdec D A bdec
 
 	and dep_bdec_file (A:A) mlbfile_rel : D * A =
-	    let val mlbfile_abs = mkAbs mlbfile_rel
+	    let
+        val unique = MlbFileSys.unique true mlbfile_rel
+(*	    let val mlbfile_abs = mkAbs mlbfile_rel *)
 	    in
-		case lookupA A mlbfile_abs of
+		case lookupA A unique of
 		    SOME D => (D,A)
 		  | NONE =>
 			let val {cd_old,file=mlbfile} = MlbFileSys.change_dir mlbfile_rel
@@ -619,13 +625,15 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
 			       val (D,A) = dep_bdec DepEnv.empty A bdec
 			   in  cd_old() ; 
 			       (D, {modTimeMlbFileMax=timeMax(modTimeMlbFileMaxOld,modTimeMlbFileMaxNew),
-				    mlbfiles=(mlbfile_abs,D) :: #mlbfiles A})
+				    mlbfiles=(unique,D) :: #mlbfiles A})
 			   end handle X => (cd_old(); raise X)
 			end
 	    end
 
+  in 
 	fun dep (mlbfile : string) : unit =
 	    (dep_bdec_file emptyA mlbfile; ())
+  end
 
 	(* Support for finding the source files of a basis file *)
 
@@ -744,11 +752,18 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
   end
 
   local
-    val unique = MlbFileSys.unique
+(*    val unique = MlbFileSys.unique *)
+    exception Cycle of (string * MlbFileSys.unique) list * (string * MlbFileSys.unique) option
+    fun pathUpArrow(p,p_pre) = 
+        if OS.Path.isAbsolute p then p
+        else OS.Path.concat(p_pre,p)
   in
-  fun srcs_bdec_file dir state mlbs mlbfile_rel =
+  fun srcs_bdec_file {dir,current_mlb} state mlbs mlbfile_rel =
       let 
-        val mlbfile_abs = unique true mlbfile_rel
+        val mlbfile_abs = MlbFileSys.unique true mlbfile_rel
+        val _ = if List.exists (fn m => m = mlbfile_abs) current_mlb
+                then raise Cycle ([(mlbfile_rel,mlbfile_abs)], NONE)
+                else ()
       in
         case List.find (fn (a,_) => mlbfile_abs = a) mlbs
         of SOME (_,deps) => (state,deps, mlbs)
@@ -761,7 +776,18 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
                val dir = if OS.Path.isAbsolute mlbfile_rel
                          then OS.Path.dir mlbfile_rel
                          else OS.Path.concat(dir,OS.Path.dir mlbfile_rel)
-               val (state,deps,mlbs) = srcs_bdec state mlbfile mlbs dir [] [] bdec
+                                       (* srcs_bdec state mlbfile mlbs dir [] [] bdec *)
+               val (state,deps,mlbs) = (srcs_bdec state mlbfile mlbs {dir=dir,current_mlb = mlbfile_abs::current_mlb} [] [] bdec)
+                 handle Cycle (l,cycend) => 
+                   let
+                     val dir = OS.Path.dir mlbfile_rel
+                     val l = List.map (fn (s,u) => (pathUpArrow (s,dir),u)) l
+                   in
+                     raise Cycle((mlbfile_rel,mlbfile_abs)::l,
+                                  case cycend 
+                                  of NONE => if #2(List.last l) = mlbfile_abs then SOME (mlbfile_rel,mlbfile_abs) else NONE
+                                   | SOME (s,u) => SOME (pathUpArrow (s,dir),u))
+                   end
              in
                (cd_old ()
               ; (state, deps, (mlbfile_abs,deps)::mlbs))
@@ -799,7 +825,7 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
        let
          val smlfile = if OS.Path.isAbsolute smlfile 
                        then smlfile
-                       else OS.Path.concat(dir,smlfile)
+                       else OS.Path.concat(#dir dir,smlfile)
          val (bg,deps) = BG.add_first (#bg state : (SmlFile * string * string list) BG.A) deps (NonScript (Atom.fromString smlfile), mlbfile, anns)
        in
          ({bg = bg, bid_map = #bid_map state}, [deps], mlbs)
@@ -815,7 +841,7 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
          val smlfiles = List.map (fn smlfile => 
                        if OS.Path.isAbsolute smlfile 
                        then smlfile
-                       else OS.Path.concat(dir,smlfile)) smlfiles
+                       else OS.Path.concat(#dir dir,smlfile)) smlfiles
 
          val bg = List.foldl (fn (f,bg) => #1 (BG.add_first bg deps (Script (Atom.fromString f), mlbfile, anns))) (#bg state) smlfiles
        in
@@ -843,10 +869,10 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
     type File = SmlFile * Elem BG.B * BG.I * (Elem BG.B) list 
 
     local 
-      val list = BG.foldB (fn (e : Elem,acc) => (unique true ((Atom.toString o stripFile o #1) e), ((stripFile o #1) e, #2 e)) :: acc) []
+      val list = BG.foldB (fn (e : Elem,acc) => (MlbFileSys.unique true ((Atom.toString o stripFile o #1) e), ((stripFile o #1) e, #2 e)) :: acc) []
 
       val sort = Listsort.sort (fn ((a,_),(b,_)) => MlbFileSys.cmp (a,b))
-      fun fileCmp (f,g) = MlbFileSys.cmp (unique true f,unique true g)
+      fun fileCmp (f,g) = MlbFileSys.cmp (MlbFileSys.unique true f,MlbFileSys.unique true g)
       fun report(s,m1,m2) =
         let
           val s = Atom.toString s
@@ -867,9 +893,22 @@ functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT =
     in
     fun sources (mlbfile:string) = 
           let
-            val (a,b) = BG.turn (#bg(#1 (srcs_bdec_file "" {bg = BG.emptyA, bid_map = []} [] mlbfile)))
+            val (a,b) = BG.turn (#bg(#1 (srcs_bdec_file {dir="",current_mlb = []} {bg = BG.emptyA, bid_map = []} [] mlbfile)))
           in (ignore (check a); (a,b))
           end
+        handle Cycle (l,u) => case u
+                              of NONE => error ("Bad cycle detected, this is a compiler bug")
+                               | SOME (e,u) => 
+                    let 
+                      fun cycstart [] = ["\n"]
+                        | cycstart [(s,us)] = s::["\n"]
+                        | cycstart ((s,us)::l) =
+                             if us = u
+                             then "Cycle starts:\n"::"  "::s::"\n"::(cycstart l)
+                             else "  "::s::"\n"::(cycstart l)
+                    in
+                      error (String.concat (["Cycle detected:\n"] @ (cycstart l)))
+                    end
     end
   end
 
