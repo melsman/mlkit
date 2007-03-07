@@ -323,7 +323,7 @@ hashFold(hashtable *tinfo, void *(*f)(void *, void *, void *), void *first)
 
 // char * -> unsigned long 
 unsigned long
-charhashfunction (char *key)
+charhashfunction (const char *key)
 {
   unsigned long result = 0;
   unsigned char *k = (unsigned char *) key;
