@@ -101,7 +101,7 @@ type arg = unit
 
 %name   Topdec
 %header (functor TopdecLrVals(
-           structure Token: TOKEN
+           Token: TOKEN
          )
         )
 
