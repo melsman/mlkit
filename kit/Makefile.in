@@ -283,7 +283,6 @@ install_test:
 	$(INSTALL) test/Makefile $(DATADIR)/test
 	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(DATADIR)/test
 	$(INSTALL) test/README $(DATADIR)/test 
-	$(INSTALL) test/LEXGEN_DATA/*.lex $(DATADIR)/test/LEXGEN_DATA 
 	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA 
 	$(INSTALL) test/ray/DATA/TEST $(DATADIR)/test/ray/DATA
 	$(INSTALL) test/ray/input test/ray/README test/ray/load test/ray/*.{sml,mlb} $(DATADIR)/test/ray
