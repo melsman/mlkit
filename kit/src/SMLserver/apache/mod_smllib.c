@@ -1395,7 +1395,7 @@ apsml_GetMimeType(Region rAddr, String s, int rr)
   if ( r->content_type == NULL ) 
     {
 	ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, ((request_rec *) rr), 
-			"nssml_GetMimeType problem - returning empty string");
+			"apsml: apsml_GetMimeType problem - returning empty string");
       r->content_type = "";
     }
   return convertStringToML(rAddr, (char *) r->content_type);

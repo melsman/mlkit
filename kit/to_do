@@ -1,3 +1,24 @@
+
+mael 2007-02-26: Things to do:
+
+ - runtime flags only if env var MLKIT_RUNTIME_FLAGS is set.
+
+     Instead use the syntax:
+
+       a.out @MLKit -help --
+       a.out @MLKit -help -- a b c
+         means: print runtime help options and exit
+
+       a.out @MLKit -verbose_gc -- a b c
+         means: enable runtime option -verbose_gc and make options [a, b, c]
+         available to the application.
+
+ - mlkit with no command args should return minimal help info...  OK mael 2007-02-27
+
+ - cleanup of odbc.c and mod_sml.c
+
+ - tabbing and emacs
+
 mael 2005-11-29: Things needed for the next release:
 
    * mael 2005-10-04: Better mlkit error reporting in case a src-file

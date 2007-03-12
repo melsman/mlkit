@@ -933,7 +933,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 					   | IsolateFunExn => 
 					      (print "Stopping compilation of MLB-file due to errors.\n";
 					       raise PARSE_ELAB_ERROR nil)
-					   | _ => (print "Stopping compilation due to errors.\n";
+					   | ? => (print "Stopping compilation due to errors.\n";
+						   print (General.exnMessage ? ^ "\n");
 						   raise PARSE_ELAB_ERROR nil))
 				 end
 		       | WRONG_FILETYPE s => raise Fail s)
