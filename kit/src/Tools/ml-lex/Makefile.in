@@ -1,0 +1,20 @@
+
+top_srcdir=@top_srcdir@
+BINDIR=$(top_srcdir)/bin
+
+MKDIR=$(top_srcdir)/mkinstalldirs
+INSTALL=@INSTALL@
+INSTALLDATA=@INSTALL_DATA@
+INSTALLPROGRAM=@INSTALL_PROGRAM@
+
+include $(top_srcdir)/Makefiledefault
+
+$(BINDIR)/mlkit-mllex: mlkit-mllex
+	$(MKDIR) $(BINDIR)
+	$(INSTALLPROGRAM) mlkit-mllex $(BINDIR)
+
+mlkit-mllex: Makefile ml-lex.mlb *.sml
+	$(MLCOMP) -output mlkit-mllex ml-lex.mlb
+
+clean:
+	rm -rf MLB *~ mlkit-mllex
