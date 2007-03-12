@@ -1,3 +1,6 @@
+mael 2007-03-12:
+ - we need a man-page for mlkit-mllex
+ - we need to add mlkit-mlyacc as well
 
 mael 2007-02-26: Things to do:
 
@@ -17,7 +20,7 @@ mael 2007-02-26: Things to do:
 
  - cleanup of odbc.c and mod_sml.c
 
- - tabbing and emacs
+ - tabbing and emacs... OK mael 2007-03-12
 
 mael 2005-11-29: Things needed for the next release:
 
