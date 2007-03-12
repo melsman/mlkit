@@ -1,0 +1,25 @@
+  Lexical analyzer generator for Standard ML.
+        Version 1.6, October 1994
+
+Copyright (c) 1989-92 by Andrew W. Appel, James S. Mattson, David R. Tarditi.
+
+This software comes with ABSOLUTELY NO WARRANTY.  This software is
+subject only to the PRINCETON STANDARD ML SOFTWARE LIBRARY COPYRIGHT
+NOTICE, LICENSE AND DISCLAIMER, (in the file "COPYRIGHT", distributed
+with this software). You may copy and distribute this software; see
+the file COPYRIGHT.smlnj for details and restrictions.
+
+Modified for use with the MLKit by Martin Elsman (mael 2007-03-12); see the 
+
+Files of interest:
+
+lexgen.doc		- User's manual for ML-Lex
+
+lexgen.sml		- ML version of Lex
+
+ml-lex-mlkit.sml        - Stub-code for stand-alone program that takes the 
+                          specification file name as a command line argument
+
+ml-lex.mlb		- MLB description file for ML-Lex
+
+Makefile                - Makefile to build ml-lex with the MLKit

@@ -37,7 +37,7 @@ REQUEST_PROFILING=
 mlkit: mlkit_kit
 
 .PHONY: mlkit_kit
-mlkit_kit: basics rp2ps tester kitbench mlbmake
+mlkit_kit: basics rp2ps tester kitbench mlbmake Parsing/Topdec.lex.sml
 #	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
@@ -54,13 +54,13 @@ mlkit_kit: basics rp2ps tester kitbench mlbmake
 mlkit_kam: mlkit_kam_kit
 
 .PHONY: mlkit_kam_kit
-mlkit_kam_kit: basics tester kitbench
+mlkit_kam_kit: basics tester kitbench Parsing/Topdec.lex.sml
 	$(MAKE) -C Runtime kam
 	$(MLCOMP) -output mlkit_kam Compiler/kitkam.mlb
 	$(INSTALL) -p mlkit_kam $(BINDIR)
 
 .PHONY: mlkit_nj
-mlkit_nj: basics rp2ps tester kitbench mlbmake
+mlkit_nj: basics rp2ps tester kitbench mlbmake Parsing/Topdec.lex.sml
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
@@ -74,14 +74,14 @@ mlkit_nj: basics rp2ps tester kitbench mlbmake
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit
 
 .PHONY: mlkit_kam_nj
-mlkit_kam_nj: basics tester kitbench
+mlkit_kam_nj: basics tester kitbench Parsing/Topdec.lex.sml
 	$(MAKE) -C Runtime kam
 	echo 'use "build_kam.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam
 
 smlserver: smlserver_kit
 
-smlserver_kit: basics mlbmake
+smlserver_kit: basics mlbmake Parsing/Topdec.lex.sml
 	$(MAKE) -C Tools/MspComp
 	$(MAKE) -C Tools/UlWrapUp
 #	$(MAKE) -C Tools/MlbMake
@@ -95,7 +95,7 @@ smlserver_kit: basics mlbmake
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 #	chmod a+x $(BINDIR)/smlserverc
 
-smlserver_nj: basics mlbmake
+smlserver_nj: basics mlbmake Parsing/Topdec.lex.sml
 	$(MAKE) -C Tools/MspComp
 	$(MAKE) -C Tools/UlWrapUp
 #	$(MAKE) -C Tools/MlbMake
@@ -110,7 +110,7 @@ smlserver_nj: basics mlbmake
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 #	chmod a+x $(BINDIR)/smlserverc
 
-barry: basics
+barry: basics Parsing/Topdec.lex.sml
 	echo 'use "build_barry.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/barry.$(ARCH-OS)
 	rm -f $(BINDIR)/barry
@@ -118,7 +118,7 @@ barry: basics
 	cd .. && echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
 	chmod a+x $(BINDIR)/barry
 
-basics: genopcodes heap2exec
+basics: genopcodes heap2exec mlkit-mllex
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -139,6 +139,13 @@ mlbmake:
 
 kitbench:
 	$(MAKE) -C Tools/Benchmark
+
+.PHONY: mlkit-mllex
+mlkit-mllex:
+	$(MAKE) -C Tools/ml-lex
+
+Parsing/Topdec.lex.sml: Parsing/Topdec.lex
+	$(BINDIR)/mlkit-mllex Parsing/Topdec.lex
 
 heap2exec: heap2exec/heap2exec
 	cp heap2exec/heap2exec.copy heap2exec/heap2exec;
