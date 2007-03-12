@@ -1,5 +1,11 @@
 MLKit NEWS file
 
+ * mael 2007-03-12: Added mlkit-mllex executable by including a
+   modified copy of mllex from SML/NJ 110.60. The copy of the source
+   code is in src/Tools/ml-lex. The source code is compiled with
+   either mlton or with mlkit, depending on the setting of MLCOMP at
+   configure-time.
+
  * mael 2006-10-29: Applied patch by Vesa Karvonen. The patch:
 
      - Exposes the Basis library Text : TEXT module, which wasn't
