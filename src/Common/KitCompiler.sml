@@ -59,9 +59,9 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				   "Options:\n\n")
 
 	val options = [("version", ["v","V"], ["Print MLKit version information and exit."]),
-		       ("man", [], ["Print man-page and exit."]),
-		       ("help", [], ["Print help information and exit."]),
-		       ("help S", [], ["Print help information about an option and exit."])
+		       ("help", [], ["Print extended help information and exit."]),
+		       ("help S", [], ["Print help information about an option and exit."]),
+		       ("man", [], ["Print man-page and exit."])
 		       ]
 
 	fun print_indent nil = ()
@@ -98,8 +98,11 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				    print (Flags.help_all()); 
 				    raise Fail ""))]
 		
-	    fun go_files files = ((Manager.comp files; OS.Process.success) 
-				   handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
+	    fun go_files [file] = 
+		((Manager.comp [file]; OS.Process.success) 
+		 handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
+	      | go_files _ = (print_greetings(); print_usage(); print_options(); raise Fail "")
+
 	    fun go_options options =
 		let val rest = Flags.read_options{options=options, nullary=nullary_options,
 						  unary=unary_options}

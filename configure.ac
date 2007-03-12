@@ -1,4 +1,4 @@
-AC_INIT(MLKit, [4.3.0])
+AC_INIT(MLKit, [4.3.1])
 AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/SMLserver/apache/Makefile 
@@ -10,6 +10,7 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  src/Tools/MlbMake/Makefile
                  src/Tools/Rp2ps/Makefile
                  src/Tools/GenOpcodes/Makefile
+                 src/Tools/ml-lex/Makefile
                  src/Tools/UlWrapUp/Makefile
                  src/Tools/Tester/Makefile
                  src/Version.sml])

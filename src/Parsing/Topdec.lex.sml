@@ -1,4 +1,3 @@
-type int = Int.int
 functor TopdecLex(structure Tokens: Topdec_TOKENS
 			   structure LexUtils: LEX_UTILS
 			     where type pos = LexBasics.pos
@@ -802,7 +801,7 @@ val s = [
 fun f x = x 
 val s = map f (rev (tl (rev s))) 
 exception LexHackingError 
-fun look ((j,x)::r, i) = if i = j then x else look(r, i) 
+fun look ((j,x)::r, i: int) = if i = j then x else look(r, i) 
   | look ([], i) = raise LexHackingError
 fun g {fin=x, trans=i} = {fin=x, trans=look(s,i)} 
 in Vector.fromList(map g 
@@ -943,29 +942,28 @@ type result = UserDeclarations.lexresult
 	exception LexerError (* raised if illegal leaf action tried *)
 end
 
-type int = Int.int
-fun makeLexer (yyinput: int -> string) =
-let	val yygone0:int= ~1
+fun makeLexer yyinput =
+let	val yygone0=1
 	val yyb = ref "\n" 		(* buffer *)
-	val yybl: int ref = ref 1		(*buffer length *)
-	val yybufpos: int ref = ref 1		(* location of next character to use *)
-	val yygone: int ref = ref yygone0	(* position in file of beginning of buffer *)
+	val yybl = ref 1		(*buffer length *)
+	val yybufpos = ref 1		(* location of next character to use *)
+	val yygone = ref yygone0	(* position in file of beginning of buffer *)
 	val yydone = ref false		(* eof found yet? *)
-	val yybegin: int ref = ref 1		(*Current 'start state' for lexer *)
+	val yybegin = ref 1		(*Current 'start state' for lexer *)
 
 	val YYBEGIN = fn (Internal.StartStates.STARTSTATE x) =>
 		 yybegin := x
 
 fun lex (yyarg as (arg: UserDeclarations.arg)) =
 let fun continue() : Internal.result = 
-  let fun scan (s,AcceptingLeaves : Internal.yyfinstate list list,l,i0: int) =
-	let fun action (i: int,nil) = raise LexError
+  let fun scan (s,AcceptingLeaves : Internal.yyfinstate list list,l,i0) =
+	let fun action (i,nil) = raise LexError
 	| action (i,nil::l) = action (i-1,l)
 	| action (i,(node::acts)::l) =
 		case node of
 		    Internal.N yyk => 
-			(let fun yymktext() = String.substring(!yyb,i0,i-i0)
-			     val yypos: int = i0+ !yygone
+			(let fun yymktext() = substring(!yyb,i0,i-i0)
+			     val yypos = i0+ !yygone
 			fun REJECT() = action(i,acts::l)
 			open UserDeclarations Internal.StartStates
  in (yybufpos := i; case yyk of 
@@ -1090,31 +1088,31 @@ let fun continue() : Internal.result =
 
 		) end )
 
-	val {fin,trans} = Vector.sub (Internal.tab, s)
+	val {fin,trans} = Unsafe.Vector.sub(Internal.tab, s)
 	val NewAcceptingLeaves = fin::AcceptingLeaves
 	in if l = !yybl then
 	     if trans = #trans(Vector.sub(Internal.tab,0))
 	       then action(l,NewAcceptingLeaves
 ) else	    let val newchars= if !yydone then "" else yyinput 1024
-	    in if (String.size newchars)=0
+	    in if (size newchars)=0
 		  then (yydone := true;
 		        if (l=i0) then UserDeclarations.eof yyarg
 		                  else action(l,NewAcceptingLeaves))
 		  else (if i0=l then yyb := newchars
-		     else yyb := String.substring(!yyb,i0,l-i0)^newchars;
+		     else yyb := substring(!yyb,i0,l-i0)^newchars;
 		     yygone := !yygone+i0;
-		     yybl := String.size (!yyb);
+		     yybl := size (!yyb);
 		     scan (s,AcceptingLeaves,l-i0,0))
 	    end
-	  else let val NewChar = Char.ord (CharVector.sub (!yyb,l))
+	  else let val NewChar = Char.ord(Unsafe.CharVector.sub(!yyb,l))
 		val NewChar = if NewChar<128 then NewChar else 128
-		val NewState = Char.ord (CharVector.sub (trans,NewChar))
+		val NewState = Char.ord(Unsafe.CharVector.sub(trans,NewChar))
 		in if NewState=0 then action(l,NewAcceptingLeaves)
 		else scan(NewState,NewAcceptingLeaves,l+1,i0)
 	end
 	end
 (*
-	val start= if String.substring(!yyb,!yybufpos-1,1)="\n"
+	val start= if substring(!yyb,!yybufpos-1,1)="\n"
 then !yybegin+1 else !yybegin
 *)
 	in scan(!yybegin (* start *),nil,!yybufpos,!yybufpos)

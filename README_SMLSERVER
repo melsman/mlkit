@@ -98,7 +98,8 @@ Apache2 configuration for SMLserver:
 
  $ sudo ln -sf /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
  $ sudo ln -sf /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
- $ sudo apache2ctl restart
+ $ sudo apache2ctl stop
+ $ sudo apache2ctl start
 
 SMLserver configuration and demonstration:
 
@@ -173,7 +174,8 @@ Verify that the database is available using isql:
 
 Restart Apache2 by executing the command 
 
- $ sudo apache2ctl restart
+ $ sudo apache2ctl stop
+ $ sudo apache2ctl start
 
 After copying the sample Web directory to $HOME, as described above,
 edit the file $HOME/web/web_lib/Db.sml. Make sure that the structure

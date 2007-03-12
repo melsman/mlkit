@@ -22,7 +22,7 @@ for the runtime system are first. For instance, in
   run -tags_only -arg1
 
 the first commandline argument for the application is -arg1 because
--tags_onlyKit is recognized as a Kit command line argument.
+-tags_only is recognized as a Kit command line argument.
  
 */
 
@@ -40,13 +40,8 @@ extern double heap_to_live_ratio;
 /*----------------------------------------*
  * Prototypes                             *
  *----------------------------------------*/
-//#ifdef PROFILING
-//String sml_commandline_nameProfiling(Region rAddr, long pPoint);
-//long sml_commandline_argsProfiling(Region pairRho, Region strRho, long pPoint);
-//#else
 String REG_POLY_FUN_HDR(sml_commandline_name, Region rAddr);
 uintptr_t REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho);
-//#endif /* PROFILING */
 
 void parseCmdLineArgs(int argc, char *argv[]);
 

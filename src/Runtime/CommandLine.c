@@ -13,7 +13,7 @@
 #include <sys/time.h>    /* Used by setitimer. */
 #endif
 
-int commandline_argc;     // Kam-backend (Interp.c) need access to update these variables
+int commandline_argc;     // Kam-backend (Interp.c) needs access to update these variables
 char **commandline_argv;  // when discharging object file arguments.
 static int app_arg_index = 1; /* index for first argument to application. Set by parseArgs */
 // static char exeName[100];
