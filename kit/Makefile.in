@@ -283,13 +283,10 @@ install_test:
 	$(INSTALL) test/Makefile $(DATADIR)/test
 	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(DATADIR)/test
 	$(INSTALL) test/README $(DATADIR)/test 
-	$(INSTALL) test/DATA/*.{gml,sml} $(DATADIR)/test/DATA
 	$(INSTALL) test/LEXGEN_DATA/*.lex $(DATADIR)/test/LEXGEN_DATA 
 	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA 
 	$(INSTALL) test/ray/DATA/TEST $(DATADIR)/test/ray/DATA
 	$(INSTALL) test/ray/input test/ray/README test/ray/load test/ray/*.{sml,mlb} $(DATADIR)/test/ray
-	$(INSTALL) test/mlyacc/DATA/*.grm $(DATADIR)/test/mlyacc/DATA
-	$(INSTALL) test/mlyacc/*.{sig,sml,mlb} $(DATADIR)/test/mlyacc
 	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(DATADIR)/test/nucleic
 	$(INSTALL) test/danwang/*.{sml,sig,mlb} $(DATADIR)/test/danwang
 	$(INSTALL) test/barnes-hut/*.{sml,mlb} test/barnes-hut/load test/barnes-hut/README $(DATADIR)/test/barnes-hut
