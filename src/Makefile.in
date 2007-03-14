@@ -37,7 +37,7 @@ REQUEST_PROFILING=
 mlkit: mlkit_kit
 
 .PHONY: mlkit_kit
-mlkit_kit: basics rp2ps tester kitbench mlbmake Parsing/Topdec.lex.sml
+mlkit_kit: basics rp2ps tester kitbench mlbmake mllex-yacc
 #	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
@@ -53,14 +53,17 @@ mlkit_kit: basics rp2ps tester kitbench mlbmake Parsing/Topdec.lex.sml
 
 mlkit_kam: mlkit_kam_kit
 
+.PHONY: mllex-yacc
+mllex-yacc: Parsing/Topdec.lex.sml Parsing/Topdec.grm.sml
+
 .PHONY: mlkit_kam_kit
-mlkit_kam_kit: basics tester kitbench Parsing/Topdec.lex.sml
+mlkit_kam_kit: basics tester kitbench mllex-yacc
 	$(MAKE) -C Runtime kam
 	$(MLCOMP) -output mlkit_kam Compiler/kitkam.mlb
 	$(INSTALL) -p mlkit_kam $(BINDIR)
 
 .PHONY: mlkit_nj
-mlkit_nj: basics rp2ps tester kitbench mlbmake Parsing/Topdec.lex.sml
+mlkit_nj: basics rp2ps tester kitbench mlbmake mllex-yacc
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
@@ -74,14 +77,14 @@ mlkit_nj: basics rp2ps tester kitbench mlbmake Parsing/Topdec.lex.sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit
 
 .PHONY: mlkit_kam_nj
-mlkit_kam_nj: basics tester kitbench Parsing/Topdec.lex.sml
+mlkit_kam_nj: basics tester kitbench mllex-yacc
 	$(MAKE) -C Runtime kam
 	echo 'use "build_kam.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam
 
 smlserver: smlserver_kit
 
-smlserver_kit: basics mlbmake Parsing/Topdec.lex.sml
+smlserver_kit: basics mlbmake mllex-yacc
 	$(MAKE) -C Tools/MspComp
 	$(MAKE) -C Tools/UlWrapUp
 #	$(MAKE) -C Tools/MlbMake
@@ -95,7 +98,7 @@ smlserver_kit: basics mlbmake Parsing/Topdec.lex.sml
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 #	chmod a+x $(BINDIR)/smlserverc
 
-smlserver_nj: basics mlbmake Parsing/Topdec.lex.sml
+smlserver_nj: basics mlbmake mllex-yacc
 	$(MAKE) -C Tools/MspComp
 	$(MAKE) -C Tools/UlWrapUp
 #	$(MAKE) -C Tools/MlbMake
@@ -110,7 +113,7 @@ smlserver_nj: basics mlbmake Parsing/Topdec.lex.sml
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 #	chmod a+x $(BINDIR)/smlserverc
 
-barry: basics Parsing/Topdec.lex.sml
+barry: basics mllex-yacc
 	echo 'use "build_barry.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/barry.$(ARCH-OS)
 	rm -f $(BINDIR)/barry
@@ -118,7 +121,7 @@ barry: basics Parsing/Topdec.lex.sml
 	cd .. && echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
 	chmod a+x $(BINDIR)/barry
 
-basics: genopcodes heap2exec mlkit-mllex
+basics: genopcodes heap2exec mlkit-mllex mlkit-mlyacc
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -144,8 +147,15 @@ kitbench:
 mlkit-mllex:
 	$(MAKE) -C Tools/ml-lex
 
+.PHONY: mlkit-mlyacc
+mlkit-mlyacc:
+	$(MAKE) -C Tools/ml-yacc
+
 Parsing/Topdec.lex.sml: Parsing/Topdec.lex
 	$(BINDIR)/mlkit-mllex Parsing/Topdec.lex
+
+Parsing/Topdec.grm.sml: Parsing/Topdec.grm
+	$(BINDIR)/mlkit-mlyacc Parsing/Topdec.grm
 
 heap2exec: heap2exec/heap2exec
 	cp heap2exec/heap2exec.copy heap2exec/heap2exec;
@@ -171,6 +181,8 @@ clean:
 	cd Tools/GenOpcodes && $(MAKE) clean
 	cd Tools/Benchmark && $(MAKE) clean
 	$(MAKE) -C Tools/UlWrapUp clean
+	$(MAKE) -C Tools/ml-lex clean
+	$(MAKE) -C Tools/ml-yacc clean
 	cd Compiler && $(CLEAN)
 	cd Compiler/Backend && $(CLEAN)
 	cd Compiler/Backend/Dummy && $(CLEAN)
@@ -203,8 +215,8 @@ clean_mlb:
 	cd Edlib && $(CLEAN_MLB)
 	cd Tools/MlbMake && $(CLEAN_MLB)
 
-grm:
-	cd Parsing && ml-lex Topdec.lex; ml-yacc Topdec.grm
+#grm:
+#	cd Parsing && ml-lex Topdec.lex; ml-yacc Topdec.grm
 
 # ----------------------------------------------------------
 # Support for measuring the code blowup resulting from

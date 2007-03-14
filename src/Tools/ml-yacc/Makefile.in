@@ -1,0 +1,20 @@
+
+top_srcdir=@top_srcdir@
+BINDIR=$(top_srcdir)/bin
+
+MKDIR=$(top_srcdir)/mkinstalldirs
+INSTALL=@INSTALL@
+INSTALLDATA=@INSTALL_DATA@
+INSTALLPROGRAM=@INSTALL_PROGRAM@
+
+include $(top_srcdir)/Makefiledefault
+
+$(BINDIR)/mlkit-mlyacc: mlkit-mlyacc
+	$(MKDIR) $(BINDIR)
+	$(INSTALLPROGRAM) mlkit-mlyacc $(BINDIR)
+
+mlkit-mlyacc: Makefile src/ml-yacc.mlb src/*.sml lib/*.sml lib/ml-yacc-lib.mlb
+	$(MLCOMP) -output mlkit-mlyacc src/ml-yacc.mlb
+
+clean:
+	rm -rf MLB */MLB */*~ *~ mlkit-mlyacc

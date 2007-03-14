@@ -249,6 +249,8 @@ install0:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
 	$(INSTALL) bin/mlkit $(BINDIR)
+	$(INSTALL) bin/mlkit-mllex $(BINDIR)
+	$(INSTALL) bin/mlkit-mlyacc $(BINDIR)
 	$(INSTALL) bin/rp2ps $(BINDIR)
 	$(INSTALL) bin/kittester $(BINDIR)
 	$(MKDIR) $(LIBDIR)

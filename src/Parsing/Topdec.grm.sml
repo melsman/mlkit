@@ -1715,11 +1715,10 @@ val terms : term list = nil
  $$ (T 4) $$ (T 3) $$ (T 2) $$ (T 1) $$ (T 0)end
 structure Actions =
 struct 
-type int = Int.int
 exception mlyAction of int
 local open Header in
 val actions = 
-fn (i392:int,defaultPos,stack,
+fn (i392,defaultPos,stack,
     (()):arg) =>
 case (i392,stack)
 of  ( 0, ( ( _, ( MlyValue.ID ID1, ID1left, ID1right)) :: rest671)) =>
