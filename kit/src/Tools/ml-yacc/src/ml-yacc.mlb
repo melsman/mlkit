@@ -1,0 +1,32 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+  ../lib/ml-yacc-lib.mlb
+in
+  utils.sig
+
+  sigs.sml
+
+  hdr.sml
+  yacc.grm.sig
+  yacc.grm.sml
+  yacc.lex.sml
+  parse.sml
+
+  utils.sml
+  grammar.sml
+  core.sml
+  coreutils.sml
+  graph.sml
+  look.sml
+  lalr.sml
+  mklrtable.sml
+  mkprstruct.sml
+  shrink.sml
+  verbose.sml
+
+  absyn.sig
+  absyn.sml
+  yacc.sml
+  link.sml
+  export-yacc.sml
+end
