@@ -1,0 +1,29 @@
+.TH mlkit-mlyacc 1 "@DATE@" "MLKit @PACKAGE_VERSION@" "parser generator for Standard ML"
+.SH NAME
+.B mlkit-mlyacc 
+- parser generator for Standard ML.
+
+.SH SYNOPSIS
+.B mlkit-mlyacc 
+file.grm
+
+.SH DESCRIPTION
+When invoked, 
+.B mlkit-mlyacc
+reads the file
+.B file.grm
+and outputs a parser (written in Standard ML) in the file 
+.B file.grm.sml
+and a Standard ML signature for the parser in the file
+.B file.grm.sig
+
+To learn more about using 
+.B mlkit-mlyacc
+, see the "ML Yacc user's manual" available as 
+.B @prefix@/share/doc/mlkit/mlyacc.pdf
+
+.SH SEE ALSO
+.B mlkit
+(1),
+.B mlkit-mllex
+(1)

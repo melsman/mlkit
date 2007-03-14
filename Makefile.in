@@ -258,7 +258,12 @@ install0:
 	$(MAKE) install_runtime LIBDIR=$(LIBDIR)/mlkit
 	$(MAKE) install_basis LIBDIR=$(LIBDIR)/mlkit
 	$(MAKE) install_mlkit_basislibs LIBDIR=$(LIBDIR)/mlkit
-	$(MAKE) install_man
+	$(MKDIR) $(MANDIR)
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/mlkit.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/mlkit-mllex.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/mlkit-mlyacc.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/rp2ps.1 $(MANDIR)/man1
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
 	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
@@ -266,6 +271,8 @@ install0:
 	$(MKDIR) $(DATADIR)/doc/mlkit
 	$(MAKE) install_license KIND=mlkit
 	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc/mlkit/
+	$(INSTALLDATA) src/Tools/ml-lex/mllex.pdf $(DATADIR)/doc/mlkit/
+	$(INSTALLDATA) src/Tools/ml-yacc/doc/mlyacc.pdf $(DATADIR)/doc/mlkit/
 	$(INSTALLDATA) NEWS $(DATADIR)/doc/mlkit/
 
 install:
@@ -485,7 +492,9 @@ install_smlserver0:
 	$(MKDIR) $(LIBDIR)/smlserver
 	$(MAKE) install_smlserver_basislibs LIBDIR=$(LIBDIR)/smlserver
 	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
-	$(MAKE) install_man
+	$(MKDIR) $(MANDIR)
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/smlserverc.1 $(MANDIR)/man1
 #	$(MKDIR) $(INSTDIR)/share
 	$(MKDIR) $(INSTDIR)/share/smlserver
 #	$(MKDIR) $(INSTDIR)/share/doc

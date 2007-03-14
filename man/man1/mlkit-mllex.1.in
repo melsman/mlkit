@@ -1,0 +1,27 @@
+.TH mlkit-mllex 1 "@DATE@" "MLKit @PACKAGE_VERSION@" "lexer generator for Standard ML"
+.SH NAME
+.B mlkit-mllex 
+- lexer generator for Standard ML.
+
+.SH SYNOPSIS
+.B mlkit-mllex 
+file.lex
+
+.SH DESCRIPTION
+When invoked, 
+.B mlkit-mllex
+reads the file
+.B file.lex
+and outputs a lexer (written in Standard ML) in the file 
+.B file.lex.sml
+
+To learn more about using 
+.B mlkit-mllex
+, see the manual "A Lexical Analyzer Generator for Standard ML" available as 
+.B @prefix@/share/doc/mlkit/mllex.pdf
+
+.SH SEE ALSO
+.B mlkit
+(1),
+.B mlkit-mlyacc
+(1)

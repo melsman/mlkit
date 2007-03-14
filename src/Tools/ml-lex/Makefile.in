@@ -13,8 +13,12 @@ $(BINDIR)/mlkit-mllex: mlkit-mllex
 	$(MKDIR) $(BINDIR)
 	$(INSTALLPROGRAM) mlkit-mllex $(BINDIR)
 
-mlkit-mllex: Makefile ml-lex.mlb *.sml
+mlkit-mllex: Makefile ml-lex.mlb *.sml mllex.pdf
 	$(MLCOMP) -output mlkit-mllex ml-lex.mlb
+
+mllex.pdf:
+	pdflatex mllex.tex
+	pdflatex mllex.tex
 
 clean:
 	rm -rf MLB *~ mlkit-mllex

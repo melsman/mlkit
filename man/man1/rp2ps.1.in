@@ -1,4 +1,4 @@
-.TH rp2ps 1 "Jan 25, 2006" "MLKit version 4.3.0" "Region-profile to Postscript generator"
+.TH rp2ps 1 "@DATE@" "MLKit @PACKAGE_VERSION@" "Region-profile to Postscript generator"
 .SH NAME
 rp2ps - Region-profile to Postscript generator.
 
