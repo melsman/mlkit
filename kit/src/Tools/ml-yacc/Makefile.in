@@ -13,8 +13,12 @@ $(BINDIR)/mlkit-mlyacc: mlkit-mlyacc
 	$(MKDIR) $(BINDIR)
 	$(INSTALLPROGRAM) mlkit-mlyacc $(BINDIR)
 
-mlkit-mlyacc: Makefile src/ml-yacc.mlb src/*.sml lib/*.sml lib/ml-yacc-lib.mlb
+mlkit-mlyacc: Makefile src/ml-yacc.mlb src/*.sml lib/*.sml lib/ml-yacc-lib.mlb doc/mlyacc.pdf
 	$(MLCOMP) -output mlkit-mlyacc src/ml-yacc.mlb
 
+doc/mlyacc.pdf:
+	cd doc && pdflatex mlyacc.tex
+	cd doc && pdflatex mlyacc.tex
+
 clean:
-	rm -rf MLB */MLB */*~ *~ mlkit-mlyacc
+	rm -rf MLB */MLB */*~ *~ mlkit-mlyacc doc/*.aux doc/*.pdf doc/*.toc
