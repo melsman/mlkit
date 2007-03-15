@@ -45,7 +45,7 @@ install:
 	$(INSTALLDATA) www/web/secret/*.sml $(LIBDIR)/www/web/secret
 	$(INSTALLDATA) www/web/upload/*.sml $(LIBDIR)/www/web/upload
 	$(INSTALLDATA) www/web/upload/files/*.png $(LIBDIR)/www/web/upload/files
-	$(INSTALLDATA) www/images/*.{png,html,eps} $(LIBDIR)/www/images
+	$(INSTALLDATA) www/images/*.{png,html} $(LIBDIR)/www/images
 	$(INSTALLDATA) web_demo_lib/*.sml $(LIBDIR)/web_demo_lib
 
 clean:
