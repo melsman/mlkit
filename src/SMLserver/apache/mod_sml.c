@@ -41,6 +41,8 @@ charEqual(const char *a, const char *b)
 
 module AP_MODULE_DECLARE_DATA sml_module;
 
+DEFINE_NHASHMAP(cachetable, charhashfunction, charEqual)
+DEFINE_NHASHMAP(conftable, charhashfunction, charEqual)
 
 static int apsml_processSmlFile (request_data * rd, char *uri, int kind);
 
