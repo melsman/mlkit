@@ -1309,7 +1309,7 @@ apsml_closeconn (mailer *mail, request_data *rd)/*{{{*/
     n = getanswer(&r, mail->timeout.mail, mail, 1);
   }
   closeconn(mail, NULL);
-  answer_map_apply(&(mail->answers),  free);
+  answer_map_apply(&(mail->answers),  (void (*) (reply *)) free);
 //    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn 6");
   answer_map_close(&(mail->answers));
