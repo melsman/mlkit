@@ -237,12 +237,12 @@ cacheCreate (int maxsize, int timeout, unsigned long hash, request_data *rd)	/*{
 
 // ML: string * int * int -> cache ptr_option
 const cache *
-apsml_cacheCreate (String cacheName1, int maxsize, int timeout, request_data * rd)	/*{{{ */
+apsml_cacheCreate (char *key, int maxsize, int timeout, request_data * rd)	/*{{{ */
 {
 //  keyNhash kn1;
 //  kn1.key = &(cacheName1->data);
 //  kn1.hash = charhashfunction (kn1.key);
-  char *key = &(cacheName1->data);
+//  char *key = &(cacheName1->data);
   apr_thread_rwlock_wrlock (rd->cachetable->rwlock);
   const cache *c;
 //  void **c1 = (void **) &c;
@@ -251,24 +251,23 @@ apsml_cacheCreate (String cacheName1, int maxsize, int timeout, request_data * r
 //    &(cacheName1->data), maxsize, timeout);
   if (cachetable_find (rd->cachetable->ht, key, &c) == hash_DNE)
     {
-      int size = sizeStringDefine(cacheName1) + 1;
-      char *kn = malloc (size);
+      int size = strlen(key);
+      char *kn = malloc (size+1);
 //      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
 //		    "apsml_cacheCreate: malloc 0x%x, length:%d", (unsigned long) kn, size);
       
       if (kn == NULL) return NULL;
 //      kn->key = (char *) (kn + 1);
 //      kn->hash = kn1.hash;
-      strncpy (kn, key, sizeStringDefine(cacheName1));
-      kn[sizeStringDefine(cacheName1)] = 0;
+      strncpy (kn, key, size);
+      kn[size] = 0;
       c = cacheCreate (maxsize, timeout, charhashfunction(kn), rd);
       cachetable_insert (rd->cachetable->ht, kn, c);
     }
   else
     {
       ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
-		    "apsml_cacheCreate: cacheName == %s already exists",
-		    &(cacheName1->data));
+		    "apsml_cacheCreate: cacheName == %s already exists", key);
     }
 //  ppGlobalCache(rd);
   apr_thread_rwlock_unlock (rd->cachetable->rwlock);
@@ -297,7 +296,7 @@ apsml_cacheFind (char *cacheName, request_data *rd)	/*{{{ */
   return c;
 }				/*}}} */
 
-void
+static void
 listremoveitem (cache * c, entry * e, request_data *rd)	/*{{{ */
 {
   if (e->timeout) cacheheap_heapdelete (c->heap, e->heappos);
@@ -425,7 +424,7 @@ apsml_cacheGet (Region rAddr, cache *c, String key1, request_data *rd)	/*{{{ */
   return s;
 }				/*}}} */
 
-void
+static void
 cacheremoveitem (cache * c, entry * e, request_data *rd)	/*{{{ */
 {
   entrytable_erase (c->htable, e->key);

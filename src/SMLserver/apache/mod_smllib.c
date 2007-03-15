@@ -1277,6 +1277,11 @@ apsmlPutDBData (int i, void *data, void child_init(void *, int, apr_pool_t *, se
     prev_tmp = tmp;
   }
   tmp = (struct db_t *) malloc (sizeof (struct db_t));
+  if (tmp == NULL) 
+  {
+    apr_thread_mutex_unlock(rd->ctx->dblock);
+    return 2;
+  }
   tmp->next = NULL;
   tmp->dbspec = data;
   tmp->num = i;
