@@ -212,7 +212,7 @@ name ## _rehash (name ## _hashtable_t * tinfo) \
     { \
       if (tinfo->table[i].used) \
 	{ \
-	  hashval = tinfo->table[i].hashval; /* (*(tinfo->hash_function)) (tinfo->table[i].key) % newsize; */ \
+	  hashval = tinfo->table[i].hashval % newsize; /* (*(tinfo->hash_function)) (tinfo->table[i].key) % newsize; */ \
 	  while (newtable[hashval].used) \
 	    { \
 	      hashval++; \
