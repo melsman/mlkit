@@ -96,8 +96,8 @@ Apache2 configuration for SMLserver:
   #  RewriteRule .* pub.sml
   #</Directory>
 
- $ sudo ln -sf /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enable/sml.conf
- $ sudo ln -sf /etc/apache2/mods-available/sml.load /etc/apache2/mods-enable/sml.load
+ $ sudo ln -sf /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enabled/sml.conf
+ $ sudo ln -sf /etc/apache2/mods-available/sml.load /etc/apache2/mods-enabled/sml.load
  $ sudo apache2ctl stop
  $ sudo apache2ctl start
 
@@ -121,7 +121,7 @@ BUILDING SMLSERVER FROM THE SOURCES WITH Postgresql ACCESS
 Additional requirements: 
 
  1) postgresql (e.g., Debian package postgresql-8.1)
- 2) unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev)
+ 2) unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev, odbc-postgresql)
 
 Do as above, but with the changes below.
 
@@ -162,13 +162,14 @@ as follows:
 
 Install the data models for the sample Web programs by executing:
 
- $ cd $HOME/web/demo_lib/pgsql
+ $ cd $HOME/web/web_demo_lib/pgsql
  $ psql -c "\i all.sql"
 
 Verify that the database is available using isql:
 
- $ isql psql
+ $ isql psql user passwd
  > select * from guest;
+ > q
 
  (you should see a message from Homer Simpson...)
 
