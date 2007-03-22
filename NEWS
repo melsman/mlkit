@@ -1,5 +1,8 @@
 MLKit NEWS file
 
+ * mael 2007-03-22: Added mlkit-mlyacc executable and man-pages for
+   mlkit-mlyacc and mlkit-mllex.
+
  * mael 2007-03-12: Added mlkit-mllex executable by including a
    modified copy of mllex from SML/NJ 110.60. The copy of the source
    code is in src/Tools/ml-lex. The source code is compiled with
