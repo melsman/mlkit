@@ -308,11 +308,11 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   char *is;
   server_rec *ss;
   void *first_init_check = NULL;
-  sml_greeting(s);
   apr_pool_userdata_get (&first_init_check, "mod_sml_first_init_check_HACK",
                          s->process->pool);
   if (first_init_check == NULL)
     {       // first init round
+      sml_greeting(s);
       apr_pool_userdata_set ((const void *) 1,
                              "mod_sml_first_init_check_HACK",
                              apr_pool_cleanup_null, s->process->pool);
@@ -359,7 +359,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
 
 //  ppGlobalCache(rd);
 
-  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
                 "apsml: server->path is %s", s->path);
 
   i = strlen(ctx->smlpath) + strlen(ctx->prjid) + 20 + strlen(mlb);
@@ -375,8 +375,8 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
       ss = ss->next;
     }
   
-  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
-                "apsml: module is now loaded");
+  //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+  //              "apsml: module is now loaded");
   
   ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
                 "apsml: ulFileName is %s", ctx->ulFileName);
@@ -478,7 +478,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
           free(is);
         }
       ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
-                    "apsml: init script executed with return code %d", res);
+                    "apsml: init script executed with return code %d (0: success)", res);
       struct db_t *db_tmp = rd->ctx->db;
       for (; db_tmp; db_tmp = db_tmp->next)
         {
