@@ -50,12 +50,15 @@ CLEAN=rm -rf MLB PM CM *~ .\#*
 
 all: mlkit
 
-.PHONY: smlserver_basislibs smlserver_libs smlserver_kitlibs
-smlserver_basislibs:
+.PHONY: smlserver_basislib smlserver_libs smlserver_kitlib smlserver_weblib
+smlserver_basislib:
 	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c basis.mlb)
 
-smlserver_kitlibs:
+smlserver_kitlib:
 	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c kitlib.mlb)
+
+smlserver_weblib:
+	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c web/lib.mlb)
 
 mlkit_basislibs:
 	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc basis.mlb)
@@ -71,21 +74,26 @@ mlkit_kitlibs:
 
 smlserver_libs:
 	(cd basis && find -name MLB -type d | xargs rm -rf)
-	$(MAKE) smlserver_basislibs
-	$(MAKE) smlserver_kitlibs
+	$(MAKE) smlserver_basislib
+	$(MAKE) smlserver_kitlib
+	$(MAKE) smlserver_weblib
 
 mlkit_libs:
 	(cd basis && find -name MLB -type d | xargs rm -rf)
 	$(MAKE) mlkit_basislibs
 	$(MAKE) mlkit_kitlibs
 
-install_smlserver_basislibs:
+install_smlserver_basislib:
 #	$(MKDIR) $(LIBDIR)/basis/MLB
 	$(MKDIR) $(LIBDIR)/basis/MLB/SMLserver
 #	$(MKDIR) $(LIBDIR)/basis/io/MLB
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/SMLserver
+	$(MKDIR) $(LIBDIR)/basis/web/MLB/SMLserver
+	$(MKDIR) $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
 	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/MLB/SMLserver
 	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/io/MLB/SMLserver
+	$(INSTALLDATA) -p basis/web/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/web/MLB/SMLserver
+	$(INSTALLDATA) -p basis/web/xmlrpc/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
 
 install_mlkit_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/MLB
@@ -157,7 +165,6 @@ clean:
 	cd smlserver/xt/www && $(CLEAN)
 
 clean_mlb:
-#	rm -rf MLB */MLB */*/MLB */*/*/MLB */*/*/*/MLB */*/*/*/*/MLB */*/*/*/*/*/MLB 
 	find . -name "MLB" -type d | xargs rm -Rf
 
 tgz_export:
@@ -189,23 +196,6 @@ tgz_smlserver:
            */*/*/*/*/*/.cvsignore
 	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
 	cd ..; rm -rf smlserver-$(KITVERSION)
-
-# %.spec: %.spec.in
-# 	sed -e "s+@VERSION@+$(KITVERSION)+g" < $< > $@
-
-# rpm_smlserver: smlserver.spec
-# 	# assume that ``make tgz_smlserver'' has been run 
-# 	# as a user other than root!
-# 	cp -f ../smlserver-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
-# 	cp -f smlserver.spec $(RPMDIR)/SPECS/smlserver-$(KITVERSION).spec
-# 	(cd $(RPMDIR)/SPECS; rpm -ba smlserver-$(KITVERSION).spec)
-
-# rpm: mlkit.spec
-# 	# assume that ``make tgz'' has been run 
-# 	# as a user other than root!
-# 	cp -f ../mlkit-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
-# 	cp -f mlkit.spec $(RPMDIR)/SPECS/mlkit-$(KITVERSION).spec
-# 	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
@@ -490,7 +480,7 @@ install_smlserver0:
 	$(INSTALL) bin/smlserver-wrap $(BINDIR)
 	$(INSTALL) bin/mspcomp $(BINDIR)
 	$(MKDIR) $(LIBDIR)/smlserver
-	$(MAKE) install_smlserver_basislibs LIBDIR=$(LIBDIR)/smlserver
+	$(MAKE) install_smlserver_basislib LIBDIR=$(LIBDIR)/smlserver
 	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
 	$(MKDIR) $(MANDIR)
 	$(MKDIR) $(MANDIR)/man1

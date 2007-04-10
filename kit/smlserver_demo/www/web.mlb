@@ -1,15 +1,14 @@
 local
-  ../web_lib/lib.mlb
-in
-  local
-  $(SML_LIB)/basis/kitlib.mlb
+  $(SML_LIB)/basis/web/lib.mlb
   ../web_sys/begin.sml
+       ../web_demo_lib/Db.sml
+       ../web_demo_lib/DbClob.sml
        ../web_demo_lib/Page.sml
        ../web_demo_lib/FormVar.sml
        ../web_demo_lib/Auth.sml
        ../web_demo_lib/RatingUtil.sml
   ../web_sys/end.sml
-  in 
+in 
    scripts
     ../web_sys/init.sml
 
@@ -99,6 +98,5 @@ in
 
     web/xmlrpc_test_server.sml
     web/xmlrpc_test_client.sml
-   end (*scripts*)
-  end
+  end (*scripts*)
 end

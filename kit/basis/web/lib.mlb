@@ -1,7 +1,7 @@
-basis.mlb
-open Basis
-  Quot.sml
-  local
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/kitlib.mlb
+Quot.sml
+local
     WEB_SET.sml
     WEB_CONN.sml
     WEB_COOKIE.sml
@@ -19,19 +19,16 @@ open Basis
     WebDynlib.sml
     WebSerialize.sml
     WebInfo.sml
-    $(SML_LIB)/basis/kitlib.mlb
     WebLowMail.sml
     WebDbLow.sml
-  in
+in
     xmlrpc/xmlrpc.mlb
     WEB.sml
     Web.sml  
     DbFunctor.sml 
-    Db.sml
-    DbClob.sml
-  end
+end
     
-  HTML.sml
-  Html.sml
-  MSP.sml
-  Msp.sml
+HTML.sml
+Html.sml
+MSP.sml
+Msp.sml

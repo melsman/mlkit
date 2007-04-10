@@ -19,8 +19,6 @@ all:
 	$(MAKE) -C www
 
 install:
-	$(MKDIR) $(LIBDIR)/web_lib
-	$(MKDIR) $(LIBDIR)/web_lib/xmlrpc
 	$(MKDIR) $(LIBDIR)/web_sys
 	$(MKDIR) $(LIBDIR)/web_demo_lib
 	$(MKDIR) $(LIBDIR)/www
@@ -32,8 +30,6 @@ install:
 	$(MKDIR) $(LIBDIR)/www/web/secret
 	$(MKDIR) $(LIBDIR)/www/web/upload
 	$(MKDIR) $(LIBDIR)/www/web/upload/files
-	$(INSTALLDATA) web_lib/*.{sml,mlb} $(LIBDIR)/web_lib
-	$(INSTALLDATA) web_lib/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/web_lib/xmlrpc
 	$(INSTALLDATA) web_sys/*.sml $(LIBDIR)/web_sys
 	$(INSTALLDATA) www/web.mlb $(LIBDIR)/www
 	$(INSTALLDATA) www/Makefile $(LIBDIR)/www
