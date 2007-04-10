@@ -99,13 +99,13 @@ apsml_returnRedirect (int i, char *url, request_rec *r)	/*{{{ */
 void
 apsml_add_headers_out (char *key, int key_size, char *value, int value_size, request_rec *r)	/*{{{ */
 {
-//      ap_log_rerror(__FILE__,__LINE__, LOG_NOTICE, 0, r, "key,value, key_size, value_size: %s, %s, %i, %i", key, value, key_size, value_size);
+//      ap_log_rerror(__FILE__,__LINE__, LOG_DEBUG, 0, r, "key,value, key_size, value_size: %s, %s, %i, %i", key, value, key_size, value_size);
   char *kv = (char *) apr_palloc (r->pool, key_size + 1 + value_size + 1);
   strncpy (kv, key, key_size + 1);
   strncpy (kv + key_size + 1, value, value_size);
   kv[key_size] = 0;
   kv[key_size + value_size + 1] = 0;
-//      ap_log_rerror(__FILE__,__LINE__, LOG_NOTICE, 0, r, "key,value: %s, %s", kv, kv+key_size+1);
+//      ap_log_rerror(__FILE__,__LINE__, LOG_DEBUG, 0, r, "key,value: %s, %s", kv, kv+key_size+1);
   apr_table_add (r->headers_out, kv, kv + key_size + 1);
   return;
 }				/*}}} */
@@ -132,7 +132,7 @@ void
 apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ */
 {
 //              request_data *rd = (request_data *) rd1;
-//              ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "Logging");
+//              ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "Logging");
   int logS = convertIntToC (logSeverity);
   int stringSize = sizeStringDefine (str) + 1;
   char *s = (char *) apr_palloc (rd->pool, stringSize);
@@ -235,14 +235,14 @@ sml_getAuxData(Region r, request_data *rd)/*{{{*/
 String
 apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ */
 {
-//      ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, rd->request, "apsml: getFormData C init");
+//      ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml: getFormData C init");
   if (type == GET)
     {
 //      ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r, "apsml get: %s",
 //		    r->args);
       if (r->args)
 	return convertStringToML (rAddr, r->args);
-//              ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, r, "apsml: getFormData C get NULL");
+//              ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, r, "apsml: getFormData C get NULL");
       return (String) NULL;
     }
   // else (type == FORM)
@@ -253,7 +253,7 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ *
   int rds;
   int totalsize = 0;
   maxsize = (maxsize == -1) ? 0x7FFFFFFF : maxsize;
-//      ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool, "setup client form date retrievel");
+//      ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool, "setup client form date retrievel");
   if (ap_setup_client_block (r, REQUEST_CHUNKED_DECHUNK) == OK)
     {
       ap_should_client_block (r);
@@ -590,7 +590,7 @@ apsml_encodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
 {
 // It seems like ap_escape_url cannot handle + 
   char *src = &(str->data);
-//      ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "apsml: apsml_encodeUrl C1: %s", src);
+//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C1: %s", src);
   int i;
   char *d = (char *) apr_palloc (rd->pool, sizeStringDefine(str) + 1);
   for (i = 0; i < sizeStringDefine(str); i++)
@@ -609,7 +609,7 @@ apsml_encodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
     }
   }
   d[sizeStringDefine(str)] = 0;
-//      ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "apsml: apsml_encodeUrl C2: %s", src);
+//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C2: %s", src);
   char *dst = ap_escape_uri (rd->pool, d);
   int a = 0;
   for (i = 0; dst[i]; i++, a++)
@@ -620,7 +620,7 @@ apsml_encodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
       a = -1;
     }
   }
-//      ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "apsml: apsml_encodeUrl C4: %s", dst);
+//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C4: %s", dst);
   return convertStringToML (rAddr, dst);
 }				/*}}} */
 
@@ -629,7 +629,7 @@ String
 apsml_decodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
 {
   char *s = &(str->data);
-//      ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "apsml: apsml_decodeUrl C: %s", s);
+//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C: %s", s);
 // It seems like ap_unescape_url cannot handle spaces
   char *to = (char *) apr_palloc (rd->pool, sizeStringDefine(str) + 1);
   char p1;
@@ -647,9 +647,9 @@ apsml_decodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
     }
   }
   to[sizeStringDefine(str)] = 0;
-//      ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "apsml: apsml_decodeUrl C1: %s", to);
+//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C1: %s", to);
   ap_unescape_url (to);
-//      ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "apsml: apsml_decodeUrl C2: %s", to);
+//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C2: %s", to);
   return convertStringToML (rAddr, to);
 }				/*}}} */
 
@@ -801,7 +801,7 @@ apsml_conflookup (Region rAddr, String k, request_data * rd)	/*{{{ */
   String s;
   apr_thread_rwlock_rdlock (rd->ctx->conftable->rwlock);
   char *key = &(k->data);
-//      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+//      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
 //		    "apsml_conflookup key:%s",kn.key);
   if (conftable_find (rd->ctx->conftable->ht, key, &value) != hash_OK)
     {
@@ -1303,13 +1303,13 @@ apsmlPutDBData (int i, void *data, void child_init(void *, int, apr_pool_t *, se
 void 
 dblog1 (const request_data *rd, const char *data)/*{{{*/
 {
-  ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, data);
+  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, data);
 }/*}}}*/
 
 void 
 dblog2 (const request_data *rd, const char *data, const int num)/*{{{*/
 {
-  ap_log_error(__FILE__, __LINE__, LOG_NOTICE, 0, rd->server, "%s %d", data, num);
+  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s %d", data, num);
 }/*}}}*/
 
 void *
@@ -1399,7 +1399,7 @@ apsml_GetMimeType(Region rAddr, String s, int rr)
   find_ct(r);
   if ( r->content_type == NULL ) 
     {
-	ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, ((request_rec *) rr), 
+	ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, ((request_rec *) rr), 
 			"apsml: apsml_GetMimeType problem - returning empty string");
       r->content_type = "";
     }
