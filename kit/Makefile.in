@@ -482,6 +482,10 @@ install_smlserver0:
 	$(MKDIR) $(LIBDIR)/smlserver
 	$(MAKE) install_smlserver_basislib LIBDIR=$(LIBDIR)/smlserver
 	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
+	$(MKDIR) $(LIBDIR)/smlserver/basis/web
+	$(MKDIR) $(LIBDIR)/smlserver/basis/web/xmlrpc
+	$(INSTALLDATA) -p basis/web/*.{sml,mlb} $(LIBDIR)/smlserver/basis/web
+	$(INSTALLDATA) -p basis/web/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web/xmlrpc
 	$(MKDIR) $(MANDIR)
 	$(MKDIR) $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/smlserverc.1 $(MANDIR)/man1
