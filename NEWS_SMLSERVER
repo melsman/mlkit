@@ -1,5 +1,12 @@
 File NEWS_SMLSERVER
 
+ * mael 2007-04-10: Moved smlserver_demo/web_lib/lib.mlb to
+   kit/basis/web/lib.mlb. The Web library is now precompiled before
+   installation.
+
+ * mael 2007-04-10: Duplicate uo-code-files in ul-files are now
+   removed to speed up the generation of ul-files.
+
  * mael 2007-02-05: The book "SMLserver, A Functional Approach to Web
    Publishing" has been upgraded to reflect the move to the Apache
    platform.

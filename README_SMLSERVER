@@ -179,7 +179,7 @@ Restart Apache2 by executing the command
  $ sudo apache2ctl start
 
 After copying the sample Web directory to $HOME, as described above,
-edit the file $HOME/web/web_lib/Db.sml. Make sure that the structure
+edit the file $HOME/web/web_demo_lib/Db.sml. Make sure that the structure
 DbBackend passed to the DbFunctor is the structure Web.DbPgBackend.
 The lines defining the Oracle structure and the MySQL structure should
 be commented out.
@@ -187,7 +187,7 @@ be commented out.
 Edit the file $HOME/web/web_sys/init.sml. Enable the Postgresql
 configuration lines.
 
-Compile the sample \web{} project as described above.
+Compile the sample Web project as described above.
 
 Go start your Web browser and visit the database examples available
 from http://localhost/web/index.sml.

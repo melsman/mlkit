@@ -1,11 +1,10 @@
-../basis.mlb
 local
-   open Basis
+   $(SML_LIB)/basis/basis.mlb
+   $(SML_LIB)/basis/kitlib.mlb
    Parsercomb.sig
    Parsercomb.sml
    WSeq.sig
    WSeq.sml
-   open KitLib
 in
    XMLRPC_TYPE.sig  
    XMLRPC.sig
