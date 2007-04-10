@@ -1316,7 +1316,7 @@ void *
 getDbData(int num, request_data *rd)/*{{{*/
 {
   struct request_db *tmp = rd->dbdata;
-  dblog1(rd, "getDbData");
+  // dblog1(rd, "getDbData");
   while (tmp)
   {
     if (num == tmp->num) return tmp->dbdata;
