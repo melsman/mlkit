@@ -90,10 +90,10 @@ install_smlserver_basislib:
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/SMLserver
 	$(MKDIR) $(LIBDIR)/basis/web/MLB/SMLserver
 	$(MKDIR) $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
-	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/MLB/SMLserver
-	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/io/MLB/SMLserver
-	$(INSTALLDATA) -p basis/web/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/web/MLB/SMLserver
-	$(INSTALLDATA) -p basis/web/xmlrpc/MLB/SMLserver/*.{d,eb,eb1,lnk,uo,bdy} $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
+	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/MLB/SMLserver
+	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/io/MLB/SMLserver
+	$(INSTALLDATA) -p basis/web/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/web/MLB/SMLserver
+	$(INSTALLDATA) -p basis/web/xmlrpc/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
 
 install_mlkit_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/MLB
@@ -106,14 +106,14 @@ install_mlkit_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_GC
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/MLB/RI
-	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/MLB/RI_GC
-	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/MLB/RI_GC_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/io/MLB/RI
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o,bdy} $(LIBDIR)/basis/io/MLB/RI_GC
-	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
-	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,bdy,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/MLB/RI/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/MLB/RI
+	$(INSTALLDATA) -p basis/MLB/RI_GC/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/MLB/RI_GC
+	$(INSTALLDATA) -p basis/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/MLB/RI_GC_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC/*.{d,eb,eb1,lnk,o} $(LIBDIR)/basis/io/MLB/RI_GC
+	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
+	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 
 nj:
 	$(MKDIR) bin
