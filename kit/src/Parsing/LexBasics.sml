@@ -352,6 +352,42 @@ structure LexBasics: LEX_BASICS =
       end
       | output_source {os,...} = TextIO.output(os,"*** POSITION UNKNOWN ***")
 
+    fun get_source {left=POSITION posLfn, right=POSITION posRfn} : string =
+      let val {file, line=line1:int,column=column1:int, getLine} = posLfn()
+	  val {line=line2:int, column=column2:int, ...} = posRfn()
+	    
+	    (* If the first character is not `:' or `=' (it shows!!) then we emit `='. *)
+	  fun patch s = 
+              (case String.sub(s,0) of
+                  #":" => s
+                | #"=" => s
+                | _ => " = " ^ s
+              ) handle _ => Crash.impossible "LexBasics.get_source"
+
+	  fun extract s a = String.extract a handle e => (print ("extract : " ^ s ^ "\n"); raise e)
+      in if line1 = line2 then 
+	   let val line = getLine line1
+	       (* val _ = print ("line = " ^ line ^ "\n"); *)
+	   in patch(extract "line" (line, column1, SOME (column2-column1)))
+	   end
+	 else 
+	   let val first = getLine line1
+	       (* val _ = print ("first = " ^ first ^ "\n"); *)
+	       val first = patch(extract "first" (first, column1, NONE))
+	       (* val _ = print ("first = " ^ first ^ "\n"); *)
+	       val last = getLine line2
+	       (* val _ = print ("last = " ^ last ^ "\n"); *)
+	       val last = extract "last" (last, 0, SOME column2) 
+	       (* val _ = print ("last = " ^ last ^ "\n"); *)
+	       fun get_lines (l, lines) = 
+		 if l = line1 then first :: lines
+		 else get_lines(l-1,getLine l :: lines)
+	   in String.concat (get_lines(line2-1,[last]))
+	   end
+      end
+      | get_source _ = Crash.impossible "LexBasics.get_source: POSITION UNKNOWN"
+
+
     val FIELD_WIDTH = 18
 
     exception LEXICAL_ERROR of pos * string

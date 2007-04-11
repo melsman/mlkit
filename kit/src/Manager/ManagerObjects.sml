@@ -536,7 +536,8 @@ functor ManagerObjects(
     type BodyBuilderClos = {infB: InfixBasis,
 			    elabB: ElabBasis,
 			    absprjid: absprjid,
-			    filename: string,
+(**			    filename: string, **)
+                            filetext: string,
 			    filemd5: md5,
 			    opaq_env: opaq_env,
 			    T: TyName.TyName list,
@@ -580,15 +581,15 @@ functor ManagerObjects(
     (* Picklers *)
 
     val pu_BodyBuilderClos =
-	let fun to ((infB,elabB,absprjid),(filename,opaq_env,T),(resE,filemd5)) = 
-		{infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,filemd5=filemd5,
-		 opaq_env=opaq_env,T=T,resE=resE}
-	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,filemd5=filemd5,
-		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),(resE,filemd5))
+	let fun to ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext)) = 
+		{infB=infB,elabB=elabB,absprjid=absprjid,filemd5=filemd5,
+		 opaq_env=opaq_env,T=T,resE=resE,filetext=filetext}
+	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filemd5=filemd5,filetext,
+		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext))
 	in Pickle.convert (to,from)
 	    (Pickle.tup3Gen0(Pickle.tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
-			     Pickle.tup3Gen0(Pickle.string,OpacityEnv.pu,Pickle.listGen TyName.pu), 
-			     Pickle.pairGen0(Environments.E.pu,Pickle.string)))
+			     Pickle.pairGen0(OpacityEnv.pu,Pickle.listGen TyName.pu), 
+			     Pickle.tup3Gen0(Environments.E.pu,Pickle.string,Pickle.string)))
 	end
 
     val pu_IntSigEnv =
