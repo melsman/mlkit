@@ -28,9 +28,22 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     fun die s = Crash.impossible ("IntModules." ^ s)
     fun print_error_report report = Report.print' report (!Flags.log)
-
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
+
+    fun withFile (f:TextIO.instream->'a) (s:string) : 'a =
+	let val is = TextIO.openIn s
+	in let val a = f is
+	   in TextIO.closeIn is ; a
+	   end handle ? => (TextIO.closeIn is ; raise ?)
+	end 
+
+    fun writeFile f t =
+        let val os = TextIO.openOut f
+        in ( TextIO.output(os, t)
+           ; TextIO.closeOut os) handle ? => (TextIO.closeOut os; raise ?)
+        end
+
     fun pr_tynames [] = ""
       | pr_tynames [t] = TyName.pr_TyName t
       | pr_tynames (t::ts) = TyName.pr_TyName t ^ ", " ^ pr_tynames ts
@@ -182,9 +195,16 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	         val _ = Name.bucket := []
 		   
 		 (* Re-elaboration *)
-	         val res = ParseElab.parse_elab {infB= #infB BBC, elabB=elabB, 
-						 absprjid= #absprjid BBC, file= #filename BBC} 
 
+                 val filename = 
+                     let val text = #filetext BBC
+                         val basedir = OS.Path.dir (Flags.get_string_entry "output")                        
+                         val filename = basedir ## (FunId.pr_FunId funid ^ ".bdy")
+                     in writeFile filename text
+                      ; filename
+                     end
+	         val res = ParseElab.parse_elab {infB= #infB BBC, elabB=elabB, 
+						 absprjid= #absprjid BBC, file=filename} 
 	      in case res
 		   of ParseElab.FAILURE (report,error_codes) => (print_error_report report;
 								 die "reelaborate.ParseElab.FAILURE")
@@ -476,13 +496,13 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp) 
        : BodyBuilderClos =
 	   let val funid_string = FunId.pr_FunId funid
-	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))  
-		              ^ "." ^ funid_string ^ ".bdy"
+(**	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
+		              ^ "." ^ funid_string ^ ".bdy" **)
 (*
 	       val filename = mlbdir() ## filename
 *)
 (* fix mael 2005-12-04: output contains something like: "basis/MLB/RI/file.o" *)
-	       val filename = OS.Path.dir (Flags.get_string_entry "output") ## filename
+(**	       val filename = OS.Path.dir (Flags.get_string_entry "output") ## filename **)
 
 (*	       val filename = OS.Path.mkAbsolute{path=filename,relativeTo=OS.Path.concat(OS.FileSys.getDir(), pmdir())} *)
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
@@ -492,15 +512,23 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 		  ElabInfo.to_ParseInfo) i
 	       val info = TopdecGrammar.info_on_strexp strexp
 	       val (left, right) = info_to_positions info
+
+               val filetext = 
+                   ("structure " ^ funid_string ^ " ") ^
+                   LexBasics.get_source {left=left,right=right}
+(*                              
 	       val os = TextIO.openOut filename
 	       val _ = TextIO.output(os, "structure " ^ funid_string ^ " ")
 	       val _ = LexBasics.output_source{os=os,left=left,right=right}
 	       val _ = TextIO.closeOut os
+               val filetext = withFile TextIO.inputAll filename
+*)
 
 	       (* Explicit environment for the closure (function) below *)
 	       val BBC : BodyBuilderClos = 
 		   {infB=infB,elabB=elabB,absprjid=absprjid,
-		    filename=filename,filemd5=MD5.fromFile filename,opaq_env=opaq_env,T=T,resE=resE}
+		    (**filename=filename,**)filemd5=MD5.fromString filetext,filetext=filetext,
+                    opaq_env=opaq_env,T=T,resE=resE}
 	   in BBC
 	   end handle (X as IO.Io {name=s,...}) => 
 	       (print ("Error while blasting out functor body for " ^ 

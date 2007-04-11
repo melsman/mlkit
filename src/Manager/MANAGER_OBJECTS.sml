@@ -104,7 +104,8 @@ signature MANAGER_OBJECTS =
     type BodyBuilderClos = {infB: InfixBasis,
 			    elabB: ElabBasis,
 			    absprjid: absprjid,
-			    filename: string,
+(**			    filename: string, **)
+                            filetext: string,
 			    filemd5: md5,
 			    opaq_env: opaq_env,
 			    T: TyName.TyName list,
