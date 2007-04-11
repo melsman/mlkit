@@ -418,16 +418,18 @@ functor DbOracleBackend(type conn = foreignptr
           val _ = case Info.configGetValue (Info.Type.Bool, "DATABASE_PRINT_SELECT")
                   of SOME true => ignore (log sql)
                    | _ => () 
+          val _ = log "DBORAExecuteSQL"
           val res : int = prim("@:",("DBORAExecuteSQL",r,sql : string, getReqRec()))
 (*          val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`) *)
           in case res of 1 => (*DBData*) 
-                             (let val res2 : string list = prim(":", ("apsmlORAGetCNames",r,getReqRec()))
+                             (let val _ = log "apsmlORAGetCNames"
+                                  val res2 : string list = prim(":", ("apsmlORAGetCNames",r,getReqRec()))
                                   val res3 = List.map toLower (List.rev res2)
                               in ((h, selector res3, res3),res3)
                               end handle Overflow => 
-                                     raise Fail "Oracle Driver: selectDb.Database connection failed")
-                       | 2 => raise Fail "Oracle Driver: selectDb: SQL was not a select statement"
-                       | _ => raise Fail "Oracle Driver: selectDb: An error occured"
+                                     raise Fail ("Oracle Driver: selectDb.Database connection failed: " ^ sql))
+                       | 2 => raise Fail ("Oracle Driver: selectDb: SQL was not a select statement: " ^ sql)
+                       | _ => raise Fail ("Oracle Driver: selectDb: An error occured: " ^ sql)
           end
     val toOption = List.map (fn (s,i) => case i of 
                         ~2 => raise Fail "Oracle Driver: getRowListDb.Data has been truncated"
