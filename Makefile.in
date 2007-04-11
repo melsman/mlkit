@@ -310,7 +310,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(MKDIR) $(INSTDIR)/src/heap2exec
-	$(INSTALLDATA) src/Makefile src/*.{mlb,sml,cm,in} $(INSTDIR)/src
+	$(INSTALLDATA) src/Makefile src/*.{sml,cm,in} $(INSTDIR)/src
 	$(INSTALLDATA) src/Common/*.{mlb,sml,cm} $(INSTDIR)/src/Common
 	$(INSTALLDATA) src/Common/EfficientElab/*.sml $(INSTDIR)/src/Common/EfficientElab
 	$(INSTALLDATA) src/Compiler/*.{mlb,sml,cm} $(INSTDIR)/src/Compiler
@@ -327,7 +327,7 @@ install_src:
 	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,mlb,cm} $(INSTDIR)/src/Edlib
 	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex} $(INSTDIR)/src/Parsing
 	$(INSTALLDATA) src/Runtime/Makefile src/Runtime/*.{c,h,in} $(INSTDIR)/src/Runtime
-	$(INSTALLDATA) src/SMLserver/Makefile src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
+	$(INSTALLDATA) src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
 	$(INSTALLDATA) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
 	$(INSTALLDATA) src/SMLserver/apache/Notes src/SMLserver/apache/*.{c,h,in} $(INSTDIR)/src/SMLserver/apache
 	$(INSTALLDATA) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
