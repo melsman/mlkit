@@ -21,6 +21,9 @@ all:
 install:
 	$(MKDIR) $(LIBDIR)/web_sys
 	$(MKDIR) $(LIBDIR)/web_demo_lib
+	$(MKDIR) $(LIBDIR)/web_demo_lib/mysql
+	$(MKDIR) $(LIBDIR)/web_demo_lib/orasql
+	$(MKDIR) $(LIBDIR)/web_demo_lib/pgsql
 	$(MKDIR) $(LIBDIR)/www
 	$(MKDIR) $(LIBDIR)/www/images
 	$(MKDIR) $(LIBDIR)/www/web
@@ -43,6 +46,9 @@ install:
 	$(INSTALLDATA) www/web/upload/files/*.png $(LIBDIR)/www/web/upload/files
 	$(INSTALLDATA) www/images/*.{png,html} $(LIBDIR)/www/images
 	$(INSTALLDATA) web_demo_lib/*.sml $(LIBDIR)/web_demo_lib
+	$(INSTALLDATA) web_demo_lib/mysql/*.sql $(LIBDIR)/web_demo_lib/mysql
+	$(INSTALLDATA) web_demo_lib/orasql/*.sql $(LIBDIR)/web_demo_lib/orasql
+	$(INSTALLDATA) web_demo_lib/pgsql/*.sql $(LIBDIR)/web_demo_lib/pgsql
 
 clean:
 	$(MAKE) -C www clean
