@@ -12,8 +12,9 @@ is given in Appendix A.
 1. System-wide Installation
 ---------------------------
 
-Provided you have downloaded the binary distribution to the /tmp
-directory, execute the following commands in a bash-shell - as root:
+Provided you have downloaded a binary distribution to the /tmp
+directory and renamed the distribution to smlserver-@PACKAGE_VERSION@-i386.tgz, 
+execute the following commands in a bash-shell - as root:
  
  % cd /tmp
  % tar xzvf smlserver-@PACKAGE_VERSION@-i386.tgz
@@ -21,7 +22,6 @@ directory, execute the following commands in a bash-shell - as root:
  % cp -pa bin/* /usr/bin/
  % cp -pa lib/smlserver /usr/lib/smlserver
  % cp -pa share/man/man1/* /usr/share/man/man1/
- % cp -pa share/smlserver /usr/share/smlserver
  % cp -pa share/doc/smlserver /usr/share/doc/smlserver
  % mkdir /etc/smlserver
  % echo "SML_LIB /usr/lib/smlserver" > /etc/smlserver/mlb-path-map
@@ -34,8 +34,9 @@ smlserverc, smlserver-wrap, and mspcomp.
 
 2. Personal Installation
 ------------------------
-Provided you have downloaded the binary distribution to your home
-directory $HOME, execute the following commands:
+Provided you have downloaded a binary distribution to your home
+directory $HOME, and renamed the distribution to 
+smlserver-@PACKAGE_VERSION@-i386.tgz, execute the following commands:
  
  $ cd $HOME
  $ tar xzvf smlserver-@PACKAGE_VERSION@-i386.tgz
