@@ -1,0 +1,35 @@
+# --------------------------------------
+# execute using:
+#
+#   make -f MakefileDist "target"
+# --------------------------------------
+
+TESTDATE=`date +%Y-%m-%d`
+
+.PHONY: all
+all: mlkit smlserver_odbc smlserver_nodb
+
+.PHONY: mlkit
+mlkit:
+	./autobuild
+	./configure
+	$(MAKE) all
+	$(MAKE) mlkit_i386_tgz
+	$(MAKE) -C test test_mlkit
+	$(MAKE) dist_mlkit TESTDATE=$(TESTDATE)
+
+.PHONY: smlserver_odbc
+smlserver_odbc:
+	./autobuild
+	./configure --enable-SMLserver --with-apxs=`which apxs2` --enable-odbc
+	$(MAKE) smlserver_all
+	$(MAKE) smlserver_i386_tgz
+	$(MAKE) dist_smlserver
+
+.PHONY: smlserver_nodb
+smlserver_nodb:
+	./autobuild
+	./configure --enable-SMLserver --with-apxs=`which apxs2`
+	$(MAKE) smlserver_all
+	$(MAKE) smlserver_i386_tgz
+	$(MAKE) dist_smlserver DBTYPE=nodb
