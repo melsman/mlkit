@@ -395,6 +395,7 @@ man_smlserver:
 # -----------------------------------------------------
 # Target for building MLKit binary package. The target
 # assumes that the mlkit has been build using
+#  $ ./autobuild
 #  $ ./configure --sysconfdir=/etc --prefix=/usr
 #  $ make
 #  $ make mlkit_libs
@@ -411,6 +412,7 @@ mlkit_i386_tgz:
 # -----------------------------------------------------
 # Target for building SMLserver binary package. The target
 # assumes that SMLserver has been build using
+#  $ ./autobuild
 #  $ ./configure --sysconfdir=/etc --prefix=/usr --enable-SMLserver --with-apxs=`which apxs2` --enable-odbc
 #  $ make smlserver
 #  $ make smlserver_libs
