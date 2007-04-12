@@ -59,25 +59,25 @@ smlserver_all: smlserver smlserver_libs
 
 .PHONY: smlserver_basislib smlserver_libs smlserver_kitlib smlserver_weblib
 smlserver_basislib:
-	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/smlserverc -c basis.mlb)
 
 smlserver_kitlib:
-	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/smlserverc -c kitlib.mlb)
 
 smlserver_weblib:
-	(cd basis && SML_LIB=$(CWD) ../bin/smlserverc -c web/lib.mlb)
+	(cd basis && SML_LIB=.. ../bin/smlserverc -c web/lib.mlb)
 
 mlkit_basislibs:
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc basis.mlb)
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -gc basis.mlb)
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -gc -prof basis.mlb)
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc -prof basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof basis.mlb)
 
 mlkit_kitlibs:
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc kitlib.mlb)
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -gc kitlib.mlb)
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -gc -prof kitlib.mlb)
-	(cd basis && SML_LIB=$(CWD) ../bin/mlkit -c -no_gc -prof kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof kitlib.mlb)
+	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof kitlib.mlb)
 
 smlserver_libs:
 	(cd basis && find -name MLB -type d | xargs rm -rf)
