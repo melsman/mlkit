@@ -572,5 +572,10 @@ dist_mlkit:
 	scp README $(HOSTDIR)/README-$(KITVERSION).txt
 	scp doc/mlkit.pdf $(HOSTDIR)/mlkit-$(KITVERSION).pdf
 	scp ../test_reports/test_report-native-$(TESTDATE).pdf $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).pdf
-	scp ../test_reports/test_report-kam-$(TESTDATE).pdf $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).pdf
+#	scp ../test_reports/test_report-kam-$(TESTDATE).pdf $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).pdf
 	scp dist/mlkit-$(KITVERSION)-i386.tgz $(HOSTDIR)/
+
+dist_smlserver:
+	scp NEWS_SMLSERVER $(HOSTDIR)/NEWS_SMLSERVER-$(KITVERSION).txt
+	scp README_SMLSERVER $(HOSTDIR)/README_SMLSERVER-$(KITVERSION).txt
+	scp dist/smlserver-$(KITVERSION)-i386.tgz $(HOSTDIR)/
