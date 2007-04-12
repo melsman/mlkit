@@ -72,11 +72,14 @@ Appendix A: Directory Structure of the Distribution
            /smlserver-wrap
            /mspcomp
         lib/smlserver/lib/mod_sml.so
-                         ...
+                         /...
                      /basis/basis.mlb
                            /kitlib.mlb
                            /web/lib.mlb
                            ...
+                     /web_demo_lib/
+                     /web_sys/
+                     /www/                     
         share/man/man1/smlserverc.1
         share/doc/smlserver/README_SMLSERVER_BIN
                            /README_SMLSERVER
