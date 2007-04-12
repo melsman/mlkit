@@ -6,6 +6,7 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  src/Makefile
                  Makefile 
                  doc/README_BIN
+                 doc/README_SMLSERVER_BIN
                  man/man1/mlkit-mllex.1
                  man/man1/mlkit-mlyacc.1
                  man/man1/rp2ps.1

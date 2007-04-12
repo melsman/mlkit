@@ -1,0 +1,85 @@
+
+                The SMLserver binary distribution
+	              smlserver-@PACKAGE_VERSION@-i386
+
+This readme file describes the structure of the SMLserver binary
+distribution as well as necessary steps for proper personal and system
+wide installation.
+
+An overview of the directory structure of the distribution
+is given in Appendix A.
+
+1. System-wide Installation
+---------------------------
+
+Provided you have downloaded the binary distribution to the /tmp
+directory, execute the following commands in a bash-shell - as root:
+ 
+ % cd /tmp
+ % tar xzvf smlserver-@PACKAGE_VERSION@-i386.tgz
+ % cd smlserver-@PACKAGE_VERSION@-i386
+ % cp -pa bin/* /usr/bin/
+ % cp -pa man/man1/* /usr/man/man1/
+ % cp -pa lib/smlserver /usr/lib/smlserver
+ % cp -pa share/smlserver /usr/share/smlserver
+ % cp -pa share/doc/smlserver /usr/share/doc/smlserver
+ % mkdir /etc/smlserver
+ % echo "SML_LIB /usr/lib/smlserver" > /etc/smlserver/mlb-path-map
+
+All locations, except the system wide path-map /etc/smlserver/mlb-path-map
+can be changed at will.
+
+Any user on the system should now be able to run the commands
+smlserverc, smlserver-wrap, and mspcomp.
+
+2. Personal Installation
+------------------------
+Provided you have downloaded the binary distribution to your home
+directory $HOME, execute the following commands:
+ 
+ $ cd $HOME
+ $ tar xzvf smlserver-@PACKAGE_VERSION@-i386.tgz
+ $ ln -s smlserver-@PACKAGE_VERSION@-i386 smlserver
+ $ mkdir .smlserver
+ $ echo "SML_LIB $HOME/smlserver/lib/mlkit" > .smlserver/mlb-path-map
+
+You can now either run the smlserverc command directly by specifying the
+complete path or you can modify your personal PATH environment
+variable to include $HOME/smlserver/bin.
+
+Now, that SMLserver is installed, proceed with Chapter 2 of the book
+"SMLserver - A Functional Approach to Web Publishing", available from
+the SMLserver home page www.smlserver.org.
+
+3. More Information
+-------------------
+See the SMLserver home page www.smlserver.org for more
+information. SMLserver is based on the MLKit Standard ML compiler and
+SMLserver is distributed under the same license as the MLKit. License
+information is located in the file 
+share/doc/smlserver/license/MLKit-LICENSE.
+
+4. Comments and Bug Reports
+---------------------------
+Please see the SMLserver home page for a list of known bugs and
+limitations. Send bug reports to smlserver@itu.dk.
+
+Appendix A: Directory Structure of the Distribution
+---------------------------------------------------
+  smlserver-@PACKAGE_VERSION@-i386.tgz:
+     smlserver-@PACKAGE_VERSION@-i386/
+        bin/smlserverc
+           /smlserver-wrap
+           /mspcomp
+        lib/smlserver/lib/mod_sml.so
+                         ...
+                     /basis/basis.mlb
+                           /kitlib.mlb
+                           /web/lib.mlb
+                           ...
+        man/man1/smlserverc.1
+        share/doc/smlserver/README_SMLSERVER_BIN
+                           /README_SMLSERVER
+                           /licence/
+
+
