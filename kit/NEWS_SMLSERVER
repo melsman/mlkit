@@ -1,8 +1,19 @@
 File NEWS_SMLSERVER
 
+           **** SMLserver version 4.3.2 is released ****
+
+ * mael 2007-04-12: The book "SMLserver - A Functional Approach to Web
+   Publishing" has been reworked to reflect the move from AOLserver to
+   the Apache platform; see www.smlserver.org for more.
+
+ * mael 2007-04-12: Note: support for "extended typing" (see below)
+   is currently not maintained.
+
  * mael 2007-04-10: Moved smlserver_demo/web_lib/lib.mlb to
    kit/basis/web/lib.mlb. The Web library is now precompiled before
-   installation.
+   installation. This change also involved moving the Db.sml file into
+   smlserver_demo/web_demo_lib/Db.sml, as this file needs to be
+   configured for each individual use.
 
  * mael 2007-04-10: Duplicate uo-code-files in ul-files are now
    removed to speed up the generation of ul-files.
@@ -11,8 +22,8 @@ File NEWS_SMLSERVER
    Publishing" has been upgraded to reflect the move to the Apache
    platform.
  
- * mael 2007-02-05: XMLrpc support. It is now possible to write XMLrpc
-   services and to call XMLrpc services using SMLserver. This work is
+ * mael 2007-02-05: XML-RPC support. It is now possible to write XML-RPC
+   services and to call XML-RPC services using SMLserver. This work is
    primarily due to Martin Olsen (mol@itu.dk).
 
  * mael 2007-02-05: WEB signature changes: Web.return, Web.write,

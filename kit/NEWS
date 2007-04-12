@@ -1,5 +1,12 @@
 MLKit NEWS file
 
+ * mael 2007-04-12: Functor bodies are now stored directly in module
+   interpretation bases. Upon compilation of a functor application,
+   the functor body is extracted from the interpretation basis and
+   compiled. Previously, functor bodies were stored in designated
+   functor body files, which led to problems with moving compilation
+   bases around for package installations, etc.
+
  * mael 2007-03-22: Added mlkit-mlyacc executable and man-pages for
    mlkit-mlyacc and mlkit-mllex.
 

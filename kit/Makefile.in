@@ -167,35 +167,35 @@ clean:
 clean_mlb:
 	find . -name "MLB" -type d | xargs rm -Rf
 
-tgz_export:
-	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
-	cd ..; cvs -d linux.it.edu:/cvsroot -q export -D now -d mlkit-$(KITVERSION) mlkit/kit
-	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
-	cd ..; rm -rf mlkit-$(KITVERSION)
+#tgz_export:
+#	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
+#	cd ..; cvs -d linux.it.edu:/cvsroot -q export -D now -d mlkit-$(KITVERSION) mlkit/kit
+#	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
+#	cd ..; rm -rf mlkit-$(KITVERSION)
 
-tgz:
-	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
-	cd ..; cp -d -f -p -R kit mlkit-$(KITVERSION)
-	cd ../mlkit-$(KITVERSION); $(MAKE) clean
-	cd ../mlkit-$(KITVERSION); rm -rf test_dev
-	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
-	cd ../mlkit-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
-           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
-           */*/*/*/*/*/.cvsignore
-	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
-	cd ..; rm -rf mlkit-$(KITVERSION)
+#tgz:
+#	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
+#	cd ..; cp -d -f -p -R kit mlkit-$(KITVERSION)
+#	cd ../mlkit-$(KITVERSION); $(MAKE) clean
+#	cd ../mlkit-$(KITVERSION); rm -rf test_dev
+#	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
+#	cd ../mlkit-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
+#           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
+#           */*/*/*/*/*/.cvsignore
+#	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
+#	cd ..; rm -rf mlkit-$(KITVERSION)
 
-tgz_smlserver:
-	cd ..; rm -rf smlserver-$(KITVERSION) smlserver-$(KITVERSION).tgz
-	cd ..; cp -d -f -p -R kit smlserver-$(KITVERSION)
-	cd ../smlserver-$(KITVERSION); $(MAKE) clean
-	cd ../smlserver-$(KITVERSION); rm -rf test_dev
-	cd ../smlserver-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
-	cd ../smlserver-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
-           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
-           */*/*/*/*/*/.cvsignore
-	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
-	cd ..; rm -rf smlserver-$(KITVERSION)
+#tgz_smlserver:
+#	cd ..; rm -rf smlserver-$(KITVERSION) smlserver-$(KITVERSION).tgz
+#	cd ..; cp -d -f -p -R kit smlserver-$(KITVERSION)
+#	cd ../smlserver-$(KITVERSION); $(MAKE) clean
+#	cd ../smlserver-$(KITVERSION); rm -rf test_dev
+#	cd ../smlserver-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
+#	cd ../smlserver-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
+#           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
+#           */*/*/*/*/*/.cvsignore
+#	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
+#	cd ..; rm -rf smlserver-$(KITVERSION)
 
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
@@ -392,6 +392,13 @@ man_smlserver:
 	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/lib/smlserver bin/smlserverc -man > man/man1/smlserverc.1
 
+# -----------------------------------------------------
+# Target for building MLKit binary package. The target
+# assumes that the mlkit has been build using
+#  $ ./configure --sysconfdir=/etc --prefix=/usr
+#  $ make
+#  $ make mlkit_libs
+# -----------------------------------------------------
 MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 .PHONY: mlkit_i386_tgz
 mlkit_i386_tgz:
@@ -400,6 +407,33 @@ mlkit_i386_tgz:
 	$(MAKE) install0 INSTDIR=dist/$(MLKIT_DIST_BIN)
 	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	(cd dist && tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
+
+# -----------------------------------------------------
+# Target for building SMLserver binary package. The target
+# assumes that SMLserver has been build using
+#  $ ./configure --sysconfdir=/etc --prefix=/usr --enable-SMLserver --with-apxs=`which apxs2` --enable-odbc
+#  $ make smlserver
+#  $ make smlserver_libs
+# -----------------------------------------------------
+SMLSERVER_DIST_BIN=smlserver-$(KITVERSION)-i386
+.PHONY: smlserver_i386_tgz
+smlserver_i386_tgz:
+	$(MKDIR) dist
+	rm -rf dist/$(SMLSERVER_DIST_BIN)
+	$(MAKE) install_smlserver0 INSTDIR=dist/$(SMLSERVER_DIST_BIN)
+	$(INSTALLDATA) doc/README_SMLSERVER_BIN dist/$(SMLSERVER_DIST_BIN)/share/doc/smlserver
+	(cd dist && tar czvf $(SMLSERVER_DIST_BIN).tgz $(SMLSERVER_DIST_BIN))
+
+# -----------------------------------------------------
+# The target for building source distributions should 
+# not be used - instead make an svn tag for the release 
+# "mlkit-X.Y.Z" as follows:
+#   svn copy https://mlkit.svn.sourceforge.net/svnroot/mlkit/trunk \
+#            https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/mlkit-X.Y.Z \
+#      -m "Tagging release of MLKit"
+# and make people checkout the releases.
+# -----------------------------------------------------
+
 
 MLKIT_DIST_SRC=mlkit-$(KITVERSION)-src
 .PHONY: mlkit_src_tgz
