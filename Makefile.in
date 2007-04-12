@@ -48,7 +48,14 @@ CLEAN=rm -rf MLB PM CM *~ .\#*
 .PHONY: mlkit mlkit_kam smlserver barry clean clean_mlb install
 .PHONY: install_smlserver install_smlserver0
 
-all: mlkit
+mlkit:
+	$(MKDIR) bin
+	$(MAKE) -C src mlkit
+	$(MAKE) man_mlkit
+
+all: mlkit mlkit_libs
+
+smlserver_all: smlserver smlserver_libs
 
 .PHONY: smlserver_basislib smlserver_libs smlserver_kitlib smlserver_weblib
 smlserver_basislib:
@@ -118,11 +125,6 @@ install_mlkit_basislibs:
 nj:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit_nj
-	$(MAKE) man_mlkit
-
-mlkit:
-	$(MKDIR) bin
-	$(MAKE) -C src mlkit
 	$(MAKE) man_mlkit
 
 mlkit_kam:
