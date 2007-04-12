@@ -405,7 +405,7 @@ MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
 mlkit_i386_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(MLKIT_DIST_BIN)
-	$(MAKE) install0 INSTDIR=dist/$(MLKIT_DIST_BIN)
+	$(MAKE) install0 DESTDIR=dist/$(MLKIT_DIST_BIN) prefix=/
 	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	(cd dist && tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
 
@@ -422,7 +422,7 @@ SMLSERVER_DIST_BIN=smlserver-$(KITVERSION)-i386
 smlserver_i386_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(SMLSERVER_DIST_BIN)
-	$(MAKE) install_smlserver0 INSTDIR=dist/$(SMLSERVER_DIST_BIN)
+	$(MAKE) install_smlserver0 DESTDIR=dist/$(SMLSERVER_DIST_BIN) prefix=/
 	$(INSTALLDATA) doc/README_SMLSERVER_BIN dist/$(SMLSERVER_DIST_BIN)/share/doc/smlserver
 	(cd dist && tar czvf $(SMLSERVER_DIST_BIN).tgz $(SMLSERVER_DIST_BIN))
 
@@ -561,17 +561,14 @@ install_smlserver:install_smlserver0
 # 	scp $(RPMDIR)/SRPMS/smlserver-$(KITVERSION)-1.src.rpm $(SMLSERVER_HOSTDIR)/
 
 
-# MLKIT_HOST=ssh.itu.dk
-# MLKIT_HOSTDIR=$(MLKIT_HOST):/import/www/research/mlkit/dist
-# TESTDATE=2004-06-11
+HOST=ssh.itu.dk
+HOSTDIR=$(HOST):/import/www/research/mlkit/dist
+TESTDATE=2007-04-12
 
-# dist_mlkit:
-# 	scp NEWS $(MLKIT_HOSTDIR)/NEWS-$(KITVERSION).txt
-# 	scp README $(MLKIT_HOSTDIR)/README-$(KITVERSION).txt
-# 	scp INSTALL $(MLKIT_HOSTDIR)/INSTALL-$(KITVERSION).txt
-# 	scp doc/mlkit.pdf $(MLKIT_HOSTDIR)/mlkit-$(KITVERSION).pdf
-# 	scp ../test_reports/test_report-native-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).dvi
-# 	scp ../test_reports/test_report-kam-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).dvi
-# 	scp ../mlkit-$(KITVERSION).tgz $(MLKIT_HOSTDIR)/
-# 	scp $(RPMDIR)/RPMS/i386/mlkit-$(KITVERSION)-1.i386.rpm $(MLKIT_HOSTDIR)/
-# 	scp $(RPMDIR)/SRPMS/mlkit-$(KITVERSION)-1.src.rpm $(MLKIT_HOSTDIR)/
+dist_mlkit:
+	scp NEWS $(HOSTDIR)/NEWS-$(KITVERSION).txt
+	scp README $(HOSTDIR)/README-$(KITVERSION).txt
+	scp doc/mlkit.pdf $(HOSTDIR)/mlkit-$(KITVERSION).pdf
+	scp ../test_reports/test_report-native-$(TESTDATE).pdf $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).pdf
+	scp ../test_reports/test_report-kam-$(TESTDATE).pdf $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).pdf
+	scp dist/mlkit-$(KITVERSION)-i386.tgz $(HOSTDIR)/

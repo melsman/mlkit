@@ -19,8 +19,8 @@ directory, execute the following commands in a bash-shell - as root:
  % tar xzvf smlserver-@PACKAGE_VERSION@-i386.tgz
  % cd smlserver-@PACKAGE_VERSION@-i386
  % cp -pa bin/* /usr/bin/
- % cp -pa man/man1/* /usr/man/man1/
  % cp -pa lib/smlserver /usr/lib/smlserver
+ % cp -pa share/man/man1/* /usr/share/man/man1/
  % cp -pa share/smlserver /usr/share/smlserver
  % cp -pa share/doc/smlserver /usr/share/doc/smlserver
  % mkdir /etc/smlserver
@@ -77,7 +77,7 @@ Appendix A: Directory Structure of the Distribution
                            /kitlib.mlb
                            /web/lib.mlb
                            ...
-        man/man1/smlserverc.1
+        share/man/man1/smlserverc.1
         share/doc/smlserver/README_SMLSERVER_BIN
                            /README_SMLSERVER
                            /licence/
