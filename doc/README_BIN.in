@@ -19,8 +19,8 @@ directory, execute the following commands in a bash-shell - as root:
  % tar xzvf mlkit-@PACKAGE_VERSION@-i386.tgz
  % cd mlkit-@PACKAGE_VERSION@-i386
  % cp -pa bin/* /usr/bin/
- % cp -pa man/man1/* /usr/man/man1/
  % cp -pa lib/mlkit /usr/lib/mlkit
+ % cp -pa share/man/man1/* /usr/share/man/man1/
  % cp -pa share/mlkit /usr/share/mlkit
  % cp -pa share/doc/mlkit /usr/share/doc/mlkit
  % mkdir /etc/mlkit
@@ -70,12 +70,7 @@ Documentation for the MLKit is located in the distribution in the
 directories share/doc/mlkit and man/man1. License information is
 located in the file share/doc/mlkit/license/MLKit-LICENSE.
 
-5. VCG
-------
-The VCG tool, which is used to show region flow graphs, can be found
-at http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
-
-6. Comments and Bug Reports
+5. Comments and Bug Reports
 ---------------------------
 Please see the MLKit home page for a list of known bugs and
 limitations. Send bug reports to mlkit@itu.dk.
@@ -93,11 +88,13 @@ Appendix A: Directory Structure of the Distribution
                  /basis/basis.mlb
                        /kitlib.mlb
                        /...
-        man/man1/mlkit.1
-                /rp2ps.1
+        share/man/man1/mlkit.1
+                      /rp2ps.1
+                      /...
         share/doc/mlkit/mlkit.pdf
                        /README_BIN
                        /licence/
+                       /NEWS
              /mlkit/test/
                    /kitdemo/
 
