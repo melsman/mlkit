@@ -523,8 +523,8 @@ install_smlserver0:
 	$(INSTALLDATA) -p basis/web/*.{sml,mlb} $(LIBDIR)/smlserver/basis/web
 	$(INSTALLDATA) -p basis/web/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web/xmlrpc
 #	$(MKDIR) $(MANDIR)
-#	$(MKDIR) $(MANDIR)/man1
-	$(INSTALLDATA) -p man/man1/smlserverc.1 $(MANDIR)/man1
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/smlserverc.1 $(MANDIR)/man1
 #	$(MKDIR) $(INSTDIR)/share
 #	$(MKDIR) $(INSTDIR)/share/smlserver
 #	$(MKDIR) $(INSTDIR)/share/doc
