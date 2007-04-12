@@ -1,5 +1,5 @@
-$(SML_LIB)/basis/basis.mlb
-$(SML_LIB)/basis/kitlib.mlb
+../basis.mlb
+../kitlib.mlb
 Quot.sml
 local
     WEB_SET.sml
