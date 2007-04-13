@@ -5,6 +5,7 @@
 # --------------------------------------
 
 TESTDATE=`date +%Y-%m-%d`
+FLAGS=--with-compiler=`which mlkit`
 
 .PHONY: all
 all: mlkit smlserver_odbc smlserver_nodb
@@ -21,15 +22,23 @@ mlkit:
 .PHONY: smlserver_odbc
 smlserver_odbc:
 	./autobuild
-	./configure --enable-SMLserver --with-apxs=`which apxs2` --enable-odbc
+	./configure --enable-SMLserver --with-apxs=`which apxs2` --enable-odbc $(FLAGS)
 	$(MAKE) smlserver_all
 	$(MAKE) smlserver_i386_tgz
 	$(MAKE) dist_smlserver
 
+.PHONY: smlserver_ora
+smlserver_ora:
+	./autobuild
+	./configure --enable-SMLserver --with-apxs=`which apxs2` --with-oracle=`pwd`/../oracle/instantclient_10_2 $(FLAGS)
+	$(MAKE) smlserver_all
+	$(MAKE) smlserver_i386_tgz
+	$(MAKE) dist_smlserver DBTYPE=ora
+
 .PHONY: smlserver_nodb
 smlserver_nodb:
 	./autobuild
-	./configure --enable-SMLserver --with-apxs=`which apxs2`
+	./configure --enable-SMLserver --with-apxs=`which apxs2` $(FLAGS)
 	$(MAKE) smlserver_all
 	$(MAKE) smlserver_i386_tgz
 	$(MAKE) dist_smlserver DBTYPE=nodb
