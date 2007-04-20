@@ -132,14 +132,14 @@ structure List : LIST = struct
                                    
 end; (*structure List*)
 
-val null = List.null
+fun null a = List.null a
 val hd = List.hd
 val tl = List.tl
-val length = List.length
-val rev = List.rev
-val op @ = List.@
-val app = List.app
-val map = List.map
-val foldr = List.foldr
-val foldl = List.foldl
+fun length a = List.length a
+fun rev a = List.rev a
+fun op @ a = List.@ a
+fun app f l = List.app f l
+fun map f l = List.map f l
+fun foldr a b c = List.foldr a b c
+fun foldl a b c = List.foldl a b c
 exception Empty = List.Empty
