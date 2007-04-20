@@ -1,5 +1,8 @@
 MLKit NEWS file
 
+ * mael 2007-04-19: Executing mlkit with no command args now returns
+   minimal help info.
+
  * mael 2007-04-12: Functor bodies are now stored directly in module
    interpretation bases. Upon compilation of a functor application,
    the functor body is extracted from the interpretation basis and
