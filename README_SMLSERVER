@@ -197,7 +197,7 @@ BUILDING SMLSERVER FROM THE SOURCES WITH Oracle ACCESS
 
 to build Oracle interface:
 download Oracle Instant Client + SDK
-cd /abs/path/to/oracle/instant/client/sdk
+cd /abs/path/to/oracle/instant/client/
 ln -sf libclntsh.so.10.1 libclntsh.so
 cd mlkit/kit
 proceed as above with this configure command
