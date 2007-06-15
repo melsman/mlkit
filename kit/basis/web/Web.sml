@@ -870,12 +870,17 @@ structure Web :> WEB =
         | NONE => NONE
 
     fun formvarAll s =
+        case getQuery() of
+            SOME set => Set.getAll(set,s)
+          | NONE => []
+(*                    
+    fun formvarAll s =
       case getQuery() of
         SOME set =>(case Set.get(set,s)
                     of NONE => []
                      | SOME e => [e])
       | NONE => []
-
+*)
   end
 
 
