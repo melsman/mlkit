@@ -131,11 +131,11 @@ structure Web :> WEB =
         fun foldr f b s = List.foldl f b (List.rev (list s))
         fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) [] s
         fun igetAll (s:set,key:string) : string list = 
-               case Polyhash.peek s key
+               case Polyhash.peek s (CharVector.map Char.toLower key)
                of NONE => []
                 | SOME l => List.map (fn (k,v) => v) l
         fun getAll (s:set,key:string) : string list = 
-               case Polyhash.peek s key
+               case Polyhash.peek s (CharVector.map Char.toLower key)
                of NONE => []
                 | SOME l => List.mapPartial (fn (k,v) => if k = key then SOME v else NONE) l
     end
