@@ -22,7 +22,7 @@
 #include <netdb.h>  /*}}} */
 
 // Defines /*{{{*/
-#define BUFFERSIZE 10	/*}}} */
+#define BUFFERSIZE 1000	/*}}} */
 #define FORM 1
 #define GET 0
 
