@@ -18,17 +18,19 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			     TextIO.output(!Flags.log, "\n\n"))
     fun StringTree_to_string st = PP.flatten (PP.format (!Flags.colwidth, st))
     val pr_Type = StringTree_to_string o layoutType
-local
-  fun f0 separator pp_x [] = ""
-    | f0 separator pp_x [x] = pp_x x
-    | f0 separator pp_x (x::xs) = pp_x x ^ separator ^ f0 separator pp_x xs
-in
-  fun pp_list0 start finish separator pp_x xs = start ^ f0 separator pp_x xs ^ finish
-  fun pp_list a = pp_list0 "[" "]" ", " a
-  fun pp_set a = pp_list0 "{" "}" ", " a
-  fun pp_tuple a = pp_list0 "(" ")" "," a
-  fun pp_enumeration a = pp_list0 "" "" ", " a
-end
+
+    local
+        fun f0 separator pp_x [] = ""
+          | f0 separator pp_x [x] = pp_x x
+          | f0 separator pp_x (x::xs) = pp_x x ^ separator ^ f0 separator pp_x xs
+    in
+        fun pp_list0 start finish separator pp_x xs = start ^ f0 separator pp_x xs ^ finish
+        fun pp_list a = pp_list0 "[" "]" ", " a
+        fun pp_set a = pp_list0 "{" "}" ", " a
+        fun pp_tuple a = pp_list0 "(" ")" "," a
+        fun pp_enumeration a = pp_list0 "" "" ", " a
+    end
+
     fun log s = TextIO.output(!Flags.log, s)
 
     (* =================================
