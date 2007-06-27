@@ -1,5 +1,9 @@
 (* Author: Carsten Varming 2006 *)
 
+(* For a specific usage of look at the bottom of this file *)
+(* This code will a string and handle data much
+   like the gnu getopt function                            *)
+
 functor QuickSort(Arg:
                     sig
                       type A
@@ -186,13 +190,17 @@ functor Argument(Data :
     end
   end;
 
+(* Example usage *)
+
 structure Arg :> 
   sig
     val parse : string list -> (string * string list * string)
   end =
   struct
+    (* Defining a structure that describes the parameters to the program *)
     structure D = 
       struct
+         (* I will accept three kinds of parameters In, Out, and Pres *) 
         datatype A = Out of string
                    | In of string
                    | Pres of string
@@ -202,11 +210,16 @@ structure Arg :>
                                 end)
         val Default = Undef
         exception BadArg of string
+         (*  -p data and --preserve data is parsed to Pres data
+             -i data and --infile data is  parsed to In data
+             -o data and --outfile daat is parsed to Out data *)
         val constructors = [("-p",Arg.String Pres),("--preserve",Arg.String Pres),
                             ("-i",Arg.String In),("--infile",Arg.String In),
                             ("-o",Arg.String Out),("--outfile",Arg.String Out)]
       end
+    (* Give me a parser *)
     structure A = Argument(D)
+    (* Specific handling for this program *)
     fun getPres l = List.foldr (fn (D.Pres i,acc) => i::acc | (_,acc) => acc) [] l
     fun getIn l = List.foldr (fn (D.In i,acc) => i::acc | (_,acc) => acc) [] l
     fun getOut l = List.foldr (fn (D.Out i,acc) => i::acc | (_,acc) => acc) [] l
