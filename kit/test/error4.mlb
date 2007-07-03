@@ -1,0 +1,4 @@
+(* Cycles in mlb-files are not legal! Here is an immediate cycle. *)
+
+error4a.mlb
+error3.sml

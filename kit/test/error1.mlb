@@ -1,0 +1,2 @@
+(* It is an error if a source file does not exist *)
+notexisting.sml

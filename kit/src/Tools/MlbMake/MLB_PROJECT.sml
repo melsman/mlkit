@@ -1,9 +1,10 @@
 signature MLB_PROJECT =
+sig
+  structure MS : 
     sig
-  structure MS :
-    sig
-      structure Bid :
-        sig eqtype bid and longbid
+      structure Bid : 
+        sig 
+          eqtype bid and longbid
           val bid : string -> bid
           val longbid : bid list -> longbid
           val longopen : longbid -> bid * longbid option
@@ -11,37 +12,38 @@ signature MLB_PROJECT =
           val pp_longbid : longbid -> string
         end
 
-	type atbdec = string (* path.{sml,sig} *) 
+      type atbdec = string (* path.{sml,sig} *) 
 
-	datatype bexp = BASbexp of bdec
-                      | LETbexp of bdec * bexp
-                      | LONGBIDbexp of Bid.longbid
-
-             and bdec = SEQbdec of bdec * bdec
-	              | EMPTYbdec 
-                      | LOCALbdec of bdec * bdec
-                      | BASISbdec of Bid.bid * bexp
-                      | OPENbdec of Bid.longbid list
-	              | ATBDECbdec of atbdec
-		      | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)		          
-		      | SCRIPTSbdec of atbdec list
-	              | ANNbdec of string * bdec
+      datatype bexp = BASbexp of bdec
+                    | LETbexp of bdec * bexp
+                    | LONGBIDbexp of Bid.longbid
+                                     
+           and bdec = SEQbdec of bdec * bdec
+	            | EMPTYbdec 
+                    | LOCALbdec of bdec * bdec
+                    | BASISbdec of Bid.bid * bexp
+                    | OPENbdec of Bid.longbid list
+	            | ATBDECbdec of atbdec
+		    | MLBFILEbdec of string * string option  (* path.mlb <scriptpath p> *)		          
+		    | SCRIPTSbdec of atbdec list
+	            | ANNbdec of string * bdec
     end
 
-	(* scriptpath p is optional in MLBFILEbdec; only useful in the context of
-	 * SMLserver as SCRIPTSbdec. *)
+    (* scriptpath p is optional in MLBFILEbdec; only useful in the context of
+     * SMLserver as SCRIPTSbdec. *)
+    
+  val parse : string -> MS.bdec 
+  (* [parse mlbfile] parses a basis file mlbfile. Prints an 
+   * error message and raises Fail on error. *)
 
-	val parse : string -> MS.bdec 
-	(* [parse mlbfile] parses a basis file mlbfile. Prints an 
-	 * error message and raises Fail on error. *)
+  val depDir : string ref  
+  (* The directory in which dependency files are stored; the 
+   * default is "PM" *)
 
-	val depDir : string ref  
-	(* The directory in which dependency files are stored; the 
-	 * default is "PM" *)
-	val dep : string -> unit   
-	(* [dep mlbfile] parses mlbfile (and the mlb-files it mentions, 
-	 * recursively) and writes dependency information to disk in 
-	 * .d-files. *)
+  val dep : string -> unit   
+  (* [dep mlbfile] parses mlbfile (and the mlb-files it mentions, 
+   * recursively) and writes dependency information to disk in 
+   * .d-files. *)
 
   type BG
   structure Atom :
@@ -66,5 +68,5 @@ signature MLB_PROJECT =
   val sources : string -> BG 
   (* [sources mlbfile] returns the dependency graph of sources (.sml- and
    * .sig-files) mentioned in mlbfile *)
-  end
+end
 

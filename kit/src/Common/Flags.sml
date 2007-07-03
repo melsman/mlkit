@@ -320,8 +320,8 @@ struct
     case M.lookup (!dir) key
       of SOME (BOOL_ENTRY e) => #item e := true
        | SOME (BOOLA_ENTRY e) => #on e ()
-       | SOME _ => die ("turn_on: entry " ^ key ^ " is of wrong kind")
-       | NONE => die ("turn_on: no entry " ^ key ^ " in directory")
+       | SOME _ => raise Fail ("option " ^ key ^ " is of wrong kind")
+       | NONE => raise Fail ("invalid option: " ^ key)
 
   fun turn_off (key: string) : unit = 
     case M.lookup (!dir) key

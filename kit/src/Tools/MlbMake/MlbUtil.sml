@@ -4,7 +4,6 @@ structure MlbUtil :>
     val quot : string -> string
     val warn : string -> unit
     val error : string -> 'a
-    val errors : string list -> 'a
     val pp_list : string -> string list -> string
   end =
     struct
@@ -19,9 +18,13 @@ structure MlbUtil :>
 	local
 	    fun err s = print ("\nError: " ^ s ^ ".\n\n"); 
 	in
+	    fun error (s : string) = 
+                raise Fail s (* Error is then printed in KitCompiler *)
+(*
 	    fun error (s : string) = (err s; raise Fail "error")	    
 	    fun errors (ss:string list) = 
 		(app err ss; raise Fail "error")
+*)
 	end
     
 	fun vchat0 (verbose:unit -> bool) s = 

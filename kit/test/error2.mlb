@@ -1,0 +1,6 @@
+(* multible occurrences of a source file in the 
+ * same mlb-file is not allowed *)
+
+error2.sml
+error2b.sml
+error2.sml

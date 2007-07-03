@@ -1,0 +1,5 @@
+(* The same physical source file may be referenced 
+ * by at most one mlb-file *)
+
+error3a.mlb
+error3.sml

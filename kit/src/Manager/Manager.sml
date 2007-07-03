@@ -692,18 +692,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                 infix ##
                 val op ## = OS.Path.concat
             in dir ## MO.mlbdir () ## (file ^ ext)
-	    end
-	 fun objFileFromSmlFile smlfile =
-	     fileFromSmlFile smlfile (objFileExt())
-	     
-	 fun lnkFileFromSmlFile smlfile = 
-	     objFileFromSmlFile smlfile ^ ".lnk"
+            end
+         fun objFileFromSmlFile smlfile =
+             fileFromSmlFile smlfile (objFileExt())
+             
+         fun lnkFileFromSmlFile smlfile = 
+             objFileFromSmlFile smlfile ^ ".lnk"
      in
-	 fun getUoFiles (smlfile:string) : string list =
-	     let val lnkfile = lnkFileFromSmlFile smlfile
-		 val modc = readLinkFiles [lnkfile]
-	     in ModCode.target_files modc
-	     end
+         fun getUoFiles (smlfile:string) : string list =
+             let val lnkfile = lnkFileFromSmlFile smlfile
+                 val modc = readLinkFiles [lnkfile]
+             in ModCode.target_files modc
+             end
      end
 
     structure MlbProject = MlbProject(ManagerObjects.Environment)
@@ -725,43 +725,43 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                         val s = mlb_to_ulfile getUoFiles {mlbfile=mlbfile}
                         val ulfile = !run_file
                     in writeAll(ulfile,s) 
-		     ; print("[wrote file " ^ ulfile ^ "]\n")
-		    end
-	          | NONE => 
-		    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
-			val modc_scripts = readLinkFiles lnkFilesScripts		
-		    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
-		    end)
-	   else 
-	       (chat "making executable";
-		ModCode.mk_exe_all_emitted(modc, nil, !run_file))
-	end
+                     ; print("[wrote file " ^ ulfile ^ "]\n")
+                    end
+                  | NONE => 
+                    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
+                        val modc_scripts = readLinkFiles lnkFilesScripts                
+                    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
+                    end)
+           else 
+               (chat "making executable";
+                ModCode.mk_exe_all_emitted(modc, nil, !run_file))
+        end
 
     (* ----------------------------
      * Build an MLB project
      * ---------------------------- *)
 
-    exception IsolateFunExn
+    exception IsolateFunExn of int
 
     local
-	fun failSig s signal =
-	    raise Fail ("isolate error: " ^ s ^ "(" ^ 
-			SysWord.toString (Posix.Signal.toWord signal) ^ ")")
+        fun failSig s signal =
+            raise Fail ("isolate error: " ^ s ^ "(" ^ 
+                        SysWord.toString (Posix.Signal.toWord signal) ^ ")")
     in
-	fun isolate (f : 'a -> unit) (a:'a) : unit =
-	    case Posix.Process.fork() of
-		SOME pid => 
-		    let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
-		    in if pid2 = pid then 
-			(case status of
-			     Posix.Process.W_EXITED => ()
-			   | Posix.Process.W_EXITSTATUS _ => raise IsolateFunExn
-			   | Posix.Process.W_STOPPED s => failSig "W_STOPPED" s
-			   | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED" s)
-		   else raise Fail "isolate error 2"
-		end
-	  | NONE => (f a before Posix.Process.exit 0w0
-		     handle _ => Posix.Process.exit 0w1)
+        fun isolate (f : 'a -> unit) (a:'a) : unit =
+            case Posix.Process.fork() of
+                SOME pid => (* parent *)
+                    let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
+                    in if pid2 = pid then 
+                        (case status of
+                             Posix.Process.W_EXITED => ()
+                           | Posix.Process.W_EXITSTATUS n => raise IsolateFunExn (Word8.toInt n)
+                           | Posix.Process.W_STOPPED s => failSig "W_STOPPED" s
+                           | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED" s)
+                   else raise Fail "isolate error 2"
+                end
+          | NONE => (f a before Posix.Process.exit 0w0        (* child *)
+                     handle _ => Posix.Process.exit 0w1)
     end
 
     local
@@ -775,31 +775,31 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                            pids := []) 
       end
       fun failSig s signal =
-            raise Fail ("isolate error: " ^ s ^ "(" ^ 
-                        SysWord.toString (Posix.Signal.toWord signal) ^ ")")
+          raise Fail ("isolate error: " ^ s ^ "(" ^ 
+                      SysWord.toString (Posix.Signal.toWord signal) ^ ")")
     in
       fun isolate2 (f : 'a -> unit) (a:'a) : Posix.Process.pid =
-	           case Posix.Process.fork()
-             of SOME pid => (add pid ; pid)
-              | NONE => ((f a ; Posix.Process.exit 0w0)
-		                     handle _ => Posix.Process.exit 0w1)
+          case Posix.Process.fork()
+           of SOME pid => (add pid ; pid)
+            | NONE => ((f a ; Posix.Process.exit 0w0)
+                       handle _ => Posix.Process.exit 0w1)
 
       fun wait p = 
-         let
-           val (pid,st) = case p
-                          of NONE => Posix.Process.wait()
-                           | SOME p => Posix.Process.waitpid (Posix.Process.W_CHILD p,[])
-         in
-           case st 
-           of Posix.Process.W_EXITED => (remove pid ; pid)
-            | Posix.Process.W_EXITSTATUS _ => (remove pid ; killrest (); raise IsolateFunExn)
-            | Posix.Process.W_STOPPED s => (remove pid ; killrest (); failSig "W_STOPPED" s)
-            | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED" s)
-         end handle OS.SysErr t => (killrest (); failSig "OS.SysErr" (Posix.Signal.fromWord 0w0))
+          let
+            val (pid,st) = case p
+                            of NONE => Posix.Process.wait()
+                             | SOME p => Posix.Process.waitpid (Posix.Process.W_CHILD p,[])
+          in
+            case st 
+             of Posix.Process.W_EXITED => (remove pid ; pid)
+              | Posix.Process.W_EXITSTATUS n => (remove pid ; killrest (); raise IsolateFunExn (Word8.toInt n))
+              | Posix.Process.W_STOPPED s => (remove pid ; killrest (); failSig "W_STOPPED" s)
+              | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED" s)
+          end handle OS.SysErr t => (killrest (); failSig "OS.SysErr" (Posix.Signal.fromWord 0w0))
     end
-
+                               
     structure MlbPlugIn : MLB_PLUGIN  =
-	struct
+    struct
     local
       fun unlock lockfile = (Posix.FileSys.unlink lockfile) handle _ => ()
       fun lock unique lockfile = 
@@ -812,146 +812,145 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
          in if fu then (Posix.FileSys.unlink (lockfile ^ unique); f) handle _ => f
             else false
          end
-	    fun compile0 target flags lockfile unique a =
-		let
-		    (* deal with annotations (from mlb-file) *)
-		    val flags = String.tokens Char.isSpace flags
-		    val () = List.app Flags.turn_on flags
-		    val () = Flags.turn_on "compile_only"
-		    val () = Flags.lookup_string_entry "output" := target
-		in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock lf))
-		end handle ? => ((case lockfile of NONE => () | SOME lf => unlock lf) ;
-                     case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
-                                                      | ? => raise ?)
+
+      fun compile0 target flags lockfile unique a =
+          let
+            (* deal with annotations (from mlb-file) *)
+            val flags = String.tokens Char.isSpace flags
+            val () = List.app Flags.turn_on flags
+            val () = Flags.turn_on "compile_only"
+            val () = Flags.lookup_string_entry "output" := target
+          in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock lf))
+          end handle ? => ((case lockfile of NONE => () | SOME lf => unlock lf) ;
+                           case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
+                                   | ? => raise ?)
     in
-	    fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
-		    (fn f => case lockfile
-                 of NONE => SOME (f ())
-                  | SOME lf => if lock (Int.toString unique) lf
-                               then SOME (f ())
-                               else NONE)
-        (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
+      fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
+          (fn f => case lockfile
+                    of NONE => SOME (f ())
+                     | SOME lf => if lock (Int.toString unique) lf then SOME (f ())
+                                  else NONE)
+              (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
     end
 
-      val getParallelN = parallel
-      val wait = wait
-(*
-	      | compile _ _ = die "MlbPlugIn.compile.flags non-empty"
-*)
-  local
-	    fun link0 mlbfile target lnkFiles lnkFilesScripts () =
-		(Flags.lookup_string_entry "output" := target;
-		 Flags.lookup_stringlist_entry "link" := lnkFiles;
-		 Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
-		 link_lnk_files (SOME mlbfile))
-  in
-	    fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
-		isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
-	      | link _ _ = die "MlbPlugIn.link.flags non-empty"
-  end
+    val getParallelN = parallel
+    val wait = wait
+                   
+    local
+      fun link0 mlbfile target lnkFiles lnkFilesScripts () =
+          (Flags.lookup_string_entry "output" := target;
+           Flags.lookup_stringlist_entry "link" := lnkFiles;
+           Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
+           link_lnk_files (SOME mlbfile))
+    in
+      fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
+          isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
+        | link _ _ = die "MlbPlugIn.link.flags non-empty"
+    end
 
-	    fun mlbdir() = MO.mlbdir()
-	    val objFileExt = objFileExt
-
-	    fun maybeSetRegionEffectVarCounter n =
-		let val b = region_profiling()
-		    val _ = if b then Flags.lookup_int_entry "regionvar" := n
-			    else ()
-		in b 
-		end
-
-	    val lnkFileConsistent = lnkFileConsistent
-	end
+    fun mlbdir() = MO.mlbdir()
+    val objFileExt = objFileExt
+                       
+    fun maybeSetRegionEffectVarCounter n =
+        let 
+          val b = region_profiling()
+          val _ = if b then Flags.lookup_int_entry "regionvar" := n
+                  else ()
+        in b 
+        end
+        
+    val lnkFileConsistent = lnkFileConsistent
+    end (* struct *)
 
 
     structure MlbMake = MlbMake(structure MlbProject = MlbProject
                                 structure MlbPlugIn = MlbPlugIn
-				val verbose = Flags.is_on0 "chat"
-				val oneSrcFile : string option ref = ref NONE)		   
+                                val verbose = Flags.is_on0 "chat"
+                                val oneSrcFile : string option ref = ref NONE)             
 
     datatype source = SML of string | MLB of string | WRONG_FILETYPE of string 
 
     fun determine_source (s:string) : source = 
-	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.mlb', '.sml', or '.sig'.\n" ^
-					  "*** The file name you gave me has " ^ s)
-	in case OS.Path.ext s of 
-	    SOME "mlb" => MLB s
-	  | SOME ext => if Flags.has_sml_source_ext ext then SML s
-			else wrong ("extension " ^ quot ext ^ ".")
-	  | NONE => wrong ("no extension.")
-	end
+        let fun wrong s = WRONG_FILETYPE ("File name must have extension '.mlb', '.sml', or '.sig'.\n" ^
+                                          "*** The file name you gave me has " ^ s)
+        in case OS.Path.ext s of 
+            SOME "mlb" => MLB s
+          | SOME ext => if Flags.has_sml_source_ext ext then SML s
+                        else wrong ("extension " ^ quot ext ^ ".")
+          | NONE => wrong ("no extension.")
+        end
     
     val import_basislib = Flags.is_on0 "import_basislib"
     fun gen_wrap_mlb smlfilepath =
-	let val mlb_filepath = OS.Path.base smlfilepath ^ ".auto.mlb"
-	    val _ = chat ("Generating MLB-file " ^ mlb_filepath)
-	    val os = TextIO.openOut mlb_filepath
-	    val basislib = !Flags.install_dir ## "basis/basis.mlb"
-	    val _ = chat ("Using basis library " ^ quot basislib)
-	    val smlfile = OS.Path.file smlfilepath
-	    val body = 
-		if import_basislib() then
-		    "local " ^ basislib ^ " in " ^ smlfile ^ " end"
-		else smlfile
-	in 
-	    let val _ = TextIO.output(os, body)
-		val _ = TextIO.closeOut os
-	    in mlb_filepath
-	    end handle X => (TextIO.closeOut os; raise X)
-	end
+        let val mlb_filepath = OS.Path.base smlfilepath ^ ".auto.mlb"
+            val _ = chat ("Generating MLB-file " ^ mlb_filepath)
+            val os = TextIO.openOut mlb_filepath
+            val basislib = !Flags.install_dir ## "basis/basis.mlb"
+            val _ = chat ("Using basis library " ^ quot basislib)
+            val smlfile = OS.Path.file smlfilepath
+            val body = 
+                if import_basislib() then
+                    "local " ^ basislib ^ " in " ^ smlfile ^ " end"
+                else smlfile
+        in 
+            let val _ = TextIO.output(os, body)
+                val _ = TextIO.closeOut os
+            in mlb_filepath
+            end handle X => (TextIO.closeOut os; raise X)
+        end
 
     fun comp0 files : unit =
-	if Flags.get_stringlist_entry "link" <> nil then link_lnk_files NONE
-	else
-	    case files of
-		[file] => 
-		    (case determine_source file of 
-			 SML s => 
-			     if Flags.is_on "compile_only" then
-				 let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
-				     val namebase = Flags.get_string_entry "namebase"
-				 in build_mlb_one (namebase, ebfiles, s)
-				 end
-			     else 
-				 let val mlb_file = gen_wrap_mlb s
-				     val _ = comp0 [mlb_file]
-					 handle X => (OS.FileSys.remove mlb_file; raise X)
-				 in OS.FileSys.remove mlb_file
-				 end
-		       | MLB s => 
-				 let val target =
-				     if !Flags.SMLserver then
-					 let val {dir,file} = OS.Path.splitDirFile s
-					     val op ## = OS.Path.concat infix ##
-					 in dir ## MO.mlbdir() ## (OS.Path.base file ^ ".ul")
-					 end
-				     else Flags.get_string_entry "output"
-				 in  
-				     (MlbMake.build{flags="",mlbfile=s,target=target} 
-				      handle Fail s => raise Fail s
-					   | IsolateFunExn => 
-					      (print "Stopping compilation of MLB-file due to errors.\n";
-					       raise PARSE_ELAB_ERROR nil)
-					   | ? => (print "Stopping compilation due to errors.\n";
-						   print (General.exnMessage ? ^ "\n");
-						   raise PARSE_ELAB_ERROR nil))
-				 end
-		       | WRONG_FILETYPE s => raise Fail s)
-	      | _ => raise Fail "I expect exactly one file name"
-			     
+        if Flags.get_stringlist_entry "link" <> nil then link_lnk_files NONE
+        else
+            case files of
+                [file] => 
+                    (case determine_source file of 
+                         SML s => 
+                             if Flags.is_on "compile_only" then
+                                 let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
+                                     val namebase = Flags.get_string_entry "namebase"
+                                 in build_mlb_one (namebase, ebfiles, s)
+                                 end
+                             else 
+                                 let val mlb_file = gen_wrap_mlb s
+                                     val _ = comp0 [mlb_file]
+                                         handle X => (OS.FileSys.remove mlb_file; raise X)
+                                 in OS.FileSys.remove mlb_file
+                                 end
+                       | MLB s => 
+                                 let val target =
+                                     if !Flags.SMLserver then
+                                         let val {dir,file} = OS.Path.splitDirFile s
+                                             val op ## = OS.Path.concat infix ##
+                                         in dir ## MO.mlbdir() ## (OS.Path.base file ^ ".ul")
+                                         end
+                                     else Flags.get_string_entry "output"
+                                 in  
+                                     (MlbMake.build{flags="",mlbfile=s,target=target} 
+                                      handle Fail s => raise Fail s
+                                           | IsolateFunExn n => 
+                                              (print ("Stopping compilation of MLB-file due to error (code " ^ Int.toString n ^ ").\n");
+                                               raise PARSE_ELAB_ERROR nil)
+                                           | ? => (print "Stopping compilation due to errors.\n";
+                                                   print (General.exnMessage ? ^ "\n");
+                                                   raise PARSE_ELAB_ERROR nil))
+                                 end
+                       | WRONG_FILETYPE s => raise Fail s)
+              | _ => raise Fail "I expect exactly one file name"
+                             
     val timingfile = "KITtimings"
     fun comp files : unit =
       if Flags.is_on "compiler_timings" then
-	let val os = (TextIO.openOut (timingfile)
-		      handle _ => (print ("Error: I could not open file `" ^ timingfile ^ "' for writing");
-				   raise PARSE_ELAB_ERROR nil))
-	  fun close () = (TextIO.closeOut os; 
-			  Flags.timings_stream := NONE;
-			  print ("[wrote compiler timings file: "  ^ timingfile ^ "]\n"))
-	in Flags.timings_stream := SOME os;
-	  comp0 files handle E => (close(); raise E);
-	    close()
-	end
+        let val os = (TextIO.openOut (timingfile)
+                      handle _ => (print ("Error: I could not open file `" ^ timingfile ^ "' for writing");
+                                   raise PARSE_ELAB_ERROR nil))
+          fun close () = (TextIO.closeOut os; 
+                          Flags.timings_stream := NONE;
+                          print ("[wrote compiler timings file: "  ^ timingfile ^ "]\n"))
+        in Flags.timings_stream := SOME os;
+          comp0 files handle E => (close(); raise E);
+            close()
+        end
       else comp0 files
 
     (* initialize Flags.comp_ref to contain build (for interaction), etc.

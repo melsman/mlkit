@@ -10,7 +10,7 @@ local
   basis Manager = bas ../Manager/manager.mlb end
   basis Compiler = bas compiler.mlb end
   basis Regions = bas regions.mlb end
-  open BasLib Compiler Regions
+  open BasLib (* Compiler *) Regions
 in
   (* Native Backend *)
 
@@ -45,7 +45,9 @@ in
         end
      end
 
-     ../Common/KitX86.sml
+     local open Compiler 
+     in ../Common/KitX86.sml
+     end
      
   end
 end
