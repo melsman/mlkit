@@ -9,7 +9,7 @@ local
   basis Basics = bas ../Common/basics.mlb end
   basis Manager = bas ../Manager/manager.mlb end
   basis Compiler = bas compiler.mlb end
-  open BasLib Compiler
+  open BasLib (* Compiler *)
 in
   local open Tools SpecialObjects in Regions/REG_CONST.sml end
   Regions/AT_INF.sml
@@ -72,7 +72,7 @@ in
      Regions/TestSpreadExp.sml
 *)
 
-     local open Edlib Pickle SyntaxObjects SpecialObjects Basics CompilerObjects
+     local open Edlib Pickle SyntaxObjects SpecialObjects Basics CompilerObjects Compiler
      in CompBasis.sml
         Compile.sml
      end
