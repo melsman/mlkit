@@ -18,6 +18,12 @@ Test files may contain Standard ML like comments.
 
 *)
 
+(* test of mlb-files *)
+error1.mlb          (* ccl *) ecte
+error2.mlb                    ecte
+error3.mlb                    ecte
+error4.mlb                    ecte
+
 (* Tests of static semantics; it would be great with some more
  * systematic testing here! *)
 

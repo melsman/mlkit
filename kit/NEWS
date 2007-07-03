@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+ * mael 2007-07-04: Error messages for errors in mlb-files have been
+   improved; see test/error1.mlb, test/error2.mlb, test/error3.mlb,
+   and test/error4.mlb.
+
  * mael 2007-04-19: Executing mlkit with no command args now returns
    minimal help info.
 
