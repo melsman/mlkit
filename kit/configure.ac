@@ -10,6 +10,7 @@ AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  man/man1/mlkit-mllex.1
                  man/man1/mlkit-mlyacc.1
                  man/man1/rp2ps.1
+                 man/man1/kittester.1
                  smlserver_demo/Makefile
                  src/Tools/MlbMake/Makefile
                  src/Tools/Rp2ps/Makefile

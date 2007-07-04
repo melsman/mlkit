@@ -1,0 +1,67 @@
+.TH kittester 1 "@DATE@" "MLKit @PACKAGE_VERSION@" "test tool for the MLKit"
+.SH NAME
+.B kittester
+- test tool for use with the MLKit Standard ML compiler.
+
+.SH SYNOPSIS
+.B kittester
+mlkit file.tst [OPTION]
+
+.SH DESCRIPTION
+When invoked, 
+.B kittester
+reads the file
+.B file.tst
+and executes the MLKit (executable given by mlkit argument) for each test 
+program listed in 
+.B file.tst
+. The result of compilation (and possible execution of the test programs) are 
+reported in a report
+.B report.pdf.
+
+Various flags listed for each test program in 
+.B file.tst 
+may be used to control compilation and execution of the test program. Given a test program 
+.B test.sml,
+there are flags for comparing the generated compiler log with the content of the file
+.B test.sml.log.ok.
+
+Similarly, there are flags for comparing the output of execution with the content of the file
+.B test.sml.out.ok.
+
+In details, the file
+.B file.tst
+may mention a set of Standard ML sources and projects. 
+Entries in a test file consists of a file name path 
+(with extension sml, sig, or mlb) followed
+by a list of tokens. The following tokens are supported:
+
+.IP \fBnobasislib\fR 4
+do not import basis library
+.IP \fBnooptimiser\fR 4
+disable lambda optimiser
+.IP \fBccl\fR 4
+compare compiler logs
+.IP \fBtx\fR 4
+time executable
+.IP \fBtc\fR 4
+time compiler
+.IP \fBecte\fR 4
+expect compile time error
+.IP \fBue\fR 4
+expect uncaught exception
+.
+
+Test files may contain Standard ML style comments.
+
+.SH OPTIONS
+
+Options given to
+.B kittester
+are sent along to the mlkit executable for each compilation.
+
+.SH SEE ALSO
+.B mlkit
+(1)
+
+.B http://www.itu.dk/research/mlkit
