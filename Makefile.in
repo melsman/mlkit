@@ -256,6 +256,7 @@ install0:
 	$(INSTALLDATA) man/man1/mlkit-mllex.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/mlkit-mlyacc.1 $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/rp2ps.1 $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/kittester.1 $(MANDIR)/man1
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
 	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
