@@ -13,7 +13,9 @@ local
 in
   local open Pickle 
   in COMP_BASIS.sml
+     COMP_BASIS_GEN.sml
   end
+  COMPILE_GEN.sml
   COMPILE.sml
   local open Pickle 
   in Lambda/OPT_LAMBDA.sml 
@@ -31,6 +33,9 @@ in
   end
   local open Edlib Tools Basics SyntaxObjects CompilerObjects
   in Lambda/CompileDec.sml
+     local open Pickle in CompBasisToLamb.sml end
+     COMPILE_TO_LAMB.sml
+     CompileToLamb.sml
   end
 
   local open Tools Manager Environment

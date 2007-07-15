@@ -50,7 +50,7 @@ signature EXECUTION =
       
     val link_files_with_runtime_system : (unit -> string) -> string list -> string -> unit
 
-    val backend_name : string
+    val backend_name : string (* e.g., X86, KAM, Barry, JS *)
 
     val pu_linkinfo : linkinfo Pickle.pu
   end

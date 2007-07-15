@@ -15,10 +15,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
     open Execution
 
 
-    fun cmd_name() = 
-	if !Flags.SMLserver then "smlserverc"
-	else if backend_name = "X86" then "mlkit" 
-	else "mlkit_kam"
+    fun cmd_name() = OS.Path.file(CommandLine.name())
 
     structure ManagerObjects =
 	ManagerObjects(struct
@@ -47,18 +44,22 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	val date = Version.configure_date
 
 	fun print_greetings() =
-	    let val name = 
-		    if !Flags.SMLserver then "SMLserver"
-		    else "MLKit"
-	    in
-		print(name ^ " " ^ Version.version ^ " (rev " ^ Version.svn_rev ^ "; " ^ date ^ ") [" ^
-		      backend_name ^ " Backend]\n")
+	    let val version = 
+                    (Version.version 
+                     ^ " (rev " ^ Version.svn_rev 
+                     ^ "; " ^ date ^ ")")
+              val msg = 
+                  if !Flags.SMLserver then "SMLserver Compiler " ^ version ^ "\n"
+                  else if backend_name = "SmlToJs" then "SmlToJs " ^ version ^ "\n"
+                  else ("MLKit " ^ version ^ " [" 
+                        ^ backend_name ^ " Backend]\n")
+            in print msg
 	    end
 	    
 	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
 				   "Options:\n\n")
 
-	val options = [("version", ["v","V"], ["Print MLKit version information and exit."]),
+	val options = [("version", ["v","V"], ["Print version information and exit."]),
 		       ("help", [], ["Print extended help information and exit."]),
 		       ("help S", [], ["Print help information about an option and exit."]),
 		       ("man", [], ["Print man-page and exit."])
@@ -115,8 +116,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		     val baseDir = 
 			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of 
 			     SOME v => v
-			   | NONE => raise Fail ("An MLKit library install directory must be provided\n" ^
-						 "in an environment variable SML_LIB or as a path-definition\n" ^
+			   | NONE => raise Fail ("A library install directory must be provided in an\n" ^
+						 "environment variable SML_LIB or as a path-definition\n" ^
 						 "in either the system wide path-map " ^ Configuration.etcdir ^ "/" ^ (cmd_name()) ^ "/mlb-path-map\n" ^
 						 "or in your personal path-map ~/." ^ (cmd_name()) ^ "/mlb-path-map.")
 		 in
@@ -125,8 +126,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		 handle Fail "" => OS.Process.success
 		      | Fail s => (print ("* Error: " ^ s ^ ".\n"); 
                                    print ("* Exiting!\n");
-				   OS.Process.failure))
-		
+				   OS.Process.failure))		
 	end
     in
 	open Manager
