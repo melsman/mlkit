@@ -1,5 +1,5 @@
 
-structure CompileBasisBarry : COMPILE_BASIS =
+structure CompileBasisJS : COMPILE_BASIS =
   struct
     structure PP = PrettyPrint
 

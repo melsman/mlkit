@@ -1,5 +1,9 @@
-(* Standard ML Barifyer *)
-structure CompBasisBarry : COMP_BASIS_BARRY =
+(* CompBasis for compilation from LambToLamb *)
+structure CompBasisToLamb 
+  : COMP_BASIS_GEN 
+        where type Envs = {TCEnv : LambdaStatSem.env,
+		           EqEnv : EliminateEq.env,
+		           OEnv: OptLambda.env} =
   struct
     structure PP = PrettyPrint
 
@@ -19,6 +23,7 @@ structure CompBasisBarry : COMP_BASIS_BARRY =
     type CompBasis = {TCEnv : TCEnv, (* lambda type check environment *)
 		      EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
 		      OEnv: OEnv}
+    type Envs = CompBasis
 
     fun mk_CompBasis a = a
     fun de_CompBasis a = a
@@ -87,10 +92,10 @@ structure CompBasisBarry : COMP_BASIS_BARRY =
 	  val excons = Excon.ex_DIV :: 
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::
-	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
+	      Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cons   (* for elim eq *)
 	  val cons = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cons
                      else cons
-	  val tynames = TyName.tyName_LIST :: 
+	  val tynames = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
 	      TyName.tyName_VECTOR :: tynames     (* for elim eq *) 
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames
@@ -106,7 +111,44 @@ structure CompBasisBarry : COMP_BASIS_BARRY =
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
       in ({TCEnv=TCEnv1,
 	   EqEnv=EqEnv1,
-	   OEnv=OEnv1}, lvars, cons, excons)
+	   OEnv=OEnv1}, lvars, tynames, cons, excons)
+      end
+
+    fun subtractPredefinedCons cons = 
+	let fun eq a b = Con.eq(a,b)
+	    fun fromList l = Set.fromList eq l
+	in Set.list
+	    (Set.difference eq (fromList cons) (fromList Con.consPredefined))
+	end
+
+    fun subtractPredefinedExcons excons = 
+	let fun eq a b = Excon.eq(a,b)
+	    fun fromList l = Set.fromList eq l
+	in Set.list
+	    (Set.difference eq (fromList excons) (fromList Excon.exconsPredefined))
+	end
+    
+    fun subtractPredefinedTynames tns = 
+	TyName.Set.list
+	(TyName.Set.difference (TyName.Set.fromList tns) (TyName.Set.fromList TyName.tynamesPredefined))
+
+    fun restrict0 ({EqEnv,OEnv,TCEnv},
+		  (lvars,tynames,cons,excons)) = 
+      let
+	  (* Don't include identifiers that are declared by the initial basis *)
+	  
+	  val tynames = subtractPredefinedTynames tynames
+	  val cons = subtractPredefinedCons cons
+	  val excons = subtractPredefinedExcons excons
+	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
+	  val lvars = lvars_eq @ lvars
+	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
+	  val tynames = subtractPredefinedTynames tynames
+	  val cons = subtractPredefinedCons cons
+	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
+      in ({TCEnv=TCEnv1,
+	   EqEnv=EqEnv1,
+	   OEnv=OEnv1}, lvars, tynames, cons, excons)
       end
 
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)

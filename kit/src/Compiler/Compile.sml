@@ -6,12 +6,12 @@ structure Compile: COMPILE =
     structure CE = CompilerEnv
 
     type CompBasis = CompBasis.CompBasis
-    type CEnv = CompilerEnv.CEnv
-    type Env = CompileDec.Env
-    type strdec = CompileDec.strdec
-    type strexp = CompileDec.strexp
-    type funid = CompileDec.funid
-    type strid = CompileDec.strid
+    type CEnv = CompileToLamb.CEnv
+    type Env = CompileToLamb.Env
+    type strdec = CompileToLamb.strdec
+    type strexp = CompileToLamb.strexp
+    type funid = CompileToLamb.funid
+    type strid = CompileToLamb.strid
 
     fun die s = Crash.impossible ("Compile." ^ s)
 
@@ -19,9 +19,6 @@ structure Compile: COMPILE =
     (*  Dynamic Flags.                                                        *)
     (* ---------------------------------------------------------------------- *)
 
-    val eliminate_polymorphic_equality_p = Flags.is_on0 "eliminate_polymorphic_equality"
-    val type_check_lambda_p = Flags.is_on0 "type_check_lambda"
-    val print_opt_lambda_expression = Flags.is_on0 "print_opt_lambda_expression" 
     val print_regions = Flags.is_on0 "print_regions"
 
     val region_profiling_p = Flags.is_on0 "region_profiling"
@@ -33,14 +30,6 @@ structure Compile: COMPILE =
 	 item=ref false, neg=false, desc=
 	 "Print imported region static environment prior to\n\
 	  \region inference."}
-
-    val safeLinkTimeElimination = Flags.add_bool_entry 
-	{long="safeLinkTimeElimination", short=NONE, 
-	 menu=["Control",
-	       "safeLinkTimeElimination"],
-	 item=ref false, neg=false, desc=
-	 "Threat this module as a library in the sense that\n\
-	  \the code can be eliminated if it is not used."}
 
     val print_storage_mode_expression = Flags.add_bool_entry 
 	{long="print_storage_mode_expression", short=SOME "Psme", 
@@ -88,12 +77,6 @@ structure Compile: COMPILE =
          PP.NODE{start = "[", finish = "]", childsep = PP.RIGHT ",", indent = 1, 
                  children = stl}, !Flags.colwidth)
 
-    fun pr0 st log = (Report.print' (PP.reportStringTree st) log; 
-                      TextIO.flushOut log)
-    fun pr st = pr0 st (!Flags.log)
-
-    fun length l = foldr (fn (_, n) => n+1) 0 l
-
     local
       fun msg(s: string) = 
 	  (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
@@ -116,19 +99,11 @@ structure Compile: COMPILE =
           )
 
     fun ifthen e f = if e then f() else ()
-    fun footnote(x, y) = x
-    infix footnote
-
-    fun printCEnv ce =
-      ifthen (!Flags.DEBUG_COMPILER)
-      (fn _ => display("CompileAndRun.CEnv", CompilerEnv.layoutCEnv ce))
-
 
     (* ---------------------------------------------------------------------- *)
     (*  Abbreviations                                                         *)
     (* ---------------------------------------------------------------------- *)
       
-    val layoutLambdaPgm = LambdaExp.layoutLambdaPgm 
     fun layoutRegionPgm x = 
 	(RegionExp.layoutLambdaPgm 
 	 (if print_regions() then 
@@ -159,110 +134,6 @@ structure Compile: COMPILE =
       fun pp_counter() = (pp_count := !pp_count + 1; !pp_count)
       fun reset_pp_count() = pp_count := pp_init
     end
-
-    (* ---------------------------------------------------------------------- *)
-    (*  Compile the declaration using old compiler environment, ce            *)
-    (* ---------------------------------------------------------------------- *)
-
-    fun ast2lambda fe (ce, strdecs) =
-      (chat "[Compiling abstract syntax tree into lambda language...";
-
-(*       Timing.timing_begin(); *)  
-
-       (* timing does not work with functor inlining because it triggers reelaboration,
-	* which is also timed. mael 2003-02-18 *)
-
-       let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
-				       * Lambda programs are closed w.r.t. type variables, because code 
-				       * generation of the strdecs is done after an entire top-level 
-				       * declaration is elaborated. ME 1998-09-04 *)
-(*
-	   val (ce1, lamb) =  Timing.timing_end_res 
-	        ("ToLam", CompileDec.compileStrdecs fe ce strdecs)
-*)
-	   val (ce1, lamb) = CompileDec.compileStrdecs fe ce strdecs
-	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
-	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
-       in  
-	 chat "]\n";
-	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
-	 (lamb,ce1, declared_lvars, declared_excons) 
-     end)
-
-    (* ------------------------------------ *)
-    (* isEmptyLambdaPgm lamb  returns true  *)
-    (* if lamb is a pair of an empty list   *)
-    (* of datatype bindings and an empty    *)
-    (* frame. Then we need not generate any *)
-    (* code.                                *)
-    (* ------------------------------------ *)
-    fun isEmptyLambdaPgm lamb =
-      let open LambdaExp
-      in case lamb
-	   of PGM(DATBINDS [[]], FRAME {declared_lvars=[], declared_excons=[]}) => true
-	    | PGM(DATBINDS [], FRAME {declared_lvars=[], declared_excons=[]}) => true
-	    | _ => false
-      end
-
-    (* ---------------------------------------------------------------------- *)
-    (*  Type check the lambda code                                             *)
-    (* ---------------------------------------------------------------------- *)
-
-    fun type_check_lambda (a,b) =
-      if type_check_lambda_p() then
-	(chat "[Type checking lambda term...";
-	 Timing.timing_begin();
-	 let 
-	   val env' = Timing.timing_end_res ("CheckLam",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
-                  pgm =  b}))
-	 in
-	   chat "]\n";
-	   env'
-	 end)
-      else LambdaStatSem.empty
-
-
-    (* ---------------------------------------------------------------------- *)
-    (*   Eliminate polymorphic equality in the lambda code                    *)
-    (* ---------------------------------------------------------------------- *)
-
-    fun elim_eq_lambda (env,lamb) =
-      if eliminate_polymorphic_equality_p() then
-	(chat "[Eliminating polymorphic equality...";
-	 Timing.timing_begin();
-	 let val (lamb', env') = 
-	   Timing.timing_end_res ("ElimEq", EliminateEq.elim_eq (env, lamb))
-	 in
-	   chat "]\n";
-	   if !Flags.DEBUG_COMPILER then 
-	     (display("Lambda Program After Elimination of Pol. Eq.", 
-		      layoutLambdaPgm lamb');
-	      display("Pol. Eq. Environment", EliminateEq.layout_env env'))
-	   else ();
-	   (lamb', env')
-	 end)
-      else (lamb, EliminateEq.empty)
-
-
-    (* ---------------------------------------------------------------------- *)
-    (*   Optimise the lambda code                                             *)
-    (* ---------------------------------------------------------------------- *)
-
-    val optimise_p = Flags.is_on0 "optimiser"
-
-    fun optlambda (env, lamb) =
-          ((if optimise_p() then chat "[Optimising lambda term..."
-	    else chat "[Rewriting lambda term...");
-	   Timing.timing_begin();
-	   let 
-	     val (lamb_opt, env') = 
-	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
-	   in
-	     chat "]\n";
-	     if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
-	     then display("Report: Opt", layoutLambdaPgm lamb_opt) else () ;
-	     (lamb_opt, env')
-	   end)
 
     (* ---------------------------------------------------------------------- *)
     (*   Spread the optimised lambda code                                     *)
@@ -586,32 +457,21 @@ structure Compile: COMPILE =
     (* This is the main function; It invokes all the passes of the back end *)
     (************************************************************************)
 
-    datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
+    type target = ((place*pp)at,place*phsize,unit) LambdaPgm
+    datatype res = CodeRes of CEnv * CompBasis * target * bool
                  | CEnvOnlyRes of CEnv
 
     fun compile fe (CEnv, Basis, strdecs) : res =
       let
-
-	(* There is only space in the basis for one lambdastat-env.
-	 * If we want more checks, we should insert more components
-	 * in bases. For now, we do type checking after optlambda, only. *)
-
         val _ = RegionExp.printcount:=1;
 	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env} =
 	  CompBasis.de_CompBasis Basis
-
-        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, strdecs)
-	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
-        val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
-	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
-	if isEmptyLambdaPgm lamb_opt 
-          then (chat "Empty lambda program; skipping code generation.";
-                CEnvOnlyRes CEnv1)
-	else
-	  let
-	    val safe = LambdaExp.safeLambdaPgm lamb_opt
-	    val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
+        case CompileToLamb.compile fe (CEnv, (TCEnv,EqEnv,OEnv), strdecs) of
+          CompileToLamb.CEnvOnlyRes CEnv1 => CEnvOnlyRes CEnv1
+        | CompileToLamb.CodeRes (CEnv1, (TCEnv1,EqEnv1,OEnv1), lamb_opt, safe) => 
+          let 
+            val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
 	    val _ = MulExp.warn_puts(rse, mul_pgm)
 	    val k_mul_pgm = k_norm mul_pgm
 	    val sma_pgm = storagemodeanalysis k_mul_pgm
@@ -622,11 +482,12 @@ structure Compile: COMPILE =
 	    val Basis' = CompBasis.mk_CompBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 						 rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
 						 drop_env=drop_env1,psi_env=psi_env1}
-	  in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe orelse safeLinkTimeElimination())
+	  in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe)
 	  end
       end
 
-    (* Hook to be run before any compilation *)
+    (* Hook to be run before any compilation. 
+     * Overwrite hook for CompileToLamb, which is a noop. *)
     fun preHook():unit =
 	let (* val _ = print ("In preHook\n") *)
 	in
@@ -635,7 +496,6 @@ structure Compile: COMPILE =
 				 * gets id n. *)
 (*	    before print "[Exiting preHook]\n" *)
 	end
-    
     
     fun pairToFile (a,b) file =
 	let
@@ -649,7 +509,8 @@ structure Compile: COMPILE =
 	    outString {file=file, s=Int.toString a ^ " " ^ Int.toString b}
 	end
 
-    (* Hook to be run after all compilations (for one compilation unit) *)
+    (* Hook to be run after all compilations (for one compilation unit)
+     * Overwrite hook for CompileToLamb, which is a noop. *)
     fun postHook {unitname:string} : unit =
 	if !(Flags.lookup_int_entry "regionvar") = ~1 then ()
 	else
