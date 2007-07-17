@@ -1,6 +1,7 @@
 (* Initial allows for other modules to be discharged at link time *)
 
 local
+    Initial.sml
     basis General = 
       bas 
         GENERAL.sml General.sml OPTION.sml Option.sml 
@@ -27,13 +28,12 @@ local
               end
         in bas
               open Poly   
-(*
+
               MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
 	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
-*)
            end
         end
-(*
+
     basis String = 
        let open General ArrayVector
        in bas
@@ -63,7 +63,10 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
+           basis W = 
+             bas 
+               WORD.sml Word32.sml Word31.sml Word8.sml 
+             end
            basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
                       end
@@ -77,17 +80,23 @@ local
  
     basis Int =
        let open General String IntInfRep
-       in bas INTEGER.sml Int.sml Int32.sml Int31.sml end
+       in bas 
+            INTEGER.sml Int32.sml Int31.sml 
+          end
        end
+
 
     basis Real =
        let open General String Int
        in bas MATH.sml Math.sml REAL.sml Real.sml 
+(*
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
+*)
 	  end
        end
+
 
     basis IntInf =
        let open General List ArrayVector String Word Int Real
@@ -96,6 +105,7 @@ local
               end
           end
        end
+(*
 (*  
     basis Polyhash =
        let open General String ArrayVector Word

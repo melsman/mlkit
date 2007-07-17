@@ -45,13 +45,18 @@ RPMDIR=/usr/src/rpm
 
 CLEAN=rm -rf MLB PM CM *~ .\#*
 
-.PHONY: mlkit mlkit_kam smlserver barry clean clean_mlb install
+.PHONY: mlkit smltojs mlkit_kam smlserver barry clean clean_mlb install
 .PHONY: install_smlserver install_smlserver0
 
 mlkit:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit
 	$(MAKE) man_mlkit
+
+smltojs:
+	$(MKDIR) bin
+	$(MAKE) -C src smltojs
+	$(MAKE) man_smltojs
 
 all: mlkit mlkit_libs
 
@@ -394,6 +399,11 @@ man_mlkit:
 man_smlserver:
 	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/lib/smlserver bin/smlserverc -man > man/man1/smlserverc.1
+
+.PHONY: man_smltojs
+man_smltojs:
+	$(MKDIR) man/man1
+	SML_LIB=$(exec_prefix)/lib/smltojs bin/smltojs -man > man/man1/smltojs.1
 
 # -----------------------------------------------------
 # Target for building MLKit binary package. The target
