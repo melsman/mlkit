@@ -1,7 +1,7 @@
 structure ExpToJs : EXP_TO_JS =
 struct
 
-fun die s = raise Fail s
+fun die s = (print (s ^"\n");raise Fail s)
 
 structure L = LambdaExp
 
@@ -71,28 +71,106 @@ fun parJs (js: Js) : Js = $"(" & js & $")"
 val unitValueJs = "0"
 
 fun pToJs2 name e1 e2 =
-    case name of
+ case name of
       "__plus_int32ub" => e1 & $"+" & e2
     | "__plus_int31" => e1 & $"+" & e2
+    | "__plus_word32ub" => e1 & $"+" & e2
+    | "__plus_word31" => e1 & $"+" & e2
+    | "__plus_real" => e1 & $"+" & e2
     | "__minus_int32ub" => e1 & $"-" & e2
     | "__minus_int31" => e1 & $"-" & e2
+    | "__minus_word32ub" => e1 & $"-" & e2 
+    | "__minus_word31" => e1 & $"-" & e2 
+    | "__minus_real" => e1 & $"-" & e2 
     | "__mul_int32ub" => e1 & $"*" & e2
     | "__mul_int31" => e1 & $"*" & e2
+    | "__mul_word32ub" => e1 & $"*" & e2
+    | "__mul_word31" => e1 & $"*" & e2
+    | "__mul_real" => e1 & $"*" & e2
+
     | "__less_int32ub" => e1 & $"<" & e2 
     | "__lesseq_int32ub" => e1 & $"<=" & e2 
     | "__greatereq_int32ub" => e1 & $">=" & e2 
     | "__greater_int32ub" => e1 & $">" & e2 
     | "__equal_int32ub" => e1 & $" == " & e2 
+    | "__less_int31" => e1 & $"<" & e2 
+    | "__lesseq_int31" => e1 & $"<=" & e2 
+    | "__greatereq_int31" => e1 & $">=" & e2 
+    | "__greater_int31" => e1 & $">" & e2 
+    | "__equal_int31" => e1 & $" == " & e2 
+    | "__less_word32ub" => e1 & $"<" & e2 
+    | "__lesseq_word32ub" => e1 & $"<=" & e2 
+    | "__greatereq_word32ub" => e1 & $">=" & e2 
+    | "__greater_word32ub" => e1 & $">" & e2 
+    | "__equal_word32ub" => e1 & $" == " & e2 
+    | "__less_word31" => e1 & $"<" & e2 
+    | "__lesseq_word31" => e1 & $"<=" & e2 
+    | "__greatereq_word31" => e1 & $">=" & e2 
+    | "__greater_word31" => e1 & $">" & e2 
+    | "__equal_word31" => e1 & $" == " & e2 
+
+    | "__less_real" => e1 & $"<" & e2 
+    | "__lesseq_real" => e1 & $"<=" & e2 
+    | "__greatereq_real" => e1 & $">=" & e2 
+    | "__greater_real" => e1 & $">" & e2 
+(*
+    | "__equal_real" => e1 & $" == " & e2 
+*)
     | "__bytetable_sub" => parJs e1 & $".charCodeAt(" & e2 & $")"
     | "concatStringML" => e1 & $"+" & e2
     | "word_sub0" => parJs e1 & $"[" & e2 & $"]"
     | "word_table_init" => $"SmlPrims.wordTableInit" & seq[e1,e2]
+    | "greatereqStringML" => e1 & $">=" & e2 
+    | "greaterStringML" => e1 & $">" & e2 
+    | "lesseqStringML" => e1 & $"<=" & e2 
+    | "lessStringML" => e1 & $"<" & e2 
+    | "__shift_right_unsigned_word32ub" => $"SmlPrims.shift_right_unsigned_word32" & seq[e1,e2]
+    | "__shift_right_unsigned_word31" => $"SmlPrims.shift_right_unsigned_word31" & seq[e1,e2]
+    | "__shift_right_signed_word32ub" => $"SmlPrims.shift_right_signed_word32" & seq[e1,e2]
+    | "__shift_right_signed_word31" => $"SmlPrims.shift_right_signed_word31" & seq[e1,e2]
+
+    | "__andb_word32ub" => e1 & $"&" & e2 
+    | "__andb_word31" => e1 & $"&" & e2 
+    | "__andb_word" => e1 & $"&" & e2 
+
+    | "__orb_word32ub" => e1 & $"|" & e2 
+    | "__orb_word31" => e1 & $"|" & e2 
+    | "__orb_word" => e1 & $"|" & e2 
+
+    | "__xorb_word32ub" => e1 & $"^" & e2 
+    | "__xorb_word31" => e1 & $"^" & e2 
+    | "__xorb_word" => e1 & $"^" & e2 
+                       
+    | "__quot_int31" => $"SmlPrims.quot_int31" & seq[e1,e2]
+    | "__rem_int31" => $"SmlPrims.rem_int31" & seq[e1,e2]
+    | "__quot_int32ub" => $"SmlPrims.quot_int32" & seq[e1,e2]
+    | "__rem_int32ub" => $"SmlPrims.rem_int32" & seq[e1,e2]
+
+    | "__shift_left_word31" => $"SmlPrims.shift_left_word31" & seq[e1,e2]
+    | "__shift_left_word32ub" => $"SmlPrims.shift_left_word32" & seq[e1,e2]
+
+    | "divFloat" => e1 & $"/" & e2 
+    | "atan2Float" => $"Math.atan2" & seq[e1,e2]
+
+    | "powFloat" => $"Math.pow" & seq[e1,e2]
+
     | _ => die ("pToJs2.unimplemented: " ^ name)
 
 fun pToJs3 name e1 e2 e3 =
     case name 
      of "word_update0" => seq[parJs e1 & $"[" & e2 & $"] = " & e3, 
                               $unitValueJs]
+      | "__mod_int32ub" => $"SmlPrims.mod_int32" & seq[e1,e2,e3]
+      | "__mod_int31" => $"SmlPrims.mod_int32" & seq[e1,e2,e3]
+      | "__mod_word32ub" => $"SmlPrims.mod_word32" & seq[e1,e2,e3]
+      | "__mod_word31" => $"SmlPrims.mod_word31" & seq[e1,e2,e3]
+      | "__div_int32ub" => $"SmlPrims.div_int32" & seq[e1,e2,e3]
+      | "__div_int31" => $"SmlPrims.div_int32" & seq[e1,e2,e3]
+      | "__div_word32ub" => $"SmlPrims.div_word32" & seq[e1,e2,e3]
+      | "__div_word31" => $"SmlPrims.div_word31" & seq[e1,e2,e3]
+
+      | "generalStringOfFloat" => $"SmlPrims.generalStringOfFloat" & seq[e1,e2,e3]
+
       | _ => die ("pToJs3.unimplemented: " ^ name)
 
 fun callPrim1 n e =
@@ -103,14 +181,76 @@ fun pToJs1 name e =
      of "__bytetable_size" => parJs e & $".length"
       | "implodeCharsML" => callPrim1 "SmlPrims.implode" e
       | "implodeStringML" => callPrim1 "SmlPrims.concat" e
+      | "charsToCharArray" => callPrim1 "SmlPrims.charsToCharArray" e
+      | "charArraysConcat" => callPrim1 "SmlPrims.charArraysConcat" e
       | "printStringML" => callPrim1 "document.write" e
       | "exnNameML" => parJs e & $"[0]"
       | "id" => e
       | "word_table0" => $"Array" & parJs e
       | "table_size" => parJs e & $".length"
+      | "chararray_to_string" => parJs e & $".join(\"\")"
+
+      | "__neg_int32ub" => callPrim1 "SmlPrims.neg_int32" e
+      | "__neg_int31" => callPrim1 "SmlPrims.neg_int31" e
+      | "__neg_real" => parJs ($"-" & e)
+      | "__abs_int32ub" => callPrim1 "SmlPrims.abs_int32" e
+      | "__abs_int31" => callPrim1 "SmlPrims.abs_int31" e
+      | "__abs_real" => callPrim1 "Math.abs" e
+
+      | "__int32ub_to_int" => e
+      | "__int_to_int32ub" => e
+      | "__int31_to_int32ub" => e
+      | "__int31_to_int" => e
+      | "__word_to_word32ub" => e
+      | "__word_to_word32ub_X" => e
+      | "__word31_to_word32ub" => e
+      | "__word31_to_word" => e
+      | "__word32ub_to_word" => e
+
+      | "__int32ub_to_int31" => callPrim1 "SmlPrims.chk_ovf_int31" e
+      | "__int_to_int31" => callPrim1 "SmlPrims.chk_ovf_int31" e
+
+      | "__word32ub_to_int" => callPrim1 "SmlPrims.chk_ovf_int32" e
+      | "__word32ub_to_int32ub" => callPrim1 "SmlPrims.chk_ovf_int32" e
+      | "__word32ub_to_int_X" => callPrim1 "SmlPrims.word32_to_int32_X" e
+      | "__word32ub_to_int32ub_X" => callPrim1 "SmlPrims.word32_to_int32_X" e
+      | "__word31_to_word32ub_X" => callPrim1 "SmlPrims.word31_to_word32_X" e
+      | "__word31_to_word_X" => callPrim1 "SmlPrims.word31_to_word32_X" e
+
+      | "__word32ub_to_word31" => callPrim1 "SmlPrims.word32_to_word31" e
+      | "__word_to_word31" => callPrim1 "SmlPrims.word32_to_word31" e
+
+      | "__int32ub_to_word32ub" => callPrim1 "SmlPrims.int32_to_word32" e
+
+      | "isnanFloat" => parJs (e & $"== NaN") 
+      | "sqrtFloat" => callPrim1 "Math.sqrt" e
+      | "sinFloat" => callPrim1 "Math.sin" e
+      | "cosFloat" => callPrim1 "Math.cos" e
+      | "asinFloat" => callPrim1 "Math.asin" e
+      | "acosFloat" => callPrim1 "Math.acos" e
+      | "atanFloat" => callPrim1 "Math.atan" e
+      | "lnFloat" => callPrim1 "Math.log" e
+      | "expFloat" => callPrim1 "Math.exp" e
+
+      | "realInt" => e
+
+      | "floorFloat" => callPrim1 "SmlPrims.floorFloat" e
+      | "ceilFloat" => callPrim1 "SmlPrims.ceilFloat" e
+      | "truncFloat" => callPrim1 "SmlPrims.truncFloat" e
+
+      | "stringOfFloat" => callPrim1 "SmlPrims.stringOfFloat" e
+
+
       | _ => die ("pToJs1 unimplemented: " ^ name)
 
-fun pToJs name [e] = pToJs1 name e
+fun pToJs0 name =
+    case name
+     of "posInfFloat" => $"Infinity"
+      | "negInfFloat" => parJs($"-Infinity")
+      | _ => die ("pToJs0 unimplemented: " ^ name)
+
+fun pToJs name [] = pToJs0 name
+  | pToJs name [e] = pToJs1 name e
   | pToJs name [e1,e2] = pToJs2 name e1 e2
   | pToJs name [e1,e2,e3] = pToJs3 name e1 e2 e3
   | pToJs name _ = die ("pToJs unimplemented: " ^ name)
@@ -178,8 +318,8 @@ fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
       stToE($"var tmp = " & toJs e & $";\n" & cases & default)
     end
 
-fun toJs (e:Exp) : Js = 
-  case e of 
+fun toJs (e0:Exp) : Js = 
+  case e0 of 
     L.VAR {lvar,...} => $(prLvar lvar)
   | L.INTEGER (value,_) => $(Int32.toString value)
   | L.WORD (value,_) => $(Word32.fmt StringCvt.DEC value)
@@ -212,7 +352,7 @@ fun toJs (e:Exp) : Js =
   | L.PRIM(L.DROPprim, [e]) => toJs e
   | L.PRIM(L.DROPprim, _) => die "DROPprim unimplemented"
                                   
-  | L.PRIM(L.EQUALprim _, [e1,e2]) => parJs (toJs e & $"==" & toJs e2)
+  | L.PRIM(L.EQUALprim _, [e1,e2]) => parJs (toJs e1 & $"==" & toJs e2)
                                     
   | L.FN {pat,body} => 
     let val lvs = map ($ o prLvar o #1) pat
@@ -228,7 +368,6 @@ fun toJs (e:Exp) : Js =
     varJs ("__dummy") 
           (toJs bind)
           (toJs scope)
-(*    seq[toJs bind,toJs scope] *)
   | L.LET {pat,bind,scope} => 
     let val lvs = map #1 pat
         val binds = case bind of L.PRIM(UB_RECORDprim,binds) => binds
@@ -242,19 +381,20 @@ fun toJs (e:Exp) : Js =
     in 
       loop(lvs,binds)
     end
-  | L.FIX{functions=[{lvar=f_lv,bind=L.FN{pat,body},...}],scope} => 
-    let val lvs = map ($ o prLvar o #1) pat
-    in varJs (prLvar f_lv) 
-             ($("function " ^ prLvar f_lv) & seq lvs & $"{ return(" & toJs body & $"); }")
-             (toJs scope)
-    end
-  | L.FIX{functions,scope} => die "FIX unimplemented"
+  | L.FIX{functions,scope} => 
+    foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
+              let val lvs = map ($ o prLvar o #1) pat
+              in varJs (prLvar f_lv) 
+                       ($("function " ^ prLvar f_lv) & seq lvs & $"{ return(" & toJs body & $"); }")
+                       acc
+              end
+            | _ => die "toJs.malformed FIX") (toJs scope) functions
 
   | L.APP(e1,L.PRIM(L.UB_RECORDprim, es)) => toJs e1 & seq(map toJs es)
   | L.APP(e1,e2) => toJs e1 & $"(" & toJs e2 & $")"
                     
   | L.SWITCH_I {switch,precision} => toJsSw toJs "" Int32.toString switch
-  | L.SWITCH_W {switch,precision} => toJsSw toJs "" Word32.toString switch
+  | L.SWITCH_W {switch,precision} => toJsSw toJs "" (Word32.fmt StringCvt.DEC) switch
   | L.SWITCH_S switch => toJsSw toJs "" (fn s => "\"" ^ String.toString s ^ "\"") switch
   | L.SWITCH_C switch => toJsSw_C toJs switch
   | L.SWITCH_E switch => toJsSw_E toJs switch
@@ -269,7 +409,7 @@ fun toJs (e:Exp) : Js =
            @ [$"frame"])
     end
 *)
-  | L.HANDLE (e1,e2) => 
+  | L.HANDLE (e1,e2) => (* memo: avoid capture of variable e! *)
     stToE ($"try { return(" & toJs e1 & $"); } catch(e) { return " && parJs(toJs e2) & $"(e); }")
 
   | L.EXCEPTION (excon,_,scope) => (* nullary or unary *)
@@ -296,7 +436,7 @@ fun toString (js:Js) : string =
         | strs (js1&js2,acc) = strs(js1,strs(js2,acc))
         | strs _ = die "toString.strs"
     in String.concat(strs(elim js,nil))
-    end
+    end handle ? => (print "Error in toString\n"; raise ?)
 
 fun toFile (f,js) : unit = 
     let val os = TextIO.openOut f
