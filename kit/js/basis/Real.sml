@@ -10,9 +10,22 @@ structure Real : REAL =
     fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
 
     fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
-    fun to_string_gen (s : string) (precision:int) (x : real) : string = 
-      prim ("generalStringOfFloat", (s,precision,x))
-    fun toString(x : real) : string = prim ("stringOfFloat", x)
+
+    fun mlify s = (* Add ".0" if not "e" or "." in s  *)
+	      let val stop = size s
+		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
+		      if i = stop then s ^ ".0"
+		      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
+		      else loop (i+1)
+	      in loop 0 end
+
+    fun toStringFix (precision:int) (x : real) : string = 
+        mlify(prim ("stringOfFloatFix", (precision,x)))
+    fun toStringSci (precision:int) (x : real) : string = 
+        prim ("stringOfFloatSci", (precision,x))
+    fun toStringGen (precision:int) (x : real) : string = 
+        mlify(prim ("stringOfFloatGen", (precision,x)))
+    fun toString(x : real) : string = toStringGen 12 x
     fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
     fun isNan (x : real) : bool = prim ("isnanFloat", x)
 
@@ -39,32 +52,25 @@ structure Real : REAL =
      November 30, 1990 *)
 
     fun fmt spec = 
-      let fun mlify s = (* Add ".0" if not "e" or "." in s  *)
-	      let val stop = size s
-		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
-		      if i = stop then s ^ ".0"
-		      else if sub_unsafe(s,i) = #"." orelse sub_unsafe(s,i) = #"E" then s
-		      else loop (i+1)
-	      in loop 0 end
-
+      let 
 	  open StringCvt
 	  (* Below we check that the requested number of decimal digits 
-	   * is reasonable; else sml_general_string_of_float may crash. *)
+	   * is reasonable... *)
 	  val fmtspec = 
 	  case spec of
-	      SCI NONE     => to_string_gen "e" ~1
+	      SCI NONE     => toStringSci 6
 	    | SCI (SOME n) => 
-		  if n < 0 orelse n > 400 then raise Size 
-		  else to_string_gen "e" n
-	    | FIX NONE     => to_string_gen "f" ~1
+		  if n < 0 orelse n > 20 then raise Size 
+		  else toStringSci n
+	    | FIX NONE     => toStringFix 6
 	    | FIX (SOME n) =>
-		  if n < 0 orelse n > 400 then raise Size 
-		  else to_string_gen "f" n
+		  if n < 0 orelse n > 20 then raise Size 
+		  else toStringFix n
 	    | GEN NONE     => toString
 	    | GEN (SOME n) => 
-		  if n < 1 orelse n > 400 then raise Size 
-		  else (fn r => mlify (to_string_gen "g" n r))
-            | EXACT => toString
+		  if n < 1 orelse n > 20 then raise Size 
+		  else toStringGen n
+            | EXACT => toStringGen 20
       in fmtspec 
       end
 
