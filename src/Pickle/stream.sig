@@ -15,8 +15,8 @@ signature STREAM =
     val out    : char * outstream -> outstream
     val get    : instream -> char * instream
 
-    val outw1    : word8 * outstream -> outstream
-    val getw1    : instream -> word8 * instream
+    val outw1    : Word8.word * outstream -> outstream
+    val getw1    : instream -> Word8.word * instream
 
     val outw   : word * outstream -> outstream
     val getw   : instream -> word * instream
