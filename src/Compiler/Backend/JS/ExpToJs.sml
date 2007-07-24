@@ -14,7 +14,64 @@ infix & &&
 
 val emp = $""
 
+structure Context :> sig type context
+                       val empty : context
+                       val add : context -> Lvars.lvar -> context
+                       val isIn : context -> Lvars.lvar -> bool
+                     end =
+struct
+  type context = Lvars.lvar list
+  val empty = nil
+  fun add c s = s::c
+  fun isIn c s = List.exists (fn x => Lvars.eq(s,x)) c
+end
+
 local
+  type lvar = Lvars.lvar
+  type excon = Excon.excon
+  val frameLvars : lvar list ref = ref nil
+  val frameExcons : excon list ref = ref nil
+
+  (* function to replace first occurence of a sub-string in a string *)
+  fun replaceString (s0:string,s1:string) (s:string) : string =
+      let val ss = Substring.full s
+          val (ss1,ss2) = Substring.position s0 ss
+      in if Substring.size ss2 > 0 (* there was a match *) then
+           let val ss3 = Substring.triml (size s0) ss2
+           in Substring.concat[ss1,Substring.full s1,ss3]
+           end
+         else s (* no match *)
+      end
+
+  fun normalizeBase b = 
+      let 
+(*
+        val b = if String.sub(b,size b - 1) = #"1" then
+                  Substring.string(Substring.trimr 1 (Substring.full b))
+                else b
+*)
+        val b = replaceString (".mlb-", "$") b
+        val b = replaceString (".sml1", "$") b
+      in
+        String.translate (fn #"." => "$" | c => Char.toString c) b
+      end
+
+  val localBase : string option ref = ref NONE
+
+  fun maybeUpdateLocalBase n : bool (* Singleton(true) *) =
+      true before
+      (case !localBase of 
+         SOME _ => ()  (* no need to set it again! *)
+       | NONE => localBase := SOME((normalizeBase o #2 o Name.key) n))
+
+  fun isFrameLvar lvar () =
+      List.exists (fn lv => Lvars.eq(lv,lvar)) (!frameLvars)
+      andalso maybeUpdateLocalBase (Lvars.name lvar)
+
+  fun isFrameExcon excon () =
+      List.exists (fn e => Excon.eq(e,excon)) (!frameExcons)
+      andalso maybeUpdateLocalBase (Excon.name excon)
+
   val symbolChars = "!%&$#+-/:<=>?@\\~`^|*"
                     
   fun isSymbol s = 
@@ -28,17 +85,30 @@ local
 
   fun idfy s =
       if isSymbol s then
-        "SYMB_" ^ String.translate idfy_c s
+        "s$" ^ String.translate idfy_c s
       else s
+
+  fun patch n f s =
+      let val (k,b) = Name.key n
+          val s = s ^ "$" ^ Int.toString k
+      in if Name.rigid n orelse f() then
+           let val b = normalizeBase b
+           in b ^ "." ^ s
+           end
+         else s
+      end           
 in
-  fun prLvar lv =
-      "v_" ^ idfy(Lvars.pr_lvar lv)
-      
-  fun prCon c =
-      "c_" ^ idfy(Con.pr_con c)
-      
-  fun exconName excon = "en_" ^ idfy(Excon.pr_excon excon)
-  fun exconExn excon = "exn_" ^ idfy(Excon.pr_excon excon)
+  fun setFrameLvars xs = frameLvars := xs
+  fun setFrameExcons xs = frameExcons := xs
+  fun prLvar C lv =
+      patch (Lvars.name lv) 
+            (fn() => isFrameLvar lv() andalso not(Context.isIn C lv)) 
+            (idfy(Lvars.pr_lvar lv))
+  fun exconName e = 
+      patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e))
+  fun exconExn e = 
+      patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e))
+  fun getLocalBase() = !localBase
 end
 
 fun j1 && j2 =
@@ -372,9 +442,9 @@ fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
       stToE($"var tmp = " & unPar(toJs e) & $";\n" & cases & default)
     end
 
-fun toJs (e0:Exp) : Js = 
+fun toJs (C:Context.context) (e0:Exp) : Js = 
   case e0 of 
-    L.VAR {lvar,...} => $(prLvar lvar)
+    L.VAR {lvar,...} => $(prLvar C lvar)
   | L.INTEGER (value,_) => $(Int32.toString value)
   | L.WORD (value,_) => $(Word32.fmt StringCvt.DEC value)
   | L.STRING s => sToS0 s
@@ -383,105 +453,115 @@ fun toJs (e0:Exp) : Js =
     if con = Con.con_FALSE then $"false"
     else if con = Con.con_TRUE then $"true"
     else $"Array" & seq[cToS0 con]
-  | L.PRIM(L.CONprim {con,...},[e]) => $"Array" & seq[cToS0 con, toJs e]
-  | L.PRIM(L.DECONprim _, [e]) => seq [toJs e] & $"[1]"
+  | L.PRIM(L.CONprim {con,...},[e]) => $"Array" & seq[cToS0 con, toJs C e]
+  | L.PRIM(L.DECONprim _, [e]) => seq [toJs C e] & $"[1]"
 
   | L.PRIM(L.EXCONprim excon,nil) => (* nullary *)
     $(exconExn excon)
   | L.PRIM(L.EXCONprim excon,[e]) => (* unary *)
-    $"Array" & seq[$(exconName excon), toJs e]
+    $"Array" & seq[$(exconName excon), toJs C e]
 
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
-    parJs (toJs e) & $"[1]"
+    parJs (toJs C e) & $"[1]"
 
   | L.PRIM(L.RECORDprim, []) => $unitValueJs
-  | L.PRIM(L.RECORDprim, es) => $"Array" & seq(map toJs es)
+  | L.PRIM(L.RECORDprim, es) => $"Array" & seq(map (toJs C) es)
   | L.PRIM(L.UB_RECORDprim, _) => die "UB_RECORD unimplemented"
-  | L.PRIM(L.SELECTprim i,[e]) => seq [toJs e] & $("[" ^ Int.toString i ^ "]")
+  | L.PRIM(L.SELECTprim i,[e]) => seq [toJs C e] & $("[" ^ Int.toString i ^ "]")
 
-  | L.PRIM(L.DEREFprim _, [e]) => parJs (toJs e) & $"[0]"
-  | L.PRIM(L.REFprim _, [e]) => seq[$"tmp = Array(1)", $"tmp[0] = " & toJs e, $"tmp"]
-  | L.PRIM(L.ASSIGNprim _, [e1,e2]) => seq[parJs (toJs e1) & $"[0] = " & toJs e2,
+  | L.PRIM(L.DEREFprim _, [e]) => parJs (toJs C e) & $"[0]"
+  | L.PRIM(L.REFprim _, [e]) => seq[$"tmp = Array(1)", $"tmp[0] = " & toJs C e, $"tmp"]
+  | L.PRIM(L.ASSIGNprim _, [e1,e2]) => seq[parJs (toJs C e1) & $"[0] = " & toJs C e2,
                                            $unitValueJs]
-  | L.PRIM(L.DROPprim, [e]) => toJs e
+  | L.PRIM(L.DROPprim, [e]) => toJs C e
   | L.PRIM(L.DROPprim, _) => die "DROPprim unimplemented"
                                   
-  | L.PRIM(L.EQUALprim _, [e1,e2]) => parJs (toJs e1 & $"==" & toJs e2)
+  | L.PRIM(L.EQUALprim _, [e1,e2]) => parJs (toJs C e1 & $"==" & toJs C e2)
                                     
   | L.FN {pat,body} => 
-    let val lvs = map ($ o prLvar o #1) pat
-    in $"function" & seq lvs & $"{ " & returnJs(toJs body) & $" }"
+    let val lvs = map ($ o prLvar C o #1) pat
+    in $"function" & seq lvs & $"{ " & returnJs(toJs C body) & $" }"
     end
   | L.LET {pat=[p],bind,scope} => 
     let val lv = #1 p
-    in varJs (prLvar lv) 
-             (unPar(toJs bind))
-             (toJs scope)
+    in varJs (prLvar C lv) 
+             (unPar(toJs C bind))
+             (toJs C scope)
     end
   | L.LET {pat=[],bind,scope} => (* memo: why not sequence? *)
     varJs ("__dummy") 
-          (unPar(toJs bind))
-          (toJs scope)
+          (unPar(toJs C bind))
+          (toJs C scope)
   | L.LET {pat,bind,scope} => 
     let val lvs = map #1 pat
         val binds = case bind of L.PRIM(UB_RECORDprim,binds) => binds
                                | _ => die "LET.unimplemented"
-        fun loop (nil,nil) = (toJs scope)
+        fun loop (nil,nil) = (toJs C scope)
           | loop (lv::lvs,b::bs) =
-            varJs (prLvar lv) 
-                  (unPar(toJs b))
+            varJs (prLvar C lv) 
+                  (unPar(toJs C b))
                   (loop(lvs,bs))
           | loop _ = die "LET.mismatch"
     in 
       loop(lvs,binds)
     end
   | L.FIX{functions,scope} => 
-    foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
-              let val lvs = map ($ o prLvar o #1) pat
-              in varJs (prLvar f_lv) 
-                       ($("function " ^ prLvar f_lv) & seq lvs & $"{ " & returnJs(toJs body) & $" }")
-                       acc
-              end
-            | _ => die "toJs.malformed FIX") (toJs scope) functions
-
-  | L.APP(e1,L.PRIM(L.UB_RECORDprim, es)) => toJs e1 & seq(map toJs es)
-  | L.APP(e1,e2) => toJs e1 & parJs(toJs e2)
+    let val C' = foldl(fn(lvar,C) => Context.add C lvar) C (map #lvar functions)
+    in foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
+                 let val lvs = map ($ o prLvar C o #1) pat
+                 in varJs (prLvar C f_lv) 
+                          ($("function " ^ prLvar C' f_lv) & seq lvs & $"{ " & returnJs(toJs C' body) & $" }")
+                          acc
+                 end
+               | _ => die "toJs.malformed FIX") (toJs C scope) functions
+    end
+  | L.APP(e1,L.PRIM(L.UB_RECORDprim, es)) => toJs C e1 & seq(map (toJs C) es)
+  | L.APP(e1,e2) => toJs C e1 & parJs(toJs C e2)
                     
-  | L.SWITCH_I {switch,precision} => toJsSw toJs Int32.toString switch
-  | L.SWITCH_W {switch,precision} => toJsSw toJs (Word32.fmt StringCvt.DEC) switch
-  | L.SWITCH_S switch => toJsSw toJs (fn s => "\"" ^ String.toString s ^ "\"") switch
-  | L.SWITCH_C switch => toJsSw_C toJs switch
-  | L.SWITCH_E switch => toJsSw_E toJs switch
+  | L.SWITCH_I {switch,precision} => toJsSw (toJs C) Int32.toString switch
+  | L.SWITCH_W {switch,precision} => toJsSw (toJs C) (Word32.fmt StringCvt.DEC) switch
+  | L.SWITCH_S switch => toJsSw (toJs C) (fn s => "\"" ^ String.toString s ^ "\"") switch
+  | L.SWITCH_C switch => toJsSw_C (toJs C) switch
+  | L.SWITCH_E switch => toJsSw_E (toJs C) switch
                     
-  | L.PRIM(L.CCALLprim {name,...},exps) => pToJs name (map toJs exps)
+  | L.PRIM(L.CCALLprim {name,...},exps) => pToJs name (map (toJs C) exps)
   | L.PRIM _ => die "toJs.PRIM unimplemented"
   | L.FRAME {declared_lvars, declared_excons} =>  emp
 (*
     let val lvs = map #lvar declared_lvars
     in seq([$"frame = new Object()"] 
-           @ map (fn lv => $"frame." & $(prLvar lv) & $" = " & $(prLvar lv)) lvs 
+           @ map (fn lv => $"frame." & $(prLvar C lv) & $" = " & $(prLvar C lv)) lvs 
            @ [$"frame"])
     end
 *)
   | L.HANDLE (e1,e2) => (* memo: avoid capture of variable e! *)
     let val lv = Lvars.newLvar()
-        val v = prLvar lv
-    in stToE ($"try { " & returnJs(toJs e1) & $" } catch(" & $v & $") { " & returnJs(parJs(toJs e2) & parJs($v)) & $" }")
+        val v = prLvar C lv
+    in stToE ($"try { " & returnJs(toJs C e1) & $" } catch(" & $v & $") { " & returnJs(parJs(toJs C e2) & parJs($v)) & $" }")
     end
   | L.EXCEPTION (excon,SOME _,scope) => (* unary *)
     let val s = Excon.pr_excon excon  (* for printing *)
-    in varJs (exconName excon) (sToS s) (toJs scope)
+    in varJs (exconName excon) (sToS s) (toJs C scope)
     end
   | L.EXCEPTION (excon,NONE,scope) => (* nullary; precompute exn value and store it in exconExn(excon)... *)
     let val s = Excon.pr_excon excon  (* for printing *)
       val exn_id = exconExn excon
     in varJs (exconName excon) (sToS s) 
              (varJs (exconExn excon) ($"Array" & seq[$(exconName excon)])
-                    (toJs scope))
+                    (toJs C scope))
     end
-  | L.RAISE(e,_) => stToE ($"throw" & parJs(toJs e) & $";\n")
+  | L.RAISE(e,_) => stToE ($"throw" & parJs(toJs C e) & $";\n")
 
-val toJs = fn (L.PGM(_,e)) => toJs e
+val toJs = fn L.PGM(_,e) => 
+              let 
+                val (lvars,excons) = LambdaBasics.exports e
+                val _ = setFrameLvars lvars
+                val _ = setFrameExcons excons
+                val js = toJs Context.empty e
+              in case getLocalBase() of
+                   SOME b => $b & $" = {};\n" & js
+                 | NONE => js
+              end
 
 fun toString (js:Js) : string = 
     let

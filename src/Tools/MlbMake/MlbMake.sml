@@ -157,12 +157,12 @@ struct
             val deps = readDependencies smlfile
             val basisFiles = map ebFileFromSmlFile deps
         in SOME(P.compile {verbose=verbose} 
-            {basisFiles=basisFiles,source=smlfile,
-             target=objFileFromSmlFile smlfile,
-       unique = unique,
-       lockfile = if force then NONE else SOME (lockFileFromSmlFile smlfile),
-             namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
-             flags=flags})
+                          {basisFiles=basisFiles,source=smlfile,
+                           target=objFileFromSmlFile smlfile,
+                           unique = unique,
+                           lockfile = if force then NONE else SOME (lockFileFromSmlFile smlfile),
+                           namebase=OS.Path.file mlbfile ^ "-" ^ OS.Path.file smlfile,
+                           flags=flags})
         end
 
     fun writeFile f c =

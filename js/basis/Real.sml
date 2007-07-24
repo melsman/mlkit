@@ -11,6 +11,8 @@ structure Real : REAL =
 
     fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
 
+    fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
+
     fun mlify s = (* Add ".0" if not "e" or "." in s  *)
 	      let val stop = size s
 		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
@@ -26,7 +28,7 @@ structure Real : REAL =
     fun toStringGen (precision:int) (x : real) : string = 
         mlify(prim ("stringOfFloatGen", (precision,x)))
     fun toString(x : real) : string = toStringGen 12 x
-    fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
+
     fun isNan (x : real) : bool = prim ("isnanFloat", x)
 
     type real = real

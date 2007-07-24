@@ -466,11 +466,13 @@ structure Compile: COMPILE =
         val _ = RegionExp.printcount:=1;
 	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env} =
 	  CompBasis.de_CompBasis Basis
+        val BtoLamb = CompBasisToLamb.mk_CompBasis{TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv}
       in
-        case CompileToLamb.compile fe (CEnv, (TCEnv,EqEnv,OEnv), strdecs) of
+        case CompileToLamb.compile fe (CEnv, BtoLamb, strdecs) of
           CompileToLamb.CEnvOnlyRes CEnv1 => CEnvOnlyRes CEnv1
-        | CompileToLamb.CodeRes (CEnv1, (TCEnv1,EqEnv1,OEnv1), lamb_opt, safe) => 
+        | CompileToLamb.CodeRes (CEnv1, BtoLamb1, lamb_opt, safe) => 
           let 
+            val {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1} = CompBasisToLamb.de_CompBasis BtoLamb1
             val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
 	    val _ = MulExp.warn_puts(rse, mul_pgm)
 	    val k_mul_pgm = k_norm mul_pgm
