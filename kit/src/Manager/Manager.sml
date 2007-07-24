@@ -560,7 +560,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                      print "\n")
 *)
             val _ = Name.bucket := []
-            val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
+            val base = mlbfile (* ^ "." ^ smlfile *) (* already appended in MlbMake! *)
+            val _ = Name.baseSet base
             val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
                                             file = smlfile,
                                             infB = infB, elabB = elabB} 
@@ -594,7 +595,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                 val names_elab = !Name.bucket
                 val _ = List.app Name.mk_rigid names_elab
                 val _ = Name.bucket := []
-                val _ = Name.baseSet (mlbfile ^ "." ^ smlfile ^ "1")
+                val _ = Name.baseSet (base ^ "1")
 
                 val _ = chat "[opacity elimination begin...]"
                 val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)

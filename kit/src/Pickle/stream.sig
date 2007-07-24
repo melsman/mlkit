@@ -15,6 +15,9 @@ signature STREAM =
     val out    : char * outstream -> outstream
     val get    : instream -> char * instream
 
+    val outw1    : word8 * outstream -> outstream
+    val getw1    : instream -> word8 * instream
+
     val outw   : word * outstream -> outstream
     val getw   : instream -> word * instream
 
@@ -34,3 +37,8 @@ signature STREAM =
     val openOut  : unit -> outstream
     val openIn   : string -> instream
   end
+
+(* [outw1(w,os)] output the one bit w&0w1 to the stream os.
+
+   [getw1(w,o)] read one bit from stream is.
+*)

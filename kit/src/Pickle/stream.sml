@@ -12,6 +12,10 @@ structure Stream : STREAM =
     fun get (loc:loc,e::es) = (e, (loc+0w1, es))
       | get _ = raise Fail "empty in-stream"
 
+    fun outw1 (e, (loc:loc,es)) = (loc+0w1, Byte.byteToChar e::es)
+    fun getw1 (loc:loc,e::es) = (Byte.charToByte e, (loc+0w1, es))
+      | getw1 _ = raise Fail "empty in-stream"
+
     fun outw (w,s) =
 	let val >> = Word.>>
 	    infix >>
