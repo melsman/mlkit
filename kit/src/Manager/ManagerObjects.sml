@@ -187,8 +187,8 @@ functor ManagerObjects(
 
 	structure labelTable : sig type table
 				   val mk : unit -> table
-				   val look : table * Labels.label -> bool
-				   val insert : table * Labels.label -> unit
+				   val look : table * Execution.lab -> bool
+				   val insert : table * Execution.lab -> unit
 			       end =
 	  struct
 	    type table = (string list) Array.array
@@ -207,13 +207,13 @@ functor ManagerObjects(
 	      in f l
 	      end
 	    fun look (table,lab) =
-	      let val s = Labels.pr_label lab
+	      let val s = Execution.pr_lab lab
 		  val h = hash s
 		  val l = Array.sub(table,h)
 	      in member s l
 	      end
 	    fun insert (table,lab) = 
-	      let val s = Labels.pr_label lab
+	      let val s = Execution.pr_lab lab
 		  val h = hash s
 		  val l = Array.sub(table,h)
 	      in if member s l then ()
@@ -234,7 +234,7 @@ functor ManagerObjects(
 	    fun add_exports_to_allexports (f_labs,d_labs) =
 		let fun look l = 
 			if labelTable.look(allexports, l) then
-			    die ("Label " ^ Labels.pr_label l ^ " allready exported")
+			    die ("Label " ^ Execution.pr_lab l ^ " allready exported")
 			else ()
 		in
 		    (List.app (fn lab => (look lab ; labelTable.insert(allexports,lab))) f_labs;

@@ -10,7 +10,6 @@ LIBDIR=@top_srcdir@
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
 CLEAN=rm -rf MLB PM CM *~ .\#* a.out run
-CLEAN_MLB=rm -rf MLB
 
 BINDIR=@top_srcdir@/bin
 
@@ -118,13 +117,18 @@ smlserver_nj: basics mlbmake mllex-yacc
 #	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 #	chmod a+x $(BINDIR)/smlserverc
 
+.PHONY: barry
 barry: basics mllex-yacc
-	echo 'use "build_barry.sml";' | sml
-	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/barry.$(ARCH-OS)
-	rm -f $(BINDIR)/barry
-	cd .. && echo '#!/bin/sh' > bin/barry
-	cd .. && echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
-	chmod a+x $(BINDIR)/barry
+	$(MLCOMP) -output barry Compiler/barry.mlb
+	$(INSTALL) -p barry $(BINDIR)
+
+#barry: basics mllex-yacc
+#	echo 'use "build_barry.sml";' | sml
+#	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/barry.$(ARCH-OS)
+#	rm -f $(BINDIR)/barry
+#	cd .. && echo '#!/bin/sh' > bin/barry
+#	cd .. && echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
+#	chmod a+x $(BINDIR)/barry
 
 basics: genopcodes heap2exec mlkit-mllex mlkit-mlyacc
 
@@ -200,25 +204,6 @@ clean:
 	cd SMLserver && $(CLEAN) nssml.so *.o
 	$(MAKE) -C SMLserver/apache clean
 	rm -f mlkit
-
-clean_mlb:
-	cd ../basis && $(CLEAN_MLB)
-	$(CLEAN_MLB)
-	cd Pickle && $(CLEAN_MLB)
-	cd Common && $(CLEAN_MLB)
-	cd Common/EfficientElab && $(CLEAN_MLB)
-	cd Compiler && $(CLEAN_MLB)
-	cd Compiler/Lambda && $(CLEAN_MLB)
-	cd Compiler/Regions && $(CLEAN_MLB)
-	cd Compiler/Backend && $(CLEAN_MLB)
-	cd Compiler/Backend/Dummy && $(CLEAN_MLB)
-	cd Compiler/Backend/X86 && $(CLEAN_MLB)
-	cd Compiler/Backend/KAM && $(CLEAN_MLB)
-	cd Compiler/Backend/Barry && $(CLEAN_MLB)
-	cd Parsing && $(CLEAN_MLB)
-	cd Manager && $(CLEAN_MLB)
-	cd Edlib && $(CLEAN_MLB)
-	cd Tools/MlbMake && $(CLEAN_MLB)
 
 #grm:
 #	cd Parsing && ml-lex Topdec.lex; ml-yacc Topdec.grm

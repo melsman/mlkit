@@ -14,13 +14,14 @@ signature EXECUTION =
     type funid = FunId.funid
     type strid = StrId.strid
     type Env = CompilerEnv.ElabEnv
-    type label = AddressLabels.label
+    type lab
     type target 
     type linkinfo 
 
-    val code_label_of_linkinfo : linkinfo -> label
-    val imports_of_linkinfo : linkinfo -> label list * label list
-    val exports_of_linkinfo : linkinfo -> label list * label list
+    val pr_lab : lab -> string
+    val code_label_of_linkinfo : linkinfo -> lab
+    val imports_of_linkinfo : linkinfo -> lab list * lab list
+    val exports_of_linkinfo : linkinfo -> lab list * lab list
     val unsafe_linkinfo : linkinfo -> bool
 
     (* Hook to be run before any compilation *)
@@ -36,7 +37,7 @@ signature EXECUTION =
 	('a * ('a -> funid -> strid * Env * strexp * CEnv * 'a))
 	-> CEnv * CompileBasis * strdec list * string -> res
 
-    val generate_link_code : (label list * (label list * label list) -> target) option
+    val generate_link_code : (lab list * (lab list * lab list) -> target) option
     val emit: {target: target, filename:string} -> string   (* returns the filename for the .o file
 							     * or the .uo file, dependent on which
 							     * backend is used *)
