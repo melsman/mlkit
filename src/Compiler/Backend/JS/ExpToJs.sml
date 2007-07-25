@@ -86,7 +86,7 @@ local
   fun idfy s =
       if isSymbol s then
         "s$" ^ String.translate idfy_c s
-      else s
+      else String.translate (fn #"'" => "$" | c => Char.toString c) s
 
   fun patch n f s =
       let val (k,b) = Name.key n
@@ -104,10 +104,14 @@ in
       patch (Lvars.name lv) 
             (fn() => isFrameLvar lv() andalso not(Context.isIn C lv)) 
             (idfy(Lvars.pr_lvar lv))
+  fun prLvarExport lv =
+      patch (Lvars.name lv) (fn() => true) (idfy(Lvars.pr_lvar lv))
   fun exconName e = 
       patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e))
   fun exconExn e = 
       patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e))
+  fun exconExnExport e = 
+      patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e))
   fun getLocalBase() = !localBase
 end
 
@@ -433,7 +437,7 @@ fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
     let 
       val cases =
           List.foldl (fn (((excon,_),e),acc) =>
-                         $"if (tmp[0] = " & $(exconName excon) & $") { " & returnJs(toJs e) & $" };\n" & acc) emp bs
+                         $"if (tmp[0] == " & $(exconName excon) & $") { " & returnJs(toJs e) & $" };\n" & acc) emp bs
       val default = 
           case eo 
            of SOME e => returnJs(toJs e)
@@ -442,13 +446,19 @@ fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
       stToE($"var tmp = " & unPar(toJs e) & $";\n" & cases & default)
     end
 
+fun mlToJsReal s =
+    String.translate (fn #"~" => "-" | c => Char.toString c) s
+
+fun mlToJsInt v =
+    String.translate (fn #"~" => "-" | c => Char.toString c) (Int32.toString v)
+
 fun toJs (C:Context.context) (e0:Exp) : Js = 
   case e0 of 
     L.VAR {lvar,...} => $(prLvar C lvar)
-  | L.INTEGER (value,_) => $(Int32.toString value)
+  | L.INTEGER (value,_) => if value < 0 then parJs($(mlToJsInt value)) else $(mlToJsInt value)
   | L.WORD (value,_) => $(Word32.fmt StringCvt.DEC value)
   | L.STRING s => sToS0 s
-  | L.REAL s => $s
+  | L.REAL s => if String.sub(s,0) = #"~" then parJs($(mlToJsReal s)) else $(mlToJsReal s)
   | L.PRIM(L.CONprim {con,...},nil) => 
     if con = Con.con_FALSE then $"false"
     else if con = Con.con_TRUE then $"true"
@@ -598,6 +608,22 @@ fun toFile (f,js) : unit =
     in 
       ( TextIO.output(os,toString js) ; TextIO.closeOut os )
       handle ? => (TextIO.closeOut os; raise ?)
+    end
+
+fun pp_list ss = "[" ^ String.concatWith "," ss ^ "]"
+
+fun exports (L.PGM(_,e)) =
+    let val (ls,es) = LambdaBasics.exports e
+        val ss = map prLvarExport ls @ map exconExnExport es 
+        val _ = print ("Exports: " ^ pp_list ss ^ "\n")
+    in ss
+    end
+
+fun imports (L.PGM(_,e)) =
+    let val (ls,es) = LambdaBasics.freevars e
+        val ss = map (prLvar Context.empty) ls @ map exconExn es 
+        val _ = print ("Imports: " ^ pp_list ss ^ "\n")
+    in ss
     end
 
 end

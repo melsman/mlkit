@@ -7,7 +7,9 @@ signature COMPILE_JS =
      * returned. *)
 
     include COMPILE_GEN
-    where type target = ExpToJs.Js
+    where type target = 
+               ExpToJs.Js * {exports: string list,
+                             imports: string list}
 
     (* emit: returns the filename for the generated .js file *)
     val emit : {target: target, filename: string} -> string  
@@ -29,7 +31,7 @@ structure CompileJS: COMPILE_JS =
     type Env = CompileToLamb.Env
     type strexp = CompileToLamb.strexp
     type LambdaPgm = CompileToLamb.target
-    type target = ExpToJs.Js
+    type target = ExpToJs.Js * {imports:string list, exports:string list}
 
     fun die s = Crash.impossible ("CompileBarry." ^ s)
 
@@ -47,11 +49,15 @@ structure CompileJS: COMPILE_JS =
         case CompileToLamb.compile fe (CEnv,Basis,strdecs) 
          of CompileToLamb.CEnvOnlyRes CEnv1 => CEnvOnlyRes CEnv1
           | CompileToLamb.CodeRes (CEnv1, Basis1, lamb_opt, safe) =>
-            CodeRes (CEnv1, Basis1, ExpToJs.toJs lamb_opt, safe)
-          
+            let val exports = ExpToJs.exports lamb_opt
+                val imports = ExpToJs.imports lamb_opt
+                val js = ExpToJs.toJs lamb_opt
+            in CodeRes (CEnv1, Basis1, (js, {imports=imports,exports=exports}), safe)
+            end
+
     fun emit {target: target, filename} : string =
 	let val filename = filename ^ ".js"
-        in ExpToJs.toFile (filename, target)
+        in ExpToJs.toFile (filename, #1 target)
          ; print ("[wrote JavaScript file:\t" ^ filename ^ "]\n")
          ; filename
 	end

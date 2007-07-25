@@ -20,14 +20,15 @@ structure ExecutionBarry : EXECUTION =
     type strexp = TopdecGrammar.strexp
     type funid = TopdecGrammar.funid
     type strid = TopdecGrammar.strid
-    type label = Labels.label
+    type lab = Labels.label
     type linkinfo = {unsafe:bool}
     type target = Compile.target
 
+    val pr_lab = Labels.pr_label
     val dummy_label = Labels.new()
-    val code_label_of_linkinfo : linkinfo -> label = fn _ => dummy_label
-    val imports_of_linkinfo : linkinfo -> (label list * label list) = fn _ => (nil,nil)
-    val exports_of_linkinfo : linkinfo -> (label list * label list) = fn _ => (nil,nil)
+    val code_label_of_linkinfo : linkinfo -> lab = fn _ => dummy_label
+    val imports_of_linkinfo : linkinfo -> (lab list * lab list) = fn _ => (nil,nil)
+    val exports_of_linkinfo : linkinfo -> (lab list * lab list) = fn _ => (nil,nil)
     fun unsafe_linkinfo (li: linkinfo) : bool =  #unsafe li
 
     (* Hook to be run before any compilation *)

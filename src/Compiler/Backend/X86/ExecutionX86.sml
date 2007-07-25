@@ -113,10 +113,12 @@ structure ExecutionX86: EXECUTION =
     type funid = TopdecGrammar.funid
     type strid = TopdecGrammar.strid
     type target = CodeGen.AsmPrg
-    type label = NativeCompile.label
+    type lab = NativeCompile.label
 
-    type linkinfo = {code_label:label, imports: label list * label list, 
-		     exports : label list * label list, unsafe:bool}
+    val pr_lab = Labels.pr_label               
+
+    type linkinfo = {code_label:lab, imports: lab list * lab list, 
+		     exports : lab list * lab list, unsafe:bool}
     fun code_label_of_linkinfo (li:linkinfo) = #code_label li
     fun exports_of_linkinfo (li:linkinfo) = #exports li
     fun imports_of_linkinfo (li:linkinfo) = #imports li

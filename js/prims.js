@@ -1,13 +1,16 @@
-en_Bind = new String("Bind");
-exn_Bind = Array(en_Bind);
-en_Match = new String("Match");
-exn_Match = Array(en_Match);
-en_Div = new String("Div");
-exn_Div = Array(en_Div);
-en_Interrupt = new String("Interrupt");
-exn_Interrupt = Array(en_Interrupt);
-en_Overflow = new String("Overflow");
-exn_Overflow = Array(en_Overflow);
+CompilerInitial = {}
+
+CompilerInitial.en$Bind = new String("Bind");
+CompilerInitial.exn$Bind = Array(CompilerInitial.en$Bind);
+
+CompilerInitial.en$Match = new String("Match");
+CompilerInitial.exn$Match = Array(CompilerInitial.en$Match);
+CompilerInitial.en$Div$40 = new String("Div");
+CompilerInitial.exn$Div$40 = Array(CompilerInitial.en$Div$40);
+CompilerInitial.en$Interrupt = new String("Interrupt");
+CompilerInitial.exn$Interrupt = Array(CompilerInitial.en$Interrupt);
+CompilerInitial.en$Overflow$43 = new String("Overflow");
+CompilerInitial.exn$Overflow$43 = Array(CompilerInitial.en$Overflow$43);
 
 SmlPrims = {}
 
@@ -85,14 +88,14 @@ SmlPrims.wordTableInit = function(n,x) {
 
 SmlPrims.chk_ovf_i32 = function (i) {
   if ( i < -2147483648 || i > 2147483647 ) {
-    throw(exn_Overflow);
+    throw(CompilerInitial.exn$Overflow$43);
   }
   return i;
 }
 
 SmlPrims.chk_ovf_i31 = function (i) {
   if ( i < -1073741824 || i > 1073741823 ) {
-    throw(exn_Overflow);
+    throw(CompilerInitial.exn$Overflow$43);
   }
   return i;
 }
@@ -115,7 +118,7 @@ SmlPrims.mod_i32 = function (x,y,exn) {
 
 SmlPrims.div_i32 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
-  if ( y == -1 && x == -2147483648 ) { throw(exn_Overflow); }
+  if ( y == -1 && x == -2147483648 ) { throw(CompilerInitial.exn$Overflow$43); }
   if ( x < 0 && y > 0 ) { 
     return Math.floor((x + 1) / y) - 1; 
   } else { 
@@ -137,7 +140,7 @@ SmlPrims.mod_i31 = function (e1,e2,e) {
 
 SmlPrims.div_i31 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
-  if ( y == -1 && x == -1073741824 ) { throw(exn_Overflow); }
+  if ( y == -1 && x == -1073741824 ) { throw(CompilerInitial.exn$Overflow$43); }
   if ( x < 0 && y > 0 ) { 
     return Math.floor((x + 1) / y) - 1; 
   } else { 
