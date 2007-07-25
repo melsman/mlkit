@@ -8,6 +8,7 @@ structure Stream : STREAM =
     type loc = word
     type instream = loc * char list
     type outstream = loc * char list
+
     fun out (e, (loc:loc,es)) = (loc+0w1, e::es)
     fun get (loc:loc,e::es) = (e, (loc+0w1, es))
       | get _ = raise Fail "empty in-stream"
@@ -105,8 +106,8 @@ structure Stream : STREAM =
 	   else (w,s)
 	end
 
-    fun getLocIn (loc,es) = loc
-    fun getLocOut (loc,es) = loc
+    fun getLocIn (s:instream) = (#1 s, s)
+    fun getLocOut (s:outstream) = (#1 s, s)
     fun toString (loc,es) = implode (rev es)
     fun openOut () = (0w0:loc,nil)
     fun openIn (s:string) = (0w0:loc, explode s)
