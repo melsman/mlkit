@@ -9,8 +9,8 @@ signature STREAM =
     type outstream
     type loc = word
 
-    val getLocIn  : instream -> loc 
-    val getLocOut : outstream -> loc 	
+    val getLocIn  : instream -> loc * instream
+    val getLocOut : outstream -> loc * outstream
 
     val out    : char * outstream -> outstream
     val get    : instream -> char * instream
