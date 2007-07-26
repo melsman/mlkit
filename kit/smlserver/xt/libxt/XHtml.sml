@@ -1,5 +1,5 @@
 (* 
- * Copyright (c) 2003, Martin Elsman
+ * Copyright (c) 2003, Martin Elsman; License: GPL
  *
  * SMLserver interface for XHtml that statically guarantees (1)
  * validity of constructed documents and (2) consistent and 
