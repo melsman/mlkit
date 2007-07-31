@@ -890,7 +890,7 @@ Det finder du nok aldrig ud af.*)
 			  lvar = Lvars.new_named_lvar s}
     fun mk_ifeq_node (ifeq as (path, con, edge1, edge2)) : node =
 	  let val node = mk_node (IfEq ifeq) ("n" ^ Int.toString (next ())
-					      ^ "_" ^ string_from_con con ^ "?")
+					      ^ "_" ^ string_from_con con (* ^ "?" *))
 	  in 
 	    mapr := map.add (ifeq, node, !mapr) ;
 	    edge_bump edge1 ;

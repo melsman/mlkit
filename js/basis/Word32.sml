@@ -7,8 +7,8 @@ structure Word32 : WORD =
     fun cast_iw (a: int) : word = prim("id", a)
 
     fun toInt (w : word32) : int = prim("__word32_to_int", w)
-    fun toIntX (w : word32) : int = prim("__word32_to_int_X", w)
-    fun fromInt (i : int) : word32 = prim("__word_to_word32", cast_iw i)
+    fun toIntX (w : word32) : int = prim("__word32_to_int_X_JS", w)
+    fun fromInt (i : int) : word32 = prim("__int_to_word32", i)
 
     fun toLargeWord (w : word32) : word32 = w
     val toLarge = toLargeWord
@@ -39,7 +39,7 @@ structure Word32 : WORD =
       fun rshiftuns_ (w : word32, k : word) : word32 = 
 	prim("__shift_right_unsigned_word32", (w,k))
       fun toInt32X (w : word32) : int32 =
-	  prim("__word32_to_int32_X", w)
+	  prim("__word32_to_int_X_JS", w)   (* was: "__word32_to_int32_X" *)
     in
       fun << (w, k)  = if k >= wordSize_w then 0w0
 		       else lshift_(w, k)

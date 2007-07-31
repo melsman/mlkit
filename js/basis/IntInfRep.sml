@@ -4,44 +4,56 @@
    is declared before any of the Int/IntN/Word/WordN modules. mael
    2005-12-14 *)
 
+(* NOTICE: The following primitives are dangerous for the JavaScript
+   backend as the MLKit compile (CompileDec) maps them to the identity:
+
+     "__int32_to_word"
+     "__int32_to_word32"
+     "__word32_to_int_X"
+     "__word32_to_int32_X"
+
+   These three primitives should not be used in the JavaScript basis library! *)
+
+
 structure IntInfRep : INT_INF_REP =
   struct
       (* Some primitive conversions *)
+(*
       fun cast_wi (a: word) : int = prim("id", a)
       fun cast_iw (a: int) : word = prim("id", a)
-
+*)
       fun i32_i (x: int32) : int = prim("__int32_to_int", x)
       fun i_i32 (x: int) : int32 = prim("__int_to_int32", x)
       fun i31_i32 (x: int31) : int32 = prim("__int31_to_int32", x)
       fun i32_i31 (x: int32) : int31 = prim("__int32_to_int31", x)
       fun i31_i (x: int31) : int = prim("__int31_to_int", x)
       fun i_i31 (x: int) : int31 = prim("__int_to_int31", x)
-      fun w32_w (w : word32) : word = cast_iw(prim("__word32_to_int", w))
-      fun w32_w_X (w : word32) : int = prim("__word32_to_int_X", w)
+(*      fun i_w (i : int) : word = prim("__int_to_word32", i)   (*was: prim("id", i) *) *)
+      fun w32_w (w : word32) : word = prim("__word32_to_word", w)
+(*      fun w32_w_X (w : word32) : int = prim("__word32_to_int_X", w) *)
       fun w_w32 (w : word) : word32 = prim("__word_to_word32", w)
       fun w_w32_X (w : word) : word32 = prim("__word_to_word32_X", w)
       fun w31_w32 (w : word31) : word32 = prim("__word31_to_word32", w)
       fun w31_w32_X (w : word31) : word32 = prim("__word31_to_word32_X", w)
       fun w32_w31 (w : word32) : word31 = prim("__word32_to_word31", w)
       
-      fun w_i_X (w : word) : int = prim("id", w)
+      fun w_i_X (w : word) : int = prim("__word32_to_int_X_JS", w)  (* prim("id", w) *)
       fun w_i (w : word) : int = 
 	  let val i = w_i_X w
 	  in if i < 0 then raise Overflow else i
 	  end
-      fun i_w (i : int) : word = prim("id", i)
 
-      fun w31_i (w : word31) : int = w_i(prim("__word31_to_word", w))
-      fun w31_i_X (w : word31) : int = cast_wi(prim("__word31_to_word_X", w))
-      fun i_w31 (i : int) : word31 = prim("__word_to_word31", cast_iw i)
-      fun i_w32 (i : int) : word32 = prim("__word_to_word32", cast_iw i)
+(*      fun w31_i (w : word31) : int = w_i(prim("__word31_to_word", w)) *)
+(*      fun w31_i_X (w : word31) : int = cast_wi(prim("__word31_to_word_X", w)) *)
+(*      fun i_w31 (i : int) : word31 = prim("__word_to_word31", cast_iw i) *)
+(*      fun i_w32 (i : int) : word32 = prim("__word_to_word32", cast_iw i) *)
       fun w32_i32 (w : word32) : int32 = prim("__word32_to_int32", w)
-      fun w32_i32_X (w : word32) : int32 = prim("__word32_to_int32_X", w)
-      fun i32_w32 (i : int32) : word32 = prim("__int32_to_word32", i)
-      fun i31_w32 (i : int31) : word32 = i32_w32(i31_i32 i)
+      fun w32_i32_X (w : word32) : int32 = prim("__word32_to_int32_X_JS", w)
+      fun i32_w32 (i : int32) : word32 = prim("__int32_to_word32_JS", i)
+(*      fun i31_w32 (i : int31) : word32 = i32_w32(i31_i32 i) *)
       fun i31_w (i : int31) : word = w32_w(i32_w32(i31_i32 i))
-      fun i31_w31 (i : int31) : word31 = prim("id", i)
-      fun w31_i31 (i : word31) : int31 = prim("id", i)
+      fun i31_w31 (i : int31) : word31 = w32_w31(i31_w i)  (*was:prim("id", i)*)
+      fun w31_i31 (w : word31) : int31 = i32_i31(w_i_X(w31_w32_X w)) (*was: prim("id", w) *)
 
 
       fun rshiftW32 (w : word32, k : word) : word32 = 
@@ -68,13 +80,13 @@ structure IntInfRep : INT_INF_REP =
 	  else prim ("__rem_int31", (x,y))
 
       fun lshiftw31 (w : word31, k) : word31 =
-	  if k >= cast_iw 31 then 0w0
+	  if k >= 0w31 then 0w0
 	  else prim("__shift_left_word31", (w,k))
 
       fun rshiftw31X (w : word31, k) : word31 = 
-	if k >= cast_iw 31 then 
-	  if cast_wi(prim("__word31_to_word_X", w)) >= 0 then 0w0 (* msbit = 0 *)
-	  else prim("__word_to_word31", cast_iw ~1)  (* msbit = 1 *)
+	if k >= 0w31 then 
+	  if w <= 0wx3FFFFFFF then 0w0 (* msbit = 0 *)
+	  else 0wx7FFFFFFF             (* msbit = 1 *)
 	else prim("__shift_right_signed_word31", (w,k))
 	  
       (* BigNat operations - IntInf is based on bignat = int31 list *)
@@ -276,7 +288,7 @@ structure IntInfRep : INT_INF_REP =
 	  | natInfToI32 [d,e] = ~(nbase()*(i31_i32 e)) + i31_i32 d
 	  | natInfToI32 (d::r) = ~(nbase()*natInfToI32 r) + i31_i32 d
 
-	fun bigNatMinNeg() = BN.addOne (natInfFromI32 (~(minNeg()+1)))
+	fun bigNatMinNeg() = BN.addOne (natInfFromI32 (~(minNeg()+1)))   (* = ~minInt *)
 	fun negi digits = _IntInf{negative=true, digits=digits}
 	fun bigIntMinNeg() = negi (bigNatMinNeg())
 
@@ -338,7 +350,7 @@ structure IntInfRep : INT_INF_REP =
 	      end
 
       fun fromWord32X (w:word32) : intinf =
-	  fromInt32(w32_i32_X w)
+	  fromInt32(w32_i32_X w) handle ? => (print ("Error IntInfRep.fromWord32X: " ^ exnName ? ^ "<br>"); raise ?) 
 
       fun fromWord31X (w:word31) : intinf =
 	  fromWord32X(w31_w32_X w)
@@ -346,10 +358,15 @@ structure IntInfRep : INT_INF_REP =
       fun fromWordX (w:word) : intinf =
 	  fromWord32X(w_w32_X w)
 
-      fun toWord32 (x : intinf) : word32 =
-	  i32_w32(toInt32 x) 
-	  handle _ => raise Fail "IntInfRep.toWord32"
-
+(*      fun pr_Err s = (print ("toWord32." ^ s ^ "<br>"); raise Overflow) *)
+      fun toWord32 (x : intinf) : word32 = i32_w32(toInt32 x)
+(*
+          if x > valOf0x7FFFFFFF then pr_Err "to large"
+          else if x < ~0x
+          let val a = toInt32 x handle ? => (print ("Error IntInfRep.toWord32(1): " ^ exnName ? ^ "<br>"); raise ?) 
+          in i32_w32 a handle ? => (print ("Error IntInfRep.toWord32(2): " ^ exnName ? ^ "<br>"); raise ?) 
+          end
+*)
       fun fromWord (w : word) : intinf =
 	  fromWord32 (w_w32 w)
 
