@@ -15,11 +15,9 @@ signature MATH =
     val pow : real * real -> real
     val ln    : real -> real
     val log10 : real -> real
-(*
     val sinh : real -> real
     val cosh : real -> real
     val tanh : real -> real
-*)
   end
 
 (*

@@ -65,7 +65,7 @@ local
        let open General String IntInfRep
            basis W = 
              bas 
-               WORD.sml Word32.sml Word31.sml Word8.sml 
+               WORD.sml Word32.sml Word8.sml Word31.sml 
              end
            basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
@@ -204,5 +204,5 @@ local
 *)
 in
   open General List ArrayVector String Bool Word Byte Text 
-       Int Real IntInf (* IntInfRep Io System Posix IO*)
+       Int Real IntInf IntInfRep (* Io System Posix IO*)
 end

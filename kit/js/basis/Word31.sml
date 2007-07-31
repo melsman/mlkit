@@ -8,8 +8,8 @@ structure Word31 : WORD =
     fun cast_iw (a: int) : word = prim("id", a)
 
     fun toInt (w : word31) : int = Word.toInt(prim("__word31_to_word", w))
-    fun toIntX (w : word31) : int = cast_wi(prim("__word31_to_word_X", w))
-    fun fromInt (i : int) : word31 = prim("__word_to_word31", cast_iw i)
+    fun toIntX (w : word31) : int = prim("__word31_to_int_X_JS", w)
+    fun fromInt (i : int) : word31 = prim("__int_to_word31_JS", i)
 
     fun toLargeWord (w : word31) : word32 = prim("__word31_to_word32", w)
     val toLarge = toLargeWord

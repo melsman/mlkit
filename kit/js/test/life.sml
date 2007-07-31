@@ -206,7 +206,7 @@ local
     fun iter n = #2(nthgen'(n,gun()))
   end
 
-  fun testit _ = show(iter 200)    
+  fun testit _ = show(iter 5)    
 
 in
   val _ = testit ()

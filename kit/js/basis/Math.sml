@@ -42,9 +42,9 @@ structure Math : MATH = struct
 			  end 
      fun log10 r = ln r / Initial.ln10
   end
-(*
+
   fun sinh (a : real) : real = prim ("sinhFloat", a)
   fun cosh (a : real) : real = prim ("coshFloat", a)
   fun tanh (a : real) : real = prim ("tanhFloat", a)
-*)
+
 end (*structure Math*)

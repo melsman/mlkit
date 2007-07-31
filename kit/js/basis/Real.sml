@@ -13,7 +13,7 @@ structure Real : REAL =
 
     fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
 
-    fun mlify s = (* Add ".0" if not "e" or "." in s  *)
+    fun maybeAddDotZero s = (* Add ".0" if not "e" or "." in s  *)
 	      let val stop = size s
 		  fun loop i =		(* s[0..i-1] contains no "." or "e" *)
 		      if i = stop then s ^ ".0"
@@ -21,12 +21,21 @@ structure Real : REAL =
 		      else loop (i+1)
 	      in loop 0 end
 
+    fun special s = 
+        case s of
+          "Infinity" => "inf"
+        | "~Infinity" => "~inf"
+        | "NaN" => "nan"
+        | s => s
+
+    fun convert_e s = special(String.translate (fn #"e" => "E" | #"-" => "~" | #"+" => "" | c => Char.toString c) s)
+
     fun toStringFix (precision:int) (x : real) : string = 
-        mlify(prim ("stringOfFloatFix", (precision,x)))
+        convert_e(prim ("stringOfFloatFix", (precision,x)))
     fun toStringSci (precision:int) (x : real) : string = 
-        prim ("stringOfFloatSci", (precision,x))
+        convert_e(prim ("stringOfFloatSci", (precision,x)))
     fun toStringGen (precision:int) (x : real) : string = 
-        mlify(prim ("stringOfFloatGen", (precision,x)))
+        convert_e(maybeAddDotZero(prim ("stringOfFloatGen", (precision,x))))
     fun toString(x : real) : string = toStringGen 12 x
 
     fun isNan (x : real) : bool = prim ("isnanFloat", x)

@@ -1,10 +1,9 @@
 CompilerInitial = {}
 
-CompilerInitial.en$Bind = new String("Bind");
-CompilerInitial.exn$Bind = Array(CompilerInitial.en$Bind);
-
-CompilerInitial.en$Match = new String("Match");
-CompilerInitial.exn$Match = Array(CompilerInitial.en$Match);
+CompilerInitial.en$Bind$42 = new String("Bind");
+CompilerInitial.exn$Bind$42 = Array(CompilerInitial.en$Bind$42);
+CompilerInitial.en$Match$41 = new String("Match");
+CompilerInitial.exn$Match$41 = Array(CompilerInitial.en$Match$41);
 CompilerInitial.en$Div$40 = new String("Div");
 CompilerInitial.exn$Div$40 = Array(CompilerInitial.en$Div$40);
 CompilerInitial.en$Interrupt = new String("Interrupt");
@@ -119,18 +118,10 @@ SmlPrims.mod_i32 = function (x,y,exn) {
 SmlPrims.div_i32 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
   if ( y == -1 && x == -2147483648 ) { throw(CompilerInitial.exn$Overflow$43); }
-  if ( x < 0 && y > 0 ) { 
-    return Math.floor((x + 1) / y) - 1; 
-  } else { 
-    if ( x > 0 && y < 0 ) { 
-      return Math.floor((x - 1) / y) - 1;
-    } else {
-      return Math.floor(x / y);
-    }
-  }
+  return Math.floor(x / y);
 }
 
-SmlPrims.mod_i31 = function (e1,e2,e) {
+SmlPrims.mod_i31 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
   if ( (x > 0 && y > 0) || (x < 0 && y < 0) || (x % y == 0) ) {
     return x % y;
@@ -141,21 +132,17 @@ SmlPrims.mod_i31 = function (e1,e2,e) {
 SmlPrims.div_i31 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
   if ( y == -1 && x == -1073741824 ) { throw(CompilerInitial.exn$Overflow$43); }
-  if ( x < 0 && y > 0 ) { 
-    return Math.floor((x + 1) / y) - 1; 
-  } else { 
-    if ( x > 0 && y < 0 ) { 
-      return Math.floor((x - 1) / y) - 1;
-    } else {
-      return Math.floor(x / y);
-    }
-  }
+  return Math.floor(x / y);
 }
 
 SmlPrims.div_w31 = function (x,y,exn) {
+  if ( y == 0 ) { throw(exn); }
+  return Math.floor(x / y);
 }
 
 SmlPrims.div_w32 = function (x,y,exn) {
+  if ( y == 0 ) { throw(exn); }
+  return Math.floor(x / y);
 }
 
 SmlPrims.mod_w31 = function (x,y,exn) {
@@ -168,9 +155,25 @@ SmlPrims.mod_w32 = function (x,y,exn) {
   return x % y;
 }
 
+SmlPrims.quot = function (x,y) {
+  if ((x < 0 && y >= 0) || (x >= 0 && y < 0)) {
+     return Math.ceil(x / y);
+  } else {
+     return Math.floor(x / y);
+  }
+}
+
 SmlPrims.w32_to_i32_X = function(x) {
   if ( x > 0x7FFFFFFF ) {
-    return -(x & 0x7FFFFFFF);
+    return -(0xFFFFFFFF - x) - 1;
+  } else {
+    return x;
+  }
+}
+
+SmlPrims.w31_to_i32_X = function(x) {
+  if ( x > 0x3FFFFFFF ) {
+    return -(0x7FFFFFFF - x) - 1;
   } else {
     return x;
   }
@@ -182,4 +185,40 @@ SmlPrims.w31_to_w32_X = function(x) {
   } else {
     return x;
   }
+}
+
+SmlPrims.i32_to_w32 = function(x) {
+  if ( x < 0 ) {
+    return 0xFFFFFFFF - (-x) + 1;
+  } else {
+    return x;
+  }
+}
+
+SmlPrims.i32_to_w31 = function(x) {
+  if ( x < 0 ) {
+    return SmlPrims.cut_w31(0xFFFFFFFF - (-x) + 1);
+  } else {
+    return SmlPrims.cut_w31(x);
+  }
+}
+
+SmlPrims.sinh = function(x) {
+  var tmp = Math.exp(x);
+  return (tmp - 1 / tmp) / 2;
+}
+
+SmlPrims.cosh = function(x) {
+  var tmp = Math.exp(x);
+  return (tmp + 1 / tmp) / 2;
+}
+
+SmlPrims.tanh = function(x) {
+  var tmp = Math.exp(x);
+  return (tmp - 1 / tmp) / (tmp + 1 / tmp);
+}
+
+SmlPrims.trunc = function(x) {
+  if ( x >= 0 ) { return Math.floor(x); }
+  return Math.ceil(x);
 }
