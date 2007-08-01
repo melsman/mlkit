@@ -21,6 +21,8 @@ fun check true = "OK"
 fun test' t b = test t (check b)
 fun test'' t f = test t ((check (f())) handle _ => "EXN")
 
+val _ = print "<h2>File int_2.sml: More testing of structure Int...</h2>"
+
 val test1 = test "test1" ((~minint seq "WRONG") handle Overflow => "OK")
 
 val test2 = test "test2" ((abs minint seq "WRONG") handle Overflow => "OK")
@@ -102,4 +104,6 @@ val test45 = test "test45" ((fromLarge(Int32.toLarge(valOf Int32.maxInt)) seq (i
 			    handle Overflow => if tagging() then "OK" else "WRONG")
 val test46 = test "test46" ((fromLarge(Int32.toLarge(valOf Int32.minInt)) seq (if tagging() then "WRONG" else "OK")) 
 			    handle Overflow => if tagging() then "OK" else "WRONG")
+
+val _ = print "End test<br>"
 end

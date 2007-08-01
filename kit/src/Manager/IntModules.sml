@@ -89,7 +89,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     local val counter = ref 0
           fun inc() = (counter := !counter + 1; !counter)
-    in fun fresh_unitname() = "code" ^ Int.toString(inc())
+    in fun fresh_unitname() = Int.toString(inc())
        fun reset_unitname_counter() = counter := 0
     end
 
@@ -276,11 +276,18 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
     fun compile_strdecs(fi,intB, [], unitname_opt) = (CE.emptyCEnv, CompileBasis.empty, ModCode.empty)
       | compile_strdecs(fi,intB, strdecs, unitname_opt) =
       let val (_,_,ce,cb) = IntBasis.un intB
-	  val unitname = case unitname_opt
-			   of SOME unitname => unitname
-			    | NONE => fresh_unitname()
+	  val (unitname,resetName) = case unitname_opt
+			   of SOME unitname => (unitname,fn() => ())
+			    | NONE => let val i = fresh_unitname()
+                                        val name = Name.baseGet()
+                                        val _ = Name.baseSet(name ^ "$" ^ i)   (* new stuff; mael 2007-07-31 *)
+                                      in ("code" ^ i, fn() => Name.baseSet name)
+                                      end
+                                      
 	  val vcg_filename = (* pmdir() ^ *) unitname ^ ".vcg"
-      in case Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs,vcg_filename)
+          val res = Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs,vcg_filename)
+          val _ = resetName()
+      in case res
 	   of Execution.CodeRes(ce',cb',target,linkinfo) =>
 	     (ce',cb', ModCode.mk_modcode(target,linkinfo,unitname))
 	    | Execution.CEnvOnlyRes ce' => (ce', CompileBasis.empty, ModCode.empty)

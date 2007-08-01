@@ -191,5 +191,6 @@ val test10 =
 	    ("",       NONE),
 	    ("gryf",   NONE)
 	    ]);
-    
+
+val _ = print "Test ended."    
 end

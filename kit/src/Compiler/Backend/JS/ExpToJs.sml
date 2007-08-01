@@ -102,6 +102,8 @@ local
 in
   fun setFrameLvars xs = frameLvars := xs
   fun setFrameExcons xs = frameExcons := xs
+  fun resetBase() = localBase := NONE
+
   fun prLvar C lv =
       patch (Lvars.name lv) 
             (fn() => isFrameLvar lv() andalso not(Context.isIn C lv)) 
@@ -117,11 +119,35 @@ in
   fun getLocalBase() = !localBase
 end
 
+fun toJSString s =
+    let 
+      fun digit n = chr(48 + n);
+      fun toJSescape (c:char) : string =
+	case c of
+	    #"\\"   => "\\\\"
+	  | #"\""   => "\\\""
+	  | _       =>
+	    if #"\032" <= c andalso c <= #"\126" then str c
+	    else
+		(case c of
+		     #"\010" => "\\n"			(* LF,  10 *)
+		   | #"\013" => "\\r"			(* CR,  13 *)
+		   | #"\009" => "\\t"			(* HT,   9 *)
+		   | #"\011" => "\\v"			(* VT,  11 *)
+		   | #"\008" => "\\b"			(* BS,   8 *)
+		   | #"\012" => "\\f"			(* FF,  12 *)
+                   | _       => let val n = ord c
+				in implode[#"\\", digit(n div 64), digit(n div 8 mod 8),
+					   digit(n mod 8)]
+				end)          
+          
+    in "\"" ^ String.translate toJSescape s ^ "\""
+    end
+
 fun j1 && j2 =
   j1 & $" " & j2
 
-fun sToS0 s : Js =
-    $("\"" ^ String.toString s ^ "\"")
+fun sToS0 s : Js = $(toJSString s)
 
 fun sToS s : Js = 
     $"new String(" & sToS0 s & $")"
@@ -324,7 +350,7 @@ fun pToJs1 name e =
       | "id" => e
       | "word_table0" => $"Array" & parJs e
       | "table_size" => parJs e & $".length"
-      | "chararray_to_string" => parJs e & $".join(\"\")"
+      | "chararray_to_string" => callPrim1 "SmlPrims.charArrayToString" e
 
       | "__neg_int32ub" => chkOvfI32($"-" & e)
       | "__neg_int31" => chkOvfI31($"-" & e)
@@ -537,7 +563,7 @@ fun toJs (C:Context.context) (e0:Exp) : Js =
                     
   | L.SWITCH_I {switch,precision} => toJsSw (toJs C) mlToJsInt switch
   | L.SWITCH_W {switch,precision} => toJsSw (toJs C) (Word32.fmt StringCvt.DEC) switch
-  | L.SWITCH_S switch => toJsSw (toJs C) (fn s => "\"" ^ String.toString s ^ "\"") switch
+  | L.SWITCH_S switch => toJsSw (toJs C) toJSString switch
   | L.SWITCH_C switch => toJsSw_C (toJs C) switch
   | L.SWITCH_E switch => toJsSw_E (toJs C) switch
                     
@@ -574,6 +600,7 @@ val toJs = fn L.PGM(_,e) =>
                 val (lvars,excons) = LambdaBasics.exports e
                 val _ = setFrameLvars lvars
                 val _ = setFrameExcons excons
+                val _ = resetBase()
                 val js = toJs Context.empty e
               in case getLocalBase() of
                    SOME b => $b & $" = {};\n" & js

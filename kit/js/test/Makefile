@@ -21,5 +21,5 @@ testdyn1:
 	SML_LIB=$(SML_LIB) ../../bin/smltojs testdyn1.sml
 
 clean:
-	rm -rf MLB $(TARGETS) all.html *~
+	rm -rf MLB *.html *~
 	(cd ../basis; rm -rf MLB)
