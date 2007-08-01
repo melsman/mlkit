@@ -2,7 +2,7 @@
 
 (* This test file is stolen from MosML. mael 2001-04-26 *)
 
-val _ = print "Testing match compiler<br>"
+val _ = print "<h2>File testmatc.sml: Testing match compiler</h2>"
 
 fun check b = if b then "OK" else "WRONG"
 
@@ -451,3 +451,5 @@ val test72 = check
                     | B72 _ => false | _ => false)
     end
 val _ = prln "test72" test72
+
+val _ = print "Test ended."

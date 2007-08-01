@@ -10,7 +10,7 @@ functor ByteTable(eqtype table
 
   (* The ByteTable functor should be applied four times:
    *
-   *              table       elem
+   * result       table       elem
    * ------------------------------
    * CharVector   string      char
    * Word8Vector  string      word8

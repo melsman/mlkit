@@ -14,6 +14,8 @@ fun check true = "OK"
 fun test' t b = test t (check b)
 fun test'' t f = test t ((check (f())) handle _ => "EXN")
 
+val _ = print "<h2>File int31_2.sml: More testing of structure Int31...</h2>"
+
 val test1 = test "test1" ((~minint seq "WRONG") handle Overflow => "OK")
 
 val test2 = test "test2" ((abs minint seq "WRONG") handle Overflow => "OK")
@@ -102,5 +104,7 @@ val test51 = test'' "test51" (fn _ => valOf maxInt + ~3 = 1073741820)
 
 val test52 = test'' "test52" (fn _ => ~1073741821 - 3  = valOf minInt)
 val test53 = test'' "test53" (fn _ => valOf minInt + 3 = ~1073741821)
+
+val _ = print "Test ended."
 
 end

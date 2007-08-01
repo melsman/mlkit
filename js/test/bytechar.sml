@@ -13,7 +13,7 @@ fun range (from, to) p =
 
 fun checkrange bounds = check o range bounds;
 
-fun tst0 s s' = print (s ^ "    \t" ^ s' ^ "\n");
+fun tst0 s s' = print (s ^ ": " ^ s' ^ "<br>");
 fun tst  s b = tst0 s (check  b);
 fun tst' s f = tst0 s (check' f);
 
@@ -26,7 +26,7 @@ fun tstrange s bounds = (tst s) o range bounds
 use "auxil.sml";
 *)
 
-val _ = print "\nFile bytechar.sml: Testing structures Byte and Char...\n"
+val _ = print "<h2>File bytechar.sml: Testing structures Byte and Char...</h2>"
 
 local 
 
@@ -405,5 +405,7 @@ val test43 =
 		"\\x100",
 		"\\xG"])
     end;
+
+val _ = print "Test ended."
 end
 

@@ -189,4 +189,6 @@ val test15 =
 	   andalso all (fn i => i < 0w7) a
 	   andalso all (fn _ => false) (fromList []));
 val _ = ptest "test15" test15
+
+val _ = print "Test ended."
 end;

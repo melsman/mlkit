@@ -3,7 +3,7 @@
 
    - modified for the MLKit; mael 2005-11-28 *)
 
-fun ptest t s = print(t ^ ": " ^ s ^ "\n")
+fun ptest t s = print(t ^ ": " ^ s ^ "<br>")
 infix 1 seq
 fun e1 seq e2 = e2;
 fun check b = if b then "OK" else "WRONG";
@@ -16,6 +16,8 @@ fun range (from, to) p =
     end;
 
 fun checkrange bounds p = check'(fn _ => range bounds p)
+
+val _ = print "<h2>File word8vectorslice.sml: Testing structure Word8VectorSlice...</h2>";
 
 local 
     open Word8Vector;
@@ -376,6 +378,8 @@ val test17b =
       andalso coll (slice(sa, 1, SOME 4)) (slice(sa, 0, SOME 4)) = LESS
   end)
 val _ = ptest "test17b" test17b
+
+val _ = print "Test ended."
 end
 
 

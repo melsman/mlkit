@@ -13,7 +13,7 @@ fun range (from, to) p =
 
 fun checkrange bounds = check o range bounds;
 
-fun tst0 s s' = print (s ^ "    \t" ^ s' ^ "\n");
+fun tst0 s s' = print (s ^ ": " ^ s' ^ "<br>");
 fun tst  s b = tst0 s (check  b);
 fun tst' s f = tst0 s (check' f);
 
@@ -22,7 +22,7 @@ fun tstrange s bounds = (tst s) o range bounds
 
 (* test/list.sml  PS 1994-12-10;  Martin-11/03/1998 *)
 
-val _ = print "\nFile list.sml: Testing structure List...\n";
+val _ = print "<h2>File list.sml: Testing structure List...</h2>";
 
 local 
     open List
@@ -131,4 +131,6 @@ val test37a =
     tst' "test37a" (fn _ => getItem [] = NONE
 	   andalso getItem [#"A"] = SOME(#"A", [])
 	   andalso getItem [#"B", #"C"] = SOME(#"B", [#"C"]));
+
+val _ = print "Test ended."
 end;

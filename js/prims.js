@@ -76,6 +76,11 @@ SmlPrims.arrayMap = function(f) {
     };
 }
 
+SmlPrims.charArrayToString = function(a) {
+ var a2 = SmlPrims.arrayMap(String.fromCharCode)(a);
+ return a2.join("");
+}
+
 SmlPrims.wordTableInit = function(n,x) {
   var i;
   var a = Array(n);

@@ -13,7 +13,7 @@ fun range (from, to) p =
 
 fun checkrange bounds = check o range bounds;
 
-fun tst0 s s' = print (s ^ "    \t" ^ s' ^ "\n");
+fun tst0 s s' = print (s ^ ": " ^ s' ^ "<br>");
 fun tst  s b = tst0 s (check  b);
 fun tst' s f = tst0 s (check' f);
 
@@ -27,7 +27,7 @@ fun tstrange s bounds = (tst s) o range bounds
 use "auxil.sml";
 *)
 
-val _ = print "Testing String...\n";
+val _ = print "<h2>File string.sml: Testing String...</h2>";
 
 local 
     val map' = map
@@ -371,4 +371,5 @@ val test25 =
 		   andalso not (isPrefix "Abcde"  "abcde")
 		   andalso not (isPrefix "abcdE"  "abcde"))
 
+val _ = print "Test ended."
 end

@@ -13,6 +13,8 @@ fun test t s = print (t ^ ": " ^ s ^ "<br>")
 fun check true = "OK"
   | check false = "WRONG"
 
+val _ = print "<h2>File int32_2.sml: More testing of structure Int32...</h2>"
+
 val test0 = test "test0" (case maxInt
 			    of SOME i => check(i=maxint)
 			     | _ => "WRONG")
@@ -87,4 +89,5 @@ val test29 = test "test29" ((check (SOME(toInt (maxint div 2)) = Option.map Int3
 val test29a = test "test29a" ((check (SOME(toInt (minint div 2)) = Option.map Int31.toInt Int31.minInt)) 
 			      handle Overflow => "EXN")
 
+val _ = print "Test ended"
 end
