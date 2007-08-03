@@ -14,11 +14,9 @@ all: $(TARGETS)
 	SML_LIB=$(SML_LIB) $(SMLTOJS) -o $* $*.sml
 	echo "<a href=\"$*.html\">Test: $*</a><br>" >> all.html
 
-test1:
-	rm -rf MLB ; SML_LIB=.. ../../bin/smltojs test1.sml
-
-testdyn1:
-	SML_LIB=$(SML_LIB) ../../bin/smltojs testdyn1.sml
+mlb%: Makefile %.sml %.mlb
+	SML_LIB=$(SML_LIB) $(SMLTOJS) -o $* $*.mlb
+	echo "<a href=\"$*.html\">Test: $*</a><br>" >> all.html
 
 clean:
 	rm -rf MLB *.html *~

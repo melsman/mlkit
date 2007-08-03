@@ -40,6 +40,15 @@ SmlPrims.charsToCharArray = function(xs) {
   return a;
 }
 
+SmlPrims.listToArray = function(xs) {
+  var i;
+  var a = Array();
+  for ( i = 0 ; xs[0] != "nil" ; xs = xs[1][1], i++ ) {
+    a[i] = xs[1][0];
+  }
+  return a;
+}
+
 SmlPrims.charArraysConcat = function(xs) {
   var i;
   var a = Array();

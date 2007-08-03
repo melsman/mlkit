@@ -566,8 +566,33 @@ fun toJs (C:Context.context) (e0:Exp) : Js =
   | L.SWITCH_S switch => toJsSw (toJs C) toJSString switch
   | L.SWITCH_C switch => toJsSw_C (toJs C) switch
   | L.SWITCH_E switch => toJsSw_E (toJs C) switch
-                    
-  | L.PRIM(L.CCALLprim {name,...},exps) => pToJs name (map (toJs C) exps)
+
+  | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res},exps) => 
+    die "toJs.PRIM(EXPORTprim) unimplemented"
+  | L.PRIM(L.CCALLprim {name,...},exps) => 
+    (case name of
+       "execStmtJS" =>
+       (case exps 
+         of L.STRING s :: L.STRING argNames :: args =>  (* static code *)
+            ($("(function (" ^ argNames ^ ") { " ^ s ^ " })") & seq(map (toJs C) args))
+          | s :: argNames :: args => (* dynamic code *)
+            parJs(parJs($"new Function" & seq[toJs C argNames, toJs C s])
+                       & seq(map (toJs C) args))
+          | _ => die "toJs.execStmtJS : string-->string-->args")
+     | "callJS" => 
+       (case exps 
+         of L.STRING f :: args =>  (* static code *)
+            ($f & seq(map (toJs C) args))
+          | f :: args => (* dynamic code *)
+            let val xs = ((String.concatWith ",") o #2)
+                         (foldl (fn (_,(i,acc)) => (i+1,"a" ^ Int.toString i::acc)) (0,nil) args)
+            in
+              parJs(parJs($"new Function" & seq[$("\"" ^ xs ^ "\""), $"\"return \" + " & toJs C f & $(" + \"(" ^ xs ^ ")\"")])
+                         & seq(map (toJs C) args))
+            end
+          | _ => die "toJs.callJS : string-->args")
+     | _ => pToJs name (map (toJs C) exps)
+    )
   | L.PRIM _ => die "toJs.PRIM unimplemented"
   | L.FRAME {declared_lvars, declared_excons} => $unitValueJs
 (*
