@@ -520,6 +520,25 @@ install_barry:
 	rm -f /usr/bin/barry
 	cp -f -p $(INSTDIR_BARRY)/bin/barry /usr/bin/barry
 
+install_smltojs0:
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/smltojs $(BINDIR)
+	$(MKDIR) $(LIBDIR)/smltojs
+	$(MAKE) install_smltojs_basislib LIBDIR=$(LIBDIR)/smltojs
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/smltojs.1 $(MANDIR)/man1
+	$(MKDIR) $(INSTDIR)/share/doc/smltojs
+	$(MAKE) install_license KIND=smltojs
+	$(INSTALLDATA) README_SMLTOJS $(DATADIR)/doc/smltojs
+
+install_smltojs: install_smltojs0
+	$(MKDIR) $(SYSCONFDIR)/smltojs
+	if [ -e $(SYSCONFDIR)/smltojs/mlb-path-map ]; \
+           then true; \
+           else echo "SML_LIB $(exec_prefix)/lib/smltojs" > $(SYSCONFDIR)/smltojs/mlb-path-map; \
+        fi
+
 install_smlserver0:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
