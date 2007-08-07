@@ -19,10 +19,13 @@ struct
   val homepage_smlserver = "http://www.smlserver.org"
   val homepage_smltojs = "http://www.itu.dk/people/mael/smltojs"
 
-    fun concatWith2 (s1,s2) l =
-	let fun loop nil = ""
-	      | loop [x,y] = x ^ s2 ^ y
+    fun concatWith2 (s1,s2) nil = ""
+      | concatWith2 (s1,s2) [x] = x
+      | concatWith2 (s1,s2) [x1,x2] = x1 ^ s2 ^ x2
+      | concatWith2 (s1,s2) l = 
+	let fun loop [x,y] = x ^ s1 ^ s2 ^ y      (* ", " ^ " and " *)
 	      | loop (x::xs) = x ^ s1 ^ loop xs
+              | loop _ = raise Fail "concatWith2.impossible"
 	in loop l
 	end
 
@@ -207,18 +210,18 @@ struct
     fun credits exe =
 	let val smlserver_maybe =
 		if isSMLserver exe then 
-		    ("SMLserver was developed by " ^ concatWith2 (", ", ", and ") Devel.smlserver_developers ^ ". ")
+		    ("SMLserver was developed by " ^ concatWith2 (", ", " and ") Devel.smlserver_developers ^ ". ")
 		else ""
           val c =
               if isSMLtoJs exe then
-                ["SMLtoJs was developed by " ^ concatWith2 (", ", ", and ") Devel.smltojs_developers ^ ". ",
+                ["SMLtoJs was developed by " ^ concatWith2 (", ", " and ") Devel.smltojs_developers ^ ". ",
                  "Many people have helped developing the MLKit on which SMLtoJs is built; see the MLKit home page for details."]
               else
                 [smlserver_maybe,
 	         "The MLKit (version 2 and beyond) was developed by ",
-	         concatWith2 (", ",", and ") Devel.developers,
+	         concatWith2 (", "," and ") Devel.developers,
 	         ". People who have contributed with bug-fixes and improvements include ",
-	         concatWith2 (", ", ", and ") Devel.contributers,
+	         concatWith2 (", ", " and ") Devel.contributers,
 	         ". Nick Rothwell and David N. Turner took part in the development of the MLKit version 1.\n"]
 	in 
 	    String.concat ([".SH CREDITS\n"] @ c)
