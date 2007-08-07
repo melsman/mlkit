@@ -1,28 +1,6 @@
 (*life.sml*)
 
-(*based on kitlifeopt.sml, but with copying
-  to avoid many generations in the same region*)
-
 local
-  fun map f l = 
-    let fun loop [] = []
-          | loop (x::xs) = f x :: loop xs
-    in loop l
-    end
-  
-  fun rev l =
-    let fun rev_rec(p as ([], acc)) = p
-          | rev_rec(x::xs, acc) = rev_rec(xs, x::acc)
-    in #2 (rev_rec(l,nil))
-    end
-  fun length [] = 0
-    | length (x::xs) = 1 + length xs
-
-  fun app f [] = ()
-    | app f (x::xs) = (f x; app f xs)
-  
-  
-  fun eq_integer_curry(x)(y:int) = x= y
   fun eq_int_pair_curry (x:int,x':int)(y,y'): bool =
     x=y andalso x'=y'
   
@@ -43,7 +21,6 @@ local
         loop l
     end
   
-  
   fun exists pred l = 
     let fun loop [] = false
           | loop (x::xs) = 
@@ -54,8 +31,6 @@ local
     
   fun member eq x a = exists (eq a) x
   
-  fun cons a x = a::x
-
   fun revonto x y = accumulate' ((fn (x,y) => y::x), x, y)
 
   local
@@ -69,24 +44,14 @@ local
       end
   end
   
-  fun copy n x = repeat (cons x) n []
-  
-  fun spaces 0 = ""
-    | spaces n = "<td></td>" ^ spaces (n-1)
+  fun spaces 0 = nil
+    | spaces n = "<td></td>" :: spaces (n-1)
 
-  fun cp_list[] = []
-    | cp_list((x,y)::rest) = 
-          let val l = cp_list rest
-          in (x,y):: l
-          end
-  
   fun lexless(a2,b2)(a1:int,b1:int) = 
     if a2<a1 then true else if a2=a1 then b2<b1 else false
   
   
   local
-      fun copy [] = []
-        | copy (x::xs) = x :: copy xs
       fun take(i,l) = 
           case l of [] => []
            |  x::xs=> if i>0 then x::take(i-1,xs) else nil
@@ -105,8 +70,8 @@ local
         case l of [] => []
         | x::xs => (case xs of []=> l 
                     | _ => let val k = length l div 2
-                           in merge(copy (tmergesort(take(k,l))),
-                                    copy (tmergesort(drop(k,l))))
+                           in merge(tmergesort(take(k,l)),
+                                    tmergesort(drop(k,l)))
                            end
                    )
       fun lexordset x = tmergesort x
@@ -143,7 +108,6 @@ local
 
   abstype generation = GEN of (int*int) list
   with 
-    fun copy (GEN l) = GEN(cp_list l)
     fun alive (GEN livecoords) = livecoords
     and mkgen coordlist = GEN (lexordset coordlist)
     and nextgen gen =
@@ -157,13 +121,13 @@ local
                                                  (neighbours z)
                                  ) living
         val newborn = occurs3 newnbrlist
-      in mkgen (cp_list(survivors @ newborn))
+      in mkgen (survivors @ newborn)
       end
   end
   
   local 
     val xstart = 0 and ystart = 0
-    fun markafter n string = string ^ spaces n ^ "<td>0</td>"
+    fun markafter n string = string ^ concat(spaces n) ^ "<td>0</td>"
     fun plotfrom (x,y) (* current position *)
                  str   (* current line being prepared -- a string *)
                  ((x1:int,y1)::more)  (* coordinates to be plotted *)
@@ -188,27 +152,54 @@ local
         (7,31),(7,40),(7,41),(8,20),(8,28),(8,29),(8,30),(8,31),(8,40),(8,41),
         (9,29),(9,30),(9,31),(9,32)]
   
-  fun show(x) = 
-      (print "<table>";
-       app (fn s => (print "<tr>"; print s; print "</tr>")) (plot(alive x));
-       print "</table>\n")
-                                                            
-  
-  local 
-    fun nthgen'(p as(0,g)) = p 
-      | nthgen'(p as(i,g)) = 
-          nthgen' (i-1, let val g' = nextgen  g
-                        in  show g;
-                            copy g'
-                        end)
-  
-  in 
-    fun iter n = #2(nthgen'(n,gun()))
-  end
+  fun pp_gen x = 
+      let val board =  "<table>" ::
+                       (List.foldl (fn (s,acc) => "<tr>" :: s :: "</tr>" :: acc) ["</table>"]
+                           (plot(alive x)))
+      in String.concat board
+      end
 
-  fun testit _ = show(iter 5)    
+  fun get id =
+      case Js.getElementById Js.document id of
+        SOME e => e
+      | NONE => raise Fail ("Missing id in document: " ^ id)
 
+  fun updStatus n (s:string) (k : unit -> unit) : unit =
+      let val e = get "status"
+      in Js.innerHTML e s
+       ; Js.setTimeout n (fn () => k ())
+       ; ()
+      end
+
+  fun loop (f : 's -> 's) (p:'s->bool) : 's -> unit =
+      let val r : 's option ref = ref NONE
+          fun run (s : 's) : unit =
+            if p(s) then 
+              let val _ = r := SOME s
+              in updStatus 500 "waiting"
+                           (fn () => updStatus 0 "computing"
+                                               (fn () => run (f(valOf (!r)))))
+              end
+            else ()
+      in run
+      end
+  
+  fun show g : unit =
+      let val e = get "board"
+      in Js.innerHTML e (pp_gen g)
+      end
+
+  fun next g =
+      let val g' = nextgen g
+          val _ = show g'
+      in g'
+      end
+
+  fun runit g0 n = 
+      loop (fn (i,g)=>(i+1,next g)) (fn (i,_) => i < n) g0
+
+  val _ = print "<html><body><h2>Game of Life</h2><div id='board'></div><h4>Status: <span id='status'>starting</span></h4></body></html>"
 in
-  val _ = testit ()
+  val _ = runit (0,gun()) 8
 end
  

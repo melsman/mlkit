@@ -3,12 +3,15 @@ FILES=array2.sml int31.sml int.sml vectorslice.sml word8arrayslice.sml word8vect
  array.sml int_2.sml int32.sml listpair.sml string.sml testmatc.sml word.sml word8.sml word31.sml word32.sml \
  bytechar.sml int31_2.sml intinf.sml list.sml real.sml substring.sml word8vectorslice.sml
 
+MLBFILES=exec counter temp life
+
 TARGETS=$(FILES:%.sml=%.html)
+MLBTARGETS=$(MLBFILES:%=mlb%)
 
 SML_LIB=..
 SMLTOJS=../../bin/smltojs
 
-all: $(TARGETS)
+all: $(TARGETS) $(MLBTARGETS)
 
 %.html: %.sml Makefile
 	SML_LIB=$(SML_LIB) $(SMLTOJS) -o $* $*.sml

@@ -4,6 +4,10 @@ signature JS_CORE =
     val unit   : unit T
     val int    : int T
     val string : string T
+    val fptr   : foreignptr T
+    val bool   : bool T
+    val option : 'a T -> 'a option T
+    val ==>    : 'a T * 'b T -> ('a -> 'b) T
 
     val exec0 : {stmt: string,
                  res: 'b T} 
@@ -40,7 +44,6 @@ signature JS_CORE =
     val call2 : string * 'a1 T * 'a2 T * 'b T -> 'a1*'a2 -> 'b
     val call3 : string * 'a1 T * 'a2 T * 'a3 T * 'b T -> 'a1*'a2*'a3 -> 'b
     val call4 : string * 'a1 T * 'a2 T * 'a3 T * 'a4 T * 'b T -> 'a1*'a2*'a3*'a4 -> 'b
-
   end
 
 structure JsCore :> JS_CORE =
@@ -49,6 +52,10 @@ structure JsCore :> JS_CORE =
     val unit   : unit T = ()
     val int    : int T = ()
     val string : string T = ()
+    val fptr   : foreignptr T = ()
+    val bool   : bool T = ()
+    val option : 'a T -> 'a option T = fn _ => ()
+    val ==>    : 'a T * 'b T -> ('a -> 'b) T = fn _ => ()
 
     fun exec0 {stmt:string, 
                res: 'b T} () : 'b =

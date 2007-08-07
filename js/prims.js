@@ -13,6 +13,14 @@ CompilerInitial.exn$Overflow$43 = Array(CompilerInitial.en$Overflow$43);
 
 SmlPrims = {}
 
+SmlPrims.option = function(e) {
+  if ( e ) {
+    return Array("SOME",e);
+  } else {
+    return Array("NONE");
+  }
+}
+
 SmlPrims.explode = function(s) {
   var i;
   var res = Array("nil");
