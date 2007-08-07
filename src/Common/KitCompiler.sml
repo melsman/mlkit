@@ -86,8 +86,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				       raise Fail "")),
 		 ("man", fn () => (print(Man.gen {cmd=cmd_name,date=date,
 						  extraOptions=options,
-						  version=Version.version,
-					          smlserver= !Flags.SMLserver});
+						  version=Version.version});
 				   raise Fail "")),
 		 ("v", fn () => (print_greetings(); 
 				 raise Fail "")),
