@@ -1,3 +1,4 @@
 local $SML_LIB/basis/basis.mlb
 in JsCore.sml
+   Js.sml
 end
