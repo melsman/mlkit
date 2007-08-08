@@ -75,10 +75,7 @@ see above), simply type
   $ make smltojs
 
 If compilation succeeds, an executable file bin/smltojs should now be
-available. If you wish to install SMLtoJs on your system, type (as
-user root)
-
-  $ make install_smltojs
+available.
 
 HOW IT WORKS
 ------------

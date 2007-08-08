@@ -536,7 +536,7 @@ install_smltojs0:
 	$(MKDIR) $(BINDIR)
 	$(INSTALL) bin/smltojs $(BINDIR)
 	$(MKDIR) $(LIBDIR)/smltojs
-	$(MAKE) install_smltojs_basislib LIBDIR=$(LIBDIR)/smltojs
+	$(MAKE) install_smltojs_basislibs LIBDIR=$(LIBDIR)/smltojs
 	$(MKDIR) $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/smltojs.1 $(MANDIR)/man1
 	$(MKDIR) $(INSTDIR)/share/doc/smltojs

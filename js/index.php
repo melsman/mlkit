@@ -77,7 +77,7 @@ SMLtoJs compiles on Debian Linux systems with MLton or MLKit
 installed. The SMLtoJS sources are available through an MLKit
 sourceforge svn checkout:
 <pre>
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.2new/kit smltojs
+ $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.2new2/kit smltojs
 </pre>
 This command copies the sources to the directory smltojs.
 </p>
@@ -93,12 +93,7 @@ see above), simply type
   $ make smltojs
 </pre>
 If compilation succeeds, an executable
-file <code>bin/smltojs</code> should now be available. If you wish to install
-SMLtoJs on your system, type (as user root)
-<pre>
-  $ make install_smltojs
-</pre>
-</p>
+file <code>bin/smltojs</code> should now be available.</p>
 
 <h3>How it Works</h3>
 <p>
