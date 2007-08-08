@@ -95,6 +95,17 @@ mlkit_libs:
 	$(MAKE) mlkit_basislibs
 	$(MAKE) mlkit_kitlibs
 
+smltojs_basislibs:
+	(cd js/basis && find -name MLB -type d | xargs rm -rf)
+	(cd js/basis && SML_LIB=.. ../bin/smltojs -c basis.mlb)
+	(cd js/basis && SML_LIB=.. ../bin/smltojs -c js.mlb)
+
+install_smltojs_basislibs:
+	$(MKDIR) $(LIBDIR)/basis
+	$(INSTALLDATA) -p js/basis/*.{sml,mlb} $(LIBDIR)/basis
+	$(MKDIR) $(LIBDIR)/basis/MLB/Js/
+	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js} $(LIBDIR)/basis/MLB/Js
+
 install_smlserver_basislib:
 #	$(MKDIR) $(LIBDIR)/basis/MLB
 	$(MKDIR) $(LIBDIR)/basis/MLB/SMLserver
