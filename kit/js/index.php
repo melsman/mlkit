@@ -77,7 +77,7 @@ SMLtoJs compiles on Debian Linux systems with MLton or MLKit
 installed. The SMLtoJS sources are available through an MLKit
 sourceforge svn checkout:
 <pre>
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.2/kit smltojs
+ $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.2new/kit smltojs
 </pre>
 This command copies the sources to the directory smltojs.
 </p>
