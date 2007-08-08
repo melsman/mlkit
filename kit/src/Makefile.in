@@ -51,7 +51,7 @@ mlkit_kit: basics rp2ps tester kitbench mlbmake mllex-yacc
 	$(INSTALL) -p mlkit $(BINDIR)
 
 .PHONY: smltojs
-smltojs: basics tester kitbench mllex-yacc
+smltojs: basics mlbmake mllex-yacc
 	$(MLCOMP) -output smltojs Compiler/smltojs.mlb
 	$(INSTALL) -p smltojs $(BINDIR)
 
