@@ -1,5 +1,5 @@
 <?
-$title = "SMLtoJs - A Standard ML to JavaScript Compiler"
+$title = "SMLtoJs - A Standard ML to JavaScript Compiler";
 ?>
 
 <html>
@@ -92,8 +92,8 @@ see above), simply type
   $ ./configure
   $ make smltojs
 </pre>
-from within the <code>kit/</code> directory. If compilation succeeds, an executable
-file <code>kit/bin/smltojs</code> should now be available. If you wish to install
+If compilation succeeds, an executable
+file <code>bin/smltojs</code> should now be available. If you wish to install
 SMLtoJs on your system, type (as user root)
 <pre>
   $ make install_smltojs
@@ -102,7 +102,7 @@ SMLtoJs on your system, type (as user root)
 
 <h3>How it Works</h3>
 <p>
-The SMLtoJs executable <code>kit/bin/smltojs</code> takes as argument an sml-file
+The SMLtoJs executable <code>bin/smltojs</code> takes as argument an sml-file
 (or an mlb-file referencing the sml-files and other mlb-files of the
 project) and produces an html file called <code>run.html</code> provided there are
 no type errors! The resulting html-file mentions the generated
@@ -116,7 +116,7 @@ results in the file name.html being generated instead of <code>run.html</code>.
 
 <h3>Testing that it Works</h3>
 <p>
-To compile and test the test programs, cd to the <code>kit/js/test</code> directory
+To compile and test the test programs, cd to the <code>js/test</code> directory
 and run <code>"make clean all"</code>:
 <pre>
  $ cd js/test

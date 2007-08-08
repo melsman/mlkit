@@ -74,16 +74,16 @@ see above), simply type
   $ ./configure
   $ make smltojs
 
-from within the kit/ directory. If compilation succeeds, an executable
-file kit/bin/smltojs should now be available. If you wish to install
-SMLtoJs on your system, type (as user root)
+If compilation succeeds, an executable file bin/smltojs should now be
+available. If you wish to install SMLtoJs on your system, type (as
+user root)
 
   $ make install_smltojs
 
 HOW IT WORKS
 ------------
 
-The SMLtoJs executable kit/bin/smltojs takes as argument an sml-file
+The SMLtoJs executable bin/smltojs takes as argument an sml-file
 (or an mlb-file referencing the sml-files and other mlb-files of the
 project) and produces an html file called run.html provided there are
 no type errors! The resulting html-file mentions the generated
@@ -96,7 +96,7 @@ results in the file name.html being generated instead of run.html.
 TESTING THAT IT WORKS
 ---------------------
 
-To compile and test the test programs, cd to the kit/js/test directory
+To compile and test the test programs, cd to the js/test directory
 and run "make clean all":
 
  $ cd js/test
@@ -136,6 +136,6 @@ bytechar
 COPYRIGHT AND LICENSE
 ---------------------
 
-See the files in kit/doc/license for copyright notices and license
+See the files in doc/license for copyright notices and license
 information.
 
