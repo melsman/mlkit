@@ -1,9 +1,6 @@
 (*life.sml*)
 
 local
-  fun eq_int_pair_curry (x:int,x':int)(y,y'): bool =
-    x=y andalso x'=y'
-  
   exception ex_undefined of string
   fun error str = raise ex_undefined str
   
@@ -12,24 +9,8 @@ local
   
   fun accumulate' (f, a, []) = a
     | accumulate' (f, a, b::x) = accumulate'(f, f(a,b), x)
-  
-  fun filter pred l = 
-    let fun loop [] = []
-          | loop (x::xs) = 
-             if pred(x) then x:: loop xs else loop xs
-    in
-        loop l
-    end
-  
-  fun exists pred l = 
-    let fun loop [] = false
-          | loop (x::xs) = 
-              pred(x) orelse loop xs
-    in
-        loop l
-    end
-    
-  fun member eq x a = exists (eq a) x
+
+  fun member x a = List.exists (fn y => y = a) x
   
   fun revonto x y = accumulate' ((fn (x,y) => y::x), x, y)
 
@@ -89,19 +70,19 @@ local
             let fun f (q) =
                   case q of (_,_,_,_,[]) => q
                   | ( xover, x3, x2, x1, (a::x)) =>
-                     if member eq_int_pair_curry xover a then f( xover, x3, x2, x1, x) else
-                     if member eq_int_pair_curry x3 a then f ((a::xover), x3, x2, x1, x) else
-  		   if member eq_int_pair_curry x2 a then f (xover, (a::x3), x2, x1, x) else
-                     if member eq_int_pair_curry x1 a then f (xover, x3, (a::x2), x1, x) else
+                     if member xover a then f( xover, x3, x2, x1, x) else
+                     if member x3 a then f ((a::xover), x3, x2, x1, x) else
+  		   if member x2 a then f (xover, (a::x3), x2, x1, x) else
+                     if member x1 a then f (xover, x3, (a::x2), x1, x) else
   		                       f (xover, x3, x2, (a::x1), x)
-                fun diff x y = filter (fn x => not(member eq_int_pair_curry y x)) x  (* unfolded o *)
+                fun diff x y = List.filter (fn x => not(member y x)) x  (* unfolded o *)
                 val (xover, x3, _, _, _) = f ([],[],[],[],x)
              in diff x3 xover end
   
   
   fun neighbours (i,j) = [(i-1,j-1),(i-1,j),(i-1,j+1),
-  			    (i,j-1),(i,j+1),
-  			    (i+1,j-1),(i+1,j),(i+1,j+1)]
+  			  (i,j-1),(i,j+1),
+  			  (i+1,j-1),(i+1,j),(i+1,j+1)]
   
   infix footnote
   fun x footnote y = x
@@ -113,11 +94,11 @@ local
     and nextgen gen =
       let
         val living = alive gen
-        fun isalive x = member eq_int_pair_curry living x
-        fun liveneighbours x = length( filter isalive ( neighbours x))
+        fun isalive x = member living x
+        fun liveneighbours x = length( List.filter isalive ( neighbours x))
         fun twoorthree n = n=2 orelse n=3
-        val survivors = filter (twoorthree o liveneighbours) living
-        val newnbrlist = collect (fn z => filter (fn x => not(isalive x)) 
+        val survivors = List.filter (twoorthree o liveneighbours) living
+        val newnbrlist = collect (fn z => List.filter (fn x => not(isalive x)) 
                                                  (neighbours z)
                                  ) living
         val newborn = occurs3 newnbrlist
@@ -140,7 +121,7 @@ local
     fun good (x,y) = x>=xstart andalso y>=ystart
   in  
     fun plot coordlist = plotfrom(xstart,ystart) "" 
-                                 (filter good coordlist)
+                                 (List.filter good coordlist)
   end
   
   (* the initial generation *)
@@ -167,7 +148,7 @@ local
   fun updStatus n (s:string) (k : unit -> unit) : unit =
       let val e = get "status"
       in Js.innerHTML e s
-       ; Js.setTimeout n (fn () => k ())
+       ; Js.setTimeout n k
        ; ()
       end
 
@@ -180,7 +161,7 @@ local
                            (fn () => updStatus 0 "computing"
                                                (fn () => run (f(valOf (!r)))))
               end
-            else ()
+            else updStatus 0 "done" (fn () => ())
       in run
       end
   
@@ -198,7 +179,8 @@ local
   fun runit g0 n = 
       loop (fn (i,g)=>(i+1,next g)) (fn (i,_) => i < n) g0
 
-  val _ = print "<html><body><h2>Game of Life</h2><div id='board'></div><h4>Status: <span id='status'>starting</span></h4></body></html>"
+  val _ = print ("<html><body><h2>Game of Life</h2><div id='board'></div>" ^
+                 "<h4>Status: <span id='status'>starting</span></h4></body></html>")
 in
   val _ = runit (0,gun()) 8
 end

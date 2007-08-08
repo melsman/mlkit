@@ -21,6 +21,8 @@ structure ExecutionX86: EXECUTION =
 				   structure LineStmt = NativeCompile.LineStmt
 				   structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
+    fun die s = Crash.impossible("ExecutionX86." ^ s)
+
     local
 	fun convertList option s =
 	    let val l = String.tokens(fn c => c = #",")s
@@ -197,7 +199,7 @@ structure ExecutionX86: EXECUTION =
 	                handle _ => ())
       else ()
 
-    fun link_files_with_runtime_system path_to_runtime files run =
+    fun link_files_with_runtime_system0 path_to_runtime files run =
       let val files = map (fn s => s ^ " ") files
 	  val libdirs = 
 	      case !(Flags.lookup_string_entry "libdirs") of
@@ -214,6 +216,61 @@ structure ExecutionX86: EXECUTION =
 	print("[wrote executable file:\t" ^ run ^ "]\n");
 	report_dangle_stat()
       end 
+
+    val op ## = OS.Path.concat infix ##
+                                               
+    local
+	  val region_profiling = Flags.lookup_flag_entry "region_profiling"
+	  val tag_values = Flags.is_on0 "tag_values"
+	  val tag_pairs_p = Flags.is_on0 "tag_pairs"
+          val gc_p = Flags.is_on0 "garbage_collection"
+          val gengc_p = Flags.is_on0 "generational_garbage_collection"
+
+	  fun path_to_runtime () = 
+	    let fun file () = 
+	      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
+	      if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
+	      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
+	      if !region_profiling                                      then "runtimeSystemProf.a"      else
+              if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"      else
+              if                           gc_p() andalso gengc_p()     then "runtimeSystemGenGC.a"     else
+              if                           gc_p()                       then "runtimeSystemGC.a"        else
+              if tag_values()                     andalso tag_pairs_p() then 
+		  die "no runtime system supports tagging of values with tagging of pairs"             else
+              if tag_values()                                           then "runtimeSystemTag.a"      else
+		                                                             "runtimeSystem.a"
+	    in !Flags.install_dir ## "lib" ## file()
+	    end
+    in
+       val link_files_with_runtime_system = link_files_with_runtime_system0 path_to_runtime
+    end
+
+
+    local
+      val region_profiling = Flags.is_on0 "region_profiling"
+      val recompile_basislib = Flags.is_on0 "recompile_basislib"
+      val tag_pairs_p = Flags.is_on0 "tag_pairs"
+      val gc_p = Flags.is_on0 "garbage_collection"
+      val gengc_p = Flags.is_on0 "generational_garbage_collection"
+    in 
+	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
+      fun mlbdir() = 
+	  let val subdir =
+	      if recompile_basislib() then "Scratch"   (* avoid overwriting other files *)
+	      else 
+		  case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p()) of 
+		      (false,     true,   true,               false) => "RI_GC_PROF"
+		    | (false,     true,   false,              false) => "RI_GC"
+		    | (false,     true,   true,               true)  => "RI_GC_TP_PROF"
+		    | (false,     true,   false,              true)  => "RI_GC_TP"
+		    | (true,      true,   true,               false) => "RI_GEN_GC_PROF"
+		    | (true,      true,   false,              false) => "RI_GEN_GC"
+		    | (true,      _,      _,                  _)     => die "Illegal combination of generational garbage collection and tagged pairs"
+		    | (false,     false,  true,               _)     => "RI_PROF"
+		    | (false,     false,  false,              _)     => "RI"
+	  in "MLB" ## subdir
+	  end
+    end
 
     val pu_linkinfo =
 	let val pu_labels = Pickle.listGen Labels.pu

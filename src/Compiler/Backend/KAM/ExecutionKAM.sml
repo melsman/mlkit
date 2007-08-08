@@ -94,7 +94,7 @@ structure ExecutionKAM : EXECUTION =
 	filename
       end
 	      
-    fun link_files_with_runtime_system _ files run = 
+    fun link_files_with_runtime_system files run = 
       if !Flags.SMLserver then ()
       else 
 	let 
@@ -112,6 +112,15 @@ structure ExecutionKAM : EXECUTION =
 	  OS.Process.system ("chmod a+x " ^ run);
 	  print("[Created file " ^ run ^ "]\n")
 	  (* ; app (print o (fn s => "   " ^ s ^ "\n")) files  *)
+	end
+
+    val op ## = OS.Path.concat infix ##
+                                               
+    fun mlbdir() = 
+	let val subdir =
+	        if !Flags.SMLserver then "SMLserver"
+                else "RI"
+        in "MLB" ## subdir
 	end
 
     val pu_linkinfo =

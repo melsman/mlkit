@@ -55,7 +55,7 @@ structure ExecutionBarry : EXECUTION =
       end
     val generate_link_code = NONE
     fun emit a = Compile.emit a
-    fun link_files_with_runtime_system _ files run =
+    fun link_files_with_runtime_system files run =
 	let val pm_file = run ^ ".mlb"
 	    val os = TextIO.openOut pm_file
 	in 
@@ -65,6 +65,8 @@ structure ExecutionBarry : EXECUTION =
 	     print("[Created file " ^ pm_file ^ "]\n"))
 	    handle X => (TextIO.closeOut os; raise X)
 	end
+
+    fun mlbdir() = "MLB" ## "Barry"
 
     val pu_linkinfo =
 	Pickle.convert (fn b => {unsafe=b},

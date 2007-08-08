@@ -15,11 +15,11 @@ all: $(TARGETS) $(MLBTARGETS)
 
 %.html: %.sml Makefile
 	SML_LIB=$(SML_LIB) $(SMLTOJS) -o $* $*.sml
-	echo "<a href=\"$*.html\">Test: $*</a><br>" >> all.html
+	echo "<a href=\"$*.html\">Test: $*</a> (<a href=\"$*.sml\">src</a>)<br>" >> all.html
 
 mlb%: Makefile %.sml %.mlb
 	SML_LIB=$(SML_LIB) $(SMLTOJS) -o $* $*.mlb
-	echo "<a href=\"$*.html\">Test: $*</a><br>" >> all.html
+	echo "<a href=\"$*.html\">Test: $*</a> (<a href=\"$*.sml\">src</a>)<br>" >> all.html
 
 clean:
 	rm -rf MLB *.html *~

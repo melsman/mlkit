@@ -43,15 +43,17 @@ signature EXECUTION =
 							     * backend is used *)
 
     (* -------------------------------------------------------------
-     * link_files_with_runtime_system path_to_runtime files run : Link 
+     * link_files_with_runtime_system files run : Link 
      * a list `files' of partially linked files (.o files) to the 
      * runtime system (also partially linked) and produce an executable 
      * called `run'. 
      * ------------------------------------------------------------- *)
       
-    val link_files_with_runtime_system : (unit -> string) -> string list -> string -> unit
+    val link_files_with_runtime_system : string list -> string -> unit
 
     val backend_name : string (* e.g., X86, KAM, Barry, JS *)
+
+    val mlbdir : unit -> string
 
     val pu_linkinfo : linkinfo Pickle.pu
   end
