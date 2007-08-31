@@ -176,7 +176,7 @@ license information.
 <table border=0 bgcolor="#1f94b7" cellpadding=1 cellspacing=1 width=100% align=right>
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>SMLtoJs Examples</b></font></td></tr>
-                   <tr><td bgcolor="#eeeeee"><table width=100%><tr><td><font size=-1><b>program</b></font></td><td align=right>
+                   <tr><td bgcolor="#eeeeee"><table width=100%><tr><td><font size=-1><b>program</b></font></td><td>
 
            <font size=-1><b>sources</b></font></td></tr>
 
