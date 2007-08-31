@@ -7,7 +7,7 @@ $title = "SMLtoJs - A Standard ML to JavaScript Compiler";
 <body>
 <h2><? echo $title ?></h2>
 
-<h4>By Martin Elsman, 2007-08-08</h4>
+<h4>By Martin Elsman, 2007-08-31</h4>
 
 <hr>
 
@@ -166,7 +166,9 @@ license information.
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
-      <b>2007-08-08: </b>SMLtoJs <b>version 4.3.2</b> is available. 
+                       <b>2007-08-31: </b>SMLtoJs <b>version 4.3.3</b> is available.</td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2007-08-08: </b>SMLtoJs <b>version 4.3.2</b> is available.</td></tr>
                  </table>
              </td>
          </tr>
