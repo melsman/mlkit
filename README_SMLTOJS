@@ -3,10 +3,10 @@ This is file README_SMLTOJS                           mael 2007-08-07
 INTRODUCTION
 ------------
 
-SMLtoJs is a compiler from Standard ML to JavaScript, which allows
-programmers to enjoy the power of Standard ML static typing,
-higher-order functions, pattern matching, and modules for programming
-client-side web-applications.
+SMLtoJs (pronounced "SML toys") is a compiler from Standard ML to
+JavaScript, which allows programmers to enjoy the power of Standard ML
+static typing, higher-order functions, pattern matching, and modules
+for programming client-side web applications.
 
 SMLtoJs compiles all of Standard ML, including most of the Standard ML
 Basis Library. It also has support for calling JavaScript functions
@@ -59,7 +59,7 @@ SMLtoJs compiles on Debian Linux systems with MLton or MLKit
 installed. The SMLtoJS sources are available through an MLKit
 sourceforge svn checkout:
 
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.2new3/kit smltojs
+ $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.3/kit smltojs
 
 This command copies the sources to the directory smltojs.
 
@@ -114,21 +114,20 @@ Currently, SMLtoJs does not implement tail-calls properly, as all
 calls are translated into JavaScript calls. We are planning in the
 near future to implement tail-calls using trampolines.
 
-There is a known issue with a bug in the following tests:
+There is a known issue with a bug in the following test (in some cases, 
+the implementation pretty prints reals slightly different than 
+suggested by the spec):
 
-string
-------
- test23: WRONG
- test24: WRONG
+  real
+  ----
+   test13c: WRONG
 
-intinf
-------
- test20e: overflow...
+There are plenty of possibilities for further improvements, including:
 
-bytechar
---------
- test42: WRONG
- test43: WRONG
+ * Using numbers to represent constructors (instead of strings).
+
+ * Unboxing of datatypes; currently, a boxed representation is used
+   for lists, for example.
 
 COPYRIGHT AND LICENSE
 ---------------------

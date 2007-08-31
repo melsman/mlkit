@@ -185,15 +185,7 @@ fun appi f es =
 
 fun stToE (st : Js) : Js = StToE st
 
-(*
-fun returnJs (e: Js) : Js =
-    case unPar e of
-      StToE st => st
-    | js => $"return " & js & $";\n"
-*)
-
 val unitValueJs = "0"
-
 
 (* 
 
@@ -272,9 +264,6 @@ fun pToJs2 name e1 e2 =
     | "__lesseq_real" => parJs(e1 & $"<=" & e2)
     | "__greatereq_real" => parJs(e1 & $">=" & e2)
     | "__greater_real" => parJs(e1 & $">" & e2)
-(*
-    | "__equal_real" => e1 & $" == " & e2 
-*)
     | "__bytetable_sub" => parJs e1 & $".charCodeAt" & parJs e2
     | "concatStringML" => parJs(e1 & $"+" & e2)
     | "word_sub0" => parJs e1 & sqparJs e2
@@ -377,7 +366,6 @@ fun pToJs1 name e =
       | "__word32_to_int_X_JS" => callPrim1 "SmlPrims.w32_to_i32_X" e
       | "__word31_to_int_X_JS" => callPrim1 "SmlPrims.w31_to_i32_X" e
       | "__word32_to_int32_X_JS" => callPrim1 "SmlPrims.w32_to_i32_X" e
-(*      | "__word32ub_to_int32ub_X" => callPrim1 "SmlPrims.w32_to_i32_X" e *)
       | "__word31_to_word32ub_X" => callPrim1 "SmlPrims.w31_to_w32_X" e
       | "__word31_to_word_X" => callPrim1 "SmlPrims.w31_to_w32_X" e
       | "__int32_to_word32_JS" => callPrim1 "SmlPrims.i32_to_w32" e
@@ -659,7 +647,7 @@ fun toString (js:Js) : string =
              StToE js => strs b (js,acc)
            | IfJs(e,e1,e2) => strs false ($"if " & parJs e & $" { " & returnJs e1 & $" } else { " & returnJs e2 & $" };\n", acc)
            | js => strs false ($"return " & js & $";\n",acc))
-        | strs b (IfJs(e,e1,e2),acc) = strs false (parJs e & $"?" & parJs e1 & $":" & parJs e2,acc)
+        | strs b (IfJs(e,e1,e2),acc) = strs false (parJs(parJs e & $"?" & parJs e1 & $":" & parJs e2),acc)
         | strs b (StToE js,acc) = 
           if b then strs false ($"__dummy = function(){ " & js & $" }()",acc)
           else strs false ($"function(){ " & js & $" }()",acc)
