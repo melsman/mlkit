@@ -21,7 +21,7 @@ structure General : GENERAL =
     exception Domain
     exception Div = Div
     exception Chr
-    exception Fail of string
+    exception Fail = Initial.Fail
     exception Interrupt = Interrupt
   
     fun exnName (e: exn) : string = prim("exnNameML", e)

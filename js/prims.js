@@ -244,3 +244,87 @@ SmlPrims.trunc = function(x) {
   if ( x >= 0 ) { return Math.floor(x); }
   return Math.ceil(x);
 }
+
+SmlPrims.getrealtime = function() {
+  var timebase = -2147483648;
+  var d = new Date();
+  var t = d.getTime();
+  var s = Math.floor(t/1000);
+  var u = (t % 1000) * 1000;
+  return Array(SmlPrims.chk_ovf_i32(s+timebase),SmlPrims.chk_ovf_i32(u));
+}
+
+SmlPrims.monthDays = function(Y,m) {
+  switch(m) {  
+    case 0 : 
+    case 2 :
+    case 4 :
+    case 6 :
+    case 7 :
+    case 9 :
+    case 11 : return 31;
+    case 1 : { if ( Y%4 == 0 && ( (Y%100 != 0) || ( Y%400 == 0 ) ) ) {
+                 return 29;
+               } else {
+                 return 28;
+               }
+             }
+    default : return 30;
+  }
+}
+
+SmlPrims.yearDays = function(Y,m,D) {
+  var d = D - 1;
+  var i;
+  for ( i = 0 ; i < m ; i ++ ) {
+    d += SmlPrims.monthDays(Y,i);
+  }
+  return d;
+}
+
+SmlPrims.localtime = function(t) {
+  var d = new Date(t*1000);
+  var H = d.getHours();
+  var M = d.getMinutes();
+  var Y = d.getFullYear();
+  var D = d.getDate();
+  var wd = d.getDay();
+  var m = d.getMonth();
+  var yd = SmlPrims.yearDays(Y,m,D);
+  var S = d.getSeconds();
+  var dst = -1;
+  return Array(H,dst,D,M,m,S,wd,yd,Y);
+}
+
+SmlPrims.gmtime = function(t) {
+  var d = new Date(t*1000);
+  var H = d.getUTCHours();
+  var M = d.getUTCMinutes();
+  var Y = d.getUTCFullYear();
+  var D = d.getUTCDate();
+  var wd = d.getUTCDay();
+  var m = d.getUTCMonth();
+  var yd = SmlPrims.yearDays(Y,m,D);
+  var S = d.getUTCSeconds();
+  var dst = -1;
+  return Array(H,dst,D,M,m,S,wd,yd,Y);
+}
+
+SmlPrims.mktime = function(r) {
+  var H = r[0];
+  var D = r[2];
+  var M = r[3];
+  var m = r[4];
+  var S = r[5];
+  var Y = r[8];
+  var d = new Date(Y,m,D,H,M,S,0);
+  var t = d.getTime();
+  return Math.floor(t / 1000);
+}
+
+// return localoffset in seconds
+SmlPrims.localoffset = function() {
+  var d = new Date();
+  var m = d.getTimezoneOffset();
+  return 60 * m;
+}

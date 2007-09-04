@@ -56,7 +56,12 @@ structure CompileJS: COMPILE_JS =
             end
 
     fun emit {target: target, filename} : string =
-	let val filename = filename ^ ".js"
+	let fun repair f =
+                let val {dir,file} = OS.Path.splitDirFile f
+                    val file = String.translate (fn #"." => "-" | c => Char.toString c) file
+                in OS.Path.joinDirFile{dir=dir,file=file}
+                end
+            val filename = repair filename ^ ".js"
         in ExpToJs.toFile (filename, #1 target)
          ; print ("[wrote JavaScript file:\t" ^ filename ^ "]\n")
          ; filename

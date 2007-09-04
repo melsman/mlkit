@@ -103,21 +103,21 @@ local
               end
           end
        end
-(*
+
     basis System =
        let open General String Int
        in let basis Time = let open Int Real IntInf in bas TIME.sml Time.sml end end
+
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
               basis Os = let open Path in bas OS.sml end end
-              basis Date = let open Int Real Time IntInf in bas DATE.sml Date.sml end end
+              basis Date = let open List Int Real Time IntInf in bas DATE.sml Date.sml end end
               basis Timer = let open Int Time IntInf in bas TIMER.sml Timer.sml end end
           in bas open Time Random Path Os Date Timer
              end
           end
        end
-*)
 in
   open General List ArrayVector String Bool Word Byte Text 
-       Int Real IntInf IntInfRep (* System *)
+       Int Real IntInf IntInfRep System
 end

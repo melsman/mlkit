@@ -5,8 +5,6 @@ structure Time : TIME =
     fun getrealtime() : {sec : int, usec : int} =
       prim("sml_getrealtime", ())
 
-    fun negpow10 p = Math.exp(Math.ln 10.0 * real (~p));
-
     (* Translation to obtain a longer time horizon.  Must agree with
        TIMEBASE used in sml_getrealtime. *)
 
@@ -22,6 +20,8 @@ structure Time : TIME =
 
     val zeroTime = {sec = timebase, usec = 0};
     fun now () = getrealtime ();
+
+    fun negpow10 p = Math.exp(Math.ln 10.0 * real (~p));
 
     fun fromSeconds s = 
 	if IntInf.<(s, 0) then raise Time else {sec=LargeInt.toInt s + timebase, usec=0};

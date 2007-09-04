@@ -37,11 +37,11 @@ and for executing JavaScript statements.
 <li><b>Standard ML Basis Library support.</b> SMLtoJs has support for most of
    the Standard ML basis library, including the following structures:
       <code>Array2 ArraySlice Array Bool Byte Char CharArray CharArraySlice
-      CharVector CharVectorSlice General Int Int31 Int32 IntInf
-      LargeWord ListPair List Math Option Pack32Big Pack32Little Real
-      StringCvt String Substring ArraySlice Text Vector VectorSlice
-      Word Word31 Word32 Word8 Word8Array Word8ArraySlice Word8Vector
-      Word8VectorSlice</code>.
+      CharVector CharVectorSlice Date General Int Int31 Int32 IntInf
+      LargeWord ListPair List Math Option OS.Path Pack32Big
+      Pack32Little Random Real StringCvt String Substring Text Time
+      Timer Vector VectorSlice Word Word31 Word32 Word8 Word8Array
+      Word8ArraySlice Word8Vector Word8VectorSlice</code>.
 </li>
 
 <li><b>JavaScript integration</b>. SMLtoJs has support for calling JavaScript

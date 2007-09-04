@@ -9,7 +9,10 @@ structure Timer : TIMER =
                    sysSec : int, sysUsec : int,
                    usrSec : int, usrUsec : int}
 
-    fun getrutime_ () : tusage = prim("sml_getrutime", ())
+    fun getrutime_ () : tusage = {gcSec=0,gcUsec=0,
+                                  sysSec=0,sysUsec=0,
+                                  usrSec=0,usrUsec=0}
+      (*prim("sml_getrutime", ())*)
 
     open Time
 
