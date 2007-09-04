@@ -209,6 +209,9 @@ fun wrapWord31 (js: Js) : Js =
 fun wrapWord32 (js: Js) : Js =
     parJs(js & $" & 0xFFFFFFFF")
 
+fun callPrim0 n =
+    $n & seq[]
+
 fun callPrim1 n e =
     $n & parJs e
 
@@ -392,13 +395,17 @@ fun pToJs1 name e =
       | "floorFloat" => chkOvfI32(callPrim1 "Math.floor" e)
       | "ceilFloat" => chkOvfI32(callPrim1 "Math.ceil" e)
       | "truncFloat" => chkOvfI32(callPrim1 "SmlPrims.trunc" e)
-
+      | "sml_localtime" => callPrim1 "SmlPrims.localtime" e
+      | "sml_gmtime" => callPrim1 "SmlPrims.gmtime" e
+      | "sml_mktime" => callPrim1 "SmlPrims.mktime" e
       | _ => die ("pToJs1 unimplemented: " ^ name)
 
 fun pToJs0 name =
     case name
      of "posInfFloat" => $"Infinity"
       | "negInfFloat" => parJs($"-Infinity")
+      | "sml_getrealtime" => callPrim0 "SmlPrims.getrealtime"
+      | "sml_localoffset" => callPrim0 "SmlPrims.localoffset"
       | _ => die ("pToJs0 unimplemented: " ^ name)
 
 fun pToJs name [] = pToJs0 name

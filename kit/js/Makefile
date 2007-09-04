@@ -8,6 +8,7 @@ publish:
 	ssh $(HOST) mkdir -p $(TDIR)/test/MLB/Js
 	scp -r test/MLB/Js/*.js $(HOST):$(TDIR)/test/MLB/Js/
 	scp -r test/*.html $(HOST):$(TDIR)/test/
+	scp -r test/*.sml $(HOST):$(TDIR)/test/
 
 clean:
 	$(MAKE) -C test clean
