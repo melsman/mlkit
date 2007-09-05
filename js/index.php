@@ -7,7 +7,7 @@ $title = "SMLtoJs - A Standard ML to JavaScript Compiler";
 <body>
 <h2><? echo $title ?></h2>
 
-<h4>By Martin Elsman, 2007-08-31</h4>
+<h4>By Martin Elsman, 2007-09-05</h4>
 
 <hr>
 
@@ -50,7 +50,7 @@ and for executing JavaScript statements.
 <li><b>Simple DOM access</b>. Simple DOM access and support for installing Standard ML
    functions as DOM event handlers and timer call back functions.</li>
 
-<li><b>Optimization</b>. All Modules language constructs, including functors,
+<li><b>Optimization</b>. All Standard ML module language constructs, including functors,
    functor applications, and signature constraints, are eliminated by
    SMLtoJs at compile time. Moreover, SMLtoJs performs a series of
    compile time optimizations, including function inlining and
@@ -74,7 +74,7 @@ SMLtoJs compiles on Debian Linux systems with MLton or MLKit
 installed. The SMLtoJS sources are available through an MLKit
 sourceforge svn checkout:
 <pre>
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.3/kit smltojs
+ $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.4/kit smltojs
 </pre>
 This command copies the sources to the directory smltojs.
 </p>
@@ -166,6 +166,8 @@ license information.
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2007-09-05: </b>SMLtoJs <b>version 4.3.4</b> is available.</td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-08-31: </b>SMLtoJs <b>version 4.3.3</b> is available.</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-08-08: </b>SMLtoJs <b>version 4.3.2</b> is available.</td></tr>
@@ -211,6 +213,9 @@ license information.
 <a href="test/real.html">Test: real</a> </td><td><a href="test/real.sml">src</a></td></tr><tr><td>
 <a href="test/substring.html">Test: substring</a> </td><td><a href="test/substring.sml">src</a></td></tr><tr><td>
 <a href="test/word8vectorslice.html">Test: word8vectorslice</a> </td><td><a href="test/word8vectorslice.sml">src</a></td></tr><tr><td>
+<a href="test/unixpath.html">Test: unixpath</a> </td><td><a href="test/unixpath.sml">src</a></td></tr><tr><td>
+<a href="test/date.html">Test: date</a> </td><td><a href="test/date.sml">src</a></td></tr><tr><td>
+<a href="test/time.html">Test: time</a> </td><td><a href="test/time.sml">src</a></td></tr><tr><td>
 <a href="test/exec.html">Test: exec</a> </td><td><a href="test/exec.sml">src</a></td></tr><tr><td>
 <a href="test/counter.html">Test: counter</a> </td><td><a href="test/counter.sml">src</a></td></tr><tr><td>
 <a href="test/temp.html">Test: temp</a> </td><td><a href="test/temp.sml">src</a></td></tr><tr><td>

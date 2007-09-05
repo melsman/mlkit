@@ -1,0 +1,14 @@
+SMLtoJs NEWS file
+
+* mael 2007-09-05: Support for the following Basis Library structures:
+  Date, Time, Timer, Random, OS.Path and related test pages.
+
+* mael 2007-09-05: Change in target file names to avoid .sml.js
+  extensions. Such extensions break compatibility with SMLserver, which
+  are setup to handle .sml-extensions...
+
+* mael 2007-08-31: SMLtoJs version 4.3.3 is released.
+
+* mael 2007-08-31: Various bug fixes.
+
+* mael 2007-08-08: SMLtoJs version 4.3.2 is released.
