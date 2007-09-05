@@ -9,6 +9,7 @@ publish:
 	scp -r test/MLB/Js/*.js $(HOST):$(TDIR)/test/MLB/Js/
 	scp -r test/*.html $(HOST):$(TDIR)/test/
 	scp -r test/*.sml $(HOST):$(TDIR)/test/
+	scp prims.js index.php $(HOST):$(TDIR)/
 
 clean:
 	$(MAKE) -C test clean
