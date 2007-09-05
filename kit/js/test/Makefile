@@ -4,7 +4,7 @@ FILES=array2.sml int31.sml int.sml vectorslice.sml word8arrayslice.sml word8vect
  bytechar.sml int31_2.sml intinf.sml list.sml real.sml substring.sml word8vectorslice.sml time.sml date.sml \
  unixpath.sml
 
-MLBFILES=exec counter temp life
+MLBFILES=exec counter temp life cal
 
 TARGETS=$(FILES:%.sml=%.html)
 MLBTARGETS=$(MLBFILES:%=mlb%)
