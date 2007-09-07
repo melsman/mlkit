@@ -2,4 +2,5 @@ $SML_LIB/basis/basis.mlb
 $SML_LIB/basis/js.mlb
 HTML.sml
 Html.sml
+Web.sml
 ntemp.sml
