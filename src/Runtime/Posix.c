@@ -218,13 +218,13 @@ sml_lower(char *name, size_t rwx_mode, size_t flags, size_t perm, size_t i, size
 
 extern char **environ;
 
-int
-sml_exec (String path, int sl, int envl, int kind)
+uintptr_t
+sml_exec (String path, uintptr_t sl, int envl, int kind)
 {
   String elemML;
   int n, i;
   char **args, **env;
-  int list = sl;
+  uintptr_t list = sl;
   kind = convertIntToC(kind);
   for (n = 0; isCONS(list); list = tl(list))
   {
@@ -309,8 +309,8 @@ sml_pipe(uintptr_t triple)
   return triple;
 }
 
-int
-REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
+uintptr_t
+REG_POLY_FUN_HDR(sml_readVec,uintptr_t pair, Region sr, int fd, int n1)
 {
   int r, n;
   String s;
@@ -323,7 +323,7 @@ REG_POLY_FUN_HDR(sml_readVec,int pair, Region sr, int fd, int n1)
   {
     ((char *)&(s->data))[r] = 0;
   }
-  first(pair) = (int) s;
+  first(pair) = (uintptr_t) s;
   second(pair) = convertIntToML(r);
   return pair;
 }
@@ -965,8 +965,8 @@ REG_POLY_FUN_HDR(sml_getlogin, Region rs)
   return s;
 }
 
-int
-sml_gettime(int pair)
+uintptr_t
+sml_gettime(uintptr_t pair)
 {
   time_t t;
   mkTagTripleML(pair);
@@ -982,8 +982,8 @@ sml_gettime(int pair)
   return pair;
 }
 
-int
-REG_POLY_FUN_HDR(sml_ttyname, int pair, Region rs, int fd)
+uintptr_t
+REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, int fd)
 {
   char *buf;
   int i = 100, r;
@@ -997,14 +997,14 @@ REG_POLY_FUN_HDR(sml_ttyname, int pair, Region rs, int fd)
     if (!buf)
     {
       first(pair) = convertIntToML(errno);
-      second(pair) = (int) NULL;
+      second(pair) = (uintptr_t) NULL;
     }
     buf[i-1] = 0;
     r = ttyname_r(fd, buf, i-1);
     if (r == 0)
     {
       first(pair) = convertIntToML(0);
-      second(pair) = (int) REG_POLY_CALL(convertStringToML, rs, buf);
+      second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, rs, buf);
       free(buf);
       return pair;
     }
@@ -1013,7 +1013,7 @@ REG_POLY_FUN_HDR(sml_ttyname, int pair, Region rs, int fd)
     i <<= 1;
   } while (r == ERANGE);
   first(pair) = convertIntToML(r);
-  second(pair) = (int) NULL;
+  second(pair) = (uintptr_t) NULL;
   return pair;
 }
 

@@ -325,7 +325,7 @@ sml_mkdir(String path, int exn)                        /* SML Basis */
 
 
 int 
-sml_modtime(int vAddr, String path, int exn)             /* SML Basis */
+sml_modtime(uintptr_t vAddr, String path, int exn)             /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 ) 
@@ -348,7 +348,7 @@ sml_rmdir(String path, int exn)              /* SML Basis */
 }
 
 void 
-sml_settime(String path, int time, int exn)     /* SML Basis */
+sml_settime(String path, uintptr_t time, int exn)     /* SML Basis */
 {
   struct utimbuf tbuf;
   tbuf.actime = tbuf.modtime = (long)(get_d(time));
@@ -370,7 +370,7 @@ sml_filesize(String path, int exn)              /* SML Basis */
   return (convertIntToML(buf.st_size));
 }
 
-int 
+uintptr_t 
 sml_opendir(String path, int exn)           /* SML Basis */
 {
   DIR * dstr;    
@@ -380,11 +380,11 @@ sml_opendir(String path, int exn)           /* SML Basis */
       raise_exn(exn);
     }
   check_tag_scalar(dstr);
-  return (int)tag_scalar(dstr); 
+  return (uintptr_t)tag_scalar(dstr); 
 }
 
 String
-REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v, int exn)    /* SML Basis */
+REG_POLY_FUN_HDR(sml_readdir, Region rAddr, uintptr_t v, int exn)    /* SML Basis */
 {
   struct dirent *direntry;
   String res;
@@ -404,7 +404,7 @@ REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v, int exn)    /* SML Basis */
 }
 
 void 
-sml_rewinddir(int v)            /* SML Basis */
+sml_rewinddir(uintptr_t v)            /* SML Basis */
 {
   DIR *dir_ptr;
 
@@ -414,7 +414,7 @@ sml_rewinddir(int v)            /* SML Basis */
 }
 
 void 
-sml_closedir(int v, int exn)            /* SML Basis */
+sml_closedir(uintptr_t v, int exn)            /* SML Basis */
 {
   DIR *dir_ptr;
 
@@ -432,12 +432,13 @@ sml_errno(void)             /* SML Basis */
   return convertIntToML((size_t) errno);                 // not thread-safe!!
 }
 
+// FIXME
 String
 REG_POLY_FUN_HDR(sml_errormsg, Region rAddr, int errnum)    /* SML Basis */
 {
   char *res;
   res = strerror(convertIntToC(errnum));
-  if ( (int)res == EINVAL )
+  if ( (uintptr_t)res == EINVAL )
     res = "(Unknown error)";
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
@@ -513,8 +514,8 @@ REG_POLY_FUN_HDR(sml_realpath, Region rAddr, String path, int exn)  /* SML Basis
   return REG_POLY_CALL(convertStringToML, rAddr, result);
 }
 
-int 
-sml_devinode(int vAddr, String path, int exn)             /* SML Basis */
+uintptr_t 
+sml_devinode(uintptr_t vAddr, String path, int exn)             /* SML Basis */
 {
   struct stat buf;
   if (stat(&(path->data), &buf) == -1) 
@@ -522,8 +523,8 @@ sml_devinode(int vAddr, String path, int exn)             /* SML Basis */
       raise_exn(exn);
     }
   // Return a pair of the device and the inode
-  first(vAddr) = convertIntToML((int)buf.st_dev);
-  second(vAddr) = convertIntToML((int)buf.st_ino);
+  first(vAddr) = convertIntToML((uintptr_t)buf.st_dev);
+  second(vAddr) = convertIntToML((uintptr_t)buf.st_ino);
   mkTagPairML(vAddr);
   return vAddr;
 }
@@ -566,8 +567,8 @@ outputBinStream(uintptr_t os1, String s, uintptr_t exn)
   return mlUNIT;
 }
 
-int
-sml_microsleep(int pair, int s, int u)
+uintptr_t
+sml_microsleep(uintptr_t pair, int s, int u)
 {
   int r;
   struct timespec req, rem;

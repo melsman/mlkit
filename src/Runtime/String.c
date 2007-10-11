@@ -378,6 +378,6 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
 void 
 printNum(ssize_t n) 
 {
-  printf("Num: %d\n",convertIntToC(n));
+  printf("Num: %zd\n",convertIntToC(n));
   return;
 }

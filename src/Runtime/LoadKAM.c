@@ -128,7 +128,7 @@ labelMapNew(void)
 void
 printLabelId(label lab,uintptr_t id)
 {
-  printf(" Lab(%ld,%s) -> %d\n",lab->id,&(lab->base),id);
+  printf(" Lab(%ld,%s) -> %zd\n",lab->id,&(lab->base),id);
 }
 
 void
@@ -716,7 +716,7 @@ interpLoadExtend(Interp* interp, const char* file, serverstate ss)
 
 #define GLOBAL_REGION(n) { \
   debug(printf("Allocating global region %d at sp=%x\n",(n),sp)); \
-  *(ds + (n)) = (int) allocateRegion((Ro*) sp, &topRegion); \
+  *(ds + (n)) = (uintptr_t) allocateRegion((Ro*) sp, &topRegion); \
   offsetSP(sizeRo); \
 }
 

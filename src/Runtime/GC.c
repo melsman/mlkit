@@ -414,7 +414,7 @@ size_lobj (size_t tag)
   case TAG_TABLE:
     return (sizeof(void *))*(get_table_size(tag) + 1);
   default:
-    printf("tag_kind(tag) = %x (%d) - tag = %d\n", tag_kind(tag), tag_kind(tag), tag);
+    printf("tag_kind(tag) = %zx (%zd) - tag = %zd\n", tag_kind(tag), tag_kind(tag), tag);
     die("GC.size_lobj");
     exit(2);
   }
@@ -980,7 +980,7 @@ evacuate(uintptr_t obj)
       // obj_ptr points at slot before the actual value
       copy_to_gen = target_gen(gen, rp, obj_ptr+1); 
       new_obj_ptr = acopy_pair(copy_to_gen, obj_ptr);
-      *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
+      *(obj_ptr+1) = (uintptr_t)new_obj_ptr; // install forward pointer
       break;
     }
   case RTYPE_REF:
@@ -993,7 +993,7 @@ evacuate(uintptr_t obj)
       // obj_ptr points at slot before the actual value
       copy_to_gen = target_gen(gen, rp, obj_ptr+1);
       new_obj_ptr = acopy_ref(copy_to_gen, obj_ptr);
-      *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
+      *(obj_ptr+1) = (uintptr_t)new_obj_ptr; // install forward pointer
       break;
     }
   case RTYPE_TRIPLE:
@@ -1004,7 +1004,7 @@ evacuate(uintptr_t obj)
       // obj_ptr points at slot before the actual value
       copy_to_gen = target_gen(gen, rp, obj_ptr+1);
       new_obj_ptr = acopy_triple(copy_to_gen, obj_ptr);
-      *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
+      *(obj_ptr+1) = (uintptr_t)new_obj_ptr; // install forward pointer
       break;
     }
   default:   // Object is tagged 
@@ -1019,7 +1019,7 @@ evacuate(uintptr_t obj)
 #ifdef CHECK_GC
 	  if ( ! points_into_tospace(*obj_ptr) )
 	    {
-	      printf("*obj_ptr=0x%x - obj_ptr=%p - rp=%p - gen=%p - rtype(*gen)=%x\n", *obj_ptr, obj_ptr, rp, gen, rtype(*gen));
+	      printf("*obj_ptr=0x%zx - obj_ptr=%p - rp=%p - gen=%p - rtype(*gen)=%zx\n", *obj_ptr, obj_ptr, rp, gen, rtype(*gen));
 	      die ("forward ptr check failed\n");
 	    }
 	  else
@@ -1046,7 +1046,7 @@ evacuate(uintptr_t obj)
      #endif
       set_gen_status_SOME(*copy_to_gen);
     }
-  return (unsigned int)new_obj_ptr;
+  return (uintptr_t)new_obj_ptr;
 }
 
 static uintptr_t*
@@ -1327,7 +1327,7 @@ gc(uintptr_t **sp, size_t reg_map)
 
   if ( verbose_gc ) 
     {
-      fprintf(stderr,"[%s#%d",
+      fprintf(stderr,"[%s#%zd",
 #ifdef ENABLE_GEN_GC	      
 	      (is_major_p)?("GC"):("gc"),
 #else
@@ -1740,7 +1740,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	  FRAG_sum = FRAG_sum + FRAG;
 	}
 
-      fprintf(stderr,"%ldkb(%2.0f%%)+L%dkb -> %ldkb(%2.0f%%)+L%dkb, FL:%dkb, ",
+      fprintf(stderr,"%ldkb(%2.0f%%)+L%zdkb -> %ldkb(%2.0f%%)+L%zdkb, FL:%zdkb, ",
 	      pages_from_space,
 	      region_utilize(pages_from_space, bytes_from_space),
 	      lobjs_beforegc / 1024,
@@ -1769,7 +1769,7 @@ gc(uintptr_t **sp, size_t reg_map)
 
 void
 report_dataspace(void) {
-  printf ("data_begin_addr = %p\ndata_end_addr = %p\ndifference = %d\n",
+  printf ("data_begin_addr = %p\ndata_end_addr = %p\ndifference = %td\n",
 	  data_begin_addr, data_end_addr,
 	  data_end_addr - data_begin_addr);
   return;

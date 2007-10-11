@@ -519,7 +519,7 @@ allocateRegion(Region r
 		      , topRegionCell
 #endif
 		      );
-  r = (Region)setInfiniteBit((int)r);
+  r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
@@ -532,7 +532,7 @@ allocatePairRegion(Region r)
 #ifdef ENABLE_GEN_GC
   set_pairregion(r->g1);
 #endif /* ENABLE_GEN_GC */
-  r = (Region)setInfiniteBit((int)r);
+  r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
@@ -544,7 +544,7 @@ allocateArrayRegion(Region r)
 #ifdef ENABLE_GEN_GC
   set_arrayregion(r->g1);
 #endif /* ENABLE_GEN_GC */
-  r = (Region)setInfiniteBit((int)r);
+  r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
@@ -556,7 +556,7 @@ allocateRefRegion(Region r)
 #ifdef ENABLE_GEN_GC
   set_refregion(r->g1);
 #endif /* ENABLE_GEN_GC */
-  r = (Region)setInfiniteBit((int)r);
+  r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
@@ -568,7 +568,7 @@ allocateTripleRegion(Region r)
 #ifdef ENABLE_GEN_GC
   set_tripleregion(r->g1);
 #endif /* ENABLE_GEN_GC */
-  r = (Region)setInfiniteBit((int)r);
+  r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 #endif /*ENABLE_GC*/
@@ -1043,7 +1043,7 @@ allocRegionInfiniteProfiling(Region r, size_t regionId)
 
   TOP_REGION = r;
 
-  r = (Region)setInfiniteBit((int)r);
+  r = (Region)setInfiniteBit((uintptr_t)r);
 
   debug(printf("exiting]\n"));
 
