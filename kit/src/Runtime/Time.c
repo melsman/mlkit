@@ -14,6 +14,7 @@
 
 #define tm2cal(tptr)   mktime(tptr)
 
+// FIXME
 /* The following must agree with timebase in basislib/Time.sml */
 #ifdef TAG_VALUES
 #define TIMEBASE (-1073741824)
@@ -21,14 +22,14 @@
 #define TIMEBASE (Min_Int)
 #endif
 
-int 
+uintptr_t 
 get_time_base(int dummy) 
 {
   return convertIntToML(TIMEBASE);
 }
 
-int 
-sml_getrealtime (int vAddr) 
+uintptr_t 
+sml_getrealtime (uintptr_t vAddr) 
 {
   struct timeval tp;
   gettimeofday(&tp, NULL);
@@ -38,8 +39,8 @@ sml_getrealtime (int vAddr)
   return vAddr;
 }
 
-int 
-sml_localtime (int vAddr, int v) 
+uintptr_t 
+sml_localtime (uintptr_t vAddr, uintptr_t v) 
 {
   struct tm tmr;
   struct tm *tmrp;
@@ -58,8 +59,8 @@ sml_localtime (int vAddr, int v)
   return vAddr;
 }
 
-int 
-sml_gmtime (int vAddr, int r) 
+uintptr_t 
+sml_gmtime (uintptr_t vAddr, uintptr_t r) 
 {
   struct tm tmr, *tmrp;
   time_t clock = (long)(get_d(r));
@@ -77,8 +78,8 @@ sml_gmtime (int vAddr, int r)
   return vAddr;
 }
 
-int 
-sml_mktime (int vAddr, int v) 
+uintptr_t 
+sml_mktime (uintptr_t vAddr, uintptr_t v) 
 {
   struct tm tmr;
   tmr.tm_hour = convertIntToC(elemRecordML(v,0));
@@ -96,7 +97,7 @@ sml_mktime (int vAddr, int v)
 }
 
 String
-REG_POLY_FUN_HDR(sml_asctime, Region rAddr, int v, int exn) 
+REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn) 
 {
   struct tm tmr;
   char *r;
@@ -119,7 +120,7 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, int v, int exn)
 }
 
 String
-REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, int v, int exn) 
+REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, uintptr_t v, int exn) 
 {
   struct tm tmr;
   int ressize;
@@ -143,8 +144,8 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, int v, int exn)
 #undef BUFSIZE
 }
 
-int 
-sml_localoffset (int vAddr) 
+uintptr_t 
+sml_localoffset (uintptr_t vAddr) 
 {
   struct tm gmt;
   time_t t1, t2, td;
@@ -158,8 +159,8 @@ sml_localoffset (int vAddr)
   return vAddr;
 }
 
-int 
-sml_getrutime(int vAddr) 
+uintptr_t 
+sml_getrutime(uintptr_t vAddr) 
 {
   struct rusage rusages;
   getrusage(RUSAGE_SELF, &rusages);

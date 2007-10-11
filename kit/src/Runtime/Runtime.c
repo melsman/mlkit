@@ -91,11 +91,11 @@ terminateML (long status)
   if ( report_gc || verbose_gc )
     { 
       alloc_total += alloc_period;
-      fprintf(stderr, "[GC(%dms): %d collections", time_gc_all_ms, num_gc);
+      fprintf(stderr, "[GC(%zdms): %zd collections", time_gc_all_ms, num_gc);
 #ifdef ENABLE_GEN_GC
-      fprintf(stderr, " (%d major)", num_gc_major);
+      fprintf(stderr, " (%zd major)", num_gc_major);
 #endif
-      fprintf(stderr, ", %dkb rpages", rp_total);
+      fprintf(stderr, ", %zdkb rpages", rp_total);
     }
 
   if ( report_gc )
@@ -126,9 +126,9 @@ size_t failNumber = SIZE_MAX;
 size_t syserrNumber = SIZE_MAX;
 
 void
-sml_setFailNumber(int ep, int i)
+sml_setFailNumber(uintptr_t ep, int i)
 {
-  int e = first((int) ep);
+  uintptr_t e = first(ep);
   switch (convertIntToC(i))
   {
     case 1:
@@ -142,9 +142,9 @@ sml_setFailNumber(int ep, int i)
 }
 
 void 
-uncaught_exception (String exnStr, unsigned long n, int ep) 
+uncaught_exception (String exnStr, unsigned long n, uintptr_t ep) 
 { 
-  int a;
+  uintptr_t a;
   fprintf(stderr,"uncaught exception "); 
   fflush(stderr);
   fputs(&(exnStr->data), stderr);
@@ -201,8 +201,8 @@ equalTable(Table x, Table y)
 /*----------------------------------------------------------------------*
  *equalPolyML:                                                            *
  *----------------------------------------------------------------------*/
-int 
-equalPolyML(int x, int y) 
+uintptr_t 
+equalPolyML(uintptr_t x, uintptr_t y) 
 {
   int i;
 
@@ -232,8 +232,8 @@ L0:
       return mlTRUE;
     }
     if (val_tag_kind(x) == TAG_CON1) { /* Why not check the constructor tags? 10/01/1999, Niels */
-      x = *(((int *)x)+1);
-      y = *(((int *)y)+1);
+      x = *(((uintptr_t *)x)+1);
+      y = *(((uintptr_t *)y)+1);
       goto L0;
     }
     /*    if (valTagKind(x) == valueTagReal) {
@@ -246,13 +246,13 @@ L0:
     }
     if (val_tag_kind(x) == TAG_RECORD) {
       for (i = 1; i <= get_record_size(x); i++) {
-	if (equalPolyML(*(((int *)x)+i), *(((int *)y)+i)) == mlFALSE)
+	if (equalPolyML(*(((uintptr_t *)x)+i), *(((uintptr_t *)y)+i)) == mlFALSE)
 	  return mlFALSE;
       }
       return mlTRUE;
     }
     if (val_tag_kind(x) == TAG_REF) {
-      if ((((int *)x)+1) == (((int *)y)+1)) 
+      if ((((uintptr_t *)x)+1) == (((uintptr_t *)y)+1)) 
 	return mlTRUE;
       else 
 	return mlFALSE;
@@ -318,7 +318,7 @@ extern void code(void);
 #endif
 
 #ifndef APACHE
-ssize_t 
+int 
 main(int argc, char *argv[]) 
 {
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))

@@ -105,6 +105,8 @@ typedef unsigned int uint32;
 	pc = (bytecode_t) *env;                                                           \
 }
 
+// FIXME setjmp and longjmp only handles integers. Thus an exception map is needed.
+
 #define Setup_for_c_call  int return_value; \
                           if( (return_value = setjmp(global_exn_env)) == 0 ) {
 
@@ -1143,7 +1145,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
 
       Instruct(PUSH_EXN_PTR): {
 	debug(printf("PUSH_EXN_PTR\n"));
-	pushDef((unsigned long)exnPtr);
+	pushDef((uintptr_t)exnPtr);
 	exnPtr = sp - 1;                    // there is no stack-macro to do this!
 	Next;
       }

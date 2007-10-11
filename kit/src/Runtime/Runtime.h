@@ -58,14 +58,14 @@
  *----------------------------------------------------------------*/
 
 #ifdef TAG_VALUES
-int equalPolyML(int x, int y);
+uintptr_t equalPolyML(uintptr_t x, uintptr_t y);
 #endif
 
 int die (const char *);
 int die2 (const char *, const char *);
 long terminate (long status);    /* status is a C value */
 long terminateML (long status);  /* status is an ML value */
-void uncaught_exception (StringDesc *exnStr, unsigned long, int);
+void uncaught_exception (StringDesc *exnStr, unsigned long, uintptr_t);
 
 #endif /* RUNTIME_H */
 
