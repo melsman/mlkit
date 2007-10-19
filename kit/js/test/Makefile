@@ -10,7 +10,11 @@ TARGETS=$(FILES:%.sml=%.html)
 MLBTARGETS=$(MLBFILES:%=mlb%)
 
 SML_LIB=..
+
 SMLTOJS=../../bin/smltojs
+
+# Flapjax support (FX)
+SMLTOJS_FX=$(SMLTOJS) --jslibs flapjax.js
 
 all: $(TARGETS) $(MLBTARGETS)
 
@@ -20,6 +24,10 @@ all: $(TARGETS) $(MLBTARGETS)
 
 mlb%: Makefile %.sml %.mlb
 	SML_LIB=$(SML_LIB) $(SMLTOJS) -o $* $*.mlb
+	echo "<a href=\"$*.html\">Test: $*</a> (<a href=\"$*.sml\">src</a>)<br>" >> all.html
+
+fx%: Makefile %.sml %.mlb
+	SML_LIB=$(SML_LIB) $(SMLTOJS_FX) -o $* $*.mlb
 	echo "<a href=\"$*.html\">Test: $*</a> (<a href=\"$*.sml\">src</a>)<br>" >> all.html
 
 clean:
