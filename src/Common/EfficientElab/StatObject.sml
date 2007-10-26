@@ -999,9 +999,10 @@ structure StatObject: STATOBJECT =
 	     | TYVAR _ => die "make_equality"
 	     | RECTYPE r => RecType.apply make_equality0 r
 	     | CONSTYPE (ty_list, tyname) =>
-		if TyName.eq (tyname, TyName.tyName_REF) then ()
-		(* "ref" is a special case; take it out straight away,
-		 * otherwise we'll damage any tyvars within the arg to "ref".*)
+		if TyName.eq (tyname, TyName.tyName_REF) orelse
+                   TyName.eq (tyname, TyName.tyName_ARRAY) then ()
+		(* "ref" and "array" are special cases; take them out straight away,
+		 * otherwise we'll damage any tyvars within the args. *)
 		else if TyName.equality tyname then List.app make_equality0 ty_list
 		     else raise NotEquality
 	     | ARROW _ => raise NotEquality
