@@ -912,9 +912,13 @@ structure StatObject: STATOBJECT =
       fun of_scon sc =
 	case sc
 	  of SCon.INTEGER i =>
-	    if IntInf.>(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.maxInt))) then 
+	    if IntInf.>(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.maxInt))) orelse
+               IntInf.<(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.minInt)))
+            then 
 		simple_scon IntInf
-	    else if IntInf.>(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.maxInt))) then 
+	    else if IntInf.>(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.maxInt))) orelse
+                    IntInf.<(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.minInt)))
+            then 
 		let val tv = TyVar.fresh_overloaded [TyName.tyName_INT32,TyName.tyName_INTINF]
 		in {type_scon=from_TyVar tv, overloading=SOME tv}
 		end 		
@@ -1134,9 +1138,12 @@ structure StatObject: STATOBJECT =
 	      end
 	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=SOME tynames2, 
 					      rank, inst, ...}))) =>
-	      let val overloaded = SOME (TyName.Set.intersect tynames1 tynames2)
+	      let val overloadSet = TyName.Set.intersect tynames1 tynames2               
+                  val _ = if TyName.Set.isEmpty overloadSet then 
+                            raise Unify "unify_with_overloaded_tyvar: tyvars overloaded with distinct tynames"
+                          else ()
 		  val tvd = {equality = equality, id = id, base = base, rank = rank, 
-			     overloaded = overloaded, explicit = NONE, inst = inst}
+			     overloaded = SOME overloadSet, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
 	     | CONSTYPE (taus, tyname) =>

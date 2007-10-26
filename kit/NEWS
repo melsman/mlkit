@@ -1,5 +1,14 @@
 MLKit NEWS file
 
+ * mael 2007-10-26: Improved error message for a particular kind of
+   overloading resolution error. Elaboration of the program
+
+      val _ = fn (a,b) => (a + 1) + (b + 0w1)
+
+   results in the introduction of a type variable with an empty set
+   of overload possibilities. We now check during unification that
+   overloading sets do not become empty...
+
  * mael 2007-10-26: Bug fix: array types should admit equality even if
    the argument to the array type constructor does not. Bug report
    submitted by Vesa Karvonen.
