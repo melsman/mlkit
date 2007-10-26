@@ -130,41 +130,63 @@ structure CompilerEnv: COMPILER_ENV =
       in ARROWtype([record],[t])
       end
 
+    val boolVE =
+        initVE [(Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
+	        (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[]))]
+
+    val listVE = 
+        initVE [(Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
+				   [LambdaExp.TYVARtype tyvar_nil])),
+	        (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
+				    [LambdaExp.TYVARtype tyvar_cons]))]
+
+    val fragVE =
+        initVE [(Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
+				     [LambdaExp.TYVARtype tyvar_quote])),
+	        (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
+					 [LambdaExp.TYVARtype tyvar_antiquote]))]
+
     val initialVarEnv : VarEnv = 
-      initVE [(Ident.id_PRIM, PRIM),
-	       (Ident.id_EXPORT, EXPORT),
-	       (Ident.id_ABS, ABS),
-	       (Ident.id_NEG, NEG),
-	       (Ident.id_PLUS, PLUS),
-	       (Ident.id_MINUS, MINUS),
-	       (Ident.id_MUL, MUL),
-	       (Ident.id_DIV, DIV),
-	       (Ident.id_MOD, MOD),
-	       (Ident.id_LESS, LESS),
-	       (Ident.id_GREATER, GREATER),
-	       (Ident.id_LESSEQ, LESSEQ),
-	       (Ident.id_GREATEREQ, GREATEREQ),
-	       (Ident.resetRegions, RESET_REGIONS),
-	       (Ident.forceResetting, FORCE_RESET_REGIONS),
-	       (Ident.id_REF, REF),
-	       (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
-	       (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
-	       (Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
-				  [LambdaExp.TYVARtype tyvar_nil])),
-	       (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
-				   [LambdaExp.TYVARtype tyvar_cons])),
-	       (Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
-				    [LambdaExp.TYVARtype tyvar_quote])),
-	       (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
-					[LambdaExp.TYVARtype tyvar_antiquote])),		      
-	       (Ident.id_INTINF, CON(Con.con_INTINF,[],intinfType, [])),		      
-	       (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
-	       (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
-	       (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
-	       (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType)),
-	       (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType))
-	       ]
+        VarEnv.plus(VarEnv.plus(VarEnv.plus(boolVE,listVE),fragVE),
+         initVE [(Ident.id_PRIM, PRIM),
+	         (Ident.id_EXPORT, EXPORT),
+	         (Ident.id_ABS, ABS),
+	         (Ident.id_NEG, NEG),
+	         (Ident.id_PLUS, PLUS),
+	         (Ident.id_MINUS, MINUS),
+	         (Ident.id_MUL, MUL),
+	         (Ident.id_DIV, DIV),
+	         (Ident.id_MOD, MOD),
+	         (Ident.id_LESS, LESS),
+	         (Ident.id_GREATER, GREATER),
+	         (Ident.id_LESSEQ, LESSEQ),
+	         (Ident.id_GREATEREQ, GREATEREQ),
+	         (Ident.resetRegions, RESET_REGIONS),
+	         (Ident.forceResetting, FORCE_RESET_REGIONS),
+	         (Ident.id_REF, REF),
+(*
+	         (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
+	         (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
+	         (Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
+				    [LambdaExp.TYVARtype tyvar_nil])),
+	         (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
+				     [LambdaExp.TYVARtype tyvar_cons])),
+	         (Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
+				      [LambdaExp.TYVARtype tyvar_quote])),
+	         (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
+					  [LambdaExp.TYVARtype tyvar_antiquote])),		      
+*)
+	         (Ident.id_INTINF, CON(Con.con_INTINF,[],intinfType, [])),		      
+	         (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
+	         (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
+	         (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
+	         (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType)),
+	         (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType))
+	        ])
     local 
+      fun fromVarEnv ve = 
+          CENV {StrEnv=emptyStrEnv, VarEnv=ve, TyEnv=emptyTyEnv, PathEnv=emptyPathEnv}
+
       open TyCon TyName
       fun initialTyEnv() : TyEnv = 	
 	  TYENV (initMap [(tycon_INT31, ([tyName_INT31], emptyCEnv)),
@@ -183,9 +205,9 @@ structure CompilerEnv: COMPILER_ENV =
 			  (tycon_CHAR, ([tyName_WORD8], emptyCEnv)),
 			  (tycon_EXN, ([tyName_EXN], emptyCEnv)),
 			  (tycon_REF, ([tyName_REF], emptyCEnv)),
-			  (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
-			  (tycon_LIST, ([tyName_LIST], emptyCEnv)),
-			  (tycon_FRAG, ([tyName_FRAG], emptyCEnv)),
+			  (tycon_BOOL, ([tyName_BOOL], fromVarEnv boolVE)),
+			  (tycon_LIST, ([tyName_LIST], fromVarEnv listVE)),
+			  (tycon_FRAG, ([tyName_FRAG], fromVarEnv fragVE)),
 			  (tycon_INTINF, ([tyName_INTINF], emptyCEnv)),
 			  (*		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)), *)
 			  (tycon_UNIT, ([], emptyCEnv))

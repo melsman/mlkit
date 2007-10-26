@@ -1,7 +1,6 @@
 signature BOOL =
   sig
-    (* datatype bool = true | false *)
-    eqtype bool
+    datatype bool = datatype bool
     val not : bool -> bool
     val toString : bool -> string
     val scan       : (char, 'a) StringCvt.reader
