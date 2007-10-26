@@ -1872,7 +1872,8 @@ let
 	  if Set.member tyName_WORD31 ts then
 	    Type.WordDefault()
 	  else Type.Word32
-	else Crash.impossible "resolve_tv.hmm; maybe insert cases for string, etc"
+	else Crash.impossible ("resolve_tv.hmm; maybe insert cases for string, etc; ts = {" 
+                               ^ String.concatWith "," (map pr_TyName (Set.list ts)) ^ "}")
     end
 
   fun resolve_tau tau : OverloadingInfo.OverloadingInfo =
