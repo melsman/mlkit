@@ -110,7 +110,7 @@ structure TyName: TYNAME =
 	val tyName_ARRAY      = predef false{tycon=TyCon.tycon_ARRAY,      arity=1, equality=true}
 	val tyName_VECTOR     = predef false{tycon=TyCon.tycon_VECTOR,     arity=1, equality=true}
 	val tyName_CHARARRAY  = predef false{tycon=TyCon.tycon_CHARARRAY,  arity=0, equality=true}
-	val tyName_FOREIGNPTR = predef true {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=false}
+	val tyName_FOREIGNPTR = predef true {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=true}
 	val tyName_EXN        = predef false{tycon=TyCon.tycon_EXN,        arity=0, equality=false}
 	val _ = Rank.reset()
 	val tynamesPredefined = !bucket
