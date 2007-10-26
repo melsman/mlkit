@@ -1,7 +1,6 @@
 signature LIST =
   sig
-    (* datatype 'a list = nil | :: of 'a * 'a list *)
-    eqtype 'a list
+    datatype list = datatype list
     exception Empty
 
     val null : 'a list -> bool

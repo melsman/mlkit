@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+ * mael 2007-10-26: Signature BOOL now specifies true and
+   false. Signature LIST specifies :: and nil. Structure List declares
+   :: and nil. Structure Bool declares true and false.
+
  * mael 2007-10-26: Improved error message for a particular kind of
    overloading resolution error. Elaboration of the program
 

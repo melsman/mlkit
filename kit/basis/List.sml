@@ -1,7 +1,7 @@
 (*List.sml*)
 
 structure List : LIST = struct
-  type 'a list = 'a list
+  datatype list = datatype list
 
   exception Empty
 
