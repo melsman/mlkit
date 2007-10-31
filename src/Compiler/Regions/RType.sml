@@ -160,15 +160,15 @@ struct
                 in (FUN(mus1,eps,mus2), cone2) end
             | L.CONStype(tys,tyname)=>
               let val arity as (alpha_count, rhos_runtypes, eps_count) = 
-	  	    case lookup tyname
-		      of SOME arity => arity
-		       | NONE => die ("mkTy: type name " ^ TyName.pr_TyName tyname ^ " not declared")
+                    case lookup tyname
+                      of SOME arity => arity
+                       | NONE => die ("mkTy: type name " ^ TyName.pr_TyName tyname ^ " not declared")
                   val (cone, mus) = List.foldr mkMus (cone,[]) tys
-		  fun repeat2 ([],cone,rhos) = (cone, rev rhos)
-		    | repeat2 (rt::rts,cone,rhos) =
-		    let val (rho,cone') = E.freshRhoWithTy(rt,cone)
-		    in repeat2 (rts,cone',rho::rhos)
-		    end 
+                  fun repeat2 ([],cone,rhos) = (cone, rev rhos)
+                    | repeat2 (rt::rts,cone,rhos) =
+                    let val (rho,cone') = E.freshRhoWithTy(rt,cone)
+                    in repeat2 (rts,cone',rho::rhos)
+                    end 
                   val (cone, rhos) = repeat2(rhos_runtypes,cone,[]) 
 
 (*17/10/96-Martin
@@ -190,7 +190,7 @@ struct
                  end
       and mkMu(ty, cone) = 
           let val (tau, cone) = mkTy(ty,cone)
-	      val (rho,cone) = E.freshRhoWithTy(runtype tau, cone)
+              val (rho,cone) = E.freshRhoWithTy(runtype tau, cone)
           in
               ((tau,rho),cone)
           end
@@ -219,25 +219,25 @@ struct
 
   fun layout_list' f [ ] = NONE
     | layout_list' f l = SOME (Node{start = "[", finish = "]", indent = 1, 
-				    childsep = PP.RIGHT ", ",
-				    children = map f l})
+                                    childsep = PP.RIGHT ", ",
+                                    children = map f l})
               
   fun layout_tuple f [ ] = leaf ""
     | layout_tuple f [x] = f x
     | layout_tuple f l = Node{start = "(", finish = ")", indent = 1, 
-			      childsep = PP.RIGHT ", ",
-			      children = map f l}
+                              childsep = PP.RIGHT ", ",
+                              children = map f l}
               
   fun layout_tuple' f [ ] = NONE
     | layout_tuple' f [x] = SOME(f x)
     | layout_tuple' f l = SOME(Node{start = "(", finish = ")", indent = 1, 
-				    childsep = PP.RIGHT ", ",
-				    children = map f l})
+                                    childsep = PP.RIGHT ", ",
+                                    children = map f l})
 
   fun layout_tuple'' l = 
     let fun mk_list([],acc) = rev acc
-	  | mk_list(SOME t::rest, acc) = mk_list(rest,t::acc) 
-	  | mk_list(NONE::rest, acc) = mk_list(rest,acc)
+          | mk_list(SOME t::rest, acc) = mk_list(rest,t::acc) 
+          | mk_list(NONE::rest, acc) = mk_list(rest,acc)
     in layout_tuple' (fn x => x) (mk_list (l,[]))
     end
 
@@ -259,44 +259,44 @@ struct
           case ty of
             TYVAR v => layout_tyvar v
           | FUN(mus1,areff,mus2) =>
-	      let val children = [layout_arg_res mus1, layout_arrow_rec areff, layout_arg_res mus2]
-	      in if parenthesise then
-		   Node{start = "(", finish = ")", indent = 1, childsep = PP.NOSEP, children = children}
-		 else Node{start="", finish="", indent=1, childsep=PP.NOSEP, children=children}
-	      end
+              let val children = [layout_arg_res mus1, layout_arrow_rec areff, layout_arg_res mus2]
+              in if parenthesise then
+                   Node{start = "(", finish = ")", indent = 1, childsep = PP.NOSEP, children = children}
+                 else Node{start="", finish="", indent=1, childsep=PP.NOSEP, children=children}
+              end
           | CONSTYPE(tyname,[],[],[]) => 
               leaf (TyName.pr_TyName tyname)
           | CONSTYPE(tyname,mu_list,place_list,arreff_list) =>
               if omit_region_info 
               then case layout_tuple' (lay_mu_rec true) mu_list
-		     of SOME mu_tree =>
-		       Node{start = "", finish = "", indent = 0, 
-			    childsep = PP.RIGHT " ",
-			    children = [mu_tree, leaf (TyName.pr_TyName tyname)]}
-		      | NONE => leaf (TyName.pr_TyName tyname)
+                     of SOME mu_tree =>
+                       Node{start = "", finish = "", indent = 0, 
+                            childsep = PP.RIGHT " ",
+                            children = [mu_tree, leaf (TyName.pr_TyName tyname)]}
+                      | NONE => leaf (TyName.pr_TyName tyname)
               else
                 let val mu_tree =  layout_tuple' (lay_mu_rec true) mu_list
- 	  	    val place_list = if print_word_regions() then place_list
-				     else discard_word_rhos place_list
+                    val place_list = if print_word_regions() then place_list
+                                     else discard_word_rhos place_list
                     val rho_tree = layout_list' lay_node place_list
                     val effect_tree = layout_list' lay_node arreff_list
                 in case layout_tuple'' [mu_tree,rho_tree,effect_tree]
-		     of SOME t => Node{start = "", finish = "", indent = 0, 
-				       childsep = PP.RIGHT " ",
-				       children = [t, leaf (TyName.pr_TyName tyname)]}
-		      | NONE => leaf (TyName.pr_TyName tyname)
+                     of SOME t => Node{start = "", finish = "", indent = 0, 
+                                       childsep = PP.RIGHT " ",
+                                       children = [t, leaf (TyName.pr_TyName tyname)]}
+                      | NONE => leaf (TyName.pr_TyName tyname)
                 end
           | RECORD [] => leaf "unit"
           | RECORD mu_list =>
-		if parenthesise then Node{start = "(", finish = ")", childsep = PP.RIGHT "*", indent = 1,
-					 children = map (lay_mu_rec true) mu_list}
-		else Node{start = "", finish = "", childsep = PP.RIGHT "*", indent = 1,
-			  children = map (lay_mu_rec true) mu_list}
+                if parenthesise then Node{start = "(", finish = ")", childsep = PP.RIGHT "*", indent = 1,
+                                         children = map (lay_mu_rec true) mu_list}
+                else Node{start = "", finish = "", childsep = PP.RIGHT "*", indent = 1,
+                          children = map (lay_mu_rec true) mu_list}
 
     and lay_mu_rec parenthesise (tau,rho)= 
       if omit_region_info orelse (not(print_word_regions()) 
-				  andalso isWordRegion rho) then
-	lay_tau_rec parenthesise tau
+                                  andalso isWordRegion rho) then
+        lay_tau_rec parenthesise tau
       else layout_pair (lay_tau_rec false tau, lay_node rho)
 
     and layout_arg_res [mu] = lay_mu_rec true mu
@@ -318,14 +318,14 @@ struct
     in
       List.foldl u cone (BasisCompat.ListPair.zipEq(effs1,effs2))
       handle X =>  let val (lay_ty,_) = mk_layout false;
-		       fun dump(ty) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_ty ty, !Flags.colwidth)
-		   in
+                       fun dump(ty) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_ty ty, !Flags.colwidth)
+                   in
                      TextIO.output(!Flags.log, "ty1 = \n"); dump ty1;
                      TextIO.output(!Flags.log, "ty2 = \n"); dump ty2;
                      die ("unify: types do not unify. Exception " ^ exnName X ^ 
-			  " raised; length(effs1) = " ^ Int.toString(length effs1) ^ 
-			  " and length(effs2) = " ^ Int.toString (length effs2) ^ ". ")
-		   end
+                          " raised; length(effs1) = " ^ Int.toString(length effs1) ^ 
+                          " and length(effs2) = " ^ Int.toString (length effs2) ^ ". ")
+                   end
     end
 
   fun unify_mu (mu1, mu2:mu) cone: E.cone =
@@ -417,15 +417,15 @@ struct
          ([],[],[]) => if !Flags.print_types then lay_ty(tau) else PP.LEAF ""
        | _ => 
           let val children = 
-	          if print_effects() then 
+                  if print_effects() then 
                     (*print regions and effect and -perhaps- types: *)
-		    (if !Flags.print_types then map layout_tyvar alphas
-		     else [])  @  rho_trees  @  map lay_node_short epsilons
-		  else (if !Flags.print_types then map layout_tyvar alphas
-			else [])  @  (if print_regions() then  rho_trees
-				      else [])
-	    
-  	      val binders = PP.HNODE{start="",finish="",childsep=PP.RIGHT ",",
+                    (if !Flags.print_types then map layout_tyvar alphas
+                     else [])  @  rho_trees  @  map lay_node_short epsilons
+                  else (if !Flags.print_types then map layout_tyvar alphas
+                        else [])  @  (if print_regions() then  rho_trees
+                                      else [])
+            
+              val binders = PP.HNODE{start="",finish="",childsep=PP.RIGHT ",",
                                      children=children}
               
           in if !Flags.print_types 
@@ -434,13 +434,13 @@ struct
                     childsep = PP.RIGHT ".", 
                     children = [binders,lay_ty tau]}
              else (case children
-		     of [] => PP.LEAF ""
-		      | _ => if print_regions() orelse 
+                     of [] => PP.LEAF ""
+                      | _ => if print_regions() orelse 
                                 print_effects()
                                then Node{start = "[", finish = "]", 
                                          indent = 1, childsep = PP.NOSEP, 
-					 children = [binders]}
-			     else binders)
+                                         children = [binders]}
+                             else binders)
           end
       )
   in
@@ -476,16 +476,22 @@ struct
     let val old = case E.get_place_ty rho of SOME old => old | _ => die "maybe_increase_runtype"
         val new = runtype tau
     in
-	if old<>new then 
-	    if E.eq_effect(rho, E.toplevel_region_withtype_bot) then   (* This should not happen too often ; ughhh *)
-		(tau, E.toplevelRhoFromTy new)
-	    else
-		((case E.lub_runType(old,new) of 
-		      E.WORD_RT => 
-			  (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; mu)
-		    | rt => (E.setRunType rho rt; mu))
-		      handle _ => die "maybe_increase_runtime")
-	else mu
+        if old<>new then 
+            if E.eq_effect(rho, E.toplevel_region_withtype_bot) then   (* This should not happen too often ; ughhh *)
+                (tau, E.toplevelRhoFromTy new)
+            else
+                ((case E.lub_runType(old,new) of 
+                      E.WORD_RT => 
+                          (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; mu)
+                    | rt => (E.setRunType rho rt; mu))
+              handle X => 
+                let val (_,lay_mu) = mk_layout false;
+                    fun dump(mu) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_mu mu, !Flags.colwidth)
+                in
+                    TextIO.output(!Flags.log, "mu = \n"); dump mu;
+                    die "maybe_increase_runtime"
+                end)
+        else mu
     end
 
   (* instantiation of type schemes *)
@@ -594,12 +600,12 @@ struct
           val _ = List.app E.setInstance Sr
           val _ = List.app E.setInstance Se
 
-	  val Ty = #2(cp_ty tau)
+          val Ty = #2(cp_ty tau)
                                   (* this is where arrow effects are instantiated*)
-	  val (cone, updates) = E.instNodesClever (Sr @ Se) cone
+          val (cone, updates) = E.instNodesClever (Sr @ Se) cone
 
-	  val _ = List.app E.clearInstance Sr
-	  val _ = List.app E.clearInstance Se
+          val _ = List.app E.clearInstance Sr
+          val _ = List.app E.clearInstance Se
 
             (*val _ = footnote Profile.profileOff()*)
         in
@@ -614,23 +620,23 @@ struct
    *)
 
   fun runtype_place place = case E.get_place_ty place
-			      of SOME rt => rt
-			       | NONE => die "runtype_place"
+                              of SOME rt => rt
+                               | NONE => die "runtype_place"
 
   fun update_runtypes([],[]) = ()
     | update_runtypes(rho_a::actuals,rho_f::formals) =
         let val rt_a = runtype_place rho_a
-	    val rt_lub = E.lub_runType(rt_a,runtype_place rho_f)
+            val rt_lub = E.lub_runType(rt_a,runtype_place rho_f)
             val _ = if rt_lub = rt_a then ()
-		    else E.setRunType rho_a rt_lub
-	in update_runtypes(actuals,formals)
-	end
+                    else E.setRunType rho_a rt_lub
+        in update_runtypes(actuals,formals)
+        end
     | update_runtypes _ = die "update_runtypes"
 
   fun unify_with_toplevel_wordregion (cone, rhos) =
     let val rhos = List.filter isWordRegion rhos
     in foldl (fn (rho, cone) => 
-	      E.unifyRho(E.toplevel_region_withtype_word, rho) cone) 
+              E.unifyRho(E.toplevel_region_withtype_word, rho) cone) 
       cone rhos
     end
     
@@ -643,27 +649,27 @@ struct
           val rhos = map find rhos  and epsilons = map find epsilons 
           and places = map find places and arreffs = map find arreffs
 
-	  (* set types of places according to rhos *)
-	  val _ = update_runtypes(places, rhos)
+          (* set types of places according to rhos *)
+          val _ = update_runtypes(places, rhos)
 (*
-	  val _ = app (fn rho => case E.get_place_ty rho
-				   of SOME E.WORD_RT => die "instClever.quantified word region!!"
-				    | _ => ()) rhos 
+          val _ = app (fn rho => case E.get_place_ty rho
+                                   of SOME E.WORD_RT => die "instClever.quantified word region!!"
+                                    | _ => ()) rhos 
 *)
           val S = (BasisCompat.ListPair.zipEq(alphas,types),
                    BasisCompat.ListPair.zipEq(rhos,places),
                    BasisCompat.ListPair.zipEq(epsilons,arreffs))
                   handle _ => die "inst: type scheme and \
                                  \instantiation list have different arity"
-	  val (Ty,cone,updates) = instAux(S, tau) cone
-(*	  val cone = unify_with_toplevel_wordregion (cone, places) *)
+          val (Ty,cone,updates) = instAux(S, tau) cone
+(*        val cone = unify_with_toplevel_wordregion (cone, places) *)
         in (Ty,cone,updates)
         end
 
   fun inst sigma_il cone = 
       let val (a,cone,c) = instClever sigma_il cone
-	  val places = map E.find (#2(#2(sigma_il)))
-	  val cone = unify_with_toplevel_wordregion (cone, places)
+          val places = map E.find (#2(#2(sigma_il)))
+          val cone = unify_with_toplevel_wordregion (cone, places)
       in (a,cone)
       end
 
@@ -673,8 +679,8 @@ struct
         [] => NONE
       |  _ => SOME("regEffClos: escaping from generalisation: " 
                    ^ ListUtils.stringSep 
-			 "[" "]" ", " 
-			 (pp o E.layout_effect) effects ^ "\n")
+                         "[" "]" ", " 
+                         (pp o E.layout_effect) effects ^ "\n")
                   
    fun combine_messages(NONE, msg2) = msg2
      | combine_messages(msg1, NONE) = msg1
@@ -786,16 +792,16 @@ struct
 
   fun check_eff s e = 
       let fun check_rho s r = (* mael 2004-10-19 *)
-	  let val k = E.key_of_eps_or_rho r
-	  in if k = 1 andalso not(E.eq_effect(E.toplevel_region_withtype_top,r)) then
-	      die ("check_eff: " ^ s)
-	     else ()
-	  end
+          let val k = E.key_of_eps_or_rho r
+          in if k = 1 andalso not(E.eq_effect(E.toplevel_region_withtype_top,r)) then
+              die ("check_eff: " ^ s)
+             else ()
+          end
       in
-	  if E.is_put e orelse E.is_get e then
-	      check_rho (s ^ ".putget") (E.rho_of e)
-	  else if E.is_rho e then check_rho (s ^ ".rho") e
-	       else ()		  
+          if E.is_put e orelse E.is_get e then
+              check_rho (s ^ ".putget") (E.rho_of e)
+          else if E.is_rho e then check_rho (s ^ ".rho") e
+               else ()            
       end
 
 
@@ -819,20 +825,20 @@ struct
      (* if there are no potentially generalisable nodes, we can escape right away,
         without going into the expensive operation of contracting effects *)
      val _ = if List.exists (potentially_generalisable n) annotations then () 
-	     else raise MONOMORPHIC(B_1,FORALL([],[],[],tau),NONE)
+             else raise MONOMORPHIC(B_1,FORALL([],[],[],tau),NONE)
 
      (* make sure there is at most one generalisable secondary effect variable *)
      val reachable_nodes = E.subgraph annotations
 
      val _ = app (check_eff "regEffClos2") reachable_nodes
-	 handle X =>
-	      let
-		  val _ = logsay("\nregEffClos enter, tau = ");
-		  val (lay_ty, _) = mk_layout false
-		  val _ = PP.outputTree(logsay,lay_ty tau,!Flags.colwidth)
-		  val _ = print ("\nphi = " ^ PP.flatten1(E.layout_effect_deep phi) ^ "\n")
-	      in raise X
-	      end
+         handle X =>
+              let
+                  val _ = logsay("\nregEffClos enter, tau = ");
+                  val (lay_ty, _) = mk_layout false
+                  val _ = PP.outputTree(logsay,lay_ty tau,!Flags.colwidth)
+                  val _ = print ("\nphi = " ^ PP.flatten1(E.layout_effect_deep phi) ^ "\n")
+              in raise X
+              end
 
      val B_2 = unify_generic_secondary_epss(B_1,n,reachable_nodes, annotations)
 
@@ -992,14 +998,14 @@ struct
           in
             (List.all E.eq_effect
                         (BasisCompat.ListPair.zipEq
-			     (E.remove_duplicates(pfrv tau'),
+                             (E.remove_duplicates(pfrv tau'),
                               E.remove_duplicates(pfrv tau'')))
              )
             andalso
             ((*logsay "regions correspond\n";*)
              List.all E.sameEffect
                         (BasisCompat.ListPair.zipEq
-			     (E.remove_duplicates(pfev tau'),
+                             (E.remove_duplicates(pfev tau'),
                               E.remove_duplicates(pfev tau'')))
              )
           end
@@ -1189,16 +1195,16 @@ struct
         (FinMap.empty : (tyvar, place) FinMap.map, B : cone)))
   and unify_rhos_on_same_tyvars0 ((tau, rho), (ttr, B)) =
         (case tau of
-  	   TYVAR tyvar =>
-  	     (case FinMap.lookup ttr tyvar of
-  		SOME rho' => (ttr, E.unifyRho (rho, rho') B)
-  	      | NONE =>      (FinMap.add (tyvar, rho, ttr), B))
-  	 | CONSTYPE (tyname, mus, _, _) =>
-  	     unify_rhos_on_same_tyvars00 (mus, (ttr, B))
-  	 | RECORD mus => unify_rhos_on_same_tyvars00 (mus, (ttr, B))
-  	 | FUN (mus1, _, mus2) =>
-  	     unify_rhos_on_same_tyvars00 (mus1,
-  	     (unify_rhos_on_same_tyvars00 (mus2, (ttr, B)))))
+           TYVAR tyvar =>
+             (case FinMap.lookup ttr tyvar of
+                SOME rho' => (ttr, E.unifyRho (rho, rho') B)
+              | NONE =>      (FinMap.add (tyvar, rho, ttr), B))
+         | CONSTYPE (tyname, mus, _, _) =>
+             unify_rhos_on_same_tyvars00 (mus, (ttr, B))
+         | RECORD mus => unify_rhos_on_same_tyvars00 (mus, (ttr, B))
+         | FUN (mus1, _, mus2) =>
+             unify_rhos_on_same_tyvars00 (mus1,
+             (unify_rhos_on_same_tyvars00 (mus2, (ttr, B)))))
   and unify_rhos_on_same_tyvars00 (mus, (ttr, B)) =
         List.foldl unify_rhos_on_same_tyvars0 (ttr, B) mus
   
@@ -1207,67 +1213,67 @@ struct
      
   local
       fun size_of_tyname tyname =
-	if TyName.unboxed tyname then SOME 0
-	else if TyName.eq (tyname, TyName.tyName_REAL) then 
-	  SOME (RegConst.size_of_real ())
+        if TyName.unboxed tyname then SOME 0
+        else if TyName.eq (tyname, TyName.tyName_REAL) then 
+          SOME (RegConst.size_of_real ())
         else if (TyName.eq (tyname, TyName.tyName_WORD32)
-		 orelse TyName.eq (tyname, TyName.tyName_INT32)) then
-	  (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
-	  SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
-	else if (TyName.eq (tyname, TyName.tyName_STRING)
-		 orelse TyName.eq (tyname, TyName.tyName_CHARARRAY)
-		 orelse TyName.eq (tyname, TyName.tyName_ARRAY)
-		 orelse TyName.eq (tyname, TyName.tyName_VECTOR)) then NONE
-	else die ("S (CCALL ...): \nI am sorry, but c functions returning "
-		  ^ TyName.pr_TyName tyname
-		  ^ " are not supported yet.\n")
+                 orelse TyName.eq (tyname, TyName.tyName_INT32)) then
+          (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
+          SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
+        else if (TyName.eq (tyname, TyName.tyName_STRING)
+                 orelse TyName.eq (tyname, TyName.tyName_CHARARRAY)
+                 orelse TyName.eq (tyname, TyName.tyName_ARRAY)
+                 orelse TyName.eq (tyname, TyName.tyName_VECTOR)) then NONE
+        else die ("S (CCALL ...): \nI am sorry, but c functions returning "
+                  ^ TyName.pr_TyName tyname
+                  ^ " are not supported yet.\n")
 
       fun below_list _ = NONE (*i.e., `yes, we are below a list constructor'*)
 
       fun c_function_effects1 in_list ((tau_schema,_),(tau, rho)) =
         case (tau_schema, tau) 
-	  of (TYVAR _,           _) => []
-	   | (CONSTYPE (_, mus_schema, _, _), CONSTYPE (tyname, mus, rhos, epss)) =>
-	    if TyName.eq (tyname, TyName.tyName_LIST) then
-	      (case (mus_schema, mus, rhos) of
-		 ([mu1_schema], [mu1], [rho1]) =>
-		   (*rho is for cons cells & rho1 is for auxiliary pairs*)
-		   [(rho, NONE), (rho1, NONE)] @ c_function_effects1 below_list (mu1_schema,mu1)
-	       | _ => die "c_function_effects1: strange list type")
-	    else [(rho, in_list (size_of_tyname tyname))]
+          of (TYVAR _,           _) => []
+           | (CONSTYPE (_, mus_schema, _, _), CONSTYPE (tyname, mus, rhos, epss)) =>
+            if TyName.eq (tyname, TyName.tyName_LIST) then
+              (case (mus_schema, mus, rhos) of
+                 ([mu1_schema], [mu1], [rho1]) =>
+                   (*rho is for cons cells & rho1 is for auxiliary pairs*)
+                   [(rho, NONE), (rho1, NONE)] @ c_function_effects1 below_list (mu1_schema,mu1)
+               | _ => die "c_function_effects1: strange list type")
+            else [(rho, in_list (size_of_tyname tyname))]
            | (RECORD nil, RECORD nil) => [(rho, SOME 0)] (*unit is not allocated*)
-	   | (RECORD mus_schema, RECORD mus) =>
-  	     (rho, in_list (SOME (RegConst.size_of_record mus)))
-  	     :: List.concat (map (c_function_effects1 in_list) (BasisCompat.ListPair.zipEq(mus_schema,mus)
-								 handle _ => die "c_function_effects1.zip"))
-  	     (*it is assumed that List.concat does not concat the lists in
-  	      opposite order, i.e., that concat_list [[1,2], [3], [4]] is
-  	      [1,2,3,4] and not [4,3,1,2]*)
-	   | (FUN _, FUN (mus, eps0, mus')) => die "c_function_effects1 (FUN ...)"
-	   | _ => die "c_function_effects1: schema does not match instance"
+           | (RECORD mus_schema, RECORD mus) =>
+             (rho, in_list (SOME (RegConst.size_of_record mus)))
+             :: List.concat (map (c_function_effects1 in_list) (BasisCompat.ListPair.zipEq(mus_schema,mus)
+                                                                 handle _ => die "c_function_effects1.zip"))
+             (*it is assumed that List.concat does not concat the lists in
+              opposite order, i.e., that concat_list [[1,2], [3], [4]] is
+              [1,2,3,4] and not [4,3,1,2]*)
+           | (FUN _, FUN (mus, eps0, mus')) => die "c_function_effects1 (FUN ...)"
+           | _ => die "c_function_effects1: schema does not match instance"
   in
     fun c_function_effects (FORALL(_,_,_,tau), mu) : (place * int option) list =
       case tau
-	of FUN(_,_,[mu_schema]) => c_function_effects1 (fn i=>i) (mu_schema, mu)
-	 | _ => die "c_function_effects.expecting function type with one return value"
+        of FUN(_,_,[mu_schema]) => c_function_effects1 (fn i=>i) (mu_schema, mu)
+         | _ => die "c_function_effects.expecting function type with one return value"
   end
   
   local
     fun add_rho(rho,acc) = 
       case E.get_place_ty rho
-	of SOME E.WORD_RT => acc
-	 | SOME _ => if !(E.get_visited rho) then acc 
-		     else (E.get_visited rho := true; rho::acc)
-	 | NONE => die "add_rho"
+        of SOME E.WORD_RT => acc
+         | SOME _ => if !(E.get_visited rho) then acc 
+                     else (E.get_visited rho := true; rho::acc)
+         | NONE => die "add_rho"
     fun add_rhos(rhos,acc) = foldl add_rho acc rhos
     fun fv_mus (mus,acc) = foldl fv_mu acc mus
     and fv_mu ((tau,rho),acc) =
       case tau 
-	of TYVAR tyvar => acc
-	 | CONSTYPE (tyname, mus, rhos, nil) => fv_mus(mus,add_rho(rho,add_rhos(rhos,acc)))
-	 | CONSTYPE (tyname, _, _, _) => die "frv_except_tyvar_rhos.non-empty arrow-effect set"
-	 | RECORD mus => fv_mus(mus,add_rho(rho,acc))
-	 | FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1"
+        of TYVAR tyvar => acc
+         | CONSTYPE (tyname, mus, rhos, nil) => fv_mus(mus,add_rho(rho,add_rhos(rhos,acc)))
+         | CONSTYPE (tyname, _, _, _) => die "frv_except_tyvar_rhos.non-empty arrow-effect set"
+         | RECORD mus => fv_mus(mus,add_rho(rho,acc))
+         | FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1"
   in
     fun frv_except_tyvar_rhos mus =
       let val rhos = fv_mus (mus, nil)
@@ -1282,57 +1288,57 @@ struct
 
   fun sigma_for_c_function tyvars mu B =
         let val B = unify_rhos_on_same_tyvars mu B
-  	in
-  	  (case mu of
-  	     (FUN (mus1, eps0, mus2), rho) =>
-  	       let (* val _ = pr_mu "cf1" mu *)
-		   val rhos_get = frv_except_tyvar_rhos mus1
-  		   val rhos_put = frv_except_tyvar_rhos mus2
-(*		   val _ = pr_effects "rhos_get" rhos_get     
-		   val _ = pr_effects "rhos_put" rhos_put
+        in
+          (case mu of
+             (FUN (mus1, eps0, mus2), rho) =>
+               let (* val _ = pr_mu "cf1" mu *)
+                   val rhos_get = frv_except_tyvar_rhos mus1
+                   val rhos_put = frv_except_tyvar_rhos mus2
+(*                 val _ = pr_effects "rhos_get" rhos_get     
+                   val _ = pr_effects "rhos_put" rhos_put
 *)
-		   val _ = 
-		       case map E.mkGet rhos_get @ map E.mkPut rhos_put of
-			   nil => ()
-			 | rhos_gets_puts => 
-			       (*insert effects on the arrow in mu*)
-			       E.edge (eps0, E.mkUnion rhos_gets_puts)
-  	       in
-  		 let (* val _ = pr_mu "cf2" mu *)
-		     val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
-		   handle X => (print ("generalize_all failed\n"); raise X)
-  		 in (sigma, B)
-  		 end
-  	       end
-  	   | _ => die "sigma_for_c_function")
-	end
+                   val _ = 
+                       case map E.mkGet rhos_get @ map E.mkPut rhos_put of
+                           nil => ()
+                         | rhos_gets_puts => 
+                               (*insert effects on the arrow in mu*)
+                               E.edge (eps0, E.mkUnion rhos_gets_puts)
+               in
+                 let (* val _ = pr_mu "cf2" mu *)
+                     val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
+                   handle X => (print ("generalize_all failed\n"); raise X)
+                 in (sigma, B)
+                 end
+               end
+           | _ => die "sigma_for_c_function")
+        end
 
   (* Picklers *)
   val pu_mu : Type Pickle.pu -> (Type * place) Pickle.pu 
       = Pickle.cache "mu" (fn pu_Type => Pickle.nameGen "RType.mu" 
-			   (Pickle.pairGen(pu_Type,E.pu_effect)))
+                           (Pickle.pairGen(pu_Type,E.pu_effect)))
 
   val pu_mus : Type Pickle.pu -> (Type * place) list Pickle.pu
       = Pickle.cache "mus" (Pickle.nameGen "RType.mus" o Pickle.listGen o pu_mu)
 
   val pu_Type =
       let fun toInt (TYVAR _) = 0
-	    | toInt (CONSTYPE _) = 1
-	    | toInt (RECORD _) = 2
-	    | toInt (FUN _) = 3
-	  fun fun_TYVAR _ =
-	      Pickle.con1 TYVAR (fn TYVAR a => a | _ => die "pu_Type.TYVAR")
-	      L.pu_tyvar
-	  fun fun_CONSTYPE pu_Type =
-	      Pickle.con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_Type.CONSTYPE")
-	      (Pickle.tup4Gen0(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
-	  fun fun_RECORD pu_Type =
-	      Pickle.con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
-	      (pu_mus pu_Type)
-	  fun fun_FUN pu_Type =
-	      Pickle.debugUnpickle "FUN" 
-	      (Pickle.con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
-	       (Pickle.tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type)))
+            | toInt (CONSTYPE _) = 1
+            | toInt (RECORD _) = 2
+            | toInt (FUN _) = 3
+          fun fun_TYVAR _ =
+              Pickle.con1 TYVAR (fn TYVAR a => a | _ => die "pu_Type.TYVAR")
+              L.pu_tyvar
+          fun fun_CONSTYPE pu_Type =
+              Pickle.con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_Type.CONSTYPE")
+              (Pickle.tup4Gen0(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
+          fun fun_RECORD pu_Type =
+              Pickle.con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
+              (pu_mus pu_Type)
+          fun fun_FUN pu_Type =
+              Pickle.debugUnpickle "FUN" 
+              (Pickle.con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
+               (Pickle.tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type)))
       in Pickle.dataGen("RType.Type",toInt,[fun_TYVAR,fun_CONSTYPE,fun_RECORD,fun_FUN])
       end
   val pu_mu = pu_mu pu_Type
