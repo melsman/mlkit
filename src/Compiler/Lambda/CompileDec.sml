@@ -112,6 +112,8 @@ structure CompileDec: COMPILE_DEC =
         LET{pat=[(lv,[],tau)],
             bind=lamb1,
             scope=lamb2}
+      fun If(e,e1,e2) =
+          SWITCH_C(SWITCH(e,[((Con.con_TRUE,NONE),e1)],SOME e2))
     end
 
     fun new_lvar_from_string_opt NONE = Lvars.newLvar ()  
@@ -454,6 +456,38 @@ structure CompileDec: COMPILE_DEC =
        of SOME(TypeInfo.MATCH_INFO {Type}) => compileType Type
 	| SOME(TypeInfo.EXP_INFO {Type}) => compileType Type
 	| _ => die "typeScon.wrong type info"
+
+
+   (* Constructing intinfs *)
+   fun digits (x:IntInf.int) : Int32.int list = 
+       if x = IntInf.fromInt 0 then nil
+       else
+	 let val maxdigit = IntInf.fromLarge (Int32.toLarge 1073741824)  (* 2^30 *)
+	     val rest = IntInf.div(x,maxdigit)
+	     val d = IntInf.mod(x,maxdigit)
+	 in Int32.fromLarge (IntInf.toLarge d) :: digits rest
+	 end
+
+   fun buildIntInf (x : IntInf.int) =
+       let val a = IntInf.abs x
+  	   val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
+	     foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type]},
+				     [PRIM(RECORDprim,[INTEGER(d,int31Type),
+						       C])]))
+		   (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type]},
+		         nil))
+		   (digits a)
+	      
+	   val negativeCon =
+	       if IntInf.<(x,IntInf.fromInt 0) then Con.con_TRUE
+	       else Con.con_FALSE
+	   val negativeExp = 
+	       PRIM(CONprim{con=negativeCon,
+			    instances=nil},nil)
+       in
+	 PRIM(CONprim{con=Con.con_INTINF,instances=nil},
+	      [PRIM(RECORDprim,[digitsExp,negativeExp])])
+       end
 
 
 
@@ -952,7 +986,12 @@ Det finder du nok aldrig ud af.*)
 	   WILDCARDatpat info => succeed (augment (ctx, termd), work, rhs, rules)
 	     (*WILDCARDatpat is treated almost like variable patterns*)
 	 | SCONatpat (info, scon) =>
-	     match_con (Scon (scon, typeScon info)) [] (path, termd, ctx, work, rhs, rules)
+           let val tau = typeScon info
+           in (* if typeIsIntInf tau then 
+                match_intinf (Scon (scon, tau)) [] (path, termd, ctx, work, rhs, rules)
+              else *)
+                match_con (Scon (scon, tau)) [] (path, termd, ctx, work, rhs, rules)
+           end
 	 | LONGIDatpat (info, OP_OPT (longid, _)) =>
 	     (case to_TypeInfo info of
 		SOME (TypeInfo.VAR_PAT_INFO _) =>
@@ -987,6 +1026,13 @@ Det finder du nok aldrig ud af.*)
 	         (path, termd, ctx, work, rhs, rules)
 	     end
 	 | PARatpat (info, pat) => match_pat (pat, path, termd, ctx, work, rhs, rules))
+(*
+  and match_intinf pcon (argpats : (int * pat) list)
+	(path, termd, ctx, work, rhs, rules) =
+	let val pcon = Tuple {arity=2}
+        in match_con pcon (path, termd, ctx, work, rhs, rules)
+        end
+*)
 
   (*match_con pcon argpats (path, termd, ctx, work, rhs, rules) = `pcon' is
    the compile-time description of the constructor that we want to generate
@@ -1258,6 +1304,20 @@ in
 		   in (functions' @ functions,
 		       f (switch_x (SWITCH (e, cases', def'))))
 		   end
+               fun switch_ii (SWITCH (e:LambdaExp, cases:(IntInf.int*LambdaExp)list, def:LambdaExp option)) : LambdaExp =
+                   let val lv = Lvars.newLvar ()
+                       fun convertCases ([(_,exp:LambdaExp)],NONE) :LambdaExp = exp
+                         | convertCases (nil,SOME a)   = a
+                         | convertCases ((x,b)::cases,def:LambdaExp option) = 
+                           If(PRIM(EQUALprim {instance=RECORDtype[intinfType,intinfType]},
+                                   [VAR{lvar=lv,instances=nil},
+                                    buildIntInf x]),
+                              b,
+                              convertCases(cases,def))
+                         | convertCases (nil,NONE) = die "Switch.intinf - no cases"
+                   in monoLet((lv,intinfType,e),
+                              convertCases(cases,def))
+                   end
 	       fun precision (t: Type) : int =
 		 let val tn = case t
 				of CONStype(nil, tn) => tn
@@ -1280,12 +1340,19 @@ in
 			     declareLvarDecon (path, lv', env))
 			 end
 		      | _ => die "compile_node: fn Con =>")
-		| Scon (SCon.INTEGER _, tau) => switch
-		    (fn sw => SWITCH_I{switch=sw,precision=precision tau}, 
-		     fn (Scon (SCon.INTEGER i,_),env) => 
-		          ((Int32.fromLarge(IntInf.toLarge i),env)
-			   handle _ => die "IntInf in patterns not implemented")
-		      | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
+		| Scon (SCon.INTEGER _, tau) => 
+                  (case precision tau of
+                     ~1 => (* intinf *)
+                     switch (switch_ii,
+                             fn (Scon (SCon.INTEGER i,_),env) => (i,env)
+		              | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
+                   | p => 
+                     switch
+		         (fn sw => SWITCH_I{switch=sw,precision=p}, 
+		          fn (Scon (SCon.INTEGER i,_),env) => 
+		             ((Int32.fromLarge(IntInf.toLarge i),env)
+			      handle _ => die "IntInf in patterns not implemented")
+		           | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>"))
 		| Scon (SCon.CHAR _, tau) => switch
 		    (fn sw => SWITCH_W {switch=sw, precision=precision tau}, 
 		     fn (Scon (SCon.CHAR i,_),env) => (Word32.fromInt i,env)
@@ -1935,36 +2002,6 @@ end; (*match compiler local*)
     (* ----------------------------------------------------------------------- *)
     (*               Syntax directed compilation                               *)
     (* ----------------------------------------------------------------------- *)
-
-    fun digits (x:IntInf.int) : Int32.int list = 
-	if x = IntInf.fromInt 0 then nil
-	else
-	let val maxdigit = IntInf.fromLarge (Int32.toLarge 1073741824)  (* 2^30 *)
-	    val rest = IntInf.div(x,maxdigit)
-	    val d = IntInf.mod(x,maxdigit)
-	in Int32.fromLarge (IntInf.toLarge d) :: digits rest
-	end
-
-    fun buildIntInf (x : IntInf.int) =
-	let val a = IntInf.abs x
-	    val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
-		foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type]},
-					[PRIM(RECORDprim,[INTEGER(d,int31Type),
-							  C])]))
-		(PRIM(CONprim{con=Con.con_NIL,instances=[int31Type]},
-		      nil))
-		(digits a)
-	      
-	    val negativeCon =
-		if IntInf.<(x,IntInf.fromInt 0) then Con.con_TRUE
-		else Con.con_FALSE
-	    val negativeExp = 
-		PRIM(CONprim{con=negativeCon,
-			     instances=nil},nil)
-	in
-	    PRIM(CONprim{con=Con.con_INTINF,instances=nil},
-		 [PRIM(RECORDprim,[digitsExp,negativeExp])])
-	end
 
     fun typeIsIntInf (CONStype(nil,tn)) =
 	TyName.eq(tn,TyName.tyName_INTINF)

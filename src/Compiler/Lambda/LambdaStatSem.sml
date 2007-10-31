@@ -763,7 +763,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_INT31
 			   | 32 => tyName_INT32
-			   | _ => die "SWITCH_I"
+                           | ~1 => tyName_INTINF
+			   | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
 	   in type_switch (type_lexp env) (fn _ => tn) switch
 	   end
 	 | SWITCH_W {switch, precision} => 
