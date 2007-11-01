@@ -1,4 +1,5 @@
 local 
+  ../../Common/tools.mlb
   $(SML_LIB)/basis/basis.mlb
   ../../../basis/kitlib.mlb
 in

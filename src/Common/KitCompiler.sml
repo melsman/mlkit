@@ -106,26 +106,24 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    fun go_options options =
 		let val rest = Flags.read_options{options=options, nullary=nullary_options,
 						  unary=unary_options}
-		in go_files rest
-		end
-	in
-  	    (* fun die s = Crash.impossible ("KitCompiler." ^ s) *)
-  	    fun kitexe(root_dir, args) = 
-		(let 
-		     val baseDir = 
+		    val baseDir = 
 			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of 
 			     SOME v => v
 			   | NONE => raise Fail ("A library install directory must be provided in an\n" ^
 						 "environment variable SML_LIB or as a path-definition\n" ^
 						 "in either the system wide path-map " ^ Configuration.etcdir ^ "/" ^ (cmd_name()) ^ "/mlb-path-map\n" ^
 						 "or in your personal path-map ~/." ^ (cmd_name()) ^ "/mlb-path-map.")
-		 in
-		     (set_paths baseDir; go_options args)
-		 end
-		 handle Fail "" => OS.Process.success
-		      | Fail s => (print ("* Error: " ^ s ^ ".\n"); 
-                                   print ("* Exiting!\n");
-				   OS.Process.failure))		
+
+		in set_paths baseDir ; go_files rest
+		end
+	in
+  	    (* fun die s = Crash.impossible ("KitCompiler." ^ s) *)
+  	    fun kitexe(root_dir, args) = 
+		go_options args
+		handle Fail "" => OS.Process.success
+		     | Fail s => (print ("* Error: " ^ s ^ ".\n");
+                                  print ("* Exiting!\n");
+				  OS.Process.failure)
 	end
     in
 	open Manager
