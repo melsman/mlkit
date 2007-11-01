@@ -77,7 +77,7 @@ functor Environment(val program_name : unit -> string) :> ENVIRONMENT =
                 val _ = varMap := SOME(BM.mkDict String.compare)
                 val user = Option.map (fn x=> x^"/." ^ (program_name()) ^ "/mlb-path-map") (OS.Process.getEnv "HOME")
                 val system = SOME(Configuration.etcdir ^ "/" ^ (program_name()) ^ "/mlb-path-map")
-                val files = [system,user]
+                val files = [system,user] @ List.map SOME (Flags.get_stringlist_entry "mlb_path_maps")
               in List.app (fn x => (case x
                                     of NONE => ()
                                      | SOME x' => (readfile x')

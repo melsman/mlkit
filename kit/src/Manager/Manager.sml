@@ -96,6 +96,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
        desc="Basis files to be loaded before compilation\n\
         \proper."}
 
+    val _ = Flags.add_stringlist_entry 
+      {long="mlb_path_maps", short=NONE, item=ref nil,
+       menu=["File", "ML Basis path map files to use"],
+       desc="ML Basis path map files to be used."}
+
     val _ = Flags.add_string_entry 
       {long="namebase", short=NONE, item=ref "dummyBase",
        menu=["File", "Name base"],

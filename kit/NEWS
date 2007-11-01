@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+ * mael 2007-11-01: Support added for taking mlb-path-map-files as
+   MLKit command-line arguments using the option
+   --mlb_path_maps. Patch supplied by Vesa Karvonen.
+
  * mael 2007-10-31: Infinite precision integers are now allowed in
    patterns. See file test/intinf2.sml.
 
