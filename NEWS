@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+ * mael 2007-11-02: Fixed bug in opacity elimination. Bug reported by
+   Vesa Karvonen; see test/vesa2.sml for a small example that didn't work
+   before the bug fix.
+
  * mael 2007-11-01: Support added for taking mlb-path-map-files as
    MLKit command-line arguments using the option
    --mlb_path_maps. Patch supplied by Vesa Karvonen.

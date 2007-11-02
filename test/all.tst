@@ -49,10 +49,11 @@ freedatatype2.sml   ccl       ecte
 sharing.sml         ccl       ecte
 opaque.sml          ccl
 opaque2.sml                        ue nobasislib
-opaque3.sml                        nobasislib
+opaque3.sml                           nobasislib
 functor.sml         ccl
 functor2.sml        ccl
 functor3.sml
+vesa2.sml                             nobasislib
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
@@ -109,6 +110,7 @@ int31_2.sml
 int32.sml                     
 int32_2.sml                   
 intinf.sml
+intinf2.sml
 list.sml                      
 listpair.sml                  
 string.sml                    
