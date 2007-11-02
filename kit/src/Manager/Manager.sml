@@ -107,6 +107,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
        desc="Name base to enforce unique names when compiling\n\
         \mlb-files."}
 
+    val print_post_elab_ast = 
+        Flags.add_bool_entry 
+         {long="print_post_elab_ast", short=SOME "Ppeast", neg=false, 
+          item=ref false,
+          menu=["Debug", "print ast after elaboation"],
+          desc="Print ast after elaboration."}
+
     exception PARSE_ELAB_ERROR = MO.PARSE_ELAB_ERROR
     fun error a = MO.error a
     val quot = MO.quot
@@ -471,6 +478,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     fun fid_topdec a = FreeIds.fid_topdec a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
+    val debug = Flags.is_on0 "debug_compiler"
+
+    fun maybe_print_topdec s topdec =
+	if print_post_elab_ast() orelse debug() then
+	    let val _ = print (s ^ ":\n")
+		val st = PostElabTopdecGrammar.layoutTopdec topdec
+	    in pr_st st
+	    end
+	else ()
+
     (* -------------------------------
      * Compute actual dependencies 
      * ------------------------------- *)
@@ -577,6 +594,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                      ; raise PARSE_ELAB_ERROR error_codes)
               | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
               let 
+	        val _ = maybe_print_topdec "AST after elaboration" topdec
                 val _ = chat "[finding free identifiers begin...]"
                 val freelongids = add_longstrid intinfrep (fid_topdec topdec)
                 val _ = chat "[finding free identifiers end...]"
@@ -605,6 +623,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                 val _ = chat "[opacity elimination begin...]"
                 val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
                 val _ = chat "[opacity elimination end...]"
+
+	        val _ = maybe_print_topdec "AST after opacity elimination" topdec
                   
                 val _ = chat "[interpretation begin...]"
                 val functor_inline = false

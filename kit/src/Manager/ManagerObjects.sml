@@ -631,12 +631,19 @@ functor ManagerObjects(
 	fun plus (IB(ife1,ise1,ce1,cb1), IB(ife2,ise2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), IntSigEnv.plus(ise1,ise2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
 
+        fun pp_tynames s tns =
+           (print ("\n" ^ s ^ ":\n  ");
+	    print (String.concatWith "," (map TyName.pr_TyName tns) ^ "\n"))
+
 	fun restrict0 (IB(ife,ise,ce,cb), {funids, sigids, longstrids, longvids, longtycons}, tynames) =
 	    let val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
-		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
-			else ()*)
+(*
+		val _ = if !Flags.chat then (print("\n RESTRICTED(0) CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
+			else ()
+		val _ = pp_tynames "Restricting ce to tynames" tynames
+*)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
 		fun tynames_ife(IFE ife) = 
 		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
@@ -694,8 +701,8 @@ functor ManagerObjects(
 		val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
-		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
-			else ()*)
+		val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
+			else ()
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
 		fun tynames_ife(IFE ife) = 
 		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
@@ -863,6 +870,11 @@ functor ManagerObjects(
 	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso 
 	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
+	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
+	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
+		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
+			    OpacityEnv.layout rea, IntBasis.layout intB]}
+
 	fun closure (B': Basis, B: Basis) : Basis = 
 	    (* closure_B'(B) : the closure of B w.r.t. B' *)
 (*was:
@@ -872,6 +884,16 @@ functor ManagerObjects(
 *)
 	    let val BASIS(infB',eB',oe',iB') = B'
 		val BASIS(infB,eB,oe,iB) = B
+(*
+                val _ = if !Flags.chat then
+                      (print "\nClosure_B'(B):\n";
+                       print "B' = \n";
+                       PP.printTree (layout B');
+                       print "\nB = \n";
+                       PP.printTree (layout B);
+                       print "\n")
+                     else ()                
+*)
 		val dom = domain B
 		fun subtractPredefinedTynames tns = 
 		    TyName.Set.difference tns (TyName.Set.fromList TyName.tynamesPredefined)
@@ -887,11 +909,6 @@ functor ManagerObjects(
 		BASIS(infB,eB,oe2,iBclosed)
 	    end
 	  
-	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
-	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
-		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
-			    OpacityEnv.layout rea, IntBasis.layout intB]}
-
 	fun initial() = BASIS (InfixBasis.emptyB, 
 			       ModuleEnvironments.B.initial(), 
 			       OpacityEnv.initial, 

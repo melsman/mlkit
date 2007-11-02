@@ -400,7 +400,8 @@ structure OpacityElim: OPACITY_ELIM =
 		                            (* a realisation for those generative names 
 					     * that become visible. *)
 (*
-	      val _ = print ("\nOpacity Elimination of functor application of " ^ FunId.pr_FunId funid ^ "\n")
+	      val _ = print ("\nOpacity Elimination of functor application of " ^ FunId.pr_FunId funid ^ "\n\n")
+              val _ = print ("T = {" ^ String.concatWith "," (map TyName.pr_TyName (TyName.Set.list T)) ^ "}\n\n")
 	      val _ = pr_rea "rea_0" rea_0
 	      val _ = pr_rea "rea_funid" rea_funid
 	      val _ = pr_rea "rea_strexp" rea_strexp
@@ -414,18 +415,26 @@ structure OpacityElim: OPACITY_ELIM =
 (*	      val rea_i' = rea_strexp oo rea_0 oo rea_i  *)
 	      val rea_i' = Realisation_restrict (Realisation_dom rea_i) (rea_0 oo rea_strexp oo rea_i)
 
-(*	      val _ = pr_rea "rea_i'" rea_i' *)
+(*	      val _ = pr_rea "rea_i'" rea_i'  *)
 
 	      val rea_g' = rea_g1 oo rea_g2
 
-(*	      val _ = pr_rea "rea_g'" rea_g' *)
+(*	      val _ = pr_rea "rea_g'" rea_g'  *)
 
-	      val rea' = rea_g2 oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
+(*	      val rea' = rea_g2 oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp *)
+(* mael 2007-11-02 *)
 
-(*	      val _ = pr_rea "rea'" rea' *)
+(*
+	      val rea' = rea_g' oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
+*)
+	      val rea' = rea_g' oo rea_i' oo rea_funid oo rea_g_ oo rea_strexp
 
-	      val E' = on_Env rea' E
+(*	      val _ = pr_rea "rea'" rea'  *)
+
+(*	      val E' = on_Env rea' E *)
+	      val E' = on_Env (rea_0 oo rea') E
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNCTOR_APP_INFO{rea_inst=rea_i',rea_gen=rea_g',Env=E'})
+              val rea' = Realisation_restrict_from (Realisation_dom rea_g') (Realisation_restrict_from (Realisation_dom rea_i') rea')
 	  in (APPstrexp(i', funid, strexp'), rea')
 	  end
 	 | LETstrexp(i, strdec, strexp) =>
@@ -553,7 +562,7 @@ structure OpacityElim: OPACITY_ELIM =
        ((* Compiler.Profile.reset();
 	 Compiler.Profile.setTimingMode true; *)
 	let
-(*	    val _ = pr_tdec topdec *)
+(*          val _ = pr_tdec topdec *)
 	  val (t,e) = elim_topdec (oenv, topdec)
 (*
 	  val _ = print "\nOpacity_elimination env:\n"

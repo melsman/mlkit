@@ -424,12 +424,15 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
 	      val (phi,Eres) = case to_TypeInfo i
 				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
-				   let (*val _ = print "Inst realisation is: \n"
+				   let 
+(*
+                                     val _ = print "Inst realisation is: \n"
 				     val _ = PP.printTree (Environments.Realisation.layout rea_inst)
 				     val _ = print "\n"
 				     val _ = print "Gen realisation is: \n"
 				     val _ = PP.printTree (Environments.Realisation.layout rea_gen)
-				     val _ = print "\n" *)
+				     val _ = print "\n"
+*)
 				   in
 				     (Environments.Realisation.oo(rea_inst,rea_gen), Env)
 				   end
