@@ -142,15 +142,10 @@ signature STATOBJECT =
 	val of_scon                 : scon -> {type_scon: Type, overloading : TyVar option}
 
 	datatype unify_result = UnifyOk (* of Substitution *)
-                              | UnifyFail 
+                              | UnifyFail of string 
                               | UnifyRankError of TyVar * TyName
 
 	val unify                   : Type * Type -> unify_result
-	val instantiate_arbitrarily : TyVar -> unit
-
-	(* instantiate_arbitrarily tyvar; instantiate tyvar to some
-	 * arbitrary type (int). Used by ElabTopdec.elab_topdec when
-	 * tyvar is free in a topdec.*)
 
 	val match : Type * Type -> unit   (* for compilation manager *)
 

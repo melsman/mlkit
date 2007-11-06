@@ -1429,4 +1429,112 @@ structure LambdaExp: LAMBDA_EXP =
 						       fun_FRAME])
 	end
 
+    structure TyvarSet = NatSet
+    structure TVS = TyvarSet
+
+    fun tyvars_Type (s: TVS.Set) (t:Type) (acc: TVS.Set) : TVS.Set =
+        case t of
+          TYVARtype tv => if TVS.member tv s then acc
+                          else TVS.insert tv acc
+        | ARROWtype(ts1,ts2) => tyvars_Types s ts1 (tyvars_Types s ts2 acc)
+        | CONStype(ts,_) => tyvars_Types s ts acc
+        | RECORDtype ts => tyvars_Types s ts acc
+
+    and tyvars_Types (s: TVS.Set) nil (acc: TVS.Set) : TVS.Set = acc
+      | tyvars_Types s (t::ts) acc = tyvars_Type s t (tyvars_Types s ts acc)
+
+    fun tyvars_Scheme (s: TVS.Set) (tyvars: tyvar list,Type:Type) (acc: TVS.Set) : TVS.Set =
+        let val s = TVS.addList tyvars s
+        in tyvars_Type s Type acc
+        end
+
+    fun tyvars_Exp (s:TVS.Set) (e:LambdaExp) (acc:TVS.Set) : TVS.Set =
+      let
+	fun tyvars_Switch s (SWITCH(arg, sels, opt)) acc =
+	  let
+            val acc = tyvars_Exp s arg acc
+	    val acc = foldl (fn ((_,e),acc) => tyvars_Exp s e acc) acc sels
+          in
+	    case opt
+	      of SOME e => tyvars_Exp s e acc
+	       | NONE => acc
+          end          
+      in
+	case e of
+          VAR{instances, lvar} => tyvars_Types s instances acc
+        | INTEGER _ => acc
+        | WORD _ => acc
+        | STRING _ => acc
+        | REAL _ => acc
+	| FN{pat,body} => tyvars_Exp s body (foldl (fn ((_,t),acc) => tyvars_Type s t acc) acc pat)
+	| LET{pat,bind,scope} => 
+          let val s' = foldl (fn ((_,tvs,_),s) => TVS.addList tvs s) s pat
+            val acc = foldl (fn ((_,_,t),acc) => tyvars_Type s' t acc) acc pat
+            val acc = tyvars_Exp s' bind acc
+          in tyvars_Exp s scope acc
+          end 
+	| FIX{functions,scope} => 
+          let val acc = foldl (fn ({lvar,tyvars,Type,bind},acc) => 
+                                  let val s = TVS.addList tyvars s
+                                  in tyvars_Type s Type (tyvars_Exp s bind acc)
+                                  end) acc functions
+          in tyvars_Exp s scope acc
+          end
+	| APP(e1, e2) => tyvars_Exp s e1 (tyvars_Exp s e2 acc)
+	| EXCEPTION(excon,tauOpt,e) =>
+          let val acc = case tauOpt of 
+                          NONE => acc
+                        | SOME tau => tyvars_Type s tau acc
+          in tyvars_Exp s e acc
+          end
+	| RAISE(e,taus) => tyvars_TypeList s taus (tyvars_Exp s e acc)
+	| HANDLE(e1, e2) => tyvars_Exp s e1 (tyvars_Exp s e2 acc)
+	| SWITCH_I {switch,precision} => tyvars_Switch s switch acc
+	| SWITCH_W {switch,precision} => tyvars_Switch s switch acc
+	| SWITCH_S switch => tyvars_Switch s switch acc
+	| SWITCH_C switch => tyvars_Switch s switch acc
+	| SWITCH_E switch => tyvars_Switch s switch acc
+	| PRIM(p,es) => tyvars_Exps s es (tyvars_Prim s p acc)
+        | FRAME fr => tyvars_Frame s fr acc
+      end
+
+    and tyvars_Exps s nil acc = acc
+      | tyvars_Exps s (e::es) acc = tyvars_Exp s e (tyvars_Exps s es acc)
+	
+    and tyvars_Prim (s: TVS.Set) (p:Type prim) (acc: TVS.Set) : TVS.Set =
+      case p of
+        CONprim{instances,...} => tyvars_Types s instances acc
+      | DECONprim{instances,...} => tyvars_Types s instances acc
+      | EXCONprim _ => acc
+      | DEEXCONprim _ => acc
+      | DEREFprim{instance} => tyvars_Type s instance acc
+      | REFprim{instance} => tyvars_Type s instance acc
+      | ASSIGNprim{instance} => tyvars_Type s instance acc 
+      | EQUALprim{instance} => tyvars_Type s instance acc
+      | CCALLprim {instances, tyvars, Type, ...} => 
+        tyvars_Types s instances (tyvars_Scheme s (tyvars, Type) acc)
+      | EXPORTprim {instance_arg,instance_res, ...} => 
+        tyvars_Type s instance_arg (tyvars_Type s instance_res acc)
+      | RESET_REGIONSprim{instance} => tyvars_Type s instance acc
+      | FORCE_RESET_REGIONSprim{instance} => tyvars_Type s instance acc
+      | RECORDprim => acc
+      | SELECTprim _ => acc
+      | UB_RECORDprim => acc
+      | DROPprim => acc
+
+    and tyvars_Frame s fr acc =
+        let val {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
+		 declared_excons: (excon * Type option) list} = fr
+          val acc = foldl (fn ({lvar,tyvars,Type},acc) => tyvars_Scheme s (tyvars,Type) acc) acc declared_lvars
+          val acc = foldl (fn ((_,SOME t),acc) => tyvars_Type s t acc
+                            | ((_,NONE),acc) => acc) acc declared_excons
+        in acc
+        end
+
+    and tyvars_TypeList (s:TVS.Set) tl (acc:TVS.Set) : TVS.Set =
+        case tl of 
+          Types ts => tyvars_Types s ts acc
+	| Frame fr => tyvars_Frame s fr acc
+	| RaisedExnBind => acc
+
   end

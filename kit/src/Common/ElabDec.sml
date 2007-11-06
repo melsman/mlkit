@@ -216,7 +216,7 @@ structure ElabDec: ELABDEC =
     fun Unify(tau, tau', i): Substitution * ElabInfo =
       case Type.unify (tau, tau')
         of Type.UnifyOk => (Substitution.Id, okConv i)  (* substitutions are dummies *)
-         | Type.UnifyFail =>
+         | Type.UnifyFail _ =>
              (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION(tau, tau'))
              )
@@ -228,7 +228,7 @@ structure ElabDec: ELABDEC =
     fun UnifyWithTexts(text,tau,text', tau', i): Substitution * ElabInfo =
       case Type.unify(tau, tau')
         of Type.UnifyOk => (Substitution.Id, okConv i)
-         | Type.UnifyFail =>
+         | Type.UnifyFail _ =>
              (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION_TEXT(text,tau,text', tau'))
              )
@@ -965,7 +965,7 @@ structure ElabDec: ELABDEC =
 			   val (_, tau2) = TypeScheme.to_TyVars_and_Type sigma2
 		       in (case Type.unify(tau1, tau2) of
 			     Type.UnifyOk => (Substitution.Id, i)   (* substitutions are dummies *)
-			   | Type.UnifyFail => (Substitution.Id,
+			   | Type.UnifyFail _ => (Substitution.Id,
 						ElabInfo.plus_ErrorInfo i
 						(ErrorInfo.UNIFICATION(tau1, tau2)))
 			   | Type.UnifyRankError(tv,tn) => (Substitution.Id,

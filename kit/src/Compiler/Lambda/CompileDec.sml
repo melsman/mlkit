@@ -1231,7 +1231,19 @@ Det finder du nok aldrig ud af.*)
       let val (f, e, env) =
 	    foldl  (*again, foldr could also have been used*)
 	    (fn ((id, (lvar, tyvars, tau), path), (f,e,env)) =>
-	     let val (f',e',_,env') = compile_path env obj path
+	     let val obj =
+                     case obj of
+                       (VAR{lvar=lv,instances},tau) =>
+                       let 
+                         fun member tv = List.exists (fn tv' => tv = tv') tyvars 
+                         fun f (t as TYVARtype tv) = 
+                             if member tv then t
+                             else intDefaultType()   (* see compilation of test/pat.sml *)
+                           | f t = t
+                       in (VAR{lvar=lv,instances=map f instances}, tau)  (* MEMO: maybe instantiate tau properly? *)
+                       end
+                     | _ => die "mk_declarations_to_be_made.skip0"
+                 val (f',e',_,env') = compile_path env obj path
 	     in 
 		 case tyvars of
 		     nil => (f o f', LET {pat = [(lvar, tyvars, tau)],

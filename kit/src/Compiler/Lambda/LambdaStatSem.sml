@@ -75,6 +75,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		    val lookup_lvar : env -> lvar -> TypeScheme
 		    val lookup_excon : env -> excon -> Type option
 		    val ftv_env : env -> NatSet.Set
+                    val isin_tv : env -> tyvar -> bool
+                    val add_tyvars : tyvar list * env -> env
 		    val restrict : env * {lvars:lvar list,
 					  tynames:TyName list,
 					  cons: con list,
@@ -83,6 +85,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		    type StringTree
 		    val layout_env : env -> StringTree
 		    val layoutTypes : Type list -> StringTree
+
+                    val prTypeScheme : tyvar list * Type -> string
+                    val prType : Type -> string
+                    val prTypes : Type list -> string
 
 		    val pu : env Pickle.pu
 		  end =
@@ -261,6 +267,15 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
 	fun ftv_env ({ftv,...} : env) = ftv
 
+        fun isin_tv (e:env) tv =
+            NatSet.member tv (ftv_env e)
+
+        fun add_tyvars (tvs, {ftv,con_env,tyname_env,lvar_env,excon_env} : env) : env =
+	  {ftv=NatSet.addList tvs ftv,
+	   con_env=con_env,
+	   tyname_env=tyname_env,
+	   lvar_env=lvar_env, 
+	   excon_env=excon_env}           
 
 	type StringTree = PP.StringTree
 
@@ -278,6 +293,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	fun layout_tyvars tyvars = layout_seq "(" ")" (PP.LEAF o pr_tyvar) tyvars  
 	fun layoutTypeScheme (tyvars, Type) = PP.NODE {start="\\/", finish="", indent=0, childsep=PP.LEFT ".",
 							children=[layout_tyvars tyvars, layoutType Type]}
+        val prTypeScheme =
+            StringTree_to_string o layoutTypeScheme
+
+        val prType =
+            StringTree_to_string o layoutType
+
+        val prTypes =
+            StringTree_to_string o layoutTypes
 
 	fun layout_con_env con_env =
 	  ConMap.layoutMap {start="ConEnv: {", eq=" -> ", sep=", ", finish="}"}
@@ -309,8 +332,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	      fun sayset() = PP.outputTree(print,NatSet.layoutSet {start="{",finish="}",
 								   sep=","} (PP.LEAF o pr_tyvar) ftv, 
 					   !Flags.colwidth)
-	      val _ = if true (* NatSet.isEmpty ftv*)  then ()   (* there can in fact be free type variables in
-								  * a topdec - see EfficientElab/ElabTopdec.sml *)
+	      val _ = if NatSet.isEmpty ftv then () (* there can no-longer be free type variables in
+						     * a topdec - see EfficientElab/ElabTopdec.sml; mael 2007-11-05 *)
 		      else (say ("Restrict: Problem with set of free type variables");
 			    say ("not being empty. Here is the environment: ");
 			    sayenv();
@@ -376,10 +399,13 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	case ty of
 	    CONStype(ts,tn) => (lookup_tyname e tn; valid_ts e ts)
 	  | ARROWtype(ts1,ts2) => (valid_ts e ts1; valid_ts e ts2)
-	  | TYVARtype _ => ()
+	  | TYVARtype tv => if isin_tv e tv then ()
+                            else die "valid_t.non-bound type variable" 
 	  | RECORDtype ts => valid_ts e ts	
     and valid_ts (e:env) nil = ()
       | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
+
+    fun valid_s e (tvs,ty) = valid_t (add_tyvars(tvs,e)) ty
 
     fun mk_instance ((tyvars,Type):TypeScheme, instances : Type list) =
       let val S = LambdaBasics.mk_subst (fn () => "mk_instance") (tyvars, instances)
@@ -491,7 +517,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		 (case mk_instance(lookup_con env con, instances)
 		    of ARROWtype([t1],[t2]) =>
 		      let val ts = unTypeList "CONprim" (type_e lexp)
-		      in (eqTypes ("CONprim: " ^ Con.pr_con con)([t1],ts); [t2])
+		      in (eqTypes ("CONprim: " (* ^ Con.pr_con con *)) ([t1],ts); [t2])
 		      end
 		     | _ => die "CONprim.Unary constructor does not have arrow type")
 		| _ => die "CONprim.Wrong number of args")
@@ -500,10 +526,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		case lexps
 		  of [lexp] => (case mk_instance(lookup_con env con, instances)
 				  of ARROWtype([t1],[t2]) =>
-				    let val s = ("DECONprim: " (* ^ Con.pr_con con *))
-				        val ts = unTypeList s (type_e lexp)
+				    let val ts = unTypeList "DECONprim0" (type_e lexp)
 				    in if eq_Types([t2],ts) then [t1]
-				       else die s
+				       else die ("DECONprim: " ^ Con.pr_con con 
+                                                 ^ "; ts = " ^ prTypes ts ^ "; t2 = " ^ prType t2)
 				    end
 				   | _ => die "DECONprim.Unary constructor does not have arrow type")
 		   | _ => die "DECONprim.Wrong number of args")
@@ -604,7 +630,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		   | _ => die "EQUALprim.Wrong number of args") 
 	   | CCALLprim {name, instances, tyvars, Type} => 
 	       (valid_ts env instances;
-		valid_t env Type;
+		valid_s env (tyvars,Type);
 		case mk_instance ((tyvars, Type), instances) of
 		  ARROWtype (ts_arg, ts_res) =>
 		    let val ts = map (unTypeListOne "CCALL" o type_e) lexps
@@ -669,8 +695,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       (case lexp
 	of VAR{lvar,instances} => (valid_ts env instances; 
 				   Types [mk_instance(lookup_lvar env lvar, instances)])
-	 | INTEGER (i,t) => (valid_t env t; Types [t])
-	 | WORD (w,t) => (valid_t env t; Types [t])
+	 | INTEGER (i,t) => (valid_t env t; Types [t])    (* TODO: i31, i32 - compare with literal i *)
+	 | WORD (w,t) => (valid_t env t; Types [t])       (* TODO: w31, w32 - compare with literal w *)
 	 | STRING s => Types [CONStype([], tyName_STRING)]
 	 | REAL s => Types [CONStype([], tyName_REAL)]
 	 | FN {pat,body} =>
@@ -687,8 +713,11 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	  in type_lexp env scope  
 	  end
 	 | LET {pat,bind,scope} =>
-	  let val env' = foldl (fn ((lvar,tyvars,Type), env) => 
+	  let val env_scope = foldl (fn ((lvar,tyvars,Type), env) => 
 				     add_lvar(lvar,(tyvars,Type),env)) env pat
+                              
+              val tvs = foldl (fn ((_,tvs,_),acc) => tvs @ acc) nil pat
+              val env_bind = add_tyvars (tvs, env)
 
 	      val check_polymorphism = 
 		if !letrec_polymorphism_only then (fn [] => ()
@@ -700,18 +729,21 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		 check_polymorphism tyvars; 
 		 tyvars_not_in_env(tyvars, env))
 
+	      val ts_bind = unTypeList "LET.bind" (type_lexp env_bind bind)
 
-	      val ts_bind = unTypeList "LET.bind" (type_lexp env bind)
+              val _ = app (fn ((_,tyvars,tau), tau') => 
+                              (valid_s env (tyvars,tau);
+                               check_type_scheme(tyvars, tau, tau')))
+	                  (ListPair.zipEq (pat,ts_bind))
+                  handle ListPair.UnequalLengths => 
+	                 die "LET.pattern and bind type differ in numbers of components"
 	  in 
-	      valid_ts env (map #3 pat);
-	    (((app (fn ((_,tyvars,tau), tau') => check_type_scheme(tyvars, tau, tau'))
-	       (BasisCompat.ListPair.zipEq (pat,ts_bind))) handle BasisCompat.ListPair.UnequalLengths => 
-	                 die "LET.pattern and bind type differ in numbers of components"));
-	    type_lexp env' scope
+	    type_lexp env_scope scope
 	  end
 	 | FIX {functions, scope} =>
-	  let val env' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
-				     (valid_t env Type; add_lvar(lvar,([],Type),env))) env functions
+	  let (* env' is the environment for checking function bodies *)
+              val env' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
+				     (valid_s env (tyvars,Type); add_lvar(lvar,([],Type),env))) env functions
 (*	      val _ =
 		let type t = {lvar:lvar,tyvars:tyvar list, Type : Type, bind:LambdaExp}
 		    fun ch_abs [] = ()
@@ -724,12 +756,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 		end 
 *)
 	      val type_pairs = map (fn {bind,Type,...} => (unTypeListOne "FIX" (type_lexp env' bind), Type)) functions
-	      val env'' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
+
+              val _ = app (eqType "FIX") type_pairs
+
+	      val env_scope = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
 				      (tyvars_not_in_env(tyvars, env);
 				       add_lvar(lvar,(tyvars,Type),env))) env functions
 	  in
-	    app (eqType "FIX") type_pairs;
-	    type_lexp env'' scope
+	    type_lexp env_scope scope
 	  end
 	 | APP (lexp1, lexp2) =>
 	  (case type_lexp env lexp1
@@ -747,7 +781,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	      (case typeopt of SOME t => valid_t env t | NONE => ();
 	       type_lexp (add_excon(excon,typeopt,env)) lexp)
 	 | RAISE (lexp, tl) =>
-	     ((* valid_ts env tl; *)
+	     ((* valid_ts env tl; *)   (* MEMO: Why is this commented out? mael 2007-11-05 *)
 	      case type_lexp env lexp
 		of Types [CONStype([],tyName_EXN)] => tl
 		 | _ => die "RAISE.type not exn")
@@ -763,7 +797,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_INT31
 			   | 32 => tyName_INT32
-                           | ~1 => tyName_INTINF
+                        (* | ~1 => tyName_INTINF *)  (* IntInf's have been compiled away at this point *)
 			   | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
 	   in type_switch (type_lexp env) (fn _ => tn) switch
 	   end
@@ -785,11 +819,27 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	 | PRIM (prim, lexps) => Types (type_prim env prim lexps)
 	 | FRAME {declared_lvars, declared_excons} =>
 		   let 
-		     fun on_lvar {lvar,tyvars,Type} =
-		       let val (tyvars, Type) = lookup_lvar env lvar
-		       in valid_t env Type; {lvar=lvar, tyvars=tyvars,Type=Type}
+		     fun on_lvar (p as {lvar,tyvars,Type}) =
+		       let val (tvs, tau) = lookup_lvar env lvar
+(*
+                         val _ = if LambdaBasics.eq_sigma((tvs,tau),(tyvars,Type)) then ()
+                                 else die ("FRAME.lvars.sigmas not equal: env(" ^ Lvars.pr_lvar lvar ^ ") = " 
+                                           ^ prTypeScheme(tvs,tau) ^ "; sigma = " ^ prTypeScheme(tyvars,Type))
+*)
+		       in {lvar=lvar, tyvars=tvs,Type=tau}
 		       end
-		     fun on_excon (excon,_) = (excon, lookup_excon env excon)
+		     fun on_excon (excon,opt) =
+                         let val opt = lookup_excon env excon
+                         in (excon,opt)
+                         end
+(*
+                         case (opt, lookup_excon env excon) of
+                           (NONE, NONE) => (excon,NONE)
+                         | (SOME t, SOME t') => 
+                           if eq_Type (t,t') then (excon, SOME t')
+                           else die "FRAME.excons.type mismatch"
+                         | _ => die "FRAME.excons.NONE vs SOME"
+*)                         
 		   in
 		     Frame {declared_lvars = map on_lvar declared_lvars,
 			    declared_excons = map on_excon declared_excons}

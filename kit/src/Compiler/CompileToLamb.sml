@@ -29,8 +29,9 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	 menu=["Control",
 	       "safeLinkTimeElimination"],
 	 item=ref false, neg=false, desc=
-	 "Threat this module as a library in the sense that\n\
-	  \the code can be eliminated if it is not used."}
+	 "Treat this module as a library in the sense that\n\
+	  \the code can be eliminated if it is not used,\n\
+          \even if the code has side effects."}
 
     (* ---------------------------------------------------------------------- *)
     (*  Printing utilities                                                    *)
@@ -71,7 +72,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (* ---------------------------------------------------------------------- *)
 
     fun ast2lambda fe (ce, strdecs) =
-      (chat "[Compiling abstract syntax tree into lambda language...";
+      (chat "[Compiling abstract syntax tree into lambda language..";
 
 (*       Timing.timing_begin(); *)  
 
@@ -89,6 +90,8 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	   val (ce1, lamb) = CompileDec.compileStrdecs fe ce strdecs
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
+           val _ = chat "."
+           val lamb = LambdaBasics.close lamb
        in  
 	 chat "]\n";
 	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
@@ -119,8 +122,10 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	(chat "[Type checking lambda term...";
 	 Timing.timing_begin();
 	 let 
-	   val env' = Timing.timing_end_res ("CheckLam",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
-                  pgm =  b}))
+	   val env' = Timing.timing_end_res ("CheckLam",
+                                             LambdaStatSem.type_check {env = a,  
+                                                                       letrec_polymorphism_only = false,  (* MEMO: shouldn't this be true? *)
+                                                                       pgm =  b})
 	 in
 	   chat "]\n";
 	   env'
@@ -193,7 +198,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
-	if isEmptyLambdaPgm lamb_opt 
+	if isEmptyLambdaPgm lamb_opt
           then (chat "Empty lambda program; skipping code generation.";
                 CEnvOnlyRes CEnv1)
 	else

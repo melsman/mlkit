@@ -1236,14 +1236,13 @@ structure ElabTopdec: ELABTOPDEC  =
 
     (* Check for free type variables: Free type variables are not
      * allowed in the basis resulting from elaborating a top-level
-     * declaration. However, free type variables may occur in the
+     * declaration. We inforce this requirement in
+     * elab_topdec'. However, free type variables may still occur in the
      * resulting elaborated top-level declaration - namely if an
      * identifier has been `shadowed' in the resulting basis. Since
-     * elaboration may succeed in this case, we could go ahead and
-     * unify such free type variables with `int', say, to have the
-     * property that no topdec's contains free type variables. This we
-     * do not do, so we should make sure that all compilation phases
-     * deals correctly with free type variables. *)
+     * elaboration may succeed in this case, we instantiate such free
+     * type variables (to type int) after compilation into the LambdaExp
+     * language; see CompileToLamb.sml. *)
 
     fun modify_info_topdec (topdec, i) = case topdec of 
       OG.STRtopdec(_,strdec,topdecopt) => OG.STRtopdec(i,strdec,topdecopt)
@@ -1261,12 +1260,15 @@ structure ElabTopdec: ELABTOPDEC  =
 			end
       end
  
-    val elab_topdec = fn a => (TyName.Rank.reset();
-			       (*print ("\nElabTopdec: LEVEL = " ^ StatObject.Level.pr(StatObject.Level.current())^"\n");*)
-			       let val res = elab_topdec' a
-			       in TyName.Rank.reset();
-				 res
-			       end)
+    val elab_topdec = 
+     fn a => 
+        let (* val _ = print ("\nElabTopdec: LEVEL = " ^ StatObject.Level.pr(StatObject.Level.current())^"\n");*)
+          val _ = TyName.Rank.reset()
+          val res = elab_topdec' a
+          val _ = TyName.Rank.reset()
+        in
+          res
+	end
 
     (********
     Printing functions
