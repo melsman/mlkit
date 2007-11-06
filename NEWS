@@ -1,5 +1,8 @@
 MLKit NEWS file
 
+ * mael 2007-11-06: Improved type checking of the internal language
+   LambdaExp. LambdaExp programs are now closed w.r.t. type variables.
+
  * mael 2007-11-02: Fixed bug in opacity elimination. Bug reported by
    Vesa Karvonen; see test/vesa2.sml for a small example that didn't work
    before the bug fix.

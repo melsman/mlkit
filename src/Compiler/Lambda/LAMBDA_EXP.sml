@@ -151,4 +151,10 @@ signature LAMBDA_EXP =
     val pu_Types      : Type list Pickle.pu
     val pu_TypeScheme : (tyvar list * Type) Pickle.pu 
     val pu_LambdaExp  : LambdaExp Pickle.pu
+
+    structure TyvarSet : KIT_MONO_SET where type elt = tyvar
+    val tyvars_Exp    : TyvarSet.Set -> LambdaExp -> TyvarSet.Set -> TyvarSet.Set
+    val tyvars_Type   : TyvarSet.Set -> Type -> TyvarSet.Set -> TyvarSet.Set
+    val tyvars_TypeList : TyvarSet.Set -> TypeList -> TyvarSet.Set -> TyvarSet.Set
+    val tyvars_Prim   : TyvarSet.Set -> Type prim -> TyvarSet.Set -> TyvarSet.Set
   end

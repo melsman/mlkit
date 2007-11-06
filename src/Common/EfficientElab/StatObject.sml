@@ -1023,14 +1023,15 @@ structure StatObject: STATOBJECT =
        ************************)
 
       datatype unify_result = UnifyOk (* of Substitution *)
-	                    | UnifyFail 
+	                    | UnifyFail of string
                             | UnifyRankError of TyVar * TyName
 
 
       (* Unify types (tau,tau') s.t. (range (subst) n restr_tyvars) =
        * empty. *)
 
-      fun restricted_unify (restricted_tyvars : TyVar list) (tau, tau') : unify_result =
+      fun restricted_unify {restricted_tyvars : TyVar list}
+                           (tau, tau') : unify_result =
       let
 
 	exception Unify of string           (* One of these local exceptions *)
@@ -1215,14 +1216,13 @@ structure StatObject: STATOBJECT =
 		       (*This exception is raised if an explicit type variable is
 			unified with a type variable with lower level, since then
 			the side condition concerning free type variables on rule
-			17 in the Definition is not satisfied*)
+			15 in the Definition is not satisfied*)
 
 		       raise Unify "unifyExplicit.5"
 		   else 
 		       tv' := TY_LINK ty
 	     end
-
-	  | unifyExplicit (_, _) = raise Unify "unifyExplicit.5"
+	  | unifyExplicit (_, _) = raise Unify "unifyExplicit.7"
 
 	(* unifyTyVar (tau, tau') = Check whether we can safely unify
 	 * a TyVar (the first tau) and a type (tau').  unifyTyVar
@@ -1339,16 +1339,12 @@ structure StatObject: STATOBJECT =
 	  else raise Unify "unifyConsType"
       in
 	(unifyType (tau,tau'); UnifyOk)
-	handle Unify s => UnifyFail
+	handle Unify s => UnifyFail s
 	     | Rank(tv,tn) => UnifyRankError(tv,tn)
       end
 
-      fun unify (ty1,ty2) = restricted_unify nil (ty1,ty2)
-
-      fun instantiate_arbitrarily tyvar =
-	case unify (from_TyVar tyvar, IntDefault()) 
-	  of UnifyOk => ()
-	   | _ => die "instantiate_arbitrarily"
+      fun unify (ty1,ty2) = 
+          restricted_unify {restricted_tyvars=nil} (ty1,ty2)
 
       (* Matching functions for compilation manager *)
 
@@ -1497,7 +1493,7 @@ structure StatObject: STATOBJECT =
 	     * ``generalises_Type(int->int, 'a->int)''.  This call
 	     * should return false! -- Martin *)
 	    
-	    case Type.restricted_unify (TyVar.unionTyVarSet(fv_tau',fv_sigma)) (tau,tau') 
+	    case Type.restricted_unify {restricted_tyvars=TyVar.unionTyVarSet(fv_tau',fv_sigma)} (tau,tau') 
 	      of Type.UnifyOk => true
 	       | _ => false
 	  end
@@ -1515,7 +1511,7 @@ structure StatObject: STATOBJECT =
 	     * ``generalises_TypeScheme(\/().'a->int, \/'b.'b->int)''.  This call
 	     * should return false! -- mael 2004-08-05; see test/weeks6.sml *)
 	    
-	    case Type.restricted_unify (TyVar.unionTyVarSet(fv_tau',fv_sigma)) (tau,tau') 
+	    case Type.restricted_unify {restricted_tyvars=TyVar.unionTyVarSet(fv_tau',fv_sigma)} (tau,tau') 
 	      of Type.UnifyOk => true
 	       | _ => false
 	  end

@@ -605,6 +605,8 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       val mk_subst = mk_subst
 
+      fun mk_subst' ps = ps
+
       val on_Type = on_Type
 
       val on_LambdaExp = on_LambdaExp
@@ -673,5 +675,19 @@ structure LambdaBasics: LAMBDA_BASICS =
 	end
 
     end (*local*)
+
+    local
+      structure TVS = TyvarSet
+    in
+      fun close (PGM(db,e)) =
+          let
+(*            val e = new_instance e *)
+            val tvs = tyvars_Exp (TVS.empty) e (TVS.empty)
+            val tvs = TVS.list tvs
+            val S = mk_subst' (map (fn tv => (tv,intDefaultType())) tvs)
+            val e = on_LambdaExp S e
+          in PGM(db,e)
+          end
+    end
 
   end

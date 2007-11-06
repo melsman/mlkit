@@ -2,7 +2,7 @@
 signature LAMBDA_BASICS =
   sig
 
-    type LambdaExp
+    type LambdaExp and LambdaPgm
 
     (* generic lambda expression traversers *)
     val passTD : (LambdaExp -> LambdaExp) -> LambdaExp -> LambdaExp
@@ -37,4 +37,6 @@ signature LAMBDA_BASICS =
     val match_sigma : (tyvar list * Type) * Type -> subst
 
     val freevars : LambdaExp -> lvar list * excon list
+
+    val close : LambdaPgm -> LambdaPgm
   end
