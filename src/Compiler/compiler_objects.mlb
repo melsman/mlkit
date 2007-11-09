@@ -30,16 +30,16 @@ in
         in Lambda/LambdaExp.sml
         end
      end
-  end
 
-  Lambda/LAMBDA_BASICS.sml
+     Lambda/LAMBDA_BASICS.sml
   
-  local open Edlib Tools SpecialObjects
-  in Lambda/LambdaBasics.sml
-  end
+     local open Edlib Tools SpecialObjects
+     in Lambda/LambdaBasics.sml
+     end
 
-  local open Pickle Tools SyntaxObjects SpecialObjects Basics
-  in Lambda/CompilerEnv.sml
+     local open Tools SyntaxObjects SpecialObjects Basics
+     in Lambda/CompilerEnv.sml
+     end
   end
 
   open SpecialObjects

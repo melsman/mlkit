@@ -39,4 +39,22 @@ signature LAMBDA_BASICS =
     val freevars : LambdaExp -> lvar list * excon list
 
     val close : LambdaPgm -> LambdaPgm
+
+
+    (* Normalization of type schemes so that type schemes only bind type
+     * variables that occur in the body of the type scheme. CompileDec.sml
+     * doesn't ensure this property, so we fix the LambdaExp terms after
+     * compilation into LambdaExp; see CompileToLamb.sml *)
+
+    structure Normalize : sig
+      type env and StringTree
+      val plus : env * env -> env
+      val empty : env
+      val initial : env
+      val restrict : env * lvar list -> env
+      val enrich : env * env -> bool
+      val layout : env -> StringTree
+      val pu : env Pickle.pu
+      val norm : env * LambdaPgm -> LambdaPgm * env
+    end
   end

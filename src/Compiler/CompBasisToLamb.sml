@@ -3,7 +3,8 @@ structure CompBasisToLamb
   : COMP_BASIS_GEN 
         where type Envs = {TCEnv : LambdaStatSem.env,
 		           EqEnv : EliminateEq.env,
-		           OEnv: OptLambda.env} =
+		           OEnv: OptLambda.env,
+                           NEnv: LambdaBasics.Normalize.env} =
   struct
     structure PP = PrettyPrint
 
@@ -20,9 +21,11 @@ structure CompBasisToLamb
     type TCEnv = LambdaStatSem.env
     type EqEnv = EliminateEq.env
     type OEnv = OptLambda.env
+    type NEnv = LambdaBasics.Normalize.env
     type CompBasis = {TCEnv : TCEnv, (* lambda type check environment *)
 		      EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
-		      OEnv: OEnv}
+		      OEnv: OEnv,
+                      NEnv: NEnv}
     type Envs = CompBasis
 
     fun mk_CompBasis a = a
@@ -30,24 +33,28 @@ structure CompBasisToLamb
 
     val empty = {TCEnv=LambdaStatSem.empty,
 		 EqEnv=EliminateEq.empty,
-		 OEnv=OptLambda.empty}
+		 OEnv=OptLambda.empty,
+                 NEnv=LambdaBasics.Normalize.empty}
 
     val initial = {TCEnv=LambdaStatSem.initial,
 		   EqEnv=EliminateEq.initial,
-		   OEnv=OptLambda.initial}
+		   OEnv=OptLambda.initial,
+                   NEnv=LambdaBasics.Normalize.initial}
 
-    fun plus({TCEnv,EqEnv,OEnv},
-	     {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv'}) =
+    fun plus({TCEnv,EqEnv,OEnv,NEnv},
+	     {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',NEnv=NEnv'}) =
       {TCEnv=LambdaStatSem.plus(TCEnv,TCEnv'),
        EqEnv=EliminateEq.plus(EqEnv,EqEnv'),
-       OEnv=OptLambda.plus(OEnv,OEnv')}
+       OEnv=OptLambda.plus(OEnv,OEnv'),
+       NEnv=LambdaBasics.Normalize.plus(NEnv,NEnv')}
 
     type StringTree = PP.StringTree
-    fun layout_CompBasis {TCEnv,EqEnv,OEnv} =
+    fun layout_CompBasis {TCEnv,EqEnv,OEnv,NEnv} =
       PP.NODE{start="{", finish="}", indent=1, childsep=PP.RIGHT "; ",
               children=[EliminateEq.layout_env EqEnv,
 			OptLambda.layout_env OEnv,
-			LambdaStatSem.layout_env TCEnv
+			LambdaStatSem.layout_env TCEnv,
+                        LambdaBasics.Normalize.layout NEnv
                        ]
              }
 
@@ -60,21 +67,23 @@ structure CompBasisToLamb
       fun EliminateEq_enrich a = EliminateEq.enrich a
       fun LambdaStatSem_enrich a = LambdaStatSem.enrich a
       fun OptLambda_enrich a = OptLambda.enrich a
+      fun NEnv_enrich a = LambdaBasics.Normalize.enrich a
     in
-      fun enrich ({TCEnv,EqEnv,OEnv},
-		  {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1}) =
+      fun enrich ({TCEnv,EqEnv,OEnv,NEnv},
+		  {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,NEnv=NEnv1}) =
 	debug("EqEnv", EliminateEq_enrich(EqEnv,EqEnv1)) andalso 
 	debug("TCEnv", LambdaStatSem_enrich(TCEnv,TCEnv1)) andalso
-	debug("OEnv", OptLambda_enrich(OEnv,OEnv1))
+	debug("OEnv", OptLambda_enrich(OEnv,OEnv1)) andalso
+	debug("NEnv", NEnv_enrich(NEnv,NEnv1))
     end
 
-    fun match ({TCEnv,EqEnv,OEnv},
-	       {TCEnv=TCEnv0,EqEnv=EqEnv0,OEnv=OEnv0}) = 
+    fun match ({TCEnv,EqEnv,OEnv,NEnv},
+	       {TCEnv=TCEnv0,EqEnv=EqEnv0,OEnv=OEnv0,NEnv=NEnv0}) = 
       let val EqEnv = EliminateEq.match(EqEnv,EqEnv0) 
-      in {TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv}
+      in {TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv,NEnv=NEnv}
       end
 
-    fun restrict ({EqEnv,OEnv,TCEnv},
+    fun restrict ({EqEnv,OEnv,TCEnv,NEnv},
 		  (lvars,tynames,cons,excons)) = 
       let
 	
@@ -101,16 +110,26 @@ structure CompBasisToLamb
               TyName.tyName_CHARARRAY :: tynames    (* for inlining primitives *)
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames
                         else tynames
+
+          val NEnv1 = LambdaBasics.Normalize.restrict(NEnv,lvars)
+              handle x =>
+               (say "CompBasisToLamb.restrict: Normalize.restrict failed\n";
+                say "Normalize environment is:\n";
+                PP.outputTree(say,  LambdaBasics.Normalize.layout NEnv, 100);
+                say "(end of normalize environment)\n";
+                raise x) 
+
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames}) handle x =>
-               (say "CompileBasis.restrict: ElimiateEq.restrict failed\n";
-                say "Then equality environment is:\n";
-                PP.outputTree(say,  EliminateEq.layout_env EqEnv, 70);
+               (say "CompBasisToLamb.restrict: ElimiateEq.restrict failed\n";
+                say "Equality environment is:\n";
+                PP.outputTree(say,  EliminateEq.layout_env EqEnv, 100);
                 say "(end of equality environment)\n";
                 raise x) 
 	  val lvars = lvars_eq @ lvars
 	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
-      in ({TCEnv=TCEnv1,
+      in ({NEnv=NEnv1,
+           TCEnv=TCEnv1,
 	   EqEnv=EqEnv1,
 	   OEnv=OEnv1}, lvars, tynames, cons, excons)
       end
@@ -133,7 +152,7 @@ structure CompBasisToLamb
 	TyName.Set.list
 	(TyName.Set.difference (TyName.Set.fromList tns) (TyName.Set.fromList TyName.tynamesPredefined))
 
-    fun restrict0 ({EqEnv,OEnv,TCEnv},
+    fun restrict0 ({EqEnv,OEnv,TCEnv,NEnv},
 		  (lvars,tynames,cons,excons)) = 
       let
 	  (* Don't include identifiers that are declared by the initial basis *)
@@ -141,13 +160,15 @@ structure CompBasisToLamb
 	  val tynames = subtractPredefinedTynames tynames
 	  val cons = subtractPredefinedCons cons
 	  val excons = subtractPredefinedExcons excons
+          val NEnv1 = LambdaBasics.Normalize.restrict(NEnv,lvars)
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
 	  val lvars = lvars_eq @ lvars
 	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
 	  val tynames = subtractPredefinedTynames tynames
 	  val cons = subtractPredefinedCons cons
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
-      in ({TCEnv=TCEnv1,
+      in ({NEnv=NEnv1,
+           TCEnv=TCEnv1,
 	   EqEnv=EqEnv1,
 	   OEnv=OEnv1}, lvars, tynames, cons, excons)
       end
@@ -155,9 +176,9 @@ structure CompBasisToLamb
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
-	let fun to (tce,eqe,oe) = {TCEnv=tce, EqEnv=eqe, OEnv=oe}
-	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe} = (tce,eqe,oe)
+	let fun to (tce,eqe,(oe,ne)) = {TCEnv=tce, EqEnv=eqe, OEnv=oe, NEnv=ne}
+	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe, NEnv=ne} = (tce,eqe,(oe,ne))
 	in Pickle.convert (to,from)
-	    (Pickle.tup3Gen0(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
+	    (Pickle.tup3Gen0(LambdaStatSem.pu,EliminateEq.pu,Pickle.pairGen0(OptLambda.pu,LambdaBasics.Normalize.pu)))
 	end    
   end

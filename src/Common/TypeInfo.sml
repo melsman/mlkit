@@ -50,6 +50,7 @@ structure TypeInfo: TYPE_INFO =
 
     fun on_TypeInfo' (phi,ti) =
       let fun phi_on_Type tau = StatObject.Realisation.on_Type phi tau
+          fun phi_on_Scheme tau = StatObject.Realisation.on_TypeScheme phi tau
 	  fun phi_on_TE TE = Environments.Realisation.on_TyEnv phi TE (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
 	  fun phi_on_E E = Environments.Realisation.on_Env phi E        (* it used to be the identity *)
 	  fun phi_on_phi' phi' = StatObject.Realisation.oo(phi,phi')
@@ -58,7 +59,10 @@ structure TypeInfo: TYPE_INFO =
 	   of LAB_INFO _ => ti
 	    | RECORD_ATPAT_INFO{Type} => RECORD_ATPAT_INFO{Type=phi_on_Type Type}
 	    | VAR_INFO {instances} => VAR_INFO {instances = map phi_on_Type instances}
-	    | VAR_PAT_INFO {tyvars,Type} => VAR_PAT_INFO{tyvars=tyvars,Type=phi_on_Type Type}
+	    | VAR_PAT_INFO {tyvars,Type} => 
+            let val (tyvars,Type) = phi_on_Scheme(tyvars,Type)
+            in VAR_PAT_INFO{tyvars=tyvars,Type=Type}
+            end
 	    | CON_INFO {numCons, index, instances, longid} =>
 	     CON_INFO {numCons=numCons,index=index,
 		       instances=map phi_on_Type instances,
@@ -70,7 +74,9 @@ structure TypeInfo: TYPE_INFO =
 	    | EXP_INFO {Type} => EXP_INFO{Type=phi_on_Type Type}
 	    | MATCH_INFO {Type} => MATCH_INFO{Type=phi_on_Type Type}
 	    | PLAINvalbind_INFO {tyvars, Type} =>
-	     PLAINvalbind_INFO {tyvars=tyvars, Type=phi_on_Type Type}
+            let val (tyvars,Type) = phi_on_Scheme(tyvars,Type)
+            in PLAINvalbind_INFO {tyvars=tyvars,Type=Type}
+            end
 	    | OPEN_INFO _ => ti
 	    | INCLUDE_INFO _ => ti
 	    | FUNCTOR_APP_INFO {rea_inst,rea_gen,Env} => 

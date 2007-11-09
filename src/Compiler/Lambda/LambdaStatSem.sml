@@ -400,12 +400,20 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	    CONStype(ts,tn) => (lookup_tyname e tn; valid_ts e ts)
 	  | ARROWtype(ts1,ts2) => (valid_ts e ts1; valid_ts e ts2)
 	  | TYVARtype tv => if isin_tv e tv then ()
-                            else die "valid_t.non-bound type variable" 
+                            else die ("valid_t.non-bound type variable " ^ pr_tyvar tv) 
 	  | RECORDtype ts => valid_ts e ts	
     and valid_ts (e:env) nil = ()
       | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
 
-    fun valid_s e (tvs,ty) = valid_t (add_tyvars(tvs,e)) ty
+    structure TVS = TyvarSet
+    fun valid_s e (tvs,ty) = 
+        let val s = tyvars_Type TVS.empty ty TVS.empty
+          val _ = app (fn tv => if TVS.member tv s then ()
+                                else die ("valid_s.Type variable " ^ pr_tyvar tv ^ " not in " ^ prTypeScheme(tvs,ty)))
+                      tvs
+        in
+          valid_t (add_tyvars(tvs,e)) ty
+        end
 
     fun mk_instance ((tyvars,Type):TypeScheme, instances : Type list) =
       let val S = LambdaBasics.mk_subst (fn () => "mk_instance") (tyvars, instances)
@@ -743,7 +751,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	 | FIX {functions, scope} =>
 	  let (* env' is the environment for checking function bodies *)
               val env' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
-				     (valid_s env (tyvars,Type); add_lvar(lvar,([],Type),env))) env functions
+				     (valid_s env (tyvars,Type); add_lvar(lvar,([],Type),add_tyvars(tyvars,env)))) env functions
 (*	      val _ =
 		let type t = {lvar:lvar,tyvars:tyvar list, Type : Type, bind:LambdaExp}
 		    fun ch_abs [] = ()

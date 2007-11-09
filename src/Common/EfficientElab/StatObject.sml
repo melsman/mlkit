@@ -1816,28 +1816,28 @@ structure StatObject: STATOBJECT =
 	       end)
 
 
-      local
-	fun refresh_tyvars tyvars : TyVar list * Type list = 
-	  let fun fresh (tv as ref(NO_TY_LINK tvdesc)) = 
-	          let val tv = TyVar.refresh tv
-		  in (tv, Type.from_TyVar(tv))
-		  end
-		| fresh _ = die "on_TypeScheme.fresh"
-	  in ListPair.unzip (map fresh tyvars)
-	  end
-      in
-	fun on_TypeScheme Realisation_Id scheme = scheme
-	  | on_TypeScheme phi (sigma as (tyvars,tau)) =
+      fun on_TypeScheme Realisation_Id scheme = scheme
+	| on_TypeScheme phi (sigma as (tyvars,tau)) =
 	  if List.exists TyVar.is_overloaded tyvars then sigma  (* type schemes for overloaded identifiers are rigid *)
-	  else (tyvars,on_Type phi tau)
-      end
-
-      fun on_TypeFcn Realisation_Id typefcn = typefcn
-	| on_TypeFcn phi (TYPEFCN {tyvars, tau}) =
+	  else 
+            let val tau = on_Type phi tau
+(*
+              (* eliminate bound tyvars that are not in tau *)
+              val tvs = Type.generic_tyvars tau
+              val tyvars = foldr (fn (tv,acc) => if List.exists (fn t => t = tv) tvs then tv::acc else acc) nil tyvars 
+*)
+            in (tyvars,tau)
+            end
+            
+      fun on_TypeFcn Realisation_Id theta = theta
+	| on_TypeFcn phi (theta as TYPEFCN {tyvars, tau}) =
+        TYPEFCN{tyvars=tyvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved, which differ 
+                                                      * from the case for type schemes ; mael-2007-11-07 *)
+(* 
 	let val (tyvars,tau) = on_TypeScheme phi (tyvars,tau)
 	in TYPEFCN{tyvars=tyvars,tau=tau}
 	end
-
+*)
       fun on_TypeFcn' Realisation_Id typefcn' = typefcn'
 	| on_TypeFcn' phi (TYNAME t) = on_TyName' phi t
 	| on_TypeFcn' phi (EXPANDED theta) = EXPANDED (on_TypeFcn phi theta)
