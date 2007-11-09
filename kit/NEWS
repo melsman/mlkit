@@ -1,5 +1,11 @@
 MLKit NEWS file
 
+ * mael 2007-11-09: Improved type checking of the internal language
+   LambdaExp. Type schemes are now normalized (and inforced to be so)
+   so that bound names always occur in the body of the type scheme
+   prior to region inference. This normalization happens after
+   compilation into the LambdaExp language.
+
  * mael 2007-11-06: Improved type checking of the internal language
    LambdaExp. LambdaExp programs are now closed w.r.t. type variables.
 

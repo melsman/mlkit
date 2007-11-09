@@ -676,18 +676,143 @@ structure LambdaBasics: LAMBDA_BASICS =
 
     end (*local*)
 
-    local
-      structure TVS = TyvarSet
-    in
-      fun close (PGM(db,e)) =
-          let
-(*            val e = new_instance e *)
-            val tvs = tyvars_Exp (TVS.empty) e (TVS.empty)
-            val tvs = TVS.list tvs
-            val S = mk_subst' (map (fn tv => (tv,intDefaultType())) tvs)
-            val e = on_LambdaExp S e
-          in PGM(db,e)
-          end
-    end
+    structure TVS = TyvarSet
+    
+    fun close (PGM(db,e)) =
+        let
+(*          val e = new_instance e *)
+          val tvs = tyvars_Exp (TVS.empty) e (TVS.empty)
+          val tvs = TVS.list tvs
+          val S = mk_subst' (map (fn tv => (tv,intDefaultType())) tvs)
+          val e = on_LambdaExp S e
+        in PGM(db,e)
+        end
 
+    structure Normalize =
+    struct
+
+      (* Normalize type schemes so that type schemes only bind type
+       * variables that occur in the body of the type scheme *)
+      type StringTree = PP.StringTree
+      type sigma = tyvar list * Type
+      type env = bool list option Lvars.Map.map
+      val empty : env = Lvars.Map.empty
+      val initial : env = Lvars.Map.empty
+      val plus: env * env -> env = Lvars.Map.plus
+      fun restrict (m:env,d) = Lvars.Map.restrict (Lvars.pr_lvar,m,d)
+      fun enrich (m:env,m') = Lvars.Map.enrich (op =) (m,m')
+      fun lookup m lv = Lvars.Map.lookup m lv
+      val add = Lvars.Map.add
+      fun pp_bl bl = String.concat (map (fn true => "1" | false => "0") bl)
+      val layout = Lvars.Map.layoutMap {start="{",finish="}",eq="->",sep=","}
+                                       (PP.LEAF o Lvars.pr_lvar) 
+                                       (fn NONE => PP.LEAF "none"
+                                         | SOME bl => PP.LEAF (pp_bl bl))
+      val pu = let open Pickle
+               in Lvars.Map.pu Lvars.pu (optionGen(listGen(bool)))
+               end
+
+      fun t (nil,nil) = nil
+        | t (true::bl,x::xs) = x::t(bl,xs)
+        | t (false::bl,x::xs) = t(bl,xs)
+        | t _ = die "T.error"
+
+      fun normScheme (sigma : sigma) : sigma * bool list option =
+          let val (tvs,tau) = sigma
+            val tvs' = tyvars_Type TVS.empty tau TVS.empty
+            val bl = map (fn tv => TVS.member tv tvs') tvs
+            val a = List.all (fn x => x) bl
+          in if a then (sigma, NONE)
+             else ((t(bl,tvs),tau), SOME bl)
+          end
+
+      val F : env option ref = ref NONE
+
+      fun N (E:env) (e:LambdaExp) : LambdaExp =
+          let
+	    fun Ns (SWITCH(arg, sels, opt)) =
+                SWITCH(N E arg, map (fn (a,e) => (a,N E e)) sels,
+                       case opt of
+                         SOME e => SOME(N E e)
+                       | NONE => NONE)
+          in
+	    case e of
+              VAR{instances, lvar} => 
+              (case lookup E lvar of
+                 SOME(SOME bl) => VAR{instances=t(bl,instances),lvar=lvar}
+               | SOME NONE => e
+               | NONE => die "N.VAR")
+            | INTEGER _ => e
+            | WORD _ => e
+            | STRING _ => e
+            | REAL _ => e
+	    | FN{pat,body} => 
+              let val E = foldl (fn ((lv,_),E) => add(lv,NONE,E)) E pat
+              in FN{pat=pat,body=N E body}
+              end
+	    | LET{pat,bind,scope} => 
+              let val (pat,E') = foldr (fn ((lv,tvs,tau),(pat,E)) => 
+                                           let val ((tvs,tau),obl) = normScheme (tvs,tau)
+                                           in ((lv,tvs,tau)::pat, add(lv,obl,E))
+                                           end) (nil,E) pat
+              in LET{pat=pat,bind=N E bind,scope=N E' scope}
+              end
+	    | FIX{functions,scope} => 
+              let val Eb = foldl (fn ({lvar,...},E) => add(lvar,NONE,E)) E functions
+                  val (functions,E') = 
+                      foldr (fn ({lvar,tyvars,Type,bind},(fns,E)) => 
+                                let val ((tyvars,Type),obl) = normScheme (tyvars,Type)
+                                in ({lvar=lvar,tyvars=tyvars,Type=Type,bind=N Eb bind}::fns, add(lvar,obl,E))
+                                end) (nil,E) functions
+              in FIX{functions=functions,scope=N E' scope}
+              end
+	    | APP(e1, e2) => APP(N E e1, N E e2)
+	    | EXCEPTION(excon,tauOpt,e) => EXCEPTION(excon,tauOpt,N E e)
+	    | RAISE(e,tl) => RAISE(N E e, Ntl E tl)
+	    | HANDLE(e1, e2) => HANDLE(N E e1, N E e2)
+	    | SWITCH_I {switch,precision} => SWITCH_I{switch=Ns switch,precision=precision}
+	    | SWITCH_W {switch,precision} => SWITCH_W{switch=Ns switch,precision=precision}
+	    | SWITCH_S switch => SWITCH_S(Ns switch)
+	    | SWITCH_C switch => SWITCH_C(Ns switch)
+	    | SWITCH_E switch => SWITCH_E(Ns switch)
+	    | PRIM(p,es) => PRIM(p, map (N E) es)
+            | FRAME fr => FRAME(Nf E fr)
+          end
+
+      and Ntl E tl =
+          case tl of
+            Types _ => tl
+          | Frame fr => Frame (Nf E fr)
+          | RaisedExnBind => tl
+
+      and Nf E fr =
+          let 
+            val {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
+	         declared_excons: (excon * Type option) list} = fr
+            val Ef = foldl (fn ({lvar,...},acc) => 
+                               case lookup E lvar of 
+                                 SOME r => add(lvar,r,acc)
+                               | NONE => die "N.Frame") empty declared_lvars
+            val _ = F := SOME Ef
+            val declared_lvars = 
+                map (fn {lvar,tyvars,Type} =>
+                        let val ((tyvars,Type),_) = normScheme (tyvars,Type)
+                        in {lvar=lvar,tyvars=tyvars,Type=Type}
+                        end) declared_lvars
+          in 
+            {declared_lvars=declared_lvars,
+             declared_excons=declared_excons}
+          end
+
+      fun norm (E:env, PGM(db,e)) =
+          let val _ = F := NONE
+            val e = N E e
+            val E' = case !F of SOME E' => E'
+                              | NONE => die "norm"
+            val _ = F := NONE
+          in (PGM(db,e),E')
+          end
+
+    end
+      
   end

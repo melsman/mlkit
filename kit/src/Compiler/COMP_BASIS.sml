@@ -5,6 +5,7 @@ signature COMP_BASIS =
 
     type TyName and lvar and con and excon
 
+    type NEnv           (* type scheme normalization environment *)
     type TCEnv          (* lambda type check environment *)
     type EqEnv          (* Environment for elimination of polymorphic equality *)
     type OEnv           (* optimizer env *)
@@ -28,9 +29,9 @@ signature COMP_BASIS =
       CompBasis * lvar list * con list * excon list
 
 
-    val mk_CompBasis: {TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,
+    val mk_CompBasis: {NEnv:NEnv,TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,
 		       mularefmap:mularefmap,drop_env:drop_env,psi_env:psi_env} -> CompBasis
-    val de_CompBasis: CompBasis -> {TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,
+    val de_CompBasis: CompBasis -> {NEnv:NEnv,TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,
 				    mularefmap:mularefmap,drop_env:drop_env,psi_env:psi_env}
     type StringTree
     val layout_CompBasis: CompBasis -> StringTree

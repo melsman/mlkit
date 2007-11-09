@@ -71,7 +71,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
     (*  Compile the declaration using old compiler environment, ce            *)
     (* ---------------------------------------------------------------------- *)
 
-    fun ast2lambda fe (ce, strdecs) =
+    fun ast2lambda fe (ce, ne, strdecs) =
       (chat "[Compiling abstract syntax tree into lambda language..";
 
 (*       Timing.timing_begin(); *)  
@@ -91,11 +91,13 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
            val _ = chat "."
+           val (lamb,ne1) = LambdaBasics.Normalize.norm(ne,lamb) 
+           val _ = chat "."
            val lamb = LambdaBasics.close lamb
        in  
 	 chat "]\n";
 	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
-	 (lamb,ce1, declared_lvars, declared_excons) 
+	 (lamb, ce1, ne1, declared_lvars, declared_excons) 
      end)
 
     (* ------------------------------------ *)
@@ -191,9 +193,9 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	 * If we want more checks, we should insert more components
 	 * in bases. For now, we do type checking after optlambda, only. *)
 
-	val {TCEnv,EqEnv,OEnv} = CompBasisToLamb.de_CompBasis Basis
+	val {TCEnv,EqEnv,OEnv,NEnv} = CompBasisToLamb.de_CompBasis Basis
 
-        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, strdecs)
+        val (lamb, CEnv1, NEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, NEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
@@ -204,7 +206,7 @@ structure CompileToLamb: COMPILE_TO_LAMB =
 	else
 	  let
 	    val safe = LambdaExp.safeLambdaPgm lamb_opt
-	    val Basis1 = CompBasisToLamb.mk_CompBasis{TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1}
+	    val Basis1 = CompBasisToLamb.mk_CompBasis{TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,NEnv=NEnv1}
 	  in CodeRes (CEnv1, Basis1, lamb_opt, safe orelse safeLinkTimeElimination())
 	  end
       end
