@@ -92,6 +92,24 @@ struct
   fun discard_top_wordrho places = List.filter (not o isTopWordRegion) places 
   fun discard_word_rhos places = List.filter (not o isWordRegion) places 
 
+  (* ann_XX0 ty acc: return effects in the order they appear in the
+   * underlying ML-type; this function is used for unifying effects in
+   * types; we do not remove the topWordRegions from the lists as this
+   * could mess up the lists... mael 2007-11-14 *)
+
+  fun ann_ty0 ty (acc : effect list) = 
+       case ty of 
+         TYVAR _ => acc
+       | CONSTYPE(_,mus,rhos,epss) => 
+          List.foldr ann_mu0 (rhos @ (epss @ acc)) mus
+       | RECORD mus =>
+          List.foldr ann_mu0 acc mus
+       | FUN(mus1,eps,mus2) =>
+          ann_mus0 mus1 (eps:: ann_mus0 mus2 acc)
+  and ann_mu0 ((tau,rho), acc) = ann_ty0 tau (rho::acc)
+  and ann_mus0 [] acc  = acc
+    | ann_mus0 (mu::rest) acc = ann_mu0 (mu, ann_mus0 rest acc)
+
   fun ann_ty ty (acc : effect list) = 
        case ty of 
          TYVAR _ => acc
@@ -106,7 +124,7 @@ struct
   and ann_mus [] acc  = acc
     | ann_mus (mu::rest) acc = ann_mu (mu, ann_mus rest acc)
 
-  (* free region variables of mu, including secondary occurrences *)
+  (* free region variables of mu, including secondary occurrences but excluding the topWordRegion *)
 
   fun frv_mu mu = 
       let val annotations = ann_mu (mu, [])
@@ -313,8 +331,8 @@ struct
     else E.unifyRho(node1, node2) cone
 
   fun unify_ty(ty1, ty2:Type) cone: E.cone =
-    let val effs1 = ann_ty ty1 []
-        val effs2 = ann_ty ty2 []
+    let val effs1 = ann_ty0 ty1 []
+        val effs2 = ann_ty0 ty2 []
     in
       List.foldl u cone (BasisCompat.ListPair.zipEq(effs1,effs2))
       handle X =>  let val (lay_ty,_) = mk_layout false;
@@ -329,7 +347,7 @@ struct
     end
 
   fun unify_mu (mu1, mu2:mu) cone: E.cone =
-    List.foldl u cone (BasisCompat.ListPair.zipEq(ann_mu (mu1, []),ann_mu (mu2, [])))
+    List.foldl u cone (BasisCompat.ListPair.zipEq(ann_mu0 (mu1, []),ann_mu0 (mu2, [])))
     handle _ => let val (_,lay_mu) = mk_layout false;
                      fun dump(mu) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_mu mu, !Flags.colwidth)
                  in

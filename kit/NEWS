@@ -1,5 +1,8 @@
 MLKit NEWS file
 
+ * mael 2007-11-14: Fixed bug reported by Vesa Karvonen concerning
+   unification of region types.
+
  * mael 2007-11-09: Improved type checking of the internal language
    LambdaExp. Type schemes are now normalized (and inforced to be so)
    so that bound names always occur in the body of the type scheme
