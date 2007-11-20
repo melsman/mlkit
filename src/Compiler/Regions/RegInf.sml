@@ -258,8 +258,10 @@ struct
                                         (B,Effect.Lf[]) ts
        | Exp.FN{pat, body, alloc, free} =>
            (case mt of
-              Exp.Mus [mu0 as (RType.FUN(mus2,eps_phi0,mus1),_)] =>
-                let 
+              Exp.Mus [mu0 as (ty,_)] =>
+              (case RType.unFUN ty of
+                 SOME(mus2,eps_phi0,mus1) =>
+                 let 
 		    val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
                           RSE.declareLvar(lvar, (false,false,
                                  RType.type_to_scheme tau, rho,NONE,NONE), 
@@ -270,11 +272,12 @@ struct
 		    val delta = Effect.Br(delta_body, delta_gc)
                     val lev_eps = case Effect.level_of eps_phi0 of SOME n => n | NONE => die "bad arrow effect (FN)"
                     val B = lower_delta lev_eps delta B  
-                in 
+                 in 
                     update_increment(eps_phi0, delta);
                     update_areff(eps_phi0);
                     (B, Effect.Lf [])
-                end
+                 end
+               | NONE => die "R: FN expression had bad meta type")
             | _ => die "R: FN expression had bad meta type")
            
    
@@ -423,7 +426,13 @@ struct
    
        | Exp.APP(t1,t2) => 
            let val (B,d1) = R(B,rse,t1)
-               val eps_phi0 = case t1 of Exp.TR(_, Exp.Mus [(RType.FUN(_,eps_phi0,_),_)],_) => eps_phi0 | _ => die "APP: not function"
+               val eps_phi0 = 
+                   case t1 of 
+                     Exp.TR(_, Exp.Mus [(ty,_)],_) => 
+                     (case RType.unFUN ty of
+                        SOME(_,eps_phi0,_) => eps_phi0 
+                      | NONE => die "APP: not function")
+                   | _ => die "APP: not function"
                val (B,d2) = R(B,rse,t2)
            in  (B,Effect.Br(current_increment(eps_phi0),Effect.Br(d1,d2)))
                (*(B,Effect.Br(Effect.Lf[eps_phi0],Effect.Br(d1,d2)))*)
@@ -433,7 +442,13 @@ struct
        | Exp.RAISE t1 => R(B,rse,t1)
        | Exp.HANDLE(t1,t2) => 
            let val (B,d1) = R(B,rse,t1)
-               val eps_phi0 = case t2 of Exp.TR(_, Exp.Mus [(RType.FUN(_,eps_phi0,_),_)],_) => eps_phi0 | _ => die "HANDLE: not function"
+               val eps_phi0 = 
+                   case t2 of 
+                     Exp.TR(_, Exp.Mus [(ty,_)],_) => 
+                     (case RType.unFUN ty of
+                        SOME(_,eps_phi0,_) => eps_phi0 
+                      | NONE => die "HANDLE: not function")
+                   | _ => die "HANDLE: not function"
                val (B,d2) = R(B,rse,t2)
            in  (B,Effect.Br(current_increment(eps_phi0),Effect.Br(d1,d2)))
                (*(B,Effect.Br(Effect.Lf[eps_phi0],Effect.Br(d1,d2)))*)

@@ -520,7 +520,10 @@ struct
              | LETREGION{body, ...} => warn_dangle_trip TE body
 	     | _ => ()
 	 
-           and warn_dangle_trip TE (TR(e,mu as RegionExp.Mus[(R.FUN(_,eps,_),_)],_,_)) = warn_dangle TE (e,SOME eps)
+           and warn_dangle_trip TE (TR(e,mu as RegionExp.Mus[(ty,_)],_,_)) = 
+               (case R.unFUN ty of
+                  SOME (_,eps,_) => warn_dangle TE (e,SOME eps)
+                | NONE => warn_dangle TE (e, NONE))
              | warn_dangle_trip TE (TR(e,mu,_,_)) = warn_dangle TE (e, NONE)
 
 	   and warn_dangle_i TE (SWITCH(e, list, e')) = 
@@ -1029,11 +1032,14 @@ struct
       and layTrip(TR(e,RegionExp.Mus mus,rea,ref psi),n) = 
         let val t1 = 
                 case (e, mus) of
-                  (FN{pat,body,free,alloc}, [(R.FUN(_,eps,_),_)])=> 
-		    let val eps_s = if print_effects() then PP.flatten1(Eff.layout_effect(*_deep*) eps) ^ " "    (*mads*)
-				    else ""
-		    in layLam((pat,body,alloc), n, eps_s)
-		    end
+                  (FN{pat,body,free,alloc}, [(ty,_)])=> 
+                  (case R.unFUN ty of
+                     SOME (_,eps,_) =>
+		     let val eps_s = if print_effects() then PP.flatten1(Eff.layout_effect(*_deep*) eps) ^ " "    (*mads*)
+				     else ""
+		     in layLam((pat,body,alloc), n, eps_s)
+		     end
+                   | NONE => layExp(e,n))
                 | _ => layExp(e,n)
             val tick = (printcount:= !printcount+1; !printcount)
         in

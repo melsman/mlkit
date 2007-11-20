@@ -1353,14 +1353,14 @@ struct
 
 
     fun precisionNumType t =
-      case t
-	of RType.CONSTYPE(tn,_,_,_) => 
+      case RType.unCONSTYPE t of 
+        SOME(tn,_,_,_) => 
 	  if TyName.eq(tn, TyName.tyName_INT31) then 31
 	  else if TyName.eq(tn, TyName.tyName_INT32) then 32
 	  else if TyName.eq(tn, TyName.tyName_WORD31) then 31
 	  else if TyName.eq(tn, TyName.tyName_WORD32) then 32
 	  else die "precisionNumType.wrong tyname"
-	 | _ => die "precisionNumType.wrong type"
+      | NONE => die "precisionNumType.wrong type"
 
     (* ------------------------------ *)  
     (*   General Utility Functions    *)
@@ -1511,7 +1511,10 @@ struct
 
     fun gen_fresh_res_lvars(RegionExp.Mus type_and_places) =
       (case type_and_places of
-	  [(RType.FUN(mus1,arroweffect,mus2),_)] => List.map (fn _ => fresh_lvar("res")) mus2
+	  [(ty,_)] => 
+          (case RType.unFUN ty of 
+             SOME(mus1,arroweffect,mus2) => List.map (fn _ => fresh_lvar("res")) mus2
+           | NONE => die "gen_fresh_res: not a function type.")
         | _ => die "gen_fresh_res: not a function type.")
       | gen_fresh_res_lvars(RegionExp.Frame _) = []
       | gen_fresh_res_lvars(RegionExp.RaisedExnBind) = []
@@ -2130,8 +2133,8 @@ struct
 		 fun eq_prim n = CCALL{name=n,args=[ce1,ce2],rhos_for_result=[]}
 
 		 val ce =
-		   (case tau of
-		      RType.CONSTYPE(tn,_,_,_) =>
+		   (case RType.unCONSTYPE tau of
+		      SOME(tn,_,_,_) =>
                         if (TyName.eq(tn,TyName.tyName_BOOL) 
 			    orelse TyName.eq(tn,TyName.tyName_REF)
 			    orelse TyName.eq(tn,TyName.tyName_ARRAY)
@@ -2153,8 +2156,10 @@ struct
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
 			       die "`=' on vectors! EliminateEq should have dealt with this"
 			else eq_prim "equalPolyML"
-		    | RType.RECORD [] => eq_prim "__equal_int32ub"
-		    | _ => eq_prim "equalPolyML")
+                    | NONE => 
+                      case RType.unRECORD tau of
+                        SOME [] => eq_prim "__equal_int32ub"
+                      | _ => eq_prim "equalPolyML")
 	       in
 		 (insert_ses(ce,ses),NONE_SE)
 	       end
@@ -2202,12 +2207,12 @@ struct
 		 val smas = comp_region_args_sma rhos_for_result'
 		 val maybe_return_unit =
 		   if BI.tag_values() then
-		   (case mu_result of
-		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
-							    scope=RECORD{elems=[],
-									 alloc=IGNORE,
-									 tag=BI.tag_ignore,
-									 maybeuntag=false}})
+		   (case RType.unRECORD(#1 mu_result) of
+		      SOME [] => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
+					       scope=RECORD{elems=[],
+							    alloc=IGNORE,
+							    tag=BI.tag_ignore,
+							    maybeuntag=false}})
 		    | _ => (fn ce => ce))
 		   else (fn ce => ce)
 		 val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
@@ -2223,10 +2228,11 @@ struct
 			      of MulExp.TR(_,RegionExp.Mus[(ty,_)],_,_) => ty
 			       | _ => die "CCALL_AUTO.ty"
 			  fun fty ty : foreign_type =
-			    case ty
-			      of RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
-			       | RType.RECORD [] => Unit
-			       | _ => die "CCALL_AUTO.fty"
+			    case RType.unCONSTYPE ty of
+                              SOME(tn,_,_,_) => tn_to_foreign_type tn
+                            | NONE => case RType.unRECORD ty of
+                                        SOME [] => Unit
+                                      | _ => die "CCALL_AUTO.fty"
 			  val args = ListPair.zip(ces,map (fty o ty_trs) trs)
 			    handle _ => die "CCALL_AUTO.zip"
 			  val res = case fty (#1 mu_result)
@@ -2250,10 +2256,11 @@ struct
 	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) => 
 	       let val (ce,se) = ccTrip tr env lab cur_rv
 		   fun toForeignType (ty,_) : foreign_type =
-		       case ty of 
-			   RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
-			 | RType.RECORD [] => Unit
-			 | _ => die "EXPORT.toForeignType"
+		       case RType.unCONSTYPE ty of 
+                         SOME(tn,_,_,_) => tn_to_foreign_type tn
+		       | NONE => case RType.unRECORD ty of 
+                                   SOME [] => Unit
+                                 | _ => die "EXPORT.toForeignType"
 		   val maybe_return_unit =
 		       if BI.tag_values() andalso toForeignType mu_res = Unit then
 			   (fn ce => LET{pat=[fresh_lvar("export")],bind=ce,
@@ -2340,7 +2347,10 @@ struct
       let
 	fun gen_pseudo_res_lvars(RegionExp.Mus type_and_places) =
 	  (case type_and_places of
-	     [(RType.FUN(mus1,arroweffect,mus2),_)] => List.map (fn _ => Lvars.notused_lvar) mus2
+	     [(ty,_)] => 
+             (case RType.unFUN ty of
+                SOME(mus1,arroweffect,mus2) => List.map (fn _ => Lvars.notused_lvar) mus2
+              | NONE => die "gen_fresh_res: not a function type.")
 	   | _ => die "gen_fresh_res: not a function type.")
 	  | gen_pseudo_res_lvars(RegionExp.Frame _) = []
 	  | gen_pseudo_res_lvars(RegionExp.RaisedExnBind) = []
@@ -2855,8 +2865,8 @@ struct
 		 val ce2 = liftTrip tr2 env lab
 		 fun eq_prim n = CCALL{name=n,args=[ce1,ce2],rhos_for_result=[]}
 	       in
-		   (case tau of
-		      RType.CONSTYPE(tn,_,_,_) =>
+		   (case RType.unCONSTYPE tau of
+		      SOME(tn,_,_,_) =>
                         if (TyName.eq(tn,TyName.tyName_BOOL) 
 			    orelse TyName.eq(tn,TyName.tyName_REF)
 			    orelse TyName.eq(tn,TyName.tyName_CHARARRAY)
@@ -2878,8 +2888,9 @@ struct
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
 			  die "`=' on vectors! EliminateEq should have dealt with this"
 			else eq_prim "equalPolyML"
-		    | RType.RECORD [] => eq_prim "__equal_int32ub"
-		    | _ => eq_prim "equalPolyML")
+		    | NONE => case RType.unRECORD tau of 
+                                SOME [] => eq_prim "__equal_int32ub"
+		              | _ => eq_prim "equalPolyML")
 	       end
 	   | MulExp.CCALL({name = "id", mu_result, rhos_for_result}, trs) =>
 	       (case trs of
@@ -2928,10 +2939,11 @@ struct
 			      of MulExp.TR(_,RegionExp.Mus[(ty,_)],_,_) => ty
 			       | _ => die "CCALL_AUTO.ty"
 			  fun fty ty : foreign_type =
-			    case ty
-			      of RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
-			       | RType.RECORD [] => Unit
-			       | _ => die "CCALL_AUTO.fty"
+			    case RType.unCONSTYPE ty of
+			      SOME(tn,_,_,_) => tn_to_foreign_type tn
+			    | NONE => case RType.unRECORD ty of
+                                        SOME [] => Unit
+			              | _ => die "CCALL_AUTO.fty"
 			  val args = ListPair.zip(ces,map (fty o ty_trs) trs)
 			    handle _ => die "CCALL_AUTO.zip"
 			  val res = case fty (#1 mu_result)
@@ -2948,10 +2960,11 @@ struct
 	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) => 
 	       let val ce = liftTrip tr env lab
 		   fun toForeignType (ty,_) : foreign_type =
-		       case ty of 
-			   RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
-			 | RType.RECORD [] => Unit
-			 | _ => die "EXPORT.toForeignType"
+		       case RType.unCONSTYPE ty of 
+			   SOME(tn,_,_,_) => tn_to_foreign_type tn
+			 | NONE => case RType.unRECORD ty of
+                                     SOME [] => Unit
+			           | _ => die "EXPORT.toForeignType"
 	       in
 		   EXPORT{name=name,
 			  clos_lab=Labels.new_named ("ExportClosLab_" ^ name),

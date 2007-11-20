@@ -164,7 +164,7 @@ struct
 	val (lvs,exs) = LB.freevars (blvs,e)
 	val rhos = List.foldl (fn (lv, acc) => rhos_sigma lv @ acc) nil lvs
 	val rhos = List.foldl (fn (ex, acc) => rhos_sigma' ex @ acc) rhos exs
-	val rhos_not = R.frv_mu (R.FUN(mus1,eps,mus2),rho)
+	val rhos_not = R.frv_mu (R.mkFUN(mus1,eps,mus2),rho)
 	val rhos = Eff.setminus(Eff.remove_duplicates rhos, rhos_not)
 	fun drop_rho_p (r:place) =
 	  Eff.eq_effect(r, Eff.toplevel_region_withtype_top)
@@ -383,9 +383,11 @@ struct
     (* get_exn_mu(mu') if mu' is the type and place of a nullary exception constructor,
        return mu'; otherwise mu' = (mu_1 -> mu_2, rho): return mu_2 *)
 
-    fun get_exn_mu(R.FUN(_,_,[mu2]),_) = mu2
-      | get_exn_mu mu' = mu'
-
+    fun get_exn_mu (mu as (ty,_)) = 
+        case R.unFUN ty of 
+          SOME(_,_,[mu2]) => mu2
+        | _ => mu
+                  
     fun meetSwitch _    TAIL = TAIL
       | meetSwitch TAIL _    = TAIL
       | meetSwitch _    _    = NOTAIL
@@ -563,7 +565,7 @@ struct
 		     else SOME(LB.freevars e)  (*region inference without dangling pointers*)
         in
           (B, E'.TR(E'.FN{pat = ListPair.zip(map #1 pat, mus), body = t1, alloc = rho, free=free},
-                    E'.Mus [(R.FUN(mus,eps,mu_list1), rho)], (*Eff.*)mkPut(rho)),
+                    E'.Mus [(R.mkFUN(mus,eps,mu_list1), rho)], (*Eff.*)mkPut(rho)),
 	   NOTAIL)
         end
     | E.APP(e1_ML: E.LambdaExp, e2_ML: E.LambdaExp) => 
@@ -576,7 +578,11 @@ struct
                 | _ => false
          
             val B = if simple_application then B else pushIfNotTopLevel(toplevel,B)
-	    val (B,t1 as E'.TR(e1, E'.Mus [(R.FUN(mus2,eps_phi0,mus1),rho_0)],phi1), _) = S(B,e1_ML, false, NOTAIL)
+	    val (B,t1 as E'.TR(e1, E'.Mus [(ty,rho_0)],phi1), _) = S(B,e1_ML, false, NOTAIL)
+            val (mus2,eps_phi0,mus1) =                
+                case R.unFUN ty of
+                  SOME f => f
+                | NONE => die "E.APP.function expected"
             val (B,t2 as E'.TR(e2, E'.Mus mus2', phi2), _) = S(B,e2_ML, false, NOTAIL)
             val B = unify_mus (mus2,mus2') B
         in
@@ -696,8 +702,8 @@ good *)
             (* if exception constructor is unary: unify place of exception
                constructor  and place of its result type. Note: I think 
                we could have chosen not to identify these two regions *)
-            val B = case tau of
-                      R.FUN(_,_,mus as [(tau_res, rho_res)]) => 
+            val B = case R.unFUN tau of
+                      SOME(_,_,mus as [(tau_res, rho_res)]) => 
                           (*Eff.*)unifyRho(rho_res, rho) B
                     | _ => B
             val rse' = (*RSE.*)declareExcon(excon, mu, rse)
@@ -730,18 +736,21 @@ good *)
           val (B, t2 as E'.TR(e2', E'.Mus mus2, phi2), _) = S(B,e2, false, NOTAIL)
         in 
           case mus2 of 
-            [(R.FUN(mus21,arreff,mus22),rho2)] => 
-             let val B = unify_mus(mus22,mus1) B
-                 val phi = (*Eff.*)mkUnion([phi1,phi2,arreff,(*Eff.*)mkGet rho2])
+            [(ty,rho2)] => 
+            (case R.unFUN ty of
+               SOME(mus21,arreff,mus22) =>
+               let val B = unify_mus(mus22,mus1) B
+                   val phi = (*Eff.*)mkUnion([phi1,phi2,arreff,(*Eff.*)mkGet rho2])
                  (* lower all the region and effect variables of mus21 to have level 2 (not 0),
                     so that they cannot be generalised ever. Level 2, because it is generated 
     	            in this program unit, unless unified with another lower-level rho. *)
-                 val B = List.foldl (uncurry ((*Eff.*)lower 2)) 
+                   val B = List.foldl (uncurry ((*Eff.*)lower 2)) 
 				    B (ann_mus mus21 [])
-             in
-               retract(B, E'.TR( E'.HANDLE(t1,t2), E'.Mus mus22, phi), 
-		       NOTAIL) 
-             end
+               in
+                 retract(B, E'.TR( E'.HANDLE(t1,t2), E'.Mus mus22, phi), 
+		         NOTAIL) 
+               end
+             | NONE => die "S: ill-typed handle expression")
           | _ => die "S: ill-typed handle expression"
         end
     | E.PRIM(E.REFprim{instance}, [e1])=>
@@ -755,7 +764,7 @@ good *)
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
           val (rho_new, B) = (*Eff.*)freshRhoWithTy(Eff.REF_RT, B)
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkPut rho_new, phi1])
-          val mus = [(R.CONSTYPE(TyName.tyName_REF, mus1,[],[]),rho_new)]
+          val mus = [(R.mkCONSTYPE(TyName.tyName_REF, mus1,[],[]),rho_new)]
         in
           (B, E'.TR(E'.REF (rho_new, t1), E'.Mus mus,phi),
 	   NOTAIL)
@@ -772,10 +781,13 @@ good *)
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
         in
           case mus1 of
-            [(R.CONSTYPE(tyname_ref, mus, [], []), rho)] =>
+            [(ty, rho)] =>
+            (case R.unCONSTYPE ty of
+               SOME(tyname_ref, mus, [], []) =>
                retract(B, E'.TR(E'.DEREF t1, E'.Mus mus,
-                        (*Eff.*)mkUnion([(*Eff.*)mkGet rho, phi1])),
+                                (*Eff.*)mkUnion([(*Eff.*)mkGet rho, phi1])),
 		       NOTAIL)
+             | _ => die "S: ill-typed rereferencing")
           | _ => die "S: ill-typed rereferencing"
         end
 
@@ -800,14 +812,17 @@ good *)
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
           val (B, t2 as E'.TR(e2', E'.Mus mus2, phi2), _) = S(B,e2, false, NOTAIL)
         in case (mus1,mus2) of
-             ([(R.CONSTYPE(ref_tyname, [mu1],[],[]),rho1)], [mu2]) =>
-               let val B = unify_mu(mu1,mu2)B
-                   val (rho3, B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
-                   val phi = (*Eff.*)mkUnion([(*Eff.*)(*mkPut rho1,mael*) (*Eff.*)mkGet rho1, (*Eff.*)mkPut rho3,phi1, phi2])
-               in
+             ([(ty1,rho1)], [mu2]) =>
+             (case R.unCONSTYPE ty1 of
+                SOME(ref_tyname, [mu1],[],[]) =>
+                let val B = unify_mu(mu1,mu2)B
+                    val (rho3, B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
+                    val phi = (*Eff.*)mkUnion([(*Eff.*)(*mkPut rho1,mael*) (*Eff.*)mkGet rho1, (*Eff.*)mkPut rho3,phi1, phi2])
+                in
                   retract(B, E'.TR(E'.ASSIGN(rho3,t1,t2), E'.Mus [(R.unitType, rho3)], phi),
 			  NOTAIL)
-               end
+                end
+              | _ => die "S: ill-typed assignment")
            | _ => die "S: ill-typed assignment"
         end
 
@@ -842,8 +857,9 @@ good *)
         let 
           val sigma = noSome ((*RSE.*)lookupCon rse con) ".S: constructor not in RSE"
           val (B, tau', il) = newInstance(B,sigma,instances)
-          val aux_regions = (case tau' of R.CONSTYPE(_,_,rhos,_) => rhos 
-                             | _ => die "S: nullary constructor not of constructed type")
+          val aux_regions = (case R.unCONSTYPE tau' of 
+                               SOME(_,_,rhos,_) => rhos 
+                             | NONE => die "S: nullary constructor not of constructed type")
           val (rho, B) = (*Eff.*)freshRhoWithTy(runtype tau', B)
           val result_type = (tau',rho)
         in
@@ -855,8 +871,10 @@ good *)
         let 
           val sigma = noSome ((*RSE.*)lookupCon rse con) "S (CONprim): constructor not in RSE"
           val (B, tau', il) = newInstance(B,sigma,instances)
-          val (mu1,_,mus2,mu2) = case tau' of R.FUN(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
-                                  | _ => die "S: unary constructor not functional"
+          val (mu1,_,mus2,mu2) = 
+              case R.unFUN tau' of 
+                SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
+              | _ => die "S: unary constructor not functional"
           val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1), _) = S(B, arg, false, NOTAIL)
           val B = unify_mus(mu1',mu1) B
         in
@@ -869,8 +887,10 @@ good *)
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val sigma = noSome ((*RSE.*)lookupCon rse con) "S (DECONprim): constructor not in RSE"
           val (B, tau', il) = newInstance(B,sigma,instances)
-          val (mu1,arreff,mus2,mu2) = case tau' of R.FUN(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
-                                  | _ => die "S: unary constructor not functional"
+          val (mu1,arreff,mus2,mu2) = 
+              case R.unFUN tau' of 
+                SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
+              | _ => die "S: unary constructor not functional"
           val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1), _) = S(B, arg, false, NOTAIL)
           val B = unify_mus(mu1',mus2) B
         in
@@ -895,8 +915,8 @@ good *)
             let
               val mu = noSome ((*RSE.*)lookupExcon rse excon) ".S: unary exception constructor not in RSE"
             in
-                case mu of 
-                  (R.FUN(mus1,arreff,mus_result as [(_, rho_result)]),_) =>
+                case R.unFUN (#1 mu) of 
+                  SOME(mus1,arreff,mus_result as [(_, rho_result)]) =>
                     let                  
                       val B = unify_mus(mus1,mus) B
                       val phi = (*Eff.*)mkPut(rho_result)
@@ -905,7 +925,7 @@ good *)
                          E'.Mus mus_result, (*Eff.*)mkUnion([phi,phi_arg])),
 		       NOTAIL)
                     end
-                  | _ => die "S: unary exception constructor ill-typed"
+                | _ => die "S: unary exception constructor ill-typed"
            end 
           (* expression denotes frame or failing top-level binding : *)
         | (B,t_arg as E'.TR(arg_e, E'.RaisedExnBind, phi_arg), _) => 
@@ -916,8 +936,10 @@ good *)
         let 
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (tau, p) = noSome ((*RSE.*)lookupExcon rse excon) "S (DEEXCONprim): exception constructor not in RSE"
-          val (mu1,arreff,mus2,mu2) = case tau of R.FUN(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
-                                  | _ => die "S: unary exception constructor not functional"
+          val (mu1,arreff,mus2,mu2) = 
+              case R.unFUN tau of 
+                SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
+              | _ => die "S: unary exception constructor not functional"
           val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1), _) = S(B, arg, false, NOTAIL)
           val B = unify_mus(mu1',mus2) B
         in
@@ -930,7 +952,7 @@ good *)
                     let val (B, trip, _) = S(B,arg, false, NOTAIL)
                     in (B, trip::trips)
                     end) (B,[]) args
-            val tau = R.RECORD(map (fn E'.TR(_,E'.Mus [mu],_) => mu | _ => die "S.record: boxed arg") trips)
+            val tau = R.mkRECORD(map (fn E'.TR(_,E'.Mus [mu],_) => mu | _ => die "S.record: boxed arg") trips)
             val (rho,B) = (*Eff.*)freshRhoWithTy(runtype tau, B)
             val phi = (*Eff.*)mkUnion((*Eff.*)mkPut rho :: map (fn E'.TR(_,_,phi) => phi) trips)
         in
@@ -940,7 +962,13 @@ good *)
     | E.PRIM(E.SELECTprim i, [arg as E.VAR _]) =>
         let 
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,arg, false, NOTAIL)
-          val (mus,rho) = case mus1 of [(R.RECORD mus,rho)] => (mus,rho) | _ => die "S (select) : not record type"
+          val (mus,rho) = 
+              case mus1 of 
+                [(ty,rho)] => 
+                (case R.unRECORD ty of
+                   SOME mus => (mus,rho) 
+                 | NONE => die "S (select) : not record type")
+              | _ => die "S (select) : not record type"
           val mu = List.nth(mus,i) handle Subscript => die "S (select) : select index out of range"
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkGet rho, phi1])
         in
@@ -951,7 +979,13 @@ good *)
         let 
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,arg, false, NOTAIL)
-          val (mus,rho) = case mus1 of [(R.RECORD mus,rho)] => (mus,rho) | _ => die "S (select) : not record type"
+          val (mus,rho) = 
+              case mus1 of 
+                [(ty,rho)] => 
+                (case R.unRECORD ty of
+                   SOME mus => (mus,rho) 
+                 | NONE => die "S (select) : not record type")
+              | _ => die "S (select) : not record type"
           val mu = List.nth(mus,i) handle Subscript => die "S (select) : select index out of range"
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkGet rho, phi1])
         in
@@ -1020,8 +1054,8 @@ good *)
 	    val (B, tau, _) = newInstance (B, sigma, instances)
 	      handle X => (print "CCALL-2\n"; raise X)
 	in
-	  (case tau of
-	     R.FUN (mus_a, eps_phi0, [mu_r]) =>
+	  (case R.unFUN tau of
+	     SOME (mus_a, eps_phi0, [mu_r]) =>
 	       let
 		 val (B, trs', mus_es, phis) =
 		       List.foldr (fn (e, (B, trs', mus_es, phis)) =>
@@ -1054,7 +1088,9 @@ good *)
        (let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
 	    val (B, tr' as E'.TR (_, E'.Mus mus, phi), _) = S (B, e0, false, NOTAIL)
 	in case mus of
-	    [(R.FUN([mu1],eps_phi0,[mu2]),rho)] =>
+	    [(ty,rho)] =>
+            (case R.unFUN ty of
+               SOME([mu1],eps_phi0,[mu2]) =>
 		let (*val (mu1',B) = freshMu(instance_arg,B)
 		    val B = unify_mu(mu1,mu1')B
 		    val (mu2',B) = freshMu(instance_res,B)
@@ -1082,6 +1118,7 @@ good *)
 		 retract (B, E'.TR (e', E'.Mus [mu], (*was: eps_phi0*) phi),
 			  NOTAIL)
 	       end
+             | _ => die "EXPORT: function does not have function type")
 	   | _ => die "EXPORT: function does not have function type"
 	end handle X => (print "EXPORT-1\n"; raise X))
 
