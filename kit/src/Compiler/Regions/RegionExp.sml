@@ -564,9 +564,12 @@ old*)
       and layTrip(TR(e,Mus mus,rea),n) = 
         let val t1 = 
                 case (e, mus) of
-                  (FN{pat, body, alloc, free}, [(R.FUN(_,eps,_),_)])=> 
-                    layLam((pat,body,alloc), n, 
-                           PP.flatten1(Eff.layout_effect eps) ^ " ")
+                  (FN{pat, body, alloc, free}, [(ty,_)])=> 
+                  (case R.unFUN ty of
+                     SOME (_,eps,_) =>
+                     layLam((pat,body,alloc), n, 
+                            PP.flatten1(Eff.layout_effect eps) ^ " ")
+                   | NONE => layExp(e,n))
                 | _ => layExp(e,n)
             val tick = (printcount:= !printcount+1; !printcount)
         in

@@ -80,11 +80,11 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
     local
 
-      fun mkListType(mu,rho) = R.CONSTYPE(TyName.tyName_LIST, [mu], [rho], [])
+      fun mkListType(mu,rho) = R.mkCONSTYPE(TyName.tyName_LIST, [mu], [rho], [])
 
       fun mk_nil_sigma c lev0 =
 	let val alpha = L.fresh_tyvar()
-	    val alpha_ty = R.TYVAR alpha
+	    val alpha_ty = R.mkTYVAR alpha
 	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
 	    val (rho',c) = E.freshRhoWithTy(E.PAIR_RT, c)  (* aux region for pairs *)
 	    val (c,nil_sigma,_) = R.generalize_all (c, lev0, [alpha], mkListType((alpha_ty,rho), rho'))
@@ -93,7 +93,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
       fun mk_cons_sigma c lev0 rt_list =
 	let val alpha = L.fresh_tyvar()
-	    val alpha_ty = R.TYVAR alpha
+	    val alpha_ty = R.mkTYVAR alpha
 	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
 	    val (rho',c) = E.freshRhoWithTy(E.PAIR_RT, c)  (* aux region for pairs *)
 	    val (rho'',c) = E.freshRhoWithTy(rt_list, c)   (* region for result list *)
@@ -101,7 +101,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	    val (arreff, c) = E.freshEps c
 	    val _ = E.edge(arreff, E.mkPut rho'')
 
-	    val cons_mu = R.FUN([(R.RECORD[(alpha_ty,rho),alpha_rho_list], rho')],
+	    val cons_mu = R.mkFUN([(R.mkRECORD[(alpha_ty,rho),alpha_rho_list], rho')],
 				arreff, 
 				[alpha_rho_list])
 	    val (c,cons_sigma,_) = R.generalize_all (c, lev0, [alpha], cons_mu)
@@ -109,17 +109,17 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	end
 
       fun mkFragConsTy mu1 ae (mu,rho,rho0) =
-	R.FUN([mu1],ae,[(R.CONSTYPE(TyName.tyName_FRAG, [mu], [rho], []), rho0)])
+	R.mkFUN([mu1],ae,[(R.mkCONSTYPE(TyName.tyName_FRAG, [mu], [rho], []), rho0)])
 
       fun mk_quote_sigma c lev0 =
 	let val alpha = L.fresh_tyvar()
-	    val alpha_ty = R.TYVAR alpha
+	    val alpha_ty = R.mkTYVAR alpha
 	    val (rho1,c) = E.freshRhoWithTy(E.STRING_RT, c)  (* region for auxiliary strings *)
 	    val (rho2,c) = E.freshRhoWithTy(E.TOP_RT, c)     (* region for result frag *)
 	    val (rho3,c) = E.freshRho c                      (* bot-region for tyvar *)
 	    val (arreff, c) = E.freshEps c
 	    val _ = E.edge(arreff, E.mkPut rho2)
-	    val quote_ty = mkFragConsTy (R.CONSTYPE(TyName.tyName_STRING,[],[],[]),rho1)
+	    val quote_ty = mkFragConsTy (R.mkCONSTYPE(TyName.tyName_STRING,[],[],[]),rho1)
 	      arreff ((alpha_ty,rho3),rho1,rho2)
 	    val (c,quote_sigma,_) = R.generalize_all (c, lev0, [alpha], quote_ty)
 	in (c, quote_sigma)
@@ -127,7 +127,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
       fun mk_antiquote_sigma c lev0 =
 	let val alpha = L.fresh_tyvar()
-	    val alpha_ty = R.TYVAR alpha
+	    val alpha_ty = R.mkTYVAR alpha
 	    val (rho1,c) = E.freshRhoWithTy(E.STRING_RT, c)  (* region for auxiliary strings *)
 	    val (rho2,c) = E.freshRhoWithTy(E.TOP_RT, c)     (* region for result frag *)
 	    val (rho3,c) = E.freshRho c                      (* bot-region for tyvar *)
@@ -141,7 +141,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
       fun mk_bool_sigma c lev0 =
 	let val (c,bool_sigma,_) =  
-	       R.generalize_all (c, lev0, [], (R.CONSTYPE(TyName.tyName_BOOL,[],[],[])))
+	       R.generalize_all (c, lev0, [], (R.mkCONSTYPE(TyName.tyName_BOOL,[],[],[])))
 	in (c, bool_sigma)
 	end
 
@@ -152,14 +152,14 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	      val (rList,c) = E.freshRhoWithTy(E.WORD_RT, c)
 	      val (rIntInf,c) = E.freshRhoWithTy(E.WORD_RT, c)
 	      val (rRec,c) = E.freshRhoWithTy(E.PAIR_RT, c)
-	      val bool_mu = (R.CONSTYPE(TyName.tyName_BOOL,[],[],[]), rBool)
-	      val int31_mu = (R.CONSTYPE(TyName.tyName_INT31,[],[],[]),rInt31)
+	      val bool_mu = (R.mkCONSTYPE(TyName.tyName_BOOL,[],[],[]), rBool)
+	      val int31_mu = (R.mkCONSTYPE(TyName.tyName_INT31,[],[],[]),rInt31)
 	      val digits_mu = (mkListType(int31_mu,rListPair),rList)
-	      val arg_mu = (R.RECORD[(*digits= *)digits_mu, (*negative= *)bool_mu],rRec)
-	      val intinf_mu = (R.CONSTYPE(TyName.tyName_INTINF,[],[rRec,rListPair],[]), rIntInf)
+	      val arg_mu = (R.mkRECORD[(*digits= *)digits_mu, (*negative= *)bool_mu],rRec)
+	      val intinf_mu = (R.mkCONSTYPE(TyName.tyName_INTINF,[],[rRec,rListPair],[]), rIntInf)
 	      val (ae, c) = E.freshEps c
 	      val _ = E.edge(ae, E.mkPut rIntInf)
-	      val f = R.FUN([arg_mu],ae,[intinf_mu])
+	      val f = R.mkFUN([arg_mu],ae,[intinf_mu])
 	      val (c,intinf_sigma,_) =  
 		  R.generalize_all (c, lev0, [], f)
 	  in (c,intinf_sigma)

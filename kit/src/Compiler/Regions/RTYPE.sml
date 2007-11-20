@@ -1,15 +1,29 @@
 
 signature RTYPE =
 sig
-  type cone and LambdaType  and effect  and arroweffect and tyname and place and runType and tyvar 
-  sharing type place= effect
+  type cone and LambdaType and effect and arroweffect and tyname and place and runType and tyvar 
+  sharing type place = effect
   sharing type arroweffect = effect
 
+(*
   datatype Type = 
       TYVAR of tyvar
     | CONSTYPE of tyname * (Type*place) list * place list * arroweffect list
     | RECORD of (Type*place) list
     | FUN of (Type*place)list * arroweffect * (Type*place)list 
+*)
+             
+  type Type
+  type mu = Type * place
+  val mkTYVAR    : tyvar -> Type
+  val mkCONSTYPE : tyname * mu list * place list * arroweffect list -> Type
+  val mkRECORD   : mu list -> Type
+  val mkFUN      : mu list * arroweffect * mu list -> Type
+
+  val unTYVAR    : Type -> tyvar option
+  val unCONSTYPE : Type -> (tyname * mu list * place list * arroweffect list) option
+  val unRECORD   : Type -> mu list option
+  val unFUN      : Type -> (mu list * arroweffect * mu list) option
 
   val exnType: Type 
   val int31Type: Type

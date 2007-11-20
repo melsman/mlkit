@@ -141,7 +141,7 @@ struct
          foldr (uncurry plus) arity0 (map (infer_arity_ty rse current_tynames) types)
          ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames 
                then arity0
-               else (0,[R.runtype(R.CONSTYPE(tyname,[],[],[]))],zero) ++
+               else (0,[R.runtype(R.mkCONSTYPE(tyname,[],[],[]))],zero) ++
                      let val (global, local_rse) = rse 
                      in
                       (case RSE.lookupTyName local_rse tyname of
@@ -220,13 +220,13 @@ struct
           E.TYVARtype alpha => 
              let val place = noSome (tyvar_to_place alpha)
                              "ty_to_mu: tyvar not in domain"
-             in (R.TYVAR alpha, place)
+             in (R.mkTYVAR alpha, place)
              end
         | E.ARROWtype(taus1,taus2) => 
-             extend(R.FUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
+             extend(R.mkFUN(map ty_to_mu taus1, get_eps(), map ty_to_mu taus2))
         | E.CONStype(taus, tyname) => 
              if being_defined tyname
-               then (R.CONSTYPE(tyname, map ty_to_mu taus, fresh_rhos,fresh_epss), 
+               then (R.mkCONSTYPE(tyname, map ty_to_mu taus, fresh_rhos,fresh_epss), 
                      common_place)
              else (* tyname not in the current datbind. 
                    Look for it amongst previously declared datbinds: *)
@@ -240,7 +240,7 @@ struct
                     )
                )
         | E.RECORDtype(taus) => 
-            extend(R.RECORD(map ty_to_mu taus)) 
+            extend(R.mkRECORD(map ty_to_mu taus)) 
 
       and spread_constructed_type(rse, tyname, taus): 
                                            (R.Type*R.effect) option = 
@@ -249,7 +249,7 @@ struct
              let val (number_of_alphas, rho_runtypes, number_of_epsilons) = 
                   RSE.un_arity arity 
              in
-               SOME(extend(R.CONSTYPE(tyname, map ty_to_mu taus,
+               SOME(extend(R.mkCONSTYPE(tyname, map ty_to_mu taus,
                                              get_list_with_runtypes rho_runtypes,
                                              apply_n get_eps number_of_epsilons)))
              end
@@ -349,7 +349,7 @@ struct
                            in 
                              ((alpha, rho):: rho_list, cone')
                            end) ([], cone) tyvar_list
-              val new_mus0 = map (fn (alpha,rho) => (R.TYVAR alpha, rho))
+              val new_mus0 = map (fn (alpha,rho) => (R.mkTYVAR alpha, rho))
                                  tyvar_conversion0
               val tyvarPairMap0 = 
                    foldr 
@@ -357,7 +357,7 @@ struct
                     FinMap.empty tyvar_conversion0
 
               val result_type = 
-                    R.CONSTYPE(tyname,new_mus0, fresh_aux_rhos, fresh_aux_arreffs)
+                    R.mkCONSTYPE(tyname,new_mus0, fresh_aux_rhos, fresh_aux_arreffs)
 
               fun spreadCon (con, tau_opt) (acc as (list,cone) : 
                         ((Con.con * E'.constructorKind * R.sigma)list * cone)) =
@@ -379,7 +379,7 @@ struct
                               val _ = Effect.edge(eps, Effect.mkPut common_place)  (* inserted 21/5/96 mads*)
                               val (cone,sigma,_) = 
                                     R.generalize_all(cone,level_of_TE,tyvar_list,
-                                                 R.FUN([mu1],eps,[(result_type,
+                                                 R.mkFUN([mu1],eps,[(result_type,
                                                                 common_place)]))
                           in
                             ((con, E'.VALUE_CARRYING, sigma)::list,cone)

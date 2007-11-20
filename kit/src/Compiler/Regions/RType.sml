@@ -54,6 +54,24 @@ struct
 
   withtype mu = Type*place
 
+  val mkTYVAR = TYVAR
+  val mkCONSTYPE = CONSTYPE
+  val mkRECORD = RECORD
+  val mkFUN = FUN
+
+  fun unTYVAR (TYVAR a) = SOME a
+    | unTYVAR _ = NONE
+
+  fun unCONSTYPE (CONSTYPE a) = SOME a
+    | unCONSTYPE _ = NONE
+
+  fun unRECORD (RECORD a) = SOME a
+    | unRECORD _ = NONE
+
+  fun unFUN (FUN a) = SOME a
+    | unFUN _ = NONE
+
+
   type runType = E.runType
 
   (* details of runtype are exploited in SpreadDataType.infer_arity_ty *)
@@ -91,6 +109,61 @@ struct
 
   fun discard_top_wordrho places = List.filter (not o isTopWordRegion) places 
   fun discard_word_rhos places = List.filter (not o isWordRegion) places 
+
+(*
+  local
+    val (lay_ty,lay_mu) = mk_layout false
+    fun dump_ty(ty) = 
+        PP.outputTree(fn s => TextIO.output(!Flags.log, s), 
+                      lay_ty ty, !Flags.colwidth)
+
+    fun dump_mu(mu) = 
+        PP.outputTree(fn s => TextIO.output(!Flags.log, s), 
+                      lay_mu mu, !Flags.colwidth)
+
+    fun unify_ty0 (t1,t2,c) : c =
+        case (t1, t2) of
+          (TYVAR _, TYVAR _) => c
+        | (CONSTYPE(_,mus1,rs1,es1),CONSTYPE(_,mus2,rs2,es2)) => 
+          unify_mus0(mus1,mus2,
+                     unify_rhos0(rs1,rs2,
+                                 unify_epss0(es1,es2,c)))
+        | (RECORD mus1, RECORD mus2) => unify_mus0(mus1,mus2,c)
+        | (FUN(mus1,e1,mus'1),FUN(mus2,e2,mus'2)) => 
+          unify_mus0(mus1,mus2, E.unifyEps(e1,e2) (unify_mus0(mus'1,mus'2,c)))
+        | _ => (TextIO.output(!Flags.log, "ty1 = \n"); dump_ty t1;
+                TextIO.output(!Flags.log, "ty2 = \n"); dump_ty t2;
+                die ("unify: types do not unify"))
+
+    and unify_mu0 ((t1,r1),(t2,r2),c) = 
+        unify_ty0(t1,t2, E.unifyRho(r1,r2)c)
+                                      
+    and unify_mus0 (mus1,mus2,c) = 
+        ListPair.foldlEq unify_mu0 c (mus1,mus2)
+        handle ListPair.UnequalLengths =>
+               die "unify_mus0: UnequalLengths"
+    and unify_rhos0 (rs1,rs2,c) = 
+        ListPair.foldlEq (fn (a,b,c) => E.unifyRho(a,b)c) c (rs1,rs2)
+        handle ListPair.UnequalLengths =>
+               die "unify_rhos0: UnequalLengths"
+    and unify_epss0 (es1,es2,c) = 
+        ListPair.foldlEq (fn (a,b,c) => E.unifyEps(a,b)c) c (es1,es2)
+        handle ListPair.UnequalLengths =>
+               die "unify_epss0: UnequalLengths"
+  in
+  fun unify_ty (a,b) c = unify_ty0 (a,b,c)
+      handle _ => (TextIO.output(!Flags.log, "mu1 = \n"); dump_ty a;
+                   TextIO.output(!Flags.log, "mu2 = \n"); dump_ty b;
+                   die "unify_ty: types do not unify")                         
+  fun unify_mus (a,b) c = unify_mus0 (a,b,c)
+      handle _ => (die "unify_mus: types with places do not unify")
+  fun unify_mu (a,b) c = unify_mu0 (a,b,c)
+      handle _ => (TextIO.output(!Flags.log, "mu1 = \n"); dump_mu a;
+                   TextIO.output(!Flags.log, "mu2 = \n"); dump_mu b;
+                   die "unify_mu: types with places do not unify")
+                         
+  end
+*)
 
   (* ann_XX0 ty acc: return effects in the order they appear in the
    * underlying ML-type; this function is used for unifying effects in

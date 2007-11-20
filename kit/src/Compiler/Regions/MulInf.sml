@@ -157,16 +157,18 @@ struct
              end
           | FN{pat,body,free,alloc} =>
              (case mu of
-               RegionExp.Mus[(RType.FUN(_,eps,_),_)] =>
-                let 		    
-                   val _ = infer_trip(body) 
-                   val psi = get_psi body
-                   val psi_eps = #2(Mul.un_mularef(Mul.nf(!(
+               RegionExp.Mus[(ty,_)] =>
+               (case RType.unFUN ty of
+                  SOME (_,eps,_) =>                                 
+                  let 		    
+                    val _ = infer_trip(body) 
+                    val psi = get_psi body
+                    val psi_eps = #2(Mul.un_mularef(Mul.nf(!(
                                      Mul.lookup_mularefmap(Psi, eps)))))
-                   val almost_new_psi = Mul.maxef(psi,psi_eps)
-                   (* eps.almost_new_psi is not necessarily acyclic; so normalise it: *)
-                   val (_,new_psi) = Mul.un_mularef(Mul.nf(Mul.makearef(eps,almost_new_psi)))
-		   fun debug() =
+                    val almost_new_psi = Mul.maxef(psi,psi_eps)
+                    (* eps.almost_new_psi is not necessarily acyclic; so normalise it: *)
+                    val (_,new_psi) = Mul.un_mularef(Mul.nf(Mul.makearef(eps,almost_new_psi)))
+		    fun debug() =
 		       (print "DEBUG FN\n";
 			print " eps = \n" ; outtree(Eff.layout_effect eps);
 			print "\n psi =\n" ; outtree(Mul.layout_mulef psi);
@@ -174,13 +176,14 @@ struct
 			print "\n almost_new_psi=\n";  outtree(Mul.layout_mulef almost_new_psi);
 			print "\n new_psi=\n"; outtree(Mul.layout_mulef new_psi);
 			print "\n")
-		   val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep) 
+		    val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep) 
 		       handle X =>
 			   (say "\nMulInf(FN) fails:\n";
 			    debug(); raise X)
-  		in
+  		  in
   		    psi_r:= Mul.put alloc
-  		end
+  		  end
+                | NONE => die "function not of function type")
               | _ => die "function not of function type"
              )
           | LETREGION{B: effect list ref, rhos, body} =>
@@ -214,8 +217,11 @@ struct
   		(* application is by the inference rules (non-smart) *)
    	   let 
                val  (eps, p) = case get_mu tr1 of
-                 			RegionExp.Mus[(RType.FUN(_,eps, _), p)]=> (eps, p)
-  		             | _ => die "non-function type at application"
+                 		 RegionExp.Mus[(ty, p)]=> 
+                                 (case RType.unFUN ty of
+                                    SOME (_,eps,_) => (eps, p)
+                                  | NONE => die "non-function type at application")
+  		               | _ => die "non-function type at application"
                val _ = infer_trip(tr1)
                val _ = infer_trip(tr2)
                val psi1 = get_psi tr1   (* may have been updated by mulinf(e2)! *)
@@ -261,7 +267,10 @@ struct
                  val _ = infer_trip(tr1)
                  val _ = infer_trip(tr2)
                  val (eps,rho_handler) = case get_mu tr2 of
-                                           RegionExp.Mus[(RType.FUN(_,eps,_),rho)] =>(eps,rho)
+                                           RegionExp.Mus[(ty,rho)] => 
+                                           (case RType.unFUN ty of
+                                              SOME (_,eps,_) => (eps,rho)
+                                            | NONE => die "HANDLE: handler did not have functional type")
                                          | _ => die "HANDLE: handler did not have functional type"
                  val psi_of_eps = #2(Mul.un_mularef(!(Mul.lookup_mularefmap(Psi,eps))))
                  val psi_aux = Mul.sum_psis[psi_of_eps,Mul.efvar eps(*, Mul.get rho_handler*)]
@@ -486,15 +495,15 @@ struct
           app(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,other,bind} => 
                            (set_trip(bind);
                             (* Set the PUT multiplicites of the formal region variables *)
-                            case Type of
-                              RType.FUN(_,areff,_) =>
+                            case RType.unFUN Type of
+                              SOME(_,areff,_) =>
                                 let val mularef = Mul.nf(!(Mul.lookup_mularefmap(Psi,areff)))
                                     val psi = #2(Mul.un_mularef mularef)
                                     val places = map #1 (!rhos_formals)
                                     val muls = Mul.getmultiplicities_unsorted(psi, places)
                                 in rhos_formals:= ListPair.zip(places,muls)
                                 end
-                            | _ => die "set_rh_sides: expected function type"
+                            | NONE => die "set_rh_sides: expected function type"
                                                            
                            )
                     ) functions;
