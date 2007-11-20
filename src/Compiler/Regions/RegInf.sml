@@ -35,15 +35,11 @@ struct
   fun die msg = Crash.impossible ("RegInf." ^ msg)
 
   fun say s = TextIO.output(TextIO.stdOut, s)
-  fun checkMsgOpt (SOME msg) = Flags.warn_string msg
-    | checkMsgOpt NONE = ()
 
   fun show_sigma sigma = PrettyPrint.flatten1(RType.mk_lay_sigma false (sigma))
 
   fun instClever(sigma,il) y = RType.instClever(sigma,il) y
   fun unify_ty(tau,tau_1) = RType.unify_ty(tau,tau_1)
-  fun alpha_rename'(x) = RType.alpha_rename'(x)
-  fun effClos x = RType.effClos x
   fun matchSchemes x = RType.matchSchemes x
   fun insert_alphas x = RType.insert_alphas x
   fun alpha_rename x= RType.alpha_rename x
@@ -353,8 +349,7 @@ struct
                                     handle _ => die "pushLayer failed\n"
                         val (B4,delta_rhs) = R(B3', rse',bind)   (* bind is a fn, so delta_rhs is empty *)
                         val _ = count_RegEffClos:= !count_RegEffClos+1
-                        val (B5,sigma_5hat, msg_opt) = regEffClos(B4, Effect.level(B3),phi4,tau4)
-                        val _ = checkMsgOpt msg_opt 
+                        val (B5,sigma_5hat) = regEffClos(B4, Effect.level(B3),phi4,tau4)
                         val (_, B5) = pop(B5)
                         val (_,newrhos,newepss) = RType.bv sigma_5hat
 			(* val _ = sayLn("sigma_5hat is " ^ show_sigma (sigma_5hat)) *)

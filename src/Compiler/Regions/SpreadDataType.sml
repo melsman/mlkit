@@ -377,7 +377,7 @@ struct
                                           tau) 
                               val (eps, cone) = Effect.freshEps cone
                               val _ = Effect.edge(eps, Effect.mkPut common_place)  (* inserted 21/5/96 mads*)
-                              val (cone,sigma,_) = 
+                              val (cone,sigma) = 
                                     R.generalize_all(cone,level_of_TE,tyvar_list,
                                                  R.mkFUN([mu1],eps,[(result_type,
                                                                 common_place)]))
@@ -385,7 +385,7 @@ struct
                             ((con, E'.VALUE_CARRYING, sigma)::list,cone)
                           end
                       | NONE     => 
-                          let val (cone,sigma,_) = 
+                          let val (cone,sigma) = 
                                   R.generalize_all(cone,level_of_TE,tyvar_list,result_type)
                           in ((con, E'.CONSTANT, sigma)::list, cone)
                           end
