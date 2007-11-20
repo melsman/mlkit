@@ -37,7 +37,7 @@ struct
   type effect = E.effect
   type cone = E.cone
   type delta_phi = E.delta_phi
-(*  type tyname_env = TyNameEnv.tyname_env *)
+
   type LambdaType = L.Type
   type StringTree = PP.StringTree
 
@@ -789,7 +789,7 @@ struct
   fun checkSigma(sigma as FORALL([],[],[],tau)) = (tickNoBound(); sigma)
     | checkSigma sigma = (tickSomeBound(); sigma)
 
-  exception MONOMORPHIC of E.cone * sigma * string option
+  exception MONOMORPHIC of E.cone * sigma
 
   fun visit node = E.get_visited node := true
   fun unvisit node = E.get_visited node := false
@@ -897,7 +897,7 @@ struct
 
 
   fun regEffClos(B: E.cone, B_0: int, phi: E.effect, tau: Type): 
-                                    E.cone * sigma * string option =
+                                    E.cone * sigma =
   let
      (*val _ = Profile.profileOn()*)
 (*
@@ -916,7 +916,7 @@ struct
      (* if there are no potentially generalisable nodes, we can escape right away,
         without going into the expensive operation of contracting effects *)
      val _ = if List.exists (potentially_generalisable n) annotations then () 
-             else raise MONOMORPHIC(B_1,FORALL([],[],[],tau),NONE)
+             else raise MONOMORPHIC(B_1,FORALL([],[],[],tau))
 
      (* make sure there is at most one generalisable secondary effect variable *)
      val reachable_nodes = E.subgraph annotations
@@ -968,16 +968,13 @@ struct
      val _ = PP.outputTree(logsay,lay_sigma sigma,!Flags.colwidth)
      *)
   in
-    (B_3, sigma, NONE) (*footnote Profile.profileOff()*)
+    (B_3, sigma) (*footnote Profile.profileOff()*)
   end handle MONOMORPHIC result => result
            | X => (print "regEffClos failed\n"; raise X)
 
-  fun effClos(B: E.cone, B_0: int, phi: E.effect, tau: Type): 
-                                    E.cone * sigma * string option = die "effClos not implemented"
-
-  fun generalize_all(cone, level: int, alphas, tau): cone * sigma * string option =
-      let val (cone,sigma, msg) = regEffClos(cone,level,E.empty,tau)
-      in (cone, insert_alphas(alphas,sigma), msg)
+  fun generalize_all(cone, level: int, alphas, tau): cone * sigma =
+      let val (cone,sigma) = regEffClos(cone,level,E.empty,tau)
+      in (cone, insert_alphas(alphas,sigma))
       end
 
 
@@ -998,7 +995,7 @@ struct
     in
         sigma'
     end
-
+(*
   fun alpha_rename'((rhos,epss,tau), B: E.cone): sigma = 
     let 
         val c = E.push B
@@ -1010,6 +1007,7 @@ struct
     in
         sigma'
     end
+*)
 
   (* normalised type schemes: bound region and effect variables
      annotated with positions indicating where in the type they
@@ -1396,7 +1394,7 @@ struct
                                E.edge (eps0, E.mkUnion rhos_gets_puts)
                in
                  let (* val _ = pr_mu "cf2" mu *)
-                     val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
+                     val (B, sigma) = generalize_all (B, 0, tyvars, #1 mu)
                    handle X => (print ("generalize_all failed\n"); raise X)
                  in (sigma, B)
                  end

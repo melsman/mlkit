@@ -89,12 +89,6 @@ struct
 
   fun die s = Crash.impossible ("SpreadExpression." ^ s)
 
-  fun warn (lvar, SOME s) = Flags.warn
-	(Report.// (Report.line ("algorithm S (SpreadExpression), while processing\
-				 \ lvar: " ^ Lvars.pr_lvar lvar ^ ":"),
-		    Report.line s))
-    | warn _ = ()
-
   (* operations which are imported from other modules (for profiling) *)
 
   fun matchSchemes(sigma1,sigma2) = R.matchSchemes(sigma1,sigma2)
@@ -361,7 +355,7 @@ struct
 		    E.ARROWtype p => p 
 		  | _ => die "mk_sigma_hat_list"		  
               val (tau_0, B) = freshType(Type,B)
-              val (B,sigma, msg_opt) = generalize_all(B,retract_level,tyvars,tau_0)
+              val (B,sigma) = generalize_all(B,retract_level,tyvars,tau_0)
               val sigma_hat = R.drop_alphas sigma
             val (_,B) = (*Eff.*)pop B (* back to retract level *)
             val (B, l) = mk_sigma_hat_list(B,retract_level) rest
@@ -639,7 +633,7 @@ struct
             val B = Eff.push(B);         (* for generalize_all *)
               val E.ARROWtype(tau_x_ml, tau_1_ml) = Type
               val (tau_0, B) = freshType(Type,B)
-              val (B,sigma, msg_opt) = generalize_all(B,retract_level,tyvars,tau_0)
+              val (B,sigma) = generalize_all(B,retract_level,tyvars,tau_0)
             val (_,B) = Eff.pop B (* back to retract level *)
             val B = Eff.push(B)
               val sigma_hat = R.drop_alphas sigma
@@ -1230,8 +1224,7 @@ good *)
                       val (B, t1 as E'.TR(_, E'.Mus [(tau1, rho1)], phi1),_) = spreadExp(B, rse1, bind,false,NOTAIL)
                       val B = (*Eff.*)unifyRho(rho1,rho) B          
                       val _ = count_RegEffClos:= !count_RegEffClos + 1
-                      val (B,sigma1,msg_opt) = regEffClos(B, retract_level, phi1, tau1)
-                      val _ = warn(lvar,msg_opt)
+                      val (B,sigma1) = regEffClos(B, retract_level, phi1, tau1)
                     val (_,B) = (*Eff.*)pop B (* back to retract level *)
                     
 (*                    val _  = log_sigma(R.insert_alphas(tyvars, sigma1), lvar)*)

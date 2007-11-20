@@ -87,7 +87,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	    val alpha_ty = R.mkTYVAR alpha
 	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
 	    val (rho',c) = E.freshRhoWithTy(E.PAIR_RT, c)  (* aux region for pairs *)
-	    val (c,nil_sigma,_) = R.generalize_all (c, lev0, [alpha], mkListType((alpha_ty,rho), rho'))
+	    val (c,nil_sigma) = R.generalize_all (c, lev0, [alpha], mkListType((alpha_ty,rho), rho'))
 	in (c, nil_sigma)
 	end
 
@@ -104,7 +104,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	    val cons_mu = R.mkFUN([(R.mkRECORD[(alpha_ty,rho),alpha_rho_list], rho')],
 				arreff, 
 				[alpha_rho_list])
-	    val (c,cons_sigma,_) = R.generalize_all (c, lev0, [alpha], cons_mu)
+	    val (c,cons_sigma) = R.generalize_all (c, lev0, [alpha], cons_mu)
 	in (c, cons_sigma)
 	end
 
@@ -121,7 +121,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	    val _ = E.edge(arreff, E.mkPut rho2)
 	    val quote_ty = mkFragConsTy (R.mkCONSTYPE(TyName.tyName_STRING,[],[],[]),rho1)
 	      arreff ((alpha_ty,rho3),rho1,rho2)
-	    val (c,quote_sigma,_) = R.generalize_all (c, lev0, [alpha], quote_ty)
+	    val (c,quote_sigma) = R.generalize_all (c, lev0, [alpha], quote_ty)
 	in (c, quote_sigma)
 	end
 
@@ -135,12 +135,12 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	    val _ = E.edge(arreff, E.mkPut rho2)
 	    val antiquote_ty = mkFragConsTy (alpha_ty,rho3)
 	      arreff ((alpha_ty,rho3),rho1,rho2)
-	    val (c,antiquote_sigma,_) = R.generalize_all (c, lev0, [alpha], antiquote_ty)
+	    val (c,antiquote_sigma) = R.generalize_all (c, lev0, [alpha], antiquote_ty)
 	in (c, antiquote_sigma)
 	end
 
       fun mk_bool_sigma c lev0 =
-	let val (c,bool_sigma,_) =  
+	let val (c,bool_sigma) =  
 	       R.generalize_all (c, lev0, [], (R.mkCONSTYPE(TyName.tyName_BOOL,[],[],[])))
 	in (c, bool_sigma)
 	end
@@ -160,7 +160,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	      val (ae, c) = E.freshEps c
 	      val _ = E.edge(ae, E.mkPut rIntInf)
 	      val f = R.mkFUN([arg_mu],ae,[intinf_mu])
-	      val (c,intinf_sigma,_) =  
+	      val (c,intinf_sigma) =  
 		  R.generalize_all (c, lev0, [], f)
 	  in (c,intinf_sigma)
 	  end
