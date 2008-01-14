@@ -199,6 +199,7 @@ clean:
 	cd Compiler/Backend/X86 && $(CLEAN)
 	cd Compiler/Backend/KAM && $(CLEAN)
 	cd Compiler/Backend/Barry && $(CLEAN)
+	cd Compiler/Backend/JS && $(CLEAN)
 	cd Compiler/Regions && $(CLEAN)
 	cd Compiler/Lambda && $(CLEAN)
 	cd SMLserver && $(CLEAN) nssml.so *.o
