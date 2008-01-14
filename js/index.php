@@ -1,18 +1,19 @@
-<?
-$title = "SMLtoJs - A Standard ML to JavaScript Compiler";
-?>
-
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
-<head><title><? echo $title ?></title></head>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>SMLtoJs - A Standard ML to JavaScript Compiler</title>
+<link href="base.css" rel="stylesheet" type="text/css">
+</head>
 <body>
-<h2><? echo $title ?></h2>
-
-<h4>By Martin Elsman, 2007-09-05</h4>
+<table border=0 cellpadding=0 cellspacing=0 width=100%>
+<tr><td width=75%>
+<img src=smltojs_logo_color.png>
+<h2>A Standard ML to JavaScript Compiler</h2>
+<h4>By <a href="http://www.itu.dk/people/mael">Martin Elsman</a>, 2007-09-05</h4>
 
 <hr>
 
-<table border=0 cellpadding=0 cellspacing=0 width=100%>
-<tr><td width=75%>
 <h3>Introduction</h3>
 <p>
 SMLtoJs (pronounced "SML toys") is a compiler from Standard ML to
@@ -90,11 +91,11 @@ see above), simply type
   $ make smltojs
 </pre>
 If compilation succeeds, an executable
-file <code>bin/smltojs</code> should now be available.</p>
+file <a href="smltojs.man.html"><code>bin/smltojs</code></a> should now be available.</p>
 
 <h3>How it Works</h3>
 <p>
-The SMLtoJs executable <code>bin/smltojs</code> takes as argument an sml-file
+The SMLtoJs executable <a href="smltojs.man.html"><code>bin/smltojs</code></a> takes as argument an sml-file
 (or an mlb-file referencing the sml-files and other mlb-files of the
 project) and produces an html file called <code>run.html</code> provided there are
 no type errors! The resulting html-file mentions the generated
@@ -102,7 +103,7 @@ JavaScript files and a file <code>prims.js</code>, which contains a set of
 primitive JavaScript functions used by the generated code.
 </p>
 <p>
-Hint: Adding the flag <code>"-o name"</code> as command-line argument to <code>smltojs</code>
+Hint: Adding the flag <code>"-o name"</code> as command-line argument to <a href="smltojs.man.html"><code>smltojs</code></a>
 results in the file name.html being generated instead of <code>run.html</code>.
 </p>
 
@@ -166,6 +167,8 @@ license information.
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2007-09-17: </b>Martin gave a talk on the PLS Monday lunch meeting (<a href="slides_lunch_2007-09-17.pdf">slides</a>).</td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-09-05: </b>SMLtoJs <b>version 4.3.4</b> is available.</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-08-31: </b>SMLtoJs <b>version 4.3.3</b> is available.</td></tr>
@@ -219,7 +222,8 @@ license information.
 <a href="test/exec.html">Test: exec</a> </td><td><a href="test/exec.sml">src</a></td></tr><tr><td>
 <a href="test/counter.html">Test: counter</a> </td><td><a href="test/counter.sml">src</a></td></tr><tr><td>
 <a href="test/temp.html">Test: temp</a> </td><td><a href="test/temp.sml">src</a></td></tr><tr><td>
-<a href="test/life.html">Test: life</a> </td><td><a href="test/life.sml">src</a></td></tr>
+<a href="test/life.html">Test: life</a> </td><td><a href="test/life.sml">src</a></td></tr><tr><td>
+<a href="test/cal.html">Test: cal</a> </td><td><a href="test/cal.sml">src</a></td></tr>
                  </table>
              </td>
          </tr>
