@@ -1,15 +1,17 @@
 signature TLIST =
   sig
-    type 'a tlist = ('a list,TimeVal.B)TimeVal.t
-    val ::: : (''a,TimeVal.B)TimeVal.t * ''a tlist -> ''a tlist
-    val nill : unit -> ''a tlist
+    type 'a beh = ('a,TimeVal.B)TimeVal.t
+    val ::: : ''a beh * ''a list beh -> ''a list beh
+    val nill : unit -> ''a list beh
+(*    val sort : ''a beh list -> ''a list beh *)
   end
 
 structure TList :> TLIST =
 struct
 
 open TimeVal
-type 'a tlist = ('a list,B)t
+type 'a beh = ('a,TimeVal.B)TimeVal.t
+type 'a tlist = 'a list beh
 
 fun :::(x : (''a,B)t, xs: ''a tlist) : ''a tlist =
   arr(op ::) (pair(x,xs))

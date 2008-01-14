@@ -1,51 +1,4 @@
-(* Reactive Web Programming *)
-
-signature ARROW0 = sig
-  type ('b,'c,'k) arr
-  val arr : (''b -> ''c) -> (''b,''c,'k) arr
-  val >>> : (''b,''c,'k)arr * (''c,''d,'k)arr -> (''b,''d,'k)arr                                       
-  val fst : (''b,''c,'k)arr -> (''b*''d,''c*''d,'k)arr
-end
-
-signature ARROW = sig
-  include ARROW0
-  val snd : (''b,''c,'k)arr -> (''d*''b,''d*''c,'k)arr
-  val *** : (''b,''c,'k)arr * (''d,''e,'k)arr -> (''b*''d,''c*''e,'k)arr
-  val &&& : (''b,''c,'k)arr * (''b,''d,'k)arr -> (''b,''c*''d,'k)arr
-end
-
-signature TIME_VAL =
-sig
-  type B type E (* kinds: Behaviors (B) and Events (E) *)
-  type ('a,'k)t
-  type 'a b = ('a,B)t
-  type 'a e = ('a,E)t
-
-  include ARROW 
-  where type ('a,'b,'k)arr = ('a,'k)t -> ('b,'k)t
-
-  val insertDOM : string b * string -> unit
-  val timer     : int -> Time.time b
-  val textField : string -> string b
-  val mouseOver : string -> bool b
-  val mouse     : unit -> (int*int) b
-  val pair      : ''a b * ''b b -> (''a * ''b) b
-  val merge     : ''a e * ''a e -> ''a e
-  val delay     : int -> (''a,''a,B)arr
-  val calm      : int -> (''a,''a,B)arr
-  val fold      : (''a * ''b -> ''b) -> ''b -> ''a e -> ''b e
-  val click     : string -> ''a -> ''a e
-  val changes   : ''a b -> ''a e
-  val hold      : ''a -> ''a e -> ''a b
-  val const     : ''a -> ''a b
-  val empty     : unit -> ''a e
-  val current   : ''a b -> ''a
-  val poll      : (unit -> ''a) -> int -> ''a b
-
-  val addListener : (''a,'k)t -> (''a -> unit) -> unit 
-end
-
-structure TimeVal :> TIME_VAL =
+structure RWP :> RWP =
 struct
 
 fun idError s id = 
@@ -135,14 +88,14 @@ end
 
 val pair = pairT
 
-fun merge (e1: (''a,E)t, e2: (''a,E)t) : (''a,E)t =
+fun merge (e1: ''a e, e2: ''a e) : ''a e =
     let val e = new NONE
         val _ = addListener e1 (#newValue e)
         val _ = addListener e2 (#newValue e)
     in e
     end
 
-fun insertDOM (b : (string,B)t, id : string) =
+fun insertDOM (id:string) (b : string b) =
     case Js.getElementById Js.document id of
       SOME e => 
       (case #current b of
@@ -151,7 +104,7 @@ fun insertDOM (b : (string,B)t, id : string) =
        | NONE => raise Fail "insertDOM impossible")
     | NONE => idError "insertDOM" id
 
-fun delay (ms:int) (b : (''a,B)t) : (''a,B)t =
+fun delay (ms:int) (b : ''a b) : ''a b =
     let val b' = new(case #current b of 
                        SOME(ref v) => SOME v 
                      | NONE => raise Fail "delay.impossible")
@@ -160,7 +113,7 @@ fun delay (ms:int) (b : (''a,B)t) : (''a,B)t =
     in b'
     end
 
-fun calm (ms:int) (b : (''a,B)t) : (''a,B)t =
+fun calm (ms:int) (b : ''a b) : ''a b =
     let val b' = new(case #current b of
                        SOME(ref v) => SOME v 
                      | NONE => raise Fail "calm.impossible")
@@ -175,7 +128,7 @@ fun calm (ms:int) (b : (''a,B)t) : (''a,B)t =
     in b'
     end
 
-fun textField (id:string) : (string,B) t =
+fun textField (id:string) : string b =
     case Js.getElementById Js.document id of
       SOME e => let
                   val b = new (SOME(Js.value e))
@@ -185,7 +138,7 @@ fun textField (id:string) : (string,B) t =
                 end 
     | NONE => idError "textField" id
 
-fun mouseOver (id:string) : (bool,B)t =
+fun mouseOver (id:string) : bool b =
     case Js.getElementById Js.document id of
       SOME e => let
                   val b = new(SOME false)
@@ -196,7 +149,7 @@ fun mouseOver (id:string) : (bool,B)t =
                 end 
     | NONE => idError "mouseOver" id
 
-fun mouse() : (int*int,B)t =
+fun mouse() : (int*int)b =
     let val b = new(SOME(0,0))
         val () = Js.onMouseMove Js.document (#newValue b)
     in b
@@ -210,30 +163,19 @@ fun click (id:string) (a:''a) : (''a,E)t =
                 end
     | NONE => idError "click" id
 
-fun changes (b: (''a,B)t) : (''a,E)t =
+fun changes (b: ''a b) : ''a e =
     let val t = new NONE
         val _ = addListener b (#newValue t)
     in t
     end
 
-fun hold (a : ''a) (e: (''a,E)t) : (''a,B)t =
+fun hold (a : ''a) (e: ''a e) : ''a b =
     let val b = new(SOME a)
         val _ = addListener e (#newValue b)
     in b
     end
 
-(*
-fun fold (f:''a*''b -> ''b) (x:''b) (a:(''a,'k)t) : (''b,B)t =
-    let val b : (''b,B)t = new(SOME x)
-        val _ = addListener a (fn v => 
-                                  case #current b of
-                                    SOME (ref c) => #newValue b (f(v,c))
-                                  | NONE => raise Fail "fold.impossible")
-    in b
-    end
-*)
-
-fun fold (f:''a*''b -> ''b) (x:''b) (a:(''a,E)t) : (''b,E)t =
+fun fold (f:''a*''b -> ''b) (x:''b) (a:''a e) : ''b e =
     let val t = ref x
         val es : (''b,E)t = new(NONE)
         val _ = addListener a (fn v => let val r = f(v,!t)
@@ -242,11 +184,11 @@ fun fold (f:''a*''b -> ''b) (x:''b) (a:(''a,E)t) : (''b,E)t =
     in es
     end
 
-fun empty() : (''a,E)t = new NONE
+fun empty() : ''a e = new NONE
 
-fun const (a:''a) : (''a,B)t = new (SOME a)
+fun const (a:''a) : ''a b = new (SOME a)
 
-fun poll (f: unit -> ''a) (ms:int) : (''a,B)t = 
+fun poll (f: unit -> ''a) (ms:int) : ''a b = 
     let val b = new (SOME (f()))
         (* This could  be optimized so that we don't do unnecessary 
          * f-work when there is no listeners... *)
