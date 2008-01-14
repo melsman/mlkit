@@ -28,7 +28,6 @@ struct
   structure RegionStatEnv = RSE 
 
   val preserve_tail_calls = Flags.is_on0 "preserve_tail_calls"
-  val garbage_collection = Flags.is_on0 "garbage_collection"
 
   type rse = RSE.regionStatEnv
 
