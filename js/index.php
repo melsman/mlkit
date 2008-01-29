@@ -65,7 +65,7 @@ Reactive Web Programming. See the <a href="test/rwp_ex1.html">rwp_ex1
 example</a> for an introduction to what you can do with this
 library. The <a href="test/rwp.sig">simple library API</a> captures
 the basic notions of behaviors and event streams as well as the
-xoncepts of behavior transformers and event stream transformers.</li>
+concepts of behavior transformers and event stream transformers.</li>
 </ul>
 
 <h3>Online Demonstration</h3>
