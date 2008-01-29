@@ -10,7 +10,7 @@
 <tr><td width=75%>
 <img src=smltojs_logo_color.png>
 <h2>A Standard ML to JavaScript Compiler</h2>
-<h4>By <a href="http://www.itu.dk/people/mael">Martin Elsman</a>, 2007-09-05</h4>
+<h4>By <a href="http://www.itu.dk/people/mael">Martin Elsman</a>, 2008-01-29</h4>
 
 <hr>
 
@@ -60,6 +60,12 @@ and for executing JavaScript statements.
    flags. As a result, SMLtoJs generates fairly efficient JavaScript
    code, although there are rooms for improvements; see below.</li>
 
+<li><b>Reactive Web Programming</b>. SMLtoJs has library support for
+Reactive Web Programming. See the <a href="test/rwp_ex1.html">rwp_ex1
+example</a> for an introduction to what you can do with this
+library. The <a href="test/rwp.sig">simple library API</a> captures
+the basic notions of behaviors and event streams as well as the
+xoncepts of behavior transformers and event stream transformers.</li>
 </ul>
 
 <h3>Online Demonstration</h3>
@@ -162,10 +168,12 @@ license information.
 
 <td align=right valign=top width="25%">
 
-   <table border=0 cellpadding=0 cellspacing=0 width=95% align=right>
+   <table border=0 cellpadding=3 cellspacing=0 width=95% align=right>
     <tr><td><table border=0 bgcolor="#1f94b7" cellpadding=1 cellspacing=1 width=100% align=right>
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2007-11-27: </b>Martin gave a talk in the DIKU TOPPS group (<a href="slides_diku_2007-11-27.pdf">slides</a>).</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-09-17: </b>Martin gave a talk on the PLS Monday lunch meeting (<a href="slides_lunch_2007-09-17.pdf">slides</a>).</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
@@ -184,46 +192,47 @@ license information.
                    <tr><td bgcolor="#eeeeee"><table width=100%><tr><td><font size=-1><b>program</b></font></td><td>
 
            <font size=-1><b>sources</b></font></td></tr>
-
-<tr><td><a href="test/array2.html">Test: array2</a> </td><td><a href="test/array2.sml">src</a></td></tr><tr><td>
-<a href="test/int31.html">Test: int31</a> </td><td><a href="test/int31.sml">src</a></td></tr><tr><td>
-<a href="test/int.html">Test: int</a> </td><td><a href="test/int.sml">src</a></td></tr><tr><td>
-<a href="test/vectorslice.html">Test: vectorslice</a> </td><td><a href="test/vectorslice.sml">src</a></td></tr><tr><td>
-<a href="test/word8arrayslice.html">Test: word8arrayslice</a> </td><td><a href="test/word8arrayslice.sml">src</a></td></tr><tr><td>
-<a href="test/word8vector.html">Test: word8vector</a> </td><td><a href="test/word8vector.sml">src</a></td></tr><tr><td>
-<a href="test/arrayslice.html">Test: arrayslice</a> </td><td><a href="test/arrayslice.sml">src</a></td></tr><tr><td>
-<a href="test/general.html">Test: general</a> </td><td><a href="test/general.sml">src</a></td></tr><tr><td>
-<a href="test/int32_2.html">Test: int32_2</a> </td><td><a href="test/int32_2.sml">src</a></td></tr><tr><td>
-<a href="test/math.html">Test: math</a> </td><td><a href="test/math.sml">src</a></td></tr><tr><td>
-<a href="test/stringcvt.html">Test: stringcvt</a> </td><td><a href="test/stringcvt.sml">src</a></td></tr><tr><td>
-<a href="test/testdyn1.html">Test: testdyn1</a> </td><td><a href="test/testdyn1.sml">src</a></td></tr><tr><td>
-<a href="test/vector.html">Test: vector</a> </td><td><a href="test/vector.sml">src</a></td></tr><tr><td>
-<a href="test/word8array.html">Test: word8array</a> </td><td><a href="test/word8array.sml">src</a></td></tr><tr><td>
-<a href="test/array.html">Test: array</a> </td><td><a href="test/array.sml">src</a></td></tr><tr><td>
-<a href="test/int_2.html">Test: int_2</a> </td><td><a href="test/int_2.sml">src</a></td></tr><tr><td>
-<a href="test/int32.html">Test: int32</a> </td><td><a href="test/int32.sml">src</a></td></tr><tr><td>
-<a href="test/listpair.html">Test: listpair</a> </td><td><a href="test/listpair.sml">src</a></td></tr><tr><td>
-<a href="test/string.html">Test: string</a> </td><td><a href="test/string.sml">src</a></td></tr><tr><td>
-<a href="test/testmatc.html">Test: testmatc</a> </td><td><a href="test/testmatc.sml">src</a></td></tr><tr><td>
-<a href="test/word.html">Test: word</a> </td><td><a href="test/word.sml">src</a></td></tr><tr><td>
-<a href="test/word8.html">Test: word8</a> </td><td><a href="test/word8.sml">src</a></td></tr><tr><td>
-<a href="test/word31.html">Test: word31</a> </td><td><a href="test/word31.sml">src</a></td></tr><tr><td>
-<a href="test/word32.html">Test: word32</a> </td><td><a href="test/word32.sml">src</a></td></tr><tr><td>
-<a href="test/bytechar.html">Test: bytechar</a> </td><td><a href="test/bytechar.sml">src</a></td></tr><tr><td>
-<a href="test/int31_2.html">Test: int31_2</a> </td><td><a href="test/int31_2.sml">src</a></td></tr><tr><td>
-<a href="test/intinf.html">Test: intinf</a> </td><td><a href="test/intinf.sml">src</a></td></tr><tr><td>
-<a href="test/list.html">Test: list</a> </td><td><a href="test/list.sml">src</a></td></tr><tr><td>
-<a href="test/real.html">Test: real</a> </td><td><a href="test/real.sml">src</a></td></tr><tr><td>
-<a href="test/substring.html">Test: substring</a> </td><td><a href="test/substring.sml">src</a></td></tr><tr><td>
-<a href="test/word8vectorslice.html">Test: word8vectorslice</a> </td><td><a href="test/word8vectorslice.sml">src</a></td></tr><tr><td>
-<a href="test/unixpath.html">Test: unixpath</a> </td><td><a href="test/unixpath.sml">src</a></td></tr><tr><td>
-<a href="test/date.html">Test: date</a> </td><td><a href="test/date.sml">src</a></td></tr><tr><td>
-<a href="test/time.html">Test: time</a> </td><td><a href="test/time.sml">src</a></td></tr><tr><td>
-<a href="test/exec.html">Test: exec</a> </td><td><a href="test/exec.sml">src</a></td></tr><tr><td>
-<a href="test/counter.html">Test: counter</a> </td><td><a href="test/counter.sml">src</a></td></tr><tr><td>
-<a href="test/temp.html">Test: temp</a> </td><td><a href="test/temp.sml">src</a></td></tr><tr><td>
-<a href="test/life.html">Test: life</a> </td><td><a href="test/life.sml">src</a></td></tr><tr><td>
-<a href="test/cal.html">Test: cal</a> </td><td><a href="test/cal.sml">src</a></td></tr>
+<tr><td>
+<a href="test/rwp_ex1.html">Ex: rwp_ex1</a> </td><td><a href="test/rwp_ex1.mlb.html">src</a></td></tr><tr><td>
+<a href="test/counter.html">Ex: counter</a> </td><td><a href="test/counter.mlb.html">src</a></td></tr><tr><td>
+<a href="test/temp.html">Ex: temp</a> </td><td><a href="test/temp.mlb.html">src</a></td></tr><tr><td>
+<a href="test/life.html">Ex: life</a> </td><td><a href="test/life.mlb.html">src</a></td></tr><tr><td>
+<a href="test/cal.html">Ex: cal</a> </td><td><a href="test/cal.mlb.html">src</a></td></tr><tr><td>
+<a href="test/array2.html">Test: array2</a> </td><td><a href="test/array2.sml.html">src</a></td></tr><tr><td>
+<a href="test/int31.html">Test: int31</a> </td><td><a href="test/int31.sml.html">src</a></td></tr><tr><td>
+<a href="test/int.html">Test: int</a> </td><td><a href="test/int.sml.html">src</a></td></tr><tr><td>
+<a href="test/vectorslice.html">Test: vectorslice</a> </td><td><a href="test/vectorslice.sml.html">src</a></td></tr><tr><td>
+<a href="test/word8arrayslice.html">Test: word8arrayslice</a> </td><td><a href="test/word8arrayslice.sml.html">src</a></td></tr><tr><td>
+<a href="test/word8vector.html">Test: word8vector</a> </td><td><a href="test/word8vector.sml.html">src</a></td></tr><tr><td>
+<a href="test/arrayslice.html">Test: arrayslice</a> </td><td><a href="test/arrayslice.sml.html">src</a></td></tr><tr><td>
+<a href="test/general.html">Test: general</a> </td><td><a href="test/general.sml.html">src</a></td></tr><tr><td>
+<a href="test/int32_2.html">Test: int32_2</a> </td><td><a href="test/int32_2.sml.html">src</a></td></tr><tr><td>
+<a href="test/math.html">Test: math</a> </td><td><a href="test/math.sml.html">src</a></td></tr><tr><td>
+<a href="test/stringcvt.html">Test: stringcvt</a> </td><td><a href="test/stringcvt.sml.html">src</a></td></tr><tr><td>
+<a href="test/testdyn1.html">Test: testdyn1</a> </td><td><a href="test/testdyn1.sml.html">src</a></td></tr><tr><td>
+<a href="test/vector.html">Test: vector</a> </td><td><a href="test/vector.sml.html">src</a></td></tr><tr><td>
+<a href="test/word8array.html">Test: word8array</a> </td><td><a href="test/word8array.sml.html">src</a></td></tr><tr><td>
+<a href="test/array.html">Test: array</a> </td><td><a href="test/array.sml.html">src</a></td></tr><tr><td>
+<a href="test/int_2.html">Test: int_2</a> </td><td><a href="test/int_2.sml.html">src</a></td></tr><tr><td>
+<a href="test/int32.html">Test: int32</a> </td><td><a href="test/int32.sml.html">src</a></td></tr><tr><td>
+<a href="test/listpair.html">Test: listpair</a> </td><td><a href="test/listpair.sml.html">src</a></td></tr><tr><td>
+<a href="test/string.html">Test: string</a> </td><td><a href="test/string.sml.html">src</a></td></tr><tr><td>
+<a href="test/testmatc.html">Test: testmatc</a> </td><td><a href="test/testmatc.sml.html">src</a></td></tr><tr><td>
+<a href="test/word.html">Test: word</a> </td><td><a href="test/word.sml.html">src</a></td></tr><tr><td>
+<a href="test/word8.html">Test: word8</a> </td><td><a href="test/word8.sml.html">src</a></td></tr><tr><td>
+<a href="test/word31.html">Test: word31</a> </td><td><a href="test/word31.sml.html">src</a></td></tr><tr><td>
+<a href="test/word32.html">Test: word32</a> </td><td><a href="test/word32.sml.html">src</a></td></tr><tr><td>
+<a href="test/bytechar.html">Test: bytechar</a> </td><td><a href="test/bytechar.sml.html">src</a></td></tr><tr><td>
+<a href="test/int31_2.html">Test: int31_2</a> </td><td><a href="test/int31_2.sml.html">src</a></td></tr><tr><td>
+<a href="test/intinf.html">Test: intinf</a> </td><td><a href="test/intinf.sml.html">src</a></td></tr><tr><td>
+<a href="test/list.html">Test: list</a> </td><td><a href="test/list.sml.html">src</a></td></tr><tr><td>
+<a href="test/real.html">Test: real</a> </td><td><a href="test/real.sml.html">src</a></td></tr><tr><td>
+<a href="test/substring.html">Test: substring</a> </td><td><a href="test/substring.sml.html">src</a></td></tr><tr><td>
+<a href="test/word8vectorslice.html">Test: word8vectorslice</a> </td><td><a href="test/word8vectorslice.sml.html">src</a></td></tr><tr><td>
+<a href="test/time.html">Test: time</a> </td><td><a href="test/time.sml.html">src</a></td></tr><tr><td>
+<a href="test/date.html">Test: date</a> </td><td><a href="test/date.sml.html">src</a></td></tr><tr><td>
+<a href="test/unixpath.html">Test: unixpath</a> </td><td><a href="test/unixpath.sml.html">src</a></td></tr><tr><td>
+<a href="test/exec.html">Test: exec</a> </td><td><a href="test/exec.mlb.html">src</a></td></tr><tr><td>
                  </table>
              </td>
          </tr>
