@@ -40,6 +40,9 @@ fun current ({current,...}:(''a,B)t) : ''a =
 fun addListener ({listeners,...}: ('a,'k)t) f =
     listeners := (f :: (!listeners))
 
+fun send (b:(''a,'k)t) (v:''a) : unit =
+    #newValue b v
+
 fun fstT (eP : (''a*''b,'k)t) : (''a,'k)t =
     let val v1opt = case #current eP of
                       SOME(ref(v1,_)) => SOME v1

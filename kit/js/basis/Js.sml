@@ -1,22 +1,26 @@
 signature JS = 
 sig
   (* dom *)
-  type doc type elem
-  val document       : doc
-  val getElementById : doc -> string -> elem option
-  val firstChild     : elem -> elem option
-  val lastChild      : elem -> elem option
-  val nextSibling    : elem -> elem option
-  val previousSibling: elem -> elem option
-  val innerHTML      : elem -> string -> unit
-  val value          : elem -> string
-  val setAttribute   : elem -> string -> string -> unit
-  val createElement  : string -> elem
-  val createTextNode : string -> elem
-  val createFragment : unit -> elem
-  val appendChild    : elem -> elem -> unit
-  val removeChild    : elem -> elem -> unit
-  val replaceChild   : elem -> elem -> elem -> unit
+  eqtype doc eqtype elem
+  val document        : doc
+  val documentElement : doc -> elem
+  val getElementById  : doc -> string -> elem option
+  val parent          : elem -> elem option
+  val firstChild      : elem -> elem option
+  val lastChild       : elem -> elem option
+  val nextSibling     : elem -> elem option
+  val previousSibling : elem -> elem option
+  val innerHTML       : elem -> string -> unit
+  val value           : elem -> string
+  val setAttribute    : elem -> string -> string -> unit
+  val removeAttribute : elem -> string -> unit
+  val setStyle        : elem -> string -> unit
+  val createElement   : string -> elem
+  val createTextNode  : string -> elem
+  val createFragment  : unit -> elem
+  val appendChild     : elem -> elem -> unit
+  val removeChild     : elem -> elem -> unit
+  val replaceChild    : elem -> elem -> elem -> unit
 
   (* events *)
   datatype eventType = onclick | onchange | onkeypress 
@@ -27,15 +31,39 @@ sig
 
   (* timers *)
   type intervalId
-  val setInterval   : int -> (unit -> unit) -> intervalId
-  val clearInterval : intervalId -> unit
+  val setInterval     : int -> (unit -> unit) -> intervalId
+  val clearInterval   : intervalId -> unit
 
   type timeoutId
-  val setTimeout    : int -> (unit -> unit) -> timeoutId
-  val clearTimeout  : timeoutId -> unit
+  val setTimeout      : int -> (unit -> unit) -> timeoutId
+  val clearTimeout    : timeoutId -> unit
+
+  structure XMLHttpRequest : sig
+    type req
+    val new              : unit -> req
+    val openn            : req -> {method: string, url: string, sync: bool} -> unit
+    val setRequestHeader : req -> string * string -> unit
+    val send             : req -> string option -> unit
+    val state            : req -> int        (* 0,1,2,3,4 *)
+    val status           : req -> int option (* 200, 404, ... *)
+    val onStateChange    : req -> (unit -> unit) -> unit
+    val response         : req -> string option
+    val abort            : req -> unit
+  end 
+
+(*
+  val rpc : 'a T -> 'b T -> {url: string, method: string} 
+	    -> 'a -> 'b
+
+  val rpcAsync : 'a T -> 'b T -> {url: string, method: string} 
+	    -> ('b -> unit) -> 'a -> unit
+*)
 end
 
 (*
+  [parent e] returns SOME p, if p is the parent of e. Returns NONE if
+  e has no parent.
+
   [appendChild e child] appends child to e.
 
   [removeChild e child] removes child from e.
@@ -64,6 +92,11 @@ fun getElementById (d:doc) (id:string) : elem option =
              arg1=("d",J.fptr),
              arg2=("id",J.string),
              res=J.option J.fptr} (d,id)
+
+fun parent(e:elem) : elem option =
+    J.exec1 {stmt="return SmlPrims.option(e.parentNode);",
+             arg1=("e",J.fptr),
+             res=J.option J.fptr} e
 
 fun firstChild(e:elem) : elem option =
     J.exec1 {stmt="return SmlPrims.option(e.firstChild);",
@@ -158,10 +191,24 @@ fun value (e:elem) : string =
             arg1=("e",J.fptr),
             res=J.string} e
 
+fun documentElement (d:doc) : elem =
+    J.exec1{stmt="return d.documentElement;",
+            arg1=("d",J.fptr),
+            res=J.fptr} d
+
+fun setStyle (e : elem) (a: string) : unit =
+    J.exec2 {stmt="e.setAttribute('style',a); e.style.cssText = a;",
+             arg1=("e",J.fptr), arg2=("a",J.string), res=J.unit} (e,a)
 
 fun setAttribute (e : elem) (a: string) (b:string) : unit =
-    J.exec3 {stmt="return e.setAttribute(a,b);",
-             arg1=("e",J.fptr), arg2=("a",J.string), arg3=("b",J.string), res=J.unit} (e,a,b)
+    if a = "style" then setStyle e b
+    else 
+      J.exec3 {stmt="return e.setAttribute(a,b);",
+               arg1=("e",J.fptr), arg2=("a",J.string), arg3=("b",J.string), res=J.unit} (e,a,b)
+
+fun removeAttribute (e : elem) (a: string) : unit =
+    J.exec2 {stmt="return e.removeAttribute(a);",
+             arg1=("e",J.fptr), arg2=("a",J.string), res=J.unit} (e,a)
 
 fun createElement (t : string) : elem =
     J.call1 ("document.createElement", J.string, J.fptr) t
@@ -184,6 +231,54 @@ fun replaceChild (e : elem) (a: elem) (old: elem) : unit =
     J.exec3 {stmt="return e.replaceChild(a,old);",
              arg1=("e",J.fptr), arg2=("a",J.fptr), arg3=("old",J.fptr), 
              res=J.unit} (e,a,old)
+
+structure XMLHttpRequest =
+  struct
+      type req = foreignptr
+      fun new() : req =
+          J.call0 ("SmlPrims.newRequest", J.fptr)
+
+      fun openn(r:req) {method: string, url: string, sync: bool} : unit =
+          J.exec4 {stmt="return r.open(m,t,s);",
+                   arg1=("r",J.fptr),arg2=("m",J.string),arg3=("u",J.string),
+                   arg4=("s",J.bool),res=J.unit} (r,method,url,sync)
+      
+      fun send (r:req) (SOME s) : unit =
+          J.exec2 {stmt="return r.send(s);",
+                   arg1=("r",J.fptr),arg2=("s",J.string),res=J.unit} (r,s)
+        | send r NONE = 
+          J.exec1 {stmt="return r.send(null);",
+                   arg1=("r",J.fptr),res=J.unit} r
+
+      fun setRequestHeader (r:req) (k:string,v:string) : unit =
+          J.exec3 {stmt="return r.setRequestHeader(k,v);",
+                   arg1=("r",J.fptr),arg2=("k",J.string),arg3=("v",J.string),
+                   res=J.unit} (r,k,v)
+
+      fun state (r:req) : int =
+          J.exec1 {stmt="return r.readyState;",
+                   arg1=("r",J.fptr),res=J.int} r
+
+      fun status (r:req) : int option =
+          J.exec1 {stmt="return SmlPrims.option(r.status);",
+                   arg1=("r",J.fptr),
+                   res=J.option J.int} r
+
+      fun onStateChange (r:req) (f: unit -> unit) : unit =
+          J.exec2{stmt="r.onreadystatechange = f;",
+                  arg1=("r",J.fptr),arg2=("f",J.==>(J.unit,J.unit)),
+                  res=J.unit} (r,f)
+
+      fun response (r:req) : string option =
+          J.exec1 {stmt="return SmlPrims.option(r.responseText);",
+                   arg1=("r",J.fptr),
+                   res=J.option J.string} r
+
+      fun abort (r:req) : unit =
+          J.exec1 {stmt="return r.abort();",
+                   arg1=("r",J.fptr),
+                   res=J.unit} r
+  end
 end
 
 structure Js : JS = JsSecret

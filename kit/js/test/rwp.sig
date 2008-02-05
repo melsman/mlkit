@@ -39,9 +39,9 @@ sig
   val current   : ''a b -> ''a
   val poll      : (unit -> ''a) -> int -> ''a b
   val insertDOM : string -> string b -> unit
-(*
+
+  val send      : (''a,'k)t -> ''a -> unit
   val addListener : (''a,'k)t -> (''a -> unit) -> unit 
-*)
 end
 
 (*

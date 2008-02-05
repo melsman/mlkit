@@ -328,3 +328,35 @@ SmlPrims.localoffset = function() {
   var m = d.getTimezoneOffset();
   return 60 * m;
 }
+
+// The following code is from Chapter 20 in David Flanagan. JavaScript, The 
+// Definitive Guide. Fifth Edition. 2006. O'Reilly.
+SmlPrims._factories = 
+    [function() { return new XMLHttpRequest(); },
+     function() { return new ActiveXObject("Msxml2.XMLHTTP"); },
+     function() { return new ActiveXObject("Microsoft.XMLHTTP"); }
+     ];
+
+SmlPrims._factory = null; // When we find a factory that works, store it here
+
+SmlPrims.newRequest = function() {
+    if (SmlPrims._factory != null) return SmlPrims._factory();
+    
+    for(var i = 0; i < SmlPrims._factories.length; i++) {
+	try {
+	    var factory = SmlPrims._factories[i];
+	    var request = factory();
+	    if (request != null) {
+		SmlPrims.factory = factory;
+		return request;
+	    }
+	}
+	catch(e) {
+	    continue;
+	}
+    }
+    SmlPrims._factory = function() {
+	throw new Error("SmlPrims.newRequest not supported by browser");
+    }
+    SmlPrims._factory();
+}
