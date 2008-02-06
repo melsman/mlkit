@@ -347,7 +347,7 @@ SmlPrims.newRequest = function() {
 	    var factory = SmlPrims._factories[i];
 	    var request = factory();
 	    if (request != null) {
-		SmlPrims.factory = factory;
+		SmlPrims._factory = factory;
 		return request;
 	    }
 	}

@@ -41,7 +41,7 @@ sig
   structure XMLHttpRequest : sig
     type req
     val new              : unit -> req
-    val openn            : req -> {method: string, url: string, sync: bool} -> unit
+    val openn            : req -> {method: string, url: string, async: bool} -> unit
     val setRequestHeader : req -> string * string -> unit
     val send             : req -> string option -> unit
     val state            : req -> int        (* 0,1,2,3,4 *)
@@ -238,10 +238,10 @@ structure XMLHttpRequest =
       fun new() : req =
           J.call0 ("SmlPrims.newRequest", J.fptr)
 
-      fun openn(r:req) {method: string, url: string, sync: bool} : unit =
-          J.exec4 {stmt="return r.open(m,t,s);",
+      fun openn(r:req) {method: string, url: string, async: bool} : unit =
+          J.exec4 {stmt="return r.open(m,u,a);",
                    arg1=("r",J.fptr),arg2=("m",J.string),arg3=("u",J.string),
-                   arg4=("s",J.bool),res=J.unit} (r,method,url,sync)
+                   arg4=("a",J.bool),res=J.unit} (r,method,url,async)
       
       fun send (r:req) (SOME s) : unit =
           J.exec2 {stmt="return r.send(s);",
