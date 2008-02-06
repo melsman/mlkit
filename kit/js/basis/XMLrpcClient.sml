@@ -2,17 +2,18 @@
 local
   fun makeRequest {url,request} : string =
       let val r = Js.XMLHttpRequest.new()
-          val _ = Js.XMLHttpRequest.openn r {method="POST",url=url,sync=true}
+          val _ = Js.XMLHttpRequest.openn r {method="POST",url=url,async=false}
           val _ = Js.XMLHttpRequest.send r (SOME request)
-      in case Js.XMLHttpRequest.response r of
+          val res = Js.XMLHttpRequest.response r
+      in case res of
            SOME s => s
-         | NONE => raise Fail ("makeRequest.no response; state=" ^ 
-                               Int.toString (Js.XMLHttpRequest.state r))
+         | NONE => raise (Fail ("makeRequest.no response; state=" ^ 
+                                 Int.toString (Js.XMLHttpRequest.state r)))
       end
 
   fun makeRequestAsync {url,request,cont} : unit =
       let val r = Js.XMLHttpRequest.new()
-          val _ = Js.XMLHttpRequest.openn r {method="POST",url=url,sync=false}
+          val _ = Js.XMLHttpRequest.openn r {method="POST",url=url,async=true}
           val _ = Js.XMLHttpRequest.onStateChange r 
                      (fn() =>
                         if Js.XMLHttpRequest.state r > 3 then

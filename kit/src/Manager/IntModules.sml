@@ -422,6 +422,14 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	| APPstrexp(i, funid, strexp) => 
 	  let val _ = chat ("[interpreting functor argument to functor " ^ FunId.pr_FunId funid ^ " begin...]")
 
+		     (* Before we interpret strexp we force previously generated names
+		      * to be `rigid' by emptying the generative names
+		      * bucket, located in Name. This might lead to some
+		      * unnecessary recompilation - but for now it'll do. -
+		      * Martin - this helps for prettyprinting names correctly in the JS-backend... *)
+	      val _ = List.app Name.mk_rigid (!Name.bucket)
+	      val _ = Name.bucket := []
+
 	      val (phi,Eres) = case to_TypeInfo i
 				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
 				   let 
