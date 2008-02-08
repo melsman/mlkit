@@ -49,7 +49,18 @@ struct
         fun param (toplevel:bool) value x = if toplevel then elemP "param" (value x) else value x
         fun pu p u = fn toplevel => (param toplevel p, u) 
     in
-        
+(*        
+        val unit = 
+            let val unpick = 
+                let val legalInt = Parsercomb.scan(Int.scan StringCvt.DEC)
+                in valueU (elemU "int" legalInt || elemU "i4" legalInt) |> ()
+                end
+                val valueP = fn () => (taggedValueP "int" o WSeq.$  o Int.toString) 0
+                val unitPu = pu valueP unpick    
+            in 
+                unitPu
+            end
+*)
         val int = 
             let val unpick = 
                 let val legalInt = Parsercomb.scan(Int.scan StringCvt.DEC)
@@ -207,29 +218,12 @@ struct
             end
         
         
-        fun rpc0 a b {url, method} g = 
-            let 
-                val hostP = ($ "http://" || success "") #-- getChars1 (fn #":" => false | #"/" => false | _ => true)
-                val portP = getChars1 (fn #":" => true | _ => false) #-- scan(Int.scan StringCvt.DEC) || success 80
-                val pathP = getChars0 (fn _ => true)
-                val ((host, port), path) = 
-                    let val opt = scanString (hostP -- portP -- pathP) url
-                    in
-                        case opt of
-                            SOME i => i
-                          | NONE => raise ServerConnection  "Malformed url"
-                    end
-                val  (pick,_) = a true
+        fun rpc0 a b method g = 
+            let val  (pick,_) = a true
                 val  (_, unpick)  = b true
-                fun mkReq value =  
-                    let val req = 
-                        (WSeq.flatten (WSeq.$$ ["<?xml version=\"1.0\"?><methodCall><methodName>", method, "</methodName><params>"] 
-                                       && (pick value) && (WSeq.$ "</params></methodCall>") && WSeq.Nl && WSeq.Nl)) 
-                        val head =  WSeq.$$ ["POST ", path, " HTTP/1.0\n", "User-Agent: mlxmlrpc\n", "Host: ",  host, 
-                                             "\nContent-Type: text/xml\n", "Content-Length: ", Int.toString (String.size req), "\n\n"]
-                    in
-                        (WSeq.flatten (head && (WSeq.$ req)))
-                    end  
+                fun mkReq value = 
+                    WSeq.flatten (WSeq.$$ ["<?xml version=\"1.0\"?><methodCall><methodName>", method, "</methodName><params>"] 
+                                       && (pick value) && (WSeq.$ "</params></methodCall>") && WSeq.Nl && WSeq.Nl)
                 
                 fun unwrap answ = 
                     let val methodResp = Substring.full(answ)
@@ -242,18 +236,18 @@ struct
                             SOME i => i 
                           | NONE => raise TypeConversion
                                 handle Subscript => raise TypeConversion
-                    end
+                    end handle TypeConversion => raise Fail ("TC: " ^ answ)
             in g (mkReq,unwrap)
                handle X.Connection str => raise ServerConnection str
             end     
 
         fun rpc a b {url,method} = 
-            rpc0 a b {url=url,method=method} 
+            rpc0 a b method
                  (fn (wr,uwr) => 
                   fn x => (uwr (X.makeRequest {url=url, request=wr x})))
 
         fun rpcAsync a b {url,method} =
-            rpc0 a b {url=url,method=method} 
+            rpc0 a b method
                  (fn (wr,uwr) => 
                   fn x => 
                   fn f => X.makeRequestAsync {url=url, request=wr x, cont=fn y => f (uwr y)})

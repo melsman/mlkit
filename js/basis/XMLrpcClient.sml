@@ -1,8 +1,15 @@
 
 local
+  fun setRequestHeaders r sz =
+      app (Js.XMLHttpRequest.setRequestHeader r)
+      [("Content-Type", "text/xml"),
+       ("User-Agent", "mlxmlrpc"),
+       ("Content-Length", Int.toString sz)]
+
   fun makeRequest {url,request} : string =
       let val r = Js.XMLHttpRequest.new()
           val _ = Js.XMLHttpRequest.openn r {method="POST",url=url,async=false}
+          val _ = setRequestHeaders r (String.size request)
           val _ = Js.XMLHttpRequest.send r (SOME request)
           val res = Js.XMLHttpRequest.response r
       in case res of
@@ -14,6 +21,7 @@ local
   fun makeRequestAsync {url,request,cont} : unit =
       let val r = Js.XMLHttpRequest.new()
           val _ = Js.XMLHttpRequest.openn r {method="POST",url=url,async=true}
+          val _ = setRequestHeaders r (String.size request)
           val _ = Js.XMLHttpRequest.onStateChange r 
                      (fn() =>
                         if Js.XMLHttpRequest.state r > 3 then
