@@ -238,7 +238,12 @@ struct
                                 handle Subscript => raise TypeConversion
                     end handle TypeConversion => raise Fail ("TC: " ^ answ)
             in g (mkReq,unwrap)
-               handle X.Connection str => raise ServerConnection str
+               handle e => case e of 
+                             X.Connection str => raise ServerConnection str
+                           | TypeConversion => raise e
+                           | MethodInvocation _ => raise e
+                           | Fail s => raise e
+                           | _ => raise Fail ("rpc0 " ^ General.exnMessage e)
             end     
 
         fun rpc a b {url,method} = 
