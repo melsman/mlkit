@@ -6,6 +6,7 @@ val _ = print ("<html><body><h1>XMLrpc test</h1>" ^
 fun call Ta Tr m a =
     XMLrpc.rpc Ta Tr {url="/demo/xmlrpc_test_server.sml",  (* http://www.smlserver.org *)
                       method=m} a
+    handle e => raise Fail ("call: " ^ General.exnMessage e)
 
 fun get id = 
     case Js.getElementById Js.document id of
@@ -19,7 +20,7 @@ val handler =
   | XMLrpc.MethodInvocation(i,s) => ("MI:" ^ s)
   | XMLrpc.TypeConversion => "TC"
   | Fail s => ("Fail: " ^ s)
-  | _ => "Exn"
+  | e => "Exn: " ^ General.exnMessage e
 
 fun comp () = 
     let val v = Js.value elemN
@@ -53,7 +54,10 @@ fun redraw() =
      let open XMLrpc 
          val r = call int (list(pair(pair(int,string),pair(string,string)))) "guests" 0
          val (a,fs) = List.foldl (fn (((gid,n),(e,c)),(a,fs)) => 
-                                     let val g = td (Int.toString gid)
+                                     let val n = "Name"
+                                       val c = "comment"
+                                       val e = "email"
+                                         val g = td (Int.toString gid)
                                          val gId = "b" ^ Int.toString gid
                                          val link = td ("<a href='mailto:" ^ e ^ "'>"^n^"</a>")
                                          val c = td c

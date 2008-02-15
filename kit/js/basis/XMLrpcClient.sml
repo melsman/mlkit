@@ -16,7 +16,7 @@ local
            SOME s => s
          | NONE => raise (Fail ("makeRequest.no response; state=" ^ 
                                  Int.toString (Js.XMLHttpRequest.state r)))
-      end
+      end handle e => raise Fail ("makeRequest: " ^ General.exnMessage e)
 
   fun makeRequestAsync {url,request,cont} : unit =
       let val r = Js.XMLHttpRequest.new()
