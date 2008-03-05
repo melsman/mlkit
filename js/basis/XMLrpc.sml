@@ -1,7 +1,7 @@
-
 (* 
    Author: Martin Olsen (Version: 1.0)
-   Modified by Martin Elsman to work with AJAX programming and SMLtoJs.
+   Major revision by Martin Elsman.
+   Also modified to work with AJAX programming and SMLtoJs.
    mael 2008-02-05
 *)
 
@@ -40,72 +40,59 @@ struct
         
     local 
         fun elemU tag v = 
-            ($ ("<" ^ tag ^ ">") -- repeat0 ($ "\n"))  #-- v --# ($ ("</" ^ tag ^ ">") -- repeat0 ($ "\n"))
-        fun elemP tag p =  WSeq.$$["<", tag, ">"] && p && WSeq.$$["</", tag, ">"] 
+            ($ ("<" ^ tag ^ ">") -- repeat0 ($ "\n"))
+            #-- v --# ($ ("</" ^ tag ^ ">") -- repeat0 ($ "\n"))
+
+        fun elemP tag p =
+            WSeq.$$["<", tag, ">"] && p && WSeq.$$["</", tag, ">"] 
         fun valueU v = elemU "value" v
         fun valueP p = elemP "value" p
         fun taggedValueU tag v = valueU (elemU tag v)
         fun taggedValueP tag p = valueP (elemP tag p) 
-        fun param (toplevel:bool) value x = if toplevel then elemP "param" (value x) else value x
+        fun param (toplevel:bool) value x = 
+            if toplevel then elemP "param" (value x) else value x
         fun pu p u = fn toplevel => (param toplevel p, u) 
     in
-(*        
-        val unit = 
-            let val unpick = 
-                let val legalInt = Parsercomb.scan(Int.scan StringCvt.DEC)
-                in valueU (elemU "int" legalInt || elemU "i4" legalInt) |> ()
-                end
-                val valueP = fn () => (taggedValueP "int" o WSeq.$  o Int.toString) 0
-                val unitPu = pu valueP unpick    
-            in 
-                unitPu
-            end
-*)
+        
         val int = 
-            let val unpick = 
-                let val legalInt = Parsercomb.scan(Int.scan StringCvt.DEC)
-                in valueU (elemU "int" legalInt || elemU "i4" legalInt)
-                end
-                val valueP = taggedValueP "int" o WSeq.$  o Int.toString
-                val intPu = pu valueP unpick    
-            in 
-                intPu
+            let val u = 
+                    let val legalInt = Parsercomb.scan(Int.scan StringCvt.DEC)
+                    in valueU (elemU "int" legalInt || elemU "i4" legalInt)
+                    end
+                val p = 
+                    taggedValueP "int" o WSeq.$  o Int.toString
+            in pu p u
             end
         
         val bool  = 
-            let val unpickle = taggedValueU "boolean" (Parsercomb.scan(Int.scan StringCvt.DEC) >> (fn x => x = 1))
+            let val u = taggedValueU "boolean" (Parsercomb.scan(Int.scan StringCvt.DEC) >> (fn x => x = 1))
                 fun boolToStr b = if b then "1" else "0"
-                val valueP = taggedValueP "boolean"  o WSeq.$ o boolToStr
-                val boolPu = pu valueP unpickle
-            in  
-                boolPu
+                val p = taggedValueP "boolean"  o WSeq.$ o boolToStr
+            in pu p u
             end 
         
         val real = 
-            let val unpickle = taggedValueU "double" (Parsercomb.scan  Real.scan)
-                val valueP = taggedValueP "double"  o WSeq.$ o Real.toString
-                val realPu = pu valueP unpickle 
-            in
-                realPu
+            let val u = taggedValueU "double" (Parsercomb.scan Real.scan)
+                val p = taggedValueP "double"  o WSeq.$ o Real.toString
+            in pu p u               
             end
         
         val string = 
-            let val unpickle = 
-                let fun legalCh #"&" = false 
-                      | legalCh #"<" = false 
-                      | legalCh _ = true 
-                    val strConv = (getChar legalCh || ($ "&amp;" |> #"&") || ($ "&gt;" |> #">") || ($ "&lt;" |> #"<"))
-                    val strU = Parsercomb.repeat0 strConv >> String.implode
-                in
-                    valueU ((elemU "string" strU) || strU)
-                end
+            let val u = 
+                    let fun legalCh #"&" = false 
+                          | legalCh #"<" = false 
+                          | legalCh _ = true 
+                      val strConv = 
+                          (getChar legalCh || ($ "&amp;" |> #"&") || ($ "&gt;" |> #">") || ($ "&lt;" |> #"<"))
+                      val strU = Parsercomb.repeat0 strConv >> String.implode
+                    in
+                      valueU ((elemU "string" strU) || strU)
+                    end
                 fun strP #"<" = "&lt;" 
                   | strP #"&" = "&amp;"
-                  | strP ch   = String.str(ch) 
-                val valueP = taggedValueP "string" o WSeq.$ o String.translate strP
-                val stringPu =  pu valueP unpickle
-            in
-                stringPu
+                  | strP ch = String.str ch 
+                val p = taggedValueP "string" o WSeq.$ o String.translate strP
+            in pu p u
             end
         
         val date = 
@@ -149,82 +136,81 @@ struct
                     taggedValueU  "dateTime.iso8601" datePar
                 end
                 val valueP = taggedValueP "dateTime.iso8601" o WSeq.$ o Date.fmt "%Y%m%dT%H:%M:%S"
-                val datePu = pu valueP unpickle 
-            in
-                datePu
+            in pu valueP unpickle 
             end       
-        
-        fun pair (a, b) =  
-            let val (apickle, aunpickle) = a false
-                val (bpickle, bunpickle) = b false
-                val unpickle = 
-                    let val legalText = getChars0(fn #"<" => false | _ => true) 
-                        val name = elemU "name" legalText
-                        fun member p = elemU "member" (name -- p)
-                        fun validNames (a,b) = 
-                            let val an = Int.fromString a
-                                val bn = Int.fromString b
-                            in 
-                                if (isSome an) andalso (isSome bn) andalso (valOf bn + 1 = valOf an) 
-                                    (* FIXME bn = 1? *)
-                                    then false 
-                                else true
-                            end
-                        val unpicka = fn ((aname, a),(bname,b)) => if validNames(aname,bname) then SOME (a,b) else NONE
-                        val unpickb = fn ((aname, a),(bname,b)) => if validNames(bname, aname) then SOME (b,a) else NONE 
-                        fun valStr par1 par2 =  taggedValueU  "struct" ((member par1) -- (member par2))
-                    in 
-                        ((valStr aunpickle bunpickle) >>* unpicka) ||  ((valStr bunpickle aunpickle) >>* unpickb)  
-                    end 
-                fun memberP name p = elemP "member" ((elemP "name" (WSeq.$ name)) && p) 
-                val membersP = fn (x,y) => memberP "1" (apickle x) && memberP "2" (bpickle y)    
-                val valueP = taggedValueP "struct" o membersP
-                val pairUp = (* fn toplevel => if toplevel then (fn (x,y) => elemP "param" (apickle x && bpickle y), unpickle)
-                                            else (valueP, unpickle) *)
-                    pu valueP unpickle
-            in
-                pairUp
+
+        fun conv (inj:'b->'a,prj:'a->'b) (a:'a pu) : 'b pu =
+            let val (p,u) = a false
+            in pu (p o inj) (u >> prj)
+            end
+
+        val unit =
+            conv (fn () => 1,
+                  fn 1 => ()
+                   | _ => raise TypeConversion) int
+
+        fun pair (a,b) =
+            let val (pa,ua) = a false
+                val (pb,ub) = b false
+                fun pickler (x,y) = pa x && pb y
+                val p = taggedValueP  "array" o (elemP "data" o pickler)
+                val u = taggedValueU  "array" (elemU "data" (ua -- ub))
+            in pu p u
+            end
+
+        fun tup3 (a,b,c) =
+            let val (pa,ua) = a false
+                val (pb,ub) = b false
+                val (pc,uc) = c false
+                fun pickler (x,y,z) = pa x && pb y && pc z
+                val p = taggedValueP  "array" o (elemP "data" o pickler)
+                val u = taggedValueU  "array" (elemU "data" (((ua -- ub) -- uc) >> (fn ((x,y),z) => (x,y,z))))
+            in pu p u
+            end
+
+        fun tup4 (a,b,c,d) =
+            let val (pa,ua) = a false
+                val (pb,ub) = b false
+                val (pc,uc) = c false
+                val (pd,ud) = d false
+                fun pickler (x,y,z,v) = pa x && pb y && pc z && pd v
+                val p = taggedValueP  "array" o (elemP "data" o pickler)
+                val unpickler =
+                    (((ua--ub)--(uc--ud)) >> (fn ((x,y),(z,v)) => (x,y,z,v)))
+                val u = taggedValueU  "array" (elemU "data" unpickler)
+            in pu p u
             end
         
         fun list a =  
             let val (pick, unpick) = a false
-                val unpickle = taggedValueU  "array" (elemU "data" (repeat0 unpick))
-                fun listpickler [] = WSeq.Empty |
-                    listpickler (y::ys) = pick y && listpickler ys
-                val valueP = taggedValueP  "array" o (elemP "data" o listpickler)
-                val listPu = pu valueP unpickle 
-            in
-                listPu
+                val u = taggedValueU  "array" (elemU "data" (repeat0 unpick))
+                fun listpickler [] = WSeq.Empty 
+                  | listpickler (y::ys) = pick y && listpickler ys
+                val p = taggedValueP  "array" o (elemP "data" o listpickler)
+            in pu p u
             end
-        
+
         fun vector a = 
-            let val (pick, unpick) = list a false
-                fun toList v = Vector.foldr (fn (a,b) => a::b) [] v
-                val pickle = pick o toList
-                val unpickle =  unpick >> Vector.fromList
-                val vectorPu = pu pickle unpickle
-            in
-                vectorPu
-            end
+            conv (Vector.foldr (op ::) nil, 
+                  Vector.fromList) (list a)
         
         fun array a = 
-            let val (pick, unpick) = list a false
-                fun toList a = Array.foldr (fn (a,b) => a::b) [] a
-                val pickle = pick o toList
-                val unpickle = unpick >> Array.fromList
-                val arrayPu = pu pickle unpickle
-            in
-                arrayPu
-            end
+            conv (Array.foldr (op ::) nil, 
+                  Array.fromList) (list a)
         
-        
+        fun option a =
+            conv (fn SOME x => [x] 
+                   | NONE => nil,
+                  fn [x] => SOME x 
+                   | nil => NONE 
+                   | _ => raise TypeConversion) (list a)
+
         fun rpc0 a b method g = 
             let val  (pick,_) = a true
                 val  (_, unpick)  = b true
                 fun mkReq value = 
                     WSeq.flatten (WSeq.$$ ["<?xml version=\"1.0\"?><methodCall><methodName>", method, "</methodName><params>"] 
-                                       && (pick value) && (WSeq.$ "</params></methodCall>") && WSeq.Nl && WSeq.Nl)
-                
+                                       && (pick value) && (WSeq.$ "</params></methodCall>") && WSeq.Nl && WSeq.Nl)                
                 fun unwrap answ = 
                     let val methodResp = Substring.full(answ)
                         val (_, u) =  pair(int, string) false
@@ -256,6 +242,5 @@ struct
                  (fn (wr,uwr) => 
                   fn x => 
                   fn f => X.makeRequestAsync {url=url, request=wr x, cont=fn y => f (uwr y)})
-
     end
 end (* struct *)
