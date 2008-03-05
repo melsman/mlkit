@@ -206,6 +206,7 @@ structure EliminateEq: ELIMINATE_EQ =
       [TyName.tyName_INT31, TyName.tyName_INT32,
        TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32, 
        TyName.tyName_BOOL, TyName.tyName_STRING, TyName.tyName_REF, TyName.tyName_ARRAY,
+       TyName.tyName_FOREIGNPTR,
        TyName.tyName_CHARARRAY] (*not tyName_REAL*)
 
 
