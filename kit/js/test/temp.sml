@@ -9,7 +9,9 @@ fun get id =
     | NONE => raise Fail ("Missing id in document: " ^ id)
 
 val elemC = get "tC"
-        
+
+val () = Js.setStyle elemC ("backgroundColor", "green")
+
 fun comp () = 
     let val v = Js.value elemC
         val res = 
