@@ -4,6 +4,7 @@ signature JS_CORE =
     val unit   : unit T
     val int    : int T
     val string : string T
+    val real   : real T
     val fptr   : foreignptr T
     val bool   : bool T
     val option : 'a T -> 'a option T
@@ -45,6 +46,9 @@ signature JS_CORE =
     val call2 : string * 'a1 T * 'a2 T * 'b T -> 'a1*'a2 -> 'b
     val call3 : string * 'a1 T * 'a2 T * 'a3 T * 'b T -> 'a1*'a2*'a3 -> 'b
     val call4 : string * 'a1 T * 'a2 T * 'a3 T * 'a4 T * 'b T -> 'a1*'a2*'a3*'a4 -> 'b
+
+    val getProperty : foreignptr -> 'a T -> string -> 'a
+    val setProperty : foreignptr -> 'a T -> string -> 'a -> unit
   end
 
 structure JsCore :> JS_CORE =
@@ -53,6 +57,7 @@ structure JsCore :> JS_CORE =
     val unit   : unit T = ()
     val int    : int T = ()
     val string : string T = ()
+    val real   : real T = ()
     val fptr   : foreignptr T = ()
     val bool   : bool T = ()
     val option : 'a T -> 'a option T = fn _ => ()
@@ -99,4 +104,18 @@ structure JsCore :> JS_CORE =
         prim("callJS", (f,v1,v2,v3))
     fun call4 (f: string, t1: 'a1 T, t2: 'a2 T, t3: 'a3 T, t4: 'a4 T, tb: 'b T) (v1:'a1,v2:'a2,v3:'a3,v4:'a4) : 'b =
         prim("callJS", (f,v1,v2,v3,v4))
+
+    fun getProperty (fp: foreignptr) (t:'a T) (s:string) : 'a =
+        exec2 {stmt="return fp[s];",
+               arg1=("fp",fptr),
+               arg2=("s",string),
+               res=t} (fp,s)
+
+    fun setProperty (fp: foreignptr) (t:'a T) (s:string) (v:'a) : unit =
+        exec3 {stmt="fp[s] = v;",
+               arg1=("fp",fptr),
+               arg2=("s",string),
+               arg3=("v",t),
+               res=unit} (fp,s,v)
+
   end

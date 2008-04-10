@@ -14,7 +14,7 @@ sig
   val value           : elem -> string
   val setAttribute    : elem -> string -> string -> unit
   val removeAttribute : elem -> string -> unit
-  val setStyle        : elem -> string -> unit
+(*  val setStyle        : elem -> string -> unit *)
   val createElement   : string -> elem
   val createTextNode  : string -> elem
   val createFragment  : unit -> elem
@@ -38,6 +38,9 @@ sig
   val setTimeout      : int -> (unit -> unit) -> timeoutId
   val clearTimeout    : timeoutId -> unit
 
+  (* styles *)
+  val setStyle        : elem -> string * string -> unit
+
   structure XMLHttpRequest : sig
     type req
     val new              : unit -> req
@@ -51,6 +54,7 @@ sig
     val abort            : req -> unit
   end 
 
+  val random             : unit -> real
 (*
   val rpc : 'a T -> 'b T -> {url: string, method: string} 
 	    -> 'a -> 'b
@@ -69,6 +73,8 @@ end
   [removeChild e child] removes child from e.
 
   [replaceChild e new old] replaces old child from e with new child.
+
+  [random()] returns a random real in the interval [0.0,1.0[.
 *)
 
 structure JsSecret :> sig 
@@ -201,8 +207,6 @@ fun setStyle (e : elem) (a: string) : unit =
              arg1=("e",J.fptr), arg2=("a",J.string), res=J.unit} (e,a)
 
 fun setAttribute (e : elem) (a: string) (b:string) : unit =
-    if a = "style" then setStyle e b
-    else 
       J.exec3 {stmt="return e.setAttribute(a,b);",
                arg1=("e",J.fptr), arg2=("a",J.string), arg3=("b",J.string), res=J.unit} (e,a,b)
 
@@ -231,6 +235,12 @@ fun replaceChild (e : elem) (a: elem) (old: elem) : unit =
     J.exec3 {stmt="return e.replaceChild(a,old);",
              arg1=("e",J.fptr), arg2=("a",J.fptr), arg3=("old",J.fptr), 
              res=J.unit} (e,a,old)
+
+fun setStyle (e: elem) (s:string,v:string) : unit =
+    let val st = J.getProperty e J.fptr "style"
+    in J.setProperty st J.string s v
+    end
+
 
 structure XMLHttpRequest =
   struct
@@ -279,6 +289,10 @@ structure XMLHttpRequest =
                    arg1=("r",J.fptr),
                    res=J.unit} r
   end
+
+fun random() : real =
+    J.exec0 {stmt="return Math.random();",
+             res=J.real} ()
 end
 
 structure Js : JS = JsSecret

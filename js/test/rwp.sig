@@ -27,6 +27,7 @@ sig
   val mouseOver : string -> bool b
   val mouse     : unit -> (int*int) b
   val pair      : ''a b * ''b b -> (''a * ''b) b
+  val list      : ''a b list -> ''a list b
   val merge     : ''a e * ''a e -> ''a e
   val delay     : int -> (''a,''a,B)arr
   val calm      : int -> (''a,''a,B)arr
@@ -36,12 +37,15 @@ sig
   val hold      : ''a -> ''a e -> ''a b
   val const     : ''a -> ''a b
   val empty     : unit -> ''a e
+  val iff       : bool b * ''a b * ''a b -> ''a b
+  val when      : bool b * ''a b -> ''a b
+  val until     : bool b * ''a b -> ''a b
   val current   : ''a b -> ''a
   val poll      : (unit -> ''a) -> int -> ''a b
   val insertDOM : string -> string b -> unit
-
+  val setStyle  : string -> (string * string b) -> unit
   val send      : (''a,'k)t -> ''a -> unit
-  val addListener : (''a,'k)t -> (''a -> unit) -> unit 
+(*  val addListener : (''a,'k)t -> (''a -> unit) -> unit  *)
 end
 
 (*
@@ -85,7 +89,7 @@ end
  relative to the upper-left corner of the browser window.
 
  [pair(b1,b2)] returns a behavior for the pair of the two behaviors b1
- and b2.
+ and b2. Sem[pair(b1,b2)] = \t.(Sem[b1]t,Sem[b2]t).
 
  [merge(e1,e2)] returns the event stream resulting from merging the
  two event streams e1 and e2.
@@ -108,9 +112,24 @@ end
  [hold a es] returns a behavior holding the value of the previous
  element in the event stream es with a being the initial value.
 
- [const a] returns the constant behavior with value a.
+ [const a] returns the constant behavior with value a. Sem(const a) =
+ \t.a.
 
  [empty()] returns the empty event stream.
+
+ [iff (x,y,z)] returns the behavior which is y when x is true and z
+ when x is false. Sem[iff (x,y,z)] = \t.if Sem[x](t) then Sem[y](t)
+ else Sem[z](t).
+
+ [when (x,y)] returns the behavior that changes according to y when x
+ is true and otherwise does not change. The initial value of the
+ resulting behavior is identical to the current value of y. Sem[when(x,y)] =
+ \t.if Sem[x](t) then Sem[y](t) else Sem[y](t-delta).
+
+ [until (x,y)] returns the behavior that changes according to y until
+ x becomes true the first time. After this, the resulting behavior is
+ constant. The initial value of the resulting behavior is identical to
+ the current value of y.
 
  [current b] returns the current value of the behavior b.
 
