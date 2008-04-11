@@ -49,7 +49,6 @@ type pack = {nid:int, comp:unit->unit}
 type ('a,'k) t = 
      {nid: int,
       fns: ('a->unit) list ref,
-      parrents: pack list ref,
       newValue : 'a -> unit,
       current: 'a ref option}
 
@@ -77,8 +76,7 @@ fun pack (t:('a,'k)t) : pack =
      comp= fn() =>
            case #current t of
              SOME (ref v) => 
-             ( List.app (fn f => f v) (rev(!(#fns t)))
-             (* ; List.app H.put (!(#parrents t)) *) )
+             List.app (fn f => f v) (rev(!(#fns t)))
            | NONE => raise Fail "pack.comp.NONE"}
 
 fun eval() =
@@ -91,7 +89,6 @@ type 'a e = ('a,E)t
 
 fun new (init:''a option) : (''a,'k) t =
     let val fns = ref nil
-        val parrents = ref nil
         val nid = newNodeId()
         val tmp = ref NONE
         fun getIt() =
@@ -104,7 +101,6 @@ fun new (init:''a option) : (''a,'k) t =
              val b = 
                  {nid=nid,
                   fns=fns,
-                  parrents=parrents,
                   current=SOME current,
                   newValue=fn v => if v = !current then ()
                                    else (current := v; 
@@ -116,7 +112,6 @@ fun new (init:''a option) : (''a,'k) t =
          let val b =
                  {nid=nid,
                   fns=fns,
-                  parrents=parrents,
                   current=NONE,
                   newValue=fn v => app (fn f => f v) (rev(!fns))}
            val _ = tmp := SOME b
@@ -129,14 +124,9 @@ fun current ({current,...}:''a b) : ''a =
       SOME(ref v) => v
     | NONE => raise Fail "rwp.current.impossible"
 
-fun addListener ({fns,parrents,...}: ('a,'k)t) f (opt:('b,'k')t option) : unit =
-    ( fns := (f :: (!fns));
-      case opt of
-        NONE => ()
-      | SOME e => 
-        parrents := pack e :: (!parrents)
-    )
-
+fun addListener ({fns,...}: ('a,'k)t) f : unit =
+    fns := (f :: (!fns))
+    
 fun send (b:(''a,'k)t) (v:''a) : unit =
     #newValue b v
 
@@ -145,7 +135,7 @@ fun fstT (eP : (''a*''b,'k)t) : (''a,'k)t =
                       SOME(ref(v1,_)) => SOME v1
                     | NONE => NONE
         val e : (''a,'k)t = new v1opt
-        val () = addListener eP (#newValue e o #1) (SOME e)
+        val () = addListener eP (#newValue e o #1)
     in e
     end
 
@@ -154,7 +144,7 @@ fun sndT (eP : (''a*''b,'k)t) : (''b,'k)t =
                       SOME(ref(_,v2)) => SOME v2
                     | NONE => NONE
         val e : (''b,'k)t = new v2opt
-        val () = addListener eP (#newValue e o #2) (SOME e)
+        val () = addListener eP (#newValue e o #2)
     in e
     end
 
@@ -167,8 +157,8 @@ fun pairT (e1: (''a,'k)t, e2: (''b,'k)t) : (''a*''b,'k)t =
     case (#current e1, #current e2) of
       (SOME v1r, SOME v2r) => (* behaviors *)
       let val e : (''a*''b,'k) t = new (SOME(!v1r,!v2r))
-          val () = addListener e1 (fn v1: ''a => #newValue e (v1,!v2r)) (SOME e)
-          val () = addListener e2 (fn v2: ''b => #newValue e (!v1r,v2)) (SOME e)
+          val () = addListener e1 (fn v1: ''a => #newValue e (v1,!v2r))
+          val () = addListener e2 (fn v2: ''b => #newValue e (!v1r,v2))
       in e
       end      
 (*
@@ -178,10 +168,10 @@ fun pairT (e1: (''a,'k)t, e2: (''b,'k)t) : (''a*''b,'k)t =
           val e : (''a*''b,'k)t = new NONE
           val _ = addListener e1 (fn v1: ''a => case get e2s of 
                                                   NONE => add e1s v1
-                                                | SOME v2 => #newValue e (v1,v2)) (SOME e)
+                                                | SOME v2 => #newValue e (v1,v2))
           val _ = addListener e2 (fn v2: ''b => case get e1s of
                                                   NONE => add e2s v2
-                                                | SOME v1 => #newValue e (v1,v2)) (SOME e)
+                                                | SOME v1 => #newValue e (v1,v2))
       in e
       end
 *)
@@ -192,8 +182,8 @@ val pair = pairT
 
 fun merge (e1: ''a e, e2: ''a e) : ''a e =
     let val e = new NONE
-        val () = addListener e1 (#newValue e) (SOME e)
-        val () = addListener e2 (#newValue e) (SOME e)
+        val () = addListener e1 (#newValue e)
+        val () = addListener e2 (#newValue e)
     in e
     end
 
@@ -202,7 +192,7 @@ fun insertDOM (id:string) (b : string b) =
       SOME e => 
       (case #current b of
          SOME(ref v) => (Js.innerHTML e v;
-                         addListener b (Js.innerHTML e) NONE)
+                         addListener b (Js.innerHTML e))
        | NONE => raise Fail "insertDOM impossible")
     | NONE => idError "insertDOM" id
 
@@ -211,7 +201,7 @@ fun setStyle (id:string) (s:string, b: string b) : unit =
       SOME e => 
       (case #current b of
          SOME(ref v) => (Js.setStyle e (s,v);
-                         addListener b (fn v => Js.setStyle e (s,v)) NONE)
+                         addListener b (fn v => Js.setStyle e (s,v)))
        | NONE => raise Fail "setStyle impossible")
     | NONE => idError "setStyle" id
 
@@ -227,7 +217,7 @@ fun delay (ms:int) (b : ''a b) : ''a b =
                                                          )
                                                      ); ()
                                    )
-                               ) NONE
+                               )
     in b'
     end
 
@@ -247,7 +237,7 @@ fun calm (ms:int) (b : ''a b) : ''a b =
                                                            eval()
                                                           )
                                                         else ()); 
-                                   ())) NONE
+                                   ()))
     in b'
     end
 
@@ -288,13 +278,13 @@ fun click (id:string) (a:''a) : (''a,E)t =
 
 fun changes (b: ''a b) : ''a e =
     let val t = new NONE
-        val () = addListener b (#newValue t) (SOME t)
+        val () = addListener b (#newValue t)
     in t
     end
 
 fun hold (a : ''a) (e: ''a e) : ''a b =
     let val b = new(SOME a)
-        val () = addListener e (#newValue b) (SOME b)
+        val () = addListener e (#newValue b)
     in b
     end
 
@@ -303,7 +293,7 @@ fun fold (f:''a*''b -> ''b) (x:''b) (a:''a e) : ''b e =
         val es : (''b,E)t = new(NONE)
         val () = addListener a (fn v => let val r = f(v,!t)
                                        in t := r; #newValue es r
-                                       end) (SOME es)
+                                       end)
     in es
     end
 
@@ -327,7 +317,7 @@ fun arr (f: ''a -> ''b) (b0:(''a,'k)t) =
     let val b = new(case #current b0 of
                       SOME(ref v) => SOME (f v)
                     | NONE => NONE)
-      val () = addListener b0 (#newValue b o f) (SOME b)
+      val () = addListener b0 (#newValue b o f)
     in b
     end
 
@@ -364,11 +354,11 @@ fun iff(x,y,z) =
       val b = new (SOME init)
       fun add f y =
           addListener y (fn a => if f(current x) then #newValue b (current y)
-                                 else ()) (SOME b)
+                                 else ())
       val _ = add (fn x => x) y
       val _ = add not z
       val _ = addListener x (fn t => if t then #newValue b (current y)
-                                     else #newValue b (current z)) (SOME b)
+                                     else #newValue b (current z))
     in b
     end
 
@@ -397,9 +387,9 @@ fun until(x,y) =
     let val b = new (SOME(current y))
         val stop = ref (current x) 
         val _ = addListener x (fn v:bool => if v then stop := true 
-                                            else ()) (SOME b)
+                                            else ())
         val _ = addListener y (fn v => if !stop then ()
-                                       else #newValue b v) (SOME b)
+                                       else #newValue b v)
     in b
     end
 *)
