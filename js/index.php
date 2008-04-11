@@ -194,6 +194,8 @@ license information.
            <font size=-1><b>sources</b></font></td></tr>
 <tr><td>
 <a href="test/rwp_ex1.html">Ex: rwp_ex1</a> </td><td><a href="test/rwp_ex1.mlb.html">src</a></td></tr><tr><td>
+<a href="test/rwp_ex2.html">Ex: rwp_ex2</a> </td><td><a href="test/rwp_ex2.mlb.html">src</a></td></tr><tr><td>
+<a href="test/rwp_ex3.html">Ex: rwp_ex3</a> </td><td><a href="test/rwp_ex3.mlb.html">src</a></td></tr><tr><td>
 <a href="test/counter.html">Ex: counter</a> </td><td><a href="test/counter.mlb.html">src</a></td></tr><tr><td>
 <a href="test/temp.html">Ex: temp</a> </td><td><a href="test/temp.mlb.html">src</a></td></tr><tr><td>
 <a href="test/life.html">Ex: life</a> </td><td><a href="test/life.mlb.html">src</a></td></tr><tr><td>
