@@ -7,7 +7,10 @@ publish:
 	scp -r basis/MLB/Js/*.js $(HOST):$(TDIR)/basis/MLB/Js/
 	ssh $(HOST) mkdir -p $(TDIR)/test/MLB/Js
 	scp -r test/MLB/Js/*.js $(HOST):$(TDIR)/test/MLB/Js/
-	scp -r test/*.{html,sml,sig} $(HOST):$(TDIR)/test/
+	scp -r test/*.html $(HOST):$(TDIR)/test/
+	scp -r test/*.sml $(HOST):$(TDIR)/test/
+	scp -r test/*.sig $(HOST):$(TDIR)/test/
+	scp -r test/*.png $(HOST):$(TDIR)/test/
 	scp prims.js $(HOST):$(TDIR)/
 	$(MAKE) publishweb
 
