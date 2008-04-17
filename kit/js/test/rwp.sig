@@ -16,8 +16,8 @@ end
 
 signature RWP =
 sig
-  type B type E (* kinds: Behaviors (B) and Events (E) *)
-  type ('a,'k)t
+  eqtype B eqtype E (* kinds: Behaviors (B) and Events (E) *)
+  eqtype ('a,'k)t
   type 'a b = ('a, B)t
   type 'a e = ('a, E)t
   include ARROW where type ('a,'b,'k)arr = ('a,'k)t -> ('b,'k)t
@@ -45,7 +45,8 @@ sig
   val insertDOM : string -> string b -> unit
   val setStyle  : string -> (string * string b) -> unit
   val send      : (''a,'k)t -> ''a -> unit
-(*  val addListener : (''a,'k)t -> (''a -> unit) -> unit  *)
+  val flatten   : ''a b b -> ''a b
+  val addListener : (''a,'k)t -> (''a -> unit) -> unit
 end
 
 (*
