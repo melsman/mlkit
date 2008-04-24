@@ -14,7 +14,6 @@ sig
   val value           : elem -> string
   val setAttribute    : elem -> string -> string -> unit
   val removeAttribute : elem -> string -> unit
-(*  val setStyle        : elem -> string -> unit *)
   val createElement   : string -> elem
   val createTextNode  : string -> elem
   val createFragment  : unit -> elem
