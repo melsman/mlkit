@@ -91,6 +91,17 @@ end
 
 val pair = pairT
 
+fun tup3 (e1: ''a b, e2: ''b b, e3: ''c b) : (''a*''b*''c)b =
+    case (#current e1, #current e2, #current e3) of
+      (SOME v1r, SOME v2r, SOME v3r) => (* behaviors *)
+      let val e : (''a*''b*''c) b = new (SOME(!v1r,!v2r,!v3r))
+          val _ = addListener e1 (fn v1: ''a => #newValue e (v1,!v2r,!v3r))
+          val _ = addListener e2 (fn v2: ''b => #newValue e (!v1r,v2,!v3r))
+          val _ = addListener e3 (fn v3: ''c => #newValue e (!v1r,!v2r,v3))
+      in e
+      end 
+    | _ => raise Fail "tup3.impossible"
+
 fun merge (e1: ''a e, e2: ''a e) : ''a e =
     let val e = new NONE
         val _ = addListener e1 (#newValue e)

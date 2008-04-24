@@ -39,6 +39,16 @@ fun map (f: ''a b -> ''b b) (l:''a list b) : ''b list b =
     flatten(arr (list o g) l)
   end
 
+fun color i =
+    arr (fn 0 => "blue"
+          | 1 => "black"
+          | 2 => "red"
+          | 3 => "green"
+          | 4 => "darkgreen"
+          | 5 => "darkred"
+          | 7 => "margenta"
+          | _ => "red") i
+
 infix &
 fun fold (f: ''a b -> ''b b) (op & : ''b b * ''b b -> ''b b) (e:''b b) (l: ''a list b) : ''b b =
   let fun g (nil : ''a list) : ''b b = e
@@ -48,7 +58,7 @@ fun fold (f: ''a b -> ''b b) (op & : ''b b * ''b b -> ''b b) (e:''b b) (l: ''a l
     flatten(arr g l)
   end
     
-fun cB() = ul (fold (li o $) (op &) (li($(const"No items"))) bB)
+fun cB() = ul (fold (lia [S("color", color aB)] o $) (op &) (li ($(const"No items"))) bB)
 
 (*
 fun pos(x,y) = 

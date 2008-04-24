@@ -27,6 +27,7 @@ sig
   val mouseOver : string -> bool b
   val mouse     : unit -> (int*int) b
   val pair      : ''a b * ''b b -> (''a * ''b) b
+  val tup3      : ''a b * ''b b * ''c b -> (''a * ''b * ''c) b
   val list      : ''a b list -> ''a list b
   val merge     : ''a e * ''a e -> ''a e
   val delay     : int -> (''a,''a,B)arr
