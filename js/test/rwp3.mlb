@@ -4,3 +4,7 @@ rwp.sig
 rwp3.sml
 rhtml.sig
 rhtml.sml
+color.sig
+color.sml
+rwidget.sig
+rwidget.sml
