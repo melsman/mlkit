@@ -11,6 +11,8 @@ CompilerInitial.exn$Interrupt = Array(CompilerInitial.en$Interrupt);
 CompilerInitial.en$Overflow$43 = new String("Overflow");
 CompilerInitial.exn$Overflow$43 = Array(CompilerInitial.en$Overflow$43);
 
+SMLtoJs = {}
+
 SmlPrims = {}
 
 SmlPrims.option = function(e) {
