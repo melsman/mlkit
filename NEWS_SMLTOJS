@@ -1,5 +1,31 @@
 SMLtoJs NEWS file
 
+* mael 2008-08-13: Added support for accessing compiled SML functions
+  from JavaScript programs. At the SML side, values are exported using
+  the _export keyword. Here is an example:
+
+   fun myfun x = x + 1
+   val () = _export("myfun", myfun)
+
+  Expressions of the form _export("myfun", v) has type unit. The first
+  argument to _export must be an immediate string and the second
+  argument must be a value of type t -> t, where each of the t's must
+  be of the form
+
+   t  ::= int | word | word31 | int31 | real | string | bool
+        | word8 | char | t * ... * t
+
+  After the _export construct has been executed, the exported function
+  can be called from JavaScript, as follows:
+
+   var a = SMLtoJs.myfun(4);
+
+* mael 2008-01-14: Added support for linking with external libraries;
+  use 'smltojs --help' to get information about the --jslibs command
+  line option.
+
+* mael 2007-09-05: SMLtoJs version 4.3.4 is released.
+
 * mael 2007-09-05: Support for the following Basis Library structures:
   Date, Time, Timer, Random, OS.Path and related test pages.
 

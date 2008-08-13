@@ -562,8 +562,14 @@ fun toJs (C:Context.context) (e0:Exp) : Js =
   | L.SWITCH_C switch => toJsSw_C (toJs C) switch
   | L.SWITCH_E switch => toJsSw_E (toJs C) switch
 
-  | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res},exps) => 
-    die "toJs.PRIM(EXPORTprim) unimplemented"
+  (* In EXPORTprim below, we could eta-convert e and add code to check
+   * that the type of the argument is compatiple with instance_arg. *)
+  | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res},[e]) => 
+    seq[$("SMLtoJs." ^ name ^ " = ") & toJs C e,
+        $unitValueJs]
+  | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res}, _) => 
+    die "toJs.PRIM(EXPORTprim) should take exactly one argument"
+
   | L.PRIM(L.CCALLprim {name,...},exps) => 
     (case name of
        "execStmtJS" =>
