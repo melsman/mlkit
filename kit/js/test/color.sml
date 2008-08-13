@@ -3,7 +3,7 @@ structure Color :> COLOR = struct
 
   fun fromHex (w: word) : t =
       let val s = Word.toString w
-      in "#" ^ CharVector.tabulate(size s - 6, fn _ => "0") ^ s
+      in "#" ^ CharVector.tabulate(size s - 6, fn _ => #"0") ^ s
       end
 
   fun rgb (r,g,b) =

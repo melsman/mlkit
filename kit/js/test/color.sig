@@ -1,12 +1,11 @@
 signature COLOR = sig
-  type t
+  eqtype t
   val rgb : int * int * int -> t
 
   val fromHex : word -> t
   val fromString : string -> t option
   val toString   : t -> string
 
-  val black   : t
   val aqua    : t
   val black   : t
   val blue    : t
