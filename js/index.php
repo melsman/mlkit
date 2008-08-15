@@ -10,7 +10,7 @@
 <tr><td width=75%>
 <img src=smltojs_logo_color.png>
 <h2>A Standard ML to JavaScript Compiler</h2>
-<h4>By <a href="http://www.itu.dk/people/mael">Martin Elsman</a>, 2008-01-29</h4>
+<h4>By <a href="http://www.elsman.com">Martin Elsman</a>, 2008-08-16</h4>
 
 <hr>
 
@@ -24,7 +24,7 @@ for programming client-side web applications.
 
 <p>SMLtoJs compiles all of Standard ML, including most of the Standard ML
 Basis Library. It also has support for calling JavaScript functions
-and for executing JavaScript statements.
+and for executing plain JavaScript.
 </p>
 
 <h3>Features</h3>
@@ -46,7 +46,8 @@ and for executing JavaScript statements.
 </li>
 
 <li><b>JavaScript integration</b>. SMLtoJs has support for calling JavaScript
-   functions and for executing JavaScript statements.</li>
+   functions and for executing plain JavaScript. Moreover, Standard ML
+   functions may be exported and called by JavaScript code.</li>
 
 <li><b>Simple DOM access</b>. Simple DOM access and support for installing Standard ML
    functions as DOM event handlers and timer call back functions.</li>
@@ -81,7 +82,7 @@ SMLtoJs compiles on Debian Linux systems with MLton or MLKit
 installed. The SMLtoJS sources are available through an MLKit
 sourceforge svn checkout:
 <pre>
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.4/kit smltojs
+ $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.5/kit smltojs
 </pre>
 This command copies the sources to the directory smltojs.
 </p>
@@ -173,6 +174,7 @@ license information.
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2008-08-16: </b>SMLtoJs <b>version 4.3.5</b> is available.</td></tr>
                        <b>2007-11-27: </b>Martin gave a talk in the DIKU TOPPS group (<a href="slides_diku_2007-11-27.pdf">slides</a>).</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-09-17: </b>Martin gave a talk on the PLS Monday lunch meeting (<a href="slides_lunch_2007-09-17.pdf">slides</a>).</td></tr>
@@ -248,6 +250,6 @@ license information.
 </tr>
 </table>
 <hr>
-<a href="mailto:mael@itu.dk">mael@itu.dk</a>
+<a href="mailto:mael@elsman.com">mael@elsman.com</a>
 </body>
 </html>
