@@ -1,5 +1,7 @@
 SMLtoJs NEWS file
 
+* mael 2007-08-16: SMLtoJs version 4.3.5 is released.
+
 * mael 2008-08-13: Added support for accessing compiled SML functions
   from JavaScript programs. At the SML side, values are exported using
   the _export keyword. Here is an example:
