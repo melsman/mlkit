@@ -17,7 +17,7 @@ end
 signature RWP =
 sig
   eqtype B eqtype E (* kinds: Behaviors (B) and Events (E) *)
-  eqtype ('a,'k)t
+  type ('a,'k)t
   type 'a b = ('a, B)t
   type 'a e = ('a, E)t
   include ARROW where type ('a,'b,'k)arr = ('a,'k)t -> ('b,'k)t

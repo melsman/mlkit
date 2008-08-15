@@ -9,11 +9,10 @@ SMLtoJs NEWS file
 
   Expressions of the form _export("myfun", v) has type unit. The first
   argument to _export must be an immediate string and the second
-  argument must be a value of type t -> t, where each of the t's must
-  be of the form
-
-   t  ::= int | word | word31 | int31 | real | string | bool
-        | word8 | char | t * ... * t
+  argument must be a value of type t1 -> t2, where t1 and t2 are
+  arbitrary types. There are no dynamic checks that values passed to
+  exported functions are compatible with type t1; the responsibility
+  for this is entirely the programmer's.
 
   After the _export construct has been executed, the exported function
   can be called from JavaScript, as follows:
