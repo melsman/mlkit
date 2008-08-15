@@ -175,6 +175,7 @@ license information.
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2008-08-16: </b>SMLtoJs <b>version 4.3.5</b> is available.</td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-11-27: </b>Martin gave a talk in the DIKU TOPPS group (<a href="slides_diku_2007-11-27.pdf">slides</a>).</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2007-09-17: </b>Martin gave a talk on the PLS Monday lunch meeting (<a href="slides_lunch_2007-09-17.pdf">slides</a>).</td></tr>
