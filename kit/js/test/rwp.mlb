@@ -1,4 +1,12 @@
 $SML_LIB/basis/basis.mlb
 $SML_LIB/basis/js.mlb
 rwp.sig
-rwp.sml
+rwp3.sml
+rhtml.sig
+rhtml.sml
+color.sig
+color.sml
+(*
+rwidget.sig
+rwidget.sml
+*)
