@@ -29,14 +29,14 @@ fun prj (Append (Append (l1, l2), l3)) = prj (Append (l1, Append (l2, l3)))
   | prj (Perm [a]) = SOME (a, Perm [])
   | prj (Perm [a1, a2]) = if rndBool () then SOME (a1, Perm [a2]) else SOME (a2, Perm [a1])
   | prj (Perm l) = prj (part l)
-
+(*
 fun composePartial (f, g) x = 
     case g x 
      of NONE => NONE
       | SOME y => f y
-
+*)
 (* findSome : ('a -> 'b option) -> 'a permuteList -> 'b option *)
-fun findSome f = composePartial (fn (x, xs) =>
+fun findSome f = Option.composePartial (fn (x, xs) =>
 		let val fx = f x in if isSome fx then fx else findSome f xs end, prj)
 
 end
