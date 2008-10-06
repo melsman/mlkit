@@ -1,4 +1,0 @@
-This directory contains C functions for implementing parts of the generic
-OS interface on Unix systems that support Posix 1003.1b.  These functions
-support operations that are not part of Posix, but are present on most Unix
-systems.
