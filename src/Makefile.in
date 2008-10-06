@@ -17,7 +17,6 @@ include @top_srcdir@/Makefiledefault
 
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
-HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
 
 GENOPCODES_TARGETS=Runtime/Prims.c Runtime/PrimsNsSml.c \
  Runtime/KamInsts.h Runtime/KamInsts.c Runtime/jumptbl.h \
@@ -66,72 +65,27 @@ mlkit_kam_kit: basics tester kitbench mllex-yacc
 	$(MLCOMP) -output mlkit_kam Compiler/kitkam.mlb
 	$(INSTALL) -p mlkit_kam $(BINDIR)
 
-.PHONY: mlkit_nj
-mlkit_nj: basics rp2ps tester kitbench mlbmake mllex-yacc
-	$(MAKE) -C Runtime runtimeSystem.a
-	$(MAKE) -C Runtime runtimeSystemProf.a
-	$(MAKE) -C Runtime runtimeSystemGC.a
-	$(MAKE) -C Runtime runtimeSystemGCProf.a
-	$(MAKE) -C Runtime runtimeSystemGenGC.a
-	$(MAKE) -C Runtime runtimeSystemGenGCProf.a
-#	$(MAKE) -C Runtime runtimeSystemGCTP.a
-#	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
-#	$(MAKE) -C Runtime runtimeSystemTag.a
-	echo 'use "build.sml";' | sml
-	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit
-
-.PHONY: mlkit_kam_nj
-mlkit_kam_nj: basics tester kitbench mllex-yacc
-	$(MAKE) -C Runtime kam
-	echo 'use "build_kam.sml";' | sml
-	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam
-
+.PHONY: smlserver
 smlserver: smlserver_kit
 
+.PHONY: smlserver_kit
 smlserver_kit: basics mlbmake mllex-yacc
 	$(MAKE) -C Tools/MspComp
 	$(MAKE) -C Tools/UlWrapUp
-#	$(MAKE) -C Tools/MlbMake
 	$(MAKE) -C Runtime runtimeSystemKamApSml.o
-#	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
 	$(MAKE) -C SMLserver/apache
 	$(MLCOMP) -output smlserverc Compiler/smlserver.mlb
 	$(INSTALL) -p smlserverc $(BINDIR)
-#	rm -f $(BINDIR)/smlserverc
-#	cd .. && echo '#!/bin/sh' > bin/smlserverc
-#	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
-#	chmod a+x $(BINDIR)/smlserverc
-
-smlserver_nj: basics mlbmake mllex-yacc
-	$(MAKE) -C Tools/MspComp
-	$(MAKE) -C Tools/UlWrapUp
-#	$(MAKE) -C Tools/MlbMake
-#	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
-	$(MAKE) -C Runtime runtimeSystemKamApSml.o
-#	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
-	$(MAKE) -C SMLserver/apache
-	echo 'use "build_web.sml";' | sml
-	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/smlserverc
-#	rm -f $(BINDIR)/smlserverc
-#	cd .. && echo '#!/bin/sh' > bin/smlserverc
-#	cd .. && echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
-#	chmod a+x $(BINDIR)/smlserverc
 
 .PHONY: barry
 barry: basics mllex-yacc
 	$(MLCOMP) -output barry Compiler/barry.mlb
 	$(INSTALL) -p barry $(BINDIR)
 
-#barry: basics mllex-yacc
-#	echo 'use "build_barry.sml";' | sml
-#	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/barry.$(ARCH-OS)
-#	rm -f $(BINDIR)/barry
-#	cd .. && echo '#!/bin/sh' > bin/barry
-#	cd .. && echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
-#	chmod a+x $(BINDIR)/barry
+.PHONY: basics
+basics: genopcodes mlkit-mllex mlkit-mlyacc
 
-basics: genopcodes heap2exec mlkit-mllex mlkit-mlyacc
-
+.PHONY: genopcodes
 genopcodes: $(GENOPCODES_TARGETS)
 
 $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
@@ -140,15 +94,19 @@ $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
 # kitgen_opcodes assumes it's run from the src-directory
 	$(BINDIR)/kitgen_opcodes
 
+.PHONY: rp2ps
 rp2ps:
 	$(MAKE) -C Tools/Rp2ps
 
+.PHONY: tester
 tester:
 	$(MAKE) -C Tools/Tester
 
+.PHONY: mlbmake
 mlbmake:
 	$(MAKE) -C Tools/MlbMake Configuration.sml
 
+.PHONY: kitbench
 kitbench:
 	$(MAKE) -C Tools/Benchmark
 
@@ -166,12 +124,7 @@ Parsing/Topdec.lex.sml: Parsing/Topdec.lex
 Parsing/Topdec.grm.sml: Parsing/Topdec.grm
 	$(BINDIR)/mlkit-mlyacc Parsing/Topdec.grm
 
-heap2exec: heap2exec/heap2exec
-	cp heap2exec/heap2exec.copy heap2exec/heap2exec;
-	cp heap2exec/run.x86-linux.copy heap2exec/run.x86-linux
-
-#$(MAKE) uncommented by NH because heap2exec doesn't compile on FC3
-
+.PHONY: clean
 clean:
 	$(CLEAN) run $(GENOPCODES_TARGETS)
 	cd Pickle && $(CLEAN)
@@ -181,7 +134,6 @@ clean:
 	cd Parsing && $(CLEAN)
 	cd Manager && $(CLEAN)
 	cd Edlib && $(CLEAN)
-	cd heap2exec && $(MAKE) clean
 	cd Runtime && $(MAKE) clean
 	cd Tools/MspComp && $(MAKE) clean
 	cd Tools/Tester && $(MAKE) clean
@@ -206,8 +158,6 @@ clean:
 	$(MAKE) -C SMLserver/apache clean
 	rm -f mlkit
 
-#grm:
-#	cd Parsing && ml-lex Topdec.lex; ml-yacc Topdec.grm
 
 # ----------------------------------------------------------
 # Support for measuring the code blowup resulting from
@@ -217,7 +167,7 @@ clean:
 FILE = /home/mael/kit/src/bdys.txt
 LINES = /home/mael/kit/src/lines.mael.sml
 
-
+.PHONY: bdys
 bdys:
 	(cd Common/PM/RI && wc -l *.bdy > $(FILE))
 	(cd Common/EfficientElab/PM/RI && wc -l *.bdy >> $(FILE)) 
@@ -232,6 +182,7 @@ bdys:
 	(cd Compiler/Backend/HpPaRisc/PM/RI && wc -l *.bdy >> $(FILE))	
 	(cd Manager/PM/RI && wc -l *.bdy >> $(FILE))	
 
+.PHONY: lines
 lines:
 	(cd Common && cat *.sml > $(LINES))
 	(cd Common/EfficientElab && cat *.sml >> $(LINES)) 
