@@ -1,2 +1,2 @@
 clean:
-	rm -rf PM MLB a.out *~
+	rm -rf MLB *~

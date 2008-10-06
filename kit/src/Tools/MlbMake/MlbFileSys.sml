@@ -18,10 +18,11 @@ structure MlbFileSys :> MLB_FILESYS =
       fun init () = lib_list := [(*case OS.Process.getEnv "PWD" of NONE =>*)
                                  OS.FileSys.getDir() (*| SOME d => d *)]
       fun conditionalInit () = case !lib_list of [] => init () | _ => ()
-      fun getDir d = 
-	  let val SOME(h,r) = List.getItem (List.rev d)
-          in List.foldl (fn (x,y) => OS.Path.concat (y,x)) h r
-          end
+      fun getDir d =
+          case List.getItem (List.rev d) of
+	    SOME(h,r) => List.foldl (fn (x,y) => OS.Path.concat (y,x)) h r
+          | NONE => error "getDir:impossible"
+            
     in
       fun getCurrentDir () = (conditionalInit () ; getDir (!lib_list))
       fun change_dir p : {cd_old : unit -> unit, file : string} =

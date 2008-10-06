@@ -9,7 +9,7 @@ MKDIR=@top_srcdir@/mkinstalldirs
 LIBDIR=@top_srcdir@
 INSTALL=@INSTALL@
 INSTALLDATA=@INSTALL_DATA@
-CLEAN=rm -rf MLB PM CM *~ .\#* a.out run
+CLEAN=rm -rf MLB *~ .\#* a.out run
 
 BINDIR=@top_srcdir@/bin
 
@@ -126,8 +126,10 @@ Parsing/Topdec.grm.sml: Parsing/Topdec.grm
 
 .PHONY: clean
 clean:
-	$(CLEAN) run $(GENOPCODES_TARGETS)
+	$(CLEAN) run $(GENOPCODES_TARGETS) smltojs
+	$(MAKE) -C Pickle clean
 	cd Pickle && $(CLEAN)
+	cd Kitlib && $(CLEAN)
 	cd Common && $(CLEAN)
 	cd Common/EfficientElab && $(CLEAN)
 	cd Compiler && $(CLEAN)
