@@ -43,7 +43,7 @@ RPMDIR=/usr/src/rpm
 
 @SET_MAKE@
 
-CLEAN=rm -rf MLB PM CM *~ .\#*
+CLEAN=rm -rf MLB *~ .\#*
 
 .PHONY: mlkit smltojs mlkit_kam smlserver barry clean clean_mlb install
 .PHONY: install_smlserver install_smlserver0
@@ -97,8 +97,8 @@ mlkit_libs:
 
 smltojs_basislibs:
 	(cd js/basis && find -name MLB -type d | xargs rm -rf)
-	(cd js/basis && SML_LIB=.. ../bin/smltojs -c basis.mlb)
-	(cd js/basis && SML_LIB=.. ../bin/smltojs -c js.mlb)
+	(cd js/basis && SML_LIB=.. ../../bin/smltojs -c basis.mlb)
+	(cd js/basis && SML_LIB=.. ../../bin/smltojs -c js.mlb)
 
 install_smltojs_basislibs:
 	$(MKDIR) $(LIBDIR)/basis
@@ -150,12 +150,12 @@ barry:
 	$(MAKE) -C src barry
 
 clean:
-	$(CLEAN) bin run lib bootstrap dist man/man1/mlkit.1 man/man1/smlserverc.1
+	$(CLEAN) bin run lib bootstrap dist man/man1/*.1 doc/README_SMLSERVER_BIN doc/README_BIN
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
 	cd ml-yacc-lib && $(CLEAN)
-	cd kitdemo && $(CLEAN) run */PM */*~
+	cd kitdemo && $(CLEAN) run */*~
 	cd test && $(MAKE) clean
 	cd test_dev && $(CLEAN) run *.out *.log
 	cd src && $(MAKE) clean
@@ -165,6 +165,7 @@ clean:
 	cd smlserver/xt/demolib && $(CLEAN)
 	cd smlserver/xt/libxt && $(CLEAN)
 	cd smlserver/xt/www && $(CLEAN)
+	$(MAKE) -C js clean
 
 clean_mlb:
 	find . -name "MLB" -type d | xargs rm -Rf

@@ -1,10 +1,10 @@
-FILES=$(shell ls -1 *.{sml,sig,pm,cm,mlb} Makefile copyright.att)
+FILES=$(shell ls -1 *.sml *.sig *.mlb Makefile ../../doc/license/copyright.att)
 
 clean:
-	rm -rf MLB CM PM *~ *.log pickle.tgz
+	rm -rf MLB *~ *.log pickle pickle.tgz
 
 tgz:
-	rm -rf pickle
+	rm -rf pickle pickle.tgz
 	mkdir pickle
 	cp $(FILES) pickle/
 	tar czvf pickle.tgz pickle

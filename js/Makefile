@@ -14,8 +14,8 @@ publish:
 	scp prims.js $(HOST):$(TDIR)/
 	$(MAKE) publishweb
 
-publishweb: smltojs.man.html
-	scp smltojs.man.html slides_diku_2007-11-27.pdf slides_lunch_2007-09-17.pdf base.css index.php smltojs_logo_color.png $(HOST):$(TDIR)/
+publishweb: 
+	scp slides_diku_2007-11-27.pdf slides_lunch_2007-09-17.pdf base.css index.php smltojs_logo_color.png $(HOST):$(TDIR)/
 
 smltojs.man.html: Makefile
 	man2html -r ../man/man1/smltojs.1 > smltojs.man.html
@@ -23,4 +23,5 @@ smltojs.man.html: Makefile
 
 clean:
 	$(MAKE) -C test clean
+	$(MAKE) -C basis clean
 	rm -f *~ smltojs.man.html

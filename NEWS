@@ -1,5 +1,7 @@
 MLKit NEWS file
 
+ * mael 2008-10-06: Compiling with SML/NJ is no longer supported.
+
  * mael 2007-11-14: Fixed bug reported by Vesa Karvonen concerning
    unification of region types.
 
