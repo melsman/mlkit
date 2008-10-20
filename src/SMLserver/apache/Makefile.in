@@ -40,7 +40,7 @@ all: ${ALL}
 install: $(INST)
 
 ${TARGET}: ${SOURCE} Makefile
-	$(APXS) -DAPACHE -Wc,"$(OPT)" -c -lresolv -L. ${SOURCE}
+	$(APXS) -DAPACHE -Wc,"$(OPT)" -c -lresolv -lm -L. ${SOURCE}
 
 oracle: $(ORACLELIB)
 odbc: $(ODBCLIB)
