@@ -8,8 +8,8 @@ in
   local open Pickle SyntaxObjects
   in NAME.sml
      local open Tools
-     in TYNAME.sml
-	Name.sml
+     in Name.sml
+        TYNAME.sml
 	QuasiMap.sml
 	QuasiSet.sml
 	TyName.sml

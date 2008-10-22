@@ -11,31 +11,38 @@ CompilerInitial.exn$Interrupt = Array(CompilerInitial.en$Interrupt);
 CompilerInitial.en$Overflow$43 = new String("Overflow");
 CompilerInitial.exn$Overflow$43 = Array(CompilerInitial.en$Overflow$43);
 
+Con = {}
+Con.nil = 0;
+Con.cons = 1;
+Con.some = 0;
+Con.none = 1;
+Con.intinf = 0; 
+
 SMLtoJs = {}
 
 SmlPrims = {}
 
 SmlPrims.option = function(e) {
   if ( e ) {
-    return Array("SOME",e);
+    return [Con.some,e];
   } else {
-    return Array("NONE");
+    return [Con.none];
   }
 }
 
 SmlPrims.explode = function(s) {
   var i;
-  var res = Array("nil");
+  var res = [Con.nil];
   for ( i = s.length ; i > 0 ; i-- ) {
-    res = Array("::",Array(s.charCodeAt(i-1),res));
+    res = [Con.cons,[s.charCodeAt(i-1),res]];
   }
   return res;
 }
 
 SmlPrims.implode = function(xs) {
   var i;
-  var a = Array();
-  for ( i = 0 ; xs[0] != "nil" ; xs = xs[1][1], i++ ) {
+  var a = [];
+  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
     a[i] = String.fromCharCode(xs[1][0]);
   }
   return a.join("");
@@ -43,8 +50,8 @@ SmlPrims.implode = function(xs) {
 
 SmlPrims.charsToCharArray = function(xs) {
   var i;
-  var a = Array();
-  for ( i = 0 ; xs[0] != "nil" ; xs = xs[1][1], i++ ) {
+  var a = [];
+  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
     a[i] = xs[1][0];
   }
   return a;
@@ -52,8 +59,8 @@ SmlPrims.charsToCharArray = function(xs) {
 
 SmlPrims.listToArray = function(xs) {
   var i;
-  var a = Array();
-  for ( i = 0 ; xs[0] != "nil" ; xs = xs[1][1], i++ ) {
+  var a = [];
+  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
     a[i] = xs[1][0];
   }
   return a;
@@ -61,8 +68,8 @@ SmlPrims.listToArray = function(xs) {
 
 SmlPrims.charArraysConcat = function(xs) {
   var i;
-  var a = Array();
-  for ( i = 0 ; xs[0] != "nil" ; xs = xs[1][1], i++ ) {
+  var a = [];
+  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
     a = Array.concat(a, xs[1][0]);
   }
   return a;
@@ -70,24 +77,25 @@ SmlPrims.charArraysConcat = function(xs) {
 
 SmlPrims.concat = function(xs) {
   var i;
-  var a = Array();
-  for ( i = 0 ; xs[0] != "nil" ; xs = xs[1][1], i++ ) {
+  var a = [];
+  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
     a[i] = xs[1][0];
   }
   return a.join("");
 }
 
 SmlPrims.length = function len(a) {
-  switch(a[0]) {
-    case "nil": return 0; break;
-    default: return(1 + len(a[1][1]));
-  }
+    if (a[0] == Con.nil) {
+	return 0;
+    } else {
+	return(1 + len(a[1][1]));
+    }
 }
 
 SmlPrims.arrayMap = function(f) { 
     return function(a) {
         var i;
-        var a2 = Array(a.length);
+        var a2 = new Array(a.length);
         for (i = 0; i < a.length; i++ ) {
           a2[i] = f(a[i]);
         };
@@ -102,7 +110,7 @@ SmlPrims.charArrayToString = function(a) {
 
 SmlPrims.wordTableInit = function(n,x) {
   var i;
-  var a = Array(n);
+  var a = new Array(n);
   for ( i = 0 ; i < n ; i++) {
     a[i] = x;
   };
@@ -253,7 +261,7 @@ SmlPrims.getrealtime = function() {
   var t = d.getTime();
   var s = Math.floor(t/1000);
   var u = (t % 1000) * 1000;
-  return Array(SmlPrims.chk_ovf_i32(s+timebase),SmlPrims.chk_ovf_i32(u));
+  return [SmlPrims.chk_ovf_i32(s+timebase),SmlPrims.chk_ovf_i32(u)];
 }
 
 SmlPrims.monthDays = function(Y,m) {
@@ -295,7 +303,7 @@ SmlPrims.localtime = function(t) {
   var yd = SmlPrims.yearDays(Y,m,D);
   var S = d.getSeconds();
   var dst = -1;
-  return Array(H,dst,D,M,m,S,wd,yd,Y);
+  return [H,dst,D,M,m,S,wd,yd,Y];
 }
 
 SmlPrims.gmtime = function(t) {
@@ -309,7 +317,7 @@ SmlPrims.gmtime = function(t) {
   var yd = SmlPrims.yearDays(Y,m,D);
   var S = d.getUTCSeconds();
   var dst = -1;
-  return Array(H,dst,D,M,m,S,wd,yd,Y);
+  return [H,dst,D,M,m,S,wd,yd,Y];
 }
 
 SmlPrims.mktime = function(r) {

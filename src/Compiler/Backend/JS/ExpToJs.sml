@@ -8,22 +8,60 @@ structure L = LambdaExp
 type LambdaPgm = L.LambdaPgm
 type Exp = L.LambdaExp
 
+structure Env = struct
+ structure M = Con.Map
+ type t = (TyName.TyName * int) M.map
+ val empty : t = M.empty
+ val initial : t = 
+     let open TyName
+     in M.fromList [
+        (Con.con_FALSE, (tyName_BOOL,0)),
+        (Con.con_TRUE, (tyName_BOOL,1)),
+        (Con.con_NIL, (tyName_LIST,0)),
+        (Con.con_CONS, (tyName_LIST,1)),
+        (Con.con_QUOTE, (tyName_FRAG,0)),
+        (Con.con_ANTIQUOTE, (tyName_FRAG,1)),
+        (Con.con_REF, (tyName_REF,0)),
+        (Con.con_INTINF, (tyName_INTINF,0))
+        ]
+     end
+ val plus : t * t -> t = M.plus
+ fun restrict (e,l) : t = M.restrict (Con.pr_con,e,l)
+ val enrich : t * t -> bool = 
+     M.enrich (fn ((t1,i1),(t2,i2)) => i1 = i2 andalso TyName.eq(t1,t2))
+
+ val pu = M.pu Con.pu (Pickle.pairGen(TyName.pu,Pickle.int))
+
+ fun flatten (es:t list) : t =
+     List.foldl plus empty es
+
+ fun fromDatbinds (L.DATBINDS dbss) : t =
+     let fun fromDb (tvs,t,cs) = 
+             #1(List.foldl(fn ((c,_),(e,i)) => (M.add(c,(t,i),e),i+1)) (M.empty,0) cs)
+     in flatten(map (flatten o map fromDb) dbss)
+     end
+end
+
 datatype Js = $ of string | & of Js * Js | V of (string * Js) list * Js | Par of Js | StToE of Js | returnJs of Js | IfJs of Js * Js * Js
 
 infix & &&
 
 val emp = $""
 
-structure Context :> sig type context
-                       val empty : context
-                       val add : context -> Lvars.lvar -> context
-                       val isIn : context -> Lvars.lvar -> bool
+structure Context :> sig type t
+                       val mk : Env.t -> t
+                       val empty : t
+                       val add : t -> Lvars.lvar -> t
+                       val isIn : t -> Lvars.lvar -> bool
+                       val envOf : t -> Env.t
                      end =
 struct
-  type context = Lvars.lvar list
-  val empty = nil
-  fun add c s = s::c
-  fun isIn c s = List.exists (fn x => Lvars.eq(s,x)) c
+  type t = Env.t * Lvars.lvar list
+  fun mk e = (e,nil)
+  val empty = (Env.empty, nil)
+  fun add (e,c) s = (e,s::c)
+  fun envOf (e,c) = e            
+  fun isIn (e,c) s = List.exists (fn x => Lvars.eq(s,x)) c
 end
 
 local
@@ -147,6 +185,12 @@ fun toJSString s =
 fun j1 && j2 =
   j1 & $" " & j2
 
+fun mlToJsReal s =
+    String.translate (fn #"~" => "-" | c => Char.toString c) s
+
+fun mlToJsInt v =
+    String.translate (fn #"~" => "-" | c => Char.toString c) (Int32.toString v)
+
 fun sToS0 s : Js = $(toJSString s)
 
 fun sToS s : Js = 
@@ -154,6 +198,11 @@ fun sToS s : Js =
 
 fun cToS0 c : Js = 
     $("\"" ^ String.toString (Con.pr_con c) ^ "\"")
+
+fun cToNum C c : Js =
+    case Env.M.lookup (Context.envOf C) c of
+      SOME (_,i) => $(mlToJsInt (Int32.fromInt i))
+    | NONE => die ("cToNum: constructor " ^ Con.pr_con c ^ " not in context")
 
 fun unPar (e:Js) = 
     case e of
@@ -168,14 +217,18 @@ fun parJs (e: Js) : Js =
 fun sqparJs (e:Js) : Js =
     $"[" & unPar e & $"]"
 
+local
+  fun loop xs =
+      case xs
+       of nil => $""
+        | [x] => unPar x
+        | x::xs => unPar x & $", " & loop xs 
+in
 fun seq (jss : Js list) : Js =
-  let fun loop xs =
-        case xs
-         of nil => $""
-          | [x] => unPar x
-          | x::xs => unPar x & $", " & loop xs 
-  in $"(" & loop jss & $")"
-  end
+    $"(" & loop jss & $")"
+fun array (jss : Js list) : Js =
+    $"[" & loop jss & $"]"
+end
 
 fun appi f es = 
   let fun loop (n,nil) = nil
@@ -435,24 +488,24 @@ fun booleanBranch bs eo =
       SOME e => 
       (case bs of
          [((c,_),e')] => 
-         (if c = Con.con_FALSE then SOME(e,e')
-          else (if c = Con.con_TRUE then SOME(e',e)
+         (if Con.eq(c, Con.con_FALSE) then SOME(e,e')
+          else (if Con.eq(c, Con.con_TRUE) then SOME(e',e)
                 else NONE))
        | _ => NONE)
     | NONE => 
       (case bs of
          [((c1,_),e1),((c2,_),e2)] => 
-         (if c1 = Con.con_TRUE then SOME(e1,e2)
-          else (if c1 = Con.con_FALSE then SOME(e2,e1)
+         (if Con.eq(c1, Con.con_TRUE) then SOME(e1,e2)
+          else (if Con.eq(c1, Con.con_FALSE) then SOME(e2,e1)
                 else NONE))
        | _ => NONE)
 
-fun toJsSw_C (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*Exp)list,eo: Exp option)) =
+fun toJsSw_C C (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*Exp)list,eo: Exp option)) =
     case booleanBranch bs eo 
      of SOME(e1,e2) => IfJs (toJs e,toJs e1,toJs e2)
       | NONE =>       
         let  
-          fun pp (c,lvopt) = cToS0 c
+          fun pp (c,lvopt) = cToNum C c
           val default = 
               case eo 
                of SOME e => $"default: " & returnJs(toJs e)
@@ -474,13 +527,7 @@ fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
       stToE($"var tmp = " & unPar(toJs e) & $";\n" & cases & default)
     end
 
-fun mlToJsReal s =
-    String.translate (fn #"~" => "-" | c => Char.toString c) s
-
-fun mlToJsInt v =
-    String.translate (fn #"~" => "-" | c => Char.toString c) (Int32.toString v)
-
-fun toJs (C:Context.context) (e0:Exp) : Js = 
+fun toJs (C:Context.t) (e0:Exp) : Js = 
   case e0 of 
     L.VAR {lvar,...} => $(prLvar C lvar)
   | L.INTEGER (value,_) => if value < 0 then parJs($(mlToJsInt value)) else $(mlToJsInt value)
@@ -488,27 +535,28 @@ fun toJs (C:Context.context) (e0:Exp) : Js =
   | L.STRING s => sToS0 s
   | L.REAL s => if String.sub(s,0) = #"~" then parJs($(mlToJsReal s)) else $(mlToJsReal s)
   | L.PRIM(L.CONprim {con,...},nil) => 
-    if con = Con.con_FALSE then $"false"
-    else if con = Con.con_TRUE then $"true"
-    else $"Array" & seq[cToS0 con]
-  | L.PRIM(L.CONprim {con,...},[e]) => $"Array" & seq[cToS0 con, toJs C e]
+    if Con.eq(con, Con.con_FALSE) then $"false"
+    else if Con.eq(con, Con.con_TRUE) then $"true"
+    else array[cToNum C con]
+  | L.PRIM(L.CONprim {con,...},[e]) => array[cToNum C con, toJs C e]
   | L.PRIM(L.DECONprim _, [e]) => seq [toJs C e] & $"[1]"
 
   | L.PRIM(L.EXCONprim excon,nil) => (* nullary *)
     $(exconExn excon)
   | L.PRIM(L.EXCONprim excon,[e]) => (* unary *)
-    $"Array" & seq[$(exconName excon), toJs C e]
+    array[$(exconName excon), toJs C e]
 
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
     parJs (toJs C e) & $"[1]"
 
   | L.PRIM(L.RECORDprim, []) => $unitValueJs
-  | L.PRIM(L.RECORDprim, es) => $"Array" & seq(map (toJs C) es)
+  | L.PRIM(L.RECORDprim, es) => array(map (toJs C) es)
   | L.PRIM(L.UB_RECORDprim, _) => die "UB_RECORD unimplemented"
   | L.PRIM(L.SELECTprim i,[e]) => seq [toJs C e] & $("[" ^ Int.toString i ^ "]")
 
   | L.PRIM(L.DEREFprim _, [e]) => parJs (toJs C e) & $"[0]"
-  | L.PRIM(L.REFprim _, [e]) => seq[$"tmp = Array(1)", $"tmp[0] = " & toJs C e, $"tmp"]
+  | L.PRIM(L.REFprim _, [e]) => (*seq[$"tmp = Array(1)", $"tmp[0] = " & toJs C e, $"tmp"]*)
+    array[toJs C e]
   | L.PRIM(L.ASSIGNprim _, [e1,e2]) => seq[parJs (toJs C e1) & $"[0] = " & toJs C e2,
                                            $unitValueJs]
   | L.PRIM(L.DROPprim, [e]) => toJs C e
@@ -559,7 +607,7 @@ fun toJs (C:Context.context) (e0:Exp) : Js =
   | L.SWITCH_I {switch,precision} => toJsSw (toJs C) mlToJsInt switch
   | L.SWITCH_W {switch,precision} => toJsSw (toJs C) (Word32.fmt StringCvt.DEC) switch
   | L.SWITCH_S switch => toJsSw (toJs C) toJSString switch
-  | L.SWITCH_C switch => toJsSw_C (toJs C) switch
+  | L.SWITCH_C switch => toJsSw_C C (toJs C) switch
   | L.SWITCH_E switch => toJsSw_E (toJs C) switch
 
   (* In EXPORTprim below, we could eta-convert e and add code to check
@@ -616,21 +664,25 @@ fun toJs (C:Context.context) (e0:Exp) : Js =
     let val s = Excon.pr_excon excon  (* for printing *)
       val exn_id = exconExn excon
     in varJs (exconName excon) (sToS s) 
-             (varJs (exconExn excon) ($"Array" & seq[$(exconName excon)])
+             (varJs (exconExn excon) (array[$(exconName excon)])
                     (toJs C scope))
     end
   | L.RAISE(e,_) => stToE ($"throw" & parJs(toJs C e) & $";\n")
 
-val toJs = fn L.PGM(_,e) => 
+val toJs = fn (env0, L.PGM(dbss,e)) => 
               let 
                 val (lvars,excons) = LambdaBasics.exports e
                 val _ = setFrameLvars lvars
                 val _ = setFrameExcons excons
                 val _ = resetBase()
-                val js = toJs Context.empty e
-              in case getLocalBase() of
-                   SOME b => $b & $" = {};\n" & js
-                 | NONE => js
+                val env' = Env.fromDatbinds dbss
+                val env = Env.plus(env0,env')
+                val js = toJs (Context.mk env) e
+                val js = 
+                    case getLocalBase() of
+                      SOME b => $b & $" = {};\n" & js
+                    | NONE => js
+              in (js, env')
               end
 
 fun toString (js:Js) : string = 

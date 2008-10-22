@@ -1,6 +1,7 @@
 (* Constructors for the lambda language *)
 
-structure Con: CON =
+structure Con :> CON where type name = Name.name
+                       and type Map.StringTree = PrettyPrint.StringTree =
   struct
     structure PP = PrettyPrint
 

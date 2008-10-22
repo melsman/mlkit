@@ -769,6 +769,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
     exception IsolateFunExn of int
 
+    fun errSubProcess e =
+        (print "[[ERR in sub process:\n  ";
+         print (General.exnMessage e ^ "]]\n"))
+
     local
         fun failSig s signal =
             raise Fail ("isolate error: " ^ s ^ "(" ^ 
@@ -787,7 +791,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                    else raise Fail "isolate error 2"
                 end
           | NONE => (f a before Posix.Process.exit 0w0        (* child *)
-                     handle _ => Posix.Process.exit 0w1)
+                     handle e => 
+                            (errSubProcess e;
+                             Posix.Process.exit 0w1))
     end
 
     local
@@ -808,7 +814,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
           case Posix.Process.fork()
            of SOME pid => (add pid ; pid)
             | NONE => ((f a ; Posix.Process.exit 0w0)
-                       handle _ => Posix.Process.exit 0w1)
+                       handle e => (errSubProcess e;
+                                    Posix.Process.exit 0w1))
 
       fun wait p = 
           let

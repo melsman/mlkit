@@ -1,10 +1,5 @@
-(* Timer -- new basis 1995-03-20, 1995-09-14, 1995-11-06, 1997-03-07 *)
-
-(* Under DOS, real time and cpu time are the same *)
-
 structure Timer : TIMER =
   struct
-
     type tusage = {gcSec : int,  gcUsec : int,
                    sysSec : int, sysUsec : int,
                    usrSec : int, usrUsec : int}
@@ -12,8 +7,6 @@ structure Timer : TIMER =
     fun getrutime_ () : tusage = {gcSec=0,gcUsec=0,
                                   sysSec=0,sysUsec=0,
                                   usrSec=0,usrUsec=0}
-      (*prim("sml_getrutime", ())*)
-
     open Time
 
     type cpu_timer  = {usr : time, sys : time, gc : time};
@@ -45,9 +38,6 @@ structure Timer : TIMER =
 
     fun checkRealTimer time1 = now () - time1;
 
-    (* Removed 1995-11-03, added again 1997-03-07 *)
-
     fun totalCPUTimer _  = CPUTimer Initial.initial_rutime
     fun totalRealTimer _ = Initial.initial_realtime
-
   end

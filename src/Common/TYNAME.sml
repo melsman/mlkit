@@ -28,7 +28,7 @@ signature TYNAME =
      *)
 
     type TyName
-    eqtype tycon
+    type tycon = TyCon.tycon
 
     val freshTyName  : {tycon : tycon, arity : int, equality : bool} -> TyName
     val pr_TyName : TyName -> string
@@ -41,7 +41,7 @@ signature TYNAME =
     val id       : TyName -> int * string (* the string is the base (i.e., the defining program unit) *)
 
     (* Names *)
-    type name
+    type name = Name.name
     val match : TyName * TyName -> unit
     val name : TyName -> name
 
@@ -87,14 +87,15 @@ signature TYNAME =
 
     val tynamesPredefined : TyName list
 
-    type StringTree
+    type StringTree = PrettyPrint.StringTree
     val layout : TyName -> StringTree
 
     val pu : TyName Pickle.pu
 
     structure Map : MONO_FINMAP
-    structure Set : KIT_MONO_SET
-    sharing type TyName = Set.elt = Map.dom
-    sharing type StringTree = Set.StringTree = Map.StringTree
-
+                        where type StringTree = StringTree
+                          and type dom = TyName 
+    structure Set : KIT_MONO_SET 
+                        where type StringTree = StringTree
+                          and type elt = TyName 
   end
