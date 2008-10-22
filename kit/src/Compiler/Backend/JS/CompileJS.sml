@@ -23,7 +23,9 @@ structure CompileJS: COMPILE_JS =
 
     structure CE = CompilerEnv
 
-    type CompBasis = CompBasis.CompBasis
+    type jse = ExpToJs.Env.t
+               
+    type CompBasis = CompBasis.CompBasis * jse
     type CEnv = CompileToLamb.CEnv
     type strdec = CompileToLamb.strdec
     type funid = CompileToLamb.funid
@@ -45,14 +47,14 @@ structure CompileJS: COMPILE_JS =
     datatype res = CodeRes of CEnv * CompBasis * target * bool
                  | CEnvOnlyRes of CEnv
 
-    fun compile fe (CEnv, Basis, strdecs) : res =
+    fun compile fe (CEnv, (Basis, jse), strdecs) : res =
         case CompileToLamb.compile fe (CEnv,Basis,strdecs) 
          of CompileToLamb.CEnvOnlyRes CEnv1 => CEnvOnlyRes CEnv1
           | CompileToLamb.CodeRes (CEnv1, Basis1, lamb_opt, safe) =>
             let val exports = ExpToJs.exports lamb_opt
                 val imports = ExpToJs.imports lamb_opt
-                val js = ExpToJs.toJs lamb_opt
-            in CodeRes (CEnv1, Basis1, (js, {imports=imports,exports=exports}), safe)
+                val (js,jse1) = ExpToJs.toJs (jse,lamb_opt)
+            in CodeRes (CEnv1, (Basis1, jse1), (js, {imports=imports,exports=exports}), safe)
             end
 
     fun emit {target: target, filename} : string =

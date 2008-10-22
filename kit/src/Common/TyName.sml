@@ -1,6 +1,6 @@
 (* Type names *)
 
-structure TyName: TYNAME =
+structure TyName :> TYNAME =
   struct
       
     val print_type_name_stamps = Flags.add_bool_entry
