@@ -8,36 +8,71 @@ structure L = LambdaExp
 type LambdaPgm = L.LambdaPgm
 type Exp = L.LambdaExp
 
+datatype conRep =
+         BOOL of bool                      
+       | ENUM of int
+       | STD of int
+       | UNBOXED_NULL
+       | UNBOXED_UNARY
+
 structure Env = struct
  structure M = Con.Map
- type t = (TyName.TyName * int) M.map
+ type t = conRep M.map
  val empty : t = M.empty
  val initial : t = 
      let open TyName
      in M.fromList [
-        (Con.con_FALSE, (tyName_BOOL,0)),
-        (Con.con_TRUE, (tyName_BOOL,1)),
-        (Con.con_NIL, (tyName_LIST,0)),
-        (Con.con_CONS, (tyName_LIST,1)),
-        (Con.con_QUOTE, (tyName_FRAG,0)),
-        (Con.con_ANTIQUOTE, (tyName_FRAG,1)),
-        (Con.con_REF, (tyName_REF,0)),
-        (Con.con_INTINF, (tyName_INTINF,0))
+        (Con.con_FALSE, BOOL false),
+        (Con.con_TRUE, BOOL true),
+        (Con.con_NIL, UNBOXED_NULL),
+        (Con.con_CONS, UNBOXED_UNARY),
+        (Con.con_QUOTE, STD 0),
+        (Con.con_ANTIQUOTE, STD 1),
+        (Con.con_REF, STD 0),
+        (Con.con_INTINF, STD 0)
         ]
      end
  val plus : t * t -> t = M.plus
  fun restrict (e,l) : t = M.restrict (Con.pr_con,e,l)
- val enrich : t * t -> bool = 
-     M.enrich (fn ((t1,i1),(t2,i2)) => i1 = i2 andalso TyName.eq(t1,t2))
+ val enrich : t * t -> bool = M.enrich (op =)
 
- val pu = M.pu Con.pu (Pickle.pairGen(TyName.pu,Pickle.int))
+ val pu_conRep = 
+     Pickle.dataGen 
+         ("conRep",
+          fn BOOL b => 0
+           | ENUM i => 1
+           | STD i => 2
+           | UNBOXED_NULL => 3
+           | UNBOXED_UNARY => 4,
+          [fn _ => Pickle.con1 BOOL (fn BOOL b => b | _ => die "pu_conRep.BOOL") Pickle.bool,
+           fn _ => Pickle.con1 ENUM (fn ENUM i => i | _ => die "pu_conRep.ENUM") Pickle.int,
+           fn _ => Pickle.con1 STD (fn STD i => i | _ => die "pu_conRep.STD") Pickle.int,
+           Pickle.con0 UNBOXED_NULL,
+           Pickle.con0 UNBOXED_UNARY])
 
- fun flatten (es:t list) : t =
-     List.foldl plus empty es
+ val pu = M.pu Con.pu pu_conRep
 
  fun fromDatbinds (L.DATBINDS dbss) : t =
-     let fun fromDb (tvs,t,cs) = 
-             #1(List.foldl(fn ((c,_),(e,i)) => (M.add(c,(t,i),e),i+1)) (M.empty,0) cs)
+     let
+       fun flatten (es:t list) : t =
+           List.foldl plus empty es
+       val all_nullary = 
+           List.all (fn (_,NONE) => true | _ => false)
+       fun onAll C cs = 
+           #1(List.foldl(fn ((c,_),(e,i)) => (M.add(c,C i,e),i+1)) (M.empty,0) cs)
+       fun unboxable [(c0,NONE),(c1,SOME _)] = SOME(c1,c0)
+         | unboxable [(c1,SOME _),(c0,NONE)] = SOME(c1,c0)
+         | unboxable _ = NONE
+       fun fromDb (tvs,t,cs) = 
+             if TyName.unboxed t then
+               if all_nullary cs then
+                 onAll ENUM cs
+               else
+                 case unboxable cs of
+                   SOME (c_unary,c_nullary) =>
+                   M.fromList [(c_unary,UNBOXED_UNARY),(c_nullary,UNBOXED_NULL)]
+                 | NONE => onAll STD cs
+             else  onAll STD cs
      in flatten(map (flatten o map fromDb) dbss)
      end
 end
@@ -196,13 +231,10 @@ fun sToS0 s : Js = $(toJSString s)
 fun sToS s : Js = 
     $"new String(" & sToS0 s & $")"
 
+(*
 fun cToS0 c : Js = 
     $("\"" ^ String.toString (Con.pr_con c) ^ "\"")
-
-fun cToNum C c : Js =
-    case Env.M.lookup (Context.envOf C) c of
-      SOME (_,i) => $(mlToJsInt (Int32.fromInt i))
-    | NONE => die ("cToNum: constructor " ^ Con.pr_con c ^ " not in context")
+*)
 
 fun unPar (e:Js) = 
     case e of
@@ -239,6 +271,37 @@ fun appi f es =
 fun stToE (st : Js) : Js = StToE st
 
 val unitValueJs = "0"
+
+local 
+  fun pp_int i =
+      $(mlToJsInt (Int32.fromInt i))
+in
+  fun ppCon C c : Js =
+      case Env.M.lookup (Context.envOf C) c of
+        SOME(STD i) => pp_int i
+      | SOME(ENUM i) => pp_int i
+      | SOME(BOOL true) => $"true" 
+      | SOME(BOOL false) => $"false" 
+      | SOME UNBOXED_NULL => $"null"
+      | _ => die "ppCon" 
+  fun ppConNullary C c : Js =
+    case Env.M.lookup (Context.envOf C) c of
+      SOME(STD i) => array[pp_int i]
+    | SOME(ENUM i) => pp_int i
+    | SOME(BOOL true) => $"true" 
+    | SOME(BOOL false) => $"false" 
+    | SOME UNBOXED_NULL => $"null"
+    | SOME UNBOXED_UNARY => die "ppConNullary: UNBOXED_UNARY applied to argument" 
+    | NONE => die ("ppConNullary: constructor " ^ Con.pr_con c ^ " not in context")
+  fun ppConUnary C c e : Js =
+    case Env.M.lookup (Context.envOf C) c of
+      SOME(STD i) => array[pp_int i,e]
+    | SOME(ENUM i) => die "ppConUnary: ENUM"
+    | SOME(BOOL _) => die "ppConUnary: BOOL"
+    | SOME UNBOXED_NULL => die "ppConUnary: UNBOXED_NULL"
+    | SOME UNBOXED_UNARY => e
+    | NONE => die ("ppConUnary: constructor " ^ Con.pr_con c ^ " not in context")
+end
 
 (* 
 
@@ -500,18 +563,51 @@ fun booleanBranch bs eo =
                 else NONE))
        | _ => NONE)
 
+fun unboxedBranch C bs eo =
+    case eo of
+      SOME e' =>
+      (case bs of
+         [((c,_),e)] =>
+         (case Env.M.lookup (Context.envOf C) c of
+            SOME UNBOXED_NULL => SOME(e,e')
+          | SOME UNBOXED_UNARY => SOME(e',e)
+          | _ => NONE)
+       | _ => NONE)
+    | NONE => 
+      (case bs of
+         [((c,_),e1),(_,e2)] =>
+         (case Env.M.lookup (Context.envOf C) c of
+            SOME UNBOXED_NULL => SOME(e1,e2)
+          | SOME UNBOXED_UNARY => SOME(e2,e1)
+          | _ => NONE)
+       | _ => NONE)
+
+fun enumeration C (((c,_),_)::_) =
+    case Env.M.lookup (Context.envOf C) c of
+      SOME(ENUM _) => true
+    | _ => false
+
 fun toJsSw_C C (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*Exp)list,eo: Exp option)) =
-    case booleanBranch bs eo 
-     of SOME(e1,e2) => IfJs (toJs e,toJs e1,toJs e2)
-      | NONE =>       
-        let  
-          fun pp (c,lvopt) = cToNum C c
-          val default = 
-              case eo 
-               of SOME e => $"default: " & returnJs(toJs e)
-                | NONE => emp
-          val cases = foldr(fn ((a,e),acc) => $"case" && pp a && $": " & returnJs(parJs(toJs e)) && acc) default bs                     
-        in stToE($"switch(" & parJs(toJs e) & $"[0]" & $") { " & cases & $" }")
+    case booleanBranch bs eo of 
+      SOME(e1,e2) => IfJs (toJs e,toJs e1,toJs e2)
+    | NONE =>
+      case unboxedBranch C bs eo of 
+        SOME(e1,e2) => IfJs (parJs(toJs e) & $" == null",toJs e1,toJs e2)
+      | NONE => 
+        let
+          fun pp (c,lvopt) = ppCon C c
+          fun gen unboxed =
+              let val e_js = if unboxed then toJs e
+                             else parJs(toJs e) & $"[0]"
+                  val default = 
+                      case eo of 
+                        SOME e => $"default: " & returnJs(toJs e)
+                      | NONE => emp
+                  val cases = foldr(fn ((a,e),acc) => $"case" && pp a && $": " & returnJs(parJs(toJs e)) && acc) default bs                     
+              in stToE($"switch(" & e_js & $") { " & cases & $" }")
+              end
+        in if enumeration C bs then gen true
+           else gen false
         end
 
 fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)*Exp)list,eo: Exp option)) =
@@ -534,13 +630,14 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
   | L.WORD (value,_) => $(Word32.fmt StringCvt.DEC value)
   | L.STRING s => sToS0 s
   | L.REAL s => if String.sub(s,0) = #"~" then parJs($(mlToJsReal s)) else $(mlToJsReal s)
-  | L.PRIM(L.CONprim {con,...},nil) => 
-    if Con.eq(con, Con.con_FALSE) then $"false"
-    else if Con.eq(con, Con.con_TRUE) then $"true"
-    else array[cToNum C con]
-  | L.PRIM(L.CONprim {con,...},[e]) => array[cToNum C con, toJs C e]
-  | L.PRIM(L.DECONprim _, [e]) => seq [toJs C e] & $"[1]"
-
+  | L.PRIM(L.CONprim {con,...},nil) => ppConNullary C con
+  | L.PRIM(L.CONprim {con,...},[e]) => ppConUnary C con (toJs C e)
+  | L.PRIM(L.DECONprim {con,...}, [e]) => 
+    (case Env.M.lookup (Context.envOf C) con of
+       SOME(STD _) => seq [toJs C e] & $"[1]"
+     | SOME UNBOXED_UNARY => toJs C e
+     | SOME _ => die ("toJs.PRIM(DECON): constructor " ^ Con.pr_con con ^ " associated with NULLARY constructor info")
+     | NONE => die ("toJs.PRIM(DECON): constructor " ^ Con.pr_con con ^ " not in context"))
   | L.PRIM(L.EXCONprim excon,nil) => (* nullary *)
     $(exconExn excon)
   | L.PRIM(L.EXCONprim excon,[e]) => (* unary *)

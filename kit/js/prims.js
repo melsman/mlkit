@@ -12,8 +12,6 @@ CompilerInitial.en$Overflow$43 = new String("Overflow");
 CompilerInitial.exn$Overflow$43 = Array(CompilerInitial.en$Overflow$43);
 
 Con = {}
-Con.nil = 0;
-Con.cons = 1;
 Con.some = 0;
 Con.none = 1;
 Con.intinf = 0; 
@@ -32,9 +30,9 @@ SmlPrims.option = function(e) {
 
 SmlPrims.explode = function(s) {
   var i;
-  var res = [Con.nil];
+  var res = null;
   for ( i = s.length ; i > 0 ; i-- ) {
-    res = [Con.cons,[s.charCodeAt(i-1),res]];
+    res = [s.charCodeAt(i-1),res];
   }
   return res;
 }
@@ -42,8 +40,8 @@ SmlPrims.explode = function(s) {
 SmlPrims.implode = function(xs) {
   var i;
   var a = [];
-  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
-    a[i] = String.fromCharCode(xs[1][0]);
+  for ( i = 0 ; xs != null ; xs = xs[1], i++ ) {
+    a[i] = String.fromCharCode(xs[0]);
   }
   return a.join("");
 }
@@ -51,8 +49,8 @@ SmlPrims.implode = function(xs) {
 SmlPrims.charsToCharArray = function(xs) {
   var i;
   var a = [];
-  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
-    a[i] = xs[1][0];
+  for ( i = 0 ; xs != null ; xs = xs[1], i++ ) {
+    a[i] = xs[0];
   }
   return a;
 }
@@ -60,8 +58,8 @@ SmlPrims.charsToCharArray = function(xs) {
 SmlPrims.listToArray = function(xs) {
   var i;
   var a = [];
-  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
-    a[i] = xs[1][0];
+  for ( i = 0 ; xs != null ; xs = xs[1], i++ ) {
+    a[i] = xs[0];
   }
   return a;
 }
@@ -69,8 +67,8 @@ SmlPrims.listToArray = function(xs) {
 SmlPrims.charArraysConcat = function(xs) {
   var i;
   var a = [];
-  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
-    a = Array.concat(a, xs[1][0]);
+  for ( i = 0 ; xs != null ; xs = xs[1], i++ ) {
+    a = Array.concat(a, xs[0]);
   }
   return a;
 }
@@ -78,17 +76,17 @@ SmlPrims.charArraysConcat = function(xs) {
 SmlPrims.concat = function(xs) {
   var i;
   var a = [];
-  for ( i = 0 ; xs[0] != Con.nil ; xs = xs[1][1], i++ ) {
-    a[i] = xs[1][0];
+  for ( i = 0 ; xs != null ; xs = xs[1], i++ ) {
+    a[i] = xs[0];
   }
   return a.join("");
 }
 
 SmlPrims.length = function len(a) {
-    if (a[0] == Con.nil) {
+    if (a == null) {
 	return 0;
     } else {
-	return(1 + len(a[1][1]));
+	return(1 + len(a[1]));
     }
 }
 

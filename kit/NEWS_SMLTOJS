@@ -1,5 +1,8 @@
 SMLtoJs NEWS file
 
+* mael 2007-10-25: Certain datatype constructors are now represented
+  unboxed. This unboxing includes lists and enumerations.
+
 * mael 2007-10-23: Datatype Constructors are now represented as
   numbers and there is support now for unboxing simple datatypes such
   as lists.
