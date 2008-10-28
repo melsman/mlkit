@@ -163,6 +163,25 @@ local
                               | #"." => "$"             (* below  makes the ids *)
                               | c => Char.toString c) s (* unique... *)
 
+  (* convert identifier names such as "v343" and "var322" into "v" - the name key
+   * is appended later, which will make the identifiers unique... *)
+
+  val idfy = 
+      let
+        fun restDigits i s = 
+            CharVectorSlice.all Char.isDigit (CharVectorSlice.slice(s,i,NONE))
+        fun simplify s =
+              (if String.sub(s,0) = #"v" then
+                 if restDigits 1 s then "v"
+                 else
+                   if String.sub(s,1) = #"a" 
+                      andalso String.sub(s,2) = #"r" 
+                      andalso restDigits 3 s then "v"
+                   else s
+               else s) handle _ => s
+      in fn s => simplify(idfy s)
+      end
+
   fun patch n f s =
       let val (k,b) = Name.key n
           val s = s ^ "$" ^ Int.toString k
@@ -218,7 +237,7 @@ fun toJSString s =
     end
 
 fun j1 && j2 =
-  j1 & $" " & j2
+    j1 & $" " & j2
 
 fun mlToJsReal s =
     String.translate (fn #"~" => "-" | c => Char.toString c) s
@@ -329,7 +348,7 @@ fun callPrim0 n =
     $n & seq[]
 
 fun callPrim1 n e =
-    $n & parJs e
+    $n & seq[e]
 
 fun callPrim2 n e1 e2 =
     $n & seq[e1,e2]
@@ -583,9 +602,10 @@ fun unboxedBranch C bs eo =
        | _ => NONE)
 
 fun enumeration C (((c,_),_)::_) =
-    case Env.M.lookup (Context.envOf C) c of
-      SOME(ENUM _) => true
-    | _ => false
+    (case Env.M.lookup (Context.envOf C) c of
+       SOME(ENUM _) => true
+     | _ => false)
+  | enumeration _ _ = false
 
 fun toJsSw_C C (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*Exp)list,eo: Exp option)) =
     case booleanBranch bs eo of 
@@ -699,7 +719,7 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
                | _ => die "toJs.malformed FIX") (toJs C scope) functions
     end
   | L.APP(e1,L.PRIM(L.UB_RECORDprim, es)) => toJs C e1 & seq(map (toJs C) es)
-  | L.APP(e1,e2) => toJs C e1 & parJs(toJs C e2)
+  | L.APP(e1,e2) => toJs C e1 & seq[toJs C e2]
                     
   | L.SWITCH_I {switch,precision} => toJsSw (toJs C) mlToJsInt switch
   | L.SWITCH_W {switch,precision} => toJsSw (toJs C) (Word32.fmt StringCvt.DEC) switch
@@ -807,7 +827,7 @@ fun toString (js:Js) : string =
         | strs b (returnJs js,acc) = 
           (case unPar js of
              StToE js => strs b (js,acc)
-           | IfJs(e,e1,e2) => strs false ($"if " & parJs e & $" { " & returnJs e1 & $" } else { " & returnJs e2 & $" };\n", acc)
+           | IfJs(e,e1,e2) => strs false ($"if " & seq[e] & $" { " & returnJs e1 & $" } else { " & returnJs e2 & $" };\n", acc)
            | js => strs false ($"return " & js & $";\n",acc))
         | strs b (IfJs(e,e1,e2),acc) = strs false (parJs(parJs e & $"?" & parJs e1 & $":" & parJs e2),acc)
         | strs b (StToE js,acc) = 

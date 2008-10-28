@@ -1,5 +1,24 @@
+mael 2008-10-19: Make a filesys abstraction FSys that allows for
+source files and target files to be stored in a database or in the
+file system. The MLKit should then use this abstraction for accessing
+files. The abstraction should be general in the sense that it should
+support all kinds of files, including binary files, but still, it
+should support being implemented using a proxy so that sources can be
+stored on a server, compiled on clients and targets stored on the
+server.
+
+mael 2008-10-18: When an mlb-path-map references a non-existing file,
+mlkit reports:
+
+ Stopping compilation due to errors.
+ SysErr
+
+We need a better error message in this case...
+
 mael 2007-07-09: There is a bug concerning checking of changes in
-dependent mlb-files.
+dependent mlb-files. Update mael 2008-10-28: .d-files (e.g.) for a
+file should contain the hosting mlb-file in the name in order for the
+dependency checks to work correctly...
 
 mael 2007-04-19: Check before using a library that it has been
 compiled with the same version of the mlkit that tries to use the
