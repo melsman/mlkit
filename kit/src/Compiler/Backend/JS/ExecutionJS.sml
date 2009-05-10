@@ -60,6 +60,8 @@ structure ExecutionJS : EXECUTION =
 
     fun emit a = Compile.emit a
 
+    val be_rigid = true
+
     val op ## = OS.Path.concat infix ##
 
     val get_jslibs = Flags.add_stringlist_entry 

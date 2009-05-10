@@ -24,6 +24,8 @@ signature EXECUTION =
     val exports_of_linkinfo : linkinfo -> lab list * lab list
     val unsafe_linkinfo : linkinfo -> bool
 
+    val be_rigid : bool
+
     (* Hook to be run before any compilation *)
     val preHook : unit -> unit
 	

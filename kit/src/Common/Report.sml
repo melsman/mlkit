@@ -60,9 +60,12 @@ structure Report: REPORT =
 		    | lines => map f lines)
 	  end
 
-    fun print(REPORT lines) = (map BasicIO.println lines; ())
+    fun println s = print (s ^ "\n") 
+    fun println' os s = (TextIO.output(os, s ^ "\n"); TextIO.flushOut os)
+
+    fun print(REPORT lines) = (map println lines; ())
       | print(REPORT2(r1,r2)) = (print r1; print r2)
 
-    fun print'(REPORT lines) os = (map (BasicIO.println' os) lines; ())
+    fun print'(REPORT lines) os = (map (println' os) lines; ())
       | print'(REPORT2(r1,r2)) os = (print' r1 os; print' r2 os)
   end;

@@ -1,21 +1,21 @@
 
-functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
-		       where type absprjid = string
+functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 		   structure Execution : EXECUTION
+                   structure ModCodeMini : MODCODE_MINI
+                   val mlbdir : unit -> string
 		   sharing type Execution.CompileBasis = ManagerObjects.CompileBasis
-		   sharing type Execution.target = ManagerObjects.target
-		   sharing type Execution.linkinfo = ManagerObjects.linkinfo)
+		   sharing type Execution.target = ModCodeMini.target
+		   sharing type Execution.linkinfo = ModCodeMini.linkinfo)
     : INT_MODULES =
   struct
     structure CompileBasis = Execution.CompileBasis
     structure PP = PrettyPrint
     structure TopdecGrammar = PostElabTopdecGrammar
     structure ElabInfo = AllInfo.ElabInfo
-    structure FunStamp = ManagerObjects.FunStamp
     structure IntBasis = ManagerObjects.IntBasis
     structure IntFunEnv = ManagerObjects.IntFunEnv
     structure IntSigEnv = ManagerObjects.IntSigEnv
-    structure ModCode = ManagerObjects.ModCode
+    structure ModCode = ModCodeMini
     structure CE = CompilerEnv
     structure ElabEnv = Environments.E
     structure ElabBasis = ModuleEnvironments.B
@@ -30,6 +30,10 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
     fun print_error_report report = Report.print' report (!Flags.log)
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
+
+    fun cleanBucket () =
+        ( List.app Name.mk_rigid (!Name.bucket)
+        ; Name.bucket := [])
 
     fun withFile (f:TextIO.instream->'a) (s:string) : 'a =
 	let val is = TextIO.openIn s
@@ -64,7 +68,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     type IntBasis = ManagerObjects.IntBasis
      and topdec = TopdecGrammar.topdec
-     and modcode = ManagerObjects.modcode
+     and modcode = ModCode.modcode
      and CompileBasis = CompileBasis.CompileBasis
      and CEnv = CE.CEnv
      and IntFunEnv = ManagerObjects.IntFunEnv
@@ -96,8 +100,6 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
     (* ----------------------------------------------------
      * Determine where to put target files
      * ---------------------------------------------------- *)
-    val mlbdir = ManagerObjects.mlbdir
-
     type funid = TopdecGrammar.funid
     type strexp = TopdecGrammar.strexp
 
@@ -195,7 +197,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	         val _ = Name.bucket := []
 		   
 		 (* Re-elaboration *)
-
+(*
                  val filename = 
                      let val text = #filetext BBC
                          val basedir = OS.Path.dir (Flags.get_string_entry "output")                        
@@ -203,8 +205,10 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
                      in writeFile filename text
                       ; filename
                      end
+*)
 	         val res = ParseElab.parse_elab {infB= #infB BBC, elabB=elabB, 
-						 absprjid= #absprjid BBC, file=filename} 
+						 absprjid= #absprjid BBC, 
+                                                 src=ParseElab.SrcString (#filetext BBC)} 
 	      in case res
 		   of ParseElab.FAILURE (report,error_codes) => (print_error_report report;
 								 die "reelaborate.ParseElab.FAILURE")
@@ -264,7 +268,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
    fun lookupInlineFunApp (ife:IntFunEnv) (funid:funid) 
        : strid * ElabEnv * strexp * CEnv * IntFunEnv =
-       let val (absprjid,funstamp,strid,E,BBC,intB0) = IntFunEnv.lookup ife funid
+       let val (absprjid,strid,E,BBC,intB0) = IntFunEnv.lookup ife funid
 	   val (ife0,_,ce0,_) = IntBasis.un intB0
        in (strid,E,reelaborate(funid,strid,BBC),ce0,ife0)
        end
@@ -287,6 +291,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	  val vcg_filename = (* pmdir() ^ *) unitname ^ ".vcg"
           val res = Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs,vcg_filename)
           val _ = resetName()
+          val _ = if Execution.be_rigid then cleanBucket() else ()
       in case res
 	   of Execution.CodeRes(ce',cb',target,linkinfo) =>
 	     (ce',cb', ModCode.mk_modcode(target,linkinfo,unitname))
@@ -427,8 +432,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 		      * bucket, located in Name. This might lead to some
 		      * unnecessary recompilation - but for now it'll do. -
 		      * Martin - this helps for prettyprinting names correctly in the JS-backend... *)
-	      val _ = List.app Name.mk_rigid (!Name.bucket)
-	      val _ = Name.bucket := []
+              val _ = cleanBucket()
 
 	      val (phi,Eres) = case to_TypeInfo i
 				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
@@ -448,7 +452,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
 	      val (ce, cb, mc) = int_strexp(intB, strexp)
 	      val _ = chat "[interpreting functor argument end...]"
-	      val (absprjid,funstamp,strid,E,BBC,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
+	      val (absprjid,strid,E,BBC,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
 	      val _ = chat "[constraining argument begin...]" 
 	      val ce = CE.constrain(ce,E')
@@ -485,14 +489,12 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 		      * bucket, located in Name. This might lead to some
 		      * unnecessary recompilation - but for now it'll do. -
 		      * Martin *)
-	      val _ = List.app Name.mk_rigid (!Name.bucket)
-	      val _ = Name.bucket := []
+              val _ = cleanBucket()
 	      val _ = chat "[interpreting functor body begin...]"
 	      val (ce',cb',mc') = int_strexp(intB', strexp0')
 	      val _ = chat "[interpreting functor body end...]"
 	      val N' = !Name.bucket
-	      val _ = Name.bucket := []
-	      val _ = List.app Name.mk_rigid N'
+              val _ = cleanBucket()
 		       
 	      val intB'' = IntBasis.mk(IntFunEnv.empty, IntSigEnv.empty, ce', cb')
 
@@ -561,7 +563,6 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 					       longstrids=longstrids,
 					       longvids=longvids,longtycons=longtycons}, 
 					TyName.Set.empty)
-	  val funstamp = FunStamp.new funid
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i
 	      of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabBref=ref elabB,T,resE,opaq_env_opt=SOME opaq_env}) => 
@@ -573,7 +574,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 		end
 	       | _ => die "int_funbind.no type info"
 	  val BBC = generate_BBC(absprjid, funid, strid, body_builder_info, strexp)
-	  val fe = IntFunEnv.add(funid,(absprjid,funstamp,strid,E,BBC,intB0),IntFunEnv.empty)
+	  val fe = IntFunEnv.add(funid,(absprjid,strid,E,BBC,intB0),IntFunEnv.empty)
 (*
 	  val _ = print ("Closure interpretation basis for " ^ FunId.pr_FunId funid ^ " :\n")
 	  val _ = print_intbasis intB0

@@ -1039,10 +1039,20 @@ structure Pickle :> PICKLE = (* was : *)
 	convert (Vector.fromList,Vector.foldr (op ::) nil)
 	(listGen pu)
 
+(*
     val real = 
 	debug "real"
 	(convert (fn s => PackRealBig.fromBytes(Byte.stringToBytes s),
 		  fn r => Byte.bytesToString(PackRealBig.toBytes r))
+	 string)
+*)
+
+    val real = 
+	debug "real"
+	(convert (fn s => case Real.fromString s of 
+                            SOME r => r 
+                          | NONE => fail "real.impossible",
+		  Real.toString)
 	 string)
 
     val time = 

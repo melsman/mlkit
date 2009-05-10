@@ -2,11 +2,13 @@ structure Crash: CRASH =
   struct
     exception CRASH
 
+    fun println s = print (s ^ "\n") 
+
     fun impossible msg =
       let
 	val msg = "Impossible: " ^ msg
       in
-	BasicIO.println msg;
+	println msg;
 	raise CRASH
       end
 
@@ -16,7 +18,7 @@ structure Crash: CRASH =
 	let
 	  val msg = "Assert fails: " ^ msg
 	in
-	  BasicIO.println msg;
+	  println msg;
 	  raise CRASH
 	end
 
@@ -24,7 +26,7 @@ structure Crash: CRASH =
       let
 	val msg = "Unimplemented: " ^ msg
       in
-	BasicIO.println msg;
+	println msg;
 	raise CRASH
       end
   end

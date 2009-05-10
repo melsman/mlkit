@@ -178,6 +178,7 @@ Initial revision
   val string: ('a -> string) -> 'a list -> string
    (* string p l; returns the canonical string representation of l. *)
 
+(*
   val printSep: TextIO.outstream -> string -> string -> string ->
                 (TextIO.outstream -> 'a -> unit) -> 'a list -> unit
    (* printSep os start finish sep p l; sends the string representation of l
@@ -187,7 +188,7 @@ Initial revision
   val print: TextIO.outstream -> (TextIO.outstream -> 'a -> unit) -> 'a list -> unit
    (* print os p l; sends the canonical string representation of l to
       the stream os. *)
-
+*)
 
 (* OBSERVERS *)
 

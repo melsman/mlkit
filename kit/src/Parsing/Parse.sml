@@ -97,7 +97,7 @@ structure Parse: PARSE =
     type InfixBasis = Infixing.InfixBasis
     type SourceReader = LexBasics.SourceReader
 
-    val sourceFromStdIn = LexBasics.lexFromStdIn
+(*    val sourceFromStdIn = LexBasics.lexFromStdIn *)
     val sourceFromFile = LexBasics.lexFromFile (*may raise Io s*)
     val sourceFromString = LexBasics.lexFromString
 

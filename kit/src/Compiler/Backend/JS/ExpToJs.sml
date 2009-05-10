@@ -83,20 +83,33 @@ infix & &&
 
 val emp = $""
 
+(* 
+Mutually recursive functions are compiled into properties of a
+common object:
+ 
+    var x = {};
+    x.f = function(...){... x.g(...) ...};
+    x.g = function(...){... x.f(...) ...};
+    f = x.f;
+    g = x.g;
+
+Here x is a fresh variable. To map f and g to x.f and x.g, we make use
+of an lvar->lvar map in the context.
+*) 
 structure Context :> sig type t
                        val mk : Env.t -> t
                        val empty : t
-                       val add : t -> Lvars.lvar -> t
-                       val isIn : t -> Lvars.lvar -> bool
+                       val add : t -> Lvars.lvar * string -> t
+                       val lookup : t -> Lvars.lvar -> string option
                        val envOf : t -> Env.t
                      end =
 struct
-  type t = Env.t * Lvars.lvar list
-  fun mk e = (e,nil)
-  val empty = (Env.empty, nil)
-  fun add (e,c) s = (e,s::c)
+  type t = Env.t * string Lvars.Map.map
+  fun mk e = (e,Lvars.Map.empty)
+  val empty = (Env.empty, Lvars.Map.empty)
+  fun add (e,c) (lv,s) = (e,Lvars.Map.add(lv,s,c))
   fun envOf (e,c) = e            
-  fun isIn (e,c) s = List.exists (fn x => Lvars.eq(s,x)) c
+  fun lookup (e,c) lv = Lvars.Map.lookup c lv
 end
 
 local
@@ -182,33 +195,41 @@ local
       in fn s => simplify(idfy s)
       end
 
-  fun patch n f s =
-      let val (k,b) = Name.key n
-          val s = s ^ "$" ^ Int.toString k
-      in if Name.rigid n orelse f() then
-           let val b = normalizeBase b
-           in b ^ "." ^ s
-           end
-         else s
-      end           
+  fun patch n f s opt =
+      case opt of
+        NONE =>
+        let val (k,b) = Name.key n
+            val s = s ^ "$" ^ Int.toString k
+        in if Name.rigid n orelse f() then
+             let val b = normalizeBase b
+             in b ^ "." ^ s
+             end
+           else s
+        end
+      | SOME s0 => s0 ^ "." ^ s
 in
   fun setFrameLvars xs = frameLvars := xs
   fun setFrameExcons xs = frameExcons := xs
   fun resetBase() = localBase := NONE
 
+  fun pr_lv lv = idfy(Lvars.pr_lvar lv)
+
   fun prLvar C lv =
       patch (Lvars.name lv) 
-            (fn() => isFrameLvar lv() andalso not(Context.isIn C lv)) 
-            (idfy(Lvars.pr_lvar lv))
+            (isFrameLvar lv) 
+            (pr_lv lv)
+            (Context.lookup C lv)
   fun prLvarExport lv =
-      patch (Lvars.name lv) (fn() => true) (idfy(Lvars.pr_lvar lv))
+      patch (Lvars.name lv) (fn() => true) (pr_lv lv) NONE
   fun exconName e = 
-      patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e))
+      patch (Excon.name e) (isFrameExcon e) ("en$" ^ idfy(Excon.pr_excon e)) NONE
   fun exconExn e = 
-      patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e))
+      patch (Excon.name e) (isFrameExcon e) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
   fun exconExnExport e = 
-      patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e))
+      patch (Excon.name e) (fn() => true) ("exn$" ^ idfy(Excon.pr_excon e)) NONE
   fun getLocalBase() = !localBase
+  fun fresh_fixvar() =
+      prLvar Context.empty (Lvars.new_named_lvar "fix")
 end
 
 fun toJSString s =
@@ -643,6 +664,21 @@ fun toJsSw_E (toJs: Exp->Js) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
       stToE($"var tmp = " & unPar(toJs e) & $";\n" & cases & default)
     end
 
+fun lvarInExp lv e =
+    let exception FOUND
+        fun f (L.VAR{lvar,...}) =
+            if Lvars.eq(lv,lvar) then raise FOUND
+            else ()
+          | f e = LambdaBasics.app_lamb f e
+    in (f e; false) 
+       handle FOUND => true
+    end
+
+fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_}] =
+    if lvarInExp lvar body then NONE
+    else SOME(lvar,pat,body)
+  | monoNonRec _ = NONE
+
 fun toJs (C:Context.t) (e0:Exp) : Js = 
   case e0 of 
     L.VAR {lvar,...} => $(prLvar C lvar)
@@ -668,7 +704,9 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
 
   | L.PRIM(L.RECORDprim, []) => $unitValueJs
   | L.PRIM(L.RECORDprim, es) => array(map (toJs C) es)
-  | L.PRIM(L.UB_RECORDprim, _) => die "UB_RECORD unimplemented"
+  | L.PRIM(L.UB_RECORDprim, [e]) => toJs C e
+  | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = " 
+                                        ^ Int.toString (List.length es))
   | L.PRIM(L.SELECTprim i,[e]) => seq [toJs C e] & $("[" ^ Int.toString i ^ "]")
 
   | L.PRIM(L.DEREFprim _, [e]) => parJs (toJs C e) & $"[0]"
@@ -709,14 +747,29 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
       loop(lvs,binds)
     end
   | L.FIX{functions,scope} => 
-    let val C' = foldl(fn(lvar,C) => Context.add C lvar) C (map #lvar functions)
-    in foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
-                 let val lvs = map ($ o prLvar C o #1) pat
-                 in varJs (prLvar C f_lv) 
-                          ($("function " ^ prLvar C' f_lv) & seq lvs & $"{ " & returnJs(toJs C' body) & $" }")
-                          acc
-                 end
-               | _ => die "toJs.malformed FIX") (toJs C scope) functions
+    let val scopeJs = toJs C scope
+    in case monoNonRec functions of
+         SOME (lv,pat,body) =>
+         let val lvs = map ($ o prLvar C o #1) pat
+         in varJs (prLvar C lv) 
+                  ($"function " & seq lvs & $"{ " & returnJs(toJs C body) & $" }")
+                  scopeJs
+         end         
+       | NONE =>
+         let 
+           val fixvar = fresh_fixvar()
+           fun pr_fix_lv lv = fixvar ^ "." ^ pr_lv lv            
+           val C' = foldl(fn(lvar,C) => Context.add C (lvar,fixvar)) C (map #lvar functions)
+           val js2 = foldl(fn(lv,js) => varJs (prLvar C lv) ($(pr_fix_lv lv)) js) scopeJs (map #lvar functions)
+           val js = foldl(fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
+                           let val lvs = map ($ o prLvar C o #1) pat
+                           in varJs (pr_fix_lv f_lv) 
+                                    ($"function " & seq lvs & $"{ " & returnJs(toJs C' body) & $" }")
+                                    acc
+                           end
+                           | _ => die "toJs.malformed FIX") js2 functions
+         in varJs fixvar ($"{}") js
+         end
     end
   | L.APP(e1,L.PRIM(L.UB_RECORDprim, es)) => toJs C e1 & seq(map (toJs C) es)
   | L.APP(e1,e2) => toJs C e1 & seq[toJs C e2]
@@ -797,7 +850,7 @@ val toJs = fn (env0, L.PGM(dbss,e)) =>
                 val js = toJs (Context.mk env) e
                 val js = 
                     case getLocalBase() of
-                      SOME b => $b & $" = {};\n" & js
+                      SOME b => $"if (typeof(" & $b & $") == 'undefined') { " & $b & $" = {}; }\n" & js
                     | NONE => js
               in (js, env')
               end

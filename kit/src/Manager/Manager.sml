@@ -1,6 +1,6 @@
 
-functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid = string
-                structure IntModules : INT_MODULES where type absprjid = string
+functor Manager(structure ManagerObjects : MANAGER_OBJECTS
+                structure IntModules : INT_MODULES
                 sharing type ManagerObjects.IntBasis = IntModules.IntBasis
                 sharing type ManagerObjects.modcode = IntModules.modcode) 
     : MANAGER =
@@ -8,13 +8,38 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     structure PP = PrettyPrint
     structure MO = ManagerObjects
     structure Basis = MO.Basis
-    structure FunStamp = MO.FunStamp
     structure ModCode = MO.ModCode
     structure IntBasis = MO.IntBasis
     structure ElabBasis = ModuleEnvironments.B
     structure ErrorCode = ParseElab.ErrorCode
     structure H = Polyhash
-
+                  
+    (* This should definitely go somewhere else! Copy of function in ExpToJs.sml *)
+    fun toJSString s =
+        let 
+          fun digit n = chr(48 + n);
+          fun toJSescape (c:char) : string =
+	      case c of
+	        #"\\"   => "\\\\"
+	      | #"\""   => "\\\""
+	      | _       =>
+	        if #"\032" <= c andalso c <= #"\126" then str c
+	        else
+		  (case c of
+		     #"\010" => "\\n"			(* LF,  10 *)
+		   | #"\013" => "\\r"			(* CR,  13 *)
+		   | #"\009" => "\\t"			(* HT,   9 *)
+		   | #"\011" => "\\v"			(* VT,  11 *)
+		   | #"\008" => "\\b"			(* BS,   8 *)
+		   | #"\012" => "\\f"			(* FF,  12 *)
+                   | _       => let val n = ord c
+				in implode[#"\\", digit(n div 64), digit(n div 8 mod 8),
+					   digit(n mod 8)]
+				end)          
+                  
+        in "\"" ^ String.translate toJSescape s ^ "\""
+        end
+        
     fun testout(s: string):unit = TextIO.output(TextIO.stdOut, s)
     fun testouttree(t:PP.StringTree) = PP.outputTree(testout,t,80)
 
@@ -29,6 +54,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     val op ## = OS.Path.concat infix ##
 
     val region_profiling = Flags.is_on0 "region_profiling"
+
+    val export_basis_js = 
+        (Flags.add_bool_entry 
+         {long="export_basis_js", short=SOME "ebjs", neg=false, 
+          item=ref false,
+          menu=["Control", "export basis in js file (SmlToJs)"],
+          desc="When this flag is enabled, SmlToJs writes\n\
+           \pickled bases to file.eb.js files to be read by\n\
+           \js-client."}
+          ; Flags.is_on0 "export_basis_js")           
 
     val extendedtyping = 
         (Flags.add_bool_entry 
@@ -75,13 +110,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
        menu=["File", "link files"],
        desc="Link-files to be linked together to form an\n\
         \executable."}
-
-    val parallel = Flags.add_int_entry
-      {long="parallel_compilation", short = SOME "j",
-       menu=["Control", "number of parallel compilation processes"],
-       item=ref 1, desc=
-       "The maximum number of parallel processes used\n\
-       \for compilation."}
 
     val _ = Flags.add_stringlist_entry 
       {long="link_code_scripts", short=SOME "link_scripts", item=ref nil,
@@ -174,6 +202,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     fun log_st (st) : unit = PP.outputTree (log, st, 70)
     fun pr_st (st) : unit = PP.outputTree (print, st, 120)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
+    fun chatf f = if !Flags.chat then log (f() ^ "\n") else ()
                 
     (* ------------------------------------------- 
      * Debugging and reporting
@@ -196,7 +225,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                end handle ? => (BinIO.closeIn is; raise ?)
             end
 
-        val pchat = chat
         fun sizeToStr sz = 
             if sz < 10000 then Int.toString sz ^ " bytes"
             else if sz < 10000000 then Int.toString (sz div 1024) ^ "Kb (" ^ Int.toString sz ^ " bytes)" 
@@ -223,6 +251,26 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
             in file ^ "." ^ ext
             end
 
+        fun writeTextFile file s =
+            let val os = TextIO.openOut file
+                val _ = chatf (fn() => " [Writing file " ^ file ^ "...]")
+            in (  TextIO.output(os,s)
+                ; TextIO.closeOut os
+                ) handle X => (TextIO.closeOut os; raise X)
+            end
+
+        fun writeBasisJs punit B =
+            let val os : Pickle.outstream = Pickle.empty()
+                val os : Pickle.outstream = Pickle.pickler Basis.pu B os
+                val s = Pickle.toString os
+                val punit = String.translate (fn #"." => "_" | c => String.str c) punit
+                val s = String.concat [punit, "_eb = ", 
+                                       toJSString s,
+                                       ";"]
+                val file = targetFromSmlFile punit "eb.js"
+            in writeTextFile file s
+            end
+              
         fun isFileContentStringBIN f s =
             let val is = BinIO.openIn f
             in ((Byte.bytesToString (BinIO.inputAll is) = s)
@@ -232,7 +280,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
         fun writePickle file pickleString =
             let val os = BinIO.openOut file
-                val _ = pchat (" [Writing pickle to file " ^ file ^ "...]")
+                val _ = chatf (fn() => " [Writing pickle to file " ^ file ^ "...]")
             in (  BinIO.output(os,Byte.stringToBytes pickleString)
                 ; BinIO.closeOut os
                 ) handle X => (BinIO.closeOut os; raise X)
@@ -240,12 +288,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
         fun 'a doPickleGen0 (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) : string =
             let val os : Pickle.outstream = Pickle.empty()
-                val _ = pchat (" [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
+                val _ = chatf (fn() => " [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
                 (*  val timer = timerStart "Pickler" *)
                 val os : Pickle.outstream = Pickle.pickler pu_obj obj os
                 (* val _ = timerReport timer *)
                 val res = Pickle.toString os
-                val _ = pchat (" [End pickling " ^ ext ^ " (sz = " ^ sizeToStr (size res) ^ ")]")
+                val _ = chatf (fn() => " [End pickling " ^ ext ^ " (sz = " ^ sizeToStr (size res) ^ ")]")
             in res
             end
 
@@ -336,7 +384,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                         val p1 = doPickleGen0 smlfile pu_NB1 ext1 NB1
                     in if (isFileContentStringBIN f0 p0 
                            andalso isFileContentStringBIN f1 p1) then 
-                        (pchat "[No writing: valid pickle strings already in eb-files.]")
+                        (chat "[No writing: valid pickle strings already in eb-files.]")
                        else (writePickle f0 p0 ; writePickle f1 p1)
                     end
               | NOT_ALPHA_EQUAL => 
@@ -387,7 +435,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
             end
 (*
         fun doUnpickleBases ebfiles : Basis = 
-            let val _ = pchat "\n [Begin unpickling...]\n"
+            let val _ = chat "\n [Begin unpickling...]\n"
                 fun process (nil,is,B) = B
                   | process (ebfile::ebfiles,is,B) =
                     let val s = readFile ebfile
@@ -409,7 +457,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 *)
         fun doUnpickleBases0 ebfiles 
             : Pickle.instream option * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
-            let val _ = pchat "\n [Begin unpickling elaboration bases...]\n"
+            let val _ = chat "\n [Begin unpickling elaboration bases...]\n"
                 fun process (nil,is,acc) = (is, rev acc)
                   | process (ebfile::ebfiles,is,acc) =
                     let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
@@ -443,7 +491,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
             end 
 
         fun doUnpickleBases1 (is: Pickle.instream option) ebfiles : opaq_env * IntBasis = 
-            let val _ = pchat "\n [Begin unpickling compiler bases...]\n"
+            let val _ = chat "\n [Begin unpickling compiler bases...]\n"
                 fun process (nil,is,basisPair) = basisPair
                   | process (ebfile::ebfiles,is,basisPair) =
                     let val s = readFile ebfile
@@ -585,7 +633,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
             val base = mlbfile (* ^ "." ^ smlfile *) (* already appended in MlbMake! *)
             val _ = Name.baseSet base
             val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
-                                            file = smlfile,
+                                            src = ParseElab.SrcFile smlfile,
                                             infB = infB, elabB = elabB} 
         in (case res of 
                 ParseElab.FAILURE (report, error_codes) => 
@@ -669,6 +717,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
                 val modc = ModCode.emit (abs_mlbfile,modc)
                 val _ = doPickleLnkFile smlfile modc
+
+                (* Maybe write smlfile.eb.js to disk with export basis binding 
+                 * for JavaScript loading *)
+                val () = if export_basis_js() then writeBasisJs smlfile B'
+                         else ()
 
               in print_result_report report;
                 log_cleanup()
@@ -769,131 +822,131 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 
     exception IsolateFunExn of int
 
-    fun errSubProcess e =
-        (print "[[ERR in sub process:\n  ";
-         print (General.exnMessage e ^ "]]\n"))
+    structure MlbPlugIn : MLB_PLUGIN = 
+      struct
+        local
+          local
+            val pids = ref []
+          in
+            fun add pid = pids := pid::(!pids)
+            fun remove pid = pids := (List.mapPartial (fn p => if p = pid then NONE else SOME p) (!pids))
+            fun killrest () = (List.app (fn p => Posix.Process.kill (Posix.Process.K_PROC p, Posix.Signal.term)) (!pids) ;
+                               List.app (fn p => ignore (Posix.Process.waitpid (Posix.Process.W_CHILD p,[]))) (!pids) ;
+                               pids := []) 
+          end
+          fun failSig s signal =
+              raise Fail ("isolate error: " ^ s ^ "(" ^ 
+                          SysWord.toString (Posix.Signal.toWord signal) ^ ")")
+          fun errSubProcess e =
+              (print "[[ERR in sub process:\n  ";
+               print (General.exnMessage e ^ "]]\n"))
+        in
+          fun isolate2 (f : 'a -> unit) (a:'a) : Posix.Process.pid =
+              case Posix.Process.fork()
+               of SOME pid => (add pid ; pid)
+                | NONE => ((f a ; Posix.Process.exit 0w0)
+                           handle e => (errSubProcess e;
+                                        Posix.Process.exit 0w1))
+          fun wait p = 
+              let
+                val (pid,st) = case p
+                                of NONE => Posix.Process.wait()
+                                 | SOME p => Posix.Process.waitpid (Posix.Process.W_CHILD p,[])
+              in
+                case st 
+                 of Posix.Process.W_EXITED => (remove pid ; pid)
+                  | Posix.Process.W_EXITSTATUS n => (remove pid ; killrest (); raise IsolateFunExn (Word8.toInt n))
+                  | Posix.Process.W_STOPPED s => (remove pid ; killrest (); failSig "W_STOPPED" s)
+                  | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED" s)
+              end handle OS.SysErr t => (killrest (); failSig "OS.SysErr" (Posix.Signal.fromWord 0w0))
 
-    local
-        fun failSig s signal =
-            raise Fail ("isolate error: " ^ s ^ "(" ^ 
-                        SysWord.toString (Posix.Signal.toWord signal) ^ ")")
-    in
-        fun isolate (f : 'a -> unit) (a:'a) : unit =
-            case Posix.Process.fork() of
+          fun isolate (f : 'a -> unit) (a:'a) : unit =
+              case Posix.Process.fork() of
                 SOME pid => (* parent *)
-                    let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
-                    in if pid2 = pid then 
-                        (case status of
-                             Posix.Process.W_EXITED => ()
-                           | Posix.Process.W_EXITSTATUS n => raise IsolateFunExn (Word8.toInt n)
-                           | Posix.Process.W_STOPPED s => failSig "W_STOPPED" s
-                           | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED" s)
+                let val (pid2,status) = Posix.Process.waitpid (Posix.Process.W_CHILD pid,[])
+                in if pid2 = pid then 
+                     (case status of
+                        Posix.Process.W_EXITED => ()
+                      | Posix.Process.W_EXITSTATUS n => raise IsolateFunExn (Word8.toInt n)
+                      | Posix.Process.W_STOPPED s => failSig "W_STOPPED" s
+                      | Posix.Process.W_SIGNALED s => failSig "W_SIGNALED" s)
                    else raise Fail "isolate error 2"
                 end
-          | NONE => (f a before Posix.Process.exit 0w0        (* child *)
-                     handle e => 
-                            (errSubProcess e;
-                             Posix.Process.exit 0w1))
-    end
+              | NONE => (f a before Posix.Process.exit 0w0        (* child *)
+                         handle e => 
+                                (errSubProcess e;
+                                 Posix.Process.exit 0w1))
 
-    local
-      local
-        val pids = ref []
-      in
-        fun add pid = pids := pid::(!pids)
-        fun remove pid = pids := (List.mapPartial (fn p => if p = pid then NONE else SOME p) (!pids))
-        fun killrest () = (List.app (fn p => Posix.Process.kill (Posix.Process.K_PROC p, Posix.Signal.term)) (!pids) ;
-                           List.app (fn p => ignore (Posix.Process.waitpid (Posix.Process.W_CHILD p,[]))) (!pids) ;
-                           pids := []) 
-      end
-      fun failSig s signal =
-          raise Fail ("isolate error: " ^ s ^ "(" ^ 
-                      SysWord.toString (Posix.Signal.toWord signal) ^ ")")
-    in
-      fun isolate2 (f : 'a -> unit) (a:'a) : Posix.Process.pid =
-          case Posix.Process.fork()
-           of SOME pid => (add pid ; pid)
-            | NONE => ((f a ; Posix.Process.exit 0w0)
-                       handle e => (errSubProcess e;
-                                    Posix.Process.exit 0w1))
-
-      fun wait p = 
-          let
-            val (pid,st) = case p
-                            of NONE => Posix.Process.wait()
-                             | SOME p => Posix.Process.waitpid (Posix.Process.W_CHILD p,[])
-          in
-            case st 
-             of Posix.Process.W_EXITED => (remove pid ; pid)
-              | Posix.Process.W_EXITSTATUS n => (remove pid ; killrest (); raise IsolateFunExn (Word8.toInt n))
-              | Posix.Process.W_STOPPED s => (remove pid ; killrest (); failSig "W_STOPPED" s)
-              | Posix.Process.W_SIGNALED s => (remove pid ; killrest (); failSig "W_SIGNALED" s)
-          end handle OS.SysErr t => (killrest (); failSig "OS.SysErr" (Posix.Signal.fromWord 0w0))
-    end
-                               
-    structure MlbPlugIn : MLB_PLUGIN  =
-    struct
-    local
-      fun unlock lockfile = (Posix.FileSys.unlink lockfile) handle _ => ()
-      fun lock unique lockfile = 
-         let
-           val fu = (Posix.IO.close (Posix.FileSys.creat (lockfile ^ unique,Posix.FileSys.S.iwusr)) ; true) handle OS.SysErr _ => false
-           val f = if fu 
-                   then (Posix.FileSys.link{old=lockfile ^ unique, new=lockfile}; true)
-                        handle OS.SysErr _ => Posix.FileSys.ST.nlink (Posix.FileSys.stat (lockfile ^ unique)) = 2
-                   else false
-         in if fu then (Posix.FileSys.unlink (lockfile ^ unique); f) handle _ => f
-            else false
-         end
-
-      fun compile0 target flags lockfile unique a =
-          let
-            (* deal with annotations (from mlb-file) *)
-            val flags = String.tokens Char.isSpace flags
-            val () = List.app Flags.turn_on flags
-            val () = Flags.turn_on "compile_only"
-            val () = Flags.lookup_string_entry "output" := target
-          in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock lf))
-          end handle ? => ((case lockfile of NONE => () | SOME lf => unlock lf) ;
-                           case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
-                                   | ? => raise ?)
-    in
-      fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
-          (fn f => case lockfile
-                    of NONE => SOME (f ())
-                     | SOME lf => if lock (Int.toString unique) lf then SOME (f ())
-                                  else NONE)
-              (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
-    end
-
-    val getParallelN = parallel
-    val wait = wait
-                   
-    local
-      fun link0 mlbfile target lnkFiles lnkFilesScripts () =
-          (Flags.lookup_string_entry "output" := target;
-           Flags.lookup_stringlist_entry "link" := lnkFiles;
-           Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
-           link_lnk_files (SOME mlbfile))
-    in
-      fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
-          isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
-        | link _ _ = die "MlbPlugIn.link.flags non-empty"
-    end
-
-    fun mlbdir() = MO.mlbdir()
-    val objFileExt = objFileExt
-                       
-    fun maybeSetRegionEffectVarCounter n =
-        let 
-          val b = region_profiling()
-          val _ = if b then Flags.lookup_int_entry "regionvar" := n
-                  else ()
-        in b 
         end
+
+        local
+          fun unlock lockfile = (Posix.FileSys.unlink lockfile) handle _ => ()
+          fun lock unique lockfile = 
+              let
+                val fu = 
+                    (Posix.IO.close (Posix.FileSys.creat (lockfile ^ unique,Posix.FileSys.S.iwusr)) ; true) 
+                    handle OS.SysErr _ => false
+                val f = if fu then 
+                          (Posix.FileSys.link{old=lockfile ^ unique, new=lockfile}; true)
+                          handle OS.SysErr _ => Posix.FileSys.ST.nlink (Posix.FileSys.stat (lockfile ^ unique)) = 2
+                        else false
+              in if fu then (Posix.FileSys.unlink (lockfile ^ unique); f) handle _ => f
+                 else false
+              end
+
+          fun compile0 target flags lockfile unique a =
+              let
+                (* deal with annotations (from mlb-file) *)
+                val flags = String.tokens Char.isSpace flags
+                val () = List.app Flags.turn_on flags
+                val () = Flags.turn_on "compile_only"
+                val () = Flags.lookup_string_entry "output" := target
+              in (build_mlb_one a before (case lockfile of NONE => () | SOME lf => unlock lf))
+              end handle ? => ((case lockfile of NONE => () | SOME lf => unlock lf) ;
+                               case ? of Fail s => ( print ("Compile error: " ^ s ^ "\n"))
+                                       | ? => raise ?)
+        in
+          fun compile {verbose} {basisFiles,lockfile,unique,source,namebase,target,flags} : Posix.Process.pid option =
+              (fn f => case lockfile
+                        of NONE => SOME (f ())
+                         | SOME lf => if lock (Int.toString unique) lf then SOME (f ())
+                                      else NONE)
+                  (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
+        end
+
+        val getParallelN = 
+            Flags.add_int_entry
+                {long="parallel_compilation", short = SOME "j",
+                 menu=["Control", "number of parallel compilation processes"],
+                 item=ref 1, 
+                 desc="The maximum number of parallel processes used\n\
+                      \for compilation."
+                }
+        local
+          fun link0 mlbfile target lnkFiles lnkFilesScripts () =
+              (Flags.lookup_string_entry "output" := target;
+               Flags.lookup_stringlist_entry "link" := lnkFiles;
+               Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
+               link_lnk_files (SOME mlbfile))
+        in
+          fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
+             isolate (link0 mlbfile target lnkFiles lnkFilesScripts) ()
+            | link _ _ = die "MlbPlugIn.link.flags non-empty"
+        end
+
+        fun mlbdir() = MO.mlbdir()
+        val objFileExt = objFileExt
+                       
+        fun maybeSetRegionEffectVarCounter n =
+            let 
+              val b = region_profiling()
+              val _ = if b then Flags.lookup_int_entry "regionvar" := n
+                      else ()
+            in b 
+            end
         
-    val lnkFileConsistent = lnkFileConsistent
-    end (* struct *)
+        val lnkFileConsistent = lnkFileConsistent
+      end (* struct *)
 
 
     structure MlbMake = MlbMake(structure MlbProject = MlbProject
@@ -916,10 +969,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
     val import_basislib = Flags.is_on0 "import_basislib"
     fun gen_wrap_mlb smlfilepath =
         let val mlb_filepath = OS.Path.base smlfilepath ^ ".auto.mlb"
-            val _ = chat ("Generating MLB-file " ^ mlb_filepath)
+            val _ = chatf (fn () => "Generating MLB-file " ^ mlb_filepath)
             val os = TextIO.openOut mlb_filepath
             val basislib = !Flags.install_dir ## "basis/basis.mlb"
-            val _ = chat ("Using basis library " ^ quot basislib)
+            val _ = chatf (fn() => "Using basis library " ^ quot basislib)
             val smlfile = OS.Path.file smlfilepath
             val body = 
                 if import_basislib() then
@@ -932,47 +985,46 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
             end handle X => (TextIO.closeOut os; raise X)
         end
 
-    fun comp0 files : unit =
-        if Flags.get_stringlist_entry "link" <> nil then link_lnk_files NONE
+    fun comp0 file : unit =
+        if Flags.get_stringlist_entry "link" <> nil then 
+          link_lnk_files NONE
         else
-            case files of
-                [file] => 
-                    (case determine_source file of 
-                         SML s => 
-                             if Flags.is_on "compile_only" then
-                                 let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
-                                     val namebase = Flags.get_string_entry "namebase"
-                                 in build_mlb_one (namebase, ebfiles, s)
-                                 end
-                             else 
-                                 let val mlb_file = gen_wrap_mlb s
-                                     val _ = comp0 [mlb_file]
-                                         handle X => (OS.FileSys.remove mlb_file; raise X)
-                                 in OS.FileSys.remove mlb_file
-                                 end
-                       | MLB s => 
-                                 let val target =
-                                     if !Flags.SMLserver then
-                                         let val {dir,file} = OS.Path.splitDirFile s
-                                             val op ## = OS.Path.concat infix ##
-                                         in dir ## MO.mlbdir() ## (OS.Path.base file ^ ".ul")
-                                         end
-                                     else Flags.get_string_entry "output"
-                                 in  
-                                     (MlbMake.build{flags="",mlbfile=s,target=target} 
-                                      handle Fail s => raise Fail s
-                                           | IsolateFunExn n => 
-                                              (print ("Stopping compilation of MLB-file due to error (code " ^ Int.toString n ^ ").\n");
-                                               raise PARSE_ELAB_ERROR nil)
-                                           | ? => (print "Stopping compilation due to errors.\n";
-                                                   print (General.exnMessage ? ^ "\n");
-                                                   raise PARSE_ELAB_ERROR nil))
-                                 end
-                       | WRONG_FILETYPE s => raise Fail s)
-              | _ => raise Fail "I expect exactly one file name"
+          case determine_source file of 
+            SML s => 
+            if Flags.is_on "compile_only" then
+              let val ebfiles = Flags.get_stringlist_entry "load_basis_files"
+                  val namebase = Flags.get_string_entry "namebase"
+              in build_mlb_one (namebase, ebfiles, s)
+              end
+            else 
+              let val mlb_file = gen_wrap_mlb s
+                val _ = comp0 mlb_file
+                    handle X => (OS.FileSys.remove mlb_file; raise X)
+              in OS.FileSys.remove mlb_file
+              end
+          | MLB s => 
+            let val target =
+                    if !Flags.SMLserver then
+                      let val {dir,file} = OS.Path.splitDirFile s
+                        val op ## = OS.Path.concat infix ##
+                      in dir ## MO.mlbdir() ## (OS.Path.base file ^ ".ul")
+                      end
+                    else Flags.get_string_entry "output"
+            in  
+              (MlbMake.build{flags="",mlbfile=s,target=target} 
+               handle Fail s => raise Fail s
+                    | IsolateFunExn n => 
+                      (print ("Stopping compilation of MLB-file due to error (code " 
+                              ^ Int.toString n ^ ").\n");
+                       raise PARSE_ELAB_ERROR nil)
+                    | ? => (print "Stopping compilation due to errors.\n";
+                            print (General.exnMessage ? ^ "\n");
+                            raise PARSE_ELAB_ERROR nil))
+            end
+          | WRONG_FILETYPE s => raise Fail s
                              
     val timingfile = "KITtimings"
-    fun comp files : unit =
+    fun comp file : unit =
       if Flags.is_on "compiler_timings" then
         let val os = (TextIO.openOut (timingfile)
                       handle _ => (print ("Error: I could not open file `" ^ timingfile ^ "' for writing");
@@ -981,15 +1033,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
                           Flags.timings_stream := NONE;
                           print ("[wrote compiler timings file: "  ^ timingfile ^ "]\n"))
         in Flags.timings_stream := SOME os;
-          comp0 files handle E => (close(); raise E);
+          comp0 file handle E => (close(); raise E);
             close()
         end
-      else comp0 files
-
-    (* initialize Flags.comp_ref to contain build (for interaction), etc.
-     * See comment in FLAGS.*)
-    fun wrap f a = (f a) handle PARSE_ELAB_ERROR _ => 
-      TextIO.output(TextIO.stdOut, "\n ** Parse or elaboration error occurred. **\n")
-    val _ = Flags.comp_ref := wrap (fn s => comp [s])
-
+      else comp0 file
   end

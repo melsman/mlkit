@@ -5,8 +5,10 @@ local
   basis Kitlib = bas ../Kitlib/kitlib.mlb end
   open BasLib
 in 
+(*
   BASIC_IO.sml 
-  BasicIO.sml
+  BasicIO.sml 
+*)
   CRASH.sml
   Crash.sml
   REPORT.sml
@@ -26,7 +28,7 @@ in
   end
   FLAGS.sml
   BasisCompat.sml
-  Menu.sml
+(*  Menu.sml *)
   local open Kitlib
   in
     Flags.sml

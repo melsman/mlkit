@@ -29,6 +29,7 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     structure CompileBasis = CompileBasisDummy(structure TyName = TyName
 					       structure PP = PP)
 
+    val be_rigid = false
     val backend_name = "Dummy"
     val backend_longname = "Dummy (no output generated)"
 

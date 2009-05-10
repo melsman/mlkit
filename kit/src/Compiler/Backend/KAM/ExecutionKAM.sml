@@ -31,6 +31,8 @@ structure ExecutionKAM : EXECUTION =
 
     val backend_name = "KAM"
 
+    val be_rigid = false
+
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
     type Env = CompilerEnv.ElabEnv

@@ -446,19 +446,19 @@ struct
   fun optToList NONE = []
     | optToList (SOME a) = [a]
 
-	fun bitem true = "on"
-	  | bitem false = "off"
+  fun bitem true = "on"
+    | bitem false = "off"
   fun opt (SOME s) = ", -" ^ s
-	  | opt NONE = ""
+    | opt NONE = ""
 
-	fun negationNew (e:bentry, kind) =
-	  if not(#neg e) then []
-	  else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-           kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}] 
-
-	fun negationNew' (e:baentry, kind) =
-	  [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-      kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}] 
+  fun negationNew (e:bentry, kind) =
+      if not(#neg e) then []
+      else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
+             kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}] 
+           
+  fun negationNew' (e:baentry, kind) =
+      [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
+        kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}] 
 
     in
       (case lookup_notnull_menu (!dir) key 
@@ -550,18 +550,18 @@ struct
 
 end (* Directory *)
 
-structure Menu = Menu(val help_topic = Directory.help)
+(**structure Menu = Menu(val help_topic = Directory.help)**)
 
 fun add_bool_entry e = 
   case #menu e
     of nil => Directory.bool_entry e
-     | path => (Menu.add_flag_to_menu(#long e, path, #item e); 
+     | path => ((**Menu.add_flag_to_menu(#long e, path, #item e); **)
 		Directory.bool_entry e)
 
 fun add_string_entry e = 
   case #menu e
     of nil => Directory.string_entry e 
-     | path => (Menu.add_string_to_menu(#long e, path, #item e);
+     | path => ((**Menu.add_string_to_menu(#long e, path, #item e);**)
 		Directory.string_entry e)
 
 fun add_stringlist_entry e = 
@@ -573,7 +573,7 @@ fun add_stringlist_entry e =
 fun add_int_entry e = 
   case #menu e
     of nil => Directory.int_entry e 
-     | path => (Menu.add_int_to_menu(#long e, path, #item e);
+     | path => ((**Menu.add_int_to_menu(#long e, path, #item e);**)
 		Directory.int_entry e)
 
 fun add_bool_entry0 (l,i) =
@@ -588,7 +588,7 @@ fun add_bool_action_entry e =
   in
     case #menu e
       of nil => Directory.bool_action_entry e
-       | path => (Menu.add_bool_action_to_menu(#long e, path, toggle, fn() => !(#item e));
+       | path => ((**Menu.add_bool_action_to_menu(#long e, path, toggle, fn() => !(#item e));**)
 		  Directory.bool_action_entry e)
   end
 
@@ -763,10 +763,12 @@ in
       \as a repository.")
 end
 
+(*
 val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))
   [
    ("print entire menu", Menu.show_full_menu)
    ]
+*)
 
   (*4. File menu*)
 
@@ -811,7 +813,7 @@ in
        \inference expressions.")]
 end
 
-val _ = Menu.add_int_list_to_menu ("", ["Profiling", "print program points"], program_points)
+(**val _ = Menu.add_int_list_to_menu ("", ["Profiling", "print program points"], program_points)**)
 (*
 val _ = Menu.add_int_pair_list_to_menu ("", ["Profiling", "paths between two nodes in region flow graph"], region_paths)
 *)
@@ -838,12 +840,11 @@ in
     "Debug linking of target code by showing which object\n\
      \files are linked together."),
    ("debug_man_enrich", NONE, "debug compilation manager enrichment", ref false,
-    "During interactive use, show information about why a\n\
-     \program unit need be recompiled. In the MLKit, a\n\
-     \program unit (or a functor body) is recompiled if\n\
-     \either (a) the program unit is modified, or (b)\n\
-     \information about an identifier for which the program\n\
-     \unit depends upon has changed.")
+    "Show information about why a program unit need be\n\
+     \recompiled. A program unit (or a functor body)\n\
+     \is recompiled if either (a) the program unit is\n\
+     \modified, or (b) information about an identifier\n\
+     \for which the program unit depends upon has changed.")
    ]
 
   val _ = app (add ["Debug"] false) 
@@ -855,21 +856,7 @@ in
    ]
 end
 
-  (*7. Compile an sml file*)
-  (*8. Compile it again*)
-
-  local 
-    fun comp_current_source_file () = !comp_ref (!current_source_file)
-  in
-    val _ = Menu.add_action_read_to_menu("", ["Compile file or project"],
-					 comp_current_source_file,
-					 current_source_file)
-    val _ = Menu.add_action_with_value_to_menu("", ["Compile it again"], 
-					       comp_current_source_file, 
-					       fn () => "(" ^ quote (!current_source_file) ^ ")")
-  end
-
-  (*Entries not included in menu and exe-options, but in lookup functions*)
+  (*Entries not included in command-line options, but in lookup functions*)
 
   val _ = add_string_entry0 ("c_compiler", c_compiler)
                         (*e.g. "cc -Aa" or "gcc -ansi"*)
@@ -899,8 +886,6 @@ val help_all = Directory.help_all
 type options = {desc : string, long : string list, short : string list,
                 kind : string option, default : string option} 
 val getOptions = Directory.getOptions : unit -> options list
-
-val interact = Menu.interact
 
 val SMLserver = ref false
 

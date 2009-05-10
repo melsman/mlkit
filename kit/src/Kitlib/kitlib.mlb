@@ -25,10 +25,10 @@ local
 
   basis Susp =  (* Suspension *) 
     bas SUSP.sml Susp.sml end
-
+(*
   basis Sml90 = 
     bas SML90.sml end
-
-in open ListUtil Polyhash SetsAndMaps Regexp Susp Sml90
+*)
+in open ListUtil Polyhash SetsAndMaps Regexp Susp (*Sml90*)
 end
 

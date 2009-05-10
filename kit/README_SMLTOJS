@@ -44,6 +44,11 @@ FEATURES
    flags. As a result, SMLtoJs generates fairly efficient JavaScript
    code, although there are rooms for improvements; see below.
 
+ * Compiling in the Browser. A version of SmlToJs can be compiled by
+   SmlToJs itself, which leads to a proper browser hosted Standard ML
+   compiler.
+
+
 ONLINE DEMONSTRATION
 --------------------
 
@@ -73,6 +78,7 @@ see above), simply type
   $ ./autobuild
   $ ./configure
   $ make smltojs
+  $ make smltojs_basislibs
 
 If compilation succeeds, an executable file bin/smltojs should now be
 available.
@@ -107,6 +113,21 @@ all.html includes links to all the test files:
 The examples temp.html, counter.html, and life.html are the most
 interesting examples at the moment (more will come).
 
+COMPILATION IN THE BROWSER
+--------------------------
+
+To build the browser-hosted compiler, proceed as follows:
+
+  $ cd ../src/Compiler
+  $ SML_LIB=../../js ../../bin/smltojs smltojs0.mlb
+
+The last command should generate a file run.html which links to all
+necessary JavaScript sources. Executing
+
+ $ firefox run.html
+
+will start up an simple IDE for the compiler. 
+
 ISSUES
 ------
 
@@ -124,10 +145,10 @@ suggested by the spec):
 
 There are plenty of possibilities for further improvements, including:
 
- * Using numbers to represent constructors (instead of strings).
+ * Functor in-lining, which may lead to improved execution speed.
 
- * Unboxing of datatypes; currently, a boxed representation is used
-   for lists, for example.
+ * Improved constant folding. Some features are implemented with the
+   --aggressive_opt flag to smltojs.
 
 COPYRIGHT AND LICENSE
 ---------------------

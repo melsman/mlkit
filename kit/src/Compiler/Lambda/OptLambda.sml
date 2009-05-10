@@ -131,6 +131,15 @@ structure OptLambda: OPT_LAMBDA =
 	  \across modules is controlled by individual optimisation\n\
 	  \flags."}
 
+    val aggressive_opt = Flags.add_bool_entry 
+	{long="aggresive_opt",short=SOME "aopt", 
+	 menu=["Control", "Optimiser", "aggressive optimisation"],
+	 item=ref false,neg=false, 
+	 desc=
+	 "Enable aggressive optimations, including constant\n\
+         \folding, and aggressive inlining. These\n\
+         \optimasations are not guaranteed to be region safe."}
+
    (* -----------------------------------------------------------------
     * Some helpful functions
     * ----------------------------------------------------------------- *)
@@ -419,7 +428,15 @@ structure OptLambda: OPT_LAMBDA =
           fun count acc _ = if acc >= max_size then raise Big else acc+1
       in (foldTD count 0 lamb; true) handle Big => false
       end
-    
+
+    fun small_const lamb =
+        case lamb of
+          REAL _ => true
+        | INTEGER _ => true
+        | WORD _ => true
+        | PRIM(CONprim {con,...},[]) => true
+        | STRING s => String.size s < 100
+        | _ => false          
 
    (* -----------------------------------------------------
     * Closedness of a lambda expression ; used only for 
@@ -757,6 +774,41 @@ structure OptLambda: OPT_LAMBDA =
 	| is_fn (FIX{functions,scope}) = is_fn scope
 	| is_fn _ = false
 
+      (* in-lining of unsafe bindings in safe contexts *)
+      fun simpleContext lv e =
+          if aggressive_opt() andalso Lvars.one_use lv then
+            let fun build e =
+                    case e of
+                      VAR{lvar,instances} => 
+                      if Lvars.eq(lv,lvar) then SOME(fn x => x, instances)
+                      else NONE
+                    | PRIM(p,args) =>
+                      (case buildargs args of
+                         SOME(f,instances) => SOME(fn x => PRIM(p,f x), instances)
+                       | NONE => NONE)
+(*
+                    | PRIM(p,arg::args) =>
+                      (case build arg of
+                         SOME(f,instances) => SOME(fn x => PRIM(p,f x :: args), instances)
+                       | NONE => NONE)
+*)
+                    | _ => NONE
+              and buildargs args =
+                  case args of
+                    [] => NONE   (* hmmm - shouldn't happen *)
+                  | arg::args =>
+                    (case build arg of
+                       SOME(f,instances) => SOME(fn x => f x :: args, instances)
+                     | NONE =>
+                       if safeLambdaExp arg then
+                         (case buildargs args of
+                            SOME (f,instances) => SOME(fn x => arg :: f x,instances)
+                          | NONE => NONE)
+                       else NONE)
+
+            in build e
+            end
+          else NONE
 
       (* -----------------------------------------------------------------
        * Reduce on switch
@@ -802,6 +854,19 @@ structure OptLambda: OPT_LAMBDA =
 	   | PRIM(CONprim {con,...},nil) => is_boolean con
 	   | _ => false
 
+      fun constantFolding lamb fail =
+          if not(aggressive_opt()) then fail
+          else 
+            case lamb of
+              PRIM(CCALLprim{name,...},exps) =>
+              (case (name, exps) of
+                 ("concatStringML", [STRING s1,STRING s2]) => 
+                 let val lamb = STRING (s1 ^ s2)
+                 in (lamb, CCONST lamb)
+                 end
+               | _ => fail)
+            | _ => fail
+
       fun reduce (env, (fail as (lamb,cv))) =
 	case lamb
 	  of VAR{lvar,instances} =>
@@ -829,7 +894,7 @@ structure OptLambda: OPT_LAMBDA =
 			      else (tick "reduce - inline-var"; (lamb'', CVAR lamb'')) (*reduce (env, (lamb'', CVAR lamb''))*)
 			   end
 		     | CCONST lamb' => 
-			   if is_unboxed_value lamb' then 
+			   if is_unboxed_value lamb' orelse (aggressive_opt() andalso small_const lamb') then 
 			     (decr_use lvar; tick "reduce - inline-unboxed-value"; (lamb', cv))
 			   else if Lvars.one_use lvar then 
 			     (decr_use lvar; tick "reduce - inline-const"; (lamb', cv))
@@ -841,7 +906,7 @@ structure OptLambda: OPT_LAMBDA =
 		| NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
 	   | INTEGER _ => (lamb, CCONST lamb)
 	   | WORD _ => (lamb, CCONST lamb)
-	   | PRIM(CONprim {con,...},[]) => if is_boolean con then (lamb, CCONST lamb)
+	   | PRIM(CONprim {con,...},[]) => if is_boolean con orelse aggressive_opt() then (lamb, CCONST lamb)
 					   else fail
 	   | STRING _ => (lamb, CCONST lamb)
 	   | REAL _ => (lamb, CCONST lamb) 
@@ -889,7 +954,13 @@ structure OptLambda: OPT_LAMBDA =
 			  | SWITCH_S sw => do_sw SWITCH_S sw
 			  | SWITCH_C sw => do_sw SWITCH_C sw
 			  | SWITCH_E sw => do_sw SWITCH_E sw
-			  | _ => fail
+			  | _ => (case simpleContext lvar scope of
+                                    SOME(f,instances) =>
+                                    (* no need for decr_uses *)
+			            let val S = mk_subst (fn () => "reduce.LET2") (tyvars, instances)
+			            in tick "reduce - let-simpleContext"; reduce (env, (f(on_LambdaExp S bind), cv))
+			            end    
+                                  | NONE => fail)
 	       end
 	   | LET{pat=nil,bind,scope} =>
 	       if safeLambdaExp bind then 
@@ -990,7 +1061,7 @@ structure OptLambda: OPT_LAMBDA =
 	  | SWITCH_S switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_C switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_E switch => reduce_switch (reduce, env, fail, switch)
-	  | _ => fail
+	  | _ => constantFolding lamb fail
 
 
       (* -----------------------------------------------------------------

@@ -117,7 +117,13 @@ local
              end
           end
        end
+    basis Io =
+       let open General List String ArrayVector
+       in bas TEXT_IO.sml TextIO.sml IO.sml end
+       end
+    basis Control =
+       bas CONTROL.sml Control.sml end
 in
   open General List ArrayVector String Bool Word Byte Text 
-       Int Real IntInf IntInfRep System
+       Int Real IntInf IntInfRep System Io Control
 end

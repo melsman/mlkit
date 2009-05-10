@@ -1,0 +1,10 @@
+basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+basis Edlib = bas ../Edlib/edlib.mlb end
+basis Pickle = bas ../Pickle/pickle.mlb end
+basis Tools = bas ../Common/tools.mlb end
+basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
+basis SpecialObjects = bas ../Common/special_objects.mlb end
+basis CompilerObjects = bas compiler_objects.mlb end
+basis Basics = bas ../Common/basics.mlb end
+basis Manager = bas ../Manager/manager0.mlb end
+basis Compiler = bas compiler0.mlb end

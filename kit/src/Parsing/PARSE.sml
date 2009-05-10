@@ -10,7 +10,7 @@ signature PARSE =
 
     val nameOf: SourceReader -> string
 
-    val sourceFromStdIn: unit -> SourceReader
+(*    val sourceFromStdIn: unit -> SourceReader *)
     val sourceFromFile: string -> SourceReader (*may raise Io s*)
     val sourceFromString: string -> SourceReader
 
