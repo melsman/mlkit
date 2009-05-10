@@ -78,10 +78,16 @@ structure ParseElab: PARSE_ELAB =
     in
       (*parse may raise Parse*)
 
-      fun parse (infB : InfixBasis, file_name : string)
+      datatype src = SrcFile of string
+                   | SrcString of string
+
+      fun parse (infB : InfixBasis, src : src)
 	    : InfixBasis * PreElabTopdecGrammar.topdec option =
-	    let val state = Parse.begin (Parse.sourceFromFile file_name
-					 (*may raise Io s*))
+	    let val src = 
+                    case src of
+                      SrcFile s => Parse.sourceFromFile s (*may raise Io s*)
+                    | SrcString s => Parse.sourceFromString s
+                val state = Parse.begin src
 	        val (infB', topdecs) = parse0 (infB, state)
 	    in (infB', append_topdecs topdecs)
 	    end handle IO.Io {name,cause = OS.SysErr(err,se),...} => 
@@ -102,10 +108,10 @@ structure ParseElab: PARSE_ELAB =
     val empty_success = SUCCESS{report=Report.null, infB=InfixBasis.emptyB,
 				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
 
-    fun parse_elab {infB: InfixBasis, elabB: ElabBasis, absprjid: absprjid, file : string} : Result =
+    fun parse_elab {infB: InfixBasis, elabB: ElabBasis, absprjid: absprjid, src : src} : Result =
       let val _ = chat "[parsing..."
 	  val _ = Timing.timing_begin()
-	  val parse_res = (parse (infB, file)  (*may raise Parse*) 
+	  val parse_res = (parse (infB, src)  (*may raise Parse*) 
 			   handle E => (Timing.timing_end "Parse" ; raise E))
 	  val _ = Timing.timing_end "Parse" 
 	  val _ = chat "]\n"

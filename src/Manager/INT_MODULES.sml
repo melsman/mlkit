@@ -5,7 +5,7 @@ signature INT_MODULES =
     type topdec = PostElabTopdecGrammar.topdec
     type modcode
 
-    type absprjid
+    type absprjid = ModuleEnvironments.absprjid
 
     val interp : bool * absprjid * IntBasis * topdec * string -> IntBasis * modcode    
 

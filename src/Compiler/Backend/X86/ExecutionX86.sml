@@ -23,6 +23,8 @@ structure ExecutionX86: EXECUTION =
 
     fun die s = Crash.impossible("ExecutionX86." ^ s)
 
+    val be_rigid = false
+
     local
 	fun convertList option s =
 	    let val l = String.tokens(fn c => c = #",")s

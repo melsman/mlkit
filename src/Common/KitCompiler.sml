@@ -19,13 +19,25 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
     structure ManagerObjects =
 	ManagerObjects(struct
-                   structure Execution = Execution
-                   val program_name = cmd_name
-                 end)
-      
+                         structure Execution = Execution
+                         val program_name = cmd_name
+                       end)
+
+    structure ModCodeMini = struct
+      type modcode = ManagerObjects.modcode
+      type linkinfo = ManagerObjects.linkinfo
+      type target = ManagerObjects.target
+      val seq = ManagerObjects.ModCode.seq
+      val empty = ManagerObjects.ModCode.empty
+      val mk_modcode = ManagerObjects.ModCode.mk_modcode
+      val emit = ManagerObjects.ModCode.emit
+    end
+                     
     structure IntModules = 
 	IntModules(structure ManagerObjects = ManagerObjects
-		   structure Execution = Execution)
+                   structure ModCodeMini = ModCodeMini
+		   structure Execution = Execution
+                   val mlbdir = ManagerObjects.mlbdir)
 
     structure Manager =
 	Manager(structure ManagerObjects = ManagerObjects
@@ -99,7 +111,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 				    raise Fail ""))]
 		
 	    fun go_files [file] = 
-		((Manager.comp [file]; OS.Process.success) 
+		((Manager.comp file; OS.Process.success) 
 		 handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
 	      | go_files _ = (print_greetings(); print_usage(); print_options(); raise Fail "")
 

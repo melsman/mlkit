@@ -67,13 +67,6 @@ signature FLAGS =
     val log : TextIO.outstream ref
     val colwidth : int ref
 
-    (*Compilation ref.  This ref is necessary because Flags.interact
-     depends on, e.g., Manager.build_project but module Flags cannot depend on
-     module Manager because Manager depends on Flags.  Perhaps interact
-     should be in Manager instead of in Flags?*)
-
-    val comp_ref : (string -> unit)ref
-
     val timings_stream : TextIO.outstream option ref   (* optional stream for exporting 
 							  timings (`KITtimings') 
 						       *)
@@ -88,10 +81,8 @@ signature FLAGS =
 					       *)
     val region_paths : (int*int) list ref 
 
-    val interact: unit -> unit                 (* interactive menu *)
-
     (* Generic system to document options and let them appear on command 
-     * lines as well as in menu. *)
+     * lines. *)
 
     type bentry = {long: string,           (* long option for use with mlkit command 
 					    *   using `--', script files, and internally
@@ -113,7 +104,7 @@ signature FLAGS =
 
     (* Functions to add entries dynamically; remember to add a description
      * telling what the flag is used for. If a nil-menu is given, the
-     * entry is not shown in menu and the option cannot be given at the 
+     * entry is not shown in help and the option cannot be given at the 
      * command line. *)
 
     val add_bool_entry       : bentry -> (unit -> bool)

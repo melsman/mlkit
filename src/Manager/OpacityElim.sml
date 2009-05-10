@@ -568,13 +568,12 @@ structure OpacityElim: OPACITY_ELIM =
 	  val _ = print "\nOpacity_elimination env:\n"
 	  val _ = PP.printTree (OpacityEnv.layout e)
 *)
-	(*
-	  val tempfile = OS.FileSys.tmpName()
+       (* val tempfile = OS.FileSys.tmpName()
 	  val os = TextIO.openOut tempfile
 	  val _ = Compiler.Profile.report os
 	  val _ = TextIO.closeOut os   
 	  val _ = print ("[exported profile to file " ^ tempfile ^ "]\n")
-	    *)
+	*)
 	in (t,e)
 	end)
      else (topdec, OpacityEnv.empty)

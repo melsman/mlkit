@@ -78,7 +78,7 @@ structure LexBasics: LEX_BASICS =
 
     fun fileToSourceText filename =
       let
-	val stream = BasicIO.open_in filename	(* Io raised here gets dealt
+	val stream = TextIO.openIn filename	(* Io raised here gets dealt
 						   with in any calling
 						   context properly. *)
 	fun process s =
@@ -87,7 +87,7 @@ structure LexBasics: LEX_BASICS =
 	     | NONE => [""]
 	val lines = map (untabify 0) (process stream)
       in 
-	BasicIO.close_in stream;
+	TextIO.closeIn stream;
 	SOURCE_TEXT{filename=filename, lines=withAbsCharacter(0, lines)}
       end
 
@@ -190,7 +190,6 @@ structure LexBasics: LEX_BASICS =
     val lexFromFile =
       lexFromSourceText o fileToSourceText
 
-
    (* lexFromStdIn is more complex. (Yes: even more complex.) We are lexing as
       we go along and building a SourceText line by line. Oh, it's here that
       we get to eliminate tabs as well. They're nuked as we read the lines of
@@ -199,6 +198,7 @@ structure LexBasics: LEX_BASICS =
 
     val prompt = ". "
 
+(*
     fun lexFromStdIn() =
       let
 	val name = "std_in"
@@ -240,6 +240,7 @@ structure LexBasics: LEX_BASICS =
 	  positionFn=fn absPos => positionFn(theSource, absPos)
 	}
       end
+*)
 
    (* highlight underlines part of a line. Oh, the line will probably
       still carry the trailing `\n'. *)

@@ -46,4 +46,15 @@ structure Initial =
          (*getrutime_ ()*)
     end 
 
+    local
+      val printer : (string -> unit) ref = 
+          ref(fn(s:string) => prim("printStringML", s))
+      fun !(x: 'a ref): 'a = prim ("!", x) 
+      infix 3 :=
+      fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y)) 
+    in
+      fun printer_set p =
+          printer := p
+      fun printer_get() = !printer
+    end 
   end

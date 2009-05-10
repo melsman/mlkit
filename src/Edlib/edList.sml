@@ -84,7 +84,7 @@ struct
     fun stringSep start finish sep p l = start ^ (str p l sep false) ^ finish
     fun string p l = stringSep ("[") ("]") (", ") p l
   end
-
+(*
   local
     fun pr os _ nil _ _ = ()
     |   pr os p (h::t) sep needSep =
@@ -97,7 +97,7 @@ struct
 	  (TextIO.output (os, start); pr os p l sep false; TextIO.output (os, finish))
     fun print os p l = printSep os ("[") ("]") (", ") p l
   end
-
+*)
 
 (* OBSERVERS *)
 

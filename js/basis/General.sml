@@ -55,7 +55,8 @@ fun not true = false
 
 fun a <> b = not (a = b)
 
-fun print (s:string) : unit = prim("printStringML", s)
+fun print (s:string) : unit = 
+    Initial.printer_get() s
   
 fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
 fun concat (ss : string list) : string = prim ("implodeStringML", ss)
