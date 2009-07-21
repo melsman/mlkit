@@ -73,12 +73,29 @@ structure ExecutionJS : EXECUTION =
             \to the generated html and thereby allow for SML\n\
             \code to reference existing JavaScript libraries."}
 
+    val js_path_compress = Flags.add_bool_entry 
+	{long="js_path_compress", short=NONE, 
+	 menu=["File","js path compress"],
+	 item=ref false, neg=false, 
+         desc= "Compress (make canonical) Javascript file path\n\
+               \references in the resulting run.html file."}
+
+    val js_path_prefix = Flags.add_string_entry 
+        {long="js_path_prefix", short=NONE, menu=["File", "js path prefix"], 
+         item=ref "",
+         desc= "Prefix to add to each Javascript file path in the\n\
+               \resulting run.html file."}
+
     fun link_files_with_runtime_system files run =
 	let val html_file = run ^ ".html"
 	    val os = TextIO.openOut html_file
             fun out s = TextIO.output(os,s)
             fun outJsFile f =
-                out ("<script type=\"text/javascript\" src=\"" ^ f ^ "\"></script>\n")
+                let val f = js_path_prefix() ## f
+                    val f = if js_path_compress() then OS.Path.mkCanonical f 
+                            else f
+                in out ("<script type=\"text/javascript\" src=\"" ^ f ^ "\"></script>\n")
+                end
             val jslibs = get_jslibs()
             val files = jslibs @ files
 	in 

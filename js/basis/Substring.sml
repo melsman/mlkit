@@ -1,3 +1,4 @@
+(* Substring Implementation *)
 structure Substring : SUBSTRING =
   struct
     type string = string (*CharVector.vector*)

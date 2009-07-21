@@ -1,9 +1,7 @@
-(* Random -- Random number generator -- 1995-04-23 *)
-
+(** Pseudo random numbers *)
 signature RANDOM =
   sig
     type generator
-
     val newgenseed : real -> generator
     val newgen     : unit -> generator
     val random     : generator -> real
@@ -12,22 +10,26 @@ signature RANDOM =
     val rangelist  : int * int -> int * generator -> int list
   end
 
-(* Type generator is the abstract type of random number generators,
-   producing uniformly distributed pseudo-random numbers.
+(**
 
-   [newgenseed seed] returns a random number generator with the given seed.
+[type generator] The abstract type of random number generators,
+producing uniformly distributed pseudo-random numbers.
 
-   [newgen ()] returns a random number generator, taking the seed from
-   the system clock.
+[newgenseed seed] returns a random number generator with the given
+seed.
 
-   [random gen] returns a random number in the interval [0..1).
+[newgen ()] returns a random number generator, taking the seed from
+the system clock.
 
-   [randomlist (n, gen)] returns a list of n random numbers in the
-   interval [0,1).
+[random gen] returns a random number in the interval [0..1).
 
-   [range (min, max) gen] returns an integral random number in the
-   range [min, max).  Raises Fail if min > max.
+[randomlist (n, gen)] returns a list of n random numbers in the
+interval [0,1).
 
-   [rangelist (min, max) (n, gen)] returns a list of n integral random
-   numbers in the range [min, max).  Raises Fail if min > max.  
+[range (min, max) gen] returns an integral random number in the 
+range [min, max[.  Raises Fail if min > max.
+
+[rangelist (min, max) (n, gen)] returns a list of n integral random
+numbers in the range [min, max).  Raises Fail if min > max.
+
 *)

@@ -206,7 +206,7 @@ local
              end
            else s
         end
-      | SOME s0 => s0 ^ "." ^ s
+      | SOME s0 => s0 ^ ".$" ^ s
 in
   fun setFrameLvars xs = frameLvars := xs
   fun setFrameExcons xs = frameExcons := xs
@@ -218,7 +218,7 @@ in
       patch (Lvars.name lv) 
             (isFrameLvar lv) 
             (pr_lv lv)
-            (Context.lookup C lv)
+            (Context.lookup C lv)   (* Fix variables *)
   fun prLvarExport lv =
       patch (Lvars.name lv) (fn() => true) (pr_lv lv) NONE
   fun exconName e = 
@@ -758,7 +758,7 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
        | NONE =>
          let 
            val fixvar = fresh_fixvar()
-           fun pr_fix_lv lv = fixvar ^ "." ^ pr_lv lv            
+           fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
            val C' = foldl(fn(lvar,C) => Context.add C (lvar,fixvar)) C (map #lvar functions)
            val js2 = foldl(fn(lv,js) => varJs (prLvar C lv) ($(pr_fix_lv lv)) js) scopeJs (map #lvar functions)
            val js = foldl(fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>

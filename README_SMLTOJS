@@ -118,7 +118,7 @@ COMPILATION IN THE BROWSER
 
 To build the browser-hosted compiler, proceed as follows:
 
-  $ cd ../src/Compiler
+  $ cd ../../src/Compiler
   $ SML_LIB=../../js ../../bin/smltojs smltojs0.mlb
 
 The last command should generate a file run.html which links to all
@@ -126,14 +126,13 @@ necessary JavaScript sources. Executing
 
  $ firefox run.html
 
-will start up an simple IDE for the compiler. 
+will start up a simple IDE for the compiler. 
 
 ISSUES
 ------
 
 Currently, SMLtoJs does not implement tail-calls properly, as all
-calls are translated into JavaScript calls. We are planning in the
-near future to implement tail-calls using trampolines.
+calls are translated into JavaScript calls.
 
 There is a known issue with a bug in the following test (in some cases, 
 the implementation pretty prints reals slightly different than 

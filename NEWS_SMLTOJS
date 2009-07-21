@@ -1,13 +1,13 @@
 SMLtoJs NEWS file
 
-* mael 2007-10-25: Certain datatype constructors are now represented
+* mael 2008-10-25: Certain datatype constructors are now represented
   unboxed. This unboxing includes lists and enumerations.
 
-* mael 2007-10-23: Datatype Constructors are now represented as
+* mael 2008-10-23: Datatype Constructors are now represented as
   numbers and there is support now for unboxing simple datatypes such
   as lists.
 
-* mael 2007-08-16: SMLtoJs version 4.3.5 is released.
+* mael 2008-08-16: SMLtoJs version 4.3.5 is released.
 
 * mael 2008-08-13: Added support for accessing compiled SML functions
   from JavaScript programs. At the SML side, values are exported using
