@@ -27,8 +27,7 @@ local
                  end
               end
         in bas
-              open Poly   
-
+              open Poly
               MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
 	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
            end
@@ -41,7 +40,7 @@ local
              local open List
                    STR_BASE.sml StrBase.sml 
              in
-                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml
+                Char.sml String.sml CHAR.sml STRING.sml String2.sml SUBSTRING.sml Substring.sml
              end
           end
        end
@@ -107,7 +106,6 @@ local
     basis System =
        let open General String Int
        in let basis Time = let open Int Real IntInf in bas TIME.sml Time.sml end end
-
               basis Random = let open Real in bas RANDOM.sml Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
               basis Os = let open Path in bas OS.sml end end

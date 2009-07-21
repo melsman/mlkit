@@ -1,3 +1,9 @@
+(**
+The MONO_VECTOR signature is a generic interface to monomorphic
+vectors, immutable sequences with constant-time access. Monomorphic
+vectors allow more compact representations than the analogous
+polymorphic vectors over the same element type.
+*)
 signature MONO_VECTOR = 
   sig
     type vector
@@ -24,126 +30,97 @@ signature MONO_VECTOR =
     val collate  : (elem * elem -> order) -> vector * vector -> order
 end
 
-(*
-Description
+(**
+[maxLen] The maximum length of vectors supported by this
+implementation. Attempts to create larger vectors will result in the
+Size exception being raised.
 
-val maxLen : int
+[fromList l] creates a new vector from l, whose length is length l and
+with the i(th) element of l used as the i(th) element of the
+vector. If the length of the list is greater than maxLen, then the
+Size exception is raised.
 
-    The maximum length of vectors supported by this
-    implementation. Attempts to create larger vectors will result in
-    the Size exception being raised.
+[tabulate (n, f)] creates a vector of n elements, where the elements
+are defined in order of increasing index by applying f to the
+element's index. Equivalent to the expression (fromList (List.tabulate
+(n, f))). If n < 0 or maxLen < n, then the Size exception is raised.
 
-fromList l
+[length vec] returns |vec|, the length (i.e., the number of elements)
+of the vector vec.
 
-    creates a new vector from l, whose length is length l and with the
-    i(th) element of l used as the i(th) element of the vector. If the
-    length of the list is greater than maxLen, then the Size exception
-    is raised.
+[sub (vec, i)] returns the i(th) element of the vector vec. If i < 0
+or |vec| <= i, then the Subscript exception is raised.
 
-tabulate (n, f)
+[update (vec, i, x)] returns a new vector, identical to vec, except
+the i(th) element of vec is set to x. If i < 0 or |vec| <= i, then the
+Subscript exception is raised.
 
-    creates a vector of n elements, where the elements are defined in
-    order of increasing index by applying f to the element's
-    index. This is equivalent to the expression:
+[concat l] returns the vector that is the concatenation of the vectors
+in the list l. If the total length of these vectors exceeds maxLen,
+then the Size exception is raised.
 
-fromList (List.tabulate (n, f))
+[appi f vec]
 
-    If n < 0 or maxLen < n, then the Size exception is raised.
+[app f vec] These apply the function f to the elements of a vector in
+left to right order (i.e., increasing indices). The more general appi
+function supplies both the element and the element's index to the
+function f. The expression (app f vec) is equivalent to (appi (f o #2)
+vec).
 
-length vec
+[mapi f vec]
 
-    returns |vec|, the length (i.e., the number of elements) of the
-    vector vec.
-
-sub (vec, i)
-
-    returns the i(th) element of the vector vec. If i < 0 or |vec| <=
-    i, then the Subscript exception is raised.
-
-update (vec, i, x)
-
-    returns a new vector, identical to vec, except the i(th) element
-    of vec is set to x. If i < 0 or |vec| <= i, then the Subscript
-    exception is raised.
-
-concat l
-
-    returns the vector that is the concatenation of the vectors in the
-    list l. If the total length of these vectors exceeds maxLen, then
-    the Size exception is raised.
-
-appi f vec
-app f vec
-
-    These apply the function f to the elements of a vector in left to
-    right order (i.e., increasing indices). The more general appi
-    function supplies both the element and the element's index to the
-    function f. The expression app f vec is equivalent to:
-
-      appi (f o #2) vec
-
-mapi f vec
-map f vec
-
-    These functions produce new vectors by mapping the function f from
-    left to right over the argument vector. The more general mapi
-    function supplies both the element and the element's index to the
-    function f. The expression mapi f vec is equivalent to:
+[map f vec] These functions produce new vectors by mapping the function f from
+left to right over the argument vector. The more general mapi
+function supplies both the element and the element's index to the
+function f. The expression (mapi f vec) is equivalent to
 
       fromList (List.map f (foldri (fn (i,a,l) => (i,a)::l) [] vec))
       
-    The expression map f vec is equivalent to:
+The expression map f vec is equivalent to:
 
       mapi (f o #2) vec
       
-foldli f init vec
-foldri f init vec
-foldl f init vec
-foldr f init vec
+[foldli f init vec]
 
-    These fold the function f over all the elements of a vector, using
-    the value init as the initial value. The functions foldli and
-    foldl apply the function f from left to right (increasing
-    indices), while the functions foldri and foldr work from right to
-    left (decreasing indices). The more general functions foldli and
-    foldri supply both the element and the element's index to the
-    function f.
+[foldri f init vec]
 
-    Refer to the MONO_ARRAY manual pages for reference implementations
-    of the indexed versions.
+[foldl f init vec]
 
-    The expression foldl f is equivalent to:
+[foldr f init vec] These fold the function f over all the elements of
+a vector, using the value init as the initial value. The functions
+foldli and foldl apply the function f from left to right (increasing
+indices), while the functions foldri and foldr work from right to left
+(decreasing indices). The more general functions foldli and foldri
+supply both the element and the element's index to the function f.
+
+Refer to the MONO_ARRAY manual pages for reference implementations
+of the indexed versions.
+
+The expression foldl f is equivalent to
 
       foldli (fn (_, a, x) => f(a, x))
       
-    A similar relation holds between foldr and foldri.
+A similar relation holds between foldr and foldri.
 
-findi f vec
-find f vec
+[findi f vec]
 
-    These apply f to each element of the vector vec, from left to
-    right (i.e., increasing indices), until a true value is
-    returned. If this occurs, the functions return the element;
-    otherwise, they return NONE. The more general version findi also
-    supplies f with the vector index of the element and, upon finding
-    an entry satisfying the predicate, returns that index with the
-    element.
+[find f vec] These apply f to each element of the vector vec, from
+left to right (i.e., increasing indices), until a true value is
+returned. If this occurs, the functions return the element; otherwise,
+they return NONE. The more general version findi also supplies f with
+the vector index of the element and, upon finding an entry satisfying
+the predicate, returns that index with the element.
 
-exists f vec
+[exists f vec] applies f to each element x of the vector vec, from
+left to right (i.e., increasing indices), until f x evaluates to true;
+it returns true if such an x exists and false otherwise.
 
-    applies f to each element x of the vector vec, from left to right
-    (i.e., increasing indices), until f x evaluates to true; it
-    returns true if such an x exists and false otherwise.
+[all f vec] applies f to each element x of the vector vec, from left
+to right (i.e., increasing indices), until f x evaluates to false; it
+returns false if such an x exists and true otherwise. It is equivalent
+to (not(exists (not o f ) vec)).
 
-all f vec
+[collate f (v1, v2)] performs lexicographic comparison of the two
+vectors using the given ordering f on elements.
 
-    applies f to each element x of the vector vec, from left to right
-    (i.e., increasing indices), until f x evaluates to false; it
-    returns false if such an x exists and true otherwise. It is
-    equivalent to not(exists (not o f ) vec)).
-
-collate f (v1, v2)
-
-    performs lexicographic comparison of the two vectors using the
-    given ordering f on elements.
 *)

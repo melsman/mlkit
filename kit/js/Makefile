@@ -21,6 +21,11 @@ smltojs.man.html: Makefile
 	man2html -r ../man/man1/smltojs.1 > smltojs.man.html
 #	rman -f HTML -r '' ../man/man1/smltojs.1 > smltojs.man.html
 
+smltojs_web: Makefile
+	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -js_path_compress -js_path_prefix "src/Compiler" smltojs0.mlb)
+	(cd ..; cp src/Compiler/run.html .)
+	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < run.html | grep '\.js'` run.html)
+
 clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C basis clean

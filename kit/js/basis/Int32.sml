@@ -134,5 +134,5 @@ structure Int32 : INTEGER =
 
   end (*structure Int32*)
 
-structure FixedInt = Int32
-structure Int = Int32
+structure FixedInt : INTEGER = Int32
+structure Int : INTEGER = Int32

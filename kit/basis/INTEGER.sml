@@ -1,3 +1,4 @@
+(* Integer operations *)
 signature INTEGER = 
   sig
       eqtype int

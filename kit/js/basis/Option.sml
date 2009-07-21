@@ -1,4 +1,4 @@
-structure Option: OPTION =
+structure Option : OPTION =
   struct
     exception Option = Option
     datatype option = datatype option

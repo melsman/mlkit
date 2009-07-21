@@ -288,9 +288,9 @@ functor VectorArg(type elem) =
     fun length (t:table): int = prim ("__bytetable_size", t)
   end
 
-structure CharVector 
-    :> MONO_VECTOR where type elem = char 
-		     and type vector = string =
+structure CharVector :> MONO_VECTOR 
+  where type elem = char 
+    and type vector = string =
     let structure V = ByteTable(VectorArg(type elem = char))
     in struct open V
 	      val update = updatev

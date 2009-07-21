@@ -36,7 +36,8 @@ structure IntInf : INT_INF =
    * a submodule.
    *)
 
-    structure NumScan : sig
+    structure NumScan :
+      sig
 
         val skipWS : (char, 'a) StringCvt.reader -> 'a -> 'a
 
@@ -247,7 +248,8 @@ structure IntInf : INT_INF =
     
       end (* structure NumScan *)
 
-    structure NumFormat : sig
+    structure NumFormat :
+      sig
 
         val fmtWord : StringCvt.radix -> Word32.word -> string
         val fmtInt : StringCvt.radix -> int31 -> string	(** should be int32 **)
