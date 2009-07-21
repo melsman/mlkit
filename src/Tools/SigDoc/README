@@ -1,0 +1,33 @@
+SIGDOC
+
+This directory contains a tool for generating HTML documentation for
+Standard ML signatures.
+
+The tool takes as arguments a set of signature files, containing single
+signatures, and a set of implementation files.
+
+The tool scans the signature files to obtain the set of signature
+identifiers. For each signature identifier, the tool generates a
+documentation page with documentation for each specified
+identifier. Also, the tool scans the implementation files for
+structure identifiers, identifying implementations of the signatures
+and generates a documentation page with an index over structure
+identifier (with links to the signature documentation).
+
+Signature files must conform to the following structure:
+
+---------------
+(** general comment ... *)
+
+signature A = sig
+  type a
+  ...
+  val b : a -> unit
+end
+
+(**
+  [a] is a type.
+
+  [b a] returns unit.
+*)
+---------------
