@@ -1,4 +1,5 @@
-(**
+(** Operations on string values.
+
 The STRING signature specifies the basic operations on a string type,
 which is a vector of the underlying character type char as defined in
 the structure.

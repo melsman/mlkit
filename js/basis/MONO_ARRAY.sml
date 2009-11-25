@@ -1,4 +1,5 @@
-(**
+(** Monomorphic array operations.
+
 The MONO_ARRAY signature is a generic interface to monomorphic arrays,
 mutable sequences with constant-time access and update. Monomorphic
 arrays allow more compact representations than the analogous

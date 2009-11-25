@@ -288,6 +288,7 @@ functor VectorArg(type elem) =
     fun length (t:table): int = prim ("__bytetable_size", t)
   end
 
+(** Character vector operations. *)
 structure CharVector :> MONO_VECTOR 
   where type elem = char 
     and type vector = string =
@@ -308,6 +309,7 @@ functor ArrayArg(type elem) =
     fun length (t:table): int = prim ("table_size", t)
   end
 
+(** Character array operations. *)
 structure CharArray :> MONO_ARRAY
   where type vector = CharVector.vector
   where type elem = char 
@@ -315,26 +317,31 @@ structure CharArray :> MONO_ARRAY
   = ByteTable(ArrayArg(type elem = char))
 
 local
-    structure Word8Vector =
+
+structure Word8Vector =
 	let structure V = ByteTable(VectorArg(type elem = word8))
 	in struct open V
 	          val update = updatev
 	   end
 	end
 
-    structure Word8Array = 
+(** Unsigned 8-bit-word array operations. *)
+structure Word8Array = 
 	ByteTable(ArrayArg(type elem = word8))
 
     structure Tmp =
 	struct
 	    structure Word8Array = Word8Array
 	    structure Word8Vector = Word8Vector
-	end
-    : sig
-	   structure Word8Vector : MONO_VECTOR where type elem = word8 
-	   structure Word8Array : MONO_ARRAY where type elem = word8
-	   sharing type Word8Vector.vector = Word8Array.vector
-       end
+	end : 
+sig
+(** Unsigned 8-bit-word vector operations. *)
+structure Word8Vector : MONO_VECTOR where type elem = word8 
+
+(** Unsigned 8-bit-word array operations. *)
+structure Word8Array : MONO_ARRAY where type elem = word8
+sharing type Word8Vector.vector = Word8Array.vector
+end
 in
     open Tmp
 end

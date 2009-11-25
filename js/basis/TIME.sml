@@ -1,4 +1,5 @@
-(**
+(** Operations on time values.
+
 The structure Time provides an abstract type for representing times
 and time intervals, and functions for manipulating, converting,
 writing, and reading them.

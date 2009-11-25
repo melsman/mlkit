@@ -561,7 +561,7 @@ struct
                     E'.Mus [(R.mkFUN(mus,eps,mu_list1), rho)], (*Eff.*)mkPut(rho)),
 	   NOTAIL)
         end
-    | E.APP(e1_ML: E.LambdaExp, e2_ML: E.LambdaExp) => 
+    | E.APP(e1_ML: E.LambdaExp, e2_ML: E.LambdaExp,_) => 
         let
             val simple_application: bool =
                 case e1_ML of E.VAR{lvar, ...} =>

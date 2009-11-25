@@ -1,4 +1,5 @@
-(**
+(** Monomorphic vector slice operations.
+
 The MONO_VECTOR_SLICE signature provides an abstraction of subarrays
 for monomorphic immutable arrays or vectors. A slice value can be
 viewed as a triple (v, i, n), where v is the underlying vector, i is

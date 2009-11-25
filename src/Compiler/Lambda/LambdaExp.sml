@@ -122,7 +122,7 @@ structure LambdaExp: LAMBDA_EXP =
 				  Type : Type,
 				  bind : LambdaExp} list,
 		     scope : LambdaExp}
-      | APP      of LambdaExp * LambdaExp
+      | APP      of LambdaExp * LambdaExp * bool option (* tail call? *)
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
@@ -165,7 +165,7 @@ structure LambdaExp: LAMBDA_EXP =
 	| FN{pat,body} => foldTD fcns (foldl' (foldType g) new_acc (map #2 pat)) body
 	| LET{pat,bind,scope} => foldTD fcns (foldTD fcns (foldl' (foldType g) new_acc (map #3 pat)) bind) scope
 	| FIX{functions,scope} => foldTD fcns (foldl' (foldTD fcns) (foldl' (foldType g) new_acc (map #Type functions))  (map #bind functions)) scope
-	| APP(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
+	| APP(lamb1, lamb2, _) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
 	| EXCEPTION(excon,tauOpt,lamb) => 
              (case tauOpt of NONE => foldTD fcns new_acc lamb
                  | SOME tau => foldTD fcns (g new_acc tau) lamb
@@ -234,7 +234,14 @@ structure LambdaExp: LAMBDA_EXP =
 	"__less_real",
 	"__greater_real",
 	"__lesseq_real",
-	"__greatereq_real"]
+	"__greatereq_real",
+        "concatStringML",
+        "__bytetable_size",
+        "implodeCharsML",
+        "implodeStringML",
+        "id",
+        "table_size",
+        "exnNameML"]
 
      fun safeCName n = if StrSet.member n safeCNames then () 
 		       else raise NotSafe
@@ -246,6 +253,7 @@ structure LambdaExp: LAMBDA_EXP =
 	  | EXCONprim _        => ()
 	  | DEEXCONprim _      => ()
 	  | RECORDprim         => ()
+          | UB_RECORDprim      => ()
 	  | SELECTprim _       => ()
 	  | EQUALprim _        => ()
 	  | DROPprim           => ()            
@@ -775,7 +783,7 @@ structure LambdaExp: LAMBDA_EXP =
 		    }
 	  end
 *)
-      | APP(lamb1, lamb2) =>
+      | APP(lamb1, lamb2, _) =>
 	  PP.NODE{start= if context>13 then "(" else "", 
                   finish=if context>13 then ")" else "", 
 		  childsep=PP.RIGHT " ",
@@ -1374,7 +1382,7 @@ structure LambdaExp: LAMBDA_EXP =
 		end
 	    fun fun_APP pu_LambdaExp =
 		Pickle.con1 APP (fn APP a => a | _ => die "pu_LambdaExp.APP")
-		(Pickle.pairGen0(pu_LambdaExp,pu_LambdaExp))
+		(Pickle.tup3Gen0(pu_LambdaExp,pu_LambdaExp,Pickle.optionGen Pickle.bool))
 	    fun fun_EXCEPTION pu_LambdaExp =
 		Pickle.con1 EXCEPTION (fn EXCEPTION a => a | _ => die "pu_LambdaExp.EXCEPTION")
 		(Pickle.tup3Gen0(Excon.pu,pu_TypeOpt,pu_LambdaExp))
@@ -1480,7 +1488,7 @@ structure LambdaExp: LAMBDA_EXP =
                                   end) acc functions
           in tyvars_Exp s scope acc
           end
-	| APP(e1, e2) => tyvars_Exp s e1 (tyvars_Exp s e2 acc)
+	| APP(e1, e2, _) => tyvars_Exp s e1 (tyvars_Exp s e2 acc)
 	| EXCEPTION(excon,tauOpt,e) =>
           let val acc = case tauOpt of 
                           NONE => acc

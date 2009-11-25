@@ -1,4 +1,5 @@
-(**
+(** Operations for starting and checking timers.
+
 The Timer structure provides facilities for measuring the passing of
 wall clock (real) time and the amount of time the running process has
 had the CPU (user time), has been active in the OS kernel (system

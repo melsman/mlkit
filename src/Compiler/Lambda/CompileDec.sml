@@ -1261,7 +1261,7 @@ Det finder du nok aldrig ud af.*)
 in
 
   fun compile_jump_to ({lvar, ...} : node) =
-	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim, []))
+	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim, []), NONE)
 	  (*instances=[] because the var can never be polymorphic
 	   because it is the name of a non-polymorphic function.*)
 
@@ -1883,7 +1883,7 @@ end; (*match compiler local*)
 			     [a] => a
 			   | args => PRIM(RECORDprim,args))
 	  in case CE.lookup_longid e intInfLongId of
-	      SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=nil},arg)
+	      SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=nil},arg,NONE)
 	    | _ => die ("intinfOp: " ^ opr)
 	  end
 
@@ -2189,7 +2189,7 @@ end; (*match compiler local*)
 	   | APPexp(_, f, arg) => (*application of non-identifier*)
 	       let val f' = compileExp env f
 		 val arg' = compileAtexp env arg
-	       in APP(f',arg')
+	       in APP(f',arg',NONE)
 	       end
 
 	   | TYPEDexp(_, exp, _) => compileExp env exp
@@ -2255,7 +2255,7 @@ end; (*match compiler local*)
 		       raise ex)
 			      
 		    val il' = on_il(S, il)
-		    fun default () = APP(VAR{lvar=lv,instances=il'},arg')
+		    fun default () = APP(VAR{lvar=lv,instances=il'},arg',NONE)
 		in 
 		  if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
 		    case (instances', arg')

@@ -1,4 +1,5 @@
-(** 
+(** Operations on polymorphic arrays.
+
 The Array structure defines polymorphic arrays, mutable sequences with
 constant-time access and update.
 

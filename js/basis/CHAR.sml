@@ -1,4 +1,5 @@
-(** 
+(** Operations on character values.
+
 The CHAR signature defines a type char of characters, and provides
 basic operations and predicates on values of that type. There is a
 linear ordering defined on characters. In addition, there is an

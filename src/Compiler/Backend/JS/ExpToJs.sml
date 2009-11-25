@@ -94,7 +94,7 @@ common object:
     g = x.g;
 
 Here x is a fresh variable. To map f and g to x.f and x.g, we make use
-of an lvar->lvar map in the context.
+of a map (:lvar->lvar) in the context.
 *) 
 structure Context :> sig type t
                        val mk : Env.t -> t
@@ -130,14 +130,8 @@ local
       end
 
   fun normalizeBase b = 
-      let 
-(*
-        val b = if String.sub(b,size b - 1) = #"1" then
-                  Substring.string(Substring.trimr 1 (Substring.full b))
-                else b
-*)
-        val b = replaceString (".mlb-", "$") b
-        val b = replaceString (".sml1", "$") b
+      let val b = replaceString (".mlb-", "$") b
+          val b = replaceString (".sml1", "$") b
       in
         String.translate (fn #"." => "$" | c => Char.toString c) b
       end
@@ -754,7 +748,7 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
          in varJs (prLvar C lv) 
                   ($"function " & seq lvs & $"{ " & returnJs(toJs C body) & $" }")
                   scopeJs
-         end         
+         end
        | NONE =>
          let 
            val fixvar = fresh_fixvar()
@@ -771,8 +765,8 @@ fun toJs (C:Context.t) (e0:Exp) : Js =
          in varJs fixvar ($"{}") js
          end
     end
-  | L.APP(e1,L.PRIM(L.UB_RECORDprim, es)) => toJs C e1 & seq(map (toJs C) es)
-  | L.APP(e1,e2) => toJs C e1 & seq[toJs C e2]
+  | L.APP(e1,L.PRIM(L.UB_RECORDprim, es),_) => toJs C e1 & seq(map (toJs C) es)
+  | L.APP(e1,e2,_) => toJs C e1 & seq[toJs C e2]
                     
   | L.SWITCH_I {switch,precision} => toJsSw (toJs C) mlToJsInt switch
   | L.SWITCH_W {switch,precision} => toJsSw (toJs C) (Word32.fmt StringCvt.DEC) switch

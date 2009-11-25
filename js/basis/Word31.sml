@@ -1,5 +1,6 @@
 (* Requires Word32 to be defined *)
 
+(** Operations on unsigned 31 bit word values. *)
 structure Word31 : WORD =
   struct
     val wordSize = 31

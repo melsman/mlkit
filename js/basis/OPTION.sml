@@ -1,4 +1,5 @@
-(**
+(** Operations on optional values.
+
 The Option structure defines the option type, used for handling
 partial functions and optional values, and provides a collection of
 common combinators.

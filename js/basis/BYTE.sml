@@ -1,4 +1,5 @@
-(** 
+(** Conversion operations between Word8.word values and characters.
+
 Bytes are 8-bit integers as provided by the Word8 structure, but serve
 the dual role as elements composing the extended ASCII character
 set. The Byte structure provides functions for converting values
