@@ -1,4 +1,5 @@
-(**
+(** Operations on polymorphic array slices.
+ 
 The ArraySlice structure provides an abstraction of subarrays for
 polymorphic arrays. A slice value can be viewed as a triple (a, i, n),
 where a is the underlying array, i is the starting index, and n is the

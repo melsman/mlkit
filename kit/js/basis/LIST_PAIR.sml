@@ -1,4 +1,5 @@
-(**
+(** Operations on pairs of lists.
+
 The ListPair structure provides operations on pairs of lists. The
 operations fall into two categories. Those in the first category,
 whose names do not end in "Eq", do not require that the lists have the

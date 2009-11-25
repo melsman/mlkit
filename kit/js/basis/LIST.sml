@@ -1,4 +1,5 @@
-(**
+(** Generic operations on lists.
+
 The List structure provides a collection of utility functions for
 manipulating polymorphic lists, traditionally an important datatype in
 functional programming.

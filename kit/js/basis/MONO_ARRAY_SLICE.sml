@@ -1,4 +1,5 @@
-(**
+(** Monomorphic array slice operations.
+
 The MONO_ARRAY_SLICE signature provides an abstraction of subarrays
 for monomorphic arrays. A slice value can be viewed as a triple (a, i,
 n), where a is the underlying array, i is the starting index, and n is

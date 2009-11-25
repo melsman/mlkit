@@ -1,4 +1,5 @@
-(**
+(** Monomorphic vector operations.
+
 The MONO_VECTOR signature is a generic interface to monomorphic
 vectors, immutable sequences with constant-time access. Monomorphic
 vectors allow more compact representations than the analogous

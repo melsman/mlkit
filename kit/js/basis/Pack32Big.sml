@@ -9,6 +9,7 @@
  *
  *)
 
+(** 32-bit big-endian packing operations. *)
 structure PackWord32Big : PACK_WORD =
   struct
     structure W = LargeWord

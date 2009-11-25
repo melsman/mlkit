@@ -1,4 +1,5 @@
-(** 
+(** Operations on 2-dimensional arrays.
+
 The Array2 structure provides polymorphic mutable 2-dimensional
 arrays. As with 1-dimensional arrays, these arrays have the equality
 property that two arrays are equal if they are the same array, i.e.,

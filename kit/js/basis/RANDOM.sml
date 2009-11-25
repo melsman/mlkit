@@ -1,4 +1,7 @@
-(** Pseudo random numbers *)
+(** Pseudo random numbers.
+
+Operations for generating random numbers. 
+*)
 signature RANDOM =
   sig
     type generator

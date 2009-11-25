@@ -1,4 +1,5 @@
-(**
+(** Operations on substrings.
+
 The SUBSTRING signature specifies manipulations on an abstract
 representation of a sequence of contiguous characters in a string. A
 substring value can be modeled as a triple (s, i, n), where s is the

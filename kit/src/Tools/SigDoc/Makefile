@@ -7,7 +7,7 @@ IMPL=General List Bool Int31 Int32 IntInf String2 \
  Substring ByteTable Char Array2 Array Vector VectorSlice \
  ArraySlice ByteSlice Date Time Timer Word8 Word31 Word32 \
  Byte Real Math Random Pack32Little Pack32Big ListPair Option Listsort \
- StringCvt
+ StringCvt ConcatString
 
 THESIGS=$(SIGS:%=../../../js/basis/%.sml)
 THEIMPL=$(IMPL:%=../../../js/basis/%.sml)

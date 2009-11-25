@@ -1,4 +1,5 @@
 
+(** Operations on 31 bit signed integers. *)
 structure Int31 : INTEGER = 
   struct (*Depends on StringCvt and Char*)
 

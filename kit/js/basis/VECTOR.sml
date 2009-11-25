@@ -1,4 +1,5 @@
-(**
+(** Operations on polymorphic vectors.
+
 The Vector structure defines polymorphic vectors, immutable sequences
 with constant-time access.
 *)

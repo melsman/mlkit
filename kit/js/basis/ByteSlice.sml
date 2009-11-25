@@ -247,6 +247,7 @@ struct
       end
 end
 
+(** Character vector slice operations. *)
 structure CharVectorSlice : MONO_VECTOR_SLICE = 
     ByteSlice(type table  = CharVector.vector
 	      type array  = CharArray.array
@@ -259,6 +260,7 @@ structure CharVectorSlice : MONO_VECTOR_SLICE =
               fun length0 (t:table): int = CharVector.length t
              )
 
+(** Unsigned 8-bit-word vector slice operations. *)
 structure Word8VectorSlice : MONO_VECTOR_SLICE = 
     ByteSlice(type table  = Word8Vector.vector
 	      type array  = Word8Array.array
@@ -271,6 +273,7 @@ structure Word8VectorSlice : MONO_VECTOR_SLICE =
               fun length0 (t:table): int = Word8Vector.length t
              )
 
+(** Character array slice operations. *)
 structure CharArraySlice : MONO_ARRAY_SLICE = 
     ByteSlice(type table  = CharArray.array
 	      type array  = CharArray.array
@@ -283,6 +286,7 @@ structure CharArraySlice : MONO_ARRAY_SLICE =
               fun length0 (t:table): int = CharArray.length t
              )
 
+(** Unsigned 8-bit-word array slice operations. *)
 structure Word8ArraySlice : MONO_ARRAY_SLICE = 
     ByteSlice(type table  = Word8Array.array
 	      type array  = Word8Array.array

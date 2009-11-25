@@ -1,4 +1,5 @@
-(**
+(** Basic operations on boolean values.
+
 The Bool structure provides some basic operations on boolean values.
 *)
 signature BOOL =

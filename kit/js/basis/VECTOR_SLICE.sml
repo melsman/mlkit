@@ -1,4 +1,5 @@
-(**
+(** Operations on polymorphic vector slices.
+
 The VectorSlice structure provides an abstraction of subvectors for
 polymorphic vectors. A slice value can be viewed as a triple (v, i,
 n), where v is the underlying vector, i is the starting index, and n

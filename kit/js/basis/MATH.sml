@@ -1,4 +1,5 @@
-(**
+(** Mathematical floating-point values and operations.
+ 
 The signature MATH specifies basic mathematical constants, the square
 root function, and trigonometric, hyperbolic, exponential, and
 logarithmic functions based on a real type. The functions defined here

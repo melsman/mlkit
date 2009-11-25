@@ -1,4 +1,5 @@
-(**
+(** Operations on floating point values.
+
 The REAL signature specifies structures that implement floating-point
 numbers. The semantics of floating-point numbers should follow the
 IEEE standard 754-1985 and the ANSI/IEEE standard 854-1987. In

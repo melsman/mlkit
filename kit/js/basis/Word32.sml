@@ -1,3 +1,4 @@
+(** Operations on unsigned 32 bit word values. *)
 structure Word32 : WORD =
   struct
     val wordSize = 32
@@ -156,5 +157,8 @@ structure Word32 : WORD =
     type word = word32
   end
 
+(** Operations on largest unboxed unsigned word values. *)
 structure Word : WORD = Word32
+
+(** Operations on largest unsigned word values. *)
 structure LargeWord : WORD = Word32

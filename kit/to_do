@@ -1,3 +1,44 @@
+mael 2009-10-10: Dynamic types and values.
+
+signature DYN_TYPE = sig
+
+  eqtype tn
+  eqtype con
+  datatype t = 
+	DT_Tuple of t list 
+      | DT_Dat of tn * t list
+      | DT_Arrow of t * t
+      | DT_Int32 | DT_Int31 | DT_Real | DT_Bool | DT_String 
+
+  val con_arg_t : tn * t list -> con -> t
+
+  datatype v = 
+	V_Int32 of Int32.int
+      | V_Int31 of Int31.int
+      | V_Bool of bool
+      | V_Real of real  
+      | V_String of string
+      | V_Tuple of v list
+      | V_Fn of v -> v
+      | V_Con of con * v option
+
+end
+
+structure Dt :> DYN_TYPE 
+
+Built-in function:
+
+  
+  val typeof : '_a -> Dt.t
+  fun variant (a : '_a) : Dt.v =
+    case typeof a of
+      DT_Int32 => Dt.V_Int32(Unsafe.cast a)
+      ...
+
+  fun op = (v1 : '_a, v2 : '_a) =
+    case typeof v1 of
+      
+
 mael 2008-10-19: Make a filesys abstraction FSys that allows for
 source files and target files to be stored in a database or in the
 file system. The MLKit should then use this abstraction for accessing
@@ -48,28 +89,6 @@ mael 2007-02-26: Things to do:
 mael 2005-11-29: Things needed for the next release:
 
    * mael 2006-01-24: Don't do a gc during exit...
-
-   * mael 2005-11-29: Update Basis Library to a reasonable degree.
-
-   * mael 2005-11-29: Makefile target for generating binary package
-     (tgz) with README_BIN file. DONE mael 2006-01-26.
-
-   * mael 2005-11-29: Makefile target for generating source package
-     (tgz) with README file
-
-   * mael 2005-12-01: papers/smlserver/root.tex (Carsten): Almost Done
-        1) Revise the text in table in Section 3.8 OK
-        2) Run through Sections 2.1--2.4. What should the directory
-           structure of smlserver_demo be? It would be cool if it is
-           possible to compile scs. OK
-        3) Update log-line of Section 3.9. OK CV
-        4) Update WEB_CACHE signature of Section 6.6. OK CV
-        5) Update NS_DB signature of Section 7.2 OK CV
-        6) Update Section 9.6?? OK CV
-        7) Update Section 10.1?? OK CV
-        8) Appendix A: insert part of sample httpd.conf file. 
-        9) Delete Appendix B & C; wouldn't this be ok? OK CV
-       10) Appendix E appears not to be upto date. OK CV
 
 mael 2005-10-28: Fix bug in gengc: Errors when bootstrapping
 

@@ -1,4 +1,5 @@
-(**
+(** Utility operations for converting to and from strings.
+
 The StringCvt structure provides types and functions for handling the
 conversion between strings and values of various basic types.
 *)

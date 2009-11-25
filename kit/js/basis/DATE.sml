@@ -1,4 +1,5 @@
-(**
+(** Operations on dates.
+
 The Date structure provides functions for converting between times and
 dates, and formatting and scanning dates.
 *)

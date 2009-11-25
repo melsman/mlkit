@@ -19,6 +19,8 @@ signature LAMBDA_BASICS =
     type excon and lvar
     val exports : LambdaExp -> lvar list * excon list
 
+    (* Annotate tail call on APP constructs *)
+    val annotate_tail_calls : LambdaExp -> LambdaExp
 
     (* substitutions *)
     exception TypeVariableCapture

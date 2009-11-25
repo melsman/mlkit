@@ -1,4 +1,5 @@
-(** 
+(** Operations on unsigned word values.
+ 
 Instances of the signature WORD provide a type of unsigned integer
 with modular arithmetic and logical operations and conversion
 operations. They are also meant to give efficient access to the

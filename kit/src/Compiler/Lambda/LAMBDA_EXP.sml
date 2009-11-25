@@ -104,7 +104,7 @@ signature LAMBDA_EXP =
 				  Type : Type,
 				  bind : LambdaExp} list,
 		     scope : LambdaExp}
-      | APP      of LambdaExp * LambdaExp
+      | APP      of LambdaExp * LambdaExp * bool option  (* tail call? *)
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp

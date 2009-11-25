@@ -1,5 +1,6 @@
 (* Requires Word, Word32 *)
 
+(** Unsigned 8-bit word value operations. *)
 structure Word8 : WORD =
   struct
 

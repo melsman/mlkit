@@ -244,7 +244,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	   | (ARROWtype _) => die "gen_type_eq.arrow type."
 	   | (CONStype (taus,tn)) =>
 	      let fun apply e [] = e
-		    | apply e (tau::taus) = apply (APP(e, gen tau)) taus
+		    | apply e (tau::taus) = apply (APP(e, gen tau, NONE)) taus
 		fun dont_support() = 
 		  raise DONT_SUPPORT_EQ (TyName.pr_TyName tn)
 	      in
@@ -273,11 +273,11 @@ structure EliminateEq: ELIMINATE_EQ =
 	 (fn [] => lamb_true
 	   | [tau] => let val v = VAR {lvar=p, instances=[]}
 			  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
-		      in APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]))
+		      in APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]),NONE)
 		      end
 	   | (tau :: taus) => let val v = VAR {lvar=p, instances=[]}
 				  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
-				  val e = APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]))
+				  val e = APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]),NONE)
 			      in SWITCH_C (SWITCH (e, [((Con.con_TRUE,NONE), gen_switch (n+1) p taus)], 
 						   SOME lamb_false))
 			      end)
@@ -344,7 +344,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	    val lamb_true_case =
 	      mk_decon p0' p0
 	      (mk_decon p1' p1
-	       (APP(lamb_eq_fn_tau, PRIM(RECORDprim, [lamb_var p0', lamb_var p1']))))
+	       (APP(lamb_eq_fn_tau, PRIM(RECORDprim, [lamb_var p0', lamb_var p1']),NONE)))
 
 	  in mk_sw (c,SOME p1') lamb_true_case
 	  end
@@ -577,8 +577,8 @@ structure EliminateEq: ELIMINATE_EQ =
 	 SWITCH_C (SWITCH (PRIM (LESS_INTprim(), [var_j, INTEGER' 0]),
 	   [((Con.con_TRUE,NONE), lamb_true)],
 	   SOME (SWITCH_C (SWITCH
-		  ((APP (var_eq_alpha, PRIM (RECORDprim, [sub var_table1, sub var_table2]))),
-		   [((Con.con_TRUE,NONE), APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1])))],
+		  ((APP (var_eq_alpha, PRIM (RECORDprim, [sub var_table1, sub var_table2]),NONE)),
+		   [((Con.con_TRUE,NONE), APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1]),NONE))],
 		   SOME lamb_false)))))}
 
    fun function_loop() = {lvar = lvar_loop,
@@ -600,7 +600,7 @@ structure EliminateEq: ELIMINATE_EQ =
 										 intDefaultType()]},
 					       [var_n1, var_n2]),
 					 [((Con.con_TRUE,NONE),
-					   APP (var_loop, PRIM (MINUS_INTprim(), [var_n2, INTEGER' 1])))],
+					   APP (var_loop, PRIM (MINUS_INTprim(), [var_n2, INTEGER' 1]),NONE))],
 					 SOME lamb_false))}))}}}}
      
    fun function_eq_table() = {lvar = lvar_eq_table,
@@ -646,7 +646,7 @@ structure EliminateEq: ELIMINATE_EQ =
 		| FIX {functions, scope} => 
 		 FIX {functions=map (fn {lvar,tyvars,Type,bind} => {lvar=lvar,tyvars=tyvars,Type=Type,bind=f bind}) functions, 
 		      scope=f scope}
-		| APP(e1,e2) => APP(f e1, f e2)
+		| APP(e1,e2,_) => APP(f e1, f e2, NONE)
 		| EXCEPTION (excon,tauopt,scope) => EXCEPTION (excon, tauopt,f scope)
 		| RAISE(e,tau) => RAISE(f e, tau)
 		| HANDLE(e1,e2) => HANDLE(f e1, f e2)
@@ -686,7 +686,7 @@ structure EliminateEq: ELIMINATE_EQ =
      *)
 
     fun apply_eq_fns env [] e = e
-      | apply_eq_fns env (tau::taus) e = let val f = APP(e, gen_type_eq env tau)
+      | apply_eq_fns env (tau::taus) e = let val f = APP(e, gen_type_eq env tau, NONE)
 					 in apply_eq_fns env taus f
 					 end
 
@@ -731,7 +731,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	       (case instance
 		  of RECORDtype [tau,_] => 
 		    let val e = PRIM(RECORDprim, [t env lexp1,t env lexp2])
-		    in APP(gen_type_eq env tau, e)
+		    in APP(gen_type_eq env tau, e, NONE)
 		    end
 		   | _ => die "f.EQUALprim")
 	 | LET {pat=[(lvar,tvs,tau)],bind,scope} =>
@@ -788,7 +788,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	    end
 	 (* the rest is just trivial traversal *) 
 	 | FN {pat, body} => FN {pat=pat, body=t env body}
-	 | APP(lexp1, lexp2) => APP(t env lexp1, t env lexp2)
+	 | APP(lexp1, lexp2, _) => APP(t env lexp1, t env lexp2, NONE)
 	 | EXCEPTION(excon, tauopt, lexp) => EXCEPTION(excon, tauopt, t env lexp)
 	 | RAISE(lexp,tau) => RAISE(t env lexp,tau)
 	 | HANDLE(lexp1, lexp2) => HANDLE(t env lexp1, t env lexp2)

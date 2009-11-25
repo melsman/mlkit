@@ -1,4 +1,5 @@
-(**
+(** Byte-level packaging of word values.
+
 The PackWord<N>Big and PackWord<N>Little structures provide facilities
 for packing and unpacking N-bit word elements into Word8 vectors. This
 mechanism allows word values to be transmitted in binary format over

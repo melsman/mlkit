@@ -1,4 +1,5 @@
-(** 
+(** General exceptions and operations.
+
 The structure General defines exceptions, datatypes, and functions
 which are used throughout the SML Basis Library, and are useful in a
 wide range of programs.

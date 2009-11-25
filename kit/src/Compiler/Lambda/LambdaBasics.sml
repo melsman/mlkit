@@ -41,7 +41,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 							{lvar=lvar,tyvars=tyvars,
 							 Type=Type,bind=passTD f bind}) functions,
 					 scope=passTD f scope}
-	   | APP(lamb1, lamb2) => APP(passTD f lamb1, passTD f lamb2)
+	   | APP(lamb1, lamb2, tc) => APP(passTD f lamb1, passTD f lamb2, tc)
 	   | EXCEPTION(excon,tauOpt,lamb) => EXCEPTION(excon,tauOpt, passTD f lamb)
 	   | RAISE(lamb,tl) => RAISE(passTD f lamb,tl)
 	   | HANDLE(lamb1, lamb2) => HANDLE(passTD f lamb1, passTD f lamb2)
@@ -83,7 +83,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 							   {lvar=lvar,tyvars=tyvars,Type=Type,bind=passBU f bind}) 
 					              functions,
 					    scope=passBU f scope}
-	      | APP(lamb1, lamb2) => APP(passBU f lamb1, passBU f lamb2)
+	      | APP(lamb1, lamb2, tc) => APP(passBU f lamb1, passBU f lamb2, tc)
 	      | EXCEPTION(excon,tauOpt,lamb) => EXCEPTION(excon,tauOpt, passBU f lamb)
 	      | RAISE(lamb,tl) => RAISE(passBU f lamb,tl)
 	      | HANDLE(lamb1, lamb2) => HANDLE(passBU f lamb1, passBU f lamb2)
@@ -120,7 +120,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | FN{pat,body} => foldTD f new_acc body
 	   | LET{pat,bind,scope} => foldTD f (foldTD f new_acc bind) scope
 	   | FIX{functions,scope} => foldTD f (foldl' (foldTD f) new_acc  (map #bind functions)) scope
-	   | APP(lamb1, lamb2) => foldTD f (foldTD f new_acc lamb1) lamb2
+	   | APP(lamb1, lamb2, _) => foldTD f (foldTD f new_acc lamb1) lamb2
 	   | EXCEPTION(excon,tauOpt,lamb) => foldTD f new_acc lamb
 	   | RAISE(lamb,tl) => foldTD f new_acc lamb
 	   | HANDLE(lamb1, lamb2) => foldTD f (foldTD f new_acc lamb1) lamb2
@@ -162,7 +162,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 								 Type=Type,
 								 bind=f bind}) functions,
 		   scope=f scope}
-	 | APP(e1,e2) => APP(f e1, f e2) 
+	 | APP(e1,e2, tc) => APP(f e1, f e2, tc) 
 	 | EXCEPTION(excon,ty_opt,scope) => EXCEPTION(excon,ty_opt, f scope) 
          | RAISE(e,tl) => RAISE(f e, tl) 
 	 | HANDLE(e1,e2) => HANDLE(f e1, f e2) 	   
@@ -199,7 +199,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	 | FN{pat,body} => f body
          | LET{pat,bind,scope} => (f bind; f scope)
 	 | FIX{functions,scope} => (app (f o #bind) functions; f scope)
-	 | APP(e1,e2) => (f e1; f e2) 
+	 | APP(e1,e2,_) => (f e1; f e2) 
 	 | EXCEPTION(excon,ty_opt,scope) => f scope 
          | RAISE(e,tl) => f e
 	 | HANDLE(e1,e2) => (f e1; f e2) 	   
@@ -394,7 +394,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | FIX{functions,scope} => let val (functions', ren') = on_functions ren on_e functions
 				     in FIX{functions=functions', scope=on_e ren' scope}
 				     end
-	   | APP(e1,e2) => APP(on_e ren e1, on_e ren e2)
+	   | APP(e1,e2,tc) => APP(on_e ren e1, on_e ren e2, tc)
 	   | EXCEPTION(excon, ty_opt, e) => EXCEPTION(excon, case ty_opt of SOME tau => SOME (on_tau ren tau) | NONE => NONE,
 						      on_e ren e)
 	   | RAISE(e,tl) => RAISE(on_e ren e, on_tl ren tl)
@@ -574,7 +574,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 		      end 
 		  in FIX{functions=map on_function functions, scope=f S scope}
 		  end
-		 | APP(lamb1,lamb2) => APP(f S lamb1,f S lamb2)
+		 | APP(lamb1,lamb2,tc) => APP(f S lamb1,f S lamb2,tc)
 		 | EXCEPTION(excon,tau_opt,lamb) =>
 		  EXCEPTION(excon,
 			    case tau_opt 
@@ -766,7 +766,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                                 end) (nil,E) functions
               in FIX{functions=functions,scope=N E' scope}
               end
-	    | APP(e1, e2) => APP(N E e1, N E e2)
+	    | APP(e1, e2, tc) => APP(N E e1, N E e2, tc)
 	    | EXCEPTION(excon,tauOpt,e) => EXCEPTION(excon,tauOpt,N E e)
 	    | RAISE(e,tl) => RAISE(N E e, Ntl E tl)
 	    | HANDLE(e1, e2) => HANDLE(N E e1, N E e2)
@@ -814,5 +814,47 @@ structure LambdaBasics: LAMBDA_BASICS =
           end
 
     end
+
+    (* Annotate tail call on APP constructs *)
+    fun annotate_tail_calls (e: LambdaExp) : LambdaExp =
+        let 
+          fun t tail e =
+              let
+	        fun t_sw tail (SWITCH(arg, sels, opt)) =
+                    SWITCH(t false arg, map (fn (a,e) => (a,t tail e)) sels,
+                           case opt of
+                             SOME e => SOME(t tail e)
+                           | NONE => NONE)
+              in
+	        case e of
+                  VAR _ => e
+                | INTEGER _ => e
+                | WORD _ => e
+                | STRING _ => e
+                | REAL _ => e
+	        | FN{pat,body} => FN{pat=pat,body=t true body} 
+	        | LET{pat,bind,scope} => 
+                  LET{pat=pat,bind=t false bind,scope=t tail scope}
+	        | FIX{functions,scope} => 
+                  let val functions = map (fn {lvar,tyvars,Type,bind} => 
+                                              {lvar=lvar,tyvars=tyvars,Type=Type,
+                                               bind=t false bind}) functions
+                  in FIX{functions=functions,
+                         scope=t tail scope}
+                  end
+	        | APP(e1, e2, _) => APP(t false e1,t false e2,SOME tail)
+	        | EXCEPTION(excon,tauOpt,e) => EXCEPTION(excon,tauOpt,t tail e)
+	        | RAISE(e,tl) => RAISE(t false e, tl)
+	        | HANDLE(e1, e2) => HANDLE(t false e1, t false e2)
+	        | SWITCH_I {switch,precision} => SWITCH_I{switch=t_sw tail switch,precision=precision}
+	        | SWITCH_W {switch,precision} => SWITCH_W{switch=t_sw tail switch,precision=precision}
+	        | SWITCH_S switch => SWITCH_S(t_sw tail switch)
+	        | SWITCH_C switch => SWITCH_C(t_sw tail switch)
+	        | SWITCH_E switch => SWITCH_E(t_sw tail switch)
+	        | PRIM(p,es) => PRIM(p, map (t false) es)
+                | FRAME fr => e
+              end
+        in t false e
+        end
       
   end

@@ -1,4 +1,5 @@
-(**
+(** Operations on arbitrarily large integers.
+
 The optional IntInf structure is one of the possible implementations
 of the INTEGER interface. In addition to the INTEGER operations, it
 provides some operations useful for programming with arbitrarily large

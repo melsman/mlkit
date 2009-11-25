@@ -31,3 +31,40 @@ end
   [b a] returns unit.
 *)
 ---------------
+
+
+TODO:
+
+Generate also a grouped module overview:
+
+  Standard Basis Library
+  ----------------------
+  General
+  Option
+  List
+  ...
+
+  Extended Basis Library
+  ----------------------
+  Pretty
+  Pickle
+  SetFun
+  MapFun
+  Hash
+  HashTable
+  Stack
+  Queue
+  Heap
+  ListSort
+  Random
+  Md5
+  DiGraph
+  Uref
+  Cstring
+  ParseComb
+
+  Tool Library
+  ------------
+  Draw2d
+  Levenstein
+  Html

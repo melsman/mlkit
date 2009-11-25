@@ -773,7 +773,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	  in
 	    type_lexp env_scope scope
 	  end
-	 | APP (lexp1, lexp2) =>
+	 | APP (lexp1, lexp2, _) =>
 	  (case type_lexp env lexp1
 	     of Types [ARROWtype(ts_arg,ts_res)] =>
 	       let val ts = unTypeList "APP" (type_lexp env lexp2)

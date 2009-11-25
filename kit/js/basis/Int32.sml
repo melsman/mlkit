@@ -1,4 +1,5 @@
 
+(** Operations on 32 bit signed integers. *)
 structure Int32 : INTEGER = 
   struct (*Depends on StringCvt and Char*)
 
@@ -134,5 +135,8 @@ structure Int32 : INTEGER =
 
   end (*structure Int32*)
 
+(** Operations on largest fixed-sized signed integers. *)
 structure FixedInt : INTEGER = Int32
+
+(** Operations on largest unboxed signed integers. *)
 structure Int : INTEGER = Int32

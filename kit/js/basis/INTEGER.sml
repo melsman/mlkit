@@ -1,4 +1,5 @@
-(** 
+(** Operations on signed integer values.
+
 Instances of the INTEGER signature provide a type of signed integers
 of either a fixed or arbitrary precision, and arithmetic and
 conversion operations. For fixed precision implementations, most
