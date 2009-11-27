@@ -71,6 +71,7 @@ structure JsAst : JS_AST = struct
       | "+" => true
       | "*" => true
       | "/" => true
+      | "%" => true
       | "," => true (* sequence *)
       | ">>" => true
       | ">>>" => true
@@ -130,10 +131,15 @@ structure JsAst : JS_AST = struct
 
   val end_stmt = $";\n"
 
+  fun pp_varid id = 
+      if CharVector.exists (fn #"." => true | _ => false) id then $id 
+      else $"var " & $id 
+
   fun pp_exp p e =
       case e of
         Prim ("Infinity",[]) => $"Infinity"
       | Prim ("-Infinity",[]) => $"-Infinity"
+      | Prim (",",es) => pp_list ("(",",",")") (pp_exp false) es
       | Prim (n,es) => 
         let fun default() = par p ($n & pp_list ("(",",",")") (pp_exp false) es)
         in case es of
@@ -152,15 +158,16 @@ structure JsAst : JS_AST = struct
       | Prop (e0,id) => pp_exp true e0 & ($".") & ($id) 
       | New (id, es) => par p ($"new " & $id & pp_list ("(",",",")") (pp_exp false) es)
       | Sub (e1, e2) => pp_exp true e1 & ($"[") & pp_exp false e2 & ($"]")
+
   and pp_stmt s = 
       case s of
-        Var (id, NONE) => $"var " & $id & end_stmt
-      | Var (id, SOME e) => $"var " & $id & $" = " & pp_exp false e & end_stmt
+        Var (id, NONE) => pp_varid id & end_stmt
+      | Var (id, SOME e) => pp_varid id & $" = " & pp_exp false e & end_stmt
       | Exp e => pp_exp false e & end_stmt
       | Seq ss => CSeq (List.map pp_stmt ss)
       | Sw (e,cases,defopt) =>
         $"switch (" & pp_exp false e & $") { " &
-        CSeq (List.map (fn (c,s) => $"case " & pp_cnst false c & $": " & pp_block s) cases) &
+        CSeq (List.map (fn (c,s) => $"case " & pp_cnst false c & $": " & pp_bblock s) cases) &
         (case defopt of SOME def => $"default: " & pp_block def | NONE => $"") & 
         $" }" & end_stmt
       | Return e => $"return " & pp_exp false e & end_stmt
@@ -181,6 +188,7 @@ structure JsAst : JS_AST = struct
       | Throw e => $"throw " & pp_exp false e & end_stmt
       | Embed s => $s
   and pp_block s = wrap ("{","}") (pp_stmt s)
+  and pp_bblock s = wrap ("{"," break; }") (pp_stmt s)
 
   fun pr_stmt s = Cs.toString (pp_stmt s)
   fun pr_exp e = Cs.toString (pp_exp false e)

@@ -232,7 +232,7 @@ end
 infix &
 fun x & y = J.Seq[x,y]
 
-fun sToS s : J.exp = J.New("String",J.Cnst(J.Str s))
+fun sToS s : J.exp = J.New("String",[J.Cnst(J.Str s)])
 
 type LambdaPgm = L.LambdaPgm
 type Exp = L.LambdaExp
@@ -254,7 +254,7 @@ fun wrapRet (k:cont) (r:ret) : J.stmt =
       S f => f k
     | E e => wrapExp k e
 
-fun resolveE (arg: J.stmt option * 'a) (f: 'a -> J.Exp) : ret = 
+fun resolveE (arg: J.stmt option * 'a) (f: 'a -> J.exp) : ret = 
     case arg of
       (SOME s,es') => S(fn k => s & wrapExp k (f es'))
     | (NONE,es') => E(f es')
@@ -273,13 +273,13 @@ val jfalse = J.Cnst(J.Bool false)
 val jnull = J.Cnst J.Null
 
 (* Compilation of value constructors *)
-fun ppCon C c : J.exp =
+fun ppCon C c : J.cnst =
     case Env.M.lookup (Context.envOf C) c of
-      SOME(STD i) => jint i
-    | SOME(ENUM i) => jint i
-    | SOME(BOOL true) => jtrue
-    | SOME(BOOL false) => jfalse 
-    | SOME UNBOXED_NULL => jnull
+      SOME(STD i) => J.Int(Int32.fromInt i)
+    | SOME(ENUM i) => J.Int(Int32.fromInt i)
+    | SOME(BOOL true) => J.Bool true
+    | SOME(BOOL false) => J.Bool false
+    | SOME UNBOXED_NULL => J.Null
     | _ => die "ppCon" 
 fun ppConNullary C c : J.exp =
     case Env.M.lookup (Context.envOf C) c of
@@ -323,7 +323,7 @@ fun jorw e w = J.Prim("|",[e,J.Cnst(J.Word w)])
 
 fun wrapWord31 (e: J.exp) : J.exp = jandw e 0wx7FFFFFFF
 
-fun wrapWord32 (js: J.exp) : J.exp = jandw e 0xFFFFFFFF
+fun wrapWord32 (e: J.exp) : J.exp = jandw e 0wxFFFFFFFF
 
 fun callPrim0 n = J.App(J.Id n,[])
 
@@ -529,18 +529,20 @@ fun pToJs name [] = pToJs0 name
 
 (* Compilation of switches *)
       
-fun toJsSw (toj: Exp->ret) (pp:'a->string) (L.SWITCH(e:Exp,bs:('a*Exp)list,eo: Exp option)) : ret =
-    S ( fn k =>
+fun toJsSw (toj: Exp->ret) 
+           (toj1: Exp->J.stmt option * J.exp)
+           (pp:'a->J.cnst) 
+           (L.SWITCH(e:Exp,bs:('a*Exp)list,eo: Exp option)) : ret =
     let
-      val cases = 
+      fun cases k = 
           foldr(fn ((a,e),acc) => (pp a, wrapRet k (toj e)) :: acc) [] bs 
-      val defopt = 
+      fun defopt k : J.stmt option = 
           case eo of 
             SOME e => SOME (wrapRet k (toj e))
           | NONE => NONE
     in
-      resolveS (toj e) (fn e' => J.Sw(e',cases,defopt))
-    end)
+      resolveS (toj1 e) (fn e' => fn k => J.Sw(e',cases k,defopt k))
+    end
 
 fun booleanBranch bs eo =
     case eo of
@@ -584,11 +586,14 @@ fun enumeration C (((c,_),_)::_) =
      | _ => false)
   | enumeration _ _ = false
 
-fun toJsSw_C C (toj: Exp->ret) (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*Exp)list,eo: Exp option)) : ret =
+fun toJsSw_C C 
+             (toj: Exp->ret) 
+             (toj1: Exp-> J.stmt option * J.exp) 
+             (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*Exp)list,eo: Exp option)) : ret =
     let fun compIf condF e1 e2 =
             case (toj e1, toj e2) of
-              (E e1', E e2') => resolveE (toj e) (fn e' => J.IfExp(condF e',e1',e2'))
-            | (r1,r2) => resolveS (toj e) (fn e' => fn k => J.IfStmt(condF e',wrapRet k r1,SOME(wrapRet k r2)))
+              (E e1', E e2') => resolveE (toj1 e) (fn e' => J.IfExp(condF e',e1',e2'))
+            | (r1,r2) => resolveS (toj1 e) (fn e' => fn k => J.IfStmt(condF e',wrapRet k r1,SOME(wrapRet k r2)))
     in
       case booleanBranch bs eo of 
         SOME(e1,e2) => compIf (fn c => c) e1 e2
@@ -599,33 +604,35 @@ fun toJsSw_C C (toj: Exp->ret) (L.SWITCH(e:Exp,bs:((Con.con*Lvars.lvar option)*E
         let
           fun pp (c,lvopt) = ppCon C c
           fun gen unboxed =
-              let fun swF e = if unboxed then e else Sub(e,jcnst0)
+              let fun swF e = if unboxed then e else J.Sub(e,jcnst0)
                   fun defopt k = 
                       case eo of 
                         SOME e => SOME (wrapRet k (toj e))
                       | NONE => NONE
                   fun cases k = foldr(fn ((a,e),acc) => (pp a, wrapRet k (toj e)) :: acc) [] bs                     
-              in resolveS (toj e) (fn e' => fn k => J.Sw(swF e',cases k,defopt k))
+              in resolveS (toj1 e) (fn e' => fn k => J.Sw(swF e',cases k,defopt k))
               end
         in if enumeration C bs then gen true
            else gen false
         end
+    end
 
 fun toJsSw_E (toj: Exp->ret) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)*Exp)list,eo: Exp option)) : ret =
     let 
+      val tmpvar = fresh_tmpvar()
       val s0 = 
           case toj e of
-            E e' => J.Var(J.Id "tmp", SOME e')
-          | S f => J.Var(J.Id "tmp", NONE) & f (IdCont "tmp")
+            E e' => J.Var(tmpvar, SOME e')
+          | S f => J.Var(tmpvar, NONE) & f (IdCont tmpvar)
       fun default k =
           case eo of
             SOME e => wrapRet k (toj e)
           | NONE => die "toJsSw_E.no default"          
       fun cases k =
           List.foldr (fn (((excon,_),e),acc) =>
-                         J.IfStmt(J.Prim("==", [J.Sub(J.Id "tmp",jcnst0), J.Id (exconName excon)]),
+                         J.IfStmt(J.Prim("==", [J.Sub(J.Id tmpvar,jcnst0), J.Id (exconName excon)]),
                                   wrapRet k (toj e),
-                                  NONE) & acc) (default k) bs
+                                  SOME acc)) (default k) bs
     in S (fn k => s0 & cases k)
     end
 
@@ -657,10 +664,10 @@ fun toj C (e:Exp) : ret =
   | L.REAL v => E(J.Cnst(J.Real v))
   | L.PRIM(L.CONprim {con,...},nil) => E(ppConNullary C con)
   | L.PRIM(L.CONprim {con,...},[e]) => 
-    resolveE (toj C e) (ppConUnary C con)
+    resolveE (toj1 C e) (ppConUnary C con)
   | L.PRIM(L.DECONprim {con,...}, [e]) => 
     (case Env.M.lookup (Context.envOf C) con of
-       SOME(STD _) => resolveE (toj C e) (fn e' => J.Sub(e',jcnst1))
+       SOME(STD _) => resolveE (toj1 C e) (fn e' => J.Sub(e',jcnst1))
      | SOME UNBOXED_UNARY => toj C e
      | SOME _ => die ("toj.PRIM(DECON): constructor " ^ Con.pr_con con 
                       ^ " associated with NULLARY constructor info")
@@ -669,27 +676,27 @@ fun toj C (e:Exp) : ret =
   | L.PRIM(L.EXCONprim excon,nil) => (* nullary *)
     E(J.Id(exconExn excon))
   | L.PRIM(L.EXCONprim excon,[e]) => (* unary *)
-    resolveE (toj C e) (fn e' => J.Array [J.Id(exconName excon),e'])
+    resolveE (toj1 C e) (fn e' => J.Array [J.Id(exconName excon),e'])
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
-    resolveE (toj C e) (fn e' => J.Sub(e', jcnst1))
-  | L.PRIM(L.RECORDprim, []) => E(junit)
+    resolveE (toj1 C e) (fn e' => J.Sub(e', jcnst1))
+  | L.PRIM(L.RECORDprim, []) => E junit
   | L.PRIM(L.RECORDprim, es) => resolveE (tojs C es) J.Array
   | L.PRIM(L.UB_RECORDprim, [e]) => toj C e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = " 
                                         ^ Int.toString (List.length es))
   | L.PRIM(L.SELECTprim i,[e]) => 
-    resolveE (toj C e) (fn e' => J.Sub(e',J.Cnst(J.Int(Int32.fromInt i))))
+    resolveE (toj1 C e) (fn e' => J.Sub(e',J.Cnst(J.Int(Int32.fromInt i))))
   | L.PRIM(L.DEREFprim _, [e]) =>
-    resolveE (toj C e) (fn e' => J.Sub(e', jcnst0))
+    resolveE (toj1 C e) (fn e' => J.Sub(e', jcnst0))
   | L.PRIM(L.REFprim _, [e]) =>
-    resolveE (toj C e) (fn e' => J.Array [e'])
+    resolveE (toj1 C e) (fn e' => J.Array [e'])
   | L.PRIM(L.ASSIGNprim _, [e1,e2]) => 
-    resolveE (toj2 C (e1,e2)) 
+    resolveE (toj2 C (e1,e2))
       (fn (e1',e2') => J.Prim(",",[J.Prim("=",[J.Sub(e1',jcnst0),e2']),junit]))
   | L.PRIM(L.DROPprim, [e]) => toj C e
   | L.PRIM(L.DROPprim, _) => die "DROPprim unimplemented"
   | L.PRIM(L.EQUALprim _, [e1,e2]) => 
-    resolveE (toj2 C (e1,e2)) (fn (e1',e2') => J.Prim("==",[e1',e2'])
+    resolveE (toj2 C (e1,e2)) (fn (e1',e2') => J.Prim("==",[e1',e2']))
   | L.FN {pat,body} => 
     let val ids = map (prLvar C o #1) pat
     in E(J.Fun(ids, wrapRet (RetCont NONE) (toj C body)))
@@ -702,9 +709,9 @@ fun toj C (e:Exp) : ret =
                    S f => f NxtCont
                  | E e => J.Exp e
          in s_bind &
-            case toj C scope of
-              S f' => f' k
-            | E e => wrapExp k e
+            (case toj C scope of
+               S f' => f' k
+             | E e => wrapExp k e)
          end)
   | L.LET {pat,bind,scope} => 
     let val lvs = map #1 pat
@@ -716,7 +723,7 @@ fun toj C (e:Exp) : ret =
     (case monoNonRec functions of
        SOME (lv,pat,body) =>
        let val ids = map (prLvar C o #1) pat
-           val f = J.Fun(ids, wrapRet RetCont (toj C body))
+           val f = J.Fun(ids, wrapRet (RetCont NONE) (toj C body))
        in S (fn k => J.Var(prLvar C lv,SOME f) & wrapRet k (toj C scope))
        end
      | NONE =>
@@ -728,29 +735,30 @@ fun toj C (e:Exp) : ret =
          fun fundefs k = 
              foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
                        let val ids = map (prLvar C o #1) pat
-                       in J.Var(pr_fix_lv f_lv, SOME(J.Fun(ids,wrapRet RetCont (toj C' body)))) & acc
+                       in J.Var(pr_fix_lv f_lv, SOME(J.Fun(ids,wrapRet (RetCont NONE) (toj C' body)))) & acc
                        end
                      | _ => die "toJs.malformed FIX") 
                    (js2 k) functions
-       in S(fn k => J.Var(fixvar,J.Id "{}") & fundefs k)
+       in S(fn k => J.Var(fixvar,SOME (J.Id "{}")) & fundefs k)
        end)
   | L.APP(e1,L.PRIM(L.UB_RECORDprim, es),_) => 
     (case tojs C (e1::es) of
        (SOME s, e1' :: es') =>
        S(fn k => s & wrapExp k (J.App(e1',es')))
-     | (NONE, e1' :: es') => E(J.App(e1',es')))
+     | (NONE, e1' :: es') => E(J.App(e1',es'))
+     | _ => die "toj.L.APP: impossible")
   | L.APP(e1,e2,i) => toj C (L.APP(e1,L.PRIM(L.UB_RECORDprim,[e2]),i))
 
-  | L.SWITCH_I {switch,precision} => toJsSw (toj C) mlToJsInt switch
-  | L.SWITCH_W {switch,precision} => toJsSw (toj C) (Word32.fmt StringCvt.DEC) switch
-  | L.SWITCH_S switch => toJsSw (toj C) toJSString switch
-  | L.SWITCH_C switch => toJsSw_C C (toj C) switch
+  | L.SWITCH_I {switch,precision} => toJsSw (toj C) (toj1 C) J.Int switch
+  | L.SWITCH_W {switch,precision} => toJsSw (toj C) (toj1 C) J.Word switch
+  | L.SWITCH_S switch => toJsSw (toj C) (toj1 C) J.Str switch
+  | L.SWITCH_C switch => toJsSw_C C (toj C) (toj1 C) switch
   | L.SWITCH_E switch => toJsSw_E (toj C) switch
 
   (* In EXPORTprim below, we could eta-convert e and add code to check
    * that the type of the argument is compatiple with instance_arg. *)
   | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res},[e]) => 
-    resolveE (toj C e) (fn e' => J.Prim(",",[J.Prim("=",[Id("SMLtoJs." ^ name),e']),junit]))
+    resolveE (toj1 C e) (fn e' => J.Prim(",",[J.Prim("=",[J.Id("SMLtoJs." ^ name),e']),junit]))
   | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res}, _) => 
     die "toj.PRIM(EXPORTprim) should take exactly one argument"
   | L.PRIM(L.CCALLprim {name,...},exps) => 
@@ -758,7 +766,7 @@ fun toj C (e:Exp) : ret =
        "execStmtJS" =>
        (case exps 
          of L.STRING s :: L.STRING argNames :: args =>  (* static code *)
-            resolveE (tojs C args) (fn es' => J.App(J.Fun([J.Id argNames],J.Embed s), es'))
+            resolveE (tojs C args) (fn es' => J.App(J.Fun([argNames],J.Embed s), es'))   (* hack with argNames pretty printing *)
           | s :: argNames :: args => (* dynamic code *)
             resolveE (tojs C (s::argNames::args))
                      (fn (s'::argNames'::es') =>
@@ -768,7 +776,7 @@ fun toj C (e:Exp) : ret =
      | "callJS" => 
        (case exps 
          of L.STRING f :: args =>  (* static code *)
-            resolveE (toj C args) (fn es' => J.App(J.Id f,es'))
+            resolveE (tojs C args) (fn es' => J.App(J.Id f,es'))
           | f :: args => (* dynamic code *)
             let val xs = ((String.concatWith ",") o #2)
                          (foldl (fn (_,(i,acc)) => (i+1,"a" ^ Int.toString i::acc)) (0,nil) args)
@@ -789,23 +797,23 @@ fun toj C (e:Exp) : ret =
   | L.HANDLE (e1,e2) => (* memo: avoid capture of variable e! *)
     let val lv = Lvars.newLvar()
         val id = prLvar C lv
-    in S (fn k => J.Try (wrapExp k (toj C e1), 
+    in S (fn k => J.Try (wrapRet k (toj C e1), 
                          id, 
-                         wrapRet k (resolveE (toj C e2) (fn e2' => J.App(e2',[J.Id id])))))
+                         wrapRet k (resolveE (toj1 C e2) (fn e2' => J.App(e2',[J.Id id])))))
     end
   | L.EXCEPTION (excon,SOME _,scope) => (* unary *)
     let val s = Excon.pr_excon excon  (* for printing *)
     in S (fn k => J.Var(exconName excon, SOME(sToS s)) & 
-                  wrapExp k (toj C scope))
+                  wrapRet k (toj C scope))
     end
   | L.EXCEPTION (excon,NONE,scope) => (* nullary; precompute exn value and store it in exconExn(excon)... *)
     let val s = Excon.pr_excon excon  (* for printing *)
         val exn_id = exconExn excon
     in S (fn k => J.Var(exconName excon, SOME (sToS s)) & 
                   J.Var(exconExn excon, SOME (J.Array[J.Id(exconName excon)])) &
-                  wrapExp k (toj C scope))
+                  wrapRet k (toj C scope))
     end
-  | L.RAISE(e,_) => resolveS (toj C e) (fn e' => fn k => J.Throw e')
+  | L.RAISE (e,_) => resolveS (toj1 C e) (fn e' => fn k => J.Throw e')
 
 and toj_let C (lvs, binds, scope) = 
     let
@@ -820,10 +828,16 @@ and toj_let C (lvs, binds, scope) =
     in loop(lvs,binds)
     end
 
+and toj1 C e =
+    case tojs C [e] of
+      (opt,[e']) => (opt,e')
+    | _ => die "toj1.impossible"
+
 and toj2 C (e1, e2) =
     case tojs C [e1,e2] of
-      (sopt,[e1',e2']) => (sopt,(e1,e2))
+      (sopt,[e1',e2']) => (sopt,(e1',e2'))
     | _ => die "toj2.impossible"
+
 and tojs C es =
     let fun loop [] = (NONE,[])
           | loop (e::es) =
@@ -856,7 +870,8 @@ val toJs = fn (env0, L.PGM(dbss,e)) =>
                 val _ = resetBase()
                 val env' = Env.fromDatbinds dbss
                 val env = Env.plus(env0,env')
-                val js = toj (Context.mk env) e
+                val js = wrapRet (RetCont NONE) (toj (Context.mk env) e)
+                val js = J.Exp(J.App(J.Fun([],js),[]))
                 val js = 
                     case getLocalBase() of
                       SOME b => J.IfStmt(J.Prim("==",[J.App(J.Id"typeof",[J.Id b]),
