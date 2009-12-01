@@ -1,5 +1,11 @@
 SMLtoJs NEWS file
 
+* mael 2009-12-01: It is now possible to compile and run Standard ML
+  programs in a browser. See the README_SMLTOJS file for details.
+
+* mael 2009-12-01: The compiler has been rewritten so as to allow for
+  tail-call optimization. The generated code is now much faster...
+
 * mael 2008-10-25: Certain datatype constructors are now represented
   unboxed. This unboxing includes lists and enumerations.
 

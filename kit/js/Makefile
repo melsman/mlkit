@@ -21,10 +21,20 @@ smltojs.man.html: Makefile
 	man2html -r ../man/man1/smltojs.1 > smltojs.man.html
 #	rman -f HTML -r '' ../man/man1/smltojs.1 > smltojs.man.html
 
+BASISFILES=Initial General Option List ListPair \
+ Vector VectorSlice Array ArraySlice Array2 ByteTable ByteSlice \
+ StringCvt String2 Substring Text Bool IntInfRep \
+ Word32 Word8 Word31 Pack32Little Pack32Big Byte \
+ Int32 Int31 Math Real IntInf \
+ Time Random Path Date Timer TextIO \
+ JsCore Js
+
+THEBASISFILES = $(BASISFILES:%=js/basis/MLB/Js/%.sml.o.eb.js)
+
 smltojs_web: Makefile
-	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -js_path_compress -js_path_prefix "src/Compiler" smltojs0.mlb)
+	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -aopt -js_path_compress -js_path_prefix "src/Compiler" smltojs0.mlb)
 	(cd ..; cp src/Compiler/run.html .)
-	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < run.html | grep '\.js'` run.html)
+	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < run.html | grep '\.js'` run.html $(THEBASISFILES))
 
 clean:
 	$(MAKE) -C test clean

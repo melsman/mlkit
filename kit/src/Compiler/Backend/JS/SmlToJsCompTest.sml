@@ -74,40 +74,43 @@ structure SmlToJsCompTest = struct
          res
       end
 
-  val basislibs = ["Initial","General","Option","LIST"]
+  val basislibs = ["Initial","General","Option", "List", "ListPair",
+                   "Vector", "VectorSlice", "Array", "ArraySlice", "Array2", "ByteTable", "ByteSlice", 
+                   "StringCvt", "String2", "Substring", "Text", "Bool", "IntInfRep", 
+                   "Word32", "Word8", "Word31", "Pack32Little", "Pack32Big", "Byte",                   
+                   "Int32", "Int31",
+                   "Math", "Real",
+                   "IntInf",
+                   "Time", "Random", "Path", "Date", "Timer", "TextIO",
+                   "JsCore", "Js"
+                  ]
   val envRef : Env.t option ref = ref NONE
 
   fun exnMsg (e:exn) : string = prim("execStmtJS", ("return e.toString()","e",e))
 
-  fun expensive() =
-      let
-        fun myloop (n,a) = if n < 0 then a
-                           else myloop(n-1,a+2)
-        val res = myloop(20000,0)
-      in "Expensive: " ^ Int.toString res ^ "\n"
-      end handle e => (exnMsg e ^ "\n")
+  infix ++
+  fun e ++ e' = Env.plus (e,e')
+  fun load_env n =
+      let val () = out "."
+        val eb_s = JsCore.exec0{stmt="return " ^ n ^ "_sml_eb;",res=JsCore.string}()
+      (* val () = out ("Unpickling " ^ n ^ "\n") *)
+      in #1(Pickle.unpickler Env.pu (Pickle.fromString eb_s))
+      end handle ? => (out ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?)
 
   fun exec() =
       let
-        infix ++
-        fun e ++ e' = Env.plus (e,e')
-        fun load_env n =
-            let val () = print ("Loading " ^ n ^ "\n")
-                val eb_s = JsCore.exec0{stmt="return " ^ n ^ "_sml_eb;",res=JsCore.string}()
-                val () = print ("Unpickling " ^ n ^ "\n")
-            in #1(Pickle.unpickler Env.pu (Pickle.fromString eb_s))
-            end handle ? => (print ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?) 
         fun load_env_all() =
             case !envRef of
               SOME e => e
-            | NONE =>
-              let val e = foldl (fn (n,a) => a ++ load_env n) Env.initial basislibs
+            | NONE => raise Fail "impossible: load_env_all"
+(*
+              let val e = foldl (fn (n,a) => a ++ load_env n) (Env.initial()) basislibs
               in envRef := SOME e
                ; e
               end
+*)
         fun exec0 s =
-            let val () = print (expensive())
-                val e = load_env_all()
+            let val e = load_env_all()
                 val (e',mc) = compile (e,s)
             in execute mc 
                handle ? => print ("Uncaught exception " ^ General.exnName ? ^ "\n") 
@@ -117,12 +120,22 @@ structure SmlToJsCompTest = struct
       in out res
       end
 
-  val () = Js.installEventHandler (getElem id_execbutton) Js.onclick (fn () => (exec(); false))
+  fun load_envs e nil = (envRef := SOME e; out " Done]\n")
+    | load_envs e (n::ns) = 
+      (Js.setTimeout 0 (fn () => load_envs (e ++ load_env n) ns); 
+       ())
 
+(*  val path = "" *)
+  val path = "./../../"
 
   fun load n =
-      print (tag "script" ["type='text/javascript'", "src='./../../js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js'"] "")
+      print (tag "script" ["type='text/javascript'", "src='" ^ path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js'"] "")
 
   val () = List.app load basislibs
+
+  val () = out "[Loading Basis Library "
+  val _ = Js.setTimeout 100 (fn () => load_envs (Env.initial()) basislibs)
+
+  val () = Js.installEventHandler (getElem id_execbutton) Js.onclick (fn () => (exec(); false))
 
 end

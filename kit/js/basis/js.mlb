@@ -1,5 +1,7 @@
 local $SML_LIB/basis/basis.mlb
-in JsCore.sml
+in JS_CORE.sml
+   JsCore.sml
+   JS.sml
    Js.sml
    local xmlrpc.mlb
    in XMLrpcClient.sml

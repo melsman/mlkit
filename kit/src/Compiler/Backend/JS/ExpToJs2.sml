@@ -3,7 +3,7 @@ structure ExpToJs : EXP_TO_JS = struct
 structure L = LambdaExp
 structure J = JsAst
 
-fun die s = (print (s ^"\n");raise Fail s)
+fun die s = (print (s ^ "\n"); raise Fail s)
 
 type LambdaPgm = L.LambdaPgm
 type Exp = L.LambdaExp
@@ -227,6 +227,7 @@ in
       prLvar Context.empty (Lvars.new_named_lvar "fix")
   fun fresh_tmpvar() =
       prLvar Context.empty (Lvars.new_named_lvar "t")
+  fun pr_label lv = "lab$" ^ pr_lv lv
 end
 
 infix &
@@ -237,7 +238,7 @@ fun sToS s : J.exp = J.New("String",[J.Cnst(J.Str s)])
 type LambdaPgm = L.LambdaPgm
 type Exp = L.LambdaExp
 
-datatype cont = RetCont of (lvar*lvar list) option 
+datatype cont = RetCont of (lvar*J.id list) option   (* lvar is the fix-bound variable and ids are the function parameters *)
               | IdCont of J.id 
               | NxtCont
 
@@ -281,6 +282,7 @@ fun ppCon C c : J.cnst =
     | SOME(BOOL false) => J.Bool false
     | SOME UNBOXED_NULL => J.Null
     | _ => die "ppCon" 
+
 fun ppConNullary C c : J.exp =
     case Env.M.lookup (Context.envOf C) c of
       SOME(STD i) => J.Array[jint i]
@@ -290,6 +292,7 @@ fun ppConNullary C c : J.exp =
     | SOME UNBOXED_NULL => jnull
     | SOME UNBOXED_UNARY => die "ppConNullary: UNBOXED_UNARY applied to argument" 
     | NONE => die ("ppConNullary: constructor " ^ Con.pr_con c ^ " not in context")
+
 fun ppConUnary C c e : J.exp =
     case Env.M.lookup (Context.envOf C) c of
       SOME(STD i) => J.Array[jint i,e]
@@ -299,11 +302,9 @@ fun ppConUnary C c e : J.exp =
     | SOME UNBOXED_UNARY => e
     | NONE => die ("ppConUnary: constructor " ^ Con.pr_con c ^ " not in context")
 
-
 (* Compilation of primitives *)
 
 (* 
-
 Arithmetic int32 operations check explicitly for overflow and throw
 the Overflow exception in this case. Arithmetic word32 operations
 truncate the result to make it fit into 32 bits.
@@ -316,7 +317,8 @@ int32 operations, as long as we check for overflow after the operation
 
 word31 values are represented as 31 bits, which means that bit
 operations (&, |) may be implemented using word32 operations, but
-arithmentic operations must consider signs explicitly. *)
+arithmentic operations must consider signs explicitly. 
+*)
 
 fun jandw e w = J.Prim("&",[e,J.Cnst(J.Word w)])
 fun jorw e w = J.Prim("|",[e,J.Cnst(J.Word w)])
@@ -638,20 +640,45 @@ fun toJsSw_E (toj: Exp->ret) (L.SWITCH(e:Exp,bs:((Excon.excon*Lvars.lvar option)
 
 (* Some utility functions *)
 
-fun lvarInExp lv e =
-    let exception FOUND
-        fun f (L.VAR{lvar,...}) =
-            if Lvars.eq(lv,lvar) then raise FOUND
-            else ()
-          | f e = LambdaBasics.app_lamb f e
-    in (f e; false) 
-       handle FOUND => true
-    end
+local 
+  exception FOUND 
+in
+  fun lvarInExp lv e =
+      let fun f (L.VAR{lvar,...}) =
+              if Lvars.eq(lv,lvar) then raise FOUND
+              else ()
+            | f e = LambdaBasics.app_lamb f e
+      in (f e; false) handle FOUND => true
+      end
+      
+  fun tailCalls lvar e =
+      let fun f (L.APP(_,_,SOME true)) = raise FOUND
+            | f e = LambdaBasics.app_lamb f e
+      in (f e; false) handle FOUND => true
+      end
+
+  fun noFns e =
+      let fun f (L.FN _) = raise FOUND
+            | f e = LambdaBasics.app_lamb f e
+      in (f e; true) handle FOUND => false
+      end
+end
+
+
+(* Monomorphic non recursive functions are compiled into simple 
+ * function expressions. *)
 
 fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_}] =
     if lvarInExp lvar body then NONE
     else SOME(lvar,pat,body)
   | monoNonRec _ = NONE
+
+fun reassignIds (ids:J.id list) (es:J.exp list) : J.stmt =
+    let val ids_exps_newids : (J.id * J.exp * J.id) list = 
+            ListPair.mapEq (fn (id,e) => (id, e, fresh_tmpvar())) (ids, es)
+    in J.Seq(map (fn (_,e,id') => J.Var(id',SOME e)) ids_exps_newids) &
+       J.Seq(map (fn (id,_,id') => J.Var(id,SOME (J.Id id'))) ids_exps_newids)
+    end
 
 (* Main compilation function *)
     
@@ -727,20 +754,47 @@ fun toj C (e:Exp) : ret =
        in S (fn k => J.Var(prLvar C lv,SOME f) & wrapRet k (toj C scope))
        end
      | NONE =>
-       let 
-         val fixvar = fresh_fixvar()
-         fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
-         val C' = foldl(fn(lvar,C) => Context.add C (lvar,fixvar)) C (map #lvar functions)
-         fun js2 k = foldl(fn(lv,js) => J.Var(prLvar C lv, SOME(J.Id (pr_fix_lv lv))) & js) (wrapRet k (toj C scope)) (map #lvar functions)
-         fun fundefs k = 
-             foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
-                       let val ids = map (prLvar C o #1) pat
-                       in J.Var(pr_fix_lv f_lv, SOME(J.Fun(ids,wrapRet (RetCont NONE) (toj C' body)))) & acc
-                       end
-                     | _ => die "toJs.malformed FIX") 
-                   (js2 k) functions
-       in S(fn k => J.Var(fixvar,SOME (J.Id "{}")) & fundefs k)
-       end)
+       case functions of
+         [{lvar,bind=L.FN{pat,body},...}] =>
+         if tailCalls lvar body andalso noFns body then
+           let 
+             val fid = prLvar C lvar
+             val ids = map (prLvar C o #1) pat
+             val fixvar = fresh_fixvar()
+             fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
+             val C' = Context.add C (lvar,fixvar)                 
+             val funbody = J.While(SOME (pr_label lvar), jtrue,   (* label must be the same as the one for the continue statement... *)
+                                   wrapRet (RetCont(SOME(lvar,ids))) 
+                                           (toj C' body))
+           in S(fn k =>
+                   ( (* print ("fix with tailcalls: " ^ prLvar C lvar ^ "\n"); *)
+                   J.Var(fixvar,SOME (J.Id "{}")) &
+                   J.Var(pr_fix_lv lvar, SOME(J.Fun(ids,funbody))) & 
+                   J.Var(fid, SOME(J.Id (pr_fix_lv lvar))) & 
+                   wrapRet k (toj C scope)))
+           end
+         else toj_fix C functions scope
+       | _ => toj_fix C functions scope)
+  | L.APP(e1 as L.VAR{lvar,...},L.PRIM(L.UB_RECORDprim, es),SOME true) => (* tail call *)
+    (S (fn k =>
+           let fun notail() =
+                   case tojs C (e1::es) of
+                     (SOME s, e1' :: es') =>
+                     s & wrapExp k (J.App(e1',es'))
+                   | (NONE, e1' :: es') => wrapExp k (J.App(e1',es'))
+                   | _ => die "toj.L.APP.tail: impossible"
+           in case k of
+                RetCont(SOME(lv,ids)) => (* lv should be equal to lvar and ids are the formally bound variables *)                   
+                if not (Lvars.eq(lv,lvar)) then notail()
+                else 
+                  ( (* print (" tail call: " ^ prLvar C lvar ^ "\n"); *)
+                   wrapRet NxtCont 
+                          (resolveS (tojs C es) 
+                                    (fn es' => fn _ => 
+                                                  reassignIds ids es' & J.Continue (pr_label lvar))))
+              | k => notail()
+           end
+    ))
   | L.APP(e1,L.PRIM(L.UB_RECORDprim, es),_) => 
     (case tojs C (e1::es) of
        (SOME s, e1' :: es') =>
@@ -862,25 +916,42 @@ and tojs C es =
     in loop es
     end
 
-val toJs = fn (env0, L.PGM(dbss,e)) => 
-              let 
-                val (lvars,excons) = LambdaBasics.exports e
-                val _ = setFrameLvars lvars
-                val _ = setFrameExcons excons
-                val _ = resetBase()
-                val env' = Env.fromDatbinds dbss
-                val env = Env.plus(env0,env')
-                val js = wrapRet (RetCont NONE) (toj (Context.mk env) e)
-                val js = J.Exp(J.App(J.Fun([],js),[]))
-                val js = 
-                    case getLocalBase() of
-                      SOME b => J.IfStmt(J.Prim("==",[J.App(J.Id"typeof",[J.Id b]),
-                                                      J.Cnst (J.Str "undefined")]),
-                                         J.Exp(J.Prim("=",[J.Id b, J.Id "{}"])),
-                                         NONE) & js
-                    | NONE => js
-              in (js, env')
-              end
+and toj_fix C functions scope =
+    let 
+      val fixvar = fresh_fixvar()
+      fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
+      val C' = foldl(fn(lvar,C) => Context.add C (lvar,fixvar)) C (map #lvar functions)
+      fun js2 k = foldl(fn(lv,js) => J.Var(prLvar C lv, SOME(J.Id (pr_fix_lv lv))) & js) (wrapRet k (toj C scope)) (map #lvar functions)
+      fun fundefs k = 
+          foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
+                    let val ids = map (prLvar C o #1) pat
+                    in J.Var(pr_fix_lv f_lv, SOME(J.Fun(ids,wrapRet (RetCont NONE) (toj C' body)))) & acc
+                    end
+                  | _ => die "toj_fix.malformed FIX") 
+                (js2 k) functions
+    in S(fn k => J.Var(fixvar,SOME (J.Id "{}")) & fundefs k)
+    end
+
+fun toJs (env0, L.PGM(dbss,e)) =
+    let 
+      val e = LambdaBasics.annotate_tail_calls e
+      val (lvars,excons) = LambdaBasics.exports e
+      val _ = setFrameLvars lvars
+      val _ = setFrameExcons excons
+      val _ = resetBase()
+      val env' = Env.fromDatbinds dbss
+      val env = Env.plus(env0,env')
+      val js = wrapRet (RetCont NONE) (toj (Context.mk env) e)
+      val js = J.Exp(J.App(J.Fun([],js),[]))
+      val js = 
+          case getLocalBase() of
+            SOME b => J.IfStmt(J.Prim("==",[J.App(J.Id"typeof",[J.Id b]),
+                                            J.Cnst (J.Str "undefined")]),
+                               J.Exp(J.Prim("=",[J.Id b, J.Id "{}"])),
+                               NONE) & js
+          | NONE => js
+    in (js, env')
+    end
 
 type Js = J.stmt
 

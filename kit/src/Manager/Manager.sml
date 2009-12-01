@@ -574,7 +574,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         in (vids,tycons,strids)
         end
                 
-    fun compute_acual_deps 
+    fun compute_actual_deps 
         (eb0:ElabBasis)
         (elabBasesInfo:{ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list)
         {funids,sigids,longstrids,longtycons,longvids} =
@@ -648,7 +648,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = chat "[finding free identifiers end...]"
 
                 val _ = chat "[computing actual dependencies begin...]"
-                val ebfiles_actual = compute_acual_deps 
+                val ebfiles_actual = compute_actual_deps 
                     (#2 initialBasis0) elabBasesInfo freelongids
                 val ebfiles_actual = map (fn x => x ^ "1") ebfiles_actual
                 val _ = chat "[computing actual dependencies end...]"
@@ -688,25 +688,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val B' = Basis.mk(infB',elabB',opaq_env',intB')
 
                 (* Construct export bases *)
+                val _ = 
+                    if print_export_bases() then
+                      (  print ("[Export basis for " ^ smlfile ^ " before closure:]\n")
+                       ; pr_st (MO.Basis.layout B')
+                       ; print "\n")
+                    else ()
+                         
+                val B'Closed = Basis.closure (B_im,B')
+
+                val _ = 
+                    if print_closed_export_bases() then
+                      (  print ("[Closed export basis for " ^ smlfile ^ ":]\n")
+                       ; pr_st (MO.Basis.layout B'Closed)
+                       ; print "\n")
+                    else ()
+
                 val (NB0',NB1') =
-                    let 
-                        val _ = 
-                            if print_export_bases() then
-                                (  print ("[Export basis for " ^ smlfile ^ " before closure:]\n")
-                                 ; pr_st (MO.Basis.layout B')
-                                 ; print "\n")
-                            else ()
-                                
-                        val B'Closed = Basis.closure (B_im,B')
-
-                        val _ = 
-                            if print_closed_export_bases() then
-                                (  print ("[Closed export basis for " ^ smlfile ^ ":]\n")
-                                 ; pr_st (MO.Basis.layout B'Closed)
-                                 ; print "\n")
-                            else ()
-
-                        val (b1,b2,b3,b4) = Basis.un B'Closed
+                    let val (b1,b2,b3,b4) = Basis.un B'Closed
                     in ((names_elab,(b1,b2)),
                         (names_int, (b3,b4)))
                     end
@@ -720,7 +719,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
                 (* Maybe write smlfile.eb.js to disk with export basis binding 
                  * for JavaScript loading *)
-                val () = if export_basis_js() then writeBasisJs smlfile B'
+                val () = if export_basis_js() then writeBasisJs smlfile B'Closed
                          else ()
 
               in print_result_report report;
