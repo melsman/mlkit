@@ -307,7 +307,11 @@ structure Pickle :> PICKLE = (* was : *)
 	
     val word = wordGen "word" (fn x => x, fn x => x)
     val word32 = word32Gen "word32" (fn x => x, fn x => x)
-    val int = wordGen "int" (Word.fromInt, Word.toIntX)
+(*    val int = wordGen "int" (Word.fromInt, Word.toIntX) *)
+
+    (* allow for serialization with Int=Int31 to be deserialized with Int=Int32! *)
+
+    val int = word32Gen "int" (Word32.fromInt, Int.fromLarge o Word32.toLargeIntX)
     val int32 = word32Gen "int32" (Word32.fromLargeInt o Int32.toLarge, 
 				   Int32.fromLarge o Word32.toLargeIntX)
 	

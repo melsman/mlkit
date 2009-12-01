@@ -51,6 +51,7 @@ structure TyName :> TYNAME =
 	      
 	  val pu = Pickle.int
 	  val pu_rankrefOne = Pickle.refOneGen pu
+          val pp = Int.toString
 	end
       end
 			  

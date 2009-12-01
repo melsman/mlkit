@@ -1,7 +1,7 @@
 signature ENV = sig
   type t
   val empty  : t
-  val initial : t
+  val initial : unit -> t
   val plus : t * t -> t
   val pp : bool -> t -> string   (* bool specifies whether values are printed *)
   val pu : t Pickle.pu
@@ -36,7 +36,7 @@ structure SmlToJsComp : SMLTOJS_COMP = struct
   structure Env : ENV = struct
     type t = MO.Basis
     val empty = Basis.empty
-    val initial = Basis.initial()
+    val initial = Basis.initial
     val plus = Basis.plus
     fun pp _ b = PrettyPrint.flatten(PrettyPrint.format(100,Basis.layout b))
     val pu = Basis.pu

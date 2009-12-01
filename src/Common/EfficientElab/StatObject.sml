@@ -5,7 +5,7 @@ structure StatObject: STATOBJECT =
     structure ExplicitTyVar = SyntaxTyVar
     structure EdList = Edlib.List
 
-    val print_type_levels = ref false     (* for debugging *)
+    val print_type_levels = ref true     (* for debugging *)
 
     fun die s = Crash.impossible ("StatObject." ^ s)
     fun noSome NONE s = die s
@@ -347,7 +347,7 @@ structure StatObject: STATOBJECT =
 
       val ordA = ord #"a"
       fun pretty_string names pr_ty
-	(ref (NO_TY_LINK {equality, overloaded, id, ...})) =
+	(ref (NO_TY_LINK {equality, overloaded, id, rank, ...})) =
 	    let val boring = "U" ^ Int.toString id
 	    in
 		(if is_overloaded0 overloaded then "OVERLOADED" else "")
@@ -365,13 +365,14 @@ structure StatObject: STATOBJECT =
 			    L := L' @ [{tv=id, letter=len}] ;
 			    str(chr(ordA + len))
 			  end)
+              ^ "[" ^ TyName.Rank.pp (!rank) ^ "]"
 		 | NONAMES => boring)
 	    end
 	| pretty_string a pr_ty (ref (TY_LINK ty)) =
 	    let val ty = findType ty
 	    in case #TypeDesc ty 
-		 of TYVAR tv => pretty_string a pr_ty tv
-		  | _ => pr_ty ty
+		 of TYVAR tv => pretty_string a pr_ty tv ^ "{" ^ Int.toString(!(#level ty)) ^ "}"
+		  | _ => pr_ty ty ^ "{" ^ Int.toString(!(#level ty)) ^ "}"
 	    end
 
       fun string' pr_ty tv = pretty_string NONAMES pr_ty tv
