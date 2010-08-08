@@ -129,7 +129,7 @@ local
   fun gun() = mkgen         
        [(2,20),(3,19),(3,21),(4,18),(4,22),(4,23),(4,32),(5,7),(5,8),(5,18),
         (5,22),(5,23),(5,29),(5,30),(5,31),(5,32),(5,36),(6,7),(6,8),(6,18),
-        (6,22),(6,23),(6,28),(6,29),(6,30),(6,31),(6,36),(7,19),(7,21),(7,28),
+        (6,22),(6,23),(6,26),(6,29),(6,30),(6,31),(6,36),(7,19),(7,21),(7,28),
         (7,31),(7,40),(7,41),(8,20),(8,28),(8,29),(8,30),(8,31),(8,40),(8,41),
         (9,29),(9,30),(9,31),(9,32)]
   
@@ -157,7 +157,7 @@ local
           fun run (s : 's) : unit =
             if p(s) then 
               let val _ = r := SOME s
-              in updStatus 500 "waiting"
+              in updStatus 0 "waiting"
                            (fn () => updStatus 0 "computing"
                                                (fn () => run (f(valOf (!r)))))
               end
@@ -182,6 +182,6 @@ local
   val _ = print ("<html><body><h2>Game of Life</h2><div id='board'></div>" ^
                  "<h4>Status: <span id='status'>starting</span></h4></body></html>")
 in
-  val _ = runit (0,gun()) 8
+  val _ = runit (0,gun()) 200
 end
  

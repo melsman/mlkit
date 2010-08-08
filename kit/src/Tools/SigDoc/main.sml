@@ -198,6 +198,9 @@ fun getc (s,p) =
       SOME(String.sub(s,p),(s,p+1))
     else NONE
 
+fun pr_error_pos (s,p) = 
+    "Error at position " ^ Int.toString p ^ ": " ^ String.extract(s,p,NONE) 
+
 fun read_chars (f:char->bool) (is:stream) (C:string -> t) =
     let fun read is a =
             case getc is of
@@ -221,7 +224,7 @@ fun read_id is =
     end
 
 fun read_symb is =
-    let val symbolChars = "@$/*-+<>!#%?^~:|="
+    let val symbolChars = "@$/*-+<>!#%?^~:|=&"
         fun isSymbolChar c = CharVector.exists (fn c' => c=c') symbolChars
     in read_chars isSymbolChar is ID
     end
@@ -287,7 +290,7 @@ fun lex s =
               SOME(t,is) => read is (t::a)
             | NONE => 
               if eos is then rev a
-              else raise Fail "Error reading string"
+              else raise Fail ("Error reading string: " ^ pr_error_pos is)
     in read (s,0) nil
     end
 

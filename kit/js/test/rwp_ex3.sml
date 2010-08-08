@@ -1,6 +1,6 @@
 
 local
-open RWP
+open Rwp
 infix *** &&& >>>
 
 val _ = print ("<html></head></head><body id='top'><h1 align=center>RWP Example: Sheeps in a Box</h1>" ^

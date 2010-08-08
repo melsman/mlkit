@@ -97,8 +97,9 @@ mlkit_libs:
 
 smltojs_basislibs:
 	(cd js/basis && find -name MLB -type d | xargs rm -rf)
-	(cd js/basis && SML_LIB=.. ../../bin/smltojs -c basis.mlb)
-	(cd js/basis && SML_LIB=.. ../../bin/smltojs -c js.mlb)
+	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c basis.mlb)
+	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c js.mlb)
+	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c rwp.mlb)
 
 install_smltojs_basislibs:
 	$(MKDIR) $(LIBDIR)/basis
