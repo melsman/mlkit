@@ -1,7 +1,8 @@
-structure JsSecret :> sig 
-  include JS 
-  val fromDoc : doc -> foreignptr 
-end =
+structure JsSecret :> 
+  sig 
+    include JS 
+    val fromDoc : doc -> foreignptr 
+  end =
 struct
 
 structure J = JsCore
@@ -14,33 +15,35 @@ type elem = foreignptr
 
 val document = J.exec0 {stmt="return document;", res=J.fptr} ()
 
+fun openWindow () = J.exec0 {stmt="return window.open();", res=J.fptr} ()
+
 fun getElementById (d:doc) (id:string) : elem option =
     J.exec2 {stmt="return SmlPrims.option(d.getElementById(id));",
              arg1=("d",J.fptr),
              arg2=("id",J.string),
              res=J.option J.fptr} (d,id)
 
-fun parent(e:elem) : elem option =
+fun parent (e:elem) : elem option =
     J.exec1 {stmt="return SmlPrims.option(e.parentNode);",
              arg1=("e",J.fptr),
              res=J.option J.fptr} e
 
-fun firstChild(e:elem) : elem option =
+fun firstChild (e:elem) : elem option =
     J.exec1 {stmt="return SmlPrims.option(e.firstChild);",
              arg1=("e",J.fptr),
              res=J.option J.fptr} e
 
-fun lastChild(e:elem) : elem option =
+fun lastChild (e:elem) : elem option =
     J.exec1 {stmt="return SmlPrims.option(e.lastChild);",
              arg1=("e",J.fptr),
              res=J.option J.fptr} e
 
-fun nextSibling(e:elem) : elem option =
+fun nextSibling (e:elem) : elem option =
     J.exec1 {stmt="return SmlPrims.option(e.nextSibling);",
              arg1=("e",J.fptr),
              res=J.option J.fptr} e
 
-fun previousSibling(e:elem) : elem option =
+fun previousSibling (e:elem) : elem option =
     J.exec1 {stmt="return SmlPrims.option(e.previousSibling);",
              arg1=("e",J.fptr),
              res=J.option J.fptr} e
@@ -73,11 +76,26 @@ fun installEventHandler (e: elem) (et: eventType) (f: unit -> bool) : unit =
 fun getEventHandler (e: elem) (et: eventType) : (unit -> bool) option =
     NONE
 
+val IE = J.exec0 {stmt="return document.all?true:false;",
+                  res=J.bool} ()
 
-fun onMouseMove (d: doc) (f : int*int->unit) : unit =
-    J.exec2 {stmt="return d.onmousemove = function(ev) { f([ev.pageX,ev.pageY]); };",
-             arg1=("d",J.fptr), arg2=("f",J.===>(J.int,J.int,J.unit)), res=J.unit} (d,f)
+fun posF (f:int*int -> 'a) : int*int -> 'a =
+    let fun pos a = if a < 0 then 0 else a
+    in fn (x,y) => f (pos x, pos y)
+    end
+
+fun onMouseMoveIE (d:doc) (f : int*int->unit) : unit =
+    J.exec2 {stmt="return d.onmousemove = function(e) { f([event.clientX + d.body.scrollLeft,event.clientY + d.body.scrollTop]); };",
+             arg1=("d",J.fptr), arg2=("f",J.===>(J.int,J.int,J.unit)), res=J.unit} (d,posF f)
     
+
+fun onMouseMoveNIE (d:doc) (f : int*int->unit) : unit =
+    J.exec2 {stmt="return d.onmousemove = function(e) { f([e.pageX,e.pageY]); };",
+             arg1=("d",J.fptr), arg2=("f",J.===>(J.int,J.int,J.unit)), res=J.unit} (d,posF f)
+
+val onMouseMove =
+    if IE then onMouseMoveIE
+    else onMouseMoveNIE
 
 type intervalId = foreignptr
 fun setInterval (i: int) (f: unit -> unit) : intervalId =
@@ -166,10 +184,10 @@ fun setStyle (e: elem) (s:string,v:string) : unit =
 structure XMLHttpRequest =
   struct
       type req = foreignptr
-      fun new() : req =
+      fun new () : req =
           J.call0 ("SmlPrims.newRequest", J.fptr)
 
-      fun openn(r:req) {method: string, url: string, async: bool} : unit =
+      fun openn (r:req) {method: string, url: string, async: bool} : unit =
           J.exec4 {stmt="return r.open(m,u,a);",
                    arg1=("r",J.fptr),arg2=("m",J.string),arg3=("u",J.string),
                    arg4=("a",J.bool),res=J.unit} (r,method,url,async)
@@ -211,7 +229,7 @@ structure XMLHttpRequest =
                    res=J.unit} r
   end
 
-fun random() : real =
+fun random () : real =
     J.exec0 {stmt="return Math.random();",
              res=J.real} ()
 end

@@ -29,28 +29,25 @@ structure SmlToJsCompTest = struct
   fun qq s = "'" ^ s ^ "'"
   val init = 
       String.concatWith "\n"
-      [
-(*       "infix ^",
-       "fun (s : string) ^ (s' : string) : string = prim (\"concatStringML\", (s, s'))",
-*)
-       "val a = \"hello \" ^ \"world\"",
-(*       "fun print (s:string) : unit = prim(\"printStringML\", s)", *)
-       "val () = print a"]
+      ["fun loop (n,acc) : IntInf.int =",
+       "  if n = 0 then acc",
+       "  else loop(n-1,n*acc)",
+       "",
+       "fun fac n =", 
+       "  print (\"fac(\" ^ IntInf.toString n ^ \") = \" ^", 
+       "         IntInf.toString (loop(n,1)) ^ \"\\n\")",
+       "",
+       "val () = List.app fac [10,20,30,40]"
+      ]
+
   val id_smlarea = "smlarea"
-  val smlarea = tag "textarea" ["id=" ^ qq(id_smlarea),"cols='100'", "rows='25'"] init 
+  val smlarea = tag "textarea" ["id=" ^ qq(id_smlarea),"cols='75'", "rows='40'"] init 
 
   val id_outarea = "outarea"
-  val outarea = tag "textarea" ["id=" ^ qq(id_outarea),"cols='100'", "rows='25'"] ""
+  val outarea = tag "textarea" ["id=" ^ qq(id_outarea),"cols='75'", "rows='40'"] ""
 
   val id_execbutton = "execbutton"
-  val execbutton = tag "input" ["type='button'", "id=" ^ qq(id_execbutton),"value='Execute'"] ""
-
-  val () = print (tag "h1" [] "SmlToJs Prompt")
-  val () = print (tag "h4" [] "Type in some Standard ML code")
-  val () = print smlarea
-  val () = print outarea
-  val () = print "<br/>"
-  val () = print execbutton
+  val execbutton = tag "input" ["type='button'", "id=" ^ qq(id_execbutton),"value='Compile and Run'"] ""
 
   fun getElem id =
       case Js.getElementById Js.document id of
@@ -125,17 +122,60 @@ structure SmlToJsCompTest = struct
       (Js.setTimeout 0 (fn () => load_envs (e ++ load_env n) ns); 
        ())
 
-(*  val path = "" *)
-  val path = "./../../"
+  val path = ""
+
+(*  val path = "./../../" *)
 
   fun load n =
       print (tag "script" ["type='text/javascript'", "src='" ^ path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js'"] "")
 
+  val smltojs_logo_path = "js/smltojs_logo_color160.png"
+
   val () = List.app load basislibs
 
-  val () = out "[Loading Basis Library "
-  val _ = Js.setTimeout 100 (fn () => load_envs (Env.initial()) basislibs)
+  val () = print "<html>"
+  val () = print "<body>"
+  val () = print "<table>"
+  val () = print "<tr><th align='left'><h2>SMLtoJs Prompt</h2></th><td>&nbsp;<td></tr>"
+  val () = print "<tr><td align='left'><i>Compile and Run your Standard ML programs in a Browser!</i></td><td align='right'><i>Works on Google Chrome and Firefox 3.5.5</i></td></tr>"
+  val () = print "<tr>"           
+  val () = print (tag "td" ["align='left'"] ("[" ^ (tag "a" ["href='js/doc/str_idx.html'","target='_blank'"] "Structure Index") ^ " | " ^ 
+                               (tag "a" ["href='js/doc/sig_idx.html'","target='_blank'"] "Signature Index") ^ " | " ^ 
+                               (tag "a" ["href='js/doc/id_idx.html'","target='_blank'"] "Id Index") ^ "]"))
+  val () = print (tag "td" ["align='right'"] execbutton)
+  val () = print "</tr>"
+  val () = print (tag "tr" [] (tag "td" [] smlarea ^ tag "td" [] outarea))
 
-  val () = Js.installEventHandler (getElem id_execbutton) Js.onclick (fn () => (exec(); false))
+  val contributed = "Contributed by <a href='http://www.elsman.com'>Martin Elsman</a>"
+  val hosted = "Hosted by <a href='http://www.itu.dk'>IT University of Copenhagen</a>"
+  val logo = 
+      "<a href='http://www.itu.dk/people/mael/smltojs'><img border='0' alt='SMLtoJs Logo' src='" ^ 
+      smltojs_logo_path ^ 
+      "'/></a>"
+
+  val () = 
+      print (tag "tr" [] 
+                 (tag "td" ["colspan='2'", "padding='0'"] 
+                      (tag "table" ["width='100%'"]
+                           (tag "tr" []
+                                ((tag "td" ["align='left'"] contributed) ^
+                                 (tag "td" ["align='center'"] hosted) ^ 
+                                 (tag "td" ["align='right'"] logo))))))
+  val () = print "</body>"
+  val () = print "</html>"
+
+  fun onload() =
+      let 
+        val () = out "[Loading Basis Library "
+        val _ = load_envs (Env.initial()) basislibs
+      in Js.installEventHandler (getElem id_execbutton) Js.onclick (fn () => (exec(); false))
+      end
+
+  fun setWindowOnload (f: unit -> unit) : unit = 
+      JsCore.exec1{arg1=("a",JsCore.==>(JsCore.unit,JsCore.unit)),
+                   stmt="return window.onload=a;",
+                   res=JsCore.unit} f
+
+  val () = setWindowOnload onload
 
 end

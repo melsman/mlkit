@@ -1,6 +1,6 @@
 
 local
-open RWP
+open Rwp
 infix *** &&& >>>
 
 val _ = print ("<html></head></head><body><h1>Reactive Web Programming Example: Sine</h1>" ^

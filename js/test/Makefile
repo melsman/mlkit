@@ -34,4 +34,6 @@ mlb%: Makefile %.sml %.mlb
 
 clean:
 	rm -rf MLB *.html *~
+
+cleanall: clean
 	(cd ../basis; rm -rf MLB)

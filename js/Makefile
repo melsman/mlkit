@@ -1,5 +1,5 @@
-HOST=ssh.itu.dk
-TDIR=public_html/smltojs
+HOST=tiger.itu.dk
+TDIR=smlserver.org/www/smltojs
 publish:
 	$(MAKE) -C test all
 	ssh $(HOST) rm -rf $(TDIR)/basis $(TDIR)/test
@@ -15,7 +15,7 @@ publish:
 	$(MAKE) publishweb
 
 publishweb: 
-	scp slides_diku_2007-11-27.pdf slides_lunch_2007-09-17.pdf base.css index.php smltojs_logo_color.png $(HOST):$(TDIR)/
+	scp slides_diku_2007-11-27.pdf slides_lunch_2007-09-17.pdf base.css index.html smltojs_logo_color.png $(HOST):$(TDIR)/
 
 smltojs.man.html: Makefile
 	man2html -r ../man/man1/smltojs.1 > smltojs.man.html
@@ -27,15 +27,20 @@ BASISFILES=Initial General Option List ListPair \
  Word32 Word8 Word31 Pack32Little Pack32Big Byte \
  Int32 Int31 Math Real IntInf \
  Time Random Path Date Timer TextIO \
- JsCore Js
+ JsCore Js Html Rwp
 
 THEBASISFILES = $(BASISFILES:%=js/basis/MLB/Js/%.sml.o.eb.js)
 
-smltojs_web: Makefile
-	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -aopt -js_path_compress -js_path_prefix "src/Compiler" smltojs0.mlb)
-	(cd ..; cp src/Compiler/run.html .)
-	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < run.html | grep '\.js'` run.html $(THEBASISFILES))
+smltojs_web: Makefile doc
+	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -aopt -js_path_compress -js_path_prefix "src/Compiler" -o index smltojs0.mlb)
+	(cd ..; cp src/Compiler/index.html .)
+	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html $(THEBASISFILES) js/smltojs_logo_color160.png js/doc/*.html)
 
+.PHONY: doc
+doc:
+	(cd doc; make)
+
+.PHONY: clean
 clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C basis clean

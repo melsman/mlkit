@@ -1,3 +1,8 @@
+(** Core Javascript functionality 
+
+Basic functionality for accessing native Javascript code.
+*)
+
 signature JS_CORE =
   sig
     type 'a T
@@ -51,3 +56,21 @@ signature JS_CORE =
     val setProperty : foreignptr -> 'a T -> string -> 'a -> unit
   end
 
+(**
+
+[type 'a T]
+
+[execN a v] returns the result of executing the javascript statement
+in a with actual arguments (v) provided for the formal parameters,
+specified in a.
+
+[callN (t1,...,tn,tr)] (v1,...,vn)] returns the result of calling the
+javascript function n with proper arguments (vi) given for each of the
+arguments specified by tn.
+
+[getProperty fp t s] extracts the property s (of type t) from the
+object specified by fp.
+
+[setProperty fp t s v] sets the property s to the value v (of type t)
+on the object specified by fp.
+*)
