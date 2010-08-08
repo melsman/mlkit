@@ -5,7 +5,7 @@ structure StatObject: STATOBJECT =
     structure ExplicitTyVar = SyntaxTyVar
     structure EdList = Edlib.List
 
-    val print_type_levels = ref true     (* for debugging *)
+    val print_type_levels = ref false     (* for debugging *)
 
     fun die s = Crash.impossible ("StatObject." ^ s)
     fun noSome NONE s = die s
@@ -365,7 +365,7 @@ structure StatObject: STATOBJECT =
 			    L := L' @ [{tv=id, letter=len}] ;
 			    str(chr(ordA + len))
 			  end)
-              ^ "[" ^ TyName.Rank.pp (!rank) ^ "]"
+           (*   ^ "[" ^ TyName.Rank.pp (!rank) ^ "]" *)
 		 | NONAMES => boring)
 	    end
 	| pretty_string a pr_ty (ref (TY_LINK ty)) =
