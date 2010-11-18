@@ -31,10 +31,25 @@ BASISFILES=Initial General Option List ListPair \
 
 THEBASISFILES = $(BASISFILES:%=js/basis/MLB/Js/%.sml.o.eb.js)
 
+CODEMIRRORFILES=js/codemirror/dist/js/*.js \
+ js/codemirror/dist/contrib/sml/css/smlcolors.css \
+ js/codemirror/dist/contrib/sml/js/parsesml.js \
+ js/codemirror/dist/contrib/sml/js/tokenizesml.js \
+ js/codemirror/dist/css/docs.css
+
+CODEMIRRORFLAGS=-jslibs "../../js/codemirror/dist/js/codemirror.js"
+
 smltojs_web: Makefile doc
-	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -aopt -js_path_compress -js_path_prefix "src/Compiler" -o index smltojs0.mlb)
+	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -aopt -js_path_compress -js_path_prefix "src/Compiler" $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
 	(cd ..; cp src/Compiler/index.html .)
-	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html $(THEBASISFILES) js/smltojs_logo_color160.png js/doc/*.html)
+	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html $(THEBASISFILES) js/smltojs_logo_color160.png js/doc/*.html $(CODEMIRRORFILES))
+
+codemirror: Makefile
+	(cd codemirror/sml; SML_LIB=../../../js ../../../bin/smltojs -chat -aopt codemirror.mlb)
+
+.PHONY:
+buildanduntar: smltojs_web
+	cp smltojs_web.tgz /home/mael/tmp/ && cd /home/mael/tmp && tar xzf smltojs_web.tgz
 
 .PHONY: doc
 doc:
@@ -42,6 +57,7 @@ doc:
 
 .PHONY: clean
 clean:
+	$(MAKE) -C doc clean
 	$(MAKE) -C test clean
 	$(MAKE) -C basis clean
 	rm -f *~ smltojs.man.html

@@ -1,0 +1,385 @@
+A Standard ML Compiler in JavaScript
+
+Features:
+
+ - Off-line compilation possible for generating libraries available on the web (basis library, etc)
+ - Compilation possible in a browser:
+     - ML prompt
+     - support for loading libraries given an url (- use "url";)
+          * when an url is loaded, several files are fetched:
+             1. js-file/html-file referencing code
+             2. eb-file(s) for library
+     - the url could either be an mlb-file or an sml/sig-file
+
+ - Rewrite KitCompiler, Manager
+
+  signature ENV = sig
+      type t
+      val emp  : t
+      val init : t
+      val plus : t * t -> t
+  end
+
+  signature SMLTOJS_COMP = sig
+    structure SEnv : ENV
+    structure DEnv : ENV
+    type target
+    val compile  : SEnv.t * string -> SEnv.t * target  (* may raise Fail *)
+    val execute  : DEnv.t * target -> DEnv.t    (* may raise exn *)
+    val from_url : string -> SEnv.t * target
+    val pp : SEnv.t * DEnv.t -> string  
+  end
+
+Trampolines
+-----------
+
+  functions containing tail calls can be implemented using trampolines:
+
+  let fun f x = ... T(f(...)) ...
+  in ... f(...) ...
+  end
+  --->
+  let fun f x = ... T(f(...)) ...
+  in ... Tr(f(...)) ...
+  end
+  
+  where
+  fun tramp f a =
+    case o of
+       Func f => f()
+     | Res r => r
+
+
+  # Trampoline style javascript code
+
+  function tramp(x) {
+    while (x && x.func != null) {
+      x = x.func();
+    }
+    return x;
+  }
+
+  function trampcall(f,args) {
+    return tramp({func:function() { return f(args); });
+  }
+
+  function thefun (n,a) {
+    if (n < 0) { 
+      return a; 
+    } else {
+      var f = function() { return thefun(n-1,a+2); };
+      return {func:f};
+    }
+  }
+
+  # Tail calls implemented using Javascript "gotos"
+
+  function thefun2 (n,a) {
+    thefun2:
+    while(true) {
+      if (n <= 0) {
+        return a;
+      } else {
+        n=n-1;
+        a=a+2;
+        continue thefun2;
+      }
+    }
+  }  
+
+  function thefun3 (n,a) {
+    thefun3:
+    while(true) {
+      return (function() {
+         if (n <= 0) {
+	   return a;
+	 } else {
+	   n=n-1;
+	   a=a+2;
+	   continue thefun3;
+	 }
+      }());
+    }
+  }  
+
+
+ datatype cont = Ret | Next | Var x
+
+ var x = 8;
+ var f = function () { return this.x; };
+ f.x = x;
+
+
+Intro
+-----
+
+For implementing tail-recursion using Javascript's labels and continue
+statement, it is first necessary to avoid that Javascript function
+application is used for implementing ML's let constructs. Instead, it
+is necessary to make use of var statements, which again requires us to
+implement closures using function properties and access to free
+variables of a function through 'this'. For instance, consider the ML
+function
+
+   fun f (n,a) =
+    if n = 0 then a
+    else let val i = n+1
+         in f (n-1, (fn()=>i) :: a)
+	 end
+
+Here we must make sure that the accumulated functions refer to their
+distinct value for i. To ensure this, we transform the function as
+follows:
+
+   function f(n,a) {
+    loop:
+    while(true) {
+     if (n == 0) { return a; }
+     else {
+       var i = n + 1;
+       n = n - 1;
+       var g = function() { return this.i; };
+       g.i = i;
+       a = [g,a];
+       continue loop;
+     }
+    }
+   }
+
+Lambda expressions
+------------------
+
+ e := x | e1 e2 | d | op e | e1 op e2 | fn x => e
+    | if e then e1 else e2 | true | false
+    | let x = e1 in e2
+    | fix f(x) = e1 in e2 | tail f(e)
+   
+
+
+
+Javascript syntax
+-----------------
+
+ e := e op e
+    | op e
+    | if e then e else e
+    | function(x) { s }
+    | e(e)
+    | x 
+    | d
+    | e.x
+    | [e1,...,en]
+
+ s := 
+     var x;
+   | var x = e;
+   | e = e;
+   | s ; s
+   | switch(e) {
+       case i_1: s_1;
+       ...
+       case i_n: s_n;
+       default: s
+     }
+   | return e;
+   | continue x;
+   | x:
+   | while(e) { s }
+
+Expressions                     [[e]]F
+--------------------------------------
+
+  [[e1 op e2]]F = [[e1]]F op [[e2]]F
+
+  [[op e]]F = op [[e]]F
+
+  [[if e then e1 else e2]]F = if [[e]]F then [[e1]]F else [[e2]]F
+
+  [[fn x => e]]F = function(x) { [e] Ret [] }            iff fv(e) \ {x} = {}
+
+  [[e1 e2]]F = [[e1]]F([[e2]]F)                          iff [[e1]]F and [[e2]]F are defined 
+
+  [[x]]F = x                                             iff x \not \in F
+ 
+  [[x]]F = this.x                                        iff x \in F
+
+  [[d]]F = d
+
+Statements                       [e] cont F
+-------------------------------------------
+
+ [let x = e1 in e2] cont F = 
+    var x; 
+    [e1] (Var x) F; 
+    [e2] cont F
+
+ [fn x => e] cont F = 
+    var f = function(x) { [e] Ret (fv(e) \ {x})};
+    f.x1 = [[x1]]F; ... f.xn = [[xn]]F;                  {x1,...,xn} = fv(e) \ {x}
+    RETURN cont f;
+
+ [e] cont F = 
+    RETURN cont ([[e]]F);                                iff [[e]]F is defined
+
+ [tail f(e)] cont F =
+    [e] (Var x) F;                                       F(f) = x
+    continue f;
+
+ [fix f(x) = e1 in e2] cont F =
+    var f = function(x) { 
+      f_lab:
+      while(true) {
+        [e1] Ret (fv(e1) \ {x,f})
+      };
+    f.x1 = [[x1]]F; ... f.xn = [[xn]]F;                  {x1,...,xn} = fv(e1) \ {x,f}
+    [e2] cont F;
+
+ RETURN Next e =       e;
+ RETURN Ret e =        return e;
+ RETURN (Var y) e =    y = e;
+ 
+
+New
+-------------
+
+
+  Continuations:
+
+    C ::= Ret | Ret(f,x) | Var(x)
+
+                                 +------------+
+                                 |F |- e => e'|
+                                 +------------+
+
+  F |- e1 => e1'      F |- e2 => e2'
+  ----------------------------------
+    F |- e1 op e2 => e1' op e2'
+
+  F |- e => e'    F |- e1 => e1'   F |- e2 => e2'
+  -----------------------------------------------  
+    F |- if e then e1 else e2 => e' ? e1' : e2'
+
+  -----------
+  F |- d => d
+
+  x \not \in F
+  ------------
+  F |- x => x
+
+      x \in F
+  ----------------
+  F |- x => this.x
+
+   F;Ret |- e => s    fv(e) \ {x} = {}
+  ------------------------------------
+  F |- fn x => e  =>  function(x){s}
+
+  F |- e1 => e1'  F |- e2 => e2'
+  ------------------------------
+     F |- e1 e2 => e1'(e2')
+
+                                    +-------------+
+                                    |F;C |- e => s|
+                                    +-------------+
+
+   f fresh
+   F;Ret |- e => s    fv(e) \ {x} = {x1,...,xn} 
+  ---------------------------------------------
+  F;C |- fn x => e  =>  var f = function(x){s};
+                        f.x1 = [[x1]]F;
+                        ...
+                        f.xn = [[xn]]F;
+                        WrapCont(C)(f)
+
+       F;Var(x) |- e1 => s1   F;Var(y) |- e2 => s2
+  -------------------------------------------------------
+  F;C |- e1 e2 => var x; var y; s1; s2; WrapCont(C)(x(y))
+
+      F;Var(x) |- e1 => s1    F |- e2 => e2'
+  ----------------------------------------------
+  F;C |- e1 e2 => var x; s1; WrapCont(C)(x(e2'))
+
+    F|- e => s,e'    F;C |- e1 => s1    F;C |- e2 => s2
+  --------------------------------------------------------  
+  F;C |- if e then e1 else e2 => s; if (e') {s1} else {s2}
+
+         F |- e => e'
+  ---------------------------
+  F;C |- e => WrapCont(C)(e')
+
+   F;Var(x) |- e1 => s1   F,x;C |- e2 => s2
+  ----------------------------------------
+  F;C |- let x = e1 in e2 => var x; s1; s2
+
+    F' = fv(e1) \ {x,f} = {x1,...,xn}
+    F';Ret(f,x) |- e1 => s1     F |- x1 => e1' ... F |- xn => en'
+    F;C |- e2 => s2
+  ----------------------------------------------------------
+  F;C |- fix f(x) = e1 in e2  =>
+    var f = function f(x) { f: while(true) {s1}; };
+    f.x1 = e1'; ... f.xn = en';                  
+    s2;
+
+            F;Var(x) |- e => s
+  ------------------------------------
+  F;Ret(f,x) |- f e => s; continue f;
+  
+
+
+WrapCont(Ret)(e) = return e;
+WrapCont(V(x))(e) = x = e;
+
+Tail recursion
+--------------
+
+
+ 
+
+ function f (x) {
+   f_lab:
+   while(true) {
+     ...
+     x = x';
+     continue f_lab;
+   }
+ }
+
+
+Multi
+-----
+
+ function eo(idx,n,a) {
+   loop:
+   while(true) {
+     switch(idx) {
+      case 0: { // even
+        if (n == 0) {
+          return a;
+        } else {
+          n = n - 1;
+          a = not(a);
+          idx = 1; // odd
+          continue loop;
+        }
+      }
+      case 1: { // odd
+        if (n == 1) {
+          return a;
+        } else {
+          n = n - 1;
+          a = not(a);
+          idx = 0; // odd
+          continue loop;
+        }
+      }
+     }
+   }
+ }
+          
+ function even(n) = eo(0,n,true);
+ function odd(n) = eo(1,n,true);
+
+
+Loading and Saving
+------------------
+
