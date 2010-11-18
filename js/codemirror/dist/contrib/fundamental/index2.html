@@ -1,0 +1,82 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <script src="../../js/codemirror.js" type="text/javascript"></script>
+    <title>CodeMirror: SML demonstration with C# at right</title>
+    <link rel="stylesheet" type="text/css" href="../../css/docs.css"/>
+  </head>
+  <body style="padding: 20px;">
+
+<p>Demonstration of <a href="../../index.html">CodeMirror</a>'s SML and C# highlighter.</p>
+
+<p>Written by <a href="http://www.elsman.com/">Martin Elsman</a> (MIT licence).</p>
+
+<table width="100%" height="80%"><tr><td width="50%">
+<div class="border">
+<textarea id="code">
+structure A = struct
+  type 'a t = int * int * 'a
+  datatype 'a x = A of int | B of 'a
+  val a = (5,3)
+end
+
+(* ok *)
+(*
+(* hello (* world *) nested *)
+
+fun f x = x + 1
+*)
+val a = ~45
+val b = 3.4E~3
+val w = 0wx34a
+val j = 0w343
+
+val c = #"A"
+
+val s = "Hi\n"
+val x = " Hello\
+  \ World"
+
+val ops = [##,??,&&,//,@@,%%,^^,~~,++,
+           ||,!!,==,>>,<<,::,$$,--,**]
+</textarea>
+</div>
+</td>
+<td width="50%">
+<div class="border">
+<textarea id="code2">
+public class Hello {
+  int avariable;
+  public Hello() {
+    // the constructor
+    avariable = 45;
+  }
+}
+</textarea>
+</div>
+</td></tr>
+</table>
+
+<script type="text/javascript">
+  var editor = CodeMirror.fromTextArea('code', {
+    parserfile: ["../contrib/sml/js/tokenizesml.js", "../contrib/sml/js/parsesml.js"],
+    stylesheet: "css/smlcolors.css",
+    path: "../../js/",
+    height: "90%",
+    lineNumbers: true,
+    textWrapping: false
+  });
+</script>
+
+<script type="text/javascript">
+  var editor2 = CodeMirror.fromTextArea('code2', {
+    parserfile: ["../contrib/csharp/js/tokenizecsharp.js", "../contrib/csharp/js/parsecsharp.js"],
+    stylesheet: "../csharp/css/csharpcolors.css",
+    path: "../../js/",
+    height: "90%",
+    lineNumbers: true,
+    textWrapping: false
+  });
+</script>
+
+</body>
+</html>

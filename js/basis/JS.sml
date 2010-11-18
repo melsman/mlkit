@@ -7,11 +7,16 @@ functionality.
 signature JS = 
   sig
     (* dom *)
+    eqtype win
     eqtype doc 
     eqtype elem
+    val window          : win
+    val openWindow      : string -> string -> string -> win
+    val closeWindow     : win -> unit
+    val windowDocument  : win -> doc
     val document        : doc
-    val openWindow      : unit -> doc
     val documentElement : doc -> elem
+    val documentWrite   : doc -> string -> unit
     val getElementById  : doc -> string -> elem option
     val parent          : elem -> elem option
     val firstChild      : elem -> elem option
@@ -62,6 +67,16 @@ signature JS =
     end 
                                
     val random             : unit -> real
+
+    (* Shorthand notation for creating elements *)
+    structure Element : sig
+      val $     : string -> elem
+      val &     : elem * elem -> elem
+      val taga0 : string -> (string*string)list -> elem
+      val tag0  : string -> elem
+      val tag   : string -> elem -> elem
+      val taga  : string -> (string*string)list -> elem -> elem                                 
+    end
   end
 
 (**

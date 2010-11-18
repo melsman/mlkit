@@ -1,6 +1,13 @@
 structure SmlToJsCompTest = struct
   open SmlToJsComp
 
+  fun timeit f x =
+      let val rt = Timer.startRealTimer()
+        val res = f x
+        val t = Timer.checkRealTimer rt
+      in (res,t)
+      end      
+
   fun getPage (url:string) : string =
       let val r = Js.XMLHttpRequest.new()
           val () = print "p1\n"
@@ -15,18 +22,11 @@ structure SmlToJsCompTest = struct
                                  Int.toString (Js.XMLHttpRequest.state r)))
       end handle e => raise Fail ("getPage: " ^ General.exnMessage e)
 
-  fun htmlencode s : string =
-      let fun enc #"<" = "&lt;"
-	    | enc #">" = "&gt;"
-	    | enc #"&" = "&amp;"
-	    | enc #"\"" = "&quot;"
-	    | enc c = String.str c
-      in String.translate enc s 
-      end
-  fun pr_attr [] = ""
-    | pr_attr attrs = " " ^ String.concatWith " " attrs
-  fun tag t attr e = "<" ^ t ^ pr_attr attr ^ ">" ^ e ^ "</" ^ t ^ ">"
   fun qq s = "'" ^ s ^ "'"
+
+  open Js.Element
+  infix &
+
   val init = 
       String.concatWith "\n"
       ["fun loop (n,acc) : IntInf.int =",
@@ -41,24 +41,18 @@ structure SmlToJsCompTest = struct
       ]
 
   val id_smlarea = "smlarea"
-  val smlarea = tag "textarea" ["id=" ^ qq(id_smlarea),"cols='75'", "rows='40'"] init 
-
-  val id_outarea = "outarea"
-  val outarea = tag "textarea" ["id=" ^ qq(id_outarea),"cols='75'", "rows='40'"] ""
-
-  val id_execbutton = "execbutton"
-  val execbutton = tag "input" ["type='button'", "id=" ^ qq(id_execbutton),"value='Compile and Run'"] ""
+  val smlarea = 
+      taga "div" [("class","border")]
+          (taga "textarea" [("id",id_smlarea),("cols","200"), ("rows","20")] ($init))
+  val outarea = taga0 "textarea" [("cols","200"),("rows","20")]
+  val execbutton = taga0 "input" [("type","button"),("value","Compile and Run")]
+  val clearoutbutton = taga0 "input" [("type","button"),("value","Clear Output")]
+  val clearinbutton = taga0 "input" [("type","button"),("value","Clear Input")]
 
   fun getElem id =
       case Js.getElementById Js.document id of
         SOME e => e
       | NONE => raise Fail ("failed to find " ^ qq id ^ " in doc")
-
-  fun out s =
-      let (*val s = htmlencode s*)
-        val e = getElem id_outarea
-      in Js.appendChild e (Js.createTextNode s)
-      end
 
   fun exec_print (f:'a -> unit) (v:'a) : string =
       let val p_old = Control.printer_get()
@@ -85,6 +79,9 @@ structure SmlToJsCompTest = struct
 
   fun exnMsg (e:exn) : string = prim("execStmtJS", ("return e.toString()","e",e))
 
+  val outRef : (string -> unit) ref = ref (fn _ => raise Fail "outRef not initialized")
+  fun out s = !outRef s
+
   infix ++
   fun e ++ e' = Env.plus (e,e')
   fun load_env n =
@@ -94,7 +91,7 @@ structure SmlToJsCompTest = struct
       in #1(Pickle.unpickler Env.pu (Pickle.fromString eb_s))
       end handle ? => (out ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?)
 
-  fun exec() =
+  fun exec editor =
       let
         fun load_env_all() =
             case !envRef of
@@ -106,13 +103,21 @@ structure SmlToJsCompTest = struct
                ; e
               end
 *)
+        val timing = true
+        fun printtime s t = 
+            if timing then print ("[" ^ s ^ " time: " ^ Time.toString t ^ "]\n")
+            else ()
         fun exec0 s =
             let val e = load_env_all()
-                val (e',mc) = compile (e,s)
-            in execute mc 
-               handle ? => print ("Uncaught exception " ^ General.exnName ? ^ "\n") 
+                val ((e',mc),compiletime) = timeit compile (e,s)
+                val _ = printtime "Compile" compiletime
+            in
+              let val ((),exectime) = timeit execute mc
+              in print "\n"; 
+                 printtime "Execution" exectime
+              end handle ? => print ("Uncaught exception " ^ General.exnName ? ^ "\n") 
             end 
-        val s = Js.value (getElem id_smlarea)
+        val s = CodeMirror.getCode editor
         val res = exec_print exec0 s              
       in out res
       end
@@ -126,49 +131,131 @@ structure SmlToJsCompTest = struct
 
 (*  val path = "./../../" *)
 
+  val topelem = Js.documentElement Js.document
+
+  fun appendToTop e = Js.appendChild topelem e
+
   fun load n =
-      print (tag "script" ["type='text/javascript'", "src='" ^ path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js'"] "")
+      appendToTop (taga0 "script" [("type","text/javascript"), 
+                                   ("src", path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js")])
 
   val smltojs_logo_path = "js/smltojs_logo_color160.png"
+  val contributed = $"Contributed by " & taga "a" [("href","http://www.elsman.com")] ($"Martin Elsman")
+  val hosted = $"Hosted by " & taga "a" [("href","http://www.itu.dk")] ($"IT University of Copenhagen")
+  val logo = taga "a" [("href","http://www.itu.dk/people/mael/smltojs")]
+                  (taga0 "img" [("border","0"),("alt","SMLtoJs Logo"),("src",smltojs_logo_path)])
 
   val () = List.app load basislibs
 
-  val () = print "<html>"
-  val () = print "<body>"
-  val () = print "<table>"
-  val () = print "<tr><th align='left'><h2>SMLtoJs Prompt</h2></th><td>&nbsp;<td></tr>"
-  val () = print "<tr><td align='left'><i>Compile and Run your Standard ML programs in a Browser!</i></td><td align='right'><i>Works on Google Chrome and Firefox 3.5.5</i></td></tr>"
-  val () = print "<tr>"           
-  val () = print (tag "td" ["align='left'"] ("[" ^ (tag "a" ["href='js/doc/str_idx.html'","target='_blank'"] "Structure Index") ^ " | " ^ 
-                               (tag "a" ["href='js/doc/sig_idx.html'","target='_blank'"] "Signature Index") ^ " | " ^ 
-                               (tag "a" ["href='js/doc/id_idx.html'","target='_blank'"] "Id Index") ^ "]"))
-  val () = print (tag "td" ["align='right'"] execbutton)
-  val () = print "</tr>"
-  val () = print (tag "tr" [] (tag "td" [] smlarea ^ tag "td" [] outarea))
+  val head_tr =
+      tag "tr"
+          (taga "th" [("align","left")]
+                (tag "h2" ($"SMLtoJs Prompt")) & 
+                tag "td" ($""))      
 
-  val contributed = "Contributed by <a href='http://www.elsman.com'>Martin Elsman</a>"
-  val hosted = "Hosted by <a href='http://www.itu.dk'>IT University of Copenhagen</a>"
-  val logo = 
-      "<a href='http://www.itu.dk/people/mael/smltojs'><img border='0' alt='SMLtoJs Logo' src='" ^ 
-      smltojs_logo_path ^ 
-      "'/></a>"
+  val comments_tr =
+      tag "tr"
+          (taga "td" [("align","left")]
+                (tag "i" ($"Compile and Run your Standard ML programs in a Browser!!")) &
+                taga "td" [("align","right")]
+                (tag "i" ($"Works on Google Chromium and Firefox 3.5.5")))
 
-  val () = 
-      print (tag "tr" [] 
-                 (tag "td" ["colspan='2'", "padding='0'"] 
-                      (tag "table" ["width='100%'"]
-                           (tag "tr" []
-                                ((tag "td" ["align='left'"] contributed) ^
-                                 (tag "td" ["align='center'"] hosted) ^ 
-                                 (tag "td" ["align='right'"] logo))))))
-  val () = print "</body>"
-  val () = print "</html>"
+  val link_tr =
+      tag "tr"
+          (taga "td" [("align","left")]
+                ($"[" & 
+                  taga "a" [("href","js/doc/str_idx.html"),("target","_blank")] 
+                  ($"Structure Index") & 
+                  ($" | " & 
+                    (taga "a" [("href","js/doc/sig_idx.html"),("target","_blank")] 
+                          ($"Signature Index") &
+                          ($" | " & 
+                            (taga "a" [("href","js/doc/id_idx.html"),("target","_blank")] 
+                                  ($"Id Index") &
+                                  ($"]")))))) &
+                taga "td" [("align","right")] (clearinbutton & clearoutbutton & execbutton))
+
+  val middle_tr =
+      tag "tr"
+          (taga "td" [("width","50%"),("height","100%")] smlarea &
+                taga "td" [("width","50%")] outarea)
+
+  val footer_tr =
+      tag "tr"
+      (taga "td" [("colspan","2"), ("padding","0")] 
+       (taga "table" [("width","100%")]
+             (tag "tr"
+                  (taga "td" [("align","left")] contributed &
+                        (taga "td" [("align","center")] hosted &
+                              (taga "td" [("align","right")] logo))))))
+
+  val heads =
+      if false then
+        taga "style" [("type","text/css")] ($("textarea {width:100%;height:100%;}")) &
+             (taga0 "link" [("rel","stylesheet"),("type","text/css"),
+                            ("href","js/codemirror/dist/css/docs.css")])
+      else 
+        taga0 "link" [("rel","stylesheet"),("type","text/css"),
+                      ("href","js/codemirror/dist/css/docs.css")]
+        
+  val elem =
+      tag "html"
+      (tag "head" heads &
+       tag "body"
+       (tag "table"
+        (head_tr &
+         comments_tr &
+         link_tr &         
+         middle_tr &
+         footer_tr
+        )
+       )
+      )
+
+  val _ = appendToTop elem
+
+  fun mkEditor kind h area =
+      let val tokenizefile =
+              "../contrib/" ^ kind ^ "/js/tokenize" ^ kind ^ ".js"
+          val parsefile =
+              "../contrib/" ^ kind ^ "/js/parse" ^ kind ^ ".js"
+          val stylefile =
+              "js/codemirror/dist/contrib/" ^ kind ^ "/css/" ^ kind ^ "colors.css"
+          val properties =
+              let open CodeMirror.EditorProperties
+                  val t = empty()
+              in textWrapping t false
+               ; lineNumbers t true
+               ; path t "js/codemirror/dist/js/"
+               ; parserfiles t [tokenizefile,parsefile]
+               ; stylesheets t [stylefile] 
+               ; height t h
+               ; t
+              end
+      in CodeMirror.newEditor {id=area, properties=properties}
+      end
 
   fun onload() =
-      let 
+      let
+        val editor = mkEditor "sml" "500px" id_smlarea
+        fun whileSome f g =
+            case f() of
+              SOME x => (g x; whileSome f g)
+            | NONE => ()
+        fun clearoutarea () =
+            (whileSome (fn() => Js.firstChild outarea)
+                       (fn e => Js.removeChild outarea e);
+             true)
+        fun clearsmlarea () =
+            (CodeMirror.setCode editor ""; true)
+        fun outfun s =
+            Js.appendChild outarea (Js.createTextNode s)
+        val () = outRef := outfun
         val () = out "[Loading Basis Library "
         val _ = load_envs (Env.initial()) basislibs
-      in Js.installEventHandler (getElem id_execbutton) Js.onclick (fn () => (exec(); false))
+      in Js.installEventHandler execbutton Js.onclick (fn () => (exec editor; false));
+         Js.installEventHandler clearoutbutton Js.onclick clearoutarea;
+         Js.installEventHandler clearinbutton Js.onclick clearsmlarea
       end
 
   fun setWindowOnload (f: unit -> unit) : unit = 

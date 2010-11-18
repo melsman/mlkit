@@ -1,0 +1,40 @@
+textarea {
+  width:100%;
+  height:100%;
+  border: 2px solid black;
+}
+
+div.CodeMirror-line-numbers {
+    padding-top:2pt;
+    font-size: 10pt;
+    font-family: courier, monospace;
+    color: black;
+    background-color:lightgray;
+    width:2.5em;
+}
+
+div.border {
+  border: 2px solid black;
+}
+
+code {
+  font-family: courier, monospace;
+  font-size: 90%;
+  color: #144;
+}
+
+pre.code {
+  margin: 1.1em 12px;
+  border: 1px solid #CCCCCC;
+  color: black;
+  padding: .4em;
+  font-family: courier, monospace;
+}
+
+.warn {
+  color: #C00;
+}
+
+dl dl {
+  margin: 0;
+}

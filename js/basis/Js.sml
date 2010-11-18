@@ -8,14 +8,37 @@ struct
 structure J = JsCore
 
 (* dom *)
+type win = foreignptr
 type doc = foreignptr
 fun fromDoc a = a
 
 type elem = foreignptr
 
 val document = J.exec0 {stmt="return document;", res=J.fptr} ()
+val window = J.exec0 {stmt="return this;", res=J.fptr} ()
 
-fun openWindow () = J.exec0 {stmt="return window.open();", res=J.fptr} ()
+fun openWindow (url:string) (title:string) (attrs:string) : win = 
+    J.exec3 {stmt="return window.open(u,t,a);", 
+             arg1=("u",J.string),
+             arg2=("t",J.string),
+             arg3=("a",J.string),
+             res=J.fptr} (url,title,attrs)
+
+fun windowDocument w : doc = 
+    J.exec1 {stmt="return w.document;",
+             arg1=("w",J.fptr),
+             res=J.fptr} w
+
+fun closeWindow w : unit =
+    J.exec1 {stmt="w.close();",
+             arg1=("w",J.fptr),
+             res=J.unit} w
+
+fun documentWrite d s = 
+    J.exec2 {stmt="return d.write(s);",
+             arg1=("d",J.fptr),
+             arg2=("s",J.string),
+             res=J.unit} (d,s)
 
 fun getElementById (d:doc) (id:string) : elem option =
     J.exec2 {stmt="return SmlPrims.option(d.getElementById(id));",
@@ -180,6 +203,38 @@ fun setStyle (e: elem) (s:string,v:string) : unit =
     in J.setProperty st J.string s v
     end
 
+(* Shorthand notation for creating elements *)
+structure Element = struct
+  fun taga t attrs elem = 
+      let val newelem = createElement t     
+      in List.app (fn (k,v) => setAttribute newelem k v) attrs;
+         appendChild newelem elem;
+         newelem
+      end
+
+  fun tag t elem = 
+      taga t nil elem
+
+  fun taga0 t attrs = 
+      let val newelem = createElement t     
+      in List.app (fn (k,v) => setAttribute newelem k v) attrs;
+         newelem
+      end
+
+  fun tag0 t = 
+      taga0 t nil
+      
+  fun $ s = 
+      createTextNode s
+
+  infix &
+  fun e1 & e2 =
+      let val e = createFragment()
+      in appendChild e e1;
+         appendChild e e2;
+         e
+      end
+end
 
 structure XMLHttpRequest =
   struct
