@@ -5,15 +5,14 @@
 
 signature PICKLE =
   sig
-    type instream and outstream
-	
-    type 'a pickler   = 'a -> outstream -> outstream
-    type 'a unpickler = instream -> 'a * instream
-
     type 'a pu
 
-    val pickler   : 'a pu -> 'a pickler
-    val unpickler : 'a pu -> 'a unpickler
+    val pickle    : 'a pu -> 'a -> string
+    val unpickle  : 'a pu -> string -> 'a
+
+    type hce
+    val empty_hce : unit -> hce
+    val unpickle' : 'a pu -> hce -> string -> 'a * hce
 
     val word      : word pu
     val word32    : Word32.word pu
@@ -56,12 +55,6 @@ signature PICKLE =
     val con0      : 'a -> 'b -> 'a pu
     val con1      : ('a->'b) -> ('b->'a) -> 'a pu -> 'b pu
 
-    val empty     : unit -> outstream
-    val toString  : outstream -> string
-
-    val fromString: string -> instream
-    val fromStringHashCons : instream -> string -> instream
-
     val convert   : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
     val convert0  : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
 
@@ -88,14 +81,6 @@ signature PICKLE =
   end
 
 (*
- [instream] type of an instream.
-
- [outstream] type of an outstream.
-
- ['a pickler] parameterized pickler type.
- 
- ['a unpickler] parameterized unpickler type.
- 
  ['a pu] parameterized type of a pair of a pickler and an unpickler.
  
  [word] pickler-unpickler pair for word values.
@@ -146,15 +131,12 @@ signature PICKLE =
  [dataGen2 (aToInt, aPuCons, bToInt, bPuCons)] works as dataGen, but
  for two mutually recursive datatypes.
 
- [empty()] returns an empty outstream.
+ [pickle pu v] returns the result of serializing (pickling) v.
 
- [toString os] returns a string corresponding to output sent to the
- outstream os.
+ [unpickle pu s] returns the result of unpickling s.
 
- [fromString s] returns an instream corresponding to the string s.
-
- [fromStringHashCons is s] returns an instream corresponding to the
- string s but with hashcons information from the instream is.
+ [unpickle' pu hce s] returns a pair of the result of unpickling s and
+ an accumulated hashcons environment.
 
  [get is] reads a word from the instream is.
 

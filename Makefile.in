@@ -314,11 +314,10 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X86
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
-	$(MKDIR) $(INSTDIR)/src/heap2exec
-	$(INSTALLDATA) src/Makefile src/*.{sml,cm,in} $(INSTDIR)/src
-	$(INSTALLDATA) src/Common/*.{mlb,sml,cm} $(INSTDIR)/src/Common
+	$(INSTALLDATA) src/Makefile src/*.{sml,in} $(INSTDIR)/src
+	$(INSTALLDATA) src/Common/*.{mlb,sml} $(INSTDIR)/src/Common
 	$(INSTALLDATA) src/Common/EfficientElab/*.sml $(INSTDIR)/src/Common/EfficientElab
-	$(INSTALLDATA) src/Compiler/*.{mlb,sml,cm} $(INSTDIR)/src/Compiler
+	$(INSTALLDATA) src/Compiler/*.{mlb,sml} $(INSTDIR)/src/Compiler
 	$(INSTALLDATA) src/Compiler/Lambda/*.sml $(INSTDIR)/src/Compiler/Lambda
 	$(INSTALLDATA) src/Compiler/Regions/*.sml $(INSTDIR)/src/Compiler/Regions
 	$(INSTALLDATA) src/Compiler/Backend/*.sml $(INSTDIR)/src/Compiler/Backend
@@ -326,10 +325,10 @@ install_src:
 	$(INSTALLDATA) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
 	$(INSTALLDATA) src/Compiler/Backend/KAM/*.{sml,spec} $(INSTDIR)/src/Compiler/Backend/KAM
 	$(INSTALLDATA) src/Compiler/Backend/X86/*.sml $(INSTDIR)/src/Compiler/Backend/X86
-	$(INSTALLDATA) src/Manager/*.{sml,mlb,cm} $(INSTDIR)/src/Manager
-	$(INSTALLDATA) src/Pickle/*.{sml,sig,mlb,cm} $(INSTDIR)/src/Pickle
+	$(INSTALLDATA) src/Manager/*.{sml,mlb} $(INSTDIR)/src/Manager
+	$(INSTALLDATA) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
 	$(INSTALLDATA) src/CUtils/Makefile src/CUtils/*.{c,h} $(INSTDIR)/src/CUtils
-	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,mlb,cm} $(INSTDIR)/src/Edlib
+	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,mlb} $(INSTDIR)/src/Edlib
 	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex} $(INSTDIR)/src/Parsing
 	$(INSTALLDATA) src/Runtime/Makefile src/Runtime/*.{c,h,in} $(INSTDIR)/src/Runtime
 	$(INSTALLDATA) src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
@@ -338,12 +337,10 @@ install_src:
 	$(INSTALLDATA) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
 	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,mlb} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
 	$(INSTALLDATA) src/Tools/GenOpcodes/*.{sml,mlb,in} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
-	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,mlb,cm,in} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
+	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,mlb,in} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h,in} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb,in} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
 	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
-	$(INSTALLDATA) src/heap2exec/README src/heap2exec/run.$(ARCH-OS) $(INSTDIR)/src/heap2exec
-	$(INSTALL) src/heap2exec/heap2exec $(INSTDIR)/src/heap2exec
 
 bootstrap0: install_test install_src
 	$(INSTALL) bin/kittester $(BINDIR)

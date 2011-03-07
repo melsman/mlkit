@@ -1,5 +1,15 @@
 MLKit NEWS file
 
+ * mael 2011-02-23: Optimized sizes of pickles generated for symbol
+   table information. Now, using the new Bitstream module in
+   src/Pickle, it is possible to output single bits to the
+   stream. Also reverted pickler dictionaries for sharing to be
+   localized for each type, which opens up for using short
+   locators. Sizes are now approximately half the size of before.
+
+ * mael 2011-02-23: Fixed Posix.c bug when compiling runtime system
+   under ubuntu > 9.10 (reported by Niels Hallenberg).
+
  * mael 2008-10-06: Compiling with SML/NJ is no longer supported.
 
  * mael 2007-11-14: Fixed bug reported by Vesa Karvonen concerning
