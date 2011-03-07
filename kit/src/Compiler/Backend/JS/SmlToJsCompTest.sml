@@ -88,7 +88,7 @@ structure SmlToJsCompTest = struct
       let val () = out "."
         val eb_s = JsCore.exec0{stmt="return " ^ n ^ "_sml_eb;",res=JsCore.string}()
       (* val () = out ("Unpickling " ^ n ^ "\n") *)
-      in #1(Pickle.unpickler Env.pu (Pickle.fromString eb_s))
+      in Pickle.unpickle Env.pu eb_s
       end handle ? => (out ("load_env problem: " ^ exnMsg ? ^ "\n"); raise ?)
 
   fun exec editor =
