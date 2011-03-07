@@ -1,0 +1,7 @@
+local
+   $(SML_LIB)/basis/basis.mlb
+   ../../../basis/test/test.mlb
+   ../pickle.mlb
+in
+   test_pickle.sml
+end

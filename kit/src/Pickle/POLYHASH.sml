@@ -33,6 +33,8 @@ signature POLYHASH =
     (* Look for an item and return the number of values with the same hash *)
     val peekSameHash: ('key, 'data) hash_table -> 'key -> int * int
 
+    val clear       : ('key, 'data) hash_table -> unit
+
 (* Polymorphic hash primitives from Caml Light 
  * not supported by the ML Kit Runtime System
     val hash        : 'key -> int
@@ -91,6 +93,8 @@ signature POLYHASH =
    [bucketSizes htbl] returns a list of the sizes of the buckets.
    This is to allow users to gauge the quality of their hashing
    function.  
+
+   [clear htbl] empties all data in htbl.
 
    [hash k] returns the hash value of k, as a positive integer. If
    k1=k2 then hash(k1) = hash(k2), so this function can be used when

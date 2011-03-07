@@ -951,6 +951,20 @@ REG_POLY_FUN_HDR(sml_getgroups, uintptr_t rp, Region rs, uintptr_t exn)
 // so we declare it here... mael 2006-01-24
 int getlogin_r(char *buf, size_t bufsize);
 
+// BUG 2010-03-31 NH.
+// There is a bug here. For some reason the definition of L_cuserid is
+// not done in fine /usr/include/bits/stdio_lim.h which is included from
+// within /usr/include/stdio.h.
+// Trying setting
+//   #undef __USE_XOPEN2K
+//   #define __USE_GNU 1 
+// at the top of Runtime.c also fixes the problem - makes sence if 
+// you look at stdio_lim.h
+// The constant L_ctermid IS set in stdio_lim.h because it is used 
+// without problems further down.
+// Everything compiles if we define it directly here instead - or moves
+// the defines above to Runtime.c:
+#define L_cuserid 9
 String
 REG_POLY_FUN_HDR(sml_getlogin, Region rs)
 {

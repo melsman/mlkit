@@ -7,7 +7,7 @@ signature ARRAY = sig
 
   val maxLen   : int
   val array    : int * 'a -> 'a array
-  val fromList : '_a list -> '_a array
+  val fromList : 'a list -> 'a array
   val tabulate : int * (int -> 'a) -> 'a array
 
   val length  : 'a array -> int

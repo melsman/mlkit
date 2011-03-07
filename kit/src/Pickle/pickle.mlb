@@ -1,5 +1,5 @@
 (*
- * Copyright, Martin Elsman 2003-01-07 
+ * Copyright, Martin Elsman 2003-2011
  * GPL Licence
  *)
 local 
@@ -9,8 +9,8 @@ local
         POLYHASH.sml Polyhash.sml 
     end
   eqhashdyn2.sml
-  stream.sig
-  stream.sml
+  bitstream.sig
+  bitstream.sml
 in
   pickle.sig
   open Polyhash

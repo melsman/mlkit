@@ -260,9 +260,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             end
 
         fun writeBasisJs punit B =
-            let val os : Pickle.outstream = Pickle.empty()
-                val os : Pickle.outstream = Pickle.pickler Basis.pu B os
-                val s = Pickle.toString os
+            let val s = Pickle.pickle Basis.pu B
                 val punit = String.translate (fn #"." => "_" | c => String.str c) punit
                 val s = String.concat [punit, "_eb = ", 
                                        toJSString s,
@@ -287,12 +285,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             end
 
         fun 'a doPickleGen0 (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) : string =
-            let val os : Pickle.outstream = Pickle.empty()
-                val _ = chatf (fn() => " [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
+            let val _ = chatf (fn() => " [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
                 (*  val timer = timerStart "Pickler" *)
-                val os : Pickle.outstream = Pickle.pickler pu_obj obj os
+                val res = Pickle.pickle pu_obj obj
                 (* val _ = timerReport timer *)
-                val res = Pickle.toString os
                 val _ = chatf (fn() => " [End pickling " ^ ext ^ " (sz = " ^ sizeToStr (size res) ^ ")]")
             in res
             end
@@ -305,7 +301,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
         fun unpickleGen smlfile pu ext : 'a option =    (* MEMO: perhaps use hashconsing *)
             let val s = readFile (targetFromSmlFile smlfile ext)
-                val (res,is) = Pickle.unpickler pu (Pickle.fromString s)
+                val res = Pickle.unpickle pu s
             in SOME res
             end handle _ => NONE
 
@@ -410,27 +406,27 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             doPickleGen punit ModCode.pu "lnk" modc 
 
         fun readLinkFiles lnkFiles =
-            let fun process (nil,is,modc) = modc
-                  | process (lf::lfs,is,modc) =
+            let fun process (nil,hce,modc) = modc
+                  | process (lf::lfs,hce,modc) =
                     let val s = readFile lf
                             handle _ => die ("readLinkFiles.error reading file " ^ lf)
-                        val (modc',is) = Pickle.unpickler ModCode.pu 
-                            (Pickle.fromStringHashCons is s)
+                        val (modc',hce) = Pickle.unpickle' ModCode.pu hce s 
                             handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
                         val modc' = ModCode.dirMod (OS.Path.dir lf) modc'
                             handle _ => die ("readLinkFiles.error during dirMod modc'")
-                    in process(lfs,is,ModCode.seq(modc,modc'))
+                    in process(lfs,hce,ModCode.seq(modc,modc'))
                     end
             in case lnkFiles of 
                 nil => ModCode.empty
               | lf::lfs => 
                     let val s = readFile lf
                             handle _ => die ("readLinkFiles.error reading file " ^ lf)
-                        val (modc,is) = Pickle.unpickler ModCode.pu (Pickle.fromString s)
+                        val hce = Pickle.empty_hce()
+                        val (modc,hce) = Pickle.unpickle' ModCode.pu hce s
                             handle _ => die ("readLinkFiles.error deserializing link code for " ^ lf)
                         val modc = ModCode.dirMod (OS.Path.dir lf) modc
                             handle _ => die ("readLinkFiles.error during dirMod modc")
-                    in process(lfs,is,modc) 
+                    in process(lfs,hce,modc) 
                     end 
             end
 (*
@@ -456,48 +452,46 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             end 
 *)
         fun doUnpickleBases0 ebfiles 
-            : Pickle.instream option * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
+            : Pickle.hce * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
             let val _ = chat "\n [Begin unpickling elaboration bases...]\n"
-                fun process (nil,is,acc) = (is, rev acc)
-                  | process (ebfile::ebfiles,is,acc) =
+                fun process (nil,hce,acc) = (hce, rev acc)
+                  | process (ebfile::ebfiles,hce,acc) =
                     let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
-                        val ((_,infixElabBasis),is) = Pickle.unpickler pu_NB0
-                            (Pickle.fromStringHashCons is s)
+                        val ((_,infixElabBasis),hce) = Pickle.unpickle' pu_NB0 hce s
                             handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile)
                         val entry = {ebfile=ebfile,infixElabBasis=infixElabBasis,
                                      used=ref false}
-                    in process(ebfiles,is,entry::acc)
+                    in process(ebfiles,hce,entry::acc)
                     end
             in
                 case ebfiles of 
-                    nil => (NONE,nil)
+                    nil => (Pickle.empty_hce(),nil)
                   | ebfile::ebfiles => 
                         let val s = readFile ebfile handle _ => 
                               die("doUnpickleBases0.error reading file " ^ ebfile)
-                            val ((_,infixElabBasis),is) = 
-                              Pickle.unpickler pu_NB0 (Pickle.fromString s)
+                            val hce = Pickle.empty_hce()
+                            val ((_,infixElabBasis),hce) = Pickle.unpickle' pu_NB0 hce s
                                 handle Fail st => 
                                          die("doUnpickleBases0.error unpickling infixElabBasis from file " 
                                              ^ ebfile ^ ": Fail(" ^ st ^ "); sz(s) = " ^ Int.toString (size s))
                                      | e => 
                                          die("doUnpickleBases0.error unpickling infixElabBasis from file " 
                                              ^ ebfile ^ ": " ^ General.exnMessage e)
-                            val (is, entries) = 
-                              process(ebfiles,is,[{ebfile=ebfile,
-                                                   infixElabBasis=infixElabBasis,
-                                                   used=ref false}])
-                        in (SOME is, entries)
+                            val (hce, entries) = 
+                              process(ebfiles,hce,[{ebfile=ebfile,
+                                                    infixElabBasis=infixElabBasis,
+                                                    used=ref false}])
+                        in (hce, entries)
                         end handle _ => die ("doUnpickleBases. error \n")
             end 
 
-        fun doUnpickleBases1 (is: Pickle.instream option) ebfiles : opaq_env * IntBasis = 
+        fun doUnpickleBases1 (hce: Pickle.hce) ebfiles : opaq_env * IntBasis = 
             let val _ = chat "\n [Begin unpickling compiler bases...]\n"
-                fun process (nil,is,basisPair) = basisPair
-                  | process (ebfile::ebfiles,is,basisPair) =
+                fun process (nil,hce,basisPair) = basisPair
+                  | process (ebfile::ebfiles,hce,basisPair) =
                     let val s = readFile ebfile
-                        val is = Pickle.fromStringHashCons is s
-                        val ((_,basisPair'),is) = Pickle.unpickler pu_NB1 is
-                    in process(ebfiles,is,Basis.plusBasis1(basisPair,basisPair'))
+                        val ((_,basisPair'),hce) = Pickle.unpickle' pu_NB1 hce s
+                    in process(ebfiles,hce,Basis.plusBasis1(basisPair,basisPair'))
                     end
                 val basisPair0 = Basis.initialBasis1()
             in
@@ -505,19 +499,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                     nil => basisPair0
                   | ebfile::ebfiles => 
                         let val s = readFile ebfile
-                            val is = 
-                                case is of
-                                    SOME is => Pickle.fromStringHashCons is s
-                                  | NONE => Pickle.fromString s
-                            val ((_,basisPair),is) = Pickle.unpickler pu_NB1 is
-                        in process(ebfiles,is,Basis.plusBasis1(basisPair0,basisPair))
+                            val ((_,basisPair),hce) = Pickle.unpickle' pu_NB1 hce s
+                        in process(ebfiles,hce,Basis.plusBasis1(basisPair0,basisPair))
                         end handle _ => die ("doUnpickleBases1. error \n")
             end 
 
         fun lnkFileConsistent {lnkFile} =
             let val s = readFile lnkFile
-                val (mc,is) = Pickle.unpickler ModCode.pu 
-                    (Pickle.fromString s)
+                val mc = Pickle.unpickle ModCode.pu s
             in true
             end handle _ => false
 
