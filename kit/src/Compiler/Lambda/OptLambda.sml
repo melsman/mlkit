@@ -182,6 +182,9 @@ structure OptLambda: OPT_LAMBDA =
     fun is_in_lv lv lvs = List.exists (fn lv' => Lvars.eq(lv,lv')) lvs
     fun is_in_ex ex exs = List.exists (fn ex' => Excon.eq(ex,ex')) exs
 
+    val lexp_true = PRIM(CONprim{con=Con.con_TRUE,instances=nil},nil)
+    val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil},nil)
+
    (* -----------------------------------------------------------------
     * Statistical functions
     * ----------------------------------------------------------------- *)
@@ -893,15 +896,75 @@ structure OptLambda: OPT_LAMBDA =
       fun constantFolding lamb fail =
           if not(aggressive_opt()) then fail
           else 
-            case lamb of
-              PRIM(CCALLprim{name,...},exps) =>
-              (case (name, exps) of
-                 ("concatStringML", [STRING s1,STRING s2]) => 
-                 let val lamb = STRING (s1 ^ s2)
-                 in (lamb, CCONST lamb)
-                 end
-               | _ => fail)
-            | _ => fail
+            let val opt =
+                    case lamb of
+                      PRIM(CCALLprim{name,...},exps) =>
+                      (case exps of
+                         [STRING s1,STRING s2] =>
+                         let fun opp opr = SOME(if opr(s1,s2) then lexp_true else lexp_false)
+                         in case name of
+                              "concatStringML" => SOME(STRING (s1 ^ s2))
+                            | "lessStringML" => opp (op <)
+                            | "greaterStringML" => opp (op >)
+                            | "lesseqStringML" => opp (op <=)
+                            | "greatereqStringML" => opp (op >=)
+                            | _ => NONE
+                         end
+                       | [INTEGER(v1,_),INTEGER(v2,_)] =>
+                         let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
+                         in case name of
+                              "__less_int31" => opp (op <)
+                            | "__less_int32b" => opp (op <)
+                            | "__less_int32ub" => opp (op <)
+                            | "__lesseq_int31" => opp (op <=)
+                            | "__lesseq_int32b" => opp (op <=)
+                            | "__lesseq_int32ub" => opp (op <=)
+                            | "__greater_int31" => opp (op >)
+                            | "__greater_int32b" => opp (op >)
+                            | "__greater_int32ub" => opp (op >)
+                            | "__greatereq_int31" => opp (op >=)
+                            | "__greatereq_int32b" => opp (op >=)
+                            | "__greatereq_int32ub" => opp (op >=)
+                            | "__equal_int31" => opp (op =)
+                            | "__equal_int32b" => opp (op =)
+                            | "__equal_int32ub" => opp (op =)
+                            | _ => NONE
+                         end
+                       | [WORD(v1,t),WORD(v2,_)] =>
+                         let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
+                         in case name of
+                              "__less_word31" => opp (op <)
+                            | "__less_word32b" => opp (op <)
+                            | "__less_word32ub" => opp (op <)
+                            | "__lesseq_word31" => opp (op <=)
+                            | "__lesseq_word32b" => opp (op <=)
+                            | "__lesseq_word32ub" => opp (op <=)
+                            | "__greater_word31" => opp (op >)
+                            | "__greater_word32b" => opp (op >)
+                            | "__greater_word32ub" => opp (op >)
+                            | "__greatereq_word31" => opp (op >=)
+                            | "__greatereq_word32b" => opp (op >=)
+                            | "__greatereq_word32ub" => opp (op >=)
+                            | "__equal_word" => opp (op =)
+                            | "__equal_word31" => opp (op =)
+                            | "__equal_word32b" => opp (op =)
+                            | "__equal_word32ub" => opp (op =)
+                            | "__andb_word" => SOME(WORD(Word32.andb(v1,v2),t))
+                            | "__andb_word31" => SOME(WORD(Word32.andb(v1,v2),t))
+                            | "__andb_word32b" => SOME(WORD(Word32.andb(v1,v2),t))
+                            | "__andb_word32ub" => SOME(WORD(Word32.andb(v1,v2),t))
+                            | "__orb_word" => SOME(WORD(Word32.orb(v1,v2),t))
+                            | "__orb_word31" => SOME(WORD(Word32.orb(v1,v2),t))
+                            | "__orb_word32b" => SOME(WORD(Word32.orb(v1,v2),t))
+                            | "__orb_word32ub" => SOME(WORD(Word32.orb(v1,v2),t))
+                            | _ => NONE
+                         end
+                       | _ => NONE)
+                    | _ => NONE
+            in case opt of
+                 SOME lamb => (lamb,CCONST lamb)
+               | NONE => fail
+            end
 
       fun reduce (env, (fail as (lamb,cv))) =
 	case lamb
