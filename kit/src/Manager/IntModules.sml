@@ -82,11 +82,6 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	of SOME ti => SOME(ElabInfo.TypeInfo.normalise ti)
 	 | NONE => NONE 
 
-    (* For path operations *)
-    infix ##
-    val op ## = OS.Path.concat
-
-
     (* ----------------------------------------------------
      * Fresh unit names; in case functors `splits' sources
      * ---------------------------------------------------- *)
@@ -671,20 +666,25 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	 | (NONE, NONE) => (LEAF IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
 
-    fun interp(fi:bool,absprjid,intB,topdec, unitname) =
-      let 
-	val _ = Execution.preHook()
-        val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
-	val MLB_slash_unitname = 
-	    let val {dir,file} = OS.Path.splitDirFile unitname
-	    in dir ## mlbdir() ## file handle _ => die "concat"
-	    end
-	val _ = Execution.postHook {unitname=MLB_slash_unitname} handle _ => die "postHook"
-        val intBs = flatten(t,[])
-      in
-        (List.foldl (fn(x, acc)=> IntBasis.plus(acc,x)) IntBasis.empty intBs, mc)
-      end
-
+    local
+      (* For path operations *)
+      infix ##
+      val op ## = OS.Path.concat
+    in
+      fun interp(fi:bool,absprjid,intB,topdec, unitname) =
+        let 
+          val _ = Execution.preHook()
+          val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
+          val MLB_slash_unitname = 
+              let val {dir,file} = OS.Path.splitDirFile unitname
+              in (dir ## mlbdir() ## file) handle _ => die "interp: Path.concat"
+              end
+          val _ = Execution.postHook {unitname=MLB_slash_unitname} handle _ => die "postHook"
+          val intBs = flatten(t,[])
+        in
+          (List.foldl (fn(x, acc)=> IntBasis.plus(acc,x)) IntBasis.empty intBs, mc)
+        end
+    end
   end
 
 

@@ -1,5 +1,9 @@
 functor MlbProject (Env : ENVIRONMENT) :> MLB_PROJECT = 
 struct
+
+  fun die s = (print ("Die: MlbProject: " ^ s ^ "\n"); raise Fail s) 
+
+  fun unique_true f = MlbFileSys.unique true f
   
   structure MS =
   struct
@@ -22,10 +26,10 @@ struct
       val bidCompare = String.compare 
       fun pp_bid s = s
       fun longbid (bids:bid list) : longbid = bids
-      fun longopen nil = raise Fail "empty longbid"
+      fun longopen nil = die "empty longbid"
         | longopen [bid] = (bid,NONE)
         | longopen (bid::longbid) = (bid, SOME longbid)
-      fun pp_longbid nil = raise Fail "empty longbid"
+      fun pp_longbid nil = die "empty longbid"
         | pp_longbid [b] = pp_bid b
         | pp_longbid (b::bs) = pp_bid b ^ "." ^ pp_longbid bs
       fun explode ss = ss
@@ -377,7 +381,9 @@ struct
                           else parse_error1 mlbfile ("invalid path following SCRIPTPATH keyword",ss)
                         | _ => parse_error1 mlbfile ("missing path to follow SCRIPTPATH keyword",ss))
                      | _ => (NONE,ss))
-            in parse_bdec_more mlbfile (MS.MLBFILEbdec (expand mlbfile s,opt),ss)
+              val mlbfile2 = expand mlbfile s
+              (*val () = print ("File " ^ s ^ " expands to " ^ mlbfile2 ^ " in " ^ mlbfile ^"\n") *)
+            in parse_bdec_more mlbfile (MS.MLBFILEbdec (mlbfile2,opt),ss)
             end
           else NONE
       | nil => NONE
@@ -393,19 +399,24 @@ struct
           val ss = (lex mlbfile o drop_comments mlbfile o
                     explode o MlbFileSys.fromFile) mlbfile
         (* val _ = print_ss ss *)
-        in  case parse_bdec_opt mlbfile ss of
-              SOME (bdec,nil) => bdec
-            | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
-            | NONE => MS.EMPTYbdec
+          val bdec = 
+              case parse_bdec_opt mlbfile ss of
+                SOME (bdec,nil) => bdec
+              | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
+              | NONE => MS.EMPTYbdec
+        in (* print ("Successfully parsed " ^ mlbfile ^ "\n"); *)
+           bdec
         end
         handle IO.Io {name=io_s,cause,...} => error ("The basis file " ^ quot mlbfile ^ " cannot be opened")
                                               
 
   (* Support for writing dependency information to disk in .d-files. *)
-                                              
-  fun dirMod dir file = if OS.Path.isAbsolute file then file
-                        else OS.Path.concat(dir,file)
 
+  fun path_concat dir file = 
+      (if OS.Path.isAbsolute file then file
+       else OS.Path.concat(dir,file))
+      handle OS.Path.Path => die "Path: path_concat"
+                                              
   structure DepEnv = 
   struct
     type L = string list        
@@ -414,7 +425,7 @@ struct
         let 
           fun look nil _ = NONE
             | look ((x,d)::xs) y = if x = y then SOME d else look xs y
-          fun lookD _ nil = raise Fail "empty longbid"
+          fun lookD _ nil = die "empty longbid"
             | lookD (D(_,xs)) [y] = look xs y
             | lookD (D(_,xs)) (y::ys) =
               case look xs y of
@@ -431,7 +442,7 @@ struct
     fun dirModify ("", dep) = dep
       | dirModify (dir, dep : D) : D =
         let fun depMap f (D(L,bds)) = D(map f L,map (fn (b,d) => (b,depMap f d)) bds)
-        in depMap (dirMod dir) dep
+        in depMap (path_concat dir) dep
         end
   end
   
@@ -472,20 +483,19 @@ struct
                                                         
   local
     fun mkAbs file = OS.Path.mkAbsolute{path=file,relativeTo=OS.FileSys.getDir()}
+                     handle OS.Path.Path => die "mkAbs"
                      
   in
     fun subtractDir _ "" = (fn p => p)
       | subtractDir hasLink dir =
         if hasLink
-        then fn p => if OS.Path.isAbsolute p
-                     then p
-                     else OS.Path.concat (MlbFileSys.getCurrentDir (),p)
+        then fn p => path_concat (MlbFileSys.getCurrentDir()) p
         else
           let val dir_abs = mkAbs dir
           in fn p =>
                 let val p_abs = mkAbs p
-                  val _ = if OS.Path.isAbsolute dir then print ("mkAbs: " ^ p ^ " " ^ p_abs ^ " " ^ dir ^ "\n") else ()
-                in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs}
+                    (* val _ = if OS.Path.isAbsolute dir then print ("mkAbs: " ^ p ^ " " ^ p_abs ^ " " ^ dir ^ "\n") else () *)
+                in OS.Path.mkRelative{path=p_abs,relativeTo=dir_abs} handle OS.Path.Path => die "subtractDir"
                 end
           end
   end
@@ -500,10 +510,10 @@ struct
           case arcs 
            of [] => false
             | (x::xr) => #2(List.foldl (fn (x,(y,b)) =>
-                                           let val y' = OS.Path.concat (y,x)
+                                           let val y' = OS.Path.concat (y,x) handle OS.Path.Path => die "Path: hasLinks"
                                            in (y',b orelse islink y')
                                            end)
-                                       (let val a = OS.Path.toString {vol = vol, isAbs = isAbs, arcs = [x]}
+                                       (let val a = OS.Path.toString {vol = vol, isAbs = isAbs, arcs = [x]} handle OS.Path.Path => die "Path: hasLinks2"
                                         in (a, islink a)
                                         end)
                                        xr)
@@ -514,7 +524,7 @@ struct
           val {dir,file} = OS.Path.splitDirFile smlfile
           infix ## 
           val op ## = OS.Path.concat
-          val file = dir ## (!depDir) ## (file ^ ".d")
+          val file = (dir ## (!depDir) ## (file ^ ".d")) handle OS.Path.Path => die "Path: maybeWriteDep"
         in if fileNewer modTimeMlbFileMax file then ()         (* Don't write .d-file if the current .d-file *)
            else                                                  (*  is newer than the mlb-file or any imported mlb-file. *)
              let 
@@ -604,7 +614,7 @@ struct
 
         and dep_bdec_file (A:A) mlbfile_rel : D * A =
             let
-        val unique = MlbFileSys.unique true mlbfile_rel
+                val unique = unique_true mlbfile_rel
 (*          let val mlbfile_abs = mkAbs mlbfile_rel *)
             in
                 case lookupA A unique of
@@ -629,7 +639,9 @@ struct
 
   in 
         fun dep (mlbfile : string) : unit =
-            (dep_bdec_file emptyA mlbfile; ())
+            ((* print "[Computing dependencies ..."; *)
+             dep_bdec_file emptyA mlbfile; ()
+             (* ; print "]\n" *))
   end
 
   (* Support for finding the source files of a basis file *)
@@ -755,13 +767,11 @@ struct
   local
 (*    val unique = MlbFileSys.unique *)
     exception Cycle of (string * MlbFileSys.unique) list * (string * MlbFileSys.unique) option
-    fun pathUpArrow(p,p_pre) = 
-        if OS.Path.isAbsolute p then p
-        else OS.Path.concat(p_pre,p)
+    fun pathUpArrow(p,p_pre) = path_concat p_pre p
   in
     fun srcs_bdec_file {dir,current_mlb} state mlbs mlbfile_rel =
       let 
-        val mlbfile_abs = MlbFileSys.unique true mlbfile_rel
+        val mlbfile_abs = unique_true mlbfile_rel
         val _ = if List.exists (fn m => m = mlbfile_abs) current_mlb
                 then raise Cycle ([(mlbfile_rel,mlbfile_abs)], NONE)
                 else ()
@@ -774,10 +784,12 @@ struct
            in
              let
                val bdec = parse mlbfile
-               val dir = if OS.Path.isAbsolute mlbfile_rel
-                         then OS.Path.dir mlbfile_rel
-                         else OS.Path.concat(dir,OS.Path.dir mlbfile_rel)
+               val dir = path_concat dir (OS.Path.dir mlbfile_rel)
                                        (* srcs_bdec state mlbfile mlbs dir [] [] bdec *)
+(*
+               val () = print ("CurrentDir: " ^ FileSys.getDir() ^ "\n")
+               val () = print ("Dir before processing " ^ mlbfile ^ ": " ^ dir ^ "\n")
+*)
                val (state,deps,mlbs) = (srcs_bdec state mlbfile mlbs {dir=dir,current_mlb = mlbfile_abs::current_mlb} [] [] bdec)
                  handle Cycle (l,cycend) => 
                    let
@@ -825,9 +837,7 @@ struct
                          , mlbs)
      | MS.ATBDECbdec smlfile => 
        let
-         val smlfile = if OS.Path.isAbsolute smlfile 
-                       then smlfile
-                       else OS.Path.concat(#dir dir,smlfile)
+         val smlfile = path_concat (#dir dir) smlfile
          val (bg,deps) = BG.add_first (#bg state : (SmlFile * string * string list) BG.A) deps (NonScript (Atom.fromString smlfile), mlbfile, anns)
        in
          ({bg = bg, bid_map = #bid_map state}, [deps], mlbs)
@@ -840,11 +850,7 @@ struct
        end
      | MS.SCRIPTSbdec smlfiles =>
        let
-         val smlfiles = List.map (fn smlfile => 
-                       if OS.Path.isAbsolute smlfile 
-                       then smlfile
-                       else OS.Path.concat(#dir dir,smlfile)) smlfiles
-
+         val smlfiles = List.map (path_concat (#dir dir)) smlfiles
          val bg = List.foldl (fn (f,bg) => #1 (BG.add_first bg deps (Script (Atom.fromString f), mlbfile, anns))) (#bg state) smlfiles
        in
          ({bg = bg,bid_map = #bid_map state},deps,mlbs)
@@ -875,7 +881,7 @@ struct
               val smlfile = Atom.toString a
               val mlbfile = #2 e
           in 
-            ((MlbFileSys.unique true smlfile, (a,mlbfile)) :: acc)
+            ((unique_true smlfile, (a,mlbfile)) :: acc)
             handle _ => 
                    MlbUtil.error
                    ("The file " ^ MlbUtil.quot smlfile ^ " (referenced in " ^ MlbUtil.quot mlbfile ^ ") does not exist or cannot be read") 
@@ -884,16 +890,20 @@ struct
       val list = BG.foldB fromElem []
 
       val sort = Listsort.sort (fn ((a,_),(b,_)) => MlbFileSys.cmp (a,b))
-      fun fileCmp (f,g) = MlbFileSys.cmp (MlbFileSys.unique true f,MlbFileSys.unique true g)
+      fun filesEqual (f,g) = 
+          (case MlbFileSys.cmp (unique_true f, unique_true g) of
+             EQUAL => true
+           | _ => false)
+          handle _ => false
       fun report(s,m1,m2) =
         let
           val s = Atom.toString s
           val first = "The file " ^ MlbUtil.quot s ^ " is referenced "
         in 
-          case fileCmp(m1,m2) 
-          of EQUAL => first ^ "more than once in " ^ MlbUtil.quot m1
-           |     _ => first ^ "in both " ^ MlbUtil.quot m1 
-                            ^ " and " ^ MlbUtil.quot m2
+          if filesEqual(m1,m2) then
+            first ^ "more than once in " ^ MlbUtil.quot m1
+          else
+            first ^ "in both " ^ MlbUtil.quot m1 ^ " and " ^ MlbUtil.quot m2
         end
       fun check' [] = []
         | check' [a] = [a]
@@ -905,6 +915,7 @@ struct
   in
     fun sources (mlbfile:string) = 
         let
+          (*val () = print ("Finding sources in " ^ mlbfile ^ "\n")*)
           val (a,b) = BG.turn (#bg(#1 (srcs_bdec_file {dir="",current_mlb = []} {bg = BG.emptyA, bid_map = []} [] mlbfile)))
         in (ignore (check a); (a,b))
         end

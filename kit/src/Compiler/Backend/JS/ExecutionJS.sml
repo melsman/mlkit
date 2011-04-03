@@ -25,6 +25,8 @@ structure ExecutionJS : EXECUTION =
     type linkinfo = {unsafe:bool,imports:lab list,exports:lab list}
     type target = Compile.target
 
+    fun die s = (print ("ExecutionJS.Die: " ^ s); raise Fail s)
+
     val dummy_label = "__DUMMYDUMMY"
     val code_label_of_linkinfo : linkinfo -> lab = fn _ => dummy_label
 
@@ -83,15 +85,25 @@ structure ExecutionJS : EXECUTION =
     val js_path_prefix = Flags.add_string_entry 
         {long="js_path_prefix", short=NONE, menu=["File", "js path prefix"], 
          item=ref "",
-         desc= "Prefix to add to each Javascript file path in the\n\
-               \resulting run.html file."}
+         desc= "Prefix to add to each non-absolute Javascript\n\
+               \file path in the resulting run.html file."}
+
+    val js_path_relative_to = Flags.add_string_entry 
+        {long="js_path_relative_to", short=NONE, menu=["File", "js path relative to"], 
+         item=ref "",
+         desc= "Absolute directory for which each absolute\n\
+               \Javascript file path is made relative to in\n\
+               \the resulting run.html file."}
 
     fun link_files_with_runtime_system files run =
 	let val html_file = run ^ ".html"
 	    val os = TextIO.openOut html_file
             fun out s = TextIO.output(os,s)
             fun outJsFile f =
-                let val f = js_path_prefix() ## f
+                let val f =
+                        if OS.Path.isAbsolute f then
+                          OS.Path.mkRelative{path=f,relativeTo=js_path_relative_to()}
+                        else js_path_prefix() ## f
                     val f = if js_path_compress() then OS.Path.mkCanonical f 
                             else f
                 in out ("<script type=\"text/javascript\" src=\"" ^ f ^ "\"></script>\n")

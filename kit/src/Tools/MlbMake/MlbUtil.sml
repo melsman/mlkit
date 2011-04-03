@@ -4,13 +4,8 @@ structure MlbUtil :>
     val quot : string -> string
     val warn : string -> unit
     val error : string -> 'a
-    val pp_list : string -> string list -> string
   end =
     struct
-	fun pp_list sep nil = ""
-	  | pp_list sep [x] = x 
-	  | pp_list sep (x::xs) = x ^ sep ^ pp_list sep xs
-	    
 	fun quot s = "'" ^ s ^ "'"
 
 	fun warn (s : string) = print ("\nWarning: " ^ s ^ ".\n\n")

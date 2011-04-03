@@ -48,8 +48,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
     local
 	(* Directories and files *)
 
-	val op ## = OS.Path.concat infix ##
-
 	fun set_paths install_dir =
 	    Flags.install_dir := install_dir
 

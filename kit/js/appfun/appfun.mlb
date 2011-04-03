@@ -1,0 +1,5 @@
+local $(SML_LIB)/basis/basis.mlb
+      $(SML_LIB)/basis/js.mlb
+      $(SML_LIB)/codemirror/sml/codemirror.mlb
+in AppFun.sml
+end

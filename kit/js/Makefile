@@ -38,9 +38,10 @@ CODEMIRRORFILES=js/codemirror/dist/js/*.js \
  js/codemirror/dist/css/docs.css
 
 CODEMIRRORFLAGS=-jslibs "../../js/codemirror/dist/js/codemirror.js"
-
+JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to "/home/mael/kit"
+SML_LIB=/home/mael/kit/js
 smltojs_web: Makefile doc
-	(cd ../src/Compiler; SML_LIB=../../js ../../bin/smltojs -aopt -js_path_compress -js_path_prefix "src/Compiler" $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
+	(cd ../src/Compiler; SML_LIB=$(SML_LIB) ../../bin/smltojs -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
 	(cd ..; cp src/Compiler/index.html .)
 	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html $(THEBASISFILES) js/smltojs_logo_color160.png js/doc/*.html $(CODEMIRRORFILES))
 

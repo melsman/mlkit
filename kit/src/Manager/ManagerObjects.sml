@@ -133,7 +133,8 @@ functor ManagerObjects(
 		       end
 		   val f0 = Execution.emit {target=target,filename=target_filename}
 		   val f = OS.Path.file f0
-	    in mlbdir() ## f (* strip the initial dir in the recorded code file *)
+	    in (mlbdir() ## f) (* strip the initial dir in the recorded code file *)
+               handle OS.Path.Path => die "emit: Path.concat"
 	    end
 
 	(* -------------------------------------------------------------

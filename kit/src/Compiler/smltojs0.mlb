@@ -14,9 +14,8 @@ local
 in Backend/JS/ExecutionJS.sml 
    local $SML_LIB/basis/js.mlb
    in Backend/JS/SmlToJsComp.sml
-      local $SML_LIB/codemirror/sml/codemirror.sig
-            $SML_LIB/codemirror/sml/codemirror.sml
-      in Backend/JS/SmlToJsCompTest.sml
+      local $SML_LIB/appfun/appfun.mlb
+      in Backend/JS/SmlToJsCompApp.sml
       end
    end
 end
