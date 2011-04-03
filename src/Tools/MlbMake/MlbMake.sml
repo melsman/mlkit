@@ -24,6 +24,8 @@ struct
      * Some operations on directories and files
      * ------------------------------------------- *)
 
+    fun die s = (print ("Die: MlbMake: " ^ s ^ "\n"); raise Fail s) 
+
     fun vchat s = MlbUtil.vchat0 verbose s
 
     local
@@ -32,7 +34,7 @@ struct
                 infix ##
                 val op ## = OS.Path.concat
             in dir ## P.mlbdir () ## (file ^ ext)
-            end
+            end handle OS.Path.Path => die "fileFromSmlFile. Path"
     in
         fun objFileFromSmlFile smlfile =
             fileFromSmlFile smlfile (P.objFileExt())
@@ -74,8 +76,10 @@ struct
       in loop("", dirs)
       end
 
-    fun dirMod dir file = if OS.Path.isAbsolute file then file
-                          else OS.Path.concat(dir,file)
+    fun path_concat dir file = 
+        (if OS.Path.isAbsolute file then file
+         else OS.Path.concat(dir,file))
+        handle OS.Path.Path => die "Path: path_concat"
 
     (* --------------------
      * Build an mlb-project
@@ -87,8 +91,8 @@ struct
             val is = TextIO.openIn depFile
         in let val all = TextIO.inputAll is handle _ => ""
                val smlfiles = String.tokens Char.isSpace all
-               val smlfiles = map (dirMod dir) smlfiles   
-               val _ = vchat ("Dependencies for " ^ smlfile ^ ": " ^ MlbUtil.pp_list " " smlfiles)
+               val smlfiles = map (path_concat dir) smlfiles   
+               val _ = vchat ("Dependencies for " ^ smlfile ^ ": " ^ String.concatWith " " smlfiles)
            in TextIO.closeIn is; smlfiles
            end handle _ => (TextIO.closeIn is; nil)
         end handle _ => nil
@@ -214,7 +218,7 @@ struct
             val revFile = 
                 let val {dir,file} = OS.Path.splitDirFile src
                 in dir ## P.mlbdir() ## (file ^ ".rev")
-                end
+                end handle OS.Path.Path => die "readRevFromRevFile.Path"
             fun err() = MlbUtil.error ("Failed to read threaded region/effect variable counter from file " 
                                        ^ revFile ^ ", for profiling.")
             val is = TextIO.openIn revFile
@@ -384,7 +388,7 @@ struct
                   | SOME (file,mlb,anns) =>
                     let 
                       (*   val _ =  print ("About to compile: " ^ (fileToString file) ^ "\n")  *)
-                      val flags = (MlbUtil.pp_list "" anns) ^ " " ^ flags
+                      val flags = (String.concatWith "" anns) ^ " " ^ flags
                       val b = if setRegionEffectVarCounter 
                               then P.maybeSetRegionEffectVarCounter(#regionVar acc ())
                               else false

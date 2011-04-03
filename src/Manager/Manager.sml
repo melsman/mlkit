@@ -759,7 +759,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 infix ##
                 val op ## = OS.Path.concat
             in dir ## MO.mlbdir () ## (file ^ ext)
-            end
+            end handle OS.Path.Path => die "fileFromSmlFile. Path"
          fun objFileFromSmlFile smlfile =
              fileFromSmlFile smlfile (objFileExt())
              
@@ -1001,7 +1001,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             in  
               (MlbMake.build{flags="",mlbfile=s,target=target} 
                handle Fail s => raise Fail s
-                    | IsolateFunExn n => 
+                    | OS.SysErr (s,_) =>
+                      (print "Stopping compilation due to system error:\n";
+                       print ("SysErr(" ^ s ^ ")\n");
+                       raise PARSE_ELAB_ERROR nil)
+                    | IsolateFunExn n =>
                       (print ("Stopping compilation of MLB-file due to error (code " 
                               ^ Int.toString n ^ ").\n");
                        raise PARSE_ELAB_ERROR nil)
