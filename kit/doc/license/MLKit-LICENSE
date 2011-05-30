@@ -17,9 +17,10 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details; see the file GPL-LICENSE.
 
 For the source distributions, the files in the directories
-src/Runtime/ and basis/ are distributed under the MIT license; see the
-files basis/MIT-LICENSE and src/Runtime/MIT-LICENSE. All other files
-are distributed under the GPL license; see the file GPL-LICENSE.
+src/Runtime/ and basis/ and js/ are distributed under the MIT license;
+see the files src/Runtime/MIT-LICENSE and basis/MIT-LICENSE and
+js/MIT-LICENSE. All other files are distributed under the GPL license;
+see the file GPL-LICENSE.
 
 For the binary distributions, the files in the directory lib/ are
 distributed under the MIT license; see the file MIT-LICENSE. All other

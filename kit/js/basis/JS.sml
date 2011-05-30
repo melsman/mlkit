@@ -76,6 +76,8 @@ signature JS =
       val tag0  : string -> elem
       val tag   : string -> elem -> elem
       val taga  : string -> (string*string)list -> elem -> elem                                 
+      val toForeignPtr   : elem -> foreignptr
+      val fromForeignPtr : foreignptr -> elem
     end
   end
 

@@ -34,7 +34,7 @@ local
       in Js.XMLHttpRequest.send r (SOME request)
       end
 in
-structure XMLrpc = 
+structure XMLrpc : XMLRPC = 
   XMLrpc(struct 
            exception Connection = Fail
            val makeRequest = makeRequest

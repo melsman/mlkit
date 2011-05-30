@@ -8,9 +8,9 @@ IMPL=General List Bool Int31 Int32 IntInf String2 \
  Substring ByteTable Char Array2 Array Vector VectorSlice \
  ArraySlice ByteSlice Date Time Timer Word8 Word31 Word32 \
  Byte Real Math Random Pack32Little Pack32Big ListPair Option Listsort \
- StringCvt JsCore Js Html Rwp
+ StringCvt JsCore Js Html Rwp XMLrpcClient
 
-THESIGS=$(SIGS:%=../../js/basis/%.sml)
+THESIGS=$(SIGS:%=../../js/basis/%.sml) ../../js/basis/XMLRPC.sig ../../js/basis/XMLRPC_TYPE.sig
 THEIMPL=$(IMPL:%=../../js/basis/%.sml)
 
 .PHONY: doc
