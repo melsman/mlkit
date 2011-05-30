@@ -1,3 +1,8 @@
+(** XMLRPC index types.
+
+See http://www.xmlrpc.com 
+*)
+
 signature XMLRPC_TYPE = sig
     type 'a T
     val int    : int T
@@ -16,42 +21,42 @@ signature XMLRPC_TYPE = sig
     val conv   : ('a -> 'b) * ('b -> 'a) -> 'b T -> 'a T
 end
 
-(*
- [int] type <int> and <i4>
+(**
+[int] type <int> and <i4>.
 
- [bool] type <boolean>
+[bool] type <boolean>.
 
- [real] type <double>
+[real] type <double>.
 
- [string] type <string>
+[string] type <string>.
 
- [date] type <dateTime.iso8601>
+[date] type <dateTime.iso8601>.
 
- [unit] type <int> with value 0.
+[unit] type <int> with value 0.
 
- [pair] type <array> where type 'a is type of member with index 0 and
- 'b is type of member with index 1.
+[pair] type <array> where type 'a is type of member with index 0 and
+'b is type of member with index 1.
 
- [tup3] type <array> where type 'a is type of member with index 0, 'b 
- is type of member with index 1, and 'c is type of member with index 2.
+[tup3] type <array> where type 'a is type of member with index 0, 'b 
+is type of member with index 1, and 'c is type of member with index 2.
 
- [tup4] type <array> where type 'a is type of member with index 0, 'b 
- is type of member with index 1, 'c is type of member with index 2,
- and 'd is type of member with index 3.
+[tup4] type <array> where type 'a is type of member with index 0, 'b 
+is type of member with index 1, 'c is type of member with index 2,
+and 'd is type of member with index 3.
 
- [option] type <array> with either one element or zero elements.
+[option] type <array> with either one element or zero elements.
 
- [list] type <array>. Homogeneous lists where elements must be of
- identical type.
+[list] type <array>. Homogeneous lists where elements must be of
+identical type.
 
- [array] type <array>. Homogeneous arrays where elements must be of
- identical type.
+[array] type <array>. Homogeneous arrays where elements must be of
+identical type.
 
- [vector] type <array>. Homogeneous vectors where elements must be of
- identical type.
+[vector] type <array>. Homogeneous vectors where elements must be of
+identical type.
 
- [option] type <array> with zero or one element.
+[option] type <array> with zero or one element.
 
- [conv (f,g) a] allows for constructing a serializer of arbitrary
- type, given an empedding-projection pair (f,g) into the type a. 
+[conv (f,g) a] allows for constructing a serializer of arbitrary
+type, given an empedding-projection pair (f,g) into the type a. 
 *)

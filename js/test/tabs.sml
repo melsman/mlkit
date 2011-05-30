@@ -1,23 +1,5 @@
 
-fun taga (t:string) (attrs:(string*string)list) (elem:Js.elem) : Js.elem = 
-    let val newelem = Js.createElement t     
-    in List.app (fn (k,v) => Js.setAttribute newelem k v) attrs;
-       Js.appendChild newelem elem;
-       newelem
-    end
-
-fun tag t elem = taga t nil elem
-
-fun $ s = Js.createTextNode s
-
-infix &
-
-fun e1 & e2 =
-    let val e = Js.createFragment()
-    in Js.appendChild e e1;
-       Js.appendChild e e2;
-       e
-    end
+open Js.Element infix &
 
 fun nbsp() = $ ""
 
@@ -85,8 +67,24 @@ val table = tabs "70px" [("Tab1", page1), ("Tab2", page2), ("Tab3",page3)]
 
 val table = taga "table" [("width","100%"),("border","1")] (tag "tr" (tag "td" table))
 
-val top = Js.documentElement(Js.document)
+val win = Js.openWindow "" "" "newwin"
 
-val h = tag "html" (tag "body" (tag "h1" ($"Tabs Example") & table & tag "p" ($"Hello")))
+val doc = Js.windowDocument win
+
+val top = Js.documentElement doc
+
+val styles = 
+    "body { font-size: 80%; font-family: 'Lucida Grande', Verdana, Arial, Sans-Serif; }\n\
+    \ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }\n\
+    \ul#tabs li { display: inline; }\n\
+    \ul#tabs li a { color: #42454a; background-color: #dedbde; border: 1px solid #c9c3ba; border-bottom: none; padding: 0.3em; text-decoration: none; }\n\
+    \ul#tabs li a:hover { background-color: #f1f0ee; }\n\
+    \ul#tabs li a.selected { color: #000; background-color: #f1f0ee; font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }\n\
+    \div.tabContent { border: 1px solid #c9c3ba; padding: 0.5em; background-color: #f1f0ee; }\n\
+    \div.tabContent.hide { display: none; }"
+
+val h = tag "html" 
+            (tag "head" (tag "title" ($"Tab Example") & (taga "style" [("type","text/css")] ($styles))) &
+                 (tag "body" (tag "h1" ($"Tabs Example") & table & tag "p" ($"Hello"))))
 
 val _ = Js.appendChild top h

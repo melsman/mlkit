@@ -5,9 +5,9 @@ structure SmlToJsAppArg : APP_ARG = struct
   infix &
 
   val codemirror_module = "sml"
-  val application_title = "SMLtoJs Prompt"
+  val application_title = "SMLtoJsOnline"
   val application_teaser = "Compile and Run your Standard ML programs in a Browser!!"
-
+  val syntaxhighlight = true
   val logo_path = "js/smltojs_logo_color160.png"
   val logo = taga "a" [("href","http://www.itu.dk/people/mael/smltojs")]
                   (taga0 "img" [("border","0"),("alt","Logo"),("src",logo_path)])

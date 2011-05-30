@@ -234,6 +234,9 @@ structure Element = struct
          appendChild e e2;
          e
       end
+
+  fun toForeignPtr x = x
+  fun fromForeignPtr x = x
 end
 
 structure XMLHttpRequest =
