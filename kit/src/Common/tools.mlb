@@ -9,14 +9,14 @@ in
   BASIC_IO.sml 
   BasicIO.sml 
 *)
-  CRASH.sml
+  CRASH.sig
   Crash.sml
-  REPORT.sml
+  REPORT.sig
   Report.sml
-  TIMESTAMP.sml
+  TIMESTAMP.sig
   Timestamp.sml
   local open Edlib
-  in PRETTYPRINT.sml 
+  in PRETTYPRINT.sig 
      ListUtils.sml
      PrettyPrint.sml  
   end
@@ -26,7 +26,7 @@ in
      IntFinMapPT.sml
      OrderFinMap.sml 
   end
-  FLAGS.sml
+  FLAGS.sig
   BasisCompat.sml
 (*  Menu.sml *)
   local open Kitlib
@@ -39,9 +39,9 @@ in
   in IntStringFinMap.sml
      WordFinMapPT.sml
      local open Edlib 
-     in FINMAPEQ.sml
+     in FINMAPEQ.sig
         FinMapEq.sml
-        FINMAP.sml
+        FINMAP.sig
         FinMap.sml 
      end
      SORTED_FINMAP.sml
@@ -58,12 +58,12 @@ in
      NatSet.sml
   end
 
-  STACK.sml
+  STACK.sig
   Stack.sml
   local open Pickle 
   in UNION_FIND_POLY.sml
      UnionFindPoly.sml
-     DIGRAPH.sml
+     DIGRAPH.sig
      local open Edlib
      in IntDiGraph.sml
         DiGraph.sml 

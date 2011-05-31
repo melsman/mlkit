@@ -23,12 +23,12 @@ local
     WebDbLow.sml
 in
     xmlrpc/xmlrpc.mlb
-    WEB.sml
+    WEB.sig
     Web.sml  
     DbFunctor.sml 
 end
     
-HTML.sml
+HTML.sig
 Html.sml
-MSP.sml
+MSP.sig
 Msp.sml

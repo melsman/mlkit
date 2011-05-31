@@ -12,7 +12,7 @@ in
     local open KitLib Util
     in MlbProject.sml
     end
-    ULFILE.sml
+    ULFILE.sig
     UlFile.sml
   end
   MLB_PLUGIN.sml

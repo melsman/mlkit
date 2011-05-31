@@ -16,7 +16,7 @@ in
      COMP_BASIS_GEN.sml
   end
   COMPILE_GEN.sml
-  COMPILE.sml
+  COMPILE.sig
   local open Pickle 
   in Lambda/OPT_LAMBDA.sml 
      Lambda/LAMBDA_STAT_SEM.sml

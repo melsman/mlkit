@@ -1,6 +1,6 @@
 $SML_LIB/basis/basis.mlb
 $SML_LIB/basis/js.mlb
 frp2.sml
-TDOM.sml
+TDOM.sig
 TDom.sml
 tdom_ex1.sml

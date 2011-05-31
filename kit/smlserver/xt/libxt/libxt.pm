@@ -15,7 +15,7 @@
     SMLserverDbFunctor.sml
     SMLserverUnsafe.sml
   in    
-    SMLSERVER.sml
+    SMLSERVER.sig
     SMLserver.sml  
   end
 
@@ -23,8 +23,8 @@
     XHTML_ATTR.sml
     XHtmlAttr.sml
   in
-    XHTML.sml
+    XHTML.sig
     XHtml.sml
-    HTTP.sml
+    HTTP.sig
     Http.sml
   end

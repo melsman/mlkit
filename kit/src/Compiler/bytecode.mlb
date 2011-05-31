@@ -5,7 +5,7 @@ local
 in
   (* Bytecode Backend *)
 
-  Backend/KAM/KAM.sml
+  Backend/KAM/KAM.sig
   Backend/KAM/CODE_GEN_KAM.sml
   Backend/KAM/OPCODES_KAM.sml
   Backend/KAM/BUFF_CODE.sml

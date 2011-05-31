@@ -3,6 +3,6 @@ local
   $(SML_LIB)/basis/basis.mlb
   ../../Kitlib/kitlib.mlb
 in
-  CONFIGURATION.sml Configuration.sml
-  ENVIRONMENT.sml Environment.sml
+  CONFIGURATION.sig Configuration.sml
+  ENVIRONMENT.sig Environment.sml
 end

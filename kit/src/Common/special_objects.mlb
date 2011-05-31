@@ -6,10 +6,10 @@ local
   open BasLib 
 in
   local open Pickle SyntaxObjects
-  in NAME.sml
+  in NAME.sig
      local open Tools
      in Name.sml
-        TYNAME.sml
+        TYNAME.sig
 	QuasiMap.sml
 	QuasiSet.sml
 	TyName.sml
