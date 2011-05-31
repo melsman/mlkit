@@ -1,5 +1,8 @@
 MLKit NEWS file
 
+ * mael 2011-05-31: Renamed many files to allow for checkout of
+   repository on case-insensitive file systems.
+
  * mael 2011-02-23: Optimized sizes of pickles generated for symbol
    table information. Now, using the new Bitstream module in
    src/Pickle, it is possible to output single bits to the

@@ -55,7 +55,7 @@ ONLINE DEMONSTRATION
 To see SMLtoJs in action, see the SMLtoJs homepage for links to online
 examples of compiled Standard ML:
 
-  http://www.itu.dk/people/mael/smltojs
+  http://www.smlserver.org/smltojs
 
 GETTING THE SOURCES
 -------------------
@@ -119,7 +119,7 @@ COMPILATION IN THE BROWSER
 To build the browser-hosted compiler, proceed as follows:
 
   $ cd ../../src/Compiler
-  $ SML_LIB=../../js ../../bin/smltojs -aopt smltojs0.mlb
+  $ SML_LIB=$(HOME)/smltojs/js ../../bin/smltojs -aopt smltojs0.mlb
 
 The last command should generate a file run.html which links to all
 necessary JavaScript sources. Executing
