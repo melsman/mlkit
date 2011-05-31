@@ -5,11 +5,11 @@ local
   open BasLib 
 in
   local open Pickle 
-  in STRID.sml 
-     IDENT.sml
-     SIGID.sml
-     FUNID.sml
-     LAB.sml
+  in STRID.sig
+     IDENT.sig
+     SIGID.sig
+     FUNID.sig
+     LAB.sig
      SYNTAX_TYVAR.sml
      local open Tools 
      in StrId.sml
@@ -21,10 +21,10 @@ in
      Lab.sml
      SyntaxTyVar.sml  
   end
-  SCON.sml
+  SCON.sig
   SCon.sml
   local open Pickle
-  in TYCON.sml
+  in TYCON.sig
      local open Tools in TyCon.sml end
   end
 end

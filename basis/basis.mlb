@@ -4,7 +4,7 @@ local
     Initial.sml
     basis General = 
       bas 
-        GENERAL.sml General.sml OPTION.sml Option.sml 
+        GENERAL.sig General.sml OPTION.sig Option.sml 
       end
 
     basis Initial2 =
@@ -15,7 +15,7 @@ local
     basis List =
       let open General
       in bas
-            LIST.sml List.sml LIST_PAIR.sml ListPair.sml
+            LIST.sig List.sml LIST_PAIR.sml ListPair.sml
          end
       end
 
@@ -24,11 +24,11 @@ local
             basis Poly =
               let wordtables.sml TableSlice.sml
               in bas 
-                    VECTOR.sml Vector.sml 
+                    VECTOR.sig Vector.sml 
                     VECTOR_SLICE.sml VectorSlice.sml
-                    ARRAY.sml Array.sml
+                    ARRAY.sig Array.sml
                     ARRAY_SLICE.sml ArraySlice.sml
-                    ARRAY2.sml Array2.sml
+                    ARRAY2.sig Array2.sml
                  end
               end
         in bas
@@ -45,19 +45,19 @@ local
              local open List
                    STR_BASE.sml StrBase.sml 
              in
-                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml
+                Char.sml String.sml CHAR.sig STRING.sig SUBSTRING.sig Substring.sml
              end
           end
        end
 
     basis Text =
        let open String ArrayVector
-       in bas TEXT.sml Text.sml end
+       in bas TEXT.sig Text.sml end
        end
 
     basis Bool = 
        let open General String 
-       in bas BOOL.sml Bool.sml end
+       in bas BOOL.sig Bool.sml end
        end
 
     basis IntInfRep =
@@ -67,7 +67,7 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
+           basis W = bas WORD.sig Word.sml Word32.sml Word31.sml Word8.sml end
            basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
                       end
@@ -76,7 +76,7 @@ local
 
     basis Byte = 
        let open General String ArrayVector Word
-       in bas BYTE.sml Byte.sml end
+       in bas BYTE.sig Byte.sml end
        end
  
     basis Int =
@@ -86,7 +86,7 @@ local
 
     basis Real =
        let open General String Int
-       in bas MATH.sml Math.sml REAL.sml Real.sml 
+       in bas MATH.sig Math.sml REAL.sig Real.sml 
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
@@ -103,7 +103,7 @@ local
 (*  
     basis Polyhash =
        let open General String ArrayVector Word
-       in bas POLYHASH.sml Polyhash.sml end
+       in bas POLYHASH.sig Polyhash.sml end
        end
 *)
     basis Io =
@@ -117,8 +117,8 @@ local
 
     basis System =
        let open General String Int
-       in let basis Time = let open Int Real IntInf in bas TIME.sml Time.sml end end
-              basis Random = let open Real in bas RANDOM.sml Random.sml end end
+       in let basis Time = let open Int Real IntInf in bas TIME.sig Time.sml end end
+              basis Random = let open Real in bas RANDOM.sig Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
               basis FileSys = let open List Time Random Path Byte ArrayVector Initial2
                               in bas OS_FILE_SYS.sml FileSys.sml end 
@@ -127,8 +127,8 @@ local
                                 bas OS_PROCESS.sml local open List in Process.sml end end end
               basis Os = let open FileSys Path Process Word in bas OS_IO.sml OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
-              basis Date = let open Int Real Time IntInf in bas DATE.sml Date.sml end end
-              basis Timer = let open Int Time IntInf in bas TIMER.sml Timer.sml end end
+              basis Date = let open Int Real Time IntInf in bas DATE.sig Date.sml end end
+              basis Timer = let open Int Time IntInf in bas TIMER.sig Timer.sml end end
           in bas open Time Random Path FileSys 
                       Process Os CommandLine Date Timer
              end
@@ -167,7 +167,7 @@ local
                 IntInf OSError BitFlags
        in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml 
               POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml 
-              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sml Posix.sml 
+              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sig Posix.sml 
           end
        end
 

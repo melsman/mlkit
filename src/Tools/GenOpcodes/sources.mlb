@@ -1,6 +1,6 @@
 local
     $(SML_LIB)/basis/basis.mlb    
-    ../../../basis/LISTSORT.sml
+    ../../../basis/LISTSORT.sig
     ../../../basis/Listsort.sml
 in
     GenOpcodes.sml

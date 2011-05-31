@@ -21,7 +21,7 @@ in
 
   local open Basics 
   in INT_MODULES.sml 
-     MANAGER.sml
+     MANAGER.sig
   end
 
   local open Pickle CompilerObjects

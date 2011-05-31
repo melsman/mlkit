@@ -1,5 +1,5 @@
 local
   $(SML_LIB)/basis/basis.mlb
 in
-  HTML.sml Html.sml
+  HTML.sig Html.sml
 end

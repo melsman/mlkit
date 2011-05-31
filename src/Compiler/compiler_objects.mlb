@@ -10,9 +10,9 @@ local
 in
   local open Tools Pickle
   in
-     Lambda/LVARS.sml
-     Lambda/CON.sml
-     Lambda/EXCON.sml
+     Lambda/LVARS.sig
+     Lambda/CON.sig
+     Lambda/EXCON.sig
      Regions/ADDRESS_LABELS.sml
      local open SpecialObjects
      in Lambda/Lvars.sml

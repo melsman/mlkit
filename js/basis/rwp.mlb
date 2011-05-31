@@ -2,6 +2,6 @@ local
   basis.mlb
 in
   js.mlb
-  RWP.sml
+  RWP.sig
   Rwp.sml
 end

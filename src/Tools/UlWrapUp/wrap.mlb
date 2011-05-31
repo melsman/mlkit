@@ -2,9 +2,9 @@ local
   $(SML_LIB)/basis/basis.mlb
   basis KitLib =
            bas
-             ../../../basis/BINARYSET.sml
+             ../../../basis/BINARYSET.sig
              ../../../basis/Binaryset.sml
-             ../../../basis/BINARYMAP.sml
+             ../../../basis/BINARYMAP.sig
              ../../../basis/Binarymap.sml
            end
 

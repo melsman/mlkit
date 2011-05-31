@@ -1,4 +1,4 @@
 $(SML_LIB)/basis/basis.mlb
 local utils/utils.mlb
-in SET.sml Set.sml SetApp.sml
+in SET.sig Set.sml SetApp.sml
 end

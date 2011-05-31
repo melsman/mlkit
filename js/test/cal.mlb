@@ -1,4 +1,4 @@
 $SML_LIB/basis/basis.mlb
-HTML.sml
+HTML.sig
 Html.sml
 cal.sml

@@ -8,7 +8,7 @@ local
   open BasLib SyntaxObjects SpecialObjects
 in
   local open Pickle Tools
-  in INFIXBASIS.sml
+  in INFIXBASIS.sig
      local open Edlib in InfixBasis.sml end
   end
 
@@ -71,13 +71,13 @@ in
   local open Tools in ../Parsing/InfixStack.sml end
 
   ../Parsing/GRAMMAR_UTILS.sml
-  ../Parsing/INFIXING.sml
+  ../Parsing/INFIXING.sig
   local open Tools 
   in ../Parsing/GrammarUtils.sml 
      ../Parsing/Infixing.sml
   end
   
-  ../Parsing/PARSE.sml
+  ../Parsing/PARSE.sig
   ../Parsing/MyBase.sml
   ../Parsing/Topdec.grm.sig (*../Parsing/Topdec.grm*)
   ../Parsing/Topdec.grm.sml 
@@ -92,7 +92,7 @@ in
   in PostElabGrammar.sml
   end
 
-  ELABDEC.sml
+  ELABDEC.sig
   ELABTOPDEC.sml
   local open Edlib Tools 
   in ElabDec.sml

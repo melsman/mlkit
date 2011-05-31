@@ -6,7 +6,7 @@ local
   $(SML_LIB)/basis/basis.mlb
   basis Polyhash = 
     bas 
-        POLYHASH.sml Polyhash.sml 
+        POLYHASH.sig Polyhash.sml 
     end
   eqhashdyn2.sml
   stream.sig

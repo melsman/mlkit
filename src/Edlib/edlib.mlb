@@ -2,7 +2,7 @@ local
    $(SML_LIB)/basis/basis.mlb
    EDLIB_GENERAL.sml EdlibGeneral.sml
    LIST.sml (*List.sml *) edList.sml
-   EQ_SET.sml SET.sml 
+   EQ_SET.sml SET.sig 
    LIST_PAIR.sml (*ListPair.sml*) edListPair.sml LIST_SORT.sml 
 in
    ListSort.sml
