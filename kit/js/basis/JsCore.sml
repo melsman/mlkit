@@ -41,6 +41,15 @@ structure JsCore :> JS_CORE =
                res: 'b T} (v1: 'a1, v2: 'a2, v3: 'a3, v4: 'a4) : 'b =
         prim("execStmtJS", (stmt, String.concatWith "," [n1,n2,n3,n4], v1,v2,v3,v4))
 
+    fun exec5 {stmt:string, 
+               arg1=(n1:string,t1: 'a1 T), 
+               arg2=(n2:string,t2: 'a2 T), 
+               arg3=(n3:string,t3: 'a3 T), 
+               arg4=(n4:string,t4: 'a4 T), 
+               arg5=(n5:string,t5: 'a5 T), 
+               res: 'b T} (v1: 'a1, v2: 'a2, v3: 'a3, v4: 'a4, v5: 'a5) : 'b =
+        prim("execStmtJS", (stmt, String.concatWith "," [n1,n2,n3,n4,n5], v1,v2,v3,v4,v5))
+
     fun call0 (f: string, tb: 'b T) : 'b =
         prim("callJS", f)
     fun call1 (f: string, t1: 'a1 T, tb: 'b T) (v1:'a1) : 'b =
