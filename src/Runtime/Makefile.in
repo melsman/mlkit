@@ -49,7 +49,7 @@ all: kam runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a \
 	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS $(OPT) -o $*-tag.o $<
 
 SysErrTable.h: gen_syserror
-	[ -a SysErrTable.h ]  && rm SysErrTable.h || true
+	rm -f SysErrTable.h
 	./gen_syserror > SysErrTable.h
 
 gen_syserror: gen_syserror.c

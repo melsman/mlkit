@@ -59,7 +59,7 @@ structure Benchmark =
 	  in 
 	    if memusage then
 	      let val cmd = "memusage -t -T --title=" ^ t ^ " -p " ^ png ^ " ./" ^ t
-	      in if OS.Process.system cmd = OS.Process.success then (s, res)
+	      in if OS.Process.isSuccess(OS.Process.system cmd) then (s, res)
 		 else (s, NONE)
 	      end
 	    else (s, res)

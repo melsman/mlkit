@@ -158,6 +158,13 @@ static void printUsage(void) {
   exit(0);
 }
 
+static void check_scanf_result(int result) {
+  if (result == EOF) {
+    printf("Failure in scanf");
+    exit(-1);
+  }
+}
+
 /*----------------------------------------------------------------*
  * interactive:                                                   *
  *   Go into interactive mode.                                    *
@@ -176,26 +183,26 @@ static void interactive(void) {
     printf("      (6)   Profile stack with respect to size.\n");
     printf("      (e)   Exit.\n");
     printf("\n\nType switch: ");
-    scanf("%1s", &button);
+    check_scanf_result(scanf("%1s", &button));
     printf("\n\nYou typed %c.\n",button);
     switch (button) {
     case '1':
       printf("\n Type name of output file: ");
-      scanf("%s", rpName);
+      check_scanf_result(scanf("%s", rpName));
       printf("\n Type name to put on top page: ");
-      scanf("%s", name);
+      check_scanf_result(scanf("%s", name));
       printf("\n Now profiling all regions to file: %s using name %s.\n", rpName, name);
       MakeRegionProfile();
       printf("\n Profiling of all regions now finished. \n");
       break;
     case '2':
       printf("\n Type region to profile: ");
-      scanf("%i", &regionNo);
+      check_scanf_result(scanf("%i", &regionNo));
       if (regionNo != 0) {
 	printf("\n Type name of output file: ");
-	scanf("%s", objName);
+	check_scanf_result(scanf("%s", objName));
 	printf("\n Type name to put on top page: ");
-	scanf("%s", name);
+	check_scanf_result(scanf("%s", name));
 	printf("\n Now profiling region %d to file: %s using name %s.\n", regionNo, objName, name);
 	MakeObjectProfile(regionNo);
 	printf("\n Profiling of region %d to file: %s finished.\n", regionNo, objName);
@@ -204,7 +211,7 @@ static void interactive(void) {
       break;
     case '3':
       printf("Type region to print: ");
-      scanf("%i", &regionNo);
+      check_scanf_result(scanf("%i", &regionNo));
       PrintRegion(regionNo);
       break;
     case '4':
@@ -215,9 +222,9 @@ static void interactive(void) {
       break;
     case '6':
       printf("\n Type name of output file: ");
-      scanf("%s", stackName);
+      check_scanf_result(scanf("%s", stackName));
       printf("\n Type name to put on top page: ");
-      scanf("%s", name);
+      check_scanf_result(scanf("%s", name));
       printf("\n Now profiling the stack to file: %s using name %s.\n", stackName, name);
       MakeStackProfile();
       printf("\n Profiling of the stack now finished. \n");

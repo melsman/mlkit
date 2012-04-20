@@ -43,9 +43,8 @@ uintptr_t
 sml_localtime (uintptr_t vAddr, uintptr_t v) 
 {
   struct tm tmr;
-  struct tm *tmrp;
   time_t clock = (long)(get_d(v));
-  tmrp = localtime_r(&clock, &tmr);
+  localtime_r(&clock, &tmr);
   mkTagRecordML(vAddr,9);
   elemRecordML(vAddr,0) = convertIntToML(tmr.tm_hour);
   elemRecordML(vAddr,1) = convertIntToML(tmr.tm_isdst);
@@ -62,9 +61,9 @@ sml_localtime (uintptr_t vAddr, uintptr_t v)
 uintptr_t 
 sml_gmtime (uintptr_t vAddr, uintptr_t r) 
 {
-  struct tm tmr, *tmrp;
+  struct tm tmr;
   time_t clock = (long)(get_d(r));
-  tmrp = gmtime_r(&clock,&tmr);
+  gmtime_r(&clock,&tmr);
   mkTagRecordML(vAddr,9);
   elemRecordML(vAddr,0) = convertIntToML(tmr.tm_hour);
   elemRecordML(vAddr,1) = convertIntToML(tmr.tm_isdst);

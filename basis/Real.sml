@@ -63,7 +63,8 @@ structure Real : REAL =
 	    | GEN NONE     => toString
 	    | GEN (SOME n) => 
 		  if n < 1 orelse n > 400 then raise Size 
-		  else fn r => mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r)
+		  else fn r => mlify (to_string_gen ("%." ^ Int.toString n ^ "g") r) 
+            | EXACT => fmt (SCI (SOME 30))
       in fmtspec 
       end
 

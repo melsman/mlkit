@@ -33,9 +33,6 @@ export INSTDIR_BARRY
 
 include Makefiledefault
 
-ARCH-OS=x86-linux
-#ARCH-OS=x86-bsd
-
 RPMDIR=/usr/src/rpm
 #RPMDIR=/usr/src/redhat
 
@@ -170,36 +167,6 @@ clean:
 
 clean_mlb:
 	find . -name "MLB" -type d | xargs rm -Rf
-
-#tgz_export:
-#	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
-#	cd ..; cvs -d linux.it.edu:/cvsroot -q export -D now -d mlkit-$(KITVERSION) mlkit/kit
-#	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
-#	cd ..; rm -rf mlkit-$(KITVERSION)
-
-#tgz:
-#	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
-#	cd ..; cp -d -f -p -R kit mlkit-$(KITVERSION)
-#	cd ../mlkit-$(KITVERSION); $(MAKE) clean
-#	cd ../mlkit-$(KITVERSION); rm -rf test_dev
-#	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
-#	cd ../mlkit-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
-#           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
-#           */*/*/*/*/*/.cvsignore
-#	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
-#	cd ..; rm -rf mlkit-$(KITVERSION)
-
-#tgz_smlserver:
-#	cd ..; rm -rf smlserver-$(KITVERSION) smlserver-$(KITVERSION).tgz
-#	cd ..; cp -d -f -p -R kit smlserver-$(KITVERSION)
-#	cd ../smlserver-$(KITVERSION); $(MAKE) clean
-#	cd ../smlserver-$(KITVERSION); rm -rf test_dev
-#	cd ../smlserver-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
-#	cd ../smlserver-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
-#           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
-#           */*/*/*/*/*/.cvsignore
-#	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
-#	cd ..; rm -rf smlserver-$(KITVERSION)
 
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
@@ -565,25 +532,6 @@ install_smlserver:install_smlserver0
            then true; \
            else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
         fi
-
-# Some old targets
-#install_smlserver_oracle:
-#	$(MKDIR) $(INSTDIR_SMLSERVER)/lib
-#	$(INSTALL) src/SMLserver/apache/libsmloracle.so.1.0 $(INSTDIR_SMLSERVER)/lib
-#	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1.0 lib/libsmloracle.so.1
-#	cd $(INSTDIR_SMLSERVER) && $(LN) libsmloracle.so.1 lib/libsmloracle.so
-
-# SMLSERVER_HOST=hug.it.edu
-# SMLSERVER_HOSTDIR=$(SMLSERVER_HOST):/web/smlserver/www/dist
-
-# dist_smlserver:
-# 	scp NEWS_SMLSERVER $(SMLSERVER_HOSTDIR)/NEWS_SMLSERVER-$(KITVERSION).txt
-# 	scp README_SMLSERVER $(SMLSERVER_HOSTDIR)/README_SMLSERVER-$(KITVERSION).txt
-# 	scp doc/smlserver.pdf $(SMLSERVER_HOSTDIR)/smlserver-$(KITVERSION).pdf
-# 	scp ../smlserver-$(KITVERSION).tgz $(SMLSERVER_HOSTDIR)/
-# 	scp $(RPMDIR)/RPMS/i386/smlserver-$(KITVERSION)-1.i386.rpm $(SMLSERVER_HOSTDIR)/
-# 	scp $(RPMDIR)/SRPMS/smlserver-$(KITVERSION)-1.src.rpm $(SMLSERVER_HOSTDIR)/
-
 
 HOST=ssh.itu.dk
 HOSTDIR=$(HOST):/import/www/research/mlkit/dist

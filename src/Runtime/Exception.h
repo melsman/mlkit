@@ -26,7 +26,7 @@ extern Exception* exn_OVERFLOW;            /* Exception raised for all primitive
 
 extern Exception* exn_INTERRUPT;           /* Exception for user interrupt (Ctrl-C). */
 
-void raise_exn(int exn);
+void raise_exn(uintptr_t exn);
 
 extern size_t failNumber;
 

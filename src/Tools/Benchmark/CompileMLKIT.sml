@@ -11,7 +11,7 @@ local
 	  val cmd = "mlkit " ^ compflags ^ " -o " ^ t ^ " " ^ src
 	  val cmd = "../bin/mlkit " ^ compflags ^ " -o " ^ t ^ " " ^ src (*Niels*)
       in  print ("Executing: " ^ cmd ^ "\n")
-	; if OS.Process.system cmd = OS.Process.success then SOME (src,t)
+	; if OS.Process.isSuccess(OS.Process.system cmd) then SOME (src,t)
 	  else NONE
       end
 in
