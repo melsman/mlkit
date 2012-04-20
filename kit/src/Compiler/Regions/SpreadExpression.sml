@@ -307,6 +307,10 @@ struct
      and fix expressions.
   *)
 
+  fun unMus s (E'.Mus mus) = mus
+    | unMus s (E'.Frame _) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a Frame") 
+    | unMus s (E'.RaisedExnBind) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a RaisedExnBind")
+
   fun spreadExp(B: cone, rse,  e: E.LambdaExp, toplevel, cont:cont): cone * (place,unit)E'.trip * cont =
   let
     fun lookup tyname = case (*RSE.*)lookupTyName rse tyname of
@@ -391,7 +395,8 @@ struct
                            last: E.LambdaExp option),toplevel,cont): cone * (place,unit)E'.trip * cont =
     let
       val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
-      val (B,t0 as E'.TR(e', E'.Mus mus_0, phi_0),_) = spread(B,e0,false,NOTAIL)
+      val (B,t0 as E'.TR(e', meta_0, phi_0),_) = spread(B,e0,false,NOTAIL)
+      val mus_0 = unMus "spreadSwitch" meta_0
       val mu_0 as (_,object_rho) = 
           case mus_0 of [mu_0] => mu_0 | _ => die "S. ill-typed object of switch"
       val B = List.foldl (uncurry (fn mu => unify_mu(get_exn_mu mu,mu_0)))
@@ -443,7 +448,7 @@ struct
                            last: E.LambdaExp option),toplevel,cont): cone * (place,unit)E'.trip * cont =
       spreadSwitch B spread con excon_mus (E.SWITCH(e0, map (fn ((c,_),e) => (c,e)) choices, last),toplevel,cont)
 
-   fun S(B,e,toplevel:bool,cont:cont): cone * (place,unit)E'.trip * cont = 
+    fun S(B,e,toplevel:bool,cont:cont): cone * (place,unit)E'.trip * cont = 
       (case e of
       E.VAR{lvar, instances : E.Type list} =>
        (case (*RSE.*)lookupLvar rse lvar of
@@ -528,9 +533,9 @@ struct
            UB_RECORD[RECORD[2, 3], RECORD[4,5]] and
            UB_RECORD[2, 3, 4,5]
         *)
-           
         let val (B, triples, mus, phis) = List.foldl(fn (exp, (B, triples', mus, phis)) =>
-              let val (B,trip as E'.TR(e',E'.Mus mus1,phi), _) = S(B, exp, false, NOTAIL)
+              let val (B,trip as E'.TR(e',meta1,phi), _) = S(B, exp, false, NOTAIL)
+                  val mus1 = unMus "S.UB_RECORDprim" meta1
               in case mus1 of
                    [mu] => (B, trip::triples', mu :: mus, phi::phis)
                  | _ => die ".S: unboxed record expression with compound, unboxed argument"
@@ -539,7 +544,7 @@ struct
             val mus = rev mus
 	    val triples = rev triples
         in
-          (B, E'.TR(E'.UB_RECORD(triples), E'.Mus mus, phi),
+          (B, E'.TR(E'.UB_RECORD triples, E'.Mus mus, phi),
 	   NOTAIL)
         end
     | E.FN{pat: (E.lvar * E.Type) list, body: E.LambdaExp} =>
@@ -548,7 +553,8 @@ struct
           val rse' = List.foldl (fn ((lvar, mu as (tau,rho)), rse) =>
                          (*RSE.*)declareLvar(lvar, (false,false,R.type_to_scheme tau, rho,NONE,NONE), rse)) rse
                          (ListPair.zip(map #1 pat, mus))
-          val (B,t1 as E'.TR(e1',E'.Mus mu_list1, phi1), _) = spreadExp(B,rse',body,false,TAIL)
+          val (B,t1 as E'.TR(e1',meta1, phi1), _) = spreadExp(B,rse',body,false,TAIL)
+          val mu_list1 = unMus "S.FN" meta1
           val (eps, B) = (*Eff.*)freshEps B
           val _ = (*Eff.*)edge(eps, phi1)
 
@@ -571,12 +577,17 @@ struct
                 | _ => false
          
             val B = if simple_application then B else pushIfNotTopLevel(toplevel,B)
-	    val (B,t1 as E'.TR(e1, E'.Mus [(ty,rho_0)],phi1), _) = S(B,e1_ML, false, NOTAIL)
+	    val (B,t1 as E'.TR(e1, meta1, phi1), _) = S(B,e1_ML, false, NOTAIL)
+            val (ty,rho_0) =
+                case unMus "S.APP" meta1 of
+                  [p] => p
+                | _ => die "E.APP.singleton mus expected"
             val (mus2,eps_phi0,mus1) =                
                 case R.unFUN ty of
                   SOME f => f
                 | NONE => die "E.APP.function expected"
-            val (B,t2 as E'.TR(e2, E'.Mus mus2', phi2), _) = S(B,e2_ML, false, NOTAIL)
+            val (B,t2 as E'.TR(e2, meta2, phi2), _) = S(B,e2_ML, false, NOTAIL)
+            val mus2' = unMus "S.APP2" meta2 
             val B = unify_mus (mus2,mus2') B
         in
             if simple_application then (B, E'.TR(E'.APP(t1,t2), E'.Mus mus1, 
@@ -587,7 +598,8 @@ struct
 
    | E.LET{pat=nil, bind = e1_ML, scope = e2_ML} =>   (* wild card *)
         let
-           val (B, t1 as E'.TR(e1, E'.Mus mus, phi1), _) = S(B, e1_ML, false, NOTAIL)
+           val (B, t1 as E'.TR(e1, meta1, phi1), _) = S(B, e1_ML, false, NOTAIL)
+           val mus = unMus "S.LET-wildcard" meta1
            val (B, t2 as E'.TR(e2, meta2, phi2), cont) = S(B, e2_ML, toplevel, cont)
         in
           (B, E'.TR(E'.LET{pat = nil,
@@ -598,8 +610,8 @@ struct
    | E.LET{pat, bind = e1_ML, scope = e2_ML} =>
         let
            val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
-           val (B, t1 as E'.TR(e1, E'.Mus mus, phi1), _) = S(B, e1_ML, false, NOTAIL)
-
+           val (B, t1 as E'.TR(e1, meta, phi1), _) = S(B, e1_ML, false, NOTAIL)
+           val mus = unMus "S.LET" meta
            fun loop_pat([], [], B, rse, pat'_list) = (B,rse, rev pat'_list)
              | loop_pat((lvar,alphas,tau_ML):: rest_bind, (tau_1, rho_1):: mu_rest,
                         B, rse, pat'_list) =
@@ -717,7 +729,8 @@ good *)
                     end	
                 | E.RaisedExnBind => (E'.RaisedExnBind, B)
                 | E.Frame _ => die "spreading of RAISE failed: RAISE was annotated with a FRAME type"
-          val (B, t2 as E'.TR(e2', E'.Mus mus2, phi2), _) = S(B,e1,false,NOTAIL)
+          val (B, t2 as E'.TR(e2', meta2, phi2), _) = S(B,e1,false,NOTAIL)
+          val _ = unMus "S.RAISE" meta2
         in
             (B,E'.TR(E'.RAISE(t2),description', phi2),NOTAIL)
         end handle X => (print ("RAISE FAILED\n"); raise X))
@@ -725,9 +738,11 @@ good *)
     | E.HANDLE(e1,e2) =>
         let 
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
-          val (B, t2 as E'.TR(e2', E'.Mus mus2, phi2), _) = S(B,e2, false, NOTAIL)
-        in 
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
+          val (B, t2 as E'.TR(e2', meta2, phi2), _) = S(B,e2, false, NOTAIL)
+          val mus1 = unMus "S.HANDLE1" meta1
+          val mus2 = unMus "S.HANDLE2" meta2
+        in
           case mus2 of 
             [(ty,rho2)] => 
             (case R.unFUN ty of
@@ -746,7 +761,7 @@ good *)
              | NONE => die "S: ill-typed handle expression")
           | _ => die "S: ill-typed handle expression"
         end
-    | E.PRIM(E.REFprim{instance}, [e1])=>
+    | E.PRIM(E.REFprim{instance}, [e1]) =>
 (*
 
                                           e1' : [mu], phi1    
@@ -754,7 +769,8 @@ good *)
                         ref e1'  : [(mu ref, rho_new)],  phi1 u {put rho_new}
 *)
         let
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
+          val mus1 = unMus "S.REFprim" meta1
           val (rho_new, B) = (*Eff.*)freshRhoWithTy(Eff.REF_RT, B)
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkPut rho_new, phi1])
           val mus = [(R.mkCONSTYPE(TyName.tyName_REF, mus1,[],[]),rho_new)]
@@ -771,7 +787,8 @@ good *)
 *)
         let
           val B = pushIfNotTopLevel(toplevel,B)
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
+          val mus1 = unMus "S.DEREFprim" meta1
         in
           case mus1 of
             [(ty, rho)] =>
@@ -802,8 +819,10 @@ good *)
 *)
         let
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
-          val (B, t2 as E'.TR(e2', E'.Mus mus2, phi2), _) = S(B,e2, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
+          val (B, t2 as E'.TR(e2', meta2, phi2), _) = S(B,e2, false, NOTAIL)
+          val mus1 = unMus "S.ASSIGNprim1" meta1
+          val mus2 = unMus "S.ASSIGNprim2" meta2
         in case (mus1,mus2) of
              ([(ty1,rho1)], [mu2]) =>
              (case R.unCONSTYPE ty1 of
@@ -828,7 +847,8 @@ good *)
 *)
         let
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
+          val mus1 = unMus "S.DROPprim" meta1
 	in
 	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1), NOTAIL)
 	end
@@ -868,7 +888,8 @@ good *)
               case R.unFUN tau' of 
                 SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
               | _ => die "S: unary constructor not functional"
-          val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1), _) = S(B, arg, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1', phi1), _) = S(B, arg, false, NOTAIL)
+          val mu1' = unMus "S.CONprim" meta1'
           val B = unify_mus(mu1',mu1) B
         in
           (B, E'.TR(E'.CON1({con=con, il = il, alloc = #2(mu2)},t1), E'.Mus mus2, 
@@ -884,7 +905,8 @@ good *)
               case R.unFUN tau' of 
                 SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
               | _ => die "S: unary constructor not functional"
-          val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1), _) = S(B, arg, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1', phi1), _) = S(B, arg, false, NOTAIL)
+          val mu1' = unMus "S.DECONprim" meta1'
           val B = unify_mus(mu1',mus2) B
         in
           retract(B, E'.TR(E'.DECON({con=con, il = il},t1), E'.Mus mu1, 
@@ -925,7 +947,7 @@ good *)
              die "S: exception constructor applied to frame or raised Bind exception"
 	| _ => die "S(B,PRIM(EXCON...),...)"
        )
-    | E.PRIM(E.DEEXCONprim(excon), [arg]) =>
+    | E.PRIM(E.DEEXCONprim excon, [arg]) =>
         let 
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (tau, p) = noSome ((*RSE.*)lookupExcon rse excon) "S (DEEXCONprim): exception constructor not in RSE"
@@ -933,7 +955,8 @@ good *)
               case R.unFUN tau of 
                 SOME(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
               | _ => die "S: unary exception constructor not functional"
-          val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1), _) = S(B, arg, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1', phi1), _) = S(B, arg, false, NOTAIL)
+          val mu1' = unMus "S.DEEXCONprim" meta1'
           val B = unify_mus(mu1',mus2) B
         in
           retract(B, E'.TR(E'.DEEXCON(excon,t1), E'.Mus mu1, 
@@ -954,7 +977,8 @@ good *)
         end
     | E.PRIM(E.SELECTprim i, [arg as E.VAR _]) =>
         let 
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,arg, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,arg, false, NOTAIL)
+          val mus1 = unMus "S.SELECTprim-VAR" meta1
           val (mus,rho) = 
               case mus1 of 
                 [(ty,rho)] => 
@@ -971,7 +995,8 @@ good *)
     | E.PRIM(E.SELECTprim i, [arg]) =>
         let 
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
-          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,arg, false, NOTAIL)
+          val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,arg, false, NOTAIL)
+          val mus1 = unMus "S.SELECTprim" meta1
           val (mus,rho) = 
               case mus1 of 
                 [(ty,rho)] => 
@@ -997,8 +1022,10 @@ good *)
 
         let 
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
-          val (B,  t1 as E'.TR(e1', E'.Mus mus1, phi1),_) = S(B,arg1,false,NOTAIL)
-          val (B,  t2 as E'.TR(e2', E'.Mus mus2, phi2),_) = S(B,arg2,false,NOTAIL)
+          val (B,  t1 as E'.TR(e1', meta1, phi1),_) = S(B,arg1,false,NOTAIL)
+          val (B,  t2 as E'.TR(e2', meta2, phi2),_) = S(B,arg2,false,NOTAIL)
+          val mus1 = unMus "S.EQUALprim1" meta1
+          val mus2 = unMus "S.EQUALprim2" meta2
           val (rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
           val mus = [(R.boolType,rho)]
           val phi = (*Eff.*)mkUnion(phi1::phi2::(*Eff.*)mkPut rho :: 
@@ -1052,7 +1079,8 @@ good *)
 	       let
 		 val (B, trs', mus_es, phis) =
 		       List.foldr (fn (e, (B, trs', mus_es, phis)) =>
-                       let val (B, tr' as E'.TR (_, E'.Mus mus', phi), _) = S (B, e, false, NOTAIL)
+                       let val (B, tr' as E'.TR (_, meta', phi), _) = S (B, e, false, NOTAIL)
+                           val mus' = unMus "S.CCALLprim" meta'
 		       in (case mus' of
 			     [mu'] => (B, tr' :: trs', mu' :: mus_es, phi :: phis)
 			   | _ => die "S: CCALL argument had not precisely one mu")
@@ -1079,7 +1107,8 @@ good *)
 	   *)
 
        (let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
-	    val (B, tr' as E'.TR (_, E'.Mus mus, phi), _) = S (B, e0, false, NOTAIL)
+	    val (B, tr' as E'.TR (_, meta, phi), _) = S (B, e0, false, NOTAIL)
+            val mus = unMus "S.EXPORTprim" meta
 	in case mus of
 	    [(ty,rho)] =>
             (case R.unFUN ty of
@@ -1127,7 +1156,8 @@ good *)
               these puts should not be added in the multiplicity inference.
           *)
           let 
-            val (B, t as E'.TR(e',E'.Mus mus0,_), _) = S(B,e0,false,NOTAIL)
+            val (B, t as E'.TR(e',meta0,_), _) = S(B,e0,false,NOTAIL)
+            val mus0 = unMus "S.RESET_REGIONSprim" meta0
 	    val (fresh_rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
 	    val mu = (R.unitType, fresh_rho)
             val phi = (*Eff.*)mkUnion(map (*Eff.*)mkPut(fresh_rho::List.filter (*Eff.*)is_rho (ann_mus mus0 [])))
@@ -1144,7 +1174,8 @@ good *)
     | E.PRIM(E.FORCE_RESET_REGIONSprim{instance = _}, [e0 as (E.VAR _)] ) =>
           (*  same as RESET_REGIONSprim, except that "force" is set to true in the result *)
           let 
-            val (B, t as E'.TR(e',E'.Mus mus0,_), _) = S(B,e0,false,NOTAIL)
+            val (B, t as E'.TR(e',meta0,_), _) = S(B,e0,false,NOTAIL)
+            val mus0 = unMus "S.FORCE_RESET_REGIONSprim" meta0
 	    val (fresh_rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
 	    val mu = (R.unitType, fresh_rho)
             val phi = (*Eff.*)mkUnion(map (*Eff.*)mkPut(fresh_rho::List.filter (*Eff.*)is_rho (ann_mus mus0 [])))
@@ -1220,7 +1251,11 @@ good *)
                   let 
                     (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                     val B = (*Eff.*)push(B)
-                      val (B, t1 as E'.TR(_, E'.Mus [(tau1, rho1)], phi1),_) = spreadExp(B, rse1, bind,false,NOTAIL)
+                      val (B, t1 as E'.TR(_, meta1, phi1),_) = spreadExp(B, rse1, bind,false,NOTAIL)
+                      val (tau1,rho1) =
+                          case unMus "spreadFcns" meta1 of
+                            [p] => p
+                          | _ => die "spreadFcns: expecting singleton mus" 
                       val B = (*Eff.*)unifyRho(rho1,rho) B          
                       val _ = count_RegEffClos:= !count_RegEffClos + 1
                       val (B,sigma1) = regEffClos(B, retract_level, phi1, tau1)
