@@ -95,7 +95,7 @@ structure Tester : TESTER =
 	val exe_file = "./runexe"
 	val runargs = nil (*["-heap_to_live_ratio", "2.5"]*)
 	fun rename_and_run(suffix, out_file, outok_file) =
-	  if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
+	  if OS.Process.isSuccess(OS.Process.system ("mv run " ^ exe_file)) then
 	    let 
               val file_label = filepath ^suffix
    	      fun test_output () =
@@ -118,7 +118,7 @@ structure Tester : TESTER =
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped = 
-		      if OS.Process.system ("strip " ^ exe_file) = OS.Process.success then
+		      if OS.Process.isSuccess(OS.Process.system ("strip " ^ exe_file)) then
 			size_of_file exe_file
 		      else (msgOk ("the command `strip " ^ exe_file ^ "' failed"); "N/A")
 		in
@@ -133,8 +133,8 @@ structure Tester : TESTER =
 	      else
 		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file (*".out"*))
 		in 
-		  if (not(opt "ue" (*Uncaught Exception*) ) andalso res = OS.Process.success) 
-		    orelse (opt "ue" (*Uncaught Exception*) andalso res <> OS.Process.success) then
+		  if (not(opt "ue" (*Uncaught Exception*) ) andalso OS.Process.isSuccess res) 
+		    orelse (opt "ue" (*Uncaught Exception*) andalso not(OS.Process.isSuccess res)) then
 		      TestReport.add_runtime_bare_line(file_label,test_output())
 		  else (msgErr (exe_file ^ " failure");
 			TestReport.add_runtime_bare_line(file_label,false))
@@ -144,7 +144,7 @@ structure Tester : TESTER =
 		TestReport.add_runtime_bare_line(filepath,false))
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
-        if OS.Process.system compile_command = OS.Process.success then
+        if OS.Process.isSuccess(OS.Process.system compile_command) then
 	  (maybe_compare_complogs true; 
 	   maybe_report_comptimes();
 	   rename_and_run(" ri ",".out",".out.ok")

@@ -25,8 +25,8 @@
 #include "Runtime.h"
 #include "GC.h"
 
-size_t time_to_gc = 0;                   // set to 1 by alloc if GC should occur at next
-                                      //   function invocation 
+size_t time_to_gc = 0;          // set to 1 by alloc if GC should occur at next
+                                //   function invocation 
 size_t *stack_bot_gc = NULL;    // bottom and top of stack -- used during GC to
 size_t *stack_top_gc;           //   determine if a value is stack-allocated
 size_t to_space_old = 0;        // size of to-space (live) at previous GC
@@ -39,19 +39,19 @@ size_t alloc_total = 0;         // allocated bytes by alloc (total, includes lob
 size_t gc_total = 0;            // bytes recycled by GC (total)
 size_t lobjs_current = 0;       // bytes currently occupied by large objects
 size_t lobjs_gc_treshold = 0;   // set time_to_gc to 1 when lobjs_current exceeds
-                                      //   lobjs_gc_treshold; this variable is adjusted
-                                      //   after garbage collection.
+                                //   lobjs_gc_treshold; this variable is adjusted
+                                //   after garbage collection.
 size_t rp_gc_treshold = 0;      // set time_to_gc to 1 when rp_used exceeds
-                                      //   rp_gc_treshold; this variable is adjusted
-                                      //   after garbage collection.
-double FRAG_sum = 0.0;                // fragmentation denotes how much of region
-                                      //   pages are used by values -- and is computed
-                                      //   as an average of percentages computed at
-                                      //   each garbage collection; thus for programs
-                                      //   that seldom garbage collect, the fragmentation
-                                      //   figure makes little sense.
+                                //   rp_gc_treshold; this variable is adjusted
+                                //   after garbage collection.
+double FRAG_sum = 0.0;          // fragmentation denotes how much of region
+                                //   pages are used by values -- and is computed
+                                //   as an average of percentages computed at
+                                //   each garbage collection; thus for programs
+                                //   that seldom garbage collect, the fragmentation
+                                //   figure makes little sense.
 
-uintptr_t *data_lab_ptr = NULL;             // pointer at exported data labels part of the root-set
+uintptr_t *data_lab_ptr = NULL;           // pointer at exported data labels part of the root-set
 ssize_t num_gc = 0;                       // number of garbage collections
 #ifdef ENABLE_GEN_GC
 ssize_t num_gc_major = 0;                 // number of major garbage collections
@@ -746,7 +746,7 @@ print_tagged_rp_content(Rp *rp)
    gælder for alle acopy-funktioner
    MEMO: What does this comment mean?
 */
-inline uintptr_t *
+inline static uintptr_t *
 acopy(Gen *gen, uintptr_t *obj_ptr) 
 {
   ssize_t size;
@@ -773,7 +773,7 @@ acopy(Gen *gen, uintptr_t *obj_ptr)
   return new_obj_ptr;
 }
 
-inline uintptr_t *
+inline static uintptr_t *
 acopy_pair(Gen *gen, uintptr_t *obj_ptr) 
 {
   uintptr_t *new_obj_ptr;
@@ -790,7 +790,7 @@ acopy_pair(Gen *gen, uintptr_t *obj_ptr)
   return new_obj_ptr;
 }
 
-inline uintptr_t *
+inline static uintptr_t *
 acopy_ref(Gen *gen, uintptr_t *obj_ptr) 
 {
   uintptr_t *new_obj_ptr;
@@ -806,7 +806,7 @@ acopy_ref(Gen *gen, uintptr_t *obj_ptr)
   return new_obj_ptr;
 }
 
-inline uintptr_t *
+inline static uintptr_t *
 acopy_triple(Gen *gen, uintptr_t *obj_ptr) 
 {
   uintptr_t *new_obj_ptr;
@@ -1240,13 +1240,13 @@ check_all_lobjs(void)    // used for debugging
       for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) )
 	{
 	  uintptr_t* tag_ptr;
-	  uintptr_t sz;
+	  //uintptr_t sz;
 #ifdef PROFILING
 	  tag_ptr = &(*(&(lobjs->value) + sizeObjectDesc));
 #else
 	  tag_ptr = &(lobjs->value);
 #endif
-	  sz = size_lobj(*tag_ptr);
+	  //sz = size_lobj(*tag_ptr);
 	  //printf("  size_lobj: %d\n", sz);
 	  if ( is_const(*tag_ptr) )
 	    die ("check_lobjs: lobj constant bit set");
@@ -1275,7 +1275,7 @@ gc(uintptr_t **sp, size_t reg_map)
   extern Rp* freelist;
   uintptr_t **sp_ptr;
   uintptr_t *fd_ptr;
-  unsigned long fd_size, fd_mark, fd_offset_to_return;
+  unsigned long fd_size, fd_offset_to_return;
   uintptr_t *w_ptr;
   long w_idx;
   unsigned long w;
@@ -1496,7 +1496,6 @@ gc(uintptr_t **sp, size_t reg_map)
   /*   - spilled results                           */
 
   fd_ptr = *sp_ptr;
-  fd_mark = *(fd_ptr-1);
   fd_offset_to_return = *(fd_ptr-2);
   fd_size = *(fd_ptr-3);
   predSPDef(sp_ptr,size_rcf);
@@ -1532,7 +1531,6 @@ gc(uintptr_t **sp, size_t reg_map)
       
       sp_ptr = sp_ptr + fd_offset_to_return + 1; // Points at next return address.
       fd_ptr = *sp_ptr;
-      fd_mark = *(fd_ptr-1);
       fd_offset_to_return = *(fd_ptr-2);
       fd_size = *(fd_ptr-3);
       predSPDef(sp_ptr,size_rcf);

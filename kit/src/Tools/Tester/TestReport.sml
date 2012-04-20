@@ -83,7 +83,7 @@ structure TestReport : TEST_REPORT =
       end handle _ => ("could not open or close file `" ^ s ^ "'\n")
 
     fun kitversion kitexe =
-      if OS.Process.system (kitexe ^ " --version > KITversion") = OS.Process.success then
+      if OS.Process.isSuccess(OS.Process.system (kitexe ^ " --version > KITversion")) then
 	read_all "KITversion"
       else "failure while executing `" ^ kitexe ^ " --version'\n"
 
@@ -99,7 +99,7 @@ structure TestReport : TEST_REPORT =
                      | NONE => "localhost"
 
     fun latex file =
-      if OS.Process.system ("pdflatex " ^ file) = OS.Process.success then ()
+      if OS.Process.isSuccess(OS.Process.system ("pdflatex " ^ file)) then ()
       else print "Latex error.\n"
 
     type comptime_table_line = {name:string, total:Time.time, entries: (string * Time.time * real) list}

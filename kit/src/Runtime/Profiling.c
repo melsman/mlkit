@@ -358,7 +358,7 @@ AllocatedSpaceInARegion(Ro *rp)
   unsigned int n;
 
   n = profTabGetNoOfPages(rp->regionId) * ALLOCATABLE_WORDS_IN_REGION_PAGE * 4;
-  fprintf(stderr,"    Allocated bytes in region %5d: %5d\n",rp->regionId, n);
+  fprintf(stderr,"    Allocated bytes in region %5zd: %5u\n",rp->regionId, n);
   return;
 }
 
@@ -904,7 +904,7 @@ profileTick(long *stackTop)
   newTick = (TickList *)allocMemProfiling_xx(sizeof(TickList));
 
   newTick->stackUse = ((long *)stackBot)-((long *)stackTop);
-  maxStackP = (unsigned long *) min((unsigned long)maxStackP, (unsigned long)stackTop);
+  maxStackP = (long *) min((unsigned long)maxStackP, (unsigned long)stackTop);
 
   /*  printf("Stackuse at entry %d, stackbot: %x, stackTop: %x\n", newTick->stackUse, stackBot, stackTop); */
 

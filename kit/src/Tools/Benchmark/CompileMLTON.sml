@@ -6,7 +6,7 @@ structure CompileMLTON : COMPILE =
 	  fun comp src =
 	    let val cmd = "/usr/bin/mlton -o " ^ target ^ " " ^ compflags ^ " " ^ src
 	    in  print ("Executing: " ^ cmd ^ "\n")
-	      ; if OS.Process.system cmd = OS.Process.success then SOME (src,target)
+	      ; if OS.Process.isSuccess(OS.Process.system cmd) then SOME (src,target)
 		else NONE
 	    end
       in case ext

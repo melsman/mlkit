@@ -31,9 +31,8 @@ structure MlbUtil :>
 	     let 
 		 val status = OS.Process.system cmd
 		     handle _ => error ("Command failed: " ^ quot cmd)
-	     in if status = OS.Process.failure then
-		 error ("Command failed: " ^ quot cmd)
-		else ()
+	     in if OS.Process.isSuccess status then ()
+                else error ("Command failed: " ^ quot cmd)
 	     end
 	     )
     end

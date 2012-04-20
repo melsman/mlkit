@@ -24,9 +24,9 @@ structure CompileSMLNJ : COMPILE =
 		  ^ "\"; SMLofNJ.exportFn(\"" ^ target ^ "\", fn _ => (doit();OS.Process.success));' | sml")
 	       val heap2execCmd = 
 		  (heap2exec ^ " " ^ target ^ "." ^ arch_os() ^ " " ^ target) 
-	     in if (OS.Process.system exportCmd = OS.Process.success andalso
-		    OS.Process.system heap2execCmd = OS.Process.success andalso
-		    OS.Process.system("chmod a+x " ^ target) = OS.Process.success)
+	     in if (OS.Process.isSuccess(OS.Process.system exportCmd) andalso
+		    OS.Process.isSuccess(OS.Process.system heap2execCmd) andalso
+		    OS.Process.isSuccess(OS.Process.system("chmod a+x " ^ target)))
 		  then SOME (src_smlnj,target)
 		else NONE
 	     end
@@ -38,9 +38,9 @@ structure CompileSMLNJ : COMPILE =
 		    ^ "\"; SMLofNJ.exportFn(\"" ^ target ^ "\", fn _ => (Main.doit();OS.Process.success));' | sml")
 		 val heap2execCmd = 
 		    (heap2exec ^ " " ^ target ^ "." ^ arch_os() ^ " " ^ target) 
-	     in if (OS.Process.system exportCmd = OS.Process.success andalso
-		    OS.Process.system heap2execCmd = OS.Process.success andalso
-		    OS.Process.system("chmod a+x " ^ target) = OS.Process.success)
+	     in if (OS.Process.isSuccess(OS.Process.system exportCmd) andalso
+		    OS.Process.isSuccess(OS.Process.system heap2execCmd) andalso
+		    OS.Process.isSuccess(OS.Process.system("chmod a+x " ^ target)))
 		  then SOME (src_smlnj,target)
 		else NONE
 	     end

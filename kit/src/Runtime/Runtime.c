@@ -286,7 +286,7 @@ sig_handler_int(void)
   }
 #endif /* PROFILING */
 
-  raise_exn((int)&exn_INTERRUPT);
+  raise_exn((uintptr_t)&exn_INTERRUPT);
   return; /* never comes here */
 }
 
@@ -309,7 +309,7 @@ sig_handler_fpe(void)
   }
 #endif /* PROFILING */
 
-  raise_exn((int)&exn_OVERFLOW);
+  raise_exn((uintptr_t)&exn_OVERFLOW);
   return; /* never comes here */
 }
 

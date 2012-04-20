@@ -15,9 +15,6 @@ BINDIR=@top_srcdir@/bin
 
 include @top_srcdir@/Makefiledefault
 
-ARCH-OS=x86-linux
-#ARCH-OS=x86-bsd
-
 GENOPCODES_TARGETS=Runtime/Prims.c Runtime/PrimsNsSml.c \
  Runtime/KamInsts.h Runtime/KamInsts.c Runtime/jumptbl.h \
  Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml \
@@ -36,7 +33,6 @@ mlkit: mlkit_kit
 
 .PHONY: mlkit_kit
 mlkit_kit: basics rp2ps tester kitbench mlbmake mllex-yacc
-#	if [ -d Tools/MlbMake/MLB ]; then rm -Rf Tools/MlbMake/MLB; fi
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a

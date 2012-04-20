@@ -17,7 +17,7 @@ structure GenOpcodes : GEN_OPCODES =
 	if all source = all target then 
 	  (OS.FileSys.remove source) handle _ => 
 	    print ("\n*** Error removing file " ^ source ^ "\n")
-	else if OS.Process.system ("mv " ^ source ^ " " ^ target) = OS.Process.success then ()
+	else if OS.Process.isSuccess(OS.Process.system ("mv " ^ source ^ " " ^ target)) then ()
 	     else print ("\n*** Error renaming " ^ source ^ " to " ^ target ^ "\n")
       end 
 

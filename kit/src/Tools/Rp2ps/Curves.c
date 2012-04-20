@@ -262,7 +262,7 @@ static void XAxis(void)
 {
   double increment, i; 
   double t, x;
-  double legendlen;
+  // double legendlen;
   double aBitMore = 15.0;
  
   /* draw the x axis line */
@@ -282,7 +282,7 @@ static void XAxis(void)
   if (increment < 0.01) increment = 0.01;
 
   t = graphwidth / xrange;
-  legendlen = StringSize("seconds") + (double) XFUDGE;
+  //legendlen = StringSize("seconds") + (double) XFUDGE;
  
   for (i = sampletable[ 0 ]; i < sampletable[ nsamples - 1]; i += increment) {
     x = (i - sampletable[ 0 ]) * t;  

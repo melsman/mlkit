@@ -10,20 +10,20 @@ signature BITSTREAM =
 
     val isEmpty   : instream -> bool
 
-    val outwN     : word -> word8 * outstream -> outstream
-    val getwN     : word -> instream -> word8 * instream
+    val outwN     : word -> Word8.word * outstream -> outstream
+    val getwN     : word -> instream -> Word8.word * instream
 
     val outwN'    : word -> word * outstream -> outstream
     val getwN'    : word -> instream -> word * instream
 
-    val outw1     : word8 * outstream -> outstream
-    val getw1     : instream -> word8 * instream
+    val outw1     : Word8.word * outstream -> outstream
+    val getw1     : instream -> Word8.word * instream
 
     val outb      : bool * outstream -> outstream
     val getb      : instream -> bool * instream
 
-    val outw2     : word8 * outstream -> outstream
-    val getw2     : instream -> word8 * instream
+    val outw2     : Word8.word * outstream -> outstream
+    val getw2     : instream -> Word8.word * instream
 
     val outw8     : Word8.word * outstream -> outstream
     val getw8     : instream -> Word8.word * instream
