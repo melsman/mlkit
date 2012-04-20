@@ -278,8 +278,11 @@ structure InstsX86: INSTS_X86 =
 	structure LvarFinMap = Lvars.Map
 
 	val regs = [eax,ebx,ecx,edx,esi,edi,ebp,esp]
-	val reg_lvs as [eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv] =
-	  map (fn r => Lvars.new_named_lvar (pr_reg r)) regs
+	val reg_lvs = map (fn r => Lvars.new_named_lvar (pr_reg r)) regs
+        val (eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv) =
+            case reg_lvs of
+              [eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv] => (eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv)
+            | _ => die "RI.reg_lvs mismatch"
 	val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,regs))
 	  
 	val all_regs = reg_lvs
