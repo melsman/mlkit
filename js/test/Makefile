@@ -4,7 +4,7 @@ FILES=fix2.sml array2.sml int31.sml int.sml vectorslice.sml word8arrayslice.sml 
  bytechar.sml int31_2.sml intinf.sml list.sml real.sml substring.sml word8vectorslice.sml time.sml date.sml \
  unixpath.sml kkb.sml simple.sml recursion.sml
 
-MLBFILES=exec counter temp life cal rwp_ex1 rwp_ex2 rwp_ex3 export
+MLBFILES=exec counter temp life cal rwp_ex1 rwp_ex2 rwp_ex3 export canvas_ex1
 
 TARGETS=$(FILES:%.sml=%.html)
 MLBTARGETS=$(MLBFILES:%=mlb%)
