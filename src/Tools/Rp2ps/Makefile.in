@@ -15,7 +15,7 @@ CFILES = $(OFILES:%.o=%.c)
 
 BINDIR=$(top_srcdir)/bin
 
-OPT=-Wall -std=gnu99 $(CFLAGS)
+OPT=-m32 -Wall -std=gnu99 $(CFLAGS)
 
 .PHONY: clean depend
 
@@ -29,7 +29,7 @@ $(BINDIR)/rp2ps: rp2ps
 	$(INSTALLPROGRAM) rp2ps $(BINDIR)
 
 rp2ps: $(OFILES)
-	$(CC) -o rp2ps $(OFILES) -lm
+	$(CC) -m32 -o rp2ps $(OFILES) -lm
 
 clean:
 	rm -f *.o core a.out *~ rp2ps

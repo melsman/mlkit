@@ -1,10 +1,9 @@
 
-                The MLKit source distribution
-	              mlkit-X.Y.Z-src
+                       The MLKit sources
 
-This README file describes the structure of the MLKit source
-distribution as well as necessary steps for compilation and either
-personal or system wide installation.
+This README file describes the structure of the MLKit sources as well
+as necessary steps for compilation and either personal or system wide
+installation.
 
 An overview of the directory structure of the distribution is given in
 Appendix A. 
@@ -79,44 +78,25 @@ be one of the following:
        $ mlkit -V
        MLKit version 4.3.0, Jan 25, 2006 [X86 Backend]
 
-Moreover, if you go with (1), unless you have much time and a machine
-with more than 3GB of memory, you also need
-
- (3) Standard ML of New Jersey version 110.0.7. A link to the home page
-     for the Standard ML of New Jersey compiler is available from the
-     MLKit home page. The command sml should be available from the
-     prompt:
-
-      $ sml
-      Standard ML of New Jersey, Version 110.0.7, September 28, 2000 \
-      [CM; autoload enabled]
-      -
-
-Gcc is needed for compiling the runtime system and related tools.
+Moreover, Gcc is needed for compiling the runtime system and related
+tools.
 
 4. Compilation
 --------------
-If you checked out the sources from the sourceforge svn repository,
+After having checked out the sources from the sourceforge svn repository,
 execute the command:
  
  $ ./autobuild
 
-Otherwise, unpack the package mlkit-X.Y.Z-src.tgz.
-
 Now, cd to the toplevel directory of the package. Execute the commands
-under (a), (b), or (c):
+under (a) or (b):
 
-  a. Compile with MLton and SML/NJ  (Tested with 1Gb RAM)
-  -------------------------------------------------------
-   $ ./configure 
-   $ make nj
-
-  b. Compile with MLton alone (Tested with 3Gb RAM)
+  a. Compile with MLton alone (Tested with 3Gb RAM)
   -------------------------------------------------
    $ ./configure 
    $ make mlkit
 
-  c. Compile with existing MLKit (Tested with 1Gb RAM)
+  b. Compile with existing MLKit (Tested with 1Gb RAM)
   ----------------------------------------------------
    $ ./configure --with-compiler=mlkit
    $ make mlkit
@@ -197,10 +177,10 @@ at http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
 Please see the MLKit home page for a list of known bugs and
 limitations. Send bug reports to mlkit@itu.dk.
 
-Appendix A: Directory Structure of the Source Distribution
-----------------------------------------------------------
-  mlkit-X.Y.Z-src.tgz:
-     mlkit-X.Y.Z-src/
+Appendix A: Directory Structure of the Sources
+----------------------------------------------
+
+     kit/
         README
         configure
         Makefile.in        
@@ -214,10 +194,10 @@ Appendix A: Directory Structure of the Source Distribution
 
 Appendix B: Quick Compilation and Installation Guide
 ----------------------------------------------------
-We assume that SML/NJ 110.0.7 and MLton >= 20051202 are installed on
-the system as described in Section 3.
+We assume that MLton >= 20051202 is installed on the system as
+described in Section 3.
 
-If you checked out the sources from the sourceforge svn repository,
+After having checked out the sources from the sourceforge svn repository,
 execute the command:
  
  $ ./autobuild
@@ -225,7 +205,7 @@ execute the command:
 To compile and install the MLKit, execute the following commands:
 
  $ ./configure
- $ make nj
+ $ make mlkit
  $ make bootstrap
  $ make mlkit_libs
 
