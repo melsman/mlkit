@@ -32,7 +32,7 @@ CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
 HEADER_FILES=SysErrTable.h
 
 #OPT=-Wall -pedantic -std=c99
-OPT=-Wall -std=gnu99 $(CFLAGS)
+OPT=-m32 -Wall -std=gnu99 $(CFLAGS)
 AR=ar rc
 
 .PHONY: depend clean runtime all

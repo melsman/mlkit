@@ -100,7 +100,7 @@ smltojs_basislibs:
 
 install_smltojs_basislibs:
 	$(MKDIR) $(LIBDIR)/basis
-	$(INSTALLDATA) -p js/basis/*.{sml,mlb} $(LIBDIR)/basis
+	$(INSTALLDATA) -p js/basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/MLB/Js/
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js} $(LIBDIR)/basis/MLB/Js
 
@@ -171,13 +171,13 @@ clean_mlb:
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
 	$(MKDIR) $(DATADIR)/kitdemo/utils
-	$(INSTALLDATA) kitdemo/*.{sml,mlb,c} $(DATADIR)/kitdemo 
+	$(INSTALLDATA) kitdemo/*.{sml,sig,mlb,c} $(DATADIR)/kitdemo 
 	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(DATADIR)/kitdemo/utils 
 
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
-	$(INSTALLDATA) -p basis/*.{sml,mlb} $(LIBDIR)/basis
+	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
 
 install_man:
@@ -533,18 +533,14 @@ install_smlserver:install_smlserver0
            else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
         fi
 
-HOST=ssh.itu.dk
-HOSTDIR=$(HOST):/import/www/research/mlkit/dist
-TESTDATE=2007-04-12
-
+HOST=mael@frs.sourceforge.net
+HOSTDIR=$(HOST):/home/frs/project/mlkit/mlkit-$(KITVERSION)/
 dist_mlkit:
-	scp NEWS $(HOSTDIR)/NEWS-$(KITVERSION).txt
-	scp README $(HOSTDIR)/README-$(KITVERSION).txt
-	scp doc/README_BIN $(HOSTDIR)/README_BIN-$(KITVERSION).txt
-	scp doc/mlkit.pdf $(HOSTDIR)/mlkit-$(KITVERSION).pdf
-	scp test/test_report-native-$(TESTDATE).pdf $(HOSTDIR)/test_report-native-$(KITVERSION).pdf
+	scp NEWS $(HOSTDIR)
+	scp doc/README_BIN $(HOSTDIR)
+#	scp test/test_report-native-$(TESTDATE).pdf $(HOSTDIR)/test_report-native-$(KITVERSION).pdf
 #	scp test/test_report-kam-$(TESTDATE).pdf $(HOSTDIR)/test_report-kam-$(KITVERSION).pdf
-	scp dist/mlkit-$(KITVERSION)-i386.tgz $(HOSTDIR)/
+	scp dist/mlkit-$(KITVERSION)-i386.tgz $(HOSTDIR)
 
 DBTYPE=odbc
 dist_smlserver:
