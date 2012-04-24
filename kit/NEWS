@@ -1,5 +1,14 @@
 MLKit NEWS file
 
+ * mael 2012-04-24: Automatic enabling of aggressive optimisations
+   when garbage collection is enabled.
+
+              **** MLKit version 4.3.6 is released ****
+
+ * mael 2012-04-23: Cleaning up source code and allowed for the
+   compiler and runtime system to build on 64-bit systems, using
+   the -m32 flag to gcc, gas, and ld. 
+
  * mael 2011-05-31: Renamed many files to allow for checkout of
    repository on case-insensitive file systems.
 

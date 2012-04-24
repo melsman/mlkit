@@ -848,7 +848,7 @@ good *)
         let
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
           val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
-          val mus1 = unMus "S.DROPprim" meta1
+(*          val mus1 = unMus "S.DROPprim" meta1 *)
 	in
 	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1), NOTAIL)
 	end

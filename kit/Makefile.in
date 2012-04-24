@@ -33,9 +33,6 @@ export INSTDIR_BARRY
 
 include Makefiledefault
 
-RPMDIR=/usr/src/rpm
-#RPMDIR=/usr/src/redhat
-
 # Some commands
 
 @SET_MAKE@

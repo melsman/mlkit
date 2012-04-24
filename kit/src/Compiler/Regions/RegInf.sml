@@ -24,6 +24,12 @@ struct
 
   fun uncurry f (x,y) = f x y
 
+  infix &&
+  fun (Effect.Lf[]) && d = d
+    | d && (Effect.Lf[]) = d
+    | d1 && d2 = Effect.Br(d1,d2)
+  val delta_emp = Effect.Lf[]
+
   exception AbortExp  (* Region inference of any expression is 
                          enclosed in a handle which handles any
                          exception - except AbortExp - (typically Crash.impossible)
@@ -73,6 +79,7 @@ struct
               discharged_phi: effect list ref,
               old_effect_of_letregion): cone * Effect.delta_phi =
         let
+          (*val () = print "[Retract..."*)
           val (B_discharge,B_keep) = Below(B, mus)
 
              (* Nodes of level at most level(B)-1 which appear in the increment of
@@ -81,15 +88,15 @@ struct
 
           val (new_discharged_phi,delta_letregion) = 
                  observeDelta(Effect.level B_keep, 
-                                     Effect.Br(Effect.Lf (!discharged_phi),
-	                                       delta_phi_body), 
-                                     old_effect_of_letregion)
+                              Effect.Lf (!discharged_phi) && delta_phi_body, 
+                              old_effect_of_letregion)
           (* old_effect_of_letregion has now been increased by delta_letregion *)
         in discharged_basis:= B_discharge;
            discharged_phi:= new_discharged_phi;	
+           (*print "]\n";*)
            (B_keep, delta_letregion)
         end
-    | retract(B, t,_,_,_,_) = (B, Effect.Lf[])
+    | retract(B, t,_,_,_,_) = (B, delta_emp)
 
 
 
@@ -152,7 +159,7 @@ struct
 
     val gc_arrow_effect_update = ref false
     fun gc_compute_delta(rse,free,(ty0,rho0)) = 
-      if dangling_pointers() then Effect.Lf[]
+      if dangling_pointers() then delta_emp
       else 
 	let 
           val fv_sigma = RType.ferv_sigma    (*was: frv_sigma*)
@@ -203,18 +210,24 @@ struct
 	in Effect.Lf effects
 	end
 
-    fun R(B:cone, rse: rse, t as Exp.TR(e, mt: Exp.metaType, phi: effect)): cone * Effect.delta_phi =
+     fun R(B:cone, rse: rse, t as Exp.TR(e, mt: Exp.metaType, phi: effect)): cone * Effect.delta_phi =
       let 
+(*
+        val () = print ("R(" ^ Int.toString (!count_visited) ^ ")")
+        val () = if !count_visited mod 10 = 0 then
+                   print (Effect.info B)
+                 else ()
+*)
         fun R_sw(B,rse, Exp.SWITCH(t1, rules, t_opt)) =
            let val (B,d1) = R(B,rse,t1)
                val (B,d2) = foldl (fn ((lhs,rhs), (B,d)) => 
                                       let val (B',d') = R(B,rse,rhs)
-                                      in (B', Effect.Br(d,d'))
+                                      in (B', d && d')
                                       end) (B,d1) rules
            in
                case t_opt of NONE => (B,d2)
                | SOME t => let val (B,d3) = R(B,rse,t)
-                           in (B, Effect.Br(d2,d3))
+                           in (B, d2 && d3)
                            end
            end
       in count_visited:= !count_visited+1;
@@ -237,7 +250,7 @@ struct
                             List.app update_increment    updates;
                             List.app (update_areff o #1) updates
                               handle _ => die "update_areff in VAR case";
-                            (B',Effect.Lf[])
+                            (B',delta_emp)
                         end
                        )
                    | _ => die ("R.VAR{...}: bad metatype")
@@ -245,13 +258,13 @@ struct
               | NONE => die ("R.VAR{...}: free lvar" ^ Lvar.pr_lvar lvar)
             )
          end
-       | Exp.INTEGER _ => (B, Effect.Lf [])
-       | Exp.WORD _    => (B, Effect.Lf [])
-       | Exp.STRING  _ => (B, Effect.Lf [])
-       | Exp.REAL    _ => (B, Effect.Lf [])
+       | Exp.INTEGER _ => (B, delta_emp)
+       | Exp.WORD _    => (B, delta_emp)
+       | Exp.STRING  _ => (B, delta_emp)
+       | Exp.REAL    _ => (B, delta_emp)
        | Exp.UB_RECORD ts => foldr(fn (t, (B, d)) => 
-                                        let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
-                                        (B,Effect.Lf[]) ts
+                                        let val (B', d') = R(B,rse,t) in (B', d && d') end) 
+                                        (B,delta_emp) ts
        | Exp.FN{pat, body, alloc, free} =>
            (case mt of
               Exp.Mus [mu0 as (ty,_)] =>
@@ -265,13 +278,13 @@ struct
                               (ListPair.zip(map #1 pat, mus2))
                     val (B, delta_body) = R(B,rse', body)
 		    val delta_gc = gc_compute_delta(rse,free,mu0)
-		    val delta = Effect.Br(delta_body, delta_gc)
+		    val delta = delta_body && delta_gc
                     val lev_eps = case Effect.level_of eps_phi0 of SOME n => n | NONE => die "bad arrow effect (FN)"
                     val B = lower_delta lev_eps delta B  
                  in 
                     update_increment(eps_phi0, delta);
                     update_areff(eps_phi0);
-                    (B, Effect.Lf [])
+                    (B, delta_emp)
                  end
                | NONE => die "R: FN expression had bad meta type")
             | _ => die "R: FN expression had bad meta type")
@@ -300,30 +313,25 @@ struct
                                           rse)
                val (B, d2) = R(B,rse', scope)
             in
-               (B, Effect.Br(d1,d2))
+               (B, d1 && d2)
             end
        | Exp.LET{pat = nil, bind = bind, scope} =>  (* wild card *)
            let val (B,d1) = R(B,rse,bind)
                val (B,d2) = R(B,rse,scope)
-	   in (B, Effect.Br(d1,d2))
+	   in (B, d1 && d2)
 	   end
        | Exp.LET _ => die "LET.multiple bindings not implemented." 
        | Exp.FIX{shared_clos = rho0,
                  functions,
                  scope = t2} =>
             let 
-              (*val _ = sayLn("fix: entering   " ^ Lvar.pr_lvar f )*)
               (* val _ = sayCone B*)
-
-
-              fun addBindingForRhs {lvar = f, occ, tyvars = alphavec, 
-                               rhos as ref rhovec, epss as ref epsvec, 
-                               Type = tau0, formal_regions,bind} rse =
-                  let 
-                     val sigma = RType.FORALL([] ,rhovec,epsvec,tau0)
+              fun addBindingForRhs ({lvar = f, occ, tyvars = alphavec, 
+                                     rhos as ref rhovec, epss as ref epsvec, 
+                                     Type = tau0, formal_regions,bind}, rse) =
+                  let val sigma = RType.FORALL([] ,rhovec,epsvec,tau0)
                   in RSE.declareLvar(f,(true,true,sigma, rho0, SOME occ, NONE),rse)
                   end
-
 
               fun doOneRhs rse {lvar = f,occ,tyvars = alphavec, 
                                 rhos = rhosr as ref rhovec, epss = epssr as ref epsvec, 
@@ -337,8 +345,7 @@ struct
                         val _ = sayCone B3
                         val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))
 *)
-                        val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking 
-                                                                                   alpha_equality below *)
+                        val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking alpha_equality below *)
                                handle _ => die("failed to rename type scheme " ^ 
                                                 show_sigma sigma_3hat)
 
@@ -360,7 +367,7 @@ struct
                                                "sigma_3_hat_save = \n" ^ show_sigma sigma3_hat_save ^
                                                "\nsigma5_hat       = \n" ^ show_sigma sigma_5hat)
                          then 
-                                ((* sayLn("fix:  leaving " ^ Lvar.pr_lvar f); *)
+                                ((*sayLn("fix:  leaving " ^ Lvar.pr_lvar f);*)
                                  (*log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);*)
                                  (* update bindings in syntax tree *)
                                  rhosr:= newrhos;  
@@ -380,7 +387,7 @@ struct
                              (* update bindings in syntax tree *)
                              rhosr:= newrhos;  
                              epssr:= newepss;
-			     (* sayLn("fix:looping for " ^ Lvar.pr_lvar f); *)
+			     (*sayLn("fix:looping for " ^ Lvar.pr_lvar f);*)
                              (B5,false)
                            end
                       end
@@ -389,34 +396,26 @@ struct
                end
 		| doOneRhs _ _ = die "doOneRhs.wrong bind"
 
-              fun loop{B, fcn=[], previous_were_ok=true, rse, gc_update} = (B,gc_update)
-                | loop{B, fcn=[], previous_were_ok=false, rse, gc_update} = loop{B=B,fcn=functions,previous_were_ok=true,rse=rse,gc_update=gc_update}
-                | loop{B, fcn=fcn::rest, previous_were_ok,rse,gc_update} =
-                    let (* val _ = gc_arrow_effect_update := false *)
-			val (B, rhs_was_ok) = doOneRhs rse fcn B 
-                    in loop{B=B, fcn=rest, previous_were_ok=previous_were_ok andalso rhs_was_ok (*andalso not(!gc_arrow_effect_update) *),
-                            rse=addBindingForRhs fcn rse,
-			    gc_update=gc_update (*orelse !gc_arrow_effect_update*)}
+              fun loop {B, fcn=[], previous_were_ok=true, rse} = B
+                | loop {B, fcn=[], previous_were_ok=false, rse} = loop {B=B,fcn=functions,previous_were_ok=true,rse=rse}
+                | loop {B, fcn=fcn::rest, previous_were_ok,rse} =
+                    let val (B, rhs_was_ok) = doOneRhs rse fcn B 
+                    in loop {B=B, fcn=rest, previous_were_ok=previous_were_ok andalso rhs_was_ok,
+                             rse=addBindingForRhs (fcn,rse)}
                     end                
 
-              fun addBindingForScope {lvar = f, occ, tyvars = alphavec, 
-                               rhos as ref rhovec, epss as ref epsvec, 
-                               Type = tau0, formal_regions,bind} rse =
-                  let 
-                     val sigma1hat' = RType.FORALL(alphavec ,rhovec,epsvec,tau0)
+              fun addBindingForScope ({lvar = f, occ, tyvars = alphavec, 
+                                       rhos as ref rhovec, epss as ref epsvec, 
+                                       Type = tau0, formal_regions,bind}, rse) =
+                  let val sigma1hat' = RType.FORALL(alphavec ,rhovec,epsvec,tau0)
                   in RSE.declareLvar(f,(true,true,sigma1hat', rho0, SOME occ, NONE),rse)
                   end
 
-              val (B1,gc_update) = loop{B=B,fcn=functions,previous_were_ok=true, rse=foldl (uncurry addBindingForRhs) rse functions, gc_update=false}
+              val B1 = loop {B=B,fcn=functions,previous_were_ok=true, rse=foldl addBindingForRhs rse functions}
 
-              val rse' = foldl (uncurry addBindingForScope) rse functions
+              val rse' = foldl addBindingForScope rse functions
             in
-(*		gc_arrow_effect_update := false;  *)
 		R(B1, rse', t2)  
-(*
-		before 
-	      gc_arrow_effect_update := (gc_update orelse !gc_arrow_effect_update)
-*)
             end
    
        | Exp.APP(t1,t2) => 
@@ -429,8 +428,8 @@ struct
                       | NONE => die "APP: not function")
                    | _ => die "APP: not function"
                val (B,d2) = R(B,rse,t2)
-           in  (B,Effect.Br(current_increment(eps_phi0),Effect.Br(d1,d2)))
-               (*(B,Effect.Br(Effect.Lf[eps_phi0],Effect.Br(d1,d2)))*)
+           in  (B, current_increment eps_phi0 && d1 && d2)
+               (*(B, Effect.Lf[eps_phi0] && d1 && d2)*)
            end
        | Exp.EXCEPTION(excon, nullary:bool, mu, alloc, t1) => 
                            R(B,RSE.declareExcon(excon,mu,rse),t1)
@@ -445,40 +444,40 @@ struct
                       | NONE => die "HANDLE: not function")
                    | _ => die "HANDLE: not function"
                val (B,d2) = R(B,rse,t2)
-           in  (B,Effect.Br(current_increment(eps_phi0),Effect.Br(d1,d2)))
-               (*(B,Effect.Br(Effect.Lf[eps_phi0],Effect.Br(d1,d2)))*)
+           in  (B, current_increment eps_phi0 && d1 && d2)
+               (*(B, Effect.Lf[eps_phi0] && d1 && d2)*)
            end
        | Exp.SWITCH_I {switch,precision} => R_sw(B,rse,switch)
        | Exp.SWITCH_W {switch,precision} => R_sw(B,rse,switch)
        | Exp.SWITCH_S sw => R_sw(B,rse,sw)
        | Exp.SWITCH_C sw => R_sw(B,rse,sw)
        | Exp.SWITCH_E sw => R_sw(B,rse,sw)
-       | Exp.CON0 _ => (B, Effect.Lf[])
+       | Exp.CON0 _ => (B, delta_emp)
        | Exp.CON1 (_, t) => R(B,rse,t)
        | Exp.DECON (_, t) => R(B,rse,t)
-       | Exp.EXCON (_, NONE) => (B, Effect.Lf[])
+       | Exp.EXCON (_, NONE) => (B, delta_emp)
        | Exp.EXCON (_, SOME (_,t)) => R(B,rse,t)
        | Exp.DEEXCON (_, t) => R(B,rse,t)
-       | Exp.RECORD (_, ts) => foldr(fn (t, (B, d))  => 
-					  let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
-                               (B,Effect.Lf[]) ts
+       | Exp.RECORD (_, ts) => foldr(fn (t, (B, d)) => 
+					let val (B', d') = R(B,rse,t) in (B', d && d') end) 
+                                    (B,delta_emp) ts
        | Exp.SELECT (_, t) => R(B,rse,t)
        | Exp.DEREF t => R(B,rse,t)
        | Exp.REF (_, t) => R(B,rse,t)
        | Exp.ASSIGN (_,t1,t2) => 
            let val (B,d1) = R(B,rse,t1)
                val (B,d2) = R(B,rse,t2)
-           in  (B,Effect.Br(d1,d2))
+           in  (B, d1 && d2)
            end
        | Exp.DROP t => R(B,rse,t)
        | Exp.EQUAL (_,t1,t2) => 
            let val (B,d1) = R(B,rse,t1)
                val (B,d2) = R(B,rse,t2)
-           in  (B,Effect.Br(d1,d2))
+           in  (B, d1 && d2)
            end
        | Exp.CCALL (_, ts) => foldr(fn (t,(B, d))  => 
-					 let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
-                              (B,Effect.Lf[]) ts
+				       let val (B', d') = R(B,rse,t) in (B', d && d') end) 
+                                   (B,delta_emp) ts
        | Exp.EXPORT (_, t) => R(B,rse,t)
        | Exp.RESET_REGIONS (_, t) => R(B,rse,t)
        | Exp.FRAME{declared_lvars,declared_excons} =>
@@ -488,7 +487,7 @@ struct
                         | _ => die ("R: cannot build frame; lvar \"" ^ Lvar.pr_lvar lvar 
                                      ^ "\" is not in scope at frame")
                      ) declared_lvars;
-            (B, Effect.Lf[])
+            (B, delta_emp)
            )
        ) (* case *)
           handle AbortExp  => raise AbortExp 
@@ -507,7 +506,7 @@ struct
     fun loopR (B,rse,tr) =
 	let val _ = gc_arrow_effect_update := false
 	    val _ = Effect.reset(); 
-	    val B = #1(R (B,rse,tr)) handle AbortExp => Crash.impossible "R failed"
+            val B = #1(R (B,rse,tr)) handle AbortExp => Crash.impossible "R failed"
   	    (* for toplas submission: insert call show_visited *)
 	    val B = (* show_visited *) B
 	in if !gc_arrow_effect_update then loopR (B,rse,tr)

@@ -333,24 +333,13 @@ struct
 
   structure ConeLayer(*:MONO_FINMAP*) = 
       struct
-        val lsize  = 10
-         infix eq
-     
+         val lsize  = 10     
          type dom = int
-     
          type 'b map = (int*'b)list array
      
          val empty = Array.array((*lsize*)0,[]:(int*effect)list)
          fun mkEmpty() = Array.array(lsize,[])
-     
-         fun lookup t key =
-           let 
-             fun loop [] = NONE
-               | loop ((key',y)::rest) = if key = key' then SOME y else loop rest
-           in 
-             loop(Array.sub(t,key mod lsize))
-           end
-     
+
          fun add(k0,d0, t) =
           let val i = k0 mod lsize
               val l = Array.sub(t,i)
@@ -368,47 +357,49 @@ struct
      
          fun range (m:'b map) : 'b list =
            let
-             fun  loop(n, acc) = if n<0 then acc
-                  else loop(n-1, Array.sub(m, n) @ acc)
-           in
-        	map (fn (x,y) => y) (loop(lsize-1,[]))
-           end
-     
-         fun list (m:'b map) : (dom * 'b) list =
-           let
-             fun  loop(n, acc) = if n<0 then acc
-                  else loop(n-1, Array.sub(m, n) @ acc)
+             fun loop(n, acc) =
+                 if n < 0 then acc
+                 else loop(n-1, map #2 (Array.sub(m, n)) @ acc)
            in
         	loop(lsize-1,[])
            end
      
+         fun size (m:'b map) : int =
+           let fun loop(n, acc) =
+                 if n < 0 then acc
+                 else loop(n-1, List.length (Array.sub(m, n)) + acc)
+           in loop(lsize-1, 0)
+           end
      
          fun fromSortedList l a=
            foldl (fn ((d,r),a) => add(d,r, a)) a l
      
          type StringTree = PP.StringTree
-     
-         fun layoutMap {start, eq=equal, sep, finish} layoutDom layoutRan m =
-           PP.NODE {start=start,
-     	       finish=finish,
-     	       children=map (fn (d,r) => 
-     			     PP.NODE {start="",
-     				      finish="",
-     				      children=[layoutDom d, 
-     						layoutRan r],
-     				      indent=3,
-     				      childsep=PP.RIGHT equal})
-     	       (list m),
-     	       indent=3,
-     	       childsep=PP.RIGHT sep}
-     
          type Report = Report.Report
-     
-        fun reportMap f t = Report.flatten(map f (list t))
-     
-         val reportMapSORTED  = reportMap
 
-
+         local
+           fun list (m:'b map) : (dom * 'b) list =
+               let fun loop(n, acc) = if n<0 then acc
+                                      else loop(n-1, Array.sub(m, n) @ acc)
+               in loop(lsize-1,[])
+               end
+         in
+           fun layoutMap {start, eq=equal, sep, finish} layoutDom layoutRan m =
+               PP.NODE {start=start,
+     	                finish=finish,
+     	                children=map (fn (d,r) => 
+     			                 PP.NODE {start="",
+     				                  finish="",
+     				                  children=[layoutDom d, 
+     						            layoutRan r],
+     				                  indent=3,
+     				                  childsep=PP.RIGHT equal})
+     	                             (list m),
+     	                indent=3,
+     	                childsep=PP.RIGHT sep}
+           fun reportMap f t = Report.flatten(map f (list t))     
+           val reportMapSORTED  = reportMap
+         end
       end
 
 
@@ -417,7 +408,7 @@ struct
   (* The Cone is implemented as an array, which
      represents a stack of coneLayers *)
 
-  structure Cone: sig 
+  structure Cone : sig 
                      type map  (* = coneLayer map *)
                      type cone
                      val max_cone_level: int
@@ -429,21 +420,22 @@ struct
                          (int -> StringTree) -> 
                          (coneLayer -> StringTree) ->  cone -> StringTree
                      val reset: cone -> unit
-                  end =
+                     val level: cone -> int
+                     val emptyCone : cone
+                     val info : cone -> string
+                   end =
   struct
-    local open Array
-    in
        val max_cone_level = 1000
-       type map = coneLayer array
+       type map = coneLayer Array.array
        type cone = int * (*coneLayer*) map
      (* The integer is the number of levels in the cone;
         initially 0 *)
-       val global_array:map  = array(max_cone_level, ConeLayer.empty)
+       val global_array:map  = Array.array(max_cone_level, ConeLayer.empty)
        val empty = global_array
-       fun lookup _ i = SOME(sub(global_array, i))
+       fun lookup _ i = SOME(Array.sub(global_array, i))
                     handle _ => NONE
        fun add(i,coneLayer,_) = 
-          (update(global_array, i, coneLayer)
+          (Array.update(global_array, i, coneLayer)
                     handle _ => die ("Cone.add: index " 
                                      ^ Int.toString i 
                                      ^ "out of range [0.." 
@@ -451,15 +443,15 @@ struct
            global_array)
      
        fun remove(i,_) =
-          (update(global_array, i, ConeLayer.empty);
+          (Array.update(global_array, i, ConeLayer.empty);
            SOME global_array)
            handle _ => NONE
     
        fun reset (_,array) =      (* reset levels 0 to max_cone_level -1 in array *)
-	 let fun reset_loop(i) =
-	       if i>= max_cone_level then ()
-	       else (update(array, i, ConeLayer.empty);
-		     reset_loop(i+1))
+	 let fun reset_loop i =
+	       if i >= max_cone_level then ()
+	       else (Array.update(array, i, ConeLayer.empty);
+		     reset_loop (i+1))
 	 in reset_loop 0
 	 end
 
@@ -467,29 +459,35 @@ struct
                      layoutInt
                      layoutConeLayer
                      cone =
-         let
-            val (n, table) = cone
-            fun get_layers(i) = 
-                  if i> n then []
-                  else (i,sub(table, i)) :: get_layers(i+1)
-         in
-            PP.NODE{start = start, finish = finish,  indent = 3, childsep=PP.RIGHT sep,
+         let val (n, table) = cone
+             fun get_layers i = 
+                  if i > n then []
+                  else (i,Array.sub(table, i)) :: get_layers(i+1)
+         in PP.NODE{start = start, finish = finish,  indent = 3, childsep=PP.RIGHT sep,
                     children= map (fn (d,r) => 
 			     PP.NODE {start="",
 				      finish="",
-				      children=[layoutInt d, 
-						layoutConeLayer r],
+				      children=[layoutInt d, layoutConeLayer r],
 				      indent=3,
 				      childsep=PP.RIGHT sep})
-                                  (get_layers(1))}
+                                  (get_layers 1)}
          end
-    end
+
+       fun level(i,_) = i
+       val emptyCone = (0,empty)
+
+       fun info(i,m) =
+           let val sl = ArraySlice.slice (m,1,SOME i)
+               val is = ArraySlice.foldl (fn (layer,acc) => Int.toString(ConeLayer.size layer) :: acc) [] sl
+           in "Cone(" ^ Int.toString i ^ "; " ^ String.concatWith "," is ^ ")"
+           end                                                                     
   end
 
+  val info = Cone.info
   type cone = Cone.cone
-  fun level((i,_):cone) = i
+  val level = Cone.level
   val emptyLayer = ConeLayer.empty
-  val emptyCone = (0,Cone.empty)
+  val emptyCone = Cone.emptyCone
   fun layoutLayer (layer: coneLayer) : PP.StringTree= 
       ConeLayer.layoutMap{start = "{", finish = "}", eq = "=", sep = ","}
                          ( PP.LEAF o Int.toString)
@@ -504,9 +502,9 @@ struct
 
   fun layoutCone (cone:cone) : PP.StringTree =
       Cone.layoutMap{start = "{", finish = "}\n", eq = "=", sep = ","}
-                         (fn i: int => PP.LEAF("level " ^ Int.toString i))
-                         layoutLayer
-                         (cone)
+                    (fn i: int => PP.LEAF("level " ^ Int.toString i))
+                    layoutLayer
+                    cone
 
   (* remove "effect" with "key" from "cone" at "level" *)
 
@@ -569,7 +567,6 @@ struct
         | _ => die "merge: cannot sort effects that are neither region variables nor effect variables")
 
   (* sort: top-down mergesort*)
-
   fun sort [] = []
     | sort [x] = [x]
     | sort xs =
@@ -579,7 +576,6 @@ struct
       end
 
   (* pushLayer: see signature *)
-
   fun pushLayer(ateffects: effect list, cone as (n,c):cone): cone = 
       let val l = rev((map (fn effect => 
                           case get_level_and_key effect of
@@ -589,17 +585,15 @@ struct
                               ateffects))
           fun is_sorted [] = true
             | is_sorted [x] = true
-            | is_sorted ((i:int,_)::(j,y):: rest) = 
-                 i<j andalso is_sorted ((j,y)::rest)
+            | is_sorted ((i:int,_)::(rest as (j,_)::_)) = 
+                 i < j andalso is_sorted rest
           val _ = if is_sorted l then () else die "pushLayer: atomic effects not sorted"
           val layer = ConeLayer.fromSortedList l (ConeLayer.mkEmpty())
-      in
-          (n+1, Cone.add(n+1, layer, c))
+      in (n+1, Cone.add(n+1, layer, c))
       end
 
 
   (* pop topmost layer of cone *)
-
   fun pop((n,c):cone): coneLayer * cone =
        if n<=0 then die "pop: Attempt to pop empty cone"
        else 
@@ -625,7 +619,6 @@ struct
                List.filter (fn eff => let val (ref l, _) = noSome (get_level_and_key eff, "popAndClean")
                                    in l>= n 
                                    end)  (ConeLayer.range top_layer)))
-            
         in  
           atomic_effects
         end

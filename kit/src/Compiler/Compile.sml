@@ -194,8 +194,8 @@ structure Compile: COMPILE =
 	val _ = print ("Checking effects; size = " ^ Int.toString(List.length effects_rse0) ^ "\n")
 	val _ = out_layer (Effect.layoutEtas effects_rse0)
 	val _ = Effect.check_effects "Compile" effects_rse0
+	val _ = print "RegInf.inferEffects ... \n"
 *)
-(*	val _ = print "RegInf.inferEffects ... \n" *)
         val cone = RegInf.inferEffects
                    (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log)))
                    (cone,rse_with_con, spread_lamb_exp)
@@ -204,7 +204,6 @@ structure Compile: COMPILE =
 (*
         val _ = print "new_layer before lowering:\n"
         val _ = out_layer(Effect.layoutEtas new_layer)
-
 	val _ = print "RegInf.Creating Cone ...\n"
 *)
 	val toplevel = Effect.level Effect.initCone
@@ -215,9 +214,9 @@ structure Compile: COMPILE =
         val _ = out_layer(Effect.layoutEtas new_layer)
 *)
 	(* all variables in cone with toplevel: *)
-(*	  
-	val _ = print "RegInf.Unifying toplevel regions and effects ...\n"
-*)
+	  
+(*	val _ = print "RegInf.Unifying toplevel regions and effects ...\n" *)
+
         val cone = Effect.unify_with_toplevel_rhos_eps(cone,new_layer)
 
 	val new_layer = []
