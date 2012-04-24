@@ -134,11 +134,13 @@ structure OptLambda: OPT_LAMBDA =
     val aggressive_opt = Flags.add_bool_entry 
 	{long="aggresive_opt",short=SOME "aopt", 
 	 menu=["Control", "Optimiser", "aggressive optimisation"],
-	 item=ref false,neg=false, 
+	 item=ref true,neg=false, 
 	 desc=
 	 "Enable aggressive optimisations, including constant\n\
          \folding and aggressive inlining. These\n\
-         \optimisations are not guaranteed to be region safe."}
+         \optimisations are not guaranteed to be region\n\
+         \safe. Turning off garbage collection automatically\n\
+         \turns off this option."}
 
    (* -----------------------------------------------------------------
     * Some helpful functions

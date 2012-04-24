@@ -73,6 +73,7 @@ sig
   type cone and coneLayer
   val emptyCone: cone 
   val initCone: cone  (* contains the two toplevel regions below *)
+  val info: cone -> string
 
   val toplevel_region_withtype_top    : effect
   val toplevel_region_withtype_word   : effect
@@ -169,8 +170,8 @@ sig
   val unify_with_toplevel_effect : effect -> unit
     
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
-  val observe: int* delta_phi * effect ->  unit
-  val observeDelta: int* delta_phi * effect ->  effect list * delta_phi
+  val observe: int * delta_phi * effect ->  unit
+  val observeDelta: int * delta_phi * effect ->  effect list * delta_phi
 
   val update_increment: effect * delta_phi -> unit
   val update_areff: effect -> unit
