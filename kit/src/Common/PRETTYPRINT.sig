@@ -83,9 +83,9 @@ signature PRETTYPRINT =
     val layoutAtom: ('a -> string) -> ('a -> StringTree)
 			(* Given a simple printing routine, return a function
 			   to build a leaf. *)
-
+(*
     val layoutSet: ('a -> StringTree) -> 'a EqSet.Set -> StringTree
-
+*)
     val layout_opt : ('a -> StringTree) -> 'a option -> StringTree
     val layout_pair : ('a -> StringTree) -> ('b -> StringTree)
                       -> 'a * 'b -> StringTree

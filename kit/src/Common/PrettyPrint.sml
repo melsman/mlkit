@@ -2,14 +2,12 @@
 
 structure PrettyPrint: PRETTYPRINT =
   struct
-
     val raggedRight : bool ref = ref true
     val colwidth : int ref = ref 100
-
-    structure EdList = Edlib.List
-
     val WIDTH = 75
     val DEBUG = false
+
+    fun die s = raise Fail ("PrettyPrint: " ^ s)
           
     datatype childsep = NOSEP | LEFT of string | RIGHT of string
 
@@ -52,12 +50,13 @@ structure PrettyPrint: PRETTYPRINT =
 
 
     fun layoutAtom (f: 'a -> string) (x: 'a) = LEAF(f x)
-      
+
+(*      
     fun layoutSet f set =
       NODE{start="{", finish="}", indent=1, childsep=RIGHT ", ",
            children=map f (EqSet.list set)
           }
-
+*)
     fun layout_opt layout (SOME x) = layout x
       | layout_opt layout NONE = LEAF "_|_"
 
@@ -144,11 +143,11 @@ structure PrettyPrint: PRETTYPRINT =
     fun get_last_line(m: minipage): (string * minipage) option = 
     let fun loop (ind,m) = 
         case m of
-             LINES [] => NONE
-          |  LINES (list) => 
-               let val (last,others) = EdList.removeLast list
-               in SOME(indent_line ind last, indent ind (LINES others))
-               end
+             LINES list =>
+             (case rev list of
+                last::others_rev =>
+                SOME(indent_line ind last, indent ind (LINES (rev others_rev)))
+              | _ => NONE)
           |  INDENT(i, m') => loop(ind+i, m')
           |  PILE(m1,m2) => 
                (case loop(ind,m2) of
@@ -320,15 +319,16 @@ structure PrettyPrint: PRETTYPRINT =
             then
               indent ind (LINES["..."])
             else
-              let
-                val (last, firstN) = EdList.removeLast children
-                val firstNPages = map (print myWidth) firstN
-                val firstNPages' = map (botRightConcat s) firstNPages
-              in
-                indent ind (PILE(pilePages firstNPages',
-                                 print myWidth last)
-                           )
-              end handle EdList.Empty _ => Crash.impossible "PrettyPrint.pileChildren"
+              case rev children of
+                last::firstN_rev =>
+                let val firstNPages = map (print myWidth) (rev firstN_rev)
+                    val firstNPages' = map (botRightConcat s) firstNPages
+                in
+                  indent ind (PILE(pilePages firstNPages',
+                                   print myWidth last)
+                             )
+                end
+              | _ => die "pileChildren"
           end
 
 
@@ -348,14 +348,14 @@ structure PrettyPrint: PRETTYPRINT =
 
     fun format(width: int, t: StringTree): minipage =
       if width < 3 then
-        Crash.impossible "PrettyPrint.format: width too small"
+        die "format: width too small"
       else
         LINES(interpret(0,print width t,[]))
              
     (* result with newlines  *)
-    and flatten (LINES( string_list)) : string =
-      ListUtils.stringSep "" "" "\n" (fn x => x) string_list
-      | flatten _ = Crash.impossible "PrettyPrint.flatten"
+    and flatten (LINES strings) : string =
+        String.concatWith "\n" strings
+      | flatten _ = die "flatten"
 
    (* The string constants below are used for outputting long strings of blanks
       efficiently.
@@ -455,7 +455,7 @@ old*)
             in
                 Report.flatten lines
             end
-     | _ => Crash.impossible "PrettyPrint.reportStringTree'"
+     | _ => die "reportStringTree'"
 
     fun reportStringTree tree =
       reportStringTree' WIDTH tree

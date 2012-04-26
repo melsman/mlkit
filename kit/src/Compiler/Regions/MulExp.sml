@@ -1643,6 +1643,9 @@ struct
             TR(VAR{lvar=x,il =il0 ,plain_arreffs=[],
                    fix_bound=false,rhos_actuals= ref [], other = dummy_'c}, mu, [], ref Mul.empty_psi)
 
+        fun ub_record0_as_term mu =
+            TR(UB_RECORD[], mu, [], ref Mul.empty_psi)
+
         fun lvar_as_term'(x,mu as (tau,rho)) = 
             lvar_as_term(x,RegionExp.Mus[mu])
 
@@ -1650,6 +1653,7 @@ struct
           (case mu of
              RegionExp.Mus[(ty,place)] =>
                [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
+           | RegionExp.RaisedExnBind => []
            | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
 		       PP.flatten1 (RegionExp.layMeta mu)))
       end
@@ -1665,12 +1669,19 @@ struct
            kne tr1 (fn tr1' =>
             if atomic tr1' then k(f tr1')
             else
-             let val x = fresh()
-             in k(e_to_t(LET{k_let = true,
-                        pat = mk_pat(x,mu1),
-                        bind = tr1',
-                        scope= f(lvar_as_term(x,mu1))}))
-             end)
+              case mu1 of
+                RegionExp.RaisedExnBind =>
+                k(e_to_t(LET{k_let = true,
+                             pat = [],
+                             bind = tr1',
+                             scope= f (ub_record0_as_term mu1)}))
+              | _ =>
+                let val x = fresh()
+                in k(e_to_t(LET{k_let = true,
+                                pat = mk_pat(x,mu1),
+                                bind = tr1',
+                                scope= f (lvar_as_term(x,mu1))}))
+                end)
 
       fun two_sub (tr1, tr2) f =
         k(
