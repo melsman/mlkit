@@ -187,8 +187,8 @@ val test7 =
 
 val test8 = 
     tst' "test8" (fn _ => 
-	   hour (mkdate(1998, Mar, 28, 12, 0, 0)) = 12
-	   andalso hour (mkdate(1998, Mar, 28, 36, 0, 0)) = 12)
+	   hour (mkdate(1998, Apr, 28, 12, 0, 0)) =
+           hour (mkdate(1998, Apr, 28, 36, 0, 0)))
 
 in
 end
