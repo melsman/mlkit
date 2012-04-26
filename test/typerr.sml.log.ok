@@ -102,7 +102,6 @@ typerr.sml, line 25, column 27:
                              ^^^^^^^^^
 Type clash,
    operand suggests operator type: {a: ''a, b: ''b, c: ''c} * {d: int}->'d
-
    but I found operator type:      {a: ''a, b: ''b, c: ''c} * {a: ''a, b: ''b, c: ''c}->bool
 
 typerr.sml, line 27, column 12:
@@ -151,16 +150,13 @@ typerr.sml, line 33, column 24:
                           ^^^^^^^^^^^^
 Type clash,
    operand suggests operator type: {u: ''a, v: ''b} * {z: int}->'c
-
    but I found operator type:      {u: ''a, v: ''b} * {u: ''a, v: ''b}->bool
 
 typerr.sml, line 35, column 24:
   fun f14 (x as (u, v)) = x = ([1],2,3);
                           ^^^^^^^^^^^^^
 Type clash,
-
    operand suggests operator type: (int list * int) * (int list * int * int)->'a
-
    but I found operator type:      (int list * int) * (int list * int)->bool
 
 typerr.sml, line 37, column 24:

@@ -1,0 +1,13 @@
+local
+        $(SML_LIB)/basis/basis.mlb
+        ../../Pickle/pickle.mlb
+        ../REPORT.sig
+        ../Report.sml
+        ../PRETTYPRINT.sig
+        ../PrettyPrint.sml
+        ../MONO_FINMAP.sml
+	../IntFinMapPT.sml
+in
+        IntFinMapPT_Test.sml
+end
+        
