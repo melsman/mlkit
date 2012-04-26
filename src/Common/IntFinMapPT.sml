@@ -51,14 +51,15 @@ struct
   fun isEmpty Empty = true
     | isEmpty _ = false
 
-  fun lookup t k =
-    let val w = fromInt k
-        fun look Empty = NONE
+  fun lookupw t w =
+    let fun look Empty = NONE
           | look (Lf (j,x)) = if j=w then SOME x else NONE
           | look (Br (p,m,t0,t1)) =
               if w <= p then look t0
                         else look t1
-    in (*check "lookup" k;*) look t end
+    in look t end
+
+  fun lookup t k = lookupw t (fromInt k)
 
   fun join (m,p0,t0,p1,t1) =
     (* combine two trees with prefixes p0 and p1,
@@ -117,11 +118,30 @@ struct
     | Fold f b (Lf(w,e)) = f((toInt w,e),b)
     | Fold f b (Br(_,_,t1,t2)) = Fold f (Fold f b t1) t2
 
-  fun remove (d,t) =  (* not terribly efficient! *)
-    case ((* check "remove" d;*) lookup t d)
-      of SOME _ => SOME(Fold (fn ((d',e),a) => if d=d' then a
-					       else add(d',e,a)) empty t)
+(*
+  fun remove (k,t) =  (* not terribly efficient! *)
+    case ((* check "remove" k;*) lookup t k)
+      of SOME _ => SOME(Fold (fn ((k',e),a) => if k=k' then a
+					       else add(k',e,a)) empty t)
        | NONE => NONE
+*)
+
+  fun removew (w,t) =
+      case t of                
+        Empty => NONE
+      | Lf(w',e) => if w' = w then SOME Empty
+                    else NONE
+      | Br(p,m,t0,t1) =>
+        if w <= p then
+          case removew(w,t0) of
+            NONE => NONE
+          | SOME t0' => SOME (plus(t0',t1))
+        else
+          case removew(w,t1) of
+            NONE => NONE
+          | SOME t1' => SOME (plus(t0,t1'))
+
+  fun remove (k,t) = removew (fromInt k,t)      
 
   fun composemap f Empty = Empty
     | composemap f (Lf(w,e)) = Lf(w,f e)
@@ -146,7 +166,6 @@ struct
   fun list m = Fold (op ::) nil m
   fun filter f m = Fold (fn (e as (d,r),a) => if f e then add(d,r,a) 
 					      else a) empty m 
-    
   fun addList [] m = m
     | addList ((d,r)::rest) m = addList rest (add(d,r,m))
 
@@ -161,12 +180,27 @@ struct
 		| NONE => raise Restrict(pp d)
     in res (l, empty)
     end
-
+(*
    fun enrich f (m1, m2) =
      Fold (fn ((d2,r2),b) => 
 	   case lookup m1 d2
 	     of SOME r1 => b andalso f(r1,r2)
 	      | NONE => false) true m2  
+*)
+   fun enrich f p =
+       let fun enr (_, Empty) = true
+             | enr (Empty, _) = false                           
+             | enr (Lf _, Br _) = false
+             | enr (t1, Lf(d2,r2)) =
+               (case lookupw t1 d2 of
+                  SOME r1 => f(r1,r2)
+                | NONE => false)
+             | enr (t1 as Br(p1,_,t11,t12), t2 as Br(p2,_,t21,t22)) =
+               if p1 > p2 then enr (t11,t21) andalso enr (t1,t22)
+               else if p1 < p2 then enr (t12, t22) andalso enr (t1, t21)
+               else enr (t11,t21) andalso enr (t12,t22)
+       in enr p
+       end
 
    type StringTree = PP.StringTree
 
@@ -210,78 +244,3 @@ struct
 	   Pickle.dataGen ("IntFinMapPT.map",toInt,[pu_Empty, pu_Lf, pu_Br])
        end
 end
-
-
-structure TestIntFinMap : sig end =
-  struct
-(*    
-    structure BasicIO = BasicIO()
-    structure Report = Report(structure BasicIO=BasicIO)
-    structure Crash=Crash(structure BasicIO = BasicIO)
-    structure PP = PrettyPrint(structure Report=Report
-			       structure Crash=Crash
-			       structure Flags=Flags(structure Crash=Crash
-						     structure Report=Report))
-
-    structure IFM = IntFinMap(structure Report=Report
-			      structure PP=PP)
-
-    fun member [] e = false
-      | member (x::xs) e = x=e orelse member xs e
-
-    infix ===
-    fun l1 === l2 =
-      foldl (fn (x,b) => b andalso member l2 x) (length l1 = length l2) l1
-
-    fun mk [] = []
-      | mk (x::xs) = (x,Int.toString x)::mk xs
-
-    fun mk' [] = []
-      | mk' (x::xs) = (x,Int.toString x ^ "'")::mk' xs
-
-    val l1 = mk [12,234,345,23,234,6,456,78,345,23,78,79,657,345,234,456,78,0,7,45,3,56,578,7,567,345,35,2,456,57,8,5]
-    val l2 = mk' [23,43,4,456,456,23,4523,4,47,5,567,4356,345,34,79,78,53,5,5,6,47,567,56,7,46,345,34,5,36,47,57]
-
-    val m1 = IFM.fromList l1
-    val m2 = IFM.fromList l2
-
-    val m3 = IFM.plus(m1,m2)
-
-    fun test s true = print ("OK : " ^ s ^ "\n")
-      | test s false = print ("ERROR : " ^ s ^ "\n")
-
-    val test1 = test "test1" (IFM.list(m3) === IFM.list(IFM.fromList(l1@l2)))
-      
-    val test2 = test "test2" (IFM.lookup m1 6 = SOME "6")
-    val test3 = test "test3" (IFM.lookup m1 9 = NONE)
-
-    val test4 = test "test4" (IFM.lookup m3 4356 = SOME "4356'")
-
-    val test5 = test "test5" (IFM.lookup m3 35 = SOME "35")
-
-    val m4 = IFM.restrict (m3, [6,345,23,34,657,47])
-
-    val test6 = test "test6" (IFM.lookup m4 23 = SOME "23'")
-    val test6 = test "test6" (IFM.lookup m4 657 = SOME "657")
-    val test7 = test "test7" (IFM.lookup m4 35 = NONE)
-    val test8 = test "test8" (IFM.lookup m4 78 = NONE)
-
-    val test9 = test "test9" ((IFM.restrict (m1,[43]); false) handle IFM.Restrict => true)
-
-    fun sum [] = 0
-      | sum (x::xs) = x + sum xs
-      
-    fun remdubs ([],a:int list) = a
-      | remdubs (x::xs,a) = remdubs(xs, if member a x then a else x::a)
-
-    val test10 = test "test10" (sum (IFM.dom m1) = sum (remdubs (map #1 l1,[])))
-
-    val test11 = test "test11" (IFM.lookup (IFM.add(2222,"2222''",m1)) 2222 = SOME "2222''")
-    val test12 = test "test12" (IFM.lookup (IFM.add(234,"234''",m1)) 234 = SOME "234''")
-
-    val st = IFM.layoutMap {start="{",finish="}", eq=" -> ", sep=", "} (PP.LEAF o Int.toString) PP.LEAF m3
-
-    val _ = PP.outputTree(print, st, 100)
-*)
-  end
-

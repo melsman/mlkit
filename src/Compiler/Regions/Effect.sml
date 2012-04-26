@@ -331,6 +331,13 @@ struct
   (* A cone is a finite map from an initial segment of the natural numbers
      to finite maps, which map node keys to nodes *)
 
+  structure ConeLayer = struct
+     open IntFinMap
+     fun mkEmpty() = empty
+     fun size m = fold (fn (_,acc) => acc+1) 0 m
+     val fromSortedList = addList
+  end
+(*
   structure ConeLayer(*:MONO_FINMAP*) = 
       struct
          val lsize  = 10     
@@ -401,7 +408,7 @@ struct
            val reportMapSORTED  = reportMap
          end
       end
-
+*)
 
   type coneLayer = effect ConeLayer.map
 
