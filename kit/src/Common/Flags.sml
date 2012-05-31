@@ -860,8 +860,10 @@ end
 
   (*Entries not included in command-line options, but in lookup functions*)
 
+(*
   val _ = add_string_entry0 ("c_compiler", c_compiler)
                         (*e.g. "cc -Aa" or "gcc -ansi"*)
+*)
 
   val _ = add_bool_entry0 ("enhanced_atbot_analysis", enhanced_atbot_analysis)
   val _ = add_bool_entry0 ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)

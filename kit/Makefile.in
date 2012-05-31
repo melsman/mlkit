@@ -40,7 +40,7 @@ include Makefiledefault
 CLEAN=rm -rf MLB *~ .\#*
 
 .PHONY: mlkit smltojs mlkit_kam smlserver barry clean clean_mlb install
-.PHONY: install_smlserver install_smlserver0
+.PHONY: install_smlserver install_smlserver0 install_include
 
 mlkit:
 	$(MKDIR) bin
@@ -203,6 +203,10 @@ install_runtime:
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
 
+install_include:
+	$(MKDIR) $(DATADIR)/include
+	$(INSTALLDATA) src/Runtime/*.h $(DATADIR)/include
+
 install0:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
@@ -226,6 +230,7 @@ install0:
 	$(MKDIR) $(DATADIR)/mlkit
 	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/mlkit
 	$(MAKE) install_test DATADIR=$(DATADIR)/mlkit
+	$(MAKE) install_include DATADIR=$(DATADIR)/mlkit
 	$(MKDIR) $(DATADIR)/doc
 	$(MKDIR) $(DATADIR)/doc/mlkit
 	$(MAKE) install_license KIND=mlkit
