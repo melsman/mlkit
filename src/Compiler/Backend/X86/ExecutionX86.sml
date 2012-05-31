@@ -63,6 +63,13 @@ structure ExecutionX86: EXECUTION =
 	\directores. The directories are passed to 'ld'\n\
 	\using the -L option."}
 
+    val _ = Flags.add_string_entry 
+      {long="c_compiler", short=SOME "cc", item=ref "gcc",
+       menu=["Control", "C compiler (used for linking)"],
+       desc="This option specifies which C compiler is\n\
+	\used for linking. When linking with c++\n\
+        \libraries, 'g++' is the linker you want."}
+
     val strip_p = ref false
     val _ = Flags.add_bool_entry 
        {long="strip", short=NONE, neg=false, item=strip_p,
