@@ -1,7 +1,6 @@
 local
   $(SML_LIB)/basis/basis.mlb
-  INFO.sml
-  LinuxInfo.sml
+  info.mlb
   MemUsage.sml
   TestFile.sml
   CompilerTimings.sml

@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------*
  *                        Regions                                 *
  *----------------------------------------------------------------*/
-#include <stdlib.h>
+#include <stdio.h>
 #include "Flags.h"
 #include "Region.h"
 #include "Math.h"
@@ -488,7 +488,6 @@ allocateRegion0(Region r
 		) 
 { 
   debug(printf("[allocateRegion (rAddr=%x)...",r));  
-
   r = clearStatusBits(r);
 
   r->g0.fp = NULL;

@@ -907,6 +907,21 @@ structure Statistics =
 		   no_dangling_pointers_changes_total := 0)
   end
 
+fun memoize f =
+    let val r = ref NONE
+    in fn () => case !r of SOME v => v
+			 | NONE => let val v = f()
+				   in r:=SOME v; v
+				   end
+    end
+    
+val sysname =
+    memoize (fn () =>
+		case List.find (fn (f,_) => f = "sysname") (Posix.ProcEnv.uname()) of
+		    SOME (_, name) => name
+		  | NONE => "unknown"
+	    )
+
 end (* functor Flags *)  
    
   

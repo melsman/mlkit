@@ -1,17 +1,12 @@
-structure Info: INFO =
-struct
+structure LinuxInfo : INFO = struct
 
-    (*************************************************************)
-    (* Linux                                                     *)
-    (*************************************************************)
-
-  fun withFile s f =
+fun withFile s f =
     let val is = TextIO.openIn s
     in (f is before TextIO.closeIn is)
-      handle _ => (TextIO.closeIn is; NONE)
+       handle _ => (TextIO.closeIn is; NONE)
     end
-
-  local
+	
+local
     fun readEntry e line =
       let
 	fun removeTrailingNl l =
@@ -98,4 +93,4 @@ struct
 	 else SOME {rss = getInt 1, size = getInt 2}
       end handle _ => NONE
 *)
-end (* structure Info *)
+end

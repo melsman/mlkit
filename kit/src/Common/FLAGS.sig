@@ -138,4 +138,6 @@ signature FLAGS =
       end
 
     val has_sml_source_ext : string -> bool
+
+    val sysname : unit -> string
   end

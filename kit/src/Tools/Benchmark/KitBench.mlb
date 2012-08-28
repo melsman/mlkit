@@ -1,7 +1,6 @@
 local
   $(SML_LIB)/basis/basis.mlb
-  ../Tester/INFO.sml
-  ../Tester/LinuxInfo.sml
+  ../Tester/info.mlb
   ../Tester/MemUsage.sml
   ../Tester/TestFile.sml
   COMPILE.sml

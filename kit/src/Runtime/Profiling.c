@@ -508,7 +508,7 @@ Statistics()
     /*    fprintf(stderr,"  Size of finite region descriptor: %d bytes\n",sizeof(FiniteRegionDesc)); */
     fprintf(stderr,"\nMALLOC\n");
     fprintf(stderr,"  Number of calls to malloc for regions: %ld\n",callsOfSbrk);
-    fprintf(stderr,"  Alloc. in each malloc call: %d bytes\n", BYTES_ALLOC_BY_SBRK);
+    fprintf(stderr,"  Alloc. in each malloc call: %ld bytes\n", BYTES_ALLOC_BY_SBRK);
     fprintf(stderr,"  Total allocation by malloc: %ld bytes (%.1fMb)\n", BYTES_ALLOC_BY_SBRK*callsOfSbrk,
 	    (BYTES_ALLOC_BY_SBRK*callsOfSbrk)/Mb );
     
@@ -521,7 +521,7 @@ Statistics()
     
     fprintf(stderr,"\nINFINITE REGIONS\n");
     /*    fprintf(stderr,"  Size of infinite reg. desc. (incl. prof info): %d bytes\n",sizeRo*4); */
-    fprintf(stderr,"  Size of infinite region descriptor: %d bytes\n",(sizeRo-sizeRoProf)*(sizeof(void *)));
+    fprintf(stderr,"  Size of infinite region descriptor: %ld bytes\n",(sizeRo-sizeRoProf)*(sizeof(void *)));
     fprintf(stderr,"  Number of calls to allocateRegionInf: %ld\n",callsOfAllocateRegionInf);
     fprintf(stderr,"  Number of calls to deallocateRegionInf: %ld\n",callsOfDeallocateRegionInf);    
     fprintf(stderr,"  Number of calls to alloc: %ld\n",callsOfAlloc);
@@ -617,7 +617,7 @@ pp_finite_region (FiniteRegionDesc *frd)
 {
   ObjectDesc *obj;
   obj = (ObjectDesc *) (frd+1);
-  fprintf(stderr,"FRDid: %d, next: %d, objectId: %d, objSize: %d\n",
+  fprintf(stderr,"FRDid: %zu, next: %zu, objectId: %lu, objSize: %zu\n",
 	 frd->regionId, (size_t) frd, obj->atId, obj->size);
   return;
 }
@@ -632,14 +632,14 @@ pp_infinite_region_gen (Gen *gen)
   ObjectDesc *fObj;
   Rp *rp;
 
-  fprintf(stderr,"Generation %d at address %p\n", generation(*gen),gen);
+  fprintf(stderr,"Generation %lu at address %p\n", generation(*gen),gen);
   for( rp = clear_fp(gen->fp) ; rp ; rp = rp->n ) 
     {
       fObj = (ObjectDesc *) (((long *)rp)+HEADER_WORDS_IN_REGION_PAGE);
       while ( ((long *)fObj < ((long *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 	      && (fObj->atId!=notPP) ) 
 	{
-	  fprintf(stderr,"ObjAtId %d, Size: %d\n", fObj->atId, fObj->size);
+	  fprintf(stderr,"ObjAtId %zu, Size: %zu\n", fObj->atId, fObj->size);
 	  fObj=(ObjectDesc *)(((size_t *)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
 	}
     }
@@ -651,7 +651,7 @@ pp_infinite_region (Region r)
 {
   r = clearStatusBits(r);
 
-  fprintf(stderr,"Region %d\n", r->regionId);
+  fprintf(stderr,"Region %zu\n", r->regionId);
   pp_infinite_region_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
   pp_infinite_region_gen(&(r->g1));  
@@ -958,8 +958,8 @@ profileTick(long *stackTop)
     
       if ( fObj->size >= ALLOCATABLE_WORDS_IN_REGION_PAGE ) 
 	{
-	  sprintf(errorStr, "ERROR - PROFILE_TICK -- Size quite big, pp: %d with  \
-              size %d, fObj-1: %d, fObj %d in finite region %d\n", 
+	  sprintf(errorStr, "ERROR - PROFILE_TICK -- Size quite big, pp: %zu with  \
+              size %zu, fObj-1: %zu, fObj %zu in finite region %lu\n", 
 		  fObj->atId, fObj->size, *(((size_t*)fObj)-1), (size_t)fObj, frd->regionId);
 	  profileERROR(errorStr);
 	}
@@ -970,7 +970,7 @@ profileTick(long *stackTop)
       if ( newTick->stackUse < 0 ) 
 	{
 	  fprintf(stderr,"ERROR3 - PROFILE_TICK -- stackUse in profileTick less than \
-             zero %ld, after object with size %d and pp %d, stackBot: %p, stackTop: %p\n",
+             zero %ld, after object with size %zu and pp %zu, stackBot: %p, stackTop: %p\n",
 		  newTick->stackUse, fObj->size, fObj->atId, stackBot, stackTop);
 	  profileERROR(errorStr);
 	}

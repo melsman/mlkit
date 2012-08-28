@@ -108,7 +108,7 @@ struct syserr_entry srcSig[] = {
   {"SIGTTIN", SIGTTIN},
   {"SIGTTOU", SIGTTOU},
   {"SIGBUS", SIGBUS},
-  {"SIGPOLL", SIGPOLL},
+  //  {"SIGPOLL", SIGPOLL},
   {"SIGPROF", SIGPROF},
   {"SIGSYS", SIGSYS},
   {"SIGTRAP", SIGTRAP},

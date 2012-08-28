@@ -137,9 +137,13 @@ structure InstsX86: INSTS_X86 =
 				     Char.isAlphaNum c orelse
 				     c = #"_" orelse c = #".") (String.explode s))
 
+    fun pr_namelab s =
+	if Flags.sysname() = "Darwin" then "_" ^ s
+	else s
+
     fun pr_lab (DatLab l) = "DLab." ^ remove_ctrl(Labels.pr_label l)
       | pr_lab (LocalLab l) = ".LLab." ^ remove_ctrl(Labels.pr_label l)
-      | pr_lab (NameLab s) = (* "NLab." ^ *)  remove_ctrl s
+      | pr_lab (NameLab s) = (* "NLab." ^ *)  pr_namelab(remove_ctrl s)
       | pr_lab (MLFunLab l) = "FLab." ^ remove_ctrl(Labels.pr_label l)
 
     (* Convert ~n to -n *)
@@ -255,7 +259,10 @@ structure InstsX86: INSTS_X86 =
 	       static_data: inst list}, filename) =
       let
         val os : TextIO.outstream = TextIO.openOut filename
-        val static_data = (dot_section ".note.GNU-stack,\"\",@progbits") :: static_data
+	val section = 
+	    if Flags.sysname() = "Darwin" then ".note.GNU-stack,\"\""
+	    else ".note.GNU-stack,\"\",@progbits"
+        val static_data = dot_section section :: static_data
       in (emit_insts (os, init_code);
 	  app (emit_topdecl os) top_decls;
 	  emit_insts (os, static_data);

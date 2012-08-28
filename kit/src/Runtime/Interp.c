@@ -45,16 +45,16 @@ Exception *exn_BIND;       // Initialized in Interp.c
 Exception *exn_DIV;        // Initialized in Interp.c
 Exception *exn_MATCH;      // Initialized in Interp.c
 jmp_buf global_exn_env;    // 
-void raise_exn(int exn) { 
-  longjmp(global_exn_env, exn);   // never returns 
+void raise_exn(uintptr_t exn) { 
+  longjmp(global_exn_env, (int)exn);   // never returns 
 } 
 #endif
 
 size_t
-printList (uintptr_t l) {    /* function to print out a list */
+printList (uintptr_t l) {    // function to print out a list
   printf("\nList = [");
   for (; isCONS(l); l = tl(l))
-    printf("%x : elem = %d\n", l, (size_t) hd(l));
+    printf("%#016lx : elem = %#016lx\n", (unsigned long)l, (unsigned long) hd(l));
   printf("]\n");
   return mlUNIT;
 }
@@ -302,6 +302,7 @@ typedef unsigned int uint32;
  * have been resolved already.
  */
 
+/*
 static int
 getInstNumber(void *jumptable[], unsigned int jumptableSize, void *inst)
 {
@@ -312,6 +313,7 @@ getInstNumber(void *jumptable[], unsigned int jumptableSize, void *inst)
   }
   return -1;
 }
+*/
 
 /* replace instruction numbers with instruction addresses */
 void 
