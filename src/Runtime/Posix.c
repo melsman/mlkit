@@ -23,43 +23,46 @@
 size_t
 sml_WIFEXITED(size_t status)
 {
-  if (WIFEXITED(convertIntToC((int) status)))
-    return mlTRUE;
+  int tmp = convertIntToC((int)status);
+  if (WIFEXITED(tmp)) return mlTRUE;
   else return mlFALSE;
 }
 
 size_t
 sml_WIFSIGNALED(size_t status)
 {
-  if (WIFSIGNALED(convertIntToC((int) status)))
-    return mlTRUE;
+  int tmp = convertIntToC((int)status);
+  if (WIFSIGNALED(tmp)) return mlTRUE;
   else return mlFALSE;
 }
 
 size_t
 sml_WIFSTOPPED(size_t status)
 {
-  if (WIFSTOPPED((int) convertIntToC(status)))
-    return mlTRUE;
+  int tmp = convertIntToC((int)status);
+  if (WIFSTOPPED(tmp)) return mlTRUE;
   else return mlFALSE;
 }
 
 size_t
 sml_WEXITSTATUS(size_t status)
 {
-  return convertIntToML(WEXITSTATUS((int) convertIntToC(status)));
+  int tmp = convertIntToC((int)status);
+  return convertIntToML(WEXITSTATUS(tmp));
 }
 
 size_t
 sml_WTERMSIG(size_t status)
 {
-  return convertIntToML(WTERMSIG((int) convertIntToC(status)));
+  int tmp = convertIntToC((int)status);
+  return convertIntToML(WTERMSIG(tmp));
 }
 
 size_t
 sml_WSTOPSIG(size_t status)
 {
-  return convertIntToML(WSTOPSIG((int) convertIntToC(status)));
+  int tmp = convertIntToC((int)status);
+  return convertIntToML(WSTOPSIG(tmp));
 }
 
 uintptr_t 

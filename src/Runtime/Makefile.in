@@ -1,5 +1,6 @@
 # Makefile for the MLKit runtime system.
 
+SYSNAME=$(shell uname -s)
 CC=@CC@
 CFLAGS=@CFLAGS@
 INSTALL=@INSTALL@
@@ -11,17 +12,18 @@ MKDIR=@top_srcdir@/mkinstalldirs
 BINDIR=@top_srcdir@/bin
 LIBDIR=@top_srcdir@/lib
 
-OFILES = Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
-         GC.o Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o
-CFILES = $(OFILES:%.o=%.c)
+OFILES=Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
+       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o
+OFILESWITHGC=$(OFILES) GC.o
+CFILES = $(OFILESWITHGC:%.o=%.c)
 OFILES_PROF = $(OFILES:%.o=%-p.o)
 OFILES_TAG = $(OFILES:%.o=%-tag.o)
-OFILES_GC = $(OFILES:%.o=%-gc.o)
-OFILES_GC_PROF = $(OFILES:%.o=%-gc-p.o)
-OFILES_GEN_GC = $(OFILES:%.o=%-gengc.o)
-OFILES_GEN_GC_PROF = $(OFILES:%.o=%-gengc-p.o)
-OFILES_GC_TP = $(OFILES:%.o=%-gc-tp.o)
-OFILES_GC_TP_PROF = $(OFILES:%.o=%-gc-tp-p.o)
+OFILES_GC = $(OFILESWITHGC:%.o=%-gc.o)
+OFILES_GC_PROF = $(OFILESWITHGC:%.o=%-gc-p.o)
+OFILES_GEN_GC = $(OFILESWITHGC:%.o=%-gengc.o)
+OFILES_GEN_GC_PROF = $(OFILESWITHGC:%.o=%-gengc-p.o)
+OFILES_GC_TP = $(OFILESWITHGC:%.o=%-gc-tp.o)
+OFILES_GC_TP_PROF = $(OFILESWITHGC:%.o=%-gc-tp-p.o)
 OFILES_KAM = $(OFILES:%.o=%-kam.o) Interp-kam.o LoadKAM-kam.o KamInsts-kam.o Prims.o \
              HeapCache-kam.o 
 CFILES_KAM = $(CFILES) Interp.c LoadKAM.c KamInsts.c HeapCache.c
@@ -32,7 +34,10 @@ CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
 HEADER_FILES=SysErrTable.h
 
 #OPT=-Wall -pedantic -std=c99
-OPT=-m32 -Wall -std=gnu99 $(CFLAGS)
+
+OPT:=-m32 -Wall -std=gnu99
+OPT:=$(OPT) $(CFLAGS)
+
 AR=ar rc
 
 .PHONY: depend clean runtime all
@@ -122,7 +127,7 @@ runtimeSystemGenGCProf.a: $(OFILES_GEN_GC_PROF) $(HEADER_FILES)
 	$(INSTALLDATA) $@ $(LIBDIR)
 
 kam: $(OFILES_KAM) $(HEADER_FILES)
-	$(CC) -o $@ $(OFILES_KAM) -lm -ldl
+	$(CC) -o $@ $(OFILES_KAM) -lm -ldl -m32
 	$(MKDIR) $(LIBDIR)
 	$(INSTALL) $@ $(LIBDIR)
 

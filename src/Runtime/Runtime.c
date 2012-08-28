@@ -35,14 +35,16 @@ int
 die (const char *s) 
 { 
   fprintf(stderr,"Runtime Error: %s\n",s); 
+  fflush(stderr);
   exit(-1); 
 }
 
 int 
 die2 (const char *s1, const char* s2) 
 { 
-    fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2); 
-    exit(-1); 
+  fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2); 
+  fflush(stderr);
+  exit(-1); 
 }
 
 void
@@ -51,13 +53,20 @@ setStackSize(rlim_t size)
   int res;
   char *bad;
   struct rlimit lim;
-  lim.rlim_cur = size;
-  lim.rlim_max = size;
+  struct rlimit oldlim;
+  res = getrlimit(RLIMIT_STACK, &oldlim);
+  if (res == -1)
+  {
+    bad = strerror(errno);
+    die2("setStackSize(1)", bad);
+  }
+  lim.rlim_cur = oldlim.rlim_max;
+  lim.rlim_max = oldlim.rlim_max;
   res = setrlimit(RLIMIT_STACK, &lim);
   if (res == -1)
   {
     bad = strerror(errno);
-    die(bad);
+    die2("setStackSize(2)", bad);
   }
   return;
 }
@@ -322,7 +331,7 @@ int
 main(int argc, char *argv[]) 
 {
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))
-    die("integer configuration is erroneous");
+    die("main - integer configuration is erroneous");
 
   setStackSizeUnlimited();
 
@@ -337,8 +346,8 @@ rpMap = regionPageMapNew();
 #endif
 
   /* setup handlers */
-  signal(SIGINT, (SignalHandler)sig_handler_int);
-  signal(SIGFPE, (SignalHandler)sig_handler_fpe);
+  //signal(SIGINT, (SignalHandler)sig_handler_int);
+  //signal(SIGFPE, (SignalHandler)sig_handler_fpe);
 
   debug(printf("Starting execution...\n");)
 #ifdef KAM

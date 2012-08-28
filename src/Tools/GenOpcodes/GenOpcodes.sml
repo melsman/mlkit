@@ -214,16 +214,18 @@ structure GenOpcodes : GEN_OPCODES =
 	fun out s = TextIO.output(out_stream, s)
 	fun write_opcode([]) = out "  };\n"
 	  | write_opcode([opcode]) = out ("  " ^ opcode ^ "\n};\n")
-	  | write_opcode(opcode::rest) = (out ("  " ^ opcode ^ ",\n");
+	  | write_opcode(opcode::rest) = (out ("  (c_primitive)" ^ opcode ^ ",\n");
 					  write_opcode rest)
 	fun pr_list nil = ""
 	  | pr_list [s] = s
 	  | pr_list (s::ss) = s ^ ", " ^ pr_list ss
+	fun pp_prim "exit" = "void exit()"
+	  | pp_prim p = "int " ^ p ^ "()"
       in
 	out "/* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes */\n";
 	out ("/* based on the files [" ^ pr_list spec_files ^ "] */\n\n");
 	out "#include \"Prims.h\"\n\n";
-	List.app (fn prim => out ("extern int " ^ prim ^ "();\n")) spec_insts;
+	List.app (fn prim => out ("extern " ^ pp_prim prim ^ ";\n")) spec_insts;
 	out "\nc_primitive cprim[] = {\n";
 	write_opcode spec_insts;
 	TextIO.closeOut(out_stream);

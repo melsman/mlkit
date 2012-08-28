@@ -74,7 +74,7 @@ AC_MSG_RESULT($SVN_REV)
 AC_SUBST(SVN_REV)
 
 AC_MSG_CHECKING(configure date)
-DATE=`date -I`
+DATE=`date -u '+%Y-%m-%dT-%H:%M:%S'`
 AC_SUBST(DATE)
 AC_MSG_RESULT($DATE)
 

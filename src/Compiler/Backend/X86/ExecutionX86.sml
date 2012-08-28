@@ -64,11 +64,18 @@ structure ExecutionX86: EXECUTION =
 	\using the -L option."}
 
     val _ = Flags.add_string_entry 
-      {long="c_compiler", short=SOME "cc", item=ref "gcc",
-       menu=["Control", "C compiler (used for linking)"],
-       desc="This option specifies which C compiler is\n\
-	\used for linking. When linking with c++\n\
-        \libraries, 'g++' is the linker you want."}
+	let val macgcc = "gcc -Wl,-no_pie"
+	    val gcc = if Flags.sysname() = "Darwin" then macgcc
+		      else "gcc"
+	in
+	    {long="c_compiler", short=SOME "cc", item=ref gcc,
+	     menu=["Control", "C compiler (used for linking)"],
+	     desc="This option specifies which C compiler is\n\
+		  \used for linking. When linking with c++\n\
+		  \libraries, 'g++' is the linker you want.\n\
+		  \On Linux the default is 'gcc', whereas on\n\
+                  \Mac OS X, the default is '" ^ macgcc ^ "'."}
+	end
 
     val strip_p = ref false
     val _ = Flags.add_bool_entry 
@@ -175,25 +182,16 @@ structure ExecutionX86: EXECUTION =
     val delete_target_files = Flags.is_on0 "delete_target_files"
     val libs = Flags.lookup_string_entry "libs"
 
-    fun gas() = if gdb_support() then "as --gstabs"
-		else "as"
+    fun gas0() =
+	if Flags.sysname() = "Darwin" then "as -arch i386" else "as --32"
+
+    fun gas() = if gdb_support() then gas0() ^ " --gstabs"
+		else gas0()
+
     fun assemble (file_s, file_o) =
-      (execute_command (gas() ^ " --32 -o " ^ file_o ^ " " ^ file_s);
+      (execute_command (gas() ^ " -o " ^ file_o ^ " " ^ file_s);
        if delete_target_files() andalso not(gdb_support()) then delete_file file_s 
        else ())
-
-	  (*e.g., "cc -Aa -c -o link.o link.s"
-
-	   man cc:
-	   -c          Suppress the link edit phase of the compilation, and
-		       force an object (.o) file to be produced for each .c
-		       file even if only one program is compiled.  Object
-		       files produced from C programs must be linked before
-		       being executed.
-
-	   -ooutfile   Name the output file from the linker outfile.  The
-		       default name is a.out.*)
-
 
     fun emit {target, filename:string} : string =
       let val filename_o = filename ^ ".o"
