@@ -17,7 +17,7 @@ signature DYNLIB =
 
    [dlsym(ml,c,h)] Associates the c-function c in the library represented by h
    with the primitive name ml. After this call you can make primitive calls to
-   the c-fuction by prim(":",..) where the first element in the tuple .. must
+   the c-function by prim(":",..) where the first element in the tuple .. must
    be ml.
 
    [isLinked ml] Returns true iff ml is associated to a c-function in a library.

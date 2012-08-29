@@ -248,7 +248,7 @@ __rem_int32b(size_t* b, size_t* x, size_t* y)
 ssize_t 
 realInt(ssize_t d, ssize_t x) 
 {
-  debug(printf("[realInt: d = %x, x = %d\n", d, x));
+  debug(printf("[realInt: d = %zu, x = %zu\n", d, x));
   get_d(d) = (double) (convertIntToC(x));
   set_dtag(d);
   debug(printf("]\n"));

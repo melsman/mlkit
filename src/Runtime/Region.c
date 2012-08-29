@@ -487,7 +487,7 @@ allocateRegion0(Region r
 #endif
 		) 
 { 
-  debug(printf("[allocateRegion (rAddr=%x)...",r));  
+  debug(printf("[allocateRegion (rAddr=%p)...",r));  
   r = clearStatusBits(r);
 
   r->g0.fp = NULL;
@@ -615,7 +615,7 @@ void deallocateRegion(
   int i;
 #endif
 
-  debug(printf("[deallocateRegion... top region: %x\n", TOP_REGION));
+  debug(printf("[deallocateRegion... top region: %p\n", TOP_REGION));
 
 #ifdef PROFILING
   callsOfDeallocateRegionInf++;
@@ -759,7 +759,7 @@ allocGen (Gen *gen, size_t n) {
   uintptr_t *i;
 #endif
 
-  debug(printf("[allocGen... generation: %x", gen));
+  debug(printf("[allocGen... generation: %p", gen));
 
 #ifdef PROFILING
   r = get_ro_from_gen(*gen);

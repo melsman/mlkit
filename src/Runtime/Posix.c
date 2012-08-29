@@ -750,7 +750,7 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
   makeNIL(list);
   while (*members)
   {
-    allocRecordML(memberListR, 2, pair);
+    allocPairML(memberListR, pair);
     first(pair) = (long) REG_POLY_CALL(convertStringToML, memberR, *members);
     second(pair) = (long) list;
     makeCONS(pair, list);
@@ -796,7 +796,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
   makeNIL(list);
   while (*members)
   {
-    allocRecordML(memberListR, 2, pair);
+    allocPairML(memberListR, pair);
     first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, memberR, *members);
     second(pair) = (uintptr_t) list;
     makeCONS(pair, list);
@@ -901,7 +901,7 @@ REG_POLY_FUN_HDR(sml_environ, Region rl, Region rs)
   m = environ;
   while (*m)
   {
-    allocRecordML(rl, 2, pair);
+    allocPairML(rl, pair);
     first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, rs, *m);
     second(pair) = (uintptr_t) list;
     makeCONS(pair,list);
@@ -939,7 +939,7 @@ REG_POLY_FUN_HDR(sml_getgroups, uintptr_t rp, Region rs, uintptr_t exn)
   }
   for(i=0; i<r; i++)
   {
-    REG_POLY_CALL(allocRecordML,rs, 2, pair);
+    REG_POLY_CALL(allocPairML, rs, pair);
     first(pair) = (uintptr_t) convertIntToML(tmp[i]);
     second(pair) = (uintptr_t) list;
     makeCONS(pair, list)
@@ -1034,37 +1034,35 @@ REG_POLY_FUN_HDR(sml_ttyname, uintptr_t pair, Region rs, int fd)
   return pair;
 }
 
+uintptr_t*
+REG_POLY_FUN_HDR(cons_pair_of_strings, Region rl, Region rp, Region s1, Region s2, char* str1, char* str2, uintptr_t* list) {
+  uintptr_t *lpair, *pair;
+  allocPairML(rl, lpair);
+  allocPairML(rp, pair);
+  first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s1, str1);
+  second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s2, str2);
+  hd(lpair) = (uintptr_t)pair;
+  tl(lpair) = (uintptr_t)list;
+  return lpair;
+}
+
 uintptr_t
-REG_POLY_FUN_HDR(sml_uname, Region rl, Region s1, Region s2)
+REG_POLY_FUN_HDR(sml_uname, Region rl, Region rp, Region s1, Region s2)
 {
   struct utsname i;
-  uintptr_t *pair, *list;
+  uintptr_t *list;
   int j;
   makeNIL(list);
   j = uname(&i);
-  if (j == -1) return (uintptr_t) list;
-  allocRecordML(rl, 2, pair);
-  second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s2, i.sysname);
-  first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s1, "sysname");
-  makeCONS(pair,list);
-  allocRecordML(rl, 2, pair);
-  second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s2, i.nodename);
-  first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s1, "nodename");
-  makeCONS(pair,list);
-  allocRecordML(rl, 2, pair);
-  second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s2, i.release);
-  first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s1, "release");
-  makeCONS(pair,list);
-  allocRecordML(rl, 2, pair);
-  second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s2, i.version);
-  first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s1, "version");
-  makeCONS(pair,list);
-  allocRecordML(rl, 2, pair);
-  second(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s2, i.machine);
-  first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, s1, "machine");
-  makeCONS(pair,list);
-  return (uintptr_t) list;
+  if (j == -1) return (uintptr_t)list;
+  list = REG_POLY_CALL(cons_pair_of_strings, rl, rp, s1, s2, "sysname", i.sysname, list);
+  list = REG_POLY_CALL(cons_pair_of_strings, rl, rp, s1, s2, "nodename", i.nodename, list);
+  list = REG_POLY_CALL(cons_pair_of_strings, rl, rp, s1, s2, "release", i.release, list);
+  list = REG_POLY_CALL(cons_pair_of_strings, rl, rp, s1, s2, "version", i.version, list);
+  list = REG_POLY_CALL(cons_pair_of_strings, rl, rp, s1, s2, "machine", i.machine, list);
+  return (uintptr_t)list;
 }
+
 
 
 
