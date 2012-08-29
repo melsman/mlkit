@@ -20,20 +20,34 @@ fun tstrange s bounds = (tst s) o range bounds
 val _ = print "\nFile posix.sml: Testing structure Posix...\n"
 val _ = print "\nFile posix.sml: Testing structure Posix.IO...\n"
 
-val chanels = ref NONE
-
+val channels = ref NONE
 val _ = tst' "Posix.IO.pipe" (fn () => let val {outfd,infd} = Posix.IO.pipe () 
-                                       in (chanels := (SOME(infd,outfd)) ; true)
+                                       in (channels := (SOME(infd,outfd)) ; true)
                                        end)
 
-val (infd,outfd) = Option.valOf (!chanels)
+val (infd,outfd) = Option.valOf (!channels)
 
 val child = (Posix.Process.fork () = NONE before tst0 "Posix.Process.fork" "OK") 
             handle _ => (tst0 "Posix.Process.fork" "EXN" before OS.Process.exit(OS.Process.failure);true)
 
-val _ = if child then let
-val _ = tst' "Posix.IO.close" (fn () => (Posix.IO.close outfd; true))
-in () end
-else let
-val _ = tst' "Posix.IO.close" (fn () => (Posix.IO.close infd; true))
-in () end
+val _ = if child then 
+	    let	val _ = tst' "Posix.IO.close" (fn () => (Posix.IO.close outfd; true))
+		val _ = Posix.Process.exit(0w0)
+	    in () 
+	    end
+	else let val _ = tst' "Posix.IO.close" (fn () => (Posix.IO.close infd; true))			 
+		 val _ = Posix.Process.wait()
+	     in ()
+	     end
+
+fun lookup s a =
+    case List.find (fn (f,_) => f = s) a of
+	SOME (_, name) => SOME name
+      | NONE => NONE
+
+val _ = tst' "Posix.uname" (fn () =>
+			       let val a = Posix.ProcEnv.uname()
+			       in case lookup "sysname" a of
+				      SOME s => s = "Linux" orelse s = "Darwin"
+				    | NONE => false
+			       end)
