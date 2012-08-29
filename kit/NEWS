@@ -1,5 +1,10 @@
 MLKit NEWS file
 
+ * mael 2012-08-29: Port of the MLKit to Mac OS X. Still the backend
+   generates 32-bit code.
+
+ * mael 2012-08-29: Fixed bug in Posix.ProcEnv.uname.
+
  * mael 2012-04-24: Automatic enabling of aggressive optimisations
    when garbage collection is enabled.
 
