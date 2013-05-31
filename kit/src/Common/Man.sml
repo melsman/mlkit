@@ -15,9 +15,9 @@ struct
   fun isSMLtoJs exe : bool =
       String.isSubstring "smltojs" exe
       
-  val homepage = "http://www.itu.dk/research/mlkit"
+  val homepage = "https://sourceforge.net/apps/mediawiki/mlkit/index.php"
   val homepage_smlserver = "http://www.smlserver.org"
-  val homepage_smltojs = "http://www.itu.dk/people/mael/smltojs"
+  val homepage_smltojs = "http://www.smlserver.org/smltojs"
 
     fun concatWith2 (s1,s2) nil = ""
       | concatWith2 (s1,s2) [x] = x
