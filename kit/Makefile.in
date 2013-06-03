@@ -496,8 +496,8 @@ install_smltojs0:
 	$(MKDIR) $(INSTDIR)/share/doc/smltojs
 	$(MAKE) install_license KIND=smltojs
 	$(INSTALLDATA) README_SMLTOJS $(DATADIR)/doc/smltojs
-	$(MKDIR) $(INSTDIR)/share/test/smltojs
-	$(INSTALLDATA) js/test/*.{sml,sig,mlb,png,gif} $(INSTDIR)/share/test/smltojs
+	$(MKDIR) $(INSTDIR)/share/smltojs/test
+	$(INSTALLDATA) js/test/*.{sml,sig,mlb,png,gif} $(INSTDIR)/share/smltojs/test
 
 install_smltojs: install_smltojs0
 	$(MKDIR) $(SYSCONFDIR)/smltojs
