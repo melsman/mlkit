@@ -1,5 +1,8 @@
 SMLtoJs NEWS file
 
+* mael 2013-06-03: Fixed bug with not installing prims.js. Now also
+  installing tests.
+
 * mael 2009-12-01: It is now possible to compile and run Standard ML
   programs in a browser. See the README_SMLTOJS file for details.
 
