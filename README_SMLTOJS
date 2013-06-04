@@ -1,4 +1,4 @@
-This is file README_SMLTOJS                           mael 2007-08-31
+This is file README_SMLTOJS                           mael 2013-06-04
 
 INTRODUCTION
 ------------
@@ -9,8 +9,8 @@ static typing, higher-order functions, pattern matching, and modules
 for programming client-side web applications.
 
 SMLtoJs compiles all of Standard ML, including most of the Standard ML
-Basis Library. It also has support for calling JavaScript functions
-and for executing JavaScript statements.
+Basis Library. It also has good support for integrating with
+JavaScript.
 
 FEATURES
 --------
@@ -44,35 +44,34 @@ FEATURES
    flags. As a result, SMLtoJs generates fairly efficient JavaScript
    code, although there are rooms for improvements; see below.
 
- * Compiling in the Browser. A version of SmlToJs can be compiled by
-   SmlToJs itself, which leads to a proper browser hosted Standard ML
+ * Compiling in the Browser. A version of SMLtoJs can be compiled by
+   SMLtoJs itself, which leads to a proper browser hosted Standard ML
    compiler.
-
 
 ONLINE DEMONSTRATION
 --------------------
 
 To see SMLtoJs in action, see the SMLtoJs homepage for links to online
-examples of compiled Standard ML:
+examples of compiled Standard ML and the Web browser hosted Standard
+ML compiler:
 
   http://www.smlserver.org/smltojs
 
 GETTING THE SOURCES
 -------------------
 
-SMLtoJs compiles on Debian Linux systems with MLton or MLKit
-installed. The SMLtoJS sources are available through an MLKit
-sourceforge svn checkout:
+SMLtoJs compiles on Debian Linux and Mac OS systems with MLton or
+MLKit. The SMLtoJs sources are available through an MLKit sourceforge
+svn checkout:
 
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.4/kit smltojs
+ $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/trunk/kit smltojs
 
 This command copies the sources to the directory smltojs.
 
 BUILDING SMLTOJS
 ----------------
 
-To compile SMLtoJs from the sources (MLKit svn checkout;
-see above), simply type
+To compile SMLtoJs from the sources (see above), simply type
 
   $ cd smltojs
   $ ./autobuild

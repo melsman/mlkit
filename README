@@ -59,8 +59,9 @@ more liberal MIT License.
 3. Compilation Requirements
 ---------------------------
 To compile, install, and use the MLKit, a Linux box running Ubuntu
-Linux, Debian, gentoo, or similar is needed. The MLKit has also earlier
-been reported to run on the FreeBSD/x86 platform, with little tweaking.
+Linux, Debian, gentoo, or similar is needed. The MLKit also works on
+Mac OS and has also earlier been reported to run on the FreeBSD/x86
+platform, with little tweaking.
 
 To compile the MLKit, a Standard ML compiler is needed, which needs to
 be one of the following:
@@ -214,4 +215,3 @@ Execute as root:
  % make install
 
 See Section 9 for how to test the installation.
-
