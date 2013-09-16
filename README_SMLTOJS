@@ -64,7 +64,7 @@ SMLtoJs compiles on Debian Linux and Mac OS systems with MLton or
 MLKit. The SMLtoJs sources are available through an MLKit sourceforge
 svn checkout:
 
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/trunk/kit smltojs
+ $ svn co https://svn.code.sf.net/p/mlkit/code/trunk/kit smltojs
 
 This command copies the sources to the directory smltojs.
 
@@ -150,4 +150,3 @@ COPYRIGHT AND LICENSE
 
 See the files in doc/license for copyright notices and license
 information.
-
