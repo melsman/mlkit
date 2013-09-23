@@ -14,6 +14,11 @@ structure identifiers, identifying implementations of the signatures
 and generates a documentation page with an index over structure
 identifier (with links to the signature documentation).
 
+The generated HTML documentation embeds an autocompleting search field
+that depends on the jquery library placed in the lib/
+subdirectory. For the generated code to work, copy the content of the
+lib/ directory into the target directory for the documentation.
+
 Signature files must conform to the following structure:
 
 ---------------
