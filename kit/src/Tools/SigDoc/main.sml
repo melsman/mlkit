@@ -27,6 +27,8 @@ structure Map :> MAP = struct
       map #1 (List.filter (fn (a,b) => p b) m)
 end
 
+fun println s = print (s ^"\n")
+
 (* Concatenable strings *)
 datatype cstring = $ of string | & of cstring * cstring | CSeq of cstring list
 infix 6 &  (* as ^ *)
@@ -75,6 +77,7 @@ fun htmlencode s : string =
 
 fun taga t a e = $("<" ^ t ^ a ^ ">") & e & $("</" ^ t ^ ">") 
 fun tag t e = taga t "" e
+fun taga0 t a = taga t a ($"")
 fun tag0 t = $("<" ^ t ^ " />") 
 fun tdwl w e = taga "td" (" width='" ^ Int.toString w ^ "%' align='left'") e
 
@@ -388,6 +391,7 @@ fun read_impl (f:string) : strmap =
 fun match_id nil h = NONE
   | match_id (id::ids) h =
     if h = id orelse String.isPrefix (id ^ " ") h orelse
+       String.isPrefix (id ^ "(") h orelse
        String.isSubstring (" " ^ id ^ " ") h then
       SOME id
     else match_id ids h
@@ -479,14 +483,35 @@ fun page h idx b =
     let val str_idx_link = taga "a" " href='str_idx.html'" ($"Structure Idx")
         val sig_idx_link = taga "a" " href='sig_idx.html'" ($"Signature Idx")
         val id_idx_link = taga "a" " href='id_idx.html'" ($"Id Idx")
+        val searchform = $"Search" & taga0 "input" " id='inp' type='text' onchange='searchit(window.getElementById(\"inp\").value);'"  
+        val search = ($"Search: ") & (*taga "div" " class='ui-widget'"*)
+                       (taga0 "input" " id='tags'")
+        val head =
+          tag "head"
+            (taga0 "link" " rel='stylesheet' href='jquery-ui.css'" &
+             taga0 "script" " src='jquery-1.9.1.js'" &
+             taga0 "script" " src='jquery-ui.js'" &
+             taga0 "script" " src='generated_tags.js'" &
+             taga0 "link" " rel='stylesheet' href='style.css'" &
+             tag "script"
+               ($ "$(function() { \
+                  \  $( '#tags' ).autocomplete({\
+                  \    source: availableTags,\
+                  \    select: function(event,ui){ window.location = ui.item.value; }\
+                  \  });\
+                  \});")
+            )
     in
-      tag "html" 
-          (tag "body" 
+      tag "html"          
+          (tag "head" head
+          & tag "body" 
                (taga "table" " width=100%" (tag "tr" (tag "td" (tag "b" h) & (tag "td" idx) & 
+                                                        taga "td" " align='center'" search &
                                                         taga "td" " align='right'" 
                                                           (str_idx_link & ($" | ") & 
                                                            sig_idx_link & ($" | ") & 
-                                                           id_idx_link))) &
+                                                           id_idx_link)
+                                                      )) &
                      (tag0 "hr" &
                            b & 
                            tag0 "hr" &
@@ -549,6 +574,7 @@ fun gen_idx {head: string,
                       val id = line_id line
                       val ch2 = String.sub(id,0)
                       val e = line_entry line
+(*                      val () = println (id ^ ": " ^ stringOfCString e) *)
                       val n = List.length bodies
                       val bodies = List.map (tdwl (75 div n)) bodies
                       val entry = tag "tr" (tdwl 20 (tag "tt" e) & tdwl 5 ($sep) & (CSeq bodies))
@@ -610,7 +636,7 @@ fun gen_str_idx (sigmap:sigmap, strmap) =
 fun gen_id_idx (idmap, sigmap, strmap) =
     let val im = foldl (fn ((sigid, (ids,_,_,_)),a) =>
                            let val strs = strs_for_sigid sigid strmap
-                           in (map (fn id => (id,sigid,strs)) ids) @ a
+                           in map (fn id => (id,sigid,strs)) ids @ a
                            end) nil (Map.list idmap)
       val im = Listsort.sort (fn((id,_,_),(id2,_,_)) => String.compare (id,id2)) im               
       fun compact nil a = rev a
@@ -633,7 +659,17 @@ fun gen_id_idx (idmap, sigmap, strmap) =
                    line_entry = $ o #1,
                    line_bodies=fn x => [layout_impls x],
                    sep="&nbsp;"}
+      fun qq s = "'" ^ s ^ "'"
+      fun pair e1 e2 = "{label:" ^ e1 ^ ",value:" ^ e2 ^ "}"
+      fun prtag id strid sigid = pair (qq (strid ^ "." ^ id)) (qq(sigid ^ ".sml.html"))
+      fun tags nil = $""
+        | tags ((id, nil)::rest) = tags rest
+        | tags ([(id, [(sigid,[strid])])]) = $(prtag id strid sigid)
+        | tags ((id, (sigid,nil)::es)::rest) = tags ((id,es)::rest)
+        | tags ((id, (sigid,strid::strids)::es)::rest) = $(prtag id strid sigid) & $"," & tags ((id,(sigid,strids)::es)::rest)
+      val alltags = $"var availableTags = [" & tags im & $"];"
     in writeFile "id_idx.html" (stringOfCString cs)
+     ; writeFile "generated_tags.js" (stringOfCString alltags)
     end
 
 fun gen (sigfiles:string list, implfiles) =
