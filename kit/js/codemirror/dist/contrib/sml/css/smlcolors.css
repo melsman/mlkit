@@ -11,11 +11,6 @@ html {
   color: black;
 }
 
-textarea {
-  width:100%;
-  height:100%;
-}
-
 pre.code, .editbox {
   color: #666666;
 }

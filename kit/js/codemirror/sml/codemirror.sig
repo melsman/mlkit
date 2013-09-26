@@ -7,6 +7,7 @@ signature CODE_MIRROR = sig
     val parserfiles : t -> string list -> unit
     val path        : t -> string -> unit
     val height      : t -> string -> unit
+    val width       : t -> string -> unit
     val minHeight   : t -> string -> unit
     val readOnly    : t -> bool -> unit
     val lineNumbers : t -> bool -> unit

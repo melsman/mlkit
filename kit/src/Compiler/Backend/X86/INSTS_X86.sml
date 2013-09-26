@@ -142,6 +142,8 @@ signature INSTS_X86 =
     val caller_save_regs_ccall_as_lvs : lvar list
 *)
 
+    val sysname : unit -> string
+
     type StringTree
     val layout : AsmPrg -> StringTree
 

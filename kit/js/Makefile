@@ -21,15 +21,7 @@ smltojs.man.html: Makefile
 	man2html -r ../man/man1/smltojs.1 > smltojs.man.html
 #	rman -f HTML -r '' ../man/man1/smltojs.1 > smltojs.man.html
 
-BASISFILES=Initial General Option List ListPair \
- Vector VectorSlice Array ArraySlice Array2 ByteTable ByteSlice \
- StringCvt String2 Substring Text Bool IntInfRep \
- Word32 Word8 Word31 Pack32Little Pack32Big Byte \
- Int32 Int31 Math Real IntInf \
- Time Random Path Date Timer TextIO \
- JsCore Js Html Rwp
-
-THEBASISFILES = $(BASISFILES:%=js/basis/MLB/Js/%.sml.o.eb.js)
+THEBASISFILES = js/basis/MLB/Js/*.js
 
 CODEMIRRORFILES=js/codemirror/dist/js/*.js \
  js/codemirror/dist/contrib/sml/css/smlcolors.css \
@@ -37,20 +29,28 @@ CODEMIRRORFILES=js/codemirror/dist/js/*.js \
  js/codemirror/dist/contrib/sml/js/tokenizesml.js \
  js/codemirror/dist/css/docs.css
 
+SRC_ROOT=$(shell cd ..; pwd)
+SML_LIB=$(SRC_ROOT)/js
+SMLTOJS=SML_LIB=$(SML_LIB) smltojs
 CODEMIRRORFLAGS=-jslibs "../../js/codemirror/dist/js/codemirror.js"
-JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to "/home/mael/kit"
-SML_LIB=/home/mael/kit/js
+JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
+JSDOCFILES=js/doc/*.{html,css,js}
+
+# Before running "make smltojs_web", make sure to run "make smltojs; make smltojs_basislibs"
+# in the parent directory; otherwise, certain js-files are missing in will not be 
+# part of the packaged tar-file.
 smltojs_web: Makefile doc
-	(cd ../src/Compiler; SML_LIB=$(SML_LIB) ../../bin/smltojs -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
+	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
 	(cd ..; cp src/Compiler/index.html .)
-	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html $(THEBASISFILES) js/smltojs_logo_color160.png js/doc/*.html $(CODEMIRRORFILES))
+	(cd ..; tar czvf js/smltojs_web.tgz `sed 's/.*src="\(.*\)".*/\1/g' < index.html | grep '\.js'` index.html js/appfun/style.css $(THEBASISFILES) js/smltojs_logo_color160.png $(JSDOCFILES) $(CODEMIRRORFILES))
 
 codemirror: Makefile
-	(cd codemirror/sml; SML_LIB=../../../js ../../../bin/smltojs -chat -aopt codemirror.mlb)
+	(cd codemirror/sml; $(SMLTOJS) -c -aopt codemirror.mlb)
 
+TMPTARGETDIR=/Users/mael/tmp2
 .PHONY:
 buildanduntar: smltojs_web
-	cp smltojs_web.tgz /home/mael/tmp/ && cd /home/mael/tmp && tar xzf smltojs_web.tgz
+	cp smltojs_web.tgz $(TMPTARGETDIR) && cd $(TMPTARGETDIR) && tar xzf smltojs_web.tgz
 
 .PHONY: doc
 doc:
@@ -61,4 +61,5 @@ clean:
 	$(MAKE) -C doc clean
 	$(MAKE) -C test clean
 	$(MAKE) -C basis clean
+	$(MAKE) -C codemirror clean
 	rm -f *~ smltojs.man.html

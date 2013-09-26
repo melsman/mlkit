@@ -25,20 +25,18 @@ struct
       JsCore.exec0{stmt="return navigator.userAgent;",res=JsCore.string} ()
 
   val agent = String.translate (Char.toString o Char.toLower) (userAgent())
-  val touchDevices = ["ipod", "iphone", "series60", "symbian", "android", "windows ce", "blackberry"]
+  val touchDevices = ["ipod", "ipad", "iphone", "series60", "symbian", "android", "windows ce", "blackberry"]
 
   fun touchScreen a =
       let fun has s = String.isSubstring s a
       in List.exists (fn s => String.isSubstring s a) touchDevices
       end
 
-  val id_inputarea = "inputarea"
-  val inputtextarea =
-      taga "textarea" [("id",id_inputarea),("cols","200"), ("rows","20")] ($X.initinput)
-  val inputarea = 
-      taga "div" [("class","border")]
-           inputtextarea          
-  val outarea = taga0 "textarea" [("cols","200"),("rows","20")]
+  val id_inarea = "inarea"
+  val inarea = taga "textarea" [("id",id_inarea)] ($X.initinput)
+  val outarea = taga0 "textarea" [("readonly","readonly")]
+  val inputarea = taga "div" [("class","textareacontainer")] inarea          
+  val outputarea = taga "div" [("class","textareacontainer")] outarea
   val execbutton = taga0 "input" [("type","button"),("value","Compile and Run")]
   val clearoutbutton = taga0 "input" [("type","button"),("value","Clear Output")]
   val clearinbutton = taga0 "input" [("type","button"),("value","Clear Input")]
@@ -48,7 +46,13 @@ struct
 
   val topelem = Js.documentElement Js.document
 
-  fun appendToTop e = Js.appendChild topelem e
+  fun appendToTop e = 
+      let fun loop() =
+              case Js.firstChild topelem of
+                  SOME e => (Js.removeChild topelem e; loop())
+                | NONE => ()
+      in loop(); Js.appendChild topelem e
+      end
 
   fun load scriptpath =
       appendToTop (taga0 "script" [("type","text/javascript"), 
@@ -57,46 +61,38 @@ struct
   val () = List.app load X.script_paths
 
   val head_tr =
-      tag "tr"
-          (taga "th" [("align","left")]
+      taga "tr" [("height","30px")]
+          (taga "th" [("align","left"),("rowspan","2")]
                 (tag "h2" ($X.application_title)) & 
-                tag "td" ($""))      
+                taga "td" [("align","right")] (tag "i" ($X.application_teaser)))      
 
   val comments_tr =
-      tag "tr"
-          (taga "td" [("align","left")]
-                (tag "i" ($X.application_teaser)) &
-                taga "td" [("align","right")]
-                (tag "i" ($"Works on Google Chromium and Firefox 3.5.5")))
+      taga "tr" [("height","30px")]
+          (taga "td" [("align","right")]
+                (tag "i" ($"Works on Google Chrome and Firefox")) & tag "td" ($""))
 
   val link_tr =
-      tag "tr"
+      taga "tr" [("height","30px")]
           (taga "td" [("align","left")] X.links &
                 taga "td" [("align","right")] (clearinbutton & clearoutbutton & execbutton))
 
   val middle_tr =
-      tag "tr"
-          (taga "td" [("width","50%"),("height","100%")] inputarea &
-                taga "td" [("width","50%")] outarea)
+      tag "tr" (taga "td" [("width","50%")] inputarea & taga "td" [("width","50%")] outputarea)
 
   val footer_tr =
-      tag "tr"
-      (taga "td" [("colspan","2"), ("padding","0")] X.footer)
+      taga "tr" [("height","30px")]
+      (taga "td" [("colspan","2")] X.footer)
 
   val heads =
-      if false then
-        taga "style" [("type","text/css")] ($("textarea {width:100%;height:100%;}")) &
-             (taga0 "link" [("rel","stylesheet"),("type","text/css"),
-                            ("href","js/codemirror/dist/css/docs.css")])
-      else 
-        taga0 "link" [("rel","stylesheet"),("type","text/css"),
-                      ("href","js/codemirror/dist/css/docs.css")]
-        
+      taga0 "link" [("rel","stylesheet"),("type","text/css"),
+                    ("href","js/codemirror/dist/css/docs.css")] &
+      taga0 "link" [("rel","stylesheet"),("type","text/css"),
+                    ("href","js/appfun/style.css")]            
+
   val elem =
-      tag "html"
-      (tag "head" heads &
-       tag "body"
-       (tag "table"
+      tag "head" heads &
+      tag "body"
+       (taga "table" [("width","100%"),("height","100%")]
         (head_tr &
          comments_tr &
          link_tr &         
@@ -104,20 +100,19 @@ struct
          footer_tr
         )
        )
-      )
-
+ 
   val _ = appendToTop elem
 
   type editor = 
        {get: unit -> string,
         set: string -> unit}
 
-  fun mkEditor h area : editor =
+  fun mkEditor area : editor =
       if not X.syntaxhighlight orelse touchScreen agent then
-        {get=fn() => Js.value inputtextarea,
-         set=fn s => case Js.firstChild inputtextarea of
-                       SOME c => Js.replaceChild inputtextarea ($s) c
-                     | NONE => Js.appendChild inputtextarea ($s)
+        {get=fn() => Js.value inarea,
+         set=fn s => case Js.firstChild inarea of
+                       SOME c => Js.replaceChild inarea ($s) c
+                     | NONE => Js.appendChild inarea ($s)
         }
       else
       let val kind = X.codemirror_module
@@ -131,11 +126,12 @@ struct
               let open CodeMirror.EditorProperties
                   val t = empty()
               in textWrapping t false
-               ; lineNumbers t true
+               ; lineNumbers t false
                ; path t "js/codemirror/dist/js/"
                ; parserfiles t [tokenizefile,parsefile]
                ; stylesheets t [stylefile] 
-               ; height t h
+               ; height t "100%"
+               ; width t "100%"
                ; t
               end
           val ed = CodeMirror.newEditor {id=area, properties=properties}
@@ -162,7 +158,7 @@ struct
 
   fun onload() =
       let
-        val editor = mkEditor "500px" id_inputarea
+        val editor = mkEditor id_inarea
         fun whileSome f g =
             case f() of
               SOME x => (g x; whileSome f g)

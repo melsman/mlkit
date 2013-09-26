@@ -22,6 +22,8 @@ structure CodeMirror :> CODE_MIRROR = struct
         setProperty t string "path" p
     fun height (t:t) (p: string) : unit =
         setProperty t string "height" p
+    fun width (t:t) (p: string) : unit =
+        setProperty t string "width" p
     fun minHeight (t:t) (p: string) : unit =
         setProperty t string "minHeight" p
     fun lineNumbers (t:t) (b: bool) : unit =

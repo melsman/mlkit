@@ -1,7 +1,7 @@
 (** Reactive Web Programming Library. 
 
 Combinators for constructing reactive web programs. See 
-http://www.itu.dk/people/mael/smltojs/slides_diku_2007-11-27.pdf for an
+http://www.smlserver.org/smltojs/slides_diku_2007-11-27.pdf for an
 introduction to the use of the combinators.
 *)
 

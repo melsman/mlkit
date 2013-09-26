@@ -65,7 +65,7 @@ structure ExecutionX86: EXECUTION =
 
     val _ = Flags.add_string_entry 
 	let val macgcc = "gcc -Wl,-no_pie"
-	    val gcc = if Flags.sysname() = "Darwin" then macgcc
+	    val gcc = if InstsX86.sysname() = "Darwin" then macgcc
 		      else "gcc"
 	in
 	    {long="c_compiler", short=SOME "cc", item=ref gcc,
@@ -183,7 +183,7 @@ structure ExecutionX86: EXECUTION =
     val libs = Flags.lookup_string_entry "libs"
 
     fun gas0() =
-	if Flags.sysname() = "Darwin" then "as -arch i386" else "as --32"
+	if InstsX86.sysname() = "Darwin" then "as -arch i386" else "as --32"
 
     fun gas() = if gdb_support() then gas0() ^ " --gstabs"
 		else gas0()

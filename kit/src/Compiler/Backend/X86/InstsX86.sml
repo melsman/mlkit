@@ -5,6 +5,21 @@ structure InstsX86: INSTS_X86 =
 
     fun die s = Crash.impossible("X86Inst." ^ s)
 
+    fun memoize f =
+        let val r = ref NONE
+        in fn () => case !r of SOME v => v
+			     | NONE => let val v = f()
+				       in r:=SOME v; v
+				       end
+        end
+            
+    val sysname =
+        memoize (fn () =>
+		    case List.find (fn (f,_) => f = "sysname") (Posix.ProcEnv.uname()) of
+		        SOME (_, name) => name
+		      | NONE => "unknown"
+	        )
+
     type lvar = Lvars.lvar
     datatype reg = eax | ebx | ecx | edx | esi | edi | ebp | esp 
                  | ah | al | cl
@@ -138,7 +153,7 @@ structure InstsX86: INSTS_X86 =
 				     c = #"_" orelse c = #".") (String.explode s))
 
     fun pr_namelab s =
-	if Flags.sysname() = "Darwin" then "_" ^ s
+	if sysname() = "Darwin" then "_" ^ s
 	else s
 
     fun pr_lab (DatLab l) = "DLab." ^ remove_ctrl(Labels.pr_label l)
@@ -260,7 +275,7 @@ structure InstsX86: INSTS_X86 =
       let
         val os : TextIO.outstream = TextIO.openOut filename
 	val section = 
-	    if Flags.sysname() = "Darwin" then ".note.GNU-stack,\"\""
+	    if sysname() = "Darwin" then ".note.GNU-stack,\"\""
 	    else ".note.GNU-stack,\"\",@progbits"
         val static_data = dot_section section :: static_data
       in (emit_insts (os, init_code);

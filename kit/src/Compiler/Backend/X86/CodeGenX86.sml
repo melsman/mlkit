@@ -600,7 +600,7 @@ struct
 	end
 
     fun needs_align n =
-	Flags.sysname() = "Darwin"
+	I.sysname() = "Darwin"
 
     fun restore_stack_alignment (nargs, C) = 
 	let val tmp = tmp_reg0
@@ -2928,7 +2928,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         fun slot_for_datlab((_,l),C) =
             let fun maybe_dotsize C =
-                    if Flags.sysname() = "Darwin" then C
+                    if I.sysname() = "Darwin" then C
                     else I.dot_size(DatLab l, 4) :: C
             in
                 I.dot_globl (DatLab l) ::
