@@ -207,22 +207,26 @@ fun merge (e1: ''a e, e2: ''a e) : ''a e =
     in e
     end
 
+fun insertDOM_elem e b =
+    case #current b of
+        SOME(ref v) => (Js.innerHTML e v;
+                        addListener b (Js.innerHTML e))
+      | NONE => raise Fail "insertDOM_elem impossible"
+
 fun insertDOM (id:string) (b : string b) =
     case Js.getElementById Js.document id of
-      SOME e => 
-      (case #current b of
-         SOME(ref v) => (Js.innerHTML e v;
-                         addListener b (Js.innerHTML e))
-       | NONE => raise Fail "insertDOM impossible")
+      SOME e => insertDOM_elem e b
     | NONE => idError "insertDOM" id
+
+fun setStyle_elem e (s,b) =
+    case #current b of
+        SOME(ref v) => (Js.setStyle e (s,v);
+                        addListener b (fn v => Js.setStyle e (s,v)))
+      | NONE => raise Fail "setStyle_elem impossible"
 
 fun setStyle (id:string) (s:string, b: string b) : unit =
     case Js.getElementById Js.document id of
-      SOME e => 
-      (case #current b of
-         SOME(ref v) => (Js.setStyle e (s,v);
-                         addListener b (fn v => Js.setStyle e (s,v)))
-       | NONE => raise Fail "setStyle impossible")
+      SOME e => setStyle_elem e (s,b)
     | NONE => idError "setStyle" id
 
 fun delay (ms:int) (b : ''a b) : ''a b =
@@ -261,39 +265,48 @@ fun calm (ms:int) (b : ''a b) : ''a b =
     in b'
     end
 
+fun textField_elem e =
+    let val b = new (SOME(Js.value e))
+        fun f () = (newValue b (Js.value e); eval(); true)
+        val () = Js.installEventHandler e Js.onkeyup f
+    in b
+    end
+
 fun textField (id:string) : string b =
     case Js.getElementById Js.document id of
-      SOME e => let
-                  val b = new (SOME(Js.value e))
-                  fun f () = (newValue b (Js.value e); eval(); true)
-                  val () = Js.installEventHandler e Js.onkeyup f                                                   
-                in b
-                end 
+      SOME e => textField_elem e
     | NONE => idError "textField" id
+
+fun mouseOver_elem e =
+    let val b = new(SOME false)
+        fun f over () = (newValue b over; eval(); true)
+        val () = Js.installEventHandler e Js.onmouseover (f true)
+        val () = Js.installEventHandler e Js.onmouseout (f false)
+    in b
+    end 
 
 fun mouseOver (id:string) : bool b =
     case Js.getElementById Js.document id of
-      SOME e => let
-                  val b = new(SOME false)
-                  fun f over () = (newValue b over; eval(); true)
-                  val () = Js.installEventHandler e Js.onmouseover (f true)
-                  val () = Js.installEventHandler e Js.onmouseout (f false)
-                in b
-                end 
+      SOME e => mouseOver_elem e
     | NONE => idError "mouseOver" id
 
-fun mouse() : (int*int)b =
+fun mouse_doc d =
     let val b = new(SOME(0,0))
-        val () = Js.onMouseMove Js.document (fn v => (newValue b v; eval()))
+        val () = Js.onMouseMove d (fn v => (newValue b v; eval()))
     in b
+    end
+
+fun mouse () : (int*int)b = mouse_doc Js.document
+
+fun click_elem e a =
+    let val t = new NONE
+        val () = Js.installEventHandler e Js.onclick (fn() => (newValue t a; eval(); true))
+    in t
     end
 
 fun click (id:string) (a:''a) : (''a,E)t =
     case Js.getElementById Js.document id of
-      SOME e => let val t = new NONE
-                    val () = Js.installEventHandler e Js.onclick (fn() => (newValue t a; eval(); true))
-                in t
-                end
+      SOME e => click_elem e a
     | NONE => idError "click" id
 
 fun changes (b: ''a b) : ''a e =

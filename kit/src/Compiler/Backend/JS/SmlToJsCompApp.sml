@@ -67,8 +67,14 @@ structure SmlToJsAppArg : APP_ARG = struct
 
   val script_paths = 
       let val path = ""  (*  val path = "./../../" *)
-          fun scriptpath n = path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
-      in List.map scriptpath basislibs
+          fun basispath n = path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
+          fun implpath n = path ^ "js/basis/MLB/Js/" ^ n ^ ".js"
+      in List.map basispath basislibs @
+         List.map implpath ["Html-sml","Rwp-sml","XMLrpcClient-sml-code1",
+                            "XMLrpcClient-sml-code2", "XMLrpcClient-sml-code3"]  
+      (* modules that are not used by SMLtoJs itself are not loaded
+       * and need to be mentioned here, so that they can be
+       * explicitly loaded! *)
       end
 
   val envRef : Env.t option ref = ref NONE

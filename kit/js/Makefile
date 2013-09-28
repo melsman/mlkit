@@ -48,7 +48,7 @@ codemirror: Makefile
 	(cd codemirror/sml; $(SMLTOJS) -c -aopt codemirror.mlb)
 
 TMPTARGETDIR=/Users/mael/tmp2
-.PHONY:
+.PHONY: buildanduntar
 buildanduntar: smltojs_web
 	cp smltojs_web.tgz $(TMPTARGETDIR) && cd $(TMPTARGETDIR) && tar xzf smltojs_web.tgz
 

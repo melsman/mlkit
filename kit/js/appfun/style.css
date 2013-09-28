@@ -1,3 +1,7 @@
+body
+{
+    overflow: hidden;
+}
 textarea
 {
     border:0;

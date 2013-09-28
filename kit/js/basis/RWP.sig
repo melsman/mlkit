@@ -11,11 +11,11 @@ signature RWP =
     type ('a,'k)t
     type 'a b = ('a, B)t      (* Behaviors *)
     type 'a e = ('a, E)t      (* Events *)
-                
+
     (* Arrow operations *)
     type ('a,'b,'k)arr = ('a,'k)t -> ('b,'k)t
     val arr : (''b -> ''c) -> (''b,''c,'k) arr
-    val >>> : (''b,''c,'k)arr * (''c,''d,'k)arr -> (''b,''d,'k)arr                                       
+    val >>> : (''b,''c,'k)arr * (''c,''d,'k)arr -> (''b,''d,'k)arr
     val fst : (''b,''c,'k)arr -> (''b*''d,''c*''d,'k)arr
     val snd : (''b,''c,'k)arr -> (''d*''b,''d*''c,'k)arr
     val *** : (''b,''c,'k)arr * (''d,''e,'k)arr -> (''b*''d,''c*''e,'k)arr
@@ -52,6 +52,15 @@ signature RWP =
     val hold      : ''a -> ''a e -> ''a b
     val send      : (''a,'k)t -> ''a -> unit
     val addListener : (''a,'k)t -> (''a -> unit) -> unit
+
+    (* Element operations *)
+    val insertDOM_elem : Js.elem -> string b -> unit
+    val setStyle_elem  : Js.elem -> (string * string b) -> unit
+    val textField_elem : Js.elem -> string b
+    val mouseOver_elem : Js.elem -> bool b
+    val click_elem     : Js.elem -> ''a -> ''a e
+
+    val mouse_doc      : Js.doc -> (int*int) b
   end
 
 (**
