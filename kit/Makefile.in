@@ -94,6 +94,7 @@ smltojs_basislibs:
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c basis.mlb)
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c js.mlb)
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c rwp.mlb)
+	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c dojo.mlb)
 
 install_smltojs_basislibs:
 	$(MKDIR) $(LIBDIR)/basis

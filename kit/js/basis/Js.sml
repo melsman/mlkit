@@ -290,6 +290,24 @@ structure XMLHttpRequest =
 fun random () : real =
     J.exec0 {stmt="return Math.random();",
              res=J.real} ()
+
+val unit2unit_T = J.==>(J.unit,J.unit)
+
+fun loadScript url callback =
+    let val head = J.exec1 {stmt="return document.getElementsByTagName(s)[0];",
+                            arg1=("s", J.string),
+                            res=J.fptr} "head"
+        val head = Element.fromForeignPtr head
+        val script = createElement "script"
+        fun setScriptProp t k v =
+            J.setProperty (Element.toForeignPtr script) t k v
+        val () = setScriptProp J.string "type" "text/javascript"
+        val () = setScriptProp J.string "src" url
+        (* set callback on multiple properties for browser compatibility *)
+        val () = setScriptProp unit2unit_T "onreadystatechange" callback
+        val () = setScriptProp unit2unit_T "onload" callback
+    in appendChild head script
+    end
 end
 
 structure Js : JS = JsSecret

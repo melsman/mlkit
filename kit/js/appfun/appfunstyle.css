@@ -1,7 +1,8 @@
 body
 {
     overflow: hidden;
-    font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
+    font-family: "Verdana", "sans-serif";
+    font-size: 12px;
 }
 textarea
 {
@@ -14,6 +15,5 @@ textarea
 }
 .textareacontainer
 {
-    border:1px solid #999999;
     height:100%;
 }

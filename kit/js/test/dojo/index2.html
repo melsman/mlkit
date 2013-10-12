@@ -1,0 +1,87 @@
+<!DOCTYPE HTML>
+<html >
+<head>
+<link rel="stylesheet" href="dijit/themes/claro/claro.css">
+<style>
+html, body, #mainDiv {
+    width: 100%; height: 100%;
+    border: 0; padding: 0; margin: 0;}
+</style>
+<script>
+function loadScript(url, callback)
+{
+    // Adding the script tag to the head as suggested before
+    var head = document.getElementsByTagName('head')[0];
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = url;
+
+    // Then bind the event to the callback function.
+    // There are several events for cross browser compatibility.
+    script.onreadystatechange = callback;
+    script.onload = callback;
+
+    // Fire the loading
+    head.appendChild(script);
+};
+
+function pane(h, k) {
+  require(["dijit/layout/ContentPane",
+           "dojo/domReady!"], 
+          function(ContentPane){
+            k(new ContentPane(h));
+          });
+};
+
+function bordercontainer(h, arr, k) {
+  require(["dijit/layout/BorderContainer",
+           "dojo/domReady!"], 
+          function(BorderContainer){
+	     var bc = new BorderContainer(h);
+	     for (var i=0; i < arr.length; i++ ) {
+	       bc.addChild(arr[i]);
+	     }
+	     k(bc);
+          });
+};
+
+function tabcontainer(h, arr, k) {
+  require(["dijit/layout/TabContainer",
+           "dojo/domReady!"], 
+          function(TabContainer){
+             var tc = new TabContainer(h);
+             for (i=0; i < arr.length; i++ ) {
+                tc.addChild(arr[i]);
+             }
+             k(tc);
+          });
+};
+
+function attachToBody(k) {
+  require(["dojo/domReady!"],
+          function(){
+            var w = k();
+            document.body.appendChild(w.domNode);
+            w.startup();
+          });
+  // put the top level widget into the document, and then call startup()
+};
+
+//
+// User code
+//
+
+this.dojoConfig = {parseOnLoad: true};
+loadScript('dojo/dojo.js', function() {
+  pane({region: "left", content: "hello world", splitter: "true"}, function (leftpane) { 
+  pane({title: "tab1"}, function (p1) {
+  pane({title: "tab2"}, function (p2) {
+  tabcontainer({region: "center"}, [p1,p2], function (tc) {
+  bordercontainer({style: "height: 100%; width: 100%;"}, [leftpane,tc], function (bc) {
+  attachToBody(function() { return bc; });})
+  })})})});
+});
+</script>
+</head>
+<body class='claro'></body>
+</html>

@@ -1,5 +1,5 @@
 local
-   $(SML_LIB)/basis/basis.mlb
+   basis.mlb
    Parsercomb.sig
    Parsercomb.sml
    WSeq.sig

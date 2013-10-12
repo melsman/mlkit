@@ -68,6 +68,8 @@ signature JS =
                                
     val random             : unit -> real
 
+    val loadScript         : string -> (unit -> unit) -> unit
+
     (* Shorthand notation for creating elements *)
     structure Element : sig
       val $     : string -> elem
@@ -94,5 +96,10 @@ has no parent.
 
 [random()] returns a random real in the interval [0.0,1.0[.
 
+[loadScript url callback] loads the JavaScript file specified by the
+url and execute the callback function once the script is fully
+loaded. The loadScript function assumes that a head element is present
+in the DOM.
+ 
 *)
 

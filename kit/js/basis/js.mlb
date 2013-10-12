@@ -1,4 +1,4 @@
-local $SML_LIB/basis/basis.mlb
+local basis.mlb
 in JS_CORE.sml JsCore.sml
    JS.sig Js.sml
    html.mlb
