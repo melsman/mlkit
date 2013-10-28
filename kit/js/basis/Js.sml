@@ -150,7 +150,7 @@ fun setTimeout (i: int) (f: unit -> unit) : timeoutId =
 fun clearTimeout (id: timeoutId) : unit =
     let val arg1 = ("id", J.fptr)
     in
-      J.exec1 {stmt="return d.clearTimeout(id);", 
+      J.exec1 {stmt="return clearTimeout(id);", 
                arg1=arg1, res=J.unit} id
     end
 

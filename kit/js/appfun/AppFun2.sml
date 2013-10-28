@@ -1,14 +1,16 @@
 signature APP_ARG = sig
   val codemirror_module  : string
   val application_title  : string
-  val application_teaser : string
-  val initinput          : string
+  val application_logo   : string
+  val demoinput          : string option
   val compute            : string -> unit   (* output on stdout goes to the output area *)
-  val links              : Js.elem
-  val footer             : Js.elem
+  val about              : Js.elem
   val script_paths       : string list
   val onloadhook         : {out: string -> unit} -> unit
   val syntaxhighlight    : bool
+  val dropboxKey         : string option
+  val fileExtensions     : string list
+  val rightPane          : (unit -> Js.elem) option
 end
 
 functor AppFun(X : APP_ARG) : sig end =
@@ -33,9 +35,50 @@ struct
       end
 
   val outarea = taga0 "textarea" [("readonly","readonly")]
-  val outputarea = taga "div" [("class","textareacontainer")] outarea
+  val outareaDiv = taga "div" [("class","textareacontainer")] outarea
+  val logarea = taga0 "textarea" [("readonly","readonly")]
+  val logareaDiv = taga "div" [("class","textareacontainer")] logarea
   val execbutton = taga0 "input" [("type","button"),("value","Compile and Run")]
   val clearoutbutton = taga0 "input" [("type","button"),("value","Clear Output")]
+
+  val nodropboxPng = "nodropbox.png"
+  val dropboxPng = "dropbox.png"
+  val notifyAreaElem = taga "div" [("class","notify_area")] ($"welcome!")
+
+  val dropboxAreaElem = taga0 "img" [("src",nodropboxPng),("class","dropbox_area")]
+  fun setNoDropboxPng() = Js.setAttribute dropboxAreaElem "src" nodropboxPng
+  fun setDropboxPng() = Js.setAttribute dropboxAreaElem "src" dropboxPng
+
+  local
+    val notifyTimeout = ref NONE
+    fun setAttr e opacity color =
+        Js.setAttribute e "style" ("opacity:" ^ Real.toString opacity ^ "; background-color:" ^ color ^ ";")
+    fun clearNotification e =
+        (Js.setAttribute e "style" "opacity:0.0;";
+         notifyTimeout := NONE)
+    fun fadeNotification color e opacity () =
+        if opacity < 0.0 then clearNotification e
+        else 
+          (setAttr e opacity color;
+           notifyTimeout := SOME(Js.setTimeout 50 (fadeNotification color e (opacity-0.02))))
+
+    val Error = "#dd8888"
+    val Warning = "#dddd88"
+    val Confirm = "#88dd88"
+
+    fun notify0 color e s =
+      (case !notifyTimeout of
+           SOME tid => Js.clearTimeout tid
+         | NONE => ();
+       Js.innerHTML e s;
+       setAttr e 1.0 color;
+       notifyTimeout := SOME(Js.setTimeout 3000 (fadeNotification color e 0.98)))
+  in
+    val notify_err = notify0 Error notifyAreaElem
+    val notify_errE = notify0 Error
+    val notify_warn = notify0 Warning notifyAreaElem
+    val notify = notify0 Confirm notifyAreaElem
+  end
 
   val outRef : (string -> unit) ref = ref (fn _ => raise Fail "outRef not initialized")
   fun out s = !outRef s
@@ -52,6 +95,18 @@ struct
   fun outfun s =
       (Js.appendChild outarea (Js.createTextNode s);
        scrollDown outarea)
+
+  fun clearlogarea () =
+      whileSome (fn() => Js.firstChild logarea)
+                (fn e => Js.removeChild logarea e)
+
+  fun log0 s =
+      let val s = Date.fmt "%H:%M:%S" (Date.fromTimeLocal(Time.now())) ^ ": " ^ s ^ "\n"
+      in Js.appendChild logarea (Js.createTextNode s)
+       ; scrollDown logarea
+      end
+
+  fun log s = (notify s; log0 s)
           
   val topelem = Js.documentElement Js.document
 
@@ -103,40 +158,6 @@ struct
                                    ("src", scriptpath)])
 
   val () = List.app load X.script_paths
-*)
-
-(*
-  val link_tr =
-      taga "tr" [("height","30px")]
-          (taga "td" [("align","left")] X.links &
-                taga "td" [("align","right")] (clearinbutton & clearoutbutton & execbutton))
-
-  val middle_tr =
-      tag "tr" (taga "td" [("width","50%")] inputarea & taga "td" [("width","50%")] outputarea)
-
-  val footer_tr =
-      taga "tr" [("height","30px")]
-      (taga "td" [("colspan","2")] X.footer)
-
-  val heads =
-      taga0 "link" [("rel","stylesheet"),("type","text/css"),
-                    ("href","js/codemirror/dist/css/docs.css")] &
-      taga0 "link" [("rel","stylesheet"),("type","text/css"),
-                    ("href","js/appfun/style.css")]            
-
-  val elem =
-      tag "head" heads &
-      tag "body"
-       (taga "table" [("width","100%"),("height","100%")]
-        (head_tr &
-         comments_tr &
-         link_tr &         
-         middle_tr &
-         footer_tr
-        )
-       )
- 
-  val _ = appendToTop elem
 *)
 
   type editor = 
@@ -192,15 +213,12 @@ struct
          false
       end
 
-  val documentation =
-      taga0 "iframe" [("src","doc/str_idx.html"),("style", "height:100%; width:100%; border:0;")]
-
   open Dojo infix >>=
 
   fun noop() = ()
   fun put s () = outfun (s^"\n")
 
-  val logo = taga0 "img" [("src", "smltojs_logo_transparent_small.png"),("height","30px")]
+  val logo = taga0 "img" [("src", X.application_logo),("height","30px"),("alt",X.application_title)]
 
   val menuStyle = ("style","border:0;padding:2;")
 
@@ -260,6 +278,9 @@ struct
                 stmt="return dsm.openDefaultDatastore(function(err,ds) {thef([err,ds]);});",
                 res=J.unit} (dsm,f)
 
+    fun deleteDatastore dsm ds =
+        callMethod2 (J.fptr,J.==>(J.string,J.unit),J.unit) "deleteDatastore" dsm (ds,fn _ => ())
+
     fun getTable ds s : table =
         callMethod1 (J.string, J.fptr) "getTable" ds s
 
@@ -272,9 +293,17 @@ struct
         in hash
         end
 
+    fun signOut c f : unit =
+        let val h = mkHash []
+        in callMethod2 (J.fptr,J.==>(J.fptr,J.unit),J.unit) "signOut" c (h,fn _ => f())
+        end
+
     type record = foreignptr
     fun insert (t:table) (h:hash) : record =
         callMethod1 (J.fptr, J.fptr) "insert" t (mkHash h)
+
+    fun deleteRecord (r:record) : unit =
+        callMethod0 J.unit "deleteRecord" r
 
     fun idx (t: 'a J.T) (a: foreignptr) i : 'a =
         J.exec2{arg1=("a",J.fptr),arg2=("i",J.int),res=t,
@@ -298,104 +327,577 @@ struct
         callMethod1 (J.string,t) "get" r k
   end
 
-  val DropboxKey = "ncraemhwgbtj509"
+  fun qq s = "'" ^ s ^ "'"
 
-  val filesElement = tag0 "div"
+  infix ^^
+  fun "0" ^^ p = p
+    | p1 ^^ p2 = p1 ^ "/" ^ p2  
 
-  type file = {name: string, content: unit -> string}
-               
-  val files : file list ref = ref nil
+  structure Files = struct
+    type filename = string
+    type dir = string
 
-  fun fileNew (name: string, content: string) : unit =
-      files := ({name=name,content=fn () => content} :: !files)
+    fun okExt s = List.exists (fn s' => s = s') X.fileExtensions
 
-  fun getFile r =
-      let val name = Dropbox.get JsCore.string r "name"
-      in Js.appendChild filesElement (tag "p" ($name))
+    fun okFolderName n =
+        size n > 0 andalso
+        Char.isAlpha (String.sub(n, 0)) andalso
+        CharVector.all (fn c => Char.isAlphaNum c orelse c = #"_" orelse c = #"-") n
+
+    fun okFileName n =
+        case String.fields (fn c => c = #".") n of
+            [bn,ext] => okFolderName bn andalso okExt ext
+          | _ => false
+
+    fun okFolderPath p =
+        p = "0" orelse
+        let val fields = String.fields (fn c => c = #"/") p
+        in List.all okFolderName fields
+        end
+
+    fun okFilePath p =
+        let val fields = String.fields (fn c => c = #"/") p
+        in case rev fields of
+               h :: tl => okFileName h andalso List.all okFolderName tl
+             | _ => false
+        end
+
+    (* Three containers to keep in sync: allfiles, GUI filetreestore and dropbox filesTable!!
+     *
+     * - The containers allfiles and filetreestore are always in sync;
+     *   this invariant is maintained by the functions in this
+     *   structure.
+     * - The variable current contains the current selected editor tab.
+     * - The filesInTabs variable contains all the "loaded" files in tabs.
+     * - The dropbox filesTable is kept in sync with the other
+     *   containers using autosave and autoload.
+     *)
+
+    val allfiles : filename list ref = ref nil                (* long names *)
+    val alldirs : dir list ref = ref ["0"]                    (* long names *)
+    val filesTable : Dropbox.table option ref = ref NONE
+    val current : filename ref = ref "0"                      (* long name *)
+    val filesInTabs : (filename*string ref*(unit->string)) list ref = ref nil
+
+    fun splitPath p =
+        if p = "0" then (p,NONE)
+        else let val fields = String.fields (fn c => c = #"/") p
+             in case rev fields of
+                    [ n ] => if okFileName n then ("0",SOME n)
+                             else (n,NONE)
+                  | n :: tl => if okFileName n then (String.concatWith "/" (rev tl), SOME n)
+                               else (p,NONE)
+                  | _ => raise Fail "impossible: splitPath"
+             end
+
+    fun splitFolderPath p =
+        if p = "0" then (p,NONE)
+        else let val fields = String.fields (fn c => c = #"/") p
+             in case rev fields of
+                    [ n ] => if okFolderName n then ("0",SOME n)
+                             else (n,NONE)
+                  | n :: tl => if okFolderName n then (String.concatWith "/" (rev tl), SOME n)
+                               else (p,NONE)
+                  | _ => raise Fail "impossible: splitFolderPath"
+             end
+
+    fun currentFolder() =
+        #1(splitPath(!current))
+    fun currentFile() =
+        if okFilePath (!current) then SOME (!current)
+        else NONE
+    fun currentIsFolder() =
+        if okFolderPath (!current) then SOME(!current)
+        else NONE
+
+    fun fileExists name = List.exists (fn x => x = name) (!allfiles)
+    fun folderExists name = List.exists (fn x => x = name) (!alldirs)
+
+    local 
+      fun loadFile fts r =
+          let fun loadDir p n =
+                  let val d = p ^^ n
+                  in if List.exists (fn d' => d = d') (!alldirs) then ()
+                     else (treeStoreAdd fts [("id",d),("parent",p),("name",n),("kind","folder")];
+                           alldirs := d :: !alldirs)
+                  end
+              fun loadDirs name =
+                  let val fields = String.fields (fn c => c = #"/") name
+                      fun loop d [n] = if okFileName n then SOME (d,n)
+                                       else (loadDir d n; NONE)
+                        | loop d (n::tl) = (loadDir d n; loop (d^^n) tl)
+                        | loop _ _ = raise Fail "loadDirs.impossible"
+                  in loop "0" fields
+                  end
+              val name = Dropbox.get JsCore.string r "name"
+          in case loadDirs name of
+                 NONE => ()
+               | SOME (p,n) => (treeStoreAdd fts [("id",name),("parent",p),("name",n),("kind","leaf")];
+                                allfiles := name :: !allfiles)
+          end
+    in
+      fun load c fts =
+          let val dsm = Dropbox.getDatastoreManager c
+          in Dropbox.openDefaultDatastore dsm (fn (err, ds) =>           
+                  let val thefilesTable = Dropbox.getTable ds "files"
+                      val () = filesTable := SOME thefilesTable
+                      val fileRecords = Dropbox.query thefilesTable []
+                  in List.app (loadFile fts) fileRecords
+                  end
+             )
+          end
+    end
+
+    fun getFileRecord filename =  (* filename is a full path *)
+        case !filesTable of
+            SOME t =>
+            (case Dropbox.query t [("name",filename)] of
+                 [r] => r
+               | nil => raise Fail ("getFileRecord: no records in Dropbox table for name=" ^ filename)
+               | _ => raise Fail ("getFileRecord: too many records in Dropbox table for name=" ^ filename))
+          | NONE => raise Fail "getFileRecord: no filesTable set"
+                            
+    (* [loadFileContent filename] returns (SOME c) if the file filename
+     * (with content c) is not already loaded in a tab. It returns NONE
+     * if the file is already in a tab. Raises (Fail msg) in case of
+     * error. *)
+    
+    fun loadFileContent filename : string option =
+        if List.exists (fn (x,_,_) => x = filename) (!filesInTabs) then 
+          (current := filename; NONE)
+        else
+          let val r = getFileRecord filename
+              val c = Dropbox.get JsCore.string r "content"
+              val () = current := filename
+          in log ("Loaded file " ^ qq filename);
+             SOME c
+          end
+
+    fun clear fts closetab =
+        let val () = 
+                case !filesTable of
+                    SOME t =>
+                    let val rs = Dropbox.query t []
+                    in List.app Dropbox.deleteRecord rs
+                    end
+                  | NONE => ()
+            val () = List.app (treeStoreRemove fts) (!allfiles)
+            val () = List.app (fn id => if id <> "0" then treeStoreRemove fts id else ()) (!alldirs)
+        in alldirs := ["0"];
+           allfiles := nil;
+           current := "0";
+           List.app (fn (f,_,_) => closetab f) (!filesInTabs);
+           filesInTabs := nil
+        end
+
+    fun mkAbsPath n =
+        case currentFolder() of 
+            "0" => n 
+          | d => d ^ "/" ^ n
+
+    local
+
+       val count = ref 0
+       fun newFile0 fts content name =           
+           let val lname = mkAbsPath name
+               val () = case !filesTable of
+                            SOME t => (Dropbox.insert t [("name",lname),("content",content)]; ())
+                          | NONE => ()
+               val () = allfiles := lname :: !allfiles
+           in treeStoreAdd fts [("id", lname),("parent",currentFolder()),("name",name),("kind","leaf")];
+              current := lname;
+              lname
+           end
+       fun newFolder0 fts name =
+           let val lname = mkAbsPath name
+               val () = case !filesTable of
+                            SOME t => (Dropbox.insert t [("name",lname),("content","")]; ())
+                          | NONE => ()
+               val () = alldirs := lname :: !alldirs
+           in treeStoreAdd fts [("id", lname),("parent",currentFolder()),("name",name),("kind","folder")];
+              lname
+           end
+    in
+        local
+           fun suggest exists f =
+               let val num = !count before count := !count + 1
+                   val name = f num
+               in if exists name then suggest exists f
+                  else name
+               end
+        in
+           fun suggestNewFileName base = suggest fileExists (fn num => base ^ "-" ^ Int.toString num ^ ".sml")
+           fun suggestNewFolderName () = suggest folderExists (fn num => "Folder-" ^ Int.toString num)
+        end
+        fun newFile fts content name =
+            if fileExists name then raise Fail "file already exists"
+            else if not(okFileName name) then raise Fail "invalid new file name"
+            else newFile0 fts content name
+        fun newFolder fts name =
+            if folderExists name then raise Fail "folder already exists"
+            else if not(okFolderName name) then raise Fail "invalid new folder name"
+            else newFolder0 fts name
+            
+    end (*local*)
+
+    fun showTab n =
+        current := n
+
+    fun delete fts closetab : unit =
+        case currentIsFolder() of
+            SOME "0" => notify_err "Cannot delete root folder"
+          | SOME folder =>
+            let val (tabsToKill,tabsToKeep) =
+                    List.partition (fn (f,_,_) => String.isPrefix folder f) (!filesInTabs)
+                val (filesToDelete,filesToKeep) =
+                    List.partition (fn f => String.isPrefix folder f) (!allfiles)
+                val (foldersToDelete,foldersToKeep) =
+                    List.partition (fn f => String.isPrefix folder f) (!alldirs)
+                fun deleteFile f =
+                    (let val r = getFileRecord f
+                     in Dropbox.deleteRecord r
+                      ; log0 ("Deleted file " ^ qq f)
+                     end handle _ => ())
+                fun deleteFolder f =
+                    (let val r = getFileRecord f
+                     in Dropbox.deleteRecord r
+                      ; log0 ("Deleted folder " ^ qq f)
+                     end handle _ => ())
+            in current := "0"
+             ; filesInTabs := tabsToKeep
+             ; allfiles := filesToKeep
+             ; alldirs := foldersToKeep
+             ; List.app (treeStoreRemove fts) filesToDelete
+             ; List.app (treeStoreRemove fts) foldersToDelete
+             ; List.app (fn (f,_,_) => closetab f) tabsToKill
+             ; List.app deleteFile filesToDelete
+             ; List.app deleteFolder foldersToDelete
+             ; log ("Deleted folder " ^ qq folder ^ " completely")
+            end
+          | NONE =>
+            let val f = !current
+            in current := "0"
+             ; filesInTabs := List.filter (fn (f',_,_) => f' <> f) (!filesInTabs)
+             ; allfiles := List.filter (fn f' => f' <> f) (!allfiles)
+             ; treeStoreRemove fts f
+             ; closetab f
+             ; (let val r = getFileRecord f
+                in Dropbox.deleteRecord r
+                 ; log ("Deleted file " ^ qq f)
+                end handle _ => ())
+            end
+
+    fun addTab filename md5 getcontent =
+        filesInTabs := (filename,ref md5,getcontent) :: (!filesInTabs)
+        
+    fun saveFile (filename,md5ref,getcontent) =
+        let val c = getcontent()
+            val newMd5 = MD5.fromString c
+        in if !md5ref = newMd5 then ()
+           else (let val r = getFileRecord filename
+                 in Dropbox.set JsCore.string r "content" c;
+                    log ("Saved file " ^ qq filename);
+                    md5ref := newMd5
+                 end handle _ => ())
+        end
+
+    fun autosave () =
+        List.app saveFile (!filesInTabs)
+
+    fun closeTab n =
+        let val () = 
+                case currentFile() of
+                    SOME n' => if n = n' then current := "0"
+                               else ()
+                  | NONE => ()
+            val () = 
+                case List.find (fn (n',_,_) => n' = n) (!filesInTabs) of
+                    SOME f => saveFile f
+                  | NONE => ()
+            val newFilesInTabs = List.filter (fn (n',_,_) => n' <> n) (!filesInTabs)
+        in filesInTabs := newFilesInTabs
+        end
+
+    fun stripAbsolute a =
+        if size a > 0 andalso String.sub(a,0) = #"/" then
+          SOME(String.extract(a,1,NONE))
+        else NONE
+
+    fun move fts folderpath filename newfile =             (* new file either relative to folderpath or absolute *)
+        let val (newfilepath,newfilename,newparent) =
+                if okFilePath newfile then
+                  case splitPath newfile of
+                      (parent, SOME newfilename) =>
+                      let val newparent = if parent = "0" then folderpath
+                                          else folderpath ^^ parent
+                      in (folderpath ^^ newfile, newfilename, newparent)
+                      end
+                    | _ => raise Fail "move.impossible: newfile is a file"
+                else 
+                  case stripAbsolute newfile of
+                      SOME path =>
+                      if okFilePath path then
+                        case splitPath path of
+                            (newparent, SOME newfilename) => (path,newfilename,newparent)
+                          | _ => raise Fail "move.impossible: newfile is a file"
+                      else raise Fail ("invalid target path " ^ qq newfile)                                 
+                    | NONE => raise Fail ("invalid target path " ^ qq newfile)
+            val filepath = folderpath ^^ filename
+        in if fileExists newfilepath then raise Fail "file already exists"
+           else if not(folderExists newparent) then raise Fail ("target folder " ^ qq newparent ^ " does not exist")
+           else case List.find (fn (n,_,_) => n = filepath) (!filesInTabs) of
+              SOME (_,_,getContent) =>              
+              ( current := "0"
+              ; filesInTabs := List.filter (fn (n,_,_) => n <> filepath) (!filesInTabs)
+              ; allfiles := List.map (fn n => if n <> filepath then n else newfilepath) (!allfiles)
+              ; treeStoreRemove fts filepath
+              ; treeStoreAdd fts [("id", newfilepath),("parent",newparent),("name",newfilename),("kind","leaf")]
+              ; (let val r = getFileRecord filepath
+                 in Dropbox.set JsCore.string r "name" newfilepath
+                  ; log ("Moved file " ^ qq filename ^ " to " ^ qq newfilename)
+                 end handle _ => ())
+              ; (newfilepath,getContent())
+              )
+            | NONE => raise Fail "impossible: cannot locate file in tab structure!"
+        end
+  end (* structure Files *)
+
+  fun addEditorTab (tabs,tmap) filename content =
+      let val id_inarea = filename ^ "_inarea"
+          val inarea = taga "textarea" [("id",id_inarea),("style","border:0;")] ($content)
+          val inputarea = taga "div" [("class","textareacontainer")] inarea          
+          val () = run (pane [("style","height:100%;"),("title",filename),("closable","true")] inputarea >>= (fn page =>
+                        (set_onClose page (fn() => (Files.closeTab filename; true));
+                         set_onShow page (fn() => Files.showTab filename);
+                         addChild tabs page;
+                         selectChild tabs page;
+                         tmap := (filename,page) :: (!tmap);
+                         ret ())))
+          val editor = mkEditor id_inarea inarea  (* requires id_inarea to be in document tree *)
+          val md5 = MD5.fromString content
+          val () = Files.addTab filename md5 (#get editor)
+      in editor
       end
 
-  fun getDropboxData c =
-      let val dsm = Dropbox.getDatastoreManager c
-      in Dropbox.openDefaultDatastore dsm (fn (err, ds) =>           
-                let val () = Js.appendChild filesElement (tag "p" ($"hello"))
-                    val filesTable = Dropbox.getTable ds "files"
-                    val fileRecords = Dropbox.query filesTable []
-                in List.app getFile fileRecords;
-                   Js.appendChild filesElement (tag "p" ($"no more files"))
-                end
-         )
+  fun button s = taga "button" [("style","height:25px; width:100px;")] (tag "b" ($s))
+
+  fun withDialog {caption: string, button=buttext, label: string,
+                  suggestion: string, validate: string -> 'a,
+                  cont: 'a -> unit} : unit =
+      let
+        val msgArea = taga0 "span" [("class","notify_area2"),("style","opacity:0.0;top:0px;")]                            
+        fun doit d s =
+              let val t = validate s
+              in (hideDialog d; cont t; true)
+              end handle Fail msg => (notify_errE msgArea msg; true)
+          val field = taga0 "input" [("type","text"),("value",suggestion)]
+          val but = button buttext
+          val content = taga "p" [("style","width:400px;")] (tag "p" ($(label ^ ": ") & field) & tag "p" (but & $ " " & msgArea))
+          val dM = dialog [("title",caption)] content >>= (fn d =>
+                   (Js.installEventHandler but Js.onclick (fn () => doit d (Js.value field));
+                    showDialog d; ret () ))
+      in run dM
       end
 
-  fun menuHandle_DropboxAuth () =
-      let val c = Dropbox.client DropboxKey
-      in Dropbox.authenticate0 c
+  fun confirmDialog caption label msg f =
+      let val cancel = button "Cancel"
+          val but = button label
+          val content = taga "p" [("style","width:400px;")] (tag "p" msg & taga "p" [("style","text-align:center;")] (cancel & $" " & but))
+          val dM = dialog [("title",caption)] content >>= (fn d =>
+                   (Js.installEventHandler but Js.onclick (fn () => (hideDialog d; f(); true));
+                    Js.installEventHandler cancel Js.onclick (fn () => (hideDialog d; true));
+                    showDialog d; ret () ))
+      in run dM
+      end 
+
+  fun infoDialog caption label content : unit =
+      let val but = button label
+          val content = taga "p" [("style","width:400px;")] (content & taga "p" [("style","text-align:center;")] but)
+          val dM = dialog [("title",caption)] content >>= (fn d =>
+                   (Js.installEventHandler but Js.onclick (fn () => (hideDialog d; true));
+                    showDialog d; ret () ))
+      in run dM
+      end 
+
+  fun menuHandle_NewNamedFile tabsmap fts () : unit =
+      let val content = "(* File created " ^ Date.toString(Date.fromTimeLocal (Time.now())) ^ " *)\n"
+      in withDialog {caption="New File", button="Create", label="Name",
+                     suggestion=Files.suggestNewFileName "Untitled",
+                     validate=Files.newFile fts content,
+                     cont=fn s => let val editor = addEditorTab tabsmap s content
+                                  in Js.installEventHandler execbutton Js.onclick (fn () => exec editor);
+                                     ()
+                                  end}
       end
 
-  val authElement = tag0 "div"
-
-  val () = 
-      Dropbox.load (fn () =>
-                       let val c = Dropbox.client DropboxKey
-                           val () = Dropbox.authenticate c (fn _ => ())
-                           val text = if Dropbox.isAuthenticated c then
-                                        (getDropboxData c;
-                                         "Authenticated: " ^ (Dropbox.dropboxUid c))
-                                      else "Not authenticated"
-                       in Js.appendChild authElement ($("Status: " ^ text))
-                       end)
-
-  val count = ref 0
-  fun menuHandle_NewBuffer tabs () =
-      let 
-        val num = !count before count := !count + 1
-        val bufname = "Untitled-" ^ Int.toString num ^ ".sml"
-        val id_inarea = bufname ^ "_inarea"
-        val inarea = taga "textarea" [("id",id_inarea),("style","border:0;")] ($("val a = \"" ^ bufname ^ "\""))
-        val inputarea = taga "div" [("class","textareacontainer")] inarea          
-        val () = run (pane [("style","height:100%;"),("title",bufname),("closable","true")] inputarea >>= (fn page =>
-                      (addChild tabs page;
-                       ret ())))
-        val editor = mkEditor id_inarea inarea  (* requires id_inarea to be in document tree *)
-        fun clearinputarea () = (#set editor ""; true)
-      in Js.installEventHandler execbutton Js.onclick (fn () => exec editor)
+  fun menuHandle_MoveFile tabsmap fts closetab () : unit =
+      let val path = !Files.current
+      in case Files.splitPath path of
+             (parentpath, SOME filename) =>
+             withDialog {caption="Move/Rename File", button="Move", label="New name",
+                         suggestion=filename,
+                         validate=Files.move fts parentpath filename,
+                         cont=fn(newfilepath,content) =>
+                                 (closetab path;
+                                  addEditorTab tabsmap newfilepath content; ())}
+           | (folderpath, NONE) =>
+             notify_err "Renaming of folders not supported"
+(*
+             case Files.splitFolderPath folderpath of
+                (parentpath, SOME foldername) =>
+                withDialog {caption="Move/Rename Folder", button="Move", label="New name",
+                            suggestion=foldername,
+                            validate=Files.move fts parentpath foldername,
+                            cont=fn(newfolderpath,content) =>
+                                    (closetabsWith folderpath;
+                                     addEditorTab tabsmap newfilepath content; ())}
+*)
       end
 
-  fun menu tabs =
+  fun menuHandle_FilesDelete fts closetab () : unit =
+      let val msg =
+              case Files.currentFile() of
+                  SOME f => ("Do you really want to delete the file " ^
+                             qq f ^ "?")
+                | NONE => case Files.currentIsFolder() of
+                              SOME f => ("Do you really want to delete the folder " ^
+                                         qq f ^ " and all its containing files?")
+                            | NONE => raise Fail "menuHandle_FilesDelete.impossible"
+      in confirmDialog "Confirm Deletion" "Delete" ($msg) (fn () => Files.delete fts closetab)
+      end
+
+  fun menuHandle_Export () : unit = ()
+  fun menuHandle_Import () : unit = ()
+
+  fun menuHandle_NewFolder fts () : unit =
+      withDialog {caption="New Folder", button="Create", label="Name",
+                  suggestion=Files.suggestNewFolderName (),
+                  validate=Files.newFolder fts,
+                  cont=fn s => ()}
+      
+  fun treeHandle_LoadFile tabsmap selecttab (lname,name) : unit =
+      if Files.okFolderPath lname then Files.current := lname
+      else case Files.loadFileContent lname of
+               SOME content =>
+               let val editor = addEditorTab tabsmap lname content
+               in ()
+               end
+             | NONE => selecttab lname
+
+  fun menuHandle_OpenDemo tabsmap fts demo () =
+      let val name = Files.suggestNewFileName "Demo"
+          val path = Files.newFile fts demo name
+          val editor = addEditorTab tabsmap path demo
+      in Js.installEventHandler execbutton Js.onclick (fn () => exec editor);
+         ()
+      end
+
+  fun menuHandle_DropboxSignIn key () =
+      let fun doit() =
+              let val c = Dropbox.client key
+              in Dropbox.authenticate0 c
+              end
+      in if (!Files.allfiles = nil andalso !Files.alldirs = ["0"]) orelse !Files.filesTable <> NONE then doit()
+         else let val msg = $"Signing in to Dropbox will delete all application data created in this session. \
+                             \If this is the first time you sign in to Dropbox from this application, you will \
+                             \be asked to allow the application to store data in a special area of your Dropbox account."
+              in confirmDialog "Dropbox Sign In" "Sign in" msg doit
+              end
+      end           
+
+  fun menuHandle_DropboxSignOut c fts closetab () =
+      let val msg = $"Signing out of Dropbox will not delete any data in the Dropbox datastore. You will \
+                     \always be able to sign in again using the \"Sign in\" entry in the Dropbox menu."
+      in Files.autosave();
+         confirmDialog "Dropbox Sign Out" "Sign out" msg
+           (fn () => Dropbox.signOut c 
+               (fn () => (Files.filesTable := NONE;
+                          Files.clear fts closetab;
+                          log "Signed out of Dropbox";
+                          setNoDropboxPng())))
+      end
+
+  fun poweredby() =
+      let fun link l t = taga "a" [("href",l), ("target","_blank")] ($t)
+          val linkSMLtoJs = link "http://www.smlserver.org/smltojs" "SMLtoJs"
+          val linkDojo = link "http://dojotoolkit.org/" "Dojo"
+          val linkDropboxdatastore = link "https://www.dropbox.com/developers/datastore" "Dropbox datastore"
+      in $"This application is based on "
+          & linkSMLtoJs 
+          & $", a Standard ML to JavaScript compiler. The front-end uses "
+          & linkDojo 
+          & $" and allows for the user to save source files in a personal and secure "
+          & linkDropboxdatastore 
+          & $"."
+      end
+
+  fun menu tabs fts closetab =
       Menu.mk [("region", "center"),menuStyle] >>= (fn (w_left, m_left) =>
       Menu.menu m_left "File" >>= (fn m_file =>
-      Menu.item m_file ("New", SOME ("iconClass","dijitIcon dijitIconNewTask"), menuHandle_NewBuffer tabs) >>= (fn () =>
-      Menu.item m_file ("Dropbox Authorize", SOME EditorIcon.copy, menuHandle_DropboxAuth) >>= (fn () =>
+      Menu.item m_file ("New file", SOME EditorIcon.newPage, menuHandle_NewNamedFile tabs fts) >>= (fn () =>
+      Menu.item m_file ("New folder", SOME Icon.folderClosed, menuHandle_NewFolder fts) >>= (fn () =>
+      Menu.item m_file ("Move", SOME EditorIcon.paste, menuHandle_MoveFile tabs fts closetab) >>= (fn () =>
+      Menu.item m_file ("Delete", SOME EditorIcon.delete, menuHandle_FilesDelete fts closetab) >>= (fn () =>
+      Menu.item m_file ("Export (zip)", SOME EditorIcon.indent, menuHandle_Export) >>= (fn () =>
+      Menu.item m_file ("Import (zip)", SOME EditorIcon.outdent, menuHandle_Import) >>= (fn () =>
+      (case X.demoinput of NONE => ret () | SOME demo => Menu.item m_file ("Open Demo File", NONE, menuHandle_OpenDemo tabs fts demo)) >>= (fn () =>
+      (case X.dropboxKey of NONE => ret () | SOME key =>
+       Menu.menu m_left "Dropbox" >>= (fn m_dropbox =>
+       (Dropbox.load (fn () =>
+                        let val c = Dropbox.client key
+                            val () = Dropbox.authenticate c (fn _ => ())
+                            val () = if Dropbox.isAuthenticated c then
+                                       (Files.load c fts;
+                                        log ("Dropbox authenticated with userid " ^ Dropbox.dropboxUid c);
+                                        setDropboxPng())
+                                     else log "Not dropbox authenticated"
+                            val m = Menu.item m_dropbox ("Sign in", SOME EditorIcon.createLink, menuHandle_DropboxSignIn key) >>= (fn () =>
+                                    Menu.item m_dropbox ("Sign out", SOME EditorIcon.unlink, menuHandle_DropboxSignOut c fts closetab))
+                        in run m                           
+                        end);
+        ret ()))) >>= (fn () =>
       Menu.item m_left ("Compile&amp;Run", NONE, put "compile&run") >>= (fn () =>
       Menu.item m_left ("Clear output", NONE, clearoutarea) >>= (fn () =>
       pane [("region", "left"),("style","padding:0;padding-right:10;background-color:#eeeeee;")] logo >>= (fn logo =>
       Menu.mk [("region", "right"),menuStyle] >>= (fn (w_right, m_right) =>
       Menu.menu m_right "Help" >>= (fn m_help =>
-      Menu.item m_help ("Basis Library", SOME EditorIcon.copy, put "about") >>= (fn () =>
-      Menu.item m_help ("About", SOME EditorIcon.cut, put "about") >>= (fn () =>
-      Menu.item m_help ("Licence", NONE, noop) >>= (fn () =>
+      Menu.item m_help ("About", SOME EditorIcon.newPage, fn() => infoDialog ("About " ^ X.application_title) "Ok" X.about) >>= (fn () =>
+      Menu.item m_help ("Powered by...", SOME EditorIcon.newPage, fn() => infoDialog "Powered by..." "Ok" (poweredby())) >>= (fn () =>
       layoutContainer [("region", "top"),("style","height:30px;")] [logo, w_left, w_right]
-      ))))))))))))
+      )))))))))))))))))
 
   val everything =
-      tabContainer [("region", "top"),("splitter","true"),("style","height:70%;border:0;"),("tabPosition","bottom")] [] >>= (fn tabs =>
-      pane [("title","Dropbox Content")] authElement >>= (fn authpane =>
-      pane [("title","Files")] filesElement >>= (fn filespane =>
-      accordionContainer [("region", "left"),("splitter","true"), ("style", "width:20%;")] [authpane, filespane] >>= (fn accord =>
-      menu tabs >>= (fn top =>   
-      pane [("region", "center"),("style","height:30%;")] outputarea >>= (fn centerbot =>
-      borderContainer [("region", "center")] [tabs,centerbot] >>= (fn center =>
-      pane [("region", "right"), ("splitter","true")] documentation >>= (fn right =>
-      borderContainer [("style", "height: 100%; width: 100%;")]
-                      [accord,top,right,center]
-      ))))))))
+      let val authElement = tag0 "div"
+      in advTabContainer [("region", "top"),("splitter","true"),("style","height:70%;border:0;"),("tabPosition","bottom")] >>= (fn (tabsmap,{select=selecttab,close=closetab}) =>
+         pane [("title","Dropbox Status"),("region","bottom"),("style","height:30px;")] authElement >>= (fn authpane =>
+         treeStore [[("id", "0"),("name","/"),("kind","folder")]] >>= (fn fts =>
+         tree [("title","Files"),("region", "left"),("splitter","true"), ("style", "width:20%;")] "0" (treeHandle_LoadFile tabsmap selecttab) fts >>= (fn left =>
+         menu tabsmap fts closetab >>= (fn top =>
+         pane [("title","Output")] outareaDiv >>= (fn outputpane =>
+         pane [("title","Message Log")] logareaDiv >>= (fn logpane =>
+         tabContainer [("region", "center"),("style","height:30%;"),("tabPosition","bottom")] [outputpane,logpane] >>= (fn centerbot =>
+         borderContainer [("region", "center")] [#1 tabsmap,centerbot] >>= (fn center =>
+         (case X.rightPane of
+              SOME generator => pane [("region", "right"), ("splitter","true")] (generator()) >>= (fn p => ret [p])
+            | NONE => ret [])  >>= (fn rights =>
+         borderContainer [("style", "height: 100%; width: 100%;")] ([left,top,center] @ rights)
+         ))))))))))
+      end
+
+  val () = Js.appendChild (getElem "body") notifyAreaElem
+  val () = Js.appendChild (getElem "body") dropboxAreaElem
 
   val () = attachToElement (getElem "body") everything
-
+                                
+(*
+<table class="notify_container" width="100%"><tr><td width="50%"></td><td class="notify_ok" style="opacity:0.4;">Notifidfdfdfdfdfdfcation!</td><td width="50%"></td></tr></table>                    
+*)
   fun onload() =
       let
         val () = cleanupBody()
         val () = outRef := outfun
         val () = X.onloadhook {out=out}
+        val _ = Js.setInterval 10000 Files.autosave
       in ()
       end
 

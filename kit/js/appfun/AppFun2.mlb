@@ -2,5 +2,6 @@ local $(SML_LIB)/basis/basis.mlb
       $(SML_LIB)/basis/js.mlb
       $(SML_LIB)/codemirror/sml/codemirror.mlb
       $(SML_LIB)/basis/dojo.mlb
+      $(SML_LIB)/basis/md5.mlb
 in AppFun2.sml
 end

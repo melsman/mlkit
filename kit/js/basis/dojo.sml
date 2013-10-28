@@ -96,6 +96,21 @@ structure Dojo :> DOJO = struct
                        ; f p
                       end)
 
+  fun dialog (h:hash) e : widget M =
+      fn (f: widget -> unit) =>
+         require1 "dijit/Dialog"
+                  (fn D => 
+                      let val d = new D(h)
+                      in setContentElement d e
+                       ; f d
+                      end)
+
+  fun showDialog d =
+      JsCore.exec1{stmt="d.show();",arg1=("d",JsCore.fptr),res=JsCore.unit} d
+
+  fun hideDialog d =
+      JsCore.exec1{stmt="d.hide();",arg1=("d",JsCore.fptr),res=JsCore.unit} d
+
   fun titlePane (h:hash) (w: widget) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/TitlePane"
@@ -116,19 +131,32 @@ structure Dojo :> DOJO = struct
                       in f p
                       end)
 
-  fun setProperties h w =
-      List.app (fn (k,v) => JsCore.setProperty w JsCore.string k v) h
+  fun setProp w t k v =
+    JsCore.exec2{stmt="w.set(k,v);",
+                 arg1=("w",JsCore.fptr), arg2=("v",t), 
+                 res=JsCore.unit} (w,v)
+      
 
-  fun setContent w s =
-    JsCore.exec2{stmt="w.set('content', s);",
-                 arg1=("w",JsCore.fptr), arg2=("s",JsCore.string),
-                 res=JsCore.unit} (w,s)
+  fun setProperties h w =
+      List.app (fn (k,v) => setProp w JsCore.string k v) h
+
+  fun setContent w s = setProp w JsCore.string "content" s
+
+  fun selectChild w w2 =
+    JsCore.exec2{stmt="w.selectChild(w2,true);",
+                 arg1=("w",JsCore.fptr), arg2=("w2",JsCore.fptr),
+                 res=JsCore.unit} (w,w2)
+
+  fun removeChild w w2 =
+    JsCore.exec2{stmt="w.removeChild(w2);",
+                 arg1=("w",JsCore.fptr), arg2=("w2",JsCore.fptr),
+                 res=JsCore.unit} (w,w2)
 
   type treeStore = foreignptr
   fun treeStore (hs:hash list) : treeStore M =
       fn (f: treeStore -> unit) =>
-         require1 "dojo/store/Memory"
-                  (fn Memory => 
+         require1 "dojo/store/Memory" (fn Memory => 
+         require1 "dojo/store/Observable" (fn Observable =>
                       let val data = JsCore.exec0{stmt="return new Array();",res=JsCore.fptr}()
                           fun add d h =
                               let val h = mkHash h
@@ -139,28 +167,69 @@ structure Dojo :> DOJO = struct
                                                arg1=("data",JsCore.fptr),
                                                res=JsCore.fptr} data
                           val p = new0 Memory(h)
+                          val p = JsCore.exec2{arg1=("Con",JsCore.fptr),
+                                               arg2=("s",JsCore.fptr),
+                                               res=JsCore.fptr,
+                                               stmt="return new Con(s);"} (Observable,p)
                       in f p
-                      end)
-  exception DojoUnimplemented
-  val treeStoreAdd       : treeStore -> hash -> unit = fn _ => raise DojoUnimplemented
-  val treeStoreRemove    : treeStore -> string -> unit = fn _ => raise DojoUnimplemented
+                      end))
+
+  fun treeStoreAdd ts h : unit =
+      let val h = mkHash h
+      in JsCore.exec2{arg1=("ts",JsCore.fptr),arg2=("h",JsCore.fptr),
+                      stmt="ts.add(h);",
+                      res=JsCore.unit} (ts,h)
+      end
+
+  fun treeStoreRemove ts s =
+      JsCore.exec2{arg1=("ts",JsCore.fptr),arg2=("s",JsCore.string),
+                   stmt="ts.remove(s);",
+                   res=JsCore.unit} (ts,s)
+      
   fun tree (h: hash) rootId onClick (store:treeStore) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/tree/ObjectStoreModel" (fn ObjectStoreModel =>
          require1 "dijit/Tree" (fn Tree =>
          let val modelArg = 
-                 JsCore.exec2{stmt="return {store:store,query:{id:id}};",arg1=("store",JsCore.fptr),
+                 JsCore.exec2{stmt="return {store:store,query:{id:id},mayHaveChildren:function(item){return item.kind == 'folder';}};",arg1=("store",JsCore.fptr),
                               arg2=("id",JsCore.string),res=JsCore.fptr}(store,rootId)
              val model = new0 ObjectStoreModel(modelArg)
              val treeArg = mkHash h
              val () = JsCore.setProperty treeArg JsCore.fptr "model" model
-             val () = JsCore.exec2{stmt="a.onClick = function(item) { f(item.id); };",
-                                   arg1=("a",JsCore.fptr), arg2=("f",JsCore.==>(JsCore.string,
-                                                                                JsCore.unit)),
+             val () = JsCore.exec2{stmt="a.onClick = function(item) { f([item.id,item.name]); };",
+                                   arg1=("a",JsCore.fptr), arg2=("f",JsCore.===>(JsCore.string,JsCore.string,
+                                                                                 JsCore.unit)),
                                    res=JsCore.unit} (treeArg,onClick)
              val tree = new0 Tree(treeArg)
          in f tree
          end))
+
+  type tabmap = widget * (string*widget)list ref
+  fun advTabContainer (h:hash) : (tabmap * {select:string->unit,close:string->unit}) M =
+      tabContainer h [] >>= (fn tabs =>
+      let val tm = ref []
+          fun withTab s f =
+              case List.find (fn (s',_) => s=s') (!tm) of
+                  SOME (_,p) => f p
+                | NONE => ()         
+          fun select s = withTab s (selectChild tabs)
+          fun close s = 
+              (withTab s (removeChild tabs);
+               tm := List.filter (fn (s',_) => s<>s') (!tm))
+      in ret ((tabs,tm), {select=select,close=close})
+      end)
+
+  fun set_onClose (w:widget) (f: unit -> bool) : unit =
+      JsCore.exec2{stmt="w.onClose = f;",
+                   arg1=("w",JsCore.fptr),
+                   arg2=("f",JsCore.==>(JsCore.unit,JsCore.bool)),
+                   res=JsCore.unit} (w,f)
+
+  fun set_onShow (w:widget) (f: unit -> unit) : unit =
+      JsCore.exec2{stmt="w.onShow = f;",
+                   arg1=("w",JsCore.fptr),
+                   arg2=("f",JsCore.==>(JsCore.unit,JsCore.unit)),
+                   res=JsCore.unit} (w,f)
 
   structure Menu = struct
     type menu = foreignptr * bool
@@ -202,6 +271,43 @@ structure Dojo :> DOJO = struct
                ; f()
               end)
         end
+  end
+
+  structure Icon = struct
+    fun wrap s = ("iconClass","dijitIcon dijitIcon" ^ s)
+    val save = wrap "Save"
+    val print = wrap "Print"
+    val cut = wrap "Cut"
+    val copy = wrap "Copy"
+    val clear = wrap "Clear"
+    val delete = wrap "Delete"
+    val undo = wrap "Undo"
+    val edit = wrap "Edit"
+    val newTask = wrap "NewTask"
+    val editTask = wrap "EditTask"
+    val editProperty = wrap "EditProperty"
+    val task = wrap "Task"
+    val filter = wrap "Filter"
+    val configure = wrap "Configure"
+    val search = wrap "Search"
+    val application = wrap "Application"
+    val bookmark = wrap "Bookmark"
+    val chart = wrap "Chart"
+    val connector = wrap "Connector"
+    val database = wrap "Database"
+    val documents = wrap "Documents"
+    val mail = wrap "Mail"
+    val leaf = wrap "Leaf"
+    val file = wrap "File"
+    val function = wrap "Function"
+    val key = wrap "Key"
+    val package = wrap "Package"
+    val sample = wrap "Sample"
+    val table = wrap "Table"
+    val users = wrap "Users"
+    val folderClosed = wrap "FolderClosed"
+    val folderOpen = wrap "FolderOpen"
+    val error = wrap "Error"
   end
 
   structure EditorIcon = struct

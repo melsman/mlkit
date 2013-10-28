@@ -7,6 +7,7 @@ framework. For general information about the Dojo framework, see
 http://dojotoolkit.org/reference-guide/1.9/. In particuler see
 http://dojotoolkit.org/reference-guide/1.9/.
 *)
+
 signature DOJO = sig
   type 'a M
   val >>= : 'a M * ('a -> 'b M) -> 'b M
@@ -28,15 +29,25 @@ signature DOJO = sig
   val setProperties      : hash -> widget -> unit
   val setContent         : widget -> string -> unit
   val setContentElement  : widget -> Js.elem -> unit
-
+  val selectChild        : widget -> widget -> unit
   val addChild           : widget -> widget -> unit
+
+  val dialog             : hash -> Js.elem -> widget M
+  val showDialog         : widget -> unit
+  val hideDialog         : widget -> unit 
 
   type treeStore
   val treeStore          : hash list -> treeStore M
   val treeStoreAdd       : treeStore -> hash -> unit
   val treeStoreRemove    : treeStore -> string -> unit
-  val tree               : hash -> string -> (string -> unit) 
+  val tree               : hash -> string -> (string*string -> unit) 
                            -> treeStore -> widget M
+
+  type tabmap = widget * (string*widget)list ref
+  val advTabContainer    : hash -> (tabmap*{select:string->unit,close:string->unit}) M
+
+  val set_onClose        : widget -> (unit -> bool) -> unit
+  val set_onShow         : widget -> (unit -> unit) -> unit
 
   structure Menu: sig
     type menu
@@ -47,56 +58,91 @@ signature DOJO = sig
 
   (* TODO: Toolbar, Fieldset *)
 
- structure EditorIcon : sig
-   val sep : icon
-   val save : icon
-   val print : icon
-   val cut : icon
-   val copy : icon
-   val paste : icon
-   val delete : icon
-   val cancel : icon
-   val undo : icon
-   val redo : icon
-   val selectAll : icon
-   val bold : icon
-   val italic : icon
-   val underline : icon
-   val strikethrough : icon
-   val superscript : icon
-   val subscript : icon
-   val justifyCenter : icon
-   val justifyFull : icon
-   val justifyLeft : icon
-   val justifyRight : icon
-   val indent : icon
-   val outdent : icon
-   val listBulletIndent : icon
-   val listBulletOutdent : icon
-   val listNumIndent : icon
-   val listNumOutdent : icon
-   val tabIndent : icon
-   val leftToRight : icon
-   val rightToLeft : icon
-   val toggleDir : icon
-   val backColor : icon
-   val foreColor : icon
-   val hiliteColor : icon
-   val newPage : icon
-   val insertImage : icon
-   val insertTable : icon
-   val space : icon
-   val insertHorizontalRule : icon
-   val insertOrderedList : icon
-   val insertUnorderedList : icon
-   val createLink : icon
-   val unlink : icon
-   val viewSource : icon
-   val removeFormat : icon
-   val fullScreen : icon
-   val wikiword : icon
+  structure Icon : sig
+    val save : icon
+    val print : icon
+    val cut : icon
+    val copy : icon
+    val clear : icon
+    val delete : icon
+    val undo : icon
+    val edit : icon
+    val newTask : icon
+    val editTask : icon
+    val editProperty : icon
+    val task : icon
+    val filter : icon
+    val configure : icon
+    val search : icon
+    val application : icon
+    val bookmark : icon
+    val chart : icon
+    val connector : icon
+    val database : icon
+    val documents : icon
+    val mail : icon
+    val leaf : icon
+    val file : icon
+    val function : icon
+    val key : icon
+    val package : icon
+    val sample : icon
+    val table : icon
+    val users : icon
+    val folderClosed : icon
+    val folderOpen : icon
+    val error : icon
   end
 
+  structure EditorIcon : sig
+    val sep : icon
+    val save : icon
+    val print : icon
+    val cut : icon
+    val copy : icon
+    val paste : icon
+    val delete : icon
+    val cancel : icon
+    val undo : icon
+    val redo : icon
+    val selectAll : icon
+    val bold : icon
+    val italic : icon
+    val underline : icon
+    val strikethrough : icon
+    val superscript : icon
+    val subscript : icon
+    val justifyCenter : icon
+    val justifyFull : icon
+    val justifyLeft : icon
+    val justifyRight : icon
+    val indent : icon
+    val outdent : icon
+    val listBulletIndent : icon
+    val listBulletOutdent : icon
+    val listNumIndent : icon
+    val listNumOutdent : icon
+    val tabIndent : icon
+    val leftToRight : icon
+    val rightToLeft : icon
+    val toggleDir : icon
+    val backColor : icon
+    val foreColor : icon
+    val hiliteColor : icon
+    val newPage : icon
+    val insertImage : icon
+    val insertTable : icon
+    val space : icon
+    val insertHorizontalRule : icon
+    val insertOrderedList : icon
+    val insertUnorderedList : icon
+    val createLink : icon
+    val unlink : icon
+    val viewSource : icon
+    val removeFormat : icon
+    val fullScreen : icon
+    val wikiword : icon
+  end
 end
 
 (**
@@ -150,8 +196,9 @@ root is the node that does not have a parent key.
 [tree h id onClick store] returns a monad for constructing a tree
 widget with the underlying store. The hash h may contain a title,
 default width and the other properties that controls the context in
-which the tree appears. The onClick method is triggered whenever a
-node in the tree is clicked on by the end user - the argument to the
-onClick function is the id of the node clicked on.
+which the tree appears. The id is the id of the root of the tree. The
+onClick method is triggered whenever a node in the tree is clicked on
+by the end user - the argument to the onClick function is a pair of
+the id and the name of the node clicked on.
 
 *)

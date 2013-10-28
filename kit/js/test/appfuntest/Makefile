@@ -1,6 +1,8 @@
 ## 
-## Establish links to directories basis, codemirror, dojo, dijit and to the file
-## prims.js. Start web-server in this directory:
+## 
+## Establish links to directories js/basis, js/codemirror, js/doc, dojo-release-1.9.1/dojo, 
+## dojo-release-1.9.1/dijit and to the files js/prims.js, js/appfun/dropbox.png and 
+## js/appfun/nodropbox.png. Start web-server in this directory:
 ##  python -m SimpleHTTPServer 8000
 ##
 SRC_ROOT=$(shell cd ../../..; pwd)
@@ -12,7 +14,7 @@ JS_PATH_FLAGS=-js_path_compress -js_path_relative_to $(SRC_ROOT)/js
 
 all: index.html
 
-index.html: Makefile appfuntest.sml appfuntest.mlb ../../appfun/AppFun2.sml
+index.html: Makefile appfuntest.sml appfuntest.mlb ../../appfun/AppFun2.sml ../../basis/dojo.sig ../../basis/dojo.sml
 	$(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index appfuntest.mlb
 
 deploy:
