@@ -607,7 +607,7 @@ mailer_initconn (char *serv, mailer *mail) //{{{
   // receive greeting
 
   n = getanswer (&r, mail->timeout.init, mail, 1);
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, mail->rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, mail->rd->server, 
 //        "mailer_initconn 1, %i", n);
   switch (n / 100)
     {
@@ -1275,7 +1275,7 @@ static void
 closeconn(mailer *mail, email *e)/*{{{*/
 {
   int n;
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, mail->rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, mail->rd->server, 
 //        "closeconn 1");
   if (e != NULL) 
   {
@@ -1290,7 +1290,7 @@ closeconn(mailer *mail, email *e)/*{{{*/
     }
     mail->socket = 0;
   }
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, mail->rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, mail->rd->server, 
 //        "closeconn end");
   return;
 }/*}}}*/
@@ -1301,7 +1301,7 @@ apsml_closeconn (mailer *mail, request_data *rd)/*{{{*/
   int n;
   struct charlist *p;
   reply *r;
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn 1");
   if (mail->socket && mail->etype == mail_OK)
   {
@@ -1310,13 +1310,13 @@ apsml_closeconn (mailer *mail, request_data *rd)/*{{{*/
   }
   closeconn(mail, NULL);
   answer_map_apply(&(mail->answers),  (void (*) (reply *)) free);
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn 6");
   answer_map_close(&(mail->answers));
   p = mail->partialanswer;
   while (p)
   {
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn freeing partial answers");
     free(mail->partialanswer);
     p = p->next;
@@ -1325,7 +1325,7 @@ apsml_closeconn (mailer *mail, request_data *rd)/*{{{*/
   mail->partialanswer = NULL;
   if (mail->lastemail) free (mail->lastemail);
   free(mail);
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn end");
   return 0;
 }/*}}}*/
@@ -1387,7 +1387,7 @@ apsml_sendmail(int tolist, int tolistlength, String from, String data, mailer *m
   e->size = strlen(e->data);
   e->response = NULL;
   n = sendmail(mail, e, &left);
-    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, mail->rd->server, 
+    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, mail->rd->server, 
         "apsml_closeconn n = %d, etype = %d, err = %d", n, mail->etype, mail->err);
   switch (n)
   {
@@ -1428,7 +1428,7 @@ apsml_mailget(Region rAddrLPairs, Region rAddrEPairs, Region rAddrString,
   char *res;
   uintptr_t *pair, *listpair, *list;
   makeNIL (list);
-//    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, mail->rd->server, 
+//    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, mail->rd->server, 
 //        "apsml_mailget 1");
 
   if (mail == NULL) return list;

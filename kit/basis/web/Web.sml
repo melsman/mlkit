@@ -863,7 +863,7 @@ structure Web :> WEB =
     fun peer () : string = prim("apsml_getpeer", (getReqRecP()))
 
     fun write (s: string) : unit =
-       prim("@ap_rputs", (s,getReqRecP()))
+       prim("@apsml_rputs", (s,getReqRecP()))
        
     fun formvar s =  case getQuery()
        of SOME set => Set.get(set,s)

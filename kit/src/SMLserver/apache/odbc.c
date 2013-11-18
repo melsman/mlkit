@@ -245,10 +245,9 @@ static void
 DBCheckNSetIfServerGoneBad(oDb_t *db, SQLSMALLINT ht, SQLHANDLE h, void *ctx, int lock)/*{{{*/
 {
   db_conf *dbc;
-  SQLRETURN stat;
   SQLSMALLINT rvlength;
   char buf[9];
-  stat = SQLGetDiagField(ht, h, 1, SQL_DIAG_SQLSTATE, buf, 9, &rvlength);
+  SQLGetDiagField(ht, h, 1, SQL_DIAG_SQLSTATE, buf, 9, &rvlength);
   if (rvlength < 2) return;
   switch (ERRORCODETOINT(buf))
   {
@@ -364,10 +363,10 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
 static void
 DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
 {
-  SQLRETURN status;
   if (ses == NULL) return;
 //  if (ses->mode == MANUAL_COMMIT)
 //  {
+//    SQLRETURN status;
 //    ses->mode = AUTO_COMMIT;
 //    status = SQLEndTran(SQL_HANDLE_DBC, ses->connhp, SQL_ROLLBACK);
 //    ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, ;, ctx)
@@ -384,7 +383,7 @@ DBFlushStmt (oSes_t *ses, void *ctx)/*{{{*/
   }
   if (ses->stmthp != SQL_NULL_HANDLE)
   {
-    status = SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
+    SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
     ses->stmthp = SQL_NULL_HANDLE;
   }
   return;
@@ -714,7 +713,8 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
 {
   dbOraData *dbdata;
   oSes_t *tmpses, *rses;
-  int dbid, i, numberOfSess;
+  int dbid, i;
+  // int numberOfSess;
   oDb_t *db;
   if (ses == NULL || rd == NULL) return DBError;
   dbid = ses->db->dbid;
@@ -770,7 +770,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
         while ((rses = db->freeSessionsGlobal))
         {
           db->freeSessionsGlobal = rses->next;
-          numberOfSess = db->number_of_sessions;
+          // numberOfSess = db->number_of_sessions;
           DBReturnSession(rses, rd);
         }
       }
@@ -789,7 +789,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
         }
         ses = rses;
         rses = rses->next;
-          numberOfSess = db->number_of_sessions;
+        // numberOfSess = db->number_of_sessions;
         DBReturnSession(ses,rd);
       }
       if (tmpses) tmpses->next = NULL;
@@ -800,7 +800,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
         {
           ses = rses;
           rses = rses->next;
-          numberOfSess = db->number_of_sessions;
+          // numberOfSess = db->number_of_sessions;
           DBReturnSession(ses,rd);
         }
         db->freeSessionsGlobal = NULL;
@@ -810,7 +810,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
   }
   else
   {
-          numberOfSess = db->number_of_sessions;
+    // numberOfSess = db->number_of_sessions;
     DBReturnSession(ses,rd);
     broadcast_cond(dbc->cvar);
   }

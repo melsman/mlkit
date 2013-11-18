@@ -49,9 +49,15 @@ apsml_returnHtml (int status, char *s, int len, char *content_type, request_rec 
   r->content_type = content_type; 
 //      ap_log_rerror(__FILE__,__LINE__, LOG_DEBUG, 0, r, 
 //                      "apsml_returnHtml C: status == %i, len == %i, data: %s", status, len, s);
-  ap_rputs (s, r);
+//  ap_rputs (s, r);
+  ap_rwrite (s,len,r);
   return 0;
 }				/*}}} */
+
+void apsml_rputs(char *s, request_rec *r)
+{
+  ap_rputs(s,r);
+}
 
 int
 apsml_returnFile (int status, char *mt, char *file, request_rec *r)	//{{{
@@ -76,7 +82,7 @@ apsml_returnFile (int status, char *mt, char *file, request_rec *r)	//{{{
       ap_send_fd (fd, r, 0, finfo.size, &amountsend);
       return 0;
     }
-  ap_log_rerror (__FILE__, __LINE__, LOG_ERR, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_ERR, 0, r,
 		 "SEND_FILE went wrong: %s", file);
   return 1;
 }				//}}}
@@ -116,7 +122,7 @@ apsml_location (Region rAddr, int rd1)	/*{{{ */
 {
   request_data *rd = (request_data *) rd1;
   request_rec *r = rd->request;
-  ap_log_rerror (__FILE__, __LINE__, LOG_EMERG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_EMERG, 0, r,
 		 "apsml_location does not work");
   int length_scheme = strlen (r->parsed_uri.scheme);
   int length_hostinfo = strlen (r->parsed_uri.hostinfo);
@@ -132,7 +138,7 @@ void
 apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ */
 {
 //              request_data *rd = (request_data *) rd1;
-//              ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "Logging");
+//              ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "Logging");
   int logS = convertIntToC (logSeverity);
   int stringSize = sizeStringDefine (str) + 1;
   char *s = (char *) apr_palloc (rd->pool, stringSize);
@@ -141,11 +147,11 @@ apsml_log (int logSeverity, StringDesc * str, request_data * rd, int exn)	/*{{{ 
   convertStringToC (str, s, stringSize, exn);
   if (rd->request)
     {
-      ap_log_rerror (__FILE__, __LINE__, logS, 0, rd->request, "%s", s);
+      ap_log_rerror (APLOG_MARK, logS, 0, rd->request, "%s", s);
     }
   else
     {
-      ap_log_error (__FILE__, __LINE__, logS, 0, rd->server, "%s", s);
+      ap_log_error (APLOG_MARK, logS, 0, rd->server, "%s", s);
     }
   return;
 }				/*}}} */
@@ -205,7 +211,7 @@ String
 apsml_getpeer (Region rAddr, request_rec *r)	/*{{{ */
 {
   // request_rec
-  return convertStringToML (rAddr, r->connection->remote_ip);
+  return convertStringToML (rAddr, r->useragent_ip);
 }				/*}}} */
 
 // ML: request_rec -> string
@@ -235,14 +241,14 @@ sml_getAuxData(Region r, request_data *rd)/*{{{*/
 String
 apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ */
 {
-//      ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml: getFormData C init");
+//      ap_log_rerror(APLOG_MARK, LOG_DEBUG, 0, rd->request, "apsml: getFormData C init");
   if (type == GET)
     {
-//      ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r, "apsml get: %s",
+//      ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r, "apsml get: %s",
 //		    r->args);
       if (r->args)
 	return convertStringToML (rAddr, r->args);
-//              ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, r, "apsml: getFormData C get NULL");
+//              ap_log_error(APLOG_MARK, LOG_DEBUG, 0, r, "apsml: getFormData C get NULL");
       return (String) NULL;
     }
   // else (type == FORM)
@@ -253,7 +259,7 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ *
   int rds;
   int totalsize = 0;
   maxsize = (maxsize == -1) ? 0x7FFFFFFF : maxsize;
-//      ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool, "setup client form date retrievel");
+//      ap_log_rerror(APLOG_MARK, LOG_DEBUG, 0, rd->pool, "setup client form date retrievel");
   if (ap_setup_client_block (r, REQUEST_CHUNKED_DECHUNK) == OK)
     {
       ap_should_client_block (r);
@@ -276,7 +282,7 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ *
 	    {
 	      buf->size = rds - (totalsize - maxsize);
 	      totalsize = maxsize;
-	      ap_log_rerror (__FILE__, __LINE__, LOG_WARNING, 0, r,
+	      ap_log_rerror (APLOG_MARK, LOG_WARNING, 0, r,
 			     "apsml: User tried to send file larger than maxfilesize");
 	      break;
 	    }
@@ -292,9 +298,9 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ *
 	  buf = buf->next;
 	}
       *(finalstring + totalsize) = 0;
-//      ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->request,
+//      ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, rd->request,
 //		     "apsml formdata: size==%i", totalsize);
-//      ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->request,
+//      ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, rd->request,
 //		     "apsml formdata: size==%i, data: %s", totalsize, finalstring);
       return convertBinStringToML (rAddr, totalsize, finalstring);
     }
@@ -307,7 +313,7 @@ apsml_getQueryData (Region rAddr, int maxsize, int type, request_rec *r)	/*{{{ *
 static apr_table_t *
 apsml_setCreate (request_data * rd,int n)	/*{{{ */
 {
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml_setCreate");
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml_setCreate");
   apr_table_t *t = apr_table_make (rd->pool, n);
   return t;
 }				/*}}} */
@@ -451,36 +457,11 @@ returnSet(Region rl, Region rp, Region rsk, Region rsv, apr_table_t *set)
 }
 
 // ML: unit -> (string * string) list
-static uintptr_t *
-apsml_headers_old (Region rl, Region rp, Region rsk, Region rsv, request_data *rd)		/*{{{ */
-{
-  request_rec *r = rd->request;
-  uintptr_t *list;
-//  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
-  if (!r) 
-  {
-    ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
-		  "apsml_headers called without a connection");
-    raise_exn ((uintptr_t) &exn_OVERFLOW);
-    return 0;
-  }
-  if (r->headers_in)
-  {
-    return returnSet(rl, rp, rsk, rsv, r->headers_in);
-  }
-  else
-  {
-    makeNIL(list);
-    return list;
-  }
-}				/*}}} */
-
-// ML: unit -> (string * string) list
 uintptr_t *
 apsml_headers (Region rl, Region rp, Region rsk, Region rsv, request_rec *r)		/*{{{ */
 {
   uintptr_t *list;
-//  ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, rd->request, "apsml_headers");
+//  ap_log_rerror(APLOG_MARK, LOG_DEBUG, 0, rd->request, "apsml_headers");
   if (r->headers_in)
   {
     return returnSet(rl, rp, rsk, rsv, r->headers_in);
@@ -500,7 +481,7 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   int e, l, serversize;
   String tmpstr;
   char *c, *tmpptr, *server = NULL;
-//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml_reg_schedule");
+//  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml_reg_schedule");
   tmpstr = (String) elemRecordML(pair, 0);
   c = &(tmpstr->data);
   l = sizeStringDefine (tmpstr);
@@ -508,13 +489,13 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   server = &(tmpstr->data);
   serversize = sizeStringDefine(tmpstr);
   l += serversize+1;
-//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //      "schedule : %s, first: %d, interval: %d, type %d", c, convertIntToC(first_time),
 //       convertIntToC(interval), convertIntToC(type));
   schedHeader *sh = (schedHeader *) malloc(sizeof(schedHeader) + l+1);
   if (!sh)
   {
-    ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+    ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, 
         "Malloc error, schedule : %s, first: %d, interval: %d, type %d could not be performed",
         c, convertIntToC(first_time), convertIntToC(interval), convertIntToC(type));
   }
@@ -536,16 +517,16 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
   apr_global_mutex_lock(rd->ctx->sched.lock);
   tmp = 0;
   e = 0;
-//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+//  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //      "schedule : %s, first: %d, interval: %d, type %d", c, first_time, interval, type);
   while (e < packagelength)
   {
-//    ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "schedule: e:%d", e);
+//    ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "schedule: e:%d", e);
     tmp = write(rd->ctx->sched.input, sh+e, packagelength-e);
     if (tmp == -1)
     {
       e = errno;
-      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, 
           "schedule reg went bad: %s", strerror(e));
       apr_global_mutex_unlock(rd->ctx->sched.lock);
       free(sh);
@@ -554,7 +535,7 @@ apsml_reg_schedule(int first_time, int interval, int type, int pair, request_dat
     e += tmp;
     packagelength -= tmp;
   }
-//  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "sent this %s", c);
+//  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "sent this %s", c);
   apr_global_mutex_unlock(rd->ctx->sched.lock);
   free (sh);
   return;
@@ -590,7 +571,7 @@ apsml_encodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
 {
 // It seems like ap_escape_url cannot handle + 
   char *src = &(str->data);
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C1: %s", src);
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C1: %s", src);
   int i;
   char *d = (char *) apr_palloc (rd->pool, sizeStringDefine(str) + 1);
   for (i = 0; i < sizeStringDefine(str); i++)
@@ -609,7 +590,7 @@ apsml_encodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
     }
   }
   d[sizeStringDefine(str)] = 0;
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C2: %s", src);
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C2: %s", src);
   char *dst = ap_escape_uri (rd->pool, d);
   int a = 0;
   for (i = 0; dst[i]; i++, a++)
@@ -620,7 +601,7 @@ apsml_encodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
       a = -1;
     }
   }
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C4: %s", dst);
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml: apsml_encodeUrl C4: %s", dst);
   return convertStringToML (rAddr, dst);
 }				/*}}} */
 
@@ -629,7 +610,7 @@ String
 apsml_decodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
 {
   char *s = &(str->data);
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C: %s", s);
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C: %s", s);
 // It seems like ap_unescape_url cannot handle spaces
   char *to = (char *) apr_palloc (rd->pool, sizeStringDefine(str) + 1);
   char p1;
@@ -647,9 +628,9 @@ apsml_decodeUrl (Region rAddr, String str, request_data * rd)	/*{{{ */
     }
   }
   to[sizeStringDefine(str)] = 0;
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C1: %s", to);
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C1: %s", to);
   ap_unescape_url (to);
-//      ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C2: %s", to);
+//      ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "apsml: apsml_decodeUrl C2: %s", to);
   return convertStringToML (rAddr, to);
 }				/*}}} */
 
@@ -660,7 +641,7 @@ apsml_method (Region rAddr, request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_WARNING, 0, rd->server,
 		    "apsml_method called without a connection");
       raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
@@ -674,7 +655,7 @@ apsml_scheme (Region rAddr, request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_WARNING, 0, rd->server,
 		    "apsml_scheme called without a connection");
       raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
@@ -693,7 +674,7 @@ apsml_contentlength (request_data * rd)	/*{{{ */
 {
   if (rd->request == 0)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_WARNING, 0, rd->server,
 		    "apsml_method called without a connection");
       raise_exn ((uintptr_t) &exn_OVERFLOW);
       return 0;
@@ -786,7 +767,7 @@ apsml_confinsert (String k, String v, int extraval, request_data * rd)	/*{{{ */
   apr_thread_rwlock_wrlock (rd->ctx->conftable->rwlock);
   if (conftable_update (rd->ctx->conftable->ht, key, value) != hash_OK)
   {
-    ap_log_error (__FILE__, __LINE__, LOG_EMERG, 0, rd->server,
+    ap_log_error (APLOG_MARK, LOG_EMERG, 0, rd->server,
 	   "apsml_confinsert error, Out of memory");
   }
   apr_thread_rwlock_unlock (rd->ctx->conftable->rwlock);
@@ -801,7 +782,7 @@ apsml_conflookup (Region rAddr, String k, request_data * rd)	/*{{{ */
   String s;
   apr_thread_rwlock_rdlock (rd->ctx->conftable->rwlock);
   char *key = &(k->data);
-//      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+//      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 //		    "apsml_conflookup key:%s",kn.key);
   if (conftable_find (rd->ctx->conftable->ht, key, &value) != hash_OK)
     {
@@ -951,7 +932,7 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
   addr_hint.ai_socktype = SOCK_STREAM;
   if (getaddrinfo (server, sport, &addr_hint, &addr) != 0) 
   {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "getaddrinfo failed on server: %s", server);
     free(head);
     free(startbuf);
@@ -981,7 +962,7 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
   freeaddrinfo (addr);
   if (sock == -1 || c == -1)
   {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "socket or connect failed on server: %s", server);
     free(head);
     free(startbuf);
@@ -998,7 +979,7 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
     now = time(NULL);
     if (now > curtime)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "connection timeout on server: %s", server);
       free(head);
       close(sock);
@@ -1020,7 +1001,7 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
     tmp = select(sock + 1, &readset, wset, NULL, &tv);
     if (tmp == -1)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "select failed: %s", server);
       free(head);
       close(sock);
@@ -1047,7 +1028,7 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
       {
         tmp = errno;
         if (tmp == EAGAIN) continue;
-        ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+        ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
             "socket recv error: %s", strerror(tmp));
         free(head);
         close(sock);
@@ -1068,7 +1049,7 @@ apsml_getpage(Region sAddr, String server1, String page1, int pair)/*{{{*/
       {
         tmp = errno;
         if (tmp == EAGAIN || tmp == EWOULDBLOCK) continue;
-        ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+        ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
             "socket send error: %s", strerror(tmp));
         free(head);
         close(sock);
@@ -1117,7 +1098,7 @@ apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
   addr_hint.ai_socktype = SOCK_STREAM;
   if (getaddrinfo (server, sport, &addr_hint, &addr) != 0) 
   {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "getaddrinfo failed on server: %s", server);
     free(startbuf);
     return NULL;
@@ -1146,7 +1127,7 @@ apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
   freeaddrinfo (addr);
   if (sock == -1 || c == -1)
   {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "socket or connect failed on server: %s", server);
     free(startbuf);
     if (sock != -1) close(sock);
@@ -1161,7 +1142,7 @@ apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
     now = time(NULL);
     if (now > curtime)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "connection timeout on server: %s", server);
       close(sock);
       return collectbuf(sAddr, startbuf, rd);
@@ -1182,7 +1163,7 @@ apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
     tmp = select(sock + 1, &readset, wset, NULL, &tv);
     if (tmp == -1)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
 		    "select failed: %s", server);
       close(sock);
       return collectbuf(sAddr, startbuf, rd);
@@ -1207,7 +1188,7 @@ apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
       {
         tmp = errno;
         if (tmp == EAGAIN) continue;
-        ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+        ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
             "socket recv error: %s", strerror(tmp));
         close(sock);
         return collectbuf(sAddr, startbuf, rd);
@@ -1226,7 +1207,7 @@ apsml_mkrequest(Region sAddr, String server1, String request1, int pair)/*{{{*/
       {
         tmp = errno;
         if (tmp == EAGAIN || tmp == EWOULDBLOCK) continue;
-        ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+        ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
             "socket send error: %s", strerror(tmp));
         close(sock);
         return collectbuf(sAddr, startbuf, rd);
@@ -1303,13 +1284,13 @@ apsmlPutDBData (int i, void *data, void child_init(void *, int, apr_pool_t *, se
 void 
 dblog1 (const request_data *rd, const char *data)/*{{{*/
 {
-  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, data);
+  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s", data);
 }/*}}}*/
 
 void 
 dblog2 (const request_data *rd, const char *data, const int num)/*{{{*/
 {
-  ap_log_error(__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s %d", data, num);
+  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s %d", data, num);
 }/*}}}*/
 
 void *
@@ -1399,7 +1380,7 @@ apsml_GetMimeType(Region rAddr, String s, int rr)
   find_ct(r);
   if ( r->content_type == NULL ) 
     {
-	ap_log_rerror(__FILE__, __LINE__, LOG_DEBUG, 0, ((request_rec *) rr), 
+	ap_log_rerror(APLOG_MARK, LOG_DEBUG, 0, ((request_rec *) rr), 
 			"apsml: apsml_GetMimeType problem - returning empty string");
       r->content_type = "";
     }
@@ -1414,7 +1395,7 @@ plog1s(const char *s, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s", s);
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s", s);
   return;
 }/*}}}*/
 
@@ -1423,7 +1404,7 @@ plog2s(const char *s, const char *t, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s", s, t);
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s%s", s, t);
   return;
 }/*}}}*/
 
@@ -1432,7 +1413,7 @@ plog3s(const char *s, const char *t, const char *r, void *ctx)/*{{{*/
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s", s, t, r);
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s%s%s", s, t, r);
   return;
 }/*}}}*/
 
@@ -1441,7 +1422,7 @@ plog4s(const char *s, const char *t, const char *r, const char *v, void *ctx)/*{
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s", s, t, r, v);
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s%s%s%s", s, t, r, v);
   return;
 }/*}}}*/
 
@@ -1450,7 +1431,7 @@ plog5s(const char *s, const char *t, const char *r, const char *v, const char *w
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s%s", s, t, r, v, w);
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s%s%s%s%s", s, t, r, v, w);
   return;
 }/*}}}*/
 
@@ -1459,7 +1440,7 @@ plog4s1i(const char *s, const char *t, const char *r, const char *v, unsigned lo
 {
   serverstate ss = (serverstate) ctx;
   request_data *rd = (request_data *) ss->aux;
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, "%s%s%s%s%ld", s, t, r, v, w);
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, "%s%s%s%s%ld", s, t, r, v, w);
   return;
 }/*}}}*/
 

@@ -231,7 +231,7 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
 	  first (listpair) = (uintptr_t) pair;
 	  second (listpair) = (uintptr_t) list;
 	  makeCONS (listpair, list);
-    ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server, 
+    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, 
         "apdns_getFQDN_MX: pref %i, ttl %i, %s", a_mx_pref, a_ttl, dnsnames);
 	}
       else if (a_type == T_CNAME)

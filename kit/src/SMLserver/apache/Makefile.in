@@ -51,7 +51,7 @@ $(ORACLELIB): oracle.c
 
 $(ODBCLIB): odbc.c
 	$(CC) $(OPT) -c -fpic -DAPACHE odbc.c
-	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 -lodbc -DAPACHE odbc.o -o $(ODBCLIB)
+	$(CC) -shared -Wl,-soname,libsmlodbc.so.1 -DAPACHE odbc.o -o $(ODBCLIB) -lodbc
 
 #	${LN}f libsmloracle.so.1.0 libsmloracle.so.1
 #	${LN}f libsmloracle.so.1 libsmloracle.so

@@ -17,6 +17,10 @@
 #include "../../Runtime/HeapCache.h"
 #include "greeting.h"
 
+#ifdef APLOG_USE_MODULE
+APLOG_USE_MODULE(sml);
+#endif
+
 // #define APSML_SCRIPT_HASHTABLE_SZ 1023
 
 #define DEFAULT_PRJID "sources"
@@ -52,14 +56,14 @@ static int apsml_processSmlFile (request_data * rd, char *uri, int kind);
 void
 logMsg (char *msg)
 {
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, globalrd->server,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, globalrd->server,
     "apsml: Notice; apsml: %s", msg);
 }
 
 void
 logMsg1 (char *msg, request_data *rd)    /*{{{ */
 {
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
     "apsml: Notice; apsml: %s", msg);
 //  fprintf (stderr, "Notice; apsml: %s", msg);
 }
@@ -91,7 +95,7 @@ logMsg (enum reportLevel level, const char *msg, void *rd1)    /*{{{ */
       rep_lev = LOG_EMERG;
       break;
   }
-  ap_log_error (__FILE__, __LINE__, rep_lev, 0, rd->server,
+  ap_log_error (APLOG_MARK, rep_lev, 0, rd->server,
     "apsml: Notice; apsml: %s", msg);
   return;
 } /*}}}*/
@@ -100,40 +104,40 @@ logMsg (enum reportLevel level, const char *msg, void *rd1)    /*{{{ */
 void
 printserver (server_rec * s)  //{{{
 {
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->defn_name is %s", s->defn_name);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->server_admin is %s", s->server_admin);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->server_hostname is %s", s->server_hostname);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->error_fname is %s", s->error_fname);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->path is %s", s->path);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->port is %d", s->port);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->is_virtual is %d", s->is_virtual);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->addrs->host_addr->hostname is %s", s->addrs->host_addr->hostname);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->addrs->host_addr->port is %d", s->addrs->host_addr->port);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->addrs->host_addr->servname is %s", s->addrs->host_addr->servname);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->addrs->virthost is %s", s->addrs->virthost);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
     "apsml: server->addrs->host_port is %d", s->addrs->host_port);
 
   return;
@@ -235,7 +239,7 @@ confinit (server_rec * s, apr_pool_t * pool, conf_hashtable_with_lock ** ct) /*{
   htwl->ht = (conftable_hashtable_t *) apr_palloc (pool, sizeof (conftable_hashtable_t));
   if (conftable_init (htwl->ht) != hash_OK)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_EMERG, 0, s,
+      ap_log_error (APLOG_MARK, LOG_EMERG, 0, s,
         "apsml: Config hash failed");
     }
   *ct = htwl;
@@ -341,7 +345,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   for( i=0 ; i<4 ; i++ )
     {
       apr_thread_mutex_create(&(apache_locks[i]), APR_THREAD_MUTEX_DEFAULT, pconf);
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                     "apsml: creating lock %i", i);
     }
   //  apr_thread_mutex_create(&(codeCacheMutex), APR_THREAD_MUTEX_DEFAULT, pconf);
@@ -359,7 +363,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
 
 //  ppGlobalCache(rd);
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: server->path is %s", s->path);
 
   i = strlen(ctx->smlpath) + strlen(ctx->prjid) + 20 + strlen(mlb);
@@ -375,17 +379,17 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
       ss = ss->next;
     }
   
-  //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+  //  ap_log_error (APLOG_MARK, LOG_NOTICE, 0, s,
   //              "apsml: module is now loaded");
   
-  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, s,
+  ap_log_error (APLOG_MARK, LOG_NOTICE, 0, s,
                 "apsml: ulFileName is %s", ctx->ulFileName);
   
   ctx->mainproc = getpid();
   
   if (!ctx->smlpath)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+      ap_log_error (APLOG_MARK, LOG_ERR, 0, s,
                     "apsml: You must set SmlPath in Apache conf section");
       exit(0);
     }
@@ -400,25 +404,25 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
       return 5;
     }
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: post config 1");
 
   rd->ctx->cachelock.shmname = tempnam(NULL, NULL);
   if (rd->ctx->cachelock.shmname == NULL)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+      ap_log_error (APLOG_MARK, LOG_ERR, 0, s,
                     "apsml: Unable to get temporary name from tempnam");
       return APR_EINIT;
     }
   stat = apr_shm_create(&(rd->ctx->cachelock.shm), SHMSIZE, rd->ctx->cachelock.shmname, pconf);
   if (stat != APR_SUCCESS)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+      ap_log_error (APLOG_MARK, LOG_ERR, 0, s,
                     "apsml: Unable to create shared memory using apr_shm_create");
       return stat;
     }
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: post config 2");
 
   unsigned long *dbtmp = (unsigned long *) apr_shm_baseaddr_get(rd->ctx->cachelock.shm);
@@ -429,7 +433,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   rd->ctx->sched.glockname = tempnam(NULL,NULL);
   if (rd->ctx->sched.glockname == NULL) return 5;
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: post config 3");
 
   stat = apr_global_mutex_create(&(rd->ctx->sched.lock), 
@@ -437,7 +441,7 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
                                  APR_LOCK_DEFAULT, pconf);
   if (stat != APR_SUCCESS)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, s,
+      ap_log_error (APLOG_MARK, LOG_ERR, 0, s,
                     "apsml: global_mutex_create failed");
       return 5;
     }
@@ -445,20 +449,20 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
   si = startsched(s->defn_name, s->port);
   if (si.pid == -1) return 5;
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: post config 4");
 
   rd->ctx->sched.pid = si.pid;
   rd->ctx->sched.input = si.input;
 
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
                 "apsml: created process %d", rd->ctx->sched.pid);
 
   rd->pool = ptemp;
   int res = APSML_OK;
   if (rd->ctx->initscript != NULL)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
                     "apsml: init script: %s about to start", rd->ctx->initscript);
       rd->ctx->pid = getpid();
       char *name = (char *) malloc (120);
@@ -477,21 +481,21 @@ apsml_post_config (apr_pool_t * pconf, apr_pool_t * plog, apr_pool_t * ptemp, se
           res = apsml_processSmlFile (rd, is, 1);
           free(is);
         }
-      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
                     "apsml: init script executed with return code %d (0: success)", res);
       struct db_t *db_tmp = rd->ctx->db;
       for (; db_tmp; db_tmp = db_tmp->next)
         {
-          ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+          ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                         "apsml: shutdown 1");
           db_tmp->tmp_shutdown(db_tmp->dbspec, s);
         }
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                     "apsml: shutdown 2");
     }
   else
     {
-      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
                     "apsml: No init script executed");
     }
   rd->ctx->initDone = 1;
@@ -564,19 +568,19 @@ apsml_child_init(apr_pool_t *p, server_rec *s)/*{{{*/
   struct db_t *tmp;
   InterpContext *ctx = ap_get_module_config (s->module_config, &sml_module);
   ctx->pid = getpid();
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: childInit; pid : %d", ctx->pid);
   apr_proc_mutex_child_init(&(ctx->cachelock.plock), ctx->cachelock.plockname, p);
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: childInit 1");
   for(tmp = ctx->db; tmp; tmp = tmp->next)
     {
       (*(tmp->child_init))(tmp->dbspec, tmp->num, p, s);
     }
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: childInit 2");
   apr_global_mutex_child_init(&(ctx->sched.lock), ctx->sched.glockname, p);
-  ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, s,
+  ap_log_error (APLOG_MARK, LOG_DEBUG, 0, s,
                 "apsml: childInit 3");
   
   debug_file_as(char *name,(char *) malloc (120));
@@ -592,7 +596,7 @@ ppTable (apr_table_entry_t * table, request_data * rd)  //{{{
   apr_array_header_t *ah = (apr_array_header_t *) apr_table_elts (table);
   for (i = 0; i < ah->nelts; i++)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
         "apsml: table entry %i: (key,value) = (%s,%s)", i,
         (((apr_table_entry_t *) ah->elts) + i)->key,
         (((apr_table_entry_t *) ah->elts) + i)->val);
@@ -602,44 +606,44 @@ ppTable (apr_table_entry_t * table, request_data * rd)  //{{{
 void
 printrequest (request_rec * r)  //{{{
 {
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->the_request is %s", r->the_request);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->protocol is %s", r->protocol);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->hostname is %s", r->hostname);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->status_line is %s", r->status_line);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->method is %s", r->method);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->range is %s", r->range);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->content_type is %s", r->content_type);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->handler is %s", r->handler);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->content_encoding is %s",
      r->content_encoding);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->content_languages is %s",
      r->content_languages);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->vlist_validator is %s",
      r->vlist_validator);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->user is %s", r->user);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->ap_auth_type is %s", r->ap_auth_type);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->unparsed_uri is %s", r->unparsed_uri);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->uri is %s", r->uri);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->filename is %s", r->filename);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->path_info is %s", r->path_info);
-  ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, r,
+  ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, r,
      "apsml: request_rec->args is %s", r->args);
   return;
 }       //}}}
@@ -658,11 +662,8 @@ char *
 apsml_smlFileToUoFile(request_data *rd, char *smlfile, char *prjid,
                       char **old, unsigned long *oldLength)/*{{{*/
 {
-  char *pageRoot;
   char c, *p, *lp, *lu, *uo;
   unsigned long length;
-  InterpContext *ctx = rd->ctx;
-  pageRoot = ctx->smlpath;
   p = smlfile;
   lp = NULL;
   lu = NULL;
@@ -723,18 +724,18 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
 
   if (rd->request)
     {
-      ap_log_rerror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->request,
+      ap_log_rerror (APLOG_MARK, LOG_DEBUG, 0, rd->request,
                      "apsml: pid: %ld, Notice ul-file has time %ld", (long) rd->ctx->pid, (long) t);
     }
   else
     {
-      ap_log_error (__FILE__, __LINE__, LOG_DEBUG, 0, rd->server,
-                    "apsml: pid: %ld, Notice ul-file has time %ld", rd->ctx->pid, t);
+      ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server,
+                    "apsml: pid: %ld, Notice ul-file has time %ld", (long)rd->ctx->pid, t);
     }
   
   if (t == (time_t) - 1)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_ERR, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_ERR, 0, rd->server,
                     "apsml: ul-file %s does not exist - web service not working",
                     ctx->ulFileName);
       return APSML_ULFILENOTFOUND;
@@ -750,7 +751,7 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
 
 
       // MEMO: somehow wait for all executions to finish!
-      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+      ap_log_perror (APLOG_MARK, LOG_NOTICE, 0, rd->pool,
                      "apsml: (re)loading interpreter; oldtime: %ld; newtime: %ld",
                      ctx->timeStamp, t);
       
@@ -759,17 +760,17 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
       interpClear (ctx->interp);
       
       // clear the heap cache
-      ap_log_perror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool,
+      ap_log_perror (APLOG_MARK, LOG_DEBUG, 0, rd->pool,
                      "apsml: clearing heap cache");
       clearHeapCache ();
       
-      ap_log_perror (__FILE__, __LINE__, LOG_NOTICE, 0, rd->pool,
+      ap_log_perror (APLOG_MARK, LOG_NOTICE, 0, rd->pool,
                      "apsml: opening ul-file %s", ctx->ulFileName);
       
       clearSmlMap(rd->ctx->smlTable);
       rd->ctx->smlTable = NULL;
 
-      ap_log_perror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool,
+      ap_log_perror (APLOG_MARK, LOG_DEBUG, 0, rd->pool,
                      "apsml: setting up pCtx");
 
       pCtx.interp = rd->ctx->interp;
@@ -801,11 +802,11 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
       key = uri;
       if (parseul_find(rd->ctx->smlTable, key, &file) == hash_DNE)
 	{
-	  ap_log_perror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool,
+	  ap_log_perror (APLOG_MARK, LOG_DEBUG, 0, rd->pool,
 			 "apsml: Request not script: %s %d", uri, strlen(uri));
-	  ap_log_perror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool,
+	  ap_log_perror (APLOG_MARK, LOG_DEBUG, 0, rd->pool,
 			 "apsml: Size of hash table: %ld", ctx->smlTable->hashTableUsed);
-	  ap_log_perror (__FILE__, __LINE__, LOG_DEBUG, 0, rd->pool,
+	  ap_log_perror (APLOG_MARK, LOG_DEBUG, 0, rd->pool,
 			 "apsml: Scripts in table:");
 	  printSmlTable(rd->ctx->smlTable, rd);
 	  return APSML_FILENOTFOUND;
@@ -819,32 +820,32 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
         }
       break;
     default:
-      ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
                     "apsml: Internal error in mod_sml.c, apsml_processSmlFile called with kind == %d", kind);
       return APSML_FILENOTFOUND;
       break;
     }
   
   debug_writer1("Starting new file %d\n", 0);
-  ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+  ap_log_error (APLOG_MARK, LOG_INFO, 0, rd->server,
                 "apsml: Starting interpreter on file %s, pid: %d", file, rd->ctx->pid);
   
   //  globalrd = rd;
   if (interpLoadRun (ctx->interp, file, &errorStr, &ss, &res) != 0)
     {
-      ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+      ap_log_error (APLOG_MARK, LOG_INFO, 0, rd->server,
                     "apsml: Interpretation on file %s went bad, pid: %d", file, rd->ctx->pid);
       debug_writer1("Stopping new file %d BAD\n", 0);
       return APSML_ERROR;
     }
-  ap_log_error (__FILE__, __LINE__, LOG_INFO, 0, rd->server,
+  ap_log_error (APLOG_MARK, LOG_INFO, 0, rd->server,
                 "apsml: Interpretation of file %s was successful, pid: %d", file, rd->ctx->pid);
   debug_writer1("Stopping new file %d GOOD\n", 0);
   
-  //  ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+  //  ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
   //     "apsml: Interpretation ended on file %s with result %d, errorStr: %d", uo_file, res, errorStr);
   //  if (errorStr)
-  //    ap_log_error (__FILE__, __LINE__, LOG_NOTICE, 0, rd->server,
+  //    ap_log_error (APLOG_MARK, LOG_NOTICE, 0, rd->server,
   //       "apsml: Interpretation ended on file %s with result %d, errorStr: %s", uo_file, res, errorStr);
   
   
@@ -852,7 +853,7 @@ apsml_processSmlFile (request_data * rd, char *uri, int kind) //{{{
     {                   // uncaught exception; errorStr allocated
       if (res == -1)    // exception other than Interrupt raised
         {
-          ap_log_error (__FILE__, __LINE__, LOG_WARNING, 0, rd->server,
+          ap_log_error (APLOG_MARK, LOG_WARNING, 0, rd->server,
                         "apsml: %s raised %s", file, errorStr);
         }
       free (errorStr);    // free the malloced string 
@@ -896,10 +897,10 @@ mod_sml_method_handler (request_rec * r)  //{{{
   rd->dbdata = NULL;
 //  ppGlobalCache(rd);
 
-//        ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, r, "apsml cachetable: %d", rd->cachetable);
+//        ap_log_rerror(APLOG_MARK, LOG_NOTICE, 0, r, "apsml cachetable: %d", rd->cachetable);
   if (r->args)
     {
-//        ap_log_rerror(__FILE__, __LINE__, LOG_NOTICE, 0, r, "apsml args: %s", r->args);
+//        ap_log_rerror(APLOG_MARK, LOG_NOTICE, 0, r, "apsml args: %s", r->args);
     }
   int res;
   res = apsml_processSmlFile (rd, r->uri, 0);

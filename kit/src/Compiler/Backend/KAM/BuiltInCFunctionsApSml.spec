@@ -1,5 +1,5 @@
 ap_internal_redirect
-ap_rputs
+apsml_rputs
 apsml_returnHtml
 apsml_returnRedirect
 apsml_returnFile

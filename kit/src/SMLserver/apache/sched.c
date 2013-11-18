@@ -404,7 +404,6 @@ forkandgetpage(const char *server, const char *script, unsigned short port,
   int tmp;
   char *newserver, *newscript;
   struct threaddata *td;
-  apr_status_t stat;
   apr_thread_t *schedthread;
 
   tmp = strlen (server) + strlen(script);
@@ -417,7 +416,7 @@ forkandgetpage(const char *server, const char *script, unsigned short port,
   td->port = port;
   td->newscript = newscript;
   td->newserver = newserver;
-  stat = apr_thread_create(&schedthread, schedthread_attr, childgetpage, td, pool);
+  apr_thread_create(&schedthread, schedthread_attr, childgetpage, td, pool);
   return;
 }/*}}}*/
 
@@ -478,7 +477,7 @@ scheduleproc (const char *server, int port, int infile)/*{{{*/
       tv.tv_sec = tmpheader->nexttime - curtime;
       tv.tv_sec = tv.tv_sec < 0 ? 0 : tv.tv_sec;
       tv.tv_usec = 0;
-      dprintf(logfile, "Next scheduled run: %d\n", tv.tv_sec);
+      dprintf(logfile, "Next scheduled run: %d\n", (int)tv.tv_sec);
       if (tv.tv_sec != 0)
       {
         tmp = select(infile+1, &readfd, NULL, NULL, &tv);
