@@ -1,17 +1,20 @@
  signature CANVAS = sig
   type t
   type elem = Js.elem
-  val getContext : elem -> string -> t
-  val fillRect   : t -> int -> int -> int -> int -> unit
-  val clearRect  : t -> int -> int -> int -> int -> unit
-  val beginPath  : t -> unit
-  val moveTo     : t -> int -> int -> unit
-  val lineTo     : t -> int -> int -> unit
-  val closePath  : t -> unit
-  val stroke     : t -> unit
-  val fillStyle  : t -> string -> unit
-  val lineWidth  : t -> string -> unit
+  val getContext  : elem -> string -> t
+  val fillRect    : t -> int -> int -> int -> int -> unit
+  val clearRect   : t -> int -> int -> int -> int -> unit
+  val beginPath   : t -> unit
+  val moveTo      : t -> int -> int -> unit
+  val lineTo      : t -> int -> int -> unit
+  val closePath   : t -> unit
+  val stroke      : t -> unit
+  val fillStyle   : t -> string -> unit
+  val lineWidth   : t -> string -> unit
   val strokeStyle : t -> string -> unit
+  val drawImage   : t -> elem -> 
+                    int -> int -> int -> int -> 
+                    int -> int -> int -> int -> unit
 end
 
 structure Canvas : CANVAS = struct
@@ -77,12 +80,30 @@ structure Canvas : CANVAS = struct
                     res=JsCore.unit,
                     arg1=("c",JsCore.fptr),
                     arg2=("s",JsCore.string)} (c, s)
+
+  fun drawImage c e x1 x2 x3 x4 x5 x6 x7 x8 =
+      let val e = Js.Element.toForeignPtr e
+      in JsCore.exec10 {stmt="c.drawImage(e,x1,x2,x3,x4,x5,x6,x7,x8);",
+                        res=JsCore.unit,
+                        arg1=("c",JsCore.fptr),
+                        arg2=("e",JsCore.fptr),
+                        arg3=("x1",JsCore.int),
+                        arg4=("x2",JsCore.int),
+                        arg5=("x3",JsCore.int),
+                        arg6=("x4",JsCore.int),
+                        arg7=("x5",JsCore.int),
+                        arg8=("x6",JsCore.int),
+                        arg9=("x7",JsCore.int),
+                        arg10=("x8",JsCore.int)}
+                       (c,e,x1,x2,x3,x4,x5,x6,x7,x8)
+      end
+                     
 end
 
 local
 
-val screenWidth    = 400
-val screenHeight   = 200
+val screenWidth    = 800
+val screenHeight   = 400
 
 fun ppInt i = if i < 0 then "-" ^ Int.toString (~i) else Int.toString i
 
@@ -423,7 +444,11 @@ structure C = Canvas
 fun getElemProperty e t s =
     JsCore.getProperty (Js.Element.toForeignPtr e) t s
 
-fun updateMiniMap() =
+val minimap_p = true
+
+fun updateMiniMap() = 
+    if not minimap_p then ()
+    else 
     let val miniMap = $ "minimap"
 	val miniMapObjects = $ "minimapobjects"
         val height = getElemProperty miniMap JsCore.int "height"
@@ -462,6 +487,8 @@ fun drawRay(rayX, rayY) =
     end
 
 fun drawMiniMap() =
+    if not minimap_p then ()
+    else 
     (* draw the topdown view minimap *)
     let	val miniMap = $ "minimap"               (* the actual map *)
 	val miniMapCtr = $ "minimapcontainer"	(* the container div element *)

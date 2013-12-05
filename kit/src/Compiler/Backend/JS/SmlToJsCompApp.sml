@@ -6,35 +6,62 @@ structure SmlToJsAppArg : APP_ARG = struct
 
   val codemirror_module = "sml"
   val application_title = "SMLtoJs Online"
-  val application_teaser = "Compile and Run your Standard ML programs in a Browser!!"
+  val application_logo = "smltojs_logo_transparent_small.png"
+
   val syntaxhighlight = true
-  val logo_path = "js/smltojs_logo_color160.png"
-  val logo = taga "a" [("href","http://www.smlserver.org/smltojs")]
-                  (taga0 "img" [("border","0"),("alt","Logo"),("src",logo_path)])
 
-  val contributed = $"Contributed by " & taga "a" [("href","http://www.elsman.com")] ($"Martin Elsman")
-  val hosted = $"Hosted by " & taga "a" [("href","http://www.itu.dk")] ($"IT University of Copenhagen")
+  fun about () =
+      let fun link t href () = taga "a" [("href",href), ("target","_blank")] ($t)
+          val MartinElsman = link "Martin Elsman" "http://www.elsman.com"
+          val SMLtoJs = link "SMLtoJs" "http://www.smlserver.org/smltojs"
+          val Dojo = link "Dojo" "http://www.dojotoolkit.org"
+          val CodeMirror = link "CodeMirror" "http://codemirror.net"
+          val DropboxDataStoreAPI = link "Dropbox Datastore API" "https://www.dropbox.com/developers/datastore"
+          val linkSourceForgeMLKitRep = link "SourceForge MLKit Repository" "http://sourceforge.net/apps/mediawiki/mlkit"
+      in 
+        tag "p"
+            ($"This Standard ML IDE allows programmers to build client-based web " &
+              $"applications using Standard ML. Use the File-menu to create " &
+              $"and organize files. Use the documentation to the right for " &
+              $"navigating the part of the Standard ML Basis Library " &
+              $"available to the programmer. Additional libraries are " &
+              $"supported, including libraries Js and JsCore for interacting " &
+              $"with native JavaScript. Programs are compiled and executed " &
+              $"using the top-level menu item Compile->Run. The print " &
+              $"function can be used to output text to the Output tab in " &
+              $"the lower part of the IDE. For a quick demonstration, load the Demo-file available from " &
+              $"the File-menu.") &            
+       tag "p"
+           ($"Created files appear in the File Tree to the left. If you " &
+             $"have a Dropbox account, your files may be kept in a special " &
+             $"area of your Dropbox, visible only to you. The application " &
+             $"is only requesting access to this special part of your Dropbox.") &           
+       tag "h4" ($"A Note on Privacy") &
+       tag "p"
+          ($"The programs you keep in the file tree are not visible " &
+            $"to anyone but you. Information about your programs and the " &
+            $"programs themselves only leaves your web-browser for " &
+            $"syncronizing with your Dropbox datastore. The Dropbox " &
+            $"datastore is visible only to you.") &
+       tag "h4" ($"Contributors") &
+          tag "p"
+             ($"The IDE is based on " & SMLtoJs() & 
+               $", a Standard ML to JavaScript compiler. The IDE also uses the " & Dojo() & 
+               $" framework as the basis for the IDE GUI widgets and the " & DropboxDataStoreAPI() & 
+               $" for allowing users to store their data in Dropbox. The IDE also uses " & CodeMirror() & 
+               $" as the foundation for the Standard ML editor features, including syntax-highligting. " &
+               $" The sources for this IDE are" &
+               $" available by download from the SourceForge MLKit repository and are distributed" &
+               $" under the GPL2 license; some parts of the sources are also available under the MIT license." &
+               $" For information about licenses, please consult the sources, which are available" & 
+               $" from the " & linkSourceForgeMLKitRep() & $".")  &
+          tag "p"
+          ($"The IDE and SMLtoJs are written by " & MartinElsman() & $". For information about using " & SMLtoJs() & 
+            $" in an offline setting, consult the " & SMLtoJs() & $" web site.") 
+      end
 
-  val footer =
-      taga "table" [("width","100%")]
-           (tag "tr"
-                (taga "td" [("align","left")] contributed &
-                      (taga "td" [("align","center")] hosted &
-                            (taga "td" [("align","right")] logo))))      
-
-  val links = 
-      $"[" & 
-       taga "a" [("href","js/doc/str_idx.html"),("target","_blank")] 
-       ($"Structure Index") & 
-       ($" | " & 
-         (taga "a" [("href","js/doc/sig_idx.html"),("target","_blank")] 
-               ($"Signature Index") &
-               ($" | " & 
-                 (taga "a" [("href","js/doc/id_idx.html"),("target","_blank")] 
-                       ($"Id Index") &
-                       ($"]")))))
-
-  val initinput = 
+  val demoinput = 
+      SOME(
       String.concatWith "\n"
       ["fun loop (n,acc) : IntInf.int =",
        "  if n = 0 then acc",
@@ -45,7 +72,7 @@ structure SmlToJsAppArg : APP_ARG = struct
        "         IntInf.toString (loop(n,1)) ^ \"\\n\")",
        "",
        "val () = List.app fac [10,20,30,40]"
-      ]
+      ])
 
   fun timeit f x =
       let val rt = Timer.startRealTimer()
@@ -66,9 +93,8 @@ structure SmlToJsAppArg : APP_ARG = struct
                   ]
 
   val script_paths = 
-      let val path = ""  (*  val path = "./../../" *)
-          fun basispath n = path ^ "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
-          fun implpath n = path ^ "js/basis/MLB/Js/" ^ n ^ ".js"
+      let fun basispath n = "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
+          fun implpath n = "js/basis/MLB/Js/" ^ n ^ ".js"
       in List.map basispath basislibs @
          List.map implpath ["Html-sml","Rwp-sml","XMLrpcClient-sml-code1",
                             "XMLrpcClient-sml-code2", "XMLrpcClient-sml-code3"]  
@@ -81,13 +107,14 @@ structure SmlToJsAppArg : APP_ARG = struct
 
   fun exnMsg (e:exn) : string = prim("execStmtJS", ("return e.toString()","e",e))
 
-  fun compute inputstring =
+  fun compute f inputstring =
       let
         fun load_env_all() =
             case !envRef of
               SOME e => e
             | NONE => raise Fail "impossible: load_env_all"
         val timing = true
+        val () = print ("[Compiling file " ^ f ^ "]\n")
         fun printtime s t = 
             if timing then print ("[" ^ s ^ " time: " ^ Time.toString t ^ "]\n")
             else ()
@@ -95,11 +122,14 @@ structure SmlToJsAppArg : APP_ARG = struct
         val ((e',mc),compiletime) = timeit compile (e,inputstring)
         val _ = printtime "Compile" compiletime
       in
-        let val ((),exectime) = timeit execute mc
+        let val () = print "[Executing]\n"
+            val ((),exectime) = timeit execute mc
         in print "\n"; 
            printtime "Execution" exectime
         end handle ? => print ("Uncaught exception " ^ General.exnName ? ^ "\n") 
       end 
+
+  val computeLabel = "Compile->Run"
 
   fun onloadhook {out : string -> unit} =
       let
@@ -118,6 +148,11 @@ structure SmlToJsAppArg : APP_ARG = struct
       in out "[Loading Basis Library ";
          load_envs (Env.initial()) basislibs
       end
+
+  val dropboxKey = SOME "384tq7rviyh4lrg"
+  val fileExtensions = ["sml","sig","mlb","txt"]
+  val rightPane =
+      SOME(fn () => taga0 "iframe" [("src","js/doc/str_idx.html"),("style", "height:100%; width:100%; border:0;")])
 end
 
 structure SmlToJsCompTest = AppFun(SmlToJsAppArg)

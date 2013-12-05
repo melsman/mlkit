@@ -29,15 +29,37 @@ CODEMIRRORFILES=js/codemirror/dist/js/*.js \
  js/codemirror/dist/contrib/sml/js/tokenizesml.js \
  js/codemirror/dist/css/docs.css
 
+favicon.ico: smltojs_logo_no_text.png 
+	convert smltojs_logo_no_text.png \
+            \( -clone 0 -resize 16x16 \) \( -clone 0 -resize 32x32 \) \
+            \( -clone 0 -resize 48x48 \) \( -clone 0 -resize 64x64 \) \
+            favicon.ico
+
 SRC_ROOT=$(shell cd ..; pwd)
 SML_LIB=$(SRC_ROOT)/js
 SMLTOJS=SML_LIB=$(SML_LIB) smltojs
 CODEMIRRORFLAGS=-jslibs "../../js/codemirror/dist/js/codemirror.js"
 JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
 JSDOCFILES=js/doc/*.{html,css,js}
+DOJO=/Users/mael/dojo-release-1.9.1
+# Before running "make smltojsonline", make sure to run "make smltojs; make smltojs_basislibs"
+# in the parent directory; otherwise, certain js-files will be missing.
+# For trying smltojsonline on http://localhost:8000, first start a web-server in the smltojsonline directory:
+#   python -m SimpleHTTPServer 8000
+
+smltojsonline: Makefile doc favicon.ico
+	rm -rf smltojsonline
+	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)
+	mkdir -p smltojsonline
+	cp -p ../src/Compiler/index.html smltojsonline/
+	(cd ..; tar c `sed 's/.*src="\(.*\)".*/\1/g' < js/smltojsonline/index.html | grep '\.js'` $(THEBASISFILES) $(JSDOCFILES) $(CODEMIRRORFILES) | tar xv -C js/smltojsonline/)
+	cp -p appfun/dropbox.png appfun/nodropbox.png appfun/appfunstyle.css smltojsonline/
+	cp -pa $(DOJO)/dojo $(DOJO)/dijit smltojsonline/
+	cp -pa test/appfuntest/smltojs_logo_transparent_small.png smltojsonline/
+	cp favicon.ico smltojsonline/
 
 # Before running "make smltojs_web", make sure to run "make smltojs; make smltojs_basislibs"
-# in the parent directory; otherwise, certain js-files are missing in will not be 
+# in the parent directory; otherwise, certain js-files are missing and will not be 
 # part of the packaged tar-file.
 smltojs_web: Makefile doc
 	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)

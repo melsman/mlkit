@@ -55,6 +55,20 @@ signature JS_CORE =
                  res: 'b T} 
                 -> 'a1 * 'a2 * 'a3 * 'a4 * 'a5 -> 'b
 
+    val exec10 : {stmt: string, 
+                  arg1: string * 'a1 T, 
+                  arg2: string * 'a2 T, 
+                  arg3: string * 'a3 T, 
+                  arg4: string * 'a4 T, 
+                  arg5: string * 'a5 T, 
+                  arg6: string * 'a6 T, 
+                  arg7: string * 'a7 T, 
+                  arg8: string * 'a8 T, 
+                  arg9: string * 'a9 T, 
+                  arg10: string * 'a10 T, 
+                  res: 'b T} 
+                 -> 'a1 * 'a2 * 'a3 * 'a4 * 'a5 * 'a6 * 'a7 * 'a8 * 'a9 * 'a10 -> 'b
+
     val call0 : string * 'b T -> 'b
     val call1 : string * 'a1 T * 'b T -> 'a1 -> 'b
     val call2 : string * 'a1 T * 'a2 T * 'b T -> 'a1*'a2 -> 'b

@@ -1,6 +1,6 @@
 (** Basic Javascript and DOM operations. 
 
-Basic operations for accessing the DOM tree and basic Javascript
+Basic operations for accessing the DOM tree and basic JavaScript
 functionality.
 *)
 

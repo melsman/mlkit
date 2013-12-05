@@ -6,6 +6,7 @@ body
 }
 textarea
 {
+    font-family:courier,monospace;
     border:0;
     border-top-width:0;
     border-bottom-width:0;

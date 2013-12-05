@@ -3,8 +3,9 @@ signature APP_ARG = sig
   val application_title  : string
   val application_logo   : string
   val demoinput          : string option
-  val compute            : string -> unit   (* output on stdout goes to the output area *)
-  val about              : Js.elem
+  val compute            : string -> string -> unit   (* [compute f content] output on stdout goes to the output area *)
+  val computeLabel       : string
+  val about              : unit -> Js.elem
   val script_paths       : string list
   val onloadhook         : {out: string -> unit} -> unit
   val syntaxhighlight    : bool
@@ -38,7 +39,6 @@ struct
   val outareaDiv = taga "div" [("class","textareacontainer")] outarea
   val logarea = taga0 "textarea" [("readonly","readonly")]
   val logareaDiv = taga "div" [("class","textareacontainer")] logarea
-  val execbutton = taga0 "input" [("type","button"),("value","Compile and Run")]
   val clearoutbutton = taga0 "input" [("type","button"),("value","Clear Output")]
 
   val nodropboxPng = "nodropbox.png"
@@ -143,7 +143,7 @@ struct
         | NONE => raise Fail "createBody"
 
   val () = appendStyleLink "dijit/themes/claro/claro.css"
-  val () = appendStyleLink "codemirror/dist/css/docs.css"
+  val () = appendStyleLink "js/codemirror/dist/css/docs.css"
   val () = appendStyleLink "appfunstyle.css"
   val () = createBody ()
 
@@ -152,13 +152,7 @@ struct
           SOME e => e
         | NONE => raise Fail "getElem"
 
-(*
-  fun load scriptpath =
-      appendToTop (taga0 "script" [("type","text/javascript"), 
-                                   ("src", scriptpath)])
-
-  val () = List.app load X.script_paths
-*)
+  val () = List.app appendScript X.script_paths
 
   type editor = 
        {get: unit -> string,
@@ -178,13 +172,13 @@ struct
           val parsefile =
               "../contrib/" ^ kind ^ "/js/parse" ^ kind ^ ".js"
           val stylefile =
-              "codemirror/dist/contrib/" ^ kind ^ "/css/" ^ kind ^ "colors.css"
+              "js/codemirror/dist/contrib/" ^ kind ^ "/css/" ^ kind ^ "colors.css"
           val properties =
               let open CodeMirror.EditorProperties
                   val t = empty()
               in textWrapping t true
                ; lineNumbers t true
-               ; path t "codemirror/dist/js/"
+               ; path t "js/codemirror/dist/js/"
                ; parserfiles t [tokenizefile,parsefile]
                ; stylesheets t [stylefile] 
                ; height t "100%"
@@ -207,10 +201,9 @@ struct
          res
       end
 
-  fun exec (editor:editor) =
-      let val res = exec_print X.compute (#get editor ())
-      in out res;
-         false
+  fun compileAndRunEditor f (editor:editor) =
+      let val res = exec_print (X.compute f) (#get editor ())
+      in out res
       end
 
   open Dojo infix >>=
@@ -377,7 +370,7 @@ struct
     val alldirs : dir list ref = ref ["0"]                    (* long names *)
     val filesTable : Dropbox.table option ref = ref NONE
     val current : filename ref = ref "0"                      (* long name *)
-    val filesInTabs : (filename*string ref*(unit->string)) list ref = ref nil
+    val filesInTabs : (filename*string ref*editor) list ref = ref nil
 
     fun splitPath p =
         if p = "0" then (p,NONE)
@@ -537,7 +530,16 @@ struct
             if folderExists name then raise Fail "folder already exists"
             else if not(okFolderName name) then raise Fail "invalid new folder name"
             else newFolder0 fts name
-            
+      
+        fun currentEditor () =
+            case currentFile() of
+                NONE => NONE
+              | SOME f =>
+                case List.find (fn (f',_,_) => f = f') (!filesInTabs) of
+                    SOME t => SOME (f,#3 t)
+                  | NONE => ( log "currentEditor: error"
+                            ; NONE)
+      
     end (*local*)
 
     fun showTab n =
@@ -587,11 +589,11 @@ struct
                 end handle _ => ())
             end
 
-    fun addTab filename md5 getcontent =
-        filesInTabs := (filename,ref md5,getcontent) :: (!filesInTabs)
+    fun addTab filename md5 editor =
+        filesInTabs := (filename,ref md5,editor) :: (!filesInTabs)
         
-    fun saveFile (filename,md5ref,getcontent) =
-        let val c = getcontent()
+    fun saveFile (filename,md5ref,editor:editor) =
+        let val c = #get editor ()
             val newMd5 = MD5.fromString c
         in if !md5ref = newMd5 then ()
            else (let val r = getFileRecord filename
@@ -646,7 +648,7 @@ struct
         in if fileExists newfilepath then raise Fail "file already exists"
            else if not(folderExists newparent) then raise Fail ("target folder " ^ qq newparent ^ " does not exist")
            else case List.find (fn (n,_,_) => n = filepath) (!filesInTabs) of
-              SOME (_,_,getContent) =>              
+              SOME (_,_,editor) =>              
               ( current := "0"
               ; filesInTabs := List.filter (fn (n,_,_) => n <> filepath) (!filesInTabs)
               ; allfiles := List.map (fn n => if n <> filepath then n else newfilepath) (!allfiles)
@@ -656,7 +658,7 @@ struct
                  in Dropbox.set JsCore.string r "name" newfilepath
                   ; log ("Moved file " ^ qq filename ^ " to " ^ qq newfilename)
                  end handle _ => ())
-              ; (newfilepath,getContent())
+              ; (newfilepath,#get editor())
               )
             | NONE => raise Fail "impossible: cannot locate file in tab structure!"
         end
@@ -675,8 +677,7 @@ struct
                          ret ())))
           val editor = mkEditor id_inarea inarea  (* requires id_inarea to be in document tree *)
           val md5 = MD5.fromString content
-          val () = Files.addTab filename md5 (#get editor)
-      in editor
+      in Files.addTab filename md5 editor
       end
 
   fun button s = taga "button" [("style","height:25px; width:100px;")] (tag "b" ($s))
@@ -710,24 +711,23 @@ struct
       in run dM
       end 
 
-  fun infoDialog caption label content : unit =
-      let val but = button label
-          val content = taga "p" [("style","width:400px;")] (content & taga "p" [("style","text-align:center;")] but)
+  fun infoDialog buttonlabel caption content : unit =
+      let val but = button buttonlabel
+          val content = taga "p" [("style","width:500px;")] (content & taga "p" [("style","text-align:center;")] but)
           val dM = dialog [("title",caption)] content >>= (fn d =>
                    (Js.installEventHandler but Js.onclick (fn () => (hideDialog d; true));
                     showDialog d; ret () ))
       in run dM
-      end 
+      end
+
+  val infoDialogOk = infoDialog "Ok"
 
   fun menuHandle_NewNamedFile tabsmap fts () : unit =
       let val content = "(* File created " ^ Date.toString(Date.fromTimeLocal (Time.now())) ^ " *)\n"
       in withDialog {caption="New File", button="Create", label="Name",
                      suggestion=Files.suggestNewFileName "Untitled",
                      validate=Files.newFile fts content,
-                     cont=fn s => let val editor = addEditorTab tabsmap s content
-                                  in Js.installEventHandler execbutton Js.onclick (fn () => exec editor);
-                                     ()
-                                  end}
+                     cont=fn s => addEditorTab tabsmap s content}
       end
 
   fun menuHandle_MoveFile tabsmap fts closetab () : unit =
@@ -739,7 +739,7 @@ struct
                          validate=Files.move fts parentpath filename,
                          cont=fn(newfilepath,content) =>
                                  (closetab path;
-                                  addEditorTab tabsmap newfilepath content; ())}
+                                  addEditorTab tabsmap newfilepath content)}
            | (folderpath, NONE) =>
              notify_err "Renaming of folders not supported"
 (*
@@ -750,7 +750,7 @@ struct
                             validate=Files.move fts parentpath foldername,
                             cont=fn(newfolderpath,content) =>
                                     (closetabsWith folderpath;
-                                     addEditorTab tabsmap newfilepath content; ())}
+                                     addEditorTab tabsmap newfilepath content)}
 *)
       end
 
@@ -766,8 +766,8 @@ struct
       in confirmDialog "Confirm Deletion" "Delete" ($msg) (fn () => Files.delete fts closetab)
       end
 
-  fun menuHandle_Export () : unit = ()
-  fun menuHandle_Import () : unit = ()
+  fun menuHandle_Export () : unit = infoDialogOk "Files Export to Zip" ($"Not yet implemented")
+  fun menuHandle_Import () : unit = infoDialogOk "Files Import from Zip" ($"Not yet implemented")
 
   fun menuHandle_NewFolder fts () : unit =
       withDialog {caption="New Folder", button="Create", label="Name",
@@ -778,18 +778,13 @@ struct
   fun treeHandle_LoadFile tabsmap selecttab (lname,name) : unit =
       if Files.okFolderPath lname then Files.current := lname
       else case Files.loadFileContent lname of
-               SOME content =>
-               let val editor = addEditorTab tabsmap lname content
-               in ()
-               end
+               SOME content => addEditorTab tabsmap lname content
              | NONE => selecttab lname
 
   fun menuHandle_OpenDemo tabsmap fts demo () =
       let val name = Files.suggestNewFileName "Demo"
           val path = Files.newFile fts demo name
-          val editor = addEditorTab tabsmap path demo
-      in Js.installEventHandler execbutton Js.onclick (fn () => exec editor);
-         ()
+      in addEditorTab tabsmap path demo
       end
 
   fun menuHandle_DropboxSignIn key () =
@@ -817,18 +812,30 @@ struct
                           setNoDropboxPng())))
       end
 
-  fun poweredby() =
-      let fun link l t = taga "a" [("href",l), ("target","_blank")] ($t)
+  fun menuHandle_CompileAndRun () =
+      case Files.currentEditor() of
+          SOME (f,e) => compileAndRunEditor f e
+        | NONE => log "No file selected"
+
+  fun poweredby () =
+      let fun link l t () = taga "a" [("href",l), ("target","_blank")] ($t)
           val linkSMLtoJs = link "http://www.smlserver.org/smltojs" "SMLtoJs"
           val linkDojo = link "http://dojotoolkit.org/" "Dojo"
+          val linkCodeMirror = link "http://codemirror.net" "CodeMirror" 
           val linkDropboxdatastore = link "https://www.dropbox.com/developers/datastore" "Dropbox datastore"
-      in $"This application is based on "
-          & linkSMLtoJs 
-          & $", a Standard ML to JavaScript compiler. The front-end uses "
-          & linkDojo 
-          & $" and allows for the user to save source files in a personal and secure "
-          & linkDropboxdatastore 
-          & $"."
+          val linkSourceForgeMLKitRep = link "http://sourceforge.net/apps/mediawiki/mlkit" "SourceForge MLKit Repository"
+      in tag "p" 
+             ($"This IDE is based on " & linkSMLtoJs() & 
+              $", a Standard ML to JavaScript compiler. The front-end uses " & linkDojo() & 
+              $" and " & linkCodeMirror() & $". The IDE " & 
+              $" allows for the user to save source files in a personal and secure " & linkDropboxdatastore() & 
+              $".") &
+         tag "p" 
+             ($" The sources for this IDE are" &
+              $" available by download from the SourceForge MLKit repository and are distributed" &
+              $" under the GPL2 license; some parts of the sources are also available under the MIT license." &
+              $" For information about licenses, please consult the sources, which are available" & 
+              $" from the " & linkSourceForgeMLKitRep() & $".")
       end
 
   fun menu tabs fts closetab =
@@ -856,42 +863,36 @@ struct
                         in run m                           
                         end);
         ret ()))) >>= (fn () =>
-      Menu.item m_left ("Compile&amp;Run", NONE, put "compile&run") >>= (fn () =>
+      Menu.item m_left (X.computeLabel, NONE, menuHandle_CompileAndRun) >>= (fn () =>
       Menu.item m_left ("Clear output", NONE, clearoutarea) >>= (fn () =>
       pane [("region", "left"),("style","padding:0;padding-right:10;background-color:#eeeeee;")] logo >>= (fn logo =>
       Menu.mk [("region", "right"),menuStyle] >>= (fn (w_right, m_right) =>
       Menu.menu m_right "Help" >>= (fn m_help =>
-      Menu.item m_help ("About", SOME EditorIcon.newPage, fn() => infoDialog ("About " ^ X.application_title) "Ok" X.about) >>= (fn () =>
-      Menu.item m_help ("Powered by...", SOME EditorIcon.newPage, fn() => infoDialog "Powered by..." "Ok" (poweredby())) >>= (fn () =>
+      Menu.item m_help ("About", SOME EditorIcon.newPage, fn() => infoDialogOk ("About " ^ X.application_title) (X.about())) >>= (fn () =>
+      Menu.item m_help ("Powered by...", SOME EditorIcon.newPage, fn() => infoDialogOk "Powered by..." (poweredby())) >>= (fn () =>
       layoutContainer [("region", "top"),("style","height:30px;")] [logo, w_left, w_right]
       )))))))))))))))))
 
   val everything =
-      let val authElement = tag0 "div"
-      in advTabContainer [("region", "top"),("splitter","true"),("style","height:70%;border:0;"),("tabPosition","bottom")] >>= (fn (tabsmap,{select=selecttab,close=closetab}) =>
-         pane [("title","Dropbox Status"),("region","bottom"),("style","height:30px;")] authElement >>= (fn authpane =>
-         treeStore [[("id", "0"),("name","/"),("kind","folder")]] >>= (fn fts =>
-         tree [("title","Files"),("region", "left"),("splitter","true"), ("style", "width:20%;")] "0" (treeHandle_LoadFile tabsmap selecttab) fts >>= (fn left =>
-         menu tabsmap fts closetab >>= (fn top =>
-         pane [("title","Output")] outareaDiv >>= (fn outputpane =>
-         pane [("title","Message Log")] logareaDiv >>= (fn logpane =>
-         tabContainer [("region", "center"),("style","height:30%;"),("tabPosition","bottom")] [outputpane,logpane] >>= (fn centerbot =>
-         borderContainer [("region", "center")] [#1 tabsmap,centerbot] >>= (fn center =>
-         (case X.rightPane of
-              SOME generator => pane [("region", "right"), ("splitter","true")] (generator()) >>= (fn p => ret [p])
-            | NONE => ret [])  >>= (fn rights =>
-         borderContainer [("style", "height: 100%; width: 100%;")] ([left,top,center] @ rights)
-         ))))))))))
-      end
+      advTabContainer [("region", "top"),("splitter","true"),("style","height:70%;border:0;"),("tabPosition","bottom")] >>= (fn (tabsmap,{select=selecttab,close=closetab}) =>
+      treeStore [[("id", "0"),("name","/"),("kind","folder")]] >>= (fn fts =>
+      tree [("title","Files"),("region", "left"),("splitter","true"), ("style", "width:20%;")] "0" (treeHandle_LoadFile tabsmap selecttab) fts >>= (fn left =>
+      menu tabsmap fts closetab >>= (fn top =>
+      pane [("title","Output")] outareaDiv >>= (fn outputpane =>
+      pane [("title","Message Log")] logareaDiv >>= (fn logpane =>
+      tabContainer [("region", "center"),("style","height:30%;"),("tabPosition","bottom")] [outputpane,logpane] >>= (fn centerbot =>
+      borderContainer [("region", "center")] [#1 tabsmap,centerbot] >>= (fn center =>
+      (case X.rightPane of
+           SOME generator => pane [("region", "right"), ("splitter","true")] (generator()) >>= (fn p => ret [p])
+         | NONE => ret [])  >>= (fn rights =>
+      borderContainer [("style", "height: 100%; width: 100%;")] ([left,top,center] @ rights)
+      )))))))))
 
   val () = Js.appendChild (getElem "body") notifyAreaElem
   val () = Js.appendChild (getElem "body") dropboxAreaElem
 
   val () = attachToElement (getElem "body") everything
                                 
-(*
-<table class="notify_container" width="100%"><tr><td width="50%"></td><td class="notify_ok" style="opacity:0.4;">Notifidfdfdfdfdfdfcation!</td><td width="50%"></td></tr></table>                    
-*)
   fun onload() =
       let
         val () = cleanupBody()

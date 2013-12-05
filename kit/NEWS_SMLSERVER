@@ -1,5 +1,8 @@
 File NEWS_SMLSERVER
 
+ * mael 2013-11-19: The SMLserver sources are now ported to work with
+   Apache 2.4 and Postgres 9.1 (through ODBC).
+
            **** SMLserver version 4.3.2 is released ****
 
  * mael 2007-04-12: The book "SMLserver - A Functional Approach to Web

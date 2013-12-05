@@ -1,3 +1,8 @@
+mael 2013-11-21: Create a Prims.concatWith to allow for inlining of
+JsCore.exec2, etc. Currently, all JavaScript interaction (except for
+calls to JsCore.exec1) is done through the creation of Function
+objects...
+
 mael 2009-10-10: Dynamic types and values.
 
 signature DYN_TYPE = sig

@@ -24,14 +24,14 @@ structure JsCore :> JS_CORE =
                arg1=(n1:string,t1: 'a1 T), 
                arg2=(n2:string,t2: 'a2 T), 
                res: 'b T} (v1: 'a1, v2: 'a2) : 'b =
-        prim("execStmtJS", (stmt, String.concatWith "," [n1,n2], v1,v2))
+        prim("execStmtJS", (stmt, n1 ^ "," ^ n2, v1,v2))
 
     fun exec3 {stmt:string, 
                arg1=(n1:string,t1: 'a1 T), 
                arg2=(n2:string,t2: 'a2 T), 
                arg3=(n3:string,t3: 'a3 T), 
                res: 'b T} (v1: 'a1, v2: 'a2, v3: 'a3) : 'b =
-        prim("execStmtJS", (stmt, String.concatWith "," [n1,n2,n3], v1,v2,v3))
+        prim("execStmtJS", (stmt, n1 ^ "," ^ n2 ^ "," ^ n3, v1,v2,v3))
 
     fun exec4 {stmt:string, 
                arg1=(n1:string,t1: 'a1 T), 
@@ -39,7 +39,7 @@ structure JsCore :> JS_CORE =
                arg3=(n3:string,t3: 'a3 T), 
                arg4=(n4:string,t4: 'a4 T), 
                res: 'b T} (v1: 'a1, v2: 'a2, v3: 'a3, v4: 'a4) : 'b =
-        prim("execStmtJS", (stmt, String.concatWith "," [n1,n2,n3,n4], v1,v2,v3,v4))
+        prim("execStmtJS", (stmt, n1 ^ "," ^ n2 ^ "," ^ n3 ^ "," ^ n4, v1,v2,v3,v4))
 
     fun exec5 {stmt:string, 
                arg1=(n1:string,t1: 'a1 T), 
@@ -48,7 +48,24 @@ structure JsCore :> JS_CORE =
                arg4=(n4:string,t4: 'a4 T), 
                arg5=(n5:string,t5: 'a5 T), 
                res: 'b T} (v1: 'a1, v2: 'a2, v3: 'a3, v4: 'a4, v5: 'a5) : 'b =
-        prim("execStmtJS", (stmt, String.concatWith "," [n1,n2,n3,n4,n5], v1,v2,v3,v4,v5))
+        prim("execStmtJS", (stmt, n1 ^ "," ^ n2 ^ "," ^ n3 ^ "," ^ n4 ^ "," ^ n5, v1,v2,v3,v4,v5))
+
+    fun exec10 {stmt:string,
+                arg1=(n1:string,t1: 'a1 T),
+                arg2=(n2:string,t2: 'a2 T),
+                arg3=(n3:string,t3: 'a3 T),
+                arg4=(n4:string,t4: 'a4 T),
+                arg5=(n5:string,t5: 'a5 T),
+                arg6=(n6:string,t6: 'a6 T),
+                arg7=(n7:string,t7: 'a7 T),
+                arg8=(n8:string,t8: 'a8 T),
+                arg9=(n9:string,t9: 'a9 T),
+                arg10=(n10:string,t10: 'a10 T),
+                res: 'b T} (v1: 'a1, v2: 'a2, v3: 'a3, v4: 'a4, v5: 'a5,
+                            v6: 'a6, v7: 'a7, v8: 'a8, v9: 'a9, v10: 'a10) : 'b =
+        prim("execStmtJS", (stmt, n1 ^ "," ^ n2 ^ "," ^ n3 ^ "," ^ n4 ^ "," ^ n5 ^ "," ^
+                                  n6 ^ "," ^ n7 ^ "," ^ n8 ^ "," ^ n9 ^ "," ^ n10,
+                            v1,v2,v3,v4,v5,v6,v7,v8,v9,v10))
 
     fun call0 (f: string, tb: 'b T) : 'b =
         prim("callJS", f)
@@ -62,16 +79,9 @@ structure JsCore :> JS_CORE =
         prim("callJS", (f,v1,v2,v3,v4))
 
     fun getProperty (fp: foreignptr) (t:'a T) (s:string) : 'a =
-        exec2 {stmt="return fp[s];",
-               arg1=("fp",fptr),
-               arg2=("s",string),
-               res=t} (fp,s)
+        prim("execStmtJS", ("return fp[s];", "fp,s", fp,s))
 
     fun setProperty (fp: foreignptr) (t:'a T) (s:string) (v:'a) : unit =
-        exec3 {stmt="fp[s] = v;",
-               arg1=("fp",fptr),
-               arg2=("s",string),
-               arg3=("v",t),
-               res=unit} (fp,s,v)
+        prim("execStmtJS", ("fp[s] = v;", "fp,s,v", fp, s, v))
 
   end

@@ -56,7 +56,7 @@ Requirements:
 
  1) a working Apache2 webserver 
  2) apxs2 installed (e.g., apache2-threaded-dev)
- 3) mlkit >= 4.3.0 compiled and installed
+ 3) mlkit >= 4.3.6 compiled and installed
  4) bison, flex
 
 SMLserver installation after unpacking the SMLserver sources into
@@ -120,7 +120,7 @@ BUILDING SMLSERVER FROM THE SOURCES WITH Postgresql ACCESS
 
 Additional requirements: 
 
- 1) postgresql (e.g., Debian package postgresql-8.1)
+ 1) postgresql (e.g., Debian package postgresql-9.1)
  2) unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev, odbc-postgresql)
 
 Do as above, but with the changes below.
@@ -144,7 +144,7 @@ After make install_smlserver:
 
 Make sure postgresql is started:
 
- $ sudo /etc/init.d/postgresql-8.1 restart
+ $ sudo /etc/init.d/postgresql-9.1 restart
 
 Create a database user with the same name as your login name on
 the Linux box:
