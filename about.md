@@ -9,7 +9,7 @@ _By Martin Elsman and Mads Tofte_
 
 ### History, Goals and Approach
 
-<img width="160" alt="Old logo" align="right" src="/images/Oldlogo.gif">
+<img width="160" alt="Old logo" align="right" src="{{BASE_PATH}}/images/Oldlogo.gif">
 
 The development of the MLKit began in 1989 at Edinburgh
 University. Originally, the project had two purposes:
