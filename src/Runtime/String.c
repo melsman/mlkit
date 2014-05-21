@@ -122,7 +122,7 @@ size_t
 chrCharML(size_t charNrML, uintptr_t exn) 
 {
   size_t charNrC = convertIntToC(charNrML); 
-  if ( charNrC >= 0 && charNrC <= 255 ) 
+  if ( charNrC <= 255 ) 
     {
       return convertIntToML (charNrC); 
     }

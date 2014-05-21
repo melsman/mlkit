@@ -144,7 +144,7 @@ static int PsKind;
 
 static void PsPathNew(Kind kind,int size)
 {
-  size = size; /* Ignore size */
+  /* size = size; Ignore size */
   PathColour = -1;
   PathWidth = -1;
   PsKind = kind;
