@@ -7,7 +7,7 @@ group: navigation
 
 _By Martin Elsman and Mads Tofte_
 
-=== History, Goals and Approach
+### History, Goals and Approach
 
 <img width="160" alt="Old logo" align="right" src="/images/Oldlogo.gif">
 
@@ -51,7 +51,7 @@ with a native backend for Intel's x86 architecture and a bytecode
 backend. Many more features have been added to the MLKit since version
 3.0; see the documentation for details.
 
-=== Acknowledgments
+### Acknowledgments
 
 The MLKit is software partly delivered by the DART research project,
 which is sponsored by the Danish Research Council for Natural
@@ -59,7 +59,7 @@ Sciences.  People whom we wish to thank for contributing with bug
 reports include, but are not limited to (in alphabetical order) Johnny
 Andersen, Ken Friis Larsen, Daniel Wang, and Stephen Weeks.
 
-=== Other Standard ML Implementations
+### Other Standard ML Implementations
 
 * [SML/NJ](http://www.smlnj.org)
 * [Moscow ML](http://www.itu.dk/~sestoft/mosml.html)
