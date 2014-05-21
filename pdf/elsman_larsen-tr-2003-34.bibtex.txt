@@ -1,0 +1,9 @@
+@TechReport{elsman-larsen-03,
+  author = 	"Martin Elsman and Ken Friis Larsen",
+  title = 	"Typing {XHTML} Web Applications in {SMLserver}",
+  institution =	"IT University of Copenhagen, Denmark",
+  year = 	"2003",
+  month =       "October",
+  type = 	"Technical Report",
+  number = 	"ITU-TR-2003-34"
+}

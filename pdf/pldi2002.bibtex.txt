@@ -1,0 +1,10 @@
+@InProceedings{het02,
+  author =      "Niels Hallenberg and Martin Elsman and Mads Tofte",
+  title =       "Combining Region Inference and Garbage Collection",
+  booktitle =   "ACM SIGPLAN Conference on Programming
+                 Language Design and Implementation (PLDI'02)",
+  year =        "2002",
+  publisher =   "ACM Press",
+  note =        "Berlin, Germany",
+  month =       "June"
+}

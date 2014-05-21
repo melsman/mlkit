@@ -1,0 +1,8 @@
+@InProceedings{elsman_tic98,
+  author = 	 {Martin Elsman},
+  title = 	 {Polymorphic Equality---No Tags Required},
+  booktitle = 	 {Proceedings of the Second International Workshop on Types in Compilation},
+  year = 	 {1998},
+  publisher = 	 {Springer-Verlag},
+  month = 	 {March}
+}

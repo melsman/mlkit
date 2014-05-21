@@ -1,0 +1,9 @@
+@InProceedings{elsman99,
+  author = 	 {Martin Elsman},
+  title = 	 {Static Interpretation of Modules},
+  booktitle = 	 {Procedings of Fourth International Conference on Functional Programming (ICFP'99)},
+  year = 	 {1999},
+  month =        {September},
+  pages =        {208--219},
+  publisher =    {ACM Press}
+}

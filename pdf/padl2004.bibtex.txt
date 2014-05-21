@@ -1,0 +1,8 @@
+@InProceedings{el04,
+  author = 	 {Martin Elsman and Ken Friis Larsen},
+  title = 	 {Typing {XHTML} {Web} Applications in {ML}},
+  booktitle = 	 {International Symposium on Practical Aspects of Declarative Languages (PADL'04)},
+  year = 	 {2004},
+  month =        {June},
+  publisher =    {Springer-Verlag}
+}

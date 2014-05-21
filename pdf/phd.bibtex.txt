@@ -1,0 +1,10 @@
+@phdthesis
+     {
+      elsman_phd_thesis,
+      author    = "Martin Elsman",
+      title     = "Program Modules, Separate Compilation, and
+                  Intermodule Optimisation",
+      school    = "Department of Computer Science, University of Copenhagen",
+      year      = "1999",
+      month     = "January"
+     }

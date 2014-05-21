@@ -1,0 +1,10 @@
+@article{tbeh04,
+ author = {Mads Tofte and Lars Birkedal and Martin Elsman and Niels Hallenberg},
+ title = {A Retrospective on Region-Based Memory Management},
+ journal = {Higher Order Symbolic Computation},
+ volume = {17},
+ number = {3},
+ year = {2004},
+ pages = {245--265},
+ publisher = {Kluwer Academic Publishers}
+}

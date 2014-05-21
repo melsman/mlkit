@@ -1,0 +1,8 @@
+@InProceedings{eh03,
+  author = 	 {Martin Elsman and Niels Hallenberg},
+  title = 	 {Web Programming with {SMLserver}},
+  booktitle = 	 {Fifth International Symposium on Practical Aspects of Declarative Languages (PADL'03)},
+  year = 	 {2003},
+  month =        {January},
+  publisher =    {Springer-Verlag}
+}

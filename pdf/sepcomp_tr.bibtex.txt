@@ -1,0 +1,9 @@
+@TechReport{sepcomptr08,
+  author = 	"Martin Elsman",
+  title = 	"A Framework for Cut-Off Incremental Recompilation and Inter-Module Optimization",
+  institution = "IT University of Copenhagen",
+  year = 	"2008",
+  month =       "April",
+  type = 	"Technical Report",
+  address = 	"Rued Langgaards Vej 7, DK-2300 Copenhagen S, Denmark"
+}

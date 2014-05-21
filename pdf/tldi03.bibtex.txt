@@ -1,0 +1,8 @@
+@InProceedings{elsman:tldi03,
+  author = 	 {Martin Elsman},
+  title = 	 {Garbage Collection Safety for Region-based Memory Management},
+  booktitle = 	 {Proceedings of ACM SIGPLAN Workshop on Types in Language Design and Implementation (TLDI'03)},
+  year = 	 {2003},
+  month =        {January},
+  publisher =    {ACM Press}
+}

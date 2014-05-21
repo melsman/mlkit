@@ -1,0 +1,17 @@
+<div class="row-fluid">
+  <div class="span8">
+    {{ content }}
+  </div>
+  <div class="span4">
+    <div class="well sidebar-nav">
+      <ul class="nav nav-list">
+        <li class="nav-header">Most Recent Posts</li>
+        {% for post in site.posts limit: 10 %}
+          <li><a href="{{ BASE_PATH }}{{ post.url }}">{{ post.date | date_to_string }} &raquo; {{ post.title }}</a></li>
+        {% endfor %}
+        <li class="nav-header">...</li>
+      </ul>
+      <center><a href="archive.html" class="btn">All Posts &raquo;</a></center>
+    </div>
+  </div>
+</div>

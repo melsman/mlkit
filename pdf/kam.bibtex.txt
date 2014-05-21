@@ -1,0 +1,10 @@
+@TechReport{kam02,
+  author = 	 {Martin Elsman and Niels Hallenberg},
+  title = 	 {A Region-Based Abstract Machine for the {ML Kit}},
+  institution =  {Royal Veterinary and Agricultural University of Denmark and IT University of Copenhagen},
+  year = 	 {2002},
+  month =        {August},
+  day =          {20},
+  number = 	 {TR-2002-18},
+  note =	 {IT University Technical Report Series}
+}

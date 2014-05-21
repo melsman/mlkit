@@ -1,0 +1,8 @@
+@Manual{smlserver07,
+  title       = {SMLserver---A Functional Approach to Web Publishing (Second Edition)},
+  author      = {Martin Elsman and Niels Hallenberg and Carsten Varming},
+  institution = {The IT University of Copenhagen, Denmark},
+  month       = {April},
+  year        = {2007},
+  note        = {(174 pages). Available via \texttt{http://www.smlserver.org}}
+}

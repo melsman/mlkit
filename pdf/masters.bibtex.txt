@@ -1,0 +1,10 @@
+@mastersthesis
+     {
+      elsman_masters_thesis,
+      author    = "Martin Elsman",
+      title     = "A Portable {S}tandard {ML} Implementation",
+      school    = "Technical University of Denmark, Department of
+		  Computer Science",
+      year      = "1994",
+      month     = "August"
+     }

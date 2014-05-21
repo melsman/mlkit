@@ -1,0 +1,10 @@
+@TechReport{elsman04,
+  author = 	"Martin Elsman",
+  title = 	"Type-Specialized Serialization with Sharing",
+  institution = "IT University of Copenhagen",
+  year = 	"2004",
+  month =       "February",
+  type = 	"Technical Report",
+  number = 	"ITU-TR-2004-43",
+  address = 	"Glentevej 67, DK-2400 Copenhagen NV, Denmark"
+}

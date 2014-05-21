@@ -1,0 +1,7 @@
+@InProceedings{tfp05elsman,
+  author = 	 {Martin Elsman},
+  title = 	 {Type-Specialized Serialization with Sharing},
+  booktitle = 	 {Sixth Symposium on Trends in Functional Programming (TFP'05)},
+  year = 	 {2005},
+  month =        {September}
+}

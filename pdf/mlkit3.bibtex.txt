@@ -1,0 +1,10 @@
+@TechReport{mlkit3,
+  author      = {Mads Tofte and Lars Birkedal and Martin Elsman 
+                 and Niels Hallenberg and Tommy H{\o}jfeld Olesen and
+                 Peter Sestoft and Peter Bertelsen},
+  title       = {Programming with Regions in the {ML Kit} (for Version 3)},
+  institution = {Department of Computer Science, University of Copenhagen},
+  year        = {1998},
+  month       = {December},
+  note        = {Technical Report 98/25}
+}
