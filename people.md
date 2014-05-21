@@ -5,7 +5,7 @@ group: navigation
 ---
 {% include JB/setup %}
 
-=== Current Maintainer
+=== Current Maintainer ===
 
 * [Martin Elsman](http://www.elsman.com)
 
