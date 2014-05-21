@@ -61,18 +61,6 @@ if test x"${enable_SMLserver}" != x && test "${enable_SMLserver}" = yes; then
   AC_SUBST(oracle_dir)
 fi;
 
-AC_MSG_CHECKING(svn rev)
-SVN_REV=$(svn info | awk '($1 == "Revision:"){print $2}')
-
-if test -z "$SVN_REV"; then
-	AC_MSG_ERROR([couldn't find svn rev]);
-fi
-if echo $SVN_REV | grep -q '[^0-9]'; then
-	AC_MSG_ERROR([bad svn rev: $SVN_REV]);
-fi
-AC_MSG_RESULT($SVN_REV)
-AC_SUBST(SVN_REV)
-
 AC_MSG_CHECKING(configure date)
 DATE=`date -u '+%Y-%m-%dT-%H:%M:%S'`
 AC_SUBST(DATE)

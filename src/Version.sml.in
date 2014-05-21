@@ -5,6 +5,5 @@
 structure Version =
   struct
     val version = "@PACKAGE_VERSION@"
-    val svn_rev = "@SVN_REV@"
     val configure_date = "@DATE@" 
   end
