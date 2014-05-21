@@ -4,11 +4,6 @@ layout: front
 ---
 {% include JB/setup %}
 
-<div class="row-fluid">
-  <div class="span5">
-     <img width="160" alt="Martin Elsman" align="left" src="/images/mlkit_logo.png">
-  </div>
-  <div class="span7">
 <h4>MLKit Properties</h4>
 
 <dl><dt>SML'97.</dt><dd>The MLKit compiler covers all of Standard ML,
@@ -73,5 +68,3 @@ from the download page. Source code distributions are available as
 well.</dd>
 
 </dl>
-  </div>
-</div>
