@@ -97,8 +97,8 @@ the bin directory:
     $ gv -seascape region.ps
 
 Figure 2 shows the region profile obtained with the commands shown above.
-<div width="200" align="right" style="float:right;width:200;">
-<img width="200" src="{{BASE_PATH}}/images/mlkit_compiling_kitkbjul9.png"/>
+<div width="400" style="float:right;width:200;">
+<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9.png"/>
 <div>Figure 2. A region profile of the MLKit compiling the program
 kitkbjul9.sml, which is located in the test directory.  Controlling
 Profiling Options.</div>
@@ -113,8 +113,8 @@ can be found by looking in the file bin/mlkit.  The figure below shows
 a region profile similar to the one above except that the number of
 profile ticks is increased using the option -microsec 100000.
 
-<div width="200" align="right" style="float:right;width:200;">
-<img width="200" src="{{BASE_PATH}}/images/mlkit_compiling_kitkbjul9_400msec.png"/>
+<div width="400" style="float:right;width:200;">
+<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9_400msec.png"/>
 <div>Figure 3. A region profile of the MLKit compiling the program kitkbjul9.sml. Memory is traversed once every 0.1 second.
 </div>
 </div>
