@@ -87,8 +87,8 @@ University of Copenhagen. 1996. [pdf]({{BASE_PATH}}/pdf/kothesis.pdf).
 * Martin Elsman. __A Portable Standard ML Implementation__. Master's
 Thesis. Technical University of Denmark. August 1994. [pdf]({{BASE_PATH}}/pdf/masters.pdf), [bibtex]({{BASE_PATH}}/pdf/masters.bibtex.txt).
 
-* Magnus Vejlstrup. Multiplicity Inference. Master's Thesis 94-9-1. Department of Computer Science, University of
-Copenhagen. 1994.
+* Magnus Vejlstrup. __Multiplicity Inference__. Master's Thesis 94-9-1. Department of Computer Science, University of
+Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
 
@@ -123,8 +123,7 @@ Copenhagen. Januar 2006. [pdf]({{BASE_PATH}}/pdf/mlkit-4.3.0.pdf), [bibtex]({{BA
 
 * Martin Elsman and Niels Hallenberg. __SMLserver - A Functional Approach
 to Web Publishing__. Royal Veterinary and Agricultural University of
-Denmark and IT University of Copenhagen. February, 2002. [pdf]({{BASE_PATH}}/pdf/),
-bibtex. Newer edition above!
+Denmark and IT University of Copenhagen. February, 2002. Newer edition above!
 
 * Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
 Højfeld Olesen, Peter Sestoft and Peter Bertelsen. __Programming with
