@@ -67,7 +67,7 @@ on Principles of Programming Languages_. January 1996. [pdf]({{BASE_PATH}}/pdf/p
 * Mads Tofte and Jean-Pierre Talpin. __Implementation of the Typed
 Call-by-value lambda-calculus using a Stack of Regions__. In
 _Proceedings of the 21st Annual ACM SIGPLAN-SIGACT Symposium on
-Principles of Programming Languages_. 1994.
+Principles of Programming Languages_. 1994. [pdf]({{BASE_PATH}}/pdf/popl94.pdf).
 
 ### Theses
 
