@@ -8,6 +8,8 @@ group: navigation
 
 ### MLKit User's Guide 
 
+<img width="160" alt="Old logo" align="right" src="{{BASE_PATH}}/images/books.gif">
+
 * Installation
 * [Bootstrapping]({{BASE_PATH}}/bootstrap.html)
 * [MLKit Basis Library Implementation]({{BASE_PATH}}/basis.html)
