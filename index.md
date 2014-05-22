@@ -4,8 +4,6 @@ layout: front
 ---
 {% include JB/setup %}
 
-### MLKit Properties
-
 <!-- Example row of columns -->
 <div class="row">
   <div class="col-lg-4">
@@ -32,7 +30,7 @@ layout: front
           management. Memory allocation directives (both allocation and
           deallocation) are inferred by the compiler, which uses a number of
           program analyses concerning lifetimes and storage layout.</p>
-       <p><a class="btn btn-primary" href="{{BASE_PATH}}/doc.html" role="button">View details &raquo;</a></p>
+       <p><a class="btn btn-primary" href="{{BASE_PATH}}/doc.html" role="button">View documentation &raquo;</a></p>
   </div>
 </div>
 
