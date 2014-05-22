@@ -10,7 +10,7 @@ MLKit. An overview of the process is pictured in Figure 1.
 
 <div width="400" style="float:right">
 <img width="400" src="{{BASE_PATH}}/images/Bootstrap.png" />
-<div style="max-width:400;font-size:80%;"><b>Figure 1. The bootstrapping process illustrated using T-diagrams. Each
+<div style="max-width:400;width:auto;height:auto;font-size:80%;"><b>Figure 1. The bootstrapping process illustrated using T-diagrams. Each
 compiler in the diagram is characterized by three languages: the
 source language that it compiles, the target language that it
 generates code for, and the implementation language that it is written
