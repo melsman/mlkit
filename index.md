@@ -6,35 +6,35 @@ layout: front
 
 ### MLKit Properties
 
-   <!-- Example row of columns -->
-      <div class="row">
-        <div class="col-lg-4">
-          <h2>SML'97</h2>
-          <p>The MLKit compiler covers all of Standard ML,
-as defined in the 1997 edition of the Definition of Standard ML. The
-MLKit implements most of the latest Standard ML Basis Library
-specification.</p><img width="100" alt="The Definition" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
-        </div>
-        <div class="col-lg-4">
-          <h2>Supports ML Basis Files</h2>
-          <p>The MLKit compiles large
-programs, including itself, around 80.000 lines of Standard ML plus
-the Standard ML Basis Library. The support for ML Basis Files makes it
-easy to compile large programs with different Standard ML
-compilers. Currently, both MLton and the MLKit supports the concept of
-ML Basis Files. The MLKit has a system, based on MLB-files, for
-avoiding unnecessary recompilation upon changes of source code.</p>
-          <p><a class="btn btn-primary" href="{{BASE_PATH}}/mlbasisfiles.html" role="button">View details &raquo;</a></p>
-       </div>
-        <div class="col-lg-4">
-          <h2>Region-Based Memory Management</h2>
-          <p>The MLKit integrates reference-tracing garbage collection with region-based memory
-management. Memory allocation directives (both allocation and
-deallocation) are inferred by the compiler, which uses a number of
-program analyses concerning lifetimes and storage layout.</p>
-          <p><a class="btn btn-primary" href="{{BASE_PATH}}/doc.html" role="button">View details &raquo;</a></p>
-        </div>
-      </div>
+<!-- Example row of columns -->
+<div class="row">
+  <div class="col-lg-4">
+     <h2>SML'97</h2>
+       <p>The MLKit compiler covers all of Standard ML,
+          as defined in the 1997 edition of the Definition of Standard ML. The
+          MLKit implements most of the latest Standard ML Basis Library
+          specification.</p><img width="100" alt="The Definition" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
+   </div>
+   <div class="col-lg-4">
+     <h2>Supports ML Basis Files</h2>
+       <p>The MLKit compiles large
+          programs, including itself, around 80.000 lines of Standard ML plus
+          the Standard ML Basis Library. The support for ML Basis Files makes it
+          easy to compile large programs with different Standard ML
+          compilers. Currently, both MLton and the MLKit supports the concept of
+          ML Basis Files. The MLKit has a system, based on MLB-files, for
+          avoiding unnecessary recompilation upon changes of source code.</p>
+       <p><a class="btn btn-primary" href="{{BASE_PATH}}/mlbasisfiles.html" role="button">View details &raquo;</a></p>
+   </div>
+   <div class="col-lg-4">
+     <h2>Region-Based Memory Management</h2>
+       <p>The MLKit integrates reference-tracing garbage collection with region-based memory
+          management. Memory allocation directives (both allocation and
+          deallocation) are inferred by the compiler, which uses a number of
+          program analyses concerning lifetimes and storage layout.</p>
+       <p><a class="btn btn-primary" href="{{BASE_PATH}}/doc.html" role="button">View details &raquo;</a></p>
+  </div>
+</div>
 
 ### Other features
 
