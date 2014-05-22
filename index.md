@@ -34,8 +34,8 @@ the MLKit is available from the Documentation page.
 
 #### Other features
 
-Open Source License:
-MLKit is open source; it is
+Open Source License
+: MLKit is open source; it is
 distributed under the GNU General Public License (GPL). The runtime
 system and libraries are also distributed under the MIT licence, thus,
 executables constructed with the MLKit are non-restricted.
