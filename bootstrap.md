@@ -98,12 +98,15 @@ the bin directory:
 
 Figure 2 shows the region profile obtained with the commands shown above.
 
-<div width="400" style="float:right;width:200;">
-<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9.png"/>
-<div>Figure 2. A region profile of the MLKit compiling the program
-kitkbjul9.sml, which is located in the test directory.  Controlling
-Profiling Options.</div>
+<div style="float:right; margin-left:20px;margin-bottom:20px;margin-top:20px;">
+<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9.png" />
+<div style="max-width:400px;width:auto;height:auto;font-size:80%;"><b>
+Figure 2. A region profile of the MLKit compiling the program
+kitkbjul9.sml, which is located in the test directory.
+</b></div>
 </div>
+
+### Controlling Profiling Options.
 
 To control the profiling options at runtime as described in the
 Section on Region Profiling, we use the program mlkit.img in the bin
@@ -114,10 +117,11 @@ can be found by looking in the file bin/mlkit.  The figure below shows
 a region profile similar to the one above except that the number of
 profile ticks is increased using the option -microsec 100000.
 
-<div width="400" style="float:right;width:200;">
-<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9_400msec.png"/>
-<div>Figure 3. A region profile of the MLKit compiling the program kitkbjul9.sml. Memory is traversed once every 0.1 second.
-</div>
+<div style="float:right; margin-left:20px;margin-bottom:20px;margin-top:20px;">
+<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9_400msec.png" />
+<div style="max-width:400px;width:auto;height:auto;font-size:80%;"><b>
+Figure 3. A region profile of the MLKit compiling the program kitkbjul9.sml. Memory is traversed once every 0.1 second.
+</b></div>
 </div>
 
 Here is how the above figure was produced:
