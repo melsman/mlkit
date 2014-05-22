@@ -2,6 +2,7 @@
 layout: page
 title: Static Interpretation
 ---
+{% include JB/setup %}
 _By Niels Hallenberg and Martin Elsman_
 
 In this note, we demonstrate the process of bootstrapping the
