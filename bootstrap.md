@@ -8,9 +8,9 @@ _By Niels Hallenberg and Martin Elsman_
 In this note, we demonstrate the process of bootstrapping the
 MLKit. An overview of the process is pictured in Figure 1.
 
-<div width="200" style="float:right;width:200;">
-<img width="200" src="{{BASE_PATH}}/images/Bootstrap.png" />
-<div>Figure 1. The bootstrapping process illustrated using T-diagrams. Each
+<div width="400" style="float:right">
+<img width="400" src="{{BASE_PATH}}/images/Bootstrap.png" />
+<div width="400">Figure 1. The bootstrapping process illustrated using T-diagrams. Each
 compiler in the diagram is characterized by three languages: the
 source language that it compiles, the target language that it
 generates code for, and the implementation language that it is written
@@ -97,6 +97,7 @@ the bin directory:
     $ gv -seascape region.ps
 
 Figure 2 shows the region profile obtained with the commands shown above.
+
 <div width="400" style="float:right;width:200;">
 <img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9.png"/>
 <div>Figure 2. A region profile of the MLKit compiling the program
