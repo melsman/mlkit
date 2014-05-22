@@ -117,13 +117,6 @@ can be found by looking in the file bin/mlkit.  The figure below shows
 a region profile similar to the one above except that the number of
 profile ticks is increased using the option -microsec 100000.
 
-<div style="float:right; margin-left:20px;margin-bottom:20px;margin-top:20px;">
-<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9_400msec.png" />
-<div style="max-width:400px;width:auto;height:auto;font-size:80%;"><b>
-Figure 3. A region profile of the MLKit compiling the program kitkbjul9.sml. Memory is traversed once every 0.1 second.
-</b></div>
-</div>
-
 Here is how the above figure was produced:
 
     $ cd $HOME/mlkit-v3P/test
@@ -136,3 +129,10 @@ Here is how the above figure was produced:
     Using 2000 samples.
     Using encapsulated postscript with width 388 pt.
     $ gv -seascape region.ps
+
+<div style="float:right; margin-left:20px;margin-bottom:20px;margin-top:20px;">
+<img width="400" src="{{BASE_PATH}}/images/Mlkit_compiling_kitkbjul9_400msec.png" />
+<div style="max-width:400px;width:auto;height:auto;font-size:80%;"><b>
+Figure 3. A region profile of the MLKit compiling the program kitkbjul9.sml. Memory is traversed once every 0.1 second.
+</b></div>
+</div>
