@@ -27,8 +27,8 @@ Copenhagen. Januar 2006. [pdf]({{BASE_PATH}}/pdf/mlkit-4.3.0.pdf), [bibtex]({{BA
 
 ### Other Resources
 
-* The MLKit implements most of the Standard ML Basis Library
+* The MLKit implements most of the [Standard ML Basis Library](http://sml.sourceforge.net/Basis/)
 * The 1997 Summer School on Region-Based Memory Management
-* comp.lang.ml FAQ
-* Stephen Gilmore's Programming in Standard ML'97
-* Related papers and reports
+* [comp.lang.ml FAQ](http://www.faqs.org/faqs/meta-lang-faq/)
+* Stephen Gilmore's [Programming in Standard ML'97](http://homepages.inf.ed.ac.uk/stg/NOTES/)
+* Related [papers and reports]({{BASE_PATH}}/papers.html)

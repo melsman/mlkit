@@ -21,17 +21,17 @@ of compilation units and allow for expressing source dependencies,
 exactly, as a directed acyclic graph, within one MLB-file.
 
     bdec ::= bdec bdec                 sequential basis declaration
-	   | (empty)                   empty basis declaration
-	   | local bdec in bdec end    local declaration
-	   | basis bid = bexp          basis identifier binding
-	   | open longbid*             opening of bases
-	   | atbdec
-	   | path.mlb                  include
+           | (empty)                   empty basis declaration
+           | local bdec in bdec end    local declaration
+           | basis bid = bexp          basis identifier binding
+           | open longbid*             opening of bases
+           | atbdec
+           | path.mlb                  include
     atbdec ::= path.sml                source file
-	     | path.sig                source file
+             | path.sig                source file
     bexp ::= bas bdec end              basis declaration grouping
-	   | let bdec in bexp end      let expression
-	   | longbid
+           | let bdec in bexp end      let expression
+           | longbid
 
 In an MLB-file, one can reference source files and other MLB-files
 using absolute or relative paths. Relative paths are relative to the

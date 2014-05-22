@@ -9,7 +9,7 @@ group: navigation
 
 * [Martin Elsman](http://www.elsman.com)
 
-### People who have previously contributed to the development of the MLKit
+### Previous Contributors
 
 * Niels Hallenberg (Main developer of region profiling support and co-developer of foreign function interface, x86 backend, bytecode backend, and of combining GC and regions)
 
