@@ -8,10 +8,11 @@ layout: front
 <div class="row">
   <div class="col-lg-4">
      <h2>SML'97</h2>
+       <img width="100" alt="The Definition" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
        <p>The MLKit compiler covers all of Standard ML,
           as defined in the 1997 edition of the Definition of Standard ML. The
           MLKit implements most of the latest Standard ML Basis Library
-          specification.</p><img width="100" alt="The Definition" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
+          specification.</p>
    </div>
    <div class="col-lg-4">
      <h2>Supports ML Basis Files</h2>
@@ -71,7 +72,7 @@ layout: front
           invoked.</p>
    </div>
    <div class="col-lg-4">
-     <h2>Efficient implementation of Modules</h2>
+     <h2>Modules without Overhead</h2>
        <p>The MLKit compiles Standard ML Modules, using a compilation scheme called [Static
           Interpretation]({{BASE_PATH}}/staticinterp.html), which eliminates Modules entirely at compile
           time.</p>
@@ -88,15 +89,15 @@ layout: front
 <div class="row">
   <div class="col-lg-4">
      <h2>Hosted at Github</h2>
-       <p>MLKit sources are hosted at Github, which makes it straightforward to browse code and collaborate on projects.</p>
+       <p>MLKit sources are <a href="http://github.com/melsman/mlkit">hosted at Github</a>, which makes it straightforward to browse code and collaborate on projects.</p>
    </div>
    <div class="col-lg-4">
      <h2>Related Systems</h2>
        <p>Several systems are built on top of MLKit, including:
           <ul>
-            <li>[SMLserver](http://www.smlserver.org) - a system for developing server based Web applications in Standard ML.</li>
-            <li>[SMLtoJs](http://www.smlserver.org/smltojs) - a compiler that compiles Standard ML programs into JavaScript.</li>
-            <li>[SMLOnline](http://www.smlserver.org/ide) - a Standard ML compiler running in a browser.</li>
+            <li><a href="http://www.smlserver.org">SMLserver</a> - a system for developing server based Web applications in Standard ML.</li>
+            <li><a href="http://www.smlserver.org/smltojs">SMLtoJs</a> - a compiler that compiles Standard ML programs into JavaScript.</li>
+            <li><a href="http://www.smlserver.org/ide">SMLonline</a> - a Standard ML compiler running in a browser.</li>
           </ul> 
           </p>
    </div>
