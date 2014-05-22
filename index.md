@@ -4,7 +4,9 @@ layout: front
 ---
 {% include JB/setup %}
 
-#### MLKit Properties
+### MLKit Properties
+
+<img width="160" alt="Old logo" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
 
 SML'97
 : The MLKit compiler covers all of Standard ML,
@@ -22,8 +24,7 @@ ML Basis Files. The MLKit has a system, based on MLB-files, for
 avoiding unnecessary recompilation upon changes of source code.
 
 Region-Based Memory Management
-: The MLKit integrates
-reference-tracing garbage collection with region-based memory
+: The MLKit integrates reference-tracing garbage collection with region-based memory
 management. Memory allocation directives (both allocation and
 deallocation) are inferred by the compiler, which uses a number of
 program analyses concerning lifetimes and storage layout.
@@ -32,13 +33,15 @@ Documentation
 : A comprehensive guide on programming with
 the MLKit is available from the Documentation page.
 
-#### Other features
+### Other features
 
 Open Source License
 : MLKit is open source; it is
 distributed under the GNU General Public License (GPL). The runtime
 system and libraries are also distributed under the MIT licence, thus,
 executables constructed with the MLKit are non-restricted.
+
+<img width="160" alt="Life profile" align="right" src="{{BASE_PATH}}/images/Life80_large.jpg">
 
 Region Profiling
 : The MLKit includes a graphical region
@@ -60,8 +63,8 @@ care of allocating and deallocating regions used by C functions thus
 invoked.
 
 Efficient implementation of Modules
-: The MLKit compiles Standard ML Modules, using a compilation scheme called Static
-Interpretation, which eliminates Modules entirely at compile
+: The MLKit compiles Standard ML Modules, using a compilation scheme called [Static
+Interpretation]({{BASE_PATH}}/staticinterp.html), which eliminates Modules entirely at compile
 time.
 
 Two Backends
@@ -73,3 +76,11 @@ Binary Distributions
 : Binary distributions are available
   from the download page. Source code distributions are available as
   well.
+
+### Related Systems
+
+The following tools are based on the MLKit:
+
+* [SMLserver](http://www.smlserver.org) - a system for developing server based Web applications in Standard ML.
+* [SMLtoJs](http://www.smlserver.org/smltojs) - a compiler that compiles Standard ML programs into JavaScript.
+* [SMLOnline](http://www.smlserver.org/ide) - a Standard ML compiler running in a browser.
