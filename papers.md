@@ -43,9 +43,31 @@ Germany. June 2002. [pdf](/pdf/pldi2002.pdf), [bibtex](/pdf/pldi2002.bibtex.txt)
 International Conference on Functional Programming (ICFP'99)_. Paris,
 France. September 1999. [pdf](/pdf/icfp99.pdf), [bibtex](/pdf/icfp99.bibtex.txt).
 
+* Mads Tofte. __A Brief Introduction to Regions__. Invited
+Talk. In _Proceedings on the 1998 ACM International Symposium on Memory
+Management (ISMM'98)_. Vancouver, 1998.
+
+* Mads Tofte and Lars Birkedal. __A Region Inference
+Algorithm__. In _Transactions on Programming Languages and Systems (TOPLAS)_.
+July 1998, vol 20, number 4, pages 734-767 (plus 24 pages of
+electronic appendix).
+
 * Martin Elsman. __Polymorphic Equality - No Tags Required__. In _Second
 International Workshop on Types in Compilation (TIL'98)_. Kyoto,
 Japan. March 1998. [pdf](/pdf/equality.pdf), [bibtex](/pdf/equality.bibtex.txt).
+
+* Mads Tofte and Jean-Pierre Talpin. __Region-Based Memory
+Management__. In _Information and Computation 132(2), pages 109-176_. 1997.
+
+* Lars Birkedal, Mads Tofte and Magnus Vejlstrup. __From Region
+Inference to von Neumann Machines via Region Representation
+Inference__. In _Proceedings of the 23rd ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages_. January 1996.
+
+* Mads Tofte and Jean-Pierre Talpin. __Implementation of the Typed
+Call-by-value lambda-calculus using a Stack of Regions__. In
+_Proceedings of the 21st Annual ACM SIGPLAN-SIGACT Symposium on
+Principles of Programming Languages_. 1994.
 
 ### Theses
 
@@ -53,8 +75,20 @@ Japan. March 1998. [pdf](/pdf/equality.pdf), [bibtex](/pdf/equality.bibtex.txt).
 Optimisation__. PhD thesis. Revised. Department of Computer Science,
 University of Copenhagen. January 1999. [pdf](/pdf/phd.pdf), [bibtex](/pdf/phd.bibtex.txt).
 
+* Niels Hallenberg. __Combining Garbage Collection and Region Inference
+in The MLKit__. Master's Thesis. Department of Computer Science,
+University of Copenhagen. 1999.
+
+* Martin Koch and Tommy Højfeld Olesen. __Compiling a Higher-Order
+Call-by-Value Functional Programming Language to a RISC Using a Stack
+of Regions__. Master's Thesis 96-10-5. Department of Computer Science,
+University of Copenhagen. 1996.
+
 * Martin Elsman. __A Portable Standard ML Implementation__. Master's
 Thesis. Technical University of Denmark. August 1994. [pdf](/pdf/masters.pdf), [bibtex](/pdf/masters.bibtex.txt).
+
+* Magnus Vejlstrup. Multiplicity Inference. Master's Thesis 94-9-1. Department of Computer Science, University of
+Copenhagen. 1994.
 
 ### Technical Reports
 
@@ -104,20 +138,28 @@ Regions in the ML Kit__. Technical Report 97/12. Department of Computer
 Science, University of Copenhagen. April 1997. There is a newer
 version of this document - see above. [bibtex](/pdf/mlkit2.bibtex.txt).
 
+* Niels Hallenberg. __A Region Profiler for a Standard ML compiler based
+on Region Inference__. Student Project. Department of Computer Science,
+University of Copenhagen. June 1996.
+
 * Martin Elsman and Niels Hallenberg. __An Optimizing Backend for the ML
 Kit Using a Stack of Regions__. Student Project. Department of Computer
 Science, University of Copenhagen. July 1995. [pdf](/pdf/backend.pdf).
+
+* Mads Tofte and Jean-Pierre Talpin. __A Theory of Stack Allocation in
+Polymorphically Typed Languages__. Technical Report 93/15. Department
+of Computer Science, University of Copenhagen. 1993.
+
+* Lars Birkedal, Nick Rothwell, Mads Tofte and David N. Turner. __The ML
+Kit (Version 1)__. Technical Report 93/14. Department of Computer
+Science, University of Copenhagen. 1993.
+
 
 ### Notes
 
 * Martin Elsman. __Polymorphism and Unification of Cyclic Terms__. Note on
 unification of terms. Computer Science Division, University of
 California, Berkeley. July 1999. [pdf](/pdf/termunify.pdf).
-
-* Martin Elsman. __Separate Compilation and Cut-off Incremental
-Recompilation__. Note on implementing separate compilation and cut-off
-incremental recompilation in the TIL Standard ML compiler. Work done
-while at Department of Computer Science, University of Copenhagen. May 1997. [pdf](/pdf/til_sep.pdf).
 
 * Martin Elsman. __Optimising Typed Programs__. Department of Computer
 Science, University of Copenhagen (DIKU). January 1998. Note on
