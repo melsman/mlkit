@@ -8,8 +8,8 @@ _By Niels Hallenberg and Martin Elsman_
 In this note, we demonstrate the process of bootstrapping the
 MLKit. An overview of the process is pictured in Figure 1.
 
-<div width="200" align="right" style="float:right;width:200;">
-<img src="{{BASE_PATH}}/images/Bootstrap.png" />
+<div width="200" style="float:right;width:200;">
+<img width="200" src="{{BASE_PATH}}/images/Bootstrap.png" />
 <div>Figure 1. The bootstrapping process illustrated using T-diagrams. Each
 compiler in the diagram is characterized by three languages: the
 source language that it compiles, the target language that it
@@ -98,7 +98,7 @@ the bin directory:
 
 Figure 2 shows the region profile obtained with the commands shown above.
 <div width="200" align="right" style="float:right;width:200;">
-<img src="{{BASE_PATH}}/images/mlkit_compiling_kitkbjul9.png"/>
+<img width="200" src="{{BASE_PATH}}/images/mlkit_compiling_kitkbjul9.png"/>
 <div>Figure 2. A region profile of the MLKit compiling the program
 kitkbjul9.sml, which is located in the test directory.  Controlling
 Profiling Options.</div>
@@ -114,7 +114,7 @@ a region profile similar to the one above except that the number of
 profile ticks is increased using the option -microsec 100000.
 
 <div width="200" align="right" style="float:right;width:200;">
-<img src="{{BASE_PATH}}/images/mlkit_compiling_kitkbjul9_400msec.png"/>
+<img width="200" src="{{BASE_PATH}}/images/mlkit_compiling_kitkbjul9_400msec.png"/>
 <div>Figure 3. A region profile of the MLKit compiling the program kitkbjul9.sml. Memory is traversed once every 0.1 second.
 </div>
 </div>
