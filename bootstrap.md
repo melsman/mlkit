@@ -5,7 +5,7 @@ title: Static Interpretation
 {% include JB/setup %}
 _By Niels Hallenberg and Martin Elsman_
 
-<div width="400" style="float:right; margin-left:10px;margin-bottom:10px;margin-top:10px;">
+<div style="float:right; margin-left:20px;margin-bottom:20px;margin-top:20px;">
 <img width="400" src="{{BASE_PATH}}/images/Bootstrap.png" />
 <div style="max-width:400px;width:auto;height:auto;font-size:80%;"><b>Figure 1. The bootstrapping process illustrated using T-diagrams. Each
 compiler in the diagram is characterized by three languages: the
