@@ -72,9 +72,9 @@ layout: front
           invoked.</p>
    </div>
    <div class="col-lg-4">
-     <h3>Modules without Overhead</h3>
-       <p>The MLKit compiles Standard ML Modules, using a compilation scheme called [Static
-          Interpretation]({{BASE_PATH}}/staticinterp.html), which eliminates Modules entirely at compile
+     <h3>No-Overhead Modules</h3>
+       <p>The MLKit compiles Standard ML Modules, using a compilation scheme called 
+          <a href="{{BASE_PATH}}/staticinterp.html">Static Interpretation</a>, which eliminates Modules entirely at compile
           time.</p>
    </div>
    <div class="col-lg-4">
