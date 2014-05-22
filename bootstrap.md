@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Static Interpretation
+title: Bootstrapping
 ---
 {% include JB/setup %}
 _By Niels Hallenberg and Martin Elsman_
