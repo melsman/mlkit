@@ -1,1 +1,5 @@
-Makefile Version.sml config.h mlkit
+Makefile
+Version.sml
+config.h
+mlkit
+*~
