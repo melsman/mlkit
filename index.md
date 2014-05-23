@@ -10,7 +10,7 @@ layout: front
      <h3>SML'97</h3>
        <img width="100" alt="The Definition" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
        <p>The MLKit compiler covers all of Standard ML,
-          as defined in the 1997 edition of the Definition of Standard ML. The
+          as defined in the 1997 edition of the <a href="http://mitpress.mit.edu/books/definition-standard-ml">Definition of Standard ML</a>. The
           MLKit implements most of the latest Standard ML Basis Library
           specification.</p>
    </div>
@@ -18,7 +18,7 @@ layout: front
      <h3>ML Basis Files</h3>
        <p>The MLKit compiles large
           programs, including itself, around 80.000 lines of Standard ML plus
-          the Standard ML Basis Library. The support for ML Basis Files makes it
+          the Standard ML Basis Library. The support for <a href="{{BASE_PATH}}/mlbasisfiles.html">ML Basis Files</a> makes it
           easy to compile large programs with different Standard ML
           compilers. Currently, both MLton and the MLKit supports the concept of
           ML Basis Files. The MLKit has a system, based on MLB-files, for
