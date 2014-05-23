@@ -72,7 +72,6 @@ th {
   background-image: url('http://melsman.github.io/mlkit/images/mlkitsquare.png');
   background-width: 50%;
   background-repeat: none; /* Repeat the gradient */
-  width: 80px;
   border-radius: 5px 5px 0 0;
 }
 .nav-justified > li:last-child > a {
