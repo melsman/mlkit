@@ -2,14 +2,14 @@ body {
   padding-top: 20px;
 }
 
-.overview.table {
+table {
   width: auto;
   min-width: 80%;
 }
-.overview > table, .overview > td, .overview > th {
+table, td, th {
   border:1px solid green;
 }
-.overview > th {
+th {
   background-color:green;
   color:white;
 }
