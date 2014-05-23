@@ -1,0 +1,6 @@
+Makefile	
+doc/mlyacc.aux
+doc/mlyacc.log
+doc/mlyacc.pdf
+doc/mlyacc.toc
+mlkit-mlyacc
