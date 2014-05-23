@@ -30,6 +30,7 @@ th {
 .jumbotron {
   text-align: center;
   background-color: transparent;
+  padding: 10px;
 }
 .jumbotron .btn {
   padding: 14px 24px;
