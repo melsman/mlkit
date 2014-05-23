@@ -8,6 +8,10 @@ body {
   border: 1;
 }
 
+.overview > td {
+  width: 33%;
+}
+
 .container-narrow {
   margin: 0 auto;
   max-width: 800px; }
