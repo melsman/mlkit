@@ -45,23 +45,23 @@ Features:
 
   * Documentation. A comprehensive guide on programming with the MLKit
     is available in the doc/ directory. Documentation is also
-    available in man-pages and from the MLKit home page (wiki) 
+    available in man-pages and from the MLKit home page
 
-                http://www.itu.dk/research/mlkit
+                http://melsman.github.io/mlkit
 
 2. License and Copyright
 ------------------------
-The MLKit compiler is distributed under the GNU Public License. See
-the file doc/license/MLKit-LICENSE for details. The runtime system
-(kit/src/Runtime/) and libraries (kit/basis/) is distributed under the
-more liberal MIT License.
+The MLKit compiler is distributed under the GNU Public License,
+version 2. See the file doc/license/MLKit-LICENSE for details. The
+runtime system (kit/src/Runtime/) and libraries (kit/basis/) is
+distributed under the more liberal MIT License.
 
 3. Compilation Requirements
 ---------------------------
 To compile, install, and use the MLKit, a Linux box running Ubuntu
 Linux, Debian, gentoo, or similar is needed. The MLKit also works on
 Mac OS and has also earlier been reported to run on the FreeBSD/x86
-platform, with little tweaking.
+platform, with a little tweaking.
 
 To compile the MLKit, a Standard ML compiler is needed, which needs to
 be one of the following:
@@ -84,8 +84,7 @@ tools.
 
 4. Compilation
 --------------
-After having checked out the sources from the sourceforge svn repository,
-execute the command:
+After having checked out the sources from Github, execute the command:
  
  $ ./autobuild
 
@@ -161,8 +160,10 @@ The MLKit should produce an executable file "run":
  hello world
 
 10. More Information
--------------------
-See the MLKit home page http://www.itu.dk/research/mlkit/
+--------------------
+See the MLKit home page
+
+   http://melsman.github.io/mlkit
 
 Documentation for the MLKit is located in the directories doc/mlkit
 and man/man1. License information is located in the file
@@ -176,7 +177,7 @@ at http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
 12. Comments and Bug Reports
 ----------------------------
 Please see the MLKit home page for a list of known bugs and
-limitations. Send bug reports to mlkit@itu.dk.
+limitations. To file a bug-report, create an issue at the Github page.
 
 Appendix A: Directory Structure of the Sources
 ----------------------------------------------
@@ -198,8 +199,7 @@ Appendix B: Quick Compilation and Installation Guide
 We assume that MLton >= 20051202 is installed on the system as
 described in Section 3.
 
-After having checked out the sources from the sourceforge svn repository,
-execute the command:
+After having checked out the sources from Github, execute the command:
  
  $ ./autobuild
 
