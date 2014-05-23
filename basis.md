@@ -124,3 +124,4 @@ signature and functor.
 | Word32 structure | Mael |  OK |
 | Word structure | Mael |  OK|
 | WORD signature| Mael |  OK |
+{: rules="overview" }
