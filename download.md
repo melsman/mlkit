@@ -8,7 +8,7 @@ group: navigation
 
 ### The Sources
 
-The MLKit source tree contains the sources for
+The MLKit sources are [hosted at Github](https://github.com/melsman/mlkit) and contains the sources for
 
 * The MLKit native compiler.
 * [SMLserver](http://smlserver.org), an efficient Apache2 web server plugin for serving Web sites written in Standard ML.
@@ -21,8 +21,6 @@ The MLKit source tree contains the sources for
 MLKit is supported only on UNIX platforms, including MacOS and Linux.
 
 ### Download
-
-The MLKit sources are [hosted at Github](https://github.com/melsman/mlkit).
 
 To get the latest version of the sources, issue the following git command:
 
