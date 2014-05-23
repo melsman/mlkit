@@ -2,14 +2,16 @@ body {
   padding-top: 20px;
 }
 
-.overview {
+.overview.table {
   width: auto;
   min-width: 80%;
-  border: 1;
 }
-
-.overview > td {
-  width: 33%;
+.overview > table, .overview > td, .overview > th {
+  border:1px solid green;
+}
+.overview > th {
+  background-color:green;
+  color:white;
 }
 
 .container-narrow {
