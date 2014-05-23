@@ -8,6 +8,7 @@ table {
 }
 table, td, th {
   border:1px solid green;
+  padding: 3px;
 }
 th {
   background-color:green;
