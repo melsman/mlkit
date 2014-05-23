@@ -72,7 +72,7 @@ th {
   background-image: url('http://melsman.github.io/mlkit/images/mlkitsquare.png');
   background-size: 55px;
   width: 55px;
-  padding: 0;
+  margin: 0;
   background-repeat: none; /* Repeat the gradient */
   border-radius: 5px 5px 0 0;
 }
