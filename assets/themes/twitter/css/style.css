@@ -74,9 +74,6 @@ th {
   background-repeat: none; /* Repeat the gradient */
   border-radius: 5px 5px 0 0;
 }
-.nav-justified > li:first-child {
-  width: 20px;
-}
 .nav-justified > li:last-child > a {
   border-bottom: 0;
   border-radius: 0 0 5px 5px;
