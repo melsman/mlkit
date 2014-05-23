@@ -37,8 +37,8 @@ layout: front
   <div class="col-lg-4">
      <h3>Open Source</h3>
        <p>MLKit is open source; it is
-          distributed under the GNU General Public License (GPL). The runtime
-          system and libraries are also distributed under the MIT licence, thus,
+          distributed under the <a href="http://opensource.org/licenses/GPL-2.0">GNU General Public License, version 2 (GPLv2)</a>. The runtime
+          system and libraries are also distributed under the <a href="http://opensource.org/licenses/MIT">MIT licence</a>, thus,
           executables constructed with the MLKit are non-restricted.</p>
    </div>
    <div class="col-lg-4">
