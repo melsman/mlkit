@@ -75,7 +75,7 @@ th {
   border-radius: 5px 5px 0 0;
 }
 .nav-justified > li:first-child {
-  width: 55px;
+  width: 20px;
 }
 .nav-justified > li:last-child > a {
   border-bottom: 0;
