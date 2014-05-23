@@ -28,4 +28,4 @@ To get the latest version of the sources, issue the following git command:
 
 ### Installation
 
-To install the MLKit, see the [README](https://github.com/melsman/mlkit/README) file.
+To install the MLKit, see the [README](https://github.com/melsman/mlkit/blob/master/README) file.
