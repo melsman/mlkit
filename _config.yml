@@ -13,7 +13,7 @@ markdown: kramdown
 title : MLKit
 tagline: A Standard ML Compiler and Toolkit
 author :
-  name : Martin Elsman
+  name : Martin Elsman, University of Copenhagen
   email : mael@di.ku.dk
   github : melsman
   twitter : none
