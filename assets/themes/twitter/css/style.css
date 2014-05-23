@@ -5,9 +5,9 @@ body {
 .overview {
   width: auto;
   min-width: 80%;
-  align: left;
   border: 1;
 }
+
 .container-narrow {
   margin: 0 auto;
   max-width: 800px; }

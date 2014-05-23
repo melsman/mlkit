@@ -9,7 +9,7 @@ Library in the MLKit. The table shows the status of each structure,
 signature and functor.
 
 | Module | Reviewed by | Status |
-|:------:|:-----------:|:------:|
+|:-------|:------------|:-------|
 | Array structure | Mael |  OK |
 | ARRAY signature | Mael |  OK |
 | Array2 structure | Mael |  OK |
@@ -124,4 +124,4 @@ signature and functor.
 | Word32 structure | Mael |  OK |
 | Word structure | Mael |  OK|
 | WORD signature| Mael |  OK |
-{: rules="overview" }
+{: class="overview" }
