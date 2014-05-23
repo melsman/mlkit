@@ -2,6 +2,7 @@
 layout: page
 title: Static Interpretation
 ---
+{% include JB/setup %}
 _By Martin Elsman and Mads Tofte_
 
 ### Interpretation of Standard ML Modules at Compile time

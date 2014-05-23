@@ -10,11 +10,12 @@ group: navigation
 
 <img width="160" alt="Old logo" align="right" src="{{BASE_PATH}}/images/books.gif">
 
-* Installation
+* [Installation](http://github.com/melsman/mlkit)
 * [Bootstrapping]({{BASE_PATH}}/bootstrap.html)
 * [MLKit Basis Library Implementation]({{BASE_PATH}}/basis.html)
 * [ML Basis Files]({{BASE_PATH}}/mlbasisfiles.html)
 * [Static Interpretation of Modules]({{BASE_PATH}}/staticinterp.html)
+* [Bugs]({{BASE_PATH}}/bugs.html)
 
 ### Programming with Regions in the MLKit
 
