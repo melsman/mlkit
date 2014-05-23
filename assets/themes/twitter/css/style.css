@@ -68,7 +68,7 @@ th {
   background-image: none;
   box-shadow: inset 0 3px 7px rgba(0,0,0,.15);
 }
-.nav-justified > li:first-child {
+.nav-justified > li:first-child > a {
   background-image: url('http://melsman.github.io/mlkit/images/mlkitsquare.png');
   background-size: 55px;
   width: 55px;
