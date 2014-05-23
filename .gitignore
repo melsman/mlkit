@@ -1,1 +1,7 @@
-Makefile autom4te.cache bin config.log config.status configure lib
+Makefile
+autom4te.cache
+bin
+config.log
+config.status
+configure
+lib
