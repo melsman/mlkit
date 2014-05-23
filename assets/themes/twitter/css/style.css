@@ -70,7 +70,7 @@ th {
 }
 .nav-justified > li:first-child > a {
   background-image: url('http://melsman.github.io/mlkit/images/mlkitsquare.png');
-  background-size: 80px 55px;
+  background-size: 84px 55px;
   background-repeat: none; /* Repeat the gradient */
   border-radius: 5px 5px 0 0;
 }
