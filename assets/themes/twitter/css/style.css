@@ -2,19 +2,6 @@ body {
   padding-top: 20px;
 }
 
-table {
-  width: auto;
-  min-width: 80%;
-}
-table {
-  border:1px solid green;
-  padding: 3px;
-}
-th {
-  background-color:green;
-  color:white;
-}
-
 .container-narrow {
   margin: 0 auto;
   max-width: 800px; }
