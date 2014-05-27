@@ -6,7 +6,7 @@ layout: front
 
 <!-- Example row of columns -->
 <div class="row">
-  <div class="col-lg-8">
+  <div class="col-lg-10">
 
 <div class="row">
   <div class="col-lg-4">
@@ -104,7 +104,14 @@ layout: front
 </div>
 
 </div>
-  <div class="col-lg-4">
-  <h2> Hej </h2>
+  <div class="col-lg-2">
+  <h2>News</h2>
+  <ul class="list-group">
+  <li class="list-group-item"><b>2014-05-28:</b> justo odio</li>
+  <li class="list-group-item">Dapibus ac facilisis in</li>
+  <li class="list-group-item">Morbi leo risus</li>
+  <li class="list-group-item">Porta ac consectetur ac</li>
+  <li class="list-group-item">Vestibulum at eros</li>
+</ul>
   </div>
 </div>
