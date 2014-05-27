@@ -104,12 +104,14 @@ layout: front
     </div>
   </div>
   <div class="col-lg-3"> <!-- Right part -->
-  <div class="panel-heading">News</div>
-  <ul class="list-group">
-    <li class="list-group-item"><b>2014-05-28:</b> The MLKit has moved to Github!</li>
-    <li class="list-group-item"><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</li>
-    <li class="list-group-item"><b>2012-04-23:</b> MLKit 4.3.6 is released.</li>
-    <li class="list-group-item"><b>2006-01-27:</b> MLKit 4.3.0 is released.</li>
-  </ul>
+   <div class="panel panel-default">
+      <div class="panel-heading">News</div>
+      <table class="table">
+	<tr><td><b>2014-05-28:</b>The MLKit has moved to Github!</td></tr>
+	<tr><td><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</td></tr>
+	<tr><td><b>2012-04-23:</b> MLKit 4.3.6 is released.</td></tr>
+	<tr><td><b>2006-01-27:</b> MLKit 4.3.0 is released.</td></tr>
+      </table>
   </div>
+ </div>
 </div>
