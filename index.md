@@ -6,6 +6,9 @@ layout: front
 
 <!-- Example row of columns -->
 <div class="row">
+  <div class="col-lg-8">
+
+<div class="row">
   <div class="col-lg-4">
      <h3>SML'97</h3>
        <img width="100" alt="The Definition" align="right" src="{{BASE_PATH}}/images/Thedef.jpg">
@@ -98,4 +101,10 @@ layout: front
           </ul> 
           </p>
    </div>
+</div>
+
+</div>
+  <div class="col-lg-4">
+  <h2> Hej </h2>
+  </div>
 </div>
