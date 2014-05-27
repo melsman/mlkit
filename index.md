@@ -104,7 +104,7 @@ layout: front
     </div>
   </div>
   <div class="col-lg-3"> <!-- Right part -->
-  <h3>News</h3>
+  <div class="panel-heading">News</div>
   <ul class="list-group">
     <li class="list-group-item"><b>2014-05-28:</b> The MLKit has moved to Github!</li>
     <li class="list-group-item"><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</li>
