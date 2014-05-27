@@ -106,7 +106,7 @@ layout: front
   <div class="col-lg-3"> <!-- Right part -->
   <h3>News</h3>
   <ul class="list-group">
-    <li class="list-group-item"><b>2014-05-28:</b>The MLKit has moved to Github!</li>
+    <li class="list-group-item"><b>2014-05-28:</b> The MLKit has moved to Github!</li>
     <li class="list-group-item"><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</li>
     <li class="list-group-item"><b>2012-04-23:</b> MLKit 4.3.6 is released.</li>
     <li class="list-group-item"><b>2006-01-27:</b> MLKit 4.3.0 is released.</li>
