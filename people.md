@@ -11,13 +11,13 @@ group: navigation
 
 ### Previous Contributors
 
-* Niels Hallenberg (Main developer of region profiling support and co-developer of foreign function interface, x86 backend, bytecode backend, and of combining GC and regions)
+* [Niels Hallenberg](https://www.linkedin.com/in/nielshallenberg) (Main developer of region profiling support and co-developer of foreign function interface, x86 backend, bytecode backend, and of combining GC and regions)
 
-* Carsten Varming (Developer)
+* [Carsten Varming](https://www.linkedin.com/in/varming) (Developer)
 
-* Mads Tofte (Main architect of adding region support to the MLKit, co-developer of MLKit version 1)
+* [Mads Tofte](http://www.itu.dk/people/tofte) (Main architect of adding region support to the MLKit, co-developer of MLKit version 1)
 
-* Lars Birkedal (Co-developer of region runtime system and various region representation analyses, co-developer of MLKit version 1)
+* [Lars Birkedal](http://cs.au.dk/~birke/) (Co-developer of region runtime system and various region representation analyses, co-developer of MLKit version 1)
 
 * Peter Bertelsen (Generalization of storage mode analysis)
 
@@ -25,6 +25,6 @@ group: navigation
 
 * Nick Rothwell (Co-developer of MLKit version 1)
 
-* Peter Sestoft (Generalization of storage mode analysis; Basis Library Implementation from Moscow ML)
+* [Peter Sestoft](http://www.itu.dk/people/sestoft) (Generalization of storage mode analysis; Basis Library Implementation from Moscow ML)
 
 * David N. Turner (Co-developer of MLKit version 1)

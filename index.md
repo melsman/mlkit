@@ -109,8 +109,8 @@ layout: front
       <table class="table">
 	<tr><td><b>2014-05-28:</b>The MLKit has moved to Github!</td></tr>
 	<tr><td><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</td></tr>
-	<tr><td><b>2012-04-23:</b> MLKit 4.3.6 is released.</td></tr>
-	<tr><td><b>2006-01-27:</b> MLKit 4.3.0 is released.</td></tr>
+	<tr><td><b>2013-05-30:</b> [MLKit 4.3.7](https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.7) is released.</td></tr>
+	<tr><td><b>2007-04-13:</b> [MLKit 4.3.2](https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.2) is released.</td></tr>
       </table>
   </div>
  </div>
