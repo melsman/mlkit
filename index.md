@@ -90,20 +90,10 @@ layout: front
       <div class="col-lg-4">
 	 <h3>Hosted at Github</h3>
 	   <p>MLKit sources are <a href="http://github.com/melsman/mlkit">hosted at Github</a>, which makes it straightforward to browse code and collaborate on projects.</p>
-       </div>
-       <div class="col-lg-4">
-	 <h3>Related Systems</h3>
-	   <p>Several systems are built on top of MLKit, including:
-	      <ul>
-		<li><a href="http://www.smlserver.org">SMLserver</a> - a system for developing server based Web applications in Standard ML.</li>
-		<li><a href="http://www.smlserver.org/smltojs">SMLtoJs</a> - a compiler that compiles Standard ML programs into JavaScript.</li>
-		<li><a href="http://www.smlserver.org/ide">SMLonline</a> - a Standard ML compiler running in a browser.</li>
-	      </ul> 
-	      </p>
-       </div>
-    </div>
-  </div>
-  <div class="col-lg-3"> <!-- Right part -->
+      </div>
+   </div>
+   </div>
+   <div class="col-lg-3"> <!-- Right part -->
    <div class="panel panel-default">
       <div class="panel-heading">News</div>
       <table class="table">
@@ -111,7 +101,7 @@ layout: front
 	<tr><td><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</td></tr>
 	<tr><td><b>2013-05-30:</b> <a href="https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.7">MLKit 4.3.7</a> is released.</td></tr>
       </table>
-  </div>
+   </div>
 
    <div class="panel panel-default">
       <div class="panel-heading">Links</div>
