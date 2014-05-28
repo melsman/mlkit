@@ -110,8 +110,17 @@ layout: front
 	<tr><td><b>2014-05-28:</b>The MLKit has moved to Github!</td></tr>
 	<tr><td><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</td></tr>
 	<tr><td><b>2013-05-30:</b> <a href="https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.7">MLKit 4.3.7</a> is released.</td></tr>
-	<tr><td><b>2007-04-13:</b> <a href="https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.2">MLKit 4.3.2</a> is released.</td></tr>
       </table>
   </div>
+
+   <div class="panel panel-default">
+      <div class="panel-heading">Links</div>
+      <table class="table">
+	<tr><td><a href="http://www.smlserver.org/ide">SMLonline</a> &mdash; Compile SML programs in your browser and save your programs in Dropbox.</td></tr>
+	<tr><td><a href="http://www.smlserver.org/smltojs">SMLtoJs</a> &mdash; Compile SML programs into JavaScript.</td></tr>
+	<tr><td><a href="http://www.smlserver.org/">SMLserver</a> &mdash; Use SML on the Web server.</td></tr>
+      </table>
+  </div>
+
  </div>
 </div>
