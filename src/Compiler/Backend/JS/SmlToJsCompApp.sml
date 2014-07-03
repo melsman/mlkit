@@ -17,7 +17,7 @@ structure SmlToJsAppArg : APP_ARG = struct
           val Dojo = link "Dojo" "http://www.dojotoolkit.org"
           val CodeMirror = link "CodeMirror" "http://codemirror.net"
           val DropboxDataStoreAPI = link "Dropbox Datastore API" "https://www.dropbox.com/developers/datastore"
-          val linkSourceForgeMLKitRep = link "SourceForge MLKit Repository" "http://sourceforge.net/apps/mediawiki/mlkit"
+          val linkMLKitRep = link "Github MLKit Repository" "https://github.com/melsman/mlkit"
       in 
         tag "p"
             ($"This Standard ML IDE allows programmers to build client-based web " &
@@ -51,10 +51,10 @@ structure SmlToJsAppArg : APP_ARG = struct
                $" for allowing users to store their data in Dropbox. The IDE also uses " & CodeMirror() & 
                $" as the foundation for the Standard ML editor features, including syntax-highligting. " &
                $" The sources for this IDE are" &
-               $" available by download from the SourceForge MLKit repository and are distributed" &
+               $" available by download from the Github MLKit repository and are distributed" &
                $" under the GPL2 license; some parts of the sources are also available under the MIT license." &
                $" For information about licenses, please consult the sources, which are available" & 
-               $" from the " & linkSourceForgeMLKitRep() & $".")  &
+               $" from the " & linkMLKitRep() & $".")  &
           tag "p"
           ($"The IDE and SMLtoJs are written by " & MartinElsman() & $". For information about using " & SMLtoJs() & 
             $" in an offline setting, consult the " & SMLtoJs() & $" web site.") 
@@ -82,14 +82,14 @@ structure SmlToJsAppArg : APP_ARG = struct
       end      
 
   val basislibs = ["Initial","General","Option", "List", "ListPair",
-                   "Vector", "VectorSlice", "Array", "ArraySlice", "Array2", "ByteTable", "ByteSlice", 
-                   "StringCvt", "String2", "Substring", "Text", "Bool", "IntInfRep", 
-                   "Word32", "Word8", "Word31", "Pack32Little", "Pack32Big", "Byte",                   
+                   "Vector", "VectorSlice", "Array", "ArraySlice", "Array2", "ByteTable", "ByteSlice",
+                   "StringCvt", "String2", "Substring", "Text", "Bool", "IntInfRep",
+                   "Word32", "Word8", "Word31", "Pack32Little", "Pack32Big", "Byte",
                    "Int32", "Int31",
                    "Math", "Real",
                    "IntInf",
                    "Time", "Random", "Path", "Date", "Timer", "TextIO",
-                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient"
+                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo"
                   ]
 
   val script_paths = 

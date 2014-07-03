@@ -40,6 +40,7 @@ signature JS =
     val installEventHandler : elem -> eventType -> (unit -> bool) -> unit
     val getEventHandler     : elem -> eventType -> (unit -> bool) option
     val onMouseMove         : doc -> (int*int -> unit) -> unit
+    val onMouseMoveElem     : elem -> (int*int -> unit) -> unit
                                                           
     (* timers *)
     type intervalId
@@ -52,6 +53,10 @@ signature JS =
                                        
     (* styles *)
     val setStyle        : elem -> string * string -> unit
+
+    (* Position *)
+    val xElem           : elem -> int
+    val yElem           : elem -> int
 
     structure XMLHttpRequest : sig
       type req

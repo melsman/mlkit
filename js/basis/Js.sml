@@ -120,6 +120,40 @@ val onMouseMove =
     if IE then onMouseMoveIE
     else onMouseMoveNIE
 
+fun xElem (e:elem) : int =
+    J.exec1 {stmt="var x=0; \
+                  \while(e) {x+=(e.offsetLeft-e.scrollLeft+e.clientLeft); \
+                            \e=e.offsetParent; }; \
+                  \return x;",
+             arg1=("e",J.fptr), res=J.int} e
+
+fun yElem (e:elem) : int =
+    J.exec1 {stmt="var y=0; \
+                  \while(e) {y+=(e.offsetTop-e.scrollTop+e.clientTop); \
+                            \e=e.offsetParent; }; \
+                  \return y;",
+             arg1=("e",J.fptr), res=J.int} e
+
+fun posFe (e:elem, f:int*int -> 'a) : int*int -> 'a =
+    let val xOff = xElem e
+        val yOff = yElem e
+        fun pos a = if a < 0 then 0 else a
+    in fn (x,y) => f (pos (x-xOff), pos (y-yOff))
+    end
+
+fun onMouseMoveElemIE (e:elem) (f : int*int->unit) : unit =
+    J.exec2 {stmt="return e.ownerDocument.onmousemove = function(ee) { f([event.clientX + e.ownerDocument.body.scrollLeft, event.clientY + e.ownerDocument.body.scrollTop]); };",
+             arg1=("e",J.fptr), arg2=("f",J.===>(J.int,J.int,J.unit)), res=J.unit} (e,posFe(e,f))
+    
+
+fun onMouseMoveElemNIE (e:elem) (f : int*int->unit) : unit =
+    J.exec2 {stmt="return e.ownerDocument.onmousemove = function(ee) { f([ee.pageX,ee.pageY]); };",
+             arg1=("e",J.fptr), arg2=("f",J.===>(J.int,J.int,J.unit)), res=J.unit} (e,posFe(e,f))
+
+val onMouseMoveElem =
+    if IE then onMouseMoveElemIE
+    else onMouseMoveElemNIE
+
 type intervalId = foreignptr
 fun setInterval (i: int) (f: unit -> unit) : intervalId =
     let val arg1 = ("i", J.int)

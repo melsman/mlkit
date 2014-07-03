@@ -290,6 +290,12 @@ fun mouseOver (id:string) : bool b =
       SOME e => mouseOver_elem e
     | NONE => idError "mouseOver" id
 
+fun mouse_elem e =
+    let val b = new(SOME(0,0))
+        val () = Js.onMouseMoveElem e (fn v => (newValue b v; eval()))
+    in b
+    end
+
 fun mouse_doc d =
     let val b = new(SOME(0,0))
         val () = Js.onMouseMove d (fn v => (newValue b v; eval()))

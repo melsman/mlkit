@@ -60,6 +60,7 @@ signature RWP =
     val mouseOver_elem : Js.elem -> bool b
     val click_elem     : Js.elem -> ''a -> ''a e
 
+    val mouse_elem     : Js.elem -> (int*int) b
     val mouse_doc      : Js.doc -> (int*int) b
   end
 
@@ -155,5 +156,8 @@ calling the function f every n microseconds.
 [insertDOM id b] effectively inserts the behavior in the DOM tree
 under the element identified by id. Raises Fail if there is no
 element identified by id in the DOM.
+
+[mouse_elem e] returns a pair behavior for the x-y positions of the mouse
+relative to the upper-left corner of the element e.
 
 *)

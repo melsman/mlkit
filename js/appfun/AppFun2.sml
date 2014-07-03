@@ -116,6 +116,12 @@ struct
           Js.appendChild head (taga0 "link" [("rel","stylesheet"), ("href", path)])
         | NONE => raise Fail "appendStyleLink"
 
+  fun appendIconLink path =
+      case Js.firstChild topelem of
+          SOME head =>
+          Js.appendChild head (taga0 "link" [("rel","shortcut icon"), ("type","image/x-icon"), ("href", path)])
+        | NONE => raise Fail "appendStyleLink"
+
   fun appendScript path =
       case Js.firstChild topelem of
           SOME head =>
@@ -145,6 +151,7 @@ struct
   val () = appendStyleLink "dijit/themes/claro/claro.css"
   val () = appendStyleLink "js/codemirror/dist/css/docs.css"
   val () = appendStyleLink "appfunstyle.css"
+  val () = appendIconLink "favicon.ico"
   val () = createBody ()
 
   fun getElem id : Js.elem =
