@@ -1,0 +1,11 @@
+*.o
+*.a
+Makefile
+KamInsts.c
+KamInsts.h
+SysErrTable.h
+gen_syserror
+jumptbl.h
+Prims.c
+PrimsApSml.c
+PrimsNsSml.c
