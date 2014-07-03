@@ -64,4 +64,4 @@ are sent along to the mlkit executable for each compilation.
 .B mlkit
 (1)
 
-.B http://www.itu.dk/research/mlkit
+.B http://melsman.github.io/mlkit

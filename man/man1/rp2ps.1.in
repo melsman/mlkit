@@ -32,7 +32,7 @@ For the MLKit compiler to generate a profile data file to process with
 
 To learn more about region profiling with the MLKit, consult the MLKit manual "Programming with Regions in the MLKit", which is available from the MLKit home page and from the distributions. For more information about the MLKit, consult the MLKit home page:
 
-.B http://www.itu.dk/research/mlkit
+.B http://melsman.github.io/mlkit
 
 .SH EXAMPLES
 For examples, consult the MLKit manual "Programming with Regions in the MLKit", which is available from the MLKit home page and from the distributions.
@@ -112,4 +112,4 @@ The MLKit (version 2 and beyond) was developed by Lars Birkedal, Martin Elsman, 
 
 The MLKit manual "Programming with Regions in the MLKit", available from the MLKit home page
 
-.B http://www.itu.dk/research/mlkit
+.B http://melsman.github.io/mlkit

@@ -15,7 +15,7 @@ struct
   fun isSMLtoJs exe : bool =
       String.isSubstring "smltojs" exe
       
-  val homepage = "https://sourceforge.net/apps/mediawiki/mlkit/index.php"
+  val homepage = "http://melsman.github.io/mlkit"
   val homepage_smlserver = "http://www.smlserver.org"
   val homepage_smltojs = "http://www.smlserver.org/smltojs"
 
