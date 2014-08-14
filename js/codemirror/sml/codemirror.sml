@@ -20,6 +20,8 @@ structure CodeMirror :> CODE_MIRROR = struct
         setPropertyStringArray t "parserfile" files
     fun path (t:t) (p: string) : unit =
         setProperty t string "path" p
+    fun mode (t:t) (p: string) : unit =
+        setProperty t string "mode" p
     fun height (t:t) (p: string) : unit =
         setProperty t string "height" p
     fun width (t:t) (p: string) : unit =
@@ -36,19 +38,21 @@ structure CodeMirror :> CODE_MIRROR = struct
 
   type editor = foreignptr
 
-  fun newEditor {id:string, properties:EditorProperties.t} : editor =
-      exec2 {stmt="return CodeMirror.fromTextArea(id,props);",
-             arg1=("id",string),
-             arg2=("props",fptr),
-             res=fptr} (id,properties)
+  fun newEditor {textarea:Js.elem, properties:EditorProperties.t} : editor =
+      let val efptr = Js.Element.toForeignPtr textarea
+      in exec2 {stmt="return CodeMirror.fromTextArea(e,props);",
+                arg1=("e",fptr),
+                arg2=("props",fptr),
+                res=fptr} (efptr,properties)
+      end
 
-  fun getCode (e : editor) : string =
-      exec1 {stmt="return e.getCode();",
+  fun getValue (e : editor) : string =
+      exec1 {stmt="return e.getValue();",
              arg1=("e",fptr),
              res=string} e
 
-  fun setCode (e : editor) (s:string) : unit =
-      exec2 {stmt="return e.setCode(s);",
+  fun setValue (e : editor) (s:string) : unit =
+      exec2 {stmt="return e.setValue(s);",
              arg1=("e",fptr),
              arg2=("s",string),
              res=unit} (e,s)

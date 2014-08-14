@@ -149,7 +149,8 @@ struct
         | NONE => raise Fail "createBody"
 
   val () = appendStyleLink "dijit/themes/claro/claro.css"
-  val () = appendStyleLink "js/codemirror/dist/css/docs.css"
+  val () = appendStyleLink "js/codemirror/codemirror.css"
+  val () = appendScript "js/codemirror/sml.js"
   val () = appendStyleLink "appfunstyle.css"
   val () = appendIconLink "favicon.ico"
   val () = createBody ()
@@ -165,7 +166,7 @@ struct
        {get: unit -> string,
         set: string -> unit}
 
-  fun mkEditor id_inarea inarea : editor =
+  fun mkEditor inarea : editor =
       if not X.syntaxhighlight orelse touchScreen agent then
         {get=fn() => Js.value inarea,
          set=fn s => case Js.firstChild inarea of
@@ -173,28 +174,32 @@ struct
                      | NONE => Js.appendChild inarea ($s)
         }
       else
-      let val kind = X.codemirror_module
+      let (*val kind = X.codemirror_module
           val tokenizefile =
               "../contrib/" ^ kind ^ "/js/tokenize" ^ kind ^ ".js"
           val parsefile =
               "../contrib/" ^ kind ^ "/js/parse" ^ kind ^ ".js"
           val stylefile =
               "js/codemirror/dist/contrib/" ^ kind ^ "/css/" ^ kind ^ "colors.css"
+          *)
           val properties =
               let open CodeMirror.EditorProperties
                   val t = empty()
               in textWrapping t true
                ; lineNumbers t true
-               ; path t "js/codemirror/dist/js/"
+(*
+               ; path t "js/codemirror/"
                ; parserfiles t [tokenizefile,parsefile]
                ; stylesheets t [stylefile] 
+*)
                ; height t "100%"
                ; width t "100%"
+               ; mode t "sml"
                ; t
               end
-          val ed = CodeMirror.newEditor {id=id_inarea, properties=properties}
-      in {get=fn () => CodeMirror.getCode ed,
-          set=fn s => CodeMirror.setCode ed s}
+          val ed = CodeMirror.newEditor {textarea=inarea, properties=properties}
+      in {get=fn () => CodeMirror.getValue ed,
+          set=fn s => CodeMirror.setValue ed s}
       end
 
   fun exec_print (f:'a -> unit) (v:'a) : string =
@@ -672,8 +677,7 @@ struct
   end (* structure Files *)
 
   fun addEditorTab (tabs,tmap) filename content =
-      let val id_inarea = filename ^ "_inarea"
-          val inarea = taga "textarea" [("id",id_inarea),("style","border:0;")] ($content)
+      let val inarea = taga "textarea" [("style","border:0;")] ($content)
           val inputarea = taga "div" [("class","textareacontainer")] inarea          
           val () = run (pane [("style","height:100%;"),("title",filename),("closable","true")] inputarea >>= (fn page =>
                         (set_onClose page (fn() => (Files.closeTab filename; true));
@@ -682,7 +686,7 @@ struct
                          selectChild tabs page;
                          tmap := (filename,page) :: (!tmap);
                          ret ())))
-          val editor = mkEditor id_inarea inarea  (* requires id_inarea to be in document tree *)
+          val editor = mkEditor inarea
           val md5 = MD5.fromString content
       in Files.addTab filename md5 editor
       end

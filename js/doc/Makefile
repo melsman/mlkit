@@ -21,4 +21,4 @@ doc:
 
 .PHONY: clean
 clean:
-	rm -rf *~ *.html
+	rm -rf *~ *.html generated_tags.js

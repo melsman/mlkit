@@ -49,7 +49,7 @@ structure SmlToJsAppArg : APP_ARG = struct
                $", a Standard ML to JavaScript compiler. The IDE also uses the " & Dojo() & 
                $" framework as the basis for the IDE GUI widgets and the " & DropboxDataStoreAPI() & 
                $" for allowing users to store their data in Dropbox. The IDE also uses " & CodeMirror() & 
-               $" as the foundation for the Standard ML editor features, including syntax-highligting. " &
+               $" as the foundation for the Standard ML editor features, including syntax-highligting (support provided by Ken Friis Larsen). " &
                $" The sources for this IDE are" &
                $" available by download from the Github MLKit repository and are distributed" &
                $" under the GPL2 license; some parts of the sources are also available under the MIT license." &

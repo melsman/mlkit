@@ -23,11 +23,7 @@ smltojs.man.html: Makefile
 
 THEBASISFILES = js/basis/MLB/Js/*.js
 
-CODEMIRRORFILES=js/codemirror/dist/js/*.js \
- js/codemirror/dist/contrib/sml/css/smlcolors.css \
- js/codemirror/dist/contrib/sml/js/parsesml.js \
- js/codemirror/dist/contrib/sml/js/tokenizesml.js \
- js/codemirror/dist/css/docs.css
+CODEMIRRORFILES=js/codemirror/codemirror.js js/codemirror/codemirror.css js/codemirror/sml.js
 
 favicon.ico: smltojs_logo_no_text.png 
 	convert smltojs_logo_no_text.png \
@@ -38,7 +34,7 @@ favicon.ico: smltojs_logo_no_text.png
 SRC_ROOT=$(shell cd ..; pwd)
 SML_LIB=$(SRC_ROOT)/js
 SMLTOJS=SML_LIB=$(SML_LIB) smltojs
-CODEMIRRORFLAGS=-jslibs "../../js/codemirror/dist/js/codemirror.js"
+CODEMIRRORFLAGS=-jslibs "../../js/codemirror/codemirror.js"
 JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
 JSDOCFILES=js/doc/*.{html,css,js}
 DOJO=/Users/mael/dojo-release-1.9.1
@@ -85,3 +81,4 @@ clean:
 	$(MAKE) -C basis clean
 	$(MAKE) -C codemirror clean
 	rm -f *~ smltojs.man.html
+	$(MAKE) -C appfun clean

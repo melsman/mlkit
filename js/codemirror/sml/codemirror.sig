@@ -3,9 +3,11 @@ signature CODE_MIRROR = sig
   structure EditorProperties : sig
     type t
     val empty : unit -> t
-    val stylesheets : t -> string list -> unit
+(*    val stylesheets : t -> string list -> unit
     val parserfiles : t -> string list -> unit
     val path        : t -> string -> unit
+*)
+    val mode        : t -> string -> unit
     val height      : t -> string -> unit
     val width       : t -> string -> unit
     val minHeight   : t -> string -> unit
@@ -15,10 +17,11 @@ signature CODE_MIRROR = sig
   end
 
   type editor
-  val newEditor : {id:string, properties: EditorProperties.t} -> editor
+  val newEditor : {textarea:Js.elem, properties: EditorProperties.t} -> editor
 
-  val getCode           : editor -> string
-  val setCode           : editor -> string -> unit
+  val getValue          : editor -> string
+  val setValue          : editor -> string -> unit
+(*
   val focus             : editor -> unit
   val selection         : editor -> string
   val replaceSelection  : editor -> string -> unit
@@ -26,6 +29,8 @@ signature CODE_MIRROR = sig
   val reindentSelection : editor -> unit
   val undo              : editor -> unit
   val redo              : editor -> unit
+*)
+
 (*
   (* Lines *)
   type line
