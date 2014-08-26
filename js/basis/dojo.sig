@@ -27,6 +27,7 @@ signature DOJO = sig
   val attachToElement    : Js.elem -> widget M -> unit
   val run                : unit M -> unit
   val setProperties      : hash -> widget -> unit
+  val setBoolProperty    : string*bool -> widget -> unit
   val setContent         : widget -> string -> unit
   val setContentElement  : widget -> Js.elem -> unit
   val selectChild        : widget -> widget -> unit
@@ -35,6 +36,7 @@ signature DOJO = sig
   val dialog             : hash -> Js.elem -> widget M
   val showDialog         : widget -> unit
   val hideDialog         : widget -> unit 
+  val runDialog          : string -> Js.elem -> unit
 
   type treeStore
   val treeStore          : hash list -> treeStore M
@@ -200,5 +202,9 @@ which the tree appears. The id is the id of the root of the tree. The
 onClick method is triggered whenever a node in the tree is clicked on
 by the end user - the argument to the onClick function is a pair of
 the id and the name of the node clicked on.
+
+[runDialog title e] opens a Dojo dialog window with the caption title
+containing the DOM element e. Set the width and height style
+attributes on the element e to control the size of the dialog window.
 
 *)

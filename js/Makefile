@@ -53,6 +53,9 @@ smltojsonline: Makefile doc favicon.ico
 	cp -pa $(DOJO)/dojo $(DOJO)/dijit smltojsonline/
 	cp -pa test/appfuntest/smltojs_logo_transparent_small.png smltojsonline/
 	cp favicon.ico smltojsonline/
+	mkdir -p smltojsonline/otests
+	cp -p otests/content smltojsonline/otests/
+	(cd otests; for f in `ls *.sml`; do cp -p $${f} ../smltojsonline/otests/$${f}_; done)
 
 # Before running "make smltojs_web", make sure to run "make smltojs; make smltojs_basislibs"
 # in the parent directory; otherwise, certain js-files are missing and will not be 

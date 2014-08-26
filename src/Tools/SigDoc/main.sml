@@ -90,6 +90,9 @@ fun encode id =
     in String.translate f id
     end
 
+fun plingencode id =
+    String.translate (fn #"'" => "\\'" | c => String.str c) id
+
 fun init_space s = 
     (Char.isSpace(String.sub(s,0)))
     handle _ => false
@@ -660,7 +663,7 @@ fun gen_id_idx (idmap, sigmap, strmap) =
                    sep="&nbsp;"}
       fun qq s = "'" ^ s ^ "'"
       fun pair e1 e2 = "{label:" ^ e1 ^ ",value:" ^ e2 ^ "}"
-      fun prtag id strid sigid = pair (qq (strid ^ "." ^ id)) (qq(sigid ^ ".sml.html"))
+      fun prtag id strid sigid = pair (qq (plingencode(strid ^ "." ^ id))) (qq(sigid ^ ".sml.html"))
       fun tags nil = $""
         | tags ((id, nil)::rest) = tags rest
         | tags ([(id, [(sigid,[strid])])]) = $(prtag id strid sigid)

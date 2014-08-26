@@ -1,32 +1,28 @@
-val w = Js.openWindow "" "my window" 
-  ("location=1,status=1,scrollbars=1,resizable=no,width=200,height=200," ^
-   "menubar=no,toolbar=no")
+(* File sheeps.sml: A simple reactive game - get the sheeps into the box.
+ * Copyright (c) 2014, Martin Elsman.
+ * MIT License.
+ *)
 
-val doc = Js.windowDocument w
+infix &
+open Js.Element
 
-val e = Js.documentElement doc
+val scoreElem = tag "span" ($"0")
+val msgElem = tag "span" ($"?")
+val timeElem = tag "span" ($"0")
 
-val () = Js.innerHTML e 
-  ("<html></head></head><body id='top'><h1 align=center>RWP Example: Sheeps in a Box</h1>" ^
-   "<h2 align=center>Score: <span id='score'>0</span> &nbsp; Time: <span id='time'>0</span></h2>" ^
-   "<h2 align=center><span id='msg'>?</span></h2>" ^
-   "</body></html>")
+val body = taga "div" [("style","width:600;height:600;")]
+             (taga "h1" [("align","center")] ($"RWP Example: Sheeps") &
+              taga "h2" [("align","center")] ($"Score: " & scoreElem 
+                                              & $" " & $"Time: " & timeElem) &
+              taga "h2" [("align","center")] msgElem)
 
-fun getElem s =
-    case Js.getElementById doc s of 
-      SOME e => e
-    | NONE => raise Fail ("no " ^ s ^ " element in DOM")
-
-val scoreElem = getElem "score"
-val msgElem = getElem "msg"
-val timeElem = getElem "time"
-val body = getElem "top"
+val () = Dojo.runDialog "Sheeps" body
 
 local
 open Rwp
 infix *** &&& >>>
 
-val time : int b = 
+val time0 : int b = 
     let val t0 = Time.now()
     in arr (fn t => IntInf.toInt(Time.toMilliseconds(Time.-(t,t0)))) 
            (timer 20)
@@ -69,15 +65,14 @@ local
        else a
     end
 
-  val m = delay 200 (mouse_doc doc)
+  val m = delay 200 (mouse_elem body)
 in
 
   (* mkSheep returns a sheep behavior and a DOM-installer, to be
    * called later with a stopable version of the sheep behavior. *)
 
   fun mkSheep n : (int*int)b * ((int*int)b -> unit) =
-      let val e = Js.createElement "img"
-          val () = Js.setAttribute e "src" "sheep.png"
+      let val e = taga0 "img" [("src","http://www.smlserver.org/images/sheep.png")]
           val e' = mkBox e false
           val sheepPos0 = (200 + 70 * n, 200 + 70 * n)
           val s = hold sheepPos0 (fold newSheep sheepPos0 (changes m))
@@ -118,7 +113,7 @@ in
                    let val x = until(stop,x)
                    in f x
                    end) sheeps
-  val time = until (stop, time)
+  val time = until (stop, time0)
 end
 
 val boxElem = mkBox (Js.createTextNode "") true
@@ -133,7 +128,7 @@ val msg =
 val boxColor =
     iff (sheepsInBox,
          const "green",
-         const "white")
+         const "blue")
 
 val () = insertDOM_elem scoreElem (arr Int.toString score)
 

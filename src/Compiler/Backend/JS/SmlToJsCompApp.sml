@@ -89,15 +89,26 @@ structure SmlToJsAppArg : APP_ARG = struct
                    "Math", "Real",
                    "IntInf",
                    "Time", "Random", "Path", "Date", "Timer", "TextIO",
-                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo"
+                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo", "utest"
                   ]
 
   val script_paths = 
       let fun basispath n = "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
           fun implpath n = "js/basis/MLB/Js/" ^ n ^ ".js"
       in List.map basispath basislibs @
-         List.map implpath ["Html-sml","Rwp-sml","XMLrpcClient-sml-code1",
-                            "XMLrpcClient-sml-code2", "XMLrpcClient-sml-code3"]  
+         List.map implpath ["Array2-sml","ArraySlice-sml-code1","ArraySlice-sml-code3",
+                            "VectorSlice-sml-code1","VectorSlice-sml-code3",
+                            "ByteTable-sml-code11","ByteTable-sml-code14","ByteTable-sml-code16",
+                            "ByteTable-sml-code17","ByteTable-sml-code20","ByteTable-sml-code22",
+                            "ByteTable-sml-code3","ByteTable-sml-code5","ByteTable-sml-code6",
+                            "ByteTable-sml-code9",
+                            "ByteSlice-sml-code1","ByteSlice-sml-code10","ByteSlice-sml-code12",
+                            "ByteSlice-sml-code3","ByteSlice-sml-code4","ByteSlice-sml-code6",
+                            "ByteSlice-sml-code7","ByteSlice-sml-code9",
+                            "Bool-sml", "Char-sml", "Byte-sml", "StrBase-sml", "Math-sml",
+                            "Html-sml","Rwp-sml",
+                            "Parsercomb-sml","XMLrpcClient-sml-code1",
+                            "XMLrpcClient-sml-code2", "XMLrpcClient-sml-code3","utest-sml"]  
       (* modules that are not used by SMLtoJs itself are not loaded
        * and need to be mentioned here, so that they can be
        * explicitly loaded! *)

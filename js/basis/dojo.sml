@@ -55,7 +55,10 @@ structure Dojo :> DOJO = struct
 
   fun mkHash h =
       let val hash = JsCore.exec0{stmt="return {};", res=JsCore.fptr} ()
-          val () = List.app (fn (k,v) => JsCore.setProperty hash JsCore.string k v) h
+          val () = List.app (fn (k,v) => 
+                                (*if v = "false" then
+                                  JsCore.setProperty hash JsCore.bool k false
+                                else*) JsCore.setProperty hash JsCore.string k v) h
       in hash
       end
 
@@ -111,6 +114,9 @@ structure Dojo :> DOJO = struct
   fun hideDialog d =
       JsCore.exec1{stmt="d.hide();",arg1=("d",JsCore.fptr),res=JsCore.unit} d
 
+  fun runDialog title e =
+      run (dialog[("title", title)] e >>= (ret o showDialog))
+
   fun titlePane (h:hash) (w: widget) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/TitlePane"
@@ -132,13 +138,17 @@ structure Dojo :> DOJO = struct
                       end)
 
   fun setProp w t k v =
-    JsCore.exec2{stmt="w.set(k,v);",
-                 arg1=("w",JsCore.fptr), arg2=("v",t), 
-                 res=JsCore.unit} (w,v)
-      
+    JsCore.exec3{stmt="w.set(k,v);",
+                 arg1=("w",JsCore.fptr), 
+                 arg2=("k",JsCore.string),
+                 arg3=("v",t), 
+                 res=JsCore.unit} (w,k,v)
 
   fun setProperties h w =
       List.app (fn (k,v) => setProp w JsCore.string k v) h
+
+  fun setBoolProperty (k,v) w =
+      setProp w JsCore.bool k v
 
   fun setContent w s = setProp w JsCore.string "content" s
 

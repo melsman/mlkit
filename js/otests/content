@@ -1,0 +1,6 @@
+Examples=github.sml,life.sml,war.sml;
+Simple=fac.sml;
+Utests=array.sml,array2.sml,arrayslice.sml,bytechar.sml,date.sml,general.sml,int.sml,int31.sml,int32.sml,list.sml,listpair.sml,math.sml,
+       real.sml,string.sml,stringcvt.sml,testdyn1.sml,time.sml,vector.sml,vectorslice.sml;
+Reactive=frp.sml,sheeps.sml;
+ 

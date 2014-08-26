@@ -35,6 +35,17 @@ struct
       in List.exists (fn s => String.isSubstring s a) touchDevices
       end
 
+  fun serverGet file =
+      let val file = file ^ "?_=" ^ Real.toString (Time.toReal(Time.now())) (* avoid cache *)
+          open Js.XMLHttpRequest
+          val r = new()
+          val () = openn r {method="GET",url=file,async=false}
+          val () = send r NONE
+      in case response r of
+             SOME res => res
+           | NONE => raise Fail ("serverGet failed on file " ^ file)
+      end
+
   val outarea = taga0 "textarea" [("readonly","readonly")]
   val outareaDiv = taga "div" [("class","textareacontainer")] outarea
   val logarea = taga0 "textarea" [("readonly","readonly")]
@@ -227,111 +238,6 @@ struct
 
   val menuStyle = ("style","border:0;padding:2;")
 
-  structure Dropbox = struct
-    type client = foreignptr
-    type datastoremanager = foreignptr
-    type datastore = foreignptr
-    type table = foreignptr
-    structure J = JsCore
-    val op ==> = J.==> infix ==>
-
-    fun load f = Js.loadScript "https://www.dropbox.com/static/api/dropbox-datastores-1.0-latest.js" f
-    fun client k =
-        J.exec1{stmt="return new Dropbox.Client({key:k});",
-                arg1=("k", J.string),
-                res=J.fptr} k
-        
-    fun callMethod0 (t:'a J.T) m (obj:foreignptr) : 'a =
-        J.exec1{arg1=("obj",J.fptr),
-                stmt="return obj." ^ m ^ "();",
-                res=t} obj
-
-    fun callMethod1 (a1t: 'a1 J.T, t:'a J.T) m (obj:foreignptr) (a1:'a1) : 'a =
-        J.exec2{arg1=("obj",J.fptr),
-                arg2=("a1",a1t),
-                stmt="return obj." ^ m ^ "(a1);",
-                res=t} (obj,a1)
-
-    fun callMethod2 (a1t: 'a1 J.T, a2t: 'a2 J.T, t:'a J.T) m (obj:foreignptr) (a1:'a1,a2:'a2) : 'a =
-        J.exec3{arg1=("obj",J.fptr),
-                arg2=("a1",a1t),
-                arg3=("a2",a2t),
-                stmt="return obj." ^ m ^ "(a1,a2);",
-                res=t} (obj,a1,a2)
-               
-    fun authenticate c (onerr: string option -> unit) =
-        J.exec2{arg1=("c",J.fptr),
-                arg2=("f",(J.option J.string) ==> J.unit),
-                stmt="c.authenticate({interactive:false}, f);",
-                     res=J.unit} (c,onerr)
-
-    fun dropboxUid c =
-        callMethod0 J.string "dropboxUid" c
-
-    fun authenticate0 c =
-        callMethod0 J.unit "authenticate" c
-
-    fun isAuthenticated c =
-        callMethod0 J.bool "isAuthenticated" c
-
-    fun getDatastoreManager c =
-        callMethod0 J.fptr "getDatastoreManager" c
-
-    fun openDefaultDatastore dsm f =
-        J.exec2{arg1=("dsm",J.fptr),
-                arg2=("thef",J.===>(J.string,J.fptr,J.unit)),
-                stmt="return dsm.openDefaultDatastore(function(err,ds) {thef([err,ds]);});",
-                res=J.unit} (dsm,f)
-
-    fun deleteDatastore dsm ds =
-        callMethod2 (J.fptr,J.==>(J.string,J.unit),J.unit) "deleteDatastore" dsm (ds,fn _ => ())
-
-    fun getTable ds s : table =
-        callMethod1 (J.string, J.fptr) "getTable" ds s
-
-    type hash = (string * string) list
-    type hash0 = foreignptr
-
-    fun mkHash (h: hash) : hash0 =
-        let val hash = JsCore.exec0{stmt="return {};", res=JsCore.fptr} ()
-            val () = List.app (fn (k,v) => JsCore.setProperty hash JsCore.string k v) h
-        in hash
-        end
-
-    fun signOut c f : unit =
-        let val h = mkHash []
-        in callMethod2 (J.fptr,J.==>(J.fptr,J.unit),J.unit) "signOut" c (h,fn _ => f())
-        end
-
-    type record = foreignptr
-    fun insert (t:table) (h:hash) : record =
-        callMethod1 (J.fptr, J.fptr) "insert" t (mkHash h)
-
-    fun deleteRecord (r:record) : unit =
-        callMethod0 J.unit "deleteRecord" r
-
-    fun idx (t: 'a J.T) (a: foreignptr) i : 'a =
-        J.exec2{arg1=("a",J.fptr),arg2=("i",J.int),res=t,
-                stmt="return a[i];"}(a,i)
-
-    fun len (a: foreignptr) : int =
-        J.getProperty a J.int "length"
-
-    fun query t h : record list =
-        let val records = callMethod1 (J.fptr, J.fptr) "query" t (mkHash h)
-            fun loop i acc = 
-                if i < 0 then acc 
-                else loop (i-1) (idx J.fptr records i :: acc)
-        in loop (len records - 1) nil
-        end
-
-    fun set t r k v =
-        callMethod2 (J.string,t,J.unit) "set" r (k,v)
-
-    fun get t r k =
-        callMethod1 (J.string,t) "get" r k
-  end
-
   fun qq s = "'" ^ s ^ "'"
 
   infix ^^
@@ -376,6 +282,11 @@ struct
      * - The filesInTabs variable contains all the "loaded" files in tabs.
      * - The dropbox filesTable is kept in sync with the other
      *   containers using autosave and autoload.
+     *
+     * There is a reserved folder called Server. The content of the Server folder is 
+     * determined by the file otests/content on the server. Files and folders in the 
+     * Server folder are read-only, meaning that modifications to the files are not
+     * saved.
      *)
 
     val allfiles : filename list ref = ref nil                (* long names *)
@@ -418,7 +329,14 @@ struct
     fun fileExists name = List.exists (fn x => x = name) (!allfiles)
     fun folderExists name = List.exists (fn x => x = name) (!alldirs)
 
-    local 
+    fun isServerPath p =
+        case String.tokens (fn c => c = #"/") p of
+            "Server" :: _ => true
+          | _ => false
+
+    local
+      (* [loadFile fts r] loads an individual file in Dropbox and adds it to 
+       * the FileTreeStore. *)
       fun loadFile fts r =
           let fun loadDir p n =
                   let val d = p ^^ n
@@ -434,19 +352,21 @@ struct
                         | loop _ _ = raise Fail "loadDirs.impossible"
                   in loop "0" fields
                   end
-              val name = Dropbox.get JsCore.string r "name"
+              val name = Dropbox.get r "name"
           in case loadDirs name of
                  NONE => ()
                | SOME (p,n) => (treeStoreAdd fts [("id",name),("parent",p),("name",n),("kind","leaf")];
                                 allfiles := name :: !allfiles)
           end
     in
+
+      (* [load c fts] loads files from Dropbox and updates FileTreeStore *)
       fun load c fts =
           let val dsm = Dropbox.getDatastoreManager c
           in Dropbox.openDefaultDatastore dsm (fn (err, ds) =>           
                   let val thefilesTable = Dropbox.getTable ds "files"
                       val () = filesTable := SOME thefilesTable
-                      val fileRecords = Dropbox.query thefilesTable []
+                      val fileRecords = Dropbox.allRecords thefilesTable
                   in List.app (loadFile fts) fileRecords
                   end
              )
@@ -461,6 +381,15 @@ struct
                | nil => raise Fail ("getFileRecord: no records in Dropbox table for name=" ^ filename)
                | _ => raise Fail ("getFileRecord: too many records in Dropbox table for name=" ^ filename))
           | NONE => raise Fail "getFileRecord: no filesTable set"
+
+    (* [loadFileContentFromServer f] loads the file f from the server *)
+    fun loadFileContentFromServer f =
+        case rev(String.tokens (fn c => c = #"/") f) of
+            x :: _ => let val c = serverGet ("otests/" ^ x ^ "_")
+                      in log ("loaded file " ^ qq f ^ " from server");
+                         c
+                      end
+          | _ => raise Fail ("failed to load server file content for " ^ f)
                             
     (* [loadFileContent filename] returns (SOME c) if the file filename
      * (with content c) is not already loaded in a tab. It returns NONE
@@ -471,23 +400,32 @@ struct
         if List.exists (fn (x,_,_) => x = filename) (!filesInTabs) then 
           (current := filename; NONE)
         else
+          if isServerPath filename then
+            SOME(loadFileContentFromServer filename)
+          else
           let val r = getFileRecord filename
-              val c = Dropbox.get JsCore.string r "content"
+              val c = Dropbox.get r "content"
               val () = current := filename
           in log ("Loaded file " ^ qq filename);
              SOME c
           end
 
+    fun treeStoreRemoveExceptServer fts id =
+        if isServerPath id then ()
+        else treeStoreRemove fts id
+
     fun clear fts closetab =
         let val () = 
                 case !filesTable of
                     SOME t =>
-                    let val rs = Dropbox.query t []
+                    let val rs = Dropbox.allRecords t
                     in List.app Dropbox.deleteRecord rs
                     end
                   | NONE => ()
-            val () = List.app (treeStoreRemove fts) (!allfiles)
-            val () = List.app (fn id => if id <> "0" then treeStoreRemove fts id else ()) (!alldirs)
+            val () = List.app (treeStoreRemoveExceptServer fts) (!allfiles)
+            val () = List.app (fn id => if id <> "0" then 
+                                          treeStoreRemoveExceptServer fts id
+                                        else ()) (!alldirs)
         in alldirs := ["0"];
            allfiles := nil;
            current := "0";
@@ -505,22 +443,30 @@ struct
        val count = ref 0
        fun newFile0 fts content name =           
            let val lname = mkAbsPath name
-               val () = case !filesTable of
-                            SOME t => (Dropbox.insert t [("name",lname),("content",content)]; ())
-                          | NONE => ()
-               val () = allfiles := lname :: !allfiles
-           in treeStoreAdd fts [("id", lname),("parent",currentFolder()),("name",name),("kind","leaf")];
-              current := lname;
-              lname
+           in if isServerPath lname then
+                raise Fail "You cannot create new files in the Server folder"
+              else
+                let val () = case !filesTable of
+                                 SOME t => Dropbox.insert t [("name",lname),("content",content)]
+                               | NONE => ()
+                    val () = allfiles := lname :: !allfiles
+                in treeStoreAdd fts [("id", lname),("parent",currentFolder()),("name",name),("kind","leaf")];
+                   current := lname;
+                   lname
+                end
            end
        fun newFolder0 fts name =
            let val lname = mkAbsPath name
-               val () = case !filesTable of
-                            SOME t => (Dropbox.insert t [("name",lname),("content","")]; ())
-                          | NONE => ()
-               val () = alldirs := lname :: !alldirs
-           in treeStoreAdd fts [("id", lname),("parent",currentFolder()),("name",name),("kind","folder")];
-              lname
+           in if isServerPath lname then
+                raise Fail "You cannot create new folders in the Server folder"
+              else
+                let val () = case !filesTable of
+                                 SOME t => Dropbox.insert t [("name",lname),("content","")]
+                               | NONE => ()
+                    val () = alldirs := lname :: !alldirs
+                in treeStoreAdd fts [("id", lname),("parent",currentFolder()),("name",name),("kind","folder")];
+                   lname
+                end
            end
     in
         local
@@ -550,23 +496,26 @@ struct
                 case List.find (fn (f',_,_) => f = f') (!filesInTabs) of
                     SOME t => SOME (f,#3 t)
                   | NONE => ( log "currentEditor: error"
-                            ; NONE)
-      
+                            ; NONE)      
     end (*local*)
 
     fun showTab n =
         current := n
 
+    (* [delete fts closetab] deletes the current folder or the current file *)
     fun delete fts closetab : unit =
         case currentIsFolder() of
             SOME "0" => notify_err "Cannot delete root folder"
           | SOME folder =>
+            if isServerPath folder then
+              log ("You cannot delete folders in the Server folder")
+            else 
             let val (tabsToKill,tabsToKeep) =
-                    List.partition (fn (f,_,_) => String.isPrefix folder f) (!filesInTabs)
+                    List.partition (fn (f,_,_) => String.isPrefix (folder^"/") f) (!filesInTabs)
                 val (filesToDelete,filesToKeep) =
-                    List.partition (fn f => String.isPrefix folder f) (!allfiles)
+                    List.partition (fn f => String.isPrefix (folder^"/") f) (!allfiles)
                 val (foldersToDelete,foldersToKeep) =
-                    List.partition (fn f => String.isPrefix folder f) (!alldirs)
+                    List.partition (fn f => f = folder orelse String.isPrefix (folder^"/") f) (!alldirs)
                 fun deleteFile f =
                     (let val r = getFileRecord f
                      in Dropbox.deleteRecord r
@@ -581,8 +530,8 @@ struct
              ; filesInTabs := tabsToKeep
              ; allfiles := filesToKeep
              ; alldirs := foldersToKeep
-             ; List.app (treeStoreRemove fts) filesToDelete
-             ; List.app (treeStoreRemove fts) foldersToDelete
+             ; List.app (treeStoreRemoveExceptServer fts) filesToDelete
+             ; List.app (treeStoreRemoveExceptServer fts) foldersToDelete
              ; List.app (fn (f,_,_) => closetab f) tabsToKill
              ; List.app deleteFile filesToDelete
              ; List.app deleteFolder foldersToDelete
@@ -590,15 +539,19 @@ struct
             end
           | NONE =>
             let val f = !current
-            in current := "0"
-             ; filesInTabs := List.filter (fn (f',_,_) => f' <> f) (!filesInTabs)
-             ; allfiles := List.filter (fn f' => f' <> f) (!allfiles)
-             ; treeStoreRemove fts f
-             ; closetab f
-             ; (let val r = getFileRecord f
-                in Dropbox.deleteRecord r
-                 ; log ("Deleted file " ^ qq f)
-                end handle _ => ())
+            in if isServerPath f then
+                 log "You cannot delete files in the Server folder"
+               else
+                 ( current := "0"
+                 ; filesInTabs := List.filter (fn (f',_,_) => f' <> f) (!filesInTabs)
+                 ; allfiles := List.filter (fn f' => f' <> f) (!allfiles)
+                 ; treeStoreRemoveExceptServer fts f
+                 ; closetab f
+                 ; (let val r = getFileRecord f
+                    in Dropbox.deleteRecord r
+                     ; log ("Deleted file " ^ qq f)
+                    end handle _ => ())
+                 )
             end
 
     fun addTab filename md5 editor =
@@ -608,8 +561,10 @@ struct
         let val c = #get editor ()
             val newMd5 = MD5.fromString c
         in if !md5ref = newMd5 then ()
+           else if isServerPath filename then
+             log ("Modified server file " ^ qq filename ^ " not saved")
            else (let val r = getFileRecord filename
-                 in Dropbox.set JsCore.string r "content" c;
+                 in Dropbox.set r "content" c;
                     log ("Saved file " ^ qq filename);
                     md5ref := newMd5
                  end handle _ => ())
@@ -657,17 +612,18 @@ struct
                       else raise Fail ("invalid target path " ^ qq newfile)                                 
                     | NONE => raise Fail ("invalid target path " ^ qq newfile)
             val filepath = folderpath ^^ filename
-        in if fileExists newfilepath then raise Fail "file already exists"
+        in if isServerPath newfilepath then raise Fail "file cannot be moved to the server"
+           else if fileExists newfilepath then raise Fail "file already exists"
            else if not(folderExists newparent) then raise Fail ("target folder " ^ qq newparent ^ " does not exist")
            else case List.find (fn (n,_,_) => n = filepath) (!filesInTabs) of
               SOME (_,_,editor) =>              
               ( current := "0"
               ; filesInTabs := List.filter (fn (n,_,_) => n <> filepath) (!filesInTabs)
               ; allfiles := List.map (fn n => if n <> filepath then n else newfilepath) (!allfiles)
-              ; treeStoreRemove fts filepath
+              ; treeStoreRemoveExceptServer fts filepath
               ; treeStoreAdd fts [("id", newfilepath),("parent",newparent),("name",newfilename),("kind","leaf")]
               ; (let val r = getFileRecord filepath
-                 in Dropbox.set JsCore.string r "name" newfilepath
+                 in Dropbox.set r "name" newfilepath
                   ; log ("Moved file " ^ qq filename ^ " to " ^ qq newfilename)
                  end handle _ => ())
               ; (newfilepath,#get editor())
@@ -675,6 +631,28 @@ struct
             | NONE => raise Fail "impossible: cannot locate file in tab structure!"
         end
   end (* structure Files *)
+
+  val ftsServer = 
+      let val content = serverGet "otests/content"
+          val content = String.translate (fn c => if Char.isSpace c then "" else String.str c) content
+          val lines = String.tokens (fn c => c = #";") content
+          fun processFiles folder files =
+              let val files = String.tokens (fn c => c = #",") files
+              in List.map (fn f => [("id",folder^"/"^f),("name",f),("kind","file"),("parent",folder)]) files
+              end
+          fun processLine line =
+              case String.tokens (fn c => c = #"=") line of
+                  [folder,files] =>
+                  let val sfolder = "Server/"^folder
+                  in [("id",sfolder),("name",folder),
+                      ("kind","folder"),("parent","Server")]::
+                     processFiles sfolder files
+                  end
+                | [] => []
+                | _ => (log "syntax error in otests/content file"; [])
+      in [("id","Server"),("name","Server"),("kind","folder"),("parent","0")] ::
+         List.foldr (fn (l,a) => processLine l @ a) nil lines
+      end
 
   fun addEditorTab (tabs,tmap) filename content =
       let val inarea = taga "textarea" [("style","border:0;")] ($content)
@@ -803,7 +781,7 @@ struct
               let val c = Dropbox.client key
               in Dropbox.authenticate0 c
               end
-      in if (!Files.allfiles = nil andalso !Files.alldirs = ["0"]) orelse !Files.filesTable <> NONE then doit()
+      in if (!Files.allfiles = nil andalso !Files.alldirs = ["0"]) orelse Option.isSome(!Files.filesTable) then doit()
          else let val msg = $"Signing in to Dropbox will delete all application data created in this session. \
                              \If this is the first time you sign in to Dropbox from this application, you will \
                              \be asked to allow the application to store data in a special area of your Dropbox account."
@@ -834,7 +812,7 @@ struct
           val linkDojo = link "http://dojotoolkit.org/" "Dojo"
           val linkCodeMirror = link "http://codemirror.net" "CodeMirror" 
           val linkDropboxdatastore = link "https://www.dropbox.com/developers/datastore" "Dropbox datastore"
-          val linkSourceForgeMLKitRep = link "http://sourceforge.net/apps/mediawiki/mlkit" "SourceForge MLKit Repository"
+          val linkMLKitRep = link "https://github.com/melsman/mlkit" "Github MLKit Repository"
       in tag "p" 
              ($"This IDE is based on " & linkSMLtoJs() & 
               $", a Standard ML to JavaScript compiler. The front-end uses " & linkDojo() & 
@@ -843,10 +821,10 @@ struct
               $".") &
          tag "p" 
              ($" The sources for this IDE are" &
-              $" available by download from the SourceForge MLKit repository and are distributed" &
+              $" available by download from the " & linkMLKitRep() & $" and are distributed" &
               $" under the GPL2 license; some parts of the sources are also available under the MIT license." &
-              $" For information about licenses, please consult the sources, which are available" & 
-              $" from the " & linkSourceForgeMLKitRep() & $".")
+              $" For information about licenses, please consult the sources at the " & 
+              linkMLKitRep() & $".")
       end
 
   fun menu tabs fts closetab =
@@ -886,8 +864,8 @@ struct
 
   val everything =
       advTabContainer [("region", "top"),("splitter","true"),("style","height:70%;border:0;"),("tabPosition","bottom")] >>= (fn (tabsmap,{select=selecttab,close=closetab}) =>
-      treeStore [[("id", "0"),("name","/"),("kind","folder")]] >>= (fn fts =>
-      tree [("title","Files"),("region", "left"),("splitter","true"), ("style", "width:20%;")] "0" (treeHandle_LoadFile tabsmap selecttab) fts >>= (fn left =>
+      treeStore ([("id", "0"),("name","/"),("kind","folder")]::ftsServer) >>= (fn fts =>
+      tree [("region", "left"),("splitter","true"),("style","width:20%;")] "0" (treeHandle_LoadFile tabsmap selecttab) fts >>= (fn left =>
       menu tabsmap fts closetab >>= (fn top =>
       pane [("title","Output")] outareaDiv >>= (fn outputpane =>
       pane [("title","Message Log")] logareaDiv >>= (fn logpane =>
