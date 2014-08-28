@@ -34,6 +34,11 @@ signature JS =
     val removeChild     : elem -> elem -> unit
     val replaceChild    : elem -> elem -> elem -> unit
 
+    type ns (* name space *)
+    val nsFromString    : string -> ns
+    val createElementNS : ns -> string -> elem
+    val setAttributeNS  : ns -> elem -> string -> string -> unit
+
     (* events *)
     datatype eventType = onclick | onchange | onkeypress 
                        | onkeyup | onmouseover | onmouseout
@@ -82,7 +87,13 @@ signature JS =
       val taga0 : string -> (string*string)list -> elem
       val tag0  : string -> elem
       val tag   : string -> elem -> elem
-      val taga  : string -> (string*string)list -> elem -> elem                                 
+      val taga  : string -> (string*string)list -> elem -> elem
+
+      val nstaga0 : ns -> string -> (string*string)list -> elem
+      val nstag0  : ns -> string -> elem
+      val nstag   : ns -> string -> elem -> elem
+      val nstaga  : ns -> string -> (string*string)list -> elem -> elem
+ 
       val toForeignPtr   : elem -> foreignptr
       val fromForeignPtr : foreignptr -> elem
     end

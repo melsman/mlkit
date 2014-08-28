@@ -72,7 +72,7 @@ in
    * called later with a stopable version of the sheep behavior. *)
 
   fun mkSheep n : (int*int)b * ((int*int)b -> unit) =
-      let val e = taga0 "img" [("src","http://www.smlserver.org/images/sheep.png")]
+      let val e = taga0 "img" [("src","https://www.smlserver.org/images/sheep.png")]
           val e' = mkBox e false
           val sheepPos0 = (200 + 70 * n, 200 + 70 * n)
           val s = hold sheepPos0 (fold newSheep sheepPos0 (changes m))

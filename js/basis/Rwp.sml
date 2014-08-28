@@ -224,10 +224,21 @@ fun setStyle_elem e (s,b) =
                         addListener b (fn v => Js.setStyle e (s,v)))
       | NONE => raise Fail "setStyle_elem impossible"
 
+fun setAttr_elem e (s,b) =
+    case #current b of
+        SOME(ref v) => (Js.setAttribute e s v;
+                        addListener b (fn v => Js.setAttribute e s v))
+      | NONE => raise Fail "setAttr_elem impossible"
+
 fun setStyle (id:string) (s:string, b: string b) : unit =
     case Js.getElementById Js.document id of
       SOME e => setStyle_elem e (s,b)
     | NONE => idError "setStyle" id
+
+fun setAttr (id:string) (s:string, b: string b) : unit =
+    case Js.getElementById Js.document id of
+      SOME e => setAttr_elem e (s,b)
+    | NONE => idError "setAttr" id
 
 fun delay (ms:int) (b : ''a b) : ''a b =
     let val b' = new(case #current b of 

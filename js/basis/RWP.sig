@@ -39,6 +39,7 @@ signature RWP =
     val poll      : (unit -> ''a) -> int -> ''a b
     val insertDOM : string -> string b -> unit
     val setStyle  : string -> (string * string b) -> unit
+    val setAttr   : string -> (string * string b) -> unit
     val flatten   : ''a b b -> ''a b
 
     (* Event operations *)
@@ -56,6 +57,7 @@ signature RWP =
     (* Element operations *)
     val insertDOM_elem : Js.elem -> string b -> unit
     val setStyle_elem  : Js.elem -> (string * string b) -> unit
+    val setAttr_elem   : Js.elem -> (string * string b) -> unit
     val textField_elem : Js.elem -> string b
     val mouseOver_elem : Js.elem -> bool b
     val click_elem     : Js.elem -> ''a -> ''a e

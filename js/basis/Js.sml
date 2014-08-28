@@ -14,6 +14,9 @@ fun fromDoc a = a
 
 type elem = foreignptr
 
+type ns = string (* name space *)
+val nsFromString = fn x => x
+
 val document = J.exec0 {stmt="return document;", res=J.fptr} ()
 val window = J.exec0 {stmt="return this;", res=J.fptr} ()
 
@@ -206,12 +209,20 @@ fun setAttribute (e : elem) (a: string) (b:string) : unit =
       J.exec3 {stmt="return e.setAttribute(a,b);",
                arg1=("e",J.fptr), arg2=("a",J.string), arg3=("b",J.string), res=J.unit} (e,a,b)
 
+fun setAttributeNS (ns:ns) (e : elem) (a: string) (b:string) : unit =
+      J.exec4 {stmt="return e.setAttributeNS(ns,a,b);",
+               arg1=("ns",J.string),arg2=("e",J.fptr),
+               arg3=("a",J.string), arg4=("b",J.string), res=J.unit} (ns,e,a,b)
+
 fun removeAttribute (e : elem) (a: string) : unit =
     J.exec2 {stmt="return e.removeAttribute(a);",
              arg1=("e",J.fptr), arg2=("a",J.string), res=J.unit} (e,a)
 
 fun createElement (t : string) : elem =
     J.call1 ("document.createElement", J.string, J.fptr) t
+
+fun createElementNS (ns:ns) (t:string) : elem =
+    J.call2 ("document.createElementNS", J.string, J.string, J.fptr) (ns,t)
 
 fun createFragment () : elem =
     J.call0 ("document.createDocumentFragment", J.fptr)
@@ -239,27 +250,32 @@ fun setStyle (e: elem) (s:string,v:string) : unit =
 
 (* Shorthand notation for creating elements *)
 structure Element = struct
-  fun taga t attrs elem = 
-      let val newelem = createElement t     
+
+  fun taga' createElem t attrs elem = 
+      let val newelem = createElem t     
       in List.app (fn (k,v) => setAttribute newelem k v) attrs;
          appendChild newelem elem;
          newelem
       end
 
-  fun tag t elem = 
-      taga t nil elem
+  val taga = taga' createElement
+  fun nstaga ns = taga' (createElementNS ns)
 
-  fun taga0 t attrs = 
-      let val newelem = createElement t     
+  fun tag t = taga t nil
+  fun nstag ns t = nstaga ns t nil
+
+  fun taga0' createElem t attrs = 
+      let val newelem = createElem t     
       in List.app (fn (k,v) => setAttribute newelem k v) attrs;
          newelem
       end
+  val taga0 = taga0' createElement
+  fun nstaga0 ns = taga0' (createElementNS ns)
 
-  fun tag0 t = 
-      taga0 t nil
-      
-  fun $ s = 
-      createTextNode s
+  fun tag0 t = taga0 t nil
+  fun nstag0 ns t = nstaga0 ns t nil
+
+  fun $ s = createTextNode s
 
   infix &
   fun e1 & e2 =
