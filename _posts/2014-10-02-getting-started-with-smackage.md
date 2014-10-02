@@ -1,10 +1,9 @@
 ---
 layout: post
+author: Martin Elsman
 category : lessons
 tags : [smackage,libraries, package management,mlton,mlkit]
 ---
-_By Martin Elsman_
-
 {% include JB/setup %}
 
 [Smackage](http://github.com/standardml/smackage) is a package

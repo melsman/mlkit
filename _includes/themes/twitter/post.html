@@ -5,12 +5,17 @@
 <div class="row-fluid post-full">
   <div class="span12">
     <div class="date">
-      <span>{{ page.date | date_to_long_string }}</span>
+       <span> 
+       {% if page.author %}
+	 <i>{{ page.author }}</i>,
+       {% endif %}
+       {{ page.date | date_to_long_string }}
+       </span>
     </div>
     <div class="content">
       {{ content }}
     </div>
-
+<!--
   {% unless page.categories == empty %}
     <ul class="tag_box inline">
       <li><i class="icon-folder-open"></i></li>
@@ -26,22 +31,22 @@
       {% include JB/tags_list %}
     </ul>
   {% endunless %}  
-
+-->
     <hr>
     <div class="pagination">
-      <ul>
+      <table width="100%" border="0" padding="0" spacing="5"><tr>
       {% if page.previous %}
-        <li class="prev"><a href="{{ BASE_PATH }}{{ page.previous.url }}" title="{{ page.previous.title }}">&larr; Previous</a></li>
+        <td class="prev"><a href="{{ BASE_PATH }}{{ page.previous.url }}" title="{{ page.previous.title }}">&larr; Previous</a></td>
       {% else %}
-        <li class="prev disabled"><a>&larr; Previous</a></li>
+        <td class="prev disabled"><a>&larr; Previous</a></td>
       {% endif %}
-        <li><a href="{{ BASE_PATH }}{{ site.JB.archive_path }}">Archive</a></li>
+        <td align="center"><a href="{{ BASE_PATH }}{{ site.JB.archive_path }}">Archive</a></td>
       {% if page.next %}
-        <li class="next"><a href="{{ BASE_PATH }}{{ page.next.url }}" title="{{ page.next.title }}">Next &rarr;</a></li>
+        <td class="next" align="right"><a href="{{ BASE_PATH }}{{ page.next.url }}" title="{{ page.next.title }}">Next &rarr;</a></td>
       {% else %}
-        <li class="next disabled"><a>Next &rarr;</a>
+        <td align="right" class="next disabled"><a>Next &rarr;</a></td>
       {% endif %}
-      </ul>
+      </tr></table>
     </div>
     <hr>
     {% include JB/comments %}
