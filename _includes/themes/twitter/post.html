@@ -7,11 +7,11 @@
     <div class="date">
        <span> 
        {% if page.author %}
-	 <i>{{ page.author }}</i>,
+	 <i>By {{ page.author }}</i>,
        {% endif %}
        {{ page.date | date_to_long_string }}
        </span>
-    </div>
+    </div><br/>
     <div class="content">
       {{ content }}
     </div>
