@@ -42,7 +42,7 @@ Execute the following commands in a shell:
     $ git clone git://github.com/standardml/smackage
     $ cd smackage
     $ make mlton
-    $ ./smackage refresh
+    $ bin/smackage refresh
 
 Smackage stores configuration information, libraries, and versioning
 information in your local working directory `$(HOME)/.smackage`, which
@@ -54,9 +54,9 @@ variable (e.g., alter your `$(HOME)/.bash_profile` file).
 Now, in a fresh shell, execute the following commands:
 
     $ cd smackage
-    $ ./smackage get smackage
-    $ ./smackage make smackage mlton
-    $ ./smackage make smackage install
+    $ bin/smackage get smackage
+    $ bin/smackage make smackage mlton
+    $ bin/smackage make smackage install
 
 The get command will fetch the smackage package (and possible
 depending packages) from the Smackage github repository. The make
@@ -84,20 +84,20 @@ Here you need to replace `[HOME]` with your particular path to your
 home directory, as found in `$(HOME)`. Different compilers reads the
 `mlb-path-map` file from different locations. For instance, MLKit will
 try to see if there is a file `$(HOME)/.mlkit/mlb-path-file`. If not,
-it will try to find one in `/usr/local/etc/mlkit` or
-`/usr/etc/mlkit`. MLton will try similar attempts.
+it will try to find one in `/usr/local/etc/mlkit`. MLton will try
+similar attempts.
 
 ## Mastering `smackage` commands.
 
 Now that `smackage` is installed, you can execute various basic smackage
 commands:
 
- Command           | Action
- ------------------|------
- smackage refresh           | update the local database
- smackage get _package_     | download _package_ and the packages it depends on
- smackage update            | download new versions of fetched packages
- smackage info _package_    | display information about _package_
+ |Command           | Action
+ |------------------|------
+ |smackage refresh           | update the local database
+ |smackage get _package_     | download _package_ and the packages it depends on
+ |smackage update            | download new versions of fetched packages
+ |smackage info _package_    | display information about _package_
 
 To learn more about available Smackage commands, just run `smackage`
 without arguments.
@@ -117,14 +117,24 @@ your library:
     $ git push --tags
 
 If your package is hosted at Github, you may tag the current version
-of your package using the Web api - simply click the "releases" link
-on the main page of your repository and follow the online guidance.
+of your package using the Web GUI - simply click the "releases" link
+on the main page of your repository and follow the online guide.
 
 ## Adding a .smackspec-file to your library
 
 You may want to add a description of your package in form of a
 .smackspec-file. The description is necessary if your package depends
-on other packages
+on other packages. Here is an example .smackspec file:
+
+    description: An APL parser in Standard ML
+    maintainer: Martin Elsman <mael@di.ku.dk>
+    keywords: APL, parsing
+    license: MIT License
+    requires: unicode v1 (v1.0.2)
+
+The value associated with the `requires` key specifies that v1 of the
+library is needed, with v1.0.2 being the minimum version number that
+the package can work with.
 
 ## Related work
 
