@@ -87,7 +87,7 @@ try to see if there is a file `$(HOME)/.mlkit/mlb-path-file`. If not,
 it will try to find one in `/usr/local/etc/mlkit`. MLton will try
 similar attempts.
 
-## Mastering `smackage` commands.
+## Mastering Smackage commands
 
 Now that `smackage` is installed, you can execute various basic smackage
 commands:
