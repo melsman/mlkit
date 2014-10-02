@@ -37,6 +37,8 @@ the most simple Smackage commands, such as `smackage refresh`,
 
 ## Install Smackage
 
+Execute the following commands in a shell:
+
     $ cd
     $ git clone git://github.com/standardml/smackage
     $ cd smackage
@@ -77,9 +79,9 @@ library, the convention is that an MLB-file can reference the special
 `$(SMACKAGE)` variable in path names. For this to work, add a line to
 the appropriate `mlb-path-map` file:
 
-    SMACKAGE {{HOME}}/.smackage/lib
+    SMACKAGE [HOME]/.smackage/lib
 
-Here you need to replace `{{HOME}}` with your particular path to your
+Here you need to replace `[HOME]` with your particular path to your
 home directory, as found in `$(HOME)`. Different compilers reads the
 `mlb-path-map` file from different locations. For instance, MLKit will
 try to see if there is a file `$(HOME)/.mlkit/mlb-path-file`. If not,
@@ -91,12 +93,12 @@ it will try to find one in `/usr/local/etc/mlkit` or
 Now that `smackage` is installed, you can execute various basic smackage
 commands:
 
-Command           | Action
-------------------|------
-smackage refresh           | update the local database
-smackage get _package_     | download _package_ and the packages it depends on
-smackage update            | download new versions of fetched packages
-smackage info _package_    | display information about _package_
+ Command           | Action
+ ------------------|------
+ smackage refresh           | update the local database
+ smackage get _package_     | download _package_ and the packages it depends on
+ smackage update            | download new versions of fetched packages
+ smackage info _package_    | display information about _package_
 
 To learn more about available Smackage commands, just run `smackage`
 without arguments.
