@@ -1,7 +1,7 @@
 ---
 layout: post
 category : lessons
-tags : [smackage, libraries, package management, mlton, mlkit]
+tags : [smackage,libraries, package management,mlton,mlkit]
 ---
 _By Martin Elsman_
 
