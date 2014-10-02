@@ -35,11 +35,23 @@ exactly, as a directed acyclic graph, within one MLB-file.
 
 In an MLB-file, one can reference source files and other MLB-files
 using absolute or relative paths. Relative paths are relative to the
-location of the MLB-file. Paths can reference environment variables
-using the $(ENVVAR) notation, where ENVVAR is an environment
+location of the MLB-file. Paths can reference, so-called MLB path
+variables using the $(VAR) notation, where VAR is an MLB path
 variable. In particular, MLB-files can reference the Basis Library,
-using the $(SML_LIB) environment variable, by including the path
-$(SML_LIB)/basis/basis.mlb.
+using the MLB path variable $(SML_LIB), by including the path
+$(SML_LIB)/basis/basis.mlb. An MLB path variable _V_ is resolved
+according to the following rules:
+
+1. First, look for an environment variable with name _V_.
+
+1. Then, look for a definition of the variable _V_ in one of the files
+provided with an option --mlb_path_maps (see `mlkit -help` for
+details).
+
+1. Then, look for a definition of _V_ in the user's local file
+$(HOME)/.mlkit/mlb-path-map.
+
+1. Finally, look for a definition of _V_ in the global file /usr/local/etc/mlkit/mlb-path-map.
 
 MLB-files may contain Standard ML style comments. The declared
 identifiers of an MLB-file is the union of the identifiers being
@@ -58,7 +70,10 @@ would arise by expanding all referenced MLB-files and then
 concatenating all the source files listed in the MLB-file (with
 appropriate renaming of declared identifiers of source files that are
 included using local), in the order they are listed, except that each
-MLB-file is executed only the first time it is imported.
+MLB-file is executed only the first time it is imported. To be
+precise, MLB files can be used to hide the definition of signature and
+functor declarations, which cannot be accomodated using Stadard ML
+toplevel declarations alone.
 
 ### Managing Compilation and Recompilation with MLB-files
 
