@@ -82,7 +82,7 @@ JB :
   # Set 'provider' to false to turn commenting off globally.
   #
   comments :
-    provider : disqus
+#    provider : disqus
     disqus :
       short_name : mlkit
     livefyre :

@@ -97,7 +97,7 @@ layout: front
    <div class="panel panel-default">
       <div class="panel-heading">News</div>
       <table class="table">
-	<tr><td><b>2014-10-02:</b> Read how <a href="http://www.elsman.com/mlkit/lessons/2014/10/02/getting-started-with-smackage/">MLKit works nicely with Smackage</a>!</td></tr>
+	<tr><td><b>2014-10-02:</b> Read how <a href="http://www.elsman.com/lessons/2014/10/02/getting-started-with-smackage/">MLKit works nicely with Smackage</a>!</td></tr>
 	<tr><td><b>2014-05-28:</b> The MLKit has moved to Github!</td></tr>
 	<tr><td><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</td></tr>
 	<tr><td><b>2013-05-30:</b> <a href="https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.7">MLKit 4.3.7</a> is released.</td></tr>
