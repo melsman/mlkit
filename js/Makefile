@@ -84,4 +84,3 @@ clean:
 	$(MAKE) -C basis clean
 	$(MAKE) -C codemirror clean
 	rm -f *~ smltojs.man.html
-	$(MAKE) -C appfun clean
