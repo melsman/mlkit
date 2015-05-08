@@ -179,6 +179,8 @@ sig
   val computeIncrement: delta_phi -> effect list
   val current_increment: effect -> delta_phi (* the increment currently associated with an effect variable*)
 
+  val profGlobalIncs : unit -> unit (* for profiling *)
+
   val instNodes: (effect*effect)list -> cone -> cone
   val instNodesClever: (effect*effect)list -> cone -> cone * (effect * delta_phi)list
 

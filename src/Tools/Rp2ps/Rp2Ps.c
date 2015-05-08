@@ -421,9 +421,7 @@ static void checkArgs(int argc, char *argv[]) {
 	    epsfwidth *= 72.0;
 	  else if (strcmp((char *)argv[0], "mm") == 0)
 	    epsfwidth = (float) (epsfwidth*2.834646);
-	  else if (strcmp((char *)argv[0], "pt") == 0)
-	    epsfwidth = epsfwidth;
-	  else {
+	  else if (strcmp((char *)argv[0], "pt") != 0) {
 	    printf("No/wrong in, mm or pt after -eps width switch\n");
 	    printUsage();
 	  }

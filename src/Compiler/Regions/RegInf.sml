@@ -213,6 +213,9 @@ struct
      fun R(B:cone, rse: rse, t as Exp.TR(e, mt: Exp.metaType, phi: effect)): cone * Effect.delta_phi =
       let 
 (*
+        val () = if !count_visited mod 100 = 0 then
+                   print ("R(" ^ Int.toString (!count_visited) ^ ")")
+                 else ()
         val () = print ("R(" ^ Int.toString (!count_visited) ^ ")")
         val () = if !count_visited mod 10 = 0 then
                    print (Effect.info B)
@@ -230,6 +233,11 @@ struct
                            in (B, d2 && d3)
                            end
            end
+        fun pr s = if false andalso !count_visited >= 10200 then 
+                     (print s;
+                      if s="v" then Effect.profGlobalIncs()
+                      else ())
+                   else ()
       in count_visited:= !count_visited+1;
        (case e of
          Exp.VAR{lvar, il_r = il_r as ref(il,f), fix_bound} =>
@@ -238,19 +246,22 @@ struct
            (case RSE.lookupLvar rse lvar of
      	  SOME(_,_,sigma,place0,_, _) =>
                  let 
+                   val _ = pr "V"
                    val (tau_1,B,updates: (effect * Effect.delta_phi)list) = instClever(sigma,il)(B)
                      handle Crash.CRASH =>
                        die ("inst failed; type scheme:\n" ^
                              PrettyPrint.flatten1(RType.mk_lay_sigma false (sigma)) ^ "\n")
+                   val _ = pr "-"
                  in
                    case mt of 
                      Exp.Mus [(tau, _)] =>
                        (let val B' = (unify_ty(tau,tau_1)B handle _ => die "unify_ty failed\n");
-                        in
+                        in  pr "-";
                             List.app update_increment    updates;
-                            List.app (update_areff o #1) updates
+                            pr "-";
+                            List.app (update_areff o #1) updates    (* takes time; mael 2015-05-07 *)
                               handle _ => die "update_areff in VAR case";
-                            (B',delta_emp)
+                            (B',delta_emp) before pr "v"
                         end
                        )
                    | _ => die ("R.VAR{...}: bad metatype")
@@ -271,7 +282,7 @@ struct
               (case RType.unFUN ty of
                  SOME(mus2,eps_phi0,mus1) =>
                  let 
-		    val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
+	            val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
                           RSE.declareLvar(lvar, (false,false,
                                  RType.type_to_scheme tau, rho,NONE,NONE), 
                                           rse)) rse
@@ -280,10 +291,14 @@ struct
 		    val delta_gc = gc_compute_delta(rse,free,mu0)
 		    val delta = delta_body && delta_gc
                     val lev_eps = case Effect.level_of eps_phi0 of SOME n => n | NONE => die "bad arrow effect (FN)"
+ 	            val _ = pr "L"
                     val B = lower_delta lev_eps delta B  
+ 	            val _ = pr "-"
                  in 
                     update_increment(eps_phi0, delta);
-                    update_areff(eps_phi0);
+ 	            pr "-";
+                    update_areff(eps_phi0);   (* takes time; mael 2015-05-07 *)
+ 	            pr "l";
                     (B, delta_emp)
                  end
                | NONE => die "R: FN expression had bad meta type")
@@ -399,7 +414,7 @@ struct
               fun loop {B, fcn=[], previous_were_ok=true, rse} = B
                 | loop {B, fcn=[], previous_were_ok=false, rse} = loop {B=B,fcn=functions,previous_were_ok=true,rse=rse}
                 | loop {B, fcn=fcn::rest, previous_were_ok,rse} =
-                    let val (B, rhs_was_ok) = doOneRhs rse fcn B 
+                    let val (B, rhs_was_ok) = doOneRhs rse fcn B
                     in loop {B=B, fcn=rest, previous_were_ok=previous_were_ok andalso rhs_was_ok,
                              rse=addBindingForRhs (fcn,rse)}
                     end                

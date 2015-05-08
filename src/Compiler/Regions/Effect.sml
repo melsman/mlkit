@@ -1025,6 +1025,23 @@ tracing *)
 
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
 
+  (* for profiling *)
+  fun szDelta (Lf _) = 1
+    | szDelta (Br(d1,d2)) = szDelta d1 + szDelta d2
+
+  fun delta_plus(d1,d2) =
+      let fun loop (Lf xs, acc) = loops(xs,acc)
+            | loop (Br (d1,d2), acc) = loop(d2,loop(d1,acc))
+          and loops (nil,acc) = acc
+            | loops (x::xs,acc) =
+              let val r = G.find_visited x
+              in loops(xs, if !r then acc else (r:=true;x::acc))
+              end
+          val unique_nodes = loop(Br(d1,d2),nil)
+      in List.app (fn x => G.find_visited x := false) unique_nodes
+       ; Lf unique_nodes
+      end
+
   structure Increments = 
       OrderFinMap(struct type T = effect
 			 fun lt (i: effect) (j:effect) = 
@@ -1032,6 +1049,14 @@ tracing *)
                   end)
 
   val globalIncs: delta_phi Increments.map ref = ref(Increments.empty)
+
+  val profGlobalIncs : unit -> unit = 
+   fn () =>
+      if true then ()
+      else let val sz = Increments.fold (fn (_,a) => a+1) 0 (!globalIncs)
+               val tot = Increments.fold (fn (d,a) => a+szDelta d) 0 (!globalIncs)
+           in print("[SZ=" ^ Int.toString sz ^ ";TOT=" ^ Int.toString tot ^ "]")
+           end
 
   fun unvisitDelta (Lf effects) = app G.unvisit_all effects
     | unvisitDelta (Br(d1,d2)) = (unvisitDelta d1; unvisitDelta d2)
@@ -1041,18 +1066,20 @@ tracing *)
        if is_arrow_effect eff
        then
         case Increments.lookup (!globalIncs) eff of
-          SOME delta => globalIncs:= Increments.add(eff,Br(delta, delta_new),!globalIncs)
+          SOME delta => globalIncs:= Increments.add(eff,delta_plus(delta, delta_new),!globalIncs)
         | NONE =>       globalIncs:= Increments.add(eff,delta_new,!globalIncs)
        else ()
                                              
   fun key_of_eps_or_rho node = case get_level_and_key(node)
        of SOME(level,key) => !key | _ => die "key_of_eps_or_rho"
 
+  val profiling = ref false
+  val startProf : unit -> unit =
+      fn() => profiling := true
 
 
   fun computeIncrement delta =
     let 
-
         fun search' (b,[]) = b
           | search' (b,x::xs) = search'(search(x, b), xs)
 
@@ -1067,10 +1094,8 @@ tracing *)
           in
             if !r then ns 
             else (r := true;
-                  let
-                          val i = G.find_info n 
-                  in
-                          case i of
+                  let val i = G.find_info n 
+                  in case i of
                             UNION _ =>
                                   (* do not include n itself, but search children *)
                                   (search'(ns,(G.out_of_node n)))
@@ -1090,9 +1115,7 @@ tracing *)
                   end
                  )
           end
-
-      in
-        searchDelta(delta,[]) footnote unvisitDelta delta
+      in searchDelta(delta,[]) footnote unvisitDelta delta
       end
 
   fun current_increment(eps) = 
@@ -1178,6 +1201,13 @@ tracing *)
      G.union_without_edge_duplication when implementing unification of region-
      and effect variables *)
 
+  fun removeIncr n =
+      (globalIncs := 
+       (case Increments.remove (n,!globalIncs) of
+            SOME m => m
+          | NONE => die "removeIncr");
+       profGlobalIncs())
+
   fun einfo_combine_eps(eps1,eps2)(einfo1,einfo2) = (* assume einfo1 and einfo2 
 						     * have the same level *)
     case (einfo1, einfo2) 
@@ -1190,14 +1220,16 @@ tracing *)
 	    (if !algorithm_R then
 	       case Increments.lookup(!globalIncs)eps2
 		 of SOME delta2 => (update_increment(eps1,delta2);
-				    update_areff(eps1) handle _ => die "einfo_combine_eps1")
+				    update_areff eps1 handle _ => die "einfo_combine_eps1";
+                                    removeIncr eps2)
 		  | NONE => ()
 	     else (); einfo1)
 	  else (* k2 < k1 *)
 	    (if !algorithm_R then
 	       case Increments.lookup(!globalIncs)eps1
 		 of SOME delta1 => (update_increment(eps2,delta1);
-				    update_areff(eps2) handle _ => die "einfo_combine_eps2")
+				    update_areff eps2 handle _ => die "einfo_combine_eps2";
+                                    removeIncr eps1)
 		  | NONE => ()
 	     else (); einfo2)
        | _ => die "einfo_combine_eps"

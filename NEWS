@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+ * mael 2015-05-08: Fixed inefficiency in region inference algorithm
+   for programs containing highly continuation-based nested recursive
+   functions.
+
  * mael 2014-05-23: Moved the sources to github. Updated documentation
    and README files.
 
