@@ -73,19 +73,21 @@ concepts of behavior transformers and event stream transformers.</li>
 
 <p>
 To see SMLtoJs in action, click on the examples in the table to the right; there are also
-links to the Standard ML source code.
+links to the Standard ML source code. To learn more about the details of the SMLtoJs implementation, see the <a href="http://www.elsman.com/pdf/smltojs-final.pdf">paper</a> presented at PLASTIC'2011.
+
 </p>
 
 <h3>Getting the Sources</h3>
 <p>
 SMLtoJs compiles on Debian Linux systems with MLton or MLKit
-installed. The SMLtoJS sources are available through an MLKit
-sourceforge svn checkout:
+installed. The latest version of the SMLtoJS sources are available through an MLKit
+github checkout:
 <pre>
- $ svn co https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/smltojs-4.3.5/kit smltojs
+ $ git clone https://github.com/melsman/mlkit.git smltojs
 </pre>
 This command copies the sources to the directory smltojs.
 </p>
+For older (and perhaps more stable) versions of SMLtoJS, you may browse the <a href="https://github.com/melsman/mlkit/releases">list of releases</a>.
 
 <h3>Building SMLtoJs</h3>
 <p>
@@ -173,6 +175,18 @@ license information.
     <tr><td><table border=0 bgcolor="#1f94b7" cellpadding=1 cellspacing=1 width=100% align=right>
          <tr><td><table border=0 bgcolor=white cellpadding=3 cellspacing=0 width=100%>
                    <tr><td bgcolor="#1f94b7"><font color=white><b>News</b></font></td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2013-09-17: </b>Version 4.3.7 of SMLtoJs is released.</td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2011-04-16: </b>Use <a href="http://www.smlserver.org/ide">SMLtoJsOnline</a>
+                       for compiling and running Standard ML programs
+                       in your browser (improved 2013).</td></tr>
+                   <tr><td bgcolor="#eeeeee"><font size=-1>
+                       <b>2010-09-25: </b>Martin gave a talk at the
+                       2010 ML Workshop on using SMLtoJs
+                       for <a href="http://www.elsman.com/pdf/mlwork2010.pdf">Hosting
+                       a Standard ML Compiler in a Web
+                       Browser</a>.</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
                        <b>2008-08-16: </b>SMLtoJs <b>version 4.3.5</b> is available.</td></tr>
                    <tr><td bgcolor="#eeeeee"><font size=-1>
