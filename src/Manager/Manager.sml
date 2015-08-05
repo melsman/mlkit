@@ -125,7 +125,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         \proper."}
 
     val _ = Flags.add_stringlist_entry 
-      {long="mlb_path_maps", short=NONE, item=ref nil,
+      {long="mlb_path_maps", short=SOME"mlb-path-map", item=ref nil,
        menu=["File", "ML Basis path map files to use"],
        desc="ML Basis path map files to be used."}
 
