@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <signal.h>
+#include <string.h>
 #include "Posix.h"
 
 struct syserr_entry srcErr[] = {

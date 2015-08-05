@@ -181,13 +181,15 @@ unsigned long callsOfDeallocateRegionInf=0,
                                         /* It is updated in function Profiling.updateMaxProfStack, which is */
                                         /* called from the assembler file.                                  */
              allocatedLobjs=0;          /* Total number of allocated large objects allocated with malloc */
-#endif /*PROFILING*/
 
 inline static unsigned int 
 max(unsigned int a, unsigned int b) 
 {
   return (a<b)?b:a;
 }
+
+#endif /*PROFILING*/
+
 
 /*------------------------------------------------------*
  * If an error occurs, then print the error and stop.   *

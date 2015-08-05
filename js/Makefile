@@ -1,6 +1,8 @@
-HOST=tiger.itu.dk
+HOST=37.139.21.24
 TDIR=smlserver.org/www/smltojs
-publish:
+
+.PHONY: publish
+publish: doc
 	$(MAKE) -C test all
 	ssh $(HOST) rm -rf $(TDIR)/basis $(TDIR)/test
 	ssh $(HOST) mkdir -p $(TDIR)/basis/MLB/Js
