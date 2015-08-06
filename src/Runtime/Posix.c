@@ -973,7 +973,7 @@ REG_POLY_FUN_HDR(sml_getlogin, Region rs)
 {
   String s;
   int r;
-  s = REG_POLY_CALL(allocStringC,rs, L_cuserid + 1);
+  s = REG_POLY_CALL(allocStringC,rs, L_cuserid + 4);  /* was 1 - hmm*/
   r = getlogin_r(&(s->data), L_cuserid);
   if (r != 0)
   {

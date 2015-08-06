@@ -1001,7 +1001,6 @@ senddata(reply **r, char *data, int datasize, mailer *mail) //{{{
   int socket = mail->socket;
   int s,t,n = 0;
   int gotanswer = 0;
-  time_t before;
   fd_set recvfds;
   fd_set writefds;
   struct timeval tv;
@@ -1011,7 +1010,6 @@ senddata(reply **r, char *data, int datasize, mailer *mail) //{{{
   FD_ZERO (&writefds);
   FD_SET (socket, &recvfds);
   FD_SET (socket, &writefds);
-  before = time (NULL);
   while (n < datasize)
   {
     s = select (socket + 1, &recvfds, &writefds, NULL, &tv);
@@ -1298,15 +1296,14 @@ closeconn(mailer *mail, email *e)/*{{{*/
 int
 apsml_closeconn (mailer *mail, request_data *rd)/*{{{*/
 {
-  int n;
   struct charlist *p;
   reply *r;
 //    ap_log_error (APLOG_MARK, LOG_DEBUG, 0, rd->server, 
 //        "apsml_closeconn 1");
   if (mail->socket && mail->etype == mail_OK)
   {
-    n = mailer_send("QUIT\r\n", mail, mail->timeout.mail);
-    n = getanswer(&r, mail->timeout.mail, mail, 1);
+    mailer_send("QUIT\r\n", mail, mail->timeout.mail);
+    getanswer(&r, mail->timeout.mail, mail, 1);
   }
   closeconn(mail, NULL);
   answer_map_apply(&(mail->answers),  (void (*) (reply *)) free);

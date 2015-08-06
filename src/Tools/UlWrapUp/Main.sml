@@ -45,6 +45,7 @@ fun pp_scripts (f,loc) = String.concat [" ", f, " As ", loc, "\n"]
 
 fun pp_syntax (UlFile.UoFile l) = String.concat ["Codefiles\n", String.concat (List.map pp_uofile l), "End\n"]
   | pp_syntax (UlFile.Script l) = String.concat ["Scripts\n", String.concat (List.map pp_scripts l), "End\n"]
+  | pp_syntax (UlFile.UlFile l) = String.concat ["UlFile\n", String.concat (List.map pp_scripts l), "End\n"]
 
 fun copyFile (i,out) = 
      let

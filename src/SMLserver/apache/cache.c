@@ -97,21 +97,21 @@ listLength(cache *c)/*{{{*/
   return r;
 }/*}}}*/
 
-static void
-checkList3(cache *c, int line, request_data *rd)/*{{{*/
-{
-  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "checkList3");
-  if (listLength(c) != c->htable->hashTableUsed) *(char *) 0 = 0;
-  return;
-}/*}}}*/
+/* static void */
+/* checkList3(cache *c, int line, request_data *rd)/\*{{{*\/ */
+/* { */
+/*   ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "checkList3"); */
+/*   if (listLength(c) != c->htable->hashTableUsed) *(char *) 0 = 0; */
+/*   return; */
+/* }/\*}}}*\/ */
 
-static void
-checkList2(cache *c,int line,request_data *rd)/*{{{*/
-{
-  ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "checkList2");
-  checkList(c);
-  return;
-}/*}}}*/
+/* static void */
+/* checkList2(cache *c,int line,request_data *rd)/\*{{{*\/ */
+/* { */
+/*   ap_log_error(APLOG_MARK, LOG_DEBUG, 0, rd->server, "checkList2"); */
+/*   checkList(c); */
+/*   return; */
+/* }/\*}}}*\/ */
 
 void ppCache (cache * c, request_data * rd);
 

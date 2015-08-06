@@ -127,6 +127,8 @@ functor Argument(Data :
       fun toArgKind (Int f) = Data.Arg.Int f
         | toArgKind (String f) = Data.Arg.String f
         | toArgKind (Binary f) = Data.Arg.Binary f
+        | toArgKind (Eq _) = raise Fail "toArgKind - not expecting Eq"
+        | toArgKind Unknown = raise Fail "toArgKind - not expecting Unknown"
       fun getBinary "true" = SOME true
         | getBinary "false" = SOME false
         | getBinary x = case Int.fromString x

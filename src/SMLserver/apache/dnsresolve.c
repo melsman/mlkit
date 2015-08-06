@@ -200,7 +200,6 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
 	return list;
     }
   // The answers
-  int rv;
   for (j = 0; j < head->anscount; j++)
     {
 //      int a_name = next;
@@ -221,7 +220,7 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
 	  if (next + a_rdlength >= n || a_rdlength < 3)
 	    return list;
 	  uint16_t a_mx_pref = twocharto16 (ans[next], ans[next + 1]);
-	  rv = dumpname (dnsnames, NS_MAXDNAME, ans, next + 2, n);
+	  dumpname (dnsnames, NS_MAXDNAME, ans, next + 2, n);
 	  rs = convertStringToML (rAddrString, dnsnames);
 	  allocRecordML (rAddrEPairs, 3, pair);
 	  elemRecordML (pair, 0) = (uintptr_t) a_mx_pref;
@@ -236,7 +235,7 @@ apdns_getFQDN_MX_1 (Region rAddrLPairs, Region rAddrEPairs,
 	}
       else if (a_type == T_CNAME)
 	{			// we got an alias (cononical name)
-	  rv = dumpname (dnsnames, NS_MAXDNAME, ans, next, n);
+	  dumpname (dnsnames, NS_MAXDNAME, ans, next, n);
 	  input = dnsnames;
 	  break;
 	}

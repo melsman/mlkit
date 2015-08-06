@@ -4,7 +4,7 @@
 #include <alloca.h>
 #include "parseFuncs.h"
 #include "parseul.h"
-#define YYDEBUG 1
+//#define YYDEBUG 1
 
 %}
 

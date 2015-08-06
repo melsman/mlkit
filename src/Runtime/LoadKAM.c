@@ -665,10 +665,9 @@ interpLoadExtend(Interp* interp, const char* file, serverstate ss)
 {
   FILE *fd;
   struct exec_header exec_header;
-  int tmp;
   bytecode_t start_code;
 
-  tmp = attempt_open(file, &exec_header, ss, &fd);
+  attempt_open(file, &exec_header, ss, &fd);
 
   start_code = interpLoad(interp, file, fd, &exec_header, ss);
 
@@ -923,7 +922,6 @@ interpLoadRun(Interp* interp, const char* file, char** errorStr, serverstate ss,
 {
   bytecode_t start_code;
   FILE *fd;
-  int tmp;
   debug_writer1("interpLoadRun %d starting\n", 0);
 
 #if ( THREADS && CODE_CACHE )
@@ -936,7 +934,7 @@ interpLoadRun(Interp* interp, const char* file, char** errorStr, serverstate ss,
 #endif
       struct exec_header exec_header;
   debug_writer1("interpLoadRun %d open file\n", 0);
-      tmp = attempt_open(file, &exec_header, ss, &fd);
+      attempt_open(file, &exec_header, ss, &fd);
   debug_writer1("interpLoadRun %d load\n", 0);
       start_code = interpLoad(interp, file, fd, &exec_header, ss);
       debug(printf("[skip code exports]\n"));
