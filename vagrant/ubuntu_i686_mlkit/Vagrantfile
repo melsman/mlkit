@@ -12,7 +12,7 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "puphpet/ubuntu1404-x32"
+  config.vm.box = "ubuntu/trusty32"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -68,7 +68,6 @@ Vagrant.configure(2) do |config|
      # bring the machine up-to-date
      sudo apt-get update
      sudo apt-get -y upgrade 
-     sudo update-grub
  
      # install some utilities
      sudo apt-get -y install emacs
@@ -89,5 +88,12 @@ Vagrant.configure(2) do |config|
      sudo -u vagrant make mlkit
      sudo -u vagrant make mlkit_libs
      sudo make install
+
+     # install smltojs
+     sudo -u vagrant ./configure --with-compiler=mlkit
+     sudo -u vagrant make smltojs
+     sudo -u vagrant make smltojs_basislibs
+     sudo make install_smltojs
+ 
   SHELL
 end
