@@ -15,6 +15,7 @@ signature JS_CORE =
     val option : 'a T -> 'a option T
     val ==>    : 'a T * 'b T -> ('a -> 'b) T
     val ===>   : 'a T * 'b T * 'c T -> ('a*'b -> 'c) T
+    val ====>  : 'a T * 'b T * 'c T * 'd T -> ('a*'b*'c -> 'd) T
 
     val exec0 : {stmt: string,
                  res: 'b T} 
@@ -75,8 +76,30 @@ signature JS_CORE =
     val call3 : string * 'a1 T * 'a2 T * 'a3 T * 'b T -> 'a1*'a2*'a3 -> 'b
     val call4 : string * 'a1 T * 'a2 T * 'a3 T * 'a4 T * 'b T -> 'a1*'a2*'a3*'a4 -> 'b
 
+    val method0 : 'b T -> foreignptr -> string -> 'b
+    val method1 : 'a1 T -> 'b T -> foreignptr -> string -> 'a1 -> 'b
+    val method2 : 'a1 T -> 'a2 T -> 'b T -> foreignptr -> string -> 'a1 -> 'a2 -> 'b
+    val method3 : 'a1 T -> 'a2 T -> 'a3 T -> 'b T -> foreignptr -> string -> 'a1 -> 'a2 -> 'a3 -> 'b
+    val method4 : 'a1 T -> 'a2 T -> 'a3 T -> 'a4 T -> 'b T -> foreignptr -> string -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'b
+
     val getProperty : foreignptr -> 'a T -> string -> 'a
     val setProperty : foreignptr -> 'a T -> string -> 'a -> unit
+
+    structure Array : sig
+      type t = foreignptr
+      val empty    : unit -> t
+      val push     : 'a T -> t -> 'a -> t
+      val fromList : 'a T -> 'a list -> t
+    end
+
+    structure Object : sig
+      type t = foreignptr
+      val empty    : unit -> t
+      val get      : 'a T -> t -> string -> 'a
+      val set      : 'a T -> t -> string -> 'a -> unit
+      val fromList : 'a T -> (string * 'a) list -> t
+    end
+
   end
 
 (**

@@ -9,7 +9,8 @@ structure JsCore :> JS_CORE =
     val bool   : bool T = ()
     val option : 'a T -> 'a option T = fn _ => ()
     val ==>    : 'a T * 'b T -> ('a -> 'b) T = fn _ => ()
-    val ===>    : 'a T * 'b T * 'c T-> ('a*'b -> 'c) T = fn _ => ()
+    val ===>   : 'a T * 'b T * 'c T-> ('a*'b -> 'c) T = fn _ => ()
+    val ====>  : 'a T * 'b T * 'c T * 'd T -> ('a*'b*'c -> 'd) T = fn _ => ()
 
     fun exec0 {stmt:string, 
                res: 'b T} () : 'b =
@@ -78,10 +79,45 @@ structure JsCore :> JS_CORE =
     fun call4 (f: string, t1: 'a1 T, t2: 'a2 T, t3: 'a3 T, t4: 'a4 T, tb: 'b T) (v1:'a1,v2:'a2,v3:'a3,v4:'a4) : 'b =
         prim("callJS", (f,v1,v2,v3,v4))
 
+    fun method0 tr obj m =
+        exec1{arg1=("obj",fptr),res=tr,stmt="return obj." ^ m ^ "();"} obj
+
+    fun method1 ta tr obj m a =
+        exec2{arg1=("obj",fptr),arg2=("a",ta),res=tr,stmt="return obj." ^ m ^ "(a);"} (obj,a)
+
+    fun method2 ta1 ta2 tr obj m a1 a2 =
+        exec3{arg1=("obj",fptr),arg2=("a1",ta1),arg3=("a2",ta2),res=tr,
+              stmt="return obj." ^ m ^ "(a1,a2);"} (obj,a1,a2)
+
+    fun method3 ta1 ta2 ta3 tr obj m a1 a2 a3 =
+        exec4{arg1=("obj",fptr),arg2=("a1",ta1),arg3=("a2",ta2),arg4=("a3",ta3),res=tr,
+              stmt="return obj." ^ m ^ "(a1,a2,a3);"} (obj,a1,a2,a3)
+
+    fun method4 ta1 ta2 ta3 ta4 tr obj m a1 a2 a3 a4 =
+        exec5{arg1=("obj",fptr),arg2=("a1",ta1),arg3=("a2",ta2),arg4=("a3",ta3),arg5=("a4",ta4),res=tr,
+              stmt="return obj." ^ m ^ "(a1,a2,a3,a4);"} (obj,a1,a2,a3,a4)
+
     fun getProperty (fp: foreignptr) (t:'a T) (s:string) : 'a =
         prim("execStmtJS", ("return fp[s];", "fp,s", fp,s))
 
     fun setProperty (fp: foreignptr) (t:'a T) (s:string) (v:'a) : unit =
         prim("execStmtJS", ("fp[s] = v;", "fp,s,v", fp, s, v))
+
+    structure Array = struct
+        type t = foreignptr
+        val empty : unit -> t = exec0{stmt="return new Array();",res=fptr}
+        fun push t a v =
+            (exec2{stmt="a.push(v);",arg1=("a",fptr),arg2=("v",t),res=unit} (a,v); 
+             a)
+        fun fromList t = List.foldl (fn (v,a) => push t a v) (empty())
+    end
+
+    structure Object = struct
+        type t = foreignptr
+        val empty : unit -> t = exec0{stmt="return {};",res=fptr}
+        fun get t obj p = getProperty obj t p
+        fun set t obj p v = setProperty obj t p v
+        fun fromList t = List.foldl (fn ((k,v),a) => (set t a k v; a)) (empty())
+    end
 
   end

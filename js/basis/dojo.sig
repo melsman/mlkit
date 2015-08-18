@@ -4,9 +4,19 @@ The interface supports a monadic style of programming. The
 implementation of the monad is the continuation monad, capturing the
 continuation-based approach to loading libraries in the Dojo
 framework. For general information about the Dojo framework, see
-http://dojotoolkit.org/reference-guide/1.9/. In particuler see
-http://dojotoolkit.org/reference-guide/1.9/.
+http://dojotoolkit.org/reference-guide/1.10/. In particuler see
+http://dojotoolkit.org/reference-guide/1.10/.
 *)
+
+signature DOJO_TEXTBOX = sig
+  type t
+  type 'a M
+  val mk           : (string * string) list -> t M
+  val getValue     : t -> string
+  val setValue     : t -> string -> unit
+  val domNode      : t -> Js.elem
+  val toForeignPtr : t -> foreignptr
+end
 
 signature DOJO = sig
   type 'a M
@@ -32,11 +42,14 @@ signature DOJO = sig
   val setContentElement  : widget -> Js.elem -> unit
   val selectChild        : widget -> widget -> unit
   val addChild           : widget -> widget -> unit
+  val startup            : widget -> unit (* shouldn't be necessary... Hmm *)
 
   val dialog             : hash -> Js.elem -> widget M
   val showDialog         : widget -> unit
   val hideDialog         : widget -> unit 
   val runDialog          : string -> Js.elem -> unit
+
+
 
   type treeStore
   val treeStore          : hash list -> treeStore M
@@ -51,11 +64,45 @@ signature DOJO = sig
   val set_onClose        : widget -> (unit -> bool) -> unit
   val set_onShow         : widget -> (unit -> unit) -> unit
 
-  structure Menu: sig
+  structure Menu : sig
     type menu
     val mk     : hash -> (widget * menu) M
     val menu   : menu -> string -> menu M
     val item   : menu -> string * icon option * (unit -> unit) -> unit M
+  end
+
+  structure TextBox       : DOJO_TEXTBOX where type 'a M = 'a M
+  structure NumberTextBox : DOJO_TEXTBOX where type 'a M = 'a M
+  structure DateTextBox   : DOJO_TEXTBOX where type 'a M = 'a M
+
+  structure Button : sig
+    type t
+    val mk           : hash -> (unit -> unit) -> t M
+    val domNode      : t -> Js.elem
+    val toForeignPtr : t -> foreignptr
+  end
+
+  structure RestGrid : sig
+    type t
+    type object = foreignptr
+    datatype colspec = VALUE of {field:string,label:string,
+                                 editor:string option,sortable:bool}
+                     | DELETE of {label:string}
+                    
+    val mk           : {target: string, idProperty: string} -> colspec list -> t M
+    val put          : t -> object -> unit   (* put data in the store and refresh the grid *)
+    val domNode      : t -> Js.elem
+    val toForeignPtr : t -> foreignptr
+    val toStore      : t -> foreignptr
+    val toWidget     : t -> widget
+  end
+
+  structure Grid : sig
+    type t
+    val mk           : hash -> (string*string) list -> t M
+    val add          : t -> (string*string) list list -> unit
+    val domNode      : t -> Js.elem
+    val toForeignPtr : t -> foreignptr
   end
 
   (* TODO: Toolbar, Fieldset *)

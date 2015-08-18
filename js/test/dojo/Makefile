@@ -14,8 +14,25 @@ wd=$(shell pwd)
 JS_PATH_FLAGS=-js_path_compress -js_path_relative_to "../.."
 SMLTOJS=SML_LIB=../.. ../../../bin/smltojs
 
-run.html: Makefile $(FILES)
+.PHONY: all
+all:
+	@echo "Assumptions:"
+	@echo "  - install dojo, dojox, dijit, dgrid in present directory"
+	@echo "Relevant targets:"
+	@echo "  - make prepare0 : rebuild basis library"
+	@echo "  - make prepare  : copy basis library and prims.js to present directory"  
+	@echo "  - make run.html : compile example"
+
+.PHONY: prepare0
+prepare0:
+	(cd ../../..; make smltojs_basislibs)
+
+.PHONY: prepare
+prepare:
+	cp -pa ../../prims.js ../../basis .
+
+run.html: clean prepare Makefile $(FILES)
 	$(SMLTOJS) -aopt $(JS_PATH_FLAGS) dojo_test.mlb
 
 clean:
-	rm -rf *~ MLB run.html  
+	rm -rf *~ MLB run.html prims.js basis

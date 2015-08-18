@@ -29,7 +29,7 @@ structure Dojo :> DOJO = struct
       Js.Element.fromForeignPtr(JsCore.getProperty c JsCore.fptr "domNode")
 
   fun startup (c:widget) : unit =
-      JsCore.exec1{stmt="c.startup();",arg1=("c",JsCore.fptr),res=JsCore.unit} c
+      JsCore.method0 JsCore.unit c "startup"
 
   fun run (m : unit M) : unit = m (fn x => x)
 
@@ -50,17 +50,9 @@ structure Dojo :> DOJO = struct
       end
 
   fun addChild (e:widget) (p:widget) : unit =
-      JsCore.exec2{stmt="e.addChild(p);", arg1=("e",JsCore.fptr),
-                   arg2=("p",JsCore.fptr), res=JsCore.unit} (e, p)
+      JsCore.method1 JsCore.fptr JsCore.unit e "addChild" p
 
-  fun mkHash h =
-      let val hash = JsCore.exec0{stmt="return {};", res=JsCore.fptr} ()
-          val () = List.app (fn (k,v) => 
-                                (*if v = "false" then
-                                  JsCore.setProperty hash JsCore.bool k false
-                                else*) JsCore.setProperty hash JsCore.string k v) h
-      in hash
-      end
+  fun mkHash h = JsCore.Object.fromList JsCore.string h
 
   fun new0 c arg = 
       let val obj = JsCore.exec2{stmt="return new c(h);", arg1=("c",JsCore.fptr), arg2=("h",JsCore.fptr),
@@ -122,10 +114,7 @@ structure Dojo :> DOJO = struct
          require1 "dijit/TitlePane"
                   (fn Tp => 
                       let val p = new Tp(h)
-                          val () = JsCore.exec2{arg1=("p",JsCore.fptr),
-                                                arg2=("w",JsCore.fptr),
-                                                stmt="p.addChild(w);",
-                                                res=JsCore.unit}(p,w)
+                          val () = addChild p w
                       in f p
                       end)
 
@@ -167,11 +156,8 @@ structure Dojo :> DOJO = struct
       fn (f: treeStore -> unit) =>
          require1 "dojo/store/Memory" (fn Memory => 
          require1 "dojo/store/Observable" (fn Observable =>
-                      let val data = JsCore.exec0{stmt="return new Array();",res=JsCore.fptr}()
-                          fun add d h =
-                              let val h = mkHash h
-                              in JsCore.exec2{stmt="d.push(h);",arg1=("d",JsCore.fptr),arg2=("h",JsCore.fptr),res=JsCore.unit} (d,h)
-                              end
+                      let val data = JsCore.Array.empty()
+                          fun add d h = (JsCore.Array.push JsCore.fptr d (mkHash h); ())
                           val () = List.app (add data) hs
                           val h = JsCore.exec1{stmt="return {data:data,getChildren:function(obj) { return this.query({parent:obj.id}); }};",
                                                arg1=("data",JsCore.fptr),
@@ -281,6 +267,161 @@ structure Dojo :> DOJO = struct
                ; f()
               end)
         end
+  end
+
+  structure GenUtil = struct
+
+    fun mk_con0 (con:string) (h:foreignptr) : foreignptr M = 
+      fn (k: foreignptr -> unit) => require1 con (fn F => k(new0 F h))
+
+    fun mk_con (con:string) (h:hash) : foreignptr M = mk_con0 con (mkHash h)
+
+    fun get (p:string) (obj:foreignptr) : string =
+        JsCore.exec2{arg1=("obj",JsCore.fptr),
+                     arg2=("p",JsCore.string),
+                     stmt="return obj.get(p);",
+                     res=JsCore.string} (obj,p)
+    fun set (p:string) (obj:foreignptr) (v:string) : unit =
+        JsCore.exec3{arg1=("obj",JsCore.fptr),
+                     arg2=("p",JsCore.string),
+                     arg3=("v",JsCore.string),
+                     stmt="obj.set(p,v);",
+                     res=JsCore.unit} (obj,p,v)
+  end
+
+  structure TextBox = struct
+    type t = foreignptr
+    type 'a M = 'a M
+    val mk = GenUtil.mk_con "dijit/form/TextBox"
+    val getValue = GenUtil.get "value"
+    val setValue = GenUtil.set "value"
+    val domNode = domNode
+    fun toForeignPtr x = x
+  end
+
+  structure NumberTextBox = struct
+    type t = foreignptr
+    type 'a M = 'a M
+    val mk = GenUtil.mk_con "dijit/form/NumberTextBox"
+    val getValue = GenUtil.get "value"
+    val setValue = GenUtil.set "value"
+    val domNode = domNode
+    fun toForeignPtr x = x
+  end
+
+  structure DateTextBox = struct
+    type t = foreignptr
+    type 'a M = 'a M
+    val mk = GenUtil.mk_con "dijit/form/DateTextBox"
+    val getValue = GenUtil.get "value"
+    val setValue = GenUtil.set "value"
+    val domNode = domNode
+    fun toForeignPtr x = x
+  end
+
+  structure Button = struct
+    type t = foreignptr
+    fun mk (h:hash) (f:unit->unit) : t M =
+        let val h = mkHash h
+            val () = JsCore.exec2{arg1=("h",JsCore.fptr), arg2=("f",JsCore.==>(JsCore.unit,JsCore.unit)),
+                                  res=JsCore.unit,stmt="h.onClick = f;"} (h,f)
+        in GenUtil.mk_con0 "dijit/form/Button" h
+        end
+    val domNode = domNode
+    fun toForeignPtr x = x    
+  end
+
+  structure RestGrid = struct
+    type t = {grid: foreignptr, store: foreignptr} 
+    datatype colspec = VALUE of {field:string,label:string,
+                                 editor:string option,sortable:bool}
+                     | DELETE of {label:string}
+
+    fun call_arr2 f a1 a2 =
+        JsCore.exec3{arg1=("f",JsCore.fptr),arg2=("a1",JsCore.fptr),arg3=("a2",JsCore.fptr),res=JsCore.fptr,
+                     stmt="return f([a1,a2]);"} (f,a1,a2)
+
+    fun call_arr4 f a1 a2 a3 a4 =
+        JsCore.exec5{arg1=("f",JsCore.fptr),arg2=("a1",JsCore.fptr),arg3=("a2",JsCore.fptr),
+                     arg4=("a3",JsCore.fptr),arg5=("a4",JsCore.fptr),
+                     res=JsCore.fptr, stmt="return f([a1,a2,a3,a4]);"} (f,a1,a2,a3,a4)
+           
+    fun fromColspec idProperty store (VALUE {field,label,editor,sortable}) =
+        let val h = [("field",field),("label",label)]
+            val h = case editor of
+                        SOME ed => let val h = mkHash(h @ [("editor",ed),("editOn","dblclick")])
+                                       val () = JsCore.setProperty h JsCore.bool "autoSave" true
+                                   in h
+                                   end
+                      | NONE => mkHash h
+            val () = JsCore.setProperty h JsCore.bool "sortable" sortable
+        in h
+        end
+      | fromColspec idProperty store (DELETE {label}) =
+        let val h = [("field","delete"),("label",label)]
+            val h = mkHash h
+            val () = JsCore.setProperty h JsCore.bool "sortable" false
+            val () = JsCore.setProperty h (JsCore.====>(JsCore.fptr,JsCore.fptr,JsCore.fptr,JsCore.unit)) "renderCell" 
+                                        (fn (obj,value,node) => 
+                                            let val nodeElem = Js.Element.fromForeignPtr node
+                                                val img = Js.Element.taga0 "img" [("style","height:16px;"),("src","/trash32.png")]
+                                            in Js.appendChild nodeElem img
+                                             ; Js.installEventHandler img Js.onclick (fn () => (JsCore.method1 JsCore.int JsCore.unit store "remove" (JsCore.getProperty obj JsCore.int idProperty);
+                                                                                                true))
+                                            end)
+        in h
+        end
+                                               
+    fun mk {target: string, idProperty: string} (colspecs:colspec list) : t M =
+        fn (k: t -> unit) =>
+        require1 "dojo/_base/declare" (fn declare =>
+        require1 "dgrid/OnDemandGrid" (fn OnDemandGrid =>
+        require1 "dgrid/Keyboard" (fn Keyboard =>
+        require1 "dgrid/Selection" (fn Selection =>
+        require1 "dgrid/Editor" (fn Editor =>
+        require1 "dstore/Rest" (fn Rest =>
+        require1 "dstore/Trackable" (fn Trackable =>
+        let val MyRest = call_arr2 declare Rest Trackable
+            val h = [("target",target),("idProperty",idProperty)]
+            val store = new MyRest(h)
+            val MyGrid = call_arr4 declare OnDemandGrid Keyboard Selection Editor
+            val cols = List.map (fromColspec idProperty store) colspecs
+            val columns = JsCore.Array.fromList JsCore.fptr cols
+            val arg = JsCore.Object.fromList JsCore.fptr [("columns",columns),
+                                                          ("collection",store)]
+            val grid = new0 MyGrid(arg)
+            val res = k {grid=grid,store=store}
+        in res
+        end)))))))
+
+    type object = foreignptr
+    fun put ({grid,store}:t) (obj:foreignptr) : unit =
+        (JsCore.method1 JsCore.fptr JsCore.unit store "put" obj;
+         JsCore.method0 JsCore.unit grid "refresh")
+
+    val domNode : t -> Js.elem = fn ({grid,...}) => domNode grid
+    val toForeignPtr : t -> foreignptr = #grid
+    val toStore : t -> foreignptr = #store
+    val toWidget : t -> widget = #grid
+  end
+
+  structure Grid = struct
+    type t = foreignptr
+    fun mk h cols : t M =
+      fn (f: t -> unit) =>
+         require1 "dgrid/Grid" (fn Grid =>
+         let val h = mkHash h
+             val () = JsCore.Object.set JsCore.fptr h "columns" (mkHash cols)
+             val grid = new0 Grid(h)
+         in f grid
+         end)
+    fun add (g:t) (hs:hash list) : unit =
+        let val hs = List.map mkHash hs
+            val a = JsCore.Array.fromList JsCore.fptr hs
+        in JsCore.method1 JsCore.fptr JsCore.unit g "renderArray" a
+        end
+    val domNode = domNode
+    fun toForeignPtr x = x
   end
 
   structure Icon = struct
