@@ -612,6 +612,7 @@ struct
                       else raise Fail ("invalid target path " ^ qq newfile)                                 
                     | NONE => raise Fail ("invalid target path " ^ qq newfile)
             val filepath = folderpath ^^ filename
+            val () = log ("Moving file " ^ qq filepath ^ " into " ^ qq newfilepath)
         in if isServerPath newfilepath then raise Fail "file cannot be moved to the server"
            else if fileExists newfilepath then raise Fail "file already exists"
            else if not(folderExists newparent) then raise Fail ("target folder " ^ qq newparent ^ " does not exist")
