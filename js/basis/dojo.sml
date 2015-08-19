@@ -100,11 +100,8 @@ structure Dojo :> DOJO = struct
                        ; f d
                       end)
 
-  fun showDialog d =
-      JsCore.exec1{stmt="d.show();",arg1=("d",JsCore.fptr),res=JsCore.unit} d
-
-  fun hideDialog d =
-      JsCore.exec1{stmt="d.hide();",arg1=("d",JsCore.fptr),res=JsCore.unit} d
+  fun showDialog d = JsCore.method0 JsCore.unit d "show"
+  fun hideDialog d = JsCore.method0 JsCore.unit d "hide"
 
   fun runDialog title e =
       run (dialog[("title", title)] e >>= (ret o showDialog))
@@ -141,24 +138,15 @@ structure Dojo :> DOJO = struct
 
   fun setContent w s = setProp w JsCore.string "content" s
 
-  fun selectChild w w2 =
-    JsCore.exec2{stmt="w.selectChild(w2,true);",
-                 arg1=("w",JsCore.fptr), arg2=("w2",JsCore.fptr),
-                 res=JsCore.unit} (w,w2)
-
-  fun removeChild w w2 =
-    JsCore.exec2{stmt="w.removeChild(w2);",
-                 arg1=("w",JsCore.fptr), arg2=("w2",JsCore.fptr),
-                 res=JsCore.unit} (w,w2)
+  fun selectChild w w2 = JsCore.method2 JsCore.fptr JsCore.bool JsCore.unit w "selectChild" w2 true
+  fun removeChild w w2 = JsCore.method1 JsCore.fptr JsCore.unit w "removeChild" w2
 
   type treeStore = foreignptr
   fun treeStore (hs:hash list) : treeStore M =
       fn (f: treeStore -> unit) =>
          require1 "dojo/store/Memory" (fn Memory => 
          require1 "dojo/store/Observable" (fn Observable =>
-                      let val data = JsCore.Array.empty()
-                          fun add d h = (JsCore.Array.push JsCore.fptr d (mkHash h); ())
-                          val () = List.app (add data) hs
+                      let val data = JsCore.Array.fromList JsCore.fptr (List.map mkHash hs)
                           val h = JsCore.exec1{stmt="return {data:data,getChildren:function(obj) { return this.query({parent:obj.id}); }};",
                                                arg1=("data",JsCore.fptr),
                                                res=JsCore.fptr} data
@@ -170,17 +158,8 @@ structure Dojo :> DOJO = struct
                       in f p
                       end))
 
-  fun treeStoreAdd ts h : unit =
-      let val h = mkHash h
-      in JsCore.exec2{arg1=("ts",JsCore.fptr),arg2=("h",JsCore.fptr),
-                      stmt="ts.add(h);",
-                      res=JsCore.unit} (ts,h)
-      end
-
-  fun treeStoreRemove ts s =
-      JsCore.exec2{arg1=("ts",JsCore.fptr),arg2=("s",JsCore.string),
-                   stmt="ts.remove(s);",
-                   res=JsCore.unit} (ts,s)
+  fun treeStoreAdd ts h = JsCore.method1 JsCore.fptr JsCore.unit ts "add" (mkHash h)
+  fun treeStoreRemove ts s = JsCore.method1 JsCore.string JsCore.unit ts "remove" s
       
   fun tree (h: hash) rootId onClick (store:treeStore) : widget M =
       fn (f: widget -> unit) =>
@@ -191,7 +170,7 @@ structure Dojo :> DOJO = struct
                               arg2=("id",JsCore.string),res=JsCore.fptr}(store,rootId)
              val model = new0 ObjectStoreModel(modelArg)
              val treeArg = mkHash h
-             val () = JsCore.setProperty treeArg JsCore.fptr "model" model
+             val () = JsCore.Object.set JsCore.fptr treeArg "model" model
              val () = JsCore.exec2{stmt="a.onClick = function(item) { f([item.id,item.name]); };",
                                    arg1=("a",JsCore.fptr), arg2=("f",JsCore.===>(JsCore.string,JsCore.string,
                                                                                  JsCore.unit)),
@@ -269,7 +248,7 @@ structure Dojo :> DOJO = struct
         end
   end
 
-  structure GenUtil = struct
+  structure JsUtil = struct
 
     fun mk_con0 (con:string) (h:foreignptr) : foreignptr M = 
       fn (k: foreignptr -> unit) => require1 con (fn F => k(new0 F h))
@@ -287,14 +266,19 @@ structure Dojo :> DOJO = struct
                      arg3=("v",JsCore.string),
                      stmt="obj.set(p,v);",
                      res=JsCore.unit} (obj,p,v)
+
+    fun callFptrArr f xs =
+        JsCore.exec2{arg1=("f",JsCore.fptr),arg2=("xs",JsCore.fptr),res=JsCore.fptr,
+                     stmt="return f(xs);"} (f,JsCore.Array.fromList JsCore.fptr xs)
+
   end
 
   structure TextBox = struct
     type t = foreignptr
     type 'a M = 'a M
-    val mk = GenUtil.mk_con "dijit/form/TextBox"
-    val getValue = GenUtil.get "value"
-    val setValue = GenUtil.set "value"
+    val mk = JsUtil.mk_con "dijit/form/TextBox"
+    val getValue = JsUtil.get "value"
+    val setValue = JsUtil.set "value"
     val domNode = domNode
     fun toForeignPtr x = x
   end
@@ -302,9 +286,9 @@ structure Dojo :> DOJO = struct
   structure NumberTextBox = struct
     type t = foreignptr
     type 'a M = 'a M
-    val mk = GenUtil.mk_con "dijit/form/NumberTextBox"
-    val getValue = GenUtil.get "value"
-    val setValue = GenUtil.set "value"
+    val mk = JsUtil.mk_con "dijit/form/NumberTextBox"
+    val getValue = JsUtil.get "value"
+    val setValue = JsUtil.set "value"
     val domNode = domNode
     fun toForeignPtr x = x
   end
@@ -312,9 +296,9 @@ structure Dojo :> DOJO = struct
   structure DateTextBox = struct
     type t = foreignptr
     type 'a M = 'a M
-    val mk = GenUtil.mk_con "dijit/form/DateTextBox"
-    val getValue = GenUtil.get "value"
-    val setValue = GenUtil.set "value"
+    val mk = JsUtil.mk_con "dijit/form/DateTextBox"
+    val getValue = JsUtil.get "value"
+    val setValue = JsUtil.set "value"
     val domNode = domNode
     fun toForeignPtr x = x
   end
@@ -325,11 +309,12 @@ structure Dojo :> DOJO = struct
         let val h = mkHash h
             val () = JsCore.exec2{arg1=("h",JsCore.fptr), arg2=("f",JsCore.==>(JsCore.unit,JsCore.unit)),
                                   res=JsCore.unit,stmt="h.onClick = f;"} (h,f)
-        in GenUtil.mk_con0 "dijit/form/Button" h
+        in JsUtil.mk_con0 "dijit/form/Button" h
         end
     val domNode = domNode
     fun toForeignPtr x = x    
-  end
+  end           
+
 
   structure RestGrid = struct
     type t = {grid: foreignptr, store: foreignptr} 
@@ -337,36 +322,27 @@ structure Dojo :> DOJO = struct
                                  editor:string option,sortable:bool}
                      | DELETE of {label:string}
 
-    fun call_arr2 f a1 a2 =
-        JsCore.exec3{arg1=("f",JsCore.fptr),arg2=("a1",JsCore.fptr),arg3=("a2",JsCore.fptr),res=JsCore.fptr,
-                     stmt="return f([a1,a2]);"} (f,a1,a2)
-
-    fun call_arr4 f a1 a2 a3 a4 =
-        JsCore.exec5{arg1=("f",JsCore.fptr),arg2=("a1",JsCore.fptr),arg3=("a2",JsCore.fptr),
-                     arg4=("a3",JsCore.fptr),arg5=("a4",JsCore.fptr),
-                     res=JsCore.fptr, stmt="return f([a1,a2,a3,a4]);"} (f,a1,a2,a3,a4)
-           
     fun fromColspec idProperty store (VALUE {field,label,editor,sortable}) =
         let val h = [("field",field),("label",label)]
             val h = case editor of
                         SOME ed => let val h = mkHash(h @ [("editor",ed),("editOn","dblclick")])
-                                       val () = JsCore.setProperty h JsCore.bool "autoSave" true
+                                       val () = JsCore.Object.set JsCore.bool h "autoSave" true
                                    in h
                                    end
                       | NONE => mkHash h
-            val () = JsCore.setProperty h JsCore.bool "sortable" sortable
+            val () = JsCore.Object.set JsCore.bool h "sortable" sortable
         in h
         end
       | fromColspec idProperty store (DELETE {label}) =
         let val h = [("field","delete"),("label",label)]
             val h = mkHash h
-            val () = JsCore.setProperty h JsCore.bool "sortable" false
-            val () = JsCore.setProperty h (JsCore.====>(JsCore.fptr,JsCore.fptr,JsCore.fptr,JsCore.unit)) "renderCell" 
+            val () = JsCore.Object.set JsCore.bool h "sortable" false
+            val () = JsCore.Object.set (JsCore.====>(JsCore.fptr,JsCore.fptr,JsCore.fptr,JsCore.unit)) h "renderCell" 
                                         (fn (obj,value,node) => 
                                             let val nodeElem = Js.Element.fromForeignPtr node
                                                 val img = Js.Element.taga0 "img" [("style","height:16px;"),("src","/trash32.png")]
                                             in Js.appendChild nodeElem img
-                                             ; Js.installEventHandler img Js.onclick (fn () => (JsCore.method1 JsCore.int JsCore.unit store "remove" (JsCore.getProperty obj JsCore.int idProperty);
+                                             ; Js.installEventHandler img Js.onclick (fn () => (JsCore.method1 JsCore.int JsCore.unit store "remove" (JsCore.Object.get JsCore.int obj idProperty);
                                                                                                 true))
                                             end)
         in h
@@ -381,10 +357,10 @@ structure Dojo :> DOJO = struct
         require1 "dgrid/Editor" (fn Editor =>
         require1 "dstore/Rest" (fn Rest =>
         require1 "dstore/Trackable" (fn Trackable =>
-        let val MyRest = call_arr2 declare Rest Trackable
+        let val MyRest = JsUtil.callFptrArr declare [Rest,Trackable]
             val h = [("target",target),("idProperty",idProperty)]
             val store = new MyRest(h)
-            val MyGrid = call_arr4 declare OnDemandGrid Keyboard Selection Editor
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Selection,Editor]
             val cols = List.map (fromColspec idProperty store) colspecs
             val columns = JsCore.Array.fromList JsCore.fptr cols
             val arg = JsCore.Object.fromList JsCore.fptr [("columns",columns),
