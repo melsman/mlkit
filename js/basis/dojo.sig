@@ -11,7 +11,7 @@ http://dojotoolkit.org/reference-guide/1.10/.
 signature DOJO_TEXTBOX = sig
   type t
   type 'a M
-  val mk           : (string * string) list -> t M
+  val mk           : (string*string)list -> bool -> t M    (* the boolean specifies whether a value is required *)
   val getValue     : t -> string
   val setValue     : t -> string -> unit
   val domNode      : t -> Js.elem
@@ -49,8 +49,6 @@ signature DOJO = sig
   val hideDialog         : widget -> unit 
   val runDialog          : string -> Js.elem -> unit
 
-
-
   type treeStore
   val treeStore          : hash list -> treeStore M
   val treeStoreAdd       : treeStore -> hash -> unit
@@ -75,11 +73,39 @@ signature DOJO = sig
   structure NumberTextBox : DOJO_TEXTBOX where type 'a M = 'a M
   structure DateTextBox   : DOJO_TEXTBOX where type 'a M = 'a M
 
-  structure Button : sig
+  structure ValidationTextBox : sig 
     type t
-    val mk           : hash -> (unit -> unit) -> t M
+    val mk           : hash -> {required:bool,validator:string->bool} -> t M
+    val getValue     : t -> string
+    val setValue     : t -> string -> unit
     val domNode      : t -> Js.elem
     val toForeignPtr : t -> foreignptr
+  end
+
+  structure Form : sig
+    type t
+    val mk           : hash -> t M 
+    val domNode      : t -> Js.elem
+    val toForeignPtr : t -> foreignptr
+    val validate     : t -> bool
+  end                                  
+
+  structure Button : sig
+    type t
+    val mk           : hash -> (unit->unit) -> t M
+    val domNode      : t -> Js.elem
+    val toForeignPtr : t -> foreignptr
+  end
+
+  structure FilteringSelect : sig
+    type t
+    val mk                : hash -> {id:string,name:string} list -> t M
+    val getValue          : t -> string
+    val getDisplayedvalue : t -> string
+    val setValue          : t -> string -> unit
+    val domNode           : t -> Js.elem
+    val toForeignPtr      : t -> foreignptr
+    val startup           : t -> unit
   end
 
   structure RestGrid : sig

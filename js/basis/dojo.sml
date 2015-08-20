@@ -253,7 +253,11 @@ structure Dojo :> DOJO = struct
     fun mk_con0 (con:string) (h:foreignptr) : foreignptr M = 
       fn (k: foreignptr -> unit) => require1 con (fn F => k(new0 F h))
 
-    fun mk_con (con:string) (h:hash) : foreignptr M = mk_con0 con (mkHash h)
+    fun mk_con (con:string) (h:hash) (r:bool) : foreignptr M =
+        let val h = mkHash h
+            val () = JsCore.Object.set JsCore.bool h "required" r
+        in mk_con0 con h
+        end
 
     fun get (p:string) (obj:foreignptr) : string =
         JsCore.exec2{arg1=("obj",JsCore.fptr),
@@ -276,7 +280,8 @@ structure Dojo :> DOJO = struct
   structure TextBox = struct
     type t = foreignptr
     type 'a M = 'a M
-    val mk = JsUtil.mk_con "dijit/form/TextBox"
+    fun mk h r = JsUtil.mk_con (if r then "dijit/form/ValidationTextBox" 
+                                else "dijit/form/TextBox") h r
     val getValue = JsUtil.get "value"
     val setValue = JsUtil.set "value"
     val domNode = domNode
@@ -301,6 +306,54 @@ structure Dojo :> DOJO = struct
     val setValue = JsUtil.set "value"
     val domNode = domNode
     fun toForeignPtr x = x
+  end
+
+  structure ValidationTextBox = struct
+    type t = foreignptr
+    fun mk (h:hash) {required:bool,validator:string->bool} : t M =
+        let val h = mkHash h
+            val () = JsCore.Object.set JsCore.bool h "required" required
+            val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" validator
+        in JsUtil.mk_con0 "dijit/form/ValidationTextBox" h
+        end
+    val getValue = JsUtil.get "value"
+    val setValue = JsUtil.set "value"
+    val domNode = domNode
+    fun toForeignPtr x = x
+  end
+
+  structure FilteringSelect = struct
+    type t = foreignptr
+    fun mk (h:hash) (data:{id:string,name:string}list) : t M =
+      fn (k: t -> unit) => 
+         require1 "dijit/form/FilteringSelect" (fn FilteringSelect =>
+         require1 "dojo/store/Memory" (fn Memory =>
+         let fun objTransform {id,name} = JsCore.Object.fromList JsCore.string [("id",id),("name",name)]
+             val arr = JsCore.Array.fromList JsCore.fptr (List.map objTransform data)
+             val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
+             val store = new0 Memory dataObject
+             val params = mkHash h
+             val () = JsCore.Object.set JsCore.fptr params "store" store
+             val select = new0 FilteringSelect params
+         in k select
+         end))
+    val getValue = JsUtil.get "value"
+    val getDisplayedvalue = JsUtil.get "displayedvalue"
+    val setValue = JsUtil.set "value"
+    val domNode = domNode
+    fun toForeignPtr x = x
+    val startup = startup
+  end
+
+  structure Form = struct
+    type t = foreignptr
+    fun mk (h:hash) : t M =
+        let val h = mkHash h
+        in JsUtil.mk_con0 "dijit/form/Form" h
+        end
+    fun validate t = JsCore.method0 JsCore.bool t "validate"
+    val domNode = domNode
+    fun toForeignPtr x = x   
   end
 
   structure Button = struct
