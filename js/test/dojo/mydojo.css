@@ -1,0 +1,15 @@
+html, body {
+    height: 100%;
+}
+body {
+    margin: 0;
+}
+.dgrid-row {
+    height: 22px;
+}
+.dgrid-row-odd {
+    background-color: #FFFFFF;
+}
+.dgrid-row-even {
+    background-color: #FFFFCC;
+}

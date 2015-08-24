@@ -277,72 +277,79 @@ structure Dojo :> DOJO = struct
 
   end
 
-  structure TextBox = struct
-    type t = foreignptr
-    type 'a M = 'a M
-    fun mk h r = JsUtil.mk_con (if r then "dijit/form/ValidationTextBox" 
-                                else "dijit/form/TextBox") h r
-    val getValue = JsUtil.get "value"
-    val setValue = JsUtil.set "value"
-    val domNode = domNode
-    fun toForeignPtr x = x
-  end
 
-  structure NumberTextBox = struct
-    type t = foreignptr
-    type 'a M = 'a M
-    val mk = JsUtil.mk_con "dijit/form/NumberTextBox"
-    val getValue = JsUtil.get "value"
-    val setValue = JsUtil.set "value"
-    val domNode = domNode
-    fun toForeignPtr x = x
-  end
+  type 'a editConArg = {hash:hash, required:bool, file:string,
+                        fromString: string -> 'a option,
+                        toString: 'a -> string}
+  type 'a editor = foreignptr * 'a editConArg
+  type 'a editCon = 'a editConArg * ('a editConArg -> 'a editor M)
 
-  structure DateTextBox = struct
-    type t = foreignptr
-    type 'a M = 'a M
-    val mk = JsUtil.mk_con "dijit/form/DateTextBox"
-    val getValue = JsUtil.get "value"
-    val setValue = JsUtil.set "value"
-    val domNode = domNode
-    fun toForeignPtr x = x
-  end
+  fun stringBox (file:string) (h:hash) : string editCon =
+      ({hash=h,required=true,file=file,
+        fromString=fn s => SOME s,
+        toString=fn s => s},
+       fn (a as {file=f,hash=h,required=r,...}) => JsUtil.mk_con f h r >>= (fn e => ret (e,a))
+      )
 
-  structure ValidationTextBox = struct
-    type t = foreignptr
-    fun mk (h:hash) {required:bool,validator:string->bool} : t M =
-        let val h = mkHash h
-            val () = JsCore.Object.set JsCore.bool h "required" required
-            val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" validator
-        in JsUtil.mk_con0 "dijit/form/ValidationTextBox" h
-        end
-    val getValue = JsUtil.get "value"
-    val setValue = JsUtil.set "value"
-    val domNode = domNode
-    fun toForeignPtr x = x
-  end
+  fun textBox h : string editCon = stringBox "dijit/form/ValidationTextBox" h
+  fun numBox h : string editCon = stringBox "dijit/form/NumberTextBox" h
+  fun dateBox h : string editCon = stringBox "dijit/form/DateTextBox" h
 
-  structure FilteringSelect = struct
-    type t = foreignptr
-    fun mk (h:hash) (data:{id:string,name:string}list) : t M =
-      fn (k: t -> unit) => 
-         require1 "dijit/form/FilteringSelect" (fn FilteringSelect =>
+  fun isNull (s:string) : bool = JsCore.exec1{arg1=("s",JsCore.string),res=JsCore.bool,
+                                              stmt="return (s==null);"} s
+                                             
+  fun optionBox ((a, mk): 'a editCon) : 'a option editCon = 
+     let fun transform ({hash,required= _, file,fromString:string -> 'a option,toString:'a -> string}: 'a editConArg) : 'a option editConArg =
+             {hash=hash,required=false,file=file,
+              fromString=fn "" => SOME NONE | s => if isNull s then SOME NONE else SOME(fromString s),    (* : string -> 'a option option *)
+              toString=fn NONE => "" | SOME s => toString s}         (* : 'a option -> string *)
+         fun inverse ({hash,file,required= _,fromString:string-> 'a option option,toString: 'a option -> string} : 'a option editConArg) : 'a editConArg =
+             {hash=hash,file=file,required=false,fromString=fn s => case fromString s of SOME s => s 
+                                                                                       | NONE => NONE,
+              toString=toString o SOME}
+     in (transform a, fn x => (mk o inverse) x >>= (fn (e,a) => ret(e,transform a)))
+     end
+
+  fun validationBox h {fromString: string-> 'a option,toString: 'a -> string} : 'a editCon =
+      ({hash=h,required=true,file="dijit/form/ValidationTextBox",
+        fromString=fromString,toString=toString},
+       fn (a as {hash=h,required=r,file=f,fromString=fromS,toString=toS}) =>
+             let val h = mkHash h
+                 val () = JsCore.Object.set JsCore.bool h "required" r
+                 val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (Option.isSome o fromS)
+             in JsUtil.mk_con0 f h >>= (fn e => ret (e,a))
+             end
+      )
+
+  fun intBox h : int editCon = validationBox h {fromString=Int.fromString,toString=Int.toString}
+  fun realBox h : real editCon = validationBox h {fromString=Real.fromString,toString=Real.toString}
+
+  fun filterSelectBox (h:hash) (data:{id:string,name:string}list) : string editCon =
+      ({hash=h,required=true,file="dijit/form/FilteringSelect",fromString=fn s => SOME s, toString=fn s => s},
+       fn (a as {hash=h,required=r,file,...}) =>
+       fn k => 
+         require1 file (fn FilteringSelect =>
          require1 "dojo/store/Memory" (fn Memory =>
          let fun objTransform {id,name} = JsCore.Object.fromList JsCore.string [("id",id),("name",name)]
              val arr = JsCore.Array.fromList JsCore.fptr (List.map objTransform data)
              val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
              val store = new0 Memory dataObject
              val params = mkHash h
+             val () = JsCore.Object.set JsCore.bool params "required" r
              val () = JsCore.Object.set JsCore.fptr params "store" store
              val select = new0 FilteringSelect params
-         in k select
-         end))
-    val getValue = JsUtil.get "value"
-    val getDisplayedvalue = JsUtil.get "displayedvalue"
-    val setValue = JsUtil.set "value"
-    val domNode = domNode
-    fun toForeignPtr x = x
-    val startup = startup
+         in k (select,a)
+         end)))
+
+  structure Editor = struct
+    type 'a t = 'a editor
+    fun mk (a,f) = f a
+    fun getValue ((e,a) : 'a editor) = case #fromString a (JsUtil.get "value" e) of SOME v => v 
+                                                                                  | NONE => raise Fail "Editor.getValue"
+    fun setValue ((e,a) : 'a editor) v = JsUtil.set "value" e (#toString a v)
+    val domNode = fn ((e,_): 'a editor) => domNode e
+    fun toForeignPtr (x,_) = x
+    val startup = fn (e,_) => startup e
   end
 
   structure Form = struct
@@ -367,7 +374,6 @@ structure Dojo :> DOJO = struct
     val domNode = domNode
     fun toForeignPtr x = x    
   end           
-
 
   structure RestGrid = struct
     type t = {grid: foreignptr, store: foreignptr} 

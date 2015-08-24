@@ -8,16 +8,6 @@ http://dojotoolkit.org/reference-guide/1.10/. In particuler see
 http://dojotoolkit.org/reference-guide/1.10/.
 *)
 
-signature DOJO_TEXTBOX = sig
-  type t
-  type 'a M
-  val mk           : (string*string)list -> bool -> t M    (* the boolean specifies whether a value is required *)
-  val getValue     : t -> string
-  val setValue     : t -> string -> unit
-  val domNode      : t -> Js.elem
-  val toForeignPtr : t -> foreignptr
-end
-
 signature DOJO = sig
   type 'a M
   val >>= : 'a M * ('a -> 'b M) -> 'b M
@@ -69,17 +59,24 @@ signature DOJO = sig
     val item   : menu -> string * icon option * (unit -> unit) -> unit M
   end
 
-  structure TextBox       : DOJO_TEXTBOX where type 'a M = 'a M
-  structure NumberTextBox : DOJO_TEXTBOX where type 'a M = 'a M
-  structure DateTextBox   : DOJO_TEXTBOX where type 'a M = 'a M
+  type 'a editCon
+  val optionBox           : 'a editCon -> 'a option editCon   (* raises Fail if applied to a 't option editCon', for some t *)
+  val textBox             : hash -> string editCon
+  val numBox              : hash -> string editCon
+  val realBox             : hash -> real editCon
+  val intBox              : hash -> int editCon
+  val dateBox             : hash -> string editCon
+  val validationBox       : hash -> {fromString: string -> 'a option, toString: 'a -> string} -> 'a editCon
+  val filterSelectBox     : hash -> {id:string,name:string}list -> string editCon
 
-  structure ValidationTextBox : sig 
-    type t
-    val mk           : hash -> {required:bool,validator:string->bool} -> t M
-    val getValue     : t -> string
-    val setValue     : t -> string -> unit
-    val domNode      : t -> Js.elem
-    val toForeignPtr : t -> foreignptr
+  structure Editor : sig
+    type 'a t
+    val mk                : 'a editCon -> 'a t M
+    val getValue          : 'a t -> 'a
+    val setValue          : 'a t -> 'a -> unit
+    val domNode           : 'a t -> Js.elem
+    val toForeignPtr      : 'a t -> foreignptr
+    val startup           : 'a t -> unit   (* in particular for filterSelectBox *)
   end
 
   structure Form : sig
@@ -97,16 +94,19 @@ signature DOJO = sig
     val toForeignPtr : t -> foreignptr
   end
 
-  structure FilteringSelect : sig
+(*
+  structure RestGrid2 : sig
     type t
-    val mk                : hash -> {id:string,name:string} list -> t M
-    val getValue          : t -> string
-    val getDisplayedvalue : t -> string
-    val setValue          : t -> string -> unit
-    val domNode           : t -> Js.elem
-    val toForeignPtr      : t -> foreignptr
-    val startup           : t -> unit
+    type colspec
+    val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool} -> colspec
+    val deleteColspec : {label:string} -> colspec
+    val mk            : {target: string, idProperty: string} -> colspec list -> t M
+    val domNode       : t -> Js.elem
+    val toForeignPtr  : t -> foreignptr
+    val toStore       : t -> foreignptr
+    val toWidget      : t -> widget
   end
+*)
 
   structure RestGrid : sig
     type t
