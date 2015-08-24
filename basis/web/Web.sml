@@ -1536,7 +1536,7 @@ structure Web :> WEB =
   structure DbPostgreSQLBackend = DbODBCBackend(struct 
                                                 type conn = foreignptr
                                                 val getReqRec = getReqRec
-                                                val log = (fn x => (log(Notice, x); x))
+                                                val log = (fn x => (log(Debug, x); x))
                                                 val isNull = isNull
                                                 structure Info = Info
                                                 structure Dynlib = WebDynlib
