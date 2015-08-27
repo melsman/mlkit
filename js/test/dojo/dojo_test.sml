@@ -96,7 +96,7 @@ fun form theform username password age birthdate evennum fselect button =
        f
     end
 
-val restGrid =
+fun restGrid addRow =
   let open RestGrid2
       val colspecs = [valueColspec {field="gid",label="gid",editor=NONE,sortable=true,typ=INT},
                       valueColspec {field="name",label="Name",editor=SOME(textBox[]),sortable=true,typ=STRING},
@@ -104,16 +104,20 @@ val restGrid =
                       valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},
                       actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn no => runDialog "Print" ($("Go to the printer... Pick up job " ^ no ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
-  in mk {target="http://localhost:8080/rest/guests/", idProperty="gid", button={label="Add",icon=SOME Icon.newTask}} colspecs >>= (fn rg =>
+  in mk {target="http://localhost:8080/rest/guests/", idProperty="gid", addRow=addRow} colspecs >>= (fn rg =>
      (postruns_add "RestGrid2.startup" (fn () => RestGrid2.startup rg);
       ret (domNode rg)))
   end
 
-fun panes rg n =
+fun panes rg rg_ro n =
     if n = 0 then ret []
-    else let val (e,s) = if n = 2 then (rg,[("style","padding:0;border:0;margin:0;")]) else (Js.Element.$"",[])
+    else let val style = [("style","padding:0;border:0;margin:0;")]
+             val (e,s) = case n of
+                             2 => (rg,style) 
+                           | 3 => (rg_ro,style) 
+                           | _ => (Js.Element.$"",[])
          in pane (s@[("title", "Tab" ^ Int.toString n),EditorIcon.newPage]) e >>= (fn p =>
-            panes rg (n-1) >>= (fn ps =>
+            panes rg rg_ro (n-1) >>= (fn ps =>
             ret (p::ps)))
          end
 
@@ -136,14 +140,15 @@ val m =
          ("splitter","true")] botpane >>= (fn botpane =>
   linkPane [("region", "right"), ("href","doc/ARRAY.sml.html"), ("style", "width:20%;"),
             ("splitter","true")] >>= (fn rightpane =>
-  restGrid >>= (fn rg =>
+  restGrid (SOME{label="Add",icon=SOME Icon.newTask}) >>= (fn rg =>
+  restGrid NONE >>= (fn rg_ro =>
   gridM >>= (fn g =>
   pane [("region","center"),("title", "First"),("closable","true"),("style","height:100%;"),EditorIcon.unlink] (Js.Element.$ "Initial value") >>= (fn p1 =>
   pane [("title", "Second"),EditorIcon.save] (tag "h2" ($"A form") & form theform username password age birthdate evennum fselect button) >>= (fn p2 =>
   pane [("title", "Grid"),("style","padding:0;border:0;margin:0;")] (Grid.domNode g) >>= (fn gridWidget =>
   treeStore treedata >>= (fn store =>
   tree [] "0" (onClick p1 g) store >>= (fn tr =>
-  panes rg 4 >>= (fn ps =>
+  panes rg rg_ro 4 >>= (fn ps =>
   accordionContainer [("title","Something"),("region","right"),
                       ("splitter","true")] ps >>= (fn ac =>
   tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac] >>= (fn tc =>
@@ -153,7 +158,7 @@ val m =
              ("style","width:10%;")] tr >>= (fn tr =>
   borderContainer [("style", "height: 100%; width: 100%;")]
                   [tr,ibc,toppane,rightpane]
-)))))))))))))))))))))))))
+))))))))))))))))))))))))))
 
 fun setWindowOnload (f: unit -> unit) : unit =
     let open JsCore infix ==>

@@ -102,7 +102,7 @@ signature DOJO = sig
     val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
     val deleteColspec : {label:string,button:button} -> colspec
     val actionColspec : {label:string,button:button,onclick:string->unit} -> colspec  (* arg to onclick is the idProperty value *)
-    val mk            : {target:string, idProperty:string, button:button} -> colspec list -> t M
+    val mk            : {target:string, idProperty:string, addRow:button option} -> colspec list -> t M
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
     val startup       : t -> unit

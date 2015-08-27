@@ -447,7 +447,7 @@ structure Dojo :> DOJO = struct
         end
 
     fun buttonArgs (button:button) =
-        ([("label",#label button),("class","grid-button")] @
+        ([(*("label",#label button),*)("class","grid-button")] @
          (case #icon button of
               SOME i => [i]
             | NONE => []))
@@ -530,7 +530,34 @@ structure Dojo :> DOJO = struct
         )
     end
 
-    fun mk {target:string, idProperty:string, button=but:button} (colspecs:colspec list) : t M =
+    fun mkSimple {target:string, idProperty:string} (colspecs:colspec list) : t M = 
+        require1 "dojo/_base/declare" >>= (fn declare =>
+        require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
+        require1 "dgrid/Keyboard" >>= (fn Keyboard =>
+        require1 "dgrid/Editor" >>= (fn Editor =>
+        require1 "dstore/Rest" >>= (fn Rest =>
+        require1 "dstore/Trackable" >>= (fn Trackable =>
+        require1 "dstore/Memory" >>= (fn Memory =>
+        require1 "dijit/form/Button" >>= (fn Button =>
+        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
+        let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
+            val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
+            val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
+        in mkColumns (mkGridCol Button idProperty store) colspecs >>= (fn columns =>
+        let val grid = mkGrid MyGrid {columns=columns,collection=store}
+            fun start() = JsCore.method0 JsCore.unit grid "startup"
+            open Js.Element infix &
+            val gridelem = domNode grid
+            val () = Js.setStyle gridelem ("height", "100%")
+            val () = Js.setStyle gridelem ("width", "100%")
+        in ret {elem=gridelem,store=store,startup=start}
+        end)
+        end)))))))))
+
+    fun mk {target:string, idProperty:string, addRow=NONE} (colspecs:colspec list) : t M = 
+         mkSimple {target=target,idProperty=idProperty} colspecs
+      | mk {target:string, idProperty:string, addRow=SOME but:button option} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -547,8 +574,8 @@ structure Dojo :> DOJO = struct
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
         in mkColumns (mkGridCol Button idProperty store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
-            val label = "Add Item"
             val button = new Button (buttonArgs but)
+            val addbutton = new Button (buttonArgs but)
             val form = new Form([])
             fun sampleData () = 
                 let val h = defaultsOfColspecs colspecs
@@ -564,7 +591,6 @@ structure Dojo :> DOJO = struct
                 JsCore.method2 JsCore.string JsCore.bool JsCore.unit g "set" "showHeader" b
             fun set_label b l =
                 JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
-            val addbutton = new Button (buttonArgs but)
         in mkColumns (mkAddGridCol idProperty addbutton) colspecs >>= (fn addgridcolumns =>
         let val addgrid = mkGrid MyGrid {columns=addgridcolumns,collection=addstore}
             val addgridelem = domNode addgrid
