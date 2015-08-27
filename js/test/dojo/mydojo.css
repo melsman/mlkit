@@ -4,12 +4,43 @@ html, body {
 body {
     margin: 0;
 }
-.dgrid-row {
-    height: 22px;
+.dgrid-scroller {
+  overflow:auto;
+}
+.grid-add-row {
+  height:53px;
+}
+.grid-button .dijitButtonNode
+{
+   width: 60px;
+}
+.field-gid {
+    width: 50px;
+}
+.field-email,.field-name {
+    width: 200px;
+}
+.field-action, .heading-action {
+    align: center;
+    width: 80px;
+}
+.field-delete, .heading-delete {
+    align: center;
+    width: 80px;
 }
 .dgrid-row-odd {
-    background-color: #FFFFFF;
+    background: #F2F5F9;
 }
-.dgrid-row-even {
-    background-color: #FFFFCC;
+.dgrid-cell {
+    border: none;
+    vertical-align: middle;
 }
+.dgrid-row-even.ui-state-default { 
+        background-color: #F5F9FE; 
+} 
+.dgrid-row-odd.ui-state-default{ 
+        background-color: #E1EEFB; 
+}
+.claro .ui-state-active { 
+    background-color: #B9D7F6; 
+} 

@@ -24,7 +24,7 @@ signature DOJO = sig
   val tabContainer       : hash -> widget list -> widget M
   val borderContainer    : hash -> widget list -> widget M
   val layoutContainer    : hash -> widget list -> widget M
-  val attachToElement    : Js.elem -> widget M -> unit
+  val attachToElement    : Js.elem -> widget M -> (unit -> unit) -> unit
   val run                : unit M -> unit
   val setProperties      : hash -> widget -> unit
   val setBoolProperty    : string*bool -> widget -> unit
@@ -94,19 +94,19 @@ signature DOJO = sig
     val toForeignPtr : t -> foreignptr
   end
 
-(*
   structure RestGrid2 : sig
     type t
     type colspec
-    val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool} -> colspec
-    val deleteColspec : {label:string} -> colspec
-    val mk            : {target: string, idProperty: string} -> colspec list -> t M
+    type button = {label:string,icon:icon option}
+    datatype typ = INT | STRING
+    val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
+    val deleteColspec : {label:string,button:button} -> colspec
+    val actionColspec : {label:string,button:button,onclick:string->unit} -> colspec  (* arg to onclick is the idProperty value *)
+    val mk            : {target:string, idProperty:string, button:button} -> colspec list -> t M
     val domNode       : t -> Js.elem
-    val toForeignPtr  : t -> foreignptr
     val toStore       : t -> foreignptr
-    val toWidget      : t -> widget
+    val startup       : t -> unit
   end
-*)
 
   structure RestGrid : sig
     type t
@@ -255,8 +255,9 @@ resized by the user (the center region will automatically be
 adjusted). You also want to set the height and the width of the border
 container widget using the "style" property.
 
-[attachToElement e m] initializes the widget (by running the monad
-computation m) and attaches it to the element e.
+[attachToElement e m k] initializes the widget (by running the monad
+computation m) and attaches it to the element e. After the attachment,
+the continuation k is run.
 
 [setProperties h w] sets the properties in the hash h on the widget
 w. Notice that not all properties may be set dynamically; consult the

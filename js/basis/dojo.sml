@@ -9,21 +9,27 @@ structure Dojo :> DOJO = struct
   val fptr2unit_T = JsCore.==>(JsCore.fptr,JsCore.unit)
   val unit2unit_T = JsCore.==>(JsCore.unit,JsCore.unit)
 
-  fun require0 (f:unit->unit) : unit =
-      JsCore.exec1 {stmt="require(['dojo/domReady!'],f);",
-                    arg1=("f",unit2unit_T),
-                    res=JsCore.unit} f
-  fun require1 (s:string) (f:foreignptr->unit) : unit =
-      JsCore.exec2 {stmt="require([s,'dojo/domReady!'],f);",
-                    arg1=("s",JsCore.string),
-                    arg2=("f",fptr2unit_T),
-                    res=JsCore.unit} (s,f)
-
   infix >>=
   type 'a M = ('a -> unit) -> unit
   fun ret a f = f a
   fun (m : 'b M) >>= (k : 'b -> 'a M) : 'a M =
     fn c:'a -> unit => m(fn v:'b => k v c)
+
+  fun mapM f nil = ret nil
+    | mapM f (x::xs) = f x >>= (fn y => mapM f xs >>= (fn ys => ret(y::ys)))
+
+  val require0 : unit M = 
+   fn (f:unit->unit) =>
+      JsCore.exec1 {stmt="require(['dojo/domReady!'],f);",
+                    arg1=("f",unit2unit_T),
+                    res=JsCore.unit} f
+
+  fun require1 (s:string) : foreignptr M =
+      fn (f:foreignptr->unit) =>
+         JsCore.exec2 {stmt="require([s,'dojo/domReady!'],f);",
+                       arg1=("s",JsCore.string),
+                       arg2=("f",fptr2unit_T),
+                       res=JsCore.unit} (s,f)
 
   fun domNode (c:widget) : Js.elem =
       Js.Element.fromForeignPtr(JsCore.getProperty c JsCore.fptr "domNode")
@@ -33,8 +39,9 @@ structure Dojo :> DOJO = struct
 
   fun run (m : unit M) : unit = m (fn x => x)
 
-  fun attachToElement (e: Js.elem) (m : widget M) : unit =   (* run *)
-      let val () = JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
+  fun attachToElement (e: Js.elem) (m : widget M) (k:unit->unit): unit =   (* run *)
+      let val () = log "[attaching]\n"
+          val () = JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
                                  res=JsCore.unit} ()
       in Js.loadScript "dojo/dojo.js"
                       (fn () =>
@@ -43,6 +50,7 @@ structure Dojo :> DOJO = struct
                                         let val n = domNode c
                                         in Js.appendChild e n
                                          ; startup c
+                                         ; k()
                                         end
                                     )
                                )
@@ -310,15 +318,20 @@ structure Dojo :> DOJO = struct
      in (transform a, fn x => (mk o inverse) x >>= (fn (e,a) => ret(e,transform a)))
      end
 
+  fun mkEditorArgs ({hash, required, fromString:string-> 'a option, ...}: 'a editConArg) : foreignptr =
+      let val h = mkHash hash
+          val fromString = 
+           if required then fn "" => NONE | s => fromString s
+           else fromString
+          val () = JsCore.Object.set JsCore.bool h "required" required
+          val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (Option.isSome o fromString)
+      in h
+      end
+
   fun validationBox h {fromString: string-> 'a option,toString: 'a -> string} : 'a editCon =
       ({hash=h,required=true,file="dijit/form/ValidationTextBox",
         fromString=fromString,toString=toString},
-       fn (a as {hash=h,required=r,file=f,fromString=fromS,toString=toS}) =>
-             let val h = mkHash h
-                 val () = JsCore.Object.set JsCore.bool h "required" r
-                 val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (Option.isSome o fromS)
-             in JsUtil.mk_con0 f h >>= (fn e => ret (e,a))
-             end
+       fn arg => JsUtil.mk_con0 (#file arg) (mkEditorArgs arg) >>= (fn e => ret (e,arg))
       )
 
   fun intBox h : int editCon = validationBox h {fromString=Int.fromString,toString=Int.toString}
@@ -374,6 +387,255 @@ structure Dojo :> DOJO = struct
     val domNode = domNode
     fun toForeignPtr x = x    
   end           
+
+  structure RestGrid2 = struct
+    type editspec = {hash:foreignptr, file:string}
+    fun editspec ((arg,_):'a editCon) : editspec =
+        {hash=mkEditorArgs arg,file= #file arg}
+            
+    type t = {elem: Js.elem, store: foreignptr, startup: unit->unit} 
+    datatype typ = INT | STRING
+    type button = {label:string,icon:icon option}
+    datatype colspec = VALUE of {field:string,label:string,typ:typ,
+                                 editor:editspec option,sortable:bool}
+                     | DELETE of {label:string,button:button}
+                     | ACTION of {label:string,onclick:string->unit,button:button}
+    fun valueColspec {field,label,editor,sortable,typ} =
+        VALUE {field=field,label=label,
+               editor=Option.map editspec editor,
+               sortable=sortable,typ=typ}
+    val deleteColspec = DELETE
+    val actionColspec = ACTION
+
+    fun setTypDefault typ obj f =
+        case typ of
+            INT => JsCore.Object.set JsCore.int obj f 0
+          | STRING => JsCore.Object.set JsCore.string obj f ""
+
+    fun defaultsOfColspecs css =
+        let val obj = JsCore.Object.empty()
+            fun f (DELETE _) = ()
+              | f (ACTION _) = ()
+              | f (VALUE {field,typ,...}) = setTypDefault typ obj field
+        in List.app f css; obj
+        end
+
+    fun mkValueCol {field,label,editor,sortable,typ} =
+        let val h = [("field",field),("label",label)]
+            val h = mkHash h
+            val () = JsCore.Object.set JsCore.bool h "sortable" sortable
+        in case editor of
+               NONE => ret h
+             | SOME {hash=editorArgs,file} => 
+               require1 file >>= (fn EditorCon =>
+               (JsCore.Object.set JsCore.bool h "autoSave" true;
+(*                JsCore.Object.set JsCore.string h "editOn" "dblclick"; *)
+                JsCore.Object.set JsCore.fptr h "editor" EditorCon;
+                JsCore.Object.set JsCore.fptr h "editorArgs" editorArgs;
+                ret h))
+        end
+
+    fun setRenderCell h (f:unit -> Js.elem) : unit =
+        let fun g() = Js.Element.toForeignPtr(f())
+        in JsCore.Object.set (JsCore.==>(JsCore.unit,JsCore.fptr)) h "renderCell" g
+        end
+
+    fun setRenderCell1 h (f:foreignptr -> Js.elem) : unit =
+        let val g = Js.Element.toForeignPtr o f
+        in JsCore.Object.set (JsCore.==>(JsCore.fptr,JsCore.fptr)) h "renderCell" g
+        end
+
+    fun buttonArgs (button:button) =
+        ([("label",#label button),("class","grid-button")] @
+         (case #icon button of
+              SOME i => [i]
+            | NONE => []))
+
+    fun mkGridCol Button idProperty store (VALUE valarg) =
+        let val valarg = if idProperty = #field valarg then  (* don't allow editing of the primary key *)
+                           {field= #field valarg, label= #label valarg, typ= #typ valarg,
+                            editor=NONE,sortable= #sortable valarg}
+                         else valarg
+        in mkValueCol valarg
+        end
+      | mkGridCol Button idProperty store (DELETE {label,button}) =
+        let val h = [("field","delete"),("label",label)]
+            val h = mkHash h
+            val () = JsCore.Object.set JsCore.bool h "sortable" false
+            val () = setRenderCell1 h (fn obj => 
+                                           let val delbutton = new Button (buttonArgs button)
+                                               val () = JsCore.Object.set unit2unit_T delbutton "onClick"
+                                                   (fn () => let val id = JsCore.Object.get JsCore.int obj idProperty
+                                                             in JsCore.method1 JsCore.int JsCore.unit store "remove" id
+                                                             end)
+                                           in domNode delbutton
+                                           end)
+        in ret h
+        end
+      | mkGridCol Button idProperty store (ACTION {label:string,onclick:string->unit,button:button}) =
+        let val h = [("field","action"),("label",label)]
+            val h = mkHash h
+            val () = JsCore.Object.set JsCore.bool h "sortable" false
+            val () = setRenderCell1 h (fn obj => 
+                                           let val actionbutton = new Button (buttonArgs button)
+                                               val () = JsCore.Object.set unit2unit_T actionbutton "onClick"
+                                                   (fn () => let val id = JsCore.Object.get JsCore.int obj idProperty
+                                                             in onclick (Int.toString id)
+                                                             end)
+                                           in domNode actionbutton
+                                           end)
+        in ret h
+        end
+        
+
+
+    fun mkColumns f colspecs =
+        mapM f colspecs >>= (fn cols =>
+        ret (JsCore.Array.fromList JsCore.fptr cols))
+
+    fun mkRenderCol field label f =
+        let val h = mkHash [("field",field),("label",label)]
+            val () = JsCore.Object.set JsCore.bool h "sortable" false
+            val () = setRenderCell h f
+        in ret h
+        end
+
+    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable}) = 
+        if field <> idProperty then
+          mkValueCol {field=field,label=label,editor=editor,typ=typ,sortable=false}
+        else mkRenderCol field label (fn () => Js.Element.$ "")
+      | mkAddGridCol idProperty addbutton (ACTION {label,...}) = mkRenderCol "delete" label (fn () => Js.Element.$ "")
+      | mkAddGridCol idProperty addbutton (DELETE {label,...}) = mkRenderCol "action" label (fn () => domNode addbutton)
+
+    fun mkGrid GridCon {columns,collection} =
+        let val arg = JsCore.Object.fromList JsCore.fptr [("columns",columns),
+                                                          ("collection",collection)]
+        in new0 GridCon(arg)
+        end
+
+    local open Js.Element infix &
+    in fun tag_sty t s e = taga t [("style",s)] e
+       fun mkFlexBox e1 e2 e3 =
+        tag_sty "table" "width:100%;height:100%;border-spacing:0;border:none;" (
+          tag "tr" (
+            tag_sty "td" "width:100%;height:30px;padding:10px;text-align:right;" e1
+          ) &
+          tag "tr" (
+            tag_sty "td" "width:100%;height:0px;" e2
+          ) &
+          tag_sty "tr" "height:100%;" (
+            tag_sty "td" "width:100%;height:100%;" e3
+          )
+        )
+    end
+
+    fun mk {target:string, idProperty:string, button=but:button} (colspecs:colspec list) : t M =
+        require1 "dojo/_base/declare" >>= (fn declare =>
+        require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
+        require1 "dgrid/Keyboard" >>= (fn Keyboard =>
+        require1 "dgrid/Editor" >>= (fn Editor =>
+        require1 "dstore/Rest" >>= (fn Rest =>
+        require1 "dstore/Trackable" >>= (fn Trackable =>
+        require1 "dstore/Memory" >>= (fn Memory =>
+        require1 "dijit/form/Button" >>= (fn Button =>
+        require1 "dijit/form/Form" >>= (fn Form =>
+        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
+        let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
+            val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
+            val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
+        in mkColumns (mkGridCol Button idProperty store) colspecs >>= (fn columns =>
+        let val grid = mkGrid MyGrid {columns=columns,collection=store}
+            val label = "Add Item"
+            val button = new Button (buttonArgs but)
+            val form = new Form([])
+            fun sampleData () = 
+                let val h = defaultsOfColspecs colspecs
+                    val () = JsCore.Object.set JsCore.int h idProperty 0
+                in h
+                end
+            val addstore = 
+                let val arg = mkHash [("idProperty",idProperty)]
+                    val () = JsCore.Object.set JsCore.fptr arg "data" (JsCore.Array.fromList JsCore.fptr [sampleData()])
+                in new0 MemoryTrackableStore(arg)
+                end
+            fun set_showHeader g b = 
+                JsCore.method2 JsCore.string JsCore.bool JsCore.unit g "set" "showHeader" b
+            fun set_label b l =
+                JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
+            val addbutton = new Button (buttonArgs but)
+        in mkColumns (mkAddGridCol idProperty addbutton) colspecs >>= (fn addgridcolumns =>
+        let val addgrid = mkGrid MyGrid {columns=addgridcolumns,collection=addstore}
+            val addgridelem = domNode addgrid
+            val addgridcontainer = Js.Element.taga "div" [("class","grid-add-row"),("style","width:100%;display:none;")] addgridelem
+            fun clearAddGrid() =
+                (JsCore.method1 JsCore.int JsCore.unit addstore "removeSync" 0;
+                 JsCore.method1 JsCore.fptr JsCore.unit addstore "addSync" (sampleData());
+                 JsCore.method0 JsCore.unit addgrid "refresh")
+            fun start() = 
+                (log "[startup begin]\n";
+                 JsCore.method0 JsCore.unit grid "startup";
+                 JsCore.method0 JsCore.unit addgrid "startup";
+                 clearAddGrid();
+                 log "[startup end]\n")
+            fun addItemButtonToggle () =
+                let val style = JsCore.Object.get JsCore.fptr (Js.Element.toForeignPtr addgridcontainer) "style"
+                in if JsCore.Object.get JsCore.string style "display" = "block" then
+                     (JsCore.Object.set JsCore.string style "display" "none";
+                      set_label button (#label but);
+                      set_showHeader grid true;
+                      JsCore.method0 JsCore.unit grid "resize")
+                   else 
+                     (JsCore.Object.set JsCore.string style "display" "block";
+                      set_label button "Cancel";
+                      set_showHeader grid false;
+                      JsCore.method0 JsCore.unit addgrid "refresh";
+                      JsCore.method0 JsCore.unit addgrid "resize";
+                      JsCore.method0 JsCore.unit grid "resize")
+                end
+            val () = JsCore.Object.set unit2unit_T addbutton "onClick" 
+                (fn () =>
+                    (JsCore.method0 JsCore.unit addgrid "save";
+                     if (JsCore.method0 JsCore.bool form "validate") then
+                       let val data = JsCore.method1 JsCore.int JsCore.fptr addstore "getSync" 0
+                           val obj = JsCore.Object.empty()
+                           fun copyJs field t =
+                               let val v = JsCore.Object.get t data field
+                               in JsCore.Object.set t obj field v
+                               end
+                           fun copy f INT = copyJs f JsCore.int
+                             | copy f STRING  = copyJs f JsCore.string
+                           val () = List.app (fn DELETE _ => ()
+                                               | ACTION _ => ()
+                                               | VALUE{field,typ,...} => if field = idProperty then ()
+                                                                         else copy field typ
+                                             ) colspecs
+                       in JsCore.method1 JsCore.fptr JsCore.unit store "put" obj
+                        ; JsCore.method0 JsCore.unit grid "refresh"
+                        ; clearAddGrid()
+                        ; addItemButtonToggle()
+                       end
+                     else ())
+                )
+            val () = JsCore.Object.set unit2unit_T button "onClick" addItemButtonToggle
+            open Js.Element infix &
+            val formchild = taga "table" [("style","width:100%;border-spacing:0;border:none;")] (tag "tr" (tag "td" addgridcontainer))
+            val () = Js.appendChild (domNode form) formchild
+            val gridelem = domNode grid
+            val () = Js.setStyle gridelem ("height", "100%")
+            val () = Js.setStyle gridelem ("width", "100%")
+            val () = Js.setStyle addgridelem ("width", "100%")
+(*            val () = Js.setStyle gridelem ("border-bottom", "0") *)
+            val elem = mkFlexBox (domNode button) (domNode form) gridelem
+        in ret {elem=elem,store=store,startup=start}
+        end)
+        end)
+        end))))))))))
+
+    fun startup ({startup=start,...}: t) : unit = start()
+    val domNode : t -> Js.elem = fn {elem,...} => elem
+    val toStore : t -> foreignptr = #store
+  end
 
   structure RestGrid = struct
     type t = {grid: foreignptr, store: foreignptr} 

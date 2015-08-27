@@ -1,9 +1,18 @@
 structure Test = struct
 open Dojo infix >>=
 
+fun log s = JsCore.call1 ("console.log",JsCore.string,JsCore.unit) s
+
 local val postruns = ref nil
-in fun postruns_add f = postruns := f :: !postruns
-   fun postruns_run () = List.app (fn s => s()) (!postruns)
+in fun postruns_add s f = 
+       (log ("[postruns_add(" ^ s ^ ") begin]\n");
+        postruns := f :: !postruns;
+        log "[postruns_add end]\n")
+        
+   fun postruns_run () = 
+       let val xs = !postruns
+       in (log ("[running " ^ Int.toString(List.length xs) ^ " postruns begin]\n"); List.app (fn s => s()) xs; log "[running postruns end]\n")
+       end
 end
 
 fun getElem id : Js.elem =
@@ -29,9 +38,9 @@ val treedata = [
 ]
 
 val () = print "<link rel='stylesheet' href='dojo/resources/dojo.css'>"
-val () = print "<link rel='stylesheet' href='dijit/themes/claro/claro.css'>"
 val () = print "<link rel='stylesheet' href='dgrid/css/dgrid.css'>"
 val () = print "<link rel='stylesheet' href='dgrid/css/skins/claro.css'>"
+val () = print "<link rel='stylesheet' href='dijit/themes/claro/claro.css'>"
 val () = print "<link rel='stylesheet' href='mydojo.css'>"
 val () = print "<body class='claro' id='body'></body>"
 
@@ -52,9 +61,8 @@ val gridM =
              ("last", "Last Name"),
              ("age", "Age")]
 
-fun onClick w g rg (id,n) = (setContent w ("Got " ^ n ^ " - " ^ id);
-                             startup rg;
-                             Grid.add g gridData)
+fun onClick w g (id,n) = (setContent w ("Got " ^ n ^ " - " ^ id);
+                          Grid.add g gridData)
 
 
 open Js.Element infix &
@@ -89,22 +97,25 @@ fun form theform username password age birthdate evennum fselect button =
     end
 
 val restGrid =
-  let open RestGrid
-      val colspecs = [VALUE {field="gid",label="gid",editor=NONE,sortable=true},
-                      VALUE {field="name",label="Name",editor=SOME "text",sortable=true},
-                      VALUE {field="email",label="Email",editor=SOME "text",sortable=true},
-                      VALUE {field="comments",label="Comments",editor=SOME "text",sortable=true}(*,
-                      DELETE {label="Action"}*)]
-  in RestGrid.mk {target="http://localhost:8080/rest/guests", idProperty="gid"} colspecs >>= (fn rg =>
-     ret (RestGrid.toWidget rg))
+  let open RestGrid2
+      val colspecs = [valueColspec {field="gid",label="gid",editor=NONE,sortable=true,typ=INT},
+                      valueColspec {field="name",label="Name",editor=SOME(textBox[]),sortable=true,typ=STRING},
+                      valueColspec {field="email",label="Email",editor=SOME(numBox[]),sortable=true,typ=STRING},
+                      valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},
+                      actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn no => runDialog "Print" ($("Go to the printer... Pick up job " ^ no ^ "..."))},
+                      deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
+  in mk {target="http://localhost:8080/rest/guests/", idProperty="gid", button={label="Add",icon=SOME Icon.newTask}} colspecs >>= (fn rg =>
+     (postruns_add "RestGrid2.startup" (fn () => RestGrid2.startup rg);
+      ret (domNode rg)))
   end
 
 fun panes rg n =
     if n = 0 then ret []
-    else pane [("title", "Tab" ^ Int.toString n),EditorIcon.newPage] (Js.Element.$"") >>= (fn p =>
-         (if n = 2 then addChild p rg else ();
-         panes rg (n-1) >>= (fn ps =>
-         ret (p::ps))))
+    else let val (e,s) = if n = 2 then (rg,[("style","padding:0;border:0;margin:0;")]) else (Js.Element.$"",[])
+         in pane (s@[("title", "Tab" ^ Int.toString n),EditorIcon.newPage]) e >>= (fn p =>
+            panes rg (n-1) >>= (fn ps =>
+            ret (p::ps)))
+         end
 
 fun validator s = case Int.fromString s of SOME i => if i mod 2 = 0 then SOME i else NONE
                                          | NONE => NONE
@@ -116,22 +127,22 @@ val m =
   Editor.mk (optionBox(dateBox [])) >>= (fn birthdate =>
   Editor.mk (validationBox [] {fromString=validator,toString=Int.toString}) >>= (fn evennum =>
   Editor.mk (filterSelectBox [("name","animal"),("searchAttr","name"),("value", "3"),("maxHeight","150")] selectdata) >>= (fn fselect =>
-  (postruns_add (fn() => Editor.startup fselect);
+  (postruns_add "Editor.startup" (fn() => Editor.startup fselect);
   Form.mk [] >>= (fn theform =>
   Button.mk [("label","Login")] (button_handler theform username password age birthdate fselect) >>= (fn button =>
   pane [("region", "top")] (tag "b" ($"Main Title")) >>= (fn toppane =>
   pane [("style","height:auto;")] outputElem >>= (fn botpane =>
   titlePane [("title","Output"),("region", "bottom"),
-         ("splitter","true"), ("style","border:0;")] botpane >>= (fn botpane =>
+         ("splitter","true")] botpane >>= (fn botpane =>
   linkPane [("region", "right"), ("href","doc/ARRAY.sml.html"), ("style", "width:20%;"),
             ("splitter","true")] >>= (fn rightpane =>
-  pane [("title", "First"),("closable","true"),EditorIcon.unlink] ($"Initially empty") >>= (fn p1 =>
-  pane [("title", "Second"),EditorIcon.save] (tag "h2" ($"A form") & form theform username password age birthdate evennum fselect button) >>= (fn p2 =>
-  gridM >>= (fn g =>
-  pane [("title", "Grid"),("style","padding:0;border:0;margin:0;")] (Grid.domNode g) >>= (fn gridWidget =>
   restGrid >>= (fn rg =>
+  gridM >>= (fn g =>
+  pane [("region","center"),("title", "First"),("closable","true"),("style","height:100%;"),EditorIcon.unlink] (Js.Element.$ "Initial value") >>= (fn p1 =>
+  pane [("title", "Second"),EditorIcon.save] (tag "h2" ($"A form") & form theform username password age birthdate evennum fselect button) >>= (fn p2 =>
+  pane [("title", "Grid"),("style","padding:0;border:0;margin:0;")] (Grid.domNode g) >>= (fn gridWidget =>
   treeStore treedata >>= (fn store =>
-  tree [] "0" (onClick p1 g rg) store >>= (fn tr =>
+  tree [] "0" (onClick p1 g) store >>= (fn tr =>
   panes rg 4 >>= (fn ps =>
   accordionContainer [("title","Something"),("region","right"),
                       ("splitter","true")] ps >>= (fn ac =>
@@ -151,6 +162,5 @@ fun setWindowOnload (f: unit -> unit) : unit =
              res=unit} f
     end
 
-val () = setWindowOnload (fn () => (attachToElement (getElem "body") m;
-                                    postruns_run()))
+val () = setWindowOnload (fn () => (attachToElement (getElem "body") m postruns_run))
 end

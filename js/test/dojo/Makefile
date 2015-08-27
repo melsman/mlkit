@@ -12,7 +12,7 @@
 FILES=dojo_test.mlb dojo_test.sml
 wd=$(shell pwd)
 JS_PATH_FLAGS=-js_path_compress -js_path_relative_to "../.."
-SMLTOJS=SML_LIB=../.. ../../../bin/smltojs
+SMLTOJS=SML_LIB=../.. ../../../bin/smltojs -js_dom_mode
 
 .PHONY: all
 all:
