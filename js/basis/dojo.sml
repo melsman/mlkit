@@ -419,7 +419,7 @@ structure Dojo :> DOJO = struct
         in List.app f css; obj
         end
 
-    fun mkValueCol {field,label,editor,sortable,typ} =
+    fun mkValueCol {editOn} {field,label,editor,sortable,typ} =
         let val h = [("field",field),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" sortable
@@ -428,7 +428,9 @@ structure Dojo :> DOJO = struct
              | SOME {hash=editorArgs,file} => 
                require1 file >>= (fn EditorCon =>
                (JsCore.Object.set JsCore.bool h "autoSave" true;
-(*                JsCore.Object.set JsCore.string h "editOn" "dblclick"; *)
+                (case editOn of
+                     SOME value => JsCore.Object.set JsCore.string h "editOn" value
+                   | NONE => ());
                 JsCore.Object.set JsCore.fptr h "editor" EditorCon;
                 JsCore.Object.set JsCore.fptr h "editorArgs" editorArgs;
                 ret h))
@@ -455,7 +457,7 @@ structure Dojo :> DOJO = struct
                            {field= #field valarg, label= #label valarg, typ= #typ valarg,
                             editor=NONE,sortable= #sortable valarg}
                          else valarg
-        in mkValueCol valarg
+        in mkValueCol {editOn=SOME "dblclick"} valarg
         end
       | mkGridCol Button idProperty store (DELETE {label,button}) =
         let val h = [("field","delete"),("label",label)]
@@ -501,7 +503,7 @@ structure Dojo :> DOJO = struct
 
     fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable}) = 
         if field <> idProperty then
-          mkValueCol {field=field,label=label,editor=editor,typ=typ,sortable=false}
+          mkValueCol {editOn=NONE} {field=field,label=label,editor=editor,typ=typ,sortable=false}
         else mkRenderCol field label (fn () => Js.Element.$ "")
       | mkAddGridCol idProperty addbutton (ACTION {label,...}) = mkRenderCol "delete" label (fn () => Js.Element.$ "")
       | mkAddGridCol idProperty addbutton (DELETE {label,...}) = mkRenderCol "action" label (fn () => domNode addbutton)
