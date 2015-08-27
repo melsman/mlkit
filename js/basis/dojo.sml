@@ -40,8 +40,7 @@ structure Dojo :> DOJO = struct
   fun run (m : unit M) : unit = m (fn x => x)
 
   fun attachToElement (e: Js.elem) (m : widget M) (k:unit->unit): unit =   (* run *)
-      let val () = log "[attaching]\n"
-          val () = JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
+      let val () = JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
                                  res=JsCore.unit} ()
       in Js.loadScript "dojo/dojo.js"
                       (fn () =>
@@ -573,11 +572,9 @@ structure Dojo :> DOJO = struct
                  JsCore.method1 JsCore.fptr JsCore.unit addstore "addSync" (sampleData());
                  JsCore.method0 JsCore.unit addgrid "refresh")
             fun start() = 
-                (log "[startup begin]\n";
-                 JsCore.method0 JsCore.unit grid "startup";
+                (JsCore.method0 JsCore.unit grid "startup";
                  JsCore.method0 JsCore.unit addgrid "startup";
-                 clearAddGrid();
-                 log "[startup end]\n")
+                 clearAddGrid())
             fun addItemButtonToggle () =
                 let val style = JsCore.Object.get JsCore.fptr (Js.Element.toForeignPtr addgridcontainer) "style"
                 in if JsCore.Object.get JsCore.string style "display" = "block" then
