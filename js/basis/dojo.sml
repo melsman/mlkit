@@ -323,7 +323,8 @@ structure Dojo :> DOJO = struct
            if required then fn "" => NONE | s => fromString s
            else fromString
           val () = JsCore.Object.set JsCore.bool h "required" required
-          val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (Option.isSome o fromString)
+          val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (fn s => case fromString s of SOME _ => true 
+                                                                                                                       | NONE => false)
       in h
       end
 
@@ -373,6 +374,7 @@ structure Dojo :> DOJO = struct
     fun validate t = JsCore.method0 JsCore.bool t "validate"
     val domNode = domNode
     fun toForeignPtr x = x   
+    fun startup x = JsCore.method0 JsCore.unit x "connectChildren"
   end
 
   structure Button = struct
@@ -387,10 +389,10 @@ structure Dojo :> DOJO = struct
     fun toForeignPtr x = x    
   end           
 
-  structure RestGrid2 = struct
-    type editspec = {hash:foreignptr, file:string}
+  structure RestGrid = struct
+    type editspec = {hash:unit->foreignptr, file:string}
     fun editspec ((arg,_):'a editCon) : editspec =
-        {hash=mkEditorArgs arg,file= #file arg}
+        {hash=fn()=>mkEditorArgs arg,file= #file arg}
             
     type t = {elem: Js.elem, store: foreignptr, startup: unit->unit} 
     datatype typ = INT | STRING
@@ -425,14 +427,14 @@ structure Dojo :> DOJO = struct
             val () = JsCore.Object.set JsCore.bool h "sortable" sortable
         in case editor of
                NONE => ret h
-             | SOME {hash=editorArgs,file} => 
+             | SOME {hash=editorArgsFn,file} => 
                require1 file >>= (fn EditorCon =>
                (JsCore.Object.set JsCore.bool h "autoSave" true;
                 (case editOn of
                      SOME value => JsCore.Object.set JsCore.string h "editOn" value
                    | NONE => ());
                 JsCore.Object.set JsCore.fptr h "editor" EditorCon;
-                JsCore.Object.set JsCore.fptr h "editorArgs" editorArgs;
+                JsCore.Object.set JsCore.fptr h "editorArgs" (editorArgsFn());
                 ret h))
         end
 
@@ -447,7 +449,7 @@ structure Dojo :> DOJO = struct
         end
 
     fun buttonArgs (button:button) =
-        ([(*("label",#label button),*)("class","grid-button")] @
+        ([("label",#label button),("class","grid-button")] @
          (case #icon button of
               SOME i => [i]
             | NONE => []))
@@ -487,8 +489,6 @@ structure Dojo :> DOJO = struct
                                            end)
         in ret h
         end
-        
-
 
     fun mkColumns f colspecs =
         mapM f colspecs >>= (fn cols =>
@@ -530,6 +530,13 @@ structure Dojo :> DOJO = struct
         )
     end
 
+    fun set_showHeader g b = 
+        JsCore.method2 JsCore.string JsCore.bool JsCore.unit g "set" "showHeader" b
+    fun set_label b l =
+        JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
+    fun set_icon b NONE = ()
+      | set_icon b (SOME(k,v)) = JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" k v
+
     fun mkSimple {target:string, idProperty:string} (colspecs:colspec list) : t M = 
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
@@ -557,7 +564,7 @@ structure Dojo :> DOJO = struct
 
     fun mk {target:string, idProperty:string, addRow=NONE} (colspecs:colspec list) : t M = 
          mkSimple {target=target,idProperty=idProperty} colspecs
-      | mk {target:string, idProperty:string, addRow=SOME but:button option} (colspecs:colspec list) : t M =
+      | mk {target:string, idProperty:string, addRow=SOME(butAdd,butCancel):(button*button) option} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -566,17 +573,16 @@ structure Dojo :> DOJO = struct
         require1 "dstore/Trackable" >>= (fn Trackable =>
         require1 "dstore/Memory" >>= (fn Memory =>
         require1 "dijit/form/Button" >>= (fn Button =>
-        require1 "dijit/form/Form" >>= (fn Form =>
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
+        Form.mk [] >>= (fn form =>
         let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
         in mkColumns (mkGridCol Button idProperty store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
-            val button = new Button (buttonArgs but)
-            val addbutton = new Button (buttonArgs but)
-            val form = new Form([])
+            val button = new Button (buttonArgs butAdd)
+            val addbutton = new Button (buttonArgs butAdd)
             fun sampleData () = 
                 let val h = defaultsOfColspecs colspecs
                     val () = JsCore.Object.set JsCore.int h idProperty 0
@@ -587,10 +593,6 @@ structure Dojo :> DOJO = struct
                     val () = JsCore.Object.set JsCore.fptr arg "data" (JsCore.Array.fromList JsCore.fptr [sampleData()])
                 in new0 MemoryTrackableStore(arg)
                 end
-            fun set_showHeader g b = 
-                JsCore.method2 JsCore.string JsCore.bool JsCore.unit g "set" "showHeader" b
-            fun set_label b l =
-                JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
         in mkColumns (mkAddGridCol idProperty addbutton) colspecs >>= (fn addgridcolumns =>
         let val addgrid = mkGrid MyGrid {columns=addgridcolumns,collection=addstore}
             val addgridelem = domNode addgrid
@@ -602,17 +604,22 @@ structure Dojo :> DOJO = struct
             fun start() = 
                 (JsCore.method0 JsCore.unit grid "startup";
                  JsCore.method0 JsCore.unit addgrid "startup";
-                 clearAddGrid())
+                 clearAddGrid();
+                 Form.startup form)
+
             fun addItemButtonToggle () =
                 let val style = JsCore.Object.get JsCore.fptr (Js.Element.toForeignPtr addgridcontainer) "style"
                 in if JsCore.Object.get JsCore.string style "display" = "block" then
                      (JsCore.Object.set JsCore.string style "display" "none";
-                      set_label button (#label but);
+                      Form.startup form;
+                      set_label button (#label butAdd);
+                      set_icon button (#icon butAdd);
                       set_showHeader grid true;
                       JsCore.method0 JsCore.unit grid "resize")
                    else 
                      (JsCore.Object.set JsCore.string style "display" "block";
-                      set_label button "Cancel";
+                      set_label button (#label butCancel);
+                      set_icon button (#icon butCancel);
                       set_showHeader grid false;
                       JsCore.method0 JsCore.unit addgrid "refresh";
                       JsCore.method0 JsCore.unit addgrid "resize";
@@ -621,8 +628,9 @@ structure Dojo :> DOJO = struct
             val () = JsCore.Object.set unit2unit_T addbutton "onClick" 
                 (fn () =>
                     (JsCore.method0 JsCore.unit addgrid "save";
-                     if (JsCore.method0 JsCore.bool form "validate") then
-                       let val data = JsCore.method1 JsCore.int JsCore.fptr addstore "getSync" 0
+                     if Form.validate form then
+                       let val () = log "validate succeeded"
+                           val data = JsCore.method1 JsCore.int JsCore.fptr addstore "getSync" 0
                            val obj = JsCore.Object.empty()
                            fun copyJs field t =
                                let val v = JsCore.Object.get t data field
@@ -644,14 +652,14 @@ structure Dojo :> DOJO = struct
                 )
             val () = JsCore.Object.set unit2unit_T button "onClick" addItemButtonToggle
             open Js.Element infix &
-            val formchild = taga "table" [("style","width:100%;border-spacing:0;border:none;")] (tag "tr" (tag "td" addgridcontainer))
-            val () = Js.appendChild (domNode form) formchild
+            val formelem = Form.domNode form
+            val () = Js.appendChild formelem addgridcontainer
+            val formcontainer = taga "table" [("style","width:100%;border-spacing:0;border:none;")] (tag "tr" (tag "td" formelem))
             val gridelem = domNode grid
             val () = Js.setStyle gridelem ("height", "100%")
             val () = Js.setStyle gridelem ("width", "100%")
             val () = Js.setStyle addgridelem ("width", "100%")
-(*            val () = Js.setStyle gridelem ("border-bottom", "0") *)
-            val elem = mkFlexBox (domNode button) (domNode form) gridelem
+            val elem = mkFlexBox (domNode button) formcontainer gridelem
         in ret {elem=elem,store=store,startup=start}
         end)
         end)
@@ -660,71 +668,6 @@ structure Dojo :> DOJO = struct
     fun startup ({startup=start,...}: t) : unit = start()
     val domNode : t -> Js.elem = fn {elem,...} => elem
     val toStore : t -> foreignptr = #store
-  end
-
-  structure RestGrid = struct
-    type t = {grid: foreignptr, store: foreignptr} 
-    datatype colspec = VALUE of {field:string,label:string,
-                                 editor:string option,sortable:bool}
-                     | DELETE of {label:string}
-
-    fun fromColspec idProperty store (VALUE {field,label,editor,sortable}) =
-        let val h = [("field",field),("label",label)]
-            val h = case editor of
-                        SOME ed => let val h = mkHash(h @ [("editor",ed),("editOn","dblclick")])
-                                       val () = JsCore.Object.set JsCore.bool h "autoSave" true
-                                   in h
-                                   end
-                      | NONE => mkHash h
-            val () = JsCore.Object.set JsCore.bool h "sortable" sortable
-        in h
-        end
-      | fromColspec idProperty store (DELETE {label}) =
-        let val h = [("field","delete"),("label",label)]
-            val h = mkHash h
-            val () = JsCore.Object.set JsCore.bool h "sortable" false
-            val () = JsCore.Object.set (JsCore.====>(JsCore.fptr,JsCore.fptr,JsCore.fptr,JsCore.unit)) h "renderCell" 
-                                        (fn (obj,value,node) => 
-                                            let val nodeElem = Js.Element.fromForeignPtr node
-                                                val img = Js.Element.taga0 "img" [("style","height:16px;"),("src","/trash32.png")]
-                                            in Js.appendChild nodeElem img
-                                             ; Js.installEventHandler img Js.onclick (fn () => (JsCore.method1 JsCore.int JsCore.unit store "remove" (JsCore.Object.get JsCore.int obj idProperty);
-                                                                                                true))
-                                            end)
-        in h
-        end
-                                               
-    fun mk {target: string, idProperty: string} (colspecs:colspec list) : t M =
-        fn (k: t -> unit) =>
-        require1 "dojo/_base/declare" (fn declare =>
-        require1 "dgrid/OnDemandGrid" (fn OnDemandGrid =>
-        require1 "dgrid/Keyboard" (fn Keyboard =>
-        require1 "dgrid/Selection" (fn Selection =>
-        require1 "dgrid/Editor" (fn Editor =>
-        require1 "dstore/Rest" (fn Rest =>
-        require1 "dstore/Trackable" (fn Trackable =>
-        let val MyRest = JsUtil.callFptrArr declare [Rest,Trackable]
-            val h = [("target",target),("idProperty",idProperty)]
-            val store = new MyRest(h)
-            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Selection,Editor]
-            val cols = List.map (fromColspec idProperty store) colspecs
-            val columns = JsCore.Array.fromList JsCore.fptr cols
-            val arg = JsCore.Object.fromList JsCore.fptr [("columns",columns),
-                                                          ("collection",store)]
-            val grid = new0 MyGrid(arg)
-            val res = k {grid=grid,store=store}
-        in res
-        end)))))))
-
-    type object = foreignptr
-    fun put ({grid,store}:t) (obj:foreignptr) : unit =
-        (JsCore.method1 JsCore.fptr JsCore.unit store "put" obj;
-         JsCore.method0 JsCore.unit grid "refresh")
-
-    val domNode : t -> Js.elem = fn ({grid,...}) => domNode grid
-    val toForeignPtr : t -> foreignptr = #grid
-    val toStore : t -> foreignptr = #store
-    val toWidget : t -> widget = #grid
   end
 
   structure Grid = struct

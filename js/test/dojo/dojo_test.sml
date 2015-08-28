@@ -96,16 +96,18 @@ fun form theform username password age birthdate evennum fselect button =
        f
     end
 
+fun parseEmail s = if s = "mael@diku.dk" then SOME s else NONE
+
 fun restGrid addRow =
-  let open RestGrid2
+  let open RestGrid
       val colspecs = [valueColspec {field="gid",label="gid",editor=NONE,sortable=true,typ=INT},
                       valueColspec {field="name",label="Name",editor=SOME(textBox[]),sortable=true,typ=STRING},
-                      valueColspec {field="email",label="Email",editor=SOME(numBox[]),sortable=true,typ=STRING},
+                      valueColspec {field="email",label="Email",editor=SOME(validationBox[]{fromString=parseEmail,toString=fn s => s}),sortable=true,typ=STRING},
                       valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},
                       actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn no => runDialog "Print" ($("Go to the printer... Pick up job " ^ no ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
   in mk {target="http://localhost:8080/rest/guests/", idProperty="gid", addRow=addRow} colspecs >>= (fn rg =>
-     (postruns_add "RestGrid2.startup" (fn () => RestGrid2.startup rg);
+     (postruns_add "RestGrid.startup" (fn () => startup rg);
       ret (domNode rg)))
   end
 
@@ -140,7 +142,7 @@ val m =
          ("splitter","true")] botpane >>= (fn botpane =>
   linkPane [("region", "right"), ("href","doc/ARRAY.sml.html"), ("style", "width:20%;"),
             ("splitter","true")] >>= (fn rightpane =>
-  restGrid (SOME{label="Add",icon=SOME Icon.newTask}) >>= (fn rg =>
+  restGrid (SOME({label="Add",icon=SOME Icon.newTask},{label="Cancel",icon=SOME EditorIcon.cancel})) >>= (fn rg =>
   restGrid NONE >>= (fn rg_ro =>
   gridM >>= (fn g =>
   pane [("region","center"),("title", "First"),("closable","true"),("style","height:100%;"),EditorIcon.unlink] (Js.Element.$ "Initial value") >>= (fn p1 =>

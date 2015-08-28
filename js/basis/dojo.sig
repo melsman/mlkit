@@ -85,6 +85,7 @@ signature DOJO = sig
     val domNode      : t -> Js.elem
     val toForeignPtr : t -> foreignptr
     val validate     : t -> bool
+    val startup      : t -> unit
   end                                  
 
   structure Button : sig
@@ -94,7 +95,7 @@ signature DOJO = sig
     val toForeignPtr : t -> foreignptr
   end
 
-  structure RestGrid2 : sig
+  structure RestGrid : sig
     type t
     type colspec
     type button = {label:string,icon:icon option}
@@ -102,25 +103,10 @@ signature DOJO = sig
     val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
     val deleteColspec : {label:string,button:button} -> colspec
     val actionColspec : {label:string,button:button,onclick:string->unit} -> colspec  (* arg to onclick is the idProperty value *)
-    val mk            : {target:string, idProperty:string, addRow:button option} -> colspec list -> t M
+    val mk            : {target:string, idProperty:string, addRow:(button*button) option} -> colspec list -> t M
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
     val startup       : t -> unit
-  end
-
-  structure RestGrid : sig
-    type t
-    type object = foreignptr
-    datatype colspec = VALUE of {field:string,label:string,
-                                 editor:string option,sortable:bool}
-                     | DELETE of {label:string}
-                    
-    val mk           : {target: string, idProperty: string} -> colspec list -> t M
-    val put          : t -> object -> unit   (* put data in the store and refresh the grid *)
-    val domNode      : t -> Js.elem
-    val toForeignPtr : t -> foreignptr
-    val toStore      : t -> foreignptr
-    val toWidget     : t -> widget
   end
 
   structure Grid : sig
