@@ -55,6 +55,10 @@ signature JS =
     type timeoutId
     val setTimeout      : int -> (unit -> unit) -> timeoutId
     val clearTimeout    : timeoutId -> unit
+
+    (* Cookies *)
+    val setCookie       : doc -> string -> unit
+    val getCookie       : doc -> string
                                        
     (* styles *)
     val setStyle        : elem -> string * string -> unit

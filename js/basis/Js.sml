@@ -201,6 +201,12 @@ fun documentElement (d:doc) : elem =
             arg1=("d",J.fptr),
             res=J.fptr} d
 
+fun setCookie (d:doc) (v:string) : unit =
+    JsCore.exec2{arg1=("document",JsCore.fptr),arg2=("value",JsCore.string),res=JsCore.unit,stmt="document.cookie=value;"} (d, v)
+
+fun getCookie (d:doc) : string =
+    JsCore.exec1{arg1=("document",JsCore.fptr),res=JsCore.string,stmt="return document.cookie;"} d
+
 fun setStyle (e : elem) (a: string) : unit =
     J.exec2 {stmt="e.setAttribute('style',a); e.style.cssText = a;",
              arg1=("e",J.fptr), arg2=("a",J.string), res=J.unit} (e,a)
