@@ -106,7 +106,7 @@ fun restGrid addRow =
                       valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},
                       actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn no => runDialog "Print" ($("Go to the printer... Pick up job " ^ no ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
-  in mk {target="http://localhost:8080/rest/guests/", idProperty="gid", addRow=addRow} colspecs >>= (fn rg =>
+  in mk {target="http://localhost:8080/rest/guests/", filter=nil,idProperty="gid", addRow=addRow} colspecs >>= (fn rg =>
      (postruns_add "RestGrid.startup" (fn () => startup rg);
       ret (domNode rg)))
   end
