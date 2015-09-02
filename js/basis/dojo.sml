@@ -643,10 +643,12 @@ structure Dojo :> DOJO = struct
                                                | VALUE{field,typ,...} => if field = idProperty then ()
                                                                          else copy field typ
                                              ) colspecs
-                       in JsCore.method1 JsCore.fptr JsCore.unit store "put" obj
-                        ; JsCore.method0 JsCore.unit grid "refresh"
-                        ; clearAddGrid()
-                        ; addItemButtonToggle()
+                           val contObj = JsCore.method1 JsCore.fptr JsCore.fptr store "put" obj
+                       in 
+                         JsCore.method1 (JsCore.==>(JsCore.unit,JsCore.unit)) JsCore.unit contObj "then" (fn () =>
+                          (JsCore.method0 JsCore.unit grid "refresh"; 
+                           clearAddGrid();
+                           addItemButtonToggle()))
                        end
                      else ())
                 )
