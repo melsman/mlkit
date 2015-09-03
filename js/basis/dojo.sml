@@ -557,13 +557,13 @@ structure Dojo :> DOJO = struct
         JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
     fun set_icon b NONE = ()
       | set_icon b (SOME(k,v)) = JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" k v
-
+(*
     fun filterStore store (filter:(string*string)list) =
         let val filter = JsCore.Object.fromList JsCore.string filter
         in JsCore.method1 JsCore.fptr JsCore.fptr store "filter" filter
         end
-
-    fun mkSimple {target:string, filter, idProperty:string,notify,notify_err} (colspecs:colspec list) : t M = 
+*)
+    fun mkSimple {target:string, headers, idProperty:string,notify,notify_err} (colspecs:colspec list) : t M = 
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -575,8 +575,10 @@ structure Dojo :> DOJO = struct
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
         let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
-            val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
-            val store = filterStore store filter
+            val storeArg = mkHash [("target",target),("idProperty",idProperty)]
+            val () = if List.null headers then () 
+                     else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHash headers)
+            val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
@@ -589,9 +591,9 @@ structure Dojo :> DOJO = struct
         end)
         end)))))))))
 
-    fun mk {target:string, filter, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
-         mkSimple {target=target,filter=filter,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
-      | mk {target:string, filter, idProperty:string, addRow=SOME(butAdd,butCancel):(button*button) option,notify,notify_err} (colspecs:colspec list) : t M =
+    fun mk {target:string, headers, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
+         mkSimple {target=target,headers=headers,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
+      | mk {target:string, headers, idProperty:string, addRow=SOME(butAdd,butCancel):(button*button) option,notify,notify_err} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -606,8 +608,10 @@ structure Dojo :> DOJO = struct
         let
             val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
-            val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
-            val store = filterStore store filter
+            val storeArg = mkHash [("target",target),("idProperty",idProperty)]
+            val () = if List.null headers then () 
+                     else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHash headers)
+            val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
