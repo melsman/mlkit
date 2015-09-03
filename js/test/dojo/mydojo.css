@@ -44,3 +44,26 @@ body {
 .claro .ui-state-active { 
     background-color: #B9D7F6; 
 } 
+.notify_area_content
+{
+    display: inline-block;
+    text-align: center;
+    padding-left:20px;
+    padding-right: 20px;
+    padding-top: 4px;
+    padding-bottom:4px;
+    border:2px solid;
+    border-radius:20px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index:1;
+}
+
+.notify_area
+{
+    width:100%;
+    text-align: center;    
+    position: absolute;
+    top:8px;
+    z-index:1;
+}

@@ -31,6 +31,25 @@ structure Dojo :> DOJO = struct
                        arg2=("f",fptr2unit_T),
                        res=JsCore.unit} (s,f)
 
+  structure Promise : sig
+    type 'a t
+    val When  : 'a JsCore.T -> ('a t * ('a -> unit) -> unit) M
+    val WhenE : 'a JsCore.T -> ('a t * ('a -> unit) * (string->unit) -> unit) M
+  end = struct
+    type 'a t = foreignptr
+    fun When t =
+      require1 "dojo/when" >>= (fn whenF =>
+      ret (fn (promise,ok) =>
+              JsCore.exec3 {arg1=("when",JsCore.fptr), arg2=("p",JsCore.fptr), arg3=("ok",JsCore.==>(t,JsCore.unit)), res=JsCore.unit, stmt="when(p,ok);"} (whenF,promise,ok)))
+    fun WhenE t =
+      require1 "dojo/when" >>= (fn whenF =>
+      ret (fn (promise,ok,err) =>
+              JsCore.exec4 {arg1=("when",JsCore.fptr), arg2=("p",JsCore.fptr), 
+                            arg3=("ok",JsCore.==>(t,JsCore.unit)), 
+                            arg4=("err",JsCore.==>(JsCore.string,JsCore.unit)), 
+                            res=JsCore.unit, stmt="when(p,ok,err);"} (whenF,promise,ok,err)))
+  end
+
   fun domNode (c:widget) : Js.elem =
       Js.Element.fromForeignPtr(JsCore.getProperty c JsCore.fptr "domNode")
 
@@ -454,14 +473,15 @@ structure Dojo :> DOJO = struct
               SOME i => [i]
             | NONE => []))
 
-    fun mkGridCol Button idProperty store (VALUE valarg) =
+    fun mkGridCol _ Button idProperty store (VALUE valarg) =
         let val valarg = if idProperty = #field valarg then  (* don't allow editing of the primary key *)
                            {field= #field valarg, label= #label valarg, typ= #typ valarg,
                             editor=NONE,sortable= #sortable valarg}
                          else valarg
         in mkValueCol {editOn=SOME "dblclick"} valarg
         end
-      | mkGridCol Button idProperty store (DELETE {label,button}) =
+      | mkGridCol (notify,notify_err) Button idProperty store (DELETE {label,button}) =
+        Promise.WhenE JsCore.unit >>= (fn when =>
         let val h = [("field","delete"),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" false
@@ -469,13 +489,14 @@ structure Dojo :> DOJO = struct
                                            let val delbutton = new Button (buttonArgs button)
                                                val () = JsCore.Object.set unit2unit_T delbutton "onClick"
                                                    (fn () => let val id = JsCore.Object.get JsCore.int obj idProperty
-                                                             in JsCore.method1 JsCore.int JsCore.unit store "remove" id
+                                                                 val promise = JsCore.method1 JsCore.int JsCore.fptr store "remove" id
+                                                             in when (promise, fn () => notify "Entry successfully deleted...", notify_err)
                                                              end)
                                            in domNode delbutton
                                            end)
         in ret h
-        end
-      | mkGridCol Button idProperty store (ACTION {label:string,onclick:string->unit,button:button}) =
+        end)
+      | mkGridCol _ Button idProperty store (ACTION {label:string,onclick:string->unit,button:button}) =
         let val h = [("field","action"),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" false
@@ -542,7 +563,7 @@ structure Dojo :> DOJO = struct
         in JsCore.method1 JsCore.fptr JsCore.fptr store "filter" filter
         end
 
-    fun mkSimple {target:string, filter, idProperty:string} (colspecs:colspec list) : t M = 
+    fun mkSimple {target:string, filter, idProperty:string,notify,notify_err} (colspecs:colspec list) : t M = 
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -557,7 +578,7 @@ structure Dojo :> DOJO = struct
             val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
             val store = filterStore store filter
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
-        in mkColumns (mkGridCol Button idProperty store) colspecs >>= (fn columns =>
+        in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             fun start() = JsCore.method0 JsCore.unit grid "startup"
             open Js.Element infix &
@@ -568,9 +589,9 @@ structure Dojo :> DOJO = struct
         end)
         end)))))))))
 
-    fun mk {target:string, filter, idProperty:string, addRow=NONE} (colspecs:colspec list) : t M = 
-         mkSimple {target=target,filter=filter,idProperty=idProperty} colspecs
-      | mk {target:string, filter, idProperty:string, addRow=SOME(butAdd,butCancel):(button*button) option} (colspecs:colspec list) : t M =
+    fun mk {target:string, filter, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
+         mkSimple {target=target,filter=filter,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
+      | mk {target:string, filter, idProperty:string, addRow=SOME(butAdd,butCancel):(button*button) option,notify,notify_err} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -579,14 +600,16 @@ structure Dojo :> DOJO = struct
         require1 "dstore/Trackable" >>= (fn Trackable =>
         require1 "dstore/Memory" >>= (fn Memory =>
         require1 "dijit/form/Button" >>= (fn Button =>
-        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
+        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry =>
+        Promise.WhenE JsCore.unit >>= (fn when =>
         Form.mk [] >>= (fn form =>
-        let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
+        let
+            val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             val store = new RestTrackableStore([("target",target),("idProperty",idProperty)])
             val store = filterStore store filter
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
-        in mkColumns (mkGridCol Button idProperty store) colspecs >>= (fn columns =>
+        in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             val button = new Button (buttonArgs butAdd)
             val addbutton = new Button (buttonArgs butAdd)
@@ -650,12 +673,13 @@ structure Dojo :> DOJO = struct
                                                | VALUE{field,typ,...} => if field = idProperty then ()
                                                                          else copy field typ
                                              ) colspecs
-                           val contObj = JsCore.method1 JsCore.fptr JsCore.fptr store "put" obj
-                       in 
-                         JsCore.method1 (JsCore.==>(JsCore.unit,JsCore.unit)) JsCore.unit contObj "then" (fn () =>
-                          (JsCore.method0 JsCore.unit grid "refresh"; 
-                           clearAddGrid();
-                           addItemButtonToggle()))
+                           val promise = JsCore.method1 JsCore.fptr JsCore.fptr store "put" obj
+                       in when (promise, fn () =>
+                                            (JsCore.method0 JsCore.unit grid "refresh"; 
+                                             clearAddGrid();
+                                             addItemButtonToggle();
+                                             notify "Entry added successfully..."),
+                               notify_err)
                        end
                      else ())
                 )
@@ -672,7 +696,7 @@ structure Dojo :> DOJO = struct
         in ret {elem=elem,store=store,startup=start}
         end)
         end)
-        end))))))))))
+        end)))))))))))
 
     fun startup ({startup=start,...}: t) : unit = start()
     val domNode : t -> Js.elem = fn {elem,...} => elem
