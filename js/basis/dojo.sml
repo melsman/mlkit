@@ -557,6 +557,10 @@ structure Dojo :> DOJO = struct
         JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
     fun set_icon b NONE = ()
       | set_icon b (SOME(k,v)) = JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" k v
+
+    fun mkHeaderArgs kvs =
+        mkHash (List.map (fn (k,v) => ("SMLRest-" ^ k, v)) kvs)
+
 (*
     fun filterStore store (filter:(string*string)list) =
         let val filter = JsCore.Object.fromList JsCore.string filter
@@ -577,7 +581,7 @@ structure Dojo :> DOJO = struct
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             val storeArg = mkHash [("target",target),("idProperty",idProperty)]
             val () = if List.null headers then () 
-                     else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHash headers)
+                     else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
@@ -610,7 +614,7 @@ structure Dojo :> DOJO = struct
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             val storeArg = mkHash [("target",target),("idProperty",idProperty)]
             val () = if List.null headers then () 
-                     else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHash headers)
+                     else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
