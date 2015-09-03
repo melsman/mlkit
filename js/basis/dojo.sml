@@ -47,7 +47,7 @@ structure Dojo :> DOJO = struct
               JsCore.exec4 {arg1=("when",JsCore.fptr), arg2=("p",JsCore.fptr), 
                             arg3=("ok",JsCore.==>(t,JsCore.unit)), 
                             arg4=("err",JsCore.==>(JsCore.string,JsCore.unit)), 
-                            res=JsCore.unit, stmt="when(p,ok,err);"} (whenF,promise,ok,err)))
+                            res=JsCore.unit, stmt="when(p,ok,function(obj) { return err(JSON.parse(obj.response.data).error); });"} (whenF,promise,ok,err)))
   end
 
   fun domNode (c:widget) : Js.elem =
