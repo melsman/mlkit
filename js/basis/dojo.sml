@@ -58,22 +58,50 @@ structure Dojo :> DOJO = struct
 
   fun run (m : unit M) : unit = m (fn x => x)
 
-  fun attachToElement (e: Js.elem) (m : widget M) (k:unit->unit): unit =   (* run *)
-      let val () = JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
-                                 res=JsCore.unit} ()
-      in Js.loadScript "dojo/dojo.js"
-                      (fn () =>
-                       require0(fn () =>
-                                   m(fn c =>
-                                        let val n = domNode c
-                                        in Js.appendChild e n
-                                         ; startup c
-                                         ; k()
-                                        end
-                                    )
-                               )
-                      )
-      end
+  local
+        (* The dojo loading must be done at most once. If attachToElement is
+           called twice before the boolean ref is updated, the loading
+           could happen twice unless the code is protected with an
+           execution thunk list. *)
+
+        val thunks : (unit -> unit) list option ref = ref (SOME nil)
+
+  in fun attachToElement (e: Js.elem) (m : widget M) (k:unit->unit): unit =   (* run *)
+         let fun f() = require0(fn () => m(fn c => (Js.appendChild e (domNode c); 
+                                                    startup c;
+                                                    k())))
+         in case !thunks of
+                SOME nil => (* first call *)
+                (JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
+                               res=JsCore.unit} ();
+                 thunks := SOME [f];
+                 Js.loadScript "dojo/dojo.js" (fn () =>
+                                                  let val fs = case !thunks of
+                                                                   SOME fs => List.rev fs
+                                                                 | NONE => raise Fail "impossible"
+                                                  in thunks := NONE;
+                                                     List.app (fn f => f()) fs
+                                                  end))
+              | SOME fs => (thunks := SOME(f::fs))   (* schedule the function for execution *)
+              | NONE => f()  (* dojo has already been loaded *)
+         end
+  end
+
+(* the old buggy code:
+
+ fun attachToElement (e: Js.elem) (m : widget M) (k:unit->unit): unit =   (* run *)
+         let val () = if !dojoLoaded then ()
+                      else JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
+                                         res=JsCore.unit} ()
+             fun exec() =
+                 require0(fn () => m(fn c => (Js.appendChild e (domNode c); 
+                                              startup c;
+                                              k())))
+         in if !dojoLoaded then exec()
+            else Js.loadScript "dojo/dojo.js" (fn () => (dojoLoaded := true; exec()))
+         end
+  end
+*)
 
   fun addChild (e:widget) (p:widget) : unit =
       JsCore.method1 JsCore.fptr JsCore.unit e "addChild" p
@@ -414,7 +442,7 @@ structure Dojo :> DOJO = struct
         {hash=fn()=>mkEditorArgs arg,file= #file arg}
             
     type t = {elem: Js.elem, store: foreignptr, startup: unit->unit} 
-    datatype typ = INT | STRING
+    datatype typ = INT | STRING | NUM of int
     type button = {label:string,icon:icon option}
     datatype colspec = VALUE of {field:string,label:string,typ:typ,
                                  editor:editspec option,sortable:bool}
@@ -431,6 +459,7 @@ structure Dojo :> DOJO = struct
         case typ of
             INT => JsCore.Object.set JsCore.int obj f 0
           | STRING => JsCore.Object.set JsCore.string obj f ""
+          | NUM _ => JsCore.Object.set JsCore.real obj f 0.0
 
     fun defaultsOfColspecs css =
         let val obj = JsCore.Object.empty()
@@ -676,6 +705,7 @@ structure Dojo :> DOJO = struct
                                end
                            fun copy f INT = copyJs f JsCore.int
                              | copy f STRING  = copyJs f JsCore.string
+                             | copy f (NUM _)  = copyJs f JsCore.real
                            val () = List.app (fn DELETE _ => ()
                                                | ACTION _ => ()
                                                | VALUE{field,typ,...} => if field = idProperty then ()

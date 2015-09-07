@@ -99,7 +99,7 @@ signature DOJO = sig
     type t
     type colspec
     type button = {label:string,icon:icon option}
-    datatype typ = INT | STRING
+    datatype typ = INT | STRING | NUM of int
     val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
     val deleteColspec : {label:string,button:button} -> colspec
     val actionColspec : {label:string,button:button,onclick:string->unit} -> colspec  (* arg to onclick is the idProperty value *)
