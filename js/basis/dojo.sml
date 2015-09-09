@@ -469,8 +469,14 @@ structure Dojo :> DOJO = struct
         in List.app f css; obj
         end
 
-    fun fieldsOfColspecs css =
-        List.foldr (fn (VALUE{field,...}, acc) => field::acc | (_,acc) => acc) nil css
+    fun member nil y = false
+      | member (x::xs) y = x = y orelse member xs y
+
+    fun fieldsOfColspecs css pkey =
+        let val keys = List.foldr (fn (VALUE{field,...}, acc) => field::acc | (_,acc) => acc) nil css
+        in if member keys pkey then keys
+           else pkey::keys
+        end
 
     fun mkValueCol {editOn} {field,label,editor,sortable,typ} =
         let val h = [("field",field),("label",label)]
@@ -504,9 +510,6 @@ structure Dojo :> DOJO = struct
          (case #icon button of
               SOME i => [i]
             | NONE => []))
-
-    fun member nil y = false
-      | member (x::xs) y = x = y orelse member xs y
 
     fun mkGridCol _ Button idProperty fields store (VALUE valarg) =
         let val valarg = if idProperty = #field valarg then  (* don't allow editing of the primary key *)
@@ -622,7 +625,7 @@ structure Dojo :> DOJO = struct
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,ColumnResizer,DijitRegistry]
-            val fields = fieldsOfColspecs colspecs
+            val fields = fieldsOfColspecs colspecs idProperty
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             fun start() = JsCore.method0 JsCore.unit grid "startup"
@@ -656,7 +659,7 @@ structure Dojo :> DOJO = struct
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
-            val fields = fieldsOfColspecs colspecs
+            val fields = fieldsOfColspecs colspecs idProperty
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             val button = new Button (buttonArgs butAdd)
