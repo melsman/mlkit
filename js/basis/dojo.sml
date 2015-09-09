@@ -447,7 +447,7 @@ structure Dojo :> DOJO = struct
     datatype colspec = VALUE of {field:string,label:string,typ:typ,
                                  editor:editspec option,sortable:bool}
                      | DELETE of {label:string,button:button}
-                     | ACTION of {label:string,onclick:string->unit,button:button}
+                     | ACTION of {label:string,onclick:(string->string)->unit,button:button}
     fun valueColspec {field,label,editor,sortable,typ} =
         VALUE {field=field,label=label,
                editor=Option.map editspec editor,
@@ -468,6 +468,9 @@ structure Dojo :> DOJO = struct
               | f (VALUE {field,typ,...}) = setTypDefault typ obj field
         in List.app f css; obj
         end
+
+    fun fieldsOfColspecs css =
+        List.foldr (fn (VALUE{field,...}, acc) => field::acc | (_,acc) => acc) nil css
 
     fun mkValueCol {editOn} {field,label,editor,sortable,typ} =
         let val h = [("field",field),("label",label)]
@@ -502,14 +505,17 @@ structure Dojo :> DOJO = struct
               SOME i => [i]
             | NONE => []))
 
-    fun mkGridCol _ Button idProperty store (VALUE valarg) =
+    fun member nil y = false
+      | member (x::xs) y = x = y orelse member xs y
+
+    fun mkGridCol _ Button idProperty fields store (VALUE valarg) =
         let val valarg = if idProperty = #field valarg then  (* don't allow editing of the primary key *)
                            {field= #field valarg, label= #label valarg, typ= #typ valarg,
                             editor=NONE,sortable= #sortable valarg}
                          else valarg
         in mkValueCol {editOn=SOME "dblclick"} valarg
         end
-      | mkGridCol (notify,notify_err) Button idProperty store (DELETE {label,button}) =
+      | mkGridCol (notify,notify_err) Button idProperty fields store (DELETE {label,button}) =
         Promise.WhenE JsCore.unit >>= (fn when =>
         let val h = [("field","delete"),("label",label)]
             val h = mkHash h
@@ -525,15 +531,17 @@ structure Dojo :> DOJO = struct
                                            end)
         in ret h
         end)
-      | mkGridCol _ Button idProperty store (ACTION {label:string,onclick:string->unit,button:button}) =
+      | mkGridCol _ Button idProperty fields store (ACTION {label:string,onclick:(string->string)->unit,button:button}) =
         let val h = [("field","action"),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" false
             val () = setRenderCell1 h (fn obj => 
                                            let val actionbutton = new Button (buttonArgs button)
                                                val () = JsCore.Object.set unit2unit_T actionbutton "onClick"
-                                                   (fn () => let val id = JsCore.Object.get JsCore.int obj idProperty
-                                                             in onclick (Int.toString id)
+                                                   (fn () => let fun look k = 
+                                                                     if member fields k then JsCore.Object.get JsCore.string obj k
+                                                                     else "not known"
+                                                             in onclick look
                                                              end)
                                            in domNode actionbutton
                                            end)
@@ -605,6 +613,7 @@ structure Dojo :> DOJO = struct
         require1 "dstore/Trackable" >>= (fn Trackable =>
         require1 "dstore/Memory" >>= (fn Memory =>
         require1 "dijit/form/Button" >>= (fn Button =>
+        require1 "dgrid/extensions/ColumnResizer" >>= (fn ColumnResizer =>
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
         let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
@@ -612,8 +621,9 @@ structure Dojo :> DOJO = struct
             val () = if List.null headers then () 
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
-            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
-        in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,ColumnResizer,DijitRegistry]
+            val fields = fieldsOfColspecs colspecs
+        in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             fun start() = JsCore.method0 JsCore.unit grid "startup"
             open Js.Element infix &
@@ -622,7 +632,7 @@ structure Dojo :> DOJO = struct
             val () = Js.setStyle gridelem ("width", "100%")
         in ret {elem=gridelem,store=store,startup=start}
         end)
-        end)))))))))
+        end))))))))))
 
     fun mk {target:string, headers, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
          mkSimple {target=target,headers=headers,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
@@ -646,7 +656,8 @@ structure Dojo :> DOJO = struct
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
-        in mkColumns (mkGridCol (notify,notify_err) Button idProperty store) colspecs >>= (fn columns =>
+            val fields = fieldsOfColspecs colspecs
+        in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             val button = new Button (buttonArgs butAdd)
             val addbutton = new Button (buttonArgs butAdd)

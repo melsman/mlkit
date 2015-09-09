@@ -104,7 +104,8 @@ fun restGrid addRow =
                       valueColspec {field="name",label="Name",editor=SOME(textBox[]),sortable=true,typ=STRING},
                       valueColspec {field="email",label="Email",editor=SOME(validationBox[]{fromString=parseEmail,toString=fn s => s}),sortable=true,typ=STRING},
                       valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},
-                      actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn no => runDialog "Print" ($("Go to the printer... Pick up job " ^ no ^ "..."))},
+                      actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn look => runDialog "Print" ($("Go to the printer... Pick up job " ^ 
+                                                                                                                                              look "gid" ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
   in RestGrid.mk {target="http://localhost:8080/rest/guests/", headers=nil,idProperty="gid", addRow=addRow,notify=Notify.notify,notify_err=Notify.notify_err} colspecs >>= (fn rg =>
      (postruns_add "RestGrid.startup" (fn () => startup rg);
