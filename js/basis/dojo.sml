@@ -349,6 +349,10 @@ structure Dojo :> DOJO = struct
   fun numBox h : string editCon = stringBox "dijit/form/NumberTextBox" h
   fun dateBox h : string editCon = stringBox "dijit/form/DateTextBox" h
 
+  fun orEmptyBox ({hash,file,fromString,toString,required},f) =
+      ({hash=hash,required=false,file=file,
+        fromString=fromString,toString=toString},f)
+
   fun isNull (s:string) : bool = JsCore.exec1{arg1=("s",JsCore.string),res=JsCore.bool,
                                               stmt="return (s==null);"} s
                                              

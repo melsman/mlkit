@@ -61,6 +61,7 @@ signature DOJO = sig
 
   type 'a editCon
   val optionBox           : 'a editCon -> 'a option editCon   (* raises Fail if applied to a 't option editCon', for some t *)
+  val orEmptyBox          : string editCon -> string editCon
   val textBox             : hash -> string editCon
   val numBox              : hash -> string editCon
   val realBox             : hash -> real editCon
