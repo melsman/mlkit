@@ -347,7 +347,34 @@ structure Dojo :> DOJO = struct
 
   fun textBox h : string editCon = stringBox "dijit/form/ValidationTextBox" h
   fun numBox h : string editCon = stringBox "dijit/form/NumberTextBox" h
-  fun dateBox h : string editCon = stringBox "dijit/form/DateTextBox" h
+
+  fun isISOdate s =
+      size s = 10 andalso String.sub(s,4) = #"-" andalso String.sub(s,4) = #"-" andalso
+      List.all (fn i => Char.isDigit(String.sub(s,i))) [0,1,2,3,5,6,8,9]
+
+  fun toISOstring s = JsCore.call1 ("dojo.date.stamp.toISOString",JsCore.string,JsCore.string) s
+
+  fun toISOstringShort s =
+      let val s = toISOstring s
+      in if size s > 10 then
+           let val s' = String.extract(s,0,SOME 10)
+           in if isISOdate s' then s'
+              else s
+           end
+         else s
+      end
+
+  fun dateBox h : string editCon =
+      let fun fromString s =
+              if isISOdate s then SOME s
+              else SOME(toISOstringShort s)
+      in ({hash=h,required=true,file="dijit/form/DateTextBox",
+           fromString=fromString,
+           toString=fn s => s},
+          fn (a as {file=f,hash=h,required=r,...}) => JsUtil.mk_con f h r >>= (fn e => ret (e,a))
+         )
+      end
+
 
   fun orEmptyBox ({hash,file,fromString,toString,required},f) =
       ({hash=hash,required=false,file=file,
