@@ -108,6 +108,7 @@ signature DOJO = sig
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
     val startup       : t -> unit
+    val refresh       : t -> unit
   end
 
   structure Grid : sig

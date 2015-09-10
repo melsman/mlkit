@@ -472,7 +472,7 @@ structure Dojo :> DOJO = struct
     fun editspec ((arg,_):'a editCon) : editspec =
         {hash=fn()=>mkEditorArgs arg,file= #file arg}
             
-    type t = {elem: Js.elem, store: foreignptr, startup: unit->unit} 
+    type t = {elem: Js.elem, store: foreignptr, startup: unit->unit, refresh: unit->unit} 
     datatype typ = INT | STRING | NUM of int
     type button = {label:string,icon:icon option}
     datatype colspec = VALUE of {field:string,label:string,typ:typ,
@@ -664,7 +664,8 @@ structure Dojo :> DOJO = struct
             val gridelem = domNode grid
             val () = Js.setStyle gridelem ("height", "100%")
             val () = Js.setStyle gridelem ("width", "100%")
-        in ret {elem=gridelem,store=store,startup=start}
+            fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
+        in ret {elem=gridelem,store=store,startup=start,refresh=refresh}
         end)
         end))))))))))
 
@@ -776,12 +777,14 @@ structure Dojo :> DOJO = struct
             val () = Js.setStyle gridelem ("width", "100%")
             val () = Js.setStyle addgridelem ("width", "100%")
             val elem = mkFlexBox (domNode button) formcontainer gridelem
-        in ret {elem=elem,store=store,startup=start}
+            fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
+        in ret {elem=elem,store=store,startup=start,refresh=refresh}
         end)
         end)
         end)))))))))))
 
     fun startup ({startup=start,...}: t) : unit = start()
+    fun refresh ({refresh=refr,...}: t) : unit = refr()
     val domNode : t -> Js.elem = fn {elem,...} => elem
     val toStore : t -> foreignptr = #store
   end
