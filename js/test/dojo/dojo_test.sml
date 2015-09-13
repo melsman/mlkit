@@ -101,6 +101,7 @@ fun parseEmail s = if s = "mael@diku.dk" then SOME s else NONE
 fun restGrid addRow =
   let open RestGrid
       val colspecs = [valueColspec {field="gid",label="gid",editor=NONE,sortable=true,typ=INT},
+                      valuePrettyColspec {field="name",label="Name (with stuff)",editor=SOME(textBox[]),sortable=true,typ=STRING,pretty=fn s => $("name: " ^ s)},
                       valueColspec {field="name",label="Name",editor=SOME(textBox[]),sortable=true,typ=STRING},
                       valueColspec {field="email",label="Email",editor=SOME(validationBox[]{fromString=parseEmail,toString=fn s => s}),sortable=true,typ=STRING},
                       valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},

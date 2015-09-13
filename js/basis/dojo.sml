@@ -476,13 +476,16 @@ structure Dojo :> DOJO = struct
     datatype typ = INT | STRING | NUM of int
     type button = {label:string,icon:icon option}
     datatype colspec = VALUE of {field:string,label:string,typ:typ,
-                                 editor:editspec option,sortable:bool}
+                                 editor:editspec option,sortable:bool,pretty:(string->Js.elem)option}
                      | DELETE of {label:string,button:button}
                      | ACTION of {label:string,onclick:(string->string)->unit,button:button}
     fun valueColspec {field,label,editor,sortable,typ} =
         VALUE {field=field,label=label,
                editor=Option.map editspec editor,
-               sortable=sortable,typ=typ}
+               sortable=sortable,typ=typ,pretty=NONE}
+    fun valuePrettyColspec {field,label,editor,sortable,typ,pretty} =
+        VALUE {field=field,label=label,editor=Option.map editspec editor,
+               sortable=sortable,typ=typ,pretty=SOME pretty}
     val deleteColspec = DELETE
     val actionColspec = ACTION
 
@@ -509,10 +512,23 @@ structure Dojo :> DOJO = struct
            else pkey::keys
         end
 
-    fun mkValueCol {editOn} {field,label,editor,sortable,typ} =
+    fun setRenderCell h (f:unit -> Js.elem) : unit =
+        let fun g() = Js.Element.toForeignPtr(f())
+        in JsCore.Object.set (JsCore.==>(JsCore.unit,JsCore.fptr)) h "renderCell" g
+        end
+
+    fun setRenderCell1 h (f:foreignptr -> Js.elem) : unit =
+        let val g = Js.Element.toForeignPtr o f
+        in JsCore.Object.set (JsCore.==>(JsCore.fptr,JsCore.fptr)) h "renderCell" g
+        end
+
+    fun mkValueCol {editOn} {field,label,editor,sortable,typ,pretty} =
         let val h = [("field",field),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" sortable
+            val () = case pretty of
+                         NONE => ()
+                       | SOME pp => setRenderCell1 h (pp o (fn p => JsCore.Object.get JsCore.string p field))
         in case editor of
                NONE => ret h
              | SOME {hash=editorArgsFn,file} => 
@@ -526,16 +542,6 @@ structure Dojo :> DOJO = struct
                 ret h))
         end
 
-    fun setRenderCell h (f:unit -> Js.elem) : unit =
-        let fun g() = Js.Element.toForeignPtr(f())
-        in JsCore.Object.set (JsCore.==>(JsCore.unit,JsCore.fptr)) h "renderCell" g
-        end
-
-    fun setRenderCell1 h (f:foreignptr -> Js.elem) : unit =
-        let val g = Js.Element.toForeignPtr o f
-        in JsCore.Object.set (JsCore.==>(JsCore.fptr,JsCore.fptr)) h "renderCell" g
-        end
-
     fun buttonArgs (button:button) =
         ([("label",#label button),("class","grid-button")] @
          (case #icon button of
@@ -545,7 +551,7 @@ structure Dojo :> DOJO = struct
     fun mkGridCol _ Button idProperty fields store (VALUE valarg) =
         let val valarg = if idProperty = #field valarg then  (* don't allow editing of the primary key *)
                            {field= #field valarg, label= #label valarg, typ= #typ valarg,
-                            editor=NONE,sortable= #sortable valarg}
+                            editor=NONE,sortable= #sortable valarg, pretty= #pretty valarg}
                          else valarg
         in mkValueCol {editOn=SOME "dblclick"} valarg
         end
@@ -593,9 +599,9 @@ structure Dojo :> DOJO = struct
         in ret h
         end
 
-    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable}) = 
+    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable,pretty}) = 
         if field <> idProperty then
-          mkValueCol {editOn=NONE} {field=field,label=label,editor=editor,typ=typ,sortable=false}
+          mkValueCol {editOn=NONE} {field=field,label=label,editor=editor,typ=typ,sortable=false,pretty=pretty}
         else mkRenderCol field label (fn () => Js.Element.$ "")
       | mkAddGridCol idProperty addbutton (ACTION {label,...}) = mkRenderCol "delete" label (fn () => Js.Element.$ "")
       | mkAddGridCol idProperty addbutton (DELETE {label,...}) = mkRenderCol "action" label (fn () => domNode addbutton)
