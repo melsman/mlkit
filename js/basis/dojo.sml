@@ -657,6 +657,7 @@ structure Dojo :> DOJO = struct
         require1 "dstore/Trackable" >>= (fn Trackable =>
         require1 "dstore/Memory" >>= (fn Memory =>
         require1 "dijit/form/Button" >>= (fn Button =>
+        require1 "dgrid/extensions/ColumnHider" >>= (fn ColumnHider =>
         require1 "dgrid/extensions/ColumnResizer" >>= (fn ColumnResizer =>
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
         let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
@@ -665,7 +666,7 @@ structure Dojo :> DOJO = struct
             val () = if List.null headers then () 
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
-            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,ColumnResizer,DijitRegistry]
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,ColumnResizer,ColumnHider,DijitRegistry]
             val fields = fieldsOfColspecs colspecs idProperty
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields store) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
@@ -677,7 +678,7 @@ structure Dojo :> DOJO = struct
             fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
         in ret {elem=gridelem,store=store,startup=start,refresh=refresh}
         end)
-        end))))))))))
+        end)))))))))))
 
     fun mk {target:string, headers, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
          mkSimple {target=target,headers=headers,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
