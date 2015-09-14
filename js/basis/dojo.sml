@@ -476,21 +476,35 @@ structure Dojo :> DOJO = struct
     datatype typ = INT | STRING | NUM of int
     type button = {label:string,icon:icon option}
     datatype colspec = VALUE of {field:string,label:string,typ:typ,
-                                 editor:editspec option,sortable:bool,prettyWithId:(string*string->Js.elem)option}
-                     | DELETE of {label:string,button:button}
-                     | ACTION of {label:string,onclick:(string->string)->unit,button:button}
-    fun valueColspec {field,label,editor,sortable,typ} =
+                                 editor:editspec option,sortable:bool,prettyWithId:(string*string->Js.elem)option,hidden:bool,unhidable:bool}
+                     | DELETE of {label:string,button:button,hidden:bool,unhidable:bool}
+                     | ACTION of {label:string,onclick:(string->string)->unit,button:button,hidden:bool,unhidable:bool}
+    fun valueColspec {field,label,editor,typ} =
         VALUE {field=field,label=label,
                editor=Option.map editspec editor,
-               sortable=sortable,typ=typ,prettyWithId=NONE}
-    fun valuePrettyColspec {field,label,editor,sortable,typ,pretty} =
+               sortable=true,typ=typ,prettyWithId=NONE,hidden=false,unhidable=false}
+    fun valuePrettyColspec {field,label,editor,typ,pretty} =
         VALUE {field=field,label=label,editor=Option.map editspec editor,
-               sortable=sortable,typ=typ,prettyWithId=SOME (pretty o #1)}
-    fun valuePrettyWithIdColspec {field,label,editor,sortable,typ,prettyWithId} =
+               sortable=true,typ=typ,prettyWithId=SOME (pretty o #1),hidden=false,unhidable=false}
+    fun valuePrettyWithIdColspec {field,label,editor,typ,prettyWithId} =
         VALUE {field=field,label=label,editor=Option.map editspec editor,
-               sortable=sortable,typ=typ,prettyWithId=SOME prettyWithId}
-    val deleteColspec = DELETE
-    val actionColspec = ACTION
+               sortable=true,typ=typ,prettyWithId=SOME prettyWithId,hidden=false,unhidable=false}
+    fun deleteColspec {label:string,button:button} = DELETE {label=label,button=button,hidden=false,unhidable=false}
+    fun actionColspec {label:string,button:button,onclick:(string->string)->unit} = ACTION {label=label,button=button,onclick=onclick,hidden=false,unhidable=false}
+
+    fun sortable b (VALUE {field,label,typ,editor,sortable,prettyWithId,hidden,unhidable}) =
+        VALUE {field=field,label=label,typ=typ,editor=editor,sortable=b,prettyWithId=prettyWithId,hidden=hidden,unhidable=unhidable}
+      | sortable b cs = cs
+
+    fun hidden b (VALUE {field,label,typ,editor,sortable,prettyWithId,hidden,unhidable}) =
+        VALUE {field=field,label=label,typ=typ,editor=editor,sortable=sortable,prettyWithId=prettyWithId,hidden=b,unhidable=unhidable}
+      | hidden b (DELETE {label,button,hidden,unhidable}) = DELETE {label=label,button=button,hidden=b,unhidable=unhidable}
+      | hidden b (ACTION {label,onclick,button,hidden,unhidable}) = ACTION {label=label,onclick=onclick,button=button,hidden=b,unhidable=unhidable} 
+
+    fun unhidable b (VALUE {field,label,typ,editor,sortable,prettyWithId,hidden,unhidable}) =
+        VALUE {field=field,label=label,typ=typ,editor=editor,sortable=sortable,prettyWithId=prettyWithId,hidden=hidden,unhidable=b}
+      | unhidable b (DELETE {label,button,hidden,unhidable}) = DELETE {label=label,button=button,hidden=hidden,unhidable=b}
+      | unhidable b (ACTION {label,onclick,button,hidden,unhidable}) = ACTION {label=label,onclick=onclick,button=button,hidden=hidden,unhidable=b}
 
     fun setTypDefault typ obj f =
         case typ of
@@ -525,10 +539,12 @@ structure Dojo :> DOJO = struct
         in JsCore.Object.set (JsCore.==>(JsCore.fptr,JsCore.fptr)) h "renderCell" g
         end
 
-    fun mkValueCol idProperty {editOn} {field,label,editor,sortable,typ,prettyWithId} =
+    fun mkValueCol idProperty {editOn} {field,label,editor,sortable,typ,prettyWithId,hidden,unhidable} =
         let val h = [("field",field),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" sortable
+            val () = JsCore.Object.set JsCore.bool h "hidden" hidden
+            val () = JsCore.Object.set JsCore.bool h "unhidable" unhidable
             val () = case prettyWithId of
                          NONE => ()
                        | SOME pp => setRenderCell1 h (pp o (fn p => (JsCore.Object.get JsCore.string p field,
@@ -555,15 +571,17 @@ structure Dojo :> DOJO = struct
     fun mkGridCol _ Button idProperty fields store (VALUE valarg) =
         let val valarg = if idProperty = #field valarg then  (* don't allow editing of the primary key *)
                            {field= #field valarg, label= #label valarg, typ= #typ valarg,
-                            editor=NONE,sortable= #sortable valarg, prettyWithId= #prettyWithId valarg}
+                            editor=NONE,sortable= #sortable valarg, prettyWithId= #prettyWithId valarg, hidden= #hidden valarg, unhidable= #unhidable valarg}
                          else valarg
         in mkValueCol idProperty {editOn=SOME "dblclick"} valarg
         end
-      | mkGridCol (notify,notify_err) Button idProperty fields store (DELETE {label,button}) =
+      | mkGridCol (notify,notify_err) Button idProperty fields store (DELETE {label,button,hidden,unhidable}) =
         Promise.WhenE JsCore.unit >>= (fn when =>
         let val h = [("field","delete"),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" false
+            val () = JsCore.Object.set JsCore.bool h "hidden" hidden
+            val () = JsCore.Object.set JsCore.bool h "unhidable" unhidable
             val () = setRenderCell1 h (fn obj => 
                                            let val delbutton = new Button (buttonArgs button)
                                                val () = JsCore.Object.set unit2unit_T delbutton "onClick"
@@ -575,10 +593,12 @@ structure Dojo :> DOJO = struct
                                            end)
         in ret h
         end)
-      | mkGridCol _ Button idProperty fields store (ACTION {label:string,onclick:(string->string)->unit,button:button}) =
+      | mkGridCol _ Button idProperty fields store (ACTION {label:string,onclick:(string->string)->unit,button:button,hidden,unhidable}) =
         let val h = [("field","action"),("label",label)]
             val h = mkHash h
             val () = JsCore.Object.set JsCore.bool h "sortable" false
+            val () = JsCore.Object.set JsCore.bool h "hidden" hidden
+            val () = JsCore.Object.set JsCore.bool h "unhidable" unhidable
             val () = setRenderCell1 h (fn obj => 
                                            let val actionbutton = new Button (buttonArgs button)
                                                val () = JsCore.Object.set unit2unit_T actionbutton "onClick"
@@ -603,9 +623,9 @@ structure Dojo :> DOJO = struct
         in ret h
         end
 
-    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable,prettyWithId}) = 
+    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable,prettyWithId,hidden,unhidable}) = 
         if field <> idProperty then
-          mkValueCol idProperty {editOn=NONE} {field=field,label=label,editor=editor,typ=typ,sortable=false,prettyWithId=prettyWithId}
+          mkValueCol idProperty {editOn=NONE} {field=field,label=label,editor=editor,typ=typ,sortable=false,prettyWithId=prettyWithId,hidden=hidden,unhidable=unhidable}
         else mkRenderCol field label (fn () => Js.Element.$ "")
       | mkAddGridCol idProperty addbutton (ACTION {label,...}) = mkRenderCol "delete" label (fn () => Js.Element.$ "")
       | mkAddGridCol idProperty addbutton (DELETE {label,...}) = mkRenderCol "action" label (fn () => domNode addbutton)

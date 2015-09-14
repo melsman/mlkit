@@ -100,11 +100,11 @@ fun parseEmail s = if s = "mael@diku.dk" then SOME s else NONE
 
 fun restGrid addRow =
   let open RestGrid
-      val colspecs = [valueColspec {field="gid",label="gid",editor=NONE,sortable=true,typ=INT},
-                      valuePrettyColspec {field="name",label="Name (with stuff)",editor=SOME(textBox[]),sortable=true,typ=STRING,pretty=fn s => $("name: " ^ s)},
-                      valueColspec {field="name",label="Name",editor=SOME(textBox[]),sortable=true,typ=STRING},
-                      valueColspec {field="email",label="Email",editor=SOME(validationBox[]{fromString=parseEmail,toString=fn s => s}),sortable=true,typ=STRING},
-                      valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),sortable=true,typ=STRING},
+      val colspecs = [hidden true (valueColspec {field="gid",label="gid",editor=NONE,typ=INT}),
+                      hidden true (valuePrettyColspec {field="name",label="Name (with stuff)",editor=SOME(textBox[]),typ=STRING,pretty=fn s => $("name: " ^ s)}),
+                      valueColspec {field="name",label="Name",editor=SOME(textBox[]),typ=STRING},
+                      unhidable true (valueColspec {field="email",label="Email",editor=SOME(validationBox[]{fromString=parseEmail,toString=fn s => s}),typ=STRING}),
+                      valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),typ=STRING},
                       actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn look => runDialog "Print" ($("Go to the printer... Pick up job " ^ 
                                                                                                                                               look "gid" ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
