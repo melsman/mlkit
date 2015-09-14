@@ -103,6 +103,7 @@ signature DOJO = sig
     datatype typ = INT | STRING | NUM of int
     val valueColspec  : {field:string,label:string,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
     val valuePrettyColspec : {field:string,label:string,pretty:string->Js.elem,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
+    val valuePrettyWithIdColspec : {field:string,label:string,prettyWithId:string*string->Js.elem,editor:'a editCon option,sortable:bool,typ:typ} -> colspec
     val deleteColspec : {label:string,button:button} -> colspec
     val actionColspec : {label:string,button:button,onclick:(string->string)->unit} -> colspec  (* arg to onclick is a function for looking up a field value, given a key *)
     val mk            : {target:string, headers:(string*string)list, idProperty:string, addRow:(button*button) option, notify:string->unit, notify_err:string->unit} -> colspec list -> t M
