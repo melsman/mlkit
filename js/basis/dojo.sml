@@ -415,6 +415,10 @@ structure Dojo :> DOJO = struct
   fun intBox h : int editCon = validationBox h {fromString=Int.fromString,toString=Int.toString}
   fun realBox h : real editCon = validationBox h {fromString=Real.fromString,toString=Real.toString}
 
+  fun mymap0 f nil ys = rev ys
+    | mymap0 f (x::xs) ys = mymap0 f xs (f x::ys)
+  fun mymap f xs = mymap0 f xs nil
+
   fun filterSelectBox (h:hash) (data:{id:string,name:string}list) : string editCon =
       ({hash=h,required=true,file="dijit/form/FilteringSelect",fromString=fn s => SOME s, toString=fn s => s},
        fn (a as {hash=h,required=r,file,...}) =>
@@ -422,7 +426,7 @@ structure Dojo :> DOJO = struct
          require1 file (fn FilteringSelect =>
          require1 "dojo/store/Memory" (fn Memory =>
          let fun objTransform {id,name} = JsCore.Object.fromList JsCore.string [("id",id),("name",name)]
-             val arr = JsCore.Array.fromList JsCore.fptr (List.map objTransform data)
+             val arr = JsCore.Array.fromList JsCore.fptr (mymap objTransform data)
              val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
              val store = new0 Memory dataObject
              val params = mkHash h
