@@ -425,8 +425,16 @@ structure Dojo :> DOJO = struct
        fn k => 
          require1 file (fn FilteringSelect =>
          require1 "dojo/store/Memory" (fn Memory =>
-         let fun objTransform {id,name} = JsCore.Object.fromList JsCore.string [("id",id),("name",name)]
-             val arr = JsCore.Array.fromList JsCore.fptr (mymap objTransform data)
+         let (*fun objTransform {id,name} = JsCore.Object.fromList JsCore.string [("id",id),("name",name)]*)
+             val arr = JsCore.Array.empty()
+             val () = List.app (fn {id,name} =>
+                                   let val obj = JsCore.Object.empty()
+                                       val () = JsCore.Object.set JsCore.string obj "id" id
+                                       val () = JsCore.Object.set JsCore.string obj "name" name
+                                       val _ = JsCore.Array.push JsCore.fptr arr obj
+                                   in ()
+                                   end) data
+(*             val arr = JsCore.Array.fromList JsCore.fptr (mymap objTransform data) *)
              val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
              val store = new0 Memory dataObject
              val params = mkHash h
