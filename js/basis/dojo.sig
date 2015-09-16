@@ -114,6 +114,7 @@ signature DOJO = sig
     val mk            : {target:string, headers:(string*string)list, idProperty:string, addRow:(button*button) option, notify:string->unit, notify_err:string->unit} -> colspec list -> t M
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
+    val setCollection : t -> {target:string} -> unit 
     val startup       : t -> unit
     val refresh       : t -> unit
   end

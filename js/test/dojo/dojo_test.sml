@@ -67,6 +67,19 @@ fun onClick w g (id,n) = (setContent w ("Got " ^ n ^ " - " ^ id);
 
 open Js.Element infix &
 
+fun tag_sty t s e = taga t [("style",s)] e
+
+fun mkFlexBox3 e1 e2 e3 =
+    tag_sty "table" "width:100%;height:100%;border-spacing:0;border:none;" (
+      tag "tr" (
+        tag_sty "td" "width:50%;height:30px;padding:10px;text-align:left;" e1 &
+        tag_sty "td" "width:50%;height:30px;padding:10px;text-align:right;" e2
+      ) &
+      tag_sty "tr" "height:100%;" (
+        taga "td" [("colspan","2"),("style","width:100%;height:100%;")] e3
+      )
+    )
+
 val outputElem = tag "div" ($"This is just an empty area, initially!")
 
 fun button_handler theform username password age birthdate fselect () =
@@ -108,9 +121,11 @@ fun restGrid addRow =
                       actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn look => runDialog "Print" ($("Go to the printer... Pick up job " ^ 
                                                                                                                                               look "gid" ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
-  in RestGrid.mk {target="http://localhost:8080/rest/guests/", headers=nil,idProperty="gid", addRow=addRow,notify=Notify.notify,notify_err=Notify.notify_err} colspecs >>= (fn rg =>
+      val target = "http://localhost:8080/rest/guests/"
+      fun restrictFn g s = setCollection g {target=target ^ "?q(name)=" ^ s}
+  in RestGrid.mk {target=target, headers=nil,idProperty="gid", addRow=addRow,notify=Notify.notify,notify_err=Notify.notify_err} colspecs >>= (fn rg =>
      (postruns_add "RestGrid.startup" (fn () => startup rg);
-      ret (domNode rg)))
+      ret (domNode rg, restrictFn rg)))
   end
 
 fun panes rg rg_ro n =
@@ -118,7 +133,12 @@ fun panes rg rg_ro n =
     else let val style = [("style","padding:0;border:0;margin:0;")]
              val (e,s) = case n of
                              2 => (rg,style) 
-                           | 3 => (rg_ro,style) 
+                           | 3 => let val (rg,restrictFn) = rg_ro
+                                      val button = taga0 "input" [("type","button"),("value","Get the records with 'art' in the name!")]
+                                      val () = Js.installEventHandler button Js.onclick (fn () => (restrictFn "%art%"; true))
+                                      val e = mkFlexBox3 ($"The grid") button rg
+                                  in (e,style) 
+                                  end
                            | _ => (Js.Element.$"",[])
          in pane (s@[("title", "Tab" ^ Int.toString n),EditorIcon.newPage]) e >>= (fn p =>
             panes rg rg_ro (n-1) >>= (fn ps =>
@@ -144,7 +164,7 @@ val m =
          ("splitter","true")] botpane >>= (fn botpane =>
   linkPane [("region", "right"), ("href","doc/ARRAY.sml.html"), ("style", "width:20%;"),
             ("splitter","true")] >>= (fn rightpane =>
-  restGrid (SOME({label="Add",icon=SOME Icon.newTask},{label="Cancel",icon=SOME EditorIcon.cancel})) >>= (fn rg =>
+  restGrid (SOME({label="Add",icon=SOME Icon.newTask},{label="Cancel",icon=SOME EditorIcon.cancel})) >>= (fn (rg,_) =>
   restGrid NONE >>= (fn rg_ro =>
   gridM >>= (fn g =>
   pane [("region","center"),("title", "First"),("closable","true"),("style","height:100%;"),EditorIcon.unlink] (Js.Element.$ "Initial value") >>= (fn p1 =>
