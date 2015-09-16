@@ -115,6 +115,7 @@ signature DOJO = sig
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
     val setCollection : t -> {target:string} -> unit 
+    val setSort       : t -> {field:string} -> unit 
     val startup       : t -> unit
     val refresh       : t -> unit
   end

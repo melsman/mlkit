@@ -484,7 +484,9 @@ structure Dojo :> DOJO = struct
     fun editspec ((arg,_):'a editCon) : editspec =
         {hash=fn()=>mkEditorArgs arg,file= #file arg}
             
-    type t = {elem: Js.elem, getStore: unit->foreignptr, startup: unit->unit, refresh: unit->unit, setCollection: string->unit} 
+    type t = {elem: Js.elem, getStore: unit->foreignptr, startup: unit->unit, 
+              refresh: unit->unit, setCollection: string->unit, setSort: string->unit}
+
     datatype typ = INT | STRING | NUM of int
     type button = {label:string,icon:icon option}
     datatype colspec = VALUE of {field:string,label:string,typ:typ,
@@ -675,6 +677,9 @@ structure Dojo :> DOJO = struct
     fun mkHeaderArgs kvs =
         mkHash (List.map (fn (k,v) => ("SMLRest-" ^ k, v)) kvs)
 
+    fun setSort grid field =
+        JsCore.method2 JsCore.string JsCore.string JsCore.unit grid "set" "sort" field
+
 (*
     fun filterStore store (filter:(string*string)list) =
         let val filter = JsCore.Object.fromList JsCore.string filter
@@ -720,7 +725,8 @@ structure Dojo :> DOJO = struct
                     val () = JsCore.method2 JsCore.string JsCore.fptr JsCore.unit grid "set" "collection" store
                 in refresh()
                 end
-        in ret {elem=gridelem,getStore=getStore,startup=start,refresh=refresh,setCollection=setCollection}
+        in ret {elem=gridelem,getStore=getStore,startup=start,refresh=refresh,setCollection=setCollection,
+               setSort=setSort grid}
         end)
         end)))))))))))
 
@@ -834,7 +840,9 @@ structure Dojo :> DOJO = struct
             val () = Js.setStyle addgridelem ("width", "100%")
             val elem = mkFlexBox (domNode button) formcontainer gridelem
             fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
-        in ret {elem=elem,getStore=getStore,startup=start,refresh=refresh,setCollection=fn _ => notify_err "action not supported on advanced grids"}
+        in ret {elem=elem,getStore=getStore,startup=start,refresh=refresh,
+                setCollection=fn _ => notify_err "action not supported on advanced grids",
+                setSort=setSort grid}
         end)
         end)
         end)))))))))))
@@ -842,6 +850,8 @@ structure Dojo :> DOJO = struct
     fun startup ({startup=start,...}: t) : unit = start()
     fun refresh ({refresh=refr,...}: t) : unit = refr()
     fun setCollection ({setCollection=set,...}:t) {target:string} : unit = set target
+    fun setSort ({setSort=set,...}:t) {field:string} : unit = set field
+
     val domNode : t -> Js.elem = fn {elem,...} => elem
     fun toStore ({getStore,...}: t) : foreignptr = getStore ()
   end
