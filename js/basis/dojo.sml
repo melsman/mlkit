@@ -329,6 +329,14 @@ structure Dojo :> DOJO = struct
         JsCore.exec2{arg1=("f",JsCore.fptr),arg2=("xs",JsCore.fptr),res=JsCore.fptr,
                      stmt="return f(xs);"} (f,JsCore.Array.fromList JsCore.fptr xs)
 
+    fun on (t:'a JsCore.T) (obj:foreignptr) (event:string) (f: 'a -> unit) : unit =
+         run(require1 "dojo/on" >>= (fn on =>
+                       ret(JsCore.exec4{arg1=("on",JsCore.fptr),
+                                        arg2=("obj",JsCore.fptr),
+                                        arg3=("event",JsCore.string),
+                                        arg4=("f",JsCore.==>(t,JsCore.unit)),
+                                        res=JsCore.unit,
+                                        stmt="on(obj,event,f);"} (on,obj,event,f))))
   end
 
 
@@ -478,6 +486,31 @@ structure Dojo :> DOJO = struct
     val domNode = domNode
     fun toForeignPtr x = x    
   end           
+
+  structure UploadFile = struct
+    type t = foreignptr
+    fun mk (h : hash) {url:string,multiple:bool,uploadOnSelect:bool,name:string} : t M =
+        let val h = mkHash (("url",url)::("name",name)::h)
+            val () = JsCore.Object.set JsCore.bool h "multiple" multiple
+            val () = JsCore.Object.set JsCore.bool h "uploadOnSelect" uploadOnSelect
+        in require1 "dojox/form/Uploader" >>= (fn Don'tUseThis =>
+            let val uploader = JsCore.exec1 {arg1=("h",JsCore.fptr),res=JsCore.fptr,stmt="return new dojox.form.Uploader(h);"} h
+            in ret uploader
+            end)
+        end
+    fun upload (t:t) (h: hash) : unit =
+        JsCore.method1 JsCore.fptr JsCore.unit t "upload" (mkHash h)
+
+    fun reset (t:t) : unit =
+        JsCore.method0 JsCore.unit t "reset"
+
+    fun onComplete (obj:t) f = JsUtil.on JsCore.fptr obj "Complete" f
+    fun onBegin (obj:t) f = JsUtil.on JsCore.unit obj "Begin" f
+    fun onError (obj:t) f = JsUtil.on JsCore.unit obj "Error" f
+
+    val domNode      : t -> Js.elem = domNode
+    val toForeignPtr : t -> foreignptr = fn x => x
+  end    
 
   structure RestGrid = struct
     type editspec = {hash:unit->foreignptr, file:string}

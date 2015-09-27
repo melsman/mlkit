@@ -97,6 +97,22 @@ signature DOJO = sig
     val toForeignPtr : t -> foreignptr
   end
 
+  structure UploadFile : sig
+    type t
+    val mk           : hash -> {url:string,multiple:bool,uploadOnSelect:bool,name:string} -> t M
+    val domNode      : t -> Js.elem
+    val toForeignPtr : t -> foreignptr
+    val upload       : t -> hash -> unit
+    val reset        : t -> unit
+(*    val getFileList  : t -> string list *)
+    val onComplete   : t -> (foreignptr -> unit) -> unit 
+    val onError      : t -> (unit -> unit) -> unit
+    val onBegin      : t -> (unit -> unit) -> unit
+(*
+    val onProgress   : t -> (int*int -> unit) -> unit
+*)
+  end    
+
   structure RestGrid : sig
     type t
     type colspec
