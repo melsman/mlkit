@@ -167,6 +167,10 @@ val uploadM =
         ret(UploadFile.domNode uploader & Button.domNode upload_btn))))
     end
 
+fun mkBox t e =
+    pane [] e >>= (fn p =>
+    titlePane [("title",t)] p)
+
 val m =
   Editor.mk (textBox []) >>= (fn username =>
   Editor.mk (textBox [("type","password")]) >>= (fn password =>
@@ -196,14 +200,20 @@ val m =
   panes rg rg_ro 4 >>= (fn ps =>
   accordionContainer [("title","Something"),("region","right"),
                       ("splitter","true")] ps >>= (fn ac =>
-  tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac] >>= (fn tc =>
+  mkBox "Box1" ($"Yes") >>= (fn b1 =>
+  mkBox "Box2" ($"Yes") >>= (fn b2 =>
+  mkBox "Box3" ($"Yes") >>= (fn b3 =>
+  mkBox "Box4" ($"Yes") >>= (fn b4 =>
+  mkBox "Box5" ($"Yes") >>= (fn b5 =>
+  tableContainer [("title","Tiles"),("cols","2"),("showLabels","false"),("spacing","5")] {showLabels=false} [b1,b2,b3,b4,b5] >>= (fn tableWidget =>
+  tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac,tableWidget] >>= (fn tc =>
   borderContainer [("region","center"),
                    ("style", "height: 100%; width: 100%;")] [tc,botpane] >>= (fn ibc =>
   titlePane [("title","A Tree"),("region","left"),("splitter","true"),
              ("style","width:10%;")] tr >>= (fn tr =>
   borderContainer [("style", "height: 100%; width: 100%;")]
                   [tr,ibc,toppane,rightpane]
-)))))))))))))))))))))))))))
+)))))))))))))))))))))))))))))))))
 
 fun setWindowOnload (f: unit -> unit) : unit =
     let open JsCore infix ==>

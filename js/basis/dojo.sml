@@ -117,19 +117,22 @@ structure Dojo :> DOJO = struct
   fun new c h =
       new0 c (mkHash h)
 
-  fun stackContainer (kind:string) (h:hash) (panes: widget list) : widget M =
+  fun stackContainer (kind:string) (bh:(string*bool)list) (h:hash) (panes: widget list) : widget M =
       fn (f: widget -> unit) =>
          require1 kind
                   (fn Sc =>
-                      let val sc = new Sc(h)
+                      let val h = mkHash h
+                          val () = List.app (fn(k,v) => JsCore.Object.set JsCore.bool h k v) bh
+                          val sc = new0 Sc(h)
                       in List.app (addChild sc) panes
                        ; f sc
                       end)
 
-  val tabContainer = stackContainer "dijit/layout/TabContainer"
-  val borderContainer = stackContainer "dijit/layout/BorderContainer"
-  val layoutContainer = stackContainer "dijit/layout/LayoutContainer"
-  val accordionContainer = stackContainer "dijit/layout/AccordionContainer"
+  val tabContainer = stackContainer "dijit/layout/TabContainer" []
+  val borderContainer = stackContainer "dijit/layout/BorderContainer" []
+  val layoutContainer = stackContainer "dijit/layout/LayoutContainer" []
+  fun tableContainer h {showLabels} = stackContainer "dojox/layout/TableContainer" [("showLabels",showLabels)] h
+  val accordionContainer = stackContainer "dijit/layout/AccordionContainer" []
 
   fun setContentElement w (e: Js.elem) =
     JsCore.exec2{stmt="w.set('content', e);",

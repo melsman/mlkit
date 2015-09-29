@@ -24,6 +24,7 @@ signature DOJO = sig
   val tabContainer       : hash -> widget list -> widget M
   val borderContainer    : hash -> widget list -> widget M
   val layoutContainer    : hash -> widget list -> widget M
+  val tableContainer     : hash -> {showLabels:bool} -> widget list -> widget M
   val attachToElement    : Js.elem -> widget M -> (unit -> unit) -> unit
   val run                : unit M -> unit
   val setProperties      : hash -> widget -> unit
