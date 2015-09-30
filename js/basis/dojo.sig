@@ -51,6 +51,8 @@ signature DOJO = sig
   type tabmap = widget * (string*widget)list ref
   val advTabContainer    : hash -> (tabmap*{select:string->unit,close:string->unit}) M
 
+  val lazyTabContainer   : hash -> widget * (string*icon option*widget M) list -> widget M
+
   val set_onClose        : widget -> (unit -> bool) -> unit
   val set_onShow         : widget -> (unit -> unit) -> unit
 

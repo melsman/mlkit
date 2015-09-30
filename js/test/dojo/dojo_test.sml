@@ -194,7 +194,7 @@ val m =
   uploadM >>= (fn upload_elem =>
   pane [("title", "Second"),EditorIcon.save] (tag "h2" ($"A form") & form theform username password age birthdate evennum fselect button &                                                 
                                               tag "h2" ($"Upload") & upload_elem) >>= (fn p2 =>
-  pane [("title", "Grid"),("style","padding:0;border:0;margin:0;")] (Grid.domNode g) >>= (fn gridWidget =>
+  pane [("title", "Grid"),("style","border:0;")] (Grid.domNode g) >>= (fn gridWidget =>
   treeStore treedata >>= (fn store =>
   tree [] "0" (onClick p1 g) store >>= (fn tr =>
   panes rg rg_ro 4 >>= (fn ps =>
@@ -206,14 +206,20 @@ val m =
   mkBox "Box4" ($"Yes") >>= (fn b4 =>
   mkBox "Box5" ($"Yes") >>= (fn b5 =>
   tableContainer [("title","Tiles"),("cols","2"),("showLabels","false"),("spacing","5")] {showLabels=false} [b1,b2,b3,b4,b5] >>= (fn tableWidget =>
-  tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac,tableWidget] >>= (fn tc =>
-  borderContainer [("region","center"),
-                   ("style", "height: 100%; width: 100%;")] [tc,botpane] >>= (fn ibc =>
-  titlePane [("title","A Tree"),("region","left"),("splitter","true"),
-             ("style","width:10%;")] tr >>= (fn tr =>
-  borderContainer [("style", "height: 100%; width: 100%;")]
-                  [tr,ibc,toppane,rightpane]
-)))))))))))))))))))))))))))))))))
+  pane [("title","The vissible strict tab-page")] ($"here we go...") >>= (fn strict =>
+  let val lazy1 = pane [("title","Lazy1")] ($"Yes Madame")
+      val lazy2 = pane [("title","Lazy2")] ($"Yes Sir")
+  in
+    lazyTabContainer [("title", "I'm Lazy")] (strict,[("Lazy1",SOME EditorIcon.print,lazy1),("Lazy2",NONE,lazy2)]) >>= (fn lazyWidget =>
+    tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac,tableWidget,lazyWidget] >>= (fn tc =>
+    borderContainer [("region","center"),
+                     ("style", "height: 100%; width: 100%;")] [tc,botpane] >>= (fn ibc =>
+    titlePane [("title","A Tree"),("region","left"),("splitter","true"),
+               ("style","width:10%;")] tr >>= (fn tr =>
+    borderContainer [("style", "height: 100%; width: 100%;")]
+                    [tr,ibc,toppane,rightpane]
+    ))))
+  end)))))))))))))))))))))))))))))))
 
 fun setWindowOnload (f: unit -> unit) : unit =
     let open JsCore infix ==>

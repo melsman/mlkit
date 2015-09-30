@@ -263,6 +263,38 @@ structure Dojo :> DOJO = struct
                    arg2=("f",JsCore.==>(JsCore.unit,JsCore.unit)),
                    res=JsCore.unit} (w,f)
 
+  fun runthem nil = ret nil
+    | runthem (x::xs) = x >>= (fn x' => runthem xs >>= (fn xs' => ret (x'::xs')))
+
+  fun appi f xs =
+      let fun ai f i nil = ()
+            | ai f i (x::xs) = (f(x,i);ai f (i+1) xs)
+      in ai f 0 xs
+      end
+
+  fun lazyTabContainer (h:hash) (w,wMs) : widget M =
+      let val dummy_wMs = List.map (fn (title,icon,_) => 
+                                       pane ([("title",title),("style","margin:0;border:0;padding:0;")]@
+                                             (case icon of SOME ic => [ic]
+                                                         | NONE => [])) (Js.Element.$"")) wMs
+          fun onShow w i bs () =
+              let val r = List.nth (bs,i)
+              in if !r then ()
+                 else let val m = 
+                             #3 (List.nth (wMs,i)) >>= (fn wnew =>
+                             (addChild w wnew;
+                              r := true;
+                              ret ()))
+                      in run m
+                      end
+              end
+          val bs = List.map (fn _ => ref false) wMs
+      in runthem dummy_wMs >>= (fn ws =>
+         tabContainer h (w::ws) >>= (fn tabs =>
+         (appi (fn (w,i) => set_onShow w (onShow w i bs)) ws;
+          ret tabs)))
+      end
+
   structure Menu = struct
     type menu = foreignptr * bool
     fun mk h : (widget * menu) M =
