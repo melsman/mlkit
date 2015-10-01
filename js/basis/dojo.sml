@@ -545,6 +545,8 @@ structure Dojo :> DOJO = struct
 
     val domNode      : t -> Js.elem = domNode
     val toForeignPtr : t -> foreignptr = fn x => x
+    val startup      : t -> unit = startup
+
   end    
 
   structure RestGrid = struct

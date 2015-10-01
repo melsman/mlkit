@@ -114,6 +114,7 @@ signature DOJO = sig
 (*
     val onProgress   : t -> (int*int -> unit) -> unit
 *)
+    val startup      : t -> unit
   end    
 
   structure RestGrid : sig
