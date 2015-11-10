@@ -90,11 +90,11 @@ fun button_handler theform username password age birthdate fselect () =
           val bd = case Editor.getValue birthdate of SOME s => "SOME(" ^ s ^ ")"
                                                    | NONE => "NONE"
           val animal = Editor.getValue fselect
-      in Js.appendChild outputElem (tag "p" ($("{un=" ^ un ^ ",pw=" ^ pw ^ ",age=" ^ age ^ ",birthdate=" ^ bd ^ ",animal=" ^ animal ^ "}")))
+      in Js.appendChild outputElem (tag "p" ($("{un=" ^ un ^ ",pw=" ^ pw ^ ",age=" ^ Int.toString age ^ ",birthdate=" ^ bd ^ ",animal=" ^ animal ^ "}")))
       end
     else Js.appendChild outputElem (tag "p" ($("Form not valid!")))
 
-fun form theform username password age birthdate evennum fselect button =
+fun form theform username password age birthdate evennum fselect button tempc tempf tempk =
     let val e =
           tag "table" (
             tag "tr" (tag "td" ($"Username") & tag "td" (Editor.domNode username)) &
@@ -103,6 +103,9 @@ fun form theform username password age birthdate evennum fselect button =
             tag "tr" (tag "td" ($"Birthdate") & tag "td" (Editor.domNode birthdate)) &
             tag "tr" (tag "td" ($"Evennum") & tag "td" (Editor.domNode evennum)) &
             tag "tr" (tag "td" ($"Favorite animal") & tag "td" (Editor.domNode fselect)) &
+            tag "tr" (tag "td" ($"Temperature Celcius") & tag "td" (Editor.domNode tempc)) &
+            tag "tr" (tag "td" ($"Temperature Fahrenheit") & tag "td" (Editor.domNode tempf)) &
+            tag "tr" (tag "td" ($"Temperature Kelvin") & tag "td" (Editor.domNode tempk)) &
             tag "tr" (taga "td" [("align","center"),("colspan","2")] (Button.domNode button)))
         val f = Form.domNode theform
     in Js.appendChild f e;
@@ -171,14 +174,24 @@ fun mkBox t e =
     pane [] e >>= (fn p =>
     titlePane [("title",t)] p)
 
+fun c2f v = 1.8 * v + 32.0
+fun c2k v = v + 273.15
+
 val m =
   Editor.mk (textBox []) >>= (fn username =>
   Editor.mk (textBox [("type","password")]) >>= (fn password =>
-  Editor.mk (numBox []) >>= (fn age =>
+  Editor.mk (intBox []) >>= (fn age =>
+  Editor.mk (realBox [] (StringCvt.FIX(SOME 2))) >>= (fn tempc =>
+  Editor.mk (realBox [] (StringCvt.FIX(SOME 3))) >>= (fn tempf =>
+  Editor.mk (realBox [] (StringCvt.FIX(SOME 4))) >>= (fn tempk =>
   Editor.mk (optionBox(dateBox [])) >>= (fn birthdate =>
   Editor.mk (validationBox [] {fromString=validator,toString=Int.toString}) >>= (fn evennum =>
   Editor.mk (filterSelectBox [("name","animal"),("searchAttr","name"),("value", "3"),("maxHeight","150")] selectdata) >>= (fn fselect =>
-  (postruns_add "Editor.startup" (fn() => Editor.startup fselect);
+ (Editor.onChange tempc (fn v => Editor.setValue tempf (c2f v));
+  Editor.onChange tempc (fn v => Editor.setValue tempk (c2k v));
+  Editor.setReadOnly tempk true;
+  Editor.setDisabled tempf true;
+  postruns_add "Editor.startup" (fn() => Editor.startup fselect);
   Form.mk [] >>= (fn theform =>
   Button.mk [("label","Login")] (button_handler theform username password age birthdate fselect) >>= (fn button =>
   pane [("region", "top")] (tag "b" ($"Main Title")) >>= (fn toppane =>
@@ -192,7 +205,7 @@ val m =
   gridM >>= (fn g =>
   pane [("region","center"),("title", "First"),("closable","true"),("style","height:100%;"),EditorIcon.unlink] (Js.Element.$ "Initial value") >>= (fn p1 =>
   uploadM >>= (fn upload_elem =>
-  pane [("title", "Second"),EditorIcon.save] (tag "h2" ($"A form") & form theform username password age birthdate evennum fselect button &                                                 
+  pane [("title", "Second"),EditorIcon.save] (tag "h2" ($"A form") & form theform username password age birthdate evennum fselect button tempc tempf tempk &
                                               tag "h2" ($"Upload") & upload_elem) >>= (fn p2 =>
   pane [("title", "Grid"),("style","border:0;")] (Grid.domNode g) >>= (fn gridWidget =>
   treeStore treedata >>= (fn store =>
@@ -219,7 +232,7 @@ val m =
     borderContainer [("style", "height: 100%; width: 100%;")]
                     [tr,ibc,toppane,rightpane]
     ))))
-  end)))))))))))))))))))))))))))))))
+  end))))))))))))))))))))))))))))))))))
 
 fun setWindowOnload (f: unit -> unit) : unit =
     let open JsCore infix ==>

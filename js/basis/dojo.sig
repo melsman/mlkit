@@ -67,9 +67,10 @@ signature DOJO = sig
   val optionBox           : 'a editCon -> 'a option editCon   (* raises Fail if applied to a 't option editCon', for some t *)
   val orEmptyBox          : string editCon -> string editCon
   val textBox             : hash -> string editCon
-  val numBox              : hash -> string editCon
-  val realBox             : hash -> real editCon
+(*  val numBox              : hash -> string editCon
+*)
   val intBox              : hash -> int editCon
+  val realBox             : hash -> StringCvt.realfmt -> real editCon
   val dateBox             : hash -> string editCon
   val validationBox       : hash -> {fromString: string -> 'a option, toString: 'a -> string} -> 'a editCon
   val filterSelectBox     : hash -> {id:string,name:string}list -> string editCon
@@ -79,6 +80,9 @@ signature DOJO = sig
     val mk                : 'a editCon -> 'a t M
     val getValue          : 'a t -> 'a
     val setValue          : 'a t -> 'a -> unit
+    val setDisabled       : 'a t -> bool -> unit
+    val setReadOnly       : 'a t -> bool -> unit
+    val onChange          : 'a t -> ('a -> unit) -> unit
     val domNode           : 'a t -> Js.elem
     val toForeignPtr      : 'a t -> foreignptr
     val startup           : 'a t -> unit   (* in particular for filterSelectBox *)

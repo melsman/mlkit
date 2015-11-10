@@ -388,8 +388,37 @@ structure Dojo :> DOJO = struct
        fn (a as {file=f,hash=h,required=r,...}) => JsUtil.mk_con f h r >>= (fn e => ret (e,a))
       )
 
+  fun numFromString scan s =
+      let val s = CharVector.map (fn #"-" => #"~" | c => c) s
+          val ss = Substring.full s
+      in case scan Substring.getc ss of
+             SOME (v,ss) => if Substring.size ss = 0 then SOME v
+                            else NONE
+                                     
+           | NONE => NONE
+      end
+
+  fun numToString tostring v =
+      CharVector.map (fn #"~" => #"-" | c => c) (tostring v)
+
+  val realFromString = numFromString Real.scan
+  fun realToString rf = numToString (Real.fmt rf)
+  val intFromString = numFromString (Int.scan StringCvt.DEC)
+  val intToString = numToString Int.toString
+
+(*  fun stringFromRealBox (file:string) (h:hash) : string editCon =
+      ({hash=h,required=true,file=file,
+        fromString=realFromString,
+        toString=realToString},
+       fn (a as {file=f,hash=h,required=r,...}) => JsUtil.mk_con f h r >>= (fn e => ret (e,a))
+      )
+*)
+
   fun textBox h : string editCon = stringBox "dijit/form/ValidationTextBox" h
-  fun numBox h : string editCon = stringBox "dijit/form/NumberTextBox" h
+
+(*
+  fun numBox h : string editCon = stringFromRealBox "dijit/form/NumberTextBox" h
+*)
 
   fun isISOdate s =
       size s = 10 andalso String.sub(s,4) = #"-" andalso String.sub(s,4) = #"-" andalso
@@ -455,8 +484,8 @@ structure Dojo :> DOJO = struct
        fn arg => JsUtil.mk_con0 (#file arg) (mkEditorArgs arg) >>= (fn e => ret (e,arg))
       )
 
-  fun intBox h : int editCon = validationBox h {fromString=Int.fromString,toString=Int.toString}
-  fun realBox h : real editCon = validationBox h {fromString=Real.fromString,toString=Real.toString}
+  fun intBox h : int editCon = validationBox h {fromString=intFromString,toString=intToString}
+  fun realBox h rf : real editCon = validationBox h {fromString=realFromString,toString=realToString rf}
 
   fun mymap0 f nil ys = rev ys
     | mymap0 f (x::xs) ys = mymap0 f xs (f x::ys)
@@ -490,10 +519,16 @@ structure Dojo :> DOJO = struct
   structure Editor = struct
     type 'a t = 'a editor
     fun mk (a,f) = f a
-    fun getValue ((e,a) : 'a editor) = case #fromString a (JsUtil.get "value" e) of SOME v => v 
-                                                                                  | NONE => raise Fail "Editor.getValue"
-    fun setValue ((e,a) : 'a editor) v = JsUtil.set "value" e (#toString a v)
-    val domNode = fn ((e,_): 'a editor) => domNode e
+    fun getValue ((e,a) : 'a t) = case #fromString a (JsUtil.get "value" e) of SOME v => v 
+                                                                             | NONE => raise Fail "Editor.getValue"
+    fun setValue ((e,a) : 'a t) v = JsUtil.set "value" e (#toString a v)
+    fun setDisabled ((e,a): 'a t) b = JsCore.method1 JsCore.bool JsCore.unit e "setDisabled" b
+    fun setReadOnly ((e,a): 'a t) b = setBoolProperty ("readOnly",b) e
+    fun onChange (e : 'a t) (f: 'a -> unit) : unit = 
+        let fun onChange0 (e,a) f = JsCore.method2 JsCore.string unit2unit_T JsCore.unit e "on" "change" f
+        in onChange0 e (fn () => f (getValue e))
+        end 
+    val domNode = fn ((e,_): 'a t) => domNode e
     fun toForeignPtr (x,_) = x
     val startup = fn (e,_) => startup e
   end
