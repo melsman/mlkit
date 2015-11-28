@@ -299,14 +299,15 @@ structure Formlets :> FORMLETS = struct
                | NONE => die ("Rules.setupRule.submit.expecting button - got nothing for " ^ Int.toString id))
           | Load_rule f => List.app (upd_key kvs) (f())
 
-    fun setupPostRule error_reporter kvs r =
+    fun setupPostRule guard error_reporter kvs r =
         case r of
             Init_rule _ => ()
           | Update_rule _ => ()
           | PostUpdate_rule (f01,f02,f) =>
             let fun onchange () =
-                    upd kvs f02 (f(get kvs f01))
-                    handle FormletError s => (error_reporter s; raise Fail "formlet error")
+                    if !guard then ()
+                    else upd kvs f02 (f(get kvs f01))
+                         handle FormletError s => (error_reporter s; raise Fail "formlet error")
             in inst kvs f01 onchange
             end
           | Submit_rule ({id,...},f) => ()
@@ -328,11 +329,13 @@ structure Formlets :> FORMLETS = struct
       Dojo.Form.mk[] >>= (fn dojo_form =>
       let val form_elem = Dojo.Form.domNode dojo_form
           val () = Js.appendChild form_elem (tag "table" (tag "tr" e))
+          val guard = ref true
           fun startup () =
               (List.app (fn (_,_,ED ed) => Dojo.Editor.startup ed
                         | _ => ()) kvs;
                Dojo.Form.startup dojo_form; 
-               List.app (Rules.setupPostRule error_reporter kvs) rules;
+               List.app (Rules.setupPostRule guard error_reporter kvs) rules;
+               guard := false;
                Js.setStyle form_elem ("height","auto;"))
       in Dojo.pane [("style","height:100%;overflow:auto;")] form_elem >>= (fn w =>
          (List.app (Rules.setupRule error_reporter dojo_form kvs) rules;
