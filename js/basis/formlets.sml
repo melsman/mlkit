@@ -101,9 +101,11 @@ structure Formlets :> FORMLETS = struct
   (* Rules *)
   exception FormletError of string
   datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value)list -> unit) | Load_rule of unit -> (key*value)list
+                | PostUpdate_rule of f0 * f0 * (gen -> gen)
   fun init_rule (f : 'a f) (g: unit -> 'a) : rule = Init_rule (#1 f, #2 f o g)
   fun load_rule f : rule = Load_rule f
   fun update_rule (f1: 'a f) (f2: 'b f) (g: 'a -> 'b) : rule = Update_rule (NONE, #1 f1, #1 f2, #2 f2 o g o #3 f1)
+  fun postupdate_rule (f1: 'a f) (f2: 'b f) (g: 'a -> 'b) : rule = PostUpdate_rule (#1 f1, #1 f2, #2 f2 o g o #3 f1)
   fun button_rule (e:el) (f1: 'a f) (f2: 'b f) (g: 'a -> 'b) : rule = Update_rule (SOME e, #1 f1, #1 f2, #2 f2 o g o #3 f1)
   fun validate_rule (f:'a f) (g: 'a -> string option) : rule =
       update_rule f emp (fn x => case g x of NONE => () 
@@ -281,6 +283,7 @@ structure Formlets :> FORMLETS = struct
                     handle FormletError s => (error_reporter s; raise Fail "formlet error")
             in inst kvs f01 onchange
             end
+          | PostUpdate_rule (f01,f02,f) => ()
           | Update_rule (SOME {id,...},f01,f02,f) =>
             (case lookup kvs id of
                  SOME (BUT (_,attachOnClick)) => attachOnClick (fn () => upd kvs f02 (f(get kvs f01)))
@@ -295,6 +298,19 @@ structure Formlets :> FORMLETS = struct
                | SOME (ED ed) => die ("Rules.setupRule.submit.expecting button - got ed for " ^ Int.toString id)
                | NONE => die ("Rules.setupRule.submit.expecting button - got nothing for " ^ Int.toString id))
           | Load_rule f => List.app (upd_key kvs) (f())
+
+    fun setupPostRule error_reporter kvs r =
+        case r of
+            Init_rule _ => ()
+          | Update_rule _ => ()
+          | PostUpdate_rule (f01,f02,f) =>
+            let fun onchange () =
+                    upd kvs f02 (f(get kvs f01))
+                    handle FormletError s => (error_reporter s; raise Fail "formlet error")
+            in inst kvs f01 onchange
+            end
+          | Submit_rule ({id,...},f) => ()
+          | Load_rule f => ()
   end                                                      
 
   type error_reporter = string -> unit
@@ -315,7 +331,9 @@ structure Formlets :> FORMLETS = struct
           fun startup () =
               (List.app (fn (_,_,ED ed) => Dojo.Editor.startup ed
                         | _ => ()) kvs;
-               Dojo.Form.startup dojo_form; Js.setStyle form_elem ("height","auto;"))
+               Dojo.Form.startup dojo_form; 
+               List.app (Rules.setupPostRule error_reporter kvs) rules;
+               Js.setStyle form_elem ("height","auto;"))
       in Dojo.pane [("style","height:100%;overflow:auto;")] form_elem >>= (fn w =>
          (List.app (Rules.setupRule error_reporter dojo_form kvs) rules;
           ret (startup,w)))
