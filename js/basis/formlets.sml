@@ -17,7 +17,7 @@ structure Formlets :> FORMLETS = struct
 
   (* Elements *)
   type hidden = {value:string ref,listeners:(string -> unit)list ref}
-  datatype elem = EDITCON of string Dojo.editCon | BUTTON | HIDDEN of hidden
+  datatype elem = EDITCON of string Dojo.editCon * string | BUTTON | HIDDEN of hidden
   type el = {elem:elem,key:string,label:string,id:int}
 
   val newId : unit -> int =
@@ -25,7 +25,7 @@ structure Formlets :> FORMLETS = struct
       in fn () => !c before c:= !c + 1
       end
       
-  fun fromEditCon (ec: string Dojo.editCon) : el = {elem=EDITCON ec,key="",label="",id=newId()}
+  fun fromEditCon (ec: string Dojo.editCon) : el = {elem=EDITCON(ec,""),key="",label="",id=newId()}
   val textbox : unit -> el = fn () => fromEditCon (Dojo.textBox[])
   val intbox  : unit -> el = fn () => fromEditCon (Dojo.textBox[])
   val realbox : unit -> el = fn () => fromEditCon (Dojo.textBox[])
@@ -34,11 +34,17 @@ structure Formlets :> FORMLETS = struct
   val boolbox : unit -> el = fn () => selectbox [("true","True"),("false","False")]
   val hidden : unit -> el = fn () => {elem=HIDDEN {value=ref "",listeners=ref nil},key="",label="",id=newId()}
 
-  fun key (e:el,k) : el = 
+  fun withKey (e:el,k) : el = 
       if #key e = "" then {elem= #elem e,label= #label e,key=k,id= #id e}
       else die ("Cannot set key " ^ qq k ^ " for an element that already has the key " ^ qq(#key e))
 
-  fun label (e:el,l) : el = {elem= #elem e,label=l,key= #key e,id= #id e}
+  fun withLabel (e:el,l) : el = {elem= #elem e,label=l,key= #key e,id= #id e}
+
+  fun wValue (EDITCON(ec,_),v) = EDITCON(ec,v)
+    | wValue (HIDDEN vl,v) = (#value vl := v; HIDDEN vl)
+    | wValue _ = die "wValue.button"
+
+  fun withValue (e:el,v) : el = {elem= wValue(#elem e,v),label= #label e,key= #key e,id= #id e}
 
   type button = el
   val button : label -> el = fn label => {elem=BUTTON,key="",label=label,id=newId()}
@@ -138,11 +144,12 @@ structure Formlets :> FORMLETS = struct
              in ret ([(id,key,BUT(but,attachOnclick))],tag "td" e)
              end)
           end
-        | Lf {elem=EDITCON ec,key,label,id} =>
+        | Lf {elem=EDITCON (ec,v),key,label,id} =>
           Dojo.Editor.mk ec >>= (fn ed =>
           let val e = tag "td" (Dojo.Editor.domNode ed)
               val e = if label <> "" then tag "td" ($label) & e else e
-          in ret ([(id,key,ED ed)], e)
+          in (if v<>"" then Dojo.Editor.setValue ed v else ());
+             ret ([(id,key,ED ed)], e)
           end)
         | Lf {elem=HIDDEN vl,key,label,id} => ret ([(id,key,HID (vl,fn _ => ()))], $"")
         | Vf forms => 

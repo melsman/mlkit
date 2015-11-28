@@ -16,8 +16,9 @@ signature FORMLETS = sig
   val selectbox   : (value*label)list -> el
   val hidden      : unit -> el
 
-  val key         : el * key -> el
-  val label       : el * label -> el
+  val withKey     : el * key -> el
+  val withLabel   : el * label -> el
+  val withValue   : el * value -> el
 
   type button
   val button      : label -> button
