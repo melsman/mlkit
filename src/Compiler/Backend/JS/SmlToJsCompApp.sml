@@ -89,7 +89,7 @@ structure SmlToJsAppArg : APP_ARG = struct
                    "Math", "Real",
                    "IntInf",
                    "Time", "Random", "Path", "Date", "Timer", "TextIO",
-                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo", "utest"
+                   "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo", "formlets", "utest"
                   ]
 
   val script_paths = 
