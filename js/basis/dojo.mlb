@@ -4,4 +4,6 @@ local
 in
   dojo.sig
   dojo.sml
+  formlets.sig
+  formlets.sml
 end

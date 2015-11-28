@@ -34,5 +34,8 @@ prepare:
 run.html: clean prepare Makefile $(FILES)
 	$(SMLTOJS) -aopt $(JS_PATH_FLAGS) dojo_test.mlb
 
+formlets_test.html: clean prepare Makefile $(FILES) formlets_test.mlb formlets_test.sml
+	$(SMLTOJS) -aopt $(JS_PATH_FLAGS) -o formlets_test formlets_test.mlb
+
 clean:
 	rm -rf *~ MLB run.html prims.js basis
