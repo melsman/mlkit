@@ -23,32 +23,31 @@ infixr 5 >> />
          
 open Js.Element infix &
 
-infix label
-infix key
+infix withLabel withKey withValue
           
 (* Ex 1 *)
-val firstname = textbox() key "firstname"   label "First Name"
-val lastname = textbox()  key "lastname"    label "Last Name"
-val age = intbox()        key "age"         label "Age"
-val male = boolbox()      key "male"        label "Male"
-val tempc = realbox()     key "tempc"       label "Temp in Celcius"
-val tempf = realbox()     key "tempf"       label "Temp in Fahrenheit"
-val tempk = realbox()     key "tempk"       label "Temp in Kelvin"
+val firstname = textbox() withKey "firstname"   withLabel "First Name"
+val lastname = textbox()  withKey "lastname"    withLabel "Last Name"
+val age = intbox()        withKey "age"         withLabel "Age"             withValue "0"
+val male = boolbox()      withKey "male"        withLabel "Male"            withValue "true"
+val tempc = realbox()     withKey "tempc"       withLabel "Temp in Celcius"
+val tempf = realbox()     withKey "tempf"       withLabel "Temp in Fahrenheit"
+val tempk = realbox()     withKey "tempk"       withLabel "Temp in Kelvin"
                    
 val but = button "Set age and Temp"
                  
-val field1a = realbox()     key "field1a"       label "Field 1A"
-val field1b = realbox()     key "field1b"       label "Field 1B"
-val field1c = realbox()     key "field1c"       label "Field 1C"
-val field1sum = realbox()   key "field1sum"     label "Sum"
+val field1a = realbox()     withKey "field1a"       withLabel "Field 1A"
+val field1b = realbox()     withKey "field1b"       withLabel "Field 1B"
+val field1c = realbox()     withKey "field1c"       withLabel "Field 1C"
+val field1sum = realbox()   withKey "field1sum"     withLabel "Sum"
                        
-val field2a = realbox()     key "field2a"       label "Field 2A"
-val field2b = realbox()     key "field2b"       label "Field 2B"
-val field2sum = realbox()   key "field2sum"     label "Sum"
+val field2a = realbox()     withKey "field2a"       withLabel "Field 2A"
+val field2b = realbox()     withKey "field2b"       withLabel "Field 2B"
+val field2sum = realbox()   withKey "field2sum"     withLabel "Sum"
                        
 val subbut = button "Submit"
                     
-val hid = hidden() key "hid"
+val hid = hidden() withKey "hid"
                 
 val parent = tag0 "ul"
                   
