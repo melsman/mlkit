@@ -94,8 +94,9 @@ structure Formlets :> FORMLETS = struct
 
   (* Rules *)
   exception FormletError of string
-  datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value)list -> unit)
+  datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value)list -> unit) | Load_rule of unit -> (key*value)list
   fun init_rule (f : 'a f) (g: unit -> 'a) : rule = Init_rule (#1 f, #2 f o g)
+  fun load_rule f : rule = Load_rule f
   fun update_rule (f1: 'a f) (f2: 'b f) (g: 'a -> 'b) : rule = Update_rule (NONE, #1 f1, #1 f2, #2 f2 o g o #3 f1)
   fun button_rule (e:el) (f1: 'a f) (f2: 'b f) (g: 'a -> 'b) : rule = Update_rule (SOME e, #1 f1, #1 f2, #2 f2 o g o #3 f1)
   fun validate_rule (f:'a f) (g: 'a -> string option) : rule =
@@ -190,6 +191,16 @@ structure Formlets :> FORMLETS = struct
     fun lookup nil id = NONE
       | lookup ((id0,_,ed)::rest) id = if id=id0 then SOME ed else lookup rest id
 
+    fun lookup_key nil key = NONE
+      | lookup_key ((_,k,ed)::rest) key = if k=key then SOME ed else lookup_key rest key
+
+    fun upd_key kvs (k,v) =
+        case lookup_key kvs k of
+            SOME (ED ed) => Dojo.Editor.setValue ed v
+          | SOME (HID(vl,_)) => #value vl := v
+          | SOME (BUT _) => die ("upd_key.does not expect button for key " ^ qq k)
+          | NONE => die ("upd_key.no editor for key " ^ qq k)
+
     fun upd kvs f0 g =
         case f0 of
             value0 {id,...} =>
@@ -276,7 +287,7 @@ structure Formlets :> FORMLETS = struct
                | SOME (HID _) => die ("Rules.setupRule.submit.expecting button - got hidden for " ^ Int.toString id)
                | SOME (ED ed) => die ("Rules.setupRule.submit.expecting button - got ed for " ^ Int.toString id)
                | NONE => die ("Rules.setupRule.submit.expecting button - got nothing for " ^ Int.toString id))
-
+          | Load_rule f => List.app (upd_key kvs) (f())
   end                                                      
 
   type error_reporter = string -> unit
@@ -289,7 +300,7 @@ structure Formlets :> FORMLETS = struct
        5. an element key is defined at most once
        6. elements (their ids) are used at most once in a form
   *)
-  fun mk (form,rules) error_reporter : (Dojo.widget * (unit->unit)) M =
+  fun mk (form,rules) error_reporter : ((unit->unit) * Dojo.widget) M =
       mkForm form >>= (fn (kvs,e) =>
       Dojo.Form.mk[] >>= (fn dojo_form =>
       let val form_elem = Dojo.Form.domNode dojo_form
@@ -300,12 +311,12 @@ structure Formlets :> FORMLETS = struct
                Dojo.Form.startup dojo_form; Js.setStyle form_elem ("height","auto;"))
       in Dojo.pane [("style","height:100%;overflow:auto;")] form_elem >>= (fn w =>
          (List.app (Rules.setupRule error_reporter dojo_form kvs) rules;
-          ret (w,startup)))
+          ret (startup,w)))
       end))
 
   fun install (e: Js.elem) formlet error_reporter : unit =
       let val startupRef = ref (fn()=>())
-          val wM = mk formlet error_reporter >>= (fn (w,startup) =>
+          val wM = mk formlet error_reporter >>= (fn (startup,w) =>
                    (startupRef := startup;
                     ret w))
       in Dojo.attachToElement e wM (!startupRef)

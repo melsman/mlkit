@@ -45,6 +45,7 @@ signature FORMLETS = sig
   (* Rules *)
   type rule
   val init_rule     : 'a f -> (unit -> 'a) -> rule
+  val load_rule     : (unit -> (key*value)list) -> rule
   val update_rule   : 'a f -> 'b f -> ('a -> 'b) -> rule
   val button_rule   : button -> 'a f -> 'b f -> ('a -> 'b) -> rule
   val validate_rule : 'a f -> ('a -> string option) -> rule
@@ -53,7 +54,7 @@ signature FORMLETS = sig
   type formlet = form * rule list
   type error_reporter = string -> unit
   val install : Js.elem -> formlet -> error_reporter -> unit
-  val mk : formlet -> error_reporter -> (Dojo.widget * (unit -> unit)) Dojo.M
+  val mk : formlet -> error_reporter -> ((unit -> unit) * Dojo.widget) Dojo.M
 end
 
 (** formlets
