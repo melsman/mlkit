@@ -491,7 +491,7 @@ structure Dojo :> DOJO = struct
     | mymap0 f (x::xs) ys = mymap0 f xs (f x::ys)
   fun mymap f xs = mymap0 f xs nil
 
-  fun filterSelectBox (h:hash) (data:{id:string,name:string}list) : string editCon =
+  fun filterSelectBox (h:hash) autoComplete (data:{id:string,name:string}list) : string editCon =
       ({hash=h,required=true,file="dijit/form/FilteringSelect",fromString=fn s => SOME s, toString=fn s => s},
        fn (a as {hash=h,required=r,file,...}) =>
        fn k => 
@@ -510,6 +510,7 @@ structure Dojo :> DOJO = struct
              val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
              val store = new0 Memory dataObject
              val params = mkHash h
+             val () = JsCore.Object.set JsCore.bool params "autoComplete" autoComplete
              val () = JsCore.Object.set JsCore.bool params "required" r
              val () = JsCore.Object.set JsCore.fptr params "store" store
              val select = new0 FilteringSelect params

@@ -73,7 +73,7 @@ signature DOJO = sig
   val realBox             : hash -> StringCvt.realfmt -> real editCon
   val dateBox             : hash -> string editCon
   val validationBox       : hash -> {fromString: string -> 'a option, toString: 'a -> string} -> 'a editCon
-  val filterSelectBox     : hash -> {id:string,name:string}list -> string editCon
+  val filterSelectBox     : hash -> bool -> {id:string,name:string}list -> string editCon
 
   structure Editor : sig
     type 'a t

@@ -186,7 +186,7 @@ val m =
   Editor.mk (realBox [] (StringCvt.FIX(SOME 4))) >>= (fn tempk =>
   Editor.mk (optionBox(dateBox [])) >>= (fn birthdate =>
   Editor.mk (validationBox [] {fromString=validator,toString=Int.toString}) >>= (fn evennum =>
-  Editor.mk (filterSelectBox [("name","animal"),("searchAttr","name"),("value", "3"),("maxHeight","150")] selectdata) >>= (fn fselect =>
+  Editor.mk (filterSelectBox [("name","animal"),("searchAttr","name"),("value", "3"),("maxHeight","150")] true selectdata) >>= (fn fselect =>
  (Editor.onChange tempc (fn v => Editor.setValue tempf (c2f v));
   Editor.onChange tempc (fn v => Editor.setValue tempk (c2k v));
   Editor.setReadOnly tempk true;

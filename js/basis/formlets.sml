@@ -30,7 +30,7 @@ structure Formlets :> FORMLETS = struct
   val intbox  : unit -> el = fn () => fromEditCon (Dojo.textBox[])
   val realbox : unit -> el = fn () => fromEditCon (Dojo.textBox[])
   val datebox : unit -> el = fn () => fromEditCon (Dojo.textBox[])
-  fun selectbox sls : el = fromEditCon (Dojo.filterSelectBox[] (List.map (fn (k,v) => {id=k,name=v}) sls))
+  fun selectbox sls : el = fromEditCon (Dojo.filterSelectBox[] true (List.map (fn (k,v) => {id=k,name=v}) sls))
   val boolbox : unit -> el = fn () => selectbox [("true","True"),("false","False")]
   val hidden : unit -> el = fn () => {elem=HIDDEN {value=ref "",listeners=ref nil},key="",label="",id=newId()}
 
