@@ -25,13 +25,15 @@ open Js.Element infix &
 
 infix withLabel withKey withValue
           
+fun sumbox() = fromEditCon(Dojo.textBox [("style","width:100%;")])
+
 (* Ex 1 *)
 val firstname = textbox() withKey "firstname"   withLabel "First Name"
 val lastname = textbox()  withKey "lastname"    withLabel "Last Name"
 val age = intbox()        withKey "age"         withLabel "Age"             withValue "0"
 val male = boolbox()      withKey "male"        withLabel "Male"            withValue "true"
 val tempc = realbox()     withKey "tempc"       withLabel "Temp in Celcius"
-val tempf = realbox()     withKey "tempf"       withLabel "Temp in Fahrenheit"
+val tempf = sumbox()      withKey "tempf"       withLabel "Temp in Fahrenheit"
 val tempk = realbox()     withKey "tempk"       withLabel "Temp in Kelvin"
                    
 val but = button "Set age and Temp"
@@ -39,11 +41,11 @@ val but = button "Set age and Temp"
 val field1a = realbox()     withKey "field1a"       withLabel "Field 1A"
 val field1b = realbox()     withKey "field1b"       withLabel "Field 1B"
 val field1c = realbox()     withKey "field1c"       withLabel "Field 1C"
-val field1sum = realbox()   withKey "field1sum"     withLabel "Sum"
+val field1sum = sumbox()    withKey "field1sum"     withLabel "Sum"
                        
 val field2a = realbox()     withKey "field2a"       withLabel "Field 2A"
 val field2b = realbox()     withKey "field2b"       withLabel "Field 2B"
-val field2sum = realbox()   withKey "field2sum"     withLabel "Sum"
+val field2sum = sumbox()    withKey "field2sum"     withLabel "Sum"
                        
 val subbut = button "Submit"
                     
@@ -51,10 +53,10 @@ val hid = hidden() withKey "hid"
                 
 val parent = tag0 "ul"
                   
-val form = group "Person" ((%firstname >> %lastname) /> (space >> space >> %age) /> (empty >> %male))
-                 /> group "With a changer" (changer hid [("three", %field1a /> %field1b /> %field1c /> %field1sum),
-                                                         ("two", %field2a /> %field2b /> %field2sum)])
-                 /> group "Temperature" (%tempc /> (%tempf >> %tempk) /> (group "ButGroup" (%%but))) /> %%subbut /> group "Output" (elem parent)
+val form = (group "Person" ((%firstname >> %lastname) /> (space >> space >> %age) /> (empty >> %male))
+                  >> group "With a changer" (changer hid [("three", %field1a /> %field1b /> %field1c /> %field1sum),
+                                                          ("two", %field2a /> %field2b /> %field2sum)]))
+                 /> hextend(group "Temperature" (%tempc /> (%tempf >> %tempk) /> (hextend(group "ButGroup" (%%but)))) /> %%subbut /> group "Output" (elem parent))
                  
 val initrule1 = init_rule (readonly tempf) (fn () => true)
 val initrule2 = init_rule (readonly tempk) (fn () => true)

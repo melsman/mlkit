@@ -34,6 +34,7 @@ signature FORMLETS = sig
   val empty       : form
   val space       : form
   val changer     : el -> (value * form) list -> form
+  val hextend     : form -> form
 
   (* Fields *)
   type 'a f

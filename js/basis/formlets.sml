@@ -50,16 +50,27 @@ structure Formlets :> FORMLETS = struct
   val button : label -> el = fn label => {elem=BUTTON,key="",label=label,id=newId()}
 
   (* Forms *)
-  datatype form = Lf of el                              (* Leaf *)
+  type span = int
+  datatype form = Lf of el * span                       (* Leaf *)
                 | Vf of form list                       (* Vertical *)
                 | Hf of form list                       (* Horizontal *)
-                | Gf of label * form                    (* Group with label *)
+                | Gf of label * form * span             (* Group with label *)
                 | Ef                                    (* Empty (identity for >> and />) *)
-                | Elf of Js.elem                        (* Dom element *)
-                | Cf of el * (string*form)list          (* Changer *)
+                | Elf of Js.elem * span                 (* Dom element *)
+                | Cf of el * (string*form)list * span   (* Changer *)
 
-  val % : el -> form = fn x => Lf x
+  val % : el -> form = fn x => Lf (x,1)
   val %% : button -> form = %
+
+  fun hextend (Lf (x,s)) = Lf (x,s+1)
+    | hextend (Vf xs) = Vf (List.map hextend xs)
+    | hextend (Hf xs) = (case rev xs of
+                             nil => Ef
+                           | x::xs => Hf (rev(hextend x :: xs)))
+    | hextend (Gf (x,y,s)) = Gf(x,y,s+1)
+    | hextend Ef = Ef
+    | hextend (Elf(x,s)) = Elf(x,s+1)
+    | hextend (Cf(x,y,s)) = Cf(x,y,s+1)
 
   fun op >> (Ef,f) = f
     | op >> (f,Ef) = f
@@ -75,11 +86,11 @@ structure Formlets :> FORMLETS = struct
     | op /> (f,Vf fs2) = Vf(f::fs2)
     | op /> (f1,f2) = Vf[f1,f2]
 
-  val group     : label -> form -> form = fn l => fn f => Gf(l,f)
+  val group     : label -> form -> form = fn l => fn f => Gf(l,f,1)
   val empty     : form = Ef
-  val changer   : el -> (string * form) list -> form = fn el => fn sfs => Cf(el,sfs)
-  val space     : form = Elf($"")
-  val elem      : Js.elem -> form = Elf
+  val changer   : el -> (string * form) list -> form = fn el => fn sfs => Cf(el,sfs,1)
+  val space     : form = Elf($"",1)
+  val elem      : Js.elem -> form = fn x => Elf(x,1)
 
   (* Fields *)
   datatype f0 = value0 of el | readonly0 of el | enabled0 of el | pair0 of f0 * f0 | emp0
@@ -120,11 +131,13 @@ structure Formlets :> FORMLETS = struct
 
   fun tag_sty t s e = taga t [("style",s)] e
 
-  fun boxGroup lab e =
-    Dojo.pane [("style","height:auto;")] e >>= (fn p =>
+  fun boxGroup span lab e =
+    Dojo.pane [("style","height:auto;width:100%;")] e >>= (fn p =>
     Dojo.titlePane [("title",lab)] p >>= (fn w => 
     (Dojo.setBoolProperty ("toggleable", false) w;
-     let val parent = taga0 "td" [("style","vertical-align: top;")]
+     let val attr = [("style","vertical-align: top;")]
+         val attr = if span = 1 then attr else ("colspan",Int.toString span)::attr
+         val parent = taga0 "td" attr
      in Dojo.attachToElement parent (Dojo.ret w) (fn () => ())
       ; Dojo.ret parent
      end)))
@@ -135,42 +148,46 @@ structure Formlets :> FORMLETS = struct
     1. No duplicate use of elements
     2. No duplicate use of keys
   *)
+
+  fun spantd 1 e = taga "td" [] e
+    | spantd n e = taga "td" [("colspan",Int.toString n)] e
+
   fun mkForm form : ((int*key*key_thing)list * Js.elem) M =         (* invariant: returns a list of key mappings and an element representing row content *)
       case form of
-          Lf {elem=BUTTON,key,label,id} =>
+          Lf ({elem=BUTTON,key,label,id},span) =>
           let val listeners : (unit->unit) list ref = ref nil
               fun onclick () = List.app (fn f => f()) (!listeners)
               fun attachOnclick f = listeners := (f :: !listeners)
           in Dojo.Button.mk [("label",label)] onclick >>= (fn but =>
              let val e = Dojo.Button.domNode but
-             in ret ([(id,key,BUT(but,attachOnclick))],tag "td" e)
+             in ret ([(id,key,BUT(but,attachOnclick))],spantd span e)
              end)
           end
-        | Lf {elem=EDITCON (ec,v),key,label,id} =>
+        | Lf ({elem=EDITCON (ec,v),key,label,id},span) =>
           Dojo.Editor.mk ec >>= (fn ed =>
-          let val e = tag "td" (Dojo.Editor.domNode ed)
-              val e = if label <> "" then tag "td" ($label) & e else e
+          let val e = spantd span (Dojo.Editor.domNode ed)
+              val e = if label <> "" then taga "td" [("class","formlets-label-td")] ($label) & e else e
           in (if v<>"" then Dojo.Editor.setValue ed v else ());
              ret ([(id,key,ED ed)], e)
           end)
-        | Lf {elem=HIDDEN vl,key,label,id} => ret ([(id,key,HID (vl,fn _ => ()))], $"")
+        | Lf ({elem=HIDDEN vl,key,label,id},_) => ret ([(id,key,HID (vl,fn _ => ()))], $"")
         | Vf forms => 
           mkForms forms >>= (fn (kvs,es) =>
           let val trs = List.foldr (fn (e,a) => tag "tr" e & a) ($"") es
-          in ret(kvs, tag "td" (tag "table" trs))
+          in ret(kvs, taga "td" [] (taga "table" [("width","100%;")] trs))
           end)
         | Hf forms => 
           mkForms forms >>= (fn (kvs,es) =>
           let val e = List.foldr (fn (e,a) => e & a) ($"") es
           in ret(kvs, e)
           end)
-        | Gf (lab,form) =>
+        | Gf (lab,form,span) =>
           mkForm form >>= (fn (kvs,e) => 
-          boxGroup lab (tag "table" (tag "tr" e)) >>= (fn e =>
+          boxGroup span lab (taga "table" [("width","100%;")] (tag "tr" e)) >>= (fn e =>
           ret (kvs,e)))
         | Ef => ret (nil, $"")
-        | Elf e => ret (nil, tag "td" e)
-        | Cf({elem=HIDDEN vl,key,id,...},sfs) =>
+        | Elf (e,span) => ret (nil, spantd span e)
+        | Cf ({elem=HIDDEN vl,key,id,...},sfs,span) =>
           mkKeyForms sfs >>= (fn (kvs,ses) =>
           case ses of
               (s,e)::_ => 
@@ -183,7 +200,7 @@ structure Formlets :> FORMLETS = struct
                                      Js.appendChild e0 e)
                         | NONE => die ("changer: cannot find element for " ^ s)
               in #value vl := s
-               ; ret ((id,key,HID (vl,onChange))::kvs,e0)
+               ; ret ((id,key,HID (vl,onChange))::kvs,spantd span e0)
               end
             | _ => die "Changer requires at least one possibility"
           )
@@ -328,7 +345,7 @@ structure Formlets :> FORMLETS = struct
       mkForm form >>= (fn (kvs,e) =>
       Dojo.Form.mk[] >>= (fn dojo_form =>
       let val form_elem = Dojo.Form.domNode dojo_form
-          val () = Js.appendChild form_elem (tag "table" (tag "tr" e))
+          val () = Js.appendChild form_elem (taga "table" [("width","100%;")] (tag "tr" e))
           val guard = ref true
           fun startup () =
               (List.app (fn (_,_,ED ed) => Dojo.Editor.startup ed
