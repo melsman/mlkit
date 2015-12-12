@@ -56,7 +56,7 @@ structure Formlets :> FORMLETS = struct
                 | Hf of form list                       (* Horizontal *)
                 | Gf of label * form * span             (* Group with label *)
                 | Ef                                    (* Empty (identity for >> and />) *)
-                | Elf of Js.elem * span                 (* Dom element *)
+                | Elf of label option * Js.elem * span  (* Dom element with optional label *)
                 | Cf of el * (string*form)list * span   (* Changer *)
 
   val % : el -> form = fn x => Lf (x,1)
@@ -69,7 +69,7 @@ structure Formlets :> FORMLETS = struct
                            | x::xs => Hf (rev(hextend x :: xs)))
     | hextend (Gf (x,y,s)) = Gf(x,y,s+1)
     | hextend Ef = Ef
-    | hextend (Elf(x,s)) = Elf(x,s+1)
+    | hextend (Elf(lopt,x,s)) = Elf(lopt,x,s+1)
     | hextend (Cf(x,y,s)) = Cf(x,y,s+1)
 
   fun op >> (Ef,f) = f
@@ -89,8 +89,8 @@ structure Formlets :> FORMLETS = struct
   val group     : label -> form -> form = fn l => fn f => Gf(l,f,1)
   val empty     : form = Ef
   val changer   : el -> (string * form) list -> form = fn el => fn sfs => Cf(el,sfs,1)
-  val space     : form = Elf($"",1)
-  val elem      : Js.elem -> form = fn x => Elf(x,1)
+  val space     : form = Elf(NONE,$"",1)
+  val elem      : string option -> Js.elem -> form = fn lopt => fn x => Elf(lopt,x,1)
 
   (* Fields *)
   datatype f0 = value0 of el | readonly0 of el | enabled0 of el | pair0 of f0 * f0 | emp0
@@ -186,7 +186,8 @@ structure Formlets :> FORMLETS = struct
           boxGroup span lab (taga "table" [("width","100%;")] (tag "tr" e)) >>= (fn e =>
           ret (kvs,e)))
         | Ef => ret (nil, $"")
-        | Elf (e,span) => ret (nil, spantd span e)
+        | Elf (NONE,e,span) => ret (nil, spantd span e)
+        | Elf (SOME lab,e,span) => ret (nil, taga "td" [("class","formlets-label-td")] ($lab) & spantd span e)
         | Cf ({elem=HIDDEN vl,key,id,...},sfs,span) =>
           mkKeyForms sfs >>= (fn (kvs,ses) =>
           case ses of

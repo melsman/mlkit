@@ -30,7 +30,7 @@ signature FORMLETS = sig
   val >>          : form * form -> form
   val />          : form * form -> form
   val group       : label -> form -> form
-  val elem        : Js.elem -> form
+  val elem        : label option -> Js.elem -> form
   val empty       : form
   val space       : form
   val changer     : el -> (value * form) list -> form

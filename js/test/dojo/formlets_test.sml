@@ -56,7 +56,7 @@ val parent = tag0 "ul"
 val form = (group "Person" ((%firstname >> %lastname) /> (space >> space >> %age) /> (empty >> %male))
                   >> group "With a changer" (changer hid [("three", %field1a /> %field1b /> %field1c /> %field1sum),
                                                           ("two", %field2a /> %field2b /> %field2sum)]))
-                 /> hextend(group "Temperature" (%tempc /> (%tempf >> %tempk) /> (hextend(group "ButGroup" (%%but)))) /> %%subbut /> group "Output" (elem parent))
+                 /> hextend(group "Temperature" (%tempc /> (%tempf >> %tempk) /> (hextend(group "ButGroup" (%%but)))) /> %%subbut /> group "Output" (elem NONE parent))
                  
 val initrule1 = init_rule (readonly tempf) (fn () => true)
 val initrule2 = init_rule (readonly tempk) (fn () => true)
