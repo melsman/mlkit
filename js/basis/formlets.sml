@@ -142,7 +142,9 @@ structure Formlets :> FORMLETS = struct
       ; Dojo.ret parent
      end)))
 
-  datatype key_thing = ED of string Dojo.Editor.t | BUT of Dojo.Button.t * ((unit->unit)->unit) | HID of hidden * (string -> unit)
+  datatype key_thing = ED of string Dojo.Editor.t 
+                     | BUT of Dojo.Button.t * ((unit->unit)->unit) 
+                     | HID of hidden
 
   (* Assumptions:
     1. No duplicate use of elements
@@ -170,7 +172,7 @@ structure Formlets :> FORMLETS = struct
           in (if v<>"" then Dojo.Editor.setValue ed v else ());
              ret ([(id,key,ED ed)], e)
           end)
-        | Lf ({elem=HIDDEN vl,key,label,id},_) => ret ([(id,key,HID (vl,fn _ => ()))], $"")
+        | Lf ({elem=HIDDEN vl,key,label,id},_) => ret ([(id,key,HID vl)], $"")
         | Vf forms => 
           mkForms forms >>= (fn (kvs,es) =>
           let val trs = List.foldr (fn (e,a) => tag "tr" e & a) ($"") es
@@ -200,8 +202,12 @@ structure Formlets :> FORMLETS = struct
                           SOME e => (removeChildren e0;
                                      Js.appendChild e0 e)
                         | NONE => die ("changer: cannot find element for " ^ s)
+                  fun look nil = false
+                    | look ((id0,_,_)::rest) = id = id0 orelse look rest
+                  val kvs = if look kvs then kvs else (id,key,HID vl)::kvs
               in #value vl := s
-               ; ret ((id,key,HID (vl,onChange))::kvs,spantd span e0)
+               ; #listeners vl := onChange :: (!(#listeners vl))
+               ; ret (kvs,spantd span e0)
               end
             | _ => die "Changer requires at least one possibility"
           )
@@ -224,7 +230,7 @@ structure Formlets :> FORMLETS = struct
     fun upd_key kvs (k,v) =
         case lookup_key kvs k of
             SOME (ED ed) => Dojo.Editor.setValue ed v
-          | SOME (HID(vl,_)) => #value vl := v
+          | SOME (HID vl) => #value vl := v
           | SOME (BUT _) => die ("upd_key.does not expect button for key " ^ qq k)
           | NONE => die ("upd_key.no editor for key " ^ qq k)
 
@@ -233,11 +239,10 @@ structure Formlets :> FORMLETS = struct
             value0 {id,...} =>
             (case lookup kvs id of
                  SOME (ED ed) => Dojo.Editor.setValue ed (unSgen g)
-               | SOME (HID(vl,onChange)) =>
+               | SOME (HID vl) =>
                  let val s = unSgen g
                  in #value vl := s
                   ; List.app (fn f => f s) (!(#listeners vl))
-                  ; onChange s
                  end
                | SOME (BUT _) => die "Rules.upd.button"
                | NONE => die ("Rules.upd." ^ Int.toString id))
@@ -265,7 +270,7 @@ structure Formlets :> FORMLETS = struct
             value0 {id,...} =>
             (case lookup kvs id of
                  SOME (ED ed) => Sgen(Dojo.Editor.getValue ed)
-               | SOME (HID (vl,_)) => Sgen(!(#value vl))
+               | SOME (HID vl) => Sgen(!(#value vl))
                | SOME (BUT _) => die "Rules.get.button"
                | NONE => die ("Rules.get." ^ Int.toString id))
           | readonly0 {id,...} => die "Rules.get.readonly not implemented"
@@ -278,7 +283,7 @@ structure Formlets :> FORMLETS = struct
             value0 {id,...} =>
             (case lookup kvs id of
                  SOME (ED ed) => Dojo.Editor.onChange ed (fn _ => f())
-               | SOME (HID (vl,_)) => (#listeners vl) := (fn _ => f()) :: (!(#listeners vl))
+               | SOME (HID vl) => (#listeners vl) := (fn _ => f()) :: (!(#listeners vl))
                | SOME (BUT _) => die "Rules.inst.button"
                | NONE => die ("Rules.inst." ^ Int.toString id))
           | readonly0 {id,...} => die "Rules.inst.readonly not implemented"
@@ -290,7 +295,7 @@ structure Formlets :> FORMLETS = struct
         List.foldl (fn ((_,"",_),a) => a
                      | ((_,_,BUT _),a) => a
                      | ((_,k,ED ed),a) => (k,Dojo.Editor.getValue ed)::a
-                     | ((_,k,HID (vl,_)),a) => (k, !(#value vl))::a) nil kvs
+                     | ((_,k,HID vl),a) => (k, !(#value vl))::a) nil kvs
 
     fun setupRule error_reporter dojo_form kvs r =
         case r of
