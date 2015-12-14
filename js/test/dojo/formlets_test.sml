@@ -69,7 +69,8 @@ val temprule2 = update_rule (value tempc) (value tempk) (fn c => case Real.fromS
                                                                    | NONE => "--")
                             
 val subrule = submit_rule subbut (fn kvs => (removeChildren parent;
-                                             List.app (fn (k,v) => Js.appendChild parent (tag "li" ($(k ^ ":" ^ v))))) kvs)
+                                             List.app (fn (k,SOME v) => Js.appendChild parent (tag "li" ($(k ^ ":" ^ v)))
+                                                        | (k,NONE) => ())) kvs)
                           
 infix ||
           

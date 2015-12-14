@@ -52,7 +52,7 @@ signature FORMLETS = sig
   val postupdate_rule : 'a f -> 'b f -> ('a -> 'b) -> rule   (* enabled only after data is loaded *)
   val button_rule     : button -> 'a f -> 'b f -> ('a -> 'b) -> rule
   val validate_rule   : 'a f -> ('a -> string option) -> rule
-  val submit_rule     : button -> ((key*value)list -> unit) -> rule
+  val submit_rule     : button -> ((key*value option)list -> unit) -> rule
  
   type formlet = form * rule list
   type error_reporter = string -> unit

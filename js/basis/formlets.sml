@@ -111,7 +111,7 @@ structure Formlets :> FORMLETS = struct
 
   (* Rules *)
   exception FormletError of string
-  datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value)list -> unit) | Load_rule of unit -> (key*value)list
+  datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value option)list -> unit) | Load_rule of unit -> (key*value)list
                 | PostUpdate_rule of f0 * f0 * (gen -> gen)
   fun init_rule (f : 'a f) (g: unit -> 'a) : rule = Init_rule (#1 f, #2 f o g)
   fun load_rule f : rule = Load_rule f
@@ -294,8 +294,8 @@ structure Formlets :> FORMLETS = struct
     fun getValues kvs =
         List.foldl (fn ((_,"",_),a) => a
                      | ((_,_,BUT _),a) => a
-                     | ((_,k,ED ed),a) => (k,Dojo.Editor.getValue ed)::a
-                     | ((_,k,HID vl),a) => (k, !(#value vl))::a) nil kvs
+                     | ((_,k,ED ed),a) => (k,Dojo.Editor.getValueOpt ed)::a
+                     | ((_,k,HID vl),a) => (k, SOME(!(#value vl)))::a) nil kvs
 
     fun setupRule error_reporter dojo_form kvs r =
         case r of

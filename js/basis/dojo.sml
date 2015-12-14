@@ -522,6 +522,9 @@ structure Dojo :> DOJO = struct
     fun mk (a,f) = f a
     fun getValue ((e,a) : 'a t) = case #fromString a (JsUtil.get "value" e) of SOME v => v 
                                                                              | NONE => raise Fail "Editor.getValue"
+    fun getValueOpt ((e,a): 'a t) = let val v = JsUtil.get "value" e
+                                    in if isNull v then NONE else #fromString a v
+                                    end
     fun setValue ((e,a) : 'a t) v = JsUtil.set "value" e (#toString a v)
     fun setDisabled ((e,a): 'a t) b = JsCore.method1 JsCore.bool JsCore.unit e "setDisabled" b
     fun setReadOnly ((e,a): 'a t) b = setBoolProperty ("readOnly",b) e

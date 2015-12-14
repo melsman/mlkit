@@ -79,6 +79,7 @@ signature DOJO = sig
     type 'a t
     val mk                : 'a editCon -> 'a t M
     val getValue          : 'a t -> 'a
+    val getValueOpt       : 'a t -> 'a option
     val setValue          : 'a t -> 'a -> unit
     val setDisabled       : 'a t -> bool -> unit
     val setReadOnly       : 'a t -> bool -> unit
