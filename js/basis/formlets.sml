@@ -236,7 +236,7 @@ structure Formlets :> FORMLETS = struct
 
     fun upd kvs f0 g =
         case f0 of
-            value0 {id,...} =>
+            value0 {id,key,...} =>
             (case lookup kvs id of
                  SOME (ED ed) => Dojo.Editor.setValue ed (unSgen g)
                | SOME (HID vl) =>
@@ -245,19 +245,19 @@ structure Formlets :> FORMLETS = struct
                   ; List.app (fn f => f s) (!(#listeners vl))
                  end
                | SOME (BUT _) => die "Rules.upd.button"
-               | NONE => die ("Rules.upd." ^ Int.toString id))
-          | readonly0 {id,...} =>
+               | NONE => die ("Rules.upd.value: id " ^ Int.toString id ^ " (" ^ key ^ ") not present in form"))
+          | readonly0 {id,key,...} =>
             (case lookup kvs id of
                  SOME (ED ed) => Dojo.Editor.setReadOnly ed (unBgen g)
                | SOME (HID _) => die "Rules.upd.readonly.hidden"
                | SOME (BUT _) => die "Rules.upd.readonly.button"
-               | NONE => die ("Rules.upd.readonly" ^ Int.toString id))
-          | enabled0 {id,...} =>
+               | NONE => die ("Rules.upd.readonly: id " ^ Int.toString id ^ " (" ^ key ^ ") not present in form"))
+          | enabled0 {id,key,...} =>
             (case lookup kvs id of
                  SOME (ED ed) => Dojo.Editor.setDisabled ed (not(unBgen g))
                | SOME (HID _) => die "Rules.upd.enabled.hidden"
                | SOME (BUT _) => die "Rules.upd.enabled.button"
-               | NONE => die ("Rules.upd.enabled." ^ Int.toString id))
+               | NONE => die ("Rules.upd.enabled." ^ Int.toString id ^ " (" ^ key ^ ") not present in form"))
           | emp0 => ()
           | pair0 (f01,f02) => 
             let val (g1,g2) = unPgen g
