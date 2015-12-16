@@ -108,11 +108,13 @@ structure Formlets :> FORMLETS = struct
   fun enabled e0 = (enabled0 e0,Bgen,unBgen)
   fun || ((f01,to1,from1),(f02,to2,from2)) = (pair0(f01,f02), fn(x,y)=>Pgen(to1 x,to2 y), fn g => let val (x,y) = unPgen g in (from1 x, from2 y) end)
   val emp = (emp0,fn () => Ugen, fn Ugen => () | _ => die "unUgen")
+  fun && (x,y) = (x,y)
 
   (* Rules *)
   exception FormletError of string
   datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value option)list -> unit) | Load_rule of unit -> (key*value)list
-                | PostUpdate_rule of f0 * f0 * (gen -> gen)
+                | PostUpdate_rule of f0 * f0 * (gen -> gen) | All_rule of rule list
+  val all_rule = All_rule
   fun init_rule (f : 'a f) (g: unit -> 'a) : rule = Init_rule (#1 f, #2 f o g)
   fun load_rule f : rule = Load_rule f
   fun update_rule (f1: 'a f) (f2: 'b f) (g: 'a -> 'b) : rule = Update_rule (NONE, #1 f1, #1 f2, #2 f2 o g o #3 f1)
@@ -321,6 +323,7 @@ structure Formlets :> FORMLETS = struct
                | SOME (ED ed) => die ("Rules.setupRule.submit.expecting button - got ed for " ^ Int.toString id)
                | NONE => die ("Rules.setupRule.submit.expecting button - got nothing for " ^ Int.toString id))
           | Load_rule f => List.app (upd_key kvs) (f())
+          | All_rule rs => List.app (setupRule error_reporter dojo_form kvs) rs
 
     fun setupPostRule guard error_reporter kvs r =
         case r of
@@ -335,6 +338,7 @@ structure Formlets :> FORMLETS = struct
             end
           | Submit_rule ({id,...},f) => ()
           | Load_rule f => ()
+          | All_rule rs => List.app (setupPostRule guard error_reporter kvs) rs
   end                                                      
 
   type error_reporter = string -> unit

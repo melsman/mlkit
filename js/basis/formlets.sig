@@ -42,10 +42,12 @@ signature FORMLETS = sig
   val readonly    : el -> bool f
   val enabled     : el -> bool f
   val ||          : 'a f * 'b f -> ('a * 'b) f
+  val &&          : 'a * 'b -> 'a * 'b
   val emp         : unit f
 
   (* Rules *)
   type rule
+  val all_rule        : rule list -> rule
   val init_rule       : 'a f -> (unit -> 'a) -> rule
   val load_rule       : (unit -> (key*value)list) -> rule
   val update_rule     : 'a f -> 'b f -> ('a -> 'b) -> rule
