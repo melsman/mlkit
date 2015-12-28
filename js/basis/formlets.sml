@@ -153,7 +153,7 @@ structure Formlets :> FORMLETS = struct
     2. No duplicate use of keys
   *)
 
-  fun spantd 1 e = taga "td" [] e
+  fun spantd 1 e = taga "td" [("style","vertical-align:top;")] e
     | spantd n e = taga "td" [("colspan",Int.toString n),("style","vertical-align:top;")] e
 
   fun mkForm form : ((int*key*key_thing)list * Js.elem) M =         (* invariant: returns a list of key mappings and an element representing row content *)
