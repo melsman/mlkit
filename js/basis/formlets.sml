@@ -301,21 +301,21 @@ structure Formlets :> FORMLETS = struct
                      | ((_,k,ED ed),a) => (k,Dojo.Editor.getValueOpt ed)::a
                      | ((_,k,HID vl),a) => (k, SOME(!(#value vl)))::a) nil kvs
 
+    fun mkOnChange error_reporter kvs f01 f02 f () =
+        case SOME (get kvs f01) handle _ => NONE of
+            SOME vs => (upd kvs f02 (f vs)
+                        handle AbortRule => ()
+                             | FormletError s => (error_reporter s; raise Fail "formlet error"))
+          | NONE => ()
+
     fun setupRule error_reporter dojo_form kvs r =
         case r of
             Init_rule (f0,f:unit -> gen) => (upd kvs f0 (f()) handle AbortRule => ())
-          | Update_rule (NONE,f01,f02,f) =>
-            let fun onchange () =
-                    upd kvs f02 (f(get kvs f01))
-                    handle AbortRule => ()
-                         | FormletError s => (error_reporter s; raise Fail "formlet error")
-            in inst kvs f01 onchange
-            end
+          | Update_rule (NONE,f01,f02,f) => inst kvs f01 (mkOnChange error_reporter kvs f01 f02 f)
           | PostUpdate_rule (f01,f02,f) => ()
           | Update_rule (SOME {id,...},f01,f02,f) =>
             (case lookup kvs id of
-                 SOME (BUT (_,attachOnClick)) => attachOnClick (fn () => upd kvs f02 (f(get kvs f01))
-                                                                         handle AbortRule => ())
+                 SOME (BUT (_,attachOnClick)) => attachOnClick (mkOnChange error_reporter kvs f01 f02 f)
                | SOME (HID _) => die ("Rules.setupRule.expecting button - got hidden for " ^ Int.toString id)
                | SOME (ED ed) => die ("Rules.setupRule.expecting button - got ed for " ^ Int.toString id)
                | NONE => die ("Rules.setupRule.expecting button - got nothing for " ^ Int.toString id))
