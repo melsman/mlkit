@@ -47,6 +47,7 @@ signature FORMLETS = sig
 
   (* Rules *)
   type rule
+  exception AbortRule
   val all_rule        : rule list -> rule
   val init_rule       : 'a f -> (unit -> 'a) -> rule
   val load_rule       : (unit -> (key*value)list) -> rule

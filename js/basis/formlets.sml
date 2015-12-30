@@ -111,6 +111,7 @@ structure Formlets :> FORMLETS = struct
   fun && (x,y) = (x,y)
 
   (* Rules *)
+  exception AbortRule
   exception FormletError of string
   datatype rule = Init_rule of f0 * (unit -> gen) | Update_rule of el option * f0 * f0 * (gen -> gen) | Submit_rule of el * ((key*value option)list -> unit) | Load_rule of unit -> (key*value)list
                 | PostUpdate_rule of f0 * f0 * (gen -> gen) | All_rule of rule list
@@ -302,17 +303,19 @@ structure Formlets :> FORMLETS = struct
 
     fun setupRule error_reporter dojo_form kvs r =
         case r of
-            Init_rule (f0,f:unit -> gen) => upd kvs f0 (f())
+            Init_rule (f0,f:unit -> gen) => (upd kvs f0 (f()) handle AbortRule => ())
           | Update_rule (NONE,f01,f02,f) =>
             let fun onchange () =
                     upd kvs f02 (f(get kvs f01))
-                    handle FormletError s => (error_reporter s; raise Fail "formlet error")
+                    handle AbortRule => ()
+                         | FormletError s => (error_reporter s; raise Fail "formlet error")
             in inst kvs f01 onchange
             end
           | PostUpdate_rule (f01,f02,f) => ()
           | Update_rule (SOME {id,...},f01,f02,f) =>
             (case lookup kvs id of
-                 SOME (BUT (_,attachOnClick)) => attachOnClick (fn () => upd kvs f02 (f(get kvs f01)))
+                 SOME (BUT (_,attachOnClick)) => attachOnClick (fn () => upd kvs f02 (f(get kvs f01))
+                                                                         handle AbortRule => ())
                | SOME (HID _) => die ("Rules.setupRule.expecting button - got hidden for " ^ Int.toString id)
                | SOME (ED ed) => die ("Rules.setupRule.expecting button - got ed for " ^ Int.toString id)
                | NONE => die ("Rules.setupRule.expecting button - got nothing for " ^ Int.toString id))
@@ -334,7 +337,8 @@ structure Formlets :> FORMLETS = struct
             let fun onchange () =
                     if !guard then ()
                     else upd kvs f02 (f(get kvs f01))
-                         handle FormletError s => (error_reporter s; raise Fail "formlet error")
+                         handle AbortRule => ()
+                              | FormletError s => (error_reporter s; raise Fail "formlet error")
             in inst kvs f01 onchange
             end
           | Submit_rule ({id,...},f) => ()
