@@ -136,11 +136,13 @@ signature DOJO = sig
     val unhidable     : bool -> colspec -> colspec
     val sortable      : bool -> colspec -> colspec   (* e.g.: val cs = hidden true (sortable true cs)  *)
 
-    val mk            : {target:string, headers:(string*string)list, idProperty:string, addRow:(button*button) option, notify:string->unit, notify_err:string->unit} -> colspec list -> t M
+    val mk            : {target:string, headers:(string*string)list, idProperty:string, addRow:(button*button) option, 
+                         notify:string->unit, notify_err:string->unit} -> colspec list -> t M
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
     val setCollection : t -> {target:string} -> unit 
-    val setSort       : t -> {field:string} -> unit 
+    val setSort       : t -> {field:string} -> unit
+    val setSummary    : t -> {field:string,elem:Js.elem} list -> unit
     val startup       : t -> unit
     val refresh       : t -> unit
   end

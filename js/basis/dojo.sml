@@ -594,7 +594,8 @@ structure Dojo :> DOJO = struct
         {hash=fn()=>mkEditorArgs arg,file= #file arg}
             
     type t = {elem: Js.elem, getStore: unit->foreignptr, startup: unit->unit, 
-              refresh: unit->unit, setCollection: string->unit, setSort: string->unit}
+              refresh: unit->unit, setCollection: string->unit, setSort: string->unit, 
+              setSummary : {field:string,elem:Js.elem}list -> unit}
 
     datatype typ = INT | STRING | NUM of int
     type button = {label:string,icon:icon option}
@@ -789,6 +790,12 @@ structure Dojo :> DOJO = struct
     fun setSort grid field =
         JsCore.method2 JsCore.string JsCore.string JsCore.unit grid "set" "sort" field
 
+    fun setSummary grid (cols:{field:string,elem:Js.elem}list) =
+        let val summaryRow = JsCore.Object.empty()
+        in List.app (fn {field,elem} => JsCore.Object.set JsCore.fptr summaryRow field (Js.Element.toForeignPtr elem)) cols
+         ; JsCore.method2 JsCore.string JsCore.fptr JsCore.unit grid "set" "summary" summaryRow
+        end
+
 (*
     fun filterStore store (filter:(string*string)list) =
         let val filter = JsCore.Object.fromList JsCore.string filter
@@ -807,18 +814,20 @@ structure Dojo :> DOJO = struct
         require1 "dgrid/extensions/ColumnHider" >>= (fn ColumnHider =>
         require1 "dgrid/extensions/ColumnResizer" >>= (fn ColumnResizer =>
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
+        require1 "SummaryRow" >>= (fn SummaryRow => 
         let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             fun mkStore target =
                 let val storeArg = mkHash [("target",target),("idProperty",idProperty)]
                     val () = if List.null headers then () 
                              else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
-                in new0 RestTrackableStore(storeArg)
+                    val store = new0 RestTrackableStore(storeArg)
+                in store
                 end
             val store = mkStore target
             val storeRef = ref store
             fun getStore() = !storeRef
-            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,ColumnResizer,ColumnHider,DijitRegistry]
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,ColumnResizer,ColumnHider,DijitRegistry,SummaryRow]
             val fields = fieldsOfColspecs colspecs idProperty
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields getStore) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
@@ -835,9 +844,10 @@ structure Dojo :> DOJO = struct
                 in refresh()
                 end
         in ret {elem=gridelem,getStore=getStore,startup=start,refresh=refresh,setCollection=setCollection,
-               setSort=setSort grid}
+               setSort=setSort grid,
+               setSummary=setSummary grid}
         end)
-        end)))))))))))
+        end))))))))))))
 
     fun mk {target:string, headers, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
          mkSimple {target=target,headers=headers,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
@@ -851,6 +861,7 @@ structure Dojo :> DOJO = struct
         require1 "dstore/Memory" >>= (fn Memory =>
         require1 "dijit/form/Button" >>= (fn Button =>
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry =>
+        require1 "SummaryRow" >>= (fn SummaryRow => 
         Promise.WhenE JsCore.unit >>= (fn when =>
         Form.mk [] >>= (fn form =>
         let
@@ -861,7 +872,7 @@ structure Dojo :> DOJO = struct
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             fun getStore() = store
-            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry]
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,Editor,DijitRegistry,SummaryRow]
             val fields = fieldsOfColspecs colspecs idProperty
         in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields getStore) colspecs >>= (fn columns =>
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
@@ -950,16 +961,18 @@ structure Dojo :> DOJO = struct
             val elem = mkFlexBox (domNode button) formcontainer gridelem
             fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
         in ret {elem=elem,getStore=getStore,startup=start,refresh=refresh,
-                setCollection=fn _ => notify_err "action not supported on advanced grids",
-                setSort=setSort grid}
+                setCollection=fn _ => notify_err "setCollection action not supported on advanced grids",
+                setSort=setSort grid,
+                setSummary=setSummary grid}
         end)
         end)
-        end)))))))))))
+        end))))))))))))
 
     fun startup ({startup=start,...}: t) : unit = start()
     fun refresh ({refresh=refr,...}: t) : unit = refr()
     fun setCollection ({setCollection=set,...}:t) {target:string} : unit = set target
     fun setSort ({setSort=set,...}:t) {field:string} : unit = set field
+    fun setSummary ({setSummary=set,...}:t) x : unit = set x
 
     val domNode : t -> Js.elem = fn {elem,...} => elem
     fun toStore ({getStore,...}: t) : foreignptr = getStore ()
