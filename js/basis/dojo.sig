@@ -35,7 +35,8 @@ signature DOJO = sig
   val addChild           : widget -> widget -> unit
   val startup            : widget -> unit (* shouldn't be necessary... Hmm *)
   val domNode            : widget -> Js.elem
-  val redraw             : widget -> unit
+  val resize             : widget -> unit
+  val refresh            : widget -> unit
 
   val dialog             : hash -> Js.elem -> widget M
   val showDialog         : widget -> unit
