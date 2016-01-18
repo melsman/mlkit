@@ -159,6 +159,7 @@ structure Dojo :> DOJO = struct
 
   fun showDialog d = JsCore.method0 JsCore.unit d "show"
   fun hideDialog d = JsCore.method0 JsCore.unit d "hide"
+  fun redraw d = JsCore.method0 JsCore.unit d "redraw"
 
   fun runDialog title e =
       run (dialog[("title", title)] e >>= (ret o showDialog))
