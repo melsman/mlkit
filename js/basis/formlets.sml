@@ -197,10 +197,15 @@ structure Formlets :> FORMLETS = struct
           mkKeyForms sfs >>= (fn (kvs,ses) =>
           case ses of
               (s,e)::_ => 
-              let val e0 = tag "tr" e
-                  val t = taga "table" [("style","width:100%;border-spacing:0;border:none;")] e0
-                  fun find nil _ = NONE
+              let fun find nil _ = NONE
                     | find ((k,v)::kvs) s = if k=s then SOME v else find kvs s 
+                  val e = case !(#value vl) of
+                              "" => (#value vl := s; e)
+                            | k => case find ses k of
+                                       SOME e => e
+                                     | NONE => (#value vl := s; e)
+                  val e0 = tag "tr" e
+                  val t = taga "table" [("style","width:100%;border-spacing:0;border:none;")] e0
                   fun onChange s =
                       case find ses s of
                           SOME e => (removeChildren e0;
@@ -209,8 +214,7 @@ structure Formlets :> FORMLETS = struct
                   fun look nil = false
                     | look ((id0,_,_)::rest) = id = id0 orelse look rest
                   val kvs = if look kvs then kvs else (id,key,HID vl)::kvs
-              in #value vl := s
-               ; #listeners vl := onChange :: (!(#listeners vl))
+              in #listeners vl := onChange :: (!(#listeners vl))
                ; ret (kvs,spantd span t)
               end
             | _ => die "Changer requires at least one possibility"
