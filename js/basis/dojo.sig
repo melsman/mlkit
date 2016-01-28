@@ -47,6 +47,7 @@ signature DOJO = sig
   val treeStore          : hash list -> treeStore M
   val treeStoreAdd       : treeStore -> hash -> unit
   val treeStoreRemove    : treeStore -> string -> unit
+  val treeStoreClear     : treeStore -> unit
   val tree               : hash -> string -> (string*string -> unit) 
                            -> treeStore -> widget M
 

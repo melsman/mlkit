@@ -219,7 +219,10 @@ structure Dojo :> DOJO = struct
 
   fun treeStoreAdd ts h = JsCore.method1 JsCore.fptr JsCore.unit ts "add" (mkHash h)
   fun treeStoreRemove ts s = JsCore.method1 JsCore.string JsCore.unit ts "remove" s
-      
+  fun treeStoreClear (ts:treeStore) : unit =
+      JsCore.exec1{arg1=("ts",JsCore.fptr),res=JsCore.unit,
+                   stmt="ts.query().forEach(function(item){ts.remove(ts.getIdentity(item));});"} ts
+
   fun tree (h: hash) rootId onClick (store:treeStore) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/tree/ObjectStoreModel" (fn ObjectStoreModel =>
