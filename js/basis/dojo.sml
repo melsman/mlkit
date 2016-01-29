@@ -223,7 +223,7 @@ structure Dojo :> DOJO = struct
       JsCore.exec1{arg1=("ts",JsCore.fptr),res=JsCore.unit,
                    stmt="ts.query().forEach(function(item){ts.remove(ts.getIdentity(item));});"} ts
 
-  fun tree (h: hash) rootId onClick (store:treeStore) : widget M =
+  fun treeWidget (h: hash) {showRoot} rootId onClick (store:treeStore) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/tree/ObjectStoreModel" (fn ObjectStoreModel =>
          require1 "dijit/Tree" (fn Tree =>
@@ -232,6 +232,8 @@ structure Dojo :> DOJO = struct
                               arg2=("id",JsCore.string),res=JsCore.fptr}(store,rootId)
              val model = new0 ObjectStoreModel(modelArg)
              val treeArg = mkHash h
+             val () = if showRoot then () 
+                      else JsCore.Object.set JsCore.bool treeArg "showRoot" showRoot
              val () = JsCore.Object.set JsCore.fptr treeArg "model" model
              val () = JsCore.exec2{stmt="a.onClick = function(item) { f([item.id,item.name]); };",
                                    arg1=("a",JsCore.fptr), arg2=("f",JsCore.===>(JsCore.string,JsCore.string,
@@ -240,6 +242,8 @@ structure Dojo :> DOJO = struct
              val tree = new0 Tree(treeArg)
          in f tree
          end))
+
+  fun tree h = treeWidget h {showRoot=true}
 
   type tabmap = widget * (string*widget)list ref
   fun advTabContainer (h:hash) : (tabmap * {select:string->unit,close:string->unit}) M =

@@ -50,6 +50,8 @@ signature DOJO = sig
   val treeStoreClear     : treeStore -> unit
   val tree               : hash -> string -> (string*string -> unit) 
                            -> treeStore -> widget M
+  val treeWidget         : hash -> {showRoot:bool} -> string -> (string*string -> unit) 
+                           -> treeStore -> widget M
 
   type tabmap = widget * (string*widget)list ref
   val advTabContainer    : hash -> (tabmap*{select:string->unit,close:string->unit}) M
