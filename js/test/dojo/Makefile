@@ -22,6 +22,10 @@ all:
 	@echo "  - make prepare0 : rebuild basis library"
 	@echo "  - make prepare  : copy basis library and prims.js to present directory"  
 	@echo "  - make run.html : compile example"
+	@echo "Afterwards execute:"
+	@echo "  - python -m SimpleHTTPServer 8000"
+	@echo "Then request (in a browser):"
+	@echo "  - http://localhost:8000/run.html"
 
 .PHONY: prepare0
 prepare0:
