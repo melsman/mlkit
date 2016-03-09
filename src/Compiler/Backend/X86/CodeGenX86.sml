@@ -175,7 +175,7 @@ struct
       end
 
     fun wordToStr (w : Word32.word) : string =
-      "0X" ^ Word32.toString w
+      "0x" ^ Word32.toString w
 
     (* Convert ~n to -n *)
     fun i2s i = if i >= 0 then Int.toString i
@@ -244,7 +244,7 @@ struct
       | move_immed(x,d:ea,C) = I.movl(I (intToStr x), d) :: C
 
     fun move_num(x,ea:ea,C) = 
-      if (x = "0" orelse x = "0X0") andalso (case ea of R _ => true | _ => false) 
+      if (x = "0" orelse x = "0x0") andalso (case ea of R _ => true | _ => false) 
           then I.xorl(ea, ea) :: C
       else I.movl(I x, ea) :: C
 
@@ -589,7 +589,7 @@ struct
 	in
 	    I.leal(D(i2s(4*nargs), esp), R tmp) ::      (* tmp = esp + 4n; memoize esp as it should be restored after call *)
 	    I.subl(I(i2s(4*(nargs+5))), R esp) ::       (* esp = esp - 16 - 4 - 4n ; alignment *) 
-	    I.andl(I "0XFFFFFFF0", R esp) ::            (* esp = esp & 0xFFFFFFF0; alignment *)
+	    I.andl(I "0xFFFFFFF0", R esp) ::            (* esp = esp & 0xFFFFFFF0; alignment *)
 	    I.addl(I(i2s(4*(nargs+1))), R esp) ::       (* make room for args to be pushed, so that once the args are pushed, the stack is aligned *)
 	    I.pushl(R tmp) ::
 	    iterl (fn (i,C) =>
@@ -714,7 +714,7 @@ struct
     (* Put a bitvector into the code. *)
     fun gen_bv (ws,C) =
       let fun gen_bv'([],C) = C
-            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_long ("0X"^Word32.fmt StringCvt.HEX w)::C)
+            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_long ("0x"^Word32.fmt StringCvt.HEX w)::C)
       in if gc_p() then gen_bv'(ws,C)
          else C
       end
@@ -725,7 +725,7 @@ struct
       if gc_p() then 
         let
           val l = new_local_lab "return_from_gc_stub"
-          val reg_map_immed = "0X" ^ Word32.fmt StringCvt.HEX reg_map
+          val reg_map_immed = "0x" ^ Word32.fmt StringCvt.HEX reg_map
           val size_ff = 0 (*dummy*)
         in
 (*
@@ -3184,9 +3184,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    I.pushl(LA next_lab) ::
                    comment ("JUMP TO NEXT PROGRAM UNIT",
                    I.jmp(L l) :: 
-                   I.dot_long "0XFFFFFFFF" :: (* Marks, no more frames on stack. Used to calculate rootset. *)
-                   I.dot_long "0XFFFFFFFF" :: (* An arbitrary offsetToReturn *)
-                   I.dot_long "0XFFFFFFFF" :: (* An arbitrary function number. *)
+                   I.dot_long "0xFFFFFFFF" :: (* Marks, no more frames on stack. Used to calculate rootset. *)
+                   I.dot_long "0xFFFFFFFF" :: (* An arbitrary offsetToReturn *)
+                   I.dot_long "0xFFFFFFFF" :: (* An arbitrary function number. *)
                    I.lab next_lab :: C))
                  end) C progunit_labs
 

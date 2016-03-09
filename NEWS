@@ -1,5 +1,9 @@
 MLKit NEWS file
 
+              **** MLKit version 4.3.8 is released ****
+
+ * mael 2016-03-09: Fixed issue with assembler invocation on Mac OS X.
+
  * mael 2015-05-11: Fixed a few runtime system compiler warnings.
 
  * mael 2015-05-08: Fixed inefficiency in region inference algorithm

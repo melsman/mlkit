@@ -77,6 +77,19 @@ structure ExecutionX86: EXECUTION =
                   \Mac OS X, the default is '" ^ macgcc ^ "'."}
 	end
 
+    val _ = Flags.add_string_entry 
+	let val mac_as = "gcc -c -m32 -no-integrated-as"
+            val linux_as = "as --32"
+	    val ass = if InstsX86.sysname() = "Darwin" then mac_as
+		      else linux_as
+	in
+	    {long="assembler", short=SOME "as", item=ref ass,
+	     menu=["Control", "Assembler command"],
+	     desc="This option specifies the assembler used.\n\
+		  \On Linux the default is '" ^ linux_as ^ "'. On Mac OS X,\n\
+                  \the default is '" ^ mac_as ^ "'."}
+	end
+
     val strip_p = ref false
     val _ = Flags.add_bool_entry 
        {long="strip", short=NONE, neg=false, item=strip_p,
@@ -183,7 +196,10 @@ structure ExecutionX86: EXECUTION =
     val libs = Flags.lookup_string_entry "libs"
 
     fun gas0() =
+        !(Flags.lookup_string_entry "assembler")
+(*
 	if InstsX86.sysname() = "Darwin" then "as -arch i386" else "as --32"
+*)
 
     fun gas() = if gdb_support() then gas0() ^ " --gstabs"
 		else gas0()
