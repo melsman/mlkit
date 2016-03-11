@@ -4,6 +4,8 @@ local
   MemUsage.sml
   TestFile.sml
   CompilerTimings.sml
+  test_report.sig
+  test_report.sml
   TestReport.sml
 in 
   Tester.sml
