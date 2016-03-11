@@ -29,10 +29,14 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
 REQUEST_PROFILING=
 #REQUEST_PROFILING=true
 
-mlkit: mlkit_kit
+.PHONY: mlkit
+mlkit: mlkit_tools mlkit_runtime mlkit_kit
 
-.PHONY: mlkit_kit
-mlkit_kit: basics rp2ps tester kitbench mlbmake mllex-yacc
+.PHONY: mlkit_tools
+mlkit_tools: basics rp2ps tester kitbench mlbmake mllex-yacc
+
+.PHONY: mlkit_runtime
+mlkit_runtime: basics
 	$(MAKE) -C Runtime runtimeSystem.a
 	$(MAKE) -C Runtime runtimeSystemProf.a
 	$(MAKE) -C Runtime runtimeSystemGC.a
@@ -42,6 +46,9 @@ mlkit_kit: basics rp2ps tester kitbench mlbmake mllex-yacc
 #	$(MAKE) -C Runtime runtimeSystemGCTP.a
 #	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
 #	$(MAKE) -C Runtime runtimeSystemTag.a
+
+.PHONY: mlkit_kit
+mlkit_kit:
 	$(MLCOMP) -output mlkit Compiler/native.mlb
 	$(INSTALL) -p mlkit $(BINDIR)
 
