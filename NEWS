@@ -1,5 +1,14 @@
 MLKit NEWS file
 
+              **** MLKit version 4.3.9 is released ****
+
+ * mael 2016-03-12: Support for parallel builds using 'make -j'.
+
+ * mael 2016-03-12: Eliminated hard dependency on pdflatex.
+
+ * mael 2016-03-12: Modified KitTester to generate HTML reports
+   instead of pdf through LaTeX.
+
               **** MLKit version 4.3.8 is released ****
 
  * mael 2016-03-09: Fixed issue with assembler invocation on Mac OS X.
