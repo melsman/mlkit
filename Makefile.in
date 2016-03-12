@@ -78,19 +78,26 @@ mlkit_kitlibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof kitlib.mlb)
 
-smlserver_libs:
-	(cd basis && find . -name MLB -type d | xargs rm -rf)
+smlserver_libs: mlkit_cleanlibs
 	$(MAKE) smlserver_basislib
 	$(MAKE) smlserver_kitlib
 	$(MAKE) smlserver_weblib
 
-mlkit_libs:
+.PHONY: mlkit_cleanlibs
+mlkit_cleanlibs:
 	(cd basis && find . -name MLB -type d | xargs rm -rf)
+
+.PHONY: mlkit_libs
+mlkit_libs: mlkit_cleanlibs
 	$(MAKE) mlkit_basislibs
 	$(MAKE) mlkit_kitlibs
 
-smltojs_basislibs:
+.PHONY: smltojs_cleanlibs
+smltojs_cleanlibs:
 	(cd js/basis && find . -name MLB -type d | xargs rm -rf)
+
+.PHONY: smltojs_basislibs
+smltojs_basislibs: smltojs_cleanlibs
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c basis.mlb)
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c js.mlb)
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c rwp.mlb)

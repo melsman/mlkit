@@ -89,9 +89,9 @@ barry: basics mllex-yacc
 basics: genopcodes mlkit-mllex mlkit-mlyacc
 
 .PHONY: genopcodes
-genopcodes: $(GENOPCODES_TARGETS)
+genopcodes: $(BINDIR)/kitgen_opcodes
 
-$(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
+$(BINDIR)/kitgen_opcodes: $(GENOPCODES_SOURCES)
 	$(MKDIR) $(BINDIR)
 	$(MAKE) -C Tools/GenOpcodes BINDIR=../../$(BINDIR)
 # kitgen_opcodes assumes it's run from the src-directory
