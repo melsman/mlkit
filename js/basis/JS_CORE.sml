@@ -100,6 +100,22 @@ signature JS_CORE =
       val fromList : 'a T -> (string * 'a) list -> t
     end
 
+    structure TypedObjects : sig
+      type 'a j   (* any *)
+      type 'a o   (* objects *)
+      type 'a a   (* arrays *)
+      val /> : 'a o j * 'b o j -> ('a->'b) o j
+      val P : string -> 'a j -> 'a o j
+      val S : string -> string j
+      val I : int -> int j
+      val R : real -> real j
+      val B : bool -> bool j
+      val F : foreignptr -> foreignptr j
+      val A : 'a j list -> 'a a j
+      val objToFptr : 'a o j -> foreignptr
+      val arrToFptr : 'a a j -> foreignptr
+    end
+                           
   end
 
 (**

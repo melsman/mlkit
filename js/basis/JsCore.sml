@@ -120,4 +120,62 @@ structure JsCore :> JS_CORE =
         fun fromList t = List.foldl (fn ((k,v),a) => (set t a k v; a)) (empty())
     end
 
+    structure TypedObjects = struct
+        datatype j0 =
+                 S of string
+                 | I of int
+                 | R of real
+                 | B of bool
+                 | F of foreignptr
+                 | A of j0 list
+                 | P0 of string * j0
+                 | /> of j0 * j0
+        type 'a j = j0
+        type 'a o = unit
+        type 'a a = unit
+        fun P x y = P0 (x,y)
+                       
+        structure JArr = Array
+        structure JObj = Object
+                             
+        fun objToFptr j =
+            let val obj = JObj.empty()
+            in setProps obj j
+             ; obj
+            end
+        and setProps obj j =
+            case j of
+                P0(p,j) => setPropObj obj p j
+              | />(j1,j2)  => (setProps obj j1; setProps obj j2)
+              | _ => raise Fail "setProps expecting P or />"
+        and setPropObj obj p j =
+            case j of
+                S s => JObj.set string obj p s
+              | B b => JObj.set bool obj p b
+              | I i => JObj.set int obj p i
+              | R r => JObj.set real obj p r
+              | F f => JObj.set fptr obj p f
+              | P0 _ => setPropObj obj p (F(objToFptr j))
+              | /> _ => setPropObj obj p (F(objToFptr j))
+              | A _ => setPropObj obj p (F(arrToFptr j))
+        and arrToFptr j =
+            case j of
+                A js =>
+                let val arr = JArr.empty()
+                in List.app (pushArr arr) js
+                 ; arr
+                end
+              | _ => raise Fail "arrToFptr expects array"
+        and pushArr arr j =
+            case j of
+                S s => (JArr.push string arr s; ())
+              | B b => (JArr.push bool arr b; ())
+              | I i => (JArr.push int arr i; ())
+              | R r => (JArr.push real arr r; ())
+              | F f => (JArr.push fptr arr f; ())
+              | A _ => pushArr arr (F(arrToFptr j))
+              | _ => raise Fail "arrToFptr expects non-property"
+    
+    end
+                           
   end
