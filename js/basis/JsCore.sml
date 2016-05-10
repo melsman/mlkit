@@ -174,7 +174,7 @@ structure JsCore :> JS_CORE =
               | R r => (JArr.push real arr r; ())
               | F f => (JArr.push fptr arr f; ())
               | A _ => pushArr arr (F(arrToFptr j))
-              | _ => raise Fail "arrToFptr expects non-property"
+              | _ => pushArr arr (F(objToFptr j))
     
     end
                            
