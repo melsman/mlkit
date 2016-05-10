@@ -131,8 +131,8 @@ structure JsCore :> JS_CORE =
                  | P0 of string * j0
                  | /> of j0 * j0
         type 'a j = j0
-        type 'a o = unit
-        type 'a a = unit
+        type obj = unit
+        type 'a arr = unit
         fun P x y = P0 (x,y)
                        
         structure JArr = Array

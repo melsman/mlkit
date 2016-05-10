@@ -101,19 +101,19 @@ signature JS_CORE =
     end
 
     structure TypedObjects : sig
-      type 'a j   (* any *)
-      type 'a o   (* objects *)
-      type 'a a   (* arrays *)
-      val /> : 'a o j * 'b o j -> ('a->'b) o j
-      val P : string -> 'a j -> 'a o j
+      type 'a j    (* any *)
+      type obj     (* objects *)
+      type 'a arr  (* arrays *)
+      val /> : obj j * obj j -> obj j
+      val P : string -> 'a j -> obj j
       val S : string -> string j
       val I : int -> int j
       val R : real -> real j
       val B : bool -> bool j
       val F : foreignptr -> foreignptr j
-      val A : 'a j list -> 'a a j
-      val objToFptr : 'a o j -> foreignptr
-      val arrToFptr : 'a a j -> foreignptr
+      val A : 'a j list -> 'a arr j
+      val objToFptr : obj j -> foreignptr
+      val arrToFptr : 'a arr j -> foreignptr
     end
                            
   end
