@@ -1,0 +1,71 @@
+html, body {
+    height: 100%;
+}
+body {
+    margin: 0;
+}
+.dgrid-scroller {
+  overflow:auto;
+}
+.grid-add-row {
+  height:71px;
+}
+.grid-button .dijitButtonNode
+{
+   width: 60px;
+}
+.field-gid {
+    width: 50px;
+}
+.field-email,.field-name {
+    width: 200px;
+}
+.field-action, .heading-action {
+    align: center;
+    width: 105px;
+}
+.field-delete, .heading-delete {
+    align: center;
+    width: 105px;
+}
+/*
+.dgrid-row-odd {
+    background: #F2F5F9;
+}
+.dgrid-cell {
+    border: none;
+    vertical-align: middle;
+}
+.dgrid-row-even.ui-state-default { 
+        background-color: #F5F9FE; 
+} 
+.dgrid-row-odd.ui-state-default { 
+        background-color: #E1EEFB; 
+}
+*/
+.claro .ui-state-active { 
+    background-color: #B9D7F6; 
+} 
+.notify_area_content
+{
+    display: inline-block;
+    text-align: center;
+    padding-left:20px;
+    padding-right: 20px;
+    padding-top: 4px;
+    padding-bottom:4px;
+    border:2px solid;
+    border-radius:20px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index:1;
+}
+
+.notify_area
+{
+    width:100%;
+    text-align: center;    
+    position: absolute;
+    top:8px;
+    z-index:1;
+}

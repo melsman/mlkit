@@ -429,33 +429,60 @@ structure Dojo :> DOJO = struct
   fun numBox h : string editCon = stringFromRealBox "dijit/form/NumberTextBox" h
 *)
 
-  fun isISOdate s =
-      size s = 10 andalso String.sub(s,4) = #"-" andalso String.sub(s,4) = #"-" andalso
-      List.all (fn i => Char.isDigit(String.sub(s,i))) [0,1,2,3,5,6,8,9]
+  local
+    fun isISO s =
+        size s = 10 andalso String.sub(s,4) = #"-" andalso String.sub(s,4) = #"-" andalso
+        List.all (fn i => Char.isDigit(String.sub(s,i))) [0,1,2,3,5,6,8,9]
 
-  fun toISOstring s = JsCore.call1 ("dojo.date.stamp.toISOString",JsCore.string,JsCore.string) s
+    fun dateToISO (date : foreignptr) : string=
+        let val formatarg = JsCore.Object.fromList JsCore.string [("selector","date"),("datePattern","yyyy-MM-dd")]
+            val isostring = JsCore.call2 ("dojo.date.locale.format",JsCore.fptr,JsCore.fptr,JsCore.string) (date,formatarg)
+        in isostring
+        end
 
-  fun toISOstringShort s =
-      let val s = toISOstring s
-      in if size s > 10 then
-           let val s' = String.extract(s,0,SOME 10)
-           in if isISOdate s' then s'
-              else s
-           end
-         else s
-      end
+    fun localToISO s =
+        let val parsearg = JsCore.Object.fromList JsCore.string [("selector","date")]
+            val date = JsCore.call2 ("dojo.date.locale.parse",JsCore.string,JsCore.fptr,JsCore.fptr) (s,parsearg)
+        in dateToISO date
+        end
 
-  fun dateBox h : string editCon =
-      let fun fromString s =
-              if isISOdate s then SOME s
-              else SOME(toISOstringShort s)
-      in ({hash=h,required=true,file="dijit/form/DateTextBox",
-           fromString=fromString,
-           toString=fn s => s},
-          fn (a as {file=f,hash=h,required=r,...}) => JsUtil.mk_con f h r >>= (fn e => ret (e,a))
-         )
-      end
+    fun toISO s =
+        if isISO s then s
+        else localToISO s
+(*
+        else let val s = 
+             in if size s > 10 then
+                  let val s' = String.extract(s,0,SOME 10)
+                  in if isISOdate s' then s'
+                     else s
+                  end
+                else s
+             end
+*)
 
+    fun isoFullToDate s =
+        JsCore.exec1{arg1=("s",JsCore.string),res=JsCore.fptr,stmt="return new Date(Date.parse(s));"} s
+
+    fun toString s =
+        let val date = isoFullToDate s
+        in dateToISO date
+        end
+
+    fun fromString s = SOME(toISO s)            
+  in
+    fun dateBox h : string editCon =
+        ({hash=h,required=true,file="dijit/form/DateTextBox",
+          fromString=fromString,
+          toString=toString},
+         fn (a as {file=f,hash=h,required=r,...}) => 
+            let val h = mkHash h
+                val () = JsCore.Object.set JsCore.bool h "required" r
+                val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
+                val () = JsCore.Object.set JsCore.fptr h "constraints" c
+            in JsUtil.mk_con0 f h >>= (fn e => ret (e,a))
+            end
+        )
+  end
 
   fun orEmptyBox ({hash,file,fromString,toString,required},f) =
       ({hash=hash,required=false,file=file,
@@ -476,7 +503,7 @@ structure Dojo :> DOJO = struct
      in (transform a, fn x => (mk o inverse) x >>= (fn (e,a) => ret(e,transform a)))
      end
 
-  fun mkEditorArgs ({hash, required, fromString:string-> 'a option, ...}: 'a editConArg) : foreignptr =
+  fun mkEditorArgs ({hash, required, fromString:string-> 'a option, file, ...}: 'a editConArg) : foreignptr =
       let val h = mkHash hash
           val fromString = 
            if required then fn "" => NONE | s => fromString s
@@ -484,6 +511,11 @@ structure Dojo :> DOJO = struct
           val () = JsCore.Object.set JsCore.bool h "required" required
           val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (fn s => case fromString s of SOME _ => true 
                                                                                                                        | NONE => false)
+          val () = if file = "dijit/form/DateTextBox" then
+                     let val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
+                     in JsCore.Object.set JsCore.fptr h "constraints" c
+                     end
+                   else ()
       in h
       end
 
@@ -982,6 +1014,51 @@ structure Dojo :> DOJO = struct
         end)
         end))))))))))))
 
+    type s = foreignptr * string (* idProperty *)
+
+    fun memoryStore {idProperty} : s M =
+        require1 "dojo/_base/declare" >>= (fn declare =>
+        require1 "dstore/Trackable" >>= (fn Trackable =>
+        require1 "dstore/Memory" >>= (fn Memory =>
+        let val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
+            val storeArg = mkHash [("idProperty",idProperty)]
+            val store = new0 MemoryTrackableStore(storeArg)
+        in ret (store,idProperty)
+        end)))
+          
+    fun memoryStoreAdd ((s,_):s) vs : unit =
+        let fun addSync h : unit = JsCore.method1 JsCore.fptr JsCore.unit s "addSync" h
+        in List.app (addSync o mkHash) vs
+        end
+                 
+    fun mkFromStore {store=(store,idProperty),notify,notify_err} (colspecs:colspec list) : t M = 
+        require1 "dojo/_base/declare" >>= (fn declare =>
+        require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
+        require1 "dgrid/Keyboard" >>= (fn Keyboard =>
+        require1 "dijit/form/Button" >>= (fn Button =>
+        require1 "dgrid/extensions/ColumnHider" >>= (fn ColumnHider =>
+        require1 "dgrid/extensions/ColumnResizer" >>= (fn ColumnResizer =>
+        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
+        require1 "SummaryRow" >>= (fn SummaryRow => 
+        let val storeRef = ref store
+            fun getStore() = !storeRef
+            val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,ColumnResizer,ColumnHider,DijitRegistry,SummaryRow]
+            val fields = fieldsOfColspecs colspecs idProperty
+        in mkColumns (mkGridCol (notify,notify_err) Button idProperty fields getStore) colspecs >>= (fn columns =>
+        let val grid = mkGrid MyGrid {columns=columns,collection=store}
+            fun start() = JsCore.method0 JsCore.unit grid "startup"
+            open Js.Element infix &
+            val gridelem = domNode grid
+            val () = Js.setStyle gridelem ("height", "100%")
+            val () = Js.setStyle gridelem ("width", "100%")
+            fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
+            fun setCollection _ = raise Fail "Dojo.setCollection not supported for store-based grids"
+        in ret {elem=gridelem,getStore=getStore,startup=start,refresh=refresh,setCollection=setCollection,
+               setSort=setSort grid,
+               setSummary=setSummary grid}
+        end)
+        end))))))))
+
     fun startup ({startup=start,...}: t) : unit = start()
     fun refresh ({refresh=refr,...}: t) : unit = refr()
     fun setCollection ({setCollection=set,...}:t) {target:string} : unit = set target
@@ -990,6 +1067,7 @@ structure Dojo :> DOJO = struct
 
     val domNode : t -> Js.elem = fn {elem,...} => elem
     fun toStore ({getStore,...}: t) : foreignptr = getStore ()
+                 
   end
 
   structure Grid = struct
