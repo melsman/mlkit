@@ -153,9 +153,10 @@ signature DOJO = sig
     val refresh       : t -> unit
 
     type s
-    val memoryStore    : {idProperty:string} -> s M
-    val memoryStoreAdd : s -> (string*string)list list -> unit
-    val mkFromStore    : {store:s,notify:string->unit,notify_err:string->unit} -> colspec list -> t M
+    val memoryStore      : {idProperty:string} -> s M
+    val memoryStoreAdd   : s -> (string*string)list list -> unit
+    val memoryStoreClear : s -> unit
+    val mkFromStore      : {store:s,notify:string->unit,notify_err:string->unit} -> colspec list -> t M
   end
 
   structure Grid : sig
