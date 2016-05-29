@@ -1033,7 +1033,7 @@ structure Dojo :> DOJO = struct
 
     fun memoryStoreClear ((s,_):s) : unit =
         JsCore.exec1{arg1=("s",JsCore.fptr),res=JsCore.unit,
-                     stmt="s.query().forEach(function(item){s.remove(s.getIdentity(item));});"} s
+                     stmt="s.forEach(function(item){s.remove(s.getIdentity(item));});"} s
             
     fun mkFromStore {store=(store,idProperty),notify,notify_err} (colspecs:colspec list) : t M = 
         require1 "dojo/_base/declare" >>= (fn declare =>
