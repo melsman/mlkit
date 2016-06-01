@@ -434,7 +434,7 @@ structure Dojo :> DOJO = struct
         size s = 10 andalso String.sub(s,4) = #"-" andalso String.sub(s,4) = #"-" andalso
         List.all (fn i => Char.isDigit(String.sub(s,i))) [0,1,2,3,5,6,8,9]
 
-    fun dateToISO (date : foreignptr) : string=
+    fun dateToISO (date : foreignptr) : string =
         let val formatarg = JsCore.Object.fromList JsCore.string [("selector","date"),("datePattern","yyyy-MM-dd")]
             val isostring = JsCore.call2 ("dojo.date.locale.format",JsCore.fptr,JsCore.fptr,JsCore.string) (date,formatarg)
         in isostring
@@ -470,18 +470,30 @@ structure Dojo :> DOJO = struct
 
     fun fromString s = SOME(toISO s)            
   in
+
+  val dateToISO : foreignptr -> string = dateToISO
+  val isoFullToDate = isoFullToDate
+  
+  (* Notice that the intention is that, internally, all editors have
+     values that are represented as strings. Thus the
+     function toString should take a value and transform it into the
+     internal string representation. Similarly, the function
+     fromString should convert the internal representation into the
+     external representation. With respect to the dateTextBox control,
+     the internal representation, however, is *not* a string, thus, we
+     need toString and fromString values that represent it in the internal representation *)
+
     fun dateBox h : string editCon =
         ({hash=h,required=true,file="dijit/form/DateTextBox",
           fromString=fromString,
           toString=toString},
          fn (a as {file=f,hash=h,required=r,...}) => 
-            require1 "dojo/date/locale" >>= (fn _ =>
             let val h = mkHash h
                 val () = JsCore.Object.set JsCore.bool h "required" r
                 val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
                 val () = JsCore.Object.set JsCore.fptr h "constraints" c
             in JsUtil.mk_con0 f h >>= (fn e => ret (e,a))
-            end)
+            end
         )
   end
 
@@ -491,6 +503,9 @@ structure Dojo :> DOJO = struct
 
   fun isNull (s:string) : bool = JsCore.exec1{arg1=("s",JsCore.string),res=JsCore.bool,
                                               stmt="return (s==null);"} s
+
+  fun isNullFptr (s:foreignptr) : bool = JsCore.exec1{arg1=("s",JsCore.fptr),res=JsCore.bool,
+                                                      stmt="return (s==null);"} s
                                              
   fun optionBox ((a, mk): 'a editCon) : 'a option editCon = 
      let fun transform ({hash,required= _, file,fromString:string -> 'a option,toString:'a -> string}: 'a editConArg) : 'a option editConArg =
@@ -562,12 +577,38 @@ structure Dojo :> DOJO = struct
   structure Editor = struct
     type 'a t = 'a editor
     fun mk (a,f) = f a
-    fun getValue ((e,a) : 'a t) = case #fromString a (JsUtil.get "value" e) of SOME v => v 
-                                                                             | NONE => raise Fail "Editor.getValue"
-    fun getValueOpt ((e,a): 'a t) = let val v = JsUtil.get "value" e
-                                    in if isNull v then NONE else #fromString a v
-                                    end
-    fun setValue ((e,a) : 'a t) v = JsUtil.set "value" e (#toString a v)
+
+    local
+      fun getDateVal (e:foreignptr) : string =
+          let val obj = JsCore.Object.get JsCore.fptr e "value"
+          in if isNullFptr obj then ""
+             else dateToISO obj
+          end
+    in fun getValue ((e,a) : 'a t) =
+           let val s = case #file a of
+                           "dijit/form/DateTextBox" => getDateVal e
+                         | _ => JsUtil.get "value" e
+           in case #fromString a s of SOME v => v 
+                                    | NONE => raise Fail "Editor.getValue"
+           end
+       fun getValueOpt ((e,a): 'a t) =
+           let val v = case #file a of
+                        "dijit/form/DateTextBox" => getDateVal e
+                        | _ => JsUtil.get "value" e
+           in if isNull v then NONE else #fromString a v
+           end
+    end
+    fun setNull (e:foreignptr) (k:string) : unit =
+        JsCore.exec2{arg1=("obj",JsCore.fptr),arg2=("k",JsCore.string),res=JsCore.unit,
+                     stmt="obj.set(k,null);"} (e,k)
+    fun setValue ((e,a) : 'a t) v =
+        let val s = #toString a v
+        in case #file a of
+               "dijit/form/DateTextBox" =>
+               if s="" then setNull e "value"
+               else JsCore.method2 JsCore.string JsCore.fptr JsCore.unit e "set" "value" (isoFullToDate s)
+             | _ => JsUtil.set "value" e s
+        end
     fun setDisabled ((e,a): 'a t) b = JsCore.method1 JsCore.bool JsCore.unit e "setDisabled" b
     fun setReadOnly ((e,a): 'a t) b = setBoolProperty ("readOnly",b) e
     fun onChange (e : 'a t) (f: 'a -> unit) : unit = 
