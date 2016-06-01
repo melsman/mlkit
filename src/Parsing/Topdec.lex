@@ -107,8 +107,9 @@ HexDigit           = [0-9a-fA-F];
 HexInteger         = (\126)? "0x" {HexDigit}+;
 Word               = "0w" ("x" {HexDigit}+ | {Digit}+);
 DecInteger	   = {DecPosInteger} | {DecNegInteger};
-Real		   = ({DecInteger} "." {DecPosInteger} ("E" {DecInteger})?)
-		     | ({DecInteger} "E" {DecInteger});
+Exp            = [eE]{DecInteger};
+Real		   = ({DecInteger} "." {DecPosInteger} {Exp}?)
+			     | ({DecInteger} {Exp});
 NormalId	   = {Letter} ({Letter} | {Digit} | [_'])*;
 NormalIdOrOther   = "_IntInf" | "_export" | {NormalId};
 TyVar		   = "'" ({Letter} | {Digit} | [_'])*;
