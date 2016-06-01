@@ -475,13 +475,13 @@ structure Dojo :> DOJO = struct
           fromString=fromString,
           toString=toString},
          fn (a as {file=f,hash=h,required=r,...}) => 
+            require1 "dojo/date/locale" >>= (fn _ =>
             let val h = mkHash h
                 val () = JsCore.Object.set JsCore.bool h "required" r
-(*                val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
+                val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
                 val () = JsCore.Object.set JsCore.fptr h "constraints" c
-*)
             in JsUtil.mk_con0 f h >>= (fn e => ret (e,a))
-            end
+            end)
         )
   end
 
