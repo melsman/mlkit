@@ -676,7 +676,7 @@ structure Dojo :> DOJO = struct
     fun editspec ((arg,_):'a editCon) : editspec =
         {hash=fn()=>mkEditorArgs arg,file= #file arg}
             
-    type t = {elem: Js.elem, getStore: unit->foreignptr, startup: unit->unit, 
+    type t = {elem: Js.elem, getStore: unit->foreignptr, startup: unit->unit, setStore: foreignptr -> unit,
               refresh: unit->unit, setCollection: string->unit, setSort: string->unit, 
               setSummary : {field:string,elem:Js.elem}list -> unit}
 
@@ -932,8 +932,9 @@ structure Dojo :> DOJO = struct
                 in refresh()
                 end
         in ret {elem=gridelem,getStore=getStore,startup=start,refresh=refresh,setCollection=setCollection,
-               setSort=setSort grid,
-               setSummary=setSummary grid}
+                setStore=fn _ => notify_err "setStore action not supported on simple grids (only on memory grids)",
+                setSort=setSort grid,
+                setSummary=setSummary grid}
         end)
         end))))))))))))
 
@@ -1050,6 +1051,7 @@ structure Dojo :> DOJO = struct
             fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
         in ret {elem=elem,getStore=getStore,startup=start,refresh=refresh,
                 setCollection=fn _ => notify_err "setCollection action not supported on advanced grids",
+                setStore=fn _ => notify_err "setStore action not supported on advanced grids (only on memory grids)",
                 setSort=setSort grid,
                 setSummary=setSummary grid}
         end)
@@ -1076,7 +1078,7 @@ structure Dojo :> DOJO = struct
     fun memoryStoreClear ((s,_):s) : unit =
         JsCore.exec1{arg1=("s",JsCore.fptr),res=JsCore.unit,
                      stmt="s.forEach(function(item){s.remove(s.getIdentity(item));});"} s
-            
+
     fun mkFromStore {store=(store,idProperty),notify,notify_err} (colspecs:colspec list) : t M = 
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
@@ -1099,12 +1101,16 @@ structure Dojo :> DOJO = struct
             val () = Js.setStyle gridelem ("width", "100%")
             fun refresh() = JsCore.method0 JsCore.unit grid "refresh"
             fun setCollection _ = raise Fail "Dojo.setCollection not supported for store-based grids"
+            fun setStore grid store = JsCore.method2 JsCore.string JsCore.fptr JsCore.unit grid "set" "collection" store
         in ret {elem=gridelem,getStore=getStore,startup=start,refresh=refresh,setCollection=setCollection,
-               setSort=setSort grid,
-               setSummary=setSummary grid}
+                setStore=setStore grid,
+                setSort=setSort grid,
+                setSummary=setSummary grid}
         end)
         end))))))))
 
+    fun setMemoryStore (grid:t) ((store,_):s) : unit = #setStore grid store
+                 
     fun startup ({startup=start,...}: t) : unit = start()
     fun refresh ({refresh=refr,...}: t) : unit = refr()
     fun setCollection ({setCollection=set,...}:t) {target:string} : unit = set target

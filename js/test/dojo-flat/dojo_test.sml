@@ -46,7 +46,12 @@ val () = print "<link rel='stylesheet' href='dijit/themes/claro/claro.css'>"
 val () = print "<link rel='stylesheet' href='dojo-theme-flat/CSS/dojo/flat.css'>"
 val () = print "<link rel='stylesheet' href='dojo-theme-flat/CSS/dgrid/css/dgrid.css'>"
 val () = print "<link rel='stylesheet' href='dojo-theme-flat/CSS/dgrid/css/skins/skin.css'>"
-
+           
+(*
+val () = print "<link rel='stylesheet' href='Esri-dojo-theme-flat-4e1fdb1/CSS/dojo/flat.css'>"
+val () = print "<link rel='stylesheet' href='Esri-dojo-theme-flat-4e1fdb1/CSS/dgrid/css/dgrid.css'>"
+val () = print "<link rel='stylesheet' href='Esri-dojo-theme-flat-4e1fdb1/CSS/dgrid/css/skins/skin.css'>"
+*)               
 val () = print "<link rel='stylesheet' href='mydojo.css'>"
 val () = print "<body class='claro' id='body'></body>"
 
