@@ -199,9 +199,11 @@ val uploadM =
     end
 
 fun mkBox t e =
-    pane [] e >>= (fn p =>
-    titlePane [("title",t)] p)
+    pane [] e >>= (titlePane [("title",t)])
 
+fun mkBoxNoTitle e =
+    pane [] e >>= (titlePane [])
+         
 fun c2f v = 1.8 * v + 32.0
 fun c2k v = v + 273.15
 
@@ -247,14 +249,14 @@ val m =
   mkBox "Box1" ($"Yes") >>= (fn b1 =>
   mkBox "Box2" ($"Yes") >>= (fn b2 =>
   mkBox "Box3" ($"Yes") >>= (fn b3 =>
-  mkBox "Box4" ($"Yes") >>= (fn b4 =>
+  mkBoxNoTitle ($"Yes") >>= (fn b4 =>
   mkBox "Box5" ($"Yes") >>= (fn b5 =>
   tableContainer [("title","Tiles"),("cols","2"),("showLabels","false"),("spacing","5")] {showLabels=false} [b1,b2,b3,b4,b5] >>= (fn tableWidget =>
   pane [("title","The vissible strict tab-page")] ($"here we go...") >>= (fn strict =>
   let val lazy1 = pane [("title","Lazy1")] ($"Yes Madame")
       val lazy2 = pane [("title","Lazy2")] ($"Yes Sir")
   in
-    lazyTabContainer [("title", "I'm Lazy")] (strict,[("Lazy1",SOME EditorIcon.print,lazy1),("Lazy2",NONE,lazy2)]) >>= (fn lazyWidget =>
+    lazyTabContainer [("title", "I'm Lazy")] (strict,[("Lazy1",SOME EditorIcon.print,lazy1),("Lazy2",NONE,lazy2)]) >>= (fn (lazyWidget,_) =>
     tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac,tableWidget,lazyWidget] >>= (fn tc =>
     borderContainer [("region","center"),
                      ("style", "height: 100%; width: 100%;")] [tc,botpane] >>= (fn ibc =>

@@ -272,20 +272,21 @@ structure Dojo :> DOJO = struct
                    arg2=("f",JsCore.==>(JsCore.unit,JsCore.unit)),
                    res=JsCore.unit} (w,f)
 
-  fun runthem nil = ret nil
-    | runthem (x::xs) = x >>= (fn x' => runthem xs >>= (fn xs' => ret (x'::xs')))
-
+  fun runthemKeys nil = ret nil
+    | runthemKeys ((k,x)::xs) = x >>= (fn x' => runthemKeys xs >>= (fn xs' => ret ((k,x')::xs')))
+                          
   fun appi f xs =
       let fun ai f i nil = ()
             | ai f i (x::xs) = (f(x,i);ai f (i+1) xs)
       in ai f 0 xs
       end
 
-  fun lazyTabContainer (h:hash) (w,wMs) : widget M =
+  fun lazyTabContainer (h:hash) (w,wMs) : (widget*{select:string->unit}) M =
       let val dummy_wMs = List.map (fn (title,icon,_) => 
-                                       pane ([("title",title),("style","margin:0;border:0;padding:0;")]@
+                                        (title,
+                                         pane ([("title",title),("style","margin:0;border:0;padding:0;")]@
                                              (case icon of SOME ic => [ic]
-                                                         | NONE => [])) (Js.Element.$"")) wMs
+                                                         | NONE => [])) (Js.Element.$""))) wMs
           fun onShow w i bs () =
               let val r = List.nth (bs,i)
               in if !r then ()
@@ -298,10 +299,14 @@ structure Dojo :> DOJO = struct
                       end
               end
           val bs = List.map (fn _ => ref false) wMs
-      in runthem dummy_wMs >>= (fn ws =>
-         tabContainer h (w::ws) >>= (fn tabs =>
-         (appi (fn (w,i) => set_onShow w (onShow w i bs)) ws;
-          ret tabs)))
+          fun select tabs ws0 s =
+              List.app (fn (k,w) => if k = s then selectChild tabs w else ()) ws0
+      in runthemKeys dummy_wMs >>= (fn ws0 =>
+         let val ws = List.map #2 ws0
+         in tabContainer h (w::ws) >>= (fn tabs =>
+            (appi (fn (w,i) => set_onShow w (onShow w i bs)) ws;
+             ret (tabs,{select=select tabs ws0})))
+         end)
       end
 
   structure Menu = struct
