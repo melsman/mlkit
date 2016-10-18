@@ -55,75 +55,89 @@ be one of the following:
 1. MLton >= 20051202. A link to the home page for MLton is available
    from the MLKit home page. The command sml should be available from
    the prompt:
-
-       $ mlton
-       MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
+````bash
+$ mlton
+MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
+````
 
 1. A working MLKit compiler >= 4.3.0. The command mlkit should be
    available from the prompt:
-
-       $ mlkit -V
-       MLKit version 4.3.0, Jan 25, 2006 [X86 Backend]
+````bash
+$ mlkit -V
+MLKit version 4.3.0, Jan 25, 2006 [X86 Backend]
+````
 
 Moreover, `gcc` is needed for compiling the runtime system and related
 tools.
 
 ## Compilation
 
-After having checked out the sources from Github, execute the command:
- 
-    $ ./autobuild
+After having checked out the sources from Github, execute the command: 
+````bash
+$ ./autobuild
+````
 
 Now, `cd` to the toplevel directory of the repository. Execute the commands
 under (1) or (2):
 
 1. Compile with MLton alone (Tested with 3Gb RAM)
-        $ ./configure 
-        $ make mlkit
+````bash
+$ ./configure 
+$ make mlkit
+````
 
 2. Compile with existing MLKit (Tested with 1Gb RAM)
-        $ ./configure --with-compiler=mlkit
-        $ make mlkit
+````bash
+$ ./configure --with-compiler=mlkit
+$ make mlkit
+````
 
 If you later want to install the MLKit in your own home directory, you
 should also pass the option `--prefix=$HOME/mlkit` to `./configure` above.
 
 For binary packages, we use
-
-    $ ./configure --sysconfdir=/etc --prefix=/usr
+````bash
+$ ./configure --sysconfdir=/etc --prefix=/usr
+````
 
 ## Bootstrapping (optional - works with 1Gb RAM)
 
 This step is optional. If you want the resulting executable compiler
 to be bootstrapped (compiled with itself), execute the command:
 
-    $ make bootstrap
+````bash
+$ make bootstrap
+````
 
 Be aware that this step takes some time.
 
 ## Pre-compile Basis Library and Kit-Library
 
 Execute the following command:
-
-    $ make mlkit_libs
+````bash
+$ make mlkit_libs
+````
 
 ## Installation
 
 For a system wide installation of the MLKit, installation including
 man-pages and tools, execute the command:
-
-    $ sudo make install
+````bash
+$ sudo make install
+````
 
 For a personal installation, with `--prefix=$HOME/mlkit` given to
 `./configure`, execute the following command:
-
-    $ make install
+````bash
+$ make install
+````
 
 ## Making a Binary Package
 
 To build a binary package, execute the command
-
-    $ make mlkit_i386_tgz
+````bash
+$ make mlkit_i386_tgz
+````
 
 This command leaves a package `mlkit-X.Y.Z-i386.tgz` in the `dist/`
 directory. For building a binary package, the installation step above
@@ -133,15 +147,17 @@ is not needed and the bootstrapping step is optional.
 
 To test the installation, copy the directory `/usr/share/mlkit/kitdemo` to
 somewhere in your own directory, say `$HOME/kitdemo`:
-
-    $ cp -a /usr/share/mlkit/kitdemo $HOME/kitdemo
-    $ cd $HOME/kitdemo
-    $ mlkit helloworld.sml
+````bash
+$ cp -a /usr/share/mlkit/kitdemo $HOME/kitdemo
+$ cd $HOME/kitdemo
+$ mlkit helloworld.sml
+````
 
 The MLKit should produce an executable file `run`:  
-
-    $ ./run
-    hello world
+````bash
+$ ./run
+hello world
+````
 
 ## More Information
 
@@ -181,18 +197,21 @@ We assume that MLton >= 20051202 is installed on the system as
 described above.
 
 After having checked out the sources from Github, execute the command:
- 
-    $ ./autobuild
+````bash
+$ ./autobuild
+````
 
 To compile and install the MLKit, execute the following commands:
-
-    $ ./configure
-    $ make mlkit
-    $ make bootstrap             
-    $ make mlkit_libs
+````bash
+$ ./configure
+$ make mlkit
+$ make bootstrap             
+$ make mlkit_libs
+````
 
 To install the MLKit and related tools, execute:
-
-    $ sudo make install
+````bash
+$ sudo make install
+````
 
 See the section "Try It" above to test the installation.
