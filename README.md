@@ -52,19 +52,17 @@ platform, with a little tweaking.
 To compile the MLKit, a Standard ML compiler is needed, which needs to
 be one of the following:
 
-1. MLton >= 20051202. A link to the home page for MLton is available
-   from the MLKit home page. The command sml should be available from
-   the prompt:
-  ````bash
-  $ mlton
-  MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
-  ````
-1. A working MLKit compiler >= 4.3.0. The command mlkit should be
-   available from the prompt:
-  ````bash
-  $ mlkit -V
-  MLKit version 4.3.0, Jan 25, 2006 [X86 Backend]
-  ````
+__[MLton](http://mlton.org) >= 20051202:__
+````bash
+$ mlton
+MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
+````
+
+__A working MLKit compiler >= 4.3.0:__
+````bash
+$ mlkit -V
+MLKit version 4.3.0, Jan 25, 2006 [X86 Backend]
+````
 
 Moreover, `gcc` is needed for compiling the runtime system and related
 tools.
@@ -76,19 +74,20 @@ After having checked out the sources from Github, execute the command:
 $ ./autobuild
 ````
 
-Now, `cd` to the toplevel directory of the repository. Execute the commands
-under (1) or (2):
+Now, `cd` to the toplevel directory of the repository and execute the
+appropriate set of commands:
 
-1. Compile with MLton alone (Tested with 3Gb RAM)
-   ````bash
-   $ ./configure 
-   $ make mlkit
-   ````
-2. Compile with existing MLKit (Tested with 1Gb RAM)
-   ````bash
-   $ ./configure --with-compiler=mlkit
-   $ make mlkit
-   ````
+__Compile with MLton alone (Tested with 3Gb RAM):__
+````bash
+$ ./configure 
+$ make mlkit
+````
+
+__Compile with existing MLKit (Tested with 1Gb RAM):__
+````bash
+$ ./configure --with-compiler=mlkit
+$ make mlkit
+````
 
 If you later want to install the MLKit in your own home directory, you
 should also pass the option `--prefix=$HOME/mlkit` to `./configure` above.
