@@ -1,0 +1,23 @@
+language: c
+
+sudo: true
+
+addons:
+  apt:
+    packages:
+    - libgmp-dev
+    - libc6:i386
+
+before_install:
+ - sudo apt-get -qq update
+ - sudo apt-get install -y gcc gcc-multilib mlton autoconf make
+ 
+install:
+ - ./autobuild
+ - ./configure
+ - make mlkit
+ - make mlkit_libs
+ - sudo make install
+
+script:
+ - cd test && make test_mlkit
