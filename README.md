@@ -78,12 +78,12 @@ Now, `cd` to the toplevel directory of the repository. Execute the commands
 under (1) or (2):
 
 1. Compile with MLton alone (Tested with 3Gb RAM)
-       $ ./configure 
-       $ make mlkit
+        $ ./configure 
+        $ make mlkit
 
 2. Compile with existing MLKit (Tested with 1Gb RAM)
-       $ ./configure --with-compiler=mlkit
-       $ make mlkit
+        $ ./configure --with-compiler=mlkit
+        $ make mlkit
 
 If you later want to install the MLKit in your own home directory, you
 should also pass the option `--prefix=$HOME/mlkit` to `./configure` above.
@@ -103,7 +103,7 @@ Be aware that this step takes some time.
 
 ## Pre-compile Basis Library and Kit-Library
 
-Execute the following commands:
+Execute the following command:
 
     $ make mlkit_libs
 
@@ -115,7 +115,7 @@ man-pages and tools, execute the command:
     $ sudo make install
 
 For a personal installation, with `--prefix=$HOME/mlkit` given to
-`./configure`, execute the following commands:
+`./configure`, execute the following command:
 
     $ make install
 
