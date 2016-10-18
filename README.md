@@ -1,22 +1,29 @@
 ## The MLKit
 
-The MLKit is a compiler for the programming language Standard ML. The
+The [MLKit](http://www.elsman.com/mlkit) is a compiler for the programming language Standard ML. The
 MLKit covers all of Standard ML, as defined in the 1997 edition of the
 Definition of Standard ML and supports most of the Standard ML Basis
 Library.
 
+## Statistics
+
+[![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/pr)](http://issuestats.com/github/melsman/mlkit)
+[![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/issue)](http://issuestats.com/github/melsman/mlkit)
+[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
+
 ## Features:
 
 * Covers all of Standard ML. The MLKit compiles all of Standard ML,
-  including Modules, as specified by the Definition of Standard
-  ML. The MLKit also supports large parts of the Standard ML Basis
-  Library.
+  [including Modules](http://www.elsman.com/mlkit/staticinterp.html),
+  as specified by the Definition of Standard ML. The MLKit also
+  supports large parts of the [Standard ML Basis Library](http://www.elsman.com/mlkit/basis.html).
 
-* Supports ML Basis Files: The MLKit compiles large programs,
-  including itself, around 80.000 lines of Standard ML plus the
+* Supports [ML Basis Files](http://www.elsman.com/mlkit/mlbasisfiles.html):
+  The MLKit compiles large programs,
+  [including itself](http://www.elsman.com/mlkit/bootstrap.html), around 80.000 lines of Standard ML plus the
   Standard ML Basis Library. The support for ML Basis Files makes it
   easy to compile a program with different Standard ML
-  compilers. Currently, both MLton and the MLKit supports the concept
+  compilers. Currently, both [MLton](http://mlton.org) and the MLKit supports the concept
   of ML Basis Files.
  
 * Region-Based Memory Management: Memory allocation directives (both
@@ -31,9 +38,10 @@ Library.
 
 * Native backend for the x86 architecture.
 
-* Documentation. A comprehensive guide on programming with the MLKit
-  is available in the doc/ directory. Documentation is also available
-  in man-pages and from the MLKit home page http://melsman.github.io/mlkit
+* [Documentation](http://www.elsman.com/mlkit/doc.html). A
+  comprehensive guide on programming with the MLKit is
+  available. Documentation is also available in man-pages and from the
+  [MLKit home page](http://melsman.github.io/mlkit).
 
 ## License and Copyright
 
@@ -157,21 +165,15 @@ hello world
 
 ## More Information
 
-See the MLKit home page http://melsman.github.io/mlkit.
+See the [MLKit home page](http://melsman.github.io/mlkit).
 
 Documentation for the MLKit is located in the directories `doc/mlkit`
 and `man/man1`. License information is located in the file
 `doc/license/MLKit-LICENSE`.
 
-## VCG
-
-The VCG tool, which is used to show region flow graphs, can be found
-at http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
-
 ## Comments and Bug Reports
 
-Please see the MLKit home page for a list of known bugs and
-limitations. To file a bug-report, create an issue at the Github page.
+The MLKit has a number of [known bugs and limitations](http://www.elsman.com/mlkit/bugs.html). To file a bug-report, create an issue at the Github page.
 
 ## Appendix A: Directory Structure of the Sources
 
@@ -211,3 +213,8 @@ $ sudo make install
 ````
 
 See the section "Try It" above to test the installation.
+
+## Appendix C: Displaying Region Flow Graphs with VCG
+
+The [VCG tool](http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html) can be used to show region flow graphs.
+
