@@ -11,7 +11,7 @@ Library.
 [![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/issue)](http://issuestats.com/github/melsman/mlkit)
 [![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
 
-## Features:
+## Features
 
 * Covers all of Standard ML. The MLKit compiles all of Standard ML,
   [including Modules](http://www.elsman.com/mlkit/staticinterp.html),

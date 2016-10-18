@@ -1,16 +1,16 @@
 language: c
 
+os:
+ - linux
+ - osx
+
 sudo: true
 
-addons:
-  apt:
-    packages:
-    - libgmp-dev
-    - libc6:i386
-
 before_install:
- - sudo apt-get -qq update
- - sudo apt-get install -y gcc gcc-multilib mlton autoconf make
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc mlton autoconf make ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc gcc-multilib mlton autoconf make ; fi
  
 install:
  - ./autobuild
