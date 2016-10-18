@@ -22,7 +22,7 @@ MLKit is supported only on UNIX platforms, including MacOS and Linux.
 
 ### Download
 
-To get the latest version of the sources, issue the following git command:
+To get the latest version of the sources, issue the following `git` command:
 
     git clone https://github.com/melsman/mlkit.git
 
@@ -30,7 +30,7 @@ For older versions of the MLKit, you may browse the [list of releases](https://g
 
 ### Installation
 
-To install the MLKit, see the [README](https://github.com/melsman/mlkit/blob/master/README) file.
+To install the MLKit, see the [README](https://github.com/melsman/mlkit/blob/master/README.md) file.
 
 ### Very old versions of the MLKit
 
