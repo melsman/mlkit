@@ -15,7 +15,7 @@ before_install:
 install:
  - ./autobuild
  - ./configure
- - make mlkit
+ - travis_wait 30 make mlkit
  - make mlkit_libs
  - sudo make install
 
