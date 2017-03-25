@@ -35,8 +35,8 @@
 // size field in table is the size in words (excluding tag), size
 // field in string is the size in bytes (excluding tag)
 
-#define is_string(x)        (tag_kind(x) == TAG_STRING) 
-#define is_table(x)         (tag_kind(x) == TAG_TABLE) 
+#define is_string(x)        (tag_kind(x) == TAG_STRING)
+#define is_table(x)         (tag_kind(x) == TAG_TABLE)
 
 #define val_tag_string(s)   (gen_string_tag((s),0,1))
 #define get_string_size(s)  ((s) >> 6)
@@ -71,7 +71,7 @@
 #define FALSE 0
 
 /*----------------------------------------------------------------*
- * Converting integers.                                           * 
+ * Converting integers.                                           *
  *----------------------------------------------------------------*/
 
 #define i32ub_to_i31(i)   (((i) << 1) + 1)
@@ -79,7 +79,7 @@
 
 #ifdef TAG_VALUES
 #define convertIntToC(i)  ((i) >> 1)
-#define convertIntToML(i) (((i) << 1) + 1)
+#define convertIntToML(i) (signed int)(((unsigned int)(i) << 1) + 1)
 #define get_i32b(b)       (* (((size_t *)b)+1))
 #define set_i32b_tag(b)   (* (size_t *)(b) = val_tag_i32b)
 #else
@@ -88,7 +88,7 @@
 #endif
 
 /*----------------------------------------------------------------*
- * Tagging Scalars (used for non ML values)                       * 
+ * Tagging Scalars (used for non ML values)                       *
  *----------------------------------------------------------------*/
 #ifdef TAG_VALUES
 #define tag_scalar(s)      (((size_t)(s)) | 1)
@@ -101,10 +101,10 @@
 #define check_tag_scalar(s)  {if ((((size_t)(s)) | 1) == ((size_t)(s))) {die("Tagging.h:check tag scalar failed");} else {}}
 
 /*----------------------------------------------------------------*
- * Converting reals.                                              * 
+ * Converting reals.                                              *
  *----------------------------------------------------------------*/
 
-/* extract double from storable value. 
+/* extract double from storable value.
  * get_d may be used as l-value as well. */
 
 #ifdef TAG_VALUES
@@ -135,13 +135,13 @@
   ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
   realPtr = (uintptr_t *)(((ObjectDesc *)realPtr)+1); \
 }
-#else 
+#else
 #define allocReal(realRho, realPtr) {realPtr = (uintptr_t *) alloc(realRho,2);}
 #endif
 #endif
 
 /*----------------------------------------------------------------*
- * Converting booleans.                                           * 
+ * Converting booleans.                                           *
  *----------------------------------------------------------------*/
 #define convertBoolToC(i)  ((i) >> 1)
 #define convertBoolToML(i) (((i) << 1) + 1)
@@ -153,7 +153,7 @@
 #define convertUnitToML(u) (mlUNIT)
 
 /*----------------------------------------------------------------*
- * Converting records.                                            * 
+ * Converting records.                                            *
  *   mlTagRecordML: Store tag in record at address recAddr.       *
  *   storeElemRecordML: mem[recAddr+offset]=mlVal, where mlVal    *
  *                      has to be the value in ML representation. *
