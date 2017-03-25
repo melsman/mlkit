@@ -8,7 +8,7 @@ test_mlkit: prepare
 
 test_mlkit_no_gc:
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
-	/bin/mv test_report.html test_report-native-gc-$(DATE).html
+	/bin/mv test_report.html test_report-native-nogc-$(DATE).html
 
 test_mlkit_gengc:
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gengc)
