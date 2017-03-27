@@ -4,12 +4,12 @@ open Dojo infix >>=
 fun log s = JsCore.call1 ("console.log",JsCore.string,JsCore.unit) s
 
 local val postruns = ref nil
-in fun postruns_add s f = 
+in fun postruns_add s f =
        (log ("[postruns_add(" ^ s ^ ") begin]\n");
         postruns := f :: !postruns;
         log "[postruns_add end]\n")
-        
-   fun postruns_run () = 
+
+   fun postruns_run () =
        let val xs = !postruns
        in (log ("[running " ^ Int.toString(List.length xs) ^ " postruns begin]\n"); List.app (fn s => s()) xs; log "[running postruns end]\n")
        end
@@ -55,8 +55,8 @@ val gridData =
      [("first","Grethe"),("last","Hansen"),("age", "25")],
      [("first","Jens"),("last","Ulrik"),("age", "8")]]
 
-val gridM = 
-    Grid.mk [("sort","last"),("className","dgrid-autoheight")] 
+val gridM =
+    Grid.mk [("sort","last"),("className","dgrid-autoheight")]
             [("first", "First Name"),
              ("last", "Last Name"),
              ("age", "Age")]
@@ -114,17 +114,22 @@ fun form theform username password age birthdate evennum fselect button tempc te
 
 fun parseEmail s = if s = "mael@diku.dk" then SOME s else NONE
 
+fun currencyBox h = orEmptyBox(filterSelectBox h true [{id="eur",name="EUR"},{id="dkk",name="DKK"},{id="usd",name="USD"}])
+fun prettyCur "eur" = $"EUR"
+  | prettyCur "usd" = $"USD"
+  | prettyCur "dkk" = $"DKk"
+  | prettyCur _ = $"OTHER"
 fun restGrid addRow =
   let open RestGrid
       val colspecs = [hidden true (valueColspec {field="gid",label="gid",editor=NONE,typ=INT}),
                       hidden true (valuePrettyColspec {field="name",label="Name (with stuff)",editor=SOME(textBox[]),typ=STRING,pretty=fn s => $("name: " ^ s)}),
                       valueColspec {field="name",label="Name",editor=SOME(textBox[]),typ=STRING},
                       unhidable true (valueColspec {field="email",label="Email",editor=SOME(validationBox[]{fromString=parseEmail,toString=fn s => s}),typ=STRING}),
-                      valueColspec {field="comments",label="Comments",editor=SOME(textBox[("style","width:100%;")]),typ=STRING},
-                      actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn look => runDialog "Print" ($("Go to the printer... Pick up job " ^ 
+                      valuePrettyColspec {field="comments",label="Comments",pretty=prettyCur,editor=SOME(currencyBox[("style","width:100%;")]),typ=STRING},
+                      actionColspec {label="Action",button={label="Print",icon=SOME EditorIcon.print},onclick=fn look => runDialog "Print" ($("Go to the printer... Pick up job " ^
                                                                                                                                               look "gid" ^ "..."))},
                       deleteColspec {label="Delete/Add",button={label="Delete",icon=SOME EditorIcon.delete}}]
-      val target = "http://localhost:8080/rest/guests/"
+      val target = "http://localhost:8081/rest/guests/"
       fun restrictFn g s = setCollection g {target=target ^ "?q(name)=" ^ s}
   in RestGrid.mk {target=target, headers=nil,idProperty="gid", addRow=addRow,notify=Notify.notify,notify_err=Notify.notify_err} colspecs >>= (fn rg =>
      (postruns_add "RestGrid.startup" (fn () => startup rg);
@@ -135,12 +140,12 @@ fun panes rg rg_ro n =
     if n = 0 then ret []
     else let val style = [("style","padding:0;border:0;margin:0;")]
              val (e,s) = case n of
-                             2 => (rg,style) 
+                             2 => (rg,style)
                            | 3 => let val (rg,restrictFn) = rg_ro
                                       val button = taga0 "input" [("type","button"),("value","Get the records with 'art' in the name!")]
                                       val () = Js.installEventHandler button Js.onclick (fn () => (restrictFn "%art%"; true))
                                       val e = mkFlexBox3 ($"The grid") button rg
-                                  in (e,style) 
+                                  in (e,style)
                                   end
                            | _ => (Js.Element.$"",[])
          in pane (s@[("title", "Tab" ^ Int.toString n),EditorIcon.newPage]) e >>= (fn p =>
@@ -160,9 +165,9 @@ val uploadM =
             (UploadFile.reset uploader;
              runDialog "Upload error" ($"Some error happened during upload - maybe the file was too big or of the wrong type..."))
         fun uploadHandler uploader () =
-          (UploadFile.upload uploader [("besked","hej")]) 
+          (UploadFile.upload uploader [("besked","hej")])
           handle _ => (UploadFile.reset uploader; runDialog "error" ($"Something went wrong"))
-    in UploadFile.mk [("label","Pick a File"),("showInput","before")] {name="uploadfile", url="http://localhost:8080/uploadfile.sml",
+    in UploadFile.mk [("label","Pick a File"),("showInput","before")] {name="uploadfile", url="http://localhost:8081/uploadfile.sml",
                                                                        multiple=false,uploadOnSelect=false} >>= (fn uploader =>
        (UploadFile.onComplete uploader onComplete;
         UploadFile.onError uploader (onError uploader);
@@ -223,7 +228,7 @@ val m =
   let val lazy1 = pane [("title","Lazy1")] ($"Yes Madame")
       val lazy2 = pane [("title","Lazy2")] ($"Yes Sir")
   in
-    lazyTabContainer [("title", "I'm Lazy")] (strict,[("Lazy1",SOME EditorIcon.print,lazy1),("Lazy2",NONE,lazy2)]) >>= (fn lazyWidget =>
+    lazyTabContainer [("title", "I'm Lazy")] (strict,[("Lazy1",SOME EditorIcon.print,lazy1),("Lazy2",NONE,lazy2)]) >>= (fn (lazyWidget,_) =>
     tabContainer [("region","center"),("tabPosition","bottom")] [p1,p2,gridWidget,ac,tableWidget,lazyWidget] >>= (fn tc =>
     borderContainer [("region","center"),
                      ("style", "height: 100%; width: 100%;")] [tc,botpane] >>= (fn ibc =>
@@ -241,7 +246,7 @@ fun setWindowOnload (f: unit -> unit) : unit =
              res=unit} f
     end
 
-val () = setWindowOnload (fn () => (attachToElement (getElem "body") m (fn () => 
+val () = setWindowOnload (fn () => (attachToElement (getElem "body") m (fn () =>
                                                                            (postruns_run();
                                                                             Js.appendChild (getElem "body") Notify.notifyAreaElem))))
 end

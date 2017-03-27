@@ -1,7 +1,7 @@
 
 structure Dojo :> DOJO = struct
   type icon = string * string
-  type hash = (string * string) list   
+  type hash = (string * string) list
   type widget = foreignptr
 
   fun log s = JsCore.call1 ("console.log",JsCore.string,JsCore.unit) s
@@ -18,7 +18,7 @@ structure Dojo :> DOJO = struct
   fun mapM f nil = ret nil
     | mapM f (x::xs) = f x >>= (fn y => mapM f xs >>= (fn ys => ret(y::ys)))
 
-  val require0 : unit M = 
+  val require0 : unit M =
    fn (f:unit->unit) =>
       JsCore.exec1 {stmt="require(['dojo/domReady!'],f);",
                     arg1=("f",unit2unit_T),
@@ -44,9 +44,9 @@ structure Dojo :> DOJO = struct
     fun WhenE t =
       require1 "dojo/when" >>= (fn whenF =>
       ret (fn (promise,ok,err) =>
-              JsCore.exec4 {arg1=("when",JsCore.fptr), arg2=("p",JsCore.fptr), 
-                            arg3=("ok",JsCore.==>(t,JsCore.unit)), 
-                            arg4=("err",JsCore.==>(JsCore.string,JsCore.unit)), 
+              JsCore.exec4 {arg1=("when",JsCore.fptr), arg2=("p",JsCore.fptr),
+                            arg3=("ok",JsCore.==>(t,JsCore.unit)),
+                            arg4=("err",JsCore.==>(JsCore.string,JsCore.unit)),
                             res=JsCore.unit, stmt="when(p,ok,function(obj) { return err(JSON.parse(obj.response.data).error); });"} (whenF,promise,ok,err)))
   end
 
@@ -67,7 +67,7 @@ structure Dojo :> DOJO = struct
         val thunks : (unit -> unit) list option ref = ref (SOME nil)
 
   in fun attachToElement (e: Js.elem) (m : widget M) (k:unit->unit): unit =   (* run *)
-         let fun f() = require0(fn () => m(fn c => (Js.appendChild e (domNode c); 
+         let fun f() = require0(fn () => m(fn c => (Js.appendChild e (domNode c);
                                                     startup c;
                                                     k())))
          in case !thunks of
@@ -94,7 +94,7 @@ structure Dojo :> DOJO = struct
                       else JsCore.exec0 {stmt="this.dojoConfig = {parseOnLoad: true};",
                                          res=JsCore.unit} ()
              fun exec() =
-                 require0(fn () => m(fn c => (Js.appendChild e (domNode c); 
+                 require0(fn () => m(fn c => (Js.appendChild e (domNode c);
                                               startup c;
                                               k())))
          in if !dojoLoaded then exec()
@@ -108,7 +108,7 @@ structure Dojo :> DOJO = struct
 
   fun mkHash h = JsCore.Object.fromList JsCore.string h
 
-  fun new0 c arg = 
+  fun new0 c arg =
       let val obj = JsCore.exec2{stmt="return new c(h);", arg1=("c",JsCore.fptr), arg2=("h",JsCore.fptr),
                                  res=JsCore.fptr} (c,arg)
       in obj
@@ -142,7 +142,7 @@ structure Dojo :> DOJO = struct
   fun pane (h:hash) e : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/layout/ContentPane"
-                  (fn Cp => 
+                  (fn Cp =>
                       let val p = new Cp(h)
                       in setContentElement p e
                        ; f p
@@ -151,7 +151,7 @@ structure Dojo :> DOJO = struct
   fun dialog (h:hash) e : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/Dialog"
-                  (fn D => 
+                  (fn D =>
                       let val d = new D(h)
                       in setContentElement d e
                        ; f d
@@ -168,7 +168,7 @@ structure Dojo :> DOJO = struct
   fun titlePane (h:hash) (w: widget) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/TitlePane"
-                  (fn Tp => 
+                  (fn Tp =>
                       let val p = new Tp(h)
                           val () = addChild p w
                       in f p
@@ -177,16 +177,16 @@ structure Dojo :> DOJO = struct
   fun linkPane (h:hash) : widget M =
       fn (f: widget -> unit) =>
          require1 "dijit/layout/LinkPane"
-                  (fn Lp => 
+                  (fn Lp =>
                       let val p = new Lp(h)
                       in f p
                       end)
 
   fun setProp w t k v =
     JsCore.exec3{stmt="w.set(k,v);",
-                 arg1=("w",JsCore.fptr), 
+                 arg1=("w",JsCore.fptr),
                  arg2=("k",JsCore.string),
-                 arg3=("v",t), 
+                 arg3=("v",t),
                  res=JsCore.unit} (w,k,v)
 
   fun setProperties h w =
@@ -203,7 +203,7 @@ structure Dojo :> DOJO = struct
   type treeStore = foreignptr
   fun treeStore (hs:hash list) : treeStore M =
       fn (f: treeStore -> unit) =>
-         require1 "dojo/store/Memory" (fn Memory => 
+         require1 "dojo/store/Memory" (fn Memory =>
          require1 "dojo/store/Observable" (fn Observable =>
                       let val data = JsCore.Array.fromList JsCore.fptr (List.map mkHash hs)
                           val h = JsCore.exec1{stmt="return {data:data,getChildren:function(obj) { return this.query({parent:obj.id}); }};",
@@ -227,12 +227,12 @@ structure Dojo :> DOJO = struct
       fn (f: widget -> unit) =>
          require1 "dijit/tree/ObjectStoreModel" (fn ObjectStoreModel =>
          require1 "dijit/Tree" (fn Tree =>
-         let val modelArg = 
+         let val modelArg =
                  JsCore.exec2{stmt="return {store:store,query:{id:id},mayHaveChildren:function(item){return item.kind == 'folder';}};",arg1=("store",JsCore.fptr),
                               arg2=("id",JsCore.string),res=JsCore.fptr}(store,rootId)
              val model = new0 ObjectStoreModel(modelArg)
              val treeArg = mkHash h
-             val () = if showRoot then () 
+             val () = if showRoot then ()
                       else JsCore.Object.set JsCore.bool treeArg "showRoot" showRoot
              val () = JsCore.Object.set JsCore.fptr treeArg "model" model
              val () = JsCore.exec2{stmt="a.onClick = function(item) { f([item.id,item.name]); };",
@@ -252,9 +252,9 @@ structure Dojo :> DOJO = struct
           fun withTab s f =
               case List.find (fn (s',_) => s=s') (!tm) of
                   SOME (_,p) => f p
-                | NONE => ()         
+                | NONE => ()
           fun select s = withTab s (selectChild tabs)
-          fun close s = 
+          fun close s =
               (withTab s (removeChild tabs);
                tm := List.filter (fn (s',_) => s<>s') (!tm))
       in ret ((tabs,tm), {select=select,close=close})
@@ -274,7 +274,7 @@ structure Dojo :> DOJO = struct
 
   fun runthemKeys nil = ret nil
     | runthemKeys ((k,x)::xs) = x >>= (fn x' => runthemKeys xs >>= (fn xs' => ret ((k,x')::xs')))
-                          
+
   fun appi f xs =
       let fun ai f i nil = ()
             | ai f i (x::xs) = (f(x,i);ai f (i+1) xs)
@@ -282,7 +282,7 @@ structure Dojo :> DOJO = struct
       end
 
   fun lazyTabContainer (h:hash) (w,wMs) : (widget*{select:string->unit}) M =
-      let val dummy_wMs = List.map (fn (title,icon,_) => 
+      let val dummy_wMs = List.map (fn (title,icon,_) =>
                                         (title,
                                          pane ([("title",title),("style","margin:0;border:0;padding:0;")]@
                                              (case icon of SOME ic => [ic]
@@ -290,7 +290,7 @@ structure Dojo :> DOJO = struct
           fun onShow w i bs () =
               let val r = List.nth (bs,i)
               in if !r then ()
-                 else let val m = 
+                 else let val m =
                              #3 (List.nth (wMs,i)) >>= (fn wnew =>
                              (addChild w wnew;
                               r := true;
@@ -317,13 +317,13 @@ structure Dojo :> DOJO = struct
          let val menubar = new MenuBar(h)
          in f (menubar,(menubar,true))
          end)
-        
+
     fun menu (m,_) s =
       fn (f: menu -> unit) =>
          require1 "dijit/PopupMenuBarItem" (fn PopupMenuBarItem =>
          require1 "dijit/DropDownMenu" (fn DropDownMenu =>
          let val dropdownmenu = new DropDownMenu([])
-             val popupmenubaritem = 
+             val popupmenubaritem =
                  JsCore.exec3{arg1=("C",JsCore.fptr),
                               arg2=("s",JsCore.string),
                               arg3=("d",JsCore.fptr),
@@ -340,7 +340,7 @@ structure Dojo :> DOJO = struct
               let val h = [("label",s)]
                   val h = case i of SOME p => p :: h
                                   | NONE => h
-                  val i = new MenuItem(h)           
+                  val i = new MenuItem(h)
                   val () = JsCore.exec2{arg1=("i",JsCore.fptr),
                                         arg2=("f",JsCore.==>(JsCore.unit,JsCore.unit)),
                                         stmt="i.set('onClick', f);",
@@ -353,7 +353,7 @@ structure Dojo :> DOJO = struct
 
   structure JsUtil = struct
 
-    fun mk_con0 (con:string) (h:foreignptr) : foreignptr M = 
+    fun mk_con0 (con:string) (h:foreignptr) : foreignptr M =
       fn (k: foreignptr -> unit) => require1 con (fn F => k(new0 F h))
 
     fun mk_con (con:string) (h:hash) (r:bool) : foreignptr M =
@@ -388,17 +388,22 @@ structure Dojo :> DOJO = struct
                                         stmt="on(obj,event,f);"} (on,obj,event,f))))
   end
 
+  type editorOptions = {id:string,name:string}list
 
   type 'a editConArg = {hash:hash, required:bool, file:string,
                         fromString: string -> 'a option,
-                        toString: 'a -> string}
+                        toString: 'a -> string,
+                        editorOptions: editorOptions option,
+                        autoComplete: bool}
   type 'a editor = foreignptr * 'a editConArg
   type 'a editCon = 'a editConArg * ('a editConArg -> 'a editor M)
 
   fun stringBox (file:string) (h:hash) : string editCon =
       ({hash=h,required=true,file=file,
         fromString=fn s => SOME s,
-        toString=fn s => s},
+        toString=fn s => s,
+        editorOptions=NONE,
+        autoComplete=false},
        fn (a as {file=f,hash=h,required=r,...}) => JsUtil.mk_con f h r >>= (fn e => ret (e,a))
       )
 
@@ -408,7 +413,7 @@ structure Dojo :> DOJO = struct
       in case scan Substring.getc ss of
              SOME (v,ss) => if Substring.size ss = 0 then SOME v
                             else NONE
-                                     
+
            | NONE => NONE
       end
 
@@ -455,7 +460,7 @@ structure Dojo :> DOJO = struct
         if isISO s then s
         else localToISO s
 (*
-        else let val s = 
+        else let val s =
              in if size s > 10 then
                   let val s' = String.extract(s,0,SOME 10)
                   in if isISOdate s' then s'
@@ -473,12 +478,12 @@ structure Dojo :> DOJO = struct
         in dateToISO date
         end
 
-    fun fromString s = SOME(toISO s)            
+    fun fromString s = SOME(toISO s)
   in
 
   val dateToISO : foreignptr -> string = dateToISO
   val isoFullToDate = isoFullToDate
-  
+
   (* Notice that the intention is that, internally, all editors have
      values that are represented as strings. Thus the
      function toString should take a value and transform it into the
@@ -491,8 +496,10 @@ structure Dojo :> DOJO = struct
     fun dateBox h : string editCon =
         ({hash=h,required=true,file="dijit/form/DateTextBox",
           fromString=fromString,
-          toString=toString},
-         fn (a as {file=f,hash=h,required=r,...}) => 
+          toString=toString,
+          editorOptions=NONE,
+          autoComplete=false},
+         fn (a as {file=f,hash=h,required=r,...}) =>
             let val h = mkHash h
                 val () = JsCore.Object.set JsCore.bool h "required" r
                 val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
@@ -502,82 +509,108 @@ structure Dojo :> DOJO = struct
         )
   end
 
-  fun orEmptyBox ({hash,file,fromString,toString,required},f) =
+  fun orEmptyBox ({hash,file,fromString,toString,required,editorOptions,autoComplete},f) =
       ({hash=hash,required=false,file=file,
-        fromString=fromString,toString=toString},f)
+        fromString=fromString,toString=toString,editorOptions=editorOptions,
+        autoComplete=autoComplete},f)
 
   fun isNull (s:string) : bool = JsCore.exec1{arg1=("s",JsCore.string),res=JsCore.bool,
                                               stmt="return (s==null);"} s
 
   fun isNullFptr (s:foreignptr) : bool = JsCore.exec1{arg1=("s",JsCore.fptr),res=JsCore.bool,
                                                       stmt="return (s==null);"} s
-                                             
-  fun optionBox ((a, mk): 'a editCon) : 'a option editCon = 
-     let fun transform ({hash,required= _, file,fromString:string -> 'a option,toString:'a -> string}: 'a editConArg) : 'a option editConArg =
+
+  fun optionBox ((a, mk): 'a editCon) : 'a option editCon =
+      let fun transform ({hash,required= _, file,fromString:string -> 'a option,toString:'a -> string,
+                          editorOptions,autoComplete}: 'a editConArg) : 'a option editConArg =
              {hash=hash,required=false,file=file,
               fromString=fn "" => SOME NONE | s => if isNull s then SOME NONE else SOME(fromString s),    (* : string -> 'a option option *)
-              toString=fn NONE => "" | SOME s => toString s}         (* : 'a option -> string *)
-         fun inverse ({hash,file,required= _,fromString:string-> 'a option option,toString: 'a option -> string} : 'a option editConArg) : 'a editConArg =
-             {hash=hash,file=file,required=false,fromString=fn s => case fromString s of SOME s => s 
-                                                                                       | NONE => NONE,
-              toString=toString o SOME}
+              toString=fn NONE => "" | SOME s => toString s,         (* : 'a option -> string *)
+              editorOptions=editorOptions,autoComplete=autoComplete}
+          fun inverse ({hash,file,required= _,fromString:string-> 'a option option,toString: 'a option -> string,
+                        editorOptions,autoComplete} : 'a option editConArg) : 'a editConArg =
+             {hash=hash,file=file,required=false,
+              fromString=fn s => case fromString s of SOME s => s
+                                                    | NONE => NONE,
+              toString=toString o SOME,
+              editorOptions=editorOptions,
+              autoComplete=autoComplete}
      in (transform a, fn x => (mk o inverse) x >>= (fn (e,a) => ret(e,transform a)))
      end
 
-  fun mkEditorArgs ({hash, required, fromString:string-> 'a option, file, ...}: 'a editConArg) : foreignptr =
+  fun mkEditorArgs ({hash, required, fromString:string-> 'a option, file, editorOptions, autoComplete, ...}: 'a editConArg) : foreignptr =
       let val h = mkHash hash
-          val fromString = 
-           if required then fn "" => NONE | s => fromString s
-           else fromString
           val () = JsCore.Object.set JsCore.bool h "required" required
-          val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator" (fn s => case fromString s of SOME _ => true 
-                                                                                                                       | NONE => false)
-          val () = if file = "dijit/form/DateTextBox" then
-                     let val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
-                     in JsCore.Object.set JsCore.fptr h "constraints" c
-                     end
-                   else ()
-      in h
+      in case file of
+             "dijit/form/Select" =>
+             let val options = JsCore.Array.empty()
+                 val () = case editorOptions of
+                              SOME data =>
+                              List.app (fn {id,name} =>
+                                           let val obj = JsCore.Object.empty()
+                                               val () = JsCore.Object.set JsCore.string obj "label" id
+                                               val () = JsCore.Object.set JsCore.string obj "value" name
+                                               val _ = JsCore.Array.push JsCore.fptr options obj
+                                           in ()
+                                           end) data
+                            | NONE => ()
+                 val () = JsCore.Object.set JsCore.fptr h "options" options
+             in h
+             end
+           | "dijit/form/FilteringSelect" =>
+             (require1 "dojo/store/Memory" (fn Memory =>
+              let val arr = JsCore.Array.empty()
+                  val () = case editorOptions of
+                               SOME data =>
+                               List.app (fn {id,name} =>
+                                            let val obj = JsCore.Object.empty()
+                                                val () = JsCore.Object.set JsCore.string obj "id" id
+                                                val () = JsCore.Object.set JsCore.string obj "name" name
+                                                val _ = JsCore.Array.push JsCore.fptr arr obj
+                                            in ()
+                                            end) data
+                             | NONE => ()
+                  val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
+                  val store = new0 Memory dataObject
+                  val () = JsCore.Object.set JsCore.bool h "autoComplete" autoComplete
+                  val () = JsCore.Object.set JsCore.fptr h "store" store
+              in ()
+              end)
+              ; h)
+           | "dijit/form/DateTextBox" =>
+             let val c = JsCore.Object.fromList JsCore.string [("datePattern", "yyyy-MM-dd")]
+             in JsCore.Object.set JsCore.fptr h "constraints" c
+              ; h
+             end
+           | _ =>
+             let val fromString = if required then fn "" => NONE | s => fromString s
+                                  else fromString
+                 val () = JsCore.Object.set (JsCore.==>(JsCore.string,JsCore.bool)) h "validator"
+                                            (fn s => case fromString s of SOME _ => true
+                                                                        | NONE => false)
+             in h
+             end
       end
 
   fun validationBox h {fromString: string-> 'a option,toString: 'a -> string} : 'a editCon =
       ({hash=h,required=true,file="dijit/form/ValidationTextBox",
-        fromString=fromString,toString=toString},
+        fromString=fromString,toString=toString,editorOptions=NONE,autoComplete=false},
        fn arg => JsUtil.mk_con0 (#file arg) (mkEditorArgs arg) >>= (fn e => ret (e,arg))
       )
 
   fun intBox h : int editCon = validationBox h {fromString=intFromString,toString=intToString}
   fun realBox h rf : real editCon = validationBox h {fromString=realFromString,toString=realToString rf}
 
-  fun mymap0 f nil ys = rev ys
-    | mymap0 f (x::xs) ys = mymap0 f xs (f x::ys)
-  fun mymap f xs = mymap0 f xs nil
+  fun selectBox (h:hash) (data:{id:string,name:string}list) : string editCon =
+      ({hash=h,required=true,file="dijit/form/Select",fromString=fn s => SOME s, toString=fn s => s,
+        editorOptions=SOME data,autoComplete=false},
+       fn arg => JsUtil.mk_con0 (#file arg) (mkEditorArgs arg) >>= (fn e => ret (e,arg)))
 
   fun filterSelectBox (h:hash) autoComplete (data:{id:string,name:string}list) : string editCon =
-      ({hash=h,required=true,file="dijit/form/FilteringSelect",fromString=fn s => SOME s, toString=fn s => s},
-       fn (a as {hash=h,required=r,file,...}) =>
-       fn k => 
-         require1 file (fn FilteringSelect =>
-         require1 "dojo/store/Memory" (fn Memory =>
-         let (*fun objTransform {id,name} = JsCore.Object.fromList JsCore.string [("id",id),("name",name)]*)
-             val arr = JsCore.Array.empty()
-             val () = List.app (fn {id,name} =>
-                                   let val obj = JsCore.Object.empty()
-                                       val () = JsCore.Object.set JsCore.string obj "id" id
-                                       val () = JsCore.Object.set JsCore.string obj "name" name
-                                       val _ = JsCore.Array.push JsCore.fptr arr obj
-                                   in ()
-                                   end) data
-(*             val arr = JsCore.Array.fromList JsCore.fptr (mymap objTransform data) *)
-             val dataObject = JsCore.Object.fromList JsCore.fptr [("data",arr)]
-             val store = new0 Memory dataObject
-             val params = mkHash h
-             val () = JsCore.Object.set JsCore.bool params "autoComplete" autoComplete
-             val () = JsCore.Object.set JsCore.bool params "required" r
-             val () = JsCore.Object.set JsCore.fptr params "store" store
-             val select = new0 FilteringSelect params
-         in k (select,a)
-         end)))
+      ({hash=h,required=true,file="dijit/form/FilteringSelect",fromString=fn s => SOME s, toString=fn s => s,
+        editorOptions=SOME data,autoComplete=autoComplete},
+       fn arg => JsUtil.mk_con0 (#file arg) (mkEditorArgs arg) >>= (fn e => ret (e,arg))
+      )
 
   structure Editor = struct
     type 'a t = 'a editor
@@ -593,7 +626,7 @@ structure Dojo :> DOJO = struct
            let val s = case #file a of
                            "dijit/form/DateTextBox" => getDateVal e
                          | _ => JsUtil.get "value" e
-           in case #fromString a s of SOME v => v 
+           in case #fromString a s of SOME v => v
                                     | NONE => raise Fail "Editor.getValue"
            end
        fun getValueOpt ((e,a): 'a t) =
@@ -616,10 +649,10 @@ structure Dojo :> DOJO = struct
         end
     fun setDisabled ((e,a): 'a t) b = JsCore.method1 JsCore.bool JsCore.unit e "setDisabled" b
     fun setReadOnly ((e,a): 'a t) b = setBoolProperty ("readOnly",b) e
-    fun onChange (e : 'a t) (f: 'a -> unit) : unit = 
+    fun onChange (e : 'a t) (f: 'a -> unit) : unit =
         let fun onChange0 (e,a) f = JsCore.method2 JsCore.string unit2unit_T JsCore.unit e "on" "change" f
         in onChange0 e (fn () => f (getValue e))
-        end 
+        end
     val domNode = fn ((e,_): 'a t) => domNode e
     fun toForeignPtr (x,_) = x
     val startup = fn (e,_) => startup e
@@ -633,7 +666,7 @@ structure Dojo :> DOJO = struct
         end
     fun validate t = JsCore.method0 JsCore.bool t "validate"
     val domNode = domNode
-    fun toForeignPtr x = x   
+    fun toForeignPtr x = x
     fun startup x = JsCore.method0 JsCore.unit x "connectChildren"
   end
 
@@ -646,8 +679,8 @@ structure Dojo :> DOJO = struct
         in JsUtil.mk_con0 "dijit/form/Button" h
         end
     val domNode = domNode
-    fun toForeignPtr x = x    
-  end           
+    fun toForeignPtr x = x
+  end
 
   structure UploadFile = struct
     type t = foreignptr
@@ -674,15 +707,15 @@ structure Dojo :> DOJO = struct
     val toForeignPtr : t -> foreignptr = fn x => x
     val startup      : t -> unit = startup
 
-  end    
+  end
 
   structure RestGrid = struct
     type editspec = {hash:unit->foreignptr, file:string}
     fun editspec ((arg,_):'a editCon) : editspec =
         {hash=fn()=>mkEditorArgs arg,file= #file arg}
-            
+
     type t = {elem: Js.elem, getStore: unit->foreignptr, startup: unit->unit, setStore: foreignptr -> unit,
-              refresh: unit->unit, setCollection: string->unit, setSort: string->unit, 
+              refresh: unit->unit, setCollection: string->unit, setSort: string->unit,
               setSummary : {field:string,elem:Js.elem}list -> unit}
 
     datatype typ = INT | STRING | NUM of int
@@ -714,7 +747,7 @@ structure Dojo :> DOJO = struct
     fun hidden b (VALUE {field,label,typ,editor,sortable,prettyLook,hidden,unhidable}) =
         VALUE {field=field,label=label,typ=typ,editor=editor,sortable=sortable,prettyLook=prettyLook,hidden=b,unhidable=unhidable}
       | hidden b (DELETE {label,button,hidden,unhidable}) = DELETE {label=label,button=button,hidden=b,unhidable=unhidable}
-      | hidden b (ACTION {label,onclick,button,hidden,unhidable}) = ACTION {label=label,onclick=onclick,button=button,hidden=b,unhidable=unhidable} 
+      | hidden b (ACTION {label,onclick,button,hidden,unhidable}) = ACTION {label=label,onclick=onclick,button=button,hidden=b,unhidable=unhidable}
 
     fun unhidable b (VALUE {field,label,typ,editor,sortable,prettyLook,hidden,unhidable}) =
         VALUE {field=field,label=label,typ=typ,editor=editor,sortable=sortable,prettyLook=prettyLook,hidden=hidden,unhidable=b}
@@ -768,7 +801,7 @@ structure Dojo :> DOJO = struct
                        | SOME pp => setRenderCell1 h (pp o look)
         in case editor of
                NONE => ret h
-             | SOME {hash=editorArgsFn,file} => 
+             | SOME {hash=editorArgsFn,file} =>
                require1 file >>= (fn EditorCon =>
                (JsCore.Object.set JsCore.bool h "autoSave" true;
                 (case editOn of
@@ -799,7 +832,7 @@ structure Dojo :> DOJO = struct
             val () = JsCore.Object.set JsCore.bool h "sortable" false
             val () = JsCore.Object.set JsCore.bool h "hidden" hidden
             val () = JsCore.Object.set JsCore.bool h "unhidable" unhidable
-            val () = setRenderCell1 h (fn obj => 
+            val () = setRenderCell1 h (fn obj =>
                                            let val delbutton = new Button (buttonArgs button)
                                                val () = JsCore.Object.set unit2unit_T delbutton "onClick"
                                                    (fn () => let val id = JsCore.Object.get JsCore.int obj idProperty
@@ -817,10 +850,10 @@ structure Dojo :> DOJO = struct
             val () = JsCore.Object.set JsCore.bool h "sortable" false
             val () = JsCore.Object.set JsCore.bool h "hidden" hidden
             val () = JsCore.Object.set JsCore.bool h "unhidable" unhidable
-            val () = setRenderCell1 h (fn obj => 
+            val () = setRenderCell1 h (fn obj =>
                                            let val actionbutton = new Button (buttonArgs button)
                                                val () = JsCore.Object.set unit2unit_T actionbutton "onClick"
-                                                   (fn () => let fun look k = 
+                                                   (fn () => let fun look k =
                                                                      if member fields k then JsCore.Object.get JsCore.string obj k
                                                                      else "not known"
                                                              in onclick look
@@ -841,7 +874,7 @@ structure Dojo :> DOJO = struct
         in ret h
         end
 
-    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable,prettyLook,hidden,unhidable}) = 
+    fun mkAddGridCol idProperty addbutton (VALUE{field,label,editor,typ,sortable,prettyLook,hidden,unhidable}) =
         if field <> idProperty then
           mkValueCol idProperty {editOn=NONE} {field=field,label=label,editor=editor,typ=typ,sortable=false,prettyLook=prettyLook,hidden=hidden,unhidable=unhidable}
         else mkRenderCol field label (fn () => Js.Element.$ "")
@@ -870,7 +903,7 @@ structure Dojo :> DOJO = struct
         )
     end
 
-    fun set_showHeader g b = 
+    fun set_showHeader g b =
         JsCore.method2 JsCore.string JsCore.bool JsCore.unit g "set" "showHeader" b
     fun set_label b l =
         JsCore.method2 JsCore.string JsCore.string JsCore.unit b "set" "label" l
@@ -895,7 +928,7 @@ structure Dojo :> DOJO = struct
         in JsCore.method1 JsCore.fptr JsCore.fptr store "filter" filter
         end
 *)
-    fun mkSimple {target:string, headers, idProperty:string,notify,notify_err} (colspecs:colspec list) : t M = 
+    fun mkSimple {target:string, headers, idProperty:string,notify,notify_err} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
@@ -906,13 +939,13 @@ structure Dojo :> DOJO = struct
         require1 "dijit/form/Button" >>= (fn Button =>
         require1 "dgrid/extensions/ColumnHider" >>= (fn ColumnHider =>
         require1 "dgrid/extensions/ColumnResizer" >>= (fn ColumnResizer =>
-        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
-        require1 "SummaryRow" >>= (fn SummaryRow => 
+        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry =>
+        require1 "SummaryRow" >>= (fn SummaryRow =>
         let val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             fun mkStore target =
                 let val storeArg = mkHash [("target",target),("idProperty",idProperty)]
-                    val () = if List.null headers then () 
+                    val () = if List.null headers then ()
                              else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
                     val store = new0 RestTrackableStore(storeArg)
                 in store
@@ -943,7 +976,7 @@ structure Dojo :> DOJO = struct
         end)
         end))))))))))))
 
-    fun mk {target:string, headers, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M = 
+    fun mk {target:string, headers, idProperty:string, addRow=NONE, notify, notify_err} (colspecs:colspec list) : t M =
          mkSimple {target=target,headers=headers,idProperty=idProperty,notify=notify,notify_err=notify_err} colspecs
       | mk {target:string, headers, idProperty:string, addRow=SOME(butAdd,butCancel):(button*button) option,notify,notify_err} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
@@ -955,14 +988,14 @@ structure Dojo :> DOJO = struct
         require1 "dstore/Memory" >>= (fn Memory =>
         require1 "dijit/form/Button" >>= (fn Button =>
         require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry =>
-        require1 "SummaryRow" >>= (fn SummaryRow => 
+        require1 "SummaryRow" >>= (fn SummaryRow =>
         Promise.WhenE JsCore.unit >>= (fn when =>
         Form.mk [] >>= (fn form =>
         let
             val RestTrackableStore = JsUtil.callFptrArr declare [Rest,Trackable]
             val MemoryTrackableStore = JsUtil.callFptrArr declare [Memory,Trackable]
             val storeArg = mkHash [("target",target),("idProperty",idProperty)]
-            val () = if List.null headers then () 
+            val () = if List.null headers then ()
                      else JsCore.Object.set JsCore.fptr storeArg "headers" (mkHeaderArgs headers)
             val store = new0 RestTrackableStore(storeArg)
             fun getStore() = store
@@ -972,12 +1005,12 @@ structure Dojo :> DOJO = struct
         let val grid = mkGrid MyGrid {columns=columns,collection=store}
             val button = new Button (buttonArgs butAdd)
             val addbutton = new Button (buttonArgs butAdd)
-            fun sampleData () = 
+            fun sampleData () =
                 let val h = defaultsOfColspecs colspecs
                     val () = JsCore.Object.set JsCore.int h idProperty 0
                 in h
                 end
-            val addstore = 
+            val addstore =
                 let val arg = mkHash [("idProperty",idProperty)]
                     val () = JsCore.Object.set JsCore.fptr arg "data" (JsCore.Array.fromList JsCore.fptr [sampleData()])
                 in new0 MemoryTrackableStore(arg)
@@ -990,7 +1023,7 @@ structure Dojo :> DOJO = struct
                 (JsCore.method1 JsCore.int JsCore.unit addstore "removeSync" 0;
                  JsCore.method1 JsCore.fptr JsCore.unit addstore "addSync" (sampleData());
                  JsCore.method0 JsCore.unit addgrid "refresh")
-            fun start() = 
+            fun start() =
                 (JsCore.method0 JsCore.unit grid "startup";
                  JsCore.method0 JsCore.unit addgrid "startup";
                  clearAddGrid();
@@ -1005,7 +1038,7 @@ structure Dojo :> DOJO = struct
                       set_icon button (#icon butAdd);
                       set_showHeader grid true;
                       JsCore.method0 JsCore.unit grid "resize")
-                   else 
+                   else
                      (JsCore.Object.set JsCore.string style "display" "block";
                       set_label button (#label butCancel);
                       set_icon button (#icon butCancel);
@@ -1014,7 +1047,7 @@ structure Dojo :> DOJO = struct
                       JsCore.method0 JsCore.unit addgrid "resize";
                       JsCore.method0 JsCore.unit grid "resize")
                 end
-            val () = JsCore.Object.set unit2unit_T addbutton "onClick" 
+            val () = JsCore.Object.set unit2unit_T addbutton "onClick"
                 (fn () =>
                     (JsCore.method0 JsCore.unit addgrid "save";
                      if Form.validate form then
@@ -1035,7 +1068,7 @@ structure Dojo :> DOJO = struct
                                              ) colspecs
                            val promise = JsCore.method1 JsCore.fptr JsCore.fptr store "put" obj
                        in when (promise, fn () =>
-                                            (JsCore.method0 JsCore.unit grid "refresh"; 
+                                            (JsCore.method0 JsCore.unit grid "refresh";
                                              clearAddGrid();
                                              addItemButtonToggle();
                                              notify "Entry added successfully..."),
@@ -1074,7 +1107,7 @@ structure Dojo :> DOJO = struct
             val store = new0 MemoryTrackableStore(storeArg)
         in ret (store,idProperty)
         end)))
-          
+
     fun memoryStoreAdd ((s,_):s) vs : unit =
         let fun addSync h : unit = JsCore.method1 JsCore.fptr JsCore.unit s "addSync" h
         in List.app (addSync o mkHash) vs
@@ -1084,15 +1117,15 @@ structure Dojo :> DOJO = struct
         JsCore.exec1{arg1=("s",JsCore.fptr),res=JsCore.unit,
                      stmt="s.forEach(function(item){s.remove(s.getIdentity(item));});"} s
 
-    fun mkFromStore {store=(store,idProperty),notify,notify_err} (colspecs:colspec list) : t M = 
+    fun mkFromStore {store=(store,idProperty),notify,notify_err} (colspecs:colspec list) : t M =
         require1 "dojo/_base/declare" >>= (fn declare =>
         require1 "dgrid/OnDemandGrid" >>= (fn OnDemandGrid =>
         require1 "dgrid/Keyboard" >>= (fn Keyboard =>
         require1 "dijit/form/Button" >>= (fn Button =>
         require1 "dgrid/extensions/ColumnHider" >>= (fn ColumnHider =>
         require1 "dgrid/extensions/ColumnResizer" >>= (fn ColumnResizer =>
-        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry => 
-        require1 "SummaryRow" >>= (fn SummaryRow => 
+        require1 "dgrid/extensions/DijitRegistry" >>= (fn DijitRegistry =>
+        require1 "SummaryRow" >>= (fn SummaryRow =>
         let val storeRef = ref store
             fun getStore() = !storeRef
             val MyGrid = JsUtil.callFptrArr declare [OnDemandGrid,Keyboard,ColumnResizer,ColumnHider,DijitRegistry,SummaryRow]
@@ -1115,7 +1148,7 @@ structure Dojo :> DOJO = struct
         end))))))))
 
     fun setMemoryStore (grid:t) ((store,_):s) : unit = #setStore grid store
-                 
+
     fun startup ({startup=start,...}: t) : unit = start()
     fun refresh ({refresh=refr,...}: t) : unit = refr()
     fun setCollection ({setCollection=set,...}:t) {target:string} : unit = set target
@@ -1124,7 +1157,7 @@ structure Dojo :> DOJO = struct
 
     val domNode : t -> Js.elem = fn {elem,...} => elem
     fun toStore ({getStore,...}: t) : foreignptr = getStore ()
-                 
+
   end
 
   structure Grid = struct
@@ -1234,4 +1267,3 @@ structure Dojo :> DOJO = struct
   val wikiword = wrap "Wikiword"
   end
 end
-

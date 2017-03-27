@@ -40,7 +40,7 @@ signature DOJO = sig
 
   val dialog             : hash -> Js.elem -> widget M
   val showDialog         : widget -> unit
-  val hideDialog         : widget -> unit 
+  val hideDialog         : widget -> unit
   val runDialog          : string -> Js.elem -> unit
 
   type treeStore
@@ -48,9 +48,9 @@ signature DOJO = sig
   val treeStoreAdd       : treeStore -> hash -> unit
   val treeStoreRemove    : treeStore -> string -> unit
   val treeStoreClear     : treeStore -> unit
-  val tree               : hash -> string -> (string*string -> unit) 
+  val tree               : hash -> string -> (string*string -> unit)
                            -> treeStore -> widget M
-  val treeWidget         : hash -> {showRoot:bool} -> string -> (string*string -> unit) 
+  val treeWidget         : hash -> {showRoot:bool} -> string -> (string*string -> unit)
                            -> treeStore -> widget M
 
   type tabmap = widget * (string*widget)list ref
@@ -78,6 +78,7 @@ signature DOJO = sig
   val realBox             : hash -> StringCvt.realfmt -> real editCon
   val dateBox             : hash -> string editCon
   val validationBox       : hash -> {fromString: string -> 'a option, toString: 'a -> string} -> 'a editCon
+  val selectBox           : hash -> {id:string,name:string}list -> string editCon
   val filterSelectBox     : hash -> bool -> {id:string,name:string}list -> string editCon
 
   structure Editor : sig
@@ -96,12 +97,12 @@ signature DOJO = sig
 
   structure Form : sig
     type t
-    val mk           : hash -> t M 
+    val mk           : hash -> t M
     val domNode      : t -> Js.elem
     val toForeignPtr : t -> foreignptr
     val validate     : t -> bool
     val startup      : t -> unit
-  end                                  
+  end
 
   structure Button : sig
     type t
@@ -118,14 +119,14 @@ signature DOJO = sig
     val upload       : t -> hash -> unit
     val reset        : t -> unit
 (*    val getFileList  : t -> string list *)
-    val onComplete   : t -> (foreignptr -> unit) -> unit 
+    val onComplete   : t -> (foreignptr -> unit) -> unit
     val onError      : t -> (unit -> unit) -> unit
     val onBegin      : t -> (unit -> unit) -> unit
 (*
     val onProgress   : t -> (int*int -> unit) -> unit
 *)
     val startup      : t -> unit
-  end    
+  end
 
   structure RestGrid : sig
     type t
@@ -142,11 +143,11 @@ signature DOJO = sig
     val unhidable     : bool -> colspec -> colspec
     val sortable      : bool -> colspec -> colspec   (* e.g.: val cs = hidden true (sortable true cs)  *)
 
-    val mk            : {target:string, headers:(string*string)list, idProperty:string, addRow:(button*button) option, 
+    val mk            : {target:string, headers:(string*string)list, idProperty:string, addRow:(button*button) option,
                          notify:string->unit, notify_err:string->unit} -> colspec list -> t M
     val domNode       : t -> Js.elem
     val toStore       : t -> foreignptr
-    val setCollection : t -> {target:string} -> unit 
+    val setCollection : t -> {target:string} -> unit
     val setSort       : t -> {field:string} -> unit
     val setSummary    : t -> {field:string,elem:Js.elem} list -> unit
     val startup       : t -> unit
@@ -267,7 +268,7 @@ initialization, etc.
 
 [m >>= f] makes it possible to sequentialize computations.
 
-[type hash] 
+[type hash]
 
 [pane h] returns a computation that computes a basic leaf widget. Set
 the content property in the hash to initialize the content or set it
