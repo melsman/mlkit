@@ -1,2 +1,6 @@
 *.html
 MLB
+*.res
+*.out
+*.snippet
+*.mlbsnippet

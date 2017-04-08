@@ -1,0 +1,24 @@
+Loading general.html
+File general.sml: Testing structure General...
+
+Exception should be 'E1 or E2':
+exnName = 'E1'; exnMessage = 'E1
+Exception should be 'Bind':
+exnName = 'Bind'; exnMessage = 'Bind
+Exception should be 'Match':
+exnName = 'Match'; exnMessage = 'Match
+Exception should be 'Subscript':
+exnName = 'Subscript'; exnMessage = 'Subscript
+Exception should be 'Size':
+exnName = 'Size'; exnMessage = 'Size
+Exception should be 'Div':
+exnName = 'Div'; exnMessage = 'Div
+Exception should be 'Chr':
+exnName = 'Chr'; exnMessage = 'Chr
+Exception should be 'Fail':
+exnName = 'Fail'; exnMessage = 'Fail
+Exception should be 'Option':
+exnName = 'Option'; exnMessage = 'Option
+Exception should be 'Empty':
+exnName = 'Empty'; exnMessage = 'Empty
+
