@@ -1,8 +1,12 @@
 FILES=fix2.sml array2.sml int31.sml int.sml vectorslice.sml word8arrayslice.sml word8vector.sml arrayslice.sml \
  general.sml int32_2.sml math.sml stringcvt.sml testdyn1.sml vector.sml word8array.sml \
  array.sml int_2.sml int32.sml listpair.sml string.sml testmatc.sml word.sml word8.sml word31.sml word32.sml \
- bytechar.sml int31_2.sml intinf.sml list.sml real.sml substring.sml word8vectorslice.sml time.sml date.sml \
+ bytechar.sml int31_2.sml intinf.sml list.sml real.sml substring.sml word8vectorslice.sml time.sml \
  unixpath.sml kkb.sml simple.sml
+
+# problems with phantomjs and date operations...
+#date.sml
+
 
 MLBFILES=exec.mlb counter.mlb temp.mlb life.mlb cal.mlb rwp_ex1.mlb rwp_ex2.mlb rwp_ex3.mlb export.mlb \
  canvas_ex1.mlb
