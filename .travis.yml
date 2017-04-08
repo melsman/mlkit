@@ -8,10 +8,10 @@ sudo: true
 
 before_install:
  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
- - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc mlkit autoconf ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc mlkit autoconf phantomjs ; fi
  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update ; fi
  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc gcc-multilib mlton autoconf make ; fi
- 
+
 install:
  - ./autobuild
  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./configure --with-compiler=mlkit; fi
@@ -19,6 +19,11 @@ install:
  - travis_wait 50 make mlkit
  - make mlkit_libs
  - sudo make install
+ - ./configure --with-compiler=`pwd`/bin/mlkit
+ - travis_wait 50 make smltojs
+ - make smltojs_basislibs
+ - sudo make install_smltojs
 
 script:
  - cd test && make test_mlkit
+ - cd js/test && make test
