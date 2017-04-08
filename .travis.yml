@@ -26,4 +26,4 @@ install:
 
 script:
  - cd test && make test_mlkit
- - cd js/test && make test
+ - cd ../js/test && make test
