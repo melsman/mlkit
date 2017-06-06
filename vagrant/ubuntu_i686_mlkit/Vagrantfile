@@ -5,6 +5,9 @@
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
 # you're doing.
+
+ENV["LC_ALL"] = "C"
+
 Vagrant.configure(2) do |config|
   # The most common configuration options are documented and commented below.
   # For a complete reference, please see the online documentation at
@@ -12,7 +15,8 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "ubuntu/trusty32"
+  config.vm.box = "ubuntu/xenial32"
+#  config.vm.box = "ubuntu/trusty32"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -48,7 +52,13 @@ Vagrant.configure(2) do |config|
   #   vb.gui = true
   #
       # Customize the amount of memory on the VM:
-      vb.memory = "4096"
+    vb.memory = "4096"
+
+    # Basebox ubuntu/xenial64 comes with following Vagrantfile config and causes https://github.com/joelhandwell/ubuntu_vagrant_boxes/issues/1
+    # vb.customize [ "modifyvm", :id, "--uart1", "0x3F8", "4" ]
+    # vb.customize [ "modifyvm", :id, "--uartmode1", "file", File.join(Dir.pwd, "ubuntu-xenial-16.04-cloudimg-console.log") ]
+    # following config will address the issue
+    vb.customize [ "modifyvm", :id, "--uartmode1", "disconnected" ]
   end
   #
   # View the documentation for the provider you are using for more
@@ -58,8 +68,12 @@ Vagrant.configure(2) do |config|
   # such as FTP and Heroku are also available. See the documentation at
   # https://docs.vagrantup.com/v2/push/atlas.html for more information.
   config.push.define "atlas" do |push|
-    push.app = "melsman/ubuntu_1404_i686_mlkit"
+    push.app = "melsman/ubuntu_1604_i686_mlkit"
   end
+
+  # The following line needs to be commented out on the first "vagrant up" launch;
+  # then, before running "vagrant package", the line should be uncommented.
+  config.ssh.username = "vagrant"
 
   # Enable provisioning with a shell script. Additional provisioners such as
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
@@ -67,8 +81,8 @@ Vagrant.configure(2) do |config|
   config.vm.provision "shell", inline: <<-SHELL
      # bring the machine up-to-date
      sudo apt-get update
-     sudo apt-get -y upgrade 
- 
+     sudo apt-get -y upgrade
+
      # install some utilities
      sudo apt-get -y install emacs
      sudo apt-get -y install autoconf
@@ -76,11 +90,24 @@ Vagrant.configure(2) do |config|
      sudo apt-get -y install git
      sudo apt-get -y install bison
      sudo apt-get -y install flex
-     sudo apt-get -y install texlive-latex-base
+     sudo apt-get -y install make
+
+     #sudo apt-get -y install texlive-latex-base
+
+     # create vagrant user, which is not present in the xenial32 box...
+     adduser --disabled-password --gecos "" vagrant
+     echo 'vagrant:vagrant' | chpasswd
+     cp /etc/sudoers.d/90-cloud-init-users /etc/sudoers.d/90-vagrant-user
+     sed -i 's/ubuntu/vagrant/g' /etc/sudoers.d/90-vagrant-user
+     mkdir /home/vagrant/.ssh
+     cp /home/ubuntu/.ssh/authorized_keys /home/vagrant/.ssh/
+     chown -R vagrant:vagrant /home/vagrant/.ssh/
+     chmod 600 /home/vagrant/.ssh/authorized_keys
+     chmod 700 /home/vagrant/.ssh/
 
      # install mlkit
      cd /home/vagrant
-     rm -rf mlkit
+     sudo rm -rf mlkit
      sudo -u vagrant git clone https://github.com/melsman/mlkit.git mlkit
      cd mlkit
      sudo -u vagrant ./autobuild
@@ -94,6 +121,6 @@ Vagrant.configure(2) do |config|
      sudo -u vagrant make smltojs
      sudo -u vagrant make smltojs_basislibs
      sudo make install_smltojs
- 
+
   SHELL
 end
