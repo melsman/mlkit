@@ -3,5 +3,6 @@ Version.sml
 config.h
 mlkit
 smltojs
+smlserverc
 MLB
 *~

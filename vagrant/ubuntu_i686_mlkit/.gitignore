@@ -1,2 +1,4 @@
+tmp
+*.log
 package.box
 .vagrant
