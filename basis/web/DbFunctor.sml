@@ -1,13 +1,19 @@
 
 functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
                    val name : string)
-                  
-                    :> WEB_DB where type 'a Type = 'a DbBackend.Type = 
+
+                    :> WEB_DB where type 'a Type = 'a DbBackend.Type =
   struct
     structure DbBasic = DbBackend.DbBasic
     type ns_db = int
     type quot = string frag list
     type 'a Type = 'a DbBackend.Type
+
+    fun getOpt (opt,default) =
+        case opt of
+            SOME v => v
+          | NONE => default
+
     val dbCache = Web.Cache.get(Web.Cache.String, Web.Cache.Int,
                                 "__InternalCache:DBTABLE",
                                 Web.Cache.WhileUsed(NONE,NONE))
@@ -25,23 +31,23 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	type pool = string
 	type db = pool * ns_db
 	local
-	  val pools : pool list ref = ref [] 
+	  val pools : pool list ref = ref []
 	in
 (*
 	  fun initPools {section,key} =
 	    case NsInfo.configGetValue{sectionName=section, key=key} of
 	      SOME ps => pools := (String.tokens (fn ch => ch = #",") ps)
-	    | NONE => raise (Fail ("initPools.no pools specified in file " ^ NsInfo.configFile() ^ 
+	    | NONE => raise (Fail ("initPools.no pools specified in file " ^ NsInfo.configFile() ^
 			     "; section " ^ sectionName ^ " and key " ^ key ^ "."))
 *)
 	  fun initPools pns = pools := pns
 	  fun putPool pn = pools := pn :: !pools
-	  fun getPool () = 
+	  fun getPool () =
 	    case !pools of
 	      [] => raise Fail "getPool.no more pools"
 	    | pn::ps => (pools := ps; pn)
 	  fun toList () = !pools
-	  fun pp () = 
+	  fun pp () =
 	    let
 	      fun sl2s sep [] = ""
   	        | sl2s sep l = concat (tl (foldr (fn (s,acc)=>sep::s::acc) [] l))
@@ -64,16 +70,16 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	val getHandle = fn () => DbBackend.getHandle unique_number
 
 	val putHandle = DbBackend.putHandle
- 
+
 	fun wrapDb f =
 	  let val db = getHandle()
 	  in (f db before putHandle db)
 	    handle X => (putHandle db; raise X)
 	  end
-      
+
 	fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
 	  (DbBackend.dmlDb db q handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
- 
+
 	val dmlDb = DbBackend.dmlDb
 
 	val execDb = DbBackend.execDb
@@ -81,7 +87,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	val dmlTransDb = DbBackend.dmlTransDb
 
 	val dmlTrans = fn f => wrapDb (fn z => dmlTransDb z f)
-    
+
 	fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
 	  dmlTransDb db f handle X => (f_panic(`^(General.exnMessage X)`))
 
@@ -89,7 +95,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	  dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
 	fun foldDbCol (db:db) (f:string list -> (string->string option)*'a->'a) (acc:'a) (sql:quot) : 'a =
-	  let 
+	  let
 	    val (s,r) = DbBackend.selectDb db sql
 	    val f' = f r
 	    fun loop (acc:'a) : 'a =
@@ -99,12 +105,21 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	  end
 
 	fun foldDb (db : db) f acc sql = foldDbCol db (fn c => fn (g,a) => f (fn x => if List.exists (fn c' => c' = x) c
-                                                                                      then Option.getOpt(g x, "")
+                                                                                      then getOpt(g x, "")
                                                                                       else "##",
                                                                               a)) acc sql
 
+        fun foldDbRaw (db:db) (f:string option list * 'a -> 'a) (a:'a) (sql:quot) : 'a =
+	    let val (s,r) = DbBackend.selectDb db sql
+                fun loop (acc:'a) : 'a =
+                    case DbBackend.getRowListDb s of
+                        NONE => acc
+		      | SOME l => loop(f(l,acc))
+            in loop a
+            end
+
 	fun appDbCol (db:db) (f:string list -> (string->string option)->'a) (sql:quot) : unit =
-	  let 
+	  let
 	    val (s,r) = DbBackend.selectDb db sql
 	    val f' = f r
 	    fun loop () : unit =
@@ -112,54 +127,54 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
                                    | NONE => ()
 	  in loop ()
 	  end
-  
+
 	fun appDb db f sql = appDbCol db (fn c => fn g => f(fn x=> if List.exists (fn c' => x = c') c
-								   then Option.getOpt (g x,"")
+								   then getOpt (g x,"")
 								   else "##")) sql
 
-	fun listDbCol (db:db) (f:string list -> (string->string option)->'a) (sql: quot) : 'a list = 
-	  let 
+	fun listDbCol (db:db) (f:string list -> (string->string option)->'a) (sql: quot) : 'a list =
+	  let
 	    val (s,r) = DbBackend.selectDb db sql
 	    val f' = f r
 	    fun loop () : 'a list =
 	      case DbBackend.getRowDb s of SOME g => f' g :: loop()
                                    | NONE => []
-	  in 
+	  in
 	    loop ()
 	  end
- 
+
 	fun listDb db f sql = listDbCol db (fn c => fn g => f(fn x=> if List.exists (fn c' => x = c') c
 								     then getOpt(g x, "")
 								     else "##")) sql
 
-	fun oneWrap f m db sql = let val (s,r) = DbBackend.selectDb db sql 
+	fun oneWrap f m db sql = let val (s,r) = DbBackend.selectDb db sql
 				     val res = f s
 				 in case DbBackend.getRowDb s of NONE => res
 							       | SOME _ => raise Fail (m ^ ".more than one row")
 				 end
 
 	val oneFieldDb = oneWrap
-			     (fn s => 
+			     (fn s =>
 				 case DbBackend.getRowListDb s of NONE => raise Fail "Db.oneFieldDb.no rows"
 								| SOME [x] => getOpt(x,"")
 								| SOME _ => raise Fail "Db.oneFieldDb.size of result not one")
 			     "oneFieldDb"
-			 
-	val zeroOrOneFieldDb = 
+
+	val zeroOrOneFieldDb =
 	    oneWrap
 		(fn s => case DbBackend.getRowListDb s of NONE => NONE
 							| SOME [x] => SOME (getOpt(x,""))
 							| SOME _ => raise Fail "zeroOrOneFieldDb.size of set is not one")
 		"zeroOrOneFieldDb"
 
-	val oneRowDb = 
+	val oneRowDb =
 	    oneWrap
 		(fn s => case DbBackend.getRowListDb s of NONE => raise Fail "Db.oneRowDb.no rows"
 							| SOME l => map (fn x => getOpt(x, "")) l)
 		"oneRowDb"
-  
+
 	fun oneRowDb' db (f:(string->string)->'a) (sql:quot) : 'a =
-	  let 
+	  let
 	    val (s,c) = DbBackend.selectDb db sql
 	    val res =
 	      case DbBackend.getRowDb s of NONE => raise Fail "Db.oneRowDb'.no rows"
@@ -170,16 +185,16 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	    case DbBackend.getRowDb s of NONE => res
                                  | SOME _ => raise Fail "oneRowDb'.more that one row"
 	  end
-	
-  val zeroOrOneRowDb = oneWrap (fn r=> Option.map (map (fn x => getOpt(x,"")))
+
+        val zeroOrOneRowDb = oneWrap (fn r=> Option.map (map (fn x => getOpt(x,"")))
                                 (DbBackend.getRowListDb r)) "zeroOrOneRowDb"
 
 	fun zeroOrOneRowDb' db f sql : 'a option =
-	  let 
+	  let
 	    val (s,c) = DbBackend.selectDb db sql
-      val res = Option.map (fn g => f(fn y => if List.exists (fn c' => c' = y) c 
-                                              then getOpt(g y, "")
-                                              else "##")) (DbBackend.getRowDb s)
+            val res = Option.map (fn g => f(fn y => if List.exists (fn c' => c' = y) c
+                                                    then getOpt(g y, "")
+                                                    else "##")) (DbBackend.getRowDb s)
 	  in
 	    case DbBackend.getRowDb s of NONE => res
                                  | SOME _ => raise Fail "zeroOrOneRowDb'.more than one row"
@@ -187,37 +202,35 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 
 	fun existsOneRowDb db sql : bool =
 	  let val (s,_) = DbBackend.selectDb db sql
-    in case DbBackend.getRowDb s of NONE => false
-                                  | SOME _ => true
+          in case DbBackend.getRowDb s of NONE => false
+                                        | SOME _ => true
 	  end
 
-	fun seqNextvalDb db (seqName:string) : int = 
+	fun seqNextvalDb db (seqName:string) : int =
 	  let val s = oneFieldDb db `select ^(seqNextvalExp seqName) ^fromDual`
 	  in case Int.fromString s of
 	    SOME i => i
-	  | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
+	  | NONE => raise Fail "Db.seqNextval.nextval not an integer"
 	  end
 
-	fun seqCurrvalDb db (seqName:string) : int = 
+	fun seqCurrvalDb db (seqName:string) : int =
 	  let val s = oneFieldDb db `select ^(seqCurrvalExp seqName) ^fromDual`
 	  in case Int.fromString s of
 	    SOME i => i
-	  | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
+	  | NONE => raise Fail "Db.seqCurrval.nextval not an integer"
 	  end
 
        (* Stored Procedures *)
        fun execSpDb (db: db) ([]: quot list) : unit = ()
          | execSpDb (db: db) (qs: quot list) : unit =
-	 let
-	   val body = Quot.concatWith ";\n"  qs
-	 in
-	   dmlDb db (`declare begin ` ^^ body ^^ `; end;`)
+	 let val body = Quot.concatWith ";\n"  qs
+	 in dmlDb db (`declare begin ` ^^ body ^^ `; end;`)
          end
     end (* structure Handle *)
 
     fun dml (q: quot) : unit = Handle.wrapDb (fn db => Handle.dmlDb db q)
-    fun exec (q: quot) : unit = Handle.wrapDb (fn db => Handle.execDb db q)    
-    
+    fun exec (q: quot) : unit = Handle.wrapDb (fn db => Handle.execDb db q)
+
     fun maybeDml (q: quot) : unit = dml q handle X => ()
 
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
@@ -232,19 +245,22 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
     fun foldCol (f:string list -> (string->string option)*'a->'a) (acc:'a) (sql:quot) : 'a =
       Handle.wrapDb (fn db => Handle.foldDbCol db f acc sql)
 
+    fun foldRaw (f:string option list * 'a -> 'a) (acc:'a) (sql:quot) : 'a =
+      Handle.wrapDb (fn db => Handle.foldDbRaw db f acc sql)
+
     fun app (f:(string->string)->'a) (sql:quot) : unit =
       Handle.wrapDb (fn db => Handle.appDb db f sql)
 
     fun appCol (f:string list -> (string->string option)->'a) (sql:quot) : unit =
       Handle.wrapDb (fn db => Handle.appDbCol db f sql)
 
-    fun list (f:(string->string)->'a) (sql:quot) : 'a list = 
+    fun list (f:(string->string)->'a) (sql:quot) : 'a list =
       Handle.wrapDb (fn db => Handle.listDb db f sql)
 
-    fun listCol (f:string list -> (string->string option)->'a) (sql:quot) : 'a list = 
+    fun listCol (f:string list -> (string->string option)->'a) (sql:quot) : 'a list =
       Handle.wrapDb (fn db => Handle.listDbCol db f sql)
 
-    fun oneField (sql : quot) : string = 
+    fun oneField (sql : quot) : string =
       Handle.wrapDb (fn db => Handle.oneFieldDb db sql)
 
     fun zeroOrOneField (sql : quot) : string option =
@@ -253,20 +269,20 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
     fun oneRow sql : string list =
       Handle.wrapDb (fn db => Handle.oneRowDb db sql)
 
-    fun oneRow' (f:(string->string)->'a) (sql:quot) : 'a = 
+    fun oneRow' (f:(string->string)->'a) (sql:quot) : 'a =
       Handle.wrapDb (fn db => Handle.oneRowDb' db f sql)
 
     fun zeroOrOneRow sql : string list option =
       Handle.wrapDb (fn db => Handle.zeroOrOneRowDb db sql)
 
-    fun zeroOrOneRow' (f:(string->string)->'a) (sql:quot) : 'a option = 
+    fun zeroOrOneRow' (f:(string->string)->'a) (sql:quot) : 'a option =
       Handle.wrapDb (fn db => Handle.zeroOrOneRowDb' db f sql)
 
     fun existsOneRow sql : bool =
       Handle.wrapDb (fn db => Handle.existsOneRowDb db sql)
 
     fun qq s =
-      let 
+      let
 	fun qq_s' [] = []
 	  | qq_s' (x::xs) = if x = #"'" then x :: x :: (qq_s' xs) else x :: (qq_s' xs)
       in
@@ -292,7 +308,7 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
 	| 12 => Date.Dec
 	| _ => raise Fail ("DbFunctor.toDate: " ^ (Int.toString mth))
     in
-      fun toDate s = 
+      fun toDate s =
 	(case (RegExp.extract o RegExp.fromString) "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9]).*" s of
 	   SOME [yyyy,mm,dd] => SOME (Date.date{year=Option.valOf (Int.fromString yyyy),
 						month=mthToName (Option.valOf (Int.fromString mm)),
@@ -328,10 +344,9 @@ functor DbFunctor (structure DbBackend : WEB_DB_BACKEND
     fun setList vs = String.concatWith (Quot.toString `,
 `) (List.map (fn (n,v) => n ^ "=" ^ qqq v) vs)
 
-    fun seqNextval (seqName:string) : int = 
+    fun seqNextval (seqName:string) : int =
       Handle.wrapDb (fn db => Handle.seqNextvalDb db seqName)
 
-    fun seqCurrval (seqName:string) : int = 
+    fun seqCurrval (seqName:string) : int =
       Handle.wrapDb (fn db => Handle.seqCurrvalDb db seqName)
   end
-
