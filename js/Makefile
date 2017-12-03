@@ -27,7 +27,7 @@ THEBASISFILES = js/basis/MLB/Js/*.js
 
 CODEMIRRORFILES=js/codemirror/codemirror.js js/codemirror/codemirror.css js/codemirror/sml.js
 
-favicon.ico: smltojs_logo_no_text.png 
+favicon.ico: smltojs_logo_no_text.png
 	convert smltojs_logo_no_text.png \
             \( -clone 0 -resize 16x16 \) \( -clone 0 -resize 32x32 \) \
             \( -clone 0 -resize 48x48 \) \( -clone 0 -resize 64x64 \) \
@@ -35,11 +35,11 @@ favicon.ico: smltojs_logo_no_text.png
 
 SRC_ROOT=$(shell cd ..; pwd)
 SML_LIB=$(SRC_ROOT)/js
-SMLTOJS=SML_LIB=$(SML_LIB) smltojs
+SMLTOJS=SML_LIB=$(SML_LIB) $(SRC_ROOT)/bin/smltojs
 CODEMIRRORFLAGS=-jslibs "../../js/codemirror/codemirror.js"
 JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
 JSDOCFILES=js/doc/*.{html,css,js}
-DOJO=/Users/mael/dojo-release-1.9.1
+DOJO=/Users/mael/dojo-release-1.9.11
 # Before running "make smltojsonline", make sure to run "make smltojs; make smltojs_basislibs"
 # in the parent directory; otherwise, certain js-files will be missing.
 # For trying smltojsonline on http://localhost:8000, first start a web-server in the smltojsonline directory:
@@ -60,7 +60,7 @@ smltojsonline: Makefile doc favicon.ico
 	(cd otests; for f in `ls *.sml`; do cp -p $${f} ../smltojsonline/otests/$${f}_; done)
 
 # Before running "make smltojs_web", make sure to run "make smltojs; make smltojs_basislibs"
-# in the parent directory; otherwise, certain js-files are missing and will not be 
+# in the parent directory; otherwise, certain js-files are missing and will not be
 # part of the packaged tar-file.
 smltojs_web: Makefile doc
 	(cd ../src/Compiler; $(SMLTOJS) -aopt $(JS_PATH_FLAGS) $(CODEMIRRORFLAGS) -o index smltojs0.mlb)

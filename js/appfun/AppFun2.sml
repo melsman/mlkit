@@ -20,7 +20,7 @@ struct
   open Js.Element
   infix &
 
-  fun scrollDown e = 
+  fun scrollDown e =
       JsCore.exec1 {stmt="t.scrollTop = t.scrollHeight;", arg1=("t",JsCore.fptr),res=JsCore.unit}
       (Js.Element.toForeignPtr e)
 
@@ -69,7 +69,7 @@ struct
          notifyTimeout := NONE)
     fun fadeNotification color e opacity () =
         if opacity < 0.0 then clearNotification e
-        else 
+        else
           (setAttr e opacity color;
            notifyTimeout := SOME(Js.setTimeout 50 (fadeNotification color e (opacity-0.02))))
 
@@ -118,7 +118,7 @@ struct
       end
 
   fun log s = (notify s; log0 s)
-          
+
   val topelem = Js.documentElement Js.document
 
   fun appendStyleLink path =
@@ -143,7 +143,7 @@ struct
       case Js.firstChild topelem of
           SOME head =>
           (case Js.nextSibling head of
-               SOME goodbody => 
+               SOME goodbody =>
                (case Js.nextSibling goodbody of
                     SOME badbody => Js.removeChild topelem badbody
                   | NONE => raise Fail "cleanupBody")
@@ -173,7 +173,7 @@ struct
 
   val () = List.app appendScript X.script_paths
 
-  type editor = 
+  type editor =
        {get: unit -> string,
         set: string -> unit}
 
@@ -201,7 +201,7 @@ struct
 (*
                ; path t "js/codemirror/"
                ; parserfiles t [tokenizefile,parsefile]
-               ; stylesheets t [stylefile] 
+               ; stylesheets t [stylefile]
 *)
                ; height t "100%"
                ; width t "100%"
@@ -220,7 +220,7 @@ struct
           val () = Control.printer_set p_new
           val () = f v handle _ => ()
           val res = String.concat(rev(!buf))
-      in Control.printer_set p_old; 
+      in Control.printer_set p_old;
          res
       end
 
@@ -242,7 +242,7 @@ struct
 
   infix ^^
   fun "0" ^^ p = p
-    | p1 ^^ p2 = p1 ^ "/" ^ p2  
+    | p1 ^^ p2 = p1 ^ "/" ^ p2
 
   structure Files = struct
     type filename = string
@@ -283,8 +283,8 @@ struct
      * - The dropbox filesTable is kept in sync with the other
      *   containers using autosave and autoload.
      *
-     * There is a reserved folder called Server. The content of the Server folder is 
-     * determined by the file otests/content on the server. Files and folders in the 
+     * There is a reserved folder called Server. The content of the Server folder is
+     * determined by the file otests/content on the server. Files and folders in the
      * Server folder are read-only, meaning that modifications to the files are not
      * saved.
      *)
@@ -335,7 +335,7 @@ struct
           | _ => false
 
     local
-      (* [loadFile fts r] loads an individual file in Dropbox and adds it to 
+      (* [loadFile fts r] loads an individual file in Dropbox and adds it to
        * the FileTreeStore. *)
       fun loadFile fts r =
           let fun loadDir p n =
@@ -361,9 +361,10 @@ struct
     in
 
       (* [load c fts] loads files from Dropbox and updates FileTreeStore *)
-      fun load c fts =
+    fun load c fts = ()
+(*
           let val dsm = Dropbox.getDatastoreManager c
-          in Dropbox.openDefaultDatastore dsm (fn (err, ds) =>           
+          in Dropbox.openDefaultDatastore dsm (fn (err, ds) =>
                   let val thefilesTable = Dropbox.getTable ds "files"
                       val () = filesTable := SOME thefilesTable
                       val fileRecords = Dropbox.allRecords thefilesTable
@@ -371,6 +372,7 @@ struct
                   end
              )
           end
+*)
     end
 
     fun getFileRecord filename =  (* filename is a full path *)
@@ -390,14 +392,14 @@ struct
                          c
                       end
           | _ => raise Fail ("failed to load server file content for " ^ f)
-                            
+
     (* [loadFileContent filename] returns (SOME c) if the file filename
      * (with content c) is not already loaded in a tab. It returns NONE
      * if the file is already in a tab. Raises (Fail msg) in case of
      * error. *)
-    
+
     fun loadFileContent filename : string option =
-        if List.exists (fn (x,_,_) => x = filename) (!filesInTabs) then 
+        if List.exists (fn (x,_,_) => x = filename) (!filesInTabs) then
           (current := filename; NONE)
         else
           if isServerPath filename then
@@ -415,7 +417,7 @@ struct
         else treeStoreRemove fts id
 
     fun clear fts closetab =
-        let val () = 
+        let val () =
                 case !filesTable of
                     SOME t =>
                     let val rs = Dropbox.allRecords t
@@ -423,7 +425,7 @@ struct
                     end
                   | NONE => ()
             val () = List.app (treeStoreRemoveExceptServer fts) (!allfiles)
-            val () = List.app (fn id => if id <> "0" then 
+            val () = List.app (fn id => if id <> "0" then
                                           treeStoreRemoveExceptServer fts id
                                         else ()) (!alldirs)
         in alldirs := ["0"];
@@ -434,14 +436,14 @@ struct
         end
 
     fun mkAbsPath n =
-        case currentFolder() of 
-            "0" => n 
+        case currentFolder() of
+            "0" => n
           | d => d ^ "/" ^ n
 
     local
 
        val count = ref 0
-       fun newFile0 fts content name =           
+       fun newFile0 fts content name =
            let val lname = mkAbsPath name
            in if isServerPath lname then
                 raise Fail "You cannot create new files in the Server folder"
@@ -488,7 +490,7 @@ struct
             if folderExists name then raise Fail "folder already exists"
             else if not(okFolderName name) then raise Fail "invalid new folder name"
             else newFolder0 fts name
-      
+
         fun currentEditor () =
             case currentFile() of
                 NONE => NONE
@@ -496,7 +498,7 @@ struct
                 case List.find (fn (f',_,_) => f = f') (!filesInTabs) of
                     SOME t => SOME (f,#3 t)
                   | NONE => ( log "currentEditor: error"
-                            ; NONE)      
+                            ; NONE)
     end (*local*)
 
     fun showTab n =
@@ -509,7 +511,7 @@ struct
           | SOME folder =>
             if isServerPath folder then
               log ("You cannot delete folders in the Server folder")
-            else 
+            else
             let val (tabsToKill,tabsToKeep) =
                     List.partition (fn (f,_,_) => String.isPrefix (folder^"/") f) (!filesInTabs)
                 val (filesToDelete,filesToKeep) =
@@ -556,7 +558,7 @@ struct
 
     fun addTab filename md5 editor =
         filesInTabs := (filename,ref md5,editor) :: (!filesInTabs)
-        
+
     fun saveFile (filename,md5ref,editor:editor) =
         let val c = #get editor ()
             val newMd5 = MD5.fromString c
@@ -574,12 +576,12 @@ struct
         List.app saveFile (!filesInTabs)
 
     fun closeTab n =
-        let val () = 
+        let val () =
                 case currentFile() of
                     SOME n' => if n = n' then current := "0"
                                else ()
                   | NONE => ()
-            val () = 
+            val () =
                 case List.find (fn (n',_,_) => n' = n) (!filesInTabs) of
                     SOME f => saveFile f
                   | NONE => ()
@@ -602,14 +604,14 @@ struct
                       in (folderpath ^^ newfile, newfilename, newparent)
                       end
                     | _ => raise Fail "move.impossible: newfile is a file"
-                else 
+                else
                   case stripAbsolute newfile of
                       SOME path =>
                       if okFilePath path then
                         case splitPath path of
                             (newparent, SOME newfilename) => (path,newfilename,newparent)
                           | _ => raise Fail "move.impossible: newfile is a file"
-                      else raise Fail ("invalid target path " ^ qq newfile)                                 
+                      else raise Fail ("invalid target path " ^ qq newfile)
                     | NONE => raise Fail ("invalid target path " ^ qq newfile)
             val filepath = folderpath ^^ filename
             val () = log ("Moving file " ^ qq filepath ^ " into " ^ qq newfilepath)
@@ -617,7 +619,7 @@ struct
            else if fileExists newfilepath then raise Fail "file already exists"
            else if not(folderExists newparent) then raise Fail ("target folder " ^ qq newparent ^ " does not exist")
            else case List.find (fn (n,_,_) => n = filepath) (!filesInTabs) of
-              SOME (_,_,editor) =>              
+              SOME (_,_,editor) =>
               ( current := "0"
               ; filesInTabs := List.filter (fn (n,_,_) => n <> filepath) (!filesInTabs)
               ; allfiles := List.map (fn n => if n <> filepath then n else newfilepath) (!allfiles)
@@ -633,7 +635,7 @@ struct
         end
   end (* structure Files *)
 
-  val ftsServer = 
+  val ftsServer =
       let val content = serverGet "otests/content"
           val content = String.translate (fn c => if Char.isSpace c then "" else String.str c) content
           val lines = String.tokens (fn c => c = #";") content
@@ -657,7 +659,7 @@ struct
 
   fun addEditorTab (tabs,tmap) filename content =
       let val inarea = taga "textarea" [("style","border:0;")] ($content)
-          val inputarea = taga "div" [("class","textareacontainer")] inarea          
+          val inputarea = taga "div" [("class","textareacontainer")] inarea
           val () = run (pane [("style","height:100%;"),("title",filename),("closable","true")] inputarea >>= (fn page =>
                         (set_onClose page (fn() => (Files.closeTab filename; true));
                          set_onShow page (fn() => Files.showTab filename);
@@ -676,7 +678,7 @@ struct
                   suggestion: string, validate: string -> 'a,
                   cont: 'a -> unit} : unit =
       let
-        val msgArea = taga0 "span" [("class","notify_area2"),("style","opacity:0.0;top:0px;")]                            
+        val msgArea = taga0 "span" [("class","notify_area2"),("style","opacity:0.0;top:0px;")]
         fun doit d s =
               let val t = validate s
               in (hideDialog d; cont t; true)
@@ -699,7 +701,7 @@ struct
                     Js.installEventHandler cancel Js.onclick (fn () => (hideDialog d; true));
                     showDialog d; ret () ))
       in run dM
-      end 
+      end
 
   fun infoDialog buttonlabel caption content : unit =
       let val but = button buttonlabel
@@ -764,7 +766,7 @@ struct
                   suggestion=Files.suggestNewFolderName (),
                   validate=Files.newFolder fts,
                   cont=fn s => ()}
-      
+
   fun treeHandle_LoadFile tabsmap selecttab (lname,name) : unit =
       if Files.okFolderPath lname then Files.current := lname
       else case Files.loadFileContent lname of
@@ -788,14 +790,14 @@ struct
                              \be asked to allow the application to store data in a special area of your Dropbox account."
               in confirmDialog "Dropbox Sign In" "Sign in" msg doit
               end
-      end           
+      end
 
   fun menuHandle_DropboxSignOut c fts closetab () =
       let val msg = $"Signing out of Dropbox will not delete any data in the Dropbox datastore. You will \
                      \always be able to sign in again using the \"Sign in\" entry in the Dropbox menu."
       in Files.autosave();
          confirmDialog "Dropbox Sign Out" "Sign out" msg
-           (fn () => Dropbox.signOut c 
+           (fn () => Dropbox.signOut c
                (fn () => (Files.filesTable := NONE;
                           Files.clear fts closetab;
                           log "Signed out of Dropbox";
@@ -811,20 +813,20 @@ struct
       let fun link l t () = taga "a" [("href",l), ("target","_blank")] ($t)
           val linkSMLtoJs = link "http://www.smlserver.org/smltojs" "SMLtoJs"
           val linkDojo = link "http://dojotoolkit.org/" "Dojo"
-          val linkCodeMirror = link "http://codemirror.net" "CodeMirror" 
+          val linkCodeMirror = link "http://codemirror.net" "CodeMirror"
           val linkDropboxdatastore = link "https://www.dropbox.com/developers/datastore" "Dropbox datastore"
           val linkMLKitRep = link "https://github.com/melsman/mlkit" "Github MLKit Repository"
-      in tag "p" 
-             ($"This IDE is based on " & linkSMLtoJs() & 
-              $", a Standard ML to JavaScript compiler. The front-end uses " & linkDojo() & 
-              $" and " & linkCodeMirror() & $". The IDE " & 
-              $" allows for the user to save source files in a personal and secure " & linkDropboxdatastore() & 
+      in tag "p"
+             ($"This IDE is based on " & linkSMLtoJs() &
+              $", a Standard ML to JavaScript compiler. The front-end uses " & linkDojo() &
+              $" and " & linkCodeMirror() & $". The IDE " &
+              $" allows for the user to save source files in a personal and secure " & linkDropboxdatastore() &
               $".") &
-         tag "p" 
+         tag "p"
              ($" The sources for this IDE are" &
               $" available by download from the " & linkMLKitRep() & $" and are distributed" &
               $" under the GPL2 license; some parts of the sources are also available under the MIT license." &
-              $" For information about licenses, please consult the sources at the " & 
+              $" For information about licenses, please consult the sources at the " &
               linkMLKitRep() & $".")
       end
 
@@ -850,7 +852,7 @@ struct
                                      else log "Not dropbox authenticated"
                             val m = Menu.item m_dropbox ("Sign in", SOME EditorIcon.createLink, menuHandle_DropboxSignIn key) >>= (fn () =>
                                     Menu.item m_dropbox ("Sign out", SOME EditorIcon.unlink, menuHandle_DropboxSignOut c fts closetab))
-                        in run m                           
+                        in run m
                         end);
         ret ()))) >>= (fn () =>
       Menu.item m_left (X.computeLabel, NONE, menuHandle_CompileAndRun) >>= (fn () =>
@@ -881,8 +883,8 @@ struct
   val () = Js.appendChild (getElem "body") notifyAreaElem
   val () = Js.appendChild (getElem "body") dropboxAreaElem
 
-  val () = attachToElement (getElem "body") everything
-                                
+  val () = attachToElement (getElem "body") everything (fn() => ())
+
   fun onload() =
       let
         val () = cleanupBody()
