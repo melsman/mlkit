@@ -17,6 +17,17 @@ datatype conRep = (* representation of value constructors for datatypes *)
        | UNBOXED_NULL
        | UNBOXED_UNARY
 
+(* Replacing lvars in an expression to other lvars *)
+type rep = (lvar, lvar) FinMapEq.map
+
+fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances}) : Exp =
+    (case FinMapEq.lookup Lvars.eq rep lvar of
+         SOME lv => L.VAR{lvar=lv,instances=instances}
+       | NONE => e)
+  | replace_lvs rep (L.FRAME _) = die "rename_lvs: FRAME construct not expected"
+  | replace_lvs rep e = LambdaBasics.map_lamb (replace_lvs rep) e
+
+
 (* Environments map value constructors to information about their
  * representation. *)
 
@@ -234,9 +245,6 @@ infix &
 fun x & y = J.Seq[x,y]
 
 fun sToS s : J.exp = J.New("String",[J.Cnst(J.Str s)])
-
-type LambdaPgm = L.LambdaPgm
-type Exp = L.LambdaExp
 
 datatype cont = RetCont of (lvar*J.id list) option   (* lvar is the fix-bound variable and ids are the function parameters *)
               | IdCont of J.id
@@ -691,7 +699,7 @@ fun reassignIds (ids:J.id list) (es:J.exp list) : J.stmt =
 
 (* Main compilation function *)
 
-fun toj C (e:Exp) : ret =
+fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     case e of
     L.VAR {lvar,...} => E(J.Id(prLvar C lvar))
   | L.INTEGER (v,_) => E(J.Cnst(J.Int v))
@@ -700,11 +708,11 @@ fun toj C (e:Exp) : ret =
   | L.REAL v => E(J.Cnst(J.Real v))
   | L.PRIM(L.CONprim {con,...},nil) => E(ppConNullary C con)
   | L.PRIM(L.CONprim {con,...},[e]) =>
-    resolveE (toj1 C e) (ppConUnary C con)
+    resolveE (toj1 C P e) (ppConUnary C con)
   | L.PRIM(L.DECONprim {con,...}, [e]) =>
     (case Env.M.lookup (Context.envOf C) con of
-       SOME(STD _) => resolveE (toj1 C e) (fn e' => J.Sub(e',jcnst1))
-     | SOME UNBOXED_UNARY => toj C e
+       SOME(STD _) => resolveE (toj1 C P e) (fn e' => J.Sub(e',jcnst1))
+     | SOME UNBOXED_UNARY => toj C P e
      | SOME _ => die ("toj.PRIM(DECON): constructor " ^ Con.pr_con con
                       ^ " associated with NULLARY constructor info")
      | NONE => die ("toj.PRIM(DECON): constructor " ^ Con.pr_con con
@@ -712,40 +720,56 @@ fun toj C (e:Exp) : ret =
   | L.PRIM(L.EXCONprim excon,nil) => (* nullary *)
     E(J.Id(exconExn excon))
   | L.PRIM(L.EXCONprim excon,[e]) => (* unary *)
-    resolveE (toj1 C e) (fn e' => J.Array [J.Id(exconName excon),e'])
+    resolveE (toj1 C P e) (fn e' => J.Array [J.Id(exconName excon),e'])
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
-    resolveE (toj1 C e) (fn e' => J.Sub(e', jcnst1))
+    resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst1))
   | L.PRIM(L.RECORDprim, []) => E junit
-  | L.PRIM(L.RECORDprim, es) => resolveE (tojs C es) J.Array
-  | L.PRIM(L.UB_RECORDprim, [e]) => toj C e
+  | L.PRIM(L.RECORDprim, es) => resolveE (tojs C P es) J.Array
+  | L.PRIM(L.UB_RECORDprim, [e]) => toj C P e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))
   | L.PRIM(L.SELECTprim i,[e]) =>
-    resolveE (toj1 C e) (fn e' => J.Sub(e',J.Cnst(J.Int(Int32.fromInt i))))
+    resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(Int32.fromInt i))))
   | L.PRIM(L.DEREFprim _, [e]) =>
-    resolveE (toj1 C e) (fn e' => J.Sub(e', jcnst0))
+    resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst0))
   | L.PRIM(L.REFprim _, [e]) =>
-    resolveE (toj1 C e) (fn e' => J.Array [e'])
+    resolveE (toj1 C P e) (fn e' => J.Array [e'])
   | L.PRIM(L.ASSIGNprim _, [e1,e2]) =>
-    resolveE (toj2 C (e1,e2))
+    resolveE (toj2 C P (e1,e2))
       (fn (e1',e2') => J.Prim(",",[J.Prim("=",[J.Sub(e1',jcnst0),e2']),junit]))
-  | L.PRIM(L.DROPprim, [e]) => toj C e
+  | L.PRIM(L.DROPprim, [e]) => toj C P e
   | L.PRIM(L.DROPprim, _) => die "DROPprim unimplemented"
   | L.PRIM(L.EQUALprim _, [e1,e2]) =>
-    resolveE (toj2 C (e1,e2)) (fn (e1',e2') => J.Prim("==",[e1',e2']))
+    resolveE (toj2 C P (e1,e2)) (fn (e1',e2') => J.Prim("==",[e1',e2']))
   | L.FN {pat,body} =>
     let val ids = map (prLvar C o #1) pat
-    in E(J.Fun(ids, wrapRet (RetCont NONE) (toj C body)))
+    in if #clos_p P then
+         let fun fromList nil = FinMapEq.empty
+               | fromList ((k,v)::rest) = FinMapEq.add Lvars.eq (k,v,fromList rest)
+             val (fvs,_) = LambdaBasics.freevars e (* memo: what about excons? *)
+             val lvs_lvs'_idxs =  (* new lvs for free variables *)
+                 rev (#1 (foldl (fn (x,(acc,i)) => ((x,Lvars.newLvar(),i)::acc,i+1))
+                                (nil,0) fvs))
+             val env_id = prLvar C (Lvars.new_named_lvar "env")
+             val rep : rep = (fromList o map (fn (lv,lv',_) => (lv,lv'))) lvs_lvs'_idxs
+             val body' = replace_lvs rep body
+             val binds = map (fn (_,lv',i) => J.Var(prLvar C lv', SOME(J.Sub(J.Id env_id,J.Cnst(J.Int i))))) lvs_lvs'_idxs
+             val g = J.Fun(ids, J.Seq (binds@[wrapRet(RetCont NONE) (toj C P body')]))
+             val f = J.Fun([env_id], J.Return g)
+             val es = map (J.Id o prLvar C) fvs
+         in E(J.App(f,[J.Array es]))
+         end
+       else E(J.Fun(ids, wrapRet (RetCont NONE) (toj C P body)))
     end
-  | L.LET {pat=[p],bind,scope} => toj_let C ([#1 p],[bind],scope)
+  | L.LET {pat=[p],bind,scope} => toj_let C P ([#1 p],[bind],scope)
   | L.LET {pat=[],bind,scope} =>
     S(fn k =>
          let val s_bind =
-                 case toj C bind of
+                 case toj C P bind of
                    S f => f NxtCont
                  | E e => J.Exp e
          in s_bind &
-            (case toj C scope of
+            (case toj C P scope of
                S f' => f' k
              | E e => wrapExp k e)
          end)
@@ -753,46 +777,60 @@ fun toj C (e:Exp) : ret =
     let val lvs = map #1 pat
         val binds = case bind of L.PRIM(UB_RECORDprim,binds) => binds
                                | _ => die "LET.unimplemented"
-    in toj_let C (lvs, binds, scope)
+    in toj_let C P (lvs, binds, scope)
     end
   | L.FIX{functions,scope} =>
     (case monoNonRec functions of
        SOME (lv,pat,body) =>
        let val ids = map (prLvar C o #1) pat
-           val f = J.Fun(ids, wrapRet (RetCont NONE) (toj C body))
-       in S (fn k => J.Var(prLvar C lv,SOME f) & wrapRet k (toj C scope))
+           val f = J.Fun(ids, wrapRet (RetCont NONE) (toj C P body))
+       in S (fn k => J.Var(prLvar C lv,SOME f) & wrapRet k (toj C P scope))
        end
      | NONE =>
        case functions of
          [{lvar,bind=L.FN{pat,body},...}] =>
-         if tailCalls lvar body andalso (*not (unsafeTailCall lvar body) *) noFns body then
-           let
-             val fid = prLvar C lvar
-(*
-             val () = if not (noFns body) then
-                        print ("######### New tailrecursive function: " ^ fid ^ "\n")
-                      else ()
-*)
-             val ids = map (prLvar C o #1) pat
-             val fixvar = fresh_fixvar()
-             fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
-             val C' = Context.add C (lvar,fixvar)
-             val funbody = J.While(SOME (pr_label lvar), jtrue,   (* label must be the same as the one for the continue statement... *)
-                                   wrapRet (RetCont(SOME(lvar,ids)))
-                                           (toj C' body))
-           in S(fn k =>
-                   ( (* print ("fix with tailcalls: " ^ prLvar C lvar ^ "\n"); *)
-                   J.Var(fixvar,SOME (J.Id "{}")) &
-                   J.Var(pr_fix_lv lvar, SOME(J.Fun(ids,funbody))) &
-                   J.Var(fid, SOME(J.Id (pr_fix_lv lvar))) &
-                   wrapRet k (toj C scope)))
-           end
-         else toj_fix C functions scope
-       | _ => toj_fix C functions scope)
+         if tailCalls lvar body then
+           if noFns body then                           (* ##1## Lambdas inside need not be closed *)
+             let val fid = prLvar C lvar
+                 val ids = map (prLvar C o #1) pat
+                 val fixvar = fresh_fixvar()
+                 fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
+                 val C' = Context.add C (lvar,fixvar)
+                 val funbody = J.While(SOME (pr_label lvar), jtrue,   (* label must be the same as the one for the continue statement... *)
+                                       wrapRet (RetCont(SOME(lvar,ids)))
+                                               (toj C' P body))
+             in S(fn k =>
+                     ( J.Var(fixvar,SOME (J.Id "{}")) &
+                       J.Var(pr_fix_lv lvar, SOME(J.Fun(ids,funbody))) &
+                       J.Var(fid, SOME(J.Id (pr_fix_lv lvar))) &
+                       wrapRet k (toj C P scope)))
+             end
+           else if not (unsafeTailCall lvar body) then  (* ##2## Lambdas inside MUST be closurized *)
+             let val fid = prLvar C lvar
+
+                 (*val () = print ("######### New tailrecursive function: " ^ fid ^ "\n")*)
+
+                 val ids = map (prLvar C o #1) pat
+                 val fixvar = fresh_fixvar()
+                 fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
+                 val C' = Context.add C (lvar,fixvar)
+                 val funbody = J.While(SOME (pr_label lvar), jtrue,   (* label must be the same as the one for the continue statement... *)
+                                       wrapRet (RetCont(SOME(lvar,ids)))
+                                               (toj C' {clos_p=true} body))
+             in S(fn k =>
+                     ( (*print ("fix with tailcalls: " ^ prLvar C lvar ^ "\n");*)
+                       J.Var(fixvar,SOME (J.Id "{}")) &
+                       J.Var(pr_fix_lv lvar, SOME(J.Fun(ids,funbody))) &
+                       J.Var(fid, SOME(J.Id (pr_fix_lv lvar))) &
+                       wrapRet k (toj C P scope)))
+             end
+           else toj_fix C P functions scope
+         else toj_fix C P functions scope
+       | _ => toj_fix C P functions scope)
   | L.APP(e1 as L.VAR{lvar,...},L.PRIM(L.UB_RECORDprim, es),SOME true) => (* tail call *)
     (S (fn k =>
            let fun notail() =
-                   case tojs C (e1::es) of
+                   case tojs C P (e1::es) of
                      (SOME s, e1' :: es') =>
                      s & wrapExp k (J.App(e1',es'))
                    | (NONE, e1' :: es') => wrapExp k (J.App(e1',es'))
@@ -803,30 +841,30 @@ fun toj C (e:Exp) : ret =
                 else
                   ( (* print (" tail call: " ^ prLvar C lvar ^ "\n"); *)
                    wrapRet NxtCont
-                          (resolveS (tojs C es)
+                          (resolveS (tojs C P es)
                                     (fn es' => fn _ =>
                                                   reassignIds ids es' & J.Continue (pr_label lvar))))
               | k => notail()
            end
     ))
   | L.APP(e1,L.PRIM(L.UB_RECORDprim, es),_) =>
-    (case tojs C (e1::es) of
+    (case tojs C P (e1::es) of
        (SOME s, e1' :: es') =>
        S(fn k => s & wrapExp k (J.App(e1',es')))
      | (NONE, e1' :: es') => E(J.App(e1',es'))
      | _ => die "toj.L.APP: impossible")
-  | L.APP(e1,e2,i) => toj C (L.APP(e1,L.PRIM(L.UB_RECORDprim,[e2]),i))
+  | L.APP(e1,e2,i) => toj C P (L.APP(e1,L.PRIM(L.UB_RECORDprim,[e2]),i))
 
-  | L.SWITCH_I {switch,precision} => toJsSw (toj C) (toj1 C) J.Int switch
-  | L.SWITCH_W {switch,precision} => toJsSw (toj C) (toj1 C) J.Word switch
-  | L.SWITCH_S switch => toJsSw (toj C) (toj1 C) J.Str switch
-  | L.SWITCH_C switch => toJsSw_C C (toj C) (toj1 C) switch
-  | L.SWITCH_E switch => toJsSw_E (toj C) switch
+  | L.SWITCH_I {switch,precision} => toJsSw (toj C P) (toj1 C P) J.Int switch
+  | L.SWITCH_W {switch,precision} => toJsSw (toj C P) (toj1 C P) J.Word switch
+  | L.SWITCH_S switch => toJsSw (toj C P) (toj1 C P) J.Str switch
+  | L.SWITCH_C switch => toJsSw_C C (toj C P) (toj1 C P) switch
+  | L.SWITCH_E switch => toJsSw_E (toj C P) switch
 
   (* In EXPORTprim below, we could eta-convert e and add code to check
    * that the type of the argument is compatiple with instance_arg. *)
   | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res},[e]) =>
-    resolveE (toj1 C e) (fn e' => J.Prim(",",[J.Prim("=",[J.Id("SMLtoJs." ^ name),e']),junit]))
+    resolveE (toj1 C P e) (fn e' => J.Prim(",",[J.Prim("=",[J.Id("SMLtoJs." ^ name),e']),junit]))
   | L.PRIM(L.EXPORTprim {name,instance_arg,instance_res}, _) =>
     die "toj.PRIM(EXPORTprim) should take exactly one argument"
   | L.PRIM(L.CCALLprim {name,...},exps) =>
@@ -834,9 +872,9 @@ fun toj C (e:Exp) : ret =
        "execStmtJS" =>
        (case exps
          of L.STRING s :: L.STRING argNames :: args =>  (* static code *)
-            resolveE (tojs C args) (fn es' => J.App(J.Fun([argNames],J.Embed s), es'))   (* hack with argNames pretty printing *)
+            resolveE (tojs C P args) (fn es' => J.App(J.Fun([argNames],J.Embed s), es'))   (* hack with argNames pretty printing *)
           | s :: argNames :: args => (* dynamic code *)
-            resolveE (tojs C (s::argNames::args))
+            resolveE (tojs C P (s::argNames::args))
                      (fn (s'::argNames'::es') =>
                          J.App(J.New("Function", [argNames',s']),es')
                        | _ => die "toj.execStmtJS : string-->string-->args (2)")
@@ -844,12 +882,12 @@ fun toj C (e:Exp) : ret =
      | "callJS" =>
        (case exps
          of L.STRING f :: args =>  (* static code *)
-            resolveE (tojs C args) (fn es' => J.App(J.Id f,es'))
+            resolveE (tojs C P args) (fn es' => J.App(J.Id f,es'))
           | f :: args => (* dynamic code *)
             let val xs = ((String.concatWith ",") o #2)
                          (foldl (fn (_,(i,acc)) => (i+1,"a" ^ Int.toString i::acc)) (0,nil) args)
             in
-              resolveE (tojs C (f::args))
+              resolveE (tojs C P (f::args))
                        (fn (f'::args') =>
                            J.App(J.New("Function",[J.Id("\"" ^ xs ^ "\""),
                                                    J.Prim("+",[J.Prim("+",[J.Id "\"return \"",f']),
@@ -858,37 +896,37 @@ fun toj C (e:Exp) : ret =
                          | _ => die "toj.callJS : string-->args (2)")
             end
           | _ => die "toj.callJS : string-->args")
-     | _ => resolveE (tojs C exps) (pToJs name)
+     | _ => resolveE (tojs C P exps) (pToJs name)
     )
   | L.PRIM _ => die "toj.PRIM unimplemented"
   | L.FRAME {declared_lvars, declared_excons} => E junit
   | L.HANDLE (e1,e2) => (* memo: avoid capture of variable e! *)
     let val lv = Lvars.newLvar()
         val id = prLvar C lv
-    in S (fn k => J.Try (wrapRet k (toj C e1),
+    in S (fn k => J.Try (wrapRet k (toj C P e1),
                          id,
-                         wrapRet k (resolveE (toj1 C e2) (fn e2' => J.App(e2',[J.Id id])))))
+                         wrapRet k (resolveE (toj1 C P e2) (fn e2' => J.App(e2',[J.Id id])))))
     end
   | L.EXCEPTION (excon,SOME _,scope) => (* unary *)
     let val s = Excon.pr_excon excon  (* for printing *)
     in S (fn k => J.Var(exconName excon, SOME(sToS s)) &
-                  wrapRet k (toj C scope))
+                  wrapRet k (toj C P scope))
     end
   | L.EXCEPTION (excon,NONE,scope) => (* nullary; precompute exn value and store it in exconExn(excon)... *)
     let val s = Excon.pr_excon excon  (* for printing *)
         val exn_id = exconExn excon
     in S (fn k => J.Var(exconName excon, SOME (sToS s)) &
                   J.Var(exconExn excon, SOME (J.Array[J.Id(exconName excon)])) &
-                  wrapRet k (toj C scope))
+                  wrapRet k (toj C P scope))
     end
-  | L.RAISE (e,_) => resolveS (toj1 C e) (fn e' => fn k => J.Throw e')
+  | L.RAISE (e,_) => resolveS (toj1 C P e) (fn e' => fn k => J.Throw e')
 
-and toj_let C (lvs, binds, scope) =
+and toj_let C P (lvs, binds, scope) =
     let
-      fun loop (nil,nil) = toj C scope
+      fun loop (nil,nil) = toj C P scope
         | loop (lv::lvs,b::bs) =
           let val id = prLvar C lv
-          in case toj C b of
+          in case toj C P b of
                E e' => S(fn k => J.Var(id,SOME e') & wrapRet k (loop(lvs,bs)))
              | S f => S(fn k => J.Var(id,NONE) & f (IdCont id) & wrapRet k (loop(lvs,bs)))
           end
@@ -896,29 +934,29 @@ and toj_let C (lvs, binds, scope) =
     in loop(lvs,binds)
     end
 
-and toj1 C e =
-    case tojs C [e] of
+and toj1 C P e =
+    case tojs C P [e] of
       (opt,[e']) => (opt,e')
     | _ => die "toj1.impossible"
 
-and toj2 C (e1, e2) =
-    case tojs C [e1,e2] of
+and toj2 C P (e1, e2) =
+    case tojs C P [e1,e2] of
       (sopt,[e1',e2']) => (sopt,(e1',e2'))
     | _ => die "toj2.impossible"
 
-and tojs C es =
+and tojs C P es =
     let fun loop [] = (NONE,[])
           | loop (e::es) =
-            case tojs C es of
+            case tojs C P es of
               (NONE,es') =>
-              (case toj C e of
+              (case toj C P e of
                  E e1' => (NONE,e1'::es')
                | S f1 =>
                  let val id = fresh_tmpvar()
                  in (SOME(J.Var(id,NONE) & f1 (IdCont id)),J.Id id :: es')
                  end)
             | (SOME s,es') =>
-              case toj C e of
+              case toj C P e of
                 E e1' =>
                 let val id = fresh_tmpvar()
                 in (SOME(J.Var(id,SOME e1') & s), J.Id id :: es')
@@ -930,16 +968,16 @@ and tojs C es =
     in loop es
     end
 
-and toj_fix C functions scope =
+and toj_fix C P functions scope =
     let
       val fixvar = fresh_fixvar()
       fun pr_fix_lv lv = fixvar ^ ".$" ^ pr_lv lv   (* needs to be consistent with patch above *)
       val C' = foldl(fn(lvar,C) => Context.add C (lvar,fixvar)) C (map #lvar functions)
-      fun js2 k = foldl(fn(lv,js) => J.Var(prLvar C lv, SOME(J.Id (pr_fix_lv lv))) & js) (wrapRet k (toj C scope)) (map #lvar functions)
+      fun js2 k = foldl(fn(lv,js) => J.Var(prLvar C lv, SOME(J.Id (pr_fix_lv lv))) & js) (wrapRet k (toj C P scope)) (map #lvar functions)
       fun fundefs k =
           foldl (fn ({lvar=f_lv,bind=L.FN{pat,body},...},acc) =>
                     let val ids = map (prLvar C o #1) pat
-                    in J.Var(pr_fix_lv f_lv, SOME(J.Fun(ids,wrapRet (RetCont NONE) (toj C' body)))) & acc
+                    in J.Var(pr_fix_lv f_lv, SOME(J.Fun(ids,wrapRet (RetCont NONE) (toj C' P body)))) & acc
                     end
                   | _ => die "toj_fix.malformed FIX")
                 (js2 k) functions
@@ -955,7 +993,7 @@ fun toJs (env0, L.PGM(dbss,e)) =
       val _ = resetBase()
       val env' = Env.fromDatbinds dbss
       val env = Env.plus(env0,env')
-      val js = wrapRet (RetCont NONE) (toj (Context.mk env) e)
+      val js = wrapRet (RetCont NONE) (toj (Context.mk env) {clos_p=false} e)
       val js = J.Exp(J.App(J.Fun([],js),[]))
       val js =
           case getLocalBase() of
