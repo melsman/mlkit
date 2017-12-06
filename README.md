@@ -1,4 +1,4 @@
-## The MLKit
+## MLKit
 
 The [MLKit](http://www.elsman.com/mlkit) is a compiler for the programming language Standard ML. The
 MLKit covers all of Standard ML, as defined in the 1997 edition of the
@@ -11,7 +11,7 @@ Library.
 [![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/issue)](http://issuestats.com/github/melsman/mlkit)
 [![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
 
-## Features
+## MLKit Features
 
 * Covers all of Standard ML. The MLKit compiles all of Standard ML,
   [including Modules](http://www.elsman.com/mlkit/staticinterp.html),
@@ -25,7 +25,7 @@ Library.
   easy to compile a program with different Standard ML
   compilers. Currently, both [MLton](http://mlton.org) and the MLKit supports the concept
   of ML Basis Files.
- 
+
 * Region-Based Memory Management: Memory allocation directives (both
   allocation and deallocation) are inferred by the compiler, which
   uses a number of program analyses concerning lifetimes and storage
@@ -43,12 +43,27 @@ Library.
   available. Documentation is also available in man-pages and from the
   [MLKit home page](http://melsman.github.io/mlkit).
 
+## MLKit Cousins
+
+This repository also includes the sources for the following tools,
+which are built on top of MLKit:
+
+* [SMLToJs](/README_SMLTOJS.md). A compiler that compiles all of Standard ML into JavaScript.
+
+* [SMLServer](/README_SMLSERVER.md). A compiler and Apache module that
+  allow for Standard ML to be efficiently executed in a web-server
+  context.
+
+* [Barry](/README_BARRY.md). A Standard ML source-to-source compiler
+  that will eliminate modules, using static interpretation and
+  generate optimised Core-language Standard ML code.
+
 ## License and Copyright
 
 The MLKit compiler is distributed under the GNU Public License,
-version 2. See the file doc/license/MLKit-LICENSE for details. The
-runtime system (kit/src/Runtime/) and libraries (kit/basis/) is
-distributed under the more liberal MIT License.
+version 2. See the file [MLKit-LICENSE](/doc/license/MLKit-LICENSE)
+for details. The runtime system (`/src/Runtime/`) and libraries
+(`basis/`) is distributed under the more liberal MIT License.
 
 ## Compilation Requirements
 
@@ -77,7 +92,7 @@ tools.
 
 ## Compilation
 
-After having checked out the sources from Github, execute the command: 
+After having checked out the sources from Github, execute the command:
 ````bash
 $ ./autobuild
 ````
@@ -87,7 +102,7 @@ appropriate set of commands:
 
 __Compile with MLton alone (Tested with 3Gb RAM):__
 ````bash
-$ ./configure 
+$ ./configure
 $ make mlkit
 ````
 
@@ -157,7 +172,7 @@ $ cd $HOME/kitdemo
 $ mlkit helloworld.sml
 ````
 
-The MLKit should produce an executable file `run`:  
+The MLKit should produce an executable file `run`:
 ````bash
 $ ./run
 hello world
@@ -180,12 +195,12 @@ The MLKit has a number of [known bugs and limitations](http://www.elsman.com/mlk
     kit/
        README
        configure
-       Makefile.in        
+       Makefile.in
        src/
        basis/
        doc/mlkit.pdf
-          /license/MLKit-LICENSE                   
-       man/man1/rp2ps.1                
+          /license/MLKit-LICENSE
+       man/man1/rp2ps.1
        kitdemo/
        test/
 
@@ -203,7 +218,7 @@ To compile and install the MLKit, execute the following commands:
 ````bash
 $ ./configure
 $ make mlkit
-$ make bootstrap             
+$ make bootstrap
 $ make mlkit_libs
 ````
 
@@ -217,4 +232,3 @@ See the section "Try It" above to test the installation.
 ## Appendix C: Displaying Region Flow Graphs with VCG
 
 The [VCG tool](http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html) can be used to show region flow graphs.
-

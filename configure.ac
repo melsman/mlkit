@@ -1,10 +1,10 @@
-AC_INIT(MLKit, [4.3.9])
+AC_INIT(MLKit, [4.3.10])
 AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
-AC_CONFIG_FILES([src/SMLserver/apache/Makefile 
+AC_CONFIG_FILES([src/SMLserver/apache/Makefile
                  src/Runtime/Makefile
                  src/Makefile
-                 Makefile 
+                 Makefile
                  doc/README_BIN
                  doc/README_SMLSERVER_BIN
                  man/man1/mlkit-mllex.1
@@ -39,7 +39,7 @@ AC_ARG_ENABLE(SMLserver,AS_HELP_STRING(--enable-SMLserver,compile with SMLserver
 
 AC_ARG_ENABLE(KAM,AS_HELP_STRING(--enable-KAM,compile with KAM backend))
 
-AC_ARG_ENABLE(threaded, 
+AC_ARG_ENABLE(threaded,
   AS_HELP_STRING(--disable-threaded,Don't use threaded interpreter),[],
   AC_DEFINE(THREADED,1,[Kam backend should be threaded]))
 

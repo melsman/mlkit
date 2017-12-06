@@ -1,0 +1,219 @@
+## SMLServer
+
+See the [SMLServer home page](http://www.smlserver.org)
+
+SMLserver is an SML module for Apache2. SMLserver supports Web server
+interpretation of bytecode compiled Standard ML scripts. Both ML
+Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
+interface to the Apache2 API, are supported.
+
+SMLserver uses a load-once-execute-many scheme for executing sml-files
+and msp-files. Together with database pooling, the scheme makes it
+possible to create database backed Web sites in Standard ML that are
+capable of responding to a high number of requests compared to systems
+using a traditional CGI based approach. The database API supports a
+variety of different RDBMS's, including Oracle, PostgreSQL, and MySQL.
+
+Project files (mlb-files) maintained by the Web programmer are used to
+keep track of library modules, msp-files, and sml-files that are part
+of the Web project. When a page is requested, SMLserver first checks
+if the library modules are loaded.  If the library modules are not
+loaded, SMLserver loads the library modules. Then the page requested
+is loaded and executed, leaving the library modules loaded for reuse
+by other requests. Only when the project is recompiled or Apache is
+restarted, the library modules are reloaded.
+
+The book "SMLserver - A Functional Approach to Web Publishing (Second
+Edition)" [2] is available for download from the SMLserver home page.
+
+## System Requirements
+
+To use SMLserver you need the following:
+
+* Linux Box (e.g. Debian)
+
+* Apache2.
+
+* SMLserver. Binary packages and source packages are available from
+  the SMLserver home page; see the top of this file.
+
+* An RDBMS. To get access to a database from within your Standard ML
+  scripts, you need to have an RDBMS system installed that is
+  supported by SMLserver - see below. One such RDBMS is PostgreSQL,
+  which you can fetch from www.postgresql.org. Detailed information
+  about setting up a database with PostgreSQL for the purpose of
+  using it with SMLserver is given below.
+
+## Building SMLServer from the Sources Without Database Access
+
+Requirements:
+
+1. a working Apache2 webserver
+2. apxs2 installed (e.g., apache2-threaded-dev)
+3. mlkit >= 4.3.6 compiled and installed
+4. bison, flex
+
+SMLserver installation after unpacking the SMLserver sources into
+directory kit:
+
+    $ cd kit
+    $ ./autobuild
+    $ ./configure --enable-SMLserver --with-apxs=`which apxs2` --with-compiler=`which mlkit`
+    $ make smlserver
+    $ make smlserver_libs
+    $ sudo make install_smlserver
+
+Apache2 configuration for SMLserver:
+
+    Edit /etc/apache2/apache2.conf:
+     Add index.sml to DirectoryIndex list
+
+    Edit /etc/apache2/sites-available/default:
+     Change DocumentRoot to /home/mael/web/www
+     Change Directory path to /home/mael/web/www
+
+    $ sudo cp /usr/local/lib/smlserver/lib/mod_sml.so /usr/lib/apache2/modules/
+    $ sudo echo "LoadModule sml_module /usr/lib/apache2/modules/mod_sml.so" > /etc/apache2/mods-available/sml.load
+
+Create the file `/etc/apache2/mods-available/sml.conf` with the following content:
+
+    <IfModule mod_sml.c>
+      AddHandler sml-module .sml
+      SmlPrjId "web"
+      SmlPath "/home/mael/web/www/"
+      SmlInitScript "/home/mael/web/www/../web_sys/init.sml"
+    </IfModule>
+    #<Directory /home/mael/web/www/web/secret>
+    #  SetHandler None
+    #  RewriteEngine On
+    #  RewriteBase /web/secret
+    #  RewriteRule .* pub.sml
+    #</Directory>
+
+Now execute the following commands:
+
+    $ sudo ln -sf /etc/apache2/mods-available/sml.conf /etc/apache2/mods-enabled/sml.conf
+    $ sudo ln -sf /etc/apache2/mods-available/sml.load /etc/apache2/mods-enabled/sml.load
+    $ sudo apache2ctl stop
+    $ sudo apache2ctl start
+
+SMLserver configuration and demonstration:
+
+    $ cd $HOME
+    $ mkdir web
+    $ cp -pa /usr/local/lib/smlserver/{www,web_sys,web_lib,web_demo_lib} web/
+
+Make sure the database configuration lines in `web/web_sys/init.sml`
+are commented out.
+
+    $ cd web/www
+    $ make
+
+Point your browser to http://localhost/web/
+
+## Building SMLServer from the sources with postgresql access
+
+Additional requirements:
+
+1. postgresql (e.g., Debian package postgresql-9.1)
+2. unixodbc: (e.g., Debian packages unixodbc, unixodbc-dev, odbc-postgresql)
+
+Do as above, but with the changes below.
+
+Add the following lines to `/etc/odbc.ini` (replace `user` with your login
+name):
+
+    [psql]
+    Description = PostgreSQL
+    Driver      = /usr/lib/odbc/psqlodbca.so
+    Database    = user
+    Servername  = localhost
+
+Add `--enable-odbc` to the `./configure` command:
+
+    $ ./configure --enable-SMLserver --with-apxs=`which apxs2` --with-compiler=`which mlkit` --enable-odbc
+
+After make install_smlserver:
+
+    $ sudo ln -sf /usr/local/lib/smlserver/lib/libsmlodbc.so /usr/lib/
+
+Make sure postgresql is started:
+
+    $ sudo /etc/init.d/postgresql-9.1 restart
+
+Create a database user with the same name as your login name on
+the Linux box:
+
+    $ sudo su - postgres
+    $ createuser -P user
+
+Invent a new password for the database user. Answer yes to the questions
+asked by createuser.
+
+As user, create a database (also called user) as follows:
+
+    $ createdb $USER
+
+Install the data models for the sample Web programs by executing:
+
+    $ cd $HOME/web/web_demo_lib/pgsql
+    $ psql -c "\i all.sql"
+
+Verify that the database is available using isql:
+
+    $ isql psql user passwd
+    > select * from guest;
+    > q
+
+You should see a message from Homer Simpson...
+
+Restart Apache2 by executing the commands
+
+   $ sudo apache2ctl stop
+   $ sudo apache2ctl start
+
+After copying the sample Web directory to $HOME, as described above,
+edit the file `$HOME/web/web_demo_lib/Db.sml`. Make sure that the structure
+`DbBackend` passed to the DbFunctor is the structure `Web.DbPgBackend`.
+The lines defining the Oracle structure and the `MySQL` structure should
+be commented out.
+
+Edit the file `$HOME/web/web_sys/init.sml`. Enable the Postgresql
+configuration lines.
+
+Compile the sample Web project as described above.
+
+Go start your Web browser and visit the database examples available
+from http://localhost/web/index.sml.
+
+## Building SMLServer from the sources with oracle access
+
+To build Oracle interface, first download Oracle Instant Client +
+SDK. Then execute the following commands:
+
+    $ cd /abs/path/to/oracle/instant/client/
+    $ ln -sf libclntsh.so.10.1 libclntsh.so
+    $ cd mlkit/kit
+
+Proceed as above with this configure command:
+
+    $ configure  --enable-SMLserver --with-apache=/abs/path/to/apache \
+           --with-oracle=/abs/path/to/oracle/instant/client/and/sdk \
+           --with-compiler=/path/to/compiler
+
+Before starting Apache:
+
+    $ unzip instant_client /abs/path/to/smlserver/lib
+    $ set LD_LIBRARY_PATH to /abs/path/to/smlserver/lib
+
+
+## References
+
+[1] A system for running ML Server Pages using the Apache Web server
+    CGI support was first implemented by Peter Sestoft. For
+    information about this work, consult
+    http://www.dina.kvl.dk/~sestoft/msp
+
+[2] Martin Elsman, Niels Hallenberg, and Carsten Varming. SMLserver -
+    A Functional Approach to Web Publishing. Second Edition. February
+    2007. Available from SMLserver home page (see above).

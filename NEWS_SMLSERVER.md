@@ -1,0 +1,180 @@
+## SMLServer NEWS
+
+* mael 2013-11-19: The SMLserver sources are now ported to work with
+  Apache 2.4 and Postgres 9.1 (through ODBC).
+
+### SMLserver version 4.3.2 is released
+
+* mael 2007-04-12: The book "SMLserver - A Functional Approach to Web
+  Publishing" has been reworked to reflect the move from AOLserver to
+  the Apache platform; see http://www.smlserver.org for more.
+
+* mael 2007-04-12: Note: support for "extended typing" (see below)
+  is currently not maintained.
+
+* mael 2007-04-10: Moved `smlserver_demo/web_lib/lib.mlb` to
+  `basis/web/lib.mlb`. The Web library is now precompiled before
+  installation. This change also involved moving the `Db.sml` file into
+  `smlserver_demo/web_demo_lib/Db.sml`, as this file needs to be
+  configured for each individual use.
+
+* mael 2007-04-10: Duplicate uo-code-files in ul-files are now
+  removed to speed up the generation of ul-files.
+
+* mael 2007-02-05: The book "SMLserver, A Functional Approach to Web
+  Publishing" has been upgraded to reflect the move to the Apache
+  platform.
+
+* mael 2007-02-05: XML-RPC support. It is now possible to write XML-RPC
+  services and to call XML-RPC services using SMLserver. This work is
+  primarily due to Martin Olsen (mol@itu.dk).
+
+* mael 2007-02-05: WEB signature changes: Web.return, Web.write,
+  Web.returnRedirect, Web.Conn.write, Web.Conn.return (and friends)
+  now have return type unit.
+
+* mael 2007-02-05: SMLserver has now moved from AOLserver to Apache,
+  due to work by Carsten Varming (varming@cmu.edu). Many new features
+  have been added.
+
+* mael 2007-02-05: ML Server Pages (msp-files) are now supported by
+  the use of the mspcomp tool, which compiles msp-files into
+  sml-scripts.
+
+### SMLserver version 4.1.4 is released
+
+* mael 2004-05-18: Finished work on "extended typing" in SMLserver,
+  featuring static guarantees that (1) generated XHTML is valid XHTML
+  1.0 and (2) forms and links are used consistently with corresponding
+  target scripts. See `smlserver/xt/` for examples. Use the smlserverc
+  compiler flag `-xt` (or `--extended_typing`) to enable. See the PADL'04
+  paper "Typing XHTML Web Applications in ML" for implementation
+  details.
+
+* nh 2003-06-18: Support for `multipart/form-data` implemented in
+  `Ns.sml`, see function `getQuery()`.
+
+* mael 2003-02-24: Initialized work on extended typing in SMLserver,
+  featuring static guarantees that (1) generated XHTML 1.0 validates
+  and (2) forms and links are used consistently with corresponding
+  target scripts. See `/smlserver/xt/` for examples. Use the
+  smlserverc compiler flag `-xt` (or `--extended_typing`) to enable.
+
+* nh 2003-01-08: Added hModule to the interpreter context in
+  `nssml.c`. This makes it easier to access parameters in the
+  configuration file. Used to access the trap-file in function
+  `nssml_trapProc`.
+
+* nh 2003-01-08: Fixed bug with cache name in `Ns.Cache`. Cache names
+  can have a maximum size of 32 characters i AOLserver versions
+  3.X. After version 4, cache names can be of arbitrary size.
+
+* nh 2003-01-07: Updated NS_CACHE.sml signature such that it matches
+  the PADL paper. Reimplemented the Triple constructor, so that the
+  result type is 'a*'b*'c instead of (('a*'b)*'c).
+  Updated SMLserver book with new cache interface.
+
+* nh 2002-10-31: `Ns.Cache` version 2 - Typed caching and
+  memoization. Inserted in the `NS.sml` signature
+
+* mael 2002-10-31: Execution caching of library initialization.
+
+### SMLserver version 4.1.1 is released
+
+* mael 2002-08-24: Added functions for trapping of URL requests
+  (`Ns.registerTrap`) and for scheduling (`Ns.scheduleScript`,
+  `Ns.scheduleDaily`, `Ns.scheduleWeekly`). It is now also possible
+  to configure for a script to be run when the webserver starts (see
+  the default configuration file for details.)
+
+* mael 2002-03-19: Added possibility for caching loaded leaf-bytecode
+  files (flag CODE_CACHE in `LoadKAM.h`). This feature improves on the
+  number of requests that can be served per second. Default: enabled.
+
+### SMLserver version 4.1.0 is released
+
+* mael 2002-01-29: Cleaned up documentation and demonstration
+  examples.
+
+* nh 2001-12-29: Added support for MySQL
+
+* mael 2001-10-09: Added support for threaded simultaneous responses
+  of requests. Serving a request is no longer blocked by the serving
+  of other requests.
+
+* nh 2001-10-05: Added multilingual support in `ScsFormVar` module.
+
+* mael 2001-09-30: Changed the name of the SMLserver compiler from
+  `mlkit_web` to `smlserverc`.
+
+* nh 2001-09-23: Added dictionary support for multilingual language
+  support. Additional modules `ScsDict`, `ScsLogin`, and `ScsLang`.
+
+* nh 2001-09-21: Added support for checking form variables
+  (module `/scs/ScsFormVar.sml`). Added two utility packages:
+  `/scs/ScsDate` and `/scs/ScsList`. Fixed authentication example. It
+  now works on both PostgreSQL and Oracle.
+
+* nh 2001-09-17: Added support for cookies, caching. Added
+  authentication example with simple filtering.
+
+* mael 2001-07-22: Primitives for accessing the AOLserver
+  configuration file added to the `Ns` structure. Also added primitive
+  for getting the url associated with a request.
+
+### SMLserver version 3.9.2 is released
+
+* mael 2001-07-19: Proper handling of uncaught exceptions. To avoid
+  that AOLserver is killed when an SMLserver web-page evaluates to an
+  uncaught exception, the interpreter no longer uses the exit system
+  call to terminate execution when an uncaught exception appears.
+  Instead, the interpreter returns a status code of -1 (or -2 if the
+  uncaught exception is Interrupt). In case the interpreter returns
+  -1, a warning is written to the server log. The Interrupt exception
+  can thus be used to terminate an SMLserver web-page without
+  generating a warning.
+
+* mael 2001-07-19: Added Interrupt exception to front end.
+
+### SMLserver version 3.9.1 is released
+
+* mael 2001-07-12: Space bug fixed. Each time a request was
+  served, a new stack was allocated but never freed; the
+  implementation now recycles allocated stacks.
+
+* mael 2001-07-12: Functionality for sending email (Ns.sendmail/
+  Ns.mail) added to Ns structure.
+
+* mael 2001-07-12: Support for accessing request headers and
+  information about server setup added to Ns structure.
+
+* mael 2001-07-05: Bug fix: valrec may now overwrite identifier
+  status. Bug reported by Johnny Andersen.
+
+* mael 2001-07-05: Quotation support. The datatype
+
+      datatype 'a frag = QUOTE of string | ANTIQUOTE of 'a
+
+  is available in the top-level environment. Moreover, the back-tick character
+  cease to be allowed in symbolic identifiers. Values of the `'a
+  frag` datatype may be constructed using the quotation/antiquotation
+  syntax:
+
+      val s = "world"
+      val a : string frag list = `hello ^s - goodbye`
+
+  Quotation support makes for a nice way of embedding HTML and SQL
+  in your web-applications.
+
+* mael 2001-07-05: An uncaught exception now causes the program to
+  return -1 to the shell (instead of 0). Suggestion by Stephen Weeks.
+
+* mael 2001-07-05: Bug fix: The function `OS.FileSys.tmpName` now
+  returns a file name for a file in `/tmp/` (instead of in `/etc/`). Bug
+  reported by Stephen Weeks.
+
+* mael & nh: bytecode backend added as an alternative to the x86
+  native backend; primarily, the bytecode backend is added for
+  portability and for use with the SMLserver project, which adds
+  Standard ML language support to AOLserver -- a webserver from
+  America Online.
