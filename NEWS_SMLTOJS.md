@@ -1,6 +1,6 @@
 ## SMLtoJs NEWS
 
-### SMLtoJs version 4.3.10 is released
+### SMLtoJs version 4.3.11 is released
 
 * mael 2017-12-06: Better support for tail-recursive functions, by
   making proper closures for escaping lambdas. Updated relevant List
