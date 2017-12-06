@@ -53,7 +53,7 @@ compiling the Basis Library, to learn how Barry deals with primitives.
 
 Barry works by pretty-printing `LambdaExp` fragments (`LambdaExp` is an
 intermediate language in the MLKit) as Standard ML code. If you want
-to look at the code, see the file [[src/Compiler/Lambda/LambdaExp.sml]].
+to look at the code, see the file `src/Compiler/Lambda/LambdaExp.sml`.
 
 ## License and Copyright
 

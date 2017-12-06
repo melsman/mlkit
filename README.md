@@ -50,7 +50,7 @@ which are built on top of MLKit:
 
 * [SMLToJs](/README_SMLTOJS.md). A compiler that compiles all of Standard ML into JavaScript.
 
-* [SMLServer](/README_SMLSERVER.md). A compiler and Apache module that
+* [SMLserver](/README_SMLSERVER.md). A compiler and Apache module that
   allow for Standard ML to be efficiently executed in a web-server
   context.
 

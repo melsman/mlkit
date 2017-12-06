@@ -1,6 +1,6 @@
-## SMLServer
+## SMLserver
 
-See the [SMLServer home page](http://www.smlserver.org)
+See the [SMLserver home page](http://www.smlserver.org)
 
 SMLserver is an SML module for Apache2. SMLserver supports Web server
 interpretation of bytecode compiled Standard ML scripts. Both ML
@@ -44,7 +44,7 @@ To use SMLserver you need the following:
   about setting up a database with PostgreSQL for the purpose of
   using it with SMLserver is given below.
 
-## Building SMLServer from the Sources Without Database Access
+## Building SMLserver from the Sources Without Database Access
 
 Requirements:
 
@@ -111,7 +111,7 @@ are commented out.
 
 Point your browser to http://localhost/web/
 
-## Building SMLServer from the sources with postgresql access
+## Building SMLserver from the sources with postgresql access
 
 Additional requirements:
 
@@ -169,8 +169,8 @@ You should see a message from Homer Simpson...
 
 Restart Apache2 by executing the commands
 
-   $ sudo apache2ctl stop
-   $ sudo apache2ctl start
+    $ sudo apache2ctl stop
+    $ sudo apache2ctl start
 
 After copying the sample Web directory to $HOME, as described above,
 edit the file `$HOME/web/web_demo_lib/Db.sml`. Make sure that the structure
@@ -186,7 +186,7 @@ Compile the sample Web project as described above.
 Go start your Web browser and visit the database examples available
 from http://localhost/web/index.sml.
 
-## Building SMLServer from the sources with oracle access
+## Building SMLserver from the sources with oracle access
 
 To build Oracle interface, first download Oracle Instant Client +
 SDK. Then execute the following commands:

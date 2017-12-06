@@ -91,13 +91,13 @@ results in the file name.html being generated instead of run.html.
 To compile and test the test programs, cd to the `js/test` directory
 and run `make clean all`:
 
-   $ cd js/test
-   $ make clean all
+    $ cd js/test
+    $ make clean all
 
 You can now start Firefox or Chrome on the generated html-files; the file
 all.html includes links to all the test files:
 
-   $ firefox all.html
+    $ firefox all.html
 
 The examples `temp.html`, `counter.html`, and `life.html` are the most
 interesting examples at the moment (more will come).
