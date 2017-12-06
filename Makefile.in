@@ -178,8 +178,8 @@ clean_mlb:
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
 	$(MKDIR) $(DATADIR)/kitdemo/utils
-	$(INSTALLDATA) kitdemo/*.{sml,sig,mlb,c} $(DATADIR)/kitdemo 
-	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(DATADIR)/kitdemo/utils 
+	$(INSTALLDATA) kitdemo/*.{sml,sig,mlb,c} $(DATADIR)/kitdemo
+	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(DATADIR)/kitdemo/utils
 
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
@@ -247,7 +247,7 @@ install0:
 	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc/mlkit/
 	$(INSTALLDATA) src/Tools/ml-lex/mllex.pdf $(DATADIR)/doc/mlkit/
 	$(INSTALLDATA) src/Tools/ml-yacc/doc/mlyacc.pdf $(DATADIR)/doc/mlkit/
-	$(INSTALLDATA) NEWS $(DATADIR)/doc/mlkit/
+	$(INSTALLDATA) NEWS.md $(DATADIR)/doc/mlkit/
 
 install:
 	$(MAKE) install0
@@ -265,8 +265,8 @@ install_test:
 	$(MKDIR) $(DATADIR)/test/ray/DATA $(DATADIR)/test/mlyacc/DATA
 	$(INSTALL) test/Makefile $(DATADIR)/test
 	$(INSTALL) test/Makefile test/*.{tst,sml,sig,mlb,out.ok,log.ok,txt,c} $(DATADIR)/test
-	$(INSTALL) test/README $(DATADIR)/test 
-	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA 
+	$(INSTALL) test/README $(DATADIR)/test
+	$(INSTALL) test/VLIW_DATA/*.s $(DATADIR)/test/VLIW_DATA
 	$(INSTALL) test/ray/DATA/TEST $(DATADIR)/test/ray/DATA
 	$(INSTALL) test/ray/input test/ray/README test/ray/load test/ray/*.{sml,mlb} $(DATADIR)/test/ray
 	$(INSTALL) test/nucleic/MAIL test/nucleic/*.{sml,mlb,tex,bbl} $(DATADIR)/test/nucleic
@@ -283,7 +283,7 @@ install_test:
 install_src:
 	$(MKDIR) $(INSTDIR)/src
 	$(MKDIR) $(INSTDIR)/src/Common $(INSTDIR)/src/Compiler $(INSTDIR)/src/Manager $(INSTDIR)/src/Kitlib $(INSTDIR)/src/Pickle
-	$(MKDIR) $(INSTDIR)/src/CUtils $(INSTDIR)/src/Edlib $(INSTDIR)/src/Parsing $(INSTDIR)/src/Runtime 
+	$(MKDIR) $(INSTDIR)/src/CUtils $(INSTDIR)/src/Edlib $(INSTDIR)/src/Parsing $(INSTDIR)/src/Runtime
 	$(MKDIR) $(INSTDIR)/src/SMLserver $(INSTDIR)/src/Tools
 	$(MKDIR) $(INSTDIR)/src/SMLserver/apache
 	$(MKDIR) $(INSTDIR)/src/SMLserver/apache/test
@@ -325,7 +325,7 @@ install_src:
 bootstrap0: install_test install_src
 	$(INSTALL) bin/kittester $(BINDIR)
 
-bootstrap_first: 
+bootstrap_first:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
 	$(INSTALL) bin/{mlkit,rp2ps} $(BINDIR)
@@ -335,7 +335,7 @@ bootstrap_next_build:
 	cd src && $(MAKE) genopcodes BINDIR=../$(BINDIR)
 	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native.mlb
 
-bootstrap_next_install: 
+bootstrap_next_install:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
 	$(INSTALL) bin/{rp2ps,kittester} $(BINDIR)
@@ -343,7 +343,7 @@ bootstrap_next_install:
 	$(MAKE) install_test
 	$(MAKE) install_src
 
-bootstrap_next: 
+bootstrap_next:
 	$(MAKE) bootstrap_next_build
 	$(MAKE) bootstrap_next_install
 
@@ -412,8 +412,8 @@ smlserver_i386_tgz:
 	(cd dist && tar czvf $(SMLSERVER_DIST_BIN).tgz $(SMLSERVER_DIST_BIN))
 
 # -----------------------------------------------------
-# The target for building source distributions should 
-# not be used - instead make an svn tag for the release 
+# The target for building source distributions should
+# not be used - instead make an svn tag for the release
 # "mlkit-X.Y.Z" as follows:
 #   svn copy https://mlkit.svn.sourceforge.net/svnroot/mlkit/trunk \
 #            https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/mlkit-X.Y.Z \
@@ -434,8 +434,8 @@ mlkit_src_tgz:
 	$(MAKE) install_basis LIBDIR=dist/$(MLKIT_DIST_SRC)
 	$(MAKE) install_kitdemo DATADIR=dist/$(MLKIT_DIST_SRC)
 	$(MAKE) install_man MANDIR=dist/$(MLKIT_DIST_SRC)/man
-	$(INSTALLDATA) README dist/$(MLKIT_DIST_SRC)
-	$(INSTALLDATA) NEWS dist/$(MLKIT_DIST_SRC)
+	$(INSTALLDATA) README.md dist/$(MLKIT_DIST_SRC)
+	$(INSTALLDATA) NEWS.md dist/$(MLKIT_DIST_SRC)
 	$(INSTALLDATA) Makefile.in dist/$(MLKIT_DIST_SRC)
 	$(INSTALL) configure dist/$(MLKIT_DIST_SRC)
 	$(INSTALLDATA) Makefiledefault dist/$(MLKIT_DIST_SRC)
@@ -459,8 +459,8 @@ install_kam:
 	$(INSTALL) bin/mlkit_kam $(INSTDIR_KAM)/bin
 	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
 	$(INSTALLDATA) copyright $(INSTDIR_KAM)
-	$(INSTALLDATA) README $(INSTDIR_KAM)
-	$(INSTALLDATA) -R kitdemo $(INSTDIR_KAM)/kitdemo 
+	$(INSTALLDATA) README.md $(INSTDIR_KAM)
+	$(INSTALLDATA) -R kitdemo $(INSTDIR_KAM)/kitdemo
 	$(INSTALLDATA) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
 	$(INSTALLDATA) -R basis $(INSTDIR_KAM)/basis
 	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR_KAM)/doc
@@ -478,9 +478,9 @@ install_barry:
 	$(MKDIR) $(INSTDIR_BARRY)/doc
 	$(INSTALL) bin/barry.$(ARCH-OS) $(INSTDIR_BARRY)/bin
 	$(INSTALL) copyright $(INSTDIR_BARRY)
-	$(INSTALL) README $(INSTDIR_BARRY)
-	$(INSTALL) README_BARRY $(INSTDIR_BARRY)
-	$(INSTALL) -R kitdemo $(INSTDIR_BARRY)/kitdemo 
+	$(INSTALL) README.md $(INSTDIR_BARRY)
+	$(INSTALL) README_BARRY.md $(INSTDIR_BARRY)
+	$(INSTALL) -R kitdemo $(INSTDIR_BARRY)/kitdemo
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR_BARRY)/ml-yacc-lib
 	$(INSTALL) -R basis $(INSTDIR_BARRY)/basis
 	$(INSTALL) doc/mlkit.pdf $(INSTDIR_BARRY)/doc
@@ -505,7 +505,7 @@ install_smltojs0:
 	$(INSTALLDATA) man/man1/smltojs.1 $(MANDIR)/man1
 	$(MKDIR) $(INSTDIR)/share/doc/smltojs
 	$(MAKE) install_license KIND=smltojs
-	$(INSTALLDATA) README_SMLTOJS $(DATADIR)/doc/smltojs
+	$(INSTALLDATA) README_SMLTOJS.md $(DATADIR)/doc/smltojs
 	$(MKDIR) $(INSTDIR)/share/smltojs/test
 	$(INSTALLDATA) js/test/*.{sml,sig,mlb,png,gif} $(INSTDIR)/share/smltojs/test
 
@@ -537,8 +537,8 @@ install_smlserver0:
 #	$(MKDIR) $(INSTDIR)/share/doc
 	$(MKDIR) $(INSTDIR)/share/doc/smlserver
 	$(MAKE) install_license KIND=smlserver
-	$(INSTALLDATA) README_SMLSERVER $(DATADIR)/doc/smlserver
-	$(INSTALLDATA) NEWS_SMLSERVER $(DATADIR)/doc/smlserver
+	$(INSTALLDATA) README_SMLSERVER.md $(DATADIR)/doc/smlserver
+	$(INSTALLDATA) NEWS_SMLSERVER.md $(DATADIR)/doc/smlserver
 	$(MAKE) -C smlserver_demo install LIBDIR=$(LIBDIR)/smlserver
 	$(MAKE) -C src/SMLserver/apache install LIBDIR=$(LIBDIR)/smlserver/lib
 
@@ -552,7 +552,7 @@ install_smlserver:install_smlserver0
 HOST=mael@frs.sourceforge.net
 HOSTDIR=$(HOST):/home/frs/project/mlkit/mlkit-$(KITVERSION)/
 dist_mlkit:
-	scp NEWS $(HOSTDIR)
+	scp NEWS.md $(HOSTDIR)
 	scp doc/README_BIN $(HOSTDIR)
 #	scp test/test_report-native-$(TESTDATE).pdf $(HOSTDIR)/test_report-native-$(KITVERSION).pdf
 #	scp test/test_report-kam-$(TESTDATE).pdf $(HOSTDIR)/test_report-kam-$(KITVERSION).pdf
@@ -560,7 +560,7 @@ dist_mlkit:
 
 DBTYPE=odbc
 dist_smlserver:
-	scp NEWS_SMLSERVER $(HOSTDIR)/NEWS_SMLSERVER-$(KITVERSION).txt
-	scp README_SMLSERVER $(HOSTDIR)/README_SMLSERVER-$(KITVERSION).txt
+	scp NEWS_SMLSERVER.md $(HOSTDIR)/NEWS_SMLSERVER-$(KITVERSION).md
+	scp README_SMLSERVER.md $(HOSTDIR)/README_SMLSERVER-$(KITVERSION).md
 	scp doc/README_SMLSERVER_BIN $(HOSTDIR)/README_SMLSERVER_BIN-$(KITVERSION).txt
 	scp dist/smlserver-$(KITVERSION)-i386.tgz $(HOSTDIR)/smlserver-$(KITVERSION)-i386-$(DBTYPE).tgz
