@@ -2,7 +2,7 @@ FILES=fix2.sml array2.sml int31.sml int.sml vectorslice.sml word8arrayslice.sml 
  general.sml int32_2.sml math.sml stringcvt.sml testdyn1.sml vector.sml word8array.sml \
  array.sml int_2.sml int32.sml listpair.sml string.sml testmatc.sml word.sml word8.sml word31.sml word32.sml \
  bytechar.sml int31_2.sml intinf.sml list.sml real.sml substring.sml word8vectorslice.sml time.sml \
- unixpath.sml kkb.sml simple.sml
+ unixpath.sml kkb.sml simple.sml tailrec2.sml
 
 # problems with phantomjs and date operations...
 #date.sml
@@ -81,8 +81,8 @@ mlb%: Makefile %.sml %.mlb
 test: $(RES_TESTFILES)
 	@cat $(RES_TESTFILES)
 	@echo "-------T E S T --- R E P O R T-------"
-	@echo "Tests succeeded:   `grep "OK" $(RES_TESTFILES) | wc -l` /`grep "Test" $(RES_TESTFILES) | wc -l`"
-	@echo "Test errors:       `grep "ERR" $(RES_TESTFILES) | wc -l` /`grep "Test" $(RES_TESTFILES) | wc -l`"
+	@echo "Tests succeeded:   `grep "OK" $(RES_TESTFILES) | wc -l` /`grep "of test" $(RES_TESTFILES) | wc -l`"
+	@echo "Test errors:       `grep "ERR" $(RES_TESTFILES) | wc -l` /`grep "of test" $(RES_TESTFILES) | wc -l`"
 	@echo "-------------------------------------"
 	@exit `grep "ERR" $(RES_TESTFILES) | wc -l`
 
