@@ -318,6 +318,11 @@ structure XMLHttpRequest =
                    arg1=("r",J.fptr),arg2=("k",J.string),arg3=("v",J.string),
                    res=J.unit} (r,k,v)
 
+      fun setResponseType (r:req) (v:string) : unit =
+          J.exec2 {stmt="r.responseType = v;",
+                   arg1=("r",J.fptr),arg2=("v",J.string),
+                   res=J.unit} (r,v)
+
       fun state (r:req) : int =
           J.exec1 {stmt="return r.readyState;",
                    arg1=("r",J.fptr),res=J.int} r

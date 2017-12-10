@@ -72,6 +72,7 @@ signature JS =
       val new              : unit -> req
       val openn            : req -> {method: string, url: string, async: bool} -> unit
       val setRequestHeader : req -> string * string -> unit
+      val setResponseType  : req -> string -> unit
       val send             : req -> string option -> unit
       val state            : req -> int        (* 0,1,2,3,4 *)
       val status           : req -> int option (* 200, 404, ... *)
