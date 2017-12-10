@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.3.12 is released
+
 ### MLKit version 4.3.9 is released
 
 * mael 2016-03-12: Support for parallel builds using `make -j`.

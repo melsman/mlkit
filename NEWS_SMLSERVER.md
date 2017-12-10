@@ -1,4 +1,9 @@
-## SMLServer NEWS
+## SMLserver NEWS
+
+### SMLserver version 4.3.12 is released
+
+* mael 2017-12-10: Support for responses to binary asynchronous
+  XmlHTTPRequests.
 
 * mael 2013-11-19: The SMLserver sources are now ported to work with
   Apache 2.4 and Postgres 9.1 (through ODBC).

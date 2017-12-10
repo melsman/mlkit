@@ -1,5 +1,9 @@
 ## SMLtoJs NEWS
 
+### SMLtoJs version 4.3.12 is released
+
+* mael 2017-12-10: Support for binary asynchronous XmlHTTPRequests.
+
 ### SMLtoJs version 4.3.11 is released
 
 * mael 2017-12-06: Better support for tail-recursive functions, by
