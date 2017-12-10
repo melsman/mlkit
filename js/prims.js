@@ -14,7 +14,7 @@ CompilerInitial.exn$Overflow$43 = Array(CompilerInitial.en$Overflow$43);
 Con = {}
 Con.some = 0;
 Con.none = 1;
-Con.intinf = 0; 
+Con.intinf = 0;
 
 SMLtoJs = {}
 
@@ -90,7 +90,7 @@ SmlPrims.length = function len(a) {
     }
 }
 
-SmlPrims.arrayMap = function(f) { 
+SmlPrims.arrayMap = function(f) {
     return function(a) {
         var i;
         var a2 = new Array(a.length);
@@ -263,8 +263,8 @@ SmlPrims.getrealtime = function() {
 }
 
 SmlPrims.monthDays = function(Y,m) {
-  switch(m) {  
-    case 0 : 
+  switch(m) {
+    case 0 :
     case 2 :
     case 4 :
     case 6 :
@@ -337,9 +337,9 @@ SmlPrims.localoffset = function() {
   return 60 * m;
 }
 
-// The following code is from Chapter 20 in David Flanagan. JavaScript, The 
+// The following code is from Chapter 20 in David Flanagan. JavaScript, The
 // Definitive Guide. Fifth Edition. 2006. O'Reilly.
-SmlPrims._factories = 
+SmlPrims._factories =
     [function() { return new XMLHttpRequest(); },
      function() { return new ActiveXObject("Msxml2.XMLHTTP"); },
      function() { return new ActiveXObject("Microsoft.XMLHTTP"); }
@@ -349,7 +349,7 @@ SmlPrims._factory = null; // When we find a factory that works, store it here
 
 SmlPrims.newRequest = function() {
     if (SmlPrims._factory != null) return SmlPrims._factory();
-    
+
     for(var i = 0; i < SmlPrims._factories.length; i++) {
 	try {
 	    var factory = SmlPrims._factories[i];
@@ -367,4 +367,15 @@ SmlPrims.newRequest = function() {
 	throw new Error("SmlPrims.newRequest not supported by browser");
     }
     SmlPrims._factory();
+}
+
+SmlPrims.arraybufferToString = function (ab) {
+    if (ab == null) { return null; }
+    var arr = new Uint8Array(ab);
+    var ss = [];            // break up into blocks
+    var blocksz = 0xffff;   // to avoid stack overflow
+    for (var i=0; i*blocksz < arr.length; i++) {
+        ss.push(String.fromCharCode.apply(null, arr.subarray(i*blocksz,(i+1)*blocksz)));
+    }
+    return ss.join('');
 }

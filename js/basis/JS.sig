@@ -1,14 +1,14 @@
-(** Basic Javascript and DOM operations. 
+(** Basic Javascript and DOM operations.
 
 Basic operations for accessing the DOM tree and basic JavaScript
 functionality.
 *)
 
-signature JS = 
+signature JS =
   sig
     (* dom *)
     eqtype win
-    eqtype doc 
+    eqtype doc
     eqtype elem
     val window          : win
     val openWindow      : string -> string -> string -> win
@@ -40,18 +40,18 @@ signature JS =
     val setAttributeNS  : ns -> elem -> string -> string -> unit
 
     (* events *)
-    datatype eventType = onclick | onchange | onkeypress 
+    datatype eventType = onclick | onchange | onkeypress
                        | onkeyup | onmouseover | onmouseout
     val installEventHandler : elem -> eventType -> (unit -> bool) -> unit
     val getEventHandler     : elem -> eventType -> (unit -> bool) option
     val onMouseMove         : doc -> (int*int -> unit) -> unit
     val onMouseMoveElem     : elem -> (int*int -> unit) -> unit
-                                                          
+
     (* timers *)
     type intervalId
     val setInterval     : int -> (unit -> unit) -> intervalId
     val clearInterval   : intervalId -> unit
-                                        
+
     type timeoutId
     val setTimeout      : int -> (unit -> unit) -> timeoutId
     val clearTimeout    : timeoutId -> unit
@@ -59,7 +59,7 @@ signature JS =
     (* Cookies *)
     val setCookie       : doc -> string -> unit
     val getCookie       : doc -> string
-                                       
+
     (* styles *)
     val setStyle        : elem -> string * string -> unit
 
@@ -77,9 +77,10 @@ signature JS =
       val status           : req -> int option (* 200, 404, ... *)
       val onStateChange    : req -> (unit -> unit) -> unit
       val response         : req -> string option
+      val responseArrBuf   : req -> string option
       val abort            : req -> unit
-    end 
-                               
+    end
+
     val random             : unit -> real
 
     val loadScript         : string -> (unit -> unit) -> unit
@@ -97,7 +98,7 @@ signature JS =
       val nstag0  : ns -> string -> elem
       val nstag   : ns -> string -> elem -> elem
       val nstaga  : ns -> string -> (string*string)list -> elem -> elem
- 
+
       val toForeignPtr   : elem -> foreignptr
       val fromForeignPtr : foreignptr -> elem
     end
@@ -120,6 +121,5 @@ has no parent.
 url and execute the callback function once the script is fully
 loaded. The loadScript function assumes that a head element is present
 in the DOM.
- 
-*)
 
+*)

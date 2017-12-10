@@ -1,5 +1,5 @@
-structure Web :> WEB = 
-  struct 
+structure Web :> WEB =
+  struct
   exception InternalSmlServerError
   exception InternalSmlServerErrorOutOfMemory
   exception MissingConnection
@@ -7,10 +7,10 @@ structure Web :> WEB =
 
   fun isNull(s : string) : bool = prim("__is_null", s : string) : bool
   fun isNullFp(s : foreignptr) : bool = prim("__is_null", s : foreignptr) : bool
-  
+
   fun getReqRec () : foreignptr  = prim("__serverGetCtx", ())
   fun getReqRecP () : foreignptr =
-       let 
+       let
          val res = prim("@apsml_GetReqRec", (getReqRec())) : foreignptr
        in
          if isNullFp res then raise MissingConnection else res
@@ -18,19 +18,19 @@ structure Web :> WEB =
 
     (* defined in http_log.h *)
   structure WebLog : WEB_LOG =
-  struct 
+  struct
     type LogSeverity = int
     val Emergency=0 and Alert=1 and Critical=2 and Error=3
     and Warning=4 and Notice=5 and Info=6 and Debug=7
-    local 
+    local
       val pid = (SysWord.toInt o Posix.Process.pidToWord o Posix.ProcEnv.getpid) ()
     in
-    fun log (ls: LogSeverity, s: string) : unit = 
+    fun log (ls: LogSeverity, s: string) : unit =
       prim("apsml_log", (ls, "[pid: " ^ (Int.toString pid) ^ "] " ^ s, getReqRec(), InternalSmlServerError))
     end
     fun advLog (ls, data, ppdata) = (log(ls, ppdata data);data)
   end
-  
+
   open WebLog
 
   fun encodeUrl (s : string) : string = prim("apsml_encodeUrl", (s,getReqRec()))
@@ -38,7 +38,7 @@ structure Web :> WEB =
 
   fun buildUrl action hvs =
     action ^ "?" ^ (String.concatWith "&" (List.map (fn (n,v) => n ^ "=" ^ encodeUrl v) hvs))
-  
+
 
     structure Info : WEB_INFO = WebInfo(struct
                type conn = foreignptr
@@ -69,27 +69,27 @@ structure Web :> WEB =
       fun getOpt (s:set, key:string, dflt:string): string =
         Option.getOpt(get (s, key), dflt)
 
-      fun put (s,k,v) : unit = 
+      fun put (s,k,v) : unit =
             let val k' = CharVector.map Char.toLower k
             in case Polyhash.peek s k'
                of NONE => Polyhash.insert s (k',[(k,v)])
                 | SOME l => Polyhash.insert s (k',(k,v)::l)
             end
 
-    (*    fun put (s: set, key: string, value: string) : unit = 
-          prim("@apr_table_add", (s,key,value)) 
-      
-        fun free (s: set) : unit = () 
+    (*    fun put (s: set, key: string, value: string) : unit =
+          prim("@apr_table_add", (s,key,value))
 
-      fun create (rr : int) : set = 
+        fun free (s: set) : unit = ()
+
+      fun create (rr : int) : set =
           (log (Debug,"apsml_setCreate called with arg: " ^ (Int.toString rr)); prim("@apsml_setCreate", (rr))) *)
-      
+
       (*  fun size (s: set) : int = prim("@apsml_SetSize", s)  *)
 
         val size = Polyhash.numItems
 
       (*  fun unique (s: set, key: string) : bool =
-          prim("@apsml_setUnique", (s,key)) 
+          prim("@apsml_setUnique", (s,key))
 
         fun key (s: set, index: int) : string option =
           let val res : string =  prim("apsml_SetKey", (s, index))
@@ -103,10 +103,10 @@ structure Web :> WEB =
        else SOME res
           end *)
 
-       (* fun getPair(s,n) = 
+       (* fun getPair(s,n) =
           case (key(s,n), value(s,n))
       of (SOME k,SOME v) => (k,v)
-          | _ => raise Fail "Web.getPair"  
+          | _ => raise Fail "Web.getPair"
 
         fun foldr (f:(string * string) * 'a -> 'a) (b:'a) (s:set) : 'a =
           let fun loop (n,acc) = if n < 0 then acc
@@ -118,10 +118,10 @@ structure Web :> WEB =
                else f(getPair(s,n), loop(n-1,acc))
           in loop (size s - 1, b)
           end
-        fun getAll (s:set, key:string): string list = 
-          foldl (fn ((k,v),a) => if k = key then v :: a else a) nil s 
+        fun getAll (s:set, key:string): string list =
+          foldl (fn ((k,v),a) => if k = key then v :: a else a) nil s
         fun list s = foldl (op ::) nil s *)
-        fun create () = Polyhash.mkTable ((CharVector.foldl 
+        fun create () = Polyhash.mkTable ((CharVector.foldl
                                              (fn (c,hv) => (if hv > 69273666
                                                             then (Char.ord c) + 31 * (hv div 64)
                                                             else (Char.ord c) + 31 * hv) handle Overflow => 0) 0),
@@ -130,17 +130,17 @@ structure Web :> WEB =
         fun foldl f b s = List.foldl f b (list s)
         fun foldr f b s = List.foldl f b (List.rev (list s))
         fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) [] s
-        fun igetAll (s:set,key:string) : string list = 
+        fun igetAll (s:set,key:string) : string list =
                case Polyhash.peek s (CharVector.map Char.toLower key)
                of NONE => []
                 | SOME l => List.map (fn (k,v) => v) l
-        fun getAll (s:set,key:string) : string list = 
+        fun getAll (s:set,key:string) : string list =
                case Polyhash.peek s (CharVector.map Char.toLower key)
                of NONE => []
                 | SOME l => List.mapPartial (fn (k,v) => if k = key then SOME v else NONE) l
     end
 
-  structure Set : WEB_SET = WebSet 
+  structure Set : WEB_SET = WebSet
 
   structure StringCache :> WEB_STRING_CACHE =
       struct
@@ -149,7 +149,7 @@ structure Web :> WEB =
           let val c : cache = prim("@apsml_cacheCreate", (n,sz, t, getReqRec()))
           in if isNullFp c then raise InternalSmlServerErrorOutOfMemory else c
           end
-          
+
         fun find (n : string) : cache option = (*log(Debug, "cacheFind"); *)
           let val res : foreignptr = prim("@apsml_cacheFind", (n, getReqRec()))
           in if isNullFp res then (*log(Debug, "cacheFind NONE pid:" ^ Int.toString(Info.pid())) ;*) NONE
@@ -163,17 +163,17 @@ structure Web :> WEB =
           let val c : cache = prim("@apsml_cacheFlush", (c,getReqRec(), 1))
           in if isNullFp c then raise InternalSmlServerErrorOutOfMemory else ()
           end
-        fun set(c:cache, k:string, v:string, t:int) : (bool * string option) = 
-          let 
+        fun set(c:cache, k:string, v:string, t:int) : (bool * string option) =
+          let
             (*val _ = log(Debug, "key: "^ k ^", value: " ^ v) *)
             val (res,value) : (int * string) = prim("apsml_cacheSet", (c,(k,v,t),getReqRec()))
             (*val _ = log(Debug, "apsml_cacheSet DONE") *)
-          in if res = 1 
+          in if res = 1
              then (if isNull(value) then (false,NONE) else (false, SOME(value)))
-           else if res = 2 
+           else if res = 2
            then (true, NONE)
            else raise InternalSmlServerErrorOutOfMemory
-          end 
+          end
         fun get(c:cache, k:string) : string option = (*log(Notice, "cacheGet"); *)
           let val res : string = prim("apsml_cacheGet", (c,k, getReqRec()))
           in if isNull res then NONE
@@ -183,28 +183,28 @@ structure Web :> WEB =
         local
           fun cache_fn (f:string->string, cn: string,t: int, sz : int) set get =
             (fn k =>
-               case find cn of 
+               case find cn of
                NONE => let val v = f k in (set (create(cn,t,sz),k,v,0);v) end
-             | SOME c => (case get (c,k) of 
-                NONE => let val v = f k in (set (c,k,v,t);v) end 
+             | SOME c => (case get (c,k) of
+                NONE => let val v = f k in (set (c,k,v,t);v) end
               | SOME v => v))
         in
-          fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int, sz : int)) = 
+          fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int, sz : int)) =
             cache_fn arg set get
           fun cacheForAwhile (arg as (f:string->string, cn: string, t: int, sz : int)) =
             let
               open Time
               fun set'(c,k,v,t) = set(c,k, toString (now()) ^ ":" ^ v,t)
-              fun get'(c,k) = 
+              fun get'(c,k) =
                 case get(c,k) of
                   NONE => NONE
-                | SOME t0_v => 
+                | SOME t0_v =>
                     (case scan Substring.getc (Substring.full t0_v)
-                       of SOME (t0,s) => 
+                       of SOME (t0,s) =>
                         (case Substring.getc s
-                            of SOME (#":",v) => 
+                            of SOME (#":",v) =>
                               if now() > t0 + (fromSeconds (Int.toLarge t))
-                              then NONE 
+                              then NONE
                               else SOME (Substring.string v)
                              | _ => NONE)
                         | NONE => NONE)
@@ -235,29 +235,29 @@ structure Web :> WEB =
   (* Cache info *)
   fun pp_kind kind =
     case kind of
-      WhileUsed (t,s) => 
+      WhileUsed (t,s) =>
         let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
                        of NONE => "No timeout" | SOME(t') => "timeout: " ^ t'
-            val size = case Option.map Int.toString s 
+            val size = case Option.map Int.toString s
                        of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
-        in 
+        in
           "WhileUsed(" ^ time ^ " " ^ size ^ ")"
         end
-    | TimeOut (t,s) => 
+    | TimeOut (t,s) =>
         let val time = case Option.map Int.toString (Option.map (LargeInt.toInt o Time.toSeconds) t)
                        of SOME(t') => "Time to live: " ^ t' | NONE => "No time limit"
-            val size = case Option.map Int.toString s 
+            val size = case Option.map Int.toString s
                        of NONE => "No size limit" | SOME(s') => "Size limit: " ^ s'
             in
               "TimeOut(" ^ time ^ " " ^ size ^ ")"
             end
 
   fun pp_type (t: 'a Type) = #name t
-  fun pp_cache (c: ('a,'b)cache) = 
-    "[name:" ^ (#name c) ^ ",kind:" ^ (pp_kind(#kind c)) ^ 
-    ",domType: " ^ (pp_type (#domType c)) ^ 
+  fun pp_cache (c: ('a,'b)cache) =
+    "[name:" ^ (#name c) ^ ",kind:" ^ (pp_kind(#kind c)) ^
+    ",domType: " ^ (pp_type (#domType c)) ^
     ",rangeType: " ^ (pp_type (#rangeType c)) ^ "]"
-    
+
   fun get (domType:'a Type,rangeType: 'b Type,name,kind) =
     let
       fun pp_kind kind =
@@ -265,17 +265,17 @@ structure Web :> WEB =
           WhileUsed t => "W"
         | TimeOut t => "T"
       val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
-(*      val _ = 
+(*      val _ =
         if String.size c_name > max_cache_name_size then
-    raise Fail ("Ns.Cache.get: Can't create cache because cache name " ^ 
+    raise Fail ("Ns.Cache.get: Can't create cache because cache name " ^
           c_name ^ " is larger than "  ^ (Int.toString max_cache_name_size))
         else () *)
-      val cache = 
+      val cache =
         case kind of
-          WhileUsed (t,s) =>  
+          WhileUsed (t,s) =>
              StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
                                   getOpt(s, ~1))
-        | TimeOut (t,s) => 
+        | TimeOut (t,s) =>
              StringCache.findTmSz(c_name, getOpt(Option.map (LargeInt.toInt o Time.toSeconds) t,0),
                                   getOpt(s, ~1))
     in
@@ -285,16 +285,16 @@ structure Web :> WEB =
        rangeType=rangeType,
        cache=cache}
     end
-  
+
   local
     open Time
     fun getWhileUsed (c: ('a,'b) cache) k =
       StringCache.get(#cache c,#to_string(#domType c) k)
-      fun getTimeOut' t' t0_v = 
-        let fun getT (s1, t0, t1) = 
+      fun getTimeOut' t' t0_v =
+        let fun getT (s1, t0, t1) =
              (case Substring.getc s1
                of SOME(#":",v) => (
-                 case (t',t1) of (NONE,SOME(t1')) => 
+                 case (t',t1) of (NONE,SOME(t1')) =>
                             (*log(Debug, "NONE,SOME("^ Time.toString t1' ^")");*)
                              if now() > t0 + t1'
                              then NONE
@@ -305,16 +305,16 @@ structure Web :> WEB =
                              then NONE
                              else SOME (Substring.string v)
                           | (NONE,NONE) => (*log(Debug,"NONE,NONE");*)SOME(Substring.string v)
-                          | (SOME(t),NONE) => 
+                          | (SOME(t),NONE) =>
                            (*log(Debug, "SOME("^ Time.toString t ^"), NONE");*)
                             if now() > t0 + t then NONE
                             else SOME (Substring.string v))
                 | _ => NONE)
-         in 
+         in
         case scan Substring.getc (Substring.full t0_v)
-          of SOME (t0,s) => 
+          of SOME (t0,s) =>
              (case Substring.getc s
-               of SOME (#":",s') => 
+               of SOME (#":",s') =>
                   (case scan Substring.getc s'
                     of SOME(t1,s1) => getT(s1,t0,SOME(t1))
                      | _ => (
@@ -325,7 +325,7 @@ structure Web :> WEB =
            | _ => NONE
           end
 
-    fun getTimeOut (c: ('a,'b) cache) k t v = case v of 
+    fun getTimeOut (c: ('a,'b) cache) k t v = case v of
       NONE => (
         case StringCache.get(#cache c,#to_string(#domType c) k) of
           NONE => NONE
@@ -334,9 +334,9 @@ structure Web :> WEB =
   in
     fun lookup (c:('a,'b) cache) (k: 'a) =
       let
-        val v = 
+        val v =
           case #kind c of
-            WhileUsed (t,_) => getWhileUsed c k 
+            WhileUsed (t,_) => getWhileUsed c k
           | TimeOut (t,_) => getTimeOut c k t NONE
       in
         case v of
@@ -357,7 +357,7 @@ structure Web :> WEB =
              t'))
     | TimeOut (t,_) => case (StringCache.set(#cache c,
            #to_string(#domType c) k,
-           Time.toString (Time.now()) ^ ":" ^ 
+           Time.toString (Time.now()) ^ ":" ^
            (case (to,t) of (NONE,SOME(t')) => Time.toString (zeroTo1 t')
                      | (SOME(to'),SOME(t')) => Time.toString (min(to',zeroTo1 t'))
                      | (NONE,NONE) => "-"
@@ -365,30 +365,30 @@ structure Web :> WEB =
                ^ ":" ^ ((#to_string (#rangeType c)) v), t'))
            of (true,_) => true
             | (false, NONE) => false
-            | (false, SOME(oldvalue)) => 
+            | (false, SOME(oldvalue)) =>
               case getTimeOut' t oldvalue of NONE => true
                                            | SOME(_) => false
      end
   end
 
   fun flush (c: ('a,'b) cache) = StringCache.flush (#cache c)
-    
+
   fun memoizePartialTime (c: ('a,'b) cache) (f:('a -> ('b * Time.time option) option)) =
     (fn k =>
-     (case lookup c k of 
+     (case lookup c k of
         NONE => let val v' = f k in (Option.map (fn (v,time) => insert (c,k,v,time)) v';
-                                     Option.map (fn (v,_) => v) v') end 
+                                     Option.map (fn (v,_) => v) v') end
       | SOME v => SOME v))
 
-  fun memoizePartial c (f: ('a -> 'b option)) = 
-            memoizePartialTime c (fn x => Option.map (fn y => (y,NONE)) (f x)) 
+  fun memoizePartial c (f: ('a -> 'b option)) =
+            memoizePartialTime c (fn x => Option.map (fn y => (y,NONE)) (f x))
 
   fun memoizeTime c f = fn k => valOf(memoizePartialTime c (fn x => SOME (f x)) k)
 
   fun memoize c f = fn k => valOf(memoizePartial c (fn x => SOME (f x)) k)
 
   end
-      
+
 
   structure Mime :> WEB_MIME =
     struct
@@ -403,7 +403,7 @@ structure Web :> WEB =
               val def = Substring.tokens Char.isSpace def
             in case (Substring.size lv,def)
                of (0,[]) => m
-                | (_,[]) => raise ParseErr (Substring.string lv ^ " has no extensions") 
+                | (_,[]) => raise ParseErr (Substring.string lv ^ " has no extensions")
                 |  _     => List.foldl (fn (x,m) => BM.insert (m, x, lv)) m def
             end
 
@@ -433,7 +433,7 @@ structure Web :> WEB =
                       of NONE => (WebLog.log(WebLog.Notice, "SMLServer.MimeFinder: MimeTypeFile not defined, using application/octet-stream")
                                   ; SOME "application/octet-stream")
                        | SOME f => Option.map Substring.string (BM.peek (readConf f, Substring.full x))
-      
+
       structure WC = Cache
 
       val mimeCache = WC.get (WC.String, WC.String, "smlserver_mimetype_cache",
@@ -454,18 +454,18 @@ structure Web :> WEB =
     end
 
 
-  structure Conn : WEB_CONN = 
-    struct 
+  structure Conn : WEB_CONN =
+    struct
     type set = (string,(string * string) list) Polyhash.hash_table
 
     val GET = 0
     val FORM = 1
 
     val log = WebLog.log
-    
+
     (* fun method () : string  = (prim("apsml_method", getReqRec())) handle Overflow => raise MissingConnection *)
     fun method () : string =
-          let 
+          let
             val res = prim ("@apsml_method",getReqRecP ()) : foreignptr
           in
             if isNullFp res then "" else prim("fromCtoMLstring", res : foreignptr) : string
@@ -486,8 +486,8 @@ structure Web :> WEB =
           case !table of NONE =>
             let
               val l = prim("apsml_headers", (getReqRecP())) : (string * string) list
-              val t = 
-                Polyhash.mkTable ((CharVector.foldl 
+              val t =
+                Polyhash.mkTable ((CharVector.foldl
                                     (fn (c,hv) => (if hv > 69273666
                                                    then Char.ord c + 31 * (hv div 64)
                                                    else Char.ord c + 31 * hv) handle Overflow => 0) 0),
@@ -500,7 +500,7 @@ structure Web :> WEB =
 
     fun add_headers (key,value) : unit = prim("@apsml_add_headers_out", (key : string, size key : int, value : string,
                                                                          size value : int, getReqRecP())) : unit
-    
+
     fun setMimeType(s : string) : unit = prim("@apsml_setMimeType",(s, size s, getReqRecP()))
 
     fun returnFile(status: int, mt: string, f: string) : unit =
@@ -509,21 +509,21 @@ structure Web :> WEB =
 	   else raise Fail("Web.Conn.returnFile: Cannot access file " ^ f)
 	end
 
-    fun returnHtml (i:int, s: string) : unit = 
+    fun returnHtml (i:int, s: string) : unit =
       let
         val _ = add_headers("Cache-Control","no-cache")
       in
         prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "text/html" : string, getReqRecP())) : unit
       end
 
-    fun returnXhtml (i : int,s : string) : unit = 
+    fun returnXhtml (i : int,s : string) : unit =
       let
         val _ = add_headers("Cache-Control","must-revalidate")
       in
         prim("@apsml_returnHtml", (i,s,size s, Mime.addEncoding "application/xhtml+xml" : string, getReqRecP())) : unit
       end
 
-    local 
+    local
         val (form_data : set option option ref) = ref NONE
         datatype FV =
         large_fv of {fv_name : Substring.substring,
@@ -535,7 +535,7 @@ structure Web :> WEB =
            content : Substring.substring,
            content_types : (Substring.substring * Substring.substring) list}
         val multiform_data : FV list ref = ref []
-      
+
 
           (* Local utility functions *)
         fun lower' NONE = ""
@@ -543,7 +543,7 @@ structure Web :> WEB =
 
         fun skipNewline substr =
         let
-          val substr = 
+          val substr =
         if Substring.first substr = SOME #"\r" then Substring.slice (substr,1,NONE) else substr
           val substr =
         if Substring.first substr = SOME #"\n" then Substring.slice (substr,1,NONE) else substr
@@ -573,10 +573,10 @@ structure Web :> WEB =
           fun match' pattern rest =
         case pattern of
           [] => (true,rest)
-        | p::ps => 
+        | p::ps =>
           (case Substring.getc rest of
              NONE => (false,orig_rest)
-           | SOME(c,rest) => 
+           | SOME(c,rest) =>
            if m c p then
              match' ps rest
            else
@@ -591,17 +591,17 @@ structure Web :> WEB =
           val (content_type,after_content_type) = Substring.position "\n" content
           val (content_type,content_type_value) = Substring.position ":" content_type
         in
-          if Substring.size content_type_value = 0 then 
+          if Substring.size content_type_value = 0 then
           (* no : and therefore no contenttype *)
         (acc,content)
           else
         let
           val content_type_value = Substring.slice(content_type_value,1,NONE)
           val content_type_value = triml content_type_value
-          val content_type_value = #1(Substring.splitl (fn c => c <> #"\r" andalso 
+          val content_type_value = #1(Substring.splitl (fn c => c <> #"\r" andalso
                     c <> #"\n") content_type_value)
         in
-          ((content_type,content_type_value)::acc, 
+          ((content_type,content_type_value)::acc,
            skipNewline after_content_type)
         end
         end
@@ -624,7 +624,7 @@ structure Web :> WEB =
           val eat_disposition = triml eat_disposition
 
           val (fv_name,fv_filename) = Substring.position ";" eat_disposition
-          val fv_name = 
+          val fv_name =
         case match false "name=\"" fv_name of
               (true,rest) => rest
           | _ => raise Fail "Ns.parseNextBoundary: can't find fv_name"
@@ -654,7 +654,7 @@ structure Web :> WEB =
            val before_eat_value = skipNewline after_content_types
            val (value_incl_end_newline,after_value) = Substring.position boundary before_eat_value
            val value_excl_end_newline = skipEndNewline value_incl_end_newline
-        in 
+        in
           case filename_opt of
         NONE => SOME (small_fv{fv_name = fv_name,
                  content = value_excl_end_newline,
@@ -668,7 +668,7 @@ structure Web :> WEB =
         handle Fail _ => NONE
 
 
-	local 
+	local
 
 	    (* We now support two ways of accessing POST request data:
 	     * (1) through Web.Conn.getRequestData(), which returns
@@ -685,16 +685,16 @@ structure Web :> WEB =
 	    fun assign r s = (r := SOME s; s)
 	in
             fun getQueryDataFORM () : string option =
-		case !cache of 
-		    SOME s => s 
+		case !cache of
+		    SOME s => s
 		  | NONE => assign cache
 		   let val maxsize = getOpt(Info.configGetValue(Info.Type.Int, "maxFormDataSize"),50000)
 		       val cl = contentLength()
 		   in
-		       if cl > maxsize then 
-			   ( log (Notice, "Content length of " ^ Int.toString cl ^ 
-					  " exceeding max content length of " ^ 
-					  Int.toString maxsize);			  
+		       if cl > maxsize then
+			   ( log (Notice, "Content length of " ^ Int.toString cl ^
+					  " exceeding max content length of " ^
+					  Int.toString maxsize);
 			     NONE (* content size is too large *)
 			   )
 		       else
@@ -713,7 +713,7 @@ structure Web :> WEB =
 		val boundary =
 		    case RegExp.extract (RegExp.fromString ".*[bB][oO][uU][Nn][Dd][Aa][Rr][Yy]=(.*)") contentType of
 			SOME [pat] => pat
-		      | _ => raise Fail ("Web.Conn.parseContent: can't get boundary out of contentType: " ^ 
+		      | _ => raise Fail ("Web.Conn.parseContent: can't get boundary out of contentType: " ^
 					 contentType)
 		val boundary = "--" ^ boundary
 		val content = Substring.full content
@@ -721,34 +721,34 @@ structure Web :> WEB =
 		    case parseNextBoundary boundary content of
 			NONE => []
 		      | SOME (fv,rest) => fv :: loop rest
-            in 
+            in
 		(loop content,boundary)
             end
             handle Fail _ => ([],"boundary")
 
-        fun getQueryDataGET() : string option = 
+        fun getQueryDataGET() : string option =
             let val res : string = prim("apsml_getQueryData", (~1, GET, getReqRecP()))
             in if isNull res then NONE
                else SOME res
             end
 
-	fun parseFormData(NONE : set option, s : string) : set = 
+	fun parseFormData(NONE : set option, s : string) : set =
             parseFormData(SOME(WebSet.create()),s)
-          | parseFormData(SOME(set), s) = 
+          | parseFormData(SOME(set), s) =
             let (*val _ = log(Notice, "parseFormData: " ^ s) *)
 		val f0 = Substring.tokens (fn c => c = #"&")
 		val f1 = Substring.splitl (fn c => not(c = #"="))
-		val f2 = fn (p1,p2) => (decodeUrl (Substring.string p1), 
+		val f2 = fn (p1,p2) => (decodeUrl (Substring.string p1),
 					decodeUrl (Substring.string (Substring.dropl (fn c => c = #"=") p2)))
 		val pairs = map (f2 o f1) (f0 (Substring.full s))
             in ((app (fn (p1,p2) => WebSet.put(set, p1, p2))) pairs; set)
             end
-            
-    in 
-      fun getQuery() : set option = 
-        case !form_data of SOME data => data 
-                 | NONE => 
-          let 
+
+    in
+      fun getQuery() : set option =
+        case !form_data of SOME data => data
+                 | NONE =>
+          let
             val content_type = Set.iget (headers(),"content-type")
           in
             if method() = "POST" andalso
@@ -761,19 +761,19 @@ structure Web :> WEB =
 		in
 		    case fvs of
 			[] => NONE
-		      | fvs => 
+		      | fvs =>
 			let
 			    val form = WebSet.create ()
-			    fun storeContentType fv_name (key,value) = 
+			    fun storeContentType fv_name (key,value) =
 				WebSet.put(form,
-					   Substring.string fv_name ^ "." ^ 
+					   Substring.string fv_name ^ "." ^
 					   lower' (SOME (Substring.string key)),
 					   Substring.string value)
 			    fun storeFV fv =
 				case fv of
 				    large_fv {fv_name,filename,filesize,content,content_types} =>
 				    (WebSet.put (form, Substring.string fv_name,Substring.string filename);
-				     WebSet.put (form, Substring.string fv_name ^ ".filesize", 
+				     WebSet.put (form, Substring.string fv_name ^ ".filesize",
 						 Int.toString filesize);
 				     List.app (storeContentType fv_name) content_types)
 				  | small_fv {fv_name,content,content_types} =>
@@ -787,7 +787,7 @@ structure Web :> WEB =
 		end
             else
 		let val formdata = getQueryDataFORM()
-		    val formset = case formdata of 
+		    val formset = case formdata of
 				      NONE => NONE
 				    | SOME(s) => SOME(parseFormData(NONE, s))
 		    val getdata = getQueryDataGET()
@@ -797,7 +797,7 @@ structure Web :> WEB =
 		in (form_data := SOME(finalset); getQuery())
 		end
           end
-	  
+
       fun storeMultiformData (fv,filename) =
 	  let
               val _ = getQuery() (* Make sure that formvariables have been read *)
@@ -807,14 +807,14 @@ structure Web :> WEB =
 		| storeFV (x::xs) =
 		  case x of
 		      large_fv{fv_name,filename,content,...} =>
-		      if Substring.string fv_name = fv then 
-			  BinIO.output (os,Substring.string content) 
-		      else 
+		      if Substring.string fv_name = fv then
+			  BinIO.output (os,Substring.string content)
+		      else
 			  storeFV xs
 		    | small_fv{fv_name,...} =>
-		      if Substring.string fv_name = fv then 
+		      if Substring.string fv_name = fv then
 			  r (Fail ("Web.storeMultiformData. FV " ^ fv ^ " does not contain a file"))
-		      else 
+		      else
 			  storeFV xs
 	  in
               storeFV (!multiform_data);
@@ -824,35 +824,42 @@ structure Web :> WEB =
 
       fun getRequestData () = Option.getOpt(getQueryDataFORM(),"")
 
-    end 
+    end
 
     fun return (s: string) : unit = returnHtml(~1,s)
-    (*fun return (s: string) : status = 
+    (*fun return (s: string) : status =
       prim("@apsml_returnHtml", (~1,s,size s, getReqRec())) *)
 
-    fun returnRedirectWithCode(i: int, s: string) : unit = 
+    fun returnRedirectWithCode(i: int, s: string) : unit =
       prim("@apsml_returnRedirect",(i, s, getReqRecP()))
 
+    fun returnBinary (s: string) : unit =
+        let val _ = add_headers("Cache-Control","no-cache")
+        in prim("@apsml_returnHtml", (~1,s,size s,
+                                      Mime.addEncoding "application/octet-stream" : string,
+                                      getReqRecP()))
+        end
+
     fun returnRedirect s = returnRedirectWithCode (302,s)
-    (*fun returnRedirect(s: string) : status = 
+    (*fun returnRedirect(s: string) : status =
       prim("@apsml_returnRedirect",(~1, s, getReqRec()))*)
 
-    fun url () : string list = 
+    fun url () : string list =
       prim("apsml_geturl", getReqRecP())
 
-    fun redirect(url: string) : unit = 
+    fun redirect(url: string) : unit =
      ( (*log(WebLog.Notice, "Web.Conn.redirect");  *)
      prim("@ap_internal_redirect", (url : string, getReqRecP() : foreignptr)) : unit
      )
 
-    fun port () : int = (prim("@apsml_getport", (getReqRecP() : foreignptr))) 
+    fun port () : int = (prim("@apsml_getport", (getReqRecP() : foreignptr)))
 
     fun host () : string = (prim("apsml_gethost",(getReqRec())))
-    
+
     fun server () : string = (prim("apsml_getserver",(getReqRecP())))
 
     fun scheme () : string = (* (prim("apsml_scheme",getReqRec())) handle Overflow => raise MissingConnection *)
-        let 
+        let
             val res = prim ("@apsml_scheme",getReqRecP ()) : foreignptr
         in
             if isNullFp res then "" else prim("fromCtoMLstring", res : foreignptr) : string
@@ -864,7 +871,7 @@ structure Web :> WEB =
 
     fun write (s: string) : unit =
        prim("@apsml_rputs", (s,getReqRecP()))
-       
+
     fun formvar s =  case getQuery()
        of SOME set => Set.get(set,s)
         | NONE => NONE
@@ -873,7 +880,7 @@ structure Web :> WEB =
         case getQuery() of
             SOME set => Set.getAll(set,s)
           | NONE => []
-(*                    
+(*
     fun formvarAll s =
       case getQuery() of
         SOME set =>(case Set.get(set,s)
@@ -885,24 +892,24 @@ structure Web :> WEB =
 
 
 
-  
+
     structure LowMail : WEB_LOW_MAIL = WebLowMail(struct
                type conn = foreignptr
-               val getReqRec = getReqRec 
+               val getReqRec = getReqRec
                structure Info = Info
-               val log = fn s => log(Debug, s) 
+               val log = fn s => log(Debug, s)
                exception Forbidden = Forbidden
-               end) 
+               end)
 
     structure Cookie : WEB_COOKIE =
       struct
-  (* This is an modified implementation of Cookies found in MoscowML. 
+  (* This is an modified implementation of Cookies found in MoscowML.
        This is from the MoscowML source:
 
        (c) Hans Molin, Computing Science Dept., Uppsala University, 1999.
        http://www.csd.uu.se/~d97ham/                     d97ham@csd.uu.se
 
-       Documentation, cleanup and efficiency improvements by sestoft@dina.kvl.dk 
+       Documentation, cleanup and efficiency improvements by sestoft@dina.kvl.dk
 
        Anyone is granted the right to copy and/or use this code, provided
        that this note is retained, also in modified versions.  The code is
@@ -914,12 +921,12 @@ structure Web :> WEB =
   in
     exception CookieError of string
 
-    type cookiedata = 
-      {name   : string, 
-       value  : string, 
-       expiry : Date.date option, 
-       domain : string option, 
-       path   : string option, 
+    type cookiedata =
+      {name   : string,
+       value  : string,
+       expiry : Date.date option,
+       domain : string option,
+       path   : string option,
        secure : bool}
 
     fun allCookies() : (string * string) list = (*WebLog.log(Notice, "allCookies"); *)(
@@ -927,7 +934,7 @@ structure Web :> WEB =
         [] => []
       | ([(k,cv)]) =>
     let
-      fun splitNameAndValue sus = 
+      fun splitNameAndValue sus =
         let
           val (pref,suff) = Substring.position "=" sus
         in
@@ -941,15 +948,15 @@ structure Web :> WEB =
 
     fun getCookie cn = List.find (fn (name,value) => cn = name) (allCookies())
 
-    fun getCookieValue cn = 
+    fun getCookieValue cn =
       case getCookie cn of
         NONE => NONE
       | SOME (n,v) => SOME v
 
     (* Date must be GMT time, that is, use Date.fromTimeUniv *)
-    fun setCookie {name : string, value : string, expiry : Date.date option, 
+    fun setCookie {name : string, value : string, expiry : Date.date option,
        domain : string option, path : string option, secure : bool} : unit =
-      let 
+      let
         fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
       in
         if name = "" orelse value= ""
@@ -965,43 +972,43 @@ structure Web :> WEB =
           end
       end
 
-    val setCookies = app setCookie 
+    val setCookies = app setCookie
 
     fun deleteCookie { name : string, path : string option } : unit =
       let val key_out = "Set-cookie"
         val val_out = String.concat[encodeUrl name, "=deleted;",
                 "expires=Fri, 11-Feb-77 12:00:00 GMT",
                 concatOpt "; path=" path]
-    in 
-      Conn.add_headers (key_out,val_out) 
+    in
+      Conn.add_headers (key_out,val_out)
     end
   end
       end
-  
+
   structure WebDynlib = Dynlib(Cache)
-   
 
 
-  structure Mail : WEB_MAIL = 
+
+  structure Mail : WEB_MAIL =
   struct
-    type email = {to: string list, cc: string list, 
-                  bcc: string list, from: string, 
+    type email = {to: string list, cc: string list,
+                  bcc: string list, from: string,
                   subject: string, body: string,
                   extra_headers: string list}
     datatype CharSet = UTF8 | ISO88591 | USASCII
     val current_server = ref NONE : (LowMail.mailer * LowMail.MX_FQDN) option ref
-    val servercache = Cache.get(Cache.String, 
+    val servercache = Cache.get(Cache.String,
                                 Cache.List (Cache.Pair Cache.Int Cache.String),
                                 "__WEB_MAIL_DNS_CACHE__",
                                 Cache.TimeOut(SOME(Time.fromSeconds(86400)), SOME(1000000)))
-    val getserveraddr = Cache.memoizeTime servercache (fn addr => 
-            let 
-                fun reduce l = 
-                  List.foldl 
-                  (fn ((_,a1,a2),(nl,time)) => ((a1,LowMail.FQDN_MX_toString a2)::nl,Int.min (time,a1))) 
+    val getserveraddr = Cache.memoizeTime servercache (fn addr =>
+            let
+                fun reduce l =
+                  List.foldl
+                  (fn ((_,a1,a2),(nl,time)) => ((a1,LowMail.FQDN_MX_toString a2)::nl,Int.min (time,a1)))
                   ([],86400) l
                 val (li,time) = reduce (LowMail.getFQDN_MX(addr))
-            in if li = [] 
+            in if li = []
                then ([],SOME(Time.fromSeconds(0)))
                else ((List.rev li),(SOME(Time.fromSeconds (LargeInt.fromInt time))))
             end)
@@ -1010,9 +1017,9 @@ structure Web :> WEB =
     fun checkaddr addr = (log(Debug, addr);
       case String.fields (fn x => x = #"@") addr
       of (name::server::[]) => (
-          if String.size name > 63 orelse String.size server > 255 
-          then false 
-          else 
+          if String.size name > 63 orelse String.size server > 255
+          then false
+          else
             case getserveraddr server
               of [] => false
                | (x::xr) => true
@@ -1022,27 +1029,27 @@ structure Web :> WEB =
      fun composeheader _ _ [] [] = []
        | composeheader _ _ [] (a::acc) = rev ((a ^ "\r\n") :: acc)
        | composeheader name delim (x::xr) [] = composeheader "" delim xr [name ^ x]
-       | composeheader _ delim (x::xr) (a::ar) = 
-           if size x + size a + 2 * (size delim) < 998 
+       | composeheader _ delim (x::xr) (a::ar) =
+           if size x + size a + 2 * (size delim) < 998
            then composeheader "" delim xr ((a ^ delim ^ x) :: ar)
            else composeheader "" delim xr ((" " ^ x) :: (a ^ delim ^ "\r\n") :: ar)
 
-    
-    structure Encodings :> sig val headerEncode : int -> string -> (string * int) end = 
-      struct 
-        fun createLookupAllow n = not (n >= 32 andalso n <= 126) 
+
+    structure Encodings :> sig val headerEncode : int -> string -> (string * int) end =
+      struct
+        fun createLookupAllow n = not (n >= 32 andalso n <= 126)
         val tableA = ref NONE
-        fun lookupAllowTable () = case !tableA 
+        fun lookupAllowTable () = case !tableA
                                   of NONE => (tableA := SOME(Vector.tabulate(256,createLookupAllow));
                                                       lookupAllowTable ())
                                    | SOME v => v
 
         fun shouldencode z x = let val table = lookupAllowTable()
                                  exception Done
-                             in (Word8Vector.foldl (fn (y,z') => 
+                             in (Word8Vector.foldl (fn (y,z') =>
                                                     if Vector.sub(table,Word8.toInt y) orelse z' > z
                                                     then raise Done
-                                                    else z'+1) 0 
+                                                    else z'+1) 0
                                                (Byte.stringToBytes x) ; false) handle Done => true
                              end
 
@@ -1050,12 +1057,12 @@ structure Web :> WEB =
                                   in
                                   if (n >= #"a" andalso n <= #"z") orelse
                                      (n >= #"A" andalso n < #"Z" ) orelse
-                                     (n >= #"0" andalso n < #"9" ) orelse 
+                                     (n >= #"0" andalso n < #"9" ) orelse
                                       n = #"!" orelse n = #"*" orelse n = #"+"
-                                      orelse n = #"-" 
+                                      orelse n = #"-"
                                   then (Char.toString n,1)
                                   else if n = #" " then ("_",1)
-                                  else ((if n' < 16 then "=0" else "=") ^ 
+                                  else ((if n' < 16 then "=0" else "=") ^
                                          Word8.fmt StringCvt.HEX (Word8.fromInt n'),3)
                                   end
 
@@ -1071,38 +1078,38 @@ structure Web :> WEB =
                           in Word8Vector.foldl (fn (x,l) => #2(Vector.sub(table,Word8.toInt x)) + l) 0 w8v
                           end
 
-        fun encode' x = let val table = lookupBSTable () 
+        fun encode' x = let val table = lookupBSTable ()
                       in String.translate (fn c => #1(Vector.sub(table,(Word8.toInt(Byte.charToByte c))))) x
                       end
 
         val st = "=?ISO-8859-1?Q?"
         val lst = String.size st
-        fun encode sp (d:Substring.substring) = if sp + lst > 70 
+        fun encode sp (d:Substring.substring) = if sp + lst > 70
                          then let val (s,l) = encode 2 d in ("\r\n  " ^ s,l) end
-                         else let val d' = Substring.string d 
+                         else let val d' = Substring.string d
                               in if enlength d' < (73 - sp - lst)
                          then let val s = st ^ (encode' d') ^ "?=" in (s, String.size s) end
-                         else (fn (x,y) => let val s = st ^ (encode' (Substring.string x)) 
-                                           in if Substring.size y > 0 
-                                              then let val (s',l) = encode 2 y 
+                         else (fn (x,y) => let val s = st ^ (encode' (Substring.string x))
+                                           in if Substring.size y > 0
+                                              then let val (s',l) = encode 2 y
                                                    in (s ^ "=?=\r\n  " ^ s', l)
                                                    end
                                               else (s ^ "?=", String.size s + 2)
                                            end)
                               (Substring.splitAt(d,73-sp-lst))
                               end
-        fun headerEncode s x = if shouldencode (76-s) x 
-                               then encode s (Substring.full x) 
+        fun headerEncode s x = if shouldencode (76-s) x
+                               then encode s (Substring.full x)
                                else (x, s + (String.size x))
       end
 
 
-     fun genheads {to, cc, bcc, from, subject, body, extra_headers} = 
+     fun genheads {to, cc, bcc, from, subject, body, extra_headers} =
           let fun genhead hname li = foldl (fn (x,y) => y ^ x) "" (composeheader hname ", " li [])
               val to' = genhead "To: " to
               val cc' = genhead "Cc: " cc
               val from' = genhead "From: " from
-              val subject' = let val s = "Subject: " 
+              val subject' = let val s = "Subject: "
                              in s ^ (#1(Encodings.headerEncode (String.size s) subject)) ^ "\r\n"
                              end
               val eh = foldl (fn (x,y) => y ^ x ^ "\r\n") "" extra_headers
@@ -1113,11 +1120,11 @@ structure Web :> WEB =
           in ((to @ cc, nobcc):: (tosingle (map addbcc bcc)))
           end
 
-     fun addrToServer to = case LowMail.getDefaultServer() 
+     fun addrToServer to = case LowMail.getDefaultServer()
                            of  SOME v  => SOME v
-                             | NONE =>( 
+                             | NONE =>(
                              case String.fields (fn x => x = #"@") to
-                             of (name::server::[]) => 
+                             of (name::server::[]) =>
                                (case getserveraddr server
                                of ((x,y)::xr) => SOME(LowMail.FQDN_MX_fromString y)
                                 | _ => NONE)
@@ -1125,7 +1132,7 @@ structure Web :> WEB =
 
      (* genserverdict generates a map: server option -> (addr list * header) list     *
       * or in other words: server option -> email list                                *)
-     fun genserverdict li = 
+     fun genserverdict li =
             let fun order ord (NONE,NONE) = EQUAL
                   | order ord (_,NONE) = GREATER
                   | order ord (NONE,_) = LESS
@@ -1133,32 +1140,32 @@ structure Web :> WEB =
                 val myorder = order LowMail.FQDN_MX_compare
                 fun grap [] acc = (acc,[])
                   | grap ((x,y)::[]) a =  (x::a,[])
-                  | grap ((x1,y1)::(x2,y2)::xr) a = 
-                              case myorder (y1,y2) 
+                  | grap ((x1,y1)::(x2,y2)::xr) a =
+                              case myorder (y1,y2)
                               of EQUAL => grap ((x2,y2)::xr) (x1::a)
                                | _ => (x1::a, (x2,y2)::xr)
                 fun bb (([],header),dict) = dict
-                  | bb ((addr::addrlist,header),dict) = 
+                  | bb ((addr::addrlist,header),dict) =
                        let val (_,server) = addr
                            val elist = getOpt(Binarymap.peek(dict, server),[])
                            val (l1,addrrest) = grap (addr::addrlist) []
-                       in 
-                         bb ((addrrest,header), Binarymap.insert 
+                       in
+                         bb ((addrrest,header), Binarymap.insert
                                    (dict, server, ((l1,header)::elist)))
                        end
-                fun aa ((addr : string list,header),dict) = 
-                   let val addrlist = Listsort.sort 
+                fun aa ((addr : string list,header),dict) =
+                   let val addrlist = Listsort.sort
                                   (fn ((_,a),(_,b)) => myorder (a,b))
                                           (map (fn x => (x, (addrToServer x))) addr)
                    in bb ((addrlist,header), dict)
                    end
-            in 
+            in
               foldl aa (Binarymap.mkDict myorder) li
             end
     fun pairmsg ([],_) = []
       | pairmsg ((x::xr),msg) = (x,msg)::pairmsg(xr,msg)
 
-     local 
+     local
      fun createLookupTabel n = if n = 10 then ("\r\n",2) (* \n *)
                              else if n = 9 then ("\t",1) (* \t *)
                              else if n = 32 then (" ",1) (* space *)
@@ -1166,19 +1173,19 @@ structure Web :> WEB =
                              else if n >= 62 andalso n <= 126 then (Char.toString (chr n),1)
                              else if n < 16 then ("=0" ^ Word8.fmt StringCvt.HEX (Word8.fromInt n),3)
                              else ("=" ^ Word8.fmt StringCvt.HEX (Word8.fromInt n),3)
-    
+
        val lookupTableT = ref NONE
-     fun lookupTable () = case !lookupTableT 
-                          of NONE => (lookupTableT:=SOME (Vector.tabulate (256,createLookupTabel)); 
+     fun lookupTable () = case !lookupTableT
+                          of NONE => (lookupTableT:=SOME (Vector.tabulate (256,createLookupTabel));
                                       lookupTable ())
                            | SOME(v) => v
-     
+
      (* quoted printable implementation (RFC 2045)  *)
-     fun trawl f b s = Substring.foldl 
+     fun trawl f b s = Substring.foldl
                         (fn (c,n) => f(c,n,(Vector.sub(lookupTable (), ord c)))) b (Substring.full s)
-     
-     fun countbit (li,s ,n,l,ls,offset) = 
-                                 if l > 75 
+
+     fun countbit (li,s ,n,l,ls,offset) =
+                                 if l > 75
                                  then (li, n+3+ls + offset, ls) (* =\r\n *)
                                  else (li, n+ls + offset, l)
 
@@ -1195,26 +1202,26 @@ structure Web :> WEB =
                                                     | _     => f([],s,n,l+ls,ls,0))
        | qpencode' f (cc,([(cp,sp,lsp)],n,l),(s,ls)) = (
                   if cp = #" " orelse cp = #"\t" then
-                  case cc of #"\n" => f([], sp^"=\r\n"^s, n, 0, lsp+1,2+ls)  
+                  case cc of #"\n" => f([], sp^"=\r\n"^s, n, 0, lsp+1,2+ls)
                            | #"\r" => ([(cp,sp,lsp),(cc,s,ls)],n,l)
                            | #" "  => f([(cc,s,ls)],sp,n,l+lsp,lsp,0)
                            | #"\t" => f([(cc,s,ls)],sp,n,l+lsp,lsp,0)
-                           | _     => let val (_,c1,c2) = f([],sp,n,l+lsp,lsp,0) 
-                                      in f([],s,c1,c2+ls,ls,0) 
+                           | _     => let val (_,c1,c2) = f([],sp,n,l+lsp,lsp,0)
+                                      in f([],s,c1,c2+ls,ls,0)
                                       end
                   else
                   case (cp,cc) of (#"\r",#"\n") => f([],"\r\n",n,0,2,0)
                                 | (#"\r",#"\r") => f([(cc,s,ls)],sp,n,l+lsp,lsp,0)
                                 | (#"\r",#"\t") => f([(cc,s,ls)],sp,n,l+lsp,lsp,0)
                                 | (#"\r",#" ")  => f([(cc,s,ls)],sp,n,l+lsp,lsp,0)
-                                | (#"\r",_)     => let val (_,c1,c2) = f([],sp,n,l+lsp,lsp,0) 
-                                                   in f([],s,c1,c2+ls,ls,0) 
+                                | (#"\r",_)     => let val (_,c1,c2) = f([],sp,n,l+lsp,lsp,0)
+                                                   in f([],s,c1,c2+ls,ls,0)
                                                    end
-                                | _ => let val (_,c1,c2) = f([],sp,n,l+lsp,lsp,0) 
-                                       in f([],s,c1,c2+ls,ls,0) 
+                                | _ => let val (_,c1,c2) = f([],sp,n,l+lsp,lsp,0)
+                                       in f([],s,c1,c2+ls,ls,0)
                                        end)
-       | qpencode' f (cc ,(([(cpp,spp,lspp),(#"\r",sp,lsp)]),n,l),(s, ls)) = 
-            if cpp = #"\t" orelse cpp = #" " then 
+       | qpencode' f (cc ,(([(cpp,spp,lspp),(#"\r",sp,lsp)]),n,l),(s, ls)) =
+            if cpp = #"\t" orelse cpp = #" " then
             let val (_,c1,c2) = f([],spp,n,l+lspp,lspp,0)
             in (
             case cc of #"\n" => f([],"\t=\r\n"^s, n, 0, lspp+1, 2+ls)
@@ -1224,7 +1231,7 @@ structure Web :> WEB =
                      | _ => let val (_,c3,c4) = f([],sp,c1,c2+lsp,lsp,0)
                             in f([],s,c3,c4+ls,ls,0)
                             end )
-             end 
+             end
              else raise Fail("Encoding algorithm not working (encoding)")
 
        | qpencode' _ _ = raise Fail("Encoding algorithm not working (encoding)")
@@ -1249,16 +1256,16 @@ structure Web :> WEB =
     fun smtpencodeCount (#".",[#"\r",#"\n"],n) = ([],n+4)
       | smtpencodeCount (cc,li,n) = ([],List.length li + n + 1)
 
-    fun smtpencodeEncode array (#".",[#"\r",#"\n"],n) = 
+    fun smtpencodeEncode array (#".",[#"\r",#"\n"],n) =
                         (Byte.packString (array,n,Substring.full "\r\n.."); ([],n+4))
-      | smtpencodeEncode array (cc,li,n) = 
-                        (Byte.packString (array,n,Substring.full (implode (li@[cc]))); 
+      | smtpencodeEncode array (cc,li,n) =
+                        (Byte.packString (array,n,Substring.full (implode (li@[cc])));
                          ([],List.length li + n + 1))
 
-    fun smtpencode' f (cc,([],n)) = (case cc 
+    fun smtpencode' f (cc,([],n)) = (case cc
              of #"\r" => ([cc],n)
               | _ => f(cc,[],n))
-      | smtpencode' f (cc,([cp],n)) = (case (cp,cc) 
+      | smtpencode' f (cc,([cp],n)) = (case (cp,cc)
              of (#"\r",#"\n") => ([cp,cc],n)
               | _ => f(cc,[cp],n))
       | smtpencode' f (cc,(li,n)) = f(cc,li,n)
@@ -1268,7 +1275,7 @@ structure Web :> WEB =
                                             | (x::xr) => f(x,xr,n)
                                 end
     fun smtpencode s = let val (_,n) = smtpencodefinal smtpencodeCount ([],0) (Substring.full s)
-                           val tail = if size s > 1 
+                           val tail = if size s > 1
                                       then Substring.substring(s,size s - 2, 2)
                                       else Substring.full ""
                            val extra = Substring.compare(Substring.full "\r\n", tail) <> EQUAL
@@ -1279,23 +1286,23 @@ structure Web :> WEB =
                            Byte.unpackString (Word8ArraySlice.full array) (*array,0,NONE*))
                        end
 
-    fun prepareAndSend charset {to, cc, bcc, from, subject, body, extra_headers} = 
+    fun prepareAndSend charset {to, cc, bcc, from, subject, body, extra_headers} =
          let val (fromok,frombad) = List.partition checkaddr from
-             val msgfrom = if List.length from > 1 
-                           then "From address' not valid" 
+             val msgfrom = if List.length from > 1
+                           then "From address' not valid"
                            else "From address not valid"
              in if fromok <> []
-         then 
+         then
            let exception e1 of string
                val _ = log(Debug, body)
                val charsetString = case charset of ISO88591 => "ISO-8859-1"
                                                  | UTF8 => "UTF8"
                                                  | USASCII => "US-ASCII"
-               val (to_ready, to_failed) = List.partition checkaddr to   
+               val (to_ready, to_failed) = List.partition checkaddr to
                val (cc_ready, cc_failed) = List.partition checkaddr cc
                val (bcc_ready, bcc_failed) = List.partition checkaddr bcc
                fun offsetstring i = let val i = LargeInt.toInt i
-                                        fun f x = 
+                                        fun f x =
                                               let val t = x div 3600
                                                   val m = (x mod 3600) div 60
                                                   val tt = if t < 10 then "0" ^ Int.toString t
@@ -1304,7 +1311,7 @@ structure Web :> WEB =
                                                            else Int.toString m
                                               in tt ^ mm
                                               end
-                                    in  if i = 0 then "+0000" 
+                                    in  if i = 0 then "+0000"
                                         else if i < 12 * 60 * 60 then "-" ^ (f i)
                                              else "+" ^ (f (24*60*60-i))
                                     end
@@ -1314,34 +1321,34 @@ structure Web :> WEB =
                                 in (Date.fmt "%a, %d %b %Y %H:%M:%S " n) ^ (offsetstring t)
                                 end
                val failed_msg = "address not valid"
-               val serverdict = genserverdict (genheads 
-                     {to = to_ready, cc = cc_ready, bcc = bcc_ready, from = from, 
-                      subject = subject, body = body, 
+               val serverdict = genserverdict (genheads
+                     {to = to_ready, cc = cc_ready, bcc = bcc_ready, from = from,
+                      subject = subject, body = body,
                       extra_headers =  "MIME-Version: 1.0"::
                                       ("Content-Type: text/plain; charset=" ^ charsetString) ::
                                        "Content-Transfer-Encoding: quoted-printable"::
                                       ("Date: "^ datastring) ::
                                       ("Message-ID: " ^ "test@changeme") ::
                                       extra_headers})
-               fun push (server,tolist,header) = 
-                   let val _ = (case !current_server of 
+               fun push (server,tolist,header) =
+                   let val _ = (case !current_server of
                                  SOME(mailer,s) =>
                                  if LowMail.FQDN_MX_compare(s,server) = EQUAL
                                  then ()
-                                 else (LowMail.closeConn mailer; 
+                                 else (LowMail.closeConn mailer;
                                        current_server:= SOME(LowMail.initConn(server),server))
                                | NONE =>
                                        current_server:= SOME(LowMail.initConn(server),server)
                                        ) handle LowMail.ConnectionErr(m,_,_,_) => raise e1(m)
-                   in 
-                      LowMail.sendmail (tolist, List.nth(fromok,0), header ^ body, 
+                   in
+                      LowMail.sendmail (tolist, List.nth(fromok,0), header ^ body,
                                         #1(valOf(!current_server)))
                    end
-               fun mysend(NONE, li) = (map (fn (x,_) => pairmsg (x,"address is not valid")) li) 
+               fun mysend(NONE, li) = (map (fn (x,_) => pairmsg (x,"address is not valid")) li)
                  | mysend(SOME(s),[]) = []
                  | mysend(SOME(s),((x,y)::xr)) = ((
-                         let val (_,a1,a2) = push(s,x,y) 
-                                handle LowMail.ConnectionErr(m,_,l2,l3) => 
+                         let val (_,a1,a2) = push(s,x,y)
+                                handle LowMail.ConnectionErr(m,_,l2,l3) =>
                                              (current_server := NONE; ([],l2,l3))
                          in (a1 @ a2)::(mysend(SOME(s),xr))
                          end) handle e1(msg) => map (fn (c,_) => pairmsg (c,msg)) ((x,y)::xr))
@@ -1351,28 +1358,28 @@ structure Web :> WEB =
          end
 
      fun mail unfold fail botu botf = case (unfold botu,NONE) handle ? => (NONE,SOME ?)
-             of (NONE,a) => (case !current_server 
+             of (NONE,a) => (case !current_server
                            of NONE => (case a of NONE => (botu,botf) | SOME(?) => raise ?)
                             | SOME(s,_) => (LowMail.closeConn(s);current_server:= NONE;
                                             (case a of NONE => (botu,botf) | SOME ? => raise ?)))
-              | (SOME(e : email,a,charset),_) => 
-                             let val b = prepareAndSend charset 
-                                              {to = #to(e), cc = #cc(e), bcc = #bcc(e), 
+              | (SOME(e : email,a,charset),_) =>
+                             let val b = prepareAndSend charset
+                                              {to = #to(e), cc = #cc(e), bcc = #bcc(e),
                                                from = [#from(e)], subject = #subject(e),
                                                body = ((smtpencode o qpencode) (#body(e))),
                                                extra_headers = #extra_headers(e)}
-                             in if b = [] 
-                                then mail unfold fail a botf 
+                             in if b = []
+                                then mail unfold fail a botf
                                 else mail unfold fail a (fail (e,b,botf))
                              end
-              
+
 
 (*    fun sendmail {to: string list, cc: string list, bcc: string list,
             from: string, subject: string, body: string,
             extra_headers: string list} : unit =
       let
         fun sl2s sep [] = ""
-                | sl2s sep l = concat (tl (foldr (fn (s,acc)=>sep::s::acc) [] l)) 
+                | sl2s sep l = concat (tl (foldr (fn (s,acc)=>sep::s::acc) [] l))
         fun header s nil = ""
           | header s l = s ^ ": " ^ sl2s "," l ^ "\n"
         val mails = concat
@@ -1383,7 +1390,7 @@ structure Web :> WEB =
            concat(map (fn s => s ^ "\n") extra_headers),
            "Subject: ", subject, "\n\n",
            smtpencode body]
-        fun writeFile (filename, str) = 
+        fun writeFile (filename, str) =
           let val os = TextIO.openOut filename
           in (TextIO.output (os, str); TextIO.closeOut os)
       handle X => (TextIO.closeOut os; raise X)
@@ -1393,7 +1400,7 @@ structure Web :> WEB =
       in (writeFile (tmpf, mails);
           if OS.Process.system cmd = OS.Process.success then ()
           else raise Fail "")
-        handle X => 
+        handle X =>
           (FileSys.remove tmpf;
            raise Fail ("Failed to send email from " ^ from ^ " using Web.sendmail."))
       end*)
@@ -1413,25 +1420,25 @@ structure Web :> WEB =
                                                                   [" but I got the following errors: "] @
 								 (List.foldl (fn ((x,y),z) => "; " :: x :: " " :: y :: z) [] err))))
               true ())
-	  
+
       fun send {to: string, from: string, subject: string, body: string} : unit =
 	  sendmail {to=[to],from=from,cc=nil,bcc=nil,subject=subject,
 		    extra_headers=nil,body=body}
   end
-  
-  
+
+
   val log = WebLog.log
-	    
+
   type quot = Quot.quot
 
   fun return (q : quot) : unit =
       Conn.return(Quot.toString q)
-      
+
   fun splitUrl (url:string) : {port: int, page: string, server: string} =
       let val (sscheme,r1) = Substring.splitAt (Substring.full url, 7)
           val (shp,r2) = Substring.splitl (fn x => x <> #"/") r1
-          val (sserver,sport1) = Substring.splitl (fn x => x <> #":") shp 
-          val (_,sport) = Substring.splitAt (sport1, 1) 
+          val (sserver,sport1) = Substring.splitl (fn x => x <> #":") shp
+          val (_,sport) = Substring.splitAt (sport1, 1)
               handle Subscript => (Substring.full "", Substring.full "80")
           val scheme = Substring.string sscheme
           val page = let val a = Substring.string r2 in if a = "" then "/" else a end
@@ -1448,16 +1455,16 @@ structure Web :> WEB =
           val r : string = prim("apsml_getpage",(server,page,(port,timeout,getReqRec())))
       in if isNull r then NONE else SOME r
       end handle Subscript => (log(Debug, "fetchUrlTime: subscript raised");NONE)
-			      
-  fun fetchUrl url = 
+
+  fun fetchUrl url =
       let val timeout = getOpt(Info.configGetValue (Info.Type.Int, "FetchUrlTimeOut"),60)
       in fetchUrlTime timeout url
       end
 
   val returnRedirect =
-      Conn.returnRedirect 
+      Conn.returnRedirect
 
-  fun write (q : quot) : unit = 
+  fun write (q : quot) : unit =
       Conn.write (Quot.toString q)
 
   (*fun getMimeType(s: string) : string = prim("apsml_GetMimeType", (s,getReqRec()))*)
@@ -1469,44 +1476,44 @@ structure Web :> WEB =
     (* By raising Interrupt, the web-server is not killed as it
      * would be if we call OS.Process.exit. Also, handlers can
      * protect the freeing of resources such as file descriptors
-     * and database handles. Moreover, region pages are freed as 
+     * and database handles. Moreover, region pages are freed as
      * they should be. *)
 
-  fun schedule' (f : string) (s : string option) (first : int) (interval : int) : unit = 
+  fun schedule' (f : string) (s : string option) (first : int) (interval : int) : unit =
       let
           val port : int = getOpt(Info.configGetValue (Info.Type.Int, "SchedulePort"),
                                   if Conn.hasConnection () then Conn.port() else 0)
-          val _ = if port = 0 then raise Fail "tried to schedule with an invalid port number" 
+          val _ = if port = 0 then raise Fail "tried to schedule with an invalid port number"
                   else ()
       in
           case s of NONE =>
 		    prim("apsml_reg_schedule", (first : int, interval : int, 0,
 						(f : string ,"localhost",port : int), getReqRec()))
                   | SOME(server) =>
-		    prim("apsml_reg_schedule", (first : int, interval : int, 0, 
+		    prim("apsml_reg_schedule", (first : int, interval : int, 0,
 						(f : string, server : string, port : int), getReqRec()))
       end
 
-  fun schedule f server first interval = 
-      let fun next t1 t2 = if Time.>=(t1,t2) 
-                           then Time.-(t1, t2) 
+  fun schedule f server first interval =
+      let fun next t1 t2 = if Time.>=(t1,t2)
+                           then Time.-(t1, t2)
                            else next (Time.+(t1, interval)) t2
           val fir = LargeInt.toInt (Time.toSeconds(next (Date.toTime first) (Time.now())))
       in
           schedule' f server fir (LargeInt.toInt(Time.toSeconds interval))
       end
 
-  fun deSchedule (f:string) : unit = 
+  fun deSchedule (f:string) : unit =
       prim("apsml_reg_schedule", (0,0,1,(f,"",0),getReqRec()))
-            
+
   fun scheduleScript f s i = schedule' f s i i
-  fun scheduleDaily f s {hour, minute} = 
+  fun scheduleDaily f s {hour, minute} =
       let val now = Date.fromTimeUniv (Time.now())
-          val first = ((hour - Date.hour now) mod 24) * 60*60 
+          val first = ((hour - Date.hour now) mod 24) * 60*60
                       + ((minute - Date.minute now) mod 60) * 60
       in schedule' f s first (24*60*60)
       end
-  fun scheduleWeekly f s {day, hour, minute} = 
+  fun scheduleWeekly f s {day, hour, minute} =
       let fun weekday Date.Mon = 0
             | weekday Date.Tue = 1
             | weekday Date.Wed = 2
@@ -1516,43 +1523,43 @@ structure Web :> WEB =
             | weekday Date.Sun = 6
           val now = Date.fromTimeUniv (Time.now())
           val first = ((weekday day - weekday (Date.weekDay now)) mod 7) * 24 * 60 * 60
-                      + ((hour - Date.hour now) mod 24) * 60*60 
-                      + ((minute - Date.minute now) mod 60) * 60 
+                      + ((hour - Date.hour now) mod 24) * 60*60
+                      + ((minute - Date.minute now) mod 60) * 60
       in schedule' f s first (24*60*60*7)
       end
 
      (* Creating the supported database interfaces *)
-        
-  structure DbOraBackend = DbOracleBackend(struct 
+
+  structure DbOraBackend = DbOracleBackend(struct
                                            type conn = foreignptr
                                            val getReqRec = getReqRec
                                            val log = (fn x => (log(Debug, x); x))
                                            val isNull = isNull
                                            structure Info = Info
                                            structure Dynlib = WebDynlib
-                                           end) :> WEB_DB_BACKEND 
+                                           end) :> WEB_DB_BACKEND
                                                        where type 'a Type = 'a Info.Type.Type
-									    
-  structure DbPostgreSQLBackend = DbODBCBackend(struct 
+
+  structure DbPostgreSQLBackend = DbODBCBackend(struct
                                                 type conn = foreignptr
                                                 val getReqRec = getReqRec
                                                 val log = (fn x => (log(Debug, x); x))
                                                 val isNull = isNull
                                                 structure Info = Info
                                                 structure Dynlib = WebDynlib
-                                                end) :> WEB_DB_BACKEND 
+                                                end) :> WEB_DB_BACKEND
 							    where type 'a Type = 'a Info.Type.Type
 
-  structure DbMySqlBackend = DbODBCBackend(struct 
+  structure DbMySqlBackend = DbODBCBackend(struct
                                            type conn = foreignptr
                                            val getReqRec = getReqRec
                                            val log = (fn x => (log(Debug, x); x))
                                            val isNull = isNull
                                            structure Info = Info
                                            structure Dynlib = WebDynlib
-                                           end) :> WEB_DB_BACKEND 
+                                           end) :> WEB_DB_BACKEND
                                                        where type 'a Type = 'a Info.Type.Type
-									    
+
   (*structure DbOra = DbFunctor(structure DbBackend = DbOraBackend)*)
 
   local
@@ -1563,12 +1570,12 @@ structure Web :> WEB =
               val r : string = prim("apsml_mkrequest",(server,req,(port,timeout,getReqRec())))
 	  in if isNull r then raise Connection ("Failed request for " ^ url) else r
 	  end handle Subscript => ( log(Debug, "Web.sml: makeRequest: subscript raised")
-				  ; raise Connection ("Failed in parsing " ^ url))				  
+				  ; raise Connection ("Failed in parsing " ^ url))
   in
       structure XMLrpc = XMLrpc(exception Connection = Connection
                                 val makeRequest = makeRequest
 				val write = Conn.write
 				val getRequestData = Conn.getRequestData
 			        val log = fn s => log(Notice,s))
-  end	     
+  end
   end

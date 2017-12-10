@@ -3,6 +3,7 @@ signature WEB_CONN = sig
   val returnHtml         : int * string -> unit
   val returnXhtml        : int * string -> unit
   val return             : string -> unit
+  val returnBinary       : string -> unit
   val returnFile         : int * string * string -> unit
   val write              : string -> unit
   val returnRedirect     : string -> unit
@@ -13,10 +14,10 @@ signature WEB_CONN = sig
   val formvar            : string -> string option
   val formvarAll         : string -> string list
   val storeMultiformData : string * string -> unit
-  val headers            : unit -> set 
-  val host               : unit -> string 
-  val location           : unit -> string 
-  val peer               : unit -> string 
+  val headers            : unit -> set
+  val host               : unit -> string
+  val location           : unit -> string
+  val peer               : unit -> string
   val scheme             : unit -> string
   val port               : unit -> int
   val redirect           : string -> unit
@@ -77,7 +78,7 @@ end
  connection.
 
  [host()] returns the server hostname associated with the connection.
- 
+
  [location()] returns the HTTP location associated with the
  connection. For example: http://www.avalon.com:81. A server may be
  associated with more than one location at a given time, although
@@ -90,7 +91,7 @@ end
 
  [peerPort()] returns the port from which the peer is connected.
 
- [port()] returns the server port number associated with the 
+ [port()] returns the server port number associated with the
  connection.
 
  [redirect f] performs an internal redirect, to the file f; i.e.,
@@ -109,7 +110,7 @@ end
  scripts, no connection is available. This function may be used to
  protect execution of code that requires a connection (e.g., execution
  of library code).
-  
+
  [add_headers (key,value)] adds key:value to the http header
 
  [fullRequest()] returns the entire request as a string. Raises
