@@ -313,6 +313,10 @@ structure XMLHttpRequest =
           J.exec1 {stmt="return r.send(null);",
                    arg1=("r",J.fptr),res=J.unit} r
 
+      fun sendBlob (r:req) (s:string) : unit =
+          J.exec2 {stmt="return r.send(new Blob([s],{type:'application/octet-stream'}));",
+                   arg1=("r",J.fptr),arg2=("s",J.string),res=J.unit} (r,s)
+
       fun setRequestHeader (r:req) (k:string,v:string) : unit =
           J.exec3 {stmt="return r.setRequestHeader(k,v);",
                    arg1=("r",J.fptr),arg2=("k",J.string),arg3=("v",J.string),
