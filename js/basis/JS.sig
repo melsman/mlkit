@@ -74,7 +74,7 @@ signature JS =
       val setRequestHeader : req -> string * string -> unit
       val setResponseType  : req -> string -> unit
       val send             : req -> string option -> unit
-      val sendBlob         : req -> string -> unit
+      val sendBinary       : req -> string -> unit
       val state            : req -> int        (* 0,1,2,3,4 *)
       val status           : req -> int option (* 200, 404, ... *)
       val onStateChange    : req -> (unit -> unit) -> unit

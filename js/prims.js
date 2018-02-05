@@ -379,3 +379,13 @@ SmlPrims.arraybufferToString = function (ab) {
     }
     return ss.join('');
 }
+
+SmlPrims.stringToArrayBuffer = function (s) {
+    var sz = s.length;
+    var ab = new ArrayBuffer(s.length);
+    var barr = new Uint8Array(ab);
+    for (var i=0; i < barr.length; i++) {
+	barr[i] = s.charCodeAt(i);
+    }
+    return ab;
+}

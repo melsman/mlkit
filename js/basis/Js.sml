@@ -313,8 +313,8 @@ structure XMLHttpRequest =
           J.exec1 {stmt="return r.send(null);",
                    arg1=("r",J.fptr),res=J.unit} r
 
-      fun sendBlob (r:req) (s:string) : unit =
-          J.exec2 {stmt="return r.send(new Blob([s],{type:'application/octet-stream'}));",
+      fun sendBinary (r:req) (s:string) : unit =
+          J.exec2 {stmt="return r.send(SmlPrims.stringToArrayBuffer(s));",
                    arg1=("r",J.fptr),arg2=("s",J.string),res=J.unit} (r,s)
 
       fun setRequestHeader (r:req) (k:string,v:string) : unit =
