@@ -98,8 +98,9 @@ end
  argument to f is a function that maps column names to values. Raises
  Fail msg on error.
 
- [foldSetdb db f b sql] similar to foldDb except that f takes the
- result set as argument. Raises Fail msg on fail.
+ [foldRawDb db f b sql] similar to foldDb except that f receives a row
+ and an accumulator as its arguments. Raises Fail msg on fail, but
+ does no checking of column names.
 
  [appDb db f sql] executes SQL statement sql and applies f on each row
  in the result set. Raises Fail on error.
