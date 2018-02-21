@@ -22,21 +22,24 @@ signature WEB_DB_HANDLE = sig
 
   (* Queries *)
   val foldDb    : db -> ((string->string)*'a->'a) -> 'a -> quot -> 'a
-  val foldDbCol : db -> (string list -> (string -> string option) * 'a 
+  val foldDbCol : db -> (string list -> (string -> string option) * 'a
                          -> 'a)
                   -> 'a -> quot -> 'a
+
+  val foldDbRaw : db -> (string option list * 'a -> 'a) -> 'a -> quot -> 'a
+
   val appDb     : db -> ((string->string)->'a) -> quot -> unit
-  val appDbCol  : db -> (string list -> (string->string option)->'a) 
+  val appDbCol  : db -> (string list -> (string->string option)->'a)
                   -> quot -> unit
   val listDb    : db -> ((string->string)->'a) -> quot -> 'a list
-  val listDbCol : db -> (string list -> (string->string option)->'a) 
+  val listDbCol : db -> (string list -> (string->string option)->'a)
                         -> quot -> 'a list
   val zeroOrOneRowDb  : db -> quot -> string list option
-  val oneFieldDb      : db -> quot -> string 
+  val oneFieldDb      : db -> quot -> string
   val zeroOrOneFieldDb: db -> quot -> string option
   val oneRowDb        : db -> quot -> string list
   val oneRowDb'       : db -> ((string->string)->'a) -> quot -> 'a
-  val zeroOrOneRowDb' : db -> ((string->string)->'a) -> quot 
+  val zeroOrOneRowDb' : db -> ((string->string)->'a) -> quot
                         -> 'a option
   val existsOneRowDb  : db -> quot -> bool
 
@@ -66,12 +69,12 @@ end
 
  [dmlDb db dml] executes the data manipulation language command dml
  using database handle db. Raises Fail msg if dml is unsuccessful; msg
- is the error message returned from the database. 
+ is the error message returned from the database.
 
  [panicDmlDb db f sql] executes the data manipulation language command
  dml using database handle db. Calls the function f with with an error
  message as argument if the dml command is unsuccessful. panicDmlDb
- returns unit and raises an exception only if f does. 
+ returns unit and raises an exception only if f does.
 
  [dmlTransDb db f] executes function f using handle db, which may send
  a series of SQL statements to the database. All SQL statements are
@@ -95,8 +98,9 @@ end
  argument to f is a function that maps column names to values. Raises
  Fail msg on error.
 
- [foldSetdb db f b sql] similar to foldDb except that f takes the
- result set as argument. Raises Fail msg on fail.
+ [foldRawDb db f b sql] similar to foldDb except that f receives a row
+ and an accumulator as its arguments. Raises Fail msg on fail, but
+ does no checking of column names.
 
  [appDb db f sql] executes SQL statement sql and applies f on each row
  in the result set. Raises Fail on error.
@@ -123,7 +127,7 @@ end
 
  [oneRowDb' db f sql] executes SQL statement sql, which must return
  exactly one row. Returns f applied on the row. Raises Fail on error.
-    
+
  [zeroOrOneRowDb' db f sql] executes SQL statement sql, which must
  return either zero or one row. Returns f applied on the row if it
  exists. Raises Fail on error.
@@ -142,5 +146,5 @@ end
 
  [wrapDb f] obtains a handle db with getHandle. applies f to db and
  before returning the result, the handle db is returned with
- putHandle.  
+ putHandle.
 *)

@@ -1,6 +1,6 @@
 signature WEB_DB = sig
   structure Handle : WEB_DB_HANDLE
-		     
+
   type 'a Type
   val config : 'a Type * string * 'a -> unit
 
@@ -12,32 +12,35 @@ signature WEB_DB = sig
 
   (* Stored Procedure *)
   val execSp  : quot list -> unit
-				   
+
   (* Queries *)
   val fold    : ((string->string)*'a->'a) -> 'a -> quot -> 'a
-  val foldCol : (string list -> (string->string option)*'a->'a) 
+  val foldCol : (string list -> (string->string option)*'a->'a)
                 -> 'a -> quot -> 'a
+
+  val foldRaw : (string option list * 'a -> 'a) -> 'a -> quot -> 'a
+
   val app     : ((string->string)->'a) -> quot -> unit
-  val appCol  : (string list -> (string->string option)->'a) 
+  val appCol  : (string list -> (string->string option)->'a)
                 -> quot -> unit
   val list    : ((string->string)->'a) -> quot -> 'a list
-  val listCol : (string list -> (string->string option)->'a) 
+  val listCol : (string list -> (string->string option)->'a)
                 -> quot -> 'a list
 
-  val oneField      : quot -> string 
+  val oneField      : quot -> string
   val zeroOrOneField: quot -> string option
   val oneRow        : quot -> string list
   val oneRow'       : ((string->string)->'a) -> quot -> 'a
   val zeroOrOneRow  : quot -> string list option
   val zeroOrOneRow' : ((string->string)->'a) -> quot -> 'a option
   val existsOneRow  : quot -> bool
-			      
+
   (* Sequences *)
   val seqNextvalExp : string -> string
   val seqNextval    : string -> int
   val seqCurrvalExp : string -> string
   val seqCurrval    : string -> int
-				
+
   (* Miscellaneous *)
   val sysdateExp    : string
   val qq            : string -> string
@@ -53,7 +56,7 @@ signature WEB_DB = sig
   val toBool        : string -> bool option
   val fromBool      : bool -> string
   val toReal        : string -> real option
-  val fromReal      : real -> string		      
+  val fromReal      : real -> string
 end
 
 (*
@@ -73,8 +76,9 @@ end
  f is a function that maps column names to values. Raises Fail msg on
  error.
 
- [foldSet f b sql] similar to fold except that f takes the result set
- as argument. Raises Fail msg on fail.
+ [foldRaw f b sql] similar to fold except that f receives a row and an
+ accumulator as its arguments. Raises Fail msg on fail, but does no
+ checking of column names.
 
  [app f sql] executes SQL statement sql and applies f on each row in
  the result set. Raises Fail on error.
@@ -164,12 +168,12 @@ end
  [valueList vs] returns a string formatted to be part of an insert
  statement:
 
-       `insert into t (f1,f2,f3) 
+       `insert into t (f1,f2,f3)
         values (^(Db.valueList [f1,f2,f3]))`
 
  is turned into
 
-      `insert into t (f1,f2,f3) 
+      `insert into t (f1,f2,f3)
        values ('f1_','f2_','f3_')`
 
  where fi_ are the properly quoted values.
@@ -178,9 +182,9 @@ end
  statement. Say nvs = [(n1,v1),(n2,v2)], then
 
        `update t set ^(Db.setList nvs)`
- 
+
  is turned into
-   
+
        `update t set n1='v1_',n2='v2_'`
 
  where vi_ are the properly quoted values.
