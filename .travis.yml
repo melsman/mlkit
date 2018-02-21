@@ -8,7 +8,6 @@ sudo: true
 
 before_install:
  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
- - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew cask uninstall oclint || true ; fi
  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc mlkit autoconf phantomjs ; fi
  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update ; fi
  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc gcc-multilib mlton autoconf make ; fi
