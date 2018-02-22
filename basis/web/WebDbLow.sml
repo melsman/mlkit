@@ -244,8 +244,6 @@ functor DbODBCBackend(type conn = foreignptr
 			 | _ => raise Fail "ODBC Driver: selectDb: An error occured"
             end
 
-    val toOption = List.rev o (List.map (fn [] => NONE | l as (_::_) => SOME(String.concat (List.rev l))))
-
     fun toOption (xss:string list list) : string option list =
         let val xs : string option list = List.map (fn nil => NONE
                                                      | [x] => SOME x
