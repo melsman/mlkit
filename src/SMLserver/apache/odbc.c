@@ -11,8 +11,8 @@
 
 enum DBReturn
 {
-  DBError = 0, 
-  DBData = 1, 
+  DBError = 0,
+  DBData = 1,
   DBDml = 2,
   DBEod = 3
 };
@@ -41,7 +41,7 @@ struct bugs
   struct freeDBC *freeDBC;
 };
 
-typedef struct 
+typedef struct
 {
   SQLHENV envhp;
   int dbid;
@@ -165,7 +165,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
           }
         }
         i++;
-        status = SQLGetDiagRec(handletype, handle, i, SQLstate_ptr, &naterrptr, (SQLCHAR *) msg, 
+        status = SQLGetDiagRec(handletype, handle, i, SQLstate_ptr, &naterrptr, (SQLCHAR *) msg,
                                msgLength - 1, &msgl);
 	// dblog2(ctx,"status = ", status);
 	// dblog2(ctx,"msgl = ", msgl);
@@ -182,7 +182,7 @@ putmsg(SQLRETURN status, SQLSMALLINT handletype, SQLHANDLE handle, char *msg, in
   return SQL_ERROR;
 }/*}}}*/
 
-static oDb_t * 
+static oDb_t *
 DBinitConn (void *ctx, SQLCHAR *DSN, SQLCHAR *userid, SQLCHAR *password, int dbid)/*{{{*/
 {
   SQLRETURN status;
@@ -190,7 +190,7 @@ DBinitConn (void *ctx, SQLCHAR *DSN, SQLCHAR *userid, SQLCHAR *password, int dbi
   unsigned char *ctmp;
   unsigned int dbsize = strlen((char *) DSN) + strlen((char *) userid) + strlen((char *) password) + 3;
   db = (oDb_t *) malloc(sizeof(oDb_t) + dbsize);
-  if (!db) 
+  if (!db)
   {
     dblog1(ctx, "Malloc failed");
     return NULL;
@@ -272,7 +272,7 @@ DBCheckNSetIfServerGoneBad(oDb_t *db, SQLSMALLINT ht, SQLHANDLE h, void *ctx, in
   return;
 }/*}}}*/
 
-static void 
+static void
 DBShutDown(oDb_t *db, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -307,7 +307,7 @@ DBgetSession (oDb_t *db, void *rd)/*{{{*/
   oSes_t *ses;
   if (db == NULL) return NULL;
   ses = (oSes_t *) malloc (sizeof(oSes_t));
-  if (!ses) 
+  if (!ses)
   {
     dblog1(rd, "malloc failed");
     return NULL;
@@ -396,7 +396,7 @@ DBODBCExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
   if (ses == NULL || sql == NULL) return DBError;
   SQLRETURN status;
   // dblog1(ctx, "Allocating handle");
-  status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp)); 
+  status = SQLAllocHandle(SQL_HANDLE_STMT, ses->connhp, &(ses->stmthp));
   ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 1);
       return DBError;,
@@ -415,7 +415,7 @@ DBODBCExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
   // dblog2(ctx, "SQL_STILL_EXECUTING = ", SQL_STILL_EXECUTING);
   // dblog2(ctx, "SQL_INVALID_HANDLE = ", SQL_INVALID_HANDLE);
   // dblog2(ctx, "SQL_NO_DATA = ", SQL_NO_DATA);
-  
+
   if (status == SQL_NO_DATA)
   {
     SQLFreeHandle(SQL_HANDLE_STMT, ses->stmthp);
@@ -457,7 +457,7 @@ DBODBCExecuteSQL (oSes_t *ses, char *sql, void *ctx)/*{{{*/
 }/*}}}*/
 
 static void *
-DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *), 
+DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *),
                  void **columnCtx, void *ctx)/*{{{*/
 {
   SQLSMALLINT i;
@@ -467,7 +467,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *),
   // dblog1(ctx,"Checking for NULL_HANDLE");
   if (ses->stmthp == SQL_NULL_HANDLE) return NULL;
   ses->datasizes = (int *) malloc((ses->cols+1) * sizeof (int));
-  
+
   if (ses->datasizes == NULL) return NULL;
   datasizes = ses->datasizes;
   datasizes[0] = ses->cols;
@@ -486,7 +486,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *),
         )
     *columnCtx = dump(*columnCtx, i, colnamelength, ses->msg);
     // Get size of data
-    status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH, 
+    status = SQLColAttribute(ses->stmthp, i, SQL_DESC_OCTET_LENGTH,
                              NULL, 0, NULL, datasizes+i);
     ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
         DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
@@ -500,7 +500,7 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *),
 }/*}}}*/
 
 static int
-DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int), 
+DBGetRow (oSes_t *ses,
           void **rowCtx, void *ctx)/*{{{*/
 {
   unsigned int n;
@@ -510,7 +510,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int),
   if (ses->stmthp == NULL) return DBEod;
   n = ses->datasizes[0];
 //  dblog2(ctx, "DBGetRow n", n);
-  if (!ses->rowp) 
+  if (!ses->rowp)
   {
     for (i=1; i <= n; i++) size = MAX(ses->datasizes[i],size);
     ses->rowp = (char *) malloc(size+1+sizeof(SQLINTEGER) + MAXMSG);
@@ -524,7 +524,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int),
 /*    for (i=1, size = n * sizeof(SQLLEN); i <= n; i++)
     {
       status = SQLBindCol(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR,
-                              (SQLPOINTER) (ses->rowp+size), 
+                              (SQLPOINTER) (ses->rowp+size),
                               (SQLINTEGER) (ses->datasizes[i] + 1),
                               (SQLLEN *) (ses->rowp + (i * sizeof(SQLLEN))));
       ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
@@ -558,16 +558,16 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int),
 //    dblog2(ctx, "before n", n);
   for (i = 1; i <= n; i++)
   {
-    status = SQLGetData(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR, 
-                        (SQLPOINTER) (ses->rowp + sizeof(SQLINTEGER)), 
-                        (SQLINTEGER) ses->rowpSize - 1 - sizeof(SQLINTEGER), 
+    status = SQLGetData(ses->stmthp, (SQLUSMALLINT) i, SQL_C_CHAR,
+                        (SQLPOINTER) (ses->rowp + sizeof(SQLINTEGER)),
+                        (SQLINTEGER) ses->rowpSize - 1 - sizeof(SQLINTEGER),
                         (SQLINTEGER *) ses->rowp);
     switch (status)
-    { 
+    {
       case SQL_SUCCESS:
-        *rowCtx = dump(*rowCtx, *((SQLINTEGER *) ses->rowp),
-                       ses->rowp + sizeof(SQLINTEGER), 0);
-//        if (*((SQLINTEGER *) ses->rowp) == SQL_NULL_DATA) 
+        *rowCtx = dumpRows(*rowCtx, *((SQLINTEGER *) ses->rowp),
+			   ses->rowp + sizeof(SQLINTEGER), 0);
+//        if (*((SQLINTEGER *) ses->rowp) == SQL_NULL_DATA)
 //        {
 //          dblog1(ctx, "data was NULL");
 //        }
@@ -577,17 +577,17 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int),
 //        }
         break;
       case SQL_SUCCESS_WITH_INFO:
-        stat = SQLGetDiagField (SQL_HANDLE_STMT, ses->stmthp, 1, SQL_DIAG_SQLSTATE, 
+        stat = SQLGetDiagField (SQL_HANDLE_STMT, ses->stmthp, 1, SQL_DIAG_SQLSTATE,
                                   smallbuf, 9, &smallbufLength);
         if (stat == SQL_SUCCESS && !strncmp(smallbuf, "01004", 5))
         {
-          *rowCtx = dump(*rowCtx, *((SQLINTEGER *) ses->rowp),
-                         ses->rowp + sizeof(SQLINTEGER), ses->rowpSize - 1 - sizeof(SQLINTEGER) - 1);
+          *rowCtx = dumpRows(*rowCtx, *((SQLINTEGER *) ses->rowp),
+			     ses->rowp + sizeof(SQLINTEGER), ses->rowpSize - 1 - sizeof(SQLINTEGER) - 1);
           continue;
         }
         // NO break on purpose;
       default:
-        ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg, 
+        ErrorCheck(status, SQL_HANDLE_STMT, ses->stmthp, ses->msg,
             DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_STMT, ses->stmthp, ctx, 1);
             DBFlushStmt(ses,ctx);
             return DBError;,
@@ -599,7 +599,7 @@ DBGetRow (oSes_t *ses, void *dump(void *, SQLLEN, char *, unsigned int),
   return DBData;
 }/*}}}*/
 
-uintptr_t 
+uintptr_t
 DBODBCTransStart (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
@@ -618,7 +618,7 @@ DBODBCTransCommit (oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL) return DBError;
-  if (ses->mode == AUTO_COMMIT) 
+  if (ses->mode == AUTO_COMMIT)
   {
     DBFlushStmt(ses,ctx);
     return DBError;
@@ -634,12 +634,12 @@ DBODBCTransCommit (oSes_t *ses, void *ctx)/*{{{*/
   return DBDml;
 }/*}}}*/
 
-uintptr_t 
+uintptr_t
 DBODBCTransRollBack(oSes_t *ses, void *ctx)/*{{{*/
 {
   SQLRETURN status;
   if (ses == NULL) return DBError;
-  if (ses->mode == AUTO_COMMIT) 
+  if (ses->mode == AUTO_COMMIT)
   {
     DBFlushStmt(ses,ctx);
     return DBError;
@@ -676,7 +676,7 @@ DBReturnSession (oSes_t *ses, void *ctx)/*{{{*/
     dblog1(ctx, "ODBC Driver: DBReturnSession, a transaction was in flight");
   }
   status = SQLDisconnect(ses->connhp);
-  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg, 
+  ErrorCheck(status, SQL_HANDLE_DBC, ses->connhp, ses->msg,
       DBCheckNSetIfServerGoneBad(ses->db, SQL_HANDLE_DBC, ses->connhp, ctx, 0);,
       ctx)
   ses->db->number_of_sessions--;
@@ -815,7 +815,7 @@ apsmlODBCDropSession(oSes_t *ses, void *rd)/*{{{*/
     broadcast_cond(dbc->cvar);
   }
   unlock_thread(dbc->tlock);
-  if (dbdata->dbSessions == NULL) 
+  if (dbdata->dbSessions == NULL)
   {
     removeDbData(dbid, rd);
     free(dbdata);
@@ -831,7 +831,7 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
   oDb_t *db;
   int i;
   dbOraData *dbdata = (dbOraData *) getDbData(dbid, rd);
-  if (!dbdata) 
+  if (!dbdata)
   {
     dbdata = (dbOraData *) malloc(sizeof (dbOraData));
     if (!dbdata) return NULL;
@@ -839,7 +839,7 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
     dbdata->dbSessions = NULL;
     dbdata->theOne = 0;
     dbdata->depth = 0;
-    if (putDbData(dbid, dbdata, rd)) 
+    if (putDbData(dbid, dbdata, rd))
     {
       free(dbdata);
       return NULL;
@@ -858,23 +858,23 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
     dblog1(rd, "Database not configred");
     return NULL;
   }
-  if (dbdata->depth >= dbc->maxdepth) 
+  if (dbdata->depth >= dbc->maxdepth)
   {
     return (oSes_t *) 1;
   }
   lock_thread(dbc->tlock);
   if (!dbc->dbspec)
   {
-    if (!dbc->DSN || !dbc->username || !dbc->password || 
+    if (!dbc->DSN || !dbc->username || !dbc->password ||
          dbc->maxdepth < 1)
     {
       unlock_thread(dbc->tlock);
-      dblog1(rd, 
+      dblog1(rd,
            "One or more of DSN, UserName, PassWord and SessionMaxDepth not set");
       return NULL;
     }
     dblog1(rd, "Initializing database connection");
-    dbc->dbspec = DBinitConn(rd, (SQLCHAR *) dbc->DSN, (SQLCHAR *) dbc->username, 
+    dbc->dbspec = DBinitConn(rd, (SQLCHAR *) dbc->DSN, (SQLCHAR *) dbc->username,
                                     (SQLCHAR *) dbc->password, dbid);
 //    dblog1(rd, "Database initialization call done");
   }
@@ -939,7 +939,7 @@ apsmlODBCGetSession(int dbid, void *rd)/*{{{*/
         unlock_thread(dbc->tlock);
         return ses;
       }
-      else 
+      else
       {
         dblog1(rd, "Could not get session");
         wait_cond(dbc->cvar);
@@ -966,13 +966,13 @@ apsmlDbCleanUpReq(void *rd, void *dbdata1)/*{{{*/
   return;
 }/*}}}*/
 
-void 
+void
 apsmlORAChildInit(void *c1, int num, void *pool, void *server)
 {
   return;
 }
 
-int 
+int
 apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
 {
   int id;
@@ -980,7 +980,7 @@ apsmlODBCSetVal (int i, void *rd, int pos, void *val)/*{{{*/
   db_conf *cd;
 //  dblog1(rd, "apsmlORASetVal");
   cd = (db_conf *) apsmlGetDBData (i,rd);
-  if (cd == NULL) 
+  if (cd == NULL)
   {
     cd = (db_conf *) malloc (sizeof (db_conf));
     if (!cd) return 2;
@@ -1107,7 +1107,7 @@ dumpRows(void *ctx1, SQLLEN data1, char *data2, unsigned int next)/*{{{*/
     {
       makeNIL(ctx->list2);
     }
-    else 
+    else
     {
       allocRecordML(ctx->rList2Addr, 2, pair2);
       rs = convertStringToML(ctx->rStringAddr, data2);
@@ -1124,7 +1124,7 @@ dumpRows(void *ctx1, SQLLEN data1, char *data2, unsigned int next)/*{{{*/
 }/*}}}*/
 
 uintptr_t
-apsmlODBCGetRow(uintptr_t vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, Region rAddrString, 
+apsmlODBCGetRow(uintptr_t vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, Region rAddrString,
             oSes_t *ses, void *rd)/*{{{*/
 {
   cNames_t cn1;
@@ -1135,9 +1135,8 @@ apsmlODBCGetRow(uintptr_t vAddrPair, Region rAddrL1Pairs, Region rAddrL2Pairs, R
   cn->rList2Addr = rAddrL2Pairs;
   makeNIL(cn->list1);
   makeNIL(cn->list2);
-  res = DBGetRow(ses, dumpRows, (void **) &cn, rd);
+  res = DBGetRow(ses, (void **) &cn, rd);
   first(vAddrPair) = (uintptr_t) cn1.list1;
   second(vAddrPair) = res;
   return vAddrPair;
 }/*}}}*/
-
