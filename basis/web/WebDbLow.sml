@@ -255,7 +255,7 @@ functor DbODBCBackend(type conn = foreignptr
 	case !h of
 	    NONE => raise Fail "ODBC Driver: Abuse, session is closed"
           | SOME r =>
-            let val () = log "apsmlODBCGetRow"
+            let val _ = log "apsmlODBCGetRow"
                 val (res,res2) : ((string list) list * int) = prim(":", ("apsmlODBCGetRow",r,getReqRec()))
             in case res2 of 1 => SOME (toOption res)
                           | 3 => NONE
