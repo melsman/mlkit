@@ -1,0 +1,8 @@
+Loading packreal.html
+Testing structure PackRealBig...
+[r = 0.00000000000, sz(vector) = 8, sz(bs) 8, r' = 0.00000000000]
+[r = 2.00000000000, sz(vector) = 8, sz(bs) 8, r' = 2.00000000000]
+[r = 43.2300000000, sz(vector) = 8, sz(bs) 8, r' = 43.2300000000]
+[r = ~43.2000000000, sz(vector) = 8, sz(bs) 8, r' = ~43.2000000000]
+test1 : OK
+
