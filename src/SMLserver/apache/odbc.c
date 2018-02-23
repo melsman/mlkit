@@ -499,6 +499,9 @@ DBGetColumnInfo (oSes_t *ses, void *dump(void *, int, SQLSMALLINT, char *),
   return *columnCtx;
 }/*}}}*/
 
+static void *
+dumpRows(void *ctx1, SQLINTEGER data1, char *data2, unsigned int next);
+
 static int
 DBGetRow (oSes_t *ses,
           void **rowCtx, void *ctx)/*{{{*/
@@ -1086,7 +1089,7 @@ apsmlODBCGetCNames(Region rList1Addr, Region rStringAddr, oSes_t *ses, void *rd)
 }/*}}}*/
 
 static void *
-dumpRows(void *ctx1, SQLLEN data1, char *data2, unsigned int next)/*{{{*/
+dumpRows(void *ctx1, SQLINTEGER data1, char *data2, unsigned int next)/*{{{*/
 {
   String rs;
   uintptr_t *pair, *pair2;
