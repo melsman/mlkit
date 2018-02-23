@@ -2,9 +2,9 @@
 
 local
     Initial.sml
-    basis General = 
-      bas 
-        GENERAL.sig General.sml OPTION.sig Option.sml 
+    basis General =
+      bas
+        GENERAL.sig General.sml OPTION.sig Option.sml
       end
 
     basis List =
@@ -18,8 +18,8 @@ local
         let open General List
             basis Poly =
               let wordtables.sml TableSlice.sml
-              in bas 
-                    VECTOR.sig Vector.sml 
+              in bas
+                    VECTOR.sig Vector.sml
                     VECTOR_SLICE.sml VectorSlice.sml
                     ARRAY.sig Array.sml
                     ARRAY_SLICE.sml ArraySlice.sml
@@ -28,17 +28,17 @@ local
               end
         in bas
               open Poly
-              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
+              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml
 	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
            end
         end
 
-    basis String = 
+    basis String =
        let open General ArrayVector
        in bas
-             STRING_CVT.sml StringCvt.sml 
+             STRING_CVT.sml StringCvt.sml
              local open List
-                   STR_BASE.sml StrBase.sml 
+                   STR_BASE.sml StrBase.sml
              in
                 Char.sml String.sml CHAR.sig STRING.sig String2.sml SUBSTRING.sig Substring.sml
              end
@@ -50,8 +50,8 @@ local
        in bas TEXT.sig Text.sml end
        end
 
-    basis Bool = 
-       let open General String 
+    basis Bool =
+       let open General String
        in bas BOOL.sig Bool.sml end
        end
 
@@ -62,43 +62,41 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = 
-             bas 
-               WORD.sig Word32.sml Word8.sml Word31.sml 
+           basis W =
+             bas
+               WORD.sig Word32.sml Word8.sml Word31.sml
              end
            basis PW = let open ArrayVector W
-                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
+                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end
                       end
        in bas open W PW end
        end
 
-    basis Byte = 
+    basis Byte =
        let open General String ArrayVector Word
        in bas BYTE.sig Byte.sml end
        end
- 
+
     basis Int =
        let open General String IntInfRep
-       in bas 
-            INTEGER.sml Int32.sml Int31.sml 
+       in bas
+            INTEGER.sml Int32.sml Int31.sml
           end
        end
 
     basis Real =
        let open General String Int
-       in bas MATH.sig Math.sml REAL.sig Real.sml 
-(*
+       in bas MATH.sig Math.sml REAL.sig Real.sml
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
             end
-*)
 	  end
        end
 
     basis IntInf =
        let open General List ArrayVector String Word Int Real
        in bas ann safeLinkTimeElimination
-              in INT_INF.sml IntInf.sml 
+              in INT_INF.sml IntInf.sml
               end
           end
        end
@@ -125,6 +123,6 @@ local
     basis Control =
        bas CONTROL.sig Control.sml end
 in
-  open General List ArrayVector String Bool Word Byte Text 
+  open General List ArrayVector String Bool Word Byte Text
        Int Real IntInf IntInfRep System Io Control
 end

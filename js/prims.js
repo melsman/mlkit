@@ -106,6 +106,26 @@ SmlPrims.charArrayToString = function(a) {
  return a2.join("");
 }
 
+SmlPrims.real_to_bytes = function(r) {
+    var buf = new ArrayBuffer(8);
+    var arr1 = new Float64Array(buf,0,1);
+    arr1[0] = r;
+    var arr2 = new Uint8Array(buf,0,8);
+    var arr3 = SmlPrims.arrayMap(String.fromCharCode)(arr2);
+    return arr3.join("");
+}
+
+SmlPrims.bytes_to_real = function(s) {
+    var buf = new ArrayBuffer(8);
+    var arr1 = new Uint8Array(buf,0,8);
+    var i;
+    for (i=0 ; i<8 && i<s.length; i++) {
+	arr1[i] = s.charCodeAt(i);
+    }
+    var arr2 = new Float64Array(buf,0,1);
+    return arr2[0];
+}
+
 SmlPrims.wordTableInit = function(n,x) {
   var i;
   var a = new Array(n);

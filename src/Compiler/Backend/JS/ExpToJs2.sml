@@ -466,6 +466,8 @@ fun pToJs1 name e : J.exp =
       | "word_table0" => J.App(J.Id "Array",[e])
       | "table_size" => J.Prop(e,"length")
       | "chararray_to_string" => callPrim1 "SmlPrims.charArrayToString" e
+      | "sml_real_to_bytes" => callPrim1 "SmlPrims.real_to_bytes" e
+      | "sml_bytes_to_real" => callPrim1 "SmlPrims.bytes_to_real" e
 
       | "__neg_int32ub" => chkOvfI32(J.Prim("-",[e]))
       | "__neg_int31" => chkOvfI31(J.Prim("-",[e]))
