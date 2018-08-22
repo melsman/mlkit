@@ -29,3 +29,12 @@ install:
 script:
  - cd test && make test_mlkit
  - cd ../js/test && make test
+
+deploy:
+  provider: releases
+  api_key:
+    secure: "EdlYayNQUr6Mhdqh2F538bXqTOObiUBkPqvY0FO9lDEnbuLF4P6raqhrhIafjhtslTXQB11xsmgsJewF8Zp/Z1P5yJCxBiAw+ZrFeptnm2Ry0OkUNTBwVB419W9bgxqhIyAol9wlo0s6GshCktXGHGFyOyru/9C9DmDRuv+CXaA="
+  file: "dist/mlkit_bin_dist.tgz"
+  skip_cleanup: true
+  on:
+    tags: true
