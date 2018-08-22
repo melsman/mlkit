@@ -1,4 +1,4 @@
-AC_INIT(MLKit, [m4_esyscmd_s(echo $(git --no-pager describe --tags | sed -e s/mlkit-//))])
+AC_INIT(MLKit, [m4_esyscmd_s(echo $(git --no-pager describe --tags --contains | sed -e s/mlkit-//))])
 AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/SMLserver/apache/Makefile
