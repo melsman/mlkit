@@ -52,7 +52,7 @@ smltojs:
 	$(MAKE) -C src smltojs
 	$(MAKE) man_smltojs
 
-all: mlkit mlkit_libs
+all: mlkit mlkit_libs smltojs smltojs_basislibs
 
 smlserver_all: smlserver smlserver_libs
 
@@ -386,14 +386,50 @@ man_smltojs:
 #  $ ./configure
 #  $ make all
 # -----------------------------------------------------
-MLKIT_DIST_BIN=mlkit-$(KITVERSION)-i386
-.PHONY: mlkit_i386_tgz
-mlkit_i386_tgz:
+MLKIT_DIST_BIN=mlkit-$(KITVERSION)-x86
+.PHONY: mlkit_x86_tgz
+mlkit_x86_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(MLKIT_DIST_BIN)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(MLKIT_DIST_BIN) prefix=
 	$(INSTALLDATA) doc/README_BIN dist/$(MLKIT_DIST_BIN)/share/doc/mlkit
 	(cd dist && tar czvf $(MLKIT_DIST_BIN).tgz $(MLKIT_DIST_BIN))
+
+# -----------------------------------------------------
+# Target for building SMLtoJs binary package. The target
+# assumes that smltojs has been build using
+#  $ ./autobuild
+#  $ ./configure
+#  $ make smltojs
+#  $ make smltojs_basislibs
+# -----------------------------------------------------
+SMLTOJS_DIST_BIN=smltojs-$(KITVERSION)-x86
+.PHONY: smltojs_x86_tgz
+smltojs_x86_tgz:
+	$(MKDIR) dist
+	rm -rf dist/$(SMLTOJS_DIST_BIN)
+	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(SMLTOJS_DIST_BIN) prefix=
+	(cd dist && tar czvf $(SMLTOJS_DIST_BIN).tgz $(SMLTOJS_DIST_BIN))
+
+# -----------------------------------------------------
+# Target for building binary distribution for both
+# mlkit and smltojs. Assumes the following
+#  $ ./autobuild
+#  $ ./configure
+#  $ make mlkit
+#  $ make mlkit_libs
+#  $ make smltojs
+#  $ make smltojs_basislibs
+# -----------------------------------------------------
+BIN_DIST=mlkit_bin_dist
+.PHONY: mlkit_bin_dist
+mlkit_bin_dist:
+	$(MKDIR) dist
+	rm -rf dist/$(BIN_DIST)
+	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
+	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
+	(cd dist && tar czvf $(BIN_DIST).tgz $(BIN_DIST))
+
 
 # -----------------------------------------------------
 # Target for building SMLserver binary package. The target
@@ -410,43 +446,6 @@ smlserver_i386_tgz:
 	$(MAKE) install_smlserver0 DESTDIR=$(CWD)/dist/$(SMLSERVER_DIST_BIN) prefix=
 	$(INSTALLDATA) doc/README_SMLSERVER_BIN dist/$(SMLSERVER_DIST_BIN)/share/doc/smlserver
 	(cd dist && tar czvf $(SMLSERVER_DIST_BIN).tgz $(SMLSERVER_DIST_BIN))
-
-# -----------------------------------------------------
-# The target for building source distributions should
-# not be used - instead make an svn tag for the release
-# "mlkit-X.Y.Z" as follows:
-#   svn copy https://mlkit.svn.sourceforge.net/svnroot/mlkit/trunk \
-#            https://mlkit.svn.sourceforge.net/svnroot/mlkit/tags/mlkit-X.Y.Z \
-#      -m "Tagging release of MLKit"
-# and make people checkout the releases.
-# -----------------------------------------------------
-
-
-MLKIT_DIST_SRC=mlkit-$(KITVERSION)-src
-.PHONY: mlkit_src_tgz
-mlkit_src_tgz:
-	./autobuild
-	$(MKDIR) dist
-	rm -rf dist/$(MLKIT_DIST_SRC)
-	$(MKDIR) dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_src INSTDIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_test DATADIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_basis LIBDIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_kitdemo DATADIR=dist/$(MLKIT_DIST_SRC)
-	$(MAKE) install_man MANDIR=dist/$(MLKIT_DIST_SRC)/man
-	$(INSTALLDATA) README.md dist/$(MLKIT_DIST_SRC)
-	$(INSTALLDATA) NEWS.md dist/$(MLKIT_DIST_SRC)
-	$(INSTALLDATA) Makefile.in dist/$(MLKIT_DIST_SRC)
-	$(INSTALL) configure dist/$(MLKIT_DIST_SRC)
-	$(INSTALLDATA) Makefiledefault dist/$(MLKIT_DIST_SRC)
-	$(INSTALL) mkinstalldirs dist/$(MLKIT_DIST_SRC)
-	$(INSTALL) install-sh dist/$(MLKIT_DIST_SRC)
-	$(MKDIR) dist/$(MLKIT_DIST_SRC)/smlserver_demo
-	$(INSTALL) smlserver_demo/Makefile.in dist/$(MLKIT_DIST_SRC)/smlserver_demo
-	$(MKDIR) dist/$(MLKIT_DIST_SRC)/doc
-	$(MAKE) install_license DATADIR=dist/$(MLKIT_DIST_SRC)
-	$(INSTALLDATA) doc/{README_BIN.in,mlkit.pdf} dist/$(MLKIT_DIST_SRC)/doc
-	(cd dist && tar czvf $(MLKIT_DIST_SRC).tgz $(MLKIT_DIST_SRC))
 
 # The following is obsolete!!
 bootstrap_kam: install_kam bootstrap0
@@ -548,19 +547,3 @@ install_smlserver:install_smlserver0
            then true; \
            else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
         fi
-
-HOST=mael@frs.sourceforge.net
-HOSTDIR=$(HOST):/home/frs/project/mlkit/mlkit-$(KITVERSION)/
-dist_mlkit:
-	scp NEWS.md $(HOSTDIR)
-	scp doc/README_BIN $(HOSTDIR)
-#	scp test/test_report-native-$(TESTDATE).pdf $(HOSTDIR)/test_report-native-$(KITVERSION).pdf
-#	scp test/test_report-kam-$(TESTDATE).pdf $(HOSTDIR)/test_report-kam-$(KITVERSION).pdf
-	scp dist/mlkit-$(KITVERSION)-i386.tgz $(HOSTDIR)
-
-DBTYPE=odbc
-dist_smlserver:
-	scp NEWS_SMLSERVER.md $(HOSTDIR)/NEWS_SMLSERVER-$(KITVERSION).md
-	scp README_SMLSERVER.md $(HOSTDIR)/README_SMLSERVER-$(KITVERSION).md
-	scp doc/README_SMLSERVER_BIN $(HOSTDIR)/README_SMLSERVER_BIN-$(KITVERSION).txt
-	scp dist/smlserver-$(KITVERSION)-i386.tgz $(HOSTDIR)/smlserver-$(KITVERSION)-i386-$(DBTYPE).tgz
