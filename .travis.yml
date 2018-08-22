@@ -1,31 +1,35 @@
 language: c
+
 os:
-- linux
-- osx
+ - linux
+ - osx
+
 sudo: true
+
 before_install:
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -f /usr/local/include/c++ ; fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc mlkit autoconf phantomjs
-  ; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update ; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc gcc-multilib
-  mlton autoconf make ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -f /usr/local/include/c++ ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc mlkit autoconf phantomjs ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update ; fi
+ - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc gcc-multilib mlton autoconf make ; fi
+
 install:
-- "./autobuild"
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./configure --with-compiler=mlkit; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./configure ; fi
-- travis_wait 50 make mlkit
-- make mlkit_libs
-- sudo make install
-- "./configure --with-compiler=`pwd`/bin/mlkit"
-- travis_wait 50 make smltojs
-- make smltojs_basislibs
-- sudo make install_smltojs
-- make mlkit_bin_dist
+ - ./autobuild
+ - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./configure --with-compiler=mlkit; fi
+ - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./configure ; fi
+ - travis_wait 50 make mlkit
+ - make mlkit_libs
+ - sudo make install
+ - ./configure --with-compiler=`pwd`/bin/mlkit
+ - travis_wait 50 make smltojs
+ - make smltojs_basislibs
+ - sudo make install_smltojs
+ - make mlkit_bin_dist
+
 script:
-- cd test && make test_mlkit
-- cd ../js/test && make test
+ - cd test && make test_mlkit
+ - cd ../js/test && make test
+
 deploy:
   provider: releases
   api_key:
