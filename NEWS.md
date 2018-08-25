@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+* mael 2018-08-25: Support for automatic deployment of binary builds.
+
 ### MLKit version 4.3.12 is released
 
 ### MLKit version 4.3.9 is released
