@@ -177,29 +177,45 @@ static void PsPathWidth(double width)
 }
 
 /*static double colours[] =
-{ 0.3, 0.6, 0.9, 0.2, 0.5, 0.8, 0.1, 0.4, 0.7, 0.0, 
-  0.3, 0.6, 0.9, 0.2, 0.5, 0.8, 0.1, 0.4, 0.7, 0.0, 
+{ 0.3, 0.6, 0.9, 0.2, 0.5, 0.8, 0.1, 0.4, 0.7, 0.0,
+  0.3, 0.6, 0.9, 0.2, 0.5, 0.8, 0.1, 0.4, 0.7, 0.0,
   0.3, 0.6
 };*/
 
-static double colours[] =
+static int rgb[21][3] =
+  { {230, 25, 75}, {60, 180, 75}, {255, 225, 25}, {0, 130, 200},
+    {245, 130, 48}, {145, 30, 180}, {70, 240, 240}, {240, 50, 230},
+    {210, 245, 60}, {250, 190, 190}, {0, 128, 128}, {230, 190, 255},
+    {170, 110, 40}, {255, 250, 200}, {128, 0, 0}, {170, 255, 195},
+    {128, 128, 0}, {255, 215, 180}, {0, 0, 128}, {128, 128, 128},
+    {0, 0, 0}
+  };
+
+/*static double colours[] =
 { 0.9, 0.2, 0.5, 0.8, 0.1, 0.4, 0.7, 0.0, 0.3, 0.6,
   0.9, 0.2, 0.5, 0.8, 0.1, 0.4, 0.7, 0.0, 0.3, 0.6,
   0.9, 0.2
 };
+*/
 
 static void PsPathStroke(void)
 {
+  int red = rgb[PathColour%22][0];
+  int green = rgb[PathColour%22][1];
+  int blue = rgb[PathColour%22][2];
   if(PsKind == Closed)
     fprintf(outfp, "closepath\n");
-  
+
   if(PathWidth >= 0)
     fprintf(outfp, "%f  setlinewidth\n",PathWidth);
-  
+
   if(PathColour>=0) {
     fprintf(outfp, "gsave\n");
-    
-    fprintf(outfp, "%f setgray\n", colours[PathColour%22]);
+
+    fprintf(outfp, "%f %f %f setrgbcolor\n",
+	    (red/256.0),
+	    (green/256.0),
+	    (blue/256.0));
     fprintf(outfp, "fill\n");
 
     fprintf(outfp, "grestore\n");
