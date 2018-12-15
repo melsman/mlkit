@@ -58,8 +58,8 @@ int power_exn(int res, int base, int n, int exn) {
   if (base_real < 0.0) {
     printf("Now raising exception.\n");
     raise_exn(exn);
-    return; /* This return statement is necessary 
-	     * with the C backend */
+    return 0; /* This return statement is necessary
+	       * with the C backend */
   }
   n = convertIntToC(n);
   for (p = 1; n > 0; --n) p = p * base_real;
@@ -76,7 +76,7 @@ int print_string_list(int strs) {
   int ys;
   for (ys=strs; isCONS(ys); ys=tl(ys))
     printStringML((StringDesc *) hd(ys));
-  return;
+  return 0;
 }
 
 
@@ -216,7 +216,7 @@ int dir(Region pairRho, Region strRho, String mlDirName, int exn) {
     raise_exn(exn);
     return 0;
   }
-  makeNIL(resList);  
+  makeNIL(resList);
   while ((dp = readdir(dfd)) != NULL) {
     mlStr = convertStringToML(strRho, dp->d_name);
     allocRecordML(pairRho, 2, pairPtr);
@@ -224,7 +224,7 @@ int dir(Region pairRho, Region strRho, String mlDirName, int exn) {
     second(pairPtr) = (int) resList;
     makeCONS(pairPtr, resList);
   }
-   
+
   (void) closedir(dfd);
   return (int) resList;
 }
@@ -249,7 +249,7 @@ int dirProf(Region pairRho, Region strRho, String mlDirName, int exn, int pPoint
     return 0;
   }
 
-  makeNIL(resList);  
+  makeNIL(resList);
   while ((dp = readdir(dfd)) != NULL) {
     mlStr = convertStringToMLProf(strRho, dp->d_name, pPoint);
     allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
@@ -257,7 +257,7 @@ int dirProf(Region pairRho, Region strRho, String mlDirName, int exn, int pPoint
     second(pairPtr) = (int) resList;
     makeCONS(pairPtr, resList);
   }
-   
+
   (void) closedir(dfd);
   return (int) resList;
 }
