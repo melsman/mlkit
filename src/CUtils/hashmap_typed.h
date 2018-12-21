@@ -4,14 +4,14 @@
 #include "hashmap.h"
 
 // a new function for generating new hash tables (uses malloc)
-hashtable* 
+hashtable*
 hashnew(unsigned long (*hash) (void *key),
 	int (*equal) (void *key1, void *key2));
 
 // as hashupdate, but exits with an error message in case of an error
 void hashupd (hashtable * tinfo, void *key, void *value);
 
-// free all entries in hashtable and memory allocated 
+// free all entries in hashtable and memory allocated
 // for the hashtable struct
 void hashdrop (hashtable*);
 

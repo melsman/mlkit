@@ -183,7 +183,7 @@ hashrehash (hashtable * tinfo)
     {
       newsize = 2 * tinfo->hashTableSize + 3;
     }
-  else 
+  else
     {
       if ((tinfo->hashTableUsed >= ((tinfo->hashTableSize / 1024) * MINHASH))
 	  || tinfo->hashTableSize == MINHASHSIZE)
@@ -224,7 +224,7 @@ hashrehash (hashtable * tinfo)
 }
 
 // apply
-void 
+void
 hashapply(hashtable *tinfo, void (*f)(void *value))
 {
   hashmember *table = tinfo->table;
@@ -240,7 +240,7 @@ hashapply(hashtable *tinfo, void (*f)(void *value))
 }
 
 // Apply
-void 
+void
 hashApply(hashtable *tinfo, void (*f)(void *key,void *value))
 {
   hashmember *table = tinfo->table;
@@ -256,7 +256,7 @@ hashApply(hashtable *tinfo, void (*f)(void *key,void *value))
 }
 
 // map
-void 
+void
 hashmap(hashtable *tinfo, void* (*f)(void *value))
 {
   hashmember *table = tinfo->table;
@@ -272,7 +272,7 @@ hashmap(hashtable *tinfo, void* (*f)(void *value))
 }
 
 // Map
-void 
+void
 hashMap(hashtable *tinfo, void* (*f)(void *key,void *value))
 {
   hashmember *table = tinfo->table;
@@ -321,12 +321,12 @@ hashFold(hashtable *tinfo, void *(*f)(void *, void *, void *), void *first)
   return t;
 }
 
-// char * -> unsigned long 
+// char * -> unsigned long
 unsigned long
-charhashfunction (const char *key)
+charhashfunction (char *s)
 {
   unsigned long result = 0;
-  unsigned char *k = (unsigned char *) key;
+  unsigned char *k = (unsigned char *) s;
   while (*k)
     {
       // Will not overflow as the type is unsigned

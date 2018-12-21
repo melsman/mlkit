@@ -84,5 +84,5 @@ void hashMap(hashtable *tinfo, void* (*f)(void *key, void *value));
 void hashmap(hashtable *tinfo, void* (*f)(void *value));
 
 // an efficient hashfunction on char arrays
-unsigned long charhashfunction (const char *key);
+unsigned long charhashfunction (char *s);
 #endif
