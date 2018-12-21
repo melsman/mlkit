@@ -3,7 +3,7 @@
 signature ARROW0 = sig
   type ('b,'c,'k) arr
   val arr : (''b -> ''c) -> (''b,''c,'k) arr
-  val >>> : (''b,''c,'k)arr * (''c,''d,'k)arr -> (''b,''d,'k)arr                                       
+  val >>> : (''b,''c,'k)arr * (''c,''d,'k)arr -> (''b,''d,'k)arr
   val fst : (''b,''c,'k)arr -> (''b*''d,''c*''d,'k)arr
 end
 
@@ -17,7 +17,7 @@ end
 signature RWP =
 sig
   eqtype B eqtype E (* kinds: Behaviors (B) and Events (E) *)
-  type ('a,'k)t
+  eqtype ('a,'k)t
   type 'a b = ('a, B)t
   type 'a e = ('a, E)t
   include ARROW where type ('a,'b,'k)arr = ('a,'k)t -> ('b,'k)t
