@@ -1,7 +1,7 @@
 let
   infixr 5  :: @
-  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
-  datatype l = 
+  fun print (s:string) : unit = prim("printStringML", s)
+  datatype l =
     L of string
   | LL of string
   val n = L "It works n gives l"

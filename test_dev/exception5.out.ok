@@ -1,0 +1,9 @@
+Num: 1
+hej
+Testing generative exceptions:
+Enter f with x=Num: 1
+
+Enter f with x=Num: 0
+
+In handle _
+Ok - exn - generative...

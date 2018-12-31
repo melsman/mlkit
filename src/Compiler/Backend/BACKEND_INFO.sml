@@ -5,7 +5,7 @@ signature BACKEND_INFO =
     type label
     type offset = int
 
-    val init_clos_offset   : offset     (* First offset in FN closure is 1 and 
+    val init_clos_offset   : offset     (* First offset in FN closure is 1 and
 					 * code pointer is at offset 0 *)
     val init_sclos_offset  : offset     (* First offset in shared closure is 0 *)
     val init_regvec_offset : offset     (* First offset in region vector is 0 *)
@@ -45,9 +45,9 @@ signature BACKEND_INFO =
 
     val size_of_reg_desc : unit -> int  (* dependent on whether region profiling is enabled *)
 
-    val finiteRegionDescSizeP : int     (* Number of words in a finite region 
+    val finiteRegionDescSizeP : int     (* Number of words in a finite region
 					 * descriptor when profiling is used. *)
-    val objectDescSizeP       : int     (* Number of words in an object descriptor 
+    val objectDescSizeP       : int     (* Number of words in an object descriptor
 					 * when profiling is used. *)
     val defaultIntPrecision : unit -> int
     val defaultWordPrecision : unit -> int
@@ -76,20 +76,12 @@ signature BACKEND_INFO =
     (* is_prim(name) returns true if name is not implemented by a C call,
      * but rather in machine code; primitives do not destroy all
      * caller save registers, as C calls do. *)
-      
-    val is_prim : string -> bool   
 
-    (* is_flow_prim(name) returns true if name is a flow primitive such 
+    val is_prim : string -> bool
+
+    (* is_flow_prim(name) returns true if name is a flow primitive such
      * as __less_int31 and __equal_word32ub. *)
     val is_flow_prim : string -> bool
 
-    val down_growing_stack : bool         (* true for x86 code generation *)
+    val down_growing_stack : bool         (* true for x86/x64 code generation *)
   end
-
-
-
-
-
-
-
-

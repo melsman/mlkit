@@ -25,17 +25,18 @@ OFILES_GEN_GC_PROF = $(OFILESWITHGC:%.o=%-gengc-p.o)
 OFILES_GC_TP = $(OFILESWITHGC:%.o=%-gc-tp.o)
 OFILES_GC_TP_PROF = $(OFILESWITHGC:%.o=%-gc-tp-p.o)
 OFILES_KAM = $(OFILES:%.o=%-kam.o) Interp-kam.o LoadKAM-kam.o KamInsts-kam.o Prims.o \
-             HeapCache-kam.o 
+             HeapCache-kam.o
 CFILES_KAM = $(CFILES) Interp.c LoadKAM.c KamInsts.c HeapCache.c
 OFILES_SMLSERVER = $(OFILES:%.o=%-smlserver.o) Interp-smlserver.o LoadKAM-smlserver.o \
-             HeapCache-smlserver.o KamInsts-smlserver.o PrimsApSml.o 
+             HeapCache-smlserver.o KamInsts-smlserver.o PrimsApSml.o
 CFILES_SMLSERVER = $(CFILES) Interp.c LoadKAM.c HeapCache.c KamInsts.c
 
 HEADER_FILES=SysErrTable.h
 
 #OPT=-Wall -pedantic -std=c99
 
-OPT:=-m32 -Wall -std=gnu99
+#OPT:=-m32 -Wall -std=gnu99
+OPT:=-Wall -std=gnu99
 OPT:=$(OPT) $(CFLAGS)
 
 AR=ar rc
@@ -70,8 +71,8 @@ gen_syserror: gen_syserror.c
 	$(CC) -c -DKAM -DLAB_THREADED -DTHREADS -DAPACHE -fpic $(OPT) -o $*-smlserver.o $<
 
 %-p.o: %.c
-#	$(CC) -c -DPROFILING -DDEBUG -o $*-p.o $< 
-	$(CC) -c -DPROFILING $(OPT) -o $*-p.o $< 
+#	$(CC) -c -DPROFILING -DDEBUG -o $*-p.o $<
+	$(CC) -c -DPROFILING $(OPT) -o $*-p.o $<
 
 %-gc.o: %.c
 	$(CC) -c -DTAG_VALUES -DTAG_FREE_PAIRS -DENABLE_GC $(OPT) -o $*-gc.o $<
@@ -163,13 +164,13 @@ depend:
 	rm Makefile.in.bak
 
 clean:
-	rm -f $(OFILES) $(OFILES_TAG) $(OFILES_PROF) $(OFILES_GC) $(OFILES_GC_TP) 
-	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF) $(OFILES_KAM) $(OFILES_SMLSERVER) 
+	rm -f $(OFILES) $(OFILES_TAG) $(OFILES_PROF) $(OFILES_GC) $(OFILES_GC_TP)
+	rm -f $(OFILES_GC_PROF) $(OFILES_GC_TP_PROF) $(OFILES_KAM) $(OFILES_SMLSERVER)
 	rm -f $(OFILES_GEN_GC_PROF) $(OFILES_GEN_GC)
 	rm -f core a.out *~ *.bak gen_syserror SysErrTable.h
-	rm -f runtimeSystemKamApSml.o kam runtimeSystemGCProf.a runtimeSystemGC.a 
-	rm -f runtimeSystemGCTPProf.a runtimeSystemGCTP.a 
-	rm -f runtimeSystemProf.a runtimeSystemTag.a runtimeSystem.a 
+	rm -f runtimeSystemKamApSml.o kam runtimeSystemGCProf.a runtimeSystemGC.a
+	rm -f runtimeSystemGCTPProf.a runtimeSystemGCTP.a
+	rm -f runtimeSystemProf.a runtimeSystemTag.a runtimeSystem.a
 	rm -f runtimeSystemGenGCProf.a runtimeSystemGenGC.a
 
 ### DO NOT DELETE THIS LINE

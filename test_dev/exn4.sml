@@ -1,6 +1,6 @@
 
-fun print (s:string) : unit = prim("printStringML", "printStringML", s)
-fun exnName (e: exn) : string = prim("exnNameML", "exnNameProfilingML", e)   (* exomorphic by copying *)
+fun print (s:string) : unit = prim("printStringML", s)
+fun exnName (e: exn) : string = prim("exnNameML", e)   (* exomorphic by copying *)
 
 exception ThisIsAnException
 infix ::
@@ -11,7 +11,7 @@ fun pr_exn e = (print(exnName e); print "\n")
 
 val _ = app pr_exn [Div,Match,Bind,Overflow,ThisIsAnException]
 
-val _ = (raise Bind) 
-  handle Match => print "***Error***\n" | Bind => print "***Success***\n" 
+val _ = (raise Bind)
+  handle Match => print "***Error***\n" | Bind => print "***Success***\n"
 
 val _ = raise Div

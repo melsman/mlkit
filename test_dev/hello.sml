@@ -1,16 +1,16 @@
 let
-fun print (s:string) : unit = prim("printStringML", "printStringML", s)
+fun print (s:string) : unit = prim("printStringML", s)
 in
  print "It works!\n"
 end
 
 (*
-infix ^ 
+infix ^
 fun (s : string) ^ (s' : string) : string = prim ("concatString", "concatStringProfiling", (s, s'))
 
-(*fun myfun (x, y, z) = 
+(*fun myfun (x, y, z) =
   let val _ = print y
-      val a1 = z ^ y 
+      val a1 = z ^ y
     val _ = print a1
   in a1 ^ x
   end*)

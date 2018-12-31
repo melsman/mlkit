@@ -6,19 +6,19 @@
 
 #include <stdint.h>
 #include "Flags.h"
- 
+
 /*
 Overview
 --------
 
-This module defines the runtime representation of regions. 
+This module defines the runtime representation of regions.
 
 There are two types of regions: {\em finite} and {\em infinite}.
 A region is finite if its (finite) size has been found at compile
-time and to which at most one object will ever be written. 
+time and to which at most one object will ever be written.
 Otherwise it is infinite.
 
-The runtime representation of a region depends on 
+The runtime representation of a region depends on
   (a) whether the region is finite or infinite;
   (b) whether profiling is turned on or not.
 
@@ -27,7 +27,7 @@ We describe each of the four possibilities in turn.
 (a) Finite region of size n bytes (n%4==0) -- meaning that
     every object that may be stored in the region has size
     at most n bytes:
-    (i)  without profiling, the region is n/4 words on the 
+    (i)  without profiling, the region is n/4 words on the
          runtime stack;
     (ii) with profiling, the region is represented by first
          pushing a region descriptor (see below) on the stack,
@@ -36,11 +36,11 @@ We describe each of the four possibilities in turn.
          of finite regions are linked together which the profiler
          can traverse.
 (b) Infinite region -- meaning that the region can contain objects
-    of different sizes. 
+    of different sizes.
     (i)  without profiling, the region is represented by a
          {\em region descriptor} on the stack. The region descriptor
          points to the beginning and the end of a linked list of
-         fixed size region pages (see below). 
+         fixed size region pages (see below).
     (ii) with profiling, the representation is the same as without
          profiling, except that the region descriptor contains more
          fields for profiling statistics.
@@ -73,7 +73,7 @@ RegionPageMap* regionPageMapNew(void);
 extern RegionPageMap* rpMap;
 #endif /* REGION_PAGE_STAT */
 
-/* 
+/*
  * Number of words that can be allocated in each regionpage and number
  * of words in the header part of each region page.
  *
@@ -86,7 +86,7 @@ extern RegionPageMap* rpMap;
 #define HEADER_WORDS_IN_REGION_PAGE 3
 #else
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
-#define HEADER_WORDS_IN_REGION_PAGE 2 
+#define HEADER_WORDS_IN_REGION_PAGE 2
 #endif /* ENABLE_GEN_GC */
 
 typedef struct rp {
@@ -110,7 +110,7 @@ typedef struct rp {
  * (here 30) of fresh region pages: */
 
 /* Size of allocated space in each SBRK-call. */
-#define BYTES_ALLOC_BY_SBRK REGION_PAGE_BAG_SIZE*sizeof(Rp)  
+#define BYTES_ALLOC_BY_SBRK REGION_PAGE_BAG_SIZE*sizeof(Rp)
 
 /* When garbage collection is enabled, a single bit in a region page
  * descriptor specifies if the page is part of to-space during garbage
@@ -184,10 +184,10 @@ typedef struct lobjs {
 typedef struct gen {
   uintptr_t * a;    /* Pointer to first unused word in the newest region page
                  of the region. */
-  uintptr_t * b;    /* Pointer to the border of the newest region page, defined as the 
+  uintptr_t * b;    /* Pointer to the border of the newest region page, defined as the
                  address of the first word to follow the region page. One maintains
                  the invariant a<=b;  a=b means the region page is full.*/
-  Rp *fp;     /* Pointer to the oldest (first allocated) page of the region. 
+  Rp *fp;     /* Pointer to the oldest (first allocated) page of the region.
                  The beginning of the newest page of the region can be calculated
                  as a fixed offset from b. Thus the region descriptor gives
                  direct access to both the first and the last region page
@@ -196,7 +196,7 @@ typedef struct gen {
 } Gen;
 
 
-/* 
+/*
 Region descriptors
 ------------------
 ro is the type of region descriptors. Region descriptors are kept on
@@ -210,14 +210,14 @@ are raised) */
 #define offsetG1InRo (sizeof(Gen))  /* bytes */
 #endif
 typedef struct ro {
-  Gen g0;              /* g0 is the only generation when ordinary GC is used. g0 
+  Gen g0;              /* g0 is the only generation when ordinary GC is used. g0
                           is the youngest generation when using generational GC. */
 
   #ifdef ENABLE_GEN_GC
   Gen g1;              /* g1 is the old generation. */
   #endif
 
-  struct ro * p;       /* Pointer to previous region descriptor. It has to be at 
+  struct ro * p;       /* Pointer to previous region descriptor. It has to be at
                           the bottom of the structure */
 
   /* here are the extra fields that are used when profiling is turned on: */
@@ -247,7 +247,7 @@ typedef Ro* Region;
 #define descRo_a(rAddr,w) (rAddr->g0.a = rAddr->g0.a - w) /* Used in IO.inputStream */
 
 
-// When GC is enabled, bits in the region descriptor (in the r->g0.fp pointer) 
+// When GC is enabled, bits in the region descriptor (in the r->g0.fp pointer)
 // are used to tell the type of values in the region, in the
 // case that the values are untagged. Because region pages are aligned
 // on 1k boundaries, plenty of bits are available in the r->g0.fp pointer.
@@ -255,15 +255,15 @@ typedef Ro* Region;
 //
 //     000    (hex 0x0)   ordinary tagged values
 //     001    (hex 0x1)   pairs
-//     010    (hex 0x2)   arrays   (value is tagged, but the region type 
+//     010    (hex 0x2)   arrays   (value is tagged, but the region type
 //                                  is needed by generational collector)
 //     011    (hex 0x3)   refs
 //     111    (hex 0x7)   triples
 
-// To make Generational GC possible we use two more bits to encode 
+// To make Generational GC possible we use two more bits to encode
 //   (1) the status SOME or NONE saying whether the generation is
 //       on the scan stack or not
-//   (2) the generation (being either 0 or 1). This info is used 
+//   (2) the generation (being either 0 or 1). This info is used
 //       to calculate the address of the region descriptor given
 //       a pointer to the generation (either g0 or g1) in the
 //       region descriptor.
@@ -378,7 +378,7 @@ void deallocateRegionsUntil(Region rAdr, Region* topRegionCell);
 Region allocateRegion(Region roAddr);
 void deallocateRegion();
 void deallocateRegionsUntil(Region rAddr);
-void deallocateRegionsUntil_X86(Region rAddr);
+void deallocateRegionsUntil_X64(Region rAddr);
 #endif
 
 uintptr_t *alloc (Region r, size_t n);
@@ -417,19 +417,19 @@ size_t NoOfPagesInGen(Gen* gen);
 #define notPP 0 /* Also used by GC */
 #ifdef PROFILING
 
-/* 
+/*
 Here is the type of region descriptors for finite regions when
 profiling is enabled (see item (a)(ii) at the beginning of the file):
 */
 
 typedef struct finiteRegionDesc {
-  struct finiteRegionDesc * p;  /* Has to be in the bottom of the descriptor 
+  struct finiteRegionDesc * p;  /* Has to be in the bottom of the descriptor
                                    for deallocation. */
   size_t regionId;                 /* If msb. set then infinite region. (? - mads)*/
 } FiniteRegionDesc;
 #define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/sizeof(void *))
 
-/* 
+/*
 Object descriptors
 ------------------
 When profiling is turned on, every object is prefixed by an
@@ -450,7 +450,7 @@ typedef struct objectDesc {
 } ObjectDesc;
 #define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(void *)))
 
-/* 
+/*
 Profiling is done by scanning the store at regular intervals.
 Every such interruption of the normal execution is called
 a {\em profile tick}. During a profile tick, the runtime system
