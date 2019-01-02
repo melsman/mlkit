@@ -91,6 +91,9 @@ structure InstsX64: INSTS_X64 =
     | divsd of ea * ea
     | addsd of ea * ea
     | subsd of ea * ea
+    | maxsd of ea * ea
+    | ucomisd of ea * ea
+    | xorps of ea * ea
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)
@@ -241,6 +244,9 @@ structure InstsX64: INSTS_X64 =
                | divsd a => emit_bin("divsd", a)
                | addsd a => emit_bin("addsd", a)
                | subsd a => emit_bin("subsd", a)
+               | maxsd a => emit_bin("maxsd", a)
+               | ucomisd a => emit_bin("ucomisd", a)
+               | xorps a => emit_bin("xorps", a)
 
                | fstpq ea => emit_unary("fstpq", ea)
                | fldq ea => emit_unary("fldq", ea)

@@ -65,6 +65,9 @@ signature INSTS_X64 =
     | divsd of ea * ea
     | addsd of ea * ea
     | subsd of ea * ea
+    | maxsd of ea * ea
+    | ucomisd of ea * ea
+    | xorps of ea * ea
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)

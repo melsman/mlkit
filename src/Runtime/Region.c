@@ -708,7 +708,7 @@ void callSbrk() {
 
   /* For GC we require 1Kb alignments, that is the size of a region page! */
 
-  sb = malloc(BYTES_ALLOC_BY_SBRK + 1024 /*8*/);
+  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) );
 
   if ( sb == NULL ) {
     perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
@@ -716,8 +716,8 @@ void callSbrk() {
   }
 
   /* alignment (martin) */
-  if (( temp = (size_t)((uintptr_t)sb % 1024 ))) {
-    sb = sb + 1024 - temp;
+  if (( temp = (size_t)((uintptr_t)sb % sizeof(Rp) ))) {
+    sb = sb + sizeof(Rp) - temp;
   }
 
   if ( ! is_rp_aligned((size_t)sb) ) {

@@ -98,11 +98,13 @@ typedef struct rp {
   uintptr_t i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Rp;
 
-#if defined(__LP64__) || (__WORDSIZE == 64)
-#define is_rp_aligned(rp)  (((rp) & 0x7FF) == 0)
-#else
-#define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
-#endif
+/* #if defined(__LP64__) || (__WORDSIZE == 64) */
+/* #define SIZE_REGION_PAGE 0x800 */
+/* #else */
+/* #define SIZE_REGION_PAGE 0x400 */
+/* #endif */
+
+#define is_rp_aligned(rp)  (((rp) & sizeof(Rp)) == 0)
 
 /* Free pages are kept in a free list. When the free list becomes
  * empty and more space is required, the runtime system calls the

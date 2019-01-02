@@ -335,7 +335,8 @@ struct
     fun load_label_addr(lab,dst_aty,t:reg,size_ff,C) =
         case dst_aty of
             SS.PHREG_ATY d => I.movq(LA lab, R d) :: C
-          | SS.STACK_ATY offset => die "load_label_addr: should be updated"
+          | SS.STACK_ATY offset =>
+            I.movq(LA lab, R t) :: store_indexed(rsp, WORDS(size_ff-offset-1), R t, C)
             (*store_indexed(rsp, WORDS(size_ff-offset-1), LA lab, C)*)
           | _ => die "load_label_addr.wrong ATY"
 
@@ -1420,18 +1421,25 @@ struct
      fun mulf_kill_tmp01 a = bin_float_op_kill_tmp01 I.mulsd a
      fun divf_kill_tmp01 a = bin_float_op_kill_tmp01 I.divsd a
 
-     fun unary_float_op_kill_tmp01 finst (b,x,d,size_ff,C) = (* ME MEMO *)
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff,xmm0)
+     fun negf_kill_tmp01 (b,x,d,size_ff,C) =
+       let val x_C = load_float_aty(x, tmp_reg0, size_ff,xmm1)
            val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
        in
-         x_C(finst ::
+         x_C(I.xorps (R xmm0,R xmm0) :: I.subsd (R xmm1,R xmm0) ::
          b_C(store_float_reg(b_reg,tmp_reg1,xmm0,
          copy(b_reg,d_reg, C'))))
        end
 
-     fun negf_kill_tmp01 a = unary_float_op_kill_tmp01 I.fchs a
-     fun absf_kill_tmp01 a = unary_float_op_kill_tmp01 I.fabs a
+     fun absf_kill_tmp01 (b,x,d,size_ff,C) =
+       let val x_C = load_float_aty(x, tmp_reg0, size_ff,xmm1)
+           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
+           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
+       in
+         x_C(I.xorps (R xmm0,R xmm0) :: I.subsd (R xmm1,R xmm0) :: I.maxsd (R xmm1,R xmm0) ::
+         b_C(store_float_reg(b_reg,tmp_reg1,xmm0,
+         copy(b_reg,d_reg, C'))))
+       end
 
      datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
 
@@ -1441,23 +1449,20 @@ struct
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
            val true_lab = new_local_lab "true"
            val cont_lab = new_local_lab "cont"
-           val (mlTrue, mlFalse, cond_code, jump, push_args) = (* from gcc experiments *)
-             case cond
-               of LESSTHAN => (BI.ml_true, BI.ml_false, "69", I.je, x_C o y_C)
-                | LESSEQUAL => (BI.ml_true, BI.ml_false, "5", I.je, x_C o y_C)
-                | GREATERTHAN => (BI.ml_false, BI.ml_true, "69", I.jne, y_C o x_C)
-                | GREATEREQUAL => (BI.ml_false, BI.ml_true, "5", I.jne, y_C o x_C)
+           val jump = (* from gcc experiments *)
+               case cond of
+                   LESSTHAN => I.jb      (*below*)
+                 | LESSEQUAL => I.jbe    (*below or equal*)
+                 | GREATERTHAN => I.ja   (*above*)
+                 | GREATEREQUAL => I.jae (*above or equal*)
+           val load_args = x_C o y_C
        in
-         push_args(I.fcompp ::
-         I.movq(R rax, R tmp_reg1) ::  (* save rax *)
-         I.fnstsw ::
-         I.andb(I cond_code, R ah) ::
-         I.movq(R tmp_reg1, R rax) ::   (* restore rax *)
+         load_args(I.ucomisd (R xmm1, R xmm0) ::
          jump true_lab ::
-         I.movq(I (i2s mlFalse), R d_reg) ::
+         I.movq(I (i2s BI.ml_false), R d_reg) ::
          I.jmp(L cont_lab) ::
          I.lab true_lab ::
-         I.movq(I (i2s mlTrue), R d_reg) ::
+         I.movq(I (i2s BI.ml_true), R d_reg) ::
          I.lab cont_lab ::
          C')
        end
