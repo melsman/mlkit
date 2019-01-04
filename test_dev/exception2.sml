@@ -10,16 +10,16 @@ fun print (s:string) : unit = prim("printStringML", s)
 val x =
  let
    exception E
-   exception E' of int
-   exception E''
-   fun f (E,x)     = print x
-     | f (E' 1,x)  = print x
-     | f (E'',x)   = print x
-     | f (_,x)     = print x
+   exception A of int
+   exception B
+   fun f (E,x) = print x
+     | f (A 1,x) = print x
+     | f (B,x) = print x
+     | f (_,x) = print x
    val _ = f(E,"Test OK\n")
-   val _ = f(E' 1,"Test OK\n")
-   val _ = f(E'',"Test OK\n")
-   val _ = f(E' 2,"Test OK\n")
+   val _ = f(A 1,"Test OK\n")
+   val _ = f(B,"Test OK\n")
+   val _ = f(A 2,"Test OK\n")
  in
    2
  end

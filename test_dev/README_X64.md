@@ -30,20 +30,21 @@
  string1.sml                          ok
  test_dattyp.sml                      ok
  foldl.sml                            ok
+ testdyn1-nobasis.sml                 ok
+ real0.sml                            ok
+ real1.sml                            ok
+ real2.sml                            ok
+ ref-real.sml                         ok
+ fft_no_basislib.sml                  ok
+ kitkbjul9_no_basislib.sml            ok
+ kitlife35u_no_basislib.sml           ok
+ kitqsort_no_basislib.sml             ok
+ kitreynolds2_no_basislib.sml         ok
+ kitreynolds3_no_basislib.sml         ok
+ kitsimple_no_basislib.sml            ok
+ kittmergesort_no_basislib.sml        ok
+ professor_game.sml                   ok
 
- testdyn1.sml
  testdyn2.sml
-
- exception2.sml                       ok
- fft_no_basislib.sml
- kitkbjul9_no_basislib.sml            oversætter men udskriver intet når det køres!
- kitlife35u_no_basislib.sml           oversætter men udskriver intet når det køres!
- kitqsort_no_basislib.sml
- kitreynolds2_no_basislib.sml
- kitreynolds3_no_basislib.sml
- kitsimple_no_basislib.sml
- kittmergesort_no_basislib.sml
- professor_game.sml                   oversætter men udskriver intet når det køres!
- real1.sml
- ref-real.sml
-listpair.sml
+ exception2.sml
+ listpair.sml

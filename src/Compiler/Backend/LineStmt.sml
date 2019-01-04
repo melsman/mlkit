@@ -1,4 +1,4 @@
-functor LineStmt(structure CallConv: CALL_CONV 
+functor LineStmt(structure CallConv: CALL_CONV
 		   where type lvar = Lvars.lvar
 		 structure ClosExp: CLOS_EXP
 	           where type con = Con.con
@@ -11,8 +11,8 @@ functor LineStmt(structure CallConv: CALL_CONV
 		 sharing type CallConv.cc = ClosExp.cc
 	         structure BI : BACKEND_INFO
 	         structure RI : REGISTER_INFO
-                   where type lvar = Lvars.lvar) 
-    : LINE_STMT = 
+                   where type lvar = Lvars.lvar)
+    : LINE_STMT =
 struct
   structure Labels = AddressLabels
   structure PP = PrettyPrint
@@ -49,7 +49,7 @@ struct
   fun log_st st = PP.outputTree(fn s => TextIO.output(!Flags.log,s), st, 70)
   fun pr_st st = PP.outputTree(fn s => TextIO.output(TextIO.stdOut,s), st, 70)
   fun die s  = Crash.impossible ("LineStmt." ^ s)
-  fun fast_pr stringtree = 
+  fun fast_pr stringtree =
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
      TextIO.output(!Flags.log, "\n"))
 
@@ -109,23 +109,23 @@ struct
                                                (* The boolean is true if the region has an untagged type *)
     | PASS_PTR_TO_RHO of 'aty sma              (* Used only by CCALL *)
 
-  and ('sty,'offset,'aty) LineStmt = 
+  and ('sty,'offset,'aty) LineStmt =
       ASSIGN        of {pat: 'aty, bind: 'aty SimpleExp}
     | FLUSH         of 'aty * 'offset
     | FETCH         of 'aty * 'offset
-    | FNJMP         of {opr: 'aty, args: 'aty list, clos: 'aty option, 
+    | FNJMP         of {opr: 'aty, args: 'aty list, clos: 'aty option,
 			res: 'aty list, bv: Word32.word list}
-    | FNCALL        of {opr: 'aty, args: 'aty list, clos: 'aty option, 
+    | FNCALL        of {opr: 'aty, args: 'aty list, clos: 'aty option,
 			res: 'aty list, bv: Word32.word list}
-    | JMP           of {opr: label, args: 'aty list, reg_vec: 'aty option, 
+    | JMP           of {opr: label, args: 'aty list, reg_vec: 'aty option,
 			reg_args: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
-    | FUNCALL       of {opr: label, args: 'aty list, reg_vec: 'aty option, 
+    | FUNCALL       of {opr: label, args: 'aty list, reg_vec: 'aty option,
 			reg_args: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
     | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
     | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
-    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
-			handl: ('sty,'offset,'aty) LineStmt list * 'aty, 
-			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty * (Word32.word list), 
+    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list,
+			handl: ('sty,'offset,'aty) LineStmt list * 'aty,
+			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty * (Word32.word list),
 			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
     | SWITCH_I      of {switch: (Int32.int,'sty,'offset,'aty) Switch, precision: int}
@@ -133,7 +133,7 @@ struct
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
     | SWITCH_C      of ((con*con_kind),'sty,'offset,'aty) Switch
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
-    | RESET_REGIONS of {force: bool, 
+    | RESET_REGIONS of {force: bool,
 			regions_for_resetting: 'aty sma list}
     | PRIM          of {name: string, args: 'aty list, res: 'aty list}
     | CCALL         of {name: string, args: 'aty list,
@@ -144,7 +144,7 @@ struct
 
   and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 
-  and 'aty sma = 
+  and 'aty sma =
       ATTOP_LI of 'aty * pp
     | ATTOP_LF of 'aty * pp
     | ATTOP_FI of 'aty * pp
@@ -155,10 +155,10 @@ struct
     | SAT_FF   of 'aty * pp
     | IGNORE
 
-  datatype ('sty,'offset,'aty) TopDecl = 
+  datatype ('sty,'offset,'aty) TopDecl =
       FUN of label * cc * ('sty,'offset,'aty) LineStmt list
     | FN of label * cc * ('sty,'offset,'aty) LineStmt list
-  
+
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) TopDecl list
 
   fun smash_free (lvs,excons,rhos) = rhos@excons@lvs
@@ -198,7 +198,7 @@ struct
     fun pr_phsize(PhysSizeInf.INF)     = "inf"
       | pr_phsize(PhysSizeInf.WORDS i) = Int.toString i
 
-    fun pr_binder(place,phsize) = 
+    fun pr_binder(place,phsize) =
       (PP.flatten1(Effect.layout_effect place) ^ ":" ^ pr_phsize phsize)
 
     fun pr_con_kind(ENUM i)    = "enum " ^ Int.toString i
@@ -208,7 +208,7 @@ struct
     fun pr_pp pp = "pp" ^ Int.toString pp
 
     fun layout_aty pr_aty aty = LEAF(pr_aty aty)
-      
+
     fun layout_aty_opt pr_aty (SOME aty) = layout_aty pr_aty aty
       | layout_aty_opt pr_aty (NONE) = LEAF ""
 
@@ -216,8 +216,8 @@ struct
       | pr_bv([mark]) = die "pr_bv:Bit Vector with only one element"
       | pr_bv([mark,offsetToReturn]) = die "pr_bv:Bit Vector with only two elements"
       | pr_bv([mark,offsetToReturn,size]) = die "pr_bv:Bit Vector with only three elements"
-      | pr_bv(mark::offsetToReturn::size::bvs) = 
-      (foldl (fn (w,C) => (Word32.fmt StringCvt.BIN w) ^ ":" ^  C) "" bvs) ^ 
+      | pr_bv(mark::offsetToReturn::size::bvs) =
+      (foldl (fn (w,C) => (Word32.fmt StringCvt.BIN w) ^ ":" ^  C) "" bvs) ^
       (Word32.fmt StringCvt.DEC size) ^ ":" ^ (Word32.fmt StringCvt.DEC offsetToReturn) ^ ":" ^
       (Word32.fmt StringCvt.DEC mark)
 
@@ -227,20 +227,20 @@ struct
 	  NODE{start="",finish="",indent=0,
 	       children=[LEAF (pr_const const),layout_lss ls_sel],
 	       childsep=RIGHT " => "}
-	val t1 = NODE{start="(case ",finish=" ",indent=2, childsep = NOSEP, 
+	val t1 = NODE{start="(case ",finish=" ",indent=2, childsep = NOSEP,
 		      children=[layout_aty pr_aty aty_arg]}
 	val t2 = NODE{start="of " ,finish="",indent=6,childsep=LEFT " | ",
-		      children=(map layout_sels sels) @ 
+		      children=(map layout_sels sels) @
 		      [NODE{start="",finish="",indent=0,
 			    children=[LEAF "_",layout_lss default],
 			    childsep=RIGHT " => "}]}
 	val t3 = NODE{start="",finish=") (*case*) ",indent=3,childsep=NOSEP,children=[t2]}
-      in 
+      in
 	NODE{start = "", finish = "", indent=0, childsep=NOSEP,children=[t1,t3]}
       end
 
     fun layout_foreign_type ft =
-	case ft of 
+	case ft of
 	    CharArray => LEAF "CharArray"
 	  | Int => LEAF "Int"
 	  | Bool => LEAF "Bool"
@@ -280,7 +280,7 @@ struct
 		   finish="]aux " ^ pr_sma pr_aty alloc,
 		   childsep=RIGHT ",",
 		   children=map (layout_sma pr_aty) aux_regions}
-	 | CON1{con,con_kind,alloc,arg} => 
+	 | CON1{con,con_kind,alloc,arg} =>
 	     HNODE{start=Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ") ",
 		   finish="" ^ pr_sma pr_aty alloc,
 		   childsep=NOSEP,
@@ -296,9 +296,9 @@ struct
 	 | PASS_PTR_TO_MEM(sma,i,b) => LEAF("MEM(" ^ pr_sma pr_aty sma ^ "," ^ Int.toString i ^ ","
 					    ^ Bool.toString b ^ ")")
 	 | PASS_PTR_TO_RHO(sma) => LEAF("PTR(" ^ pr_sma pr_aty sma ^ ")"))
-	
+
       and layout_ls pr_sty pr_offset pr_aty simplify ls =
-	let 
+	let
 	  fun layout_lss_local lss = layout_lss pr_sty pr_offset pr_aty simplify lss
 	in
 	  (case ls of
@@ -379,11 +379,11 @@ struct
 	   | LETREGION{rhos,body} =>
 	       let
 		 val rhos = if simplify then remove_finite_rhos rhos else rhos
-		 val binders = HNODE{start = "", 
-				     finish = "", 
-				     childsep = RIGHT", ", 
+		 val binders = HNODE{start = "",
+				     finish = "",
+				     childsep = RIGHT", ",
 				     children = map (fn (b,offset) => LEAF(pr_binder b ^ pr_offset offset)) rhos}
-	       in 
+	       in
 		 (case rhos of
 		    [] => layout_lss_local body
 		  | _ => NODE{start= "letregion " ^ flatten1(binders) ^ " in ",
@@ -408,8 +408,8 @@ struct
 		 end
 	   | HANDLE{default,handl=(handl,handl_aty),handl_return=(handl_return,handl_return_aty,[]),offset} =>
 		 let
-		   val node_exn = NODE{start="[",finish="]",childsep=RIGHT("](" ^ pr_aty handl_aty ^ 
-				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["), 
+		   val node_exn = NODE{start="[",finish="]",childsep=RIGHT("](" ^ pr_aty handl_aty ^
+				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["),
 				       indent=2,children=[layout_lss_local handl,layout_lss_local handl_return]}
 		 in
 		   NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss_local default,node_exn]}
@@ -417,14 +417,14 @@ struct
 	   | HANDLE{default,handl=(handl,handl_aty),handl_return=(handl_return,handl_return_aty,bv),offset} =>
 		 let
 		   val hnode_bv = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
-		   val node_exn = NODE{start="[",finish="](bv: " ^ flatten1(hnode_bv) ^ ")",childsep=RIGHT("](" ^ pr_aty handl_aty ^ 
-				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["), 
+		   val node_exn = NODE{start="[",finish="](bv: " ^ flatten1(hnode_bv) ^ ")",childsep=RIGHT("](" ^ pr_aty handl_aty ^
+				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["),
 				       indent=2,children=[layout_lss_local handl,layout_lss_local handl_return]}
 		 in
 		   NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss_local default,node_exn]}
 		 end
 
-	   | RAISE{arg,defined_atys} => 
+	   | RAISE{arg,defined_atys} =>
 		 let
 		   val lay_stys = flatten1(HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (fn aty => LEAF(pr_aty aty)) defined_atys})
 		 in
@@ -450,7 +450,7 @@ struct
 		 let
 		   val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 in
-		   HNODE{start=flatten1(t0) ^ " = prim(\"" ^ name ^ "\", <", 
+		   HNODE{start=flatten1(t0) ^ " = prim(\"" ^ name ^ "\", <",
 			 finish=">)",
 			 childsep=RIGHT ",",
 			 children=map (layout_aty pr_aty) args}
@@ -459,7 +459,7 @@ struct
 		 let
 		   val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 in
-		   HNODE{start=flatten1(t0) ^ " = ccall(\"" ^ name ^ "\", <", 
+		   HNODE{start=flatten1(t0) ^ " = ccall(\"" ^ name ^ "\", <",
 			 finish=">)",
 			 childsep=RIGHT ",",
 			 children=(map (layout_aty pr_aty) rhos_for_result) @ (map (layout_aty pr_aty) args)}
@@ -470,12 +470,12 @@ struct
 						    children=[layout_aty pr_aty aty, layout_foreign_type f]}
 		   val t0 = layout_pair res
 		 in
-		   HNODE{start=flatten1(t0) ^ " = ccall_auto(\"" ^ name ^ "\", <", 
+		   HNODE{start=flatten1(t0) ^ " = ccall_auto(\"" ^ name ^ "\", <",
 			 finish=">)",
 			 childsep=RIGHT ",",
 			 children=map layout_pair args}
 		 end
-	   | EXPORT{name,clos_lab, arg=(aty,ft1,ft2)} => 
+	   | EXPORT{name,clos_lab, arg=(aty,ft1,ft2)} =>
 		 HNODE{start="_export(" ^ name ^ ",",
 		       finish=")",
 		       childsep=RIGHT ",",
@@ -485,8 +485,8 @@ struct
 		 )
 
 	end
-      
-      and layout_lss pr_sty pr_offset pr_aty simplify lss = 
+
+      and layout_lss pr_sty pr_offset pr_aty simplify lss =
 	NODE{start="",
 	     finish= "",
 	     indent= 0,
@@ -508,15 +508,15 @@ struct
       and layout_sma pr_aty sma = LEAF(pr_sma pr_aty sma)
 
       fun layout_top_decl pr_sty pr_offset pr_aty simplify (FUN(lab,cc,lss)) =
-          NODE{start = "FUN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
-	       finish = "", 
-	       indent = 2, 
-	       childsep = NOSEP, 
+          NODE{start = "FUN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=",
+	       finish = "",
+	       indent = 2,
+	       childsep = NOSEP,
 	       children = [layout_lss pr_sty pr_offset pr_aty simplify lss]}
       | layout_top_decl pr_sty pr_offset pr_aty simplify (FN(lab,cc,lss)) =
-	  NODE{start = "FN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
-	       finish = "", 
-	       indent = 2, 
+	  NODE{start = "FN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=",
+	       finish = "",
+	       indent = 2,
 	       childsep = NOSEP,
 	       children = [layout_lss pr_sty pr_offset pr_aty simplify lss]}
 
@@ -528,7 +528,7 @@ struct
 	     childsep=NOSEP,
 	     children = map (layout_top_decl pr_sty pr_offset pr_aty simplify) top_decls}
   in
-    fun layout_line_prg pr_sty pr_offset pr_aty simplify top_decls = 
+    fun layout_line_prg pr_sty pr_offset pr_aty simplify top_decls =
       layout_line_prg' pr_sty pr_offset pr_aty simplify top_decls
     fun layout_line_stmt pr_sty pr_offset pr_aty simplify ls =
       layout_line_stmt' pr_sty pr_offset pr_aty simplify ls
@@ -544,7 +544,7 @@ struct
     | zip _ = die "zip: Cannot zip two lists."
 
   fun is_region_pair place =
-    case Effect.get_place_ty place of 
+    case Effect.get_place_ty place of
 	NONE => die "is_region_pair"
       | SOME Effect.PAIR_RT => true
       | SOME _ => false
@@ -607,7 +607,7 @@ struct
 
     fun maybe_assign ([], bind, acc) = acc
       | maybe_assign ([lv], bind, acc) = ASSIGN{pat=VAR lv, bind=bind} :: acc
-      | maybe_assign _ = die "maybe_assign.more than one lvar to bind!"      
+      | maybe_assign _ = die "maybe_assign.more than one lvar to bind!"
 
     fun L_ce(ce,lvars_res,acc) =
       case ce
@@ -620,8 +620,8 @@ struct
 	 | ClosExp.WORD i => maybe_assign (lvars_res, ATOM(WORD i), acc)
 	 | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
 	 | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
-	 | ClosExp.PASS_PTR_TO_MEM(sma,i) => 
-	    let fun untagged_region_type sma = 
+	 | ClosExp.PASS_PTR_TO_MEM(sma,i) =>
+	    let fun untagged_region_type sma =
 		   case ce_of_sma sma of
 		       SOME (ClosExp.RVAR rho) => is_region_pair rho
 		     | _ => false
@@ -630,16 +630,16 @@ struct
 	    end
 	 | ClosExp.PASS_PTR_TO_RHO sma => maybe_assign (lvars_res, PASS_PTR_TO_RHO(sma_to_sma sma), acc)
 	 | ClosExp.UB_RECORD ces => List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
-	 | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc} => 
+	 | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc} =>
 	  maybe_assign (lvars_res, CLOS_RECORD{label=label,
 					       elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
 					       alloc=sma_to_sma alloc}, acc)
-	 | ClosExp.REGVEC_RECORD{elems,alloc} => 
+	 | ClosExp.REGVEC_RECORD{elems,alloc} =>
 	  maybe_assign (lvars_res, REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma alloc}, acc)
-	 | ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc} => 
+	 | ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc} =>
 	  maybe_assign (lvars_res, SCLOS_RECORD{elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
 						alloc=sma_to_sma alloc}, acc)
-	 | ClosExp.RECORD{elems,alloc,tag,maybeuntag} => 
+	 | ClosExp.RECORD{elems,alloc,tag,maybeuntag} =>
 	  maybe_assign (lvars_res, RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag,maybeuntag=maybeuntag}, acc)
 	 | ClosExp.SELECT(i,ce) =>
 	  maybe_assign (lvars_res, SELECT(i,ce_to_atom ce), acc)
@@ -674,10 +674,10 @@ struct
 		   handl=([SCOPE{pat=[mk_sty clos_lv],scope=L_ce(ce2,[clos_lv],[])}],VAR clos_lv),
 		   handl_return=([],aty,[]),offset=()} :: acc (* for now, offset is unit *)
 	  end
-	 | ClosExp.SWITCH_I {switch, precision} => 
+	 | ClosExp.SWITCH_I {switch, precision} =>
 	  SWITCH_I {switch=L_ce_sw(switch,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i),
 		    precision=precision} ::acc
-	 | ClosExp.SWITCH_W {switch, precision} => 
+	 | ClosExp.SWITCH_W {switch, precision} =>
 	  SWITCH_W {switch=L_ce_sw(switch,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i),
 		    precision=precision} ::acc
 	 | ClosExp.SWITCH_S sw => SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
@@ -687,7 +687,7 @@ struct
 	  maybe_assign (lvars_res, CON0{con=con,con_kind=con_kind_to_con_kind con_kind,
 				       aux_regions=smas_to_smas aux_regions,
 				       alloc=sma_to_sma alloc}, acc)
-	 | ClosExp.CON1{con,con_kind,alloc,arg} => 
+	 | ClosExp.CON1{con,con_kind,alloc,arg} =>
 	  maybe_assign (lvars_res, CON1{con=con,con_kind=con_kind_to_con_kind con_kind,
 					alloc=sma_to_sma alloc,arg=ce_to_atom arg}, acc)
 	 | ClosExp.DECON{con,con_kind,con_exp} =>
@@ -700,20 +700,20 @@ struct
 	 | ClosExp.ASSIGN(sma,ce1,ce2) =>
 	  maybe_assign (lvars_res, ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2), acc)
 	 | ClosExp.DROP(ce) => L_ce(ce,lvars_res,acc)
-	 | ClosExp.RESET_REGIONS{force,regions_for_resetting} => 
+	 | ClosExp.RESET_REGIONS{force,regions_for_resetting} =>
 	  (* We must have RESET_REGIONS return unit. *)
 	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
 	  maybe_assign (lvars_res, ATOM UNIT, acc)
-	 | ClosExp.CCALL{name,rhos_for_result,args} => 
+	 | ClosExp.CCALL{name,rhos_for_result,args} =>
 	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
 				       res=map VAR lvars_res}::acc
 	  else CCALL{name=name,args=ces_to_atoms args,
 		     rhos_for_result=ces_to_atoms rhos_for_result,
 		     res=map VAR lvars_res}::acc
-	 | ClosExp.CCALL_AUTO{name,args,res} => 
-	  if BI.is_prim name then 
+	 | ClosExp.CCALL_AUTO{name,args,res} =>
+	  if BI.is_prim name then
 	    die ("CCALL_AUTO." ^ name ^ " appears to be a PRIM!")
-	  else 
+	  else
 	    let val res = case lvars_res
 			    of [lv] => (VAR lv, res)
 			     | _ => die ("CCALL_AUTO.result mismatch (SOME) "
@@ -721,7 +721,7 @@ struct
 		val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
 	    in CCALL_AUTO{name=name, args=args, res=res}::acc
 	    end
-	 | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} => 
+	 | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} =>
 	    EXPORT{name=name,clos_lab=clos_lab,arg=(ce_to_atom ce,ft1,ft2)}::
 	    maybe_assign (lvars_res, ATOM UNIT, acc)
 	 | ClosExp.FRAME{declared_lvars,declared_excons} => acc
@@ -731,7 +731,7 @@ struct
 	val lvars_res = CallConv.get_res_lvars(cc)
       in
 	FUN(lab,cc,L_ce(ce,lvars_res,[]))
-      end	    
+      end
       | L_top_decl(ClosExp.FN(lab,cc,ce)) =
       let
 	val lvars_res = CallConv.get_res_lvars(cc)
@@ -759,7 +759,7 @@ struct
 	    of FNJMP a => if count_tail_calls then 1 else 0
 	     | FNCALL a => 1
 	     | JMP a => if count_tail_calls then 1 else 0
-	     | FUNCALL a => 1 
+	     | FUNCALL a => 1
 	     | LETREGION{rhos,body} => NA_lss body
 	     | SCOPE{pat,scope} => NA_lss scope
 	     | HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} => NA_lss default + NA_lss handl
@@ -770,17 +770,17 @@ struct
 	     | SWITCH_C sw => NA_sw sw NA_lss
 	     | SWITCH_E sw => NA_sw sw NA_lss
 	     | _ => 0
-    in 
+    in
       foldr (fn (ls,n) => n + NA_ls ls) 0 lss
     end
   in
     fun NA_prg top_decls =
-    let 
-      fun NA_top_decl func = 
-	case func 
+    let
+      fun NA_top_decl func =
+	case func
 	  of FUN(lab,cc,lss) => NA_lss lss
 	   | FN(lab,cc,lss) => NA_lss lss
-    in 
+    in
       foldr (fn (func,n) => n + NA_top_decl func) 0 top_decls
     end
   end
@@ -807,7 +807,7 @@ struct
     | get_phreg_sma(SAT_FI(atom,pp),acc)   = get_phreg_atom(atom,acc)
     | get_phreg_sma(SAT_FF(atom,pp),acc)   = get_phreg_atom(atom,acc)
     | get_phreg_sma(IGNORE,acc)            = acc
-    
+
   fun get_phreg_smas(smas,acc) = foldr (fn (sma,acc) => get_phreg_sma(sma,acc)) acc smas
 
   fun get_phreg_se(ATOM atom,acc) = get_phreg_atom(atom,acc)
@@ -875,34 +875,6 @@ struct
 
   fun get_var_smas(smas,acc) = foldr (fn (sma,acc) => get_var_sma(sma,acc)) acc smas
 
-(* <<<<< LineStmt.sml *)
-(*
-  fun def_var_se (se: Atom SimpleExp,acc:lvar list) = acc
-
-  fun use_var_se(ATOM atom,acc) = get_var_atom(atom,acc)
-    | use_var_se(LOAD lab,acc) = acc
-    | use_var_se(STORE(atom,lab),acc) = get_var_atom(atom,acc)
-    | use_var_se(STRING str,acc) = acc
-    | use_var_se(REAL str,acc) = acc
-    | use_var_se(CLOS_RECORD{label,elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
-    | use_var_se(REGVEC_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_smas(elems,acc))
-    | use_var_se(SCLOS_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
-    | use_var_se(RECORD{elems,alloc,tag},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
-    | use_var_se(SELECT(i,atom),acc) = get_var_atom(atom,acc)
-    | use_var_se(CON0{con,con_kind,aux_regions,alloc},acc) = get_var_sma(alloc, get_var_smas(aux_regions,acc))
-    | use_var_se(CON1{con,con_kind,alloc,arg},acc) = get_var_sma(alloc,get_var_atom(arg,acc))
-    | use_var_se(DECON{con,con_kind,con_aty},acc) = get_var_atom(con_aty,acc)
-    | use_var_se(DEREF atom,acc) = get_var_atom(atom,acc)
-    | use_var_se(REF(sma,atom),acc) = get_var_sma(sma,get_var_atom(atom,acc))
-    | use_var_se(ASSIGNREF(sma,atom1,atom2),acc) = get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
-    | use_var_se(PASS_PTR_TO_MEM(sma,i),acc) = get_var_sma(sma,acc)
-    | use_var_se(PASS_PTR_TO_RHO sma,acc) = get_var_sma(sma,acc)
-
-  fun use_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
-    get_var_atoms(args,get_var_atom_opt(reg_vec,
-					get_var_atoms(reg_args,get_var_atom_opt(clos,[]))))
-*)
-(* ======= *)
   fun get_var_sma_ignore(ATTOP_LI(atom,pp),acc) = acc
     | get_var_sma_ignore(ATTOP_LF(atom,pp),acc) = acc
     | get_var_sma_ignore(ATTOP_FI(atom,pp),acc) = acc
@@ -917,15 +889,7 @@ struct
 
   fun smash_free_ignore (lvs,excons,rhos) = excons@lvs
 
-(* >>>>> 1.22
-
-  <<<<< LineStmt.sml
-  =====
-*)
-
   fun def_var_se (se: Atom SimpleExp,acc:lvar list) = acc
-
-(* >>>>> 1.22 *)
 
   fun def_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = get_var_atoms(res,[])
 
@@ -934,7 +898,7 @@ struct
 
   fun def_var_on_fn{opr,args,clos,res,bv} = get_var_atoms(res,[])
 
-  fun def_var_ls(ASSIGN{pat,bind}) = get_var_atom(pat,[]) 
+  fun def_var_ls(ASSIGN{pat,bind}) = get_var_atom(pat,[])
     | def_var_ls(FLUSH(atom,_)) = []
     | def_var_ls(FETCH(atom,_)) = get_var_atom(atom,[])
     | def_var_ls(FNJMP cc) = def_var_on_fn cc
@@ -960,13 +924,13 @@ struct
   local
     fun get_var_sma' ignore_rvars =
       if ignore_rvars then get_var_sma_ignore else get_var_sma
-    fun get_var_smas' ignore_rvars = 
+    fun get_var_smas' ignore_rvars =
       if ignore_rvars then get_var_smas_ignore else get_var_smas
-    fun smash_free' ignore_rvars = 
+    fun smash_free' ignore_rvars =
       if ignore_rvars then smash_free_ignore else smash_free
 
     fun use_var_se' get_var_sma get_var_smas smash_free arg =
-      case arg of 
+      case arg of
 	(ATOM atom,acc) => get_var_atom(atom,acc)
       | (LOAD lab,acc) => acc
       | (STORE(atom,lab),acc) => get_var_atom(atom,acc)
@@ -992,7 +956,7 @@ struct
       else
 	get_var_atoms(args,get_var_atom_opt(reg_vec,
 					    get_var_atoms(reg_args,get_var_atom_opt(clos,[]))))
-	    
+
     fun use_var_ls' ignore_rvars ls =
       let
 	fun use_var_on_fun arg = use_var_on_fun' ignore_rvars arg
@@ -1042,7 +1006,7 @@ struct
   fun get_lvar_atoms(atoms,acc) = filter_out_phregs (get_var_atoms(atoms,acc))
   fun get_lvar_atom_opt(atom_opt,acc) = filter_out_phregs (get_var_atom_opt(atom_opt,acc))
 
-  fun get_lvar_sma(sma,acc) = filter_out_phregs (get_var_sma(sma,acc))    
+  fun get_lvar_sma(sma,acc) = filter_out_phregs (get_var_sma(sma,acc))
   fun get_lvar_smas(smas,acc) = filter_out_phregs(get_var_smas(smas,acc))
 
   fun def_lvar_se (se:Atom SimpleExp,acc:lvar list) = filter_out_phregs acc
@@ -1095,7 +1059,7 @@ struct
 	    val default' = map_lss default
 	  in
 	    switch_con(SWITCH(map_aty atom,sels',default'))
-	  end 
+	  end
 
 	fun map_fn_app{opr,args,clos,res,bv} =
 	  {opr=map_aty opr,
@@ -1118,12 +1082,12 @@ struct
 	  | map_se(STORE(aty,label)) = STORE(map_aty aty,label)
 	  | map_se(STRING str) = STRING str
 	  | map_se(REAL str) = REAL str
-	  | map_se(CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = 
+	  | map_se(CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) =
 	  CLOS_RECORD{label=label,
 		      elems=(map_atys lvs,map_atys excons,map_atys rhos),
 		      alloc= map_sma alloc}
 	  | map_se(REGVEC_RECORD{elems,alloc}) = REGVEC_RECORD{elems=map_smas elems,alloc=map_sma alloc}
-	  | map_se(SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) = 
+	  | map_se(SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) =
 	  SCLOS_RECORD{elems=(map_atys lvs,map_atys excons,map_atys rhos),
 		       alloc = map_sma alloc}
 	  | map_se(RECORD{elems,alloc,tag,maybeuntag}) = RECORD{elems=map_atys elems,alloc=map_sma alloc,tag=tag,maybeuntag=maybeuntag}
@@ -1153,20 +1117,20 @@ struct
 		 handl_return=(map_lss' handl_return,map_aty handl_return_lv,bv),
 		 offset=f_offset offset} :: map_lss' lss
 	  | map_lss'(RAISE{arg,defined_atys}::lss) = RAISE{arg=map_aty arg,defined_atys=map_atys defined_atys} :: map_lss' lss
-	  | map_lss'(SWITCH_I {switch, precision} :: lss) = 
+	  | map_lss'(SWITCH_I {switch, precision} :: lss) =
 	  map_sw(map_lss',fn sw => SWITCH_I {switch=sw, precision=precision},switch) :: map_lss' lss
-	  | map_lss'(SWITCH_W {switch, precision} :: lss) = 
+	  | map_lss'(SWITCH_W {switch, precision} :: lss) =
 	  map_sw(map_lss',fn sw => SWITCH_W {switch=sw, precision=precision},switch) :: map_lss' lss
 	  | map_lss'(SWITCH_S sw::lss) = map_sw(map_lss',SWITCH_S,sw) :: map_lss' lss
 	  | map_lss'(SWITCH_C sw::lss) = map_sw(map_lss',SWITCH_C,sw) :: map_lss' lss
 	  | map_lss'(SWITCH_E sw::lss) = map_sw(map_lss',SWITCH_E,sw) :: map_lss' lss
 	  | map_lss'(RESET_REGIONS{force,regions_for_resetting}::lss) =
 	  RESET_REGIONS{force=force,regions_for_resetting=map_smas regions_for_resetting} :: map_lss' lss
-	  | map_lss'(PRIM{name,args,res}::lss) = 
+	  | map_lss'(PRIM{name,args,res}::lss) =
 	  PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
-	  | map_lss'(CCALL{name,args,rhos_for_result,res}::lss) = 
+	  | map_lss'(CCALL{name,args,rhos_for_result,res}::lss) =
 	  CCALL{name=name,args=map_atys args,rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
-	  | map_lss'(CCALL_AUTO{name,args,res}::lss) = 
+	  | map_lss'(CCALL_AUTO{name,args,res}::lss) =
 	  CCALL_AUTO{name=name,args=map_pair_atys args,res=map_pair_aty res} :: map_lss' lss
 	  | map_lss'(EXPORT{name,clos_lab,arg=(aty,ft1,ft2)}::lss) =
 	  EXPORT{name=name,clos_lab=clos_lab,arg=(map_aty aty,ft1,ft2)} :: map_lss' lss
@@ -1179,12 +1143,12 @@ struct
 				      code=top_decls:('sty1,'offset1,'aty1) LinePrg,
 				      imports:label list * label list,
 				      exports:label list * label list} =
-    let 
-      fun map_top_decl func = 
-	case func 
+    let
+      fun map_top_decl func =
+	case func
 	  of FUN(lab,cc,lss) => FUN(lab,cc,map_lss f_aty f_offset f_sty lss)
 	   | FN(lab,cc,lss) => FN(lab,cc,map_lss f_aty f_offset f_sty lss)
-    in 
+    in
       {main_lab = main_lab,
        code = foldr (fn (func,acc) => map_top_decl func :: acc) [] top_decls,
        imports = imports,
@@ -1204,7 +1168,7 @@ struct
   end
 
   local
-    fun add_ok_use(lv,(OKset,notOKset,_)) = 
+    fun add_ok_use(lv,(OKset,notOKset,_)) =
       if Lvarset.member(lv,OKset) then
 	 (Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),NONE)
       else
@@ -1213,13 +1177,13 @@ struct
 	else
 	  (Lvarset.add(OKset,lv),notOKset,SOME lv)
     fun add_not_ok_use(lvs,(OKset,notOKset,_)) =
-      foldl (fn (lv,(OKset,notOKset,next_prev_use_lv)) => 
+      foldl (fn (lv,(OKset,notOKset,next_prev_use_lv)) =>
 	     (Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),next_prev_use_lv)) (OKset,notOKset,NONE) lvs
     fun add_not_ok_def(lvs,(OKset,notOKset,_)) =
-      foldl (fn (lv,(OKset,notOKset,next_prev_use_lv)) => 
+      foldl (fn (lv,(OKset,notOKset,next_prev_use_lv)) =>
 	     (Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),next_prev_use_lv)) (OKset,notOKset,NONE) lvs
     fun add_ok_def(lv,NONE,(OKset,notOKset,_)) = add_not_ok_def([lv],(OKset,notOKset,NONE))
-      | add_ok_def(lv,SOME lv_to_match,(OKset,notOKset,_)) = 
+      | add_ok_def(lv,SOME lv_to_match,(OKset,notOKset,_)) =
       if Lvars.eq(lv,lv_to_match) then
 	(OKset,notOKset,NONE)
       else
@@ -1235,14 +1199,14 @@ struct
       (* because we may only have ONE use of each flow variable.                *)
       let
 	val (OKset_sels,notOKset_sels,_) =
-	  foldr (fn ((sel,lss),(OKset,notOKset,_)) => 
+	  foldr (fn ((sel,lss),(OKset,notOKset,_)) =>
 		 FV_CalcSets_lss(lss,(OKset,notOKset,prev_use_lv))) (OKset,notOKset,NONE) sels
       in
 	add_not_ok_use(get_lvar_atom(atom,[]),FV_CalcSets_lss(default,(OKset_sels,notOKset_sels,prev_use_lv)))
       end
 
     fun pr_prev(NONE) = "none"
-      | pr_prev(SOME lv) = Lvars.pr_lvar lv 
+      | pr_prev(SOME lv) = Lvars.pr_lvar lv
 
     fun FV_CalcSets_ls(ls,OKset,notOKset,prev_use_lv) =
       (case ls of
@@ -1262,7 +1226,7 @@ struct
 	     add_not_ok_def([lv_res],add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
          (* Pattern: case lv of true => lss | _ => lss *)
          (* Pattern: case lv of false => lss | _ => lss *)
-       | SWITCH_C(sw as SWITCH(VAR lv,[((con,con_kind),lss)],default)) => 
+       | SWITCH_C(sw as SWITCH(VAR lv,[((con,con_kind),lss)],default)) =>
 	   if Con.eq(con,Con.con_TRUE) orelse
 	     Con.eq(con,Con.con_FALSE) then
 	     let
@@ -1274,8 +1238,8 @@ struct
 	     FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
          (* Pattern: case lv of 3 => lss | _ => lss *)
          (* Pattern: case lv of 1 => lss | _ => lss *)
-       | SWITCH_I {switch=sw as SWITCH(VAR lv,[(sel_val,lss)],default), precision} => 
-	   if (sel_val = Int32.fromInt BI.ml_true 
+       | SWITCH_I {switch=sw as SWITCH(VAR lv,[(sel_val,lss)],default), precision} =>
+	   if (sel_val = Int32.fromInt BI.ml_true
 	       orelse sel_val = Int32.fromInt BI.ml_false) then
 	     let
 	       val (OKset',notOKset',_) = FV_CalcSets_lss(default,(OKset,notOKset,prev_use_lv))
@@ -1284,12 +1248,12 @@ struct
 	     end
 	   else
 	     FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
-       | LETREGION{rhos,body} => 
+       | LETREGION{rhos,body} =>
 	     (* if region_profiling is disabled, then only infinite regions execute code *)
              (* if region_profiling is enabled, then all non zero regions execute code   *)
 	     (case (if Flags.is_on "region_profiling" then remove_zero_rhos else remove_finite_rhos) rhos of
 		[] => FV_CalcSets_lss(body,(OKset,notOKset,prev_use_lv))
-	      | _ => 
+	      | _ =>
 		  let
 		    val (OKset',notOKset',_) = FV_CalcSets_lss(body,(OKset,notOKset,NONE))
 		  in
@@ -1335,13 +1299,13 @@ struct
       let
 	(* Add cc to nonOKset *)
 	val notOKset = Lvarset.lvarsetof (CallConv.get_res_lvars cc @ CallConv.get_arg_lvars cc)
-	val (OKset,_,_) = FV_CalcSets_lss(lss,(Lvarset.empty,notOKset,NONE)) 
+	val (OKset,_,_) = FV_CalcSets_lss(lss,(Lvarset.empty,notOKset,NONE))
 	val _ = inc_flow_var (List.length(Lvarset.members OKset))
-	val OKmap = 
-	  Lvarset.foldset 
-	  (fn (OKmap,lv) => 
+	val OKmap =
+	  Lvarset.foldset
+	  (fn (OKmap,lv) =>
 	   LvarFinMap.add (lv,
-			   (Labels.new_named (Lvars.pr_lvar lv ^ "T"), 
+			   (Labels.new_named (Lvars.pr_lvar lv ^ "T"),
 			    Labels.new_named (Lvars.pr_lvar lv ^ "F")),
 			   OKmap)) (LvarFinMap.empty,OKset)
 	val lss' = map_lss (fn aty => ann_aty(aty,OKmap)) (fn i => i) (fn sty => ann_sty(sty,OKmap)) lss
@@ -1350,12 +1314,12 @@ struct
       end
   in
     fun FV_prg top_decls =
-      let 
-	fun FV_top_decl func = 
-	  case func 
+      let
+	fun FV_top_decl func =
+	  case func
 	    of FUN(lab,cc,lss) => FV_top_decl' (fn lss => FUN(lab,cc,lss)) (cc,lss)
 	     | FN(lab,cc,lss) => FV_top_decl' (fn lss => FN(lab,cc,lss)) (cc,lss)
-      in 
+      in
 	foldr (fn (func,acc) => FV_top_decl func :: acc) [] top_decls
       end
   end
@@ -1370,13 +1334,13 @@ struct
     let
       val _ = chat "[Linearisation..."
       val _ = reset_flow_var_stat()
-      val line_prg = L_clos_prg clos_prg	
-      val line_prg_flow_var = 
+      val line_prg = L_clos_prg clos_prg
+      val line_prg_flow_var =
 	if not (Flags.is_on "disable_flow_var") then
 	  FV_prg line_prg
 	else
 	  line_prg
-      val _ = 
+      val _ =
 	if Flags.is_on "print_linearised_program" then
 	  (print ("Number of functions:      " ^ (Int.toString(length(line_prg))) ^ "\n");
 	   print ("Number of applications:   " ^ (Int.toString(NA_prg line_prg)) ^ "\n");

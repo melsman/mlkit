@@ -53,12 +53,7 @@ fun map f [] = []
 fun revAcc [] ys = ys
         | revAcc (x::xs) ys = revAcc xs (x::ys)
 fun rev xs = revAcc xs []
-(*
-fun eq_integer (x: int, y: int): bool = x = y
-fun eq_string  (x: string, y: string): bool = x = y
-*)
 
-fun eq_integer_curry(x)(y:int) =eq_integer(x,y)
 fun eq_int_pair_curry (x,x')(y,y'): bool =
     eq_integer(x,y) andalso eq_integer(x',y')
 
@@ -182,7 +177,7 @@ fun occurs3 x =
     in diff x3 xover
     end
 
-fun copy_string s=  s(*implode(explode s)*)
+fun copy_string s = s ^ ""
 fun copy_bool true = true
   | copy_bool false = false
 

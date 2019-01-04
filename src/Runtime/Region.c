@@ -716,12 +716,15 @@ void callSbrk() {
   }
 
   /* alignment (martin) */
-  if (( temp = (size_t)((uintptr_t)sb % sizeof(Rp) ))) {
+  if (( temp = (size_t)(((uintptr_t)sb) % sizeof(Rp) ))) {
     sb = sb + sizeof(Rp) - temp;
   }
 
   if ( ! is_rp_aligned((size_t)sb) ) {
     printf ("sb=%p\n", sb);
+    printf ("sizeof(Rp)=%ld\n", sizeof(Rp));
+    printf ("sizeof(uintptr_t)=%ld\n", sizeof(uintptr_t));
+    printf ("temp=%ld\n", temp);
     die("SBRK region page is not properly aligned.");
   }
 

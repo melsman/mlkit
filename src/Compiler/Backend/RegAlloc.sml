@@ -10,7 +10,7 @@ functor RegAlloc(structure CallConv: CALL_CONV
                    sharing type CallConv.cc = LineStmt.cc
 		 structure RI : REGISTER_INFO
 		   where type lvar = Lvars.lvar
-		   where type lvarset = Lvarset.lvarset) 
+		   where type lvarset = Lvarset.lvarset)
     : REG_ALLOC =
 struct
   structure Labels = AddressLabels
@@ -29,7 +29,7 @@ struct
       \you save about 15 percent on compile time."}
 
   val region_profiling = Flags.is_on0 "region_profiling"
-				  
+
   type lvarset = Lvarset.lvarset
   type place = Effect.place
   type excon = Excon.excon
@@ -47,7 +47,7 @@ struct
     STACK_STY of lvar
   | PHREG_STY of lvar * lvar
   | FV_STY    of lvar * label * label
-    
+
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LS.pr_phreg phreg
     | pr_sty(FV_STY(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
@@ -58,9 +58,9 @@ struct
   (* Logging *)
   (***********)
   fun log s = TextIO.output(!Flags.log,s ^ "\n")
-  fun chat(s: string) = if !Flags.chat then print (s ^ "\n") else ()
+  fun chat (s: string) = if !Flags.chat then print (s ^ "\n") else ()
   fun die s  = Crash.impossible ("RegAlloc." ^ s)
-  fun fast_pr stringtree = 
+  fun fast_pr stringtree =
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
      TextIO.output(!Flags.log, "\n"))
 
@@ -85,11 +85,11 @@ struct
   local
     fun mk_sty lv = LS.V lv (* Flow variables are annotated later *)
     fun resolve_args([],lss) = lss
-      | resolve_args((atom,phreg)::args,lss) = 
+      | resolve_args((atom,phreg)::args,lss) =
       resolve_args(args,LS.ASSIGN{pat=atom,bind=LS.ATOM(LS.PHREG phreg)}::lss)
 
     fun resolve_res([],lss) = lss
-      | resolve_res((atom,phreg)::res,lss) = 
+      | resolve_res((atom,phreg)::res,lss) =
       resolve_res(res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM atom}::lss)
 
     fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
@@ -97,7 +97,7 @@ struct
 
     fun CC_ls(LS.FNJMP{opr,args,clos,res,bv},rest) =
       let
-	val ({clos,args,res,...},assign_list_args,assign_list_res) = 
+	val ({clos,args,res,...},assign_list_args,assign_list_res) =
 	  CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
@@ -106,7 +106,7 @@ struct
 	end
 	| CC_ls(LS.FNCALL{opr,args,clos,res,bv},rest) =
 	let
-	  val ({clos,args,res,...},assign_list_args,assign_list_res) = 
+	  val ({clos,args,res,...},assign_list_args,assign_list_res) =
 	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
@@ -115,7 +115,7 @@ struct
 	end
 	| CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,res,bv},rest) =
 	let
-	  val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
+	  val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) =
 	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
@@ -124,7 +124,7 @@ struct
 	end
 	| CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv},rest) =
 	let
-	  val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
+	  val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) =
 	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
@@ -133,7 +133,7 @@ struct
 	end
 	| CC_ls(LS.LETREGION{rhos,body},rest) = LS.LETREGION{rhos=rhos,body=CC_lss body}::rest
 	| CC_ls(LS.SCOPE{pat,scope},rest) = LS.SCOPE{pat=pat,scope=CC_lss scope}::rest
-	| CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset},rest) = 
+	| CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset},rest) =
 	LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv,bv),offset=offset}::rest
 	| CC_ls(LS.HANDLE{default,handl,handl_return,offset},rest) = die "CC_ls: handl_return in HANDLE not empty"
 	| CC_ls(LS.SWITCH_I {switch,precision},rest) = LS.SWITCH_I {switch=CC_sw CC_lss switch,
@@ -143,18 +143,18 @@ struct
 	| CC_ls(LS.SWITCH_S sw,rest) = LS.SWITCH_S(CC_sw CC_lss sw)::rest
 	| CC_ls(LS.SWITCH_C sw,rest) = LS.SWITCH_C(CC_sw CC_lss sw)::rest
 	| CC_ls(LS.SWITCH_E sw,rest) = LS.SWITCH_E(CC_sw CC_lss sw)::rest
-	| CC_ls(LS.CCALL{name,args,rhos_for_result,res},rest) = 
+	| CC_ls(LS.CCALL{name,args,rhos_for_result,res},rest) =
 	let
-	  val ({args,rhos_for_result,res},assign_list_args,assign_list_res) = 
+	  val ({args,rhos_for_result,res},assign_list_args,assign_list_res) =
 	    CallConv.resolve_ccall RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG {args=args,rhos_for_result=rhos_for_result,res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.CCALL_AUTO{name,args,res},rest) = 
+	| CC_ls(LS.CCALL_AUTO{name,args,res},rest) =
 	let
-	  val ({args,res},assign_list_args,assign_list_res) = 
+	  val ({args,res},assign_list_args,assign_list_res) =
 	    CallConv.resolve_ccall_auto RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG {args=args,res=res}
 	in
 	  resolve_res(assign_list_args,
@@ -162,29 +162,29 @@ struct
 		      resolve_args(assign_list_res,rest))
 	end
 	| CC_ls (ls,rest) = ls::rest
-	
+
       and CC_lss(lss) = List.foldr (fn (ls,acc) => CC_ls(ls,acc)) [] lss
   in
-      fun CC_top_decl(LS.FUN(lab,cc,lss)) = 
+      fun CC_top_decl(LS.FUN(lab,cc,lss)) =
 	let
 	  val (cc',args,res) = CallConv.resolve_cc RI.args_phreg RI.res_phreg cc
 	  val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
 	  val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
-	  val body_args = 
+	  val body_args =
 	     LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
 	  val body_res =
 	    LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
 	in
 	  LS.FUN(lab,cc',[body_res])
 	end
-	| CC_top_decl(LS.FN(lab,cc,lss)) = 
+	| CC_top_decl(LS.FN(lab,cc,lss)) =
 	let
 	  val (cc',args,res) = CallConv.resolve_cc RI.args_phreg RI.res_phreg cc
 	  val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
 	  val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
-	  val body_args = 
+	  val body_args =
 	    LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
 	  val body_res =
 	    LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
@@ -203,10 +203,10 @@ struct
    * ----------------------------- *)
 
   fun ra_assign (assign : StoreTypeLI -> StoreType) lss =
-    let 
+    let
       fun ra_assign_sw ra_assign_lss (LS.SWITCH(atom_arg,sels,default)) =
 	LS.SWITCH(atom_arg,map (fn (s,lss) => (s,ra_assign_lss lss)) sels, ra_assign_lss default)
-	
+
       fun ra_assign_ls ls =
 	case ls
 	  of LS.ASSIGN a => LS.ASSIGN a
@@ -218,14 +218,14 @@ struct
 	   | LS.FUNCALL a => LS.FUNCALL a
 	   | LS.LETREGION{rhos,body} => LS.LETREGION{rhos=rhos,body=ra_assign_lss body}
 	   | LS.SCOPE{pat,scope} => LS.SCOPE{pat=map assign pat,scope=ra_assign_lss scope}
-	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} => 
+	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} =>
 	    LS.HANDLE{default=ra_assign_lss default,handl=(ra_assign_lss handl,handl_lv),
 		      handl_return=([],handl_return_lv,bv),offset=offset}
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ra_dummy_ls: handl_return in HANDLE not empty"
 	   | LS.RAISE{arg,defined_atys} => LS.RAISE{arg=arg,defined_atys=defined_atys}
-	   | LS.SWITCH_I {switch,precision} => LS.SWITCH_I{switch=ra_assign_sw ra_assign_lss switch, 
+	   | LS.SWITCH_I {switch,precision} => LS.SWITCH_I{switch=ra_assign_sw ra_assign_lss switch,
 							   precision=precision}
-	   | LS.SWITCH_W {switch,precision} => LS.SWITCH_W{switch=ra_assign_sw ra_assign_lss switch, 
+	   | LS.SWITCH_W {switch,precision} => LS.SWITCH_W{switch=ra_assign_sw ra_assign_lss switch,
 							   precision=precision}
 	   | LS.SWITCH_S sw => LS.SWITCH_S(ra_assign_sw ra_assign_lss sw)
 	   | LS.SWITCH_C sw => LS.SWITCH_C(ra_assign_sw ra_assign_lss sw)
@@ -235,26 +235,26 @@ struct
 	   | LS.CCALL a => LS.CCALL a
 	   | LS.CCALL_AUTO a => LS.CCALL_AUTO a
 	   | LS.EXPORT a => LS.EXPORT a
-	    
+
       and ra_assign_lss lss = List.foldr (fn (ls,acc) => ra_assign_ls ls :: acc) [] lss
-	
+
     in ra_assign_lss lss
     end
-  
+
   (* -----------------------------------
    * Dummy Assignment; implement all
    * lambda variables on the stack.
    * ----------------------------------- *)
 
   fun ra_dummy_prg funcs =
-    let 
-      fun assign(LS.V lv) = STACK_STY lv	
+    let
+      fun assign(LS.V lv) = STACK_STY lv
 	| assign(LS.FV lv) = FV_STY lv
       fun ra_assign_func assign func =
-	case func 
+	case func
 	  of LS.FUN(lab,cc,lss) => LS.FUN(lab,cc,ra_assign assign lss)
 	   | LS.FN(lab,cc,lss) => LS.FN(lab,cc,ra_assign assign lss)
-    in 
+    in
       foldr (fn (func,acc) => ra_assign_func assign (CC_top_decl func) :: acc) [] funcs
     end
 
@@ -266,7 +266,7 @@ struct
   (* Invariant: no_of_nodes = coalesce + spills + assigned_colors            *)
   (* Invariant: no_of_moves = coalesced_moves+constrained_moves+frozen_moves *)
   (* We do not consider pre-colored variables.                               *)
-  local 
+  local
     val no_of_nodes     = ref 0
     val spills          = ref 0
     val assigned_colors = ref 0
@@ -281,7 +281,7 @@ struct
     val ml_call = ref 0
   in
     fun fix_int i = StringCvt.padLeft #" " 7 (Int.toString i)
-    fun procent(t:int,b:int) = 
+    fun procent(t:int,b:int) =
       if b=0 then
 	"(---)"
       else
@@ -340,7 +340,7 @@ struct
     | coloredNodes_enum => "colored"
     | selectStack_enum => "select"
 
-  datatype live_range_status = 
+  datatype live_range_status =
     no_call | c_call | ml_call (* Does the live range cross a c-call or a ml-call. *)
 
   fun merge_lrs(no_call,s2) = s2
@@ -357,13 +357,13 @@ struct
   fun key' (n : node) = key(#lv n)
 
   (* Precolored nodes *)
-  val precolored : node list = 
+  val precolored : node list =
     map (fn lv => {lv=lv,degree=ref 0, mv_related=ref NONE,
 		   worklist=ref precolored_enum, adjList=ref nil,
 		   alias = ref NONE, color=ref (SOME lv),
 		   lrs = ref no_call, uses = ref 0})
-    RI.caller_save_phregs  
-  fun reset_precolored() = 
+    RI.caller_save_phregs
+  fun reset_precolored() =
     app (fn ({lv,degree, mv_related, worklist, adjList, alias, color, lrs, uses} : node) =>
 	 (degree:=0; mv_related:=NONE; worklist:=precolored_enum;
 	  adjList:=nil; alias:=NONE; color:=SOME lv; lrs:=no_call; uses:=0))
@@ -376,29 +376,29 @@ struct
   val initial : node list ref = ref []
   val simplifyWorklist : node list ref = ref []
   val freezeWorklist : node list ref = ref []
-  val spillWorklist : node list ref = ref [] 
+  val spillWorklist : node list ref = ref []
   val spilledNodes : node list ref = ref []
   val coalescedNodes : node list ref = ref []
   val coloredNodes : node list ref = ref []
   val selectStack : node list ref = ref []
-    
+
   fun worklistsReset () =
     (initial := nil; simplifyWorklist := nil;
      freezeWorklist := nil; spillWorklist := nil;
      spilledNodes := nil; coalescedNodes := nil;
      coalescedNodes := nil; coloredNodes := nil;
      selectStack := nil)
-    
+
   fun isEmpty nil = true
     | isEmpty _ = false
-    
-  local 
-    fun norm (wle:worklist_enum) (wl:node list ref) : unit = 
+
+  local
+    fun norm (wle:worklist_enum) (wl:node list ref) : unit =
       wl := List.filter (fn n => !(#worklist n) = wle) (!wl)
     fun norm_simplifyWorklist () = norm simplifyWorklist_enum simplifyWorklist
     fun norm_freezeWorklist() = norm freezeWorklist_enum freezeWorklist
     fun norm_spillWorklist() = norm spillWorklist_enum spillWorklist
-  in 
+  in
     fun isEmpty_simplifyWorklist() =
       (norm_simplifyWorklist(); isEmpty(!simplifyWorklist))
     fun isEmpty_freezeWorklist() =
@@ -420,24 +420,24 @@ struct
 
   datatype movelist_enum = coalescedMoves_enum | constrainedMoves_enum |
     frozenMoves_enum | worklistMoves_enum | activeMoves_enum
-    
+
   type move = {lv1:lvar, lv2:lvar, movelist:movelist_enum ref} (* why is a move not an instruction? There may be several moves from lv1 into lv2; hmm, no because we use SML *)
-    
+
   (* Move lists *)
   val coalescedMoves : move list ref = ref []
   val constrainedMoves : move list ref = ref []
   val frozenMoves : move list ref = ref []
   val worklistMoves : move list ref = ref []
   val activeMoves : move list ref = ref []
-    
+
   fun movelistsReset() =
     (coalescedMoves := nil; constrainedMoves := nil;
      frozenMoves := nil; worklistMoves := nil; activeMoves := nil)
-    
+
   local
-    fun norm (mle:movelist_enum) (ml:move list ref) : unit= 
+    fun norm (mle:movelist_enum) (ml:move list ref) : unit=
       ml := List.filter (fn m => !(#movelist m) = mle) (!ml)
-  in 
+  in
     fun norm_worklistMoves () = norm worklistMoves_enum worklistMoves
     fun isEmpty_worklistMoves() =
       (norm_worklistMoves(); isEmpty(!worklistMoves))
@@ -458,9 +458,9 @@ struct
     val nTable : (int*node)list Array.array = Array.array (512,nil)
     fun hash i = Word.toInt(Word.andb(Word.fromInt i, 0w511))
   in
-    fun nTableLookup i : node option = 
+    fun nTableLookup i : node option =
       let fun find [] = NONE
-	    | find ((i',e)::is) = if i=i' then SOME e else find is 
+	    | find ((i',e)::is) = if i=i' then SOME e else find is
       in find (Array.sub(nTable, hash i))
       end
     fun nTableAdd (i:int,n:node) : unit =
@@ -491,9 +491,9 @@ struct
     fun hash i = Word.toInt(Word.andb(Word.fromInt i, 0w511))
   in
     fun moveListReset () : unit = Array.modify (fn _ => nil) mTable
-    fun moveListLookup i : move list = 
+    fun moveListLookup i : move list =
       let fun find [] = nil
-	    | find ((i',ms)::is) = if i=i' then ms else find is 
+	    | find ((i',ms)::is) = if i=i' then ms else find is
       in find (Array.sub(mTable, hash i))
       end
     fun moveListAdd (i:int,m:move) : unit =
@@ -509,26 +509,26 @@ struct
     structure M = IntFinMap
     val mTable : (move list ref) M.map ref = ref M.empty
   in
-    fun moveListLookup i : move list = 
+    fun moveListLookup i : move list =
       case M.lookup (!mTable) i
-	of SOME rl => !rl 
+	of SOME rl => !rl
 	 | NONE => nil
-    fun moveListAdd (i:int, m:move) : unit = 
+    fun moveListAdd (i:int, m:move) : unit =
       case M.lookup (!mTable) i
 	of SOME rl => rl := m :: !rl
 	 | NONE => mTable := M.add(i,ref [m],!mTable)
     fun moveListReset() = mTable := M.empty
   end
 (*
-  local 
+  local
     val adjSet : (int*int)list Array.array = Array.array (1024,nil)
     fun hash (i1,i2) = Word.toInt(Word.andb(0w65599 * Word.fromInt i1 + Word.fromInt i2, 0w1023))
     fun order (i1:int,i2:int) = if i2 < i1 then (i2,i1) else (i1,i2)
     fun find (p:int*int) [] = false
       | find p ((p':int*int)::ps) = (#1 p' = #1 p andalso #2 p' = #2 p) orelse find p ps
-  in 
+  in
     fun adjSetReset() : unit = Array.modify (fn _ => nil) adjSet
-    fun adjSetMember (p:int*int) : bool = 
+    fun adjSetMember (p:int*int) : bool =
       let val p = order p
       in find p (Array.sub(adjSet, hash p))
       end
@@ -545,12 +545,12 @@ struct
     structure M = IntFinMap
     val adjSet : (S.Set ref) M.map ref = ref M.empty
   in
-    fun adjSetMember (i1,i2) : bool = 
+    fun adjSetMember (i1,i2) : bool =
       if i1 < i2 then (case M.lookup (!adjSet) i1
 			 of SOME s => S.member (Word.fromInt i2) (!s)
 			  | NONE => false)
       else adjSetMember(i2,i1)
-    fun adjSetAdd (i1,i2) : unit = 
+    fun adjSetAdd (i1,i2) : unit =
       if i1 < i2 then (case M.lookup (!adjSet) i1
 			 of SOME s => if S.member (Word.fromInt i2) (!s) then ()
 				      else s := S.insert (Word.fromInt i2) (!s)
@@ -559,21 +559,21 @@ struct
     fun adjSetReset() = adjSet := M.empty
   end
 
-  fun raReset () = (worklistsReset(); movelistsReset(); nTableReset(); 
+  fun raReset () = (worklistsReset(); movelistsReset(); nTableReset();
 		    moveListReset(); adjSetReset(); reset_precolored())
 
   fun lvarset_atom a = Lvarset.lvarsetof(LS.get_var_atom(a,nil))
 
   fun Adjecent (n:node) : node list =
     foldl (fn (lv,acc) => case nTableLookup (key lv)
-			    of SOME n => 
+			    of SOME n =>
 			      (case !(#worklist n)
 				 of selectStack_enum => acc
 				  | coalescedNodes_enum => acc
 				  | _ => n::acc)
 			     | NONE => die "Adjecent") nil (!(#adjList n))
 
-  fun NodeMoves (n:node) : move list = 
+  fun NodeMoves (n:node) : move list =
     foldl (fn (m,acc) => case !(#movelist m)
 			   of activeMoves_enum => m::acc   (* nodes that have never been potentially *)
 			    | worklistMoves_enum => m::acc (* nodes that are already potentially *)
@@ -582,31 +582,37 @@ struct
   fun MoveRelated (n:node) : bool = case NodeMoves n
 				      of nil => false
 				       | _ => true
-    
+
   fun EnableMoves (nodes:node list) : unit =
     app (fn n => app (fn m => case !(#movelist m)
 				of activeMoves_enum => worklistMovesAdd m
 				 | _ => ()) (NodeMoves n)) nodes
 
-  fun GetAlias (k : int) : node =
+  fun GetAlias (lv:lvar) (k : int) : node =
     case nTableLookup k
       of SOME n =>
-	if !(#worklist n) = coalescedNodes_enum then 
+	if !(#worklist n) = coalescedNodes_enum then
 	  case !(#alias n)
-	    of SOME i => GetAlias i
-	     | NONE => die "GetAlias.1"
+	    of SOME i => GetAlias (#lv n) i
+	     | NONE => die ("GetAlias.1: lvar=" ^ Lvars.pr_lvar lv)
 	else n
-       | NONE => die "GetAlias.2"
+       | NONE => die ("GetAlias.2: lvar=" ^ Lvars.pr_lvar lv)
 
-  fun pr_node ({lv,degree,mv_related,worklist = ref wl,adjList,alias = ref NONE,color = ref (SOME color_lv),lrs,uses}:node) = 
-    "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:NONE,color:" ^ 
+  fun GetAliasLv (lv:lvar) : node =
+      GetAlias lv (key lv)
+
+  fun GetAliasNode (n:node) : node =
+      GetAliasLv (#lv n)
+
+  fun pr_node ({lv,degree,mv_related,worklist = ref wl,adjList,alias = ref NONE,color = ref (SOME color_lv),lrs,uses}:node) =
+    "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:NONE,color:" ^
     Lvars.pr_lvar color_lv ^ ",wl:" ^ pr_worklist wl ^ "}"
-    | pr_node {lv,degree,mv_related,worklist = ref wl,adjList,alias = ref (SOME a_id),color = ref (SOME color_lv),lrs,uses} = 
-    "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^ 
-    Lvars.pr_lvar (#lv(GetAlias a_id)) ^ ",color:" ^ Lvars.pr_lvar color_lv ^ ",wl:" ^ pr_worklist wl ^ "}"
-    | pr_node {lv,degree,mv_related,worklist = ref wl,adjList,alias = ref (SOME a_id),color = ref NONE,lrs,uses} = 
-    "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^ 
-    Lvars.pr_lvar (#lv(GetAlias a_id)) ^ ",wl:" ^ pr_worklist wl ^ ",color:NONE}"
+    | pr_node {lv,degree,mv_related,worklist = ref wl,adjList,alias = ref (SOME a_id),color = ref (SOME color_lv),lrs,uses} =
+    "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^
+    Lvars.pr_lvar (#lv(GetAlias lv a_id)) ^ ",color:" ^ Lvars.pr_lvar color_lv ^ ",wl:" ^ pr_worklist wl ^ "}"
+    | pr_node {lv,degree,mv_related,worklist = ref wl,adjList,alias = ref (SOME a_id),color = ref NONE,lrs,uses} =
+    "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",alias:" ^
+    Lvars.pr_lvar (#lv(GetAlias lv a_id)) ^ ",wl:" ^ pr_worklist wl ^ ",color:NONE}"
     | pr_node {lv,degree,mv_related,worklist = ref wl,adjList,alias = ref NONE,color = ref NONE,lrs,uses} =
     "{key: " ^ Int.toString (key lv) ^ ",lv:" ^ Lvars.pr_lvar lv ^ ",wl:" ^ pr_worklist wl ^ ",alias:NONE,color:NONE}"
 
@@ -617,7 +623,7 @@ struct
     in #degree m := d - 1;
        if d = K then
 	 (EnableMoves(m :: Adjecent m);
-	  if MoveRelated m then freezeWorklistAdd m 
+	  if MoveRelated m then freezeWorklistAdd m
 	  else simplifyWorklistAdd m)
        else ()
     end
@@ -635,37 +641,37 @@ struct
   fun AddEdge (u : lvar ,v : lvar) : unit =
     let
       val (u_key, v_key) = (key u, key v)
-    in 
+    in
       if u_key = v_key orelse adjSetMember(u_key, v_key) then ()
-       else 
-	 (adjSetAdd(u_key,v_key); 
+       else
+	 (adjSetAdd(u_key,v_key);
 	  case nTableLookup u_key
 	    of SOME u_node =>
 	      (case nTableLookup v_key
-		 of SOME v_node => 
-		   (if !(#worklist u_node) <> precolored_enum then 
+		 of SOME v_node =>
+		   (if !(#worklist u_node) <> precolored_enum then
 		      ((#adjList u_node) := v :: !(#adjList u_node);
 		       (#degree u_node) := !(#degree u_node) + 1)
 		    else ();
-		      if !(#worklist v_node) <> precolored_enum then 
+		      if !(#worklist v_node) <> precolored_enum then
 			((#adjList v_node) := u :: !(#adjList v_node);
 			 (#degree v_node) := !(#degree v_node) + 1)
 		      else ())
 		  | NONE => () (*mael die ("AddEdge.nTableLookup v_key: " ^ Lvars.pr_lvar v) *))
 	     | NONE => () (*mael die ("AddEdge.nTableLookup u_key: " ^ Lvars.pr_lvar u) *))
-    end	    
+    end
 
   fun MakeWorklist() =
-    let 
+    let
       fun do_n n =
-	if !(#degree n) >= K then 
+	if !(#degree n) >= K then
 	  spillWorklistAdd n
-	else 
-	  if MoveRelated n then 
+	else
+	  if MoveRelated n then
 	    freezeWorklistAdd n
-	  else 
+	  else
 	    simplifyWorklistAdd n
-    in 
+    in
       app do_n (!initial)
     end
 
@@ -702,9 +708,9 @@ struct
   fun Coalesce() : unit = (* invariant : worklistMoves is normalised and non-empty *)
     case !worklistMoves
       of (m as {lv1,lv2,movelist}) :: _ =>
-	let 
-	  val x = GetAlias (key lv1)
-	  val y = GetAlias (key lv2)
+	let
+	  val x = GetAliasLv lv1
+	  val y = GetAliasLv lv2
 	  val (u,v) = if !(#worklist y) = precolored_enum then (y,x)
 		      else (x,y)
 	in if key' u = key' v then (coalescedMovesAdd m;
@@ -715,7 +721,7 @@ struct
 	      constrainedMovesAdd m;
 	      AddWorkList u;
 	      AddWorkList v)
-	   else if     (!(#worklist u) = precolored_enum andalso 
+	   else if     (!(#worklist u) = precolored_enum andalso
 	               (foldl (fn (t, acc) => acc andalso OK(t,u)) true (Adjecent v)))
 	              orelse
 		       (!(#worklist u) <> precolored_enum andalso
@@ -731,8 +737,8 @@ struct
 
   fun FreezeMoves (u: node) : unit =
     let fun on_move (m as {lv1=x,lv2=y,movelist}) : unit =
-          let val v = if key'(GetAlias (key y)) = key'(GetAlias(key' u)) then GetAlias(key x)
-		      else GetAlias(key y)
+          let val v = if key'(GetAliasLv y) = key'(GetAliasNode u) then GetAliasLv x
+		      else GetAliasLv y
 	  in
 	    inc_frozen();
 	    frozenMovesAdd m;
@@ -756,12 +762,12 @@ struct
       fun pri (n:node) = Real.fromInt(!(#uses n)) / Real.fromInt(!(#degree n))  (**lrs_factor(!(#lrs n))06/04/1999, Niels*)
       fun select_spill() = (* use lowest priority: uses/degree*lrs_factor *)
 	case !spillWorklist of
-	  m :: rest => #1(foldl (fn (n,(m,mpri)) => 
+	  m :: rest => #1(foldl (fn (n,(m,mpri)) =>
 				 let val npri = pri n
 				 in if mpri < npri then (m,mpri) else (n,npri) end) (m,pri m) rest)
 	| _ => die "SelectSpill.select_spill"
 
-      fun order_mv_related(n:node,m:node) = 	  
+      fun order_mv_related(n:node,m:node) =
 	if List.length(NodeMoves n) < List.length(NodeMoves m) then n else m
       fun select_spill2() = (* spill non-move related nodes *)
 	case !spillWorklist of
@@ -785,7 +791,7 @@ struct
 	if !(#lrs n) = ml_call then
 	  (inc_ml_call(); assign_color(n,RI.callee_save_ccall_phregset,RI.caller_save_phregset,notOkColors))
 	else
-	  if !(#lrs n) = c_call then 
+	  if !(#lrs n) = c_call then
 	    (inc_c_call(); assign_color(n,RI.callee_save_ccall_phregset,RI.caller_save_phregset,notOkColors))
 	  else
 	    (inc_no_call(); assign_color(n,RI.caller_save_phregset,RI.callee_save_ccall_phregset,notOkColors))
@@ -793,34 +799,34 @@ struct
 (*
       fun find_color_simple (n:node,notOkColors) =
 	let
-	  val okColors = Lvarset.difference(allColors,notOkColors) 
+	  val okColors = Lvarset.difference(allColors,notOkColors)
 	in
 	  case Lvarset.members okColors
 	    of nil => (spilledNodesAdd (n:node); inc_spills())
 	     | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors())
 	end
-*)		
+*)
       fun pop_loop (ns : node list) =
 	case ns
 	  of nil => app (fn n => if !(#worklist n) = coalescedNodes_enum then
-			 (#color n := !(#color(GetAlias(key' n))); inc_assigned_colors())
+			 (#color n := !(#color(GetAliasNode n)); inc_assigned_colors())
 				 else ()) (!coalescedNodes)
 	   | n::ns =>
-	    let 
+	    let
 	      val _ = if !(#worklist n) = coalescedNodes_enum then die "assigning color to coalesced node" else ()
-	      val notOkColors = 
+	      val notOkColors =
 		foldl (fn (w:lvar,set) =>
-		       let val n = GetAlias(key w)
+		       let val n = GetAliasLv w
 		       in if (case !(#worklist n)
 				of coloredNodes_enum => true
 				 | precolored_enum => true
 				 | _ => false) then
-			 case !(#color(GetAlias(key w)))
+			 case !(#color(GetAliasLv w))
 			   of SOME c => Lvarset.add(set,c)
 			    | NONE => die "pop_loop"
 			  else set
 		       end) Lvarset.empty (!(#adjList n))
-	    in 
+	    in
 	      find_color(*_simple*)(n,notOkColors);
 	      pop_loop ns
 	    end
@@ -831,57 +837,59 @@ struct
    * the function on the stack! *)
 
   fun MakeInitial (args_on_stack_lvs, lss) =
-    let 
-      fun add_use lv = 
-	let 
-	  val i = key lv 
+    let
+      fun add_use lv =
+	let
+	  val i = key lv
 	in
 	  case nTableLookup i
 	    of SOME n => #uses n := !(#uses n) + 1
 	     | NONE => () (*mael die ("MakeInitial.add_use: " ^ Lvars.pr_lvar lv ^ " not in nTableLookup") *)
 	end
-      fun add lv = 
-	let 
-	  val i = key lv 
-	in 
+      fun add lv =
+	let
+	  val i = key lv
+	in
 	  case nTableLookup i
 	    of SOME n => () (* Multiple definition in switch *)
-	     | NONE => let 
+	     | NONE => let
 			 val n : node = {lv=lv,degree=ref 0, mv_related=ref NONE,
 					 worklist=ref initial_enum, adjList=ref nil,
 					 alias = ref NONE, color=ref NONE,
 					 lrs = ref no_call, uses = ref 0}
-		       in 
+		       in
 			 nTableAdd(i,n); initial := n :: !initial; inc_initial()
 		       end
 	end
       fun mk_sw mk (LS.SWITCH(a,sels,default)) =
-	(app add_use (LS.get_var_atom(a,nil)); 
-	 app (fn (_,lss) => app mk lss) sels; 
+	(app add_use (LS.get_var_atom(a,nil));
+	 app (fn (_,lss) => app mk lss) sels;
 	 app mk default)
+      fun default ls =
+          let val (def,use) = LS.def_use_lvar_ls ls
+	  in app add def;
+	     app add_use use
+	  end
       fun mk ls =
 	case ls
 	  of LS.FLUSH _ => die "MakeInitial: FLUSH not inserted yet."
 	   | LS.FETCH _ => die "MakeInitial: FETCH not inserted yet."
 	   | LS.LETREGION{rhos,body} => app mk body
 	   | LS.SCOPE{pat,scope} => app mk scope
-	   | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv,bv),offset} => 
+	   | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv,bv),offset} =>
 	    (app add (LS.get_var_atom (handl_lv,nil));
 	     app add (LS.get_var_atom (handl_return_lv,nil));
 	     app mk handl_lss;
-	     app mk default;  
+	     app mk default;
 	     app mk handl_return_lss)
 	   | LS.SWITCH_I {switch,precision} => mk_sw mk switch
 	   | LS.SWITCH_W {switch,precision} => mk_sw mk switch
 	   | LS.SWITCH_S sw => mk_sw mk sw
 	   | LS.SWITCH_C sw => mk_sw mk sw
 	   | LS.SWITCH_E sw => mk_sw mk sw
-	   | _ => let 
-		    val (def,use) = LS.def_use_lvar_ls ls
-		  in 
-		    app add def; 
-		    app add_use use
-		  end
+           | ls as LS.CCALL _ => (app add RI.args_phreg_ccall; default ls)
+           | ls as LS.CCALL_AUTO _ => (app add RI.args_phreg_ccall; default ls)
+	   | ls => default ls
     in app mk lss
     end
 
@@ -890,8 +898,8 @@ struct
    * the IG because they are not to be colored. *)
 
   fun Build (args_on_stack_lvs, lss) =
-    let 
-      fun set_lrs_status new_s lv = 
+    let
+      fun set_lrs_status new_s lv =
 	case nTableLookup (key lv)
 	  of SOME {lrs = (lrs as ref old_s),...} => lrs := merge_lrs(old_s,new_s)
 	   | NONE => die "set_lrs_status - nTableLookup failed"
@@ -903,21 +911,21 @@ struct
       fun use_var_ls ls = Lvarset.difference(Lvarset.lvarsetof(LS.use_var_ls ls), args_on_stack_lvs)
 
       fun ig_sw (ig_lss, LS.SWITCH (a, sel, def), L) =
-	let val Ls = map (fn (_, lss) => ig_lss(lss, L)) sel 
+	let val Ls = map (fn (_, lss) => ig_lss(lss, L)) sel
 	    val L = foldl Lvarset.union (ig_lss(def,L)) Ls
 	in Lvarset.union (L, Lvarset.difference(lvarset_atom a, args_on_stack_lvs))
 	end
       fun do_non_tail_call (L, ls) =
-	let 
+	let
 	  val (def, use) = def_use_var_ls ls  (* def=flv(res) *)
 	  val lvars_to_flush = Lvarset.difference(L,def)
-	  val _ = 
+	  val _ =
 	    case ls of
 	      LS.CCALL _ => lvarset_app (set_lrs_status c_call) lvars_to_flush
 	    | LS.CCALL_AUTO _ => lvarset_app (set_lrs_status c_call) lvars_to_flush
 	    | _ => lvarset_app (set_lrs_status ml_call) lvars_to_flush
 	  val L = Lvarset.union(L,def)  (* We insert edges between def'ed variables *)
-	  val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) L) def 
+	  val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) L) def
 	  val L = Lvarset.union(use, lvars_to_flush(*Lvarset.difference(L,def)*))
 	in L
 	end
@@ -945,13 +953,13 @@ struct
 	  (lvarset_app (fn l => AddEdge(l,lv1)) L;
 	   Lvarset.delete(L,lv1))
         else
-	let 
+	let
 	  val _ = inc_moves()
 	  val move : move = {lv1=lv1, lv2=lv2, movelist=ref worklistMoves_enum}
 	  val _ = (moveListAdd(key lv1, move); moveListAdd(key lv2, move))
-	  val _ = worklistMovesAdd move 
-	  val _ = lvarset_app (fn l => AddEdge(l,lv1)) (Lvarset.delete(L,lv2)) 
-	  val L = Lvarset.add(Lvarset.delete(L,lv1),lv2) 
+	  val _ = worklistMovesAdd move
+	  val _ = lvarset_app (fn l => AddEdge(l,lv1)) (Lvarset.delete(L,lv2))
+	  val L = Lvarset.add(Lvarset.delete(L,lv1),lv2)
 	in L
 	end
       fun remove_finite_rhos([]) = []
@@ -961,14 +969,14 @@ struct
 	case ls
 	  of LS.FLUSH _ => die "ig_ls: FLUSH not inserted yet."
 	   | LS.FETCH _ => die "ig_ls: FETCH not inserted yet."
-	   | LS.FNJMP _ => do_tail_call(L,ls) 
+	   | LS.FNJMP _ => do_tail_call(L,ls)
 	   | LS.FNCALL _ => do_non_tail_call(L,ls)
-	   | LS.JMP _ => do_tail_call(L,ls) 
+	   | LS.JMP _ => do_tail_call(L,ls)
 	   | LS.FUNCALL _ => do_non_tail_call(L,ls)
-	   | LS.LETREGION{rhos,body} => 
+	   | LS.LETREGION{rhos,body} =>
 	    let
 	      val L' = ig_lss(body,L)
-		
+
 	      (* Infinite letregions involve C calls and so do
 	       * finite regions when profiling is enabled. C calls
 	       * are involved both at entrance to the body and at
@@ -979,9 +987,9 @@ struct
 	       * setting is not crucial for soundness of the
 	       * register allocator. *)
 
-	      (* Update live range status for live variables, if C 
+	      (* Update live range status for live variables, if C
 	       * calls are involved. *)
-	      val _ = if List.null rhos orelse ( not(region_profiling()) 
+	      val _ = if List.null rhos orelse ( not(region_profiling())
 						 andalso List.null (remove_finite_rhos rhos) ) then ()
 		      else (lvarset_app (set_lrs_status c_call) L ;
 			    lvarset_app (set_lrs_status c_call) L')
@@ -1063,18 +1071,18 @@ struct
 	move_set := EdgeSet.insert (s1,s2) (!move_set)
       else
 	move_set := EdgeSet.insert (s2,s1) (!move_set)
-    fun pp_edge (s1,s2,linestyle) = 
+    fun pp_edge (s1,s2,linestyle) =
       "edge: {arrowstyle: none linestyle: " ^ linestyle ^ " sourcename: \"" ^ s1 ^ "\" targetname: \"" ^ s2 ^ "\" }\n"
     fun export_nodes stream =
-      let 
-	fun do_n (n : node) = 
+      let
+	fun do_n (n : node) =
 	  (TextIO.output(stream, "node: { title:\"" ^ pr_node n ^ "\" label:\"" ^ pr_node n ^ "\" }\n");
 	   List.app (fn lv => add_edge(pr_node n, Lvars.pr_lvar lv)) (!(#adjList n));
 	   List.app (fn (m:move) => add_move(Lvars.pr_lvar (#lv1 m),Lvars.pr_lvar (#lv2 m))) (NodeMoves n))
 	fun export_edges() =
 	  (EdgeSet.apply (fn (s1,s2) => TextIO.output(stream, pp_edge(s1,s2,"continuous"))) (!edge_set);
 	   EdgeSet.apply (fn (s1,s2) => TextIO.output(stream, pp_edge(s1,s2, "dotted"))) (!move_set))
-      in 
+      in
 	(app do_n (!initial);
 	 app do_n precolored;
 	 export_edges())
@@ -1095,7 +1103,7 @@ struct
       else
 	()
   end
-    
+
   fun ra_body (fun_name, args_on_stack_lvs, lss) =
     let fun repeat() =
       (if not(isEmpty_simplifyWorklist()) then Simplify()
@@ -1106,31 +1114,38 @@ struct
 			       if isEmpty_simplifyWorklist() andalso isEmpty_worklistMoves()
 				 andalso isEmpty_freezeWorklist() andalso isEmpty_spillWorklist() then ()
 			       else repeat())
-	 
-	fun assign(LS.V lv) = 
+
+	fun assign(LS.V lv) =
 	  (case nTableLookup (key lv)
-	    of SOME n => 
+	    of SOME n =>
 	      (case !(#color n)
 		 of SOME c => PHREG_STY (lv,c)
 		  | NONE => STACK_STY lv)
 	     | NONE => die "ra_body.assign: lvar not assigned a color")
-	  | assign(LS.FV lv) = FV_STY lv 
-	
-	val _ = (raReset(); 
+	  | assign(LS.FV lv) = FV_STY lv
+
+	val _ = (raReset();
 		 MakeInitial (args_on_stack_lvs, lss);
-		 Build (args_on_stack_lvs, lss); 
-		 export_ig ("/net/skuld/vol/topps/disk02/MLKIT-afterVersion1/niels/.trash/" ^ fun_name ^ ".vcg");
-		 MakeWorklist(); 
-		 repeat(); 
-		 AssignColors())
-	  
+                 (*print ("MakeInitial done - " ^ fun_name ^ "\n");*)
+		 Build (args_on_stack_lvs, lss);
+                 (*print ("Build done\n");*)
+		 (*export_ig ("/net/skuld/vol/topps/disk02/MLKIT-afterVersion1/niels/.trash/" ^ fun_name ^ ".vcg");*)
+		 MakeWorklist();
+                 (*print ("MakeWorklist done\n");*)
+		 repeat();
+                 (*print ("repeat done\n");*)
+		 AssignColors();
+                 (*print ("AssignColors done\n");*)
+                 ()
+                )
+
 	val res = ra_assign assign lss
     in raReset(); res
     end
-  
+
   fun ra_top_decl f =
-    let 
-      val f = CC_top_decl f 
+    let
+      val f = CC_top_decl f
 
       fun process (lab,cc,lss) =
 	let val args_on_stack_lvs = Lvarset.lvarsetof(CallConv.get_spilled_args cc)
@@ -1139,16 +1154,16 @@ struct
 
     in (* fast_pr (LineStmt.layout_line_prg LineStmt.pr_sty (fn _ => "") pr_atom false [f]);  *)
       case f
-	of LS.FUN f => LS.FUN(process f) 
+	of LS.FUN f => LS.FUN(process f)
 	 | LS.FN f => LS.FN(process f)
     end
 
-  fun ra_prg funcs = 
+  fun ra_prg funcs =
     foldr (fn (func,acc) => ra_top_decl func :: acc) [] funcs
-    
-  (******************************************************)
-  (* Funtion to invoke the register allocator of choice *)
-  (******************************************************)
+
+  (*******************************************************)
+  (* Function to invoke the register allocator of choice *)
+  (*******************************************************)
   fun ra_main {main_lab:label,
 	       code=line_prg: (StoreTypeLI,unit,Atom) LinePrg,
 	       imports:label list * label list,
@@ -1157,9 +1172,9 @@ struct
       val _ = chat "[Register allocation..."
       val _ = reset_stat()
       val line_prg_ra = ra_prg line_prg
-      val _ = 
+      val _ =
 	if Flags.is_on "print_register_allocated_program" then
-	  display("\nReport: AFTER REGISTER ALLOCATION", 
+	  display("\nReport: AFTER REGISTER ALLOCATION",
 		  LS.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_ra)
 	else
 	  ()

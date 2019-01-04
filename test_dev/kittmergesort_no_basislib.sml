@@ -2,10 +2,10 @@
 
 (* This is tmergesort taken from Paulson's book , page 99 *)
 
-(* The merge function has been modified slightly, to 
+(* The merge function has been modified slightly, to
    traverse and rebuild both arguments fully, even when
    the one argument is empty. This ensures that both
-   recursive calls of tmergesort in itself can put their 
+   recursive calls of tmergesort in itself can put their
    results in regions local to the body of tmergesort.
 
    One can show that the maximum number of live list elements
@@ -41,31 +41,29 @@ infix  0  before
     exception Domain
     exception Div = Div
     exception Chr
-    exception Fail of string 
+    exception Fail of string
 
-fun (a:real) / (b:real) : real = prim ("divFloat", "divFloat", (a,b))
-fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
-fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
+fun (a:real) / (b:real) : real = prim ("divFloat", (a,b))
+fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
-fun chr (i : int) : char = prim ("chrCharML", "chrCharML", (i, Chr))
-fun ord (c : char) : int = prim ("id", "id", c)
-fun print (x:string):unit = prim("printStringML","printStringML",x)
+fun size (s : string) : int = prim ("__bytetable_size", s)
+fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+fun ord (c : char) : int = prim ("id", c)
+fun print (x:string):unit = prim("printStringML", x)
 
 fun append [] ys = ys
   | append (x::xs) ys = x :: append xs ys
 fun xs @ ys = append xs ys
 
-fun real (x : int) : real = prim ("realInt", "realInt", x)
-fun floor (x : real) : int = prim ("floorFloat", "floorFloat", x)    (* may raise Overflow *)
+fun real (x : int) : real = prim ("realInt", x)
+fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
 
 fun not true = false
     | not false = true
 fun (f o g) x = f(g x)
-      fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
-
-
+fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 
 exception Take and Drop
 
@@ -114,10 +112,9 @@ fun tmergesort [] = []
       in merge(tmergesort(take(k, xs)),
                tmergesort(drop(k, xs)))
       end
- 
 
-val result = 
-let 
+val result =
+let
   val n = 25000
   val xs = snd(randlist(n,1,[]))
   val _ = print "\n List generated\n"
@@ -127,4 +124,3 @@ in
   tmergesort xs;
   report("Sorted " ^ int_to_string n ^ " numbers\n")
 end
-    

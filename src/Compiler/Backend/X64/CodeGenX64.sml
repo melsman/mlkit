@@ -44,6 +44,7 @@ struct
   val tmp_reg0 = I.tmp_reg0
   val tmp_reg1 = I.tmp_reg1
   val caller_save_regs_ccall = map RI.lv_to_reg RI.caller_save_ccall_phregs
+  val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
   val all_regs = map RI.lv_to_reg RI.all_regs
 
   (***********)
@@ -565,25 +566,79 @@ struct
        | _ => I.call(NameLab name) :: C
     in
 
-    fun maybe_align F C =                     (* ME: maybe there is a better way *)
-        let val tmp = I.rbx                   (* callee save scratch register *)
+    (* better alignment technique that allows for arguments on the stack *)
+    fun push_args push_arg size_ff args C =
+        let fun loop ([], _) = C
+              | loop (arg :: rest, size_ff) = (push_arg(arg,size_ff,
+                                                        loop (rest, size_ff + 1)))
+        in loop(rev args, size_ff)
+        end
+
+    fun pop_args name nargs C =
+        case nargs
+         of 0 => C
+          | n => I.addq(I (i2s (8* (case name of ":" => n-1 | _ => n))), R rsp) :: C
+
+    fun iterl f a n =
+	if n <= 0 then a
+	else iterl f (f(n,a)) (n-1)
+
+    fun iterr f a n =
+	if n <= 0 then a
+	else f(n, iterr f a (n-1))
+
+    (* for alignment of the stack, both tmp_reg0 and tmp_reg1 can be used *)
+    fun align nargs C =
+	let val tmp = tmp_reg0
+	    val tmp1 = tmp_reg1
+	in
+	    I.leaq(D(i2s(8*nargs), rsp), R tmp) ::      (* tmp = rsp + 8n; memoize esp as it should be restored after call *)
+	    I.subq(I(i2s(8*(nargs+5))), R rsp) ::       (* rsp = rsp - 32 - 8 - 8n ; alignment *)
+	    I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::    (* rsp = rsp & 0xFFFFFFFFFFFFFFF0; alignment *)
+	    I.addq(I(i2s(8*(nargs+1))), R rsp) ::       (* make room for args to be pushed, so that once the args are pushed, the stack is aligned *)
+	    I.push(R tmp) ::
+	    iterl (fn (i,C) =>
+		     I.movq(D(i2s(~8*i), tmp), R tmp1) ::  (* notice: for x64, rsp points to the last slot used *)
+		     I.push(R tmp1) :: C
+		  )
+		  C nargs
+	end
+
+    fun needs_align () =
+	I.sysname() = "Darwin"
+
+    fun restore_stack_alignment nargs C =
+	let val tmp = tmp_reg0
+	in I.movq(D(i2s(8*nargs), rsp), R tmp) ::  (* notice: for x64, rsp points to the last slot used *)
+	   I.movq(R tmp, R rsp) ::
+	   C
+	end
+
+    fun maybe_align nargs F C =
+        if needs_align() then
+          align nargs (F (restore_stack_alignment nargs C))
+        else F C
+
+(*
+    fun maybe_align {even:bool} F C =                (* ME: maybe there is a better way *)
+        let val tmp = I.rbx                          (* callee save scratch register *)
             fun align C =
                 I.comment "ALIGN USING rbx" ::
                 I.push (R rbx) ::
                 I.movq(R rsp, R tmp) ::      (* tmp = rsp; memoize rsp as it should be restored after call *)
                 I.subq(I "16", R rsp) ::     (* rsp = rsp - 16; alignment *)
                 I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) :: (* rsp = rsp & 0xFFFFFFFFFFFFFFF0; alignment *)
-                C
-            fun unalign C =  (* restore previous stack pointer *)
+                if even then C else I.subq (I "8", R rsp) :: C
+            fun restore_align C =  (* restore previous stack pointer *)
                 I.movq(R tmp, R rsp) ::
                 I.pop (R rbx) ::
                 C
             fun needs_align () = I.sysname() = "Darwin"
         in if needs_align() then
-             align(F(unalign C))
+             align(F(restore_align C))
            else F C
         end
-
+*)
     fun regs_atys nil acc = nil
       | regs_atys (SS.PHREG_ATY r::atys) acc = regs_atys atys (r::acc)
       | regs_atys (_ ::atys) acc = regs_atys atys acc
@@ -606,6 +661,7 @@ struct
               end
             else ea
 *)
+    (* move the first six arguments into the appropriate registers *)
     fun shuffle_args (size_ff:int)
                      (mv_aty_to_reg: SS.Aty * 'a * reg * int * I.inst list -> I.inst list)
                      (args:(SS.Aty * 'a * reg)list)
@@ -625,30 +681,49 @@ struct
              | (_,_,r)::_ => die "shuffle_args: not quite done"
         end
 
+    fun warn s = print ("** WARNING: " ^ s ^ "\n")
+
+    (* 1. push stack arguments
+       2. shuffle register arguments (adjust size_ff)
+       3. align rsp (and modify location of stack arguments)
+       4. make the call
+       5. on return, reestablish (esp)
+     *)
+
     fun compile_c_call_prim (name:string, args:SS.Aty list, opt_ret:SS.Aty option, size_ff:int, tmp:reg, C) =
-        let val args = if List.length args > List.length RI.args_reg_ccall then
-                         die ("compile_c_call_prim: at most " ^
-                              Int.toString (List.length RI.args_reg_ccall) ^
-                              " arguments are supported")
-                       else ListPair.zip (args, RI.args_reg_ccall)
+        let fun drop n nil = nil
+              | drop 0 xs = xs
+              | drop n (x::xs) = drop (n-1) xs
+            fun push_arg(aty,size_ff,C) = push_aty(aty,tmp,size_ff,C)
+            val nargs = List.length args
+            val () = if nargs > List.length RI.args_reg_ccall then
+                       warn ("compile_c_call_prim: at most " ^
+                             Int.toString (List.length RI.args_reg_ccall) ^
+                             " arguments are passed in registers - " ^ name ^ " takes " ^
+                             Int.toString nargs ^ " arguments")
+                     else ()
+            val args_stack = drop (List.length RI.args_reg_ccall) args
+            val nargs_stack = List.length args_stack
+            val args = ListPair.zip (args, RI.args_reg_ccall)
             val args = map (fn (x,y) => (x,(),y)) args
             fun store_ret(SOME d,C) = move_reg_into_aty(rax,d,size_ff,C)
               | store_ret(NONE,C) = C
             (* val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
             (* With dynamic linking there must be at least one argument (the name to be bound). *)
             val dynlinklab = "localResolveLibFnManual"
-            val nargs = List.length args
             fun mv (aty,_,r,sz_ff,C) = move_aty_into_reg(aty,r,sz_ff,C)
         in shuffle_args size_ff mv args
-            (maybe_align (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-                         (store_ret(opt_ret,C)))
+            (push_args push_arg size_ff args_stack
+              (maybe_align nargs_stack
+                (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
+                  (store_ret(opt_ret,C))))
         end
 
     (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
-     * convert the C result to an ML result. *)
+     * convert the C result to an ML result. Currently supports at most 6 arguments. *)
     fun compile_c_call_auto (name,args,opt_res,size_ff,tmp,C) =
         let val args = if List.length args > List.length RI.args_reg_ccall then
-                         die ("compile_c_call_prim: at most " ^
+                         die ("compile_c_call_auto: at most " ^
                               Int.toString (List.length RI.args_reg_ccall) ^
                               " arguments are supported")
                        else ListPair.zip (args, RI.args_reg_ccall)
@@ -712,10 +787,10 @@ struct
                   | _ => convert_result ft (rax, move_reg_into_aty(rax,aty,size_ff,C))
 
             val dynlinklab = "localResolveLibFnAuto"
-            val nargs = List.length args
+            val nargs = List.length args (* not used for static calls *)
         in shuffle_args size_ff mov_arg args
-                        (maybe_align (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-                                     (store_result(opt_res,C)))
+             (maybe_align 0 (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
+               (store_result(opt_res,C)))
         end
     end
 
@@ -1116,8 +1191,12 @@ struct
                jmp,
                fn (sel1,sel2) => Int32.abs(sel1-sel2), (* sel_dist *)
                fn (lab,sel,_,C) => (I.movq(opr, R tmp_reg0) ::
-                                    I.salq(I "2", R tmp_reg0) ::
-                                    I.jmp(D(intToStr(~8*sel) ^ "+" ^ I.pr_lab lab, tmp_reg0)) ::
+                                    I.salq(I "3", R tmp_reg0) ::
+                                    I.push(R tmp_reg1) ::
+                                    I.movq(LA lab,R tmp_reg1) ::
+                                    I.addq(R tmp_reg1, R tmp_reg0) ::
+                                    I.pop(R tmp_reg1) ::
+                                    I.jmp(D(intToStr(~8*sel), tmp_reg0)) ::
                                     rem_dead_code C),
                fn (lab,C) => I.dot_quad (I.pr_lab lab) :: C, (*add_label_to_jump_tab*)
                I.eq_lab,
@@ -2158,7 +2237,7 @@ struct
                   comment_fn (fn () => "FNCALL: " ^ pr_ls ls,
                   let
                     val offset_codeptr = if BI.tag_values() then "8" else "0"
-                    val (spilled_args,spilled_res,return_lab_offset) =
+                    val (spilled_args,spilled_res,_) =
                       CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=[],reg_vec=NONE,res=res}
                     val size_rcf = length spilled_res
                     val size_ccf = length spilled_args
@@ -2238,7 +2317,7 @@ struct
                | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
                   comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
                   let
-                    val (spilled_args,spilled_res,return_lab_offset) =
+                    val (spilled_args,spilled_res,_) =
                         CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,
                                                                             reg_vec=reg_vec,res=res}
                     val size_rcf = List.length spilled_res
@@ -2406,7 +2485,7 @@ struct
                   end
                | LS.RAISE{arg=arg_aty,defined_atys} =>
                   move_aty_into_reg(arg_aty,rdi,size_ff,              (* function never returns *)
-                  maybe_align (fn C => I.call (NameLab "raise_exn") :: rem_dead_code C) C)
+                  maybe_align 0 (fn C => I.call (NameLab "raise_exn") :: rem_dead_code C) C)
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
                   let
@@ -2765,22 +2844,19 @@ struct
                             I.dot_quad (i2s BI.ml_unit),
                             I.dot_text,
                             I.dot_globl lab, (* The C function entry *)
-                            I.lab lab,
-                            I.push (R rbp),           (* save %rbp *)
-                            I.movq(R rsp, R rbp)]        (* load argument into %rbx *)
-       @  (map (fn r => I.push (R r)) [rbx,rdi,rsi])
-                         @ [I.movq(D("8",rbp),R rbx),
-                            I.movq(L clos_lab, R rax), (* load closure into %rax*)
-
-                            I.movq(D(offset_codeptr,rax), R rbp), (* extract code pointer into %rbp *)
-                            I.push (LA return_lab),   (* push return address *)
-                            I.jmp (R rbp),             (* call ML function *)
+                            I.lab lab]
+                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
+                         @ [I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
+                            I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
+                            I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
+                            I.push (I 0),                         (* push dummy *)
+                            I.push (LA return_lab),               (* push return address *)
+                            I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
-                            I.movq(R rdi, R rax)]      (* result is in %rdi *)
-       @  (map (fn r => I.pop (R r)) [rsi,rdi,rbx]) (* I found a calling C convention at                  *
-                                                      * http://www.agner.org/assem/calling_conventions.pdf *)
-                         @ [I.pop(R rbp),             (* restore %rbp *)
-                            I.ret])
+                            I.movq(R rdi, R rax),                 (* move result to %rax *)
+                            I.addq(I "8", R rsp)]                 (* pop dummy *)
+                         @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
+                         @ [I.ret])
 
                      fun push_callersave_regs C =
                          foldl (fn (r, C) => I.push(R r) :: C) C caller_save_regs_ccall

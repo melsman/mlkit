@@ -104,7 +104,7 @@ typedef struct rp {
 /* #define SIZE_REGION_PAGE 0x400 */
 /* #endif */
 
-#define is_rp_aligned(rp)  (((rp) & sizeof(Rp)) == 0)
+#define is_rp_aligned(rp)  (((rp) & (sizeof(Rp)-1)) == 0)
 
 /* Free pages are kept in a free list. When the free list becomes
  * empty and more space is required, the runtime system calls the
