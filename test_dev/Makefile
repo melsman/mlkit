@@ -6,7 +6,8 @@ TESTFILES=int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
   real_negabs.sml real1.sml real2.sml testdyn1-nobasis.sml ref-real.sml \
   kitkbjul9_no_basislib.sml fft_no_basislib.sml kitlife35u_no_basislib.sml \
   kitqsort_no_basislib.sml kitsimple_no_basislib.sml kittmergesort_no_basislib.sml \
-  kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml professor_game.sml
+  kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml professor_game.sml \
+  ccall.sml auto.sml
 
 # exception2.sml
 # listpair.sml
