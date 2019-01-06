@@ -7,11 +7,8 @@ TESTFILES=int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
   kitkbjul9_no_basislib.sml fft_no_basislib.sml kitlife35u_no_basislib.sml \
   kitqsort_no_basislib.sml kitsimple_no_basislib.sml kittmergesort_no_basislib.sml \
   kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml professor_game.sml \
-  ccall.sml auto.sml
-
-# exception2.sml
-# listpair.sml
-
+  ccall.sml auto.sml Initial.sml string_sub.sml string_upd.sml string_update.sml \
+  int_overflow.sml sign.sml word_list.sml shra.sml
 
 TESTFILES_MLB=a.mlb b.mlb c.mlb
 
@@ -22,8 +19,8 @@ RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%.mlbres)
 
 RESFILES_ALL=$(RESFILES) $(RESFILES_MLB)
 
-#MLKIT=../bin/mlkit --comments_in_x64_asmcode --debug_linking -g --no_gc --no_delete_target_files --no_basislib
-MLKIT=../bin/mlkit --no_gc --no_basislib
+MLKIT=../bin/mlkit --comments_in_x64_asmcode --debug_linking -g --no_gc --no_delete_target_files --no_basislib
+#MLKIT=../bin/mlkit --no_gc --no_basislib
 
 .PHONY: tst
 tst:
@@ -87,4 +84,4 @@ test: $(RESFILES_ALL)
 
 .PHONY: clean
 clean:
-	rm -rf MLB *~ *.exe *.res *.out *.mlbexe *.mlbout *.mlbres
+	rm -rf MLB *~ *.exe *.res *.out *.mlbexe *.mlbout *.mlbres run

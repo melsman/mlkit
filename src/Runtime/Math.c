@@ -9,13 +9,6 @@
 #include "Tagging.h"
 #include "Exception.h"
 
-/*
-static unsigned int
-max(unsigned int a, unsigned int b)
-{
-  return (a<b)?b:a;
-}*/
-
 /*------------------------------------------------------------------------*
  *                         ML Integer Functions                           *
  *------------------------------------------------------------------------*/
@@ -39,8 +32,10 @@ precision(ssize_t dummy)                                 /* ML */
 }
 
 ssize_t
-__div_int31(ssize_t x, ssize_t y, uintptr_t exn)                   /* ML */
+__div_int31(ssize_t x0, ssize_t y0, uintptr_t exn)                   /* ML */
 {
+  int x = (int)x0;
+  int y = (int)y0;
   if (y == 1)
     {
       raise_exn(exn);
@@ -60,8 +55,10 @@ __div_int31(ssize_t x, ssize_t y, uintptr_t exn)                   /* ML */
 }
 
 ssize_t
-__div_int32ub(ssize_t x, ssize_t y, uintptr_t exn)                 /* ML */
+__div_int32ub(ssize_t x0, ssize_t y0, uintptr_t exn)                 /* ML */
 {
+  int x = (int)x0;
+  int y = (int)y0;
   if (y == 0)
     {
       raise_exn(exn);
@@ -80,8 +77,10 @@ __div_int32ub(ssize_t x, ssize_t y, uintptr_t exn)                 /* ML */
 }
 
 size_t
-__div_word32ub(size_t x, size_t y, uintptr_t exn)          /* ML */
+__div_word32ub(size_t x0, size_t y0, uintptr_t exn)          /* ML */
 {
+  unsigned int x = (unsigned int)x0;
+  unsigned int y = (unsigned int)y0;
   if ( y == 0 )
     {
       raise_exn(exn);
@@ -93,8 +92,8 @@ __div_word32ub(size_t x, size_t y, uintptr_t exn)          /* ML */
 size_t
 __div_word31(size_t x, size_t y, uintptr_t exn)            /* ML */
 {
-  size_t xC = i31_to_i32ub(x);
-  size_t yC = i31_to_i32ub(y);
+  unsigned int xC = i31_to_i32ub((unsigned int)x);
+  unsigned int yC = i31_to_i32ub((unsigned int)y);
 
   if ( yC == 0 )
     {
@@ -105,8 +104,11 @@ __div_word31(size_t x, size_t y, uintptr_t exn)            /* ML */
 }
 
 ssize_t
-__mod_int31(ssize_t xML, ssize_t yML, uintptr_t exn)
+__mod_int31(ssize_t x0ML, ssize_t y0ML, uintptr_t exn)
 {
+  int xML = (int)x0ML;
+  int yML = (int)y0ML;
+
   if ( yML == 1 )
     {
       raise_exn(exn);
@@ -119,8 +121,10 @@ __mod_int31(ssize_t xML, ssize_t yML, uintptr_t exn)
 }
 
 ssize_t
-__mod_int32ub(ssize_t x, ssize_t y, uintptr_t exn)
+__mod_int32ub(ssize_t x0, ssize_t y0, uintptr_t exn)
 {
+  int x = (int)x0;
+  int y = (int)y0;
   if ( y == 0 )
     {
       raise_exn(exn);
@@ -134,8 +138,10 @@ __mod_int32ub(ssize_t x, ssize_t y, uintptr_t exn)
 }
 
 size_t
-__mod_word32ub(size_t x, size_t y, uintptr_t exn)
+__mod_word32ub(size_t x0, size_t y0, uintptr_t exn)
 {
+  unsigned int x = (unsigned int)x0;
+  unsigned int y = (unsigned int)y0;
   if ( y == 0 )
     {
       raise_exn(exn);
@@ -147,8 +153,8 @@ __mod_word32ub(size_t x, size_t y, uintptr_t exn)
 size_t
 __mod_word31(size_t x, size_t y, uintptr_t exn)
 {
-  size_t xC = i31_to_i32ub(x);
-  size_t yC = i31_to_i32ub(y);
+  unsigned int xC = i31_to_i32ub((unsigned int)x);
+  unsigned int yC = i31_to_i32ub((unsigned int)y);
 
   if ( yC == 0 )
     {
@@ -161,32 +167,32 @@ __mod_word31(size_t x, size_t y, uintptr_t exn)
 ssize_t
 __quot_int32ub(ssize_t xML, ssize_t yML)
 {
-  return xML/yML;
+  return ((int)xML)/((int)yML);
 }
 
 ssize_t
 __quot_int31(ssize_t xML, ssize_t yML)
 {
-  ssize_t xC,yC;
+  int xC,yC;
 
-  xC = i31_to_i32ub(xML);
-  yC = i31_to_i32ub(yML);
+  xC = i31_to_i32ub((int)xML);
+  yC = i31_to_i32ub((int)yML);
   return i32ub_to_i31(xC / yC);
 }
 
 ssize_t
 __rem_int32ub(ssize_t xML, ssize_t yML)
 {
-  return xML % yML;
+  return ((int)xML) % ((int)yML);
 }
 
 ssize_t
 __rem_int31(ssize_t xML, ssize_t yML)
 {
-  ssize_t xC,yC;
+  int xC,yC;
 
-  xC = i31_to_i32ub(xML);
-  yC = i31_to_i32ub(yML);
+  xC = i31_to_i32ub((int)xML);
+  yC = i31_to_i32ub((int)yML);
 
   return i32ub_to_i31(xC % yC);
 }
@@ -249,7 +255,7 @@ ssize_t
 realInt(ssize_t d, ssize_t x)
 {
   debug(printf("[realInt: d = %zu, x = %zu\n", d, x));
-  get_d(d) = (double) (convertIntToC(x));
+  get_d(d) = (double) (convertIntToC((int)x));
   set_dtag(d);
   debug(printf("]\n"));
   return d;

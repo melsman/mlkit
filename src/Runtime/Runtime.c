@@ -186,10 +186,10 @@ uncaught_exception (String exnStr, unsigned long n, uintptr_t ep)
 
 #ifdef TAG_VALUES
 
-static inline int
+static inline size_t
 equalTable(Table x, Table y)
 {
-  int i, sz_x, *px, *py;
+  size_t i, sz_x, *px, *py;
   sz_x = get_table_size(x->size);
   if ( sz_x != get_table_size(y->size))
     {

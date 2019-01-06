@@ -22,14 +22,14 @@
 #define TIMEBASE (Min_Int)
 #endif
 
-uintptr_t 
-get_time_base(int dummy) 
+uintptr_t
+get_time_base(int dummy)
 {
-  return convertIntToML(TIMEBASE);
+  return convertIntToML((int)TIMEBASE);
 }
 
-uintptr_t 
-sml_getrealtime (uintptr_t vAddr) 
+uintptr_t
+sml_getrealtime (uintptr_t vAddr)
 {
   struct timeval tp;
   gettimeofday(&tp, NULL);
@@ -39,8 +39,8 @@ sml_getrealtime (uintptr_t vAddr)
   return vAddr;
 }
 
-uintptr_t 
-sml_localtime (uintptr_t vAddr, uintptr_t v) 
+uintptr_t
+sml_localtime (uintptr_t vAddr, uintptr_t v)
 {
   struct tm tmr;
   time_t clock = (long)(get_d(v));
@@ -58,8 +58,8 @@ sml_localtime (uintptr_t vAddr, uintptr_t v)
   return vAddr;
 }
 
-uintptr_t 
-sml_gmtime (uintptr_t vAddr, uintptr_t r) 
+uintptr_t
+sml_gmtime (uintptr_t vAddr, uintptr_t r)
 {
   struct tm tmr;
   time_t clock = (long)(get_d(r));
@@ -77,8 +77,8 @@ sml_gmtime (uintptr_t vAddr, uintptr_t r)
   return vAddr;
 }
 
-uintptr_t 
-sml_mktime (uintptr_t vAddr, uintptr_t v) 
+uintptr_t
+sml_mktime (uintptr_t vAddr, uintptr_t v)
 {
   struct tm tmr;
   tmr.tm_hour = convertIntToC(elemRecordML(v,0));
@@ -96,7 +96,7 @@ sml_mktime (uintptr_t vAddr, uintptr_t v)
 }
 
 String
-REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn) 
+REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn)
 {
   struct tm tmr;
   char *r;
@@ -111,7 +111,7 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn)
   tmr.tm_yday = convertIntToC(elemRecordML(v,7));
   tmr.tm_year = convertIntToC(elemRecordML(v,8));
   r = asctime_r(&tmr, res);
-  if ( r == NULL ) 
+  if ( r == NULL )
     {
       raise_exn(exn);
     }
@@ -119,7 +119,7 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn)
 }
 
 String
-REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, uintptr_t v, int exn) 
+REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, uintptr_t v, int exn)
 {
   struct tm tmr;
   int ressize;
@@ -143,8 +143,8 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, uintptr_t v, int exn)
 #undef BUFSIZE
 }
 
-uintptr_t 
-sml_localoffset (uintptr_t vAddr) 
+uintptr_t
+sml_localoffset (uintptr_t vAddr)
 {
   struct tm gmt;
   time_t t1, t2, td;
@@ -154,12 +154,12 @@ sml_localoffset (uintptr_t vAddr)
   t2 = tm2cal(&gmt);
   td = difftime(t2, t1);
   get_d(vAddr) = (double)td;
-  set_dtag(vAddr);  
+  set_dtag(vAddr);
   return vAddr;
 }
 
-uintptr_t 
-sml_getrutime(uintptr_t vAddr) 
+uintptr_t
+sml_getrutime(uintptr_t vAddr)
 {
   struct rusage rusages;
   getrusage(RUSAGE_SELF, &rusages);

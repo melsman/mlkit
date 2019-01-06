@@ -29,7 +29,8 @@ signature TIME =
     val toString : time -> string
     val scan       : (char, 'a) StringCvt.reader
                        -> (time, 'a) StringCvt.reader
-    val fromString : string -> time option 
+    val fromString : string -> time option
+    val toPair : time -> {sec:int, usec : int}
   end
 
 (*
@@ -144,7 +145,7 @@ fromString s
     recognize a number of seconds specified as a string that matches the
     regular expression:
 
-        [+~-]?([0-9]+.[0-9]+? | .[0-9]+) 
+        [+~-]?([0-9]+.[0-9]+? | .[0-9]+)
 
     Initial whitespace is ignored. Both functions raise Time when the value is
     syntactically correct but not representable.

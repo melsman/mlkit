@@ -665,7 +665,7 @@ alloc_lobjs(int n) {
   char *p;
   size_t r;
   size_t sz_bytes;
-  sz_bytes = 4*n + sizeof(Lobjs) + 1024;
+  sz_bytes = sizeof(uintptr_t)*n + sizeof(Lobjs) + 1024;
   p = malloc(sz_bytes);
   if ( p == NULL )
     die("alloc_lobjs: malloc returned NULL");
@@ -679,12 +679,12 @@ alloc_lobjs(int n) {
     die("alloc_lobjs: large object is not properly aligned.");
   lobjs->orig = p;
 #else
-  lobjs = (Lobjs*)malloc(4*n + sizeof(Lobjs));
+  lobjs = (Lobjs*)malloc(sizeof(uintptr_t)*n + sizeof(Lobjs));
   if ( lobjs == NULL )
     die("alloc_lobjs: malloc returned NULL");
 #endif /* ENABLE_GC */
 #ifdef KAM
-  lobjs->sizeOfLobj = 4*n;
+  lobjs->sizeOfLobj = sizeof(uintptr_t)*n;
 #endif
   return lobjs;
 }

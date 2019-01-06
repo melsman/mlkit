@@ -23,9 +23,12 @@ structure InstsX64: INSTS_X64 =
     type lvar = Lvars.lvar
     datatype reg = rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp
                  | r8 | r9 | r10 | r11 | r12 | r13 | r14 | r15
+                 | eax | ebx | ecx | edx | esi | edi | ebp | esp
+                 | r8d | r9d | r10d | r11d | r12d | r13d | r14d | r15d
                  | ah (* for float conditionals *)
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
+                 | r10b (* for bytetable_update, e.g. *)
                  | xmm0 | xmm1
 
     type freg = int
@@ -68,7 +71,26 @@ structure InstsX64: INSTS_X64 =
     | push of ea
     | leaq of ea * ea
     | pop of ea
-    | addq of ea * ea
+    | andb of ea * ea
+
+    | addl of ea * ea   (* LONG OPERATIONS (32 bit) *)
+    | subl of ea * ea
+    | negl of ea
+    | decl of ea
+    | incl of ea
+    | imull of ea * ea
+    | notl of ea
+    | orl of ea * ea
+    | xorl of ea * ea
+    | andl of ea * ea
+    | sarl of ea * ea
+    | shrl of ea * ea   (* unsigned *)
+    | sall of ea * ea
+    | cmpl of ea * ea
+    | btl of ea * ea    (* bit test; sets carry flag *)
+    | btrl of ea * ea   (* bit test and reset; sets carry flag *)
+
+    | addq of ea * ea   (* QUAD OPERATIONS (64 bit) *)
     | subq of ea * ea
     | negq of ea
     | decq of ea
@@ -78,7 +100,6 @@ structure InstsX64: INSTS_X64 =
     | orq of ea * ea
     | xorq of ea * ea
     | andq of ea * ea
-    | andb of ea * ea
     | sarq of ea * ea
     | shrq of ea * ea   (* unsigned *)
     | salq of ea * ea
@@ -165,9 +186,26 @@ structure InstsX64: INSTS_X64 =
       | pr_reg r13 = "%r13"
       | pr_reg r14 = "%r14"
       | pr_reg r15 = "%r15"
+      | pr_reg eax = "%eax"
+      | pr_reg ebx = "%ebx"
+      | pr_reg ecx = "%ecx"
+      | pr_reg edx = "%edx"
+      | pr_reg esi = "%esi"
+      | pr_reg edi = "%edi"
+      | pr_reg ebp = "%ebp"
+      | pr_reg esp = "%esp"
+      | pr_reg r8d = "%r8d"
+      | pr_reg r9d = "%r9d"
+      | pr_reg r10d = "%r10d"
+      | pr_reg r11d = "%r11d"
+      | pr_reg r12d = "%r12d"
+      | pr_reg r13d = "%r13d"
+      | pr_reg r14d = "%r14d"
+      | pr_reg r15d = "%r15d"
       | pr_reg ah = "%ah"
       | pr_reg al = "%al"
       | pr_reg cl = "%cl"
+      | pr_reg r10b = "%r10b"
       | pr_reg xmm0 = "%xmm0"
       | pr_reg xmm1 = "%xmm1"
 
@@ -221,6 +259,25 @@ structure InstsX64: INSTS_X64 =
                | leaq a => emit_bin ("leaq", a)
                | push ea => emit_unary ("push", ea)
                | pop ea => emit_unary ("pop", ea)
+               | andb a => emit_bin("andb", a)
+
+               | addl a => emit_bin("addl", a)
+               | subl a => emit_bin("subl", a)
+               | negl ea => emit_unary("negl", ea)
+               | decl ea => emit_unary("decl", ea)
+               | incl ea => emit_unary("incl", ea)
+               | imull a => emit_bin("imull", a)
+               | notl ea => emit_unary("notl", ea)
+               | orl a => emit_bin("orl", a)
+               | xorl a => emit_bin("xorl", a)
+               | andl a => emit_bin("andl", a)
+               | sarl a => emit_bin("sarl", a)
+               | shrl a => emit_bin("shrl", a)
+               | sall a => emit_bin("sall", a)
+               | cmpl a => emit_bin("cmpl", a)
+               | btl a => emit_bin("btl", a)
+               | btrl a => emit_bin("btrl", a)
+
                | addq a => emit_bin("addq", a)
                | subq a => emit_bin("subq", a)
                | negq ea => emit_unary("negq", ea)
@@ -231,7 +288,6 @@ structure InstsX64: INSTS_X64 =
                | orq a => emit_bin("orq", a)
                | xorq a => emit_bin("xorq", a)
                | andq a => emit_bin("andq", a)
-               | andb a => emit_bin("andb", a)
                | sarq a => emit_bin("sarq", a)
                | shrq a => emit_bin("shrq", a)
                | salq a => emit_bin("salq", a)
@@ -363,11 +419,7 @@ structure InstsX64: INSTS_X64 =
               | rsi => rsi_lv | rdi => rdi_lv | rbp => rbp_lv | rsp => rsp_lv
               | r8 => r8_lv | r9 => r9_lv | r10 => r10_lv | r11 => r11_lv
               | r12 => r12_lv | r13 => r13_lv | r14 => r14_lv | r15 => r15_lv
-              | ah => die "reg_to_lv: ah not available for register allocation"
-              | al => die "reg_to_lv: al not available for register allocation"
-              | cl => die "reg_to_lv: cl not available for register allocation"
-              | xmm0 => die "reg_to_lv: xmm0 not available for register allocation"
-              | xmm1 => die "reg_to_lv: xmm1 not available for register allocation"
+              | _ => die ("reg_to_lv: " ^ pr_reg r ^ " not available for register allocation")
 
         val reg_args = [rax,rbx,rdi]
         val args_phreg = map reg_to_lv reg_args
@@ -398,6 +450,14 @@ structure InstsX64: INSTS_X64 =
 
     val tmp_reg0 = r10 (* CALLER saves scratch registers *)
     val tmp_reg1 = r11
+
+    fun doubleOfQuadReg r =
+        case r of
+            rax => eax | rbx => ebx | rcx => ecx | rdx => edx
+            | rsi => esi | rdi => edi | rbp => ebp | rsp => esp
+            | r8 => r8d | r9 => r9d | r10 => r10d | r11 => r11d
+            | r12 => r12d | r13 => r13d | r14 => r14d | r15 => r15d
+            | _ => die ("doubleOfQuadReg: " ^ pr_reg r ^ " is not a quad register")
 
     type StringTree = PP.StringTree
     fun layout _ = PP.LEAF "not implemented"

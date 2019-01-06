@@ -5,13 +5,20 @@ signature INSTS_X64 =
 
     datatype reg = rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp
                  | r8 | r9 | r10 | r11 | r12 | r13 | r14 | r15
+                 | eax | ebx | ecx | edx | esi | edi | ebp | esp
+                 | r8d | r9d | r10d | r11d | r12d | r13d | r14d | r15d
                  | ah (* for float conditionals *)
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
+                 | r10b (* for bytetable_update, e.g. *)
                  | xmm0 | xmm1
 
-    val tmp_reg0 : reg (*=rcx*)
-    val tmp_reg1 : reg (*=rbp*)
+    val pr_reg : reg -> string
+
+    val tmp_reg0 : reg (*=r10*)
+    val tmp_reg1 : reg (*=r11*)
+
+    val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
 
     type freg
 
@@ -42,7 +49,26 @@ signature INSTS_X64 =
     | push of ea
     | leaq of ea * ea
     | pop of ea
-    | addq of ea * ea
+    | andb of ea * ea
+
+    | addl of ea * ea   (* LONG OPERATIONS (32 bit) *)
+    | subl of ea * ea
+    | negl of ea
+    | decl of ea
+    | incl of ea
+    | imull of ea * ea
+    | notl of ea
+    | orl of ea * ea
+    | xorl of ea * ea
+    | andl of ea * ea
+    | sarl of ea * ea
+    | shrl of ea * ea   (* unsigned *)
+    | sall of ea * ea
+    | cmpl of ea * ea
+    | btl of ea * ea    (* bit test; sets carry flag *)
+    | btrl of ea * ea   (* bit test and reset; sets carry flag *)
+
+    | addq of ea * ea   (* QUAD OPERATIONS (64 bit) *)
     | subq of ea * ea
     | negq of ea
     | decq of ea
@@ -52,7 +78,6 @@ signature INSTS_X64 =
     | orq of ea * ea
     | xorq of ea * ea
     | andq of ea * ea
-    | andb of ea * ea
     | sarq of ea * ea
     | shrq of ea * ea   (* unsigned *)
     | salq of ea * ea
@@ -60,7 +85,7 @@ signature INSTS_X64 =
     | btq of ea * ea    (* bit test; sets carry flag *)
     | btrq of ea * ea   (* bit test and reset; sets carry flag *)
 
-    | movsd of ea * ea
+    | movsd of ea * ea  (* FLOAT OPERATIONS *)
     | mulsd of ea * ea
     | divsd of ea * ea
     | addsd of ea * ea
