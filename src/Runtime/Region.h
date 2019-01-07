@@ -77,16 +77,24 @@ extern RegionPageMap* rpMap;
  * Number of words that can be allocated in each regionpage and number
  * of words in the header part of each region page.
  *
- * ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must
+ * HEADER_WORDS_IN_REGION_PAGE + ALLOCATABLE_WORDS_IN_REGION_PAGE must
  * be one 1Kb - used by GC.
  */
 
 #ifdef ENABLE_GEN_GC
-#define ALLOCATABLE_WORDS_IN_REGION_PAGE 253
 #define HEADER_WORDS_IN_REGION_PAGE 3
+#if defined(__LP64__) || (__WORDSIZE == 64)
+#define ALLOCATABLE_WORDS_IN_REGION_PAGE 125
+#else
+#define ALLOCATABLE_WORDS_IN_REGION_PAGE 253
+#endif
+#else /* not(ENABLE_GEN_GC) */
+#define HEADER_WORDS_IN_REGION_PAGE 2
+#if defined(__LP64__) || (__WORDSIZE == 64)
+#define ALLOCATABLE_WORDS_IN_REGION_PAGE 126
 #else
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
-#define HEADER_WORDS_IN_REGION_PAGE 2
+#endif
 #endif /* ENABLE_GEN_GC */
 
 typedef struct rp {
@@ -338,18 +346,18 @@ of the region and is useful for, among other things, tail recursion).
 /* Operations on the two least significant   */
 /* bits in a regionpointer.                  */
 /* C ~ 1100, D ~ 1101, E ~ 1110 og F ~ 1111. */
-#define setInfiniteBit(x)   ((x) | 0x00000001)
+#define setInfiniteBit(x)   ((x) | 0x1)
 #define clearInfiniteBit(x) ((x) & (UINTPTR_MAX ^ 0x1))
 // #define clearInfiniteBit(x) ((x) & 0xFFFFFFFE)
-#define setAtbotBit(x)      ((x) | 0x00000002)
+#define setAtbotBit(x)      ((x) | 0x2)
 #define clearAtbotBit(x)    ((x) & (UINTPTR_MAX ^ 0x2))
 // #define clearAtbotBit(x)    ((x) & 0xFFFFFFFD)
-#define setStatusBits(x)    ((x) | 0x00000003)
+#define setStatusBits(x)    ((x) | 0x3)
 #define clearStatusBits(x)  ((Region)(((uintptr_t)(x)) & (UINTPTR_MAX ^ 0x3)))
 // #define clearStatusBits(x)  ((Region)(((unsigned long)(x)) & 0xFFFFFFFC))
-#define is_inf_and_atbot(x) ((((uintptr_t)(x)) & 0x00000003)==0x00000003)
-#define is_inf(x)           ((((uintptr_t)(x)) & 0x00000001)==0x00000001)
-#define is_atbot(x)         ((((uintptr_t)(x)) & 0x00000002)==0x00000002)
+#define is_inf_and_atbot(x) ((((uintptr_t)(x)) & 0x3)==0x3)
+#define is_inf(x)           ((((uintptr_t)(x)) & 0x1)==0x1)
+#define is_atbot(x)         ((((uintptr_t)(x)) & 0x2)==0x2)
 
 /*----------------------------------------------------------------*
  * Type of freelist and top-level region                          *

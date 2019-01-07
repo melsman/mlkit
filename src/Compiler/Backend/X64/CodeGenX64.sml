@@ -394,13 +394,25 @@ struct
             fun default() =
                 move_aty_into_reg(aty,t,size_ff,
                  store_indexed(b,n,R t,C))
+            fun direct_word (w:{value: Word32.word, precision:int}) : bool =
+                not(boxedNum(#precision w)) andalso
+                case #precision w of
+                    32 => #value w <= 0wxFFFF
+                  | 31 => #value w <= 0wx7FFF
+                  | _ => die "store_aty_indexed.direct_word - weird precision"
+            fun direct_int (i:{value: Int32.int, precision:int}) =
+                not(boxedNum(#precision i)) andalso
+                case #precision i of
+                    32 => #value i <= 0x7FFF andalso #value i > ~0x8000
+                  | 31 => #value i <= 0x3FFF andalso #value i > ~0x4000
+                  | _ => die "store_aty_indexed.direct_int - weird precision"
         in
             case aty of
                 SS.PHREG_ATY s => I.movq(R s,ea()) :: C
-              | SS.INTEGER_ATY i => if #value i <= 0x7FFF orelse #value i > ~0x8000 then
+              | SS.INTEGER_ATY i => if direct_int i then
                                       move_num_generic (#precision i, fmtInt i, ea(), C)
                                     else default()
-              | SS.WORD_ATY w => if #value w <= 0wxFFFF then move_num_generic (#precision w, fmtWord w, ea(), C)
+              | SS.WORD_ATY w => if direct_word w then move_num_generic (#precision w, fmtWord w, ea(), C)
                                  else default()
               | SS.UNIT_ATY => move_unit(ea(),C)
               | _ => default()
@@ -608,9 +620,6 @@ struct
 		  C nargs
 	  end
 
-      fun needs_align () =
-	  I.sysname() = "Darwin"
-
       fun restore_stack_alignment nargs C =
 	  let val tmp = tmp_reg0
 	  in I.movq(D(i2s(8*nargs), rsp), R tmp) ::  (* notice: for x64, rsp points to the last slot used *)
@@ -618,6 +627,9 @@ struct
 	     C
 	  end
     in
+      fun needs_align () =
+	  I.sysname() = "Darwin"
+
       fun maybe_align nargs F C =
           if needs_align() then
             align nargs (F (restore_stack_alignment nargs C))
@@ -805,7 +817,7 @@ struct
     (* Put a bitvector into the code. *)
     fun gen_bv (ws,C) =
       let fun gen_bv'([],C) = C
-            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_quad ("0x"^Word32.fmt StringCvt.HEX w)::C)
+            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_long ("0x"^Word32.fmt StringCvt.HEX w)::C)
       in if gc_p() then gen_bv'(ws,C)
          else C
       end
@@ -1833,8 +1845,8 @@ struct
             I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
             move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
             I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
-            I.movb(R r10b, D("8", tmp_reg1)) ::                   (* *(tmp_reg1+8) = %r10b *)
-            move_immed(Int32.fromInt BI.ml_unit, R d_reg,  (* d = () *)
+            I.movb(R r10b, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10b *)
+            move_immed(Int32.fromInt BI.ml_unit, R d_reg,       (* d = () *)
             C'))))
          end
        else
@@ -1842,7 +1854,7 @@ struct
             of SOME ([t_reg,i_reg],F) =>
               F(
               move_aty_into_reg(x,tmp_reg0,size_ff,
-              I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::      (*tmp_reg0==%r10*)
+              I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::    (*tmp_reg0==%r10*)
               C))
              | SOME _ => die "bytetable_update"
              | NONE =>
@@ -1850,7 +1862,7 @@ struct
               move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
               I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
               move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
-              I.movb(R r10b, D("8", tmp_reg1)) ::                (* *(tmp_reg1+8) = %r10b *)
+              I.movb(R r10b, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10b *)
               C))))
 
      fun bytetable_size(t,d,size_ff,C) =
@@ -3086,10 +3098,15 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           end
 
         fun store_exported_data_for_gc (labs,C) =
-          if gc_p() then
-            foldr (fn (l,acc) => I.push(LA l) :: acc)
-            (I.push (I (i2s (List.length labs))) ::
-             I.movq(R rsp, L data_lab_ptr_lab) :: C) labs
+            if gc_p() then
+              let (* Make sure to leave stack 16-byte aligned if required by os *)
+                  val F = if needs_align () andalso length(labs) mod 2 = 0 then
+                            fn C => I.push (I "1") :: C (* align *)
+                          else fn C => C
+              in F(foldr (fn (l,acc) => I.push(LA l) :: acc)
+                         (I.push (I (i2s (List.length labs))) ::
+                          I.movq(R rsp, L data_lab_ptr_lab) :: C) labs)
+              end
           else C
 
 

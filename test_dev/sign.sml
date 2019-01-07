@@ -10,8 +10,8 @@ fun sign i = if i > 0 then 1 else if i < 0 then ~1 else 0
 fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 fun sameSign (i, j) = sign i = sign j
 
-val maxInt = 2147483647
-val minInt = ~2147483648
+val maxInt : int = prim("max_fixed_int", 0)
+val minInt : int = prim("min_fixed_int", 0)
 
 val () = if sign maxInt > 0 then print "OK\n" else print "ERR\n"
 
