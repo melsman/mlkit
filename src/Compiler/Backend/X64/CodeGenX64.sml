@@ -838,7 +838,8 @@ struct
           I.movq(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
 *)
           I.cmpq(I "1", L time_to_gc_lab) ::
-          I.jne l ::
+          I.jmp (L l) ::
+(*          I.jne l :: *)
           I.movq(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
           load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
           I.push(I (i2s size_ccf)) ::
@@ -1685,13 +1686,13 @@ struct
        else
        (* y is unboxed and tagged *)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+           val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
        in
          x_C(
          load_indexed(R tmp_reg1,x_reg,WORDS 1,
-         y_C(
          copy(rcx, tmp_reg0,                         (* save rcx *)
+         y_C(
          copy(y_reg,rcx,                             (* tmp_reg0 = %r10, see InstsX64.sml *)
          I.sarq (I "1", R rcx) ::                    (* untag y: y >> 1 *)
          inst(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::

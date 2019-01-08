@@ -8,8 +8,6 @@ infix  0  before
 fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 fun not true = false | not false = true
 fun a <> b = not (a = b)
-fun !(x: 'a ref): 'a = prim ("!", x)
-fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y))
 fun print (s:string) : unit = prim("printStringML", s)
 fun printNum (n:int):unit = prim("printNum",n)
 fun toInt (w : word32) : int = prim("__word32_to_int", w)

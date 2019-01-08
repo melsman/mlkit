@@ -10,8 +10,9 @@ TESTFILES=int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
   ccall.sml auto.sml Initial.sml string_sub.sml \
   int_overflow.sml sign.sml word_list.sml
 
-#string_upd.sml string_update.sml
 #shra.sml
+
+#string_upd.sml string_update.sml
 
 #exception4.sml
 
