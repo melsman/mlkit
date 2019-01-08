@@ -712,12 +712,14 @@ struct
               | drop n (x::xs) = drop (n-1) xs
             fun push_arg(aty,size_ff,C) = push_aty(aty,tmp,size_ff,C)
             val nargs = List.length args
+(*
             val () = if nargs > List.length RI.args_reg_ccall then
                        warn ("compile_c_call_prim: at most " ^
                              Int.toString (List.length RI.args_reg_ccall) ^
                              " arguments are passed in registers - " ^ name ^ " takes " ^
                              Int.toString nargs ^ " arguments")
                      else ()
+*)
             val args_stack = drop (List.length RI.args_reg_ccall) args
             val nargs_stack = List.length args_stack
             val args = ListPair.zip (args, RI.args_reg_ccall)
@@ -1428,7 +1430,7 @@ struct
        in
          x_C(
          load_indexed(R tmp_reg0,x_reg,WORDS 1,
-         I.cmpl(I "0", R tmp_reg0) ::
+         I.cmpl(I "0", R (I.doubleOfQuadReg tmp_reg0)) ::
          I.jge cont_lab ::
          I.negl (R (I.doubleOfQuadReg tmp_reg0)) ::
          jump_overflow (
