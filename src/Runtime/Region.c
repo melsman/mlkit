@@ -140,9 +140,9 @@ Ro * topRegion;
 #endif
 
 #ifdef ENABLE_GC
-int rp_used = 0;
+long rp_used = 0;
 #endif /* ENABLE_GC */
-int rp_total = 0;
+long rp_total = 0;
 
 #ifdef PROFILING
 FiniteRegionDesc * topFiniteRegion = NULL;
@@ -802,8 +802,8 @@ allocGen (Gen *gen, size_t n) {
       allocatedLobjs++;
     #endif
 #ifdef ENABLE_GC
-      lobjs_current += 4*n;
-      lobjs_period += 4*n;
+      lobjs_current += sizeof(void*)*n;
+      lobjs_period += sizeof(void*)*n;
       if ( (!disable_gc) && (lobjs_current>lobjs_gc_treshold) )
 	{
 	  time_to_gc = 1;
@@ -817,7 +817,7 @@ allocGen (Gen *gen, size_t n) {
     }
 
 #ifdef ENABLE_GC
-  alloc_period += 4*n;
+  alloc_period += sizeof(void*)*n;
 #endif
 
   t1 = gen->a;

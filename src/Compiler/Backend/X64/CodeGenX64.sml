@@ -819,7 +819,7 @@ struct
     (* Put a bitvector into the code. *)
     fun gen_bv (ws,C) =
       let fun gen_bv'([],C) = C
-            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_long ("0x"^Word32.fmt StringCvt.HEX w)::C)
+            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_quad ("0x"^Word32.fmt StringCvt.HEX w)::C)
       in if gc_p() then gen_bv'(ws,C)
          else C
       end
@@ -838,8 +838,8 @@ struct
           I.movq(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
 *)
           I.cmpq(I "1", L time_to_gc_lab) ::
-          I.jmp (L l) ::
-(*          I.jne l :: *)
+(*          I.jmp (L l) ::  (* for disabling gc *) *)
+          I.jne l ::
           I.movq(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
           load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
           I.push(I (i2s size_ccf)) ::
@@ -1702,13 +1702,13 @@ struct
          store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))))   (* store tag *)
        end
 
-     fun shift_leftw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
+     fun shift_leftw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
 
-     fun shift_right_signedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
+     fun shift_right_signedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
 
-     fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
+     fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
 
      fun shift_left_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)

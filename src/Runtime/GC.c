@@ -465,7 +465,7 @@ next_untagged_value(uintptr_t* s, uintptr_t* a) {
  * Find allocated bytes in generations/regions; for measurements
  * -------------------------------------------------------------- */
 
-static int
+static long
 allocated_bytes_in_gen(Gen *gen)
 {
   uintptr_t *s;  // scan pointer
@@ -536,7 +536,7 @@ allocated_bytes_in_gen(Gen *gen)
 
 // Assumes that region does not contain untagged pairs or
 // untagged refs
-static int
+static long
 allocated_bytes_in_region(Region r)
 {
   return allocated_bytes_in_gen(&(r->g0))
@@ -546,11 +546,11 @@ allocated_bytes_in_region(Region r)
     ;
 }
 
-static inline int
+static inline long
 allocated_bytes_in_gen_untagged(Gen *gen, int obj_sz)  // obj_sz is in words
 {
   Rp* rp;
-  int n = 0;
+  long n = 0;
   for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     {
       if ( clear_tospace_bit(rp->n) )
@@ -562,8 +562,8 @@ allocated_bytes_in_gen_untagged(Gen *gen, int obj_sz)  // obj_sz is in words
   return n;
 }
 
-static int
-allocated_bytes_in_region_untagged(Ro* r, int obj_sz)   // obj_sz is in words
+static long
+allocated_bytes_in_region_untagged(Ro* r, long obj_sz)   // obj_sz is in words
 {
   return allocated_bytes_in_gen_untagged(&(r->g0),obj_sz)
     #ifdef ENABLE_GEN_GC
@@ -572,10 +572,10 @@ allocated_bytes_in_region_untagged(Ro* r, int obj_sz)   // obj_sz is in words
     ;
 }
 
-static int
+static long
 allocated_bytes_in_regions(void)
 {
-  int n = 0;
+  long n = 0;
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
@@ -596,17 +596,17 @@ allocated_bytes_in_regions(void)
   return n;
 }
 
-static int
+static long
 allocated_bytes_in_lobjs(void)
 {
-  int n = 0;
+  long n = 0;
   Ro* r;
   Lobjs *lobjs;
 
   for ( r = TOP_REGION ; r ; r = r->p )
     for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) )
       {
-	unsigned int tag;
+	unsigned long tag;
        #ifdef PROFILING
 	tag = *(&(lobjs->value) + sizeObjectDesc);
        #else
@@ -620,10 +620,10 @@ allocated_bytes_in_lobjs(void)
 
 // Find the number of allocated pages in a region/generation
 
-static int
+static long
 allocated_pages_in_gen(Gen *gen)
 {
-  int n = 0;
+  long n = 0;
   Rp *rp;
 
   // Maybe the generation-bit is set
@@ -632,7 +632,7 @@ allocated_pages_in_gen(Gen *gen)
   return n;
 }
 
-static int
+static long
 allocated_pages_in_region(Region r)
 {
   return allocated_pages_in_gen(&(r->g0))
@@ -642,10 +642,10 @@ allocated_pages_in_region(Region r)
     ;
 }
 
-static int
+static long
 allocated_pages_in_regions(void)
 {
-  int n = 0;
+  long n = 0;
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
@@ -1350,7 +1350,9 @@ gc(uintptr_t **sp, size_t reg_map)
 
   // Initialize the scan stack (for Infinite Regions) and the
   // container (for Finite Regions and large objects)
+  /// fprintf(stderr,"[GC: init_scan_stack]\n");
   init_scan_stack();
+  /// fprintf(stderr,"[GC: init_scan_container]\n");
   init_scan_container();
 
 #ifdef ENABLE_GEN_GC
@@ -1384,6 +1386,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // CHECK_GC
 #endif // ENABLE_GEN_GC
 
+  /// fprintf(stderr,"[GC: mk_from_space]\n");
   mk_from_space();
 
 #ifdef ENABLE_GEN_GC
@@ -1460,6 +1463,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // ENABLE_GEN_GC
 
   // Search for live registers
+  /// fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
   sp_ptr = sp;
   w = reg_map;
   for ( offset = 0 ; offset < NUM_REGS ; offset++ ) {
@@ -1471,6 +1475,8 @@ gc(uintptr_t **sp, size_t reg_map)
   }
 
   // Do spilled arguments and results to current function
+  /// fprintf(stderr,"[GC: do spilled arguments - sp=%p, reg_map=%zx, NUM_REGS=%d]\n", sp, reg_map, NUM_REGS);
+
   sp_ptr = sp;
   sp_ptr = sp_ptr + NUM_REGS;   // points at size_spilled_region_args
 
@@ -1480,6 +1486,9 @@ gc(uintptr_t **sp, size_t reg_map)
   predSPDef(sp_ptr,1);          // sp_ptr points at size_ccf
   size_ccf = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at last arg. to current function
+
+  /// fprintf(stderr,"[GC: calc done; size_spilled_region_args=%zx; size_rcf=%zx; size_ccf=%zx]\n",
+  ///  	      size_spilled_region_args,size_rcf,size_ccf);
 
   // All arguments to current function are live - except for region arguments.
   for ( offset = 0 ; offset < size_ccf ; offset++ ) {
@@ -1501,15 +1510,21 @@ gc(uintptr_t **sp, size_t reg_map)
   /*   - return address                              */
   /*   - spilled results                             */
 
+  /// fprintf(stderr,"[GC: FD processing]\n");
+
   fd_ptr = *sp_ptr;
   fd_offset_to_return = *(fd_ptr-2);
   fd_size = *(fd_ptr-3);
   predSPDef(sp_ptr,size_rcf);
 
+  /// fprintf(stderr,"[GC: FD entering loop; sp_ptr=%p; fd_ptr=%p]\n",sp_ptr,fd_ptr);
+
   // sp_ptr points at first address before FD
   while ( fd_size != /* 0xFFFFFFFFFFFFFFFF */ UINTPTR_MAX)
     {
       // Analyse frame
+      /// fprintf(stderr,"[GC: FD in loop; fd_size=%zx]\n", fd_size);
+
 
       w_ptr = fd_ptr-4;   // 4 is ok, also for x64
 
@@ -1526,7 +1541,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	  }
 	  w = w >> 1;
 	  w_idx++;
-	  if ((w_idx == 8*sizeof(void *)) & (offset+1 < fd_size))   // 8: bits per byte
+	  if ((w_idx == 32) & (offset+1 < fd_size))   // 32: code generator uses Word32
 	    {
 	      // Again, w_ptr may point arbitrarily if we are done.
 	      w_ptr--;
@@ -1541,6 +1556,8 @@ gc(uintptr_t **sp, size_t reg_map)
       fd_size = *(fd_ptr-3);
       predSPDef(sp_ptr,size_rcf);
     }
+
+  // fprintf(stderr,"[GC: FD after loop]\n");
 
   // Search for data labels; they are part of the root-set.
   num_d_labs = *data_lab_ptr; /* Number of data labels */
@@ -1713,17 +1730,18 @@ gc(uintptr_t **sp, size_t reg_map)
 
       fprintf(stderr,"(%ldms)", time_gc_one_ms);
       /*
-      fprintf(stderr, " rp_total: %d\n", rp_total);
-      fprintf(stderr, " size_scan_stack: %d\n", (size_scan_stack*sizeof(void *)) / 1024);
-      fprintf(stderr, " size_scan_container: %d\n", (size_scan_container*sizeof(void *)) / 1024);
-      fprintf(stderr, " to_space_old: %d\n", to_space_old);
-      fprintf(stderr, " alloc_period: %d\n", alloc_period);
-      fprintf(stderr, " alloc_period_save: %d\n", alloc_period_save);
-      fprintf(stderr, " bytes_from_space: %d\n", bytes_from_space);
-      fprintf(stderr, " bytes_to_space: %d\n", bytes_to_space);
-      fprintf(stderr, " lobjs_beforegc: %d\n", lobjs_beforegc);
-      fprintf(stderr, " lobjs_aftergc: %d\n", lobjs_aftergc);
-      fprintf(stderr, " lobjs_period: %d\n", lobjs_period);
+      fprintf(stderr, " rp_total: %ld\n", rp_total);
+      fprintf(stderr, " size_scan_stack: %ld\n", (size_scan_stack*sizeof(void *)) / 1024);
+      fprintf(stderr, " size_scan_container: %ld\n", (size_scan_container*sizeof(void *)) / 1024);
+      fprintf(stderr, " to_space_old: %ld\n", to_space_old);
+      fprintf(stderr, " alloc_period: %ld\n", alloc_period);
+      fprintf(stderr, " alloc_period_save: %ld\n", alloc_period_save);
+      fprintf(stderr, " bytes_from_space: %ld\n", bytes_from_space);
+      fprintf(stderr, " bytes_to_space: %ld\n", bytes_to_space);
+      fprintf(stderr, " lobjs_beforegc: %ld\n", lobjs_beforegc);
+      fprintf(stderr, " lobjs_aftergc: %ld\n", lobjs_aftergc);
+      fprintf(stderr, " lobjs_period: %ld\n", lobjs_period);
+      fprintf(stderr, " lobjs_aftergc_old: %ld\n", lobjs_aftergc_old);
       */
       if ( num_gc != 1 )
 	{
@@ -1752,7 +1770,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	      region_utilize(pages_to_space, bytes_to_space),
 	      lobjs_aftergc / 1024,
 	      size_free_list());
-      fprintf(stderr, "RI:%2.0f%%, GC:%2.0f%%]\n",
+      fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%]\n",
 	      RI, GC);
 
       to_space_old = bytes_to_space;

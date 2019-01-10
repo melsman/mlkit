@@ -25,7 +25,9 @@ RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%.mlbres)
 
 RESFILES_ALL=$(RESFILES) $(RESFILES_MLB)
 
-EXEFLAGS=-disable_gc -verbose_gc
+EXEFLAGS=-verbose_gc
+#EXEFLAGS=-disable_gc -verbose_gc
+
 MLKIT=../bin/mlkit --comments_in_x64_asmcode --debug_linking -g --no_delete_target_files --no_basislib
 #MLKIT=../bin/mlkit --comments_in_x64_asmcode --debug_linking -g --no_gc --no_delete_target_files --no_basislib
 #MLKIT=../bin/mlkit --no_gc --no_basislib
