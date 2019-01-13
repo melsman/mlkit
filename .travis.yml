@@ -29,6 +29,7 @@ install:
  - make mlkit_bin_dist
 
 script:
+ - cd test_dev && make test
  - cd test && make test_mlkit
  - cd ../js/test && make test
 

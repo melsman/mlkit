@@ -67,7 +67,7 @@ regionPageMapNew(void)
 {
   RegionPageMap* regionPageMap;
 
-  regionPageMap = (RegionPageMap*)malloc(sizeof(void *) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
+  regionPageMap = (RegionPageMap*)malloc(sizeof(long*) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
   if ( regionPageMap == NULL ) {
     die("Unable to allocate memory for RegionPageMapHashTable");
   }
@@ -1228,7 +1228,7 @@ allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, 
 void
 deallocRegionFiniteProfiling(void)
 {
-  int size;
+  long size;
 
   /*
   printf("[Entering deallocRegionFiniteProfiling regionId=%d (topFiniteRegion = %x)...\n",

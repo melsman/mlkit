@@ -83,6 +83,6 @@ fun mk_tree 0 = Lf
   | mk_tree n = let val t = mk_tree(n-1)
                 in Br(n,t,t)
                 end
-val it = if search [] (mk_tree 20)
+val it = if search [] (mk_tree 10)
          then print "true\n"
          else print "false\n"

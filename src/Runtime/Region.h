@@ -243,7 +243,7 @@ typedef struct ro {
 
 typedef Ro* Region;
 
-#define sizeRo (sizeof(Ro)/(sizeof(void *))) /* size of region descriptor in words */
+#define sizeRo (sizeof(Ro)/(sizeof(long*))) /* size of region descriptor in words */
 #define sizeRoProf (3)        /* We use three words extra when profiling. */
 
 #ifdef ENABLE_GEN_GC
@@ -437,7 +437,7 @@ typedef struct finiteRegionDesc {
                                    for deallocation. */
   size_t regionId;                 /* If msb. set then infinite region. (? - mads)*/
 } FiniteRegionDesc;
-#define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/sizeof(void *))
+#define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/sizeof(long*))
 
 /*
 Object descriptors
@@ -456,9 +456,9 @@ This applies irrespective of whether profiling is turned on or not.
 
 typedef struct objectDesc {
   size_t atId;               /* Allocation point. */
-  size_t size;               /* Size of object in bytes. */
+  size_t size;               /* Size of object in words. */
 } ObjectDesc;
-#define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(void *)))
+#define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(long*)))
 
 /*
 Profiling is done by scanning the store at regular intervals.

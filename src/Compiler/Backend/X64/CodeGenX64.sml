@@ -939,7 +939,7 @@ struct
     fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
       if region_profiling() then
         if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")
-        else I.movq(I(i2s pp), D("-8", obj_ptr)) :: C
+        else I.movq(I(i2s pp), D("-16", obj_ptr)) :: C  (* two words offset *)
       else C
 
     fun alloc_ap_kill_tmp01(sma, dst_reg:reg, n, size_ff, C) =

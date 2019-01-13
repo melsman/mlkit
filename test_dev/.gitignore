@@ -3,3 +3,6 @@
 *.res
 MLB
 *.mlbres
+*.mlbexe
+*.mlbout
+complog.txt

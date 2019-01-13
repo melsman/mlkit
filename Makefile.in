@@ -164,7 +164,7 @@ clean:
 	cd ml-yacc-lib && $(CLEAN)
 	cd kitdemo && $(CLEAN) run */*~
 	cd test && $(MAKE) clean
-	cd test_dev && $(CLEAN) run *.out *.log
+	cd test_dev && $(MAKE) clean
 	cd src && $(MAKE) clean
 	$(MAKE) -C smlserver_demo clean
 	cd smlserver && $(CLEAN)
