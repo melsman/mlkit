@@ -29,6 +29,7 @@ GCP_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-gcp.mlbres)
 
 #RESFILES_ALL=$(GCP_RESFILES) $(GCP_RESFILES_MLB) $(P_RESFILES) $(P_RESFILES_MLB) $(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
 
+RESFILES_PROF=$(GCP_RESFILES) $(GCP_RESFILES_MLB) $(P_RESFILES) $(P_RESFILES_MLB)
 RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
 
 #EXEFLAGS=-verbose_gc
@@ -206,6 +207,16 @@ test: $(RESFILES_ALL)
 	@echo "See complog.txt"
 	@echo "-------------------------------------"
 	@exit `grep "ERR" $(RESFILES_ALL) | wc -l`
+
+.PHONY: test_prof
+test_prof: $(RESFILES_PROF)
+	@cat $(RESFILES_PROF)
+	@echo "------- T E S T --- R E P O R T ----- P R O F I L I N G ------"
+	@echo "Tests succeeded:   `grep "OK" $(RESFILES_PROF) | wc -l` /`grep "Test" $(RESFILES_PROF) | wc -l`"
+	@echo "Test errors:       `grep "ERR" $(RESFILES_PROF) | wc -l` /`grep "Test" $(RESFILES_PROF) | wc -l`"
+	@echo "See complog.txt"
+	@echo "--------------------------------------------------------------"
+	@exit `grep "ERR" $(RESFILES_PROF) | wc -l`
 
 .PHONY: clean
 clean:

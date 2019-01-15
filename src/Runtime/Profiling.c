@@ -48,13 +48,11 @@ ObjectListHashList * objectListHashTable[OBJECT_LIST_HASH_TABLE_SIZE];  /* Used 
 
 ProfTabList * profHashTab[PROF_HASH_TABLE_SIZE];  /* Hash table for information collected during execution */
 
-int profTabCountDebug = 0;
-
+long profTabCountDebug = 0;
 
 unsigned long numberOfTics=0; /* Number of profilings so far. */
-
-unsigned long lastCpuTime=0; /* CPU time after last tick. */
-unsigned long cpuTimeAcc=0;  /* Used time by program excl. profiling. */
+unsigned long lastCpuTime=0;  /* CPU time after last tick. */
+unsigned long cpuTimeAcc=0;   /* Used time by program excl. profiling. */
 
 long noTimer =                                  /* Profile with a constant number of function calls. */
     ITIMER_REAL+ITIMER_VIRTUAL+ITIMER_PROF;    /* A number different from the other constants.      */
@@ -88,7 +86,7 @@ static unsigned long min(unsigned long a, unsigned long b) {
  *--------------------------------------*/
 
 void initializeProfTab(void) {
-  int i;
+  long i;
   /*  printf("Initializing profTab\n"); */
   for (i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++)
     profHashTab[i]=NULL;
@@ -96,8 +94,8 @@ void initializeProfTab(void) {
 }
 
 /*
-int profSize(ProfTabList* p) {
-  int count = 0;
+long profSize(ProfTabList* p) {
+  long count = 0;
   for ( ; p != NULL; p=p->next) {
     count++ ;
   }
@@ -105,8 +103,8 @@ int profSize(ProfTabList* p) {
 }
 */
 
-int profTabSize(void) {
-  int count, i;
+long profTabSize(void) {
+  long count, i;
   ProfTabList* p;
   for (count = 0, i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++)
     for (p=profHashTab[i]; p != NULL; p=p->next, count++) {}
@@ -215,7 +213,7 @@ void profTabDecrAllocNow(long regionId, long i, char *s) {
       return;
     };
   fprintf(stderr, "Error.%s: regionId %ld does not exist in profiling table\n", s, regionId);
-  fprintf(stderr, "profTabCountDebug = %d, profTabSize = %d\n", profTabCountDebug,
+  fprintf(stderr, "profTabCountDebug = %ld, profTabSize = %ld\n", profTabCountDebug,
 	  profTabSize());
   printProfTab();
   perror("profTabDecrAllocNow error\n");
@@ -251,15 +249,15 @@ void profTabIncrAllocNow(long regionId, long i) {
  * ---------------------------------------------------------- */
 
 void initializeRegionListTable(void) {
-  int i;
+  long i;
   for (i = 0 ; i < REGION_LIST_HASH_TABLE_SIZE; i++ )
     regionListHashTable[i] = NULL;
   return;
 }
 
-void insertRegionListTable(int regionId, RegionList* rl) {
+void insertRegionListTable(long regionId, RegionList* rl) {
   RegionListHashList* p;
-  int index;
+  long index;
   index = regionListHashTabIndex(regionId);
   for (p=regionListHashTable[index]; p != NULL; p=p->next)
     if (p->regionId == regionId) {
@@ -278,9 +276,9 @@ void insertRegionListTable(int regionId, RegionList* rl) {
   return;
 }
 
-RegionList* lookupRegionListTable(int regionId) {
+RegionList* lookupRegionListTable(long regionId) {
   RegionListHashList* p;
-  int index;
+  long index;
   index = regionListHashTabIndex(regionId);
   for (p=regionListHashTable[index]; p != NULL; p=p->next)
     if (p->regionId == regionId) return p->rl;
@@ -293,15 +291,15 @@ RegionList* lookupRegionListTable(int regionId) {
  * ---------------------------------------------------------- */
 
 void initializeObjectListTable(void) {
-  int i;
+  long i;
   for (i = 0; i < OBJECT_LIST_HASH_TABLE_SIZE; i++)
     objectListHashTable[i] = NULL;
   return;
 }
 
-void insertObjectListTable(int atId, ObjectList* ol) {
+void insertObjectListTable(long atId, ObjectList* ol) {
   ObjectListHashList* p;
-  int index;
+  long index;
   index = objectListHashTabIndex(atId);
   for (p=objectListHashTable[index]; p != NULL; p=p->next)
     if (p->atId == atId) {
@@ -320,9 +318,9 @@ void insertObjectListTable(int atId, ObjectList* ol) {
   return;
 }
 
-ObjectList* lookupObjectListTable(int atId) {
+ObjectList* lookupObjectListTable(long atId) {
   ObjectListHashList* p;
-  int index;
+  long index;
   index = objectListHashTabIndex(atId);
   for (p=objectListHashTable[index]; p != NULL; p=p->next)
     if (p->atId == atId) return p->ol;
@@ -337,7 +335,7 @@ ObjectList* lookupObjectListTable(int atId) {
    a tick is made, the time is printed on stdout */
 
 void
-queueMarkProf(StringDesc *str, int pPoint)
+queueMarkProf(StringDesc *str, long pPoint)
 {
     tellTime = 1;
     fprintf(stderr,"Reached \"%s\"\n", &(str->data));
@@ -350,10 +348,10 @@ queueMarkProf(StringDesc *str, int pPoint)
 void
 AllocatedSpaceInARegion(Ro *rp)
 {
-  unsigned int n;
+  long n;
 
   n = profTabGetNoOfPages(rp->regionId) * ALLOCATABLE_WORDS_IN_REGION_PAGE * sizeof(long*);
-  fprintf(stderr,"    Allocated bytes in region %5zd: %5u\n",rp->regionId, n);
+  fprintf(stderr,"    Allocated bytes in region %5zd: %5ld\n",rp->regionId, n);
   return;
 }
 
@@ -361,14 +359,14 @@ AllocatedSpaceInARegion(Ro *rp)
 void
 PrintGen(Gen *gen)
 {
-  int i;
+  long i;
   Rp *p;
   if ( gen )
     {
       fprintf(stderr,"\n  Address of Gen: %p, First free word: %p, Border of region: %p\n     ",gen,gen->a,gen->b);
       for ( p = clear_fp(gen->fp) , i = 1 ; p ; p = p->n , i++ )
 	{
-	  fprintf(stderr,"-->Page%2d:%p",i,p);
+	  fprintf(stderr,"-->Page%2ld:%p",i,p);
 	  if (i%3 == 0)
 	    fprintf(stderr,"\n     ");
 	}
@@ -1139,9 +1137,9 @@ profileTick(long *stackTop)
   /*  checkProfTab("profileTick.exit"); */
 
   if (raised_exn_interupt_prof)
-    raise_exn((int)&exn_INTERRUPT);
+    raise_exn((uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow_prof)
-    raise_exn((int)&exn_OVERFLOW);
+    raise_exn((uintptr_t)&exn_OVERFLOW);
 }
 
 /*-------------------------------------------------------------------*
@@ -1242,7 +1240,7 @@ outputProfilePre(void)
 void
 outputProfileTick(TickList *tick)
 {
-  int noOfRegions;
+  long noOfRegions;
   ObjectList *newObj;
   RegionList *newRegion;
 
@@ -1282,7 +1280,7 @@ outputProfileTick(TickList *tick)
 void
 outputProfilePost(void)
 {
-  int i;
+  long i;
   ProfTabList* p;
 
   debug(printf("[outputProfilePost..."));
