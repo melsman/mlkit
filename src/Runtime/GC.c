@@ -1783,9 +1783,9 @@ gc(uintptr_t **sp, size_t reg_map)
   doing_gc = 0; // Mutex on the garbage collector
 
   if (raised_exn_interupt)
-    raise_exn((int)&exn_INTERRUPT);
+    raise_exn((uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow)
-    raise_exn((int)&exn_OVERFLOW);
+    raise_exn((uintptr_t)&exn_OVERFLOW);
   return;
 }
 
