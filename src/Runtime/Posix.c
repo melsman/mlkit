@@ -967,7 +967,7 @@ int getlogin_r(char *buf, size_t bufsize);
 // without problems further down.
 // Everything compiles if we define it directly here instead - or moves
 // the defines above to Runtime.c:
-#define L_cuserid 9
+#define L_cuserid 100
 String
 REG_POLY_FUN_HDR(sml_getlogin, Region rs)
 {
