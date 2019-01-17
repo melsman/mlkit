@@ -627,8 +627,8 @@ struct
 	     C
 	  end
     in
-      fun needs_align () =
-	  I.sysname() = "Darwin"
+      fun needs_align () = true
+	  (* I.sysname() = "Darwin" *)
 
       fun maybe_align nargs F C =
           if needs_align() then
