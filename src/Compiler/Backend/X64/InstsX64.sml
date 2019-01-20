@@ -220,7 +220,7 @@ structure InstsX64: INSTS_X64 =
 
     fun pr_lab (DatLab l) = "DLab." ^ remove_ctrl(Labels.pr_label l)
       | pr_lab (LocalLab l) = ".LLab." ^ remove_ctrl(Labels.pr_label l)
-      | pr_lab (NameLab s) = (* "NLab." ^ *)  pr_namelab(remove_ctrl s)
+      | pr_lab (NameLab s) = pr_namelab(remove_ctrl s)
       | pr_lab (MLFunLab l) = "FLab." ^ remove_ctrl(Labels.pr_label l)
 
     (* Convert ~n to -n *)
@@ -229,7 +229,10 @@ structure InstsX64: INSTS_X64 =
 
     fun pr_ea (R r) = pr_reg r
       | pr_ea (L l) = pr_lab l ^ "(%rip)"
-      | pr_ea (LA l) = pr_lab l ^ "@GOTPCREL(%rip)"
+      | pr_ea (LA l) =
+      	if sysname() = "Darwin" then
+	  pr_lab l ^ "@GOTPCREL(%rip)"
+	else "$" ^ pr_lab l
       | pr_ea (I s) = "$" ^ s
       | pr_ea (D(d,r)) = if d="0" then "(" ^ pr_reg r ^ ")"
                          else d ^ "(" ^ pr_reg r ^ ")"

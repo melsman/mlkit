@@ -35,14 +35,13 @@ RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
 #EXEFLAGS=-verbose_gc
 #EXEFLAGS=-disable_gc -verbose_gc
 
-GC_FLAGS=--no_basislib --comments_in_x64_asmcode --debug_linking -g --no_delete_target_files
+#GC_FLAGS=--no_basislib --comments_in_x64_asmcode --debug_linking -g --no_delete_target_files
+GC_FLAGS=--no_basislib
 RI_FLAGS=$(GC_FLAGS) -no_gc
 PROF_FLAGS=$(RI_FLAGS) -prof
 GC_PROF_FLAGS=$(GC_FLAGS) -prof
 
-#MLKIT=../bin/mlkit --comments_in_x64_asmcode --debug_linking -g --no_delete_target_files --no_basislib
 MLKIT=../bin/mlkit
-#MLKIT=../bin/mlkit --no_gc --no_basislib
 
 .PHONY: tst
 tst:
