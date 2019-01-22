@@ -293,6 +293,7 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend $(INSTDIR)/src/Compiler/Lambda $(INSTDIR)/src/Compiler/Regions
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy $(INSTDIR)/src/Compiler/Backend/KAM
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X86
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X64
 	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(INSTALLDATA) src/Makefile src/*.{sml,in} $(INSTDIR)/src
@@ -306,6 +307,7 @@ install_src:
 	$(INSTALLDATA) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
 	$(INSTALLDATA) src/Compiler/Backend/KAM/*.{sml,spec} $(INSTDIR)/src/Compiler/Backend/KAM
 	$(INSTALLDATA) src/Compiler/Backend/X86/*.sml $(INSTDIR)/src/Compiler/Backend/X86
+	$(INSTALLDATA) src/Compiler/Backend/X64/*.sml $(INSTDIR)/src/Compiler/Backend/X64
 	$(INSTALLDATA) src/Manager/*.{sml,sig,mlb} $(INSTDIR)/src/Manager
 	$(INSTALLDATA) src/Kitlib/*.{sml,sig,mlb} $(INSTDIR)/src/Kitlib
 	$(INSTALLDATA) src/Pickle/*.{sml,sig,mlb} $(INSTDIR)/src/Pickle
@@ -335,7 +337,7 @@ bootstrap_first:
 
 bootstrap_next_build:
 	cd src && $(MAKE) genopcodes BINDIR=../$(BINDIR)
-	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native.mlb
+	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native64.mlb
 
 bootstrap_next_install:
 	$(MAKE) install_top
@@ -388,9 +390,9 @@ man_smltojs:
 #  $ ./configure
 #  $ make all
 # -----------------------------------------------------
-MLKIT_DIST_BIN=mlkit-$(KITVERSION)-x86
-.PHONY: mlkit_x86_tgz
-mlkit_x86_tgz:
+MLKIT_DIST_BIN=mlkit-$(KITVERSION)-x64
+.PHONY: mlkit_x64_tgz
+mlkit_x64_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(MLKIT_DIST_BIN)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(MLKIT_DIST_BIN) prefix=
@@ -405,9 +407,9 @@ mlkit_x86_tgz:
 #  $ make smltojs
 #  $ make smltojs_basislibs
 # -----------------------------------------------------
-SMLTOJS_DIST_BIN=smltojs-$(KITVERSION)-x86
-.PHONY: smltojs_x86_tgz
-smltojs_x86_tgz:
+SMLTOJS_DIST_BIN=smltojs-$(KITVERSION)-x64
+.PHONY: smltojs_x64_tgz
+smltojs_x64_tgz:
 	$(MKDIR) dist
 	rm -rf dist/$(SMLTOJS_DIST_BIN)
 	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(SMLTOJS_DIST_BIN) prefix=
