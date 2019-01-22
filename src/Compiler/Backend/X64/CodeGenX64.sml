@@ -2905,7 +2905,7 @@ struct
                          @ [I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
-                            I.push (I "0"),                       (* push dummy *)
+                            I.push (I "1"),                       (* push dummy *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
@@ -2914,10 +2914,12 @@ struct
                          @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                          @ [I.ret])
 
+                     val saveregs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
+                                    caller_save_regs_ccall
                      fun push_callersave_regs C =
-                         foldl (fn (r, C) => I.push(R r) :: C) C caller_save_regs_ccall
+                         foldl (fn (r, C) => I.push(R r) :: C) C saveregs
                      fun pop_callersave_regs C =
-                         foldr (fn (r, C) => I.pop(R r) :: C) C caller_save_regs_ccall
+                         foldr (fn (r, C) => I.pop(R r) :: C) C saveregs
 
                   in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
                                  store_in_label(aty,clos_lab,tmp_reg1,size_ff,
@@ -3080,7 +3082,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 I.dot_data ::
                 I.dot_align 8 ::
                 maybe_dotsize (I.lab (DatLab l) ::
-                               I.dot_quad "0" :: C)
+                               I.dot_quad "1" :: C)
             end
 
         fun slots_for_datlabs(l,C) = foldr slot_for_datlab C l
