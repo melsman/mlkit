@@ -6,7 +6,9 @@ test4    	OK
 test5    	OK
 test6    	OK
 Two lines of output follow:
-34235test7a    	OK
+1234  <--- this should read 1234
+12345 <--- this should read 12345
+test7a    	OK
 test7b    	OK
 test7c    	OK
 test8a    	OK
@@ -27,4 +29,5 @@ test12b    	OK
 test12c    	OK
 test12d    	OK
 Two lines of output follow:
-abcdeabcde
+abcde <--- this should read abcde
+abcde <--- this should read abcde

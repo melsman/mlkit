@@ -9,7 +9,7 @@ let
 
   fun neq(x,y) = if x<y then false else if x>y then false else true
 
-  fun show_move(i,j) = 
+  fun show_move(i,j) =
     (out_str "move ";
      printNum i;
      out_str "to ";
@@ -18,11 +18,11 @@ let
 
   fun hanoi(n, from, to, via)=
     if neq(n,0) then ()
-    else (hanoi(n-1, from, via, to); 
+    else (hanoi(n-1, from, via, to);
 	  show_move(from,to);
 	  hanoi(n-1, via, to, from))
   val _ = out_str "Hello\n"
-  val _ = hanoi(1000,1,2,3);
+  val _ = hanoi(10,1,2,3);
   val _ = out_str "Hello again\n"
 in
   ()

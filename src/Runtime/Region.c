@@ -29,8 +29,8 @@ extern Ns_Mutex freelistMutex;
 
 #if ( REGION_PAGE_STAT )
 
-RegionPageMap* 
-regionPageMapInsert(RegionPageMap* regionPageMap, unsigned int addr)
+RegionPageMap*
+regionPageMapInsert(RegionPageMap* regionPageMap, uintptr_t addr)
 {
   int index;
   RegionPageMapHashList* newElem;
@@ -47,27 +47,27 @@ regionPageMapInsert(RegionPageMap* regionPageMap, unsigned int addr)
   newElem->next = regionPageMap[index];
 
   regionPageMap[index] = newElem;
-  return regionPageMap;    /* We want to allow for hash-table 
+  return regionPageMap;    /* We want to allow for hash-table
 			    * resizing in the future */
-}  
+}
 
 /* Create and allocate space for a new regionPageMapHashTable */
-void 
+void
 regionPageMapZero(RegionPageMap* regionPageMap)
 {
   int i;
-  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ ) 
+  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ )
     {
       regionPageMap[i] = NULL;
     }
 }
 
-RegionPageMap* 
-regionPageMapNew(void) 
+RegionPageMap*
+regionPageMapNew(void)
 {
   RegionPageMap* regionPageMap;
 
-  regionPageMap = (RegionPageMap*)malloc(sizeof(void *) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
+  regionPageMap = (RegionPageMap*)malloc(sizeof(long*) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
   if ( regionPageMap == NULL ) {
     die("Unable to allocate memory for RegionPageMapHashTable");
   }
@@ -77,27 +77,27 @@ regionPageMapNew(void)
 }
 
 RegionPageMap*
-regionPageMapIncr(RegionPageMap* regionPageMap, unsigned int addr)
+regionPageMapIncr(RegionPageMap* regionPageMap, uintptr_t addr)
 {
   RegionPageMapHashList* p;
-  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next ) 
+  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
     {
-      if ( p->addr == addr ) 
+      if ( p->addr == addr )
 	{
 	  p->n++;
 	  return regionPageMap;
 	}
     }
   return regionPageMapInsert(regionPageMap,addr);
-}  
+}
 
 uintptr_t
 regionPageMapLookup(RegionPageMap* regionPageMap, uintptr_t addr)
 {
   RegionPageMapHashList* p;
-  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next ) 
+  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
     {
-      if ( p->addr == addr ) 
+      if ( p->addr == addr )
 	{
 	  return p->n;
 	}
@@ -111,7 +111,7 @@ regionPageMapClear(RegionPageMap* regionPageMap)
   int i;
   RegionPageMapHashList *p, *n;
 
-  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ ) 
+  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ )
     {
       p = regionPageMap[i];
       while ( p )
@@ -125,9 +125,9 @@ regionPageMapClear(RegionPageMap* regionPageMap)
 }
 
 RegionPageMap* rpMap = NULL;
-#define REGION_PAGE_MAP_INCR(rp) (regionPageMapIncr(rpMap,(unsigned int)(rp)));
+#define REGION_PAGE_MAP_INCR(rp) (regionPageMapIncr(rpMap,(uintptr_t)(rp)));
 #else
-#define REGION_PAGE_MAP_INCR(rp) 
+#define REGION_PAGE_MAP_INCR(rp)
 #endif /* REGION_PAGE_STAT */
 
 /*----------------------------------------------------------------*
@@ -140,9 +140,9 @@ Ro * topRegion;
 #endif
 
 #ifdef ENABLE_GC
-int rp_used = 0;
+long rp_used = 0;
 #endif /* ENABLE_GC */
-int rp_total = 0;
+long rp_total = 0;
 
 #ifdef PROFILING
 FiniteRegionDesc * topFiniteRegion = NULL;
@@ -162,7 +162,7 @@ unsigned long callsOfDeallocateRegionInf=0,
              allocNowFin=0,             /* Allocated in fin. regions now. */
              maxAllocFin=0,             /* Max. allocated in fin. regions. */
              allocProfNowInf=0,         /* Words used on object descriptors in inf. regions. */
-             maxAllocProfInf=0,         /* At time maxAllocInf how much were 
+             maxAllocProfInf=0,         /* At time maxAllocInf how much were
                                            used on object descriptors. */
              allocProfNowFin=0,         /* Words used on object descriptors in fin. regions. */
              maxAllocProfFin=0,         /* At time maxAllocFin how much were used on object descriptors. */
@@ -182,8 +182,8 @@ unsigned long callsOfDeallocateRegionInf=0,
                                         /* called from the assembler file.                                  */
              allocatedLobjs=0;          /* Total number of allocated large objects allocated with malloc */
 
-inline static unsigned int 
-max(unsigned int a, unsigned int b) 
+inline static unsigned int
+max(unsigned int a, unsigned int b)
 {
   return (a<b)?b:a;
 }
@@ -227,7 +227,7 @@ void printTopRegInfo() {
 */
 
 /* Print info about a region. */
-void 
+void
 pp_gen(Gen *gen)
 {
   Rp* rp;
@@ -235,16 +235,16 @@ pp_gen(Gen *gen)
   fprintf(stderr,"\n[Gen g%d at addr: %p, fp:%p, a:%p, b:%p\n",
 	  (is_gen_1(*gen)?1:0),
 	  gen,
-	  gen->fp, 
+	  gen->fp,
 	  gen->a,
-	  gen->b);  
+	  gen->b);
   for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
 #ifdef ENABLE_GEN_GC
     fprintf(stderr,"  Rp %p, next:%p, colorPtr:%p, data: %p, rp+1: %p\n",
 	    rp,
 	    rp->n,
 	    rp->colorPtr,
-	    &(rp->i), 
+	    &(rp->i),
 	    rp+1);
 #else
     fprintf(stderr,"  Rp %p, next:%p, data: %p, rp+1: %p\n",
@@ -257,8 +257,8 @@ pp_gen(Gen *gen)
   fprintf(stderr,"]\n");
 }
 
-void 
-pp_reg(Region r,  char *str) 
+void
+pp_reg(Region r,  char *str)
 {
   r = clearStatusBits(r);
   fprintf(stderr,"printRegionInfo called from: %s\n",str);
@@ -271,8 +271,8 @@ pp_reg(Region r,  char *str)
   return;
 }
 
-void 
-chk_obj_in_gen(Gen *gen, uintptr_t *obj_ptr, char* s) 
+void
+chk_obj_in_gen(Gen *gen, uintptr_t *obj_ptr, char* s)
 {
   Rp* rp;
   int found = 0;
@@ -302,13 +302,13 @@ void printRegionStack() {
 */
 
 /* Calculate number of pages in a generation */
-inline size_t 
-NoOfPagesInGen(Gen *gen) 
+inline size_t
+NoOfPagesInGen(Gen *gen)
 {
   size_t i;
   Rp *rp;
 
-  debug(printf("[NoOfPagesInGen..."));  
+  debug(printf("[NoOfPagesInGen..."));
 
   for ( i = 0, rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     i++;
@@ -319,8 +319,8 @@ NoOfPagesInGen(Gen *gen)
 }
 
 /* Calculate number of pages in an infinite region. */
-size_t 
-NoOfPagesInRegion(Region r) 
+size_t
+NoOfPagesInRegion(Region r)
 {
 #ifdef ENABLE_GEN_GC
   return NoOfPagesInGen(&(r->g0)) + NoOfPagesInGen(&(r->g1));
@@ -330,8 +330,8 @@ NoOfPagesInRegion(Region r)
 }
 
 /*
-void 
-printFreeList() 
+void
+printFreeList()
 {
   Rp *kp;
 
@@ -350,8 +350,8 @@ printFreeList()
 
 
 #ifdef ENABLE_GC
-size_t 
-size_free_list() 
+size_t
+size_free_list()
 {
   Rp *rp;
   size_t i=0;
@@ -376,7 +376,7 @@ size_free_list()
  * alloc: Allocates n words in a region.                                   *
  * resetRegion: Resets a region by freeing all pages except one            *
  * deallocateRegionsUntil: All regions above a threshold are deallocated.  *
- * deallocateRegionsUntil_X86: ---- for stack growing towards -inf         * 
+ * deallocateRegionsUntil_X64: ---- for stack growing towards -inf         *
  *-------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------*
@@ -385,14 +385,15 @@ size_free_list()
  *  The second argument is a pointer to the generation in r to use      *
  *  Important: alloc_new_block must preserve all marks in fp (Region.h) *
  *----------------------------------------------------------------------*/
-void 
-alloc_new_block(Gen *gen) 
-{ 
+void
+alloc_new_block(Gen *gen)
+{
   Rp* np;
-#ifdef PROFILING  
+  debug(printf("[alloc_new_block: gen: %p", gen);)
+#ifdef PROFILING
   Ro *r;
   r = get_ro_from_gen(*gen);
-#endif /* PROFILING */  
+#endif /* PROFILING */
 
 #ifdef PROFILING
   profTabIncrNoOfPages(r->regionId, 1);
@@ -402,9 +403,9 @@ alloc_new_block(Gen *gen)
 
   #ifdef ENABLE_GC
   rp_used++;
-  if ( (!disable_gc) && (!time_to_gc) ) 
+  if ( (!disable_gc) && (!time_to_gc) )
     {
-      // the treshold suggests when we can garbage collect without allocating 
+      // the treshold suggests when we can garbage collect without allocating
       // more memory.
       //      double treshold = (double)rp_total - (((double)rp_total) / heap_to_live_ratio);
       if ( rp_used > rp_gc_treshold )
@@ -421,7 +422,7 @@ alloc_new_block(Gen *gen)
   #endif /* ENABLE_GC */
 
   LOCK_LOCK(FREELISTMUTEX);
-  if ( freelist == NULL ) callSbrk(); 
+  if ( freelist == NULL ) callSbrk();
   np = freelist;
   freelist = freelist->n;
 
@@ -437,20 +438,20 @@ alloc_new_block(Gen *gen)
   // udefinerede? Det tror jeg faktisk ikke. Dem i g0 anvendes til at
   // angive farve ved what gen to alloc to og i g1 anvendes de i
   // points_in_tospace.
-  np->colorPtr = (uintptr_t *)(&(np->i));  
+  np->colorPtr = (uintptr_t *)(&(np->i));
 #endif /* ENABLE_GEN_GC */
 
 #ifdef ENABLE_GC
-  if ( doing_gc  
+  if ( doing_gc
 #ifdef ENABLE_GEN_GC
       && ( major_p || !is_gen_1(*gen) )
 #endif
        )
     np->n = set_tospace_bit(NULL);     // to-space bit
-  else 
+  else
 #endif
     np->n = NULL;
-  np->gen = gen;         // Install origin-pointer to generation - used by GC 
+  np->gen = gen;         // Install origin-pointer to generation - used by GC
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
@@ -462,18 +463,20 @@ alloc_new_block(Gen *gen)
       (((Rp *)(gen->b))-1)->n = np; // Updates the next field in the last region page.
   else {
 #ifdef ENABLE_GC
-    int rt;
+    uintptr_t rt;
     if ( (rt = all_marks_fp(*gen)) /* was rtype(*gen) 2003-08-06, nh */ )
       {
 	gen->fp = np;           /* Update pointer to the first page. */
 	set_fp(*gen,rt);
       }
-    else 
+    else
 #endif
       gen->fp = np;                /* Update pointer to the first page. */
   }
   gen->a = (uintptr_t *) (&(np->i));      /* Updates the allocation pointer. */
   gen->b = (uintptr_t *) (np+1);          /* Updates the border pointer. */
+
+  debug(printf("]\n");)
 }
 
 /*----------------------------------------------------------------------*
@@ -482,14 +485,14 @@ alloc_new_block(Gen *gen)
  *  Put a region administrationsstructure on the stack. The address is  *
  *  in roAddr.                                                          *
  *----------------------------------------------------------------------*/
-static inline Region 
+static inline Region
 allocateRegion0(Region r
 #ifdef KAM
 		, Region* topRegionCell
 #endif
-		) 
-{ 
-  debug(printf("[allocateRegion (rAddr=%p)...",r));  
+		)
+{
+  debug(printf("[allocateRegion (rAddr=%p)...",r));
   r = clearStatusBits(r);
 
   r->g0.fp = NULL;
@@ -501,19 +504,19 @@ allocateRegion0(Region r
   set_gen_1(r->g1);              // Mark generation
   alloc_new_block(&(r->g1));     // Allocate the first region page in g1
 #endif /* ENABLE_GEN_GC */
-  
+
   TOP_REGION = r;
 
   debug(printf("]\n"));
   return r;
-}  
+}
 
 Region
 allocateRegion(Region r
 #ifdef KAM
 	       , Region* topRegionCell
 #endif
-		    ) 
+		    )
 {
   r = allocateRegion0(r
 #ifdef KAM
@@ -525,7 +528,7 @@ allocateRegion(Region r
 }
 
 #ifdef ENABLE_GC
-Region 
+Region
 allocatePairRegion(Region r)
 {
   r = allocateRegion0(r);
@@ -537,7 +540,7 @@ allocatePairRegion(Region r)
   return r;
 }
 
-Region 
+Region
 allocateArrayRegion(Region r)
 {
   r = allocateRegion0(r);
@@ -549,7 +552,7 @@ allocateArrayRegion(Region r)
   return r;
 }
 
-Region 
+Region
 allocateRefRegion(Region r)
 {
   r = allocateRegion0(r);
@@ -561,7 +564,7 @@ allocateRefRegion(Region r)
   return r;
 }
 
-Region 
+Region
 allocateTripleRegion(Region r)
 {
   r = allocateRegion0(r);
@@ -578,7 +581,7 @@ void free_lobjs(Lobjs* lobjs)
 {
   //if ( lobjs )
   //  fprintf(stderr, "Freeing large objs: lobjs=%p\n", lobjs);
-  while ( lobjs ) 
+  while ( lobjs )
     {
       Lobjs* lobjsTmp;
 
@@ -588,10 +591,10 @@ void free_lobjs(Lobjs* lobjs)
       tag = *((&(lobjs->value)) + sizeObjectDesc);
   #else
       tag = lobjs->value;
-  #endif	  
+  #endif
 
       lobjs_current -= size_lobj(tag);
-#endif	  
+#endif
       lobjsTmp = clear_lobj_bit(lobjs->next);
 #ifdef ENABLE_GC
       free(lobjs->orig);
@@ -612,7 +615,7 @@ void deallocateRegion(
 #ifdef KAM
 		      Region* topRegionCell
 #endif
-		     ) { 
+		     ) {
 #ifdef PROFILING
   int i;
 #endif
@@ -637,8 +640,8 @@ void deallocateRegion(
 
   free_lobjs(TOP_REGION->lobjs);
 
-  /* Insert the region pages in the freelist; there is always 
-   * at least one page in a generation. */  
+  /* Insert the region pages in the freelist; there is always
+   * at least one page in a generation. */
   LOCK_LOCK(FREELISTMUTEX);
   (((Rp *)TOP_REGION->g0.b)-1)->n = freelist;  // Free pages in generation 0
   freelist = clear_fp(TOP_REGION->g0.fp);
@@ -660,9 +663,9 @@ alloc_lobjs(int n) {
   Lobjs* lobjs;
 #ifdef ENABLE_GC
   char *p;
-  size_t r;  
+  size_t r;
   size_t sz_bytes;
-  sz_bytes = 4*n + sizeof(Lobjs) + 1024;
+  sz_bytes = sizeof(uintptr_t)*n + sizeof(Lobjs) + 1024;
   p = malloc(sz_bytes);
   if ( p == NULL )
     die("alloc_lobjs: malloc returned NULL");
@@ -676,12 +679,12 @@ alloc_lobjs(int n) {
     die("alloc_lobjs: large object is not properly aligned.");
   lobjs->orig = p;
 #else
-  lobjs = (Lobjs*)malloc(4*n + sizeof(Lobjs));
+  lobjs = (Lobjs*)malloc(sizeof(uintptr_t)*n + sizeof(Lobjs));
   if ( lobjs == NULL )
     die("alloc_lobjs: malloc returned NULL");
 #endif /* ENABLE_GC */
 #ifdef KAM
-  lobjs->sizeOfLobj = 4*n;
+  lobjs->sizeOfLobj = sizeof(uintptr_t)*n;
 #endif
   return lobjs;
 }
@@ -691,7 +694,7 @@ alloc_lobjs(int n) {
  *  Sbrk is called and the free list is updated.                        *
  *  The free list has to be empty.                                      *
  *----------------------------------------------------------------------*/
-void callSbrk() { 
+void callSbrk() {
   Rp *np, *old_free_list;
   char *sb;
   size_t temp;
@@ -705,7 +708,7 @@ void callSbrk() {
 
   /* For GC we require 1Kb alignments, that is the size of a region page! */
 
-  sb = malloc(BYTES_ALLOC_BY_SBRK + 1024 /*8*/);
+  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) + 1024 );
 
   if ( sb == NULL ) {
     perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
@@ -713,12 +716,17 @@ void callSbrk() {
   }
 
   /* alignment (martin) */
-  if (( temp = (size_t)sb % 1024 )) {
-    sb = sb + 1024 - temp;
+  if (( temp = (size_t)(((uintptr_t)sb) % sizeof(Rp) ))) {
+    sb = sb + sizeof(Rp) - temp;
   }
 
-  if ( ! is_rp_aligned((size_t)sb) )
+  if ( ! is_rp_aligned((size_t)sb) ) {
+    printf ("sb=%p\n", sb);
+    printf ("sizeof(Rp)=%ld\n", sizeof(Rp));
+    printf ("sizeof(uintptr_t)=%ld\n", sizeof(uintptr_t));
+    printf ("temp=%ld\n", temp);
     die("SBRK region page is not properly aligned.");
+  }
 
   old_free_list = freelist;
   np = (Rp *) sb;
@@ -727,7 +735,7 @@ void callSbrk() {
   rp_total++;
 
   /* fragment the SBRK-chunk into region pages */
-  while ((void *)(np+1) < ((void *)freelist)+BYTES_ALLOC_BY_SBRK) { 
+  while ((char *)(np+1) < ((char *)freelist)+BYTES_ALLOC_BY_SBRK) {
     np++;
     (np-1)->n = np;
     rp_total++;
@@ -751,7 +759,7 @@ void callSbrk() {
  *  malloc.                                                             *
  *----------------------------------------------------------------------*/
 inline uintptr_t *
-allocGen (Gen *gen, size_t n) { 
+allocGen (Gen *gen, size_t n) {
   uintptr_t *t1;
   uintptr_t *t2;
   uintptr_t *t3;
@@ -761,7 +769,8 @@ allocGen (Gen *gen, size_t n) {
   uintptr_t *i;
 #endif
 
-  debug(printf("[allocGen... generation: %p", gen));
+  debug(printf("[allocGen... generation: %p, n:%zu ", gen,n));
+  debug(fflush(stdout));
 
 #ifdef PROFILING
   r = get_ro_from_gen(*gen);
@@ -778,7 +787,7 @@ allocGen (Gen *gen, size_t n) {
   r->allocProfNow += sizeObjectDesc;
 #endif /* PROFILING */
 
-  // see if the size of requested memory exceeds 
+  // see if the size of requested memory exceeds
   // the size of a region page
 
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
@@ -794,14 +803,14 @@ allocGen (Gen *gen, size_t n) {
       allocatedLobjs++;
     #endif
 #ifdef ENABLE_GC
-      lobjs_current += 4*n;
-      lobjs_period += 4*n;
-      if ( (!disable_gc) && (lobjs_current>lobjs_gc_treshold) ) 
+      lobjs_current += sizeof(void*)*n;
+      lobjs_period += sizeof(void*)*n;
+      if ( (!disable_gc) && (lobjs_current>lobjs_gc_treshold) )
 	{
 	  time_to_gc = 1;
 	}
 #endif
-      // set the constant bit so that GC won't run 
+      // set the constant bit so that GC won't run
       // through the thing before there is data in the
       // object. This shouldn't be necessary; mael 2005-11-09
 //    lobjs->value = set_tag_const(lobjs->value);
@@ -809,7 +818,7 @@ allocGen (Gen *gen, size_t n) {
     }
 
 #ifdef ENABLE_GC
-  alloc_period += 4*n;
+  alloc_period += sizeof(void*)*n;
 #endif
 
   t1 = gen->a;
@@ -818,9 +827,10 @@ allocGen (Gen *gen, size_t n) {
   t3 = gen->b;
   if (t2 > t3) {
     #if defined(PROFILING) || defined(ENABLE_GC)
-       /* insert zeros in the rest of the current region page */
+       /* insert zeros in the rest of the current region page;
+	* mael 2019-01-28: why is this necessary when just GC is enabled? */
        for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
-    #endif 
+    #endif
     alloc_new_block(gen);
 
     t1 = gen->a;
@@ -828,7 +838,16 @@ allocGen (Gen *gen, size_t n) {
   }
   gen->a = t2;
 
-  debug(printf("]\n"));
+  #ifdef ENABLE_GC
+  #ifdef CHECK_GC
+  if ( points_into_dataspace(t1) ) {
+    die("allocated value points into dataspace");
+  }
+  #endif /* CHECK_GC */
+  #endif /* ENABLE_GC */
+
+  debug(printf(", t1=%p, t2=%p]\n", t1,t2));
+  debug(fflush(stdout));
 
   return t1;
 }
@@ -843,16 +862,16 @@ uintptr_t *alloc (Region r, size_t n) {
  *  the region administration structure is updated. The statusbits are  *
  *  not changed.                                                        *
  *----------------------------------------------------------------------*/
-static inline 
+static inline
 void resetGen(Gen *gen)
 {
-  /* There is always at least one page in a generation. */ 
+  /* There is always at least one page in a generation. */
   if ( (clear_fp(gen->fp))->n ) { /* There are more than one page in the generation. */
 
 #ifdef ENABLE_GC
     rp_used--;              // at least one page is freed; see comment in alloc_new_block
                             //   concerning conservative computation.
-#endif /* ENABLE_GC */  
+#endif /* ENABLE_GC */
 
     LOCK_LOCK(FREELISTMUTEX);
     (((Rp *)(gen->b))-1)->n = freelist;
@@ -870,11 +889,11 @@ void resetGen(Gen *gen)
   return;
 }
 
-Region 
-resetRegion(Region rAdr) 
-{ 
+Region
+resetRegion(Region rAdr)
+{
   Ro *r;
-  
+
 #ifdef PROFILING
   int j;
 #endif
@@ -888,7 +907,7 @@ resetRegion(Region rAdr)
   j = NoOfPagesInRegion(r);
 
   /* There is always at-least one page in a generation. */
-  noOfPages -= j-MIN_NO_OF_PAGES_IN_REGION; 
+  noOfPages -= j-MIN_NO_OF_PAGES_IN_REGION;
   profTabDecrNoOfPages(r->regionId, j-MIN_NO_OF_PAGES_IN_REGION);
 
   allocNowInf -= r->allocNow;
@@ -921,17 +940,17 @@ resetRegion(Region rAdr)
  *  description. It deallocates all regions that are placed over sp.       *
  *  The function does not return or alter anything.                        *
  *-------------------------------------------------------------------------*/
-void 
+void
 deallocateRegionsUntil(Region r
 #ifdef KAM
 		       , Region* topRegionCell
 #endif
-		       ) 
-{ 
+		       )
+{
   // debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
 
   r = clearStatusBits(r);
-  
+
 #ifdef PROFILING
   callsOfDeallocateRegionsUntil++;
   while ((FiniteRegionDesc *)r <= topFiniteRegion)
@@ -940,8 +959,8 @@ deallocateRegionsUntil(Region r
     }
 #endif
 
-  while (r <= TOP_REGION) 
-    { 
+  while (r <= TOP_REGION)
+    {
       /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
       deallocateRegion(
 #ifdef KAM
@@ -953,24 +972,26 @@ deallocateRegionsUntil(Region r
   debug(printf("]\n"));
 
   return;
-} 
+}
 
 /*-------------------------------------------------------------------------*
- *deallocateRegionsUntil_X86: version of the above function working with   *
+ *deallocateRegionsUntil_X64: version of the above function working with   *
  *  the stack growing towards negative infinity.                           *
  *-------------------------------------------------------------------------*/
 #ifndef KAM
-void 
-deallocateRegionsUntil_X86(Region r) 
-{ 
-  //  debug(printf("[deallocateRegionsUntil_X86(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
+void
+deallocateRegionsUntil_X64(Region r)
+{
+  //  debug(printf("[deallocateRegionsUntil_X64(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
+
+  debug(printf("[deallocateRegionsUntil_X64(r = %p)...\n", r));
 
   r = clearStatusBits(r);
-  
+
 #ifdef PROFILING
   callsOfDeallocateRegionsUntil++;
 
-  /* Don't call deallocRegionFiniteProfiling if no finite 
+  /* Don't call deallocRegionFiniteProfiling if no finite
    * regions are allocated. mael 2001-03-20 */
   while ( topFiniteRegion && (FiniteRegionDesc *)r >= topFiniteRegion)
     {
@@ -978,7 +999,7 @@ deallocateRegionsUntil_X86(Region r)
     }
 #endif
 
-  while (r >= TOP_REGION) 
+  while (r >= TOP_REGION)
     {
       /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
       deallocateRegion();
@@ -987,7 +1008,7 @@ deallocateRegionsUntil_X86(Region r)
   debug(printf("]\n"));
 
   return;
-} 
+}
 #endif /* not KAM */
 
 
@@ -1015,8 +1036,8 @@ deallocateRegionsUntil_X86(Region r)
  *  roAddr points at.                                                   *
  *----------------------------------------------------------------------*/
 Region
-allocRegionInfiniteProfiling(Region r, size_t regionId) 
-{ 
+allocRegionInfiniteProfiling(Region r, size_t regionId)
+{
   /* printf("[allocRegionInfiniteProfiling r=%x, regionId=%d...", r, regionId);*/
 
   callsOfAllocateRegionInf++;
@@ -1051,17 +1072,17 @@ allocRegionInfiniteProfiling(Region r, size_t regionId)
   return r;
 }
 
-/* In CodeGenX86, we use a generic function to compile a C-call. The regionId */
+/* In CodeGenX64, we use a generic function to compile a C-call. The regionId */
 /* may therefore be tagged, which this stub-function takes care of.           */
 Region
-allocRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
-{ 
+allocRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+{
   return allocRegionInfiniteProfiling(r, convertIntToC(regionId));
 }
 
 #ifdef ENABLE_GC
 Region
-allocPairRegionInfiniteProfiling(Region r, size_t regionId) 
+allocPairRegionInfiniteProfiling(Region r, size_t regionId)
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_pairregion(clearStatusBits(r)->g0);
@@ -1072,7 +1093,7 @@ allocPairRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocArrayRegionInfiniteProfiling(Region r, size_t regionId) 
+allocArrayRegionInfiniteProfiling(Region r, size_t regionId)
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_arrayregion(clearStatusBits(r)->g0);
@@ -1084,7 +1105,7 @@ allocArrayRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocRefRegionInfiniteProfiling(Region r, size_t regionId) 
+allocRefRegionInfiniteProfiling(Region r, size_t regionId)
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_refregion(clearStatusBits(r)->g0);
@@ -1096,7 +1117,7 @@ allocRefRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocTripleRegionInfiniteProfiling(Region r, size_t regionId) 
+allocTripleRegionInfiniteProfiling(Region r, size_t regionId)
 {
   r = allocRegionInfiniteProfiling(r, regionId);
   set_tripleregion(clearStatusBits(r)->g0);
@@ -1108,8 +1129,8 @@ allocTripleRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
-{ 
+allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+{
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_pairregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
@@ -1120,8 +1141,8 @@ allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 }
 
 Region
-allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
-{ 
+allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+{
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_arrayregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
@@ -1132,8 +1153,8 @@ allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 }
 
 Region
-allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
-{ 
+allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+{
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_refregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
@@ -1144,8 +1165,8 @@ allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 }
 
 Region
-allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId) 
-{ 
+allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+{
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_tripleregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
@@ -1154,7 +1175,7 @@ allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 
   return r;
 }
-#endif /*ENABLE_GC*/ 
+#endif /*ENABLE_GC*/
 
 /*-------------------------------------------------------------------------------*
  * allocRegionFiniteProfiling:                                                   *
@@ -1165,11 +1186,11 @@ allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
  * There has to be room on the stack for the finite region descriptor and the    *
  * object descriptor. rdAddr points at the region descriptor when called.        *
  *-------------------------------------------------------------------------------*/
-#define notPrgPoint 1 
-void 
+#define notPrgPoint 1
+void
 allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size)
 {
-  ObjectDesc *objPtr;  
+  ObjectDesc *objPtr;
 /*
   printf("[Entering allocRegionFiniteProfiling, rdAddr=%x, regionId=%d, size=%d ...\n", rdAddr, regionId, size);
 */
@@ -1195,17 +1216,17 @@ allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t siz
   objPtr->atId = notPrgPoint;
   objPtr->size = size;
 
-  debug(printf("exiting, topFiniteRegion = %x, topFiniteRegion->p = %x, &topFiniteRegion = %x]\n", 
+  debug(printf("exiting, topFiniteRegion = %x, topFiniteRegion->p = %x, &topFiniteRegion = %x]\n",
   	       topFiniteRegion, topFiniteRegion->p, &topFiniteRegion));
 
   return;
 }
 
-/* In CodeGenX86, we use a generic function to compile a C-call. The regionId */
+/* In CodeGenX64, we use a generic function to compile a C-call. The regionId */
 /* and size may therefore be tagged, which this stub-function takes care of.  */
-void 
-allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size) 
-{ 
+void
+allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size)
+{
   allocRegionFiniteProfiling(rdAddr, convertIntToC(regionId), convertIntToC(size));
   return;
 }
@@ -1216,9 +1237,9 @@ allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, 
  * finite region descriptor, which will be the new stack address.  *
  *-----------------------------------------------------------------*/
 void
-deallocRegionFiniteProfiling(void) 
-{ 
-  int size;
+deallocRegionFiniteProfiling(void)
+{
+  long size;
 
   /*
   printf("[Entering deallocRegionFiniteProfiling regionId=%d (topFiniteRegion = %x)...\n",
@@ -1248,17 +1269,17 @@ deallocRegionFiniteProfiling(void)
  * beginning of the user value, as if profiling is not enabled.    *
  *-----------------------------------------------------------------*/
 uintptr_t *
-allocGenProfiling(Gen *gen, size_t n, size_t pPoint) 
+allocGenProfiling(Gen *gen, size_t n, size_t pPoint)
 {
   uintptr_t *res;
 
   debug(printf("[Entering allocProfiling... gen:%x, n:%d, pp:%d.", gen, n, pPoint));
 
   res = allocGen(gen, n+sizeObjectDesc);       // allocate object descriptor and object
-  
+
   ((ObjectDesc *)res)->atId = pPoint;     // initialize object descriptor
   ((ObjectDesc *)res)->size = n;
-  
+
   res = (uintptr_t *)(((ObjectDesc *)res) + 1); // return pointer to user data
 
   debug(printf("exiting]\n"));
@@ -1266,14 +1287,14 @@ allocGenProfiling(Gen *gen, size_t n, size_t pPoint)
 }
 
 uintptr_t *
-allocProfiling(Region r, size_t n, size_t pPoint) 
+allocProfiling(Region r, size_t n, size_t pPoint)
 {
   return allocGenProfiling(&(clearStatusBits(r)->g0),n,pPoint);
 }
 #endif /*PROFILING*/
 
 #ifdef KAM
-void 
+void
 free_region_pages(Rp* first, Rp* last)
 {
   if ( first == 0 )

@@ -6,19 +6,18 @@
   infix  3  := o
   type 'a ref = 'a ref
 
-  fun !(x: 'a ref): 'a = prim ("!", "!", x) 
-  fun (x: 'a ref) := (y: 'a): unit = prim (":=", ":=", (x, y)) 
+  fun !(x: 'a ref): 'a = prim ("!", x)
+  fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y))
 
-  fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
+  fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 
   fun not true = false
     | not false = true
 
   fun a <> b = not (a = b)
   fun (f o g) x = f(g x)
-  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
-  fun printNum (n:int):unit = prim("printNum","printNum",n)
-(*  fun printNum n = print (Int.toString n)*)
+  fun print (s:string) : unit = prim("printStringML", s)
+  fun printNum (n:int):unit = prim("printNum",n)
 
 local
   val counter = ref 0
@@ -33,7 +32,7 @@ fun loop 0 f = f ()
 
 val res = (loop 10 (fn () => printNum(inc()));
 	   loop 10 (fn () => printNum(succ())))
-	   
+
 
 val counter = ref 0
 fun inc () = (counter := (!counter + 1);

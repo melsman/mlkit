@@ -13,8 +13,8 @@
 
 typedef struct objectList {
   long atId;                /* Allocation point identifier. */
-  long size;                /* Size of object in bytes. */
-  struct objectList *nObj; /* Pointer to next object. */
+  long size;                /* Size of object in words. */
+  struct objectList *nObj;  /* Pointer to next object. */
 } ObjectList;
 
 typedef struct regionList {
@@ -23,22 +23,22 @@ typedef struct regionList {
   long waste;                   /* number of not used words in the region.     */
   long noObj;                   /* number of objects with different program points. */
   long infinite;                /* is region finite of infinite. */
-  ObjectList *fObj;            /* Pointer to first object. */
-  struct regionList * nRegion; /* Pointer to next region. */
+  ObjectList *fObj;             /* Pointer to first object. */
+  struct regionList * nRegion;  /* Pointer to next region. */
 } RegionList;
 
 typedef struct tickList {
-  RegionList * fRegion;    /* Pointer to first region. */
+  RegionList * fRegion;     /* Pointer to first region. */
   long stackUse;            /* Number of words used on the stack excl. regions. */
   long regionDescUse;       /* Number of words used to infinite regiondescriptors on the stack. */
   unsigned long time;       /* Number of 1/CLOCKS_PER_SEC seconds after start (excl. profiling.) */
-  struct tickList * nTick; /* Pointer to data for the next tick. */
+  struct tickList * nTick;  /* Pointer to data for the next tick. */
 } TickList;
 
 
 /* --------------------------------------------------
- * The following two type definitions are for 
- * holding objects for internal fast lookup 
+ * The following two type definitions are for
+ * holding objects for internal fast lookup
  * during a profile tick; see function profileTick().
  * -------------------------------------------------- */
 
@@ -51,7 +51,7 @@ typedef struct regionListHashList {
 typedef struct objectListHashList {
   long atId;
   struct objectList * ol;              /* entry */
-  struct objectListHashList * next;    /* next hashed element */  
+  struct objectListHashList * next;    /* next hashed element */
 } ObjectListHashList;
 
 #define REGION_LIST_HASH_TABLE_SIZE 4096
@@ -82,11 +82,6 @@ typedef struct profTabList {
 
 /* size of hash table */
 
-/*
-#define PROF_HASH_TABLE_SIZE 3881
-#define profHashTabIndex(regionId) ((regionId) % PROF_HASH_TABLE_SIZE)
-*/
-
 #define PROF_HASH_TABLE_SIZE 4096
 #define profHashTabIndex(regionId) ((regionId) & (PROF_HASH_TABLE_SIZE-1))
 
@@ -102,7 +97,7 @@ void profileTick(long *stackTop);
 void profiling_on(void);
 void profiling_off(void);
 void AlarmHandler();
-//void Statistik();
+
 void resetProfiler();
 void queueMarkProf();  /* tell the time next time there is a profile tick */
 char *allocMemProfiling_xx(long i);

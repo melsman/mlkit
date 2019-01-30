@@ -65,8 +65,8 @@ sml_WSTOPSIG(size_t status)
   return convertIntToML(WSTOPSIG(tmp));
 }
 
-uintptr_t 
-sml_waitpid(uintptr_t pair, size_t waitpid_arg, size_t flags) 
+uintptr_t
+sml_waitpid(uintptr_t pair, size_t waitpid_arg, size_t flags)
 {
   int status;
   int f = 0x0;
@@ -85,7 +85,7 @@ ssize_t
 sml_sysconf(ssize_t t)
 {
   long res;
-  switch (convertIntToC(t)) 
+  switch (convertIntToC(t))
   {
     case 1:
       res = sysconf(_SC_ARG_MAX);
@@ -214,7 +214,7 @@ sml_lower(char *name, size_t rwx_mode, size_t flags, size_t perm, size_t i, size
       res = fchmod(i,f);
       break;
     default:
-      res = 0;      
+      res = 0;
   }
   return res;
 }
@@ -235,9 +235,9 @@ sml_exec (String path, uintptr_t sl, int envl, int kind)
   }
   args = (char **) malloc(sizeof(char *) * (n+1));
   if (!args) return convertIntToML(-1);
-  
+
   list = sl;
-  
+
   for (i = 0; isCONS(list); list = tl(list), i++)
   {
     elemML = (String) hd(list);
@@ -246,7 +246,7 @@ sml_exec (String path, uintptr_t sl, int envl, int kind)
   args[i] = NULL;
 
   list = envl;
-  if (isCONS(list)) 
+  if (isCONS(list))
   {
     for (n = 0; isCONS(list); list = tl(list))
     {
@@ -322,7 +322,7 @@ REG_POLY_FUN_HDR(sml_readVec,uintptr_t pair, Region sr, int fd, int n1)
   s = REG_POLY_CALL(allocStringC, sr, n+1);
   ((char *)&(s->data))[n] = 0;
   r = read(convertIntToC(fd), &(s->data), n);
-  if (r > 0) 
+  if (r > 0)
   {
     ((char *)&(s->data))[r] = 0;
   }
@@ -440,13 +440,13 @@ sml_statA(uintptr_t pair, struct stat *b)
   res |= (S_IRUSR & b->st_mode ? 1 : 0);
   res <<= 1;
   res |= (S_IRWXU & b->st_mode ? 1 : 0);
-  elemRecordML(pair,1) = convertIntToML(res); 
-  elemRecordML(pair,2) = convertIntToML(b->st_ino); 
-  elemRecordML(pair,3) = convertIntToML(b->st_dev); 
-  elemRecordML(pair,4) = convertIntToML(b->st_nlink); 
-  elemRecordML(pair,5) = convertIntToML(b->st_size); 
-  elemRecordML(pair,6) = convertIntToML(b->st_uid); 
-  elemRecordML(pair,7) = convertIntToML(b->st_gid); 
+  elemRecordML(pair,1) = convertIntToML(res);
+  elemRecordML(pair,2) = convertIntToML(b->st_ino);
+  elemRecordML(pair,3) = convertIntToML(b->st_dev);
+  elemRecordML(pair,4) = convertIntToML(b->st_nlink);
+  elemRecordML(pair,5) = convertIntToML(b->st_size);
+  elemRecordML(pair,6) = convertIntToML(b->st_uid);
+  elemRecordML(pair,7) = convertIntToML(b->st_gid);
   return pair;
 }
 
@@ -495,10 +495,10 @@ sml_fstat(uintptr_t pair, size_t fd)
   return sml_statA(pair, &b);
 }
 
-static int
+static size_t
 sml_pathconf_number(size_t name)
 {
-  int res = 0;
+  size_t res = 0;
   switch(name)
   {
     case 0:
@@ -563,7 +563,7 @@ sml_pathconf(char *file, size_t name)
   return res;
 }
 
-static int sml_ttyVals[] = {
+static size_t sml_ttyVals[] = {
   VEOF, // 0
   VEOL,
   VERASE,
@@ -637,25 +637,25 @@ static int sml_ttyVals[] = {
   NCCS // 70
 };
 
-int
-sml_getTty(int i)
+size_t
+sml_getTty(size_t i)
 {
   return sml_ttyVals[i];
 }
 
 #include "SysErrTable.h"
 
-static int 
+static int
 sml_posixFind(char *s, struct syserr_entry arr[], int amount)
 {
-  int i = 0, j, k,n;
+  int i = 0, j, k, n;
   j = amount;
   while (i <= j)
   {
     k = i + (j-i) / 2;
     n = strcmp(arr[k].name, s);
     if (n == 0) return arr[k].number;
-    if (n < 0) 
+    if (n < 0)
     {
       i = k+1;
       continue;
@@ -669,22 +669,22 @@ sml_posixFind(char *s, struct syserr_entry arr[], int amount)
   return -1;
 }
 
-int
+size_t
 sml_syserror(char *s)
 {
   return sml_posixFind(s, syserrTableName, sml_numberofErrors);
 }
 
-int
+size_t
 sml_findsignal(char *s)
 {
   return sml_posixFind(s, syssigTableNumber, sml_numberofSignals);
 }
 
-static String 
-REG_POLY_FUN_HDR(sml_PosixName, Region rs, int e, struct syserr_entry arr[], int amount)
+static String
+REG_POLY_FUN_HDR(sml_PosixName, Region rs, size_t e, struct syserr_entry arr[], size_t amount)
 {
-  int i = 0, j, k,n;
+  size_t i = 0, j, k,n;
   j = amount;
   e = convertIntToC(e);
   while (i <= j)
@@ -695,7 +695,7 @@ REG_POLY_FUN_HDR(sml_PosixName, Region rs, int e, struct syserr_entry arr[], int
     {
       return REG_POLY_CALL(convertStringToML, rs, arr[k].name);
     }
-    if (n < 0) 
+    if (n < 0)
     {
       i = k+1;
       continue;
@@ -735,7 +735,7 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
   }
   res = getgrgid_r(gid, &gbuf, b, s-1, &gbuf2);
   third(triple) = res;
-  if (res) 
+  if (res)
   {
     free(b);
     return triple;
@@ -781,7 +781,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
   }
   res = getgrnam_r(name, &gbuf, b, s-1, &gbuf2);
   third(triple) = res;
-  if (res) 
+  if (res)
   {
     free(b);
     return triple;
@@ -825,7 +825,7 @@ REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region sh
   }
   res = getpwuid_r(uid, &pbuf, b, s-1, &pbuf2);
   elemRecordML(tuple,4) = res;
-  if (res) 
+  if (res)
   {
     free(b);
     return tuple;
@@ -861,7 +861,7 @@ REG_POLY_FUN_HDR(sml_getpwnam, long tuple, Region homeR, Region shellR, String n
   }
   res = getpwnam_r(name, &pbuf, b, s-1, &pbuf2);
   elemRecordML(tuple,4) = res;
-  if (res) 
+  if (res)
   {
     free(b);
     return tuple;
@@ -879,7 +879,7 @@ REG_POLY_FUN_HDR(sml_getpwnam, long tuple, Region homeR, Region shellR, String n
   return tuple;
 }
 
-String 
+String
 REG_POLY_FUN_HDR(sml_ctermid, Region r)
 {
   String rs;
@@ -960,20 +960,20 @@ int getlogin_r(char *buf, size_t bufsize);
 // within /usr/include/stdio.h.
 // Trying setting
 //   #undef __USE_XOPEN2K
-//   #define __USE_GNU 1 
-// at the top of Runtime.c also fixes the problem - makes sence if 
+//   #define __USE_GNU 1
+// at the top of Runtime.c also fixes the problem - makes sence if
 // you look at stdio_lim.h
-// The constant L_ctermid IS set in stdio_lim.h because it is used 
+// The constant L_ctermid IS set in stdio_lim.h because it is used
 // without problems further down.
 // Everything compiles if we define it directly here instead - or moves
 // the defines above to Runtime.c:
-#define L_cuserid 9
+#define L_cuserid 100
 String
 REG_POLY_FUN_HDR(sml_getlogin, Region rs)
 {
   String s;
   int r;
-  s = REG_POLY_CALL(allocStringC,rs, L_cuserid + 4);  /* was 1 - hmm*/
+  s = REG_POLY_CALL(allocStringC,rs, L_cuserid + 8);  /* was 1 - hmm*/
   r = getlogin_r(&(s->data), L_cuserid);
   if (r != 0)
   {
@@ -1062,7 +1062,3 @@ REG_POLY_FUN_HDR(sml_uname, Region rl, Region rp, Region s1, Region s2)
   list = REG_POLY_CALL(cons_pair_of_strings, rl, rp, s1, s2, "machine", i.machine, list);
   return (uintptr_t)list;
 }
-
-
-
-

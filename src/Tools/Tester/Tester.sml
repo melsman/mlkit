@@ -1,15 +1,15 @@
 
-signature TESTER = 
-  sig 
+signature TESTER =
+  sig
     val main : string * string list -> OS.Process.status
   end
 
 structure Tester : TESTER =
   struct
-(*    val _ = SMLofNJ.Internals.GC.messages false; *)
-  
+    val log = "TESTmessages"
+
     fun files_equal (s1,s2) =
-      let fun open_file s = TextIO.openIn s 
+      let fun open_file s = TextIO.openIn s
 	  val is1 = open_file s1
 	  val is2 = open_file s2
 	  fun close() = (TextIO.closeIn is1; TextIO.closeIn is2)
@@ -21,18 +21,27 @@ structure Tester : TESTER =
 
     local
       val error_counter = ref 0
+      val dotcounter = ref 0
+      fun pr_dot () =
+          if !dotcounter < 60 then
+            ( dotcounter := !dotcounter + 1
+            ; print ".")
+          else ( dotcounter := 1
+               ; print "\n.")
     in
       fun reset_error_counter() = error_counter:=0
       val msglog = ref TextIO.stdOut
-      fun msg s = (TextIO.output(!msglog,s ^ "\n"); TextIO.flushOut (!msglog); print (s ^ "\n");
+      fun msg0 s = (TextIO.output(!msglog,s ^ "\n"); TextIO.flushOut (!msglog);
 		   TestReport.add_log_line s)
-      fun msg' s = (TextIO.output(!msglog,s ^ "\n"); TextIO.flushOut (!msglog); print (s ^ "\n"))
+      fun msg s = (msg0 s; pr_dot())
+      fun msgp s = (msg0 s; print ("\n" ^ s ^ "\n"); dotcounter := 0)
+      fun msg' s = (TextIO.output(!msglog,s ^ "\n"); TextIO.flushOut (!msglog); pr_dot())
       fun msgOk s = msg (" ok: " ^ s)
-      fun msgErr s = (error_counter := !error_counter + 1; msg (" ERR: " ^ s))
-      fun msgErrors () = 
-	if !error_counter = 0 then msg "\nTEST SUCCEEDED; there were no errors."
-	else if !error_counter = 1 then msg "***TEST FAILED: there was 1 error."
-	else msg ("***TEST FAILED: there were " ^ Int.toString (!error_counter) ^ " errors.")
+      fun msgErr s = (error_counter := !error_counter + 1; msgp (" ERR: " ^ s))
+      fun msgErrors () =
+	if !error_counter = 0 then msgp "TEST SUCCEEDED; there were no errors."
+	else if !error_counter = 1 then msgp "***TEST FAILED: there was 1 error."
+	else msgp ("***TEST FAILED: there were " ^ Int.toString (!error_counter) ^ " errors.")
       fun noOfErrors() = !error_counter
     end
 
@@ -51,26 +60,26 @@ structure Tester : TESTER =
 	val _ = msg ("Processing file `" ^ filepath ^ "'")
 	val _ = OS.Process.system "rm -f -r MLB"     (* first delete MLB directories *)
 	fun opt t = List.exists (fn a => a=t) opts
-	val recover : unit -> unit = 
+	val recover : unit -> unit =
 	  let val memdir = OS.FileSys.getDir()
 	  in fn () => OS.FileSys.chDir memdir
 	  end
 	val {dir, file} = OS.Path.splitDirFile filepath
 	val _ = if dir="" then () else OS.FileSys.chDir dir
-	val compile_command_base = kitexe ^ " --log_to_file " ^ 
+	val compile_command_base = kitexe ^ " --log_to_file " ^
 	  (if opt "nobasislib" then "-no_basislib " else "") ^
 	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
-          (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "") 
+          (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "")
 	       ^ concatWith " " flags
 
-	val compile_command = compile_command_base ^ file	  
+	val compile_command = compile_command_base ^ file
 
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
-	        if opt "ecte" (*Expect Compile Time Error*) then 
+	        if opt "ecte" (*Expect Compile Time Error*) then
 		  if success then (msgErr "unexpected compile time success"; false)
 		  else (msgOk "expected compile time failure"; true)
-		else 
+		else
 		  if success then (msgOk "expected compile time success"; true)
 		  else (msgErr "unexpected compile time failure"; false)
 	  in
@@ -96,44 +105,36 @@ structure Tester : TESTER =
 	val runargs = nil (*["-heap_to_live_ratio", "2.5"]*)
 	fun rename_and_run(suffix, out_file, outok_file) =
 	  if OS.Process.isSuccess(OS.Process.system ("mv run " ^ exe_file)) then
-	    let 
+	    let
               val file_label = filepath ^suffix
    	      fun test_output () =
   	        if files_equal (file^out_file, file^outok_file) then
 		  (msgOk (out_file ^ " equal to " ^ outok_file); true)
-	        else (msgErr (out_file ^ " not equal to " ^ outok_file); false)
-(*
-	      fun test_output () =
-                if compare then 
-   		  if equal_to_okfile (file ^ ".out") then
-		    (msgOk "out equal to out.ok"; true)
-		  else (msgErr "out not equal to out.ok"; false)
-                else (msgOk "out not compared to .ok file"; true)
-*)
-	    in 
+	        else (msgErr (file^out_file ^ " not equal to " ^ file ^ outok_file); false)
+	    in
 	      if opt "tx" (*Time Executable*) then
 		let val _ = msg' ("    executing target program: " ^ exe_file)
 	 	    val {count,size,rss,data,stk,exe,real,user,sys} =
 		      MemUsage.memUsage {cmd=exe_file,args=runargs,out_file=file ^ out_file (*".out"*)}
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
-		    val exesize_stripped = 
+		    val exesize_stripped =
 		      if OS.Process.isSuccess(OS.Process.system ("strip " ^ exe_file)) then
 			size_of_file exe_file
 		      else (msgOk ("the command `strip " ^ exe_file ^ "' failed"); "N/A")
 		in
-		  TestReport.add_runtime_line{name=file_label,ok=ok,exesize=exesize, 
-					      exesize_stripped=exesize_stripped, 
+		  TestReport.add_runtime_line{name=file_label,ok=ok,exesize=exesize,
+					      exesize_stripped=exesize_stripped,
 					      size=size,data=data,
 					      rss=rss,stk=stk,exe=exe,
 					      real=real,user=user,sys=sys}
 
-		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s); 
+		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s);
 				      TestReport.add_runtime_bare_line(file_label,false))
 	      else
-		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file (*".out"*))
-		in 
-		  if (not(opt "ue" (*Uncaught Exception*) ) andalso OS.Process.isSuccess res) 
+		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file ^ " 2>&1" (*".out"*))
+		in
+		  if (not(opt "ue" (*Uncaught Exception*) ) andalso OS.Process.isSuccess res)
 		    orelse (opt "ue" (*Uncaught Exception*) andalso not(OS.Process.isSuccess res)) then
 		      TestReport.add_runtime_bare_line(file_label,test_output())
 		  else (msgErr (exe_file ^ " failure");
@@ -144,8 +145,8 @@ structure Tester : TESTER =
 		TestReport.add_runtime_bare_line(filepath,false))
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
-        if OS.Process.isSuccess(OS.Process.system compile_command) then
-	  (maybe_compare_complogs true; 
+        if OS.Process.isSuccess(OS.Process.system (compile_command ^ " >> ./" ^ log)) then
+	  (maybe_compare_complogs true;
 	   maybe_report_comptimes();
 	   rename_and_run(" ri ",".out",".out.ok")
           )
@@ -166,15 +167,14 @@ structure Tester : TESTER =
     fun main (progname, args) =
       case process_args args
 	of SOME (kitexe,testfile,flags) =>
-	  let val log = "TESTmessages"
-	    val _ = (reset_error_counter())
+	  let val _ = (reset_error_counter())
             handle Time.Time => (print "bad time4\n" ; raise Fail "bad")
 	    val _ = (TestReport.reset())
             handle Time.Time => (print "bad time5\n" ; raise Fail "bad")
 	  in (msglog:=TextIO.openOut(log);
 	      case TestFile.parse testfile
 		of NONE => OS.Process.failure
-		 | SOME (testfile_string,entries) => 
+		 | SOME (testfile_string,entries) =>
 		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
 		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
 		  in (app (process_entry flags) entries)
@@ -215,7 +215,7 @@ structure Tester : TESTER =
 			 OS.Process.failure)
       in SMLofNJ.exportFn(kit_bin_kittester_path,main)
 *)
-      in () 
+      in ()
       end *)
 
 

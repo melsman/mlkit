@@ -5,12 +5,12 @@
   infix  3  := o
   type 'a ref = 'a ref
 
-  fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
+  fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 
-  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
-  fun printNum (n:int):unit = prim("printNum","printNum",n)
+  fun print (s:string) : unit = prim("printStringML", s)
+  fun printNum (n:int):unit = prim("printNum",n)
 
-val x = 
+val x =
  let
    exception E
    val z = (if (2=2) then (raise E) else print "E not raised, error\n")
@@ -23,11 +23,11 @@ val x =
    exception G of int
    exception G' of int
 
-   val x = 2 
+   val x = 2
    val y = 3
 
-   val q = 
-     (if (2=2) then raise G'(x + y) else y - x) 
+   val q =
+     (if (2=2) then raise G'(x + y) else y - x)
 	handle G' x => (print "G' Raised\n"; x) | G x => (print "G Raised\n"; x+2)
 
    val _ = printNum q*)

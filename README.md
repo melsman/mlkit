@@ -11,6 +11,13 @@ Library.
 [![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/issue)](http://issuestats.com/github/melsman/mlkit)
 [![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
 
+## Installation
+
+Under macOS, MLKit is available through Homebrew: Just execute `brew
+install mlkit`. Under Linux, you may install a binary version of MLKit
+using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/ubuntu/mlkit).
+
+
 ## MLKit Features
 
 * Covers all of Standard ML. The MLKit compiles all of Standard ML,
@@ -33,10 +40,10 @@ Library.
   this respect.
 
 * Reference-tracing Garbage Collection: The MLKit supports
-  reference-tracing garbage collection in combination with region
+  reference-tracing garbage collection in combination with region-based
   memory management.
 
-* Native backend for the x86 architecture.
+* Native backend for the x64 architecture (under Linux and macOS).
 
 * [Documentation](http://www.elsman.com/mlkit/doc.html). A
   comprehensive guide on programming with the MLKit is
@@ -69,7 +76,7 @@ for details. The runtime system (`/src/Runtime/`) and libraries
 
 To compile, install, and use the MLKit, a Linux box running Ubuntu
 Linux, Debian, gentoo, or similar is needed. The MLKit also works on
-Mac OS and has also earlier been reported to run on the FreeBSD/x86
+macOS and has also earlier been reported to run on the FreeBSD/x86
 platform, with a little tweaking.
 
 To compile the MLKit, a Standard ML compiler is needed, which needs to
@@ -137,7 +144,7 @@ Execute the following command:
 $ make mlkit_libs
 ````
 
-## Installation
+## Installation after Compilation
 
 For a system wide installation of the MLKit, installation including
 man-pages and tools, execute the command:
@@ -155,12 +162,14 @@ $ make install
 
 To build a binary package, execute the command
 ````bash
-$ make mlkit_i386_tgz
+$ make mlkit_x64_tgz
 ````
 
-This command leaves a package `mlkit-X.Y.Z-i386.tgz` in the `dist/`
+This command leaves a package `mlkit-X.Y.Z-x64.tgz` in the `dist/`
 directory. For building a binary package, the installation step above
 is not needed and the bootstrapping step is optional.
+
+For building packages containing both MLKit and SMLtoJs, consult the Makefile.
 
 ## Try It
 
@@ -188,7 +197,7 @@ and `man/man1`. License information is located in the file
 
 ## Comments and Bug Reports
 
-The MLKit has a number of [known bugs and limitations](http://www.elsman.com/mlkit/bugs.html). To file a bug-report, create an issue at the Github page.
+The MLKit has a number of [known bugs and limitations](http://elsman.com/mlkit/bugs.html). To file a bug-report, create an issue at the Github page.
 
 ## Appendix A: Directory Structure of the Sources
 
@@ -214,13 +223,15 @@ After having checked out the sources from Github, execute the command:
 $ ./autobuild
 ````
 
-To compile and install the MLKit, execute the following commands:
+To compile the MLKit, execute the following commands:
 ````bash
 $ ./configure
 $ make mlkit
 $ make bootstrap
 $ make mlkit_libs
 ````
+
+The `make bootstrap` command is optional.
 
 To install the MLKit and related tools, execute:
 ````bash

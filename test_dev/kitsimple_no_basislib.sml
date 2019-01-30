@@ -8,72 +8,69 @@ infix  3  := o
 infix  0  before
 
 
-    type unit = unit
-    type exn = exn
-    type 'a ref = 'a ref
+type unit = unit
+type exn = exn
+type 'a ref = 'a ref
 
-    exception Bind = Bind
-    exception Match = Match
-    exception Subscript
-    exception Size
-    exception Overflow = Overflow
-    exception Domain
-    exception Div = Div
-    exception Chr
-    exception Fail of string 
+exception Bind = Bind
+exception Match = Match
+exception Subscript
+exception Size
+exception Overflow = Overflow
+exception Domain
+exception Div = Div
+exception Chr
+exception Fail of string
 
-  fun !(x: 'a ref): 'a = prim ("!", "!", x) 
-  fun (x: 'a ref) := (y: 'a): unit = prim (":=", ":=", (x, y)) 
-fun (a:real) / (b:real) : real = prim ("divFloat", "divFloat", (a,b))
-  fun sqrt (r : real) : real = prim ("sqrtFloat", "sqrtFloat", r)
-  fun sin (r : real) : real = prim ("sinFloat", "sinFloat", r)
-  fun cos (r : real) : real = prim ("cosFloat", "cosFloat", r)
-  fun tan r = sin r / cos r
-  fun atan (r : real) : real = prim ("atanFloat", "atanFloat", r)
-  fun asin (a : real) : real = prim ("asinFloat", "asinFloat", a)
-  fun acos (a : real) : real = prim ("acosFloat", "acosFloat", a)
-  fun atan2 (y : real, x : real) : real = prim ("atan2Float", "atan2Float", (y,x))
-  fun exp (r : real) : real = prim ("expFloat", "expFloat", r)
-  fun pow (x : real, y : real) : real = prim ("powFloat", "powFloat", (x,y))
-    fun real (x : int) : real = prim ("realInt", "realInt", x)
-    fun floor (x : real) : int = prim ("floorFloat", "floorFloat", x)    (* may raise Overflow *)
-fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
-fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
+fun !(x: 'a ref): 'a = prim ("!", x)
+fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y))
+fun (a:real) / (b:real) : real = prim ("divFloat", (a,b))
+fun sqrt (r : real) : real = prim ("sqrtFloat", r)
+fun sin (r : real) : real = prim ("sinFloat", r)
+fun cos (r : real) : real = prim ("cosFloat", r)
+fun tan r = sin r / cos r
+fun atan (r : real) : real = prim ("atanFloat", r)
+fun asin (a : real) : real = prim ("asinFloat", a)
+fun acos (a : real) : real = prim ("acosFloat", a)
+fun atan2 (y : real, x : real) : real = prim ("atan2Float", (y,x))
+fun exp (r : real) : real = prim ("expFloat", r)
+fun pow (x : real, y : real) : real = prim ("powFloat", (x,y))
+fun real (x : int) : real = prim ("realInt", x)
+fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
+fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
-fun chr (i : int) : char = prim ("chrCharML", "chrCharML", (i, Chr))
-fun ord (c : char) : int = prim ("id", "id", c)
-fun print (x:string):unit = prim("printStringML","printStringML",x)
-      fun append [] ys = ys
-	| append (x::xs) ys = x :: append xs ys
-      fun xs @ ys = append xs ys
+fun size (s : string) : int = prim ("__bytetable_size", s)
+fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+fun ord (c : char) : int = prim ("id", c)
+fun print (x:string):unit = prim("printStringML",x)
+fun append [] ys = ys
+  | append (x::xs) ys = x :: append xs ys
+fun xs @ ys = append xs ys
 
 fun not true = false
-    | not false = true
+  | not false = true
 fun (f o g) x = f(g x)
-      fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
-fun eq_integer (x: int, y: int): bool = prim ("=", "=", (x, y)) 
-fun eq_string  (x: string, y: string): bool = prim("=", "=", (x, y)) 
+fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
+fun eq_integer (x: int, y: int): bool = prim ("=", (x, y))
+fun eq_string  (x: string, y: string): bool = prim("=", (x, y))
 
 fun map f [] = []
-    | map f (x::xs) = f x :: map f xs
+  | map f (x::xs) = f x :: map f xs
 
 fun revAcc [] ys = ys
-        | revAcc (x::xs) ys = revAcc xs (x::ys)
+  | revAcc (x::xs) ys = revAcc xs (x::ys)
 fun rev xs = revAcc xs []
-
-(*exception Overflow*)
 
 fun digit n = chr(ord #"0" + n)
 fun digits(n,acc) =
       if n >=0 andalso n<=9 then digit n:: acc
       else digits (n div 10, digit(n mod 10) :: acc)
 
-fun int_to_string(n) = 
+fun int_to_string(n) =
       if n<0 then implode(#"~"::digits(~n,[]))
       else implode(digits(n,[]))
-
 
 exception Hd
 fun hd [] = raise Hd
@@ -84,36 +81,36 @@ structure Array =   (* Interface as in SML/NJ *)
 struct
 *)
 
-  infix sub
+infix sub
 
-  type 'a array = 'a ref list
+type 'a array = 'a ref list
 
-  exception Size 
+exception Size
 
-  exception Subscript 
+exception Subscript
 
-  fun tabulate' (i,f) = 
-        let fun tab j = if j < i then f j :: tab (j+1) else nil
-        in if i < 0 then raise Size else (tab 0)
-        end
+fun tabulate' (i,f) =
+    let fun tab j = if j < i then f j :: tab (j+1) else nil
+    in if i < 0 then raise Size else (tab 0)
+    end
 
-  fun array (n, x) = tabulate' (n, fn _ => ref x)
+fun array (n, x) = tabulate' (n, fn _ => ref x)
 
-  fun arrayoflist l = map ref l
+fun arrayoflist l = map ref l
 
-  fun tabulate (n, f) = tabulate' (n, fn x => ref(f x))
+fun tabulate (n, f) = tabulate' (n, fn x => ref(f x))
 
-  fun sub'(nil,i) = raise Subscript
-    | sub' (a::r,i) = if i > 0 then sub' (r,i-1)
-		      else if i < 0 then raise Subscript
-			   else a 
+fun sub'(nil,i) = raise Subscript
+  | sub' (a::r,i) = if i > 0 then sub' (r,i-1)
+		    else if i < 0 then raise Subscript
+		    else a
 
-  fun op sub (a, i) =  !(sub'(a,i))
+fun op sub (a, i) =  !(sub'(a,i))
 
-  fun update (a, i, v) = sub'(a, i) := v
+fun update (a, i, v) = sub'(a, i) := v
 
-  fun length [] = 0
-    | length (x::xs) = 1 + length xs
+fun length [] = 0
+  | length (x::xs) = 1 + length xs
 
 (*
 end (* Array *)
@@ -166,7 +163,7 @@ fun nthtail ([],_) = raise NthTail
 fun exists p [] = false
   | exists p (x::xs) = p x orelse exists p xs
 
-(* 
+(*
 end; (* List *)
 *)
 
@@ -193,7 +190,7 @@ structure Array2 : sig
     type 'a array2 = {size : (int*int), value : 'a array}
     exception Subscript = Subscript
     fun index22 ((i1:int,i2:int),(s1,s2)) =
-	if i1>=0 andalso i1<s1 andalso i2>=0 andalso i2<s2 then i1*s2+i2 
+	if i1>=0 andalso i1<s1 andalso i2>=0 andalso i2<s2 then i1*s2+i2
 	else raise Subscript
     fun array22(bnds as (i1,i2), v) = {size=bnds, value=array(i1*i2, v)}
     fun op sub22 ({size,value}, indx) = (op sub) (value, index22(indx,size))
@@ -220,7 +217,7 @@ functor Simple(val grid_max: int val step_count: int) (* : BMARK *) =
     infix 9 sub
 
 
-    
+
     fun min (x:real,y:real) = if x<y then x else y
     fun max (x:real,y:real) = if x<y then y else x
     exception MaxList
@@ -232,7 +229,7 @@ functor Simple(val grid_max: int val step_count: int) (* : BMARK *) =
       | sum_list (l:real list) = fold (op +) l 0.0
 
 fun for {from=start:int,step=delta:int, to=endd:int} body =
-    if delta>0 andalso endd>=start then 
+    if delta>0 andalso endd>=start then
 	let fun f x = if x > endd then () else (body x; f(x+delta))
 	in f start
 	end
@@ -245,20 +242,20 @@ fun from(n,m) = if n>m then [] else n::from(n+1,m)
 fun flatten [] = []
   | flatten (x::xs) = x @ flatten xs
 fun pow(x:real,y:int) = if y=0 then 1.0 else x * pow(x,y-1)
-fun array2(bounds as ((l1,u1),(l2,u2)),v) =  
+fun array2(bounds as ((l1,u1),(l2,u2)),v) =
     (array22((u1-l1+1, u2-l2+1),v), bounds)
-fun sub2((A,((lb1:int,ub1:int),(lb2:int,ub2:int))),(k,l)) = 
-    sub22(A, (k-lb1, l-lb2)) 
+fun sub2((A,((lb1:int,ub1:int),(lb2:int,ub2:int))),(k,l)) =
+    sub22(A, (k-lb1, l-lb2))
 fun update2((A,((lb1,_),(lb2,_))),(k,l), v) = update22(A,(k-lb1,l-lb2),v)
 fun bounds2(_,b) = b
 fun printarray2 (A as (M:real array2,((l1,u1),(l2,u2)))) =
     for {from=l1,step=1,to=u1} (fn i =>
         (print "[";
-	 for {from=l2,step=1,to=u2-1} (fn j => 
+	 for {from=l2,step=1,to=u2-1} (fn j =>
 	      print ( (* makestring(sub2(A,(i,j))) ^ *) ", "));
 	 print ( (* makestring (sub2(A,(i,u2))) ^ *) "]\n")))
 fun array1((l,u),v) = (array(u-l+1,v),(l,u))
-fun sub1((A,(l:int,u:int)),i:int) = (op sub)(A,i-l) 
+fun sub1((A,(l:int,u:int)),i:int) = (op sub)(A,i-l)
 fun update1((A,(l,_)),i,v) = update(A,i-l,v)
 fun bounds1(_,b) = b
 
@@ -267,31 +264,31 @@ fun bounds1(_,b) = b
  *)
 val grid_size = ((2,grid_max), (2,grid_max))
 
-fun north (k,l) = (k-1,l)	
-fun south (k,l) = (k+1,l)		
+fun north (k,l) = (k-1,l)
+fun south (k,l) = (k+1,l)
 
 fun east (k,l) = (k,l+1)
 fun west (k,l) = (k,l-1)
 
 val northeast = north o east
 val southeast = south o east
-val northwest = north o west		
+val northwest = north o west
 val southwest = south o west
 
 type dir = int * int -> int * int
 
-val farnorth : dir = north o north 
+val farnorth : dir = north o north
 val farsouth : dir = south o south
-val fareast : dir = east o east		
+val fareast : dir = east o east
 val farwest : dir = west o west
 
 fun zone_A(k,l) = (k,l)
 fun zone_B(k,l) = (k+1,l)
 
-fun zone_C(k,l) = (k+1,l+1)		
+fun zone_C(k,l) = (k+1,l+1)
 fun zone_D(k,l) = (k,l+1)
 
-val  zone_corner_northeast = north   
+val  zone_corner_northeast = north
 val  zone_corner_northwest = northwest
 fun  zone_corner_southeast zone = zone
 val  zone_corner_southwest = west
@@ -318,18 +315,18 @@ fun for_interior_zones f =
        for {from=lmin+1, step=1, to=lmax} (fn l => f (k,l)))
 
 fun map_interior_nodes f =
-    flatten(map (fn k => (map (fn l => f (k,l)) 
+    flatten(map (fn k => (map (fn l => f (k,l))
 			      (from(lmin,lmax))))
 	        (from(kmin,kmax)))
 fun map_interior_zones f =
-    flatten(map (fn k => (map (fn l => f (k,l)) 
+    flatten(map (fn k => (map (fn l => f (k,l))
                                (from(lmin+1,lmax))))
 	         (from(kmin+1,kmax)))
 
 fun for_north_ward_interior_zones f =
     for {from=kmax, step= ~1, to=kmin+1} (fn k =>
        for {from=lmin+1, step=1, to=lmax} (fn l => f (k,l)))
-fun for_west_ward_interior_zones f = 
+fun for_west_ward_interior_zones f =
     for {from=kmin+1, step=1, to=kmax} (fn k =>
        for {from=lmax, step= ~1, to=lmin+1} (fn l => f (k,l)))
 
@@ -341,7 +338,7 @@ fun for_west_zones f = for {from=kmin+1, step=1, to=kmax+1}(fn k => f (k,lmin))
 
 type 'a reflect_dir = int * int -> {size: int * int, value: 'a ref list}
         * ((int * int) * (int * int)) -> 'a
-  
+
 fun reflect dir node A = sub2(A, dir node)
 val reflect_north : real reflect_dir = reflect north
 val reflect_south : real reflect_dir = reflect south
@@ -352,7 +349,7 @@ fun for_north_nodes f =
     for {from=lmin, step=1, to=lmax-1} (fn l => f (kmin-1,l))
 fun for_south_nodes f =
     for {from=lmin, step=1, to=lmax-1} (fn l => f (kmax+1,l))
-fun for_east_nodes f  = 
+fun for_east_nodes f  =
     for {from=kmin, step=1, to=kmax-1} (fn k => f (k,lmax+1))
 fun for_west_nodes f =
     for {from=kmin, step=1, to=kmax-1} (fn k => f (k,lmin-1))
@@ -436,7 +433,7 @@ fun make_position_matrix interior_function =
 		val zb 	    	=  zx - zax + omega*zyx
 	    in (rb, zb)
 	    end
-	
+
 	fun reflect_node (x_dir, y_dir, a_dir, node) =
 	    let val rx = reflect x_dir  node  r'
 		val zx = reflect x_dir  node  z'
@@ -455,7 +452,7 @@ fun make_position_matrix interior_function =
 	for_west_nodes (fn n => u2(reflect_node(east, southeast, fareast, n)) n);
 	u2 (reflect_node(south, southwest, farsouth, west_of_north_east))
 	   west_of_north_east;
-        u2 (reflect_node(north, northwest, farnorth, west_of_south_east)) 
+        u2 (reflect_node(north, northwest, farnorth, west_of_south_east))
 	   west_of_south_east;
 	u2 (reflect_node(west, northwest, farwest, north_of_south_east))
 	   north_of_south_east;
@@ -468,7 +465,7 @@ fun make_position_matrix interior_function =
 	u2 (reflect_node(southeast, south, farsouth, north_west_corner))
 	   north_west_corner;
 	u2 (reflect_node(northeast, east, fareast, south_west_corner))
-	   south_west_corner; 
+	   south_west_corner;
         (r',z')
     end
 
@@ -529,23 +526,23 @@ fun make_velocity((u,w),(r,z),p,q,alpha,rho,delta_t: real) =
 
 
 fun make_position ((r,z),delta_t:real,(u',w')) =
-    let fun interior_position node = 
-            (sub2(r,node) + delta_t*sub2(u',node), 
+    let fun interior_position node =
+            (sub2(r,node) + delta_t*sub2(u',node),
 	     sub2(z,node) + delta_t*sub2(w',node))
     in make_position_matrix interior_position
     end
-	
+
 
 fun make_area_density_volume(rho, s, x') =
     let val alpha' = array2(dimension_all_zones, 0.0)
 	val s' = array2(dimension_all_zones, 0.0)
 	val rho' = array2(dimension_all_zones, 0.0)
-	fun interior_area zone = 
+	fun interior_area zone =
  	    let val (area, vol) = zone_area_vol (x', zone)
 		val density =  sub2(rho,zone)*sub2(s,zone) / vol
 	    in (area,vol,density)
 	    end
-	fun reflect_area_vol_density reflect_function = 
+	fun reflect_area_vol_density reflect_function =
 	    (reflect_function alpha',reflect_function s',reflect_function rho')
 	fun update_asr (zone,(a,s,r)) = (update2(alpha',zone,a);
 					 update2(s',zone,s);
@@ -561,27 +558,27 @@ fun make_area_density_volume(rho, s, x') =
         for_west_zones (fn zone => r_area_vol_den(reflect_east, zone));
         for_north_zones (fn zone => r_area_vol_den(reflect_south, zone));
 	(alpha', rho', s')
-    end 
+    end
 
 
 (*
  * Artifical Viscosity (page 11)
  *)
-fun make_viscosity(p,(u',w'),(r',z'), alpha',rho') = 
+fun make_viscosity(p,(u',w'),(r',z'), alpha',rho') =
     let	fun interior_viscosity zone =
-	let fun upper_del f = 
-	    0.5 * ((sub2(f,zone_corner_southeast zone) - 
+	let fun upper_del f =
+	    0.5 * ((sub2(f,zone_corner_southeast zone) -
 		    sub2(f,zone_corner_northeast zone)) +
-		   (sub2(f,zone_corner_southwest zone) - 
+		   (sub2(f,zone_corner_southwest zone) -
 		    sub2(f,zone_corner_northwest zone)))
-	    fun lower_del f = 
-		0.5 * ((sub2(f,zone_corner_southeast zone) - 
+	    fun lower_del f =
+		0.5 * ((sub2(f,zone_corner_southeast zone) -
 			sub2(f,zone_corner_southwest zone)) +
-		       (sub2(f,zone_corner_northeast zone) - 
+		       (sub2(f,zone_corner_northeast zone) -
 			sub2(f,zone_corner_northwest zone)))
 	    val xi 	= pow(upper_del   r',2) + pow(upper_del   z',2)
 	    val eta = pow(lower_del   r',2) + pow(lower_del   z',2)
-	    val upper_disc =  (upper_del r')*(lower_del w') - 
+	    val upper_disc =  (upper_del r')*(lower_del w') -
 		              (upper_del z')*(lower_del u')
 	    val lower_disc = (upper_del u')*(lower_del z') -
 		             (upper_del w') * (lower_del r')
@@ -590,7 +587,7 @@ fun make_viscosity(p,(u',w'),(r',z'), alpha',rho') =
 	    val gamma    = 1.6
 	    val speed_of_sound  =  gamma*sub2(p,zone)/sub2(rho',zone)
 	    val ubar  =  pow(upper_ubar,2) + pow(lower_ubar,2)
-	    val viscosity   =  
+	    val viscosity   =
 		sub2(rho',zone)*(1.5*ubar + 0.5*speed_of_sound*(sqrt ubar))
 	    val length   = sqrt(pow(upper_del r',2) + pow(lower_del r',2))
 	    val courant_delta = 0.5* sub2(alpha',zone)/(speed_of_sound*length)
@@ -600,7 +597,7 @@ fun make_viscosity(p,(u',w'),(r',z'), alpha',rho') =
 	val d  = array2(dimension_all_zones, 0.0)
 	fun reflect_viscosity_cdelta (direction, zone) =
 	    sub2(q',direction zone) * sub1(qb, sub2(nbc,zone))
-	fun do_zones (dir,zone) = 
+	fun do_zones (dir,zone) =
 	    update2(q',zone,reflect_viscosity_cdelta (dir,zone))
     in
 	for_interior_zones (fn zone => let val (qv,dv) = interior_viscosity zone
@@ -611,7 +608,7 @@ fun make_viscosity(p,(u',w'),(r',z'), alpha',rho') =
 	for_east_zones (fn zone => do_zones(west,zone));
 	for_west_zones (fn zone => do_zones(east,zone));
 	for_north_zones (fn zone => do_zones(south,zone));
-        (q', d) 
+        (q', d)
     end
 
 (*
@@ -623,7 +620,7 @@ fun polynomial(G,degree,rho_table,theta_table,rho_value,theta_value) =
 	    let val (low, high) = bounds1  table
 		fun search_down  i =  if  value > sub1(table,i-1)  then i
 				      else search_down (i-1)
-	    in  
+	    in
 		if  value>sub1(table,high)  then  high+1
 		else if  value <= sub1(table,low)  then low
 		     else search_down   high
@@ -638,14 +635,14 @@ fun polynomial(G,degree,rho_table,theta_table,rho_value,theta_value) =
 		      (from (0,degree)))
     end
 fun zonal_pressure  (rho_value:real,  theta_value:real)  =
-    let val (G,degree,rho_table,theta_table) = 
+    let val (G,degree,rho_table,theta_table) =
 		            extract_pressure_tables_from_constants
     in polynomial(G, degree, rho_table, theta_table, rho_value, theta_value)
     end
 
 
-fun zonal_energy (rho_value, theta_value) = 
-    let val (G, degree, rho_table, theta_table) = 
+fun zonal_energy (rho_value, theta_value) =
+    let val (G, degree, rho_table, theta_table) =
 	   		    extract_energy_tables_from_constants
     in polynomial(G, degree, rho_table, theta_table, rho_value, theta_value)
     end
@@ -655,7 +652,7 @@ val tiny = 0.000001
 
 fun newton_raphson (f,x) =
     let	fun iter (x,fx) =
-	    if fx > tiny then 
+	    if fx > tiny then
 		let val fxdx = f(x+dx)
 		    val denom = fxdx - fx
 		in if denom < tiny then iter(x,tiny)
@@ -704,11 +701,11 @@ fun make_temperature(p,epsilon,rho,theta,rho_prime,q_prime) =
  *)
 
 fun make_cc(alpha_prime, theta_hat) =
-    let fun interior_cc zone =  
+    let fun interior_cc zone =
 	    (0.0001 * pow(sub2(theta_hat,zone),2) *
 	    (sqrt (abs(sub2(theta_hat,zone)))) / sub2(alpha_prime,zone))
 	    handle Sqrt => (print ("<real>" (*Real.makestring (sub2(theta_hat, zone))*));
-			    print ("\nzone =(" (* ^ makestring (#1 zone) *) ^ "," ^ 
+			    print ("\nzone =(" (* ^ makestring (#1 zone) *) ^ "," ^
 				   (* makestring (#2 zone) ^ *) ")\n");
 			    printarray2 theta_hat;
 			    raise Sqrt)
@@ -718,12 +715,12 @@ fun make_cc(alpha_prime, theta_hat) =
        for_south_zones(fn zone => update2(cc,zone, reflect_north zone cc));
        for_west_zones(fn zone => update2(cc,zone,reflect_east zone cc));
        for_east_zones(fn zone => update2(cc,zone,reflect_west zone cc));
-       for_north_zones(fn zone => update2(cc,zone, reflect_south zone cc)); 
+       for_north_zones(fn zone => update2(cc,zone, reflect_south zone cc));
        cc
     end
 
 fun make_sigma(deltat, rho_prime, alpha_prime) =
-    let fun interior_sigma   zone =  
+    let fun interior_sigma   zone =
 	    sub2(rho_prime,zone)*sub2(alpha_prime,zone)*specific_heat/ deltat
 	val M = array2(dimension_interior_zones, 0.0)
 	fun ohandle zone =
@@ -732,8 +729,8 @@ fun make_sigma(deltat, rho_prime, alpha_prime) =
 	     print ( (* makestring specific_heat ^ *) " ");
 	     print ( (* makestring deltat ^ *) "\n");
 	     raise Overflow)
-		    
-    in  if !trace 
+
+    in  if !trace
         then print ("\t\tmake_sigma:deltat = " (* ^ makestring deltat *) ^ "\n")
 	else ();
 (***	for_interior_zones(fn zone => update2(M,zone, interior_sigma zone)) **)
@@ -765,12 +762,12 @@ fun make_ab(theta, sigma, Gamma, preceding) =
 	val b = array2(dimension_all_zones, 0.0)
 	fun interior_ab   zone =
   	    let val denom = sub2(sigma, zone) + sub2(Gamma, zone) +
-		            sub2(Gamma, preceding zone) * 
+		            sub2(Gamma, preceding zone) *
 			    (1.0 - sub2(a, preceding zone))
 		val nume1 = sub2(Gamma,zone)
 		val nume2 = sub2(Gamma,preceding zone)*sub2(b,preceding zone) +
 		            sub2(sigma,zone) * sub2(theta,zone)
-	    in  (nume1/denom,  nume2 / denom)  
+	    in  (nume1/denom,  nume2 / denom)
 	    end
 	val f  = fn zone => update2(b,zone,sub2(theta,zone))
     in
@@ -787,7 +784,7 @@ fun make_ab(theta, sigma, Gamma, preceding) =
 
 fun make_theta (a, b, succeeding, int_zones) =
     let val theta = array2(dimension_all_zones, constant_heat_source)
-	fun interior_theta zone =  
+	fun interior_theta zone =
 	    sub2(a,zone) * sub2(theta,succeeding zone)+ sub2(b,zone)
     in
 	int_zones (fn (k,l) => update2(theta, (k,l), interior_theta (k,l)));
@@ -827,8 +824,8 @@ fun compute_heat_conduction(theta_hat, deltat, x', alpha', rho') =
  *)
 fun make_pressure(rho', theta')  =
     let val p = array2(dimension_all_zones, 0.0)
-	fun boundary_p(direction, zone) = 
-	    sub1(pbb, sub2(nbc, zone)) + 
+	fun boundary_p(direction, zone) =
+	    sub1(pbb, sub2(nbc, zone)) +
 	    sub1(pb,sub2(nbc,zone)) * sub2(p, direction zone)
     in
 	for_interior_zones
@@ -866,12 +863,12 @@ fun make_energy(rho', theta')  =
 fun compute_energy_error  ((u',w'),(r',z'),p',q',epsilon',theta',rho',alpha',
 			   Gamma_k,Gamma_l,deltat)  =
     let fun mass zone =  sub2(rho',zone) * sub2(alpha',zone):real
-	val internal_energy = 
+	val internal_energy =
 	    sum_list (map_interior_zones (fn z => sub2(epsilon',z)*(mass z)))
 	fun kinetic   node =
-	    let val average_mass =  0.25*((mass (zone_A  node)) + 
+	    let val average_mass =  0.25*((mass (zone_A  node)) +
 					  (mass (zone_B  node)) +
-					  (mass (zone_C  node)) + 
+					  (mass (zone_C  node)) +
 					  (mass (zone_D  node)))
 		val v_square = pow(sub2(u',node),2) + pow(sub2(w',node),2)
 	    in 0.5 * average_mass * v_square
@@ -891,7 +888,7 @@ fun compute_energy_error  ((u',w'),(r',z'),p',q',epsilon',theta',rho',alpha',
 	  end
 
       fun from(n,m) = if n > m then [] else n::from(n+1,m)
-      val north_line = 
+      val north_line =
 	  map (fn l => (west(kmin,l),(kmin,l))) (from(lmin+1,lmax))
       val south_line =
 	  map (fn l => (west(kmax,l),(kmax,l))) (from(lmin+1,lmax))
@@ -910,7 +907,7 @@ fun compute_energy_error  ((u',w'),(r',z'),p',q',epsilon',theta',rho',alpha',
 	deltat * sub2(Gamma, zone1) * (sub2(theta',zone1) - sub2(theta',zone2))
 
       val north_flow =
-	  let val k = kmin+1 
+	  let val k = kmin+1
 	  in map (fn l => (north(k,l),(k,l))) (from(lmin+1,lmax))
 	  end
       val south_flow =
@@ -931,7 +928,7 @@ fun compute_energy_error  ((u',w'),(r',z'),p',q',epsilon',theta',rho',alpha',
      val h3  = sum_list    (map (heat_flow  Gamma_l)   east_flow)
      val h4  = sum_list    (map (heat_flow  Gamma_l)   west_flow)
      val boundary_heat =  h1 + h2 + h3 + h4
-    in 
+    in
 	internal_energy  +  kinetic_energy  -  boundary_heat  -  boundary_work
     end
 
@@ -939,7 +936,7 @@ fun compute_time_step(d, theta_hat,  theta') =
     let val deltat_courant =
 	    min_list (map_interior_zones (fn zone => sub2(d,zone)))
 	val deltat_conduct =
-	    max_list (map_interior_zones 
+	    max_list (map_interior_zones
 		        (fn z => (abs(sub2(theta_hat,z) - sub2(theta', z))/
 				  sub2(theta_hat,z))))
 	val deltat_minimum = min (deltat_courant, deltat_conduct)
@@ -947,8 +944,8 @@ fun compute_time_step(d, theta_hat,  theta') =
     end
 
 
-fun compute_initial_state () = 
-    let 
+fun compute_initial_state () =
+    let
         val v  = (all_zero_nodes, all_zero_nodes)
 	val x  = let fun interior_position  (k,l)  =
 	                 let val pi = 3.1415926535898
@@ -959,19 +956,19 @@ fun compute_initial_state () =
 			 end
 		 in  make_position_matrix interior_position
 		 end
-	val (alpha,s) = 
-	    let val (alpha_prime,s_prime) = 
+	val (alpha,s) =
+	    let val (alpha_prime,s_prime) =
 		    let val A = array2(dimension_all_zones, 0.0)
 			val S = array2(dimension_all_zones, 0.0)
 			fun reflect_area_vol f = (f A, f S)
 
-			fun u2 (f,z) = 
+			fun u2 (f,z) =
 			    let val (a,s) = reflect_area_vol(f z)
 			    in update2(A,z,a);
 				update2(S,z,s)
 			    end
 		    in
-			for_interior_zones 
+			for_interior_zones
 			   (fn z => let val (a,s) = zone_area_vol(x, z)
 				    in update2(A,z,a);
 					update2(S,z,s)
@@ -987,7 +984,7 @@ fun compute_initial_state () =
 	val rho  = let val R = array2(dimension_all_zones, 0.0)
 		   in for_all_zones (fn z => update2(R,z,1.4)); R
 		   end
-	val theta = 
+	val theta =
 	    let val T = array2(dimension_all_zones, constant_heat_source)
 	    in for_interior_zones(fn z => update2(T,z,0.0001));
 		T
@@ -1008,9 +1005,9 @@ fun compute_next_state state =
 	val v'  = make_velocity (v, x, p, q, alpha, rho, deltat)
 	val _ = if !trace then print "done make_velocity\n" else ()
 
-	val x'  = make_position(x,deltat,v') 
+	val x'  = make_position(x,deltat,v')
 	          handle _ => ( (* old: handle Overflow => *)
-				     printarray2 (#1 v'); 
+				     printarray2 (#1 v');
 				     printarray2 (#2 v');
 				     raise Overflow)
 	val _ = if !trace then print "done make_position\n" else ()
@@ -1036,9 +1033,9 @@ fun compute_next_state state =
 	val epsilon'  = make_energy (rho', theta')
 	val _ = if !trace then print "done make_energy\n" else ()
 
-	val c'  = compute_energy_error (v', x', p', q', epsilon', theta', rho', 
+	val c'  = compute_energy_error (v', x', p', q', epsilon', theta', rho',
 					alpha', Gamma_k, Gamma_l,  deltat)
-	val _ = if !trace then print "done compute_energy_error\n" 
+	val _ = if !trace then print "done compute_energy_error\n"
 		else ()
 
 	val deltat'  = compute_time_step (d, theta_hat, theta')
@@ -1047,7 +1044,7 @@ fun compute_next_state state =
 	(v',x',alpha',s',rho',p',q',  epsilon',theta',deltat',c')
     end
 
-fun runit () = 
+fun runit () =
     let fun iter (i,state) = if i = 0 then state
 			     else (print ".";
 				   iter(i-1, compute_next_state state))
@@ -1062,7 +1059,7 @@ fun print_state ((v1,v2),(r,z),alpha,s,rho,p,q,epsilon,theta,deltat,c) = (
       print "\n\nPosition matrices = \n";
       printarray2 r; print "\n\n";
       printarray2 z;
-     
+
       print "\n\nalpha = \n";
       printarray2 alpha;
 
@@ -1077,7 +1074,7 @@ fun print_state ((v1,v2),(r,z),alpha,s,rho,p,q,epsilon,theta,deltat,c) = (
 
       print "\n\nq = \n";
       printarray2 q;
-    
+
       print "\n\nepsilon = \n";
       printarray2 epsilon;
 
@@ -1112,4 +1109,3 @@ structure Main = Simple(val grid_max=100 val step_count=1);
 *)
 
 val _ = doit();
-

@@ -14,12 +14,12 @@
 // allocString: Allocates a string of size in region rAddr. Returns a
 //     pointer to the string. Uses alloc to allocate memory for the string,
 //     which then exists in contiguous memory because alloc uses
-//     malloc when the string cannot fit in a region page. The size is in 
-//     bytes, so we have to convert to words, and make alignment. The 
-//     content of the string is not initialized. 
+//     malloc when the string cannot fit in a region page. The size is in
+//     bytes, so we have to convert to words, and make alignment. The
+//     content of the string is not initialized.
 
 static inline String
-REG_POLY_FUN_HDR(allocString, Region rAddr, size_t size) 
+REG_POLY_FUN_HDR(allocString, Region rAddr, size_t size)
 {
   String sd;
   size_t szAlloc;                // size of string in words + tag
@@ -35,15 +35,15 @@ REG_POLY_FUN_HDR(allocString, Region rAddr, size_t size)
 }
 
 // convertStringToC: Copy ML string to 'buf' of size 'buflen'
-void 
-convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn) 
+void
+convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
 {
   size_t sz;
   char *p;
 
-  sz = sizeStringDefine(mlStr); 
-  if ( sz > buflen-1) 
-    { 
+  sz = sizeStringDefine(mlStr);
+  if ( sz > buflen-1)
+    {
       raise_exn(exn);
     }
   for ( p = &(mlStr->data); *p != '\0'; )
@@ -54,10 +54,10 @@ convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
   return;
 }
 
-// convertStringToML: The ML string is allocated in the region 
+// convertStringToML: The ML string is allocated in the region
 // pointen at by rAddr.
 String
-REG_POLY_FUN_HDR(convertStringToML, Region rAddr, const char *cStr) 
+REG_POLY_FUN_HDR(convertStringToML, Region rAddr, const char *cStr)
 {
   String res;
   char *p;
@@ -77,7 +77,7 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, const char *cStr)
 // not test on \0 in during the copy. However, you must be sure that
 // the legth is correct.
 String
-REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, const char *cStr) 
+REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, size_t l, const char *cStr)
 {
   String res;
   char *p;
@@ -118,20 +118,20 @@ REG_POLY_FUN_HDR(allocStringC, Region rAddr, size_t sizeC)
   return strPtr;
 }
 
-size_t 
-chrCharML(size_t charNrML, uintptr_t exn) 
+size_t
+chrCharML(size_t charNrML, uintptr_t exn)
 {
-  size_t charNrC = convertIntToC(charNrML); 
-  if ( charNrC <= 255 ) 
+  size_t charNrC = convertIntToC(charNrML);
+  if ( charNrC <= 255 )
     {
-      return convertIntToML (charNrC); 
+      return convertIntToML (charNrC);
     }
   raise_exn(exn);
   return 0;        // never reached
 }
 
 String
-REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2) 
+REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
 {
   String res;
   char *s, *p;
@@ -157,7 +157,7 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
 }
 
 String
-REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs) 
+REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs)
 {
   String res;
   size_t length = 0;
@@ -165,20 +165,20 @@ REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs)
   char *p;
 
   // maybe reset region
-  if ( is_inf_and_atbot(rAddr) ) 
+  if ( is_inf_and_atbot(rAddr) )
     {
       resetRegion(rAddr);
     }
 
   // calculate length of string
-  for ( ys = xs; isCONS(ys); ys = tl(ys) ) 
+  for ( ys = xs; isCONS(ys); ys = tl(ys) )
     {
       length++;
     }
 
   res = REG_POLY_CALL(allocString, rAddr, length);
   p = &(res->data);
-  for ( ys = xs; isCONS(ys); ys = tl(ys) ) 
+  for ( ys = xs; isCONS(ys); ys = tl(ys) )
     {
       *p++ = (unsigned char) convertIntToC (hd(ys));
     }
@@ -187,10 +187,10 @@ REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, uintptr_t xs)
 }
 
 // implodeStringML
-// Example: ["ABC","DEF","GHI","JKL"]                            
+// Example: ["ABC","DEF","GHI","JKL"]
 //   = CONS("ABC",CONS("DEF",CONS("GHI",CONS("JKL",NIL))))
 String
-REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs) 
+REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs)
 {
   String res;
   size_t sz=0;
@@ -221,8 +221,8 @@ REG_POLY_FUN_HDR(implodeStringML, Region rAddr, uintptr_t xs)
   return res;
 }
 
-void 
-printStringML(String str) 
+void
+printStringML(String str)
 {
   fputs(&(str->data),stdout);
   fflush(stdout);
@@ -230,7 +230,7 @@ printStringML(String str)
 }
 
 static inline int
-mystrcmp (String s1, String s2) 
+mystrcmp (String s1, String s2)
 {
   size_t min, l1, l2, i;
   unsigned char *p1, *p2;
@@ -245,7 +245,7 @@ mystrcmp (String s1, String s2)
 
   p1 = (unsigned char *) &(s1->data);
   p2 = (unsigned char *) &(s2->data);
-  
+
   for ( i = 0; i < min; i++, p1++, p2++ )
     {
       if ( *p1 < *p2 ) return -1;
@@ -256,8 +256,8 @@ mystrcmp (String s1, String s2)
   return 0;
 }
 
-size_t 
-lessStringML(String s1, String s2) 
+size_t
+lessStringML(String s1, String s2)
 {
   if ( mystrcmp (s1, s2) < 0 )
     {
@@ -266,8 +266,8 @@ lessStringML(String s1, String s2)
   return mlFALSE;
 }
 
-size_t 
-lesseqStringML(String s1, String s2) 
+size_t
+lesseqStringML(String s1, String s2)
 {
   if ( mystrcmp (s1, s2) <= 0 )
     {
@@ -276,8 +276,8 @@ lesseqStringML(String s1, String s2)
   return mlFALSE;
 }
 
-size_t 
-greaterStringML(String s1, String s2) 
+size_t
+greaterStringML(String s1, String s2)
 {
   if ( mystrcmp (s1, s2) > 0 )
     {
@@ -286,8 +286,8 @@ greaterStringML(String s1, String s2)
   return mlFALSE;
 }
 
-size_t 
-greatereqStringML(String s1, String s2) 
+size_t
+greatereqStringML(String s1, String s2)
 {
   if ( mystrcmp (s1, s2) >= 0 )
     {
@@ -296,14 +296,14 @@ greatereqStringML(String s1, String s2)
   return mlFALSE;
 }
 
-size_t 
-equalStringML(String s1, String s2) 
+size_t
+equalStringML(String s1, String s2)
 {
   char *p1, *p2;
   size_t sz;
   if (s1 == s2) return mlTRUE;
-  
-  sz = sizeStringDefine(s1);  
+
+  sz = sizeStringDefine(s1);
   if ( sz != sizeStringDefine(s2) )
     return mlFALSE;
   for (p1 = &(s1->data), p2 = &(s2->data) ; sz > 0 ; sz-- )
@@ -311,10 +311,10 @@ equalStringML(String s1, String s2)
   return mlTRUE;
 }
 
-// exnNameML: return name of exception; the function 
+// exnNameML: return name of exception; the function
 // is exomorphic by copying
 String
-REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e) 
+REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e)
 {
   String ml_s;
 
@@ -327,11 +327,11 @@ REG_POLY_FUN_HDR(exnNameML, Region rAddr, uintptr_t e)
   return REG_POLY_CALL(convertStringToML, rAddr, &(ml_s->data));
 }
 
-/* explodeStringML(rAddr, str): convert a string to a char list. 
+/* explodeStringML(rAddr, str): convert a string to a char list.
  * A list is kept in one region, pointed to by rAddr.  */
 
 uintptr_t *
-REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str) 
+REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
 {
   uintptr_t *res, *consPtr, *pair, *tpair;
   size_t i, sz;
@@ -346,7 +346,7 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
 
    // save first char such that we can return a pointer to it
   p = &(str->data);
-  
+
 #ifdef PROFILING
   allocPairMLProf(rAddr, pair, pPoint);
 #else
@@ -359,9 +359,9 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
   for ( i = 1 ; i < sz; i++ )
     {
       #ifdef PROFILING
-      allocPairMLProf(rAddr, tpair, pPoint); 
+      allocPairMLProf(rAddr, tpair, pPoint);
       #else
-      allocPairML(rAddr, tpair); 
+      allocPairML(rAddr, tpair);
       #endif
 
       first(tpair) = convertIntToML (*p++);
@@ -375,9 +375,26 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
 }
 
 // for debugging */
-void 
-printNum(ssize_t n) 
+void
+printNum(ssize_t n)
 {
-  printf("Num: %zd\n",convertIntToC(n));
+  printf("Num: %d\n",convertIntToC((int)n));
+  /*
+  asm volatile ( "movq $32, %rdi\n\t"
+                 "movq $52, %rsi\n\t"
+                 "movq $62, %rdx\n\t"
+                 "movq $72, %rcx\n\t"
+                 "movq $82, %r8\n\t"
+                 "movq $92, %r9\n\t"
+                 "movq $102, %r10\n\t"
+                 "movq $112, %r11\n\t"
+                 "movq $122, %rax\n\t"
+                 "movq $132, %rbx\n\t"
+                 "movq $142, %r12\n\t"
+                 "movq $152, %r13\n\t"
+                 "movq $162, %r14\n\t"
+                 "movq $172, %r15\n\t"
+	       );
+  */
   return;
 }

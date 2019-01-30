@@ -1,3 +1,17 @@
+mael 2018-12-19: Investigate prettier effect printing. Why do we print
+U-nodes?
+
+mael 2018-12-19: Consider adding a new -Psre flag for printing
+ simplified region expressions:
+
+   1. All comparison operations should be pretty-printed as such
+      (<,=,>,<=,>=).
+
+   2. print short-cut boolean expressions nicely
+
+   3. Don't print "letregion r:m in e end" constructs when r is used
+      only for storing immediate closures.
+
 mael 2013-11-21: Create a Prims.concatWith to allow for inlining of
 JsCore.exec2, etc. Currently, all JavaScript interaction (except for
 calls to JsCore.exec1) is done through the creation of Function
@@ -9,19 +23,19 @@ signature DYN_TYPE = sig
 
   eqtype tn
   eqtype con
-  datatype t = 
-	DT_Tuple of t list 
+  datatype t =
+	DT_Tuple of t list
       | DT_Dat of tn * t list
       | DT_Arrow of t * t
-      | DT_Int32 | DT_Int31 | DT_Real | DT_Bool | DT_String 
+      | DT_Int32 | DT_Int31 | DT_Real | DT_Bool | DT_String
 
   val con_arg_t : tn * t list -> con -> t
 
-  datatype v = 
+  datatype v =
 	V_Int32 of Int32.int
       | V_Int31 of Int31.int
       | V_Bool of bool
-      | V_Real of real  
+      | V_Real of real
       | V_String of string
       | V_Tuple of v list
       | V_Fn of v -> v
@@ -29,11 +43,11 @@ signature DYN_TYPE = sig
 
 end
 
-structure Dt :> DYN_TYPE 
+structure Dt :> DYN_TYPE
 
 Built-in function:
 
-  
+
   val typeof : '_a -> Dt.t
   fun variant (a : '_a) : Dt.v =
     case typeof a of
@@ -42,7 +56,7 @@ Built-in function:
 
   fun op = (v1 : '_a, v2 : '_a) =
     case typeof v1 of
-      
+
 
 mael 2008-10-19: Make a filesys abstraction FSys that allows for
 source files and target files to be stored in a database or in the
@@ -105,7 +119,7 @@ mael 2005-10-25: MLB-make needs to check the integrity (e.g., size) of
 needed. It is sufficient to check the integrity of lnk-files since
 lnk-files are generated last. DONE.
 
-varming 2005-09-05: Upgraded SMLserver to Apache. Started work on 
+varming 2005-09-05: Upgraded SMLserver to Apache. Started work on
 configuration prior to compilation (autoconf).
 
  > cd kit
@@ -114,8 +128,8 @@ configuration prior to compilation (autoconf).
  > ./configure
 
 Generates apropriate Makefiles to build the kit. To build SMLserver
-try configure --enable-SMLserver --with-apache=/path/to/apache 
-To build oracle driver configure --enable-SMLserver 
+try configure --enable-SMLserver --with-apache=/path/to/apache
+To build oracle driver configure --enable-SMLserver
 --with-apache=/path/to/apache --with-oracle=/path/to/oracle
 
 mael 2005-09-02: Both "make mlkit", "make smlserver", and "make
@@ -143,7 +157,7 @@ Things to do:
 
   - Upgrade to Apache. (Carsten)
   - Setup and test separate compilation mechanisms
-  - Setup regression testing for different compile time options, such 
+  - Setup regression testing for different compile time options, such
     as "-gc", "-prof", "-gc -prof" (Martin)
 
 
@@ -170,14 +184,14 @@ mael 2005-05-27: Things to do:
     3) Options that do not influence the generated code:
          pretty-printing options
          verbosity options (chat,debug)
-       
+
    For computing a subdirectory of MLB to store target code, etc., we
    sort all options in category (1) and (2); call this list of options
    L and the list of option values V.
 
     val s = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
     val sz = size s (*=64*)
-   
+
    This allows for the encoding of 6 option values for each character.
    Divide V into lists of 6-tuples (pad with true values for possible
    missing entries in the last tuple). Interpret each tuple as a
@@ -195,7 +209,7 @@ mael 2004-12-13: Status on MLB files.
 It is now possible to compile the MLKit itself using
 MLB-files. Unfortunately, a segmentation fault occurs when compiling
 General.sml with the generated executable - compilation of Initial.sml
-goes well. 
+goes well.
 
 Some things to do:
 
@@ -211,7 +225,7 @@ Some things to do:
 
   * Extend mlbmake to take a single sml-file "file.sml" as
     argument. Its semantics should then be similar to
-      local $(SML_LIB)/basis/basis.mlb in file.sml end  - OK 
+      local $(SML_LIB)/basis/basis.mlb in file.sml end  - OK
 
 mael 2004-10-30 Plan for mlb-files implementation in the MLKit.
 
@@ -233,7 +247,7 @@ Things to do:
 
  2) Optimize loading of export bases so that only infix and elaboration
     bases are loaded for all {u1.eb ... uN.eb} in
-         
+
         mlkit -o myfile -load u1.eb ... uN.eb file.sml
 
     After the infix and elaboration bases are loaded, the program unit
@@ -274,7 +288,7 @@ Let C be the contexts defined by
     C[.] := .
           | let f = \x.e in C[.]
 Turn
-    let f = \x.C[\y.e1] in e2  
+    let f = \x.C[\y.e1] in e2
 into
     let f = \x.\y.C[e1] in e2
 
@@ -284,7 +298,7 @@ mael 2001-11-13: turn curried functions into functions that take
 
     let f = \x1...\xn.e in (...(f e1)...en)  ==>
     let f = \<x1...xn>.e in f <e1,...,en>
-      
+
 
 mael 2001-11-12: better cross-module in-lining; support in-lining of
   non-closed functions.
@@ -306,11 +320,11 @@ mael 2001-11-12: unboxed implementation of datatypes that
   kit/basis/Splaymap.sml, and kit/basis/Splayset.sml, (4)
   Patricia trees (kit/src/Common/IntFinMapPT.sml), and (5) Union Find
   data structure (kit/src/Compiler/Kam/UnionFindPoly.sml.)
-  
+
 mael 2001-11-12: unboxed implementation of datatypes that
   have only one unary constructor; in most cases this optimisation is
   captured by the unboxing mentioned above.
- 
+
 mael 2001-08-07: catch stack-overflow
 
 mael 2001-08-03: man pages for mlkit and smlserver, rp2ps  - OK
@@ -324,13 +338,13 @@ nh 2001-06-01: Fra url:
 
     The results were (sorted by decreasing speed):
 
-    1.4,393 secs: compiler: MLKit; target code: no garbage collection (i.e., only regions) 
-    2.4,802 secs: compiler: MLKit; target code: regions and garbage collection 
-    3.6,3 secs: compiler: mosml; target code: garbage collection, no regions 
+    1.4,393 secs: compiler: MLKit; target code: no garbage collection (i.e., only regions)
+    2.4,802 secs: compiler: MLKit; target code: regions and garbage collection
+    3.6,3 secs: compiler: mosml; target code: garbage collection, no regions
     4.8,131 secs: compiler: MLKit; target code: regions, garbage collection and profiling.
        Check the region profile graph and the object profil of the largest region. (The program
        points in the latter graph do not seem to be right: maybe the same program points are
-       used in the basis library and in the evaluation system code?.) 
+       used in the basis library and in the evaluation system code?.)
 
 
                              VERSION 3
@@ -345,7 +359,7 @@ TO BE FIXED BY: (MT|ME|FAXE)
 
 =============================== BUGS ===============================
 ERROR: CompileDec `val rec pat' error
-SYMPTOM: Compilation crashes: 
+SYMPTOM: Compilation crashes:
            Impossible: CompileDec.compileREC.id_sigma
 TESTFILE: kit/test/valrecpat.sml
 PRIORITY: MEDIUM
@@ -368,7 +382,7 @@ compilation, we should restrict the annotated bases to those
 identifiers that occur free in the functor binding. Is it possible to
 do this restriction during the pass for finding free identifiers
 (FreeIds)?
- 
+
 Implement some kind of project reuse; it currently takes too long for
 the manager to find out that the code for the basis library can be
 reused. The problem is that the result basis for the basis library
@@ -413,4 +427,3 @@ Why are regions that are passed to primitive functions in the runtime
 system not tested for resetting automatically (in CompLamb);
 currently, the user must do the resetting in the C function. Is there
 a reason? What about Mogensens idea about resetting?
-

@@ -4,7 +4,7 @@
 (* Works only if inline functions are disabled.                              *)
 
 local
-  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
+  fun print (s:string) : unit = prim("printStringML", s)
   fun f () = "It works"
 
   val _ = print (f ())

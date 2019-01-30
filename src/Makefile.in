@@ -25,7 +25,7 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/BuiltInCFunctionsApSml.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
-# Whether request profiling is enabled 
+# Whether request profiling is enabled
 REQUEST_PROFILING=
 #REQUEST_PROFILING=true
 
@@ -49,7 +49,7 @@ mlkit_runtime: basics
 
 .PHONY: mlkit_kit
 mlkit_kit:
-	$(MLCOMP) -output mlkit Compiler/native.mlb
+	$(MLCOMP) -output mlkit Compiler/native64.mlb
 	$(INSTALL) -p mlkit $(BINDIR)
 
 .PHONY: smltojs
@@ -154,6 +154,7 @@ clean:
 	cd Compiler/Backend/Dummy && $(CLEAN)
 	cd Compiler/Backend/HpPaRisc && $(CLEAN)
 	cd Compiler/Backend/X86 && $(CLEAN)
+	cd Compiler/Backend/X64 && $(CLEAN)
 	cd Compiler/Backend/KAM && $(CLEAN)
 	cd Compiler/Backend/Barry && $(CLEAN)
 	cd Compiler/Backend/JS && $(CLEAN)
@@ -175,31 +176,31 @@ LINES = /home/mael/kit/src/lines.mael.sml
 .PHONY: bdys
 bdys:
 	(cd Common/PM/RI && wc -l *.bdy > $(FILE))
-	(cd Common/EfficientElab/PM/RI && wc -l *.bdy >> $(FILE)) 
-	(cd Parsing/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Lambda/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Regions/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Kam/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Cfg/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/C/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Backend/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Compiler/Backend/HpPaRisc/PM/RI && wc -l *.bdy >> $(FILE))	
-	(cd Manager/PM/RI && wc -l *.bdy >> $(FILE))	
+	(cd Common/EfficientElab/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Parsing/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/Lambda/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/Regions/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/Kam/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/Cfg/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/C/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/Backend/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Compiler/Backend/HpPaRisc/PM/RI && wc -l *.bdy >> $(FILE))
+	(cd Manager/PM/RI && wc -l *.bdy >> $(FILE))
 
 .PHONY: lines
 lines:
 	(cd Common && cat *.sml > $(LINES))
-	(cd Common/EfficientElab && cat *.sml >> $(LINES)) 
-	(cd Parsing && cat *.sml >> $(LINES))	
-	(cd Compiler && cat *.sml >> $(LINES))	
-	(cd Compiler/Lambda && cat *.sml >> $(LINES))	
-	(cd Compiler/Regions && cat *.sml >> $(LINES))	
-	(cd Compiler/Kam && cat *.sml >> $(LINES))	
-	(cd Compiler/Cfg && cat *.sml >> $(LINES))	
-	(cd Compiler/C && cat *.sml >> $(LINES))	
-	(cd Compiler/Backend && cat *.sml >> $(LINES))	
-	(cd Compiler/Backend/HpPaRisc && cat *.sml >> $(LINES))	
+	(cd Common/EfficientElab && cat *.sml >> $(LINES))
+	(cd Parsing && cat *.sml >> $(LINES))
+	(cd Compiler && cat *.sml >> $(LINES))
+	(cd Compiler/Lambda && cat *.sml >> $(LINES))
+	(cd Compiler/Regions && cat *.sml >> $(LINES))
+	(cd Compiler/Kam && cat *.sml >> $(LINES))
+	(cd Compiler/Cfg && cat *.sml >> $(LINES))
+	(cd Compiler/C && cat *.sml >> $(LINES))
+	(cd Compiler/Backend && cat *.sml >> $(LINES))
+	(cd Compiler/Backend/HpPaRisc && cat *.sml >> $(LINES))
 	(cd Manager && cat *.sml >> $(LINES))
 	wc -l $(LINES)
 	rm -f $(LINES)

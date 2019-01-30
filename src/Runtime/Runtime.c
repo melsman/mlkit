@@ -3,11 +3,12 @@
  *----------------------------------------------------------------*/
 #include <stdio.h>
 #include <signal.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 #include "Runtime.h"
 #include "Flags.h"
 #include "Tagging.h"
@@ -31,21 +32,23 @@
 #include "Interp.h"
 #endif
 
-int 
-die (const char *s) 
-{ 
-  fprintf(stderr,"Runtime Error: %s\n",s); 
+int
+die (const char *s)
+{
+  fprintf(stderr,"Runtime Error: %s\n",s);
   fflush(stderr);
-  exit(-1); 
+  exit(-1);
 }
 
-int 
-die2 (const char *s1, const char* s2) 
-{ 
-  fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2); 
+int
+die2 (const char *s1, const char* s2)
+{
+  fprintf(stderr,"Runtime Error: %s\n%s\n",s1,s2);
   fflush(stderr);
-  exit(-1); 
+  exit(-1);
 }
+
+static struct rlimit limit;
 
 void
 setStackSize(rlim_t size)
@@ -68,6 +71,13 @@ setStackSize(rlim_t size)
     bad = strerror(errno);
     die2("setStackSize(2)", bad);
   }
+  res = getrlimit(RLIMIT_STACK, &limit);
+  if (res == -1)
+  {
+    bad = strerror(errno);
+    die2("setStackSize(2)", bad);
+  }
+  // printf("Stack size: %llu; %lluMb\n", limit.rlim_cur, limit.rlim_cur / 1024 / 1024);
   return;
 }
 
@@ -77,9 +87,9 @@ setStackSizeUnlimited(void)
   return setStackSize(RLIM_INFINITY);
 }
 
-long 
-terminateML (long status) 
-{ 
+long
+terminateML (long status)
+{
   callExportFun("sml_exitCallback", convertIntToML(8)); // exported in Initial2.sml
 
 #ifdef ENABLE_GC
@@ -93,12 +103,12 @@ terminateML (long status)
 
 #ifdef PROFILING
   outputProfilePost();
-  Statistics();        
+  Statistics();
 #endif
 
 #ifdef ENABLE_GC
   if ( report_gc || verbose_gc )
-    { 
+    {
       alloc_total += alloc_period;
       fprintf(stderr, "[GC(%zdms): %zd collections", time_gc_all_ms, num_gc);
 #ifdef ENABLE_GEN_GC
@@ -107,28 +117,27 @@ terminateML (long status)
       fprintf(stderr, ", %zdkb rpages", rp_total);
     }
 
-  if ( report_gc )
-    { 
-      fprintf(stderr, "]\n");
-      fflush(stderr);
-    }
-
-  if ( verbose_gc ) 
+  if ( verbose_gc )
     {
       double ri = 0.0;
       double gc = 0.0;
       alloc_total += lobjs_period;
       gc = 100.0 * ((double)gc_total) / ((double)alloc_total);
       ri = 100.0 - gc;
-      fprintf(stderr, ", RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n", 
-	      ri, gc, FRAG_sum / (double)(num_gc-1));
+      fprintf(stderr, ", RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n",
+              ri, gc, FRAG_sum / (double)(num_gc-1));
+      fflush(stderr);
+    }
+  else if ( report_gc )
+    {
+      fprintf(stderr, "]\n");
       fflush(stderr);
     }
 #endif /* ENABLE_GC */
 
   debug(printf("]\n"));
 
-  exit (convertIntToC(status)); 
+  exit (convertIntToC(status));
 }
 
 size_t failNumber = SIZE_MAX;
@@ -150,11 +159,11 @@ sml_setFailNumber(uintptr_t ep, int i)
   return;
 }
 
-void 
-uncaught_exception (String exnStr, unsigned long n, uintptr_t ep) 
-{ 
+void
+uncaught_exception (String exnStr, unsigned long n, uintptr_t ep)
+{
   uintptr_t a;
-  fprintf(stderr,"uncaught exception "); 
+  fprintf(stderr,"uncaught exception ");
   fflush(stderr);
   fputs(&(exnStr->data), stderr);
   fflush(stderr);
@@ -173,36 +182,36 @@ uncaught_exception (String exnStr, unsigned long n, uintptr_t ep)
     fputs(&(((String) a)->data),stderr);
     fflush(stderr);
   }
-  fprintf(stderr, "\n"); 
+  fprintf(stderr, "\n");
   fflush(stderr);
 
 #ifdef PROFILING
   outputProfilePost();
-  Statistics();        
+  Statistics();
 #endif
 
-  exit (-1); 
+  exit (-1);
 }
 
 #ifdef TAG_VALUES
 
-static inline int 
-equalTable(Table x, Table y) 
+static inline size_t
+equalTable(Table x, Table y)
 {
-  int i, sz_x, *px, *py;
+  size_t i, sz_x, *px, *py;
   sz_x = get_table_size(x->size);
   if ( sz_x != get_table_size(y->size))
     {
       return mlFALSE;
     }
-  px = &(x->data); 
-  py = &(y->data); 
+  px = &(x->data);
+  py = &(y->data);
   for ( i = 0 ; i < sz_x ; i ++ )
     {
       if ( equalPolyML(*(px+i), *(py+i)) == mlFALSE )
-	{
-	  return mlFALSE;
-	}
+        {
+          return mlFALSE;
+        }
     }
   return mlTRUE;
 }
@@ -210,8 +219,8 @@ equalTable(Table x, Table y)
 /*----------------------------------------------------------------------*
  *equalPolyML:                                                            *
  *----------------------------------------------------------------------*/
-uintptr_t 
-equalPolyML(uintptr_t x, uintptr_t y) 
+uintptr_t
+equalPolyML(uintptr_t x, uintptr_t y)
 {
   int i;
 
@@ -247,24 +256,24 @@ L0:
     }
     /*    if (valTagKind(x) == valueTagReal) {
       if (get_d(x) == get_d(y))
-	return mlTRUE;
-	else return mlFALSE; 
+        return mlTRUE;
+        else return mlFALSE;
     }Obsolete 10/01/1999, Niels */
     if (val_tag_kind(x) == TAG_STRING) {
       return equalStringML((String) x, (String) y);
     }
     if (val_tag_kind(x) == TAG_RECORD) {
       for (i = 1; i <= get_record_size(x); i++) {
-	if (equalPolyML(*(((uintptr_t *)x)+i), *(((uintptr_t *)y)+i)) == mlFALSE)
-	  return mlFALSE;
+        if (equalPolyML(*(((uintptr_t *)x)+i), *(((uintptr_t *)y)+i)) == mlFALSE)
+          return mlFALSE;
       }
       return mlTRUE;
     }
     if (val_tag_kind(x) == TAG_REF) {
-      if ((((uintptr_t *)x)+1) == (((uintptr_t *)y)+1)) 
-	return mlTRUE;
-      else 
-	return mlFALSE;
+      if ((((uintptr_t *)x)+1) == (((uintptr_t *)y)+1))
+        return mlTRUE;
+      else
+        return mlFALSE;
     }
     if (val_tag_kind(x) == TAG_TABLE) {
       return equalTable((Table)x,(Table)y);
@@ -272,12 +281,27 @@ L0:
     die("equal_poly - No matching tag!");
     return mlFALSE;  // never comes here
   }
-} 
+}
 
 #endif /* TAG_VALUES */
 
-void 
-sig_handler_int(void) 
+/*
+void
+sig_handler_segv(int sig, siginfo_t *info, void *extra)
+{
+  if (sig != SIGSEGV) return;
+  char* buf = "In HANDLER\n";
+  int sz = strlen(buf);
+  write(STDERR_FILENO, buf, sz);
+  //fprintf(stderr, "[Max stack size: %lluMb]\n", limit.rlim_cur / 1024 / 1024);
+  _exit(1);
+  //raise_exn((uintptr_t)&exn_INTERRUPT);
+  return; // never comes here
+}
+*/
+
+void
+sig_handler_int(void)
 {
   signal(SIGINT, (SignalHandler)sig_handler_int);    /* setup handler again */
 
@@ -299,8 +323,8 @@ sig_handler_int(void)
   return; /* never comes here */
 }
 
-void 
-sig_handler_fpe(void) 
+void
+sig_handler_fpe(void)
 {
   signal(SIGFPE, (SignalHandler)sig_handler_fpe);    /* setup handler again */
 
@@ -327,9 +351,13 @@ extern void code(void);
 #endif
 
 #ifndef APACHE
-int 
-main(int argc, char *argv[]) 
+
+int
+main(int argc, char *argv[])
 {
+  //static struct sigaction sigact;
+  //static sigset_t sigset;
+
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))
     die("main - integer configuration is erroneous");
 
@@ -346,6 +374,26 @@ rpMap = regionPageMapNew();
 #endif
 
   /* setup handlers */
+  /*
+  if ( sigemptyset(&sigset) == -1 ) {
+    die("failed to create empty signal set");
+    exit(1);
+  }
+  if ( sigprocmask(SIG_SETMASK, &sigset, NULL) == -1 ) {
+    die("failed to clear signal processing mask");
+    exit(1);
+  }
+  sigact.sa_flags = SA_SIGINFO;
+  if ( sigemptyset(&sigact.sa_mask) == -1 ) {
+    die("failed to create empty signal mask");
+    exit(1);
+  }
+  sigact.sa_sigaction = sig_handler_segv;
+  if ( sigaction(SIGSEGV, &sigact, NULL) == -1 ) {
+    die ("failed to set SIGSEGV signal handler");
+    exit(1);
+  }
+  */
   //signal(SIGINT, (SignalHandler)sig_handler_int);
   //signal(SIGFPE, (SignalHandler)sig_handler_fpe);
 
@@ -354,9 +402,8 @@ rpMap = regionPageMapNew();
   return (main_interp(argc, argv));
 #else
   code();
-  return (EXIT_FAILURE);   /* never comes here (i.e., exits through 
-		                        * terminateML or uncaught_exception) */
+  return (EXIT_FAILURE);   /* never comes here (i.e., exits through
+                            * terminateML or uncaught_exception) */
 #endif
 }
 #endif
-

@@ -1,3 +1,3 @@
 
-int callExportFun(const char *fun, int i);
+long callExportFun(const char *fun, long i);
 

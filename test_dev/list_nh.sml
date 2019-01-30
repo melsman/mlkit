@@ -1,8 +1,8 @@
 
 let
 
-  fun print (s:string):unit = prim ("printStringML","printStringML",s)
-  fun printNum (s:int):unit = prim ("printNum","printNum",s)
+  fun print (s:string):unit = prim ("printStringML",s)
+  fun printNum (s:int):unit = prim ("printNum",s)
 
   datatype Name =
       MARTIN of string
@@ -20,7 +20,7 @@ let
   val _ = print_list print l2
   val _ = print_list printNum l1
 
-  val _ = 
+  val _ =
     case l1 of
       [] => print "intERROR0\n"
     | [1] => print "intERROR1\n"
@@ -30,7 +30,7 @@ let
     | [1,2,3,4,5] => print "intOK5\n"
     | _ => print "intERROR6\n"
 
-  val _ = 
+  val _ =
     case l2 of
       [] => print "strERROR0\n"
     | ["str1"] => print "strERROR1\n"

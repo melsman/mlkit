@@ -2,8 +2,7 @@
  *                     Garbage Collection                         *
  *----------------------------------------------------------------*/
 
-#define CHECK_GC 1
-#ifdef ENABLE_GC 
+#ifdef ENABLE_GC
 
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +25,7 @@
 #include "GC.h"
 
 size_t time_to_gc = 0;          // set to 1 by alloc if GC should occur at next
-                                //   function invocation 
+                                //   function invocation
 size_t *stack_bot_gc = NULL;    // bottom and top of stack -- used during GC to
 size_t *stack_top_gc;           //   determine if a value is stack-allocated
 size_t to_space_old = 0;        // size of to-space (live) at previous GC
@@ -68,8 +67,13 @@ ssize_t major_p = 0;                      // flag to specify whether gc should b
 #define is_minor_p (major_p == 0)
 #endif // ENABLE_GEN_GC
 
-// This implementation assumes a down growing stack (e.g., X86)
+// This implementation assumes a down growing stack (e.g., X64)
+
+#if defined(__LP64__) || (__WORDSIZE == 64)
+#define NUM_REGS 16
+#else
 #define NUM_REGS 8
+#endif
 
 /* Layout of stack:
 
@@ -86,7 +90,7 @@ ssize_t major_p = 0;                      // flag to specify whether gc should b
           FD end
             |
           FD begin
-      Return Address    pointing at value HEX: FFFFFFFF (no more FDs*) */
+      Return Address    pointing at value HEX: FFFF_FFFF_FFFF_FFFF (no more FDs*) */
 
 /* Layout of FD in the code:
 
@@ -109,11 +113,12 @@ Rp *from_space_begin, *from_space_end;
 /*******************/
 /* PRETTY PRINTING */
 /*******************/
-static void 
-pw(char *s,unsigned int tag) 
+static void
+pw(char *s,unsigned long int tag0)
 {
   int idx;
-  
+  unsigned int tag = (unsigned int)tag0; // discharge highest bits...
+
   printf("%s(%x) is ",s,tag);
   for (idx=0;idx<32;idx++) {
     if (tag & 0x80000000)
@@ -126,8 +131,8 @@ pw(char *s,unsigned int tag)
   return;
 }
 
-static void 
-print(uintptr_t *value) 
+static void
+print(uintptr_t *value)
 {
   char str[50];
   size_t val;
@@ -161,13 +166,13 @@ print(uintptr_t *value)
   return;
 }
 
-// #define copy_words(from,to,w) (memcpy((to),(from),4*(w)))
+// #define copy_words(from,to,w) (memcpy((to),(from),sizeof(void *)*(w)))
 
-inline static void 
-copy_words(uintptr_t *from,uintptr_t *to,size_t num) 
+inline static void
+copy_words(uintptr_t *from,uintptr_t *to,size_t num)
 {
   size_t i;
-  for ( i = 0 ; i < num ; i++ ) 
+  for ( i = 0 ; i < num ; i++ )
     *(to + i) = *(from + i);
   return;
 }
@@ -180,10 +185,10 @@ uintptr_t **scan_stack = NULL;
 long size_scan_stack;
 long scan_sp;
 
-inline static void 
-init_scan_stack() 
+inline static void
+init_scan_stack()
 {
-  if (scan_stack == NULL) 
+  if (scan_stack == NULL)
     {
       scan_stack = (uintptr_t **) realloc((void *)scan_stack, INIT_STACK_SIZE_W*(sizeof(void *)));
       if (scan_stack == NULL)
@@ -198,12 +203,12 @@ init_scan_stack()
 
 #define is_scan_stack_empty() (scan_sp == 0)
 
-inline static void 
-push_scan_stack(uintptr_t *ptr) 
+inline static void
+push_scan_stack(uintptr_t *ptr)
 {
   scan_stack[scan_sp] = ptr;
   scan_sp++;
-  if ( scan_sp >= size_scan_stack ) 
+  if ( scan_sp >= size_scan_stack )
     {
       size_scan_stack *= 2;
       scan_stack = (uintptr_t **) realloc((void *)scan_stack, size_scan_stack*(sizeof(void *)));
@@ -216,9 +221,9 @@ push_scan_stack(uintptr_t *ptr)
 }
 
 inline static uintptr_t *
-pop_scan_stack() 
+pop_scan_stack()
 {
-  if ( scan_sp < 1 ) 
+  if ( scan_sp < 1 )
     {
       die("GC.pop_scan_stack: scan_sp below stack bot.");
     }
@@ -235,10 +240,10 @@ long size_scan_container;
 long container_alloc;
 long container_scan;
 
-inline static void 
-init_scan_container() 
+inline static void
+init_scan_container()
 {
-  if (scan_container == NULL) 
+  if (scan_container == NULL)
     {
       scan_container = (uintptr_t **) realloc((void *)scan_container, INIT_CONTAINER_SIZE_W*(sizeof(void *)));
       if (scan_container == NULL)
@@ -254,19 +259,19 @@ init_scan_container()
 
 #define is_scan_container_empty() (container_scan == container_alloc)
 
-inline static void 
-push_scan_container(uintptr_t *ptr) 
+inline static void
+push_scan_container(uintptr_t *ptr)
 {
-  //  printf("push_scan_container(%p) - size_scan_container=%d; container_alloc=%d; container_scan=%d\n", 
+  //  printf("push_scan_container(%p) - size_scan_container=%d; container_alloc=%d; container_scan=%d\n",
   //         ptr, size_scan_container, container_alloc, container_scan);
   //print(ptr);
   //printf("\n");
   scan_container[container_alloc] = ptr;
   container_alloc++;
-  if (container_alloc >= size_scan_container) 
+  if (container_alloc >= size_scan_container)
     {
       size_scan_container *= 2;
-      scan_container = (uintptr_t **) realloc((void *)scan_container, size_scan_container*4);
+      scan_container = (uintptr_t **) realloc((void *)scan_container, size_scan_container*sizeof(void *));
       if (scan_container == NULL)
 	{
 	  die("GC.push_scan_container: Unable to increase scan_container");
@@ -276,7 +281,7 @@ push_scan_container(uintptr_t *ptr)
 }
 
 inline static uintptr_t *
-pop_scan_container() 
+pop_scan_container()
 {
   uintptr_t *v;
   v = scan_container[container_scan];
@@ -284,8 +289,8 @@ pop_scan_container()
   return v;
 }
 
-inline static void 
-clear_scan_container() 
+inline static void
+clear_scan_container()
 {
   long i;
   for ( i = 0 ; i < container_alloc ; i ++ )
@@ -294,7 +299,7 @@ clear_scan_container()
     }
 }
 
-void pp_from_space() 
+void pp_from_space()
 {
   Rp *rp;
 
@@ -314,7 +319,7 @@ void pp_from_space()
 // We mark all region pages such that we can distinguish them from
 // to-space region pages by setting a bit in the next n pointer.
 static inline void
-mk_from_space_gen(Gen *gen) 
+mk_from_space_gen(Gen *gen)
 {
   // Move region pages to from-space
   (((Rp *)gen->b)-1)->n = from_space_begin;
@@ -334,7 +339,7 @@ mk_from_space_gen(Gen *gen)
   alloc_new_block(gen);
 }
 
-static void mk_from_space() 
+static void mk_from_space()
 {
   Ro *r;
 
@@ -345,12 +350,12 @@ static void mk_from_space()
   from_space_begin = NULL;
   from_space_end = (((Rp *)TOP_REGION->g0.b)-1); // Points at last region page
 
-  for( r = TOP_REGION ; r ; r = r->p ) 
+  for( r = TOP_REGION ; r ; r = r->p )
     {
      #ifdef PROFILING
       // Similar to resetRegion in Region.c
      #ifdef ENABLE_GEN_GC
-      if ( is_major_p ) 
+      if ( is_major_p )
 	{
      #endif // ENABLE_GEN_GC
 	  j = NoOfPagesInRegion(r);
@@ -381,34 +386,29 @@ static void mk_from_space()
 
     mk_from_space_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
-    if ( is_major_p ) 
+    if ( is_major_p )
       mk_from_space_gen(&(r->g1));
 #endif // ENABLE_GEN_GC
   }
   return;
 }
 
-inline static int 
-points_into_dataspace (uintptr_t *p) {
-  return (p >= data_begin_addr) && (p <= data_end_addr);
-}
-
 #define is_stack_allocated(obj_ptr) (((obj_ptr) <= stack_bot_gc) && (((obj_ptr) >= stack_top_gc)))
 #define is_integer(obj_ptr)         ((obj_ptr) & 1)
-#define is_forward_ptr(x)           (((x) & 0x03) == 0)  /* Bit 0 and 1 must be zero */
+#define is_forward_ptr(x)           (((x) & 0x3) == 0)  /* Bit 0 and 1 must be zero */
 #define clear_forward_ptr(x)        (x)
 #define tag_forward_ptr(x)          ((unsigned long)(x))
 
 // Region pages are of size 1Kb and aligned
-#define get_rp_header(x)            ((Rp *)(((unsigned long)(x)) & 0xFFFFFC00))  
+#define get_rp_header(x)            ((Rp *)(((unsigned long)(x)) & 0xFFFFFFFFFFFFFC00))
 
-size_t 
+size_t
 size_lobj (size_t tag)
 {
   switch ( tag_kind(tag) ) {
   case TAG_STRING: {
     size_t sz_bytes;
-    sz_bytes = get_string_size(tag) + 1 + (sizeof(void *));              // 1 for zero-termination, 4 for size field
+    sz_bytes = get_string_size(tag) + 1 + (sizeof(void *));              // 1 for zero-termination, sizeof(void *) for size field
     return sz_bytes%(sizeof(void *)) ? (sizeof(void *))+(sizeof(void *))*(sz_bytes/(sizeof(void *))) : sz_bytes;  // alignment
   }
   case TAG_TABLE:
@@ -424,9 +424,9 @@ size_lobj (size_t tag)
 static inline long
 end_of_region_page_or_full(uintptr_t* s, uintptr_t* a, Rp* rp)
 {
-  return (s != a) 
-    && ((s == ((uintptr_t *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-	|| (*s == notPP)); 
+  return (s != a)
+    && ((s == ((uintptr_t *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
+	|| (*s == notPP));
 }
 
 inline static uintptr_t*
@@ -459,8 +459,8 @@ next_untagged_value(uintptr_t* s, uintptr_t* a) {
  * Find allocated bytes in generations/regions; for measurements
  * -------------------------------------------------------------- */
 
-static int 
-allocated_bytes_in_gen(Gen *gen) 
+static long
+allocated_bytes_in_gen(Gen *gen)
 {
   uintptr_t *s;  // scan pointer
   Rp *rp;
@@ -502,10 +502,10 @@ allocated_bytes_in_gen(Gen *gen)
       allocated_bytes += (sizeof(void *));
       break;
     }
-    case TAG_CON1: 
+    case TAG_CON1:
     case TAG_REF: {
       s += 2;
-      allocated_bytes += 8;
+      allocated_bytes += ((sizeof(void *))*2);
       break;
     }
     default: {
@@ -528,10 +528,10 @@ allocated_bytes_in_gen(Gen *gen)
   return allocated_bytes;
 }
 
-// Assumes that region does not contain untagged pairs or 
+// Assumes that region does not contain untagged pairs or
 // untagged refs
-static int 
-allocated_bytes_in_region(Region r) 
+static long
+allocated_bytes_in_region(Region r)
 {
   return allocated_bytes_in_gen(&(r->g0))
     #ifdef ENABLE_GEN_GC
@@ -540,24 +540,24 @@ allocated_bytes_in_region(Region r)
     ;
 }
 
-static inline int
+static inline long
 allocated_bytes_in_gen_untagged(Gen *gen, int obj_sz)  // obj_sz is in words
 {
   Rp* rp;
-  int n = 0;
+  long n = 0;
   for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     {
       if ( clear_tospace_bit(rp->n) )
 	// Take care of alignment
-	n += 4 * obj_sz * (ALLOCATABLE_WORDS_IN_REGION_PAGE / obj_sz);  // not last page
+	n += sizeof(void *) * obj_sz * (ALLOCATABLE_WORDS_IN_REGION_PAGE / obj_sz);  // not last page
       else
-	n += 4 * ((gen->a) - (rp->i));  // last page
+	n += sizeof(void *) * ((gen->a) - (rp->i));  // last page
     }
   return n;
 }
 
-static int
-allocated_bytes_in_region_untagged(Ro* r, int obj_sz)   // obj_sz is in words
+static long
+allocated_bytes_in_region_untagged(Ro* r, long obj_sz)   // obj_sz is in words
 {
   return allocated_bytes_in_gen_untagged(&(r->g0),obj_sz)
     #ifdef ENABLE_GEN_GC
@@ -566,10 +566,10 @@ allocated_bytes_in_region_untagged(Ro* r, int obj_sz)   // obj_sz is in words
     ;
 }
 
-static int 
-allocated_bytes_in_regions(void) 
+static long
+allocated_bytes_in_regions(void)
 {
-  int n = 0;
+  long n = 0;
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
@@ -582,7 +582,7 @@ allocated_bytes_in_regions(void)
 	break;
       case RTYPE_TRIPLE:
 	n += allocated_bytes_in_region_untagged(r,3);
-	break;	
+	break;
       default:
 	n += allocated_bytes_in_region(r);
       }
@@ -590,17 +590,17 @@ allocated_bytes_in_regions(void)
   return n;
 }
 
-static int 
-allocated_bytes_in_lobjs(void) 
+static long
+allocated_bytes_in_lobjs(void)
 {
-  int n = 0;
+  long n = 0;
   Ro* r;
   Lobjs *lobjs;
 
   for ( r = TOP_REGION ; r ; r = r->p )
-    for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
+    for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) )
       {
-	unsigned int tag;
+	unsigned long tag;
        #ifdef PROFILING
 	tag = *(&(lobjs->value) + sizeObjectDesc);
        #else
@@ -614,20 +614,20 @@ allocated_bytes_in_lobjs(void)
 
 // Find the number of allocated pages in a region/generation
 
-static int 
-allocated_pages_in_gen(Gen *gen) 
+static long
+allocated_pages_in_gen(Gen *gen)
 {
-  int n = 0;
+  long n = 0;
   Rp *rp;
-  
+
   // Maybe the generation-bit is set
   for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     n++;
   return n;
 }
 
-static int 
-allocated_pages_in_region(Region r) 
+static long
+allocated_pages_in_region(Region r)
 {
   return allocated_pages_in_gen(&(r->g0))
     #ifdef ENABLE_GEN_GC
@@ -636,10 +636,10 @@ allocated_pages_in_region(Region r)
     ;
 }
 
-static int 
-allocated_pages_in_regions(void) 
+static long
+allocated_pages_in_regions(void)
 {
-  int n = 0;
+  long n = 0;
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
@@ -651,8 +651,8 @@ allocated_pages_in_regions(void)
 #ifdef CHECK_GC
 #ifdef ENABLE_GEN_GC
 // Check for no tospace-bits
-static void 
-chk_no_tospacebits_gen(Gen *gen) 
+static void
+chk_no_tospacebits_gen(Gen *gen)
 {
   Rp *rp;
   for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
@@ -665,7 +665,7 @@ chk_no_tospacebits_gen(Gen *gen)
 }
 
 static void
-chk_no_tospacebits_region(Region r) 
+chk_no_tospacebits_region(Region r)
 {
   chk_no_tospacebits_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
@@ -678,7 +678,7 @@ chk_no_tospacebits_region(Region r)
 }
 
 static void
-chk_no_tospacebits_regions(void) 
+chk_no_tospacebits_regions(void)
 {
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
@@ -696,8 +696,8 @@ chk_no_tospacebits_regions(void)
 // a descriptor at offset 0.  This function is never used to determine
 // the size of an untagged pair, an untagged triple, or an untagged
 // ref.
-inline static ssize_t 
-get_size_obj(uintptr_t *obj_ptr) 
+inline static ssize_t
+get_size_obj(uintptr_t *obj_ptr)
 {
   switch (val_tag_kind_const(obj_ptr)) {
   case TAG_RECORD: return get_record_size(*obj_ptr) + 1;
@@ -705,12 +705,12 @@ get_size_obj(uintptr_t *obj_ptr)
   case TAG_CON1:
   case TAG_REF:    return 2;
   case TAG_TABLE:  return get_table_size(*obj_ptr) + 1;
-  case TAG_STRING: 
+  case TAG_STRING:
     {
-      ssize_t size = get_string_size(*obj_ptr) + 1 + (sizeof(void *));   // 1 for zero-termination, 4 for tag
+      ssize_t size = get_string_size(*obj_ptr) + 1 + (sizeof(void *));   // 1 for zero-termination, sizeof(void *) for tag
       return size%(sizeof(void *)) ? 1 + (size/(sizeof(void *))) : size/(sizeof(void *));      // alignment
     }
-  default: 
+  default:
     {
       pw("Tag: ", *obj_ptr);
       print(obj_ptr);
@@ -722,16 +722,16 @@ get_size_obj(uintptr_t *obj_ptr)
 
 // ToDo: GenGC remove print_tagged_rp_content
 /*
-void 
+void
 print_tagged_rp_content(Rp *rp)
-{ 
+{
   unsigned int *obj_ptr;
 
   fprintf(stderr,"[tagged rp content...\n");
-  for (obj_ptr = (unsigned int*)(&(rp->i)) 
+  for (obj_ptr = (unsigned int*)(&(rp->i))
 	 ; obj_ptr < (unsigned int*)(rp+1) && obj_ptr != notPP
 	 ; obj_ptr = obj_ptr + get_size_obj(obj_ptr))
-    { 
+    {
       fprintf(stderr,"Addr: %p - ",obj_ptr);
       print(obj_ptr);
     }
@@ -742,12 +742,12 @@ print_tagged_rp_content(Rp *rp)
 
 
 /* ToDo: GenGC (1) allok skal tage højde for colorPtr
-               (2) allok skal tage højde for om g1 indeholder en klump. 
+               (2) allok skal tage højde for om g1 indeholder en klump.
    gælder for alle acopy-funktioner
    MEMO: What does this comment mean?
 */
 inline static uintptr_t *
-acopy(Gen *gen, uintptr_t *obj_ptr) 
+acopy(Gen *gen, uintptr_t *obj_ptr)
 {
   ssize_t size;
   uintptr_t *new_obj_ptr;
@@ -774,7 +774,7 @@ acopy(Gen *gen, uintptr_t *obj_ptr)
 }
 
 inline static uintptr_t *
-acopy_pair(Gen *gen, uintptr_t *obj_ptr) 
+acopy_pair(Gen *gen, uintptr_t *obj_ptr)
 {
   uintptr_t *new_obj_ptr;
 
@@ -791,7 +791,7 @@ acopy_pair(Gen *gen, uintptr_t *obj_ptr)
 }
 
 inline static uintptr_t *
-acopy_ref(Gen *gen, uintptr_t *obj_ptr) 
+acopy_ref(Gen *gen, uintptr_t *obj_ptr)
 {
   uintptr_t *new_obj_ptr;
 
@@ -807,7 +807,7 @@ acopy_ref(Gen *gen, uintptr_t *obj_ptr)
 }
 
 inline static uintptr_t *
-acopy_triple(Gen *gen, uintptr_t *obj_ptr) 
+acopy_triple(Gen *gen, uintptr_t *obj_ptr)
 {
   uintptr_t *new_obj_ptr;
 
@@ -825,7 +825,7 @@ acopy_triple(Gen *gen, uintptr_t *obj_ptr)
 }
 
 static int
-points_into_tospace (uintptr_t x) 
+points_into_tospace (uintptr_t x)
 {
   uintptr_t *p;
 
@@ -833,9 +833,14 @@ points_into_tospace (uintptr_t x)
   if ( is_integer(x) )
     return 0;
   p = (uintptr_t *)x;
-  if ( is_stack_allocated(p) )
+  if ( points_into_dataspace(p) ) {
+    #ifdef CHECK_GC
+    if ( is_stack_allocated(p) )
+      die ("GC: p is both on stack and in dataspace!");
+    #endif // CHECK_GC
     return 0;
-  if ( points_into_dataspace(p) )
+  }
+  if ( is_stack_allocated(p) )
     return 0;
   // now either large object or in region
   rp = get_rp_header(p);
@@ -859,8 +864,8 @@ points_into_tospace (uintptr_t x)
   // colorPtr's in old generations are updated after each gc - the
   // reason is that the mutator never allocates values in old
   // generations.
-  
-  if ( is_minor_p && is_gen_1(*(rp->gen)) ) 
+
+  if ( is_minor_p && is_gen_1(*(rp->gen)) )
     {
       switch ( rtype(*(rp->gen)) )
 	{
@@ -886,17 +891,17 @@ points_into_tospace (uintptr_t x)
       // allocation (Region.c) when gc is enabled. For the old
       // generation, however, it is not sufficient to check the
       // tospace-bit in a region page to determine if the object (in
-      // the page) is part of to-space (see comment above). 
+      // the page) is part of to-space (see comment above).
       return is_tospace_bit(rp->n);
 }
 
-inline static Gen * 
+inline static Gen *
 target_gen(Gen *gen, Rp *rp, uintptr_t *obj_ptr)
 {
 #ifdef ENABLE_GEN_GC
   // We could also choose first to ask if gen is g1 (old generation)
   //  - in this case we could return gen immediately
-    if ( obj_ptr < rp->colorPtr ) 
+    if ( obj_ptr < rp->colorPtr )
       return &(get_ro_from_gen(*gen)->g1);  // old gen
 #ifdef CHECK_GC
     if ( is_gen_1(*gen) )
@@ -910,31 +915,35 @@ target_gen(Gen *gen, Rp *rp, uintptr_t *obj_ptr)
     return gen;
 }
 
-static uintptr_t 
-evacuate(uintptr_t obj) 
+static uintptr_t
+evacuate(uintptr_t obj)
 {
   Rp* rp;
   Gen* gen;
   Gen* copy_to_gen;
 
   uintptr_t *obj_ptr, *new_obj_ptr;
-  if (is_integer(obj)) 
+  if (is_integer(obj))
     {
       return obj;                         // not subject to GC
     }
 
-  obj_ptr = (uintptr_t *)obj;          // object is a pointer
+  obj_ptr = (uintptr_t *)obj;             // object is a pointer
 
   if ( points_into_dataspace(obj_ptr) )
     {
+      #ifdef CHECK_GC
+      if ( is_stack_allocated(obj_ptr) )
+        die ("GC: obj_ptr is both on stack and in dataspace!");
+      #endif // CHECK_GC
       return obj;                         // not subject to GC
     }
 
-  if ( is_stack_allocated(obj_ptr) )      
+  if ( is_stack_allocated(obj_ptr) )
     {                                     // object immovable
-      if ( is_const(*obj_ptr) ) 
+      if ( is_const(*obj_ptr) )
 	{
-	  return obj;      
+	  return obj;
 	}
       *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
       push_scan_container(obj_ptr);
@@ -963,10 +972,10 @@ evacuate(uintptr_t obj)
     }
 
   // Object is in an infinite region
-  gen = rp->gen; 
+  gen = rp->gen;
 #ifdef ENABLE_GEN_GC
   if (is_minor_p && is_gen_1(*gen))  // old generation
-    { 
+    {
       // obj_ptr points at old area in g1 and should be returned!
       return obj;
     }
@@ -978,15 +987,15 @@ evacuate(uintptr_t obj)
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	return *(obj_ptr+1);
       // obj_ptr points at slot before the actual value
-      copy_to_gen = target_gen(gen, rp, obj_ptr+1); 
+      copy_to_gen = target_gen(gen, rp, obj_ptr+1);
       new_obj_ptr = acopy_pair(copy_to_gen, obj_ptr);
       *(obj_ptr+1) = (uintptr_t)new_obj_ptr; // install forward pointer
       break;
     }
   case RTYPE_REF:
-    { 
+    {
       // printf("RTYPE_REF\n");
-      // ToDo: GenGC det ser ud til at points_into_tospace checker for 
+      // ToDo: GenGC det ser ud til at points_into_tospace checker for
       // mere end nødvendigt er - vi ved at det er i en inf-region
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	return *(obj_ptr+1);
@@ -1007,14 +1016,14 @@ evacuate(uintptr_t obj)
       *(obj_ptr+1) = (uintptr_t)new_obj_ptr; // install forward pointer
       break;
     }
-  default:   // Object is tagged 
+  default:   // Object is tagged
     {
       // printf("RTYPE_DEFAULT\n");
       if ( is_forward_ptr(*obj_ptr) )   // obj tag contains a fwd-ptr
 	// ToDo: With GenGC, can't we just skip the following
 	// comparison? What should we do if the pointer does not point
 	// into to-space?
-	{ 
+	{
 	  // object already copied
 #ifdef CHECK_GC
 	  if ( ! points_into_tospace(*obj_ptr) )
@@ -1024,7 +1033,7 @@ evacuate(uintptr_t obj)
 	    }
 	  else
 #endif // CHECK_GC
-	    return clear_forward_ptr(*obj_ptr);             
+	    return clear_forward_ptr(*obj_ptr);
 	}
       //printf("0x%x not a forward ptr - about to copy %p - rp=%p - gen=%p\n", *obj_ptr, obj_ptr, rp, gen);
       //printf("gen:\n");
@@ -1036,9 +1045,9 @@ evacuate(uintptr_t obj)
       *obj_ptr = tag_forward_ptr(new_obj_ptr);  // install forward pointer
     }
   }
-  if ( is_gen_status_NONE(*copy_to_gen) ) 
+  if ( is_gen_status_NONE(*copy_to_gen) )
     {
-     #ifdef PROFILING 
+     #ifdef PROFILING
       push_scan_stack(new_obj_ptr - sizeObjectDesc);
      #else
       //printf("push_scan_stack: %p - rt=%x, rt_target=%x\n",new_obj_ptr,rtype(*gen),rtype(*copy_to_gen));
@@ -1052,15 +1061,15 @@ evacuate(uintptr_t obj)
 static uintptr_t*
 scan_tagged_value(uintptr_t *s)      // s is the scan pointer
 {
-  // All large objects and objects in finite regions are temporarily 
-  // annotated as immovable. We therefore use val_tag_kind and not 
+  // All large objects and objects in finite regions are temporarily
+  // annotated as immovable. We therefore use val_tag_kind and not
   // val_tag_kind_const
 
   long sz;                                 // adjust s to point after the string
-  switch ( val_tag_kind(s) ) { 
+  switch ( val_tag_kind(s) ) {
   case TAG_STRING: {                        // Do not GC the content of a string but
     String str = (String)s;
-    sz = get_string_size(str->size) + 1 + (sizeof(void *));    // 1 for zero, 4 for tag
+    sz = get_string_size(str->size) + 1 + (sizeof(void *));    // 1 for zero, sizeof(void *) for tag
     sz = (sz%(sizeof(void *))) ? (1+sz/(sizeof(void *))) : (sz/(sizeof(void *)));
     return s + sz;
   }
@@ -1082,7 +1091,7 @@ scan_tagged_value(uintptr_t *s)      // s is the scan pointer
     num_to_skip = get_record_skip(*s);
     s = s + 1 + num_to_skip;
     remaining = sz - num_to_skip;
-    while ( remaining ) 
+    while ( remaining )
       {
 	*s = evacuate(*s);
 	s++;
@@ -1105,10 +1114,10 @@ scan_tagged_value(uintptr_t *s)      // s is the scan pointer
     return 0;
   }
   }
-}  
+}
 
-static void 
-do_scan_stack() 
+static void
+do_scan_stack()
 {
   Rp *rp;
   Gen *gen;
@@ -1117,7 +1126,7 @@ do_scan_stack()
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
 
     // Run through container - FINITE REGIONS and LARGE OBJECTS
-    while (!(is_scan_container_empty())) 
+    while (!(is_scan_container_empty()))
       {
 	uintptr_t* tmp;
 	tmp = pop_scan_container();
@@ -1125,19 +1134,19 @@ do_scan_stack()
         scan_tagged_value(tmp);
       }
 
-    while (!(is_scan_stack_empty())) 
+    while (!(is_scan_stack_empty()))
       {
 	uintptr_t *s;   // scan pointer
 	s = pop_scan_stack();
 	//printf("pop_scan_stack: %p\n", s);
 	// Get Region Page and Generation
 	rp = get_rp_header(s);
-	gen = rp->gen; 
-	switch ( rtype(*gen) ) 
+	gen = rp->gen;
+	switch ( rtype(*gen) )
 	  {
 	  case RTYPE_PAIR:
 	    {
-	      while ( s+1 != gen->a ) 
+	      while ( s+1 != gen->a )
 		{
 		  #if PROFILING
 		   s += sizeObjectDesc;
@@ -1150,7 +1159,7 @@ do_scan_stack()
 	    }
 	  case RTYPE_REF:
 	    {
-	      while ( s+1 != gen->a ) 
+	      while ( s+1 != gen->a )
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
@@ -1162,7 +1171,7 @@ do_scan_stack()
 	    }
 	  case RTYPE_TRIPLE:
 	    {
-	      while ( s+1 != gen->a ) 
+	      while ( s+1 != gen->a )
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
@@ -1180,14 +1189,14 @@ do_scan_stack()
 	    }
 	  default:
 	    {
-	      while ( s != gen->a ) 
+	      while ( s != gen->a )
 		{
                   #if PROFILING
 		  s += sizeObjectDesc;
                   #endif
 		  // printf("calling scan_tagged_value %p ;gen->a=%p; gen=%d\n", s,gen->a,is_gen_1(*gen));
 		  s = scan_tagged_value(s);
-		  s = next_value(s, gen->a); 
+		  s = next_value(s, gen->a);
 		}
 	      break;
 	    }
@@ -1198,17 +1207,17 @@ do_scan_stack()
   return;
 }
 
-inline static void 
-clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen) 
+inline static void
+clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen)
 { Rp *p;
 
-  for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
+  for ( p = clear_fp(gen->fp) ; p ; p = p->n )
     {
       // Clear tospace-bit - in minor gc, pages in g1 are not marked!
 #ifdef CHECK_GC
-      if ( ! is_tospace_bit(p->n) 
+      if ( ! is_tospace_bit(p->n)
 #ifdef ENABLE_GEN_GC
-	   && ( is_major_p || ! is_gen_1(*gen) ) 
+	   && ( is_major_p || ! is_gen_1(*gen) )
 #endif // ENABLE_GEN_GC
 	   )
 	die ("gc: page in tospace not marked in major gc");
@@ -1234,7 +1243,7 @@ check_all_lobjs(void)    // used for debugging
 {
   Region r;
   //printf("[check_all_lobjs begin]\n");
-  for( r = TOP_REGION ; r ; r = r->p ) 
+  for( r = TOP_REGION ; r ; r = r->p )
     {
       Lobjs *lobjs;
       for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) )
@@ -1251,7 +1260,7 @@ check_all_lobjs(void)    // used for debugging
 	  if ( is_const(*tag_ptr) )
 	    die ("check_lobjs: lobj constant bit set");
 	  if ( !is_lobj_bit(lobjs->next) )
-	    die ("check_lobjs: lobj bit not set"); 
+	    die ("check_lobjs: lobj bit not set");
 	}
     }
   //printf("[check_all_lobjs end]\n");
@@ -1262,14 +1271,14 @@ double
 region_utilize(long pages, long bytes)
 {
   if ( pages > 0.0 )
-    return (100.0 * (double)bytes 
-	    / ((double)(pages * 4 * ALLOCATABLE_WORDS_IN_REGION_PAGE)));
-  else 
+    return (100.0 * (double)bytes
+	    / ((double)(pages * sizeof(void *) * ALLOCATABLE_WORDS_IN_REGION_PAGE)));
+  else
     return 0.0;
 }
- 
-void 
-gc(uintptr_t **sp, size_t reg_map) 
+
+void
+gc(uintptr_t **sp, size_t reg_map)
 {
   long time_gc_one_ms = 0;
   extern Rp* freelist;
@@ -1295,7 +1304,7 @@ gc(uintptr_t **sp, size_t reg_map)
   // Mutex on the garbage collector; used by alloc_new_block in
   // Region.c for determining whether the tospace-bit should be set on
   // new allocated pages.
-  doing_gc = 1; 
+  doing_gc = 1;
 
 #ifdef ENABLE_GEN_GC
   // See code below after GC proper
@@ -1325,10 +1334,10 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // ENABLE_GEN_GC
     }
 
-  if ( verbose_gc ) 
+  if ( verbose_gc )
     {
       fprintf(stderr,"[%s#%zd",
-#ifdef ENABLE_GEN_GC	      
+#ifdef ENABLE_GEN_GC
 	      (is_major_p)?("GC"):("gc"),
 #else
 	      "GC",
@@ -1344,7 +1353,9 @@ gc(uintptr_t **sp, size_t reg_map)
 
   // Initialize the scan stack (for Infinite Regions) and the
   // container (for Finite Regions and large objects)
+  /// fprintf(stderr,"[GC: init_scan_stack]\n");
   init_scan_stack();
+  /// fprintf(stderr,"[GC: init_scan_container]\n");
   init_scan_container();
 
 #ifdef ENABLE_GEN_GC
@@ -1362,10 +1373,10 @@ gc(uintptr_t **sp, size_t reg_map)
 		{
 		  pp_gen(&(r->g1));
 		  printf("r->g1.b=%p\n", r->g1.b);
-		  die ("problem with middle page");	
+		  die ("problem with middle page");
 		}
 	    }
-	  else 
+	  else
 	    // last page
 	    if ( rp->colorPtr != (uintptr_t *)(r->g1.a) )
 	      {
@@ -1378,12 +1389,13 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // CHECK_GC
 #endif // ENABLE_GEN_GC
 
+  /// fprintf(stderr,"[GC: mk_from_space]\n");
   mk_from_space();
 
 #ifdef ENABLE_GEN_GC
   if ( is_minor_p ) {
-    // If minor gc then refs and arrays in old generations (g1) 
-    // and lobjs (i.e., for large arrays) are also considered 
+    // If minor gc then refs and arrays in old generations (g1)
+    // and lobjs (i.e., for large arrays) are also considered
     // part of the root-set...
     for ( r = TOP_REGION ; r ; r = r->p ) {
       switch ( rtype(r->g1) ) {
@@ -1391,25 +1403,25 @@ gc(uintptr_t **sp, size_t reg_map)
 	value_ptr = ((uintptr_t *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE - 1;
 	// evacuate content of refs in g1
 	// refs occupies one word only!
-	while ( (value_ptr + 1) != r->g1.a ) 
+	while ( (value_ptr + 1) != r->g1.a )
 	  {
            #if PROFILING
 	    value_ptr += sizeObjectDesc;
            #endif // PROFILING
-	    *(value_ptr+1) = evacuate(*(value_ptr+1)); 
+	    *(value_ptr+1) = evacuate(*(value_ptr+1));
 	    value_ptr = next_untagged_value(value_ptr+1,r->g1.a);
 	  }
 	break;
       }
-      case RTYPE_ARRAY: { 
+      case RTYPE_ARRAY: {
 	size_t tag;
 	ssize_t i, sz;
-	Lobjs *lobjs;    
-	
+	Lobjs *lobjs;
+
 	value_ptr = ((uintptr_t *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
 	// evacuate content of arrays in g1
-	while ( (value_ptr) != r->g1.a ) 
-	  { 
+	while ( (value_ptr) != r->g1.a )
+	  {
            #if PROFILING
 	    value_ptr += sizeObjectDesc;
            #endif // PROFILING
@@ -1424,7 +1436,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	  }
 
 	// evacuate contents of arrays in lobjs
-	for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
+	for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) )
 	  {
 	    value_ptr = &(lobjs->value);
             #ifdef PROFILING
@@ -1454,6 +1466,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // ENABLE_GEN_GC
 
   // Search for live registers
+  /// fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
   sp_ptr = sp;
   w = reg_map;
   for ( offset = 0 ; offset < NUM_REGS ; offset++ ) {
@@ -1465,6 +1478,8 @@ gc(uintptr_t **sp, size_t reg_map)
   }
 
   // Do spilled arguments and results to current function
+  /// fprintf(stderr,"[GC: do spilled arguments - sp=%p, reg_map=%zx, NUM_REGS=%d]\n", sp, reg_map, NUM_REGS);
+
   sp_ptr = sp;
   sp_ptr = sp_ptr + NUM_REGS;   // points at size_spilled_region_args
 
@@ -1475,66 +1490,77 @@ gc(uintptr_t **sp, size_t reg_map)
   size_ccf = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at last arg. to current function
 
+  /// fprintf(stderr,"[GC: calc done; size_spilled_region_args=%zx; size_rcf=%zx; size_ccf=%zx]\n",
+  ///  	      size_spilled_region_args,size_rcf,size_ccf);
+
   // All arguments to current function are live - except for region arguments.
   for ( offset = 0 ; offset < size_ccf ; offset++ ) {
     value_ptr = ((uintptr_t *)sp_ptr);
     predSPDef(sp_ptr,1);
-    if ( offset >= size_spilled_region_args ) 
+    if ( offset >= size_spilled_region_args )
       {
-	*value_ptr = evacuate(*value_ptr);    
+	*value_ptr = evacuate(*value_ptr);
       }
   }
 
-  /* sp_ptr points at first return address.                           */  
+  /* sp_ptr points at first return address.                           */
   /* Below the return address we may have slots for spilled results - */
   /* they are not live at this point!                                 */
 
-  /* Search for Frame Descriptors (FD). A FD cover */
-  /*   - function frame                            */
-  /*   - spilled arguments                         */
-  /*   - return address                            */
-  /*   - spilled results                           */
+  /* Search for Frame Descriptors (FD). An FD covers */
+  /*   - function frame                              */
+  /*   - spilled arguments                           */
+  /*   - return address                              */
+  /*   - spilled results                             */
+
+  /// fprintf(stderr,"[GC: FD processing]\n");
 
   fd_ptr = *sp_ptr;
   fd_offset_to_return = *(fd_ptr-2);
   fd_size = *(fd_ptr-3);
   predSPDef(sp_ptr,size_rcf);
 
+  /// fprintf(stderr,"[GC: FD entering loop; sp_ptr=%p; fd_ptr=%p]\n",sp_ptr,fd_ptr);
+
   // sp_ptr points at first address before FD
-  while ( fd_size != /* 0xFFFFFFFF */ UINTPTR_MAX) 
+  while ( fd_size != /* 0xFFFFFFFFFFFFFFFF */ UINTPTR_MAX)
     {
       // Analyse frame
-      
-      w_ptr = fd_ptr-4;
-    
+      /// fprintf(stderr,"[GC: FD in loop; fd_size=%zx]\n", fd_size);
+
+
+      w_ptr = fd_ptr-4;   // 4 is ok, also for x64
+
       // Find RootSet in FD
       if ( fd_size )  // fd_size may be 0 in which case w_ptr points at arbitrary address.
 	w = *w_ptr;
       w_idx = 0;
-      for( offset = 0 ; offset < fd_size ; offset++ ) 
+      for( offset = 0 ; offset < fd_size ; offset++ )
 	{
 	  if (w & 1) {
 	    // Evacuate value in frame
 	    value_ptr = ((uintptr_t *)sp_ptr) + fd_size - offset;
-	    *value_ptr = evacuate(*value_ptr); 
+	    *value_ptr = evacuate(*value_ptr);
 	  }
 	  w = w >> 1;
 	  w_idx++;
-	  if ((w_idx == 32) & (offset+1 < fd_size)) 
-	    { 
+	  if ((w_idx == 32) & (offset+1 < fd_size))   // 32: code generator uses Word32
+	    {
 	      // Again, w_ptr may point arbitrarily if we are done.
 	      w_ptr--;
 	      w = *w_ptr;
 	      w_idx = 0;
 	    }
 	}
-      
+
       sp_ptr = sp_ptr + fd_offset_to_return + 1; // Points at next return address.
       fd_ptr = *sp_ptr;
       fd_offset_to_return = *(fd_ptr-2);
       fd_size = *(fd_ptr-3);
       predSPDef(sp_ptr,size_rcf);
     }
+
+  // fprintf(stderr,"[GC: FD after loop]\n");
 
   // Search for data labels; they are part of the root-set.
   num_d_labs = *data_lab_ptr; /* Number of data labels */
@@ -1543,7 +1569,7 @@ gc(uintptr_t **sp, size_t reg_map)
     value_ptr = *(((uintptr_t **)data_lab_ptr) + offset);
     *value_ptr = evacuate(*value_ptr);
   }
-  
+
   do_scan_stack();
 
   // We Are Done And Can Now Insert from-space Into The FreeList
@@ -1559,7 +1585,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #ifdef ENABLE_GEN_GC
   if ( is_major_p )
 #endif
-  for( r = TOP_REGION ; r ; r = r->p ) 
+  for( r = TOP_REGION ; r ; r = r->p )
       {
 	Lobjs *lobjs;
 	long first = 1;
@@ -1573,10 +1599,10 @@ gc(uintptr_t **sp, size_t reg_map)
 #else
 	    tag_ptr = &(lobjs->value);
 #endif
-	    if ( is_const(*tag_ptr) 
+	    if ( is_const(*tag_ptr)
 #ifdef ENABLE_GEN_GC
 		 || is_minor_p  /* Preserve all objects in a minor gc */
-#endif /* ENABLE_GEN_GC */ 
+#endif /* ENABLE_GEN_GC */
 		 )
 	      {                               // preserve object
 		// *tag_ptr = clear_const_bit(*tag_ptr);
@@ -1585,13 +1611,13 @@ gc(uintptr_t **sp, size_t reg_map)
 		    first = 0;
 		    *lobjs_ptr = lobjs;
 		  }
-		else 
+		else
 		  *lobjs_ptr = set_lobj_bit(lobjs);
 		lobjs_ptr = &(lobjs->next);   // update slot
 		lobjs = clear_lobj_bit(lobjs->next);
 	      }
 	    else // do not preserve object
-	      {	     
+	      {
 		char* orig;
 		lobjs_current -= size_lobj(*tag_ptr);
 		orig = lobjs->orig;
@@ -1599,13 +1625,13 @@ gc(uintptr_t **sp, size_t reg_map)
 		free(orig);            // deallocate object
 	      }
 	  }
-	
+
 	if ( first )
 	  *lobjs_ptr = NULL;
 	else
-	  *lobjs_ptr = set_lobj_bit(NULL);	
+	  *lobjs_ptr = set_lobj_bit(NULL);
       }
-  
+
   // Unmark all tospace bits in region pages in regions on the stack
   // Update colorPtr in all region pages.
 
@@ -1628,18 +1654,18 @@ gc(uintptr_t **sp, size_t reg_map)
   // information is available after gc. mael 2005-03-19
 
 
-  for( r = TOP_REGION ; r ; r = r->p ) 
+  for( r = TOP_REGION ; r ; r = r->p )
     {
       clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
       clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g1));
 #endif /* ENABLE_GEN_GC */
     }
-  
+
   lobjs_gc_treshold = (long)(heap_to_live_ratio * (double)lobjs_current);
-  
-  // Reset all constant-bits in the scan container -- FINITE REGIONS 
-  // and LARGE OBJECTS -- this clearance is safe because we have 
+
+  // Reset all constant-bits in the scan container -- FINITE REGIONS
+  // and LARGE OBJECTS -- this clearance is safe because we have
   // freed only those large objects that are unmarked and thus do
   // not occur in the scan container...
   clear_scan_container();
@@ -1654,12 +1680,12 @@ gc(uintptr_t **sp, size_t reg_map)
   // leave room for copying...
   rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_total / heap_to_live_ratio);
   if ( (int)((heap_to_live_ratio - 1.0) * (double)rp_used) > rp_gc_treshold )
-    {      
+    {
 #ifdef ENABLE_GEN_GC
       if ( is_minor_p )
 	major_p = 1;
-      else 
-	{ 
+      else
+	{
 	  major_p = 0;
 #endif // ENABLE_GEN_GC
 	  rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_used);
@@ -1680,18 +1706,18 @@ gc(uintptr_t **sp, size_t reg_map)
   // callSbrkArg((int)to_allocate + REGION_PAGE_BAG_SIZE);
   // }
 
-  if ( verbose_gc || report_gc ) 
+  if ( verbose_gc || report_gc )
     {
       getrusage(RUSAGE_SELF, &rusage_end);
-      time_gc_one_ms = 
-	((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*1000 + 
-	 (rusage_end.ru_utime.tv_usec+rusage_end.ru_stime.tv_usec)/1000) - 
-	((rusage_begin.ru_utime.tv_sec+rusage_begin.ru_stime.tv_sec)*1000 + 
+      time_gc_one_ms =
+	((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*1000 +
+	 (rusage_end.ru_utime.tv_usec+rusage_end.ru_stime.tv_usec)/1000) -
+	((rusage_begin.ru_utime.tv_sec+rusage_begin.ru_stime.tv_sec)*1000 +
 	 (rusage_begin.ru_utime.tv_usec+rusage_begin.ru_stime.tv_usec)/1000);
       time_gc_all_ms += time_gc_one_ms;
     }
 
-  if ( verbose_gc ) 
+  if ( verbose_gc )
     {
       double RI = 0.0, GC = 0.0, FRAG = 0.0;
       unsigned long bytes_to_space;
@@ -1707,33 +1733,34 @@ gc(uintptr_t **sp, size_t reg_map)
 
       fprintf(stderr,"(%ldms)", time_gc_one_ms);
       /*
-      fprintf(stderr, " rp_total: %d\n", rp_total);
-      fprintf(stderr, " size_scan_stack: %d\n", (size_scan_stack*4) / 1024);
-      fprintf(stderr, " size_scan_container: %d\n", (size_scan_container*4) / 1024);
-      fprintf(stderr, " to_space_old: %d\n", to_space_old);
-      fprintf(stderr, " alloc_period: %d\n", alloc_period);
-      fprintf(stderr, " alloc_period_save: %d\n", alloc_period_save);
-      fprintf(stderr, " bytes_from_space: %d\n", bytes_from_space);
-      fprintf(stderr, " bytes_to_space: %d\n", bytes_to_space);
-      fprintf(stderr, " lobjs_beforegc: %d\n", lobjs_beforegc);
-      fprintf(stderr, " lobjs_aftergc: %d\n", lobjs_aftergc);
-      fprintf(stderr, " lobjs_period: %d\n", lobjs_period);
+      fprintf(stderr, " rp_total: %ld\n", rp_total);
+      fprintf(stderr, " size_scan_stack: %ld\n", (size_scan_stack*sizeof(void *)) / 1024);
+      fprintf(stderr, " size_scan_container: %ld\n", (size_scan_container*sizeof(void *)) / 1024);
+      fprintf(stderr, " to_space_old: %ld\n", to_space_old);
+      fprintf(stderr, " alloc_period: %ld\n", alloc_period);
+      fprintf(stderr, " alloc_period_save: %ld\n", alloc_period_save);
+      fprintf(stderr, " bytes_from_space: %ld\n", bytes_from_space);
+      fprintf(stderr, " bytes_to_space: %ld\n", bytes_to_space);
+      fprintf(stderr, " lobjs_beforegc: %ld\n", lobjs_beforegc);
+      fprintf(stderr, " lobjs_aftergc: %ld\n", lobjs_aftergc);
+      fprintf(stderr, " lobjs_period: %ld\n", lobjs_period);
+      fprintf(stderr, " lobjs_aftergc_old: %ld\n", lobjs_aftergc_old);
       */
       if ( num_gc != 1 )
 	{
-	  RI = 100.0 * ( ((double)(to_space_old + lobjs_aftergc_old + alloc_period + 
+	  RI = 100.0 * ( ((double)(to_space_old + lobjs_aftergc_old + alloc_period +
 				   lobjs_period - bytes_from_space - lobjs_beforegc)) /
 			 ((double)(to_space_old + lobjs_aftergc_old + alloc_period +
 				   lobjs_period - bytes_to_space - lobjs_aftergc)));
-	  
-	  GC = 100.0 * ( ((double)(bytes_from_space + lobjs_beforegc 
+
+	  GC = 100.0 * ( ((double)(bytes_from_space + lobjs_beforegc
 				   - bytes_to_space - lobjs_aftergc)) /
-			 ((double)(to_space_old + lobjs_aftergc_old 
-				   + alloc_period + lobjs_period - 
+			 ((double)(to_space_old + lobjs_aftergc_old
+				   + alloc_period + lobjs_period -
 				   bytes_to_space - lobjs_aftergc)));
 
-	  FRAG = 100.0 - 100.0 * (((double)(bytes_from_space + lobjs_beforegc)) / 
-				  ((double)(4*ALLOCATABLE_WORDS_IN_REGION_PAGE*pages_from_space 
+	  FRAG = 100.0 - 100.0 * (((double)(bytes_from_space + lobjs_beforegc)) /
+				  ((double)(sizeof(void *)*ALLOCATABLE_WORDS_IN_REGION_PAGE*pages_from_space
 					    + lobjs_beforegc)));
 	  FRAG_sum = FRAG_sum + FRAG;
 	}
@@ -1743,25 +1770,25 @@ gc(uintptr_t **sp, size_t reg_map)
 	      region_utilize(pages_from_space, bytes_from_space),
 	      lobjs_beforegc / 1024,
 	      pages_to_space,
-	      region_utilize(pages_to_space, bytes_to_space),	      
+	      region_utilize(pages_to_space, bytes_to_space),
 	      lobjs_aftergc / 1024,
 	      size_free_list());
-      fprintf(stderr, "RI:%2.0f%%, GC:%2.0f%%]\n",
-	      RI, GC);	     
-      
+      fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%, S:%luMb]\n",
+	      RI, GC, (size_t)(stack_bot_gc - stack_top_gc) / 1024 / 1024);
+
       to_space_old = bytes_to_space;
       lobjs_aftergc_old = lobjs_aftergc;
       lobjs_period = 0;
       alloc_period = 0;
     }
 
-  time_to_gc = 0; 
+  time_to_gc = 0;
   doing_gc = 0; // Mutex on the garbage collector
-  
-  if (raised_exn_interupt) 
-    raise_exn((int)&exn_INTERRUPT);
+
+  if (raised_exn_interupt)
+    raise_exn((uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow)
-    raise_exn((int)&exn_OVERFLOW);
+    raise_exn((uintptr_t)&exn_OVERFLOW);
   return;
 }
 

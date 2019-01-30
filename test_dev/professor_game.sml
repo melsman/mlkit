@@ -17,91 +17,89 @@ infix  4  = <> > >= < <=
 infix  3  := o
 infix  0  before
 
+type unit = unit
+type exn = exn
+type 'a ref = 'a ref
 
-    type unit = unit
-    type exn = exn
-    type 'a ref = 'a ref
+exception Bind = Bind
+exception Match = Match
+exception Subscript
+exception Size
+exception Overflow = Overflow
+exception Domain
+exception Div = Div
+exception Chr
+exception Fail of string
 
-    exception Bind = Bind
-    exception Match = Match
-    exception Subscript
-    exception Size
-    exception Overflow = Overflow
-    exception Domain
-    exception Div = Div
-    exception Chr
-    exception Fail of string 
-
-fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
-fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
+fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
+fun size (s : string) : int = prim ("__bytetable_size", s)
 
-      fun append [] ys = ys
-	| append (x::xs) ys = x :: append xs ys
-      fun xs @ ys = append xs ys
+fun append [] ys = ys
+  | append (x::xs) ys = x :: append xs ys
+fun xs @ ys = append xs ys
 
-    exception Die
-    fun output (s:string):unit = prim ("printStringML","printStringML",s)
+exception Die
+fun output (s:string):unit = prim ("printStringML",s)
 
-    fun die s = (output("Professor_game - DIE with message: " ^ s);
-		 raise Die)
-  
-    fun exnName (e: exn) : string = prim("exnNameML", "exnNameProfilingML", e)   (* exomorphic by copying *)
-    fun exnMessage (e: exn) : string = exnName e 
+fun die s = (output("Professor_game - DIE with message: " ^ s);
+	     raise Die)
 
-    datatype 'a option = NONE | SOME of 'a
-    exception Option
-    fun getOpt (NONE, a) = a
-      | getOpt (SOME a, b) = a
-    fun isSome NONE = false
-      | isSome _ = true
-    fun valOf (SOME a) = a
-      | valOf _ = raise Option
+fun exnName (e: exn) : string = prim("exnNameML", e)   (* exomorphic by copying *)
+fun exnMessage (e: exn) : string = exnName e
 
-    datatype order = LESS | EQUAL | GREATER
+datatype 'a option = NONE | SOME of 'a
+exception Option
+fun getOpt (NONE, a) = a
+  | getOpt (SOME a, b) = a
+fun isSome NONE = false
+  | isSome _ = true
+fun valOf (SOME a) = a
+  | valOf _ = raise Option
 
-    fun !(x: 'a ref): 'a = prim ("!", "!", x) 
-    fun (x: 'a ref) := (y: 'a): unit = prim (":=", ":=", (x, y)) 
-    fun (f o g) x = f(g x)
-    fun a before () = a
-    fun ignore (a) = ()
+datatype order = LESS | EQUAL | GREATER
+
+fun !(x: 'a ref): 'a = prim ("!", x)
+fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y))
+fun (f o g) x = f(g x)
+fun a before () = a
+fun ignore (a) = ()
 
 (* Top-level identifiers; Some are here - some are introduced later *)
 
-fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
+fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 
 fun not true = false
   | not false = true
 
 fun a <> b = not (a = b)
 
-fun print (s:string) : unit = prim("printStringML", "printStringML", s)
-fun printNum (n:int):unit = prim("printNum","printNum",n)
+fun print (s:string) : unit = prim("printStringML", s)
+fun printNum (n:int):unit = prim("printNum", n)
 
 fun log s = output("Professor_game - LOG with message: " ^ s ^ "\n")
 
-  fun map f [] = []
-    | map f (x::xs) = f x :: map f xs
+fun map f [] = []
+  | map f (x::xs) = f x :: map f xs
 
-  fun size xs =
+fun size xs =
     let fun acc []      k = k
-	    | acc (x::xr) k = acc xr (k+1)
-    in acc xs 0 
+	  | acc (x::xr) k = acc xr (k+1)
+    in acc xs 0
     end
 
-  fun chr (i : int) : char = prim ("chrCharML", "chrCharML", (i, Chr))
-  fun ord (c : char) : int = prim ("id", "id", c)
+fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+fun ord (c : char) : int = prim ("id", c)
 
-
-  fun digit n = chr(ord #"0" + n)
-  fun digits(n,acc) =
+fun digit n = chr(ord #"0" + n)
+fun digits(n,acc) =
     if n >=0 andalso n<=9 then digit n:: acc
     else digits (n div 10, digit(n mod 10) :: acc)
 
-  fun int_to_string(n) = if n >= 0 then implode(digits(n,[]))
-			 else "~" ^ int_to_string(~n)
+fun int_to_string(n) = if n >= 0 then implode(digits(n,[]))
+		       else "~" ^ int_to_string(~n)
 
 val debug_flag = false
 fun debug s = if debug_flag then
@@ -121,11 +119,11 @@ fun min (n:int) (m:int) =
 
 datatype clothes = RED_JACKET
                  | RED_TROUSERS
-                 | GREEN_JACKET  
+                 | GREEN_JACKET
                  | GREEN_TROUSERS
-                 | BLUE_JACKET  
+                 | BLUE_JACKET
                  | BLUE_TROUSERS
-                 | BROWN_JACKET  
+                 | BROWN_JACKET
                  | BROWN_TROUSERS
 
 type cart = {top:clothes,
@@ -158,7 +156,7 @@ fun add n (row, col) =
  * PrettyPrinting           *
  *--------------------------*)
 
-fun pp_clothes RED_JACKET     = "RED_JACKET    " 
+fun pp_clothes RED_JACKET     = "RED_JACKET    "
   | pp_clothes RED_TROUSERS   = "RED_TROUSERS  "
   | pp_clothes GREEN_JACKET   = "GREEN_JACKET  "
   | pp_clothes GREEN_TROUSERS = "GREEN_TROUSERS"
@@ -191,7 +189,7 @@ fun pp_row carts =
      pp_vertical bots;
      pp_board_line ())
   end
-  
+
 
 exception Sub'
 
@@ -205,7 +203,7 @@ exception Sub'
 	  handle Sub' => raise Subscript
 
   fun nth n l = l sub n
-		handle Subscript => raise Subscript 
+		handle Subscript => raise Subscript
 
     fun split (l, 0) = ([], l)
     |   split (x::xs, m) =
@@ -215,19 +213,19 @@ exception Sub'
     |   split ([], _) = raise Sub'
 
     fun splitNth n l =
-	  if n < 0 then raise Subscript 
+	  if n < 0 then raise Subscript
           else split (l, n)
 	  handle Sub' => raise Subscript
 
 fun pp_carts [] = ()
-  | pp_carts carts = 
+  | pp_carts carts =
       let
 	val (left, right) = splitNth (min colNo (size carts)) carts
       in
 	(pp_row left;
 	 pp_carts right)
       end
-  
+
 fun pp_board (board as (row, col, carts)) = (output("New board\n");
 					     pp_carts carts;
 					     pp_newline())
@@ -272,17 +270,17 @@ fun matchLeft (row, col, carts) cart =
   (if col > 0 then
      let
        val leftCart = nth ((findPlaceInList(row, col))-1) carts
-       val _ = debug ("matchLeft with leftcart: " ^ 
-		      (pp_clothes (findRight leftCart)) ^ 
+       val _ = debug ("matchLeft with leftcart: " ^
+		      (pp_clothes (findRight leftCart)) ^
 		      " and rightcart: " ^
 		      (pp_clothes (findLeft cart)))
      in
        matchClothes (findRight leftCart) (findLeft cart)
      end
    else
-     true) handle Subscript  => 
-                    die ("matchLeft with error "  ^ " and size list " ^ 
-			 (int_to_string (size carts)) ^ ",row " ^ (int_to_string row) ^ 
+     true) handle Subscript  =>
+                    die ("matchLeft with error "  ^ " and size list " ^
+			 (int_to_string (size carts)) ^ ",row " ^ (int_to_string row) ^
 			 ", col " ^ (int_to_string col) ^ " and findPlaceInList " ^
 			 (int_to_string (findPlaceInList(row, col))))
 
@@ -306,7 +304,7 @@ fun findSol [] [] board sols = (log "solution found";
   | findSol (x::rest) alreadyTried (board as (row, col, carts)) sols =
       let
 	val _ = debug "In findSol"
-	val sols' = 
+	val sols' =
 	  if match board x then
 	    let
 	      val _ = debug "findSol got a match"
@@ -344,4 +342,3 @@ val cartSet = [{top= BLUE_TROUSERS, bot=BROWN_JACKET, left= BLUE_JACKET, right=B
 val res = findSol cartSet [] emptyBoard []
 
 val _ = pp_boards res
-

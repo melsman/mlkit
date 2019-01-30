@@ -7,6 +7,7 @@
 #ifndef GC_H
 #define GC_H
 
+#define CHECK_GC 1
 #ifdef ENABLE_GC
 extern size_t time_to_gc;
 extern size_t rp_gc_treshold;
@@ -32,6 +33,11 @@ extern ssize_t time_gc_all_ms;
 
 extern size_t *data_begin_addr;
 extern size_t *data_end_addr;
+
+inline static int
+points_into_dataspace (uintptr_t *p) {
+  return (p >= data_begin_addr) && (p <= data_end_addr);
+}
 
 size_t size_lobj(size_t tag);
 

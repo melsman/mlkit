@@ -1,5 +1,5 @@
 struct syserr_entry
 {
   char *name;
-  int number;
+  size_t number;
 };

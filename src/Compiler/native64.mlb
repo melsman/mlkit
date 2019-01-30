@@ -1,0 +1,44 @@
+local
+  prebackend.mlb
+  basis Regions = bas regions.mlb end
+  open BasLib (* Compiler *) Regions
+in
+  (* Native Backend *)
+
+  Backend/LINE_STMT.sml
+  Backend/REG_ALLOC.sml
+  Backend/FETCH_AND_FLUSH.sml
+  Backend/CALC_OFFSET.sml
+  Backend/SUBST_AND_SIMPLIFY.sml
+  local open Tools
+  in
+     local open CompilerObjects
+     in Backend/LineStmt.sml
+        Backend/RegAlloc.sml
+        Backend/FetchAndFlush.sml
+        local open Edlib in Backend/CalcOffset.sml end
+        Backend/SubstAndSimplify.sml
+        Backend/NativeCompile.sml
+     end
+  end
+
+  (* X86 Backend *)
+  Backend/CODE_GEN.sml
+  Backend/X64/INSTS_X64.sml
+  ../Kitlib/kitlib.mlb
+  local open Tools
+  in
+     local open CompilerObjects
+     in Backend/X64/InstsX64.sml
+        Backend/X64/CodeGenX64.sml
+        local open Pickle Basics Manager
+        in Backend/X64/ExecutionX64.sml
+        end
+     end
+
+     local open Compiler
+     in ../Common/KitX64.sml
+     end
+
+  end
+end

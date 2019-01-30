@@ -27,11 +27,11 @@ long *stackBot;
 long timeToProfile;
 long maxStack;         // max. stack size from check_stack
 long *maxStackP=NULL;  // Max. stack addr. from ProfileTick
-long tempAntal; 
+long tempCount;
 long tellTime;         /* 1, if the next profile tick should print out the
 		       * current time - 0 otherwise */
 
-struct itimerval rttimer;    
+struct itimerval rttimer;
 struct itimerval old_rttimer;
 int    profileON = TRUE; /* if false profiling is not started after a profileTick. */
 
@@ -41,26 +41,24 @@ long freeProfilingRest; /* Number of bytes left in freeProfiling-chunk.     */
 TickList * firstTick; /* Pointer to data for the first tick. */
 TickList * lastTick;  /* Pointer to data for the last tick. */
 
-/* The following two global arrays are used as hash tables during 
+/* The following two global arrays are used as hash tables during
  * a profile tick. */
 RegionListHashList * regionListHashTable[REGION_LIST_HASH_TABLE_SIZE];  /* Used as hash table into a region list. */
 ObjectListHashList * objectListHashTable[OBJECT_LIST_HASH_TABLE_SIZE];  /* Used as hash table into an object list. */
 
 ProfTabList * profHashTab[PROF_HASH_TABLE_SIZE];  /* Hash table for information collected during execution */
 
-int profTabCountDebug = 0;
-
+long profTabCountDebug = 0;
 
 unsigned long numberOfTics=0; /* Number of profilings so far. */
-
-unsigned long lastCpuTime=0; /* CPU time after last tick. */
-unsigned long cpuTimeAcc=0;  /* Used time by program excl. profiling. */
+unsigned long lastCpuTime=0;  /* CPU time after last tick. */
+unsigned long cpuTimeAcc=0;   /* Used time by program excl. profiling. */
 
 long noTimer =                                  /* Profile with a constant number of function calls. */
     ITIMER_REAL+ITIMER_VIRTUAL+ITIMER_PROF;    /* A number different from the other constants.      */
 long profType = ITIMER_VIRTUAL; /* Type of profiling to use */
 long signalType = SIGVTALRM;    /* Signal to catch depending on profType. */
-long profNo = 10000;   
+long profNo = 10000;
 long microsec = 0;
 long sec = 1;
 long verboseProfileTick = 0;
@@ -70,19 +68,12 @@ long showStat = 0;
 
 char  logName[100]="profile.rp";   /* Name of log file to use. */
 FILE* logFile;
-FILE* logFile_xx;
-char  logName_xx[100]="profile.rp";   /* Name of log file to use. */
 int noOfTickInFile = 0;
 char prgName[100];
 
 long doing_prof = 0;
 long raised_exn_interupt_prof = 0;
 long raised_exn_overflow_prof = 0;
-
-
-// static unsigned int max(unsigned int a, unsigned int b) {
-//  return (a<b)?b:a;
-// }
 
 static unsigned long min(unsigned long a, unsigned long b) {
   return (a<b)?a:b;
@@ -95,23 +86,25 @@ static unsigned long min(unsigned long a, unsigned long b) {
  *--------------------------------------*/
 
 void initializeProfTab(void) {
-  int i;
+  long i;
   /*  printf("Initializing profTab\n"); */
-  for (i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++) 
+  for (i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++)
     profHashTab[i]=NULL;
   return;
 }
 
-int profSize(ProfTabList* p) {
-  int count = 0;
+/*
+long profSize(ProfTabList* p) {
+  long count = 0;
   for ( ; p != NULL; p=p->next) {
     count++ ;
   }
   return count;
 }
+*/
 
-int profTabSize(void) {
-  int count, i;
+long profTabSize(void) {
+  long count, i;
   ProfTabList* p;
   for (count = 0, i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++)
     for (p=profHashTab[i]; p != NULL; p=p->next, count++) {}
@@ -123,8 +116,8 @@ ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, long regionId) {
   /*  checkProfTab("profTabListInsertAndInitialize.enter"); */
 
   profTabCountDebug ++;
-  /*  
-      printf("Entering profTabListInsertAndInitialize; regionId = %d, profSize = %d, count = %d\n", 
+  /*
+      printf("Entering profTabListInsertAndInitialize; regionId = %d, profSize = %d, count = %d\n",
 	 regionId, profSize(p), profTabCountDebug);
   */
   pNew = (ProfTabList*)allocMemProfiling_xx(sizeof(ProfTabList));
@@ -206,7 +199,7 @@ void profTabDecrNoOfPages(long regionId, long i) {
       return;
     };
   printf("regionId is %ld\n", regionId);
-  perror("profTabDecrNoOfPages error"); 
+  perror("profTabDecrNoOfPages error");
   exit(-1);
 }
 
@@ -220,7 +213,7 @@ void profTabDecrAllocNow(long regionId, long i, char *s) {
       return;
     };
   fprintf(stderr, "Error.%s: regionId %ld does not exist in profiling table\n", s, regionId);
-  fprintf(stderr, "profTabCountDebug = %d, profTabSize = %d\n", profTabCountDebug, 
+  fprintf(stderr, "profTabCountDebug = %ld, profTabSize = %ld\n", profTabCountDebug,
 	  profTabSize());
   printProfTab();
   perror("profTabDecrAllocNow error\n");
@@ -251,20 +244,20 @@ void profTabIncrAllocNow(long regionId, long i) {
 
 
 /* ---------------------------------------------------------- *
- * Hash table to hold LOCAL region map. Hash table used 
+ * Hash table to hold LOCAL region map. Hash table used
  * locally during a profile tick to make lookup fast.
  * ---------------------------------------------------------- */
 
 void initializeRegionListTable(void) {
-  int i;
+  long i;
   for (i = 0 ; i < REGION_LIST_HASH_TABLE_SIZE; i++ )
     regionListHashTable[i] = NULL;
   return;
 }
 
-void insertRegionListTable(int regionId, RegionList* rl) {
+void insertRegionListTable(long regionId, RegionList* rl) {
   RegionListHashList* p;
-  int index;
+  long index;
   index = regionListHashTabIndex(regionId);
   for (p=regionListHashTable[index]; p != NULL; p=p->next)
     if (p->regionId == regionId) {
@@ -283,9 +276,9 @@ void insertRegionListTable(int regionId, RegionList* rl) {
   return;
 }
 
-RegionList* lookupRegionListTable(int regionId) {
+RegionList* lookupRegionListTable(long regionId) {
   RegionListHashList* p;
-  int index;
+  long index;
   index = regionListHashTabIndex(regionId);
   for (p=regionListHashTable[index]; p != NULL; p=p->next)
     if (p->regionId == regionId) return p->rl;
@@ -293,20 +286,20 @@ RegionList* lookupRegionListTable(int regionId) {
 }
 
 /* ---------------------------------------------------------- *
- * Hash table to hold LOCAL object map. The hash table is used 
+ * Hash table to hold LOCAL object map. The hash table is used
  * locally during a profile tick to make lookup fast.
  * ---------------------------------------------------------- */
 
 void initializeObjectListTable(void) {
-  int i;
+  long i;
   for (i = 0; i < OBJECT_LIST_HASH_TABLE_SIZE; i++)
     objectListHashTable[i] = NULL;
   return;
 }
 
-void insertObjectListTable(int atId, ObjectList* ol) {
+void insertObjectListTable(long atId, ObjectList* ol) {
   ObjectListHashList* p;
-  int index;
+  long index;
   index = objectListHashTabIndex(atId);
   for (p=objectListHashTable[index]; p != NULL; p=p->next)
     if (p->atId == atId) {
@@ -324,10 +317,10 @@ void insertObjectListTable(int atId, ObjectList* ol) {
   objectListHashTable[index] = p;         /* update hash table; new element is stored in front */
   return;
 }
-  
-ObjectList* lookupObjectListTable(int atId) {
+
+ObjectList* lookupObjectListTable(long atId) {
   ObjectListHashList* p;
-  int index;
+  long index;
   index = objectListHashTabIndex(atId);
   for (p=objectListHashTable[index]; p != NULL; p=p->next)
     if (p->atId == atId) return p->ol;
@@ -341,8 +334,8 @@ ObjectList* lookupObjectListTable(int atId) {
 /* This function sets the flags 'tellTime' so that next time
    a tick is made, the time is printed on stdout */
 
-void 
-queueMarkProf(StringDesc *str, int pPoint)
+void
+queueMarkProf(StringDesc *str, long pPoint)
 {
     tellTime = 1;
     fprintf(stderr,"Reached \"%s\"\n", &(str->data));
@@ -352,13 +345,13 @@ queueMarkProf(StringDesc *str, int pPoint)
 /* Calculate the allocated and used space in a region. */
 /* All instantiated regions with this region name is       */
 /* calculated as one region.                               */
-void 
+void
 AllocatedSpaceInARegion(Ro *rp)
-{ 
-  unsigned int n;
+{
+  long n;
 
-  n = profTabGetNoOfPages(rp->regionId) * ALLOCATABLE_WORDS_IN_REGION_PAGE * 4;
-  fprintf(stderr,"    Allocated bytes in region %5zd: %5u\n",rp->regionId, n);
+  n = profTabGetNoOfPages(rp->regionId) * ALLOCATABLE_WORDS_IN_REGION_PAGE * sizeof(long*);
+  fprintf(stderr,"    Allocated bytes in region %5zd: %5ld\n",rp->regionId, n);
   return;
 }
 
@@ -366,25 +359,25 @@ AllocatedSpaceInARegion(Ro *rp)
 void
 PrintGen(Gen *gen)
 {
-  int i;
+  long i;
   Rp *p;
   if ( gen )
     {
       fprintf(stderr,"\n  Address of Gen: %p, First free word: %p, Border of region: %p\n     ",gen,gen->a,gen->b);
-      for ( p = clear_fp(gen->fp) , i = 1 ; p ; p = p->n , i++ ) 
+      for ( p = clear_fp(gen->fp) , i = 1 ; p ; p = p->n , i++ )
 	{
-	  fprintf(stderr,"-->Page%2d:%p",i,p);
+	  fprintf(stderr,"-->Page%2ld:%p",i,p);
 	  if (i%3 == 0)
-	    fprintf(stderr,"\n     ");      
+	    fprintf(stderr,"\n     ");
 	}
       fprintf(stderr,"\n");
     }
 }
 
 /* Prints all pages in the region. */
-void 
+void
 PrintRegion(Region r)
-{ 
+{
   fprintf(stderr,"\nAddress of Ro: %p\n     ",r);
 
   PrintGen(&(r->g0));
@@ -393,8 +386,8 @@ PrintRegion(Region r)
 #endif /* ENABLE_GEN_GC */
 }
 
-void 
-resetProfiler() 
+void
+resetProfiler()
 {
   outputProfilePre();
   initializeProfTab();
@@ -403,23 +396,23 @@ resetProfiler()
     {
       timeToProfile = 1;
     }
-  else 
+  else
     {
       timeToProfile = 0;
       rttimer.it_value.tv_sec = sec;         /* Time in seconds to first tick. */
       rttimer.it_value.tv_usec = microsec;   /* Time in microseconds to first tick. */
       rttimer.it_interval.tv_sec = 0;        /* Time in seconds between succeding ticks. */
       rttimer.it_interval.tv_usec = 0;       /* Time in microseconds between succeding ticks. */
-      
+
       signal(signalType, AlarmHandler);
-      
-      profiling_on(); 
+
+      profiling_on();
     }
 
-  if (verboseProfileTick) 
+  if (verboseProfileTick)
     {
       fprintf(stderr,  "---------------------Profiling-Enabled---------------------\n");
-      if (profType == noTimer) 
+      if (profType == noTimer)
 	{
 	  fprintf(stderr," The profile timer is turned off; a profile tick occurs\n");
 	  fprintf(stderr,"every %ldth entrance to a function.\n", profNo);
@@ -432,9 +425,9 @@ resetProfiler()
 	fprintf(stderr," The profile timer (unix profile timer) is turned on.\n");
       if (microsec != 0 && profType != noTimer)
 	fprintf(stderr," A profile tick occurs every %ldth microsecond.\n", microsec);
-      if (sec != 0 && profType != noTimer) 
+      if (sec != 0 && profType != noTimer)
 	fprintf(stderr," A profile tick occurs every %ldth second.\n", sec);
-      if (exportProfileDatafile) 
+      if (exportProfileDatafile)
 	fprintf(stderr," Profiling data is exported to file %s.\n", logName);
       else
 	fprintf(stderr," No profiling data is exported.\n");
@@ -443,14 +436,14 @@ resetProfiler()
   return;
 }
 
-void 
-checkProfTab(char* s) 
+void
+checkProfTab(char* s)
 {
   unsigned long i;
   ProfTabList* p;
-  for ( i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++ ) 
+  for ( i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++ )
     for ( p = profHashTab[i] ; p ; p = p->next )
-      if ( p->regionId > 1000000 ) 
+      if ( p->regionId > 1000000 )
 	{
 	  printProfTab();
 	  printf("Mysterious regionId (%ld) in ProfTab: %s\n", p->regionId, s);
@@ -458,8 +451,8 @@ checkProfTab(char* s)
 	}
 }
 
-void 
-printProfTab() 
+void
+printProfTab()
 {
   long i;
   long noOfPagesTab, maxNoOfPagesTab;
@@ -474,7 +467,7 @@ printProfTab()
   maxAllocTot = 0;
 
   fprintf(stderr,"\n\nPRINTING PROFILING TABLE.\n");
-  for ( i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++ ) 
+  for ( i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++ )
     for (p=profHashTab[i];p!=NULL;p=p->next) {
       noOfPagesTab = p->noOfPages;
       noOfPagesTot += noOfPagesTab;
@@ -486,18 +479,18 @@ printProfTab()
       maxAllocTot += maxAllocTab;
       /*      if (maxNoOfPagesTab)  */
 	fprintf(stderr,"    profTab[rId%5ld]: noOfPages = %8ld, maxNoOfPages = %8ld, allocNow = %8ld, maxAlloc = %8ld\n",
-		p->regionId, noOfPagesTab, maxNoOfPagesTab, allocNowTab*4, maxAllocTab*4);
+		p->regionId, noOfPagesTab, maxNoOfPagesTab, allocNowTab*sizeof(long*), maxAllocTab*sizeof(long*));
     }
   fprintf(stderr,      "    ---------------------------------------------------------------------------------------------------\n");
   fprintf(stderr,      "                          %8ld     SUM OF MAX: %8ld         Bytes: %8ld      Bytes: %8ld\n",
-	  noOfPagesTot, maxNoOfPagesTot, allocNowTot*4, maxAllocTot*4);
+	  noOfPagesTot, maxNoOfPagesTot, allocNowTot*sizeof(long*), maxAllocTot*sizeof(long*));
   fprintf(stderr,      "    ===================================================================================================\n");
 
 }
 
-void 
+void
 Statistics()
-{ 
+{
   double Mb = 1024.0*1024.0;
 
   if (showStat) {
@@ -511,69 +504,69 @@ Statistics()
     fprintf(stderr,"  Alloc. in each malloc call: %ld bytes\n", BYTES_ALLOC_BY_SBRK);
     fprintf(stderr,"  Total allocation by malloc: %ld bytes (%.1fMb)\n", BYTES_ALLOC_BY_SBRK*callsOfSbrk,
 	    (BYTES_ALLOC_BY_SBRK*callsOfSbrk)/Mb );
-    
+
     fprintf(stderr,"\nREGION PAGES\n");
-    fprintf(stderr,"  Size of one page: %d bytes\n",ALLOCATABLE_WORDS_IN_REGION_PAGE*4);
+    fprintf(stderr,"  Size of one page: %ld bytes\n",ALLOCATABLE_WORDS_IN_REGION_PAGE*sizeof(long*));
     fprintf(stderr,"  Max number of allocated pages: %ld\n",maxNoOfPages);
     fprintf(stderr,"  Number of allocated pages now: %ld\n",noOfPages);
-    fprintf(stderr,"  Max space for region pages: %ld bytes (%.1fMb)\n", 
-	    maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*(sizeof(void *)), (maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*(sizeof(void *)))/Mb);
-    
+    fprintf(stderr,"  Max space for region pages: %ld bytes (%.1fMb)\n",
+	    maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*(sizeof(long*)), (maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*(sizeof(long*)))/Mb);
+
     fprintf(stderr,"\nINFINITE REGIONS\n");
-    /*    fprintf(stderr,"  Size of infinite reg. desc. (incl. prof info): %d bytes\n",sizeRo*4); */
-    fprintf(stderr,"  Size of infinite region descriptor: %ld bytes\n",(sizeRo-sizeRoProf)*(sizeof(void *)));
+    /*    fprintf(stderr,"  Size of infinite reg. desc. (incl. prof info): %d bytes\n",sizeRo*sizeof(long*)); */
+    fprintf(stderr,"  Size of infinite region descriptor: %ld bytes\n",(sizeRo-sizeRoProf)*(sizeof(long*)));
     fprintf(stderr,"  Number of calls to allocateRegionInf: %ld\n",callsOfAllocateRegionInf);
-    fprintf(stderr,"  Number of calls to deallocateRegionInf: %ld\n",callsOfDeallocateRegionInf);    
+    fprintf(stderr,"  Number of calls to deallocateRegionInf: %ld\n",callsOfDeallocateRegionInf);
     fprintf(stderr,"  Number of calls to alloc: %ld\n",callsOfAlloc);
     fprintf(stderr,"  Number of calls to resetRegion: %ld\n",callsOfResetRegion);
     fprintf(stderr,"  Number of calls to deallocateRegionsUntil: %ld\n",callsOfDeallocateRegionsUntil);
 
-    fprintf(stderr,"\nALLOCATION\n");    
+    fprintf(stderr,"\nALLOCATION\n");
     /*
-    fprintf(stderr,"  Alloc. space in infinite regions: %d bytes (%.1fMb)\n", allocNowInf*4, (allocNowInf*4)/Mb);
-    fprintf(stderr,"  Alloc. space in finite regions: %d bytes (%.1fMb)\n", allocNowFin*4, (allocNowFin*4)/Mb);
-    fprintf(stderr,"  Alloc. space in regions: %d bytes (%.1fMb)\n", (allocNowInf+allocNowFin)*4,((allocNowInf+allocNowFin)*4)/Mb);
+    fprintf(stderr,"  Alloc. space in infinite regions: %d bytes (%.1fMb)\n", allocNowInf*sizeof(long*), (allocNowInf*sizeof(long*))/Mb);
+    fprintf(stderr,"  Alloc. space in finite regions: %d bytes (%.1fMb)\n", allocNowFin*sizeof(long*), (allocNowFin*sizeof(long*))/Mb);
+    fprintf(stderr,"  Alloc. space in regions: %d bytes (%.1fMb)\n", (allocNowInf+allocNowFin)*sizeof(long*),((allocNowInf+allocNowFin)*sizeof(long*))/Mb);
     */
-    fprintf(stderr,"  Max alloc. space in pages: %ld bytes (%.1fMb)\n", maxAllocInf*(sizeof(void *)),(maxAllocInf*(sizeof(void *)))/Mb);
+    fprintf(stderr,"  Max alloc. space in pages: %ld bytes (%.1fMb)\n", maxAllocInf*(sizeof(long*)),(maxAllocInf*(sizeof(long*)))/Mb);
     /*
-    fprintf(stderr,  "      Space in regions at that time used on profiling: %d bytes (%4.1fMb)\n", maxAllocProfInf*4,
-	    (maxAllocProfInf*4)/Mb);
+    fprintf(stderr,  "      Space in regions at that time used on profiling: %d bytes (%4.1fMb)\n", maxAllocProfInf*sizeof(long*),
+	    (maxAllocProfInf*sizeof(long*))/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------\n");
     */
-    fprintf(stderr,"    incl. prof. info: %ld bytes (%.1fMb)\n", 
-	    (maxAllocProfInf+maxAllocInf)*(sizeof(void *)), ((maxAllocProfInf+maxAllocInf)*(sizeof(void *)))/Mb);
+    fprintf(stderr,"    incl. prof. info: %ld bytes (%.1fMb)\n",
+	    (maxAllocProfInf+maxAllocInf)*(sizeof(long*)), ((maxAllocProfInf+maxAllocInf)*(sizeof(long*)))/Mb);
     fprintf(stderr,"  Infinite regions utilisation (%ld/%ld): %2.0f%%\n",
-	    (maxAllocProfInf+maxAllocInf)*(sizeof(void *)),
-	    (maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*(sizeof(void *))),
-	    ((maxAllocProfInf+maxAllocInf)*1.0*(sizeof(void *)))/(maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*1.0*(sizeof(void *)))*100.0);
+	    (maxAllocProfInf+maxAllocInf)*(sizeof(long*)),
+	    (maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*(sizeof(long*))),
+	    ((maxAllocProfInf+maxAllocInf)*1.0*(sizeof(long*)))/(maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*1.0*(sizeof(long*)))*100.0);
     fprintf(stderr,"  Number of allocated large objects: %ld\n", allocatedLobjs);
-    fprintf(stderr,"\nSTACK\n");    
+    fprintf(stderr,"\nSTACK\n");
     fprintf(stderr,"  Number of calls to allocateRegionFin: %ld\n",callsOfAllocateRegionFin);
     fprintf(stderr,"  Number of calls to deallocateRegionFin: %ld\n",callsOfDeallocateRegionFin);
-    fprintf(stderr,"  Max space for finite regions: %ld bytes (%.1fMb)\n", maxAllocFin*(sizeof(void *)),
-	    (maxAllocFin*(sizeof(void *)))/Mb);
-    fprintf(stderr,"  Max space for region descs: %ld bytes (%.1fMb)\n", 
-	    maxRegionDescUseInf*4, (maxRegionDescUseInf*(sizeof(void *)))/Mb);
+    fprintf(stderr,"  Max space for finite regions: %ld bytes (%.1fMb)\n", maxAllocFin*(sizeof(long*)),
+	    (maxAllocFin*(sizeof(long*)))/Mb);
+    fprintf(stderr,"  Max space for region descs: %ld bytes (%.1fMb)\n",
+	    maxRegionDescUseInf*sizeof(long*), (maxRegionDescUseInf*(sizeof(long*)))/Mb);
     fprintf(stderr,"  Max size of stack: %ld bytes (%.1fMb)\n",
-	   ((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(void *))), (((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(void *))))/Mb);
-    fprintf(stderr,"    incl. prof. info: %ld bytes (%.1fMb)\n", 
+	   ((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(long*))), (((long)stackBot)-((long)maxStack)-(maxProfStack*(sizeof(long*))))/Mb);
+    fprintf(stderr,"    incl. prof. info: %ld bytes (%.1fMb)\n",
 	    ((long)stackBot)-((long)maxStack), ((((long)stackBot)-((long)maxStack))*1.0)/Mb);
-    fprintf(stderr,"    in profile tick: %ld bytes (%.1fMb)\n", 
+    fprintf(stderr,"    in profile tick: %ld bytes (%.1fMb)\n",
 	    ((long)stackBot)-((long)maxStackP), (((long)stackBot)-((long)maxStackP))/Mb);
     fprintf(stderr,"Number of profile ticks: %d\n", noOfTickInFile);
     /*
-    fprintf(stderr,  "      Space used on prof. info. at that time: %d bytes (%.1fMb)\n", 
-	    maxRegionDescUseProfInf*4, (maxRegionDescUseProfInf*4)/Mb);
+    fprintf(stderr,  "      Space used on prof. info. at that time: %d bytes (%.1fMb)\n",
+	    maxRegionDescUseProfInf*sizeof(long*), (maxRegionDescUseProfInf*sizeof(long*))/Mb);
     fprintf(stderr,"  ---------------------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Max space used on infinite region descs on stack: %d bytes (%4.1fMb)\n", 
-	    (maxRegionDescUseInf+maxRegionDescUseProfInf)*4,((maxRegionDescUseInf+maxRegionDescUseProfInf)*4)/Mb);
-    fprintf(stderr,"      Space used on profiling information at that time: %d bytes (%4.1fMb)\n", 
-	    (maxAllocProfFin+maxRegionDescUseProfFin)*4, ((maxAllocProfFin+maxRegionDescUseProfFin)*4)/Mb);
+    fprintf(stderr,"  Max space used on infinite region descs on stack: %d bytes (%4.1fMb)\n",
+	    (maxRegionDescUseInf+maxRegionDescUseProfInf)*sizeof(long*),((maxRegionDescUseInf+maxRegionDescUseProfInf)*sizeof(long*))/Mb);
+    fprintf(stderr,"      Space used on profiling information at that time: %d bytes (%4.1fMb)\n",
+	    (maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*), ((maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*))/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Max space used on finite regions on stack: %d bytes (%4.1fMb)\n", 
-	    (maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*4,((maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*4)/Mb);
-    fprintf(stderr,"    Space used on profiling information at that time: %d bytes (%4.1fMb)\n", 
-	    maxProfStack*4, (maxProfStack*4)/Mb);
+    fprintf(stderr,"  Max space used on finite regions on stack: %d bytes (%4.1fMb)\n",
+	    (maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*),((maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*sizeof(long*))/Mb);
+    fprintf(stderr,"    Space used on profiling information at that time: %d bytes (%4.1fMb)\n",
+	    maxProfStack*sizeof(long*), (maxProfStack*sizeof(long*))/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------\n");
 	    */
     fprintf(stderr,"\n*********End of region statistics*********\n");
@@ -599,8 +592,8 @@ Statistics()
  * error and stop.                                      *
  *------------------------------------------------------*/
 char errorStr[255];
-void 
-profileERROR(char *errorStr) 
+void
+profileERROR(char *errorStr)
 {
   fprintf(stderr,"\n***********************ERROR*****************************\n");
   fprintf(stderr,"%s\n", errorStr);
@@ -612,8 +605,8 @@ profileERROR(char *errorStr)
  * This function prints the contents of a finite *
  * region on screen.                             *
  *-----------------------------------------------*/
-void 
-pp_finite_region (FiniteRegionDesc *frd) 
+void
+pp_finite_region (FiniteRegionDesc *frd)
 {
   ObjectDesc *obj;
   obj = (ObjectDesc *) (frd+1);
@@ -626,18 +619,18 @@ pp_finite_region (FiniteRegionDesc *frd)
  * This function prints the contents of an infinite *
  * region on screen.                                *
  *--------------------------------------------------*/
-void 
-pp_infinite_region_gen (Gen *gen) 
+void
+pp_infinite_region_gen (Gen *gen)
 {
   ObjectDesc *fObj;
   Rp *rp;
 
   fprintf(stderr,"Generation %lu at address %p\n", generation(*gen),gen);
-  for( rp = clear_fp(gen->fp) ; rp ; rp = rp->n ) 
+  for( rp = clear_fp(gen->fp) ; rp ; rp = rp->n )
     {
       fObj = (ObjectDesc *) (((long *)rp)+HEADER_WORDS_IN_REGION_PAGE);
-      while ( ((long *)fObj < ((long *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-	      && (fObj->atId!=notPP) ) 
+      while ( ((long *)fObj < ((long *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
+	      && (fObj->atId!=notPP) )
 	{
 	  fprintf(stderr,"ObjAtId %zu, Size: %zu\n", fObj->atId, fObj->size);
 	  fObj=(ObjectDesc *)(((size_t *)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
@@ -646,15 +639,15 @@ pp_infinite_region_gen (Gen *gen)
   return;
 }
 
-void 
-pp_infinite_region (Region r) 
+void
+pp_infinite_region (Region r)
 {
   r = clearStatusBits(r);
 
   fprintf(stderr,"Region %zu\n", r->regionId);
   pp_infinite_region_gen(&(r->g0));
 #ifdef ENABLE_GEN_GC
-  pp_infinite_region_gen(&(r->g1));  
+  pp_infinite_region_gen(&(r->g1));
 #endif /* ENABLE_GEN_GC */
 
   return;
@@ -664,14 +657,14 @@ pp_infinite_region (Region r)
  * This function prints the contents of all infinite *
  * regions on screen.                                *
  *---------------------------------------------------*/
-void 
-pp_infinite_regions() 
+void
+pp_infinite_regions()
 {
   Region r;
 
-  for ( r = TOP_REGION ; r ; r = r->p ) 
+  for ( r = TOP_REGION ; r ; r = r->p )
     pp_infinite_region(r);
-  
+
   return;
 }
 
@@ -680,8 +673,8 @@ pp_infinite_regions()
  * profiling_on                                         *
  *   Sets alarm for profiling.                          *
  *------------------------------------------------------*/
-void 
-profiling_on() 
+void
+profiling_on()
 {
   setitimer(profType, &rttimer, &old_rttimer);
   profileON = TRUE;
@@ -694,10 +687,10 @@ profiling_on()
  * profiling_off                                        *
  *   Stop alarm for profiling.                          *
  *------------------------------------------------------*/
-void 
-profiling_off() 
+void
+profiling_off()
 {
-  struct itimerval zerotimer;    
+  struct itimerval zerotimer;
 
   zerotimer.it_value.tv_sec = 0;        /* Time in seconds to first tick. */
   zerotimer.it_value.tv_usec = 0;       /* Time in microseconds to first tick. */
@@ -716,26 +709,26 @@ profiling_off()
  *   allocated for profiling data.                      *
  *------------------------------------------------------*/
 char *
-allocMemProfiling_xx(long i) 
+allocMemProfiling_xx(long i)
 {
   char * p;
   char * tempPtr;
 
   tempPtr = (char *)malloc(i);
-  if ( tempPtr == NULL ) 
+  if ( tempPtr == NULL )
     {
       perror("malloc error in allocMemProfiling\n");
       exit(-1);
     }
 
-  if ( ((long)tempPtr) % (sizeof(void *)) ) 
+  if ( ((long)tempPtr) % (sizeof(long*)) )
     {
       perror("allocMemProfiling_xx not aligned\n");
       exit(-1);
     }
 
   // for debugging: initialize elements
-  for ( p = tempPtr ; p < tempPtr+i ; p++ ) 
+  for ( p = tempPtr ; p < tempPtr+i ; p++ )
     {
       *p = 1;  /*dummy*/
     }
@@ -743,19 +736,19 @@ allocMemProfiling_xx(long i)
   return tempPtr;
 }
 
-void 
-freeTick(TickList *tick) 
+void
+freeTick(TickList *tick)
 {
   ObjectList *o, *n_o;
   RegionList *r, *n_r;
 
   debug(printf("[freeTick..."));
   r = tick->fRegion;
-  while( r ) 
+  while( r )
     {
-      n_r = r->nRegion;      
+      n_r = r->nRegion;
       o = r->fObj;
-      while( o ) 
+      while( o )
 	{
 	  n_o = o->nObj;
 	  free(o);
@@ -771,8 +764,8 @@ freeTick(TickList *tick)
  * AlarmHandler:                                        *
  *     Handler function used to profile regions.        *
  *------------------------------------------------------*/
-void 
-AlarmHandler() 
+void
+AlarmHandler()
 {
   timeToProfile = 1;
   signal(signalType, AlarmHandler);   // setup signal again
@@ -782,11 +775,11 @@ AlarmHandler()
  * ProfileTick: Update the tick list by traversing all regions.      *
  *-------------------------------------------------------------------*/
 
-static inline void 
+static inline void
 profileObj(ObjectDesc *fObj, ObjectList *newObj, RegionList *newRegion,
-	   long *infiniteObjectUse, long *infiniteObjectDescUse) 
+	   long *infiniteObjectUse, long *infiniteObjectDescUse)
 {
-  if ( lookupObjectListTable(fObj->atId) == NULL ) 
+  if ( lookupObjectListTable(fObj->atId) == NULL )
     {
       // Allocate new object
       newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
@@ -797,8 +790,8 @@ profileObj(ObjectDesc *fObj, ObjectList *newObj, RegionList *newRegion,
       newRegion->used += fObj->size;
       newRegion->noObj++;
       insertObjectListTable(fObj->atId, newObj);
-    } 
-  else 
+    }
+  else
     {
       newObj = lookupObjectListTable(fObj->atId);
       newObj->size += fObj->size;
@@ -808,52 +801,52 @@ profileObj(ObjectDesc *fObj, ObjectList *newObj, RegionList *newRegion,
   *infiniteObjectDescUse += sizeObjectDesc;
 }
 
-static inline void 
-profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion, 
+static inline void
+profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
 	   long *infiniteObjectUse, long *infiniteObjectDescUse,
 	   long *infiniteRegionWaste)
 {
   ObjectDesc *fObj;
   Rp *crp;                       /* Pointer to a region page. */
 
-  /* Traverse objects in generation gen, except the last region page, 
-   * which is traversed independently; crp always points at the 
+  /* Traverse objects in generation gen, except the last region page,
+   * which is traversed independently; crp always points at the
    * beginning of a regionpage(=nPtr|dummy|data). */
-  for( crp = clear_fp(gen->fp) ; crp->n ; crp = crp->n ) 
+  for( crp = clear_fp(gen->fp) ; crp->n ; crp = crp->n )
     {
       fObj = (ObjectDesc *) (((long *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Rp
       // notPP = 0 means no object allocated
-      while ( ((long *)fObj < ((long *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-	      && (fObj->atId!=notPP) ) 
+      while ( ((long *)fObj < ((long *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
+	      && (fObj->atId!=notPP) )
 	{
 	  profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
 	  fObj=(ObjectDesc *)(((long*)fObj)+((fObj->size)+sizeObjectDesc)); // Find next object
 	}
-      newRegion->waste += 
+      newRegion->waste +=
 	(long)((((long *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((long *)fObj));
-      *infiniteRegionWaste += 
+      *infiniteRegionWaste +=
 	(long)((((long *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((long *)fObj));
       /* No more objects in current region page. */
     }
-  /* Now we need to traverse the last region page, now pointed 
+  /* Now we need to traverse the last region page, now pointed
    * to by crp (crp is a Rp) */
   fObj = (ObjectDesc *) (((long *)crp)+HEADER_WORDS_IN_REGION_PAGE);
 
-  while ( (uintptr_t *)fObj < gen->a ) 
+  while ( (uintptr_t *)fObj < gen->a )
     {
       profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
       fObj=(ObjectDesc *)(((size_t *)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
     }
-  newRegion->waste += 
+  newRegion->waste +=
     (size_t)((((size_t *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((size_t *)fObj));
-  *infiniteRegionWaste += 
+  *infiniteRegionWaste +=
     (size_t)((((size_t *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((size_t *)fObj));
-      
+
   /* No more objects in the last region page. */
 }
 
-void 
-profileTick(long *stackTop) 
+void
+profileTick(long *stackTop)
 {
   TickList *newTick;
   FiniteRegionDesc *frd;
@@ -872,21 +865,21 @@ profileTick(long *stackTop)
 
   /*  checkProfTab("profileTick.enter"); */
 
-  doing_prof = 1; /* Mutex on profilig */ 
+  doing_prof = 1; /* Mutex on profilig */
   debug(printf("Entering profileTick\n"));
 
-  if ( profType == noTimer ) 
+  if ( profType == noTimer )
     {
-      tempAntal ++;
-      if ( tempAntal < profNo )
+      tempCount ++;
+      if ( tempCount < profNo )
 	return;
-      tempAntal = 0;
-    } 
+      tempCount = 0;
+    }
   else
     {
       timeToProfile = 0; // We use timer so no profiling before next tick
     }
-  
+
   if ( verboseProfileTick )
     {
       fprintf(stderr,"profileTick -- ENTER\n");
@@ -903,12 +896,12 @@ profileTick(long *stackTop)
   /* Allocate new tick. */
   newTick = (TickList *)allocMemProfiling_xx(sizeof(TickList));
 
-  newTick->stackUse = ((long *)stackBot)-((long *)stackTop);
-  maxStackP = (long *) min((unsigned long)maxStackP, (unsigned long)stackTop);
+  newTick->stackUse = stackBot - stackTop; //maybe +1
+  maxStackP = (long*) min((unsigned long)maxStackP, (unsigned long)stackTop);
 
-  /*  printf("Stackuse at entry %d, stackbot: %x, stackTop: %x\n", newTick->stackUse, stackBot, stackTop); */
+  //printf("Stackuse at entry %ld, stackbot: %p, stackTop: %p\n", newTick->stackUse, stackBot, stackTop);
 
-  if ( newTick->stackUse < 0 ) 
+  if ( newTick->stackUse < 0 )
     {
       sprintf(errorStr, "ERROR1 - PROFILE_TICK -- stackUse in profileTick less than zero %ld (bot %p, top %p)\n",
 	      newTick->stackUse, stackBot, stackTop);
@@ -918,18 +911,18 @@ profileTick(long *stackTop)
   newTick->regionDescUse = 0;
   cpuTimeAcc += (unsigned long)(((unsigned long)clock())-lastCpuTime);
   newTick->time = cpuTimeAcc;
-  if ( tellTime == 1 ) 
+  if ( tellTime == 1 )
     {
       fprintf(stderr,"The time is: %ld\n", cpuTimeAcc);
       tellTime = 0;
     }
-  newTick->nTick   = NULL; 
-  newTick->fRegion = NULL; 
-  if (firstTick == NULL)   
-    firstTick = newTick;   
-  else                         
-    lastTick->nTick = newTick; 
-  lastTick = newTick;          
+  newTick->nTick   = NULL;
+  newTick->fRegion = NULL;
+  if (firstTick == NULL)
+    firstTick = newTick;
+  else
+    lastTick->nTick = newTick;
+  lastTick = newTick;
 
   /* Initialize hash table for regions. */
   initializeRegionListTable();
@@ -938,13 +931,13 @@ profileTick(long *stackTop)
   /* Traverse finite region list. */
   /********************************/
 
-  for ( frd = topFiniteRegion ; frd ; frd = frd->p ) 
+  for ( frd = topFiniteRegion ; frd ; frd = frd->p )
     {
       finiteRegionDescUse += sizeFiniteRegionDesc;
       finiteObjectDescUse += sizeObjectDesc;
       newTick->stackUse -= sizeFiniteRegionDesc;
       newTick->stackUse -= sizeObjectDesc;
-      if (newTick->stackUse < 0) 
+      if (newTick->stackUse < 0)
 	{
 	  sprintf(errorStr, "ERROR2 - PROFILE_TICK -- stackUse in profileTick less than zero %ld\n",
 		  newTick->stackUse);
@@ -952,22 +945,24 @@ profileTick(long *stackTop)
 	}
       fObj = (ObjectDesc *) (frd+1);
 
-      /*    printf("FiniteRegionInfo: regionId: %d, pPoint: %d, size: %d, stackuse: %d, stacksize: %d\n",
-	    frd->regionId, fObj->atId, fObj->size, newTick->stackUse, 
-	    ((int *)stackBot)-((int *)stackTop)); 2001-05-11, Niels */
-    
-      if ( fObj->size >= ALLOCATABLE_WORDS_IN_REGION_PAGE ) 
+      //printf("FiniteRegionInfo: regionId: %ld, pPoint: %ld, size: %ld, stackuse: %ld, stacksize: %ld\n",
+      //       frd->regionId, fObj->atId, fObj->size, newTick->stackUse,
+      //       stackBot - stackTop); // 2001-05-11, Niels
+
+      if ( fObj->size >= ALLOCATABLE_WORDS_IN_REGION_PAGE )
 	{
-	  sprintf(errorStr, "ERROR - PROFILE_TICK -- Size quite big, pp: %zu with  \
-              size %zu, fObj-1: %zu, fObj %zu in finite region %lu\n", 
+	  sprintf(errorStr, "ERROR - PROFILE_TICK -- Size quite big, pp: %zu with size: %zu, fObj-1: %zu, fObj: %zu in finite region: %lu\n",
 		  fObj->atId, fObj->size, *(((size_t*)fObj)-1), (size_t)fObj, frd->regionId);
 	  profileERROR(errorStr);
 	}
-    
+
       newTick->stackUse -= fObj->size;
 
+      //fprintf(stderr,"NOTE PROFILE_TICK -- stackUse: %ld, after object with size %zu, stackBot: %p, stackTop: %p\n",
+      //        newTick->stackUse, fObj->size, stackBot, stackTop);
+
       finiteObjectUse += fObj->size;
-      if ( newTick->stackUse < 0 ) 
+      if ( newTick->stackUse < 0 )
 	{
 	  fprintf(stderr,"ERROR3 - PROFILE_TICK -- stackUse in profileTick less than \
              zero %ld, after object with size %zu and pp %zu, stackBot: %p, stackTop: %p\n",
@@ -975,12 +970,12 @@ profileTick(long *stackTop)
 	  profileERROR(errorStr);
 	}
 
-      if ( lookupRegionListTable(frd->regionId) == NULL ) 
+      if ( lookupRegionListTable(frd->regionId) == NULL )
 	{
 	  newRegion = (RegionList *)allocMemProfiling_xx(sizeof(RegionList));
 	  newRegion->regionId = frd->regionId;
-	  newRegion->used = fObj->size;                   
-	  newRegion->waste = 0;                  
+	  newRegion->used = fObj->size;
+	  newRegion->waste = 0;
 	  newRegion->noObj = 1;
 	  newRegion->infinite = 0;
 	  newRegion->nRegion = newTick->fRegion;
@@ -991,12 +986,12 @@ profileTick(long *stackTop)
 	  newObj->size = fObj->size;
 	  newObj->nObj = NULL;
 	  insertRegionListTable(frd->regionId, newRegion);
-	} 
-      else 
+	}
+      else
 	{
 	  newRegion = lookupRegionListTable(frd->regionId);
-	  if ( newRegion->infinite ) 
-	    { 
+	  if ( newRegion->infinite )
+	    {
 	      // for check only
 	      sprintf(errorStr, "ERROR - PROFILE_TICK -- finite region %3ld is allocated as infinite. \n",
 		      newRegion->regionId);
@@ -1012,8 +1007,8 @@ profileTick(long *stackTop)
 		newObj = tempObj;
 	    }
 
-	  if ( newObj == NULL ) 
-	    {	      
+	  if ( newObj == NULL )
+	    {
 	      // Allocate new object
 	      newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
 	      newObj->atId = fObj->atId;
@@ -1021,8 +1016,8 @@ profileTick(long *stackTop)
 	      newObj->nObj = newRegion->fObj;
 	      newRegion->fObj = newObj;
 	      newRegion->noObj++;
-	    } 
-	  else 
+	    }
+	  else
 	    {
 	      newObj->size += fObj->size;
 	    }
@@ -1033,14 +1028,17 @@ profileTick(long *stackTop)
   /* Traverse infinite region list. */
   /**********************************/
 
-  for ( rd = TOP_REGION ; rd ; rd = rd->p ) 
+  for ( rd = TOP_REGION ; rd ; rd = rd->p )
     {
-      
-      /* printf("ERROR4 -PROFILE_TICK -- stackUse in profileTick less than zero %d, regionId: %d\n",
-	 newTick->stackUse, rd->regionId); */
+      //printf("INF REGION PROFILE_TICK -- stackUse: %ld, regionId: %ld\n",
+      //       newTick->stackUse, rd->regionId);
 
       newTick->stackUse -= sizeRo;             // size of infinite region desc
-      if (newTick->stackUse < 0) 
+
+      //printf("INF REGION PROFILE_TICK -- stackUse after subtract of sizeRo: %ld\n",
+      //       newTick->stackUse);
+
+      if (newTick->stackUse < 0)
 	{
 	  sprintf(errorStr, "ERROR4 -PROFILE_TICK -- stackUse in profileTick less than zero %ld\n",
 		  newTick->stackUse);
@@ -1048,24 +1046,24 @@ profileTick(long *stackTop)
 	}
       newTick->regionDescUse += (sizeRo-sizeRoProf); // size of infinite region desc without prof
       regionDescUseProf += sizeRoProf;               // size of profiling fields in inf reg desc
-      if ( lookupRegionListTable(rd->regionId) == NULL ) 
+      if ( lookupRegionListTable(rd->regionId) == NULL )
 	{
 	  newRegion = (RegionList *)allocMemProfiling_xx(sizeof(RegionList));
 	  newRegion->regionId = rd->regionId;
 	  newRegion->used = 0;
-	  newRegion->waste = 0;                  
+	  newRegion->waste = 0;
 	  newRegion->noObj = 0;
 	  newRegion->infinite = 1;
 	  newRegion->nRegion = newTick->fRegion;
 	  newTick->fRegion = newRegion;
 	  newRegion->fObj = NULL;
 	  insertRegionListTable(rd->regionId, newRegion);
-	} 
-      else 
+	}
+      else
 	{
 	  newRegion = lookupRegionListTable(rd->regionId);
-	  if ( newRegion->infinite != 1 ) 
-	    { 
+	  if ( newRegion->infinite != 1 )
+	    {
 	      // For check only
 	      sprintf(errorStr, "ERROR - PROFILE_TICK -- infinite region %3ld is allocated as finite. \n",
 		      newRegion->regionId);
@@ -1075,14 +1073,14 @@ profileTick(long *stackTop)
 
       // Initialize hash table for objects
       initializeObjectListTable();
-      
+
       for ( newObj = newRegion->fObj ; newObj ; newObj = newObj->nObj )
 	{
 	  insertObjectListTable(newObj->atId, newObj);
 	}
 
-      /* Traverse objects in current region, except the last region page, 
-       * which is traversed independently; crp always points at the 
+      /* Traverse objects in current region, except the last region page,
+       * which is traversed independently; crp always points at the
        * beginning of a regionpage(=nPtr|dummy|data). */
       profileGen(&(rd->g0),newObj,newRegion,&infiniteObjectUse,
 		 &infiniteObjectDescUse,&infiniteRegionWaste);
@@ -1092,44 +1090,44 @@ profileTick(long *stackTop)
 		 &infiniteObjectDescUse,&infiniteRegionWaste);
       #endif /* ENABLE_GEN_GC */
     }
-  
+
   lastCpuTime = (unsigned int)clock();
-  
-  if ( verboseProfileTick ) 
-    {      
+
+  if ( verboseProfileTick )
+    {
       fprintf(stderr,"Memory use on the stack at time %ld (in bytes)\n", newTick->time);
-      fprintf(stderr,"      Infinite region descriptors..........: %10ld\n", newTick->regionDescUse*(sizeof(void *)));
-      fprintf(stderr,"      Objects allocated in finite regions..: %10ld\n", finiteObjectUse*(sizeof(void *)));
-      fprintf(stderr,"      Other data on the stack..............: %10ld\n", newTick->stackUse*(sizeof(void *)));
+      fprintf(stderr,"      Infinite region descriptors..........: %10ld\n", newTick->regionDescUse*(sizeof(long*)));
+      fprintf(stderr,"      Objects allocated in finite regions..: %10ld\n", finiteObjectUse*(sizeof(long*)));
+      fprintf(stderr,"      Other data on the stack..............: %10ld\n", newTick->stackUse*(sizeof(long*)));
       fprintf(stderr,"    Total allocated data by program........: %10ld\n\n",
-	      (newTick->regionDescUse+finiteObjectUse+newTick->stackUse)*(sizeof(void *)));
-      fprintf(stderr,"      Finite region descriptors............: %10ld\n", finiteRegionDescUse*(sizeof(void *)));
-      fprintf(stderr,"      Prof. fields in infinite region desc.: %10ld\n", regionDescUseProf*(sizeof(void *)));
-      fprintf(stderr,"      Object descriptors in finite regions.: %10ld\n", finiteObjectDescUse*(sizeof(void *)));
-      fprintf(stderr,"    Total allocated data by profiler.......: %10ld\n", (finiteRegionDescUse+finiteObjectDescUse+regionDescUseProf)*(sizeof(void *)));
+	      (newTick->regionDescUse+finiteObjectUse+newTick->stackUse)*(sizeof(long*)));
+      fprintf(stderr,"      Finite region descriptors............: %10ld\n", finiteRegionDescUse*(sizeof(long*)));
+      fprintf(stderr,"      Prof. fields in infinite region desc.: %10ld\n", regionDescUseProf*(sizeof(long*)));
+      fprintf(stderr,"      Object descriptors in finite regions.: %10ld\n", finiteObjectDescUse*(sizeof(long*)));
+      fprintf(stderr,"    Total allocated data by profiler.......: %10ld\n", (finiteRegionDescUse+finiteObjectDescUse+regionDescUseProf)*(sizeof(long*)));
       fprintf(stderr,"  Total stack use..........................: %10ld\n",
-	      (newTick->regionDescUse+finiteObjectUse+newTick->stackUse+finiteRegionDescUse+finiteObjectDescUse+regionDescUseProf)*(sizeof(void *)));
-      
+	      (newTick->regionDescUse+finiteObjectUse+newTick->stackUse+finiteRegionDescUse+finiteObjectDescUse+regionDescUseProf)*(sizeof(long*)));
+
       if (((newTick->regionDescUse+finiteObjectUse+newTick->stackUse+
-	    finiteRegionDescUse+finiteObjectDescUse+regionDescUseProf)*(sizeof(void *))) != (stackBot-stackTop)*(sizeof(void *)))
+	    finiteRegionDescUse+finiteObjectDescUse+regionDescUseProf)*(sizeof(long*))) != (stackBot-stackTop)*(sizeof(long*)))
 	fprintf(stderr,"ERROR -- stacksize error in ProfileTick\n");
-      
+
       fprintf(stderr,"Memory use in regions at time %ld (in bytes)\n", newTick->time);
       fprintf(stderr,"    Objects allocated in infinite regions..: %10ld\n", infiniteObjectUse);
       fprintf(stderr,"    Object descriptors in infinite regions.: %10ld\n", infiniteObjectDescUse);
       fprintf(stderr,"    Total waste in region pages............: %10ld\n", infiniteRegionWaste);
-      fprintf(stderr,"  Total memory allocated to region pages...: %10ld\n", 
-	      (infiniteObjectUse+infiniteObjectDescUse+infiniteRegionWaste)*(sizeof(void *)));
-      if ( ((infiniteObjectUse+infiniteObjectDescUse+infiniteRegionWaste)*(sizeof(void *))) % ALLOCATABLE_WORDS_IN_REGION_PAGE != 0 )
+      fprintf(stderr,"  Total memory allocated to region pages...: %10ld\n",
+	      (infiniteObjectUse+infiniteObjectDescUse+infiniteRegionWaste)*(sizeof(long*)));
+      if ( ((infiniteObjectUse+infiniteObjectDescUse+infiniteRegionWaste)*(sizeof(long*))) % ALLOCATABLE_WORDS_IN_REGION_PAGE != 0 )
 	fprintf(stderr,"ERROR -- region page size error in profileTick\n");
-      
+
       fprintf(stderr,"profileTick -- LEAVE\n");
     }
-  
+
   outputProfileTick(newTick);
   freeTick(newTick);
-  
-  if ( profileON && profType != noTimer ) 
+
+  if ( profileON && profType != noTimer )
     {
       profiling_on();
     }
@@ -1137,29 +1135,29 @@ profileTick(long *stackTop)
   doing_prof = 0;
 
   /*  checkProfTab("profileTick.exit"); */
-  
-  if (raised_exn_interupt_prof) 
-    raise_exn((int)&exn_INTERRUPT);
+
+  if (raised_exn_interupt_prof)
+    raise_exn((uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow_prof)
-    raise_exn((int)&exn_OVERFLOW);  
+    raise_exn((uintptr_t)&exn_OVERFLOW);
 }
 
 /*-------------------------------------------------------------------*
  * PrintProfile: Print all collected data on screen.                 *
  *-------------------------------------------------------------------*/
-void 
-printProfile(void) 
+void
+printProfile(void)
 {
   TickList *newTick;
   ObjectList *newObj;
   RegionList *newRegion;
 
-  for ( newTick = firstTick ; newTick ; newTick = newTick->nTick ) 
+  for ( newTick = firstTick ; newTick ; newTick = newTick->nTick )
     {
       fprintf(stderr,"Starting new tick.\n");
-      for ( newRegion = newTick->fRegion ; newRegion ; newRegion = newRegion->nRegion ) 
+      for ( newRegion = newTick->fRegion ; newRegion ; newRegion = newRegion->nRegion )
 	{
-	  if ( newRegion->infinite ) 
+	  if ( newRegion->infinite )
 	    {
 	      fprintf(stderr,"  Infinite region: %3ld, used: %3ld, waste: %3ld, noObj: %3ld, Infinite: %3ld.\n",
 		      newRegion->regionId, newRegion->used, newRegion->waste,
@@ -1171,7 +1169,7 @@ printProfile(void)
 		      newRegion->regionId, newRegion->used, newRegion->waste,
 		      newRegion->noObj,newRegion->infinite);
 	    }
-	  for ( newObj = newRegion->fObj ; newObj ; newObj = newObj->nObj ) 
+	  for ( newObj = newRegion->fObj ; newObj ; newObj = newObj->nObj )
 	    {
 	      fprintf(stderr,"    Starting new object with allocation point %3ld, and size %3ld.\n",
 		      newObj->atId, newObj->size);
@@ -1216,21 +1214,21 @@ printProfile(void)
  *    regionId, MaxAlloc                                          *
  *----------------------------------------------------------------*/
 
-void 
-outputProfilePre(void) 
+void
+outputProfilePre(void)
 {
   debug(printf("[outputProfilePre..."));
 
-  if ( exportProfileDatafile ) 
+  if ( exportProfileDatafile )
     {
-      if ((logFile_xx = fopen((char *) &logName_xx, "w")) == NULL) {
+      if ((logFile = fopen((char *) &logName, "w")) == NULL) {
 	fprintf(stderr,"Cannot open logfile.\n");
 	exit(-1);
       }
     }
 
-  putw(42424242, logFile_xx); /* dummy maxAlloc, updated in outputProfilePost */
-  putw(42424242, logFile_xx); /* dummy noOfTicks, updated in outputProfilePost */
+  putw(42424242, logFile); /* dummy maxAlloc, updated in outputProfilePost */
+  putw(42424242, logFile); /* dummy noOfTicks, updated in outputProfilePost */
 
   noOfTickInFile = 0; /* Initialize counter tick-counter */
 
@@ -1239,39 +1237,39 @@ outputProfilePre(void)
   return;
 }
 
-void 
-outputProfileTick(TickList *tick) 
+void
+outputProfileTick(TickList *tick)
 {
-  int noOfRegions;
+  long noOfRegions;
   ObjectList *newObj;
   RegionList *newRegion;
 
   debug(printf("[outputProfileTick..."));
 
-  if (exportProfileDatafile) 
+  if (exportProfileDatafile)
     {
       noOfTickInFile++; /* Increment no of tick-counter */
       noOfRegions = 0;
       for (newRegion = tick->fRegion ; newRegion ; newRegion = newRegion->nRegion )
 	noOfRegions++;
 
-      putw(noOfRegions, logFile_xx);
-      putw(tick->stackUse, logFile_xx);
-      putw(tick->regionDescUse, logFile_xx);
-      putw(tick->time, logFile_xx);
+      putw(noOfRegions, logFile);
+      putw(tick->stackUse, logFile);
+      putw(tick->regionDescUse, logFile);
+      putw(tick->time, logFile);
 
-      for (newRegion = tick->fRegion ; newRegion ; newRegion = newRegion->nRegion ) 
+      for (newRegion = tick->fRegion ; newRegion ; newRegion = newRegion->nRegion )
 	{
-	  putw(newRegion->regionId, logFile_xx);
-	  putw(newRegion->used, logFile_xx);
-	  putw(newRegion->waste, logFile_xx);
-	  putw(newRegion->noObj, logFile_xx);
-	  putw(newRegion->infinite, logFile_xx);
+	  putw(newRegion->regionId, logFile);
+	  putw(newRegion->used, logFile);
+	  putw(newRegion->waste, logFile);
+	  putw(newRegion->noObj, logFile);
+	  putw(newRegion->infinite, logFile);
 
-	  for ( newObj = newRegion->fObj ; newObj ; newObj = newObj->nObj ) 
+	  for ( newObj = newRegion->fObj ; newObj ; newObj = newObj->nObj )
 	    {
-	      putw(newObj->atId, logFile_xx);
-	      putw(newObj->size, logFile_xx);
+	      putw(newObj->atId, logFile);
+	      putw(newObj->size, logFile);
 	    }
 	}
     }
@@ -1279,28 +1277,28 @@ outputProfileTick(TickList *tick)
   return;
 }
 
-void 
-outputProfilePost(void) 
+void
+outputProfilePost(void)
 {
-  int i;
+  long i;
   ProfTabList* p;
 
   debug(printf("[outputProfilePost..."));
 
   /* Output profTab to log file. */
-  putw(profTabSize(), logFile_xx);
-  for ( i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++ ) 
-    for (p=profHashTab[i]; p != NULL; p=p->next) 
+  putw(profTabSize(), logFile);
+  for ( i = 0 ; i < PROF_HASH_TABLE_SIZE ; i++ )
+    for (p=profHashTab[i]; p != NULL; p=p->next)
       {
-	putw(p->regionId, logFile_xx);
-	putw(p->maxAlloc, logFile_xx);
+	putw(p->regionId, logFile);
+	putw(p->maxAlloc, logFile);
       }
 
-  fseek(logFile_xx, 0, SEEK_SET);    // seek to the beginning of file 
-  putw(maxAlloc, logFile_xx);        // overwrite first two words
-  putw(noOfTickInFile, logFile_xx);
-  fclose(logFile_xx);
-  debug(printf("]")); 
+  fseek(logFile, 0, SEEK_SET);    // seek to the beginning of file
+  putw(maxAlloc, logFile);        // overwrite first two words
+  putw(noOfTickInFile, logFile);
+  fclose(logFile);
+  debug(printf("]"));
   return;
 }
 
@@ -1311,16 +1309,16 @@ void calcAllocInGen(Gen *gen,long *alloc, long *allocProf)
   ObjectDesc *fObj;
   Rp *crp;                       /* Pointer to a region page. */
 
-  /* Traverse objects in generation gen, except the last region page, 
-   * which is traversed independently; crp always points at the 
+  /* Traverse objects in generation gen, except the last region page,
+   * which is traversed independently; crp always points at the
    * beginning of a regionpage(=nPtr|dummy|data). */
-  for( crp = clear_fp(gen->fp) ; crp->n ; crp = crp->n ) 
+  for( crp = clear_fp(gen->fp) ; crp->n ; crp = crp->n )
     {
       fObj = (ObjectDesc *) (((size_t *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Rp
       // notPP = 0 means no object allocated
 
-      while ( ((size_t *)fObj < ((size_t *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-	      && (fObj->atId!=notPP) ) 
+      while ( ((size_t *)fObj < ((size_t *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)
+	      && (fObj->atId!=notPP) )
 	{
 	  *alloc += fObj->size;
 	  *allocProf += sizeObjectDesc;
@@ -1328,11 +1326,11 @@ void calcAllocInGen(Gen *gen,long *alloc, long *allocProf)
 	}
       /* No more objects in current region page. */
     }
-  
-  /* Now we need to traverse the last region page, now pointed 
+
+  /* Now we need to traverse the last region page, now pointed
    * to by crp (crp is a Rp) */
   fObj = (ObjectDesc *) (((size_t *)crp)+HEADER_WORDS_IN_REGION_PAGE);
-  while ( (uintptr_t *)fObj < gen->a ) 
+  while ( (uintptr_t *)fObj < gen->a )
     {
       *alloc += fObj->size;
       *allocProf += sizeObjectDesc;
@@ -1344,7 +1342,7 @@ void calcAllocInGen(Gen *gen,long *alloc, long *allocProf)
 
 #else /*PROFILING is not defined */
 
-void 
+void
 queueMark(StringDesc *str)
 {
   return;

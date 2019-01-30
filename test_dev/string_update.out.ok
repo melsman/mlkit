@@ -1,0 +1,17 @@
+First: Ok
+Seccond: Ok
+Second to last: Ok
+Last: Ok
+==Now updating==
+String - 0: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+String - 1: 'aaaaaXaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+Now s
+String - 0: 'aHello there - this is a quite long string, but not too longa'
+String - 1: 'aHello there - this is a quite long string, but not too londa'
+String - 2: 'aHello there - this is a quite long string, but not too londe'
+String - 3: 'bHello there - this is a quite long string, but not too londe'
+String - 4: 'bcello there - this is a quite long string, but not too londe'
+First: Ok
+Second: Ok
+Second to last: Ok
+Last: Ok

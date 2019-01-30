@@ -6,7 +6,7 @@ test_mlkit: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst)
 	/bin/mv test_report.html test_report-native-$(DATE).html
 
-test_mlkit_no_gc:
+test_mlkit_no_gc: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
 	/bin/mv test_report.html test_report-native-nogc-$(DATE).html
 

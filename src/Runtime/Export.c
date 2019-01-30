@@ -5,7 +5,7 @@
 #include "../CUtils/polyhashmap.h"
 #include "../CUtils/hashfun.h"
 #include "Export.h"
-
+#include "CommandLine.h"
 
 static int
 charEqual(const char *a, const char *b)
@@ -27,10 +27,10 @@ sml_regCfuns(String name,void *f)
   //  printf("sml_regCfuns %s\n", &(name->data));
   if (!exportmap) 
   {
-    exportmap = (exportmap_hashtable_t *) malloc(sizeof (exportmap_hashtable_t));
+    exportmap = exportmap_new();
     if (!exportmap) return;
-    exportmap_init(exportmap);
   }
+  
   e = &(name->data);
   if (exportmap_find(exportmap, e, &f1) == hash_DNE)
   {
@@ -42,20 +42,24 @@ sml_regCfuns(String name,void *f)
   return;
 }
 
-int
-callExportFun(const char *fun, int i)
+long
+callExportFun(const char *fun, long i)
 {
-  //  printf("callExportFun %s\n", fun);
-  if (!exportmap) return -1;
+  long res = -1;
+#ifdef ENABLE_GC
+  long disable_gc_save = disable_gc;
+  disable_gc = 0;
+#endif
+  //printf("callExportFun %s\n", fun);
+  if (!exportmap) return res;
   const void *f1;
-  int (*f2)(int);
-  if (exportmap_find(exportmap, fun, &f1) == hash_OK)
-  {
+  long (*f2)(long);
+  if (exportmap_find(exportmap, fun, &f1) == hash_OK) {
     f2 = f1;
-    return ((*f2)(i));
+    res = ((*f2)(i));
   }
-  else
-  {
-    return -1;
-  }
+#ifdef ENABLE_GC
+  disable_gc = disable_gc_save;
+#endif
+  return res;
 }

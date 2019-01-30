@@ -1,0 +1,230 @@
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+Professor_game - LOG with message: solution found
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             ||         BLUE_JACKET            |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             ||         BLUE_JACKET            |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS|
+|         BLUE_JACKET            ||         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS|
+|         BLUE_JACKET            ||         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             ||         BLUE_JACKET            |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS|
+|         BLUE_JACKET            ||         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS|
+|         BLUE_JACKET            ||         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          ||         BROWN_TROUSERS         |
+|BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  |
+|         BLUE_JACKET            ||         RED_JACKET             ||         RED_JACKET             ||         BLUE_JACKET            |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           ||         BLUE_JACKET            |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         RED_JACKET             ||         RED_JACKET             ||         BLUE_JACKET            ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
+New board
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BLUE_TROUSERS          ||         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  |
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         GREEN_JACKET           ||         BROWN_JACKET           ||         BROWN_JACKET           ||         BLUE_JACKET            |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         GREEN_TROUSERS         ||         BROWN_TROUSERS         ||         BROWN_TROUSERS         ||         BLUE_TROUSERS          |
+|RED_JACKET        GREEN_TROUSERS||GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         BROWN_JACKET           ||         GREEN_JACKET           ||         GREEN_JACKET           ||         BROWN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+|         BROWN_TROUSERS         ||         GREEN_TROUSERS         ||         GREEN_TROUSERS         ||         BROWN_TROUSERS         |
+|GREEN_JACKET      BLUE_TROUSERS ||BLUE_JACKET       BROWN_TROUSERS||BROWN_JACKET      RED_TROUSERS  ||RED_JACKET        GREEN_TROUSERS|
+|         RED_JACKET             ||         RED_JACKET             ||         BLUE_JACKET            ||         GREEN_JACKET           |
++--------------------------------++--------------------------------++--------------------------------++--------------------------------+
+
