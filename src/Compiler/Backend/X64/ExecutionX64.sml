@@ -66,7 +66,7 @@ structure ExecutionX64: EXECUTION =
 	\using the -L option."}
 
     val _ = Flags.add_string_entry
-	let val macgcc = "gcc -Wl,-no_pie"
+	let val macgcc = "gcc -Wl,-no_pie,-stack_size,0x10000000,-stack_addr,0xc0000000"
 	    val gcc = if onmac_p() then macgcc
 		      else "gcc"
 	in

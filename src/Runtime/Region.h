@@ -189,20 +189,24 @@ typedef struct lobjs {
 /* By introducing generational garbage collection we need two region
    page lists in each region descriptor. We therefore define a
    sub-structure called Gen (for generation) containing the three
-   pointers controlling the allocation into a generation: fp, a and b */
+   pointers controlling the allocation into a generation: fp, a and
+   b. */
 
 typedef struct gen {
-  uintptr_t * a;    /* Pointer to first unused word in the newest region page
-                 of the region. */
-  uintptr_t * b;    /* Pointer to the border of the newest region page, defined as the
-                 address of the first word to follow the region page. One maintains
-                 the invariant a<=b;  a=b means the region page is full.*/
-  Rp *fp;     /* Pointer to the oldest (first allocated) page of the region.
-                 The beginning of the newest page of the region can be calculated
-                 as a fixed offset from b. Thus the region descriptor gives
-                 direct access to both the first and the last region page
-                 of the region. This makes it possible to de-allocate the
-                 entire region in constant time, by appending it to the free list.*/
+  uintptr_t * a;  /* Pointer to first unused word in the newest region
+                     page of the region. */
+  uintptr_t * b;  /* Pointer to the border of the newest region page,
+                     defined as the address of the first word to
+                     follow the region page. One maintains the
+                     invariant a<=b; a=b means the region page is
+                     full. */
+  Rp *fp;   /* Pointer to the oldest (first allocated) page of the
+               region.  The beginning of the newest page of the region
+               can be calculated as a fixed offset from b. Thus the
+               region descriptor gives direct access to both the first
+               and the last region page of the region. This makes it
+               possible to deallocate the entire region in constant
+               time, by appending it to the free list. */
 } Gen;
 
 

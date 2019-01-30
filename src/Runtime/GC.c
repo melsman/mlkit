@@ -2,7 +2,6 @@
  *                     Garbage Collection                         *
  *----------------------------------------------------------------*/
 
-#define CHECK_GC 1
 #ifdef ENABLE_GC
 
 #include <stdio.h>
@@ -392,11 +391,6 @@ static void mk_from_space()
 #endif // ENABLE_GEN_GC
   }
   return;
-}
-
-inline static int
-points_into_dataspace (uintptr_t *p) {
-  return (p >= data_begin_addr) && (p <= data_end_addr);
 }
 
 #define is_stack_allocated(obj_ptr) (((obj_ptr) <= stack_bot_gc) && (((obj_ptr) >= stack_top_gc)))
@@ -839,9 +833,14 @@ points_into_tospace (uintptr_t x)
   if ( is_integer(x) )
     return 0;
   p = (uintptr_t *)x;
-  if ( is_stack_allocated(p) )
+  if ( points_into_dataspace(p) ) {
+    #ifdef CHECK_GC
+    if ( is_stack_allocated(p) )
+      die ("GC: p is both on stack and in dataspace!");
+    #endif // CHECK_GC
     return 0;
-  if ( points_into_dataspace(p) )
+  }
+  if ( is_stack_allocated(p) )
     return 0;
   // now either large object or in region
   rp = get_rp_header(p);
@@ -929,10 +928,14 @@ evacuate(uintptr_t obj)
       return obj;                         // not subject to GC
     }
 
-  obj_ptr = (uintptr_t *)obj;          // object is a pointer
+  obj_ptr = (uintptr_t *)obj;             // object is a pointer
 
   if ( points_into_dataspace(obj_ptr) )
     {
+      #ifdef CHECK_GC
+      if ( is_stack_allocated(obj_ptr) )
+        die ("GC: obj_ptr is both on stack and in dataspace!");
+      #endif // CHECK_GC
       return obj;                         // not subject to GC
     }
 
@@ -1770,8 +1773,8 @@ gc(uintptr_t **sp, size_t reg_map)
 	      region_utilize(pages_to_space, bytes_to_space),
 	      lobjs_aftergc / 1024,
 	      size_free_list());
-      fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%]\n",
-	      RI, GC);
+      fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%, S:%luMb]\n",
+	      RI, GC, (size_t)(stack_bot_gc - stack_top_gc) / 1024 / 1024);
 
       to_space_old = bytes_to_space;
       lobjs_aftergc_old = lobjs_aftergc;

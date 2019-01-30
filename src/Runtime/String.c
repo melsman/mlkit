@@ -379,5 +379,22 @@ void
 printNum(ssize_t n)
 {
   printf("Num: %d\n",convertIntToC((int)n));
+  /*
+  asm volatile ( "movq $32, %rdi\n\t"
+                 "movq $52, %rsi\n\t"
+                 "movq $62, %rdx\n\t"
+                 "movq $72, %rcx\n\t"
+                 "movq $82, %r8\n\t"
+                 "movq $92, %r9\n\t"
+                 "movq $102, %r10\n\t"
+                 "movq $112, %r11\n\t"
+                 "movq $122, %rax\n\t"
+                 "movq $132, %rbx\n\t"
+                 "movq $142, %r12\n\t"
+                 "movq $152, %r13\n\t"
+                 "movq $162, %r14\n\t"
+                 "movq $172, %r15\n\t"
+	       );
+  */
   return;
 }

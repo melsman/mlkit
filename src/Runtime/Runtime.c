@@ -8,6 +8,7 @@
 #include <sys/resource.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 #include "Runtime.h"
 #include "Flags.h"
 #include "Tagging.h"
@@ -47,6 +48,8 @@ die2 (const char *s1, const char* s2)
   exit(-1);
 }
 
+static struct rlimit limit;
+
 void
 setStackSize(rlim_t size)
 {
@@ -68,6 +71,13 @@ setStackSize(rlim_t size)
     bad = strerror(errno);
     die2("setStackSize(2)", bad);
   }
+  res = getrlimit(RLIMIT_STACK, &limit);
+  if (res == -1)
+  {
+    bad = strerror(errno);
+    die2("setStackSize(2)", bad);
+  }
+  // printf("Stack size: %llu; %lluMb\n", limit.rlim_cur, limit.rlim_cur / 1024 / 1024);
   return;
 }
 
@@ -107,12 +117,6 @@ terminateML (long status)
       fprintf(stderr, ", %zdkb rpages", rp_total);
     }
 
-  if ( report_gc )
-    {
-      fprintf(stderr, "]\n");
-      fflush(stderr);
-    }
-
   if ( verbose_gc )
     {
       double ri = 0.0;
@@ -122,6 +126,11 @@ terminateML (long status)
       ri = 100.0 - gc;
       fprintf(stderr, ", RI:%2.0f%%, GC:%2.0f%%, Frag avg:%2.0f%%]\n",
               ri, gc, FRAG_sum / (double)(num_gc-1));
+      fflush(stderr);
+    }
+  else if ( report_gc )
+    {
+      fprintf(stderr, "]\n");
       fflush(stderr);
     }
 #endif /* ENABLE_GC */
@@ -276,6 +285,21 @@ L0:
 
 #endif /* TAG_VALUES */
 
+/*
+void
+sig_handler_segv(int sig, siginfo_t *info, void *extra)
+{
+  if (sig != SIGSEGV) return;
+  char* buf = "In HANDLER\n";
+  int sz = strlen(buf);
+  write(STDERR_FILENO, buf, sz);
+  //fprintf(stderr, "[Max stack size: %lluMb]\n", limit.rlim_cur / 1024 / 1024);
+  _exit(1);
+  //raise_exn((uintptr_t)&exn_INTERRUPT);
+  return; // never comes here
+}
+*/
+
 void
 sig_handler_int(void)
 {
@@ -327,9 +351,13 @@ extern void code(void);
 #endif
 
 #ifndef APACHE
+
 int
 main(int argc, char *argv[])
 {
+  //static struct sigaction sigact;
+  //static sigset_t sigset;
+
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))
     die("main - integer configuration is erroneous");
 
@@ -346,6 +374,26 @@ rpMap = regionPageMapNew();
 #endif
 
   /* setup handlers */
+  /*
+  if ( sigemptyset(&sigset) == -1 ) {
+    die("failed to create empty signal set");
+    exit(1);
+  }
+  if ( sigprocmask(SIG_SETMASK, &sigset, NULL) == -1 ) {
+    die("failed to clear signal processing mask");
+    exit(1);
+  }
+  sigact.sa_flags = SA_SIGINFO;
+  if ( sigemptyset(&sigact.sa_mask) == -1 ) {
+    die("failed to create empty signal mask");
+    exit(1);
+  }
+  sigact.sa_sigaction = sig_handler_segv;
+  if ( sigaction(SIGSEGV, &sigact, NULL) == -1 ) {
+    die ("failed to set SIGSEGV signal handler");
+    exit(1);
+  }
+  */
   //signal(SIGINT, (SignalHandler)sig_handler_int);
   //signal(SIGFPE, (SignalHandler)sig_handler_fpe);
 

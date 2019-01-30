@@ -886,7 +886,7 @@ struct
         (copy(tmp_reg1,t,C))))
       end
 
-    (* When tagging is enabled (for gc) and tag-free pairs are enabled
+    (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
      * then the following function is used for allocating pairs in
      * infinite regions. *)
 
@@ -3225,13 +3225,30 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         val _  = add_static_data static_data
 
         (* args can only be tmp_reg0 and tmp_reg1; no arguments
-         * on the stack; only the return address! *)
+         * on the stack; only the return address! Destroys tmp_reg0! *)
         fun ccall_stub(stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
           let
             val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
                             caller_save_regs_ccall  (* maybe also save the other
                                                      * ccall argument registers and the
                                                      * ccall result register rax *)
+
+            (* Notice that caller_save_regs_ccall is defined as the empty list! *)
+
+            (* The following registers must be preserved as register
+               allocation may choose to map variables to these
+               registers:
+
+                 X = [rax,rbx,rdi,rdx,rsi] u [rbx,rbp,r12,r13,r14,r15]
+                   = [rax,rbx,rdi,rdx,rsi,rbp,r12,r13,r14,r15]
+
+               Here are the registers that are not saved:
+
+                 X \ save_regs = [rbx,rbp,r12,r13,r14,r15]
+
+               These should exactly be the callee-save registers!
+            *)
+
             fun push_callersave_regs C =
               foldl (fn (r, C) => I.push(R r) :: C) C save_regs
             fun pop_callersave_regs C =
@@ -3244,7 +3261,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.dot_globl stublab ::
             I.lab stublab ::
             push_callersave_regs
-            (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, rax,
+            (compile_c_call_prim(cfunction, map SS.PHREG_ATY args, res, size_ff, tmp_reg0,
               pop_callersave_regs
                   (I.pop(R tmp_reg0) ::
                    I.jmp(R tmp_reg0) :: C)))
@@ -3281,7 +3298,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 foldr (fn (r, C) => I.push(R r) :: C) C all_regs
               fun pop_all_regs C =
                 foldl (fn (r, C) => I.pop(R r) :: C) C all_regs
-              fun pop_size_ccf_rcf_reg_args C = base_plus_offset(rsp,WORDS(3),rsp,C) (* they are pushed in do_gc *)
+              fun pop_size_ccf_rcf_reg_args C = base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
               val size_ff = 0 (*dummy*)
             in
               I.dot_text ::
@@ -3300,7 +3317,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         val data_end_init_lab = NameLab "data_end_init_lab"
         val data_begin_addr = NameLab "data_begin_addr"
         val data_end_addr = NameLab "data_end_addr"
-        fun generate_data_begin_end(progunit_labs,C) =
+        fun generate_data_begin_end (progunit_labs,C) =
             if gc_p() then
                 let
                     fun comp (l,C) =

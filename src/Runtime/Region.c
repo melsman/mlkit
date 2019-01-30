@@ -30,7 +30,7 @@ extern Ns_Mutex freelistMutex;
 #if ( REGION_PAGE_STAT )
 
 RegionPageMap*
-regionPageMapInsert(RegionPageMap* regionPageMap, unsigned int addr)
+regionPageMapInsert(RegionPageMap* regionPageMap, uintptr_t addr)
 {
   int index;
   RegionPageMapHashList* newElem;
@@ -77,7 +77,7 @@ regionPageMapNew(void)
 }
 
 RegionPageMap*
-regionPageMapIncr(RegionPageMap* regionPageMap, unsigned int addr)
+regionPageMapIncr(RegionPageMap* regionPageMap, uintptr_t addr)
 {
   RegionPageMapHashList* p;
   for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next )
@@ -125,7 +125,7 @@ regionPageMapClear(RegionPageMap* regionPageMap)
 }
 
 RegionPageMap* rpMap = NULL;
-#define REGION_PAGE_MAP_INCR(rp) (regionPageMapIncr(rpMap,(unsigned int)(rp)));
+#define REGION_PAGE_MAP_INCR(rp) (regionPageMapIncr(rpMap,(uintptr_t)(rp)));
 #else
 #define REGION_PAGE_MAP_INCR(rp)
 #endif /* REGION_PAGE_STAT */
@@ -463,7 +463,7 @@ alloc_new_block(Gen *gen)
       (((Rp *)(gen->b))-1)->n = np; // Updates the next field in the last region page.
   else {
 #ifdef ENABLE_GC
-    int rt;
+    uintptr_t rt;
     if ( (rt = all_marks_fp(*gen)) /* was rtype(*gen) 2003-08-06, nh */ )
       {
 	gen->fp = np;           /* Update pointer to the first page. */
@@ -708,7 +708,7 @@ void callSbrk() {
 
   /* For GC we require 1Kb alignments, that is the size of a region page! */
 
-  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) );
+  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) + 1024 );
 
   if ( sb == NULL ) {
     perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
@@ -735,7 +735,7 @@ void callSbrk() {
   rp_total++;
 
   /* fragment the SBRK-chunk into region pages */
-  while ((void *)(np+1) < ((void *)freelist)+BYTES_ALLOC_BY_SBRK) {
+  while ((char *)(np+1) < ((char *)freelist)+BYTES_ALLOC_BY_SBRK) {
     np++;
     (np-1)->n = np;
     rp_total++;
@@ -770,6 +770,7 @@ allocGen (Gen *gen, size_t n) {
 #endif
 
   debug(printf("[allocGen... generation: %p, n:%zu ", gen,n));
+  debug(fflush(stdout));
 
 #ifdef PROFILING
   r = get_ro_from_gen(*gen);
@@ -826,7 +827,8 @@ allocGen (Gen *gen, size_t n) {
   t3 = gen->b;
   if (t2 > t3) {
     #if defined(PROFILING) || defined(ENABLE_GC)
-       /* insert zeros in the rest of the current region page */
+       /* insert zeros in the rest of the current region page;
+	* mael 2019-01-28: why is this necessary when just GC is enabled? */
        for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
     #endif
     alloc_new_block(gen);
@@ -836,7 +838,16 @@ allocGen (Gen *gen, size_t n) {
   }
   gen->a = t2;
 
+  #ifdef ENABLE_GC
+  #ifdef CHECK_GC
+  if ( points_into_dataspace(t1) ) {
+    die("allocated value points into dataspace");
+  }
+  #endif /* CHECK_GC */
+  #endif /* ENABLE_GC */
+
   debug(printf(", t1=%p, t2=%p]\n", t1,t2));
+  debug(fflush(stdout));
 
   return t1;
 }

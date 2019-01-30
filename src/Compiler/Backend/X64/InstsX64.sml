@@ -431,6 +431,7 @@ structure InstsX64: INSTS_X64 =
 
         val args_reg_ccall = [rdi,rsi,rdx,rcx,r8,r9]
         val args_phreg_ccall = map reg_to_lv args_reg_ccall
+        val args_ccall_phregset = Lvarset.lvarsetof args_phreg_ccall
         val res_reg_ccall = [rax]
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
 

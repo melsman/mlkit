@@ -661,7 +661,7 @@ struct
 	     | NONE => () (*mael die ("AddEdge.nTableLookup u_key: " ^ Lvars.pr_lvar u) *))
     end
 
-  fun MakeWorklist() =
+  fun MakeWorklist () =
     let
       fun do_n n =
 	if !(#degree n) >= K then
@@ -683,14 +683,14 @@ struct
   fun OK (t : node, r : node) : bool =
     !(#degree t) < K orelse !(#worklist t) = precolored_enum orelse adjSetMember(key' t, key' r)
 
-  fun Conservative(nodes:lvarset) : bool =
+  fun Conservative (nodes:lvarset) : bool =
     let val nodes = map (fn lv => case nTableLookup (key lv)
 				    of SOME n => n
 				     | NONE => die "Conservative") (Lvarset.members nodes)
     in (foldl (fn (n,k) => if !(#degree n) >= K then k+1 else k) 0 nodes) < K
     end
 
-  fun Combine(u : node, v : node) : unit = (* v is never precolored *)
+  fun Combine (u : node, v : node) : unit = (* v is never precolored *)
     (coalescedNodesAdd v;
      if !(#worklist u) <> precolored_enum then (* We only merge lrs for non precolored lvars. 19/03/1999, Niels *)
        #lrs u := merge_lrs(!(#lrs u),!(#lrs v))
@@ -705,7 +705,7 @@ struct
        spillWorklistAdd u
      else ())
 
-  fun Coalesce() : unit = (* invariant : worklistMoves is normalised and non-empty *)
+  fun Coalesce () : unit = (* invariant : worklistMoves is normalised and non-empty *)
     case !worklistMoves
       of (m as {lv1,lv2,movelist}) :: _ =>
 	let
@@ -749,16 +749,16 @@ struct
     in app on_move (NodeMoves u)
     end
 
-  fun Freeze() : unit =  (* invariant : freezeWorklist is normalised and non-empty *)
+  fun Freeze () : unit =  (* invariant : freezeWorklist is normalised and non-empty *)
     case !freezeWorklist
       of u :: _ => (simplifyWorklistAdd u; FreezeMoves u)
        | _ => die "Freeze"
 
-  fun SelectSpill() : unit = (* invariant : spillWorklist is normalised and non-empty *)
+  fun SelectSpill () : unit = (* invariant : spillWorklist is normalised and non-empty *)
     let
-      fun lrs_factor(no_call) = 1.0
-	| lrs_factor(c_call) = 1.2
-	| lrs_factor(ml_call) = 1.5
+      fun lrs_factor no_call = 1.0
+	| lrs_factor c_call = 1.2
+	| lrs_factor ml_call = 1.5
       fun pri (n:node) = Real.fromInt(!(#uses n)) / Real.fromInt(!(#degree n))  (**lrs_factor(!(#lrs n))06/04/1999, Niels*)
       fun select_spill() = (* use lowest priority: uses/degree*lrs_factor *)
 	case !spillWorklist of
@@ -778,23 +778,30 @@ struct
       (simplifyWorklistAdd m; FreezeMoves m)
     end
 
-  fun AssignColors() : unit =
+(*  val caller_save_regs = Lvarset.union(RI.args_ccall_phregset, RI.caller_save_phregset) *)
+  val caller_save_regs = RI.caller_save_phregset
+(*  val callee_save_regs = Lvarset.difference(RI.callee_save_ccall_phregset, RI.caller_save_phregset) (* subtract rbx *) *)
+  val callee_save_regs = Lvarset.empty
+
+  fun AssignColors () : unit =
     let
       fun assign_color (n:node,pri1,pri2,notOkColors) =
 	(case Lvarset.members (Lvarset.difference(pri1,notOkColors)) of
 	   nil => (case Lvarset.members (Lvarset.difference(pri2,notOkColors)) of
-		     nil => (spilledNodesAdd (n:node); inc_spills())
-		   | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors()))
-	 | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors()))
+		     nil => (spilledNodesAdd n; inc_spills())
+		   | c::_ => (coloredNodesAdd n; #color n := SOME c; inc_assigned_colors()))
+	 | c::_ => (coloredNodesAdd n; #color n := SOME c; inc_assigned_colors()))
 
       fun find_color (n:node,notOkColors) =
-	if !(#lrs n) = ml_call then
-	  (inc_ml_call(); assign_color(n,RI.callee_save_ccall_phregset,RI.caller_save_phregset,notOkColors))
-	else
-	  if !(#lrs n) = c_call then
-	    (inc_c_call(); assign_color(n,RI.callee_save_ccall_phregset,RI.caller_save_phregset,notOkColors))
-	  else
-	    (inc_no_call(); assign_color(n,RI.caller_save_phregset,RI.callee_save_ccall_phregset,notOkColors))
+          case !(#lrs n) of
+              c_call =>    (* means: only ccall *)
+	      (inc_c_call(); assign_color(n,callee_save_regs,Lvarset.empty,notOkColors))  (* RI.caller_save_phregset*)
+            | ml_call =>   (* means: ml call and/or c call; we have to be carefull that rbx is not assigned as it may be destroyed by an ml-call *)
+	      (inc_ml_call(); assign_color(n,callee_save_regs,Lvarset.empty,notOkColors))
+            | no_call =>
+              (* prioritise to use caller-save regs so that callee-save regs are
+               * available for those variables with live ranges accross calls *)
+	      (inc_no_call(); assign_color(n,caller_save_regs,RI.callee_save_ccall_phregset,notOkColors))
 
 (*
       fun find_color_simple (n:node,notOkColors) =
@@ -935,7 +942,7 @@ struct
 	    val L = use_var_ls ls
 	in L
 	end
-      fun do_record(L,ls) = (* We must insert edges between def and use! *)
+      fun do_record (L,ls) = (* We must insert edges between def and use! *)
 	let
 	  val (def,use) = def_use_var_ls ls
 	  val L' = Lvarset.union(Lvarset.union(L,def),use)
@@ -944,7 +951,7 @@ struct
 	in
 	  L
 	end
-      fun do_move(L,lv1,lv2) = (* lv1 <-- lv2 *)
+      fun do_move (L,lv1,lv2) = (* lv1 <-- lv2 *)
 	if Lvarset.member(lv1, args_on_stack_lvs) then
 	  if Lvarset.member(lv2, args_on_stack_lvs) then
 	    L
@@ -962,9 +969,9 @@ struct
 	  val L = Lvarset.add(Lvarset.delete(L,lv1),lv2)
 	in L
 	end
-      fun remove_finite_rhos([]) = []
-	| remove_finite_rhos(((place,LS.WORDS i),offset)::rest) = remove_finite_rhos rest
-	| remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
+      fun remove_finite_rhos ([]) = []
+	| remove_finite_rhos (((place,LS.WORDS i),offset)::rest) = remove_finite_rhos rest
+	| remove_finite_rhos (rho::rest) = rho :: remove_finite_rhos rest
       fun ig_ls (ls, L) =
 	case ls
 	  of LS.FLUSH _ => die "ig_ls: FLUSH not inserted yet."

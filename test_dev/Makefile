@@ -7,7 +7,7 @@ TESTFILES=int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2.sml exn3.sml \
   kitqsort_no_basislib.sml kitsimple_no_basislib.sml kittmergesort_no_basislib.sml \
   kitreynolds2_no_basislib.sml kitreynolds3_no_basislib.sml professor_game.sml \
   ccall.sml auto.sml Initial.sml string_sub.sml \
-  int_overflow.sml sign.sml word_list.sml build.sml
+  int_overflow.sml sign.sml word_list.sml build.sml reg.sml
 
 #shra.sml
 
@@ -26,8 +26,6 @@ RI_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-ri.mlbres)
 GC_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-gc.mlbres)
 P_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-p.mlbres)
 GCP_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-gcp.mlbres)
-
-#RESFILES_ALL=$(GCP_RESFILES) $(GCP_RESFILES_MLB) $(P_RESFILES) $(P_RESFILES_MLB) $(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
 
 RESFILES_PROF=$(GCP_RESFILES) $(GCP_RESFILES_MLB) $(P_RESFILES) $(P_RESFILES_MLB)
 RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
