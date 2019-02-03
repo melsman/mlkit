@@ -115,7 +115,7 @@ structure Tester : TESTER =
 	      if opt "tx" (*Time Executable*) then
 		let val _ = msg' ("    executing target program: " ^ exe_file)
 	 	    val {count,size,rss,data,stk,exe,real,user,sys} =
-		      MemUsage.memUsage {cmd=exe_file,args=runargs,out_file=file ^ out_file (*".out"*)}
+		      MemUsage.memUsage {cmd=exe_file,args=runargs,out_file=file ^ out_file (*".out"*),eout_file=NONE}
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped =

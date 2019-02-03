@@ -1,0 +1,38 @@
+This is an ML version of the "Barnes-Hut" N-Body code.  It is based on
+the third release of the C version written by Joshua E. Barnes (see
+c-version/Readme for details).  It produces answers that are essentially
+identical to the C version (there is occasionally an off-by-one error
+in the least significant digit when printing the particle data, but this
+is probably a difference in the rounding in the output libraries).  You
+will need the SML/NJ library to compile this code, and you may need to
+patch the library path in the load file.
+
+This implementation is functorized over the dimension of space (specified
+by the Vector structure).  To compile the code, type
+
+  use "load-all";
+
+then apply the Main functor to either the 2 or 3-dimensional vector
+structure (Vector2 or Vector3).  For example:
+
+  structure M3 = Main (Vector3);
+
+produces the 3-dimensional version.  To run, type
+
+  M3.doit();
+
+this will prompt you for parameters.
+
+ACKNOWLEDGEMENTS:
+a lot of the control structure was stolen from an ML version of Barnes-Hut
+written by Lorenz Huelsbergen at the University of Wisconsin.
+
+BUGS:
+None known at this time.
+
+
+	John Reppy
+	AT&T Bell Laboratories
+	Murray Hill, NJ 07974
+	jhr@research.att.com
+

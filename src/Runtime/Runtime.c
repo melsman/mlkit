@@ -110,9 +110,11 @@ terminateML (long status)
   if ( report_gc || verbose_gc )
     {
       alloc_total += alloc_period;
-      fprintf(stderr, "[GC(%zdms): %zd collections", time_gc_all_ms, num_gc);
+      fprintf(stderr, "[GC(%zd.%zdms): %zd collections",
+	      time_gc_all_ms / 10, time_gc_all_ms % 10, num_gc);
 #ifdef ENABLE_GEN_GC
-      fprintf(stderr, " (%zd major)", num_gc_major);
+      fprintf(stderr, ", %zd major (%ld.%ldms)", num_gc_major,
+	      time_majorgc_all_ms / 10, time_majorgc_all_ms % 10);
 #endif
       fprintf(stderr, ", %zdkb rpages", rp_total);
     }

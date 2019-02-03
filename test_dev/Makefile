@@ -28,14 +28,16 @@ P_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-p.mlbres)
 GCP_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-gcp.mlbres)
 
 RESFILES_PROF=$(GCP_RESFILES) $(GCP_RESFILES_MLB) $(P_RESFILES) $(P_RESFILES_MLB)
-RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
+#RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
+RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB)
 
 #EXEFLAGS=-verbose_gc
 #EXEFLAGS=-disable_gc -verbose_gc
 
 #GC_FLAGS=--no_basislib --comments_in_x64_asmcode --debug_linking -g --no_delete_target_files
-GC_FLAGS=--no_basislib
-RI_FLAGS=$(GC_FLAGS) -no_gc
+FLAGS=--no_basislib --debug_linking -g --no_delete_target_files
+GC_FLAGS=$(FLAGS) -gengc
+RI_FLAGS=$(FLAGS) -no_gc
 PROF_FLAGS=$(RI_FLAGS) -prof
 GC_PROF_FLAGS=$(GC_FLAGS) -prof
 
@@ -60,10 +62,10 @@ runtime:
 	@SML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $< >> complog.txt
 
 %-gc.exe: %.sml
-	@SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $< >> complog.txt
+	SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<
 
 %-gc.mlbexe: %.mlb
-	@SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $< >> complog.txt
+	SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<
 
 %-p.exe: %.sml
 	@SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $< >> complog.txt

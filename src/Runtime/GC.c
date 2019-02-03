@@ -62,6 +62,8 @@ ssize_t raised_exn_overflow = 0;          // set to 1 if signal occurred during 
 ssize_t time_gc_all_ms = 0;               // total time of GC (in milliseconds)
 
 #ifdef ENABLE_GEN_GC
+ssize_t time_majorgc_all_ms = 0;
+
 ssize_t major_p = 0;                      // flag to specify whether gc should be major or minor
 #define is_major_p (major_p == 1)
 #define is_minor_p (major_p == 0)
@@ -1676,6 +1678,23 @@ gc(uintptr_t **sp, size_t reg_map)
 
   rp_used = rp_total - size_free_list();
 
+  if ( verbose_gc || report_gc )
+    {
+      getrusage(RUSAGE_SELF, &rusage_end);
+      time_gc_one_ms = // 10x ms to get better precision in reporting
+	((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*10000 +
+	 (rusage_end.ru_utime.tv_usec+rusage_end.ru_stime.tv_usec)/100) -
+	((rusage_begin.ru_utime.tv_sec+rusage_begin.ru_stime.tv_sec)*10000 +
+	 (rusage_begin.ru_utime.tv_usec+rusage_begin.ru_stime.tv_usec)/100);
+      time_gc_all_ms += time_gc_one_ms;
+#ifdef ENABLE_GEN_GC
+      if ( !is_minor_p ) // this test should appear before we may set major_p below
+	{
+	  time_majorgc_all_ms += time_gc_one_ms;
+	}
+#endif
+    }
+
   // Update the GC treshold for region pages - we add -1.0 to
   // leave room for copying...
   rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_total / heap_to_live_ratio);
@@ -1706,17 +1725,6 @@ gc(uintptr_t **sp, size_t reg_map)
   // callSbrkArg((int)to_allocate + REGION_PAGE_BAG_SIZE);
   // }
 
-  if ( verbose_gc || report_gc )
-    {
-      getrusage(RUSAGE_SELF, &rusage_end);
-      time_gc_one_ms =
-	((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*1000 +
-	 (rusage_end.ru_utime.tv_usec+rusage_end.ru_stime.tv_usec)/1000) -
-	((rusage_begin.ru_utime.tv_sec+rusage_begin.ru_stime.tv_sec)*1000 +
-	 (rusage_begin.ru_utime.tv_usec+rusage_begin.ru_stime.tv_usec)/1000);
-      time_gc_all_ms += time_gc_one_ms;
-    }
-
   if ( verbose_gc )
     {
       double RI = 0.0, GC = 0.0, FRAG = 0.0;
@@ -1731,7 +1739,7 @@ gc(uintptr_t **sp, size_t reg_map)
       alloc_total += lobjs_period;                 // ok gengc
       gc_total += (bytes_from_space + lobjs_beforegc - bytes_to_space - lobjs_aftergc);
 
-      fprintf(stderr,"(%ldms)", time_gc_one_ms);
+      fprintf(stderr,"(%ld.%ldms)", time_gc_one_ms / 10, time_gc_one_ms % 10);
       /*
       fprintf(stderr, " rp_total: %ld\n", rp_total);
       fprintf(stderr, " size_scan_stack: %ld\n", (size_scan_stack*sizeof(void *)) / 1024);

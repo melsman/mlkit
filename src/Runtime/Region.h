@@ -45,7 +45,7 @@ We describe each of the four possibilities in turn.
          profiling, except that the region descriptor contains more
          fields for profiling statistics.
 
-A {\em region page} consists of a header and an array of words that
+A *region page* consists of a header and an array of words that
 can be used for allocation.  The header takes up
 HEADER_WORDS_IN_REGION_PAGE words, while the number of words
 that can be allocated is ALLOCATABLE_WORDS_IN_REGION_PAGE.
@@ -59,9 +59,9 @@ words in all.
 //#define REGION_PAGE_STAT 1
 #ifdef REGION_PAGE_STAT
 typedef struct regionPageMapHashList {
-  unsigned long n;                               /* reuse number */
+  unsigned long n;                           /* reuse number */
   uintptr_t addr;                            /* address of region page */
-  struct regionPageMapHashList * next; /* next hashed element */
+  struct regionPageMapHashList * next;       /* next hashed element */
 } RegionPageMapHashList;
 
 typedef RegionPageMapHashList* RegionPageMap;
@@ -101,16 +101,10 @@ typedef struct rp {
   struct rp *n;                   /* NULL or pointer to next page. */
   struct gen *gen;                /* Pointer back to generation. Used by GC. */
 #ifdef ENABLE_GEN_GC
-  uintptr_t *colorPtr;         /* Color pointer used by generational GC */
+  uintptr_t *colorPtr;            /* Color pointer used by generational GC */
 #endif /* ENABLE_GEN_GC */
-  uintptr_t i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
+  uintptr_t i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data */
 } Rp;
-
-/* #if defined(__LP64__) || (__WORDSIZE == 64) */
-/* #define SIZE_REGION_PAGE 0x800 */
-/* #else */
-/* #define SIZE_REGION_PAGE 0x400 */
-/* #endif */
 
 #define is_rp_aligned(rp)  (((rp) & (sizeof(Rp)-1)) == 0)
 
@@ -131,7 +125,6 @@ typedef struct rp {
 
 #ifdef ENABLE_GC
 #define clear_tospace_bit(p)  (Rp*)((uintptr_t)(p) & (UINTPTR_MAX ^ 0x1))
-// #define clear_tospace_bit(p)  (Rp*)((unsigned long)(p) & 0xFFFFFFFE)
 #define set_tospace_bit(p)    (Rp*)((uintptr_t)(p) | 0x1)
 #define is_tospace_bit(p)     ((uintptr_t)(p) & 0x1)
 #else
@@ -168,7 +161,7 @@ typedef struct lobjs {
 #ifdef KAM
   size_t sizeOfLobj;      // size of this object
 #endif
-  uintptr_t value;     // a large object; inlined to avoid pointer-indirection
+  uintptr_t value;        // a large object; inlined to avoid pointer-indirection
 } Lobjs;
 
 /* When garbage collection is enabled, a bit in a large object

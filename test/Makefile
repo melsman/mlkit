@@ -10,7 +10,7 @@ test_mlkit_no_gc: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
 	/bin/mv test_report.html test_report-native-nogc-$(DATE).html
 
-test_mlkit_gengc:
+test_mlkit_gengc: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gengc)
 	/bin/mv test_report.html test_report-native-gengc-$(DATE).html
 
@@ -23,9 +23,9 @@ test_kam: prepare
 	/bin/mv test_report.html test_report-kam-$(DATE).html
 
 clean:
-	rm -f *.exe.x86-linux *.exe.out.txt *.exe.png *.exe run *~ */*~
+	rm -f *.exe.x86-linux *.exe.out.txt *.exe.png *.exe run *~ */*~ *.exe.out.*.txt
 	rm -f runexe *.log *.outgcp *.outgengcp *.out *.outgc *.outgengc *.outp profile.rp
-	rm -f *.aux
+	rm -f *.aux bench.html
 	rm -rf */*.log MLB */MLB */*/MLB */*/*/MLB
 	rm -f testlink testcycl testbadl hardlinkA hardlinkB
 

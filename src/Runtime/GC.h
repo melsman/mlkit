@@ -7,7 +7,7 @@
 #ifndef GC_H
 #define GC_H
 
-#define CHECK_GC 1
+#define CHECK_GC 0
 #ifdef ENABLE_GC
 extern size_t time_to_gc;
 extern size_t rp_gc_treshold;
@@ -20,16 +20,18 @@ extern size_t lobjs_gc_treshold;
 extern size_t lobjs_period;
 
 extern ssize_t doing_gc;
+extern ssize_t time_gc_all_ms;
+
 #ifdef ENABLE_GEN_GC
+extern ssize_t time_majorgc_all_ms;
 extern ssize_t major_p;
 extern ssize_t num_gc_major;
 #endif
+
 extern ssize_t num_gc;
 
 extern ssize_t raised_exn_interupt;
 extern ssize_t raised_exn_overflow;
-
-extern ssize_t time_gc_all_ms;
 
 extern size_t *data_begin_addr;
 extern size_t *data_end_addr;
