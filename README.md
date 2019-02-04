@@ -1,14 +1,12 @@
 ## MLKit
 
-The [MLKit](http://www.elsman.com/mlkit) is a compiler for the programming language Standard ML. The
+The [MLKit](http://elsman.com/mlkit) is a compiler for the programming language Standard ML. The
 MLKit covers all of Standard ML, as defined in the 1997 edition of the
 Definition of Standard ML and supports most of the Standard ML Basis
 Library.
 
 ## Statistics
 
-[![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/pr)](http://issuestats.com/github/melsman/mlkit)
-[![Issue Stats](http://issuestats.com/github/melsman/mlkit/badge/issue)](http://issuestats.com/github/melsman/mlkit)
 [![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
 
 ## Installation
@@ -21,13 +19,13 @@ using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/
 ## MLKit Features
 
 * Covers all of Standard ML. The MLKit compiles all of Standard ML,
-  [including Modules](http://www.elsman.com/mlkit/staticinterp.html),
+  [including Modules](http://elsman.com/mlkit/staticinterp.html),
   as specified by the Definition of Standard ML. The MLKit also
-  supports large parts of the [Standard ML Basis Library](http://www.elsman.com/mlkit/basis.html).
+  supports large parts of the [Standard ML Basis Library](http://elsman.com/mlkit/basis.html).
 
-* Supports [ML Basis Files](http://www.elsman.com/mlkit/mlbasisfiles.html):
+* Supports [ML Basis Files](http://elsman.com/mlkit/mlbasisfiles.html):
   The MLKit compiles large programs,
-  [including itself](http://www.elsman.com/mlkit/bootstrap.html), around 80.000 lines of Standard ML plus the
+  [including itself](http://elsman.com/mlkit/bootstrap.html), around 80.000 lines of Standard ML plus the
   Standard ML Basis Library. The support for ML Basis Files makes it
   easy to compile a program with different Standard ML
   compilers. Currently, both [MLton](http://mlton.org) and the MLKit supports the concept
@@ -45,7 +43,7 @@ using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/
 
 * Native backend for the x64 architecture (under Linux and macOS).
 
-* [Documentation](http://www.elsman.com/mlkit/doc.html). A
+* [Documentation](http://elsman.com/mlkit/doc.html). A
   comprehensive guide on programming with the MLKit is
   available. Documentation is also available in man-pages and from the
   [MLKit home page](http://melsman.github.io/mlkit).
