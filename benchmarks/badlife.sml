@@ -207,7 +207,7 @@ local
     fun iter n = #2(nthgen'(n,mkgen world))
   end
 
-  fun testit _ = (show(iter 1000))
+  fun testit _ = (show(iter 200))
 
 in
   val _ = testit ()
