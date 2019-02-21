@@ -1,4 +1,0 @@
-$(SML_LIB)/basis/basis.mlb
-msort.sml
-upto.sml
-msortrun.sml
