@@ -131,16 +131,20 @@ structure Benchmark =
 
     fun tag t s = "<" ^ t ^ ">" ^ s ^ "</" ^ t ^ ">"
     fun tagAttr t a s = "<" ^ t ^ " " ^ a ^ ">" ^ s ^ "</" ^ t ^ ">"
-    val TD = tag "TD"
-    val TH = tag "TH"
-    val TR = tag "TR"
-    val B = tag "B"
-    val I = tag "I"
-    val H1 = tag "H1"
-    val H2 = tag "H2"
-    val TABLE = tagAttr "TABLE" "border=1"
-    val BODY = tagAttr "BODY" "bgcolor=white"
-    val HTML = tag "HTML"
+    val TD = tag "td"
+    val TH = tag "th"
+    val TR = tag "tr"
+    val THEAD = tag "thead"
+    val TBODY = tag "tbody"
+    val B = tag "b"
+    val I = tag "i"
+    val H1 = tag "h1"
+    val H2 = tag "h2"
+    val TABLE = tagAttr "table" "class='table'"
+    fun BODY s = tag "body" (tagAttr "div" "class='container-fluid'" s)
+    val HEAD = tag "head"
+    fun CSSLINK s = tagAttr "link" ("href='" ^ s ^ "' rel='stylesheet'") ""
+    fun HTML e = "<!DOCTYPE html>\n" ^ tagAttr "html" "lang='en'" e
     fun ppTime t = TD (Time.toString t)
     fun ppMem n = TD (if n > 10000 then Int.toString(n div 1000) ^ "M"
 		      else Int.toString n ^ "K")
@@ -176,9 +180,9 @@ structure Benchmark =
 	     ^ pp ppMem  "data" data
 	     ^ pp ppMem  "stk"  stk
 	     ^ pp ppMem  "exe"  exe
-	     ^ pp ppTimeB "user" user
+	     ^ pp ppTime "user" user
 	     ^ pp ppTime "sys"  sys
-	     ^ pp ppTime "real" real
+	     ^ pp ppTimeB "real" real
 	     ^ pp ppTime "gc" gc
 	     ^ pp ppInt "gcnum" gcnum
 	     ^ TD(tagAttr "A" ("HREF=" ^ outfile) "output")
@@ -189,7 +193,8 @@ structure Benchmark =
 	  in TR(TD(tagAttr "A" ("HREF=" ^ p) p) ^ TD(loc p) ^ tagAttr "TD" ("COLSPAN=" ^ sz) " - ") ^ "\n"
 	  end
 	val BenchHeader =
-	  TR(TH "Program"
+            THEAD(
+	    TR(TH "Program"
 	     ^ TH "Lines"
 	     ^ pp TH "rss"  "RSS"
 	     ^ pp TH "size" "Size"
@@ -201,14 +206,16 @@ structure Benchmark =
 	     ^ pp TH "real" "Real"
 	     ^ pp TH "gc"   "GC"
 	     ^ pp TH "gcnum" "GC#"
-	     ^ TH "Output" ^ (if memusage then TH "Graph" else "")) ^ "\n"
+	     ^ TH "Output" ^ (if memusage then TH "Graph" else ""))) ^ "\n"
       in
-	H2 h ^ "\n" ^ TABLE (concat (BenchHeader :: map BenchLine l)) ^ "<P>\n"
+	H2 h ^ "\n" ^ TABLE (BenchHeader ^ TBODY(concat (map BenchLine l))) ^ "\n"
       end
 
     fun BenchPage p =
 	let val dat = Date.toString(Date.fromTimeLocal (Time.now()))
-	in HTML(BODY(H1 ("KitBench Report - " ^ dat) ^ p ^ "<HR>" ^ I "The KitBench Tool"))
+	in HTML(HEAD(CSSLINK "benchstyle.css" ^
+                     CSSLINK "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css") ^
+                BODY(H1 ("KitBench Report - " ^ dat) ^ p ^ "<HR>" ^ I "The KitBench Tool"))
 	end
 
     fun readFlags ss =
@@ -292,42 +299,59 @@ structure Benchmark =
 	  val orig_l = map (fn p => (#1 p,process (compile kitdir flags) memusage_p p)) ps
 	  val l = map #2 orig_l
 	  val _ = app (add_result_map c) orig_l
-      in BenchTable ["loc", "rss", "size", "data", "stk", "exe", "real", "user", "sys", "gc", "gcnum"] (head,l,memusage_p)
+      in BenchTable ["loc", "rss", "size", "data", "stk", "exe", "real", "user", "sys", "gc", "gcnum"]
+                    (head,l,memusage_p)
       end
 
-    fun compare_section_entry (cs:compiler list) (programs:string list) (name:string,entry:string) =
-      let val sz = length cs
-	  val improvement_h = if sz = 2 then TH "Improvement (percent)" else ""
-	  val table_h = TR (TH ("Program \\ " ^ entry) ^ concat (map (fn c => TH(pr_compiler c)) cs) ^
-			    improvement_h)
-	  fun pr_result r =
-	    case r
-	      of RM.TM t => Time.toString t
-	       | RM.KB i => if i > 10000 then Int.toString (i div 1000) ^ "M"
+    local
+	  val pr_result =
+	   fn RM.TM t => Time.toString t
+   	    | RM.KB i => if i > 10000 then Int.toString (i div 1000) ^ "M"
 			 else Int.toString i ^ "K"
-	       | RM.STR s => s
-	  fun pr_entry p c =
-	    case RM.lookup {compiler=c,program=p,entry=entry}
-	      of SOME r => TD(pr_result r)
-	       | NONE => TD "-"
-	  fun percent_imp r1 r2 = TD(Real.fmt (StringCvt.FIX(SOME 1)) ((r1 - r2) * 100.0 / r1))
-	  fun improvement p [c1,c2] =
-	    ((case (RM.lookup {compiler=c1,program=p,entry=entry},
-		    RM.lookup {compiler=c2,program=p,entry=entry})
-		of (SOME (RM.KB kb1),SOME (RM.KB kb2)) => percent_imp (real kb1) (real kb2)
-		 | (SOME (RM.TM tm1),SOME (RM.TM tm2)) => percent_imp (Time.toReal tm1) (Time.toReal tm2)
-		 | _ => TD "-") handle _ => TD "_")
-	    | improvement _ _ = ""
+	    | RM.STR s => s
+	  fun pr_impr r1 r2 = Real.fmt (StringCvt.FIX(SOME 3)) (r2 / r1)
+          val pr_improvement =
+           fn (RM.TM t0,RM.TM t) => pr_impr (Time.toReal t0) (Time.toReal t)
+            | (RM.KB i0,RM.KB i) => pr_impr (real i0) (real i)
+            | _ => "-"
+	  fun pr_entry pr_pair cs entry p c =
+	      case RM.lookup {compiler=c,program=p,entry=entry} of
+                  SOME r =>
+                  let val c0 = case cs of nil => raise Fail "compare_section_entry.impossible"
+                                        | c0 :: _ => c0
+                      val impr =
+                          case RM.lookup {compiler=c0,program=p,entry=entry} of
+                              SOME r0 => pr_improvement (r0,r)
+                            | NONE => "-"
+                  in pr_pair(pr_result r,impr)
+                  end
+	        | NONE => pr_pair ("-","-")
+    in
+      fun compare_section_entry (cs:compiler list) (programs:string list) (name:string,entry:string) =
+          let val table_h = TR (TH ("Program \\ " ^ entry) ^ concat (map (fn c => TH(pr_compiler c) ^
+                                                                                  TH "Impr") cs))
+              fun pr_pair (r,i) = TD r ^ TD i
+	      fun line p = TR (TD (tagAttr "A" ("HREF=" ^ p) p) ^
+                               concat (map (pr_entry pr_pair cs entry p) cs))
+	      val lines = concat(map line programs)
+          in H2 ("Comparison of " ^ name) ^ TABLE (table_h ^ lines)
+          end
+      fun compare_section_entry_simple (cs:compiler list) (programs:string list) (name:string,entry:string) =
+          let val table_h = "metric a1 a2 a3\n"
+              fun pr_pair (r,i) = " " ^ i ^ " "
+	      fun line p = OS.Path.base p ^ " " ^ concat (map (pr_entry pr_pair cs entry p) cs) ^ "\n"
+	      val lines = concat(map line programs)
+          in H2 ("Simple Comparison of " ^ name) ^ tag "pre" (table_h ^ lines)
+          end
 
-	  fun line p = TR (TD (tagAttr "A" ("HREF=" ^ p) p) ^ concat (map (pr_entry p) cs) ^ improvement p cs)
-	  val lines = concat(map line programs)
-      in H2 ("Comparison of " ^ name) ^ TABLE (table_h ^ lines)
-      end
+      fun compare_section_entry_both cs programs p =
+          compare_section_entry cs programs p ^ compare_section_entry_simple cs programs p
+    end
 
     fun compare_section (cs:compiler list) (ps:(string*TestFile.opt list)list) : string =
       let val programs = map #1 ps
-	  val entries = [("Memory Usage","rss"), ("Execution Time","user")]
-	  val sections = map (compare_section_entry cs programs) entries
+	  val entries = [("Memory Usage","rss"), ("Execution Time","real")]
+	  val sections = map (compare_section_entry_both cs programs) entries
       in concat sections
       end
 
