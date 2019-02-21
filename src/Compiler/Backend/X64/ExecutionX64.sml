@@ -294,22 +294,28 @@ structure ExecutionX64: EXECUTION =
       val tag_pairs_p = Flags.is_on0 "tag_pairs"
       val gc_p = Flags.is_on0 "garbage_collection"
       val gengc_p = Flags.is_on0 "generational_garbage_collection"
+      val region_inference = Flags.is_on0 "region_inference"
     in
+      fun maybe_prefix_RI s =
+          if region_inference() then "RI_" ^ s
+          else s
+
 	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
       fun mlbdir() =
 	  let val subdir =
 	      if recompile_basislib() then "Scratch"   (* avoid overwriting other files *)
 	      else
 		  case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p()) of
-		      (false,     true,   true,               false) => "RI_GC_PROF"
-		    | (false,     true,   false,              false) => "RI_GC"
-		    | (false,     true,   true,               true)  => "RI_GC_TP_PROF"
-		    | (false,     true,   false,              true)  => "RI_GC_TP"
-		    | (true,      true,   true,               false) => "RI_GEN_GC_PROF"
-		    | (true,      true,   false,              false) => "RI_GEN_GC"
+		      (false,     true,   true,               false) => maybe_prefix_RI "GC_PROF"
+		    | (false,     true,   false,              false) => maybe_prefix_RI "GC"
+		    | (false,     true,   true,               true)  => maybe_prefix_RI "GC_TP_PROF"
+		    | (false,     true,   false,              true)  => maybe_prefix_RI "GC_TP"
+		    | (true,      true,   true,               false) => maybe_prefix_RI "GEN_GC_PROF"
+		    | (true,      true,   false,              false) => maybe_prefix_RI "GEN_GC"
 		    | (true,      _,      _,                  _)     => die "Illegal combination of generational garbage collection and tagged pairs"
-		    | (false,     false,  true,               _)     => "RI_PROF"
-		    | (false,     false,  false,              _)     => "RI"
+		    | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
+		    | (false,     false,  false,              _)     => if region_inference() then "RI"
+                                                                        else "NO"
 	  in "MLB" ## subdir
 	  end
     end
