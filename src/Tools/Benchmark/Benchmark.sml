@@ -35,16 +35,16 @@ structure RM : RESULT_MAP =
 
 structure Benchmark =
   struct
-    type report = {mu_report:MemUsage.report,gc:Time.time,gcnum:int}
+    type report = {mu_report:MemTime.report,gc:Time.time,gcnum:int}
     fun add_report (x:report,y:report) : report =
-        {mu_report=MemUsage.add_report(#mu_report x,#mu_report y),
+        {mu_report=MemTime.add_report(#mu_report x,#mu_report y),
          gc=Time.+(#gc x,#gc y),
          gcnum= #gcnum x + #gcnum y}
     fun div_report (x:report,n) : report =
-        {mu_report=MemUsage.div_report(#mu_report x,n),
-         gc=MemUsage.div_time(#gc x,n),
+        {mu_report=MemTime.div_report(#mu_report x,n),
+         gc=MemTime.div_time(#gc x,n),
          gcnum= #gcnum x div n}
-    val zero_report = {mu_report=MemUsage.zero_report,
+    val zero_report = {mu_report=MemTime.zero_report,
                        gc=Time.zeroTime,
                        gcnum=0}
 
@@ -98,7 +98,7 @@ structure Benchmark =
 
     fun execute {cmd,args,out_file} : report =
         let val eout_file = out_file ^ ".stderr"
-            val my_report = MemUsage.memUsage {cmd=cmd,args=args,out_file=out_file, eout_file=SOME eout_file}
+            val my_report = MemTime.memTime {cmd=cmd,args=args,out_file=out_file, eout_file=SOME eout_file}
             val (gc,gcnum) = read_stderr eout_file
         in {mu_report=my_report,
             gc=gc,
@@ -396,6 +396,10 @@ structure Benchmark =
 	   ; print "\n"
 	   ; print "EXAMPLE:\n"
 	   ; print "  kitbench -mlkit:-dangle -scratch: -smlnj kkb36c.sml.\n"
+	   ; print "\n"
+	   ; print "ENVIRONMENT:\n"
+           ; print "  kitbench makes use of the environment variable MLKIT_ROOT\n"
+           ; print "  to locate the MLKit compiler and standard library.\n"
 	   ; OS.Process.failure)
 	 | SOME (inputs, cs, out) =>
 	  let val ps = sourceFiles inputs
