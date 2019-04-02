@@ -332,7 +332,7 @@ typedef Ro* Region;
 Region polymorphism
 -------------------
 Regions can be passed to functions at runtime. The machine value that represents
-a region in this situation is a 32 bit word. The least significant bit is 1
+a region in this situation is a 64 bit word. The least significant bit is 1
 iff the region is infinite. The second least significant bit is 1 iff stores
 into the region should be preceded by emptying the region of values before
 storing the new value (this is called storing a value at the {\em bottom}
