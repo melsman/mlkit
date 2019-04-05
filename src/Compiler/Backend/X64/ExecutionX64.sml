@@ -68,15 +68,16 @@ structure ExecutionX64: EXECUTION =
     val _ = Flags.add_string_entry
 	let val macgcc = "gcc -Wl,-no_pie,-stack_size,0x10000000,-stack_addr,0xc0000000"
 	    val gcc = if onmac_p() then macgcc
-		      else "gcc"
+		      else "gcc -no-pie"
 	in
 	    {long="c_compiler", short=SOME "cc", item=ref gcc,
 	     menu=["Control", "C compiler (used for linking)"],
 	     desc="This option specifies which C compiler is\n\
 		  \used for linking. When linking with c++\n\
 		  \libraries, 'g++' is the linker you want.\n\
-		  \On Linux the default is 'gcc', whereas on\n\
-                  \Mac OS X, the default is '" ^ macgcc ^ "'."}
+		  \On Linux the default is 'gcc -no-pie',\n\
+                  \whereas on macOS, the default is\n\
+                  \'" ^ macgcc ^ "'."}
 	end
 
     val _ = Flags.add_string_entry
@@ -87,7 +88,7 @@ structure ExecutionX64: EXECUTION =
 	    {long="assembler", short=SOME "as", item=ref ass,
 	     menu=["Control", "Assembler command"],
 	     desc="This option specifies the assembler used.\n\
-		  \On Linux the default is '" ^ linux_as ^ "'. On Mac OS X,\n\
+		  \On Linux the default is '" ^ linux_as ^ "'. On macOS,\n\
                   \the default is '" ^ mac_as ^ "'."}
 	end
 
