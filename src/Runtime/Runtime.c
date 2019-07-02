@@ -48,44 +48,44 @@ die2 (const char *s1, const char* s2)
   exit(-1);
 }
 
-static struct rlimit limit;
+// static struct rlimit limit;
 
-void
-setStackSize(rlim_t size)
-{
-  int res;
-  char *bad;
-  struct rlimit lim;
-  struct rlimit oldlim;
-  res = getrlimit(RLIMIT_STACK, &oldlim);
-  if (res == -1)
-  {
-    bad = strerror(errno);
-    die2("setStackSize(1)", bad);
-  }
-  lim.rlim_cur = oldlim.rlim_max;
-  lim.rlim_max = oldlim.rlim_max;
-  res = setrlimit(RLIMIT_STACK, &lim);
-  if (res == -1)
-  {
-    bad = strerror(errno);
-    die2("setStackSize(2)", bad);
-  }
-  res = getrlimit(RLIMIT_STACK, &limit);
-  if (res == -1)
-  {
-    bad = strerror(errno);
-    die2("setStackSize(2)", bad);
-  }
-  // printf("Stack size: %llu; %lluMb\n", limit.rlim_cur, limit.rlim_cur / 1024 / 1024);
-  return;
-}
+/* void */
+/* setStackSize(rlim_t size) */
+/* { */
+/*   int res; */
+/*   char *bad; */
+/*   struct rlimit lim; */
+/*   struct rlimit oldlim; */
+/*   res = getrlimit(RLIMIT_STACK, &oldlim); */
+/*   if (res == -1) */
+/*   { */
+/*     bad = strerror(errno); */
+/*     die2("setStackSize(1)", bad); */
+/*   } */
+/*   lim.rlim_cur = oldlim.rlim_max; */
+/*   lim.rlim_max = oldlim.rlim_max; */
+/*   res = setrlimit(RLIMIT_STACK, &lim); */
+/*   if (res == -1) */
+/*   { */
+/*     bad = strerror(errno); */
+/*     die2("setStackSize(2)", bad); */
+/*   } */
+/*   res = getrlimit(RLIMIT_STACK, &limit); */
+/*   if (res == -1) */
+/*   { */
+/*     bad = strerror(errno); */
+/*     die2("setStackSize(3)", bad); */
+/*   } */
+/*   // printf("Stack size: %llu; %lluMb\n", limit.rlim_cur, limit.rlim_cur / 1024 / 1024); */
+/*   return; */
+/* } */
 
-void
-setStackSizeUnlimited(void)
-{
-  return setStackSize(RLIM_INFINITY);
-}
+// void
+// setStackSizeUnlimited(void)
+// {
+//  return setStackSize(RLIM_INFINITY);
+// }
 
 long
 terminateML (long status)
@@ -363,7 +363,7 @@ main(int argc, char *argv[])
   if ((((double)Max_Int) != Max_Int_d) || (((double)Min_Int) != Min_Int_d))
     die("main - integer configuration is erroneous");
 
-  setStackSizeUnlimited();
+  // setStackSizeUnlimited();
 
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
 
