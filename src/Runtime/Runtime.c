@@ -68,8 +68,11 @@ setStackSize(rlim_t size)
   res = setrlimit(RLIMIT_STACK, &lim);
   if (res == -1)
   {
-    bad = strerror(errno);
-    die2("setStackSize(2)", bad);
+    return;  // return silently in case of an error; on
+             // macOS, the call fails, but the stack should already be
+             // big in size (set during linking)
+    //bad = strerror(errno);
+    //die2("setStackSize(2)", bad);
   }
   res = getrlimit(RLIMIT_STACK, &limit);
   if (res == -1)
