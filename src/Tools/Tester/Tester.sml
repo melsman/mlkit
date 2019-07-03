@@ -99,6 +99,7 @@ structure Tester : TESTER =
 	    let val entries = CompilerTimings.from_file "KITtimings"
 	    in TestReport.add_comptime_line {name=filepath, entries=entries}
 	    end handle CompilerTimings.ReadTimingsError s => (msgErr s; ())
+                     | Time.Time => (msgErr "Time raised by maybe_report_comptimes"; ())
 	  else ()
 
 	val exe_file = "./runexe"
@@ -130,6 +131,9 @@ structure Tester : TESTER =
 					      real=real,user=user,sys=sys}
 
 		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s);
+				      TestReport.add_runtime_bare_line(file_label,false))
+                         | Time.Time =>
+                                     (msgErr ("Time raised during execution of " ^ exe_file);
 				      TestReport.add_runtime_bare_line(file_label,false))
 	      else
 		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file ^ " 2>&1" (*".out"*))
