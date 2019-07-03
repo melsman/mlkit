@@ -165,29 +165,29 @@ structure Tester : TESTER =
 				     \    compilation.\n")
 
     fun main (progname, args) =
-      case process_args args
-	of SOME (kitexe,testfile,flags) =>
-	  let val _ = (reset_error_counter())
-            handle Time.Time => (print "bad time4\n" ; raise Fail "bad")
-	    val _ = (TestReport.reset())
-            handle Time.Time => (print "bad time5\n" ; raise Fail "bad")
-	  in (msglog:=TextIO.openOut(log);
-	      case TestFile.parse testfile
-		of NONE => OS.Process.failure
-		 | SOME (testfile_string,entries) =>
-		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
+        case process_args args of
+            SOME (kitexe,testfile,flags) =>
+	    let val _ = (reset_error_counter())
+                        handle Time.Time => (print "bad time4\n" ; raise Fail "bad")
+	        val _ = (TestReport.reset())
+                        handle Time.Time => (print "bad time5\n" ; raise Fail "bad")
+	    in (msglog:=TextIO.openOut(log);
+	        case TestFile.parse testfile
+		 of NONE => OS.Process.failure
+		  | SOME (testfile_string,entries) =>
+		    let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
 		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
-		  in (app (process_entry flags) entries)
-            handle Time.Time => (print "bad time2\n" ; raise Fail "bad2") ;
-		    msgErrors();
-		    (TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe})
-            handle Time.Time => (print "bad time1\n" ; raise Fail "bad1")
-        ;
-(*		    if noOfErrors() = 0 then OS.Process.success else OS.Process.failure *)
-		    OS.Process.success   (* to make make work! mael 2001-10-22 *)
-		  end) before (TextIO.closeOut (!msglog))
-	  end
-	 | NONE => (print_usage progname; OS.Process.failure)
+		    in (app (process_entry flags) entries)
+                       handle Time.Time => (print "bad time2\n" ; raise Fail "bad2") ;
+		       msgErrors();
+		       (TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe})
+                       handle Time.Time => (print "bad time1\n" ; raise Fail "bad1")
+                       ;
+                         (*		    if noOfErrors() = 0 then OS.Process.success else OS.Process.failure *)
+		         OS.Process.success   (* to make make work! mael 2001-10-22 *)
+		    end) before (TextIO.closeOut (!msglog))
+	    end
+	  | NONE => (print_usage progname; OS.Process.failure)
 
 (*
     fun install() =
