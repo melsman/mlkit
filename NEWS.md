@@ -1,5 +1,10 @@
 ## MLKit NEWS
 
+* mael 2019-07-03: Fixed bug on macOS wrt setting stacksize.
+
+* mael 2019-07-03: Fixed bug on macOS wrt Time exception during
+  timings.
+
 * mael 2019-01-22: MLKit now uses a native 64bit backend.
 
 * mael 2018-08-25: Support for automatic deployment of binary builds.
