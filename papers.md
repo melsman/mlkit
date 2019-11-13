@@ -6,6 +6,8 @@ group: navigation
 ---
 {% include JB/setup %}
 
+* Martin Elsman, Philip Munksgaard, and Ken Friis Larsen. __Experience Report: Type-Safe Multi-Tier Programming with Standard ML Modules__. In _Proceedings of the ML Family Workshop (ML '18)_. St. Louis, Missouri, USA. September 2018. [PDF](/pdf/final-ml18.pdf).
+
 * Martin Elsman. __SMLtoJs: Hosting a Standard ML Compiler in a Web
 Browser__. In _ACM SIGPLAN 2011 International Workshop on Programming
 Language And Systems Technologies for Internet Clients
@@ -92,13 +94,15 @@ Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
 
+* Martin Elsman and Niels Hallenberg. __Combining Region Inference and Generational Garbage Collection__. Department of Computer Science, University of Copenhagen (DIKU), Denmark. DIKU Technical report 2019/01. ISSN 0107-8283. November 2019. [pdf](/pdf/gengc-techreport.pdf).
+
 * Martin Elsman. __A Framework for Cut-Off Incremental Recompilation and
 Inter-Module Optimization__. IT University of Copenhagen, Denmark. IT
 University Technical Report. April 2008. [pdf]({{BASE_PATH}}/pdf/sepcomp_tr.pdf), [bibtex]({{BASE_PATH}}/pdf/sepcomp_tr.bibtex.txt).
 
 * Martin Elsman, Niels Hallenberg, and Carsten Varming. __SMLserver — A
 Functional Approach to Web Publishing (Second Edition)__. IT University
-of Copenhagen, Denmark. April, 2007. [pdf]({{BASE_PATH}}/pdf/smlserver-book-20070410.pdf), [bibtex]({{BASE_PATH}}/pdf/smlserver-book-20070410.bibtex.txt). 
+of Copenhagen, Denmark. April, 2007. [pdf]({{BASE_PATH}}/pdf/smlserver-book-20070410.pdf), [bibtex]({{BASE_PATH}}/pdf/smlserver-book-20070410.bibtex.txt).
 
 * Martin Elsman. __Type-Specialized Serialization with Sharing__. IT
 University of Copenhagen. IT University Technical Report

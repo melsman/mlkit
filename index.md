@@ -73,14 +73,14 @@ layout: front
        </div>
        <div class="col-lg-4">
 	 <h3>No-Overhead Modules</h3>
-	   <p>The MLKit compiles Standard ML Modules, using a compilation scheme called 
+	   <p>The MLKit compiles Standard ML Modules, using a compilation scheme called
 	      <a href="{{BASE_PATH}}/staticinterp.html">Static Interpretation</a>, which eliminates Modules entirely at compile
 	      time.</p>
        </div>
        <div class="col-lg-4">
 	 <h3>Two Backends</h3>
 	   <p>Two backends are provided, one that
-	      generates x86 native machine code for the Linux and MacOS operating
+	      generates x64 native machine code for the Linux and macOS operating
 	      systems and one that generates bytecode.</p>
       </div>
     </div>
@@ -97,7 +97,7 @@ layout: front
    <div class="panel panel-default">
       <div class="panel-heading">News</div>
       <table class="table">
-	<tr><td><b>2016-03-09:</b> <a href="https://github.com/melsman/mlkit/releases/tag/mlkit-4.3.8">MLKit 4.3.8</a> is released.</td></tr>
+	<tr><td><b>2019-07-03:</b> <a href="https://github.com/melsman/mlkit/releases/tag/mlkit-4.4.3">MLKit 4.4.3</a> is released. The MLKit now generates x64 assembler on Linux and macOS...</td></tr>
 	<tr><td><b>2014-10-02:</b> Read how <a href="http://www.elsman.com/lessons/2014/10/02/getting-started-with-smackage">MLKit works nicely with Smackage</a>!</td></tr>
 	<tr><td><b>2014-05-28:</b> The MLKit has moved to Github!</td></tr>
 	<tr><td><b>2013-09-16:</b> On Mac/Homebrew, just write brew install mlkit to install the MLKit...</td></tr>
