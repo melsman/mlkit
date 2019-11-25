@@ -6,6 +6,10 @@ group: navigation
 ---
 {% include JB/setup %}
 
+* Martin Elsman and Niels Hallenberg. __On the Effects of Integrating Region-based Memory Management and Generational Garbage Collection in ML__. In
+_International Symposium on Practical Aspects of Declarative Languages
+(PADL '20)_. New Orleans, USA. January, 2020.
+
 * Martin Elsman, Philip Munksgaard, and Ken Friis Larsen. __Experience Report: Type-Safe Multi-Tier Programming with Standard ML Modules__. In _Proceedings of the ML Family Workshop (ML '18)_. St. Louis, Missouri, USA. September 2018. [PDF](/pdf/final-ml18.pdf).
 
 * Martin Elsman. __SMLtoJs: Hosting a Standard ML Compiler in a Web
