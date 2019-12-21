@@ -9,6 +9,11 @@
 #include "GC.h"
 #include "CommandLine.h"
 #include "Locks.h"
+
+#ifdef PARALLEL
+#include "Spawn.h"
+#endif
+
 #include "Runtime.h"
 
 /*

@@ -2824,6 +2824,42 @@ struct
                                                                            precision=32},d,size_ff,C)
                       | _ => die ("PRIM(" ^ name ^ ") not implemented")))
                   end
+               | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
+                 let
+                   (* The call_closure C function takes one argument (an ML closure). It
+                    * extracts the closure pointer and the closure environment from the argument
+                    * and makes an ML call to the function represented by the closure. *)
+                   val name = "spawnone"
+                   val offset_codeptr = if BI.tag_values() then "8" else "0"
+                   val call_closure_lab = new_local_lab (name ^ "_call_closure")
+                   val return_lab = new_local_lab ("return_" ^ name)
+                   val _ = add_static_data ([I.dot_text,
+                                             I.dot_align 8,
+                                             (*I.dot_globl call_closure_lab, (* The C function entry *) *)
+                                             I.lab call_closure_lab]
+                                            @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
+                                            @ [I.movq(R rdi,R tmp_reg0)]
+                                            (* now initialize thread local data to point to the threadinfor struct *)
+                                            @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
+                                              [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
+                                               I.movq(D("0",rdi),R rdi),             (* extract closure from threadinfo arg *)
+                                               I.movq(R rdi,R rax),                  (* move closure into closure register *)
+                                               I.movq(D(offset_codeptr,rdi), R r10), (* extract code pointer into %r10 from C arg *)
+                                               I.push (LA return_lab),               (* push return address *)
+                                               I.jmp (R r10),                        (* call ML function *)
+                                               I.lab return_lab,                     (* ML result is now in rdi *)
+                                               I.movq(R rdi, R tmp_reg0)]
+                                            @ compile_c_call_prim("pthread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
+                                              [I.movq(I "0", R rax)]                 (* move result to %rax *)
+                                            @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
+                                            @ [I.ret])))
+
+                 in I.movq(LA call_closure_lab, R tmp_reg0) ::
+                    move_aty_into_reg(arg, tmp_reg1, size_ff,
+                    (* call thread_create function, which will create a thread from the
+                     * argument function by applying it to the second argument *)
+                    compile_c_call_prim("thread_create", [SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1], SOME res, size_ff, tmp_reg1, C))
+                 end
                | LS.CCALL{name,args,rhos_for_result,res} =>
                   let
                     fun comp_c_call(all_args,res,C) =

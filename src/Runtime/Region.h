@@ -369,10 +369,13 @@ extern Rp * freelist;
 #define TOP_REGION   (*topRegionCell)
 void free_region_pages(Rp* first, Rp* last);
 #else
+#ifdef PARALLEL
+#define TOP_REGION   (thread_info()->top_region)
+#else
 extern Ro * topRegion;
 #define TOP_REGION   topRegion
 #endif
-
+#endif
 
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *

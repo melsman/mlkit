@@ -32,6 +32,10 @@
 #include "Interp.h"
 #endif
 
+#ifdef PARALLEL
+#include "Spawn.h"
+#endif
+
 int
 die (const char *s)
 {
@@ -370,6 +374,10 @@ main(int argc, char *argv[])
   setStackSizeUnlimited();
 
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
+
+#ifdef PARALLEL
+  thread_init_all();
+#endif
 
 #ifdef REGION_PAGE_STAT
 rpMap = regionPageMapNew();
