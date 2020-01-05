@@ -23,8 +23,10 @@ typedef struct {
   int tid;
   Ro *top_region;
   pthread_t thread;
+  pthread_mutex_t mutex;
   void* retval;
   int joined;
+  Rp* freelist;
 } ThreadInfo;
 
 // Thread-local information; each thread has threadinfo associated
