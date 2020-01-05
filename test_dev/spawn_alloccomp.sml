@@ -117,29 +117,11 @@ fun myf n = map (fn x => x+1) (iota n)
 fun cp nil = nil
   | cp (x::xs) = x :: cp xs
 
-fun myfpmap nil = nil
-  | myfpmap (x::xs) =
-    T.spawn (fn () => myf x)
-            (fn t =>
-                let val xs' = myfpmap xs
-                in cp(T.get t) :: xs'
-                end)
 fun length xs =
     let fun len (nil,n) = n
           | len (x::xs,n) = len(xs,n+1)
     in len(xs,0)
     end
-
-(*
-fun split xs =
-    let val h = length xs div 2
-        fun tk (nil,n,acc) = (rev acc,nil)
-          | tk (x::xs,n,acc) =
-            if n < 1 then (rev acc,x::cp xs)
-            else tk (xs,n-1,x::acc)
-    in tk (xs,h,nil)
-    end
-*)
 
 fun split vs =
     let fun sp (x::y::vs,xs,ys) = sp (vs,x::xs,y::ys)
@@ -147,16 +129,6 @@ fun split vs =
           | sp (nil,xs,ys) = (xs,ys)
     in sp (vs,nil,nil)
     end
-
-(*
-fun merge (xs,ys) =
-    case (xs,ys) of
-        (nil,_) => cp ys
-      | (_,nil) => cp xs
-      | (x::xs',y::ys') =>
-        if x < y then x :: merge (xs',ys)
-        else y :: merge (xs,ys')
-*)
 
 fun nil @ ys = ys
   | (x::xs) @ ys = x :: (xs@ys)
@@ -179,65 +151,8 @@ fun smsort nil = nil
     in merge (smsort l, smsort r)
     end
 
-fun pmsort [] : int list = []
-  | pmsort [x] = [x]
-  | pmsort xs =
-    let val (l,r) = split xs
-    in T.spawn (fn() => pmsort l) (fn l =>
-       T.spawn (fn() => pmsort r) (fn r =>
-       merge (T.get l, T.get r)))
-    end
-
-fun pdmsort p [] : int list = []
-  | pdmsort p [x] = [x]
-  | pdmsort p xs =
-    let val (l,r) = split xs
-    in if p <= 1 then merge (pdmsort p l, pdmsort p r)
-       else T.spawn (fn() => pdmsort (p div 2) l) (fn l =>
-            T.spawn (fn() => pdmsort (p div 2) r) (fn r =>
-            merge (T.get l, T.get r)))
-    end
-
-fun pdmsort2 p [] : int list = []
-  | pdmsort2 p [x] = [x]
-  | pdmsort2 p xs =
-    let val (l,r) = split xs
-    in if p <= 1 then merge (pdmsort2 p l, pdmsort2 p r)
-       else T.spawn (fn() => pdmsort2 (p div 2) l) (fn l => let val r = pdmsort2 (p div 2) r
-                                                            in merge (T.get l, r)
-                                                            end)
-    end
-
 fun flatten nil = nil
   | flatten ((x,y)::ps) = x :: y :: flatten ps
-
-fun splitd d xs =
-    let fun spl d xss =
-            if d < 1 then xss
-            else let val ps = map split xss
-                 in spl (d-1) (flatten ps)
-                 end
-    in spl d [xs]
-    end
-
-fun merges nil = nil
-  | merges [x] = x
-  | merges (x::xs) = merge(x,merges xs)
-
-fun psort d xs =
-    let val xss = splitd d xs
-        val () = printNum (length xss)
-        val xss = pmap smsort xss
-    in merges xss
-    end
-
-fun ppsort xs =
-    let val (xs1,xs2) = split xs
-        val (xs11,xs12) = split xs1
-        val (xs21,xs22) = split xs2
-        val [xs11,xs12,xs21,xs22] = pmap smsort [xs11,xs12,xs21,xs22]
-    in merge(merge(xs11,xs12),merge(xs21,xs22))
-    end
 
 fun rand (a,b) p = a + ((p+13) * 16807) mod (b-a)
 
@@ -250,8 +165,15 @@ fun randlist (a,b) n p =
     in gen (n,p,nil)
     end
 
-fun spawns_pdmsort2 p = if p <= 1 then 0
-                        else 1 + 2 * spawns_pdmsort2 (p div 2)
+fun comp (n:int) : int =
+    let val xs = randlist (1,20000) n 0
+        val s = foldl (op +) 0 xs
+    in s div n
+    end
+
+fun compk k n =
+    if k <= 1 then comp n
+    else comp n + compk (k-1) n
 
 fun prList xs =
     (map (fn x => printNum x) xs
@@ -263,17 +185,14 @@ fun chk (x::(ys as y::xs)) =
   | chk _ = "ok\n"
 
 val () =
-    let val P = 16
+    let val P = 8
+        val N = 200000
         val () = print "generating input...\n"
-        val xs = randlist (10,100) 500000 0
-        val () = print "starting merge sort...\n"
-        val res = pdmsort2 P xs
-        val () = print "checking result...\n"
-        val () = print (chk res);
-    in (*prList xs;
-       print "Sorted:\n";
-       prList res;*)
-       print "goodbye.\n";
-       printNum (spawns_pdmsort2 P)
+        val is = repl P N
+        val () = print "computations...\n"
+        val rs = pmap (compk 100) is
+        val () = print "printing results...\n"
+    in prList rs;
+       print "goodbye.\n"
     end
 end

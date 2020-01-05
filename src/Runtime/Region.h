@@ -367,13 +367,16 @@ extern Rp * freelist;
 
 #ifdef KAM
 #define TOP_REGION   (*topRegionCell)
+#define FREELIST     freelist
 void free_region_pages(Rp* first, Rp* last);
 #else
 #ifdef PARALLEL
 #define TOP_REGION   (thread_info()->top_region)
+#define FREELIST     (thread_info()->freelist)
 #else
 extern Ro * topRegion;
 #define TOP_REGION   topRegion
+#define FREELIST     freelist
 #endif
 #endif
 

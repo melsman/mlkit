@@ -53,6 +53,7 @@ thread_init_all(void) {
   ti->arg = NULL;
   ti->tid = 0;
   ti->top_region = NULL;
+  ti->freelist = NULL;
   ti->thread = (pthread_t)NULL;
   ti->retval = NULL;
   ti->joined = 0;
@@ -114,6 +115,18 @@ thread_join(pthread_t t) {
   return value;
 }
 
+// append_pages(pages1,pages2) assumes that pages1 is non-empty
+Rp *append_pages(Rp *pages1, Rp *pages2) {
+  Rp *tmp = pages1;
+  if (tmp == NULL) {
+    printf("ERROR: Spawn.c: append_pages; expecting pages\n");
+  }
+  while ( tmp->n ) {
+    tmp = tmp->n;
+  }
+  tmp->n = pages2;
+  return pages1;
+}
 
 // thread_get(ti) blocks until the given thread terminates and returns
 // the value computed by the thread. The first time thread_get is
@@ -123,11 +136,20 @@ thread_join(pthread_t t) {
 // on a ti value that was not returned by thread_create.
 void * thread_get(ThreadInfo *ti)
 {
+  pthread_mutex_lock(&(ti->mutex));
   // memo: use a mutex; different threads may call get on a thread
   if (ti->joined == 0) {
     ti->retval = thread_join(ti->thread);
     ti->joined = 1;
+    if (ti->freelist) {
+      // take lock and add pages to global freelist
+      LOCK_LOCK(FREELISTMUTEX);
+      freelist = append_pages(ti->freelist,freelist);
+      LOCK_UNLOCK(FREELISTMUTEX);
+      ti->freelist = NULL;
+    }
   }
+  pthread_mutex_unlock(&(ti->mutex));
   return ti->retval;
 }
 
@@ -147,6 +169,11 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
   ti->joined = 0;
   ti->tid = ++thread_counter;   // atomic?
   ti->top_region = NULL;
+  ti->freelist = NULL;
+  if (pthread_mutex_init(&(ti->mutex), NULL) != 0) {
+    printf("ERROR: thread_create: mutex init has failed\n");
+    exit(-1);
+  }
   thread_new(f,ti);
   tdebug("[Exiting thread_create]\n");
   return ti;
@@ -163,6 +190,7 @@ function_test(void* f) {
 
 void
 thread_free(ThreadInfo* t) {
+  pthread_mutex_destroy(&(t->mutex));
   pthread_detach(t->thread);
   free((void*)t);
 }
