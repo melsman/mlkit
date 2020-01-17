@@ -2839,7 +2839,7 @@ struct
                                              I.lab call_closure_lab]
                                             @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
                                             @ [I.movq(R rdi,R tmp_reg0)]
-                                            (* now initialize thread local data to point to the threadinfor struct *)
+                                            (* now initialize thread local data to point to the threadinfo struct *)
                                             @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
                                               [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
                                                I.movq(D("0",rdi),R rdi),             (* extract closure from threadinfo arg *)
