@@ -73,7 +73,7 @@
   fun addUnicodeChar (arg, yypos, yytext) =
     LexUtils.addUnicodeChar (positionOfStream (arg, yypos), yytext) arg
 
-  fun has_quote s = 
+  fun has_quote s =
     let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
       handle _ => false
     in loop 0
@@ -113,6 +113,7 @@ Real		   = ({DecInteger} "." {DecPosInteger} {Exp}?)
 NormalId	   = {Letter} ({Letter} | {Digit} | [_'])*;
 NormalIdOrOther   = "_IntInf" | "_export" | {NormalId};
 TyVar		   = "'" ({Letter} | {Digit} | [_'])*;
+RegVar		   = "`" ({Letter} | {Digit} | [_'])*;
 Symbol		   = [-!%&$#+<=>?@\\~`^|*:/];
 SymbolicId	   = {Symbol}+;
 AnyId		   = {NormalId} | {SymbolicId};
@@ -169,6 +170,8 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 				   arg, yypos, yytext));
 <INITIAL>{TyVar}	=> (shifting "TYVAR(...)";
 			    token1(TYVAR, yytext, arg, yypos, yytext));
+<INITIAL>{RegVar}	=> (shifting "REGVAR(...)";
+			    token1(REGVAR, yytext, arg, yypos, yytext));
 <INITIAL>"\""		=> (YYBEGIN S; LexUtils.clearString arg; continue());
 <INITIAL>"(*"		=> (YYBEGIN C; LexUtils.newComment arg; continue());
 
@@ -180,7 +183,7 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 <INITIAL>{QualifiedIdNoQuote} => (token_qualid(yytext,arg,yypos));
 
 <INITIAL>"`"            => ((* a starting quote *)
-                            YYBEGIN Q; 
+                            YYBEGIN Q;
                             LexUtils.clearString arg;
                             token0 (BEGINQ,arg,yypos,yytext));
 
@@ -199,7 +202,7 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 <Q>\n                   => (LexUtils.addChars yytext arg; continue());
 
 <AQ>{VWhiteSpace}       => (continue());
-<AQ>{NormalId}          => (YYBEGIN Q; LexUtils.clearString arg; 
+<AQ>{NormalId}          => (YYBEGIN Q; LexUtils.clearString arg;
 			    token1(AQID, yytext, arg, yypos, yytext));
 <AQ>"("                 => (YYBEGIN INITIAL;
 			    LexUtils.parStackPush (ref 1) arg;

@@ -60,9 +60,9 @@ structure OpacityElim: OPACITY_ELIM =
      * already done elaboration at this stage. One can prove that
      * opaque signature constraints only limit what programs
      * elaborate. The translation here also alter type information
-     * recorded during elaboration. Martin Elsman 13/10/97 
+     * recorded during elaboration. Martin Elsman 13/10/97
      * --------------------------------------------------------------------- *)
-     
+
     fun on_info(rea, elab_info) =
       case ElabInfo.to_TypeInfo elab_info
 	of SOME type_info => ElabInfo.plus_TypeInfo elab_info (ElabInfo.TypeInfo.on_TypeInfo(rea,type_info))
@@ -75,7 +75,7 @@ structure OpacityElim: OPACITY_ELIM =
       let val (phrase', rea') = elim(rea,phrase)
       in (SOME phrase', rea')
       end
-      | elim_opt elim (rea, NONE) = (NONE, Id) 
+      | elim_opt elim (rea, NONE) = (NONE, Id)
 
     fun elim_opt' elim (rea, SOME phrase) = SOME(elim(rea,phrase))
       | elim_opt' elim (rea, NONE) = NONE
@@ -84,7 +84,7 @@ structure OpacityElim: OPACITY_ELIM =
       let val (phrase', oenv') = elim(oenv,phrase)
       in (SOME phrase', oenv')
       end
-      | elim_opt_oenv elim (oenv, NONE) = (NONE, OpacityEnv.empty) 
+      | elim_opt_oenv elim (oenv, NONE) = (NONE, OpacityEnv.empty)
 
 
 		     (* ------- *)
@@ -93,12 +93,13 @@ structure OpacityElim: OPACITY_ELIM =
 
    local open DecGrammar
    in
-     
+
      fun elim_atexp(rea, atexp) =
        case atexp
-	 of SCONatexp(i,scon) => (SCONatexp(on_info(rea,i),scon), Id)         
-	  | IDENTatexp (i, longid_op_opt) => (IDENTatexp(on_info(rea,i), longid_op_opt), Id)
-	  | RECORDatexp (i,exprowopt) => 
+	 of SCONatexp(i,scon) => (SCONatexp(on_info(rea,i),scon), Id)
+	  | IDENTatexp (i, longid_op_opt, regvars_opt) =>
+            (IDENTatexp(on_info(rea,i), longid_op_opt, regvars_opt), Id)
+	  | RECORDatexp (i,exprowopt) =>
 	   let val (exprowopt', rea') = elim_opt elim_exprow (rea,exprowopt)
 	       val i' = on_info(rea,i)
 	   in (RECORDatexp(i',exprowopt'), rea')
@@ -124,7 +125,7 @@ structure OpacityElim: OPACITY_ELIM =
 
      and elim_exp(rea, exp) =
        case exp
-	 of ATEXPexp(i,atexp) => 
+	 of ATEXPexp(i,atexp) =>
            let val (atexp', rea') = elim_atexp(rea,atexp)
 	       val i' = on_info(rea,i)
 	   in (ATEXPexp(i',atexp'), rea')
@@ -145,7 +146,7 @@ structure OpacityElim: OPACITY_ELIM =
 	       val (match',rea'') = elim_match(rea,match)
 	       val i' = on_info(rea,i)
 	   in (HANDLEexp(i',exp',match'), rea' oo rea'')
-	   end	   
+	   end
 	  | RAISEexp(i,exp) =>
 	   let val (exp',rea') = elim_exp(rea,exp)
 	       val i' = on_info(rea,i)
@@ -180,7 +181,7 @@ structure OpacityElim: OPACITY_ELIM =
 
      and elim_dec(rea,dec) =
        case dec
-	 of VALdec(i,tyvars,valbind) => 
+	 of VALdec(i,tyvars,valbind) =>
 	   let val (valbind', rea') = elim_valbind(rea,valbind)
 	       val i' = on_info(rea,i)
 	   in (VALdec(i',tyvars,valbind'),rea')
@@ -190,11 +191,11 @@ structure OpacityElim: OPACITY_ELIM =
            let val i' = on_info(rea,i)
 	   in (TYPEdec(i',typbind), Id)
 	   end
-	   | DATATYPEdec(i,datbind) => 
+	   | DATATYPEdec(i,datbind) =>
 	   let val i' = on_info(rea,i)
 	   in (DATATYPEdec(i',datbind), Id)
 	   end
-	   | DATATYPE_REPLICATIONdec(i,tycon,longtycon) => 
+	   | DATATYPE_REPLICATIONdec(i,tycon,longtycon) =>
 	   let val i' = on_info(rea,i)
 	   in (DATATYPE_REPLICATIONdec(i',tycon,longtycon), Id)
 	   end
@@ -205,7 +206,7 @@ structure OpacityElim: OPACITY_ELIM =
 	       val (TE,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo i')
 				  of SOME(TypeInfo.ABSTYPE_INFO (TE,rea)) => (TE,rea)
 				   | _ => die "elim_dec.ABSTYPE.no tyenv info"
-	       val datatypedecinfo = ElabInfo.plus_TypeInfo dummyinfo (TypeInfo.TYENV_INFO TE) 
+	       val datatypedecinfo = ElabInfo.plus_TypeInfo dummyinfo (TypeInfo.TYENV_INFO TE)
 	       val (TE',typbindopt) = TE.Fold (fn (tycon,tystr) => fn (TE,typbindopt) =>
 					       let val theta = TyStr.to_theta tystr
 						   val tystr' = TyStr.from_theta_and_VE(theta,VE.empty)
@@ -218,9 +219,9 @@ structure OpacityElim: OPACITY_ELIM =
 					       end) (TE.empty,NONE) TE
 	       val typbind = case typbindopt
 			       of SOME typbind => typbind
-				| NONE => die "elim_dec.ABSTYPE.typbindopt is NONE" 
+				| NONE => die "elim_dec.ABSTYPE.typbindopt is NONE"
 	       val typedecinfo = ElabInfo.plus_TypeInfo dummyinfo (TypeInfo.TYENV_INFO TE')
-	   in (LOCALdec(dummyinfo, 
+	   in (LOCALdec(dummyinfo,
 			DATATYPEdec(datatypedecinfo,datbind),
 			SEQdec(dummyinfo,
 			       TYPEdec(typedecinfo,typbind),
@@ -233,9 +234,9 @@ structure OpacityElim: OPACITY_ELIM =
 	       val i' = on_info(rea,i)
 	   in (LOCALdec(i',dec1',dec2'), rea' oo rea'')
 	   end
-	   | OPENdec(i,longstridwithinfos) => 
+	   | OPENdec(i,longstridwithinfos) =>
 	   let val i' = on_info(rea,i)
-	       fun on (WITH_INFO(i,longstrid)) = WITH_INFO(on_info(rea,i), longstrid)  
+	       fun on (WITH_INFO(i,longstrid)) = WITH_INFO(on_info(rea,i), longstrid)
 	       val longstridwithinfos' = map on longstridwithinfos
 	   in (OPENdec(i',longstridwithinfos'), Id)
 	   end
@@ -249,6 +250,7 @@ structure OpacityElim: OPACITY_ELIM =
 	   | INFIXRdec _ => (dec,Id)
 	   | NONFIXdec _ => (dec,Id)
 	   | EMPTYdec _ => (dec,Id)
+	   | REGIONdec _ => (dec,Id)
 
      and elim_valbind(rea,valbind) =
        case valbind
@@ -264,7 +266,7 @@ structure OpacityElim: OPACITY_ELIM =
 	       val i' = on_info(rea,i)
 	   in (RECvalbind(i',valbind'),rea')
 	   end
-	   
+
      and elim_FValBind(rea,FVALBIND(i,FClause,FValBindopt)) =
        let val (FClause', rea') = elim_FClause(rea,FClause)
 	   val (FValBindopt', rea'') = elim_opt elim_FValBind (rea, FValBindopt)
@@ -286,13 +288,13 @@ structure OpacityElim: OPACITY_ELIM =
        case atpat
 	 of WILDCARDatpat i => WILDCARDatpat(on_info(rea,i))
 	  | SCONatpat(i,scon) => SCONatpat(on_info(rea,i),scon)
-	  | LONGIDatpat(i,longid_op_opt) => LONGIDatpat(on_info(rea,i),longid_op_opt)
+	  | LONGIDatpat(i,longid_op_opt,regvars_opt) => LONGIDatpat(on_info(rea,i),longid_op_opt,regvars_opt)
 	  | RECORDatpat(i,patrowopt) =>
-	  let val i' = on_info(rea,i) 
+	  let val i' = on_info(rea,i)
 	      val patrowopt' = elim_opt' elim_patrow (rea,patrowopt)
 	  in RECORDatpat(i', patrowopt')
 	  end
-	  | PARatpat(i,pat) => 
+	  | PARatpat(i,pat) =>
 	  let val i' = on_info(rea,i)
 	      val pat' = elim_pat(rea,pat)
 	  in PARatpat(i',pat')
@@ -310,8 +312,8 @@ structure OpacityElim: OPACITY_ELIM =
        case pat
 	 of ATPATpat(i,atpat) => ATPATpat(on_info(rea,i),elim_atpat(rea,atpat))
 	  | CONSpat(i,longid_op_opt,atpat) => CONSpat(on_info(rea,i),longid_op_opt,elim_atpat(rea,atpat))
-	  | TYPEDpat(i,pat,ty) => TYPEDpat(on_info(rea,i),elim_pat(rea,pat),ty) 
-	  | LAYEREDpat(i,id_op_opt,tyopt,pat) => LAYEREDpat(on_info(rea,i),id_op_opt,tyopt,elim_pat(rea,pat)) 
+	  | TYPEDpat(i,pat,ty) => TYPEDpat(on_info(rea,i),elim_pat(rea,pat),ty)
+	  | LAYEREDpat(i,id_op_opt,tyopt,pat) => LAYEREDpat(on_info(rea,i),id_op_opt,tyopt,elim_pat(rea,pat))
 	  | UNRES_INFIXpat _ => die "elim_pat.UNRES_INFIX"
 
    end (* local *)
@@ -358,46 +360,46 @@ structure OpacityElim: OPACITY_ELIM =
 	      val _ = pr_rea "rea'" rea'
 	      val _ = pr_rea "rea''" rea''
 *)
-	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.TRANS_CONSTRAINT_INFO E)  
+	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.TRANS_CONSTRAINT_INFO E)
 	  in (TRANSPARENT_CONSTRAINTstrexp(i',strexp',sigexp), rea'')
 	  end
-	 | APPstrexp(i, funid, strexp) => 
+	 | APPstrexp(i, funid, strexp) =>
 	  let val (strexp', rea_strexp) = elim_strexp(oenv, strexp)
 	      val rea_0 = rea_of oenv
 
 
-	      val (T, rea_funid) =                         
+	      val (T, rea_funid) =
 		case OpacityEnv.lookup_funid oenv funid
-		  of SOME(T,rea_funid) => (T, rea_funid)  
+		  of SOME(T,rea_funid) => (T, rea_funid)
 		    (*
-		     * functor body realisation; the T is the set of generative 
-		     * names in the functor body after opacity elimination; this set 
+		     * functor body realisation; the T is the set of generative
+		     * names in the functor body after opacity elimination; this set
 		     * may be either larger or smaller (in size) compared to the original
-		     * set of generative names. The realisation rea_funid maps abstract 
+		     * set of generative names. The realisation rea_funid maps abstract
 		     * names in the functor body for funid into what they stand for
 		     *)
 
 		   | NONE => die "elim_strexp.APPstrexp: lookup funid"
-	      val (rea_i, rea_g, E) =  
+	      val (rea_i, rea_g, E) =
 		case ElabInfo.to_TypeInfo i
-		  of SOME(TypeInfo.FUNCTOR_APP_INFO{rea_inst,rea_gen,Env}) => 
-		    (rea_inst, rea_gen, Env)   (* instance realisation and generativity 
-						* realisation; the E is the resulting 
+		  of SOME(TypeInfo.FUNCTOR_APP_INFO{rea_inst,rea_gen,Env}) =>
+		    (rea_inst, rea_gen, Env)   (* instance realisation and generativity
+						* realisation; the E is the resulting
 						* environment of the application. *)
 		   | _ => die "elim_strexp.APPstrexp: no info"
 	      val dom_rea_funid = Realisation_dom rea_funid
-	      val rea_g_ =                                 
+	      val rea_g_ =
 		case Realisation_inverse (Realisation_restrict dom_rea_funid rea_g)
 		  of SOME rea_g_ => rea_g_  (* inverse generativity realisation; notice that
-					     * it could be that part of the generative names 
-					     * have been resolved by the functor body realisation! *) 
+					     * it could be that part of the generative names
+					     * have been resolved by the functor body realisation! *)
 		   | NONE => die "elim_strexp.APPstrexp: cannot find inverse"
 	      val rea_g1 = Realisation_restrict_from dom_rea_funid rea_g
 		                            (* the realisation for the generative names
-					     * that are not resolved by the functor body 
+					     * that are not resolved by the functor body
 					     * realisation. *)
 	      val rea_g2 = Realisation_renaming (TyName_Set_difference T (Realisation_dom rea_g1))
-		                            (* a realisation for those generative names 
+		                            (* a realisation for those generative names
 					     * that become visible. *)
 (*
 	      val _ = print ("\nOpacity Elimination of functor application of " ^ FunId.pr_FunId funid ^ "\n\n")
@@ -452,7 +454,7 @@ structure OpacityElim: OPACITY_ELIM =
 	 | STRUCTUREstrdec(i, strbind) =>
 	  let val (strbind', rea') = elim_strbind(oenv, strbind)
 	  in (STRUCTUREstrdec(on_info(rea_of oenv,i), strbind'), rea')
-	  end	  
+	  end
 	 | LOCALstrdec(i, strdec1, strdec2) =>
 	  let val (strdec1', rea1) = elim_strdec(oenv, strdec1)
 	      val (strdec2', rea2) = elim_strdec(plus(oenv,from_rea rea1), strdec2)
@@ -469,12 +471,12 @@ structure OpacityElim: OPACITY_ELIM =
       let val (strexp', rea') = elim_strexp(oenv, strexp)
 	  val (strbindopt', rea'') = elim_opt elim_strbind(oenv, strbindopt)
       in (STRBIND(on_info(rea_of oenv,i), strid, strexp', strbindopt'), rea' oo rea'')
-      end 
+      end
 
     fun elim_funbind(oenv, FUNBIND(i, funid, strid, sigexp, strexp, funbindopt)) =
       let val rea = rea_of oenv
 	  fun pr s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
-	  val (argE, elabB, elabB', T, resE) = 
+	  val (argE, elabB, elabB', T, resE) =
 	    case ElabInfo.to_TypeInfo i
 	      of SOME(TypeInfo.FUNBIND_INFO {argE, elabBref=ref elabB, T, resE, opaq_env_opt=NONE}) =>
 		((* print "\nOPACITY_ELIM-BEFORE_REA\n";
@@ -487,7 +489,7 @@ structure OpacityElim: OPACITY_ELIM =
 		   (on_Env rea argE, elabB, elabB', T, on_Env rea resE)
 		 end)
 	       | _ => die "elim_funbind.wrong type info."
-	  val (strexp',rea') = elim_strexp(oenv, strexp)      
+	  val (strexp',rea') = elim_strexp(oenv, strexp)
 	  val resE' = on_Env rea' resE
 	  val T' = TyName_Set_difference (E_tynames resE') (B_tynames elabB')
 
@@ -499,9 +501,9 @@ structure OpacityElim: OPACITY_ELIM =
 
 	  val T' = TyName_Set_difference T' tynames_initial_basis
 
-	  val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNBIND_INFO {argE=argE, elabBref=ref elabB, T=T', resE=resE', 
+	  val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNBIND_INFO {argE=argE, elabBref=ref elabB, T=T', resE=resE',
 								    opaq_env_opt=SOME oenv})
-	    (* We store the original elaboration basis elabB in 
+	    (* We store the original elaboration basis elabB in
 	     * which the functor body should be reelaborated (see
 	     * IntModules). *)
 
@@ -510,7 +512,7 @@ structure OpacityElim: OPACITY_ELIM =
       in (FUNBIND(i',funid,strid,sigexp,strexp',funbindopt'), plus(oenv',oenv''))
       end
 
-    fun elim_fundec(oenv, FUNCTORfundec(i,funbind)) = 
+    fun elim_fundec(oenv, FUNCTORfundec(i,funbind)) =
       let val (funbind', oenv') = elim_funbind(oenv, funbind)
       in (FUNCTORfundec(on_info(rea_of oenv,i),funbind'), oenv')
       end
@@ -519,9 +521,9 @@ structure OpacityElim: OPACITY_ELIM =
 
     val rea_base = Realisation.from_T_and_tyname (TyName.Set.fromList [TyName.tyName_CHAR],
 						  TyName.tyName_WORD8)
-      
+
 (*
-      Realisation.from_T_and_tyname 
+      Realisation.from_T_and_tyname
       (TyName.Set.fromList [TyName.tyName_CHAR,TyName.tyName_WORD,TyName.tyName_WORD8],
        TyName.tyName_INT)
 *)
@@ -533,7 +535,7 @@ structure OpacityElim: OPACITY_ELIM =
 
     fun elim_sigdec (rea, SIGNATUREsigdec (i, sigbind)) =
       SIGNATUREsigdec(on_info(rea,i), elim_sigbind(rea,sigbind))
-		      
+
 
     fun elim_topdec(oenv, topdec) =
       case topdec
@@ -571,7 +573,7 @@ structure OpacityElim: OPACITY_ELIM =
        (* val tempfile = OS.FileSys.tmpName()
 	  val os = TextIO.openOut tempfile
 	  val _ = Compiler.Profile.report os
-	  val _ = TextIO.closeOut os   
+	  val _ = TextIO.closeOut os
 	  val _ = print ("[exported profile to file " ^ tempfile ^ "]\n")
 	*)
 	in (t,e)

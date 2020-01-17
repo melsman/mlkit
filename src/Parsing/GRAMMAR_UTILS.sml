@@ -14,7 +14,7 @@ signature GRAMMAR_UTILS =
     during the activity of the parser; we aren't post-passing yet).*)
 
     type pos
-    exception LAYERPAT_ERROR of (pos * pos) 
+    exception LAYERPAT_ERROR of (pos * pos)
 
     val topdecOfExp: M.DecGrammar.exp -> M.topdec
     val composeStrDec: info * M.strdec * M.strdec -> M.strdec
@@ -28,7 +28,7 @@ signature GRAMMAR_UTILS =
     val inventId: unit -> M.DecGrammar.id
     val inventId_from_atpat: M.DecGrammar.atpat -> M.DecGrammar.id
     val atexpOfIdent : info -> M.DecGrammar.id -> M.DecGrammar.atexp
-    val patOfIdent : info -> M.DecGrammar.id * bool -> M.DecGrammar.pat
+    val patOfIdent : info -> M.DecGrammar.id * M.DecGrammar.regvar list option * bool -> M.DecGrammar.pat
     val patOfAtpat: M.DecGrammar.atpat -> M.DecGrammar.pat
     val expOfAtexp: M.DecGrammar.atexp -> M.DecGrammar.exp
     val list_atexp : info -> M.DecGrammar.exp list -> M.DecGrammar.atexp
