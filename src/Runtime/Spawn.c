@@ -116,7 +116,8 @@ thread_join(pthread_t t) {
 }
 
 // append_pages(pages1,pages2) assumes that pages1 is non-empty
-Rp *append_pages(Rp *pages1, Rp *pages2) {
+Rp *
+append_pages(Rp *pages1, Rp *pages2) {
   Rp *tmp = pages1;
   if (tmp == NULL) {
     printf("ERROR: Spawn.c: append_pages; expecting pages\n");
@@ -134,15 +135,18 @@ Rp *append_pages(Rp *pages1, Rp *pages2) {
 // thread's return value in the retval field in the supplied ti
 // argument (for later retrieval). It is an error to call thread_get
 // on a ti value that was not returned by thread_create.
-void * thread_get(ThreadInfo *ti)
+void *
+thread_get(ThreadInfo *ti)
 {
-  pthread_mutex_lock(&(ti->mutex));
-  // memo: use a mutex; different threads may call get on a thread
-  if (ti->joined == 0) {
+  if (ti->joined) {      // return without taking the lock if
+    return ti->retval;   // ti->joined is true; it is incremental..
+  }
+  pthread_mutex_lock(&(ti->mutex));  // use a mutex; different threads
+  if (ti->joined == 0) {             // may call get on a thread
     ti->retval = thread_join(ti->thread);
     ti->joined = 1;
     if (ti->freelist) {
-      // take lock and add pages to global freelist
+      // take freelist lock and add pages to global freelist
       LOCK_LOCK(FREELISTMUTEX);
       freelist = append_pages(ti->freelist,freelist);
       LOCK_UNLOCK(FREELISTMUTEX);

@@ -64,10 +64,10 @@ void* thread_join(pthread_t t);
 void* thread_get(ThreadInfo *ti);
 
 // thread_create(f,a) spawns a new thread that executes the function
-// f, applied to a threadinfo value containing, among other thing, the
-// proper argument a. The function returns the threadinfo struct,
-// which can be used for joining the thread and accessing the result
-// of the function call.
+// f, applied to a threadinfo value containing, among other
+// information, the proper argument a. The function returns the
+// threadinfo struct, which can be used for joining the thread and
+// accessing the result of the function call.
 ThreadInfo* thread_create(void* (*f)(ThreadInfo*), void* arg);
 
 void thread_free(ThreadInfo* t);
