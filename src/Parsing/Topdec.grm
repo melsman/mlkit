@@ -146,7 +146,7 @@ type arg = unit
 
 (* Additional reserved keyword for supporting region annotations *)
 
-        | REGVAR of string
+        | BACKQUOTE
         | REGION
 
 (* Junk: *)
@@ -162,7 +162,6 @@ type arg = unit
 %value  STRING          ("")
 %value  ID              ("bogus")
 %value  TYVAR           ("'bogus")
-%value  REGVAR          ("`bogus")
 %value  DIGIT           (0)
 
 %nonterm
@@ -362,12 +361,6 @@ type arg = unit
         | Integer                       of IntInf.int
         | Char                          of int
 
-        | RegVar_seq1                   of string list
-                                                (* used in "region" etc.
-                                                   info not needed (failure
-                                                   not possible). *)
-
-
 %left   SHARING         (* L/R is arbitrary. *)
 %left   SEMICOLON       (* L/R is arbitrary. *)
 %right  INCLUDE         (* L/R is arbitrary. *)
@@ -523,13 +516,6 @@ LongTypeIdentEq_seq2:
                                     )
                           ]
                         )
-
-(* Sequences of explicit region variables *)
-
-RegVar_seq1:
-          REGVAR RegVar_seq1
-                        ( REGVAR :: RegVar_seq1 )
-        | REGVAR        ( [REGVAR] )
 
 (* Functors and Top-Level Declarations (Defn. V4 sec. 3.5 fig. 8): *)
 
@@ -880,12 +866,12 @@ AndSigBind_opt:
 
 AtExp:
           SCon          ( SCONatexp (PP SConleft SConright, SCon) )
-        | LongOpIdent LBRACKET RegVar_seq1 RBRACKET
+        | LongOpIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
                         ( let val OP_OPT (id, withOp) = LongOpIdent
                           in
                             IDENTatexp (PP LongOpIdentleft LongOpIdentright,
 					 OP_OPT (mk_LongId id, withOp),
-                                         SOME (map RegVar.mk_Named RegVar_seq1))
+                                         SOME (map RegVar.mk_Named EqIdent_seq1))
                           end )
         | LongOpEqIdent ( let val OP_OPT (id, withOp) = LongOpEqIdent
                           in
@@ -1098,9 +1084,9 @@ OneDec_sans_LOCAL:
 			( UNRES_FUNdec (PP FUNleft (right (get_info_FValBind FValBind)),
 					TyVarSeq1, FValBind) )
 
-        | REGION RegVar_seq1
-                        ( REGIONdec (PP REGIONleft RegVar_seq1right,
-				     map RegVar.mk_Named RegVar_seq1) )
+        | REGION EqIdent_seq1
+                        ( REGIONdec (PP REGIONleft EqIdent_seq1right,
+				     map RegVar.mk_Named EqIdent_seq1) )
 
 
 (* a `OneDec' is a single declaration phrase, including LOCAL. No semicolons. *)
@@ -1332,12 +1318,12 @@ OfTy_opt:
 AtPat:
           UNDERBAR      ( WILDCARDatpat (PP UNDERBARleft UNDERBARright) )
         | SCon          ( SCONatpat (PP SConleft SConright, SCon) )
-        | LongOpIdent LBRACKET RegVar_seq1 RBRACKET
+        | LongOpIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
                         ( let val OP_OPT (id, withOp) = LongOpIdent
                           in
                             LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
 					 OP_OPT (mk_LongId id, withOp),
-                                         SOME (map RegVar.mk_Named RegVar_seq1))
+                                         SOME (map RegVar.mk_Named EqIdent_seq1))
                           end )
         | LongOpIdent   ( let val OP_OPT (id, withOp) = LongOpIdent
                           in

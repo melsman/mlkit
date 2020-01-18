@@ -113,7 +113,6 @@ Real		   = ({DecInteger} "." {DecPosInteger} {Exp}?)
 NormalId	   = {Letter} ({Letter} | {Digit} | [_'])*;
 NormalIdOrOther   = "_IntInf" | "_export" | {NormalId};
 TyVar		   = "'" ({Letter} | {Digit} | [_'])*;
-RegVar		   = "`" ({Letter} | {Digit} | [_'])*;
 Symbol		   = [-!%&$#+<=>?@\\~`^|*:/];
 SymbolicId	   = {Symbol}+;
 AnyId		   = {NormalId} | {SymbolicId};
@@ -170,8 +169,6 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 				   arg, yypos, yytext));
 <INITIAL>{TyVar}	=> (shifting "TYVAR(...)";
 			    token1(TYVAR, yytext, arg, yypos, yytext));
-<INITIAL>{RegVar}	=> (shifting "REGVAR(...)";
-			    token1(REGVAR, yytext, arg, yypos, yytext));
 <INITIAL>"\""		=> (YYBEGIN S; LexUtils.clearString arg; continue());
 <INITIAL>"(*"		=> (YYBEGIN C; LexUtils.newComment arg; continue());
 
@@ -182,10 +179,11 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 <INITIAL>{SymbolicIdNoQuote} => (token_id(yytext,arg,yypos));
 <INITIAL>{QualifiedIdNoQuote} => (token_qualid(yytext,arg,yypos));
 
-<INITIAL>"`"            => ((* a starting quote *)
-                            YYBEGIN Q;
-                            LexUtils.clearString arg;
-                            token0 (BEGINQ,arg,yypos,yytext));
+<INITIAL>"`"            => (if quotation() then
+			      (YYBEGIN Q;  (* a starting quote *)
+			       LexUtils.clearString arg;
+			       token0 (BEGINQ,arg,yypos,yytext))
+      	                    else (token0(BACKQUOTE, arg, yypos, yytext)));
 
 <Q>"^`"                 => (LexUtils.addChars "`" arg; continue());
 <Q>"^^"                 => (LexUtils.addChars "^" arg; continue());

@@ -217,10 +217,12 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | "=>"	 => keyword DARROW
 	   | "->"	 => keyword ARROW
 	   | "#"	 => keyword HASH
-	   | "*"	 => keyword STAR
-					(* Not actually reserved, but ... *)
+	   | "*"	 => keyword STAR    (* Not actually reserved, but ... *)
 
-	   | _		 => if !explicit_regions andalso text = "region" then keyword REGION
+	   | _		 => if !explicit_regions then
+                              if text = "region" then keyword REGION
+                              else if text = "`" then keyword BACKQUOTE
+                              else ID(text, p1, p2)
                             else ID(text, p1, p2)
       end
 
