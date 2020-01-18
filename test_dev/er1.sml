@@ -15,7 +15,6 @@ fun f [`r2 `r3 `r2] () =
 *)
 
 fun g [`r] () = 4
-
 fun f [`r2 `r3 `r1] () =
     let region `r `r8
         val v = g [`r2] ()
