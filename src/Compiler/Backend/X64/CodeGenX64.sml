@@ -2513,7 +2513,7 @@ struct
                       store_indexed(rsp,WORDS(size_ff-offset-1+3), R rsp,C))
                     fun default_code C = comment ("HANDLER DEFAULT CODE",
                       CG_lss(default,size_ff,size_ccf,C))
-                    fun restore_exp_ptr C =
+                    fun restore_exn_ptr C =
                       comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
                       load_indexed(R tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
                       I.movq(R tmp_reg1, L exn_ptr_lab) ::
@@ -2535,7 +2535,7 @@ struct
                     store_exn_ptr(
                     store_sp(
                     default_code(
-                    restore_exp_ptr(
+                    restore_exn_ptr(
                     handl_return_code(comment ("END OF EXCEPTION HANDLER", C))))))))))
                   end
                | LS.RAISE{arg=arg_aty,defined_atys} =>
