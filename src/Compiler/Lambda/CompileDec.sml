@@ -13,6 +13,11 @@ structure CompileDec: COMPILE_DEC =
     structure DecGrammar = TopdecGrammar.DecGrammar
     structure ElabInfo = AllInfo.ElabInfo
 
+    val report_SourceInfo_in_ElabInfo =
+        ElabInfo.ParseInfo.SourceInfo.report
+	o ElabInfo.ParseInfo.to_SourceInfo
+	o ElabInfo.to_ParseInfo
+
     val tag_values = Flags.is_on0 "tag_values"
 
     fun chat s = if !Flags.chat then print (s ^ "\n")
@@ -1945,7 +1950,8 @@ end; (*match compiler local*)
               in case arg of
 		 RECORDatexp(_,
 			     SOME(EXPROW(_,_,exp1,
-					 SOME(EXPROW(_,_,exp2,NONE))))) =>
+					 SOME(EXPROW(_,_,exp2,NONE)))),
+                            _) =>
 		 let val exp1' = compilerExp exp1
 		     val exp2' = compilerExp exp2
 		 in unoverload env info result (exp1' :: exp2' :: exn_args)
@@ -2018,9 +2024,13 @@ end; (*match compiler local*)
 	TyName.eq(tn,TyName.tyName_INTINF)
       | typeIsIntInf _ = false
 
+    fun attach_loc_info NONE = ()
+      | attach_loc_info (SOME(i,r)) =
+        RegVar.attach_location_report r (fn () => report_SourceInfo_in_ElabInfo i)
+
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
-	     SCONatexp(info, SCon.INTEGER x) =>
+	     SCONatexp(info, SCon.INTEGER x, rv_opt) =>
 	       let
 (*		 val t = case NoSome "compileAtexp.SCON.INT.NONE" (ElabInfo.to_OverloadingInfo info)
 			   of OverloadingInfo.RESOLVED_INT31 => int31Type
@@ -2031,12 +2041,14 @@ end; (*match compiler local*)
 	       in if typeIsIntInf t then buildIntInf x
 		  else INTEGER (Int32.fromLarge (IntInf.toLarge x), t)
 	       end
-	   | SCONatexp(_, SCon.STRING x) => STRING x
-	   | SCONatexp(_, SCon.REAL x) => REAL x
-	   | SCONatexp(info, SCon.CHAR x) =>
+           | SCONatexp(_, SCon.STRING x, rv_opt) => (attach_loc_info rv_opt;
+                                                     STRING (x, Option.map #2 rv_opt))
+	   | SCONatexp(_, SCon.REAL x, rv_opt) => (attach_loc_info rv_opt;
+                                                   REAL (x, Option.map #2 rv_opt))
+	   | SCONatexp(info, SCon.CHAR x, rv_opt) =>
 	       if x < 0 orelse x > 255 then die "compileAtexp.CHAR"
 	       else WORD(Word32.fromInt x, typeScon info)
-	   | SCONatexp(info, SCon.WORD x) =>
+	   | SCONatexp(info, SCon.WORD x, rv_opt) =>
 		 let
 (*
 		   val t = case NoSome "compileAtexp.SCON.WORD.NONE" (ElabInfo.to_OverloadingInfo info)
@@ -2060,7 +2072,7 @@ end; (*match compiler local*)
 	   (* Well, - if the labs are already sorted then we can in-line
 	    the expressions in the record... 04/10/1996-Martin. *)
 
-	   | RECORDatexp(_, SOME exprow) =>
+	   | RECORDatexp(_, SOME exprow, rv_opt) =>
 	     let
                val rows = makeList (fn EXPROW(_, _, _, e) => e) exprow
                val labs = map (fn EXPROW(_, l, _, _) => l) rows
@@ -2087,7 +2099,7 @@ end; (*match compiler local*)
 		  end
 	     end
 
-	   | RECORDatexp(_, NONE) => PRIM(RECORDprim,[])
+	   | RECORDatexp(_, NONE, _) => PRIM(RECORDprim,[])
 
 	   | LETatexp(_, dec, exp) =>
 	       let val (env1, f) = compileDec env (false,dec)
@@ -2478,14 +2490,14 @@ the 12 lines above are very similar to the code below
 *)
     and decompose_prim_call
       (RECORDatexp (_, SOME (EXPROW (_, _,
-        ATEXPexp (_, SCONatexp (_, SCon.STRING name)), SOME (EXPROW (_, _,
-         exp2, NONE)))))) = (name, decompose_prim_args exp2)
+        ATEXPexp (_, SCONatexp (_, SCon.STRING name, NONE)), SOME (EXPROW (_, _,
+         exp2, NONE)))), _)) = (name, decompose_prim_args exp2)
       | decompose_prim_call _ =
       die ("\n\nThe first argument to prim must be a string denoting a C function\n\
        \or built-in primitive; in case profiling is enabled, the string \"Prof\" is\n\
        \appended to the name by the compiler.")
 
-    and decompose_prim_args (ATEXPexp (_, RECORDatexp (_, exprow_opt))) =
+    and decompose_prim_args (ATEXPexp (_, RECORDatexp (_, exprow_opt, _))) =
           decompose_prim_args0 exprow_opt
       | decompose_prim_args exp = [exp]
     and decompose_prim_args0 NONE = []
@@ -2648,7 +2660,11 @@ the 12 lines above are very similar to the code below
 
          | EMPTYdec _ => (CE.emptyCEnv, fn x => x)
 
-         | REGIONdec _ => (CE.emptyCEnv, fn x => x)
+         | REGIONdec (_,(i,regvars)) =>
+           let val () = List.app (fn r => RegVar.attach_location_report r
+                                          (fn () => report_SourceInfo_in_ElabInfo i)) regvars
+           in (CE.emptyCEnv, fn x => LETREGION{regvars=regvars,scope=x})
+           end
 
    and compileDecs env (topLevel,dec) = (* fast compilation when SEQ associates to the left *)
      (case dec of

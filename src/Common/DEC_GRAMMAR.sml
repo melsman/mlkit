@@ -24,9 +24,9 @@ sig
   val strip_info : 'a WithInfo -> 'a
 
   datatype atexp =
-	SCONatexp of info * scon |
-	IDENTatexp of info * longid op_opt * regvar list option |
-	RECORDatexp of info * exprow option |
+	SCONatexp of info * scon * (info*regvar) option |
+	IDENTatexp of info * longid op_opt * (info*regvar list) option |
+	RECORDatexp of info * exprow option * (info*regvar) option |
 	LETatexp of info * dec * exp |
 	PARatexp of info * exp
 
@@ -64,7 +64,7 @@ sig
 	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
 	EMPTYdec of info |
-        REGIONdec of info * regvar list
+        REGIONdec of info * (info*regvar list)
 
   and valbind =
 	PLAINvalbind of info * pat * exp * valbind option |
@@ -89,7 +89,7 @@ sig
   and atpat =
         WILDCARDatpat of info |
 	SCONatpat of info * scon |
-	LONGIDatpat of info * longid op_opt * regvar list option |
+	LONGIDatpat of info * longid op_opt * (info*regvar list) option |
 	RECORDatpat of info * patrow option |
 	PARatpat of info * pat
 

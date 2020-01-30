@@ -11,9 +11,9 @@ in
      FUNID.sig
      LAB.sig
      SYNTAX_TYVAR.sml
-     REGVAR.sig
      local open Tools
-     in StrId.sml
+     in REGVAR.sig
+        StrId.sml
         Ident.sml
 	IdentFinMap.sml
      end
@@ -21,7 +21,7 @@ in
      FunId.sml
      Lab.sml
      SyntaxTyVar.sml
-     RegVar.sml
+     local open Tools in RegVar.sml end
   end
   SCON.sig
   SCon.sml

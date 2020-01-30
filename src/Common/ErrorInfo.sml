@@ -104,6 +104,7 @@ structure ErrorInfo: ERROR_INFO =
 
       (* Explicit regions errors *)
       | REGVARS_IDONLY
+      | REGVARS_SCOPED_TWICE of regvar list
 
     type Report = Report.Report
     val line = Report.line
@@ -376,6 +377,9 @@ structure ErrorInfo: ERROR_INFO =
       | report REGVARS_IDONLY =
           line "Only functions can be parameterised over regions"
 
+      | report (REGVARS_SCOPED_TWICE rs) =
+          line ("Explicit region variable(s) already in scope: " ^ pp_list RegVar.pr rs)
+
     structure ErrorCode =
       struct
 	type ErrorCode = string and ErrorInfo = ErrorInfo
@@ -435,6 +439,7 @@ structure ErrorInfo: ERROR_INFO =
 	     | U_CONFLICTINGARITY _ =>                  "U_CONFLICTINGARITY"
 	     | RIGIDTYFUNEQERROR _ =>                   "RIGIDTYFUNEQERROR"
              | REGVARS_IDONLY =>                        "REGVARS_IDONLY"
+             | REGVARS_SCOPED_TWICE _ =>                "REGVARS_SCOPED_TWICE"
 
 	val error_code_parse = "PARSE"
 

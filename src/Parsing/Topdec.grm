@@ -865,13 +865,18 @@ AndSigBind_opt:
 (* Expressions, Matches, Declarations and Bindings (V4 sec. 2.8 fig. 3): *)
 
 AtExp:
-          SCon          ( SCONatexp (PP SConleft SConright, SCon) )
+          SCon          ( SCONatexp (PP SConleft SConright, SCon, NONE) )
+        | SCon BACKQUOTE EqIdent
+                        ( SCONatexp (PP SConleft SConright, SCon,
+                                     SOME (PP BACKQUOTEleft EqIdentright,
+                                           RegVar.mk_Named EqIdent)) )
         | LongOpIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
                         ( let val OP_OPT (id, withOp) = LongOpIdent
                           in
                             IDENTatexp (PP LongOpIdentleft LongOpIdentright,
 					 OP_OPT (mk_LongId id, withOp),
-                                         SOME (map RegVar.mk_Named EqIdent_seq1))
+                                         SOME (PP BACKQUOTEleft RBRACKETright,
+                                               map RegVar.mk_Named EqIdent_seq1))
                           end )
         | LongOpEqIdent ( let val OP_OPT (id, withOp) = LongOpEqIdent
                           in
@@ -879,7 +884,12 @@ AtExp:
 					OP_OPT (mk_LongId id, withOp), NONE)
                           end )
         | LBRACE ExpRow_opt RBRACE
-                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt) )
+                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt,
+                                       NONE) )
+        | LBRACE ExpRow_opt RBRACE BACKQUOTE EqIdent
+                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt,
+                                       SOME (PP BACKQUOTEleft EqIdentright,
+                                             RegVar.mk_Named EqIdent)) )
         | LET Dec IN Exp_ END
                         ( LETatexp (PP LETleft ENDright, Dec, Exp_) )
         | LPAREN Exp_ RPAREN
@@ -896,9 +906,13 @@ AtExp:
    though the equivalent forms aren't.
  *)
 
-        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, NONE) )
+        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, NONE, NONE) )
         | LPAREN ExpComma_seq2 RPAREN
-                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 )
+                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 NONE )
+        | LPAREN ExpComma_seq2 RPAREN BACKQUOTE EqIdent
+                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2
+                                                (SOME(PP BACKQUOTEleft EqIdentright,
+                                                      RegVar.mk_Named EqIdent)) )
         | HASH Label    ( hash (PP HASHleft Labelright) Label )
         | LPAREN ExpSemicolon_seq2 RPAREN
                         ( PARatexp (PP LPARENleft RPARENright,
@@ -1086,7 +1100,8 @@ OneDec_sans_LOCAL:
 
         | REGION EqIdent_seq1
                         ( REGIONdec (PP REGIONleft EqIdent_seq1right,
-				     map RegVar.mk_Named EqIdent_seq1) )
+				     (PP EqIdent_seq1left EqIdent_seq1right,
+                                      map RegVar.mk_Named EqIdent_seq1)) )
 
 
 (* a `OneDec' is a single declaration phrase, including LOCAL. No semicolons. *)
@@ -1323,7 +1338,8 @@ AtPat:
                           in
                             LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
 					 OP_OPT (mk_LongId id, withOp),
-                                         SOME (map RegVar.mk_Named EqIdent_seq1))
+                                         SOME (PP BACKQUOTEleft RBRACKETright,
+                                               map RegVar.mk_Named EqIdent_seq1))
                           end )
         | LongOpIdent   ( let val OP_OPT (id, withOp) = LongOpIdent
                           in

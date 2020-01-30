@@ -136,22 +136,22 @@ structure GrammarUtils: GRAMMAR_UTILS =
          | (_, EMPTYdec _) => dec1
          | _ => SEQdec(i, dec1, dec2)
 
-    fun tuple_atexp_with_info info exps = (* `(A, B, C)' -> `{1=A, 2=B, 3=C}'. *)
+    fun tuple_atexp_with_info info exps rv_opt = (* `(A, B, C)' -> `{1=A, 2=B, 3=C}'. *)
           let
 	    fun f (n, e :: exps) =
 	          SOME (EXPROW (info, mk_IntegerLab n, e, f (n+1, exps)))
 	      | f (_, []) = NONE
 	  in
-	    RECORDatexp (info, f (1, exps))
+	    RECORDatexp (info, f (1, exps), rv_opt)
 	  end
 
-    fun tuple_atexp (exp1::exp2::exps) =
+    fun tuple_atexp (exp1::exp2::exps) rv_opt =
           tuple_atexp_with_info
 	    (span_info (get_info_exp exp1,
 			get_info_exp (List.last (exp2::exps))
 			handle _ => impossible "tuple_atexp: last"))
-	       (exp1::exp2::exps)
-      | tuple_atexp _ = impossible "tuple_atexp _"
+	       (exp1::exp2::exps) rv_opt
+      | tuple_atexp _ _ = impossible "tuple_atexp _"
 
     fun case_exp info (exp, match) =
           APPexp (info, FNexp (get_info_match match, match),
@@ -183,7 +183,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 	    val consExp = expOfIdent info Ident.id_CONS
 
 	    fun f (exp :: exps) =
-	          APPexp (get_info_exp exp, consExp, tuple_atexp [exp, f exps])
+	          APPexp (get_info_exp exp, consExp, tuple_atexp [exp, f exps] NONE)
 	      | f [] = nilExp
 	  in
 	    PARatexp (info, f exps)
@@ -207,7 +207,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 
     fun exp_quote (info:info) (s:string) : exp =
       let val quoteExp = expOfIdent info Ident.id_QUOTE
-      in APPexp(info, quoteExp, SCONatexp(info, SCon.STRING s))
+      in APPexp(info, quoteExp, SCONatexp(info, SCon.STRING s, NONE))
       end
 
     fun exp_antiquote (info:info) (atexp: atexp) : exp =
@@ -228,7 +228,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
           let
 	    val var = Ident.inventLongId ()
 	    val varExp = ATEXPexp (info, IDENTatexp (info, OP_OPT (var, false), NONE))
-	    val unitAtExp = RECORDatexp (info, NONE)
+	    val unitAtExp = RECORDatexp (info, NONE, NONE)
 	    val unitExp = ATEXPexp (info, unitAtExp)
 	    val varPat = ATPATpat (info, LONGIDatpat (info, OP_OPT (var, false), NONE))
 	    val unitPat = ATPATpat (info, RECORDatpat (info, NONE))

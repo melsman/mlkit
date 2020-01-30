@@ -1,0 +1,7 @@
+[reading source file:	er3.sml]
+> val f : unit->int
+er3.sml, line 7, column 25:
+    in #1 (4, a, "hi there"`r1)
+                           ^^^
+Mismatching region types s and T for explicit region variable `r1
+Stopping compilation of MLB-file due to error (code 1).

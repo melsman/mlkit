@@ -115,7 +115,7 @@ structure Environments: ENVIRONMENTS =
       fun unguarded_opt f (SOME x) = f x
 	| unguarded_opt f (NONE  ) = []
 
-      fun unguarded_atexp(DecGrammar.RECORDatexp(_,exprow_opt)) =
+      fun unguarded_atexp(DecGrammar.RECORDatexp(_,exprow_opt,_)) =
 	  unguarded_opt unguarded_exprow exprow_opt
 	| unguarded_atexp(DecGrammar.LETatexp(_,dec,exp)) =
 	  unguarded_dec dec ++ unguarded_exp exp
@@ -231,7 +231,7 @@ structure Environments: ENVIRONMENTS =
 
     datatype ExplicitTyVarEnv = EXPLICITTYVARENV of (ExplicitTyVar,Type) FinMap.map
 
-    datatype Env = ENV of {SE : StrEnv, TE : TyEnv, VE : VarEnv}
+    datatype Env = ENV of {SE : StrEnv, TE : TyEnv, VE : VarEnv, R : RegVar.regvar list}
 	 and StrEnv = STRENV of (strid, Env) FinMap.map
 
     datatype Context = CONTEXT of {U : ExplicitTyVarEnv, E : Env}
@@ -282,8 +282,9 @@ structure Environments: ENVIRONMENTS =
 	let fun EnvToInt (ENV _) = 0
 	    fun StrEnvToInt (STRENV _) = 0
 	    fun fun_ENV (pu_Env, pu_StrEnv) =
-		Pickle.con1 (fn (se,te,ve) => ENV{SE=se,TE=te,VE=ve}) (fn ENV{SE=se,TE=te,VE=ve} => (se,te,ve))
-		(Pickle.tup3Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv))
+		Pickle.con1 (fn (se,te,ve,r) => ENV{SE=se,TE=te,VE=ve,R=r})
+                            (fn ENV{SE=se,TE=te,VE=ve,R=r} => (se,te,ve,r))
+		(Pickle.tup4Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv,Pickle.listGen RegVar.pu))
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
 		Pickle.con1 STRENV (fn STRENV a => a)
 		(FinMap.pu(StrId.pu,pu_Env))
@@ -365,10 +366,15 @@ structure Environments: ENVIRONMENTS =
 		   children=[TypeFcn.layout theta, layoutVE VE],
 		   childsep=PP.RIGHT ", "}
 
-    and layoutEnv (ENV{SE, TE, VE}) =
+    and layoutEnv (ENV{SE, TE, VE, R}) =
           PP.NODE {start="{", finish="}", indent=1,
-		   children=[layoutSE SE, layoutTE TE, layoutVE VE],
+		   children=[layoutSE SE, layoutTE TE, layoutVE VE, layoutR R],
 		   childsep = PP.NOSEP}
+
+    and layoutR (rs) =
+        PP.NODE {start="[",finish="]", indent=1,
+                 children=map (PP.LEAF o RegVar.pr) rs,
+                 childsep=PP.RIGHT " "}
 
     infix // val op // = Report.//
 
@@ -1099,7 +1105,7 @@ old *)
       fun tynames SE =
 	    fold (fn E => fn T => TyName.Set.union (E_tynames E) T)
 	            TyName.Set.empty SE
-      and E_tynames (ENV {VE, TE, SE}) =
+      and E_tynames (ENV {VE, TE, SE, R}) =
 	      TyName.Set.union (tynames SE)
 		(TyName.Set.union (VE.tynames VE) (TE.tynames TE))
       val layout = layoutSE
@@ -1110,18 +1116,20 @@ old *)
 
 
     structure E = struct
-      fun mk (SE, TE, VE) : Env = ENV {SE=SE, TE=TE, VE=VE}
-      fun un (ENV {SE, TE, VE}) = (SE, TE, VE)
-      fun from_VE_and_TE (VE, TE) = ENV {SE=SE.empty, TE=TE, VE=VE}
-      fun from_VE VE = ENV {SE=SE.empty, TE=TE.empty, VE=VE}
+      fun mk (SE, TE, VE, R) : Env = ENV {SE=SE, TE=TE, VE=VE,R=R}
+      fun un (ENV {SE, TE, VE, R}) = (SE, TE, VE, R)
+      fun from_R R = ENV{R=R,SE=SE.empty,TE=TE.empty,VE=VE.empty}
+      fun to_R (ENV {R,...}) = R
+      fun from_VE_and_TE (VE, TE) = ENV {SE=SE.empty, TE=TE, VE=VE, R=[]}
+      fun from_VE VE = ENV {SE=SE.empty, TE=TE.empty, VE=VE, R=[]}
       fun to_VE (ENV {VE, ...}) = VE
-      fun from_TE TE = ENV {SE=SE.empty, TE=TE, VE=VE.empty}
+      fun from_TE TE = ENV {SE=SE.empty, TE=TE, VE=VE.empty, R=[]}
       fun to_TE (ENV {TE, ...}) = TE
-      fun from_SE SE = ENV {SE=SE, TE=TE.empty, VE=VE.empty}
+      fun from_SE SE = ENV {SE=SE, TE=TE.empty, VE=VE.empty, R=[]}
       fun to_SE (ENV {SE, ...}) = SE
-      fun plus (ENV {SE, TE, VE}, ENV {SE=SE', TE=TE', VE=VE'}) =
+      fun plus (ENV {SE, TE, VE, R}, ENV {SE=SE', TE=TE', VE=VE', R=R'}) =
 	    ENV {SE = SE.plus (SE, SE'), TE = TE.plus (TE, TE'),
-		 VE = VE.plus (VE, VE')}
+		 VE = VE.plus (VE, VE'), R=R'@R}
       fun lookup_tycon (ENV {TE, ...}) tycon : TyStr option =
 	    TE.lookup TE tycon
       fun lookup_strid (ENV {SE, ...}) strid : Env option =
@@ -1152,8 +1160,8 @@ old *)
 	    lookup_longsomething to_SE SE.lookup E
 	      (StrId.explode_longstrid longstrid)
       (*on: Note that only VE contains free type variables:*)
-      fun on (S, ENV {SE, TE, VE}) = ENV {SE=SE, TE=TE, VE=VE.on (S, VE)}
-      val empty = ENV {SE=SE.empty, TE=TE.empty, VE=VE.empty}
+      fun on (S, ENV {SE, TE, VE, R}) = ENV {SE=SE, TE=TE, VE=VE.on (S, VE),R=R}
+      val empty = ENV {SE=SE.empty, TE=TE.empty, VE=VE.empty,R=[]}
       val bogus = empty
       val tyvars = SE.E_tyvars
       val tyvars' = SE.E_tyvars'
@@ -1498,7 +1506,7 @@ old *)
 
 	val tag_values = Flags.is_on0 "tag_values"
 
-	fun TE_initial() =
+	fun TE_initial () =
 	  let
 	    val (defaultTyNameInt, defaultTyNameWord) =
 	      if tag_values() then (TyName.tyName_INT31, TyName.tyName_WORD31)
@@ -1511,9 +1519,8 @@ old *)
 	    joinTE TEs
 	  end
 
-
 	local
-	  fun mk_sigma() = (*construct the type scheme: forall 'a.'a->unit*)
+	  fun mk_sigma () = (*construct the type scheme: forall 'a.'a->unit*)
 	    let val _ = Level.push()
 		val alpha = TyVar.fresh_normal ()
 		val alphaTy = Type.from_TyVar alpha
@@ -1524,9 +1531,9 @@ old *)
 	    end
 	in
 	  val resetRegionsVE =  (* resetRegions: forall 'a . 'a -> unit *)
-		  VE.singleton (Ident.resetRegions,LONGVARpriv (mk_sigma()))
+	      VE.singleton (Ident.resetRegions,LONGVARpriv (mk_sigma()))
 	  val forceResettingVE = (* forceResetting: forall 'a . 'a -> unit *)
-		  VE.singleton (Ident.forceResetting, LONGVARpriv (mk_sigma()))
+	      VE.singleton (Ident.forceResetting, LONGVARpriv (mk_sigma()))
 	end
 
 	(*notice VE.close must be applied outside the Level.push and Level.pop
@@ -1539,10 +1546,10 @@ old *)
 	   resetRegionsVE, forceResettingVE, DivVE,
 	   BindVE, MatchVE, OverflowVE, InterruptVE]
 	val fragVE = VE.close fragVE
-	fun VE_initial() = joinVE(if quotation() then fragVE :: VEs else VEs)
-	fun SE_initial() = SE.singleton(StrId.mk_StrId "IntInfRep",empty)  (* dummy *)
+	fun VE_initial () = joinVE(if quotation() then fragVE :: VEs else VEs)
+	fun SE_initial () = SE.singleton(StrId.mk_StrId "IntInfRep",empty)  (* dummy *)
       in
-	fun initial() = ENV {SE=SE_initial(), TE=TE_initial(), VE=VE_initial()}
+	fun initial () = ENV {SE=SE_initial(), TE=TE_initial(), VE=VE_initial(),R=[]}
       end
 
 
@@ -1562,33 +1569,38 @@ old *)
 		       SOME TyStr1 => TyStr.eq (TyStr1,TyStr2)
 		     | NONE => false) true TE2
 
-      fun enrich_VarEnv(VE1,VE2) =
+      fun enrich_VarEnv (VE1,VE2) =
 	VE.Fold (fn (id2,r2) => fn b => b andalso
 		 case VE.lookup VE1 id2
 		   of SOME r1 => equal_VarEnvRan(r1,r2)
 		    | NONE => false) true VE2
 
-      fun enrich_Env(E1,E2) =
-	case (un E1, un E2)
-	  of ((SE1, TE1, VE1), (SE2, TE2, VE2)) =>
-	   enrich_StrEnv(SE1,SE2) andalso enrich_TyEnv(TE1,TE2) andalso
-	   enrich_VarEnv(VE1,VE2)
+      fun enrich_R (R1,R2) =
+          List.foldl (fn (r,acc) => acc andalso List.exists (fn r' => RegVar.eq(r,r')) R1) true R2
+      and equal_R (R1,R2) =
+          length R1 = length R2 andalso enrich_R(R1,R2)
 
-      and enrich_StrEnv(SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
+      fun enrich_Env (E1,E2) =
+	case (un E1, un E2)
+	  of ((SE1, TE1, VE1, R1), (SE2, TE2, VE2, R2)) =>
+	   enrich_StrEnv(SE1,SE2) andalso enrich_TyEnv(TE1,TE2) andalso
+	   enrich_VarEnv(VE1,VE2) andalso enrich_R(R1,R2)
+
+      and enrich_StrEnv (SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
 					    case SE.lookup SE1 strid2
 					      of SOME S1 => enrich_Env(S1,S2)
 					       | NONE => false) true SE2
 
-      fun equal_TyEnv(TE1,TE2) = TE.size TE1 = TE.size TE2 andalso enrich_TyEnv (TE1,TE2)
-      fun equal_VarEnv(VE1,VE2) = VE.size VE1 = VE.size VE2 andalso enrich_VarEnv(VE1,VE2)
+      fun equal_TyEnv (TE1,TE2) = TE.size TE1 = TE.size TE2 andalso enrich_TyEnv (TE1,TE2)
+      fun equal_VarEnv (VE1,VE2) = VE.size VE1 = VE.size VE2 andalso enrich_VarEnv(VE1,VE2)
 
-      fun equal_Env(E1,E2) =
+      fun equal_Env (E1,E2) =
 	case (un E1, un E2)
-	  of ((SE1, TE1, VE1), (SE2, TE2, VE2)) =>
+	  of ((SE1, TE1, VE1, R1), (SE2, TE2, VE2, R2)) =>
 	    equal_StrEnv(SE1,SE2) andalso equal_TyEnv(TE1,TE2) andalso
-	    equal_VarEnv(VE1,VE2)
+	    equal_VarEnv(VE1,VE2) andalso equal_R(R1,R2)
 
-      and equal_StrEnv(SE1,SE2) = SE.size SE1 = SE.size SE2 andalso  (* note: you cannot use enrich_StrEnv *)
+      and equal_StrEnv (SE1,SE2) = SE.size SE1 = SE.size SE2 andalso  (* note: you cannot use enrich_StrEnv *)
 	SE.Fold (fn (strid2,S2) => fn b => b andalso
 		 case SE.lookup SE1 strid2
 		   of SOME S1 => equal_Env(S1,S2)
@@ -1600,9 +1612,9 @@ old *)
 
       (* Restriction *)
       local
-	fun restr_E(E,Whole) = E
-	  | restr_E(E,Restr{strids,vids,tycons}) =
-	  let val (SE,TE,VE) = un E
+	fun restr_E (E,Whole) = E
+	  | restr_E (E,Restr{strids,vids,tycons}) =
+	  let val (SE,TE,VE,R) = un E
   	      val SE' = foldl (fn ((strid,restr), SEnew) =>
 				    let val E = (case SE.lookup SE strid
 						   of SOME E => restr_E(E,restr)
@@ -1611,17 +1623,18 @@ old *)
 				    end) SE.empty strids
  	      val TE' = TE.restrict (TE, tycons)
 	      val VE' = VE.restrict (VE, vids)
-	  in mk (SE',TE',VE')
+              val R' = nil
+	  in mk (SE',TE',VE',R')
 	  end
       in
-	fun restrict(E,longids) = restr_E(E,create_restricter longids)
+	fun restrict (E,longids) = restr_E(E,create_restricter longids)
       end
 
       (* Matching *)
 
       fun match (E,E0) =
-	let val (SE, TE, VE)  = un E
-	    val (SE0,TE0,VE0) = un E0
+	let val (SE, TE, VE, _)  = un E
+	    val (SE0,TE0,VE0, _) = un E0
 	in
 	  matchSE (SE, SE0) ;
 	  TE.match (TE, TE0) ;
@@ -1653,6 +1666,7 @@ old *)
       fun plus_U a = #2 (plus_U' a)
       fun to_U (CONTEXT {U=EXPLICITTYVARENV m, E}) : ExplicitTyVar list =
 	    EqSet.list(FinMap.dom m)
+      fun to_R (CONTEXT{E,...}) = E.to_R E
       fun ExplicitTyVar_lookup (CONTEXT{U=EXPLICITTYVARENV m,E}) ExplicitTyVar =
 	  FinMap.lookup m ExplicitTyVar
             handle Crash.CRASH  =>
@@ -1669,8 +1683,8 @@ old *)
       fun plus_E (CONTEXT {U, E}, E') = CONTEXT {U=U, E=E.plus (E, E')}
       fun plus_TE(C,TE) = plus_E(C,E.from_TE TE)
       fun plus_VE_and_TE (C, (VE, TE)) = plus_E (C, E.from_VE_and_TE (VE,TE))
-      fun plus_VE (CONTEXT {U, E as ENV {SE, TE, VE}}, VE') =
-	    CONTEXT {U=U, E=ENV {SE=SE, TE=TE, VE=VE.plus (VE, VE')}}
+      fun plus_VE (CONTEXT {U, E as ENV {SE, TE, VE, R}}, VE') =
+	    CONTEXT {U=U, E=ENV {SE=SE, TE=TE, VE=VE.plus (VE, VE'),R=R}}
       fun from_E E = CONTEXT {U=U_empty, E=E}
       fun on (S : Substitution, C as CONTEXT {U, E}) = C
       (* was:      CONTEXT {T = T, U = U, E = onE(S, E)} *)
@@ -1864,9 +1878,9 @@ old *)
 
       fun on_Env phi (E : Env) =
 	    if is_Id phi then E else
-	      let val (SE, TE, VE) = E.un E
+	      let val (SE, TE, VE, R) = E.un E
 	      in
-		E.mk (on_StrEnv phi SE, on_TyEnv phi TE, on_VarEnv phi VE)
+		E.mk (on_StrEnv phi SE, on_TyEnv phi TE, on_VarEnv phi VE, R)
 	      end
 
       and on_StrEnv phi (SE : StrEnv) =

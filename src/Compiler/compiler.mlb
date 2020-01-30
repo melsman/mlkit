@@ -11,20 +11,20 @@ local
   basis Environment = bas ../Tools/MlbMake/environment.mlb end
   open BasLib
 in
-  local open Pickle 
+  local open Pickle
   in COMP_BASIS.sml
      COMP_BASIS_GEN.sml
   end
   COMPILE_GEN.sml
   COMPILE.sig
-  local open Pickle 
-  in Lambda/OPT_LAMBDA.sml 
+  local open Pickle
+  in Lambda/OPT_LAMBDA.sml
      Lambda/LAMBDA_STAT_SEM.sml
      Lambda/ELIMINATE_EQ.sml
   end
   Lambda/COMPILE_DEC.sml
 
-  local open Edlib Pickle Tools CompilerObjects
+  local open Edlib Pickle Tools SyntaxObjects CompilerObjects
   in Lambda/OptLambda.sml
   end
   local open Pickle Tools CompilerObjects
@@ -44,4 +44,3 @@ in
   end
   ../Common/KitMain.sml
 end
-

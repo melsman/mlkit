@@ -17,4 +17,4 @@ structure DFInfo: DF_INFO =
       | string INFIX_df   = "INFIX_df"
       | string (INFIX_BASIS _) = "INFIX_BASIS"
     val layout = PrettyPrint.LEAF o string
-  end;
+  end

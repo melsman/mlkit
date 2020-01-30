@@ -61,7 +61,6 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	of nil => ok
 	 | WITH_INFO(i, _) :: rest => check i // walk_IdInfoList rest
 
-
     fun walk_Topdec topdec =
       case topdec
 	of STRtopdec(i, strdec, topdec_opt) =>
@@ -342,10 +341,10 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 
     and walk_Atexp atexp =
       case atexp
-	of SCONatexp(i, _) =>  check i
+	of SCONatexp(i, _, _) =>  check i
 	 | IDENTatexp(i, _, _) => check i
 
-	 | RECORDatexp(i, exprow_opt) =>
+	 | RECORDatexp(i, exprow_opt, _) =>
 	     check i // walk_opt walk_Exprow exprow_opt
 
 	 | LETatexp(i, dec, exp) =>

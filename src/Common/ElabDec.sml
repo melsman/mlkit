@@ -391,7 +391,7 @@ structure ElabDec: ELABDEC =
         case atexp of
 
           (* special constants *)                               (*rule 1*)
-          IG.SCONatexp(i, scon) =>
+          IG.SCONatexp(i, scon, rv_opt) =>
 	    (* Some special constants are overloaded; thus, we must
 	     * record some overloading info in the case a special constant
 	     * can denote one of a set of type names.
@@ -402,13 +402,15 @@ structure ElabDec: ELABDEC =
 		    of NONE => okConv i
 		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
 		val i_out = addTypeInfo_EXP(i_out, type_scon)
-	    in (Substitution.Id, type_scon, OG.SCONatexp (i_out, scon))
+                val rv_opt = Option.map (fn (i,rv) => (okConv i,rv)) rv_opt
+	    in (Substitution.Id, type_scon, OG.SCONatexp (i_out, scon, rv_opt))
 	    end
 
 
           (* identifiers - variables or constructors *)         (*rule 2*)
-        | IG.IDENTatexp(i, IG.OP_OPT(longid, withOp), regvars_opt) =>
-            (case C.lookup_longid C longid of
+         | IG.IDENTatexp(i, IG.OP_OPT(longid, withOp), regvars_opt) =>
+           let val regvars_opt = Option.map (fn(i,rvs) => (okConv i,rvs)) regvars_opt
+           in case C.lookup_longid C longid of
 
                (* Variable *)
               SOME(VE.LONGVAR sigma) =>
@@ -462,20 +464,21 @@ structure ElabDec: ELABDEC =
                               regvars_opt
 			      )
 		)
-          )
+           end
 
           (* record expression *)                               (*rule 3*)
-        | IG.RECORDatexp(i, NONE) =>
-            (Substitution.Id, Type.Unit, OG.RECORDatexp(okConv i,NONE))
+         | IG.RECORDatexp(i, NONE, rv_opt) =>
+           let val rv_opt = Option.map (fn (i,rv) => (okConv i,rv)) rv_opt
+           in (Substitution.Id, Type.Unit, OG.RECORDatexp(okConv i,NONE,rv_opt))
+           end
 
           (* record expression *)
-        | IG.RECORDatexp(i, SOME exprow) =>
-            let
+        | IG.RECORDatexp(i, SOME exprow, rv_opt) =>
+          let val rv_opt = Option.map (fn (i,rv) => (okConv i,rv)) rv_opt
               val (S, rho, out_exprow) = elab_exprow(C,exprow)
-            in
-              (S, Type.from_RecType rho,
-               OG.RECORDatexp (okConv i, SOME out_exprow))
-            end
+          in (S, Type.from_RecType rho,
+              OG.RECORDatexp (okConv i, SOME out_exprow, rv_opt))
+          end
 
           (* let expression *)                                  (*rule 4*)
         | IG.LETatexp(i, dec, exp) =>
@@ -648,9 +651,9 @@ structure ElabDec: ELABDEC =
           (* Match rule *)                                      (*rule 14*)
           IG.MRULE(i, pat, exp) =>
             let
-              val (S, (VE,tau), out_pat) = elab_pat(C,pat)
-              val (S',tau',  out_exp) =
-                     elab_exp(C.plus_VE (S onC C, VE),exp)
+              val (S, (VE,tau,_), out_pat) = elab_pat(C,pat)
+              val (S',tau', out_exp) =
+                  elab_exp(C.plus_VE (S onC C, VE),exp)
               val S'' = S' oo S
 	      val out_i = okConv i
             in
@@ -831,7 +834,7 @@ structure ElabDec: ELABDEC =
                val (E', list') = process(E.empty, list)
 	       val i' = ElabInfo.plus_TypeInfo (okConv i)
 		 (TypeInfo.OPEN_INFO
-		  let val (SE,TE,VE) = E.un E'
+		  let val (SE,TE,VE,_) = E.un E'
 		  in (EqSet.list (SE.dom SE), EqSet.list (TE.dom TE), EqSet.list (VE.dom VE))
 		  end)
              in
@@ -866,12 +869,21 @@ structure ElabDec: ELABDEC =
              end
 
            (* Region declaration; added declaration *)
-         | IG.REGIONdec(i, regvars) =>
-           let val i' =
-                   case getRepeatedElements (op =) regvars of
+         | IG.REGIONdec(i, (i2,regvars)) =>
+           let val i2' = okConv i2
+               val i' =
+                   case getRepeatedElements RegVar.eq regvars of
                        [] => okConv i
-                     | repeated => repeatedIdsError (i, map ErrorInfo.REGVAR_RID repeated)
-           in (Substitution.Id, [], E.from_VE VE.empty, OG.REGIONdec(i',regvars))
+                     | repeated => repeatedIdsError (i2, map ErrorInfo.REGVAR_RID repeated)
+               val i' =
+                   let val rs_env = C.to_R C
+                       val dups = List.foldl (fn (r,acc) => if List.exists (fn r' => RegVar.eq(r',r)) rs_env
+                                                            then r::acc else acc) nil regvars
+                   in case dups of
+                          nil => i'
+                        | _ => ElabInfo.plus_ErrorInfo i' (ErrorInfo.REGVARS_SCOPED_TWICE dups)
+                   end
+           in (Substitution.Id, [], E.from_R regvars, OG.REGIONdec(i',(i2',regvars)))
            end
         )
     and elab_decs(C : Context, dec : IG.dec) :  (* fast elaboration when SEQ associates to the left *)
@@ -907,8 +919,8 @@ structure ElabDec: ELABDEC =
         (* Simple value binding *)                              (*rule 25*)
         IG.PLAINvalbind(i, pat, exp, valbind_opt) =>
           let
-            val (S0, (VE,tau), out_pat) = elab_pat(C, pat)
-            val (S1, tau1, out_exp) = elab_exp(S0 onC C, exp)
+            val (S0, (VE,tau,R), out_pat) = elab_pat(C, pat)
+            val (S1, tau1, out_exp) = elab_exp(C.plus_E(S0 onC C,E.from_R R), exp)
 
             val (S2, i') = UnifyWithTexts("type of left-hand side pattern",(S1 oo S0) on tau,
                                           "type of right-hand side expression", tau1, i)
@@ -1425,14 +1437,14 @@ structure ElabDec: ELABDEC =
     (****** atomic patterns ******)
 
     and elab_atpat (C : Context, atpat : IG.atpat) :
-        (Substitution * (VarEnv * Type) * OG.atpat) =
+        (Substitution * (VarEnv * Type * RegVar.regvar list) * OG.atpat) =
 
         case atpat of
 
           (* Wildcard *)                                        (*rule 32*)
           IG.WILDCARDatpat i  =>
             (Substitution.Id,
-             (VE.empty, Type.fresh_normal ()),
+             (VE.empty, Type.fresh_normal (), nil),
               OG.WILDCARDatpat(okConv i))
 
           (* Special constant *)                                (*rule 33*)
@@ -1449,7 +1461,7 @@ structure ElabDec: ELABDEC =
 				   | _ => okConv i)
 		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
 		val i_out = addTypeInfo_MATCH(i_out, type_scon)
-	    in (Substitution.Id, (VE.empty, type_scon), OG.SCONatpat (i_out, scon))
+	    in (Substitution.Id, (VE.empty, type_scon, nil), OG.SCONatpat (i_out, scon))
 	    end
 
           (* Long identifier *)                                 (*rule 34*)
@@ -1473,12 +1485,15 @@ structure ElabDec: ELABDEC =
                       val i' = if Option.isSome regvars_opt then
                                  ElabInfo.plus_ErrorInfo i' ErrorInfo.REGVARS_IDONLY
                                else i'
+                      val R = case regvars_opt of SOME (_, rs) => rs
+                                                | NONE => nil
+                      val regvars_opt' = Option.map (fn(i,rvs) => (okConv i,rvs)) regvars_opt
                     in
                       (Substitution.Id,
-                       (VE.empty, tau'),
+                       (VE.empty, tau', R),
 		       OG.LONGIDatpat(addTypeInfo_CON(i', C, instances, longid),
 				      OG.OP_OPT(longid, withOp),
-                                      NONE))
+                                      regvars_opt'))
                     end
 
                 | SOME(VE.LONGEXCON tau) =>
@@ -1490,12 +1505,13 @@ structure ElabDec: ELABDEC =
                       val i' = if Option.isSome regvars_opt then
                                  ElabInfo.plus_ErrorInfo i' ErrorInfo.REGVARS_IDONLY
                                else i'
+                      val regvars_opt' = Option.map (fn(i,rvs) => (okConv i,rvs)) regvars_opt
                     in
                       (Substitution.Id,
-                       (VE.empty, exnType),
+                       (VE.empty, exnType, nil),
                        OG.LONGIDatpat(addTypeInfo_EXCON(i',exnType,longid),
                                       OG.OP_OPT(longid, withOp),
-                                      NONE))
+                                      regvars_opt'))
                     end
 
                 | _ =>          (* make new variable environment *)
@@ -1503,33 +1519,34 @@ structure ElabDec: ELABDEC =
                     let
                       val tau = Type.fresh_normal ()
                       val tau_scheme = TypeScheme.from_Type tau
+                      val regvars_opt' = Option.map (fn(i,rvs) => (okConv i,rvs)) regvars_opt
                     in
                       case Ident.decompose longid
                         of (nil, id) =>
                            let val i' =
                                    case regvars_opt of
                                        NONE => okConv i
-                                     | SOME regvars =>
-                                       case getRepeatedElements (op =) regvars of
+                                     | SOME (i2,regvars) =>
+                                       case getRepeatedElements RegVar.eq regvars of
                                            [] => okConv i
                                          | repeated =>
-                                           repeatedIdsError (i, map ErrorInfo.REGVAR_RID repeated)
+                                           repeatedIdsError (i2, map ErrorInfo.REGVAR_RID repeated)
                            in (Substitution.Id,
-                               (VE.singleton_var(id, tau_scheme), tau),
+                               (VE.singleton_var(id, tau_scheme), tau, nil),
                                OG.LONGIDatpat(addTypeInfo_VAR_PAT(i',
                                                                   tau),
                                               OG.OP_OPT(longid, withOp),
-                                              regvars_opt
+                                              regvars_opt'
                                              )
                               )
                            end
                          | (_, _) =>
                              (Substitution.Id,
-                              (VE.bogus, Type_bogus ()),
+                              (VE.bogus, Type_bogus (), nil),
                               OG.LONGIDatpat(
                                 errorConv(i, ErrorInfo.QUALIFIED_ID longid),
                                 OG.OP_OPT(longid, withOp),
-                                regvars_opt
+                                regvars_opt'
                               )
                              )
                     end
@@ -1538,7 +1555,7 @@ structure ElabDec: ELABDEC =
           (* Record pattern *)                                  (*rule 36*)
         | IG.RECORDatpat(i, row_opt as NONE) =>
             (Substitution.Id,
-             (VE.empty, Type.Unit),
+             (VE.empty, Type.Unit, nil),
               OG.RECORDatpat(okConv i, NONE))
 
         | IG.RECORDatpat(i, row_opt as SOME patrow) =>
@@ -1546,7 +1563,7 @@ structure ElabDec: ELABDEC =
               val (S, (VE, rho), out_patrow) = elab_patrow(C, patrow)
             in
               (S,
-               (VE,Type.from_RecType rho),
+               (VE,Type.from_RecType rho, nil),
                 OG.RECORDatpat(addTypeInfo_RECORD_ATPAT(okConv i,
                                                         Type.from_RecType rho),
 		               SOME(out_patrow)))
@@ -1554,8 +1571,8 @@ structure ElabDec: ELABDEC =
 
           (* Parenthesised pattern *)                           (*rule 37*)
         | IG.PARatpat(i, pat) =>
-            let val (S, (VE,tau), out_pat) = elab_pat(C, pat)
-            in (S, (VE,tau), OG.PARatpat(okConv i,out_pat)) end
+            let val (S, (VE,tau,R), out_pat) = elab_pat(C, pat)
+            in (S, (VE,tau,R), OG.PARatpat(okConv i,out_pat)) end
 
     (****** pattern rows ******)
 
@@ -1566,7 +1583,7 @@ structure ElabDec: ELABDEC =
            (* Pattern row *)                                    (*rule 39*)
            IG.PATROW(i, lab, pat, NONE) =>
              let
-               val (S, (VE, tau), out_pat) = elab_pat(C, pat)
+               val (S, (VE, tau, _), out_pat) = elab_pat(C, pat)
              in
                (S, (VE, Type.RecType.add_field (lab, tau) Type.RecType.empty),
                 OG.PATROW(okConv i, lab, out_pat, NONE)
@@ -1575,7 +1592,7 @@ structure ElabDec: ELABDEC =
 
          | IG.PATROW(i, lab, pat, SOME patrow) =>
              let
-               val (S, (VE, tau), out_pat) = elab_pat(C, pat)
+               val (S, (VE, tau, _), out_pat) = elab_pat(C, pat)
                val (S', (VE', rho), out_patrow) = elab_patrow(C, patrow)
                val intdom = EqSet.intersect (VE.dom VE) (VE.dom VE')
              in
@@ -1618,11 +1635,11 @@ structure ElabDec: ELABDEC =
     (****** patterns - Definition, p. ? ******)
 
     and elab_pat (C : Context, pat : IG.pat)
-      : (Substitution * (VarEnv * Type) * OG.pat) =
+      : (Substitution * (VarEnv * Type * RegVar.regvar list) * OG.pat) =
       let
-        val (S, (VE, ty), pat') = elab_pat'(C, pat)
+        val (S, (VE, ty, R), pat') = elab_pat'(C, pat)
       in
-        (S, (VE, ty), pat')
+        (S, (VE, ty, R), pat')
       end
 
     and elab_pat'(C, pat) =
@@ -1630,13 +1647,13 @@ structure ElabDec: ELABDEC =
 
           (* Atomic pattern *)                                  (*rule 40*)
           IG.ATPATpat(i, atpat) =>
-            let val (S, (VE,tau), out_atpat) = elab_atpat(C, atpat)
-            in (S, (VE,tau), OG.ATPATpat(okConv i,out_atpat)) end
+            let val (S, (VE,tau,R), out_atpat) = elab_atpat(C, atpat)
+            in (S, (VE,tau,R), OG.ATPATpat(okConv i,out_atpat)) end
 
           (* Constructed pattern *)                             (*rule 41*)
         | IG.CONSpat(i, IG.OP_OPT(longid, withOp), atpat) =>
             let
-              val (S, (VE,tau'), out_atpat) = elab_atpat(C, atpat)
+              val (S, (VE,tau',R), out_atpat) = elab_atpat(C, atpat)
             in
               case C.lookup_longid C longid of
 
@@ -1651,7 +1668,7 @@ structure ElabDec: ELABDEC =
 						  "but constructor has type", tau1, i)
                     val tau2 = S1 on new
                   in
-                    (S1 oo S, (S1 onVE VE, tau2),
+                    (S1 oo S, (S1 onVE VE, tau2, R),
                      OG.CONSpat(addTypeInfo_CON(i', C, instances, longid),
                                 OG.OP_OPT(longid, withOp),
                                 out_atpat
@@ -1668,7 +1685,7 @@ structure ElabDec: ELABDEC =
                           "but the exception constructor has type", tau, i)
                   in
                     (S1 oo S,
-                     (S1 onVE VE,Type.Exn),
+                     (S1 onVE VE,Type.Exn,nil),
                      OG.CONSpat(addTypeInfo_EXCON(i',S1 on arrow,longid),
                                 OG.OP_OPT(longid, withOp),
                                     out_atpat
@@ -1678,7 +1695,7 @@ structure ElabDec: ELABDEC =
 
               | _ => (* Mark the error. *)
                   (Substitution.Id,
-                   (VE, Type_bogus ()),
+                   (VE, Type_bogus (),nil),
                    OG.CONSpat(lookupIdError(i, longid),
                               OG.OP_OPT(Ident.bogus, withOp),
                               out_atpat
@@ -1688,32 +1705,32 @@ structure ElabDec: ELABDEC =
 
           (* Typed pattern *)                                   (*rule 42*)
         | IG.TYPEDpat(i, pat, ty) =>
-            let val (S, (VE,tau), out_pat) = elab_pat(C, pat)
+            let val (S, (VE,tau,R), out_pat) = elab_pat(C, pat)
 	    in case elab_ty(C, ty)
 		 of (SOME tau', out_ty) =>
 		   let val (S', i') = UnifyWithTexts("pattern has type", tau, "which conflicts \
 		                                     \with your type constraint", tau', i)
 		       val S'' = S' oo S
-		   in (S'', (S'' onVE VE, S'' on tau), OG.TYPEDpat(i', out_pat, out_ty))
+		   in (S'', (S'' onVE VE, S'' on tau, R), OG.TYPEDpat(i', out_pat, out_ty))
 		   end
-                  | (NONE, out_ty) => (S, (VE, tau), OG.TYPEDpat(okConv i, out_pat, out_ty))
+                  | (NONE, out_ty) => (S, (VE, tau, R), OG.TYPEDpat(okConv i, out_pat, out_ty))
 	    end
 
           (* Layered pattern *)                                 (*rule 43*)
         | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), NONE, pat) =>
             let
-              val (S, (VE1, tau), out_pat) = elab_pat(C, pat)
+              val (S, (VE1, tau, _), out_pat) = elab_pat(C, pat)
               val VE2 = VE.singleton_var(id, TypeScheme.from_Type tau)
               val intdom = EqSet.intersect (VE.dom VE1) (VE.dom VE2)
               val VE3 = VE.plus (VE1, VE2)
             in
               if EqSet.isEmpty intdom then
-                (S, (VE3, tau),
+                (S, (VE3, tau, nil),
                  OG.LAYEREDpat(addTypeInfo_VAR_PAT(okConv i,tau),
                                OG.OP_OPT(id, withOp),
                                NONE, out_pat))
               else
-                (S, (VE3, tau),
+                (S, (VE3, tau, nil),
                  OG.LAYEREDpat(repeatedIdsError(i, map ErrorInfo.ID_RID
                                                    (EqSet.list intdom)),
                                OG.OP_OPT(id, withOp),
@@ -1721,7 +1738,7 @@ structure ElabDec: ELABDEC =
             end
 
         | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), SOME ty, pat) =>
-            let val (S, (VE1, tau), out_pat) = elab_pat(C, pat)
+            let val (S, (VE1, tau, _), out_pat) = elab_pat(C, pat)
 	    in case elab_ty(C, ty)
 		 of (SOME tau', out_ty) =>
 		   let val (S', i') = UnifyWithTexts("pattern has type", tau,
@@ -1734,18 +1751,18 @@ structure ElabDec: ELABDEC =
 		   in
 		     if EqSet.isEmpty intdom then
 		       (S'',
-			(S'' onVE VE3, S'' on tau),
+			(S'' onVE VE3, S'' on tau, nil),
 			OG.LAYEREDpat(i', OG.OP_OPT(id, withOp), SOME out_ty, out_pat)
 			)
 		     else
 		       (S'',
-			(S'' onVE VE3, S'' on tau),
+			(S'' onVE VE3, S'' on tau, nil),
 			OG.LAYEREDpat(repeatedIdsError(i, map ErrorInfo.ID_RID (EqSet.list intdom)),
 				      OG.OP_OPT(id, withOp), SOME out_ty, out_pat)
 			)
 		   end
 		  | (NONE, out_ty) =>
-		   (S, (VE1, tau), OG.LAYEREDpat(okConv i, OG.OP_OPT(id, withOp), SOME out_ty, out_pat))
+		   (S, (VE1, tau, nil), OG.LAYEREDpat(okConv i, OG.OP_OPT(id, withOp), SOME out_ty, out_pat))
 	    end
 
         | IG.UNRES_INFIXpat _ =>
@@ -2007,12 +2024,12 @@ let
 
   fun resolve_atexp (atexp : atexp) : atexp =
       case atexp of
-          SCONatexp(i,scon) =>
+          SCONatexp(i,scon,rv_opt) =>
 	    (case ElabInfo.to_OverloadingInfo i
-	       of NONE => SCONatexp(resolve_i i, scon)
+	       of NONE => SCONatexp(resolve_i i, scon, rv_opt)
 		| SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
 		 SCONatexp (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar),
-			    scon)
+			    scon, rv_opt)
 		| SOME _ => impossible "resolve_atexp.SCON")
         | IDENTatexp(i, op_opt, regvars_opt) =>
               (case ElabInfo.to_OverloadingInfo i of
@@ -2021,9 +2038,9 @@ let
 		     IDENTatexp (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar),
 				 op_opt, regvars_opt)
                  | SOME _ => impossible "resolve_atexp")
-        | RECORDatexp(i, NONE) => RECORDatexp(resolve_i i,NONE)
-        | RECORDatexp(i, SOME exprow) =>
-              RECORDatexp(resolve_i i, SOME (resolve_exprow exprow))
+        | RECORDatexp(i, NONE, rv_opt) => RECORDatexp(resolve_i i,NONE, rv_opt)
+        | RECORDatexp(i, SOME exprow, rv_opt) =>
+              RECORDatexp(resolve_i i, SOME (resolve_exprow exprow), rv_opt)
         | LETatexp(i, dec, exp) =>
               LETatexp(resolve_i i, resolve_dec dec, resolve_exp exp)
         | PARatexp(i, exp) =>

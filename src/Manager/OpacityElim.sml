@@ -96,13 +96,13 @@ structure OpacityElim: OPACITY_ELIM =
 
      fun elim_atexp(rea, atexp) =
        case atexp
-	 of SCONatexp(i,scon) => (SCONatexp(on_info(rea,i),scon), Id)
+	 of SCONatexp(i,scon,rv_opt) => (SCONatexp(on_info(rea,i),scon,rv_opt), Id)
 	  | IDENTatexp (i, longid_op_opt, regvars_opt) =>
             (IDENTatexp(on_info(rea,i), longid_op_opt, regvars_opt), Id)
-	  | RECORDatexp (i,exprowopt) =>
+	  | RECORDatexp (i,exprowopt,rv_opt) =>
 	   let val (exprowopt', rea') = elim_opt elim_exprow (rea,exprowopt)
 	       val i' = on_info(rea,i)
-	   in (RECORDatexp(i',exprowopt'), rea')
+	   in (RECORDatexp(i',exprowopt',rv_opt), rea')
 	   end
 	  | LETatexp(i,dec,exp) =>
 	   let val (dec', rea') = elim_dec(rea,dec)

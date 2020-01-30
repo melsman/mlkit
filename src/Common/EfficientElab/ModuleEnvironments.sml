@@ -60,7 +60,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
       val singleton = SIGENV o FinMap.singleton
       fun plus (SIGENV G, SIGENV G') = SIGENV (FinMap.plus (G, G'))
       fun lookup (SIGENV G) = FinMap.lookup G
-      fun tynames (SIGENV G) = 
+      fun tynames (SIGENV G) =
             FinMap.fold
 	      (fn (Sig, T) =>
 	            TyName.Set.union T (Sigma.tynames Sig))
@@ -72,15 +72,15 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	    fun format_id sigid =
 	          concat ["signature ", SigId.pr_SigId sigid, " : "]
 
-	    fun layoutPair (sigid, Sig) = 
+	    fun layoutPair (sigid, Sig) =
 	          PP.NODE {start=format_id sigid, finish="", indent=3,
 			   children=[Sigma.layout Sig],
 			   childsep=PP.NOSEP}
-	    in 
+	    in
 	      (case l of
 		[] => PP.LEAF ""		(* No signatures => no printout *)
 	      | _ =>
-		  PP.NODE {start="", finish="", indent=0, 
+		  PP.NODE {start="", finish="", indent=0,
 			   children=map layoutPair l, childsep=PP.RIGHT " "})
 	    end
       fun report (report_sigid_Sigma : sigid * Sig -> Report, SIGENV m) =
@@ -90,7 +90,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	if Realisation.is_Id rea then G
 	else SIGENV (FinMap.composemap (fn Sigma => Sigma.on (rea,Sigma)) m)
 
-      val pu = Pickle.convert (SIGENV, fn SIGENV m => m) 
+      val pu = Pickle.convert (SIGENV, fn SIGENV m => m)
 	  (FinMap.pu (SigId.pu,Sigma.pu))
 
     end (*G*)
@@ -104,17 +104,17 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 
     datatype FunEnv = FUNENV of (funid, absprjid*FunSig) FinMap.map
     fun absprjid_to_string(absprjid) = absprjid
-    fun mk_absprjid x = x 
-      
-    fun is_absprjid_basislib absprjid = 
+    fun mk_absprjid x = x
+
+    fun is_absprjid_basislib absprjid =
       OS.Path.file absprjid = "basis.pm"
-      
+
     fun strip_install_dir absprjid =
       if is_absprjid_basislib absprjid then OS.Path.mkRelative{path=absprjid, relativeTo= !Flags.install_dir}
       else absprjid
 
     fun strip_install_dir' (p as (absprjid, funid)) =
-      if is_absprjid_basislib absprjid then 
+      if is_absprjid_basislib absprjid then
 	(OS.Path.mkRelative{path=absprjid, relativeTo= !Flags.install_dir},
 	 FunId.mk_FunId (OS.Path.mkRelative{path=FunId.pr_FunId funid, relativeTo= !Flags.install_dir}))
       else p
@@ -143,7 +143,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
       fun layout (FUNENV m) =
 	    let val l = FinMap.Fold op :: nil m
 	    fun format_id funid = concat ["functor ", FunId.pr_FunId funid, " : "]
-	    fun layoutPair (funid, (_,FunSig)) = 
+	    fun layoutPair (funid, (_,FunSig)) =
 	          PP.NODE {start=format_id funid, finish="", indent=3,
 			   children=[Phi.layout FunSig],
 			   childsep=PP.NOSEP}
@@ -151,7 +151,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	      case l of
 		[] => PP.LEAF ""		(* No functors => no printout *)
 	      | _ =>
-		  PP.NODE {start="", finish="", indent=0, 
+		  PP.NODE {start="", finish="", indent=0,
 			   children=map layoutPair l, childsep=PP.RIGHT " "}
 	    end
       fun report (report_funid_Phi : funid * FunSig -> Report, FUNENV m) =
@@ -159,11 +159,11 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 	in FinMap.reportMapSORTED (FunId.<) report_funid_Phi' m
 	end
 
-      fun on rea (F as FUNENV m) = 
+      fun on rea (F as FUNENV m) =
 	if Realisation.is_Id rea then F
 	else FUNENV (FinMap.composemap (fn (absprjid, Phi) => (absprjid, Phi.on (rea, Phi))) m)
 
-      val pu = Pickle.convert (FUNENV, fn FUNENV m => m) 
+      val pu = Pickle.convert (FUNENV, fn FUNENV m => m)
 	  (FinMap.pu (FunId.pu, Pickle.pairGen(Pickle.string,Phi.pu)))
 
     end (*F*)
@@ -173,7 +173,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
     (*B, static basis*)
 
     datatype Basis = BASIS of {F : FunEnv, G : SigEnv, E : Env}
-	
+
     structure B = struct
       val empty = BASIS {F = F.empty, G = G.empty, E = E.empty}
       fun initial() = BASIS {F = F.empty, G = G.empty, E = E.initial()}
@@ -201,7 +201,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
   (*E component*)
       fun plus_E (BASIS {F, G, E}, E') = BASIS {F=F, G=G, E=E.plus (E, E')}
       fun from_E E = BASIS {F = F.empty, G = G.empty, E = E}
-      fun to_E (BASIS {E, ...}) = E 
+      fun to_E (BASIS {E, ...}) = E
       val lookup_strid = E.lookup_strid o to_E
       val lookup_longstrid = E.lookup_longstrid o to_E
       val lookup_longtycon = E.lookup_longtycon o to_E
@@ -223,20 +223,20 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 
       fun enrich_Env a = E.enrich a
 
-      fun enrich_SigEnv(SIGENV G1,SIGENV G2) = 
+      fun enrich_SigEnv(SIGENV G1,SIGENV G2) =
 	FinMap.Fold (fn ((sigid2,Sig2), b) => b andalso
-		     case FinMap.lookup G1 sigid2 
+		     case FinMap.lookup G1 sigid2
 		       of SOME Sig1 => Sigma.eq(Sig1,Sig2)
 			| NONE => false) true G2
 
       fun enrich_FunEnv(FUNENV F1,FUNENV F2) =
 	FinMap.Fold (fn ((funid2,(absprjid2,FunSig2)),b) => b andalso
-		     case FinMap.lookup F1 funid2 
+		     case FinMap.lookup F1 funid2
 		       of SOME (absprjid1,FunSig1) => absprjid1 = absprjid2 andalso Phi.eq(FunSig1,FunSig2)
 			| NONE => false) true F2
 
 
-      fun enrichB(BASIS{F=F1,G=G1,E=E1}, BASIS{F=F2,G=G2,E=E2}) = 
+      fun enrichB(BASIS{F=F1,G=G1,E=E1}, BASIS{F=F2,G=G2,E=E2}) =
 	enrich_FunEnv(F1,F2) andalso enrich_SigEnv(G1,G2) andalso
 	enrich_Env(E1,E2)
       val enrich = enrichB
@@ -254,7 +254,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 					    SOME FunSig => FunSig
 					  | NONE => die ("restrictB.funid " ^ FunId.pr_FunId funid ^ " not in basis."))
 			in FinMap.add(funid,FunSig,Fnew)
-			end) FinMap.empty funids 
+			end) FinMap.empty funids
 	    val G' = foldl
 	               (fn (sigid, Gnew) =>
 			let val Sig = (case FinMap.lookup G sigid of
@@ -269,7 +269,7 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
       fun restrict p = restrictB E.restrict p
 
       fun domain(BASIS{F=FUNENV F,G=SIGENV G,E}) : longids =
-	  let val (SE,TE,VE) = E.un E
+	  let val (SE,TE,VE,_) = E.un E
 	      val strids = EqSet.list (SE.dom SE)
 	      val longstrids = map StrId.longStrIdOfStrId strids
 	      val vids = EqSet.list (VE.dom VE)
@@ -282,8 +282,8 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
 
       (* Structure agreement *)
       fun agree([],_,_) = true
-	| agree(longstrid::longstrids,B1,B2) = 
-	case (lookup_longstrid B1 longstrid, 
+	| agree(longstrid::longstrids,B1,B2) =
+	case (lookup_longstrid B1 longstrid,
 	      lookup_longstrid B2 longstrid)
 	  of (SOME E1, SOME E2) => Environments.E.eq(E1,E2) andalso agree(longstrids,B1,B2)
 	   | _ => false
@@ -302,4 +302,3 @@ structure ModuleEnvironments: MODULE_ENVIRONMENTS =
     end (*B*)
 
   end; (*functor ModuleEnvironments*)
-

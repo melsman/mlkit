@@ -13,7 +13,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     structure TypeFcn      = StatObject.TypeFcn
-	    
+
     (*import from Environments:*)
     type id                = Environments.id
     type Env               = Environments.Env
@@ -37,7 +37,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
     fun mark_names T = app (Name.mark_gen o TyName.name) T
     fun unmark_names T = app (Name.unmark_gen o TyName.name) T
 
-      
+
     (*Plan of this code: first two functions that are used for matching
      both signatures and functor signatures, viz. sigMatchRea and
      check_enrichment.  Then the structure Sigma and Phi.
@@ -49,7 +49,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 
     datatype Sig = SIGMA of {T : TyName.Set.Set, E : Env}
 
-    datatype SigMatchError = 
+    datatype SigMatchError =
       MISSINGSTR  of longstrid
     | MISSINGTYPE of longtycon
     | S_CONFLICTINGARITY of longtycon * (TyName * TypeFcn)
@@ -58,7 +58,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
     | MISSINGEXC of strid list * id
     | S_RIGIDTYCLASH of longtycon
     | S_CONFLICTING_DOMCE of longtycon
-    | NOTYENRICHMENT of {qualid: strid list * id, 
+    | NOTYENRICHMENT of {qualid: strid list * id,
 			 str_sigma : TypeScheme, str_vce: string,
 			 sig_sigma : TypeScheme, sig_vce: string}
     | EXCNOTEQUAL of strid list * id * (Type * Type)
@@ -73,8 +73,8 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 	let
 	  fun implies(a,b) = (* a --> b *) not (a andalso (not b))
 	  fun matchEnv (E, E', path) : realisation =
-	    let val (SE, TE, _) = E.un E
-		val (SE', TE', _) = E.un E'
+	    let val (SE, TE, _, _) = E.un E
+		val (SE', TE', _, _) = E.un E'
 		val phi = matchSE (SE, SE', path)
 		val TEnew = Realisation.on_TyEnv phi TE
 	    in
@@ -91,7 +91,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 		 | NONE =>
 		       fail (MISSINGSTR (StrId.implode_longstrid(rev path, strid))))
 	    in
-	      SE.Fold f Realisation.Id SE 
+	      SE.Fold f Realisation.Id SE
 	    end
 
 	  and matchTE (TE, TE', path) : realisation =
@@ -102,11 +102,11 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 	       SOME tystr' =>
 	      (*** As Sigma is type explicit, Definition sec. 5.8
 	       *** we know that for all flexible type names t (type names bound
-	       *** by T of Sigma) there exist a tycon, such that 
-	       *** TE(tycon) = (t, VE) for some VE. 
+	       *** by T of Sigma) there exist a tycon, such that
+	       *** TE(tycon) = (t, VE) for some VE.
 	       *** However, it is possible that
 	       *** there exists a t' and tycon', s.t. TE(tycon') =
-	       *** (t', VE') for some VE' _and_ t' is not flexible (not in 
+	       *** (t', VE') for some VE' _and_ t' is not flexible (not in
 	       *** T of Sigma).
 	       ***)
 	       let val theta = TyStr.to_theta tystr
@@ -126,26 +126,26 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 			      else err CONFLICTINGEQUALITY
 			  else   err S_CONFLICTINGARITY
 			else (* t is rigid *)
-			  phi 
+			  phi
 		      end
 		  | NONE => phi)
 	       end
 
-		 | NONE => 
+		 | NONE =>
 		     fail (MISSINGTYPE
 			   (TyCon.implode_LongTyCon(rev path, tycon))))
 	     in
 	       TE.Fold f Realisation.Id TE
 	     end
 
-	  fun elim_VEs_in_TE TE = 
+	  fun elim_VEs_in_TE TE =
 	    TE.Fold (fn (tycon, tystr) => fn te =>
 		     let val tystr' = TyStr.from_theta_and_VE(TyStr.to_theta tystr,VE.empty)
 		     in TE.plus(TE.singleton(tycon,tystr'),te)
-		     end) TE.empty TE 
+		     end) TE.empty TE
 	  fun elim_VEs_in_E E =
-	    let val (SE, TE, _) = E.un E
-	    in E.mk(SE.map elim_VEs_in_E SE, elim_VEs_in_TE TE, VE.empty)
+	    let val (SE, TE, _, R) = E.un E
+	    in E.mk(SE.map elim_VEs_in_E SE, elim_VEs_in_TE TE, VE.empty, R)
 	    end
 
 	in (* the VE's are not needed for matching *)
@@ -165,17 +165,23 @@ structure ModuleStatObject: MODULE_STATOBJECT =
             | kind (VE.LONGCON _)   = "con  "
             | kind (VE.LONGEXCON _) = "excon"
 
-          fun sigma(VE.LONGVAR sigm)   =  sigm
-            | sigma(VE.LONGCON sigm)   =  sigm
-            | sigma(VE.LONGEXCON tau)  = StatObject.TypeScheme.from_Type tau
+          fun sigma (VE.LONGVAR sigm)  = sigm
+            | sigma (VE.LONGCON sigm)  = sigm
+            | sigma (VE.LONGEXCON tau) = StatObject.TypeScheme.from_Type tau
 
-	  fun enrichesE (E, E', path) : unit =
-	      let val (SE,TE,VE) = E.un E
-		  val (SE',TE',VE') = E.un E'
-	      in
-		  enrichesSE (SE,SE',path) ;
-		  enrichesTE (TE,TE',path) ;
-		  enrichesVE (VE,VE',path) 
+          fun enrich_R (R1,R2) =
+              List.foldl (fn (r,acc) => acc andalso List.exists (fn r' => RegVar.eq(r,r')) R1) true R2
+          and equal_R (R1,R2) =
+              length R1 = length R2 andalso enrich_R(R1,R2)
+
+          fun enrichesE (E, E', path) : unit =
+	      let val (SE,TE,VE,R) = E.un E
+		  val (SE',TE',VE',R') = E.un E'
+	      in enrichesSE (SE,SE',path) ;
+		 enrichesTE (TE,TE',path) ;
+		 enrichesVE (VE,VE',path) ;
+                 if equal_R (R,R') then ()
+                 else raise Fail "ModuleStatObject.enrichesE: different region sets"
 	      end
 
 	  and enrichesSE (SE, SE', path) : unit =
@@ -252,7 +258,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
     structure Sigma = struct
       val triv = SIGMA {T = TyName.Set.empty, E = E.empty}
       val bogus = triv
-      fun to_T_and_E (SIGMA {T, E}) = (T, E) 
+      fun to_T_and_E (SIGMA {T, E}) = (T, E)
       fun from_T_and_E (T,E) = SIGMA {T=T, E=E}
       val to_E = #2 o to_T_and_E
       val tyvars = E.tyvars o to_E
@@ -267,7 +273,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
       fun on' (phi : realisation, Sigma as SIGMA {T, E}) : Sig * realisation =
 	    (*        ^ renaming of bound names *)
 	    let
-	      (*only clashing bound names need to be renamed to preserve 
+	      (*only clashing bound names need to be renamed to preserve
 	       T intersection ( Supp phi union Yield phi) = EmptySet
 	       realisations, Definition v4, page 33 sec. 5.7*)
 	      val T_free = tynames Sigma
@@ -281,7 +287,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 	      (SIGMA {T = T', E = E'}, phi_rename)
 	    end
 
-      fun on (phi, Sigma : Sig) : Sig = 
+      fun on (phi, Sigma : Sig) : Sig =
 	    if Realisation.is_Id phi then Sigma else
 	      #1 (on' (phi, Sigma))
 
@@ -345,7 +351,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 	  in E_eq(E1,E2)
 	  end
 *)
-		  
+
       fun layout (SIGMA {T, E}) =
 (*	    if !Flags.DEBUG_STATOBJECTS then *)
 	      let val Ttree = TyName.Set.layoutSet {start="(", sep=",", finish=")"} TyName.layout T
@@ -362,7 +368,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 	  in Pickle.convert (to,from)
 	      (Pickle.pairGen0(TyName.Set.pu TyName.pu, E.pu))
 	  end
-	  
+
     end (*Sigma*)
 
 
@@ -376,20 +382,20 @@ structure ModuleStatObject: MODULE_STATOBJECT =
       fun from_T_and_E_and_Sigma (T, E, T'E') = FUNSIG {T = T, E = E, T'E' = T'E'}
       fun to_T_and_E_and_Sigma (FUNSIG {T, E, T'E'}) = (T, E, T'E')
       fun tynames (FUNSIG {T, E, T'E' (*= SIGMA {T = T', E = E'} *)}) =
-(*	    TyName.Set.union 
+(*	    TyName.Set.union
 	      (TyName.Set.union (E.tynames E) T)
-	      (TyName.Set.difference (E.tynames E') (TyName.Set.union T T')) 
+	      (TyName.Set.difference (E.tynames E') (TyName.Set.union T T'))
 *)
-	  TyName.Set.difference 
+	  TyName.Set.difference
 	  (TyName.Set.union (Sigma.tynames T'E') (E.tynames E))
 	  T
 
-      fun tyvars Phi = 
+      fun tyvars Phi =
 	    let val (_, E, Sig) = to_T_and_E_and_Sigma Phi
 	    in
 	      TyVar.unionTyVarSet (E.tyvars E, Sigma.tyvars Sig)
 	    end
-      fun tyvars' Phi = 
+      fun tyvars' Phi =
 	    let val (_, E, Sig) = to_T_and_E_and_Sigma Phi
 	    in
 	      E.tyvars' E @ Sigma.tyvars' Sig
@@ -457,7 +463,7 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 (*
 	fun eq(FUNSIG{T=T1,E=E1,T'E'=Sig1'}, funsig2 as FUNSIG{T,...}) =
 	  if TyName.Set.size T1 <> TyName.Set.size T then false
-	  else 
+	  else
 	    let val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
 	        val T1 = TyName.Set.list T1
 		val T2 = TyName.Set.list T2
@@ -475,9 +481,9 @@ structure ModuleStatObject: MODULE_STATOBJECT =
 	    let
 	      val Ttree = TyName.Set.layoutSet {start="(", sep=",", finish=")"} TyName.layout T
 	      val body = PP.NODE {start="(", finish=")", indent=1,
-				  children=[E.layout E, Sigma.layout T'E'], 
+				  children=[E.layout E, Sigma.layout T'E'],
 				  childsep=PP.RIGHT ", "}
-	    in 
+	    in
 	      PP.NODE {start="", finish="", indent=1,
 		       children=[Ttree,body],
 		       childsep=PP.NOSEP}
@@ -493,5 +499,3 @@ structure ModuleStatObject: MODULE_STATOBJECT =
     end (*Phi*)
 
   end (*ModuleStatObject*)
-
-

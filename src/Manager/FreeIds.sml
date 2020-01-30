@@ -152,7 +152,7 @@ structure FreeIds:  FREE_IDS =
     fun free_atexp I =
       fn SCONatexp _ => ()
        | IDENTatexp(_, OP_OPT(longvid,_), _) => use_longvid(I,longvid)
-       | RECORDatexp(_,exprow_opt) => free_exprow_opt I exprow_opt
+       | RECORDatexp(_,exprow_opt,_) => free_exprow_opt I exprow_opt
        | LETatexp(_,dec,exp) => let val I' = free_dec I dec
 				in free_exp (I ++ I') exp
 				end

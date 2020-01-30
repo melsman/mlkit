@@ -33,7 +33,7 @@ structure Infixing: INFIXING =
                  fun atomToFull atexp = ATEXPexp (get_info_atexp atexp, atexp)
                  fun fullToAtom exp = PARatexp (get_info_exp exp, exp)
 
-                 fun pair (exp1, exp2) = GrammarUtils.tuple_atexp [exp1, exp2]
+                 fun pair (exp1, exp2) = GrammarUtils.tuple_atexp [exp1, exp2] NONE
 
                  fun asId atexp =
                    case atexp
@@ -142,6 +142,10 @@ structure Infixing: INFIXING =
 	   end
 	  | _ => ())
 
+    fun eq_regvars_opt (NONE,NONE) = true
+      | eq_regvars_opt (SOME (_,rs), SOME (_,rs')) = RegVar.eqs (rs,rs')
+      | eq_regvars_opt _ = false
+
    (* `fun' bindings are a pain in the posterior. The definition (V4, Apdx. B,
       Fig. 20) gives the syntax rules as a footnote (sigh). I've formalised
       them as below. The parser delivers a FUN binding as a sequence (>= 1)
@@ -172,7 +176,7 @@ structure Infixing: INFIXING =
                            atpats. resolveFClauseArgs can fail for an
                            ineligible list of patterns. *)
 
-    fun resolveFClauseArgs(iBas, atpats): id * RegVar.regvar list option * atpat list =
+    fun resolveFClauseArgs (iBas, atpats): id * (info*RegVar.regvar list) option * atpat list =
       let
         datatype Category = INFIXED of id | OTHER
 
@@ -252,7 +256,7 @@ structure Infixing: INFIXING =
                        RHS exp. *)
 
     and resolveFClause (iBas, fclause)
-        : id * RegVar.regvar list option * (atpat list * exp * ty option) list =
+        : id * (info*RegVar.regvar list) option * (atpat list * exp * ty option) list =
       case fclause
         of FCLAUSE(info, atpats, ty_opt, exp, fclause_opt) =>
              let
@@ -267,7 +271,7 @@ structure Infixing: INFIXING =
                         val (id', regvars_opt', rest) = resolveFClause (iBas, fclause')
                       in
                         if id = id' then
-                          if regvars_opt = regvars_opt' then
+                          if eq_regvars_opt (regvars_opt,regvars_opt') then
                             (id, regvars_opt, (args', exp', ty_opt) :: rest)
                           else error_string info
                                             "Parameterised region variables should agree."
@@ -289,7 +293,7 @@ structure Infixing: INFIXING =
         fun probableTupleAtExp [] = impossible "probableTupleAtExp []"
 	  | probableTupleAtExp [atexp] = atexp
 	  | probableTupleAtExp atexps =
-	      GrammarUtils.tuple_atexp (map GrammarUtils.expOfAtexp atexps)
+	      GrammarUtils.tuple_atexp (map GrammarUtils.expOfAtexp atexps) NONE
 
         fun probableTuplePat atpats =
               GrammarUtils.patOfAtpat
@@ -806,12 +810,12 @@ structure Infixing: INFIXING =
         of SCONatexp _ => atexp
          | IDENTatexp _ => atexp
 
-         | RECORDatexp(i, exprow_opt) =>
+         | RECORDatexp(i, exprow_opt, rv_opt) =>
              RECORDatexp(i,
                          case exprow_opt
                            of SOME exprow => SOME(resolveExprow(iBas, exprow))
-                            | NONE => NONE
-                        )
+                            | NONE => NONE,
+                         rv_opt)
 
          | LETatexp(i, dec, exp) =>
              let

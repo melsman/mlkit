@@ -3,7 +3,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
   struct
     structure E = Effect
-    structure R = RType 
+    structure R = RType
     structure L = LambdaExp
     structure PP = PrettyPrint
     structure Lvar = Lvars
@@ -17,29 +17,30 @@ structure RegionStatEnv: REGION_STAT_ENV =
     fun log_st st = PP.outputTree(fn s => TextIO.output(TextIO.stdOut,s), st, 70)
     fun layout_effects effects = PP.NODE{start="[",finish="]",indent=1,childsep=PP.RIGHT ",",
 					 children=map E.layout_effect effects}
-    fun dump(t: PP.StringTree):unit = 
+    fun dump(t: PP.StringTree):unit =
         PP.outputTree(fn s => TextIO.output(!Flags.log,s), t, !Flags.colwidth)
 
-      (* arity: number of quantified type variables, 
+      (* arity: number of quantified type variables,
 		list of runtime types,
 		number of effect  variables *)
     type runType = E.runType
-    type arity = int * E.runType list * int 
+    type arity = int * E.runType list * int
     fun mk_arity x = x
     fun un_arity x = x
 
-    type il = R.il 
+    type il = R.il
     type cone = R.cone
 
     type instance_list = (il * (il * cone -> il * cone)) ref list
 
-    type lvar_env_range = bool * bool * R.sigma * R.place 
+    type lvar_env_range = bool * bool * R.sigma * R.place
 			* instance_list ref option * (il ->unit)option
 
     type regionStatEnv = {tyname_env:  arity TyNameMap.map,
 			  con_env: R.sigma ConMap.map,
 			  excon_env: (R.Type * R.place) ExconMap.map,
-			  lvar_env: lvar_env_range LvarMap.map
+			  lvar_env: lvar_env_range LvarMap.map,
+                          regvar_env: E.effect RegVar.Map.map
 			 }
     type con = Con.con                           (* Unqualified value constructors. *)
     type excon = Excon.excon			(* Unqualified exception constructors.*)
@@ -53,15 +54,17 @@ structure RegionStatEnv: REGION_STAT_ENV =
     val empty: regionStatEnv = {tyname_env = TyNameMap.empty,
 				con_env = ConMap.empty,
 				excon_env = ExconMap.empty,
-				lvar_env = LvarMap.empty}
+				lvar_env = LvarMap.empty,
+                                regvar_env = RegVar.Map.empty}
+
     val tyname_env0= TyNameMap.add(TyName.tyName_STRING, (0,[],0),
 		     TyNameMap.add(TyName.tyName_REAL, (0,[],0),
 		     TyNameMap.add(TyName.tyName_EXN, (0,[],0),
 		     TyNameMap.add(TyName.tyName_REF, (1,[],0),
 		     TyNameMap.add(TyName.tyName_BOOL, (0,[],0),
-		     TyNameMap.add(TyName.tyName_INT31, (0,[],0), 
-		     TyNameMap.add(TyName.tyName_INT32, (0,[],0), 
-		     TyNameMap.add(TyName.tyName_CHAR, (0,[],0), 
+		     TyNameMap.add(TyName.tyName_INT31, (0,[],0),
+		     TyNameMap.add(TyName.tyName_INT32, (0,[],0),
+		     TyNameMap.add(TyName.tyName_CHAR, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD8, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD31, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD32, (0,[],0),
@@ -102,7 +105,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	    val _ = E.edge(arreff, E.mkPut rho'')
 
 	    val cons_mu = R.mkFUN([(R.mkRECORD[(alpha_ty,rho),alpha_rho_list], rho')],
-				arreff, 
+				arreff,
 				[alpha_rho_list])
 	    val (c,cons_sigma) = R.generalize_all (c, lev0, [alpha], cons_mu)
 	in (c, cons_sigma)
@@ -140,7 +143,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	end
 
       fun mk_bool_sigma c lev0 =
-	let val (c,bool_sigma) =  
+	let val (c,bool_sigma) =
 	       R.generalize_all (c, lev0, [], (R.mkCONSTYPE(TyName.tyName_BOOL,[],[],[])))
 	in (c, bool_sigma)
 	end
@@ -160,7 +163,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	      val (ae, c) = E.freshEps c
 	      val _ = E.edge(ae, E.mkPut rIntInf)
 	      val f = R.mkFUN([arg_mu],ae,[intinf_mu])
-	      val (c,intinf_sigma) =  
+	      val (c,intinf_sigma) =
 		  R.generalize_all (c, lev0, [], f)
 	  in (c,intinf_sigma)
 	  end
@@ -187,82 +190,114 @@ structure RegionStatEnv: REGION_STAT_ENV =
 				     (Con.con_INTINF, intinf_sigma)]
     end
 
-    val excon_env0 = ExconMap.fromList 
+    val excon_env0 = ExconMap.fromList
       (map (fn excon => (excon, (R.exnType,E.toplevel_region_withtype_top)))
        [Excon.ex_DIV, Excon.ex_MATCH,
 	Excon.ex_BIND, Excon.ex_OVERFLOW, Excon.ex_INTERRUPT])
 
-    val initial: regionStatEnv ={tyname_env = tyname_env0,
-				 con_env = conenv0,
-				 excon_env = excon_env0,
-				 lvar_env = LvarMap.empty (*lvar_env0*) }
+    val regvar_env0 =
+        RegVar.Map.fromList
+            (map (fn (s,rv) => (RegVar.mk_Named s, rv))
+                 [("greg_top",    E.toplevel_region_withtype_top),
+                  ("greg_string", E.toplevel_region_withtype_string),
+                  ("greg_pair",   E.toplevel_region_withtype_pair),
+                  ("greg_triple", E.toplevel_region_withtype_triple),
+                  ("greg_array",  E.toplevel_region_withtype_array),
+                  ("greg_ref",    E.toplevel_region_withtype_ref)])
 
-    fun declareTyName(tyname,arity,rse as {tyname_env, con_env, excon_env,lvar_env})=
-	{tyname_env = TyNameMap.add(tyname,arity,tyname_env), 
+    val initial: regionStatEnv = {tyname_env = tyname_env0,
+				  con_env = conenv0,
+				  excon_env = excon_env0,
+				  lvar_env = LvarMap.empty (*lvar_env0*),
+                                  regvar_env = regvar_env0}
+
+    fun declareTyName (tyname,arity,{tyname_env, con_env,excon_env,
+                                     lvar_env,regvar_env}) =
+	{tyname_env = TyNameMap.add(tyname,arity,tyname_env),
 	 con_env= con_env,
 	 excon_env = excon_env,
-	 lvar_env =lvar_env}
+	 lvar_env = lvar_env,
+         regvar_env = regvar_env}
 
-    fun declareCon(con,sigma,rse as {tyname_env, con_env, excon_env,lvar_env})=
+    fun declareCon (con,sigma,{tyname_env, con_env, excon_env,
+                               lvar_env, regvar_env}) =
 	{tyname_env = tyname_env,
 	 con_env= ConMap.add (con,sigma,con_env),
 	 excon_env = excon_env,
-	 lvar_env =lvar_env}
+	 lvar_env = lvar_env,
+         regvar_env = regvar_env}
 
-    fun declareExcon(excon,mu,rse as {tyname_env, con_env, excon_env,lvar_env})=
+    fun declareExcon (excon,mu,{tyname_env, con_env, excon_env,
+                                lvar_env, regvar_env}) =
 	{tyname_env = tyname_env,
-	 con_env= con_env,
+	 con_env = con_env,
 	 excon_env = ExconMap.add (excon,mu,excon_env),
-	 lvar_env =lvar_env}
+	 lvar_env = lvar_env,
+         regvar_env = regvar_env}
 
-    fun declareLvar(lvar,range,rse as {tyname_env, con_env, excon_env,lvar_env})=
+    fun declareLvar (lvar,range,{tyname_env, con_env, excon_env,
+                                 lvar_env, regvar_env})=
 	{tyname_env = tyname_env,
-	 con_env= con_env,
+	 con_env = con_env,
 	 excon_env = excon_env,
-	 lvar_env = LvarMap.add(lvar,range,lvar_env)}
+	 lvar_env = LvarMap.add(lvar,range,lvar_env),
+         regvar_env = regvar_env}
 
-    fun plus(rse as {tyname_env, con_env, excon_env,lvar_env},
-	     rse' as {tyname_env = tyname_env', con_env=con_env', excon_env=excon_env',lvar_env=lvar_env'})=
+    fun declareRegVar (rv,effect,{tyname_env, con_env, excon_env,
+                                  lvar_env, regvar_env})=
+	{tyname_env = tyname_env,
+	 con_env = con_env,
+	 excon_env = excon_env,
+	 lvar_env = lvar_env,
+         regvar_env = RegVar.Map.add(rv,effect,regvar_env)}
+
+    fun plus ({tyname_env, con_env, excon_env,lvar_env,regvar_env},
+	      {tyname_env = tyname_env', con_env=con_env', excon_env=excon_env',
+               lvar_env=lvar_env',regvar_env=regvar_env'})=
 	{tyname_env = TyNameMap.plus(tyname_env, tyname_env'),
 	 con_env = ConMap.plus(con_env, con_env'),
 	 excon_env = ExconMap.plus(excon_env, excon_env'),
-	 lvar_env = LvarMap.plus(lvar_env, lvar_env')}
+	 lvar_env = LvarMap.plus(lvar_env, lvar_env'),
+         regvar_env = RegVar.Map.plus(regvar_env, regvar_env')}
 
-    fun lookupTyName(rse : regionStatEnv as {tyname_env,...}) = TyNameMap.lookup tyname_env
+    fun lookupRegVar (rse : regionStatEnv as {regvar_env,...}) = RegVar.Map.lookup regvar_env
+
+    fun lookupTyName (rse : regionStatEnv as {tyname_env,...}) = TyNameMap.lookup tyname_env
 
       (* To deal with togling of representation of lists we check here in the
        * lookupCon function if unboxing of datatypes is enabled:
        *)
 
-    fun lookupCon(rse : regionStatEnv as {con_env,...}) con =
-      if Con.eq(con,Con.con_CONS) then SOME cons_sigma_unboxed
-      else ConMap.lookup con_env con
+    fun lookupCon (rse : regionStatEnv as {con_env,...}) con =
+        if Con.eq(con,Con.con_CONS) then SOME cons_sigma_unboxed
+        else ConMap.lookup con_env con
 
-    fun lookupExcon(rse : regionStatEnv as {excon_env,...}) = ExconMap.lookup excon_env
-    fun lookupLvar(rse  : regionStatEnv as {lvar_env,...}) = LvarMap.lookup lvar_env
+    fun lookupExcon (rse : regionStatEnv as {excon_env,...}) = ExconMap.lookup excon_env
+    fun lookupLvar (rse  : regionStatEnv as {lvar_env,...}) = LvarMap.lookup lvar_env
     fun FoldLvar  f b (rse: regionStatEnv as {lvar_env, ...}) = LvarMap.Fold f b lvar_env
     fun FoldExcon f b (rse: regionStatEnv as {excon_env, ...}) = ExconMap.Fold f b excon_env
 
     val mapLvar : (lvar_env_range -> lvar_env_range) -> regionStatEnv -> regionStatEnv  =
-	  fn f => fn (env as {tyname_env,con_env,excon_env,lvar_env}) =>
+	  fn f => fn (env as {tyname_env,con_env,excon_env,lvar_env,regvar_env}) =>
 	     {tyname_env = tyname_env,
-	      con_env= con_env,
-	      excon_env=excon_env,
-	      lvar_env = LvarMap.composemap f lvar_env}
+	      con_env = con_env,
+	      excon_env = excon_env,
+	      lvar_env = LvarMap.composemap f lvar_env,
+              regvar_env = regvar_env}
 
     type cone = E.cone
     fun rhos_epss_free_rse (rse: regionStatEnv) =
-      let val rhos_epss = FoldLvar (fn ((_,(_,_,sigma,rho,_,_)),acc) => 
+      let val rhos_epss = FoldLvar (fn ((_,(_,_,sigma,rho,_,_)),acc) =>
 				    R.ann_sigma sigma (rho::acc)) [] rse
 	  val rhos_epss = FoldExcon (fn ((_,mu),acc) =>
 				     R.ann_mus [mu] acc) rhos_epss rse
 	  val toplevel : int = E.level E.initCone
-	  val rhos_epss_free = 
-	    foldl (fn (node, acc) => 
+	  val rhos_epss_free =
+	    foldl (fn (node, acc) =>
 			case E.level_of node
 			  of SOME level => if level = toplevel then node :: acc
 					   else acc
-			   | NONE => die "mkConeToplevel.rhos_epss_free.node not rho or eps.") 
+			   | NONE => die "mkConeToplevel.rhos_epss_free.node not rho or eps.")
 	    [] rhos_epss
 	  val rhos_epss_free = E.remove_duplicates rhos_epss_free
 	  fun closure ([],acc) = acc
@@ -274,7 +309,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
   					  if E.is_arrow_effect node then node::acc
 					  else if E.is_put node orelse E.is_get node then
 					    E.rho_of node :: acc
-					  else 
+					  else
                                             (TextIO.output(!Flags.log, "arrow effect:\n");
                                              dump(E.layout_effect_deep(rho_eps));
                                              TextIO.output(!Flags.log, "atomic effect:\n");
@@ -293,41 +328,42 @@ structure RegionStatEnv: REGION_STAT_ENV =
       (E.reset_cone E.emptyCone;
        E.pushLayer(rhos_epss_free_rse rse,E.emptyCone))
 
-    fun equal_sigma(sigma1,sigma2) = R.alpha_equal (sigma1,sigma2) E.initCone
+    fun equal_sigma (sigma1,sigma2) = R.alpha_equal (sigma1,sigma2) E.initCone
 
-    fun equal_lvar_res((b1,b1',sigma1,place1,_,_),(b2,b2',sigma2,place2,_,_)) =
+    fun equal_lvar_res ((b1,b1',sigma1,place1,_,_),(b2,b2',sigma2,place2,_,_)) =
       b1=b2 andalso b1' =b2' andalso E.eq_effect(place1,place2) andalso
       equal_sigma(sigma1,sigma2)
 
-    fun equal_con_res(sigma1,sigma2) = equal_sigma (sigma1,sigma2)
+    fun equal_con_res (sigma1,sigma2) = equal_sigma (sigma1,sigma2)
 
-    fun equal_excon_res((tau1,place1),(tau2,place2)) = 
-      E.eq_effect(place1,place2) andalso 
+    fun equal_excon_res ((tau1,place1),(tau2,place2)) =
+      E.eq_effect(place1,place2) andalso
       equal_sigma(R.type_to_scheme tau1,R.type_to_scheme tau2)
 
     local
-      fun tyname_env_restrict(tyname_env,tynames) =
+      fun tyname_env_restrict (tyname_env,tynames) =
 	TyNameMap.restrict(TyName.pr_TyName,tyname_env,tynames)
 	handle TyNameMap.Restrict s => die ("restrict; I cannot find tyname " ^ s ^ " in the environment")
-      fun con_env_restrict(con_env,cons) =
+      fun con_env_restrict (con_env,cons) =
 	ConMap.restrict(Con.pr_con,con_env,cons)
 	handle ConMap.Restrict s => die ("restrict; I cannot find con " ^ s ^ " in the environment")
-      fun excon_env_restrict(excon_env,excons) =
+      fun excon_env_restrict (excon_env,excons) =
 	ExconMap.restrict(Excon.pr_excon,excon_env,excons)
 	handle ExconMap.Restrict s => die ("restrict; I cannot find excon " ^ s ^ " in the environment")
-      fun lvar_env_restrict(lvar_env,lvars) =
+      fun lvar_env_restrict (lvar_env,lvars) =
 	LvarMap.restrict(Lvar.pr_lvar,lvar_env,lvars)
 	handle LvarMap.Restrict s => die ("restrict; I cannot find lvar " ^ s ^ " in the environment")
     in
-      fun restrict({tyname_env, con_env, excon_env,lvar_env}, {tynames,cons,excons,lvars}) =
+      fun restrict ({tyname_env, con_env, excon_env,lvar_env,regvar_env=_}, {tynames,cons,excons,lvars}) =
 	{tyname_env=tyname_env_restrict(tyname_env,tynames),
 	 con_env=con_env_restrict(con_env,cons),
 	 excon_env=excon_env_restrict(excon_env,excons),
-	 lvar_env=lvar_env_restrict(lvar_env,lvars)}
+	 lvar_env=lvar_env_restrict(lvar_env,lvars),
+         regvar_env=RegVar.Map.empty}
     end
 
     type effectvar = E.effect
-    fun places_effectvarsRSE rse = 
+    fun places_effectvarsRSE rse =
       let val rhos_epss = rhos_epss_free_rse rse
 	  val rhos = List.filter E.is_rho rhos_epss
 	  val epss = List.filter E.is_arrow_effect rhos_epss
@@ -335,12 +371,12 @@ structure RegionStatEnv: REGION_STAT_ENV =
       end
 
     type StringTree = PP.StringTree
-    val layout_scheme  = R.mk_lay_sigma false (* do not omit region info *) 
-    val (_,layout_mu) = R.mk_layout     false (* do not omit region info *) 
+    val layout_scheme  = R.mk_lay_sigma false (* do not omit region info *)
+    val (_,layout_mu) = R.mk_layout     false (* do not omit region info *)
 
     fun layout_pair (_,_,sigma,p,_,_) = PP.NODE{start= "(", finish = ")", indent = 1, childsep = PP.RIGHT ",",
 					children = [layout_scheme sigma, E.layout_effect p]}
-    fun layout_arity(a,b,c) = 
+    fun layout_arity (a,b,c) =
 	  PP.NODE{start = "(", finish  = ")",
 		  indent = 1, childsep = PP.RIGHT ", ",
 		  children = PP.LEAF (Int.toString a) ::
@@ -358,23 +394,27 @@ structure RegionStatEnv: REGION_STAT_ENV =
     fun layout_lvar_env e = LvarMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
       (PP.LEAF o Lvar.pr_lvar) layout_pair e
 
-    fun layout(rse as {tyname_env, con_env, excon_env,lvar_env}) =
+    fun layout_regvar_env e = RegVar.Map.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
+      (PP.LEAF o RegVar.pr) E.layout_effect e
+
+    fun layout (rse as {tyname_env, con_env, excon_env,lvar_env,regvar_env}) =
 	PP.NODE{start = "RegionStaticEnvironment:", finish = "(end of RegionStatEnvironment)",
 		indent = 1, childsep = PP.RIGHT",",
 		children = [layout_tyname_env tyname_env,
 			    layout_con_env con_env,
 			    layout_excon_env excon_env,
-			    layout_lvar_env lvar_env]}
+			    layout_lvar_env lvar_env,
+                            layout_regvar_env regvar_env]}
 
     val debug_man_enrich = Flags.is_on0 "debug_man_enrich"
-    fun debug(s, b) = if debug_man_enrich() then
+    fun debug (s, b) = if debug_man_enrich() then
                          (if b then log("\nRSE." ^ s ^ ": enrich succeeded.")
 			  else log("\nRSE." ^ s ^ ": enrich failed."); b)
-		      else b
-    fun debug1(s, b,lvenv,lvenv1) = 
+		       else b
+    fun debug1 (s, b,lvenv,lvenv1) =
 	if debug_man_enrich() then
 	    (if b then log("\nRSE." ^ s ^ ": enrich succeeded.")
-	     else (log("\nRSE." ^ s ^ ": enrich failed."); 
+	     else (log("\nRSE." ^ s ^ ": enrich failed.");
 		   print ("*** RSE.LVEnv =\n");
 		   PP.printTree (layout_lvar_env lvenv);
 		   print ("\n*** RSE.LVEnv1 =\n");
@@ -383,12 +423,13 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	else b
 
 
-    fun enrich ({tyname_env, con_env, excon_env,lvar_env},
-		{tyname_env=tyname_env1, con_env=con_env1, excon_env=excon_env1,lvar_env=lvar_env1}) =
+    fun enrich ({tyname_env, con_env, excon_env,lvar_env,regvar_env},
+		{tyname_env=tyname_env1, con_env=con_env1, excon_env=excon_env1,lvar_env=lvar_env1,regvar_env=regvar_env1}) =
 	debug("TyNameMap", TyNameMap.enrich (op =) (tyname_env,tyname_env1)) andalso
 	debug("ConMap", ConMap.enrich equal_con_res (con_env,con_env1)) andalso
 	debug("ExconMap", ExconMap.enrich equal_excon_res (excon_env,excon_env1)) andalso
-	debug1("LvarMap", LvarMap.enrich equal_lvar_res (lvar_env,lvar_env1),lvar_env,lvar_env1)
+	debug1("LvarMap", LvarMap.enrich equal_lvar_res (lvar_env,lvar_env1),lvar_env,lvar_env1) andalso
+        debug("RegVarMap", RegVar.Map.enrich E.eq_effect (regvar_env,regvar_env1))
 
     val pu_arity = Pickle.tup3Gen(Pickle.int,E.pu_runTypes,Pickle.int)
 
@@ -401,11 +442,12 @@ structure RegionStatEnv: REGION_STAT_ENV =
     val pu : regionStatEnv Pickle.pu =
 	Pickle.debugUnpickle "regionStatEnv"
 	(Pickle.convert (fn (te:arity TyNameMap.map,ce: R.sigma ConMap.map,
-			     ee:(R.Type*R.place) ExconMap.map,le) => {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le},
-			 fn {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le} => (te,ce,ee,le))
+			     ee:(R.Type*R.place) ExconMap.map,le) => {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le,
+                                                                      regvar_env=RegVar.Map.empty},
+			 fn {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le,regvar_env} => (te,ce,ee,le))
 	 (Pickle.tup4Gen0(TyNameMap.pu TyName.pu pu_arity,
 			  ConMap.pu Con.pu (Pickle.debugUnpickle "con_env_range" R.pu_sigma),
 			  ExconMap.pu Excon.pu (Pickle.debugUnpickle "excon_env_range" R.pu_mu),
 			  LvarMap.pu Lvar.pu (Pickle.debugUnpickle "lvar_env_range" pu_lvar_env_range)))
-	 )	
+	 )
   end

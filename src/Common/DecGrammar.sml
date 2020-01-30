@@ -32,9 +32,9 @@ struct
   fun strip_info (WITH_INFO (info,a)) = a
 
   datatype atexp =
-	SCONatexp of info * scon |
-	IDENTatexp of info * longid op_opt * regvar list option |
-	RECORDatexp of info * exprow option |
+	SCONatexp of info * scon * (info*regvar) option |
+	IDENTatexp of info * longid op_opt * (info*regvar list) option |
+	RECORDatexp of info * exprow option * (info*regvar) option |
 	LETatexp of info * dec * exp |
 	PARatexp of info * exp
 
@@ -73,7 +73,7 @@ struct
 	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
 	EMPTYdec of info |
-        REGIONdec of info * regvar list
+        REGIONdec of info * (info*regvar list)
 
   and valbind =
 	PLAINvalbind of info * pat * exp * valbind option |
@@ -98,7 +98,7 @@ struct
   and atpat =
         WILDCARDatpat of info |
 	SCONatpat of info * scon |
-	LONGIDatpat of info * longid op_opt * regvar list option |
+	LONGIDatpat of info * longid op_opt * (info*regvar list) option |
 	RECORDatpat of info * patrow option |
 	PARatpat of info * pat
 
@@ -232,11 +232,11 @@ struct
   in
     fun map_atexp_info f (atexp : atexp) : atexp =
       case atexp of
-	SCONatexp(i,scon) => SCONatexp(f i,scon)
+	SCONatexp(i, x, y) => SCONatexp(f i, x, y)
       | IDENTatexp(i, x, y) => IDENTatexp(f i, x, y)
-      | RECORDatexp(i, NONE) => RECORDatexp(f i,NONE)
-      | RECORDatexp(i, SOME exprow) =>
-	  RECORDatexp(f i, SOME (map_exprow_info f exprow))
+      | RECORDatexp(i, NONE, y) => RECORDatexp(f i,NONE, y)
+      | RECORDatexp(i, SOME exprow, y) =>
+	  RECORDatexp(f i, SOME (map_exprow_info f exprow), y)
       | LETatexp(i, dec, exp) => LETatexp(f i, map_dec_info f dec, map_exp_info f exp)
       | PARatexp(i, exp) => PARatexp(f i, map_exp_info f exp)
 
@@ -396,9 +396,9 @@ struct
 	| nexp_exp (FNexp(info, match)) = true
 	| nexp_exp _ = false
 
-      and nexp_atexp (SCONatexp(info, scon)) = true
+      and nexp_atexp (SCONatexp(info, scon, _)) = true
 	| nexp_atexp (IDENTatexp(info, longid_op_opt, _)) = true
-	| nexp_atexp (RECORDatexp(info, exprow_opt)) = nexp_exprow_opt exprow_opt
+	| nexp_atexp (RECORDatexp(info, exprow_opt, _)) = nexp_exprow_opt exprow_opt
 	| nexp_atexp (PARatexp(info, exp)) = nexp_exp exp
 	| nexp_atexp _ = false
 
@@ -487,12 +487,12 @@ struct
 
     fun layoutAtexp atexp : StringTree =
       case atexp
-	of SCONatexp(_, scon) => LEAF(SCon.pr_scon scon)
-
+        of SCONatexp(_, scon, NONE) => LEAF(SCon.pr_scon scon)
+         | SCONatexp(_, scon, SOME(_,rv)) => LEAF(SCon.pr_scon scon ^ "`" ^ RegVar.pr rv)
 	 | IDENTatexp(_, OP_OPT(longid, withOp), NONE) =>
 	     LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
 
-	 | IDENTatexp(_, OP_OPT(longid, withOp), SOME regvars) =>
+	 | IDENTatexp(_, OP_OPT(longid, withOp), SOME(_,regvars)) =>
            let val first = LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
            in NODE{start="",finish="",indent=1,
                    children=[first,
@@ -501,14 +501,16 @@ struct
 		                  childsep=LEFT ","}],
                    childsep=LEFT " "}
            end
-	 | RECORDatexp(_, exprow_opt) =>
+	 | RECORDatexp(_, exprow_opt, rv_opt) =>
 	     (case exprow_opt
-		of SOME exprow =>
-		     NODE{start="{", finish="}", indent=1,
-			     children=[layoutExprow exprow],
-			     childsep=NOSEP
-			    }
-
+  	        of SOME exprow =>
+                   let val finish = case rv_opt of SOME (_,rv) => "}`" ^ RegVar.pr rv
+                                                 | NONE => "}"
+                   in NODE{start="{", finish=finish, indent=1,
+			   children=[layoutExprow exprow],
+			   childsep=NOSEP
+			  }
+                   end
 	         | NONE =>
 		     LEAF "{}"	(* Keep this atomic... *)
 	     )
@@ -732,7 +734,7 @@ struct
 	 | EMPTYdec _ =>
 	     LEAF "(emptydec)"
 
-         | REGIONdec(_, rvs) =>
+         | REGIONdec(_, (_,rvs)) =>
 	     NODE{start="region ", finish="", indent=7,
 		     children=map (LEAF o RegVar.pr) rvs,
 		     childsep=RIGHT " "
@@ -936,7 +938,7 @@ struct
 	 | LONGIDatpat(_, OP_OPT(longid, withOp), NONE) =>
 	     LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
 
-	 | LONGIDatpat(_, OP_OPT(longid, withOp), SOME regvars) =>
+	 | LONGIDatpat(_, OP_OPT(longid, withOp), SOME(_,regvars)) =>
            let val first = LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
            in NODE{start="",finish="",indent=1,
                    children=[first,

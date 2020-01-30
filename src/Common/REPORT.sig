@@ -17,4 +17,6 @@ signature REPORT =
 	   as the report.*)
     val print: Report -> unit		(* Output on std_out *)
     val print' : Report -> TextIO.outstream -> unit   (* Output on outstream *)
-  end;
+
+    exception DeepError of Report
+  end

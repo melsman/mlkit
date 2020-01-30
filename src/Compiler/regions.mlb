@@ -14,21 +14,21 @@ in
   local open Tools SpecialObjects in Regions/REG_CONST.sml end
   Regions/AT_INF.sml
   local open Pickle in Regions/DROP_REGIONS.sml end
-  local open Pickle in Regions/EFFECT.sig end
+  local open Pickle SyntaxObjects in Regions/EFFECT.sig end
   Regions/LOCALLY_LIVE_VARIABLES.sml
   local open Pickle in Regions/MUL.sig end
   Regions/REGION_EXP.sml
   Regions/MUL_EXP.sml
   Regions/MUL_INF.sml
   Regions/REGINF.sig
-  local open Pickle in Regions/REGION_STAT_ENV.sml end
+  local open Pickle SyntaxObjects in Regions/REGION_STAT_ENV.sml end
   Regions/REG_FLOW.sml
   local open Pickle in Regions/RTYPE.sig end
-  local open CompilerObjects 
-  in Regions/SPREAD_DATATYPE.sml 
+  local open CompilerObjects
+  in Regions/SPREAD_DATATYPE.sml
      Regions/SPREAD_EXPRESSION.sml
   end
-  local open Pickle 
+  local open Pickle
   in Regions/PHYS_SIZE_INF.sml
   end
   Regions/REGION_FLOW_GRAPH_PROFILING.sml
@@ -38,36 +38,36 @@ in
      local open SpecialObjects
      in Regions/RegConst.sml
      end
-     local open Pickle 
-     in Regions/Effect.sml 
+     local open Pickle SyntaxObjects
+     in Regions/Effect.sml
         local open Edlib CompilerObjects in Regions/RType.sml end
      end
-     local open CompilerObjects 
-     in Regions/RegionExp.sml 
-        local open Pickle in Regions/RegionStatEnv.sml end
+     local open CompilerObjects
+     in Regions/RegionExp.sml
+        local open Pickle SyntaxObjects in Regions/RegionStatEnv.sml end
      end
      Regions/EffVarEnv.sml
      ../Common/QUASI_ENV.sml
      local open Pickle in ../Common/QuasiEnv.sml end
      local open Edlib Pickle CompilerObjects in Regions/Mul.sml end
-     local open CompilerObjects 
-     in Regions/MulExp.sml 
+     local open CompilerObjects
+     in Regions/MulExp.sml
         Regions/MulInf.sml
         Regions/LocallyLiveVariables.sml
         Regions/RegFlow.sml
-        Regions/RegInf.sml 
+        Regions/RegInf.sml
         Regions/SpreadDataType.sml
-        local open Edlib 
-        in Regions/SpreadExpression.sml 
+        local open Edlib
+        in local open SyntaxObjects in Regions/SpreadExpression.sml end
            Regions/AtInf.sml
            local open Pickle in Regions/DropRegions.sml end
         end
-        local open Pickle 
-        in Regions/PhysSizeInf.sml 
+        local open Pickle
+        in Regions/PhysSizeInf.sml
            Regions/RegionFlowGraphProfiling.sml
         end
-     end          
-(*     
+     end
+(*
      Regions/TestSpreadDataType.sml
      Regions/TestSpreadExp.sml
 *)
@@ -80,17 +80,17 @@ in
 
   (* Generic Modules; used both by KAM and X86 backend *)
 
-  local open Pickle 
-  in Backend/CLOS_CONV_ENV.sml 
+  local open Pickle
+  in Backend/CLOS_CONV_ENV.sml
      Backend/CLOS_EXP.sml
   end
-  Backend/CALL_CONV.sml  
-  Backend/BACKEND_INFO.sml 
-  Backend/REGISTER_INFO.sml 
+  Backend/CALL_CONV.sml
+  Backend/BACKEND_INFO.sml
+  Backend/REGISTER_INFO.sml
   Backend/JUMP_TABLES.sml
 
   local open Tools
-  in local open CompilerObjects 
+  in local open CompilerObjects
      in Backend/BackendInfo.sml
         local open Pickle in Backend/ClosConvEnv.sml end
         Backend/CallConv.sml
