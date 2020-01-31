@@ -706,8 +706,8 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     L.VAR {lvar,...} => E(J.Id(prLvar C lvar))
   | L.INTEGER (v,_) => E(J.Cnst(J.Int v))
   | L.WORD (v,_) => E(J.Cnst(J.Word v))
-  | L.STRING v => E(J.Cnst(J.Str v))
-  | L.REAL v => E(J.Cnst(J.Real v))
+  | L.STRING (v,_) => E(J.Cnst(J.Str v))
+  | L.REAL (v,_) => E(J.Cnst(J.Real v))
   | L.PRIM(L.CONprim {con,...},nil) => E(ppConNullary C con)
   | L.PRIM(L.CONprim {con,...},[e]) =>
     resolveE (toj1 C P e) (ppConUnary C con)
@@ -781,6 +781,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
                                | _ => die "LET.unimplemented"
     in toj_let C P (lvs, binds, scope)
     end
+  | L.LETREGION {scope,...} => toj C P e
   | L.FIX{functions,scope} =>
     (case monoNonRec functions of
        SOME (lv,pat,body) =>
@@ -873,7 +874,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     (case name of
        "execStmtJS" =>
        (case exps
-         of L.STRING s :: L.STRING argNames :: args =>  (* static code *)
+         of L.STRING (s,_) :: L.STRING (argNames,_) :: args =>  (* static code *)
             resolveE (tojs C P args) (fn es' => J.App(J.Fun([argNames],J.Embed s), es'))   (* hack with argNames pretty printing *)
           | s :: argNames :: args => (* dynamic code *)
             resolveE (tojs C P (s::argNames::args))
@@ -883,7 +884,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
           | _ => die "toj.execStmtJS : string-->string-->args")
      | "callJS" =>
        (case exps
-         of L.STRING f :: args =>  (* static code *)
+         of L.STRING (f,_) :: args =>  (* static code *)
             resolveE (tojs C P args) (fn es' => J.App(J.Id f,es'))
           | f :: args => (* dynamic code *)
             let val xs = ((String.concatWith ",") o #2)
