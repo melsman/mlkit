@@ -57,7 +57,7 @@ struct
   type StringTree = PP.StringTree
   infix footnote
   fun x footnote y = x
-  fun die s = Crash.impossible("Effect." ^ s)
+  fun die s = (print ("Effect." ^ s ^ "\n"); Crash.impossible("Effect." ^ s))
   fun log_tree (tr: StringTree) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), tr, !Flags.colwidth)
   fun say i = TextIO.output(TextIO.stdOut, i)
   fun say_etas (trl: StringTree list) =
@@ -1163,12 +1163,13 @@ tracing *)
                                     NONE => ()
                                   | SOME rv =>
                                     let open Report infix //
+                                        val report0 = case RegVar.get_location_report rv of
+                                                          SOME rep => rep
+                                                        | NONE => Report.null
                                         val report = Report.line
                                                          ("Explicit region variable `" ^
                                                           RegVar.pr rv ^ " is forced out of scope.")
-                                                         //
-                                                         Report.line "Please fix the program."
-                                    in raise Report.DeepError report
+                                    in raise Report.DeepError (report0 // report)
                                     end
                         val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
 		        val _  = l:= newlevel

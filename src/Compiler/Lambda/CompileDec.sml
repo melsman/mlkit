@@ -2910,7 +2910,7 @@ the 12 lines above are very similar to the code below
 	     | NONE => die "compileREC.add_scheme.no type info"
 
         fun add_rvs (rvs_opt, rvs as SOME _) = rvs
-          | add_rvs (SOME(_,regvars), _) = SOME regvars
+          | add_rvs (SOME regvars, _) = SOME regvars
           | add_rvs (NONE, NONE) = NONE
 
 	fun ids_pat (TYPEDpat(_, pat, _), rvs, scheme, ids) = ids_pat (pat, rvs, scheme, ids)
@@ -2948,8 +2948,13 @@ the 12 lines above are very similar to the code below
 
 	val functions =
 	    map (fn (_,lv,rvs,(tvs,ty),exp) =>
-                    let val regvars = case rvs of SOME rs => rs
-                                                | NONE => []
+                    let val regvars =
+                            case rvs of SOME (i,rs) =>
+                                        (List.app (fn r =>
+                                                      RegVar.attach_location_report r
+                                                        (fn () => report_SourceInfo_in_ElabInfo i)) rs;
+                                         rs)
+                                      | NONE => []
                     in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,bind=compileExp recEnv exp}
                     end)
 	        ids_lv_sch_exp__s
