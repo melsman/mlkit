@@ -687,7 +687,7 @@ end
 (* Monomorphic non recursive functions are compiled into simple
  * function expressions. *)
 
-fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_}] =
+fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_,regvars}] =
     if lvarInExp lvar body then NONE
     else SOME(lvar,pat,body)
   | monoNonRec _ = NONE
