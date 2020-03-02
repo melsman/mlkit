@@ -1300,8 +1300,15 @@ tracing *)
                                    | (_,NONE) => rv_opt1
                                    | (SOME rv1,SOME rv2) =>
                                      if RegVar.eq(rv1,rv2) then rv_opt1 (*memo:merge info*)
-                                     else die ("Cannot unify the explicit region variables `"
-                                               ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
+                                     else
+                                       let open Report infix //
+                                           val report0 = case RegVar.get_location_report rv1 of
+                                                             SOME rep => rep
+                                                           | NONE => Report.null
+                                           val report = line ("Cannot unify the explicit region variables `"
+                                                              ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
+                                       in raise Report.DeepError (report0 // report)
+                                       end
                 in RHO{level = l1, put = aux_combine(p1,p2),
 		       get = aux_combine(g1,g2), key = min_key(k1,k2),
 		       instance = instance1, pix = pix1, ty = lub_runType(t1,t2),

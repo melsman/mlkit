@@ -1,0 +1,8 @@
+[reading source file:	er9.sml]
+> infix 0 +
+  val f : unit->real
+er9.sml, line 4, column 6:
+  fun f `[r1 r2] () : real =
+        ^^^^^^^^
+Cannot unify the explicit region variables `r1 and `r2
+Stopping compilation of MLB-file due to error (code 1).
