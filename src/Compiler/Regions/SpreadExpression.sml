@@ -140,25 +140,25 @@ struct
 
   val exn_ty  = E.CONStype([], TyName.tyName_EXN)
 
-  fun declareMany(rho,rse)([],[]) = rse
-    | declareMany(rho,rse)((lvar,tyvars,sigma_hat,bind):: rest1, occ::occ1) =
+  fun declareMany (rho,rse)([],[]) = rse
+    | declareMany (rho,rse)((lvar,regvars,tyvars,sigma_hat,bind):: rest1, occ::occ1) =
         declareMany(rho,RSE.declareLvar(lvar,(true,true,sigma_hat, rho, SOME occ, NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
-  fun repl([],[]) = []
-    | repl({lvar,tyvars,Type,bind}::fcns1, sigma_hat::sigma_hat_rests) =
-            (lvar,tyvars,sigma_hat,bind):: repl(fcns1,sigma_hat_rests)
+  fun repl ([],[]) = []
+    | repl ({lvar,regvars,tyvars,Type,bind}::fcns1, sigma_hat::sigma_hat_rests) =
+            (lvar,regvars,tyvars,sigma_hat,bind):: repl(fcns1,sigma_hat_rests)
     | repl _ = die ".repl: sigma_hat_list and rhs lists have different lengths"
 
 
-  fun adjust_instances(transformer, occ as ref l) =
-       app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
+  fun adjust_instances (transformer, occ as ref l) =
+      app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
 
-  fun mkRhs(rse,rho)([],[],[]) = (rse,[])
-    | mkRhs(rse,rho)((lvar,tyvars,sigma_hat,bind)::rest1,
-                     (t1,tau1,sigma1)::rest2,
-                     occ::rest3) =
+  fun mkRhs (rse,rho)([],[],[]) = (rse,[])
+    | mkRhs (rse,rho)((lvar,regvars,tyvars,sigma_hat,bind)::rest1,
+                      (t1,tau1,sigma1)::rest2,
+                      occ::rest3) =
     let
       val (_,brhos, bepss) = R.bv(sigma1)
       val transformer = R.matchSchemes(sigma_hat, sigma1) handle R.FAIL_MATCH msg =>
@@ -265,7 +265,7 @@ struct
     | unMus s (E'.Frame _) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a Frame")
     | unMus s (E'.RaisedExnBind) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a RaisedExnBind")
 
-  fun spreadExp(B: cone, rse,  e: E.LambdaExp, toplevel, cont:cont): cone * (place,unit)E'.trip * cont =
+  fun spreadExp (B: cone, rse,  e: E.LambdaExp, toplevel, cont:cont): cone * (place,unit)E'.trip * cont =
   let
     fun lookup tyname = case RSE.lookupTyName rse tyname of
           SOME arity =>
@@ -274,39 +274,29 @@ struct
             end
         | NONE => NONE
 
-    local
-      val (freshType', freshMu') = R.freshType lookup
-    in
-      fun freshType(tau,B) = freshType'(tau,B)   (* for profiling *)
-      fun freshMu(tau,B) = freshMu'(tau,B)
-    end
+    val (freshType, freshMu) = R.freshType lookup
 
-    fun freshTypes(cone:cone, types: E.Type list) =
-    case types of [] => ([],cone)
-    | (tau_ml::rest) =>
-         let val (tau, cone) = freshType(tau_ml,cone)
-             val (taus, cone) = freshTypes(cone,rest)
-         in
-             (tau::taus, cone)
-         end
+    fun freshTypes (cone:cone, types: E.Type list) =
+        case types of
+            [] => ([],cone)
+          | (tau_ml::rest) => let val (tau, cone) = freshType(tau_ml,cone)
+                                  val (taus, cone) = freshTypes(cone,rest)
+                              in (tau::taus, cone)
+                              end
 
-    fun freshTypesWithPlaces(cone:cone, types: E.Type list) =
-    case types of [] => ([],cone)
-    | (tau_ml::rest) =>
-         let val (mu, cone) = freshMu(tau_ml,cone)
-             val (mus, cone) = freshTypesWithPlaces(cone, rest)
-         in
-             (mu::mus, cone)
-         end
+    fun freshTypesWithPlaces (cone:cone, types: E.Type list) =
+        case types of
+            [] => ([],cone)
+          | (tau_ml::rest) => let val (mu, cone) = freshMu(tau_ml,cone)
+                                  val (mus, cone) = freshTypesWithPlaces(cone, rest)
+                              in (mu::mus, cone)
+                              end
 
-     fun count_fix_rhs() = ()
-
-     fun mk_sigma_hat_list(B,retract_level) [] = (B,[])
-       | mk_sigma_hat_list(B,retract_level)({lvar, tyvars,Type,bind}::rest) =
+     fun mk_sigma_hat_list (B,retract_level) [] = (B,[])
+       | mk_sigma_hat_list (B,retract_level)({lvar,regvars,tyvars,Type,bind}::rest) =
           let
             (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hat_list: " ^ Lvars.pr_lvar lvar ^ "\n")*)
-            val _ = count_fix_rhs()
-            val B = Eff.push(B);         (* for generalize_all *)
+            val B = Eff.push(B)         (* for generalize_all *)
 	    val (tau_x_ml, tau_1_ml) =
 		case Type of
 		    E.ARROWtype p => p
@@ -320,7 +310,7 @@ struct
              (B,sigma_hat::l)
           end
 
-    fun newInstance(A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
+    fun newInstance (A: cone,sigma:R.sigma, taus: E.Type list): cone*R.Type*R.il =
       let val (alphas, rhos, epss) = R.bv sigma
           val (taus', A) = freshTypes(A,taus)
           val (rhos', A) = Eff.freshRhosPreserveRT(rhos, A)
@@ -1232,11 +1222,16 @@ good *)
             val occs = map (fn _ => ref []  : (R.il * (R.il * cone -> R.il * cone)) ref list ref) functions
             val rse1 = declareMany(rho,rse)(functions, occs)
             fun spreadRhss(B)[] = (B,[])
-              | spreadRhss(B)((lvar,tyvars,sigma_hat,bind)::rest) =
+              | spreadRhss(B)((lvar,regvars,tyvars,sigma_hat,bind)::rest) =
                   let
-                    (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
-                    val B = Eff.push(B)
-                      val (B, t1 as E'.TR(_, meta1, phi1),_) = spreadExp(B, rse1, bind,false,NOTAIL)
+                     (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
+                      val B = Eff.push(B)
+                      (*val () = print ("spreadFcns - length(regvars) = " ^ Int.toString (length regvars) ^ "\n") *)
+                      val (B,rse1') = List.foldl (fn (rv,(B,rse)) =>
+                                                     let val (rho,B) = Eff.freshRhoRegVar (B,rv)
+                                                     in (B,RSE.declareRegVar(rv,rho,rse))
+                                                     end) (B,rse1) regvars
+                      val (B, t1 as E'.TR(_, meta1, phi1),_) = spreadExp(B, rse1', bind,false,NOTAIL)
                       val (tau1,rho1) =
                           case unMus "spreadFcns" meta1 of
                             [p] => p

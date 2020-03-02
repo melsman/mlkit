@@ -87,7 +87,7 @@ structure Tester : TESTER =
 	  in
 	    if opt "ccl" (*Compare Compiler Logs*) then
 	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)
-			      else (msgErr "log not equal to log.ok"; false)
+			      else (msgErr ("compile log " ^ file ^ ".log not equal to " ^ file ^ ".log.ok"); false)
 	      in TestReport.add_compout_line {name=filepath, match=SOME match,
 					      success_as_expected=success_as_expected()}
 	      end

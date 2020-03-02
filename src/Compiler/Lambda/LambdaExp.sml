@@ -121,6 +121,7 @@ structure LambdaExp: LAMBDA_EXP =
       | LETREGION of {regvars: regvar list,
                       scope: LambdaExp}
       | FIX      of {functions : {lvar : lvar,
+                                  regvars: regvar list,
 				  tyvars : tyvar list,
 				  Type : Type,
 				  bind : LambdaExp} list,
@@ -1035,7 +1036,7 @@ structure LambdaExp: LAMBDA_EXP =
 			       children=[PP.LEAF(pr_excon excon), layoutType ty]}
         )
       and  mk_mutual_binding(functions) =
-        let fun mk_fix({lvar,tyvars,Type, bind as (FN{pat, body, ...})})
+        let fun mk_fix({lvar,regvars,tyvars,Type, bind as (FN{pat, body, ...})})
                      (no, rest_of_mutual_binding) =
               (*
                    fun f  : sigma
@@ -1056,15 +1057,19 @@ structure LambdaExp: LAMBDA_EXP =
               (no-1,
                    let
 		     val keyword = if no = 1 then "fun" else "and"
+                     val s_regvars =
+                         case regvars of
+                             nil => ""
+                           | _ => " [" ^ String.concatWith "," (map RegVar.pr regvars) ^ "] "
                      val t1 =
 			 if !Flags.print_types then
 			     let val sigma_t = layoutTypeScheme(tyvars,Type)
 				 val s = pr_lvar lvar
 			     in
-				 PP.NODE{start = s ^ ":", finish = "", indent = String.size s +1,
+				 PP.NODE{start = s ^ s_regvars ^ ":", finish = "", indent = String.size s +1,
 					 childsep = PP.NOSEP, children = [sigma_t]}
 			     end
-			 else PP.LEAF (pr_lvar lvar)
+			 else PP.LEAF (pr_lvar lvar ^ s_regvars)
                      val formals_t =
 			 case pat of
 			     [(lvar,_)] => PP.LEAF (pr_lvar lvar ^ " = ")
@@ -1389,9 +1394,9 @@ structure LambdaExp: LAMBDA_EXP =
 				  pu_LambdaExp, pu_LambdaExp)))
 	    fun fun_FIX pu_LambdaExp =
 		let val pu_function =
-		    Pickle.convert (fn (lv,tvs,t,e) => {lvar=lv,tyvars=tvs,Type=t,bind=e},
-				    fn {lvar=lv,tyvars=tvs,Type=t,bind=e} => (lv,tvs,t,e))
-		    (Pickle.tup4Gen0(Lvars.pu,pu_tyvars,pu_Type,pu_LambdaExp))
+		    Pickle.convert (fn ((lv,rs,tvs),t,e) => {lvar=lv,regvars=rs,tyvars=tvs,Type=t,bind=e},
+				    fn {lvar=lv,regvars=rs,tyvars=tvs,Type=t,bind=e} => ((lv,rs,tvs),t,e))
+		    (Pickle.tup3Gen0(Pickle.tup3Gen0(Lvars.pu,Pickle.listGen RegVar.pu,pu_tyvars),pu_Type,pu_LambdaExp))
 		in Pickle.con1 FIX (fn FIX a => a | _ => die "pu_LambdaExp.FIX")
 		    (Pickle.convert (fn (fs,s) => {functions=fs,scope=s}, fn {functions=fs,scope=s} => (fs,s))
 		     (Pickle.pairGen0(Pickle.listGen pu_function,
@@ -1506,7 +1511,7 @@ structure LambdaExp: LAMBDA_EXP =
           end
         | LETREGION{regvars,scope} => tyvars_Exp s scope acc
 	| FIX{functions,scope} =>
-          let val acc = foldl (fn ({lvar,tyvars,Type,bind},acc) =>
+          let val acc = foldl (fn ({lvar,regvars,tyvars,Type,bind},acc) =>
                                   let val s = TVS.addList tyvars s
                                   in tyvars_Type s Type (tyvars_Exp s bind acc)
                                   end) acc functions

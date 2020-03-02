@@ -24,7 +24,7 @@ structure CompileDec: COMPILE_DEC =
 		 else ()
 
     open LambdaExp
-    type function = {lvar : lvar, tyvars : tyvar list, Type : Type,
+    type function = {lvar : lvar, regvars: RegVar.regvar list, tyvars : tyvar list, Type : Type,
 		     bind : LambdaExp}
     open DecGrammar
 
@@ -1390,7 +1390,7 @@ in
 	     end
 	 | Success rhs' => ([], compile_rhs' compile_no obj env rhs')))
 
-  and compile_edge  compile_no obj raise_something tau_return_opt env edge
+  and compile_edge compile_no obj raise_something tau_return_opt env edge
 	: function list * LambdaExp =
 	(case edge of
 	   NONE => ([], raise_something (#1 obj))
@@ -1401,7 +1401,7 @@ in
 		  compile_node compile_no obj raise_something tau_return_opt (CE.clearPathEnv env) node
 		    val Type = ARROWtype ([unitType],
 					  [NoSome "compile_edge" tau_return_opt])
-		    val function = {lvar= #lvar node, tyvars=[], Type=Type,
+		    val function = {lvar= #lvar node, regvars=[], tyvars=[], Type=Type,
 				    bind=FN {pat = [(Lvars.new_named_lvar "obj",
 						     unitType)],
 					     body = lexp}}
@@ -2864,7 +2864,7 @@ the 12 lines above are very similar to the code below
 		   val raise_something = fn obj : LambdaExp =>
 		     RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
 	       in
-		 case compile_decdag  compile_no (obj,tau') raise_something NONE env decdag
+		 case compile_decdag compile_no (obj,tau') raise_something NONE env decdag
 		   of ([], lexp) => LET {pat = [(lvar_switch, tyvars', tau')],
 					 bind = compileExp env exp,
 					 scope = lexp}
@@ -2909,42 +2909,50 @@ the 12 lines above are very similar to the code below
 	     | SOME _ => die "compileREC.add_scheme.wrong type info"
 	     | NONE => die "compileREC.add_scheme.no type info"
 
-	fun ids_pat (TYPEDpat(_, pat, _), scheme, ids) = ids_pat (pat, scheme, ids)
-	  | ids_pat (ATPATpat(_, atpat), scheme, ids) = ids_atpat (atpat, scheme, ids)
-	  | ids_pat (LAYEREDpat(i, OP_OPT (id,_), _, pat), scheme, ids) =
-	  ids_pat (pat, add_scheme(i,scheme), id::ids)
-	  | ids_pat (UNRES_INFIXpat _, _, _) = die "ids_pat.UNRES_INFIXpat"
-	  | ids_pat (CONSpat _, _, _) = die "ids_pat.CONSpat"
-	and ids_atpat (WILDCARDatpat _, scheme, ids) = (scheme, ids)
-	  | ids_atpat (SCONatpat _, _, _) = die "ids_atpat.SCONatpat"
-	  | ids_atpat (LONGIDatpat(i,OP_OPT(longid, _),_), scheme, ids) =
+        fun add_rvs (rvs_opt, rvs as SOME _) = rvs
+          | add_rvs (SOME(_,regvars), _) = SOME regvars
+          | add_rvs (NONE, NONE) = NONE
+
+	fun ids_pat (TYPEDpat(_, pat, _), rvs, scheme, ids) = ids_pat (pat, rvs, scheme, ids)
+	  | ids_pat (ATPATpat(_, atpat), rvs, scheme, ids) = ids_atpat (atpat, rvs, scheme, ids)
+	  | ids_pat (LAYEREDpat(i, OP_OPT (id,_), _, pat), rvs, scheme, ids) =
+	  ids_pat (pat, rvs, add_scheme(i,scheme), id::ids)
+	  | ids_pat (UNRES_INFIXpat _, _, _, _) = die "ids_pat.UNRES_INFIXpat"
+	  | ids_pat (CONSpat _, _, _, _) = die "ids_pat.CONSpat"
+	and ids_atpat (WILDCARDatpat _, rvs, scheme, ids) = (rvs, scheme, ids)
+	  | ids_atpat (SCONatpat _, _, _, _) = die "ids_atpat.SCONatpat"
+	  | ids_atpat (LONGIDatpat(i,OP_OPT(longid, _),rvs_opt), rvs, scheme, ids) =
 	  (case Ident.decompose longid
-	     of (nil, id) => (add_scheme(i,scheme), id::ids)
+	     of (nil, id) => (add_rvs(rvs_opt,rvs), add_scheme(i,scheme), id::ids)
 	      | _ => die("compileREC.ids_atpat.LONGIDatpat.long: " ^ Ident.pr_longid longid ^ ")"))
-	  | ids_atpat (RECORDatpat _, _, _) = die "compileREC.ids_atpat.RECORDatpat"
-	  | ids_atpat (PARatpat(_,pat), scheme, ids) = ids_pat(pat, scheme, ids)
+	  | ids_atpat (RECORDatpat _, _, _, _) = die "compileREC.ids_atpat.RECORDatpat"
+	  | ids_atpat (PARatpat(_,pat), rvs, scheme, ids) = ids_pat(pat, rvs, scheme, ids)
 
 	val ids_lv_sch_exp__s =
 	  foldr (fn ((pat,exp),acc) =>
-		 case ids_pat (pat, NONE, nil)
-		   of (NONE, nil) => acc (* only wildcard involved; discard binding *)
-		    | (SOME _, nil) => die "compileREC.ids_sch_exp__s.scheme but no ids"
-		    | (SOME sch, ids as id :: _) =>
-		     let val lv = Lvars.new_named_lvar(Ident.pr_id id)
-		     in (ids, lv, sch, exp) :: acc
-		     end
-		    | _ => die "compileREC.ids_sch_exp__s.no scheme but ids")
-	  nil pat_exp__s
+		    case ids_pat (pat, NONE, NONE, nil) of
+                        (NONE, NONE, nil) => acc (* only wildcard involved; discard binding *)
+		      | (_, SOME _, nil) => die "compileREC.ids_sch_exp__s.scheme but no ids"
+		      | (rvs, SOME sch, ids as id :: _) =>
+		        let val lv = Lvars.new_named_lvar(Ident.pr_id id)
+		        in (ids, lv, rvs, sch, exp) :: acc
+		        end
+		      | _ => die "compileREC.ids_sch_exp__s.no scheme but ids")
+	        nil pat_exp__s
 
-	val ids_lv_sch__s = map (fn (ids,lv,sch,_) => (ids,lv,sch)) ids_lv_sch_exp__s
+	val ids_lv_sch__s = map (fn (ids,lv,_,sch,_) => (ids,lv,sch)) ids_lv_sch_exp__s
 	val ids_lv_ty__s = map (fn (ids,lv,(tvs,ty)) => (ids,lv,([],ty))) ids_lv_sch__s
 
 	val recEnv : CE.CEnv = env plus (mk_env ids_lv_ty__s)
 	val scopeEnv : CE.CEnv = mk_env ids_lv_sch__s
 
 	val functions =
-	  map (fn (_,lv,(tvs,ty),exp) => {lvar=lv,tyvars=tvs,Type=ty,bind=compileExp recEnv exp})
-	  ids_lv_sch_exp__s
+	    map (fn (_,lv,rvs,(tvs,ty),exp) =>
+                    let val regvars = case rvs of SOME rs => rs
+                                                | NONE => []
+                    in {lvar=lv,regvars=regvars,tyvars=tvs,Type=ty,bind=compileExp recEnv exp}
+                    end)
+	        ids_lv_sch_exp__s
 (*
 	fun id_sigma(TYPEDpat(_, pat, _)) = id_sigma pat
           | id_sigma(ATPATpat(_, LONGIDatpat(info, OP_OPT(longid, _)))) =

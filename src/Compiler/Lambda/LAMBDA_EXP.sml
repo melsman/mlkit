@@ -103,6 +103,7 @@ signature LAMBDA_EXP =
       | LETREGION of {regvars: regvar list,
                       scope: LambdaExp}
       | FIX      of {functions : {lvar : lvar,
+                                  regvars: regvar list,
 				  tyvars : tyvar list,
 				  Type : Type,
 				  bind : LambdaExp} list,

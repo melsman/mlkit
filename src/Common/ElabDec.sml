@@ -920,6 +920,7 @@ structure ElabDec: ELABDEC =
         IG.PLAINvalbind(i, pat, exp, valbind_opt) =>
           let
             val (S0, (VE,tau,R), out_pat) = elab_pat(C, pat)
+(*            val () = print ("PLAINvalbind: " ^ Int.toString (length R) ^ "\n") *)
             val (S1, tau1, out_exp) = elab_exp(C.plus_E(S0 onC C,E.from_R R), exp)
 
             val (S2, i') = UnifyWithTexts("type of left-hand side pattern",(S1 oo S0) on tau,
@@ -1523,16 +1524,16 @@ structure ElabDec: ELABDEC =
                     in
                       case Ident.decompose longid
                         of (nil, id) =>
-                           let val i' =
+                           let val (i',R) =
                                    case regvars_opt of
-                                       NONE => okConv i
+                                       NONE => (okConv i,nil)
                                      | SOME (i2,regvars) =>
                                        case getRepeatedElements RegVar.eq regvars of
-                                           [] => okConv i
+                                           [] => (okConv i,regvars)
                                          | repeated =>
-                                           repeatedIdsError (i2, map ErrorInfo.REGVAR_RID repeated)
+                                           (repeatedIdsError (i2, map ErrorInfo.REGVAR_RID repeated),regvars)
                            in (Substitution.Id,
-                               (VE.singleton_var(id, tau_scheme), tau, nil),
+                               (VE.singleton_var(id, tau_scheme), tau, R),
                                OG.LONGIDatpat(addTypeInfo_VAR_PAT(i',
                                                                   tau),
                                               OG.OP_OPT(longid, withOp),

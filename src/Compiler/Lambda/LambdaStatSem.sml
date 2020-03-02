@@ -751,7 +751,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
          | LETREGION{regvars,scope} => type_lexp env scope
 	 | FIX {functions, scope} =>
 	  let (* env' is the environment for checking function bodies *)
-              val env' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
+              val env' = foldl (fn ({lvar,regvars,tyvars,Type,bind}, env) =>   (* memo:regvars *)
 				     (valid_s env (tyvars,Type); add_lvar(lvar,([],Type),add_tyvars(tyvars,env)))) env functions
 (*	      val _ =
 		let type t = {lvar:lvar,tyvars:tyvar list, Type : Type, bind:LambdaExp}
@@ -768,7 +768,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
               val _ = app (eqType "FIX") type_pairs
 
-	      val env_scope = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
+	      val env_scope = foldl (fn ({lvar,regvars,tyvars,Type,bind}, env) =>
 				      (tyvars_not_in_env(tyvars, env);
 				       add_lvar(lvar,(tyvars,Type),env))) env functions
 	  in
