@@ -273,11 +273,11 @@ structure EliminateEq: ELIMINATE_EQ =
 	 (fn [] => lamb_true
 	   | [tau] => let val v = VAR {lvar=p, instances=[]}
 			  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
-		      in APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]),NONE)
+		      in APP (gen tau, PRIM(RECORDprim NONE, [sel 0, sel 1]),NONE)
 		      end
 	   | (tau :: taus) => let val v = VAR {lvar=p, instances=[]}
 				  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
-				  val e = APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]),NONE)
+				  val e = APP (gen tau, PRIM(RECORDprim NONE, [sel 0, sel 1]),NONE)
 			      in SWITCH_C (SWITCH (e, [((Con.con_TRUE,NONE), gen_switch (n+1) p taus)],
 						   SOME lamb_false))
 			      end)
@@ -344,7 +344,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	    val lamb_true_case =
 	      mk_decon p0' p0
 	      (mk_decon p1' p1
-	       (APP(lamb_eq_fn_tau, PRIM(RECORDprim, [lamb_var p0', lamb_var p1']),NONE)))
+	       (APP(lamb_eq_fn_tau, PRIM(RECORDprim NONE, [lamb_var p0', lamb_var p1']),NONE)))
 
 	  in mk_sw (c,SOME p1') lamb_true_case
 	  end
@@ -577,7 +577,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	 SWITCH_C (SWITCH (PRIM (LESS_INTprim(), [var_j, INTEGER' 0]),
 	   [((Con.con_TRUE,NONE), lamb_true)],
 	   SOME (SWITCH_C (SWITCH
-		  ((APP (var_eq_alpha, PRIM (RECORDprim, [sub var_table1, sub var_table2]),NONE)),
+		  ((APP (var_eq_alpha, PRIM (RECORDprim NONE, [sub var_table1, sub var_table2]),NONE)),
 		   [((Con.con_TRUE,NONE), APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1]),NONE))],
 		   SOME lamb_false)))))}
 
@@ -733,7 +733,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	 | PRIM(EQUALprim {instance}, [lexp1, lexp2]) =>
 	       (case instance
 		  of RECORDtype [tau,_] =>
-		    let val e = PRIM(RECORDprim, [t env lexp1,t env lexp2])
+		    let val e = PRIM(RECORDprim NONE, [t env lexp1,t env lexp2])
 		    in APP(gen_type_eq env tau, e, NONE)
 		    end
 		   | _ => die "f.EQUALprim")

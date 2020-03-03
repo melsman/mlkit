@@ -326,7 +326,8 @@ structure OptLambda: OPT_LAMBDA =
 
 	fun eq_prim m (p,p') =
 	    case (p,p') of
-		(RECORDprim, RECORDprim) => true
+		(RECORDprim NONE, RECORDprim NONE) => true
+	      | (RECORDprim (SOME rv1), RECORDprim (SOME rv2)) => RegVar.eq(rv1,rv2)
 	      | (SELECTprim i,SELECTprim i') => i=i'
 	      | (CONprim {con,instances=il}, CONprim {con=con',instances=il'}) =>
 		    Con.eq(con,con') andalso eq_Types(il,il')
@@ -1114,7 +1115,7 @@ structure OptLambda: OPT_LAMBDA =
 			  end
 			 | _ => fail
 	       in case lamb
-		    of PRIM(RECORDprim,lambs) =>
+		    of PRIM(RECORDprim _,lambs) =>
 		      let val (lamb', lambs') = EdList.removeNth n lambs
 		      in if safeLambdaExps lambs' then
 			   (tick "reduce - sel-record"; app decr_uses lambs';
@@ -1236,9 +1237,9 @@ structure OptLambda: OPT_LAMBDA =
 		   val (scope',cv_scope) = contr (env, scope)
 	       in reduce (env, (LET{pat=nil,bind=bind',scope=scope'}, cv_scope))
 	       end
-	      | PRIM(RECORDprim, lambs) =>
+	      | PRIM(RECORDprim opt, lambs) =>
 	       let val lamb_cv = map (fn e => contr (env,e)) lambs
-	       in (PRIM(RECORDprim, map fst lamb_cv),CRECORD (map snd lamb_cv))
+	       in (PRIM(RECORDprim opt, map fst lamb_cv),CRECORD (map snd lamb_cv))
 	       end
 	      | PRIM(prim as EXCONprim excon, lambs) =>
 	       let val lambs' = map (fst o (fn e => contr (env, e))) lambs
@@ -1281,6 +1282,7 @@ structure OptLambda: OPT_LAMBDA =
 		  else (tick "dead - excon"; (lamb', cv))
 	       end
 	      | RAISE(lamb,tl) => (RAISE(fst(contr (env, lamb)),tl),CUNKNOWN)
+	      | LETREGION {regvars,scope} => (LETREGION{regvars=regvars,scope=fst(contr (env, scope))},CUNKNOWN)
 	      | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
 	      | SWITCH_I {switch,precision} =>
 	       contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch)
@@ -1414,7 +1416,7 @@ structure OptLambda: OPT_LAMBDA =
      fun traverse lamb =
        let fun f lamb =
              case lamb
-               of LET{pat=[(lvar,[],_)],bind=PRIM(RECORDprim,lambs),scope} =>
+               of LET{pat=[(lvar,[],_)],bind=PRIM(RECORDprim _,lambs),scope} =>
 		 (mark_lvar lvar; app f lambs; f scope)
                 | PRIM(SELECTprim _, [VAR{instances=[],...}]) => ()
                 | VAR{lvar,...} => unmark_lvar lvar
@@ -1436,7 +1438,7 @@ structure OptLambda: OPT_LAMBDA =
                     VAR{lvar=lvar',instances=[]}
 		 end
 		| NONE => lamb)
-	   | LET{pat=[(lvar,[],Type)],bind=PRIM(RECORDprim, lambs),scope} =>
+	   | LET{pat=[(lvar,[],Type)],bind=PRIM(RECORDprim _, lambs),scope} =>
               if is_marked_lvar lvar then
                 let val lvars = map (fn _ => Lvars.newLvar()) lambs
                     val env' = LvarMap.add(lvar,lvars,env)
@@ -1681,7 +1683,7 @@ structure OptLambda: OPT_LAMBDA =
        case lamb
 	 of v as VAR{lvar,instances} =>
 	   (case LvarMap.lookup env lvar
-	      of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim, []), NONE)
+	      of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim NONE, []), NONE)
 	       | _ => v)
 	  | LET{pat,bind,scope} =>
 	      (case pat
@@ -1891,7 +1893,7 @@ structure OptLambda: OPT_LAMBDA =
 		    let val sz = length argTypes
 		    in
 		      case arg
-			of PRIM(RECORDprim, args) =>
+			of PRIM(RECORDprim _, args) =>
 			  if length args <> sz then die "unbox_fix_args.trans.app(length)"
 			  else APP(lvexp, PRIM(UB_RECORDprim, map (trans env) args), NONE)
 			 | VAR{lvar,instances=nil} => mk_app lvar sz

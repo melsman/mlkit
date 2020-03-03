@@ -65,7 +65,7 @@ signature LAMBDA_EXP =
       | DECONprim of {con : con, instances : 'Type list, lv_opt: lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim
+      | RECORDprim of regvar option
       | SELECTprim of int
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim

@@ -1,4 +1,4 @@
-FLAGS=-no_gc -no_basislib --maximum_inline_size 0 -er
+FLAGS=-no_gc -no_basislib --maximum_inline_size 0 -er -no_opt
 MLKIT=../../bin/mlkit $(FLAGS)
 
 .PHONY: all

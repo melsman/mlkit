@@ -725,8 +725,8 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     resolveE (toj1 C P e) (fn e' => J.Array [J.Id(exconName excon),e'])
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst1))
-  | L.PRIM(L.RECORDprim, []) => E junit
-  | L.PRIM(L.RECORDprim, es) => resolveE (tojs C P es) J.Array
+  | L.PRIM(L.RECORDprim _, []) => E junit
+  | L.PRIM(L.RECORDprim _, es) => resolveE (tojs C P es) J.Array
   | L.PRIM(L.UB_RECORDprim, [e]) => toj C P e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))

@@ -83,7 +83,7 @@ structure LambdaExp: LAMBDA_EXP =
       | DECONprim of {con : con, instances : 'Type list, lv_opt:lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim
+      | RECORDprim of regvar option
       | SELECTprim of int
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
@@ -258,7 +258,7 @@ structure LambdaExp: LAMBDA_EXP =
 	  | DECONprim _        => ()
 	  | EXCONprim _        => ()
 	  | DEEXCONprim _      => ()
-	  | RECORDprim         => ()
+	  | RECORDprim _       => ()
           | UB_RECORDprim      => ()
 	  | SELECTprim _       => ()
 	  | EQUALprim _        => ()
@@ -465,7 +465,8 @@ structure LambdaExp: LAMBDA_EXP =
 	  PP.LEAF(pr_excon excon)
       | DEEXCONprim excon =>
 	  PP.LEAF("deexcon" ^ pr_excon excon)
-      | RECORDprim => PP.LEAF("record")
+      | RECORDprim NONE => PP.LEAF("record")
+      | RECORDprim (SOME rv) => PP.LEAF("record(" ^ RegVar.pr rv ^ ")")
       | SELECTprim i => PP.LEAF("select(" ^ Int.toString i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord")
       | DROPprim => PP.LEAF("DROP")
@@ -859,10 +860,14 @@ structure LambdaExp: LAMBDA_EXP =
 	  end
       | PRIM(prim,lambs) =>
          (case (prim,lambs) of
-           (RECORDprim,_) =>
-             PP.NODE{start="(",finish=")",indent=1,
-                     children=(map (fn e => layoutLambdaExp(e,0))  lambs),
-                     childsep=PP.RIGHT ","}
+           (RECORDprim opt,_) =>
+           let val finish = case opt of
+                                NONE => ")"
+                              | SOME rv => ")`" ^ RegVar.pr rv
+           in PP.NODE{start="(",finish=finish,indent=1,
+                      children=(map (fn e => layoutLambdaExp(e,0))  lambs),
+                      childsep=PP.RIGHT ","}
+           end
          | (UB_RECORDprim,_) =>
 	      let val (s,f) = if !barify_p then ("(",")") else ("<",">")
 	      in PP.NODE{start=s,finish=f,indent=1,
@@ -1257,7 +1262,7 @@ structure LambdaExp: LAMBDA_EXP =
 	      | toInt (DECONprim _) = 1
 	      | toInt (EXCONprim _) = 2
 	      | toInt (DEEXCONprim _) = 3
-	      | toInt RECORDprim = 4
+	      | toInt (RECORDprim _) = 4
 	      | toInt (SELECTprim _) = 5
 	      | toInt UB_RECORDprim = 6
 	      | toInt DROPprim = 7
@@ -1284,7 +1289,9 @@ structure LambdaExp: LAMBDA_EXP =
 	    fun fun_DEEXCONprim _ =
 		Pickle.con1 DEEXCONprim (fn DEEXCONprim a => a | _ => die "pu_prim.DEEXCONprim")
 		Excon.pu
-	    val fun_RECORDprim = Pickle.con0 RECORDprim
+	    fun fun_RECORDprim _ =
+                Pickle.con1 RECORDprim (fn RECORDprim a => a | _ => die "pu_prim.RECORDprim")
+		(Pickle.optionGen RegVar.pu)
 	    fun fun_SELECTprim _ =
 		Pickle.con1 SELECTprim (fn SELECTprim a => a | _ => die "pu_prim.SELECTprim")
 		Pickle.int
@@ -1554,7 +1561,7 @@ structure LambdaExp: LAMBDA_EXP =
         tyvars_Type s instance_arg (tyvars_Type s instance_res acc)
       | RESET_REGIONSprim{instance} => tyvars_Type s instance acc
       | FORCE_RESET_REGIONSprim{instance} => tyvars_Type s instance acc
-      | RECORDprim => acc
+      | RECORDprim _ => acc
       | SELECTprim _ => acc
       | UB_RECORDprim => acc
       | DROPprim => acc

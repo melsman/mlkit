@@ -111,7 +111,7 @@ structure CompileDec: COMPILE_DEC =
     local
       open TLE
     in
-      val TLEunit = PRIM(RECORDprim,[])
+      val TLEunit = PRIM(RECORDprim NONE,[])
 
       fun monoLet((lv,tau,lamb1),lamb2) =
         LET{pat=[(lv,[],tau)],
@@ -477,8 +477,8 @@ structure CompileDec: COMPILE_DEC =
        let val a = IntInf.abs x
   	   val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
 	     foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type]},
-				     [PRIM(RECORDprim,[INTEGER(d,int31Type),
-						       C])]))
+				     [PRIM(RECORDprim NONE,[INTEGER(d,int31Type),
+						            C])]))
 		   (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type]},
 		         nil))
 		   (digits a)
@@ -491,7 +491,7 @@ structure CompileDec: COMPILE_DEC =
 			    instances=nil},nil)
        in
 	 PRIM(CONprim{con=Con.con_INTINF,instances=nil},
-	      [PRIM(RECORDprim,[digitsExp,negativeExp])])
+	      [PRIM(RECORDprim NONE,[digitsExp,negativeExp])])
        end
 
 
@@ -1266,7 +1266,7 @@ Det finder du nok aldrig ud af.*)
 in
 
   fun compile_jump_to ({lvar, ...} : node) =
-	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim, []), NONE)
+	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim NONE, []), NONE)
 	  (*instances=[] because the var can never be polymorphic
 	   because it is the name of a non-polymorphic function.*)
 
@@ -1886,7 +1886,7 @@ end; (*match compiler local*)
 	  let val intInfLongId = Ident.mk_LongId ["IntInfRep",opr]
 	      val arg = (case args of
 			     [a] => a
-			   | args => PRIM(RECORDprim,args))
+			   | args => PRIM(RECORDprim NONE,args))
 	  in case CE.lookup_longid e intInfLongId of
 	      SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=nil},arg,NONE)
 	    | _ => die ("intinfOp: " ^ opr)
@@ -2079,7 +2079,8 @@ end; (*match compiler local*)
 	       val exps = map (fn EXPROW(_, _, e, _) => compileExp env e) rows
 	       fun is_sorted (l1::(labs as l2::_)) = Lab.<(l1,l2) andalso is_sorted labs
 		 | is_sorted _ = true
-	     in if is_sorted labs then PRIM(RECORDprim, exps)
+               val rv_opt = Option.map (#2) rv_opt
+	     in if is_sorted labs then PRIM(RECORDprim rv_opt, exps)
 		else
 		  let val taus = map (compileType o type_of_exp
 				      o (fn EXPROW(_,_,e,_) => e)) rows
@@ -2090,7 +2091,7 @@ end; (*match compiler local*)
 				  (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
 				  (ListPair.zip(lvars, labs))
 			in
-			  PRIM(RECORDprim,map (fn (lv, _) => VAR{lvar=lv,instances=[]})
+			  PRIM(RECORDprim rv_opt,map (fn (lv, _) => VAR{lvar=lv,instances=[]})
 			       sortedLvarsXlabs)
 			end
 		  in
@@ -2099,7 +2100,7 @@ end; (*match compiler local*)
 		  end
 	     end
 
-	   | RECORDatexp(_, NONE, _) => PRIM(RECORDprim,[])
+	   | RECORDatexp(_, NONE, _) => PRIM(RECORDprim NONE,[])
 
 	   | LETatexp(_, dec, exp) =>
 	       let val (env1, f) = compileDec env (false,dec)
@@ -2271,7 +2272,7 @@ end; (*match compiler local*)
 		in
 		  if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
 		    case (instances', arg')
-		      of ([CONStype([], tyname)], PRIM(RECORDprim, l)) =>
+		      of ([CONStype([], tyname)], PRIM(RECORDprim _, l)) =>
 			(if TyName.eq(tyname, TyName.tyName_INT31) then
 			   PRIM(equal_int31(), l)
 			 else if TyName.eq(tyname, TyName.tyName_INT32) then

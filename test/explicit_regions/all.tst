@@ -28,4 +28,7 @@ er6.sml               ccl ecte
 er7.sml               ccl ecte
 er8.sml               ccl ecte
 er9.sml               ccl ecte
+er10.sml              ccl ecte
 param.sml
+tup.sml
+rec.sml

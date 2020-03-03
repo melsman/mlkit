@@ -938,13 +938,14 @@ good *)
                            Eff.mkUnion([phi1,Eff.mkGet(#2 mu2)])),
 		  NOTAIL)
         end
-    | E.PRIM(E.RECORDprim,args) =>
+    | E.PRIM(E.RECORDprim rv_opt,args) =>
         let val (B, trips) = List.foldr (fn (arg, (B, trips)) =>
                     let val (B, trip, _) = S(B,arg, false, NOTAIL)
                     in (B, trip::trips)
                     end) (B,[]) args
             val tau = R.mkRECORD(map (fn E'.TR(_,E'.Mus [mu],_) => mu | _ => die "S.record: boxed arg") trips)
-            val (rho,B) = Eff.freshRhoWithTy(R.runtype tau, B)
+            val (rho,B) = maybe_explicit_rho rse B (R.runtype tau) rv_opt
+            (*val (rho,B) = Eff.freshRhoWithTy(R.runtype tau, B)*)
             val phi = Eff.mkUnion(Eff.mkPut rho :: map (fn E'.TR(_,_,phi) => phi) trips)
         in
           (B, E'.TR(E'.RECORD(rho, trips), E'.Mus [(tau, rho)], phi),

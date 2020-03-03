@@ -566,7 +566,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 					  end
 					 | NONE => die "DEEXCONprim.Unary excon does not have arrow type")
 			 | _ => die "DEEXCONprim.Wrong number of args")
-	   | RECORDprim => [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
+	   | RECORDprim _ => [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
 	   | SELECTprim i =>
 			(case lexps
 			   of [lexp] =>
