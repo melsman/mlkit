@@ -135,7 +135,7 @@ struct
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
     | RESET_REGIONS of {force: bool,
 			regions_for_resetting: 'aty sma list}
-    | PRIM          of {name: string, args: 'aty list, res: 'aty list}
+    | PRIM          of {name: PrimName.prim, args: 'aty list, res: 'aty list}
     | CCALL         of {name: string, args: 'aty list,
 			rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
@@ -450,7 +450,7 @@ struct
 		 let
 		   val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 in
-		   HNODE{start=flatten1(t0) ^ " = prim(\"" ^ name ^ "\", <",
+		   HNODE{start=flatten1(t0) ^ " = prim(\"" ^ PrimName.pp_prim name ^ "\", <",
 			 finish=">)",
 			 childsep=RIGHT ",",
 			 children=map (layout_aty pr_aty) args}
@@ -705,22 +705,23 @@ struct
 	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
 	  maybe_assign (lvars_res, ATOM UNIT, acc)
 	 | ClosExp.CCALL{name,rhos_for_result,args} =>
-	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
-				       res=map VAR lvars_res}::acc
-	  else CCALL{name=name,args=ces_to_atoms args,
-		     rhos_for_result=ces_to_atoms rhos_for_result,
-		     res=map VAR lvars_res}::acc
+           (case PrimName.lookup_prim name of
+                SOME pname => PRIM{name=pname,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
+			           res=map VAR lvars_res}::acc
+	     | NONE => CCALL{name=name,args=ces_to_atoms args,
+		             rhos_for_result=ces_to_atoms rhos_for_result,
+		             res=map VAR lvars_res}::acc)
 	 | ClosExp.CCALL_AUTO{name,args,res} =>
-	  if BI.is_prim name then
-	    die ("CCALL_AUTO." ^ name ^ " appears to be a PRIM!")
-	  else
+	   (case PrimName.lookup_prim name of
+                SOME _ => die ("CCALL_AUTO." ^ name ^ " appears to be a PRIM!")
+	      | NONE =>
 	    let val res = case lvars_res
 			    of [lv] => (VAR lv, res)
 			     | _ => die ("CCALL_AUTO.result mismatch (SOME) "
 					 ^ Int.toString(length lvars_res))
 		val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
 	    in CCALL_AUTO{name=name, args=args, res=res}::acc
-	    end
+	    end)
 	 | ClosExp.EXPORT{name,clos_lab,arg=(ce,ft1,ft2)} =>
 	    EXPORT{name=name,clos_lab=clos_lab,arg=(ce_to_atom ce,ft1,ft2)}::
 	    maybe_assign (lvars_res, ATOM UNIT, acc)
@@ -1220,10 +1221,9 @@ struct
 	     add_not_ok_use(use_var_ls ls,add_not_ok_def(def_var_ls ls,(OKset,notOKset,NONE)))
          (* Pattern: lv := prim(cond) *)
        | PRIM{name,args=[aty1,aty2],res=[VAR lv_res]} =>
-	   if BI.is_flow_prim name then
-	     add_ok_def(lv_res,prev_use_lv,add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
-	   else
-	     add_not_ok_def([lv_res],add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
+	 if PrimName.is_flow_prim name then
+           add_ok_def(lv_res,prev_use_lv,add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
+	 else add_not_ok_def([lv_res],add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
          (* Pattern: case lv of true => lss | _ => lss *)
          (* Pattern: case lv of false => lss | _ => lss *)
        | SWITCH_C(sw as SWITCH(VAR lv,[((con,con_kind),lss)],default)) =>
