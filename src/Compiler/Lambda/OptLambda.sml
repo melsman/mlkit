@@ -120,6 +120,22 @@ structure OptLambda: OPT_LAMBDA =
 	  \more than once. Functions that are used only once are\n\
 	  \always in-lined."}
 
+    (* names of functions to inline no-matter the setting of the flag
+     * maximum_inline_size. *)
+    val inline_names = Flags.add_stringlist_entry
+	{long="inline_names",short=NONE,
+	 menu=["Control", "Optimiser", "inline names"],
+	 item=ref [], desc=
+	 "Names of functions that should always be inlined\n\
+          \if possible, no matter the setting of the flag\n\
+          \--maximum_inline_size."}
+
+    fun always_inline_function (lvar:lvar) : bool =
+        let val names = inline_names()
+            val n = Lvars.pr_lvar lvar
+        in List.exists (fn x => x = n) names
+        end
+
     val cross_module_opt = Flags.add_bool_entry
 	{long="cross_module_opt",short=SOME "cross_opt",
 	 menu=["Control", "Optimiser", "cross module optimisation"],
@@ -770,10 +786,10 @@ structure OptLambda: OPT_LAMBDA =
 	  of FN _ => small_lamb (!max_inline_size) lamb andalso closed lamb
 	   | _ => false
 *)
-      fun is_small_fn lamb =
-	case lamb
-	  of FN _ => small_lamb (max_inline_size()) lamb
-	   | _ => false
+      fun is_inlinable_fn lvar lamb =
+	  case lamb of
+              FN _ => always_inline_function lvar orelse small_lamb (max_inline_size()) lamb
+	    | _ => false
 
       fun is_fn (FN _) = true
 	| is_fn (LET{pat,bind,scope}) = is_fn bind andalso is_fn scope
@@ -1204,7 +1220,7 @@ structure OptLambda: OPT_LAMBDA =
 	       end
 	      | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
 	       let val (bind', cv) = contr (env, bind)
-		   val cv' = if (*is_small_closed_fn*) is_small_fn bind' then CFN{lexp=bind',large=false}
+		   val cv' = if (*is_small_closed_fn*) is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
 			     else if is_fn bind' then CFN{lexp=bind',large=true}
                              else if is_unboxed_value bind' then CCONST bind'
 			     else (case bind'
@@ -1244,10 +1260,10 @@ structure OptLambda: OPT_LAMBDA =
 		   val _ = app unmark_lvar lvs
 		   val env' = case functions
 				of [function as {lvar,regvars=[],tyvars,Type,bind}] =>  (* memo:regvars *)
-				  let val cv = if specialize_recursive_functions() andalso specializable function then
+				   let val cv = if specializable function andalso specialize_recursive_functions() then
 				                  CFIX{Type=Type,bind=bind,large=not(small_lamb (max_specialise_size()) bind)}
-					       else CUNKNOWN
-				  in updateEnv [lvar] [(tyvars,cv)] env
+					        else CUNKNOWN
+				   in updateEnv [lvar] [(tyvars,cv)] env
 				  end
 				 | _ => updateEnv lvs (map (fn {tyvars,...} => (tyvars,CUNKNOWN)) functions) env
 		   val (scope', cv) = contr (env', scope)
