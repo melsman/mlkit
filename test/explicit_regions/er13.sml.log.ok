@@ -1,0 +1,9 @@
+[reading source file:	er13.sml]
+> infix 0 +
+  val f : unit->real * real
+  val g : unit->real
+er13.sml, line 9, column 22:
+          val (_,y) = f `[r2] ()
+                        ^^^^^
+The number of actual explicit region variables does not match the number of formal explicit region variables.
+Stopping compilation of MLB-file due to error (code 1).

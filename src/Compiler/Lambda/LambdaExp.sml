@@ -109,7 +109,7 @@ structure LambdaExp: LAMBDA_EXP =
       (* list of mutual recursive datatype declarations *)
 
     and LambdaExp =
-        VAR      of {lvar: lvar, instances : Type list}
+        VAR      of {lvar: lvar, instances : Type list, regvars: regvar list}
       | INTEGER  of Int32.int * Type
       | WORD     of Word32.word * Type
       | STRING   of string * regvar option
@@ -742,12 +742,16 @@ structure LambdaExp: LAMBDA_EXP =
 
     and layoutLambdaExp(lamb,context:int): StringTree =
       case lamb of
-        VAR {lvar=lv,instances=taus} =>
-	    if !Flags.print_types then
-		PP.NODE{start=pr_lvar lv ^ ":(", finish=")",indent=0,
-			children=map layoutType taus,
-			childsep=PP.RIGHT ","}
-            else PP.LEAF(pr_lvar lv)
+          VAR {lvar=lv,instances=taus,regvars} =>
+          let val s = pr_lvar lv ^
+                      (if null regvars then ""
+                       else "`[" ^ String.concatWith " " (map RegVar.pr regvars) ^ "]")
+          in if !Flags.print_types then
+	       PP.NODE{start=s ^ ":(", finish=")",indent=0,
+		       children=map layoutType taus,
+		       childsep=PP.RIGHT ","}
+             else PP.LEAF s
+          end
       | INTEGER (i,tau) =>
           if !Flags.print_types then
             PP.NODE{start=Int32.toString i ^ ":", finish=" ",indent=0,
@@ -1376,8 +1380,9 @@ structure LambdaExp: LAMBDA_EXP =
 
 	    fun fun_VAR pu_LambdaExp =
 		Pickle.con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
-		(Pickle.convert (fn (lv,il) => {lvar=lv,instances=il}, fn {lvar=lv,instances=il} => (lv,il))
-		 (Pickle.pairGen0(Lvars.pu,pu_Types)))
+		            (Pickle.convert (fn (lv,il,rvs) => {lvar=lv,instances=il,regvars=rvs},
+                                             fn {lvar=lv,instances=il,regvars} => (lv,il,regvars))
+		 (Pickle.tup3Gen0(Lvars.pu,pu_Types,Pickle.listGen RegVar.pu)))
 	    fun fun_INTEGER pu_LambdaExp =
 		Pickle.con1 INTEGER (fn INTEGER a => a | _ => die "pu_LambdaExp.INTEGER")
 		(Pickle.pairGen0(Pickle.int32,pu_Type))
@@ -1504,7 +1509,7 @@ structure LambdaExp: LAMBDA_EXP =
           end
       in
 	case e of
-          VAR{instances, lvar} => tyvars_Types s instances acc
+          VAR{instances, lvar, regvars} => tyvars_Types s instances acc
         | INTEGER _ => acc
         | WORD _ => acc
         | STRING _ => acc

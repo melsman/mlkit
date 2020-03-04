@@ -23,23 +23,23 @@ structure Compile: COMPILE =
 
     val region_profiling_p = Flags.is_on0 "region_profiling"
 
-    val rse_0 = Flags.add_bool_entry 
-	{long="print_region_static_env0", short=SOME "Prse0", 
+    val rse_0 = Flags.add_bool_entry
+	{long="print_region_static_env0", short=SOME "Prse0",
 	 menu=["Printing of RSE0",
 	       "print imported region static environment"],
 	 item=ref false, neg=false, desc=
 	 "Print imported region static environment prior to\n\
 	  \region inference."}
 
-    val print_storage_mode_expression = Flags.add_bool_entry 
-	{long="print_storage_mode_expression", short=SOME "Psme", 
+    val print_storage_mode_expression = Flags.add_bool_entry
+	{long="print_storage_mode_expression", short=SOME "Psme",
 	 menu=["Printing of intermediate forms",
 	       "print storage mode expression"],
 	 item=ref false, neg=false, desc=
 	 "Print Region Expression after storage mode analysis"}
 
-    val print_drop_regions_expression_with_storage_modes = Flags.add_bool_entry 
-	{long="print_drop_regions_expression_with_storage_modes", short=SOME "Pdresm", 
+    val print_drop_regions_expression_with_storage_modes = Flags.add_bool_entry
+	{long="print_drop_regions_expression_with_storage_modes", short=SOME "Pdresm",
 	 menu=["Printing of intermediate forms",
 	       "print drop regions expression with storage modes"],
 	 item=ref false, neg=false, desc=
@@ -48,22 +48,22 @@ structure Compile: COMPILE =
 	  \atbot and attop annotations resulting from storage mode\n\
 	  \analysis."}
 
-    val print_drop_regions_expression = Flags.add_bool_entry 
-	{long="print_drop_regions_expression", short=SOME "Pdre", 
+    val print_drop_regions_expression = Flags.add_bool_entry
+	{long="print_drop_regions_expression", short=SOME "Pdre",
 	 menu=["Printing of intermediate forms","print drop regions expression"],
 	 item=ref false, neg=false, desc=
 	 "Print Region Expression after dropping word regions and\n\
 	  \regions arguments with only get-effects."}
 
-    val print_physical_size_inference_expression = Flags.add_bool_entry 
-	 {long="print_physical_size_inference_expression", short=SOME "Ppse", 
+    val print_physical_size_inference_expression = Flags.add_bool_entry
+	 {long="print_physical_size_inference_expression", short=SOME "Ppse",
 	  menu=["Printing of intermediate forms",
 		"print physical size inference expression"],
 	  item=ref false, neg=false, desc=
 	  "Print Region Expression after physical size inference."}
 
-    val print_call_explicit_expression = Flags.add_bool_entry 
-	 {long="print_call_explicit_expression", short=SOME "Pcee", 
+    val print_call_explicit_expression = Flags.add_bool_entry
+	 {long="print_call_explicit_expression", short=SOME "Pcee",
 	  menu=["Printing of intermediate forms","print call-explicit expression"],
 	  item=ref false, neg=false, desc=
 	  "Print Region Expression with call annotations."}
@@ -73,22 +73,22 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
 
     fun out_layer (stl:PP.StringTree list) =
-      PP.outputTree((fn s => TextIO.output(TextIO.stdOut, s)), 
-         PP.NODE{start = "[", finish = "]", childsep = PP.RIGHT ",", indent = 1, 
+      PP.outputTree((fn s => TextIO.output(TextIO.stdOut, s)),
+         PP.NODE{start = "[", finish = "]", childsep = PP.RIGHT ",", indent = 1,
                  children = stl}, !Flags.colwidth)
 
     local
-      fun msg(s: string) = 
+      fun msg(s: string) =
 	  (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     in
       fun chat(s: string) = if !Flags.chat then msg (s^"\n") else ()
     end
 
-    fun fast_pr stringtree = 
+    fun fast_pr stringtree =
 	(PP.outputTree ((fn s => TextIO.output(!Flags.log, s)),
 			stringtree, !Flags.colwidth);
 	 TextIO.output(!Flags.log, "\n\n"))
-	
+
     fun display(title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
@@ -103,22 +103,22 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
     (*  Abbreviations                                                         *)
     (* ---------------------------------------------------------------------- *)
-      
-    fun layoutRegionPgm x = 
-	(RegionExp.layoutLambdaPgm 
-	 (if print_regions() then 
+
+    fun layoutRegionPgm x =
+	(RegionExp.layoutLambdaPgm
+	 (if print_regions() then
 	      (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
 	  else fn _ => NONE)
                             (fn _ => NONE)) x
-    fun layoutRegionExp x = 
-	(RegionExp.layoutLambdaExp 
-	 (if print_regions() then 
+    fun layoutRegionExp x =
+	(RegionExp.layoutLambdaExp
+	 (if print_regions() then
 	      (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
 	  else fn _ => NONE)
 	      (fn _ => NONE)) x
 
     fun say x = TextIO.output(!Flags.log, x)
-    fun sayenv rse = 
+    fun sayenv rse =
 	PP.outputTree(say, SpreadExp.RegionStatEnv.layout rse, !Flags.colwidth)
 
     type arity = int
@@ -127,7 +127,7 @@ structure Compile: COMPILE =
      * Program point counter
      * -------------------------------------------- *)
 
-    local 
+    local
       val pp_init = 1   (* ~1 and 0 are reserved *)
       val pp_count = ref (pp_init)
     in
@@ -144,41 +144,41 @@ structure Compile: COMPILE =
          Timing.timing_begin();
          (*Profile.reset();
          Profile.profileOn();*)
-         let 
+         let
 (*	     val _ = display ("Region static environment 0",SpreadExp.RegionStatEnv.layout rse) *)
-	     val effects_rse = 
-		 SpreadExp.RegionStatEnv.FoldLvar 
-		 (fn ((lv,(_,_,s,r,_,_)),acc) => 
-		  if Lvars.pr_lvar lv = "revAcc" then 
-		      r :: RType.frv_sigma s @ acc 
+	     val effects_rse =
+		 SpreadExp.RegionStatEnv.FoldLvar
+		 (fn ((lv,(_,_,_,s,r,_,_)),acc) =>
+		  if Lvars.pr_lvar lv = "revAcc" then
+		      r :: RType.frv_sigma s @ acc
 		  else acc) nil rse
 (*	     val _ = out_layer (Effect.layoutEtas effects_rse) *)
 	     val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
-         in 
+         in
 	   Timing.timing_end("SpreadExp");
 	   chat "]\n";
 	   (*Profile.profileOff();
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
-	   if !Flags.DEBUG_COMPILER 
-	     then (display("\nReport: Spread; program", 
+	   if !Flags.DEBUG_COMPILER
+	     then (display("\nReport: Spread; program",
 			   layoutRegionPgm spread_lamb) ;
-		   display("\nReport: Spread; entire cone after Spreading", 
+		   display("\nReport: Spread; entire cone after Spreading",
 			   Effect.layoutCone cone) )
 	   else ();
 	   (cone,rse_con, spread_lamb)
-         end) 
+         end)
 
 
     (* ---------------------------------------------------------------------- *)
     (*   Do the region inference on the spread optimised lambda code          *)
     (* ---------------------------------------------------------------------- *)
 
-    fun inferRegions(cone,rse, rse_con,  spread_lamb as RegionExp.PGM 
+    fun inferRegions(cone,rse, rse_con,  spread_lamb as RegionExp.PGM
                         {expression = spread_lamb_exp,
                          export_datbinds = datbinds,
                          export_basis=export_basis  (* list of region variables and arrow effects *)
-                        }) = 
+                        }) =
     let
         val _ = (chat "[Inferring regions and effects...";
 		 Timing.timing_begin())
@@ -214,7 +214,7 @@ structure Compile: COMPILE =
         val _ = out_layer(Effect.layoutEtas new_layer)
 *)
 	(* all variables in cone with toplevel: *)
-	  
+
 (*	val _ = print "RegInf.Unifying toplevel regions and effects ...\n" *)
 
         val cone = Effect.unify_with_toplevel_rhos_eps(cone,new_layer)
@@ -234,17 +234,17 @@ structure Compile: COMPILE =
 		else
 		  ((*print "RegInf.Normalising program ...\n";*)
 		   reset_effect_count();      (* inserted; mads *)
-		   RegionExp.normPgm(pgm',effect_counter) 
+		   RegionExp.normPgm(pgm',effect_counter)
 		   )
 *)
 (*	val _ = print "RegInf.Computing rse' ...\n"  *)
 	val rse' =
 	  case spread_lamb_exp
 	    of RegionExp.TR(_,RegionExp.Frame{declared_lvars,declared_excons},_) =>
-	      (let val rse_temp = 
-		 foldl (fn ({lvar,compound,create_region_record,sigma, place}, rse) =>
-			     SpreadExp.RegionStatEnv.declareLvar(lvar,(compound, 
-							   create_region_record, !sigma, place, 
+	      (let val rse_temp =
+		 foldl (fn ({lvar,compound,create_region_record,regvars,sigma, place}, rse) =>
+			     SpreadExp.RegionStatEnv.declareLvar(lvar,(compound,
+							   create_region_record, regvars, !sigma, place,
 							   NONE (*SOME(ref[])*) (* reset occurrences *), NONE
 							 ), rse)) rse_con declared_lvars
 	       in
@@ -262,12 +262,12 @@ structure Compile: COMPILE =
 	      val tempfile = OS.FileSys.tmpName()
 	      val os = TextIO.openOut tempfile
 	      val _ = Compiler.Profile.report os
-	      val _ = TextIO.closeOut os   
+	      val _ = TextIO.closeOut os
 	    in print ("RegInf.Exported profile to file " ^ tempfile ^ "\n")
 	    end
 	  else ()
 *)
-    in 
+    in
       if !Flags.DEBUG_COMPILER then
         (say "Resulting region-static environment:\n";
 	 sayenv(rse');
@@ -296,15 +296,15 @@ structure Compile: COMPILE =
                 TextIO.output(!Flags.log, "\n PROFILING OF MulInf\n\n");
                 Profile.report(!Flags.log)*));
 *)
-    in 
-        if !Flags.DEBUG_COMPILER 
+    in
+        if !Flags.DEBUG_COMPILER
             then (display("\nReport: After Multiplicity Inference, the program is:\n",
                    	    MulInf.layoutLambdaPgm pgm'))
             else ();
 
         (pgm', mulenv', Psi')
     end
-    
+
 
 
     (* ---------------------------------------------------------------------- *)
@@ -331,7 +331,7 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
 
     local open MulInf
-    in fun k_norm(pgm: (place,place*mul,qmularefset ref)LambdaPgm_psi) 
+    in fun k_norm(pgm: (place,place*mul,qmularefset ref)LambdaPgm_psi)
 	: (place,place*mul,qmularefset ref)LambdaPgm_psi =
 	(chat "[K-normalisation...";
          Timing.timing_begin();
@@ -341,31 +341,31 @@ structure Compile: COMPILE =
 	     chat "]\n";
 	     pgm'
 	 end)
-    end	
+    end
 
     (* ---------------------------------------------------------------------- *)
     (*   Do attop/atbot analysis                                              *)
     (* ---------------------------------------------------------------------- *)
 
     local open AtInf
-    in fun storagemodeanalysis(pgm: (place,place*mul,qmularefset ref)LambdaPgm) 
+    in fun storagemodeanalysis(pgm: (place,place*mul,qmularefset ref)LambdaPgm)
 	: (place at,place*mul,unit)LambdaPgm =
          (* chatting and timing done in AtInf*)
 	 let val pgm' = sma pgm
-	 in 
-	    if print_storage_mode_expression() 
-               orelse !Flags.DEBUG_COMPILER then 
+	 in
+	    if print_storage_mode_expression()
+               orelse !Flags.DEBUG_COMPILER then
 	          display("\nReport: Storage Mode Expression:", layout_pgm pgm')
 	    else ();
 	    pgm'
 	 end
-    end	
+    end
 
 
     (* ---------------------------------------------------------------------- *)
     (*   Do drop regions                                                      *)
     (* ---------------------------------------------------------------------- *)
-  
+
     local open DropRegions
     in
       val drop_regions : env*(place at,place*mul,unit)LambdaPgm -> (place at,place*mul,unit)LambdaPgm * env =
@@ -375,10 +375,10 @@ structure Compile: COMPILE =
          let val (pgm',env') = drop_regions(env, pgm)
 	 in Timing.timing_end("Drop");
 	   chat "]\n";
-	    if print_drop_regions_expression() then 
+	    if print_drop_regions_expression() then
 	      display("Report: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
 	    else ();
-	    if print_drop_regions_expression_with_storage_modes() orelse !Flags.DEBUG_COMPILER then 
+	    if print_drop_regions_expression_with_storage_modes() orelse !Flags.DEBUG_COMPILER then
 	      display("Report: AFTER DROP REGIONS (with storage modes):", AtInf.layout_pgm pgm')
 	    else ();
 	    (pgm',env')
@@ -389,17 +389,17 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
     (*   Do physical size inference                                           *)
     (* ---------------------------------------------------------------------- *)
-  
+
     local open PhysSizeInf
    in
-      fun phys_size_inf (env: env, pgm:(place at,place*mul,unit)LambdaPgm) 
+      fun phys_size_inf (env: env, pgm:(place at,place*mul,unit)LambdaPgm)
 	: ((place*pp)at,place*phsize,unit)LambdaPgm * env =
 	(chat "[Physical Size Inference...";
          Timing.timing_begin();
          let val (pgm',env') = psi(pp_counter, env, pgm)
 	 in Timing.timing_end("PSI");
 	   chat "]\n";
-	    if print_physical_size_inference_expression() orelse !Flags.DEBUG_COMPILER then 
+	    if print_physical_size_inference_expression() orelse !Flags.DEBUG_COMPILER then
 	      display("Report: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
 	    else ();
 	    (pgm',env')
@@ -411,7 +411,7 @@ structure Compile: COMPILE =
     (*   Warn against dangling pointers (when Garbage Collection is on)       *)
     (* ---------------------------------------------------------------------- *)
 
-       fun warn_dangling_pointers(rse, psi_pgm) = 
+       fun warn_dangling_pointers(rse, psi_pgm) =
         let (* warn against dangling references *)
             fun get_place_at(AtInf.ATTOP(rho,pp)) = rho
               | get_place_at(AtInf.ATBOT(rho,pp)) = rho
@@ -429,17 +429,17 @@ structure Compile: COMPILE =
     (* ---------------------------------------------------------------------- *)
     (*   Do application conversion                                            *)
     (* ---------------------------------------------------------------------- *)
-  
+
     local open PhysSizeInf
     in
-      fun appConvert (pgm:((place*pp)at,place*phsize,unit)LambdaPgm): 
+      fun appConvert (pgm:((place*pp)at,place*phsize,unit)LambdaPgm):
                           ((place*pp)at,place*phsize,unit)LambdaPgm =
 	(chat "[Application Conversion...";
          Timing.timing_begin();
          let val pgm' = PhysSizeInf.appConvert(pgm)
 	 in Timing.timing_end("AppConv");
 	   chat "]\n";
-	    if print_call_explicit_expression() orelse !Flags.DEBUG_COMPILER then 
+	    if print_call_explicit_expression() orelse !Flags.DEBUG_COMPILER then
 	      display("Report: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
 	    else ();
 	    pgm'
@@ -469,8 +469,8 @@ structure Compile: COMPILE =
       in
         case CompileToLamb.compile fe (CEnv, BtoLamb, strdecs) of
           CompileToLamb.CEnvOnlyRes CEnv1 => CEnvOnlyRes CEnv1
-        | CompileToLamb.CodeRes (CEnv1, BtoLamb1, lamb_opt, safe) => 
-          let 
+        | CompileToLamb.CodeRes (CEnv1, BtoLamb1, lamb_opt, safe) =>
+          let
             val {NEnv=NEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1} = CompBasisToLamb.de_CompBasis BtoLamb1
             val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
 	    val _ = MulExp.warn_puts(rse, mul_pgm)
@@ -487,17 +487,17 @@ structure Compile: COMPILE =
 	  end
       end
 
-    (* Hook to be run before any compilation. 
+    (* Hook to be run before any compilation.
      * Overwrite hook for CompileToLamb, which is a noop. *)
     fun preHook():unit =
 	let (* val _ = print ("In preHook\n") *)
 	in
-	    Effect.resetCount() (* if "-regionvar n" is provided, 
-				 * the first effectvar/regionvar 
+	    Effect.resetCount() (* if "-regionvar n" is provided,
+				 * the first effectvar/regionvar
 				 * gets id n. *)
 (*	    before print "[Exiting preHook]\n" *)
 	end
-    
+
     fun pairToFile (a,b) file =
 	let
 	    fun outString {file:string,s:string} =

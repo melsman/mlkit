@@ -1,0 +1,9 @@
+[reading source file:	er12.sml]
+> infix 0 +
+  val f : unit->real
+  val g : unit->real
+er12.sml, line 6, column 15:
+      in 0.0 + f `[r3] ()
+                 ^^^^^
+Explicit region variable `r3 not in scope
+Stopping compilation of MLB-file due to error (code 1).

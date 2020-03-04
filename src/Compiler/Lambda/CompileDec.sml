@@ -1084,7 +1084,7 @@ Det finder du nok aldrig ud af.*)
   fun compile_path env (obj:LambdaExp*Type) path
       : (LambdaExp -> LambdaExp) * LambdaExp * Type * CE.CEnv =
       case lookupPath env path of
-	  SOME (lvar,tau) => (fn x => x, VAR {lvar=lvar,instances=nil}, tau, CE.emptyCEnv)
+	  SOME (lvar,tau) => (fn x => x, VAR {lvar=lvar,instances=[],regvars=[]}, tau, CE.emptyCEnv)
 	| NONE => compile_path0 env obj path
 
   and compile_path0 env (obj,tau) Obj = (fn x => x, obj, tau, CE.emptyCEnv)
@@ -1136,7 +1136,7 @@ Det finder du nok aldrig ud af.*)
 			    val env'' = declarePath(path0, lvar, tau, CE.emptyCEnv)
 			in
 			    (f o f',
-			     VAR{lvar=lvar,instances=nil},
+			     VAR{lvar=lvar,instances=[],regvars=[]},
 			     tau,
 			     CE.plus(env',env''))
 			end
@@ -1195,7 +1195,7 @@ Det finder du nok aldrig ud af.*)
 					   scope = x}
 		      val env'' = declarePath(path0,lvar,tau,CE.emptyCEnv)
 		  in (f o f',
-		      VAR{lvar=lvar,instances=nil},
+		      VAR{lvar=lvar,instances=[],regvars=[]},
 		      tau,
 		      CE.plus(env',env''))
 		  end
@@ -1237,14 +1237,14 @@ Det finder du nok aldrig ud af.*)
 	    (fn ((id, (lvar, tyvars, tau), path), (f,e,env)) =>
 	     let val obj =
                      case obj of
-                       (VAR{lvar=lv,instances},tau) =>
+                       (VAR{lvar=lv,instances,regvars},tau) =>
                        let
                          fun member tv = List.exists (fn tv' => tv = tv') tyvars
                          fun f (t as TYVARtype tv) =
                              if member tv then t
                              else intDefaultType()   (* see compilation of test/pat.sml *)
                            | f t = t
-                       in (VAR{lvar=lv,instances=map f instances}, tau)  (* MEMO: maybe instantiate tau properly? *)
+                       in (VAR{lvar=lv,instances=map f instances,regvars=regvars}, tau)  (* MEMO: maybe instantiate tau properly? *)
                        end
                      | _ => die "mk_declarations_to_be_made.skip0"
                  val (f',e',_,env') = compile_path env obj path
@@ -1266,7 +1266,7 @@ Det finder du nok aldrig ud af.*)
 in
 
   fun compile_jump_to ({lvar, ...} : node) =
-	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim NONE, []), NONE)
+	APP (VAR {lvar=lvar, instances=[], regvars=[]}, PRIM (RECORDprim NONE, []), NONE)
 	  (*instances=[] because the var can never be polymorphic
 	   because it is the name of a non-polymorphic function.*)
 
@@ -1326,7 +1326,7 @@ in
                          | convertCases (nil,SOME a)   = a
                          | convertCases ((x,b)::cases,def:LambdaExp option) =
                            If(PRIM(EQUALprim {instance=RECORDtype[intinfType,intinfType]},
-                                   [VAR{lvar=lv,instances=nil},
+                                   [VAR{lvar=lv,instances=[],regvars=[]},
                                     buildIntInf x]),
                               b,
                               convertCases(cases,def))
@@ -1888,7 +1888,7 @@ end; (*match compiler local*)
 			     [a] => a
 			   | args => PRIM(RECORDprim NONE,args))
 	  in case CE.lookup_longid e intInfLongId of
-	      SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=nil},arg,NONE)
+	      SOME(CE.LVAR (lv,tvs,t,ts)) => APP(VAR{lvar=lv,instances=[],regvars=[]},arg,NONE)
 	    | _ => die ("intinfOp: " ^ opr)
 	  end
 
@@ -1973,14 +1973,14 @@ end; (*match compiler local*)
 	    in
 	      if takes_one_argument then
 		FN {pat=[(lvar1, ty)],
-		    body=unoverload env info result [VAR{lvar=lvar1, instances=[]}]}
+		    body=unoverload env info result [VAR{lvar=lvar1, instances=[], regvars=[]}]}
 	      else (*takes two arguments*)
 		FN {pat=[(lvar1, RECORDtype [ty, ty])],
 		    body=unoverload env info result
 		    ([PRIM (SELECTprim 0,
-			    [VAR {lvar=lvar1, instances=[]}]),
+			    [VAR {lvar=lvar1, instances=[], regvars=[]}]),
 		      PRIM (SELECTprim 1,
-			    [VAR {lvar=lvar1, instances=[]}])]
+			    [VAR {lvar=lvar1, instances=[], regvars=[]}])]
 		     @ exn_args)}
 	    end
       fun overloaded_prim_fn' env info result = (*e.g., CE.LESS, ... *)
@@ -1998,9 +1998,9 @@ end; (*match compiler local*)
 	      FN {pat=[(lvar1, RECORDtype [ty, ty])],
 		  body=unoverload env info result
 		  [PRIM (SELECTprim 0,
-			 [VAR {lvar=lvar1, instances=[]}]),
+			 [VAR {lvar=lvar1, instances=[], regvars=[]}]),
 		   PRIM (SELECTprim 1,
-			 [VAR {lvar=lvar1, instances=[]}])]}
+			 [VAR {lvar=lvar1, instances=[], regvars=[]}])]}
 	    end
     end (*local*)
 
@@ -2061,7 +2061,7 @@ end; (*match compiler local*)
 		 in WORD (x, t)
 		 end
 	   | IDENTatexp(info, OP_OPT(longid, _), regvars_opt) =>
-	       compile_ident env info longid (lookupLongid env longid (NORMAL info))
+	       compile_ident env info longid regvars_opt (lookupLongid env longid (NORMAL info))
 
 	   (* records: the fields must be evaluated in their textual order,
 	    but the resulting record object must have the fields in a
@@ -2091,7 +2091,7 @@ end; (*match compiler local*)
 				  (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
 				  (ListPair.zip(lvars, labs))
 			in
-			  PRIM(RECORDprim rv_opt,map (fn (lv, _) => VAR{lvar=lv,instances=[]})
+			  PRIM(RECORDprim rv_opt,map (fn (lv, _) => VAR{lvar=lv,instances=[],regvars=[]})
 			       sortedLvarsXlabs)
 			end
 		  in
@@ -2110,7 +2110,7 @@ end; (*match compiler local*)
 
 	   | PARatexp(_, exp) => compileExp env exp)
 
-    and compile_ident env info longid result =
+    and compile_ident env info longid regvars_opt result =
           (case result of
 	     CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*)
 	       (let val instances =
@@ -2121,7 +2121,10 @@ end; (*match compiler local*)
 		    val instances' = map compileType instances
 		    val S = mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
 		    val il' = on_il(S,il)
-		in VAR {lvar=lv,instances=il'}
+                    val regvars = case regvars_opt of
+                                      SOME (_,regvars) => regvars
+                                    | NONE => []
+		in VAR {lvar=lv,instances=il',regvars=regvars}
 		end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = "
 					^ Ident.pr_longid longid ^ "\n");
 		                 print " Reraising...\n"; raise X))
@@ -2154,7 +2157,7 @@ end; (*match compiler local*)
 		      let val lv = Lvars.newLvar()
 		      in FN{pat=[(lv,tau')],
 			    body=PRIM(CONprim{con=con, instances=il'},
-				      [VAR{lvar=lv,instances=[]}])}
+				      [VAR{lvar=lv,instances=[],regvars=[]}])}
 		      end
 		     | CONStype _ => PRIM(CONprim {con=con, instances=il'},[])
 		     | _ => die "CE.CON.tau0 malformed"
@@ -2168,7 +2171,7 @@ end; (*match compiler local*)
 		   val instance' = compileType instance
 	       in FN{pat=[(lv,instance')],
 		     body=PRIM(REFprim {instance=instance'},
-			       [VAR{lvar=lv,instances=[]}])}
+			       [VAR{lvar=lv,instances=[],regvars=[]}])}
 	       end
 	   | CE.EXCON (excon,_) =>
 	       let
@@ -2183,7 +2186,7 @@ end; (*match compiler local*)
 		       val tau' = compileType (domType Type)
 		   in FN{pat=[(lv,tau')],
 			 body=PRIM(EXCONprim excon,
-				   [VAR{lvar=lv, instances=[]}])}
+				   [VAR{lvar=lv,instances=[],regvars=[]}])}
 		   end
 		 else PRIM(EXCONprim excon,[])
 	       end
@@ -2197,7 +2200,7 @@ end; (*match compiler local*)
 	     ATEXPexp(_, atexp) => compileAtexp env atexp
 
 	   | APPexp(_, f as ATEXPexp(_, IDENTatexp(info, OP_OPT(longid, _), regvars_opt)), arg) =>
-	       compile_application_of_ident env f info longid arg
+	       compile_application_of_ident env f info longid regvars_opt arg
 
 	   | APPexp(_, f, arg) => (*application of non-identifier*)
 	       let val f' = compileExp env f
@@ -2248,7 +2251,7 @@ end; (*match compiler local*)
 	   | UNRES_INFIXexp _ =>  die "compileExp(UNRES_INFIX)")
 
 
-    and compile_application_of_ident env f info longid arg =
+    and compile_application_of_ident env f info longid regvars_opt arg =
 
           (* We have to spot direct application of "prim" - apart from that,
 	   we don't have to bother with constructors and the like. They'll
@@ -2268,7 +2271,16 @@ end; (*match compiler local*)
 		       raise ex)
 
 		    val il' = on_il(S, il)
-		    fun default () = APP(VAR{lvar=lv,instances=il'},arg',NONE)
+		    fun default () =
+                        let val regvars =
+                                case regvars_opt of
+                                    SOME (i,regvars) =>
+                                    (List.app (fn r => RegVar.attach_location_report r
+                                                       (fn () => report_SourceInfo_in_ElabInfo i)) regvars;
+                                     regvars)
+                                  | NONE => nil
+                        in APP(VAR{lvar=lv,instances=il',regvars=regvars},arg',NONE)
+                        end
 		in
 		  if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
 		    case (instances', arg')
@@ -2532,7 +2544,7 @@ the 12 lines above are very similar to the code below
 	val _ = print "\n"
 *)
 	val lvar_switch = new_lvar_from_pats pats
-	val obj = VAR {lvar=lvar_switch, instances=[]}
+	val obj = VAR {lvar=lvar_switch, instances=[], regvars=[]}
 	      (*instances=[] because the argument to a fn cannot be polymorphic*)
 	val tau_argument = compileType (domType (type_of_match match))
 	val compile_no = fn (i, env_rhs) =>
@@ -2860,7 +2872,7 @@ the 12 lines above are very similar to the code below
 	       let val lvar_switch = new_lvar_from_pat pat
 		   val (tyvars', tau') = compileTypeScheme (tyvars, Type)
 		     handle ? => (print ("compile_binding.NONE: lvar = " ^ Lvars.pr_lvar lvar_switch ^ "\n"); raise ?)
-		   val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars'}
+		   val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars', regvars=[]}
 		   fun compile_no (i, env_rhs) = scope
 		   val raise_something = fn obj : LambdaExp =>
 		     RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)

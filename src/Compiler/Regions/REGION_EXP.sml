@@ -6,7 +6,7 @@ signature REGION_EXP =
      * is typed and functions are allowed to accept and return
      * multiple arguments. This is done by allowing two kinds of
      * records: boxed and unboxed. Unboxed records are supposed to be
-     * represented in registers.  
+     * represented in registers.
      *
      * Value and exceptions constructors are supposed to be
      * distinct. This must be ensured by the compiler. *)
@@ -17,20 +17,21 @@ signature REGION_EXP =
     type TyName
     type place and effect
 
-    eqtype tyvar 
+    eqtype tyvar
 
     type Type and sigma and il and cone
 
     datatype constructorKind = CONSTANT | VALUE_CARRYING
     datatype datbinds = DATBINDS of (TyName * (con * constructorKind * sigma) list) list list
 
-    datatype metaType =          
+    datatype metaType =
                             (* describes normal expressions: *)
-        Mus of (Type*place) list       
-                            (* To allow the result of a declaration: *)  
-      | Frame of {declared_lvars: {lvar : lvar, 
+        Mus of (Type*place) list
+                            (* To allow the result of a declaration: *)
+      | Frame of {declared_lvars: {lvar : lvar,
 				   compound : bool,
 				   create_region_record : bool,
+                                   regvars : RegVar.regvar list,
                                    sigma: sigma ref,
                                    place: place}list,
 		  declared_excons: (excon* (Type*place)option) list}
@@ -38,7 +39,7 @@ signature REGION_EXP =
       | RaisedExnBind (* to be a raised Bind exception. *)
 
 
-    datatype ('a,'b) LambdaPgm = PGM of 
+    datatype ('a,'b) LambdaPgm = PGM of
            {expression: ('a,'b)trip,
             export_datbinds: datbinds,
             export_basis: effect list}
@@ -48,12 +49,12 @@ signature REGION_EXP =
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
         VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, fix_bound: bool}
-      | INTEGER  of Int32.int * Type * 'a		
+      | INTEGER  of Int32.int * Type * 'a
       | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
       | UB_RECORD of ('a,'b) trip list (* unboxed records *)
-      | FN       of {pat : (lvar * (Type*place)) list, 
+      | FN       of {pat : (lvar * (Type*place)) list,
                      body : ('a,'b)trip,
                      alloc: 'a,
 		     free: (lvar list * excon list) option}  (*region inference without dangling pointers*)
@@ -62,8 +63,8 @@ signature REGION_EXP =
 		     bind : ('a,'b)trip,
 		     scope: ('a,'b)trip}
       | FIX      of {shared_clos: 'a,
-                     functions : {lvar : lvar, 
-                                  occ: (il * (il * cone -> il * cone)) ref list ref,		
+                     functions : {lvar : lvar,
+                                  occ: (il * (il * cone -> il * cone)) ref list ref,
 				  tyvars : tyvar list,
                                   rhos: place list ref,
                                   epss: effect list ref,
@@ -73,22 +74,22 @@ signature REGION_EXP =
 		     scope : ('a,'b)trip}
       | APP      of ('a,'b)trip * ('a,'b)trip
       | EXCEPTION of excon * bool * (Type*place)  * 'a * ('a,'b)trip
-                             (* Type*place: of exception constructor 
+                             (* Type*place: of exception constructor
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b)trip
       | HANDLE   of ('a,'b)trip * ('a,'b)trip
       | SWITCH_I of {switch: ('a,'b,Int32.int) Switch, precision: int}
       | SWITCH_W of {switch: ('a,'b,Word32.word) Switch, precision: int}
-      | SWITCH_S of ('a,'b,string) Switch 
-      | SWITCH_C of ('a,'b,con) Switch 
-      | SWITCH_E of ('a,'b,excon) Switch 
+      | SWITCH_S of ('a,'b,string) Switch
+      | SWITCH_C of ('a,'b,con) Switch
+      | SWITCH_E of ('a,'b,excon) Switch
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
       | CON1     of {con : con, il : il, alloc: 'a} * ('a,'b)trip
       | DECON    of {con : con, il : il} * ('a,'b)trip
       | EXCON    of excon * ('a * ('a,'b)trip) option     (* nullary excons are looked up in dyn env. *)
       | DEEXCON  of excon * ('a,'b)trip
       | RECORD   of 'a * ('a,'b)trip list
-      | SELECT   of int * ('a,'b)trip    
+      | SELECT   of int * ('a,'b)trip
       | DEREF    of ('a,'b)trip
       | REF      of 'a * ('a,'b)trip
       | ASSIGN   of 'a * ('a,'b)trip * ('a,'b)trip
@@ -106,19 +107,20 @@ signature REGION_EXP =
 		     mu_res : Type * place}
 	            * ('a,'b)trip  (* The ML function *)
 
-      | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} 
+      | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list}
                          * ('a,'b)trip     (* for programmer-directed resetting of regions;
 				            * resetting is forced iff "force" is true.
 				            * Forced resetting is not guaranteed to be sound *)
-      | FRAME    of {declared_lvars: {lvar : lvar, 
+      | FRAME    of {declared_lvars: {lvar : lvar,
+                                      regvars : RegVar.regvar list,
                                       sigma: sigma ref,
                                       place: place} list,
                      declared_excons: (excon * (Type*place) option) list}
                        (* a frame is the result of a structure-level
-                        * declaration. 
+                        * declaration.
 			*)
 
-    and ('a,'b,'c) Switch = SWITCH of ('a,'b)trip * 
+    and ('a,'b,'c) Switch = SWITCH of ('a,'b)trip *
                                       ('c * ('a,'b)trip) list * ('a,'b)trip option
 
 
@@ -132,11 +134,9 @@ signature REGION_EXP =
     type StringTree
     val printcount: int ref  (* controls printing of effects on expressions*)
     val layMeta : metaType -> StringTree
-    val layoutLambdaPgm: ('a -> StringTree option) -> ('b -> StringTree option) -> 
+    val layoutLambdaPgm: ('a -> StringTree option) -> ('b -> StringTree option) ->
                          ('a, 'b)LambdaPgm -> StringTree
-    val layoutLambdaExp: ('a -> StringTree option) -> ('b -> StringTree option) -> 
+    val layoutLambdaExp: ('a -> StringTree option) -> ('b -> StringTree option) ->
                          ('a,'b)LambdaExp -> StringTree
     val layoutLambdaExp': (place, unit)LambdaExp ->StringTree
   end
-
-

@@ -766,12 +766,26 @@ struct
                   in (rho'::rhos',c)
                   end)) ([],c) rhos
 
-  fun setRunType (place:effect) (rt: runType) : unit =
+  fun setRunType (place:place) (rt: runType) : unit =
       case G.find_info place of
 	  RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned} =>
 	  G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
                                 pix=pix,ty=rt,rv_opt=rv_opt,pinned=pinned})
 	| _ => die "setRunType: node is not a region variable"
+
+  fun setRegVar (place:place) (rv: RegVar.regvar) : unit =
+      case G.find_info place of
+	  RHO{put,get,key,level,instance,pix,ty,rv_opt=NONE,pinned} =>
+	  G.set_info place (RHO{put=put,get=get,key=key,level=level,instance=instance,
+                                pix=pix,ty=ty,rv_opt=SOME rv,pinned=pinned})
+        | RHO{rv_opt=SOME rv',...} => if RegVar.eq(rv,rv') then ()
+                                      else die "setRegVar: explicit regvar already set"
+	| _ => die "setRegVar: node is not a region variable"
+
+  fun getRegVar (place:place) : RegVar.regvar option =
+      case G.find_info place of
+	  RHO{put,get,key,level,instance,pix,ty,rv_opt,pinned} => rv_opt
+	| _ => die "getRegVar: node is not a region variable"
 
   (* freshEps(cone): Generate a fresh effect variable
      at the topmost layer of   cone   and insert it in

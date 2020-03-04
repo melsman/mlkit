@@ -142,7 +142,7 @@ struct
 
   fun declareMany (rho,rse)([],[]) = rse
     | declareMany (rho,rse)((lvar,regvars,tyvars,sigma_hat,bind):: rest1, occ::occ1) =
-        declareMany(rho,RSE.declareLvar(lvar,(true,true,sigma_hat, rho, SOME occ, NONE), rse))(rest1,occ1)
+        declareMany(rho,RSE.declareLvar(lvar,(true,true,regvars,sigma_hat, rho, SOME occ, NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
@@ -166,7 +166,7 @@ struct
       val _ = adjust_instances(transformer, occ)
       val function = {lvar = lvar, occ = occ, tyvars = tyvars, rhos = ref brhos, epss = ref bepss,
                       Type = tau1, formal_regions = NONE, bind = t1}
-      val rse2 = RSE.declareLvar(lvar,(true, true, R.insert_alphas(tyvars, sigma1),
+      val rse2 = RSE.declareLvar(lvar,(true, true, regvars, R.insert_alphas(tyvars, sigma1),
                                        rho, SOME occ, NONE), rse)
       val (rse2', l) = mkRhs(rse2,rho)(rest1,rest2,rest3)
     in
@@ -265,6 +265,15 @@ struct
     | unMus s (E'.Frame _) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a Frame")
     | unMus s (E'.RaisedExnBind) = die ("unMus - " ^ s ^ ": expecting Mus metaType, got a RaisedExnBind")
 
+  fun deepError (rv:RegVar.regvar) (msg:string) =
+      let open Report infix //
+          val report0 = case RegVar.get_location_report rv of
+                            SOME rep => rep
+                          | NONE => null
+          val report = line msg
+      in raise DeepError (report0 // report)
+      end
+
   fun spreadExp (B: cone, rse,  e: E.LambdaExp, toplevel, cont:cont): cone * (place,unit)E'.trip * cont =
   let
     fun lookup tyname = case RSE.lookupTyName rse tyname of
@@ -338,25 +347,13 @@ struct
                                 NONE => die "impossible: maybe_explicit_rho"
                               | SOME Eff.BOT_RT => (rho,B) before Eff.setRunType rho rt
                               | SOME rt' => if rt = rt' then (rho,B)
-                                            else
-                                              let val report0 = case RegVar.get_location_report rv of
-                                                                    SOME rep => rep
-                                                                  | NONE => Report.null
-                                                  val report = Report.line ("Mismatching region types "
-                                                                            ^ Eff.show_runType rt ^ " and "
-                                                                            ^ Eff.show_runType rt' ^ " for "
-                                                                            ^ "explicit region variable `"
-                                                                            ^ RegVar.pr rv)
-                                              in raise Report.DeepError (Report.//(report0,report))
-                                              end)
-                         | NONE =>
-                           let val report0 = case RegVar.get_location_report rv of
-                                                 SOME rep => rep
-                                               | NONE => Report.null
-                               val report = Report.line ("Explicit region variable `" ^ RegVar.pr rv
-                                                         ^ " is not in scope.")
-                           in raise Report.DeepError (Report.//(report0,report))
-                           end
+                                            else deepError rv ("Mismatching region types "
+                                                               ^ Eff.show_runType rt ^ " and "
+                                                               ^ Eff.show_runType rt' ^ " for "
+                                                               ^ "explicit region variable `"
+                                                               ^ RegVar.pr rv))
+                         | NONE => deepError rv ("Explicit region variable `" ^ RegVar.pr rv
+                                                 ^ " is not in scope.")
 
     fun meetSwitch _    TAIL = TAIL
       | meetSwitch TAIL _    = TAIL
@@ -424,9 +421,9 @@ struct
 
     fun S (B,e,toplevel:bool,cont:cont): cone * (place,unit)E'.trip * cont =
       (case e of
-      E.VAR{lvar, instances : E.Type list} =>
+      E.VAR{lvar, instances : E.Type list, regvars} =>
        (case RSE.lookupLvar rse lvar of
-	  SOME(compound,create_region_record,
+	  SOME(compound,create_region_record,formal_regvars,
                sigma,place0,instances_opt, transformer) =>
             let
               val (B, tau, il_1) = newInstance(B,sigma,instances)
@@ -434,6 +431,33 @@ struct
               val _ = save_il(instances_opt, il_r)
 	      val fix_bound = compound andalso create_region_record
 	      val phi = if fix_bound then Eff.mkGet place0 else Eff.empty
+              val () =
+                  case regvars of
+                      [] => ()
+                    | rv::_ => if length regvars = length formal_regvars then ()
+                               else if length regvars = 1 andalso null formal_regvars then
+                                 die "VAR - currently not supported case - one actual regvar / zero formal regvars"
+                               else deepError rv ("The number of actual explicit region variables does \
+                                                  \not match the number of formal explicit region variables.")
+              val B =
+                  if null regvars then B
+                  else let val all = ListPair.zipEq (#2 (R.bv sigma), #2 (R.un_il il_1))
+                           val explicits = ListPair.zipEq (formal_regvars, regvars)
+                           fun find f nil = NONE
+                             | find f ((p,p')::rest) = case Eff.getRegVar p of
+                                                           SOME rv => if RegVar.eq(rv,f) then SOME p'
+                                                                      else find f rest
+                                                         | NONE => find f rest
+                       in List.foldl(fn ((f,a),B) =>
+                                        (* find actual associated with explicit formal in all *)
+                                        case find f all of
+                                            NONE => die "S.VAR.expecting to find formal explicit region variable in scheme"
+                                          | SOME place_actual =>
+                                            case RSE.lookupRegVar rse a of
+                                                SOME rho => Eff.unifyRho (place_actual,rho) B
+                                              | NONE => deepError a ("Explicit region variable `" ^ RegVar.pr a ^ " not in scope"))
+                                    B explicits
+                       end
             in
 		(B,E'.TR(E'.VAR{lvar = lvar, fix_bound=fix_bound, il_r = il_r},
 			 E'.Mus [(tau,place0)], phi),
@@ -521,7 +545,7 @@ struct
         let
           val (mus, B) = freshTypesWithPlaces (B, map #2 pat)
           val rse' = List.foldl (fn ((lvar, mu as (tau,rho)), rse) =>
-                         RSE.declareLvar(lvar, (false,false,R.type_to_scheme tau, rho,NONE,NONE), rse)) rse
+                         RSE.declareLvar(lvar, (false,false,[],R.type_to_scheme tau, rho,NONE,NONE), rse)) rse
                          (ListPair.zip(map #1 pat, mus))
           val (B,t1 as E'.TR(e1',meta1, phi1), _) = spreadExp(B,rse',body,false,TAIL)
           val mu_list1 = unMus "S.FN" meta1
@@ -542,7 +566,7 @@ struct
             val simple_application: bool =
                 case e1_ML of E.VAR{lvar, ...} =>
                        (case RSE.lookupLvar rse lvar of
-                          SOME(compound, _,_,_,_,_) => not(compound)
+                          SOME(compound, _,_,_,_,_,_) => not(compound)
                         | _ => die ("E.APP(E.VAR ...): Lvar " ^ Lvars.pr_lvar lvar ^ " not in RSE."))
                 | _ => false
 
@@ -589,7 +613,7 @@ struct
                       val sigma = R.type_to_scheme tau_1
 (*                      val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)*)
                       val rse = RSE.declareLvar(lvar,
-                                 (false,false,R.insert_alphas(alphas, sigma),
+                                 (false,false,[],R.insert_alphas(alphas, sigma),
                                   rho_1, NONE, NONE),rse)
                  in
                       loop_pat(rest_bind, mu_rest, B, rse,
@@ -1072,7 +1096,8 @@ good *)
 			  NOTAIL)
 	       end
 	   | _ => die "CCALL: tau not function type")
-	end handle X => (print ("CCALL FAILED\n"); raise X))
+	end handle (X as Report.DeepError _) => raise X
+                 | X => (print ("CCALL FAILED\n"); raise X))
 
     | E.PRIM (E.EXPORTprim {name, instance_arg, instance_res}, [e0]) =>
           (*
@@ -1169,13 +1194,13 @@ good *)
     | E.FRAME{declared_lvars, declared_excons} =>
         let
           val new_declared_lvars' = List.foldr( fn (lvar, acc) =>
-                 let val (compound,create_region_record,sigma,p,_,_) =
+                 let val (compound,create_region_record,regvars,sigma,p,_,_) =
 		       noSome (RSE.lookupLvar rse lvar) "declared lvar of frame not in scope"
                  in {lvar=lvar, compound=compound, create_region_record=create_region_record,
-		     sigma=ref sigma, place=p} :: acc
+		     regvars=regvars,sigma=ref sigma, place=p} :: acc
                  end) [](map #lvar declared_lvars)
 	  val new_declared_lvars =
-	    map (fn {lvar,sigma,place,...} => {lvar=lvar,sigma=sigma,place=place}) new_declared_lvars'
+	    map (fn {lvar,regvars,sigma,place,...} => {lvar=lvar,regvars=regvars,sigma=sigma,place=place}) new_declared_lvars'
           val new_declared_excons = List.foldr( fn (excon, acc) =>
                  (excon,RSE.lookupExcon rse excon)::acc) [](map #1 declared_excons)
         in

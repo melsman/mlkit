@@ -192,7 +192,7 @@ structure EliminateEq: ELIMINATE_EQ =
 
     val lamb_true = PRIM(CONprim {con = Con.con_TRUE, instances = []}, [])
     val lamb_false = PRIM(CONprim {con = Con.con_FALSE, instances = []}, [])
-    fun lamb_var lv = VAR{lvar=lv,instances=[]}
+    fun lamb_var lv = VAR{lvar=lv,instances=[],regvars=[]}
 
     fun monolet {lvar, Type, bind, scope} =
       LET {pat=[(lvar,[],Type)], bind=bind, scope=scope}
@@ -232,7 +232,7 @@ structure EliminateEq: ELIMINATE_EQ =
 	fun gen tau =
 	 (case tau
 	    of (TYVARtype tv) => (case lookup_tyvar env tv
-				    of SOME lv => VAR {lvar = lv, instances =[]}
+				    of SOME lv => VAR {lvar=lv, instances=[], regvars=[]}
 				     | NONE => FN {pat=[(Lvars.newLvar(),RECORDtype [TYVARtype tv, TYVARtype tv])],
 						   body=lamb_false}) (* the function will never be applied. *)
 				    (* --------------
@@ -251,7 +251,7 @@ structure EliminateEq: ELIMINATE_EQ =
 		if is_eq_prim_tn tn then mk_prim_eq tau
 		else case lookup_tyname env tn
 		       of SOME (POLYLVAR lv) =>
-			 apply (VAR {lvar = lv, instances = taus}) taus
+			 apply (VAR {lvar=lv, instances=taus,regvars=[]}) taus
 			| SOME (MONOLVAR (lv, tyvars)) =>
 			    if map (fn TYVARtype tv => tv
 		                     | _ => dont_support()) taus = tyvars then
@@ -271,11 +271,11 @@ structure EliminateEq: ELIMINATE_EQ =
 
         and gen_switch n p =
 	 (fn [] => lamb_true
-	   | [tau] => let val v = VAR {lvar=p, instances=[]}
+	   | [tau] => let val v = VAR {lvar=p, instances=[], regvars=[]}
 			  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
 		      in APP (gen tau, PRIM(RECORDprim NONE, [sel 0, sel 1]),NONE)
 		      end
-	   | (tau :: taus) => let val v = VAR {lvar=p, instances=[]}
+	   | (tau :: taus) => let val v = VAR {lvar=p, instances=[], regvars=[]}
 				  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
 				  val e = APP (gen tau, PRIM(RECORDprim NONE, [sel 0, sel 1]),NONE)
 			      in SWITCH_C (SWITCH (e, [((Con.con_TRUE,NONE), gen_switch (n+1) p taus)],
@@ -711,11 +711,11 @@ structure EliminateEq: ELIMINATE_EQ =
 
     fun t env lexp =
       case lexp
-	of VAR {lvar, instances=[]} =>  (* maybe a recursive call *)
+	of VAR {lvar, instances=[], regvars=[]} =>  (* maybe a recursive call *)
 	  (case lookup_lvar env lvar
 	     of SOME tyvars => apply_eq_fns env (map TYVARtype (eq_tyvars tyvars)) lexp
 	      | NONE => lexp)
-	 | VAR {lvar, instances} => (* not a recursive call *)
+	 | VAR {lvar, instances, ...} => (* not a recursive call *)
 	    (case lookup_lvar env lvar
 	       of SOME tyvars => (* those of the tyvars that admit equality
 				  * determines what instances to use. *)

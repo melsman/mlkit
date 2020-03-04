@@ -33,7 +33,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
     type instance_list = (il * (il * cone -> il * cone)) ref list
 
-    type lvar_env_range = bool * bool * R.sigma * R.place
+    type lvar_env_range = bool * bool * RegVar.regvar list * R.sigma * R.place
 			* instance_list ref option * (il ->unit)option
 
     type regionStatEnv = {tyname_env:  arity TyNameMap.map,
@@ -287,7 +287,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
     type cone = E.cone
     fun rhos_epss_free_rse (rse: regionStatEnv) =
-      let val rhos_epss = FoldLvar (fn ((_,(_,_,sigma,rho,_,_)),acc) =>
+      let val rhos_epss = FoldLvar (fn ((_,(_,_,_,sigma,rho,_,_)),acc) =>
 				    R.ann_sigma sigma (rho::acc)) [] rse
 	  val rhos_epss = FoldExcon (fn ((_,mu),acc) =>
 				     R.ann_mus [mu] acc) rhos_epss rse
@@ -330,9 +330,13 @@ structure RegionStatEnv: REGION_STAT_ENV =
 
     fun equal_sigma (sigma1,sigma2) = R.alpha_equal (sigma1,sigma2) E.initCone
 
-    fun equal_lvar_res ((b1,b1',sigma1,place1,_,_),(b2,b2',sigma2,place2,_,_)) =
+    fun eq_regvars (nil,nil) = true
+      | eq_regvars (x::xs,y::ys) = RegVar.eq(x,y) andalso eq_regvars(xs,ys)
+      | eq_regvars _ = false
+
+    fun equal_lvar_res ((b1,b1',rvs1,sigma1,place1,_,_),(b2,b2',rvs2,sigma2,place2,_,_)) =
       b1=b2 andalso b1' =b2' andalso E.eq_effect(place1,place2) andalso
-      equal_sigma(sigma1,sigma2)
+      equal_sigma(sigma1,sigma2) andalso eq_regvars (rvs1,rvs2)
 
     fun equal_con_res (sigma1,sigma2) = equal_sigma (sigma1,sigma2)
 
@@ -374,8 +378,8 @@ structure RegionStatEnv: REGION_STAT_ENV =
     val layout_scheme  = R.mk_lay_sigma false (* do not omit region info *)
     val (_,layout_mu) = R.mk_layout     false (* do not omit region info *)
 
-    fun layout_pair (_,_,sigma,p,_,_) = PP.NODE{start= "(", finish = ")", indent = 1, childsep = PP.RIGHT ",",
-					children = [layout_scheme sigma, E.layout_effect p]}
+    fun layout_pair (_,_,_,sigma,p,_,_) = PP.NODE{start= "(", finish = ")", indent = 1, childsep = PP.RIGHT ",",
+					          children = [layout_scheme sigma, E.layout_effect p]}
     fun layout_arity (a,b,c) =
 	  PP.NODE{start = "(", finish  = ")",
 		  indent = 1, childsep = PP.RIGHT ", ",
@@ -434,10 +438,10 @@ structure RegionStatEnv: REGION_STAT_ENV =
     val pu_arity = Pickle.tup3Gen(Pickle.int,E.pu_runTypes,Pickle.int)
 
     val pu_lvar_env_range : lvar_env_range Pickle.pu =
-	Pickle.convert (fn (b1,b2,s,p) => (b1,b2,s,p,NONE,NONE),
-			fn (b1,b2,s,p,NONE,NONE) => (b1,b2,s,p)
+	Pickle.convert (fn ((b1,b2,rvs),s,p) => (b1,b2,rvs,s,p,NONE,NONE),
+			fn (b1,b2,rvs,s,p,NONE,NONE) => ((b1,b2,rvs),s,p)
 			 | _ => die "pu_lvar_env_range")
-	(Pickle.tup4Gen0(Pickle.bool,Pickle.bool,Pickle.debugUnpickle "sigma" R.pu_sigma,Pickle.debugUnpickle "effect" E.pu_effect))
+	(Pickle.tup3Gen0(Pickle.tup3Gen0(Pickle.bool,Pickle.bool,Pickle.listGen RegVar.pu),Pickle.debugUnpickle "sigma" R.pu_sigma,Pickle.debugUnpickle "effect" E.pu_effect))
 
     val pu : regionStatEnv Pickle.pu =
 	Pickle.debugUnpickle "regionStatEnv"

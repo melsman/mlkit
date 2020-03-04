@@ -701,8 +701,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     (* Type checking of lambda expressions *)
     and type_lexp (env:env) (lexp:LambdaExp) : TypeList =
       (case lexp
-	of VAR{lvar,instances} => (valid_ts env instances;
-				   Types [mk_instance(lookup_lvar env lvar, instances)])
+	of VAR{lvar,instances,regvars} => (valid_ts env instances;
+				           Types [mk_instance(lookup_lvar env lvar, instances)])
 	 | INTEGER (i,t) => (valid_t env t; Types [t])    (* TODO: i31, i32 - compare with literal i *)
 	 | WORD (w,t) => (valid_t env t; Types [t])       (* TODO: w31, w32 - compare with literal w *)
 	 | STRING s => Types [CONStype([], tyName_STRING)]

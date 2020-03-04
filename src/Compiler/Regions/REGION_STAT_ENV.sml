@@ -30,6 +30,7 @@ signature REGION_STAT_ENV =
     val declareLvar : (lvar
                        * (  bool  (* true iff type scheme is compound *)
                           * bool  (* true iff reference to lvar should create region record *)
+                          * RegVar.regvar list
                           * TypeAndPlaceScheme
                           * place
                           * (il * (il * cone -> il * cone)) ref list ref option (* il node at applied instances of the lvars *)
@@ -45,6 +46,7 @@ signature REGION_STAT_ENV =
     val lookupLvar : regionStatEnv -> lvar ->
                      (  bool
                       * bool
+                      * RegVar.regvar list
                       * TypeAndPlaceScheme
                       * place
                       * (il * (il * cone -> il * cone)) ref list ref option  (* il node at applied instances of the lvars *)
@@ -54,15 +56,15 @@ signature REGION_STAT_ENV =
     val lookupRegVar : regionStatEnv -> RegVar.regvar -> place option
 
     val FoldExcon: (((excon * (Type * place)) * 'a) -> 'a) -> 'a -> regionStatEnv -> 'a
-    val FoldLvar : (((lvar * (bool * bool * TypeAndPlaceScheme
+    val FoldLvar : (((lvar * (bool * bool * RegVar.regvar list * TypeAndPlaceScheme
                       * place
                       * (il * (il * cone -> il * cone))ref list ref option
                       * (il -> unit)option
                     )) * 'a) -> 'a) -> 'a  -> regionStatEnv -> 'a
 
 
-    val mapLvar : ((bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option) ->
-                   (bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option))
+    val mapLvar : ((bool*bool*RegVar.regvar list*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option) ->
+                   (bool*bool*RegVar.regvar list*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option))
         	-> regionStatEnv -> regionStatEnv
 
     val restrict : regionStatEnv * {lvars:lvar list,

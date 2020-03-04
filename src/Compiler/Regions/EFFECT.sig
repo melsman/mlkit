@@ -145,8 +145,11 @@ sig
 
   val freshRhoWithTy: runType * cone -> effect * cone
   val freshRhoWithTy': RegVar.regvar option * runType * cone -> effect * cone
-  val setRunType: effect -> runType -> unit
-  val get_place_ty: effect -> runType option
+  val setRunType: place -> runType -> unit
+  val get_place_ty: place -> runType option
+
+  val setRegVar : place -> RegVar.regvar -> unit
+  val getRegVar : place -> RegVar.regvar option
 
   val freshEps: cone -> effect * cone
   val freshEpss: effect list * cone -> effect list * cone

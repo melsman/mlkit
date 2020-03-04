@@ -17,7 +17,7 @@ in
   local open Pickle SyntaxObjects in Regions/EFFECT.sig end
   Regions/LOCALLY_LIVE_VARIABLES.sml
   local open Pickle in Regions/MUL.sig end
-  Regions/REGION_EXP.sml
+  local open SyntaxObjects in Regions/REGION_EXP.sml end
   Regions/MUL_EXP.sml
   Regions/MUL_INF.sml
   Regions/REGINF.sig
@@ -42,9 +42,9 @@ in
      in Regions/Effect.sml
         local open Edlib CompilerObjects in Regions/RType.sml end
      end
-     local open CompilerObjects
+     local open CompilerObjects SyntaxObjects
      in Regions/RegionExp.sml
-        local open Pickle SyntaxObjects in Regions/RegionStatEnv.sml end
+        local open Pickle in Regions/RegionStatEnv.sml end
      end
      Regions/EffVarEnv.sml
      ../Common/QUASI_ENV.sml

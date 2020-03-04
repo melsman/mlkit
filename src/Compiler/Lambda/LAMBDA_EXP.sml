@@ -91,7 +91,7 @@ signature LAMBDA_EXP =
       (* list of mutual recursive datatype declarations *)
 
     and LambdaExp =
-        VAR      of {lvar: lvar, instances : Type list}
+        VAR      of {lvar: lvar, instances : Type list, regvars: regvar list}
       | INTEGER  of Int32.int * Type
       | WORD     of Word32.word * Type
       | STRING   of string * regvar option

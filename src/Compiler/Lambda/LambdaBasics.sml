@@ -386,8 +386,9 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun on_e ren lamb =
 	case lamb
-	  of VAR{lvar,instances} => VAR{lvar=on_lv ren lvar,
-					instances=map (on_tau ren) instances}
+	  of VAR{lvar,instances,regvars} => VAR{lvar=on_lv ren lvar,
+					        instances=map (on_tau ren) instances,
+                                                regvars=regvars}
 	   | INTEGER _ => lamb
 	   | WORD _ => lamb
 	   | STRING _ => lamb
@@ -562,7 +563,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 			  | NONE => NONE)
 	    in
 	      case lamb
-		of VAR{lvar,instances} => VAR{lvar=lvar,instances=on_Types S instances}
+		of VAR{lvar,instances,regvars} => VAR{lvar=lvar,instances=on_Types S instances,regvars=regvars}
 		 | INTEGER _ => lamb
 		 | WORD _ => lamb
 		 | STRING _ => lamb
@@ -746,9 +747,9 @@ structure LambdaBasics: LAMBDA_BASICS =
                        | NONE => NONE)
           in
 	    case e of
-              VAR{instances, lvar} =>
+              VAR{instances, lvar, regvars} =>
               (case lookup E lvar of
-                 SOME(SOME bl) => VAR{instances=t(bl,instances),lvar=lvar}
+                 SOME(SOME bl) => VAR{instances=t(bl,instances),lvar=lvar,regvars=regvars}
                | SOME NONE => e
                | NONE => die "N.VAR")
             | INTEGER _ => e
