@@ -200,8 +200,8 @@ structure OptLambda: OPT_LAMBDA =
     fun is_in_lv lv lvs = List.exists (fn lv' => Lvars.eq(lv,lv')) lvs
     fun is_in_ex ex exs = List.exists (fn ex' => Excon.eq(ex,ex')) exs
 
-    val lexp_true = PRIM(CONprim{con=Con.con_TRUE,instances=nil},nil)
-    val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil},nil)
+    val lexp_true = PRIM(CONprim{con=Con.con_TRUE,instances=nil,regvar=NONE},nil)
+    val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
 
    (* -----------------------------------------------------------------
     * Statistical functions
@@ -329,8 +329,10 @@ structure OptLambda: OPT_LAMBDA =
 		(RECORDprim NONE, RECORDprim NONE) => true
 	      | (RECORDprim (SOME rv1), RECORDprim (SOME rv2)) => RegVar.eq(rv1,rv2)
 	      | (SELECTprim i,SELECTprim i') => i=i'
-	      | (CONprim {con,instances=il}, CONprim {con=con',instances=il'}) =>
+	      | (CONprim {con,instances=il,regvar=NONE}, CONprim {con=con',instances=il',regvar=NONE}) =>
 		    Con.eq(con,con') andalso eq_Types(il,il')
+	      | (CONprim {con,instances=il,regvar=SOME rv}, CONprim {con=con',instances=il',regvar=SOME rv'}) =>
+		    Con.eq(con,con') andalso eq_Types(il,il') andalso RegVar.eq(rv,rv')
 	      | (EXCONprim excon, EXCONprim excon') => Excon.eq(excon,excon')
 	      | (DEEXCONprim excon, DEEXCONprim excon') => Excon.eq(excon,excon')
 	      | (UB_RECORDprim,UB_RECORDprim) => true
@@ -1066,10 +1068,10 @@ structure OptLambda: OPT_LAMBDA =
 			     in tick "reduce - let-var"; reduce (env, (on_LambdaExp S bind, cv))
 			     end
 			   else fail
-			   | PRIM(CONprim {con,instances}, [VAR{lvar=lvar',instances=nil,regvars=[]}]) =>
+			   | PRIM(CONprim {con,instances,regvar}, [VAR{lvar=lvar',instances=nil,regvars=[]}]) =>
 			     if Lvars.eq(lvar,lvar')
 			       andalso Con.eq(Con.con_CONS, con) then   (* no need for decr_uses *)
-			       let val e = PRIM(CONprim {con=con,instances=instances}, [bind])
+			       let val e = PRIM(CONprim {con=con,instances=instances,regvar=regvar}, [bind])
 			       in tick "reduce - let-var-cons"; reduce (env, (e, cv))
 			       end
 			     else fail

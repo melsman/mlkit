@@ -79,7 +79,7 @@ structure LambdaExp: LAMBDA_EXP =
       | RaisedExnBind
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
-        CONprim of {con : con, instances : 'Type list}
+        CONprim of {con : con, instances : 'Type list, regvar: regvar option}
       | DECONprim of {con : con, instances : 'Type list, lv_opt:lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
@@ -441,13 +441,13 @@ structure LambdaExp: LAMBDA_EXP =
 
     fun layoutPrim layoutType prim =
      case prim of
-        CONprim{con,instances} =>
-	    let val con_s = pr_con con
-	    in
-		if !Flags.print_types then
-		    PP.NODE{start= con_s, finish="",
-			    indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
-		else PP.LEAF con_s
+        CONprim{con,instances,regvar} =>
+	    let val s = case regvar of NONE => pr_con con
+                                     | SOME rv => pr_con con ^ "`" ^ RegVar.pr rv
+            in if !Flags.print_types then
+		 PP.NODE{start=s, finish="",
+			 indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
+	       else PP.LEAF s
 	    end
       | DECONprim{con,instances,lv_opt} =>
 	      if !barify_p then
@@ -913,11 +913,14 @@ structure LambdaExp: LAMBDA_EXP =
                       childsep=PP.NOSEP}
            end
 	 | (EXCONprim excon, []) => PP.LEAF(pr_excon excon)
-	 | (CONprim{con,instances}, []) =>
-	     if !Flags.print_types then
-		 PP.NODE{start= pr_con con, finish="",
-			 indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
-	     else PP.LEAF (pr_con con)
+	 | (CONprim{con,instances,regvar}, []) =>
+           let val s = case regvar of NONE => pr_con con
+                                    | SOME rv => pr_con con ^ "`" ^ RegVar.pr rv
+           in if !Flags.print_types then
+		PP.NODE{start=s, finish="",
+			indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
+	      else PP.LEAF s
+           end
          | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
@@ -1287,8 +1290,8 @@ structure LambdaExp: LAMBDA_EXP =
 
 	    fun fun_CONprim _ =
 		Pickle.con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
-		(Pickle.convert (fn (c,il) => {con=c,instances=il}, fn {con=c,instances=il} => (c,il))
-		 (Pickle.pairGen0 (Con.pu,pu_Types)))
+		(Pickle.convert (fn (c,il,rv) => {con=c,instances=il,regvar=rv}, fn {con=c,instances=il,regvar=rv} => (c,il,rv))
+		 (Pickle.tup3Gen0 (Con.pu,pu_Types,Pickle.optionGen RegVar.pu)))
 	    fun fun_DECONprim _ =
 		Pickle.con1 DECONprim (fn DECONprim a => a | _ => die "pu_prim.DECONprim")
 		(Pickle.convert (fn (c,il,lvo) => {con=c,instances=il,lv_opt=lvo}, fn {con=c,instances=il,lv_opt=lvo} => (c,il,lvo))

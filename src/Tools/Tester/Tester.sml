@@ -79,11 +79,11 @@ structure Tester : TESTER =
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
 	        if opt "ecte" (*Expect Compile Time Error*) then
-		  if success then (msgErr "unexpected compile time success"; false)
+		  if success then (msgErr ("unexpected compile time success for " ^ file); false)
 		  else (msgOk "expected compile time failure"; true)
 		else
 		  if success then (msgOk "expected compile time success"; true)
-		  else (msgErr "unexpected compile time failure"; false)
+		  else (msgErr ("unexpected compile time failure for " ^ file) ; false)
 	  in
 	    if opt "ccl" (*Compare Compiler Logs*) then
 	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)

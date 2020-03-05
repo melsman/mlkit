@@ -1,0 +1,10 @@
+[reading source file:	er16.sml]
+> datatype t
+    con A : int->t
+    con B : t
+  val f : unit->int
+er16.sml, line 7, column 42:
+          val x = if true then B`[r1] else A`[r2 r1] 9
+                                            ^^^^^^^^
+The constructor A can take at most one explicit region as argument
+Stopping compilation of MLB-file due to error (code 1).

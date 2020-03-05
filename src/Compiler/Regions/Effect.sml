@@ -1321,7 +1321,7 @@ tracing *)
                                                            | NONE => Report.null
                                            val report = line ("Cannot unify the explicit region variables `"
                                                               ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
-                                       in raise Report.DeepError (report0 // report)
+                                       in raise DeepError (report0 // report)
                                        end
                 in RHO{level = l1, put = aux_combine(p1,p2),
 		       get = aux_combine(g1,g2), key = min_key(k1,k2),
@@ -1379,9 +1379,24 @@ tracing *)
       if is_rho r then die ("checkNotRho." ^ s ^ ": " ^ PP.flatten1 (layout_effect r))
       else ()
 
+  fun checkRegVars r1 r2 : unit =
+      case (pinned_explicit_rho r1, pinned_explicit_rho r2) of
+          (SOME rv1, SOME rv2) =>
+          if RegVar.eq(rv1,rv2) then ()
+          else let open Report infix //
+                   val report0 = case RegVar.get_location_report rv1 of
+                                     SOME rep => rep
+                                   | NONE => Report.null
+                   val report = line ("Cannot unify the explicit region variables `"
+                                      ^ RegVar.pr rv1 ^ " and `" ^ RegVar.pr rv2)
+               in raise DeepError (report0 // report)
+               end
+        | _ => ()
+
   fun unifyRho (r1,r2) cone : cone =
       (checkRho "unifyRho1" r1;
        checkRho "unifyRho2" r2;
+       checkRegVars r1 r2;
        unifyNodes(G.union einfo_combine_rho)(r1, r2) cone)
 
   fun unifyRho_no_lowering (r1,r2) : unit =

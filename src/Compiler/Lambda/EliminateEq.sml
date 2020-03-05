@@ -190,8 +190,8 @@ structure EliminateEq: ELIMINATE_EQ =
       | mk_env_tyvars (tv::tvs) (lv::lvs) env = mk_env_tyvars tvs lvs (add_tyvar (tv,lv,env))
       | mk_env_tyvars _ _ _ = die "mk_env_tyvars"
 
-    val lamb_true = PRIM(CONprim {con = Con.con_TRUE, instances = []}, [])
-    val lamb_false = PRIM(CONprim {con = Con.con_FALSE, instances = []}, [])
+    val lamb_true = PRIM(CONprim {con = Con.con_TRUE, instances = [],regvar=NONE}, [])
+    val lamb_false = PRIM(CONprim {con = Con.con_FALSE, instances = [],regvar=NONE}, [])
     fun lamb_var lv = VAR{lvar=lv,instances=[],regvars=[]}
 
     fun monolet {lvar, Type, bind, scope} =

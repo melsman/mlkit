@@ -476,10 +476,10 @@ structure CompileDec: COMPILE_DEC =
    fun buildIntInf (x : IntInf.int) =
        let val a = IntInf.abs x
   	   val digitsExp =   (* least significant bits first; see kit/basis/IntInf.sml *)
-	     foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type]},
+	     foldr (fn (d,C) => PRIM(CONprim{con=Con.con_CONS,instances=[int31Type],regvar=NONE},
 				     [PRIM(RECORDprim NONE,[INTEGER(d,int31Type),
 						            C])]))
-		   (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type]},
+		   (PRIM(CONprim{con=Con.con_NIL,instances=[int31Type],regvar=NONE},
 		         nil))
 		   (digits a)
 
@@ -488,9 +488,9 @@ structure CompileDec: COMPILE_DEC =
 	       else Con.con_FALSE
 	   val negativeExp =
 	       PRIM(CONprim{con=negativeCon,
-			    instances=nil},nil)
+			    instances=nil,regvar=NONE},nil)
        in
-	 PRIM(CONprim{con=Con.con_INTINF,instances=nil},
+	 PRIM(CONprim{con=Con.con_INTINF,instances=nil,regvar=NONE},   (* memo: fix this *)
 	      [PRIM(RECORDprim NONE,[digitsExp,negativeExp])])
        end
 
@@ -2036,6 +2036,18 @@ end; (*match compiler local*)
              regvars)
           | NONE => nil
 
+    fun regvarFromRegvarsAndInfoOpt f_con regvars_opt =
+        case regvarsFromRegvarsAndInfoOpt regvars_opt of
+            nil => NONE
+          | [rv] => SOME rv
+          | rv::_ =>
+            let val report0 = case RegVar.get_location_report rv of
+                                  SOME rep => rep
+                                | NONE => Report.null
+                val report = line ("The constructor " ^ f_con() ^ " can take at most one explicit region as argument")
+            in raise Report.DeepError (report0 // report)
+            end
+
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
 	     SCONatexp(info, SCon.INTEGER x, rv_opt) =>
@@ -2158,14 +2170,15 @@ end; (*match compiler local*)
 		 val S = mk_subst (fn () => "CompileDec.CON") (tyvars, instances')
 		 val tau0 = on_Type S tau0
 		 val il' = on_il(S,il)
+                 val regvar = regvarFromRegvarsAndInfoOpt (fn() => Con.pr_con con) regvars_opt
 	       in case tau0
 		    of ARROWtype ([tau'],_) =>
 		      let val lv = Lvars.newLvar()
 		      in FN{pat=[(lv,tau')],
-			    body=PRIM(CONprim{con=con, instances=il'},
+			    body=PRIM(CONprim{con=con, instances=il',regvar=regvar},
 				      [VAR{lvar=lv,instances=[],regvars=[]}])}
 		      end
-		     | CONStype _ => PRIM(CONprim {con=con, instances=il'},[])
+		     | CONStype _ => PRIM(CONprim {con=con, instances=il',regvar=regvar},[])
 		     | _ => die "CE.CON.tau0 malformed"
 	       end
 	   | CE.REF =>
@@ -2175,16 +2188,7 @@ end; (*match compiler local*)
 			| _ => die "compileAtexp(REF..): wrong type info"
 		   val lv = Lvars.newLvar()
 		   val instance' = compileType instance
-                   val regvar = case regvarsFromRegvarsAndInfoOpt regvars_opt of
-                                    nil => NONE
-                                  | [rv] => SOME rv
-                                  | rv::_ =>
-                                    let val report0 = case RegVar.get_location_report rv of
-                                                          SOME rep => rep
-                                                        | NONE => Report.null
-                                        val report = line "The ref constructor can take at most one explicit region as argument"
-                                    in raise Report.DeepError (report0 // report)
-                                    end
+                   val regvar = regvarFromRegvarsAndInfoOpt (fn()=>"ref") regvars_opt
 	       in FN{pat=[(lv,instance')],
 		     body=PRIM(REFprim {instance=instance',regvar=regvar},
 			       [VAR{lvar=lv,instances=[],regvars=[]}])}
@@ -2367,7 +2371,8 @@ end; (*match compiler local*)
 		 val instances' = map compileType instances
 		 val S = mk_subst (fn () => "CompileDec.CON") (tyvars, instances')
 		 val il' = on_il(S,il)
-	       in PRIM(CONprim{con=con, instances=il'},
+                 val regvar = regvarFromRegvarsAndInfoOpt (fn() => Con.pr_con con) regvars_opt
+	       in PRIM(CONprim{con=con, instances=il',regvar=regvar},
 		       [compileAtexp env arg])
 	       end
 	    | CE.REF =>
@@ -2376,16 +2381,7 @@ end; (*match compiler local*)
 		       of SOME (TypeInfo.CON_INFO{instances=[instance],...}) => instance
 			| _ => die "compileAtexp(REF..): wrong type info"
 		   val instance' = compileType instance
-                   val regvar = case regvarsFromRegvarsAndInfoOpt regvars_opt of
-                                    nil => NONE
-                                  | [rv] => SOME rv
-                                  | rv::_ =>
-                                    let val report0 = case RegVar.get_location_report rv of
-                                                          SOME rep => rep
-                                                        | NONE => Report.null
-                                        val report = line "The ref constructor can take at most one explicit region as argument"
-                                    in raise Report.DeepError (report0 // report)
-                                    end
+                   val regvar = regvarFromRegvarsAndInfoOpt (fn()=>"ref") regvars_opt
 	       in PRIM(REFprim {instance=instance',regvar=regvar},
 		       [compileAtexp env arg])
 	       end

@@ -865,21 +865,20 @@ good *)
                                                 "spreadExceptionSwitch: excon not in rse")
                                            choices) (exconsw, toplevel, cont))
 
-    | E.PRIM(E.CONprim{con, instances}, []) =>
+    | E.PRIM(E.CONprim{con, instances, regvar}, []) =>
         let
           val sigma = noSome (RSE.lookupCon rse con) ".S: constructor not in RSE"
           val (B, tau', il) = newInstance(B,sigma,instances)
           val aux_regions = (case R.unCONSTYPE tau' of
                                SOME(_,_,rhos,_) => rhos
                              | NONE => die "S: nullary constructor not of constructed type")
-          val (rho, B) = Eff.freshRhoWithTy(R.runtype tau', B)
-          val result_type = (tau',rho)
+          val (rho, B) = maybe_explicit_rho rse B (R.runtype tau') regvar
         in
           (B, E'.TR(E'.CON0{con=con, il = il, aux_regions=aux_regions, alloc = rho}, E'.Mus [(tau',rho)],
                     Eff.mkUnion(map Eff.mkPut (rho::aux_regions))),
 	   NOTAIL)
         end
-    | E.PRIM(E.CONprim{con, instances}, [arg]) =>
+    | E.PRIM(E.CONprim{con, instances, regvar}, [arg]) =>
         let
           val sigma = noSome (RSE.lookupCon rse con) "S (CONprim): constructor not in RSE"
           val (B, tau', il) = newInstance(B,sigma,instances)
@@ -890,9 +889,17 @@ good *)
           val (B, t1 as E'.TR(e1', meta1', phi1), _) = S(B, arg, false, NOTAIL)
           val mu1' = unMus "S.CONprim" meta1'
           val B = R.unify_mus(mu1',mu1) B
+          val rho = #2 mu2
+          val B = case regvar of
+                      NONE => B
+                    | SOME rv =>
+                      case RSE.lookupRegVar rse rv of
+                          SOME rho' => Eff.unifyRho (rho',rho) B
+                        | NONE => deepError rv ("Explicit region variable `" ^ RegVar.pr rv
+                                                ^ " not in scope")
         in
-          (B, E'.TR(E'.CON1({con=con, il = il, alloc = #2(mu2)},t1), E'.Mus mus2,
-                 Eff.mkUnion([phi1,Eff.mkPut(#2(mu2))])),
+          (B, E'.TR(E'.CON1({con=con, il = il, alloc = rho},t1), E'.Mus mus2,
+                 Eff.mkUnion([phi1,Eff.mkPut rho])),
 	   NOTAIL)
         end
     | E.PRIM(E.DECONprim{con, instances,...}, [arg]) =>

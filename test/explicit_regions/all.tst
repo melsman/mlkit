@@ -33,6 +33,9 @@ er11.sml              ccl ecte    (* It is an error for a value in an explicit l
 er12.sml              ccl ecte    (* It is an error to refer to a region that is not in scope (function parameter) *)
 er13.sml              ccl ecte    (* It is an error to call a function with a different non-zero number of region parameters than the function declares *)
 er14.sml              ccl ecte    (* It is an error to give multiple explicit regions to ref *)
+er15.sml              ccl ecte    (* It is an error to give multiple explicit regions to con0 *)
+er16.sml              ccl ecte    (* It is an error to give multiple explicit regions to con1 *)
+er17.sml              ccl ecte    (* It is an error to have constructors of different conditional branches to be allocated in different regions *)
 
 param.sml                         (* Functions can be declared to take region parameters *)
 param1.sml                        (* Functions can be declared to take one region parameter *)
@@ -40,6 +43,8 @@ tup.sml                           (* Tuples can be allocated in explicit regions
 tup2.sml                          (* Two tuples can be allocated in the same explicit region *)
 rec.sml                           (* Records can be allocated in explicit regions *)
 string.sml                        (* Strings can be allocated in explicit regions *)
-ref.sml                           (* Ref cells can be allocated in explicit regions *)
+ref.sml                           (* Ref constructor can be allocated in explicit regions *)
+con0.sml                          (* Con0 constructor can be allocated in explicit regions *)
+con1.sml                          (* Con1 constructor can be allocated in explicit regions *)
 call.sml
 call2.sml

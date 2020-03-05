@@ -517,7 +517,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       let val type_e = type_lexp env
       in
 	case prim
-	  of CONprim{con,instances} =>
+	  of CONprim{con,instances,regvar} =>
 	    (valid_ts env instances;
 	     case lexps
 	       of [] => [mk_instance(lookup_con env con, instances)]

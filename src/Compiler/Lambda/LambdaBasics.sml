@@ -365,7 +365,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun on_prim ren prim =
 	case prim
-	  of CONprim {con,instances} => CONprim {con=con, instances=map (on_tau ren) instances}
+	  of CONprim {con,instances,regvar} => CONprim {con=con, instances=map (on_tau ren) instances, regvar=regvar}
 	   | DECONprim {con,instances,lv_opt} => DECONprim {con=con, instances=map (on_tau ren) instances,lv_opt=on_lv_opt ren lv_opt}
 	   | DEREFprim {instance} => DEREFprim {instance=on_tau ren instance}
 	   | REFprim {instance,regvar} => REFprim {instance=on_tau ren instance,regvar=regvar}
@@ -487,7 +487,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun on_prim [] (prim: Type prim) : Type prim = prim   (* basically the same function as above for *)
 	| on_prim S (prim: Type prim) : Type prim =         (* renamings; mael *)
 	case prim
-	  of CONprim {con, instances} => CONprim {con=con, instances=on_Types S instances}
+	  of CONprim {con,instances,regvar} => CONprim {con=con, instances=on_Types S instances, regvar=regvar}
 	   | DECONprim {con, instances,lv_opt} => DECONprim {con=con,instances=on_Types S instances,lv_opt=lv_opt}
 	   | DEREFprim {instance} => DEREFprim{instance=on_Type S instance}
 	   | REFprim {instance,regvar} => REFprim{instance=on_Type S instance,regvar=regvar}
