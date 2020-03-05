@@ -20,9 +20,9 @@ datatype conRep = (* representation of value constructors for datatypes *)
 (* Replacing lvars in an expression to other lvars *)
 type rep = (lvar, lvar) FinMapEq.map
 
-fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances}) : Exp =
+fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances,regvars}) : Exp =
     (case FinMapEq.lookup Lvars.eq rep lvar of
-         SOME lv => L.VAR{lvar=lv,instances=instances}
+         SOME lv => L.VAR{lvar=lv,instances=instances,regvars=nil}
        | NONE => e)
   | replace_lvs rep (L.FRAME _) = die "rename_lvs: FRAME construct not expected"
   | replace_lvs rep e = LambdaBasics.map_lamb (replace_lvs rep) e
