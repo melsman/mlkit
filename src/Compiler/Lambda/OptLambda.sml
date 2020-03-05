@@ -338,7 +338,9 @@ structure OptLambda: OPT_LAMBDA =
 		    Con.eq(con,con') andalso eq_Types(il,il') (* andalso eqOpt (lvarsEq m) (lv_opt,lv_opt') <-- only used with Barry *)
 	      | (DROPprim, DROPprim) => true
 	      | (DEREFprim {instance=t}, DEREFprim {instance=t'}) => eq_Type(t,t')
-	      | (REFprim {instance=t}, REFprim {instance=t'}) => eq_Type(t,t')
+	      | (REFprim {instance=t,regvar=NONE}, REFprim {instance=t',regvar=NONE}) => eq_Type(t,t')
+	      | (REFprim {instance=t,regvar=SOME rv}, REFprim {instance=t',regvar=SOME rv'}) =>
+                eq_Type(t,t') andalso RegVar.eq(rv,rv')
 	      | (ASSIGNprim {instance=t}, ASSIGNprim {instance=t'}) => eq_Type(t,t')
 	      | (EQUALprim {instance=t}, EQUALprim {instance=t'}) => eq_Type(t,t')
 	      | (RESET_REGIONSprim {instance=t}, RESET_REGIONSprim {instance=t'}) => eq_Type(t,t')

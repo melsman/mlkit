@@ -878,6 +878,14 @@ AtExp:
                                          SOME (PP BACKQUOTEleft RBRACKETright,
                                                map RegVar.mk_Named EqIdent_seq1))
                           end )
+        | LongOpIdent BACKQUOTE EqIdent
+                        ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            IDENTatexp (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp),
+                                         SOME (PP BACKQUOTEleft EqIdentright,
+                                               [RegVar.mk_Named EqIdent]))
+                          end )
         | LongOpEqIdent ( let val OP_OPT (id, withOp) = LongOpEqIdent
                           in
 			    IDENTatexp (PP LongOpEqIdentleft LongOpEqIdentright,
@@ -1340,6 +1348,14 @@ AtPat:
 					 OP_OPT (mk_LongId id, withOp),
                                          SOME (PP BACKQUOTEleft RBRACKETright,
                                                map RegVar.mk_Named EqIdent_seq1))
+                          end )
+        | LongOpIdent BACKQUOTE EqIdent
+                        ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp),
+                                         SOME (PP BACKQUOTEleft EqIdentright,
+                                               [RegVar.mk_Named EqIdent]))
                           end )
         | LongOpIdent   ( let val OP_OPT (id, withOp) = LongOpIdent
                           in

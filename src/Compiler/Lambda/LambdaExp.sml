@@ -88,7 +88,7 @@ structure LambdaExp: LAMBDA_EXP =
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
-      | REFprim of {instance: 'Type}
+      | REFprim of {instance: 'Type,regvar:regvar option}
       | ASSIGNprim of {instance: 'Type}
       | EQUALprim of {instance: 'Type}
       | CCALLprim of {name : string,                  (* Primitives, etc. *)
@@ -192,7 +192,7 @@ structure LambdaExp: LAMBDA_EXP =
         CONprim{instances,...} => foldl' (foldType g) acc instances
       | DECONprim{instances,...} => foldl' (foldType g) acc instances
       | DEREFprim{instance} => (foldType g) acc instance
-      | REFprim{instance} => (foldType g) acc instance
+      | REFprim{instance,regvar} => (foldType g) acc instance
       | ASSIGNprim{instance} => (foldType g) acc instance
       | EQUALprim{instance} => (foldType g) acc instance
       | CCALLprim {instances, ...} => foldl' (foldType g) acc instances
@@ -483,11 +483,14 @@ structure LambdaExp: LAMBDA_EXP =
 	     PP.NODE{start="!(",finish=")",indent=2,
 		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF "!"
-      | REFprim {instance} =>
-          if !Flags.print_types then
-	     PP.NODE{start="ref(",finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NOSEP}
-          else PP.LEAF" ref "
+      | REFprim {instance,regvar} =>
+        let val s = case regvar of NONE => "ref"
+                                 | SOME rv => "ref`" ^ RegVar.pr rv
+        in if !Flags.print_types then
+	     PP.NODE{start=s^"(",finish=")",indent=2,
+		     children=[layoutType instance],childsep=PP.NOSEP}
+           else PP.LEAF(" " ^ s ^ " ")
+        end
       | ASSIGNprim {instance} =>
           if !Flags.print_types then
 	       PP.NODE{start=":=(",finish=")",indent=2,
@@ -902,10 +905,13 @@ structure LambdaExp: LAMBDA_EXP =
 	      else
 		  PP.NODE{start= "decon(" ^ pr_con con ^ ",",finish=")",
 			  indent=2,children=[layoutLambdaExp(lamb,0)],childsep=PP.NOSEP}
-         | (REFprim{instance},[lamb]) =>
-             PP.NODE{start="ref(",finish=")",indent=2,
-                     children=[layoutLambdaExp(lamb,0)],
-                     childsep=PP.NOSEP}
+         | (REFprim{instance,regvar},[lamb]) =>
+           let val s = case regvar of NONE => "ref"
+                                    | SOME rv => "ref`" ^ RegVar.pr rv
+           in PP.NODE{start=s ^ "(",finish=")",indent=2,
+                      children=[layoutLambdaExp(lamb,0)],
+                      childsep=PP.NOSEP}
+           end
 	 | (EXCONprim excon, []) => PP.LEAF(pr_excon excon)
 	 | (CONprim{con,instances}, []) =>
 	     if !Flags.print_types then
@@ -1306,7 +1312,9 @@ structure LambdaExp: LAMBDA_EXP =
 		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_REFprim _ =
 		Pickle.con1 REFprim (fn REFprim a => a | _ => die "pu_prim.REFprim")
-		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
+		            (Pickle.convert(fn (t,rv) => {instance=t,regvar=rv},
+                                            fn {instance,regvar} => (instance,regvar))
+                                           (Pickle.pairGen0(pu_Type,Pickle.optionGen RegVar.pu)))
 	    fun fun_ASSIGNprim _ =
 		Pickle.con1 ASSIGNprim (fn ASSIGNprim a => a | _ => die "pu_prim.ASSIGNprim")
 		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
@@ -1557,7 +1565,7 @@ structure LambdaExp: LAMBDA_EXP =
       | EXCONprim _ => acc
       | DEEXCONprim _ => acc
       | DEREFprim{instance} => tyvars_Type s instance acc
-      | REFprim{instance} => tyvars_Type s instance acc
+      | REFprim{instance,regvar} => tyvars_Type s instance acc
       | ASSIGNprim{instance} => tyvars_Type s instance acc
       | EQUALprim{instance} => tyvars_Type s instance acc
       | CCALLprim {instances, tyvars, Type, ...} =>

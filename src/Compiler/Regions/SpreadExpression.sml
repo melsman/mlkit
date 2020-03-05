@@ -760,7 +760,7 @@ good *)
              | NONE => die "S: ill-typed handle expression")
           | _ => die "S: ill-typed handle expression"
         end
-    | E.PRIM(E.REFprim{instance}, [e1]) =>
+    | E.PRIM(E.REFprim{instance,regvar}, [e1]) =>
 (*
 
                                           e1' : [mu], phi1
@@ -770,7 +770,7 @@ good *)
         let
           val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
           val mus1 = unMus "S.REFprim" meta1
-          val (rho_new, B) = Eff.freshRhoWithTy(Eff.REF_RT, B)
+          val (rho_new, B) = maybe_explicit_rho rse B Eff.REF_RT regvar
           val phi = Eff.mkUnion([Eff.mkPut rho_new, phi1])
           val mus = [(R.mkCONSTYPE(TyName.tyName_REF, mus1,[],[]),rho_new)]
         in

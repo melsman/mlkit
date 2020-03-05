@@ -368,7 +368,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	  of CONprim {con,instances} => CONprim {con=con, instances=map (on_tau ren) instances}
 	   | DECONprim {con,instances,lv_opt} => DECONprim {con=con, instances=map (on_tau ren) instances,lv_opt=on_lv_opt ren lv_opt}
 	   | DEREFprim {instance} => DEREFprim {instance=on_tau ren instance}
-	   | REFprim {instance} => REFprim {instance=on_tau ren instance}
+	   | REFprim {instance,regvar} => REFprim {instance=on_tau ren instance,regvar=regvar}
 	   | ASSIGNprim {instance} => ASSIGNprim {instance=on_tau ren instance}
 	   | EQUALprim {instance} => EQUALprim {instance=on_tau ren instance}
 	   | CCALLprim {name, instances, tyvars, Type} =>
@@ -490,7 +490,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	  of CONprim {con, instances} => CONprim {con=con, instances=on_Types S instances}
 	   | DECONprim {con, instances,lv_opt} => DECONprim {con=con,instances=on_Types S instances,lv_opt=lv_opt}
 	   | DEREFprim {instance} => DEREFprim{instance=on_Type S instance}
-	   | REFprim {instance} => REFprim{instance=on_Type S instance}
+	   | REFprim {instance,regvar} => REFprim{instance=on_Type S instance,regvar=regvar}
 	   | ASSIGNprim {instance} => ASSIGNprim{instance=on_Type S instance}
 	   | EQUALprim {instance} => EQUALprim{instance=on_Type S instance}
 	   | CCALLprim {name, instances, tyvars, Type} =>

@@ -2028,6 +2028,14 @@ end; (*match compiler local*)
       | attach_loc_info (SOME(i,r)) =
         RegVar.attach_location_report r (fn () => report_SourceInfo_in_ElabInfo i)
 
+    fun regvarsFromRegvarsAndInfoOpt regvars_opt =
+        case regvars_opt of
+            SOME (i,regvars) =>
+            (List.app (fn r => RegVar.attach_location_report r
+                           (fn () => report_SourceInfo_in_ElabInfo i)) regvars;
+             regvars)
+          | NONE => nil
+
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
 	     SCONatexp(info, SCon.INTEGER x, rv_opt) =>
@@ -2121,9 +2129,7 @@ end; (*match compiler local*)
 		    val instances' = map compileType instances
 		    val S = mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
 		    val il' = on_il(S,il)
-                    val regvars = case regvars_opt of
-                                      SOME (_,regvars) => regvars
-                                    | NONE => []
+                    val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
 		in VAR {lvar=lv,instances=il',regvars=regvars}
 		end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = "
 					^ Ident.pr_longid longid ^ "\n");
@@ -2169,8 +2175,18 @@ end; (*match compiler local*)
 			| _ => die "compileAtexp(REF..): wrong type info"
 		   val lv = Lvars.newLvar()
 		   val instance' = compileType instance
+                   val regvar = case regvarsFromRegvarsAndInfoOpt regvars_opt of
+                                    nil => NONE
+                                  | [rv] => SOME rv
+                                  | rv::_ =>
+                                    let val report0 = case RegVar.get_location_report rv of
+                                                          SOME rep => rep
+                                                        | NONE => Report.null
+                                        val report = line "The ref constructor can take at most one explicit region as argument"
+                                    in raise Report.DeepError (report0 // report)
+                                    end
 	       in FN{pat=[(lv,instance')],
-		     body=PRIM(REFprim {instance=instance'},
+		     body=PRIM(REFprim {instance=instance',regvar=regvar},
 			       [VAR{lvar=lv,instances=[],regvars=[]}])}
 	       end
 	   | CE.EXCON (excon,_) =>
@@ -2272,13 +2288,7 @@ end; (*match compiler local*)
 
 		    val il' = on_il(S, il)
 		    fun default () =
-                        let val regvars =
-                                case regvars_opt of
-                                    SOME (i,regvars) =>
-                                    (List.app (fn r => RegVar.attach_location_report r
-                                                       (fn () => report_SourceInfo_in_ElabInfo i)) regvars;
-                                     regvars)
-                                  | NONE => nil
+                        let val regvars = regvarsFromRegvarsAndInfoOpt regvars_opt
                         in APP(VAR{lvar=lv,instances=il',regvars=regvars},arg',NONE)
                         end
 		in
@@ -2366,7 +2376,17 @@ end; (*match compiler local*)
 		       of SOME (TypeInfo.CON_INFO{instances=[instance],...}) => instance
 			| _ => die "compileAtexp(REF..): wrong type info"
 		   val instance' = compileType instance
-	       in PRIM(REFprim {instance=instance'},
+                   val regvar = case regvarsFromRegvarsAndInfoOpt regvars_opt of
+                                    nil => NONE
+                                  | [rv] => SOME rv
+                                  | rv::_ =>
+                                    let val report0 = case RegVar.get_location_report rv of
+                                                          SOME rep => rep
+                                                        | NONE => Report.null
+                                        val report = line "The ref constructor can take at most one explicit region as argument"
+                                    in raise Report.DeepError (report0 // report)
+                                    end
+	       in PRIM(REFprim {instance=instance',regvar=regvar},
 		       [compileAtexp env arg])
 	       end
 	    | CE.EXCON (excon,_) => PRIM(EXCONprim excon, [compileAtexp env arg])

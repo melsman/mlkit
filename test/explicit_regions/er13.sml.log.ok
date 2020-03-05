@@ -2,7 +2,7 @@
 > infix 0 +
   val f : unit->real * real
   val g : unit->real
-er13.sml, line 9, column 22:
+er13.sml, line 12, column 22:
           val (_,y) = f `[r2] ()
                         ^^^^^
 The number of actual explicit region variables does not match the number of formal explicit region variables.

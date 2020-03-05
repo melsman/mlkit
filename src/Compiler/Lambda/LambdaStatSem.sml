@@ -588,7 +588,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				    end
 				   | _ => die "DEREFprim.Wrong instance")
 		   | _ => die "DEREFprim.Wrong number of args")
-	   | REFprim {instance} => (* as CONprim *)
+	   | REFprim {instance,regvar} => (* as CONprim *)
 		  let val typescheme_REF =
 		         let val tyvar = fresh_tyvar()
 			 in close_Type (ARROWtype([TYVARtype tyvar], [CONStype([TYVARtype tyvar], tyName_REF)]))
