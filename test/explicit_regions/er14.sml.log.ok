@@ -1,0 +1,9 @@
+[reading source file:	er14.sml]
+> infix 0 +
+  val ! : 'a ref->'a
+  val f : unit->int
+er14.sml, line 8, column 19:
+          val x = ref`[r r] 8
+                     ^^^^^^
+The constructor ref can take at most one explicit region as argument
+Stopping compilation of MLB-file due to error (code 1).

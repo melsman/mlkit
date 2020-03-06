@@ -23,7 +23,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
       error has been spotted. *)
 
     local
-      val errors = ref ([]:ErrorCode list) 
+      val errors = ref ([]:ErrorCode list)
       val error_counter = ref 0
     in
       fun report_more_errors() : bool =	!error_counter < 50
@@ -61,7 +61,6 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	of nil => ok
 	 | WITH_INFO(i, _) :: rest => check i // walk_IdInfoList rest
 
-
     fun walk_Topdec topdec =
       case topdec
 	of STRtopdec(i, strdec, topdec_opt) =>
@@ -92,7 +91,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	     check i // walk_Strdec strdec1 // walk_Strdec strdec2
 
     and walk_Strbind (STRBIND(i, _, strexp, strbind_opt)) =
-          check i // walk_Strexp strexp // walk_opt walk_Strbind strbind_opt 
+          check i // walk_Strexp strexp // walk_opt walk_Strbind strbind_opt
 
     and walk_Sigexp sigexp =
       case sigexp
@@ -102,7 +101,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	 | SIGIDsigexp(i, _) =>
 	     check i
 
-	 | WHERE_TYPEsigexp(i, sigexp, tyvars, longtycon, ty) => 
+	 | WHERE_TYPEsigexp(i, sigexp, tyvars, longtycon, ty) =>
 	     check i // walk_Sigexp sigexp // walk_Ty ty
 
     and walk_Strexp strexp =
@@ -115,10 +114,10 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 
 	 | TRANSPARENT_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	     check i // walk_Strexp strexp // walk_Sigexp sigexp
-	     
+
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	     check i // walk_Strexp strexp // walk_Sigexp sigexp
-	     
+
 	 | APPstrexp(i, _, strexp) =>
 	     check i // walk_Strexp strexp
 
@@ -216,7 +215,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	 | DATATYPEdec(i, datbind) =>
 	     check i // walk_Datbind datbind
 
-	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) => 
+	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) =>
 	     check i
 
          | ABSTYPEdec(i, datbind, dec) =>
@@ -238,6 +237,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	 | INFIXRdec(i, _, _) => check i
 	 | NONFIXdec(i, _) =>    check i
 	 | EMPTYdec i =>         check i
+	 | REGIONdec(i, _) =>    check i
 
     and walk_Valbind valbind =
       case valbind
@@ -245,7 +245,7 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 	     check i // walk_Pat pat
 	            // walk_Exp exp
 	           // walk_opt walk_Valbind valbind_opt
-            
+
 
 	 | RECvalbind(i, valbind) =>
 	     check i // walk_Valbind valbind
@@ -298,9 +298,9 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 
     and walk_Atpat atpat =
       case atpat
-	of WILDCARDatpat i =>   check i
-	 | SCONatpat(i, _) =>   check i
-	 | LONGIDatpat(i, _) => check i
+	of WILDCARDatpat i => check i
+	 | SCONatpat(i, _) => check i
+	 | LONGIDatpat(i, _, _) => check i
 
 	 | RECORDatpat(i, patrow_opt) =>
 	     check i // walk_opt walk_Patrow patrow_opt
@@ -341,10 +341,10 @@ structure ErrorTraverse : ERROR_TRAVERSE =
 
     and walk_Atexp atexp =
       case atexp
-	of SCONatexp(i, _) =>  check i
-	 | IDENTatexp(i, _) => check i
+	of SCONatexp(i, _, _) =>  check i
+	 | IDENTatexp(i, _, _) => check i
 
-	 | RECORDatexp(i, exprow_opt) =>
+	 | RECORDatexp(i, exprow_opt, _) =>
 	     check i // walk_opt walk_Exprow exprow_opt
 
 	 | LETatexp(i, dec, exp) =>

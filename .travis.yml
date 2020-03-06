@@ -36,6 +36,7 @@ script:
  - make -C test_dev test
  - make -C test test_mlkit
  - make -C js/test test
+ - make -C test/explicit_regions all
 
 deploy:
   provider: releases

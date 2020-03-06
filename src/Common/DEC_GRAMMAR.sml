@@ -1,6 +1,7 @@
 (*************************************************************)
 (* Grammar for Bare language - Definition v3 pages 8,9,70,71 *)
-(* modified to have ident in place of con  var and excon     *)
+(* modified to have ident in place of con, var and excon     *)
+(* Added support for 'region' decs.                          *)
 (*************************************************************)
 
 signature DEC_GRAMMAR =
@@ -13,6 +14,7 @@ sig
   type tycon = TyCon.tycon
   type longtycon = TyCon.longtycon
   type longstrid = StrId.longstrid
+  type regvar = RegVar.regvar
 
   type info       (* info about the position in the source text, errors etc *)
   val bogus_info : info
@@ -22,9 +24,9 @@ sig
   val strip_info : 'a WithInfo -> 'a
 
   datatype atexp =
-	SCONatexp of info * scon |         
-	IDENTatexp of info * longid op_opt |
-	RECORDatexp of info * exprow option |
+	SCONatexp of info * scon * (info*regvar) option |
+	IDENTatexp of info * longid op_opt * (info*regvar list) option |
+	RECORDatexp of info * exprow option * (info*regvar) option |
 	LETatexp of info * dec * exp |
 	PARatexp of info * exp
 
@@ -39,14 +41,14 @@ sig
 	RAISEexp of info * exp |
 	FNexp of info * match |
 	UNRES_INFIXexp of info * atexp list
-      
+
   and match =
         MATCH of info * mrule * match option
 
   and mrule =
         MRULE of info * pat * exp
 
-  and dec = 
+  and dec =
 	VALdec of info * tyvar list * valbind |
 	UNRES_FUNdec of info * tyvar list * FValBind |
 		(* TEMPORARY: removed when resolving infixes after parsing. *)
@@ -61,7 +63,8 @@ sig
 	INFIXdec of info * int option * id list |
 	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
-	EMPTYdec of info
+	EMPTYdec of info |
+        REGIONdec of info * (info*regvar list)
 
   and valbind =
 	PLAINvalbind of info * pat * exp * valbind option |
@@ -86,7 +89,7 @@ sig
   and atpat =
         WILDCARDatpat of info |
 	SCONatpat of info * scon |
-	LONGIDatpat of info * longid op_opt |
+	LONGIDatpat of info * longid op_opt * (info*regvar list) option |
 	RECORDatpat of info * patrow option |
 	PARatpat of info * pat
 

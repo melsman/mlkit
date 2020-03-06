@@ -14,21 +14,21 @@ signature GRAMMAR_UTILS =
     during the activity of the parser; we aren't post-passing yet).*)
 
     type pos
-    exception LAYERPAT_ERROR of (pos * pos) 
+    exception LAYERPAT_ERROR of (pos * pos)
 
     val topdecOfExp: M.DecGrammar.exp -> M.topdec
     val composeStrDec: info * M.strdec * M.strdec -> M.strdec
     val composeSpec: info * M.spec * M.spec -> M.spec
     val inventStrId: unit -> M.strid
     val composeDec: info * M.DecGrammar.dec * M.DecGrammar.dec -> M.DecGrammar.dec
-    val tuple_atexp_with_info : info -> M.DecGrammar.exp list -> M.DecGrammar.atexp
-    val tuple_atexp : M.DecGrammar.exp list -> M.DecGrammar.atexp
+    val tuple_atexp_with_info : info -> M.DecGrammar.exp list -> (info*M.DecGrammar.regvar) option -> M.DecGrammar.atexp
+    val tuple_atexp : M.DecGrammar.exp list -> (info*M.DecGrammar.regvar) option -> M.DecGrammar.atexp
     val case_exp : info -> M.DecGrammar.exp * M.DecGrammar.match -> M.DecGrammar.exp
     val sequenceExp: M.DecGrammar.exp list -> M.DecGrammar.exp
     val inventId: unit -> M.DecGrammar.id
     val inventId_from_atpat: M.DecGrammar.atpat -> M.DecGrammar.id
     val atexpOfIdent : info -> M.DecGrammar.id -> M.DecGrammar.atexp
-    val patOfIdent : info -> M.DecGrammar.id * bool -> M.DecGrammar.pat
+    val patOfIdent : info -> M.DecGrammar.id * (info*M.DecGrammar.regvar list) option * bool -> M.DecGrammar.pat
     val patOfAtpat: M.DecGrammar.atpat -> M.DecGrammar.pat
     val expOfAtexp: M.DecGrammar.atexp -> M.DecGrammar.exp
     val list_atexp : info -> M.DecGrammar.exp list -> M.DecGrammar.atexp

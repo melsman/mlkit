@@ -76,12 +76,12 @@ signature BACKEND_INFO =
     (* is_prim(name) returns true if name is not implemented by a C call,
      * but rather in machine code; primitives do not destroy all
      * caller save registers, as C calls do. *)
-
+(*
     val is_prim : string -> bool
 
     (* is_flow_prim(name) returns true if name is a flow primitive such
      * as __less_int31 and __equal_word32ub. *)
     val is_flow_prim : string -> bool
-
+*)
     val down_growing_stack : bool         (* true for x86/x64 code generation *)
   end

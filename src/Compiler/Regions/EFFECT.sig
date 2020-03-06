@@ -30,8 +30,8 @@ sig
 
   val get_instance: effect -> effect option ref
 
-  (* setInstance(rho,rho') sets the instance field of  rho 
-     (a generic variable) to rho', its instance; 
+  (* setInstance(rho,rho') sets the instance field of  rho
+     (a generic variable) to rho', its instance;
      setInstance(eps,eps') sets the instance field of eps to eps'*)
 
   val setInstance: effect*effect -> unit
@@ -62,7 +62,7 @@ sig
   val mk_phi : effect -> effect list
 
   val setminus: effect list * effect list -> effect list
-    (* setminus(l1, l2): 
+    (* setminus(l1, l2):
        computes l1 \ l2; assume no duplicates in l1
     *)
 
@@ -71,7 +71,7 @@ sig
   val level_of: effect ->  int option
 
   type cone and coneLayer
-  val emptyCone: cone 
+  val emptyCone: cone
   val initCone: cone  (* contains the two toplevel regions below *)
   val info: cone -> string
 
@@ -106,19 +106,19 @@ sig
          the top level of B into references to variables at lower levels. There are no
          duplicates in etas. B' is B with the topmost layer removed.
       *)
-         
+
   val pushLayer: effect list * cone -> cone
 
-     (* B' = pushLayer(etas, B):  
+     (* B' = pushLayer(etas, B):
         etas is a list of region and effect variables, sorted in descending order (THIS IS IMPORTANT)
-        B' is the result of creating a cone layer consisting of the 
+        B' is the result of creating a cone layer consisting of the
         variables in etas and pushing the layer onto B.
      *)
 
   val restrain : cone -> cone
       (* B' = restrain(B):
          B must contain at least one level.
-	 Lower (by one) the levels of region and effect variables in the topmost 
+	 Lower (by one) the levels of region and effect variables in the topmost
 	 layer of B. B' is B with the topmost layer removed.
       *)
 
@@ -129,7 +129,7 @@ sig
 
   val level: cone -> int
 
-  val resetCount: unit -> unit (* set initial regionid/effectid to that provided 
+  val resetCount: unit -> unit (* set initial regionid/effectid to that provided
 				* on command-line with "-regionvar n". *)
   val getCountFirstLast: unit -> int * int (* used for storing count numbers in MLB/f.rv file
 					    * when "-c -regionvar N" is given as argument to
@@ -139,20 +139,26 @@ sig
   val freshRhosPreserveRT: place list * cone -> place list * cone
   val renameRhos: place list * cone -> place list * cone (* fresh variables,
                                                          preserve runtime types and pix *)
-  val cloneRhos: place list * cone -> place list * cone  (* fresh variables, 
+  val cloneRhos: place list * cone -> place list * cone  (* fresh variables,
                                                          preserve runtime types, pix = ~1 *)
+  val freshRhoRegVar: cone * RegVar.regvar -> effect * cone
+
   val freshRhoWithTy: runType * cone -> effect * cone
-  val setRunType: effect -> runType -> unit
-  val get_place_ty: effect -> runType option
+  val freshRhoWithTy': RegVar.regvar option * runType * cone -> effect * cone
+  val setRunType: place -> runType -> unit
+  val get_place_ty: place -> runType option
+
+  val setRegVar : place -> RegVar.regvar -> unit
+  val getRegVar : place -> RegVar.regvar option
 
   val freshEps: cone -> effect * cone
   val freshEpss: effect list * cone -> effect list * cone
   val renameEpss: effect list * cone -> effect list * cone
   val cloneEpss: effect list * cone -> effect list * cone
 
-  val mkPut: effect -> effect (* argument must 
+  val mkPut: effect -> effect (* argument must
                                  represent a region variable *)
-  val mkGet: effect -> effect (* argument must 
+  val mkGet: effect -> effect (* argument must
                                  represent a region variable *)
 
   val edge : effect * effect -> unit
@@ -168,7 +174,7 @@ sig
 
   val unify_with_toplevel_rhos_eps : cone * effect list -> cone  (* assumes effects has top level *)
   val unify_with_toplevel_effect : effect -> unit
-    
+
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
   val observe: int * delta_phi * effect ->  unit
   val observeDelta: int * delta_phi * effect ->  effect list * delta_phi
@@ -192,9 +198,9 @@ sig
   *)
   val contract_effects: effect list -> effect list
 
-  (* lower newlevel effect cone:   lower the level of  effect  
-     and all nodes reachable from it to have level at most  
-     newlevel.  Whenever, a node is lowered,     
+  (* lower newlevel effect cone:   lower the level of  effect
+     and all nodes reachable from it to have level at most
+     newlevel.  Whenever, a node is lowered,
      it is moved to the lower level in the cone.
   *)
 
@@ -217,6 +223,4 @@ sig
   val layoutLayerRng: coneLayer -> StringTree   (* sets and clears visited field*)
   val layoutCone : cone -> StringTree           (* sets and clears visited field*)
   val layoutEtas: effect list -> StringTree list(* sets and clears visited field*)
-end	
-
-
+end

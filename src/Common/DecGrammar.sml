@@ -1,7 +1,7 @@
 (* Bare language - Definition v3 pages 8,9,70,71 *)
 (* modified to have ident in place of con and var *)
 
-functor DecGrammar(GrammarInfo: sig type GrammarInfo 
+functor DecGrammar(GrammarInfo: sig type GrammarInfo
 				    val bogus_info : GrammarInfo
 				end): DEC_GRAMMAR =
 struct
@@ -12,15 +12,17 @@ struct
   structure TyCon = TyCon
   structure StrId = StrId
   structure Ident = Ident
+  structure RegVar = RegVar
 
-  type lab    = Lab.lab      (* labels *)
-   and scon   = SCon.scon    (* special constants *)
-   and id     = Ident.id     (* identifiers - variables or constructors *)
-   and longid = Ident.longid (* long identifiers - variables or constructors *)
+  type lab    = Lab.lab             (* labels *)
+   and scon   = SCon.scon           (* special constants *)
+   and id     = Ident.id            (* identifiers - variables or constructors *)
+   and longid = Ident.longid        (* long identifiers - variables or constructors *)
    and tyvar  = TyVar.SyntaxTyVar   (* type variables *)
-   and tycon  = TyCon.tycon  (* type constructors *)
+   and tycon  = TyCon.tycon         (* type constructors *)
    and longtycon = TyCon.longtycon  (* long type constructors *)
    and longstrid = StrId.longstrid  (* structure identifiers *)
+   and regvar = RegVar.regvar       (* region variables *)
 
   type info = GrammarInfo.GrammarInfo
   val bogus_info = GrammarInfo.bogus_info
@@ -30,9 +32,9 @@ struct
   fun strip_info (WITH_INFO (info,a)) = a
 
   datatype atexp =
-	SCONatexp of info * scon |         
-	IDENTatexp of info * longid op_opt |
-	RECORDatexp of info * exprow option |
+	SCONatexp of info * scon * (info*regvar) option |
+	IDENTatexp of info * longid op_opt * (info*regvar list) option |
+	RECORDatexp of info * exprow option * (info*regvar) option |
 	LETatexp of info * dec * exp |
 	PARatexp of info * exp
 
@@ -56,7 +58,7 @@ struct
   and mrule =
         MRULE of info * pat * exp
 
-  and dec = 
+  and dec =
 	VALdec of info * tyvar list * valbind |
 	UNRES_FUNdec of info * tyvar list * FValBind |
 	TYPEdec of info * typbind |
@@ -70,7 +72,8 @@ struct
 	INFIXdec of info * int option * id list |
 	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
-	EMPTYdec of info
+	EMPTYdec of info |
+        REGIONdec of info * (info*regvar list)
 
   and valbind =
 	PLAINvalbind of info * pat * exp * valbind option |
@@ -95,7 +98,7 @@ struct
   and atpat =
         WILDCARDatpat of info |
 	SCONatpat of info * scon |
-	LONGIDatpat of info * longid op_opt |
+	LONGIDatpat of info * longid op_opt * (info*regvar list) option |
 	RECORDatpat of info * patrow option |
 	PARatpat of info * pat
 
@@ -166,6 +169,7 @@ struct
     | INFIXRdec x => (#1) x
     | NONFIXdec x => (#1) x
     | EMPTYdec x => x
+    | REGIONdec x => (#1) x
 
   and get_info_valbind obj =
     case obj of
@@ -176,8 +180,8 @@ struct
     case obj of
       DATBIND x => (#1) x
 
-  and get_info_conbind obj = 
-    case obj of 
+  and get_info_conbind obj =
+    case obj of
       CONBIND x => (#1) x
 
   and get_info_pat obj =
@@ -212,76 +216,76 @@ struct
   fun get_info_typbind (TYPBIND (info, tyvars, tycon, ty, typbind_opt)) = info
 
   fun get_info_tyrow (TYROW (info, lab, ty, tyrow_opt)) = info
-    
+
   fun get_info_exbind (EXBIND (info, id_op_opt, ty_opt, exbind_opt)) = info
     | get_info_exbind (EXEQUAL (info, id_op_opt, longid_op_opt, exbind_opt)) = info
 
   fun get_info_FValBind (FVALBIND (info, FClause, FValBind_opt)) = info
 
   fun get_info_FClause (FCLAUSE (info, atpats, tyOpt, exp, FClause_opt)) = info
-    
-  local 
+
+  local
     fun do_opt opt f =
-      case opt of 
-	NONE => NONE 
+      case opt of
+	NONE => NONE
       | SOME x  => SOME(f x)
   in
     fun map_atexp_info f (atexp : atexp) : atexp =
       case atexp of
-	SCONatexp(i,scon) => SCONatexp(f i,scon)
-      | IDENTatexp(i, op_opt) => IDENTatexp(f i, op_opt)
-      | RECORDatexp(i, NONE) => RECORDatexp(f i,NONE)
-      | RECORDatexp(i, SOME exprow) =>
-	  RECORDatexp(f i, SOME (map_exprow_info f exprow))
+	SCONatexp(i, x, y) => SCONatexp(f i, x, y)
+      | IDENTatexp(i, x, y) => IDENTatexp(f i, x, y)
+      | RECORDatexp(i, NONE, y) => RECORDatexp(f i,NONE, y)
+      | RECORDatexp(i, SOME exprow, y) =>
+	  RECORDatexp(f i, SOME (map_exprow_info f exprow), y)
       | LETatexp(i, dec, exp) => LETatexp(f i, map_dec_info f dec, map_exp_info f exp)
       | PARatexp(i, exp) => PARatexp(f i, map_exp_info f exp)
-	    
+
     and map_exprow_info f (exprow: exprow) : exprow =
-      case exprow of 
+      case exprow of
 	EXPROW(i, l, exp, NONE) => EXPROW(f i, l, map_exp_info f exp, NONE)
       | EXPROW(i, l, exp, SOME exprow) =>
 	  EXPROW(f i, l, map_exp_info f exp, SOME (map_exprow_info f exprow))
-	    
+
     and map_exp_info f (exp: exp) : exp =
       case exp of
 	ATEXPexp(i, atexp) => ATEXPexp(f i, map_atexp_info f atexp)
-      | APPexp(i, exp, atexp) => 
+      | APPexp(i, exp, atexp) =>
 	  APPexp(f i, map_exp_info f exp, map_atexp_info f atexp)
       | TYPEDexp(i, exp, ty) =>
 	  TYPEDexp(f i, map_exp_info f exp, ty)
       | HANDLEexp(i, exp, match) =>
 	  HANDLEexp(f i, map_exp_info f exp, map_match_info f match)
-      | RAISEexp(i, exp) => 
+      | RAISEexp(i, exp) =>
 	  RAISEexp(f i, map_exp_info f exp)
       | FNexp(i, match) =>
 	  FNexp(f i, map_match_info f match)
       | UNRES_INFIXexp(i,atexps) =>
 	  UNRES_INFIXexp(f i, map (map_atexp_info f) atexps)
-	    
+
     and map_match_info f (match: match) : match =
-      case match of 
-	MATCH(i, mrule, NONE) => 
+      case match of
+	MATCH(i, mrule, NONE) =>
 	  MATCH(f i, map_mrule_info f mrule, NONE)
       | MATCH(i, mrule, SOME match) =>
 	  MATCH(f i, map_mrule_info f mrule, SOME (map_match_info f match))
-	    
+
     and map_mrule_info f (MRULE(i, pat, exp) : mrule) : mrule =
       MRULE(f i, map_pat_info f pat, map_exp_info f exp)
-	
+
     and map_dec_info f (dec : dec) : dec =
-      case dec of 
+      case dec of
 	VALdec(i, tyvars, valbind) => VALdec(f i, tyvars, map_valbind_info f valbind)
       | UNRES_FUNdec(i, tyvars, FValBind) =>
 	  UNRES_FUNdec(f i, tyvars, map_FValBind_info f FValBind)
-      | TYPEdec(i,typbind) => 
+      | TYPEdec(i,typbind) =>
 	  TYPEdec(f i, map_typbind_info f typbind)
-      | DATATYPEdec(i,datbind) => 
+      | DATATYPEdec(i,datbind) =>
 	  DATATYPEdec(f i,map_datbind_info f datbind)
       | DATATYPE_REPLICATIONdec(i, tycon, longtycon) =>
 	  DATATYPE_REPLICATIONdec(f i, tycon, longtycon)
       | ABSTYPEdec(i, datbind, dec) =>
 	  ABSTYPEdec(f i, map_datbind_info f datbind, map_dec_info f dec)
-      | EXCEPTIONdec(i,exbind) => 
+      | EXCEPTIONdec(i,exbind) =>
 	  EXCEPTIONdec(f i, map_exbind_info f exbind)
       | LOCALdec(i, dec1, dec2) =>
 	  LOCALdec(f i, map_dec_info f dec1, map_dec_info f dec2)
@@ -292,33 +296,34 @@ struct
       | INFIXRdec(i,x,y) => INFIXRdec(f i,x,y)
       | NONFIXdec(i,x) => NONFIXdec(f i,x)
       | EMPTYdec i => EMPTYdec (f i)
-	    
+      | REGIONdec(i,x) => REGIONdec(f i,x)
+
     and map_FValBind_info f (FVALBIND(i,FClause,FValBind_opt)) : FValBind =
       FVALBIND(f i, map_FClause_info f FClause,
 	       case FValBind_opt of
-		 NONE => NONE 
+		 NONE => NONE
 	       | SOME FValBind => SOME (map_FValBind_info f FValBind))
-	  
+
     and map_FClause_info f (FCLAUSE(i,atpats,tyOpt,exp,FClause_opt)) : FClause =
       FCLAUSE(f i, map (map_atpat_info f) atpats,
-	      case tyOpt of 
+	      case tyOpt of
 		NONE => NONE
 	      | SOME ty => SOME(map_ty_info f ty),
 		  map_exp_info f exp,
 		  case FClause_opt of
-		    NONE => NONE 
+		    NONE => NONE
 		  | SOME FClause => SOME(map_FClause_info f FClause))
-			      
+
     and map_valbind_info f (valbind : valbind) : valbind =
       case valbind of
 	PLAINvalbind(i, pat, exp, NONE) =>
 	  PLAINvalbind(f i, map_pat_info f pat, map_exp_info f exp, NONE)
       | PLAINvalbind(i, pat, exp, SOME valbind) =>
-	  PLAINvalbind(f i, map_pat_info f pat, 
+	  PLAINvalbind(f i, map_pat_info f pat,
 		       map_exp_info f exp, SOME (map_valbind_info f valbind))
       | RECvalbind(i, valbind) =>
 	  RECvalbind(f i, map_valbind_info f valbind)
-      
+
     and map_typbind_info f (TYPBIND(i,tyvars,tycon,ty,typbind_opt)): typbind =
       TYPBIND(f i,tyvars,tycon,map_ty_info f ty,
 	      do_opt typbind_opt (map_typbind_info f))
@@ -336,14 +341,14 @@ struct
 	EXBIND(i,id,ty_opt,exbind_opt) =>
 	  EXBIND(f i, id, do_opt ty_opt (map_ty_info f),
 		 do_opt exbind_opt (map_exbind_info f))
-      | EXEQUAL(i,id,longid,exbind_opt) => 
+      | EXEQUAL(i,id,longid,exbind_opt) =>
 	  EXEQUAL(f i,id,longid,do_opt exbind_opt (map_exbind_info f))
 
     and map_atpat_info f (atpat : atpat) : atpat =
       case atpat of
 	WILDCARDatpat i => WILDCARDatpat (f i)
       | SCONatpat(i,scon) => SCONatpat(f i, scon)
-      | LONGIDatpat(i,x) => LONGIDatpat(f i,x)
+      | LONGIDatpat(i,x,y) => LONGIDatpat(f i,x,y)
       | RECORDatpat(i, NONE) => RECORDatpat(f i,NONE)
       | RECORDatpat(i, SOME patrow) =>
 	  RECORDatpat(f i, SOME (map_patrow_info f patrow))
@@ -352,7 +357,7 @@ struct
     and map_patrow_info f (patrow : patrow): patrow  =
       case patrow of
 	DOTDOTDOT(i) => DOTDOTDOT (f i)
-      | PATROW(i, lab, pat, NONE) => 
+      | PATROW(i, lab, pat, NONE) =>
 	  PATROW(f i, lab, map_pat_info f pat, NONE)
       | PATROW(i, lab, pat, SOME patrow) =>
 	  PATROW(f i, lab, map_pat_info f pat, SOME (map_patrow_info f patrow))
@@ -391,9 +396,9 @@ struct
 	| nexp_exp (FNexp(info, match)) = true
 	| nexp_exp _ = false
 
-      and nexp_atexp (SCONatexp(info, scon)) = true
-	| nexp_atexp (IDENTatexp(info, longid_op_opt)) = true
-	| nexp_atexp (RECORDatexp(info, exprow_opt)) = nexp_exprow_opt exprow_opt
+      and nexp_atexp (SCONatexp(info, scon, _)) = true
+	| nexp_atexp (IDENTatexp(info, longid_op_opt, _)) = true
+	| nexp_atexp (RECORDatexp(info, exprow_opt, _)) = nexp_exprow_opt exprow_opt
 	| nexp_atexp (PARatexp(info, exp)) = nexp_exp exp
 	| nexp_atexp _ = false
 
@@ -405,7 +410,7 @@ struct
 	| conexp_exp (TYPEDexp(info, exp, ty)) = conexp_exp exp
 	| conexp_exp _ = false
 
-      and conexp_atexp (IDENTatexp(info, OP_OPT(longid, ?))) =
+      and conexp_atexp (IDENTatexp(info, OP_OPT(longid, ?), _)) =
 	    harmless_con longid
 	| conexp_atexp (PARatexp(info, exp)) = conexp_exp exp
 	| conexp_atexp _ = false
@@ -423,9 +428,9 @@ struct
       | CONty(_, tys, _) => foldl (fn (ty,res) => fTy ty res) res tys
       | FNty(_, ty1, ty2) => fTy ty1 (fTy ty2 res)
       | PARty(_, ty) => fTy ty res
-	    
+
     and fTyrow (TYROW(_, _, ty, tyrowopt)) res =
-      case tyrowopt of 
+      case tyrowopt of
 	NONE => fTy ty res
       | SOME tyrow => fTyrow tyrow (fTy ty res)
 
@@ -433,7 +438,7 @@ struct
       let
 	val res' = case tyopt of NONE => res | SOME ty => fTy ty res
       in
-	case conopt of 
+	case conopt of
 	  NONE => res'
 	| SOME conbind => fConbind conbind res'
       end
@@ -450,7 +455,7 @@ struct
     | find_topmost_id_in_pat (TYPEDpat(_,pat,_)) = find_topmost_id_in_pat pat
     | find_topmost_id_in_pat _ = NONE
 
-  and find_topmost_id_in_atpat (LONGIDatpat(_,OP_OPT(longid,_))) = SOME(Ident.pr_longid longid)
+  and find_topmost_id_in_atpat (LONGIDatpat(_,OP_OPT(longid,_),_)) = SOME(Ident.pr_longid longid)
     | find_topmost_id_in_atpat (PARatpat(_,pat)) = find_topmost_id_in_pat pat
     | find_topmost_id_in_atpat _ = NONE
 
@@ -458,7 +463,7 @@ struct
   (*is_'true'_'nil'_etc & is_'it' are used to enforce SOME syntactic
    restrictions (Definition, §2.9 & §3.5).*)
 
-  fun is_'true'_'nil'_etc id = 
+  fun is_'true'_'nil'_etc id =
     id = Ident.id_TRUE orelse
     id = Ident.id_FALSE orelse
     id = Ident.id_NIL orelse
@@ -482,19 +487,30 @@ struct
 
     fun layoutAtexp atexp : StringTree =
       case atexp
-	of SCONatexp(_, scon) => LEAF(SCon.pr_scon scon)
-
-	 | IDENTatexp(_, OP_OPT(longid, withOp)) =>
+        of SCONatexp(_, scon, NONE) => LEAF(SCon.pr_scon scon)
+         | SCONatexp(_, scon, SOME(_,rv)) => LEAF(SCon.pr_scon scon ^ "`" ^ RegVar.pr rv)
+	 | IDENTatexp(_, OP_OPT(longid, withOp), NONE) =>
 	     LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
 
-	 | RECORDatexp(_, exprow_opt) =>
+	 | IDENTatexp(_, OP_OPT(longid, withOp), SOME(_,regvars)) =>
+           let val first = LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
+           in NODE{start="",finish="",indent=1,
+                   children=[first,
+                             NODE{start="[", finish="]", indent=1,
+		                  children=map (LEAF o RegVar.pr) regvars,
+		                  childsep=LEFT ","}],
+                   childsep=LEFT " "}
+           end
+	 | RECORDatexp(_, exprow_opt, rv_opt) =>
 	     (case exprow_opt
-		of SOME exprow =>
-		     NODE{start="{", finish="}", indent=1,
-			     children=[layoutExprow exprow],
-			     childsep=NOSEP
-			    }
-
+  	        of SOME exprow =>
+                   let val finish = case rv_opt of SOME (_,rv) => "}`" ^ RegVar.pr rv
+                                                 | NONE => "}"
+                   in NODE{start="{", finish=finish, indent=1,
+			   children=[layoutExprow exprow],
+			   childsep=NOSEP
+			  }
+                   end
 	         | NONE =>
 		     LEAF "{}"	(* Keep this atomic... *)
 	     )
@@ -646,7 +662,7 @@ struct
 
 	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) =>
 	     layout_datatype_replication(i, tycon, longtycon)
-    	     
+
 	 | ABSTYPEdec(_, datbind, dec) =>
 	     let
 	       val datbindT = layoutDatbind datbind
@@ -716,7 +732,13 @@ struct
 		    }
 
 	 | EMPTYdec _ =>
-	     LEAF "(emptydec)")
+	     LEAF "(emptydec)"
+
+         | REGIONdec(_, (_,rvs)) =>
+	     NODE{start="region ", finish="", indent=7,
+		     children=map (LEAF o RegVar.pr) rvs,
+		     childsep=RIGHT " "
+		    })
 
     and layout_datatype_replication (i, tycon, longtycon) =
           LEAF ("datatype " ^ TyCon.pr_TyCon tycon ^ " = "
@@ -913,8 +935,18 @@ struct
 
 	 | SCONatpat(_, scon) => LEAF(SCon.pr_scon scon)
 
-	 | LONGIDatpat(_, OP_OPT(longid, withOp)) =>
+	 | LONGIDatpat(_, OP_OPT(longid, withOp), NONE) =>
 	     LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
+
+	 | LONGIDatpat(_, OP_OPT(longid, withOp), SOME(_,regvars)) =>
+           let val first = LEAF((if withOp then "op " else "") ^ Ident.pr_longid longid)
+           in NODE{start="",finish="",indent=1,
+                   children=[first,
+                             NODE{start="[", finish="]", indent=1,
+		                  children=map (LEAF o RegVar.pr) regvars,
+		                  childsep=LEFT ","}],
+                   childsep=LEFT " "}
+           end
 
 	 | RECORDatpat(_, patrow_opt) =>
 	     (case patrow_opt

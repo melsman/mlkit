@@ -42,4 +42,7 @@ signature LEX_UTILS =
     val parStackPush : int ref -> LexArgument -> unit
     val parStackPop : LexArgument -> unit
     val parStackIsEmpty : LexArgument -> bool
+
+    val explicit_regions : bool ref  (* if set, the lexer will support
+                                      * 'region' tokens *)
   end;

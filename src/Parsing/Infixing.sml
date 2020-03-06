@@ -18,6 +18,8 @@ structure Infixing: INFIXING =
     fun error_string info s =
       error_report info (Report.line s)
 
+    val explicit_regions : unit -> bool = fn () => Flags.is_on "explicit_regions"
+
    (* Two operator precedence stack modules - one for expressions and
       another for patterns. *)
 
@@ -31,11 +33,11 @@ structure Infixing: INFIXING =
                  fun atomToFull atexp = ATEXPexp (get_info_atexp atexp, atexp)
                  fun fullToAtom exp = PARatexp (get_info_exp exp, exp)
 
-                 fun pair (exp1, exp2) = GrammarUtils.tuple_atexp [exp1, exp2]
+                 fun pair (exp1, exp2) = GrammarUtils.tuple_atexp [exp1, exp2] NONE
 
                  fun asId atexp =
                    case atexp
-                     of IDENTatexp(_, OP_OPT(longid, withOp)) =>
+                     of IDENTatexp(_, OP_OPT(longid, withOp), _) =>
                           if Ident.unqualified longid andalso not withOp then
                             SOME(Ident.decompose0 longid)
                           else
@@ -51,14 +53,14 @@ structure Infixing: INFIXING =
                      val identExp =
                        ATEXPexp(
                          i,
-                         IDENTatexp(i, OP_OPT(Ident.idToLongId id, false))
+                         IDENTatexp(i, OP_OPT(Ident.idToLongId id, false), NONE)
                        )
                    in
                      APPexp(i, identExp, atexp)
                    end
 
 
-                 fun applyObj(exp, atexp) = 
+                 fun applyObj(exp, atexp) =
 		       APPexp (GrammarUtils.span_info (get_info_exp exp,
 						       get_info_atexp atexp),
 		               exp, atexp)
@@ -80,7 +82,7 @@ structure Infixing: INFIXING =
 
                  fun asId atpat =
                    case atpat
-                     of LONGIDatpat(_, OP_OPT(longid, withOp)) =>
+                     of LONGIDatpat(_, OP_OPT(longid, withOp), _) =>
                           if Ident.unqualified longid andalso not withOp then
                             SOME(Ident.decompose0 longid)
                           else
@@ -97,12 +99,12 @@ structure Infixing: INFIXING =
 
                  fun applyObj(pat, atpat) =
                    (case pat
-		      of ATPATpat(_, LONGIDatpat(_, OP_OPT(longid, withOp))) =>
+		      of ATPATpat(_, LONGIDatpat(_, OP_OPT(longid, withOp), _)) =>
                         let val i = GrammarUtils.span_info (get_info_pat pat,
 							    get_info_atpat atpat)
                         in
                           CONSpat(i, OP_OPT(longid, withOp), atpat)
-                        end 
+                        end
 		       | _ =>
 			error_string (get_info_pat pat) "must be an identifier.")
 		 exception InfixStack_error = InfixStack_error
@@ -126,7 +128,7 @@ structure Infixing: INFIXING =
 
     fun checkNoInfixes iBas atpat =
       (case atpat
-	 of LONGIDatpat(info, OP_OPT(longid, false)) =>
+	 of LONGIDatpat(info, OP_OPT(longid, false), _) =>
 	   let
 	     open InfixBasis
 	   in
@@ -139,7 +141,11 @@ structure Infixing: INFIXING =
 		 | _ => ())
 	   end
 	  | _ => ())
-	 
+
+    fun eq_regvars_opt (NONE,NONE) = true
+      | eq_regvars_opt (SOME (_,rs), SOME (_,rs')) = RegVar.eqs (rs,rs')
+      | eq_regvars_opt _ = false
+
    (* `fun' bindings are a pain in the posterior. The definition (V4, Apdx. B,
       Fig. 20) gives the syntax rules as a footnote (sigh). I've formalised
       them as below. The parser delivers a FUN binding as a sequence (>= 1)
@@ -170,7 +176,7 @@ structure Infixing: INFIXING =
                            atpats. resolveFClauseArgs can fail for an
                            ineligible list of patterns. *)
 
-    fun resolveFClauseArgs(iBas, atpats): id * atpat list =
+    fun resolveFClauseArgs (iBas, atpats): id * (info*RegVar.regvar list) option * atpat list =
       let
         datatype Category = INFIXED of id | OTHER
 
@@ -179,8 +185,8 @@ structure Infixing: INFIXING =
             open InfixBasis
           in
             case atpat
-              of LONGIDatpat(_, OP_OPT(_, true)) => OTHER       (* has `op'. *)
-               | LONGIDatpat(_, OP_OPT(longid, false)) =>
+              of LONGIDatpat(_, OP_OPT(_, true), _) => OTHER       (* has `op'. *)
+               | LONGIDatpat(_, OP_OPT(longid, false), _) =>
                    (case Ident.decompose longid
                       of (nil, id) => if isInfix(iBas, id)
                                       then INFIXED id else OTHER
@@ -207,7 +213,7 @@ structure Infixing: INFIXING =
         (case map categorise atpats
           of [OTHER, INFIXED id, OTHER] =>      (* SUCCESS: matches (4). *)
                (case atpats
-                  of [ap1, _, ap2] => (id, [pair(ap1, ap2)])
+                  of [ap1, _, ap2] => (id, NONE, [pair(ap1, ap2)])
 
                    | _ => impossible "resolveClauseArgs")
 
@@ -217,7 +223,7 @@ structure Infixing: INFIXING =
                                                 (* Try for case (3)... *)
                        (case categorise ap2
                           of INFIXED id =>      (* SUCCESS: matches (3). *)
-                               (id, pair(ap1, ap3) :: rest)
+                               (id, NONE, pair(ap1, ap3) :: rest)
 
                            | OTHER =>           (* `fun (<ap1> <junk> <ap3>)' *)
 			       error_string (get_info_atpat ap2)
@@ -225,8 +231,8 @@ structure Infixing: INFIXING =
 
                    | fst :: snd :: rest =>      (* Try for case (1)/(2)... *)
                        (case fst
-                          of LONGIDatpat(info, OP_OPT(longid, withOp)) =>
-                               (mustDecompose longid info, snd :: rest)
+                          of LONGIDatpat(info, OP_OPT(longid, withOp), regvars_opt) =>
+                               (mustDecompose longid info, regvars_opt, snd :: rest)
                                                 (* `longid' can't be an infix
                                                    because it matches OTHER. *)
 
@@ -250,11 +256,11 @@ structure Infixing: INFIXING =
                        RHS exp. *)
 
     and resolveFClause (iBas, fclause)
-        : id * (atpat list * exp * ty option) list =
+        : id * (info*RegVar.regvar list) option * (atpat list * exp * ty option) list =
       case fclause
         of FCLAUSE(info, atpats, ty_opt, exp, fclause_opt) =>
              let
-               val (id, args) = resolveFClauseArgs(iBas, atpats)
+               val (id, regvars_opt, args) = resolveFClauseArgs(iBas, atpats)
                val _ = List.app (checkNoInfixes iBas) args
                val args' = map (fn a => resolveAtpat(iBas, a)) args
                val exp' = resolveExp(iBas, exp)
@@ -262,16 +268,18 @@ structure Infixing: INFIXING =
                case fclause_opt
                  of SOME fclause' =>
                       let
-                        val (id', rest) = resolveFClause (iBas, fclause')
+                        val (id', regvars_opt', rest) = resolveFClause (iBas, fclause')
                       in
                         if id = id' then
-                          (id, (args', exp', ty_opt) :: rest)
-                        else
-			  error_string info (Ident.pr_id id ^ " and "
-					     ^ Ident.pr_id id' ^ " should be the same.")
+                          if eq_regvars_opt (regvars_opt,regvars_opt') then
+                            (id, regvars_opt, (args', exp', ty_opt) :: rest)
+                          else error_string info
+                                            "Parameterised region variables should agree."
+                        else error_string info (Ident.pr_id id ^ " and "
+					        ^ Ident.pr_id id' ^ " should be the same.")
                       end
                   | NONE =>
-                      (id, [(args', exp', ty_opt)])
+                      (id, regvars_opt, [(args', exp', ty_opt)])
              end
 
 
@@ -285,7 +293,7 @@ structure Infixing: INFIXING =
         fun probableTupleAtExp [] = impossible "probableTupleAtExp []"
 	  | probableTupleAtExp [atexp] = atexp
 	  | probableTupleAtExp atexps =
-	      GrammarUtils.tuple_atexp (map GrammarUtils.expOfAtexp atexps)
+	      GrammarUtils.tuple_atexp (map GrammarUtils.expOfAtexp atexps) NONE
 
         fun probableTuplePat atpats =
               GrammarUtils.patOfAtpat
@@ -307,7 +315,8 @@ structure Infixing: INFIXING =
 
         *)
 
-        fun try_simple_fvalbindToValbind(info_fvalbind,id,rhsList: (atpat list * exp * ty option) list) = 
+        fun try_simple_fvalbindToValbind(info_fvalbind,id,regvars_opt,
+                                         rhsList: (atpat list * exp * ty option) list) =
           let
             fun certainMatch_atpat (LONGIDatpat _) = true
               | certainMatch_atpat (PARatpat(_,pat)) = certainMatch_pat pat
@@ -320,7 +329,7 @@ structure Infixing: INFIXING =
               | certainMatch_patrow (PATROW(_,_,pat,NONE)) =certainMatch_pat pat
               | certainMatch_patrow (PATROW(_,_,pat,SOME patrow)) =
               certainMatch_pat pat andalso certainMatch_patrow patrow
-         
+
             and certainMatch_pat(ATPATpat(_,atpat)) = certainMatch_atpat atpat
               | certainMatch_pat(CONSpat(_,atpat,_)) = false
               | certainMatch_pat(TYPEDpat(_,pat,ty)) = certainMatch_pat pat
@@ -329,7 +338,7 @@ structure Infixing: INFIXING =
 
           in
             case rhsList of
-              [(atpats,exp,ty_opt)] => 
+              [(atpats,exp,ty_opt)] =>
                 if List.all certainMatch_atpat atpats
                   then
                     let
@@ -352,8 +361,8 @@ structure Infixing: INFIXING =
                         val rhs = List.foldr curry exp' atpats
                     in
                       PLAINvalbind
-                      (info_fvalbind, GrammarUtils.patOfIdent info_fvalbind 
-                       (id, isInfix (iBas, id)),
+                      (info_fvalbind, GrammarUtils.patOfIdent info_fvalbind
+                       (id, regvars_opt, isInfix (iBas, id)),
                        rhs,
                        NONE)
                     end
@@ -362,11 +371,11 @@ structure Infixing: INFIXING =
           end
 
         fun fvalbindToValbind (fvalbind as FVALBIND(info, fclause, _)) =
-            let 
-              val (id, rhsList: (atpat list * exp * ty option) list) = 
+            let
+              val (id, regvars_opt, rhsList: (atpat list * exp * ty option) list) =
                   resolveFClause (iBas, fclause)
             in
-              try_simple_fvalbindToValbind(info,id,rhsList) 
+              try_simple_fvalbindToValbind(info,id,regvars_opt,rhsList)
               handle NOT_SIMPLE =>
               let
 (*                val _ = output(std_out, Ident.pr_id id ^ " is not simple\n")*)
@@ -375,15 +384,15 @@ structure Infixing: INFIXING =
                     of (atpats, _, _) :: _ => List.length atpats
                      | _ => impossible "Infixing.fvalbindToValbind"
 
-                val _ = 
-                  (* Lars: check that the number of atpats is the same in every rhs 
+                val _ =
+                  (* Lars: check that the number of atpats is the same in every rhs
                    * (c.f. Def. p. 72)
                    *)
-                  let 
+                  let
                     val rhsListNums = map (List.length o #1) rhsList
                   in
-                    List.app (fn n => 
-                                if n = numArgs then () 
+                    List.app (fn n =>
+                                if n = numArgs then ()
                                 else
 				  error_string info "the clauses must have the same\
 				                    \ number of arguments.")
@@ -402,7 +411,7 @@ structure Infixing: INFIXING =
                   | inventVars [] = Crash.impossible "Infixing.inventVars: no\
                        \ clauses in fvalbind"
 
-                  
+
                 val vars = inventVars rhsList
 		  (*the newly invented vars are paired with the info from the atpats
 		   they stand for to give better infos where they are used*)
@@ -429,7 +438,7 @@ structure Infixing: INFIXING =
                         val i_mrule = GrammarUtils.span_info (get_info_pat pat',
 							      get_info_exp exp')
                         val rest' = mkMatch rest
-                        val i_m = 
+                        val i_m =
                                case rest' of
                                   NONE => i_mrule
                                | SOME m => GrammarUtils.span_info (i_mrule, get_info_match m)
@@ -444,7 +453,7 @@ structure Infixing: INFIXING =
 
                 val innerApp =
                   case mkMatch rhsList
-                    of SOME m => 
+                    of SOME m =>
                           let val i_match = get_info_match m
                               val i_app = GrammarUtils.span_info
 				            (i_match, get_info_atexp varTuple)
@@ -457,13 +466,13 @@ structure Infixing: INFIXING =
                   (*The handling of the sourcinfo is not ideal, here.
 		   The abstraction and other syntax nodes get the same source
 		   info as the body*)
-                  let val i_body = get_info_exp exp 
-                  in 
+                  let val i_body = get_info_exp exp
+                  in
 		    FNexp (i_body,
 		      MATCH (i_body,
 			MRULE (GrammarUtils.span_info (i_id,
 						       get_info_exp exp),
-			       GrammarUtils.patOfIdent i_id (id, false),
+			       GrammarUtils.patOfIdent i_id (id, NONE, false),
 			       exp),
 			NONE))
                   end
@@ -472,11 +481,11 @@ structure Infixing: INFIXING =
                   List.foldl curry innerApp (rev vars)
               in
                 PLAINvalbind
-		  (info, GrammarUtils.patOfIdent info 
-		   (id, isInfix (iBas, id)),
+		  (info, GrammarUtils.patOfIdent info
+		   (id, regvars_opt, isInfix (iBas, id)),
 		   curriedFn,
 		   NONE)
-              end 
+              end
             end (*fvalbindToValbind*)
 
         fun resolveAll (fvalbind as FVALBIND (_, _, rest)) =
@@ -513,14 +522,14 @@ structure Infixing: INFIXING =
 	  in
 	    (iBas' ++ iBas'', STRtopdec(i, strdec', topdec_opt'))
 	  end
-	
+
       | SIGtopdec(i, sigdec, topdec_opt) =>
 	  let
 	    val (iBas', topdec_opt') = resolveTopdec_opt (iBas, topdec_opt)
 	  in
 	    (iBas', SIGtopdec(i, sigdec, topdec_opt'))
 	  end
-	
+
       | FUNtopdec(i, fundec, topdec_opt) =>
 	  let
 	    val fundec' = resolveFundec(iBas, fundec)
@@ -609,7 +618,7 @@ structure Infixing: INFIXING =
 	 | TRANSPARENT_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	     TRANSPARENT_CONSTRAINTstrexp
 	     (i, resolveStrexp(iBas, strexp), sigexp)
-	     
+
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	     OPAQUE_CONSTRAINTstrexp(i, resolveStrexp(iBas, strexp), sigexp)
 
@@ -647,7 +656,7 @@ structure Infixing: INFIXING =
 
 	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) =>
 	     (emptyB, DATATYPE_REPLICATIONdec(i, tycon, longtycon))
-	     
+
          | ABSTYPEdec(i, datbind, dec) =>
              let
                val datbind' = resolveDatbind(iBas, datbind)
@@ -703,6 +712,10 @@ structure Infixing: INFIXING =
 
          | EMPTYdec i =>
              (emptyB, EMPTYdec i)
+
+         | REGIONdec(i, rvs) =>
+             (emptyB, REGIONdec(i, rvs))
+
 
     and resolveValbind(iBas, valbind) =
       case valbind
@@ -797,12 +810,12 @@ structure Infixing: INFIXING =
         of SCONatexp _ => atexp
          | IDENTatexp _ => atexp
 
-         | RECORDatexp(i, exprow_opt) =>
+         | RECORDatexp(i, exprow_opt, rv_opt) =>
              RECORDatexp(i,
                          case exprow_opt
                            of SOME exprow => SOME(resolveExprow(iBas, exprow))
-                            | NONE => NONE
-                        )
+                            | NONE => NONE,
+                         rv_opt)
 
          | LETatexp(i, dec, exp) =>
              let

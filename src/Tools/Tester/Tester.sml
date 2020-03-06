@@ -7,6 +7,7 @@ signature TESTER =
 structure Tester : TESTER =
   struct
     val log = "TESTmessages"
+    val logdirect = ref false
 
     fun files_equal (s1,s2) =
       let fun open_file s = TextIO.openIn s
@@ -66,7 +67,8 @@ structure Tester : TESTER =
 	  end
 	val {dir, file} = OS.Path.splitDirFile filepath
 	val _ = if dir="" then () else OS.FileSys.chDir dir
-	val compile_command_base = kitexe ^ " --log_to_file " ^
+	val compile_command_base = kitexe ^
+          (if !logdirect then " " else " --log_to_file ") ^
 	  (if opt "nobasislib" then "-no_basislib " else "") ^
 	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
           (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "")
@@ -77,15 +79,15 @@ structure Tester : TESTER =
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
 	        if opt "ecte" (*Expect Compile Time Error*) then
-		  if success then (msgErr "unexpected compile time success"; false)
+		  if success then (msgErr ("unexpected compile time success for " ^ file); false)
 		  else (msgOk "expected compile time failure"; true)
 		else
 		  if success then (msgOk "expected compile time success"; true)
-		  else (msgErr "unexpected compile time failure"; false)
+		  else (msgErr ("unexpected compile time failure for " ^ file) ; false)
 	  in
 	    if opt "ccl" (*Compare Compiler Logs*) then
 	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)
-			      else (msgErr "log not equal to log.ok"; false)
+			      else (msgErr ("compile log " ^ file ^ ".log not equal to " ^ file ^ ".log.ok"); false)
 	      in TestReport.add_compout_line {name=filepath, match=SOME match,
 					      success_as_expected=success_as_expected()}
 	      end
@@ -149,7 +151,9 @@ structure Tester : TESTER =
 		TestReport.add_runtime_bare_line(filepath,false))
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
-        if OS.Process.isSuccess(OS.Process.system (compile_command ^ " >> ./" ^ log)) then
+        if OS.Process.isSuccess(OS.Process.system (compile_command ^
+                                                   (if !logdirect then " > " ^ file ^ ".log"
+                                                    else " >> ./" ^ log))) then
 	  (maybe_compare_complogs true;
 	   maybe_report_comptimes();
 	   rename_and_run(" ri ",".out",".out.ok")
@@ -159,13 +163,16 @@ structure Tester : TESTER =
 	recover()
       end
 
-    fun process_args (kitexe::testfile::flags) = SOME (kitexe,testfile,flags)
+    fun process_args (kitexe::"--logdirect"::testfile::flags) =
+        (logdirect := true; SOME (kitexe,testfile,flags))
+      | process_args (kitexe::testfile::flags) = SOME (kitexe,testfile,flags)
       | process_args _ = NONE
 
-    fun print_usage progname = print("\nUsage: kittester mlkit testfile [OPTION...]\n\
+    fun print_usage progname = print("\nUsage: kittester mlkit [--logdirect] testfile [OPTION...]\n\
 				     \  mlkit: path to executable MLKit\n\
+                                     \  --logdirect: use direct logging without -log_to_file\n\
 				     \  testfile: path to test file.\n\
-				     \  Options are passed on to the MLKit for each\n\
+				     \  OPTION... are passed on to the MLKit for each\n\
 				     \    compilation.\n")
 
     fun main (progname, args) =

@@ -836,15 +836,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
               raise Fail ("isolate error: " ^ s ^ "(HEX:" ^
                           SysWord.toString (Posix.Signal.toWord signal) ^ ", " ^
                           ppSignal signal ^ ")")
-          fun errSubProcess e =
-              (print "[[ERR in sub process:\n  ";
-               print (General.exnMessage e ^ "]]\n"))
+          fun errSubProcess source_opt e =
+              case e of
+                  Report.DeepError r =>
+                  let val r0 = Report.line ("Region annotation error" ^
+                                            (case source_opt of
+                                                 SOME f => " in " ^ f
+                                               | NONE => "."))
+                  in print_error_report r (*(Report.//(r0, r))*)
+                  end
+                | PARSE_ELAB_ERROR _ => ()
+                | _ => (print "[[ERR in sub process:\n  ";
+                        print (General.exnMessage e ^ "]]\n"))
         in
-          fun isolate2 (f : 'a -> unit) (a:'a) : Posix.Process.pid =
+          fun isolate2 source (f : 'a -> unit) (a:'a) : Posix.Process.pid =
               case Posix.Process.fork()
                of SOME pid => (add pid ; pid)
                 | NONE => ((f a ; Posix.Process.exit 0w0)
-                           handle e => (errSubProcess e;
+                           handle e => (errSubProcess (SOME source) e;
                                         Posix.Process.exit 0w1))
           fun wait p =
               let
@@ -873,7 +882,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 end
               | NONE => (f a before Posix.Process.exit 0w0        (* child *)
                          handle e =>
-                                (errSubProcess e;
+                                (errSubProcess NONE e;
                                  Posix.Process.exit 0w1))
 
         end
@@ -910,7 +919,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                         of NONE => SOME (f ())
                          | SOME lf => if lock (Int.toString unique) lf then SOME (f ())
                                       else NONE)
-                  (fn () => (isolate2 (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
+                  (fn () => (isolate2 source (compile0 target flags lockfile (Int.toString unique)) (namebase, basisFiles, source)))
         end
 
         val getParallelN =

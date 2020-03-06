@@ -14,7 +14,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 
     open TopdecGrammar TopdecGrammar.DecGrammar
 
-    fun inventId_from_atpat atpat = 
+    fun inventId_from_atpat atpat =
          case C.find_topmost_id_in_atpat atpat of
            SOME string => Ident.invent_named_id string
          | NONE =>        Ident.inventId()
@@ -46,7 +46,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
     val right = #2 o un_PP
     val left = #1 o un_PP
 
-    local 
+    local
       fun info_before_or_after (side : ParseInfo.ParseInfo -> pos)
 	    (info : ParseInfo.ParseInfo) : ParseInfo.ParseInfo =
 	    let val pos = side info in PP pos pos end
@@ -98,16 +98,16 @@ structure GrammarUtils: GRAMMAR_UTILS =
     fun expOfAtexp atexp = ATEXPexp (get_info_atexp atexp, atexp)
     fun patOfAtpat atpat = ATPATpat (get_info_atpat atpat, atpat)
 
-    fun atexpOfIdent info id = 
-          IDENTatexp (info, OP_OPT (Ident.idToLongId id, false))
+    fun atexpOfIdent info id =
+          IDENTatexp (info, OP_OPT (Ident.idToLongId id, false), NONE)
     fun expOfIdent info id = expOfAtexp (atexpOfIdent info id)
-    fun patOfIdent info (id, withOp) =
-          patOfAtpat (LONGIDatpat (info, OP_OPT (Ident.idToLongId id, withOp)))
+    fun patOfIdent info (id, regvars_opt, withOp) =
+          patOfAtpat (LONGIDatpat (info, OP_OPT (Ident.idToLongId id, withOp), regvars_opt))
 
     fun topdecOfExp exp =       (* Convert `exp' to `val it = exp'. *)
           let
 	    val info = get_info_exp exp
-	    val pat = patOfIdent info (Ident.id_IT, false)
+	    val pat = patOfIdent info (Ident.id_IT, NONE, false)
 	    val valbind = PLAINvalbind (info, pat, exp, NONE)
 	    val valdec = VALdec (info, [], valbind)
 	    val strdec = DECstrdec (info, valdec)
@@ -136,26 +136,26 @@ structure GrammarUtils: GRAMMAR_UTILS =
          | (_, EMPTYdec _) => dec1
          | _ => SEQdec(i, dec1, dec2)
 
-    fun tuple_atexp_with_info info exps = (* `(A, B, C)' -> `{1=A, 2=B, 3=C}'. *)
+    fun tuple_atexp_with_info info exps rv_opt = (* `(A, B, C)' -> `{1=A, 2=B, 3=C}'. *)
           let
 	    fun f (n, e :: exps) =
 	          SOME (EXPROW (info, mk_IntegerLab n, e, f (n+1, exps)))
 	      | f (_, []) = NONE
 	  in
-	    RECORDatexp (info, f (1, exps))
+	    RECORDatexp (info, f (1, exps), rv_opt)
 	  end
 
-    fun tuple_atexp (exp1::exp2::exps) =
+    fun tuple_atexp (exp1::exp2::exps) rv_opt =
           tuple_atexp_with_info
 	    (span_info (get_info_exp exp1,
 			get_info_exp (List.last (exp2::exps))
 			handle _ => impossible "tuple_atexp: last"))
-	       (exp1::exp2::exps)
-      | tuple_atexp _ = impossible "tuple_atexp _"
+	       (exp1::exp2::exps) rv_opt
+      | tuple_atexp _ _ = impossible "tuple_atexp _"
 
     fun case_exp info (exp, match) =
           APPexp (info, FNexp (get_info_match match, match),
-		  PARatexp (get_info_exp exp, exp)) 
+		  PARatexp (get_info_exp exp, exp))
 
     fun sequenceExp exps =
           let
@@ -167,7 +167,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 			     (info_exp, ATPATpat (info_exp, WILDCARDatpat info_exp), exp),
 			   NONE)
 		  end
-		
+
 	    fun f (exp :: exps, context) =
 	          case_exp (get_info_exp exp) (exp, wildMatch (f (exps, context)))
 	      | f ([], context) = context
@@ -182,8 +182,8 @@ structure GrammarUtils: GRAMMAR_UTILS =
 	    val nilExp = expOfIdent info Ident.id_NIL
 	    val consExp = expOfIdent info Ident.id_CONS
 
-	    fun f (exp :: exps) = 
-	          APPexp (get_info_exp exp, consExp, tuple_atexp [exp, f exps])
+	    fun f (exp :: exps) =
+	          APPexp (get_info_exp exp, consExp, tuple_atexp [exp, f exps] NONE)
 	      | f [] = nilExp
 	  in
 	    PARatexp (info, f exps)
@@ -192,7 +192,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
     fun hash info lab =
           let
 	    val id = Ident.inventId ()
-	    val row = PATROW (info, lab, patOfIdent info (id, false),
+	    val row = PATROW (info, lab, patOfIdent info (id, NONE, false),
 			      SOME (DOTDOTDOT info))
 	    val pat = ATPATpat (info, RECORDatpat (info, SOME row))
 	    val mrule = MRULE (info, pat, expOfIdent info id)
@@ -207,7 +207,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 
     fun exp_quote (info:info) (s:string) : exp =
       let val quoteExp = expOfIdent info Ident.id_QUOTE
-      in APPexp(info, quoteExp, SCONatexp(info, SCon.STRING s))
+      in APPexp(info, quoteExp, SCONatexp(info, SCon.STRING s, NONE))
       end
 
     fun exp_antiquote (info:info) (atexp: atexp) : exp =
@@ -217,8 +217,8 @@ structure GrammarUtils: GRAMMAR_UTILS =
 
     fun if_then_else_exp info (ifExp, thenExp, elseExp) =
           let
-	    val mruleT = MRULE (info, patOfIdent info (Ident.id_TRUE, false), thenExp)
-	    val mruleF = MRULE (info, patOfIdent info (Ident.id_FALSE, false), elseExp)
+	    val mruleT = MRULE (info, patOfIdent info (Ident.id_TRUE, NONE, false), thenExp)
+	    val mruleF = MRULE (info, patOfIdent info (Ident.id_FALSE, NONE, false), elseExp)
 	  in
 	    case_exp info
 	      (ifExp, MATCH (info, mruleT, SOME (MATCH (info, mruleF, NONE))))
@@ -227,10 +227,10 @@ structure GrammarUtils: GRAMMAR_UTILS =
     fun while_exp info (whileExp, doExp) =
           let
 	    val var = Ident.inventLongId ()
-	    val varExp = ATEXPexp (info, IDENTatexp (info, OP_OPT (var, false)))
-	    val unitAtExp = RECORDatexp (info, NONE)
+	    val varExp = ATEXPexp (info, IDENTatexp (info, OP_OPT (var, false), NONE))
+	    val unitAtExp = RECORDatexp (info, NONE, NONE)
 	    val unitExp = ATEXPexp (info, unitAtExp)
-	    val varPat = ATPATpat (info, LONGIDatpat (info, OP_OPT (var, false)))
+	    val varPat = ATPATpat (info, LONGIDatpat (info, OP_OPT (var, false), NONE))
 	    val unitPat = ATPATpat (info, RECORDatpat (info, NONE))
 	    val callVar = APPexp (info, varExp, unitAtExp)
 
@@ -256,7 +256,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 
 
     fun rewriteDatBind(datbind, typbind) =
-        (* XXX no check for different identifiers to be bound in datbind 
+        (* XXX no check for different identifiers to be bound in datbind
            and typbind (as required, Def. p. 66) *)
       let
 
@@ -265,26 +265,26 @@ structure GrammarUtils: GRAMMAR_UTILS =
            of tyvarseq = size of tyseq ; that is, this one implements
            substitution. *)
 
-        fun replaceTy tyvarseq tyseq ty = 
-          case ty of 
-            TYVARty(i, tv) => 
-              let 
-                val i = 
+        fun replaceTy tyvarseq tyseq ty =
+          case ty of
+            TYVARty(i, tv) =>
+              let
+                val i =
                   case index (fn a => a=tv) tyvarseq
 		    of SOME i => i
 		     | NONE => Crash.unimplemented
                       "No check for tyvar on rsh in lhs of withtype defined type"
               in
-                (List.nth (tyseq,i)) 
+                (List.nth (tyseq,i))
                 handle _ => impossible "rewriteDatBind---replaceTy"
               end
           | RECORDty(i, NONE) =>
               ty
-          | RECORDty(i, SOME tyrow) => 
+          | RECORDty(i, SOME tyrow) =>
               RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow))
-          | CONty(i, tylist, tycon) => 
+          | CONty(i, tylist, tycon) =>
               CONty(i, map (replaceTy tyvarseq tyseq) tylist, tycon)
-          | FNty(i, ty1, ty2) => 
+          | FNty(i, ty1, ty2) =>
               FNty(i, replaceTy tyvarseq tyseq ty1,
                    replaceTy tyvarseq tyseq ty2)
           | PARty(i, ty) =>
@@ -295,12 +295,12 @@ structure GrammarUtils: GRAMMAR_UTILS =
             TYROW(i, lab, ty, NONE) =>
               TYROW(i, lab, replaceTy tyvarseq tyseq ty, NONE)
           | TYROW(i, lab, ty, SOME tyrow) =>
-              TYROW(i, lab, replaceTy tyvarseq tyseq ty, 
+              TYROW(i, lab, replaceTy tyvarseq tyseq ty,
                    SOME (replaceTyrow tyvarseq tyseq tyrow))
-          
+
         exception Lookup_tycon
         fun lookup_tycon tycon typbind =
-          case typbind of 
+          case typbind of
             TYPBIND(_, tyvarseq, tycon', ty, NONE) =>
               if tycon' = tycon then (tyvarseq, ty)
               else raise Lookup_tycon
@@ -309,21 +309,21 @@ structure GrammarUtils: GRAMMAR_UTILS =
               else lookup_tycon tycon typbind
 
         fun rewriteTy ty =
-          case ty of 
-            TYVARty _ => 
+          case ty of
+            TYVARty _ =>
               ty
-          | RECORDty(i, NONE) => 
+          | RECORDty(i, NONE) =>
               ty
-          | RECORDty(i, SOME tyrow) => 
+          | RECORDty(i, SOME tyrow) =>
               RECORDty(i, SOME (rewriteTyrow tyrow))
           | CONty(i, tyseq', longtycon') =>
-              let 
+              let
                 val (strid_list, tycon') = TyCon.explode_LongTyCon longtycon'
               in
                 if strid_list = nil then
-                  (let 
+                  (let
                      val (tyvarseq1, ty1) = lookup_tycon tycon' typbind
-                     val _ = 
+                     val _ =
                        if (List.length tyseq') <> (List.length tyvarseq1) then
                          Crash.unimplemented
 			   "GrammarUtils.rewriteDatBind< insert error info into i >"
@@ -331,7 +331,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
                    in
                      replaceTy tyvarseq1 tyseq' ty1
                    end)
-                     handle Lookup_tycon => 
+                     handle Lookup_tycon =>
                      (* keep type constructor, but traverse its
                         arguments*)
                      CONty(i, map rewriteTy tyseq', longtycon')
@@ -342,7 +342,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 		   arguments*)
 		  CONty(i, map rewriteTy tyseq', longtycon')
               end
-          | FNty(i, ty1, ty2) => 
+          | FNty(i, ty1, ty2) =>
               FNty(i, rewriteTy ty1, rewriteTy ty2)
           | PARty(i, ty) =>
               PARty(i, rewriteTy ty)
@@ -366,22 +366,22 @@ structure GrammarUtils: GRAMMAR_UTILS =
 	fun in_dom tc tb = (lookup_tycon tc tb; true)
 	  handle Lookup_tycon => false
 
-	fun check i tycon =		    
+	fun check i tycon =
 	  if in_dom tycon typbind then
 	    let val pos = left i
-	    in raise LexBasics.LEXICAL_ERROR (pos, "type constructor " ^ TyCon.pr_TyCon tycon 
+	    in raise LexBasics.LEXICAL_ERROR (pos, "type constructor " ^ TyCon.pr_TyCon tycon
 					      ^ " is bound by both datatype binding and withtype binding")
 	    end
 	  else ()
 
       in
-        case datbind of 
+        case datbind of
           DATBIND(i, tyvarlist, tycon, conbind, NONE) =>
 	    (check i tycon;
 	     DATBIND(i, tyvarlist, tycon, rewriteConBind conbind, NONE))
         | DATBIND(i, tyvarlist, tycon, conbind, SOME datbind) =>
             (check i tycon;
-	     DATBIND(i, tyvarlist, tycon, 
+	     DATBIND(i, tyvarlist, tycon,
 		     rewriteConBind conbind, SOME (rewriteDatBind(datbind, typbind))))
       end
 
@@ -395,7 +395,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
 	    RECORDatpat (info, f (1, pats))
 	  end
 
-    fun tuple_atpat (pat1::pat2::pats) = 
+    fun tuple_atpat (pat1::pat2::pats) =
           tuple_atpat_with_info
 	    (span_info (get_info_pat pat1,
 			get_info_pat (List.last (pat2::pats))
@@ -409,7 +409,7 @@ structure GrammarUtils: GRAMMAR_UTILS =
                   CONSpat (get_info_pat pat,
 			   OP_OPT (Ident.idToLongId Ident.id_CONS, false),
 			   tuple_atpat [pat, f pats])
-	      | f [] = patOfIdent info (Ident.id_NIL, false)
+	      | f [] = patOfIdent info (Ident.id_NIL, NONE, false)
 	  in
 	    PARatpat (info, f pats)
 	  end
@@ -429,9 +429,9 @@ structure GrammarUtils: GRAMMAR_UTILS =
 		   | ( _ , id) => raise LAYERPAT_ERROR (un_PP i))
 	  in
 	    case idPat of
-	      TYPEDpat (_, ATPATpat (_, LONGIDatpat (_, OP_OPT (id, withOp))), ty) =>
+	      TYPEDpat (_, ATPATpat (_, LONGIDatpat (_, OP_OPT (id, withOp), NONE)), ty) =>
 		LAYEREDpat (i, OP_OPT (longIdToId id, withOp), SOME ty, asPat)
-	    | ATPATpat (_, LONGIDatpat (_, OP_OPT (id, withOp))) =>
+	    | ATPATpat (_, LONGIDatpat (_, OP_OPT (id, withOp), NONE)) =>
 		LAYEREDpat (i, OP_OPT (longIdToId id, withOp), NONE, asPat)
 	    | _ => raise LAYERPAT_ERROR (un_PP i)
 	  end

@@ -6,7 +6,7 @@ struct
   structure Lvar = Lvars
   structure RSE = RegionStatEnv
   structure PP = PrettyPrint
-  structure QM_EffVarEnv = 
+  structure QM_EffVarEnv =
       QuasiEnv(structure OFinMap = EffVarEnv
 	       val key = Effect.key_of_eps_or_rho
 	       val eq = Effect.eq_effect)
@@ -25,7 +25,7 @@ struct
   infix footnote
   fun x footnote y = x;
 
-  fun die s = (mes("Mul: " ^ s ^ "\n"); 
+  fun die s = (mes("Mul: " ^ s ^ "\n");
                Crash.impossible("Mul: " ^ s ^ "\n"))
   fun length [] = 0
     | length (x::xs) = 1+(length xs)
@@ -52,22 +52,22 @@ struct
   type mulef = (ateffect * mul) list
 
 
-  (* A multiplicity arrow effect is a pair mularef = (eps,psi) 
+  (* A multiplicity arrow effect is a pair mularef = (eps,psi)
      of an effect variable and a multiplicty effect. Here psi may contain atomic
      effects with multiplicity zero. Also the multiplicity arrow effect may be
      cyclic, i.e., eps in Dom(psi). By keeping the zero-multiplicities in psi,
      we make sure that it makes no difference whether one first "contracts" a
      cycle - making all multiplicities in psi INF - and then increase the multiplicity
-     of an atomic effect in Dom psi OR do those two operations in the reverse order. 
+     of an atomic effect in Dom psi OR do those two operations in the reverse order.
 
      We maintain an invariant that whenever a plain arrow effect eps.phi appears
      in the derivation of the input term to multiplicity inference then eps.psi
      appears at the corresponding place during multiplicity inference, for some
      psi which satisfies:
-     
+
            Dom psi = phi
   *)
-     
+
   type effectvar = Eff.effect                  (* eps *)
 
   type effect = Eff.effect list                (* phi *)
@@ -80,7 +80,7 @@ struct
      multiplicity arrow effect which the effect variable stands for.
      Just one global such map is used. The multiplicity arrow effects
      in its range increase monotonically during multiplicity inference.
-     
+
      The multiplicity arrow effects in the range are shared (hence the "ref" below).
      The idea is that if Psi(eps) = r as ref(eps.psi) and eps' \in fev(dom(psi))
      and the multiplicities of eps' are increased, then that increment must also
@@ -89,7 +89,7 @@ struct
      free occurrence of eps'. Thus only one occurrence of the semantic object needs
      to be updated. *)
 
-  structure EffVarEnv = 
+  structure EffVarEnv =
     struct
       type 'a map = 'a QM_EffVarEnv.qmap
 
@@ -104,7 +104,7 @@ struct
 
   val plus_mularefmap = EffVarEnv.plus
   val empty_mularefmap = GlobalEffVarEnv.empty
-  val initial_mularefmap = 
+  val initial_mularefmap =
     let val _ = Eff.eval_phis [Eff.toplevel_arreff]
         val mulef = map (fn ae => (ae,INF)) (Eff.represents Eff.toplevel_arreff)
         val mularef = (Eff.toplevel_arreff,mulef)
@@ -113,7 +113,7 @@ struct
 
   type mularefmap = mularef ref GlobalEffVarEnv.map        (* cross-module Psi *)
   type imp_mularefmap = mularef ref EffVarEnv.map          (* intra-compilation-unit Psi *)
-  fun combine(Psi_global: mularefmap, Psi_local: imp_mularefmap): imp_mularefmap= 
+  fun combine(Psi_global: mularefmap, Psi_local: imp_mularefmap): imp_mularefmap=
        QM_EffVarEnv.combine(Psi_global, Psi_local)
 
   fun summul (NUM n1, NUM n2) = if n1 + n2 > K then INF else NUM (n1 + n2)
@@ -137,42 +137,42 @@ struct
     in eq(mulef1,mulef2)
     end handle Eff.AE_LT => die "equal_mulef.effect in dom of mulef1 or mulef2 not atomic"
 
-  fun equal_mularef((eps1,mulef1),(eps2,mulef2)) = 
+  fun equal_mularef((eps1,mulef1),(eps2,mulef2)) =
     Eff.eq_effect(eps1,eps2) andalso equal_mulef(mulef1,mulef2)
 
   fun enrich_mularefmap(mularefmap1,mularefmap2) =
     GlobalEffVarEnv.Fold(fn ((effectvar2,ref res2),b) => b andalso
 			 case GlobalEffVarEnv.lookup mularefmap1 effectvar2
 			   of SOME (ref res1) => equal_mularef(res1,res2)
-			    | NONE => false) true mularefmap2 
+			    | NONE => false) true mularefmap2
 
   fun restrict_mularefmap(mularefmap,effectvars) =
     List.foldl(fn (effectvar,acc) =>
 	       case GlobalEffVarEnv.lookup mularefmap effectvar
 		 of SOME res => GlobalEffVarEnv.add(effectvar,res,acc)
-		  | NONE => die "restrict_mularefmap") GlobalEffVarEnv.empty effectvars 
+		  | NONE => die "restrict_mularefmap") GlobalEffVarEnv.empty effectvars
 
   (* A quantified multiplicity arrow effect set represents a type scheme.
-     An effect environment is a finite map from program variables (lvars) to 
+     An effect environment is a finite map from program variables (lvars) to
      (refs to) quantified multiplicity arrow effect sets. *)
 
   type qmularefset = (effectvar list * place list * mularefset)* place     (* Xi *)
   val empty_qmularefset :qmularefset = (([], [],[]), Eff.toplevel_region_withtype_top )
 
-  type efenv = qmularefset ref LvarMap.map  
+  type efenv = qmularefset ref LvarMap.map
 
   fun restrict_efenv(efenv,lvars) =
     foldl(fn (lv,acc) =>
 	  case LvarMap.lookup efenv lv
 	    of SOME res => LvarMap.add(lv,res,acc)
 	     | NONE => die "restrict_efenv") LvarMap.empty lvars
- 
+
   (* normalize_qmularefset(qmularefset,sigma) normalizes qmularefset
    * with respect to the order arroweffects occur in tau of sigma.
    * Rhos are normalized during S and R. *)
   fun normalize_qmularefset(qmularefset : qmularefset,sigma) : qmularefset =
     let fun visit n = Eff.get_visited n := true
-	fun unvisit n = Eff.get_visited n := false 
+	fun unvisit n = Eff.get_visited n := false
         val ((epss,rhos,mularefs),rho) = qmularefset
         val epss' = Eff.remove_duplicates (List.filter Eff.is_arrow_effect (RType.ann_sigma(sigma)[]))
 	val _ = List.app visit epss
@@ -203,7 +203,7 @@ struct
 	fun on_ae ae = if Eff.is_arrow_effect ae then
 	                  case !(Eff.get_instance ae)
 			    of SOME ae => ae
-			     | NONE => ae 
+			     | NONE => ae
 		       else if Eff.is_put ae then
 			      case !(Eff.get_instance (rho_of ae))
 				of SOME rho => Eff.mkPut rho
@@ -212,13 +212,13 @@ struct
 			      case !(Eff.get_instance (rho_of ae))
 				of SOME rho => Eff.mkGet rho
 				 | NONE => ae
-		       else die "on_ae.not atomic effect" 
+		       else die "on_ae.not atomic effect"
 	fun on_mulef [] = []
 	  | on_mulef ((ae,mul)::mulef) = (on_ae ae,mul) :: on_mulef mulef
 	fun on_mularef (eps,mulef) =
 	  case !(Eff.get_instance eps)
 	    of SOME node => (node, on_mulef mulef)
-	     | NONE => die "on_mularef.no forward info" 
+	     | NONE => die "on_mularef.no forward info"
 	fun on_mularefset [] = []
 	  | on_mularefset (mularef::mularefset) = on_mularef mularef :: on_mularefset mularefset
 	val _ = List.app setInstance eps_pairs
@@ -234,8 +234,8 @@ struct
 
      (* (1) normalize qmularefsets so that bvs comes in the order of first
       * occurrences in its type. (2) instantiate qmularefsets to fresh
-      * rhos and arrow effects. (3) check for equality of instantiated 
-      * mularefsets. *) 
+      * rhos and arrow effects. (3) check for equality of instantiated
+      * mularefsets. *)
 
     let val qmularefset1 as ((epss1,rhos1,_),_) = normalize_qmularefset(qmularefset1,sigma1)
         val qmularefset2 = normalize_qmularefset(qmularefset2,sigma2)
@@ -252,13 +252,13 @@ struct
   fun enrich_efenv((efenv1,rse1),(efenv2,rse2)) =
     LvarMap.Fold(fn ((lv2,ref res2),b) => b andalso
 	    case LvarMap.lookup efenv1 lv2
-	      of SOME (ref res1) => 
+	      of SOME (ref res1) =>
 		let val sigma1 = case RSE.lookupLvar rse1 lv2
-				   of SOME a => #3 a
+				   of SOME a => #4 a
 				    | NONE => die "enrich_efenv.lv not in rse1"
 		    val sigma2 = case RSE.lookupLvar rse2 lv2
-				   of SOME a => #3 a
-				    | NONE => die "enrich_efenv.lv not in rse2"			
+				   of SOME a => #4 a
+				    | NONE => die "enrich_efenv.lv not in rse2"
 		in equal_qmularefset((res1,sigma1),(res2,sigma2))
 		end
 	       | NONE => false) true efenv2
@@ -269,32 +269,32 @@ struct
      affected by substitution are accessed via references so that only one occurrence
      of each object needs to be affected by the substitution *)
 
-  datatype shared = MULEFF    of mulef ref                                 
-                  | MULAREFF  of mularef ref                             
-                  | MULSCHEME of qmularefset ref                        
+  datatype shared = MULEFF    of mulef ref
+                  | MULAREFF  of mularef ref
+                  | MULSCHEME of qmularefset ref
 
 
-  structure DepEnv = 
+  structure DepEnv =
     struct
       type 'a map = (int * 'a) list array
       val size = 999
       val empty: shared list map = Array.array(size, [])
 
-      fun lookup _ eps = 
+      fun lookup _ eps =
         let val key = Effect.key_of_eps_or_rho eps
             val hash = key mod size
-        in 
+        in
             SOME(#2(EdList.first(fn (i':int,r) => i' = key) (Array.sub(empty, hash))))
             handle _ => NONE
         end
-      fun layoutMap _ _ _ _ = PP.LEAF "(not implemented)" 
+      fun layoutMap _ _ _ _ = PP.LEAF "(not implemented)"
       fun hash(key) = key mod size
       val key_of_toplevel_arreff = Effect.key_of_eps_or_rho Effect.toplevel_arreff
       fun add(eps, range, _) =
         let val key = Effect.key_of_eps_or_rho eps
             val hash = hash key
             val old_list = Array.sub(empty, hash)
-        in 
+        in
             if key <> key_of_toplevel_arreff
               then
               Array.update(empty,hash, (key,range)::old_list)
@@ -304,8 +304,8 @@ struct
       fun reset() = (* reset all entries of the depency map array to [] and then
                        insert toplevel_arreff (e9) in the map with an empty list of
                        dependants. *)
-          let fun loop n = if n>=size then () 
-                           else 
+          let fun loop n = if n>=size then ()
+                           else
                            (Array.update(empty,n,[]);
                             loop(n+1))
           in loop 0;
@@ -326,19 +326,19 @@ struct
   (*pretty printing*)
 
   type StringTree = PP.StringTree
-  fun layout_list children= 
+  fun layout_list children=
        PP.NODE{start = "[", finish = "]", indent = 1, childsep = PP.RIGHT ",",
                children = children}
 
-  fun layout_set children= 
+  fun layout_set children=
        PP.NODE{start = "{", finish = "}", indent = 1, childsep = PP.RIGHT ",",
                children = children}
 
-  fun layout_set_horizontal children= 
+  fun layout_set_horizontal children=
        PP.HNODE{start = "{", finish = "}", childsep = PP.RIGHT ",",
                children = children}
 
-  fun layout_pair(t1,sep,t2) = 
+  fun layout_pair(t1,sep,t2) =
          PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT sep,
                  children =   [t1,t2]}
 
@@ -346,10 +346,10 @@ struct
     | show_mul INF = "INF"
 
   fun layout_mul m = PP.LEAF (show_mul m)
-      
+
   (* layout_ateffect ae sets and clears visited fields*)
-  fun layout_ateffect ae = 
-       if Eff.is_arrow_effect(Eff.find ae) then Eff.layout_effect ae 
+  fun layout_ateffect ae =
+       if Eff.is_arrow_effect(Eff.find ae) then Eff.layout_effect ae
        else Eff.layout_effect_deep ae
 
   (* layout_effectvar: no side effect *)
@@ -359,28 +359,28 @@ struct
   fun show_effectvar eps = PP.flatten1(layout_effectvar eps)
 
   (* layout_effect: sets and clears visited fields *)
-  fun layout_effect (ef:effect) = 
+  fun layout_effect (ef:effect) =
         layout_list (map layout_ateffect ef)
 
   (* layout_aref sets and clears visited fields *)
-  fun layout_aref(eps, phi) = 
+  fun layout_aref(eps, phi) =
         layout_pair(layout_ateffect eps, ".", layout_effect phi)
 
- 
+
   (*  layout_atompair sets and clears visited fields *)
-  fun layout_atompair(ae, mul) = 
+  fun layout_atompair(ae, mul) =
         layout_pair(layout_ateffect ae, ":", layout_mul mul)
 
   (*  layout_mulef sets and clears visited fields *)
-  fun layout_mulef psi = 
+  fun layout_mulef psi =
         layout_set_horizontal (map layout_atompair psi)
 
   (*  layout_mularef sets and clears visited fields *)
-  fun layout_mularef (eps, psi)= 
+  fun layout_mularef (eps, psi)=
         layout_pair(layout_effectvar eps,".", layout_mulef psi)
 
   (*  layout_mularefset sets and clears visited fields *)
-  fun layout_mularefset Psi = 
+  fun layout_mularefset Psi =
         layout_set (map layout_mularef Psi)
 
 (*
@@ -389,12 +389,12 @@ struct
 *)
 
   (*  layout_mularefmap sets and clears visited fields *)
-  fun layout_mularefmap Psi = 
+  fun layout_mularefmap Psi =
         GlobalEffVarEnv.layoutMap{start = "Mularefmap: [", finish = "]", eq = " -> ", sep = ", "}
           layout_effectvar (layout_mularef o !) Psi
 
   (*  layout_imp_mularefmap: sets and clears visited fields *)
-  fun layout_imp_mularefmap Psi = 
+  fun layout_imp_mularefmap Psi =
         EffVarEnv.layoutMap{start = "{", finish = "}", eq = "=", sep = ","}
           layout_effectvar (layout_mularef o !) Psi
 
@@ -402,7 +402,7 @@ struct
   fun layout_effectvars epss =
        PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT" ",
                children = map layout_effectvar epss}
-      
+
   (*  layout_place : no side-effect *)
   fun layout_place p = Eff.layout_effect p
 
@@ -410,34 +410,34 @@ struct
   fun layout_places rhos =
        PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT" ",
                children = map layout_place rhos}
-  fun at t = 
+  fun at t =
        PP.NODE{start = " at ", finish = "", indent = 4, childsep = PP.NOSEP,
                children = [t]}
-      
+
   (* layout_qmul: sets and clears visited fields *)
-  fun layout_qmul (epses, rhos, Psi)= 
+  fun layout_qmul (epses, rhos, Psi)=
        PP.NODE{start = "forall ", finish = "", indent = 7, childsep = PP.NOSEP,
                children = [layout_effectvars epses,
                            layout_places rhos,
                            layout_mularefset Psi]}
 
-  fun layout_qmularefset (((epses, rhos, Psi), p):qmularefset)= 
+  fun layout_qmularefset (((epses, rhos, Psi), p):qmularefset)=
        PP.NODE{start = "forall ", finish = "", indent = 7, childsep = PP.NOSEP,
                children = [layout_effectvars epses,
                            layout_places rhos,
                            layout_mularefset Psi,
                            at(layout_place p)]}
 
-  fun layout_efenv mulenv = 
+  fun layout_efenv mulenv =
         LvarMap.layoutMap{start="Efenv: [", finish = "]", eq = " -> ", sep = ", "}
           (PP.LEAF o Lvar.pr_lvar)
-          (layout_qmularefset o !) 
+          (layout_qmularefset o !)
           mulenv
 
-  fun layout_mapping (eps, aref) = 
+  fun layout_mapping (eps, aref) =
        layout_pair(layout_effectvar eps, "->", layout_mularef aref)
-      
-  fun layout_subst subst = 
+
+  fun layout_subst subst =
        layout_set(map layout_mapping subst)
 
   fun layout_Phi Phi = layout_set (map layout_aref Phi)
@@ -446,7 +446,7 @@ struct
     | layout_shared (MULAREFF(ref mularef)) = layout_mularef mularef
     | layout_shared (MULSCHEME(ref qmularefset)) = layout_qmularefset qmularefset
 
-  fun layout_dependency_map dep = 
+  fun layout_dependency_map dep =
       DepEnv.layoutMap{start="{", finish = "}", eq = "=", sep = ","}
           (fn eps => Effect.layout_effect eps)
           (fn shared_list => layout_list(map layout_shared shared_list))
@@ -483,29 +483,29 @@ struct
       else if  Eff.ae_lt(ae1, ae2)
          then (ae1, mul1)::sumef (psi1',psi2)
       else (ae2, mul2)::sumef (psi1,psi2')
-         
+
   structure MultiMerge =
     struct
       (* A multi-way merge can be implemented by keeping a heep
          of list of elements to be sorted. The lists in the heap
          are non-empty. The key value of a list is the key value
          of the first element of the list.*)
-    
-    
+
+
       fun leq_key(i, j) = Eff.ae_lt(i,j) orelse Eff.eq_effect(i,j)
-    
+
       structure HI = struct
         type elem = (Eff.effect * mul)list
         fun leq((x,_)::_, (y,_)::_) = leq_key(x,y)
           | leq _ = die "leq"
         fun layout(_)=  die "layout"
       end
-    
+
       structure Heap = Heap(structure HeapInfo = HI)
-    
+
       fun merge((ae1,m1), (ae2,m2)) = (ae1, summul(m1,m2))
       fun eq((ae1, m1), (ae2,m2)) = Eff.eq_effect(ae1, ae2)
-    
+
       fun makeHeap ll =
         let fun mkHeap([], h) = h
               | mkHeap([]::rest, h) = mkHeap(rest,h)
@@ -513,25 +513,25 @@ struct
         in
             mkHeap(ll, Heap.empty)
         end
-    
+
       fun insert([], h) = h
         | insert( l, h) = Heap.insert l h
-    
+
       fun merge_against(min, h) =
           if Heap.is_empty h then [min]
           else let (*val (l1 as (x1::xs1), h1) = Heap.delete_min h*)
 	           val (l1,x1,xs1,h1) =
 		     case Heap.delete_min h
 		       of (l1 as (x1::xs1), h1) => (l1,x1,xs1,h1)
-			| _ => die "merge_against" 
-               in  if eq(min,x1) then 
+			| _ => die "merge_against"
+               in  if eq(min,x1) then
                       if Heap.is_empty h1 then merge(min,x1)::xs1
                          else merge_against(merge(min,x1), insert(xs1, h1))
-                   else 
+                   else
                       if Heap.is_empty h1 then min :: l1
                       else min :: merge_against(x1, insert(xs1, h1))
                end
-    
+
        fun merge_all h =
           if Heap.is_empty h
              then []
@@ -539,22 +539,22 @@ struct
 	           val (l1,x1,xs1,h1) =
 		     case Heap.delete_min h
 		       of (l1 as (x1::xs1), h1) => (l1,x1,xs1,h1)
-			| _ => die "merge_against" 
+			| _ => die "merge_against"
                in  merge_against(x1, insert(xs1,h1))
                end
-    
+
       fun multimerge (ll: HI.elem list) =
           merge_all(makeHeap ll)
     end
-    
-    
+
+
   fun sum_psis [psi] = psi
     | sum_psis [psi1,psi2] = sumef(psi1,psi2)
     | sum_psis [] = die "sum_psis: expects at least one argument"
     | sum_psis (at_least_three) = MultiMerge.multimerge(at_least_three) (*sumef(psi, sum_psis psis)*)
 
- 
- 
+
+
   (* maxef(psi1,psi2): computes the max of psi1 and psi2.
      One does not necessarily have  Dom(psi1) = Dom(psi2).
      Done by merging psi1 and psi2
@@ -597,8 +597,8 @@ struct
     | diffef_aux _ = raise DiffEf
 *)
 
-  local 
-      fun check ((e1,_)::(e2,_)::x) = 
+  local
+      fun check ((e1,_)::(e2,_)::x) =
 	  let fun toStr e = PP.flatten1 (Effect.layout_effect e)
 	      val r1 = Effect.rho_of e1
 	      val r2 = Effect.rho_of e2
@@ -612,7 +612,7 @@ struct
 	  end
 	| check _ = die "check bad"
   in
-  fun diffef(mulef1,mulef2) = 
+  fun diffef(mulef1,mulef2) =
     diffef_aux(mulef1,mulef2)
      handle DiffEf =>
        (say "oh-oh ... cannot subtract effects";
@@ -625,9 +625,9 @@ struct
   end
 
   fun timesef (mul,[]) = []
-    | timesef (mul,(ae1, mul1)::psi)= 
+    | timesef (mul,(ae1, mul1)::psi)=
                  (ae1, timesmul(mul, mul1))::timesef(mul, psi)
- 
+
 (* (*removeatomiceffects(psi,phi): computes psi\\phi
      assumes phi \subseteq Dom(psi) *)
   fun removeatomiceffects(psi, [])= psi
@@ -654,7 +654,7 @@ struct
                      then not(!(Eff.get_visited(Eff.rho_of ae)))
                 else*) die "removeatomiceffects.keep"
 	    end
-      in 
+      in
          List.filter keep psi footnote
             List.app (fn eps_or_rho => Eff.get_visited eps_or_rho := false) discharged_basis
       end
@@ -666,7 +666,7 @@ struct
      is the multiplicity of PUT(rho_i) in psi; mul_i is 0 if PUT(rho_i)\notin\Dom(\psi);
      getmultiplicities assumes that psi is sorted on Eff.ae_lt and that [rho_1,...,rho_k]
      are sorted according to their "key" fields. *)
-   
+
   fun getmultiplicities_loop(psi, [])= []
     | getmultiplicities_loop((ae1, mul1)::psi, rho::rhos) =
         let
@@ -683,7 +683,7 @@ struct
 
   fun getmultiplicities(psi,rhos) = getmultiplicities_loop(psi,rhos)
 
-  fun getmultiplicities_unsorted(psi,rhos) = 
+  fun getmultiplicities_unsorted(psi,rhos) =
       map (fn rho => let val ae_rho = Eff.mkPut rho
                      in #2(EdList.first (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi)
                         handle EdList.First _ => NUM 0
@@ -718,49 +718,49 @@ struct
 
   fun efvar eps = [(eps, NUM 1)]
   fun makearef(eps,psi)= (eps,psi)
-  fun makesubst(eps, mularef):efsubst = [(eps, mularef)] 
+  fun makesubst(eps, mularef):efsubst = [(eps, mularef)]
   fun mk_infinite (eps, mulef) = (eps, map (fn (ae, _) => (ae, INF)) mulef)
-	    
-  fun lookup_mularefset((eps, psi)::Psi, eps') = 
+
+  fun lookup_mularefset((eps, psi)::Psi, eps') =
         if Eff.eq_effect(eps, eps') then psi else lookup_mularefset(Psi, eps')
-    | lookup_mularefset([], eps') = 
-        die ("lookup_mularefset: " ^ show_effectvar eps') 
+    | lookup_mularefset([], eps') =
+        die ("lookup_mularefset: " ^ show_effectvar eps')
 
   fun lookup_mularefmap(Psi,eps)=
       case EffVarEnv.lookup Psi eps of
         SOME x => x
-      | NONE => die ("lookup_mularefmap: "^show_effectvar eps) 
+      | NONE => die ("lookup_mularefmap: "^show_effectvar eps)
 
 
-  fun reify(mularefs) = 
+  fun reify(mularefs) =
       List.foldl (fn ((r as ref(eps,mulef)),acc) =>
-          GlobalEffVarEnv.add((*Eff.key_of_eps_or_rho*) eps, r, acc)) 
+          GlobalEffVarEnv.add((*Eff.key_of_eps_or_rho*) eps, r, acc))
             GlobalEffVarEnv.empty
             mularefs
 
-  fun lookup_efenv(EE, lvar) = 
+  fun lookup_efenv(EE, lvar) =
       case LvarMap.lookup EE lvar of
         SOME x => x
-      | NONE => die ("lookup_efenv: "^Lvar.pr_lvar lvar) 
+      | NONE => die ("lookup_efenv: "^Lvar.pr_lvar lvar)
 
   fun declare(EE,x,Xi) = LvarMap.add(x,Xi,EE)
   fun plus(EE,EE') = LvarMap.plus(EE,EE')
 
   fun getimage([], x)= NONE
     | getimage((x, fx)::f, x')= if Eff.eq_effect(x,x') then SOME fx else getimage(f, x')
-	    
+
   fun apply_mulef (S, [])= []
-    | apply_mulef (S, psi0 as (ae_m as (eps,mul))::psi) = 
+    | apply_mulef (S, psi0 as (ae_m as (eps,mul))::psi) =
             if Eff.is_arrow_effect (Eff.find eps)
               then case getimage(S, eps) of
-        	     SOME (eps', psi') => 
-                       sumef([(eps', mul)],  
+        	     SOME (eps', psi') =>
+                       sumef([(eps', mul)],
                              sumef(timesef(mul, psi'), apply_mulef(S, psi)))
 	            | NONE => sumef([ae_m], apply_mulef(S,psi))
             else psi0 (*sumef([ae_m], apply_mulef(S, psi))*)
 
 
-  fun getarefs(Psi, epses)=  
+  fun getarefs(Psi, epses)=
       ListPair.zip(epses, map (fn eps => lookup_mularefmap(Psi,eps)) epses)
 
   fun apply_mularef(S, (eps,psi)) = case getimage(S, eps) of
@@ -770,19 +770,19 @@ struct
   fun pairmap f S [] = []
     | pairmap f S (x::xs) = f(S, x)::(pairmap f S xs)
 
-  fun apply_mularefset(S, Psi)= pairmap apply_mularef S Psi 
+  fun apply_mularefset(S, Psi)= pairmap apply_mularef S Psi
 
 
   fun sort_psi psi = ListSort.sort (fn (ae1,_) => fn (ae2,_) => Eff.ae_lt(ae1,ae2)) psi
 
   fun apply_regionsubst_mulef(S, psi) =
       let val unsorted: mulef ref = ref []
-          val psi'_list = 
+          val psi'_list =
 	    (List.foldr (fn ((ae,mul),l) =>
-			 if Eff.is_put ae then 
+			 if Eff.is_put ae then
 			   let val rho = rho_of ae
 			   in if !(Eff.get_visited(rho)) then (* generic *)
-	                        (case getimage(S, rho) 
+	                        (case getimage(S, rho)
 				   of SOME place => (unsorted:= (Eff.mkPut place, mul):: !unsorted; l)
 				    | NONE => die "apply_regionsubst_mulef: non-generic node visited")
 			      else (* non-generic *)
@@ -796,23 +796,23 @@ struct
       end
 
 
-  fun apply_regionsubst_mularef(S, (eps,psi)) =  
+  fun apply_regionsubst_mularef(S, (eps,psi)) =
               (eps, apply_regionsubst_mulef(S, psi))
 
-  fun apply_regionsubst_mularefset(S, Psi)= 
+  fun apply_regionsubst_mularefset(S, Psi)=
       let val visited_refs = map (fn (rho,_) => Eff.get_visited rho) S
-          
+
       in
-          List.app (fn r => r:=true) visited_refs;  
+          List.app (fn r => r:=true) visited_refs;
                      (* mark dom(Sr) as visited; for faster instantiation *)
-          pairmap apply_regionsubst_mularef S Psi 
+          pairmap apply_regionsubst_mularef S Psi
                   footnote List.app (fn r => r:=false) visited_refs
       end
 
-  fun apply_qmularefset(S, ((epses,rhos, Psi), p)) = 
+  fun apply_qmularefset(S, ((epses,rhos, Psi), p)) =
                ((epses, rhos, apply_mularefset(S, Psi)), p)
- 
-  
+
+
 
   fun instantiateRegions([], qmularefset as((epses, [], Psi), place))= qmularefset
     | instantiateRegions(places, ((epses, rhos, Psi), place))=
@@ -821,7 +821,7 @@ struct
 	 in
 	     ((epses, [], apply_regionsubst_mularefset(Sr, Psi)), place)
 	 end
-          handle BasisCompat.ListPair.UnequalLengths => 
+          handle BasisCompat.ListPair.UnequalLengths =>
 		 die ("instantiateRegions: " ^ Int.toString(List.length rhos) ^ " formals, " ^
                       Int.toString (List.length places) ^ "actuals")
 
@@ -829,7 +829,7 @@ struct
     | cyclic(eps, (eps',_):: rest) =
         Eff.eq_effect(eps,eps') orelse
         Eff.ae_lt(eps', eps) andalso cyclic(eps,rest)
-      
+
 
   (* find_cyclic mularefs returns (SOME aref, mularefs') if
      there exists an aref in mularefs which is cyclic (in which case
@@ -851,7 +851,7 @@ struct
                           (List.filter (fn (eps',_) => not(Eff.eq_effect(eps,eps'))) psi)
            val Se = makesubst(eps,(eps,new_psi))
        in remove_cycles(apply_mularefset(Se,rest)@[(eps,new_psi)])
-       end 
+       end
 
 
 (*
@@ -863,18 +863,18 @@ struct
   fun checkPsi Psi = List.al (not o cyclic) Psi
 *)
 
-  fun makeqmularefset (rhos,epses, Psi:imp_mularefmap, place, cone):qmularefset = 
+  fun makeqmularefset (rhos,epses, Psi:imp_mularefmap, place, cone):qmularefset =
          let
              val c = Eff.push cone
-	     val Psi':mularefset= 
+	     val Psi':mularefset=
 	       remove_cycles(map (fn (eps, r as ref mularef) => mularef)
                                       (getarefs(Psi, epses)))
 	     val (freshrhos,c) = Eff.freshRhos(rhos,c)
 	     val (freshepses,c) = Eff.freshEpss(epses, c)
-	     val S = BasisCompat.ListPair.zipEq(epses, BasisCompat.ListPair.zipEq(freshepses, 
+	     val S = BasisCompat.ListPair.zipEq(epses, BasisCompat.ListPair.zipEq(freshepses,
                                               map (fn x => []) freshepses))
 	     val Sr= BasisCompat.ListPair.zipEq(rhos, freshrhos)
-	     val Psi'' : mularefset = apply_mularefset(S, Psi') 
+	     val Psi'' : mularefset = apply_mularefset(S, Psi')
 	     val Psi'' : mularefset = apply_regionsubst_mularefset(Sr, Psi'')
 	 in
              (*if checkPsi Psi'' then () else die "makeqmularefset creates bad scheme"*)
@@ -882,21 +882,21 @@ struct
 	     ((freshepses, freshrhos, Psi''), place)
 	 end
           handle BasisCompat.ListPair.UnequalLengths => die "makeqmularefset.Zip"
-	       | _ => die "makeqmularefset" 
+	       | _ => die "makeqmularefset"
 
   val empty_dep = DepEnv.empty
 
-  fun lookup_dep(dep, eps) = 
+  fun lookup_dep(dep, eps) =
       case DepEnv.lookup dep eps of
         SOME x => x
       | NONE => die ("lookup_dep: "^ show_effectvar eps ^ "\n" ^
-                     PP.flatten1(layout_dependency_map dep)) 
+                     PP.flatten1(layout_dependency_map dep))
 
   fun add_dependency(dep,eps,shared) =
        let val shared_list =  case DepEnv.lookup dep eps of
                   SOME x => x
                 | NONE => []
-       in 
+       in
           DepEnv.add(eps, shared :: shared_list, dep)
        end handle _ => die "add_dependency"
 
@@ -912,8 +912,8 @@ struct
      Normal form is achieved by calling function nf, when normal form is important.
   *)
 
-  fun nf (eps,psi) = 
-      if cyclic(eps, psi) 
+  fun nf (eps,psi) =
+      if cyclic(eps, psi)
          then (* cyclic effect: make all multiplicities infinite *)
             (eps, map(fn (eps,_) => (eps, INF))
                      (List.filter (fn (eps',_) => not(Eff.eq_effect(eps,eps'))) psi))
@@ -924,29 +924,29 @@ struct
      Precondition: Dom(old_mulef) = Dom(new_mulef) and new_mulef>= old_mulef*)
 
   fun mulef_has_grown_loop(mulef_old:mulef as [], muleff_new:mulef as []) = false
-    | mulef_has_grown_loop((ae1,m1)::mulef_old, (ae2,m2)::muleff_new) = 
-              if not(Eff.eq_effect(ae1,ae2)) 
+    | mulef_has_grown_loop((ae1,m1)::mulef_old, (ae2,m2)::muleff_new) =
+              if not(Eff.eq_effect(ae1,ae2))
                  then die "mulef_has_grown_loop: mismatching atomic effects"
               else intof_mul m2 > intof_mul m1
                    orelse mulef_has_grown_loop(mulef_old, muleff_new)
-    | mulef_has_grown_loop _ = 
+    | mulef_has_grown_loop _ =
               die "mulef_has_grown: mismatching multiplicity effects"
 
-  fun mulef_has_grown(mulef_old, mulef_new) = 
+  fun mulef_has_grown(mulef_old, mulef_new) =
       mulef_has_grown_loop(mulef_old, mulef_new) handle x =>
-            (mes("\nold: " ^ PP.flatten1(layout_mulef mulef_old) 
+            (mes("\nold: " ^ PP.flatten1(layout_mulef mulef_old)
                        ^ "\nnew: " ^ PP.flatten1(layout_mulef mulef_new) ^ "\n");
              raise x)
 
 
-  fun mularef_has_grown(mularef_old:mularef, mularef_new: mularef) = 
+  fun mularef_has_grown(mularef_old:mularef, mularef_new: mularef) =
            mulef_has_grown(#2(nf mularef_old), #2(nf mularef_new))
 
-  fun nf_mularef_has_grown(mularef_old:mularef as (_,psi_old), 
-                           mularef_new:mularef as (_,psi_new)) = 
+  fun nf_mularef_has_grown(mularef_old:mularef as (_,psi_old),
+                           mularef_new:mularef as (_,psi_new)) =
            mulef_has_grown(psi_old, psi_new)
 
-  fun qmularefset_has_grown(old as ((_,_,Psi_old),_): qmularefset, 
+  fun qmularefset_has_grown(old as ((_,_,Psi_old),_): qmularefset,
                             new as ((_,_,Psi_new),_): qmularefset) =
          List.exists nf_mularef_has_grown (BasisCompat.ListPair.zipEq(Psi_old,Psi_new))
             handle _ => (say ("qmularefset_has_grown, old scheme:");
@@ -959,15 +959,15 @@ struct
      every element of the list  dep(eps), i.e., on every semantic object in
      which eps occurs free. *)
 
-  fun saw_progress() = 
-      (no_increase_sofar:= false; 
+  fun saw_progress() =
+      (no_increase_sofar:= false;
        count_increment:= !count_increment+1)
 
   fun doSubst(eps,[],dep): unit = ()
     | doSubst(eps,mulef,dep): unit =
                  let val dependants = lookup_dep(dep,eps)
                      val Se = makesubst(eps,(eps,mulef))
-                     fun update_shared(MULEFF(r as ref mulef)) = 
+                     fun update_shared(MULEFF(r as ref mulef)) =
                              let val new = apply_mulef(Se, mulef)
                              in
                                 if !no_increase_sofar andalso mulef_has_grown(mulef, new)
@@ -975,10 +975,10 @@ struct
                                 else ();
                                 r:= new
                              end
-                       | update_shared(MULSCHEME(r as ref qmularefset)) = 
+                       | update_shared(MULSCHEME(r as ref qmularefset)) =
                              let val new = apply_qmularefset(Se,qmularefset)
-                             in 
-                                if !no_increase_sofar andalso 
+                             in
+                                if !no_increase_sofar andalso
                                      qmularefset_has_grown(qmularefset, new)
                                    then saw_progress()
                                 else ();
@@ -986,10 +986,10 @@ struct
                              end
                        | update_shared(MULAREFF(r as ref mularef)) =
                              let val new = apply_mularef(Se, mularef)
-                             in 
+                             in
                                 if !no_increase_sofar andalso mularef_has_grown(mularef, new)
                                       handle x =>
-                                        (say ("mularef_has_grown: old: "); 
+                                        (say ("mularef_has_grown: old: ");
                                              outtree(layout_mularef mularef);
                                          say ("mularef_has_grown: new: ");
                                              outtree(layout_mularef new);
@@ -998,14 +998,14 @@ struct
                                 else ();
                                 r:= new
                              end
-                 in 
+                 in
                      no_increase_sofar:= true;
                      List.app update_shared dependants
                         handle x => (mes("substitution: " ^ PP.flatten1(layout_subst Se) ^ "\n");
                                      raise x)
                  end
 (*
-  fun eq_epss(epses1,epses2): bool = 
+  fun eq_epss(epses1,epses2): bool =
       List.all Eff.eq_effect (ListPair.zip(epses1,epses2))
 
   fun makeinf_arroweffect(eps, phi) = (eps, map (fn x => (x, INF)) phi) (* phi must be sorted! *)
@@ -1016,10 +1016,10 @@ struct
      that there is a marked improvement is compilation speed if one
      starts out by setting multiplicities to 1. This should not be
      a great loss of precision: the reason an atomic effect got into
-     an effect in the first place is presumably most often that 
-     there was at least one occurrence of it. 
- 
-     For assignments this solution may be too imprecise: assignment 
+     an effect in the first place is presumably most often that
+     there was at least one occurrence of it.
+
+     For assignments this solution may be too imprecise: assignment
      gives rise to multiplicities 0. This remains to be seen.
   *)
 
@@ -1028,7 +1028,7 @@ struct
   fun makezero_arroweffect(eps, phi) = (eps, makezero_muleffect phi)
 
   fun makezero_Phi(Phi: arroweffect list) : imp_mularefmap =
-    List.foldl (fn ((eps,phi), Psi) => 
+    List.foldl (fn ((eps,phi), Psi) =>
                EffVarEnv.add(eps, ref(makezero_arroweffect(eps,phi)), Psi))
             (QM_EffVarEnv.mk 1000 GlobalEffVarEnv.empty)
             Phi
@@ -1036,7 +1036,7 @@ struct
   (* instantiate(actuals: arefset, qmul, Psi, dep)
      instantiates one ground segment of actuals at a time *)
 
-  fun check_eff s e = 
+  fun check_eff s e =
       if Eff.is_put e orelse Eff.is_get e then
 	  let val r = Eff.rho_of e
 	      val k = Eff.key_of_eps_or_rho r
@@ -1050,11 +1050,11 @@ struct
     | check_psi s ((e,_)::xs) =
       (check_eff s e; check_psi s xs)
 
-  fun instantiate([], Xi, Psi, dep)= ()     
-    | instantiate((aref0 as (eps0,phi0))::plainarroweffects, 
-                  qmul as (eps0' :: epses', [], Psi'), Psi, dep)= 
+  fun instantiate([], Xi, Psi, dep)= ()
+    | instantiate((aref0 as (eps0,phi0))::plainarroweffects,
+                  qmul as (eps0' :: epses', [], Psi'), Psi, dep)=
 	 let
-(*             val _ = if checkPsi Psi' then () else 
+(*             val _ = if checkPsi Psi' then () else
                         (say "instantiate applied to ill-formed Xi = ";
                          outtree(layout_qmul qmul))
 *)
@@ -1068,7 +1068,7 @@ struct
 	     val _ = check_psi "actual_psi" actual_psi (* mael 2004-10-19 *)
 	     val formal_psi = lookup_mularefset(Psi', eps0')
 	     val _ = check_psi "formal_psi" formal_psi (* mael 2004-10-19 *)
-             val new_actual_psi:mulef = 
+             val new_actual_psi:mulef =
                        maxef(actual_psi,
                              formal_psi) (* formal, acyclic *)
 	     val _ = check_psi "before nf" new_actual_psi (* mael 2004-10-19 *)
@@ -1076,12 +1076,12 @@ struct
              val (eps0,new_actual_psi) = nf (eps0,new_actual_psi)
 	     val _ = check_psi "after nf" new_actual_psi (* mael 2004-10-19 *)
 (*
-             val t4 = layout_mulef new_actual_psi 
+             val t4 = layout_mulef new_actual_psi
 *)
              val Se:efsubst = [(eps0', (eps0,new_actual_psi))]
              val _ = doSubst(eps0, diffef(new_actual_psi,actual_psi), dep)
 	       handle X => (say "\ninstantiate.doSubst or diffef failed\n"; raise X)
-                                handle x => 				    
+                                handle x =>
 				  (say "eps0 is "; outtree (Eff.layout_effect eps0);
 				   say "eps0' is "; outtree (Eff.layout_effect eps0');
 (*
@@ -1089,24 +1089,24 @@ struct
                                    say "\nlookup Psi gave"; outtree t1;
                                    say "\nnf gave"; outtree t2;
                                    say "\nlookup Psi' gave"; outtree t3;
-                                   say "\nnew_actual_psi was:"; outtree t4; 
+                                   say "\nnew_actual_psi was:"; outtree t4;
 *)
-				   raise x) 
+				   raise x)
 	 in
               instantiate(plainarroweffects,
-                          (epses', [], 
-                           apply_mularefset(Se, 
-                                            List.filter (fn (eps, psi) => 
-                                                      not(Eff.eq_effect(eps,eps0'))) 
-                                            Psi')), 
-                          Psi, 
-                          dep)                       
+                          (epses', [],
+                           apply_mularefset(Se,
+                                            List.filter (fn (eps, psi) =>
+                                                      not(Eff.eq_effect(eps,eps0')))
+                                            Psi')),
+                          Psi,
+                          dep)
 
          end
-       | instantiate _ = die "instatiate: wrong arguments" 
+       | instantiate _ = die "instatiate: wrong arguments"
      handle Zip => die "instantiate"
 
-  fun instantiateeffects(arroweffects, qmul as ((epses, [], Psi'), _), Psi, dep) = 
+  fun instantiateeffects(arroweffects, qmul as ((epses, [], Psi'), _), Psi, dep) =
              instantiate(arroweffects, (epses, [], Psi'), Psi, dep)
     | instantiateeffects _ = die "instantiateeffects: non-empty list of formal regions"
 
@@ -1129,7 +1129,7 @@ struct
                     if Eff.is_arrow_effect (Eff.find eps)
                        then add_dependency(dep, eps, shared)
                     else dep
-                  ) dep 
+                  ) dep
                   phi
 *)
   (* cons_if_not_there(eps', phi): insert eps' into phi, which is sorted,
@@ -1137,8 +1137,8 @@ struct
      already in phi, it is not inserted again. *)
 
   fun cons_if_not_there(eps',[]) = [eps']
-    | cons_if_not_there(eps',eps::rest) = 
-           if Eff.eq_effect(eps,eps') then eps::rest 
+    | cons_if_not_there(eps',eps::rest) =
+           if Eff.eq_effect(eps,eps') then eps::rest
            else if Eff.ae_lt(eps', eps) then eps' :: eps :: rest
            else eps::cons_if_not_there(eps',rest)
 
@@ -1146,12 +1146,12 @@ struct
        (* add r as a shared semantic object of off effectvariables in eps'.psi  *)
        add_dependencies(dep, MULAREFF r, cons_if_not_there(eps',map #1 psi))
 
-  fun mk_init_dependency_map (Psi:imp_mularefmap) = 
+  fun mk_init_dependency_map (Psi:imp_mularefmap) =
         let val _ = reset_dep()
 	    val result = EffVarEnv.Fold mk_init_dep empty_dep Psi
-        in 
+        in
             (*say "initial dependency map";*)
-            (*say "omitted"*)  
+            (*say "omitted"*)
             (*outtree(layout_dependency_map result);*)
             result
         end
@@ -1182,6 +1182,6 @@ struct
   val pu_qmularefset = Pickle.pairGen0(Pickle.tup3Gen0(Eff.pu_effects,Eff.pu_effects,pu_mularefset),
 				       Eff.pu_effect)
   val pu_efenv = LvarMap.pu Lvar.pu (Pickle.ref0Gen pu_qmularefset)
-      
+
   val pu_mularefmap = GlobalEffVarEnv.pu Eff.pu_effect (Pickle.ref0Gen pu_mularef)
 end

@@ -29,7 +29,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 		       of SOME lamb => SOME(f lamb)
 			| NONE => NONE)
       in
-	case f lamb 
+	case f lamb
 	  of VAR _ => lamb
 	   | INTEGER _ => lamb
 	   | WORD _ => lamb
@@ -37,17 +37,18 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | REAL _ => lamb
 	   | FN{pat,body} => FN{pat=pat,body=passTD f body}
 	   | LET{pat,bind,scope} => LET{pat=pat,bind=passTD f bind,scope = passTD f scope}
-	   | FIX{functions,scope} => FIX{functions=map (fn {lvar, tyvars, Type, bind} =>
-							{lvar=lvar,tyvars=tyvars,
+           | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=passTD f scope}
+	   | FIX{functions,scope} => FIX{functions=map (fn {lvar, regvars, tyvars, Type, bind} =>
+							{lvar=lvar,regvars=regvars,tyvars=tyvars,
 							 Type=Type,bind=passTD f bind}) functions,
 					 scope=passTD f scope}
 	   | APP(lamb1, lamb2, tc) => APP(passTD f lamb1, passTD f lamb2, tc)
 	   | EXCEPTION(excon,tauOpt,lamb) => EXCEPTION(excon,tauOpt, passTD f lamb)
 	   | RAISE(lamb,tl) => RAISE(passTD f lamb,tl)
 	   | HANDLE(lamb1, lamb2) => HANDLE(passTD f lamb1, passTD f lamb2)
-	   | SWITCH_I {switch, precision} => 
+	   | SWITCH_I {switch, precision} =>
 	    SWITCH_I {switch=passSwitch (passTD f) switch, precision=precision}
-	   | SWITCH_W {switch, precision} => 
+	   | SWITCH_W {switch, precision} =>
 	    SWITCH_W {switch=passSwitch (passTD f) switch, precision=precision}
 	   | SWITCH_S switch => SWITCH_S(passSwitch (passTD f) switch)
 	   | SWITCH_C switch => SWITCH_C(passSwitch (passTD f) switch)
@@ -71,7 +72,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 		       of SOME lamb => SOME(f lamb)
 			| NONE => NONE)
       in
-	f (case lamb 
+	f (case lamb
 	     of VAR _ => lamb
 	      | INTEGER _ => lamb
 	      | WORD _ => lamb
@@ -79,17 +80,18 @@ structure LambdaBasics: LAMBDA_BASICS =
 	      | REAL _ => lamb
 	      | FN{pat,body} => FN{pat=pat,body=passBU f body}
 	      | LET{pat,bind,scope} => LET{pat=pat,bind=passBU f bind,scope = passBU f scope}
-	      | FIX{functions,scope} => FIX{functions=map (fn {lvar, tyvars, Type, bind} =>
-							   {lvar=lvar,tyvars=tyvars,Type=Type,bind=passBU f bind}) 
+              | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=passBU f scope}
+	      | FIX{functions,scope} => FIX{functions=map (fn {lvar, regvars, tyvars, Type, bind} =>
+							   {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,bind=passBU f bind})
 					              functions,
 					    scope=passBU f scope}
 	      | APP(lamb1, lamb2, tc) => APP(passBU f lamb1, passBU f lamb2, tc)
 	      | EXCEPTION(excon,tauOpt,lamb) => EXCEPTION(excon,tauOpt, passBU f lamb)
 	      | RAISE(lamb,tl) => RAISE(passBU f lamb,tl)
 	      | HANDLE(lamb1, lamb2) => HANDLE(passBU f lamb1, passBU f lamb2)
-	      | SWITCH_I {switch, precision} => 
+	      | SWITCH_I {switch, precision} =>
 	       SWITCH_I {switch=passSwitch (passBU f) switch, precision=precision}
-	      | SWITCH_W {switch, precision} => 
+	      | SWITCH_W {switch, precision} =>
 	       SWITCH_W {switch=passSwitch (passBU f) switch, precision=precision}
 	      | SWITCH_S switch => SWITCH_S(passSwitch (passBU f) switch)
 	      | SWITCH_C switch => SWITCH_C(passSwitch (passBU f) switch)
@@ -103,15 +105,15 @@ structure LambdaBasics: LAMBDA_BASICS =
     fun foldTD (f:'a->LambdaExp->'a) (acc:'a) (lamb:LambdaExp) =
       let
 	val new_acc = f acc lamb
-	
+
 	fun foldSwitch (SWITCH(arg, selections, wildcard)) =
 	  let val acc' = foldl' (foldTD f) (foldTD f new_acc arg) (map #2 selections)
           in case wildcard
 	       of SOME lamb => foldTD f acc' lamb
 		| NONE => acc'
-          end          
+          end
       in
-	case lamb 
+	case lamb
 	  of VAR _ => new_acc
 	   | INTEGER _ => new_acc
 	   | WORD _ => new_acc
@@ -119,6 +121,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | REAL _ => new_acc
 	   | FN{pat,body} => foldTD f new_acc body
 	   | LET{pat,bind,scope} => foldTD f (foldTD f new_acc bind) scope
+           | LETREGION{regvars,scope} => foldTD f new_acc scope
 	   | FIX{functions,scope} => foldTD f (foldl' (foldTD f) new_acc  (map #bind functions)) scope
 	   | APP(lamb1, lamb2, _) => foldTD f (foldTD f new_acc lamb1) lamb2
 	   | EXCEPTION(excon,tauOpt,lamb) => foldTD f new_acc lamb
@@ -146,7 +149,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	     | map_opt NONE = NONE
        in SWITCH(f e, map_sel sel, map_opt opt_e)
        end
- 
+
     fun map_lamb f lamb =
       case lamb
         of VAR _ => lamb
@@ -154,21 +157,23 @@ structure LambdaBasics: LAMBDA_BASICS =
          | WORD _ => lamb
          | REAL _ => lamb
          | STRING _ => lamb
-	 | FN{pat,body} => FN{pat=pat,body=f body} 
+	 | FN{pat,body} => FN{pat=pat,body=f body}
          | LET{pat,bind,scope} => LET{pat=pat,bind=f bind,scope=f scope}
+         | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=f scope}
 	 | FIX{functions,scope} =>
-	       FIX{functions=map (fn {lvar,tyvars,Type,bind} => {lvar=lvar,
-								 tyvars=tyvars,
-								 Type=Type,
-								 bind=f bind}) functions,
+	   FIX{functions=map (fn {lvar,regvars,tyvars,Type,bind} => {lvar=lvar,
+                                                                     regvars=regvars,
+								     tyvars=tyvars,
+								     Type=Type,
+								     bind=f bind}) functions,
 		   scope=f scope}
-	 | APP(e1,e2, tc) => APP(f e1, f e2, tc) 
-	 | EXCEPTION(excon,ty_opt,scope) => EXCEPTION(excon,ty_opt, f scope) 
-         | RAISE(e,tl) => RAISE(f e, tl) 
-	 | HANDLE(e1,e2) => HANDLE(f e1, f e2) 	   
-	 | SWITCH_I {switch,precision} => 
+	 | APP(e1,e2, tc) => APP(f e1, f e2, tc)
+	 | EXCEPTION(excon,ty_opt,scope) => EXCEPTION(excon,ty_opt, f scope)
+         | RAISE(e,tl) => RAISE(f e, tl)
+	 | HANDLE(e1,e2) => HANDLE(f e1, f e2)
+	 | SWITCH_I {switch,precision} =>
 	       SWITCH_I {switch=map_lamb_sw f switch, precision=precision}
-	 | SWITCH_W {switch,precision} => 
+	 | SWITCH_W {switch,precision} =>
 	       SWITCH_W {switch=map_lamb_sw f switch, precision=precision}
 	 | SWITCH_S sw => SWITCH_S (map_lamb_sw f sw)
 	 | SWITCH_C sw => SWITCH_C (map_lamb_sw f sw)
@@ -188,7 +193,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	     | app_opt NONE = ()
        in f e; app_sel sel; app_opt opt_e
        end
- 
+
     fun app_lamb f lamb =
       case lamb
         of VAR _ => ()
@@ -198,11 +203,12 @@ structure LambdaBasics: LAMBDA_BASICS =
          | STRING _ => ()
 	 | FN{pat,body} => f body
          | LET{pat,bind,scope} => (f bind; f scope)
+         | LETREGION{regvars,scope} => f scope
 	 | FIX{functions,scope} => (app (f o #bind) functions; f scope)
-	 | APP(e1,e2,_) => (f e1; f e2) 
-	 | EXCEPTION(excon,ty_opt,scope) => f scope 
+	 | APP(e1,e2,_) => (f e1; f e2)
+	 | EXCEPTION(excon,ty_opt,scope) => f scope
          | RAISE(e,tl) => f e
-	 | HANDLE(e1,e2) => (f e1; f e2) 	   
+	 | HANDLE(e1,e2) => (f e1; f e2)
 	 | SWITCH_I {switch,...} => app_lamb_sw f switch
 	 | SWITCH_W {switch,...} => app_lamb_sw f switch
 	 | SWITCH_S sw => app_lamb_sw f sw
@@ -218,12 +224,12 @@ structure LambdaBasics: LAMBDA_BASICS =
      * collected, so that it is collected only once.
      * ----------------------------------------------------------------- *)
 
-    fun freevars e : lvar list * excon list = 
+    fun freevars e : lvar list * excon list =
       let val excons_seen : excon list ref = ref nil
 	  val excon_bucket : excon list ref = ref nil
 	  val lvar_bucket : lvar list ref = ref nil
 	  fun insert_lv lv = if !(Lvars.is_inserted lv) then ()
-			     else (Lvars.is_inserted lv := true; 
+			     else (Lvars.is_inserted lv := true;
 				   lvar_bucket := lv :: !lvar_bucket)
 	  fun insert_excon ex = if List.exists (fn ex1 => Excon.eq(ex,ex1)) (!excons_seen) then ()
 				else (excon_bucket := ex :: !excon_bucket;
@@ -239,15 +245,15 @@ structure LambdaBasics: LAMBDA_BASICS =
 	       | FN{pat,body} => (app (fn (lv,_) => Lvars.is_inserted lv := true) pat;
 				  fv body;
 				  app (fn (lv,_) => Lvars.is_inserted lv := false) pat)
-	       | LET{pat,bind,scope} => (fv bind; 
+	       | LET{pat,bind,scope} => (fv bind;
 					 app (fn (lv,_,_) => Lvars.is_inserted lv := true) pat;
 					 fv scope;
 					 app (fn (lv,_,_) => Lvars.is_inserted lv := false) pat)
 	       | FIX{functions,scope} => (app (fn {lvar,...} => Lvars.is_inserted lvar := true) functions;
 					  app (fv o #bind) functions; fv scope;
 					  app (fn {lvar,...} => Lvars.is_inserted lvar := false) functions)
-	       | EXCEPTION(excon,ty_opt,scope) => 
-		(excons_seen := excon :: !excons_seen; 
+	       | EXCEPTION(excon,ty_opt,scope) =>
+		(excons_seen := excon :: !excons_seen;
 		 fv scope;
 		 excons_seen := List.filter (fn ex => not(Excon.eq(ex,excon))) (!excons_seen))
 	       | PRIM(EXCONprim excon, lambs) => (insert_excon excon; app fv lambs)
@@ -255,7 +261,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	       | _ => app_lamb fv e
 	  val _ = clean e
 	  val _ = fv e
-	  val lvs = !lvar_bucket before (app (fn lv => Lvars.is_inserted lv := false) (!lvar_bucket); 
+	  val lvs = !lvar_bucket before (app (fn lv => Lvars.is_inserted lv := false) (!lvar_bucket);
 					 lvar_bucket := nil)
 	  val exs = !excon_bucket before excon_bucket := nil
 (*
@@ -276,15 +282,15 @@ structure LambdaBasics: LAMBDA_BASICS =
     local
       fun new_tv tv = if equality_tyvar tv then fresh_eqtyvar()
 		      else fresh_tyvar()
-			
+
       type ren = (lvar, lvar) FinMapEq.map * (tyvar, tyvar) FinMap.map
       val empty_ren = (FinMapEq.empty, FinMap.empty)
       fun add_lv (lv, lv', (lv_map, tv_map)) = (FinMapEq.add Lvars.eq (lv,lv',lv_map), tv_map)
       fun add_lvs [] ren = ren
-	| add_lvs ((lv,lv')::pairs) ren = add_lvs pairs (add_lv (lv,lv',ren)) 
+	| add_lvs ((lv,lv')::pairs) ren = add_lvs pairs (add_lv (lv,lv',ren))
       fun add_tv (tv, tv', (lv_map, tv_map)) = (lv_map, FinMap.add(tv,tv',tv_map))
       fun add_tvs [] ren = ren
-	| add_tvs ((tv,tv')::pairs) ren = add_tvs pairs (add_tv (tv,tv',ren)) 
+	| add_tvs ((tv,tv')::pairs) ren = add_tvs pairs (add_tv (tv,tv',ren))
       fun on_tv (_, tv_map) tv = case FinMap.lookup tv_map tv
 				   of SOME tv => tv
 				    | NONE => tv
@@ -303,13 +309,13 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun on_tl ren (Types ts) = Types (map (on_tau ren) ts)
 	| on_tl _ tl = tl
-      
+
       fun on_fnpat ren [] = []
 	| on_fnpat ren ((lv,tau)::pat) = (on_lv ren lv, on_tau ren tau) :: on_fnpat ren pat
-	
+
       fun on_letpat ren [] = []
 	| on_letpat ren ((lv,tvs,tau)::pat) = (on_lv ren lv, map (on_tv ren) tvs, on_tau ren tau) :: on_letpat ren pat
-	
+
       fun new_fnpat pat ren =
 	let val lvs = map #1 pat
 	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
@@ -326,7 +332,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	in if is_in tv tvs' then rem_dubs tvs tvs'
 	   else rem_dubs (tv::tvs') tvs
 	end
-      
+
       fun new_letpat pat ren =
 	let val lvs = map #1 pat
 	  val tvs = ((rem_dubs []) o flatten) (map #2 pat)
@@ -337,11 +343,11 @@ structure LambdaBasics: LAMBDA_BASICS =
 	  val ren_pat = add_lvs lvs_pairs ren_bind
 	in (on_letpat ren_pat pat, ren_bind, ren_scope)
 	end
-      
+
       fun on_sw on_e (SWITCH(e,sel,opt_e)) =
 	SWITCH(on_e e, map (fn (a, e) => (a, on_e e)) sel,
 	       case opt_e of SOME e => SOME (on_e e) | NONE => NONE)
-	
+
       fun on_functions ren on_e fns =
 	let val lvs = map #lvar fns
 	  val tvs = ((rem_dubs []) o flatten) (map #tyvars fns)
@@ -349,19 +355,20 @@ structure LambdaBasics: LAMBDA_BASICS =
 	  val tvs_pairs = map (fn tv => (tv, new_tv tv)) tvs
 	  val ren' = add_lvs lvs_pairs ren
 	  val ren_binds = add_tvs tvs_pairs ren'
-	  fun on_function {lvar,tyvars,Type,bind} = {lvar=on_lv ren' lvar, 
-						     tyvars=map (on_tv ren_binds) tyvars, 
-						     Type=on_tau ren_binds Type,
-						     bind=on_e ren_binds bind}
+	  fun on_function {lvar,regvars,tyvars,Type,bind} = {lvar=on_lv ren' lvar,
+                                                             regvars=regvars,
+						             tyvars=map (on_tv ren_binds) tyvars,
+						             Type=on_tau ren_binds Type,
+						             bind=on_e ren_binds bind}
 	in (map on_function fns, ren')
 	end
-      
+
       fun on_prim ren prim =
 	case prim
-	  of CONprim {con,instances} => CONprim {con=con, instances=map (on_tau ren) instances}
+	  of CONprim {con,instances,regvar} => CONprim {con=con, instances=map (on_tau ren) instances, regvar=regvar}
 	   | DECONprim {con,instances,lv_opt} => DECONprim {con=con, instances=map (on_tau ren) instances,lv_opt=on_lv_opt ren lv_opt}
 	   | DEREFprim {instance} => DEREFprim {instance=on_tau ren instance}
-	   | REFprim {instance} => REFprim {instance=on_tau ren instance}
+	   | REFprim {instance,regvar} => REFprim {instance=on_tau ren instance,regvar=regvar}
 	   | ASSIGNprim {instance} => ASSIGNprim {instance=on_tau ren instance}
 	   | EQUALprim {instance} => EQUALprim {instance=on_tau ren instance}
 	   | CCALLprim {name, instances, tyvars, Type} =>
@@ -376,11 +383,12 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | RESET_REGIONSprim {instance} => RESET_REGIONSprim {instance=on_tau ren instance}
 	   | FORCE_RESET_REGIONSprim {instance} => FORCE_RESET_REGIONSprim {instance=on_tau ren instance}
 	   | x => x
-	    
+
       fun on_e ren lamb =
 	case lamb
-	  of VAR{lvar,instances} => VAR{lvar=on_lv ren lvar, 
-					instances=map (on_tau ren) instances}
+	  of VAR{lvar,instances,regvars} => VAR{lvar=on_lv ren lvar,
+					        instances=map (on_tau ren) instances,
+                                                regvars=regvars}
 	   | INTEGER _ => lamb
 	   | WORD _ => lamb
 	   | STRING _ => lamb
@@ -391,6 +399,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | LET{pat,bind,scope} => let val (pat', ren_bind, ren_scope) = new_letpat pat ren
 				    in LET{pat=pat',bind=on_e ren_bind bind, scope=on_e ren_scope scope}
 				    end
+           | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=on_e ren scope}
 	   | FIX{functions,scope} => let val (functions', ren') = on_functions ren on_e functions
 				     in FIX{functions=functions', scope=on_e ren' scope}
 				     end
@@ -399,13 +408,13 @@ structure LambdaBasics: LAMBDA_BASICS =
 						      on_e ren e)
 	   | RAISE(e,tl) => RAISE(on_e ren e, on_tl ren tl)
 	   | HANDLE(e1,e2) => HANDLE(on_e ren e1, on_e ren e2)
-	   | SWITCH_I {switch,precision} => 
-	    SWITCH_I {switch=on_sw (on_e ren) switch, precision=precision} 
-	   | SWITCH_W {switch,precision} => 
-	    SWITCH_W {switch=on_sw (on_e ren) switch, precision=precision} 
-	   | SWITCH_S sw => SWITCH_S (on_sw (on_e ren) sw) 
-	   | SWITCH_C sw => SWITCH_C (on_sw (on_e ren) sw) 
-	   | SWITCH_E sw => SWITCH_E (on_sw (on_e ren) sw) 
+	   | SWITCH_I {switch,precision} =>
+	    SWITCH_I {switch=on_sw (on_e ren) switch, precision=precision}
+	   | SWITCH_W {switch,precision} =>
+	    SWITCH_W {switch=on_sw (on_e ren) switch, precision=precision}
+	   | SWITCH_S sw => SWITCH_S (on_sw (on_e ren) sw)
+	   | SWITCH_C sw => SWITCH_C (on_sw (on_e ren) sw)
+	   | SWITCH_E sw => SWITCH_E (on_sw (on_e ren) sw)
 	   | PRIM(prim,es) => PRIM(on_prim ren prim, map (on_e ren) es)
 	   | FRAME _ => lamb
       (* MEMO: frames *)
@@ -420,15 +429,15 @@ structure LambdaBasics: LAMBDA_BASICS =
      (* exports lamb - finds the exported lvars and excons of a lambda
       * expression lamb. There may not be any frame!! *)
     fun exports lamb : (lvar list * excon list) =
-      let 
+      let
 	exception Found of lvar list * excon list
-	fun f () (FRAME{declared_lvars, declared_excons}) = 
+	fun f () (FRAME{declared_lvars, declared_excons}) =
 	          raise Found (map #lvar declared_lvars, map #1 declared_excons)
 	  | f () _ = ()
-      in (foldTD f () lamb; 
-	  ([], []))      (* in case there is no frame, no variables are exported... *) 
+      in (foldTD f () lamb;
+	  ([], []))      (* in case there is no frame, no variables are exported... *)
 	handle Found p => p
-      end 
+      end
 
 
 
@@ -437,7 +446,7 @@ structure LambdaBasics: LAMBDA_BASICS =
     (* ------------- *)
 
     local
-      exception TypeVariableCapture   
+      exception TypeVariableCapture
         (* raised if the application of a substitution
 	 * would lead to type variable capture
 	 *)
@@ -447,17 +456,17 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun mk_subst f p =
 	let fun mk ([],[]) = []
 	      | mk (tv::tvs,t::ts) = (tv,t) :: mk(tvs,ts)
-	      | mk (l1,l2) = die ("mk_subst: " 
-				  ^ Int.toString (length l1) ^ " tyvars, " 
+	      | mk (l1,l2) = die ("mk_subst: "
+				  ^ Int.toString (length l1) ^ " tyvars, "
 				  ^ Int.toString (length l2) ^ " types; " ^ f())
 	in mk p
 	end
 
       fun on_Type [] tau : Type = tau
-	| on_Type S tau : Type = 
-	let 
-	  fun tv_Subst tau = 
-	    (case tau 
+	| on_Type S tau : Type =
+	let
+	  fun tv_Subst tau =
+	    (case tau
 		 of TYVARtype tyvar => (case List.find (fn (tyvar':tyvar, tau') => tyvar = tyvar') S
 					  of SOME res => #2 res
 					   | NONE => tau)
@@ -468,8 +477,8 @@ structure LambdaBasics: LAMBDA_BASICS =
 	in tv_Subst tau
 	end
 
-      fun on_Types [] types : Type list = types 
-	| on_Types S types = map (on_Type S) types 
+      fun on_Types [] types : Type list = types
+	| on_Types S types = map (on_Type S) types
 
       fun on_TypeList [] typelist = typelist
 	| on_TypeList S (Types ts) = Types (on_Types S ts)
@@ -477,11 +486,11 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun on_prim [] (prim: Type prim) : Type prim = prim   (* basically the same function as above for *)
 	| on_prim S (prim: Type prim) : Type prim =         (* renamings; mael *)
-	case prim 
-	  of CONprim {con, instances} => CONprim {con=con, instances=on_Types S instances}
+	case prim
+	  of CONprim {con,instances,regvar} => CONprim {con=con, instances=on_Types S instances, regvar=regvar}
 	   | DECONprim {con, instances,lv_opt} => DECONprim {con=con,instances=on_Types S instances,lv_opt=lv_opt}
 	   | DEREFprim {instance} => DEREFprim{instance=on_Type S instance}
-	   | REFprim {instance} => REFprim{instance=on_Type S instance}
+	   | REFprim {instance,regvar} => REFprim{instance=on_Type S instance,regvar=regvar}
 	   | ASSIGNprim {instance} => ASSIGNprim{instance=on_Type S instance}
 	   | EQUALprim {instance} => EQUALprim{instance=on_Type S instance}
 	   | CCALLprim {name, instances, tyvars, Type} =>
@@ -500,32 +509,32 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun equal_tyvar x y = x = y
       fun tyvarsType tau : tyvar Set.Set =
-	case tau 
+	case tau
 	  of TYVARtype tyvar => Set.singleton tyvar
 	   | ARROWtype(taus1,taus2) => Set.union equal_tyvar (tyvarsTypes taus1) (tyvarsTypes taus2)
 	   | CONStype(taus,_) => tyvarsTypes taus
 	   | RECORDtype taus => tyvarsTypes taus
-      and tyvarsTypes taus = 
-	foldl (fn (tau, set) => 
+      and tyvarsTypes taus =
+	foldl (fn (tau, set) =>
 		    Set.union equal_tyvar (tyvarsType tau) set) Set.empty taus
 
 
       fun on_LambdaExp [] lamb = lamb
 	| on_LambdaExp S lamb =
 	let
-	  fun tyvars_rangeS S : tyvar Set.Set = 
+	  fun tyvars_rangeS S : tyvar Set.Set =
 	    let val domS = map (TYVARtype o #1) S
 	        val rangeS = on_Types S (domS)
 	    in tyvarsTypes rangeS
 	    end
 
-	  fun restrictS S from = List.filter (fn (tv,tau) => not(member tv from)) S 
+	  fun restrictS S from = List.filter (fn (tv,tau) => not(member tv from)) S
 
-	  fun check_capture S bound_tyvars = 
+	  fun check_capture S bound_tyvars =
 	    let val S' = restrictS S bound_tyvars
-	      val intersection = 
-		Set.intersect equal_tyvar 
-		(tyvars_rangeS S') 
+	      val intersection =
+		Set.intersect equal_tyvar
+		(tyvars_rangeS S')
 		(Set.fromList equal_tyvar bound_tyvars)
 	    in
 	      if Set.isEmpty intersection then S'
@@ -543,9 +552,9 @@ structure LambdaBasics: LAMBDA_BASICS =
 			in (S', (lvar, tyvars, on_Type S' tau)::atpats)
 			end)
 	    (S, []) atpats
-	    
-	  fun f S lamb =  
-	    let 
+
+	  fun f S lamb =
+	    let
 	      fun on_switch S (SWITCH(arg,selections,wildcard)) =
 		SWITCH(f S arg,
 		       map (fn (const,x) => (const, f S x)) selections,
@@ -553,45 +562,46 @@ structure LambdaBasics: LAMBDA_BASICS =
 			 of SOME lamb => SOME(f S lamb)
 			  | NONE => NONE)
 	    in
-	      case lamb 
-		of VAR{lvar,instances} => VAR{lvar=lvar,instances=on_Types S instances}
+	      case lamb
+		of VAR{lvar,instances,regvars} => VAR{lvar=lvar,instances=on_Types S instances,regvars=regvars}
 		 | INTEGER _ => lamb
 		 | WORD _ => lamb
 		 | STRING _ => lamb
 		 | REAL _ => lamb
-		 | FN{pat,body} => FN{pat = map (fn (lv, Type) => (lv, on_Type S Type)) pat, 
+		 | FN{pat,body} => FN{pat = map (fn (lv, Type) => (lv, on_Type S Type)) pat,
 				      body = f S body}
 		 | LET{pat,bind,scope} => let val (S',pat') = on_let_pat S pat
 					  in LET{pat = pat',
 						 bind = f S' bind,
 						 scope = f S scope}
 					  end
-		 | FIX{functions,scope} => 
+                 | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=f S scope}
+		 | FIX{functions,scope} =>
 		  let
-		    fun on_function {lvar,tyvars,Type,bind} =
+		    fun on_function {lvar,regvars,tyvars,Type,bind} =
 		      let val S' = check_capture S tyvars
-		      in {lvar=lvar,tyvars=tyvars,Type=on_Type S' Type,bind=f S' bind}
-		      end 
+		      in {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=on_Type S' Type,bind=f S' bind}
+		      end
 		  in FIX{functions=map on_function functions, scope=f S scope}
 		  end
 		 | APP(lamb1,lamb2,tc) => APP(f S lamb1,f S lamb2,tc)
 		 | EXCEPTION(excon,tau_opt,lamb) =>
 		  EXCEPTION(excon,
-			    case tau_opt 
+			    case tau_opt
 			      of NONE => NONE
 			       | SOME tau => SOME (on_Type S tau),
 			    f S lamb)
 		 | RAISE(lamb,tl) => RAISE(f S lamb,on_TypeList S tl)
 		 | HANDLE(lamb1,lamb2) => HANDLE(f S lamb1,f S lamb2)
-		 | SWITCH_I {switch,precision} => 
+		 | SWITCH_I {switch,precision} =>
 		  SWITCH_I {switch=on_switch S switch, precision=precision}
-		 | SWITCH_W {switch,precision} => 
+		 | SWITCH_W {switch,precision} =>
 		  SWITCH_W {switch=on_switch S switch, precision=precision}
 		 | SWITCH_S switch => SWITCH_S(on_switch S switch)
 		 | SWITCH_C switch => SWITCH_C(on_switch S switch)
 		 | SWITCH_E switch => SWITCH_E(on_switch S switch)
 		 | PRIM (prim,lambs) => PRIM(on_prim S prim,map (f S) lambs)
-		 | FRAME _ => lamb (*MEMO*) 
+		 | FRAME _ => lamb (*MEMO*)
 	    end
 	in
 	  f S lamb
@@ -614,18 +624,18 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun eq_Type(tau1, tau2) =
 	case (tau1,tau2)
 	  of (TYVARtype tv1, TYVARtype tv2) => tv1=tv2
-	   | (ARROWtype(taus1,taus1'), ARROWtype(taus2,taus2')) => 
+	   | (ARROWtype(taus1,taus1'), ARROWtype(taus2,taus2')) =>
 	    eq_Types(taus1,taus2) andalso eq_Types(taus1',taus2')
 	   | (CONStype(taus1,tn1), CONStype(taus2,tn2)) =>
 	    eq_Types(taus1,taus2) andalso TyName.eq(tn1,tn2)
-	   | (RECORDtype taus1, RECORDtype taus2) => eq_Types(taus1,taus2) 
+	   | (RECORDtype taus1, RECORDtype taus2) => eq_Types(taus1,taus2)
            | _ => false
       and eq_Types([],[]) = true
 	| eq_Types(tau1::taus1,tau2::taus2) = eq_Type(tau1,tau2) andalso eq_Types(taus1,taus2)
 	| eq_Types _ = false
 
       fun eq_sigma_with_il(([],tau1,[]),([],tau2,[])) = eq_Type(tau1,tau2)
-	| eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2)) = 
+	| eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2)) =
 	if length tvs1 <> length tvs2 then false
 	else let val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs1
 	         val S1 = mk_subst (fn () => "eq_sigma_with_il1") (tvs1,tv_taus)
@@ -637,7 +647,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	     in eq_Type(tau1',tau2') andalso eq_Types(il1',il2')
 	     end
 
-      fun eq_sigma((tvs1,tau1),(tvs2,tau2)) = 
+      fun eq_sigma((tvs1,tau1),(tvs2,tau2)) =
 	eq_sigma_with_il((tvs1,tau1,[]),(tvs2,tau2,[]))
 
       fun match_sigma((tvs,tau), tau') =
@@ -646,11 +656,11 @@ structure LambdaBasics: LAMBDA_BASICS =
 		of SOME tau' => if eq_Type(tau,tau') then S
 				else die "match_sigma.add"
 		 | NONE => FinMap.add(tv,tau,S)
- 
+
 	    fun match_tau(S, tau, tau') =
 	      case (tau, tau')
 		of (TYVARtype tv, _) => add(tv,tau',S)
-		 | (ARROWtype(taus1,taus1'), ARROWtype(taus2,taus2')) => 
+		 | (ARROWtype(taus1,taus1'), ARROWtype(taus2,taus2')) =>
 		  let val S' = match_taus(S,taus1,taus2)
 		  in match_taus(S',taus1',taus2')
 		  end
@@ -661,12 +671,12 @@ structure LambdaBasics: LAMBDA_BASICS =
 		 | _ => die "match_tau3"
 
 	    and match_taus(S,[],[]) = S
-	      | match_taus(S,tau::taus,tau'::taus') = 
+	      | match_taus(S,tau::taus,tau'::taus') =
 	      let val S' = match_tau(S,tau,tau')
 	      in match_taus(S',taus,taus')
 	      end
 	      | match_taus _ = die "match_taus"
-	      
+
 	    val S = match_tau(FinMap.empty,tau,tau')
 	    val subst = map (fn tv => case FinMap.lookup S tv
 					of SOME tau => (tv,tau)
@@ -677,7 +687,7 @@ structure LambdaBasics: LAMBDA_BASICS =
     end (*local*)
 
     structure TVS = TyvarSet
-    
+
     fun close (PGM(db,e)) =
         let
 (*          val e = new_instance e *)
@@ -705,7 +715,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       val add = Lvars.Map.add
       fun pp_bl bl = String.concat (map (fn true => "1" | false => "0") bl)
       val layout = Lvars.Map.layoutMap {start="{",finish="}",eq="->",sep=","}
-                                       (PP.LEAF o Lvars.pr_lvar) 
+                                       (PP.LEAF o Lvars.pr_lvar)
                                        (fn NONE => PP.LEAF "none"
                                          | SOME bl => PP.LEAF (pp_bl bl))
       val pu = let open Pickle
@@ -737,32 +747,34 @@ structure LambdaBasics: LAMBDA_BASICS =
                        | NONE => NONE)
           in
 	    case e of
-              VAR{instances, lvar} => 
+              VAR{instances, lvar, regvars} =>
               (case lookup E lvar of
-                 SOME(SOME bl) => VAR{instances=t(bl,instances),lvar=lvar}
+                 SOME(SOME bl) => VAR{instances=t(bl,instances),lvar=lvar,regvars=regvars}
                | SOME NONE => e
                | NONE => die "N.VAR")
             | INTEGER _ => e
             | WORD _ => e
             | STRING _ => e
             | REAL _ => e
-	    | FN{pat,body} => 
+	    | FN{pat,body} =>
               let val E = foldl (fn ((lv,_),E) => add(lv,NONE,E)) E pat
               in FN{pat=pat,body=N E body}
               end
-	    | LET{pat,bind,scope} => 
-              let val (pat,E') = foldr (fn ((lv,tvs,tau),(pat,E)) => 
+	    | LET{pat,bind,scope} =>
+              let val (pat,E') = foldr (fn ((lv,tvs,tau),(pat,E)) =>
                                            let val ((tvs,tau),obl) = normScheme (tvs,tau)
                                            in ((lv,tvs,tau)::pat, add(lv,obl,E))
                                            end) (nil,E) pat
               in LET{pat=pat,bind=N E bind,scope=N E' scope}
               end
-	    | FIX{functions,scope} => 
+            | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=N E scope}
+	    | FIX{functions,scope} =>
               let val Eb = foldl (fn ({lvar,...},E) => add(lvar,NONE,E)) E functions
-                  val (functions,E') = 
-                      foldr (fn ({lvar,tyvars,Type,bind},(fns,E)) => 
+                  val (functions,E') =
+                      foldr (fn ({lvar,regvars,tyvars,Type,bind},(fns,E)) =>
                                 let val ((tyvars,Type),obl) = normScheme (tyvars,Type)
-                                in ({lvar=lvar,tyvars=tyvars,Type=Type,bind=N Eb bind}::fns, add(lvar,obl,E))
+                                in ({lvar=lvar,regvars=regvars,tyvars=tyvars,
+                                     Type=Type,bind=N Eb bind}::fns, add(lvar,obl,E))
                                 end) (nil,E) functions
               in FIX{functions=functions,scope=N E' scope}
               end
@@ -786,20 +798,20 @@ structure LambdaBasics: LAMBDA_BASICS =
           | RaisedExnBind => tl
 
       and Nf E fr =
-          let 
+          let
             val {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
 	         declared_excons: (excon * Type option) list} = fr
-            val Ef = foldl (fn ({lvar,...},acc) => 
-                               case lookup E lvar of 
+            val Ef = foldl (fn ({lvar,...},acc) =>
+                               case lookup E lvar of
                                  SOME r => add(lvar,r,acc)
                                | NONE => die "N.Frame") empty declared_lvars
             val _ = F := SOME Ef
-            val declared_lvars = 
+            val declared_lvars =
                 map (fn {lvar,tyvars,Type} =>
                         let val ((tyvars,Type),_) = normScheme (tyvars,Type)
                         in {lvar=lvar,tyvars=tyvars,Type=Type}
                         end) declared_lvars
-          in 
+          in
             {declared_lvars=declared_lvars,
              declared_excons=declared_excons}
           end
@@ -817,7 +829,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 
     (* Annotate tail call on APP constructs *)
     fun annotate_tail_calls (e: LambdaExp) : LambdaExp =
-        let 
+        let
           fun t tail e =
               let
 	        fun t_sw tail (SWITCH(arg, sels, opt)) =
@@ -832,12 +844,13 @@ structure LambdaBasics: LAMBDA_BASICS =
                 | WORD _ => e
                 | STRING _ => e
                 | REAL _ => e
-	        | FN{pat,body} => FN{pat=pat,body=t true body} 
-	        | LET{pat,bind,scope} => 
+	        | FN{pat,body} => FN{pat=pat,body=t true body}
+	        | LET{pat,bind,scope} =>
                   LET{pat=pat,bind=t false bind,scope=t tail scope}
-	        | FIX{functions,scope} => 
-                  let val functions = map (fn {lvar,tyvars,Type,bind} => 
-                                              {lvar=lvar,tyvars=tyvars,Type=Type,
+                | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=t false scope}
+	        | FIX{functions,scope} =>
+                  let val functions = map (fn {lvar,regvars,tyvars,Type,bind} =>
+                                              {lvar=lvar,regvars=regvars,tyvars=tyvars,Type=Type,
                                                bind=t false bind}) functions
                   in FIX{functions=functions,
                          scope=t tail scope}
@@ -856,5 +869,5 @@ structure LambdaBasics: LAMBDA_BASICS =
               end
         in t false e
         end
-      
+
   end

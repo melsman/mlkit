@@ -30,6 +30,7 @@ in
   in
      local open CompilerObjects
      in Backend/X64/InstsX64.sml
+        Backend/X64/CodeGenUtilX64.sml
         Backend/X64/CodeGenX64.sml
         local open Pickle Basics Manager
         in Backend/X64/ExecutionX64.sml

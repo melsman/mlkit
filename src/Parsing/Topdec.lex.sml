@@ -84,7 +84,7 @@ functor TopdecLex(structure Tokens: Topdec_TOKENS
   fun addUnicodeChar (arg, yypos, yytext) =
     LexUtils.addUnicodeChar (positionOfStream (arg, yypos), yytext) arg
 
-  fun has_quote s = 
+  fun has_quote s =
     let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
       handle _ => false
     in loop 0
@@ -980,10 +980,11 @@ let fun continue() : Internal.result =
                             else token_qualid(yytext,arg,yypos) end
 | 138 => let val yytext=yymktext() in token_id(yytext,arg,yypos) end
 | 165 => let val yytext=yymktext() in token_qualid(yytext,arg,yypos) end
-| 167 => let val yytext=yymktext() in (* a starting quote *)
-                            YYBEGIN Q; 
-                            LexUtils.clearString arg;
-                            token0 (BEGINQ,arg,yypos,yytext) end
+| 167 => let val yytext=yymktext() in if quotation() then
+			      (YYBEGIN Q;  (* a starting quote *)
+			       LexUtils.clearString arg;
+			       token0 (BEGINQ,arg,yypos,yytext))
+      	                    else (token0(BACKQUOTE, arg, yypos, yytext)) end
 | 170 => (LexUtils.addChars "`" arg; continue())
 | 173 => (LexUtils.addChars "^" arg; continue())
 | 175 => let val yytext=yymktext() in YYBEGIN AQ;
@@ -998,7 +999,7 @@ let fun continue() : Internal.result =
 | 179 => let val yytext=yymktext() in LexUtils.addChars yytext arg; continue() end
 | 181 => let val yytext=yymktext() in LexUtils.addChars yytext arg; continue() end
 | 184 => (continue())
-| 191 => let val yytext=yymktext() in YYBEGIN Q; LexUtils.clearString arg; 
+| 191 => let val yytext=yymktext() in YYBEGIN Q; LexUtils.clearString arg;
 			    token1(AQID, yytext, arg, yypos, yytext) end
 | 193 => let val yytext=yymktext() in YYBEGIN INITIAL;
 			    LexUtils.parStackPush (ref 1) arg;

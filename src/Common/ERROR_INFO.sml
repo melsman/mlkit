@@ -10,12 +10,13 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
     eqtype lab
     eqtype tycon
     type longid
-    type longtycon 
+    type longtycon
     type sigid
     type strid
-    type longstrid 
+    type longstrid
     eqtype funid
     type SigMatchError
+    type regvar
 
     datatype RepeatedId = ID_RID of id      (* Repeated identifier, syntax *)
 			| LAB_RID of lab    (* errors *)
@@ -26,6 +27,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
 			| STRID_RID of strid
 			| SIGID_RID of sigid
 			| FUNID_RID of funid
+                        | REGVAR_RID of regvar
 
     datatype ErrorInfo =
      (* Core errors: *)
@@ -40,7 +42,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | UNGENERALISABLE_TYVARS of id list
       | REALSCON_ATPAT
       | WRONG_ARITY of {expected: int, actual: int}
-      | FLEX_REC_NOT_RESOLVED 
+      | FLEX_REC_NOT_RESOLVED
       | REPEATED_IDS of RepeatedId list
       | TYVARS_NOT_IN_TYVARSEQ of string list
       | DATATYPES_ESCAPE_SCOPE of TyName list
@@ -48,7 +50,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | REBINDING_TRUE_NIL_ETC of id list
       | REBINDING_IT
 
-     (* General module errors: *)
+      (* General module errors: *)
       | SPECIFYING_TRUE_NIL_ETC of id list
       | SPECIFYING_IT
       | LOOKUP_SIGID of sigid
@@ -57,7 +59,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | EXDESC_SIDECONDITION
       | SHARING_TYPE_NOT_TYNAME of longtycon * TypeFcn
       | SHARING_TYPE_RIGID of longtycon * TyName
-      | SHARING_TYPE_ARITY of TyName list 
+      | SHARING_TYPE_ARITY of TyName list
 
       (*the following five errors come from rule 64, Definition 1997:*)
       | WHERE_TYPE_NOT_WELLFORMED of longtycon * TyName * Type
@@ -76,6 +78,10 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | U_CONFLICTING_DOMCE of longtycon * longtycon
       | U_CONFLICTINGARITY of longtycon * longtycon
       | RIGIDTYFUNEQERROR of longtycon * longtycon
+
+      (* Explicit regions errors *)
+      | REGVARS_IDONLY
+      | REGVARS_SCOPED_TWICE of regvar list
 
     type Report
     val report : ErrorInfo -> Report

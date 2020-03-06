@@ -40,7 +40,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	in let val a = f is
 	   in TextIO.closeIn is ; a
 	   end handle ? => (TextIO.closeIn is ; raise ?)
-	end 
+	end
 
     fun writeFile f t =
         let val os = TextIO.openOut f
@@ -80,7 +80,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     fun to_TypeInfo i =
       case ElabInfo.to_TypeInfo i
 	of SOME ti => SOME(ElabInfo.TypeInfo.normalise ti)
-	 | NONE => NONE 
+	 | NONE => NONE
 
     (* ----------------------------------------------------
      * Fresh unit names; in case functors `splits' sources
@@ -98,8 +98,8 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     type funid = TopdecGrammar.funid
     type strexp = TopdecGrammar.strexp
 
-    fun on_ElabInfo phi i = 
-       case to_TypeInfo i of 
+    fun on_ElabInfo phi i =
+       case to_TypeInfo i of
 	   SOME i' => ElabInfo.plus_TypeInfo i (ElabInfo.TypeInfo.on_TypeInfo(phi,i'))
 	 | NONE => i
 
@@ -107,30 +107,30 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     (* --------------------------------------------------------------
      * Now, how do we interpret a functor binding? It is too
      * expensive to keep the entire functor body in memory
-     * throughout the lifetime of the functor. 
+     * throughout the lifetime of the functor.
      *
      *   Instead, we memorize just enough information to make it
      * possible to rebuild the functor body (with all type info,
-     * etc.) at the point of an application of the functor. 
+     * etc.) at the point of an application of the functor.
      *
      *   At declaration time we write the ML source for the functor
      * body to disk (in the file funid.bdy.) Then, at application
      * time we rebuild the elaborated structure expression. The
      * information we need memorize to do this include
      *
-     *    (1) the infix-basis in which the body was previously 
+     *    (1) the infix-basis in which the body was previously
      *        resolved;
      *    (2) the elaboration-basis in which the body was
      *        previously elaborated;
      *    (3) the result of previously elaborating the body
      *        together with the set of type names generated
-     *        while elaborating the body (to perform 
+     *        while elaborating the body (to perform
      *        matching);
      *    (4) the realisation used for performing opacity-
      *        elimination.
-     * ------------------------------------------------------------ 
+     * ------------------------------------------------------------
      *)
-	       
+
     (* Extract a structure expression from a top-level (structure) declaration. *)
     fun extract_strexp_from_topdec(funid,topdec) =
       case topdec
@@ -144,21 +144,21 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	 | _ => die "extract_strexp_from_topdec.no (or more than one) structure declaration"
 
     type derived_form = ElabEnv option
-   
+
     fun derived_form_repair(df,strid_arg,topdec) =
-      case df of 
+      case df of
 	  NONE => topdec
-	| SOME E => 
+	| SOME E =>
 	  (case topdec
 	     of STRtopdec(i1,STRUCTUREstrdec(i2,STRBIND(i3,strid,strexp,NONE)),NONE) =>
-	       let val open_info = ElabInfo.plus_TypeInfo i1 (*say*) 
+	       let val open_info = ElabInfo.plus_TypeInfo i1 (*say*)
 	                (ElabInfo.TypeInfo.OPEN_INFO
-			 let val (SE,TE,VE) = ElabEnv.un E
-			 in (EqSet.list (Environments.SE.dom SE), EqSet.list (Environments.TE.dom TE), 
+			 let val (SE,TE,VE,_) = ElabEnv.un E
+			 in (EqSet.list (Environments.SE.dom SE), EqSet.list (Environments.TE.dom TE),
 			     EqSet.list (Environments.VE.dom VE))
 			 end)
-		   val open_dec = DecGrammar.OPENdec(open_info, 
-						     [WITH_INFO (open_info, 
+		   val open_dec = DecGrammar.OPENdec(open_info,
+						     [WITH_INFO (open_info,
 								 StrId.longStrIdOfStrId strid_arg)])
 		   val strexp' = LETstrexp(i2,DECstrdec(i1,open_dec),strexp)
 	       in STRtopdec(i1,STRUCTUREstrdec(i2,STRBIND(i3,strid,strexp',NONE)),NONE)
@@ -172,11 +172,11 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 		   * binding. We handle this by modifying the elaboration
 		   * basis and changing the resulting top-level
 		   * declaration. *)
-	   
+
 		  val (elabB, df : derived_form) =
-		      if StrId.invented_StrId strid then 
-			  let val E = 
-			         case ElabBasis.lookup_strid (#elabB BBC) strid of 
+		      if StrId.invented_StrId strid then
+			  let val E =
+			         case ElabBasis.lookup_strid (#elabB BBC) strid of
 				     SOME E => E
 				   | NONE => die "reelaborate.strid not in elabB"
 			  in (ElabBasis.plus_E(#elabB BBC,E), SOME E)
@@ -186,39 +186,39 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	       (* To do the matching to the old result, we temporarily store the contents of
 		* the Name-bucket. We then use the Name-bucket to find generated names during
 		* re-elaboration. *)
-	
+
 		(* val _ = print_basis elabB *)
 	         val names_old = !Name.bucket  (* remember to re-install these names *)
 	         val _ = Name.bucket := []
-		   
+
 		 (* Re-elaboration *)
 (*
-                 val filename = 
+                 val filename =
                      let val text = #filetext BBC
-                         val basedir = OS.Path.dir (Flags.get_string_entry "output")                        
+                         val basedir = OS.Path.dir (Flags.get_string_entry "output")
                          val filename = basedir ## (FunId.pr_FunId funid ^ ".bdy")
                      in writeFile filename text
                       ; filename
                      end
 *)
-	         val res = ParseElab.parse_elab {infB= #infB BBC, elabB=elabB, 
-						 absprjid= #absprjid BBC, 
-                                                 src=ParseElab.SrcString (#filetext BBC)} 
+	         val res = ParseElab.parse_elab {infB= #infB BBC, elabB=elabB,
+						 absprjid= #absprjid BBC,
+                                                 src=ParseElab.SrcString (#filetext BBC)}
 	      in case res
 		   of ParseElab.FAILURE (report,error_codes) => (print_error_report report;
 								 die "reelaborate.ParseElab.FAILURE")
 		    | ParseElab.SUCCESS {elabB=elabB',topdec,...} =>
-		     let 
+		     let
 			   (* We now extract the result environment out of the result basis
 			    * by looking up `funid' in the structure environment. *)
-			 val resE' = case ElabBasis.lookup_strid elabB' 
+			 val resE' = case ElabBasis.lookup_strid elabB'
 			                   ((StrId.mk_StrId o FunId.pr_FunId) funid)
 				       of SOME E => E
 					| NONE => die ("reelaborate.the builder has been applied - \
 					               \but I cannot find `funid' in resulting structure env.")
 
 			 val topdec = derived_form_repair(df, strid,topdec)
-					     
+
 			 (* Do opacity elimination again. *)
 			 fun opacity_elimination a = OpacityElim.opacity_elimination a
 			 val _ = chat "[opacity elimination begin...]"
@@ -229,14 +229,14 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 
 			 val names_elab = !Name.bucket
 			 val _ = Name.bucket := names_old  (* re-install old names *)
-						       
+
 			 (* The type name set T includes type names
 			  * generated during opacity elimination, see
 			  * functor OpacityElim; ME 1998-11-10. *)
 
 			 (* Now, do matching *)
 			 val _ = (List.app (Name.mark_gen o TyName.name) (#T BBC);
-				  List.app Name.mark_gen names_elab; 
+				  List.app Name.mark_gen names_elab;
 				  Name.rematching := true;
 				  ElabEnv.match(resE', #resE BBC);
 				  Name.rematching := false;
@@ -248,20 +248,20 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 				 else (print "Check on environments failed\n";
 				       print "\nresE = \n"; PP.printTree (ElabEnv.layout (#resE BBC));
 				       print "\nresE' = \n"; PP.printTree (ElabEnv.layout resE');
-				       print ("\nT = {" ^ pr_tynames (#T BBC) ^ "}\n"); 
+				       print ("\nT = {" ^ pr_tynames (#T BBC) ^ "}\n");
 				       die ("reelaborate.the builder has been applied - \
 					\but the result environments are not equal (after matching.)"))
-					      
+
 			 val strexp = extract_strexp_from_topdec (funid,topdec)
 		     in strexp
 		     end
-	      end handle X => (print ("Error while reconstructing functor body for " ^ 
+	      end handle X => (print ("Error while reconstructing functor body for " ^
 				      FunId.pr_FunId funid ^ "\n");
 			       print (General.exnMessage X);
 			       raise X)
 	    ) (*let*)
 
-   fun lookupInlineFunApp (ife:IntFunEnv) (funid:funid) 
+   fun lookupInlineFunApp (ife:IntFunEnv) (funid:funid)
        : strid * ElabEnv * strexp * CEnv * IntFunEnv =
        let val (absprjid,strid,E,BBC,intB0) = IntFunEnv.lookup ife funid
 	   val (ife0,_,ce0,_) = IntBasis.un intB0
@@ -282,7 +282,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
                                         val _ = Name.baseSet(name ^ "$" ^ i)   (* new stuff; mael 2007-07-31 *)
                                       in ("code" ^ i, fn() => Name.baseSet name)
                                       end
-                                      
+
 	  val vcg_filename = (* pmdir() ^ *) unitname ^ ".vcg"
           val res = Execution.compile ((#1 o IntBasis.un) intB, lookupInlineFunApp) (ce,cb,strdecs,vcg_filename)
           val _ = resetName()
@@ -293,15 +293,15 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	    | Execution.CEnvOnlyRes ce' => (ce', CompileBasis.empty, ModCode.empty)
       end
 
-    (* funapp_strdec strdec  returns true if strdec 
-     * contains a functor application. *) 
+    (* funapp_strdec strdec  returns true if strdec
+     * contains a functor application. *)
 
     fun funapp_strdec strdec =
       case strdec
-	of STRUCTUREstrdec(_,strbind) => funapp_strbind strbind 
-	 | SEQstrdec(_,strdec1,strdec2) => 
+	of STRUCTUREstrdec(_,strbind) => funapp_strbind strbind
+	 | SEQstrdec(_,strdec1,strdec2) =>
 	  funapp_strdec strdec1 orelse funapp_strdec strdec2
-	 | LOCALstrdec(_,strdec1,strdec2) => 
+	 | LOCALstrdec(_,strdec1,strdec2) =>
 	  funapp_strdec strdec1 orelse funapp_strdec strdec2
 	 | EMPTYstrdec _ => false
 	 | DECstrdec _ => false
@@ -314,35 +314,35 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	of STRUCTstrexp(_,strdec) => funapp_strdec strdec
 	 | TRANSPARENT_CONSTRAINTstrexp(_,strexp,_) => funapp_strexp strexp
 	 | OPAQUE_CONSTRAINTstrexp(_,strexp,_) => funapp_strexp strexp
-	 | APPstrexp _ => true 
-	 | LONGSTRIDstrexp _ => false 
+	 | APPstrexp _ => true
+	 | LONGSTRIDstrexp _ => false
 	 | LETstrexp(_,strdec,strexp) => funapp_strdec strdec orelse funapp_strexp strexp
 
     (* The infos are not propagated exactly in the push-functions
      * below - but we are not going to use them anyway.. - Martin *)
 
-    fun push_topdec(SIGtopdec(i,sigdec, topdec_opt)) = 
-            let val topdec_opt' = 
+    fun push_topdec(SIGtopdec(i,sigdec, topdec_opt)) =
+            let val topdec_opt' =
 	          case push_topdec_opt topdec_opt
 		    of (SOME strdec, topdec_opt') => SOME(STRtopdec(i,strdec,topdec_opt'))
 		     | (NONE, topdec_opt') => topdec_opt'
 	    in (NONE, SOME (SIGtopdec(i,sigdec, topdec_opt')))
-	    end 
+	    end
       | push_topdec(STRtopdec(i,strdec, topdec_opt)) =
         (case push_topdec_opt topdec_opt
 	   of (SOME strdec', topdec_opt') => (SOME(SEQstrdec(i,strdec,strdec')), topdec_opt')
 	    | (NONE, topdec_opt') => (SOME strdec, topdec_opt'))
       | push_topdec(FUNtopdec(i,fundec, topdec_opt)) =
-	   let val topdec_opt' = 
+	   let val topdec_opt' =
 	         case push_topdec_opt topdec_opt
 		   of (SOME strdec, topdec_opt') => SOME(STRtopdec(i,strdec,topdec_opt'))
 		    | (NONE, topdec_opt') => topdec_opt'
 	   in (NONE, SOME (FUNtopdec(i,fundec, topdec_opt')))
-	   end 
+	   end
     and push_topdec_opt (SOME topdec) = push_topdec topdec
       | push_topdec_opt NONE = (NONE, NONE)
 
-    (* strdecs_of_strdec strdec  eliminates SEQstrdec and 
+    (* strdecs_of_strdec strdec  eliminates SEQstrdec and
      * EMPTYstrdec at upper level *)
 
     fun strdecs_of_strdec (strdec, a) =
@@ -362,7 +362,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 		  val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
 		  val intB' = IntBasis.plus(intB,intB1)
 		  val (ce2,cb2,mc2) = int_strdec(intB', strdec)
-		  val intB2 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce2,cb2) 
+		  val intB2 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce2,cb2)
 		  val (ce3,cb3,mc3) = loop(IntBasis.plus(intB',intB2), strdecs, [])
 		  val ce = CE.plus(ce1,CE.plus(ce2,ce3))
 		  val cb = CompileBasis.plus(cb1,CompileBasis.plus(cb2,cb3))
@@ -396,7 +396,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	     in (CE.plus(ce,ce'), CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
 	     end
 	    | NONE => (ce,cb,mc)
-      end 
+      end
 
     and int_strexp (intB: IntBasis, strexp: strexp) : CEnv * CompileBasis * modcode =
       case strexp
@@ -417,9 +417,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      val ce' = CE.constrain(ce,E)
 	  in (ce', cb, mc)
 	  end
-	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) => 
+	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	   die "OPAQUE_CONSTRAINTstrexp.should be eliminated at this stage"
-	| APPstrexp(i, funid, strexp) => 
+	| APPstrexp(i, funid, strexp) =>
 	  let val _ = chat ("[interpreting functor argument to functor " ^ FunId.pr_FunId funid ^ " begin...]")
 
 		     (* Before we interpret strexp we force previously generated names
@@ -430,8 +430,8 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
               val _ = cleanBucket()
 
 	      val (phi,Eres) = case to_TypeInfo i
-				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
-				   let 
+				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) =>
+				   let
 (*
                                      val _ = print "Inst realisation is: \n"
 				     val _ = PP.printTree (Environments.Realisation.layout rea_inst)
@@ -449,29 +449,29 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      val _ = chat "[interpreting functor argument end...]"
 	      val (absprjid,strid,E,BBC,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
-	      val _ = chat "[constraining argument begin...]" 
+	      val _ = chat "[constraining argument begin...]"
 	      val ce = CE.constrain(ce,E')
 	      val _ = chat "[constraining argument end...]"
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,CE.declare_strid(strid,ce,CE.emptyCEnv),
 				      CompileBasis.plus(#4 (IntBasis.un intB), cb))  (* The argument may use things *)
 		                                                                     (* that are not in intB0 *)
-	      fun reuse_msg s = (print("[cannot reuse instance code for functor `" 
+	      fun reuse_msg s = (print("[cannot reuse instance code for functor `"
 				       ^ FunId.pr_FunId funid ^ "' -- " ^ s ^ "]\n"); NONE)
 
-	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
+	      val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^
 			    " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
 (* 	      val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
 
 	      val _ = chat "[recreating functor body begin...]"
 	      val strexp0 = reelaborate(funid,strid,BBC)
 	      val _ = chat "[recreating functor body end...]"
-	      val (intB', longstrids) = 
+	      val (intB', longstrids) =
 		  let
 		      val _ = chat "[finding free identifiers begin...]"
 		      val {funids,longstrids,longtycons,longvids,sigids} = FreeIds.fid_strexp strexp0
 		      val _ = chat "[finding free identifiers end...]"
 		      val _ = chat "[restricting interpretation basis begin...]"
-		      val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), 
+		      val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1),
 						    {funids=funids,sigids=sigids,longtycons=longtycons,
 						     longstrids=longstrids,longvids=longvids}, TyName.Set.empty   (* MEMO: Potential error!!! mael 2004-11-17 *)  )
 		      val _ = chat "[restricting interpretation basis end...]"
@@ -490,7 +490,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      val _ = chat "[interpreting functor body end...]"
 	      val N' = !Name.bucket
               val _ = cleanBucket()
-		       
+
 	      val intB'' = IntBasis.mk(IntFunEnv.empty, IntSigEnv.empty, ce', cb')
 
 	      val cb'' = CompileBasis.plus(cb,cb')
@@ -499,16 +499,16 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	      before print("[compiling body of functor " ^ FunId.pr_FunId funid ^ " end]\n")
 	  end
 
-	| LETstrexp(info, strdec, strexp) => 
+	| LETstrexp(info, strdec, strexp) =>
 	  let val (ce1,cb1,mc1) = comp_int_strdec(false,intB,strdec,NONE)
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
 	      val (ce2,cb2,mc2) = int_strexp(IntBasis.plus(intB,intB1),strexp)
 	  in (ce2, CompileBasis.plus(cb1,cb2), ModCode.seq(mc1,mc2))
 	  end
-    
+
     fun generate_BBC(absprjid : absprjid, funid, strid_arg,
-			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list, 
-			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp) 
+			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list,
+			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp)
        : BodyBuilderClos =
 	   let val funid_string = FunId.pr_FunId funid
 (**	       val filename = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
@@ -522,16 +522,16 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 (*	       val filename = OS.Path.mkAbsolute{path=filename,relativeTo=OS.Path.concat(OS.FileSys.getDir(), pmdir())} *)
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =
-		 (ElabInfo.ParseInfo.SourceInfo.to_positions o 
-		  ElabInfo.ParseInfo.to_SourceInfo o 
+		 (ElabInfo.ParseInfo.SourceInfo.to_positions o
+		  ElabInfo.ParseInfo.to_SourceInfo o
 		  ElabInfo.to_ParseInfo) i
 	       val info = TopdecGrammar.info_on_strexp strexp
 	       val (left, right) = info_to_positions info
 
-               val filetext = 
+               val filetext =
                    ("structure " ^ funid_string ^ " ") ^
                    LexBasics.get_source {left=left,right=right}
-(*                              
+(*
 	       val os = TextIO.openOut filename
 	       val _ = TextIO.output(os, "structure " ^ funid_string ^ " ")
 	       val _ = LexBasics.output_source{os=os,left=left,right=right}
@@ -540,31 +540,31 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 *)
 
 	       (* Explicit environment for the closure (function) below *)
-	       val BBC : BodyBuilderClos = 
+	       val BBC : BodyBuilderClos =
 		   {infB=infB,elabB=elabB,absprjid=absprjid,
 		    (**filename=filename,**)filemd5=MD5.fromString filetext,filetext=filetext,
                     opaq_env=opaq_env,T=T,resE=resE}
 	   in BBC
-	   end handle (X as IO.Io {name=s,...}) => 
-	       (print ("Error while blasting out functor body for " ^ 
+	   end handle (X as IO.Io {name=s,...}) =>
+	       (print ("Error while blasting out functor body for " ^
 		       (FunId.pr_FunId funid) ^ "\n" ^ s);
 		raise X)
 
-    fun int_funbind (absprjid: absprjid, intB: IntBasis, 
-		     FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) 
+    fun int_funbind (absprjid: absprjid, intB: IntBasis,
+		     FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt))
 	: IntFunEnv =
       let val {funids,longtycons,longstrids,longvids,sigids} = FreeIds.fid_strexp_sigexp strid strexp sigexp
 	  val intB0 = IntBasis.restrict(intB, {funids=funids,sigids=sigids,
 					       longstrids=longstrids,
-					       longvids=longvids,longtycons=longtycons}, 
+					       longvids=longvids,longtycons=longtycons},
 					TyName.Set.empty)
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i
-	      of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabBref=ref elabB,T,resE,opaq_env_opt=SOME opaq_env}) => 
+	      of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabBref=ref elabB,T,resE,opaq_env_opt=SOME opaq_env}) =>
 		let (*val _ = print_basis elabB*)
 		    val infB = case (ElabInfo.ParseInfo.to_DFInfo o ElabInfo.to_ParseInfo) i
 				 of SOME (ElabInfo.ParseInfo.DFInfo.INFIX_BASIS infB) => infB
-				  | _ => die "int_funbind.no infix basis info" 
+				  | _ => die "int_funbind.no infix basis info"
 		in (argE, {infB=infB,elabB=elabB,T=TyName.Set.list T,resE=resE,opaq_env=opaq_env})    (* NOTE: elabB is restricted when running FreeIds on program unit! *)
 		end
 	       | _ => die "int_funbind.no type info"
@@ -575,7 +575,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 	  val _ = print_intbasis intB0
 *)
       in case funbind_opt
-	   of SOME funbind => 
+	   of SOME funbind =>
 	     let val fe' = int_funbind(absprjid, intB, funbind)
 	     in IntFunEnv.plus(fe,fe')
 	     end
@@ -603,7 +603,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
     fun flatten(LEAF e,acc) = e:: acc
       | flatten(PLUS(e1,e2), acc) = flatten(e1, flatten(e2,acc))
 
-    fun int_topdec (fi:bool,unitnameOpt:string option, absprjid: absprjid, intB: IntBasis, topdec: topdec) 
+    fun int_topdec (fi:bool,unitnameOpt:string option, absprjid: absprjid, intB: IntBasis, topdec: topdec)
 	: IntBasisTree * modcode =
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
@@ -626,7 +626,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 		 end
 		| NONE => (LEAF intB1,ModCode.empty)
 	  end
-	 | FUNtopdec(i,FUNCTORfundec (i', funbind),topdec_opt) => 
+	 | FUNtopdec(i,FUNCTORfundec (i', funbind),topdec_opt) =>
 	  let val fe = int_funbind(absprjid, intB, funbind)
 	      val intB1 = IntBasis.mk(fe, IntSigEnv.empty, CE.emptyCEnv, CompileBasis.empty)
 	  in case topdec_opt
@@ -641,7 +641,7 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
      * Compile a topdec by first compiling the topdec into
      * a sequence of strdecs. In the process functors are
      * eliminated by inlining. After this compilation, the
-     * resulting strdecs are compiled as usual. 
+     * resulting strdecs are compiled as usual.
      * ---------------------------------------------------- *)
 
     (* ----------------------------------------------------
@@ -653,16 +653,16 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
 
     fun interp_aux(fi:bool,absprjid,intB,topdec, unitname) =
       case push_topdec topdec
-	of (SOME strdec, topdec_opt) => 
+	of (SOME strdec, topdec_opt) =>
         	  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname)
 	              val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
           	  in case topdec_opt
-	             of SOME topdec => 
+	             of SOME topdec =>
         		 let val (intB2, mc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1), topdec)
            		 in (PLUS(LEAF intB1,intB2)(*IntBasis.plus(intB1,intB2)*), ModCode.seq(mc1,mc2))
 		         end
          		| NONE => (LEAF intB1, mc1)
-	           end 
+	           end
 	 | (NONE, NONE) => (LEAF IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
 
@@ -672,10 +672,10 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
       val op ## = OS.Path.concat
     in
       fun interp(fi:bool,absprjid,intB,topdec, unitname) =
-        let 
+        let
           val _ = Execution.preHook()
           val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
-          val MLB_slash_unitname = 
+          val MLB_slash_unitname =
               let val {dir,file} = OS.Path.splitDirFile unitname
               in (dir ## mlbdir() ## file) handle _ => die "interp: Path.concat"
               end
@@ -686,6 +686,3 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS0
         end
     end
   end
-
-
-

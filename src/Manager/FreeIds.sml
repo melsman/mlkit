@@ -24,7 +24,7 @@ structure FreeIds:  FREE_IDS =
      * identifier is added to a bucket (holding free identifiers) it
      * is checked if it is in a `declared set'. -- Martin *)
 
-    type ids = {vids: id list, tycons: tycon list, strids: strid list, 
+    type ids = {vids: id list, tycons: tycon list, strids: strid list,
                 funids: funid list, sigids: sigid list}
 
     val empty_ids : ids = {vids=[], tycons=[], strids=[], funids=[], sigids=[]}
@@ -68,7 +68,7 @@ structure FreeIds:  FREE_IDS =
     fun mem(y,[]) = false
       | mem(y,x::xs) = y=x orelse mem(y,xs)
 
-    local    
+    local
       val bucket_longvids = ref ([] : longid list)
       val bucket_longtycons = ref ([] : longtycon list)
       val bucket_longstrids = ref ([] : longstrid list)
@@ -86,8 +86,8 @@ structure FreeIds:  FREE_IDS =
 
       fun reset_buckets() = (bucket_longvids := []; bucket_longtycons := [];
                              bucket_longstrids := []; bucket_funids := []; bucket_sigids := [])
-      fun get_free_longids() : longids = 
-	{longvids= !bucket_longvids, longtycons= !bucket_longtycons, 
+      fun get_free_longids() : longids =
+	{longvids= !bucket_longvids, longtycons= !bucket_longtycons,
 	 longstrids= !bucket_longstrids, funids= !bucket_funids, sigids= !bucket_sigids}
       fun install_longids ({funids, sigids, longstrids, longtycons, longvids} : longids) : unit =
 	(bucket_funids:=funids;
@@ -123,10 +123,10 @@ structure FreeIds:  FREE_IDS =
       if mem(sigid,sigids) then () else mk_free_sigid sigid
 
     fun use_longids (ids:ids, {longvids,longtycons,longstrids,funids,sigids}) : unit =
-      (app (fn a => use_longvid (ids, a)) longvids; 
-       app (fn a => use_longtycon (ids, a)) longtycons; 
-       app (fn a => use_longstrid (ids, a)) longstrids; 
-       app (fn a => use_funid (ids, a)) funids; 
+      (app (fn a => use_longvid (ids, a)) longvids;
+       app (fn a => use_longtycon (ids, a)) longtycons;
+       app (fn a => use_longstrid (ids, a)) longstrids;
+       app (fn a => use_funid (ids, a)) funids;
        app (fn a => use_sigid (ids, a)) sigids)
 
     (* Get type info from info-nodes; we could do better here, because
@@ -137,22 +137,22 @@ structure FreeIds:  FREE_IDS =
     in fun to_TypeInfo i =
          case ElabInfo.to_TypeInfo i
 	   of SOME ti => SOME(normalise ti)
-	    | NONE => NONE 
+	    | NONE => NONE
     end
 
     (* --------------------------------------
      * We carry around a persistent set of
-     * bound identifiers, I. 
+     * bound identifiers, I.
      * -------------------------------------- *)
 
-    (* 
+    (*
      * CORE
      *)
 
     fun free_atexp I =
       fn SCONatexp _ => ()
-       | IDENTatexp(_, OP_OPT(longvid,_)) => use_longvid(I,longvid)
-       | RECORDatexp(_,exprow_opt) => free_exprow_opt I exprow_opt
+       | IDENTatexp(_, OP_OPT(longvid,_), _) => use_longvid(I,longvid)
+       | RECORDatexp(_,exprow_opt,_) => free_exprow_opt I exprow_opt
        | LETatexp(_,dec,exp) => let val I' = free_dec I dec
 				in free_exp (I ++ I') exp
 				end
@@ -170,7 +170,7 @@ structure FreeIds:  FREE_IDS =
        | RAISEexp(_,exp) => free_exp I exp
        | FNexp(_,match) => free_match I match
        | UNRES_INFIXexp _ => die "free.UNRES_INFIXexp"
-      
+
     and free_match I (MATCH(_,mrule,match_opt)) : unit =
       (free_mrule I mrule; free_match_opt I match_opt)
     and free_match_opt I NONE = ()
@@ -186,14 +186,14 @@ structure FreeIds:  FREE_IDS =
        | UNRES_FUNdec _ => die "free.UNRES_FUNdec"
        | TYPEdec(_,typbind) => free_typbind I typbind
        | DATATYPEdec(_,datbind) => free_datbind I datbind
-       | DATATYPE_REPLICATIONdec(info,tycon,longtycon) => 
-         let 
-	   val vids = 
+       | DATATYPE_REPLICATIONdec(info,tycon,longtycon) =>
+         let
+	   val vids =
 	     case to_TypeInfo info
-	       of SOME (ElabInfo.TypeInfo.TYENV_INFO TE) => 
+	       of SOME (ElabInfo.TypeInfo.TYENV_INFO TE) =>
 		 (case Environments.TE.lookup TE tycon
 		    of SOME tystr => EqSet.list(Environments.VE.dom(Environments.TyStr.to_VE tystr))
-		     | NONE => die "free_dec.DATATYPE_REPLICATIONdec: no tystr") 
+		     | NONE => die "free_dec.DATATYPE_REPLICATIONdec: no tystr")
 		| _ => die "free_dec.DATATYPE_REPLICATIONdec: no type info"
 	   val strids = #1(TyCon.explode_LongTyCon longtycon)
 	   val longvids = map (fn id => Ident.implode_LongId (strids,id)) vids
@@ -201,7 +201,7 @@ structure FreeIds:  FREE_IDS =
 	   app (fn longvid => use_longvid(I,longvid)) longvids;
 	   add_vids(vids, add_tycon(tycon,empty_ids))
 	 end
-       | ABSTYPEdec(_,datbind,dec) => 
+       | ABSTYPEdec(_,datbind,dec) =>
          let fun Abs ({tycons,...}:ids) = {tycons=tycons, vids=[], strids=[], funids=[], sigids=[]}
 	     val I1 = free_datbind I datbind
 	     val I2 = free_dec (I ++ I1) dec
@@ -213,7 +213,7 @@ structure FreeIds:  FREE_IDS =
 				  end
        | OPENdec(info,longstrids_with_info) =>
 	  let fun use_longstrids_with_info(I,longstrids_with_info) =
-	         List.app (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
+	         List.app (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid))
 		 longstrids_with_info
 	      val (strids, tycons, ids) = case to_TypeInfo info
 					    of SOME (ElabInfo.TypeInfo.OPEN_INFO decls) => decls
@@ -232,6 +232,7 @@ structure FreeIds:  FREE_IDS =
        | INFIXRdec _ => empty_ids
        | NONFIXdec _ => empty_ids
        | EMPTYdec _ => empty_ids
+       | REGIONdec _ => empty_ids
 
     and free_valbind I =
       fn PLAINvalbind(_,pat,exp,valbind_opt) =>
@@ -245,7 +246,7 @@ structure FreeIds:  FREE_IDS =
       end
     and free_valbind_opt I NONE = empty_ids
       | free_valbind_opt I (SOME valbind) = free_valbind I valbind
- 
+
     and free_valbind' I =
       fn PLAINvalbind(_,_,exp,valbind_opt) => (free_exp I exp; free_valbind_opt' I valbind_opt)
        | RECvalbind(_,valbind) => free_valbind' I valbind
@@ -260,7 +261,7 @@ structure FreeIds:  FREE_IDS =
     and free_datbind I datbind : ids =
       let fun f (DATBIND(_,_,tycon,_,NONE)) = add_tycon(tycon,empty_ids)
 	    | f (DATBIND(_,_,tycon,_,SOME datbind)) = add_tycon(tycon,f datbind)
-	  fun g I (DATBIND(_,_,_,conbind,NONE)) = free_conbind I conbind 
+	  fun g I (DATBIND(_,_,_,conbind,NONE)) = free_conbind I conbind
 	    | g I (DATBIND(_,_,_,conbind,SOME datbind)) = free_conbind I conbind ++ g I datbind
 	  val I1 = f datbind
 	  val I2 = g (I ++ I1) datbind
@@ -283,15 +284,15 @@ structure FreeIds:  FREE_IDS =
     and free_atpat I =
       fn WILDCARDatpat _ => empty_ids
        | SCONatpat _ => empty_ids
-       | LONGIDatpat(info,OP_OPT(longvid,_)) => 
+       | LONGIDatpat(info,OP_OPT(longvid,_),_) =>
           (case to_TypeInfo info
 	     of SOME (ElabInfo.TypeInfo.VAR_PAT_INFO _) =>
 	       (case Ident.decompose longvid
 		  of ([],vid) => add_vid(vid, empty_ids)
-		   | _ => die "free_atpat.longid in pattern.") 
+		   | _ => die "free_atpat.longid in pattern.")
               | SOME (ElabInfo.TypeInfo.CON_INFO _) => (use_longvid(I,longvid); empty_ids)
 	      | SOME (ElabInfo.TypeInfo.EXCON_INFO _) => (use_longvid(I,longvid); empty_ids)
-	      | _ => die "free_atpat.no type info")  
+	      | _ => die "free_atpat.no type info")
        | RECORDatpat(_,patrow_opt) => free_patrow_opt I patrow_opt
        | PARatpat(_,pat) => free_pat I pat
 
@@ -321,7 +322,7 @@ structure FreeIds:  FREE_IDS =
     and free_tyrow_opt I NONE = ()
       | free_tyrow_opt I (SOME tyrow) = free_tyrow I tyrow
 
- 
+
     (*
      * MODULES
      *)
@@ -329,9 +330,9 @@ structure FreeIds:  FREE_IDS =
     fun free_strexp I =
       fn STRUCTstrexp(_,strdec) => (free_strdec I strdec; ())
        | LONGSTRIDstrexp(_,longstrid) => use_longstrid(I,longstrid)
-       | TRANSPARENT_CONSTRAINTstrexp(_,strexp,sigexp) => 
+       | TRANSPARENT_CONSTRAINTstrexp(_,strexp,sigexp) =>
           (free_strexp I strexp; free_sigexp I sigexp)
-       | OPAQUE_CONSTRAINTstrexp(_,strexp,sigexp) => 
+       | OPAQUE_CONSTRAINTstrexp(_,strexp,sigexp) =>
           (free_strexp I strexp; free_sigexp I sigexp)
        | APPstrexp(_,funid,strexp) => (use_funid(I,funid); free_strexp I strexp)
        | LETstrexp(_,strdec,strexp) =>
@@ -344,7 +345,7 @@ structure FreeIds:  FREE_IDS =
        | STRUCTUREstrdec(_,strbind) => free_strbind I strbind
        | LOCALstrdec(_,strdec1,strdec2) => let val I1 = free_strdec I strdec1
 					   in free_strdec (I ++ I1) strdec2
-					   end 
+					   end
        | EMPTYstrdec _ => empty_ids
        | SEQstrdec(_,strdec1,strdec2) => let val I1 = free_strdec I strdec1
 					     val I2 = free_strdec (I ++ I1) strdec2
@@ -374,7 +375,7 @@ structure FreeIds:  FREE_IDS =
        | TYPEspec(_,typdesc) => free_typdesc I typdesc
        | EQTYPEspec(_,typdesc) => free_typdesc I typdesc
        | DATATYPEspec(_,datdesc) => free_datdesc I datdesc
-       | DATATYPE_REPLICATIONspec(_,tycon,longtycon) => 
+       | DATATYPE_REPLICATIONspec(_,tycon,longtycon) =>
           (use_longtycon(I, longtycon); add_tycon(tycon,empty_ids))
        | EXCEPTIONspec(_,exdesc) => (free_exdesc I exdesc; empty_ids)
        | STRUCTUREspec(_,strdesc) => free_strdesc I strdesc
@@ -404,7 +405,7 @@ structure FreeIds:  FREE_IDS =
     and free_typdesc I (TYPDESC(_,_,tycon,typdesc_opt)) : ids =
       add_tycon(tycon,empty_ids) ++ free_typdesc_opt I typdesc_opt
     and free_typdesc_opt I NONE = empty_ids
-      | free_typdesc_opt I (SOME typdesc) = free_typdesc I typdesc 
+      | free_typdesc_opt I (SOME typdesc) = free_typdesc I typdesc
 
     and free_datdesc I datdesc : ids =
       let fun f (DATDESC(_,_,tycon,_,NONE)) = add_tycon(tycon,empty_ids)
@@ -445,7 +446,7 @@ structure FreeIds:  FREE_IDS =
 		    of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabBref,T,resE,opaq_env_opt}) =>
 		      ((elabBref := ModuleEnvironments.B.restrict(!elabBref,longids_body))
 		       handle _ => die "free_funbind.restrict failed")
-		     | _ => die "free_funbind.no type info" 
+		     | _ => die "free_funbind.no type info"
       in
 	add_funid(funid,empty_ids) ++ free_funbind_opt I funbind_opt
       end
@@ -481,7 +482,7 @@ structure FreeIds:  FREE_IDS =
     val fid_topdec = free_ids_any empty_ids free_topdec
     val fid_dec = free_ids_any empty_ids free_dec
     val fid_strexp = free_ids_any empty_ids free_strexp
-    fun fid_strexp_sigexp strid strexp sigexp = 
+    fun fid_strexp_sigexp strid strexp sigexp =
       let val _ = reset_buckets()
 	  val _ = free_strexp {vids=[], tycons=[], strids=[strid], funids=[], sigids=[]} strexp
 	  val _ = free_sigexp empty_ids sigexp
@@ -490,7 +491,7 @@ structure FreeIds:  FREE_IDS =
       in free_longids
       end
 
-    (* 
+    (*
      * PRETTYPRINTING
      *)
 
