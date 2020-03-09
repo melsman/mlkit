@@ -100,7 +100,7 @@ structure OptLambda: OPT_LAMBDA =
     val unbox_reals = Flags.add_bool_entry
 	    {long="unbox_reals", short=NONE,
 	     menu=["Control", "Optimiser", "unbox real values"],
-	     item=ref true, neg=true, desc=
+	     item=ref false, neg=true, desc=
 	     "Unbox real values and computations on real values inside\n\
              \functions. Real values stored in data structures and\n\
              \passed to functions are still boxed."}
