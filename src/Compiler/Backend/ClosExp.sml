@@ -7,7 +7,7 @@ functor ClosExp(structure CallConv: CALL_CONV where type lvar = Lvars.lvar
                   where type label = AddressLabels.label
 		  where type phsize = PhysSizeInf.phsize
 		  where type StringTree = PrettyPrint.StringTree
-		structure BI : BACKEND_INFO) : CLOS_EXP = 
+		structure BI : BACKEND_INFO) : CLOS_EXP =
 struct
   structure PP = PrettyPrint
   structure Labels = AddressLabels
@@ -28,33 +28,33 @@ struct
 
   val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
-  val print_normalized_program_p = Flags.add_bool_entry 
-      {long="print_normalized_program", short=NONE, 
+  val print_normalized_program_p = Flags.add_bool_entry
+      {long="print_normalized_program", short=NONE,
        menu=["Printing of intermediate forms","print normalized expression"],
        item=ref false, neg=false, desc=
        "Print Region Expression after K-normalisation."}
 
-  val print_clos_conv_program_p = Flags.add_bool_entry 
-      {long="print_clos_conv_program", short=SOME "Pccp", 
+  val print_clos_conv_program_p = Flags.add_bool_entry
+      {long="print_clos_conv_program", short=SOME "Pccp",
        menu=["Printing of intermediate forms","print closure converted expression"],
        item=ref false, neg=false, desc=
        "Print Region Expression after closure conversion."}
 
-  val print_lift_conv_program_p = Flags.add_bool_entry 
-      {long="print_lift_conv_program", short=SOME "Plcp", 
+  val print_lift_conv_program_p = Flags.add_bool_entry
+      {long="print_lift_conv_program", short=SOME "Plcp",
        menu=["Printing of intermediate forms","print lifted expression for the KAM"],
        item=ref false, neg=false, desc=
        "Print Region Expression after lifting. Used for the\n\
 	\compilation into byte code (KAM)."}
 
-  fun pp_lvars s lvs = 
+  fun pp_lvars s lvs =
     let fun loop nil = ()
 	  | loop (lv::lvs) = (print (Lvars.pr_lvar lv); print ","; loop lvs)
     in print (s ^ " = ["); loop lvs; print "]\n"
     end
-  
+
   val region_vectors = false
-  
+
   (***********)
   (* ClosExp *)
   (***********)
@@ -68,7 +68,7 @@ struct
 
   type binder = place * phsize
 
-  datatype ClosExp = 
+  datatype ClosExp =
       VAR             of lvar
     | RVAR            of place
     | DROPPED_RVAR    of place
@@ -78,6 +78,7 @@ struct
     | WORD            of {value: Word32.word, precision: int}
     | STRING          of string
     | REAL            of string
+    | F64             of string
     | PASS_PTR_TO_MEM of sma * int
     | PASS_PTR_TO_RHO of sma
     | UB_RECORD       of ClosExp list
@@ -88,9 +89,9 @@ struct
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
-    | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
+    | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list,
 			  clos: ClosExp option}
-    | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
+    | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list,
 			  clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
@@ -108,12 +109,12 @@ struct
     | REF             of sma * ClosExp
     | ASSIGN          of sma * ClosExp * ClosExp
     | DROP            of ClosExp
-    | RESET_REGIONS   of {force: bool, 
+    | RESET_REGIONS   of {force: bool,
 			  regions_for_resetting: sma list}
-    | CCALL           of {name: string,  
+    | CCALL           of {name: string,
 			  args: ClosExp list,
 			  rhos_for_result : ClosExp list}
-    | CCALL_AUTO      of {name: string,  
+    | CCALL_AUTO      of {name: string,
 			  args: (ClosExp * foreign_type) list,
 			  res: foreign_type}
     | EXPORT          of {name: string,
@@ -124,7 +125,7 @@ struct
 
   and 'a Switch = SWITCH of ClosExp * ('a * ClosExp) list * ClosExp
 
-  and sma = 
+  and sma =
       ATTOP_LI of ClosExp * pp
     | ATTOP_LF of ClosExp * pp
     | ATTOP_FI of ClosExp * pp
@@ -135,10 +136,10 @@ struct
     | SAT_FF   of ClosExp * pp
     | IGNORE
 
-  datatype TopDecl = 
+  datatype TopDecl =
       FUN of label * cc * ClosExp
     | FN of label * cc * ClosExp
-  
+
   type ClosPrg = TopDecl list
 
   (***********************)
@@ -156,7 +157,7 @@ struct
     fun pr_phsize(PhysSizeInf.INF)     = "inf"
       | pr_phsize(PhysSizeInf.WORDS i) = Int.toString i
 
-    fun pr_binder(place,phsize) = 
+    fun pr_binder(place,phsize) =
       (flatten1(Effect.layout_effect place) ^ ":" ^ pr_phsize phsize)
 
     fun pr_pp pp = "pp" ^ Int.toString pp
@@ -176,18 +177,18 @@ struct
 		  NODE{start="",finish="",indent=0,
 		       children=[LEAF (pr_const const), layout_ce ce_sel],
 		       childsep=RIGHT " => "}
-	    val t1 = NODE{start="(case ",finish=" ",indent=2, childsep = NOSEP, 
+	    val t1 = NODE{start="(case ",finish=" ",indent=2, childsep = NOSEP,
 			  children=[layout_ce ce_arg]}
 	    val t2 = NODE{start="of " ,finish="",indent=4,childsep=LEFT " | ",
-			  children=(map layout_sels sels) @ 
+			  children=(map layout_sels sels) @
 			           [NODE{start="",finish="",indent=0,
 					 children=[LEAF "_",layout_ce default],
 					 childsep=RIGHT " => "}]}
 	    val t3 = NODE{start="",finish=") (*case*) ",indent=3,childsep=NOSEP,children=[t2]}
-	  in 
+	  in
 	    NODE{start = "", finish = "", indent=0, childsep=NOSEP,children=[t1,t3]}
 	  end
-      
+
     fun layout_ce(VAR lv)             = LEAF(Lvars.pr_lvar lv)
       | layout_ce(RVAR place)         = Effect.layout_effect place
       | layout_ce(DROPPED_RVAR place) = LEAF("D" ^ flatten1(Effect.layout_effect place))
@@ -197,6 +198,7 @@ struct
       | layout_ce(WORD {value,precision})    = LEAF("0x" ^ Word32.toString value)
       | layout_ce(STRING s)           = LEAF("\"" ^ String.toString s ^ "\"")
       | layout_ce(REAL s)             = LEAF(s)
+      | layout_ce(F64 s)              = LEAF(s ^ "f64")
       | layout_ce(PASS_PTR_TO_MEM(sma,i)) = LEAF("MEM(" ^ (flatten1(pr_sma sma)) ^ "," ^ Int.toString i ^ ")")
       | layout_ce(PASS_PTR_TO_RHO(sma))   = LEAF("PTR(" ^ (flatten1(pr_sma sma)) ^ ")")
       | layout_ce(UB_RECORD ces)      = HNODE{start="<",
@@ -224,7 +226,7 @@ struct
 					finish=")",
 					childsep=NOSEP,
 					children=[layout_ce ce]}
-      | layout_ce(FNJMP{opr,args,clos}) = 
+      | layout_ce(FNJMP{opr,args,clos}) =
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
@@ -234,7 +236,7 @@ struct
 		 indent=3,
 		 children=[t1,t2]}
 	  end
-      | layout_ce(FNCALL{opr,args,clos}) = 
+      | layout_ce(FNCALL{opr,args,clos}) =
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
@@ -244,7 +246,7 @@ struct
 		 indent=3,
 		 children=[t1,t2]}
 	  end
-      | layout_ce(JMP{opr,args,reg_vec,reg_args,clos}) = 
+      | layout_ce(JMP{opr,args,reg_vec,reg_args,clos}) =
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
@@ -256,7 +258,7 @@ struct
 		 indent=3,
 		 children=[t1,t2,t3,t4]}
 	  end
-      | layout_ce(FUNCALL{opr,args,reg_vec,reg_args,clos}) = 
+      | layout_ce(FUNCALL{opr,args,reg_vec,reg_args,clos}) =
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
@@ -270,10 +272,10 @@ struct
 	  end
       | layout_ce(LETREGION{rhos=[],body}) = layout_ce body
       | layout_ce(LETREGION{rhos,body}) =
-          let 
-	    val binders = HNODE{start = "", 
-				finish = "", 
-				childsep = RIGHT", ", 
+          let
+	    val binders = HNODE{start = "",
+				finish = "",
+				childsep = RIGHT", ",
 				children = map (fn b => LEAF(pr_binder b)) rhos}
 	    val t1 = NODE{start="letregion ",
 			  finish="",
@@ -281,22 +283,22 @@ struct
 			  indent=10,
 			  children=[binders]}
 	    val t2 = NODE{start="in ",
-			  finish="", 
+			  finish="",
 			  childsep=NOSEP,
 			  indent=3,
 			  children=[layout_ce body]}
 	    val t3 = NODE{start="end (*",
 			  finish="*)",
-			  childsep=NOSEP, 
+			  childsep=NOSEP,
 			  indent=6,
 			  children=[HNODE{start="",
 					  finish="",
-					  childsep=RIGHT", ", 
+					  childsep=RIGHT", ",
 					  children=[binders]}]}
-	  in 
+	  in
 	    NODE{start="",finish="",indent=0,childsep=RIGHT " ",children=[t1,t2,t3]}
 	  end
-      | layout_ce(ce as LET{pat: lvar list, bind: ClosExp, scope: ClosExp}) = 
+      | layout_ce(ce as LET{pat: lvar list, bind: ClosExp, scope: ClosExp}) =
 	  let
 	    fun layout_rec(LET{pat,bind,scope}) =
 	      let
@@ -323,10 +325,10 @@ struct
       | layout_ce(SWITCH_I {switch,precision}) = layout_switch layout_ce (Int32.toString) switch
       | layout_ce(SWITCH_W {switch,precision}) = layout_switch layout_ce (fn w => "0x" ^ Word32.toString w) switch
       | layout_ce(SWITCH_S sw) = layout_switch layout_ce (fn s => s) sw
-      | layout_ce(SWITCH_C sw) = layout_switch layout_ce (fn (con,con_kind) => Con.pr_con con ^ "(" ^ 
+      | layout_ce(SWITCH_C sw) = layout_switch layout_ce (fn (con,con_kind) => Con.pr_con con ^ "(" ^
 							  pr_con_kind con_kind ^ ")") sw
       | layout_ce(SWITCH_E sw) = layout_switch layout_ce Excon.pr_excon sw
-      | layout_ce(CON0{con,con_kind,aux_regions,alloc}) = 
+      | layout_ce(CON0{con,con_kind,aux_regions,alloc}) =
 	  HNODE{start=Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")",
 		finish="] " ^ (flatten1(pr_sma alloc)),
 		childsep=RIGHT ",",
@@ -378,11 +380,11 @@ struct
 		       finish="|}",
 		       indent=0,
 		       childsep=RIGHT ",",
-		       children=(map (fn {lvar,label} => LEAF("(" ^ Lvars.pr_lvar lvar ^ "," ^ 
+		       children=(map (fn {lvar,label} => LEAF("(" ^ Lvars.pr_lvar lvar ^ "," ^
 							      Labels.pr_label label ^ ")")) declared_lvars) @
-		                (map (fn {excon,label} => LEAF("(" ^ Excon.pr_excon excon ^ "," ^ 
+		                (map (fn {excon,label} => LEAF("(" ^ Excon.pr_excon excon ^ "," ^
 							       Labels.pr_label label ^ ")")) declared_excons)}
-		  
+
     and layout_ce_opt (NONE)    = LEAF ""
       | layout_ce_opt (SOME ce) = layout_ce ce
 
@@ -405,17 +407,17 @@ struct
       | pr_sma(IGNORE)          = NODE{start="ignore ",finish="",indent=0,childsep=NOSEP,children=[]}
 
     fun layout_top_decl' f_string (lab,cc,ce) =
-      NODE{start = f_string ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
-	   finish = "", 
-	   indent = 2, 
-	   childsep = NOSEP, 
+      NODE{start = f_string ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=",
+	   finish = "",
+	   indent = 2,
+	   childsep = NOSEP,
 	   children = [layout_ce ce]}
   in
     fun layout_top_decl (FUN triple) = layout_top_decl' "FUN" triple
       | layout_top_decl (FN triple) = layout_top_decl' "FN" triple
 
     fun layout_clos_exp ce = layout_ce ce
-    fun layout_clos_prg top_decls = 
+    fun layout_clos_prg top_decls =
       let val _ = print "\nlayout begin..."
 	  val r = NODE{start="ClosExp program begin",
 		       finish="ClosExp program end",
@@ -423,7 +425,7 @@ struct
 		       childsep=NOSEP,
 		       children = map layout_top_decl top_decls}
 	  val _ = print "\nlayout end"
-      in r 
+      in r
       end
   end
 
@@ -480,7 +482,7 @@ struct
 
   fun size3(l1,l2,l3) = List.length l1 + List.length l2 + List.length l3
 
-  fun fast_pr stringtree = 
+  fun fast_pr stringtree =
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
      TextIO.output(!Flags.log, "\n"))
 
@@ -506,7 +508,7 @@ struct
   (* handle expression.                                                  *)
   (* The new variables are names kn# and the flag k_let is set true.     *)
 
-  local 
+  local
     open MulExp
     val r = ref 0
     fun fresh _ = (r:= !r + 1; Lvars.new_named_lvar ("kn" ^ Int.toString(!r)))
@@ -516,12 +518,12 @@ struct
 			     import_vars,
 			     export_vars,
 			     export_basis,
-			     export_Psi}) = 
+			     export_Psi}) =
       let
 	fun NTrip ((MulExp.TR(e,metaType,ateffects,mulef))) insert_let =
 	  let
 	    fun e_to_t e = MulExp.TR(e,metaType,ateffects,mulef)
-	    local 
+	    local
 	      val il0 = RType.mk_il([],[],[])
 	      val dummy_'c = ()
 	    in
@@ -536,8 +538,8 @@ struct
 	    end
 
 	    fun Nsw (tr, choices, opt) =
-	      MulExp.SWITCH(NTrip tr true, 
-			    map (fn(match,tr) => (match,NTrip tr true)) choices, 
+	      MulExp.SWITCH(NTrip tr true,
+			    map (fn(match,tr) => (match,NTrip tr true)) choices,
 			    (case opt of
 			       SOME tr => SOME (NTrip tr true)
 			     | NONE => NONE))
@@ -549,8 +551,9 @@ struct
 	       | MulExp.WORD(i,t,alloc) => e
 	       | MulExp.STRING(s,alloc) => e
 	       | MulExp.REAL(r,alloc) => e
+	       | MulExp.F64(r,alloc) => e
 	       | MulExp.UB_RECORD trs => MulExp.UB_RECORD (map (fn tr => NTrip tr true) trs)
-	       | MulExp.FN{pat,body,free,alloc} => 
+	       | MulExp.FN{pat,body,free,alloc} =>
 		   if insert_let then
 		     let
 		       val x = fresh()
@@ -570,7 +573,7 @@ struct
 								pat=pat,
 								bind=NTrip bind false,
 								scope=NTrip scope true}
-	       | MulExp.FIX{free,shared_clos,functions,scope} => 
+	       | MulExp.FIX{free,shared_clos,functions,scope} =>
 		   MulExp.FIX{free=free,
 			      shared_clos=shared_clos,
 			      functions=
@@ -583,13 +586,13 @@ struct
 			      scope=NTrip scope true}
 	       | MulExp.APP(callKind,saveRestore,operator,operand) =>
 		   MulExp.APP(callKind,saveRestore,NTrip operator true,NTrip operand true)
-	       | MulExp.EXCEPTION(excon,bool,typePlace,alloc,scope) => 
+	       | MulExp.EXCEPTION(excon,bool,typePlace,alloc,scope) =>
 		   MulExp.EXCEPTION(excon,bool,typePlace,alloc,NTrip scope true)
 	       | MulExp.RAISE tr => MulExp.RAISE (NTrip tr true)
 	       | MulExp.HANDLE(tr1,tr2) => MulExp.HANDLE(NTrip tr1 true,NTrip tr2 true)
-	       | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,choices,opt), precision} => 
+	       | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,choices,opt), precision} =>
 		   MulExp.SWITCH_I {switch=Nsw(tr, choices, opt), precision=precision}
-	       | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,choices,opt), precision} => 
+	       | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,choices,opt), precision} =>
 		   MulExp.SWITCH_W {switch=Nsw(tr, choices, opt), precision=precision}
 	       | MulExp.SWITCH_S(MulExp.SWITCH(tr,choices,opt)) => MulExp.SWITCH_S(Nsw(tr, choices, opt))
 	       | MulExp.SWITCH_C(MulExp.SWITCH(tr,choices,opt)) => MulExp.SWITCH_C(Nsw(tr, choices, opt))
@@ -606,7 +609,7 @@ struct
 	       | MulExp.REF(a,tr) => MulExp.REF(a,NTrip tr true)
 	       | MulExp.ASSIGN(alloc,tr1,tr2) => MulExp.ASSIGN(alloc,NTrip tr1 true,NTrip tr2 true)
 	       | MulExp.DROP tr => MulExp.DROP (NTrip tr true)
-	       | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1, tr2) => 
+	       | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1, tr2) =>
 		   MulExp.EQUAL({mu_of_arg1=mu_of_arg1,mu_of_arg2=mu_of_arg2,alloc=alloc},
 				NTrip tr1 true,
 				NTrip tr2 true)
@@ -661,10 +664,10 @@ struct
 		  end)
     local
       fun pp_dom lvar = PP.LEAF (Lvars.pr_lvar lvar)
-      fun pp_ran (FN(args,free)) = 
+      fun pp_ran (FN(args,free)) =
 	PP.LEAF ("FN[Args:"^(pr_lvars args)^
 		 ",Free:"^(pr_free free)^"]")
-	| pp_ran (FIX(args,free)) = 
+	| pp_ran (FIX(args,free)) =
 	PP.LEAF ("FIX[Args:"^(pr_lvars args)^
 		 ",Free:"^(pr_free free)^"]")
     in
@@ -679,14 +682,14 @@ struct
 
     val empty_Fenv = FuncEnv.empty
 
-    fun is_in_dom_Fenv Fenv lvar = 
+    fun is_in_dom_Fenv Fenv lvar =
       case FuncEnv.lookup Fenv lvar of
 	NONE   => false
       | SOME r => true
 
     fun lookup_Fenv Fenv lvar = FuncEnv.lookup Fenv lvar
 
-    fun rem_Fenv Fenv lvar = 
+    fun rem_Fenv Fenv lvar =
       case FuncEnv.remove (lvar, Fenv) of
 	SOME Fenv => Fenv
       | NONE => die "Remove lvar fra Fenv."
@@ -718,16 +721,16 @@ struct
       (EnvLvar.addList lvars Lvar, EnvExCon.addList excons ExCon, EnvRho.addList rhos Rho)
 
     fun fresh_Env (lvars1, excons1, rhos1) (lvars2, excons2, rhos2) =
-      (EnvLvar.fromList (lvars1@lvars2), 
+      (EnvLvar.fromList (lvars1@lvars2),
        EnvExCon.fromList (excons1@excons2),
        EnvRho.fromList (rhos1@rhos2))
 
     fun free_in_Env (LvarEnv, ExConEnv, RhoEnv) (lvars, excons, rhos) =
-      (List.foldl (fn (lvar,base) => 
+      (List.foldl (fn (lvar,base) =>
 		   if EnvLvar.member lvar LvarEnv andalso  base=true then true else false) true lvars) andalso
-      (List.foldl (fn (excon,base) => 
+      (List.foldl (fn (excon,base) =>
 		   if EnvExCon.member excon ExConEnv andalso base=true then true else false) true excons) andalso
-      (List.foldl (fn (rho,base) => 
+      (List.foldl (fn (rho,base) =>
 		   if EnvRho.member rho RhoEnv andalso base=true then true else false) true rhos)
 
     (***************)
@@ -743,11 +746,11 @@ struct
 			     import_vars,
 			     export_vars,
 			     export_basis,
-			     export_Psi}) = 
-      if false (*Flags.is_on "prune_closures"*) then 
+			     export_Psi}) =
+      if false (*Flags.is_on "prune_closures"*) then
 	let
 	  val export_vars_set = EnvLvar.fromList (#1 export_vars)
-	  val import_vars = 
+	  val import_vars =
 	    case import_vars
 	      of ref (SOME vars) => vars
 	    | _ => die "ClosExp.F.no import vars info"
@@ -756,7 +759,7 @@ struct
 	    let
 	      fun FExp e Fenv (Env as (EnvLvar, EnvExCon, EnvRho)) =
 		(case e of
-		   MulExp.VAR{lvar,...} => 
+		   MulExp.VAR{lvar,...} =>
 		     if is_in_dom_Fenv Fenv lvar then
 		       (rem_Fenv Fenv lvar, [OTHER])
 		     else
@@ -764,15 +767,16 @@ struct
 		 | MulExp.INTEGER(i,t,alloc) => (Fenv, [OTHER])
 		 | MulExp.WORD(i,t,alloc) => (Fenv, [OTHER])
 		 | MulExp.STRING(s,alloc) => (Fenv, [OTHER])
-		 | MulExp.REAL(r,alloc) => (Fenv, [OTHER]) 
-		 | MulExp.UB_RECORD trs => 
-		       List.foldr (fn (tr,(Fenv',types')) => 
+		 | MulExp.REAL(r,alloc) => (Fenv, [OTHER])
+		 | MulExp.F64(r,alloc) => (Fenv, [OTHER])
+		 | MulExp.UB_RECORD trs =>
+		       List.foldr (fn (tr,(Fenv',types')) =>
 				   (case FTrip tr Fenv' Env
 				      of (Fenv_t, [t]) => (Fenv_t,t::types')
 				    | _ => die "UB_RECORD")) (Fenv, []) trs
-	         | MulExp.FN{pat,body,free,alloc} => 
+	         | MulExp.FN{pat,body,free,alloc} =>
 		       let
-			 val free_vars = 
+			 val free_vars =
 			   case (!free) of
 			     SOME free => free
 			   | NONE => ([], [], [])
@@ -781,14 +785,14 @@ struct
 		       in
 			 (Fenv', [FUNC(args,free_vars)])
 		       end
-		 | MulExp.LETREGION{B, rhos, body} => 
+		 | MulExp.LETREGION{B, rhos, body} =>
 		       FTrip body Fenv (add_Env Env ([],[],List.map #1 (!rhos)))
-		 | MulExp.LET{k_let,pat,bind,scope} => 
+		 | MulExp.LET{k_let,pat,bind,scope} =>
 		       let
 			 val lvars = List.map #1 pat
 			 val (Fenv', types) = FTrip bind Fenv Env
 			 val types' = zip (lvars,types)
-			 val Fenv_scope = List.foldl (fn ((lvar',type'),base) => 
+			 val Fenv_scope = List.foldl (fn ((lvar',type'),base) =>
 						      case type' of
 							FUNC(args,free) => add_Fenv base lvar' (FN(args, free))
 						      | OTHER => base) Fenv' types'
@@ -806,25 +810,25 @@ struct
 			    | SOME free => (lvar, List.map #1 pat, List.map #1 (!rhos_formals), free, body))
 			   | f _ = die "Functions not in expected shape."
 			 val funcs = List.map f functions
-			   
-			 val Fenv1 = List.foldl (fn ((lvar,args,_,free,_),base) => 
-						 add_Fenv base lvar (FIX(args, free))) Fenv funcs 
-			   
-			 val FenvN = List.foldl (fn ((_,args,rhos_formals,free,body),base) => 
-						 #1(FTrip body base 
-						    (add_Env (fresh_Env free import_vars) 
+
+			 val Fenv1 = List.foldl (fn ((lvar,args,_,free,_),base) =>
+						 add_Fenv base lvar (FIX(args, free))) Fenv funcs
+
+			 val FenvN = List.foldl (fn ((_,args,rhos_formals,free,body),base) =>
+						 #1(FTrip body base
+						    (add_Env (fresh_Env free import_vars)
 						     (args,[],rhos_formals)))) Fenv1 funcs
 
-			 val all_exists = List.foldl (fn ((lvar,_,_,_,_),base) => 
-						      if is_in_dom_Fenv FenvN lvar andalso 
+			 val all_exists = List.foldl (fn ((lvar,_,_,_,_),base) =>
+						      if is_in_dom_Fenv FenvN lvar andalso
 							not (EnvLvar.member lvar export_vars_set) andalso (* none of the letrec may be exported *)
 							base = true then true else false) true funcs
-			   
-			 val Fenv_scope = 
-			   if all_exists then 
+
+			 val Fenv_scope =
+			   if all_exists then
 			     FenvN
 			   else (* Remove all FIX bound functions. *)
-			     List.foldl (fn ((lvar,_,_,_,_),base) => 
+			     List.foldl (fn ((lvar,_,_,_,_),base) =>
 					 if is_in_dom_Fenv base lvar then
 					   rem_Fenv base lvar
 					 else
@@ -833,16 +837,16 @@ struct
 			 FTrip scope Fenv_scope (add_Env Env (List.map #1 funcs,[],[]))
 		       end
 		 | MulExp.APP(callKind,saveRestore,operator,operand) =>
-		       (case operator 
+		       (case operator
 			  of MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,fix_bound=false,rhos_actuals,other},_,_,_) =>
 			    (* Ordinary function call *)
 			    let
 				   val Fenv' = (case lookup_Fenv Fenv lvar
 						  of NONE => Fenv
 						| SOME (FN(arg_fn,free_fn)) =>
-						    if free_in_Env Env free_fn then 
+						    if free_in_Env Env free_fn then
 						      Fenv
-						    else 
+						    else
 						      rem_Fenv Fenv lvar
 						| SOME (FIX(lvars,free)) => die "Function should be FN but is recorded as FIX")
 				   val (Fenv_res, _) = FTrip operand Fenv' Env
@@ -857,7 +861,7 @@ struct
 					      | SOME (FIX(args_fix,free_fix)) =>
 						  if free_in_Env Env free_fix then
 						    Fenv
-						  else 
+						  else
 						    rem_Fenv Fenv lvar
 					      | SOME (FN(lvars,free)) => die "Function should be a FIX but is recorded as FN")
 				 val (Fenv_res,_) = FTrip operand Fenv' Env
@@ -865,7 +869,7 @@ struct
 				 (Fenv_res, [OTHER])
 			       end
 			| _ => die "First argument in application not as expected.")
-		 | MulExp.EXCEPTION(excon,bool,typePlace,alloc,scope) => 
+		 | MulExp.EXCEPTION(excon,bool,typePlace,alloc,scope) =>
 			  FTrip scope Fenv (add_Env Env ([],[excon],[]))
 		 | MulExp.RAISE tr => FTrip tr Fenv Env
 		 | MulExp.HANDLE(tr1,tr2) =>
@@ -921,7 +925,7 @@ struct
 		 | MulExp.EXCON(excon,NONE) => (Fenv, [OTHER])
 		 | MulExp.EXCON(excon,SOME(alloc,tr)) => FTrip tr Fenv Env
 		 | MulExp.DEEXCON(excon,tr) => FTrip tr Fenv Env
-		 | MulExp.RECORD(alloc, trs) => 
+		 | MulExp.RECORD(alloc, trs) =>
 		   let
 		     val Fenv_res = List.foldl (fn (tr,base) => #1(FTrip tr base Env)) Fenv trs
 		   in
@@ -930,7 +934,7 @@ struct
 		 | MulExp.SELECT(i,tr) => FTrip tr Fenv Env
 		 | MulExp.DEREF tr => FTrip tr Fenv Env
 		 | MulExp.REF(a,tr) => FTrip tr Fenv Env
-		 | MulExp.ASSIGN(alloc,tr1,tr2) => 
+		 | MulExp.ASSIGN(alloc,tr1,tr2) =>
 		   let
 		     val (Fenv1,_) = FTrip tr1 Fenv Env
 		     val (Fenv2,_) = FTrip tr2 Fenv1 Env
@@ -953,24 +957,24 @@ struct
 		   end
 		 | MulExp.EXPORT(i,tr) => FTrip tr Fenv Env
 		 | MulExp.RESET_REGIONS({force, alloc, regions_for_resetting},tr) => FTrip tr Fenv Env
-		 | MulExp.FRAME{declared_lvars, declared_excons} => 
+		 | MulExp.FRAME{declared_lvars, declared_excons} =>
 		   (List.foldl (fn ({lvar,...},base) => if is_in_dom_Fenv base lvar then
 				rem_Fenv base lvar
-							else 
+							else
 							  base) Fenv declared_lvars, [OTHER]))
 	    in
 	      FExp e Fenv Env
 	    end
-	      
+
 	  val (Fenv', _) = FTrip tr FuncEnv.empty (fresh_Env import_vars ([],[],[]))
 
 	  (* Remove all export_vars from Fenv'. Currently, they are closure implemented. *)
-	  val Fenv_res = List.foldl (fn (lvar,base) => 
+	  val Fenv_res = List.foldl (fn (lvar,base) =>
 				     if is_in_dom_Fenv base lvar then
 				       rem_Fenv base lvar
 				     else
 				       base) Fenv' (#1(export_vars))
-	    
+
 	  (*val _ = pr_st (pp_Fenv Fenv_res) 29/08-2000, Niels *)
 	in
 	  Fenv_res
@@ -986,7 +990,7 @@ struct
   local
     structure CE = ClosConvEnv
 
-    local 
+    local
       val lv_no = ref 0
       val lab_no = ref 0
     in
@@ -1048,7 +1052,7 @@ struct
       | convert_sma (AtInf.ATBOT(rho,pp),CE.LI,ce) = ATBOT_LI (ce,pp)
       | convert_sma (AtInf.ATBOT(rho,pp),CE.LF,ce) = ATBOT_LF (ce,pp)
       | convert_sma (AtInf.SAT(rho,pp),CE.FI,ce) = SAT_FI (ce,pp)
-      | convert_sma (AtInf.SAT(rho,pp),CE.FF,ce) = SAT_FF (ce,pp)    
+      | convert_sma (AtInf.SAT(rho,pp),CE.FF,ce) = SAT_FF (ce,pp)
       | convert_sma (at,rk,ce) = die ("convert_sma: sma combination not recognized." ^
 				      "at=" ^ pr_at at ^ ", rk=" ^ pr_rho_kind rk ^ "\n")
 
@@ -1073,7 +1077,7 @@ struct
       | lt_se(SELECT_SE(_,i1,lv1), SELECT_SE(_,i2,lv2)) =
 	    if (i1<i2) then
 	      true
-	    else 
+	    else
 	      if (i1=i2) andalso Lvars.lt(lv1,lv2) then
 		true
 	      else
@@ -1087,7 +1091,7 @@ struct
 
     fun unify_ce_se ces_and_ses se_map =
       let
-	fun resolve((ce,NONE_SE),(ces,ses,se_map)) = (ce::ces,ses,se_map) 
+	fun resolve((ce,NONE_SE),(ces,ses,se_map)) = (ce::ces,ses,se_map)
 	  | resolve((ce,se),(ces,ses,se_map)) =
 	  (case SEMap.lookup se_map se of
 	       NONE => (ce::ces,se::ses,SEMap.add (se,ce,se_map))
@@ -1099,7 +1103,7 @@ struct
     (* Must keep the sma information and only exchange the expression inside the sma *)
     fun unify_sma_se smas_and_ses se_map =
       let
-	fun resolve((sma,NONE_SE),(smas,ses,se_map)) = (sma::smas,ses,se_map) 
+	fun resolve((sma,NONE_SE),(smas,ses,se_map)) = (sma::smas,ses,se_map)
 	  | resolve((sma,se),(smas,ses,se_map)) =
 	  (case SEMap.lookup se_map se of
 	       NONE => (sma::smas,se::ses,SEMap.add (se,get_ce(sma),se_map))
@@ -1136,7 +1140,7 @@ struct
 	      bind=FETCH lab,
 	      scope=ce}
 
-    fun insert_ses(ce,ses) = 
+    fun insert_ses(ce,ses) =
       let
 	fun filter(acc,NONE_SE) = acc
 	  | filter((lvs,ces),SELECT_SE (lv1,i,lv2)) = (lv1::lvs,SELECT(i,VAR lv2)::ces)
@@ -1159,7 +1163,7 @@ struct
 
     (* global_env is the initial environment at entry to functions excluding *)
     (* the call convention.                                                  *)
-    local 
+    local
       val global_env = ref ClosConvEnv.empty
       val frame_env = ref ClosConvEnv.empty
     in
@@ -1170,7 +1174,7 @@ struct
     end
 
     fun lookup_fix_profiling env lv =
-      case CE.lookupVarOpt env lv 
+      case CE.lookupVarOpt env lv
 	of SOME (CE.FIX(_,_,_,formals)) => formals
 	 | _ => die "lookup_fix_profiling"
 
@@ -1194,7 +1198,7 @@ struct
 	case CE.lookupVarOpt env lv of
 	  SOME(CE.FIX(_,SOME a,_,_)) => resolve_se(a)
 	| SOME(CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
-	| SOME(a) => resolve_se(a)               
+	| SOME(a) => resolve_se(a)
 	| NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
       end
 
@@ -1243,7 +1247,7 @@ struct
 
     fun convert_alloc (alloc,env) =
       (case alloc of
-	   AtInf.ATBOT(rho,pp) => 
+	   AtInf.ATBOT(rho,pp) =>
 	     let
 	       val (ce,se) = lookup_rho env rho (fn () => "convert_alloc1")
 	     in
@@ -1269,7 +1273,7 @@ struct
       | mult("l",PhysSizeInf.WORDS n) = CE.LF
       | mult _ = die "mult: Wrong binding or phsize"
 
-    fun lookup_con env con = 
+    fun lookup_con env con =
       (case CE.lookupCon env con of
 	 CE.ENUM i    => ENUM i
        | CE.UB_NULLARY i => UNBOXED i
@@ -1284,12 +1288,12 @@ struct
     (* constructors in the datatype. Similarly for nullary constructors.*)
     (* Note, that booleans and lists are allready defined,              *)
     (* see ClosConvEnv.sml, and lists are the only unboxed datatypes    *)
-    (* that we have.                                                    *) 
+    (* that we have.                                                    *)
     (*------------------------------------------------------------------*)
     fun add_datbinds_to_env (RegionExp.DATBINDS dbs) l2clos_exp_env : CE.env =
       let
-	fun enumeration tn binds = 
-	  TyName.unboxed tn andalso 
+	fun enumeration tn binds =
+	  TyName.unboxed tn andalso
 	  List.all (fn (_,k,_) => k = RegionExp.CONSTANT) binds
 
 	fun tags_enum n nil = nil
@@ -1312,7 +1316,7 @@ struct
                  l2clos_exp_env (concat_lists dbs)
     end
 
-    local 
+    local
       fun member tn nil = false
 	| member tn (x::xs) = TyName.eq (tn,x) orelse member tn xs
     in
@@ -1322,9 +1326,9 @@ struct
 	  if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
 	  else
 	    if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
-	    else 
+	    else
 	      if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault()] then Int
-	      else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn 
+	      else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn
 			^ " not supported in auto conversion")
     end
 
@@ -1353,8 +1357,8 @@ struct
 
 
     fun precisionNumType t =
-      case RType.unCONSTYPE t of 
-        SOME(tn,_,_,_) => 
+      case RType.unCONSTYPE t of
+        SOME(tn,_,_,_) =>
 	  if TyName.eq(tn, TyName.tyName_INT31) then 31
 	  else if TyName.eq(tn, TyName.tyName_INT32) then 32
 	  else if TyName.eq(tn, TyName.tyName_WORD31) then 31
@@ -1362,9 +1366,9 @@ struct
 	  else die "precisionNumType.wrong tyname"
       | NONE => die "precisionNumType.wrong type"
 
-    (* ------------------------------ *)  
+    (* ------------------------------ *)
     (*   General Utility Functions    *)
-    (* ------------------------------ *)  
+    (* ------------------------------ *)
 
     (* remove_zero_sized_region_closure_lvars: remove lvars associated with zero sized *)
     (* region closures. No code is introduced for zero sized region closures and hence *)
@@ -1372,8 +1376,8 @@ struct
     fun remove_zero_sized_region_closure_lvars env (lvs,rhos,excons) =
       let
 	fun remove [] = []
-	  | remove (lv::lvs) = 
-	      (case CE.lookupVar env lv of 
+	  | remove (lv::lvs) =
+	      (case CE.lookupVar env lv of
 	          CE.FIX(lab,NONE,0,_) => remove lvs
 		| CE.FIX(lab,NONE,i,_) => die "remove_zero_sized_region_closure_lvars: FIX messed up"
 		| CE.FIX(lab,SOME _,0,_) => die "remove_zero_sized_region_closure_lvars: FIX messed up"
@@ -1389,26 +1393,26 @@ struct
     (* when building the new environment.                                *)
     (* Region variables are FIRST in the closure; necessary for tagging. *)
     fun build_clos_env org_env new_env lv_clos base_offset (free_lv,free_excon,free_rho) =
-      let 
+      let
 	(* When computing offsets we do not increase the offset counter when meeting *)
 	(* a lambda variable bound to a zero sized shared region closure, since code *)
 	(* is not constructed to put such region closures into the actual closure.   *)
-	fun add_free_lv (lv,(env,i)) = 
-	  (case CE.lookupVar org_env lv of 
+	fun add_free_lv (lv,(env,i)) =
+	  (case CE.lookupVar org_env lv of
 	     CE.FIX(lab,NONE,0,formals)   => (CE.declareLvar(lv,CE.FIX(lab,NONE,0,formals),env),i)
 	   | CE.FIX(lab,NONE,s,formals)   => die "add_free_lv: CE.FIX messed up."
 	   | CE.FIX(lab,SOME _,0,formals) => die "add_free_lv: CE.FIX messed up."
 	   | CE.FIX(lab,SOME _,s,formals) => (CE.declareLvar(lv,CE.FIX(lab,SOME(CE.SELECT(lv_clos,i)),s,formals),env),i+1)
 	   | _ => (CE.declareLvar(lv,CE.SELECT(lv_clos,i),env),i+1))
-	fun add_free_excon (excon,(env,i)) = 
+	fun add_free_excon (excon,(env,i)) =
 	  (CE.declareExcon(excon,(CE.SELECT(lv_clos,i),
-				  CE.lookupExconArity org_env excon),env),i+1) 
-	fun add_free_rho (place,(env,i)) = 
+				  CE.lookupExconArity org_env excon),env),i+1)
+	fun add_free_rho (place,(env,i)) =
 	  (CE.declareRhoKind(place,CE.lookupRhoKind org_env place,
 			     CE.declareRho(place,CE.SELECT(lv_clos,i),env)),i+1)
-	val (env',_)  = 
-	  List.foldl add_free_lv 
-	  (List.foldl add_free_excon 
+	val (env',_)  =
+	  List.foldl add_free_lv
+	  (List.foldl add_free_excon
 	   (List.foldl add_free_rho (new_env, base_offset) free_rho) free_excon) free_lv
       in
 	env'
@@ -1418,7 +1422,7 @@ struct
     fun gen_ces_and_ses_free env (free_lv,free_excon,free_rho) =
       let
 	val lvs_and_ses = List.map (fn lv => lookup_ve env lv) free_lv
-	val excons_and_ses = List.map (fn excon => lookup_excon env excon) free_excon 
+	val excons_and_ses = List.map (fn excon => lookup_excon env excon) free_excon
 	val rhos_and_ses = List.map (fn place => lookup_rho env place (fn () => "gen_ces_and_ses_free")) free_rho
       in
 	(lvs_and_ses,excons_and_ses,rhos_and_ses)
@@ -1426,7 +1430,7 @@ struct
 
     (* drop_rho rho: replace rho by a global region with the same runtime type; *)
     (* used when rho is letrec-bound, but never written into.                    *)
-    fun drop_rho rho = 
+    fun drop_rho rho =
       (case Effect.get_place_ty rho of
 	 SOME Effect.WORD_RT   => Effect.toplevel_region_withtype_word
        | SOME Effect.STRING_RT => Effect.toplevel_region_withtype_string
@@ -1462,12 +1466,12 @@ struct
     fun compile_sels_and_default sels default f_match ccTrip =
       let
 	val sels' =
-	  List.foldr (fn ((m,tr),sels_acc) => 
+	  List.foldr (fn ((m,tr),sels_acc) =>
 		      (f_match m, insert_se(ccTrip tr))::sels_acc) [] sels
       in
 	case default of
 	  SOME tr => (sels', insert_se(ccTrip tr))
-	| NONE => 
+	| NONE =>
 	    (case rev sels' of
 	       ((_,ce)::rev_sels') => (rev rev_sels',ce)
 	     | _ => die "compile_sels_and_default: no selections.")
@@ -1486,7 +1490,7 @@ struct
 	   | CE.RVAR _ => die "find_globals_in_env: global bound to rvar."
 	   | CE.DROPPED_RVAR _ => die "find_globals_in_env: global bound to dropped rvar."
 	   | CE.SELECT _ => die "find_globals_in_env: global bound to select expression."
-    in      
+    in
       fun find_globals_in_env_all env = CE.labelsEnv labs env
 
       (* Result is a pair of label lists:              *)
@@ -1500,10 +1504,10 @@ struct
 	       | NONE => die ("find_globals_in_env: lvar not bound in env.")
 	  val pair_labs = foldr (fn (lv,a) => lookup lv CE.lookupVarOpt a) ([],[]) lvars
 	  val pair_labs = foldr (fn (ex,a) => lookup ex CE.lookupExconOpt a) pair_labs excons
-(*	val pair_labs = foldr (fn (rho,a) => lookup rho CE.lookupRhoOpt a) pair_labs regvars 
+(*	val pair_labs = foldr (fn (rho,a) => lookup rho CE.lookupRhoOpt a) pair_labs regvars
 
  this one does not seem necessary because no new regions survive program units and because the
- the global regions 0-3 are allocated statically with address labels 0-3. ME 2000-10-31 
+ the global regions 0-3 are allocated statically with address labels 0-3. ME 2000-10-31
 *)
 	in pair_labs
 	end
@@ -1511,8 +1515,8 @@ struct
 
     fun gen_fresh_res_lvars(RegionExp.Mus type_and_places) =
       (case type_and_places of
-	  [(ty,_)] => 
-          (case RType.unFUN ty of 
+	  [(ty,_)] =>
+          (case RType.unFUN ty of
              SOME(mus1,arroweffect,mus2) => List.map (fn _ => fresh_lvar("res")) mus2
            | NONE => die "gen_fresh_res: not a function type.")
         | _ => die "gen_fresh_res: not a function type.")
@@ -1525,51 +1529,46 @@ struct
 
     fun int_to_string i = if i >= 0 then Int.toString i else "-" ^ Int.toString (~i)
 
+    fun convert_real r =    (* Translate a real constant into C notation: *)
+	let fun conv #"~" = #"-"
+	      | conv #"E" = #"e"
+	      | conv c = c
+	in (implode o (map conv) o explode) r
+	end
+
     (* ------------------------ *)
     (*    Closure Conversion    *)
     (* ------------------------ *)
     fun ccTrip (MulExp.TR(e,metaType,ateffects,mulef)) env lab cur_rv =
       let
-
 	fun ccExp e =
 	  (case e of
-	     MulExp.VAR{lvar,...} => lookup_ve env lvar 
+	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,t,alloc) =>
 	       (INTEGER {value=i, precision=precisionNumType t}, NONE_SE)
 (*
-	       ((if BI.tag_values() then 
-		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE) 
+	       ((if BI.tag_values() then
+		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE)
 		 else (INTEGER (int_to_string i), NONE_SE))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
 *)
 	   | MulExp.WORD(w,t,alloc) => (WORD {value=w, precision=precisionNumType t}, NONE_SE)
 
 	   | MulExp.STRING(s,alloc) => (STRING s,NONE_SE)
-	   | MulExp.REAL(r,alloc) => 
-	       let
-		 fun convert r =    (* Translate a real constant into C notation: *)
-		   let fun conv #"~" = #"-"
-			 | conv #"E" = #"e"
-			 | conv c = c
-		   in 
-		     (implode o (map conv) o explode) r
-		   end
-	       in
-		 (REAL (convert r),NONE_SE)
-	       end
-
-	   | MulExp.UB_RECORD trs => 
+	   | MulExp.REAL(r,alloc) => (REAL (convert_real r),NONE_SE)
+	   | MulExp.F64(r,alloc) => (F64 (convert_real r),NONE_SE)
+	   | MulExp.UB_RECORD trs =>
 	       let
 		 val ces_and_ses = List.map (fn tr => ccTrip tr env lab cur_rv) trs
 		 val (ces,ses,_) = unify_ce_se ces_and_ses SEMap.empty
 	       in
 		 (insert_ses(UB_RECORD ces,ses),NONE_SE)
 	       end
-	   | MulExp.FN{pat,body,free=ref (SOME free_vars_all),alloc} => 
+	   | MulExp.FN{pat,body,free=ref (SOME free_vars_all),alloc} =>
 	       (* For now, the function is closure implemented. *)
 	       (* Free variables must go into the closure. All free variables  *)
 	       (* (free_vars_all) must be bound in the closure environment,    *)
-	       (* while we do not store region closures with no free variables *) 
+	       (* while we do not store region closures with no free variables *)
                (* in the actual closure.                                       *)
 	       let
 		 val free_vars = remove_zero_sized_region_closure_lvars env free_vars_all
@@ -1623,7 +1622,7 @@ struct
 		   else
 		     (env plus_decl_with CE.declareLvar)
 		     (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size,formals))) lvars_labels_formals)
-		   
+
 		 fun compile_fn (lvar,bind,formals,drops,lab) =
 		   let
 		     val (args,body,metaType) = case bind of
@@ -1653,26 +1652,26 @@ struct
 					 in (lv::lvs, CE.declareRho(place,CE.LVAR lv,env))
 					 end)
 			     (nil,env_with_funs) formals)
-			 
+
 		     val env_with_rho_kind =
 			  (env_with_rv plus_decl_with CE.declareRhoKind)
 			  (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
 
-		     val env_with_rho_drop = 
+		     val env_with_rho_drop =
 			   (env_with_rho_kind plus_decl_with CE.declareRho)
 			   (map (fn (place,_) => (place,CE.DROPPED_RVAR(drop_rho place))) drops)
 		     val env_with_rho_drop_kind =
 		           (env_with_rho_drop plus_decl_with CE.declareRhoKind)
-			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops) 
+			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops)
 
 		     val env_with_args =
 		           (env_with_rho_drop_kind plus_decl_with CE.declareLvar)
 			   (map (fn lv => (lv, CE.LVAR lv)) args)
 
-(*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^ 
+(*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^
 				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
-		     val (lv_rv_opt, lv_rv_var_opt) = 
+		     val (lv_rv_opt, lv_rv_var_opt) =
 		       if List.null formals orelse not(region_vectors) then (NONE, NONE)
 		       else (SOME lv_rv, SOME(VAR lv_rv))
 		     val cc = CallConv.mk_cc_fun(args,sclos,lv_rv_opt,reg_args,ress)
@@ -1701,13 +1700,13 @@ struct
 		* and a jmp - that is, if we recognice that regions in registers and on the stack
 		* can be reused. *)
 	       let
-		 val _ = 
+		 val _ =
 		   if region_profiling() then
 		     let val rhos_formals = lookup_fix_profiling env lvar
 		     in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
 		     end
 		   else ()
-		 
+
 		 val ces_and_ses = (* We remove the unboxed record. *)
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
@@ -1735,11 +1734,11 @@ struct
 	       end
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
 	   | MulExp.APP(SOME MulExp.FUNCALL, _,
-			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_), 
+			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_),
 			tr2) =>
 	       let
 		 (* Insert edges in the Region Flow Graph for Profiling. *)
-		 val _ = 
+		 val _ =
 		   if region_profiling() then
 		     let val rhos_formals = lookup_fix_profiling env lvar
 		     in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
@@ -1772,10 +1771,10 @@ struct
 		     ses)),
 		    ses_sma),
 		  NONE_SE)
-	       end		 
+	       end
 	  | MulExp.APP(SOME MulExp.FNJMP,_, tr1,tr2) =>
 	       let
-		 val ces_and_ses = 
+		 val ces_and_ses =
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
 		   | _ => [ccTrip tr2 env lab cur_rv]
@@ -1788,7 +1787,7 @@ struct
 	       end
 	   | MulExp.APP(SOME MulExp.FNCALL,_, tr1, tr2) =>
 	       let
-		 val ces_and_ses = 
+		 val ces_and_ses =
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
 		   | _ => [ccTrip tr2 env lab cur_rv]
@@ -1801,10 +1800,10 @@ struct
 	       end
 	   | MulExp.APP _ => die "application form not recognised"
 
-	   | MulExp.LETREGION{B,rhos=ref bound_regvars,body} => 
+	   | MulExp.LETREGION{B,rhos=ref bound_regvars,body} =>
 	       let
 		 (* Insert letregion nodes in the RegionFlowGraph. *)
-		 val _ = 
+		 val _ =
 		   if region_profiling() then
 		     RegionFlowGraphProfiling.add_nodes (bound_regvars,"LETREGION")
 		   else ()
@@ -1839,11 +1838,11 @@ struct
 		 val env' = CE.declareExcon(excon,(CE.LVAR lv4,CE.NULLARY_EXCON),env)
 		 val (sma,se_a) = convert_alloc(alloc,env)
 	       in
-		 (LET{pat=[lv1], 
+		 (LET{pat=[lv1],
 		      bind=CCALL{name="__fresh_exname",
 				 args=[],
 				 rhos_for_result=[]},
-		      scope=insert_se(LET{pat=[lv2], 
+		      scope=insert_se(LET{pat=[lv2],
 					  bind=STRING (Excon.pr_excon excon),
 					  scope=LET{pat=[lv3],
 						    bind=RECORD{elems=[VAR lv1,VAR lv2],
@@ -1866,11 +1865,11 @@ struct
 		 val env' = CE.declareExcon(excon,(CE.LVAR lv3,CE.UNARY_EXCON),env)
 		 val (sma,se_a) = convert_alloc(alloc,env)
 	       in
-		 (LET{pat=[lv1], 
+		 (LET{pat=[lv1],
 		      bind=CCALL{name="__fresh_exname",
 				 args=[],
 				 rhos_for_result=[]},
-		      scope=LET{pat=[lv2], 
+		      scope=LET{pat=[lv2],
 				bind=STRING (Excon.pr_excon excon),
 				scope=insert_se(LET{pat=[lv3],
 						    bind=RECORD{elems=[VAR lv1,VAR lv2],
@@ -1879,7 +1878,7 @@ struct
 								maybeuntag=false},
 						    scope=insert_se (ccTrip scope env' lab cur_rv)},se_a)}},NONE_SE)
 	       end
-	   | MulExp.RAISE tr => 
+	   | MulExp.RAISE tr =>
 	       let
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
@@ -1889,7 +1888,7 @@ struct
 						insert_se(ccTrip tr2 env lab cur_rv)),NONE_SE)
 	   | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
 	       let
-		 val (selections,opt) = 
+		 val (selections,opt) =
 		   compile_sels_and_default selections opt (fn i => i) (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
@@ -1897,22 +1896,22 @@ struct
 	       end
 	   | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
 	       let
-		 val (selections,opt) = 
+		 val (selections,opt) =
 		   compile_sels_and_default selections opt (fn i => i) (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
 		 (insert_se(SWITCH_W {switch=SWITCH(ce,selections,opt), precision=precision},se),NONE_SE)
 	       end
 	   | MulExp.SWITCH_S(MulExp.SWITCH(tr,selections,opt)) =>
-	       let 
+	       let
 		 val (selections,opt) =
 		   compile_sels_and_default selections opt (fn m=>m) (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 
 		 (* When tagging is enabled, integers in SWITCH_I are converted in
-		  * CodeGenX86.sml - so in that case we must use an untagged representation 
+		  * CodeGenX86.sml - so in that case we must use an untagged representation
 		  * of true, which is 1 (given that BI.ml_true is 3). *)
-		 val True = Int32.fromInt (if BI.ml_true = 3 then 
+		 val True = Int32.fromInt (if BI.ml_true = 3 then
 					     if BI.tag_values() then 1
 					     else BI.ml_true
 					   else die "True")
@@ -1936,9 +1935,9 @@ struct
 
 	   | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
-		 fun tag con = 
+		 fun tag con =
 		   (case CE.lookupCon env con of
-		      CE.ENUM i => 
+		      CE.ENUM i =>
 			if BI.tag_values() orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
 			  (con,ENUM(2*i+1))
@@ -1950,7 +1949,7 @@ struct
 		    | CE.B_UNARY i => (con,BOXED(Word32.toInt (BI.tag_con1(false,i)))))
 
 		 val (selections,opt) =
-		   compile_sels_and_default selections opt tag 
+		   compile_sels_and_default selections opt tag
 		                            (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
@@ -1959,8 +1958,8 @@ struct
 	   | MulExp.SWITCH_E(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 val (selections,opt) =
-		   compile_sels_and_default selections opt 
-		   (fn m=>(lookup_excon env m,CE.lookupExconArity env m)) 
+		   compile_sels_and_default selections opt
+		   (fn m=>(lookup_excon env m,CE.lookupExconArity env m))
 		   (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 		 fun compile_seq_switch(ce,[],default) = default
@@ -1982,7 +1981,7 @@ struct
 						  scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
 										compile_seq_switch(ce,rest,default)),
 								  precision=BI.defaultIntPrecision()}}}}
-		      | UNARY_EXCON => 
+		      | UNARY_EXCON =>
 			  LET{pat=[lv_exn1],
 			      bind=insert_se(SELECT(0,ce_e),se_e),
 			      scope=LET{pat=[lv_sw],
@@ -2003,7 +2002,7 @@ struct
 	       in
 		 (ce_res,NONE_SE)
 	       end
-	   | MulExp.CON0{con,il,aux_regions,alloc} => 
+	   | MulExp.CON0{con,il,aux_regions,alloc} =>
 	       let
 		 val (sma,se_a) = convert_alloc(alloc,env)
 
@@ -2037,12 +2036,12 @@ struct
 				  con_exp = ce},se),NONE_SE)
 	       end
 	   | MulExp.EXCON(excon,NONE) => lookup_excon env excon
-	   | MulExp.EXCON(excon,SOME(alloc,tr)) => 
+	   | MulExp.EXCON(excon,SOME(alloc,tr)) =>
 	       let
 		 val (ce_excon,se_excon) = lookup_excon env excon
 		 val (ce_arg,se_arg) = ccTrip tr env lab cur_rv
 		 val (sma,se_a) = convert_alloc(alloc,env)
-		 val (smas,ces,ses) = unify_smas_ces_and_ses ([(sma,se_a)],[(ce_excon,se_excon),(ce_arg,se_arg)]) 
+		 val (smas,ces,ses) = unify_smas_ces_and_ses ([(sma,se_a)],[(ce_excon,se_excon),(ce_arg,se_arg)])
 	       in
 		 (insert_ses(RECORD{elems=ces,
 				    alloc=one_in_list(smas),
@@ -2055,19 +2054,19 @@ struct
 	       in
 		 (insert_se(SELECT(1,ce_arg),se_arg),NONE_SE)
 	       end
-	   | MulExp.RECORD(alloc, trs) => 
+	   | MulExp.RECORD(alloc, trs) =>
 	       let
 		 val ces_and_ses = List.foldr (fn (tr,b) => ccTrip tr env lab cur_rv::b) [] trs
 		 val (sma,se_a) = convert_alloc(alloc,env)
 		 val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_a)],ces_and_ses)
-		 fun pair_or_triple_region rho = 
-		     case Effect.get_place_ty rho of 
-			 SOME Effect.PAIR_RT => 
+		 fun pair_or_triple_region rho =
+		     case Effect.get_place_ty rho of
+			 SOME Effect.PAIR_RT =>
 			     if length trs = 2 then true
 			     else die "RECORD.wrong number of elements in pair region"
-		       | SOME Effect.TRIPLE_RT => 
+		       | SOME Effect.TRIPLE_RT =>
 			     if length trs = 3 then true
-			     else die "RECORD.wrong number of elements in triple region"				 
+			     else die "RECORD.wrong number of elements in triple region"
 		       | _ => false
 		 val maybeuntag =
 		     case alloc
@@ -2081,7 +2080,7 @@ struct
 				    tag=BI.tag_record(false,length ces),
 				    maybeuntag=maybeuntag},ses),NONE_SE)
 	       end
-	   | MulExp.SELECT(i,tr) => 
+	   | MulExp.SELECT(i,tr) =>
 	       let
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
@@ -2095,7 +2094,7 @@ struct
 	       in
 		 (insert_ses(REF(one_in_list(smas),one_in_list(ces)),ses),NONE_SE)
 	       end
-	   | MulExp.DEREF tr => 
+	   | MulExp.DEREF tr =>
 	       let
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
@@ -2104,46 +2103,46 @@ struct
 	   | MulExp.ASSIGN(alloc,tr1,tr2) =>
 	       let
 		 val (sma,se_sma) = convert_alloc(alloc,env)
-		 val (sma,ce1,ce2,ses) = 
+		 val (sma,ce1,ce2,ses) =
 		   case unify_smas_ces_and_ses([(sma,se_sma)],[ccTrip tr1 env lab cur_rv,ccTrip tr2 env lab cur_rv]) of
 		     ([sma],[ce1,ce2],ses) => (sma,ce1,ce2,ses)
 		   | _ => die "ASSIGN: error in unify."
 	       in
 		 (insert_ses(ASSIGN(sma,ce1,ce2),ses),NONE_SE)
 	       end
-	   | MulExp.DROP tr => 
+	   | MulExp.DROP tr =>
 	       let
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
 		 (insert_se(DROP ce,se),NONE_SE)
 	       end
 	   | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1,tr2) =>
-	       let 
-		 val tau = 
-		   (case tr1 of 
+	       let
+		 val tau =
+		   (case tr1 of
 		      MulExp.TR(_,RegionExp.Mus[(tau,_)],_,_) => tau
 		    | _ => die "EQUAL.metaType not Mus.")
 
-		 val (ce1,ce2,ses) = 
+		 val (ce1,ce2,ses) =
 		   (case unify_ce_se [ccTrip tr1 env lab cur_rv,
 				      ccTrip tr2 env lab cur_rv] SEMap.empty of
 		      ([ce1,ce2],ses,_) => (ce1,ce2,ses)
 		    | _ => die "EQUAL: error in unify.")
-		      
+
 		 fun eq_prim n = CCALL{name=n,args=[ce1,ce2],rhos_for_result=[]}
 
 		 val ce =
 		   (case RType.unCONSTYPE tau of
 		      SOME(tn,_,_,_) =>
-                        if (TyName.eq(tn,TyName.tyName_BOOL) 
+                        if (TyName.eq(tn,TyName.tyName_BOOL)
 			    orelse TyName.eq(tn,TyName.tyName_REF)
 			    orelse TyName.eq(tn,TyName.tyName_ARRAY)
 			    orelse TyName.eq(tn,TyName.tyName_CHARARRAY))
 			  then
 			    eq_prim "__equal_int32ub"
-			else if TyName.eq(tn,TyName.tyName_INT31) then 
+			else if TyName.eq(tn,TyName.tyName_INT31) then
 			  eq_prim "__equal_int31"
-			else if TyName.eq(tn,TyName.tyName_INT32) then 
+			else if TyName.eq(tn,TyName.tyName_INT32) then
 			  (if BI.tag_values() then eq_prim "__equal_int32b"
 			   else eq_prim "__equal_int32ub")
                         else if TyName.eq(tn,TyName.tyName_WORD31) then
@@ -2156,7 +2155,7 @@ struct
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
 			       die "`=' on vectors! EliminateEq should have dealt with this"
 			else eq_prim "equalPolyML"
-                    | NONE => 
+                    | NONE =>
                       case RType.unRECORD tau of
                         SOME [] => eq_prim "__equal_int32ub"
                       | _ => eq_prim "equalPolyML")
@@ -2182,7 +2181,7 @@ struct
 	       (* `Calling C Functions' in the documentation.                        *)
 	       let
 		 fun add_pp_for_profiling ([], args) = (name, args)
-		   | add_pp_for_profiling ((sma,i_opt)::rest,args) = 
+		   | add_pp_for_profiling ((sma,i_opt)::rest,args) =
 		   if region_profiling() then
 		       (case i_opt of
 			  SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
@@ -2193,7 +2192,7 @@ struct
 		   else (name, args)
 
 		 fun comp_region_args_sma [] = []
-		   | comp_region_args_sma ((sma, i_opt)::rest) = 
+		   | comp_region_args_sma ((sma, i_opt)::rest) =
 		       (case i_opt of
 			  SOME 0 => die "ccExp (CCALL ...): argument region with size 0"
 			| SOME i => PASS_PTR_TO_MEM(sma,i) :: (comp_region_args_sma rest)
@@ -2239,7 +2238,7 @@ struct
 				      of CharArray => die "CCALL_AUTO.CharArray not supported in result"
 				       | t => t
 		      in (insert_ses(CCALL_AUTO{name=name, args=args, res=res},
-				     ses), 
+				     ses),
 			  NONE_SE)
 		      end
 		  | _ =>
@@ -2253,12 +2252,12 @@ struct
 			  NONE_SE)
 		      end)
 	       end
-	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) => 
+	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) =>
 	       let val (ce,se) = ccTrip tr env lab cur_rv
 		   fun toForeignType (ty,_) : foreign_type =
-		       case RType.unCONSTYPE ty of 
+		       case RType.unCONSTYPE ty of
                          SOME(tn,_,_,_) => tn_to_foreign_type tn
-		       | NONE => case RType.unRECORD ty of 
+		       | NONE => case RType.unRECORD ty of
                                    SOME [] => Unit
                                  | _ => die "EXPORT.toForeignType"
 		   val maybe_return_unit =
@@ -2280,12 +2279,12 @@ struct
 				se))
 		    , NONE_SE)
 	       end
-	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
+	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) =>
 	       let
-		 val regions_for_resetting = List.filter (fn alloc => 
+		 val regions_for_resetting = List.filter (fn alloc =>
 							  case alloc of
 							    AtInf.IGNORE => false | _ => true) regions_for_resetting
-		 val smas_and_se_smas = List.map (fn alloc => convert_alloc(alloc,env)) regions_for_resetting 
+		 val smas_and_se_smas = List.map (fn alloc => convert_alloc(alloc,env)) regions_for_resetting
 		 val (smas,se_smas,_) = unify_sma_se smas_and_se_smas SEMap.empty
 	       in
 		 (insert_ses(RESET_REGIONS{force=force,
@@ -2294,17 +2293,17 @@ struct
 	   | MulExp.FRAME{declared_lvars, declared_excons} =>
 	       let
 		 val lvars = List.map #lvar declared_lvars
-		 val lvars_and_labels' = 
-		   List.map (fn lvar => 
+		 val lvars_and_labels' =
+		   List.map (fn lvar =>
 			     (case CE.lookupVar env lvar of
-				CE.FIX(lab,SOME(CE.LVAR lv_clos),i,formals) => 
-				  let 
+				CE.FIX(lab,SOME(CE.LVAR lv_clos),i,formals) =>
+				  let
 				    val lab_sclos = fresh_lab(Lvars.pr_lvar lv_clos ^ "_lab")
 				  in
 				    (SOME{lvar=lv_clos,label=lab_sclos},{lvar=lvar,acc_type=CE.FIX(lab,SOME(CE.LABEL lab_sclos),i,formals)})
 				  end
 			      | CE.FIX(lab,NONE,i,formals) => (NONE,{lvar=lvar,acc_type=CE.FIX(lab,NONE,i,formals)})
-			      | CE.LVAR lv => 
+			      | CE.LVAR lv =>
 				  let
 				    val lab = fresh_lab(Lvars.pr_lvar lvar ^ "_lab")
 				  in
@@ -2312,10 +2311,10 @@ struct
 				  end
 			      | _ => die "FRAME: lvar not bound to either LVAR or FIX.")) lvars
 		 val (lv_and_lab,frame_env_lv) = ListPair.unzip lvars_and_labels'
-		 val lvars_and_labels = List.foldr (fn (lv_lab,acc) => 
+		 val lvars_and_labels = List.foldr (fn (lv_lab,acc) =>
 							  case lv_lab of
 							    NONE => acc | SOME lv_lab => lv_lab::acc) [] lv_and_lab
-		 val frame_env_lv = 
+		 val frame_env_lv =
 		   (ClosConvEnv.empty plus_decl_with CE.declareLvar)
 		   (map (fn {lvar,acc_type} => (lvar,acc_type)) frame_env_lv)
 		 val excons = List.map #1 declared_excons
@@ -2347,7 +2346,7 @@ struct
       let
 	fun gen_pseudo_res_lvars(RegionExp.Mus type_and_places) =
 	  (case type_and_places of
-	     [(ty,_)] => 
+	     [(ty,_)] =>
              (case RType.unFUN ty of
                 SOME(mus1,arroweffect,mus2) => List.map (fn _ => Lvars.notused_lvar) mus2
               | NONE => die "gen_fresh_res: not a function type.")
@@ -2407,12 +2406,12 @@ struct
 	fun compile_sels_and_default sels default f_match ccTrip =
 	  let
 	    val sels' =
-	      List.foldr (fn ((m,tr),sels_acc) => 
+	      List.foldr (fn ((m,tr),sels_acc) =>
 			  (f_match m, (ccTrip tr))::sels_acc) [] sels
 	  in
 	    case default of
 	      SOME tr => (sels', ccTrip tr)
-	    | NONE => 
+	    | NONE =>
 		(case rev sels' of
 		   ((_,ce)::rev_sels') => (rev rev_sels',ce)
 		 | _ => die "compile_sels_and_default: no selections.")
@@ -2423,38 +2422,28 @@ struct
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,t,alloc) => INTEGER{value=i, precision=precisionNumType t}
 (*
-	       ((if BI.tag_values() then 
-		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1)) 
+	       ((if BI.tag_values() then
+		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1))
 		 else INTEGER (int_to_string i))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
 *)
 	   | MulExp.WORD(w,t,alloc) => WORD{value=w, precision=precisionNumType t}
 	   | MulExp.STRING(s,alloc) => STRING s
-	   | MulExp.REAL(r,alloc) => 
-	       let
-		 fun convert r =    (* Translate a real constant into C notation: *)
-		   let fun conv #"~" = #"-"
-			 | conv #"E" = #"e"
-			 | conv c = c
-		   in 
-		     (implode o (map conv) o explode) r
-		   end
-	       in
-		 REAL (convert r)
-	       end
+	   | MulExp.REAL(r,alloc) => REAL (convert_real r)
+	   | MulExp.F64(r,alloc) => F64 (convert_real r)
 	   | MulExp.UB_RECORD trs => UB_RECORD (List.map (fn tr => liftTrip tr env lab) trs)
-	   | MulExp.FN{pat,body,free=ref (SOME free_vars_all),alloc} => 
+	   | MulExp.FN{pat,body,free=ref (SOME free_vars_all),alloc} =>
 	       (* For now, the function is closure implemented. *)
 	       (* Free variables must go into the closure. All free variables  *)
 	       (* (free_vars_all) must be bound in the closure environment,    *)
-	       (* while we do not store region closures with no free variables *) 
+	       (* while we do not store region closures with no free variables *)
                (* in the actual closure.                                       *)
 	       let
 		 val free_vars = remove_zero_sized_region_closure_lvars env free_vars_all
-		   
+
 		 val new_lab = fresh_lab (Labels.pr_label lab ^ ".anon")
 		 val args = List.map #1 pat
-		 val lv_clos = Lvars.env_lvar 
+		 val lv_clos = Lvars.env_lvar
 		 val pseudo_res_lvars = gen_pseudo_res_lvars metaType (* Only used to remember the number of return values in cc *)
 		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,pseudo_res_lvars)
 
@@ -2482,12 +2471,12 @@ struct
 		 val free_vars_in_shared_clos = remove_zero_sized_region_closure_lvars env free_vars_all
 		 val shared_clos_size = size3 free_vars_in_shared_clos
 
-		 val lv_sclos = fresh_lvar("sclos") 
+		 val lv_sclos = fresh_lvar("sclos")
 		 val (free_lvs, free_excons, free_rhos) = free_vars_in_shared_clos
 		 val ces = (List.map (fn lv => lookup_ve env lv) free_lvs,
 			    List.map (fn excon => lookup_excon env excon) free_excons,
 			    List.map (fn place => lookup_rho env place) free_rhos)
-		   
+
 		 val lvars_labels_formals = map (fn {lvar, rhos_formals=ref formals, ...} =>
 						 (lvar, fresh_lab(Lvars.pr_lvar lvar), formals)) functions
 
@@ -2506,7 +2495,7 @@ struct
 		   else
 		     (env plus_decl_with CE.declareLvar)
 		     (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size,formals))) lvars_labels_formals)
-		   
+
 		 fun compile_fn (lvar,bind,formals,drops,lab) =
 		   let
 		     val (args,body,metaType) = case bind of
@@ -2534,18 +2523,18 @@ struct
 			  (env_with_rho_lvs plus_decl_with CE.declareRhoKind)
 			  (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
 
-		     val env_with_rho_drop = 
+		     val env_with_rho_drop =
 			   (env_with_rho_kind plus_decl_with CE.declareRho)
 			   (map (fn (place,_) => (place,CE.DROPPED_RVAR(drop_rho place))) drops)
 		     val env_with_rho_drop_kind =
 		           (env_with_rho_drop plus_decl_with CE.declareRhoKind)
-			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops) 
+			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops)
 
 		     val env_with_args =
 		           (env_with_rho_drop_kind plus_decl_with CE.declareLvar)
 			   (map (fn lv => (lv, CE.LVAR lv)) args)
 
-(*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^ 
+(*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^
 				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
 		     val cc = CallConv.mk_cc_fun(args,sclos,NONE,rho_lvs,pseudo_res_lvars)
@@ -2594,7 +2583,7 @@ struct
 	       end
 	  | MulExp.APP(SOME MulExp.FNJMP,_, tr1,tr2) =>
 	       let
-		 val ces = 
+		 val ces =
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => liftTrip tr env lab) trs
 		   | _ => [liftTrip tr2 env lab]
@@ -2604,12 +2593,12 @@ struct
 	       end
 (*
 	   | MulExp.APP(NONE,_, (*  primitive *)
-			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_), 
+			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_),
 			tr2) =>
 	       let
 		 val ces =
 		   (case tr2 of
-		      MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => 
+		      MulExp.TR(MulExp.UB_RECORD trs,_,_,_) =>
 			List.map (fn tr => liftTrip tr env lab) trs    (* all primitives have *)
 		      | _ => die "APP.lvar.prim.args not UB_RECORD")        (* unboxed arguments.  *)
 
@@ -2662,7 +2651,7 @@ struct
 	       end
 	   | MulExp.APP _ => die "application form not recognised"
 
-	   | MulExp.LETREGION{B,rhos=ref bound_regvars,body} => 
+	   | MulExp.LETREGION{B,rhos=ref bound_regvars,body} =>
 	       let
 		 val env_with_kind =
 		   (env plus_decl_with CE.declareRhoKind)
@@ -2723,28 +2712,28 @@ struct
 	   | MulExp.HANDLE(tr1,tr2) => HANDLE(liftTrip tr1 env lab,
 					      liftTrip tr2 env lab)
 	   | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
-	       let val (selections,opt) = (compile_sels_and_default selections 
+	       let val (selections,opt) = (compile_sels_and_default selections
 					   opt (fn i => i) (fn tr => liftTrip tr env lab))
 		 val ce = liftTrip tr env lab
 	       in SWITCH_I{switch=SWITCH(ce,selections,opt), precision=precision}
 	       end
 	   | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
-	       let val (selections,opt) = (compile_sels_and_default selections 
+	       let val (selections,opt) = (compile_sels_and_default selections
 					   opt (fn i => i) (fn tr => liftTrip tr env lab))
 		 val ce = liftTrip tr env lab
 	       in SWITCH_W{switch=SWITCH(ce,selections,opt), precision=precision}
 	       end
 	   | MulExp.SWITCH_S(MulExp.SWITCH(tr,selections,opt)) =>
 	       (* We bind tr (i.e., ce) to an lvar so that tr is only evaluated once. *)
-	       let 
+	       let
 		 val (selections,opt) =
 		   compile_sels_and_default selections opt (fn m=>m) (fn tr => liftTrip tr env lab)
 		 val ce = liftTrip tr env lab
 
 		 (* When tagging is enabled, integers in SWITCH_I are converted in
-		  * CodeGenX86.sml - so in that case we must use an untagged representation 
+		  * CodeGenX86.sml - so in that case we must use an untagged representation
 		  * of true, which is 1 (given that BI.ml_true is 3). *)
-		 val True = Int32.fromInt (if BI.ml_true = 3 then 
+		 val True = Int32.fromInt (if BI.ml_true = 3 then
 					     if BI.tag_values() then 1
 					     else BI.ml_true
 					   else die "True")
@@ -2762,9 +2751,9 @@ struct
 	       end
 	   | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
-		 fun tag con = 
+		 fun tag con =
 		   (case CE.lookupCon env con of
-		      CE.ENUM i => 
+		      CE.ENUM i =>
 			if BI.tag_values() orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
 			  (con,ENUM(2*i+1))
@@ -2785,8 +2774,8 @@ struct
 	       (* We bind tr (i.e., ce) to an lvar so that tr is only evaluated once. *)
 	       let
 		 val (selections,opt) =
-		   compile_sels_and_default selections opt 
-		   (fn m=>(lookup_excon env m,CE.lookupExconArity env m)) 
+		   compile_sels_and_default selections opt
+		   (fn m=>(lookup_excon env m,CE.lookupExconArity env m))
 		   (fn tr => liftTrip tr env lab)
 		 val ce = liftTrip tr env lab
 		 fun compile_seq_switch(ce,[],default) = default
@@ -2799,7 +2788,7 @@ struct
 					       [(Int32.fromInt BI.ml_true,ce')],
 					       compile_seq_switch(ce,rest,default)),
 				 precision=BI.defaultIntPrecision()}
-		    | UNARY_EXCON => 
+		    | UNARY_EXCON =>
 			SWITCH_I{switch=SWITCH(CCALL{name="__equal_int32ub",
 						     args=[ce,SELECT(0,ce_e)],rhos_for_result=[]},
 					       [(Int32.fromInt BI.ml_true,ce')],
@@ -2811,7 +2800,7 @@ struct
 		     bind=SELECT(0,SELECT(0,ce)),
 		     scope=compile_seq_switch(VAR lv_exn_arg,selections,opt)}
 	       end
-	   | MulExp.CON0{con,il,aux_regions,alloc} => 
+	   | MulExp.CON0{con,il,aux_regions,alloc} =>
 	       let
 		 val sma = convert_alloc(alloc,env)
 		 val smas = List.map (fn alloc => convert_alloc(alloc,env)) aux_regions
@@ -2831,18 +2820,18 @@ struct
 		      alloc=sma,
 		      arg=ce_arg}
 	       end
-	   | MulExp.DECON({con,il},tr) => 
+	   | MulExp.DECON({con,il},tr) =>
 	       DECON{con=con,
 		     con_kind=lookup_con env con,
 		     con_exp = liftTrip tr env lab}
 	   | MulExp.EXCON(excon,NONE) => lookup_excon env excon
-	   | MulExp.EXCON(excon,SOME(alloc,tr)) => 
+	   | MulExp.EXCON(excon,SOME(alloc,tr)) =>
 	       RECORD{elems=[lookup_excon env excon,liftTrip tr env lab],
 		      alloc=convert_alloc(alloc,env),
 		      tag=BI.tag_excon1 false,
 		      maybeuntag=false}
 	   | MulExp.DEEXCON(excon,tr) => SELECT(1,liftTrip tr env lab)
-	   | MulExp.RECORD(alloc, trs) => 
+	   | MulExp.RECORD(alloc, trs) =>
 	       RECORD{elems=List.map (fn tr => liftTrip tr env lab) trs,
 		      alloc=convert_alloc(alloc,env),
 		      tag=BI.tag_record(false,length trs),
@@ -2850,15 +2839,15 @@ struct
 	   | MulExp.SELECT(i,tr) => SELECT(i,liftTrip tr env lab)
 	   | MulExp.REF(a,tr) => REF(convert_alloc(a,env),liftTrip tr env lab)
 	   | MulExp.DEREF tr => DEREF(liftTrip tr env lab)
-	   | MulExp.ASSIGN(alloc,tr1,tr2) => 
+	   | MulExp.ASSIGN(alloc,tr1,tr2) =>
 	       ASSIGN(convert_alloc(alloc,env),
 		      liftTrip tr1 env lab,
 		      liftTrip tr2 env lab)
 	   | MulExp.DROP(tr) => DROP(liftTrip tr env lab)
 	   | MulExp.EQUAL({mu_of_arg1,mu_of_arg2,alloc},tr1,tr2) =>
-	       let 
-		 val tau = 
-		   (case tr1 of 
+	       let
+		 val tau =
+		   (case tr1 of
 		      MulExp.TR(_,RegionExp.Mus[(tau,_)],_,_) => tau
 		    | _ => die "EQUAL.metaType not Mus.")
 		 val ce1 = liftTrip tr1 env lab
@@ -2867,15 +2856,15 @@ struct
 	       in
 		   (case RType.unCONSTYPE tau of
 		      SOME(tn,_,_,_) =>
-                        if (TyName.eq(tn,TyName.tyName_BOOL) 
+                        if (TyName.eq(tn,TyName.tyName_BOOL)
 			    orelse TyName.eq(tn,TyName.tyName_REF)
 			    orelse TyName.eq(tn,TyName.tyName_CHARARRAY)
 			    orelse TyName.eq(tn,TyName.tyName_ARRAY))
 			  then
 			    eq_prim "__equal_int32ub"
-			else if TyName.eq(tn,TyName.tyName_INT31) then 
+			else if TyName.eq(tn,TyName.tyName_INT31) then
 			  eq_prim "__equal_int31"
-			else if TyName.eq(tn,TyName.tyName_INT32) then 
+			else if TyName.eq(tn,TyName.tyName_INT32) then
 			  (if BI.tag_values() then eq_prim "__equal_int32b"
 			   else eq_prim "__equal_int32ub")
                         else if TyName.eq(tn,TyName.tyName_WORD31) then
@@ -2888,7 +2877,7 @@ struct
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
 			  die "`=' on vectors! EliminateEq should have dealt with this"
 			else eq_prim "equalPolyML"
-		    | NONE => case RType.unRECORD tau of 
+		    | NONE => case RType.unRECORD tau of
                                 SOME [] => eq_prim "__equal_int32ub"
 		              | _ => eq_prim "equalPolyML")
 	       end
@@ -2911,7 +2900,7 @@ struct
 	       (* `Calling C Functions' in the documentation.                        *)
 	       let
 		 fun comp_region_args_sma [] = []
-		   | comp_region_args_sma ((sma, i_opt)::rest) = 
+		   | comp_region_args_sma ((sma, i_opt)::rest) =
 		       (case i_opt of
 			  SOME 0 => die "liftExp (CCALL ...): argument region with size 0"
 			| SOME i => PASS_PTR_TO_MEM(sma,i) :: (comp_region_args_sma rest)
@@ -2920,7 +2909,7 @@ struct
 		 val i_opts = List.map #2 rhos_for_result
 
 		 val ces = List.map (fn tr => liftTrip tr env lab) trs
-		 val smas = comp_region_args_sma (zip(smas,i_opts))       
+		 val smas = comp_region_args_sma (zip(smas,i_opts))
 (*
 		 val maybe_return_unit =
 		   (case mu_result of (* is it actually necessary to return an unit? 13/09-2000, Niels *)
@@ -2949,7 +2938,7 @@ struct
 			  val res = case fty (#1 mu_result)
 				      of CharArray => die "CCALL_AUTO.CharArray not supported in result"
 				       | t => t
-		      in 
+		      in
 			(*maybe_return_unit*)
 			(CCALL_AUTO{name=name,args=args,res=res})
 		      end
@@ -2957,10 +2946,10 @@ struct
 		      (*maybe_return_unit*)
 		      (CCALL{name=name,args=ces,rhos_for_result=smas}))
 	       end
-	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) => 
+	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) =>
 	       let val ce = liftTrip tr env lab
 		   fun toForeignType (ty,_) : foreign_type =
-		       case RType.unCONSTYPE ty of 
+		       case RType.unCONSTYPE ty of
 			   SOME(tn,_,_,_) => tn_to_foreign_type tn
 			 | NONE => case RType.unRECORD ty of
                                      SOME [] => Unit
@@ -2970,12 +2959,12 @@ struct
 			  clos_lab=Labels.new_named ("ExportClosLab_" ^ name),
 			  arg=(ce,toForeignType mu_arg,toForeignType mu_res)}
 	       end
-	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
+	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) =>
 	       let
-		 val regions_for_resetting = List.filter (fn alloc => 
+		 val regions_for_resetting = List.filter (fn alloc =>
 							  case alloc of
 							    AtInf.IGNORE => false | _ => true) regions_for_resetting
-		 val smas = List.map (fn alloc => convert_alloc(alloc,env)) regions_for_resetting 
+		 val smas = List.map (fn alloc => convert_alloc(alloc,env)) regions_for_resetting
 	       in
 		 RESET_REGIONS{force=force,
 			       regions_for_resetting=smas}
@@ -2983,17 +2972,17 @@ struct
 	   | MulExp.FRAME{declared_lvars, declared_excons} =>
 	       let
 		 val lvars = List.map #lvar declared_lvars
-		 val lvars_and_labels' = 
-		   List.map (fn lvar => 
+		 val lvars_and_labels' =
+		   List.map (fn lvar =>
 			     (case CE.lookupVar env lvar of
-				CE.FIX(lab,SOME(CE.LVAR lv_clos),i,formals) => 
-				  let 
+				CE.FIX(lab,SOME(CE.LVAR lv_clos),i,formals) =>
+				  let
 				    val lab_sclos = fresh_lab(Lvars.pr_lvar lv_clos ^ "_lab")
 				  in
 				    (SOME{lvar=lv_clos,label=lab_sclos},{lvar=lvar,acc_type=CE.FIX(lab,SOME(CE.LABEL lab_sclos),i,formals)})
 				  end
 			      | CE.FIX(lab,NONE,i,formals) => (NONE,{lvar=lvar,acc_type=CE.FIX(lab,NONE,i,formals)})
-			      | CE.LVAR lv => 
+			      | CE.LVAR lv =>
 				  let
 				    val lab = fresh_lab(Lvars.pr_lvar lvar ^ "_lab")
 				  in
@@ -3001,10 +2990,10 @@ struct
 				  end
 			      | _ => die "FRAME: lvar not bound to either LVAR or FIX.")) lvars
 		 val (lv_and_lab,frame_env_lv) = ListPair.unzip lvars_and_labels'
-		 val lvars_and_labels = List.foldr (fn (lv_lab,acc) => 
+		 val lvars_and_labels = List.foldr (fn (lv_lab,acc) =>
 							  case lv_lab of
 							    NONE => acc | SOME lv_lab => lv_lab::acc) [] lv_and_lab
-		 val frame_env_lv = 
+		 val frame_env_lv =
 		   (ClosConvEnv.empty plus_decl_with CE.declareLvar)
 		   (map (fn {lvar,acc_type} => (lvar,acc_type)) frame_env_lv)
 		 val excons = List.map #1 declared_excons
@@ -3018,15 +3007,15 @@ struct
 		 List.foldr (fn ({excon,label},acc) =>
 			     let
 			       val ce = lookup_excon env excon
-(*mael			       val _ = print ("Label for excon(" ^ Excon.pr_excon excon ^ ") = " ^ 
+(*mael			       val _ = print ("Label for excon(" ^ Excon.pr_excon excon ^ ") = " ^
 					      Labels.pr_label label ^ "\n")
 *)
 			     in
 			       LET{pat=[(*fresh_lvar("not_used") *)],bind=STORE(ce,label),scope=acc}
 			     end)
-		 (List.foldr (fn ({lvar,label},acc) => 
-			      let 
-(*mael				val _ = print ("Label for lvar(" ^ Lvars.pr_lvar lvar ^ ") = " ^ 
+		 (List.foldr (fn ({lvar,label},acc) =>
+			      let
+(*mael				val _ = print ("Label for lvar(" ^ Lvars.pr_lvar lvar ^ ") = " ^
 					       Labels.pr_label label ^ "\n")
 *)
 			      in
@@ -3038,20 +3027,20 @@ struct
       in
 	liftExp e
       end (* End liftTrip *)
-  in 
+  in
     fun clos_conv(l2clos_exp_env, Fenv,
 		  prog as MulExp.PGM{expression = tr,
 				     export_datbinds,
 				     import_vars,
 				     export_vars,
 				     export_basis,
-				     export_Psi}) = 
+				     export_Psi}) =
       let
 	val _ = reset_lvars()
 	val _ = reset_labs()
 	val _ = reset_top_decls()
 	val _ = reset_exports()
-	val import_labs = 
+	val import_labs =
 	  find_globals_in_env (valOf(!import_vars)) l2clos_exp_env
 	  handle _ => die "clos_conv: import_vars not specified."
 	val env_datbind = add_datbinds_to_env export_datbinds CE.empty
@@ -3073,13 +3062,13 @@ struct
       end (* End clos_conv *)
 
     (* For bytecode *)
-    fun lift(clos_env, prog) = 
+    fun lift(clos_env, prog) =
       let
 	val _ = chat "[Lifting for bytecode generation...]"
       (*	val n_prog = N prog 04/10-2000, Niels *)
 	val n_prog = prog
 
-	val _ = 
+	val _ =
 	  if print_normalized_program_p() then
 	    display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
 	  else ()
@@ -3097,21 +3086,21 @@ struct
 	val _ = reset_top_decls()
 
 	(* Filter out global exception constructors *)
-	val import_vars = 
+	val import_vars =
 	  let fun member e nil = false
 		| member e (x::xs) = Excon.eq(e,x) orelse member e xs
 	      fun filter (e, acc) =
 	        if member e [Excon.ex_DIV,Excon.ex_MATCH,Excon.ex_BIND,
 			     Excon.ex_OVERFLOW,Excon.ex_INTERRUPT] then acc
 		else e::acc
-	      val (lvars,excons,rhos) = 
-		valOf(!import_vars) 
+	      val (lvars,excons,rhos) =
+		valOf(!import_vars)
 		handle _ => die "clos_conv: import_vars not specified."
 	  in (lvars, foldl filter nil excons, rhos)
 	  end
 
 	val import_labs = find_globals_in_env import_vars clos_env
-	  
+
 	val env_datbind = add_datbinds_to_env export_datbinds CE.empty
 	val global_env = CE.plus (clos_env, env_datbind)
 	val _ = set_global_env global_env
@@ -3120,14 +3109,14 @@ struct
 	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[]),lift_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env_all (get_frame_env())
-	val code = get_top_decls() 
+	val code = get_top_decls()
 	val all =
 	  {main_lab=main_lab,
 	   code=code,
 	   env=export_env,
 	   imports=import_labs,
 	   exports=export_labs}
-	val _ = 
+	val _ =
 	  if print_lift_conv_program_p() then
 	    (display("\nReport: export_env:", CE.layoutEnv export_env);
 	     display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all))))
@@ -3157,18 +3146,18 @@ struct
 			    import_vars,
 			    export_vars,
 			    export_basis,
-			    export_Psi}) = 
+			    export_Psi}) =
     let
       val _ = chat "[Closure Conversion..."
       val n_prog = N prog
-      val _ = 
+      val _ =
 	if print_normalized_program_p() then
 	  display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
 	else
 	  ()
       val Fenv = F n_prog
       val all = clos_conv (clos_env, Fenv, n_prog)
-      val _ = 
+      val _ =
 	if print_clos_conv_program_p() then
 	  display("\nReport: AFTER CLOSURE CONVERSION:", layout_clos_prg (#code(all)))
 	else

@@ -62,6 +62,7 @@ struct
       | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
+      | F64      of string * 'a
       | UB_RECORD of ('a,'b) trip list
       | FN       of {pat : (lvar * (Type*place)) list,
                      body : ('a,'b)trip,
@@ -391,6 +392,7 @@ old*)
         | WORD(w,t,a) => LEAF("0x" ^ Word32.toString w ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
+        | F64(r, a) => LEAF((r ^ "f64") ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ",
                     children = map (fn trip => layTrip(trip,0)) args}

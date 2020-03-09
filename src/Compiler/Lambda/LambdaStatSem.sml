@@ -173,6 +173,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			       (tyName_WORD31, []),
 			       (tyName_WORD32, []),
 			       (tyName_REAL, []),
+			       (tyName_F64, []),
 			       (tyName_STRING, []),
 			       (tyName_CHAR, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
@@ -707,6 +708,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	 | WORD (w,t) => (valid_t env t; Types [t])       (* TODO: w31, w32 - compare with literal w *)
 	 | STRING s => Types [CONStype([], tyName_STRING)]
 	 | REAL s => Types [CONStype([], tyName_REAL)]
+	 | F64 s => Types [CONStype([], tyName_F64)]
 	 | FN {pat,body} =>
 	  let val env' = foldl (fn ((lvar,Type), env) =>
 				     add_lvar(lvar,([],Type),env)) env pat

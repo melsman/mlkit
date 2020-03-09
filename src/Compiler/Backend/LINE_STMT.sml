@@ -77,6 +77,7 @@ signature LINE_STMT =
     | STORE           of 'aty * label (* moved to LineStmt??? 2001-03-15, Niels *)
     | STRING          of string
     | REAL            of string
+    | F64             of string
     | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
     | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}

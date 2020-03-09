@@ -266,6 +266,7 @@ structure DropRegions: DROP_REGIONS =
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
                                    (STRING(s,S atp), maybe_add regvar_env (atp, acc)))
 	     | REAL (s, atp) => (check_atp_t atp "REAL"; (REAL(s,S atp), maybe_add regvar_env (atp, acc)))
+	     | F64 (s, atp) => (check_atp_t atp "F64"; (F64(s,IGNORE), acc))
 	     | UB_RECORD trips =>
                            let val (trips', acc) = List.foldr (fn (tr, (trs,acc)) =>
                                                     let val (tr', acc)= drop env tr acc

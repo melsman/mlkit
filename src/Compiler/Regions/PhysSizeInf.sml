@@ -19,7 +19,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     val print_all_program_points = Flags.lookup_flag_entry "print_all_program_points"
 
     (* ----------------------------------------------------------------------
-     * General Abbreviations and some utilities                                              
+     * General Abbreviations and some utilities
      * ---------------------------------------------------------------------- *)
     fun log s = TextIO.output(!Flags.log,s ^ "\n")
     fun msg s = (TextIO.output(TextIO.stdOut, s ^ "\n"); TextIO.flushOut TextIO.stdOut)
@@ -40,9 +40,9 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	    | ATBOT p => SOME p
 	    | SAT p => SOME p
 	    | IGNORE => NONE
-      end  
+      end
 
-    (* --------------------------------------------------- 
+    (* ---------------------------------------------------
      * Inserting Free Variables in MulExp
      * Buckets are used to hold free variables.
      * --------------------------------------------------- *)
@@ -65,7 +65,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	val lvar_bucket = ref ([]:lvar list)
 	val excon_bucket = ref ([]:excon list)
 	val place_bucket = ref ([]:place list)
-	  
+
 	fun gen_marker(bucket, get_ref) =
 	  let fun is_marked var = !(get_ref var)
 	      fun mark var = get_ref var := true
@@ -84,16 +84,16 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	fun add_excon (excon:excon) : unit =
 	  if List.exists (fn excon' => Excon.eq(excon,excon')) (!excon_bucket) then ()
 	  else excon_bucket := excon :: (!excon_bucket)
-	    
+
 	fun add_atp atp = case place_atplace atp
 			    of SOME p => add_place p
-			     | NONE => () 
+			     | NONE => ()
 	fun mark_atp atp = case place_atplace atp
 			     of SOME p => mark_place p
-			      | NONE => () 
+			      | NONE => ()
 	fun unmark_atp atp = case place_atplace atp
 			       of SOME p => unmark_place p
-				| NONE => () 
+				| NONE => ()
 
 	fun kill_excon (excon:excon) : unit =
 	  let fun kill [] = []
@@ -101,7 +101,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 					  else excon'::kill excons
 	  in excon_bucket := kill (!excon_bucket)
 	  end
-	
+
 	fun reset_fvs () = (List.app unmark_lvar (!lvar_bucket);
 			    List.app unmark_place (!place_bucket);
 			    lvar_bucket := [];
@@ -118,7 +118,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
       (* ------------------------------------------------------
        * Assume free-vars info on fix and fn subexpressions.
        * ------------------------------------------------------ *)
-     
+
       fun fv (TR(e,_,_,_): (place at,place*mul,unit)trip) : unit =
 	let fun fv_sw (SWITCH(tr,choices,opt)) = (fv tr; List.app (fv o #2) choices;
 						  case opt of SOME tr => fv tr | NONE => ())
@@ -129,6 +129,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | WORD(n,t,alloc) => add_atp alloc
 	      | STRING(s,alloc) => add_atp alloc
 	      | REAL(s,alloc) => add_atp alloc
+	      | F64(s,alloc) => add_atp alloc
 	      | UB_RECORD trips => List.app fv trips
 	      | FN{pat,body,free,alloc} =>
 	       (case free
@@ -137,7 +138,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 		     List.app add_excon excons;
 		     List.app add_place places;
 		     add_atp alloc)
-		   | _ => die "fv.FN.free vars not available.") 
+		   | _ => die "fv.FN.free vars not available.")
 	      | LETREGION{B,rhos=ref rhos,body} =>
 		  (List.app (fn (place,mul) => mark_place place) rhos;
 		   fv body;
@@ -157,10 +158,10 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 			List.app (mark_lvar o #lvar) functions;
 			fv scope;
 			List.app (unmark_lvar o #lvar) functions)
-		      | _ => die "fv.FIX.free vars not available.") 
+		      | _ => die "fv.FIX.free vars not available.")
 	      | APP(_,_,tr1,tr2) => (fv tr1; fv tr2)
 	      | EXCEPTION(excon,b,tp,alloc,scope) =>
-		     (fv scope; add_atp alloc; 
+		     (fv scope; add_atp alloc;
 		      kill_excon excon)
 	      | RAISE tr => fv tr
 	      | HANDLE(tr1,tr2) => (fv tr1; fv tr2)
@@ -190,21 +191,21 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | CCALL ({rhos_for_result, ...}, trs) => (List.app (add_atp o #1) rhos_for_result;
 							List.app fv trs)
 	      | EXPORT (_,tr) => fv tr
-	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
-                      (add_atp alloc; 
+	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) =>
+                      (add_atp alloc;
                        List.app add_atp regions_for_resetting;
                        fv tr)
 	      | FRAME{declared_lvars, declared_excons} =>
 			       (List.app (add_lvar o #lvar) declared_lvars;
 				List.app (add_excon o #1) declared_excons)
 	end
-      
+
 
       (* ----------------------------------------------------------
-       * Insert free variables in fn and fix by calling fv, 
+       * Insert free variables in fn and fix by calling fv,
        * buttom-up.
        * ---------------------------------------------------------- *)
-     
+
       fun getOpt (SOME l) = l
         | getOpt NONE =[]
 
@@ -217,6 +218,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | WORD _ => ()
 	      | STRING _ => ()
 	      | REAL _ => ()
+	      | F64 _ => ()
 	      | UB_RECORD trips => List.app ifv trips
 	      | FN{pat,body,free,alloc} => (ifv body;
 					    List.app (mark_lvar o #1) pat;
@@ -259,7 +261,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 (*
 		;case functions
 		  of [{lvar,...}] => pr_fvs (lvar, free)
-		   | _ => () 
+		   | _ => ()
 *)
 	       end
 	      | APP(_,_,tr1,tr2) => (ifv tr1; ifv tr2)
@@ -290,12 +292,12 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => ifv tr
 	      | FRAME{declared_lvars, declared_excons} => ()
 	end
-      
+
     in (*local*)
-      val reset_fvs : unit -> unit = reset_fvs    
+      val reset_fvs : unit -> unit = reset_fvs
       fun insert_free_vars (tr, import_vars, export_vars) =
 	(ifv tr;
-	 import_vars := 
+	 import_vars :=
 	 SOME let val (_, _, export_rhos) = export_vars
 		  val _ = List.app mark_place export_rhos
 		  val imp_vars = (fv(tr); get_fvs())
@@ -341,7 +343,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 
     datatype range_env = FORMAL_REGVARS of place list
                        | FORMAL_SIZES of phsize list
-                       | NOTFIXBOUND 
+                       | NOTFIXBOUND
 
     type env = range_env LvarMap.map
     val empty = LvarMap.empty
@@ -365,8 +367,8 @@ structure PhysSizeInf: PHYS_SIZE_INF =
       foldl(fn (lv, acc) =>
 	    case LvarMap.lookup env lv
 	      of SOME res => add_env(lv,res,acc)
-	       | NONE => die "restrict") empty lvars 
-      
+	       | NONE => die "restrict") empty lvars
+
     type StringTree    = PP.StringTree
     fun layout_list (p : 'a -> StringTree,first,sep,last) (l: 'a list) : StringTree =
       PP.NODE{start=first,finish=last,indent=1,childsep=PP.RIGHT sep,
@@ -376,25 +378,25 @@ structure PhysSizeInf: PHYS_SIZE_INF =
       | layout_range NOTFIXBOUND = PP.LEAF "NOTFIXBOUND"
     val layout_env = LvarMap.layoutMap {start="psi_env: {", finish="}",sep=",",eq=" -> "}
       (PP.LEAF o Lvars.pr_lvar) layout_range
-    
+
     (*
-     * We build a graph, with one node for each binding occurrence of a 
+     * We build a graph, with one node for each binding occurrence of a
      * region variable with logical size 1.  The info of each node is the
-     * minimum physical size of the region (updated by each '... at rho' where 
+     * minimum physical size of the region (updated by each '... at rho' where
      * rho is a region variable with logical size 1).  There is an edge
-     * between two nodes, if and only if the physical size of the 
-     * region corresponding to the first node shall be greater than or 
-     * equal to the physical size of the region corresponding to the second 
-     * node. When the graph has been evaluated using function eval_psi_graph, 
+     * between two nodes, if and only if the physical size of the
+     * region corresponding to the first node shall be greater than or
+     * equal to the physical size of the region corresponding to the second
+     * node. When the graph has been evaluated using function eval_psi_graph,
      * each node contains the physical size of the region it corresponds to.
      *)
 
     type psi_info = phsize ref
     val psi_graph : psi_info DiGraph.graph ref = ref (DiGraph.mk_graph ())
     fun reset_graph() = psi_graph := DiGraph.mk_graph()
-    fun mk_node i = 
-      let val n = DiGraph.mk_node i 
-      in psi_graph := DiGraph.add_node_to_graph(n,!psi_graph); n 
+    fun mk_node i =
+      let val n = DiGraph.mk_node i
+      in psi_graph := DiGraph.add_node_to_graph(n,!psi_graph); n
       end
     fun eval_psi_graph () : unit =
       let
@@ -402,55 +404,55 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	fun max_list [] = die "eval_psi_graph"
 	  | max_list (i::is) = List.foldl (fn (i,b)=>phsize_max i b) i is
 	val layout_info = layout_phsize o !
-	  
+
 	val sccs  = DiGraph.scc layout_info (!psi_graph)
-	val compressed_sccs = 
-	  map (DiGraph.union_graph 
-	       (fn (i1,i2) => (i2 := phsize_max (!i1) (!i2); i2))) 
+	val compressed_sccs =
+	  map (DiGraph.union_graph
+	       (fn (i1,i2) => (i2 := phsize_max (!i1) (!i2); i2)))
 	  sccs
       in
-	DiGraph.bottom_up_eval 
+	DiGraph.bottom_up_eval
 	(fn (i, is) => i := max_list (map (op !) (i::is))) (!psi_graph)
-      end 
+      end
 
     (* --------------------------------------------------------------------------------
-     * psi_env: (intern) 
-     *   An environment which maps (only) regvars with logical size 1 
-     *   to nodes in the graph. 
+     * psi_env: (intern)
+     *   An environment which maps (only) regvars with logical size 1
+     *   to nodes in the graph.
      * -------------------------------------------------------------------------------- *)
 
     type psi_env = psi_info DiGraph.node RegvarFinMap.map
     val psi_env  : psi_env ref = ref RegvarFinMap.empty
     fun reset_psi_env() = psi_env := RegvarFinMap.empty
-      
-    fun psi_declare place = 
+
+    fun psi_declare place =
       psi_env := RegvarFinMap.add (place,mk_node (ref (WORDS 0)),!psi_env)
-      
+
     fun psi_lookup place = RegvarFinMap.lookup (!psi_env) place
-     
+
     fun psi_add_place_size (place,size') =
-      case psi_lookup place 
-	of SOME n => 
-	  (case DiGraph.find_info n 
+      case psi_lookup place
+	of SOME n =>
+	  (case DiGraph.find_info n
 	     of (r as ref size) => r := phsize_max size size')
 	 | NONE => ()
-	     
+
     fun psi_add_edge (actual_regvar,formal_regvar) =
-      case (psi_lookup actual_regvar, psi_lookup formal_regvar) 
+      case (psi_lookup actual_regvar, psi_lookup formal_regvar)
 	of (SOME n1, SOME n2) => (* both regvars have mul 1 *)
 	  if DiGraph.eq_nodes(n1,n2) then ()
-	  else DiGraph.mk_edge(n1,n2) 
+	  else DiGraph.mk_edge(n1,n2)
 	 (* the actual must have physical size greater than or equal to
 	  * physical size of the formal *)
 	 | (NONE, SOME n2) => () (* actual mul infinite, formal mul 1 *)
 	 | (NONE, NONE) => ()    (* both regvars have mul infinite *)
 	 | (SOME n1, NONE) => () (* formal mul infinite, actual mul finite. This
 				  * is ok. Applying a curried function, for instance,
-				  * to one argument, may not cause any allocation. 
+				  * to one argument, may not cause any allocation.
 				  * Multiplicity inference figures this out.. *)
 
     fun phsize_place place : phsize =
-      case psi_lookup place 
+      case psi_lookup place
 	of SOME n => !(DiGraph.find_info n)
 	 | NONE => INF
 
@@ -466,7 +468,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	    | ch_entry (FORMAL_SIZES sizes) = FORMAL_SIZES sizes
 	    | ch_entry NOTFIXBOUND = NOTFIXBOUND
       in LvarMap.composemap ch_entry env
-      end  
+      end
 
 
     (* -------------------------------------------------
@@ -477,28 +479,29 @@ structure PhysSizeInf: PHYS_SIZE_INF =
       (psi_tr_env tr;
        List.app (fn (_,tr) => psi_tr_env tr) sel;
        case opt of NONE => () | SOME tr => psi_tr_env tr)
-      
+
     fun psi_tr env (TR(e,_,_,_) : (place at, place*mul,unit)trip) =
       case e
 	of VAR{lvar,fix_bound=false,rhos_actuals=ref [],...} => ()
-	 | VAR _ => die "psi_tr.variables not fully applied as assumed." 
+	 | VAR _ => die "psi_tr.variables not fully applied as assumed."
 	 | INTEGER _ => ()
 	 | WORD _ => ()
 	 | STRING _ => ()  (* immediate strings are allocated statically.. *)
 	 | REAL _ => ()    (* immediate reals are allocated statically.. *)
+	 | F64 _ => ()
 	 | UB_RECORD trips => List.app (psi_tr env) trips
 	 | FN{pat,body,free=ref (SOME fvs),alloc} =>
 	   (case place_atplace alloc
 	      of SOME place => (psi_add_place_size (place,closure_size fvs);
 				psi_tr env body)
-	       | NONE => die "psi_tr.FN") 
+	       | NONE => die "psi_tr.FN")
 	 | FN _ => die "psi_tr.FN.free vars not available."
- 	 | LETREGION{B,rhos=ref rhos,body} => 
+ 	 | LETREGION{B,rhos=ref rhos,body} =>
 	  (List.app (fn (place,Mul.INF) => ()
 	                | (place,Mul.NUM n) => if n = 1 orelse n = 0 then psi_declare place
 					       else die "psi_tr.LETREGION.mul not in {0,1}")
 	   rhos; psi_tr env body)
-	 | LET{k_let,pat,bind,scope} => 
+	 | LET{k_let,pat,bind,scope} =>
 	  let val env' = List.foldl(fn (pat,acc) =>
 				    add_env(#1 pat,NOTFIXBOUND,acc)) env pat
 	  in psi_tr env bind; psi_tr env' scope
@@ -506,7 +509,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
          | FIX{free=ref (SOME fvs),shared_clos,functions,scope} =>
 	  let val env' = List.foldl
 	                 (fn ({lvar,rhos_formals,...},env) =>
-			  let val formals = map (fn (place,mul) => 
+			  let val formals = map (fn (place,mul) =>
 						 (case mul
 						    of Mul.NUM 0 => psi_declare place
 						     | Mul.NUM 1 => psi_declare place
@@ -514,9 +517,9 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 						     | Mul.INF => (); place))
 			                    (!rhos_formals)
 			  in add_env (lvar,FORMAL_REGVARS formals, env)
-			  end) 
+			  end)
 	                 env functions
-	  in 
+	  in
 	    case place_atplace shared_clos
 	      of SOME place => (let val sz = fix_closure_size fvs
 				in psi_add_place_size (place,sz);
@@ -530,17 +533,17 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	  let val actuals = map (fn atp => case place_atplace atp
 					     of SOME place => place
 					      | NONE => die "APP.actual atp is IGNORE.") atps
-	  in case lookup_env env lvar                               		  
+	  in case lookup_env env lvar
 	       (* If lvar is bound in the program we add edges
 		* between formals and actuals, otherwise we add
 		* necessary sizes to the actuals.  *)
 	       of SOME (FORMAL_REGVARS formals) =>
 		 (List.app psi_add_edge (BasisCompat.ListPair.zipEq(actuals,formals))
-		  handle BasisCompat.ListPair.UnequalLengths => 
+		  handle BasisCompat.ListPair.UnequalLengths =>
 		    die "psi_tr.APP.region_polymorphic_application: actuals differs from formals.")
-		| SOME (FORMAL_SIZES sizes) => 
+		| SOME (FORMAL_SIZES sizes) =>
 		 (List.app psi_add_place_size (BasisCompat.ListPair.zipEq (actuals, sizes))
-		  handle BasisCompat.ListPair.UnequalLengths => 
+		  handle BasisCompat.ListPair.UnequalLengths =>
 		    die "psi_tr.APP.region_polymorphic_application.actuals differs from sizes.")
 		| _ => ();
 	     psi_tr env tr2
@@ -550,7 +553,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	  let val place = case place_atplace atp
 			    of SOME place => place
 			     | NONE => die "psi_tr.EXCEPTION."
-	  in 
+	  in
 	    if b then (* nullary exception *)
 	      psi_add_place_size (place,size_nullery_exn())  (* was words 2 2001-01-18, Niels *)
 	    else (* unary exception *)
@@ -566,28 +569,28 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	 | SWITCH_E sw => psi_sw (psi_tr env) sw
 	 | CON0 {con, il, aux_regions, alloc} => (case place_atplace alloc
 						    of SOME place => psi_add_place_size(place,size_con0()) (* was 1 2001-01-18, Niels *)
-						     | NONE => () (* unboxed_con *)) 
+						     | NONE => () (* unboxed_con *))
 	 | CON1 ({con, il, alloc}, tr) => (case place_atplace alloc
 					     of SOME place => psi_add_place_size(place,size_con1()) (* was 2 2001-01-18, Niels *)
 					      | NONE => (); psi_tr env tr)
 	 | DECON ({con, il}, tr) => psi_tr env tr
 	 | EXCON (excon, opt) => (case opt
-				    of SOME (alloc,tr) => 
+				    of SOME (alloc,tr) =>
 				      (case place_atplace alloc
 					 of SOME place => (psi_add_place_size (place,size_excon1()); psi_tr env tr) (* was 2 2001-01-18, Niels*)
 					  | NONE => die "psi_tr.EXCON")
 				     | NONE => ())
 	 | DEEXCON (excon,tr) => psi_tr env tr
-	 | RECORD (alloc, trs) => 
+	 | RECORD (alloc, trs) =>
             (case (place_atplace alloc, trs)
 	       of (NONE, []) => ()  (* unit *)
 		| (SOME place, _) => psi_add_place_size(place, size_of_record trs)
-		| _ => die "psi_tr.RECORD"; List.app (psi_tr env) trs) 
+		| _ => die "psi_tr.RECORD"; List.app (psi_tr env) trs)
 	 | SELECT (i, tr) => psi_tr env tr
 	 | DEREF tr => psi_tr env tr
 	 | REF (alloc,tr) => (case place_atplace alloc
 				of SOME place => psi_add_place_size(place,size_of_ref())
-				 | NONE => die "psi_tr.REF"; psi_tr env tr) 
+				 | NONE => die "psi_tr.REF"; psi_tr env tr)
 	 | ASSIGN (alloc,tr1,tr2) => (case place_atplace alloc
 					of SOME _ => die "psi_tr.ASSIGN"
 					 | NONE => (psi_tr env tr1; psi_tr env tr2))
@@ -606,7 +609,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 		  | SOME 0 => ()
 		      (*the region contains an unboxed type*)
 		  | SOME i => psi_add_place_size (rho, WORDS i))))
-	     rhos_for_result ; 
+	     rhos_for_result ;
 	     List.app (psi_tr env) trs)
 	 | EXPORT(_,tr) => psi_tr env tr
 	 | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => psi_tr env tr
@@ -622,9 +625,9 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 
     (* --------------------------------------------------------------------
      * ips trip: insert physical sizes instead of multiplicities in MulExp.
-     * Also, insert program points on each allocation point. For FIX 
+     * Also, insert program points on each allocation point. For FIX
      * parameters we use a dummy program point: pp = ~1
-     * All result regions in primitive CCALL are annotated with the same 
+     * All result regions in primitive CCALL are annotated with the same
      * program point.
      * -------------------------------------------------------------------- *)
     type pp = int
@@ -651,14 +654,15 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	  fun bind_transform (place, mul) = (place, phsize_place place)
 	  val e' =
 	    case e
-	      of VAR {lvar,il,plain_arreffs,fix_bound,rhos_actuals,other} => 
+	      of VAR {lvar,il,plain_arreffs,fix_bound,rhos_actuals,other} =>
 		VAR {lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
-		     rhos_actuals=ref (map pp (!rhos_actuals)),other=other} 
+		     rhos_actuals=ref (map pp (!rhos_actuals)),other=other}
 	       | INTEGER (a,t,p) => INTEGER (a,t,pp p)
 	       | WORD (a,t,p) => WORD (a,t,pp p)
 	       | STRING (a,p) => STRING (a,pp p)
 	       | REAL (a,p) => REAL (a,pp p)
-	       | UB_RECORD trs => UB_RECORD (map ips trs) 
+	       | F64 (a,p) => F64 (a,pp p)
+	       | UB_RECORD trs => UB_RECORD (map ips trs)
 	       | FN {pat,body,free,alloc} => FN {pat=pat,body=ips body,free=free,alloc=pp alloc}
 	       | LET {k_let,pat,bind,scope} => LET {k_let=k_let,pat=pat,bind=ips bind,scope=ips scope}
 	       | FIX{free,shared_clos,functions,scope} =>
@@ -670,7 +674,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 			  rhos_formals=ref rhos_formals',
                           bound_but_never_written_into = bound_but_never_written_into',
                           other=other,bind=ips bind}
-		      end 
+		      end
 		in FIX{free=free,shared_clos=pp shared_clos,functions=map ips_f functions,scope=ips scope}
 		end
 	       | APP(ck,sr,tr1,tr2) => APP(ck,sr,ips tr1, ips tr2)
@@ -688,7 +692,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	       | CON1 ({con, il, alloc}, tr) => CON1 ({con=con, il=il, alloc=pp alloc}, ips tr)
 	       | DECON ({con, il}, tr) => DECON ({con=con, il=il}, ips tr)
 	       | EXCON (excon, opt) => EXCON(excon, case opt
-						      of SOME (alloc,tr) => SOME (pp alloc, ips tr) 
+						      of SOME (alloc,tr) => SOME (pp alloc, ips tr)
 						       | NONE => NONE)
 	       | DEEXCON (excon,tr) => DEEXCON (excon,ips tr)
 	       | RECORD (alloc, trs) => RECORD (pp alloc, map ips trs)
@@ -699,7 +703,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	       | DROP (tr) => DROP (ips tr)
 	       | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) =>
 		EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=pp alloc}, ips tr1, ips tr2)
-	       | CCALL ({name, mu_result, rhos_for_result}, trs) => 
+	       | CCALL ({name, mu_result, rhos_for_result}, trs) =>
 		   let val p_point = pp_c()
 		   in CCALL ({name = name,
 			      mu_result = mu_result,
@@ -710,7 +714,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 		             map ips trs)
 		   end
 	       | EXPORT (i,tr) => EXPORT (i,ips tr)
-	       | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
+	       | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) =>
                      RESET_REGIONS ({force=force, alloc=pp alloc,
                                      regions_for_resetting = map pp regions_for_resetting}, ips tr)
 	       | FRAME a => FRAME a
@@ -720,7 +724,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 
 
     (* --------------------------------------------------------
-     * Reset buckets for inserting free variables, graph and 
+     * Reset buckets for inserting free variables, graph and
      * the internal environment.
      * -------------------------------------------------------- *)
 
@@ -732,28 +736,28 @@ structure PhysSizeInf: PHYS_SIZE_INF =
      * sizes of actual region variables.
      * -------------------------------------------------------------- *)
 
-    fun psi (pp_counter : unit -> pp, env : env, 
+    fun psi (pp_counter : unit -> pp, env : env,
 	     PGM{expression=tr,
 		 export_datbinds,
 		 import_vars,
 		 export_vars,
 		 export_basis,
-		 export_Psi} : (place at, place*mul,unit)LambdaPgm)  
+		 export_Psi} : (place at, place*mul,unit)LambdaPgm)
       : ((place*pp)at,place*phsize,unit)LambdaPgm * env =
       let
-	val _ = reset()   (* reset free_vars-buckets, graph 
+	val _ = reset()   (* reset free_vars-buckets, graph
 			   * and the internal environment *)
-	
+
 	val _ = insert_free_vars (tr, import_vars, export_vars)     (* Insert free variables *)
 	val _ = psi_tr env tr                                       (* Build graph *)
 	val _ = eval_psi_graph()                                    (* Evaluate graph *)
 	val tr1 = ips pp_counter tr                                 (* Transform trip *)
-	  
+
 	val env1 = convert_env (!frame_env) (* Compute resulting environment mapping
-					     * exported lvars into minimal physical 
+					     * exported lvars into minimal physical
 					     * sizes of actual region variables. *)
 	val _ = reset()
-	  
+
       in (PGM{expression=tr1,
 	      export_datbinds=export_datbinds,
 	      import_vars=import_vars,
@@ -768,7 +772,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     (**************************)
 
   fun allocates_space(place,INF) = true
-    | allocates_space(place,WORDS i) = (i > 0) 
+    | allocates_space(place,WORDS i) = (i > 0)
 
   exception GetRho
 
@@ -779,28 +783,28 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 
   fun actual_regions_match_formal_regions([],[])  = true
     | actual_regions_match_formal_regions(l as ((formal_rho,mul)::forms), rho_act::acts): bool =
-          (Effect.eq_effect(formal_rho, get_rho rho_act) 
+          (Effect.eq_effect(formal_rho, get_rho rho_act)
            handle GetRho => false)
            andalso actual_regions_match_formal_regions (forms,acts)
     | actual_regions_match_formal_regions(_,[]) = true
     | actual_regions_match_formal_regions([], _ ) = false
 
   fun remove_from_bound([],act) = []
-    | remove_from_bound((b as (rho,mul))::bs, a) = 
+    | remove_from_bound((b as (rho,mul))::bs, a) =
         if (Effect.eq_effect(rho, get_rho a) handle _ => false) then
-           bs  
+           bs
         else b :: remove_from_bound(bs, a)
 
   val appConvert = fn (prog)=>
       appConvert
-        allocates_space        
+        allocates_space
         actual_regions_match_formal_regions
         remove_from_bound
         prog
 
 
     (* --------------------------------
-     * Pretty Printing 
+     * Pretty Printing
      * -------------------------------- *)
 
     fun layout_effectpp (effect, ~1) = E.layout_effect effect
@@ -809,17 +813,17 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	PP.HNODE{start="",finish="",childsep=PP.RIGHT " ",
 		 children=[E.layout_effect effect, PP.LEAF ("pp"^Int.toString pp)]}
       else E.layout_effect effect
-    
+
     fun layout_placeXphsize (place,phsize) =
 	PP.HNODE{start="",finish="",childsep=PP.RIGHT ":",
 		 children=[E.layout_effect place,layout_phsize phsize]}
-    fun layout_unit () = NONE 
-    val layout_trip = layoutLambdaTrip (AtInf.layout_at layout_effectpp) (AtInf.layout_at layout_effectpp) 
+    fun layout_unit () = NONE
+    val layout_trip = layoutLambdaTrip (AtInf.layout_at layout_effectpp) (AtInf.layout_at layout_effectpp)
       (SOME o layout_placeXphsize) layout_unit
 
     fun layout_pgm(PGM{expression,...}) = layout_trip expression
 
-    val pu_phsize = 
+    val pu_phsize =
 	let fun toInt INF = 0
 	      | toInt (WORDS _) = 1
 	    val fun_INF = Pickle.con0 INF
@@ -827,16 +831,16 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	in Pickle.dataGen("PhysSizeInf.phsize",toInt,[fun_INF, fun_WORDS])
 	end
 
-    val pu_range_env = 
+    val pu_range_env =
 	let fun toInt (FORMAL_REGVARS _) = 0
 	      | toInt (FORMAL_SIZES _) = 1
 	      | toInt NOTFIXBOUND = 2
 	    fun fun_FORMAL_REGVARS _ =
-		Pickle.con1 FORMAL_REGVARS (fn FORMAL_REGVARS a => a | _ => die "pu_range_env.FORMAL_REGVARS") 
+		Pickle.con1 FORMAL_REGVARS (fn FORMAL_REGVARS a => a | _ => die "pu_range_env.FORMAL_REGVARS")
 		Effect.pu_effects
 	    fun fun_FORMAL_SIZES _ =
-		Pickle.con1 FORMAL_SIZES (fn FORMAL_SIZES a => a | _ => die "pu_range_env.FORMAL_SIZES") 
-		(Pickle.listGen pu_phsize)		
+		Pickle.con1 FORMAL_SIZES (fn FORMAL_SIZES a => a | _ => die "pu_range_env.FORMAL_SIZES")
+		(Pickle.listGen pu_phsize)
 	    val fun_NOTFIXBOUND = Pickle.con0 NOTFIXBOUND
 	in Pickle.dataGen("PhysSizeInf.range_env",toInt,[fun_FORMAL_REGVARS, fun_FORMAL_SIZES, fun_NOTFIXBOUND])
 	end
@@ -845,31 +849,31 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 
 (*
     fun layout_vars(lvars,excons,places) =
-          let val t1 = PP.HNODE{start = "lvars:", finish = "end of lvars;", 
+          let val t1 = PP.HNODE{start = "lvars:", finish = "end of lvars;",
                                childsep = PP.RIGHT " ", children = map (PP.LEAF o Lvars.pr_lvar) lvars}
-            val t2 =  PP.HNODE{start = "excons:", finish = "end of excons;", 
+            val t2 =  PP.HNODE{start = "excons:", finish = "end of excons;",
                                childsep = PP.RIGHT " ", children = map (PP.LEAF o Excon.pr_excon) excons}
-            val t3 =  PP.HNODE{start = "region variables:", finish = "end of region variables;", 
+            val t3 =  PP.HNODE{start = "region variables:", finish = "end of region variables;",
                                childsep = PP.RIGHT " ", children = map Effect.layout_effect places}
           in
-            PP.NODE{start = "variables begin", finish = "variables end", indent = 2, 
+            PP.NODE{start = "variables begin", finish = "variables end", indent = 2,
                     childsep = PP.NOSEP, children = [t1,t2,t3]}
           end
 
     fun layout_pgm (PGM{expression,import_vars,export_vars,...}) = (* belongs in MulExp, actually *)
-       let 
-         val t1 = PP.NODE{start = "import_vars: ", finish = "end import vars", 
+       let
+         val t1 = PP.NODE{start = "import_vars: ", finish = "end import vars",
                           childsep = PP.RIGHT " ",
-                          indent = 2, children = 
+                          indent = 2, children =
                             case import_vars of
                               ref(SOME iv)=> [layout_vars iv]
                             | _ => [PP.LEAF " (reference not set) "]}
-         val t2 = PP.NODE{start = "export_vars: ", finish = "end export vars", 
+         val t2 = PP.NODE{start = "export_vars: ", finish = "end export vars",
                           childsep = PP.RIGHT " ",
                           indent = 2, children = [layout_vars export_vars]}
          val t3 = layout_trip expression
        in
-         PP.NODE{start = "Physical Size Program (a MulExp)", 
+         PP.NODE{start = "Physical Size Program (a MulExp)",
                  finish = "end of Physical Size Program",
                  indent = 2, childsep = PP.NOSEP,
                  children = [t1,t2,t3]}

@@ -11,9 +11,13 @@ signature INSTS_X64 =
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
                  | r10b (* for bytetable_update, e.g. *)
-                 | xmm0 | xmm1
+                 | xmm0 | xmm1 | xmm2 | xmm3
+                 | xmm4 | xmm5 | xmm6 | xmm7
+                 | xmm8 | xmm9 | xmm10 | xmm11
+                 | xmm12 | xmm13 | xmm14 | xmm15
 
     val pr_reg : reg -> string
+    val is_xmm : reg -> bool
 
     val tmp_reg0 : reg (*=r10*)
     val tmp_reg1 : reg (*=r11*)

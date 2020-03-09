@@ -94,6 +94,7 @@ struct
     | STORE           of 'aty * label
     | STRING          of string
     | REAL            of string
+    | F64             of string
     | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
     | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
@@ -254,6 +255,7 @@ struct
 	 | STORE(aty,lab) => LEAF("store(" ^ pr_aty aty ^ "," ^ Labels.pr_label lab ^ ")")
 	 | STRING s  => LEAF("\"" ^ String.toString s ^ "\"")
 	 | REAL s    => LEAF(s)
+	 | F64 s     => LEAF(s ^ "f64")
 	 | CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} => HNODE{start="[",
 									      finish="]clos " ^ pr_sma pr_aty alloc,
 									      childsep=RIGHT ",",
@@ -620,6 +622,7 @@ struct
 	 | ClosExp.WORD i => maybe_assign (lvars_res, ATOM(WORD i), acc)
 	 | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
 	 | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
+	 | ClosExp.F64 s => maybe_assign (lvars_res, F64 s, acc)
 	 | ClosExp.PASS_PTR_TO_MEM(sma,i) =>
 	    let fun untagged_region_type sma =
 		   case ce_of_sma sma of
@@ -816,6 +819,7 @@ struct
     | get_phreg_se(STORE(atom,lab),acc) = get_phreg_atom(atom,acc)
     | get_phreg_se(STRING str,acc) = acc
     | get_phreg_se(REAL str,acc) = acc
+    | get_phreg_se(F64 str,acc) = acc
     | get_phreg_se(CLOS_RECORD{label,elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
     | get_phreg_se(REGVEC_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(elems,acc))
     | get_phreg_se(SCLOS_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
@@ -937,6 +941,7 @@ struct
       | (STORE(atom,lab),acc) => get_var_atom(atom,acc)
       | (STRING str,acc) => acc
       | (REAL str,acc) => acc
+      | (F64 str,acc) => acc
       | (CLOS_RECORD{label,elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
       | (REGVEC_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_smas(elems,acc))
       | (SCLOS_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
@@ -1083,6 +1088,7 @@ struct
 	  | map_se(STORE(aty,label)) = STORE(map_aty aty,label)
 	  | map_se(STRING str) = STRING str
 	  | map_se(REAL str) = REAL str
+	  | map_se(F64 str) = F64 str
 	  | map_se(CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) =
 	  CLOS_RECORD{label=label,
 		      elems=(map_atys lvs,map_atys excons,map_atys rhos),

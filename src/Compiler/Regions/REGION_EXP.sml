@@ -53,6 +53,7 @@ signature REGION_EXP =
       | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
+      | F64      of string * 'a
       | UB_RECORD of ('a,'b) trip list (* unboxed records *)
       | FN       of {pat : (lvar * (Type*place)) list,
                      body : ('a,'b)trip,

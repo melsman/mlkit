@@ -97,6 +97,14 @@ structure OptLambda: OPT_LAMBDA =
 	      \sites are transformed to match the new function (Lambda\n\
 	      \Expression Optimiser)."}
 
+    val unbox_reals = Flags.add_bool_entry
+	    {long="unbox_reals", short=NONE,
+	     menu=["Control", "Optimiser", "unbox real values"],
+	     item=ref true, neg=true, desc=
+	     "Unbox real values and computations on real values inside\n\
+             \functions. Real values stored in data structures and\n\
+             \passed to functions are still boxed."}
+
     (* max size of recursive function defs. to be specialised. *)
     val max_specialise_size = Flags.add_int_entry
 	{long="maximum_specialise_size",short=NONE,
@@ -202,6 +210,24 @@ structure OptLambda: OPT_LAMBDA =
 
     val lexp_true = PRIM(CONprim{con=Con.con_TRUE,instances=nil,regvar=NONE},nil)
     val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
+
+    (* Operations on unboxed floats *)
+
+    local
+      type exp = LambdaExp
+      fun ccall name argtypes restype =
+          CCALLprim {name=name,instances=[],tyvars=[],
+		     Type=ARROWtype(argtypes,[restype])}
+      fun f64_bin opr (x:exp,y:exp) : exp =
+          PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type,f64Type] f64Type, [x,y])
+    in
+      fun f64_to_real (x:exp) : exp = PRIM(ccall "__f64_to_real" [f64Type] realType, [x])
+      fun real_to_f64 (x:exp) : exp = PRIM(ccall "__real_to_f64" [realType] f64Type, [x])
+      val f64_plus = f64_bin "plus"
+      val f64_minus = f64_bin "minus"
+      val f64_mul = f64_bin "mul"
+      val f64_div = f64_bin "div"
+    end
 
    (* -----------------------------------------------------------------
     * Statistical functions
@@ -524,6 +550,60 @@ structure OptLambda: OPT_LAMBDA =
      in (c nil nil lamb; true) handle OPEN => false
      end
 
+   (* Function for determining if a variable v (of type real) occurs in an
+    * expression e only in contexts of the form __real_to_f64(v)
+    * given that e is *simple* (contains no function applications,
+    * no handlers, switches, or functions. *)
+
+   fun real_lvar_f64_in_lamb (lv:lvar) (lamb:LambdaExp) : bool =
+     let exception Bad
+         fun ok n =
+             case n of
+                 "__plus_real" => true
+               | "__minus_real" => true
+               | "__mul_real" => true
+               | "__div_real" => true
+               | "__f64_to_real" => true
+               | "__real_to_f64" => true
+               | "__plus_f64" => true
+               | "__minus_f64" => true
+               | "__mul_f64" => true
+               | "__div_f64" => true
+               | _ => false
+         fun look e =
+             case e of
+                 REAL _ => ()
+               | F64 _ => ()
+               | WORD _ => ()
+               | INTEGER _ => ()
+               | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else ()
+               | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => ()
+               | PRIM(CCALLprim{name,...},es) =>
+                 if not(ok name) then raise Bad
+                 else app look es
+	       | LET{pat,bind,scope} => (look bind; look scope)
+               | PRIM(SELECTprim _, es) => app look es
+               | PRIM(RECORDprim _, es) => app look es
+               | _ => raise Bad
+     in
+       (look lamb; true) handle Bad => false
+     end
+
+   fun subst_real_lvar_f64_in_lamb (lv:lvar) (lamb:LambdaExp) : LambdaExp =
+       let fun subst e =
+             case e of
+                 REAL _ => e
+               | F64 _ => e
+               | WORD _ => e
+               | INTEGER _ => e
+               | VAR _ => e
+               | PRIM(CCALLprim{name="__real_to_f64",...},[e' as VAR {lvar,...}]) =>
+                 if Lvars.eq(lvar,lv) then e' else e
+               | PRIM(p,es) => PRIM(p,map subst es)
+	       | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
+               | _ => die "subst_real_lvar_f64_in_lamb: impossible"
+       in subst lamb
+       end
 
    (* -----------------------------------------------------------------
     * Marking Lambda Variables
@@ -994,6 +1074,18 @@ structure OptLambda: OPT_LAMBDA =
                | NONE => fail
             end
 
+      fun simple_nonexpanding e =
+          case e of
+              VAR{instances=[],regvars=[],...} => true
+            | F64 _ => true
+            | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
+            | PRIM(CCALLprim{name="__real_to_f64",...},[e]) => simple_nonexpanding e
+            | _ => false
+
+      fun reduce_f64bin f64binop (x,y) =
+          (tick "real_to_f64";
+           (f64_to_real (f64binop (real_to_f64 x,real_to_f64 y)), CUNKNOWN))
+
       fun reduce (env, (fail as (lamb,cv))) =
 	case lamb
 	  of VAR{lvar,instances,regvars=[]} =>
@@ -1038,8 +1130,36 @@ structure OptLambda: OPT_LAMBDA =
 					   else fail
 	   | STRING _ => (lamb, CCONST lamb)
 	   | REAL _ => (lamb, CCONST lamb)
-	   | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
-	       let fun do_sw SW (SWITCH(VAR{lvar=lvar',instances,regvars=[]},sel,opt_e)) =
+	   | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
+	       let
+                 (* maybe let-float f64-binding outwards to open up for other optimisations *)
+                 val (lvar,tyvars,tau,bind,scope,fail) =
+                     case (tyvars,tau) of
+                         ([],RECORDtype (_ :: _ :: _)) =>
+                         (case bind of
+                              LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>
+                                 if unbox_reals() andalso eq_Type(tau',f64Type) andalso simple_nonexpanding bind' then
+                                   (tick "reduce - f64 let-floating";
+                                    let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',
+                                                          scope=scope}
+                                    in (lv,[],tau',bind',scope'',
+                                        (LET{pat=[(lv,[],tau')],bind=bind',scope=scope''},
+                                         CUNKNOWN))
+                                    end)
+                                 else (lvar,tyvars,tau,bind,scope,fail)
+                            | _ => (lvar,tyvars,tau,bind,scope,fail))
+                         | _ => (lvar,tyvars,tau,bind,scope,fail)
+                 (* maybe unbox real binding *)
+                 val (tau,bind,scope,fail) =
+                     if unbox_reals() andalso eq_Type(realType,tau) andalso real_lvar_f64_in_lamb lvar scope then
+                       (tick "reduce - unbox_real";
+                        let val (tau,bind,scope) = (f64Type,real_to_f64 bind,
+                                                    subst_real_lvar_f64_in_lamb lvar scope)
+                        in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],bind=bind,scope=scope},
+                                            CUNKNOWN))
+                        end)
+                     else (tau,bind,scope,fail)
+                 fun do_sw SW (SWITCH(VAR{lvar=lvar',instances,regvars=[]},sel,opt_e)) =
 		     if Lvars.eq(lvar,lvar') andalso Lvars.one_use lvar then
 		       let val S = mk_subst (fn () => "let-switch") (tyvars, instances)
 		       in tick "reduce - inline-switch";
@@ -1096,7 +1216,7 @@ structure OptLambda: OPT_LAMBDA =
 	       else fail
 	   | LET{pat,bind,scope} =>
 		   (case bind of
-			PRIM(UB_RECORDtype, es) =>
+			PRIM(UB_RECORDprim, es) =>
 			    if length pat <> length es then
 				die "LET.bind"
 			    else
@@ -1189,6 +1309,19 @@ structure OptLambda: OPT_LAMBDA =
 	  | SWITCH_S switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
 	  | SWITCH_C switch => reduce_switch (reduce, env, fail, switch, selectorCon)
 	  | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
+          | PRIM(CCALLprim{name="__real_to_f64",...},
+                 [PRIM(CCALLprim{name="__f64_to_real",...},[x])]) =>
+            (tick "real unbox o box elimination";
+             reduce (env,(x,CUNKNOWN)))
+          | PRIM(CCALLprim{name,...},[x,y]) =>
+            if unbox_reals() then
+              case name of
+                  "__plus_real" => reduce_f64bin f64_plus (x,y)
+                | "__minus_real" => reduce_f64bin f64_minus (x,y)
+                | "__mul_real" => reduce_f64bin f64_mul (x,y)
+                | "__div_real" => reduce_f64bin f64_div (x,y)
+                | _ => constantFolding lamb fail
+            else constantFolding lamb fail
 	  | _ => constantFolding lamb fail
 
 
@@ -1349,7 +1482,7 @@ structure OptLambda: OPT_LAMBDA =
 	else
 	  (lamb, contract_env_dummy lamb)
 
-      fun enrich_contract_env(ce1,ce2) =
+      fun enrich_contract_env (ce1,ce2) =
 	LvarMap.Fold (fn ((lv2,res2),b) => b andalso
 		      case LvarMap.lookup ce1 lv2
 			of SOME res1 => eq_cv_scheme(res1,res2)
@@ -1357,7 +1490,7 @@ structure OptLambda: OPT_LAMBDA =
 
       fun free_contract_env_res(res,cons,tns) = (cons,tns)
 
-      fun restrict_contract_env(ce,lvars,cons,tns) =
+      fun restrict_contract_env (ce,lvars,cons,tns) =
 	List.foldl (fn (lv,(e,cons,tns)) =>
 		    case LvarMap.lookup ce lv
 		      of SOME res =>

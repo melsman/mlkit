@@ -29,7 +29,10 @@ structure InstsX64: INSTS_X64 =
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
                  | r10b (* for bytetable_update, e.g. *)
-                 | xmm0 | xmm1
+                 | xmm0 | xmm1 | xmm2 | xmm3
+                 | xmm4 | xmm5 | xmm6 | xmm7
+                 | xmm8 | xmm9 | xmm10 | xmm11
+                 | xmm12 | xmm13 | xmm14 | xmm15
 
     type freg = int
 
@@ -208,6 +211,40 @@ structure InstsX64: INSTS_X64 =
       | pr_reg r10b = "%r10b"
       | pr_reg xmm0 = "%xmm0"
       | pr_reg xmm1 = "%xmm1"
+      | pr_reg xmm2 = "%xmm2"
+      | pr_reg xmm3 = "%xmm3"
+      | pr_reg xmm4 = "%xmm4"
+      | pr_reg xmm5 = "%xmm5"
+      | pr_reg xmm6 = "%xmm6"
+      | pr_reg xmm7 = "%xmm7"
+      | pr_reg xmm8 = "%xmm8"
+      | pr_reg xmm9 = "%xmm9"
+      | pr_reg xmm10 = "%xmm10"
+      | pr_reg xmm11 = "%xmm11"
+      | pr_reg xmm12 = "%xmm12"
+      | pr_reg xmm13 = "%xmm13"
+      | pr_reg xmm14 = "%xmm14"
+      | pr_reg xmm15 = "%xmm15"
+
+    fun is_xmm (r:reg) =
+        case r of
+            xmm0 => true
+          | xmm1 => true
+          | xmm2 => true
+          | xmm3 => true
+          | xmm4 => true
+          | xmm5 => true
+          | xmm6 => true
+          | xmm7 => true
+          | xmm8 => true
+          | xmm9 => true
+          | xmm10 => true
+          | xmm11 => true
+          | xmm12 => true
+          | xmm13 => true
+          | xmm14 => true
+          | xmm15 => true
+          | _ => false
 
     fun remove_ctrl s =
         String.implode (List.filter (fn c =>

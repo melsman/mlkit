@@ -1256,6 +1256,7 @@ struct
   val exnType: Type = CONSTYPE(TyName.tyName_EXN,[],[],[])
   val boolType: Type = CONSTYPE(TyName.tyName_BOOL,[],[],[])
   val realType: Type = CONSTYPE(TyName.tyName_REAL,[],[],[])
+  val f64Type: Type = CONSTYPE(TyName.tyName_F64,[],[],[])
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
   val unitType: Type = RECORD[]
 

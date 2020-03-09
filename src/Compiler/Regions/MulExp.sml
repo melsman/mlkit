@@ -100,6 +100,7 @@ struct
       | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
+      | F64      of string * 'a
       | UB_RECORD of ('a,'b,'c) trip list (* unboxed records *)
 
       | FN       of {pat : (lvar * (Type*place)) list,
@@ -807,6 +808,7 @@ struct
         | WORD(w, t, a) => LEAF("0x" ^ Word32.toString w ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
+        | F64(r, a) => LEAF((r^"f64") ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ",
                     children = map (fn trip => layTrip(trip,0)) args}
@@ -1218,6 +1220,7 @@ struct
     | WORD _ => tr
     | STRING _ => tr
     | REAL _ => tr
+    | F64 _ => tr
     | UB_RECORD trs => e_to_t(UB_RECORD(map (eval env) trs))
     | FN{pat,body,free,alloc} =>
        e_to_t(FN{pat=pat,body = eval [] body, free=free,alloc=alloc})
@@ -1430,6 +1433,7 @@ struct
         | RegionExp.WORD(i,t,a) => (WORD(i,t,a), dep)
         | RegionExp.STRING(s,a) => (STRING(s,a), dep)
         | RegionExp.REAL(r,a) => (REAL(r,a), dep)
+        | RegionExp.F64(r,a) => (F64(r,a), dep)
         | RegionExp.UB_RECORD(ts) =>
             let val (ts', dep) = mk_deps(EE, ts, dep)
             in (UB_RECORD ts', dep)
@@ -1717,6 +1721,7 @@ struct
       | WORD _ => k tr
       | STRING _ => k tr
       | REAL _ =>  k tr
+      | F64 _ =>  k tr
       | UB_RECORD(trs) => many_sub trs (e_to_t o UB_RECORD)
       | FN{pat,body,free,alloc} =>
         k (e_to_t(FN{pat=pat, free=free,alloc=alloc,
@@ -1882,7 +1887,8 @@ struct
       | (INTEGER(i,t,_), INTEGER(i',t',_)) => i=i'
       | (WORD(w,t,_), WORD(w',t',_)) => w=w'
       | (STRING(s,_), STRING(s',_)) => s=s'
-      | (REAL(r,_), REAL(r',_)) => (r = r') (* reals are represented as strings for the precision to be preserved *)
+      | (REAL(r,_), REAL(r',_)) => (r=r') (* reals are represented as strings for the precision to be preserved *)
+      | (F64(r,_), F64(r',_)) => (r=r') (* f64s are represented as strings for the precision to be preserved *)
       | (UB_RECORD ts1, UB_RECORD ts2) =>
            eq_list eq (ts1,ts2)
       | (FN{pat = pat1, body = body1, ...}, FN{pat = pat2, body = body2, ...}) =>
@@ -2019,6 +2025,7 @@ struct
               | WORD i => (WORD i, NEXT)
               | STRING s => (STRING s, NEXT)
               | REAL r => (REAL r, NEXT)
+              | F64 r => (F64 r, NEXT)
               | UB_RECORD l => let val (trs', cont) = tailList(l, cont)
                                in (UB_RECORD trs', cont)
                                end

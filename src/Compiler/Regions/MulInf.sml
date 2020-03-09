@@ -3,13 +3,13 @@
       (*          Multiplicity Inference                 *)
       (* - classifies regions as finite or infinite -    *)
       (*   "infinite" means "of unbounded size";         *)
-      (*   "finite" means "statically known finite size" *)        
+      (*   "finite" means "statically known finite size" *)
       (***************************************************)
 
 structure MulInf: MUL_INF =
 struct
   structure PP = PrettyPrint
-  structure Eff = Effect 
+  structure Eff = Effect
   structure Lvar = Lvars
   structure RegionExp = MulExp.RegionExp
 
@@ -42,7 +42,7 @@ struct
   fun get_mu(MulExp.TR(_,mu,_,_)) = mu
   fun get_place tr = case get_mu tr of RegionExp.Mus[(_,p)] => p | _ => die "get_place"
 
-  fun frv(mu): RType.place list = 
+  fun frv(mu): RType.place list =
         Eff.remove_duplicates(List.filter Eff.is_rho (RType.ann_mus [mu] []))
 
   fun cons_if_there (NONE) l = l
@@ -54,10 +54,10 @@ struct
   fun layoutp(t1,t2) = PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT":", children = [t1,t2]}
 
   fun layoutExp e = MulExp.layoutLambdaExp
-                       (if print_regions() 
+                       (if print_regions()
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if print_regions() 
+                       (if print_regions()
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
                        (if print_regions()
@@ -67,10 +67,10 @@ struct
                        e
 
   fun layouttrip tr = MulExp.layoutLambdaTrip
-                       (if print_regions() 
+                       (if print_regions()
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if print_regions() 
+                       (if print_regions()
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
                        (if print_regions()
@@ -80,7 +80,7 @@ struct
                        tr
 
   fun layoutLambdaPgm p = MulExp.layoutLambdaPgm
-                       (if print_regions() 
+                       (if print_regions()
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
                        (if print_regions()
@@ -101,13 +101,13 @@ struct
 
   fun mulinf(Psi: Mul.imp_mularefmap, dep: Mul.dependency_map, cone: Eff.cone,
              tr as MulExp.TR(e, mu, phi, psi_r as ref psi): (place, (place*Mul.mul), Mul.qmularefset ref)trip_psi) =
-    let 
+    let
       open MulExp  (* to get constructors of expressions *)
 
       fun infer_trip(tr as MulExp.TR(e, mu, phi, psi_r as ref psi): (place, (place*Mul.mul), Mul.qmularefset ref)trip_psi): unit =
-        let 
+        let
            fun infer_sw (MulExp.SWITCH(tr0, choices, opt_else)) =
-             let 
+             let
                 val right_hand_sides = (cons_if_there opt_else (map #2 choices))
 
                 val _ = app (fn tr => infer_trip(tr)) (tr0 :: right_hand_sides)
@@ -117,51 +117,52 @@ struct
                 psi_r:= Mul.sumef(get_psi tr0, choices_psi)
                      (*   Mul.sumef(Mul.get case_object_place, Mul.sumef(get_psi tr0, choices_psi)) *)
              end
-                             
+
         in
           case e of
             VAR{lvar,fix_bound,rhos_actuals,il,plain_arreffs,other: qmularefset ref} =>
-              let 
+              let
                 val (_,places,_) = RType.un_il il
                 val qmul = Mul.instantiateRegions(places,!other)
                 val arreffs = Mul.make_arroweffects plain_arreffs
 (*
                 val _ = say ("\nMulInf.VAR " ^ Lvars.pr_lvar lvar ^ ": calling instantiateeffects with")
-                val _ = say "\narrow effects: " 
+                val _ = say "\narrow effects: "
                 val _ = outtree (Mul.layout_Phi arreffs)
-                val _ = say "\n and qmul : " 
+                val _ = say "\n and qmul : "
                 val _ = outtree (Mul.layout_qmularefset qmul)
 *)
                 val _ = Mul.instantiateeffects(arreffs,
-                                               qmul, Psi, dep) (* updates 
+                                               qmul, Psi, dep) (* updates
                                                                  shared semantic objects *)
 (*
-                val psi = case alloc 
-			    of SOME p => Mul.put p 
+                val psi = case alloc
+			    of SOME p => Mul.put p
 			     | NONE => Mul.empty_psi
 *)
 		val psi = Mul.empty_psi
               in
 		psi_r:= psi
-	      end		    
+	      end
           | INTEGER(_,t,p) => psi_r:= Mul.put p
           | WORD(_,t,p) => psi_r:= Mul.put p
           | STRING(_,p) => psi_r:= Mul.put p
           | REAL(_,p) => psi_r:= Mul.put p
+          | F64(_,p) => psi_r:= Mul.put p
           | UB_RECORD(trips) =>
-             let 
+             let
                 val _ = app(fn tr => infer_trip(tr))trips
                 val psi = sum_psis(map get_psi trips)
-             in 
+             in
                 psi_r:= psi
              end
           | FN{pat,body,free,alloc} =>
              (case mu of
                RegionExp.Mus[(ty,_)] =>
                (case RType.unFUN ty of
-                  SOME (_,eps,_) =>                                 
-                  let 		    
-                    val _ = infer_trip(body) 
+                  SOME (_,eps,_) =>
+                  let
+                    val _ = infer_trip(body)
                     val psi = get_psi body
                     val psi_eps = #2(Mul.un_mularef(Mul.nf(!(
                                      Mul.lookup_mularefmap(Psi, eps)))))
@@ -176,7 +177,7 @@ struct
 			print "\n almost_new_psi=\n";  outtree(Mul.layout_mulef almost_new_psi);
 			print "\n new_psi=\n"; outtree(Mul.layout_mulef new_psi);
 			print "\n")
-		    val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep) 
+		    val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep)
 		       handle X =>
 			   (say "\nMulInf(FN) fails:\n";
 			    debug(); raise X)
@@ -203,21 +204,21 @@ struct
                 val _ = infer_trip(scope)
              in
                 psi_r:= sum_psis[get_psi bind, get_psi scope]
-             end              
-  
+             end
+
           | FIX{free,shared_clos,functions,scope} =>
-              let 
+              let
                  val _ = inf_rh_sides(functions, shared_clos)
                  val _ = infer_trip(scope)
-              in 
+              in
                  psi_r:= Mul.sumef(Mul.put shared_clos, get_psi scope)
               end
 
           | APP(ck,sr,tr1, tr2) =>
   		(* application is by the inference rules (non-smart) *)
-   	   let 
+   	   let
                val  (eps, p) = case get_mu tr1 of
-                 		 RegionExp.Mus[(ty, p)]=> 
+                 		 RegionExp.Mus[(ty, p)]=>
                                  (case RType.unFUN ty of
                                     SOME (_,eps,_) => (eps, p)
                                   | NONE => die "non-function type at application")
@@ -232,32 +233,32 @@ struct
              in
                psi_r := psi
   	   end
-  
-  
+
+
           | EXCEPTION(excon, nullary: bool, mu as (tau,rho), alloc, body) =>
               let
                  val _ = infer_trip(body); (* no need to bind excon; won't have to look it up! *)
-  
+
                  (* Nullary constructors are bound to a pointer
-                  * in region rho which points to object consisting of exname and 
-                  * string in region rho. Unary constructors on the other hand 
+                  * in region rho which points to object consisting of exname and
+                  * string in region rho. Unary constructors on the other hand
                   * are simply bound to an object consisting of exname and string
                   * (i.e., excluding extra indirection level). The extra indirection
                   * level used for nullary constructors is to ensure simply that
                   * the exname of a nullary constructor occurrence in an expression,
-                  * EXCONprim(excon,[]), is obtained in the exact same way as 
+                  * EXCONprim(excon,[]), is obtained in the exact same way as
                   * the exname of an unary constructor occurrence in an expression,
                   * EXCONprim(excon,[e]) --- this is needed in SWITCH_E.
                   * Thus there is either two puts (nullary) or one put (unary)
                   * into region rho.
                   *)
-  
+
                  val psi_excon = if nullary then Mul.sumef(Mul.put rho, Mul.put rho) else Mul.put rho
-                 
+
               in
                  psi_r:= Mul.sumef(psi_excon, get_psi body)
               end
-  
+
           | RAISE(tr) =>
               (infer_trip(tr);
                psi_r:= get_psi tr
@@ -267,7 +268,7 @@ struct
                  val _ = infer_trip(tr1)
                  val _ = infer_trip(tr2)
                  val (eps,rho_handler) = case get_mu tr2 of
-                                           RegionExp.Mus[(ty,rho)] => 
+                                           RegionExp.Mus[(ty,rho)] =>
                                            (case RType.unFUN ty of
                                               SOME (_,eps,_) => (eps,rho)
                                             | NONE => die "HANDLE: handler did not have functional type")
@@ -297,34 +298,34 @@ struct
                 (infer_trip(tr);
                  psi_r:= get_psi tr (*Mul.sumef(Mul.get(get_place(tr)), get_psi tr)*) )
           | RECORD(p, triples) =>
-                let 
+                let
                    val _ = app(fn tr => infer_trip(tr))triples
                    val psi = sum_psis(Mul.put p :: map get_psi triples)
-                in 
+                in
                    psi_r:= psi
                 end
           | SELECT(i, tr)=>
                 (infer_trip(tr);
                  case get_mu tr of
-                    RegionExp.Mus[(_,place_of_tuple)] => 
+                    RegionExp.Mus[(_,place_of_tuple)] =>
                       psi_r:= get_psi tr (*Mul.sumef(Mul.get place_of_tuple, get_psi tr)*)
                  | _ => die "SELECT: expected single type and place")
           | DEREF tr =>
                 (infer_trip(tr);
                  case get_mu tr of
-                    RegionExp.Mus[(_,place_of_ref)] => 
+                    RegionExp.Mus[(_,place_of_ref)] =>
                       psi_r:= get_psi tr (*Mul.sumef(Mul.get place_of_ref, get_psi tr)*)
                  | _ => die "DEREF: expected single type and place")
           | REF(p, tr1) =>
                 (infer_trip(tr1);
                  case get_mu tr of
-                    RegionExp.Mus[(_,place_of_ref)] => 
+                    RegionExp.Mus[(_,place_of_ref)] =>
                       psi_r:= Mul.sumef(Mul.put place_of_ref, get_psi tr1)
                  | _ => die "REF: expected single type and place")
           | ASSIGN(p, tr1, tr2) =>
                 (infer_trip(tr1);
                  infer_trip(tr2);
-                 case get_mu tr1 of 
+                 case get_mu tr1 of
                    RegionExp.Mus[(_,place_of_ref)] =>
                      psi_r:= sum_psis[Mul.put p, (*Mul.putzero place_of_ref,mael*) get_psi tr1, get_psi tr2]
                  | _ => die "ASSIGN: expected single type and place of reference")
@@ -338,7 +339,7 @@ struct
                  let val annotations = RType.ann_mus[mu_of_arg1, mu_of_arg2] []
                      val frv = Eff.remove_duplicates(List.filter Eff.is_rho annotations)
                  in psi_r:= sum_psis(get_psi tr1::get_psi tr2 :: Mul.put alloc :: [] (*map Mul.getInf frv*))
-                 end)                
+                 end)
           | CCALL ({name, rhos_for_result, ...}, trips) => (*Calling C functions*)
                 (app infer_trip trips;
                  (*We produce a `put(rho) : m' for every rho which occurs in
@@ -372,12 +373,12 @@ struct
                                  RegionExp.Mus [mu] => frv mu
                                | _ => die "RESET_REGIONS: expected single mu"
                     val psi = sum_psis(get_psi tr :: map Mul.putzero rhos)
-                in  
+                in
                     psi_r:= psi
                 end)
           | FRAME{declared_lvars, declared_excons} =>
-             return_EE := 
-                foldl(fn ({lvar, other, ...}, EE) => 
+             return_EE :=
+                foldl(fn ({lvar, other, ...}, EE) =>
 		      ((*say(Lvar.pr_lvar lvar ^ ":"); (*mads*)
 		       outtree(Mul.layout_qmularefset(!other));
 		       say "\n";*)
@@ -401,7 +402,7 @@ struct
         in
           app(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                          bound_but_never_written_into,
-                         other,bind} => 
+                         other,bind} =>
                            (infer_trip(bind);
                             (* update type scheme for the function, if there has been
                                a change. *)
@@ -415,7 +416,7 @@ struct
           else inf_rh_sides(functions, shared_clos)
         end
     in
-      (infer_trip(tr) handle Abort x => 
+      (infer_trip(tr) handle Abort x =>
                   (say "\nWHOLE EXPRESSION:\n";
                    outtree(layouttrip tr);
                    raise x));
@@ -429,13 +430,13 @@ struct
      multiplicities in Psi *)
 
   fun setmuls(Psi, tr as MulExp.TR(e, mu, phi, psi_r as ref psi)): unit =
-    let 
+    let
       open MulExp  (* to get constructors of expressions *)
 
       fun set_trip(tr as MulExp.TR(e, mu, phi, psi_r as ref psi)): unit =
-        let 
+        let
            fun set_sw (MulExp.SWITCH(tr0, choices, opt_else)) =
-             let 
+             let
                 val right_hand_sides = (cons_if_there opt_else (map #2 choices))
              in
                 app set_trip (tr0 :: right_hand_sides)
@@ -447,8 +448,9 @@ struct
           | WORD _ => ()
           | STRING _ => ()
           | REAL _ => ()
+          | F64 _ => ()
           | UB_RECORD(trips) => app(fn tr => set_trip(tr))trips
-          | FN{body, ...} => set_trip(body) 
+          | FN{body, ...} => set_trip(body)
           | LETREGION{B: effect list ref, rhos, body} =>
              let val _ = set_trip(body)
                  val psi_body = get_psi body
@@ -459,7 +461,7 @@ struct
              end
           | LET{bind,scope,...} => (set_trip(bind); set_trip(scope))
           | FIX{free,shared_clos,functions,scope} =>
-                (set_rh_sides(functions, shared_clos); 
+                (set_rh_sides(functions, shared_clos);
                  set_trip(scope))
           | APP(_,_,tr1, tr2) => (set_trip tr1; set_trip tr2)
           | EXCEPTION(_, _, _ , _, body) => set_trip body
@@ -472,9 +474,9 @@ struct
           | SWITCH_E sw => set_sw sw
           | CON0 _ => ()
           | CON1 (_,tr) => set_trip tr
-	  | DECON (_,tr) => set_trip tr 
+	  | DECON (_,tr) => set_trip tr
 	  | EXCON(_,SOME(_,tr)) => set_trip tr
-	  | EXCON(_,NONE) => ()  
+	  | EXCON(_,NONE) => ()
           | DEEXCON(_, tr) => set_trip tr
           | RECORD (_, triples) => app set_trip triples
           | SELECT(_, tr) => set_trip tr
@@ -492,7 +494,7 @@ struct
                            raise Abort exn)
 
       and set_rh_sides(functions, shared_clos) =
-          app(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,other,bind} => 
+          app(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,other,bind} =>
                            (set_trip(bind);
                             (* Set the PUT multiplicites of the formal region variables *)
                             case RType.unFUN Type of
@@ -504,12 +506,12 @@ struct
                                 in rhos_formals:= ListPair.zip(places,muls)
                                 end
                             | NONE => die "set_rh_sides: expected function type"
-                                                           
+
                            )
                     ) functions;
 
     in
-      (set_trip(tr) handle Abort x => 
+      (set_trip(tr) handle Abort x =>
                   (say "\nWHOLE EXPRESSION:\n";
                    outtree(layouttrip tr);
                    raise x))
@@ -524,10 +526,10 @@ struct
   fun combine(Psi0, Psi)= Mul.combine(Psi0, Psi)
 
   (* test of k-normalisation: *)
-  fun printnormal(msg, trip) = 
+  fun printnormal(msg, trip) =
           (say msg; outtree(layouttrip trip))
 
-  fun printerror(e1,e2) = 
+  fun printerror(e1,e2) =
           (say "***** test of  k-normalisation failed ****\nFIRST EXPRESSION:\n";
            outtree(layoutExp e1);
            say "\nSECOND EXPRESSION:\n";
@@ -540,12 +542,12 @@ struct
   fun k_normPgm (pgm : (place,place*mul, qmularefset ref)MulExp.LambdaPgm) :
                 (place,place*mul, qmularefset ref)MulExp.LambdaPgm =
       MulExp.k_normPgm printnormal dummy_'c pgm
-   
+
   fun mulInf(p as RegionExp.PGM{expression = tr,export_datbinds,export_basis},
              Psi0: Mul.mularefmap, (* the multiplicity arrow effect map in which free effect variables
                                   of tr may be looked up; it is applicative *)
-             c: Eff.cone, mulenv: Mul.efenv): (place,place*Mul.mul,Mul.qmularefset ref)LambdaPgm_psi * efenv * mularefmap= 
-	let 
+             c: Eff.cone, mulenv: Mul.efenv): (place,place*Mul.mul,Mul.qmularefset ref)LambdaPgm_psi * efenv * mularefmap=
+	let
             val test = false
             val _ = if test then say "\nmulInf:" else ();
             val _ = if test then say "  collecting all effects..." else ()
@@ -553,25 +555,25 @@ struct
                        plus the region and effect variables that are exported by tr *)
             val effects= mkPhi(tr,export_basis)
             val _ = if test then say "  computing transitive closure ..." else ()
-            val _ = eval_phis effects  (* computes transitive closure  of effect graph, 
+            val _ = eval_phis effects  (* computes transitive closure  of effect graph,
                                           including only PUT and EPS nodes *)
                     handle exn =>
                         (say "  eval_phis called from MulInf (transitive closure of all effects) "; raise exn)
             val _ = if test then say "  making the arrow effect set Phi..." else ()
 
-            val Psi = 
+            val Psi =
 		(* Psi records multiplicities for effect variables that are
 		 * bound locally within the program unit or are exported from
 		 * the program unit. Psi is a quasi-map (i.e., partly imperative)*)
-		let val Phi = map (fn eps => (eps, Eff.represents eps)) 
+		let val Phi = map (fn eps => (eps, Eff.represents eps))
                           ( (*Eff.toplevel_arreff :: ;mael 2004-03-31*) (List.filter Eff.is_arrow_effect effects))
 		    val _ = if test then say "  made Phi, now constructing the map Psi..." else ()
 		in makezero_Phi Phi
 		end
 
-            val _ = if test then (say "  Psi0 = "; outtree(Mul.layout_mularefmap Psi0)) 
+            val _ = if test then (say "  Psi0 = "; outtree(Mul.layout_mularefmap Psi0))
 		    else ()
-            val _ = if test then (say "  Psi = "; outtree(Mul.layout_imp_mularefmap Psi)) 
+            val _ = if test then (say "  Psi = "; outtree(Mul.layout_imp_mularefmap Psi))
 		    else ()
             val _ = if test then say "\n  made Psi, now adding local and external Psi"
                     else ()
@@ -600,11 +602,11 @@ struct
                can be exported in the term. Also, set the multiplicities of
                atomic effects in exported multiplicity arrow effects to infinity. *)
 
-            val export_Psi_list = 
-                  foldr (fn (node, acc) => 
-                               let val r:Mul.mularef ref =  
-                                          Mul.lookup_mularefmap(Psi, node) 
-                               in 
+            val export_Psi_list =
+                  foldr (fn (node, acc) =>
+                               let val r:Mul.mularef ref =
+                                          Mul.lookup_mularefmap(Psi, node)
+                               in
                                   r:= Mul.mk_infinite(!r);
                                   r :: acc
                                end handle _ => acc) [] (List.filter Eff.is_arrow_effect export_basis)
@@ -621,10 +623,10 @@ struct
 		    | RegionExp.Mus _ => die "export"
 	      end
 
-	    val export_rhos = 
+	    val export_rhos =
 	      foldl (fn (effect, rhos) => if Eff.is_rho effect then effect::rhos else rhos)
 	      [] export_basis
-		
+
             val pgm' = MulExp.PGM{expression = tr',
 			export_datbinds = export_datbinds, (* unchanged *)
 			import_vars=ref NONE,
@@ -632,10 +634,10 @@ struct
 			export_basis = export_basis,       (* unchanged *)
 			export_Psi = export_Psi_list}
 
-	    val _ = case export_rhos of nil => () | _ => 
+	    val _ = case export_rhos of nil => () | _ =>
 		print ("** MulInf: export_rhos non-empty\n")
 
-	    val _ = case export_Psi_list of nil => () | _ => 
+	    val _ = case export_Psi_list of nil => () | _ =>
 		print ("** MulInf: export_Psi_list non-empty\n")
 
 	in
@@ -654,20 +656,21 @@ struct
   local open MulExp in
       datatype app_cont = APP_CONT | APP_BREAK
       local
-	  fun apps appt (SWITCH(t,ts,d)) : unit = 
-	      (appt t; List.app (fn (_,t) => appt t) ts; 
+	  fun apps appt (SWITCH(t,ts,d)) : unit =
+	      (appt t; List.app (fn (_,t) => appt t) ts;
 	       case d of SOME t => appt t | NONE => ())
 	  fun appt f (TR(e,_,_,_)) : unit = appe f e
 	  and appe f e =
 	      case f e of
 		  APP_BREAK => ()
-		| APP_CONT => 
+		| APP_CONT =>
 	      case e of
 		  VAR _ => ()
 		| INTEGER _ => ()
 		| WORD _ => ()
 		| STRING _ => ()
 		| REAL _ => ()
+		| F64 _ => ()
 		| UB_RECORD ts => List.app (appt f) ts
 		| FN {pat,body,free,alloc} => appt f body
 		| LET {k_let, pat, bind, scope} => (appt f bind; appt f scope)
@@ -690,7 +693,7 @@ struct
 		| CON0 _ => ()
 		| CON1 (_,t) => appt f t
 		| DECON (_,t) => appt f t
-		| EXCON (_,opt) => (case opt of 
+		| EXCON (_,opt) => (case opt of
 					SOME (_,t) => appt f t
 				      | NONE => ())
 		| DEEXCON (_,t) => appt f t
@@ -721,11 +724,11 @@ struct
       end
 
       fun contract_letregions (p : (place,place*mul, qmularefset ref)LambdaPgm_psi) : unit =
-	  let 
+	  let
 	      fun on_letregion x =
 		  let fun seek r nil = NONE
 			| seek r ((_,Mul.NUM _)::rs) = seek r rs
-			| seek r ((r',Mul.INF)::rs) = 
+			| seek r ((r',Mul.INF)::rs) =
 		      (case (Eff.get_place_ty r, Eff.get_place_ty r') of
 			   (SOME rt, SOME rt') => if rt=rt' then SOME r'
 						  else seek r rs
@@ -748,17 +751,17 @@ struct
       fun member lv nil = false
 	| member lv (x::xs) = Lvar.eq(lv,x) orelse member lv xs
 
-      type rng = {formals:(place*mul) list ref, rargss: place list ref list ref, 
+      type rng = {formals:(place*mul) list ref, rargss: place list ref list ref,
 		  argss:place list ref list ref}
 
       (* Build initial a-list from formal region arguments; an a-list describes
        * which region parameters that may be collapsed. Because we do not wish
-       * to collapse finite regions, unique numbers are chosen for finite 
-       * regions, whereas 1 is chosen for infinite regions. Further, infinite 
+       * to collapse finite regions, unique numbers are chosen for finite
+       * regions, whereas 1 is chosen for infinite regions. Further, infinite
        * regions of different types should not be collapsed. *)
       fun init_alist (pl: (place*mul)list) : int list =
-	  let 
-	      fun lookup (ty,e,n) = 
+	  let
+	      fun lookup (ty,e,n) =
 		  let fun look nil = (n,(ty,n)::e,n+1)
 			| look ((ty',i)::xs) = if ty=ty' then (i,e,n) else look xs
 		  in look e
@@ -767,7 +770,7 @@ struct
 	      rev(#1(List.foldl (fn ((p,m),(l,e,n)) =>
 				 case m of
 				     Mul.NUM _ => (n::l,e,n+1)
-				   | Mul.INF => 
+				   | Mul.INF =>
 					 (case Eff.get_place_ty p of
 					      SOME ty => let val (i,e,n) = lookup(ty,e,n)
 							 in (i::l,e,n)
@@ -775,12 +778,12 @@ struct
 					    | NONE => die "init_alist"))
 		     (nil,nil,1) pl))
 	  end
-	  
+
       (* Build a-list from region vector. *)
       fun args_alist (pl: place list) : int list =
 	  let fun get n p e =
 	        let fun loop nil = (n, (p,n)::e,n+1)
-		      | loop ((p',i)::rest) = if Eff.eq_effect(p,p') then (i,e,n) 
+		      | loop ((p',i)::rest) = if Eff.eq_effect(p,p') then (i,e,n)
 					      else loop rest
 		in loop e
 		end
@@ -791,7 +794,7 @@ struct
 				 end)
 		     (nil,nil,1) pl))
 	  end
-      
+
       fun eq_E (E:(place list * int list)list) (p,p') =
 	  let fun loop z (nil,_) = NONE
 		| loop z (_,nil) = NONE
@@ -808,12 +811,12 @@ struct
 			      | NONE => false)
 	    | NONE => false
 	  end
-	      
+
       fun rargs_alist (E: (place list * int list)list) (pl: place list) : int list =
 	  let fun eq (p,p') = Eff.eq_effect (p,p') orelse eq_E E (p,p')
 	      fun get n p e =
 		  let fun loop nil = (n, (p,n)::e,n+1)
-			| loop ((p',i)::rest) = if eq(p,p') then (i,e,n) 
+			| loop ((p',i)::rest) = if eq(p,p') then (i,e,n)
 						else loop rest
 		  in loop e
 		  end
@@ -856,8 +859,8 @@ struct
       val touch_count = ref 0
       fun unify_formals lv (alist: int list, formals: (place*mul)list) : unit =
 	  let fun unify (_,_,nil,nil) = ()
-		| unify (x,p,x'::xs,(p',_)::ps) = 
-	      if x = x' then (Eff.unifyRho_no_lowering (p,p'); 
+		| unify (x,p,x'::xs,(p',_)::ps) =
+	      if x = x' then (Eff.unifyRho_no_lowering (p,p');
 			      touched := true;
 			      touch_count := !touch_count + 1
 (*			      ; print("UNIFYING(" ^ Lvar.pr_lvar lv ^ "\n") *)
@@ -879,9 +882,9 @@ struct
 		| loop _ = die "trim_args"
 	  in loop(alist,l,nil)
 	  end
-	  
+
       fun contract_args' (fss: (lvar*rng) list list) : unit =
-	  let 
+	  let
 	      fun alist_before_rec (formals,argss) =
 		  let val alist1 = init_alist (!formals)
 		      val alist2 = List.foldl (fn (args,al) =>
@@ -900,11 +903,11 @@ struct
 		   formals := trim_args (alist,!formals);
 		   List.app (fn args => args := (trim_args (alist,!args))) (!argss);
 		   List.app (fn rargs => rargs := (trim_args (alist,!rargs))) (!rargss))
-		     
+
 	      fun one_group (fs : (lvar*rng)list) : unit =
-		  let 
+		  let
 		      fun process (with_alists) : ((lvar * rng) * int list) list =
-			  let 
+			  let
 			      val E = map (fn ((lv,{formals,...}),al) =>
 					   (map (fn (p,_) => p) (!formals), al))
 				  with_alists
@@ -914,17 +917,17 @@ struct
 						al (!rargss))
 				  with_alists
 			  in if map #2 with_alists = alists then with_alists
-			     else (* compute new `with_alists' based on assumptions 
+			     else (* compute new `with_alists' based on assumptions
 				   * and result, and reprocess. *)
-				 let 
-				     val with_alists = 
+				 let
+				     val with_alists =
 					 ListPair.map (fn ((f,al),al') =>
 						       (f,collapse_alist al al'))
 					 (with_alists,alists)
 				 in process with_alists
 				 end
 			  end
-		      val with_alists_init = map (fn r as (_, {formals,argss,...}) => 
+		      val with_alists_init = map (fn r as (_, {formals,argss,...}) =>
 						  (r,alist_before_rec (formals,argss))) fs
 		      val with_alists = process with_alists_init
 		  in List.app onef with_alists
@@ -936,7 +939,7 @@ struct
 		   if !touched then loop (n+1)
 		   else n)
 	      val n = (touch_count := 0; loop 1)
-	  in  
+	  in
 	      print ("Argument contractions: " ^ Int.toString (!touch_count) ^ " - "
 		     ^ Int.toString n ^ " rounds.\n")
 	  end
@@ -946,7 +949,7 @@ struct
 	      val L : (lvar * rng) list list ref = ref nil         (* lists of mutually recursive functions *)
 	      val exported = exported_lvars p
 	      fun is_exported lv = member lv exported
-	      local		  
+	      local
 		  val fix_stack : lvar list ref = ref nil
 	      in
 		  fun push lv : unit = fix_stack := (lv :: (!fix_stack))
@@ -960,14 +963,14 @@ struct
 		  case e of
 		      VAR {lvar,fix_bound=true,rhos_actuals,...} =>
 			  (case Lvar.Map.lookup (!M) lvar of
-			       SOME {argss,rargss,...} => 
-				   if is_rec lvar then 
+			       SOME {argss,rargss,...} =>
+				   if is_rec lvar then
 				       (rargss := (rhos_actuals :: (!rargss)); APP_BREAK)
-				   else 
+				   else
 				       (argss := (rhos_actuals :: (!argss)); APP_BREAK)
 			     | NONE => APP_BREAK)
 		    | FIX {functions,scope,...} =>
-		     let val funs : (lvar * rng) list = 
+		     let val funs : (lvar * rng) list =
 			 List.foldl (fn ({lvar,rhos_formals,...},acc) =>
 				     if is_exported lvar then acc
 				     else let val rng = {formals=rhos_formals,
@@ -987,14 +990,14 @@ struct
 		    | _ => APP_CONT
 	  in app build p;
 	      contract_args' (!L)
-	  end 
+	  end
 
       (* Region specialization; tranform
-  
+
             let fun f [...r...] x = e
             in  ... f [...r'...] e' ...
             end
- 
+
          into
 
             let fun f [...] x = e{r'/r}
@@ -1002,10 +1005,10 @@ struct
             end
 
          provided r' is in scope at the declaration of f and f is invariant in r
-         and all applications of f instantiate r' for r. 
+         and all applications of f instantiate r' for r.
       *)
 
-      type srng = {R:place list list, formals:(place*mul) list ref, 
+      type srng = {R:place list list, formals:(place*mul) list ref,
 		   rargss: place list ref list ref, argss:place list ref list ref}
 
       fun inR (p,nil) = false
@@ -1020,7 +1023,7 @@ struct
 
       val touched = ref false
       val counter = ref 0
-      fun touch () = (touched := true; 
+      fun touch () = (touched := true;
 		      counter:= (!counter + 1))
 
       fun same_arg n xss =
@@ -1037,15 +1040,15 @@ struct
 
       fun invariant n p xss =
 	  let fun loop nil = true
-		| loop (xs::xss) = (Eff.eq_effect(List.nth (!xs,n),p) 
+		| loop (xs::xss) = (Eff.eq_effect(List.nth (!xs,n),p)
 				    andalso invariant n p xss)
 	  in loop xss
 	  end handle _ => die "invariant"
 
       fun spec (fss : (lvar * srng) list list) =
-	  let 
+	  let
 	      fun one_f (lv,{R,formals,rargss,argss}) =
-		  let 
+		  let
 		      (*
 		      val _ = print ("FUNCTION " ^ Lvar.pr_lvar lv ^ "\n")
 		      val _ = print ("R = " ^ String.concat (map pp_places R) ^ "\n")
@@ -1084,9 +1087,9 @@ struct
 	      val L : (lvar * srng) list list ref = ref nil         (* lists of mutually recursive functions *)
 	      val exported = exported_lvars p
 	      fun is_exported lv = member lv exported
-	      local		  
+	      local
 		  val fix_stack : lvar list ref = ref nil
-		  val reg_stack : place list list ref = ref 
+		  val reg_stack : place list list ref = ref
 		      [[Eff.toplevel_region_withtype_top,
 			Eff.toplevel_region_withtype_string,
 			Eff.toplevel_region_withtype_pair,
@@ -1104,21 +1107,21 @@ struct
 		  fun pop_regs () : unit =
 		      case !reg_stack of
 			  x::xs => reg_stack := xs
-			| _ => die "specialize.pop_regs"		      
+			| _ => die "specialize.pop_regs"
 		  fun get_reg_stack () = !reg_stack
 	      end
 	      fun build e : app_cont =
 		  case e of
 		      VAR {lvar,fix_bound=true,rhos_actuals,...} =>
 			  (case Lvar.Map.lookup (!M) lvar of
-			       SOME {argss,rargss,...} => 
-				   if is_rec_lv lvar then 
+			       SOME {argss,rargss,...} =>
+				   if is_rec_lv lvar then
 				       (rargss := (rhos_actuals :: (!rargss)); APP_BREAK)
-				   else 
+				   else
 				       (argss := (rhos_actuals :: (!argss)); APP_BREAK)
 			     | NONE => APP_BREAK)
 		    | FIX {functions,scope,...} =>
-		     let val funs : (lvar * srng) list = 
+		     let val funs : (lvar * srng) list =
 			 List.foldl (fn ({lvar,rhos_formals,...},acc) =>
 				     if is_exported lvar then acc
 				     else let val srng = {R=get_reg_stack(),
@@ -1130,14 +1133,14 @@ struct
 			 nil functions
 		     in
 			 L := funs :: !L;  (* for processing   *)
-			 List.app (fn {lvar,bind,rhos_formals,...} => 
+			 List.app (fn {lvar,bind,rhos_formals,...} =>
 				   (push_lv lvar; push_regs (map #1 (!rhos_formals)))) functions;
 			 List.app (fn {bind,...} => appt build bind) functions;
 			 List.app (fn _ => (pop_lv (); pop_regs())) functions;
 			 appt build scope;
 			 APP_BREAK
 		     end
-		    | LETREGION{B,rhos,body} => 
+		    | LETREGION{B,rhos,body} =>
 		     (push_regs (map #1 (!rhos));
 		      appt build body;
 		      pop_regs();
@@ -1145,10 +1148,10 @@ struct
 		    | _ => APP_CONT
 	  in app build p;
 	      spec (!L)
-	  end 
+	  end
 
 
-      val _ = Flags.add_bool_entry 
+      val _ = Flags.add_bool_entry
 	  {long="contract_regions", short=SOME"cr", item=ref false,
 	   menu=["Control", "Regions", "contract regions"], neg=false,
 	   desc=
@@ -1157,9 +1160,9 @@ struct
 	    \are unified. Moreover, region parameters to\n\
 	    \non-exported functions are trimmed whenever\n\
 	    \possible."}
-	   
+
       val contract_p = Flags.is_on0 "contract_regions"
-	   
+
       fun contract p =
 	   if contract_p() then
 	       (contract_letregions p;
@@ -1167,7 +1170,7 @@ struct
 		specialize p;
 		contract_args p)
 	   else ()
-		      
-  end  
+
+  end
 
 end;

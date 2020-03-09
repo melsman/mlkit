@@ -30,6 +30,8 @@ struct
 
   open CodeGenUtil
 
+  fun die s  = Crash.impossible ("CodeGenX64." ^ s)
+
   local
      (*******************)
      (* Code Generation *)
@@ -72,6 +74,18 @@ struct
                                               I.dot_double str]
                      in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
                      end
+                    | LS.F64 str =>
+                      (case pat of
+                           SS.PHREG_ATY d =>
+                           if not (I.is_xmm d) then die "F64: expecting xmm register"
+                           else let val float_lab = new_float_lab()
+                                    val _ = add_static_data [I.dot_data,
+                                                             I.lab float_lab,
+                                                             I.dot_double str]
+                                in I.movq(LA float_lab, R tmp_reg0) ::
+                                   I.movsd(D("0", tmp_reg0),R d) :: C
+                                end
+                         | _ => die "F64: expecting physical register")
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                          val num_elems = List.length (LS.smash_free elems)

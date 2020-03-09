@@ -65,6 +65,7 @@ structure LambdaExp: LAMBDA_EXP =
     val foreignptrType = CONStype([], TyName.tyName_FOREIGNPTR)
     val exnType = CONStype([], TyName.tyName_EXN)
     val realType = CONStype([], TyName.tyName_REAL)
+    val f64Type = CONStype([], TyName.tyName_F64)
     val stringType = CONStype([], TyName.tyName_STRING)
     val unitType = RECORDtype([])
 
@@ -114,6 +115,7 @@ structure LambdaExp: LAMBDA_EXP =
       | WORD     of Word32.word * Type
       | STRING   of string * regvar option
       | REAL     of string * regvar option
+      | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,
@@ -166,6 +168,7 @@ structure LambdaExp: LAMBDA_EXP =
         | WORD _ => new_acc
         | STRING _ => new_acc
         | REAL _ => new_acc
+        | F64 _ => new_acc
 	| FN{pat,body} => foldTD fcns (foldl' (foldType g) new_acc (map #2 pat)) body
 	| LET{pat,bind,scope} => foldTD fcns (foldTD fcns (foldl' (foldType g) new_acc (map #3 pat)) bind) scope
         | LETREGION {regvars, scope} => foldTD fcns new_acc scope
@@ -284,6 +287,7 @@ structure LambdaExp: LAMBDA_EXP =
 	  | WORD _                      => ()
 	  | STRING _	                => ()
 	  | REAL _	                => ()
+	  | F64 _	                => ()
 	  | FN _	                => ()
 	  | LET {bind,scope,...}        => (safe bind; safe scope)
           | LETREGION _                 => raise NotSafe            (* memo: maybe safe? *)
@@ -772,6 +776,7 @@ structure LambdaExp: LAMBDA_EXP =
       | STRING (s,SOME rv) => PP.LEAF(quote s ^ "`" ^ RegVar.pr rv)
       | REAL (r,NONE) => PP.LEAF(r)
       | REAL (r,SOME rv) => PP.LEAF(r ^ "`" ^ RegVar.pr rv)
+      | F64 r => PP.LEAF(r ^ "f64")
       | FN {pat,body} =>
 	  PP.NODE{start="(fn ",finish=")", indent=4,
 		  children=[layoutFnPat pat,
@@ -978,12 +983,29 @@ structure LambdaExp: LAMBDA_EXP =
 					layoutArgs lambs]}
 		 end
 	     else
-		 PP.NODE{start="PRIM(",finish=")",indent=3,
-			 children=[layoutPrim layoutType prim,
-				   PP.NODE{start="[",finish="]",indent=1,
-					   children=map(fn x => layoutLambdaExp(x,0)) lambs,
-					   childsep=PP.RIGHT ","}],
-			 childsep=PP.RIGHT ", "}
+               let fun lay p =
+                       PP.NODE{start=p ^ "(",finish=")",indent=1,
+			       children=map(fn x => layoutLambdaExp(x,0)) lambs,
+			       childsep=PP.RIGHT ","}
+                   fun default () =
+                       PP.NODE{start="PRIM(",finish=")",indent=3,
+			      children=[layoutPrim layoutType prim,
+				        PP.NODE{start="[",finish="]",indent=1,
+					        children=map(fn x => layoutLambdaExp(x,0)) lambs,
+					        childsep=PP.RIGHT ","}],
+			      childsep=PP.RIGHT ", "}
+               in case prim of
+                      CCALLprim{name,...} =>
+                      (case name of
+                           "__mul_f64" => lay "mul_f64"
+		         | "__plus_f64" => lay "plus_f64"
+		         | "__minus_f64" => lay "minus_f64"
+		         | "__div_f64" => lay "div_f64"
+                         | "__f64_to_real" => lay "f64_to_real"
+                         | "__real_to_f64" => lay "real_to_f64"
+                         | _ => default())
+                    | _ => default()
+               end
         )
       | FRAME fr =>
 	      if !barify_p then
@@ -1388,6 +1410,7 @@ structure LambdaExp: LAMBDA_EXP =
 	      | toInt (PRIM _) = 17
 	      | toInt (FRAME _) = 18
               | toInt (LETREGION _) = 19
+	      | toInt (F64 _) = 20
 
 	    fun fun_VAR pu_LambdaExp =
 		Pickle.con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
@@ -1406,6 +1429,9 @@ structure LambdaExp: LAMBDA_EXP =
 	    fun fun_REAL pu_LambdaExp =
 		Pickle.con1 REAL (fn REAL a => a | _ => die "pu_LambdaExp.REAL")
 		(Pickle.pairGen0(Pickle.string,Pickle.optionGen RegVar.pu))
+	    fun fun_F64 pu_LambdaExp =
+		Pickle.con1 F64 (fn F64 a => a | _ => die "pu_LambdaExp.F64")
+		Pickle.string
 	    fun fun_FN pu_LambdaExp =
 		Pickle.con1 FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
 		(Pickle.convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
@@ -1485,7 +1511,8 @@ structure LambdaExp: LAMBDA_EXP =
 						       fun_SWITCH_E,
 						       fun_PRIM,
 						       fun_FRAME,
-                                                       fun_LETREGION])
+                                                       fun_LETREGION,
+                                                       fun_F64])
 	end
 
     structure TyvarSet = NatSet
@@ -1525,6 +1552,7 @@ structure LambdaExp: LAMBDA_EXP =
         | WORD _ => acc
         | STRING _ => acc
         | REAL _ => acc
+        | F64 _ => acc
 	| FN{pat,body} => tyvars_Exp s body (foldl (fn ((_,t),acc) => tyvars_Type s t acc) acc pat)
 	| LET{pat,bind,scope} =>
           let val s' = foldl (fn ((_,tvs,_),s) => TVS.addList tvs s) s pat

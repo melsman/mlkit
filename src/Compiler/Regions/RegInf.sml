@@ -273,6 +273,7 @@ struct
        | Exp.WORD _    => (B, delta_emp)
        | Exp.STRING  _ => (B, delta_emp)
        | Exp.REAL    _ => (B, delta_emp)
+       | Exp.F64     _ => (B, delta_emp)
        | Exp.UB_RECORD ts => foldr(fn (t, (B, d)) =>
                                         let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                         (B,delta_emp) ts

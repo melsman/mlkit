@@ -520,6 +520,11 @@ struct
         in (B,E'.TR(E'.REAL(r, rho),E'.Mus [(tau,rho)], Eff.mkPut rho),
 	    NOTAIL)
         end
+    | E.F64 r =>
+        let val (mu as (_,rho), B) = freshMu(E.f64Type,B)
+	in (B,E'.TR(E'.F64(r, rho),E'.Mus[mu], Eff.mkPut rho),
+	    NOTAIL)
+        end
     | E.PRIM(E.UB_RECORDprim, args) =>
         (* For simplicity, we demand that the arguments of UB_RECORDprim must themselves
            have a singleton list of type and places. Thus we do not allow, for example
