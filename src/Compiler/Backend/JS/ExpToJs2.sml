@@ -708,6 +708,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.WORD (v,_) => E(J.Cnst(J.Word v))
   | L.STRING (v,_) => E(J.Cnst(J.Str v))
   | L.REAL (v,_) => E(J.Cnst(J.Real v))
+  | L.F64 v => E(J.Cnst(J.Real v))
   | L.PRIM(L.CONprim {con,...},nil) => E(ppConNullary C con)
   | L.PRIM(L.CONprim {con,...},[e]) =>
     resolveE (toj1 C P e) (ppConUnary C con)
