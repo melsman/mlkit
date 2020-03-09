@@ -1429,9 +1429,6 @@ structure LambdaExp: LAMBDA_EXP =
 	    fun fun_REAL pu_LambdaExp =
 		Pickle.con1 REAL (fn REAL a => a | _ => die "pu_LambdaExp.REAL")
 		(Pickle.pairGen0(Pickle.string,Pickle.optionGen RegVar.pu))
-	    fun fun_F64 pu_LambdaExp =
-		Pickle.con1 F64 (fn F64 a => a | _ => die "pu_LambdaExp.F64")
-		Pickle.string
 	    fun fun_FN pu_LambdaExp =
 		Pickle.con1 FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
 		(Pickle.convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
@@ -1491,6 +1488,9 @@ structure LambdaExp: LAMBDA_EXP =
                             (fn LETREGION {regvars,scope} => (regvars,scope)
                               | _ => die "pu_LambdaExp.LETREGION")
 		(Pickle.pairGen0(Pickle.listGen RegVar.pu,pu_LambdaExp))
+	    fun fun_F64 pu_LambdaExp =
+		Pickle.con1 F64 (fn F64 a => a | _ => die "pu_LambdaExp.F64")
+		Pickle.string
 
 	in Pickle.dataGen("LambdaExp.LambdaExp",toInt,[fun_VAR,
 						       fun_INTEGER,
