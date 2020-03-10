@@ -11,21 +11,19 @@ structure Lvars: LVARS =
 
     type name = Name.name
 
-    type lvar = {name : name,
-		 str : string,
-		 free : bool ref,
+    type lvar = {name     : name,
+		 str      : string,
+		 free     : bool ref,
 		 inserted : bool ref,
-		 use : int ref  (* ,
-		 prim : primitive option *) }
+		 use      : int ref,
+                 ubf64    : bool ref}
 
-    fun new_named_lvar(str : string) : lvar = {name=Name.new(),
-					       str=str,
-					       free=ref false,
-					       inserted=ref false,
-					       use=ref 0 (* ,
-					       prim=NONE *) }
+    fun new_named_lvar (str : string) : lvar =
+        {name=Name.new(), str=str,
+	 free=ref false, inserted=ref false,
+	 use=ref 0, ubf64=ref false}
 
-    fun newLvar() : lvar = new_named_lvar ""
+    fun newLvar () : lvar = new_named_lvar ""
 
     fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
       | pr_lvar {str,...} = str
@@ -40,11 +38,11 @@ structure Lvars: LVARS =
 
     fun key lv = Name.key (name lv)
 
-    fun lt(lv1,lv2) = Name.lt(name lv1,name lv2)
+    fun lt (lv1,lv2) = Name.lt(name lv1,name lv2)
 
-    fun eq(lv1,lv2) = Name.eq(name lv1, name lv2)
+    fun eq (lv1,lv2) = Name.eq(name lv1, name lv2)
 
-    fun leq(lv1,lv2) = lt(lv1,lv2) orelse eq(lv1,lv2)
+    fun leq (lv1,lv2) = lt(lv1,lv2) orelse eq(lv1,lv2)
 
     fun usage ({use,...} : lvar) = use
     fun reset_use lv = usage lv := 0
@@ -53,7 +51,10 @@ structure Lvars: LVARS =
     fun zero_use lv = !(usage lv) = 0
     fun one_use lv = !(usage lv) = 1
 
-    fun match(lv1,lv2) = Name.match(name lv1,name lv2)
+    fun set_ubf64 (lv:lvar) : unit = (#ubf64 lv) := true
+    fun get_ubf64 (lv:lvar) : bool = !(#ubf64 lv)
+
+    fun match (lv1,lv2) = Name.match(name lv1,name lv2)
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted
 
@@ -74,13 +75,15 @@ structure Lvars: LVARS =
     val pu =
 	Pickle.hashConsEq eq
 	(Pickle.register "Lvars" [env_lvar,notused_lvar]
-	 let fun to ((n,s,f),i,u) : lvar = 
-		 {name=n, str=s, free=f, inserted=i, use=u}
-	     fun from ({name=n, str=s, free=f, inserted=i, use=u} : lvar) = ((n,s,f),i,u)
+	 let fun to ((n,s,f),i,u,ubf64) : lvar =
+		 {name=n, str=s, free=f, inserted=i, use=u, ubf64=ubf64}
+	     fun from ({name=n, str=s, free=f, inserted=i, use=u, ubf64} : lvar) = ((n,s,f),i,u,ubf64)
 	 in Pickle.newHash (#1 o Name.key o #name)
 	     (Pickle.convert (to,from)
-	      (Pickle.tup3Gen0(Pickle.tup3Gen0(Name.pu,Pickle.string,Pickle.refOneGen Pickle.bool), 
-			       Pickle.refOneGen Pickle.bool,Pickle.refOneGen Pickle.int)))
+	      (Pickle.tup4Gen0(Pickle.tup3Gen0(Name.pu,Pickle.string,Pickle.refOneGen Pickle.bool),
+			       Pickle.refOneGen Pickle.bool,
+                               Pickle.refOneGen Pickle.int,
+                               Pickle.refOneGen Pickle.bool)))
 	 end)
 
   end
@@ -91,8 +94,8 @@ structure Lvars: LVARS =
   sestoft@dina.kvl.dk
 ***********************************************************************)
 
-structure Lvarset: LVARSET = 
-struct 
+structure Lvarset: LVARSET =
+struct
 
   val xorb = Word.xorb
   val lshift = Word.<<
@@ -103,8 +106,8 @@ struct
 
     type lvar = Lvars.lvar
 
-    datatype lvarset = 
-	LF 
+    datatype lvarset =
+	LF
       | BR of lvar list * lvarset * lvarset    (* ordered list of lvars w.r.t. #2 o Lvars.key *)
 
     fun sing (0w0,lvar) = BR([lvar], LF, LF)
@@ -114,13 +117,13 @@ struct
 		     BR(nil, LF, sing(rshift(n,0w1) - 0w1, lvar))
 
     fun singleton lvar = sing (Word.fromInt(#1(Lvars.key lvar)),lvar)
-	
+
     fun cardinality LF             = 0
       | cardinality (BR(b, t1, t2)) = List.length b + cardinality t1 + cardinality t2
 
     fun mkBR (nil, LF, LF) = LF
       | mkBR (b, t1, t2) = BR(b, t1, t2)
-	
+
     fun mergeOr (nil,lvs) = lvs
       | mergeOr (lvs,nil) = lvs
       | mergeOr (lvs1' as (lv1::lvs1),lvs2' as (lv2::lvs2)) =
@@ -135,7 +138,7 @@ struct
       | union (ns1, LF) = ns1
       | union (BR(b1, t11, t12), BR(b2, t21, t22)) =
 	BR(mergeOr(b1,b2), union (t11, t21), union (t12, t22))
-	
+
     fun add (set,lvar) = union(set, singleton lvar)
 
     fun mergeAnd (nil,_) = nil
@@ -167,7 +170,7 @@ struct
       | difference (ns1, LF) = ns1
       | difference (BR(b1, t11, t12), BR(b2, t21, t22)) =
 	mkBR(diff(b1,b2), difference(t11, t21), difference(t12, t22))
-		  
+
     fun delete (is, i) = difference(is, singleton i)
 
     fun present(SOME _) = true
@@ -186,12 +189,12 @@ struct
     fun disjoint (LF, ns2) = true
       | disjoint (ns1, LF) = true
       | disjoint (BR(b1, t11, t12), BR(b2, t21, t22)) =
-	dis(b1,b2) andalso disjoint(t11, t21) 
-	andalso disjoint (t12, t22)  
+	dis(b1,b2) andalso disjoint(t11, t21)
+	andalso disjoint (t12, t22)
 
 (*  fun member (i, is) = not(disjoint(is, singleton i)) *)
 
-    fun member (lvar, is) = 
+    fun member (lvar, is) =
 	let val (i,s) = Lvars.key lvar
 	    fun mems nil = false
 	      | mems (x::xs) = #2 (Lvars.key x) = s orelse mems xs
@@ -211,9 +214,9 @@ struct
 	let fun fo a b = foldl (fn (lv,a) => f(a,lv)) a b
 	    fun sl (n, d, LF, a)                 = a
 	      | sl (n, d, BR(b, LF, LF), a) = fo a b
-	      | sl (n, d, BR(b, t1, LF), a) = 
+	      | sl (n, d, BR(b, t1, LF), a) =
 		sl(n+d, 2*d, t1, fo a b)
-	      | sl (n, d, BR(b, t1, t2), a)    = 
+	      | sl (n, d, BR(b, t1, t2), a)    =
 		sl(n+d, 2*d, t1, sl(n+2*d, 2*d, t2, fo a b))
 	in sl(0, 1, t, e) end
 
@@ -221,7 +224,7 @@ struct
 
     fun members t = foldset (fn (a,i) => i :: a) ([], t)
 
-    fun findLvar (pred: lvar -> 'a option) lvarset = 
+    fun findLvar (pred: lvar -> 'a option) lvarset =
       let exception Found of (lvar * 'a)option
 	  fun ss nil = ()
 	    | ss (lv::lvs) = (case pred lv of
@@ -233,7 +236,7 @@ struct
       in
         (search lvarset; NONE) handle Found result => result
       end
-                    
-  val empty = LF                
+
+  val empty = LF
 
 end

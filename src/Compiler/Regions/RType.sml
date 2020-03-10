@@ -1260,6 +1260,11 @@ struct
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
   val unitType: Type = RECORD[]
 
+  fun isF64Type t =
+      case t of
+          CONSTYPE(tn,_,_,_) => TyName.eq(tn,TyName.tyName_F64)
+        | _ => false
+
   fun unboxed t =
     case t
       of RECORD[] => true

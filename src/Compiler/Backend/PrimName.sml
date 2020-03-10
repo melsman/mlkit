@@ -41,7 +41,8 @@ datatype prim =
          Bytetable_sub | Bytetable_size | Bytetable_update |
 	 Word_sub0 | Word_update0 | Table_size |
 	 Is_null |
-	 ServerGetCtx
+	 ServerGetCtx |
+         Plus_f64 | Minus_f64 | Mul_f64 | Div_f64 | Real_to_f64 | F64_to_real
 
 local
   structure M = OrderFinMap(struct type T = string
@@ -91,7 +92,14 @@ local
          ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
 	 ("word_sub0", Word_sub0), ("word_update0", Word_update0), ("table_size", Table_size),
 	 ("__is_null", Is_null),
-	 ("__serverGetCtx", ServerGetCtx)]
+	 ("__serverGetCtx", ServerGetCtx),
+         ("__plus_f64", Plus_f64),
+         ("__minus_f64", Minus_f64),
+         ("__mul_f64", Mul_f64),
+         ("__div_f64", Div_f64),
+         ("__real_to_f64", Real_to_f64),
+         ("__f64_to_real", F64_to_real)
+]
 
   val M = M.fromList pairs
 in
@@ -248,6 +256,12 @@ fun pp_prim (p:prim) : string =
       | Table_size => "Table_size"
       | Is_null => "Is_null"
       | ServerGetCtx => "ServerGetCtx"
+      | Plus_f64 => "Plus_f64"
+      | Minus_f64 => "Minus_f64"
+      | Mul_f64 => "Mul_f64"
+      | Div_f64 => "Div_f64"
+      | Real_to_f64 => "Real_to_f64"
+      | F64_to_real => "F64_to_real"
 
 end
 

@@ -1583,8 +1583,8 @@ struct
             handle Abort exn => raise Abort exn
                 | x => (outtree(RegionExp.layoutLambdaExp' e); raise Abort x)
 
-      and mk_dep_funcs(EE, [], [], dep) = ([],dep)
-        | mk_dep_funcs(EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,
+      and mk_dep_funcs (EE, [], [], dep) = ([],dep)
+        | mk_dep_funcs (EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,
                             formal_regions,bind}::rest,
                            r :: rest_refs, dep)=
              let val (bind', dep) = mk_deptr(EE,bind,dep)
@@ -1597,8 +1597,8 @@ struct
              end
 	| mk_dep_funcs _ = die "mk_dep_funcs"
 
-      and mk_deps(EE, [],dep) = ([], dep)
-        | mk_deps(EE, tr::ts, dep) =
+      and mk_deps (EE, [],dep) = ([], dep)
+        | mk_deps (EE, tr::ts, dep) =
             let val (tr',dep) = mk_deptr(EE,tr, dep)
                 val (ts',dep) = mk_deps(EE, ts,dep)
             in (tr'::ts',dep) end
@@ -1632,40 +1632,42 @@ struct
      *)
   let
 
-    fun kne(tr: ('_a, 'b, 'c)trip as TR(e,mu,arefss,psir))
+    fun kne (tr: ('_a, 'b, 'c)trip as TR(e,mu,arefss,psir))
             (k : ('_a, 'b, 'c)trip -> ('_a, 'b, 'c)trip): ('_a, 'b, 'c)trip    =
     let
 
-      fun e_to_t(e) = TR(e, mu,arefss,psir)
+      fun e_to_t (e) = TR(e, mu,arefss,psir)
 
       fun ty_of (RegionExp.Mus[(tau,_)]) = tau
         | ty_of _ = die "ty_of"
 
       local val il0 = R.mk_il([],[],[])
       in
-        fun lvar_as_term(x,mu) =
+        fun lvar_as_term (x,mu) =
             TR(VAR{lvar=x,il =il0 ,plain_arreffs=[],
                    fix_bound=false,rhos_actuals= ref [], other = dummy_'c}, mu, [], ref Mul.empty_psi)
 
         fun ub_record0_as_term mu =
             TR(UB_RECORD[], mu, [], ref Mul.empty_psi)
 
-        fun lvar_as_term'(x,mu as (tau,rho)) =
+        fun lvar_as_term' (x,mu as (tau,rho)) =
             lvar_as_term(x,RegionExp.Mus[mu])
 
-        fun mk_pat(lvar, mu) =
-          (case mu of
-             RegionExp.Mus[(ty,place)] =>
-               [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
-           | RegionExp.RaisedExnBind => []
-           | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
-		       PP.flatten1 (RegionExp.layMeta mu)))
+        fun mk_pat (lvar, mu) =
+            case mu of
+                RegionExp.Mus[(ty,place)] =>
+                let val () = if R.isF64Type ty then Lvars.set_ubf64 lvar else ()
+                in [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
+                end
+              | RegionExp.RaisedExnBind => []
+              | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
+		          PP.flatten1 (RegionExp.layMeta mu))
       end
 
-      fun atomic(TR(VAR _, _, _, _)) = true
-        | atomic(TR(INTEGER _,_,_,_)) = true
-        | atomic(TR(WORD _,_,_,_)) = true
-        | atomic(TR(RECORD(_,[]), _, _, _)) = true
+      fun atomic (TR(VAR _, _, _, _)) = true
+        | atomic (TR(INTEGER _,_,_,_)) = true
+        | atomic (TR(WORD _,_,_,_)) = true
+        | atomic (TR(RECORD(_,[]), _, _, _)) = true
         | atomic _ = false
 
       (* assumes mu1 is not an unboxed tuple *)

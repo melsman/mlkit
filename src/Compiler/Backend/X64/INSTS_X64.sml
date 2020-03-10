@@ -22,6 +22,9 @@ signature INSTS_X64 =
     val tmp_reg0 : reg (*=r10*)
     val tmp_reg1 : reg (*=r11*)
 
+    val tmp_freg0 : reg (*=xmm0*)
+    val tmp_freg1 : reg (*=xmm1*)
+
     val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
 
     type freg

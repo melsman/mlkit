@@ -29,6 +29,9 @@ signature LVARS =
     val zero_use : lvar -> bool
     val one_use : lvar -> bool
 
+    val set_ubf64 : lvar -> unit
+    val get_ubf64 : lvar -> bool
+
     (* Names *)
     type name
     val match : lvar * lvar -> unit
@@ -49,8 +52,8 @@ signature LVARS =
   sestoft@dina.kvl.dk
 ***********************************************************************)
 
-signature LVARSET = 
-    sig 
+signature LVARSET =
+    sig
 	type lvar			(* = Lvars.lvar *)
 	type lvarset			(* set of lvar  *)
 	val empty        : lvarset
@@ -64,7 +67,7 @@ signature LVARSET =
 	val disjoint     : lvarset * lvarset -> bool
 	val lvarsetof    : lvar list -> lvarset
 
-	val members      : lvarset -> lvar list		
+	val members      : lvarset -> lvar list
 	val foldset      : ('a * lvar -> 'a) -> 'a * lvarset -> 'a
 	val mapset       : (lvar -> 'a) -> lvarset -> 'a list
         val findLvar     : (lvar -> '_a option) -> lvarset -> (lvar * '_a)option

@@ -1,15 +1,15 @@
 
 signature RTYPE =
 sig
-  type LambdaType 
-  type tyvar 
-  type tyname 
+  type LambdaType
+  type tyvar
+  type tyname
 
-  type cone 
+  type cone
   type effect
   type arroweffect = effect
   type place = effect
-  type runType 
+  type runType
 
   type Type
   type mu = Type * place
@@ -24,7 +24,7 @@ sig
   val unRECORD   : Type -> mu list option
   val unFUN      : Type -> (mu list * arroweffect * mu list) option
 
-  val exnType    : Type 
+  val exnType    : Type
   val int31Type  : Type
   val int32Type  : Type
   val word8Type  : Type
@@ -32,19 +32,22 @@ sig
   val word32Type : Type
   val boolType   : Type
   val realType   : Type
+  val f64Type    : Type
   val stringType : Type
   val unitType   : Type
 
   val unboxed    : Type -> bool
   val runtype    : Type -> runType
 
-  (* ann_mu(mus)acc is a list of all the places and arrow effects that occur 
+  val isF64Type  : Type -> bool
+
+  (* ann_mu(mus)acc is a list of all the places and arrow effects that occur
    * in mus consed onto acc; word regions are not included in the result. *)
   val ann_mus    : mu list -> effect list -> effect list
 
   val freshType  : (tyname -> (int*runType list*int)option) (* lookup function *)
-                   -> (LambdaType * cone -> Type * cone) 
-                      * (LambdaType * cone -> mu * cone) 
+                   -> (LambdaType * cone -> Type * cone)
+                      * (LambdaType * cone -> mu * cone)
   val unify_ty   : Type * Type -> cone -> cone
   val unify_mu   : mu * mu -> cone -> cone
   val unify_mus  : mu list * mu list -> cone -> cone
@@ -56,9 +59,9 @@ sig
   val drop_alphas    : sigma -> sigma
   val insert_alphas  : tyvar list * sigma -> sigma
   val mk_il          : Type list * place list * effect list -> il
-  val un_il          : il -> Type list * place list * effect list 
-  val ann_sigma      : sigma -> effect list -> effect list   (* ann_sigma(sigma)acc is a list of all the 
-							      * places and arrow effects that occur in 
+  val un_il          : il -> Type list * place list * effect list
+  val ann_sigma      : sigma -> effect list -> effect list   (* ann_sigma(sigma)acc is a list of all the
+							      * places and arrow effects that occur in
 							      * type of sigma, consed onto acc; word regions
 							      * are not included in the result. *)
   val free_puts   : sigma -> effect list
@@ -75,10 +78,10 @@ sig
 
   val alpha_rename   : sigma * cone -> sigma
   val alpha_equal    : sigma * sigma -> cone -> bool
-  
+
   (* matchSchemes and the transformer produced by it can
    * raise FAIL_MATCH, if the type schemes do not match or the instantiation
-   * lists are in disarray; neither should happen, but check for it 
+   * lists are in disarray; neither should happen, but check for it
    * nonetheless. *)
   exception FAIL_MATCH of string
   val matchSchemes  : sigma * sigma -> il * cone -> il * cone
@@ -89,7 +92,7 @@ sig
    * [sigma_for_c_function tyvars mu B] returns a region type scheme
    * corresponding to the ML type scheme that was freshMu'ed to get mu
    * and has bound tyvars tyvars.
-   * 
+   *
    * [c_function_effects mu] returns the `rhos_for_result' to be
    * annotated on a ccall with return type-and-place mu; see comment
    * in MUL_EXP.
@@ -99,12 +102,12 @@ sig
   val c_function_effects   : sigma * mu -> (place * int option) list
 
   type StringTree
-  (* the boolean in the following functions should be true iff on want to 
+  (* the boolean in the following functions should be true iff on want to
      omit region information *)
   val mk_layout      : bool -> (Type -> StringTree) * (mu -> StringTree)
   val mk_lay_sigma   : bool -> sigma -> StringTree
   val mk_lay_sigma'  : bool -> (tyvar list * place list * effect list * Type) -> StringTree
-  val mk_lay_sigma'' : ('b -> StringTree option) -> bool -> 
+  val mk_lay_sigma'' : ('b -> StringTree option) -> bool ->
                          (tyvar list * 'b list * effect list * Type) -> StringTree
 
   (* Picklers *)
@@ -112,5 +115,3 @@ sig
   val pu_mu    : mu Pickle.pu
   val pu_sigma : sigma Pickle.pu
 end
-
-

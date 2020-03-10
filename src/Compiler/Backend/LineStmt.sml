@@ -896,26 +896,26 @@ struct
 
   fun def_var_se (se: Atom SimpleExp,acc:lvar list) = acc
 
-  fun def_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = get_var_atoms(res,[])
+  fun def_var_on_fun {opr,args,reg_vec,reg_args,clos,res,bv} = get_var_atoms(res,[])
 
-  fun use_var_on_fn{opr,args,clos,res,bv} =
+  fun use_var_on_fn {opr,args,clos,res,bv} =
     get_var_atoms(args,get_var_atom_opt(clos,get_var_atom(opr,[])))
 
-  fun def_var_on_fn{opr,args,clos,res,bv} = get_var_atoms(res,[])
+  fun def_var_on_fn {opr,args,clos,res,bv} = get_var_atoms(res,[])
 
-  fun def_var_ls(ASSIGN{pat,bind}) = get_var_atom(pat,[])
-    | def_var_ls(FLUSH(atom,_)) = []
-    | def_var_ls(FETCH(atom,_)) = get_var_atom(atom,[])
-    | def_var_ls(FNJMP cc) = def_var_on_fn cc
-    | def_var_ls(FNCALL cc) = def_var_on_fn cc
-    | def_var_ls(JMP cc) = def_var_on_fun cc
-    | def_var_ls(FUNCALL cc) = def_var_on_fun cc
-    | def_var_ls(RAISE{arg,defined_atys}) = get_var_atoms(defined_atys,[])
-    | def_var_ls(RESET_REGIONS{force,regions_for_resetting}) = []
-    | def_var_ls(PRIM{res,...}) = get_var_atoms(res,[])
-    | def_var_ls(CCALL{res,...}) = get_var_atoms(res,[])
-    | def_var_ls(CCALL_AUTO{res=(res,_),...}) = get_var_atom(res,[])
-    | def_var_ls(EXPORT _) = []
+  fun def_var_ls (ASSIGN{pat,bind}) = get_var_atom(pat,[])
+    | def_var_ls (FLUSH(atom,_)) = []
+    | def_var_ls (FETCH(atom,_)) = get_var_atom(atom,[])
+    | def_var_ls (FNJMP cc) = def_var_on_fn cc
+    | def_var_ls (FNCALL cc) = def_var_on_fn cc
+    | def_var_ls (JMP cc) = def_var_on_fun cc
+    | def_var_ls (FUNCALL cc) = def_var_on_fun cc
+    | def_var_ls (RAISE{arg,defined_atys}) = get_var_atoms(defined_atys,[])
+    | def_var_ls (RESET_REGIONS{force,regions_for_resetting}) = []
+    | def_var_ls (PRIM{res,...}) = get_var_atoms(res,[])
+    | def_var_ls (CCALL{res,...}) = get_var_atoms(res,[])
+    | def_var_ls (CCALL_AUTO{res=(res,_),...}) = get_var_atom(res,[])
+    | def_var_ls (EXPORT _) = []
     | def_var_ls _ = die "def_var_ls: statement contains statements itself."
 
   (* In CalcOffset.sml, where we calculate bit vectors for GC, lvars bound to *)
@@ -1008,15 +1008,15 @@ struct
   (***************************************************)
   (* Def and Use sets for LineStmt RETURN ONLY lvars *)
   (***************************************************)
-  fun get_lvar_atom(atom,acc) = filter_out_phregs (get_var_atom(atom,acc))
-  fun get_lvar_atoms(atoms,acc) = filter_out_phregs (get_var_atoms(atoms,acc))
-  fun get_lvar_atom_opt(atom_opt,acc) = filter_out_phregs (get_var_atom_opt(atom_opt,acc))
+  fun get_lvar_atom (atom,acc) = filter_out_phregs (get_var_atom(atom,acc))
+  fun get_lvar_atoms (atoms,acc) = filter_out_phregs (get_var_atoms(atoms,acc))
+  fun get_lvar_atom_opt (atom_opt,acc) = filter_out_phregs (get_var_atom_opt(atom_opt,acc))
 
-  fun get_lvar_sma(sma,acc) = filter_out_phregs (get_var_sma(sma,acc))
-  fun get_lvar_smas(smas,acc) = filter_out_phregs(get_var_smas(smas,acc))
+  fun get_lvar_sma (sma,acc) = filter_out_phregs (get_var_sma(sma,acc))
+  fun get_lvar_smas (smas,acc) = filter_out_phregs(get_var_smas(smas,acc))
 
   fun def_lvar_se (se:Atom SimpleExp,acc:lvar list) = filter_out_phregs acc
-  fun use_lvar_se(se,acc) = filter_out_phregs(use_var_se(se,acc))
+  fun use_lvar_se (se,acc) = filter_out_phregs(use_var_se(se,acc))
 
   fun use_lvar_on_fun cc = filter_out_phregs(use_var_on_fun cc)
   fun def_lvar_on_fun cc = filter_out_phregs(def_var_on_fun cc)
@@ -1026,7 +1026,8 @@ struct
 
   fun use_lvar_ls ls = filter_out_phregs(use_var_ls ls)
   fun def_lvar_ls ls = filter_out_phregs(def_var_ls ls)
-  fun def_use_lvar_ls ls = (filter_out_phregs(def_var_ls ls),filter_out_phregs(use_var_ls ls))
+
+  fun def_use_lvar_ls ls = (def_lvar_ls ls, use_lvar_ls ls)
 
   (*****************************************************)
   (* Map f_aty, f_offset and f_sty on LineStmt program *)

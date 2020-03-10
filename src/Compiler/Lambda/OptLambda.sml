@@ -1155,6 +1155,7 @@ structure OptLambda: OPT_LAMBDA =
                        (tick "reduce - unbox_real";
                         let val (tau,bind,scope) = (f64Type,real_to_f64 bind,
                                                     subst_real_lvar_f64_in_lamb lvar scope)
+                            val () = Lvars.set_ubf64 lvar
                         in (tau,bind,scope,(LET{pat=[(lvar,tyvars,tau)],bind=bind,scope=scope},
                                             CUNKNOWN))
                         end)
