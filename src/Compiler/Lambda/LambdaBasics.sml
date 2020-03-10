@@ -323,7 +323,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun new_fnpat pat ren =
 	let val lvs = map #1 pat
-	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
+	  val lvs_pairs = map (fn lv => (lv, Lvars.renew lv)) lvs
 	  val ren' = add_lvs lvs_pairs ren
 	in (on_fnpat ren' pat, ren')
 	end
@@ -341,7 +341,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun new_letpat pat ren =
 	let val lvs = map #1 pat
 	  val tvs = ((rem_dubs []) o flatten) (map #2 pat)
-	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
+	  val lvs_pairs = map (fn lv => (lv, Lvars.renew lv)) lvs
 	  val tvs_pairs = map (fn tv => (tv, new_tv tv)) tvs
 	  val ren_bind = add_tvs tvs_pairs ren
 	  val ren_scope = add_lvs lvs_pairs ren
@@ -356,7 +356,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun on_functions ren on_e fns =
 	let val lvs = map #lvar fns
 	  val tvs = ((rem_dubs []) o flatten) (map #tyvars fns)
-	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
+	  val lvs_pairs = map (fn lv => (lv, Lvars.renew lv)) lvs
 	  val tvs_pairs = map (fn tv => (tv, new_tv tv)) tvs
 	  val ren' = add_lvs lvs_pairs ren
 	  val ren_binds = add_tvs tvs_pairs ren'

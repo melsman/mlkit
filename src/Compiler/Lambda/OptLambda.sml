@@ -100,7 +100,7 @@ structure OptLambda: OPT_LAMBDA =
     val unbox_reals = Flags.add_bool_entry
 	    {long="unbox_reals", short=NONE,
 	     menu=["Control", "Optimiser", "unbox real values"],
-	     item=ref false, neg=true, desc=
+	     item=ref true, neg=true, desc=
 	     "Unbox real values and computations on real values inside\n\
              \functions. Real values stored in data structures and\n\
              \passed to functions are still boxed."}
@@ -1590,7 +1590,10 @@ structure OptLambda: OPT_LAMBDA =
                                   | _ => die "eliminate_explicit_records2"
                     fun mk_lamb [] [] [] = transf env' scope
                       | mk_lamb (lv::lvs) (tau::taus) (lamb::lambs) =
-                          LET{pat=[(lv,[],tau)],bind=transf env lamb,scope=mk_lamb lvs taus lambs}
+                        ((if eq_Type(tau,f64Type) then Lvars.set_ubf64 lv else ());
+                         LET{pat=[(lv,[],tau)],
+                             bind=transf env lamb,
+                             scope=mk_lamb lvs taus lambs})
                       | mk_lamb _ _ _ = die "eliminate_explicit_records3"
                 in tick "eliminate explicit records - binding";
                    mk_lamb lvars taus lambs
@@ -1941,7 +1944,7 @@ structure OptLambda: OPT_LAMBDA =
 
      (* hoist bindings  `lvi = #i lv'  out of body
       * for 0 < i < sz *)
-     fun hoist_lvars(body,lv,sz) =
+     fun hoist_lvars (body,lv,sz) =
        let
 	 fun lookup (x:int) nil = NONE
 	   | lookup x ((b,v)::xs) = if x = b then SOME v else lookup x xs

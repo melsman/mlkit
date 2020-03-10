@@ -12,6 +12,7 @@ signature LVARS =
 
     val newLvar : unit -> lvar
     val new_named_lvar : string -> lvar
+    val renew : lvar -> lvar
 
     val pr_lvar : lvar -> string
     val pr_lvar' : lvar -> string       (* with key *)

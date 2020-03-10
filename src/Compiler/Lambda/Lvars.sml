@@ -28,6 +28,11 @@ structure Lvars: LVARS =
     fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
       | pr_lvar {str,...} = str
 
+    fun renew (lv:lvar) : lvar =
+        {name=Name.new(), str=pr_lvar lv,
+	 free=ref false, inserted=ref false,
+	 use=ref 0, ubf64=ref (!(#ubf64 lv))}
+
     fun pr_lvar' ({str,name,...} : lvar) : string =
 	let val (i,s) = Name.key name
 	    val str = if str = "" then "v:" else str ^ ":"

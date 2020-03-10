@@ -413,8 +413,14 @@ struct
      fun simplifyWorklistAdd n = add simplifyWorklist simplifyWorklist_enum n
      fun freezeWorklistAdd n = (add freezeWorklist freezeWorklist_enum n)
      fun spillWorklistAdd n = add spillWorklist spillWorklist_enum n
-     fun spilledNodesAdd n = add spilledNodes spilledNodes_enum n
-     fun coalescedNodesAdd n = add coalescedNodes coalescedNodes_enum n
+     fun spilledNodesAdd n =
+         if Lvars.get_ubf64(#lv n) then
+           die "spill of ubf64 variable not supported"
+         else add spilledNodes spilledNodes_enum n
+     fun coalescedNodesAdd n =
+         if Lvars.get_ubf64(#lv n) then
+           die "coalescing of ubf64 variable not supported"
+         else add coalescedNodes coalescedNodes_enum n
      fun coloredNodesAdd n = add coloredNodes coloredNodes_enum n
   end
 
@@ -820,7 +826,7 @@ struct
       fun pop_loop (ns : node list) =
 	case ns
 	  of nil => app (fn n => if !(#worklist n) = coalescedNodes_enum then
-			 (#color n := !(#color(GetAliasNode n)); inc_assigned_colors())
+			           (#color n := !(#color(GetAliasNode n)); inc_assigned_colors())
 				 else ()) (!coalescedNodes)
 	   | n::ns =>
 	    let

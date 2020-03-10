@@ -1496,35 +1496,35 @@ struct
 
      (* unboxed f64 operations *)
 
-     fun resolve_f64_aty aty : reg =
+     fun resolve_f64_aty f aty : reg =
          case aty of
              SS.PHREG_ATY x => if I.is_xmm x then x
-                               else die "resolve_f64_aty: expecting xmm register"
+                               else die ("resolve_f64_aty: expecting xmm register. " ^ f() ^ " - got " ^ I.pr_reg x)
            | _ => die "resolve_f64_aty: expecting physical register"
 
-     fun copy_f64 (x,y,C) = if x = y then C
-                            else if I.is_xmm x andalso I.is_xmm y then I.movsd(R x,R y)::C
-                            else die "copy_f64: expecting xmm registers"
-       | copy_f64 _ = die "copy_f64: expecting physical registers"
+     fun copy_f64 (x,y,C) =
+         if x = y then C
+         else if I.is_xmm x andalso I.is_xmm y then I.movsd(R x,R y)::C
+         else die "copy_f64: expecting xmm registers"
 
-     fun bin_f64_op finst (x,y,d,size_ff:int,C) =
-         let val x = resolve_f64_aty x
-             val y = resolve_f64_aty y
-             val d = resolve_f64_aty d
+     fun bin_f64_op s finst (x,y,d,size_ff:int,C) =
+         let val x = resolve_f64_aty (fn() => s ^ "-x") x
+             val y = resolve_f64_aty (fn() => s ^ "-y") y
+             val d = resolve_f64_aty (fn() => s ^ "-d") d
          in copy_f64(y, tmp_freg1,
             copy_f64(x, d,
             finst(R tmp_freg1, R d) ::
             C))
        end
 
-     val plus_f64 = bin_f64_op I.addsd
-     val minus_f64 = bin_f64_op I.subsd
-     val mul_f64 = bin_f64_op I.mulsd
-     val div_f64 = bin_f64_op I.divsd
-     val max_f64 = bin_f64_op I.maxsd
+     val plus_f64 = bin_f64_op "addsd" I.addsd
+     val minus_f64 = bin_f64_op "subsd" I.subsd
+     val mul_f64 = bin_f64_op "mulsd" I.mulsd
+     val div_f64 = bin_f64_op "divsd" I.divsd
+     val max_f64 = bin_f64_op "maxsd" I.maxsd
 
      fun real_to_f64 (x,d,size_ff,C) =
-         let val freg = resolve_f64_aty d
+         let val freg = resolve_f64_aty (fn() => "real_to_f64-d") d
          in load_float_aty (x, tmp_reg0, size_ff, freg) C
          end
 
