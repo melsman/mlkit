@@ -356,16 +356,19 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__plus_word32ub" => wrapWord32(J.Prim("+", [e1,e2]))
     | "__plus_word31" => wrapWord31(J.Prim("+", [e1,e2]))
     | "__plus_real" => J.Prim("+", [e1,e2])
+    | "__plus_f64" => J.Prim("+", [e1,e2])
     | "__minus_int32ub" => chkOvfI32(J.Prim("-", [e1,e2]))
     | "__minus_int31" => chkOvfI31(J.Prim("-", [e1,e2]))
     | "__minus_word32ub" => wrapWord32(J.Prim("-", [e1,e2]))
     | "__minus_word31" => wrapWord31(J.Prim("-", [e1,e2]))
     | "__minus_real" => J.Prim("-", [e1,e2])
+    | "__minus_f64" => J.Prim("-", [e1,e2])
     | "__mul_int32ub" => chkOvfI32(J.Prim("*", [e1,e2]))
     | "__mul_int31" => chkOvfI31(J.Prim("*", [e1,e2]))
     | "__mul_word32ub" => wrapWord32(J.Prim("*", [e1,e2]))
     | "__mul_word31" => wrapWord31(J.Prim("*", [e1,e2]))
     | "__mul_real" => J.Prim("*", [e1,e2])
+    | "__mul_f64" => J.Prim("*", [e1,e2])
 
     | "__less_int32ub" => J.Prim("<", [e1,e2])
     | "__lesseq_int32ub" => J.Prim("<=", [e1,e2])
@@ -430,6 +433,7 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__rem_int32ub" => J.Prim("%",[e1,e2])
 
     | "divFloat" => J.Prim("/",[e1,e2])
+    | "__div_f64" => J.Prim("/",[e1,e2])
     | "atan2Float" => callPrim2 "Math.atan2" e1 e2
 
     | "powFloat" => callPrim2 "Math.pow" e1 e2
@@ -523,6 +527,10 @@ fun pToJs1 name e : J.exp =
       | "sml_localtime" => callPrim1 "SmlPrims.localtime" e
       | "sml_gmtime" => callPrim1 "SmlPrims.gmtime" e
       | "sml_mktime" => callPrim1 "SmlPrims.mktime" e
+
+      | "__real_to_f64" => e
+      | "__f64_to_real" => e
+
       | _ => die ("pToJs1 unimplemented: " ^ name)
 
 fun pToJs0 name =
