@@ -220,6 +220,8 @@ structure OptLambda: OPT_LAMBDA =
 		     Type=ARROWtype(argtypes,[restype])}
       fun f64_bin opr (x:exp,y:exp) : exp =
           PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type,f64Type] f64Type, [x,y])
+      fun f64_uno opr (x:exp) : exp =
+          PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type] f64Type, [x])
     in
       fun f64_to_real (x:exp) : exp = PRIM(ccall "__f64_to_real" [f64Type] realType, [x])
       fun real_to_f64 (x:exp) : exp = PRIM(ccall "__real_to_f64" [realType] f64Type, [x])
@@ -227,6 +229,7 @@ structure OptLambda: OPT_LAMBDA =
       val f64_minus = f64_bin "minus"
       val f64_mul = f64_bin "mul"
       val f64_div = f64_bin "div"
+      val f64_sqrt = f64_uno "sqrt"
     end
 
    (* -----------------------------------------------------------------
@@ -1314,6 +1317,10 @@ structure OptLambda: OPT_LAMBDA =
                  [PRIM(CCALLprim{name="__f64_to_real",...},[x])]) =>
             (tick "real unbox o box elimination";
              reduce (env,(x,CUNKNOWN)))
+          | PRIM(CCALLprim{name="__real_to_f64",...},
+                 [LET{pat,bind,scope=PRIM(CCALLprim{name="__f64_to_real",...},[scope])}]) =>
+            (tick "real unbox o box elimination - let";
+             reduce (env,(LET{pat=pat,bind=bind,scope=scope},CUNKNOWN)))
           | PRIM(CCALLprim{name,...},[x,y]) =>
             if unbox_reals() then
               case name of

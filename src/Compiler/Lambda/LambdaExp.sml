@@ -250,7 +250,13 @@ structure LambdaExp: LAMBDA_EXP =
         "implodeStringML",
         "id",
         "table_size",
-        "exnNameML"]
+        "exnNameML",
+        "__plus_f64",
+        "__minus_f64",
+        "__div_f64",
+        "__mul_f64",
+        "__real_to_f64",
+        "__f64_to_real"]
 
      fun safeCName n = if StrSet.member n safeCNames then ()
 		       else raise NotSafe
