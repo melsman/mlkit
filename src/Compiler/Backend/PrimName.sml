@@ -42,7 +42,10 @@ datatype prim =
 	 Word_sub0 | Word_update0 | Table_size |
 	 Is_null |
 	 ServerGetCtx |
-         Plus_f64 | Minus_f64 | Mul_f64 | Div_f64 | Real_to_f64 | F64_to_real
+         Plus_f64 | Minus_f64 | Mul_f64 | Div_f64 | Max_f64 | Min_f64 |
+         Real_to_f64 | F64_to_real |
+         Sqrt_f64 | Neg_f64 | Abs_f64 | Int_to_f64
+
 
 local
   structure M = OrderFinMap(struct type T = string
@@ -97,8 +100,14 @@ local
          ("__minus_f64", Minus_f64),
          ("__mul_f64", Mul_f64),
          ("__div_f64", Div_f64),
+         ("__max_f64", Max_f64),
+         ("__min_f64", Min_f64),
          ("__real_to_f64", Real_to_f64),
-         ("__f64_to_real", F64_to_real)
+         ("__f64_to_real", F64_to_real),
+         ("__sqrt_f64", Sqrt_f64),
+         ("__neg_f64", Neg_f64),
+         ("__abs_f64", Abs_f64),
+         ("__int_to_f64", Int_to_f64)
 ]
 
   val M = M.fromList pairs
@@ -260,9 +269,14 @@ fun pp_prim (p:prim) : string =
       | Minus_f64 => "Minus_f64"
       | Mul_f64 => "Mul_f64"
       | Div_f64 => "Div_f64"
+      | Max_f64 => "Max_f64"
+      | Min_f64 => "Min_f64"
       | Real_to_f64 => "Real_to_f64"
       | F64_to_real => "F64_to_real"
-
+      | Sqrt_f64 => "Sqrt_f64"
+      | Neg_f64 => "Neg_f64"
+      | Abs_f64 => "Abs_f64"
+      | Int_to_f64 => "Int_to_f64"
 end
 
 end

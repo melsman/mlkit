@@ -255,8 +255,11 @@ structure LambdaExp: LAMBDA_EXP =
         "__minus_f64",
         "__div_f64",
         "__mul_f64",
+        "__max_f64",
+        "__min_f64",
         "__real_to_f64",
-        "__f64_to_real"]
+        "__f64_to_real",
+        "__int_to_f64"]
 
      fun safeCName n = if StrSet.member n safeCNames then ()
 		       else raise NotSafe
@@ -1007,8 +1010,14 @@ structure LambdaExp: LAMBDA_EXP =
 		         | "__plus_f64" => lay "plus_f64"
 		         | "__minus_f64" => lay "minus_f64"
 		         | "__div_f64" => lay "div_f64"
+		         | "__max_f64" => lay "max_f64"
+		         | "__min_f64" => lay "min_f64"
                          | "__f64_to_real" => lay "f64_to_real"
                          | "__real_to_f64" => lay "real_to_f64"
+                         | "__int_to_f64" => lay "int_to_f64"
+                         | "__sqrt_f64" => lay "sqrt_f64"
+                         | "__neg_f64" => lay "neg_f64"
+                         | "__abs_f64" => lay "abs_f64"
                          | _ => default())
                     | _ => default()
                end

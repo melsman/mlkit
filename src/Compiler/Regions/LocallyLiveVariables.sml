@@ -171,6 +171,7 @@ struct
       | cp_triv_exp (RECORD(place,[])) = RECORD((place,empty_liveset), []) (* the
             lvarset is not
             needed for the unit value, it is represented unboxed *)
+      | cp_triv_exp (F64(s,place)) = F64(s, (place, empty_liveset))
       | cp_triv_exp _ = die
             ("cp_triv_exp: not an atomic expression (expected K-normal form)")
 

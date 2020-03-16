@@ -736,13 +736,6 @@ struct
                 move_aty_into_reg(aty,r,size_ff,
                                   I.shrq(I "1", R r) :: C)
 
-            fun mov_int ((aty,r),size_ff,C) =
-                if BI.tag_values() then
-                  move_aty_into_reg(aty,r,size_ff,
-                                    I.shrq(I "1", R r) :: C)
-                else
-                  move_aty_into_reg(aty,r,size_ff,C)
-
             fun mov_foreignptr ((aty,r),size_ff,C) =
                 if BI.tag_values() then
                   case aty of
@@ -756,6 +749,14 @@ struct
                     SS.PHREG_ATY r' => I.leaq(D("8", r'), R r) :: C
                   | _ => move_aty_into_reg(aty,r,size_ff,
                                            I.leaq(D("8", r), R r) :: C)
+
+            fun mov_int ((aty,r),size_ff,C) =
+                if BI.tag_values() then
+                  move_aty_into_reg(aty,r,size_ff,
+                                    I.shrq(I "1", R r) :: C)
+                else
+                  move_aty_into_reg(aty,r,size_ff,C)
+
 
             fun mov_arg (aty,ft:LS.foreign_type,r,size_ff,C) =
                 let val mov_fun = case ft
@@ -1511,10 +1512,24 @@ struct
          let val x = resolve_f64_aty (fn() => s ^ "-x") x
              val y = resolve_f64_aty (fn() => s ^ "-y") y
              val d = resolve_f64_aty (fn() => s ^ "-d") d
-         in copy_f64(y, tmp_freg1,
-            copy_f64(x, d,
-            finst(R tmp_freg1, R d) ::
-            C))
+         in if y = d then
+              if x = d then
+                finst(R d, R d) :: C
+              else
+                copy_f64(y, tmp_freg1,
+                copy_f64(x, d,
+                finst(R tmp_freg1, R d) ::
+                C))
+            else
+              copy_f64(x, d,
+              finst(R y, R d) ::
+              C)
+       end
+
+     fun uno_f64_op s finst (x,d,size_ff:int,C) =
+         let val x = resolve_f64_aty (fn() => s ^ "-x") x
+             val d = resolve_f64_aty (fn() => s ^ "-d") d
+         in finst(R x, R d) :: C
        end
 
      val plus_f64 = bin_f64_op "addsd" I.addsd
@@ -1522,6 +1537,39 @@ struct
      val mul_f64 = bin_f64_op "mulsd" I.mulsd
      val div_f64 = bin_f64_op "divsd" I.divsd
      val max_f64 = bin_f64_op "maxsd" I.maxsd
+     val min_f64 = bin_f64_op "minsd" I.minsd
+     val sqrt_f64 = uno_f64_op "sqrtsd" I.sqrtsd
+
+     fun neg_f64 (x,d,size_ff:int,C) =
+       let val x = resolve_f64_aty (fn() => "neg_f64-x") x
+           val d = resolve_f64_aty (fn() => "neg_f64-d") d
+       in I.movsd (R x, R tmp_freg0) ::
+          I.xorps (R d, R d) ::
+          I.subsd (R tmp_freg0, R d) :: C
+       end
+
+     fun abs_f64 (x,d,size_ff,C) =
+       let val x = resolve_f64_aty (fn() => "abs_f64-x") x
+           val d = resolve_f64_aty (fn() => "abs_f64-d") d
+       in I.movsd (R x, R tmp_freg0) ::
+          I.xorps (R d, R d) ::
+          I.subsd (R tmp_freg0, R d) ::
+          I.maxsd (R tmp_freg0, R d) :: C
+       end
+
+     fun mov_int ((aty,r),size_ff,C) =
+         if BI.tag_values() then
+           move_aty_into_reg(aty,r,size_ff,
+                             I.shrq(I "1", R r) :: C)
+         else
+           move_aty_into_reg(aty,r,size_ff,C)
+
+     fun int_to_f64 (x,d,size_ff,C) =
+         let val freg = resolve_f64_aty (fn() => "real_to_f64-d") d
+             val tmp_reg0_double = I.doubleOfQuadReg tmp_reg0
+         in mov_int ((x,tmp_reg0),size_ff,
+                     I.cvtsi2sdl(R tmp_reg0_double, R freg) :: C)
+         end
 
      fun real_to_f64 (x,d,size_ff,C) =
          let val freg = resolve_f64_aty (fn() => "real_to_f64-d") d

@@ -795,6 +795,10 @@ struct
                           | Is_null => cmpi_kill_tmp01 {box=false} (I.je,x, SS.INTEGER_ATY{value=Int32.fromInt 0,
                                                                                            precision=32},d,size_ff,C)
                           | Real_to_f64 => real_to_f64(x,d,size_ff,C)
+                          | Sqrt_f64 => sqrt_f64(x,d,size_ff,C)
+                          | Neg_f64 => neg_f64(x,d,size_ff,C)
+                          | Abs_f64 => abs_f64(x,d,size_ff,C)
+                          | Int_to_f64 => int_to_f64(x,d,size_ff,C)
                           | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name))
                      | [x,y] =>
                        (case name of
@@ -872,6 +876,8 @@ struct
                           | Minus_f64 => minus_f64(x,y,d,size_ff,C)
                           | Mul_f64 => mul_f64(x,y,d,size_ff,C)
                           | Div_f64 => div_f64(x,y,d,size_ff,C)
+                          | Max_f64 => max_f64(x,y,d,size_ff,C)
+                          | Min_f64 => min_f64(x,y,d,size_ff,C)
                           | F64_to_real => f64_to_real_kill_tmp01(y,x,d,size_ff,C)
                           | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name))
                      | [b,x,y] =>

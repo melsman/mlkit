@@ -193,6 +193,41 @@ struct
 	end
   end
 
+  fun coalesce_binops lss =
+      let fun coalesce_sw f (LS.SWITCH(atom_arg,sels,default)) =
+	      LS.SWITCH(atom_arg,map (fn (s,lss) => (s,f lss)) sels, f default)
+          fun isBinF64 PrimName.Mul_f64 = true
+            | isBinF64 PrimName.Plus_f64 = true
+            | isBinF64 PrimName.Minus_f64 = true
+            | isBinF64 PrimName.Div_f64 = true
+            | isBinF64 _ = false
+      in case lss of
+             nil => nil
+           | ls::lss =>
+             case ls of
+                 LS.PRIM{name=p,args=[x,y],res=[d]} =>   (* treat "d := x op y" as "d := x; d := d op y" *)
+                 (if isBinF64 p then
+                    (LS.ASSIGN{pat=d,bind=LS.ATOM x} ::
+                     LS.PRIM{name=p,args=[d,y],res=[d]} ::
+                     coalesce_binops lss)
+                  else ls :: coalesce_binops lss)
+               | LS.LETREGION{rhos,body} => LS.LETREGION{rhos=rhos,body=coalesce_binops body} :: coalesce_binops lss
+               | LS.SCOPE{pat,scope} => LS.SCOPE{pat=pat,scope=coalesce_binops scope} :: coalesce_binops lss
+               | LS.HANDLE{default=lss0,
+			   handl=(lss1,a),
+			   handl_return=(lss2,c,b),
+			   offset} => LS.HANDLE{default=coalesce_binops lss0,
+			                        handl=(coalesce_binops lss1,a),
+			                        handl_return=(coalesce_binops lss2,c,b),
+			                        offset=offset} :: coalesce_binops lss
+               | LS.SWITCH_I{switch,precision} => LS.SWITCH_I{switch=coalesce_sw coalesce_binops switch,precision=precision} :: coalesce_binops lss
+               | LS.SWITCH_W{switch,precision} => LS.SWITCH_W{switch=coalesce_sw coalesce_binops switch,precision=precision} :: coalesce_binops lss
+               | LS.SWITCH_S switch => LS.SWITCH_S (coalesce_sw coalesce_binops switch) :: coalesce_binops lss
+               | LS.SWITCH_C switch => LS.SWITCH_C (coalesce_sw coalesce_binops switch) :: coalesce_binops lss
+               | LS.SWITCH_E switch => LS.SWITCH_E (coalesce_sw coalesce_binops switch) :: coalesce_binops lss
+               | _ => ls :: coalesce_binops lss
+      end
+
   (*****************************)
   (*    REGISTER ALLOCATION    *)
   (*****************************)
@@ -418,9 +453,7 @@ struct
            die "spill of ubf64 variable not supported"
          else add spilledNodes spilledNodes_enum n
      fun coalescedNodesAdd n =
-         if Lvars.get_ubf64(#lv n) then
-           die "coalescing of ubf64 variable not supported"
-         else add coalescedNodes coalescedNodes_enum n
+         add coalescedNodes coalescedNodes_enum n
      fun coloredNodesAdd n = add coloredNodes coloredNodes_enum n
   end
 
@@ -697,8 +730,15 @@ struct
     in (foldl (fn (n,k) => if !(#degree n) >= K then k+1 else k) 0 nodes) < K
     end
 
+  fun check_same_kind s (u:node) (v:node) : unit =
+      let fun ubf64_of_node (n:node) : bool = Lvars.get_ubf64 (#lv u)
+      in if ubf64_of_node u = ubf64_of_node v then ()
+         else die ("check_same_kind(" ^ s ^ "): different node kinds")
+      end
+
   fun Combine (u : node, v : node) : unit = (* v is never precolored *)
-    (coalescedNodesAdd v;
+    (check_same_kind "Combine" u v;
+     coalescedNodesAdd v;
      if !(#worklist u) <> precolored_enum then (* We only merge lrs for non precolored lvars. 19/03/1999, Niels *)
        #lrs u := merge_lrs(!(#lrs u),!(#lrs v))
      else
@@ -1117,20 +1157,20 @@ struct
 	   TextIO.closeOut stream;
 	   reset_set())
 	end
-      else
-	()
+      else ()
   end
 
   fun ra_body (fun_name, args_on_stack_lvs, lss) =
-    let fun repeat() =
-      (if not(isEmpty_simplifyWorklist()) then Simplify()
-	      else if not(isEmpty_worklistMoves()) then Coalesce()
-		   else if not(isEmpty_freezeWorklist()) then Freeze()
-			else if not(isEmpty_spillWorklist()) then SelectSpill()
-			     else ();
-			       if isEmpty_simplifyWorklist() andalso isEmpty_worklistMoves()
-				 andalso isEmpty_freezeWorklist() andalso isEmpty_spillWorklist() then ()
-			       else repeat())
+      let
+        fun repeat() =
+            (if not(isEmpty_simplifyWorklist()) then Simplify()
+	     else if not(isEmpty_worklistMoves()) then Coalesce()
+	     else if not(isEmpty_freezeWorklist()) then Freeze()
+	     else if not(isEmpty_spillWorklist()) then SelectSpill()
+	     else ();
+	     if isEmpty_simplifyWorklist() andalso isEmpty_worklistMoves()
+		andalso isEmpty_freezeWorklist() andalso isEmpty_spillWorklist() then ()
+	     else repeat())
 
 	fun assign(LS.V lv) =
 	  (case nTableLookup (key lv)
@@ -1141,6 +1181,7 @@ struct
 	     | NONE => die "ra_body.assign: lvar not assigned a color")
 	  | assign(LS.FV lv) = FV_STY lv
 
+        val lss = coalesce_binops lss
 	val _ = (raReset();
 		 MakeInitial (args_on_stack_lvs, lss);
                  (*print ("MakeInitial done - " ^ fun_name ^ "\n");*)

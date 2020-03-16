@@ -98,8 +98,11 @@ signature INSTS_X64 =
     | addsd of ea * ea
     | subsd of ea * ea
     | maxsd of ea * ea
+    | minsd of ea * ea
     | ucomisd of ea * ea
     | xorps of ea * ea
+    | sqrtsd of ea * ea
+    | cvtsi2sdl of ea * ea
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)

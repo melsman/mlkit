@@ -40,7 +40,7 @@ structure OptLambda: OPT_LAMBDA =
 	 "Enable optimisation of intermediate language code\n\
 	  \(Lambda Expressions). Which optimisations are performed\n\
 	  \is controlled by individual flags. The optimisations\n\
-	  \include function in-lining, function specialisation,\n\
+	  \include function inlining, function specialisation,\n\
 	  \fix-minimization, unboxing of function arguments, and\n\
 	  \elimination of unnecessary record constructions."}
 
@@ -63,7 +63,7 @@ structure OptLambda: OPT_LAMBDA =
     val contract_p = Flags.add_bool_entry
 	 {long="contract", short=NONE, menu=["Control", "Optimiser", "contract"],
 	  item=ref true, neg=true, desc=
-	  "Contract is responsible for in-lining, specialization,\n\
+	  "Contract is responsible for inlining, specialization,\n\
 	   \elimination of dead code, and much else (Lambda\n\
 	   \Expression Optimiser)."}
 
@@ -124,9 +124,9 @@ structure OptLambda: OPT_LAMBDA =
 	 menu=["Control", "Optimiser", "maximum inline size"],
 	 item=ref 50, desc=
 	 "Functions smaller than this size (counted in abstract\n\
-	  \syntax tree nodes) are in-lines, even if they are used\n\
+	  \syntax tree nodes) are inlined, even if they are used\n\
 	  \more than once. Functions that are used only once are\n\
-	  \always in-lined."}
+	  \always inlined."}
 
     (* names of functions to inline no-matter the setting of the flag
      * maximum_inline_size. *)
@@ -149,7 +149,7 @@ structure OptLambda: OPT_LAMBDA =
 	 menu=["Control", "Optimiser", "cross module optimisation"],
 	 item=ref true,neg=true,
 	 desc=
-	 "Enable cross-module optimisation including in-lining\n\
+	 "Enable cross-module optimisation including inlining\n\
 	  \of small functions and specialisation of small\n\
 	  \recursive functions. Which optimisations are performed\n\
 	  \across modules is controlled by individual optimisation\n\
@@ -229,7 +229,11 @@ structure OptLambda: OPT_LAMBDA =
       val f64_minus = f64_bin "minus"
       val f64_mul = f64_bin "mul"
       val f64_div = f64_bin "div"
+      val f64_max = f64_bin "max"
+      val f64_min = f64_bin "min"
       val f64_sqrt = f64_uno "sqrt"
+      val f64_neg = f64_uno "neg"
+      val f64_abs = f64_uno "abs"
     end
 
    (* -----------------------------------------------------------------
@@ -566,12 +570,17 @@ structure OptLambda: OPT_LAMBDA =
                | "__minus_real" => true
                | "__mul_real" => true
                | "__div_real" => true
+               | "__max_real" => true
+               | "__min_real" => true
                | "__f64_to_real" => true
                | "__real_to_f64" => true
                | "__plus_f64" => true
                | "__minus_f64" => true
                | "__mul_f64" => true
                | "__div_f64" => true
+               | "__sqrt_f64" => true
+               | "__neg_f64" => true
+               | "__abs_f64" => true
                | _ => false
          fun look e =
              case e of
@@ -670,6 +679,33 @@ structure OptLambda: OPT_LAMBDA =
      end
      | specialize_bind _ _ _ = die "specialize_bind"
 
+   val tag_values = Flags.is_on0 "tag_values"
+
+   fun simple_nonexpanding e =
+       case e of
+           VAR{instances=[],regvars=[],...} => true
+         | INTEGER (_,t) => if tag_values() then eq_Type(t,int31Type) else true
+         | F64 _ => true
+         | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
+         | PRIM(CCALLprim{name,...},[e]) =>
+           (case name of
+                "__real_to_f64" => true
+              | "__neg_f64" => true
+              | "__abs_f64" => true
+              | "__sqrt_f64" => true
+              | "__int_to_f64" => true
+              | _ => false) andalso simple_nonexpanding e
+         | PRIM(CCALLprim{name,...},[e1,e2]) =>
+           (case name of
+                "__mul_f64" => true
+              | "__minus_f64" => true
+              | "__plus_f64" => true
+              | "__div_f64" => true
+              | "__max_f64" => true
+              | "__min_f64" => true
+              | _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2
+         | _ => false
+
    (* =================================================================
     * A better contract
     * ================================================================= *)
@@ -684,7 +720,7 @@ structure OptLambda: OPT_LAMBDA =
 	val excon_bucket : excon list ref = ref []
 	fun add_excon_bucket excon = excon_bucket := (excon :: !excon_bucket)
       in
-	fun reset_excon_bucket() = excon_bucket := []
+	fun reset_excon_bucket () = excon_bucket := []
 	fun is_live_excon excon = List.exists (fn excon' => Excon.eq(excon, excon')) (!excon_bucket)
 	fun mk_live_excon excon = if is_live_excon excon then () else add_excon_bucket excon
       end
@@ -888,7 +924,7 @@ structure OptLambda: OPT_LAMBDA =
 	| is_fn (FIX{functions,scope}) = is_fn scope
 	| is_fn _ = false
 
-      (* in-lining of unsafe bindings in safe contexts *)
+      (* inlining of unsafe bindings in safe contexts *)
       fun simpleContext lv e =
           if aggressive_opt() andalso Lvars.one_use lv then
             let fun build e =
@@ -993,8 +1029,6 @@ structure OptLambda: OPT_LAMBDA =
       fun is_boolean con =
 	Con.eq(Con.con_TRUE, con) orelse Con.eq(Con.con_FALSE, con)
 
-      val tag_values = Flags.is_on0 "tag_values"
-
       fun is_unboxed_value lamb =
 	case lamb
 	  of INTEGER (v,t) => if tag_values() then not(eq_Type(t, int32Type))
@@ -1077,17 +1111,13 @@ structure OptLambda: OPT_LAMBDA =
                | NONE => fail
             end
 
-      fun simple_nonexpanding e =
-          case e of
-              VAR{instances=[],regvars=[],...} => true
-            | F64 _ => true
-            | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
-            | PRIM(CCALLprim{name="__real_to_f64",...},[e]) => simple_nonexpanding e
-            | _ => false
-
-      fun reduce_f64bin f64binop (x,y) =
+      fun reduce_f64bin f64binop (e1,e2) =
           (tick "real_to_f64";
-           (f64_to_real (f64binop (real_to_f64 x,real_to_f64 y)), CUNKNOWN))
+           (f64_to_real (f64binop (real_to_f64 e1, real_to_f64 e2)), CUNKNOWN))
+
+      fun reduce_f64uno f64unop x =
+          (tick "real_to_f64";
+           (f64_to_real (f64unop (real_to_f64 x)), CUNKNOWN))
 
       fun reduce (env, (fail as (lamb,cv))) =
 	case lamb
@@ -1133,6 +1163,7 @@ structure OptLambda: OPT_LAMBDA =
 					   else fail
 	   | STRING _ => (lamb, CCONST lamb)
 	   | REAL _ => (lamb, CCONST lamb)
+	   | F64 _ => (lamb, CCONST lamb)
 	   | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
 	       let
                  (* maybe let-float f64-binding outwards to open up for other optimisations *)
@@ -1141,8 +1172,8 @@ structure OptLambda: OPT_LAMBDA =
                          ([],RECORDtype (_ :: _ :: _)) =>
                          (case bind of
                               LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>
-                                 if unbox_reals() andalso eq_Type(tau',f64Type) andalso simple_nonexpanding bind' then
-                                   (tick "reduce - f64 let-floating";
+                                 if unbox_reals() (*andalso eq_Type(tau',f64Type)*) andalso simple_nonexpanding bind' then
+                                   (tick "reduce - let-floating";
                                     let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',
                                                           scope=scope}
                                     in (lv,[],tau',bind',scope'',
@@ -1313,6 +1344,9 @@ structure OptLambda: OPT_LAMBDA =
 	  | SWITCH_S switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
 	  | SWITCH_C switch => reduce_switch (reduce, env, fail, switch, selectorCon)
 	  | SWITCH_E switch => reduce_switch (reduce, env, fail, switch, selectorNONE)
+          | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
+            (tick "real immed to f64 immed";
+             reduce (env,(F64 s,CUNKNOWN)))
           | PRIM(CCALLprim{name="__real_to_f64",...},
                  [PRIM(CCALLprim{name="__f64_to_real",...},[x])]) =>
             (tick "real unbox o box elimination";
@@ -1321,13 +1355,23 @@ structure OptLambda: OPT_LAMBDA =
                  [LET{pat,bind,scope=PRIM(CCALLprim{name="__f64_to_real",...},[scope])}]) =>
             (tick "real unbox o box elimination - let";
              reduce (env,(LET{pat=pat,bind=bind,scope=scope},CUNKNOWN)))
-          | PRIM(CCALLprim{name,...},[x,y]) =>
+          | PRIM(CCALLprim{name,...},xs) =>
             if unbox_reals() then
-              case name of
-                  "__plus_real" => reduce_f64bin f64_plus (x,y)
-                | "__minus_real" => reduce_f64bin f64_minus (x,y)
-                | "__mul_real" => reduce_f64bin f64_mul (x,y)
-                | "__div_real" => reduce_f64bin f64_div (x,y)
+              case (name,xs) of
+                  ("__plus_real",[x,y]) => reduce_f64bin f64_plus (x,y)
+                | ("__minus_real",[x,y]) => reduce_f64bin f64_minus (x,y)
+                | ("__mul_real",[x,y]) => reduce_f64bin f64_mul (x,y)
+                | ("divFloat",[x,y]) => reduce_f64bin f64_div (x,y)
+                | ("__max_real",[x,y]) => reduce_f64bin f64_max (x,y)
+                | ("__min_real",[x,y]) => reduce_f64bin f64_min (x,y)
+                | ("sqrtFloat",[x]) => reduce_f64uno f64_sqrt x
+                | ("__neg_real",[x]) => reduce_f64uno f64_neg x
+                | ("__abs_real",[x]) => reduce_f64uno f64_abs x
+                | ("realInt",[x]) =>
+                  (tick "real_to_f64";
+                   (f64_to_real (PRIM(CCALLprim {name="__int_to_f64",instances=[],tyvars=[],
+		                                 Type=ARROWtype([intDefaultType()],[f64Type])},
+                                      [x])), CUNKNOWN))
                 | _ => constantFolding lamb fail
             else constantFolding lamb fail
 	  | _ => constantFolding lamb fail
@@ -1399,7 +1443,7 @@ structure OptLambda: OPT_LAMBDA =
 	       let val lambs' = map (fst o (fn e => contr (env,e))) lambs
 	       in (mk_live_excon excon; (PRIM(prim, lambs'), CUNKNOWN))
 	       end
-	      | PRIM(RESET_REGIONSprim _, [VAR _]) => (lamb, CUNKNOWN) (* Sweden: avoid in-lining of variable *)
+	      | PRIM(RESET_REGIONSprim _, [VAR _]) => (lamb, CUNKNOWN) (* Sweden: avoid inlining of variable *)
 	      | PRIM(prim,lambs) => (PRIM(prim,map (fst o (fn e => contr (env,e))) lambs),CUNKNOWN)
 	      | FIX{functions,scope} =>
 	       let val lvs = map #lvar functions
@@ -1620,6 +1664,39 @@ structure OptLambda: OPT_LAMBDA =
        else lamb
    end
 
+   (* -----------------------------------------------------------------
+    * Common subexpression elimination
+    *
+    * Perform a simple kind of common subexpression elimination:
+    *
+    *
+    *   1. Turn expressions of the form `fbinop(e,e)` into
+    *      `let x = e in fbinop(x,x)` (provided e is non-expanding
+    *      and not already a variable)
+    *
+    * --------------------------------------------------------------- *)
+
+   fun cse e =
+       case e of
+           PRIM(p as CCALLprim{name,...}, es) =>
+           let fun mkbin (e1,e2) =
+                   let fun nonVAR (VAR _) = false
+                         | nonVAR e = true
+                   in if nonVAR e1 andalso eq_lamb (e1,e2) andalso simple_nonexpanding e1 then
+                        let val lv = Lvars.newLvar()
+                            val () = Lvars.set_ubf64 lv
+                            val a = VAR{lvar=lv,instances=nil,regvars=nil}
+                            val () = tick "CSE - f64"
+                        in LET{pat=[(lv,[],f64Type)],bind=e1,scope=PRIM(p,[a,a])}
+                        end
+                      else PRIM(p,[e1,e2])
+                   end
+               val es = map cse es
+           in case (name,es) of
+                  ("__mul_f64", [e1,e2]) => mkbin (e1,e2)
+                | _ => PRIM(p,es)
+           end
+         | _ => map_lamb cse e
 
    (* -----------------------------------------------------------------
     * Minimize fixs: split fix's into strongly connected components:
@@ -2465,9 +2542,11 @@ structure OptLambda: OPT_LAMBDA =
     fun optimise (ce:contract_env) lamb =
       let
 	  fun loop_opt ce lamb =
-	    let val (lamb, ce) = contract ce lamb
-	    in (eliminate_explicit_records lamb, ce)
-	    end
+	      let val (lamb, ce) = contract ce lamb
+                  val lamb = eliminate_explicit_records lamb
+                  val lamb = cse lamb
+	      in (lamb, ce)
+	      end
 
 	  fun loop n (lamb,ce') =
 	    if n > max_optimise then (lamb,ce')
