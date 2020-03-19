@@ -722,6 +722,7 @@ struct
                                     | _ => die "CG_ls: Expecting two arguments for flow primitive"
                       fun cmp i = cmpi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
                       fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,size_ff,C)
                       open PrimName
                   in case name
                        of Equal_int32ub => cmp I.je
@@ -754,6 +755,10 @@ struct
                         | Greatereq_word31 => cmp I.jae
                         | Greatereq_word32ub => cmp I.jae
                         | Greatereq_word32b => cmp_boxed I.jae
+                        | Less_f64 => cmpf64 I.jb
+                        | Lesseq_f64 => cmpf64 I.jbe
+                        | Greater_f64 => cmpf64 I.ja
+                        | Greatereq_f64 => cmpf64 I.jae
                         | _ => die "CG_ls: Unsupported PRIM used with Flow Variable"
                   end)
                | LS.PRIM{name,args,res} =>
@@ -831,6 +836,7 @@ struct
                           | Less_word32ub => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
                           | Less_word32b => cmpi_kill_tmp01 {box=true} (I.jb,x,y,d,size_ff,C)
                           | Less_real => cmpf_kill_tmp01(LESSTHAN,x,y,d,size_ff,C)
+                          | Less_f64 => cmpf64_kill_tmp0(LESSTHAN,x,y,d,size_ff,C)
                           | Lesseq_int32ub => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
                           | Lesseq_int32b => cmpi_kill_tmp01 {box=true} (I.jle,x,y,d,size_ff,C)
                           | Lesseq_int31 => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
@@ -838,6 +844,7 @@ struct
                           | Lesseq_word32ub => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
                           | Lesseq_word32b => cmpi_kill_tmp01 {box=true} (I.jbe,x,y,d,size_ff,C)
                           | Lesseq_real => cmpf_kill_tmp01(LESSEQUAL,x,y,d,size_ff,C)
+                          | Lesseq_f64 => cmpf64_kill_tmp0(LESSEQUAL,x,y,d,size_ff,C)
                           | Greater_int32ub => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
                           | Greater_int32b => cmpi_kill_tmp01 {box=true} (I.jg,x,y,d,size_ff,C)
                           | Greater_int31 => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
@@ -845,6 +852,7 @@ struct
                           | Greater_word32ub => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
                           | Greater_word32b => cmpi_kill_tmp01 {box=true} (I.ja,x,y,d,size_ff,C)
                           | Greater_real => cmpf_kill_tmp01(GREATERTHAN,x,y,d,size_ff,C)
+                          | Greater_f64 => cmpf64_kill_tmp0(GREATERTHAN,x,y,d,size_ff,C)
                           | Greatereq_int32ub => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
                           | Greatereq_int32b => cmpi_kill_tmp01 {box=true} (I.jge,x,y,d,size_ff,C)
                           | Greatereq_int31 => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
@@ -852,6 +860,7 @@ struct
                           | Greatereq_word32ub => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
                           | Greatereq_word32b => cmpi_kill_tmp01 {box=true} (I.jae,x,y,d,size_ff,C)
                           | Greatereq_real => cmpf_kill_tmp01(GREATEREQUAL,x,y,d,size_ff,C)
+                          | Greatereq_f64 => cmpf64_kill_tmp0(GREATEREQUAL,x,y,d,size_ff,C)
                           | Andb_word31 => andb_word_kill_tmp01(x,y,d,size_ff,C)
                           | Andb_word32ub => andb_word_kill_tmp01(x,y,d,size_ff,C)
                           | Orb_word31 => orb_word_kill_tmp01(x,y,d,size_ff,C)
@@ -1101,7 +1110,7 @@ struct
       get_static_data (data_end_lab(l,
       comment ("END OF STATIC DATA AREA",nil)))))
 
-    fun init_x64_code() = [I.dot_text]
+    fun init_x64_code () = [I.dot_text]
   in
     fun CG {main_lab:label,
             code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
@@ -1117,6 +1126,7 @@ struct
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab}
+        val x64_prg = I.optimise x64_prg
         val _ = chat "]\n"
       in
         x64_prg
@@ -1151,7 +1161,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                                I.dot_quad "1" :: C)
             end
 
-        fun slots_for_datlabs(l,C) = foldr slot_for_datlab C l
+        fun slots_for_datlabs (l,C) = foldr slot_for_datlab C l
 
         fun toplevel_handler C =
           let
@@ -1213,7 +1223,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           end
 
         (* primitive exceptions *)
-        fun setup_primitive_exception((n,exn_string,exn_lab,exn_flush_lab),C) =
+        fun setup_primitive_exception ((n,exn_string,exn_lab,exn_flush_lab),C) =
           let
             val string_lab = gen_string_lab exn_string
             val _ =
@@ -1292,7 +1302,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         (* args can only be tmp_reg0 and tmp_reg1; no arguments
          * on the stack; only the return address! Destroys tmp_reg0! *)
-        fun ccall_stub(stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
+        fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
           let
             val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
                             caller_save_regs_ccall  (* maybe also save the other
@@ -1411,7 +1421,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 end
             else C
 
-        fun generate_jump_code_progunits(progunit_labs,C) =
+        fun generate_jump_code_progunits (progunit_labs,C) =
           foldr (fn (l,C) =>
                  let val next_lab = new_local_lab "next_progunit_lab"
                  in
@@ -1425,7 +1435,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    I.lab next_lab :: C))
                  end) C progunit_labs
 
-        fun allocate_global_regions(region_labs,C) =
+        fun allocate_global_regions (region_labs,C) =
           let
             fun maybe_pass_region_id (region_id,C) =
               if region_profiling() then I.movq(I (i2s region_id), R rsi) :: C

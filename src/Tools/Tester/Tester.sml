@@ -132,10 +132,10 @@ structure Tester : TESTER =
 					      rss=rss,stk=stk,exe=exe,
 					      real=real,user=user,sys=sys}
 
-		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s);
+		end handle Fail s => (msgErr (exe_file ^ " failure (" ^ file_label ^ "): " ^ s);
 				      TestReport.add_runtime_bare_line(file_label,false))
                          | Time.Time =>
-                                     (msgErr ("Time raised during execution of " ^ exe_file);
+                                     (msgErr ("Time raised during execution of " ^ exe_file ^ " (" ^ file_label ^ ")");
 				      TestReport.add_runtime_bare_line(file_label,false))
 	      else
 		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file ^ " 2>&1" (*".out"*))
@@ -143,7 +143,7 @@ structure Tester : TESTER =
 		  if (not(opt "ue" (*Uncaught Exception*) ) andalso OS.Process.isSuccess res)
 		    orelse (opt "ue" (*Uncaught Exception*) andalso not(OS.Process.isSuccess res)) then
 		      TestReport.add_runtime_bare_line(file_label,test_output())
-		  else (msgErr (exe_file ^ " failure");
+		  else (msgErr (exe_file ^ " failure ("  ^ file_label ^ ")");
 			TestReport.add_runtime_bare_line(file_label,false))
 		end
 	    end

@@ -92,19 +92,7 @@ struct
   fun comment_fn (f, C) = if !comments_in_asmcode then I.comment (f()) :: C
                           else C
 
-  fun rem_dead_code nil = nil
-    | rem_dead_code (C as i :: C') =
-    case i
-      of I.lab _ => C
-       | I.dot_long _ => C
-       | I.dot_quad _ => C
-       | I.dot_byte _ => C
-       | I.dot_align _ => C
-       | I.dot_globl _ => C
-       | I.dot_text => C
-       | I.dot_data => C
-       | I.comment s => i :: rem_dead_code C'
-       | _ => rem_dead_code C'
+  val rem_dead_code = I.rem_dead_code
 
   (********************************)
   (* CG on Top Level Declarations *)
@@ -813,7 +801,7 @@ struct
 
     (* reg_map is a register map describing live registers at entry to the function       *)
     (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
-    fun do_gc(reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args,C) =
+    fun do_gc (reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args,C) =
       if gc_p() then
         let
           val l = new_local_lab "return_from_gc_stub"
@@ -844,7 +832,7 @@ struct
     (* Status Bits Are Not Cleared! We preserve the value in register t,
      * t may be used in a call to alloc. *)
 
-    fun reset_region(t:reg,tmp:reg,size_ff,C) =
+    fun reset_region (t:reg,tmp:reg,size_ff,C) =
       let val l = new_local_lab "return_from_alloc"
       in copy(t,tmp_reg1,
          I.push(LA l) ::
@@ -853,7 +841,7 @@ struct
          copy(tmp_reg1, t, C))
       end
 
-    fun alloc_kill_tmp01(t:reg,n0:int,size_ff,pp:LS.pp,C) =
+    fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
       let val n = if region_profiling() then n0 + BI.objectDescSizeP
                   else n0
           val l = new_local_lab "return_from_alloc"
@@ -877,7 +865,7 @@ struct
      * then the following function is used for allocating pairs in
      * infinite regions. *)
 
-    fun alloc_untagged_value_kill_tmp01(t:reg,size_alloc,size_ff,pp:LS.pp,C) =
+    fun alloc_untagged_value_kill_tmp01 (t:reg,size_alloc,size_ff,pp:LS.pp,C) =
       let val n0 = size_alloc (* size of untagged pair, e.g. *)
           val n = if region_profiling() then n0 + BI.objectDescSizeP
                   else n0
@@ -900,21 +888,21 @@ struct
         post (t,C)))
       end
 
-    fun set_atbot_bit(dst_reg:reg,C) =
+    fun set_atbot_bit (dst_reg:reg,C) =
       I.orq(I "2", R dst_reg) :: C
 
-    fun clear_atbot_bit(dst_reg:reg,C) =
+    fun clear_atbot_bit (dst_reg:reg,C) =
       I.btrq (I "1", R dst_reg) :: C
 
-    fun set_inf_bit(dst_reg:reg,C) =
+    fun set_inf_bit (dst_reg:reg,C) =
       I.orq(I "1", R dst_reg) :: C
 
-    fun set_inf_bit_and_atbot_bit(dst_reg:reg,C) =
+    fun set_inf_bit_and_atbot_bit (dst_reg:reg,C) =
       I.orq(I "3", R dst_reg) :: C
 
     (* move_aty_into_reg_ap differs from move_aty_into_reg in the case where aty is a phreg! *)
     (* We must always make a copy of phreg because we may overwrite status bits in phreg.    *)
-    fun move_aty_into_reg_ap(aty,dst_reg,size_ff,C) =
+    fun move_aty_into_reg_ap (aty,dst_reg,size_ff,C) =
       case aty
         of SS.REG_I_ATY offset => base_plus_offset(rsp,BYTES(size_ff*8-offset*8-8(*+BI.inf_bit*)),dst_reg,
                                                    set_inf_bit(dst_reg,C))
@@ -929,7 +917,7 @@ struct
         else I.movq(I(i2s pp), D("-16", obj_ptr)) :: C  (* two words offset *)
       else C
 
-    fun alloc_ap_kill_tmp01(sma, dst_reg:reg, n, size_ff, C) =
+    fun alloc_ap_kill_tmp01 (sma, dst_reg:reg, n, size_ff, C) =
       case sma
         of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => C
          | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => C
@@ -1039,7 +1027,7 @@ struct
           end
 
     (* Set Atbot bits on region variables *)
-    fun prefix_sm(sma,dst_reg:reg,size_ff,C) =
+    fun prefix_sm (sma,dst_reg:reg,size_ff,C) =
       case sma
         of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
          | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
@@ -1069,7 +1057,7 @@ struct
          | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
 
     (* Used to build a region vector *)
-    fun store_sm_in_record(sma,tmp:reg,base_reg,offset,size_ff,C) =
+    fun store_sm_in_record (sma,tmp:reg,base_reg,offset,size_ff,C) =
       case sma
         of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
          | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
@@ -1114,7 +1102,7 @@ struct
          | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
                                 store_indexed(base_reg,offset,R tmp,C))
 
-    fun force_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) =
+    fun force_reset_aux_region_kill_tmp0 (sma,t:reg,size_ff,C) =
       let fun do_reset(aty,pp) = move_aty_into_reg_ap(aty,t,size_ff,
                                   reset_region(t,tmp_reg0,size_ff,C))
           fun maybe_reset(aty,pp) =
@@ -1137,7 +1125,7 @@ struct
             | LS.IGNORE => C
       end
 
-      fun maybe_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) =
+      fun maybe_reset_aux_region_kill_tmp0 (sma,t:reg,size_ff,C) =
         case sma
           of LS.ATBOT_LI(aty,pp) => move_aty_into_reg_ap(aty,t,size_ff,
                                     reset_region(t,tmp_reg0,size_ff,C))
@@ -1171,12 +1159,12 @@ struct
             of (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
              | _ => NONE
       in
-        fun binary_search(sels,
-                          default,
-                          opr: I.ea,
-                          compile_insts,
-                          toInt : 'a -> Int32.int,
-                          C) =
+        fun binary_search (sels,
+                           default,
+                           opr: I.ea,
+                           compile_insts,
+                           toInt : 'a -> Int32.int,
+                           C) =
           let
             val sels = map (fn (i,e) => (toInt i, e)) sels
             fun if_not_equal_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jne lab :: C
@@ -1204,7 +1192,7 @@ struct
                                     I.pop(R tmp_reg1) ::
                                     I.jmp(D(intToStr(~8*sel), tmp_reg0)) ::
                                     rem_dead_code C),
-               fn (lab,C) => I.dot_quad (I.pr_lab lab) :: C, (*add_label_to_jump_tab*)
+               fn (lab,C) => I.dot_quad' lab :: C, (*add_label_to_jump_tab*)
                I.eq_lab,
                inline_cont,
                C)
@@ -1266,7 +1254,7 @@ struct
            I.lab cont_lab :: C')))
         end
 
-      fun cmpi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) =
+      fun cmpi_and_jmp_kill_tmp01 (jump,x,y,lab_t,lab_f,size_ff,C) =
         let
           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1278,7 +1266,7 @@ struct
         end
 
       (* version with boxed arguments; assume tagging is enabled *)
-      fun cmpbi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) =
+      fun cmpbi_and_jmp_kill_tmp01 (jump,x,y,lab_t,lab_f,size_ff,C) =
         if BI.tag_values() then
           let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
               val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1292,6 +1280,22 @@ struct
             I.jmp (L lab_f) :: rem_dead_code C))
           end
         else die "cmpbi_and_jmp_kill_tmp01: tagging disabled!"
+
+      (* MEMO: we need to support spilled f64 values *)
+     fun resolve_f64_aty f aty : reg =
+         case aty of
+             SS.PHREG_ATY x => if I.is_xmm x then x
+                               else die ("resolve_f64_aty: expecting xmm register. " ^ f() ^ " - got " ^ I.pr_reg x)
+           | _ => die "resolve_f64_aty: expecting physical register"
+
+      fun cmpf64_and_jmp (jump,x,y,lab_t,lab_f,size_ff,C) =
+          let val x = resolve_f64_aty (fn() => "x - cmpf64_and_jmp") x
+              val y = resolve_f64_aty (fn() => "y - cmpf64_and_jmp") y
+          in I.ucomisd (R y, R x) ::
+             jump lab_t ::
+             I.jmp (L lab_f) ::
+             rem_dead_code C
+          end
 
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
@@ -1497,12 +1501,6 @@ struct
 
      (* unboxed f64 operations *)
 
-     fun resolve_f64_aty f aty : reg =
-         case aty of
-             SS.PHREG_ATY x => if I.is_xmm x then x
-                               else die ("resolve_f64_aty: expecting xmm register. " ^ f() ^ " - got " ^ I.pr_reg x)
-           | _ => die "resolve_f64_aty: expecting physical register"
-
      fun copy_f64 (x,y,C) =
          if x = y then C
          else if I.is_xmm x andalso I.is_xmm y then I.movsd(R x,R y)::C
@@ -1557,10 +1555,37 @@ struct
           I.maxsd (R tmp_freg0, R d) :: C
        end
 
+     datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
+     fun pp_cond LESSTHAN = "LESSTHAN"
+       | pp_cond LESSEQUAL = "LESSEQUAL"
+       | pp_cond GREATERTHAN = "GREATERTHAN"
+       | pp_cond GREATEREQUAL = "GREATEREQUAL"
+     fun cmpf64_kill_tmp0 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
+         let val x = resolve_f64_aty (fn() => pp_cond cond ^ "-x - cmpf64_kill_tmp0") x
+             val y = resolve_f64_aty (fn() => pp_cond cond ^ "-y - cmpf64_kill_tmp0") y
+             val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
+             val true_lab = new_local_lab "true"
+             val cont_lab = new_local_lab "cont"
+             val jump = (* from gcc experiments *)
+                 case cond of
+                     LESSTHAN => I.jb      (*below*)
+                   | LESSEQUAL => I.jbe    (*below or equal*)
+                   | GREATERTHAN => I.ja   (*above*)
+                   | GREATEREQUAL => I.jae (*above or equal*)
+         in I.ucomisd (R y, R x) ::
+            jump true_lab ::
+            I.movq(I (i2s BI.ml_false), R d_reg) ::
+            I.jmp(L cont_lab) ::
+            I.lab true_lab ::
+            I.movq(I (i2s BI.ml_true), R d_reg) ::
+            I.lab cont_lab ::
+            C'
+         end
+
      fun mov_int ((aty,r),size_ff,C) =
          if BI.tag_values() then
            move_aty_into_reg(aty,r,size_ff,
-                             I.shrq(I "1", R r) :: C)
+                             I.sarl(I "1", R (I.doubleOfQuadReg r)) :: C)
          else
            move_aty_into_reg(aty,r,size_ff,C)
 
@@ -1623,8 +1648,6 @@ struct
          b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
          copy(b_reg,d_reg, C'))))
        end
-
-     datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
 
      fun cmpf_kill_tmp01 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
        let val x_C = load_float_aty(x, tmp_reg0, size_ff, tmp_freg0)

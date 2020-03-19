@@ -7,9 +7,9 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     type label = Labels.label
     type offset = int
 
-    val init_clos_offset = 1     (* First offset in FN closure is 1 and code pointer is at offset 0 *) 
-    val init_sclos_offset = 0	 (* First offset in shared closure is 0 *)                             
-    val init_regvec_offset = 0	 (* First offset in region vector is 0 *)                              
+    val init_clos_offset = 1     (* First offset in FN closure is 1 and code pointer is at offset 0 *)
+    val init_sclos_offset = 0	 (* First offset in shared closure is 0 *)
+    val init_regvec_offset = 0	 (* First offset in region vector is 0 *)
 
     (***********)
     (* Tagging *)
@@ -20,7 +20,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     fun pr_tag_i tag = "0X" ^ (Int.fmt StringCvt.HEX tag)
 
     (* off is the offset at which values are traversed *)
-    fun gen_record_tag(s:int,off:int,i:bool,t:int) = 
+    fun gen_record_tag(s:int,off:int,i:bool,t:int) =
       let
 	fun pw(s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
 	val w0 = Word32.fromInt 0
@@ -38,7 +38,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
 	w_tag
       end
 
-    fun gen_string_tag(s:int,i:bool,t:int) = 
+    fun gen_string_tag(s:int,i:bool,t:int) =
       let
 	fun pw(s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
 	val w0 = Word32.fromInt 0
@@ -95,7 +95,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
       fun size_g1() = if gengc_p() then size_gen else 0
       fun size_prof() = if region_profiling() then 3 else 0
     in
-      fun size_of_reg_desc() = 
+      fun size_of_reg_desc() =
 	size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs()
     end
 
@@ -125,71 +125,6 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     val minCodeInBinSearch = 5
     val maxDiff = 10
     val minJumpTabSize = 5
-
-    (* Primitives that are inlined by the compiler; in contrast to
-     * those primitives that are implemented as C calls *)
-
-    local
-      structure S = OrderSet(struct type T = string
-				    fun lt (a: T) b = a < b
-			     end)
-
-      val S_flow = S.fromList
-	["__equal_int31", "__equal_int32ub", "__equal_int32b", 
-	 "__equal_word31", "__equal_word32ub", "__equal_word32b", 
-	 "__less_int31", "__less_int32ub", "__less_int32b", 
-	 "__less_word31", "__less_word32ub", "__less_word32b", 
-	 "__lesseq_int31", "__lesseq_int32ub", "__lesseq_int32b", 
-	 "__lesseq_word31", "__lesseq_word32ub", "__lesseq_word32b", 
-	 "__greater_int31", "__greater_int32ub", "__greater_int32b", 
-	 "__greater_word31", "__greater_word32ub", "__greater_word32b", 
-	 "__greatereq_int31", "__greatereq_int32ub", "__greatereq_int32b", 
-	 "__greatereq_word31", "__greatereq_word32ub", "__greatereq_word32b"
-	 ]
-
-      val S = S.fromList
-	["__less_real", "__lesseq_real", "__greater_real", "__greatereq_real",
-	 "__plus_int31", "__plus_int32ub", "__plus_int32b", 
-	 "__plus_word31", "__plus_word32ub", "__plus_word32b", "__plus_real",
-	 "__minus_int31", "__minus_int32ub", "__minus_int32b", 
-	 "__minus_word31", "__minus_word32ub", "__minus_word32b", "__minus_real", 
-	 "__mul_int31", "__mul_int32ub", "__mul_int32b", 
-	 "__mul_word31", "__mul_word32ub", "__mul_word32b", "__mul_real",
-	 "__div_real",
-	 "__neg_int31", "__neg_int32ub", "__neg_int32b", "__neg_real",  
-	 "__abs_int31", "__abs_int32ub", "__abs_int32b", "__abs_real",  
-	 "__andb_word31", "__andb_word32ub", "__andb_word32b",
-	 "__orb_word31", "__orb_word32ub", "__orb_word32b",
-	 "__xorb_word31", "__xorb_word32ub", "__xorb_word32b",
-	 "__shift_left_word31", "__shift_left_word32ub", "__shift_left_word32b", 
-	 "__shift_right_signed_word31", 
-	 "__shift_right_signed_word32ub", "__shift_right_signed_word32b", 
-	 "__shift_right_unsigned_word31", 
-	 "__shift_right_unsigned_word32ub", "__shift_right_unsigned_word32b", 
-	 
-	 "__int31_to_int32b", "__int31_to_int32ub", "__int32b_to_int31", "__int32b_to_word32b", "__int32ub_to_int31",
-
-	 "__word31_to_word32b", "__word31_to_word32ub", "__word32b_to_word31", "__word32ub_to_word31",
-
-	 "__word31_to_word32ub_X", "__word31_to_word32b_X", 
-
-	 "__word32b_to_int32b", "__word32b_to_int32b_X", "__word32ub_to_int32ub", "__word31_to_int31", 
-	 "__word32b_to_int31", "__int32b_to_word31", "__word32b_to_int31_X",
-
-	 "__exn_ptr", "__fresh_exname", 
-
-         "__bytetable_sub", "__bytetable_size", "__bytetable_update",
-
-	 "word_sub0", "word_update0", "table_size",
-	 
-	 "__is_null",
-
-	 "__serverGetCtx"]
-   
-    in
-      fun is_prim name = S.member name S orelse S.member name S_flow
-      fun is_flow_prim name = S.member name S_flow
-    end
 
     val down_growing_stack = down_growing_stack
   end

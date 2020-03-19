@@ -144,6 +144,7 @@ signature INSTS_X64 =
     | dot_byte of string
     | dot_long of string
     | dot_quad of string
+    | dot_quad' of lab
     | dot_double of string
     | dot_string of string
     | dot_size of lab * int
@@ -169,6 +170,10 @@ signature INSTS_X64 =
       where type lvar = lvar
 
     val sysname : unit -> string
+
+    val rem_dead_code : inst list -> inst list
+
+    val optimise : AsmPrg -> AsmPrg
 
     type StringTree
     val layout : AsmPrg -> StringTree

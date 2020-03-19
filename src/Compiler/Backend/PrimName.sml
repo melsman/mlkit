@@ -15,6 +15,7 @@ datatype prim =
 
          (* other primitives *)
          Less_real | Lesseq_real | Greater_real | Greatereq_real |
+         Less_f64 | Lesseq_f64 | Greater_f64 | Greatereq_f64 |
 	 Plus_int31 | Plus_int32ub | Plus_int32b |
 	 Plus_word31 | Plus_word32ub | Plus_word32b | Plus_real |
 	 Minus_int31 | Minus_int32ub | Minus_int32b |
@@ -68,7 +69,8 @@ local
   val M_flow = M.fromList flow_pairs
 
   val pairs =
-	[("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
+        [("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
+         ("__less_f64", Less_f64), ("__lesseq_f64", Lesseq_f64), ("__greater_f64", Greater_f64), ("__greatereq_f64", Greatereq_f64),
 	 ("__plus_int31", Plus_int31), ("__plus_int32ub", Plus_int32ub), ("__plus_int32b", Plus_int32b),
 	 ("__plus_word31", Plus_word31), ("__plus_word32ub", Plus_word32ub), ("__plus_word32b", Plus_word32b), ("__plus_real", Plus_real),
 	 ("__minus_int31", Minus_int31), ("__minus_int32ub", Minus_int32ub), ("__minus_int32b", Minus_int32b),
@@ -151,6 +153,10 @@ fun is_flow_prim (p:prim) : bool =
       | Greatereq_word31 => true
       | Greatereq_word32ub => true
       | Greatereq_word32b => true
+      | Less_f64 => true
+      | Lesseq_f64 => true
+      | Greater_f64 => true
+      | Greatereq_f64 => true
       | _ => false
 
 fun pp_prim (p:prim) : string =
@@ -189,6 +195,10 @@ fun pp_prim (p:prim) : string =
       | Lesseq_real => "Lesseq_real"
       | Greater_real => "Greater_real"
       | Greatereq_real => "Greatereq_real"
+      | Less_f64 => "Less_f64"
+      | Lesseq_f64 => "Lesseq_f64"
+      | Greater_f64 => "Greater_f64"
+      | Greatereq_f64 => "Greatereq_f64"
       | Plus_int31 => "Plus_int31"
       | Plus_int32ub => "Plus_int32ub"
       | Plus_int32b => "Plus_int32b"

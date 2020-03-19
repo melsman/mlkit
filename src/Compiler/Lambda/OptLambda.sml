@@ -177,7 +177,7 @@ structure OptLambda: OPT_LAMBDA =
 
     fun die s = Crash.impossible ("OptLambda." ^ s)
 
-    fun reportBadLambda(msg,lamb) =
+    fun reportBadLambda (msg,lamb) =
       (PP.outputTree((fn s => TextIO.output(!Flags.log, s)),
 		     LambdaExp.layoutLambdaExp lamb,
 		     !Flags.colwidth);
@@ -187,12 +187,6 @@ structure OptLambda: OPT_LAMBDA =
 	(print ("\n" ^ s ^ ": \n");
 	 PP.outputTree(print, LambdaExp.layoutLambdaExp e, 200);
 	 print "\n")
-
-    fun filter p [] = []
-      | filter p (x::xs) = if p x then x::filter p xs else filter p xs
-
-    fun foldl f a []      = a
-      | foldl f a (x::xs) = foldl f (f a x) xs
 
     fun fst (a,_) = a
     and snd (_,b) = b
@@ -222,6 +216,8 @@ structure OptLambda: OPT_LAMBDA =
           PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type,f64Type] f64Type, [x,y])
       fun f64_uno opr (x:exp) : exp =
           PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type] f64Type, [x])
+      fun f64_cmp opr (x:exp,y:exp) : exp =
+          PRIM(ccall ("__" ^ opr ^ "_f64") [f64Type,f64Type] boolType, [x,y])
     in
       fun f64_to_real (x:exp) : exp = PRIM(ccall "__f64_to_real" [f64Type] realType, [x])
       fun real_to_f64 (x:exp) : exp = PRIM(ccall "__real_to_f64" [realType] f64Type, [x])
@@ -234,6 +230,10 @@ structure OptLambda: OPT_LAMBDA =
       val f64_sqrt = f64_uno "sqrt"
       val f64_neg = f64_uno "neg"
       val f64_abs = f64_uno "abs"
+      val f64_less = f64_cmp "less"
+      val f64_lesseq = f64_cmp "lesseq"
+      val f64_greater = f64_cmp "greater"
+      val f64_greatereq = f64_cmp "greatereq"
     end
 
    (* -----------------------------------------------------------------
@@ -464,16 +464,20 @@ structure OptLambda: OPT_LAMBDA =
 
 
    (* -----------------------------------------------------------------
-    * lvar_in_lamb lvar lamb - Returns true, if there are any free
-    * occurrences of the lvar in the LambdaExp lamb.
+    * lvar_in_lamb lv lamb - Returns true, if there are any free
+    * occurrences of lv in the LambdaExp lamb.
     * ----------------------------------------------------------------- *)
 
-   fun lvar_in_lamb (lvar:lvar) (lamb:LambdaExp) =
+   fun lvar_in_lamb (lv:lvar) (lamb:LambdaExp) =
      let
        exception Occurs
        fun occurs acc lamb =
          case lamb
-           of VAR{lvar=lv,...} => if Lvars.eq(lvar,lv) then raise Occurs else false
+           of VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Occurs else false
+            | FRAME{declared_lvars,...} =>
+              ( app (fn {lvar,...} => if Lvars.eq(lvar,lv)
+                                      then raise Occurs else ()) declared_lvars
+              ; false)
             | _ => false
      in
        (foldTD occurs false lamb) handle Occurs => true
@@ -581,24 +585,43 @@ structure OptLambda: OPT_LAMBDA =
                | "__sqrt_f64" => true
                | "__neg_f64" => true
                | "__abs_f64" => true
+               | "__less_f64" => true
+               | "__lesseq_f64" => true
+               | "__greater_f64" => true
+               | "__greatereq_f64" => true
+               | "__less_real" => true
+               | "__lesseq_real" => true
+               | "__greater_real" => true
+               | "__greatereq_real" => true
                | _ => false
-         fun look e =
+         fun check e = if lvar_in_lamb lv e then raise Bad else false
+         fun safeLook_sw safeLook (SWITCH(e,es,eopt)) =
+             if safeLook e then
+               let val ss = map (safeLook o #2) es
+                   val sopt = Option.map safeLook eopt
+               in Option.getOpt (sopt,true) andalso List.all (fn x => x) ss
+               end
+             else (app (ignore o check o #2) es; Option.app (ignore o check) eopt; false)
+         fun safeLook e =
              case e of
-                 REAL _ => ()
-               | F64 _ => ()
-               | WORD _ => ()
-               | INTEGER _ => ()
-               | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else ()
-               | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => ()
+                 REAL _ => true
+               | F64 _ => true
+               | WORD _ => true
+               | INTEGER _ => true
+               | VAR{lvar,...} => if Lvars.eq(lvar,lv) then raise Bad else true
+               | PRIM(CCALLprim{name="__real_to_f64",...},[VAR _]) => true
                | PRIM(CCALLprim{name,...},es) =>
-                 if not(ok name) then raise Bad
-                 else app look es
-	       | LET{pat,bind,scope} => (look bind; look scope)
-               | PRIM(SELECTprim _, es) => app look es
-               | PRIM(RECORDprim _, es) => app look es
-               | _ => raise Bad
+                 if ok name then safeLooks es else raise Bad
+	       | LET{pat,bind,scope} => if safeLook bind then safeLook scope
+                                        else check scope
+               | PRIM(SELECTprim _, es) => safeLooks es
+               | PRIM(RECORDprim _, es) => safeLooks es
+               | SWITCH_C sw => safeLook_sw safeLook sw
+               | _ => check e
+         and safeLooks es =
+             List.foldl (fn (e,s) => if s then safeLook e else check e) true es
      in
-       (look lamb; true) handle Bad => false
+       (safeLook lamb; true) handle Bad => false
      end
 
    fun subst_real_lvar_f64_in_lamb (lv:lvar) (lamb:LambdaExp) : LambdaExp =
@@ -613,7 +636,10 @@ structure OptLambda: OPT_LAMBDA =
                  if Lvars.eq(lvar,lv) then e' else e
                | PRIM(p,es) => PRIM(p,map subst es)
 	       | LET{pat,bind,scope} => LET{pat=pat,bind=subst bind,scope=subst scope}
-               | _ => die "subst_real_lvar_f64_in_lamb: impossible"
+               | SWITCH_C(SWITCH(e,es,eopt)) =>
+                 SWITCH_C(SWITCH(subst e, map (fn (x,e) => (x,subst e)) es, Option.map subst eopt))
+               | _ => if lvar_in_lamb lv e then die "subst_real_lvar_f64_in_lamb: impossible"
+                      else e
        in subst lamb
        end
 
@@ -1115,6 +1141,10 @@ structure OptLambda: OPT_LAMBDA =
           (tick "real_to_f64";
            (f64_to_real (f64binop (real_to_f64 e1, real_to_f64 e2)), CUNKNOWN))
 
+      fun reduce_f64cmp f64cmp (e1,e2) =
+          (tick "real_to_f64";
+           (f64cmp (real_to_f64 e1, real_to_f64 e2), CUNKNOWN))
+
       fun reduce_f64uno f64unop x =
           (tick "real_to_f64";
            (f64_to_real (f64unop (real_to_f64 x)), CUNKNOWN))
@@ -1347,14 +1377,24 @@ structure OptLambda: OPT_LAMBDA =
           | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
             (tick "real immed to f64 immed";
              reduce (env,(F64 s,CUNKNOWN)))
+(*
           | PRIM(CCALLprim{name="__real_to_f64",...},
                  [PRIM(CCALLprim{name="__f64_to_real",...},[x])]) =>
             (tick "real unbox o box elimination";
              reduce (env,(x,CUNKNOWN)))
-          | PRIM(CCALLprim{name="__real_to_f64",...},
-                 [LET{pat,bind,scope=PRIM(CCALLprim{name="__f64_to_real",...},[scope])}]) =>
-            (tick "real unbox o box elimination - let";
-             reduce (env,(LET{pat=pat,bind=bind,scope=scope},CUNKNOWN)))
+*)
+          | PRIM(CCALLprim{name="__real_to_f64",...},[e]) =>
+            let fun loop e f =
+                    case e of
+                        PRIM(CCALLprim{name="__f64_to_real",...},[e]) =>
+                        (tick "real unbox o box elimination - let";
+                         SOME (f e))
+                      | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
+                      | _ => NONE
+            in case loop e (fn x => x) of
+                   NONE => constantFolding lamb fail
+                 | SOME e' => reduce(env,(e',CUNKNOWN))
+            end
           | PRIM(CCALLprim{name,...},xs) =>
             if unbox_reals() then
               case (name,xs) of
@@ -1372,6 +1412,10 @@ structure OptLambda: OPT_LAMBDA =
                    (f64_to_real (PRIM(CCALLprim {name="__int_to_f64",instances=[],tyvars=[],
 		                                 Type=ARROWtype([intDefaultType()],[f64Type])},
                                       [x])), CUNKNOWN))
+                | ("__less_real",[x,y]) => reduce_f64cmp f64_less (x,y)
+                | ("__lesseq_real",[x,y]) => reduce_f64cmp f64_lesseq (x,y)
+                | ("__greater_real",[x,y]) => reduce_f64cmp f64_greater (x,y)
+                | ("__greatereq_real",[x,y]) => reduce_f64cmp f64_greatereq (x,y)
                 | _ => constantFolding lamb fail
             else constantFolding lamb fail
 	  | _ => constantFolding lamb fail

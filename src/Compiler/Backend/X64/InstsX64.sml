@@ -162,6 +162,7 @@ structure InstsX64: INSTS_X64 =
     | dot_byte of string
     | dot_long of string
     | dot_quad of string
+    | dot_quad' of lab
     | dot_double of string
     | dot_string of string
     | dot_size of lab * int
@@ -390,6 +391,7 @@ structure InstsX64: INSTS_X64 =
                | dot_byte s => (emit "\t.byte "; emit s; emit_nl())
                | dot_long s => (emit "\t.long "; emit s; emit_nl())
                | dot_quad s => (emit "\t.quad "; emit s; emit_nl())
+               | dot_quad' l => (emit "\t.quad "; emit(pr_lab l); emit_nl())
                | dot_double s => (emit "\t.double "; emit s; emit_nl())
                | dot_string s => (emit "\t.string \""; emit s; emit "\""; emit_nl())
                | dot_section s => (emit ".section \t"; emit s; emit_nl())
@@ -520,6 +522,249 @@ structure InstsX64: INSTS_X64 =
             | r8 => r8d | r9 => r9d | r10 => r10d | r11 => r11d
             | r12 => r12d | r13 => r13d | r14 => r14d | r15 => r15d
             | _ => die ("doubleOfQuadReg: " ^ pr_reg r ^ " is not a quad register")
+
+    (* Helper functions *)
+
+    fun rem_dead_code nil = nil
+      | rem_dead_code (C as i :: C') =
+        case i of
+            lab _ => C
+          | dot_long _ => C
+          | dot_quad _ => C
+          | dot_quad' _ => C
+          | dot_byte _ => C
+          | dot_align _ => C
+          | dot_globl _ => C
+          | dot_text => C
+          | dot_data => C
+          | comment s => i :: rem_dead_code C'
+          | _ => rem_dead_code C'
+
+    fun onI (Rm:reg->reg) (Lm:lab->lab) (i:inst) : inst =
+        let fun Em ea =
+                case ea of
+                    R r => R(Rm r)
+                  | L l => L (Lm l)
+                  | LA l => LA (Lm l)
+                  | I s => ea
+                  | D (s,r) => D(s,Rm r)
+                  | DD (s1,r1,r2,s2) => DD(s1,Rm r1, Rm r2,s2)
+        in case i of
+               movq (ea1,ea2) => movq (Em ea1,Em ea2)
+             | movb (ea1,ea2) => movb (Em ea1,Em ea2)
+             | movzbq (ea1,ea2) => movzbq (Em ea1,Em ea2)
+             | push ea => push (Em ea)
+             | leaq (ea1,ea2) => leaq (Em ea1,Em ea2)
+             | pop ea => pop (Em ea)
+             | andb (ea1,ea2) => andb (Em ea1,Em ea2)
+             | addl (ea1,ea2) => addl (Em ea1,Em ea2)
+             | subl (ea1,ea2) => subl (Em ea1,Em ea2)
+             | negl ea => negl (Em ea)
+             | decl ea => decl (Em ea)
+             | incl ea => incl (Em ea)
+             | imull (ea1,ea2) => imull (Em ea1,Em ea2)
+             | notl ea => notl (Em ea)
+             | orl (ea1,ea2) => orl (Em ea1,Em ea2)
+             | xorl (ea1,ea2) => xorl (Em ea1,Em ea2)
+             | andl (ea1,ea2) => andl (Em ea1,Em ea2)
+             | sarl (ea1,ea2) => sarl (Em ea1,Em ea2)
+             | shrl (ea1,ea2) => shrl (Em ea1,Em ea2)
+             | sall (ea1,ea2) => sall (Em ea1,Em ea2)
+             | cmpl (ea1,ea2) => cmpl (Em ea1,Em ea2)
+             | btl (ea1,ea2) => btl (Em ea1,Em ea2)
+             | btrl (ea1,ea2) => btrl (Em ea1,Em ea2)
+             | addq (ea1,ea2) => addq (Em ea1,Em ea2)
+             | subq (ea1,ea2) => subq (Em ea1,Em ea2)
+             | negq ea => negq (Em ea)
+             | decq ea => decq (Em ea)
+             | incq ea => incq (Em ea)
+             | imulq (ea1,ea2) => imulq (Em ea1,Em ea2)
+             | notq ea => notq (Em ea)
+             | orq (ea1,ea2) => orq (Em ea1,Em ea2)
+             | xorq (ea1,ea2) => xorq (Em ea1,Em ea2)
+             | andq (ea1,ea2) => andq (Em ea1,Em ea2)
+             | sarq (ea1,ea2) => sarq (Em ea1,Em ea2)
+             | shrq (ea1,ea2) => shrq (Em ea1,Em ea2)
+             | salq (ea1,ea2) => salq (Em ea1,Em ea2)
+             | cmpq (ea1,ea2) => cmpq (Em ea1,Em ea2)
+             | btq (ea1,ea2) => btq (Em ea1,Em ea2)
+             | btrq (ea1,ea2) => btrq (Em ea1,Em ea2)
+             | movsd (ea1,ea2) => movsd (Em ea1,Em ea2)
+             | mulsd (ea1,ea2) => mulsd (Em ea1,Em ea2)
+             | divsd (ea1,ea2) => divsd (Em ea1,Em ea2)
+             | addsd (ea1,ea2) => addsd (Em ea1,Em ea2)
+             | subsd (ea1,ea2) => subsd (Em ea1,Em ea2)
+             | maxsd (ea1,ea2) => maxsd (Em ea1,Em ea2)
+             | minsd (ea1,ea2) => minsd (Em ea1,Em ea2)
+             | ucomisd (ea1,ea2) => ucomisd (Em ea1,Em ea2)
+             | xorps (ea1,ea2) => xorps (Em ea1,Em ea2)
+             | sqrtsd (ea1,ea2) => sqrtsd (Em ea1,Em ea2)
+             | cvtsi2sdl (ea1,ea2) => cvtsi2sdl (Em ea1,Em ea2)
+             | fstpq ea => fstpq (Em ea)
+             | fldq ea => fldq (Em ea)
+             | jmp ea => jmp (Em ea)
+             | jl l => jl (Lm l)
+             | jg l => jg (Lm l)
+             | jle l => jle (Lm l)
+             | jge l => jge (Lm l)
+             | je l => je (Lm l)
+             | jne l => jne (Lm l)
+             | jc l => jc (Lm l)
+             | jnc l => jnc (Lm l)
+             | ja l => ja (Lm l)
+             | jb l => jb (Lm l)
+             | jae l => jae (Lm l)
+             | jbe l => jbe (Lm l)
+             | jo l => jo (Lm l)
+             | call l => call (Lm l)
+             | call' ea => call' (Em ea)
+             | dot_globl l => dot_globl (Lm l)
+             | dot_size (l, i) => dot_size (Lm l, i)
+             | lab l => lab (Lm l)
+             | fldz => i
+             | faddp => i
+             | fsubp => i
+             | fmulp => i
+             | fdivp => i
+             | fcompp => i
+             | fabs => i
+             | fchs => i
+             | fnstsw => i
+             | ret => i
+             | leave => i
+             | dot_align n => i
+             | dot_text => i
+             | dot_data => i
+             | dot_section s => i
+             | dot_byte s => i
+             | dot_long s => i
+             | dot_quad s => i
+             | dot_quad' l => dot_quad' (Lm l)
+             | dot_double s => i
+             | dot_string s => i
+             | comment s => i
+        end
+
+    (* various peephole optimisations *)
+
+    structure IM = IntFinMap
+    type im = (label*label) IM.map
+    fun im_add (l1:label) (l2:label) (im:im) : im =
+        IM.add(#1(Labels.key l1),(l1,l2),im)
+    fun im_look (im:im) (l:label) : label option =
+        case IM.lookup im (#1(Labels.key l)) of
+            SOME (_,l) => SOME l
+          | NONE => NONE
+
+    fun labs_used_insts (is:inst list) : label IM.map =
+        let val im : label IM.map ref = ref IM.empty
+            fun add (l:label) : unit =
+                im := IM.add(#1(Labels.key l),l,!im)
+            fun addlab l =
+                case l of
+                    LocalLab l => add l
+                  | DatLab l => add l
+                  | MLFunLab l => add l
+                  | _ => ()
+            fun on (lab _) = ()
+              | on (i:inst) : unit = ignore (onI (fn r => r) (fn l => (addlab l; l)) i)
+        in app on is; !im
+        end
+
+    fun elim_jmp_jmp is =
+        let
+            (* make sure to preserve .quad-prefixes to lab-instructions, as
+             * these are required for the garbage collector *)
+            fun labs (im:im) is =
+                case is of
+                    nil => im
+                  | (i as lab (LocalLab l1)) :: lab (LocalLab l2) :: is => labs (im_add l2 l1 im) (i :: is)
+                  | (i as dot_quad q) :: (i' as lab (LocalLab l1)) :: lab (LocalLab l2) :: is => labs (im_add l2 l1 im) (i :: i' :: is)
+                  | dot_quad _ :: lab _ :: is => labs im is
+                  | lab (LocalLab l1) :: jmp (L(LocalLab l2)) :: is => labs (im_add l1 l2 im) is
+                  | _ :: is => labs im is
+            fun close im l =
+                case im_look im l of
+                    SOME l' => if Labels.eq(l,l') then l
+                               else close im l'
+                  | NONE => l
+            fun closure im = IM.composemap (fn (l,l') => (l,close im l')) im
+            val im = closure(labs IM.empty is)
+            fun Lm (LocalLab l) = (case im_look im l of
+                                       SOME l' => LocalLab l'
+                                     | NONE => LocalLab l)
+              | Lm l = l
+            val S : inst -> inst = onI (fn r => r) Lm
+            fun loop (nil,acc) = rev acc
+              | loop ((i as lab (LocalLab l))::is,acc) =
+                (case im_look im l of
+                     SOME _ => loop(is,acc)
+                   | NONE => loop(is,i::acc))
+              | loop (i::is,acc) = loop (is,S i::acc)
+        in loop (is,nil)
+        end
+
+    fun simpl_jmp (is,acc) =
+        let fun lab_eq (LocalLab l1, LocalLab l2) = Labels.eq(l1,l2)
+              | lab_eq _ = false
+            fun opt (c:lab->inst) (nc:lab->inst) (l1:lab) (l2:lab) (l3:lab) (is:inst list) : inst list =
+                simpl_jmp(is,
+                          if lab_eq(l1,l3) then lab l3 :: nc l2 :: acc
+                          else lab l3 :: jmp (L l2) :: c l1 :: acc)
+        in case is of
+               nil => rev acc
+             | jg l1 :: jmp (L l2) :: lab l3 :: is => opt jg jle l1 l2 l3 is
+             | jge l1 :: jmp (L l2) :: lab l3 :: is => opt jge jl l1 l2 l3 is
+             | jl l1 :: jmp (L l2) :: lab l3 :: is => opt jl jge l1 l2 l3 is
+             | jle l1 :: jmp (L l2) :: lab l3 :: is => opt jle jg l1 l2 l3 is
+             | ja l1 :: jmp (L l2) :: lab l3 :: is => opt ja jbe l1 l2 l3 is
+             | jae l1 :: jmp (L l2) :: lab l3 :: is => opt jae jb l1 l2 l3 is
+             | jb l1 :: jmp (L l2) :: lab l3 :: is => opt jb jae l1 l2 l3 is
+             | jbe l1 :: jmp (L l2) :: lab l3 :: is => opt jbe ja l1 l2 l3 is
+             | je l1 :: jmp (L l2) :: lab l3 :: is => opt je jne l1 l2 l3 is
+             | jne l1 :: jmp (L l2) :: lab l3 :: is => opt jne je l1 l2 l3 is
+             | i :: is => simpl_jmp (is,i::acc)
+        end
+
+    fun peep is =
+        let fun p (is,acc) =
+                case is of
+                    nil => rev acc
+                  | (i as jmp (L(LocalLab l1))) :: is =>
+                    (case rem_dead_code is of
+                         is as (lab (LocalLab l2) :: is') =>
+                         if Labels.eq(l1,l2) then p (is,acc)
+                         else p (is,i::acc)
+                       | is => p (is,i::acc))
+                  | i::is => p (is,i::acc)
+            val is = p (is,nil)
+            val is = simpl_jmp(is,nil)
+            val used_labs = labs_used_insts is
+            fun rem_unused_labs (nil,acc) = rev acc
+              | rem_unused_labs (i::is,acc) =
+                case i of
+                    lab (LocalLab l) =>
+                    rem_unused_labs(is,
+                                    case IM.lookup used_labs (#1(Labels.key l)) of
+                                        SOME _ => i::acc
+                                      | NONE => acc)
+                  | _ => rem_unused_labs(is,i::acc)
+            val is = rem_unused_labs(is,nil)
+        in is
+        end
+
+    (* optimise: e.g., eliminate jmp-to-jmps, etc. *)
+    fun optimise {top_decls: top_decl list,
+                  init_code: inst list,
+                  static_data: inst list} =
+        let fun opt is = peep (elim_jmp_jmp is)
+            fun onT t =
+                case t of FUN (l, insts) => FUN (l, opt insts)
+                        | FN (l, insts) => FN(l, opt insts)
+        in {top_decls=map onT top_decls,
+            init_code=init_code,
+            static_data=static_data}
+        end
 
     type StringTree = PP.StringTree
     fun layout _ = PP.LEAF "not implemented"
