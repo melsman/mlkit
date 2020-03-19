@@ -395,6 +395,12 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__lesseq_real" => J.Prim("<=", [e1,e2])
     | "__greatereq_real" => J.Prim(">=", [e1,e2])
     | "__greater_real" => J.Prim(">", [e1,e2])
+
+    | "__less_f64" => J.Prim("<", [e1,e2])
+    | "__lesseq_f64" => J.Prim("<=", [e1,e2])
+    | "__greatereq_f64" => J.Prim(">=", [e1,e2])
+    | "__greater_f64" => J.Prim(">", [e1,e2])
+
     | "__bytetable_sub" => J.App(J.Prop(e1,"charCodeAt"),[e2])
     | "concatStringML" => J.Prim("+", [e1,e2])
     | "word_sub0" => J.Sub(e1,e2)
@@ -476,9 +482,11 @@ fun pToJs1 name e : J.exp =
       | "__neg_int32ub" => chkOvfI32(J.Prim("-",[e]))
       | "__neg_int31" => chkOvfI31(J.Prim("-",[e]))
       | "__neg_real" => J.Prim("-",[e])
+      | "__neg_f64" => J.Prim("-",[e])
       | "__abs_int32ub" => chkOvfI32(callPrim1 "Math.abs" e)
       | "__abs_int31" => chkOvfI31(callPrim1 "Math.abs" e)
       | "__abs_real" => callPrim1 "Math.abs" e
+      | "__abs_f64" => callPrim1 "Math.abs" e
 
       | "__int32ub_to_int" => e
       | "__int_to_int32ub" => e
@@ -530,7 +538,9 @@ fun pToJs1 name e : J.exp =
 
       | "__real_to_f64" => e
       | "__f64_to_real" => e
+      | "__int_to_f64" => e
 
+      | "__sqrt_f64" => callPrim1 "Math.sqrt" e
       | _ => die ("pToJs1 unimplemented: " ^ name)
 
 fun pToJs0 name =
