@@ -78,13 +78,16 @@ struct
                       (case pat of
                            SS.PHREG_ATY d =>
                            if not (I.is_xmm d) then die "F64: expecting xmm register"
-                           else let val float_lab = new_float_lab()
-                                    val _ = add_static_data [I.dot_data,
-                                                             I.lab float_lab,
-                                                             I.dot_double str]
-                                in I.movq(LA float_lab, R tmp_reg0) ::
-                                   I.movsd(D("0", tmp_reg0),R d) :: C
-                                end
+                           else (case str of
+                                     "0.0" => I.xorps (R d, R d) :: C
+                                   | _ =>
+                                     let val float_lab = new_float_lab()
+                                         val _ = add_static_data [I.dot_data,
+                                                                  I.lab float_lab,
+                                                                  I.dot_double str]
+                                     in I.movq(LA float_lab, R tmp_reg0) ::
+                                        I.movsd(D("0", tmp_reg0),R d) :: C
+                                     end)
                          | _ => die "F64: expecting physical register")
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
@@ -1060,9 +1063,6 @@ struct
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                                (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
-        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-                                 I.pop (R tmp_reg1) ::
-                                 I.jmp (R tmp_reg1) :: [])
         val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
         val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_args cc)
         val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
@@ -1070,9 +1070,13 @@ struct
         val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args
         val _ = pw reg_map
    *)
+        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
+        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+                                 I.pop (R tmp_reg1) ::
+                                 I.jmp (R tmp_reg1) :: GCsnippet)
       in
         gen_fn(lab,
-               do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args,
+               checkGC(
                 base_plus_offset(rsp,WORDS(~size_ff),rsp,
                  do_simple_memprof(
                  do_prof(

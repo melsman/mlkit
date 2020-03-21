@@ -155,6 +155,7 @@ structure InstsX64: INSTS_X64 =
     | leave
 
     | dot_align of int  (* pseudo instructions *)
+    | dot_p2align of string
     | dot_globl of lab
     | dot_text
     | dot_data
@@ -285,16 +286,24 @@ structure InstsX64: INSTS_X64 =
 
     fun emit_insts (os, insts: inst list): unit =
       let
+          val linecomments = true
           fun emit s = TextIO.output(os, s)
+          val (set_comm : string -> unit, emit_comm : unit -> unit) =
+              let val comm : string option ref = ref NONE
+              in (fn c => comm := SOME c,
+                  fn () => case !comm of
+                               SOME c => (emit ("\t\t\t" ^ c); comm := NONE)
+                             | NONE => ())
+              end
           fun emit_n i = emit(Int.toString i)
-          fun emit_nl() = emit "\n"
+          fun emit_nl () = (emit_comm(); emit "\n")
           fun emit_bin (s, (ea1, ea2)) = (emit "\t"; emit s; emit " ";
                                           emit(pr_ea ea1); emit ",";
                                           emit(pr_ea ea2); emit_nl())
-          fun emit_unary(s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit_nl())
+          fun emit_unary (s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit_nl())
           fun emit_nullary s = (emit "\t"; emit s; emit_nl())
           fun emit_nullary0 s = (emit s; emit_nl())
-          fun emit_jump(s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
+          fun emit_jump (s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
           fun emit_inst i =
             case i
               of movq a => emit_bin ("movq", a)
@@ -385,6 +394,7 @@ structure InstsX64: INSTS_X64 =
                | leave => emit_nullary "leave"
 
                | dot_align i => (emit "\t.align "; emit_n i; emit_nl())
+               | dot_p2align s => (emit "\t.p2align "; emit s; emit_nl())
                | dot_globl l => (emit ".globl "; emit(pr_lab l); emit_nl())
                | dot_text => emit_nullary0 ".text"
                | dot_data => emit_nullary0 ".data"
@@ -398,7 +408,9 @@ structure InstsX64: INSTS_X64 =
                | dot_size (l, i) => (emit "\t.size "; emit(pr_lab l); emit ",";
                                      emit_n i; emit_nl())
                | lab l => (emit(pr_lab l); emit":"; emit_nl())
-               | comment s => (emit " # "; emit s; emit_nl())
+               | comment s => if linecomments then
+                                set_comm (" # " ^ s)
+                              else (emit " # "; emit s; emit_nl())
       in app emit_inst insts
       end
 
@@ -534,6 +546,7 @@ structure InstsX64: INSTS_X64 =
           | dot_quad' _ => C
           | dot_byte _ => C
           | dot_align _ => C
+          | dot_p2align _ => C
           | dot_globl _ => C
           | dot_text => C
           | dot_data => C
@@ -633,6 +646,7 @@ structure InstsX64: INSTS_X64 =
              | ret => i
              | leave => i
              | dot_align n => i
+             | dot_p2align s => i
              | dot_text => i
              | dot_data => i
              | dot_section s => i
@@ -753,11 +767,21 @@ structure InstsX64: INSTS_X64 =
         in is
         end
 
+    fun alignlabs is =
+        let fun loop (is,acc) =
+                case is of
+                    nil => rev acc
+                  | (i1 as dot_quad _)::(i2 as lab _)::is => loop(is,i2::i1::acc)
+                  | (i as lab (LocalLab l))::is => loop(is,i::dot_p2align "0x4"::acc)
+                  | i::is => loop(is,i::acc)
+        in loop (is,nil)
+        end
+
     (* optimise: e.g., eliminate jmp-to-jmps, etc. *)
     fun optimise {top_decls: top_decl list,
                   init_code: inst list,
                   static_data: inst list} =
-        let fun opt is = peep (elim_jmp_jmp is)
+        let fun opt is = alignlabs(peep(elim_jmp_jmp is))
             fun onT t =
                 case t of FUN (l, insts) => FUN (l, opt insts)
                         | FN (l, insts) => FN(l, opt insts)

@@ -298,6 +298,9 @@ struct
       | move_index_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,offset:Offset,t:reg,size_ff,C) =
           load_indexed(R t,src_reg,offset,
           move_reg_into_aty(t,dst_aty,size_ff,C))
+      | move_index_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,offset,_,size_ff,C) =
+          move_aty_into_reg(src_aty,dst_reg,size_ff,
+          load_indexed(R dst_reg,dst_reg,offset,C))
       | move_index_aty_to_aty (src_aty,dst_aty,offset,t:reg,size_ff,C) = (* can be optimised!! *)
           move_aty_into_reg(src_aty,t,size_ff,
           load_indexed(R t,t,offset,
@@ -824,6 +827,29 @@ struct
           I.lab l :: C)
         end
       else C
+
+    (* Alternative function that makes an immediate forward jump if gc is triggered, otherwise it falls through *)
+    fun do_gc (reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args) =
+      if gc_p() then
+        let
+          val l_gc_done = new_local_lab "gc_done"
+          val l_gc_do = new_local_lab "gc_do"
+          val reg_map_immed = "0x" ^ Word32.fmt StringCvt.HEX reg_map
+          val size_ff = 0 (*dummy*)
+        in
+          (fn C => I.cmpq(I "1", L time_to_gc_lab) ::
+                   I.je l_gc_do ::
+                   I.lab l_gc_done :: C,
+           I.lab l_gc_do ::
+           I.movq(I reg_map_immed, R tmp_reg1) ::                              (* tmp_reg1 = reg_map  *)
+           load_label_addr(l_gc_done,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,   (* tmp_reg0 = return address *)
+           I.push(I (i2s size_ccf)) ::
+           I.push(I (i2s size_rcf)) ::
+           I.push(I (i2s size_spilled_region_args)) ::
+           I.jmp(L gc_stub_lab) :: nil))
+        end
+      else (fn C => C, nil)
+
 
     (*********************)
     (* Allocation Points *)

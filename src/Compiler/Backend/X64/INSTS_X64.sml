@@ -136,7 +136,8 @@ signature INSTS_X64 =
     | ret
     | leave
 
-    | dot_align of int  (* pseudo instructions *)
+    | dot_align of int      (* pseudo instructions *)
+    | dot_p2align of string
     | dot_globl of lab
     | dot_text
     | dot_data
