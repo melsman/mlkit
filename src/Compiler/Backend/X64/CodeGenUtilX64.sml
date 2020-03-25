@@ -1630,7 +1630,7 @@ struct
            move_aty_into_reg(aty,r,size_ff,C)
 
      fun int_to_f64 (x,d,size_ff,C) =
-         let val freg = resolve_f64_aty (fn() => "real_to_f64-d") d
+         let val freg = resolve_f64_aty (fn() => "int_to_f64-d") d
              val tmp_reg0_double = I.doubleOfQuadReg tmp_reg0
          in mov_int ((x,tmp_reg0),size_ff,
                      I.cvtsi2sdl(R tmp_reg0_double, R freg) :: C)
@@ -1792,7 +1792,7 @@ struct
      fun add_int32b (b,x,y,d,size_ff,C) =
        bin_op_w32boxed__ {ovf=true} I.addl (b,x,y,d,size_ff,C)
 
-     fun num31_to_num32b(b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
+     fun num31_to_num32b (b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
        if BI.tag_values() then
          let val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
          in
@@ -2088,4 +2088,122 @@ struct
               C))))
 
      fun table_size a = bytetable_size a
+
+     (* operations on blockf64 values *)
+     fun blockf64_size (t,d,size_ff,C) =
+         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg0,size_ff)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+         in if BI.tag_values() then
+              t_C(
+              I.movq(D("0",t_reg), R d_reg) ::
+              I.sarq (I "9", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) and divide by 8 *)
+              I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
+              C')
+            else
+              t_C(
+              I.movq(D("0",t_reg), R d_reg) ::
+              I.sarq (I "9", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) and divide by 8 *)
+              C')
+         end
+
+     fun blockf64_alloc (x,y,d,size_ff,C) = die "blockf64_alloc: not implemented"
+
+     fun blockf64_update_real (t,i,x,d,size_ff,C) =
+       if BI.tag_values() then
+         let
+           (* i, x are represented tagged only when BI.tag_values() is true *)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+         in
+            case resolve_args([t,x],[tmp_reg1], size_ff)
+              of SOME ([t_reg,x_reg], F) =>
+                F(move_aty_into_reg(i,tmp_reg0,size_ff,
+                  I.sarq (I "1", R tmp_reg0) ::
+                  I.movsd(D("8", x_reg), R tmp_freg0) ::                    (* x points to a real *)
+                  I.movsd(R tmp_freg0, DD("8", t_reg, tmp_reg0, "8")) ::
+                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,
+                  C')))
+               | SOME _ => die "blockf64_update_real_1"
+               | NONE =>
+                (move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+                 I.sarq(I "1", R tmp_reg1) ::                     (* untag i: tmp_reg1 >> 1 *)
+                 I.salq(I "2", R tmp_reg1) ::                     (* i << 2 *)
+                 move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+                 I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+                 load_float_aty(x,tmp_reg0,size_ff,tmp_freg0)     (* tmp_freg0 = !x *)
+                 (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::        (* *(tmp_reg1+8) = tmp_freg0 *)
+                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,    (* d = () *)
+                  C')))))
+         end
+       else
+         (case resolve_args([t,i,x],[tmp_reg0,tmp_reg1], size_ff)
+            of SOME ([t_reg,i_reg,x_reg], F) =>
+              F(I.movsd(D("0", x_reg), R tmp_freg0) ::                    (* x points to a real *)
+                I.movsd(R tmp_freg0, DD("8", t_reg, i_reg, "8")) :: C)
+             | SOME _ => die "blockf64_update_real_2"
+             | NONE =>
+              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+              I.imulq(I "4", R tmp_reg1) ::                    (* i << 2 *)
+              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+              load_float_aty(x,tmp_reg0,size_ff,tmp_freg0)     (* tmp_freg0 = !x *)
+              (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::        (* *(tmp_reg1+8) = tmp_freg0 *)
+               C))))
+
+     fun blockf64_sub_real (b,t,i,d,size_ff,C) =
+         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+             val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
+         in if BI.tag_values() then                          (* i is represented tagged only *)
+              t_C(                                           (* when BI.tag_values() is true *)
+              move_aty_into_reg(i,tmp_reg0,size_ff,
+              I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
+              I.movsd(DD("8",t_reg,tmp_reg0,"8"), R tmp_freg0) ::
+              b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
+              copy(b_reg,d_reg, C')))))
+            else
+              let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+              in t_C(i_C(
+                 I.movsd(DD("8",t_reg,i_reg,"8"), R tmp_freg0) ::
+                 b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
+                 copy(b_reg,d_reg, C')))))
+              end
+         end
+
+     fun blockf64_update_f64 (t,i,x,d,size_ff,C) =
+         let val freg = resolve_f64_aty (fn() => "blockf64_update_f64-x") x
+         in if BI.tag_values() then
+              let (* i is represented tagged only when BI.tag_values() is true *)
+                val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+              in move_aty_into_reg(i,tmp_reg1,size_ff,              (* tmp_reg1 = i *)
+                 I.sarq(I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+                 move_aty_into_reg(t,tmp_reg0,size_ff,              (* tmp_reg0 = t *)
+                 (I.movsd(R freg, DD("8",tmp_reg0,tmp_reg1,"8")) :: (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
+                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,     (* d = () *)
+                  C'))))
+              end
+            else
+              move_aty_into_reg(i,tmp_reg1,size_ff,                 (* tmp_reg1 = i *)
+              move_aty_into_reg(t,tmp_reg0,size_ff,                 (* tmp_reg0 = t *)
+              (I.movsd(R freg, DD("8",tmp_reg0,tmp_reg1,"8")) ::    (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
+               C)))
+         end
+
+     fun blockf64_sub_f64 (t,i,d,size_ff,C) =
+         let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
+             val freg = resolve_f64_aty (fn() => "blockf64_sub_f64") d
+         in if BI.tag_values() then                          (* i is represented tagged only *)
+              t_C(                                           (* when BI.tag_values() is true *)
+              move_aty_into_reg(i,tmp_reg0,size_ff,
+              I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
+              I.movsd(DD("8",t_reg,tmp_reg0,"8"), R freg) ::
+              C))
+            else
+              let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+              in t_C(i_C(
+                 I.movsd(DD("8",t_reg,i_reg,"8"), R freg) ::
+                 C))
+              end
+         end
+
+
 end

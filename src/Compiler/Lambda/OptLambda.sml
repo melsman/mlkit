@@ -464,8 +464,8 @@ structure OptLambda: OPT_LAMBDA =
 
 
    (* -----------------------------------------------------------------
-    * lvar_in_lamb lv lamb - Returns true, if there are any free
-    * occurrences of lv in the LambdaExp lamb.
+    * lvar_in_lamb lv lamb - Returns true if lv occurs free in lamb
+    * and false otherwise.
     * ----------------------------------------------------------------- *)
 
    fun lvar_in_lamb (lv:lvar) (lamb:LambdaExp) =
@@ -585,6 +585,8 @@ structure OptLambda: OPT_LAMBDA =
                | "__sqrt_f64" => true
                | "__neg_f64" => true
                | "__abs_f64" => true
+               | "__max_f64" => true
+               | "__min_f64" => true
                | "__less_f64" => true
                | "__lesseq_f64" => true
                | "__greater_f64" => true
@@ -593,6 +595,11 @@ structure OptLambda: OPT_LAMBDA =
                | "__lesseq_real" => true
                | "__greater_real" => true
                | "__greatereq_real" => true
+               | "__blockf64_sub_real" => true
+               | "__blockf64_sub_f64" => true
+               | "__blockf64_update_real" => true
+               | "__blockf64_update_f64" => true
+               | "__int_to_f64" => true
                | _ => false
          fun check e = if lvar_in_lamb lv e then raise Bad else false
          fun safeLook_sw safeLook (SWITCH(e,es,eopt)) =
@@ -616,6 +623,8 @@ structure OptLambda: OPT_LAMBDA =
                                         else check scope
                | PRIM(SELECTprim _, es) => safeLooks es
                | PRIM(RECORDprim _, es) => safeLooks es
+               | PRIM(DROPprim, es) => safeLooks es
+               | PRIM(CONprim _, es) => safeLooks es
                | SWITCH_C sw => safeLook_sw safeLook sw
                | _ => check e
          and safeLooks es =
@@ -712,6 +721,7 @@ structure OptLambda: OPT_LAMBDA =
            VAR{instances=[],regvars=[],...} => true
          | INTEGER (_,t) => if tag_values() then eq_Type(t,int31Type) else true
          | F64 _ => true
+         | LET{pat,bind,scope} => simple_nonexpanding bind andalso simple_nonexpanding scope
          | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
          | PRIM(CCALLprim{name,...},[e]) =>
            (case name of
@@ -1395,7 +1405,7 @@ structure OptLambda: OPT_LAMBDA =
                    NONE => constantFolding lamb fail
                  | SOME e' => reduce(env,(e',CUNKNOWN))
             end
-          | PRIM(CCALLprim{name,...},xs) =>
+          | PRIM(CCALLprim{name,Type,...},xs) =>
             if unbox_reals() then
               case (name,xs) of
                   ("__plus_real",[x,y]) => reduce_f64bin f64_plus (x,y)
@@ -1416,6 +1426,28 @@ structure OptLambda: OPT_LAMBDA =
                 | ("__lesseq_real",[x,y]) => reduce_f64cmp f64_lesseq (x,y)
                 | ("__greater_real",[x,y]) => reduce_f64cmp f64_greater (x,y)
                 | ("__greatereq_real",[x,y]) => reduce_f64cmp f64_greatereq (x,y)
+                | ("__blockf64_sub_real",[t,i]) =>
+                  let val argTypes =
+                          case Type of
+                              ARROWtype(argTypes, _) => argTypes
+                            | _ => die "prim(__blockf64_sub_real): expecting arrow type"
+                  in tick "real_to_f64";
+                     (f64_to_real (PRIM(CCALLprim{name="__blockf64_sub_f64",instances=[],tyvars=[],
+                                                  Type=ARROWtype(argTypes,[f64Type])},
+                                        [t,i])),
+                      CUNKNOWN)
+                  end
+                | ("__blockf64_update_real",[t,i,v]) =>
+                  let val (bType,iType) =
+                          case Type of
+                              ARROWtype([bType,iType,_], _) => (bType,iType)
+                            | _ => die "prim(__blockf64_update_real): expecting arrow type with three args"
+                  in tick "real_to_f64";
+                     (PRIM(CCALLprim{name="__blockf64_update_f64",instances=[],tyvars=[],
+                                     Type=ARROWtype([bType,iType,f64Type],[unitType])},
+                           [t,i,#1(reduce(env,(real_to_f64 v,CUNKNOWN)))]),
+                      CUNKNOWN)
+                  end
                 | _ => constantFolding lamb fail
             else constantFolding lamb fail
 	  | _ => constantFolding lamb fail
@@ -1741,6 +1773,43 @@ structure OptLambda: OPT_LAMBDA =
                 | _ => PRIM(p,es)
            end
          | _ => map_lamb cse e
+
+   (* -----------------------------------------------------------------
+    * Hoist blockf64 allocations
+    *
+    * Hoist blockf64 allocations to allow for unboxing of reals:
+    *
+    *   1. Convert `let x = f64_to_real(a) in let y = alloc(b) in e`
+    *      into `let y = alloc(b) in let x = f64_to_real(a) in e`
+    *      given x \not \in fv(b).
+    *
+    * This transformation will put the x binding closer to uses; in
+    * particular, x can be allocated in an xmm register if the binding
+    * and its uses do not cross a C function call...
+    * --------------------------------------------------------------- *)
+
+   fun hoist_blockf64_allocations e =
+       let fun hoist e =
+               case e of
+                   LET{pat=pat as [(lv,_,_)],bind,scope} =>
+                   let val bind = hoist bind
+                       val scope = hoist scope
+                   in case scope of
+                          LET{pat=pat2,bind=bind2 as PRIM(CCALLprim{name="allocStringML",...},[e]),
+                              scope=scope2} => (* yes *)
+                          if not(lvar_in_lamb lv e) andalso (safeLambdaExp e orelse safeLambdaExp bind) then
+                            LET{pat=pat2,bind=bind2,
+                                scope=LET{pat=pat,bind=bind,scope=scope2}}
+                          else
+                            LET{pat=pat,bind=bind,
+                                scope=LET{pat=pat2,bind=bind2,scope=scope2}}
+                        | _ =>
+                          LET{pat=pat,bind=bind,scope=scope}
+                   end
+                 | _ => map_lamb hoist e
+       in hoist e
+       end
+
 
    (* -----------------------------------------------------------------
     * Minimize fixs: split fix's into strongly connected components:
@@ -2589,6 +2658,7 @@ structure OptLambda: OPT_LAMBDA =
 	      let val (lamb, ce) = contract ce lamb
                   val lamb = eliminate_explicit_records lamb
                   val lamb = cse lamb
+                  val lamb = hoist_blockf64_allocations lamb
 	      in (lamb, ce)
 	      end
 

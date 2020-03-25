@@ -54,6 +54,7 @@ signature LAMBDA_EXP =
     val realType: Type
     val f64Type: Type
     val stringType: Type
+    val chararrayType: Type
 
     datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)

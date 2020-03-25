@@ -67,6 +67,7 @@ structure LambdaExp: LAMBDA_EXP =
     val realType = CONStype([], TyName.tyName_REAL)
     val f64Type = CONStype([], TyName.tyName_F64)
     val stringType = CONStype([], TyName.tyName_STRING)
+    val chararrayType = CONStype([], TyName.tyName_CHARARRAY)
     val unitType = RECORDtype([])
 
     val tyvars = foldType (fn tyvarset =>
@@ -263,7 +264,10 @@ structure LambdaExp: LAMBDA_EXP =
         "__min_f64",
         "__real_to_f64",
         "__f64_to_real",
-        "__int_to_f64"]
+        "__int_to_f64",
+        "__blockf64_sub_real",
+        "__blockf64_sub_f64"
+       ]
 
      fun safeCName n = if StrSet.member n safeCNames then ()
 		       else raise NotSafe
@@ -516,12 +520,15 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim{name="__mul_real", ...} => PP.LEAF("*")
       | CCALLprim{name="__mul_int31", ...} => PP.LEAF("*")
       | CCALLprim{name="__mul_int32", ...} => PP.LEAF("*")
+      | CCALLprim{name="__mul_f64", ...} => PP.LEAF("*")
       | CCALLprim{name="__plus_real", ...} => PP.LEAF("+")
       | CCALLprim{name="__plus_int31", ...} => PP.LEAF("+")
       | CCALLprim{name="__plus_int32", ...} => PP.LEAF("+")
+      | CCALLprim{name="__plus_f64", ...} => PP.LEAF("+")
       | CCALLprim{name="__minus_real", ...} => PP.LEAF("-")
       | CCALLprim{name="__minus_int31", ...} => PP.LEAF("-")
       | CCALLprim{name="__minus_int32", ...} => PP.LEAF("-")
+      | CCALLprim{name="__minus_f64", ...} => PP.LEAF("-")
       | CCALLprim{name="__equal_int31", ...} =>
 	    if !Flags.print_types then PP.LEAF("=[int31]")
 	    else PP.LEAF("=")
@@ -948,14 +955,18 @@ structure LambdaExp: LAMBDA_EXP =
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int32ub", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
+         | (CCALLprim{name="__mul_f64", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__plus_real", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int31", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__plus_f64", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__minus_real", ...}, [_,_]) => layout_infix context 6 " - " lambs
          | (CCALLprim{name="__minus_int31", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
          | (CCALLprim{name="__minus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
+         | (CCALLprim{name="__minus_f64", ...}, [_,_]) => layout_infix context 6 " - " lambs
 
          | (CCALLprim{name="divFloat", ...}, [_,_]) =>  layout_infix context 7 " / "lambs
+         | (CCALLprim{name="__div_f64", ...}, [_,_]) =>  layout_infix context 7 " / "lambs
 
          | (EQUALprim{instance},[_,_]) => layout_infix context 4 " = "lambs
 
@@ -1030,6 +1041,12 @@ structure LambdaExp: LAMBDA_EXP =
                          | "__sqrt_f64" => lay "sqrt_f64"
                          | "__neg_f64" => lay "neg_f64"
                          | "__abs_f64" => lay "abs_f64"
+                         | "__blockf64_update_f64" => lay "blockf64_update_f64"
+                         | "__blockf64_sub_f64" => lay "blockf64_sub_f64"
+                         | "__blockf64_update_real" => lay "blockf64_update_real"
+                         | "__blockf64_sub_real" => lay "blockf64_sub_real"
+                         | "allocStringML" => lay "allocStringML"
+                         | "__blockf64_size" => lay "blockf64_size"
                          | _ => default())
                     | _ => default()
                end

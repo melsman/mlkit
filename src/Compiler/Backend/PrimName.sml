@@ -45,8 +45,9 @@ datatype prim =
 	 ServerGetCtx |
          Plus_f64 | Minus_f64 | Mul_f64 | Div_f64 | Max_f64 | Min_f64 |
          Real_to_f64 | F64_to_real |
-         Sqrt_f64 | Neg_f64 | Abs_f64 | Int_to_f64
-
+         Sqrt_f64 | Neg_f64 | Abs_f64 | Int_to_f64 |
+         Blockf64_update_real | Blockf64_sub_real | Blockf64_size | Blockf64_alloc |
+         Blockf64_update_f64 | Blockf64_sub_f64
 
 local
   structure M = OrderFinMap(struct type T = string
@@ -109,7 +110,13 @@ local
          ("__sqrt_f64", Sqrt_f64),
          ("__neg_f64", Neg_f64),
          ("__abs_f64", Abs_f64),
-         ("__int_to_f64", Int_to_f64)
+         ("__int_to_f64", Int_to_f64),
+         ("__blockf64_update_real", Blockf64_update_real),
+         ("__blockf64_sub_real", Blockf64_sub_real),
+         ("__blockf64_size", Blockf64_size),
+         ("__blockf64_alloc", Blockf64_alloc),
+         ("__blockf64_update_f64", Blockf64_update_f64),
+         ("__blockf64_sub_f64", Blockf64_sub_f64)
 ]
 
   val M = M.fromList pairs
@@ -287,6 +294,13 @@ fun pp_prim (p:prim) : string =
       | Neg_f64 => "Neg_f64"
       | Abs_f64 => "Abs_f64"
       | Int_to_f64 => "Int_to_f64"
+      | Blockf64_update_real => "Blockf64_update_real"
+      | Blockf64_sub_real => "Blockf64_sub_real"
+      | Blockf64_size => "Blockf64_size"
+      | Blockf64_alloc => "Blockf64_alloc"
+      | Blockf64_update_f64 => "Blockf64_update_f64"
+      | Blockf64_sub_f64 => "Blockf64_sub_f64"
+
 end
 
 end

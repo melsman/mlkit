@@ -807,6 +807,7 @@ struct
                           | Neg_f64 => neg_f64(x,d,size_ff,C)
                           | Abs_f64 => abs_f64(x,d,size_ff,C)
                           | Int_to_f64 => int_to_f64(x,d,size_ff,C)
+                          | Blockf64_size => blockf64_size(x,d,size_ff,C)
                           | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name))
                      | [x,y] =>
                        (case name of
@@ -891,6 +892,8 @@ struct
                           | Max_f64 => max_f64(x,y,d,size_ff,C)
                           | Min_f64 => min_f64(x,y,d,size_ff,C)
                           | F64_to_real => f64_to_real_kill_tmp01(y,x,d,size_ff,C)
+                          | Blockf64_alloc => blockf64_alloc(x,y,d,size_ff,C)
+                          | Blockf64_sub_f64 => blockf64_sub_f64(x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name))
                      | [b,x,y] =>
                        (case name of
@@ -912,6 +915,9 @@ struct
                           | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__(b,x,y,d,size_ff,C)
                           | Bytetable_update => bytetable_update(b,x,y,d,size_ff,C)
                           | Word_update0 => word_update0(b,x,y,d,size_ff,C)
+                          | Blockf64_update_real => blockf64_update_real(b,x,y,d,size_ff,C)
+                          | Blockf64_sub_real => blockf64_sub_real(b,x,y,d,size_ff,C)
+                          | Blockf64_update_f64 => blockf64_update_f64(b,x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end

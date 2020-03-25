@@ -326,7 +326,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				       layout_lvar_env lvar_env,
 				       layout_excon_env excon_env]}
 
-	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
+	fun restrict (env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
 	  let
               fun say s = print(s^"\n");
               fun sayenv() = PP.outputTree(print,layout_env env, !Flags.colwidth)
@@ -442,7 +442,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     val unit_Type = RECORDtype []
 
-    fun tyvars_not_in_env(tyvars, env) =
+    fun tyvars_not_in_env (tyvars, env) =
       if NatSet.isEmpty (NatSet.intersect (NatSet.fromList tyvars) (ftv_env env)) then ()
       else die "tyvars_not_in_env.TYVARS in Env!!"
 
