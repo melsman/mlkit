@@ -172,17 +172,26 @@ struct
       | offset_bytes (BYTES b) = i2s b
 
     fun copy (r1, r2, C) = if r1 = r2 then C
-                           else I.movq(R r1, R r2) :: C
+                           else case (I.is_xmm r1, I.is_xmm r2) of
+                                    (true, true) => I.movsd (R r1, R r2) :: C
+                                  | (false, false) => I.movq(R r1, R r2) :: C
+                                  | _ => die "copy: incompatible registers"
+
+    fun is_xmm_ea (R r) = I.is_xmm r
+      | is_xmm_ea _ = false
 
     (* Can be used to load from the stack or from a record *)
     (* d = b[n]                                            *)
     fun load_indexed (d:ea,b:reg,n:Offset,C) =
-        I.movq(D(offset_bytes n,b), d) :: C
+        if I.is_xmm b then die "load_indexed: wrong kind of register"
+        else if is_xmm_ea d then I.movsd(D(offset_bytes n,b), d) :: C
+        else I.movq(D(offset_bytes n,b), d) :: C
 
     (* Can be used to update the stack or store in a record *)
     (* b[n] = s                                             *)
     fun store_indexed (b:reg,n:Offset,s:ea,C) =
-        I.movq(s,D(offset_bytes n,b)) :: C
+        if is_xmm_ea s then I.movsd(s,D(offset_bytes n,b)) :: C
+        else I.movq(s,D(offset_bytes n,b)) :: C
 
     (* Calculate an address given a base and an offset *)
     (* dst = base + x                                  *)
@@ -245,8 +254,8 @@ struct
 
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def (SS.STACK_ATY offset,t:reg,size_ff,C) =
-        (t,store_indexed(rsp,WORDS(size_ff-offset-1),R t,C))       (*was ~size_ff+offset*)
-      | resolve_aty_def (SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C)
+        (t,store_indexed(rsp,WORDS(size_ff-offset-1),R t,C))
+      | resolve_aty_def (SS.PHREG_ATY phreg,t:reg,size_ff,C) = (phreg,C)
       | resolve_aty_def (SS.UNIT_ATY,t:reg,size_ff,C)  = (t,C)
       | resolve_aty_def _ = die "resolve_aty_def: ATY cannot be defined"
 
@@ -261,29 +270,29 @@ struct
 
     (* Make sure that the aty ends up in register dst_reg *)
     fun move_aty_into_reg (aty,dst_reg,size_ff,C) =
-      case aty
-        of SS.REG_I_ATY offset =>
-          base_plus_offset(rsp,BYTES(size_ff*8-offset*8-8+BI.inf_bit),dst_reg,C)
-         | SS.REG_F_ATY offset =>
-          base_plus_offset(rsp,WORDS(size_ff-offset-1),dst_reg,C)
-         | SS.STACK_ATY offset =>
-          load_indexed(R dst_reg,rsp,WORDS(size_ff-offset-1),C)
-         | SS.DROPPED_RVAR_ATY => C
-         | SS.PHREG_ATY phreg => copy(phreg,dst_reg,C)
-         | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
-         | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, R dst_reg, C)
-         | SS.UNIT_ATY => move_unit (R dst_reg, C)
-         | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
+        case aty of
+            SS.REG_I_ATY offset =>
+            base_plus_offset(rsp,BYTES(size_ff*8-offset*8-8+BI.inf_bit),dst_reg,C)
+          | SS.REG_F_ATY offset =>
+            base_plus_offset(rsp,WORDS(size_ff-offset-1),dst_reg,C)
+          | SS.STACK_ATY offset =>
+            load_indexed(R dst_reg,rsp,WORDS(size_ff-offset-1),C)
+          | SS.DROPPED_RVAR_ATY => C
+          | SS.PHREG_ATY phreg => copy(phreg,dst_reg,C)
+          | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
+          | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, R dst_reg, C)
+          | SS.UNIT_ATY => move_unit (R dst_reg, C)
+          | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
 
     (* dst_aty = src_reg *)
     fun move_reg_into_aty (src_reg:reg,dst_aty,size_ff,C) =
-      case dst_aty
-        of SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
-         | SS.STACK_ATY offset => store_indexed(rsp,WORDS(size_ff-offset-1),R src_reg,C)    (*was ~size_ff+offset*)
-         | SS.UNIT_ATY => C (* wild card definition - do nothing *)
-         | _ => die "move_reg_into_aty: ATY not recognized"
+        case dst_aty of
+            SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
+          | SS.STACK_ATY offset => store_indexed(rsp,WORDS(size_ff-offset-1),R src_reg,C)
+          | SS.UNIT_ATY => C (* wild card definition - do nothing *)
+          | _ => die "move_reg_into_aty: ATY not recognized"
 
-    (* dst_aty = src_aty *)
+    (* dst_aty = src_aty; may kill tmp_reg1 *)
     fun move_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,size_ff,C) = move_reg_into_aty(src_reg,dst_aty,size_ff,C)
       | move_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,size_ff,C) = move_aty_into_reg(src_aty,dst_reg,size_ff,C)
       | move_aty_to_aty (src_aty,SS.UNIT_ATY,size_ff,C) = C
@@ -294,16 +303,16 @@ struct
 
     (* dst_aty = src_aty[offset] *)
     fun move_index_aty_to_aty (SS.PHREG_ATY src_reg,SS.PHREG_ATY dst_reg,offset:Offset,t:reg,size_ff,C) =
-          load_indexed(R dst_reg,src_reg,offset,C)
+        load_indexed(R dst_reg,src_reg,offset,C)
       | move_index_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,offset:Offset,t:reg,size_ff,C) =
-          load_indexed(R t,src_reg,offset,
-          move_reg_into_aty(t,dst_aty,size_ff,C))
+        load_indexed(R t,src_reg,offset,
+         move_reg_into_aty(t,dst_aty,size_ff,C))
       | move_index_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,offset,_,size_ff,C) =
-          move_aty_into_reg(src_aty,dst_reg,size_ff,
-          load_indexed(R dst_reg,dst_reg,offset,C))
+        move_aty_into_reg(src_aty,dst_reg,size_ff,
+         load_indexed(R dst_reg,dst_reg,offset,C))
       | move_index_aty_to_aty (src_aty,dst_aty,offset,t:reg,size_ff,C) = (* can be optimised!! *)
-          move_aty_into_reg(src_aty,t,size_ff,
-          load_indexed(R t,t,offset,
+        move_aty_into_reg(src_aty,t,size_ff,
+         load_indexed(R t,t,offset,
           move_reg_into_aty(t,dst_aty,size_ff,C)))
 
     (* dst_aty = &lab *)
@@ -368,8 +377,8 @@ struct
                                             I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead for GC 2001-01-09, Niels *)
 
     fun store_aty_indexed (b:reg,n:Offset,aty,t:reg,size_ff,C) =
-        let fun ea() = D(offset_bytes n,b)
-            fun default() =
+        let fun ea () = D(offset_bytes n,b)
+            fun default () =
                 move_aty_into_reg(aty,t,size_ff,
                  store_indexed(b,n,R t,C))
             fun direct_word (w:{value: Word32.word, precision:int}) : bool =
@@ -386,7 +395,9 @@ struct
                   | _ => die "store_aty_indexed.direct_int - weird precision"
         in
             case aty of
-                SS.PHREG_ATY s => I.movq(R s,ea()) :: C
+                SS.PHREG_ATY s =>
+                if I.is_xmm s then I.movsd(R s,ea()) :: C
+                else I.movq(R s,ea()) :: C
               | SS.INTEGER_ATY i => if direct_int i then
                                       move_num_generic (#precision i, fmtInt i, ea(), C)
                                     else default()
@@ -405,22 +416,25 @@ struct
     (* Can be used to load from the stack or a record when destination is an ATY *)
     (* dst_aty = base_reg[offset] *)
     fun load_aty_from_reg_record (SS.PHREG_ATY dst_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-          load_indexed(R dst_reg,base_reg,offset,C)
+        load_indexed(R dst_reg,base_reg,offset,C)
       | load_aty_from_reg_record (dst_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
-          load_indexed(R t,base_reg,offset,
-          move_reg_into_aty(t,dst_aty,size_ff,C))
+        load_indexed(R t,base_reg,offset,
+         move_reg_into_aty(t,dst_aty,size_ff,C))
 
     (* base_aty[offset] = src_aty *)
     fun store_aty_in_aty_record (src_aty,base_aty,offset:Offset,t1:reg,t2:reg,size_ff,C) =
-      case (src_aty,base_aty)
-        of (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store_indexed(base_reg,offset,R src_reg,C)
-         | (SS.PHREG_ATY src_reg,base_aty) => move_aty_into_reg(base_aty,t2,size_ff,  (* can be optimised *)
-                                              store_indexed(t2,offset,R src_reg,C))
-         | (src_aty,SS.PHREG_ATY base_reg) => move_aty_into_reg(src_aty,t1,size_ff,
-                                              store_indexed(base_reg,offset,R t1,C))
-         | (src_aty,base_aty) => move_aty_into_reg(src_aty,t1,size_ff, (* can be optimised *)
-                                 move_aty_into_reg(base_aty,t2,size_ff,
-                                 store_indexed(t2,offset,R t1,C)))
+        case (src_aty,base_aty) of
+            (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store_indexed(base_reg,offset,R src_reg,C)
+          | (SS.PHREG_ATY src_reg,base_aty) =>
+            move_aty_into_reg(base_aty,t2,size_ff,  (* can be optimised *)
+             store_indexed(t2,offset,R src_reg,C))
+          | (src_aty,SS.PHREG_ATY base_reg) =>
+            move_aty_into_reg(src_aty,t1,size_ff,
+             store_indexed(base_reg,offset,R t1,C))
+          | (src_aty,base_aty) =>
+            move_aty_into_reg(src_aty,t1,size_ff, (* can be optimised *)
+             move_aty_into_reg(base_aty,t2,size_ff,
+              store_indexed(t2,offset,R t1,C)))
 
     (* push(aty), i.e., rsp-=8; rsp[0] = aty (different than on hp) *)
     (* size_ff is for rsp before rsp is moved. *)
@@ -456,8 +470,8 @@ struct
         of SS.PHREG_ATY r => I.addq(R r, R t) :: C
          | _ => move_aty_into_reg(arg,tmp,size_ff, I.addq(R tmp, R t) :: C)
 
-    (* Push float on float stack *)
-    fun load_float_aty (float_aty, t, size_ff, freg) =
+    (* load real into xmm register (freg) *)
+    fun load_real (float_aty, t, size_ff, freg) =
       let val disp = if BI.tag_values() then "8"
                      else "0"
       in fn C => case float_aty
@@ -466,14 +480,13 @@ struct
                            I.movsd(D(disp, t),R freg) :: C)
       end
 
-    (* Pop float from float stack *)
-    fun store_float_reg (base_reg,t:reg,freg,C) =
+    (* store xmm register value (freg) in real value (maybe incl. tag) *)
+    fun store_real (base_reg,t:reg,freg,C) =
       if BI.tag_values() then
         store_immed(BI.tag_real false, base_reg, WORDS 0,
-        I.movsd (R freg,D("8",base_reg)) :: C)   (* mael 2003-05-08 *)
+        I.movsd (R freg,D("8",base_reg)) :: C)
       else
         I.movsd (R freg,D("0",base_reg)) :: C
-
 
     (* When tag free collection of pairs is enabled, a bit is stored
        in the region descriptor if the region is an infinite region
@@ -918,7 +931,7 @@ struct
       I.orq(I "2", R dst_reg) :: C
 
     fun clear_atbot_bit (dst_reg:reg,C) =
-      I.btrq (I "1", R dst_reg) :: C
+      I.btrq(I "1", R dst_reg) :: C
 
     fun set_inf_bit (dst_reg:reg,C) =
       I.orq(I "1", R dst_reg) :: C
@@ -1307,20 +1320,22 @@ struct
           end
         else die "cmpbi_and_jmp_kill_tmp01: tagging disabled!"
 
+(*
       (* MEMO: we need to support spilled f64 values *)
      fun resolve_f64_aty f aty : reg =
          case aty of
              SS.PHREG_ATY x => if I.is_xmm x then x
                                else die ("resolve_f64_aty: expecting xmm register. " ^ f() ^ " - got " ^ I.pr_reg x)
-           | _ => die "resolve_f64_aty: expecting physical register"
+           | _ => die ("resolve_f64_aty: expecting physical register - " ^ f())
+  *)
 
       fun cmpf64_and_jmp (jump,x,y,lab_t,lab_f,size_ff,C) =
-          let val x = resolve_f64_aty (fn() => "x - cmpf64_and_jmp") x
-              val y = resolve_f64_aty (fn() => "y - cmpf64_and_jmp") y
-          in I.ucomisd (R y, R x) ::
-             jump lab_t ::
-             I.jmp (L lab_f) ::
-             rem_dead_code C
+          let val (x,x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+              val (y,y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+          in x_C(y_C(I.ucomisd (R y, R x) ::
+                     jump lab_t ::
+                     I.jmp (L lab_f) ::
+                     rem_dead_code C))
           end
 
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
@@ -1547,6 +1562,32 @@ struct
          else die "copy_f64: expecting xmm registers"
 
      fun bin_f64_op s finst (x,y,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+         in x_C(y_C(
+            if y = d then
+              if x = d then
+                finst(R d, R d) :: C'
+              else
+                copy_f64(y, tmp_freg1,
+                copy_f64(x, d,
+                finst(R tmp_freg1, R d) ::
+                C'))
+            else
+              copy_f64(x, d,
+              finst(R y, R d) ::
+              C') ))
+         end
+
+     fun uno_f64_op s finst (x,d,size_ff:int,C) =
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff,C)
+         in x_C(finst(R x, R d) :: C')
+         end
+
+     (*
+     fun bin_f64_op s finst (x,y,d,size_ff:int,C) =
          let val x = resolve_f64_aty (fn() => s ^ "-x") x
              val y = resolve_f64_aty (fn() => s ^ "-y") y
              val d = resolve_f64_aty (fn() => s ^ "-d") d
@@ -1563,13 +1604,15 @@ struct
               finst(R y, R d) ::
               C)
        end
+*)
 
+(*
      fun uno_f64_op s finst (x,d,size_ff:int,C) =
          let val x = resolve_f64_aty (fn() => s ^ "-x") x
              val d = resolve_f64_aty (fn() => s ^ "-d") d
          in finst(R x, R d) :: C
        end
-
+*)
      val plus_f64 = bin_f64_op "addsd" I.addsd
      val minus_f64 = bin_f64_op "subsd" I.subsd
      val mul_f64 = bin_f64_op "mulsd" I.mulsd
@@ -1579,20 +1622,20 @@ struct
      val sqrt_f64 = uno_f64_op "sqrtsd" I.sqrtsd
 
      fun neg_f64 (x,d,size_ff:int,C) =
-       let val x = resolve_f64_aty (fn() => "neg_f64-x") x
-           val d = resolve_f64_aty (fn() => "neg_f64-d") d
-       in I.movsd (R x, R tmp_freg0) ::
-          I.xorps (R d, R d) ::
-          I.subsd (R tmp_freg0, R d) :: C
+       let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+           val (d, C') = resolve_aty_def(d,tmp_freg1,size_ff, C)
+       in x_C(copy_f64 (x, tmp_freg0,
+              I.xorps (R d, R d) ::
+              I.subsd (R tmp_freg0, R d) :: C'))
        end
 
      fun abs_f64 (x,d,size_ff,C) =
-       let val x = resolve_f64_aty (fn() => "abs_f64-x") x
-           val d = resolve_f64_aty (fn() => "abs_f64-d") d
-       in I.movsd (R x, R tmp_freg0) ::
-          I.xorps (R d, R d) ::
-          I.subsd (R tmp_freg0, R d) ::
-          I.maxsd (R tmp_freg0, R d) :: C
+       let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+           val (d, C') = resolve_aty_def(d,tmp_freg1,size_ff, C)
+       in x_C(I.movsd (R x, R tmp_freg0) ::
+              I.xorps (R d, R d) ::
+              I.subsd (R tmp_freg0, R d) ::
+              I.maxsd (R tmp_freg0, R d) :: C')
        end
 
      datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
@@ -1601,8 +1644,8 @@ struct
        | pp_cond GREATERTHAN = "GREATERTHAN"
        | pp_cond GREATEREQUAL = "GREATEREQUAL"
      fun cmpf64_kill_tmp0 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
-         let val x = resolve_f64_aty (fn() => pp_cond cond ^ "-x - cmpf64_kill_tmp0") x
-             val y = resolve_f64_aty (fn() => pp_cond cond ^ "-y - cmpf64_kill_tmp0") y
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
              val true_lab = new_local_lab "true"
              val cont_lab = new_local_lab "cont"
@@ -1612,14 +1655,14 @@ struct
                    | LESSEQUAL => I.jbe    (*below or equal*)
                    | GREATERTHAN => I.ja   (*above*)
                    | GREATEREQUAL => I.jae (*above or equal*)
-         in I.ucomisd (R y, R x) ::
-            jump true_lab ::
-            I.movq(I (i2s BI.ml_false), R d_reg) ::
-            I.jmp(L cont_lab) ::
-            I.lab true_lab ::
-            I.movq(I (i2s BI.ml_true), R d_reg) ::
-            I.lab cont_lab ::
-            C'
+         in x_C(y_C(I.ucomisd (R y, R x) ::
+                    jump true_lab ::
+                    I.movq(I (i2s BI.ml_false), R d_reg) ::
+                    I.jmp(L cont_lab) ::
+                    I.lab true_lab ::
+                    I.movq(I (i2s BI.ml_true), R d_reg) ::
+                    I.lab cont_lab ::
+                    C'))
          end
 
      fun mov_int ((aty,r),size_ff,C) =
@@ -1630,37 +1673,36 @@ struct
            move_aty_into_reg(aty,r,size_ff,C)
 
      fun int_to_f64 (x,d,size_ff,C) =
-         let val freg = resolve_f64_aty (fn() => "int_to_f64-d") d
+         let val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff,C)
              val tmp_reg0_double = I.doubleOfQuadReg tmp_reg0
          in mov_int ((x,tmp_reg0),size_ff,
-                     I.cvtsi2sdl(R tmp_reg0_double, R freg) :: C)
+             I.cvtsi2sdl(R tmp_reg0_double, R d) :: C')
          end
 
      fun real_to_f64 (x,d,size_ff,C) =
-         let val freg = resolve_f64_aty (fn() => "real_to_f64-d") d
-         in load_float_aty (x, tmp_reg0, size_ff, freg) C
+         let val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff,C)
+         in load_real (x, tmp_reg0, size_ff, d) C'
          end
 
      fun f64_to_real_kill_tmp01 (x,b,d,size_ff,C) =
-         let val x = case x of SS.PHREG_ATY x => x
-                             | _ => die "f64_to_real_kill_tmp01.expecting PHREG"
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-         in b_C(store_float_reg(b_reg,tmp_reg1,x,
-            copy(b_reg,d_reg, C')))
+         in x_C(b_C(store_real(b_reg,tmp_reg1,x,
+            copy(b_reg,d_reg, C'))))
          end
 
 
      (* boxed operations on reals (floats) *)
 
      fun bin_float_op_kill_tmp01 finst (x,y,b,d,size_ff,C) =
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff, tmp_freg1)
-           val y_C = load_float_aty(y, tmp_reg0, size_ff, tmp_freg0)
+       let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg1)
+           val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg0)
            val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
        in
          y_C(x_C(finst(R tmp_freg0,R tmp_freg1) ::
-         b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg1,
+         b_C(store_real(b_reg,tmp_reg1,tmp_freg1,
          copy(b_reg,d_reg, C')))))
        end
 
@@ -1670,28 +1712,28 @@ struct
      fun divf_kill_tmp01 a = bin_float_op_kill_tmp01 I.divsd a
 
      fun negf_kill_tmp01 (b,x,d,size_ff,C) =
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff,tmp_freg1)
+       let val x_C = load_real(x, tmp_reg0, size_ff,tmp_freg1)
            val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
        in
          x_C(I.xorps (R tmp_freg0,R tmp_freg0) :: I.subsd (R tmp_freg1,R tmp_freg0) ::
-         b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
+         b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
          copy(b_reg,d_reg, C'))))
        end
 
      fun absf_kill_tmp01 (b,x,d,size_ff,C) =
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff,tmp_freg1)
+       let val x_C = load_real(x, tmp_reg0, size_ff,tmp_freg1)
            val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
        in
          x_C(I.xorps (R tmp_freg0,R tmp_freg0) :: I.subsd (R tmp_freg1,R tmp_freg0) :: I.maxsd (R tmp_freg1,R tmp_freg0) ::
-         b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
+         b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
          copy(b_reg,d_reg, C'))))
        end
 
      fun cmpf_kill_tmp01 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff, tmp_freg0)
-           val y_C = load_float_aty(y, tmp_reg0, size_ff, tmp_freg1)
+       let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
+           val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg1)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
            val true_lab = new_local_lab "true"
            val cont_lab = new_local_lab "cont"
@@ -2129,9 +2171,9 @@ struct
                  I.salq(I "2", R tmp_reg1) ::                     (* i << 2 *)
                  move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
                  I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
-                 load_float_aty(x,tmp_reg0,size_ff,tmp_freg0)     (* tmp_freg0 = !x *)
-                 (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::        (* *(tmp_reg1+8) = tmp_freg0 *)
-                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,    (* d = () *)
+                 load_real(x,tmp_reg0,size_ff,tmp_freg0)          (* tmp_freg0 = !x *)
+                 (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::       (* *(tmp_reg1+8) = tmp_freg0 *)
+                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,   (* d = () *)
                   C')))))
          end
        else
@@ -2145,8 +2187,8 @@ struct
               I.imulq(I "4", R tmp_reg1) ::                    (* i << 2 *)
               move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
               I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
-              load_float_aty(x,tmp_reg0,size_ff,tmp_freg0)     (* tmp_freg0 = !x *)
-              (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::        (* *(tmp_reg1+8) = tmp_freg0 *)
+              load_real(x,tmp_reg0,size_ff,tmp_freg0)          (* tmp_freg0 = !x *)
+              (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::       (* *(tmp_reg1+8) = tmp_freg0 *)
                C))))
 
      fun blockf64_sub_real (b,t,i,d,size_ff,C) =
@@ -2158,50 +2200,50 @@ struct
               move_aty_into_reg(i,tmp_reg0,size_ff,
               I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
               I.movsd(DD("8",t_reg,tmp_reg0,"8"), R tmp_freg0) ::
-              b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
+              b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
               copy(b_reg,d_reg, C')))))
             else
               let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
               in t_C(i_C(
                  I.movsd(DD("8",t_reg,i_reg,"8"), R tmp_freg0) ::
-                 b_C(store_float_reg(b_reg,tmp_reg1,tmp_freg0,
+                 b_C(store_real(b_reg,tmp_reg1,tmp_freg0,
                  copy(b_reg,d_reg, C')))))
               end
          end
 
      fun blockf64_update_f64 (t,i,x,d,size_ff,C) =
-         let val freg = resolve_f64_aty (fn() => "blockf64_update_f64-x") x
-         in if BI.tag_values() then
-              let (* i is represented tagged only when BI.tag_values() is true *)
-                val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-              in move_aty_into_reg(i,tmp_reg1,size_ff,              (* tmp_reg1 = i *)
-                 I.sarq(I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
-                 move_aty_into_reg(t,tmp_reg0,size_ff,              (* tmp_reg0 = t *)
-                 (I.movsd(R freg, DD("8",tmp_reg0,tmp_reg1,"8")) :: (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
-                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,     (* d = () *)
-                  C'))))
-              end
-            else
-              move_aty_into_reg(i,tmp_reg1,size_ff,                 (* tmp_reg1 = i *)
-              move_aty_into_reg(t,tmp_reg0,size_ff,                 (* tmp_reg0 = t *)
-              (I.movsd(R freg, DD("8",tmp_reg0,tmp_reg1,"8")) ::    (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
-               C)))
+         let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
+         in x_C(if BI.tag_values() then
+                  let (* i is represented tagged only when BI.tag_values() is true *)
+                    val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+                  in move_aty_into_reg(i,tmp_reg1,size_ff,              (* tmp_reg1 = i *)
+                     I.sarq(I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+                     move_aty_into_reg(t,tmp_reg0,size_ff,              (* tmp_reg0 = t *)
+                     (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::    (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
+                      move_immed(Int32.fromInt BI.ml_unit, R d_reg,     (* d = () *)
+                      C'))))
+                  end
+                else
+                  move_aty_into_reg(i,tmp_reg1,size_ff,                 (* tmp_reg1 = i *)
+                  move_aty_into_reg(t,tmp_reg0,size_ff,                 (* tmp_reg0 = t *)
+                  (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::       (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
+                   C))))
          end
 
      fun blockf64_sub_f64 (t,i,d,size_ff,C) =
          let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
-             val freg = resolve_f64_aty (fn() => "blockf64_sub_f64") d
+             val (d,C') = resolve_aty_def(d,tmp_freg0,size_ff,C)
          in if BI.tag_values() then                          (* i is represented tagged only *)
               t_C(                                           (* when BI.tag_values() is true *)
               move_aty_into_reg(i,tmp_reg0,size_ff,
-              I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
-              I.movsd(DD("8",t_reg,tmp_reg0,"8"), R freg) ::
-              C))
+              I.sarq (I "1", R tmp_reg0) ::                  (* i >> 1 *)
+              I.movsd(DD("8",t_reg,tmp_reg0,"8"), R d) ::
+              C'))
             else
               let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
               in t_C(i_C(
-                 I.movsd(DD("8",t_reg,i_reg,"8"), R freg) ::
-                 C))
+                 I.movsd(DD("8",t_reg,i_reg,"8"), R d) ::
+                 C'))
               end
          end
 

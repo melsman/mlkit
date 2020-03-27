@@ -109,6 +109,7 @@ struct
 		     mu_result : Type * place,
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list
+      | BLOCKF64 of 'a * ('a,'b)trip list
       | EXPORT   of {name : string,
 		     mu_arg : Type * place, (*mu of argument to c function*)
 		     mu_res : Type * place}
@@ -180,6 +181,7 @@ struct
       | ASSIGN (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | EQUAL (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | CCALL (_,trs) => foldl (uncurry mkPhiTr) acc trs
+      | BLOCKF64 (_,trs) => foldl (uncurry mkPhiTr) acc trs
       | EXPORT (_,tr) => mkPhiTr tr acc
       | RESET_REGIONS (_, tr) => mkPhiTr tr acc
       | FRAME _ => acc
@@ -517,6 +519,13 @@ old*)
 			else ""),
 	             indent = 6, childsep = PP.RIGHT ", ",
 		     children = PP.LEAF name :: (map (fn t => layTrip(t,0)) args)}
+        | BLOCKF64(alloc, args) =>
+            let
+               val alloc_s = alloc_string alloc
+            in
+            PP.NODE{start = "{", finish = "}" ^ alloc_s, indent = 1, childsep = PP.RIGHT", ",
+                    children = map (fn trip => layTrip(trip,0)) args}
+            end
         | EXPORT ({name, mu_arg, mu_res}, arg) =>
             PP.NODE {start = "_export(" ^ name ^ ", ", finish = "):"
 		     ^ (if !Flags.print_types then PP.flatten1(layMu mu_arg) ^ "->" ^ PP.flatten1(layMu mu_res)
@@ -875,6 +884,7 @@ for more info*)
 	   | ASSIGN (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
 	   | EQUAL (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
 	   | CCALL (_,trs) => app normTrip trs
+	   | BLOCKF64 (_,trs) => app normTrip trs
 	   | EXPORT (_, tr) => normTrip tr
 	   | RESET_REGIONS (_, tr) => normTrip tr
            | FRAME{declared_lvars, ...} =>()

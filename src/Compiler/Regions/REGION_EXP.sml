@@ -101,6 +101,8 @@ signature REGION_EXP =
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list  (* Calling C functions *)
 
+      | BLOCKF64 of 'a * ('a,'b)trip list
+
       (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
 
       | EXPORT   of {name : string,

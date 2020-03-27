@@ -190,6 +190,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (add_atp alloc; fv tr1; fv tr2)
 	      | CCALL ({rhos_for_result, ...}, trs) => (List.app (add_atp o #1) rhos_for_result;
 							List.app fv trs)
+	      | BLOCKF64 (alloc, trs) => (add_atp alloc; List.app fv trs)
 	      | EXPORT (_,tr) => fv tr
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) =>
                       (add_atp alloc;
@@ -288,6 +289,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | DROP (tr) => ifv tr
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (ifv tr1; ifv tr2)
 	      | CCALL (_, trs) => List.app ifv trs
+	      | BLOCKF64 (alloc, trs) => List.app ifv trs
 	      | EXPORT (_, tr) => ifv tr
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => ifv tr
 	      | FRAME{declared_lvars, declared_excons} => ()
@@ -327,15 +329,16 @@ structure PhysSizeInf: PHYS_SIZE_INF =
     fun size_of_real a = (WORDS o RegConst.size_of_real) a
     fun size_of_ref a = (WORDS o RegConst.size_of_ref) a
     fun size_of_record a = (WORDS o RegConst.size_of_record) a
-    fun closure_size(l1,l2,l3) = (WORDS o RegConst.size_closure) (l1,l2,l3)
-    fun fix_closure_size(l1,l2,l3) = (WORDS o RegConst.size_fix_closure)(l1,l2,l3)
+    fun size_of_blockf64 a = (WORDS o RegConst.size_of_record) a
+    fun closure_size (l1,l2,l3) = (WORDS o RegConst.size_closure) (l1,l2,l3)
+    fun fix_closure_size (l1,l2,l3) = (WORDS o RegConst.size_fix_closure)(l1,l2,l3)
     fun size_region_vector l = (WORDS o RegConst.size_region_vector) l
-    fun size_exname() = (WORDS o RegConst.size_exname)()
-    fun size_excon0() = (WORDS o RegConst.size_excon0)()
-    fun size_excon1() = (WORDS o RegConst.size_excon1)()
-    fun size_nullery_exn() = WORDS(RegConst.size_exname() + RegConst.size_excon0())
-    fun size_con0() = (WORDS o RegConst.size_con0)()
-    fun size_con1() = (WORDS o RegConst.size_con1)()
+    fun size_exname () = (WORDS o RegConst.size_exname)()
+    fun size_excon0 () = (WORDS o RegConst.size_excon0)()
+    fun size_excon1 () = (WORDS o RegConst.size_excon1)()
+    fun size_nullery_exn () = WORDS(RegConst.size_exname() + RegConst.size_excon0())
+    fun size_con0 () = (WORDS o RegConst.size_con0)()
+    fun size_con1 () = (WORDS o RegConst.size_con1)()
 
     (* ----------------------------------------------------------------------
      * Environment to be used for building graph
@@ -611,6 +614,11 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 		  | SOME i => psi_add_place_size (rho, WORDS i))))
 	     rhos_for_result ;
 	     List.app (psi_tr env) trs)
+	 | BLOCKF64 (alloc, trs) =>
+            (case (place_atplace alloc, trs)
+	       of (NONE, []) => ()  (* unit *)
+		| (SOME place, _) => psi_add_place_size(place, size_of_blockf64 trs)
+		| _ => die "psi_tr.BLOCKF64"; List.app (psi_tr env) trs)
 	 | EXPORT(_,tr) => psi_tr env tr
 	 | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => psi_tr env tr
 	 | FRAME{declared_lvars, ...} =>
@@ -713,6 +721,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 				  rhos_for_result},
 		             map ips trs)
 		   end
+	       | BLOCKF64 (alloc, trs) => BLOCKF64 (pp alloc, map ips trs)
 	       | EXPORT (i,tr) => EXPORT (i,ips tr)
 	       | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) =>
                      RESET_REGIONS ({force=force, alloc=pp alloc,

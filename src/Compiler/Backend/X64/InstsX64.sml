@@ -464,6 +464,7 @@ structure InstsX64: INSTS_X64 =
 
         val xmm_regs = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7,
                         xmm8,xmm9,xmm10,xmm11,xmm12,xmm13,xmm14,xmm15]
+
         val f64_lvs_with_phregs = map (fn r => (Lvars.new_named_lvar (pr_reg r),r)) xmm_regs
         val f64_phregs =
             case map #1 f64_lvs_with_phregs of

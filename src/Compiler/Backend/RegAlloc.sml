@@ -449,9 +449,9 @@ struct
      fun freezeWorklistAdd n = (add freezeWorklist freezeWorklist_enum n)
      fun spillWorklistAdd n = add spillWorklist spillWorklist_enum n
      fun spilledNodesAdd n =
-         if Lvars.get_ubf64(#lv n) then
+(*       if Lvars.get_ubf64(#lv n) then
            die "spill of ubf64 variable not supported"
-         else add spilledNodes spilledNodes_enum n
+         else*) add spilledNodes spilledNodes_enum n
      fun coalescedNodesAdd n =
          add coalescedNodes coalescedNodes_enum n
      fun coloredNodesAdd n = add coloredNodes coloredNodes_enum n

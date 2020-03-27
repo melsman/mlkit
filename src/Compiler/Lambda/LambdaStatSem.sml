@@ -666,7 +666,13 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			  else ()
 		    in ts_res
 		    end
-		| _ => die ("c function " ^ name ^ " does not have arrow type"))
+		 | _ => die ("c function " ^ name ^ " does not have arrow type"))
+           | BLOCKF64prim =>
+             let val ts = map (unTypeListOne "BLOCKF64" o type_e) lexps
+             in List.app (fn t => if LambdaBasics.eq_Type(t,f64Type) then ()
+                                  else die ("wrong blockf64 element type; got " ^ prType t)) ts
+              ; [stringType]
+             end
 	   | EXPORTprim {name, instance_arg, instance_res} =>
 	       (valid_t env instance_arg;
 		valid_t env instance_res;

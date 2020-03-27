@@ -599,6 +599,7 @@ structure AtInf: AT_INF =
 					  (which_at sme (rho, liveset), i_opt))
 				     rhos_for_result},
 				map (sma_trip sme) trs)
+		     | BLOCKF64 (alloc, trs) => BLOCKF64(which_at sme alloc,map (sma_trip sme) trs)
 		     | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)
 		     | RESET_REGIONS ({force, alloc = (p, liveset), ...}, tr as (TR(VAR{lvar,...},meta,_,_))) =>
                           (case meta of

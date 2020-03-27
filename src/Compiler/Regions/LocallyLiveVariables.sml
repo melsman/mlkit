@@ -507,6 +507,15 @@ struct
 	           map #1 children),
             freeInChildren)
          end
+
+      | BLOCKF64(rho, trs) => (* elements of trs trivial *)
+         let val children = map (fn tr => llv(tr, liveset)) trs
+             val freeInArgs = union_many(map #2 children)
+         in
+            (BLOCKF64((rho,norm_liveset(union_llv(freeInArgs, liveset))), map #1 children),
+             freeInArgs)
+	 end
+
       | EXPORT(i,tr1) =>
          let val (tr1', free_in_tr1) = llv(tr1,liveset)
          in (EXPORT(i,tr1'), free_in_tr1)

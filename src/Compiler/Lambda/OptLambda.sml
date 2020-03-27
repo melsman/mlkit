@@ -384,6 +384,8 @@ structure OptLambda: OPT_LAMBDA =
 		    n = n' andalso eq_Types (il,il') andalso eq_sigma((tvs,t),(tvs',t'))
 	      | (EXPORTprim{name=n,instance_arg=a,instance_res=r}, EXPORTprim{name=n',instance_arg=a',instance_res=r'}) =>
 		    n = n' andalso eq_Type(a,a') andalso eq_Type(r,r')
+              | (BLOCKF64prim, BLOCKF64prim) => true
+
 	      | _ => false
 
 	fun eq_sw eq_lamb0m eq (SWITCH(e,es,eo),SWITCH(e',es',eo')) =
@@ -623,6 +625,7 @@ structure OptLambda: OPT_LAMBDA =
                                         else check scope
                | PRIM(SELECTprim _, es) => safeLooks es
                | PRIM(RECORDprim _, es) => safeLooks es
+               | PRIM(BLOCKF64prim, es) => safeLooks es
                | PRIM(DROPprim, es) => safeLooks es
                | PRIM(CONprim _, es) => safeLooks es
                | SWITCH_C sw => safeLook_sw safeLook sw
@@ -739,6 +742,7 @@ structure OptLambda: OPT_LAMBDA =
               | "__div_f64" => true
               | "__max_f64" => true
               | "__min_f64" => true
+              | "__blockf64_sub_f64" => true
               | _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2
          | _ => false
 
@@ -1207,22 +1211,28 @@ structure OptLambda: OPT_LAMBDA =
 	   | LET{pat=[(lvar,tyvars,tau)],bind,scope} =>
 	       let
                  (* maybe let-float f64-binding outwards to open up for other optimisations *)
+                 fun default () = (lvar,tyvars,tau,bind,scope,fail)
+                 fun hoist () =
+                     case bind of
+                         LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>
+                         if unbox_reals() (*andalso eq_Type(tau',f64Type)*) andalso simple_nonexpanding bind' then
+                           (tick "reduce - let-floating";
+                            let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',
+                                                  scope=scope}
+                            in (lv,[],tau',bind',scope'',
+                                (LET{pat=[(lv,[],tau')],bind=bind',scope=scope''},
+                                 CUNKNOWN))
+                            end)
+                         else default()
+                       | _ => default()
                  val (lvar,tyvars,tau,bind,scope,fail) =
                      case (tyvars,tau) of
-                         ([],RECORDtype (_ :: _ :: _)) =>
-                         (case bind of
-                              LET{pat=[(lv,[],tau')],bind=bind',scope=scope'} =>
-                                 if unbox_reals() (*andalso eq_Type(tau',f64Type)*) andalso simple_nonexpanding bind' then
-                                   (tick "reduce - let-floating";
-                                    let val scope'' = LET{pat=[(lvar,[],tau)],bind=scope',
-                                                          scope=scope}
-                                    in (lv,[],tau',bind',scope'',
-                                        (LET{pat=[(lv,[],tau')],bind=bind',scope=scope''},
-                                         CUNKNOWN))
-                                    end)
-                                 else (lvar,tyvars,tau,bind,scope,fail)
-                            | _ => (lvar,tyvars,tau,bind,scope,fail))
-                         | _ => (lvar,tyvars,tau,bind,scope,fail)
+                         ([],RECORDtype (_ :: _ :: _)) => hoist()
+                       | ([],CONStype([],tn)) => if TyName.eq(tn,TyName.tyName_STRING) orelse
+                                                    TyName.eq(tn,TyName.tyName_CHARARRAY)
+                                                 then hoist()
+                                                 else default()
+                       | _ => default()
                  (* maybe unbox real binding *)
                  val (tau,bind,scope,fail) =
                      if unbox_reals() andalso eq_Type(realType,tau) andalso real_lvar_f64_in_lamb lvar scope then
@@ -1739,6 +1749,83 @@ structure OptLambda: OPT_LAMBDA =
 	  end)
        else lamb
    end
+
+   (* -----------------------------------------------------------------
+    * eliminate_explicit_blockf64_bindings lamb - eliminate bindings of
+    * explicit blockf64 bindings only used for selections inside safe
+    * contexts. Transform expressions of the form
+    *
+    *          let r = {e1,...,en} in ... (r sub i) .. (r sub j) ...
+    *
+    * into
+    *
+    *          let x1=f64_to_real(e1) in ...
+    *          let xn=f64_to_real(en) in ...
+    *             real_to_f64(xi) .. real_to_f64(xj) ...
+    *
+    * We first traverse the expression top-down marking all variables
+    * bound to explicit blocks and unmarking all uses of variables
+    * not used in subscripting contexts. Then we perform the transformation
+    * top-down. Information about fresh variables is kept in an
+    * environment.
+    * ----------------------------------------------------------------- *)
+
+   local
+     fun traverse lamb =
+       let fun f lamb =
+             case lamb
+               of LET{pat=[(lvar,[],_)],bind=PRIM(BLOCKF64prim,lambs),scope} =>
+		 (mark_lvar lvar; app f lambs; f scope)
+                | PRIM(CCALLprim{name="__blockf64_sub_f64",...}, [VAR{instances=[],...},INTEGER _]) => ()
+                | VAR{lvar,...} => unmark_lvar lvar
+		| FRAME{declared_lvars,...} => app (unmark_lvar o #lvar) declared_lvars
+                | _ => app_lamb f lamb
+       in app_lamb f lamb
+       end
+
+     type env = (lvar list) LvarMap.map
+
+     fun transf env lamb =
+	case lamb
+	  of PRIM(CCALLprim{name="__blockf64_sub_f64",...}, [VAR{lvar,instances=[],regvars=[],...},INTEGER (i32,_)]) =>
+	     (case LvarMap.lookup env lvar of
+                  SOME lvars =>
+		  let val i = Int32.toInt i32
+                              handle Overflow => die "eliminate_explicit_blockf64s: expecting small int"
+                      val lvar' = List.nth(lvars, i)
+                                  handle Subscript => die "eliminate_explicit_blockf64s: subscript error"
+		  in tick "eliminate explicit blockf64s - sub";
+                     real_to_f64(VAR{lvar=lvar',instances=[],regvars=[]})
+		  end
+		| NONE => lamb)
+           | LET{pat=[(lvar,[],_)],bind=PRIM(BLOCKF64prim,lambs),scope} =>
+             if is_marked_lvar lvar then
+               let val lvars_and_lambs = map (fn e => (Lvars.newLvar(),e)) lambs
+                   val lvars = map #1 lvars_and_lambs
+                   val env' = LvarMap.add(lvar,lvars,env)
+                   fun build [] = transf env' scope
+                     | build ((lv,lamb)::pairs) =
+                       LET{pat=[(lv,[],realType)],
+                           bind=f64_to_real(transf env lamb),
+                           scope=build pairs}
+               in tick "eliminate explicit blockf64 - binding";
+                  build lvars_and_lambs
+               end
+             else map_lamb (transf env) lamb
+           | _ => map_lamb (transf env) lamb
+   in
+     fun eliminate_explicit_blockf64_bindings lamb =
+       if eliminate_explicit_records_p() then
+	 (log "eliminating explicit blockf64 bindings\n";
+(*	  log " traversing\n"; *)
+	  traverse lamb;
+(*	  log " transformation\n"; *)
+	  let val lamb' = transf LvarMap.empty lamb
+	  in reset_lvar_bucket(); lamb'
+	  end)
+       else lamb
+   end
+
 
    (* -----------------------------------------------------------------
     * Common subexpression elimination
@@ -2657,6 +2744,7 @@ structure OptLambda: OPT_LAMBDA =
 	  fun loop_opt ce lamb =
 	      let val (lamb, ce) = contract ce lamb
                   val lamb = eliminate_explicit_records lamb
+                  val lamb = eliminate_explicit_blockf64_bindings lamb
                   val lamb = cse lamb
                   val lamb = hoist_blockf64_allocations lamb
 	      in (lamb, ce)

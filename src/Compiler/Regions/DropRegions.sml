@@ -523,6 +523,15 @@ structure DropRegions: DROP_REGIONS =
 					   (S(drop_atplace atp), i_opt)) rhos_for_result)},
 			   trs'), acc)
 		 end
+	     | BLOCKF64 (alloc, trs) =>
+                  let val acc = maybe_add regvar_env (drop_atplace alloc, acc)
+                      val (trs', acc) = List.foldr (fn (tr, (trs, acc)) =>
+                                                       let val (tr', acc) = drop env tr acc
+                                                       in (tr'::trs, acc)
+                                                       end)
+                                                   ([], acc) trs
+                  in (BLOCKF64(S(drop_atplace alloc), trs'), acc)
+                  end
 	     | EXPORT(i,tr) =>
                  let val (tr', acc) = drop env tr acc
 		 in (EXPORT (i,tr'), acc)

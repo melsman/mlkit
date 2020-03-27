@@ -216,6 +216,7 @@ struct
 										    alloc = sma_to_sma' alloc}
 	  | SS_se(LS.RECORD{elems,alloc,tag,maybeuntag}) = LS.RECORD{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag,
 								     maybeuntag=maybeuntag}
+	  | SS_se(LS.BLOCKF64{elems,alloc,tag}) = LS.BLOCKF64{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag}
 	  | SS_se(LS.SELECT(i,atom)) = LS.SELECT(i,atom_to_aty' atom)
 	  | SS_se(LS.CON0{con,con_kind,aux_regions,alloc}) = LS.CON0{con=con,con_kind=con_kind,aux_regions=smas_to_smas aux_regions,alloc=sma_to_sma' alloc}
 	  | SS_se(LS.CON1{con,con_kind,alloc,arg}) = LS.CON1{con=con,con_kind=con_kind,alloc=sma_to_sma' alloc,arg=atom_to_aty' arg}

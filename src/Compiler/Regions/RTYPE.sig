@@ -35,6 +35,7 @@ sig
   val f64Type    : Type
   val stringType : Type
   val unitType   : Type
+  val chararrayType : Type
 
   val unboxed    : Type -> bool
   val runtype    : Type -> runType

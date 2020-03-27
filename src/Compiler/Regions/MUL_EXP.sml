@@ -156,6 +156,8 @@ signature MUL_EXP =
 	 same region passed to the c function more than once if it simply
 	 happens to be used for more than one thing.*)
 
+      | BLOCKF64 of 'a * ('a,'b,'c)trip list
+
       | EXPORT   of {name : string,
 		     mu_arg : Type * place, (*mu of argument for c function*)
 		     mu_res : Type * place}

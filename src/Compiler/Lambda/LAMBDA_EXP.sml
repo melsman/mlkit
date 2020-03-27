@@ -79,6 +79,7 @@ signature LAMBDA_EXP =
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type}
+      | BLOCKF64prim
       | EXPORTprim of {name : string,
 		       instance_arg : 'Type,
 		       instance_res : 'Type}

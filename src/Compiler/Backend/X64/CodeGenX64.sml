@@ -75,20 +75,17 @@ struct
                      in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
                      end
                     | LS.F64 str =>
-                      (case pat of
-                           SS.PHREG_ATY d =>
-                           if not (I.is_xmm d) then die "F64: expecting xmm register"
-                           else (case str of
-                                     "0.0" => I.xorps (R d, R d) :: C
-                                   | _ =>
-                                     let val float_lab = new_float_lab()
-                                         val _ = add_static_data [I.dot_data,
-                                                                  I.lab float_lab,
-                                                                  I.dot_double str]
-                                     in I.movq(LA float_lab, R tmp_reg0) ::
-                                        I.movsd(D("0", tmp_reg0),R d) :: C
-                                     end)
-                         | _ => die "F64: expecting physical register")
+                      let val (d, C') = resolve_aty_def(pat, tmp_freg0, size_ff, C)
+                      in case str of
+                             "0.0" => I.xorps (R d, R d) :: C'
+                           | _ => let val float_lab = new_float_lab()
+                                      val _ = add_static_data [I.dot_data,
+                                                               I.lab float_lab,
+                                                               I.dot_double str]
+                                  in I.movq(LA float_lab, R tmp_reg0) ::
+                                     I.movsd(D("0", tmp_reg0),R d) :: C'
+                                  end
+                      end
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                          val num_elems = List.length (LS.smash_free elems)
@@ -194,6 +191,25 @@ struct
                          alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,num_elems,size_ff,
                          store_elems num_elems)
                        else if BI.tag_values() then
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         store_immed(tag, reg_for_result, WORDS 0,
+                         store_elems num_elems))
+                       else
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
+                         store_elems (num_elems-1))
+                     end
+                    | LS.BLOCKF64{elems=[],alloc,tag} =>
+                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                    | LS.BLOCKF64{elems,alloc,tag} =>
+                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                         val num_elems = List.length elems
+                         fun store_elems last_offset =
+                             #2(foldr (fn (aty,(offset,C)) =>
+                                       (offset-1,store_aty_in_reg_record(aty,tmp_freg0,reg_for_result,
+                                                                         WORDS offset,size_ff, C)))
+                                (last_offset,C') elems)
+                     in
+                       if BI.tag_values() then
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
                          store_immed(tag, reg_for_result, WORDS 0,
                          store_elems num_elems))

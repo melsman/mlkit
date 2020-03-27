@@ -1258,6 +1258,7 @@ struct
   val realType: Type = CONSTYPE(TyName.tyName_REAL,[],[],[])
   val f64Type: Type = CONSTYPE(TyName.tyName_F64,[],[],[])
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
+  val chararrayType: Type = CONSTYPE(TyName.tyName_CHARARRAY,[],[],[])
   val unitType: Type = RECORD[]
 
   fun isF64Type t =

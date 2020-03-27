@@ -1111,6 +1111,24 @@ good *)
 	end handle (X as Report.DeepError _) => raise X
                  | X => (print ("CCALL FAILED\n"); raise X))
 
+    | E.PRIM(E.BLOCKF64prim, args) =>
+        let val (B, trips) = List.foldr (fn (arg, (B, trips)) =>
+                    let val (B, trip, _) = S(B,arg, false, NOTAIL)
+                    in (B, trip::trips)
+                    end) (B,[]) args
+            val () = List.app (fn E'.TR(_,E'.Mus [(tau,rho)],_) =>
+                                  if R.isF64Type tau then ()
+                                  else die "S.blockf64: expecting f64 type"
+                                | _ => die "S.blockf64: expecting one mu") trips
+            val tau = R.stringType
+(*            val (rho,B) = maybe_explicit_rho rse B (R.runtype tau) rv_opt *)
+            val (rho,B) = Eff.freshRhoWithTy(R.runtype tau, B)
+            val phi = Eff.mkUnion(Eff.mkPut rho :: map (fn E'.TR(_,_,phi) => phi) trips)
+        in
+          (B, E'.TR(E'.BLOCKF64(rho, trips), E'.Mus [(tau, rho)], phi),
+	   NOTAIL)
+        end
+
     | E.PRIM (E.EXPORTprim {name, instance_arg, instance_res}, [e0]) =>
           (*
                      e  => [mu], phi    mu=(mu1 -phi0-> mu2,rho)
