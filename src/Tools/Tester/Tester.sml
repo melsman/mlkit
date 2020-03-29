@@ -21,16 +21,27 @@ structure Tester : TESTER =
 
 
     local
+      val all_test_counts = ref 0
+      val test_counter = ref 0
       val error_counter = ref 0
       val dotcounter = ref 0
+      fun print_progress () =
+          print (" [" ^ Int.toString (!test_counter) ^ "/"
+                 ^ Int.toString (!all_test_counts) ^ "]")
       fun pr_dot () =
           if !dotcounter < 60 then
             ( dotcounter := !dotcounter + 1
             ; print ".")
           else ( dotcounter := 1
+               ; print_progress()
                ; print "\n.")
     in
-      fun reset_error_counter() = error_counter:=0
+      fun set_all_test_counts c =
+          all_test_counts := c
+      fun test_tick () =
+          test_counter := !test_counter + 1
+      val print_progress = print_progress
+      fun reset_error_counter () = error_counter:=0
       val msglog = ref TextIO.stdOut
       fun msg0 s = (TextIO.output(!msglog,s ^ "\n"); TextIO.flushOut (!msglog);
 		   TestReport.add_log_line s)
@@ -188,8 +199,10 @@ structure Tester : TESTER =
 		  | SOME (testfile_string,entries) =>
 		    let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
 		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
-		    in (app (process_entry flags) entries)
+                        val () = set_all_test_counts (List.length entries)
+		    in (app (fn e => (process_entry flags e; test_tick())) entries)
                        handle Time.Time => (print "bad time2\n" ; raise Fail "bad2") ;
+                       print_progress();
 		       msgErrors();
 		       (TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe})
                        handle Time.Time => (print "bad time1\n" ; raise Fail "bad1")
