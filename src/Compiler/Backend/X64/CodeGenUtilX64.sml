@@ -809,39 +809,17 @@ struct
 
     (* Put a bitvector into the code. *)
     fun gen_bv (ws,C) =
-      let fun gen_bv'([],C) = C
-            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_quad ("0x"^Word32.fmt StringCvt.HEX w)::C)
-      in if gc_p() then gen_bv'(ws,C)
+      let fun gen ([],C) = C
+            | gen (w::ws,C) = gen(ws,I.dot_quad ("0x"^Word32.fmt StringCvt.HEX w)::C)
+      in if gc_p() then gen(ws,C)
          else C
       end
 
-    (* reg_map is a register map describing live registers at entry to the function       *)
-    (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
-    fun do_gc (reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args,C) =
-      if gc_p() then
-        let
-          val l = new_local_lab "return_from_gc_stub"
-          val reg_map_immed = "0x" ^ Word32.fmt StringCvt.HEX reg_map
-          val size_ff = 0 (*dummy*)
-        in
-(*
-          load_label_addr(time_to_gc_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* tmp_reg1 = &gc_flag *)
-          I.movq(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
-*)
-          I.cmpq(I "1", L time_to_gc_lab) ::
-(*          I.jmp (L l) ::  (* for disabling gc *) *)
-          I.jne l ::
-          I.movq(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
-          load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
-          I.push(I (i2s size_ccf)) ::
-          I.push(I (i2s size_rcf)) ::
-          I.push(I (i2s size_spilled_region_args)) ::
-          I.jmp(L gc_stub_lab) ::
-          I.lab l :: C)
-        end
-      else C
-
-    (* Alternative function that makes an immediate forward jump if gc is triggered, otherwise it falls through *)
+    (* Stub code that makes an immediate forward jump if gc is triggered; otherwise
+     * it falls through.
+     * reg_map is a register map describing live registers at entry to the function
+     * The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0
+     *)
     fun do_gc (reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args) =
       if gc_p() then
         let

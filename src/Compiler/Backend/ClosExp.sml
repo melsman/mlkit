@@ -1399,7 +1399,8 @@ struct
     (* declared --- used to look up the region sizes for the free        *)
     (* variables bound to letrec functions. new_env is used as base      *)
     (* when building the new environment.                                *)
-    (* Region variables are FIRST in the closure; necessary for tagging. *)
+    (* Region variables are FIRST in the closure, then comes unboxed     *)
+    (* f64 lambda variables; necessary for tagging.                      *)
     fun build_clos_env org_env new_env lv_clos base_offset (free_lv,free_excon,free_rho) =
       let
 	(* When computing offsets we do not increase the offset counter when meeting *)
@@ -1419,9 +1420,14 @@ struct
 	  (CE.declareRhoKind(place,CE.lookupRhoKind org_env place,
 			     CE.declareRho(place,CE.SELECT(lv_clos,i),env)),i+1)
 	val (env',_)  =
+(*
 	  List.foldl add_free_lv
 	  (List.foldl add_free_excon
 	   (List.foldl add_free_rho (new_env, base_offset) free_rho) free_excon) free_lv
+*)
+	  List.foldl add_free_excon
+	  (List.foldl add_free_lv
+	   (List.foldl add_free_rho (new_env, base_offset) free_rho) free_lv) free_excon
       in
 	env'
       end

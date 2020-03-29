@@ -108,9 +108,11 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 			    excon_bucket := [];
 			    place_bucket := [])
 	fun get_fvs () =
-	  let val fvs = (!lvar_bucket, !excon_bucket, !place_bucket)
-	  in reset_fvs (); fvs
-	  end
+	    let val lvs = List.filter Lvars.get_ubf64 (!lvar_bucket)
+                          @ List.filter (not o Lvars.get_ubf64) (!lvar_bucket)
+                val fvs = (lvs, !excon_bucket, !place_bucket)
+	    in reset_fvs (); fvs
+	    end
 
       end (*local buckets*)
 

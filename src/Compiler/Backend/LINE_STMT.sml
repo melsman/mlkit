@@ -208,13 +208,9 @@ signature LINE_STMT =
     (* Def and Use sets for LineStmt RETURN only lvars            *)
     (* Lvars bound to regions are also filtered out; they are not *)
     (* part of the root-set and are therefore not included in the *)
-    (* bit vectors.                                               *)
+    (* bit vectors. Also lvars bound to unboxed f64 float values  *)
+    (* are filtered out.                                          *)
     (**************************************************************)
-    val get_var_sma_cbv    : Atom sma * lvar list -> lvar list
-    val get_var_smas_cbv   : Atom sma list * lvar list -> lvar list
-    val use_var_on_fun_cbv : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
-			       clos: Atom option,res: Atom list,bv: Word32.word list} -> lvar list
-    val use_var_ls_cbv     : ('sty,'offset,Atom) LineStmt -> lvar list
     val def_use_var_ls_cbv : ('sty,'offset,Atom) LineStmt -> lvar list * lvar list
 
     (*****************************************)
