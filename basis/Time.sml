@@ -2,10 +2,10 @@
 
 structure Time : TIME =
   struct
-    fun getrealtime() : {sec : int, usec : int} =
+    fun getrealtime () : {sec : int, usec : int} =
       prim("sml_getrealtime", ())
 
-    fun negpow10 p = Math.exp(Math.ln 10.0 * real (~p));
+    fun negpow10 p = Math.exp(Math.ln 10.0 * real (~p))
 
     (* Translation to obtain a longer time horizon.  Must agree with
        TIMEBASE in file Runtime/Time.c. *)
@@ -19,11 +19,11 @@ structure Time : TIME =
 
     exception Time
 
-    val zeroTime = {sec = timebase, usec = 0};
-    fun now () = getrealtime ();
+    val zeroTime = {sec = timebase, usec = 0}
+    fun now () = getrealtime ()
 
     fun fromSeconds s =
-	if IntInf.<(s, 0) then raise Time else {sec=LargeInt.toInt s + timebase, usec=0};
+	if IntInf.<(s, 0) then raise Time else {sec=LargeInt.toInt s + timebase, usec=0}
 
     fun fromMilliseconds ms =
 	if IntInf.<(ms, 0) then raise Time else
@@ -49,34 +49,17 @@ structure Time : TIME =
 	    val rf = if r < 0.0 then raise Time else floor (r + real timebase)
 	in
 	    {sec = rf, usec = floor (1000000.0 * (r+real timebase-real rf))}
-	end handle Overflow => raise Time;
+	end handle Overflow => raise Time
 
     fun toReal {sec, usec} =
-	real sec - real timebase + real usec / 1000000.0;
+	real sec - real timebase + real usec / 1000000.0
 
-    fun timeToUnits (t, p) = floor(toReal t * negpow10 p + 0.5);
+    fun timeToUnits (t, p) = floor(toReal t * negpow10 p + 0.5)
 
     fun fmt p t =
 	Real.fmt (StringCvt.FIX (SOME (if p > 0 then p else 0))) (toReal t)
 
-(* Y2004 bug-fix
-    fun fmt p {sec, usec} =
-	let fun frac r = r - real (floor r)
-	    val rnd  = if p < 0 then 0.5
-		       else 0.5 * negpow10 p
-	    val usecr = real usec / 1000000.0 + rnd
-	    val ints = Int.toString (sec - timebase + floor usecr)
-	    fun h v i = if i <= 0 then []
-			else Char.chr (floor v + Char.ord #"0")
-                             :: h (10.0 * frac v) (i-1)
-	in
-	    if p > 0 then
-		ints ^ "." ^ String.implode (h (10.0 * frac usecr)
-					     (if p > 6 then 6 else p))
-	    else ints
-	end;
-*)
-    fun toString t = fmt 3 t;
+    fun toString t = fmt 3 t
 
     fun scan getc source =
     let fun skipWSget getc source =
@@ -122,9 +105,9 @@ structure Time : TIME =
 			     else NONE)
       | SOME(c, rest)    =>
 	    if Char.isDigit c then intg (real (decval c)) rest else NONE
-    end;
+    end
 
-    fun fromString s = StringCvt.scanString scan s;
+    fun fromString s = StringCvt.scanString scan s
 
     val op + = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
 	let val usecs = usec1 + usec2 in
@@ -132,20 +115,14 @@ structure Time : TIME =
 			  + real sec2 + real(usecs div 1000000)),
 	     usec = usecs mod 1000000}
 	end
-(*Y2004 bug-fix; mael 2005-03-16
-    val op + = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	let val usecs = usec1 + usec2 in
-	    {sec  = sec1 - timebase + sec2 + usecs div 1000000,
-	     usec = usecs mod 1000000}
-	end
-*)
+
     and op - = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
 	let val usecs = usec1 - usec2
 	    val secs  = sec1 - sec2 + usecs div 1000000
 	in
 	    if secs < 0 then raise Time
 	    else {sec = secs + timebase, usec = usecs mod 1000000}
-	end handle Overflow => raise Time;
+	end handle Overflow => raise Time
 
     val op <  = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
 	(sec1 < sec2) orelse (sec1=sec2 andalso usec1 < usec2)
@@ -154,10 +131,10 @@ structure Time : TIME =
     and op >  = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
 	(sec1 > sec2) orelse (sec1=sec2 andalso usec1 > usec2)
     and op >= = fn ({sec=sec1, usec=usec1} : time, {sec=sec2, usec=usec2}) =>
-	(sec1 > sec2) orelse (sec1=sec2 andalso usec1 >= usec2);
+	(sec1 > sec2) orelse (sec1=sec2 andalso usec1 >= usec2)
 
     fun compare (x, y: time) =
-	if x<y then LESS else if x>y then GREATER else EQUAL;
+	if x<y then LESS else if x>y then GREATER else EQUAL
 
     fun toPair x = x
   end
