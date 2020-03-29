@@ -5,30 +5,32 @@ local
   basis Polyhash = bas POLYHASH.sig Polyhash.sml end
 
   local
-    local 
+    local
       SPLAYTREE.sig Splaytree.sml
     in
-      basis Splay = 
+      basis Splay =
         bas SPLAYMAP.sig Splaymap.sml SPLAYSET.sig Splayset.sml end
     end
-    basis BinMap = 
+    basis BinMap =
       bas BINARYMAP.sig Binarymap.sml INTMAP.sig Intmap.sml end
-    basis BinSet = 
+    basis BinSet =
       bas BINARYSET.sig INTSET.sig Binaryset.sml Intset.sml end
   in
-   basis SetsAndMaps = 
+   basis SetsAndMaps =
      bas open Splay BinMap BinSet end
   end
 
   basis Regexp =  (* Regular expression support *)
     bas REG_EXP.sml local open SetsAndMaps in RegExp.sml end end
 
-  basis Susp =  (* Suspension *) 
+  basis Susp =  (* Suspension *)
     bas SUSP.sig Susp.sml end
 
-  basis Sml90 = 
+  basis Sml90 =
     bas SML90.sml end
 
-in open ListUtil Polyhash SetsAndMaps Regexp Susp Sml90
-end
+  basis RealBlocks =
+    bas real64_blocks.mlb end
 
+in open ListUtil Polyhash SetsAndMaps Regexp Susp Sml90 RealBlocks
+end
