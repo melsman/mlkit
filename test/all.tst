@@ -66,6 +66,7 @@ ftv.sml
 elabDecBug.sml      ccl ecte
 oh-no.sml           ccl       nobasislib
 oh-no2.sml          ccl       nobasislib
+real_match.sml                nobasislib
 
 (* Tests of some benchmark programs *)
 

@@ -65,11 +65,13 @@ struct
                          val _ =
                            if BI.tag_values() then
                              add_static_data [I.dot_data,
+                                              I.dot_align 8,
                                               I.lab float_lab,
                                               I.dot_quad(BI.pr_tag_w(BI.tag_real(true))),
                                               I.dot_double str]
                            else
                              add_static_data [I.dot_data,
+                                              I.dot_align 8,
                                               I.lab float_lab,
                                               I.dot_double str]
                      in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
@@ -80,6 +82,7 @@ struct
                              "0.0" => I.xorps (R d, R d) :: C'
                            | _ => let val float_lab = new_float_lab()
                                       val _ = add_static_data [I.dot_data,
+                                                               I.dot_align 8,
                                                                I.lab float_lab,
                                                                I.dot_double str]
                                   in I.movq(LA float_lab, R tmp_reg0) ::
