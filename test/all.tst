@@ -128,8 +128,8 @@ time.sml
 math.sml                                       (* ok, but not quite the
                                                   semantics of the basis
                                                   library specification *)
-listsort.mlb
 date.sml
+date2.sml
 timer.sml
 unixpath.sml
 cmdline.sml
@@ -139,8 +139,6 @@ word.sml
 word8.sml
 word31.sml
 word32.sml
-regexp1.mlb
-regexp2.mlb
 pickletest.mlb
 packreal.sml
 packreal2.sml
