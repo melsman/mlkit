@@ -131,19 +131,33 @@ sml_sysconf(ssize_t t)
   return convertIntToML((ssize_t) res);
 }
 
+long
+sec_of_clock_t(long clk_tck, clock_t c) {
+  return (c/clk_tck) & (SIZE_MAX/4);
+}
+
+long
+usec_of_clock_t(long clk_tck, clock_t c) {
+    return ((long)(1000000.0 * (double)((c%clk_tck)))/clk_tck) & (SIZE_MAX/4);
+}
+
 uintptr_t
 sml_times(uintptr_t tuple)
 {
   struct tms buf;
   clock_t r;
-  mkTagRecordML(tuple, 5);
-  r = times(&buf);
+  long clk_tck = sysconf(_SC_CLK_TCK);
+  mkTagRecordML(tuple, 8);
+  r = times(&buf);  // returns number of seconds since year 1970; use getrealtime instead in Posix.sml
   if (r == (clock_t) -1) raise_exn((uintptr_t)&exn_OVERFLOW);
-  elemRecordML(tuple,0) = convertIntToML(r & (SIZE_MAX / 4));
-  elemRecordML(tuple,1) = convertIntToML(buf.tms_utime & (SIZE_MAX / 4));
-  elemRecordML(tuple,2) = convertIntToML(buf.tms_stime & (SIZE_MAX / 4));
-  elemRecordML(tuple,3) = convertIntToML(buf.tms_cutime & (SIZE_MAX / 4));
-  elemRecordML(tuple,4) = convertIntToML(buf.tms_cstime & (SIZE_MAX / 4));
+  elemRecordML(tuple,0) = convertIntToML(sec_of_clock_t(clk_tck, buf.tms_utime));
+  elemRecordML(tuple,1) = convertIntToML(usec_of_clock_t(clk_tck, buf.tms_utime));
+  elemRecordML(tuple,2) = convertIntToML(sec_of_clock_t(clk_tck, buf.tms_stime));
+  elemRecordML(tuple,3) = convertIntToML(usec_of_clock_t(clk_tck, buf.tms_stime));
+  elemRecordML(tuple,4) = convertIntToML(sec_of_clock_t(clk_tck, buf.tms_cutime));
+  elemRecordML(tuple,5) = convertIntToML(usec_of_clock_t(clk_tck, buf.tms_cutime));
+  elemRecordML(tuple,6) = convertIntToML(sec_of_clock_t(clk_tck, buf.tms_cstime));
+  elemRecordML(tuple,7) = convertIntToML(usec_of_clock_t(clk_tck, buf.tms_cstime));
   return tuple;
 }
 

@@ -30,6 +30,8 @@ struct
 
   open CodeGenUtil
 
+  fun die s  = Crash.impossible ("CodeGenX64." ^ s)
+
   local
      (*******************)
      (* Code Generation *)
@@ -72,6 +74,18 @@ struct
                                               I.dot_double str]
                      in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
                      end
+                    | LS.F64 str =>
+                      let val (d, C') = resolve_aty_def(pat, tmp_freg0, size_ff, C)
+                      in case str of
+                             "0.0" => I.xorps (R d, R d) :: C'
+                           | _ => let val float_lab = new_float_lab()
+                                      val _ = add_static_data [I.dot_data,
+                                                               I.lab float_lab,
+                                                               I.dot_double str]
+                                  in I.movq(LA float_lab, R tmp_reg0) ::
+                                     I.movsd(D("0", tmp_reg0),R d) :: C'
+                                  end
+                      end
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                          val num_elems = List.length (LS.smash_free elems)
@@ -177,6 +191,25 @@ struct
                          alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,num_elems,size_ff,
                          store_elems num_elems)
                        else if BI.tag_values() then
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         store_immed(tag, reg_for_result, WORDS 0,
+                         store_elems num_elems))
+                       else
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
+                         store_elems (num_elems-1))
+                     end
+                    | LS.BLOCKF64{elems=[],alloc,tag} =>
+                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                    | LS.BLOCKF64{elems,alloc,tag} =>
+                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                         val num_elems = List.length elems
+                         fun store_elems last_offset =
+                             #2(foldr (fn (aty,(offset,C)) =>
+                                       (offset-1,store_aty_in_reg_record(aty,tmp_freg0,reg_for_result,
+                                                                         WORDS offset,size_ff, C)))
+                                (last_offset,C') elems)
+                     in
+                       if BI.tag_values() then
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
                          store_immed(tag, reg_for_result, WORDS 0,
                          store_elems num_elems))
@@ -708,6 +741,7 @@ struct
                                     | _ => die "CG_ls: Expecting two arguments for flow primitive"
                       fun cmp i = cmpi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
                       fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,size_ff,C)
                       open PrimName
                   in case name
                        of Equal_int32ub => cmp I.je
@@ -740,6 +774,10 @@ struct
                         | Greatereq_word31 => cmp I.jae
                         | Greatereq_word32ub => cmp I.jae
                         | Greatereq_word32b => cmp_boxed I.jae
+                        | Less_f64 => cmpf64 I.jb
+                        | Lesseq_f64 => cmpf64 I.jbe
+                        | Greater_f64 => cmpf64 I.ja
+                        | Greatereq_f64 => cmpf64 I.jae
                         | _ => die "CG_ls: Unsupported PRIM used with Flow Variable"
                   end)
                | LS.PRIM{name,args,res} =>
@@ -780,6 +818,12 @@ struct
                           | Table_size => table_size(x,d,size_ff,C)
                           | Is_null => cmpi_kill_tmp01 {box=false} (I.je,x, SS.INTEGER_ATY{value=Int32.fromInt 0,
                                                                                            precision=32},d,size_ff,C)
+                          | Real_to_f64 => real_to_f64(x,d,size_ff,C)
+                          | Sqrt_f64 => sqrt_f64(x,d,size_ff,C)
+                          | Neg_f64 => neg_f64(x,d,size_ff,C)
+                          | Abs_f64 => abs_f64(x,d,size_ff,C)
+                          | Int_to_f64 => int_to_f64(x,d,size_ff,C)
+                          | Blockf64_size => blockf64_size(x,d,size_ff,C)
                           | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name))
                      | [x,y] =>
                        (case name of
@@ -812,6 +856,7 @@ struct
                           | Less_word32ub => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
                           | Less_word32b => cmpi_kill_tmp01 {box=true} (I.jb,x,y,d,size_ff,C)
                           | Less_real => cmpf_kill_tmp01(LESSTHAN,x,y,d,size_ff,C)
+                          | Less_f64 => cmpf64_kill_tmp0(LESSTHAN,x,y,d,size_ff,C)
                           | Lesseq_int32ub => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
                           | Lesseq_int32b => cmpi_kill_tmp01 {box=true} (I.jle,x,y,d,size_ff,C)
                           | Lesseq_int31 => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
@@ -819,6 +864,7 @@ struct
                           | Lesseq_word32ub => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
                           | Lesseq_word32b => cmpi_kill_tmp01 {box=true} (I.jbe,x,y,d,size_ff,C)
                           | Lesseq_real => cmpf_kill_tmp01(LESSEQUAL,x,y,d,size_ff,C)
+                          | Lesseq_f64 => cmpf64_kill_tmp0(LESSEQUAL,x,y,d,size_ff,C)
                           | Greater_int32ub => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
                           | Greater_int32b => cmpi_kill_tmp01 {box=true} (I.jg,x,y,d,size_ff,C)
                           | Greater_int31 => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
@@ -826,6 +872,7 @@ struct
                           | Greater_word32ub => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
                           | Greater_word32b => cmpi_kill_tmp01 {box=true} (I.ja,x,y,d,size_ff,C)
                           | Greater_real => cmpf_kill_tmp01(GREATERTHAN,x,y,d,size_ff,C)
+                          | Greater_f64 => cmpf64_kill_tmp0(GREATERTHAN,x,y,d,size_ff,C)
                           | Greatereq_int32ub => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
                           | Greatereq_int32b => cmpi_kill_tmp01 {box=true} (I.jge,x,y,d,size_ff,C)
                           | Greatereq_int31 => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
@@ -833,6 +880,7 @@ struct
                           | Greatereq_word32ub => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
                           | Greatereq_word32b => cmpi_kill_tmp01 {box=true} (I.jae,x,y,d,size_ff,C)
                           | Greatereq_real => cmpf_kill_tmp01(GREATEREQUAL,x,y,d,size_ff,C)
+                          | Greatereq_f64 => cmpf64_kill_tmp0(GREATEREQUAL,x,y,d,size_ff,C)
                           | Andb_word31 => andb_word_kill_tmp01(x,y,d,size_ff,C)
                           | Andb_word32ub => andb_word_kill_tmp01(x,y,d,size_ff,C)
                           | Orb_word31 => orb_word_kill_tmp01(x,y,d,size_ff,C)
@@ -853,6 +901,15 @@ struct
                           | Int32b_to_word32b => num32b_to_num32b {ovf=false} (x,y,d,size_ff,C)
                           | Bytetable_sub => bytetable_sub(x,y,d,size_ff,C)
                           | Word_sub0 => word_sub0(x,y,d,size_ff,C)
+                          | Plus_f64 => plus_f64(x,y,d,size_ff,C)
+                          | Minus_f64 => minus_f64(x,y,d,size_ff,C)
+                          | Mul_f64 => mul_f64(x,y,d,size_ff,C)
+                          | Div_f64 => div_f64(x,y,d,size_ff,C)
+                          | Max_f64 => max_f64(x,y,d,size_ff,C)
+                          | Min_f64 => min_f64(x,y,d,size_ff,C)
+                          | F64_to_real => f64_to_real_kill_tmp01(y,x,d,size_ff,C)
+                          | Blockf64_alloc => blockf64_alloc(x,y,d,size_ff,C)
+                          | Blockf64_sub_f64 => blockf64_sub_f64(x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name))
                      | [b,x,y] =>
                        (case name of
@@ -874,6 +931,9 @@ struct
                           | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__(b,x,y,d,size_ff,C)
                           | Bytetable_update => bytetable_update(b,x,y,d,size_ff,C)
                           | Word_update0 => word_update0(b,x,y,d,size_ff,C)
+                          | Blockf64_update_real => blockf64_update_real(b,x,y,d,size_ff,C)
+                          | Blockf64_sub_real => blockf64_sub_real(b,x,y,d,size_ff,C)
+                          | Blockf64_update_f64 => blockf64_update_f64(b,x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end
@@ -1025,9 +1085,6 @@ struct
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                                (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
-        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-                                 I.pop (R tmp_reg1) ::
-                                 I.jmp (R tmp_reg1) :: [])
         val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
         val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_args cc)
         val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
@@ -1035,9 +1092,13 @@ struct
         val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args
         val _ = pw reg_map
    *)
+        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
+        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+                                 I.pop (R tmp_reg1) ::
+                                 I.jmp (R tmp_reg1) :: GCsnippet)
       in
         gen_fn(lab,
-               do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args,
+               checkGC(
                 base_plus_offset(rsp,WORDS(~size_ff),rsp,
                  do_simple_memprof(
                  do_prof(
@@ -1075,7 +1136,7 @@ struct
       get_static_data (data_end_lab(l,
       comment ("END OF STATIC DATA AREA",nil)))))
 
-    fun init_x64_code() = [I.dot_text]
+    fun init_x64_code () = [I.dot_text]
   in
     fun CG {main_lab:label,
             code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
@@ -1091,6 +1152,7 @@ struct
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab}
+        val x64_prg = I.optimise x64_prg
         val _ = chat "]\n"
       in
         x64_prg
@@ -1125,7 +1187,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                                I.dot_quad "1" :: C)
             end
 
-        fun slots_for_datlabs(l,C) = foldr slot_for_datlab C l
+        fun slots_for_datlabs (l,C) = foldr slot_for_datlab C l
 
         fun toplevel_handler C =
           let
@@ -1187,7 +1249,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           end
 
         (* primitive exceptions *)
-        fun setup_primitive_exception((n,exn_string,exn_lab,exn_flush_lab),C) =
+        fun setup_primitive_exception ((n,exn_string,exn_lab,exn_flush_lab),C) =
           let
             val string_lab = gen_string_lab exn_string
             val _ =
@@ -1266,7 +1328,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         (* args can only be tmp_reg0 and tmp_reg1; no arguments
          * on the stack; only the return address! Destroys tmp_reg0! *)
-        fun ccall_stub(stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
+        fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
           let
             val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
                             caller_save_regs_ccall  (* maybe also save the other
@@ -1385,7 +1447,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 end
             else C
 
-        fun generate_jump_code_progunits(progunit_labs,C) =
+        fun generate_jump_code_progunits (progunit_labs,C) =
           foldr (fn (l,C) =>
                  let val next_lab = new_local_lab "next_progunit_lab"
                  in
@@ -1399,7 +1461,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    I.lab next_lab :: C))
                  end) C progunit_labs
 
-        fun allocate_global_regions(region_labs,C) =
+        fun allocate_global_regions (region_labs,C) =
           let
             fun maybe_pass_region_id (region_id,C) =
               if region_profiling() then I.movq(I (i2s region_id), R rsi) :: C

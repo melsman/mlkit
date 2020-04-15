@@ -15,6 +15,7 @@ datatype prim =
 
          (* other primitives *)
          Less_real | Lesseq_real | Greater_real | Greatereq_real |
+         Less_f64 | Lesseq_f64 | Greater_f64 | Greatereq_f64 |
 	 Plus_int31 | Plus_int32ub | Plus_int32b |
 	 Plus_word31 | Plus_word32ub | Plus_word32b | Plus_real |
 	 Minus_int31 | Minus_int32ub | Minus_int32b |
@@ -41,7 +42,12 @@ datatype prim =
          Bytetable_sub | Bytetable_size | Bytetable_update |
 	 Word_sub0 | Word_update0 | Table_size |
 	 Is_null |
-	 ServerGetCtx
+	 ServerGetCtx |
+         Plus_f64 | Minus_f64 | Mul_f64 | Div_f64 | Max_f64 | Min_f64 |
+         Real_to_f64 | F64_to_real |
+         Sqrt_f64 | Neg_f64 | Abs_f64 | Int_to_f64 |
+         Blockf64_update_real | Blockf64_sub_real | Blockf64_size | Blockf64_alloc |
+         Blockf64_update_f64 | Blockf64_sub_f64
 
 local
   structure M = OrderFinMap(struct type T = string
@@ -64,7 +70,8 @@ local
   val M_flow = M.fromList flow_pairs
 
   val pairs =
-	[("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
+        [("__less_real", Less_real), ("__lesseq_real", Lesseq_real), ("__greater_real", Greater_real), ("__greatereq_real", Greatereq_real),
+         ("__less_f64", Less_f64), ("__lesseq_f64", Lesseq_f64), ("__greater_f64", Greater_f64), ("__greatereq_f64", Greatereq_f64),
 	 ("__plus_int31", Plus_int31), ("__plus_int32ub", Plus_int32ub), ("__plus_int32b", Plus_int32b),
 	 ("__plus_word31", Plus_word31), ("__plus_word32ub", Plus_word32ub), ("__plus_word32b", Plus_word32b), ("__plus_real", Plus_real),
 	 ("__minus_int31", Minus_int31), ("__minus_int32ub", Minus_int32ub), ("__minus_int32b", Minus_int32b),
@@ -91,7 +98,26 @@ local
          ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
 	 ("word_sub0", Word_sub0), ("word_update0", Word_update0), ("table_size", Table_size),
 	 ("__is_null", Is_null),
-	 ("__serverGetCtx", ServerGetCtx)]
+	 ("__serverGetCtx", ServerGetCtx),
+         ("__plus_f64", Plus_f64),
+         ("__minus_f64", Minus_f64),
+         ("__mul_f64", Mul_f64),
+         ("__div_f64", Div_f64),
+         ("__max_f64", Max_f64),
+         ("__min_f64", Min_f64),
+         ("__real_to_f64", Real_to_f64),
+         ("__f64_to_real", F64_to_real),
+         ("__sqrt_f64", Sqrt_f64),
+         ("__neg_f64", Neg_f64),
+         ("__abs_f64", Abs_f64),
+         ("__int_to_f64", Int_to_f64),
+         ("__blockf64_update_real", Blockf64_update_real),
+         ("__blockf64_sub_real", Blockf64_sub_real),
+         ("__blockf64_size", Blockf64_size),
+         ("__blockf64_alloc", Blockf64_alloc),
+         ("__blockf64_update_f64", Blockf64_update_f64),
+         ("__blockf64_sub_f64", Blockf64_sub_f64)
+]
 
   val M = M.fromList pairs
 in
@@ -134,6 +160,10 @@ fun is_flow_prim (p:prim) : bool =
       | Greatereq_word31 => true
       | Greatereq_word32ub => true
       | Greatereq_word32b => true
+      | Less_f64 => true
+      | Lesseq_f64 => true
+      | Greater_f64 => true
+      | Greatereq_f64 => true
       | _ => false
 
 fun pp_prim (p:prim) : string =
@@ -172,6 +202,10 @@ fun pp_prim (p:prim) : string =
       | Lesseq_real => "Lesseq_real"
       | Greater_real => "Greater_real"
       | Greatereq_real => "Greatereq_real"
+      | Less_f64 => "Less_f64"
+      | Lesseq_f64 => "Lesseq_f64"
+      | Greater_f64 => "Greater_f64"
+      | Greatereq_f64 => "Greatereq_f64"
       | Plus_int31 => "Plus_int31"
       | Plus_int32ub => "Plus_int32ub"
       | Plus_int32b => "Plus_int32b"
@@ -248,6 +282,24 @@ fun pp_prim (p:prim) : string =
       | Table_size => "Table_size"
       | Is_null => "Is_null"
       | ServerGetCtx => "ServerGetCtx"
+      | Plus_f64 => "Plus_f64"
+      | Minus_f64 => "Minus_f64"
+      | Mul_f64 => "Mul_f64"
+      | Div_f64 => "Div_f64"
+      | Max_f64 => "Max_f64"
+      | Min_f64 => "Min_f64"
+      | Real_to_f64 => "Real_to_f64"
+      | F64_to_real => "F64_to_real"
+      | Sqrt_f64 => "Sqrt_f64"
+      | Neg_f64 => "Neg_f64"
+      | Abs_f64 => "Abs_f64"
+      | Int_to_f64 => "Int_to_f64"
+      | Blockf64_update_real => "Blockf64_update_real"
+      | Blockf64_sub_real => "Blockf64_sub_real"
+      | Blockf64_size => "Blockf64_size"
+      | Blockf64_alloc => "Blockf64_alloc"
+      | Blockf64_update_f64 => "Blockf64_update_f64"
+      | Blockf64_sub_f64 => "Blockf64_sub_f64"
 
 end
 

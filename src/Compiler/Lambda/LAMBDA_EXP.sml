@@ -52,7 +52,9 @@ signature LAMBDA_EXP =
     val word32Type : Type
     val wordDefaultType : unit -> Type  (* word31 if tag_values, otherwise word32 *)
     val realType: Type
+    val f64Type: Type
     val stringType: Type
+    val chararrayType: Type
 
     datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)
@@ -77,6 +79,7 @@ signature LAMBDA_EXP =
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type}
+      | BLOCKF64prim
       | EXPORTprim of {name : string,
 		       instance_arg : 'Type,
 		       instance_res : 'Type}
@@ -96,6 +99,7 @@ signature LAMBDA_EXP =
       | WORD     of Word32.word * Type
       | STRING   of string * regvar option
       | REAL     of string * regvar option
+      | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,

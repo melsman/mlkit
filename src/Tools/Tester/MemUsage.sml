@@ -17,6 +17,9 @@ signature MEM_USAGE =
                    out_file: string, eout_file: string option} -> report
   end
 
+fun err exn s =
+    (print ("MemUsage." ^ s ^ " raised " ^ exnMessage exn ^ "\n"); raise exn)
+
 structure MemUsage : MEM_USAGE =
   struct
 
@@ -38,13 +41,13 @@ structure MemUsage : MEM_USAGE =
         : report =
           {count=count+count', rss=rss+rss', size=size+size',
 	   data=data+data', stk=stk+stk', exe=exe+exe',
-	   sys=Time.+(sys,sys'), user=Time.+(user,user),real=Time.+(real,real')}
-    fun div_time (t,n) = Time.fromReal(Time.toReal t / real n)
+	   sys=Time.+(sys,sys'), user=Time.+(user,user),real=Time.+(real,real')} handle X => err X "add_report"
+    fun div_time (t,n) = Time.fromReal(Time.toReal t / real n) handle X => err X "div_time"
     fun div_report ({count, rss, size, data, stk, exe, sys, user, real=r} : report, n:int)
         : report =
           {count=count div n, rss=rss div n, size=size div n,
 	   data=data div n, stk=stk div n, exe=exe div n,
-	   sys=div_time(sys,n), user=div_time(user,n),real=div_time(r,n)}
+	   sys=div_time(sys,n), user=div_time(user,n),real=div_time(r,n)} handle X => err X "div_report"
     val zero_report = {count=0, rss=0, size=0, data=0, stk=0, exe=0,
 		       sys=Time.zeroTime, user=Time.zeroTime,real=Time.zeroTime}
 
@@ -79,19 +82,20 @@ structure MemUsage : MEM_USAGE =
 	      data=data,stk=stk,exe=exe,
 	      sys=Time.-(cstime,cstime0),
 	      user=Time.-(cutime,cutime0),
-	      real=Timer.checkRealTimer realtimer}
+	      real=Timer.checkRealTimer realtimer} handle X => err X "loop_and_monitor_child"
 	  end
 	else raise Fail "loop_and_monitor_child: wrong pid"
       end
 
     fun memUsage {cmd, args, out_file, eout_file} : report =
-      let
-          val {cstime=cstime0, cutime=cutime0,...} = Posix.ProcEnv.times()
+        let
+          val {cstime=cstime0, cutime=cutime0,...} = Posix.ProcEnv.times() handle X => err X "ProcEnv.times"
       in
 	case Posix.Process.fork ()
 	  of SOME pid =>                          (* We're in the parent process *)
-	    ((loop_and_monitor_child pid {cstime0=cstime0,cutime0=cutime0,
-					  realtimer=Timer.startRealTimer()}) handle OS.SysErr(s,_) => raise Fail s)
+	     (((loop_and_monitor_child pid {cstime0=cstime0,cutime0=cutime0,
+					    realtimer=Timer.startRealTimer()}) handle OS.SysErr(s,_) => raise Fail s)
+                  handle X => err X "in parent")
 	   | NONE =>                              (* We're in the child process *)
 	    let val fd = Posix.FileSys.creat(out_file, Posix.FileSys.S.irwxu)
 	                 handle OS.SysErr(s,e) => raise Fail ("Dealing with: " ^ out_file ^ " " ^ s)
@@ -112,6 +116,7 @@ structure MemUsage : MEM_USAGE =
                  Posix.IO.close efd;
                  res
               end) handle OS.SysErr (s,_) => raise Fail s
-	    end
+	    end handle X => err X "in child"
+
       end
   end

@@ -643,6 +643,7 @@ structure EliminateEq: ELIMINATE_EQ =
 		| WORD _ => e
 		| STRING _ => e
 		| REAL _ => e
+		| F64 _ => e
 		| FN{pat,body} => FN{pat=pat,body=f body}
 		| LET {pat, bind, scope} => LET {pat=pat, bind=f bind,scope=f scope}
                 | LETREGION {regvars,scope} => LETREGION{regvars=regvars,scope=f scope}

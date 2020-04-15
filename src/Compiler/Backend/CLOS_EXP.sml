@@ -12,7 +12,7 @@ signature CLOS_EXP =
          1- The function N normalizes a MulExp program such that all
             functions are bound to a variable; an extension to K normal
             form. The result is a MulExp program
-	 
+
          2- The function F splits the set of functions in functions
             implemented with closures and functions implemented
             without closures. The result is an mapping Fenv mapping
@@ -21,7 +21,7 @@ signature CLOS_EXP =
             in the domain of Fenv then it must be implemented with a
             closure
 
-         3- The function clos_conv performs closure conversion and 
+         3- The function clos_conv performs closure conversion and
             translates a MulExp program into a ClosExp program.
 
          4- The function cc activates the above three functions.
@@ -30,7 +30,7 @@ signature CLOS_EXP =
     *)
 
     type ('a,'b,'c)LambdaPgm
-    type place 
+    type place
     type 'a at
     type phsize
 
@@ -51,7 +51,7 @@ signature CLOS_EXP =
 
     type binder = place * phsize
 
-    datatype ClosExp = 
+    datatype ClosExp =
       VAR             of lvar
     | RVAR            of place
     | DROPPED_RVAR    of place
@@ -61,6 +61,7 @@ signature CLOS_EXP =
     | WORD            of {value: Word32.word, precision: int}
     | STRING          of string
     | REAL            of string
+    | F64             of string
     | PASS_PTR_TO_MEM of sma * int
     | PASS_PTR_TO_RHO of sma
     | UB_RECORD       of ClosExp list
@@ -68,12 +69,13 @@ signature CLOS_EXP =
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
+    | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
-    | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
+    | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list,
 			  clos: ClosExp option}
-    | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
+    | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list,
 			  clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
@@ -91,12 +93,12 @@ signature CLOS_EXP =
     | REF             of sma * ClosExp
     | ASSIGN          of sma * ClosExp * ClosExp
     | DROP            of ClosExp
-    | RESET_REGIONS   of {force: bool, 
+    | RESET_REGIONS   of {force: bool,
 			  regions_for_resetting: sma list}
-    | CCALL           of {name: string,  
+    | CCALL           of {name: string,
 			  args: ClosExp list,
 			  rhos_for_result : ClosExp list}
-    | CCALL_AUTO      of {name: string,  
+    | CCALL_AUTO      of {name: string,
 			  args: (ClosExp * foreign_type) list,
 			  res: foreign_type}
     | EXPORT          of {name: string,
@@ -107,7 +109,7 @@ signature CLOS_EXP =
 
     and 'a Switch = SWITCH of ClosExp * ('a * ClosExp) list * ClosExp
 
-    and sma = 
+    and sma =
       ATTOP_LI of ClosExp * pp
     | ATTOP_LF of ClosExp * pp
     | ATTOP_FI of ClosExp * pp
@@ -118,10 +120,10 @@ signature CLOS_EXP =
     | SAT_FF   of ClosExp * pp
     | IGNORE
 
-    datatype TopDecl = 
+    datatype TopDecl =
       FUN of label * cc * ClosExp
     | FN of label * cc * ClosExp
-  
+
     type ClosPrg = TopDecl list
 
     type env

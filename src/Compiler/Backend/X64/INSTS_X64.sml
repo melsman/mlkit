@@ -11,12 +11,19 @@ signature INSTS_X64 =
                  | al (* for byte operations *)
                  | cl (* for shift operations *)
                  | r10b (* for bytetable_update, e.g. *)
-                 | xmm0 | xmm1
+                 | xmm0 | xmm1 | xmm2 | xmm3
+                 | xmm4 | xmm5 | xmm6 | xmm7
+                 | xmm8 | xmm9 | xmm10 | xmm11
+                 | xmm12 | xmm13 | xmm14 | xmm15
 
     val pr_reg : reg -> string
+    val is_xmm : reg -> bool
 
     val tmp_reg0 : reg (*=r10*)
     val tmp_reg1 : reg (*=r11*)
+
+    val tmp_freg0 : reg (*=xmm0*)
+    val tmp_freg1 : reg (*=xmm1*)
 
     val doubleOfQuadReg : reg -> reg (* fails if given a non-quad register *)
 
@@ -91,8 +98,11 @@ signature INSTS_X64 =
     | addsd of ea * ea
     | subsd of ea * ea
     | maxsd of ea * ea
+    | minsd of ea * ea
     | ucomisd of ea * ea
     | xorps of ea * ea
+    | sqrtsd of ea * ea
+    | cvtsi2sdl of ea * ea
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)
@@ -126,7 +136,8 @@ signature INSTS_X64 =
     | ret
     | leave
 
-    | dot_align of int  (* pseudo instructions *)
+    | dot_align of int      (* pseudo instructions *)
+    | dot_p2align of string
     | dot_globl of lab
     | dot_text
     | dot_data
@@ -134,6 +145,7 @@ signature INSTS_X64 =
     | dot_byte of string
     | dot_long of string
     | dot_quad of string
+    | dot_quad' of lab
     | dot_double of string
     | dot_string of string
     | dot_size of lab * int
@@ -159,6 +171,10 @@ signature INSTS_X64 =
       where type lvar = lvar
 
     val sysname : unit -> string
+
+    val rem_dead_code : inst list -> inst list
+
+    val optimise : AsmPrg -> AsmPrg
 
     type StringTree
     val layout : AsmPrg -> StringTree

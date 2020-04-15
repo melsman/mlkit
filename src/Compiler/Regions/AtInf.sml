@@ -9,11 +9,11 @@ structure AtInf: AT_INF =
     structure BT = IntStringFinMap
     structure RegvarBT = EffVarEnv
     structure EdList = Edlib.List
-    
+
     (* In the old storage mode analysis an environment was propagated to later
      * program units. Since we must assign storage mode attop to regions passed
      * to functions declared outside a program unit, the environment is of no
-     * use. 13/10/96-Martin 
+     * use. 13/10/96-Martin
      *)
 
   type sigma = RType.sigma
@@ -28,7 +28,7 @@ structure AtInf: AT_INF =
   val print_word_regions = Flags.is_on0 "print_word_regions"
   val print_effects = Flags.is_on0 "print_effects"
 
-  val debug_which_at = Flags.add_bool_entry 
+  val debug_which_at = Flags.add_bool_entry
       {long="debug_which_at", short=NONE, menu=["Debug","debug which at (storage mode analysis)"],
        item=ref false, neg=false, desc=
        "Debug storage mode analysis."}
@@ -56,7 +56,7 @@ structure AtInf: AT_INF =
   fun die s = Crash.impossible ("AtInf." ^ s)
 
   fun log s = TextIO.output (!Flags.log , s ^ "\n")
-  fun device s = TextIO.output(!Flags.log, s)            
+  fun device s = TextIO.output(!Flags.log, s)
   fun dump t = PP.outputTree(device, t, !Flags.colwidth)
   fun warn report       = Flags.warn report
   fun chat (s : string) = if !Flags.chat then log s else ()
@@ -72,24 +72,24 @@ structure AtInf: AT_INF =
                        \ mode analysis to happen before dropping of regions."
 
   fun debug0(rho, how_bound) =
-	      if debug_which_at() then 
+	      if debug_which_at() then
 		  log ("\nwhich_at: " ^ show_place rho ^ how_bound)
 	      else ()
 
-  fun show_live_vars liveset : string = 
+  fun show_live_vars liveset : string =
     PP.flatten1(LLV.layout_liveset liveset)
 
   fun debug1(rho_related, liveset) =
-     if debug_which_at() then 
+     if debug_which_at() then
 	  (log ("locally live variables: " ^ show_live_vars liveset);
 	   log ("<rho>     = {" ^ show_places rho_related ^ "}"))
      else ()
 
   fun debug2 atbot_or_sat  =
-	      (if debug_which_at() then 
+	      (if debug_which_at() then
 		   log (case atbot_or_sat of
 			    ATBOT _     => "ATBOT"
-			  | SAT _ => "SAT" 
+			  | SAT _ => "SAT"
 			  | ATTOP _      => "ATTOP"
 			  | IGNORE      => "IGNORE")
 	       else ();
@@ -100,8 +100,8 @@ structure AtInf: AT_INF =
 
   local
     fun lay_pair(t1,p)=
-      let fun lay (t1,p) = PP.NODE{start="(",finish = ")", indent= 1, 
-				   childsep = PP.RIGHT",", children = 
+      let fun lay (t1,p) = PP.NODE{start="(",finish = ")", indent= 1,
+				   childsep = PP.RIGHT",", children =
 				   [t1,PP.LEAF (show_place p)]}
       in if print_word_regions() then lay (t1,p)
 	 else case Eff.get_place_ty p
@@ -115,7 +115,7 @@ structure AtInf: AT_INF =
           val b = print_regions()
 	  val c = print_effects()
 *)
-      in 
+      in
         Flags.print_types:= true;
 (*
         Flags.print_regions:=true;
@@ -126,9 +126,9 @@ structure AtInf: AT_INF =
                    Flags.print_regions:= b;
                    Flags.print_effects := c *))
       end
-  end  
+  end
 
-  fun lay_header(force,lvar,(tau,p)) = 
+  fun lay_header(force,lvar,(tau,p)) =
   if force
      then
         PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
@@ -136,16 +136,16 @@ structure AtInf: AT_INF =
                       PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p),
                       PP.LEAF "I have done as you requested, but I cannot guarantee that it is safe.",
-                      PP.LEAF "Here are my objections (one for each region variable concerned):"]}                 
+                      PP.LEAF "Here are my objections (one for each region variable concerned):"]}
 
-  else 
+  else
         PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have suggested resetting the regions that appear free ",
                       PP.LEAF ("in the type scheme with place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
-                      lay_sigma_p(RType.type_to_scheme tau,p)]}                 
+                      lay_sigma_p(RType.type_to_scheme tau,p)]}
 
 
-  fun lay_set (rhos: place list) = 
+  fun lay_set (rhos: place list) =
     let val rhos = if print_word_regions() then rhos
 		   else List.filter (fn rho => case Eff.get_place_ty rho
 						of SOME Eff.WORD_RT => false
@@ -154,7 +154,7 @@ structure AtInf: AT_INF =
 		children = map Eff.layout_effect rhos}
     end
 
-  fun indent (t:StringTree) = 
+  fun indent (t:StringTree) =
     PP.NODE{start ="     ",finish = "", indent = 5, childsep = PP.NOSEP, children = [t]}
 
 
@@ -163,51 +163,51 @@ structure AtInf: AT_INF =
   (* Storage Mode Environments *)
   (*****************************)
 
-  structure SME = 
+  structure SME =
   struct
 
     datatype rho_desc = LETREGION_BOUND | LETREC_BOUND
-  
+
     abstype regvar_env = REGVAR_ENV of rho_desc RegvarBT.map
     with
       exception RegvarEnv
       val empty_regvar_env = REGVAR_ENV(RegvarBT.empty)
       fun declare_regvar_env(x, y, REGVAR_ENV m) = REGVAR_ENV(RegvarBT.add(x,y,m))
-      fun retrieve_regvar_env(x, REGVAR_ENV m) = case (RegvarBT.lookup m x) 
+      fun retrieve_regvar_env(x, REGVAR_ENV m) = case (RegvarBT.lookup m x)
            of SOME v => v
             | NONE => raise RegvarEnv
     end
-  
+
     type lvar_env_range = (sigma*place) * place list
-    abstype lvar_env = 
-      LVAR_ENV of  lvar_env_range BT.map	
-    with 
+    abstype lvar_env =
+      LVAR_ENV of  lvar_env_range BT.map
+    with
       exception LvarEnv
       val empty_lvar_env = LVAR_ENV(BT.empty)
       fun declare_lvar_env(x,y,LVAR_ENV m) = LVAR_ENV(BT.add(Lvars.key x,y,m))
       fun retrieve_lvar_env(x,LVAR_ENV m) =
         case BT.lookup m x of
-  	SOME x => x 
+  	SOME x => x
         | NONE => raise LvarEnv
     end
-  
+
     type excon_env_range = (sigma*place) * place list
-    abstype excon_env = 
-        EXCON_ENV of (excon * excon_env_range) list	
+    abstype excon_env =
+        EXCON_ENV of (excon * excon_env_range) list
     with
-      exception ExconEnv 
+      exception ExconEnv
       val empty_excon_env = EXCON_ENV []
       fun declare_excon_env(x,y,EXCON_ENV m) = EXCON_ENV((x,y)::m)
-      fun retrieve_excon_env(x,EXCON_ENV m) = 
+      fun retrieve_excon_env(x,EXCON_ENV m) =
         #2 (EdList.first (fn x' => Excon.eq(x, #1 x')) m)
         handle EdList.First _ => raise ExconEnv
     end
-  
-  
+
+
     type storage_mode_env = regvar_env * lvar_env * excon_env
-  
+
     val empty_sme = (empty_regvar_env,empty_lvar_env,empty_excon_env)
-  
+
   end; (* SME *)
 
   (******************)
@@ -217,7 +217,7 @@ structure AtInf: AT_INF =
   fun count_inner_conflicting_lvar() = ()
   fun count_inner_conflicting_excon() = ()
 
-  exception AbortExpression 
+  exception AbortExpression
 
   datatype conflict =
     LVAR_PROBLEM of place * lvar *SME.lvar_env_range * place (* the witness *)
@@ -241,19 +241,19 @@ structure AtInf: AT_INF =
 
   fun lines (l: string list) = PP.NODE{start="",finish="", indent=0,childsep=PP.NOSEP, children = map PP.LEAF l}
 
-  fun item (item_number:int) (t:StringTree) = 
+  fun item (item_number:int) (t:StringTree) =
     let val s = "(" ^ Int.toString item_number ^ ")"
     in
-       PP.NODE{start = s, finish = "", 
+       PP.NODE{start = s, finish = "",
                indent = Int.max (size s+1, 5),
                childsep = PP.NOSEP, children = [t]}
     end
 
-  fun layout_message(rho,kind:string,var:string,sigma_p,reachable,witness,item_number:int,force:bool) = 
+  fun layout_message(rho,kind:string,var:string,sigma_p,reachable,witness,item_number:int,force:bool) =
     item item_number
      (PP.NODE{start="",finish ="", indent=0,childsep= PP.NOSEP,children=[
             PP.LEAF "                                                  ",  (* to provoke linebreak *)
-            if force then 
+            if force then
                  PP.LEAF ("I cannot reset '" ^ show_place rho ^ "', because of conflict with the locally")
             else PP.LEAF ("'" ^ show_place rho ^ "': there is a conflict with the locally"),
             PP.LEAF ("live " ^ kind),
@@ -267,7 +267,7 @@ structure AtInf: AT_INF =
                  PP.LEAF ("This suggests that you may be destroying data in '" ^ show_place witness ^ "'.")
             else PP.LEAF ("Thus I have given '" ^ show_place rho ^ "' storage mode \"attop\".")]})
 
-  fun layout_global_message(rho,kind:string,var:string,reachable,witness,item_number:int,force) = 
+  fun layout_global_message(rho,kind:string,var:string,reachable,witness,item_number:int,force) =
     item item_number
       (PP.NODE{start="",finish ="", indent=0,childsep= PP.NOSEP,children=[
             PP.LEAF "                                                  ",  (* to provoke linebreak *)
@@ -281,20 +281,20 @@ structure AtInf: AT_INF =
             PP.LEAF ("Amongst these, '" ^ show_place witness ^ "' can also be reached from '" ^ show_place rho^ "'."),
             if force then
                PP.LEAF ("This suggests that you may be destroying data in '" ^ show_place witness ^ "'.")
-            else 
+            else
                PP.LEAF ("Thus I have given '" ^ show_place rho ^ "' storage mode \"attop\".")]})
 
-  fun layout_conflict (item_number:int, force: bool, c: conflict) = 
+  fun layout_conflict (item_number:int, force: bool, c: conflict) =
   case c of
     LVAR_PROBLEM(rho,lvar,(sigma_p,reachable),witness) =>
        layout_message(rho,"variable", Lvars.pr_lvar lvar,sigma_p,reachable,witness,item_number,force)
   | GLOBAL_LVAR_PROBLEM(rho,lvar,reachable,witness) =>
        layout_global_message(rho,"variable", Lvars.pr_lvar lvar,reachable,witness,item_number,force)
-  | EXCON_PROBLEM(rho,excon,(sigma_p,reachable), witness) => 
+  | EXCON_PROBLEM(rho,excon,(sigma_p,reachable), witness) =>
        layout_message(rho,"exception constructor", Excon.pr_excon excon,sigma_p,reachable,witness,item_number,force)
-  | GLOBAL_EXCON_PROBLEM(rho,excon,reachable,witness) => 
+  | GLOBAL_EXCON_PROBLEM(rho,excon,reachable,witness) =>
        layout_global_message(rho,"exception constructor", Excon.pr_excon excon,reachable,witness,item_number,force)
-  | NON_LOCAL rho => item item_number 
+  | NON_LOCAL rho => item item_number
                       (if force then
                            PP.LEAF ("'" ^ show_place rho ^ "': this region variable is bound\
                                     \ outside the present function")
@@ -302,7 +302,7 @@ structure AtInf: AT_INF =
                            lines[("I cannot reset '" ^ show_place rho ^ "', for it "),
                                  ("is bound outside the present function.")]
                       )
-  | ALL_ATTOP rho => item item_number 
+  | ALL_ATTOP rho => item item_number
                      (if force then
                            lines[("'" ^ show_place rho ^ "': the flag \"Storage Mode Analysis/all modes attop\""),
                                  (" is enabled.")]
@@ -310,15 +310,15 @@ structure AtInf: AT_INF =
                            lines[("I cannot reset '" ^ show_place rho ^ "', for the flag "),
                                  ("\"Storage Mode Analysis/all modes attop\" is enabled.")]
                      )
-  | FORMAL_REGION_PARAM(rho) => 
+  | FORMAL_REGION_PARAM(rho) =>
                      (* here force is true *)
                      item item_number
                        (lines[("'" ^ show_place rho ^ "' is a formal parameter of a region-polymorphic "),
                               ("function (which is or may in future program units be "),
                               ("applied to regions containing live values).")])
 
-  fun lay_conflicts (force:bool,l : conflict list) = 
-     let fun loop(item_number:int, l: conflict list) = 
+  fun lay_conflicts (force:bool,l : conflict list) =
+     let fun loop(item_number:int, l: conflict list) =
                 case l of [] => []
                 | (c::rest) => (layout_conflict(item_number, force, c)::
                                 loop(item_number+1,rest))
@@ -328,20 +328,20 @@ structure AtInf: AT_INF =
   fun lay_report(force:bool, lvar, mu, conflicts) : StringTree =
       PP.NODE{start = if force then ("forceResetting(" ^ Lvars.pr_lvar lvar ^ "): ")
                                else ("resetRegions(" ^ Lvars.pr_lvar lvar ^ "): "),
-              finish = "", indent = 3, childsep = PP.NOSEP,children = 
+              finish = "", indent = 3, childsep = PP.NOSEP,children =
                   lay_header(force,lvar,mu) :: lay_conflicts(force,conflicts)}
 
-  fun any_live (rho,sme as (_,LE,EE), liveset, 
+  fun any_live (rho,sme as (_,LE,EE), liveset,
                 rho_points_into, atbot_or_sat): conflict option * place at=
-      let 
+      let
         (* val _ = Profile.profileOn();*)
-        fun conflicting_local_lvar(lvar): conflict option =  
+        fun conflicting_local_lvar(lvar): conflict option =
              let val lvar_res as (_,lrv) = SME.retrieve_lvar_env(Lvars.key lvar, LE)
              in
                case rho_points_into(lrv)  of
                  SOME (witness: place) => SOME(LVAR_PROBLEM(rho,lvar,lvar_res,witness))
                | NONE => NONE
-             end handle SME.LvarEnv => 
+             end handle SME.LvarEnv =>
                      (* lvar from previous program module. The follwing code assumes that
                         the only region variables that can occur free in the type of an
                         lvar from a previous module are global regions declared in Effect!!! *)
@@ -355,10 +355,10 @@ structure AtInf: AT_INF =
                case rho_points_into(lrv) of
                  SOME (witness: place) => SOME(EXCON_PROBLEM(rho,excon,excon_res,witness))
                | _ => NONE
-             end handle SME.ExconEnv => 
+             end handle SME.ExconEnv =>
                      (* excon from previous program module. The following code assumes that
                         the only region variables that can occur free in the type of an
-                        lvar or excon from a previous module are global regions declared 
+                        lvar or excon from a previous module are global regions declared
                         in Effect!!! *)
                (case rho_points_into(global_regions)  of
                  SOME (witness: place) => SOME(GLOBAL_EXCON_PROBLEM(rho,excon,global_regions,witness))
@@ -376,7 +376,7 @@ structure AtInf: AT_INF =
   fun equal_places rho1 rho2 = Eff.eq_effect(rho1,rho2)
 
   fun letregion_bound (rho,sme,liveset): conflict option * place at=
-      let 
+      let
 	  fun rho_points_into rhos= List.find (equal_places rho) rhos
       in
 	  debug1([],liveset);
@@ -387,8 +387,8 @@ structure AtInf: AT_INF =
   fun visit rho = Eff.get_visited rho := true;
   fun unvisit rho = Eff.get_visited rho := false;
 
-  fun letrec_bound (rho, sme, liveset): conflict option * place at= 
-      let 
+  fun letrec_bound (rho, sme, liveset): conflict option * place at=
+      let
          (*val _ = Profile.profileOn();*)
       	  val rho_related = RegFlow.reachable_in_graph_with_insertion (rho)
          (*val _ = Profile.profileOff();*)
@@ -405,15 +405,15 @@ structure AtInf: AT_INF =
     | show_place_at (SAT p) = "sat " ^ show_place p
     | show_place_at IGNORE  = "(ignore)"
 
-  fun which_at0 explain (sme as (RE,LE,EE),rho,liveset) 
-      : conflict option * place at = 
+  fun which_at0 explain (sme as (RE,LE,EE),rho,liveset)
+      : conflict option * place at =
       (* Invariant: all rhos have their visited field false *)
      case Eff.get_place_ty rho of
        SOME Eff.WORD_RT => (NONE, ATTOP rho)
-     | _ => 
-      (if disable_atbot_analysis() then 
+     | _ =>
+      (if disable_atbot_analysis() then
   	      (SOME(ALL_ATTOP rho), ATTOP rho)
-       else 
+       else
         (case SME.retrieve_regvar_env(rho,RE) of
   	 SME.LETREGION_BOUND =>   (* SMA rules 25 and 26 *)
     	   (debug0 (rho,"(letregion-bound)");letregion_bound(rho,sme,liveset))
@@ -427,11 +427,11 @@ structure AtInf: AT_INF =
   fun which_at env (rho,liveset) :  place at =
           #2(which_at0 false (env,rho,liveset))
 
-  fun which_at_with_explanation(env,rho,liveset) 
+  fun which_at_with_explanation(env,rho,liveset)
       : conflict option * place at = which_at0 true (env,rho,liveset)
 
-  fun analyse_rhos_for_resetting (sme, liveset, rhos) : place at list * conflict list= 
-    let 
+  fun analyse_rhos_for_resetting (sme, liveset, rhos) : place at list * conflict list=
+    let
        fun loop([]:place list, acc1: place at list, acc2: conflict list) = (acc1,acc2)
          | loop(rho::rest, acc1,acc2)=
              case which_at_with_explanation(sme,rho,liveset) of
@@ -441,25 +441,25 @@ structure AtInf: AT_INF =
       loop(rhos,[],[])
     end
 
-  (* rvars(sigma, p0) = ((sigma, p0), lrv) where lrv is the set of all 
+  (* rvars(sigma, p0) = ((sigma, p0), lrv) where lrv is the set of all
      region and effect variables reachable from p or a free region or
      effect variables of sigma. *)
 
-  fun rvars (sigma, p0): SME.lvar_env_range = 
+  fun rvars (sigma, p0): SME.lvar_env_range =
       ((*Profile.profileOn();*)
        let val free_vars = RType.ferv_sigma sigma
            val free_vars' = p0 :: free_vars
            val lrv = RegFlow.reachable_with_insertion free_vars'
 		     handle Find => Crash.impossible "AtInference: rvars "
-       in 
+       in
           (*Profile.profileOff();*)
           ((sigma, p0),lrv)
        end)
 
-  fun mu_to_scheme_and_place(mu) = 
+  fun mu_to_scheme_and_place(mu) =
       let val (tau,p) = mu
           val sigma = RType.type_to_scheme tau
-      in 
+      in
           (sigma,p)
       end
 
@@ -467,13 +467,13 @@ structure AtInf: AT_INF =
   (*  sma0 traverses the program  *)
   (*  and inserts storage modes   *)
   (********************************)
- 
+
   fun sma0 (pgm0 as PGM{expression=trip,
 		 export_datbinds,
 		 import_vars,
 		 export_vars,
 		 export_basis,
-		 export_Psi}: (place * LLV.liveset, place*mul, qmularefset ref)LambdaPgm) 
+		 export_Psi}: (place * LLV.liveset, place*mul, qmularefset ref)LambdaPgm)
       : (place at, place*mul, unit)LambdaPgm =
       let fun sma_trip sme (TR(e, metaType, ateffects, mulef_r)) =
 	    let fun sma_sw sme (SWITCH(tr,choices,opt)) =
@@ -482,29 +482,30 @@ structure AtInf: AT_INF =
 		      val opt' = case opt of SOME tr => SOME (sma_trip sme tr) | NONE => NONE
 		  in SWITCH(tr',choices',opt')
 		  end
-		val e' = 
+		val e' =
 		 (case e
 		    of VAR{lvar,il,plain_arreffs,fix_bound,rhos_actuals=ref actuals,other} =>
 		      let val actuals' = map (which_at sme) actuals  (* also liveset here*)
 		      in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
 			     fix_bound=fix_bound,rhos_actuals=ref actuals',other=()}
 		      end
-		     | INTEGER(n, t, alloc as (place,liveset)) => 
+		     | INTEGER(n, t, alloc as (place,liveset)) =>
 		      if RType.unboxed t then INTEGER(n, t, ATTOP place) (* no need for analysis *)
 		      else INTEGER(n, t, which_at sme alloc)
-		     | WORD(w, t, alloc as (place,liveset)) => 
+		     | WORD(w, t, alloc as (place,liveset)) =>
 		      if RType.unboxed t then WORD(w, t, ATTOP place) (* no need for analysis *)
 		      else WORD(w, t, which_at sme alloc)
 		     | STRING(s,alloc) => STRING(s, which_at sme alloc)
 		     | REAL(s,alloc) => REAL(s, which_at sme alloc)
+		     | F64(s,alloc as (place,_)) => F64(s, ATTOP place)
 		     | UB_RECORD trips => UB_RECORD(map (sma_trip sme) trips)
 		     | FN{pat,body,free,alloc} => sma_fn(sme,SME.empty_regvar_env,pat,body,free,alloc)
-		     | LETREGION{B,rhos,body} => 
-                         let 
+		     | LETREGION{B,rhos,body} =>
+                         let
                             val (RE,LE,EE) = sme
                             fun extend ((rho,mul), RE') = SME.declare_regvar_env(rho,SME.LETREGION_BOUND,RE')
                             val sme_body = (foldl extend RE (!rhos), LE, EE)
-                         in 
+                         in
                             LETREGION{B=B,rhos=rhos,body=sma_trip sme_body body}
                          end
 		     | LET{k_let,pat,bind,scope} =>
@@ -519,9 +520,9 @@ structure AtInf: AT_INF =
                                 scope=sma_trip sme_scope scope}
 		         end
 		     | FIX{free,shared_clos = shared_clos as (shared_rho,liveset),functions,scope} =>
-  		         let 
+  		         let
                             val (RE,LE,EE) = sme
-                            val LE' = foldl  (fn ({lvar,tyvars, rhos_formals, epss, Type, ...}, acc) => 
+                            val LE' = foldl  (fn ({lvar,tyvars, rhos_formals, epss, Type, ...}, acc) =>
 					      let val rhos = map (fn (a,_) => a) (!rhos_formals)
 					      in SME.declare_lvar_env(lvar,rvars(RType.FORALL(tyvars,rhos,
 							epss,Type),shared_rho),acc)
@@ -538,7 +539,7 @@ structure AtInf: AT_INF =
 				       val rhos' = map (fn (a,_) => a) (!rhos_formals)
                                        val RE_for_body_of_fn = foldl extend SME.empty_regvar_env rhos'
                                        val fn' = sma_fn(sme',RE_for_body_of_fn,pat,body,free,alloc)
-                                    in 
+                                    in
        			              {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
 			               rhos_formals=rhos_formals,
                                        bound_but_never_written_into=bound_but_never_written_into,
@@ -550,35 +551,35 @@ structure AtInf: AT_INF =
 
 		         in FIX{free=free,
 			     shared_clos=which_at sme shared_clos,
-			     functions=map do_function functions, 
+			     functions=map do_function functions,
 			     scope=sma_trip sme' scope}
 		         end
 		     | APP(ck,sr,tr1,tr2) => APP(ck,sr,sma_trip sme tr1, sma_trip sme tr2)
 		     | EXCEPTION(excon,b,tp,alloc as (rho,liveset),scope) =>
                          let val (RE,LE,EE) = sme
                              val sme_body = (RE,LE,SME.declare_excon_env(excon,rvars(mu_to_scheme_and_place tp), EE))
-                     
+
                          in
-		           EXCEPTION(excon,b,tp, ATTOP rho, 
+		           EXCEPTION(excon,b,tp, ATTOP rho,
                                      sma_trip sme_body scope)
                          end
 		     | RAISE tr => RAISE (sma_trip sme tr)
 		     | HANDLE(tr1,tr2) => HANDLE(sma_trip sme tr1, sma_trip sme tr2)
-		     | SWITCH_I {switch,precision} => SWITCH_I {switch=sma_sw sme switch, precision=precision} 
-		     | SWITCH_W {switch,precision} => SWITCH_W {switch=sma_sw sme switch, precision=precision} 
-		     | SWITCH_S sw => SWITCH_S (sma_sw sme sw) 
-		     | SWITCH_C sw => SWITCH_C (sma_sw sme sw) 
-		     | SWITCH_E sw => SWITCH_E (sma_sw sme sw) 
-		     | CON0 {con, il, aux_regions, alloc} => 
-  		           CON0 {con=con, il=il, 
-                                  aux_regions=map (which_at sme) aux_regions, 
-                                  alloc=which_at sme alloc} 
-		     | CON1 ({con, il, alloc}, tr) => 
+		     | SWITCH_I {switch,precision} => SWITCH_I {switch=sma_sw sme switch, precision=precision}
+		     | SWITCH_W {switch,precision} => SWITCH_W {switch=sma_sw sme switch, precision=precision}
+		     | SWITCH_S sw => SWITCH_S (sma_sw sme sw)
+		     | SWITCH_C sw => SWITCH_C (sma_sw sme sw)
+		     | SWITCH_E sw => SWITCH_E (sma_sw sme sw)
+		     | CON0 {con, il, aux_regions, alloc} =>
+  		           CON0 {con=con, il=il,
+                                  aux_regions=map (which_at sme) aux_regions,
+                                  alloc=which_at sme alloc}
+		     | CON1 ({con, il, alloc}, tr) =>
                            CON1 ({con=con,il=il,alloc= which_at sme alloc},
                                  sma_trip sme tr)
 		     | DECON ({con, il}, tr) => DECON({con=con,il=il},sma_trip sme tr)
 		     | EXCON (excon, opt) => EXCON(excon, case opt
-							    of SOME (alloc as (p, liveset),tr) => 
+							    of SOME (alloc as (p, liveset),tr) =>
                                                                  SOME (ATTOP p, sma_trip sme tr)
 							     | NONE => NONE)
 		     | DEEXCON (excon,tr) => DEEXCON(excon, sma_trip sme tr)
@@ -588,33 +589,34 @@ structure AtInf: AT_INF =
 		     | REF (alloc,tr) => REF(which_at sme alloc, sma_trip sme tr)
 		     | ASSIGN (alloc as (rho,_),tr1,tr2) => ASSIGN (ATTOP rho,sma_trip sme tr1, sma_trip sme tr2) (* no need for analysis *)
 		     | DROP tr => DROP (sma_trip sme tr)
-		     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc = (p,liveset)}, tr1,tr2) => 
+		     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc = (p,liveset)}, tr1,tr2) =>
 		      EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=ATTOP p},  (* no need for analysis *)
 			     sma_trip sme tr1,sma_trip sme tr2)
-		     | CCALL ({name, mu_result, rhos_for_result}, trs) =>  
-		         CCALL ({name = name, mu_result = mu_result, 
+		     | CCALL ({name, mu_result, rhos_for_result}, trs) =>
+		         CCALL ({name = name, mu_result = mu_result,
 				 rhos_for_result =
 				     map (fn ((rho, liveset), i_opt) =>
 					  (which_at sme (rho, liveset), i_opt))
 				     rhos_for_result},
 				map (sma_trip sme) trs)
+		     | BLOCKF64 (alloc, trs) => BLOCKF64(which_at sme alloc,map (sma_trip sme) trs)
 		     | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)
-		     | RESET_REGIONS ({force, alloc = (p, liveset), ...}, tr as (TR(VAR{lvar,...},meta,_,_))) => 
+		     | RESET_REGIONS ({force, alloc = (p, liveset), ...}, tr as (TR(VAR{lvar,...},meta,_,_))) =>
                           (case meta of
                              MulExp.RegionExp.Mus [mu] =>
-                                   let 
-				       val free_regions = 
+                                   let
+				       val free_regions =
                                              Eff.remove_duplicates(RType.frv_mu mu)
 
-                                       val (place_at_list, conflicts) = 
-                                               analyse_rhos_for_resetting(sme,liveset,free_regions)      
-                                       val conflicts' = 
+                                       val (place_at_list, conflicts) =
+                                               analyse_rhos_for_resetting(sme,liveset,free_regions)
+                                       val conflicts' =
                                               if force then
                                                     foldl (fn (SAT rho, acc) => FORMAL_REGION_PARAM rho :: acc
                                                             | (_, acc) => acc) conflicts place_at_list
                                               else conflicts
                                    in
-                                      case conflicts' of 
+                                      case conflicts' of
                                         [] => ()
                                       | _ => warn (PP.reportStringTree(lay_report(force,lvar,mu,conflicts')));
 (*ME 1998-08-30
@@ -623,7 +625,7 @@ structure AtInf: AT_INF =
 							            \printed earlier in this file!",
 							       Report.line "(Search on \"You have\")")));
 *)
-                                      RESET_REGIONS({force=force,alloc=ATTOP p,regions_for_resetting = place_at_list}, 
+                                      RESET_REGIONS({force=force,alloc=ATTOP p,regions_for_resetting = place_at_list},
                                                        (* the place_at_list may contain word regions *)
                                                     sma_trip sme tr)
                                    end
@@ -634,7 +636,7 @@ structure AtInf: AT_INF =
 		      let fun f {lvar,sigma,other,place} = {lvar=lvar,sigma=sigma,other=(),place=place}
 		      in FRAME{declared_lvars=map f declared_lvars, declared_excons = declared_excons}
 		      end
-                   ) handle Crash.CRASH => 
+                   ) handle Crash.CRASH =>
                            (log "\nStorage Mode Analysis failed at expression:";
                             dump(MulExp.layoutLambdaExp(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)
                              e);
@@ -642,19 +644,19 @@ structure AtInf: AT_INF =
 
 	    in TR(e', metaType, ateffects, mulef_r)
 	    end
-        and sma_fn(sme,regvar_env0,pat,body,free,alloc) = 
+        and sma_fn(sme,regvar_env0,pat,body,free,alloc) =
                      let val (_, LE, EE) = sme
-                         fun extend ((lvar, mu), LE) = 
+                         fun extend ((lvar, mu), LE) =
                            SME.declare_lvar_env(lvar,rvars(mu_to_scheme_and_place mu), LE)
-                         val sme_body = (regvar_env0, 
-                                         foldl extend LE pat,  
+                         val sme_body = (regvar_env0,
+                                         foldl extend LE pat,
                                          EE)
                      in
                          FN{pat=pat,body=sma_trip sme_body body,
                            free=free,alloc=which_at sme alloc}
                      end
 
-      in 
+      in
          PGM{expression=sma_trip SME.empty_sme trip,
 	     export_datbinds=export_datbinds,
 	     import_vars=import_vars,
@@ -674,7 +676,7 @@ structure AtInf: AT_INF =
     (* (3) compute storage modes.               *)
     (*                                          *)
     (* See POPL 96 paper for an explanation of  *)
-    (* the general principles.                  *) 
+    (* the general principles.                  *)
     (********************************************)
 
     fun sma(pgm: (place,    place*mul, qmularefset ref)LambdaPgm):
@@ -685,9 +687,9 @@ structure AtInf: AT_INF =
          Timing.timing_end("RegFlow");
          Timing.timing_begin();
          chat "Computing locally live variables ...";
-         let val pgm' = LLV.llv pgm 
+         let val pgm' = LLV.llv pgm
                         handle _ => die "call of LLV.llv failed"
-         in 
+         in
            Timing.timing_end("LocLive");
            chat "Storage mode analysis ...";
            Timing.timing_begin();
@@ -701,7 +703,7 @@ structure AtInf: AT_INF =
     (***********************************)
 
     type StringTree = PP.StringTree
-    fun lay (s : string) (p: 'a -> StringTree) (a : 'a) : StringTree option = 
+    fun lay (s : string) (p: 'a -> StringTree) (a : 'a) : StringTree option =
       SOME(PP.HNODE{start=s^" ",finish="",children=[p a],childsep=PP.NOSEP})
 
     fun layout_at (p: 'a -> StringTree) (at : 'a at) =
@@ -737,7 +739,7 @@ structure AtInf: AT_INF =
 
     fun layout_trip_brief(tr : (place at, place*mul, unit)trip): StringTree =
       if print_regions() then
-         MulExp.layoutLambdaTrip 
+         MulExp.layoutLambdaTrip
              (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit tr
       else
          MulExp.layoutLambdaTrip ignore ignore ignore layout_unit tr
@@ -753,7 +755,3 @@ structure AtInf: AT_INF =
     fun layout_pgm_brief (PGM{expression,...}) = layout_trip_brief expression
 
 end (* AtInf *)
-
-
-
-
