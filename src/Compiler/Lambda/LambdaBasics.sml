@@ -35,6 +35,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | WORD _ => lamb
 	   | STRING _ => lamb
 	   | REAL _ => lamb
+	   | F64 _ => lamb
 	   | FN{pat,body} => FN{pat=pat,body=passTD f body}
 	   | LET{pat,bind,scope} => LET{pat=pat,bind=passTD f bind,scope = passTD f scope}
            | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=passTD f scope}
@@ -78,6 +79,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	      | WORD _ => lamb
 	      | STRING _ => lamb
 	      | REAL _ => lamb
+	      | F64 _ => lamb
 	      | FN{pat,body} => FN{pat=pat,body=passBU f body}
 	      | LET{pat,bind,scope} => LET{pat=pat,bind=passBU f bind,scope = passBU f scope}
               | LETREGION{regvars,scope} => LETREGION{regvars=regvars,scope=passBU f scope}
@@ -119,6 +121,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | WORD _ => new_acc
 	   | STRING _ => new_acc
 	   | REAL _ => new_acc
+	   | F64 _ => new_acc
 	   | FN{pat,body} => foldTD f new_acc body
 	   | LET{pat,bind,scope} => foldTD f (foldTD f new_acc bind) scope
            | LETREGION{regvars,scope} => foldTD f new_acc scope
@@ -156,6 +159,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | INTEGER _ => lamb
          | WORD _ => lamb
          | REAL _ => lamb
+         | F64 _ => lamb
          | STRING _ => lamb
 	 | FN{pat,body} => FN{pat=pat,body=f body}
          | LET{pat,bind,scope} => LET{pat=pat,bind=f bind,scope=f scope}
@@ -200,6 +204,7 @@ structure LambdaBasics: LAMBDA_BASICS =
          | INTEGER _ => ()
          | WORD _ => ()
          | REAL _ => ()
+         | F64 _ => ()
          | STRING _ => ()
 	 | FN{pat,body} => f body
          | LET{pat,bind,scope} => (f bind; f scope)
@@ -318,7 +323,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 
       fun new_fnpat pat ren =
 	let val lvs = map #1 pat
-	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
+	  val lvs_pairs = map (fn lv => (lv, Lvars.renew lv)) lvs
 	  val ren' = add_lvs lvs_pairs ren
 	in (on_fnpat ren' pat, ren')
 	end
@@ -336,7 +341,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun new_letpat pat ren =
 	let val lvs = map #1 pat
 	  val tvs = ((rem_dubs []) o flatten) (map #2 pat)
-	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
+	  val lvs_pairs = map (fn lv => (lv, Lvars.renew lv)) lvs
 	  val tvs_pairs = map (fn tv => (tv, new_tv tv)) tvs
 	  val ren_bind = add_tvs tvs_pairs ren
 	  val ren_scope = add_lvs lvs_pairs ren
@@ -351,7 +356,7 @@ structure LambdaBasics: LAMBDA_BASICS =
       fun on_functions ren on_e fns =
 	let val lvs = map #lvar fns
 	  val tvs = ((rem_dubs []) o flatten) (map #tyvars fns)
-	  val lvs_pairs = map (fn lv => (lv, Lvars.new_named_lvar(Lvars.pr_lvar lv))) lvs
+	  val lvs_pairs = map (fn lv => (lv, Lvars.renew lv)) lvs
 	  val tvs_pairs = map (fn tv => (tv, new_tv tv)) tvs
 	  val ren' = add_lvs lvs_pairs ren
 	  val ren_binds = add_tvs tvs_pairs ren'
@@ -393,6 +398,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 	   | WORD _ => lamb
 	   | STRING _ => lamb
 	   | REAL _ => lamb
+	   | F64 _ => lamb
 	   | FN{pat,body} => let val (pat', ren') = new_fnpat pat ren
 			     in FN{pat=pat', body=on_e ren' body}
 			     end
@@ -568,6 +574,7 @@ structure LambdaBasics: LAMBDA_BASICS =
 		 | WORD _ => lamb
 		 | STRING _ => lamb
 		 | REAL _ => lamb
+		 | F64 _ => lamb
 		 | FN{pat,body} => FN{pat = map (fn (lv, Type) => (lv, on_Type S Type)) pat,
 				      body = f S body}
 		 | LET{pat,bind,scope} => let val (S',pat') = on_let_pat S pat
@@ -756,6 +763,7 @@ structure LambdaBasics: LAMBDA_BASICS =
             | WORD _ => e
             | STRING _ => e
             | REAL _ => e
+            | F64 _ => e
 	    | FN{pat,body} =>
               let val E = foldl (fn ((lv,_),E) => add(lv,NONE,E)) E pat
               in FN{pat=pat,body=N E body}
@@ -844,6 +852,7 @@ structure LambdaBasics: LAMBDA_BASICS =
                 | WORD _ => e
                 | STRING _ => e
                 | REAL _ => e
+                | F64 _ => e
 	        | FN{pat,body} => FN{pat=pat,body=t true body}
 	        | LET{pat,bind,scope} =>
                   LET{pat=pat,bind=t false bind,scope=t tail scope}

@@ -53,6 +53,7 @@ signature REGION_EXP =
       | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
+      | F64      of string * 'a
       | UB_RECORD of ('a,'b) trip list (* unboxed records *)
       | FN       of {pat : (lvar * (Type*place)) list,
                      body : ('a,'b)trip,
@@ -99,6 +100,8 @@ signature REGION_EXP =
 		     mu_result : Type * place, (*mu of result from c function*)
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list  (* Calling C functions *)
+
+      | BLOCKF64 of 'a * ('a,'b)trip list
 
       (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
 

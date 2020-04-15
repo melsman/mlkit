@@ -26,7 +26,6 @@ install:
  - travis_wait 50 make mlkit
  - make mlkit_libs
  - sudo make install
- - ./configure --with-compiler=`pwd`/bin/mlkit
  - travis_wait 50 make smltojs
  - make smltojs_basislibs
  - sudo make install_smltojs

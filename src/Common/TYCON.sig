@@ -18,9 +18,10 @@ signature TYCON =
     val tycon_INTINF : tycon
     val tycon_WORD   : tycon
     val tycon_WORD8  : tycon
-    val tycon_WORD31  : tycon
+    val tycon_WORD31 : tycon
     val tycon_WORD32 : tycon
     val tycon_REAL   : tycon
+    val tycon_F64    : tycon  (* Internal *)
     val tycon_STRING : tycon
     val tycon_CHAR   : tycon
     val tycon_EXN    : tycon

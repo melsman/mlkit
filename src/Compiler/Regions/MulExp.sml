@@ -100,6 +100,7 @@ struct
       | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
+      | F64      of string * 'a
       | UB_RECORD of ('a,'b,'c) trip list (* unboxed records *)
 
       | FN       of {pat : (lvar * (Type*place)) list,
@@ -159,6 +160,7 @@ struct
 		     mu_result : Type * place, (*mu of result from c function*)
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b,'c)trip list  (* Calling C functions *)
+      | BLOCKF64 of 'a * ('a,'b,'c)trip list
       | EXPORT   of {name : string,
 		     mu_arg : Type * place, (*mu of argument for c function*)
 		     mu_res : Type * place}
@@ -307,6 +309,7 @@ struct
              | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
              | CCALL(_,l) => app (warn_puts_trip TE) l
              | EXPORT(_,tr) => warn_puts_trip TE tr
+             | BLOCKF64(_,l) => app (warn_puts_trip TE) l
              | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
              | FRAME _ => ()
              | LETREGION{body, ...} => warn_puts_trip TE body
@@ -514,6 +517,7 @@ struct
              | DROP(tr1) => (warn_dangle_trip TE tr1)
              | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | CCALL(_,l) => app (warn_dangle_trip TE) l
+             | BLOCKF64(_,l) => app (warn_dangle_trip TE) l
              | EXPORT(_,tr) => warn_dangle_trip TE tr
              | RESET_REGIONS(_,tr) => warn_dangle_trip TE tr
              | FRAME _ => ()
@@ -807,6 +811,7 @@ struct
         | WORD(w, t, a) => LEAF("0x" ^ Word32.toString w ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
+        | F64(r, a) => LEAF((r^"f64") ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ",
                     children = map (fn trip => layTrip(trip,0)) args}
@@ -949,15 +954,59 @@ struct
                        children = [layTrip(arg1,2), layTrip(arg2, 2)]}
             end
         | CCALL ({name, rhos_for_result, mu_result}, args) =>
-	    let val rhos_for_result_sts =
-	      if print_regions()
-	      then map (PP.LEAF o alloc_string o #1) rhos_for_result
-	      else []
-	    in PP.NODE {start = "ccall(", finish = ")"
+	    let val rhos_for_result_sts = if print_regions()
+	                                  then map (PP.LEAF o alloc_string o #1) rhos_for_result
+	                                  else []
+                fun prettyCcallName name =
+                    case name of
+                        "__minus_f64" => SOME "minus_f64"
+                      | "__plus_f64" => SOME "plus_f64"
+                      | "__mul_f64" => SOME "mul_f64"
+                      | "__div_f64" => SOME "div_f64"
+                      | "__max_f64" => SOME "max_f64"
+                      | "__min_f64" => SOME "min_f64"
+                      | "__neg_f64" => SOME "neg_f64"
+                      | "__abs_f64" => SOME "abs_f64"
+                      | "__sqrt_f64" => SOME "sqrt_f64"
+                      | "__minus_real" => SOME "minus_real"
+                      | "__plus_real" => SOME "plus_real"
+                      | "__mul_real" => SOME "mul_real"
+                      | "__div_real" => SOME "div_real"
+                      | "__max_real" => SOME "max_real"
+                      | "__min_real" => SOME "min_real"
+                      | "__neg_real" => SOME "neg_real"
+                      | "__abs_real" => SOME "abs_real"
+                      | "__sqrt_real" => SOME "sqrt_real"
+                      | "__int_to_f64" => SOME "int_to_f64"
+                      | "__real_to_f64" => SOME "real_to_f64"
+                      | "__f64_to_real" => SOME "f64_to_real"
+                      | "__blockf64_sub_f64" => SOME "blockf64_sub_f64"
+                      | "__plus_int31" => SOME "plus_int31"
+                      | "__minus_int31" => SOME "minus_int31"
+                      | "__mul_int31" => SOME "mul_int31"
+                      | "__div_int31" => SOME "div_int31"
+                      | "__less_int31" => SOME "less_int31"
+                      | "__greater_int31" => SOME "greater_int31"
+                      | "__lesseq_int31" => SOME "lesseq_int31"
+                      | "__greatereq_int31" => SOME "greatereq_int31"
+                      | "__less_real" => SOME "less_real"
+                      | "__greater_real" => SOME "greater_real"
+                      | "__lesseq_real" => SOME "lesseq_real"
+                      | "__greatereq_real" => SOME "greatereq_real"
+                      | "__less_f64" => SOME "less_f64"
+                      | "__greater_f64" => SOME "greater_f64"
+                      | "__lesseq_f64" => SOME "lesseq_f64"
+                      | "__greatereq_f64" => SOME "greatereq_f64"
+                      | _ => NONE
+                val (start, preF) =
+                    case prettyCcallName name of
+                        SOME n => (n ^ "(", fn cs => cs)
+                      | NONE => ("ccall(", fn cs => PP.LEAF name :: cs)
+	    in PP.NODE {start = start, finish = ")"
 			^ (if !Flags.print_types then ":" ^ PP.flatten1(layMu mu_result) else ""),
 			indent = 6, childsep = PP.RIGHT ", ",
-			children = PP.LEAF name :: rhos_for_result_sts
-		                    @ (map (fn t => layTrip(t,0)) args)}
+			children = preF(rhos_for_result_sts
+		                        @ (map (fn t => layTrip(t,0)) args))}
 	    end
         | EXPORT ({name, mu_arg, mu_res}, arg) =>
 	    let
@@ -968,6 +1017,13 @@ struct
 			indent = 6, childsep = PP.RIGHT ", ",
 			children = [layTrip(arg,0)]}
 	    end
+        | BLOCKF64(alloc, args) =>
+            let
+               val alloc_s = alloc_string alloc
+            in
+            PP.NODE{start = "{", finish = "}" ^ alloc_s, indent = 1, childsep = PP.RIGHT", ",
+                    children = map (fn trip => layTrip(trip,0)) args}
+            end
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
@@ -1218,6 +1274,7 @@ struct
     | WORD _ => tr
     | STRING _ => tr
     | REAL _ => tr
+    | F64 _ => tr
     | UB_RECORD trs => e_to_t(UB_RECORD(map (eval env) trs))
     | FN{pat,body,free,alloc} =>
        e_to_t(FN{pat=pat,body = eval [] body, free=free,alloc=alloc})
@@ -1266,6 +1323,7 @@ struct
     | DROP(tr) => e_to_t(DROP(eval env tr))
     | EQUAL(info,tr1,tr2)=>e_to_t(EQUAL(info,eval env tr1, eval env tr2))
     | CCALL(info,trs) => e_to_t(CCALL(info, map (eval env) trs))
+    | BLOCKF64(a, trs) => e_to_t(BLOCKF64(a, map (eval env) trs))
     | EXPORT(info,tr) => e_to_t(EXPORT(info,  eval env tr))
     | RESET_REGIONS(info,tr) => e_to_t(RESET_REGIONS(info, eval env tr))
     | FRAME f => tr
@@ -1430,6 +1488,7 @@ struct
         | RegionExp.WORD(i,t,a) => (WORD(i,t,a), dep)
         | RegionExp.STRING(s,a) => (STRING(s,a), dep)
         | RegionExp.REAL(r,a) => (REAL(r,a), dep)
+        | RegionExp.F64(r,a) => (F64(r,a), dep)
         | RegionExp.UB_RECORD(ts) =>
             let val (ts', dep) = mk_deps(EE, ts, dep)
             in (UB_RECORD ts', dep)
@@ -1556,6 +1615,10 @@ struct
             let val (trs',dep) = mk_deps(EE,trs,dep)
             in (CCALL(c,trs'),dep)
             end
+	| RegionExp.BLOCKF64 (p,trs) =>
+            let val (trs',dep) = mk_deps(EE,trs,dep)
+            in (BLOCKF64(p,trs'),dep)
+            end
 	| RegionExp.EXPORT(c,tr) =>
             let val (tr',dep) = mk_deptr(EE,tr,dep)
             in (EXPORT(c,tr'),dep)
@@ -1579,8 +1642,8 @@ struct
             handle Abort exn => raise Abort exn
                 | x => (outtree(RegionExp.layoutLambdaExp' e); raise Abort x)
 
-      and mk_dep_funcs(EE, [], [], dep) = ([],dep)
-        | mk_dep_funcs(EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,
+      and mk_dep_funcs (EE, [], [], dep) = ([],dep)
+        | mk_dep_funcs (EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,
                             formal_regions,bind}::rest,
                            r :: rest_refs, dep)=
              let val (bind', dep) = mk_deptr(EE,bind,dep)
@@ -1593,8 +1656,8 @@ struct
              end
 	| mk_dep_funcs _ = die "mk_dep_funcs"
 
-      and mk_deps(EE, [],dep) = ([], dep)
-        | mk_deps(EE, tr::ts, dep) =
+      and mk_deps (EE, [],dep) = ([], dep)
+        | mk_deps (EE, tr::ts, dep) =
             let val (tr',dep) = mk_deptr(EE,tr, dep)
                 val (ts',dep) = mk_deps(EE, ts,dep)
             in (tr'::ts',dep) end
@@ -1628,40 +1691,42 @@ struct
      *)
   let
 
-    fun kne(tr: ('_a, 'b, 'c)trip as TR(e,mu,arefss,psir))
+    fun kne (tr: ('_a, 'b, 'c)trip as TR(e,mu,arefss,psir))
             (k : ('_a, 'b, 'c)trip -> ('_a, 'b, 'c)trip): ('_a, 'b, 'c)trip    =
     let
 
-      fun e_to_t(e) = TR(e, mu,arefss,psir)
+      fun e_to_t (e) = TR(e, mu,arefss,psir)
 
       fun ty_of (RegionExp.Mus[(tau,_)]) = tau
         | ty_of _ = die "ty_of"
 
       local val il0 = R.mk_il([],[],[])
       in
-        fun lvar_as_term(x,mu) =
+        fun lvar_as_term (x,mu) =
             TR(VAR{lvar=x,il =il0 ,plain_arreffs=[],
                    fix_bound=false,rhos_actuals= ref [], other = dummy_'c}, mu, [], ref Mul.empty_psi)
 
         fun ub_record0_as_term mu =
             TR(UB_RECORD[], mu, [], ref Mul.empty_psi)
 
-        fun lvar_as_term'(x,mu as (tau,rho)) =
+        fun lvar_as_term' (x,mu as (tau,rho)) =
             lvar_as_term(x,RegionExp.Mus[mu])
 
-        fun mk_pat(lvar, mu) =
-          (case mu of
-             RegionExp.Mus[(ty,place)] =>
-               [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
-           | RegionExp.RaisedExnBind => []
-           | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
-		       PP.flatten1 (RegionExp.layMeta mu)))
+        fun mk_pat (lvar, mu) =
+            case mu of
+                RegionExp.Mus[(ty,place)] =>
+                let val () = if R.isF64Type ty then Lvars.set_ubf64 lvar else ()
+                in [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
+                end
+              | RegionExp.RaisedExnBind => []
+              | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
+		          PP.flatten1 (RegionExp.layMeta mu))
       end
 
-      fun atomic(TR(VAR _, _, _, _)) = true
-        | atomic(TR(INTEGER _,_,_,_)) = true
-        | atomic(TR(WORD _,_,_,_)) = true
-        | atomic(TR(RECORD(_,[]), _, _, _)) = true
+      fun atomic (TR(VAR _, _, _, _)) = true
+        | atomic (TR(INTEGER _,_,_,_)) = true
+        | atomic (TR(WORD _,_,_,_)) = true
+        | atomic (TR(RECORD(_,[]), _, _, _)) = true
         | atomic _ = false
 
       (* assumes mu1 is not an unboxed tuple *)
@@ -1717,6 +1782,7 @@ struct
       | WORD _ => k tr
       | STRING _ => k tr
       | REAL _ =>  k tr
+      | F64 _ =>  k tr
       | UB_RECORD(trs) => many_sub trs (e_to_t o UB_RECORD)
       | FN{pat,body,free,alloc} =>
         k (e_to_t(FN{pat=pat, free=free,alloc=alloc,
@@ -1830,6 +1896,7 @@ struct
             two_sub (t1,t2) (fn (t1',t2') => e_to_t(EQUAL(info,t1',t2')))
        | CCALL(info, trs) =>
             many_sub trs (fn trs' => e_to_t(CCALL(info,trs')))
+       | BLOCKF64(a, trs) => many_sub trs  (fn lvars' => (e_to_t(BLOCKF64(a,lvars'))))
        | EXPORT(info, tr) =>
             one_sub tr (fn tr' => e_to_t(EXPORT(info,tr')))
        | RESET_REGIONS(info, tr1) =>
@@ -1882,7 +1949,8 @@ struct
       | (INTEGER(i,t,_), INTEGER(i',t',_)) => i=i'
       | (WORD(w,t,_), WORD(w',t',_)) => w=w'
       | (STRING(s,_), STRING(s',_)) => s=s'
-      | (REAL(r,_), REAL(r',_)) => (r = r') (* reals are represented as strings for the precision to be preserved *)
+      | (REAL(r,_), REAL(r',_)) => (r=r') (* reals are represented as strings for the precision to be preserved *)
+      | (F64(r,_), F64(r',_)) => (r=r') (* f64s are represented as strings for the precision to be preserved *)
       | (UB_RECORD ts1, UB_RECORD ts2) =>
            eq_list eq (ts1,ts2)
       | (FN{pat = pat1, body = body1, ...}, FN{pat = pat2, body = body2, ...}) =>
@@ -1926,6 +1994,7 @@ struct
       | (DROP(tr1), DROP(tr2)) => eq(tr1,tr2)
       | (EQUAL(_,tr1,tr1'), EQUAL(_,tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
       | (CCALL(_,trs1), CCALL(_,trs2)) => eq_list eq (trs1,trs2)
+      | (BLOCKF64(a, trs1), BLOCKF64(a', trs2)) => eq_list eq (trs1,trs2)
       | (EXPORT(_,tr1), EXPORT(_,tr2)) => eq(tr1,tr2)
       | (RESET_REGIONS(_,t1), RESET_REGIONS(_,t2)) => eq(t1,t2)
       | (FRAME _, FRAME _) => true
@@ -2019,6 +2088,7 @@ struct
               | WORD i => (WORD i, NEXT)
               | STRING s => (STRING s, NEXT)
               | REAL r => (REAL r, NEXT)
+              | F64 r => (F64 r, NEXT)
               | UB_RECORD l => let val (trs', cont) = tailList(l, cont)
                                in (UB_RECORD trs', cont)
                                end
@@ -2145,6 +2215,10 @@ struct
               | CCALL(tyinfo,trs) =>
                   let val (trs', _) = tailList(trs,NEXT)
                   in (CCALL(tyinfo, trs'), NEXT)
+                  end
+              | BLOCKF64(a, l) =>
+                  let val (l', cont') = tailList(l, NEXT)
+                  in (BLOCKF64(a, l'), cont')
                   end
               | EXPORT(tyinfo,tr) =>
                   let val (tr', _) = tail(tr,NEXT)

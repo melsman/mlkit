@@ -173,6 +173,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			       (tyName_WORD31, []),
 			       (tyName_WORD32, []),
 			       (tyName_REAL, []),
+			       (tyName_F64, []),
 			       (tyName_STRING, []),
 			       (tyName_CHAR, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
@@ -325,7 +326,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				       layout_lvar_env lvar_env,
 				       layout_excon_env excon_env]}
 
-	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
+	fun restrict (env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
 	  let
               fun say s = print(s^"\n");
               fun sayenv() = PP.outputTree(print,layout_env env, !Flags.colwidth)
@@ -441,7 +442,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     val unit_Type = RECORDtype []
 
-    fun tyvars_not_in_env(tyvars, env) =
+    fun tyvars_not_in_env (tyvars, env) =
       if NatSet.isEmpty (NatSet.intersect (NatSet.fromList tyvars) (ftv_env env)) then ()
       else die "tyvars_not_in_env.TYVARS in Env!!"
 
@@ -665,7 +666,13 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			  else ()
 		    in ts_res
 		    end
-		| _ => die ("c function " ^ name ^ " does not have arrow type"))
+		 | _ => die ("c function " ^ name ^ " does not have arrow type"))
+           | BLOCKF64prim =>
+             let val ts = map (unTypeListOne "BLOCKF64" o type_e) lexps
+             in List.app (fn t => if LambdaBasics.eq_Type(t,f64Type) then ()
+                                  else die ("wrong blockf64 element type; got " ^ prType t)) ts
+              ; [stringType]
+             end
 	   | EXPORTprim {name, instance_arg, instance_res} =>
 	       (valid_t env instance_arg;
 		valid_t env instance_res;
@@ -707,6 +714,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	 | WORD (w,t) => (valid_t env t; Types [t])       (* TODO: w31, w32 - compare with literal w *)
 	 | STRING s => Types [CONStype([], tyName_STRING)]
 	 | REAL s => Types [CONStype([], tyName_REAL)]
+	 | F64 s => Types [CONStype([], tyName_F64)]
 	 | FN {pat,body} =>
 	  let val env' = foldl (fn ((lvar,Type), env) =>
 				     add_lvar(lvar,([],Type),env)) env pat

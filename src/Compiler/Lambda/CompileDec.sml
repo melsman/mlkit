@@ -2442,7 +2442,12 @@ the 12 lines above are very similar to the code below
 		  (case args of
 		     [exp] => compileExp env exp
 		   | _ => die "compile_application_of_prim: prim id")
-*)
+ *)
+              | "__blockf64" =>
+                let fun real_to_f64 x = TLE.PRIM(ccall "__real_to_f64" [TLE.realType] TLE.f64Type, [x])
+                    val args' = map (real_to_f64 o compileExp env) args   (* each of type real *)
+                in TLE.PRIM(TLE.BLOCKF64prim, args')
+                end
 	      | _ =>
 		  (*unrecognised prim name: this must be a c call; let us
 		   hope the run-time system defines a function called s:*)

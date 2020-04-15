@@ -65,7 +65,9 @@ structure LambdaExp: LAMBDA_EXP =
     val foreignptrType = CONStype([], TyName.tyName_FOREIGNPTR)
     val exnType = CONStype([], TyName.tyName_EXN)
     val realType = CONStype([], TyName.tyName_REAL)
+    val f64Type = CONStype([], TyName.tyName_F64)
     val stringType = CONStype([], TyName.tyName_STRING)
+    val chararrayType = CONStype([], TyName.tyName_CHARARRAY)
     val unitType = RECORDtype([])
 
     val tyvars = foldType (fn tyvarset =>
@@ -95,6 +97,7 @@ structure LambdaExp: LAMBDA_EXP =
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type}
+      | BLOCKF64prim
       | EXPORTprim of {name : string,
 		       instance_arg : 'Type,
 		       instance_res : 'Type}
@@ -114,6 +117,7 @@ structure LambdaExp: LAMBDA_EXP =
       | WORD     of Word32.word * Type
       | STRING   of string * regvar option
       | REAL     of string * regvar option
+      | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,
@@ -166,6 +170,7 @@ structure LambdaExp: LAMBDA_EXP =
         | WORD _ => new_acc
         | STRING _ => new_acc
         | REAL _ => new_acc
+        | F64 _ => new_acc
 	| FN{pat,body} => foldTD fcns (foldl' (foldType g) new_acc (map #2 pat)) body
 	| LET{pat,bind,scope} => foldTD fcns (foldTD fcns (foldl' (foldType g) new_acc (map #3 pat)) bind) scope
         | LETREGION {regvars, scope} => foldTD fcns new_acc scope
@@ -241,13 +246,29 @@ structure LambdaExp: LAMBDA_EXP =
 	"__greater_real",
 	"__lesseq_real",
 	"__greatereq_real",
+	"__less_f64",
+	"__greater_f64",
+	"__lesseq_f64",
+	"__greatereq_f64",
         "concatStringML",
         "__bytetable_size",
         "implodeCharsML",
         "implodeStringML",
         "id",
         "table_size",
-        "exnNameML"]
+        "exnNameML",
+        "__plus_f64",
+        "__minus_f64",
+        "__div_f64",
+        "__mul_f64",
+        "__max_f64",
+        "__min_f64",
+        "__real_to_f64",
+        "__f64_to_real",
+        "__int_to_f64",
+        "__blockf64_sub_real",
+        "__blockf64_sub_f64"
+       ]
 
      fun safeCName n = if StrSet.member n safeCNames then ()
 		       else raise NotSafe
@@ -259,6 +280,7 @@ structure LambdaExp: LAMBDA_EXP =
 	  | EXCONprim _        => ()
 	  | DEEXCONprim _      => ()
 	  | RECORDprim _       => ()
+	  | BLOCKF64prim       => ()
           | UB_RECORDprim      => ()
 	  | SELECTprim _       => ()
 	  | EQUALprim _        => ()
@@ -284,6 +306,7 @@ structure LambdaExp: LAMBDA_EXP =
 	  | WORD _                      => ()
 	  | STRING _	                => ()
 	  | REAL _	                => ()
+	  | F64 _	                => ()
 	  | FN _	                => ()
 	  | LET {bind,scope,...}        => (safe bind; safe scope)
           | LETREGION _                 => raise NotSafe            (* memo: maybe safe? *)
@@ -499,12 +522,15 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim{name="__mul_real", ...} => PP.LEAF("*")
       | CCALLprim{name="__mul_int31", ...} => PP.LEAF("*")
       | CCALLprim{name="__mul_int32", ...} => PP.LEAF("*")
+      | CCALLprim{name="__mul_f64", ...} => PP.LEAF("*")
       | CCALLprim{name="__plus_real", ...} => PP.LEAF("+")
       | CCALLprim{name="__plus_int31", ...} => PP.LEAF("+")
       | CCALLprim{name="__plus_int32", ...} => PP.LEAF("+")
+      | CCALLprim{name="__plus_f64", ...} => PP.LEAF("+")
       | CCALLprim{name="__minus_real", ...} => PP.LEAF("-")
       | CCALLprim{name="__minus_int31", ...} => PP.LEAF("-")
       | CCALLprim{name="__minus_int32", ...} => PP.LEAF("-")
+      | CCALLprim{name="__minus_f64", ...} => PP.LEAF("-")
       | CCALLprim{name="__equal_int31", ...} =>
 	    if !Flags.print_types then PP.LEAF("=[int31]")
 	    else PP.LEAF("=")
@@ -514,6 +540,7 @@ structure LambdaExp: LAMBDA_EXP =
 		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF " = "
       | CCALLprim{name="__less_real", ...} => PP.LEAF("<")
+      | CCALLprim{name="__less_f64", ...} => PP.LEAF("<")
       | CCALLprim{name="__less_int31", ...} => PP.LEAF("<")
       | CCALLprim{name="__less_int32", ...} => PP.LEAF("<")
       | CCALLprim{name="__less_string", ...} => PP.LEAF("<")
@@ -521,6 +548,7 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim{name="__less_word32", ...} => PP.LEAF("<")
 
       | CCALLprim{name="__greater_real", ...} => PP.LEAF(">")
+      | CCALLprim{name="__greater_f64", ...} => PP.LEAF(">")
       | CCALLprim{name="__greater_int31", ...} => PP.LEAF(">")
       | CCALLprim{name="__greater_int32", ...} => PP.LEAF(">")
       | CCALLprim{name="__greater_string", ...} => PP.LEAF(">")
@@ -528,6 +556,7 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim{name="__greater_word32", ...} => PP.LEAF(">")
 
       | CCALLprim{name="__lesseq_real", ...} => PP.LEAF("<=")
+      | CCALLprim{name="__lesseq_f64", ...} => PP.LEAF("<=")
       | CCALLprim{name="__lesseq_int31", ...} => PP.LEAF("<=")
       | CCALLprim{name="__lesseq_int32", ...} => PP.LEAF("<=")
       | CCALLprim{name="__lesseq_string", ...} => PP.LEAF("<=")
@@ -535,6 +564,7 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim{name="__lesseq_word32", ...} => PP.LEAF("<=")
 
       | CCALLprim{name="__greatereq_real", ...} => PP.LEAF(">=")
+      | CCALLprim{name="__greatereq_f64", ...} => PP.LEAF(">=")
       | CCALLprim{name="__greatereq_int31", ...} => PP.LEAF(">=")
       | CCALLprim{name="__greatereq_int32", ...} => PP.LEAF(">=")
       | CCALLprim{name="__greatereq_string", ...} => PP.LEAF(">=")
@@ -548,6 +578,7 @@ structure LambdaExp: LAMBDA_EXP =
           else
 	      if !barify_p then PP.LEAF ("Prim." ^ strip_ name)
 	      else PP.LEAF ("ccall " ^ name)
+      | BLOCKF64prim => PP.LEAF "blockf64"
       | EXPORTprim {name, instance_arg, instance_res} =>
           if !Flags.print_types then
 	      PP.NODE {start="_export(" ^ name ^ " ", finish=")", indent=2,
@@ -772,6 +803,7 @@ structure LambdaExp: LAMBDA_EXP =
       | STRING (s,SOME rv) => PP.LEAF(quote s ^ "`" ^ RegVar.pr rv)
       | REAL (r,NONE) => PP.LEAF(r)
       | REAL (r,SOME rv) => PP.LEAF(r ^ "`" ^ RegVar.pr rv)
+      | F64 r => PP.LEAF(r ^ "f64")
       | FN {pat,body} =>
 	  PP.NODE{start="(fn ",finish=")", indent=4,
 		  children=[layoutFnPat pat,
@@ -872,7 +904,13 @@ structure LambdaExp: LAMBDA_EXP =
                                 NONE => ")"
                               | SOME rv => ")`" ^ RegVar.pr rv
            in PP.NODE{start="(",finish=finish,indent=1,
-                      children=(map (fn e => layoutLambdaExp(e,0))  lambs),
+                      children=map (fn e => layoutLambdaExp(e,0)) lambs,
+                      childsep=PP.RIGHT ","}
+           end
+         | (BLOCKF64prim,_) =>
+           let val finish = "}"
+           in PP.NODE{start="{",finish=finish,indent=1,
+                      children=map (fn e => layoutLambdaExp(e,0)) lambs,
                       childsep=PP.RIGHT ","}
            end
          | (UB_RECORDprim,_) =>
@@ -926,14 +964,18 @@ structure LambdaExp: LAMBDA_EXP =
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int32ub", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
+         | (CCALLprim{name="__mul_f64", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__plus_real", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int31", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__plus_f64", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__minus_real", ...}, [_,_]) => layout_infix context 6 " - " lambs
          | (CCALLprim{name="__minus_int31", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
          | (CCALLprim{name="__minus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
+         | (CCALLprim{name="__minus_f64", ...}, [_,_]) => layout_infix context 6 " - " lambs
 
          | (CCALLprim{name="divFloat", ...}, [_,_]) =>  layout_infix context 7 " / "lambs
+         | (CCALLprim{name="__div_f64", ...}, [_,_]) =>  layout_infix context 7 " / "lambs
 
          | (EQUALprim{instance},[_,_]) => layout_infix context 4 " = "lambs
 
@@ -942,6 +984,7 @@ structure LambdaExp: LAMBDA_EXP =
          | (CCALLprim{name="__less_int31", ...}, [_,_]) => layout_infix context 4 " < "lambs
          | (CCALLprim{name="__less_int32ub", ...}, [_,_]) => layout_infix context 4 " < "lambs
          | (CCALLprim{name="__less_real", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_f64", ...}, [_,_]) => layout_infix context 4 " < "lambs
          | (CCALLprim{name="__less_string", ...}, [_,_]) => layout_infix context 4 " < "lambs
 
          | (CCALLprim{name="__greater_word31", ...}, [_,_]) => layout_infix context 4 " > "lambs
@@ -949,6 +992,7 @@ structure LambdaExp: LAMBDA_EXP =
          | (CCALLprim{name="__greater_int31", ...}, [_,_]) => layout_infix context 4 " > "lambs
          | (CCALLprim{name="__greater_int32ub", ...}, [_,_]) => layout_infix context 4 " > "lambs
          | (CCALLprim{name="__greater_real", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_f64", ...}, [_,_]) => layout_infix context 4 " > "lambs
          | (CCALLprim{name="__greater_string", ...}, [_,_]) => layout_infix context 4 " > "lambs
 
          | (CCALLprim{name="__lesseq_word31", ...}, [_,_]) => layout_infix context 4 " <= "lambs
@@ -956,6 +1000,7 @@ structure LambdaExp: LAMBDA_EXP =
          | (CCALLprim{name="__lesseq_int31", ...}, [_,_]) => layout_infix context 4 " <= "lambs
          | (CCALLprim{name="__lesseq_int32ub", ...}, [_,_]) => layout_infix context 4 " <= "lambs
          | (CCALLprim{name="__lesseq_real", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_f64", ...}, [_,_]) => layout_infix context 4 " <= "lambs
          | (CCALLprim{name="__lesseq_string", ...}, [_,_]) => layout_infix context 4 " <= "lambs
 
          | (CCALLprim{name="__greatereq_word31", ...}, [_,_]) => layout_infix context 4 " >= "lambs
@@ -963,6 +1008,7 @@ structure LambdaExp: LAMBDA_EXP =
          | (CCALLprim{name="__greatereq_int31", ...}, [_,_]) => layout_infix context 4 " >= "lambs
          | (CCALLprim{name="__greatereq_int32ub", ...}, [_,_]) => layout_infix context 4 " >= "lambs
          | (CCALLprim{name="__greatereq_real", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_f64", ...}, [_,_]) => layout_infix context 4 " >= "lambs
          | (CCALLprim{name="__greatereq_string", ...}, [_,_]) => layout_infix context 4 " >= "lambs
 
          | _ =>
@@ -978,12 +1024,41 @@ structure LambdaExp: LAMBDA_EXP =
 					layoutArgs lambs]}
 		 end
 	     else
-		 PP.NODE{start="PRIM(",finish=")",indent=3,
-			 children=[layoutPrim layoutType prim,
-				   PP.NODE{start="[",finish="]",indent=1,
-					   children=map(fn x => layoutLambdaExp(x,0)) lambs,
-					   childsep=PP.RIGHT ","}],
-			 childsep=PP.RIGHT ", "}
+               let fun lay p =
+                       PP.NODE{start=p ^ "(",finish=")",indent=1,
+			       children=map(fn x => layoutLambdaExp(x,0)) lambs,
+			       childsep=PP.RIGHT ","}
+                   fun default () =
+                       PP.NODE{start="PRIM(",finish=")",indent=3,
+			      children=[layoutPrim layoutType prim,
+				        PP.NODE{start="[",finish="]",indent=1,
+					        children=map(fn x => layoutLambdaExp(x,0)) lambs,
+					        childsep=PP.RIGHT ","}],
+			      childsep=PP.RIGHT ", "}
+               in case prim of
+                      CCALLprim{name,...} =>
+                      (case name of
+                           "__mul_f64" => lay "mul_f64"
+		         | "__plus_f64" => lay "plus_f64"
+		         | "__minus_f64" => lay "minus_f64"
+		         | "__div_f64" => lay "div_f64"
+		         | "__max_f64" => lay "max_f64"
+		         | "__min_f64" => lay "min_f64"
+                         | "__f64_to_real" => lay "f64_to_real"
+                         | "__real_to_f64" => lay "real_to_f64"
+                         | "__int_to_f64" => lay "int_to_f64"
+                         | "__sqrt_f64" => lay "sqrt_f64"
+                         | "__neg_f64" => lay "neg_f64"
+                         | "__abs_f64" => lay "abs_f64"
+                         | "__blockf64_update_f64" => lay "blockf64_update_f64"
+                         | "__blockf64_sub_f64" => lay "blockf64_sub_f64"
+                         | "__blockf64_update_real" => lay "blockf64_update_real"
+                         | "__blockf64_sub_real" => lay "blockf64_sub_real"
+                         | "allocStringML" => lay "allocStringML"
+                         | "__blockf64_size" => lay "blockf64_size"
+                         | _ => default())
+                    | _ => default()
+               end
         )
       | FRAME fr =>
 	      if !barify_p then
@@ -1287,6 +1362,7 @@ structure LambdaExp: LAMBDA_EXP =
 	      | toInt (EXPORTprim _) = 13
 	      | toInt (RESET_REGIONSprim _) = 14
 	      | toInt (FORCE_RESET_REGIONSprim _) = 15
+              | toInt BLOCKF64prim = 16
 
 	    fun fun_CONprim _ =
 		Pickle.con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
@@ -1340,6 +1416,7 @@ structure LambdaExp: LAMBDA_EXP =
 	    fun fun_FORCE_RESET_REGIONSprim _ =
 		Pickle.con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
 		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
+	    val fun_BLOCKF64prim = Pickle.con0 BLOCKF64prim
 	in Pickle.dataGen("LambdaExp.prim",toInt,[fun_CONprim,
 						  fun_DECONprim,
 						  fun_EXCONprim,
@@ -1355,7 +1432,8 @@ structure LambdaExp: LAMBDA_EXP =
 						  fun_CCALLprim,
 						  fun_EXPORTprim,
 						  fun_RESET_REGIONSprim,
-						  fun_FORCE_RESET_REGIONSprim])
+						  fun_FORCE_RESET_REGIONSprim,
+                                                  fun_BLOCKF64prim])
 	end
 
     fun pu_Switch pu_a pu_LambdaExp =
@@ -1388,6 +1466,7 @@ structure LambdaExp: LAMBDA_EXP =
 	      | toInt (PRIM _) = 17
 	      | toInt (FRAME _) = 18
               | toInt (LETREGION _) = 19
+	      | toInt (F64 _) = 20
 
 	    fun fun_VAR pu_LambdaExp =
 		Pickle.con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
@@ -1465,6 +1544,9 @@ structure LambdaExp: LAMBDA_EXP =
                             (fn LETREGION {regvars,scope} => (regvars,scope)
                               | _ => die "pu_LambdaExp.LETREGION")
 		(Pickle.pairGen0(Pickle.listGen RegVar.pu,pu_LambdaExp))
+	    fun fun_F64 pu_LambdaExp =
+		Pickle.con1 F64 (fn F64 a => a | _ => die "pu_LambdaExp.F64")
+		Pickle.string
 
 	in Pickle.dataGen("LambdaExp.LambdaExp",toInt,[fun_VAR,
 						       fun_INTEGER,
@@ -1485,7 +1567,8 @@ structure LambdaExp: LAMBDA_EXP =
 						       fun_SWITCH_E,
 						       fun_PRIM,
 						       fun_FRAME,
-                                                       fun_LETREGION])
+                                                       fun_LETREGION,
+                                                       fun_F64])
 	end
 
     structure TyvarSet = NatSet
@@ -1525,6 +1608,7 @@ structure LambdaExp: LAMBDA_EXP =
         | WORD _ => acc
         | STRING _ => acc
         | REAL _ => acc
+        | F64 _ => acc
 	| FN{pat,body} => tyvars_Exp s body (foldl (fn ((_,t),acc) => tyvars_Type s t acc) acc pat)
 	| LET{pat,bind,scope} =>
           let val s' = foldl (fn ((_,tvs,_),s) => TVS.addList tvs s) s pat
@@ -1573,6 +1657,7 @@ structure LambdaExp: LAMBDA_EXP =
       | EQUALprim{instance} => tyvars_Type s instance acc
       | CCALLprim {instances, tyvars, Type, ...} =>
         tyvars_Types s instances (tyvars_Scheme s (tyvars, Type) acc)
+      | BLOCKF64prim => acc
       | EXPORTprim {instance_arg,instance_res, ...} =>
         tyvars_Type s instance_arg (tyvars_Type s instance_res acc)
       | RESET_REGIONSprim{instance} => tyvars_Type s instance acc

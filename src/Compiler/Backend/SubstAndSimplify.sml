@@ -14,15 +14,15 @@ functor SubstAndSimplify(structure CallConv: CALL_CONV
                            where type place = Effect.place
 			   sharing type CalcOffset.Atom = LineStmt.Atom
 			 structure RI : REGISTER_INFO
-                           where type lvar = Lvars.lvar) 
+                           where type lvar = Lvars.lvar)
     : SUBST_AND_SIMPLIFY =
 struct
   structure PP = PrettyPrint
   structure Labels = AddressLabels
   structure RegvarFinMap = EffVarEnv
-  val _ = Flags.add_bool_entry 
+  val _ = Flags.add_bool_entry
     {long="print_simplified_program", short=NONE, item=ref false,
-     menu=["Printing of intermediate forms", "print simplified program (LineStmt)"], neg=false, 
+     menu=["Printing of intermediate forms", "print simplified program (LineStmt)"], neg=false,
      desc="Print simplified program after register\n\
       \allocation."}
 
@@ -47,7 +47,7 @@ struct
   fun msg s = TextIO.output(TextIO.stdOut, s)
   fun chat(s: string) = if !Flags.chat then msg (s) else ()
   fun die s  = Crash.impossible ("SubstAndSimplify." ^ s)
-  fun fast_pr stringtree = 
+  fun fast_pr stringtree =
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
      TextIO.output(!Flags.log, "\n"))
 
@@ -119,7 +119,7 @@ struct
     fun lookup_lv_aty(ATYmap,lv) =
 (*    if Lvars.eq(Lvars.wild_card, lv) then UNIT_ATY
       else *)
-      case LvarFinMap.lookup ATYmap lv 
+      case LvarFinMap.lookup ATYmap lv
 	of SOME r => r
 	 | NONE  => die ("lookup_lv_aty(" ^ (Lvars.pr_lvar lv) ^ ")")
 
@@ -139,7 +139,7 @@ struct
       | atom_to_aty(LS.PHREG phreg,ATYmap,RHOmap) = PHREG_ATY (RI.lv_to_reg phreg)
       | atom_to_aty(LS.INTEGER i,ATYmap,RHOmap) = INTEGER_ATY i
       | atom_to_aty(LS.WORD i,ATYmap,RHOmap) = WORD_ATY i
-      | atom_to_aty(LS.UNIT,ATYmap,RHOmap) = UNIT_ATY 
+      | atom_to_aty(LS.UNIT,ATYmap,RHOmap) = UNIT_ATY
       | atom_to_aty(LS.FLOW_VAR lv,ATYmap,RHOmap) = FLOW_VAR_ATY lv
 
     fun atom_to_aty_opt(NONE,ATYmap,RHOmap) = NONE
@@ -176,15 +176,15 @@ struct
  	val default' = SS_lss(default,ATYmap,RHOmap)
       in
 	switch_con(LS.SWITCH(atom_to_aty(atom,ATYmap,RHOmap),sels',default'))
-      end 
+      end
 
-    fun SS_lss(lss,ATYmap,RHOmap) = 
+    fun SS_lss(lss,ATYmap,RHOmap) =
       let
 	fun smas_to_smas smas = map (fn sma => sma_to_sma(sma,ATYmap,RHOmap)) smas
 	fun atoms_to_atys atoms = map (fn atom => atom_to_aty(atom,ATYmap,RHOmap)) atoms
 
 	fun sma_to_sma' sma = sma_to_sma(sma,ATYmap,RHOmap)
-	fun atom_to_aty' atom = atom_to_aty(atom,ATYmap,RHOmap) 
+	fun atom_to_aty' atom = atom_to_aty(atom,ATYmap,RHOmap)
 
 	fun do_fn_app{opr,args,clos,res,bv} =
 	  {opr=atom_to_aty' opr,
@@ -207,6 +207,7 @@ struct
 	  | SS_se(LS.STORE(atom,label)) = LS.STORE(atom_to_aty' atom,label)
 	  | SS_se(LS.STRING str) = LS.STRING str
 	  | SS_se(LS.REAL str) = LS.REAL str
+	  | SS_se(LS.F64 str) = LS.F64 str
 	  | SS_se(LS.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = LS.CLOS_RECORD{label=label,
 											elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
 											alloc= sma_to_sma' alloc}
@@ -215,6 +216,7 @@ struct
 										    alloc = sma_to_sma' alloc}
 	  | SS_se(LS.RECORD{elems,alloc,tag,maybeuntag}) = LS.RECORD{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag,
 								     maybeuntag=maybeuntag}
+	  | SS_se(LS.BLOCKF64{elems,alloc,tag}) = LS.BLOCKF64{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag}
 	  | SS_se(LS.SELECT(i,atom)) = LS.SELECT(i,atom_to_aty' atom)
 	  | SS_se(LS.CON0{con,con_kind,aux_regions,alloc}) = LS.CON0{con=con,con_kind=con_kind,aux_regions=smas_to_smas aux_regions,alloc=sma_to_sma' alloc}
 	  | SS_se(LS.CON1{con,con_kind,alloc,arg}) = LS.CON1{con=con,con_kind=con_kind,alloc=sma_to_sma' alloc,arg=atom_to_aty' arg}
@@ -226,7 +228,7 @@ struct
 	  | SS_se(LS.PASS_PTR_TO_RHO(sma)) = LS.PASS_PTR_TO_RHO(sma_to_sma' sma)
 
 	fun SS_lss'([]) = []
-	  | SS_lss'(LS.ASSIGN{pat,bind}::lss) = 
+	  | SS_lss'(LS.ASSIGN{pat,bind}::lss) =
 	  let
 	    val pat' = atom_to_aty' pat
 	    val bind' = SS_se bind
@@ -266,27 +268,27 @@ struct
 		      offset=offset} :: SS_lss(lss,ATYmap,RHOmap)
 	  end
 	  | SS_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=atom_to_aty' arg,defined_atys=atoms_to_atys defined_atys} :: SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.SWITCH_I {switch,precision}::lss) = 
-	  (SS_sw(SS_lss, fn sw => LS.SWITCH_I {switch=sw,precision=precision},switch,ATYmap,RHOmap) 
+	  | SS_lss'(LS.SWITCH_I {switch,precision}::lss) =
+	  (SS_sw(SS_lss, fn sw => LS.SWITCH_I {switch=sw,precision=precision},switch,ATYmap,RHOmap)
 	   :: SS_lss(lss,ATYmap,RHOmap))
-	  | SS_lss'(LS.SWITCH_W {switch,precision}::lss) = 
-	  (SS_sw(SS_lss, fn sw => LS.SWITCH_W {switch=sw,precision=precision},switch,ATYmap,RHOmap) 
+	  | SS_lss'(LS.SWITCH_W {switch,precision}::lss) =
+	  (SS_sw(SS_lss, fn sw => LS.SWITCH_W {switch=sw,precision=precision},switch,ATYmap,RHOmap)
 	   :: SS_lss(lss,ATYmap,RHOmap))
 	  | SS_lss'(LS.SWITCH_S sw::lss) = SS_sw(SS_lss,LS.SWITCH_S,sw,ATYmap,RHOmap) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.SWITCH_C sw::lss) = SS_sw(SS_lss,LS.SWITCH_C,sw,ATYmap,RHOmap) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.SWITCH_E sw::lss) = SS_sw(SS_lss,LS.SWITCH_E,sw,ATYmap,RHOmap) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.RESET_REGIONS{force,regions_for_resetting}::lss) =
 	  LS.RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting} :: SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.PRIM{name,args,res}::lss) = 
+	  | SS_lss'(LS.PRIM{name,args,res}::lss) =
 	  LS.PRIM{name=name,args=atoms_to_atys args,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) = 
+	  | SS_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) =
 	  LS.CCALL{name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.CCALL_AUTO{name,args,res}::lss) = 
+	  | SS_lss'(LS.CCALL_AUTO{name,args,res}::lss) =
 	  LS.CCALL_AUTO{name=name,args=map (fn (a,ft) => (atom_to_aty' a,ft)) args,
-			res=case res of (a,ft) => (atom_to_aty' a,ft)} :: 
+			res=case res of (a,ft) => (atom_to_aty' a,ft)} ::
 	  SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.EXPORT{name,clos_lab,arg=(a,ft1,ft2)}::lss) = 
-	  LS.EXPORT{name=name,clos_lab=clos_lab,arg=(atom_to_aty' a,ft1,ft2)} :: 
+	  | SS_lss'(LS.EXPORT{name,clos_lab,arg=(a,ft1,ft2)}::lss) =
+	  LS.EXPORT{name=name,clos_lab=clos_lab,arg=(atom_to_aty' a,ft1,ft2)} ::
 	  SS_lss(lss,ATYmap,RHOmap)
       in
 	SS_lss' lss
@@ -296,11 +298,11 @@ struct
     (* SS on Top Level Declarations *)
     (********************************)
     fun SS_top_decl f =
-      let 
+      let
 	fun process (lab,cc,lss) =
-	  let val lv_env = (foldl (fn ((lv,offset),e) => LvarFinMap.add(lv,STACK_ATY offset,e)) 
+	  let val lv_env = (foldl (fn ((lv,offset),e) => LvarFinMap.add(lv,STACK_ATY offset,e))
 			    LvarFinMap.empty (CallConv.get_spilled_args_with_offsets cc))
-	      val lss_ss = SS_lss(lss,lv_env,RhoFinMap.empty)		
+	      val lss_ss = SS_lss(lss,lv_env,RhoFinMap.empty)
 	  in (lab,cc,lss_ss)
 	  end
       in case f
@@ -315,7 +317,7 @@ struct
       let
 	val _ = chat "[Substitution and Simplification..."
 	val line_prg_ss = foldr (fn (func,acc) => SS_top_decl func :: acc) [] co_prg
-	val _ = 
+	val _ =
 	  if Flags.is_on "print_simplified_program" then
 	    display("\nReport: AFTER SIMPLIFICATION:", LineStmt.layout_line_prg CalcOffset.pr_sty CalcOffset.pr_offset pr_aty true line_prg_ss)
 	  else

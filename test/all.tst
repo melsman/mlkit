@@ -149,3 +149,5 @@ stream.mlb
 natset.sml
 fns.sml
 datatypes.sml
+real64vector.sml
+real64array.sml

@@ -1,7 +1,7 @@
 (* Type names - Definition (Rev) page 15 *)
 
 signature TYNAME =
-  sig 
+  sig
 
     (* Type names are based on names which may be `matched'. In
      * particular, if two type names, n1 and n2, are successfully
@@ -69,6 +69,7 @@ signature TYNAME =
     val tyName_WORD32  : TyName
     val tyName_WordDefault : unit -> TyName  (* word31 or word32 dependent on tagging *)
     val tyName_REAL    : TyName
+    val tyName_F64     : TyName              (* Internal unboxed float type *)
     val tyName_STRING  : TyName
     val tyName_CHAR    : TyName
     val tyName_LIST    : TyName
@@ -80,10 +81,10 @@ signature TYNAME =
     val tyName_FOREIGNPTR : TyName
     val tyName_EXN     : TyName
 
-    val unboxed : TyName -> bool   (* Returns true for type names that are 
+    val unboxed : TyName -> bool   (* Returns true for type names that are
 				    * implemented unboxed; depends on whether
 				    * tagging of integers is enabled. *)
-    val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t) 
+    val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t)
 				     * returns true. *)
 
     val tynamesPredefined : TyName list
@@ -95,8 +96,8 @@ signature TYNAME =
 
     structure Map : MONO_FINMAP
                         where type StringTree = StringTree
-                          and type dom = TyName 
-    structure Set : KIT_MONO_SET 
+                          and type dom = TyName
+    structure Set : KIT_MONO_SET
                         where type StringTree = StringTree
-                          and type elt = TyName 
+                          and type elt = TyName
   end
