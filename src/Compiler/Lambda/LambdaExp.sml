@@ -432,6 +432,7 @@ structure LambdaExp: LAMBDA_EXP =
 	 | #"+" => true | #"-" => true | #"/" => true | #":" => true | #"<" => true
 	 | #"=" => true | #">" => true | #"?" => true | #"@" => true | #"\\" => true
 	 | #"~" => true | #"`" => true | #"^" => true | #"|" => true | #"*" => true
+         | #"." => true
 	 | _ => false
 
    fun unsymb (s:string) : string =
@@ -441,7 +442,7 @@ structure LambdaExp: LAMBDA_EXP =
      in
        if String.size s < 1 then s
        else if is_symb (CharVector.sub(s,0)) then implode(#"v" :: do_unsymb (explode s))
-	    else s
+	    else implode(do_unsymb(explode s))
      end
 
    fun pr_lvar lv = if !barify_p then unsymb(Lvars.pr_lvar' lv)
