@@ -112,8 +112,6 @@ struct
 				 val verbose = fn () => !verbose
 				 val oneSrcFile = oneSrcFile) 
 
-(*    structure MlbMosml = Mlb(MosmlComp) *)
-
     val error = MlbUtil.error
 
     val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
@@ -124,7 +122,7 @@ struct
     fun greetings comp =
 	cmdName() ^ " version " ^ version ^ comp ^ ", " ^ date ^ "\n"
 
-    fun print_usage() = print ("\nUsage: " ^ cmdName() ^ " {-mlkit|-mosml} [OPTION]*... [file.mlb] [COMPILER OPTION]*\n\n" ^
+    fun print_usage() = print ("\nUsage: " ^ cmdName() ^ " {-mlkit|-barry} [OPTION]*... [file.mlb] [COMPILER OPTION]*\n\n" ^
 			       "Options:\n\n")
 
     val options = [("-compiler {mlkit,barry}", ["Specify compiler to use (default: mlkit)."]),
