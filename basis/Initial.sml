@@ -7,7 +7,7 @@ structure Initial =
   struct
     infix - + *
 
-    type int0 = int        
+    type int0 = int
     type word0 = word         (* used by WORD signature *)
 
     exception Fail of string
@@ -15,7 +15,6 @@ structure Initial =
 
     (* Time structure *)
     val timebase : int = prim("get_time_base", 0)
-(*    val timebase = ~1073741820 - 4 13/04/1999, Niels*)
 
     (* Date structure *)
     local fun localoffset_ () : real = prim("sml_localoffset", ())
@@ -34,7 +33,7 @@ structure Initial =
       fun getrutime_ () : tusage = prim("sml_getrutime", ())
     in val initial_realtime = getrealtime_ ()
        val initial_rutime = getrutime_ ()
-    end 
+    end
 
     (* Real structure *)
     local
@@ -50,15 +49,15 @@ structure Initial =
       fun sqrt (r : real) : real = prim ("sqrtFloat", r)
       fun ln' (r : real) : real = prim ("lnFloat", r)
     in
-      val ln10 = ln' 10.0 
+      val ln10 = ln' 10.0
       val NaN = sqrt ~1.0
     end
 
-    (* Int structure. Integers are untagged (or tagged if GC is enabled), 
-     * and there is a limit to the size of immediate integers that the Kit 
-     * accepts. We should change the lexer such that it does not convert a 
-     * string representation of an integer constant into an internal 
-     * integer, as this makes the the kit dependent on the precision of 
+    (* Int structure. Integers are untagged (or tagged if GC is enabled),
+     * and there is a limit to the size of immediate integers that the Kit
+     * accepts. We should change the lexer such that it does not convert a
+     * string representation of an integer constant into an internal
+     * integer, as this makes the the kit dependent on the precision of
      * the compiler (SML/NJ) that we use to compile the Kit. *)
 
     type int0 = int
@@ -75,7 +74,7 @@ structure Initial =
     (* FileSys *)
     structure FileSys =
       struct
-        val filesys_fail : exn = Fail "FileSys"    
+        val filesys_fail : exn = Fail "FileSys"
       end
 
     (* Process *)
@@ -86,7 +85,7 @@ structure Initial =
     val clearnerAtExit = (ref []) : (unit -> unit) list ref
     val addedclearner = ref false
    exception ClosedStream
-  
+
     (* Posix *)
 
      structure TextIO =
@@ -101,7 +100,7 @@ structure Initial =
          fun getNS s =  prim("@sml_findsignal", s : string) : int
          fun getT i =   prim("@sml_getTty", i : int) : word
          fun getTi i = prim("@sml_getTty", i : int) : int
-         structure Tty = 
+         structure Tty =
            struct
              structure V =
                struct
@@ -169,7 +168,7 @@ structure Initial =
              structure Speed =
                struct
                  val b0 = getT 48
-                 val b50 = getT 49 
+                 val b50 = getT 49
                  val b75 = getT 50
                  val b110 = getT 51
                  val b134 = getT 52
@@ -261,7 +260,7 @@ structure Initial =
              val ttou = getNS "SIGTTOU"
            end
 
-         structure Process = 
+         structure Process =
            struct
              val untraced = 0wx1
              val nohang = 0wx2
@@ -272,7 +271,7 @@ structure Initial =
       structure Posix_File_Sys =
         struct
         val (stdin,stdout,stderr) = prim ("sml_getStdNumbers", ()) : (int * int * int)
-        structure O = 
+        structure O =
           struct
             val append   =  0wx1
             val excl     =  0wx2
@@ -285,7 +284,7 @@ structure Initial =
             val rdonly   = 0wx100
             val wronly   = 0wx200
             val rdwr     = 0wx400
-            
+
             val all      = 0wx3F (* [append,excl,noctty,nonblock,sync,trunc] *)
           end
 
@@ -309,7 +308,7 @@ structure Initial =
             val all   = 0wx3FFF
           end
         end
- 
+
 
 
   end

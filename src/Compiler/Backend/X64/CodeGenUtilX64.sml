@@ -145,15 +145,15 @@ struct
           | r => die ("lv_to_reg.no: " ^ I.pr_reg r)
 
     (* Convert ~n to -n; works for all int32 values including Int32.minInt *)
-    fun intToStr (i : Int32.int) : string =
+    fun intToStr (i : IntInf.int) : string =
       let fun tr s = case explode s
                        of #"~"::rest => implode (#"-"::rest)
                         | _ => s
-      in tr (Int32.toString i)
+      in tr (IntInf.toString i)
       end
 
-    fun wordToStr (w : Word32.word) : string =
-      "0x" ^ Word32.toString w
+    fun wordToStr (w : IntInf.int) : string =
+      "0x" ^ IntInf.fmt StringCvt.HEX w
 
     (* Convert ~n to -n *)
     fun i2s i = if i >= 0 then Int.toString i
@@ -199,25 +199,20 @@ struct
         if d = b andalso isZeroOffset n then C
         else I.leaq(D(offset_bytes n, b), R d) :: C
 
-    fun mkIntAty i = SS.INTEGER_ATY {value=Int32.fromInt i,
+    fun mkIntAty i = SS.INTEGER_ATY {value=IntInf.fromInt i,
                                      precision=if BI.tag_values() then 31 else 32}
 
-    fun maybeTagInt {value: Int32.int, precision:int} : Int32.int =
-      case precision
-        of 31 => ((2 * value + 1)         (* use tagged-unboxed representation *)
-                  handle Overflow => die "maybeTagInt.Overflow")
-         | 32 => value                    (* use untagged representation - maybe boxed *)
-         | _ => die "maybeTagInt"
+    fun maybeTagInt {value: IntInf.int, precision:int} : IntInf.int =
+        case precision of
+            31 => 2 * value + 1           (* use tagged-unboxed representation *)
+          | 32 => value                   (* use untagged representation - maybe boxed *)
+          | _ => die "maybeTagInt"
 
-    fun maybeTagWord {value: Word32.word, precision:int} : Word32.word =
-      case precision
-        of 31 =>                            (* use tagged representation *)
-          let val w = 0w2 * value + 0w1
-          in if w < value then die "maybeTagWord.Overflow"
-             else w
-          end
-         | 32 => value                      (* use untagged representation - maybe boxed *)
-         | _ => die "maybeTagWord"
+    fun maybeTagWord {value: IntInf.int, precision:int} : IntInf.int =
+        case precision of
+            31 => 2 * value + 1           (* use tagged representation *)
+          | 32 => value                   (* use untagged representation - maybe boxed *)
+          | _ => die "maybeTagWord"
 
     (* formatting of immediate integer and word values *)
     fun fmtInt a : string = intToStr(maybeTagInt a)
@@ -225,7 +220,7 @@ struct
 
     (* Store a constant *)
     fun store_immed (w:Word32.word,r:reg,offset:Offset,C) =
-      I.movq(I (wordToStr w), D(offset_bytes offset,r)) :: C
+      I.movq(I (wordToStr (Word32.toLargeInt w)), D(offset_bytes offset,r)) :: C
 
     fun move_immed (0,R d,C) = I.xorq(R d, R d) :: C
       | move_immed (x,d:ea,C) = I.movq(I (intToStr x), d) :: C
@@ -265,7 +260,7 @@ struct
 
     fun move_unit (ea,C) =
         if BI.tag_values() then
-            move_immed(Int32.fromInt BI.ml_unit,ea,C) (* gc needs value! *)
+            move_immed(IntInf.fromInt BI.ml_unit,ea,C) (* gc needs value! *)
         else C
 
     (* Make sure that the aty ends up in register dst_reg *)
@@ -381,13 +376,13 @@ struct
             fun default () =
                 move_aty_into_reg(aty,t,size_ff,
                  store_indexed(b,n,R t,C))
-            fun direct_word (w:{value: Word32.word, precision:int}) : bool =
+            fun direct_word (w:{value: IntInf.int, precision:int}) : bool =
                 not(boxedNum(#precision w)) andalso
                 case #precision w of
-                    32 => #value w <= 0wxFFFF
-                  | 31 => #value w <= 0wx7FFF
+                    32 => #value w <= 0xFFFF
+                  | 31 => #value w <= 0x7FFF
                   | _ => die "store_aty_indexed.direct_word - weird precision"
-            fun direct_int (i:{value: Int32.int, precision:int}) =
+            fun direct_int (i:{value: IntInf.int, precision:int}) =
                 not(boxedNum(#precision i)) andalso
                 case #precision i of
                     32 => #value i <= 0x7FFF andalso #value i > ~0x8000
@@ -871,7 +866,7 @@ struct
       in
         copy(t,tmp_reg1,
         I.push(LA l) ::
-        move_immed(Int32.fromInt n, R tmp_reg0,
+        move_immed(IntInf.fromInt n, R tmp_reg0,
         I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
         I.lab l ::
         post_prof
@@ -899,7 +894,7 @@ struct
       in
         copy(t,tmp_reg1,
         I.push(LA l) ::
-        move_immed(Int32.fromInt n, R tmp_reg0,
+        move_immed(IntInf.fromInt n, R tmp_reg0,
         I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
         I.lab l ::
         post (t,C)))
@@ -1180,7 +1175,7 @@ struct
                            default,
                            opr: I.ea,
                            compile_insts,
-                           toInt : 'a -> Int32.int,
+                           toInt : 'a -> IntInf.int,
                            C) =
           let
             val sels = map (fn (i,e) => (toInt i, e)) sels
@@ -1200,7 +1195,7 @@ struct
                compile_insts,
                label,
                jmp,
-               fn (sel1,sel2) => Int32.abs(sel1-sel2), (* sel_dist *)
+               fn (sel1,sel2) => IntInf.abs(sel1-sel2), (* sel_dist *)
                fn (lab,sel,_,C) => (I.movq(opr, R tmp_reg0) ::
                                     I.salq(I "3", R tmp_reg0) ::
                                     I.push(R tmp_reg1) ::
@@ -2011,7 +2006,7 @@ struct
             move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
             I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
             I.movb(R r10b, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10b *)
-            move_immed(Int32.fromInt BI.ml_unit, R d_reg,       (* d = () *)
+            move_immed(IntInf.fromInt BI.ml_unit, R d_reg,      (* d = () *)
             C'))))
          end
        else
@@ -2079,7 +2074,7 @@ struct
                 F(move_aty_into_reg(i,tmp_reg0,size_ff,
                   I.sarq (I "1", R tmp_reg0) ::
                   I.movq(R x_reg, DD("8", t_reg, tmp_reg0, "8")) ::
-                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,
+                  move_immed(IntInf.fromInt BI.ml_unit, R d_reg,
                   C')))
                | SOME _ => die "word_update0_1"
                | NONE =>
@@ -2090,7 +2085,7 @@ struct
                  I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
                  move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
                  I.movq(R tmp_reg0, D("8", tmp_reg1)) ::          (* *(tmp_reg1+8) = tmp_reg0 *)
-                 move_immed(Int32.fromInt BI.ml_unit, R d_reg,    (* d = () *)
+                 move_immed(IntInf.fromInt BI.ml_unit, R d_reg,   (* d = () *)
                  C')))))
          end
        else
@@ -2140,7 +2135,7 @@ struct
                   I.sarq (I "1", R tmp_reg0) ::
                   I.movsd(D("8", x_reg), R tmp_freg0) ::                    (* x points to a real *)
                   I.movsd(R tmp_freg0, DD("8", t_reg, tmp_reg0, "8")) ::
-                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,
+                  move_immed(IntInf.fromInt BI.ml_unit, R d_reg,
                   C')))
                | SOME _ => die "blockf64_update_real_1"
                | NONE =>
@@ -2151,7 +2146,7 @@ struct
                  I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
                  load_real(x,tmp_reg0,size_ff,tmp_freg0)          (* tmp_freg0 = !x *)
                  (I.movsd(R tmp_freg0, D("8", tmp_reg1)) ::       (* *(tmp_reg1+8) = tmp_freg0 *)
-                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,   (* d = () *)
+                  move_immed(IntInf.fromInt BI.ml_unit, R d_reg,  (* d = () *)
                   C')))))
          end
        else
@@ -2198,7 +2193,7 @@ struct
                      I.sarq(I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
                      move_aty_into_reg(t,tmp_reg0,size_ff,              (* tmp_reg0 = t *)
                      (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::    (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
-                      move_immed(Int32.fromInt BI.ml_unit, R d_reg,     (* d = () *)
+                      move_immed(IntInf.fromInt BI.ml_unit, R d_reg,    (* d = () *)
                       C'))))
                   end
                 else

@@ -96,8 +96,8 @@ struct
     and ('a,'b,'c)LambdaExp =
         VAR      of {lvar: lvar, il: il, plain_arreffs: (effectvar * ateffect list) list,
                      fix_bound: bool, rhos_actuals: 'a list ref, other: 'c}
-      | INTEGER  of Int32.int * Type * 'a
-      | WORD     of Word32.word * Type * 'a
+      | INTEGER  of IntInf.int * Type * 'a
+      | WORD     of IntInf.int * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
       | F64      of string * 'a
@@ -139,8 +139,8 @@ struct
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b,'c)trip
       | HANDLE   of ('a,'b,'c)trip * ('a,'b,'c)trip
-      | SWITCH_I of {switch:('a,'b,'c,Int32.int) Switch, precision: int}
-      | SWITCH_W of {switch:('a,'b,'c,Word32.word) Switch, precision: int}
+      | SWITCH_I of {switch:('a,'b,'c,IntInf.int) Switch, precision: int}
+      | SWITCH_W of {switch:('a,'b,'c,IntInf.int) Switch, precision: int}
       | SWITCH_S of ('a,'b,'c,string) Switch
       | SWITCH_C of ('a,'b,'c,con)    Switch
       | SWITCH_E of ('a,'b,'c,excon)  Switch
@@ -807,8 +807,8 @@ struct
         | VAR{lvar, il, fix_bound=true, rhos_actuals = ref rhos_actuals, plain_arreffs,other} =>
             lay_il(Lvar.pr_lvar lvar, "", il, rhos_actuals) ^^^ layout_other other
 
-        | INTEGER(i, t, a) => LEAF(Int32.toString i ^^ layout_alloc a)
-        | WORD(w, t, a) => LEAF("0x" ^ Word32.toString w ^^ layout_alloc a)
+        | INTEGER(i, t, a) => LEAF(IntInf.toString i ^^ layout_alloc a)
+        | WORD(w, t, a) => LEAF("0x" ^ IntInf.fmt StringCvt.HEX w ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | F64(r, a) => LEAF((r^"f64") ^^ layout_alloc a)
@@ -1055,8 +1055,8 @@ struct
                  end
                )
             else layTrip(body,n)
-        | SWITCH_I {switch,precision} => layoutSwitch layTrip Int32.toString switch
-        | SWITCH_W {switch,precision} => layoutSwitch layTrip (fn w => "0x" ^ Word32.toString w) switch
+        | SWITCH_I {switch,precision} => layoutSwitch layTrip IntInf.toString switch
+        | SWITCH_W {switch,precision} => layoutSwitch layTrip (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw

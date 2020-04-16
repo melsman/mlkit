@@ -857,9 +857,9 @@ good *)
 	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1), NOTAIL)
 	end
 
-    | E.SWITCH_I {switch: Int32.int E.Switch, precision} =>
+    | E.SWITCH_I {switch: IntInf.int E.Switch, precision} =>
 	(spreadSwitch B S (fn sw => E'.SWITCH_I{switch=sw,precision=precision}) [] (switch,toplevel,cont))
-    | E.SWITCH_W {switch: Word32.word E.Switch, precision} =>
+    | E.SWITCH_W {switch: IntInf.int E.Switch, precision} =>
 	(spreadSwitch B S (fn sw => E'.SWITCH_W{switch=sw,precision=precision}) [] (switch,toplevel,cont))
 
     | E.SWITCH_S(stringsw: string E.Switch) => (spreadSwitch B S E'.SWITCH_S [] (stringsw,toplevel,cont))

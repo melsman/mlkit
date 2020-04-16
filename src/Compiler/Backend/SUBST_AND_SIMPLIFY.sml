@@ -6,7 +6,7 @@ signature SUBST_AND_SIMPLIFY =
 
     *)
 
-    type place 
+    type place
     type phsize
     type pp = int
     type lvar
@@ -27,8 +27,8 @@ signature SUBST_AND_SIMPLIFY =
       | FLOW_VAR_ATY     of lvar * label * label
       | DROPPED_RVAR_ATY
       | PHREG_ATY        of reg
-      | INTEGER_ATY      of {value: Int32.int, precision: int}
-      | WORD_ATY         of {value: Word32.word, precision: int}
+      | INTEGER_ATY      of {value: IntInf.int, precision: int}
+      | WORD_ATY         of {value: IntInf.int, precision: int}
       | UNIT_ATY
 
     val eq_aty : Aty * Aty -> bool
@@ -43,11 +43,3 @@ signature SUBST_AND_SIMPLIFY =
     val pr_offset : offset -> string
     val pr_aty    : Aty -> string
   end
-
-
-
-
-
-
-
-

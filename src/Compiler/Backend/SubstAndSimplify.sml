@@ -69,8 +69,8 @@ struct
     | FLOW_VAR_ATY     of lvar * label * label
     | DROPPED_RVAR_ATY
     | PHREG_ATY        of reg
-    | INTEGER_ATY      of {value: Int32.int, precision: int}
-    | WORD_ATY         of {value: Word32.word, precision: int}
+    | INTEGER_ATY      of {value: IntInf.int, precision: int}
+    | WORD_ATY         of {value: IntInf.int, precision: int}
     | UNIT_ATY
 
   fun pr_offset offset = CalcOffset.pr_offset offset
@@ -82,8 +82,8 @@ struct
     | pr_aty(FLOW_VAR_ATY(lv,l1,l2)) = "FV(" ^ Lvars.pr_lvar lv ^ ")"
     | pr_aty(DROPPED_RVAR_ATY) = "DROPPED_RVAR"
     | pr_aty(PHREG_ATY phreg) = pr_phreg phreg
-    | pr_aty(INTEGER_ATY {value, precision}) = Int32.toString value
-    | pr_aty(WORD_ATY {value, precision}) = Word32.toString value
+    | pr_aty(INTEGER_ATY {value, precision}) = IntInf.toString value
+    | pr_aty(WORD_ATY {value, precision}) = "0w" ^ IntInf.toString value
     | pr_aty(UNIT_ATY) = "(.)"
 
   fun eq_aty(REG_I_ATY offset1,REG_I_ATY offset2) = offset1 = offset2
@@ -145,17 +145,6 @@ struct
     fun atom_to_aty_opt(NONE,ATYmap,RHOmap) = NONE
       | atom_to_aty_opt(SOME atom,ATYmap,RHOmap) = SOME(atom_to_aty(atom,ATYmap,RHOmap))
 
-(*defined above ; mael 2001-04-10
-    fun eq_aty(REG_I_ATY offset1,REG_I_ATY offset2) = offset1 = offset2
-      | eq_aty(REG_F_ATY offset1,REG_F_ATY offset2) = offset1 = offset2
-      | eq_aty(STACK_ATY offset1,STACK_ATY offset2) = offset1 = offset2
-      | eq_aty(DROPPED_RVAR_ATY,DROPPED_RVAR_ATY) = true
-      | eq_aty(PHREG_ATY phreg1,PHREG_ATY phreg2) = RI.reg_eq(phreg1,phreg2)
-      | eq_aty(INTEGER_ATY i1,INTEGER_ATY i2) = i1 = i2
-      | eq_aty(WORD_ATY i1,WORD_ATY i2) = i1 = i2
-      | eq_aty(UNIT_ATY,UNIT_ATY) = true
-      | eq_aty _ = false
-*)
     fun sma_to_sma(LS.ATTOP_LI(atom,pp),ATYmap,RHOmap) = LS.ATTOP_LI(atom_to_aty(atom,ATYmap,RHOmap),pp)
       | sma_to_sma(LS.ATTOP_LF(atom,pp),ATYmap,RHOmap) = LS.ATTOP_LF(atom_to_aty(atom,ATYmap,RHOmap),pp)
       | sma_to_sma(LS.ATTOP_FI(atom,pp),ATYmap,RHOmap) = LS.ATTOP_FI(atom_to_aty(atom,ATYmap,RHOmap),pp)

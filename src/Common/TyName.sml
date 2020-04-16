@@ -98,10 +98,14 @@ structure TyName :> TYNAME =
 	val tyName_BOOL       = predef true {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}
 	val tyName_INT31      = predef true {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
 	val tyName_INT32      = predef false{tycon=TyCon.tycon_INT32,      arity=0, equality=true}
+	val tyName_INT63      = predef true {tycon=TyCon.tycon_INT63,      arity=0, equality=true}
+	val tyName_INT64      = predef false{tycon=TyCon.tycon_INT64,      arity=0, equality=true}
 	val tyName_INTINF     = predef true {tycon=TyCon.tycon_INTINF,     arity=0, equality=true}
 	val tyName_WORD8      = predef true {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
 	val tyName_WORD31     = predef true {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
 	val tyName_WORD32     = predef false{tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
+	val tyName_WORD63     = predef true {tycon=TyCon.tycon_WORD63,     arity=0, equality=true}
+	val tyName_WORD64     = predef false{tycon=TyCon.tycon_WORD64,     arity=0, equality=true}
 	val tyName_REAL       = predef false{tycon=TyCon.tycon_REAL,       arity=0, equality=false}
 	val tyName_F64        = predef true {tycon=TyCon.tycon_F64,        arity=0, equality=false}
 	val tyName_STRING     = predef false{tycon=TyCon.tycon_STRING,     arity=0, equality=true}
@@ -141,11 +145,17 @@ structure TyName :> TYNAME =
 		   else str))
       end
 
-    fun unboxed_num32 tn =
-      not(tag_values()) andalso (eq(tn,tyName_INT32)
-				   orelse eq(tn,tyName_WORD32))
+    local
+      fun unboxed_num32 tn =
+          not(tag_values()) andalso (eq(tn,tyName_INT32)
+				     orelse eq(tn,tyName_WORD32))
 
-    fun unboxed tn = unboxed_num32 tn orelse !(#unboxed tn)
+      fun unboxed_num64 tn =
+          not(tag_values()) andalso (eq(tn,tyName_INT64)
+				     orelse eq(tn,tyName_WORD64))
+    in
+      fun unboxed tn = unboxed_num32 tn orelse unboxed_num64 tn orelse !(#unboxed tn)
+    end
 
     fun setUnboxed (tn: TyName) : unit =
 	if unboxed tn then
@@ -227,4 +237,4 @@ structure TyName :> TYNAME =
 	val _ = print "[end of test]\n"
 *)
       end
-  end;
+  end

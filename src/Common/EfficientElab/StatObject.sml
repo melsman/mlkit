@@ -31,16 +31,16 @@ structure StatObject: STATOBJECT =
     type strid = Ident.strid
     type StringTree = PP.StringTree
 
-    (* 
-     * New, more efficient representation of types and substitutions on types 
-     * 
+    (*
+     * New, more efficient representation of types and substitutions on types
+     *
      * -- Birkedal, nov. 1993
-     * 
-     * Major cleanup 
+     *
+     * Major cleanup
      *
      * -- Elsman, nov. 1998
      *)
-    
+
     (* Bound type variables in type schemes have level GENERIC. For a
      * tree with root n, n has level GENERIC if there is a node in the
      * tree that represents a generic tyvar. Levels in type functions
@@ -59,7 +59,7 @@ structure StatObject: STATOBJECT =
 	fun pop () = level_ref := !level_ref - 1
 	fun current () = !level_ref
       end (*local*)
-      fun pr i = if i = GENERIC then "generic" 
+      fun pr i = if i = GENERIC then "generic"
 		 else if i = NONGENERIC then "nongeneric"
 		 else Int.toString i
     end (*Level*)
@@ -68,39 +68,39 @@ structure StatObject: STATOBJECT =
 
     type ExplicitTyVar = ExplicitTyVar.SyntaxTyVar
 
-    datatype TypeDesc = 
+    datatype TypeDesc =
         TYVAR of TyVar
       | ARROW of Type * Type
       | RECTYPE of RecType
       | CONSTYPE of Type list * TyName.TyName
 
-    and TyLink = 
+    and TyLink =
         NO_TY_LINK of TyVarDesc        (* type variable *)
       | TY_LINK of Type                (* type variable linked to type *)
 
-    and RecType = 
+    and RecType =
         NILrec
       | VARrec of {RowVar : RowVar, level : level ref}    (* a rowvar has a level *)
       | ROWrec of Lab.lab * Type * RecType   (* labels are ordered during unification *)
 
-    and RecLink = 
+    and RecLink =
         NO_REC_LINK of int               (* row variable; the stamp is here to ease printing *)
       | REC_LINK of RecType              (* row variable linked to row *)
 
-    withtype Type        = {TypeDesc : TypeDesc, level : level ref} 
+    withtype Type        = {TypeDesc : TypeDesc, level : level ref}
 	 and TyVar       = TyLink ref
 	 and RowVar      = RecLink ref
          and TyVarDesc =
 	   {base: string,     (* compilation unit base; (base,id) should be unique *)
 	    id : int,         (* Two type variables are equal if their ids are equal and their bases are equal*)
 	    equality : bool,  (* Does the tyvar admit equality *)
-	    rank: rank ref,   (* The rank field contains an updatable rank for the 
+	    rank: rank ref,   (* The rank field contains an updatable rank for the
 			       * type variable. See TYNAME for further comments. *)
-	    overloaded : TyName.Set.Set option, 
-                              (* The overloaded field contains a list of type names that 
-			       * the overloaded tyvar may be instantiated to, for instance 
-			       * [Type.Real, Type.Int, Type.Word] if the overloaded 
-			       * tyvar stands for a socalled num (e.g., in the type 
+	    overloaded : TyName.Set.Set option,
+                              (* The overloaded field contains a list of type names that
+			       * the overloaded tyvar may be instantiated to, for instance
+			       * [Type.Real, Type.Int, Type.Word] if the overloaded
+			       * tyvar stands for a socalled num (e.g., in the type
 			       * scheme for `+'). *)
 	    explicit : ExplicitTyVar option,  (* Does the tyvar stem from an explicit tyvar; explicit
 					       * tyvars may not be unified with other types. *)
@@ -114,15 +114,15 @@ structure StatObject: STATOBJECT =
     fun TyVarDesc_eq ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) = id=id2 andalso base=base2
 
     fun findType ty =
-      case #TypeDesc ty 
+      case #TypeDesc ty
 	of TYVAR (tl as ref (TY_LINK ty')) =>
-	  (case #TypeDesc ty' 
+	  (case #TypeDesc ty'
 	     of TYVAR (tl' as ref (TY_LINK ty'')) => (tl := TY_LINK ty''; findType ty'')
 	      | _ => ty')
 	 | _ => ty
 
     fun findRecType r =
-      case r 
+      case r
 	of VARrec {RowVar = rl as ref (REC_LINK r'), ...} =>
 	  let val r'' = findRecType r' in rl := REC_LINK r''; r'' end
 	 | _ => r
@@ -131,9 +131,9 @@ structure StatObject: STATOBJECT =
      * to change a RecType into a (lab, Type) SortedMap with optional
      * RowVar. *)
 
-    fun sanitiseRecType r : (Lab.lab, Type) SortedFinMap.map * 
+    fun sanitiseRecType r : (Lab.lab, Type) SortedFinMap.map *
       {RowVar : RowVar, level : level ref} option =
-      case findRecType r 
+      case findRecType r
 	of NILrec => (SortedFinMap.empty, NONE)
 	 | VARrec rv => (SortedFinMap.empty, SOME rv)
 	 | ROWrec(lab, tau, r') =>
@@ -164,10 +164,10 @@ structure StatObject: STATOBJECT =
      *    RowVar:
      *       (1) Does not occur
      *)
-	
+
     fun norm_Type ty =
 	let val {TypeDesc,level} = findType ty
-	    val TypeDesc = 
+	    val TypeDesc =
 		case TypeDesc of
 		    TYVAR (ref (NO_TY_LINK tvd)) =>
 			(case #inst tvd of
@@ -188,11 +188,11 @@ structure StatObject: STATOBJECT =
 
     (* Pickling *)
     val pu_TyVarDesc =
-	let fun to (((id,b),e,r),ov,ex) : TyVarDesc = 
+	let fun to (((id,b),e,r),ov,ex) : TyVarDesc =
 		{id=id, base=b, equality=e,rank=r,overloaded=ov,explicit=ex,inst=ref NONE}
 	    fun from {id, base,equality=e,rank=r,overloaded=ov,explicit=ex,inst} =
 		(((id,base),e,r),ov,ex)
-	in Pickle.convert (to,from) 
+	in Pickle.convert (to,from)
 	    (Pickle.tup3Gen0(Pickle.tup3Gen0(Pickle.pairGen0(Pickle.int,Pickle.string),
 					     Pickle.bool,
 					     TyName.Rank.pu_rankrefOne),
@@ -200,7 +200,7 @@ structure StatObject: STATOBJECT =
 			     Pickle.optionGen ExplicitTyVar.pu))
 	end
 
-    val pu_TyLink = 
+    val pu_TyLink =
 	Pickle.convert (NO_TY_LINK, fn NO_TY_LINK a => a | _ => die "pu_TyLink.NO_TY_LINK")
 	pu_TyVarDesc
 
@@ -209,15 +209,15 @@ structure StatObject: STATOBJECT =
     val pu_Type : TypeDesc Pickle.pu -> Type Pickle.pu =
 	let fun to (td,l) = {TypeDesc=td,level=l}
 	    fun from {TypeDesc=td,level=l} = (td,l)
-	in Pickle.cache "Type" (fn pu_td => Pickle.convert (to,from) 
+	in Pickle.cache "Type" (fn pu_td => Pickle.convert (to,from)
 				(Pickle.pairGen0(pu_td,Pickle.ref0EqGen (fn (r1,r2) => !r1 = !r2) Pickle.int)))
 	end
-    
+
     val pu_Types : TypeDesc Pickle.pu -> Type list Pickle.pu =
 	Pickle.cache "Types" (fn pu_td => Pickle.listGen (pu_Type pu_td))
 
     fun swap (x,y) = (y,x)
-	
+
     local
       val (pu_TypeDesc, _) =
 	let fun TypeDescToInt (TYVAR _) = 0
@@ -246,7 +246,7 @@ structure StatObject: STATOBJECT =
 		Pickle.con1 ROWrec (fn ROWrec a => a | _ => die "pu_RecType.ROWrec")
 		(Pickle.tup3Gen0(Lab.pu,pu_Type pu_TypeDesc,pu_RecType))
 
-	    val TypeDescFuns = 
+	    val TypeDescFuns =
 		[TypeDescTYVAR, TypeDescARROW, TypeDescRECTYPE, TypeDescCONSTYPE]
 	    val RecTypeFuns = [RecTypeNILrec, RecTypeROWrec]
 
@@ -257,7 +257,7 @@ structure StatObject: STATOBJECT =
       val pu_Type = pu_Type pu_TypeDesc
     end
 
-    structure TyVar = 
+    structure TyVar =
       struct
 
 	(* Does a type variable admit equality; findType must have
@@ -271,7 +271,7 @@ structure StatObject: STATOBJECT =
 	 * equality of type variables is tested only for non-linked
 	 * type variables, that is, we require that findType has been applied
 	 * before equality of type variables is tested. *)
-	
+
 	fun eq (tv,tv') = tv = tv' orelse
 	  case (tv, tv')
 	    of (ref(NO_TY_LINK tvd1), ref(NO_TY_LINK tvd2)) => TyVarDesc_eq(tvd1,tvd2)
@@ -283,7 +283,7 @@ structure StatObject: STATOBJECT =
 
 	(* Get overloading information; findType must have been
 	 * applied prior to calling these function. *)
-	  
+
 	fun get_overloaded (ref (NO_TY_LINK tvd)) = #overloaded tvd
 	  | get_overloaded (ref (TY_LINK _)) = die "TyVar.get_overloaded"
 
@@ -310,12 +310,12 @@ structure StatObject: STATOBJECT =
 	      | NONE =>  die "unset_instance.tyvar not instantiated")
 	  | unset_instance _ = die "unset_instance.link"
 
-	     
+
 	(* Make a fresh type variable based on overloading and
 	 * eq-admit info *)
 
-	local val r = ref 0 
-	in 
+	local val r = ref 0
+	in
 	  fun fresh0 {equality, overloaded, explicit} =
 	    ref (NO_TY_LINK {id = (r := !r + 1 ; !r),
 			     base = Name.baseGet(),
@@ -330,7 +330,7 @@ structure StatObject: STATOBJECT =
 		    overloaded=SOME (TyName.Set.fromList tynames),
 		    explicit=NONE}
 
-	  fun from_ExplicitTyVar extv = fresh0 {equality=ExplicitTyVar.isEquality extv, 
+	  fun from_ExplicitTyVar extv = fresh0 {equality=ExplicitTyVar.isEquality extv,
 						overloaded=NONE, explicit=SOME extv}
 	end
 
@@ -370,7 +370,7 @@ structure StatObject: STATOBJECT =
 	    end
 	| pretty_string a pr_ty (ref (TY_LINK ty)) =
 	    let val ty = findType ty
-	    in case #TypeDesc ty 
+	    in case #TypeDesc ty
 		 of TYVAR tv => pretty_string a pr_ty tv ^ "{" ^ Int.toString(!(#level ty)) ^ "}"
 		  | _ => pr_ty ty ^ "{" ^ Int.toString(!(#level ty)) ^ "}"
 	    end
@@ -379,7 +379,7 @@ structure StatObject: STATOBJECT =
       fun layout' pr_ty tv = PP.LEAF(string' pr_ty tv)
 
       val pretty_string = fn a => pretty_string a (fn _ => "(ty_link)")
-      val string = pretty_string NONAMES 
+      val string = pretty_string NONAMES
       val layout = PP.LEAF o string
 
       (* Operations on sets of type variables *)
@@ -388,7 +388,7 @@ structure StatObject: STATOBJECT =
 
       fun insertTyVarSet x set = if memberTyVarSet x set then set else x::set
 
-      fun unionTyVarSet(set1, set2) = 
+      fun unionTyVarSet(set1, set2) =
 	set1 @ List.filter (fn x => not(memberTyVarSet x set1)) set2
 
       fun minusTyVarSet (set1, set2) =
@@ -413,7 +413,7 @@ structure StatObject: STATOBJECT =
     infix oo
     structure Substitution = struct
       val Id = ()
-      val bogus = Id 
+      val bogus = Id
       fun (S1 : Substitution) oo (S2 : Substitution) : Substitution = ()
       fun on (S : Substitution, tau : Type) : Type = findType tau
       fun onScheme (S : Substitution, (tvs,tau)) = (tvs, findType tau)
@@ -421,17 +421,17 @@ structure StatObject: STATOBJECT =
 
 
 
-    structure Type = 
-      struct    
+    structure Type =
+      struct
 
-	local val r = ref 0 
+	local val r = ref 0
 	in fun freshRow () = VARrec {RowVar = ref (NO_REC_LINK (r := !r + 1 ; !r)), level = ref (Level.current())}
 	end
-      
+
 	fun layout ty =
 	  let val ty = findType ty
-	      val st = 
-		case #TypeDesc ty 
+	      val st =
+		case #TypeDesc ty
 		  of CONSTYPE ([], tyname) =>  TyName.layout tyname
 		   | CONSTYPE (ty_list, tyname) =>
 		    PP.NODE {start="(", finish=") " ^ TyName.pr_TyName tyname, indent=1,
@@ -449,9 +449,9 @@ structure StatObject: STATOBJECT =
 	    else st
 	  end
 
-	and RecType_layout r = 
+	and RecType_layout r =
 	  let val (m, rv_opt) = sanitiseRecType r
-	      val finish = case rv_opt 
+	      val finish = case rv_opt
 			     of SOME {RowVar=rv,...} => " ... " ^ pr_RowVar rv ^ "}"
 			      | NONE => "}"
 	  in SortedFinMap.layoutMap  {start="{", eq=" : ", sep=", ", finish=finish}
@@ -460,7 +460,7 @@ structure StatObject: STATOBJECT =
 
 	and pr_RowVar (ref (NO_REC_LINK rho)) = "'r" ^ Int.toString rho
 	  | pr_RowVar _ = die "pr_RowVar"
-	  
+
 	local
 	  fun Type_eq0 eq_significant (ty,ty') =
 	    let val (ty,ty') = (findType ty, findType ty')
@@ -468,37 +468,37 @@ structure StatObject: STATOBJECT =
 		  (* We could check here that the levels are different from Level.GENERIC *)
 	    in
 	      !level = !level' andalso
-	      (case (TypeDesc, TypeDesc') 
+	      (case (TypeDesc, TypeDesc')
 		 of (TYVAR (tv  as ref (NO_TY_LINK _)),
 		     TYVAR (tv' as ref (NO_TY_LINK _))) => TyVar.eq' eq_significant (tv,tv')
-		   | (ARROW (ty1,ty1'), ARROW (ty2,ty2')) => 
+		   | (ARROW (ty1,ty1'), ARROW (ty2,ty2')) =>
 		   Type_eq0 eq_significant (ty1,ty2) andalso Type_eq0 eq_significant (ty1',ty2')
 		   | (RECTYPE r1, RECTYPE r2) => RecType_eq0 eq_significant (r1,r2)
-		   | (CONSTYPE (tys1,tyname1), CONSTYPE (tys2,tyname2)) => 
+		   | (CONSTYPE (tys1,tyname1), CONSTYPE (tys2,tyname2)) =>
 		   TyName.eq (tyname1, tyname2) andalso
 		   TypeList_eq0 eq_significant (tys1,tys2)
 		   | _ => false)
 	    end
-	  
+
 	  and RecType_eq0 eq_significant (r1,r2) =
 	    let val (r1,r2) = (findRecType r1, findRecType r2)
-	    in case (r1,r2) 
+	    in case (r1,r2)
 		 of (NILrec, NILrec) => true
 		  | (VARrec {RowVar,level}, VARrec {RowVar=RowVar',level=level'}) => !level = !level' andalso RowVar = RowVar'
-		  | (ROWrec (l1,ty1,r1'), ROWrec (l2,ty2,r2')) => 
+		  | (ROWrec (l1,ty1,r1'), ROWrec (l2,ty2,r2')) =>
 		   l1 = l2 andalso Type_eq0 eq_significant (ty1,ty2)
 		   andalso RecType_eq0 eq_significant (r1',r2')
 		  | _ => false
 	    end
 
 	  and TypeList_eq0 eq_significant (tys1,tys2) =
-	    List.foldl (fn ((ty1,ty2),b) => b andalso 
+	    List.foldl (fn ((ty1,ty2),b) => b andalso
 			Type_eq0 eq_significant (ty1,ty2))
 	    true (BasisCompat.ListPair.zipEq (tys1,tys2))
 	    handle BasisCompat.ListPair.UnequalLengths => false
 	in
 	  val RecType_eq = RecType_eq0 EQ_SIGNIFICANT
-	  val eq = Type_eq0 EQ_SIGNIFICANT 
+	  val eq = Type_eq0 EQ_SIGNIFICANT
 	  val eq_equality_not_significant = Type_eq0 EQ_NOT_SIGNIFICANT  (* only used by TypeFcn.eq *)
 	end (*local*)
 
@@ -506,14 +506,14 @@ structure StatObject: STATOBJECT =
       local
 	(* Precedence levels of operators:      tycon : 4
 	                                        *     : 3
-                                                ->    : 2  
+                                                ->    : 2
                                                 {}(), : 1 *)
 
 	fun parenthesize (operator_precedence : int, context_precedence, s : string) =
 	      if operator_precedence < context_precedence then
 		concat ["(", s, ")"] else s
 
-	fun is_tuple_type (m, rv) = 
+	fun is_tuple_type (m, rv) =
 	      (SortedFinMap.matches
 		 (fn (i, lab) => Lab.is_LabN(lab, i+1)) m,
 	       rv)
@@ -533,11 +533,11 @@ structure StatObject: STATOBJECT =
 	 * NONE otherwise*)
 
 	fun fields_of_other_record (ty'_opt : Type option, fields : Type list) =
-	      case ty'_opt of 
+	      case ty'_opt of
 		SOME {TypeDesc = RECTYPE r', ...} =>
 		  let val r' = findRecType r'
-		      val (m', rv') = sanitiseRecType r' 
-		  in 
+		      val (m', rv') = sanitiseRecType r'
+		  in
 		      ziptypes (SortedFinMap.rangeSORTED m') fields
 		  end
 	      | _ => map (fn field => NONE) fields
@@ -547,16 +547,16 @@ structure StatObject: STATOBJECT =
 	 * are the same. If the type names are different, they are
 	 * printed differently, even if they have the same tycon. *)
 
-	fun full_works tyname = 
+	fun full_works tyname =
 	    let val (i,b) = TyName.id tyname
-	    in concat [TyName.pr_TyName tyname, "<", 
+	    in concat [TyName.pr_TyName tyname, "<",
 		       Int.toString i , "-", b, ">"]
 	    end
 
 	fun TyName_string_as_opt (tyname, tyname'_opt) =
-	     case tyname'_opt of 
-	       SOME tyname' => 
-		  if TyName.eq (tyname,tyname') then TyName.pr_TyName tyname 
+	     case tyname'_opt of
+	       SOME tyname' =>
+		  if TyName.eq (tyname,tyname') then TyName.pr_TyName tyname
 		  else if TyName.tycon tyname = TyName.tycon tyname'
 		       then full_works tyname
 		       else TyName.pr_TyName tyname
@@ -566,14 +566,14 @@ structure StatObject: STATOBJECT =
 	  let val ty = findType ty
 	      val ty'_opt = map_opt findType ty'_opt
 	      val st_ty =
-		case #TypeDesc ty 
+		case #TypeDesc ty
 		  of TYVAR tv => TyVar.pretty_string names tv
-			
+
 		   | RECTYPE r =>		(* See if we can print it as `a * b * ...'
 						 * rather than `{1: a, 2: b, ...}' *)
 		    let val r = findRecType r
 		        val (m, rv) = sanitiseRecType r
-		    in case is_tuple_type(m, rv) 
+		    in case is_tuple_type(m, rv)
 			 of (true, NONE) => (* A possible (t1 * t2 * ...) type, and
 					     * no rowvar. *)
 			   print_tuple names precedence (m, ty'_opt)
@@ -589,26 +589,26 @@ structure StatObject: STATOBJECT =
 			     (ListPair.zip (labels,field_types))
 			   end
 		    end
-		  
+
 		   | ARROW (t1, t2) =>
 		    parenthesize
-		    (2, precedence, 
+		    (2, precedence,
 		     (case ty'_opt of
 			SOME {TypeDesc = ARROW(t1', t2'), ...} =>
 			  pretty_string_as_opt names 3 (t1, SOME t1') ^ "->"
-			  ^ pretty_string_as_opt names 2 (t2, SOME t2') 
+			  ^ pretty_string_as_opt names 2 (t2, SOME t2')
 		      | _ =>
 			  pretty_string_as_opt names 3 (t1, NONE) ^ "->"
 			  ^ pretty_string_as_opt names 2 (t2, NONE)))
-		    
+
 		   | CONSTYPE (tys, tyname) =>
-		    let val (tys'_opt, tyname'_opt) = 
-		      case ty'_opt 
-			of SOME {TypeDesc = CONSTYPE(tys', tyname'), ...} => 
+		    let val (tys'_opt, tyname'_opt) =
+		      case ty'_opt
+			of SOME {TypeDesc = CONSTYPE(tys', tyname'), ...} =>
 			  (ziptypes tys' tys, SOME tyname')
 			 | _ => (map (fn _ => NONE) tys, NONE)
 		    in
-		      case (tys, tys'_opt) 
+		      case (tys, tys'_opt)
 			of (nil,_) => TyName_string_as_opt (tyname, tyname'_opt)
 			 | ([ty], [ty']) =>
 			  concat [pretty_string_as_opt names 4 (ty,ty'), " ",
@@ -616,7 +616,7 @@ structure StatObject: STATOBJECT =
 			 | _ =>
 			  concat [ListUtils.stringSep "(" ") " ", "
 				  (pretty_string_as_opt names 1)
-				  (ListPair.zip (tys,tys'_opt)), 
+				  (ListPair.zip (tys,tys'_opt)),
 				  " ",
 				  TyName_string_as_opt (tyname, tyname'_opt)]
 		    end
@@ -633,12 +633,12 @@ structure StatObject: STATOBJECT =
 
 	      let
 		val fields = SortedFinMap.rangeSORTED m
-		val fields' = 
-		      (case ty'_opt of 
+		val fields' =
+		      (case ty'_opt of
 			 SOME {TypeDesc = RECTYPE r', ...} =>
 			   let val r' = findRecType r'
-			       val (m', rv') = sanitiseRecType r' 
-			   in (case (SortedFinMap.matches 
+			       val (m', rv') = sanitiseRecType r'
+			   in (case (SortedFinMap.matches
 				       (fn (i,lab) => Lab.is_LabN (lab, i+1)) m',
 				     rv') of
 			         (true, NONE) =>
@@ -653,7 +653,7 @@ structure StatObject: STATOBJECT =
 		 | ([x], [x']) => "{1: " ^ pretty_string_as_opt  names 1 (x,x') ^ "}"
 		 | _ => parenthesize (3, precedence,
 				      ListUtils.stringSep "" "" " * "
-				      (pretty_string_as_opt names 4) 
+				      (pretty_string_as_opt names 4)
 				      (ListPair.zip(fields, fields'))))
 	      end
       in
@@ -668,7 +668,7 @@ structure StatObject: STATOBJECT =
 
       fun from_TyVar tyvar = {TypeDesc = TYVAR tyvar, level = ref (Level.current ())}
 
-      fun to_TyVar ty = case #TypeDesc (findType ty) 
+      fun to_TyVar ty = case #TypeDesc (findType ty)
 			  of TYVAR tyvar => SOME tyvar
 			   | _ => NONE
 
@@ -676,7 +676,7 @@ structure StatObject: STATOBJECT =
       val fresh_normal = from_TyVar o TyVar.fresh_normal
       fun from_RecType r = {TypeDesc = RECTYPE r, level = ref Level.NONGENERIC}
 
-      fun to_RecType ty = case #TypeDesc (findType ty) 
+      fun to_RecType ty = case #TypeDesc (findType ty)
 			    of RECTYPE t => SOME t
 			     | _ => NONE
 
@@ -684,14 +684,14 @@ structure StatObject: STATOBJECT =
        * variable in tau. *)
 
       fun contains_row_variable t =
-	case #TypeDesc (findType t) 
+	case #TypeDesc (findType t)
 	  of TYVAR _ => false
 	   | ARROW (t1, t2) => contains_row_variable t1 orelse contains_row_variable t2
 	   | RECTYPE r => RecType_contains_row_variable r
 	   | CONSTYPE (tylist, _) => List.exists contains_row_variable tylist
 
       and RecType_contains_row_variable r =
-	case findRecType r 
+	case findRecType r
 	  of NILrec => false
 	   | VARrec _ => true
 	   | ROWrec (_, ty, r') => contains_row_variable ty orelse RecType_contains_row_variable r'
@@ -745,7 +745,7 @@ structure StatObject: STATOBJECT =
 
 	fun sorted_labs r =
 	      (case sanitiseRecType r of (m, _) => SortedFinMap.domSORTED m)
-	fun to_list r = 
+	fun to_list r =
 	      let val m = #1 (sanitiseRecType r)
 	      in
 		BasisCompat.ListPair.zipEq (SortedFinMap.domSORTED m, SortedFinMap.rangeSORTED m)
@@ -782,24 +782,24 @@ structure StatObject: STATOBJECT =
        * level different from GENERIC then it is not necessary to look
        * for bound variables in the type. *)
 
-      local 
+      local
 	datatype free_or_bound = FREE | BOUND
 
 	val bucket = ref ([] : TyVar list)
 	fun insert tv = if List.exists (fn tv' => TyVar.eq(tv,tv')) (!bucket) then ()
 			else bucket := (tv :: (!bucket))
 
-	fun tyvars0 f_b ty : unit = 
-	  let val ty = findType ty 
-	  in case #TypeDesc ty 
-	       of TYVAR (tl as ref (NO_TY_LINK _)) => 
-		 (case f_b 
+	fun tyvars0 f_b ty : unit =
+	  let val ty = findType ty
+	  in case #TypeDesc ty
+	       of TYVAR (tl as ref (NO_TY_LINK _)) =>
+		 (case f_b
 		    of FREE => if !(#level ty) = Level.GENERIC then () else insert tl
 		     | BOUND => if !(#level ty) = Level.GENERIC then insert tl else ())
 		| TYVAR (ref (TY_LINK _))  => die "tyvars0"
 		| RECTYPE r => RecType.fold (fn (ty, ()) => tyvars0 f_b ty) () (findRecType r)
 		| ARROW (ty,ty') =>     (* For the compilation of value constructors, we
-					 * extract the tyvars of ty' before those of ty. 
+					 * extract the tyvars of ty' before those of ty.
 					 * Martin-15/11/1998 *)
 		    (tyvars0 f_b ty'; tyvars0 f_b ty)
 
@@ -814,15 +814,15 @@ structure StatObject: STATOBJECT =
 	 * depend on the exact order the bound variables are
 	 * extracted from a type - so expect things to blow up if you
 	 * modify this very code. *)
-	
+
 	fun tyvars ty : TyVar list = tyvars1 FREE ty
 	fun generic_tyvars ty : TyVar list = tyvars1 BOUND ty
       end
 
       fun tynames ty =
 	    let val ty = findType ty
-	    in case #TypeDesc ty 
-		 of TYVAR _ => TyName.Set.empty 
+	    in case #TypeDesc ty
+		 of TYVAR _ => TyName.Set.empty
 		  | RECTYPE r => RecType.fold
 		   (fn (ty, T) => TyName.Set.union (tynames ty) T)
 		   TyName.Set.empty  r
@@ -851,9 +851,9 @@ structure StatObject: STATOBJECT =
 	    (case #TypeDesc (findType ty) of
 	       ARROW (ty',ty'') => SOME ty
 	     | _ => NONE)
-      fun mk_FunType (ty,ty') = 
+      fun mk_FunType (ty,ty') =
 	    {TypeDesc = ARROW (ty,ty'), level = ref Level.NONGENERIC}
-      fun un_FunType ty = 
+      fun un_FunType ty =
 	    (case #TypeDesc (findType ty) of
 	       ARROW (ty,ty') => SOME (ty,ty')
 	     | _ => NONE)
@@ -867,23 +867,23 @@ structure StatObject: STATOBJECT =
 	       CONSTYPE (types, tyname) => SOME ty
 	     | _ => NONE)
 
-      fun mk_ConsType (typel, name) = 
+      fun mk_ConsType (typel, name) =
 	    {TypeDesc = CONSTYPE (typel,name), level = ref Level.NONGENERIC}
-      fun un_ConsType ty = 
+      fun un_ConsType ty =
 	    (case #TypeDesc (findType ty) of
 	       CONSTYPE (typel,name) => SOME (typel,name)
 	     | _ => NONE)
       val Exn = mk_ConsType ([], TyName.tyName_EXN)
-      fun is_Exn ty = 
-	    (case #TypeDesc (findType ty) of 
+      fun is_Exn ty =
+	    (case #TypeDesc (findType ty) of
 	       CONSTYPE ([], name) => TyName.eq (name, TyName.tyName_EXN)
 	     | _ => false)
       fun mk_Arrow (ty,ty') = {TypeDesc = ARROW (ty,ty'), level = ref Level.NONGENERIC}
       fun un_Arrow ty =
-	    (case #TypeDesc (findType ty) of 
+	    (case #TypeDesc (findType ty) of
 	       ARROW (t, t') => SOME (t, t')
 	     | _ => NONE)
-      fun is_Arrow ty = 
+      fun is_Arrow ty =
 	    (case #TypeDesc (findType ty) of
 	       ARROW _ => true
 	     | _ => false)
@@ -896,8 +896,10 @@ structure StatObject: STATOBJECT =
 
       val Int31        = mk_ConsType ([], TyName.tyName_INT31)
       val Int32        = mk_ConsType ([], TyName.tyName_INT32)
+      val Int63        = mk_ConsType ([], TyName.tyName_INT63)
+      val Int64        = mk_ConsType ([], TyName.tyName_INT64)
       val IntInf       = mk_ConsType ([], TyName.tyName_INTINF)
-      fun IntDefault() = if tag_values() then Int31 else Int32
+      fun IntDefault () = if tag_values() then Int31 else Int32          (* MEMO: fix this later *)
 
       val Real         = mk_ConsType ([], TyName.tyName_REAL)
       val String       = mk_ConsType ([], TyName.tyName_STRING)
@@ -907,37 +909,78 @@ structure StatObject: STATOBJECT =
       val Word8        = mk_ConsType ([], TyName.tyName_WORD8)
       val Word31       = mk_ConsType ([], TyName.tyName_WORD31)
       val Word32       = mk_ConsType ([], TyName.tyName_WORD32)
-      fun WordDefault() = if tag_values() then Word31 else Word32
+      val Word63       = mk_ConsType ([], TyName.tyName_WORD63)
+      val Word64       = mk_ConsType ([], TyName.tyName_WORD64)
+      fun WordDefault () = if tag_values() then Word31 else Word32       (* MEMO: fix this later *)
 
       fun simple_scon ty = {type_scon = ty, overloading = NONE}
+
+      (* MEMO: For bootstrapping, we don't want the source code to
+         depend on us having Int63 and Int64 and friends in scope, thus,
+         we will disable the scon inference for those types for now... *)
+
+      fun fits31bits (i:IntInf.int) : bool =
+          IntInf.<=(IntInf.fromLarge(Int31.toLarge(valOf Int31.minInt)), i) andalso
+          IntInf.<=(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.maxInt)))
+
+      fun fits32bits (i:IntInf.int) : bool =
+          IntInf.<=(IntInf.fromLarge(Int32.toLarge(valOf Int32.minInt)), i) andalso
+          IntInf.<=(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.maxInt)))
+
+      fun fits64bits (i:IntInf.int) : bool =
+          let val maxi64 : IntInf.int = 7*7*73*127*337*92737*649657  (* = 9223372036854775807 = 2^63-1 *)
+              val mini64 : IntInf.int = ~ maxi64 - 1                 (* = ~9223372036854775808 = ~2^63 *)
+          in IntInf.<=(mini64, i) andalso IntInf.<=(i, maxi64)
+          end
+
+      fun fits63bits (i:IntInf.int) : bool =
+          let val maxi63 : IntInf.int = 7*7*73*127*337*92737*649657  (* = 9223372036854775807 = 2^63-1 *)
+              val mini63 : IntInf.int = ~ maxi63 - 1                 (* = ~9223372036854775808 = ~2^63 *)
+          in IntInf.<=(mini63, i) andalso IntInf.<=(i, maxi63)
+          end
+
       fun of_scon sc =
-	case sc
-	  of SCon.INTEGER i =>
-	    if IntInf.>(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.maxInt))) orelse
-               IntInf.<(i, IntInf.fromLarge(Int32.toLarge(valOf Int32.minInt)))
-            then 
-		simple_scon IntInf
-	    else if IntInf.>(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.maxInt))) orelse
-                    IntInf.<(i, IntInf.fromLarge(Int31.toLarge(valOf Int31.minInt)))
-            then 
-		let val tv = TyVar.fresh_overloaded [TyName.tyName_INT32,TyName.tyName_INTINF]
-		in {type_scon=from_TyVar tv, overloading=SOME tv}
-		end 		
-	    else
-		let val tv = TyVar.fresh_overloaded [TyName.tyName_INT31,TyName.tyName_INT32,TyName.tyName_INTINF]
-		in {type_scon=from_TyVar tv, overloading=SOME tv}
-		end 		 
+	  case sc of
+              SCon.INTEGER i =>
+              let fun mk tns =
+                      let val tv = TyVar.fresh_overloaded tns
+		      in {type_scon=from_TyVar tv, overloading=SOME tv}
+		      end
+                  open TyName
+              in if fits31bits i then
+                   mk [tyName_INTINF, tyName_INT64, tyName_INT63, tyName_INT32, tyName_INT31]
+                 else if fits32bits i then
+                   mk [tyName_INTINF, tyName_INT64, tyName_INT63, tyName_INT32]
+                 else if fits63bits i then
+                   mk [tyName_INTINF, tyName_INT64, tyName_INT63]
+                 else if fits64bits i then
+                   mk [tyName_INTINF, tyName_INT64]
+                 else simple_scon IntInf
+              end
 	   | SCon.STRING _ => simple_scon String
 	   | SCon.REAL _ => simple_scon Real
 	   | SCon.CHAR _ => simple_scon Char
-	   | SCon.WORD w => 
-		 if w > 0wx7FFFFFFF then simple_scon Word32
-		 else let 
-			val tv = TyVar.fresh_overloaded 
-			  (if w > 0w255 (* 2^8 *) then [TyName.tyName_WORD31, TyName.tyName_WORD32]
-			   else [TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32])
-		      in {type_scon=from_TyVar tv, overloading=SOME tv}
-		      end
+	   | SCon.WORD w =>
+             let fun mk tns =
+                     let val tv = TyVar.fresh_overloaded tns
+		     in {type_scon=from_TyVar tv, overloading=SOME tv}
+		     end
+                 fun pow2 (x:IntInf.int) : IntInf.int =
+                     if x < 1 then 1
+                     else 2 * pow2 (x - 1)
+                 open TyName
+             in if w <= 0xFF then
+                  mk [tyName_WORD64, tyName_WORD63, tyName_WORD32, tyName_WORD31, tyName_WORD8]
+                else if w <= 0x7FFFFFFF then
+                  mk [tyName_WORD64, tyName_WORD63, tyName_WORD32, tyName_WORD31]
+                else if w <= (0x7FFFFFFF*2+1) then
+                  mk [tyName_WORD64, tyName_WORD63, tyName_WORD32]
+                else if w <= pow2 63 - 1 then
+                  mk [tyName_WORD64, tyName_WORD63]
+                else if w <= pow2 64 - 1 then
+                  simple_scon Word64
+                else die ("immediate word constant 0w" ^ IntInf.toString w ^ " is not representable in 64 bits")
+             end
 
       local
 
@@ -945,7 +988,7 @@ structure StatObject: STATOBJECT =
 	 * current_level.  generalise imperative type variables iff
 	 * (imp and level > current_level). *)
 
-	fun generalise {ov, imp, tau} = 	    
+	fun generalise {ov, imp, tau} =
 	  let val tau = findType tau
 	      val {TypeDesc, level} = tau
 	  in
@@ -954,34 +997,34 @@ structure StatObject: STATOBJECT =
 		(case TypeDesc of
 		   TYVAR tv =>
 		     if !level > Level.current ()
-		       then if (ov orelse not (TyVar.is_overloaded tv)) andalso imp 
-			      then level := Level.GENERIC 
+		       then if (ov orelse not (TyVar.is_overloaded tv)) andalso imp
+			      then level := Level.GENERIC
 			    else level := Level.current ()
 		     else ()
 		 | ARROW (tau1, tau2) =>
-		     level := Int.min (generalise {ov=ov, imp=imp, tau=tau1}, 
+		     level := Int.min (generalise {ov=ov, imp=imp, tau=tau1},
 				       generalise {ov=ov, imp=imp, tau=tau2})
-		 | RECTYPE r => 
+		 | RECTYPE r =>
 		     level := generaliseRecType {ov=ov, imp=imp, r=r}
-		 | CONSTYPE (taus, tyname) => 
+		 | CONSTYPE (taus, tyname) =>
 		     level := foldl Int.min Level.NONGENERIC
 		     (map (fn tau => generalise {ov=ov, imp=imp, tau=tau}) (rev taus))
 	        );
 	       !level
 	    end
-	  
+
 	  and generaliseRecType {ov, imp, r} =
-	    let val r = findRecType r 
-	    in case r 
+	    let val r = findRecType r
+	    in case r
 		 of NILrec => Level.NONGENERIC
-		  | VARrec {level,...} => (if !level > Level.current() then level := Level.current() 
+		  | VARrec {level,...} => (if !level > Level.current() then level := Level.current()
 					   else (); Level.NONGENERIC)
 		  | ROWrec (l,tau,r') => Int.min (generalise {ov=ov, imp=imp, tau=tau},
 						  generaliseRecType {ov=ov, imp=imp, r=r'})
 	    end
       in
 
-	val generalise : {ov:bool,imp:bool,tau:Type} -> unit = 
+	val generalise : {ov:bool,imp:bool,tau:Type} -> unit =
 	  fn a => (generalise a; ())
 
       end (*local*)
@@ -993,8 +1036,8 @@ structure StatObject: STATOBJECT =
       local
 	exception NotEquality
 
-	fun make_equality0 ty = 
-	  case #TypeDesc (findType ty) 
+	fun make_equality0 ty =
+	  case #TypeDesc (findType ty)
 	    of TYVAR (tv as (ref (NO_TY_LINK ({explicit=SOME ExplicitTyVar,...})))) =>
 	      if ExplicitTyVar.isEquality ExplicitTyVar then () else raise NotEquality
 	     | TYVAR (tv as (ref (NO_TY_LINK ({equality, overloaded, id, base, rank, explicit=NONE, inst, ...})))) =>
@@ -1019,7 +1062,7 @@ structure StatObject: STATOBJECT =
 
       (************************
        *
-       * Unification of types 
+       * Unification of types
        *
        ************************)
 
@@ -1050,8 +1093,8 @@ structure StatObject: STATOBJECT =
 
 	fun occurs_tv_in_Type (tv: TyVar, ty: Type) : bool =
 	  let
-	    fun occursType ty = 
-	      case findType ty 
+	    fun occursType ty =
+	      case findType ty
 		of {TypeDesc = TYVAR tv', ...} => TyVar.eq(tv,tv')
 		 | {TypeDesc = ARROW(ty1, ty2), ...} => occursType ty1 orelse occursType ty2
 		 | {TypeDesc = CONSTYPE(tys, tn), ...} => foldl (fn (ty, b) => b orelse occursType ty) false tys
@@ -1060,13 +1103,13 @@ structure StatObject: STATOBJECT =
 	  end
 
 	fun occurs_rv_in_RecType(rv, r) =
-	  case findRecType r 
+	  case findRecType r
 	    of NILrec => false
 	     | VARrec {RowVar=rv',...} => (rv = rv')
 	     | ROWrec(_, ty, r') => occurs_rv_in_Type(rv, ty) orelse occurs_rv_in_RecType(rv, r')
 
 	and occurs_rv_in_Type(rv, ty) =
-	  case #TypeDesc (findType ty) 
+	  case #TypeDesc (findType ty)
 	    of TYVAR _ => false
 	     | ARROW(ty1, ty2) => occurs_rv_in_Type(rv, ty1) orelse occurs_rv_in_Type(rv, ty2)
 	     | RECTYPE r => occurs_rv_in_RecType(rv, r)
@@ -1085,7 +1128,7 @@ structure StatObject: STATOBJECT =
 		| {TypeDesc = RECTYPE r, ...} => decr_level_RecType lev r
 	  end
 	and decr_level_RecType (lev : level) (r : RecType) : unit =
-	  let val r = findRecType r 
+	  let val r = findRecType r
 	  in case r
 	       of NILrec => ()
 		| VARrec {level,...} => if !level > lev then level := lev else ()
@@ -1106,7 +1149,7 @@ structure StatObject: STATOBJECT =
 		| RECTYPE r => decr_rank_RecType p r
 	  end
 	and decr_rank_RecType (p as (tv,rnk : rank)) (r : RecType) : unit =
-	  let val r = findRecType r 
+	  let val r = findRecType r
 	  in case r
 	       of NILrec => ()
 		| VARrec _ => ()
@@ -1128,23 +1171,23 @@ structure StatObject: STATOBJECT =
 	 * `overloaded' fields on the two unified tyvars. If tau is
 	 * not overloaded, we must not change the set `tynames1'. *)
 
-	fun unify_with_overloaded_tyvar tynames1 tau = 
-	  case #TypeDesc (findType tau) 
-	    of TYVAR (ref (NO_TY_LINK {explicit=SOME _,...})) => 
+	fun unify_with_overloaded_tyvar tynames1 tau =
+	  case #TypeDesc (findType tau)
+	    of TYVAR (ref (NO_TY_LINK {explicit=SOME _,...})) =>
 	      raise Unify "unify_with_overloaded_tyvar: explicit tyvar"
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=NONE, 
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=NONE,
 					      rank, inst, ...}))) =>
-	      let val tvd = {equality = equality, id = id, base = base, rank = rank, 
+	      let val tvd = {equality = equality, id = id, base = base, rank = rank,
 			     overloaded=SOME tynames1, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=SOME tynames2, 
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=SOME tynames2,
 					      rank, inst, ...}))) =>
-	      let val overloadSet = TyName.Set.intersect tynames1 tynames2               
-                  val _ = if TyName.Set.isEmpty overloadSet then 
+	      let val overloadSet = TyName.Set.intersect tynames1 tynames2
+                  val _ = if TyName.Set.isEmpty overloadSet then
                             raise Unify "unify_with_overloaded_tyvar: tyvars overloaded with distinct tynames"
                           else ()
-		  val tvd = {equality = equality, id = id, base = base, rank = rank, 
+		  val tvd = {equality = equality, id = id, base = base, rank = rank,
 			     overloaded = SOME overloadSet, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
@@ -1153,7 +1196,7 @@ structure StatObject: STATOBJECT =
 	      else raise Unify "unify_with_overloaded_tyvar: not overloaded to this tyname"
 	     | _ => raise Unify "unify_with_overloaded_tyvar: only overloaded to tynames"
 
-		
+
 	(* unify_with_tyvar tv; Check the attributes of an ordinary
 	 * TyVar are satisfied. We assume the `occurs' check has
 	 * already been done. *)
@@ -1161,13 +1204,13 @@ structure StatObject: STATOBJECT =
 	fun unify_with_tyvar (tv as ref (NO_TY_LINK {equality, overloaded, ...}), tau) =
 	  let
 	    val S =
-	      if equality then 
-		case make_equality tau 
+	      if equality then
+		case make_equality tau
 		  of SOME S => S
 		   | NONE => raise Unify "unify_with_tyvar.1"
 	      else Substitution.Id
 
-	    val S' = case overloaded 
+	    val S' = case overloaded
 		       of SOME tynames =>
 			 unify_with_overloaded_tyvar tynames (Substitution.on (S, tau))
 			| NONE => Substitution.Id
@@ -1187,31 +1230,31 @@ structure StatObject: STATOBJECT =
 				   level=level},
 			   ty' as {TypeDesc = TYVAR (tv' as ref (NO_TY_LINK {explicit=SOME ExplicitTyVar',...})),
 				   level=level'}) =
-	  if TyVar.eq(tv,tv') then 
+	  if TyVar.eq(tv,tv') then
 	    if !level = !level' then ()
 	    else raise Unify "unifyExplicit.level"
 	  else raise Unify "unifyExplicit.eq"
-		    
+
 	  | unifyExplicit (ty  as {TypeDesc = TYVAR (tv as ref (NO_TY_LINK {explicit=SOME ExplicitTyVar,...})),
 				   level=level},
 			   ty' as {TypeDesc = TYVAR(tv' as ref (NO_TY_LINK r)),
 				   level=level'}) =
-	    
+
 	    (* Notice below that unification of overloaded type
 	     * variable and explicit type variable is not allowed *)
 
 	    let val {equality, overloaded, ...} = r
 	    in
-	       case (equality, ExplicitTyVar.isEquality ExplicitTyVar) 
+	       case (equality, ExplicitTyVar.isEquality ExplicitTyVar)
 		 of (false,  _  ) => ()
 		  | (true , true) => ()
 		  | ( _   ,  _  ) => raise Unify "unifyExplicit.2";
 
 		   if ListUtils.member tv' restricted_tyvars then raise Unify "unifyExplicit.3"
 		   else if TyVar.is_overloaded tv' then raise Unify "unifyExplicit.4"
-		   else if !level' < !level then 
+		   else if !level' < !level then
 
-		       (*Test example: 
+		       (*Test example:
 			  (fn x => let val f = fn (y: ''a) => x = y in 2 end);*)
 
 		       (*This exception is raised if an explicit type variable is
@@ -1220,7 +1263,7 @@ structure StatObject: STATOBJECT =
 			15 in the Definition is not satisfied*)
 
 		       raise Unify "unifyExplicit.5"
-		   else 
+		   else
 		       tv' := TY_LINK ty
 	     end
 	  | unifyExplicit (_, _) = raise Unify "unifyExplicit.7"
@@ -1239,9 +1282,9 @@ structure StatObject: STATOBJECT =
 		       level=level},
 	       ty' as {TypeDesc = TYVAR(tv' as ref(NO_TY_LINK{rank=rank_ref' as ref r', ...})),
 		       level=level'}) =
-	      if TyVar.eq (tv,tv') then 
+	      if TyVar.eq (tv,tv') then
 		if !level = !level' then () else die "unifyTyVar"
-	      else 
+	      else
 		let val rank = Rank.min(r,r')
 		in rank_ref := rank ;
 		   rank_ref' := rank ;
@@ -1260,7 +1303,7 @@ structure StatObject: STATOBJECT =
 	    else
 	      (decr_level_Type (!level) ty' ;
 	       decr_rank_Type (tv,!rank) ty' ;        (* the tv is for the error reporting *)
-	       if occurs_tv_in_Type (tv, ty') orelse ListUtils.member tv restricted_tyvars 
+	       if occurs_tv_in_Type (tv, ty') orelse ListUtils.member tv restricted_tyvars
 		 then raise Unify "unifyTyVar.2"
 	       else unify_with_tyvar(tv, ty'))
 
@@ -1272,10 +1315,10 @@ structure StatObject: STATOBJECT =
 	 *******************)
 
 	fun unifyType(ty,ty') =
-	  let 
+	  let
 	    val (ty,ty') = (findType ty,findType ty')
 	  in
-	    case (#TypeDesc ty, #TypeDesc ty') 
+	    case (#TypeDesc ty, #TypeDesc ty')
 	      of (TYVAR _, _) => unifyTyVar (ty, ty')
 	       | (_, TYVAR _) => unifyTyVar (ty', ty)
 	       | (RECTYPE r, RECTYPE r') => unifyRecType(r, r')
@@ -1303,7 +1346,7 @@ structure StatObject: STATOBJECT =
 	  end
 
 	and unifyRow(row1: RecType, row2: RecType): Substitution =
-	  let val (row1,row2) = (RecType.sort row1, RecType.sort row2) 
+	  let val (row1,row2) = (RecType.sort row1, RecType.sort row2)
 	  in unifyRow' (row1, row2)
 	  end
 
@@ -1323,7 +1366,7 @@ structure StatObject: STATOBJECT =
 
 	       | (ROWrec(lab1, ty1, row1'), ROWrec(lab2, ty2, row2')) =>
 		if lab1 = lab2 then (unifyType(ty1, ty2); unifyRow(row1',row2'))
-		else 
+		else
 		  if Lab.<(lab1, lab2) then	(* Pad out row2, try again *)
 		    (extract(lab1,row2); unifyRow(row1,row2))
 		  else				(* Pad out row1, try again *)
@@ -1336,7 +1379,7 @@ structure StatObject: STATOBJECT =
 
 	and unifyConsType((ty_list, tyname), (ty_list', tyname')) =
 	  if TyName.eq(tyname, tyname') then                            (* Note that tyname=tyname' implies *)
-	    List.app unifyType (ListPair.zip(ty_list, ty_list'))      (* length(ty_list)=length(ty_list') *)           
+	    List.app unifyType (ListPair.zip(ty_list, ty_list'))      (* length(ty_list)=length(ty_list') *)
 	  else raise Unify "unifyConsType"
       in
 	(unifyType (tau,tau'); UnifyOk)
@@ -1344,7 +1387,7 @@ structure StatObject: STATOBJECT =
 	     | Rank(tv,tn) => UnifyRankError(tv,tn)
       end
 
-      fun unify (ty1,ty2) = 
+      fun unify (ty1,ty2) =
           restricted_unify {restricted_tyvars=nil} (ty1,ty2)
 
       (* Matching functions for compilation manager *)
@@ -1352,23 +1395,23 @@ structure StatObject: STATOBJECT =
       local
 	fun match_Type (ty,ty0) : unit =
 	  let val (ty, ty0) = (findType ty, findType ty0)
-	  in case (#TypeDesc ty,#TypeDesc ty0) 
+	  in case (#TypeDesc ty,#TypeDesc ty0)
 	       of (ARROW (tau,tau'), ARROW (tau0,tau0')) =>
 		 (match_Type(tau,tau0); match_Type (tau',tau0'))
 		| (RECTYPE rect, RECTYPE rect0) => match_RecType (rect,rect0)
 		| (CONSTYPE (taus,tn), CONSTYPE (taus0,tn0)) =>
 		 (match_Types (taus, taus0) ; TyName.match (tn, tn0))
-		| _ => () 
+		| _ => ()
 	  end
 
 	and match_Types ([],_) = ()
 	  | match_Types (_,[]) = ()
 	  | match_Types (tau::taus, tau0::taus0) =
 	  (match_Type (tau, tau0) ; match_Types (taus, taus0))
-	  
+
 	and match_RecType(rect,rect0) =
-	  case (findRecType rect, findRecType rect0) 
-	    of (ROWrec (l,tau,rect), ROWrec (l0,tau0,rect0)) => 
+	  case (findRecType rect, findRecType rect0)
+	    of (ROWrec (l,tau,rect), ROWrec (l0,tau0,rect0)) =>
 	      if l <> l0 then ()
 	      else (match_Type (tau,tau0) ; match_RecType (rect,rect0))
 	     | _ => ()
@@ -1386,7 +1429,7 @@ structure StatObject: STATOBJECT =
 
     type TypeScheme = TyVar list * Type
 
-    structure TypeScheme = 
+    structure TypeScheme =
       struct
 
 	(* Prettyprinting of type schemes *)
@@ -1404,15 +1447,15 @@ structure StatObject: STATOBJECT =
 
 	fun instance_with_types (([],tau),[]) = tau
 	  | instance_with_types ((tvs,tau),taus) =
-	  let 
+	  let
 	    fun instanceType ty =
 	      let val ty = findType ty
 		  val {TypeDesc, level} = ty
-	      in if !level <> Level.GENERIC then ty 
-		 else case TypeDesc 
-			of TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty 
-			 | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) => 
-			  die "instanceType.generic tyvar not instantiated"  
+	      in if !level <> Level.GENERIC then ty
+		 else case TypeDesc
+			of TYVAR (tv as ref (NO_TY_LINK {inst=ref(SOME ty),...})) => ty
+			 | TYVAR (tv as ref (NO_TY_LINK {inst=ref NONE,...})) =>
+			  die "instanceType.generic tyvar not instantiated"
 			 | TYVAR (ref (TY_LINK _)) => die "instanceType.findType doesn't work"
 			 | ARROW (ty1,ty2) => Type.mk_Arrow (instanceType ty1, instanceType ty2)
 			 | RECTYPE r => Type.from_RecType (instanceRecType r)
@@ -1420,7 +1463,7 @@ structure StatObject: STATOBJECT =
 	      end
 	    and instanceRecType r =
 	      let val r = findRecType r
-	      in case r 
+	      in case r
 		   of NILrec => r
 		    | VARrec rho => r
 		    | ROWrec (l,ty,r') => ROWrec (l,instanceType ty,instanceRecType r')
@@ -1462,7 +1505,7 @@ structure StatObject: STATOBJECT =
 	 * used to implement equality of type functions. *)
 
 	fun eq(([],ty1), ([],ty2)) = Type.eq(ty1,ty2)
-	  | eq(sigma1 as (tvs1,_), sigma2 as (tvs2,_)) = 
+	  | eq(sigma1 as (tvs1,_), sigma2 as (tvs2,_)) =
 	  length tvs1 = length tvs2 andalso
 	  let fun fresh (tv as ref(NO_TY_LINK tvdesc)) = Type.from_TyVar(TyVar.refresh tv)
 		| fresh _ = die ("eq.fresh: tysch= " ^ string sigma1)
@@ -1493,8 +1536,8 @@ structure StatObject: STATOBJECT =
 	    (* One must use restricted unify! Consider the call
 	     * ``generalises_Type(int->int, 'a->int)''.  This call
 	     * should return false! -- Martin *)
-	    
-	    case Type.restricted_unify {restricted_tyvars=TyVar.unionTyVarSet(fv_tau',fv_sigma)} (tau,tau') 
+
+	    case Type.restricted_unify {restricted_tyvars=TyVar.unionTyVarSet(fv_tau',fv_sigma)} (tau,tau')
 	      of Type.UnifyOk => true
 	       | _ => false
 	  end
@@ -1511,16 +1554,16 @@ structure StatObject: STATOBJECT =
 	    (* One must use restricted unify! Consider the call
 	     * ``generalises_TypeScheme(\/().'a->int, \/'b.'b->int)''.  This call
 	     * should return false! -- mael 2004-08-05; see test/weeks6.sml *)
-	    
-	    case Type.restricted_unify {restricted_tyvars=TyVar.unionTyVarSet(fv_tau',fv_sigma)} (tau,tau') 
+
+	    case Type.restricted_unify {restricted_tyvars=TyVar.unionTyVarSet(fv_tau',fv_sigma)} (tau,tau')
 	      of Type.UnifyOk => true
 	       | _ => false
 	  end
-	  
+
 	(* close_overload tau; close a type and do not avoid
 	 * generalisation of overloaded type variables; this function
 	 * is used for creating type schemes for primitives. *)
-	  
+
 	fun close_overload tau =
 	  let val tvs = (Type.generalise {ov=true, imp=true, tau=tau};
 			 Type.generic_tyvars tau)
@@ -1530,8 +1573,8 @@ structure StatObject: STATOBJECT =
 	(* close imp sigma; close a type scheme. The tyvars list
 	 * should be empty. The boolean imp should be false if the
 	 * valbind that tau is the type of is expansive. *)
-       
-	fun close imp ([], tau) = 
+
+	fun close imp ([], tau) =
 	  let val tvs = (Type.generalise {ov=false, imp=imp, tau=tau};
 			 Type.generic_tyvars tau)
 	  in (tvs, tau)
@@ -1549,9 +1592,9 @@ structure StatObject: STATOBJECT =
 
       local
 	fun violates_equality0 T tau =
-	  case #TypeDesc (findType tau) 
+	  case #TypeDesc (findType tau)
 	    of TYVAR _ => false
-	     | RECTYPE r => 
+	     | RECTYPE r =>
 	      (Type.RecType.fold (fn (tau, res) => res orelse violates_equality0 T tau)
 	       false r)
 	     | CONSTYPE (taus, tyname) =>
@@ -1563,7 +1606,7 @@ structure StatObject: STATOBJECT =
       in
 	fun violates_equality (T : TyName.Set.Set) (sigma : TypeScheme) : bool =
 	      let val (_, tau) = to_TyVars_and_Type sigma
-	      in case Type.un_Arrow tau 
+	      in case Type.un_Arrow tau
 		   of NONE => false                                (*nullary constructor*)
 		    | SOME (tau', _) => violates_equality0 T tau'  (*unary constructor*)
        	      end
@@ -1575,7 +1618,7 @@ structure StatObject: STATOBJECT =
 
       val pu =
 	  Pickle.pairGen(Pickle.listGen TyVar.pu,Type.pu)
-    
+
     end (*TypeScheme*)
 
 
@@ -1585,22 +1628,22 @@ structure StatObject: STATOBJECT =
 
     datatype TypeFcn = TYPEFCN of {tyvars : TyVar list, tau : Type}
 
-    structure TypeFcn = 
+    structure TypeFcn =
       struct
 
-	fun layout (TYPEFCN {tyvars, tau}) = 
+	fun layout (TYPEFCN {tyvars, tau}) =
 	  let val tau = findType tau
-	  in PP.NODE {start="/\\" ^ TyVar.pr_tyvars tyvars ^ ".", finish="", indent=0, 
+	  in PP.NODE {start="/\\" ^ TyVar.pr_tyvars tyvars ^ ".", finish="", indent=0,
 		      childsep=PP.NOSEP, children=[Type.layout tau]}
 	  end
 
-	fun eq (TYPEFCN {tyvars, tau}, TYPEFCN {tyvars=tyvars', tau=tau'}) = 
+	fun eq (TYPEFCN {tyvars, tau}, TYPEFCN {tyvars=tyvars', tau=tau'}) =
 	  TypeScheme.eq((tyvars,tau),(tyvars',tau'))
-	
+
 	fun from_TyVars_and_Type (tyvars : TyVar list, tau : Type) =
 	  (Type.generalise {ov=false, imp=true, tau=tau};
 	   TYPEFCN {tyvars=tyvars, tau=tau})
-    
+
 	fun apply (theta as (TYPEFCN {tyvars, tau}), taus : Type list) : Type =
 	  TypeScheme.instance_with_types ((tyvars,tau),taus)
 
@@ -1610,13 +1653,13 @@ structure StatObject: STATOBJECT =
 	 * function admits equality because the bound type variables
 	 * have already been renamed to admit equality. *)
 
-	fun admits_equality (theta as TYPEFCN {tyvars, tau}) : bool = 
-	  case Type.make_equality (TypeScheme.instance (tyvars,tau)) 
+	fun admits_equality (theta as TYPEFCN {tyvars, tau}) : bool =
+	  case Type.make_equality (TypeScheme.instance (tyvars,tau))
 	    of SOME _ => true
 	     | NONE => false
 
 	fun tynames (TYPEFCN {tyvars, tau}) = Type.tynames tau
-	  
+
 	fun grounded (theta : TypeFcn, tynameset : TyName.Set.Set) : bool =
 	  TyName.Set.isEmpty (TyName.Set.difference (tynames theta) tynameset)
 
@@ -1631,10 +1674,10 @@ structure StatObject: STATOBJECT =
 	  end
 
 	fun to_TyName (TYPEFCN {tyvars, tau}) : TyName option =
-	  case Type.un_ConsType tau 
+	  case Type.un_ConsType tau
 	    of SOME (taus,t) =>
 	      let fun check ([],[]) = true
-		    | check (tv::tvs,tau::taus) = 
+		    | check (tv::tvs,tau::taus) =
 		       (case Type.to_TyVar tau
 			  of SOME tv' => TyVar.eq (tv,tv')
 			   | NONE => false) andalso check(tvs,taus)
@@ -1646,16 +1689,16 @@ structure StatObject: STATOBJECT =
 
 	val is_TyName = is_Some o to_TyName
 
-	fun pretty_string names (TYPEFCN {tyvars, tau}) = 
-	  case tyvars 
+	fun pretty_string names (TYPEFCN {tyvars, tau}) =
+	  case tyvars
 	    of [] => {vars="", body=Type.pretty_string names tau}
 	     | [tyvar] => {vars=TyVar.pretty_string names tyvar,
 			   body=Type.pretty_string names tau}
 	     | tyvars => {vars=ListUtils.stringSep "(" ")" ", " (TyVar.pretty_string names) tyvars,
 			  body=Type.pretty_string names tau}
-	      
+
 	fun pretty_string' names theta = #body (pretty_string names theta)
-	  
+
 	fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
 
 	val pu =
@@ -1668,21 +1711,21 @@ structure StatObject: STATOBJECT =
 
 
     datatype TypeFcn' = TYNAME of TyName |  EXPANDED of TypeFcn
-    datatype realisation = 
+    datatype realisation =
         Not_Id of TypeFcn' TyName.Map.map
       | Realisation_Id
 
     structure Realisation = struct
 
       fun tynamesRng (Realisation_Id) = TyName.Set.empty
-	| tynamesRng (Not_Id m) = 
-	  TyName.Map.Fold (fn ((tn,TYNAME tn'),acc) => 
+	| tynamesRng (Not_Id m) =
+	  TyName.Map.Fold (fn ((tn,TYNAME tn'),acc) =>
 			      if TyName.eq(tn,tn') then acc
 			      else TyName.Set.insert tn' acc
-	                    | ((tn,EXPANDED tf),acc) => 
-				  TyName.Set.union (TyName.Set.remove tn 
-						   (TypeFcn.tynames tf)) 
-				  acc) 
+	                    | ((tn,EXPANDED tf),acc) =>
+				  TyName.Set.union (TyName.Set.remove tn
+						   (TypeFcn.tynames tf))
+				  acc)
 	  TyName.Set.empty m
 
       fun dom Realisation_Id = TyName.Set.empty
@@ -1691,24 +1734,24 @@ structure StatObject: STATOBJECT =
       (* correct_levels_Type ty; correct levels of non-tyvar nodes in
        * ty. Used by on_Type. *)
 
-      fun correct_levels_Type ty = 
-	let val ty = findType ty 
+      fun correct_levels_Type ty =
+	let val ty = findType ty
 	in if !(#level ty) = Level.GENERIC then ()
 	   else
-	     case ty 
+	     case ty
 	       of {TypeDesc = TYVAR tv, level} => ()
-		| {TypeDesc = ARROW (ty1,ty2), level} => 
+		| {TypeDesc = ARROW (ty1,ty2), level} =>
 		 level := Int.min (correct_levels_Type ty1, correct_levels_Type ty2)
-		| {TypeDesc = RECTYPE r, level} => 
+		| {TypeDesc = RECTYPE r, level} =>
 		 level := correct_levels_RecType r
-		| {TypeDesc = CONSTYPE (tys,tyname), level} => 
+		| {TypeDesc = CONSTYPE (tys,tyname), level} =>
 		 level := foldl Int.min Level.NONGENERIC (map correct_levels_Type tys) ;
           !(#level ty)
 	end
 
       and correct_levels_RecType r =
-	let val r = findRecType r 
-	in case r 
+	let val r = findRecType r
+	in case r
 	     of NILrec => Level.NONGENERIC
 	      | VARrec _ => Level.NONGENERIC
 	      | ROWrec (l,ty,r') => Int.min (correct_levels_Type ty, correct_levels_RecType r')
@@ -1759,10 +1802,10 @@ structure StatObject: STATOBJECT =
 
       local exception Inverse
       in fun inverse Realisation_Id = SOME Realisation_Id
-	   | inverse (Not_Id m) = 
-	      (SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) => 
+	   | inverse (Not_Id m) =
+	      (SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) =>
 					   case theta
-					     of TYNAME t' => 
+					     of TYNAME t' =>
 					       if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc)) then raise Inverse
 					       else TyName.Map.add(t', TYNAME t, acc)
 					      | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
@@ -1786,9 +1829,9 @@ structure StatObject: STATOBJECT =
 	| on_TyName' (Not_Id m) t = (case TyName.Map.lookup m t
 				       of SOME theta => theta
 					| NONE => TYNAME t)
- 
+
       fun on_Type Realisation_Id ty = ty
-	| on_Type phi ty = 
+	| on_Type phi ty =
 	  (* NB: keep levels, so that it works for type schemes and type functions as well *)
 	  (case findType ty of
 	     {TypeDesc = TYVAR _, level} => ty
@@ -1804,7 +1847,7 @@ structure StatObject: STATOBJECT =
 		functions for type names*)
 	       let val theta = on_TyName' phi t
 
-		   fun TypeFcn_apply' (TYNAME t', tau_list) = 
+		   fun TypeFcn_apply' (TYNAME t', tau_list) =
 			 {TypeDesc = CONSTYPE (tau_list,t'),
 			  level = ref (!level)}
 		     | TypeFcn_apply' (EXPANDED theta, tau_list) =
@@ -1820,21 +1863,21 @@ structure StatObject: STATOBJECT =
       fun on_TypeScheme Realisation_Id scheme = scheme
 	| on_TypeScheme phi (sigma as (tyvars,tau)) =
 	  if List.exists TyVar.is_overloaded tyvars then sigma  (* type schemes for overloaded identifiers are rigid *)
-	  else 
+	  else
             let val tau = on_Type phi tau
 (*
               (* eliminate bound tyvars that are not in tau *)
               val tvs = Type.generic_tyvars tau
-              val tyvars = foldr (fn (tv,acc) => if List.exists (fn t => t = tv) tvs then tv::acc else acc) nil tyvars 
+              val tyvars = foldr (fn (tv,acc) => if List.exists (fn t => t = tv) tvs then tv::acc else acc) nil tyvars
 *)
             in (tyvars,tau)
             end
-            
+
       fun on_TypeFcn Realisation_Id theta = theta
 	| on_TypeFcn phi (theta as TYPEFCN {tyvars, tau}) =
-        TYPEFCN{tyvars=tyvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved, which differ 
+        TYPEFCN{tyvars=tyvars,tau=on_Type phi tau}   (* NOTE: arity of theta should be preserved, which differ
                                                       * from the case for type schemes ; mael-2007-11-07 *)
-(* 
+(*
 	let val (tyvars,tau) = on_TypeScheme phi (tyvars,tau)
 	in TYPEFCN{tyvars=tyvars,tau=tau}
 	end
@@ -1857,18 +1900,18 @@ structure StatObject: STATOBJECT =
 
       fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
 	| phi oo Realisation_Id = phi
-	| (phi1 as Not_Id m1) oo phi2 = 
+	| (phi1 as Not_Id m1) oo phi2 =
 	case on_Realisation phi1 phi2
 	  of Realisation_Id => phi1
-	   | Not_Id m2 => 
+	   | Not_Id m2 =>
 	    let
 (*
 		fun member t nil = false
 		  | member t0 (t::ts) = TyName.eq (t0,t) orelse member t0 ts
 	        val d1 = TyName.Map.dom m1
 	        fun loop nil = ()
-		  | loop (t::ts) = 
-		  if member t d1 then 
+		  | loop (t::ts) =
+		  if member t d1 then
 		    (PP.printTree(layout phi1);
 		     PP.printTree(layout phi2)
 		     ;die ("realisation map overlay: " ^ TyName.pr_TyName t))
@@ -1879,17 +1922,17 @@ structure StatObject: STATOBJECT =
  	    end
 
       fun enrich (rea0, (rea,T)) =
-	TyName.Set.fold (fn t => fn acc => acc andalso 
+	TyName.Set.fold (fn t => fn acc => acc andalso
 			 TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
 
       fun eq (Realisation_Id, Realisation_Id) = true       (* conservative check, thus eq is a bad word for it;
 							    * - better now ; mael 2004-04-06 *)
-	| eq (rea1,rea2) = 
+	| eq (rea1,rea2) =
 	let val T = TyName.Set.union (dom rea1) (dom rea2)
 	in enrich (rea1,(rea2,T))
 	end
 (*
-	| eq (rea1,rea2) = 
+	| eq (rea1,rea2) =
 	let val T = dom rea1
 	in TyName.Set.eq T (dom rea2) andalso enrich (rea1,(rea2,T))
 	end
@@ -1912,7 +1955,7 @@ structure StatObject: STATOBJECT =
 		  TypeFcn.pu
 	  in Pickle.dataGen("StatObject.TypeFcn'",toInt,[fun_TYNAME,fun_EXPANDED])
 	  end
-      val pu = 
+      val pu =
 	  let fun to (SOME e) = Not_Id e
 		| to NONE = Realisation_Id
 	      fun from (Not_Id e) = SOME e
@@ -1920,7 +1963,7 @@ structure StatObject: STATOBJECT =
 	  in Pickle.convert (to,from)
 	      (Pickle.optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
 	  end
-	
+
     end (*Realisation*)
 
 (*
@@ -1934,13 +1977,13 @@ structure StatObject: STATOBJECT =
       val tau1 = Type.from_pair(a_type,a'_type)
       val sigma1 = (Type.generalise {ov=false, imp=true, tau=tau1}; (Type.generic_tyvars tau1,tau1))
 
-      val sigma2 = 
+      val sigma2 =
 	let
 	  val tv = ref (NO_TY_LINK {id= 1, equality = false, rank=dummy_rank_ref,
 					  overloaded = NONE, explicit=NONE, inst=ref NONE})
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
-	  val r =   {TypeDesc = 
+	  val r =   {TypeDesc =
 		     RECTYPE (Type.RecType.add_field (ONE, ty)
 			        (Type.RecType.add_field (TWO, ty')
 				   Type.RecType.empty)),
@@ -1949,27 +1992,27 @@ structure StatObject: STATOBJECT =
 	  (Type.generic_tyvars r, r)
 	end
 
-      val _ = 
+      val _ =
 	print(if TypeScheme.eq(sigma1,sigma2) then "***GENERALISE test succeeded***\n"
 	      else "***GENERALISE test failed***\n")
 
       val tau3 = TypeScheme.instance sigma1
-      val ty = Type.Int 
+      val ty = Type.Int
       and ty' = Type.fresh_normal ()
-      val tau4 = 
+      val tau4 =
 	  Type.from_RecType (Type.RecType.add_field (ONE, ty)
 			       (Type.RecType.add_field (TWO, ty')
 				  Type.RecType.empty))
       val _ = Type.unify (tau3,tau4)
     in
-      val _ = 
+      val _ =
 	print(if Type.eq(ty',Type.Int) then "***INSTANCE UNIFY test succeeded***\n"
 	      else "***INSTANCE UNIFY test failed***\n")
     end
 
    (* Test stuff *)
     local
-      val a = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'a") 
+      val a = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'a")
       and a' = TyVar.fresh_normal()
 
       val _ = Level.push ()
@@ -1982,13 +2025,13 @@ structure StatObject: STATOBJECT =
       val tau1 = Type.from_pair(a_type,a'_type)
       val sigma1 = (Type.generalise {ov=false, imp=true, tau=tau1};
 		    (Type.generic_tyvars tau1, tau1))
-      val sigma2 = 
+      val sigma2 =
 	let
 	  val tv = ref (NO_TY_LINK({id= 1, equality = false, rank=dummy_rank_ref,
 					  overloaded = NONE, explicit=NONE, inst = ref NONE}))
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
-	  val r =   {TypeDesc = 
+	  val r =   {TypeDesc =
 		     RECTYPE (Type.RecType.add_field (ONE, ty)
 			        (Type.RecType.add_field (TWO, ty')
 				   Type.RecType.empty)),
@@ -2005,7 +2048,7 @@ structure StatObject: STATOBJECT =
 
    (* Test stuff *)
     local
-      val a = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'a") 
+      val a = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'a")
       and b = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'b")
       val _ = Level.push ()
       val a_type = Type.from_TyVar a
@@ -2030,7 +2073,7 @@ structure StatObject: STATOBJECT =
 
    (* Test stuff *)
     local
-      val a = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'a") 
+      val a = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'a")
       and b = TyVar.from_ExplicitTyVar(ExplicitTyVar.mk_TyVar "'_b")
       val _ = Level.push ()
       val a_type = Type.from_TyVar a
@@ -2078,7 +2121,6 @@ structure StatObject: STATOBJECT =
       val _ = print ("instantiation = " ^ Type.string inst ^ "\n")
     in
     end
-*)  
+*)
 
   end (*StatObject*)
-

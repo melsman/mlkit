@@ -12,6 +12,8 @@ signature OVERLOADING_INFO =
     | UNRESOLVED_DOTDOTDOT of RecType
     | RESOLVED_INT31
     | RESOLVED_INT32
+    | RESOLVED_INT63
+    | RESOLVED_INT64
     | RESOLVED_INTINF
     | RESOLVED_REAL
     | RESOLVED_STRING
@@ -19,6 +21,8 @@ signature OVERLOADING_INFO =
     | RESOLVED_WORD8
     | RESOLVED_WORD31
     | RESOLVED_WORD32
+    | RESOLVED_WORD63
+    | RESOLVED_WORD64
 
     val resolvedWordDefault : unit -> OverloadingInfo
     val resolvedIntDefault : unit -> OverloadingInfo

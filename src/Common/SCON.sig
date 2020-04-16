@@ -3,10 +3,10 @@
 (* I'd like two views of SCON, one with the datatype hidden, but that seems
    to cause Poly/ML problems with the local/sharing/open stuff. *)
 
-signature SCON =    
-sig 
+signature SCON =
+sig
   datatype scon = INTEGER of IntInf.int
-  		| WORD of Word32.word
+  		| WORD of IntInf.int
   		| STRING of string
   		| CHAR of int
 		| REAL of string

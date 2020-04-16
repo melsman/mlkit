@@ -65,10 +65,14 @@ structure RegionStatEnv: REGION_STAT_ENV =
 		     TyNameMap.add(TyName.tyName_BOOL, (0,[],0),
 		     TyNameMap.add(TyName.tyName_INT31, (0,[],0),
 		     TyNameMap.add(TyName.tyName_INT32, (0,[],0),
+		     TyNameMap.add(TyName.tyName_INT63, (0,[],0),
+		     TyNameMap.add(TyName.tyName_INT64, (0,[],0),
 		     TyNameMap.add(TyName.tyName_CHAR, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD8, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD31, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD32, (0,[],0),
+		     TyNameMap.add(TyName.tyName_WORD63, (0,[],0),
+		     TyNameMap.add(TyName.tyName_WORD64, (0,[],0),
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.PAIR_RT],0),
 				   (* the auxiliary region is for a pair; hence PAIR_RT *)
 		     TyNameMap.add(TyName.tyName_FRAG, (1,[E.STRING_RT],0),
@@ -80,7 +84,7 @@ structure RegionStatEnv: REGION_STAT_ENV =
 		     TyNameMap.add(TyName.tyName_FOREIGNPTR, (0,[],0),
 		     TyNameMap.add(TyName.tyName_ARRAY, (1,[],0),
 		     TyNameMap.add(TyName.tyName_VECTOR, (1,[],0),
-		     TyNameMap.empty)))))))))))))))))))
+		     TyNameMap.empty)))))))))))))))))))))))
 
     local
 

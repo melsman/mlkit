@@ -236,7 +236,7 @@ struct
                                 else i
                               val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                             in
-                              move_immed(Int32.fromInt tag, R reg_for_result,C')
+                              move_immed(IntInf.fromInt tag, R reg_for_result,C')
                             end
                         | LS.UNBOXED i =>
                             let
@@ -247,7 +247,7 @@ struct
                                        maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
                                 C aux_regions
                             in
-                              reset_regions(move_immed(Int32.fromInt tag, R reg_for_result,C'))
+                              reset_regions(move_immed(IntInf.fromInt tag, R reg_for_result,C'))
                             end
                         | LS.BOXED i =>
                             let
@@ -340,7 +340,7 @@ struct
                      in
                        store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
                        if BI.tag_values() then
-                         move_immed(Int32.fromInt BI.ml_unit, R reg_for_result,C')
+                         move_immed(IntInf.fromInt BI.ml_unit, R reg_for_result,C')
                        else C')
                      end
                     | LS.PASS_PTR_TO_MEM(alloc,i,untagged_value) =>
@@ -645,7 +645,8 @@ struct
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
                   let
-                    val (t_lab,f_lab) = if sel_val = Int32.fromInt BI.ml_true then (lab_t,lab_f) else (lab_f,lab_t)
+                    val (t_lab,f_lab) = if sel_val = IntInf.fromInt BI.ml_true then (lab_t,lab_f)
+                                        else (lab_f,lab_t)
                     val lab_exit = new_local_lab "lab_exit"
                   in
                     I.lab(LocalLab t_lab) ::
@@ -669,7 +670,7 @@ struct
                   compileNumSwitch {size_ff=size_ff,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
-                                    toInt=fn w => Int32.fromLarge(Word32.toLargeIntX (maybeTagWord{value=w, precision=precision})),
+                                    toInt=fn w => maybeTagWord{value=w, precision=precision},
                                     opr_aty=opr_aty,
                                     oprBoxed=boxedNum precision,
                                     sels=sels,
@@ -697,9 +698,9 @@ struct
                                       | ((con,con_kind),_)::rest => con_kind
                     val sels' = map (fn ((con,con_kind),sel_insts) =>
                                      case con_kind
-                                       of LS.ENUM i => (Int32.fromInt i,sel_insts)
-                                        | LS.UNBOXED i => (Int32.fromInt i,sel_insts)
-                                        | LS.BOXED i => (Int32.fromInt i,sel_insts)) sels
+                                       of LS.ENUM i => (IntInf.fromInt i,sel_insts)
+                                        | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
+                                        | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon(src_aty,C) =
                       let val cont_lab = new_local_lab "cont"
                       in move_aty_into_reg(src_aty,tmp_reg0,size_ff,
@@ -722,7 +723,7 @@ struct
                     F (compileNumSwitch {size_ff=size_ff,
                                          size_ccf=size_ccf,
                                          CG_lss=CG_lss,
-                                         toInt=fn i => i,   (* tagging already done in ClosExp *)
+                                         toInt=fn x => x,   (* tagging already done in ClosExp *)
                                          opr_aty=opr_aty,
                                          oprBoxed=false,
                                          sels=sels',
@@ -819,7 +820,7 @@ struct
                           | Word32b_to_int31_X => word32_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
                           | Bytetable_size => bytetable_size(x,d,size_ff,C)
                           | Table_size => table_size(x,d,size_ff,C)
-                          | Is_null => cmpi_kill_tmp01 {box=false} (I.je,x, SS.INTEGER_ATY{value=Int32.fromInt 0,
+                          | Is_null => cmpi_kill_tmp01 {box=false} (I.je,x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
                                                                                            precision=32},d,size_ff,C)
                           | Real_to_f64 => real_to_f64(x,d,size_ff,C)
                           | Sqrt_f64 => sqrt_f64(x,d,size_ff,C)

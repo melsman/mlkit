@@ -57,8 +57,8 @@ signature CLOS_EXP =
     | DROPPED_RVAR    of place
     | FETCH           of label
     | STORE           of ClosExp * label
-    | INTEGER         of {value: Int32.int, precision: int}
-    | WORD            of {value: Word32.word, precision: int}
+    | INTEGER         of {value: IntInf.int, precision: int}
+    | WORD            of {value: IntInf.int, precision: int}
     | STRING          of string
     | REAL            of string
     | F64             of string
@@ -81,8 +81,8 @@ signature CLOS_EXP =
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
     | RAISE           of ClosExp
     | HANDLE          of ClosExp * ClosExp
-    | SWITCH_I        of {switch: Int32.int Switch, precision: int}
-    | SWITCH_W        of {switch: Word32.word Switch, precision: int}
+    | SWITCH_I        of {switch: IntInf.int Switch, precision: int}
+    | SWITCH_W        of {switch: IntInf.int Switch, precision: int}
     | SWITCH_S        of string Switch
     | SWITCH_C        of (con*con_kind) Switch
     | SWITCH_E        of excon Switch

@@ -139,7 +139,7 @@ type arg = unit
 
         | DECPOSINTEGER of IntInf.int option | DECNEGINTEGER of IntInf.int option
 	| HEXINTEGER of IntInf.int option | DIGIT of int
-	| WORD of Word32.word option
+	| WORD of IntInf.int option
 	| REAL of string option | STRING of string
 	| BEGINQ | ENDQ of string | OBJL of string | AQID of string
         | ID of string | TYVAR of string
@@ -157,7 +157,7 @@ type arg = unit
 %value  DECPOSINTEGER   (SOME (IntInf.fromInt 0))
 %value  DECNEGINTEGER   (SOME (IntInf.fromInt 0))
 %value  HEXINTEGER      (SOME (IntInf.fromInt 0))
-%value  WORD		(SOME 0w0)
+%value  WORD		(SOME 0)
 %value  REAL            (SOME "0.0")
 %value  STRING          ("")
 %value  ID              ("bogus")

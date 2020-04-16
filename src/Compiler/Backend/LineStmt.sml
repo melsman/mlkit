@@ -80,8 +80,8 @@ struct
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
-    | INTEGER       of {value: Int32.int, precision: int}
-    | WORD          of {value: Word32.word, precision: int}
+    | INTEGER       of {value: IntInf.int, precision: int}
+    | WORD          of {value: IntInf.int, precision: int}
     | UNIT
 
   datatype StoreType =
@@ -130,8 +130,8 @@ struct
 			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty * (Word32.word list),
 			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
-    | SWITCH_I      of {switch: (Int32.int,'sty,'offset,'aty) Switch, precision: int}
-    | SWITCH_W      of {switch: (Word32.word,'sty,'offset,'aty) Switch, precision: int}
+    | SWITCH_I      of {switch: (IntInf.int,'sty,'offset,'aty) Switch, precision: int}
+    | SWITCH_W      of {switch: (IntInf.int,'sty,'offset,'aty) Switch, precision: int}
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
     | SWITCH_C      of ((con*con_kind),'sty,'offset,'aty) Switch
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
@@ -185,8 +185,8 @@ struct
     | pr_atom (RVAR place) = PP.flatten1(Effect.layout_effect place)
     | pr_atom (DROPPED_RVAR place) = "D" ^ PP.flatten1(Effect.layout_effect place)
     | pr_atom (PHREG phreg) = pr_phreg phreg
-    | pr_atom (INTEGER {value,precision}) = Int32.toString value
-    | pr_atom (WORD {value,precision}) = "0x" ^ Word32.toString value
+    | pr_atom (INTEGER {value,precision}) = IntInf.toString value
+    | pr_atom (WORD {value,precision}) = "0x" ^ IntInf.fmt StringCvt.HEX value
     | pr_atom (UNIT) = "()"
 
   fun pr_sty (V lv) = Lvars.pr_lvar lv
@@ -437,11 +437,13 @@ struct
 		 in
 		   PP.LEAF("raise " ^ pr_aty arg ^ "(defined: " ^ lay_stys ^ ")") (* Defined atys not written 08/12/1998, Niels*)
 		 end
-	   | SWITCH_I {switch,precision} => layout_switch pr_aty layout_lss_local (Int32.toString) switch
-	   | SWITCH_W {switch,precision} => layout_switch pr_aty layout_lss_local (fn w => "0x" ^ Word32.toString w) switch
+	   | SWITCH_I {switch,precision} => layout_switch pr_aty layout_lss_local (IntInf.toString) switch
+	   | SWITCH_W {switch,precision} =>
+             layout_switch pr_aty layout_lss_local (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
 	   | SWITCH_S sw => layout_switch pr_aty layout_lss_local (fn s => s) sw
 	   | SWITCH_C sw =>
-		 layout_switch pr_aty layout_lss_local (fn (con,con_kind) => Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")") sw
+	     layout_switch pr_aty layout_lss_local (fn (con,con_kind) =>
+                                                       Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")") sw
            | SWITCH_E sw => layout_switch pr_aty layout_lss_local Excon.pr_excon sw
 	   | RESET_REGIONS{force=true,regions_for_resetting} =>
 		 HNODE{start="force reset regions(",
@@ -1260,8 +1262,8 @@ struct
          (* Pattern: case lv of 3 => lss | _ => lss *)
          (* Pattern: case lv of 1 => lss | _ => lss *)
        | SWITCH_I {switch=sw as SWITCH(VAR lv,[(sel_val,lss)],default), precision} =>
-	   if (sel_val = Int32.fromInt BI.ml_true
-	       orelse sel_val = Int32.fromInt BI.ml_false) then
+	   if (sel_val = IntInf.fromInt BI.ml_true
+	       orelse sel_val = IntInf.fromInt BI.ml_false) then
 	     let
 	       val (OKset',notOKset',_) = FV_CalcSets_lss(default,(OKset,notOKset,prev_use_lv))
 	     in

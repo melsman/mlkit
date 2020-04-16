@@ -1071,9 +1071,9 @@ structure OptLambda: OPT_LAMBDA =
 
       fun is_unboxed_value lamb =
 	case lamb
-	  of INTEGER (v,t) => if tag_values() then not(eq_Type(t, int32Type))
+	  of INTEGER (_,t) => if tag_values() then not(eq_Type(t, int32Type))
 			      else true
-	   | WORD (v,t) => if tag_values() then not(eq_Type(t, word32Type))
+	   | WORD (_,t) => if tag_values() then not(eq_Type(t, word32Type))
 			   else true
 	   | PRIM(CONprim {con,...},nil) => is_boolean con
 	   | _ => false
@@ -1113,6 +1113,21 @@ structure OptLambda: OPT_LAMBDA =
                             | "__equal_int31" => opp (op =)
                             | "__equal_int32b" => opp (op =)
                             | "__equal_int32ub" => opp (op =)
+                            | "__less_int63" => opp (op <)
+                            | "__less_int64b" => opp (op <)
+                            | "__less_int64ub" => opp (op <)
+                            | "__lesseq_int63" => opp (op <=)
+                            | "__lesseq_int64b" => opp (op <=)
+                            | "__lesseq_int64ub" => opp (op <=)
+                            | "__greater_int63" => opp (op >)
+                            | "__greater_int64b" => opp (op >)
+                            | "__greater_int64ub" => opp (op >)
+                            | "__greatereq_int63" => opp (op >=)
+                            | "__greatereq_int64b" => opp (op >=)
+                            | "__greatereq_int64ub" => opp (op >=)
+                            | "__equal_int63" => opp (op =)
+                            | "__equal_int64b" => opp (op =)
+                            | "__equal_int64ub" => opp (op =)
                             | _ => NONE
                          end
                        | [WORD(v1,t),WORD(v2,_)] =>
@@ -1121,27 +1136,48 @@ structure OptLambda: OPT_LAMBDA =
                               "__less_word31" => opp (op <)
                             | "__less_word32b" => opp (op <)
                             | "__less_word32ub" => opp (op <)
+                            | "__less_word63" => opp (op <)
+                            | "__less_word64b" => opp (op <)
+                            | "__less_word64ub" => opp (op <)
                             | "__lesseq_word31" => opp (op <=)
                             | "__lesseq_word32b" => opp (op <=)
                             | "__lesseq_word32ub" => opp (op <=)
+                            | "__lesseq_word63" => opp (op <=)
+                            | "__lesseq_word64b" => opp (op <=)
+                            | "__lesseq_word64ub" => opp (op <=)
                             | "__greater_word31" => opp (op >)
                             | "__greater_word32b" => opp (op >)
                             | "__greater_word32ub" => opp (op >)
+                            | "__greater_word63" => opp (op >)
+                            | "__greater_word64b" => opp (op >)
+                            | "__greater_word64ub" => opp (op >)
                             | "__greatereq_word31" => opp (op >=)
                             | "__greatereq_word32b" => opp (op >=)
                             | "__greatereq_word32ub" => opp (op >=)
+                            | "__greatereq_word63" => opp (op >=)
+                            | "__greatereq_word64b" => opp (op >=)
+                            | "__greatereq_word64ub" => opp (op >=)
                             | "__equal_word" => opp (op =)
                             | "__equal_word31" => opp (op =)
                             | "__equal_word32b" => opp (op =)
                             | "__equal_word32ub" => opp (op =)
-                            | "__andb_word" => SOME(WORD(Word32.andb(v1,v2),t))
-                            | "__andb_word31" => SOME(WORD(Word32.andb(v1,v2),t))
-                            | "__andb_word32b" => SOME(WORD(Word32.andb(v1,v2),t))
-                            | "__andb_word32ub" => SOME(WORD(Word32.andb(v1,v2),t))
-                            | "__orb_word" => SOME(WORD(Word32.orb(v1,v2),t))
-                            | "__orb_word31" => SOME(WORD(Word32.orb(v1,v2),t))
-                            | "__orb_word32b" => SOME(WORD(Word32.orb(v1,v2),t))
-                            | "__orb_word32ub" => SOME(WORD(Word32.orb(v1,v2),t))
+                            | "__equal_word63" => opp (op =)
+                            | "__equal_word64b" => opp (op =)
+                            | "__equal_word64ub" => opp (op =)
+                            | "__andb_word" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__andb_word31" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__andb_word32b" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__andb_word32ub" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__andb_word63" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__andb_word64b" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__andb_word64ub" => SOME(WORD(IntInf.andb(v1,v2),t))
+                            | "__orb_word" => SOME(WORD(IntInf.orb(v1,v2),t))
+                            | "__orb_word31" => SOME(WORD(IntInf.orb(v1,v2),t))
+                            | "__orb_word32b" => SOME(WORD(IntInf.orb(v1,v2),t))
+                            | "__orb_word32ub" => SOME(WORD(IntInf.orb(v1,v2),t))
+                            | "__orb_word63" => SOME(WORD(IntInf.orb(v1,v2),t))
+                            | "__orb_word64b" => SOME(WORD(IntInf.orb(v1,v2),t))
+                            | "__orb_word64ub" => SOME(WORD(IntInf.orb(v1,v2),t))
                             | _ => NONE
                          end
                        | _ => NONE)
@@ -1790,7 +1826,7 @@ structure OptLambda: OPT_LAMBDA =
 	  of PRIM(CCALLprim{name="__blockf64_sub_f64",...}, [VAR{lvar,instances=[],regvars=[],...},INTEGER (i32,_)]) =>
 	     (case LvarMap.lookup env lvar of
                   SOME lvars =>
-		  let val i = Int32.toInt i32
+		  let val i = IntInf.toInt i32
                               handle Overflow => die "eliminate_explicit_blockf64s: expecting small int"
                       val lvar' = List.nth(lvars, i)
                                   handle Subscript => die "eliminate_explicit_blockf64s: subscript error"
