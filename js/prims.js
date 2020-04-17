@@ -1,15 +1,15 @@
 CompilerInitial = {}
 
-CompilerInitial.en$Bind$43 = new String("Bind");
-CompilerInitial.exn$Bind$43 = Array(CompilerInitial.en$Bind$43);
-CompilerInitial.en$Match$42 = new String("Match");
-CompilerInitial.exn$Match$42 = Array(CompilerInitial.en$Match$42);
-CompilerInitial.en$Div$41 = new String("Div");
-CompilerInitial.exn$Div$41 = Array(CompilerInitial.en$Div$41);
+CompilerInitial.en$Bind$47 = new String("Bind");
+CompilerInitial.exn$Bind$47 = Array(CompilerInitial.en$Bind$47);
+CompilerInitial.en$Match$46 = new String("Match");
+CompilerInitial.exn$Match$46 = Array(CompilerInitial.en$Match$46);
+CompilerInitial.en$Div$45 = new String("Div");
+CompilerInitial.exn$Div$45 = Array(CompilerInitial.en$Div$45);
 CompilerInitial.en$Interrupt = new String("Interrupt");
 CompilerInitial.exn$Interrupt = Array(CompilerInitial.en$Interrupt);
-CompilerInitial.en$Overflow$44 = new String("Overflow");
-CompilerInitial.exn$Overflow$44 = Array(CompilerInitial.en$Overflow$44);
+CompilerInitial.en$Overflow$48 = new String("Overflow");
+CompilerInitial.exn$Overflow$48 = Array(CompilerInitial.en$Overflow$48);
 
 Con = {}
 Con.some = 0;
@@ -137,14 +137,14 @@ SmlPrims.wordTableInit = function(n,x) {
 
 SmlPrims.chk_ovf_i32 = function (i) {
   if ( i < -2147483648 || i > 2147483647 ) {
-    throw(CompilerInitial.exn$Overflow$44);
+    throw(CompilerInitial.exn$Overflow$48);
   }
   return i;
 }
 
 SmlPrims.chk_ovf_i31 = function (i) {
   if ( i < -1073741824 || i > 1073741823 ) {
-    throw(CompilerInitial.exn$Overflow$44);
+    throw(CompilerInitial.exn$Overflow$48);
   }
   return i;
 }
@@ -167,7 +167,7 @@ SmlPrims.mod_i32 = function (x,y,exn) {
 
 SmlPrims.div_i32 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
-  if ( y == -1 && x == -2147483648 ) { throw(CompilerInitial.exn$Overflow$44); }
+  if ( y == -1 && x == -2147483648 ) { throw(CompilerInitial.exn$Overflow$48); }
   return Math.floor(x / y);
 }
 
@@ -181,7 +181,7 @@ SmlPrims.mod_i31 = function (x,y,exn) {
 
 SmlPrims.div_i31 = function (x,y,exn) {
   if ( y == 0 ) { throw(exn); }
-  if ( y == -1 && x == -1073741824 ) { throw(CompilerInitial.exn$Overflow$44); }
+  if ( y == -1 && x == -1073741824 ) { throw(CompilerInitial.exn$Overflow$48); }
   return Math.floor(x / y);
 }
 
