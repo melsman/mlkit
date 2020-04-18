@@ -1370,8 +1370,12 @@ struct
         SOME(tn,_,_,_) =>
 	  if TyName.eq(tn, TyName.tyName_INT31) then 31
 	  else if TyName.eq(tn, TyName.tyName_INT32) then 32
+	  else if TyName.eq(tn, TyName.tyName_INT63) then 63
+	  else if TyName.eq(tn, TyName.tyName_INT64) then 64
 	  else if TyName.eq(tn, TyName.tyName_WORD31) then 31
 	  else if TyName.eq(tn, TyName.tyName_WORD32) then 32
+	  else if TyName.eq(tn, TyName.tyName_WORD63) then 63
+	  else if TyName.eq(tn, TyName.tyName_WORD64) then 64
 	  else die "precisionNumType.wrong tyname"
       | NONE => die "precisionNumType.wrong type"
 

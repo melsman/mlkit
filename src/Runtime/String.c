@@ -398,3 +398,12 @@ printNum(ssize_t n)
   */
   return;
 }
+
+// for debugging */
+void
+printLong(ssize_t n)
+{
+  printf("Long unsigned: %lu\n", convertIntToC((long int)n));
+  printf("Long signed: %ld\n", convertIntToC((long int)n));
+  return;
+}

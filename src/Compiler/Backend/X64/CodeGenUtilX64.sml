@@ -69,12 +69,12 @@ struct
   (****************************************************************)
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
-  val _ = Flags.add_bool_entry {long="comments_in_x64_asmcode", short=NONE, item=ref false,
-                                menu=["Debug", "comments in x64 assembler code"], neg=false,
-                                desc="Insert comments in x64 assembler code."}
+  val _ = Flags.add_bool_entry {long="comments_in_asmcode", short=NONE, item=ref false,
+                                menu=["Debug", "comments in assembler code"], neg=false,
+                                desc="Insert comments in assembler code."}
 
   val jump_tables = true
-  val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x64_asmcode"
+  val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_asmcode"
   val gc_p = Flags.is_on0 "garbage_collection"
   val tag_pairs_p = Flags.is_on0 "tag_pairs"
 
@@ -202,21 +202,16 @@ struct
     fun mkIntAty i = SS.INTEGER_ATY {value=IntInf.fromInt i,
                                      precision=if BI.tag_values() then 31 else 32}
 
-    fun maybeTagInt {value: IntInf.int, precision:int} : IntInf.int =
-        case precision of
-            31 => 2 * value + 1           (* use tagged-unboxed representation *)
-          | 32 => value                   (* use untagged representation - maybe boxed *)
-          | _ => die "maybeTagInt"
-
-    fun maybeTagWord {value: IntInf.int, precision:int} : IntInf.int =
-        case precision of
-            31 => 2 * value + 1           (* use tagged representation *)
-          | 32 => value                   (* use untagged representation - maybe boxed *)
-          | _ => die "maybeTagWord"
+    fun maybeTagIntOrWord {value: IntInf.int, precision:int} : IntInf.int =
+        if precision = 31 orelse precision = 63
+        then 2 * value + 1                (* use tagged-unboxed representation *)
+        else if precision = 32 orelse precision = 64
+        then value                        (* use untagged representation - maybe boxed *)
+        else die "maybeTagIntOrWord"
 
     (* formatting of immediate integer and word values *)
-    fun fmtInt a : string = intToStr(maybeTagInt a)
-    fun fmtWord a : string = wordToStr(maybeTagWord a)
+    fun fmtInt a : string = intToStr(maybeTagIntOrWord a)
+    fun fmtWord a : string = wordToStr(maybeTagIntOrWord a)
 
     (* Store a constant *)
     fun store_immed (w:Word32.word,r:reg,offset:Offset,C) =
@@ -245,7 +240,7 @@ struct
     (* returns true if boxed representation is used for
      * integers of the given precision *)
     fun boxedNum (precision:int) : bool =
-      precision > 31 andalso BI.tag_values()
+        (precision = 32 orelse precision = 64) andalso BI.tag_values()
 
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def (SS.STACK_ATY offset,t:reg,size_ff,C) =
@@ -379,14 +374,18 @@ struct
             fun direct_word (w:{value: IntInf.int, precision:int}) : bool =
                 not(boxedNum(#precision w)) andalso
                 case #precision w of
-                    32 => #value w <= 0xFFFF
-                  | 31 => #value w <= 0x7FFF
+                    31 => #value w <= 0x7FFF
+                  | 32 => #value w <= 0xFFFF
+                  | 63 => #value w <= 0x7FFF
+                  | 64 => #value w <= 0xFFFF
                   | _ => die "store_aty_indexed.direct_word - weird precision"
             fun direct_int (i:{value: IntInf.int, precision:int}) =
                 not(boxedNum(#precision i)) andalso
                 case #precision i of
-                    32 => #value i <= 0x7FFF andalso #value i > ~0x8000
-                  | 31 => #value i <= 0x3FFF andalso #value i > ~0x4000
+                    31 => #value i <= 0x3FFF andalso #value i > ~0x4000
+                  | 32 => #value i <= 0x7FFF andalso #value i > ~0x8000
+                  | 63 => #value i <= 0x3FFF andalso #value i > ~0x4000
+                  | 64 => #value i <= 0x7FFF andalso #value i > ~0x8000
                   | _ => die "store_aty_indexed.direct_int - weird precision"
         in
             case aty of
@@ -1313,44 +1312,52 @@ struct
 
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
-      fun sub_num_kill_tmp01 {ovf : bool, tag: bool} (x,y,d,size_ff,C) =
+      fun sub_num_kill_tmp01 {ovf,tag,quad} (x,y,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             fun check_ovf C = if ovf then jump_overflow C else C
             fun do_tag C = if tag then I.addq(I "1",R d_reg) :: check_ovf C   (* check twice *)
                            else C
+            val (inst_sub, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.subq, fn r => r)
+                else (I.subl, I.doubleOfQuadReg)
         in
           x_C(y_C(
           copy(y_reg, tmp_reg1,
           copy(x_reg, d_reg,
-          I.subl(R (I.doubleOfQuadReg tmp_reg1),
-                 R (I.doubleOfQuadReg d_reg)) ::
+          inst_sub(R (maybeDoubleOfQuadReg tmp_reg1),
+                   R (maybeDoubleOfQuadReg d_reg)) ::
           check_ovf (do_tag C')))))
         end
 
-      fun add_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) =  (* Be careful - when tag and ovf, add may
-                                                             * raise overflow when it is not supposed
-                                                             * to, if one is not careful! sub_num above
-                                                             * is ok, I think! mael 2001-05-19 *)
-          let fun default () =
+      fun add_num_kill_tmp01 {ovf,tag,quad} (x,y,d,size_ff,C) =  (* Be careful - when tag and ovf, add may
+                                                                  * raise overflow when it is not supposed
+                                                                  * to, if one is not careful! sub_num above
+                                                                  * is ok, I think! mael 2001-05-19 *)
+          let val (inst_add, inst_sar, inst_cmp, maybeDoubleOfQuadReg) =
+                  if quad
+                  then (I.addq, I.sarq, I.cmpq, fn r => r)
+                  else (I.addl, I.sarl, I.cmpl, I.doubleOfQuadReg)
+              fun default () =
                  let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
                      val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
                      val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
                      fun check_ovf C = if ovf then jump_overflow C else C
-                     fun do_tag C = if tag then I.addl(I "-1", R (I.doubleOfQuadReg d_reg)) :: check_ovf C
+                     fun do_tag C = if tag then inst_add(I "-1", R (maybeDoubleOfQuadReg d_reg)) :: check_ovf C
                                     else C
                  in if tag andalso ovf then
                       (x_C(y_C(
-                       copy(y_reg, tmp_reg1, I.sarl(I "1", R (I.doubleOfQuadReg tmp_reg1)) ::    (* t1 = untag y *)
-                       copy(x_reg, tmp_reg0, I.sarl(I "1", R (I.doubleOfQuadReg tmp_reg0)) ::    (* t0 = untag x *)
-                       I.addl(R (I.doubleOfQuadReg tmp_reg0),
-                              R (I.doubleOfQuadReg tmp_reg1)) ::             (* t1 = t1 + t0 *)
+                       copy(y_reg, tmp_reg1, inst_sar(I "1", R (maybeDoubleOfQuadReg tmp_reg1)) ::    (* t1 = untag y *)
+                       copy(x_reg, tmp_reg0, inst_sar(I "1", R (maybeDoubleOfQuadReg tmp_reg0)) ::    (* t0 = untag x *)
+                       inst_add(R (maybeDoubleOfQuadReg tmp_reg0),
+                                R (maybeDoubleOfQuadReg tmp_reg1)) ::             (* t1 = t1 + t0 *)
                        copy(tmp_reg1, d_reg,
                        I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::         (* d = tag d *)
-                       I.sarl(I "1", R (I.doubleOfQuadReg d_reg)) ::         (* d = untag d *)
-                       I.cmpl(R (I.doubleOfQuadReg d_reg),
-                              R (I.doubleOfQuadReg tmp_reg1)) ::
+                       inst_sar(I "1", R (maybeDoubleOfQuadReg d_reg)) ::         (* d = untag d *)
+                       inst_cmp(R (maybeDoubleOfQuadReg d_reg),
+                                R (maybeDoubleOfQuadReg tmp_reg1)) ::
                        I.jne (NameLab "__raise_overflow") ::
                        I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::         (* d = tag d *)
                        C'))))))
@@ -1358,8 +1365,8 @@ struct
                       (x_C(y_C(
                        copy(y_reg, tmp_reg1,
                        copy(x_reg, d_reg,
-                       I.addl(R (I.doubleOfQuadReg tmp_reg1),
-                              R (I.doubleOfQuadReg d_reg)) ::
+                       inst_add(R (maybeDoubleOfQuadReg tmp_reg1),
+                                R (maybeDoubleOfQuadReg d_reg)) ::
                        check_ovf (do_tag C'))))))
                  end
           in case y of
@@ -1369,32 +1376,37 @@ struct
                        val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
                    in x_C(
                        copy(x_reg,d_reg,
-                       I.addl(I (intToStr (2*value)), R (I.doubleOfQuadReg d_reg)) ::
+                       inst_add(I (intToStr (2*value)), R (maybeDoubleOfQuadReg d_reg)) ::
                        jump_overflow C'))
                    end
                  else default()
                | _ => default()
           end
 
-      fun mul_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) = (* does (1 * valOf Int31.minInt) raise Overflow ? *)
+      fun mul_num_kill_tmp01 {ovf,tag,quad} (x,y,d,size_ff,C) = (* does (1 * valOf Int31.minInt) raise Overflow ? *)
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             fun check_ovf C = if ovf then jump_overflow C else C
+            val (inst_imul, inst_add, inst_sub, inst_sar, inst_cmp, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.imulq, I.addq, I.subq, I.sarq, I.cmpq, fn r => r)
+                else (I.imull, I.addl, I.subl, I.sarl, I.cmpl, I.doubleOfQuadReg)
+
         in x_C(y_C(
            copy(y_reg, tmp_reg1,
            copy(x_reg, d_reg,
            if tag then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
-                I.sarl(I "1", R (I.doubleOfQuadReg d_reg)) ::
-                I.subl(I "1", R (I.doubleOfQuadReg tmp_reg1)) ::
-                I.imull(R (I.doubleOfQuadReg tmp_reg1),
-                        R (I.doubleOfQuadReg d_reg)) ::
+                inst_sar(I "1", R (maybeDoubleOfQuadReg d_reg)) ::
+                inst_sub(I "1", R (maybeDoubleOfQuadReg tmp_reg1)) ::
+                inst_imul(R (maybeDoubleOfQuadReg tmp_reg1),
+                          R (maybeDoubleOfQuadReg d_reg)) ::
                 check_ovf (
-                I.addl(I "1", R (I.doubleOfQuadReg d_reg)) ::
+                inst_add(I "1", R (maybeDoubleOfQuadReg d_reg)) ::
                 check_ovf C')
            else
-             I.imull(R (I.doubleOfQuadReg tmp_reg1),
-                     R (I.doubleOfQuadReg d_reg)) ::
+             inst_imul(R (maybeDoubleOfQuadReg tmp_reg1),
+                       R (maybeDoubleOfQuadReg d_reg)) ::
              check_ovf C'))))
         end
 
@@ -1728,84 +1740,119 @@ struct
          C')
        end
 
-     fun bin_op_kill_tmp01 inst (x,y,d,size_ff,C) =
+     fun bin_op_kill_tmp01 {quad} inst (x,y,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+           val maybeDoubleOfQuadReg = if quad then fn r => r
+                                      else I.doubleOfQuadReg
        in
          x_C(y_C(
          copy(y_reg, tmp_reg1,
          copy(x_reg, d_reg,
-         inst(R (I.doubleOfQuadReg tmp_reg1),
-              R (I.doubleOfQuadReg d_reg)) :: C'))))
+         inst(R (maybeDoubleOfQuadReg tmp_reg1),
+              R (maybeDoubleOfQuadReg d_reg)) :: C'))))
        end
 
      (* andb and orb are the same for 31 bit (tagged) and
       * 32 bit (untagged) representations *)
-     fun andb_word_kill_tmp01 a = bin_op_kill_tmp01 I.andl a   (* A[x&y] = A[x] & A[y]  tagging *)
-     fun orb_word_kill_tmp01 a = bin_op_kill_tmp01 I.orl a     (* A[x|y] = A[x] | A[y]  tagging *)
+     fun andb_word_kill_tmp01 {quad:bool} a = bin_op_kill_tmp01 {quad=quad} I.andl a   (* A[x&y] = A[x] & A[y]  tagging *)
+     fun orb_word_kill_tmp01 {quad:bool} a = bin_op_kill_tmp01 {quad=quad} I.orl a     (* A[x|y] = A[x] | A[y]  tagging *)
 
-     (* xorb needs to set the lowest bit for the 31 bit (tagged) version *)
-     fun xorb_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =
+     (* xorb needs to set the lowest bit for the 31 bit (tagged) version and for the 63 bit (tagged) version *)
+     fun xorb_word_kill_tmp01 {tag,quad} (x,y,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
            fun do_tag C = if tag then I.orq(I "1", R d_reg) :: C else C
+           val (inst_xor, maybeDoubleOfQuadReg) =
+               if quad
+               then (I.xorq, fn r => r)
+               else (I.xorl, I.doubleOfQuadReg)
        in
          x_C(y_C(
          copy(y_reg, tmp_reg1,
          copy(x_reg, d_reg,
-         I.xorl(R (I.doubleOfQuadReg tmp_reg1),
-                R (I.doubleOfQuadReg d_reg)) ::
+         inst_xor(R (maybeDoubleOfQuadReg tmp_reg1),
+                  R (maybeDoubleOfQuadReg d_reg)) ::
          do_tag C'))))
        end
 
-     fun bin_op_w32boxed__ {ovf} inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       if not(BI.tag_values()) then die "bin_op_w32boxed__.tagging_disabled"
+     fun binop_word_boxed__ {ovf,quad} inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
+       if not(BI.tag_values()) then die "binop_word_boxed__.tagging_disabled"
        else
          let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
              val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
              val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
              fun check_ovf C = if ovf then jump_overflow C else C
+             val maybeDoubleOfQuadReg = if quad then fn r => r
+                                        else I.doubleOfQuadReg
          in
            x_C(
            load_indexed(R tmp_reg0,x_reg,WORDS 1,
            y_C(
            load_indexed(R tmp_reg1,y_reg,WORDS 1,
-           inst(R (I.doubleOfQuadReg tmp_reg0),
-                R (I.doubleOfQuadReg tmp_reg1)) ::
+           inst(R (maybeDoubleOfQuadReg tmp_reg0),
+                R (maybeDoubleOfQuadReg tmp_reg1)) ::
            check_ovf (
            move_aty_into_reg(r,d_reg,size_ff,
            store_indexed(d_reg,WORDS 1,R tmp_reg1,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))  (* store tag *)
          end
 
-     fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.addl (r,x,y,d,size_ff,C)
+     fun addw32boxed (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
+         binop_word_boxed__ {ovf=false,quad=false} I.addl (r,x,y,d,size_ff,C)
 
-     fun subw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subq *)
+     fun addw64boxed (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+         binop_word_boxed__ {ovf=false,quad=true} I.addq (r,x,y,d,size_ff,C)
 
-     fun mulw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.imull (r,x,y,d,size_ff,C)
+     fun subw32boxed (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
+         binop_word_boxed__ {ovf=false,quad=false} I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subq *)
+
+     fun subw64boxed (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+         binop_word_boxed__ {ovf=false,quad=true} I.subq (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subq *)
+
+     fun mulw32boxed (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
+         binop_word_boxed__ {ovf=false,quad=false} I.imull (r,x,y,d,size_ff,C)
+
+     fun mulw64boxed (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+         binop_word_boxed__ {ovf=false,quad=true} I.imulq (r,x,y,d,size_ff,C)
 
      fun orw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.orl (r,x,y,d,size_ff,C)
+         binop_word_boxed__ {ovf=false,quad=false} I.orl (r,x,y,d,size_ff,C)
+
+     fun orw64boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+         binop_word_boxed__ {ovf=false,quad=true} I.orq (r,x,y,d,size_ff,C)
 
      fun andw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.andl (r,x,y,d,size_ff,C)
+         binop_word_boxed__ {ovf=false,quad=false} I.andl (r,x,y,d,size_ff,C)
+
+     fun andw64boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+         binop_word_boxed__ {ovf=false,quad=true} I.andq (r,x,y,d,size_ff,C)
 
      fun xorw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.xorl (r,x,y,d,size_ff,C)
+         binop_word_boxed__ {ovf=false,quad=false} I.xorl (r,x,y,d,size_ff,C)
+
+     fun xorw64boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+         binop_word_boxed__ {ovf=false,quad=true} I.xorq (r,x,y,d,size_ff,C)
 
      fun mul_int32b (b,x,y,d,size_ff,C) =
-       bin_op_w32boxed__ {ovf=true} I.imull (b,x,y,d,size_ff,C)
+         binop_word_boxed__ {ovf=true,quad=false} I.imull (b,x,y,d,size_ff,C)
+
+     fun mul_int64b (b,x,y,d,size_ff,C) =
+         binop_word_boxed__ {ovf=true,quad=true} I.imulq (b,x,y,d,size_ff,C)
 
      fun sub_int32b (b,x,y,d,size_ff,C) =
-       bin_op_w32boxed__ {ovf=true} I.subl (b,y,x,d,size_ff,C)
+         binop_word_boxed__ {ovf=true,quad=false} I.subl (b,y,x,d,size_ff,C)
+
+     fun sub_int64b (b,x,y,d,size_ff,C) =
+         binop_word_boxed__ {ovf=true,quad=true} I.subq (b,y,x,d,size_ff,C)
 
      fun add_int32b (b,x,y,d,size_ff,C) =
-       bin_op_w32boxed__ {ovf=true} I.addl (b,x,y,d,size_ff,C)
+         binop_word_boxed__ {ovf=true,quad=false} I.addl (b,x,y,d,size_ff,C)
+
+     fun add_int64b (b,x,y,d,size_ff,C) =
+         binop_word_boxed__ {ovf=true,quad=true} I.addq (b,x,y,d,size_ff,C)
 
      fun num31_to_num32b (b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
        if BI.tag_values() then
@@ -1838,13 +1885,15 @@ struct
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
 
-     fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) =
-       if not(BI.tag_values()) then die "shift_w32boxed__.tagging is not enabled as required"
+     fun shift_word_boxed__ {quad} inst (r,x,y,d,size_ff,C) =
+       if not(BI.tag_values()) then die "shift_word_boxed__.tagging is not enabled as required"
        else
        (* y is unboxed and tagged *)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+           val maybeDoubleOfQuadReg = if quad then fn r => r
+                                      else I.doubleOfQuadReg
        in
          x_C(
          load_indexed(R tmp_reg1,x_reg,WORDS 1,
@@ -1852,7 +1901,7 @@ struct
          y_C(
          copy(y_reg,rcx,                             (* tmp_reg0 = %r10, see InstsX64.sml *)
          I.sarq (I "1", R rcx) ::                    (* untag y: y >> 1 *)
-         inst(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
+         inst(R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
          copy(tmp_reg0, rcx,                         (* restore rcx *)
          move_aty_into_reg(r,d_reg,size_ff,
          store_indexed(d_reg,WORDS 1, R tmp_reg1,
@@ -1860,21 +1909,35 @@ struct
        end
 
      fun shift_leftw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
+       shift_word_boxed__ {quad=false} I.sall (r,x,y,d,size_ff,C)
+
+     fun shift_leftw64boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+       shift_word_boxed__ {quad=true} I.salq (r,x,y,d,size_ff,C)
 
      fun shift_right_signedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
+       shift_word_boxed__ {quad=false} I.sarl (r,x,y,d,size_ff,C)
+
+     fun shift_right_signedw64boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+       shift_word_boxed__ {quad=true} I.sarq (r,x,y,d,size_ff,C)
 
      fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
+       shift_word_boxed__ {quad=false} I.shrl (r,x,y,d,size_ff,C)
 
-     fun shift_left_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
+     fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+       shift_word_boxed__ {quad=true} I.shrq (r,x,y,d,size_ff,C)
+
+     fun shift_left_word_kill_tmp01 {tag,quad} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
            (* y is represented tagged only when BI.tag_values() is true *)
            fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
                            else C
+           val (inst_sal, maybeDoubleOfQuadReg) =
+               if quad
+               then (I.salq, fn r => r)
+               else (I.sall, I.doubleOfQuadReg)
+
        in
          if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
            x_C(
@@ -1882,10 +1945,10 @@ struct
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
-           I.decq (R tmp_reg1) ::                             (* x - 1  *)
-           untag_y (                                          (* y >> 1 *)
-           I.sall (R cl, R (I.doubleOfQuadReg tmp_reg1)) ::   (*   <<   *)
-           I.movq (R tmp_reg0, R rcx) ::                      (* restore rcx *)
+           I.decq (R tmp_reg1) ::                                  (* x - 1  *)
+           untag_y (                                               (* y >> 1 *)
+           inst_sal (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::   (*   <<   *)
+           I.movq (R tmp_reg0, R rcx) ::                           (* restore rcx *)
            I.incq (R tmp_reg1) ::           (* 1 +    *)
            copy(tmp_reg1, d_reg, C'))))))
          else
@@ -1894,7 +1957,7 @@ struct
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
-           I.sall(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
+           inst_sal(R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
            copy(tmp_reg0, rcx,                                (* restore rcx *)
            copy(tmp_reg1, d_reg, C')))))))
        end
