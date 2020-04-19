@@ -1239,20 +1239,24 @@ struct
                            C))
         end
 
-      fun cmpi_kill_tmp01 {box} (jump,x,y,d,size_ff,C) =
+      fun cmpi_kill_tmp01 {box,quad} jump (x,y,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             val true_lab = new_local_lab "true"
             val cont_lab = new_local_lab "cont"
+            val (inst_cmp, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.cmpq, fn r => r)
+                else (I.cmpl, I.doubleOfQuadReg)
             fun compare C =
               if box then
                 I.movq(D("8",y_reg), R tmp_reg1) ::
                 I.movq(D("8",x_reg), R tmp_reg0) ::
-                I.cmpl(R (I.doubleOfQuadReg tmp_reg1),
-                       R (I.doubleOfQuadReg tmp_reg0)) :: C
-              else I.cmpl(R (I.doubleOfQuadReg y_reg),
-                          R (I.doubleOfQuadReg x_reg)) :: C
+                inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
+                         R (maybeDoubleOfQuadReg tmp_reg0)) :: C
+              else inst_cmp(R (maybeDoubleOfQuadReg y_reg),
+                            R (maybeDoubleOfQuadReg x_reg)) :: C
         in
            x_C(
            y_C(
@@ -1265,28 +1269,37 @@ struct
            I.lab cont_lab :: C')))
         end
 
-      fun cmpi_and_jmp_kill_tmp01 (jump,x,y,lab_t,lab_f,size_ff,C) =
+      fun cmpi_and_jmp_kill_tmp01 {quad} (jump,x,y,lab_t,lab_f,size_ff,C) =
         let
           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+          val (inst_cmp, maybeDoubleOfQuadReg) =
+              if quad
+              then (I.cmpq, fn r => r)
+              else (I.cmpl, I.doubleOfQuadReg)
         in
           x_C(y_C(
-          I.cmpl(R (I.doubleOfQuadReg y_reg), R (I.doubleOfQuadReg x_reg)) ::
+          inst_cmp(R (maybeDoubleOfQuadReg y_reg),
+                   R (maybeDoubleOfQuadReg x_reg)) ::
           jump lab_t ::
           I.jmp (L lab_f) :: rem_dead_code C))
         end
 
       (* version with boxed arguments; assume tagging is enabled *)
-      fun cmpbi_and_jmp_kill_tmp01 (jump,x,y,lab_t,lab_f,size_ff,C) =
+      fun cmpbi_and_jmp_kill_tmp01 {quad} (jump,x,y,lab_t,lab_f,size_ff,C) =
         if BI.tag_values() then
           let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
               val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+              val (inst_cmp, maybeDoubleOfQuadReg) =
+                  if quad
+                  then (I.cmpq, fn r => r)
+                  else (I.cmpl, I.doubleOfQuadReg)
           in
             x_C(y_C(
             I.movq(D("8", y_reg), R tmp_reg1) ::
             I.movq(D("8", x_reg), R tmp_reg0) ::
-            I.cmpl(R (I.doubleOfQuadReg tmp_reg1),
-                   R (I.doubleOfQuadReg tmp_reg0)) ::
+            inst_cmp(R (maybeDoubleOfQuadReg tmp_reg1),
+                     R (maybeDoubleOfQuadReg tmp_reg0)) ::
             jump lab_t ::
             I.jmp (L lab_f) :: rem_dead_code C))
           end
@@ -1410,14 +1423,19 @@ struct
              check_ovf C'))))
         end
 
-      fun neg_int_kill_tmp0 {tag} (x,d,size_ff,C) =
+      fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            fun do_tag C = if tag then I.addl(I "2", R (I.doubleOfQuadReg d_reg)) ::
+
+            val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
+                if quad
+                then (I.addq, I.negq, fn r => r)
+                else (I.addl, I.negl, I.doubleOfQuadReg)
+            fun do_tag C = if tag then inst_add (I "2", R (maybeDoubleOfQuadReg d_reg)) ::
                                        jump_overflow C
                            else C
         in x_C(copy(x_reg, d_reg,
-           I.negl (R (I.doubleOfQuadReg d_reg)) ::
+           inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
            jump_overflow (
            do_tag C')))
         end
@@ -1436,18 +1454,22 @@ struct
              store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
           end
 
-     fun abs_int_kill_tmp0 {tag} (x,d,size_ff,C) =
+     fun abs_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
        let val cont_lab = new_local_lab "cont"
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun do_tag C = if tag then I.addl(I "2", R (I.doubleOfQuadReg d_reg)) ::
+           val (inst_add, inst_cmp, inst_neg, maybeDoubleOfQuadReg) =
+               if quad
+               then (I.addq, I.cmpq, I.negq, fn r => r)
+               else (I.addl, I.cmpl, I.negl, I.doubleOfQuadReg)
+           fun do_tag C = if tag then inst_add(I "2", R (maybeDoubleOfQuadReg d_reg)) ::
                                       jump_overflow C
                           else C
        in
          x_C(copy(x_reg,d_reg,
-         I.cmpl(I "0", R (I.doubleOfQuadReg d_reg)) ::
+         inst_cmp (I "0", R (maybeDoubleOfQuadReg d_reg)) ::
          I.jge cont_lab ::
-         I.negl (R (I.doubleOfQuadReg d_reg)) ::
+         inst_neg (R (maybeDoubleOfQuadReg d_reg)) ::
          jump_overflow (
          do_tag (
          I.lab cont_lab :: C'))))
@@ -1628,7 +1650,7 @@ struct
        | pp_cond LESSEQUAL = "LESSEQUAL"
        | pp_cond GREATERTHAN = "GREATERTHAN"
        | pp_cond GREATEREQUAL = "GREATEREQUAL"
-     fun cmpf64_kill_tmp0 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
+     fun cmpf64_kill_tmp0 cond (x,y,d,size_ff,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
@@ -1669,7 +1691,7 @@ struct
          in load_real (x, tmp_reg0, size_ff, d) C'
          end
 
-     fun f64_to_real_kill_tmp01 (x,b,d,size_ff,C) =
+     fun f64_to_real_kill_tmp01 (b,x,d,size_ff,C) =
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
@@ -1716,7 +1738,7 @@ struct
          copy(b_reg,d_reg, C'))))
        end
 
-     fun cmpf_kill_tmp01 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
+     fun cmpf_kill_tmp01 cond (x,y,d,size_ff,C) = (* ME MEMO *)
        let val x_C = load_real(x, tmp_reg0, size_ff, tmp_freg0)
            val y_C = load_real(y, tmp_reg0, size_ff, tmp_freg1)
            val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
