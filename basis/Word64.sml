@@ -10,11 +10,13 @@ structure Word64 : WORD =
     fun toIntX (w : word64) : int = prim("__word64_to_int_X", w)
     fun fromInt (i : int) : word64 = prim("__word_to_word64", cast_iw i)
 
-    fun toLargeWord (w : word64) : word64 = w
+    (* In this implementation, "large" is word32! We will later change it to be word64... *)
+
+    fun toLargeWord (w : word64) : word32 = prim("__word64_to_word32", w)
     val toLarge = toLargeWord
-    fun toLargeWordX (w : word64) : word64 = w
+    fun toLargeWordX (w : word64) : word32 = prim("__word64_to_word32", w)
     val toLargeX = toLargeWordX
-    fun fromLargeWord (w : word64) : word64 = w
+    fun fromLargeWord (w : word32) : word64 = prim("__word32_to_word64", w)
     val fromLarge = fromLargeWord
 
     fun toLargeInt (w : word64) : intinf =
@@ -50,7 +52,7 @@ structure Word64 : WORD =
       fun ~>> (w, k) =
 	if k >= wordSize_w then
 	  if toInt64X w >= 0 then 0w0    (* msbit = 0 *)
-	  else fromInt ~1                   (* msbit = 1 *)
+	  else fromInt ~1                (* msbit = 1 *)
 	else rshiftsig_(w, k)
     end
 

@@ -818,6 +818,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_INT31
 			   | 32 => tyName_INT32
+			   | 63 => tyName_INT63
+			   | 64 => tyName_INT64
                         (* | ~1 => tyName_INTINF *)  (* IntInf's have been compiled away at this point *)
 			   | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
 	   in type_switch (type_lexp env) (fn _ => tn) switch
@@ -826,6 +828,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_WORD31  (* word8 type translated into default word type in CompileDec *)
 			   | 32 => tyName_WORD32
+			   | 63 => tyName_WORD63
+			   | 64 => tyName_WORD64
 			   | _ => die "SWITCH_I"
 	   in type_switch (type_lexp env) (fn _ => tn) switch
 	   end

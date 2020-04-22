@@ -69,8 +69,10 @@ structure InstsX64: INSTS_X64 =
 
     datatype inst =                 (* general instructions *)
       movq of ea * ea
+    | mov of ea * ea
     | movb of ea * ea
     | movzbq of ea * ea
+    | movslq of ea * ea
     | push of ea
     | leaq of ea * ea
     | pop of ea
@@ -305,10 +307,12 @@ structure InstsX64: INSTS_X64 =
           fun emit_nullary0 s = (emit s; emit_nl())
           fun emit_jump (s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
           fun emit_inst i =
-            case i
-              of movq a => emit_bin ("movq", a)
+             case i of
+                 movq a => emit_bin ("movq", a)
+               | mov a => emit_bin ("mov", a)
                | movb a => emit_bin ("movb", a)
                | movzbq a => emit_bin ("movzbq", a)
+               | movslq a => emit_bin ("movslq", a)
                | leaq a => emit_bin ("leaq", a)
                | push ea => emit_unary ("push", ea)
                | pop ea => emit_unary ("pop", ea)
@@ -565,8 +569,10 @@ structure InstsX64: INSTS_X64 =
                   | DD (s1,r1,r2,s2) => DD(s1,Rm r1, Rm r2,s2)
         in case i of
                movq (ea1,ea2) => movq (Em ea1,Em ea2)
+             | mov (ea1,ea2) => mov (Em ea1,Em ea2)
              | movb (ea1,ea2) => movb (Em ea1,Em ea2)
              | movzbq (ea1,ea2) => movzbq (Em ea1,Em ea2)
+             | movslq (ea1,ea2) => movslq (Em ea1,Em ea2)
              | push ea => push (Em ea)
              | leaq (ea1,ea2) => leaq (Em ea1,Em ea2)
              | pop ea => pop (Em ea)

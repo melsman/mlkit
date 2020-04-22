@@ -125,6 +125,13 @@ size_t* __mod_int32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
 size_t* __mod_word32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
 size_t* __quot_int32b(size_t* b, size_t* x, size_t* y);
 size_t* __rem_int32b(size_t* b, size_t* x, size_t* y);
+
+size_t* __div_int64b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __div_word64b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __mod_int64b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __mod_word64b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
+size_t* __quot_int64b(size_t* b, size_t* x, size_t* y);
+size_t* __rem_int64b(size_t* b, size_t* x, size_t* y);
 #endif
 
 #endif /*__MATH_H*/

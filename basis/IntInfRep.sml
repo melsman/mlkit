@@ -16,6 +16,9 @@ structure IntInfRep : INT_INF_REP =
       fun i32_i31 (x: int32) : int31 = prim("__int32_to_int31", x)
       fun i31_i (x: int31) : int = prim("__int31_to_int", x)
       fun i_i31 (x: int) : int31 = prim("__int_to_int31", x)
+
+      fun i32_i64 (x: int32) : int64 = prim("__int32_to_int64", x)
+
       fun w32_w (w : word32) : word = cast_iw(prim("__word32_to_int", w))
       fun w32_w_X (w : word32) : int = prim("__word32_to_int_X", w)
       fun w_w32 (w : word) : word32 = prim("__word_to_word32", w)
@@ -98,14 +101,14 @@ structure IntInfRep : INT_INF_REP =
 	      val nbaseW64Not : word64 = 0wx3fffffff
 	      val lgBase : int31 = 30             (* No. of bits per digit; must be even *)
 	      val lgBaseW : word = 0w30
-	      fun maxDigit() : int31 = 1073741823
+	      fun maxDigit () : int31 = 1073741823
 	      val maxDigitI32 : int32 = 1073741823
 
-	      fun lgHBase() : int31 = quoti31 (lgBase, 2)    (* half digits *)
-	      fun hbase() : word31 = lshiftw31(0w1, i31_w (lgHBase()))
-	      fun hmask() : word31 = (hbase())-0w1
+	      fun lgHBase () : int31 = quoti31 (lgBase, 2)    (* half digits *)
+	      fun hbase () : word31 = lshiftw31(0w1, i31_w (lgHBase()))
+	      fun hmask () : word31 = (hbase())-0w1
 
-	      fun zero() : bignat = []
+	      fun zero () : bignat = []
 
 	      fun hl i =
 		  let val w = i31_w31 i
@@ -303,6 +306,11 @@ structure IntInfRep : INT_INF_REP =
 	  | natInfToI32 [d,e] = ~(nbase()*(i31_i32 e)) + i31_i32 d
 	  | natInfToI32 (d::r) = ~(nbase()*natInfToI32 r) + i31_i32 d
 
+	fun natInfToI64 [] : int64 = 0
+	  | natInfToI64 [d] = i32_i64(i31_i32 d)
+	  | natInfToI64 [d,e] = i32_i64(~(nbase()*(i31_i32 e))) + i32_i64(i31_i32 d)
+	  | natInfToI64 (d::r) = ~(i32_i64(nbase())*natInfToI64 r) + i32_i64(i31_i32 d)
+
 	fun bigNatMinNeg () = BN.addOne (natInfFromI32 (~(minNeg()+1)))
 	fun bigNatMinNeg64 () = BN.addOne (natInfFromI64 (~(minNeg64()+1)))
 	fun negi digits = _IntInf{negative=true, digits=digits}
@@ -315,6 +323,14 @@ structure IntInfRep : INT_INF_REP =
 	    (~(natInfToI32 digits)) handle _ =>
                 if digits = bigNatMinNeg() then minNeg()
 		else raise Overflow
+
+	fun intInfToI64 (_IntInf{digits=[], ...}) = 0
+	  | intInfToI64 (_IntInf{negative=false, digits}) = natInfToI64 digits
+	  | intInfToI64 (_IntInf{negative=true, digits}) =
+	    (~(natInfToI64 digits)) handle _ =>
+                if digits = bigNatMinNeg64() then minNeg64()
+		else raise Overflow
+
 
 	fun zero () = _IntInf{negative=false, digits=BN.zero()}
 	fun i32ToIntInf (0:int32) = zero()
@@ -334,6 +350,8 @@ structure IntInfRep : INT_INF_REP =
 	  fun toInt31 x = i32_i31(intInfToI32 x)
 	  fun toInt32 x = intInfToI32 x
 	  fun toInt x = i32_i(intInfToI32 x)
+
+	  fun toInt64 x = intInfToI64 x
 
 	  fun fromInt x = i32ToIntInf(i_i32 x)
 	  fun fromInt32 x = i32ToIntInf x
@@ -395,6 +413,9 @@ structure IntInfRep : INT_INF_REP =
       fun fromWord32X (w:word32) : intinf =
 	  fromInt32(w32_i32_X w)
 
+      fun fromWord64X (w:word64) : intinf =
+	  fromInt64(w64_i64_X w)
+
       fun fromWord31X (w:word31) : intinf =
 	  fromWord32X(w31_w32_X w)
 
@@ -404,6 +425,10 @@ structure IntInfRep : INT_INF_REP =
       fun toWord32 (x : intinf) : word32 =
 	  i32_w32(toInt32 x)
 	  handle _ => raise Fail "IntInfRep.toWord32"
+
+      fun toWord64 (x : intinf) : word64 =
+	  i64_w64(toInt64 x)
+	  handle _ => raise Fail "IntInfRep.toWord64"
 
       fun fromWord (w : word) : intinf =
 	  fromWord32 (w_w32 w)

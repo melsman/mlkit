@@ -7,7 +7,7 @@
 signature INT_INF_REP =
   sig
       type intinf
-	      
+
       val fromInt    : int -> intinf
       val toInt      : intinf -> int
 
@@ -32,6 +32,10 @@ signature INT_INF_REP =
       val fromWord32 : word32 -> intinf
       val fromWord32X : word32 -> intinf
       val toWord32   : intinf -> word32
+
+      val fromWord64 : word64 -> intinf
+      val fromWord64X : word64 -> intinf
+      val toWord64   : intinf -> word64
 
       (* for overloading *)
       val +   : intinf * intinf -> intinf

@@ -1729,26 +1729,47 @@ end; (*match compiler local*)
 	 ("__word32_to_int_X", ("__word32b_to_int31_X", "id"))
 	]
         @
-	[("__int_to_int64", ("__int31_to_int32b", "id")),
-	 ("__int63_to_int", ("id", "__int31_to_int32ub")),
-	 ("__int64_to_int", ("__int32b_to_int31", "id")),
-	 ("__int64_to_word", ("__int32b_to_word31", "id")),
-	 ("__int64_to_word64", ("__int32b_to_word32b", "id")),
-	 ("__int64_to_int63", ("__int32b_to_int31", "__int32ub_to_int31")),
-	 ("__int_to_int63", ("id", "__int32ub_to_int31")),
-	 ("__word_to_word64", ("__word31_to_word32b", "id")),
-	 ("__word_to_word64_X", ("__word31_to_word32b_X", "id")),
-	 ("__word63_to_word", ("id", "__word31_to_word32ub")),
-	 ("__word32_to_word", ("__word32b_to_word31", "id")),
-	 ("__word32_to_word31", ("__word32b_to_word31", "__word32ub_to_word31")),
-	 ("__word_to_word31", ("id", "__word32ub_to_word31")),
-	 ("__word31_to_word_X", ("id", "__word31_to_word32ub_X")),
-	 ("__word31_to_word32_X", ("__word31_to_word32b_X", "__word31_to_word32ub_X")),
-	 ("__word32_to_int32", ("__word32b_to_int32b", "__word32ub_to_int32ub")),
-	 ("__word32_to_int32_X", ("__word32b_to_int32b_X", "id")),
-	 ("__word32_to_int", ("__word32b_to_int31", "__word32ub_to_int32ub")),
-	 ("__word32_to_int_X", ("__word32b_to_int31_X", "id"))
-	 ]
+        let fun T t =
+                case t of
+                    "int" =>  ("int31", "int32ub")
+                  | "word" => ("word31", "word32ub")
+                  | "int64" => ("int64b", "int64ub")
+                  | "word64" => ("word64b", "word64ub")
+                  | "int32" => ("int32b", "int32ub")
+                  | "word32" => ("word32b", "word32ub")
+                  | _ => (t,t)
+            fun conv0 pr t1 t2 =
+                (pr (t1,t2), let val (a1,b1) = T t1
+                                 val (a2,b2) = T t2
+                             in (pr (a1,a2), pr (b1,b2))
+                             end)
+            val conv  = conv0 (fn (t1,t2) => "__" ^ t1 ^ "_to_" ^ t2)
+            val convX = conv0 (fn (t1,t2) => "__" ^ t1 ^ "_to_" ^ t2 ^ "_X")
+        in
+          [conv  "int"    "int64",
+           conv  "int63"  "int",
+           conv  "int64"  "word",
+           conv  "int64"  "word64",
+           conv  "int64"  "int63",
+           conv  "int"    "int63",
+           conv  "word"   "word64",
+           convX "word"   "word64",
+           conv  "word63" "word",
+           conv  "word64" "word",
+           conv  "word64" "word31",
+           conv  "word"   "word63",
+           convX "word63" "word",
+           convX "word63" "word64",
+           conv  "word64" "int64",
+           convX "word64" "int64",
+           conv  "word64" "int",
+           convX "word64" "int",
+
+           conv  "word64" "word32",   (* large-word conversions; for now, word32 is "large-word" *)
+           conv  "word32" "word64",
+           conv  "int32" "int64"
+          ]
+        end
        )
     in
       fun compileCName name =
@@ -2160,13 +2181,13 @@ end; (*match compiler local*)
     in
       fun equal_int31() = equal int31Type "__equal_int31"
       fun equal_int32() = equal int32Type "__equal_int32"
-      fun equal_int63() = equal int31Type "__equal_int63"
-      fun equal_int64() = equal int32Type "__equal_int64"
+      fun equal_int63() = equal int63Type "__equal_int63"
+      fun equal_int64() = equal int64Type "__equal_int64"
       fun equal_word8() = equal (wordDefaultType()) "__equal_word"
       fun equal_word31() = equal word31Type "__equal_word31"
       fun equal_word32() = equal word32Type "__equal_word32"
-      fun equal_word63() = equal word31Type "__equal_word63"
-      fun equal_word64() = equal word32Type "__equal_word64"
+      fun equal_word63() = equal word63Type "__equal_word63"
+      fun equal_word64() = equal word64Type "__equal_word64"
     end
 
     (* ----------------------------------------------------------------------- *)

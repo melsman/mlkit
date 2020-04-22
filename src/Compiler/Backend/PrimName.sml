@@ -84,6 +84,25 @@ datatype prim =
 	 Word32b_to_int32b | Word32b_to_int32b_X | Word32ub_to_int32ub | Word31_to_int31 |
 	 Word32b_to_int31 | Int32b_to_word31 | Word32b_to_int31_X |
 
+         Word64ub_to_int32ub |
+         Word32ub_to_word64ub |
+         Word64ub_to_word32ub |
+         Word64ub_to_int64ub |
+         Word64ub_to_int64ub_X |
+
+         Word31_to_word64b |
+         Word64b_to_int31 |
+         Word64b_to_int64b_X |
+         Word64b_to_int64b |
+         Word32b_to_word64b |
+         Word64b_to_word32b |
+         Word64b_to_int31_X |
+
+         Int32b_to_int64b |
+         Int32ub_to_int64ub |
+         Int64b_to_word64b |
+         Int64ub_to_word64ub |
+
 	 Exn_ptr | Fresh_exname |
 
          Bytetable_sub | Bytetable_size | Bytetable_update |
@@ -192,6 +211,24 @@ local
 	 ("__word31_to_word32ub_X", Word31_to_word32ub_X), ("__word31_to_word32b_X", Word31_to_word32b_X),
 	 ("__word32b_to_int32b", Word32b_to_int32b), ("__word32b_to_int32b_X", Word32b_to_int32b_X), ("__word32ub_to_int32ub", Word32ub_to_int32ub), ("__word31_to_int31", Word31_to_int31),
 	 ("__word32b_to_int31", Word32b_to_int31), ("__int32b_to_word31", Int32b_to_word31), ("__word32b_to_int31_X", Word32b_to_int31_X),
+
+         ("__word64ub_to_int32ub", Word64ub_to_int32ub), ("__word32ub_to_word64ub", Word32ub_to_word64ub), ("__word64ub_to_word32ub", Word64ub_to_word32ub),
+         ("__word64ub_to_int64ub", Word64ub_to_int64ub),
+         ("__word64ub_to_int64ub_X", Word64ub_to_int64ub_X),
+
+         ("__word31_to_word64b", Word31_to_word64b),
+         ("__word64b_to_int31", Word64b_to_int31),
+         ("__word64b_to_int64b_X", Word64b_to_int64b_X),
+         ("__word64b_to_int64b", Word64b_to_int64b),
+         ("__word32b_to_word64b", Word32b_to_word64b),
+         ("__word64b_to_word32b", Word64b_to_word32b),
+         ("__word64b_to_int31_X", Word64b_to_int31_X),
+
+         ("__int32b_to_int64b", Int32b_to_int64b),
+         ("__int32ub_to_int64ub", Int32ub_to_int64ub),
+         ("__int64b_to_word64b", Int64b_to_word64b),
+         ("__int64ub_to_word64ub", Int64ub_to_word64ub),
+
 	 ("__exn_ptr", Exn_ptr), ("__fresh_exname", Fresh_exname),
          ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
 	 ("word_sub0", Word_sub0), ("word_update0", Word_update0), ("table_size", Table_size),
@@ -497,6 +534,25 @@ fun pp_prim (p:prim) : string =
       | Word32b_to_int31 => "Word32b_to_int31"
       | Int32b_to_word31 => "Int32b_to_word31"
       | Word32b_to_int31_X => "Word32b_to_int31_X"
+
+      | Word64ub_to_int32ub => "Word64ub_to_int32ub"
+      | Word32ub_to_word64ub => "Word32ub_to_word64ub"
+      | Word64ub_to_word32ub => "Word64ub_to_word32ub"
+      | Word64ub_to_int64ub => "Word64ub_to_int64ub"
+      | Word64ub_to_int64ub_X => "Word64ub_to_int64ub_X"
+
+      | Word31_to_word64b => "Word31_to_word64b"
+      | Word64b_to_int31 => "Word64b_to_int31"
+      | Word64b_to_int64b_X => "Word64b_to_int64b_X"
+      | Word64b_to_int64b => "Word64b_to_int64b"
+      | Word32b_to_word64b => "Word32b_to_word64b"
+      | Word64b_to_word32b => "Word64b_to_word32b"
+      | Word64b_to_int31_X => "Word64b_to_int31_X"
+
+      | Int32b_to_int64b => "Int32b_to_int64b"
+      | Int32ub_to_int64ub => "Int32ub_to_int64ub"
+      | Int64b_to_word64b => "Int64b_to_word64b"
+      | Int64ub_to_word64ub => "Int64ub_to_word64ub"
 
       | Exn_ptr => "Exn_ptr"
       | Fresh_exname => "Fresh_exname"

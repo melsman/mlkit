@@ -1426,7 +1426,6 @@ struct
       fun neg_int_kill_tmp0 {tag,quad} (x,d,size_ff,C) =
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-
             val (inst_add, inst_neg, maybeDoubleOfQuadReg) =
                 if quad
                 then (I.addq, I.negq, fn r => r)
@@ -1440,14 +1439,18 @@ struct
            do_tag C')))
         end
 
-      fun neg_int32b_kill_tmp0 (b,x,d,size_ff,C) =
-        if not(BI.tag_values()) then die "neg_int32b_kill_tmp0.tagging required"
+      fun neg_int_boxed_kill_tmp0 {quad:bool} (b,x,d,size_ff,C) =
+        if not(BI.tag_values()) then die "neg_int_boxed_kill_tmp0.tagging required"
         else
           let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
               val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+              val (inst_neg, maybeDoubleOfQuadReg) =
+                  if quad
+                  then (I.negq, fn r => r)
+                  else (I.negl, I.doubleOfQuadReg)
           in x_C(
              load_indexed(R tmp_reg0,x_reg,WORDS 1,
-             I.negl(R (I.doubleOfQuadReg tmp_reg0)) ::
+             inst_neg(R (maybeDoubleOfQuadReg tmp_reg0)) ::
              jump_overflow (
              move_aty_into_reg(b,d_reg,size_ff,
              store_indexed(d_reg,WORDS 1, R tmp_reg0,                        (* store negated value *)
@@ -1476,16 +1479,22 @@ struct
        end
 
 
-     fun abs_int32b_kill_tmp0 (b,x,d,size_ff,C) =
+     fun abs_int_boxed_kill_tmp0 {quad} (b,x,d,size_ff,C) =
+       if not(BI.tag_values()) then die "abs_int_boxed_kill_tmp0.tagging required"
+       else
        let val cont_lab = new_local_lab "cont"
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+           val (inst_cmp, inst_neg, maybeDoubleOfQuadReg) =
+               if quad
+               then (I.cmpq, I.negq, fn r => r)
+               else (I.cmpl, I.negl, I.doubleOfQuadReg)
        in
          x_C(
          load_indexed(R tmp_reg0,x_reg,WORDS 1,
-         I.cmpl(I "0", R (I.doubleOfQuadReg tmp_reg0)) ::
+         inst_cmp (I "0", R (maybeDoubleOfQuadReg tmp_reg0)) ::
          I.jge cont_lab ::
-         I.negl (R (I.doubleOfQuadReg tmp_reg0)) ::
+         inst_neg (R (maybeDoubleOfQuadReg tmp_reg0)) ::
          jump_overflow (
          I.lab cont_lab ::
          move_aty_into_reg(b,d_reg,size_ff,
@@ -1546,6 +1555,30 @@ struct
                                               * largest integer is odd! mael 2001-04-29 *)
        end
 
+     fun word64_to_int31 {boxedarg,ovf} (x,d,size_ff,C) =
+       let
+           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+                               else copy(x_reg,d_reg,C)
+           fun check_ovf C =
+             if ovf then
+               I.btq(I "30", R d_reg) ::
+               I.jc (NameLab "__raise_overflow") ::
+               C
+             else C
+       in x_C(
+          maybe_unbox(
+          check_ovf(
+          I.imull(I "2", R (I.doubleOfQuadReg d_reg)) ::
+          jump_overflow (
+          I.addq(I "1", R d_reg) :: C'))))   (* No need to check for overflow after adding 1; the
+                                              * intermediate result is even (after multiplying
+                                              * with 2) so adding one cannot give Overflow because the
+                                              * largest integer is odd! mael 2001-04-29 *)
+       end
+
+
      fun word32_to_word31 {boxedarg} (x,d,size_ff,C) =
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -1559,6 +1592,47 @@ struct
           I.addq(I "1", R d_reg) ::
 *)        I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
           C'))
+       end
+
+     (* Conversions involving 64bit ints and words *)
+
+     fun word64ub_to_word32ub (x,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+       in x_C(copy(x_reg, d_reg, C')) (* just do a copy *)
+       end
+
+     fun word32ub_to_word64ub (x,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+       in x_C(I.mov(R (I.doubleOfQuadReg x_reg),
+                    R (I.doubleOfQuadReg d_reg)) :: C')  (* zero-extend the rest of d_reg *)
+       end
+
+     fun word64ub_to_int32ub (x,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+           (* hmm - I presume we should overflow if any of the upper bits are non-zero *)
+       in x_C(copy(x_reg, d_reg,
+                   I.btq(I "31", R d_reg) ::     (* sign bit set? *)
+                   I.jc (NameLab "__raise_overflow") :: C'))
+       end
+
+     fun int32ub_to_int64ub (x,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+       in x_C(I.movslq(R (I.doubleOfQuadReg x_reg),
+                       R d_reg) :: C')  (* sign-extend *)
+       end
+
+     fun num64ub_to_num64ub {ovf} (x,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+           val C'' = if ovf then
+                       I.btq(I "63", R d_reg) ::     (* sign bit set? *)
+                       I.jc (NameLab "__raise_overflow") :: C'
+                     else C'
+       in x_C(copy(x_reg, d_reg, C''))
        end
 
      (* unboxed f64 operations *)
@@ -1777,9 +1851,16 @@ struct
        end
 
      (* andb and orb are the same for 31 bit (tagged) and
-      * 32 bit (untagged) representations *)
-     fun andb_word_kill_tmp01 {quad:bool} a = bin_op_kill_tmp01 {quad=quad} I.andl a   (* A[x&y] = A[x] & A[y]  tagging *)
-     fun orb_word_kill_tmp01 {quad:bool} a = bin_op_kill_tmp01 {quad=quad} I.orl a     (* A[x|y] = A[x] | A[y]  tagging *)
+      * 32 bit (untagged) representations; same for 63/64 bits *)
+     fun andb_word_kill_tmp01 {quad:bool} a =
+         let val inst = if quad then I.andq else I.andl
+         in bin_op_kill_tmp01 {quad=quad} inst a     (* A[x&y] = A[x] & A[y]  tagging *)
+         end
+
+     fun orb_word_kill_tmp01 {quad:bool} a =
+         let val inst = if quad then I.orq else I.orl
+         in bin_op_kill_tmp01 {quad=quad} inst a     (* A[x|y] = A[x] | A[y]  tagging *)
+         end
 
      (* xorb needs to set the lowest bit for the 31 bit (tagged) version and for the 63 bit (tagged) version *)
      fun xorb_word_kill_tmp01 {tag,quad} (x,y,d,size_ff,C) =
@@ -1876,17 +1957,21 @@ struct
      fun add_int64b (b,x,y,d,size_ff,C) =
          binop_word_boxed__ {ovf=true,quad=true} I.addq (b,x,y,d,size_ff,C)
 
-     fun num31_to_num32b (b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
+     fun num31_to_num_boxed {quad} (b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
        if BI.tag_values() then
          let val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+             val (inst_sar, maybeDoubleOfQuadReg) =
+                 if quad
+                 then (I.sarq, fn r => r)
+                 else (I.sarl, I.doubleOfQuadReg)
          in
            move_aty_into_reg(x,tmp_reg0,size_ff,
-           I.sarl(I "1", R (I.doubleOfQuadReg tmp_reg0)) ::
+           inst_sar (I "1", R (maybeDoubleOfQuadReg tmp_reg0)) ::
            move_aty_into_reg(b,d_reg,size_ff,
            store_indexed(d_reg,WORDS 1, R tmp_reg0,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
          end
-       else die "num31_to_num32b.tagging_disabled"
+       else die "num31_to_num_boxed.tagging_disabled"
 
      fun num32b_to_num32b {ovf:bool} (b,x,d,size_ff,C) =
        if not(BI.tag_values()) then die "num32b_to_num32b.tagging_disabled"
@@ -1906,6 +1991,67 @@ struct
            store_indexed(d_reg, WORDS 1, R tmp_reg0,
            store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
          end
+
+     fun num64b_to_num64b {ovf:bool} (b,x,d,size_ff,C) =
+       if not(BI.tag_values()) then die "num64b_to_num64b.tagging_disabled"
+       else
+         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+             fun check_ovf C =
+               if ovf then
+                 I.btq(I "63", R tmp_reg0) ::     (* sign bit set? *)
+                 I.jc (NameLab "__raise_overflow") :: C
+               else C
+         in
+           x_C (
+           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           check_ovf (
+           move_aty_into_reg(b,d_reg,size_ff,
+           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
+         end
+
+     fun num32b_to_num64b (b,x,d,size_ff,C) =
+       if not(BI.tag_values()) then die "num32b_to_num64b.tagging_disabled"
+       else
+         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+         in
+           x_C (
+           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           move_aty_into_reg(b,d_reg,size_ff,
+           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
+         end
+
+     fun int32b_to_int64b (b,x,d,size_ff,C) =
+       if not(BI.tag_values()) then die "int32b_to_int64b.tagging_disabled"
+       else
+         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+         in
+           x_C (
+           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg0) ::       (* sign-extend *)
+           move_aty_into_reg(b,d_reg,size_ff,
+           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
+         end
+
+     fun num64b_to_num32b (b,x,d,size_ff,C) =
+       if not(BI.tag_values()) then die "num64b_to_num32b.tagging_disabled"
+       else
+         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
+         in
+           x_C (
+           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           I.mov(R (I.doubleOfQuadReg tmp_reg0),R (I.doubleOfQuadReg tmp_reg0)) ::  (* clears the upper bits *)
+           move_aty_into_reg(b,d_reg,size_ff,
+           store_indexed(d_reg, WORDS 1, R tmp_reg0,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))  (* store tag *)
+         end
+
 
      fun shift_word_boxed__ {quad} inst (r,x,y,d,size_ff,C) =
        if not(BI.tag_values()) then die "shift_word_boxed__.tagging is not enabled as required"
@@ -1945,7 +2091,7 @@ struct
      fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        shift_word_boxed__ {quad=false} I.shrl (r,x,y,d,size_ff,C)
 
-     fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
+     fun shift_right_unsignedw64boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word64.sml *)
        shift_word_boxed__ {quad=true} I.shrq (r,x,y,d,size_ff,C)
 
      fun shift_left_word_kill_tmp01 {tag,quad} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
@@ -1959,7 +2105,6 @@ struct
                if quad
                then (I.salq, fn r => r)
                else (I.sall, I.doubleOfQuadReg)
-
        in
          if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
            x_C(
@@ -1984,13 +2129,17 @@ struct
            copy(tmp_reg1, d_reg, C')))))))
        end
 
-     fun shift_right_signed_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
+     fun shift_right_signed_word_kill_tmp01 {tag,quad} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
            (* y is represented tagged only when BI.tag_values() is true *)
            fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
                            else C
+           val (inst_sar, maybeDoubleOfQuadReg) =
+               if quad
+               then (I.sarq, fn r => r)
+               else (I.sarl, I.doubleOfQuadReg)
        in
          if tag then                         (* 1 | ((x) >> (y >> 1)) *)
            x_C(
@@ -1998,11 +2147,11 @@ struct
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
-           I.decq (R tmp_reg1) ::                              (* x - 1  *)
-           untag_y (                                           (* y >> 1 *)
-           I.sarl (R cl, R (I.doubleOfQuadReg tmp_reg1)) ::    (* x >>   *)
-           copy(tmp_reg0, rcx,                                 (* restore rcx *)
-           I.orq (I "1", R tmp_reg1) ::                        (* 1 |    *)
+           I.decq (R tmp_reg1) ::                                 (* x - 1  *)
+           untag_y (                                              (* y >> 1 *)
+           inst_sar (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::  (* x >>   *)
+           copy(tmp_reg0, rcx,                                    (* restore rcx *)
+           I.orq (I "1", R tmp_reg1) ::                           (* 1 |    *)
            copy(tmp_reg1, d_reg, C')))))))
          else
            x_C(
@@ -2010,18 +2159,22 @@ struct
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
-           I.sarl(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
+           inst_sar (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
            copy(tmp_reg0, rcx,                                 (* restore rcx *)
            copy(tmp_reg1, d_reg, C')))))))
        end
 
-     fun shift_right_unsigned_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10 *)
+     fun shift_right_unsigned_word_kill_tmp01 {tag,quad} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10 *)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
            val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
            (* y is represented tagged only when BI.tag_values() is true *)
            fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
                            else C
+           val (inst_shr, maybeDoubleOfQuadReg) =
+               if quad
+               then (I.shrq, fn r => r)
+               else (I.shrl, I.doubleOfQuadReg)
        in
          if tag then                                           (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
            x_C(
@@ -2029,9 +2182,9 @@ struct
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
-           untag_y (                                           (* y >> 1                *)
-           I.shrl (R cl, R (I.doubleOfQuadReg tmp_reg1)) ::    (* (unsigned long)x >>   *)
-           I.orq (I "1", R tmp_reg1) ::                        (* 1 |                   *)
+           untag_y (                                                (* y >> 1                *)
+           inst_shr (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::    (* (unsigned long)x >>   *)
+           I.orq (I "1", R tmp_reg1) ::                             (* 1 |                   *)
            copy(tmp_reg0, rcx,
            copy(tmp_reg1, d_reg, C'))))))))
          else
@@ -2040,12 +2193,12 @@ struct
            copy(x_reg, tmp_reg1,
            y_C(
            copy(y_reg, rcx,
-           I.shrl(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
+           inst_shr (R cl, R (maybeDoubleOfQuadReg tmp_reg1)) ::
            copy(tmp_reg0, rcx,                                 (* restore rcx *)
            copy(tmp_reg1, d_reg, C')))))))
        end
 
-     fun bytetable_sub(t,i,d,size_ff,C) =
+     fun bytetable_sub (t,i,d,size_ff,C) =
        let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
            val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
@@ -2063,7 +2216,7 @@ struct
             C'))
        end
 
-     fun resolve_args(atys,ts,size_ff) =
+     fun resolve_args (atys,ts,size_ff) =
        case atys
          of nil => SOME (nil, fn C => C)
           | SS.PHREG_ATY r :: atys =>
@@ -2078,7 +2231,7 @@ struct
                       of SOME (rs,F) => SOME (t::rs, fn C => F(move_aty_into_reg(aty,t,size_ff,C)))
                        | NONE => NONE))
 
-     fun bytetable_update(t,i,x,d,size_ff,C) =
+     fun bytetable_update (t,i,x,d,size_ff,C) =
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
@@ -2110,7 +2263,7 @@ struct
               I.movb(R r10b, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10b *)
               C))))
 
-     fun bytetable_size(t,d,size_ff,C) =
+     fun bytetable_size (t,d,size_ff,C) =
        let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
        in if BI.tag_values() then
@@ -2129,7 +2282,7 @@ struct
             C')
        end
 
-     fun word_sub0(t,i,d,size_ff,C) =
+     fun word_sub0 (t,i,d,size_ff,C) =
        let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
            (* i is represented tagged only when BI.tag_values() is true *)
@@ -2148,7 +2301,7 @@ struct
             end
        end
 
-     fun word_update0(t,i,x,d,size_ff,C) =
+     fun word_update0 (t,i,x,d,size_ff,C) =
        if BI.tag_values() then
          let
            (* i, x are represented tagged only when BI.tag_values() is true *)
