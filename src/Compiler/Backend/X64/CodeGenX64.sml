@@ -877,8 +877,11 @@ struct
                           | Word64b_to_int31_X => word64_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
 
                           | Int32ub_to_int64ub => int32ub_to_int64ub (x,d,size_ff,C)
-
                           | Int64ub_to_word64ub => num64ub_to_num64ub {ovf=false} (x,d,size_ff,C)
+
+                          | Int64b_to_int31 => int64_to_int31 {boxedarg=true} (x,d,size_ff,C)
+
+                          | Int64ub_to_int32ub => int64ub_to_int32ub (x,d,size_ff,C)
 
                           | Bytetable_size => bytetable_size(x,d,size_ff,C)
                           | Table_size => table_size(x,d,size_ff,C)
@@ -1049,6 +1052,8 @@ struct
 
                           | Int32b_to_int64b => int32b_to_int64b (x,y,d,size_ff,C)
                           | Int64b_to_word64b => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
+
+                          | Int31_to_int64b => num31_to_num_boxed {quad=true} (x,y,d,size_ff,C)
 
                           | Bytetable_sub => bytetable_sub (x,y,d,size_ff,C)
                           | Word_sub0 => word_sub0 (x,y,d,size_ff,C)

@@ -81,7 +81,7 @@ local
 
     basis Int =
        let open General String IntInfRep
-       in bas INTEGER.sml Int.sml Int32.sml Int31.sml (*Int64.sml*) end
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int64.sml end
        end
 
     basis Real =

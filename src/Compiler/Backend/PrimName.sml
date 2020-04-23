@@ -78,6 +78,7 @@ datatype prim =
 	 Shift_right_unsigned_word63 | Shift_right_unsigned_word64ub | Shift_right_unsigned_word64b |
 
 	 Int31_to_int32b | Int31_to_int32ub | Int32b_to_int31 | Int32b_to_word32b | Int32ub_to_int31 |
+         Int31_to_int64b | Int31_to_int64ub | Int64b_to_int31 |
 
 	 Word31_to_word32b | Word31_to_word32ub | Word32b_to_word31 | Word32ub_to_word31 |
 	 Word31_to_word32ub_X | Word31_to_word32b_X |
@@ -102,6 +103,8 @@ datatype prim =
          Int32ub_to_int64ub |
          Int64b_to_word64b |
          Int64ub_to_word64ub |
+
+         Int64ub_to_int32ub |
 
 	 Exn_ptr | Fresh_exname |
 
@@ -207,6 +210,8 @@ local
 	 ("__shift_right_unsigned_word64ub", Shift_right_unsigned_word64ub), ("__shift_right_unsigned_word64b", Shift_right_unsigned_word64b),
 
 	 ("__int31_to_int32b", Int31_to_int32b), ("__int31_to_int32ub", Int31_to_int32ub), ("__int32b_to_int31", Int32b_to_int31), ("__int32b_to_word32b", Int32b_to_word32b), ("__int32ub_to_int31", Int32ub_to_int31),
+         ("__int31_to_int64b",Int31_to_int64b), ("__int31_to_int64ub",Int31_to_int64ub), ("__int64b_to_int31",Int64b_to_int31),
+
 	 ("__word31_to_word32b", Word31_to_word32b), ("__word31_to_word32ub", Word31_to_word32ub), ("__word32b_to_word31", Word32b_to_word31), ("__word32ub_to_word31", Word32ub_to_word31),
 	 ("__word31_to_word32ub_X", Word31_to_word32ub_X), ("__word31_to_word32b_X", Word31_to_word32b_X),
 	 ("__word32b_to_int32b", Word32b_to_int32b), ("__word32b_to_int32b_X", Word32b_to_int32b_X), ("__word32ub_to_int32ub", Word32ub_to_int32ub), ("__word31_to_int31", Word31_to_int31),
@@ -228,6 +233,8 @@ local
          ("__int32ub_to_int64ub", Int32ub_to_int64ub),
          ("__int64b_to_word64b", Int64b_to_word64b),
          ("__int64ub_to_word64ub", Int64ub_to_word64ub),
+
+         ("__int64ub_to_int32ub", Int64ub_to_int32ub),
 
 	 ("__exn_ptr", Exn_ptr), ("__fresh_exname", Fresh_exname),
          ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
@@ -521,6 +528,10 @@ fun pp_prim (p:prim) : string =
       | Int32b_to_word32b => "Int32b_to_word32b"
       | Int32ub_to_int31 => "Int32ub_to_int31"
 
+      | Int31_to_int64b => "Int31_to_int64b"
+      | Int31_to_int64ub => "Int31_to_int64ub"
+      | Int64b_to_int31 => "Int64b_to_int31"
+
       | Word31_to_word32b => "Word31_to_word32b"
       | Word31_to_word32ub => "Word31_to_word32ub"
       | Word32b_to_word31 => "Word32b_to_word31"
@@ -553,6 +564,8 @@ fun pp_prim (p:prim) : string =
       | Int32ub_to_int64ub => "Int32ub_to_int64ub"
       | Int64b_to_word64b => "Int64b_to_word64b"
       | Int64ub_to_word64ub => "Int64ub_to_word64ub"
+
+      | Int64ub_to_int32ub => "Int64ub_to_int32ub"
 
       | Exn_ptr => "Exn_ptr"
       | Fresh_exname => "Fresh_exname"

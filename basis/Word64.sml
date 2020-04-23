@@ -40,8 +40,10 @@ structure Word64 : WORD =
 	  prim("__shift_right_signed_word64", (w,k))
       fun rshiftuns_ (w : word64, k : word) : word64 =
 	  prim("__shift_right_unsigned_word64", (w,k))
+(*
       fun toInt64X (w : word64) : int64 =
 	  prim("__word64_to_int64_X", w)
+*)
     in
       fun << (w, k)  = if k >= wordSize_w then 0w0
 		       else lshift_(w, k)
@@ -50,9 +52,12 @@ structure Word64 : WORD =
 		      else rshiftuns_(w, k)
 
       fun ~>> (w, k) =
-	if k >= wordSize_w then
+        if k >= wordSize_w then
+            rshiftsig_(w, wordSize_w-0w1)
+(*
 	  if toInt64X w >= 0 then 0w0    (* msbit = 0 *)
 	  else fromInt ~1                (* msbit = 1 *)
+*)
 	else rshiftsig_(w, k)
     end
 

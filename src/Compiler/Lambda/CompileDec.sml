@@ -1747,6 +1747,7 @@ end; (*match compiler local*)
             val convX = conv0 (fn (t1,t2) => "__" ^ t1 ^ "_to_" ^ t2 ^ "_X")
         in
           [conv  "int"    "int64",
+           conv  "int64"  "int",
            conv  "int63"  "int",
            conv  "int64"  "word",
            conv  "int64"  "word64",

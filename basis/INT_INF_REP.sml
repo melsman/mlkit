@@ -17,6 +17,9 @@ signature INT_INF_REP =
       val fromInt32  : int32 -> intinf
       val toInt32    : intinf -> int32
 
+      val fromInt64  : int64 -> intinf
+      val toInt64    : intinf -> int64
+
       val fromWord   : word -> intinf
       val fromWordX  : word -> intinf
       val toWord     : intinf -> word

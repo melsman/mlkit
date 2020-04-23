@@ -295,10 +295,14 @@ structure IntInfRep : INT_INF_REP =
 		  | bn i =
 		    let	fun dmbase n = (rshiftW64(n, lgBase()), andbW64 (n, notNbase64))
 			val (q,r) = dmbase i
-		    in (i32_i31(w32_i32(w64_w32 r))) :: bn q
+                        val r1 = w64_w32 r
+                        val r2 = w32_i32 r1
+                        val r3 = i32_i31 r2
+		    in r3 :: bn q
 		    end
-	    in if i <= maxDigit64() then [i32_i31(w32_i32(w64_w32(i64_w64 i)))]
-	       else bn (i64_w64 i)
+	      in if i <= maxDigit64() then
+                   [i32_i31(w32_i32(w64_w32(i64_w64 i)))]
+	         else bn (i64_w64 i)
 	    end
 
 	fun natInfToI32 [] : int32 = 0
@@ -308,7 +312,12 @@ structure IntInfRep : INT_INF_REP =
 
 	fun natInfToI64 [] : int64 = 0
 	  | natInfToI64 [d] = i32_i64(i31_i32 d)
-	  | natInfToI64 [d,e] = i32_i64(~(nbase()*(i31_i32 e))) + i32_i64(i31_i32 d)
+	  | natInfToI64 [d,e] = let val x00 = i32_i64(i31_i32 e)
+                                    val x01 = i32_i64(nbase())*x00
+                                    val x1 = ~ x01
+                                    val x2 = i32_i64(i31_i32 d)
+                                in x1 + x2
+                                end
 	  | natInfToI64 (d::r) = ~(i32_i64(nbase())*natInfToI64 r) + i32_i64(i31_i32 d)
 
 	fun bigNatMinNeg () = BN.addOne (natInfFromI32 (~(minNeg()+1)))
@@ -327,9 +336,11 @@ structure IntInfRep : INT_INF_REP =
 	fun intInfToI64 (_IntInf{digits=[], ...}) = 0
 	  | intInfToI64 (_IntInf{negative=false, digits}) = natInfToI64 digits
 	  | intInfToI64 (_IntInf{negative=true, digits}) =
-	    (~(natInfToI64 digits)) handle _ =>
-                if digits = bigNatMinNeg64() then minNeg64()
-		else raise Overflow
+            let val i = natInfToI64 digits
+	    in ~ i
+            end handle _ =>
+                       if digits = bigNatMinNeg64() then minNeg64()
+		       else raise Overflow
 
 
 	fun zero () = _IntInf{negative=false, digits=BN.zero()}
@@ -427,8 +438,9 @@ structure IntInfRep : INT_INF_REP =
 	  handle _ => raise Fail "IntInfRep.toWord32"
 
       fun toWord64 (x : intinf) : word64 =
-	  i64_w64(toInt64 x)
-	  handle _ => raise Fail "IntInfRep.toWord64"
+          let val y = toInt64 x
+          in i64_w64 y
+          end handle X => raise Fail ("IntInfRef.toWord64: " ^ exnMessage X)
 
       fun fromWord (w : word) : intinf =
 	  fromWord32 (w_w32 w)

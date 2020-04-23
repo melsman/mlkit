@@ -1532,6 +1532,22 @@ struct
                                              * largest integer is odd! mael 2001-04-29 *)
        end
 
+     fun int64_to_int31 {boxedarg} (x,d,size_ff,C) =
+       let
+           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
+                               else copy(x_reg,d_reg,C)
+       in x_C(
+          maybe_unbox(   (* MEMO: we should raise Overflow more often *)
+          I.imull(I "2", R (I.doubleOfQuadReg d_reg)) ::
+          jump_overflow (
+          I.addq(I "1", R d_reg) :: C')))   (* No need to check for overflow after adding 1; the
+                                             * intermediate result is even (after multiplying
+                                             * with 2) so adding one cannot give Overflow because the
+                                             * largest integer is odd! mael 2001-04-29 *)
+       end
+
      fun word32_to_int31 {boxedarg,ovf} (x,d,size_ff,C) =
        let
            val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -1612,10 +1628,17 @@ struct
      fun word64ub_to_int32ub (x,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           (* hmm - I presume we should overflow if any of the upper bits are non-zero *)
+           (* MEMO: we should overflow if the argument cannot be represented *)
        in x_C(copy(x_reg, d_reg,
                    I.btq(I "31", R d_reg) ::     (* sign bit set? *)
                    I.jc (NameLab "__raise_overflow") :: C'))
+       end
+
+     fun int64ub_to_int32ub (x,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+           (* MEMO: We should overflow if the argument cannot be represented *)
+       in x_C(copy(x_reg, d_reg, C'))
        end
 
      fun int32ub_to_int64ub (x,d,size_ff,C) =
