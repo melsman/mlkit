@@ -5,7 +5,7 @@
 
 structure Initial =
   struct
-    infix - + *
+    infix - + * < =
 
     type int0 = int
     type word0 = word         (* used by WORD signature *)
@@ -61,9 +61,30 @@ structure Initial =
      * the compiler (SML/NJ) that we use to compile the Kit. *)
 
     type int0 = int
+
+    local fun pow2 n : int63 = if n < 1 then 1 else 2 * pow2(n-1)
+    in val maxInt63 : int63 = pow2 61 + (pow2 61 - 1)
+       val minInt63 : int63 = ~maxInt63 - 1
+    end
+
+    local fun pow2 n : int64 = if n < 1 then 1 else 2 * pow2(n-1)
+    in val maxInt64 : int64 = pow2 62 + (pow2 62 - 1)
+       val minInt64 : int64 = ~maxInt64 - 1
+    end
+
+    fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
+    fun fromI63 (i:int63) : int = prim("__int63_to_int", i)
+    fun fromI64 (i:int64) : int = prim("__int64_to_int", i)
+
+    val precisionInt0 : int = prim("precision", 0)
+    val (minInt0:int,maxInt0:int) =
+        if precisionInt0 = 63 then (fromI63 minInt63, fromI63 maxInt63)
+        else (fromI64 minInt64, fromI64 maxInt64)
+
+(*
     val maxInt0 : int = prim("max_fixed_int", 0)
     val minInt0 : int = prim("min_fixed_int", 0)
-    val precisionInt0 : int = prim("precision", 0)
+*)
 
     (* TextIO *)
     val stdIn_stream : int = prim ("stdInStream", 0)

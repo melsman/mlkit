@@ -19,8 +19,8 @@ structure Int64 : INTEGER =
 
     val precision = SOME 64
 
-    val maxInt = SOME (7*7*73*127*337*92737*649657 : int64)                (*  9223372036854775807 = 2^63-1 = 7*7*73*127*337*92737*649657 *)
-    val minInt = SOME (~(7*7*73*127*337*92737*649657) - 1 : int64)         (* ~9223372036854775808 = ~2^63 = ~(7*7*73*127*337*92737*649657) - 1 *)
+    val maxInt = SOME Initial.maxInt64
+    val minInt = SOME Initial.minInt64
 
     val ~ : int64 -> int64 = ~
     val op * : (int64 * int64) -> int64 = op *
@@ -42,17 +42,17 @@ structure Int64 : INTEGER =
 
       (* Below, 48 = Char.ord #"0" and 55 = Char.ord #"A" - 10. *)
       fun hexval c = if #"0" <= c andalso c <= #"9" then ord64 c - 48
-		     else (ord64 c - 55) mod 64
+		     else (ord64 c - 55) mod 32
       fun prhex i = if i < 10 then chr64(i + 48) else chr64(i + 55)
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)
 
       fun conv radix (i:int64) =
 	if SOME i = minInt then          (* Be careful not to Overflow *)
 	  (case radix
-	     of 2 => "~10000000000000000000000000000000" ^ "00000000" ^ "00000000" ^ "00000000" ^ "00000000"
-	      | 8 => "~20000000000" ^ "00000000000"
+	     of 2 => "~1000000000000000000000000000000000000000000000000000000000000000"
+	      | 8 => "~1000000000000000000000"
 	      | 10 => "~9223372036854775808"
-	      | 16 => "~80000000" ^ "00000000"
+	      | 16 => "~8000000000000000"
 	      | _ => raise Fail "conv")
 	else
 	  let fun h 0 res = res
@@ -123,4 +123,4 @@ structure Int64 : INTEGER =
 
   end (*structure Int64*)
 
-(*structure FixedInt : INTEGER = Int64*)
+structure FixedInt : INTEGER = Int64

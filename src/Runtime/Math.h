@@ -28,11 +28,11 @@
 #define  minDefine(A,B) ((A<B)?A:B)
 
 #ifdef TAG_VALUES
-#define Max_Int 1073741823       /* remember [i] = 2 * i + 1 */
-#define Min_Int -1073741824
-#define Max_Int_d 1073741823.0
-#define Min_Int_d -1073741824.0
-#define val_precision 31
+#define Max_Int 4611686018427387903       /* remember [i] = 2 * i + 1 */
+#define Min_Int -4611686018427387904
+#define Max_Int_d 4611686018427387903.0
+#define Min_Int_d -4611686018427387904.0
+#define val_precision 63
 /*
 #define Max_Int (INTPTR_MAX >> 1)
 #define Min_Int (INTPTR_MIN >> 1)
@@ -41,11 +41,11 @@
 #define val_precision (__WORDSIZE - 1)
 */
 #else
-#define Max_Int 2147483647
-#define Min_Int (-2147483647-1)
-#define Max_Int_d 2147483647.0
-#define Min_Int_d -2147483648.0
-#define val_precision 32
+#define Max_Int 9223372036854775807
+#define Min_Int (-9223372036854775807-1)
+#define Max_Int_d 9223372036854775807.0
+#define Min_Int_d -9223372036854775808.0
+#define val_precision 64
 /*
 #define Max_Int INTPTR_MAX
 #define Min_Int INTPTR_MIN
@@ -61,18 +61,20 @@
 ssize_t max_fixed_int(ssize_t dummy);
 ssize_t min_fixed_int(ssize_t dummy);
 ssize_t precision(ssize_t dummy);
-ssize_t __div_int32ub(ssize_t x, ssize_t y, uintptr_t exn);
 ssize_t __div_int31(ssize_t x, ssize_t y, uintptr_t exn);
-size_t __div_word32ub(size_t x, size_t y, uintptr_t exn);
-size_t __div_word31(size_t x, size_t y, uintptr_t exn);
-ssize_t __mod_int32ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __div_int63(ssize_t x, ssize_t y, uintptr_t exn);
 ssize_t __mod_int31(ssize_t x, ssize_t y, uintptr_t exn);
-size_t __mod_word32ub(size_t x, size_t y, uintptr_t exn);
-size_t __mod_word31(size_t x, size_t y, uintptr_t exn);
-ssize_t __quot_int32ub(ssize_t x, ssize_t y);
+ssize_t __mod_int63(ssize_t x, ssize_t y, uintptr_t exn);
 ssize_t __quot_int31(ssize_t x, ssize_t y);
-ssize_t __rem_int32ub(ssize_t x, ssize_t y);
+ssize_t __quot_int63(ssize_t x, ssize_t y);
 ssize_t __rem_int31(ssize_t x, ssize_t y);
+ssize_t __rem_int63(ssize_t x, ssize_t y);
+
+size_t __div_word31(size_t x, size_t y, uintptr_t exn);
+size_t __div_word63(size_t x, size_t y, uintptr_t exn);
+size_t __mod_word31(size_t x, size_t y, uintptr_t exn);
+size_t __mod_word63(size_t x, size_t y, uintptr_t exn);
+
 ssize_t realInt(ssize_t d, ssize_t x);
 ssize_t floorFloat(ssize_t f);
 ssize_t ceilFloat(ssize_t f);
@@ -119,6 +121,7 @@ size_t sml_bytes_to_real(size_t d, String s);
 void printReal(size_t f);
 
 #ifdef TAG_VALUES
+
 size_t* __div_int32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
 size_t* __div_word32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
 size_t* __mod_int32b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
@@ -132,6 +135,23 @@ size_t* __mod_int64b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
 size_t* __mod_word64b(size_t* b, size_t* x, size_t* y, uintptr_t exn);
 size_t* __quot_int64b(size_t* b, size_t* x, size_t* y);
 size_t* __rem_int64b(size_t* b, size_t* x, size_t* y);
+
+#else
+
+ssize_t __div_int32ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __div_int64ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __mod_int32ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __mod_int64ub(ssize_t x, ssize_t y, uintptr_t exn);
+ssize_t __quot_int32ub(ssize_t x, ssize_t y);
+ssize_t __quot_int64ub(ssize_t x, ssize_t y);
+ssize_t __rem_int32ub(ssize_t x, ssize_t y);
+ssize_t __rem_int64ub(ssize_t x, ssize_t y);
+
+size_t __div_word32ub(size_t x, size_t y, uintptr_t exn);
+size_t __div_word64ub(size_t x, size_t y, uintptr_t exn);
+size_t __mod_word32ub(size_t x, size_t y, uintptr_t exn);
+size_t __mod_word64ub(size_t x, size_t y, uintptr_t exn);
+
 #endif
 
 #endif /*__MATH_H*/

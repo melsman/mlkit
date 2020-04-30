@@ -55,6 +55,29 @@ __div_int31(ssize_t x0, ssize_t y0, uintptr_t exn)                   /* ML */
 }
 
 ssize_t
+__div_int63(ssize_t x0, ssize_t y0, uintptr_t exn)                   /* ML */
+{
+  long int x = (long int)x0;
+  long int y = (long int)y0;
+  if (y == 1)
+    {
+      raise_exn(exn);
+      return 0;                         // never reached
+    }
+  if ( y == -1 && x == ( 2 * (-4611686018427387904) + 1 ) )    // = 2 * Int63.minInt + 1
+    {
+      raise_exn((uintptr_t)&exn_OVERFLOW);
+      return 0;                         // never reached
+    }
+  if (x == 1) return 1;
+  if (x < 1 && y > 1)
+    return (2*((x+1)/(y-1))-1);
+  else if (x > 1 && y < 1)
+    return (2*((x-3)/(y-1))-1);
+  else return (2*((x-1)/(y-1))+1);
+}
+
+ssize_t
 __div_int32ub(ssize_t x0, ssize_t y0, uintptr_t exn)                 /* ML */
 {
   int x = (int)x0;
@@ -138,11 +161,42 @@ __div_word31(size_t x, size_t y, uintptr_t exn)            /* ML */
   return i32ub_to_i31(xC / yC);
 }
 
+size_t
+__div_word63(size_t x, size_t y, uintptr_t exn)            /* ML */
+{
+  unsigned long int xC = i63_to_i64ub((unsigned long int)x);
+  unsigned long int yC = i63_to_i64ub((unsigned long int)y);
+
+  if ( yC == 0 )
+    {
+      raise_exn(exn);
+      return 0;                               // never reached
+    }
+  return i64ub_to_i63(xC / yC);
+}
+
 ssize_t
 __mod_int31(ssize_t x0ML, ssize_t y0ML, uintptr_t exn)
 {
   int xML = (int)x0ML;
   int yML = (int)y0ML;
+
+  if ( yML == 1 )
+    {
+      raise_exn(exn);
+      return 0;                               // never reached
+    }
+  if ((xML-1)%(yML-1) == 0 || (xML>1 && yML>1) || (xML<1 && yML<1))
+    return ((xML-1)%(yML-1))+1;
+  else
+    return ((xML-1)%(yML-1))+yML;
+}
+
+ssize_t
+__mod_int63(ssize_t x0ML, ssize_t y0ML, uintptr_t exn)
+{
+  long int xML = (long int)x0ML;
+  long int yML = (long int)y0ML;
 
   if ( yML == 1 )
     {
@@ -229,6 +283,20 @@ __mod_word31(size_t x, size_t y, uintptr_t exn)
   return i32ub_to_i31(xC % yC);
 }
 
+size_t
+__mod_word63(size_t x, size_t y, uintptr_t exn)
+{
+  unsigned long int xC = i63_to_i64ub((unsigned long int)x);
+  unsigned long int yC = i63_to_i64ub((unsigned long int)y);
+
+  if ( yC == 0 )
+    {
+      raise_exn(exn);
+      return 0;                              // never reached
+    }
+  return i64ub_to_i63(xC % yC);
+}
+
 ssize_t
 __quot_int32ub(ssize_t xML, ssize_t yML)
 {
@@ -252,6 +320,16 @@ __quot_int31(ssize_t xML, ssize_t yML)
 }
 
 ssize_t
+__quot_int63(ssize_t xML, ssize_t yML)
+{
+  long int xC,yC;
+
+  xC = i63_to_i64ub((long int)xML);
+  yC = i63_to_i64ub((long int)yML);
+  return i64ub_to_i63(xC / yC);
+}
+
+ssize_t
 __rem_int32ub(ssize_t xML, ssize_t yML)
 {
   return ((int)xML) % ((int)yML);
@@ -272,6 +350,17 @@ __rem_int31(ssize_t xML, ssize_t yML)
   yC = i31_to_i32ub((int)yML);
 
   return i32ub_to_i31(xC % yC);
+}
+
+ssize_t
+__rem_int63(ssize_t xML, ssize_t yML)
+{
+  long int xC,yC;
+
+  xC = i63_to_i64ub((long int)xML);
+  yC = i63_to_i64ub((long int)yML);
+
+  return i64ub_to_i63(xC % yC);
 }
 
 #ifdef TAG_VALUES
@@ -382,7 +471,7 @@ ssize_t
 realInt(ssize_t d, ssize_t x)
 {
   debug(printf("[realInt: d = %zu, x = %zu\n", d, x));
-  get_d(d) = (double) (convertIntToC((int)x));
+  get_d(d) = (double) (convertIntToC((long int)x));
   set_dtag(d);
   debug(printf("]\n"));
   return d;
@@ -400,11 +489,11 @@ divFloat(ssize_t d, ssize_t x, ssize_t y)
   return d;
 }
 
-ssize_t
+long int
 floorFloat(ssize_t f)
 {
   double r;
-  ssize_t i;
+  long int i;
 
   r = get_d(f);
   if( r >= 0.0 )
@@ -413,16 +502,16 @@ floorFloat(ssize_t f)
 	{
 	  raise_exn((uintptr_t)&exn_OVERFLOW);
 	}
-      return (convertIntToML((ssize_t) r));
+      return (convertIntToML((long int) r));
     }
   if( r < Min_Int_d )
     {
       raise_exn((uintptr_t)&exn_OVERFLOW);
     }
-  i = (ssize_t) r;
+  i = (long int) r;
   if( r < ((double) i) )
     {
-      i -= 1;
+      i -= 1L;
     }
   return convertIntToML(i);
 }

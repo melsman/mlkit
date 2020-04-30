@@ -234,29 +234,29 @@ structure CompilerEnv: COMPILER_ENV =
     fun clearPathEnv (CENV{StrEnv,VarEnv,TyEnv,PathEnv}) =
 	CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TyEnv,PathEnv=emptyPathEnv}
 
-    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
+    fun declareVar (id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
 	      VarEnv=VarEnv.add(id, LVAR (lv,tyvars,tau,il0), m),
 	      PathEnv=PathEnv}
       end
 
-    fun declareCon(id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
+    fun declareCon (id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
 	      VarEnv=VarEnv.add(id,CON (con,tyvars,tau,il0), m),
 	      PathEnv=PathEnv}
       end
 
-    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=map,TyEnv,PathEnv}) =
+    fun declareExcon (id, excon, CENV{StrEnv,VarEnv=map,TyEnv,PathEnv}) =
       CENV{StrEnv=StrEnv,VarEnv=VarEnv.add(id,EXCON excon,map),TyEnv=TyEnv,
 	   PathEnv=PathEnv}
 
-    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,PathEnv}) =
+    fun declare_strid (strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,PathEnv}) =
       CENV{StrEnv=STRENV (FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv,
 	   PathEnv=PathEnv}
 
-    fun declare_tycon(tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m,PathEnv}) =
+    fun declare_tycon (tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m,PathEnv}) =
       CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m)),PathEnv=PathEnv}
 
     fun plus (CENV{StrEnv,VarEnv,TyEnv,PathEnv},
@@ -365,7 +365,7 @@ structure CompilerEnv: COMPILER_ENV =
     * Restriction
     * ------------- *)
 
-   fun restrictFinMap(error_str, env : (''a,'b) FinMap.map, dom : ''a list) =
+   fun restrictFinMap (error_str, env : (''a,'b) FinMap.map, dom : ''a list) =
      foldl (fn (id, acc) =>
 	    let val res = case FinMap.lookup env id
 			    of SOME res => res
@@ -373,7 +373,7 @@ structure CompilerEnv: COMPILER_ENV =
 	    in FinMap.add(id,res,acc)
 	    end) FinMap.empty dom
 
-   fun restrictVarEnv(m: VarEnv, ids) : VarEnv =
+   fun restrictVarEnv (m: VarEnv, ids) : VarEnv =
      foldl (fn (id, acc) =>
 	    let val res = case VarEnv.lookup m id
 			    of SOME res => res
@@ -382,10 +382,10 @@ structure CompilerEnv: COMPILER_ENV =
 	    end) VarEnv.empty ids
 
 
-   fun restrictTyEnv(TYENV m, tycons) : TyEnv =
+   fun restrictTyEnv (TYENV m, tycons) : TyEnv =
        TYENV (restrictFinMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
 
-   fun restrictStrEnv(STRENV m, strid_restrs) : StrEnv =
+   fun restrictStrEnv (STRENV m, strid_restrs) : StrEnv =
        STRENV (foldl (fn ((strid,restr:Environments.restricter), acc) =>
 		      let val res = case FinMap.lookup m strid of
 			  SOME res => restrictCEnv(res,restr)
@@ -393,8 +393,8 @@ structure CompilerEnv: COMPILER_ENV =
 		      in FinMap.add(strid,res,acc)
 		      end) FinMap.empty strid_restrs)
 
-   and restrictCEnv(ce,Environments.Whole) = ce
-     | restrictCEnv(CENV{StrEnv,VarEnv,TyEnv,PathEnv}, Environments.Restr{strids,vids,tycons}) =
+   and restrictCEnv (ce,Environments.Whole) = ce
+     | restrictCEnv (CENV{StrEnv,VarEnv,TyEnv,PathEnv}, Environments.Restr{strids,vids,tycons}) =
      CENV{StrEnv=restrictStrEnv(StrEnv,strids),
 	  VarEnv=restrictVarEnv(VarEnv,vids),
 	  TyEnv=restrictTyEnv(TyEnv,tycons),
@@ -412,10 +412,10 @@ structure CompilerEnv: COMPILER_ENV =
     val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 
      fun log s = TextIO.output(TextIO.stdOut,s)
-     fun debug(s, b) = if !debug_man_enrich then
+     fun debug (s, b) = if !debug_man_enrich then
                          (if b then log("\n" ^ s ^ ": enrich succeeded.")
 			  else log("\n" ^ s ^ ": enrich failed."); b)
-		       else b
+		        else b
 
 
      fun eq_res (LVAR (lv1,tvs1,tau1,il1), LVAR (lv2,tvs2,tau2,il2)) =
@@ -444,31 +444,31 @@ structure CompilerEnv: COMPILER_ENV =
        | eq_res (EXPORT,EXPORT) = true
        | eq_res _ = false
 
-     fun enrichVarEnv(env1: VarEnv, env2: VarEnv) : bool =
+     fun enrichVarEnv (env1: VarEnv, env2: VarEnv) : bool =
        VarEnv.Fold (fn ((id2,res2),b) => b andalso
 		    case VarEnv.lookup env1 id2
 		      of SOME res1 => eq_res(res1,res2)
 		       | NONE => false) true env2
 
-     fun eq_tynames(res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
+     fun eq_tynames (res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
 
-     fun enrichTyEnv(TYENV m1, TYENV m2) : bool =
+     fun enrichTyEnv (TYENV m1, TYENV m2) : bool =
        FinMap.Fold (fn ((id2,(res2,ce2)),b) => b andalso
 		    case FinMap.lookup m1 id2
 		      of SOME (res1,ce1) => eq_tynames(res1,res2) andalso eqCEnv(ce1,ce2)
 		       | NONE => false) true m2
 
-     and enrichCEnv(CENV{StrEnv,VarEnv,TyEnv,PathEnv},
-		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',
-			 PathEnv=PathEnv'}) =
+     and enrichCEnv (CENV{StrEnv,VarEnv,TyEnv,PathEnv},
+		     CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',
+			  PathEnv=PathEnv'}) =
        debug("StrEnv", enrichStrEnv(StrEnv,StrEnv')) andalso
        debug("VarEnv", enrichVarEnv(VarEnv,VarEnv')) andalso
        debug("TyEnv", enrichTyEnv(TyEnv,TyEnv')) andalso
        PathEnv.isEmpty PathEnv andalso PathEnv.isEmpty PathEnv'
 
-     and eqCEnv(ce1,ce2) = enrichCEnv(ce1,ce2) andalso enrichCEnv(ce2,ce1)
+     and eqCEnv (ce1,ce2) = enrichCEnv(ce1,ce2) andalso enrichCEnv(ce2,ce1)
 
-     and enrichStrEnv(STRENV se1, STRENV se2) =
+     and enrichStrEnv (STRENV se1, STRENV se2) =
        FinMap.Fold (fn ((strid,env2),b) => b andalso
 		    case FinMap.lookup se1 strid
 		      of SOME env1 => enrichCEnv(env1,env2)
@@ -490,17 +490,17 @@ structure CompilerEnv: COMPILER_ENV =
        | matchRes (EXCON (excon,_), EXCON (excon0,_)) = Excon.match(excon,excon0)
        | matchRes _ = ()
 
-     fun matchVarEnv(env: VarEnv, env0: VarEnv) =
+     fun matchVarEnv (env: VarEnv, env0: VarEnv) =
        VarEnv.Fold(fn ((id,res),_) =>
 		   case VarEnv.lookup env0 id
 		     of SOME res0 => matchRes(res,res0)
 		      | NONE => ()) () env
 
-     fun matchEnv(CENV{StrEnv,VarEnv, ...},
-		  CENV{StrEnv=StrEnv0,VarEnv=VarEnv0, ...}) =
-       (matchStrEnv(StrEnv,StrEnv0); matchVarEnv(VarEnv,VarEnv0))
+     fun matchEnv (CENV{StrEnv,VarEnv, ...},
+		   CENV{StrEnv=StrEnv0,VarEnv=VarEnv0, ...}) =
+         (matchStrEnv(StrEnv,StrEnv0); matchVarEnv(VarEnv,VarEnv0))
 
-     and matchStrEnv(STRENV se, STRENV se0) =
+     and matchStrEnv (STRENV se, STRENV se0) =
        FinMap.Fold(fn ((strid,env),_) =>
 		   case FinMap.lookup se0 strid
 		     of SOME env0 => matchEnv(env,env0)

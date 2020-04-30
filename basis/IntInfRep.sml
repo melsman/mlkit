@@ -4,27 +4,31 @@
    is declared before any of the Int/IntN/Word/WordN modules.
 *)
 
-structure IntInfRep : INT_INF_REP =
+structure IntInfRep (* : INT_INF_REP *)  =
   struct
       (* Some primitive conversions *)
       fun cast_wi (a: word) : int = prim("id", a)
       fun cast_iw (a: int) : word = prim("id", a)
 
-      fun i32_i (x: int32) : int = prim("__int32_to_int", x)
-      fun i_i32 (x: int) : int32 = prim("__int_to_int32", x)
+      fun i64_i (x: int64) : int = prim("__int64_to_int", x)
+      fun i_i64 (x: int) : int64 = prim("__int_to_int64", x)
       fun i31_i32 (x: int31) : int32 = prim("__int31_to_int32", x)
       fun i32_i31 (x: int32) : int31 = prim("__int32_to_int31", x)
-      fun i31_i (x: int31) : int = prim("__int31_to_int", x)
-      fun i_i31 (x: int) : int31 = prim("__int_to_int31", x)
+      fun i64_i63 (x: int64) : int63 = prim("__int64_to_int63", x)
+      fun i63_i64 (x: int63) : int64 = prim("__int63_to_int64", x)
+(*      fun i31_i (x: int31) : int = prim("__int31_to_int", x) *)
+(*      fun i_i31 (x: int) : int31 = prim("__int_to_int31", x) *)
 
       fun i32_i64 (x: int32) : int64 = prim("__int32_to_int64", x)
 
-      fun w32_w (w : word32) : word = cast_iw(prim("__word32_to_int", w))
-      fun w32_w_X (w : word32) : int = prim("__word32_to_int_X", w)
+(*      fun w32_w (w : word32) : word = cast_iw(prim("__word32_to_int", w)) *)
+(*      fun w32_w_X (w : word32) : int = prim("__word32_to_int_X", w) *)
       fun w_w32 (w : word) : word32 = prim("__word_to_word32", w)
-      fun w_w32_X (w : word) : word32 = prim("__word_to_word32_X", w)
+(*      fun w_w32_X (w : word) : word32 = prim("__word_to_word32_X", w) *)
       fun w31_w32 (w : word31) : word32 = prim("__word31_to_word32", w)
+      fun w63_w64 (w : word63) : word64 = prim("__word63_to_word64", w)
       fun w31_w32_X (w : word31) : word32 = prim("__word31_to_word32_X", w)
+      fun w63_w64_X (w : word63) : word64 = prim("__word63_to_word64_X", w)
       fun w32_w31 (w : word32) : word31 = prim("__word32_to_word31", w)
 
       fun w_i_X (w : word) : int = prim("id", w)
@@ -34,16 +38,17 @@ structure IntInfRep : INT_INF_REP =
 	  end
       fun i_w (i : int) : word = prim("id", i)
 
-      fun w31_i (w : word31) : int = w_i(prim("__word31_to_word", w))
+(*      fun w31_i (w : word31) : int = w_i(prim("__word31_to_word", w)) *)
       fun w31_i_X (w : word31) : int = cast_wi(prim("__word31_to_word_X", w))
-      fun i_w31 (i : int) : word31 = prim("__word_to_word31", cast_iw i)
-      fun i_w32 (i : int) : word32 = prim("__word_to_word32", cast_iw i)
+(*      fun i_w31 (i : int) : word31 = prim("__word_to_word31", cast_iw i) *)
+(*      fun i_w32 (i : int) : word32 = prim("__word_to_word32", cast_iw i) *)
       fun w32_i32 (w : word32) : int32 = prim("__word32_to_int32", w)
       fun w32_i32_X (w : word32) : int32 = prim("__word32_to_int32_X", w)
       fun i32_w32 (i : int32) : word32 = prim("__int32_to_word32", i)
       fun i31_w32 (i : int31) : word32 = i32_w32(i31_i32 i)
-      fun i31_w (i : int31) : word = w32_w(i32_w32(i31_i32 i))
+(*      fun i31_w (i : int31) : word = w32_w(i32_w32(i31_i32 i)) *)
       fun i31_w31 (i : int31) : word31 = prim("id", i)
+      fun i63_w63 (i : int63) : word63 = prim("id", i)
       fun w31_i31 (i : word31) : int31 = prim("id", i)
 
       fun w64_i64 (w : word64) : int64 = prim("__word64_to_int64", w)
@@ -51,6 +56,9 @@ structure IntInfRep : INT_INF_REP =
 
       fun i64_w64 (i : int64) : word64 = prim("__int64_to_word64", i)
       fun w64_w32 (w : word64) : word32 = prim("__word64_to_word32", w)
+
+      fun w64_w (w: word64) : word = prim("__word64_to_word", w)
+      fun w_w64 (w: word) : word64 = prim("__word_to_word64", w)
 
       fun rshiftW32 (w : word32, k : word) : word32 =
 	  if k >= 0w32 then 0w0
@@ -72,6 +80,9 @@ structure IntInfRep : INT_INF_REP =
 	  fun w32_w8 (w: word32) : word8 = w_w8(norm(prim ("__word32_to_word", w)))
 	  fun w8_w32 (w: word8) : word32 = w_w32(w8_w w)
       end
+
+      fun quot (x:int,y:int) : int = if y = 0 then raise Div
+				     else prim ("__quot_int", (x, y))
 
       fun quoti31 (x:int31,y:int31) : int31 =
 	  if y = 0 then raise Div
@@ -99,24 +110,24 @@ structure IntInfRep : INT_INF_REP =
 	      val nbaseI32 : int32 = ~0x40000000
 	      val nbaseW32Not : word32 = 0wx3fffffff
 	      val nbaseW64Not : word64 = 0wx3fffffff
-	      val lgBase : int31 = 30             (* No. of bits per digit; must be even *)
+	      val lgBase : int = 30             (* No. of bits per digit; must be even *)
 	      val lgBaseW : word = 0w30
 	      fun maxDigit () : int31 = 1073741823
 	      val maxDigitI32 : int32 = 1073741823
 
-	      fun lgHBase () : int31 = quoti31 (lgBase, 2)    (* half digits *)
-	      fun hbase () : word31 = lshiftw31(0w1, i31_w (lgHBase()))
+	      fun lgHBase () : int = quot (lgBase, 2)    (* half digits *)
+	      fun hbase () : word31 = lshiftw31(0w1, i_w (lgHBase()))
 	      fun hmask () : word31 = (hbase())-0w1
 
 	      fun zero () : bignat = []
 
 	      fun hl i =
 		  let val w = i31_w31 i
-		  in (w31_i31(rshiftw31X(w, i31_w (lgHBase()))),  (* MUST sign-extend *)
+		  in (w31_i31(rshiftw31X(w, i_w (lgHBase()))),  (* MUST sign-extend *)
 		      w31_i31(andbW31(w, hmask())))
 		  end
 
-	      fun sh i = w31_i31(lshiftw31 (i31_w31 i, i31_w (lgHBase())))
+	      fun sh i = w31_i31(lshiftw31 (i31_w31 i, i_w (lgHBase())))
 
 	      fun addOne [] : bignat = [1]
 		| addOne (m::rm) =
@@ -360,14 +371,16 @@ structure IntInfRep : INT_INF_REP =
 	  val zero = zero
 	  fun toInt31 x = i32_i31(intInfToI32 x)
 	  fun toInt32 x = intInfToI32 x
-	  fun toInt x = i32_i(intInfToI32 x)
+	  fun toInt63 x = i64_i63(intInfToI64 x)
+	  fun toInt x = i64_i(intInfToI64 x)
 
 	  fun toInt64 x = intInfToI64 x
 
-	  fun fromInt x = i32ToIntInf(i_i32 x)
+	  fun fromInt x = i64ToIntInf(i_i64 x)
 	  fun fromInt32 x = i32ToIntInf x
 	  fun fromInt64 x = i64ToIntInf x
 	  fun fromInt31 x = i32ToIntInf (i31_i32 x)
+	  fun fromInt63 x = i64ToIntInf (i63_i64 x)
       end
 
       fun subtNat (m, []) = {negative=false, digits=m}
@@ -430,11 +443,18 @@ structure IntInfRep : INT_INF_REP =
       fun fromWord31X (w:word31) : intinf =
 	  fromWord32X(w31_w32_X w)
 
+      fun fromWord63X (w:word63) : intinf =
+	  fromWord64X(w63_w64_X w)
+
       fun fromWordX (w:word) : intinf =
-	  fromWord32X(w_w32_X w)
+	  fromInt(w_i_X w)
 
       fun toWord32 (x : intinf) : word32 =
 	  i32_w32(toInt32 x)
+	  handle _ => raise Fail "IntInfRep.toWord32"
+
+      fun toWord63 (x : intinf) : word63 =
+	  i63_w63(toInt63 x)
 	  handle _ => raise Fail "IntInfRep.toWord32"
 
       fun toWord64 (x : intinf) : word64 =
@@ -443,13 +463,13 @@ structure IntInfRep : INT_INF_REP =
           end handle X => raise Fail ("IntInfRef.toWord64: " ^ exnMessage X)
 
       fun fromWord (w : word) : intinf =
-	  fromWord32 (w_w32 w)
+	  fromWord64 (w_w64 w)
 
       fun toWord (x : intinf) : word =
-	  w32_w(toWord32 x)
+	  w64_w(toWord64 x)
 
       fun fromWord8 (w8 : word8) : intinf =
-	  fromWord32 (w8_w32 w8)
+	  fromWord (w8_w w8)
 
       fun fromWord8X (w:word8) : intinf =
 	  if w < 0w128 then fromWord8 w
@@ -460,6 +480,9 @@ structure IntInfRep : INT_INF_REP =
 
       fun fromWord31 (w31 : word31) : intinf =
 	  fromWord32 (w31_w32 w31)
+
+      fun fromWord63 (w63 : word63) : intinf =
+	  fromWord64 (w63_w64 w63)
 
       fun toWord31 (x : intinf) : word31 =
 	  w32_w31(toWord32 x)

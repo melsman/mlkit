@@ -2,36 +2,43 @@
 
 (* test/pickletest.sml; Martin Elsman 2003-07-01 *)
 
-local 
+type word = Word31.word
+type int = Int31.int
+structure Word = Word31
+structure Int = Int31
+
+local
     infix 1 seq
     fun e1 seq e2 = e2;
     fun check b = if b then "OK" else "WRONG";
     fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN"
-	
-    fun range (from, to) p = 
-	let open Int 
+
+    fun range (from, to) p =
+	let open Int
 	in (from > to) orelse (p from) andalso (range (from+1, to) p)
 	end
 
     fun checkrange bounds = check o range bounds
-	
+
     fun tst0 s s' = print (s ^ "    \t" ^ s' ^ "\n")
     fun tst  s b = tst0 s (check  b)
     fun tst' s f = tst0 s (check' f)
-	
-    fun tstrange s bounds = (tst s) o range bounds  
+
+    fun tstrange s bounds = (tst s) o range bounds
 
     val _ = print "\nFile pickle.sml: Testing structure Pickle...\n"
 
     open Pickle
+    val int = int31
+    val word = word31
 
     fun tm_eq(t1,t2) =
 	Time.<(Time.-(t1,t2),Time.fromSeconds 2)
 	handle _ => Time.<(Time.-(t2,t1),Time.fromSeconds 2)
 
     fun okEq' eq s_tst (pu: 'a pu) (v1 : 'a) =
-	tst' s_tst 
-	(fn () => 
+	tst' s_tst
+	(fn () =>
 	 let val s = toString (pickler pu v1 (empty()))
 	     val (v2,is) = unpickler pu (fromString s)
 	 in eq(v1,v2)
@@ -39,38 +46,38 @@ local
 
     fun okEq a = okEq' (op =) a
 
-    val maxInt = 
-	case Int.maxInt of 
+    val maxInt =
+	case Int.maxInt of
 	    SOME i => i
 	  | _ => raise Fail "maxInt"
 
     val maxWord =
-	0w2 * Word.fromInt maxInt + 0w1
+	0w2 * Word.fromLargeInt (Int.toLarge maxInt) + 0w1
 
-    val minInt = 
-	case Int.minInt of 
+    val minInt =
+	case Int.minInt of
 	    SOME i => i
 	  | _ => raise Fail "minInt"
 
-    val maxInt32 = 
-	case Int32.maxInt of 
+    val maxInt32 =
+	case Int32.maxInt of
 	    SOME i => i
 	  | _ => raise Fail "maxInt32"
 
     val maxWord32 =
 	0w2 * Word32.fromLargeInt (Int32.toLarge maxInt32) + 0w1
 
-    val minInt32 = 
-	case Int32.minInt of 
+    val minInt32 =
+	case Int32.minInt of
 	    SOME i => i
 	  | _ => raise Fail "minInt32"
-in	
+in
 
 (* Word *)
 val _ = okEq "test1a" word 0w0
 val _ = okEq "test1b" word 0w7
-val _ = okEq "test1c" word (Word.fromInt maxInt)
-val _ = okEq "test1d" word (Word.fromInt minInt)
+val _ = okEq "test1c" word (Word.fromLargeInt (Int.toLarge maxInt))
+val _ = okEq "test1d" word (Word.fromLargeInt (Int.toLarge minInt))
 val _ = okEq "test1e" word maxWord
 
 (* Word32 *)
@@ -99,7 +106,7 @@ val _ = okEq "test5a" bool true
 val _ = okEq "test5b" bool false
 
 (* String *)
-fun mkS (n,acc) = 
+fun mkS (n,acc) =
     if n < 0 then acc
     else mkS (n-1, chr (n mod 256) :: acc)
 
@@ -165,7 +172,7 @@ val _ = okEq' (fn (a,b) => !a = !b) "test14a" (refGen 0 int) (ref 0)
 val _ = okEq' (fn (a,b) => !a = !b) "test14b" (refGen 0 int) (ref 7)
 val _ = okEq' (fn (a,b) => !a = !b) "test14c" (refGen 0 int) (ref ~7)
 val _ = okEq' (fn (a,b) => !a = !b) "test14d" (refGen (0,false) (pairGen(int,bool))) (ref (~7,true))
-val _ = okEq' (fn ((a1,a2),(b1,b2)) => !a1 = !b1 andalso !a2 = !b2) "test14e" 
+val _ = okEq' (fn ((a1,a2),(b1,b2)) => !a1 = !b1 andalso !a2 = !b2) "test14e"
     (pairGen(refGen 0 int, refGen true bool)) (ref ~7,ref false)
 
 (* ref0Gen *)
@@ -173,7 +180,7 @@ val _ = okEq' (fn (a,b) => !a = !b) "test15a" (ref0Gen int) (ref 0)
 val _ = okEq' (fn (a,b) => !a = !b) "test15b" (ref0Gen int) (ref 7)
 val _ = okEq' (fn (a,b) => !a = !b) "test15c" (ref0Gen int) (ref ~7)
 val _ = okEq' (fn (a,b) => !a = !b) "test15d" (ref0Gen (pairGen(int,bool))) (ref (~7,true))
-val _ = okEq' (fn ((a1,a2),(b1,b2)) => !a1 = !b1 andalso !a2 = !b2) "test15e" 
+val _ = okEq' (fn ((a1,a2),(b1,b2)) => !a1 = !b1 andalso !a2 = !b2) "test15e"
     (pairGen(ref0Gen int, ref0Gen bool)) (ref ~7,ref false)
 
 (* listGen *)
@@ -189,7 +196,7 @@ val _ = okEq "test20i" (pairGen(int,listGen char)) (~2333,mkS(100,nil))
 val _ = okEq "test20j" (pairGen(int,listGen char)) (2333,mkS(1000,nil))
 (*
 val _ = okEq "test20k" (pairGen(int,listGen char)) (~2333,mkS(2000,nil))
-val _ = okEq "test20l" (pairGen(int,listGen char)) (~2333,mkS(100000,nil)) 
+val _ = okEq "test20l" (pairGen(int,listGen char)) (~2333,mkS(100000,nil))
 *)
 
 val _ = okEq "test20m" (pairGen(int,listGen char)) (~2333,nil)
@@ -262,8 +269,8 @@ local
     fun fun_Lb (pu_a,pu_b) = con1 Lb (fn Lb s => s | _ => raise Fail "Lb") int
     val fun_Nb = con0 Nb
 in
-    val (pu_atree,pu_btree) = 
-	data2Gen("atree", toInta, [fun_Ta,fun_La], 
+    val (pu_atree,pu_btree) =
+	data2Gen("atree", toInta, [fun_Ta,fun_La],
 		 "btree", toIntb, [fun_Tb,fun_Lb,fun_Nb])
 end
 
@@ -279,7 +286,7 @@ val _ = okEq "test26i" pu_btree (Tb(Lb 1,La "a"))
 val _ = okEq "test26j" pu_btree (Tb(Nb,La "a"))
 
 (* Convert *)
-val pu_record = 
+val pu_record =
     convert (fn (a,b,c) => {a=a,b=b,c=c},
 	     fn {a=a,b=b,c=c} => (a,b,c)) (tup3Gen(int,bool,int))
 
@@ -303,11 +310,11 @@ local
      | sel _ = raise Fail "sel"
    fun sel_eq(xs,ys,n) = sel(xs,n) = sel(ys,n)
    fun sel_noteq(xs,ys,n) = sel(xs,n) <> sel(ys,n)
-   fun eq (xs,ys) = 
+   fun eq (xs,ys) =
        eq0(xs,ys) andalso
        sel_eq(xs,ys,2) andalso
        sel_eq(xs,ys,3) andalso
-       sel_eq(xs,ys,4) andalso 
+       sel_eq(xs,ys,4) andalso
        sel_noteq(xs,ys,0) andalso
        sel_noteq(xs,ys,1) andalso
        sel_noteq(xs,ys,5) andalso
@@ -325,39 +332,39 @@ local
     type graph = node list
 
     fun eval f (seen, nil, acc) = (seen,acc)
-      | eval f (seen, Node(i,ref nodes)::ns, acc) = 
+      | eval f (seen, Node(i,ref nodes)::ns, acc) =
 	let fun member x nil = false
 	      | member x (y::ys) = x = y orelse member x ys
-	    val (seen,acc) = 
+	    val (seen,acc) =
 		if member i seen then (seen,acc)
 		else eval f (i::seen,nodes,f(i,acc))
 	in eval f (seen,ns,acc)
 	end
 
     val pu_node =
-	let fun fun_node pu = con1 Node (fn Node a => a) 
+	let fun fun_node pu = con1 Node (fn Node a => a)
 	    (pairGen(int,refGen nil (listGen pu)))
 	in dataGen("node",fn _ => 0, [fun_node])
-	end		
+	end
 
     val node : unit -> node =
 	let val c = ref 0
 	in fn () => Node(!c,ref nil) before c := !c + 1
 	end
     infix --
-    fun n1 -- n2 = 
+    fun n1 -- n2 =
 	let val Node(_,r1) = n1
 	    val Node(_,r2) = n2
-	in r1 := n2 :: !r1 
+	in r1 := n2 :: !r1
 	    ; r2 := n1 :: !r2
 	end
-    
+
     val n1 = node()
     val n2 = node()
     val n3 = node()
     val n4 = node()
 
-    fun sum n = eval (op +) (nil,[n],0) 
+    fun sum n = eval (op +) (nil,[n],0)
     fun nodeEquiv (n1,n2) = sum n1 = sum n2
 in
     val _ = okEq' nodeEquiv "40a" pu_node n1

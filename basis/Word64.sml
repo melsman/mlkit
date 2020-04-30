@@ -10,13 +10,11 @@ structure Word64 : WORD =
     fun toIntX (w : word64) : int = prim("__word64_to_int_X", w)
     fun fromInt (i : int) : word64 = prim("__word_to_word64", cast_iw i)
 
-    (* In this implementation, "large" is word32! We will later change it to be word64... *)
-
-    fun toLargeWord (w : word64) : word32 = prim("__word64_to_word32", w)
+    fun toLargeWord (w : word64) : word64 = w
     val toLarge = toLargeWord
-    fun toLargeWordX (w : word64) : word32 = prim("__word64_to_word32", w)
+    fun toLargeWordX (w : word64) : word64 = w
     val toLargeX = toLargeWordX
-    fun fromLargeWord (w : word32) : word64 = prim("__word32_to_word64", w)
+    fun fromLargeWord (w : word64) : word64 = w
     val fromLarge = fromLargeWord
 
     fun toLargeInt (w : word64) : intinf =
@@ -79,7 +77,7 @@ structure Word64 : WORD =
 	  if #"0" <= c andalso c <= #"9" then
 	      fromInt (Char.ord c) - fromInt 48
 	  else
-	      (fromInt (Char.ord c) - fromInt 55) mod (fromInt 64);
+	      (fromInt (Char.ord c) - fromInt 55) mod (fromInt 32);
 
       fun prhex i =
 	  if toInt i < 10 then Char.chr(toInt (i + fromInt 48))
@@ -163,4 +161,4 @@ structure Word64 : WORD =
     type word = word64
   end
 
-(*structure LargeWord : WORD = Word64*)
+structure LargeWord : WORD = Word64

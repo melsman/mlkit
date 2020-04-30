@@ -893,13 +893,19 @@ structure StatObject: STATOBJECT =
       (* Special constants *)
 
       val tag_values = Flags.is_on0 "tag_values"
+      val values_64bit = Flags.is_on0 "values_64bit"
 
       val Int31        = mk_ConsType ([], TyName.tyName_INT31)
       val Int32        = mk_ConsType ([], TyName.tyName_INT32)
       val Int63        = mk_ConsType ([], TyName.tyName_INT63)
       val Int64        = mk_ConsType ([], TyName.tyName_INT64)
       val IntInf       = mk_ConsType ([], TyName.tyName_INTINF)
-      fun IntDefault () = if tag_values() then Int31 else Int32          (* MEMO: fix this later *)
+      fun IntDefault () =
+        case (tag_values(), values_64bit()) of
+            (true,  true)  => Int63
+          | (true,  false) => Int31
+          | (false, true)  => Int64
+          | (false, false) => Int32
 
       val Real         = mk_ConsType ([], TyName.tyName_REAL)
       val String       = mk_ConsType ([], TyName.tyName_STRING)
@@ -911,13 +917,17 @@ structure StatObject: STATOBJECT =
       val Word32       = mk_ConsType ([], TyName.tyName_WORD32)
       val Word63       = mk_ConsType ([], TyName.tyName_WORD63)
       val Word64       = mk_ConsType ([], TyName.tyName_WORD64)
-      fun WordDefault () = if tag_values() then Word31 else Word32       (* MEMO: fix this later *)
+      fun WordDefault () =
+        case (tag_values(), values_64bit()) of
+            (true,  true)  => Word63
+          | (true,  false) => Word31
+          | (false, true)  => Word64
+          | (false, false) => Word32
 
       fun simple_scon ty = {type_scon = ty, overloading = NONE}
 
       (* MEMO: For bootstrapping, we don't want the source code to
-         depend on us having Int63 and Int64 and friends in scope, thus,
-         we will disable the scon inference for those types for now... *)
+         depend on us having Int63 and Int64 and friends in scope... *)
 
       fun fits31bits (i:IntInf.int) : bool =
           IntInf.<=(IntInf.fromLarge(Int31.toLarge(valOf Int31.minInt)), i) andalso
@@ -948,13 +958,17 @@ structure StatObject: STATOBJECT =
 		      end
                   open TyName
               in if fits31bits i then
-                   mk [tyName_INTINF, tyName_INT64, tyName_INT63, tyName_INT32, tyName_INT31]
+                   mk ([tyName_INTINF, tyName_INT32, tyName_INT31] @
+                       (if values_64bit() then [tyName_INT64, tyName_INT63] else []))
                  else if fits32bits i then
-                   mk [tyName_INTINF, tyName_INT64, tyName_INT63, tyName_INT32]
+                   mk ([tyName_INTINF, tyName_INT32] @
+                       (if values_64bit() then [tyName_INT64, tyName_INT63] else []))
                  else if fits63bits i then
-                   mk [tyName_INTINF, tyName_INT64, tyName_INT63]
+                   mk ([tyName_INTINF] @
+                       (if values_64bit() then [tyName_INT64, tyName_INT63] else []))
                  else if fits64bits i then
-                   mk [tyName_INTINF, tyName_INT64]
+                   mk ([tyName_INTINF] @
+                       (if values_64bit() then [tyName_INT64] else []))
                  else simple_scon IntInf
               end
 	   | SCon.STRING _ => simple_scon String
@@ -970,16 +984,20 @@ structure StatObject: STATOBJECT =
                      else 2 * pow2 (x - 1)
                  open TyName
              in if w <= 0xFF then
-                  mk [tyName_WORD64, tyName_WORD63, tyName_WORD32, tyName_WORD31, tyName_WORD8]
+                  mk ([tyName_WORD32, tyName_WORD31, tyName_WORD8] @
+                      (if values_64bit() then [tyName_WORD64, tyName_WORD63] else []))
                 else if w <= 0x7FFFFFFF then
-                  mk [tyName_WORD64, tyName_WORD63, tyName_WORD32, tyName_WORD31]
+                  mk ([tyName_WORD32, tyName_WORD31] @
+                      (if values_64bit() then [tyName_WORD64, tyName_WORD63] else []))
                 else if w <= (0x7FFFFFFF*2+1) then
-                  mk [tyName_WORD64, tyName_WORD63, tyName_WORD32]
-                else if w <= pow2 63 - 1 then
+                  mk ([tyName_WORD32] @
+                      (if values_64bit() then [tyName_WORD64, tyName_WORD63] else []))
+                else if w <= pow2 63 - 1 andalso values_64bit() then
                   mk [tyName_WORD64, tyName_WORD63]
-                else if w <= pow2 64 - 1 then
+                else if w <= pow2 64 - 1 andalso values_64bit() then
                   simple_scon Word64
-                else die ("immediate word constant 0w" ^ IntInf.toString w ^ " is not representable in 64 bits")
+                else die ("immediate word constant 0w" ^ IntInf.toString w ^ " is not representable in " ^
+                          (if values_64bit() then "64 bits" else "32 bits"))
              end
 
       local

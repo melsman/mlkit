@@ -868,7 +868,7 @@ struct
                           | Word32b_to_int31_X => word32_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
 
                           | Word64ub_to_word32ub => word64ub_to_word32ub (x,d,size_ff,C)
-                          | Word32ub_to_word64ub => word32ub_to_word64ub (x,d,size_ff,C)
+                          | Word32ub_to_word64ub => word32ub_to_word64ub {signext=false} (x,d,size_ff,C)
                           | Word64ub_to_int32ub => word64ub_to_int32ub (x,d,size_ff,C)
                           | Word64ub_to_int64ub => num64ub_to_num64ub {ovf=true} (x,d,size_ff,C)
                           | Word64ub_to_int64ub_X => num64ub_to_num64ub {ovf=false} (x,d,size_ff,C)
@@ -882,6 +882,42 @@ struct
                           | Int64b_to_int31 => int64_to_int31 {boxedarg=true} (x,d,size_ff,C)
 
                           | Int64ub_to_int32ub => int64ub_to_int32ub (x,d,size_ff,C)
+
+                          | Int31_to_int64ub => int31_to_int64ub(x,d,size_ff,C)
+
+                          | Int64b_to_int63 => int64_to_int63 {boxedarg=true} (x,d,size_ff,C)
+                          | Word64b_to_word63 => word64_to_num63 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+                          | Word32b_to_word63 => word32_to_word63 {boxedarg=true,signext=false} (x,d,size_ff,C)
+                          | Word63_to_word31 => word63_to_word31 (x,d,size_ff,C)
+                          | Word31_to_word63_X => num31_to_num63 {signext=true} (x,d,size_ff,C)
+                          | Word31_to_word63 => num31_to_num63 {signext=false} (x,d,size_ff,C)
+
+                          | Int32b_to_int63 => word32_to_word63 {boxedarg=true,signext=true} (x,d,size_ff,C)
+                          | Int63_to_int31 => int63_to_int31 (x,d,size_ff,C)
+                          | Int31_to_int63 => num31_to_num63 {signext=true} (x,d,size_ff,C)
+                          | Word32b_to_int63 => word32_to_word63 {boxedarg=true,signext=false} (x,d,size_ff,C)
+                          | Word32b_to_int63_X => word32_to_word63 {boxedarg=true,signext=true} (x,d,size_ff,C)
+                          | Word64b_to_word31 => word64_to_word31 {boxedarg=true} (x,d,size_ff,C)
+
+                          | Word64b_to_int63 => word64_to_num63 {boxedarg=true,ovf=true} (x,d,size_ff,C)
+                          | Word64b_to_int63_X => word64_to_num63 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+
+                          | Int63_to_int64ub => num63_to_num64ub {shr_inst=I.sarq} (x,d,size_ff,C)
+
+                          | Int64ub_to_int63 => int64_to_int63 {boxedarg=false} (x,d,size_ff,C)
+
+                          | Word63_to_word64ub => num63_to_num64ub {shr_inst=I.shrq} (x,d,size_ff,C)
+                          | Word63_to_word64ub_X => num63_to_num64ub {shr_inst=I.sarq} (x,d,size_ff,C)
+
+                          | Word64ub_to_word31 => word64_to_word31 {boxedarg=false} (x,d,size_ff,C)
+                          | Int64ub_to_int31 => int64_to_int31 {boxedarg=false} (x,d,size_ff,C)
+
+                          | Word31_to_word64ub => word31_to_word64ub {signext=false} (x,d,size_ff,C)
+                          | Word31_to_word64ub_X => word31_to_word64ub {signext=true} (x,d,size_ff,C)
+
+                          | Word32ub_to_int64ub => word32ub_to_word64ub {signext=false} (x,d,size_ff,C)
+                          | Word32ub_to_int64ub_X => word32ub_to_word64ub {signext=true} (x,d,size_ff,C)
+                          | Word32ub_to_word64ub_X => word32ub_to_word64ub {signext=true} (x,d,size_ff,C)
 
                           | Bytetable_size => bytetable_size(x,d,size_ff,C)
                           | Table_size => table_size(x,d,size_ff,C)
@@ -1046,14 +1082,23 @@ struct
 
                           | Word64b_to_int64b_X => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
                           | Word64b_to_int64b => num64b_to_num64b {ovf=true} (x,y,d,size_ff,C)
-                          | Word32b_to_word64b => num32b_to_num64b (x,y,d,size_ff,C)
+                          | Word32b_to_word64b => word32b_to_word64b {signext=false} (x,y,d,size_ff,C)
+                          | Word32b_to_word64b_X => word32b_to_word64b {signext=true} (x,y,d,size_ff,C)
                           | Word64b_to_word32b => num64b_to_num32b (x,y,d,size_ff,C)
-                          | Word31_to_word64b => num31_to_num_boxed {quad=true} (x,y,d,size_ff,C)
+                          | Word31_to_word64b => word31_to_word64b {signext=false} (x,y,d,size_ff,C)
+                          | Word31_to_word64b_X => word31_to_word64b {signext=true} (x,y,d,size_ff,C)
 
                           | Int32b_to_int64b => int32b_to_int64b (x,y,d,size_ff,C)
                           | Int64b_to_word64b => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
 
                           | Int31_to_int64b => num31_to_num_boxed {quad=true} (x,y,d,size_ff,C)
+
+                          | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} (x,y,d,size_ff,C)
+                          | Word63_to_word32b => word63_to_word32b (x,y,d,size_ff,C)
+                          | Word63_to_word64b => num63_to_num64b {shr_inst=I.shrq} (x,y,d,size_ff,C)
+                          | Word63_to_word64b_X => num63_to_num64b {shr_inst=I.sarq} (x,y,d,size_ff,C)
+
+                          | Int63_to_int32b => int63_to_int32b (x,y,d,size_ff,C)
 
                           | Bytetable_sub => bytetable_sub (x,y,d,size_ff,C)
                           | Word_sub0 => word_sub0 (x,y,d,size_ff,C)

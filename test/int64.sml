@@ -255,21 +255,21 @@ fun chk' t f s =
     tst' t (fn _ => ((f s; false) handle Overflow => true))
 fun chkScanOvf t fmt = chk' t (StringCvt.scanString (scan fmt))
 
-val test26a = chkScanOvf "test26a" StringCvt.HEX "~80000001"
-val test26b = chkScanOvf "test26b" StringCvt.DEC "~2147483649"
-val test26c = chkScanOvf "test26c" StringCvt.OCT "~20000000001"
-val test26d = chkScanOvf "test26d" StringCvt.BIN "~10000000000000000000000000000001"
+val test26a = chkScanOvf "test26a" StringCvt.HEX "~8000000000000001"
+val test26b = chkScanOvf "test26b" StringCvt.DEC "~9223372036854775809"
+val test26c = chkScanOvf "test26c" StringCvt.OCT "~1000000000000000000001"
+val test26d = chkScanOvf "test26d" StringCvt.BIN "~1000000000000000000000000000000000000000000000000000000000000001"
 
-val test27a = chkScanOvf "test27a" StringCvt.HEX "80000000"
-val test27b = chkScanOvf "test27b" StringCvt.DEC "2147483648"
-val test27c = chkScanOvf "test27c" StringCvt.OCT "20000000000"
-val test27d = chkScanOvf "test27d" StringCvt.BIN "10000000000000000000000000000000"
+val test27a = chkScanOvf "test27a" StringCvt.HEX "10000000000000000"
+val test27b = chkScanOvf "test27b" StringCvt.DEC "9223372036854775808"
+val test27c = chkScanOvf "test27c" StringCvt.OCT "1000000000000000000000"
+val test27d = chkScanOvf "test27d" StringCvt.BIN "1000000000000000000000000000000000000000000000000000000000000000"
 
-val test28a = tst' "test28a" (fn () => toString (valOf maxInt) = "2147483647")
-val test28b = tst' "test28b" (fn () => toString (valOf minInt) = "~2147483648")
+val test28a = tst' "test28a" (fn () => toString (valOf maxInt) = "9223372036854775807")
+val test28b = tst' "test28b" (fn () => toString (valOf minInt) = "~9223372036854775808")
 
-val test29a = tst' "test29a" (fn () => fromString "2147483647" = maxInt)
-val test29b = tst' "test29b" (fn () => fromString "~2147483648" = minInt)
+val test29a = tst' "test29a" (fn () => fromString "9223372036854775807" = maxInt)
+val test29b = tst' "test29b" (fn () => fromString "~9223372036854775808" = minInt)
 
 end
 

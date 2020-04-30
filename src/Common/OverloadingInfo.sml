@@ -23,15 +23,22 @@ structure OverloadingInfo: OVERLOADING_INFO =
     | RESOLVED_WORD63
     | RESOLVED_WORD64
 
+    val values_64bit = Flags.is_on0 "values_64bit"
     val tag_values = Flags.is_on0 "tag_values"
 
     fun resolvedIntDefault () =
-      if tag_values() then RESOLVED_INT31    (* MEMO: fix this later *)
-      else RESOLVED_INT32
+        case (tag_values(), values_64bit()) of
+            (true,  true) => RESOLVED_INT63
+          | (false, true) => RESOLVED_INT64
+          | (true,  false) => RESOLVED_INT31
+          | (false, false) => RESOLVED_INT32
 
     fun resolvedWordDefault () =
-      if tag_values() then RESOLVED_WORD31   (* MEMO: fix this later *)
-      else RESOLVED_WORD32
+        case (tag_values(), values_64bit()) of
+            (true,  true) => RESOLVED_WORD63
+          | (false, true) => RESOLVED_WORD64
+          | (true,  false) => RESOLVED_WORD31
+          | (false, false) => RESOLVED_WORD32
 
     fun string (UNRESOLVED_IDENT tyvars) = "UNRESOLVED_IDENT"
       | string (UNRESOLVED_DOTDOTDOT tau) = "UNRESOLVED_DOTDOTDOT"

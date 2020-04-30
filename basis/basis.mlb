@@ -67,7 +67,7 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = bas WORD.sig Word.sml Word32.sml Word31.sml Word8.sml Word64.sml end
+           basis W = bas WORD.sig Word.sml Word64.sml Word63.sml Word32.sml Word31.sml Word8.sml end
            basis PW = let open ArrayVector W
                       in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end
                       end
@@ -81,7 +81,7 @@ local
 
     basis Int =
        let open General String IntInfRep
-       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int64.sml end
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int63.sml Int64.sml end
        end
 
     basis Real =

@@ -1,12 +1,12 @@
 (* Generic pickle module
- * Copyright, Martin Elsman 2003-01-07 
+ * Copyright, Martin Elsman 2003-01-07
  * GPL Licence
  *)
 
 signature PICKLE =
   sig
     type instream and outstream
-	
+
     type 'a pickler   = 'a -> outstream -> outstream
     type 'a unpickler = instream -> 'a * instream
 
@@ -16,8 +16,10 @@ signature PICKLE =
     val unpickler : 'a pu -> 'a unpickler
 
     val word      : word pu
+    val word31    : Word31.word pu
     val word32    : Word32.word pu
     val int       : int pu
+    val int31     : Int31.int pu
     val int32     : Int32.int pu
     val bool      : bool pu
     val string    : string pu
@@ -41,16 +43,16 @@ signature PICKLE =
     val optionGen : 'a pu -> 'a option pu
     val vectorGen : 'a pu -> 'a Vector.vector pu
     val shareGen  : 'a pu -> 'a pu
-    val enumGen   : string * ''a list -> ''a pu     
+    val enumGen   : string * ''a list -> ''a pu
 
     val dataGen   : string * ('a->int) * ('a pu -> 'a pu) list -> 'a pu
-    val data2Gen  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list 
-	            * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list 
+    val data2Gen  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list
+	            * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list
                     -> 'a pu * 'b pu
 
-    val data3Gen  : string * ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list 
-	            * string * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list 
-	            * string * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list 
+    val data3Gen  : string * ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list
+	            * string * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list
+	            * string * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list
                     -> 'a pu * 'b pu * 'c pu
 
     val con0      : 'a -> 'b -> 'a pu
@@ -70,7 +72,7 @@ signature PICKLE =
 
     val register  : string -> 'a list -> 'a pu -> 'a pu
 
-    val registerEq: ('a*'a->bool) -> ('a->int) 
+    val registerEq: ('a*'a->bool) -> ('a->int)
 	            -> string -> 'a list -> 'a pu -> 'a pu
 
     val hashCons  : 'a pu -> 'a pu
@@ -93,11 +95,11 @@ signature PICKLE =
  [outstream] type of an outstream.
 
  ['a pickler] parameterized pickler type.
- 
+
  ['a unpickler] parameterized unpickler type.
- 
+
  ['a pu] parameterized type of a pair of a pickler and an unpickler.
- 
+
  [word] pickler-unpickler pair for word values.
 
  [int] pickler-unpickler pair for int values.
@@ -164,4 +166,3 @@ signature PICKLE =
  that a pickled value equal to a value in vs is equal to the
  value in vs when unpickled.
 *)
-

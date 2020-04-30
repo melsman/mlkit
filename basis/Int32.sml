@@ -1,12 +1,12 @@
 
-structure Int32 : INTEGER = 
+structure Int32 : INTEGER =
   struct (*Depends on StringCvt and Char*)
 
     (* Primitives *)
-    fun quot(x:int32,y:int32) : int32 = if y = 0 then raise Div
-					else prim ("__quot_int32", (x,y)) 
-    fun rem(x:int32,y:int32) : int32 = if y = 0 then raise Div
-				       else prim ("__rem_int32", (x,y))
+    fun quot (x:int32,y:int32) : int32 = if y = 0 then raise Div
+					 else prim ("__quot_int32", (x,y))
+    fun rem (x:int32,y:int32) : int32 = if y = 0 then raise Div
+				        else prim ("__rem_int32", (x,y))
 
     fun not true = false
       | not false = true
@@ -22,10 +22,10 @@ structure Int32 : INTEGER =
     val maxInt = SOME (2147483647 : int32)
     val minInt = SOME (~2147483648 : int32)
 
-    val ~ : int32 -> int32 = ~  
-    val op * : (int32 * int32) -> int32 = op * 
-    val op div : (int32 * int32) -> int32 = op div 
-    val op mod : (int32 * int32) -> int32 = op mod 
+    val ~ : int32 -> int32 = ~
+    val op * : (int32 * int32) -> int32 = op *
+    val op div : (int32 * int32) -> int32 = op div
+    val op mod : (int32 * int32) -> int32 = op mod
     val op + : (int32 * int32) -> int32 = op +
     val op - : (int32 * int32) -> int32 = op -
     fun compare (x, y: int32) = if x<y then LESS else if x>y then GREATER else EQUAL
@@ -45,7 +45,7 @@ structure Int32 : INTEGER =
 		     else (ord32 c - 55) mod 32
       fun prhex i = if i < 10 then chr32(i + 48) else chr32(i + 55)
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)
-	
+
       fun conv radix (i:int32) =
 	if SOME i = minInt then          (* Be careful not to Overflow *)
 	  (case radix
@@ -77,7 +77,7 @@ structure Int32 : INTEGER =
 		  of NONE => SOME (sgn * res, src)
 		   | SOME (c, rest) => if isDigit c then digr (factor * res + hexval c) rest
 				       else SOME (sgn * res, src)
-	      in if isDigit c then digr (hexval c) rest else NONE 
+	      in if isDigit c then digr (hexval c) rest else NONE
 	      end
 *)
 	    fun dig1 sgn NONE = NONE
@@ -90,11 +90,11 @@ structure Int32 : INTEGER =
 		  val next_val =
 		    if sgn = 1 then fn (factor, res, hv) => factor * res + hv
 		    else fn (factor, res, hv) => factor * res - hv
-	      in if isDigit c then digr (sgn * hexval c) next_val rest else NONE 
+	      in if isDigit c then digr (sgn * hexval c) next_val rest else NONE
 	      end
 
 	    fun getdigs sgn after0 inp =
-	      case dig1 sgn inp 
+	      case dig1 sgn inp
 		of NONE => SOME(0, after0)
 		 | res  => res
 	    fun hexopt (sgn:int32) NONE = NONE
@@ -111,17 +111,17 @@ structure Int32 : INTEGER =
 	      | sign (SOME (#"-", rest)) = hexopt ~1 (getc rest)
 	      | sign (SOME (#"+", rest)) = hexopt  1 (getc rest)
 	      | sign inp = hexopt  1 inp
-	in sign (skipWSget getc source) 
+	in sign (skipWSget getc source)
 	end
-    
+
       fun fmt BIN = conv 2
 	| fmt OCT = conv 8
 	| fmt DEC = conv 10
 	| fmt HEX = conv 16
-	
+
       (* It should hold that: toString = fmt DEC = conv 10 *)
       fun toString (i: int32): string = fmt DEC i
-	
+
       fun fromString s = scanString (scan DEC) s
     end (*local*)
 
@@ -130,8 +130,6 @@ structure Int32 : INTEGER =
     val op <    : int32 * int32 -> bool = op <
     val op <=   : int32 * int32 -> bool = op <=
 
-    type int = int32      
+    type int = int32
 
   end (*structure Int32*)
-
-structure FixedInt : INTEGER = Int32

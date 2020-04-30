@@ -722,7 +722,7 @@ structure OptLambda: OPT_LAMBDA =
    fun simple_nonexpanding e =
        case e of
            VAR{instances=[],regvars=[],...} => true
-         | INTEGER (_,t) => if tag_values() then eq_Type(t,int31Type) else true
+         | INTEGER (_,t) => if tag_values() then eq_Type(t,int31Type) orelse eq_Type(t,int63Type) else true
          | F64 _ => true
          | LET{pat,bind,scope} => simple_nonexpanding bind andalso simple_nonexpanding scope
          | PRIM(SELECTprim _, [e]) => simple_nonexpanding e
@@ -1070,13 +1070,15 @@ structure OptLambda: OPT_LAMBDA =
 	Con.eq(Con.con_TRUE, con) orelse Con.eq(Con.con_FALSE, con)
 
       fun is_unboxed_value lamb =
-	case lamb
-	  of INTEGER (_,t) => if tag_values() then not(eq_Type(t, int32Type))
-			      else true
-	   | WORD (_,t) => if tag_values() then not(eq_Type(t, word32Type))
-			   else true
-	   | PRIM(CONprim {con,...},nil) => is_boolean con
-	   | _ => false
+	  case lamb of
+              INTEGER (_,t) => if tag_values() then (eq_Type(t, int31Type) orelse
+                                                     eq_Type(t, int63Type))
+			       else true
+	    | WORD (_,t) => if tag_values() then (not(eq_Type(t, word32Type)) andalso
+                                                  not(eq_Type(t, word64Type)))
+			    else true
+	    | PRIM(CONprim {con,...},nil) => is_boolean con
+	    | _ => false
 
       fun constantFolding lamb fail =
           if not(aggressive_opt()) then fail

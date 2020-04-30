@@ -110,6 +110,9 @@ int31.sml
 int31_2.sml
 int32.sml
 int32_2.sml
+int63.sml
+int63_2.sml
+int64.sml
 intinf.sml
 intinf2.sml
 list.sml
@@ -140,6 +143,7 @@ word.sml
 word8.sml
 word31.sml
 word32.sml
+word64.sml
 pickletest.mlb
 packreal.sml
 packreal2.sml

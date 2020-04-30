@@ -49,12 +49,12 @@ signature LAMBDA_EXP =
     val int63Type : Type
     val int64Type : Type
     val intinfType : Type
-    val intDefaultType : unit -> Type   (* int31 if tag_values, otherwise int32; MEMO: fix this later *)
+    val intDefaultType : unit -> Type   (* int63 if tag_values, otherwise int64 *)
     val word31Type : Type
     val word32Type : Type
     val word63Type : Type
     val word64Type : Type
-    val wordDefaultType : unit -> Type  (* word31 if tag_values, otherwise word32; MEMO: fix this later *)
+    val wordDefaultType : unit -> Type  (* word63 if tag_values, otherwise word64 *)
     val realType: Type
     val f64Type: Type
     val stringType: Type

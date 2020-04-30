@@ -2903,6 +2903,16 @@ struct
 			else if TyName.eq(tn,TyName.tyName_WORD32) then
 			  (if BI.tag_values() then eq_prim "__equal_word32b"
 			   else eq_prim "__equal_word32ub")
+			else if TyName.eq(tn,TyName.tyName_INT63) then
+			  eq_prim "__equal_int63"
+			else if TyName.eq(tn,TyName.tyName_INT64) then
+			  (if BI.tag_values() then eq_prim "__equal_int64b"
+			   else eq_prim "__equal_int64ub")
+                        else if TyName.eq(tn,TyName.tyName_WORD63) then
+			  eq_prim "__equal_word63"
+			else if TyName.eq(tn,TyName.tyName_WORD64) then
+			  (if BI.tag_values() then eq_prim "__equal_word64b"
+			   else eq_prim "__equal_word64ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then

@@ -92,10 +92,12 @@ datatype prim =
          Word64ub_to_int64ub_X |
 
          Word31_to_word64b |
+         Word31_to_word64b_X |
          Word64b_to_int31 |
          Word64b_to_int64b_X |
          Word64b_to_int64b |
          Word32b_to_word64b |
+         Word32b_to_word64b_X |
          Word64b_to_word32b |
          Word64b_to_int31_X |
 
@@ -103,8 +105,41 @@ datatype prim =
          Int32ub_to_int64ub |
          Int64b_to_word64b |
          Int64ub_to_word64ub |
-
          Int64ub_to_int32ub |
+
+         Int63_to_int64b |     (* sarq |> box *)
+         Int64b_to_int63 |     (* check ovf |> salq >> (+1) *)
+         Word32b_to_word63 |   (* unbox |> salq >> (+1) *)
+         Word63_to_word32b |   (* shrq |> mov |> box *)
+         Word63_to_word31 |    (* mov *)
+         Word31_to_word63 |    (* mov *)
+         Word31_to_word63_X |  (* movslq *)
+         Word63_to_word64b |   (* shrq |> box *)
+         Word63_to_word64b_X | (* sarq |> box *)
+         Word64b_to_word63 |   (* sal >> (+1) *)
+
+         Int31_to_int63 |
+         Int63_to_int31 |
+         Int32b_to_int63 |
+         Int63_to_int32b |
+         Word32b_to_int63 |
+         Word32b_to_int63_X |
+         Word64b_to_word31 |
+
+         Word64b_to_int63 |
+         Word64b_to_int63_X |
+         Int63_to_int64ub |
+         Int64ub_to_int63 |
+         Word63_to_word64ub |
+         Word63_to_word64ub_X |
+
+         Word64ub_to_word31 |
+         Int64ub_to_int31 |
+         Word31_to_word64ub |
+         Word31_to_word64ub_X |
+         Word32ub_to_int64ub |
+         Word32ub_to_int64ub_X |
+         Word32ub_to_word64ub_X |
 
 	 Exn_ptr | Fresh_exname |
 
@@ -222,10 +257,12 @@ local
          ("__word64ub_to_int64ub_X", Word64ub_to_int64ub_X),
 
          ("__word31_to_word64b", Word31_to_word64b),
+         ("__word31_to_word64b_X", Word31_to_word64b_X),
          ("__word64b_to_int31", Word64b_to_int31),
          ("__word64b_to_int64b_X", Word64b_to_int64b_X),
          ("__word64b_to_int64b", Word64b_to_int64b),
          ("__word32b_to_word64b", Word32b_to_word64b),
+         ("__word32b_to_word64b_X", Word32b_to_word64b_X),
          ("__word64b_to_word32b", Word64b_to_word32b),
          ("__word64b_to_int31_X", Word64b_to_int31_X),
 
@@ -235,6 +272,42 @@ local
          ("__int64ub_to_word64ub", Int64ub_to_word64ub),
 
          ("__int64ub_to_int32ub", Int64ub_to_int32ub),
+
+         ("__int63_to_int64b", Int63_to_int64b),
+         ("__int64b_to_int63", Int64b_to_int63),
+         ("__word32b_to_word63", Word32b_to_word63),
+         ("__word63_to_word32b", Word63_to_word32b),
+         ("__word63_to_word31", Word63_to_word31),
+         ("__word31_to_word63", Word31_to_word63),
+         ("__word31_to_word63_X", Word31_to_word63_X),
+         ("__word63_to_word64b", Word63_to_word64b),
+         ("__word63_to_word64b_X", Word63_to_word64b_X),
+         ("__word64b_to_word63", Word64b_to_word63),
+
+         ("__int31_to_int63", Int31_to_int63),
+         ("__int63_to_int31", Int63_to_int31),
+         ("__int32b_to_int63", Int32b_to_int63),
+         ("__int63_to_int32b", Int63_to_int32b),
+         ("__word32b_to_int63", Word32b_to_int63),
+         ("__word32b_to_int63_X", Word32b_to_int63_X),
+         ("__word64b_to_word31", Word64b_to_word31),
+
+         ("__word64b_to_int63", Word64b_to_int63),
+         ("__word64b_to_int63_X", Word64b_to_int63_X),
+
+         ("__int63_to_int64ub", Int63_to_int64ub),
+
+         ("__int64ub_to_int63", Int64ub_to_int63),
+         ("__word63_to_word64ub", Word63_to_word64ub),
+         ("__word63_to_word64ub_X", Word63_to_word64ub_X),
+
+         ("__word64ub_to_word31", Word64ub_to_word31),
+         ("__int64ub_to_int31", Int64ub_to_int31),
+         ("__word31_to_word64ub", Word31_to_word64ub),
+         ("__word31_to_word64ub_X", Word31_to_word64ub_X),
+         ("__word32ub_to_int64ub", Word32ub_to_int64ub),
+         ("__word32ub_to_int64ub_X", Word32ub_to_int64ub_X),
+         ("__word32ub_to_word64ub_X", Word32ub_to_word64ub_X),
 
 	 ("__exn_ptr", Exn_ptr), ("__fresh_exname", Fresh_exname),
          ("__bytetable_sub", Bytetable_sub), ("__bytetable_size", Bytetable_size), ("__bytetable_update", Bytetable_update),
@@ -553,10 +626,12 @@ fun pp_prim (p:prim) : string =
       | Word64ub_to_int64ub_X => "Word64ub_to_int64ub_X"
 
       | Word31_to_word64b => "Word31_to_word64b"
+      | Word31_to_word64b_X => "Word31_to_word64b_X"
       | Word64b_to_int31 => "Word64b_to_int31"
       | Word64b_to_int64b_X => "Word64b_to_int64b_X"
       | Word64b_to_int64b => "Word64b_to_int64b"
       | Word32b_to_word64b => "Word32b_to_word64b"
+      | Word32b_to_word64b_X => "Word32b_to_word64b_X"
       | Word64b_to_word32b => "Word64b_to_word32b"
       | Word64b_to_int31_X => "Word64b_to_int31_X"
 
@@ -566,6 +641,42 @@ fun pp_prim (p:prim) : string =
       | Int64ub_to_word64ub => "Int64ub_to_word64ub"
 
       | Int64ub_to_int32ub => "Int64ub_to_int32ub"
+
+      | Int63_to_int64b => "Int63_to_int64b"
+      | Int64b_to_int63 => "Int64b_to_int63"
+      | Word32b_to_word63 => "Word32b_to_word63"
+      | Word63_to_word32b => "Word63_to_word32b"
+      | Word63_to_word31 => "Word63_to_word31"
+      | Word31_to_word63 => "Word31_to_word63"
+      | Word31_to_word63_X => "Word31_to_word63_X"
+      | Word63_to_word64b => "Word63_to_word64b"
+      | Word63_to_word64b_X => "Word63_to_word64b_X"
+      | Word64b_to_word63 => "Word64b_to_word63"
+
+      | Int31_to_int63 => "Int31_to_int63"
+      | Int63_to_int31 => "Int63_to_int31"
+      | Int32b_to_int63 => "Int32b_to_int63"
+      | Int63_to_int32b => "Int63_to_int32b"
+      | Word32b_to_int63 => "Word32b_to_int63"
+      | Word32b_to_int63_X => "Word32b_to_int63_X"
+      | Word64b_to_word31 => "Word64b_to_word31"
+
+      | Word64b_to_int63 => "Word64b_to_int63"
+      | Word64b_to_int63_X => "Word64b_to_int63_X"
+
+      | Int63_to_int64ub => "Int63_to_int64ub"
+
+      | Int64ub_to_int63 => "Int64ub_to_int63"
+      | Word63_to_word64ub => "Word63_to_word64ub"
+      | Word63_to_word64ub_X => "Word63_to_word64ub_X"
+
+      | Word64ub_to_word31 => "Word64ub_to_word31"
+      | Int64ub_to_int31 => "Int64ub_to_int31"
+      | Word31_to_word64ub => "Word31_to_word64ub"
+      | Word31_to_word64ub_X => "Word31_to_word64ub_X"
+      | Word32ub_to_int64ub => "Word32ub_to_int64ub"
+      | Word32ub_to_int64ub_X => "Word32ub_to_int64ub_X"
+      | Word32ub_to_word64ub_X => "Word32ub_to_word64ub_X"
 
       | Exn_ptr => "Exn_ptr"
       | Fresh_exname => "Fresh_exname"

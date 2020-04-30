@@ -1511,22 +1511,31 @@ old *)
 				      TyStr.from_theta_and_VE (theta_unit, VE_unit))
 	end
 
-	val TE_initial0 = joinTE [TE_unit, TE_char, TE_real,
-				  TE_int31, TE_int32, TE_int63, TE_int64, TE_intinf,
-				  TE_word8, TE_word31, TE_word32, TE_word63, TE_word64,
-				  TE_string, TE_exn, TE_ref, TE_bool, TE_list,
-				  TE_array, TE_vector, TE_chararray, TE_foreignptr]
-
 	val tag_values = Flags.is_on0 "tag_values"
+	val values_64bit = Flags.is_on0 "values_64bit"
+
+	val TE_initial0 =
+            joinTE [TE_unit, TE_char, TE_real,
+		    TE_int31, TE_int32, TE_intinf,
+		    TE_word8, TE_word31, TE_word32,
+		    TE_string, TE_exn, TE_ref, TE_bool, TE_list,
+		    TE_array, TE_vector, TE_chararray, TE_foreignptr]
 
 	fun TE_initial () =
 	  let
 	    val (defaultTyNameInt, defaultTyNameWord) =
-	      if tag_values() then (TyName.tyName_INT31, TyName.tyName_WORD31)
-	      else (TyName.tyName_INT32, TyName.tyName_WORD32)
+	        case (tag_values(), values_64bit()) of
+                    (true,  true) => (TyName.tyName_INT63, TyName.tyName_WORD63)
+                  | (false, true) => (TyName.tyName_INT64, TyName.tyName_WORD64)
+                  | (true,  false) => (TyName.tyName_INT31, TyName.tyName_WORD31)
+                  | (false, false) => (TyName.tyName_INT32, TyName.tyName_WORD32)
+
 	    val TE_int = te (TyCon.tycon_INT, defaultTyNameInt)
 	    val TE_word = te (TyCon.tycon_WORD, defaultTyNameWord)
 	    val TEs = [TE_initial0, TE_word, TE_int]
+                       @ (if values_64bit() then
+                            [TE_int63, TE_int64, TE_word63, TE_word64]
+                          else [])
 	    val TEs = if quotation() then TE_frag :: TEs else TEs
 	  in
 	    joinTE TEs

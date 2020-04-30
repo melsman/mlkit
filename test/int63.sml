@@ -6,7 +6,7 @@ fun check b = if b then "OK" else "WRONG";
 fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN";
 
 fun range (from, to) p =
-    let open Int
+    let open Int63
     in
 	(from > to) orelse (p from) andalso (range (from+1, to) p)
     end;
@@ -23,14 +23,10 @@ fun tstrange s bounds = (tst s) o range bounds
 (* test/int.sml -- here we test only the `exotic' operations
    PS 1995-02-25, 1996-07-02 *)
 
-(*KILL 05/11/1997 10:59. tho.:
-use "auxil.sml";
-*)
-
-val _ = print "\nFile int.sml: Testing structure Int...\n"
+val _ = print "\nFile int63.sml: Testing structure Int63...\n"
 
 local
-    open Int
+    open Int63
     infix 7 quot rem
     fun divmod s (i, d, q, r)  = tst s (i div d = q andalso i mod d = r);
     fun quotrem s (i, d, q, r) = tst s (i quot d = q andalso i rem d = r);
@@ -217,40 +213,40 @@ val test21 =
 val test22 =
     tst' "test22" (fn _ => range (~1200, 1200) (scanFmt StringCvt.HEX));
 
-val test23a = tst' "test23a" (fn _ => scanFmt StringCvt.HEX (valOf Int.maxInt));
-val test23b = tst' "test23b" (fn _ => scanFmt StringCvt.DEC (valOf Int.maxInt));
-val test23c = tst' "test23c" (fn _ => scanFmt StringCvt.OCT (valOf Int.maxInt));
-val test23d = tst' "test23d" (fn _ => scanFmt StringCvt.BIN (valOf Int.maxInt));
+val test23a = tst' "test23a" (fn _ => scanFmt StringCvt.HEX (valOf Int63.maxInt));
+val test23b = tst' "test23b" (fn _ => scanFmt StringCvt.DEC (valOf Int63.maxInt));
+val test23c = tst' "test23c" (fn _ => scanFmt StringCvt.OCT (valOf Int63.maxInt));
+val test23d = tst' "test23d" (fn _ => scanFmt StringCvt.BIN (valOf Int63.maxInt));
 
-val test24a = tst' "test24a" (fn _ => scanFmt StringCvt.HEX (valOf Int.minInt));
-val test24b = tst' "test24b" (fn _ => scanFmt StringCvt.DEC (valOf Int.minInt));
-val test24c = tst' "test24c" (fn _ => scanFmt StringCvt.OCT (valOf Int.minInt));
-val test24d = tst' "test24d" (fn _ => scanFmt StringCvt.BIN (valOf Int.minInt));
+val test24a = tst' "test24a" (fn _ => scanFmt StringCvt.HEX (valOf Int63.minInt));
+val test24b = tst' "test24b" (fn _ => scanFmt StringCvt.DEC (valOf Int63.minInt));
+val test24c = tst' "test24c" (fn _ => scanFmt StringCvt.OCT (valOf Int63.minInt));
+val test24d = tst' "test24d" (fn _ => scanFmt StringCvt.BIN (valOf Int63.minInt));
 
-val test25a = tst' "test25a" (fn _ => scanFmt StringCvt.HEX (valOf Int.minInt + 10));
-val test25b = tst' "test25b" (fn _ => scanFmt StringCvt.DEC (valOf Int.minInt + 10));
-val test25c = tst' "test25c" (fn _ => scanFmt StringCvt.OCT (valOf Int.minInt + 10));
-val test25d = tst' "test25d" (fn _ => scanFmt StringCvt.BIN (valOf Int.minInt + 10));
+val test25a = tst' "test25a" (fn _ => scanFmt StringCvt.HEX (valOf Int63.minInt + 10));
+val test25b = tst' "test25b" (fn _ => scanFmt StringCvt.DEC (valOf Int63.minInt + 10));
+val test25c = tst' "test25c" (fn _ => scanFmt StringCvt.OCT (valOf Int63.minInt + 10));
+val test25d = tst' "test25d" (fn _ => scanFmt StringCvt.BIN (valOf Int63.minInt + 10));
 
 fun chk' t f s =
     tst' t (fn _ => ((f s; false) handle Overflow => true))
 fun chkScanOvf t fmt = chk' t (StringCvt.scanString (scan fmt))
-fun tag s1 s2 = if Int.precision = SOME 63 then s1 else s2
-val test26a = chkScanOvf "test26a" StringCvt.HEX (tag "~4000000000000001" "~8000000000000001")
-val test26b = chkScanOvf "test26b" StringCvt.DEC (tag "~4611686018427387905" "~9223372036854775809")
-val test26c = chkScanOvf "test26c" StringCvt.OCT (tag "~400000000000000000001" "~1000000000000000000001")
-val test26d = chkScanOvf "test26d" StringCvt.BIN (tag "~100000000000000000000000000000000000000000000000000000000000001" "~1000000000000000000000000000000000000000000000000000000000000001")
 
-val test27a = chkScanOvf "test27a" StringCvt.HEX (tag "4000000000000000" "8000000000000000")
-val test27b = chkScanOvf "test27b" StringCvt.DEC (tag "4611686018427387904" "9223372036854775808")
-val test27c = chkScanOvf "test27c" StringCvt.OCT (tag "400000000000000000000" "1000000000000000000000")
-val test27d = chkScanOvf "test27d" StringCvt.BIN (tag "100000000000000000000000000000000000000000000000000000000000000" "1000000000000000000000000000000000000000000000000000000000000000")
+val test26a = chkScanOvf "test26a" StringCvt.HEX "~4000000000000001"
+val test26b = chkScanOvf "test26b" StringCvt.DEC "~4611686018427387905"
+val test26c = chkScanOvf "test26c" StringCvt.OCT "~400000000000000000001"
+val test26d = chkScanOvf "test26d" StringCvt.BIN "~100000000000000000000000000000000000000000000000000000000000001"
 
-val test28a = tst' "test28a" (fn () => toString (valOf maxInt) = tag "4611686018427387903" "9223372036854775807")
-val test28b = tst' "test28b" (fn () => toString (valOf minInt) = tag "~4611686018427387904" "~9223372036854775808")
+val test27a = chkScanOvf "test27a" StringCvt.HEX "4000000000000000"
+val test27b = chkScanOvf "test27b" StringCvt.DEC "4611686018427387904"
+val test27c = chkScanOvf "test27c" StringCvt.OCT "400000000000000000000"
+val test27d = chkScanOvf "test27d" StringCvt.BIN "100000000000000000000000000000000000000000000000000000000000000"
 
-val test29a = tst' "test29a" (fn () => fromString (tag "4611686018427387903" "9223372036854775807") = maxInt)
-val test29b = tst' "test29b" (fn () => fromString (tag "~4611686018427387904" "~9223372036854775808") = minInt)
+val test28a = tst' "test28a" (fn () => toString (valOf maxInt) = "4611686018427387903")
+val test28b = tst' "test28b" (fn () => toString (valOf minInt) = "~4611686018427387904")
+
+val test29a = tst' "test29a" (fn () => fromString "4611686018427387903" = maxInt)
+val test29b = tst' "test29b" (fn () => fromString "~4611686018427387904" = minInt)
 
 end
 

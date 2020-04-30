@@ -65,8 +65,8 @@ structure FreeIds:  FREE_IDS =
 		    longstrids: longstrid list, longtycons: longtycon list,
 		    longvids: longid list}
 
-    fun mem(y,[]) = false
-      | mem(y,x::xs) = y=x orelse mem(y,xs)
+    fun mem (y,[]) = false
+      | mem (y,x::xs) = y=x orelse mem(y,xs)
 
     local
       val bucket_longvids = ref ([] : longid list)
@@ -101,25 +101,25 @@ structure FreeIds:  FREE_IDS =
      * Functions to apply on uses of ids
      * ------------------------------------- *)
 
-    fun use_longvid({vids,strids,...}:ids,longvid:longid): unit =
+    fun use_longvid ({vids,strids,...}:ids,longvid:longid): unit =
       case Ident.decompose longvid
 	of ([], vid) => if mem(vid,vids) then () else mk_free_longvid longvid
 	 | (strid::_,_) => if mem(strid,strids) then () else mk_free_longvid longvid
 
-    fun use_longstrid({strids,...}:ids,longstrid:longstrid): unit =
+    fun use_longstrid ({strids,...}:ids,longstrid:longstrid): unit =
       case StrId.explode_longstrid longstrid
 	of ([],strid) => if mem(strid,strids) then () else mk_free_longstrid longstrid
 	 | (strid::_,_) => if mem(strid,strids) then () else mk_free_longstrid longstrid
 
-    fun use_longtycon({tycons,strids,...}:ids,longtycon:longtycon): unit =
+    fun use_longtycon ({tycons,strids,...}:ids,longtycon:longtycon): unit =
       case TyCon.explode_LongTyCon longtycon
 	of ([], tycon) => if mem(tycon,tycons) then () else mk_free_longtycon longtycon
 	 | (strid::_,_) => if mem(strid,strids) then () else mk_free_longtycon longtycon
 
-    fun use_funid({funids,...}:ids,funid:funid): unit =
+    fun use_funid ({funids,...}:ids,funid:funid): unit =
       if mem(funid,funids) then () else mk_free_funid funid
 
-    fun use_sigid({sigids,...}:ids,sigid:sigid): unit =
+    fun use_sigid ({sigids,...}:ids,sigid:sigid): unit =
       if mem(sigid,sigids) then () else mk_free_sigid sigid
 
     fun use_longids (ids:ids, {longvids,longtycons,longstrids,funids,sigids}) : unit =

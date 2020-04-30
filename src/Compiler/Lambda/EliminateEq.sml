@@ -556,24 +556,33 @@ structure EliminateEq: ELIMINATE_EQ =
    fun INTEGER' i = INTEGER(IntInf.fromInt i, intDefaultType())
 
    val tag_values = Flags.is_on0 "tag_values"
+   val values_64bit = Flags.is_on0 "values_64bit"
 
    fun ccall name argtypes restype =
      CCALLprim {name = name, instances = [], tyvars = [],
 		Type = ARROWtype (argtypes, [restype])}
 
-   fun MINUS_INTprim() =
-     let val n = if tag_values() then "__minus_int31" else "__minus_int32ub"
+   fun MINUS_INTprim () =
+       let val n = case (tag_values(),values_64bit()) of
+                       (true,  true) => "__minus_int63"
+                     | (false, true) => "__minus_int64ub"
+                     | (true,  false) => "__minus_int31"
+                     | (false, false) => "__minus_int32ub"
        val t = intDefaultType()
-     in ccall n [t, t] t
-     end
+       in ccall n [t, t] t
+       end
 
-   fun LESS_INTprim() =
-     let val n = if tag_values() then "__less_int31" else "__less_int32ub"
+   fun LESS_INTprim () =
+     let val n = case (tag_values(),values_64bit()) of
+                       (true,  true) => "__less_int63"
+                     | (false, true) => "__less_int64ub"
+                     | (true,  false) => "__less_int31"
+                     | (false, false) => "__less_int32ub"
        val t = intDefaultType()
      in ccall n [t,t] boolType
      end
 
-   fun bind_loop() =
+   fun bind_loop () =
      FN {pat = [(lvar_j, intDefaultType())], body =
 	 SWITCH_C (SWITCH (PRIM (LESS_INTprim(), [var_j, INTEGER' 0]),
 	   [((Con.con_TRUE,NONE), lamb_true)],
@@ -582,12 +591,12 @@ structure EliminateEq: ELIMINATE_EQ =
 		   [((Con.con_TRUE,NONE), APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1]),NONE))],
 		   SOME lamb_false)))))}
 
-   fun function_loop() = {lvar = lvar_loop,
-                          regvars = [],
-			  tyvars = [], Type = ARROWtype ([intDefaultType()], [boolType]),
-			  bind = bind_loop()}
+   fun function_loop () = {lvar = lvar_loop,
+                           regvars = [],
+			   tyvars = [], Type = ARROWtype ([intDefaultType()], [boolType]),
+			   bind = bind_loop()}
 
-   fun bind_eq_table() =
+   fun bind_eq_table () =
      FN {pat = [(lvar_eq_alpha, tau_for_eq_fun tau_alpha)], body =
 	 FN {pat = [(lvar_table_pair, RECORDtype [tau_tyname, tau_tyname])], body =
 	     monolet {lvar = lvar_table1, Type = tau_tyname, bind =
@@ -605,12 +614,12 @@ structure EliminateEq: ELIMINATE_EQ =
 					   APP (var_loop, PRIM (MINUS_INTprim(), [var_n2, INTEGER' 1]),NONE))],
 					 SOME lamb_false))}))}}}}
 
-   fun function_eq_table() = {lvar = lvar_eq_table,
-                              regvars = [],
-			      tyvars = [alpha],
-			      Type = ARROWtype ([tau_for_eq_fun tau_alpha],
-						[tau_for_eq_fun tau_tyname]),
-			      bind = bind_eq_table()}
+   fun function_eq_table () = {lvar = lvar_eq_table,
+                               regvars = [],
+			       tyvars = [alpha],
+			       Type = ARROWtype ([tau_for_eq_fun tau_alpha],
+						 [tau_for_eq_fun tau_tyname]),
+			       bind = bind_eq_table()}
 
    val f = fn scope => FIX {functions = [function_eq_table()], scope = scope}
    val env = add_tyname (tyname, POLYLVAR lvar_eq_table, empty)

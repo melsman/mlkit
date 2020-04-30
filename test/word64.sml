@@ -6,7 +6,7 @@ fun check b = if b then "OK" else "WRONG";
 fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN";
 
 fun range (from, to) p =
-    let open Int32
+    let open Int64
     in
 	(from > to) orelse (p from) andalso (range (from+1, to) p)
     end;
@@ -26,7 +26,7 @@ fun tstrange s bounds = (tst s) o range bounds
 *)
 
 local
-  local open Int32
+  local open Int64
   in
     (* Isn't this disgusting: *)
     val [gt,  lt,  ge,   le] =
@@ -38,8 +38,8 @@ local
     val op > = gt and op < = lt and op >= = ge and op <= = le;
     val op + = add and op - = sub and op * = mul
     and op div = idiv and op mod = imod;
-    val i2w = fromLargeInt o Int32.toLarge
-    and w2i = Int32.fromLarge o toLargeIntX;
+    val i2w = fromLargeInt o Int64.toLarge
+    and w2i = Int64.fromLarge o toLargeIntX;
     fun pr_ln s s' = print (s ^ ": " ^ s' ^ "\n")
 in
 
@@ -48,7 +48,7 @@ val test1 = checkrange (0, 1025)
 val _ = pr_ln "test1" test1
 
 val test3 = checkrange (~1000, 1000)
-    (fn i => i = Int32.fromLarge(toLargeIntX (i2w i)));
+    (fn i => i = Int64.fromLarge(toLargeIntX (i2w i)));
 val _ = pr_ln "test3" test3
 
 val test5a = checkrange (0,15)
@@ -77,10 +77,10 @@ val _ = pr_ln "test8a" test8a
 val test8b = check (0 = w2i (notb (i2w ~1)));
 val _ = pr_ln "test8b" test8b
 *)
-val maxposint = case Int32.maxInt
+val maxposint = case Int64.maxInt
 		  of SOME m => m
 		   | NONE => raise Fail "ERROR"
-val maxnegint = case Int32.minInt
+val maxnegint = case Int64.minInt
 		  of SOME m => m
 		   | NONE => raise Fail "ERROR"
 fun pwr2 0 = 1
@@ -89,44 +89,44 @@ fun rwp i 0 = i
   | rwp i n = rwp i (n-1) div 2;
 
 val test9a = checkrange (0,1)
-    (fn k => pwr2 k = w2i (<< (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => pwr2 k = w2i (<< (i2w 1, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test9a" test9a
 (*
 val test9b = checkrange (32,65)
-    (fn k => 0 = w2i (<< (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => 0 = w2i (<< (i2w 1, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test9b" test9b
 val test9c = check (maxnegint = w2i (<< (i2w 1, Word.fromInt (Int.-(wordSize,1)))));
 val _ = pr_ln "test9c" test9c
 *)
 val test9d = checkrange (0, 1025)
-    (fn i => 2 * i = w2i (<< (i2w i, Word.fromLargeInt (Int32.toLarge 1))));
+    (fn i => 2 * i = w2i (<< (i2w i, Word.fromLargeInt (Int64.toLarge 1))));
 val _ = pr_ln "test9d" test9d
 val test9e = checkrange (0, 1025)
-    (fn i => i div 2 = w2i (>> (i2w i, Word.fromLargeInt (Int32.toLarge 1))));
+    (fn i => i div 2 = w2i (>> (i2w i, Word.fromLargeInt (Int64.toLarge 1))));
 val _ = pr_ln "test9e" test9e
 val test9f = checkrange (0,65)
-    (fn k => rwp maxposint k = w2i (>> (i2w maxposint, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => rwp maxposint k = w2i (>> (i2w maxposint, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test9f" test9f
 (*
 val test9g = checkrange (32,65)
-    (fn k => 0 = w2i (<< (i2w ~1, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => 0 = w2i (<< (i2w ~1, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test9g" test9g
 *)
 val test9h = checkrange (1,65)
-    (fn k => 0 = w2i (>> (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => 0 = w2i (>> (i2w 1, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test9h" test9h
 
 val test10a = checkrange (1,65)
-    (fn k => 0 = w2i (~>> (i2w 1, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => 0 = w2i (~>> (i2w 1, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test10a" test10a
 val test10b = checkrange (1,65)
-    (fn k => ~1 = w2i (~>> (i2w ~1, Word.fromLargeInt (Int32.toLarge k))));
+    (fn k => ~1 = w2i (~>> (i2w ~1, Word.fromLargeInt (Int64.toLarge k))));
 val _ = pr_ln "test10b" test10b
 val test10c = checkrange (~513, 513)
-    (fn i => i div 2 = Int32.fromLarge(toLargeIntX (~>> (i2w i, Word.fromLargeInt (Int32.toLarge 1)))));
+    (fn i => i div 2 = Int64.fromLarge(toLargeIntX (~>> (i2w i, Word.fromLargeInt (Int64.toLarge 1)))));
 val _ = pr_ln "test10c" test10c
 val test10d = checkrange (0,65)
-    (fn k => rwp maxnegint k = Int32.fromLarge(toLargeIntX (~>> (i2w maxnegint, Word.fromLargeInt (Int32.toLarge k)))));
+    (fn k => rwp maxnegint k = Int64.fromLarge(toLargeIntX (~>> (i2w maxnegint, Word.fromLargeInt (Int64.toLarge k)))));
 val _ = pr_ln "test10d" test10d
 local
     open Word64
@@ -330,10 +330,10 @@ end;
 
 local
     fun fromToString i =
-	fromString (toString (fromLargeInt (Int32.toLarge i))) = SOME (fromLargeInt (Int32.toLarge i));
+	fromString (toString (fromLargeInt (Int64.toLarge i))) = SOME (fromLargeInt (Int64.toLarge i));
 
     fun scanFmt radix i =
-	let val w = fromLargeInt (Int32.toLarge i)
+	let val w = fromLargeInt (Int64.toLarge i)
 	    val s = fmt radix w
 	in StringCvt.scanString (scan radix) s = SOME w end;
 
@@ -355,39 +355,41 @@ val test22 =
 val _ = pr_ln "test22" test22
 end
 
+
 local open Word64
-  fun tagging () = Int.precision = SOME 31
+  fun tagging () = Int.precision = SOME 63
 in
 
-  val test23a = tst "test23a" ((Word64.toInt 0wxFFFFFFFF seq false)
+  val test23a = tst "test23a" ((Word64.toInt 0wxFFFFFFFFFFFFFFFF seq false)
 			       handle Overflow => true)
 
-  val test23b = tst "test23b" (Word64.toIntX 0wxFFFFFFFF = ~1)
+  val test23b = tst "test23b" (Word64.toIntX 0wxFFFFFFFFFFFFFFFF = ~1)
 
   val test23c = tst "test23c"
     (if tagging() then
-       ((Word64.toIntX 0wx7FFFFFFF seq false)
+       ((Word64.toIntX 0wx7FFFFFFFFFFFFFFF seq false)
 	handle Overflow => true)
      else
-       (SOME(Word64.toIntX 0wx7FFFFFFF) = Int.maxInt))
+       (SOME(Word64.toIntX 0wx7FFFFFFFFFFFFFFF) = Int.maxInt))
 
   val test23d = tst "test23d"
     (if tagging() then
-       ((Word64.toIntX 0wx80000000 seq false)
+       ((Word64.toIntX 0wx8000000000000000 seq false)
 	handle Overflow => true)
      else
-       (SOME(Word64.toIntX 0wx80000000) = Int.minInt))
+       (SOME(Word64.toIntX 0wx8000000000000000) = Int.minInt))
 
-  val test23e = tst "test23e" (Word64.toIntX 0wx3FFFFFFF = 1073741823)
+  val test23e = tst "test23e" (Word64.toIntX 0wx3FFFFFFFFFFFFFFF = 4611686018427387903)
 
-  val test23f = tst "test23f" (Word64.toIntX 0wxc0000000 = ~1073741824)
+  val test23f = tst "test23f" (Word64.toIntX 0wxc000000000000000 = ~4611686018427387904)
 
   val test23g = tst "test23g"
     (if tagging() then
-       ((Word64.toIntX 0wxbfffffff seq false)
+       ((Word64.toIntX 0wxbfffffffffffffff seq false)
 	handle Overflow => true)
      else
-       (Word64.toIntX 0wxbfffffff = (Int.-(~1073741824, 1))))
+       (Word64.toIntX 0wxbfffffffffffffff = (Int.-(~4611686018427387904, 1))))
 
 end
+
 end

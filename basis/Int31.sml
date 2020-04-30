@@ -1,12 +1,12 @@
 
-structure Int31 : INTEGER = 
+structure Int31 : INTEGER =
   struct (*Depends on StringCvt and Char*)
 
     (* Primitives *)
-    fun quot(x:int31,y:int31) : int31 = if y = 0 then raise Div
-					else prim ("__quot_int31", (x, y)) 
-    fun rem(x:int31,y:int31) : int31 = if y = 0 then raise Div
-				       else prim ("__rem_int31", (x,y))
+    fun quot (x:int31,y:int31) : int31 = if y = 0 then raise Div
+					 else prim ("__quot_int31", (x, y))
+    fun rem (x:int31,y:int31) : int31 = if y = 0 then raise Div
+				        else prim ("__rem_int31", (x,y))
 
     fun not true = false
       | not false = true
@@ -22,10 +22,10 @@ structure Int31 : INTEGER =
     val maxInt : int31 option = SOME 1073741823
     val minInt : int31 option = SOME ~1073741824
 
-    val ~ : int31 -> int31 = ~  
-    val op * : (int31 * int31) -> int31 = op * 
-    val op div : (int31 * int31) -> int31 = op div 
-    val op mod : (int31 * int31) -> int31 = op mod 
+    val ~ : int31 -> int31 = ~
+    val op * : (int31 * int31) -> int31 = op *
+    val op div : (int31 * int31) -> int31 = op div
+    val op mod : (int31 * int31) -> int31 = op mod
     val op + : (int31 * int31) -> int31 = op +
     val op - : (int31 * int31) -> int31 = op -
     fun compare (x, y: int31) = if x<y then LESS else if x>y then GREATER else EQUAL
@@ -45,20 +45,20 @@ structure Int31 : INTEGER =
 		     else (ord31 c - 55) mod 32
       fun prhex i = if i < 10 then chr31(i + 48) else chr31(i + 55)
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)
-	
-      fun conv (radix:int31) (i:int31) =
+
+      fun conv radix (i:int31) =
 	if SOME i = minInt then          (* Be careful not to Overflow *)
 	  (case radix
 	     of 2 => "~1000000000000000000000000000000"
 	      | 8 => "~10000000000"
 	      | 10 => "~1073741824"
 	      | 16 => "~40000000"
-	      | _ => raise Fail "conv")
+              | _ => raise Fail "Int31.conv")
 	else
 	  let fun h 0 res = res
 		| h n res = h (n div radix) (prhex (n mod radix) :: res)
 	      fun tostr n = h (n div radix) [prhex (n mod radix)]
-	  in implode (if i < 0 then #"~" :: tostr (~i) else tostr i) 
+	  in implode (if i < 0 then #"~" :: tostr (~i) else tostr i)
 	  end
     in
       fun scan radix getc source =
@@ -69,17 +69,6 @@ structure Int31 : INTEGER =
 		 | OCT => (fn c => (#"0" <= c andalso c <= #"7"),  8)
 		 | DEC => (Char.isDigit,                          10)
 		 | HEX => (Char.isHexDigit,                       16)
-(*
-	    fun dig1 sgn NONE = NONE
-	      | dig1 sgn (SOME (c, rest)) =
-	      let fun digr (res:int31) src =
-		case getc src
-		  of NONE => SOME (sgn * res, src)
-		   | SOME (c, rest) => if isDigit c then digr (factor * res + hexval c) rest
-				       else SOME (sgn * res, src)
-	      in if isDigit c then digr (hexval c) rest else NONE 
-	      end
-*)
 	    fun dig1 sgn NONE = NONE
 	      | dig1 sgn (SOME (c, rest)) =
 	      let fun digr (res:int31) next_val src =
@@ -90,10 +79,10 @@ structure Int31 : INTEGER =
 		  val next_val =
 		    if sgn = 1 then fn (factor, res, hv) => factor * res + hv
 		    else fn (factor, res, hv) => factor * res - hv
-	      in if isDigit c then digr (sgn * hexval c) next_val rest else NONE 
+	      in if isDigit c then digr (sgn * hexval c) next_val rest else NONE
 	      end
 	    fun getdigs sgn after0 inp =
-	      case dig1 sgn inp 
+	      case dig1 sgn inp
 		of NONE => SOME(0, after0)
 		 | res  => res
 	    fun hexopt sgn NONE = NONE
@@ -110,17 +99,17 @@ structure Int31 : INTEGER =
 	      | sign (SOME (#"-", rest)) = hexopt ~1 (getc rest)
 	      | sign (SOME (#"+", rest)) = hexopt  1 (getc rest)
 	      | sign inp = hexopt  1 inp
-	in sign (skipWSget getc source) 
+	in sign (skipWSget getc source)
 	end
-    
+
       fun fmt BIN = conv 2
 	| fmt OCT = conv 8
 	| fmt DEC = conv 10
 	| fmt HEX = conv 16
-	
+
       (* It should hold that: toString = fmt DEC = conv 10 *)
       fun toString (i: int31): string = fmt DEC i
-	
+
       fun fromString s = scanString (scan DEC) s
     end (*local*)
 
@@ -129,5 +118,5 @@ structure Int31 : INTEGER =
     val op <    : int31 * int31 -> bool = op <
     val op <=   : int31 * int31 -> bool = op <=
 
-    type int = int31      
-  end; (*structure Int*)
+    type int = int31
+  end (*structure Int*)

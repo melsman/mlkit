@@ -6,15 +6,10 @@ test6a: OK
 test6b: OK
 test7a: OK
 test7b: OK
-test8a: OK
-test8b: OK
 test9a: OK
-test9b: OK
-test9c: OK
 test9d: OK
 test9e: OK
 test9f: OK
-test9g: OK
 test9h: OK
 test10a: OK
 test10b: OK
@@ -63,3 +58,10 @@ test19: OK
 test20: OK
 test21: OK
 test22: OK
+test23a    	OK
+test23b    	OK
+test23c    	OK
+test23d    	OK
+test23e    	OK
+test23f    	OK
+test23g    	OK

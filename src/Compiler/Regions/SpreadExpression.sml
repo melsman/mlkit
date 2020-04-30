@@ -465,49 +465,16 @@ struct
             end
          | NONE => die "spreadExp: free lvar"
        )
-
     | E.INTEGER (i,tau_ml) =>
         let val (mu as (tau,rho), B) = freshMu(tau_ml,B)
 	in (B,E'.TR(E'.INTEGER(i, tau, rho),E'.Mus[mu], Eff.mkPut rho),
 	    NOTAIL)
         end
-(*
-        let
-	  val rt = if ( (precision = 32 andalso tag_values())
-		       orelse (*for the future*)
-		       precision > 32 ) then Eff.TOP_RT
-		   else Eff.WORD_RT
-	  val (rho, B) = Eff.freshRhoWithTy(rt, B)
-	  val tau =
-	    case precision
-	      of 31 => R.int31Type
-               | 32 => R.int32Type
-	       | _ => die "spreadExp: INTEGER"
-        in
-	    (B,E'.TR(E'.INTEGER(i, rho),E'.Mus[(tau,rho)], Eff.mkPut rho))
-        end
-*)
     | E.WORD (i, tau_ml) =>
         let val (mu as (tau,rho), B) = freshMu(tau_ml,B)
 	in (B,E'.TR(E'.WORD(i, tau, rho),E'.Mus[mu], Eff.mkPut rho),
 	    NOTAIL)
         end
-(*
-	  val rt = if ( (precision = 32 andalso tag_values())
-		       orelse (*for the future*)
-		       precision > 32 ) then Eff.TOP_RT
-		   else Eff.WORD_RT
-	  val (rho, B) = Eff.freshRhoWithTy(rt, B)
-	  val tau =
-	    case precision
-	      of 8 => R.word8Type
-	       | 31 => R.word31Type
-               | 32 => R.word32Type
-	       | _ => die "spreadExp: INTEGER"
-        in
-	    (B,E'.TR(E'.WORD(i, rho),E'.Mus[(tau,rho)], Eff.mkPut rho))
-        end
-*)
     | E.STRING(s: string,rv_opt)=>
         let val (rho, B) = maybe_explicit_rho rse B Eff.STRING_RT rv_opt
             val tau = R.stringType

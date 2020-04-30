@@ -99,8 +99,8 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
     val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
 
-    fun defaultIntPrecision () = if tag_values() then 31 else 32
-    fun defaultWordPrecision () = if tag_values() then 31 else 32
+    fun defaultIntPrecision () = if tag_values() then 63 else 64
+    fun defaultWordPrecision () = if tag_values() then 63 else 64
 
     val toplevel_region_withtype_top_lab    = Labels.reg_top_lab
     val toplevel_region_withtype_bot_lab    = Labels.reg_bot_lab
