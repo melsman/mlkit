@@ -46,11 +46,15 @@ signature LAMBDA_EXP =
     val exnType : Type
     val int31Type : Type
     val int32Type : Type
+    val int63Type : Type
+    val int64Type : Type
     val intinfType : Type
-    val intDefaultType : unit -> Type   (* int31 if tag_values, otherwise int32 *)
+    val intDefaultType : unit -> Type   (* int63 if tag_values, otherwise int64 *)
     val word31Type : Type
     val word32Type : Type
-    val wordDefaultType : unit -> Type  (* word31 if tag_values, otherwise word32 *)
+    val word63Type : Type
+    val word64Type : Type
+    val wordDefaultType : unit -> Type  (* word63 if tag_values, otherwise word64 *)
     val realType: Type
     val f64Type: Type
     val stringType: Type
@@ -95,8 +99,8 @@ signature LAMBDA_EXP =
 
     and LambdaExp =
         VAR      of {lvar: lvar, instances : Type list, regvars: regvar list}
-      | INTEGER  of Int32.int * Type
-      | WORD     of Word32.word * Type
+      | INTEGER  of IntInf.int * Type
+      | WORD     of IntInf.int * Type
       | STRING   of string * regvar option
       | REAL     of string * regvar option
       | F64      of string
@@ -116,8 +120,8 @@ signature LAMBDA_EXP =
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
-      | SWITCH_I of {switch: Int32.int Switch, precision: int}
-      | SWITCH_W of {switch: Word32.word Switch, precision: int}
+      | SWITCH_I of {switch: IntInf.int Switch, precision: int}
+      | SWITCH_W of {switch: IntInf.int Switch, precision: int}
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch

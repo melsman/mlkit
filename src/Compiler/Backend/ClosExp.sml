@@ -74,8 +74,8 @@ struct
     | DROPPED_RVAR    of place
     | FETCH           of label
     | STORE           of ClosExp * label
-    | INTEGER         of {value: Int32.int, precision: int}
-    | WORD            of {value: Word32.word, precision: int}
+    | INTEGER         of {value: IntInf.int, precision: int}
+    | WORD            of {value: IntInf.int, precision: int}
     | STRING          of string
     | REAL            of string
     | F64             of string
@@ -98,8 +98,8 @@ struct
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
     | RAISE           of ClosExp
     | HANDLE          of ClosExp * ClosExp
-    | SWITCH_I        of {switch: Int32.int Switch, precision: int}
-    | SWITCH_W        of {switch: Word32.word Switch, precision: int}
+    | SWITCH_I        of {switch: IntInf.int Switch, precision: int}
+    | SWITCH_W        of {switch: IntInf.int Switch, precision: int}
     | SWITCH_S        of string Switch
     | SWITCH_C        of (con*con_kind) Switch
     | SWITCH_E        of excon Switch
@@ -195,8 +195,8 @@ struct
       | layout_ce(DROPPED_RVAR place) = LEAF("D" ^ flatten1(Effect.layout_effect place))
       | layout_ce(FETCH lab)          = LEAF("fetch(" ^ Labels.pr_label lab ^ ")")
       | layout_ce(STORE(ce,lab))      = LEAF("store(" ^ flatten1(layout_ce ce) ^ "," ^ Labels.pr_label lab ^ ")")
-      | layout_ce(INTEGER {value,precision}) = LEAF(Int32.toString value)
-      | layout_ce(WORD {value,precision})    = LEAF("0x" ^ Word32.toString value)
+      | layout_ce(INTEGER {value,precision}) = LEAF(IntInf.toString value)
+      | layout_ce(WORD {value,precision}) = LEAF("0x" ^ IntInf.fmt StringCvt.HEX value)
       | layout_ce(STRING s)           = LEAF("\"" ^ String.toString s ^ "\"")
       | layout_ce(REAL s)             = LEAF(s)
       | layout_ce(F64 s)              = LEAF(s ^ "f64")
@@ -327,8 +327,9 @@ struct
       | layout_ce(RAISE ce) = PP.LEAF("raise " ^ (flatten1(layout_ce ce)))
       | layout_ce(HANDLE(ce1,ce2)) = NODE{start="",finish="",childsep=RIGHT " handle ",indent=1,
 					  children=[layout_ce ce1,layout_ce ce2]}
-      | layout_ce(SWITCH_I {switch,precision}) = layout_switch layout_ce (Int32.toString) switch
-      | layout_ce(SWITCH_W {switch,precision}) = layout_switch layout_ce (fn w => "0x" ^ Word32.toString w) switch
+      | layout_ce(SWITCH_I {switch,precision}) = layout_switch layout_ce (IntInf.toString) switch
+      | layout_ce(SWITCH_W {switch,precision}) =
+        layout_switch layout_ce (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
       | layout_ce(SWITCH_S sw) = layout_switch layout_ce (fn s => s) sw
       | layout_ce(SWITCH_C sw) = layout_switch layout_ce (fn (con,con_kind) => Con.pr_con con ^ "(" ^
 							  pr_con_kind con_kind ^ ")") sw
@@ -1369,8 +1370,12 @@ struct
         SOME(tn,_,_,_) =>
 	  if TyName.eq(tn, TyName.tyName_INT31) then 31
 	  else if TyName.eq(tn, TyName.tyName_INT32) then 32
+	  else if TyName.eq(tn, TyName.tyName_INT63) then 63
+	  else if TyName.eq(tn, TyName.tyName_INT64) then 64
 	  else if TyName.eq(tn, TyName.tyName_WORD31) then 31
 	  else if TyName.eq(tn, TyName.tyName_WORD32) then 32
+	  else if TyName.eq(tn, TyName.tyName_WORD63) then 63
+	  else if TyName.eq(tn, TyName.tyName_WORD64) then 64
 	  else die "precisionNumType.wrong tyname"
       | NONE => die "precisionNumType.wrong type"
 
@@ -1559,15 +1564,9 @@ struct
 	  (case e of
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,t,alloc) =>
-	       (INTEGER {value=i, precision=precisionNumType t}, NONE_SE)
-(*
-	       ((if BI.tag_values() then
-		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE)
-		 else (INTEGER (int_to_string i), NONE_SE))
-		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
-*)
-	   | MulExp.WORD(w,t,alloc) => (WORD {value=w, precision=precisionNumType t}, NONE_SE)
-
+	     (INTEGER {value=i, precision=precisionNumType t}, NONE_SE)
+	   | MulExp.WORD(w,t,alloc) =>
+             (WORD {value=w, precision=precisionNumType t}, NONE_SE)
 	   | MulExp.STRING(s,alloc) => (STRING s,NONE_SE)
 	   | MulExp.REAL(r,alloc) => (REAL (convert_real r),NONE_SE)
 	   | MulExp.F64(r,alloc) => (F64 (convert_real r),NONE_SE)
@@ -1925,10 +1924,10 @@ struct
 		 (* When tagging is enabled, integers in SWITCH_I are converted in
 		  * CodeGenX86.sml - so in that case we must use an untagged representation
 		  * of true, which is 1 (given that BI.ml_true is 3). *)
-		 val True = Int32.fromInt (if BI.ml_true = 3 then
-					     if BI.tag_values() then 1
-					     else BI.ml_true
-					   else die "True")
+		 val True = IntInf.fromInt (if BI.ml_true = 3 then
+					      if BI.tag_values() then 1
+					      else BI.ml_true
+					    else die "True")
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(s,ce')::rest,default) =
 		   let
@@ -1992,7 +1991,7 @@ struct
 					scope=LET{pat=[lv_sw],
 						  bind=CCALL{name="__equal_int32ub",
 							     args=[ce,VAR lv_exn2],rhos_for_result=[]},
-						  scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
+						  scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(IntInf.fromInt BI.ml_true,ce')],
 										compile_seq_switch(ce,rest,default)),
 								  precision=BI.defaultIntPrecision()}}}}
 		      | UNARY_EXCON =>
@@ -2001,7 +2000,7 @@ struct
 			      scope=LET{pat=[lv_sw],
 					bind=CCALL{name="__equal_int32ub",
 						   args=[ce,VAR lv_exn1],rhos_for_result=[]},
-					scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
+					scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(IntInf.fromInt BI.ml_true,ce')],
 								      compile_seq_switch(ce,rest,default)),
 							precision=BI.defaultIntPrecision()}}})
 		   end
@@ -2169,11 +2168,21 @@ struct
 			else if TyName.eq(tn,TyName.tyName_INT32) then
 			  (if BI.tag_values() then eq_prim "__equal_int32b"
 			   else eq_prim "__equal_int32ub")
+			else if TyName.eq(tn,TyName.tyName_INT63) then
+			  eq_prim "__equal_int63"
+			else if TyName.eq(tn,TyName.tyName_INT64) then
+			  (if BI.tag_values() then eq_prim "__equal_int64b"
+			   else eq_prim "__equal_int64ub")
                         else if TyName.eq(tn,TyName.tyName_WORD31) then
 			  eq_prim "__equal_word31"
 			else if TyName.eq(tn,TyName.tyName_WORD32) then
 			  (if BI.tag_values() then eq_prim "__equal_word32b"
 			   else eq_prim "__equal_word32ub")
+                        else if TyName.eq(tn,TyName.tyName_WORD63) then
+			  eq_prim "__equal_word63"
+			else if TyName.eq(tn,TyName.tyName_WORD64) then
+			  (if BI.tag_values() then eq_prim "__equal_word64b"
+			   else eq_prim "__equal_word64ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then
@@ -2210,7 +2219,7 @@ struct
 		       (case i_opt of
 			  SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
 			| SOME i => add_pp_for_profiling(rest,args)
-			| NONE   => (name ^ "Prof", args @ [INTEGER {value=Int32.fromInt(get_pp sma),
+			| NONE   => (name ^ "Prof", args @ [INTEGER {value=IntInf.fromInt(get_pp sma),
 								     precision=BI.defaultIntPrecision()}]))
 		                            (*get any arbitrary pp (they are the same):*)
 		   else (name, args)
@@ -2445,12 +2454,6 @@ struct
 	  (case e of
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,t,alloc) => INTEGER{value=i, precision=precisionNumType t}
-(*
-	       ((if BI.tag_values() then
-		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1))
-		 else INTEGER (int_to_string i))
-		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
-*)
 	   | MulExp.WORD(w,t,alloc) => WORD{value=w, precision=precisionNumType t}
 	   | MulExp.STRING(s,alloc) => STRING s
 	   | MulExp.REAL(r,alloc) => REAL (convert_real r)
@@ -2757,10 +2760,10 @@ struct
 		 (* When tagging is enabled, integers in SWITCH_I are converted in
 		  * CodeGenX86.sml - so in that case we must use an untagged representation
 		  * of true, which is 1 (given that BI.ml_true is 3). *)
-		 val True = Int32.fromInt (if BI.ml_true = 3 then
-					     if BI.tag_values() then 1
-					     else BI.ml_true
-					   else die "True")
+		 val True = IntInf.fromInt (if BI.ml_true = 3 then
+					      if BI.tag_values() then 1
+					      else BI.ml_true
+					    else die "True")
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(s,ce')::rest,default) =
 		   SWITCH_I {switch=SWITCH(CCALL{name="equalStringML",args=[ce,STRING s],rhos_for_result=[]},
@@ -2809,13 +2812,13 @@ struct
 			SWITCH_I{switch=SWITCH(CCALL{name="__equal_int32ub",
 						     args=[ce,SELECT(0,SELECT(0,ce_e))],
 						     rhos_for_result=[]},
-					       [(Int32.fromInt BI.ml_true,ce')],
+					       [(IntInf.fromInt BI.ml_true,ce')],
 					       compile_seq_switch(ce,rest,default)),
 				 precision=BI.defaultIntPrecision()}
 		    | UNARY_EXCON =>
 			SWITCH_I{switch=SWITCH(CCALL{name="__equal_int32ub",
 						     args=[ce,SELECT(0,ce_e)],rhos_for_result=[]},
-					       [(Int32.fromInt BI.ml_true,ce')],
+					       [(IntInf.fromInt BI.ml_true,ce')],
 					       compile_seq_switch(ce,rest,default)),
 				 precision=BI.defaultIntPrecision()})
 		 val lv_exn_arg = fresh_lvar("exn_arg")
@@ -2900,6 +2903,16 @@ struct
 			else if TyName.eq(tn,TyName.tyName_WORD32) then
 			  (if BI.tag_values() then eq_prim "__equal_word32b"
 			   else eq_prim "__equal_word32ub")
+			else if TyName.eq(tn,TyName.tyName_INT63) then
+			  eq_prim "__equal_int63"
+			else if TyName.eq(tn,TyName.tyName_INT64) then
+			  (if BI.tag_values() then eq_prim "__equal_int64b"
+			   else eq_prim "__equal_int64ub")
+                        else if TyName.eq(tn,TyName.tyName_WORD63) then
+			  eq_prim "__equal_word63"
+			else if TyName.eq(tn,TyName.tyName_WORD64) then
+			  (if BI.tag_values() then eq_prim "__equal_word64b"
+			   else eq_prim "__equal_word64ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"
 		        else if TyName.eq(tn,TyName.tyName_VECTOR) then

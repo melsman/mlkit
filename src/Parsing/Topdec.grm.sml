@@ -1517,7 +1517,7 @@ datatype svalue = VOID | ntVOID of unit ->  unit
  | AQID of unit ->  (string) | OBJL of unit ->  (string)
  | ENDQ of unit ->  (string) | STRING of unit ->  (string)
  | REAL of unit ->  (string option)
- | WORD of unit ->  (Word32.word option) | DIGIT of unit ->  (int)
+ | WORD of unit ->  (IntInf.int option) | DIGIT of unit ->  (int)
  | HEXINTEGER of unit ->  (IntInf.int option)
  | DECNEGINTEGER of unit ->  (IntInf.int option)
  | DECPOSINTEGER of unit ->  (IntInf.int option)
@@ -1736,7 +1736,7 @@ fn (T 8) => MlyValue.QUAL_ID(fn () => (["bogus"])) |
 (T 61) => MlyValue.DECPOSINTEGER(fn () => (SOME (IntInf.fromInt 0))) | 
 (T 62) => MlyValue.DECNEGINTEGER(fn () => (SOME (IntInf.fromInt 0))) | 
 (T 63) => MlyValue.HEXINTEGER(fn () => (SOME (IntInf.fromInt 0))) | 
-(T 65) => MlyValue.WORD(fn () => (SOME 0w0)) | 
+(T 65) => MlyValue.WORD(fn () => (SOME 0)) | 
 (T 66) => MlyValue.REAL(fn () => (SOME "0.0")) | 
 (T 67) => MlyValue.STRING(fn () => ("")) | 
 (T 72) => MlyValue.ID(fn () => ("bogus")) | 

@@ -14,18 +14,18 @@
 
 #define tm2cal(tptr)   mktime(tptr)
 
-// FIXME
-/* The following must agree with timebase in basislib/Time.sml */
-#ifdef TAG_VALUES
-#define TIMEBASE (-1073741824)
-#else
-#define TIMEBASE (Min_Int)
-#endif
+/* The following must agree with timebase in basislib/Time.sml,
+ * which is assured by having basis/Initial.sml call "get_time_base".
+ * Now that we have at least 63 bits available, we can just use a
+ * timebase value of 0.
+ */
 
-uintptr_t
+#define TIMEBASE 0
+
+ssize_t
 get_time_base(int dummy)
 {
-  return convertIntToML((int)TIMEBASE);
+  return convertIntToML((long int)TIMEBASE);
 }
 
 uintptr_t

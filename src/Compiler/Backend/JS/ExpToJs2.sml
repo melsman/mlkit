@@ -273,7 +273,7 @@ fun resolveS (arg: J.stmt option * 'a) (f: 'a -> cont -> J.stmt) : ret =
       (SOME s,es') => S(fn k => s & f es' k)
     | (NONE,es') => S(fn k => f es' k)
 
-fun jint i = J.Cnst(J.Int(Int32.fromInt i))
+fun jint i = J.Cnst(J.Int(IntInf.fromInt i))
 val jcnst0 = jint 0
 val jcnst1 = jint 1
 val junit = jcnst0
@@ -284,8 +284,8 @@ val jnull = J.Cnst J.Null
 (* Compilation of value constructors *)
 fun ppCon C c : J.cnst =
     case Env.M.lookup (Context.envOf C) c of
-      SOME(STD i) => J.Int(Int32.fromInt i)
-    | SOME(ENUM i) => J.Int(Int32.fromInt i)
+      SOME(STD i) => J.Int(IntInf.fromInt i)
+    | SOME(ENUM i) => J.Int(IntInf.fromInt i)
     | SOME(BOOL true) => J.Bool true
     | SOME(BOOL false) => J.Bool false
     | SOME UNBOXED_NULL => J.Null
@@ -331,9 +331,9 @@ arithmentic operations must consider signs explicitly.
 fun jandw e w = J.Prim("&",[e,J.Cnst(J.Word w)])
 fun jorw e w = J.Prim("|",[e,J.Cnst(J.Word w)])
 
-fun wrapWord31 (e: J.exp) : J.exp = jandw e 0wx7FFFFFFF
+fun wrapWord31 (e: J.exp) : J.exp = jandw e 0x7FFFFFFF
 
-fun wrapWord32 (e: J.exp) : J.exp = jandw e 0wxFFFFFFFF
+fun wrapWord32 (e: J.exp) : J.exp = jandw e 0xFFFFFFFF
 
 fun callPrim0 n = J.App(J.Id n,[])
 
@@ -415,11 +415,11 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__shift_right_signed_word32ub" => J.Prim(">>", [e1,e2])
     | "__shift_right_signed_word31" =>
       J.IfExp(J.Prim("&", [e1,J.Id "-0x40000000"]),
-              jandw (J.Prim(">>", [jorw e1 0wx80000000, e2])) 0wx7FFFFFFF,
+              jandw (J.Prim(">>", [jorw e1 0x80000000, e2])) 0x7FFFFFFF,
               J.Prim(">>", [e1,e2]))
 
-    | "__shift_left_word31" => wrapWord31(J.Prim("<<",[e1,jandw e2 0wx1F]))
-    | "__shift_left_word32ub" => wrapWord32(J.Prim("<<",[e1,jandw e2 0wx1F]))
+    | "__shift_left_word31" => wrapWord31(J.Prim("<<",[e1,jandw e2 0x1F]))
+    | "__shift_left_word32ub" => wrapWord32(J.Prim("<<",[e1,jandw e2 0x1F]))
 
     | "__andb_word32ub" => J.Prim("&",[e1,e2])
     | "__andb_word31" => J.Prim("&",[e1,e2])
@@ -750,7 +750,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))
   | L.PRIM(L.SELECTprim i,[e]) =>
-    resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(Int32.fromInt i))))
+    resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(IntInf.fromInt i))))
   | L.PRIM(L.DEREFprim _, [e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst0))
   | L.PRIM(L.REFprim _, [e]) =>
@@ -774,7 +774,8 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
              val env_id = prLvar C (Lvars.new_named_lvar "env")
              val rep : rep = (fromList o map (fn (lv,lv',_) => (lv,lv'))) lvs_lvs'_idxs
              val body' = replace_lvs rep body
-             val binds = map (fn (_,lv',i) => J.Var(prLvar C lv', SOME(J.Sub(J.Id env_id,J.Cnst(J.Int i))))) lvs_lvs'_idxs
+             val binds = map (fn (_,lv',i) => J.Var(prLvar C lv', SOME(J.Sub(J.Id env_id,J.Cnst(J.Int i)))))
+                             lvs_lvs'_idxs
              val g = J.Fun(ids, J.Seq (binds@[wrapRet(RetCont NONE) (toj C P body')]))
              val f = J.Fun([env_id], J.Return g)
              val es = map (J.Id o prLvar C) fvs

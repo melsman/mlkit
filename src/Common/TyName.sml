@@ -11,6 +11,7 @@ structure TyName :> TYNAME =
 
     fun die s = Crash.impossible ("TyName." ^ s)
     val tag_values = Flags.is_on0 "tag_values"
+    val values_64bit = Flags.is_on0 "values_64bit"
 
     (* Type names are based on names, which may be `matched'. In
      * particular, if two type names, n1 and n2, are successfully
@@ -98,10 +99,14 @@ structure TyName :> TYNAME =
 	val tyName_BOOL       = predef true {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}
 	val tyName_INT31      = predef true {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
 	val tyName_INT32      = predef false{tycon=TyCon.tycon_INT32,      arity=0, equality=true}
+	val tyName_INT63      = predef true {tycon=TyCon.tycon_INT63,      arity=0, equality=true}
+	val tyName_INT64      = predef false{tycon=TyCon.tycon_INT64,      arity=0, equality=true}
 	val tyName_INTINF     = predef true {tycon=TyCon.tycon_INTINF,     arity=0, equality=true}
 	val tyName_WORD8      = predef true {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
 	val tyName_WORD31     = predef true {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
 	val tyName_WORD32     = predef false{tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
+	val tyName_WORD63     = predef true {tycon=TyCon.tycon_WORD63,     arity=0, equality=true}
+	val tyName_WORD64     = predef false{tycon=TyCon.tycon_WORD64,     arity=0, equality=true}
 	val tyName_REAL       = predef false{tycon=TyCon.tycon_REAL,       arity=0, equality=false}
 	val tyName_F64        = predef true {tycon=TyCon.tycon_F64,        arity=0, equality=false}
 	val tyName_STRING     = predef false{tycon=TyCon.tycon_STRING,     arity=0, equality=true}
@@ -118,8 +123,19 @@ structure TyName :> TYNAME =
 	val tynamesPredefined = !bucket
     end
 
-    fun tyName_IntDefault() = if tag_values() then tyName_INT31 else tyName_INT32
-    fun tyName_WordDefault() = if tag_values() then tyName_WORD31 else tyName_WORD32
+    fun tyName_IntDefault () =
+        case (tag_values(), values_64bit()) of
+            (true,  true)  => tyName_INT63
+          | (true,  false) => tyName_INT31
+          | (false, true)  => tyName_INT64
+          | (false, false) => tyName_INT32
+
+    fun tyName_WordDefault () =
+        case (tag_values(), values_64bit()) of
+            (true,  true)  => tyName_WORD63
+          | (true,  false) => tyName_WORD31
+          | (false, true)  => tyName_WORD64
+          | (false, false) => tyName_WORD32
 
     fun pr_TyName (tn: TyName) : string =
       let val str = TyCon.pr_TyCon (tycon tn)
@@ -132,20 +148,26 @@ structure TyName :> TYNAME =
 	  end
 	else
 	  (if tag_values() then
-	     (if eq(tn, tyName_INT31) then "int"
-	      else if eq(tn, tyName_WORD31) then "word"
+	     (if eq(tn, tyName_INT63) then "int"
+	      else if eq(tn, tyName_WORD63) then "word"
 		   else str)
 	   else
-	     (if eq(tn, tyName_INT32) then "int"
-	      else if eq(tn, tyName_WORD32) then "word"
+	     (if eq(tn, tyName_INT64) then "int"
+	      else if eq(tn, tyName_WORD64) then "word"
 		   else str))
       end
 
-    fun unboxed_num32 tn =
-      not(tag_values()) andalso (eq(tn,tyName_INT32)
-				   orelse eq(tn,tyName_WORD32))
+    local
+      fun unboxed_num32 tn =
+          not(tag_values()) andalso (eq(tn,tyName_INT32)
+				     orelse eq(tn,tyName_WORD32))
 
-    fun unboxed tn = unboxed_num32 tn orelse !(#unboxed tn)
+      fun unboxed_num64 tn =
+          not(tag_values()) andalso (eq(tn,tyName_INT64)
+				     orelse eq(tn,tyName_WORD64))
+    in
+      fun unboxed tn = unboxed_num32 tn orelse unboxed_num64 tn orelse !(#unboxed tn)
+    end
 
     fun setUnboxed (tn: TyName) : unit =
 	if unboxed tn then
@@ -180,9 +202,9 @@ structure TyName :> TYNAME =
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName
 
+(*
     structure TestMap =
       struct
-	(*
 	val _ = print "[test begin]\n"
 	fun error s = print ("error: " ^ s ^ "\n")
 	fun assert s false = error s
@@ -225,6 +247,6 @@ structure TyName :> TYNAME =
 		   | _ => error "test9"
 
 	val _ = print "[end of test]\n"
-*)
       end
-  end;
+  *)
+  end

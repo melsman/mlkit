@@ -233,12 +233,16 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
 	fun restrict (ib, ids, tynames) =
 	    let val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
-			       TyName.tyName_INT31,   (* int31, int32, intinf, word8, word31, word32 needed *)
-			       TyName.tyName_INT32,   (*     because of overloading *)
+			       TyName.tyName_INT31,   (* int31, int32, int63, int64, intinf, word8, word31, *)
+			       TyName.tyName_INT32,   (*  word32, word63, word64 needed because of overloading *)
+			       TyName.tyName_INT63,
+			       TyName.tyName_INT64,
 			       TyName.tyName_INTINF,
 			       TyName.tyName_WORD8,
 			       TyName.tyName_WORD31,
 			       TyName.tyName_WORD32,
+			       TyName.tyName_WORD63,
+			       TyName.tyName_WORD64,
 			       TyName.tyName_STRING,  (* string is needed for string constants *)
 			       TyName.tyName_CHAR,    (* char is needed for char constants *)
 			       TyName.tyName_REF,

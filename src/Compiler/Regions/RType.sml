@@ -1245,13 +1245,20 @@ struct
    * inference, integer and word types are resolved to be either word8,
    * word31, word32, int31, or int32. The default integer type is
    * dynamically determined to be the largest integer type that fits
-   * in 32 bits; similarly for words. *)
+   * in 32 bits; similarly for words.
+   *
+   * MEMO: we will later modify this to 64 bits...
+   *)
 
   val int31Type: Type = CONSTYPE(TyName.tyName_INT31,[],[],[])
   val int32Type: Type = CONSTYPE(TyName.tyName_INT32,[],[],[])
+  val int63Type: Type = CONSTYPE(TyName.tyName_INT63,[],[],[])
+  val int64Type: Type = CONSTYPE(TyName.tyName_INT64,[],[],[])
   val word8Type: Type = CONSTYPE(TyName.tyName_WORD8,[],[],[])
   val word31Type: Type = CONSTYPE(TyName.tyName_WORD31,[],[],[])
   val word32Type: Type = CONSTYPE(TyName.tyName_WORD32,[],[],[])
+  val word63Type: Type = CONSTYPE(TyName.tyName_WORD63,[],[],[])
+  val word64Type: Type = CONSTYPE(TyName.tyName_WORD64,[],[],[])
 
   val exnType: Type = CONSTYPE(TyName.tyName_EXN,[],[],[])
   val boolType: Type = CONSTYPE(TyName.tyName_BOOL,[],[],[])
@@ -1314,7 +1321,9 @@ struct
         else if TyName.eq (tyname, TyName.tyName_REAL) then
           SOME (RegConst.size_of_real ())
         else if (TyName.eq (tyname, TyName.tyName_WORD32)
-                 orelse TyName.eq (tyname, TyName.tyName_INT32)) then
+                 orelse TyName.eq (tyname, TyName.tyName_INT32)
+                 orelse TyName.eq (tyname, TyName.tyName_INT64)
+                 orelse TyName.eq (tyname, TyName.tyName_WORD64)) then
           (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
           SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
         else if (TyName.eq (tyname, TyName.tyName_STRING)

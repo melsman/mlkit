@@ -56,9 +56,9 @@ structure CompBasis: COMP_BASIS =
 		   drop_env=DropRegions.init,
 		   psi_env=PhysSizeInf.init}
 
-    fun plus({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env},
-	     {NEnv=NEnv',TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
-	      mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env'}) =
+    fun plus ({NEnv,TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+	      {NEnv=NEnv',TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
+	       mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env'}) =
       {NEnv=Normalize.plus(NEnv,NEnv'),
        TCEnv=LambdaStatSem.plus(TCEnv,TCEnv'),
        EqEnv=EliminateEq.plus(EqEnv,EqEnv'),
@@ -84,12 +84,12 @@ structure CompBasis: COMP_BASIS =
                        ]
              }
 
-    fun debug(s, b) = if !debug_man_enrich then
+    fun debug (s, b) = if !debug_man_enrich then
                          (if b then log("\n" ^ s ^ ": enrich succeeded.")
 			  else log("\n" ^ s ^ ": enrich failed."); b)
-		      else b
+		       else b
 
-    fun debug1(s, b,oenv,oenv1) =
+    fun debug1 (s, b,oenv,oenv1) =
 	if !debug_man_enrich then
 	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
 	     else (log("\n" ^ s ^ ": enrich failed.");

@@ -10,6 +10,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
      * --------------------------------------------------------- *)
 
     val letrec_polymorphism_only = ref false   (* see the main function below. *)
+    val tag_values = Flags.is_on0 "tag_values"
 
     open LambdaExp TyName
 
@@ -168,10 +169,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	  TyNameMap.fromList  [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
 			       (tyName_INT31, []),
 			       (tyName_INT32, []),
+			       (tyName_INT63, []),
+			       (tyName_INT64, []),
 			       (tyName_INTINF, [Con.con_INTINF]),
 			       (tyName_WORD8, []),
 			       (tyName_WORD31, []),
 			       (tyName_WORD32, []),
+			       (tyName_WORD63, []),
+			       (tyName_WORD64, []),
 			       (tyName_REAL, []),
 			       (tyName_F64, []),
 			       (tyName_STRING, []),
@@ -329,9 +334,9 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	fun restrict (env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
 	  let
               fun say s = print(s^"\n");
-              fun sayenv() = PP.outputTree(print,layout_env env, !Flags.colwidth)
-	      fun sayset() = PP.outputTree(print,NatSet.layoutSet {start="{",finish="}",
-								   sep=","} (PP.LEAF o pr_tyvar) ftv,
+              fun sayenv () = PP.outputTree(print,layout_env env, !Flags.colwidth)
+	      fun sayset () = PP.outputTree(print,NatSet.layoutSet {start="{",finish="}",
+								    sep=","} (PP.LEAF o pr_tyvar) ftv,
 					   !Flags.colwidth)
 	      val _ = if NatSet.isEmpty ftv then () (* there can no-longer be free type variables in
 						     * a topdec - see EfficientElab/ElabTopdec.sml; mael 2007-11-05 *)
@@ -656,7 +661,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			       of ([ta], [tr]) =>
 				 let open LambdaExp
 				     val unboxed_types = [boolType, unitType, int31Type, word31Type,
+                                                          int63Type, word63Type,
 							  intDefaultType(), wordDefaultType(), foreignptrType]
+                                                         @ (if tag_values() then []
+                                                            else [int32Type, word32Type])
 				     fun ok t = List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
 				 in if ok ta andalso ok tr then ()
 				    else die "c function `id' is used to cast to or from a boxed type; \
@@ -814,6 +822,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_INT31
 			   | 32 => tyName_INT32
+			   | 63 => tyName_INT63
+			   | 64 => tyName_INT64
                         (* | ~1 => tyName_INTINF *)  (* IntInf's have been compiled away at this point *)
 			   | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
 	   in type_switch (type_lexp env) (fn _ => tn) switch
@@ -822,6 +832,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_WORD31  (* word8 type translated into default word type in CompileDec *)
 			   | 32 => tyName_WORD32
+			   | 63 => tyName_WORD63
+			   | 64 => tyName_WORD64
 			   | _ => die "SWITCH_I"
 	   in type_switch (type_lexp env) (fn _ => tn) switch
 	   end

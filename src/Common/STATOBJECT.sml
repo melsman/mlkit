@@ -3,11 +3,11 @@
  phi in realisation, §5.2, p. 29.  Also Level and Substitution.*)
 
 signature STATOBJECT =
-  sig 
+  sig
     (*types provided by this module:*)
     type level
     type TVNames
-    type TyVar 
+    type TyVar
     type Type
     type FunType
     type ConsType
@@ -21,7 +21,7 @@ signature STATOBJECT =
     type ExplicitTyVar (*the type of type variables explicit in the source*)
     type TyName = TyName.TyName
     type StringTree = TyName.Set.StringTree
-    type lab 
+    type lab
     type scon
     type strid
 
@@ -41,11 +41,11 @@ signature STATOBJECT =
       end
 
     (*Association list for the printing of type variables:*)
-    val newTVNames                  : unit -> TVNames	
+    val newTVNames                  : unit -> TVNames
 
     structure TyVar :
       sig
-	val eq                      : TyVar * TyVar -> bool 
+	val eq                      : TyVar * TyVar -> bool
 	val equality                : TyVar -> bool
 	val fresh_normal            : unit -> TyVar
 	val fresh_overloaded        : TyName list -> TyVar
@@ -85,7 +85,7 @@ signature STATOBJECT =
 	val from_RecType            : RecType -> Type
 	val to_RecType              : Type -> RecType option
 	val contains_row_variable   : Type -> bool
-	    (*contains_row_variable rho = true iff there exists a 
+	    (*contains_row_variable rho = true iff there exists a
 	     row variable in the type rho*)
 	structure RecType :
 	  sig
@@ -122,27 +122,31 @@ signature STATOBJECT =
 	val mk_Ref                  : Type -> Type
 
 	(* Special constants *)
-	val Int31                   : Type           
+	val Int31                   : Type
 	val Int32                   : Type
+	val Int63                   : Type
+	val Int64                   : Type
 	val IntInf                  : Type
-	val IntDefault              : unit -> Type   (* Either Int31 or Int32, 
-						      * dependent on tagging; used 
-						      * for resolving overloading. *) 
+	val IntDefault              : unit -> Type   (* Either Int31 or Int32,
+						      * dependent on tagging; used
+						      * for resolving overloading. *)
 	val Real                    : Type
 	val Bool                    : Type           (* needed for initial TE and VE *)
 	val Word8                   : Type
 	val Word31                  : Type
 	val Word32                  : Type
-	val WordDefault             : unit -> Type   (* Either Word31 or Word32, 
-						      * dependent on tagging; used 
+	val Word63                  : Type
+	val Word64                  : Type
+	val WordDefault             : unit -> Type   (* Either Word31 or Word32,
+						      * dependent on tagging; used
 						      * for resolving overloading. *)
 	val String                  : Type
 	val Char                    : Type
- 
+
 	val of_scon                 : scon -> {type_scon: Type, overloading : TyVar option}
 
 	datatype unify_result = UnifyOk (* of Substitution *)
-                              | UnifyFail of string 
+                              | UnifyFail of string
                               | UnifyRankError of TyVar * TyName
 
 	val unify                   : Type * Type -> unify_result
@@ -172,7 +176,7 @@ signature STATOBJECT =
 	 * scheme have been instantiated to.*)
 
 	val instance                : TypeScheme -> Type
-	val instance'               : TypeScheme -> Type * Type list  
+	val instance'               : TypeScheme -> Type * Type list
 	val generalises_TypeScheme  : TypeScheme * TypeScheme -> bool
 	val generalises_Type        : TypeScheme * Type -> bool
 
@@ -285,4 +289,3 @@ signature STATOBJECT =
       end (*Realisation*)
 
   end;
-

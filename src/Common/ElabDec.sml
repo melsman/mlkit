@@ -72,6 +72,7 @@ structure ElabDec: ELABDEC =
     type ElabInfo = ElabInfo.ElabInfo
     type TyName = TyName.TyName
 
+    val values_64bit = Flags.is_on0 "values_64bit"
 
     (*info*)
 
@@ -1899,6 +1900,13 @@ let
 	 (Type.Word8,  OverloadingInfo.RESOLVED_WORD8),
 	 (Type.Word31, OverloadingInfo.RESOLVED_WORD31),
 	 (Type.Word32, OverloadingInfo.RESOLVED_WORD32)]
+        @
+        (if values_64bit() then
+           [(Type.Int63,  OverloadingInfo.RESOLVED_INT63),
+	    (Type.Int64,  OverloadingInfo.RESOLVED_INT64),
+            (Type.Word63, OverloadingInfo.RESOLVED_WORD63),
+	    (Type.Word64, OverloadingInfo.RESOLVED_WORD64)]
+         else [])
 
   fun tau_to_overloadinginfo tau  =
     case List.find (fn (tau', oi) => Type.eq (tau, tau')) tau_to_overloadinginfo_alist

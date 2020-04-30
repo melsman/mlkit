@@ -58,7 +58,8 @@
 #define val_tag_exname            (gen_record_tag(2,2,0,6))
 #define val_tag_excon0            (gen_record_tag(1,0,0,6))
 #define val_tag_excon1            (gen_record_tag(2,0,0,6))
-#define val_tag_i32b              (gen_record_tag(1,1,0,6))     /*hmmm; mael 2001-04-23 */
+#define val_tag_i32b              (gen_record_tag(1,1,0,6))
+#define val_tag_i64b              (gen_record_tag(1,1,0,6))
 #endif
 
 #define mlTRUE 3
@@ -76,12 +77,16 @@
 
 #define i32ub_to_i31(i)   (((i) << 1) + 1)
 #define i31_to_i32ub(i)   ((i) >> 1)
+#define i64ub_to_i63(i)   (((i) << 1) + 1)
+#define i63_to_i64ub(i)   ((i) >> 1)
 
 #ifdef TAG_VALUES
 #define convertIntToC(i)  ((i) >> 1)
-#define convertIntToML(i) (signed int)(((unsigned int)(i) << 1) + 1)
+#define convertIntToML(i) (signed long int)(((unsigned long int)(i) << 1) + 1)
 #define get_i32b(b)       (* (((size_t *)b)+1))
 #define set_i32b_tag(b)   (* (size_t *)(b) = val_tag_i32b)
+#define get_i64b(b)       (* (((size_t *)b)+1))
+#define set_i64b_tag(b)   (* (size_t *)(b) = val_tag_i64b)
 #else
 #define convertIntToC(i)  (i)
 #define convertIntToML(i) (i)

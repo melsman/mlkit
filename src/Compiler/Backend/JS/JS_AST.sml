@@ -2,8 +2,8 @@ signature JS_AST = sig
 
   type id = string  (* labels and identifiers *)
 
-  datatype cnst = Int of Int32.int | Str of string | Real of string
-                | Bool of bool | Word of Word32.word | Null
+  datatype cnst = Int of IntInf.int | Str of string | Real of string
+                | Bool of bool | Word of IntInf.int | Null
 
   datatype stmt =
          Var of id * exp option
@@ -23,7 +23,7 @@ signature JS_AST = sig
          Prim of string * exp list   (* string determines if it is infix *)
        | Array of exp list
        | IfExp of exp * exp * exp
-       | Fun of id list * stmt 
+       | Fun of id list * stmt
        | App of exp * exp list
        | Id of id
        | Cnst of cnst
@@ -31,10 +31,9 @@ signature JS_AST = sig
        | New of id * exp list
        | Sub of exp * exp
 
-  val is_infix : string -> bool 
+  val is_infix : string -> bool
 
   val pr_cnst : cnst -> string
   val pr_stmt : stmt -> string
-  val pr_exp : exp -> string  
+  val pr_exp : exp -> string
 end
-

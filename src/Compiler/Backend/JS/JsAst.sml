@@ -20,15 +20,15 @@ struct
     | concatWith tsep [t] = t
     | concatWith tsep (t::ts) = t & tsep & concatWith tsep ts
 end
- 
+
 structure JsAst : JS_AST = struct
 
   fun die s = (print("Error: " ^ s ^ "\n"); raise Fail s)
 
   type id = string  (* labels and identifiers *)
 
-  datatype cnst = Int of Int32.int | Str of string | Real of string
-                | Bool of bool | Word of Word32.word | Null
+  datatype cnst = Int of IntInf.int | Str of string | Real of string
+                | Bool of bool | Word of IntInf.int | Null
 
   datatype stmt =
          Var of id * exp option
@@ -41,14 +41,14 @@ structure JsAst : JS_AST = struct
        | IfStmt of exp * stmt * stmt option
        | Break
        | Try of stmt * id * stmt
-       | Throw of exp 
+       | Throw of exp
        | Embed of string
 
        and exp =
          Prim of string * exp list   (* string determines if it is infix *)
        | Array of exp list
        | IfExp of exp * exp * exp
-       | Fun of id list * stmt 
+       | Fun of id list * stmt
        | App of exp * exp list
        | Id of id
        | Cnst of cnst
@@ -56,7 +56,7 @@ structure JsAst : JS_AST = struct
        | New of id * exp list
        | Sub of exp * exp
 
-  fun is_infix p = 
+  fun is_infix p =
       case p of
         "=" => true  (* assign *)
       | "==" => true
@@ -79,7 +79,7 @@ structure JsAst : JS_AST = struct
       | _ => false
 
   fun mlToJsString s =
-    let 
+    let
       fun digit n = chr(48 + n);
       fun toJSescape (c:char) : string =
 	case c of
@@ -98,12 +98,12 @@ structure JsAst : JS_AST = struct
                    | _       => let val n = ord c
 				in implode[#"\\", digit(n div 64), digit(n div 8 mod 8),
 					   digit(n mod 8)]
-				end)          
-          
+				end)
+
     in "\"" ^ String.translate toJSescape s ^ "\""
     end
 
-  fun mlToJsInt i = 
+  fun mlToJsInt i =
       String.translate (fn #"~" => "-" | c => Char.toString c) i
 
   fun mlToJsReal s =
@@ -114,14 +114,14 @@ structure JsAst : JS_AST = struct
   fun wrap (s1,s2) cs = $s1 & cs & $s2
   fun par b cs = if b then wrap ("(",")") cs else cs
 
-  fun pp_cnst p c = 
+  fun pp_cnst p c =
       case c of
-        Int i => par (p andalso i < 0) ($(mlToJsInt (Int32.toString i)))
+        Int i => par (p andalso i < 0) ($(mlToJsInt (IntInf.toString i)))
       | Str s => $ (mlToJsString s)
       | Real s => par (p andalso String.sub(s,0) = #"~") ($(mlToJsReal s))
       | Bool true => $"true"
       | Bool false => $"false"
-      | Word w => $(Word32.fmt StringCvt.DEC w)
+      | Word w => $(IntInf.fmt StringCvt.DEC w)
       | Null => $"null"
 
   fun pr_cnst c = Cs.toString (pp_cnst false c)
@@ -131,16 +131,16 @@ structure JsAst : JS_AST = struct
 
   val end_stmt = $";\n"
 
-  fun pp_varid id = 
-      if CharVector.exists (fn #"." => true | _ => false) id then $id 
-      else $"var " & $id 
+  fun pp_varid id =
+      if CharVector.exists (fn #"." => true | _ => false) id then $id
+      else $"var " & $id
 
   fun pp_exp p e =
       case e of
         Prim ("Infinity",[]) => $"Infinity"
       | Prim ("-Infinity",[]) => $"-Infinity"
       | Prim (",",es) => pp_list ("(",",",")") (pp_exp false) es
-      | Prim (n,es) => 
+      | Prim (n,es) =>
         let fun default() = par p ($n & pp_list ("(",",",")") (pp_exp false) es)
         in case es of
              [e1,e2] =>
@@ -155,11 +155,11 @@ structure JsAst : JS_AST = struct
       | App (e1,es) => par p (pp_exp true e1 & pp_list ("(",",",")") (pp_exp false) es)
       | Id id => $ id
       | Cnst c => pp_cnst p c
-      | Prop (e0,id) => pp_exp true e0 & ($".") & ($id) 
+      | Prop (e0,id) => pp_exp true e0 & ($".") & ($id)
       | New (id, es) => par p ($"new " & $id & pp_list ("(",",",")") (pp_exp false) es)
       | Sub (e1, e2) => pp_exp true e1 & ($"[") & pp_exp false e2 & ($"]")
 
-  and pp_stmt s = 
+  and pp_stmt s =
       case s of
         Var (id, NONE) => pp_varid id & end_stmt
       | Var (id, SOME e) => pp_varid id & $" = " & pp_exp false e & end_stmt
@@ -168,23 +168,23 @@ structure JsAst : JS_AST = struct
       | Sw (e,cases,defopt) =>
         $"switch (" & pp_exp false e & $") { " &
         CSeq (List.map (fn (c,s) => $"case " & pp_cnst false c & $": " & pp_bblock s) cases) &
-        (case defopt of SOME def => $"default: " & pp_block def | NONE => $"") & 
+        (case defopt of SOME def => $"default: " & pp_block def | NONE => $"") &
         $" }" & end_stmt
       | Return e => $"return " & pp_exp false e & end_stmt
       | Continue id => $"continue " & $id & end_stmt
-      | While (idopt, e, s) =>         
+      | While (idopt, e, s) =>
         let val lab =
                 case idopt of SOME id => $id & $": "
                             | NONE => CSeq nil
         in lab & $"while (" & pp_exp false e & $") " & pp_block s & end_stmt
         end
-      | IfStmt (e,s1,s2opt) => 
-        $"if (" & pp_exp false e & $") " & pp_block s1 & 
-         (case s2opt of 
-            SOME s2 => $" else " & pp_block s2 & end_stmt 
+      | IfStmt (e,s1,s2opt) =>
+        $"if (" & pp_exp false e & $") " & pp_block s1 &
+         (case s2opt of
+            SOME s2 => $" else " & pp_block s2 & end_stmt
           | NONE => end_stmt)
       | Break => $"break" & end_stmt
-      | Try (s0,id,s) => $"try " & pp_block s0 & $" catch(" & $id & $") " & pp_block s & end_stmt 
+      | Try (s0,id,s) => $"try " & pp_block s0 & $" catch(" & $id & $") " & pp_block s & end_stmt
       | Throw e => $"throw " & pp_exp false e & end_stmt
       | Embed s => $s
   and pp_block s = wrap ("{","}") (pp_stmt s)

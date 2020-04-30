@@ -49,8 +49,8 @@ signature REGION_EXP =
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
         VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, fix_bound: bool}
-      | INTEGER  of Int32.int * Type * 'a
-      | WORD     of Word32.word * Type * 'a
+      | INTEGER  of IntInf.int * Type * 'a
+      | WORD     of IntInf.int * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
       | F64      of string * 'a
@@ -79,8 +79,8 @@ signature REGION_EXP =
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b)trip
       | HANDLE   of ('a,'b)trip * ('a,'b)trip
-      | SWITCH_I of {switch: ('a,'b,Int32.int) Switch, precision: int}
-      | SWITCH_W of {switch: ('a,'b,Word32.word) Switch, precision: int}
+      | SWITCH_I of {switch: ('a,'b,IntInf.int) Switch, precision: int}
+      | SWITCH_W of {switch: ('a,'b,IntInf.int) Switch, precision: int}
       | SWITCH_S of ('a,'b,string) Switch
       | SWITCH_C of ('a,'b,con) Switch
       | SWITCH_E of ('a,'b,excon) Switch

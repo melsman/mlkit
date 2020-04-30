@@ -51,8 +51,10 @@ signature INSTS_X64 =
 
     datatype inst =                 (* general instructions *)
       movq of ea * ea
+    | mov of ea * ea                (* e.g. for zero extension for moving 32-bit values into 64-bit registers *)
     | movb of ea * ea
     | movzbq of ea * ea
+    | movslq of ea * ea
     | push of ea
     | leaq of ea * ea
     | pop of ea
@@ -102,7 +104,7 @@ signature INSTS_X64 =
     | ucomisd of ea * ea
     | xorps of ea * ea
     | sqrtsd of ea * ea
-    | cvtsi2sdl of ea * ea
+    | cvtsi2sdq of ea * ea
 
     | fstpq of ea       (* store float and pop float stack *)
     | fldq of ea        (* push float onto the float stack *)

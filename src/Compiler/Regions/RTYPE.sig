@@ -27,9 +27,13 @@ sig
   val exnType    : Type
   val int31Type  : Type
   val int32Type  : Type
+  val int63Type  : Type
+  val int64Type  : Type
   val word8Type  : Type
   val word31Type : Type
   val word32Type : Type
+  val word63Type : Type
+  val word64Type : Type
   val boolType   : Type
   val realType   : Type
   val f64Type    : Type

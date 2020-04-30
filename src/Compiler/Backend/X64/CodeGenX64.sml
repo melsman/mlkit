@@ -236,7 +236,7 @@ struct
                                 else i
                               val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                             in
-                              move_immed(Int32.fromInt tag, R reg_for_result,C')
+                              move_immed(IntInf.fromInt tag, R reg_for_result,C')
                             end
                         | LS.UNBOXED i =>
                             let
@@ -247,7 +247,7 @@ struct
                                        maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
                                 C aux_regions
                             in
-                              reset_regions(move_immed(Int32.fromInt tag, R reg_for_result,C'))
+                              reset_regions(move_immed(IntInf.fromInt tag, R reg_for_result,C'))
                             end
                         | LS.BOXED i =>
                             let
@@ -340,7 +340,7 @@ struct
                      in
                        store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
                        if BI.tag_values() then
-                         move_immed(Int32.fromInt BI.ml_unit, R reg_for_result,C')
+                         move_immed(IntInf.fromInt BI.ml_unit, R reg_for_result,C')
                        else C')
                      end
                     | LS.PASS_PTR_TO_MEM(alloc,i,untagged_value) =>
@@ -645,7 +645,8 @@ struct
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
                   let
-                    val (t_lab,f_lab) = if sel_val = Int32.fromInt BI.ml_true then (lab_t,lab_f) else (lab_f,lab_t)
+                    val (t_lab,f_lab) = if sel_val = IntInf.fromInt BI.ml_true then (lab_t,lab_f)
+                                        else (lab_f,lab_t)
                     val lab_exit = new_local_lab "lab_exit"
                   in
                     I.lab(LocalLab t_lab) ::
@@ -659,7 +660,7 @@ struct
                   compileNumSwitch {size_ff=size_ff,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
-                                    toInt=fn i => maybeTagInt{value=i, precision=precision},
+                                    toInt=fn i => maybeTagIntOrWord{value=i, precision=precision},
                                     opr_aty=opr_aty,
                                     oprBoxed=boxedNum precision,
                                     sels=sels,
@@ -669,7 +670,7 @@ struct
                   compileNumSwitch {size_ff=size_ff,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
-                                    toInt=fn w => Int32.fromLarge(Word32.toLargeIntX (maybeTagWord{value=w, precision=precision})),
+                                    toInt=fn w => maybeTagIntOrWord{value=w, precision=precision},
                                     opr_aty=opr_aty,
                                     oprBoxed=boxedNum precision,
                                     sels=sels,
@@ -697,9 +698,9 @@ struct
                                       | ((con,con_kind),_)::rest => con_kind
                     val sels' = map (fn ((con,con_kind),sel_insts) =>
                                      case con_kind
-                                       of LS.ENUM i => (Int32.fromInt i,sel_insts)
-                                        | LS.UNBOXED i => (Int32.fromInt i,sel_insts)
-                                        | LS.BOXED i => (Int32.fromInt i,sel_insts)) sels
+                                       of LS.ENUM i => (IntInf.fromInt i,sel_insts)
+                                        | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
+                                        | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon(src_aty,C) =
                       let val cont_lab = new_local_lab "cont"
                       in move_aty_into_reg(src_aty,tmp_reg0,size_ff,
@@ -722,7 +723,7 @@ struct
                     F (compileNumSwitch {size_ff=size_ff,
                                          size_ccf=size_ccf,
                                          CG_lss=CG_lss,
-                                         toInt=fn i => i,   (* tagging already done in ClosExp *)
+                                         toInt=fn x => x,   (* tagging already done in ClosExp *)
                                          opr_aty=opr_aty,
                                          oprBoxed=false,
                                          sels=sels',
@@ -742,46 +743,88 @@ struct
                       val (x,y) = case args of
                                       [x,y] => (x,y)
                                     | _ => die "CG_ls: Expecting two arguments for flow primitive"
-                      fun cmp i = cmpi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
-                      fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp i = cmpi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp_quad i = cmpi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp_boxed_quad i = cmpbi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,size_ff,C)
                       fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,size_ff,C)
                       open PrimName
-                  in case name
-                       of Equal_int32ub => cmp I.je
-                        | Equal_int32b => cmp_boxed I.je
-                        | Equal_int31 => cmp I.je
-                        | Equal_word31 => cmp I.je
-                        | Equal_word32ub => cmp I.je
-                        | Equal_word32b => cmp_boxed I.je
-                        | Less_int32ub => cmp I.jl
-                        | Less_int32b => cmp_boxed I.jl
-                        | Less_int31 => cmp I.jl
-                        | Less_word31 => cmp I.jb
-                        | Less_word32ub => cmp I.jb
-                        | Less_word32b => cmp_boxed I.jb
-                        | Lesseq_int32ub => cmp I.jle
-                        | Lesseq_int32b => cmp_boxed I.jle
-                        | Lesseq_int31 => cmp I.jle
-                        | Lesseq_word31 => cmp I.jbe
-                        | Lesseq_word32ub => cmp I.jbe
-                        | Lesseq_word32b => cmp_boxed I.jbe
-                        | Greater_int32ub => cmp I.jg
-                        | Greater_int32b => cmp_boxed I.jg
-                        | Greater_int31 => cmp I.jg
-                        | Greater_word31 => cmp I.ja
-                        | Greater_word32ub => cmp I.ja
-                        | Greater_word32b => cmp_boxed I.ja
-                        | Greatereq_int32ub => cmp I.jge
-                        | Greatereq_int32b => cmp_boxed I.jge
-                        | Greatereq_int31 => cmp I.jge
-                        | Greatereq_word31 => cmp I.jae
-                        | Greatereq_word32ub => cmp I.jae
-                        | Greatereq_word32b => cmp_boxed I.jae
-                        | Less_f64 => cmpf64 I.jb
-                        | Lesseq_f64 => cmpf64 I.jbe
-                        | Greater_f64 => cmpf64 I.ja
-                        | Greatereq_f64 => cmpf64 I.jae
-                        | _ => die "CG_ls: Unsupported PRIM used with Flow Variable"
+                  in case name of
+                         Equal_int32ub =>  cmp       I.je
+                       | Equal_int32b =>   cmp_boxed I.je
+                       | Equal_int31 =>    cmp       I.je
+                       | Equal_word31 =>   cmp       I.je
+                       | Equal_word32ub => cmp       I.je
+                       | Equal_word32b =>  cmp_boxed I.je
+
+                       | Equal_int64ub =>  cmp_quad       I.je
+                       | Equal_int64b =>   cmp_boxed_quad I.je
+                       | Equal_int63 =>    cmp_quad       I.je
+                       | Equal_word63 =>   cmp_quad       I.je
+                       | Equal_word64ub => cmp_quad       I.je
+                       | Equal_word64b =>  cmp_boxed_quad I.je
+
+                       | Less_int32ub =>    cmp       I.jl
+                       | Less_int32b =>     cmp_boxed I.jl
+                       | Less_int31 =>      cmp       I.jl
+                       | Less_word31 =>     cmp       I.jb
+                       | Less_word32ub =>   cmp       I.jb
+                       | Less_word32b =>    cmp_boxed I.jb
+
+                       | Less_int64ub =>    cmp_quad       I.jl
+                       | Less_int64b =>     cmp_boxed_quad I.jl
+                       | Less_int63 =>      cmp_quad       I.jl
+                       | Less_word63 =>     cmp_quad       I.jb
+                       | Less_word64ub =>   cmp_quad       I.jb
+                       | Less_word64b =>    cmp_boxed_quad I.jb
+
+                       | Lesseq_int32ub =>  cmp       I.jle
+                       | Lesseq_int32b =>   cmp_boxed I.jle
+                       | Lesseq_int31 =>    cmp       I.jle
+                       | Lesseq_word31 =>   cmp       I.jbe
+                       | Lesseq_word32ub => cmp       I.jbe
+                       | Lesseq_word32b =>  cmp_boxed I.jbe
+
+                       | Lesseq_int64ub =>  cmp_quad       I.jle
+                       | Lesseq_int64b =>   cmp_boxed_quad I.jle
+                       | Lesseq_int63 =>    cmp_quad       I.jle
+                       | Lesseq_word63 =>   cmp_quad       I.jbe
+                       | Lesseq_word64ub => cmp_quad       I.jbe
+                       | Lesseq_word64b =>  cmp_boxed_quad I.jbe
+
+                       | Greater_int32ub =>  cmp       I.jg
+                       | Greater_int32b =>   cmp_boxed I.jg
+                       | Greater_int31 =>    cmp       I.jg
+                       | Greater_word31 =>   cmp       I.ja
+                       | Greater_word32ub => cmp       I.ja
+                       | Greater_word32b =>  cmp_boxed I.ja
+
+                       | Greater_int64ub =>  cmp_quad       I.jg
+                       | Greater_int64b =>   cmp_boxed_quad I.jg
+                       | Greater_int63 =>    cmp_quad       I.jg
+                       | Greater_word63 =>   cmp_quad       I.ja
+                       | Greater_word64ub => cmp_quad       I.ja
+                       | Greater_word64b =>  cmp_boxed_quad I.ja
+
+                       | Greatereq_int32ub =>  cmp       I.jge
+                       | Greatereq_int32b =>   cmp_boxed I.jge
+                       | Greatereq_int31 =>    cmp       I.jge
+                       | Greatereq_word31 =>   cmp       I.jae
+                       | Greatereq_word32ub => cmp       I.jae
+                       | Greatereq_word32b =>  cmp_boxed I.jae
+
+                       | Greatereq_int64ub =>  cmp_quad       I.jge
+                       | Greatereq_int64b =>   cmp_boxed_quad I.jge
+                       | Greatereq_int63 =>    cmp_quad       I.jge
+                       | Greatereq_word63 =>   cmp_quad       I.jae
+                       | Greatereq_word64ub => cmp_quad       I.jae
+                       | Greatereq_word64b =>  cmp_boxed_quad I.jae
+
+                       | Less_f64 => cmpf64 I.jb
+                       | Lesseq_f64 => cmpf64 I.jbe
+                       | Greater_f64 => cmpf64 I.ja
+                       | Greatereq_f64 => cmpf64 I.jae
+                       | _ => die "CG_ls: Unsupported PRIM used with Flow Variable"
                   end)
                | LS.PRIM{name,args,res} =>
                  let val d = case res of nil => SS.UNIT_ATY
@@ -802,25 +845,84 @@ struct
                          | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
                      | [x] =>
                        (case name of
-                            Neg_int32ub => neg_int_kill_tmp0 {tag=false} (x,d,size_ff,C)
-                          | Neg_int31 => neg_int_kill_tmp0 {tag=true} (x,d,size_ff,C)
-                          | Abs_int32ub => abs_int_kill_tmp0 {tag=false} (x,d,size_ff,C)
-                          | Abs_int31 => abs_int_kill_tmp0 {tag=true} (x,d,size_ff,C)
+                            Neg_int32ub => neg_int_kill_tmp0 {tag=false, quad=false} (x,d,size_ff,C)
+                          | Neg_int31 =>   neg_int_kill_tmp0 {tag=true,  quad=false} (x,d,size_ff,C)
+                          | Neg_int64ub => neg_int_kill_tmp0 {tag=false, quad=true}  (x,d,size_ff,C)
+                          | Neg_int63 =>   neg_int_kill_tmp0 {tag=true,  quad=true}  (x,d,size_ff,C)
+
+                          | Abs_int32ub => abs_int_kill_tmp0 {tag=false, quad=false} (x,d,size_ff,C)
+                          | Abs_int31 =>   abs_int_kill_tmp0 {tag=true,  quad=false} (x,d,size_ff,C)
+                          | Abs_int64ub => abs_int_kill_tmp0 {tag=false, quad=true}  (x,d,size_ff,C)
+                          | Abs_int63 =>   abs_int_kill_tmp0 {tag=true,  quad=true}  (x,d,size_ff,C)
+
                           | Int31_to_int32ub => num31_to_num32ub(x,d,size_ff,C)
                           | Int32b_to_int31 => int32_to_int31 {boxedarg=true} (x,d,size_ff,C)
                           | Int32ub_to_int31 => int32_to_int31 {boxedarg=false} (x,d,size_ff,C)
                           | Word31_to_word32ub => num31_to_num32ub(x,d,size_ff,C)
                           | Word32b_to_word31 => word32_to_word31 {boxedarg=true} (x,d,size_ff,C)
                           | Word32ub_to_word31 => word32_to_word31 {boxedarg=false} (x,d,size_ff,C)
-                          | Word31_to_word32ub_X => num31_to_num32ub(x,d,size_ff,C)
-                          | Word32ub_to_int32ub => word32ub_to_int32ub(x,d,size_ff,C)
+                          | Word31_to_word32ub_X => num31_to_num32ub (x,d,size_ff,C)
+                          | Word32ub_to_int32ub => word32ub_to_int32ub (x,d,size_ff,C)
                           | Word32b_to_int31 => word32_to_int31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
                           | Int32b_to_word31 => word32_to_word31 {boxedarg=true} (x,d,size_ff,C)
                           | Word32b_to_int31_X => word32_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+
+                          | Word64ub_to_word32ub => word64ub_to_word32ub (x,d,size_ff,C)
+                          | Word32ub_to_word64ub => word32ub_to_word64ub {signext=false} (x,d,size_ff,C)
+                          | Word64ub_to_int32ub => word64ub_to_int32ub (x,d,size_ff,C)
+                          | Word64ub_to_int64ub => num64ub_to_num64ub {ovf=true} (x,d,size_ff,C)
+                          | Word64ub_to_int64ub_X => num64ub_to_num64ub {ovf=false} (x,d,size_ff,C)
+
+                          | Word64b_to_int31 => word64_to_int31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
+                          | Word64b_to_int31_X => word64_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+
+                          | Int32ub_to_int64ub => int32ub_to_int64ub (x,d,size_ff,C)
+                          | Int64ub_to_word64ub => num64ub_to_num64ub {ovf=false} (x,d,size_ff,C)
+
+                          | Int64b_to_int31 => int64_to_int31 {boxedarg=true} (x,d,size_ff,C)
+
+                          | Int64ub_to_int32ub => int64ub_to_int32ub (x,d,size_ff,C)
+
+                          | Int31_to_int64ub => int31_to_int64ub(x,d,size_ff,C)
+
+                          | Int64b_to_int63 => int64_to_int63 {boxedarg=true} (x,d,size_ff,C)
+                          | Word64b_to_word63 => word64_to_num63 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+                          | Word32b_to_word63 => word32_to_word63 {boxedarg=true,signext=false} (x,d,size_ff,C)
+                          | Word63_to_word31 => word63_to_word31 (x,d,size_ff,C)
+                          | Word31_to_word63_X => num31_to_num63 {signext=true} (x,d,size_ff,C)
+                          | Word31_to_word63 => num31_to_num63 {signext=false} (x,d,size_ff,C)
+
+                          | Int32b_to_int63 => word32_to_word63 {boxedarg=true,signext=true} (x,d,size_ff,C)
+                          | Int63_to_int31 => int63_to_int31 (x,d,size_ff,C)
+                          | Int31_to_int63 => num31_to_num63 {signext=true} (x,d,size_ff,C)
+                          | Word32b_to_int63 => word32_to_word63 {boxedarg=true,signext=false} (x,d,size_ff,C)
+                          | Word32b_to_int63_X => word32_to_word63 {boxedarg=true,signext=true} (x,d,size_ff,C)
+                          | Word64b_to_word31 => word64_to_word31 {boxedarg=true} (x,d,size_ff,C)
+
+                          | Word64b_to_int63 => word64_to_num63 {boxedarg=true,ovf=true} (x,d,size_ff,C)
+                          | Word64b_to_int63_X => word64_to_num63 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+
+                          | Int63_to_int64ub => num63_to_num64ub {shr_inst=I.sarq} (x,d,size_ff,C)
+
+                          | Int64ub_to_int63 => int64_to_int63 {boxedarg=false} (x,d,size_ff,C)
+
+                          | Word63_to_word64ub => num63_to_num64ub {shr_inst=I.shrq} (x,d,size_ff,C)
+                          | Word63_to_word64ub_X => num63_to_num64ub {shr_inst=I.sarq} (x,d,size_ff,C)
+
+                          | Word64ub_to_word31 => word64_to_word31 {boxedarg=false} (x,d,size_ff,C)
+                          | Int64ub_to_int31 => int64_to_int31 {boxedarg=false} (x,d,size_ff,C)
+
+                          | Word31_to_word64ub => word31_to_word64ub {signext=false} (x,d,size_ff,C)
+                          | Word31_to_word64ub_X => word31_to_word64ub {signext=true} (x,d,size_ff,C)
+
+                          | Word32ub_to_int64ub => word32ub_to_word64ub {signext=false} (x,d,size_ff,C)
+                          | Word32ub_to_int64ub_X => word32ub_to_word64ub {signext=true} (x,d,size_ff,C)
+                          | Word32ub_to_word64ub_X => word32ub_to_word64ub {signext=true} (x,d,size_ff,C)
+
                           | Bytetable_size => bytetable_size(x,d,size_ff,C)
                           | Table_size => table_size(x,d,size_ff,C)
-                          | Is_null => cmpi_kill_tmp01 {box=false} (I.je,x, SS.INTEGER_ATY{value=Int32.fromInt 0,
-                                                                                           precision=32},d,size_ff,C)
+                          | Is_null => cmpi_kill_tmp01 {box=false,quad=false} I.je (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
+                                                                                                      precision=32},d,size_ff,C)
                           | Real_to_f64 => real_to_f64(x,d,size_ff,C)
                           | Sqrt_f64 => sqrt_f64(x,d,size_ff,C)
                           | Neg_f64 => neg_f64(x,d,size_ff,C)
@@ -830,113 +932,221 @@ struct
                           | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name))
                      | [x,y] =>
                        (case name of
-                            Equal_int32ub => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                          | Equal_int32b => cmpi_kill_tmp01 {box=true} (I.je,x,y,d,size_ff,C)
-                          | Equal_int31 => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                          | Equal_word31 => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                          | Equal_word32ub => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                          | Equal_word32b => cmpi_kill_tmp01 {box=true} (I.je,x,y,d,size_ff,C)
-                          | Plus_int32ub => add_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-                          | Plus_int31 => add_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
-                          | Plus_word31 => add_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
-                          | Plus_word32ub => add_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
-                          | Minus_int32ub => sub_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-                          | Minus_int31 => sub_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
-                          | Minus_word31 => sub_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
-                          | Minus_word32ub => sub_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
-                          | Mul_int32ub => mul_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-                          | Mul_int31 => mul_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
-                          | Mul_word31 => mul_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
-                          | Mul_word32ub => mul_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
-                          | Neg_int32b => neg_int32b_kill_tmp0 (x,y,d,size_ff,C)
-                          | Neg_real => negf_kill_tmp01(x,y,d,size_ff,C)
-                          | Abs_int32b => abs_int32b_kill_tmp0 (x,y,d,size_ff,C)
-                          | Abs_real => absf_kill_tmp01(x,y,d,size_ff,C)
-                          | Less_int32ub => cmpi_kill_tmp01 {box=false} (I.jl,x,y,d,size_ff,C)
-                          | Less_int32b => cmpi_kill_tmp01 {box=true} (I.jl,x,y,d,size_ff,C)
-                          | Less_int31 => cmpi_kill_tmp01 {box=false} (I.jl,x,y,d,size_ff,C)
-                          | Less_word31 => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
-                          | Less_word32ub => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
-                          | Less_word32b => cmpi_kill_tmp01 {box=true} (I.jb,x,y,d,size_ff,C)
-                          | Less_real => cmpf_kill_tmp01(LESSTHAN,x,y,d,size_ff,C)
-                          | Less_f64 => cmpf64_kill_tmp0(LESSTHAN,x,y,d,size_ff,C)
-                          | Lesseq_int32ub => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
-                          | Lesseq_int32b => cmpi_kill_tmp01 {box=true} (I.jle,x,y,d,size_ff,C)
-                          | Lesseq_int31 => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
-                          | Lesseq_word31 => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
-                          | Lesseq_word32ub => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
-                          | Lesseq_word32b => cmpi_kill_tmp01 {box=true} (I.jbe,x,y,d,size_ff,C)
-                          | Lesseq_real => cmpf_kill_tmp01(LESSEQUAL,x,y,d,size_ff,C)
-                          | Lesseq_f64 => cmpf64_kill_tmp0(LESSEQUAL,x,y,d,size_ff,C)
-                          | Greater_int32ub => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
-                          | Greater_int32b => cmpi_kill_tmp01 {box=true} (I.jg,x,y,d,size_ff,C)
-                          | Greater_int31 => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
-                          | Greater_word31 => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
-                          | Greater_word32ub => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
-                          | Greater_word32b => cmpi_kill_tmp01 {box=true} (I.ja,x,y,d,size_ff,C)
-                          | Greater_real => cmpf_kill_tmp01(GREATERTHAN,x,y,d,size_ff,C)
-                          | Greater_f64 => cmpf64_kill_tmp0(GREATERTHAN,x,y,d,size_ff,C)
-                          | Greatereq_int32ub => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
-                          | Greatereq_int32b => cmpi_kill_tmp01 {box=true} (I.jge,x,y,d,size_ff,C)
-                          | Greatereq_int31 => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
-                          | Greatereq_word31 => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
-                          | Greatereq_word32ub => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
-                          | Greatereq_word32b => cmpi_kill_tmp01 {box=true} (I.jae,x,y,d,size_ff,C)
-                          | Greatereq_real => cmpf_kill_tmp01(GREATEREQUAL,x,y,d,size_ff,C)
-                          | Greatereq_f64 => cmpf64_kill_tmp0(GREATEREQUAL,x,y,d,size_ff,C)
-                          | Andb_word31 => andb_word_kill_tmp01(x,y,d,size_ff,C)
-                          | Andb_word32ub => andb_word_kill_tmp01(x,y,d,size_ff,C)
-                          | Orb_word31 => orb_word_kill_tmp01(x,y,d,size_ff,C)
-                          | Orb_word32ub => orb_word_kill_tmp01(x,y,d,size_ff,C)
-                          | Xorb_word31 => xorb_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                          | Xorb_word32ub => xorb_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                          | Shift_left_word31 => shift_left_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                          | Shift_left_word32ub => shift_left_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                          | Shift_right_signed_word31 => shift_right_signed_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                          | Shift_right_signed_word32ub => shift_right_signed_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word31 => shift_right_unsigned_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word32ub => shift_right_unsigned_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                          | Int31_to_int32b => num31_to_num32b(x,y,d,size_ff,C)
-                          | Word31_to_word32b => num31_to_num32b(x,y,d,size_ff,C)
-                          | Word31_to_word32b_X => num31_to_num32b(x,y,d,size_ff,C)
+                            Equal_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
+                          | Equal_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.je (x,y,d,size_ff,C)
+                          | Equal_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
+                          | Equal_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
+                          | Equal_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
+                          | Equal_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.je (x,y,d,size_ff,C)
+                          | Equal_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
+                          | Equal_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.je (x,y,d,size_ff,C)
+                          | Equal_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
+                          | Equal_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
+                          | Equal_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
+                          | Equal_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.je (x,y,d,size_ff,C)
+
+                          | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Plus_word31 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Plus_word32ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Plus_int64ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  (x,y,d,size_ff,C)
+                          | Plus_int63 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Plus_word63 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Plus_word64ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Minus_int32ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Minus_int31 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Minus_word31 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Minus_word32ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Minus_int64ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  (x,y,d,size_ff,C)
+                          | Minus_int63 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Minus_word63 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Minus_word64ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Mul_int32ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Mul_int31 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Mul_word31 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Mul_word32ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Mul_int64ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  (x,y,d,size_ff,C)
+                          | Mul_int63 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Mul_word63 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Mul_word64ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Neg_int32b => neg_int_boxed_kill_tmp0 {quad=false} (x,y,d,size_ff,C)
+                          | Neg_int64b => neg_int_boxed_kill_tmp0 {quad=true} (x,y,d,size_ff,C)
+                          | Neg_real =>   negf_kill_tmp01 (x,y,d,size_ff,C)
+                          | Abs_int32b => abs_int_boxed_kill_tmp0 {quad=false} (x,y,d,size_ff,C)
+                          | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} (x,y,d,size_ff,C)
+                          | Abs_real =>   absf_kill_tmp01 (x,y,d,size_ff,C)
+
+                          | Less_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jl (x,y,d,size_ff,C)
+                          | Less_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jl (x,y,d,size_ff,C)
+                          | Less_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jl (x,y,d,size_ff,C)
+                          | Less_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jb (x,y,d,size_ff,C)
+                          | Less_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jb (x,y,d,size_ff,C)
+                          | Less_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jb (x,y,d,size_ff,C)
+                          | Less_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jl (x,y,d,size_ff,C)
+                          | Less_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jl (x,y,d,size_ff,C)
+                          | Less_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jl (x,y,d,size_ff,C)
+                          | Less_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jb (x,y,d,size_ff,C)
+                          | Less_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jb (x,y,d,size_ff,C)
+                          | Less_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jb (x,y,d,size_ff,C)
+
+                          | Less_real => cmpf_kill_tmp01 LESSTHAN (x,y,d,size_ff,C)
+                          | Less_f64 =>  cmpf64_kill_tmp0 LESSTHAN (x,y,d,size_ff,C)
+
+                          | Lesseq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jle (x,y,d,size_ff,C)
+                          | Lesseq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jle (x,y,d,size_ff,C)
+                          | Lesseq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jle (x,y,d,size_ff,C)
+                          | Lesseq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jbe (x,y,d,size_ff,C)
+                          | Lesseq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jbe (x,y,d,size_ff,C)
+                          | Lesseq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jbe (x,y,d,size_ff,C)
+                          | Lesseq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jle (x,y,d,size_ff,C)
+                          | Lesseq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jle (x,y,d,size_ff,C)
+                          | Lesseq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jle (x,y,d,size_ff,C)
+                          | Lesseq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jbe (x,y,d,size_ff,C)
+                          | Lesseq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jbe (x,y,d,size_ff,C)
+                          | Lesseq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jbe (x,y,d,size_ff,C)
+
+                          | Lesseq_real => cmpf_kill_tmp01 LESSEQUAL (x,y,d,size_ff,C)
+                          | Lesseq_f64 =>  cmpf64_kill_tmp0 LESSEQUAL (x,y,d,size_ff,C)
+
+                          | Greater_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jg (x,y,d,size_ff,C)
+                          | Greater_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jg (x,y,d,size_ff,C)
+                          | Greater_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jg (x,y,d,size_ff,C)
+                          | Greater_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.ja (x,y,d,size_ff,C)
+                          | Greater_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.ja (x,y,d,size_ff,C)
+                          | Greater_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.ja (x,y,d,size_ff,C)
+                          | Greater_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jg (x,y,d,size_ff,C)
+                          | Greater_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jg (x,y,d,size_ff,C)
+                          | Greater_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jg (x,y,d,size_ff,C)
+                          | Greater_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.ja (x,y,d,size_ff,C)
+                          | Greater_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.ja (x,y,d,size_ff,C)
+                          | Greater_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.ja (x,y,d,size_ff,C)
+
+                          | Greater_real => cmpf_kill_tmp01 GREATERTHAN (x,y,d,size_ff,C)
+                          | Greater_f64 =>  cmpf64_kill_tmp0 GREATERTHAN (x,y,d,size_ff,C)
+
+                          | Greatereq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jge (x,y,d,size_ff,C)
+                          | Greatereq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jge (x,y,d,size_ff,C)
+                          | Greatereq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jge (x,y,d,size_ff,C)
+                          | Greatereq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jae (x,y,d,size_ff,C)
+                          | Greatereq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jae (x,y,d,size_ff,C)
+                          | Greatereq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jae (x,y,d,size_ff,C)
+                          | Greatereq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jge (x,y,d,size_ff,C)
+                          | Greatereq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jge (x,y,d,size_ff,C)
+                          | Greatereq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jge (x,y,d,size_ff,C)
+                          | Greatereq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jae (x,y,d,size_ff,C)
+                          | Greatereq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jae (x,y,d,size_ff,C)
+                          | Greatereq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jae (x,y,d,size_ff,C)
+
+                          | Greatereq_real => cmpf_kill_tmp01 GREATEREQUAL (x,y,d,size_ff,C)
+                          | Greatereq_f64 =>  cmpf64_kill_tmp0 GREATEREQUAL (x,y,d,size_ff,C)
+
+                          | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
+                          | Andb_word32ub => andb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
+                          | Andb_word63 =>   andb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
+                          | Andb_word64ub => andb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
+
+                          | Orb_word31 =>   orb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
+                          | Orb_word32ub => orb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
+                          | Orb_word63 =>   orb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
+                          | Orb_word64ub => orb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
+
+                          | Xorb_word31 =>   xorb_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Xorb_word32ub => xorb_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Xorb_word63 =>   xorb_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Xorb_word64ub => xorb_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Shift_left_word31 =>   shift_left_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Shift_left_word32ub => shift_left_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Shift_left_word63 =>   shift_left_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Shift_left_word64ub => shift_left_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Shift_right_signed_word31 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Shift_right_signed_word32ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Shift_right_signed_word63 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Shift_right_signed_word64ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Shift_right_unsigned_word31 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word32ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word63 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word64ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+
+                          | Int31_to_int32b => num31_to_num_boxed {quad=false} (x,y,d,size_ff,C)
+                          | Word31_to_word32b => num31_to_num_boxed {quad=false} (x,y,d,size_ff,C)
+                          | Word31_to_word32b_X => num31_to_num_boxed {quad=false} (x,y,d,size_ff,C)
                           | Word32b_to_int32b => num32b_to_num32b {ovf=true} (x,y,d,size_ff,C)
                           | Word32b_to_int32b_X => num32b_to_num32b {ovf=false} (x,y,d,size_ff,C)
                           | Int32b_to_word32b => num32b_to_num32b {ovf=false} (x,y,d,size_ff,C)
-                          | Bytetable_sub => bytetable_sub(x,y,d,size_ff,C)
-                          | Word_sub0 => word_sub0(x,y,d,size_ff,C)
-                          | Plus_f64 => plus_f64(x,y,d,size_ff,C)
-                          | Minus_f64 => minus_f64(x,y,d,size_ff,C)
-                          | Mul_f64 => mul_f64(x,y,d,size_ff,C)
-                          | Div_f64 => div_f64(x,y,d,size_ff,C)
-                          | Max_f64 => max_f64(x,y,d,size_ff,C)
-                          | Min_f64 => min_f64(x,y,d,size_ff,C)
-                          | F64_to_real => f64_to_real_kill_tmp01(y,x,d,size_ff,C)
-                          | Blockf64_alloc => blockf64_alloc(x,y,d,size_ff,C)
-                          | Blockf64_sub_f64 => blockf64_sub_f64(x,y,d,size_ff,C)
+
+                          | Word64b_to_int64b_X => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
+                          | Word64b_to_int64b => num64b_to_num64b {ovf=true} (x,y,d,size_ff,C)
+                          | Word32b_to_word64b => word32b_to_word64b {signext=false} (x,y,d,size_ff,C)
+                          | Word32b_to_word64b_X => word32b_to_word64b {signext=true} (x,y,d,size_ff,C)
+                          | Word64b_to_word32b => num64b_to_num32b (x,y,d,size_ff,C)
+                          | Word31_to_word64b => word31_to_word64b {signext=false} (x,y,d,size_ff,C)
+                          | Word31_to_word64b_X => word31_to_word64b {signext=true} (x,y,d,size_ff,C)
+
+                          | Int32b_to_int64b => int32b_to_int64b (x,y,d,size_ff,C)
+                          | Int64b_to_word64b => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
+
+                          | Int31_to_int64b => num31_to_num_boxed {quad=true} (x,y,d,size_ff,C)
+
+                          | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} (x,y,d,size_ff,C)
+                          | Word63_to_word32b => word63_to_word32b (x,y,d,size_ff,C)
+                          | Word63_to_word64b => num63_to_num64b {shr_inst=I.shrq} (x,y,d,size_ff,C)
+                          | Word63_to_word64b_X => num63_to_num64b {shr_inst=I.sarq} (x,y,d,size_ff,C)
+
+                          | Int63_to_int32b => int63_to_int32b (x,y,d,size_ff,C)
+
+                          | Bytetable_sub => bytetable_sub (x,y,d,size_ff,C)
+                          | Word_sub0 => word_sub0 (x,y,d,size_ff,C)
+                          | Plus_f64 => plus_f64 (x,y,d,size_ff,C)
+                          | Minus_f64 => minus_f64 (x,y,d,size_ff,C)
+                          | Mul_f64 => mul_f64 (x,y,d,size_ff,C)
+                          | Div_f64 => div_f64 (x,y,d,size_ff,C)
+                          | Max_f64 => max_f64 (x,y,d,size_ff,C)
+                          | Min_f64 => min_f64 (x,y,d,size_ff,C)
+                          | F64_to_real => f64_to_real_kill_tmp01 (x,y,d,size_ff,C)
+                          | Blockf64_alloc => blockf64_alloc (x,y,d,size_ff,C)
+                          | Blockf64_sub_f64 => blockf64_sub_f64 (x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name))
                      | [b,x,y] =>
                        (case name of
                             Plus_int32b => add_int32b (b,x,y,d,size_ff,C)
-                          | Plus_word32b => addw32boxed(b,x,y,d,size_ff,C)
-                          | Plus_real => addf_kill_tmp01(x,y,b,d,size_ff,C)
+                          | Plus_int64b => add_int64b (b,x,y,d,size_ff,C)
+                          | Plus_word32b => addw32boxed (b,x,y,d,size_ff,C)
+                          | Plus_word64b => addw64boxed (b,x,y,d,size_ff,C)
+                          | Plus_real => addf_kill_tmp01 (x,y,b,d,size_ff,C)
                           | Minus_int32b => sub_int32b (b,x,y,d,size_ff,C)
-                          | Minus_word32b => subw32boxed(b,x,y,d,size_ff,C)
-                          | Minus_real => subf_kill_tmp01(x,y,b,d,size_ff,C)
+                          | Minus_int64b => sub_int64b (b,x,y,d,size_ff,C)
+                          | Minus_word32b => subw32boxed (b,x,y,d,size_ff,C)
+                          | Minus_word64b => subw64boxed (b,x,y,d,size_ff,C)
+                          | Minus_real => subf_kill_tmp01 (x,y,b,d,size_ff,C)
                           | Mul_int32b => mul_int32b (b,x,y,d,size_ff,C)
-                          | Mul_word32b => mulw32boxed(b,x,y,d,size_ff,C)
-                          | Mul_real => mulf_kill_tmp01(x,y,b,d,size_ff,C)
-                          | Div_real => divf_kill_tmp01(x,y,b,d,size_ff,C)
-                          | Andb_word32b => andw32boxed__(b,x,y,d,size_ff,C)
-                          | Orb_word32b => orw32boxed__(b,x,y,d,size_ff,C)
-                          | Xorb_word32b => xorw32boxed__(b,x,y,d,size_ff,C)
-                          | Shift_left_word32b => shift_leftw32boxed__(b,x,y,d,size_ff,C)
-                          | Shift_right_signed_word32b => shift_right_signedw32boxed__(b,x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__(b,x,y,d,size_ff,C)
-                          | Bytetable_update => bytetable_update(b,x,y,d,size_ff,C)
-                          | Word_update0 => word_update0(b,x,y,d,size_ff,C)
-                          | Blockf64_update_real => blockf64_update_real(b,x,y,d,size_ff,C)
-                          | Blockf64_sub_real => blockf64_sub_real(b,x,y,d,size_ff,C)
-                          | Blockf64_update_f64 => blockf64_update_f64(b,x,y,d,size_ff,C)
+                          | Mul_int64b => mul_int64b (b,x,y,d,size_ff,C)
+                          | Mul_word32b => mulw32boxed (b,x,y,d,size_ff,C)
+                          | Mul_word64b => mulw64boxed (b,x,y,d,size_ff,C)
+                          | Mul_real => mulf_kill_tmp01 (x,y,b,d,size_ff,C)
+                          | Div_real => divf_kill_tmp01 (x,y,b,d,size_ff,C)
+                          | Andb_word32b => andw32boxed__ (b,x,y,d,size_ff,C)
+                          | Andb_word64b => andw64boxed__ (b,x,y,d,size_ff,C)
+                          | Orb_word32b => orw32boxed__ (b,x,y,d,size_ff,C)
+                          | Orb_word64b => orw64boxed__ (b,x,y,d,size_ff,C)
+                          | Xorb_word32b => xorw32boxed__ (b,x,y,d,size_ff,C)
+                          | Xorb_word64b => xorw64boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_left_word32b => shift_leftw32boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_left_word64b => shift_leftw64boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_signed_word32b => shift_right_signedw32boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_signed_word64b => shift_right_signedw64boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,size_ff,C)
+                          | Bytetable_update => bytetable_update (b,x,y,d,size_ff,C)
+                          | Word_update0 => word_update0 (b,x,y,d,size_ff,C)
+                          | Blockf64_update_real => blockf64_update_real (b,x,y,d,size_ff,C)
+                          | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,size_ff,C)
+                          | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
                  end

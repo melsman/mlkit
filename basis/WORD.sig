@@ -1,15 +1,15 @@
-signature WORD = 
+signature WORD =
   sig
     eqtype word
 
     val wordSize : int
 
-    val toLarge      : word -> word32
-    val toLargeX     : word -> word32
-    val toLargeWord  : word -> word32
-    val toLargeWordX : word -> word32
-    val fromLarge     : word32 -> word
-    val fromLargeWord : word32 -> word
+    val toLarge      : word -> word64
+    val toLargeX     : word -> word64
+    val toLargeWord  : word -> word64
+    val toLargeWordX : word -> word64
+    val fromLarge     : word64 -> word
+    val fromLargeWord : word64 -> word
     val toLargeInt  : word -> intinf
     val toLargeIntX : word -> intinf
     val fromLargeInt : intinf -> word
@@ -30,17 +30,17 @@ signature WORD =
     val * : word * word -> word
     val div : word * word -> word
     val mod : word * word -> word
-	
+
     val compare : word * word -> order
     val <  : word * word -> bool
     val <= : word * word -> bool
     val >  : word * word -> bool
     val >= : word * word -> bool
-	
+
     val ~ : word -> word
     val min : word * word -> word
     val max : word * word -> word
-	
+
     val fmt      : StringCvt.radix -> word -> string
     val toString : word -> string
     val scan     : StringCvt.radix
@@ -165,7 +165,7 @@ i - j
 
     returns the difference of i and j modulo (2(wordSize)):
 
-        (2(wordSize) + i - j)(mod (2(wordSize))) 
+        (2(wordSize) + i - j)(mod (2(wordSize)))
 
     when i and j are interpreted as unsigned binary numbers. It does
     not raise Overflow.
@@ -186,7 +186,7 @@ i mod j
 
     returns the remainder of the division of i by j:
 
-        i - j * floor((i / j)) 
+        i - j * floor((i / j))
 
     when i and j are interpreted as unsigned binary numbers. It raises
     Div when j = 0.

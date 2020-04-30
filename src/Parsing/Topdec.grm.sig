@@ -13,7 +13,7 @@ val ENDQ: (string) *  'a * 'a -> (svalue,'a) token
 val BEGINQ:  'a * 'a -> (svalue,'a) token
 val STRING: (string) *  'a * 'a -> (svalue,'a) token
 val REAL: (string option) *  'a * 'a -> (svalue,'a) token
-val WORD: (Word32.word option) *  'a * 'a -> (svalue,'a) token
+val WORD: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
 val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
 val HEXINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
 val DECNEGINTEGER: (IntInf.int option) *  'a * 'a -> (svalue,'a) token
