@@ -1,7 +1,7 @@
 DATE=$(shell /bin/date -u '+%Y-%m-%dT-%H:%M:%S')
 
 .PHONY: test
-test: test_mlkit_no_gc
+test: test_mlkit_no_gc test_mlkit
 
 .PHONY: all
 all: test_kam test_mlkit

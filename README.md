@@ -29,7 +29,8 @@ using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/
   Standard ML Basis Library. The support for ML Basis Files makes it
   easy to compile a program with different Standard ML
   compilers. Currently, both [MLton](http://mlton.org) and the MLKit supports the concept
-  of ML Basis Files.
+  of ML Basis Files. The MLKit works well together with [smlpkg](https://github.com/diku-dk/smlpkg), a
+  generic package manager for Standard ML libraries and programs.
 
 * Region-Based Memory Management: Memory allocation directives (both
   allocation and deallocation) are inferred by the compiler, which

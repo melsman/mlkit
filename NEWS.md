@@ -1,5 +1,13 @@
 ## MLKit NEWS
 
+* mael 2020-04-30: Support for Word64, Word63, Int64, and Int63
+  structures in the native backend.
+
+* mael 2020-04-30: Unboxing optimisation for double-precision floats.
+
+* mael 2020-04-30: Preliminary support for source-level region
+  annotations.
+
 * mael 2019-07-03: Fixed bug on macOS wrt setting stacksize.
 
 * mael 2019-07-03: Fixed bug on macOS wrt Time exception during
