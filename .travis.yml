@@ -1,6 +1,6 @@
 language: c
 
-dist: xenial
+dist: bionic
 
 os:
  - linux
@@ -34,6 +34,7 @@ install:
 script:
  - make -C test_dev test
  - make -C test test_mlkit
+ - make -C test test_mlkit_no_gc
  - make -C js/test test
  - make -C test/explicit_regions all
 
