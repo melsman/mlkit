@@ -226,16 +226,17 @@ struct
       else I.movq(I x, ea) :: C
 
     fun move_num_boxed (x,ea:ea,C) =
-      if not(BI.tag_values()) then die "move_num_boxed.boxed integers/words necessary only when tagging is enabled"
-      else
-        let val num_lab = new_num_lab()
-          val _ = add_static_data [I.dot_data,
-                                   I.dot_align 8,
-                                   I.lab num_lab,
-                                   I.dot_quad(BI.pr_tag_w(BI.tag_word_boxed(true))),
-                                   I.dot_quad x]
-        in I.movq(LA num_lab, ea) :: C
-        end
+        if not(BI.tag_values()) then
+          die "move_num_boxed.boxed integers/words necessary only when tagging is enabled"
+        else
+          let val num_lab = new_num_lab()
+              val _ = add_static_data [I.dot_data,
+                                       I.dot_align 8,
+                                       I.lab num_lab,
+                                       I.dot_quad(BI.pr_tag_w(BI.tag_word_boxed(true))),
+                                       I.dot_quad x]
+          in I.movq(LA num_lab, ea) :: C
+          end
 
     (* returns true if boxed representation is used for
      * integers of the given precision *)
@@ -311,7 +312,6 @@ struct
             SS.PHREG_ATY d => I.movq(LA lab, R d) :: C
           | SS.STACK_ATY offset =>
             I.movq(LA lab, R t) :: store_indexed(rsp, WORDS(size_ff-offset-1), R t, C)
-            (*store_indexed(rsp, WORDS(size_ff-offset-1), LA lab, C)*)
           | _ => die "load_label_addr.wrong ATY"
 
     (* dst_aty = lab[0] *)
@@ -364,7 +364,8 @@ struct
     fun gen_data_lab lab = add_static_data [I.dot_data,
                                             I.dot_align 8,
                                             I.lab (DatLab lab),
-                                            I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead for GC 2001-01-09, Niels *)
+                                            I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead
+                                                                           * for GC *)
 
     fun store_aty_indexed (b:reg,n:Offset,aty,t:reg,size_ff,C) =
         let fun ea () = D(offset_bytes n,b)
@@ -463,6 +464,46 @@ struct
       case arg
         of SS.PHREG_ATY r => I.addq(R r, R t) :: C
          | _ => move_aty_into_reg(arg,tmp,size_ff, I.addq(R tmp, R t) :: C)
+
+    fun Id x = x
+    fun rep8bit (i: intinf) = ~0x80 <= i andalso i <= 0x7F
+    fun rep16bit (i: intinf) = ~0x8000 <= i andalso i <= 0x7FFF
+
+    fun protect_arg_aty (arg:SS.Aty,t:reg,size_ff:int,{avoid:SS.Aty}) : ea * (I.inst list -> I.inst list) =
+        let fun default () =
+                (R t, fn C => move_aty_into_reg(arg,t,size_ff,C))
+        in case arg of
+               SS.PHREG_ATY r =>
+               (case avoid of
+                    SS.PHREG_ATY avoid =>
+                    if r = avoid then default()
+                    else (R r, Id)
+                  | _ => (R r, Id))
+             | SS.INTEGER_ATY i =>
+               if boxedNum (#precision i) then die "protect_arg_aty.boxed int"
+               else if rep16bit (#value i) then (I (fmtInt i), Id)
+               else default()
+             | SS.WORD_ATY w =>
+               if boxedNum (#precision w) then die "protect_arg_aty.boxed int"
+               else if rep16bit (#value w) then (I (fmtWord w), Id)
+               else default()
+             | _ => default()
+        end
+
+    fun resolve_arg_aty_ea (arg:SS.Aty,t:reg,size_ff:int) : ea * (I.inst list -> I.inst list) =
+        let fun default () = (R t, fn C => move_aty_into_reg(arg,t,size_ff,C))
+        in case arg of
+               SS.PHREG_ATY r => (R r, Id)
+             | SS.INTEGER_ATY i =>
+               if boxedNum (#precision i) then die "resolve_arg_aty_ea.boxed int"
+               else if rep16bit (#value i) then (I (fmtInt i), Id)
+               else default()
+             | SS.WORD_ATY w =>
+               if boxedNum (#precision w) then die "resolve_arg_aty_ea.boxed int"
+               else if rep16bit (#value w) then (I (fmtWord w), Id)
+               else default()
+             | _ => default()
+        end
 
     (* load real into xmm register (freg) *)
     fun load_real (float_aty, t, size_ff, freg) =
@@ -604,65 +645,19 @@ struct
 		  C nargs
 	  end
 
-      fun restore_stack_alignment nargs C =
-	  let val tmp = tmp_reg0
-	  in I.movq(D(i2s(8*nargs), rsp), R tmp) ::  (* notice: for x64, rsp points to the last slot used *)
-	     I.movq(R tmp, R rsp) ::
-	     C
-	  end
     in
-      fun needs_align () = false
-	  (* I.sysname() = "Darwin" *)
-
       fun maybe_align nargs F C =
-          if needs_align() then
-            align nargs (F (restore_stack_alignment nargs C))
-          else
-            if nargs = 0 then F C
-            else F (I.addq(I(i2s(8*nargs)),R rsp):: C)
+          if nargs = 0 then F C
+          else F (I.addq(I(i2s(8*nargs)),R rsp):: C)
     end
-(*
-    fun maybe_align {even:bool} F C =                (* ME: maybe there is a better way *)
-        let val tmp = I.rbx                          (* callee save scratch register *)
-            fun align C =
-                I.comment "ALIGN USING rbx" ::
-                I.push (R rbx) ::
-                I.movq(R rsp, R tmp) ::      (* tmp = rsp; memoize rsp as it should be restored after call *)
-                I.subq(I "16", R rsp) ::     (* rsp = rsp - 16; alignment *)
-                I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) :: (* rsp = rsp & 0xFFFFFFFFFFFFFFF0; alignment *)
-                if even then C else I.subq (I "8", R rsp) :: C
-            fun restore_align C =  (* restore previous stack pointer *)
-                I.movq(R tmp, R rsp) ::
-                I.pop (R rbx) ::
-                C
-            fun needs_align () = I.sysname() = "Darwin"
-        in if needs_align() then
-             align(F(restore_align C))
-           else F C
-        end
-*)
+
     fun regs_atys nil acc = nil
       | regs_atys (SS.PHREG_ATY r::atys) acc = regs_atys atys (r::acc)
       | regs_atys (_ ::atys) acc = regs_atys atys acc
 
     fun member r nil = false
       | member r (x::xs) = r = x orelse member r xs
-(*
-    fun subst_ea s t ea =
-        case ea of
-            R r => if r=s then R t else ea
-          | L _ => ea
-          | LA _ => ea
-          | I _ => ea
-          | D(str,r) => if r=s then D(str,t) else ea
-          | DD(str1,r1,r2,str2) =>
-            if r1=s orelse r2=s then
-              let val r1'=if r1=s then t else r1
-                  val r2'=if r2=s then t else r2
-              in DD(str1,r1',r2',str2)
-              end
-            else ea
-*)
+
     (* move the first six arguments into the appropriate registers *)
     fun shuffle_args (size_ff:int)
                      (mv_aty_to_reg: SS.Aty * 'a * reg * int * I.inst list -> I.inst list)
@@ -889,7 +884,7 @@ struct
               I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
               I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
               I.leaq(D (i2s (8*(BI.objectDescSizeP-1)), tmp_reg1), R t) :: C  (* make tmp_reg1 point at
-                                                                                         * word before object *)
+                                                                               * word before object *)
             else
               I.leaq(D("-8",tmp_reg1), R t) :: C  (* make tmp_reg1 point at
                                                    * word before object *)
@@ -1272,6 +1267,13 @@ struct
            I.lab cont_lab :: C')))
         end
 
+      fun doubleOfQuadEa ea =
+          case ea of
+              R r => R (I.doubleOfQuadReg r)
+            | D _ => die "maybeDoubleOfQuadEa.D"
+            | DD _ => die "maybeDoubleOfQuadEa.DD"
+            | _ => ea
+
       fun cmpi_and_jmp_kill_tmp01 {quad} (jump,x,y,lab_t,lab_f,size_ff,C) =
         let
           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -1329,24 +1331,24 @@ struct
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
       fun sub_num_kill_tmp01 {ovf,tag,quad} (x,y,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            fun check_ovf C = if ovf then jump_overflow C else C
-            fun do_tag C = if tag then I.addq(I "1",R d_reg) :: check_ovf C   (* check twice *)
-                           else C
-            val (inst_sub, maybeDoubleOfQuadReg) =
-                if quad
-                then (I.subq, fn r => r)
-                else (I.subl, I.doubleOfQuadReg)
-        in
-          x_C(y_C(
-          copy(y_reg, tmp_reg1,
-          copy(x_reg, d_reg,
-          inst_sub(R (maybeDoubleOfQuadReg tmp_reg1),
-                   R (maybeDoubleOfQuadReg d_reg)) ::
-          check_ovf (do_tag C')))))
-        end
+          let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+              val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
+              val (y_ea,y_C) = protect_arg_aty(y,tmp_reg1,size_ff,{avoid=d})
+
+              fun check_ovf C = if ovf then jump_overflow C else C
+              fun do_tag C = if tag then I.addq(I "1",R d_reg) :: check_ovf C   (* check twice *)
+                             else C
+              val (inst_sub, maybeDoubleOfQuadEa) =
+                  if quad
+                  then (I.subq, fn ea => ea)
+                  else (I.subl, doubleOfQuadEa)
+          in
+            y_C(x_C(
+            copy(x_reg, d_reg,
+            inst_sub(maybeDoubleOfQuadEa y_ea,
+                     maybeDoubleOfQuadEa (R d_reg)) ::
+            check_ovf (do_tag C'))))
+          end
 
       fun add_num_kill_tmp01 {ovf,tag,quad} (x,y,d,size_ff,C) =  (* Be careful - when tag and ovf, add may
                                                                   * raise overflow when it is not supposed
@@ -1357,37 +1359,45 @@ struct
                   then (I.addq, I.sarq, I.cmpq, fn r => r)
                   else (I.addl, I.sarl, I.cmpl, I.doubleOfQuadReg)
               fun default () =
-                 let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-                     val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-                     val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+                 let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
                      fun check_ovf C = if ovf then jump_overflow C else C
                      fun do_tag C = if tag then inst_add(I "-1", R (maybeDoubleOfQuadReg d_reg)) :: check_ovf C
                                     else C
                  in if tag andalso ovf then
+                      let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+                          val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+                      in
                       (x_C(y_C(
                        copy(y_reg, tmp_reg1, inst_sar(I "1", R (maybeDoubleOfQuadReg tmp_reg1)) ::    (* t1 = untag y *)
                        copy(x_reg, tmp_reg0, inst_sar(I "1", R (maybeDoubleOfQuadReg tmp_reg0)) ::    (* t0 = untag x *)
                        inst_add(R (maybeDoubleOfQuadReg tmp_reg0),
                                 R (maybeDoubleOfQuadReg tmp_reg1)) ::             (* t1 = t1 + t0 *)
                        copy(tmp_reg1, d_reg,
-                       I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::         (* d = tag d *)
+                       I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::              (* d = tag d *)
                        inst_sar(I "1", R (maybeDoubleOfQuadReg d_reg)) ::         (* d = untag d *)
                        inst_cmp(R (maybeDoubleOfQuadReg d_reg),
                                 R (maybeDoubleOfQuadReg tmp_reg1)) ::
                        I.jne (NameLab "__raise_overflow") ::
-                       I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::         (* d = tag d *)
+                       I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::              (* d = tag d *)
                        C'))))))
+                      end
                     else
-                      (x_C(y_C(
-                       copy(y_reg, tmp_reg1,
+                      let (* rearrange x and y if y=d *)
+                          val (x,y) = if SS.eq_aty(y,d) then (y,x) else (x,y)
+                          val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
+                          val (y_ea,y_C) = protect_arg_aty(y,tmp_reg1,size_ff,{avoid=d})
+                          val maybeDoubleOfQuadEa = if quad then Id else doubleOfQuadEa
+                      in
+                      (y_C(x_C(
                        copy(x_reg, d_reg,
-                       inst_add(R (maybeDoubleOfQuadReg tmp_reg1),
-                                R (maybeDoubleOfQuadReg d_reg)) ::
-                       check_ovf (do_tag C'))))))
+                       inst_add(maybeDoubleOfQuadEa y_ea,
+                                maybeDoubleOfQuadEa (R d_reg)) ::
+                       check_ovf (do_tag C')))))
+                      end
                  end
           in case y of
                  SS.INTEGER_ATY {value,...} =>
-                 if tag andalso ovf andalso value > ~10000 andalso value < 10000 then
+                 if tag andalso ovf andalso rep16bit value then
                    let val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
                        val (x_reg,x_C) = resolve_arg_aty(x,d_reg,size_ff)
                    in x_C(
@@ -1398,6 +1408,7 @@ struct
                  else default()
                | _ => default()
           end
+
 
       fun mul_num_kill_tmp01 {ovf,tag,quad} (x,y,d,size_ff,C) = (* does (1 * valOf Int31.minInt) raise Overflow ? *)
         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
