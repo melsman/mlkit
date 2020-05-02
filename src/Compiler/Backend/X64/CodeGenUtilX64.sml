@@ -466,8 +466,8 @@ struct
          | _ => move_aty_into_reg(arg,tmp,size_ff, I.addq(R tmp, R t) :: C)
 
     fun Id x = x
-    fun rep8bit (i: intinf) = ~0x80 <= i andalso i <= 0x7F
-    fun rep16bit (i: intinf) = ~0x8000 <= i andalso i <= 0x7FFF
+    fun rep8bit (i: IntInf.int) = ~0x80 <= i andalso i <= 0x7F
+    fun rep16bit (i: IntInf.int) = ~0x8000 <= i andalso i <= 0x7FFF
 
     fun protect_arg_aty (arg:SS.Aty,t:reg,size_ff:int,{avoid:SS.Aty}) : ea * (I.inst list -> I.inst list) =
         let fun default () =
