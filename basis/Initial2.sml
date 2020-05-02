@@ -1,9 +1,9 @@
 structure Initial2 =
-  struct 
+  struct
     exception SysErr of string * int Option.option
     val _ = prim ("sml_setFailNumber", (SysErr ("as",NONE) : exn, 2 : int)) : unit
 
-    local 
+    local
       fun app f [] = ()
         | app f (x::xs) = (f x ; app f xs)
     in
@@ -19,5 +19,3 @@ structure Initial2 =
     val _ = _export ("sml_exitCallback", exitCallback)
 
   end
-
-

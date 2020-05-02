@@ -253,7 +253,11 @@ struct
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
-	val cc' = CallConv.add_frame_size(cc,get_max_offset lab)
+
+        val size_ff0 = get_max_offset lab
+        val size_cc = CallConv.get_cc_size cc
+        val size_ff = if (size_ff0 + size_cc) mod 2 = 0 then size_ff0 else size_ff0+1
+	val cc' = CallConv.add_frame_size(cc,size_ff)
       in
 	gen_fn(lab,cc',lss_co)
       end

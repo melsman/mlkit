@@ -434,7 +434,7 @@ struct
     (* size_ff is for rsp before rsp is moved. *)
     fun push_aty (aty,t:reg,size_ff,C) =
       let
-        fun default() = move_aty_into_reg(aty,t,size_ff,
+        fun default () = move_aty_into_reg(aty,t,size_ff,
                          I.push(R t) :: C)
       in case aty
            of SS.PHREG_ATY aty_reg => I.push(R aty_reg) :: C
@@ -611,13 +611,15 @@ struct
 	     C
 	  end
     in
-      fun needs_align () = true
+      fun needs_align () = false
 	  (* I.sysname() = "Darwin" *)
 
       fun maybe_align nargs F C =
           if needs_align() then
             align nargs (F (restore_stack_alignment nargs C))
-          else F C
+          else
+            if nargs = 0 then F C
+            else F (I.addq(I(i2s(8*nargs)),R rsp):: C)
     end
 (*
     fun maybe_align {even:bool} F C =                (* ME: maybe there is a better way *)
@@ -814,7 +816,8 @@ struct
      * reg_map is a register map describing live registers at entry to the function
      * The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0
      *)
-    fun do_gc (reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args) =
+    fun do_gc (reg_map:Word32.word,size_ccf,size_rcf,
+               size_spilled_region_args) =
       if gc_p() then
         let
           val l_gc_done = new_local_lab "gc_done"

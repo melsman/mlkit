@@ -1543,11 +1543,12 @@ struct
       | gen_fresh_res_lvars(RegionExp.RaisedExnBind) = []
 
     (* Convert ~n to -n *)
+(*
     fun int32_to_string i = if Int32.>=(i,0) then Int32.toString i
 			    else "-" ^ Int32.toString (Int32.~ i)
 
     fun int_to_string i = if i >= 0 then Int.toString i else "-" ^ Int.toString (~i)
-
+*)
     fun convert_real r =    (* Translate a real constant into C notation: *)
 	let fun conv #"~" = #"-"
 	      | conv #"E" = #"e"

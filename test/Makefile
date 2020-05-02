@@ -41,7 +41,7 @@ prepare: testlink hardlinkA hardlinkB
 clean:
 	rm -f *.exe.x86-linux *.exe.out.txt *.exe.png *.exe run *~ */*~ *.exe.out.*.txt
 	rm -f runexe *.log *.outgcp *.outgengcp *.out *.outgc *.outgengc *.outp profile.rp
-	rm -f *.aux bench.html
+	rm -f *.aux bench.html *.a *.o
 	rm -rf */*.log MLB */MLB */*/MLB */*/*/MLB
 	rm -f testlink testcycl testbadl hardlinkA hardlinkB
 

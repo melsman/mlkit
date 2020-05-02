@@ -1214,34 +1214,36 @@ struct
                             I.dot_text,
                             I.dot_globl lab, (* The C function entry *)
                             I.lab lab]
-                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
+                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
                          @ [I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
-                            I.push (I "1"),                       (* push dummy *)
+                            I.push (I "1"),                       (* push dummy (alignment) *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
                             I.movq(R rdi, R rax),                 (* move result to %rax *)
-                            I.addq(I "8", R rsp)]                 (* pop dummy *)
+                            I.addq(I "8", R rsp)]                 (* pop dummy (alignment) *)
                          @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                          @ [I.ret])
 
                      val saveregs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
-                                    caller_save_regs_ccall
+                                    caller_save_regs_ccall (* 0 regs *)
                      fun push_callersave_regs C =
                          foldl (fn (r, C) => I.push(R r) :: C) C saveregs
                      fun pop_callersave_regs C =
                          foldr (fn (r, C) => I.pop(R r) :: C) C saveregs
 
                   in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
-                                 store_in_label(aty,clos_lab,tmp_reg1,size_ff,
-                                                I.movq (LA lab, R tmp_reg0) ::
-                                                I.movq (LA stringlab, R tmp_reg1) ::
-                                                push_callersave_regs
-                                                (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
-                                                                                     SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
-                                                pop_callersave_regs C))))
+                     store_in_label(aty,clos_lab,tmp_reg1,size_ff,
+                     I.movq (LA lab, R tmp_reg0) ::
+                     I.movq (LA stringlab, R tmp_reg1) ::
+                     I.push (I "1") ::
+                     push_callersave_regs
+                     (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
+                                                          SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
+                      pop_callersave_regs
+                      (I.addq (I "8", R rsp) :: C)))))
                   end
                 )
        in
@@ -1291,7 +1293,7 @@ struct
         val w0 = Word32.fromInt 0
         fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
         fun pws ws = app pw ws
-        fun set_bit(bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
+        fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
         val size_ff = CallConv.get_frame_size cc
         val size_ccf = CallConv.get_ccf_size cc
@@ -1388,7 +1390,7 @@ val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data lab
 val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 *)
 
-        fun slot_for_datlab((_,l),C) =
+        fun slot_for_datlab ((_,l),C) =
             let fun maybe_dotsize C =
                     if I.sysname() = "Darwin" then C
                     else I.dot_size(DatLab l, 8) :: C
@@ -1420,7 +1422,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun store_exported_data_for_gc (labs,C) =
             if gc_p() then
               let (* Make sure to leave stack 16-byte aligned if required by os *)
-                  val F = if needs_align () andalso length(labs) mod 2 = 0 then
+                  val F = if length(labs) mod 2 = 0 then
                             fn C => I.push (I "1") :: C (* align *)
                           else fn C => C
               in F(foldr (fn (l,acc) => I.push(LA l) :: acc)
@@ -1428,7 +1430,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                           I.movq(R rsp, L data_lab_ptr_lab) :: C) labs)
               end
           else C
-
 
         fun raise_insts C = (* expects exception value in register rdi!! *)
           let
@@ -1613,18 +1614,23 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 foldr (fn (r, C) => I.push(R r) :: C) C all_regs
               fun pop_all_regs C =
                 foldl (fn (r, C) => I.pop(R r) :: C) C all_regs
-              fun pop_size_ccf_rcf_reg_args C = base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
+              fun pop_size_ccf_rcf_reg_args C =
+                  base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
               val size_ff = 0 (*dummy*)
             in
               I.dot_text ::
               I.dot_globl gc_stub_lab ::
               I.lab gc_stub_lab ::
-              push_all_regs (* The return lab and rcx are also preserved *)
+              push_all_regs                             (* The return lab and rcx are also preserved (16 regs) *)
               (copy(rsp,tmp_reg0,
-                    compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
-                                        pop_all_regs( (* The return lab and tmp_reg0 are also popped again *)
-                                        pop_size_ccf_rcf_reg_args(
-                                        (I.jmp(R tmp_reg0) :: C))))))
+              (copy(rsp,r15,                            (* Save rsp in r15 (callee-save ccall register *)
+              I.push(I "1") ::                          (* at this point we don't know whether the stack *)
+              I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::  (* is aligned, so we force align it here... *)
+              compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
+              copy(r15,rsp,                             (* Reposition stack *)
+              pop_all_regs(                             (* The return lab and tmp_reg0 are also popped again *)
+              pop_size_ccf_rcf_reg_args(
+              (I.jmp(R tmp_reg0) :: C)))))))))
             end
           else C
 
@@ -1671,7 +1677,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* Marks no more frames on stack. For calculating rootset. *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary offsetToReturn *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary function number. *)
-                   I.lab next_lab :: C))
+                   I.lab next_lab ::
+                   C))
                  end) C progunit_labs
 
         fun allocate_global_regions (region_labs,C) =
@@ -1708,8 +1715,17 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    let val region_id = Effect.key_of_eps_or_rho rho
                        val name = c_name rho
                        val C = I.movq(R rax, L (DatLab lab)) :: C
+                       val sz_regdesc = BI.size_of_reg_desc()
+                       val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
+                                        else sz_regdesc+1
+                       val sz_regdesc_bytes = 8 * sz_regdesc
+                       (* The stack is thus ensured to be 16-byte aligned after the
+                        * return address is pushed on the stack by the call instruction.
+                        *)
+(*
                        val sz_regdesc_bytes = 8*BI.size_of_reg_desc()
                        val sz_regdesc_bytes = maybe_align16 sz_regdesc_bytes
+*)
                    in
                        I.subq(I(i2s sz_regdesc_bytes), R rsp) ::  (* MAEL: maybe align *)
                        I.movq(R rsp, R rdi) ::
@@ -1730,6 +1746,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 I.movq(R rsp, D("8", rsp)) :: C
           in
             comment ("PUSH TOP-LEVEL HANDLER ON STACK",
+            I.subq(I "8", R rsp) ::                       (* anti-align *)
             I.subq(I "32", R rsp) ::
             I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("0", rsp)) ::
@@ -1737,7 +1754,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq(L exn_ptr_lab, R tmp_reg1) ::
             I.movq(R tmp_reg1, D("16", rsp)) ::
             I.movq(R rsp, D("24", rsp)) ::
-            I.movq(R rsp, L exn_ptr_lab) :: C))
+            I.movq(R rsp, L exn_ptr_lab) ::
+            I.subq(I "8", R rsp) ::                       (* align *)
+            C))
           end
 
         fun init_stack_bot_gc C =
@@ -1762,7 +1781,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.dot_align 8 ::
             I.dot_globl (NameLab "code") ::
             I.lab (NameLab "code") ::
-
+            I.push(I "1") ::                           (* 16-align stack *)
             (* Compute range of data space *)
             generate_data_begin_end(progunit_labs,
 
@@ -1790,6 +1809,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
+            (*I.push(I "1") ::*) (* ensure stack is 16-byte aligned after return address is pushed on the
+                              * stack by the I.call instruction. *)
             compile_c_call_prim("terminateML", [mkIntAty 0],
                                 NONE,0,rax, (* instead of res we return the result from
                                              * the last function call *)
@@ -1800,8 +1821,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                               overflow_stub o gc_stub o proftick) nil
         fun data_begin C =
             if gc_p() then
-                (I.lab (data_begin_init_lab) :: C)
+              (I.lab (data_begin_init_lab) :: C)
             else C
+
         fun data_end C =
             if gc_p() then
                 (I.dot_align 8 ::

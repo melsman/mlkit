@@ -7,7 +7,7 @@
 (* (e.g., resolve_cc, resolve_ccall, handl_arg_phreg,                   *)
 (*        handl_return_phreg, resolve_act_cc)                           *)
 
-functor CallConv(BI : BACKEND_INFO) : CALL_CONV = 
+functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
   struct
     type lvar = Lvars.lvar
     type offset = int
@@ -66,14 +66,14 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 
     fun get_res_lvars({res,...}:cc) = map get_lvar_sty res
 
-    fun get_arg_lvars({clos, args, reg_vec, reg_args, ...}:cc) = 
+    fun get_arg_lvars({clos, args, reg_vec, reg_args, ...}:cc) =
       get_lvar_sty_opt'(clos,
       get_lvar_stys'(args,
       get_lvar_sty_opt'(reg_vec,
       get_lvar_stys'(reg_args,[]))))
 
-    fun decompose_cc({clos, args, reg_vec,reg_args, res, ...}:cc) : 
-      {clos : lvar option, args : lvar list, 
+    fun decompose_cc({clos, args, reg_vec,reg_args, res, ...}:cc) :
+      {clos : lvar option, args : lvar list,
        reg_vec : lvar option,reg_args : lvar list, res : lvar list} =
       {clos = get_lvar_sty_opt clos,
        args = map get_lvar_sty args,
@@ -167,7 +167,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 	      val args = map assign_stack (rev args_stys)
 	  in (args, reg_args, acc, [])
 	  end
-	else 
+	else
 	  let val args = map assign_stack args_stys
 	      val reg_args = map assign_stack reg_args_stys
 	  in (args, reg_args, acc, [])
@@ -189,7 +189,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 
 
       fun resolve_sty_opt(SOME sty,acc,[]) = (SOME(assign_stack sty),acc,[])
-	| resolve_sty_opt(SOME sty,acc,phreg::phregs) = 
+	| resolve_sty_opt(SOME sty,acc,phreg::phregs) =
 	let
 	  val (sty',lv_phreg') = assign_phreg(sty,phreg)
 	in
@@ -218,7 +218,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 	end
 
       fun resolve_opt phreg_to_alpha (SOME alpha,assign_list,[]) = (SOME alpha,assign_list,[])
-	| resolve_opt phreg_to_alpha (SOME alpha,assign_list,phreg::phregs) = 
+	| resolve_opt phreg_to_alpha (SOME alpha,assign_list,phreg::phregs) =
 	let
 	  val phreg' = phreg_to_alpha phreg
 	in
@@ -226,7 +226,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 	end
 	| resolve_opt phreg_to_alpha (NONE,assign_list,phregs) = (NONE,assign_list,phregs)
       fun resolve_auto phreg_to_alpha (alpha,assign_list,[]) = (alpha,assign_list,[])
-	| resolve_auto phreg_to_alpha ((alpha,ft),assign_list,phreg::phregs) = 
+	| resolve_auto phreg_to_alpha ((alpha,ft),assign_list,phreg::phregs) =
 	let val phreg' = phreg_to_alpha phreg
 	in ((phreg',ft),(alpha,phreg)::assign_list,phregs)
 	end
@@ -277,7 +277,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 	  val (args_stys,lv_phreg_args,phregs) = resolve_stys_args(args,lv_phreg_args,phregs)
 	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys_args(reg_args,lv_phreg_args,phregs)  (*ME 2001-02-24*)
 *)
-	  val (args_stys,reg_args_stys,lv_phreg_args,phregs) = 
+	  val (args_stys,reg_args_stys,lv_phreg_args,phregs) =
 	    resolve_stys_args(args,reg_args,lv_phreg_args,phregs)
 
 	  val _ = get_next_offset() (* The next offset is for the return address *)
@@ -299,7 +299,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
       fun get_spilled_args {clos,args,reg_vec,reg_args,res,frame_size} =
 	map #1 (get_spilled_sty_opt(clos,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[])))))
 
-      fun get_spilled_args_with_offsets{clos,args,reg_vec,reg_args,res,frame_size} =
+      fun get_spilled_args_with_offsets {clos,args,reg_vec,reg_args,res,frame_size} =
 	get_spilled_sty_opt(clos,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[]))))
 
       fun get_spilled_res {clos,args,reg_vec,reg_args,res,frame_size} =
@@ -332,7 +332,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
       filter_out_stack_opt(clos,filter_out_stack(args,filter_out_stack_opt(reg_vec,[])))
 
     (* The Call Convention supports one return register for handle functions *)
-    fun handl_return_phreg res_phreg = 
+    fun handl_return_phreg res_phreg =
       case res_phreg of
 	phreg::rest => phreg
       | _ => die "handl_return_phreg needs at least one machine register for the result"
@@ -341,7 +341,7 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
       case args_phreg of
 	phreg1::phreg2::rest => (phreg1,phreg2)
       | _ => die "handl function needs at least two machine registers for arguments"
-	
+
     (******************)
     (* PrettyPrinting *)
     (******************)
@@ -363,9 +363,9 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
 
     fun pr_cc{clos,args,reg_vec,reg_args,res,frame_size} =
       "args=<" ^ pr_stys args ^
-      ">,reg_vec=<" ^ pr_sty_opt reg_vec ^ 
+      ">,reg_vec=<" ^ pr_sty_opt reg_vec ^
       ">,reg_args=<" ^ pr_stys reg_args ^
-      ">,clos=<" ^ pr_sty_opt clos ^ 
+      ">,clos=<" ^ pr_sty_opt clos ^
       ">,res=<" ^ pr_stys res ^ ">" ^
       pr_frame_size frame_size
 
