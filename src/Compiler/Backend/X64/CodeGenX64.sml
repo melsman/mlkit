@@ -1315,16 +1315,20 @@ struct
         val _ = pw reg_map
    *)
         val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
-        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-                                 I.pop (R tmp_reg1) ::
-                                 I.jmp (R tmp_reg1) :: GCsnippet)
+
+        val () = reset_code_blocks()
+        val C =
+            checkGC(
+            base_plus_offset(rsp,WORDS(~size_ff),rsp,
+            do_simple_memprof(
+            do_prof(
+            CG_lss(lss,size_ff,size_ccf,
+            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+            I.pop (R tmp_reg1) ::
+            I.jmp (R tmp_reg1) ::
+            GCsnippet))))))
       in
-        gen_fn(lab,
-               checkGC(
-                base_plus_offset(rsp,WORDS(~size_ff),rsp,
-                 do_simple_memprof(
-                 do_prof(
-                  CG_lss(lss,size_ff,size_ccf,C))))))
+        gen_fn(lab, C @ get_code_blocks())
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1351,7 +1355,7 @@ struct
     (***************************************************)
     (* Init Code and Static Data for this program unit *)
     (***************************************************)
-    fun static_data(l:label) =
+    fun static_data (l:label) =
       I.dot_data ::
       comment ("START OF STATIC DATA AREA",
       data_begin_lab (l,

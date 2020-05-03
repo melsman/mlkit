@@ -117,22 +117,31 @@ struct
     fun new_local_lab name = LocalLab (Labels.new_named name)
     local
       val counter = ref 0
-      fun incr() = (counter := !counter + 1; !counter)
+      fun incr () = (counter := !counter + 1; !counter)
     in
-      fun new_dynamicFn_lab() : lab = DatLab(Labels.new_named ("DynLab" ^ Int.toString(incr())))
-      fun new_string_lab() : lab = DatLab(Labels.new_named ("StringLab" ^ Int.toString(incr())))
-      fun new_float_lab() : lab = DatLab(Labels.new_named ("FloatLab" ^ Int.toString(incr())))
-      fun new_num_lab() : lab = DatLab(Labels.new_named ("BoxedNumLab" ^ Int.toString(incr())))
-      fun reset_label_counter() = counter := 0
+      fun new_dynamicFn_lab () : lab = DatLab(Labels.new_named ("DynLab" ^ Int.toString(incr())))
+      fun new_string_lab () : lab = DatLab(Labels.new_named ("StringLab" ^ Int.toString(incr())))
+      fun new_float_lab () : lab = DatLab(Labels.new_named ("FloatLab" ^ Int.toString(incr())))
+      fun new_num_lab () : lab = DatLab(Labels.new_named ("BoxedNumLab" ^ Int.toString(incr())))
+      fun reset_label_counter () = counter := 0
     end
 
     (* Static Data inserted at the beginning of the code. *)
     local
       val static_data : I.inst list ref = ref []
     in
-      fun add_static_data (insts) = (static_data := insts @ !static_data)
+      fun add_static_data insts = (static_data := insts @ !static_data)
       fun reset_static_data () = static_data := []
       fun get_static_data C = !static_data @ C
+    end
+
+    (* Additional code blocks added at the end of functions (for avoiding jumping over blocks) *)
+    local
+      val code_blocks : I.inst list ref = ref []
+    in
+      fun add_code_block insts = (code_blocks := insts @ !code_blocks)
+      fun reset_code_blocks () = code_blocks := []
+      fun get_code_blocks () = !code_blocks
     end
 
     (* giving numbers to registers---for garbage collection *)
@@ -230,11 +239,11 @@ struct
           die "move_num_boxed.boxed integers/words necessary only when tagging is enabled"
         else
           let val num_lab = new_num_lab()
-              val _ = add_static_data [I.dot_data,
-                                       I.dot_align 8,
-                                       I.lab num_lab,
-                                       I.dot_quad(BI.pr_tag_w(BI.tag_word_boxed(true))),
-                                       I.dot_quad x]
+              val () = add_static_data [I.dot_data,
+                                        I.dot_align 8,
+                                        I.lab num_lab,
+                                        I.dot_quad(BI.pr_tag_w(BI.tag_word_boxed(true))),
+                                        I.dot_quad x]
           in I.movq(LA num_lab, ea) :: C
           end
 
@@ -352,11 +361,11 @@ struct
             foldr(fn (ch, acc) => I.dot_byte (Int.toString(ord ch)) :: acc)
             [I.dot_byte "0"] (explode str)
 
-          val _ = add_static_data (I.dot_data ::
-                                   I.dot_align 8 ::
-                                   I.lab string_lab ::
-                                   I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size(str)))) ::
-                                   bytes)
+          val () = add_static_data (I.dot_data ::
+                                    I.dot_align 8 ::
+                                    I.lab string_lab ::
+                                    I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size(str)))) ::
+                                    bytes)
       in string_lab
       end
 
@@ -849,7 +858,7 @@ struct
          I.lab l ::
          copy(tmp_reg1, t, C))
       end
-
+(*
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
       let val n = if region_profiling() then n0 + BI.objectDescSizeP
                   else n0
@@ -869,12 +878,64 @@ struct
         post_prof
         (copy(tmp_reg1,t,C))))
       end
+*)
+    fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
+        if region_profiling() then
+          let val n = n0 + BI.objectDescSizeP
+              val l = new_local_lab "return_from_alloc"
+              fun post_prof C =
+                  (* tmp_reg1 now points at the object descriptor; initialize it *)
+                  I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
+                  I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
+                  I.leaq(D (i2s (8*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) ::
+                  C                                                    (* make tmp_reg1 point at object *)
+          in copy(t,tmp_reg1,
+             I.push(LA l) ::
+             move_immed(IntInf.fromInt n, R tmp_reg0,
+             I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
+             I.lab l ::
+             post_prof
+             (copy(tmp_reg1,t,C))))
+          end
+        else
+          let val n = n0
+              val l = new_local_lab "return_from_alloc"
+              val l_expand = new_local_lab "alloc_expand"
+              fun maybe_update_alloc_period C =
+                  if gc_p() then
+                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
+                    I.addq(I (i2s n), R tmp_reg0) ::
+                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
+                    C
+                  else C
+              val () =
+                  add_code_block
+                      (I.lab l_expand ::                            (* expand:                            *)
+                       I.push(LA l) ::                              (*   push continuation label          *)
+                       move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
+                       I.jmp(L(NameLab "__allocate")) :: nil))      (*   jmp to __allocate with args in   *)
+          in
+            copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
+            I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
+            load_indexed(R tmp_reg0,tmp_reg1,WORDS 0,               (*   tmp_reg0 = tmp_reg1[0]           *)
+            I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
+            I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
+            I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
+            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
+            I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
+            maybe_update_alloc_period(
+            I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
+            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
+          end
 
     (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
      * then the following function is used for allocating pairs in
      * infinite regions. *)
 
-    fun alloc_untagged_value_kill_tmp01 (t:reg,size_alloc,size_ff,pp:LS.pp,C) =
+    fun alloc_untagged_value_kill_tmp01 (t:reg,n,size_ff,pp:LS.pp,C) =  (* n: size of untagged pair, e.g. *)
+        alloc_kill_tmp01 (t,n,size_ff,pp,
+        I.leaq(D("-8",t), R t) :: C)
+(*
       let val n0 = size_alloc (* size of untagged pair, e.g. *)
           val n = if region_profiling() then n0 + BI.objectDescSizeP
                   else n0
@@ -896,6 +957,7 @@ struct
         I.lab l ::
         post (t,C)))
       end
+  *)
 
     fun set_atbot_bit (dst_reg:reg,C) =
       I.orq(I "2", R dst_reg) :: C
