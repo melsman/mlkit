@@ -1238,9 +1238,12 @@ struct
                            C) =
           let
             val sels = map (fn (i,e) => (toInt i, e)) sels
-            fun if_not_equal_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jne lab :: C
-            fun if_less_than_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jl lab :: C
-            fun if_greater_than_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jg lab :: C
+            fun cmp (i,opr,C) =
+                if rep16bit i then I.cmpq(I (intToStr i),opr) :: C
+                else I.movq(I (intToStr i), R tmp_reg0) :: I.cmpq(R tmp_reg0,opr) :: C
+            fun if_not_equal_go_lab (lab,i,C) = cmp(i, opr, I.jne lab :: C)
+            fun if_less_than_go_lab (lab,i,C) = cmp(i, opr, I.jl lab :: C)
+            fun if_greater_than_go_lab (lab,i,C) = cmp(i, opr, I.jg lab :: C)
           in
             if jump_tables then
               JumpTables.binary_search_new
@@ -1477,10 +1480,10 @@ struct
             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
             fun check_ovf C = if ovf then jump_overflow C else C
-            val (inst_imul, inst_add, inst_sub, inst_sar, inst_cmp, maybeDoubleOfQuadReg) =
+            val (inst_imul, inst_add, inst_sub, inst_sar, maybeDoubleOfQuadReg) =
                 if quad
-                then (I.imulq, I.addq, I.subq, I.sarq, I.cmpq, fn r => r)
-                else (I.imull, I.addl, I.subl, I.sarl, I.cmpl, I.doubleOfQuadReg)
+                then (I.imulq, I.addq, I.subq, I.sarq, fn r => r)
+                else (I.imull, I.addl, I.subl, I.sarl, I.doubleOfQuadReg)
 
         in x_C(y_C(
            copy(y_reg, tmp_reg1,
