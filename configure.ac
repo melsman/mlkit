@@ -1,4 +1,4 @@
-AC_INIT(MLKit, [m4_esyscmd_s(echo $(git --no-pager describe --tags --contains | sed -e s/mlkit-//))])
+AC_INIT(MLKit, [m4_esyscmd_s(echo $(git describe --abbrev --dirty --always --tags))])
 AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/SMLserver/apache/Makefile
@@ -65,5 +65,8 @@ AC_MSG_CHECKING(configure date)
 DATE=`date -u '+%Y-%m-%dT-%H:%M:%S'`
 AC_SUBST(DATE)
 AC_MSG_RESULT($DATE)
+
+COMMITDATE=`git log -1 --format=%cI`
+AC_SUBST(COMMITDATE)
 
 AC_OUTPUT
