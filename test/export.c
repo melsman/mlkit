@@ -1,11 +1,15 @@
-void 
+#include <stdio.h>
+
+long int incr(long int);
+
+void
 work() {
-  int b;
-  int a = 8;
+  long int b;
+  long int a = 8;
   printf("Calling ML function \"incr\"\n");
   b = incr(a);
-  printf("incr(%d) = %d\n", a,b);
+  printf("incr(%ld) = %ld\n", a,b);
   printf("Calling ML function \"incr\" again\n");
   b = incr(a);
-  printf("incr(%d) = %d\n", a,b);
+  printf("incr(%ld) = %ld\n", a,b);
 }

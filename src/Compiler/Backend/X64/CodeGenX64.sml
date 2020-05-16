@@ -844,274 +844,281 @@ struct
                           I.movq(R tmp_reg0, L exn_counter_lab) :: C)
                          | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
                      | [x] =>
-                       (case name of
-                            Neg_int32ub => neg_int_kill_tmp0 {tag=false, quad=false} (x,d,size_ff,C)
-                          | Neg_int31 =>   neg_int_kill_tmp0 {tag=true,  quad=false} (x,d,size_ff,C)
-                          | Neg_int64ub => neg_int_kill_tmp0 {tag=false, quad=true}  (x,d,size_ff,C)
-                          | Neg_int63 =>   neg_int_kill_tmp0 {tag=true,  quad=true}  (x,d,size_ff,C)
+                       let val arg = (x,d,size_ff,C)
+                       in case name of
+                              Neg_int32ub => neg_int_kill_tmp0 {tag=false, quad=false} arg
+                            | Neg_int31 =>   neg_int_kill_tmp0 {tag=true,  quad=false} arg
+                            | Neg_int64ub => neg_int_kill_tmp0 {tag=false, quad=true}  arg
+                            | Neg_int63 =>   neg_int_kill_tmp0 {tag=true,  quad=true}  arg
 
-                          | Abs_int32ub => abs_int_kill_tmp0 {tag=false, quad=false} (x,d,size_ff,C)
-                          | Abs_int31 =>   abs_int_kill_tmp0 {tag=true,  quad=false} (x,d,size_ff,C)
-                          | Abs_int64ub => abs_int_kill_tmp0 {tag=false, quad=true}  (x,d,size_ff,C)
-                          | Abs_int63 =>   abs_int_kill_tmp0 {tag=true,  quad=true}  (x,d,size_ff,C)
+                            | Abs_int32ub => abs_int_kill_tmp0 {tag=false, quad=false} arg
+                            | Abs_int31 =>   abs_int_kill_tmp0 {tag=true,  quad=false} arg
+                            | Abs_int64ub => abs_int_kill_tmp0 {tag=false, quad=true}  arg
+                            | Abs_int63 =>   abs_int_kill_tmp0 {tag=true,  quad=true}  arg
 
-                          | Int31_to_int32ub => num31_to_num32ub(x,d,size_ff,C)
-                          | Int32b_to_int31 => int32_to_int31 {boxedarg=true} (x,d,size_ff,C)
-                          | Int32ub_to_int31 => int32_to_int31 {boxedarg=false} (x,d,size_ff,C)
-                          | Word31_to_word32ub => num31_to_num32ub(x,d,size_ff,C)
-                          | Word32b_to_word31 => word32_to_word31 {boxedarg=true} (x,d,size_ff,C)
-                          | Word32ub_to_word31 => word32_to_word31 {boxedarg=false} (x,d,size_ff,C)
-                          | Word31_to_word32ub_X => num31_to_num32ub (x,d,size_ff,C)
-                          | Word32ub_to_int32ub => word32ub_to_int32ub (x,d,size_ff,C)
-                          | Word32b_to_int31 => word32_to_int31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
-                          | Int32b_to_word31 => word32_to_word31 {boxedarg=true} (x,d,size_ff,C)
-                          | Word32b_to_int31_X => word32_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+                            | Int31_to_int32ub     => num31_to_num32ub arg
+                            | Int32b_to_int31      => int32_to_int31 {boxedarg=true} arg
+                            | Int32ub_to_int31     => int32_to_int31 {boxedarg=false} arg
+                            | Word31_to_word32ub   => num31_to_num32ub arg
+                            | Word32b_to_word31    => word32_to_word31 {boxedarg=true} arg
+                            | Word32ub_to_word31   => word32_to_word31 {boxedarg=false} arg
+                            | Word31_to_word32ub_X => num31_to_num32ub arg
+                            | Word32ub_to_int32ub  => word32ub_to_int32ub arg
+                            | Word32b_to_int31     => word32_to_int31 {boxedarg=true,ovf=true} arg
+                            | Int32b_to_word31     => word32_to_word31 {boxedarg=true} arg
+                            | Word32b_to_int31_X   => word32_to_int31 {boxedarg=true,ovf=false} arg
 
-                          | Word64ub_to_word32ub => word64ub_to_word32ub (x,d,size_ff,C)
-                          | Word32ub_to_word64ub => word32ub_to_word64ub {signext=false} (x,d,size_ff,C)
-                          | Word64ub_to_int32ub => word64ub_to_int32ub (x,d,size_ff,C)
-                          | Word64ub_to_int64ub => num64ub_to_num64ub {ovf=true} (x,d,size_ff,C)
-                          | Word64ub_to_int64ub_X => num64ub_to_num64ub {ovf=false} (x,d,size_ff,C)
+                            | Word64ub_to_word32ub => word64ub_to_word32ub arg
+                            | Word32ub_to_word64ub => word32ub_to_word64ub {signext=false} arg
+                            | Word64ub_to_int32ub  => word64ub_to_int32ub arg
+                            | Word64ub_to_int64ub  => num64ub_to_num64ub {ovf=true} arg
+                            | Word64ub_to_int64ub_X => num64ub_to_num64ub {ovf=false} arg
 
-                          | Word64b_to_int31 => word64_to_int31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
-                          | Word64b_to_int31_X => word64_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+                            | Word64b_to_int31     => word64_to_int31 {boxedarg=true,ovf=true} arg
+                            | Word64b_to_int31_X   => word64_to_int31 {boxedarg=true,ovf=false} arg
 
-                          | Int32ub_to_int64ub => int32ub_to_int64ub (x,d,size_ff,C)
-                          | Int64ub_to_word64ub => num64ub_to_num64ub {ovf=false} (x,d,size_ff,C)
+                            | Int32ub_to_int64ub   => int32ub_to_int64ub arg
+                            | Int64ub_to_word64ub  => num64ub_to_num64ub {ovf=false} arg
 
-                          | Int64b_to_int31 => int64_to_int31 {boxedarg=true} (x,d,size_ff,C)
+                            | Int64b_to_int31      => int64_to_int31 {boxedarg=true} arg
 
-                          | Int64ub_to_int32ub => int64ub_to_int32ub (x,d,size_ff,C)
+                            | Int64ub_to_int32ub   => int64ub_to_int32ub arg
 
-                          | Int31_to_int64ub => int31_to_int64ub(x,d,size_ff,C)
+                            | Int31_to_int64ub     => int31_to_int64ub arg
 
-                          | Int64b_to_int63 => int64_to_int63 {boxedarg=true} (x,d,size_ff,C)
-                          | Word64b_to_word63 => word64_to_num63 {boxedarg=true,ovf=false} (x,d,size_ff,C)
-                          | Word32b_to_word63 => word32_to_word63 {boxedarg=true,signext=false} (x,d,size_ff,C)
-                          | Word63_to_word31 => word63_to_word31 (x,d,size_ff,C)
-                          | Word31_to_word63_X => num31_to_num63 {signext=true} (x,d,size_ff,C)
-                          | Word31_to_word63 => num31_to_num63 {signext=false} (x,d,size_ff,C)
+                            | Int64b_to_int63      => int64_to_int63 {boxedarg=true} arg
+                            | Word64b_to_word63    => word64_to_num63 {boxedarg=true,ovf=false} arg
+                            | Word32b_to_word63    => word32_to_word63 {boxedarg=true,signext=false} arg
+                            | Word63_to_word31     => word63_to_word31 arg
+                            | Word31_to_word63_X   => num31_to_num63 {signext=true} arg
+                            | Word31_to_word63     => num31_to_num63 {signext=false} arg
 
-                          | Int32b_to_int63 => word32_to_word63 {boxedarg=true,signext=true} (x,d,size_ff,C)
-                          | Int63_to_int31 => int63_to_int31 (x,d,size_ff,C)
-                          | Int31_to_int63 => num31_to_num63 {signext=true} (x,d,size_ff,C)
-                          | Word32b_to_int63 => word32_to_word63 {boxedarg=true,signext=false} (x,d,size_ff,C)
-                          | Word32b_to_int63_X => word32_to_word63 {boxedarg=true,signext=true} (x,d,size_ff,C)
-                          | Word64b_to_word31 => word64_to_word31 {boxedarg=true} (x,d,size_ff,C)
+                            | Int32b_to_int63      => word32_to_word63 {boxedarg=true,signext=true} arg
+                            | Int63_to_int31       => int63_to_int31 arg
+                            | Int31_to_int63       => num31_to_num63 {signext=true} arg
+                            | Word32b_to_int63     => word32_to_word63 {boxedarg=true,signext=false} arg
+                            | Word32b_to_int63_X   => word32_to_word63 {boxedarg=true,signext=true} arg
+                            | Word64b_to_word31    => word64_to_word31 {boxedarg=true} arg
 
-                          | Word64b_to_int63 => word64_to_num63 {boxedarg=true,ovf=true} (x,d,size_ff,C)
-                          | Word64b_to_int63_X => word64_to_num63 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+                            | Word64b_to_int63     => word64_to_num63 {boxedarg=true,ovf=true} arg
+                            | Word64b_to_int63_X   => word64_to_num63 {boxedarg=true,ovf=false} arg
 
-                          | Int63_to_int64ub => num63_to_num64ub {shr_inst=I.sarq} (x,d,size_ff,C)
+                            | Int63_to_int64ub     => num63_to_num64ub {shr_inst=I.sarq} arg
 
-                          | Int64ub_to_int63 => int64_to_int63 {boxedarg=false} (x,d,size_ff,C)
+                            | Int64ub_to_int63     => int64_to_int63 {boxedarg=false} arg
 
-                          | Word63_to_word64ub => num63_to_num64ub {shr_inst=I.shrq} (x,d,size_ff,C)
-                          | Word63_to_word64ub_X => num63_to_num64ub {shr_inst=I.sarq} (x,d,size_ff,C)
+                            | Word63_to_word64ub   => num63_to_num64ub {shr_inst=I.shrq} arg
+                            | Word63_to_word64ub_X => num63_to_num64ub {shr_inst=I.sarq} arg
 
-                          | Word64ub_to_word31 => word64_to_word31 {boxedarg=false} (x,d,size_ff,C)
-                          | Int64ub_to_int31 => int64_to_int31 {boxedarg=false} (x,d,size_ff,C)
+                            | Word64ub_to_word31   => word64_to_word31 {boxedarg=false} arg
+                            | Int64ub_to_int31     => int64_to_int31 {boxedarg=false} arg
 
-                          | Word31_to_word64ub => word31_to_word64ub {signext=false} (x,d,size_ff,C)
-                          | Word31_to_word64ub_X => word31_to_word64ub {signext=true} (x,d,size_ff,C)
+                            | Word31_to_word64ub   => word31_to_word64ub {signext=false} arg
+                            | Word31_to_word64ub_X => word31_to_word64ub {signext=true} arg
 
-                          | Word32ub_to_int64ub => word32ub_to_word64ub {signext=false} (x,d,size_ff,C)
-                          | Word32ub_to_int64ub_X => word32ub_to_word64ub {signext=true} (x,d,size_ff,C)
-                          | Word32ub_to_word64ub_X => word32ub_to_word64ub {signext=true} (x,d,size_ff,C)
+                            | Word32ub_to_int64ub  => word32ub_to_word64ub {signext=false} arg
+                            | Word32ub_to_int64ub_X => word32ub_to_word64ub {signext=true} arg
+                            | Word32ub_to_word64ub_X => word32ub_to_word64ub {signext=true} arg
 
-                          | Bytetable_size => bytetable_size(x,d,size_ff,C)
-                          | Table_size => table_size(x,d,size_ff,C)
-                          | Is_null => cmpi_kill_tmp01 {box=false,quad=false} I.je (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
-                                                                                                      precision=32},d,size_ff,C)
-                          | Real_to_f64 => real_to_f64(x,d,size_ff,C)
-                          | Sqrt_f64 => sqrt_f64(x,d,size_ff,C)
-                          | Neg_f64 => neg_f64(x,d,size_ff,C)
-                          | Abs_f64 => abs_f64(x,d,size_ff,C)
-                          | Int_to_f64 => int_to_f64(x,d,size_ff,C)
-                          | Blockf64_size => blockf64_size(x,d,size_ff,C)
-                          | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name))
+                            | Bytetable_size => bytetable_size arg
+                            | Table_size     => table_size arg
+
+                            | Real_to_f64    => real_to_f64 arg
+                            | Sqrt_f64       => sqrt_f64 arg
+                            | Neg_f64        => neg_f64 arg
+                            | Abs_f64        => abs_f64 arg
+                            | Int_to_f64     => int_to_f64 arg
+                            | Blockf64_size  => blockf64_size arg
+
+                            | Is_null => cmpi_kill_tmp01 {box=false,quad=false} I.je
+                                                         (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
+                                                                            precision=32},d,size_ff,C)
+                            | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name)
+                       end
                      | [x,y] =>
-                       (case name of
-                            Equal_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
-                          | Equal_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.je (x,y,d,size_ff,C)
-                          | Equal_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
-                          | Equal_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
-                          | Equal_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.je (x,y,d,size_ff,C)
-                          | Equal_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.je (x,y,d,size_ff,C)
-                          | Equal_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
-                          | Equal_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.je (x,y,d,size_ff,C)
-                          | Equal_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
-                          | Equal_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
-                          | Equal_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.je (x,y,d,size_ff,C)
-                          | Equal_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.je (x,y,d,size_ff,C)
+                       let val arg = (x,y,d,size_ff,C)
+                       in case name of
+                              Equal_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
+                            | Equal_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
+                            | Equal_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
+                            | Equal_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
 
-                          | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Plus_word31 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Plus_word32ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Plus_int64ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  (x,y,d,size_ff,C)
-                          | Plus_int63 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Plus_word63 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Plus_word64ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
+                            | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
+                            | Plus_word31 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=false} arg
+                            | Plus_word32ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=false} arg
+                            | Plus_int64ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  arg
+                            | Plus_int63 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  arg
+                            | Plus_word63 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
+                            | Plus_word64ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                          | Minus_int32ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Minus_int31 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Minus_word31 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Minus_word32ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Minus_int64ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  (x,y,d,size_ff,C)
-                          | Minus_int63 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Minus_word63 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Minus_word64ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Minus_int32ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
+                            | Minus_int31 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
+                            | Minus_word31 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=false} arg
+                            | Minus_word32ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=false} arg
+                            | Minus_int64ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  arg
+                            | Minus_int63 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  arg
+                            | Minus_word63 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
+                            | Minus_word64ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                          | Mul_int32ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Mul_int31 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Mul_word31 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Mul_word32ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Mul_int64ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  (x,y,d,size_ff,C)
-                          | Mul_int63 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Mul_word63 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Mul_word64ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Mul_int32ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
+                            | Mul_int31 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
+                            | Mul_word31 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=false} arg
+                            | Mul_word32ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=false} arg
+                            | Mul_int64ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  arg
+                            | Mul_int63 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  arg
+                            | Mul_word63 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
+                            | Mul_word64ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                          | Neg_int32b => neg_int_boxed_kill_tmp0 {quad=false} (x,y,d,size_ff,C)
-                          | Neg_int64b => neg_int_boxed_kill_tmp0 {quad=true} (x,y,d,size_ff,C)
-                          | Neg_real =>   negf_kill_tmp01 (x,y,d,size_ff,C)
-                          | Abs_int32b => abs_int_boxed_kill_tmp0 {quad=false} (x,y,d,size_ff,C)
-                          | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} (x,y,d,size_ff,C)
-                          | Abs_real =>   absf_kill_tmp01 (x,y,d,size_ff,C)
+                            | Neg_int32b => neg_int_boxed_kill_tmp0 {quad=false} arg
+                            | Neg_int64b => neg_int_boxed_kill_tmp0 {quad=true} arg
+                            | Neg_real =>   negf_kill_tmp01 arg
+                            | Abs_int32b => abs_int_boxed_kill_tmp0 {quad=false} arg
+                            | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} arg
+                            | Abs_real =>   absf_kill_tmp01 arg
 
-                          | Less_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jl (x,y,d,size_ff,C)
-                          | Less_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jl (x,y,d,size_ff,C)
-                          | Less_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jl (x,y,d,size_ff,C)
-                          | Less_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jb (x,y,d,size_ff,C)
-                          | Less_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jb (x,y,d,size_ff,C)
-                          | Less_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jb (x,y,d,size_ff,C)
-                          | Less_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jl (x,y,d,size_ff,C)
-                          | Less_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jl (x,y,d,size_ff,C)
-                          | Less_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jl (x,y,d,size_ff,C)
-                          | Less_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jb (x,y,d,size_ff,C)
-                          | Less_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jb (x,y,d,size_ff,C)
-                          | Less_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jb (x,y,d,size_ff,C)
+                            | Less_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
+                            | Less_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jl arg
+                            | Less_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
+                            | Less_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
+                            | Less_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
+                            | Less_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jb arg
+                            | Less_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
+                            | Less_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jl arg
+                            | Less_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
+                            | Less_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
+                            | Less_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
+                            | Less_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jb arg
 
-                          | Less_real => cmpf_kill_tmp01 LESSTHAN (x,y,d,size_ff,C)
-                          | Less_f64 =>  cmpf64_kill_tmp0 LESSTHAN (x,y,d,size_ff,C)
+                            | Less_real => cmpf_kill_tmp01 LESSTHAN arg
+                            | Less_f64 =>  cmpf64_kill_tmp0 LESSTHAN arg
 
-                          | Lesseq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jle (x,y,d,size_ff,C)
-                          | Lesseq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jle (x,y,d,size_ff,C)
-                          | Lesseq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jle (x,y,d,size_ff,C)
-                          | Lesseq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jbe (x,y,d,size_ff,C)
-                          | Lesseq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jbe (x,y,d,size_ff,C)
-                          | Lesseq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jbe (x,y,d,size_ff,C)
-                          | Lesseq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jle (x,y,d,size_ff,C)
-                          | Lesseq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jle (x,y,d,size_ff,C)
-                          | Lesseq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jle (x,y,d,size_ff,C)
-                          | Lesseq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jbe (x,y,d,size_ff,C)
-                          | Lesseq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jbe (x,y,d,size_ff,C)
-                          | Lesseq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jbe (x,y,d,size_ff,C)
+                            | Lesseq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
+                            | Lesseq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jle arg
+                            | Lesseq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
+                            | Lesseq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
+                            | Lesseq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
+                            | Lesseq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jbe arg
+                            | Lesseq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
+                            | Lesseq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jle arg
+                            | Lesseq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
+                            | Lesseq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
+                            | Lesseq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
+                            | Lesseq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jbe arg
 
-                          | Lesseq_real => cmpf_kill_tmp01 LESSEQUAL (x,y,d,size_ff,C)
-                          | Lesseq_f64 =>  cmpf64_kill_tmp0 LESSEQUAL (x,y,d,size_ff,C)
+                            | Lesseq_real => cmpf_kill_tmp01 LESSEQUAL arg
+                            | Lesseq_f64 =>  cmpf64_kill_tmp0 LESSEQUAL arg
 
-                          | Greater_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jg (x,y,d,size_ff,C)
-                          | Greater_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jg (x,y,d,size_ff,C)
-                          | Greater_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jg (x,y,d,size_ff,C)
-                          | Greater_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.ja (x,y,d,size_ff,C)
-                          | Greater_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.ja (x,y,d,size_ff,C)
-                          | Greater_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.ja (x,y,d,size_ff,C)
-                          | Greater_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jg (x,y,d,size_ff,C)
-                          | Greater_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jg (x,y,d,size_ff,C)
-                          | Greater_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jg (x,y,d,size_ff,C)
-                          | Greater_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.ja (x,y,d,size_ff,C)
-                          | Greater_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.ja (x,y,d,size_ff,C)
-                          | Greater_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.ja (x,y,d,size_ff,C)
+                            | Greater_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
+                            | Greater_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jg arg
+                            | Greater_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
+                            | Greater_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
+                            | Greater_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
+                            | Greater_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.ja arg
+                            | Greater_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
+                            | Greater_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jg arg
+                            | Greater_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
+                            | Greater_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
+                            | Greater_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
+                            | Greater_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.ja arg
 
-                          | Greater_real => cmpf_kill_tmp01 GREATERTHAN (x,y,d,size_ff,C)
-                          | Greater_f64 =>  cmpf64_kill_tmp0 GREATERTHAN (x,y,d,size_ff,C)
+                            | Greater_real => cmpf_kill_tmp01 GREATERTHAN arg
+                            | Greater_f64 =>  cmpf64_kill_tmp0 GREATERTHAN arg
 
-                          | Greatereq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jge (x,y,d,size_ff,C)
-                          | Greatereq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jge (x,y,d,size_ff,C)
-                          | Greatereq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jge (x,y,d,size_ff,C)
-                          | Greatereq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jae (x,y,d,size_ff,C)
-                          | Greatereq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jae (x,y,d,size_ff,C)
-                          | Greatereq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jae (x,y,d,size_ff,C)
-                          | Greatereq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jge (x,y,d,size_ff,C)
-                          | Greatereq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jge (x,y,d,size_ff,C)
-                          | Greatereq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jge (x,y,d,size_ff,C)
-                          | Greatereq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jae (x,y,d,size_ff,C)
-                          | Greatereq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jae (x,y,d,size_ff,C)
-                          | Greatereq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jae (x,y,d,size_ff,C)
+                            | Greatereq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
+                            | Greatereq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jge arg
+                            | Greatereq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
+                            | Greatereq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
+                            | Greatereq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
+                            | Greatereq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jae arg
+                            | Greatereq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
+                            | Greatereq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jge arg
+                            | Greatereq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
+                            | Greatereq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
+                            | Greatereq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
+                            | Greatereq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jae arg
 
-                          | Greatereq_real => cmpf_kill_tmp01 GREATEREQUAL (x,y,d,size_ff,C)
-                          | Greatereq_f64 =>  cmpf64_kill_tmp0 GREATEREQUAL (x,y,d,size_ff,C)
+                            | Greatereq_real => cmpf_kill_tmp01 GREATEREQUAL arg
+                            | Greatereq_f64 =>  cmpf64_kill_tmp0 GREATEREQUAL arg
 
-                          | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
-                          | Andb_word32ub => andb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
-                          | Andb_word63 =>   andb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
-                          | Andb_word64ub => andb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
+                            | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} arg
+                            | Andb_word32ub => andb_word_kill_tmp01 {quad=false} arg
+                            | Andb_word63 =>   andb_word_kill_tmp01 {quad=true}  arg
+                            | Andb_word64ub => andb_word_kill_tmp01 {quad=true}  arg
 
-                          | Orb_word31 =>   orb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
-                          | Orb_word32ub => orb_word_kill_tmp01 {quad=false} (x,y,d,size_ff,C)
-                          | Orb_word63 =>   orb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
-                          | Orb_word64ub => orb_word_kill_tmp01 {quad=true}  (x,y,d,size_ff,C)
+                            | Orb_word31 =>   orb_word_kill_tmp01 {quad=false} arg
+                            | Orb_word32ub => orb_word_kill_tmp01 {quad=false} arg
+                            | Orb_word63 =>   orb_word_kill_tmp01 {quad=true}  arg
+                            | Orb_word64ub => orb_word_kill_tmp01 {quad=true}  arg
 
-                          | Xorb_word31 =>   xorb_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Xorb_word32ub => xorb_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Xorb_word63 =>   xorb_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Xorb_word64ub => xorb_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Xorb_word31 =>   xorb_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Xorb_word32ub => xorb_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Xorb_word63 =>   xorb_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Xorb_word64ub => xorb_word_kill_tmp01 {tag=false, quad=true}  arg
 
-                          | Shift_left_word31 =>   shift_left_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Shift_left_word32ub => shift_left_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Shift_left_word63 =>   shift_left_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Shift_left_word64ub => shift_left_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Shift_left_word31 =>   shift_left_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Shift_left_word32ub => shift_left_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Shift_left_word63 =>   shift_left_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Shift_left_word64ub => shift_left_word_kill_tmp01 {tag=false, quad=true}  arg
 
-                          | Shift_right_signed_word31 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Shift_right_signed_word32ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Shift_right_signed_word63 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Shift_right_signed_word64ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Shift_right_signed_word31 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Shift_right_signed_word32ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Shift_right_signed_word63 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Shift_right_signed_word64ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=true}  arg
 
-                          | Shift_right_unsigned_word31 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=false} (x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word32ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=false} (x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word63 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=true}  (x,y,d,size_ff,C)
-                          | Shift_right_unsigned_word64ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=true}  (x,y,d,size_ff,C)
+                            | Shift_right_unsigned_word31 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Shift_right_unsigned_word32ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Shift_right_unsigned_word63 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Shift_right_unsigned_word64ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=true}  arg
 
-                          | Int31_to_int32b => num31_to_num_boxed {quad=false} (x,y,d,size_ff,C)
-                          | Word31_to_word32b => num31_to_num_boxed {quad=false} (x,y,d,size_ff,C)
-                          | Word31_to_word32b_X => num31_to_num_boxed {quad=false} (x,y,d,size_ff,C)
-                          | Word32b_to_int32b => num32b_to_num32b {ovf=true} (x,y,d,size_ff,C)
-                          | Word32b_to_int32b_X => num32b_to_num32b {ovf=false} (x,y,d,size_ff,C)
-                          | Int32b_to_word32b => num32b_to_num32b {ovf=false} (x,y,d,size_ff,C)
+                            | Int31_to_int32b => num31_to_num_boxed {quad=false} arg
+                            | Word31_to_word32b => num31_to_num_boxed {quad=false} arg
+                            | Word31_to_word32b_X => num31_to_num_boxed {quad=false} arg
+                            | Word32b_to_int32b => num32b_to_num32b {ovf=true} arg
+                            | Word32b_to_int32b_X => num32b_to_num32b {ovf=false} arg
+                            | Int32b_to_word32b => num32b_to_num32b {ovf=false} arg
 
-                          | Word64b_to_int64b_X => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
-                          | Word64b_to_int64b => num64b_to_num64b {ovf=true} (x,y,d,size_ff,C)
-                          | Word32b_to_word64b => word32b_to_word64b {signext=false} (x,y,d,size_ff,C)
-                          | Word32b_to_word64b_X => word32b_to_word64b {signext=true} (x,y,d,size_ff,C)
-                          | Word64b_to_word32b => num64b_to_num32b (x,y,d,size_ff,C)
-                          | Word31_to_word64b => word31_to_word64b {signext=false} (x,y,d,size_ff,C)
-                          | Word31_to_word64b_X => word31_to_word64b {signext=true} (x,y,d,size_ff,C)
+                            | Word64b_to_int64b_X => num64b_to_num64b {ovf=false} arg
+                            | Word64b_to_int64b => num64b_to_num64b {ovf=true} arg
+                            | Word32b_to_word64b => word32b_to_word64b {signext=false} arg
+                            | Word32b_to_word64b_X => word32b_to_word64b {signext=true} arg
+                            | Word64b_to_word32b => num64b_to_num32b arg
+                            | Word31_to_word64b => word31_to_word64b {signext=false} arg
+                            | Word31_to_word64b_X => word31_to_word64b {signext=true} arg
 
-                          | Int32b_to_int64b => int32b_to_int64b (x,y,d,size_ff,C)
-                          | Int64b_to_word64b => num64b_to_num64b {ovf=false} (x,y,d,size_ff,C)
+                            | Int32b_to_int64b => int32b_to_int64b arg
+                            | Int64b_to_word64b => num64b_to_num64b {ovf=false} arg
 
-                          | Int31_to_int64b => num31_to_num_boxed {quad=true} (x,y,d,size_ff,C)
+                            | Int31_to_int64b => num31_to_num_boxed {quad=true} arg
 
-                          | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} (x,y,d,size_ff,C)
-                          | Word63_to_word32b => word63_to_word32b (x,y,d,size_ff,C)
-                          | Word63_to_word64b => num63_to_num64b {shr_inst=I.shrq} (x,y,d,size_ff,C)
-                          | Word63_to_word64b_X => num63_to_num64b {shr_inst=I.sarq} (x,y,d,size_ff,C)
+                            | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} arg
+                            | Word63_to_word32b => word63_to_word32b arg
+                            | Word63_to_word64b => num63_to_num64b {shr_inst=I.shrq} arg
+                            | Word63_to_word64b_X => num63_to_num64b {shr_inst=I.sarq} arg
 
-                          | Int63_to_int32b => int63_to_int32b (x,y,d,size_ff,C)
+                            | Int63_to_int32b => int63_to_int32b arg
 
-                          | Bytetable_sub => bytetable_sub (x,y,d,size_ff,C)
-                          | Word_sub0 => word_sub0 (x,y,d,size_ff,C)
-                          | Plus_f64 => plus_f64 (x,y,d,size_ff,C)
-                          | Minus_f64 => minus_f64 (x,y,d,size_ff,C)
-                          | Mul_f64 => mul_f64 (x,y,d,size_ff,C)
-                          | Div_f64 => div_f64 (x,y,d,size_ff,C)
-                          | Max_f64 => max_f64 (x,y,d,size_ff,C)
-                          | Min_f64 => min_f64 (x,y,d,size_ff,C)
-                          | F64_to_real => f64_to_real_kill_tmp01 (x,y,d,size_ff,C)
-                          | Blockf64_alloc => blockf64_alloc (x,y,d,size_ff,C)
-                          | Blockf64_sub_f64 => blockf64_sub_f64 (x,y,d,size_ff,C)
-                          | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name))
+                            | Bytetable_sub => bytetable_sub arg
+                            | Word_sub0 => word_sub0 arg
+                            | Plus_f64 => plus_f64 arg
+                            | Minus_f64 => minus_f64 arg
+                            | Mul_f64 => mul_f64 arg
+                            | Div_f64 => div_f64 arg
+                            | Max_f64 => max_f64 arg
+                            | Min_f64 => min_f64 arg
+                            | F64_to_real => f64_to_real_kill_tmp01 arg
+                            | Blockf64_alloc => blockf64_alloc arg
+                            | Blockf64_sub_f64 => blockf64_sub_f64 arg
+                            | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name)
+                       end
                      | [b,x,y] =>
                        (case name of
                             Plus_int32b => add_int32b (b,x,y,d,size_ff,C)
@@ -1214,34 +1221,36 @@ struct
                             I.dot_text,
                             I.dot_globl lab, (* The C function entry *)
                             I.lab lab]
-                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
+                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
                          @ [I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
-                            I.push (I "1"),                       (* push dummy *)
+                            I.push (I "1"),                       (* push dummy (alignment) *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
                             I.movq(R rdi, R rax),                 (* move result to %rax *)
-                            I.addq(I "8", R rsp)]                 (* pop dummy *)
+                            I.addq(I "8", R rsp)]                 (* pop dummy (alignment) *)
                          @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                          @ [I.ret])
 
                      val saveregs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
-                                    caller_save_regs_ccall
+                                    caller_save_regs_ccall (* 0 regs *)
                      fun push_callersave_regs C =
                          foldl (fn (r, C) => I.push(R r) :: C) C saveregs
                      fun pop_callersave_regs C =
                          foldr (fn (r, C) => I.pop(R r) :: C) C saveregs
 
                   in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
-                                 store_in_label(aty,clos_lab,tmp_reg1,size_ff,
-                                                I.movq (LA lab, R tmp_reg0) ::
-                                                I.movq (LA stringlab, R tmp_reg1) ::
-                                                push_callersave_regs
-                                                (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
-                                                                                     SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
-                                                pop_callersave_regs C))))
+                     store_in_label(aty,clos_lab,tmp_reg1,size_ff,
+                     I.movq (LA lab, R tmp_reg0) ::
+                     I.movq (LA stringlab, R tmp_reg1) ::
+                     I.push (I "1") ::
+                     push_callersave_regs
+                     (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
+                                                          SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
+                      pop_callersave_regs
+                      (I.addq (I "8", R rsp) :: C)))))
                   end
                 )
        in
@@ -1291,7 +1300,7 @@ struct
         val w0 = Word32.fromInt 0
         fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
         fun pws ws = app pw ws
-        fun set_bit(bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
+        fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
         val size_ff = CallConv.get_frame_size cc
         val size_ccf = CallConv.get_ccf_size cc
@@ -1306,16 +1315,20 @@ struct
         val _ = pw reg_map
    *)
         val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
-        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-                                 I.pop (R tmp_reg1) ::
-                                 I.jmp (R tmp_reg1) :: GCsnippet)
+
+        val () = reset_code_blocks()
+        val C =
+            checkGC(
+            base_plus_offset(rsp,WORDS(~size_ff),rsp,
+            do_simple_memprof(
+            do_prof(
+            CG_lss(lss,size_ff,size_ccf,
+            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+            I.pop (R tmp_reg1) ::
+            I.jmp (R tmp_reg1) ::
+            GCsnippet))))))
       in
-        gen_fn(lab,
-               checkGC(
-                base_plus_offset(rsp,WORDS(~size_ff),rsp,
-                 do_simple_memprof(
-                 do_prof(
-                  CG_lss(lss,size_ff,size_ccf,C))))))
+        gen_fn(lab, C @ get_code_blocks())
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1342,7 +1355,7 @@ struct
     (***************************************************)
     (* Init Code and Static Data for this program unit *)
     (***************************************************)
-    fun static_data(l:label) =
+    fun static_data (l:label) =
       I.dot_data ::
       comment ("START OF STATIC DATA AREA",
       data_begin_lab (l,
@@ -1388,7 +1401,7 @@ val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data lab
 val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 *)
 
-        fun slot_for_datlab((_,l),C) =
+        fun slot_for_datlab ((_,l),C) =
             let fun maybe_dotsize C =
                     if I.sysname() = "Darwin" then C
                     else I.dot_size(DatLab l, 8) :: C
@@ -1420,7 +1433,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun store_exported_data_for_gc (labs,C) =
             if gc_p() then
               let (* Make sure to leave stack 16-byte aligned if required by os *)
-                  val F = if needs_align () andalso length(labs) mod 2 = 0 then
+                  val F = if length(labs) mod 2 = 0 then
                             fn C => I.push (I "1") :: C (* align *)
                           else fn C => C
               in F(foldr (fn (l,acc) => I.push(LA l) :: acc)
@@ -1428,7 +1441,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                           I.movq(R rsp, L data_lab_ptr_lab) :: C) labs)
               end
           else C
-
 
         fun raise_insts C = (* expects exception value in register rdi!! *)
           let
@@ -1613,18 +1625,23 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 foldr (fn (r, C) => I.push(R r) :: C) C all_regs
               fun pop_all_regs C =
                 foldl (fn (r, C) => I.pop(R r) :: C) C all_regs
-              fun pop_size_ccf_rcf_reg_args C = base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
+              fun pop_size_ccf_rcf_reg_args C =
+                  base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
               val size_ff = 0 (*dummy*)
             in
               I.dot_text ::
               I.dot_globl gc_stub_lab ::
               I.lab gc_stub_lab ::
-              push_all_regs (* The return lab and rcx are also preserved *)
+              push_all_regs                             (* The return lab and rcx are also preserved (16 regs) *)
               (copy(rsp,tmp_reg0,
-                    compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
-                                        pop_all_regs( (* The return lab and tmp_reg0 are also popped again *)
-                                        pop_size_ccf_rcf_reg_args(
-                                        (I.jmp(R tmp_reg0) :: C))))))
+              (copy(rsp,r15,                            (* Save rsp in r15 (callee-save ccall register *)
+              I.push(I "1") ::                          (* at this point we don't know whether the stack *)
+              I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::  (* is aligned, so we force align it here... *)
+              compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
+              copy(r15,rsp,                             (* Reposition stack *)
+              pop_all_regs(                             (* The return lab and tmp_reg0 are also popped again *)
+              pop_size_ccf_rcf_reg_args(
+              (I.jmp(R tmp_reg0) :: C)))))))))
             end
           else C
 
@@ -1671,7 +1688,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* Marks no more frames on stack. For calculating rootset. *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary offsetToReturn *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary function number. *)
-                   I.lab next_lab :: C))
+                   I.lab next_lab ::
+                   C))
                  end) C progunit_labs
 
         fun allocate_global_regions (region_labs,C) =
@@ -1708,8 +1726,17 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    let val region_id = Effect.key_of_eps_or_rho rho
                        val name = c_name rho
                        val C = I.movq(R rax, L (DatLab lab)) :: C
+                       val sz_regdesc = BI.size_of_reg_desc()
+                       val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
+                                        else sz_regdesc+1
+                       val sz_regdesc_bytes = 8 * sz_regdesc
+                       (* The stack is thus ensured to be 16-byte aligned after the
+                        * return address is pushed on the stack by the call instruction.
+                        *)
+(*
                        val sz_regdesc_bytes = 8*BI.size_of_reg_desc()
                        val sz_regdesc_bytes = maybe_align16 sz_regdesc_bytes
+*)
                    in
                        I.subq(I(i2s sz_regdesc_bytes), R rsp) ::  (* MAEL: maybe align *)
                        I.movq(R rsp, R rdi) ::
@@ -1730,6 +1757,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 I.movq(R rsp, D("8", rsp)) :: C
           in
             comment ("PUSH TOP-LEVEL HANDLER ON STACK",
+            I.subq(I "8", R rsp) ::                       (* anti-align *)
             I.subq(I "32", R rsp) ::
             I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("0", rsp)) ::
@@ -1737,7 +1765,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq(L exn_ptr_lab, R tmp_reg1) ::
             I.movq(R tmp_reg1, D("16", rsp)) ::
             I.movq(R rsp, D("24", rsp)) ::
-            I.movq(R rsp, L exn_ptr_lab) :: C))
+            I.movq(R rsp, L exn_ptr_lab) ::
+            I.subq(I "8", R rsp) ::                       (* align *)
+            C))
           end
 
         fun init_stack_bot_gc C =
@@ -1762,7 +1792,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.dot_align 8 ::
             I.dot_globl (NameLab "code") ::
             I.lab (NameLab "code") ::
-
+            I.push(I "1") ::                           (* 16-align stack *)
             (* Compute range of data space *)
             generate_data_begin_end(progunit_labs,
 
@@ -1790,6 +1820,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
+            (*I.push(I "1") ::*) (* ensure stack is 16-byte aligned after return address is pushed on the
+                              * stack by the I.call instruction. *)
             compile_c_call_prim("terminateML", [mkIntAty 0],
                                 NONE,0,rax, (* instead of res we return the result from
                                              * the last function call *)
@@ -1800,8 +1832,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                               overflow_stub o gc_stub o proftick) nil
         fun data_begin C =
             if gc_p() then
-                (I.lab (data_begin_init_lab) :: C)
+              (I.lab (data_begin_init_lab) :: C)
             else C
+
         fun data_end C =
             if gc_p() then
                 (I.dot_align 8 ::
