@@ -5,9 +5,9 @@ MLKit covers all of Standard ML, as defined in the 1997 edition of the
 Definition of Standard ML and supports most of the Standard ML Basis
 Library.
 
-## Statistics
+## Test Statistics and Benchmarking
 
-[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
+[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit) [Benchmarking](http://elsman.com/mlkit-charting/)
 
 ## Installation
 
