@@ -181,7 +181,9 @@ structure CompilerEnv: COMPILER_ENV =
 	         (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 	         (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
 	         (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType)),
-	         (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType))
+	         (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType)),
+	         (Ident.id_Subscript, EXCON(Excon.ex_SUBSCRIPT, exnType)),
+	         (Ident.id_Size, EXCON(Excon.ex_SIZE, exnType))
 	        ])
     local
       fun fromVarEnv ve =

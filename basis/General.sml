@@ -7,25 +7,25 @@ infix  4  = <> > >= < <=
 infix  3  := o
 infix  0  before
 
-structure General : GENERAL = 
+structure General : GENERAL =
   struct
     type unit = unit
     type exn = exn
 
     exception Bind = Bind
     exception Match = Match
-    exception Subscript
+    exception Subscript = Subscript
     exception Span
-    exception Size
+    exception Size = Size
     exception Overflow = Overflow
     exception Domain
     exception Div = Div
     exception Chr
     exception Fail = Initial.Fail
     exception Interrupt = Interrupt
-  
+
     fun exnName (e: exn) : string = prim("exnNameML", e)   (* exomorphic by copying *)
-    fun exnMessage (e: exn) : string = exnName e 
+    fun exnMessage (e: exn) : string = exnName e
 (*
     datatype 'a option = NONE | SOME of 'a
     exception Option
@@ -38,8 +38,8 @@ structure General : GENERAL =
 *)
     datatype order = LESS | EQUAL | GREATER
 
-    fun !(x: 'a ref): 'a = prim ("!", x) 
-    fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y)) 
+    fun !(x: 'a ref): 'a = prim ("!", x)
+    fun (x: 'a ref) := (y: 'a): unit = prim (":=", (x, y))
     fun (f o g) x = f(g x)
     fun a before () = a
     fun ignore (a) = ()
@@ -66,17 +66,17 @@ fun not true = false
 fun a <> b = not (a = b)
 
 fun print (s:string) : unit = ((!Initial.TextIO.flushStdOut)() ; prim("printStringML", s))
-  
+
 fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
 fun concat (ss : string list) : string = prim ("implodeStringML", ss)
 fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
 fun size (s:string): int = prim ("__bytetable_size", s)
-fun ord (c : char) : int = prim ("id", c)
-fun chr(i:int) : char = if i>=0 andalso i<256 then prim ("id", i)
-			else raise Chr
+fun ord (c : char) : int = prim ("ord", c)
+fun chr (i:int) : char = if i>=0 andalso i<256 then prim ("id", i)
+			 else raise Chr
 
-local 
+local
    fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
 in fun explode s =
      let fun h (j, res) = if j<0 then res
@@ -84,4 +84,3 @@ in fun explode s =
      in h (size s - 1, nil)
      end
 end
-

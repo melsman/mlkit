@@ -34,8 +34,8 @@ signature ADDRESS_LABELS =
     val exn_BIND_lab : label            (* label 9 *)
     val exn_OVERFLOW_lab : label        (* label 10 *)
     val exn_INTERRUPT_lab : label       (* label 11 *)
+    val exn_SUBSCRIPT_lab : label       (* label 12 *)
+    val exn_SIZE_lab : label            (* label 13 *)
 
     val pu : label Pickle.pu
   end
-
-

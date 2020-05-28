@@ -1495,6 +1495,8 @@ old *)
 	  val MatchVE     = VE.singleton (Ident.id_Match, LONGEXCONpriv Type.Exn)
 	  val OverflowVE  = VE.singleton (Ident.id_Overflow, LONGEXCONpriv Type.Exn)
 	  val InterruptVE = VE.singleton (Ident.id_Interrupt, LONGEXCONpriv Type.Exn)
+	  val SubscriptVE = VE.singleton (Ident.id_Subscript, LONGEXCONpriv Type.Exn)
+	  val SizeVE      = VE.singleton (Ident.id_Size, LONGEXCONpriv Type.Exn)
 
 	  fun joinVE [] = VE.empty
 	    | joinVE (VE :: rest) = VE.plus (VE, joinVE rest)
@@ -1566,7 +1568,7 @@ old *)
 	   absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
 	   lessVE, greaterVE, lesseqVE, greatereqVE,
 	   resetRegionsVE, forceResettingVE, DivVE,
-	   BindVE, MatchVE, OverflowVE, InterruptVE]
+	   BindVE, MatchVE, OverflowVE, InterruptVE, SubscriptVE, SizeVE]
 	val fragVE = VE.close fragVE
 	fun VE_initial () = joinVE(if quotation() then fragVE :: VEs else VEs)
 	fun SE_initial () = SE.singleton(StrId.mk_StrId "IntInfRep",empty)  (* dummy *)

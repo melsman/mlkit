@@ -467,7 +467,8 @@ structure LambdaExp: LAMBDA_EXP =
 
    fun pr_excon ex =
        if !barify_p then
-	   if member Excon.eq ex [Excon.ex_DIV,Excon.ex_MATCH,Excon.ex_OVERFLOW,Excon.ex_INTERRUPT]
+	 if member Excon.eq ex [Excon.ex_DIV,Excon.ex_MATCH,Excon.ex_OVERFLOW,Excon.ex_INTERRUPT,
+                                Excon.ex_SUBSCRIPT,Excon.ex_SIZE]
 	       then Excon.pr_excon ex
 	   else unsymb(Excon.pr_excon' ex)
        else Excon.pr_excon ex
@@ -1514,6 +1515,12 @@ structure LambdaExp: LAMBDA_EXP =
 
     val pu_excon_lvopt = Pickle.pairGen(Excon.pu,pu_lv_opt)
 
+    val pu_intinf : IntInf.int Pickle.pu =
+        Pickle.convert (fn s => case IntInf.fromString s of SOME i => i
+                                                          | NONE => die "pu_intinf",
+                        IntInf.toString)
+                       Pickle.string
+
     val pu_LambdaExp =
 	let fun toInt (VAR _) = 0
 	      | toInt (INTEGER _) = 1
@@ -1536,12 +1543,6 @@ structure LambdaExp: LAMBDA_EXP =
 	      | toInt (FRAME _) = 18
               | toInt (LETREGION _) = 19
 	      | toInt (F64 _) = 20
-
-            val pu_intinf : IntInf.int Pickle.pu =
-                Pickle.convert (fn s => case IntInf.fromString s of SOME i => i
-                                                                  | NONE => die "pu_intinf",
-                                IntInf.toString)
-                               Pickle.string
 
 	    fun fun_VAR pu_LambdaExp =
 		Pickle.con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")

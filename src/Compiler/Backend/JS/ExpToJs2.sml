@@ -473,6 +473,7 @@ fun pToJs1 name e : J.exp =
       | "printStringML" => callPrim1 "document.write" e
       | "exnNameML" => J.Sub(e,jcnst0)
       | "id" => e
+      | "ord" => e
       | "word_table0" => J.App(J.Id "Array",[e])
       | "table_size" => J.Prop(e,"length")
       | "chararray_to_string" => callPrim1 "SmlPrims.charArrayToString" e

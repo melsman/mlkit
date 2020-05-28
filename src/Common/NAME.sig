@@ -8,7 +8,7 @@ signature NAME =
      * matched against another name, n0, which may be either flexible
      * or rigid, and if n0 is marked generative, then n0 and n will
      * thereafter be considered identical (e.g., it holds that key n =
-     * key n0). 
+     * key n0).
      *)
 
     val key : name -> int * string     (* allow equality only through use of key. *)
@@ -34,13 +34,13 @@ signature NAME =
 
     val bucket : name list ref
 
-      
+
     (* To support efficient maps and sets based on ordering of name
      * keys, there is a so-called match counter, which increases when
      * a flexible name is successfully matched against another name. *)
 
-    type matchcount                                     
-    val current_matchcount : unit -> matchcount          
+    type matchcount
+    val current_matchcount : unit -> matchcount
     val matchcount_lt : matchcount * matchcount -> bool
     val matchcount_invalid : matchcount  (* ~1 for forcing ensurance check of pickled bases *)
 
@@ -60,6 +60,8 @@ signature NAME =
     val exn_BIND : name            (* name 9 *)
     val exn_OVERFLOW : name        (* name 10 *)
     val exn_INTERRUPT : name       (* name 11 *)
+    val exn_SUBSCRIPT : name       (* name 12 *)
+    val exn_SIZE : name            (* name 13 *)
 
     val pu : name Pickle.pu
     val pu_matchcount : matchcount Pickle.pu

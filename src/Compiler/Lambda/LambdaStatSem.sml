@@ -197,7 +197,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			      (Excon.ex_MATCH, NONE),
 			      (Excon.ex_BIND, NONE),
 			      (Excon.ex_OVERFLOW, NONE),
-			      (Excon.ex_INTERRUPT, NONE)]
+			      (Excon.ex_INTERRUPT, NONE),
+			      (Excon.ex_SUBSCRIPT, NONE),
+			      (Excon.ex_SIZE, NONE)
+                             ]
 
 	val ftv_initial =
 	  ConMap.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)
@@ -655,23 +658,24 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				log "but found types:\n"; log_st (layoutTypes ts);
 				die "c function call")
 			val _ =
-			  if name = "id" then  (* check that casts are only performed on unboxed values;
-						* casting of boxed values is region unsafe! *)
-			    (case (ts_arg, ts_res)
-			       of ([ta], [tr]) =>
-				 let open LambdaExp
-				     val unboxed_types = [boolType, unitType, int31Type, word31Type,
-                                                          int63Type, word63Type,
-							  intDefaultType(), wordDefaultType(), foreignptrType]
-                                                         @ (if tag_values() then []
-                                                            else [int32Type, word32Type])
-				     fun ok t = List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
-				 in if ok ta andalso ok tr then ()
-				    else die "c function `id' is used to cast to or from a boxed type; \
-			                     \ it is region-unsafe to use `id' this way! Rewrite your program!!"
-				 end
-		                | _ => die "c function `id' does not have a valid type")
-			  else ()
+	                    if name = "id" orelse name = "ord" then
+                              (* check that casts are only performed on unboxed values;
+			       * casting of boxed values is region unsafe! *)
+			      (case (ts_arg, ts_res)
+			        of ([ta], [tr]) =>
+				   let open LambdaExp
+				       val unboxed_types = [boolType, unitType, int31Type, word31Type,
+                                                            int63Type, word63Type,
+							    intDefaultType(), wordDefaultType(), foreignptrType]
+                                                           @ (if tag_values() then []
+                                                              else [int32Type, word32Type])
+				       fun ok t = List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
+				   in if ok ta andalso ok tr then ()
+				      else die "c function `id' is used to cast to or from a boxed type; \
+			                     \ it is region-unsafe to   use `id' this way! Rewrite your program!!"
+				   end
+		                 | _ => die "c function `id' does not have a valid type")
+			    else ()
 		    in ts_res
 		    end
 		 | _ => die ("c function " ^ name ^ " does not have arrow type"))

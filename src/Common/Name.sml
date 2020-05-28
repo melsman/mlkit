@@ -12,7 +12,7 @@ structure Name: NAME =
 	fun baseGet () = !baseCurrent
     end
 
-    (* Names may be generated fresh and 
+    (* Names may be generated fresh and
      * matched if marked generative. *)
 
     type matchcount = int
@@ -25,7 +25,7 @@ structure Name: NAME =
     end
 
     (* The string is the base *)
-    type name0 = {key: int*string, rigid: bool, gen_mark: bool ref} 
+    type name0 = {key: int*string, rigid: bool, gen_mark: bool ref}
 
     type name = name0 ref
 
@@ -45,14 +45,14 @@ structure Name: NAME =
 	else r := {key=(i,s),rigid=rigid,gen_mark=g}
 
     (* Bucket for generated names *)
-    val bucket = ref ([] : name list) 
+    val bucket = ref ([] : name list)
 
     local val c = ref 0
           fun incr() = let val a = !c
 		       in c:= a + 1; a
 		       end
     in
-      fun new () : name = 
+      fun new () : name =
 	let val key = (incr(),baseGet())
 	    val name = ref {key=key,rigid=false,gen_mark=ref false}
 (*	    val _ = print ("Name generated: " ^ #2 key ^ "#" ^ Int.toString (#1 key) ^ "\n") *)
@@ -67,7 +67,7 @@ structure Name: NAME =
 
     val rematching = ref false
 
-    fun match(n1 as ref {gen_mark=ref true,rigid=false,key=k1} : name, 
+    fun match(n1 as ref {gen_mark=ref true,rigid=false,key=k1} : name,
 	      ref (n0 as {gen_mark=gen_mark as ref true,key=k2,...})) =
 	if  #2 k1 = #2 k2 orelse !rematching then
 	    (gen_mark := false;
@@ -84,7 +84,7 @@ structure Name: NAME =
 
     (* Because the runtime system needs to know about the labels
      * of certain symbols, we predefine some names here *)
-      
+
     fun new_rigid () : name =
       let val n = new()
       in mk_rigid n; bucket := nil; n
@@ -103,20 +103,23 @@ structure Name: NAME =
     val exn_BIND = new_rigid()            (* name 9 *)
     val exn_OVERFLOW = new_rigid()        (* name 10 *)
     val exn_INTERRUPT = new_rigid()       (* name 11 *)
+    val exn_SUBSCRIPT = new_rigid()       (* name 12 *)
+    val exn_SIZE = new_rigid()            (* name 13 *)
 
     local
 	fun toRec (k,r,g) = {key=k, rigid=r, gen_mark=g}
 	fun fromRec {key, rigid, gen_mark} = (key,rigid,gen_mark)
-	val pu0 = Pickle.convert (toRec,fromRec) 
-	    (Pickle.tup3Gen0(Pickle.pairGen(Pickle.int,Pickle.string), Pickle.bool, 
+	val pu0 = Pickle.convert (toRec,fromRec)
+	    (Pickle.tup3Gen0(Pickle.pairGen(Pickle.int,Pickle.string), Pickle.bool,
 			     Pickle.refOneGen Pickle.bool))
     in
-	val pu = 
+	val pu =
 	    Pickle.hashConsEq eq
 	    (Pickle.register "Name" [reg_top, reg_bot, reg_string, reg_pair,
-				     reg_array, reg_ref, reg_triple,	     
+				     reg_array, reg_ref, reg_triple,
 				     exn_DIV, exn_MATCH, exn_BIND,
-				     exn_OVERFLOW, exn_INTERRUPT]
+				     exn_OVERFLOW, exn_INTERRUPT,
+                                     exn_SUBSCRIPT, exn_SIZE]
 	     (Pickle.ref0EqGen eq pu0))
 	val pu_matchcount = Pickle.int
     end
