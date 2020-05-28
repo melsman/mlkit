@@ -96,10 +96,17 @@ structure CompBasisToLamb
 	 * to be declared in the environments. These are identifiers
 	 * stemming from derived forms, unexhaustive matches and
 	 * equality elimination. This is why we patch the derived
-	 * identifiers below.  Martin-18/03/1998 *)
+	 * identifiers below.  Martin-18/03/1998
+         *
+         * The exception constructors Subscript and Size are also
+         * included here, which allows us to let the optimiser
+         * inline array and string subscription and array allocation
+         * across module boundaries.
+         *)
 
-	  val excons = Excon.ex_DIV ::
-	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
+          val excons =
+              Excon.ex_DIV :: Excon.ex_MATCH :: Excon.ex_BIND ::
+              Excon.ex_SUBSCRIPT :: Excon.ex_SIZE :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::
 	      Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cons   (* for elim eq *)
 	  val cons = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cons

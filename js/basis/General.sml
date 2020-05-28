@@ -14,9 +14,9 @@ structure General : GENERAL =
 
     exception Bind = Bind
     exception Match = Match
-    exception Subscript
+    exception Subscript = Subscript
     exception Span
-    exception Size
+    exception Size = Size
     exception Overflow = Overflow
     exception Domain
     exception Div = Div
