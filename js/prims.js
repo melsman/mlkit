@@ -10,6 +10,10 @@ CompilerInitial.en$Interrupt = new String("Interrupt");
 CompilerInitial.exn$Interrupt = Array(CompilerInitial.en$Interrupt);
 CompilerInitial.en$Overflow$48 = new String("Overflow");
 CompilerInitial.exn$Overflow$48 = Array(CompilerInitial.en$Overflow$48);
+CompilerInitial.en$Subscript = new String("Subscript");
+CompilerInitial.exn$Subscript = Array(CompilerInitial.en$Subscript);
+CompilerInitial.en$Size = new String("Size");
+CompilerInitial.exn$Size = Array(CompilerInitial.en$Size);
 
 Con = {}
 Con.some = 0;

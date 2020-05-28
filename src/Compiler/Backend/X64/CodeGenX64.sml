@@ -1533,8 +1533,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                                     (1, "Bind", NameLab "exn_BIND", DatLab BI.exn_BIND_lab),
                                     (2, "Overflow", NameLab "exn_OVERFLOW", DatLab BI.exn_OVERFLOW_lab),
                                     (3, "Interrupt", NameLab "exn_INTERRUPT", DatLab BI.exn_INTERRUPT_lab),
-                                    (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab)]
-        val initial_exnname_counter = 5
+                                    (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab),
+                                    (5, "Subscript", NameLab "exn_SUBSCRIPT", DatLab BI.exn_SUBSCRIPT_lab),
+                                    (6, "Size", NameLab "exn_SIZE", DatLab BI.exn_SIZE_lab)
+                                   ]
+        val initial_exnname_counter = List.length primitive_exceptions
 
         fun init_primitive_exception_constructors_code C =
           foldl (fn (t,C) => setup_primitive_exception(t,C)) C primitive_exceptions
@@ -1610,7 +1613,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                              (NameLab "__raise_div",BI.exn_DIV_lab),
                              (NameLab "__raise_match",BI.exn_MATCH_lab),
                              (NameLab "__raise_bind",BI.exn_BIND_lab),
-                             (NameLab "__raise_interrupt", BI.exn_INTERRUPT_lab)]
+                             (NameLab "__raise_interrupt", BI.exn_INTERRUPT_lab),
+                             (NameLab "__raise_subscript", BI.exn_SUBSCRIPT_lab),
+                             (NameLab "__raise_size", BI.exn_SIZE_lab)]
           in I.dot_text ::(List.foldr (fn ((nl,dl),C') =>
                                           I.dot_globl nl ::
                                           I.lab nl::

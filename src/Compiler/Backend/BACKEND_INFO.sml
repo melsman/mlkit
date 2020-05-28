@@ -60,6 +60,8 @@ signature BACKEND_INFO =
     val exn_BIND_lab      : label
     val exn_OVERFLOW_lab  : label
     val exn_INTERRUPT_lab : label
+    val exn_SUBSCRIPT_lab : label
+    val exn_SIZE_lab      : label
 
     val toplevel_region_withtype_top_lab    : label
     val toplevel_region_withtype_bot_lab    : label

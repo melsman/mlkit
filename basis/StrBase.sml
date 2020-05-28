@@ -6,13 +6,13 @@ structure StrBase : STR_BASE = struct
   fun sub_unsafe (s : string, i : int) : char = prim ("__bytetable_sub", (s,i))
   fun size (s:string): int = prim ("__bytetable_size", s)
   fun implode (chars: char list): string = prim ("implodeCharsML", chars)
-  fun concat(ss:string list) : string = prim("implodeStringML", ss)
+  fun concat (ss:string list) : string = prim("implodeStringML", ss)
 
-  fun chr(i:int) : char =
+  fun chr (i:int) : char =
     if i>=0 andalso i<256 then prim ("id", i)
     else raise Chr
 
-  fun ord (c : char) : int = prim ("id", c)
+  fun ord (c : char) : int = prim ("ord", c)
 
   fun not false = true
     | not true = false
@@ -30,8 +30,8 @@ structure StrBase : STR_BASE = struct
 
   local
 
-    fun scanl0 pred (j, stop, s) = 
-      let 
+    fun scanl0 pred (j, stop, s) =
+      let
 	fun scan0 (j, stop,s) =
 	  if j < stop andalso pred(sub_unsafe(s, j)) then scan0 (j+1, stop, s)
 	  else j
@@ -68,9 +68,9 @@ structure StrBase : STR_BASE = struct
 	    if n = 0 then rev res
 	    else let val (token, aftertoken) =
 	               splitl (fn c => not(isDelim c)) remains
-		 in h (findTok aftertoken) (token :: res) 
+		 in h (findTok aftertoken) (token :: res)
 		 end
-    in h (findTok ss) [] 
+    in h (findTok ss) []
     end
 
 
@@ -82,7 +82,7 @@ structure StrBase : STR_BASE = struct
 	    in if n = 0 then rev (field :: res)
 	       else h (rest afterfield) (field :: res)
 	    end
-    in h ss [] 
+    in h ss []
     end
 
   fun foldl f e (s,i,n) =
@@ -117,7 +117,7 @@ structure StrBase : STR_BASE = struct
 				    else raise BadEscape
 	    val from3Dec = decimal (decimal (decimal (fn src => fn code => (chr code, src))))
 	    fun skipform src =
-	      case getc src 
+	      case getc src
 		of NONE => NONE
 		 | SOME(#"\\", src1) =>
 		    (case getc src1
@@ -146,7 +146,7 @@ structure StrBase : STR_BASE = struct
 	     | SOME(#"\n", rest) => skipform rest
 	     | SOME(#"\t", rest) => skipform rest
 	     | SOME(#"^", rest)  =>
-		(case getc rest 
+		(case getc rest
 		   of NONE => NONE
 		    | SOME(c, rest) =>
 		     if #"@" <= c andalso c <= #"_" then
@@ -216,7 +216,7 @@ structure StrBase : STR_BASE = struct
 	       | SOME(c, rest) => if isHexDigit c then fromHex rest (code * 16 + hexval c)
 				  else (chr code, src)
 	  fun octalOpt cont src code =
-	    case getc src 
+	    case getc src
 	      of NONE => (chr code, src)
 	       | SOME(c, rest) => if #"0" <= c andalso c <= #"7"
 				    then cont rest (code * 8 + ord c - 48)
@@ -239,7 +239,7 @@ structure StrBase : STR_BASE = struct
 	       | SOME(#"'",  src1) => (#"'",    src1)
 	       | SOME(#"\"", src1) => (#"\"",   src1)
 	       | SOME(#"x",  src1) =>
-		     (case getc src1 
+		     (case getc src1
 			of NONE => raise BadEscape
 			 | SOME(c, src2) => if isHexDigit c then fromHex src2 (hexval c)
 					    else raise BadEscape)
@@ -261,7 +261,7 @@ structure StrBase : STR_BASE = struct
 	      case getc src
 		of NONE => implode(rev acc)
 		 | SOME(#"\\", src1) => let val (c, src2) = fromCescape' getc src1
-					in h (c::acc) src2 
+					in h (c::acc) src2
 					end
 		 | SOME(c, src1) => (h (c::acc) src1)
 	in SOME (h [] (explode s))
@@ -272,5 +272,4 @@ structure StrBase : STR_BASE = struct
 
   end (* local *)
 
-end 
-
+end

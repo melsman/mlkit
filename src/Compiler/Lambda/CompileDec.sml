@@ -2699,7 +2699,7 @@ the 12 lines above are very similar to the code below
 	      | "=" => f true EQUALprim
 
 (*KILL 20/11/1997 15:38. tho.:
- it is wrong to remove "id" here; now it is done in CompLamb.
+ it is wrong to remove "id" here; it is removed in ClosExp (mael 2020-05-25)
 	      | "id" =>
 		  (*type conversions that result in no code to run at
 		   run-time are declared as prim "id"'s; for instance, ord is

@@ -115,6 +115,8 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     val exn_BIND_lab      = Labels.exn_BIND_lab
     val exn_OVERFLOW_lab  = Labels.exn_OVERFLOW_lab
     val exn_INTERRUPT_lab = Labels.exn_INTERRUPT_lab
+    val exn_SUBSCRIPT_lab = Labels.exn_SUBSCRIPT_lab
+    val exn_SIZE_lab      = Labels.exn_SIZE_lab
 
     val init_frame_offset = 0
 

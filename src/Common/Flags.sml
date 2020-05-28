@@ -689,7 +689,7 @@ local
   fun off() = (gc := false;
 	       preserve_tail_calls := false;
 	       dangling_pointers := true;
-               Directory.turn_off "aggresive_opt";
+               Directory.turn_on "aggresive_opt";
 	       tag_values := false)
   fun on() = (gc := true;
 	      preserve_tail_calls := true;

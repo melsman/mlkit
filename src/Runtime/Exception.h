@@ -20,11 +20,12 @@ typedef struct {
 extern Exception* exn_BIND;
 extern Exception* exn_DIV;
 extern Exception* exn_MATCH;
-
 extern Exception* exn_OVERFLOW;            /* Exception raised for all primitive operations which
                                               can generate an overflow. */
 
 extern Exception* exn_INTERRUPT;           /* Exception for user interrupt (Ctrl-C). */
+extern Exception* exn_SUBSCRIPT;
+extern Exception* exn_SIZE;
 
 void raise_exn(uintptr_t exn);
 

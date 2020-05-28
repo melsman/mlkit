@@ -61,7 +61,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 		RhoKindEnv: RhoKindEnv}
 
     val pu_con_kind =
-	let 
+	let
 	    fun toInt a = case a of
 		ENUM _ => 0
 	      | UB_NULLARY _ => 1
@@ -79,7 +79,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 	end
 
     val pu_access_type =
-	let 
+	let
 	    fun toInt a = case a of
 		LVAR _ => 0
 	      | RVAR _ => 1
@@ -87,7 +87,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 	      | SELECT _ => 3
 	      | LABEL _ => 4
 	      | FIX _ => 5
-	    fun fun_LVAR _ = 
+	    fun fun_LVAR _ =
 		Pickle.con1 LVAR (fn LVAR a => a | _ => die "pu_access_type.LVAR") Lvars.pu
 	    fun fun_RVAR _ =
 		Pickle.con1 RVAR (fn RVAR a => a | _ => die "pu_access_type.RVAR") Effect.pu_effect
@@ -98,7 +98,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 	    fun fun_LABEL _ =
 		Pickle.con1 LABEL (fn LABEL a => a | _ => die "pu_access_type.LABEL") Labels.pu
 	    fun fun_FIX pu =
-		Pickle.con1 FIX (fn FIX a => a | _ => die "pu_access_type.FIX") 
+		Pickle.con1 FIX (fn FIX a => a | _ => die "pu_access_type.FIX")
 		(Pickle.tup4Gen(Labels.pu,Pickle.optionGen pu,Pickle.int,
 				Pickle.listGen(Pickle.pairGen(Effect.pu_effect,PhysSizeInf.pu_phsize))))
 	in Pickle.dataGen ("pu_access_type", toInt,
@@ -125,14 +125,14 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
       {ConEnv: ConEnv, VarEnv: VarEnv,
        ExconEnv: ExconEnv, RhoEnv: RhoEnv,
        RhoKindEnv: RhoKindEnv} =
-      let fun labs' (a,b) = labs b a 
+      let fun labs' (a,b) = labs b a
 	val acc : label list * label list = (nil,nil)
         val acc = LvarFinMap.fold (fn (a,b) => labs b a) acc VarEnv
         val acc = ExconFinMap.fold (fn ((a,_),b) => labs b a) acc ExconEnv
         val acc = RegvarFinMap.fold (fn (a,b) => labs b a) acc RhoEnv
       in acc
       end
-    
+
 
     val initialConEnv  : ConEnv = ConFinMap.fromList
       (* Potential representations. The integer denotes the index of nullary/unary
@@ -150,11 +150,13 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
        (Excon.ex_MATCH, (LABEL(BI.exn_MATCH_lab),NULLARY_EXCON)),
        (Excon.ex_BIND, (LABEL(BI.exn_BIND_lab),NULLARY_EXCON)),
        (Excon.ex_OVERFLOW, (LABEL(BI.exn_OVERFLOW_lab),NULLARY_EXCON)),
-       (Excon.ex_INTERRUPT, (LABEL(BI.exn_INTERRUPT_lab),NULLARY_EXCON))]
+       (Excon.ex_INTERRUPT, (LABEL(BI.exn_INTERRUPT_lab),NULLARY_EXCON)),
+       (Excon.ex_SUBSCRIPT, (LABEL(BI.exn_SUBSCRIPT_lab),NULLARY_EXCON)),
+       (Excon.ex_SIZE, (LABEL(BI.exn_SIZE_lab),NULLARY_EXCON))]
     val initialRhoEnv : RhoEnv = RegvarFinMap.fromList
       [(Effect.toplevel_region_withtype_top,LABEL(BI.toplevel_region_withtype_top_lab)),
 (*       (Effect.toplevel_region_withtype_bot,   (* arbitrary binding, but some binding
-                                                  is required, since DropRegions may 
+                                                  is required, since DropRegions may
                                                   leave a region with type bot in
                                                   the expression which CompLamb takes
                                                   as input (mads, Nov 16 1997)
@@ -168,7 +170,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
     val initialRhoKindEnv : RhoKindEnv = RegvarFinMap.fromList
       [(Effect.toplevel_region_withtype_top,LI),
        (Effect.toplevel_region_withtype_bot,LI), (* arbitrary binding, but some binding
-                                                    is required, since DropRegions may 
+                                                    is required, since DropRegions may
 						    leave a region with type bot in
 						    the expression which CompLamb takes
 						    as input (mads, Nov 16 1997) *)
@@ -227,12 +229,12 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
        RhoEnv     = RhoEnv,
        RhoKindEnv = RegvarFinMap.add(place,rho_kind,RhoKindEnv)}
 
-    fun lookupCon ({ConEnv,...} : env) con = 
+    fun lookupCon ({ConEnv,...} : env) con =
       case ConFinMap.lookup ConEnv con of
 	SOME con_kind => con_kind
       | NONE  => die ("lookupCon(" ^ (Con.pr_con con) ^ ")")
 
-    fun lookupVar ({VarEnv,...} : env) lvar = 
+    fun lookupVar ({VarEnv,...} : env) lvar =
       case LvarFinMap.lookup VarEnv lvar of
 	SOME access_type => access_type
       | NONE  => die ("lookupVar(" ^ (Lvars.pr_lvar lvar) ^ ")")
@@ -244,7 +246,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 	SOME (access_type,arity_excon) => access_type
       | NONE  => die ("lookupExcon(" ^ (Excon.pr_excon excon) ^ ")")
 
-    fun lookupExconOpt ({ExconEnv,...} : env) excon = 
+    fun lookupExconOpt ({ExconEnv,...} : env) excon =
       case ExconFinMap.lookup ExconEnv excon of
 	SOME (access_type,arity_excon) => SOME access_type
       | NONE => NONE
@@ -300,7 +302,7 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
       ConFinMap.enrich (op =) (ConEnv0,ConEnv) andalso
       ExconFinMap.enrich (fn ((e1,a1:arity_excon),(e2,a2)) => acc_type_eq(e1,e2) andalso a1=a2) (ExconEnv0,ExconEnv) andalso (*!!!*)
       LvarFinMap.enrich acc_type_eq (VarEnv0,VarEnv)
-	
+
     fun restrict_con_env(ConEnv,cons) = ConFinMap.restrict(Con.pr_con,ConEnv,cons)
       handle ConFinMap.Restrict s => die("restrict_con_env: " ^ s ^ " not found")
 
@@ -386,10 +388,10 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
 
    and layout_con_kind =
       fn ENUM i => PP.LEAF ("enum con: " ^ Int.toString i)
-       | UB_NULLARY i => PP.LEAF ("unboxed nullary con: " ^ Int.toString i) 
-       | B_NULLARY i => PP.LEAF ("boxed nullary con: " ^ Int.toString i) 
-       | UB_UNARY i => PP.LEAF ("unboxed unary con: " ^ Int.toString i) 
-       | B_UNARY i => PP.LEAF ("boxed unary con: " ^ Int.toString i) 
+       | UB_NULLARY i => PP.LEAF ("unboxed nullary con: " ^ Int.toString i)
+       | B_NULLARY i => PP.LEAF ("boxed nullary con: " ^ Int.toString i)
+       | UB_UNARY i => PP.LEAF ("unboxed unary con: " ^ Int.toString i)
+       | B_UNARY i => PP.LEAF ("boxed unary con: " ^ Int.toString i)
 
     and layout_access_type =
       fn LVAR lvar => PP.LEAF(Lvars.pr_lvar lvar)
@@ -397,13 +399,13 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
        | DROPPED_RVAR place => PP.LEAF("D" ^ PP.flatten1(Effect.layout_effect place))
        | SELECT (lvar,i) => PP.LEAF("#" ^ Int.toString i ^ "(" ^ Lvars.pr_lvar lvar ^ ")")
        | LABEL label => PP.LEAF(Labels.pr_label label)
-       | FIX (label,SOME(LVAR lvar),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ "," ^ Lvars.pr_lvar lvar ^ 
+       | FIX (label,SOME(LVAR lvar),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ "," ^ Lvars.pr_lvar lvar ^
 						     "," ^ Int.toString size ^ ")")
-       | FIX (label,SOME(SELECT(lvar,i)),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",#" ^ 
+       | FIX (label,SOME(SELECT(lvar,i)),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",#" ^
 							  Int.toString i ^ "(" ^ Lvars.pr_lvar lvar ^ ")," ^
 							  Int.toString size ^ ")")
-       | FIX (label1,SOME(LABEL label2),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label1 ^ "," ^ 
-							 Labels.pr_label label2 ^ 
+       | FIX (label1,SOME(LABEL label2),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label1 ^ "," ^
+							 Labels.pr_label label2 ^
 							 "," ^ Int.toString size ^ ")")
        | FIX (label,NONE,0,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",empty_clos)")
        | _ => die "layout_access_type"
@@ -414,11 +416,10 @@ functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) : 
       | FI => PP.LEAF("FI")
       | FF => PP.LEAF("FF")
 
-    and pr_access_type = 
+    and pr_access_type =
       fn acc_ty => PP.flatten1(layout_access_type acc_ty)
 
     and pr_excon_arity =
       fn NULLARY_EXCON => "nullary excon"
        | UNARY_EXCON => "unary excon"
   end;
-

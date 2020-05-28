@@ -16,13 +16,13 @@ structure AddressLabels: ADDRESS_LABELS =
     fun key (n,s) = Name.key n
 
     fun eq(l1,l2) = key l1 = key l2
-    fun lt(l1,l2) = 
-	let val (i1,s1) = key l1 
+    fun lt(l1,l2) =
+	let val (i1,s1) = key l1
 	    val (i2,s2) = key l2
 	in i1 < i2 orelse (i1=i2 andalso s1 < s2)
 	end
 
-    fun pr_label(l,s) = 
+    fun pr_label(l,s) =
 	let val (i,b) = Name.key l
 	in s ^ "$" ^ Int.toString i ^ "$" ^ b
 	end
@@ -44,6 +44,8 @@ structure AddressLabels: ADDRESS_LABELS =
     val exn_BIND_lab = (Name.exn_BIND, "exn_BIND")                (* label 9 *)
     val exn_OVERFLOW_lab = (Name.exn_OVERFLOW, "exn_OVERFLOW")    (* label 10 *)
     val exn_INTERRUPT_lab = (Name.exn_INTERRUPT, "exn_INTERRUPT") (* label 11 *)
+    val exn_SUBSCRIPT_lab = (Name.exn_SUBSCRIPT, "exn_SUBSCRIPT") (* label 12 *)
+    val exn_SIZE_lab = (Name.exn_SIZE, "exn_SIZE")                (* label 13 *)
 
     val pu =
 	Pickle.hashConsEq eq
@@ -51,7 +53,8 @@ structure AddressLabels: ADDRESS_LABELS =
 	 [reg_top_lab,reg_bot_lab,reg_string_lab,
 	  reg_pair_lab,reg_array_lab,reg_ref_lab,
 	  reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
-	  exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
+	  exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab,
+          exn_SUBSCRIPT_lab,exn_SIZE_lab]
 	 (Pickle.newHash (#1 o Name.key o #1)
 	  (Pickle.pairGen(Name.pu,Pickle.string))))
   end

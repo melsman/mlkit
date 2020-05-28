@@ -204,6 +204,7 @@ structure OptLambda: OPT_LAMBDA =
 
     val lexp_true = PRIM(CONprim{con=Con.con_TRUE,instances=nil,regvar=NONE},nil)
     val lexp_false = PRIM(CONprim{con=Con.con_FALSE,instances=nil,regvar=NONE},nil)
+    fun lexp_raise_ov t = RAISE (PRIM(EXCONprim Excon.ex_OVERFLOW,nil),Types [t])
 
     (* Operations on unboxed floats *)
 
@@ -560,7 +561,7 @@ structure OptLambda: OPT_LAMBDA =
 	      ; appOpt (c b x) opt)
 	    | FRAME _ => die "closed"
 	    | _ => app_lamb (c b x) e
-     in (c nil nil lamb; true) handle OPEN => false
+     in (c lvars_free_ok excons_free_ok lamb; true) handle OPEN => false
      end
 
    (* Function for determining if a variable v (of type real) occurs in an
@@ -776,6 +777,8 @@ structure OptLambda: OPT_LAMBDA =
                   | CCONST of LambdaExp
                   | CFN of {lexp: LambdaExp, large:bool}  (* only to appear in env *)
 	          | CFIX of {Type: Type, bind: LambdaExp, large: bool} (* only to appear in env *)
+                  | CBLKSZ of IntInf.int                  (* statically sized block (e.g., array or string) *)
+                  | CRNG of {low: IntInf.int option, high: IntInf.int option}
 
       fun eq_cv (cv1,cv2) =
 	case (cv1,cv2)
@@ -785,7 +788,9 @@ structure OptLambda: OPT_LAMBDA =
 	   | (CCONST e1, CCONST e2) => eq_lamb(e1,e2)
 	   | (CFN{lexp,large}, CFN{lexp=lexp2,large=large2}) => large = large2 andalso eq_lamb(lexp,lexp2)
 	   | (CFIX{bind,large,Type}, CFIX{bind=bind2,large=large2,Type=Type2}) =>
-	    large = large2 andalso eq_Type(Type,Type2) andalso eq_lamb(bind,bind2)
+	     large = large2 andalso eq_Type(Type,Type2) andalso eq_lamb(bind,bind2)
+           | (CBLKSZ i1, CBLKSZ i2) => i1 = i2
+           | (CRNG i1, CRNG i2) => i1 = i2
 	   | _ => false
       and eq_cvs (cv1::cvs1,cv2::cvs2) = eq_cv(cv1,cv2) andalso eq_cvs(cvs1,cvs2)
 	| eq_cvs (nil,nil) = true
@@ -811,13 +816,17 @@ structure OptLambda: OPT_LAMBDA =
 							       Type=Type,
 							       bind=bind}],
 						   scope=STRING("",NONE)}))
+           | CBLKSZ _ => true
+           | CRNG _ => true
 
       (* remove lvar from compiletimevalue, if it is there;
        * used when compiletimevalues are exported out of scope.
        *)
       fun remove lvar (CRECORD l) = CRECORD(map (remove lvar) l)
-	| remove lvar (cval as (CVAR (VAR{lvar =lvar',...}))) = if Lvars.eq(lvar,lvar') then CUNKNOWN else cval
-	| remove _ (cval as (CCONST _)) = cval
+	| remove lvar (cv as (CVAR (VAR{lvar =lvar',...}))) = if Lvars.eq(lvar,lvar') then CUNKNOWN else cv
+	| remove _ (cv as (CCONST _)) = cv
+        | remove _ (cv as (CBLKSZ _)) = cv
+        | remove _ (cv as (CRNG _)) = cv
 	| remove _ _ = CUNKNOWN
 
       fun removes [] cv = cv
@@ -833,6 +842,12 @@ structure OptLambda: OPT_LAMBDA =
 	| show_cv (CFIX {large=true,...}) = "(large fix)"
 	| show_cv (CFIX {large=false,...}) = "(small fix)"
 	| show_cv (CUNKNOWN) = "(unknown)"
+	| show_cv (CBLKSZ i) = "(cblksz " ^ IntInf.toString i ^ ")"
+	| show_cv (CRNG {low,high}) =
+          let fun pp_opti NONE = "_"
+                | pp_opti (SOME i) = IntInf.toString i
+          in "(crng " ^ pp_opti low ^ "--" ^ pp_opti high ^ ")"
+          end
 
       (* substitution *)
       fun on_cv S cv =
@@ -841,6 +856,8 @@ structure OptLambda: OPT_LAMBDA =
 	      | on (CRECORD cvs) = CRECORD (map on cvs)
 	      | on (CFN{lexp,large}) = CFN{lexp=on_LambdaExp S lexp,large=large}
 	      | on (CFIX{Type,bind,large}) = CFIX{Type=on_Type S Type,bind=on_LambdaExp S bind,large=large}
+              | on (cv as CBLKSZ _) = cv
+              | on (cv as CRNG _) = cv
 	      | on _ = CUNKNOWN
 	in on cv
 	end
@@ -852,10 +869,24 @@ structure OptLambda: OPT_LAMBDA =
 	end
 
       (* least upper bound *)
-      fun lub (cv as CVAR lamb,CVAR lamb') = if eq_lamb(lamb,lamb') then cv else CUNKNOWN
-	| lub (CRECORD cvals,CRECORD cvals') = (CRECORD (map lub (BasisCompat.ListPair.zipEq(cvals,cvals')))
-						handle BasisCompat.ListPair.UnequalLengths => die "lub")
-	| lub (cv as CCONST lamb,CCONST lamb') = if eq_lamb(lamb,lamb') then cv else CUNKNOWN
+      fun lub (cv as CVAR e1,CVAR e2) =
+          if eq_lamb(e1,e2) then cv else CUNKNOWN
+	| lub (CRECORD cvals,CRECORD cvals') =
+          (CRECORD (map lub (BasisCompat.ListPair.zipEq(cvals,cvals')))
+	   handle BasisCompat.ListPair.UnequalLengths => die "lub")
+	| lub (cv as CCONST e1,CCONST e2) =
+          if eq_lamb(e1,e2) then cv else CUNKNOWN
+        | lub (CRNG{low=l1,high=h1},CRNG{low=l2,high=h2}) =
+          let fun minopt (NONE,_) = NONE
+                | minopt (_,NONE) = NONE
+                | minopt (SOME i1,SOME i2) = SOME(IntInf.min(i1,i2))
+              fun maxopt (NONE,_) = NONE
+                | maxopt (_,NONE) = NONE
+                | maxopt (SOME i1,SOME i2) = SOME(IntInf.max(i1,i2))
+          in CRNG{low=minopt(l1,l2),high=maxopt(h1,h2)}
+          end
+        | lub (cv as CBLKSZ i1, CBLKSZ i2) =
+          if i1 = i2 then cv else CUNKNOWN
 	| lub _ = CUNKNOWN
 
       fun lubList [] = CUNKNOWN
@@ -1080,114 +1111,173 @@ structure OptLambda: OPT_LAMBDA =
 	    | PRIM(CONprim {con,...},nil) => is_boolean con
 	    | _ => false
 
-      fun constantFolding lamb fail =
-          if not(aggressive_opt()) then fail
-          else
-            let val opt =
+      fun constantFolding (env:env) lamb fail =
+          let val opt =
+                  if not(aggressive_opt()) then NONE
+                  else
                     case lamb of
-                      PRIM(CCALLprim{name,...},exps) =>
-                      (case exps of
-                         [STRING (s1,NONE),STRING (s2,NONE)] =>
-                         let fun opp opr = SOME(if opr(s1,s2) then lexp_true else lexp_false)
-                         in case name of
-                              "concatStringML" => SOME(STRING (s1 ^ s2, NONE))
-                            | "lessStringML" => opp (op <)
-                            | "greaterStringML" => opp (op >)
-                            | "lesseqStringML" => opp (op <=)
-                            | "greatereqStringML" => opp (op >=)
-                            | _ => NONE
-                         end
-                       | [INTEGER(v1,_),INTEGER(v2,_)] =>
-                         let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
-                         in case name of
-                              "__less_int31" => opp (op <)
-                            | "__less_int32b" => opp (op <)
-                            | "__less_int32ub" => opp (op <)
-                            | "__lesseq_int31" => opp (op <=)
-                            | "__lesseq_int32b" => opp (op <=)
-                            | "__lesseq_int32ub" => opp (op <=)
-                            | "__greater_int31" => opp (op >)
-                            | "__greater_int32b" => opp (op >)
-                            | "__greater_int32ub" => opp (op >)
-                            | "__greatereq_int31" => opp (op >=)
-                            | "__greatereq_int32b" => opp (op >=)
-                            | "__greatereq_int32ub" => opp (op >=)
-                            | "__equal_int31" => opp (op =)
-                            | "__equal_int32b" => opp (op =)
-                            | "__equal_int32ub" => opp (op =)
-                            | "__less_int63" => opp (op <)
-                            | "__less_int64b" => opp (op <)
-                            | "__less_int64ub" => opp (op <)
-                            | "__lesseq_int63" => opp (op <=)
-                            | "__lesseq_int64b" => opp (op <=)
-                            | "__lesseq_int64ub" => opp (op <=)
-                            | "__greater_int63" => opp (op >)
-                            | "__greater_int64b" => opp (op >)
-                            | "__greater_int64ub" => opp (op >)
-                            | "__greatereq_int63" => opp (op >=)
-                            | "__greatereq_int64b" => opp (op >=)
-                            | "__greatereq_int64ub" => opp (op >=)
-                            | "__equal_int63" => opp (op =)
-                            | "__equal_int64b" => opp (op =)
-                            | "__equal_int64ub" => opp (op =)
-                            | _ => NONE
-                         end
-                       | [WORD(v1,t),WORD(v2,_)] =>
-                         let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
-                         in case name of
-                              "__less_word31" => opp (op <)
-                            | "__less_word32b" => opp (op <)
-                            | "__less_word32ub" => opp (op <)
-                            | "__less_word63" => opp (op <)
-                            | "__less_word64b" => opp (op <)
-                            | "__less_word64ub" => opp (op <)
-                            | "__lesseq_word31" => opp (op <=)
-                            | "__lesseq_word32b" => opp (op <=)
-                            | "__lesseq_word32ub" => opp (op <=)
-                            | "__lesseq_word63" => opp (op <=)
-                            | "__lesseq_word64b" => opp (op <=)
-                            | "__lesseq_word64ub" => opp (op <=)
-                            | "__greater_word31" => opp (op >)
-                            | "__greater_word32b" => opp (op >)
-                            | "__greater_word32ub" => opp (op >)
-                            | "__greater_word63" => opp (op >)
-                            | "__greater_word64b" => opp (op >)
-                            | "__greater_word64ub" => opp (op >)
-                            | "__greatereq_word31" => opp (op >=)
-                            | "__greatereq_word32b" => opp (op >=)
-                            | "__greatereq_word32ub" => opp (op >=)
-                            | "__greatereq_word63" => opp (op >=)
-                            | "__greatereq_word64b" => opp (op >=)
-                            | "__greatereq_word64ub" => opp (op >=)
-                            | "__equal_word" => opp (op =)
-                            | "__equal_word31" => opp (op =)
-                            | "__equal_word32b" => opp (op =)
-                            | "__equal_word32ub" => opp (op =)
-                            | "__equal_word63" => opp (op =)
-                            | "__equal_word64b" => opp (op =)
-                            | "__equal_word64ub" => opp (op =)
-                            | "__andb_word" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__andb_word31" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__andb_word32b" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__andb_word32ub" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__andb_word63" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__andb_word64b" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__andb_word64ub" => SOME(WORD(IntInf.andb(v1,v2),t))
-                            | "__orb_word" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | "__orb_word31" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | "__orb_word32b" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | "__orb_word32ub" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | "__orb_word63" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | "__orb_word64b" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | "__orb_word64ub" => SOME(WORD(IntInf.orb(v1,v2),t))
-                            | _ => NONE
-                         end
-                       | _ => NONE)
-                    | _ => NONE
-            in case opt of
-                 SOME lamb => (lamb,CCONST lamb)
-               | NONE => fail
-            end
+                        PRIM(CCALLprim{name,...},exps) =>
+                        (case exps of
+                             [STRING (s1,NONE),STRING (s2,NONE)] =>
+                             let fun opp opr = SOME(if opr(s1,s2) then lexp_true else lexp_false)
+                             in case name of
+                                    "concatStringML" => SOME(STRING (s1 ^ s2, NONE))
+                                  | "lessStringML" => opp (op <)
+                                  | "greaterStringML" => opp (op >)
+                                  | "lesseqStringML" => opp (op <=)
+                                  | "greatereqStringML" => opp (op >=)
+                                  | _ => NONE
+                             end
+                           | [INTEGER(v1,t),INTEGER(v2,_)] =>
+                             let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
+                                 fun opp_ov opr = let val v = opr (v1,v2)
+                                                  in if ((Int31.fromLarge v; true) handle _ => false)
+                                                     then SOME (INTEGER(v,t))
+                                                     else NONE
+                                                  end
+                             in case name of
+                                    "__less_int31" => opp (op <)
+                                  | "__less_int32b" => opp (op <)
+                                  | "__less_int32ub" => opp (op <)
+                                  | "__less_int63" => opp (op <)
+                                  | "__less_int64b" => opp (op <)
+                                  | "__less_int64ub" => opp (op <)
+                                  | "__lesseq_int31" => opp (op <=)
+                                  | "__lesseq_int32b" => opp (op <=)
+                                  | "__lesseq_int32ub" => opp (op <=)
+                                  | "__lesseq_int63" => opp (op <=)
+                                  | "__lesseq_int64b" => opp (op <=)
+                                  | "__lesseq_int64ub" => opp (op <=)
+                                  | "__greater_int31" => opp (op >)
+                                  | "__greater_int32b" => opp (op >)
+                                  | "__greater_int32ub" => opp (op >)
+                                  | "__greater_int63" => opp (op >)
+                                  | "__greater_int64b" => opp (op >)
+                                  | "__greater_int64ub" => opp (op >)
+                                  | "__greatereq_int31" => opp (op >=)
+                                  | "__greatereq_int32b" => opp (op >=)
+                                  | "__greatereq_int32ub" => opp (op >=)
+                                  | "__greatereq_int63" => opp (op >=)
+                                  | "__greatereq_int64b" => opp (op >=)
+                                  | "__greatereq_int64ub" => opp (op >=)
+                                  | "__equal_int31" => opp (op =)
+                                  | "__equal_int32b" => opp (op =)
+                                  | "__equal_int32ub" => opp (op =)
+                                  | "__equal_int63" => opp (op =)
+                                  | "__equal_int64b" => opp (op =)
+                                  | "__equal_int64ub" => opp (op =)
+                                  | "__plus_int63" => opp_ov (op +)
+                                  | "__plus_int64ub" => opp_ov (op +)
+                                  | _ => NONE
+                             end
+                           | [WORD(v1,t),WORD(v2,_)] =>
+                             let fun opp opr = SOME(if opr(v1,v2) then lexp_true else lexp_false)
+                             in case name of
+                                    "__less_word31" => opp (op <)
+                                  | "__less_word32b" => opp (op <)
+                                  | "__less_word32ub" => opp (op <)
+                                  | "__less_word63" => opp (op <)
+                                  | "__less_word64b" => opp (op <)
+                                  | "__less_word64ub" => opp (op <)
+                                  | "__lesseq_word31" => opp (op <=)
+                                  | "__lesseq_word32b" => opp (op <=)
+                                  | "__lesseq_word32ub" => opp (op <=)
+                                  | "__lesseq_word63" => opp (op <=)
+                                  | "__lesseq_word64b" => opp (op <=)
+                                  | "__lesseq_word64ub" => opp (op <=)
+                                  | "__greater_word31" => opp (op >)
+                                  | "__greater_word32b" => opp (op >)
+                                  | "__greater_word32ub" => opp (op >)
+                                  | "__greater_word63" => opp (op >)
+                                  | "__greater_word64b" => opp (op >)
+                                  | "__greater_word64ub" => opp (op >)
+                                  | "__greatereq_word31" => opp (op >=)
+                                  | "__greatereq_word32b" => opp (op >=)
+                                  | "__greatereq_word32ub" => opp (op >=)
+                                  | "__greatereq_word63" => opp (op >=)
+                                  | "__greatereq_word64b" => opp (op >=)
+                                  | "__greatereq_word64ub" => opp (op >=)
+                                  | "__equal_word" => opp (op =)
+                                  | "__equal_word31" => opp (op =)
+                                  | "__equal_word32b" => opp (op =)
+                                  | "__equal_word32ub" => opp (op =)
+                                  | "__equal_word63" => opp (op =)
+                                  | "__equal_word64b" => opp (op =)
+                                  | "__equal_word64ub" => opp (op =)
+                                  | "__andb_word" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word31" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word32b" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word32ub" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word63" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word64b" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__andb_word64ub" => SOME(WORD(IntInf.andb(v1,v2),t))
+                                  | "__orb_word" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word31" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word32b" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word32ub" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word63" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word64b" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | "__orb_word64ub" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | _ => NONE
+                             end
+                           | [STRING(s,NONE)] =>
+                             let
+                             in case name of
+                                    "__bytetable_size" =>
+                                    SOME(INTEGER(Int.toLarge (String.size s), intDefaultType()))
+                                  | _ => NONE
+                             end
+                           | [STRING(s,NONE),INTEGER(v,t)] =>
+                             let
+                             in case name of
+                                    "__bytetable_sub" =>
+                                    (let val c = String.sub(s,Int.fromLarge v)
+                                     in SOME(WORD(Int.toLarge (Char.ord c), wordDefaultType()))
+                                     end handle _ => NONE)
+                                  | _ => NONE
+                             end
+                           | _ => NONE)
+                      | _ => NONE
+          in case opt of
+                 SOME e => (tick "constant-folding"; (e,CCONST e))
+               | NONE =>
+                 let fun rightlift opr i NONE = false
+                       | rightlift opr i (SOME i') = opr(i,i')
+                     fun leftlift opr NONE i = false
+                       | leftlift opr (SOME i) i' = opr(i,i')
+                     fun try opr xs =
+                         case xs of
+                             [INTEGER(i,_),VAR{lvar,...}] =>
+                             (case lookup_lvar(env,lvar) of
+                                  SOME(_,CRNG{low,high}) =>
+                                  if rightlift opr i low then SOME lexp_true
+                                  else if rightlift (not o opr) i high then SOME lexp_false
+                                  else NONE
+                                | _ => NONE)
+                           | [VAR{lvar,...},INTEGER(i,_)] =>
+                             (case lookup_lvar(env,lvar) of
+                                  SOME(_,CRNG{low,high}) =>
+                                  if leftlift opr high i then SOME lexp_true
+                                  else if leftlift (not o opr) low i then SOME lexp_false
+                                  else NONE
+                                | _ => NONE)
+                           | _ => NONE (* memo: more cases! *)
+                     val opt2 =
+                         case lamb of
+                             PRIM(CCALLprim{name="__less_int64ub",...},xs) => try (op <) xs
+                           | PRIM(CCALLprim{name="__less_int63",...},xs) => try (op <) xs
+                           | PRIM(CCALLprim{name="__lesseq_int64ub",...},xs) => try (op <=) xs
+                           | PRIM(CCALLprim{name="__lesseq_int63",...},xs) => try (op <=) xs
+                           | PRIM(CCALLprim{name="__greater_int64ub",...},xs) => try (not o (op >)) xs
+                           | PRIM(CCALLprim{name="__greater_int63",...},xs) => try (not o (op >)) xs
+                           | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try (not o (op >=)) xs
+                           | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try (not o (op >=)) xs
+                           | _ => NONE
+                 in case opt2 of
+                        SOME e => (tick "range-folding"; (e,CCONST e))
+                      | NONE => fail
+                 end
+          end
 
       fun reduce_f64bin f64binop (e1,e2) =
           (tick "real_to_f64";
@@ -1450,9 +1540,11 @@ structure OptLambda: OPT_LAMBDA =
                       | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
                       | _ => NONE
             in case loop e (fn x => x) of
-                   NONE => constantFolding lamb fail
+                   NONE => constantFolding env lamb fail
                  | SOME e' => reduce(env,(e',CUNKNOWN))
             end
+          | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
+            (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))
           | PRIM(CCALLprim{name,Type,...},xs) =>
             if unbox_reals() then
               case (name,xs) of
@@ -1496,9 +1588,9 @@ structure OptLambda: OPT_LAMBDA =
                            [t,i,#1(reduce(env,(real_to_f64 v,CUNKNOWN)))]),
                       CUNKNOWN)
                   end
-                | _ => constantFolding lamb fail
-            else constantFolding lamb fail
-	  | _ => constantFolding lamb fail
+                | _ => constantFolding env lamb fail
+            else constantFolding env lamb fail
+	  | _ => constantFolding env lamb fail
 
 
       (* -----------------------------------------------------------------
@@ -1568,6 +1660,30 @@ structure OptLambda: OPT_LAMBDA =
 	       in (mk_live_excon excon; (PRIM(prim, lambs'), CUNKNOWN))
 	       end
 	      | PRIM(RESET_REGIONSprim _, [VAR _]) => (lamb, CUNKNOWN) (* Sweden: avoid inlining of variable *)
+              | PRIM(p as CCALLprim{name="word_table_init",...},lambs) =>
+                let val lambs' = map (fst o (fn e => contr (env, e))) lambs
+                in case lambs' of
+                       [INTEGER(v,_),e] => (PRIM(p,lambs'),CBLKSZ v)
+                     | _ => (PRIM(p,lambs'),CUNKNOWN)
+                end
+              | PRIM(p as CCALLprim{name="ord",...},[e]) =>
+                let val (e',_) = contr (env, e)
+                in (PRIM(p,[e']),CRNG{low=SOME (IntInf.fromInt 0),
+                                      high=SOME (IntInf.fromInt 255)})
+                end
+              | PRIM(p as CCALLprim{name="table_size",...}, [e]) =>
+                let val (e',cv) = contr (env,e)
+                    fun fail () = (PRIM(p,[e']),CUNKNOWN)
+                in case cv of
+                       CBLKSZ i => if safeLambdaExp e' then
+                                     let val e'' = INTEGER(i,intDefaultType())
+                                     in tick "contr - table_size";
+                                        decr_uses e';
+                                        (e'', CCONST e'')
+                                     end
+                                   else fail()
+                     | _ => fail()
+                end
 	      | PRIM(prim,lambs) => (PRIM(prim,map (fst o (fn e => contr (env,e))) lambs),CUNKNOWN)
 	      | FIX{functions,scope} =>
 	       let val lvs = map #lvar functions
@@ -1622,7 +1738,7 @@ structure OptLambda: OPT_LAMBDA =
 		     List.foldl (fn (lv,acc) =>
 				 case LvarMap.lookup env lv
 				   of SOME res =>
-				     if cross_module_inline (lvars,excons) lv res
+				     if cross_module_inline (nil, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE]) lv res
 				       then LvarMap.add(lv,res,acc)
 				     else LvarMap.add(lv,(nil,CUNKNOWN),acc)
 				    | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc))
@@ -1687,6 +1803,8 @@ structure OptLambda: OPT_LAMBDA =
 		| toInt (CCONST _) = 3
 		| toInt (CFN _) = 4
 		| toInt (CFIX _) = 5
+		| toInt (CBLKSZ _) = 6
+		| toInt (CRNG _) = 7
 
 	      fun fun_CVAR _ =
 		  Pickle.con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
@@ -1707,9 +1825,16 @@ structure OptLambda: OPT_LAMBDA =
 		  (Pickle.convert (fn (t,e,l) => {Type=t,bind=e,large=l},
 				   fn {Type=t,bind=e,large=l} => (t,e,l))
 		   (Pickle.tup3Gen0(LambdaExp.pu_Type,LambdaExp.pu_LambdaExp,Pickle.bool)))
+	      fun fun_CBLKSZ _ =
+		  Pickle.con1 CBLKSZ (fn CBLKSZ a => a | _ => die "pu_contract_env.CBLKSZ")
+		  pu_intinf
+	      fun fun_CRNG _ =
+		  Pickle.con1 (fn (l,h) => CRNG{low=l,high=h}) (fn CRNG{low,high} => (low,high)
+                                                                 | _ => die "pu_contract_env.CRNG")
+		  (Pickle.pairGen(Pickle.optionGen pu_intinf, Pickle.optionGen pu_intinf))
 	      val pu_cv =
 		  Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
-						       fun_CCONST,fun_CFN,fun_CFIX])
+						       fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,fun_CRNG])
 	  in LvarMap.pu Lvars.pu
 	      (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
 	  end
