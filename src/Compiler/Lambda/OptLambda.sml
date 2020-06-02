@@ -122,7 +122,7 @@ structure OptLambda: OPT_LAMBDA =
     val max_inline_size = Flags.add_int_entry
 	{long="maximum_inline_size", short=NONE,
 	 menu=["Control", "Optimiser", "maximum inline size"],
-	 item=ref 50, desc=
+	 item=ref 70, desc=
 	 "Functions smaller than this size (counted in abstract\n\
 	  \syntax tree nodes) are inlined, even if they are used\n\
 	  \more than once. Functions that are used only once are\n\
@@ -1664,6 +1664,12 @@ structure OptLambda: OPT_LAMBDA =
                 let val lambs' = map (fst o (fn e => contr (env, e))) lambs
                 in case lambs' of
                        [INTEGER(v,_),e] => (PRIM(p,lambs'),CBLKSZ v)
+                     | _ => (PRIM(p,lambs'),CUNKNOWN)
+                end
+              | PRIM(p as CCALLprim{name="word_table0",...},lambs) =>
+                let val lambs' = map (fst o (fn e => contr (env, e))) lambs
+                in case lambs' of
+                       [INTEGER(v,_)] => (PRIM(p,lambs'),CBLKSZ v)
                      | _ => (PRIM(p,lambs'),CUNKNOWN)
                 end
               | PRIM(p as CCALLprim{name="ord",...},[e]) =>

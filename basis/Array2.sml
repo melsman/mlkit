@@ -1,156 +1,201 @@
-(* Array2 -- ported from Moscow ML, 2005-11-25 *)
+(* MIT License. Copyright (c) 2020 Martin Elsman *)
 
-structure Array2 : ARRAY2 =
-  struct
-    type 'a array = ('a Array.array Vector.vector * int * int) ref 
+structure Array2 :> ARRAY2 = struct
 
-    datatype traversal = RowMajor | ColMajor
+type 'a array = 'a array
 
-    type 'a region = { base : 'a array, row : int, col : int, 
-		       nrows : int option, ncols : int option}
+(* 26 bits are reserved for the length in the tag field; maxLen = 2^26 *)
+val maxLen = 4096 * 4096 (* 128 MB *)
 
-    fun fromList [] = ref (Vector.fromList [], 0, 0)
-      | fromList (xs1 :: xsr) =
-	let val row1 = Array.fromList xs1
-	    val rowr = List.map Array.fromList xsr
-	    val cols = Array.length row1
-	    val vec = 
-		if List.all (fn r => Array.length r = cols) rowr then
-		    Vector.fromList (row1 :: rowr)
-		else
-		    raise Size
-	in 
-	    ref (vec, Vector.length vec, cols)
-	end
+type 'a region = {base  : 'a array,
+                  row   : int,
+                  col   : int,
+                  nrows : int option,
+                  ncols : int option}
 
-    fun array (m, n, x) = 
-	ref (Vector.tabulate(m, fn _ => Array.array(n, x)), m, n);
+datatype traversal = RowMajor | ColMajor
 
-    fun tabulate RowMajor (m, n, f) = 
-	ref (Vector.tabulate(m, fn i => Array.tabulate(n, fn j => f(i,j))), m, n)
-      | tabulate ColMajor (m, n, f) = 
-	if m > 0 andalso n > 0 then 
-	    let val f00 = f(0, 0)
-		val arr = Vector.tabulate(m, fn i => Array.array(n, f00))
-		(* Column 0: do not apply f to (0,0) again: *)
-		val _ = VectorSlice.appi (fn (r, a) => Array.update(a, 0, f(r, 0))) 
-				    (VectorSlice.slice(arr, 1, NONE));
-		(* Remaining columns: loop, updating all rows: *)
-		fun loop c = 
-		    if c < n then  
-			(Vector.appi (fn (r, a) => Array.update(a, c, f(r, c))) 
-				     arr;
-			 loop (c+1))
-		    else ()
-	    in loop 1; ref (arr, m, n) end
-	else
-	    tabulate RowMajor (m, n, f)
+fun nRows (a : 'a array) : int = prim ("word_sub0", (a, 0))
+fun nCols (a : 'a array) : int = prim ("word_sub0", (a, 1))
+fun dimensions (a: 'a array) : int * int = (nRows a, nCols a)
+fun set_rows (a : 'a array,r:int) : unit = prim ("word_update0", (a, 0, r))
+fun set_cols (a : 'a array,c:int) : unit = prim ("word_update0", (a, 1, c))
 
-    fun dimensions (ref (a,m,n)) = (m,n);
+fun sub2 (a : 'a array, cols:int, r:int, c:int) : 'a =
+    prim ("word_sub0", (a, r*cols+c+2))
 
-    fun nRows (ref (a,m,n)) = m;
+fun update2 (a : 'a array, cols:int, r:int, c:int, v:'a) : unit =
+    prim ("word_update0", (a, r*cols+c+2, v))
 
-    fun nCols (ref (a,m,n)) = n;
+fun table0 (n : int) : 'a array = prim ("word_table0", n)
+fun array0 (n : int, x:'a) : 'a array = prim ("word_table_init", (n, x))
+fun update0 (a : 'a array, i : int, x : 'a) : unit = prim ("word_update0", (a, i, x))
 
-    fun sub(ref (a,m,n), i, j) = Array.sub(Vector.sub(a, i), j);
+fun check (r,c) : int =
+    if r < 0 orelse c < 0 orelse c > maxLen orelse r > maxLen then raise Size
+    else let val n = r*c
+         in if n > maxLen then raise Size
+            else n
+         end
 
-    fun update(ref (a,m,n), i, j, x) = Array.update(Vector.sub(a, i), j, x);
+fun array (r:int,c:int,v:'a):'a array =
+    let val n = check(r,c)
+        val a = array0(n+2,v)
+    in set_rows(a,r)
+     ; set_cols(a,c)
+     ; a
+    end
 
-    fun row (ref (a, _, _), i) = 
-	Array.vector(Vector.sub(a, i));
+fun sub (a: 'a array, r:int, c:int) : 'a =
+    let val (rs,cs) = dimensions a
+    in if r < 0 orelse c < 0 orelse r >= rs orelse
+          c >= cs then raise Subscript
+       else sub2 (a,cs,r,c)
+    end
 
-    fun column (ref (a, m, n), j) = 
-	if j<0 orelse j>=n then raise Subscript
-	else Vector.tabulate(m, fn k => Array.sub(Vector.sub(a, k), j))
+fun update (a: 'a array, r:int, c:int, v:'a) : unit =
+    let val (rs,cs) = dimensions a
+    in if r < 0 orelse c < 0 orelse r >= rs orelse
+          c >= cs then raise Subscript
+       else update2 (a,cs,r,c,v)
+    end
 
-    fun fold RowMajor f b (ref (a, _, _)) = 
-	Vector.foldl (fn (xs, res) => Array.foldl f res xs) b a
-      | fold ColMajor f b (ref (a, m, n)) = 
-	let fun rows j i b = 
-		if i >= m then b 
-		else rows j (i+1) (f(Array.sub(Vector.sub(a, i), j), b))
-	    fun cols j b =
-		if j >= n then b 
-		else cols (j+1) (rows j 0 b)
-	in cols 0 b end
+fun fromList (rs : 'a list list) : 'a array =
+    let val nr = List.length rs
+        val nc = case rs of
+                     c :: _ => List.length c
+                   | nil => 0
+        val () = List.app (fn r => if List.length r <> nc then raise Size
+                                   else ()) rs
+        val a = table0 (nr*nc+2)
+    in set_rows(a,nr)
+     ; set_cols(a,nc)
+     ; foldl(fn (r,i) =>
+                foldl(fn (x,i) => (update0(a,i,x); i+1)) i r) 2 rs
+     ; a
+    end
 
-    fun stop len i NONE = 
-	if i<0 orelse i>len then raise Subscript
-	else len
-      | stop len i (SOME n) = 
-	if i<0 orelse n<0 orelse i+n>len then raise Subscript
-	else i+n;
 
-    fun foldi RowMajor f b { base = ref (a, m, n), row, col, nrows, ncols } = 
-	VectorSlice.foldli 
-	       (fn (i, xs, res) => 
-		   ArraySlice.foldli 
-		   (fn (j,x,res) => f(i,j,x,res)) res (ArraySlice.slice(xs,col,ncols)))
-	       b (VectorSlice.slice(a, row, nrows))
-      | foldi ColMajor f b { base = ref (a, m, n), row, col, nrows, ncols } = 
-	let val stoprow = stop m row nrows
-	    val stopcol = stop n col ncols
-	    fun rows j i b = 
-		if i >= stoprow then b 
-		else rows j (i+1) (f(i, j, Array.sub(Vector.sub(a, i), j), b))
-	    fun cols j b =
-		if j >= stopcol then b 
-		else cols (j+1) (rows j row b)
-	in cols col b end
+fun tabulate t (rs:int,cs:int,f:int*int-> 'a) : 'a array =
+    let val n = check (rs,cs)
+        val a = table0 (n+2)
+        val () = (set_rows(a,rs); set_cols(a,cs))
+    in case t of
+           RowMajor =>
+           let fun loopC (r,c) = if c >= cs then ()
+                                 else (update2(a,cs,r,c,f(r,c)); loopC (r,c+1))
+               fun loopR (r,c) = if r >= rs then ()
+                                 else (loopC(r,c); loopR(r+1,c))
+           in loopR (0,0); a
+           end
+         | ColMajor =>
+           let fun loopR (r,c) = if r >= rs then ()
+                                 else (update2(a,cs,r,c,f(r,c)); loopR (r+1,c))
+               fun loopC (r,c) = if c >= cs then ()
+                                 else (loopR(r,c); loopC(r,c+1))
+           in loopC (0,0); a
+           end
+    end
 
-    fun app RowMajor f (ref (a, _, _)) = 
-	Vector.app (Array.app f) a
-      | app ColMajor f arr  =
-	fold ColMajor (fn (a, _) => f a) () arr
+fun traverseInit ({base,row,col,nrows,ncols}: 'a region)
+    : {nR:int,nC:int,rstop:int,cstop:int} =
+    let val () = if row < 0 orelse col < 0 then raise Subscript
+                 else ()
+        val (nR,nC) = dimensions base
+        val rstop = case nrows of
+                        SOME nr =>
+                        let val rstop = row+nr
+                        in if rstop > nR then raise Subscript
+                           else rstop
+                        end
+                      | NONE => nR
+        val cstop = case ncols of
+                        SOME nc =>
+                        let val cstop = col+nc
+                        in if cstop > nC then raise Subscript
+                           else cstop
+                        end
+                      | NONE => nC
+    in {nR=nR,nC=nC,rstop=rstop,cstop=cstop}
+    end
 
-    fun appi RowMajor f { base = ref (a, _, _), row, col, nrows, ncols } =
-	VectorSlice.appi 
-	      (fn (i, xs) => ArraySlice.appi 
-	       (fn (j, x) => f(i, j, x)) (ArraySlice.slice(xs, col, ncols)))
-	      (VectorSlice.slice(a, row, nrows))
-      | appi ColMajor f reg =
-	foldi ColMajor (fn (i, j, a, _) => f (i, j, a)) () reg
+fun traverseRM (f: int*int*'a*'b -> 'b) (a:'b)
+               (reg as {base,row,col,nrows,ncols}: 'a region) : 'b =
+    let val {nR,nC,rstop,cstop} = traverseInit reg
+        fun loopC (r,c,a) = if c >= cstop then a
+                            else loopC (r,c+1,f(r,c,sub2(base,nC,r,c),a))
+        fun loopR (r,c,a) = if r >= rstop then a
+                            else loopR(r+1,c,loopC(r,c,a))
+    in loopR (row,col,a)
+    end
 
-    fun modify RowMajor f (ref (a, _, _)) = 
-	Vector.app (Array.modify f) a
-      | modify ColMajor f arr =
-	foldi ColMajor (fn (i, j, a, _) => update(arr, i, j, f a)) ()
-	      {base=arr, row=0, col=0, nrows=NONE, ncols=NONE}
+fun traverseCM (f: int*int*'a*'b -> 'b) (a:'b)
+               (reg as {base,row,col,nrows,ncols}: 'a region) : 'b =
+    let val {nR,nC,rstop,cstop} = traverseInit reg
+        fun loopR (r,c,a) = if r >= rstop then a
+                            else loopR (r+1,c,f(r,c,sub2(base,nC,r,c),a))
+        fun loopC (r,c,a) = if c >= cstop then a
+                            else loopC(r,c+1,loopR(r,c,a))
+    in loopC (row,col,a)
+    end
 
-    fun modifyi RowMajor f { base = ref (a, _, _), row, col, nrows, ncols } =
-	VectorSlice.appi 
-	      (fn (i, xs) => ArraySlice.modifyi (fn (j, x) => f(i, j, x)) 
-					   (ArraySlice.slice(xs, col, ncols)))
-	      (VectorSlice.slice(a, row, nrows))
-      | modifyi ColMajor f (reg as {base, ...}) =
-	foldi ColMajor (fn (i, j, a, _) => update(base, i, j, f (i, j, a))) () reg
+fun traverse (t:traversal) (f: int*int*'a*'b -> 'b)
+             (a:'b) (reg:'a region) : 'b =
+    case t of
+        RowMajor => traverseRM f a reg
+      | ColMajor => traverseCM f a reg
 
-    fun copy { src = { base = ref (sa, sm, sn), row = src_row, col = src_col, 
-		       nrows, ncols }, 
-	       dst = ref (da, dm, dn), dst_row, dst_col } =
-	let val stoprow = stop sm src_row nrows
-	    fun bottomUp from_row to_row = 
-		if from_row < src_row then ()
-		else
-		    (ArraySlice.copy { src = ArraySlice.slice
-					(Vector.sub(sa, from_row), src_col, ncols),
-				       dst = Vector.sub(da, to_row),
-				       di = dst_col };
-		     bottomUp (from_row-1) (to_row-1))
-	    fun topDown from_row to_row = 
-		if from_row >= stoprow then ()
-		else
-		    (ArraySlice.copy { src = ArraySlice.slice
-					(Vector.sub(sa, from_row), src_col, ncols),
-				       dst = Vector.sub(da, to_row),
-				       di = dst_col };
-		     topDown (from_row+1) (to_row+1))
-	in
-	    if src_row <= dst_row then (* top dst overlaps with bot src; 
-					  copy bottom-up *)
-		bottomUp (stoprow-1) (stoprow-1+dst_row-src_row)
-	    else (* bot dst overlaps with top src; copy top-down *)
-		topDown src_row dst_row
-	end       
-  end
+fun mkRegion (a: 'a array) : 'a region =
+   {base=a,row=0,col=0,nrows=NONE,ncols=NONE}
 
+fun appi (t:traversal) (f: int*int*'a -> unit) (reg: 'a region) : unit =
+    traverse t (fn (r,c,v,()) => f(r,c,v)) () reg
+
+fun app (t:traversal) (f: 'a -> unit) (arr: 'a array) : unit =
+    traverse t (fn (_,_,v,()) => f v) () (mkRegion arr)
+
+fun foldi (t:traversal) (f: int*int*'a*'b -> 'b) (a: 'b) (reg: 'a region) : 'b =
+    traverse t (fn (r,c,v,a) => f(r,c,v,a)) a reg
+
+fun fold (t:traversal) (f: 'a*'b -> 'b) (a: 'b) (arr: 'a array) : 'b =
+    traverse t (fn (_,_,v,a) => f(v,a)) a (mkRegion arr)
+
+fun modifyi (t:traversal) (f: int*int*'a -> 'a) (reg: 'a region) : unit =
+    let val nC = nCols(#base reg)
+    in traverse t (fn (r,c,v,()) => update2(#base reg,nC,r,c,f(r,c,v))) () reg
+    end
+
+fun modify (t:traversal) (f: 'a -> 'a) (arr: 'a array) : unit =
+    modifyi t (fn (_,_,v) => f v) (mkRegion arr)
+
+fun row (a:'a array, r:int) : 'a Vector.vector =
+    let val (rs,cs) = dimensions a
+    in if r < 0 orelse r >= rs then raise Subscript
+       else Vector.tabulate (cs, fn c => sub2(a,cs,r,c))
+    end
+
+fun column (a:'a array, c:int) : 'a Vector.vector =
+    let val (rs,cs) = dimensions a
+    in if c < 0 orelse c >= cs then raise Subscript
+       else Vector.tabulate (rs, fn r => sub2(a,cs,r,c))
+    end
+
+fun copy {src: 'a region, dst: 'a array, dst_row:int, dst_col:int} : unit =
+    let val {nR:int,nC:int,rstop:int,cstop:int} = traverseInit src
+        val r_reg = rstop - (#row src)
+        val c_reg = cstop - (#col src)
+        val () = if dst_row < 0 orelse dst_row + r_reg > nR orelse
+                    dst_col < 0 orelse dst_col + c_reg > nC
+                 then raise Subscript
+                 else ()
+        val tmp = tabulate RowMajor
+                           (r_reg, c_reg,
+                            fn(r,c) => sub2(#base src,nC,
+                                            r + #row src,
+                                            c + #col src))
+    in appi RowMajor (fn (r,c,v) =>
+                         update2(#base src,nC,dst_row+r,dst_col+c,v))
+            {base=tmp,row=0,col=0,nrows=NONE,ncols=NONE}
+    end
+
+end
