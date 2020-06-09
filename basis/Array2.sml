@@ -5,7 +5,7 @@ structure Array2 :> ARRAY2 = struct
 type 'a array = 'a array
 
 (* 26 bits are reserved for the length in the tag field; maxLen = 2^26 *)
-val maxLen = 4096 * 4096 (* 128 MB *)
+val maxLen = 16777216 (* =4096*4096=128 MB *)
 
 type 'a region = {base  : 'a array,
                   row   : int,
@@ -27,23 +27,29 @@ fun sub2 (a : 'a array, cols:int, r:int, c:int) : 'a =
 fun update2 (a : 'a array, cols:int, r:int, c:int, v:'a) : unit =
     prim ("word_update0", (a, r*cols+c+2, v))
 
-fun table0 (n : int) : 'a array = prim ("word_table0", n)
-fun array0 (n : int, x:'a) : 'a array = prim ("word_table_init", (n, x))
+(* word_table2d0 is in OptLambda compiled into calls to word_table0
+   and consecutive updates to store the sizes of each dimension in
+   slot 0 and 1. Similarly for word_table2d0_init, which is in
+   OptLambda compiled into calls to word_table_init and consecutive
+   updates to store the sizes of each dimension in slot 0 and 1.
+*)
+
+fun table2d0 (n:int,r:int,c:int) : 'a array = prim ("word_table2d0", (n,r,c))
+fun table2d0_init (n:int,v:'a,r:int,c:int) : 'a array = prim ("word_table2d0_init", (n,v,r,c))
+
 fun update0 (a : 'a array, i : int, x : 'a) : unit = prim ("word_update0", (a, i, x))
 
-fun check (r,c) : int =
-    if r < 0 orelse c < 0 orelse c > maxLen orelse r > maxLen then raise Size
-    else let val n = r*c
+fun check (nr,nc) : int =
+    if nr < 0 orelse nc < 0 orelse nc > maxLen orelse nr > maxLen then raise Size
+    else let val n = nr*nc
          in if n > maxLen then raise Size
             else n
          end
 
-fun array (r:int,c:int,v:'a):'a array =
-    let val n = check(r,c)
-        val a = array0(n+2,v)
-    in set_rows(a,r)
-     ; set_cols(a,c)
-     ; a
+fun array (nr:int,nc:int,v:'a):'a array =
+    let val n = check(nr,nc)
+        val a = table2d0_init(n+2,v,nr,nc)
+    in a
     end
 
 fun sub (a: 'a array, r:int, c:int) : 'a =
@@ -67,31 +73,28 @@ fun fromList (rs : 'a list list) : 'a array =
                    | nil => 0
         val () = List.app (fn r => if List.length r <> nc then raise Size
                                    else ()) rs
-        val a = table0 (nr*nc+2)
-    in set_rows(a,nr)
-     ; set_cols(a,nc)
-     ; foldl(fn (r,i) =>
+        val a = table2d0 (nr*nc+2,nr,nc)
+    in foldl(fn (r,i) =>
                 foldl(fn (x,i) => (update0(a,i,x); i+1)) i r) 2 rs
      ; a
     end
 
 
-fun tabulate t (rs:int,cs:int,f:int*int-> 'a) : 'a array =
-    let val n = check (rs,cs)
-        val a = table0 (n+2)
-        val () = (set_rows(a,rs); set_cols(a,cs))
+fun tabulate t (nr:int,nc:int,f:int*int-> 'a) : 'a array =
+    let val n = check(nr,nc)
+        val a = table2d0(n+2,nr,nc)
     in case t of
            RowMajor =>
-           let fun loopC (r,c) = if c >= cs then ()
-                                 else (update2(a,cs,r,c,f(r,c)); loopC (r,c+1))
-               fun loopR (r,c) = if r >= rs then ()
+           let fun loopC (r,c) = if c >= nc then ()
+                                 else (update2(a,nc,r,c,f(r,c)); loopC (r,c+1))
+               fun loopR (r,c) = if r >= nr then ()
                                  else (loopC(r,c); loopR(r+1,c))
            in loopR (0,0); a
            end
          | ColMajor =>
-           let fun loopR (r,c) = if r >= rs then ()
-                                 else (update2(a,cs,r,c,f(r,c)); loopR (r+1,c))
-               fun loopC (r,c) = if c >= cs then ()
+           let fun loopR (r,c) = if r >= nr then ()
+                                 else (update2(a,nc,r,c,f(r,c)); loopR (r+1,c))
+               fun loopC (r,c) = if c >= nc then ()
                                  else (loopR(r,c); loopC(r,c+1))
            in loopC (0,0); a
            end

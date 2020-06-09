@@ -775,9 +775,10 @@ structure OptLambda: OPT_LAMBDA =
                   | CRECORD of cv list
                   | CUNKNOWN
                   | CCONST of LambdaExp
-                  | CFN of {lexp: LambdaExp, large:bool}  (* only to appear in env *)
+                  | CFN of {lexp: LambdaExp, large:bool}               (* only to appear in env *)
 	          | CFIX of {Type: Type, bind: LambdaExp, large: bool} (* only to appear in env *)
-                  | CBLKSZ of IntInf.int                  (* statically sized block (e.g., array or string) *)
+                  | CBLKSZ of IntInf.int                               (* statically sized block (e.g., array or string) *)
+                  | CBLK2SZ of IntInf.int option * IntInf.int option   (* statically sized 2d-block *)
                   | CRNG of {low: IntInf.int option, high: IntInf.int option}
 
       fun eq_cv (cv1,cv2) =
@@ -790,6 +791,7 @@ structure OptLambda: OPT_LAMBDA =
 	   | (CFIX{bind,large,Type}, CFIX{bind=bind2,large=large2,Type=Type2}) =>
 	     large = large2 andalso eq_Type(Type,Type2) andalso eq_lamb(bind,bind2)
            | (CBLKSZ i1, CBLKSZ i2) => i1 = i2
+           | (CBLK2SZ i1, CBLK2SZ i2) => i1 = i2
            | (CRNG i1, CRNG i2) => i1 = i2
 	   | _ => false
       and eq_cvs (cv1::cvs1,cv2::cvs2) = eq_cv(cv1,cv2) andalso eq_cvs(cvs1,cvs2)
@@ -817,6 +819,7 @@ structure OptLambda: OPT_LAMBDA =
 							       bind=bind}],
 						   scope=STRING("",NONE)}))
            | CBLKSZ _ => true
+           | CBLK2SZ _ => true
            | CRNG _ => true
 
       (* remove lvar from compiletimevalue, if it is there;
@@ -826,11 +829,15 @@ structure OptLambda: OPT_LAMBDA =
 	| remove lvar (cv as (CVAR (VAR{lvar =lvar',...}))) = if Lvars.eq(lvar,lvar') then CUNKNOWN else cv
 	| remove _ (cv as (CCONST _)) = cv
         | remove _ (cv as (CBLKSZ _)) = cv
+        | remove _ (cv as (CBLK2SZ _)) = cv
         | remove _ (cv as (CRNG _)) = cv
 	| remove _ _ = CUNKNOWN
 
       fun removes [] cv = cv
 	| removes (lv::lvs) cv = removes lvs (remove lv cv)
+
+      fun pp_opti NONE = "_"
+        | pp_opti (SOME i) = IntInf.toString i
 
       (* pretty printing *)
       fun show_cv (CVAR (VAR x)) = " cvar " ^ Lvars.pr_lvar (#lvar x)
@@ -843,11 +850,8 @@ structure OptLambda: OPT_LAMBDA =
 	| show_cv (CFIX {large=false,...}) = "(small fix)"
 	| show_cv (CUNKNOWN) = "(unknown)"
 	| show_cv (CBLKSZ i) = "(cblksz " ^ IntInf.toString i ^ ")"
-	| show_cv (CRNG {low,high}) =
-          let fun pp_opti NONE = "_"
-                | pp_opti (SOME i) = IntInf.toString i
-          in "(crng " ^ pp_opti low ^ "--" ^ pp_opti high ^ ")"
-          end
+	| show_cv (CBLK2SZ (i0opt,i1opt)) = "(cblk2sz " ^ pp_opti i0opt ^ ", " ^ pp_opti i1opt ^ ")"
+	| show_cv (CRNG {low,high}) = "(crng " ^ pp_opti low ^ "--" ^ pp_opti high ^ ")"
 
       (* substitution *)
       fun on_cv S cv =
@@ -857,6 +861,7 @@ structure OptLambda: OPT_LAMBDA =
 	      | on (CFN{lexp,large}) = CFN{lexp=on_LambdaExp S lexp,large=large}
 	      | on (CFIX{Type,bind,large}) = CFIX{Type=on_Type S Type,bind=on_LambdaExp S bind,large=large}
               | on (cv as CBLKSZ _) = cv
+              | on (cv as CBLK2SZ _) = cv
               | on (cv as CRNG _) = cv
 	      | on _ = CUNKNOWN
 	in on cv
@@ -887,7 +892,9 @@ structure OptLambda: OPT_LAMBDA =
           end
         | lub (cv as CBLKSZ i1, CBLKSZ i2) =
           if i1 = i2 then cv else CUNKNOWN
-	| lub _ = CUNKNOWN
+        | lub (cv as CBLK2SZ i1, CBLK2SZ i2) =
+          if i1 = i2 then cv else CUNKNOWN
+ 	| lub _ = CUNKNOWN
 
       fun lubList [] = CUNKNOWN
 	| lubList (l::ls) =
@@ -935,6 +942,88 @@ structure OptLambda: OPT_LAMBDA =
 
       val frame_contract_env : env option ref = ref NONE
 
+        (* SOME empty              : an exception is raised for sure (bot)
+           NONE                    : we're not certain that an exception
+                                     is raised (top)
+           SOME {lv1:CRNG rng1,...
+                 lvn:CRNG rngn}    : an exception is raised if either of
+                                     lvi is outside rngi
+         *)
+      fun exn_anti_env (e:LambdaExp) : env option =
+          let fun join_rng (r1,r2) =
+                  case (r1,r2) of
+                      (CRNG {low=l1,high=h1}, CRNG {low=l2,high=h2}) =>    (* (SOME 0,NONE) v (NONE,SOME 128) => (SOME 0,SOME 128) *)
+                      (case (l1,h1,l2,h2) of
+                           (NONE,SOME h,SOME l,NONE) => if l < h then CRNG{low=l2,high=h1} else r1
+                         | (SOME l,NONE,NONE,SOME h) => if l < h then CRNG{low=l1,high=h2} else r1
+                         | _ => r1)
+                    | (CRNG _, _) => r1
+                    | (_, CRNG _) => r2
+                    | _ => CUNKNOWN
+              fun join_rng' ((_,r1),(_,r2)) = ([],join_rng(r1,r2))
+              fun join (e1:env option,e2:env option) : env option =
+                  case (e1,e2) of
+                      (NONE,_) => e2
+                    | (_,NONE) => e1
+                    | (SOME e1',SOME e2') => if LvarMap.isEmpty e1' then e1
+                                             else if LvarMap.isEmpty e2' then e2
+                                             else SOME(LvarMap.mergeMap join_rng' e1' e2')
+              fun exn e : env option =
+                  case e of
+                      RAISE _ => SOME LvarMap.empty
+                    | PRIM (_,lambs) => List.foldl join NONE (map exn lambs)
+	            | LET {pat,bind,scope} => join (exn bind, exn scope)
+                    | APP (e1,e2,_) => join (exn e1, exn e2)
+                    | FIX {functions,scope} => exn scope
+                    | LETREGION {regvars,scope} => exn scope
+                    | EXCEPTION (_,_,scope) => exn scope
+                    | SWITCH_C (SWITCH(e,[((con,_),e_t)],SOME e_f)) =>
+                      if not(Con.eq(con,Con.con_TRUE)) then NONE
+                      else
+                      let fun certain_gte lv i = SOME(LvarMap.singleton(lv,([],CRNG{low=SOME i,high=NONE})))
+                          fun certain_lt lv i = SOME(LvarMap.singleton(lv,([],CRNG{low=NONE,high=SOME(i-1)})))
+                          fun comp_env_f e =
+                              case e of
+                                  PRIM(CCALLprim{name="__less_int64ub",...},[VAR {lvar,...},INTEGER(i,_)]) => certain_gte lvar i
+                                | PRIM(CCALLprim{name="__greatereq_int64ub",...},[VAR {lvar,...},INTEGER(i,_)]) => certain_lt lvar i
+(*
+                                | SWITCH_C (SWITCH(e,[((con',_),PRIM(CONprim{con=con'',...},[]))],SOME e_f')) =>
+                                  if Con.eq(con',Con.con_TRUE) andalso Con.eq(con'',Con.con_TRUE)
+                                  then join (comp_env_f e, comp_env_f e_f')
+                                  else NONE
+*)
+                                | _ => NONE
+                          fun comp_env_t e =
+                              case e of
+                                  PRIM(CCALLprim{name="__less_int64ub",...},[VAR {lvar,...},INTEGER(i,_)]) => certain_lt lvar i
+                                | _ => NONE
+                      in case (exn e_t, exn e_f) of
+                             (NONE,NONE) => exn e
+                           | (SOME env_t,NONE) => if LvarMap.isEmpty env_t then comp_env_f e
+                                                  else NONE
+(*
+                           | (NONE,SOME env_f) => if LvarMap.isEmpty env_f then comp_env_t e
+                                                  else NONE
+*)
+                           | _ => NONE
+                      end
+                    | SWITCH_C (SWITCH(e,_,_)) => exn e
+                    | SWITCH_I {switch=SWITCH(e,_,_),...} => exn e
+                    | SWITCH_W {switch=SWITCH(e,_,_),...} => exn e
+                    | SWITCH_S (SWITCH(e,_,_)) => exn e
+                    | SWITCH_E (SWITCH(e,_,_)) => exn e
+                    | FRAME _ => NONE
+                    | VAR _ => NONE
+                    | INTEGER _ => NONE
+                    | WORD _ => NONE
+                    | REAL _ => NONE
+                    | F64 _ => NONE
+                    | STRING _ => NONE
+                    | FN _ => NONE
+                    | HANDLE _ => NONE
+          in exn e
+          end
+
       (* -----------------------------------------------------------------
        * Usage counts
        * ----------------------------------------------------------------- *)
@@ -960,7 +1049,6 @@ structure OptLambda: OPT_LAMBDA =
 
       fun decr_uses (VAR{lvar,...}) = decr_use lvar                        (* Decrease uses in an expression. *)
 	| decr_uses lamb = app_lamb decr_uses lamb
-
 
       (* -----------------------------------------------------------------
        * Initialization of usage counts
@@ -1168,6 +1256,10 @@ structure OptLambda: OPT_LAMBDA =
                                   | "__equal_int64ub" => opp (op =)
                                   | "__plus_int63" => opp_ov (op +)
                                   | "__plus_int64ub" => opp_ov (op +)
+                                  | "__minus_int63" => opp_ov (op -)
+                                  | "__minus_int64ub" => opp_ov (op -)
+                                  | "__mul_int63" => opp_ov (op *)
+                                  | "__mul_int64ub" => opp_ov (op *)
                                   | _ => NONE
                              end
                            | [WORD(v1,t),WORD(v2,_)] =>
@@ -1268,10 +1360,10 @@ structure OptLambda: OPT_LAMBDA =
                            | PRIM(CCALLprim{name="__less_int63",...},xs) => try (op <) xs
                            | PRIM(CCALLprim{name="__lesseq_int64ub",...},xs) => try (op <=) xs
                            | PRIM(CCALLprim{name="__lesseq_int63",...},xs) => try (op <=) xs
-                           | PRIM(CCALLprim{name="__greater_int64ub",...},xs) => try (not o (op >)) xs
-                           | PRIM(CCALLprim{name="__greater_int63",...},xs) => try (not o (op >)) xs
-                           | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try (not o (op >=)) xs
-                           | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try (not o (op >=)) xs
+                           | PRIM(CCALLprim{name="__greater_int64ub",...},xs) => try (op >) xs
+                           | PRIM(CCALLprim{name="__greater_int63",...},xs) => try (op >) xs
+                           | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try (op >=) xs
+                           | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try (op >=) xs
                            | _ => NONE
                  in case opt2 of
                         SOME e => (tick "range-folding"; (e,CCONST e))
@@ -1638,6 +1730,11 @@ structure OptLambda: OPT_LAMBDA =
 				     of VAR _ => CVAR bind'
 				      | _ => cv)
 		   val env' = LvarMap.add(lvar,(tyvars,cv'),env)
+(*
+                   val env' = case exn_anti_env bind of                  (* under which conditions does bind not raise an exception *)
+                                  NONE => env'
+                                | SOME env'' => LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind is sure to raise an exception, but we will ignore this fact *)
+*)
 		   val (scope',cv_scope) = contr (env', scope)
 		   val cv_scope' = remove lvar cv_scope
 	       in reduce (env, (LET{pat=pat,bind=bind',scope=scope'}, cv_scope'))
@@ -1672,6 +1769,22 @@ structure OptLambda: OPT_LAMBDA =
                        [INTEGER(v,_)] => (PRIM(p,lambs'),CBLKSZ v)
                      | _ => (PRIM(p,lambs'),CUNKNOWN)
                 end
+              | PRIM(p as CCALLprim{name="word_table2d0_init",...},lambs) =>
+                let val lambs' = map (fst o (fn e => contr (env, e))) lambs
+                in case lambs' of
+                       [_,_,INTEGER(v0,_),INTEGER(v1,_)] => (PRIM(p,lambs'),CBLK2SZ (SOME v0,SOME v1))
+                     | [_,_,INTEGER(v0,_),_] => (PRIM(p,lambs'),CBLK2SZ (SOME v0,NONE))
+                     | [_,_,_,INTEGER(v1,_)] => (PRIM(p,lambs'),CBLK2SZ (NONE,SOME v1))
+                     | _ => (PRIM(p,lambs'),CUNKNOWN)
+                end
+              | PRIM(p as CCALLprim{name="word_table2d0",...},lambs) =>
+                let val lambs' = map (fst o (fn e => contr (env, e))) lambs
+                in case lambs' of
+                       [_,INTEGER(v0,_),INTEGER(v1,_)] => (PRIM(p,lambs'),CBLK2SZ (SOME v0,SOME v1))
+                     | [_,INTEGER(v0,_),_] => (PRIM(p,lambs'),CBLK2SZ (SOME v0,NONE))
+                     | [_,_,INTEGER(v1,_)] => (PRIM(p,lambs'),CBLK2SZ (NONE,SOME v1))
+                     | _ => (PRIM(p,lambs'),CUNKNOWN)
+                end
               | PRIM(p as CCALLprim{name="ord",...},[e]) =>
                 let val (e',_) = contr (env, e)
                 in (PRIM(p,[e']),CRNG{low=SOME (IntInf.fromInt 0),
@@ -1689,6 +1802,20 @@ structure OptLambda: OPT_LAMBDA =
                                      end
                                    else fail()
                      | _ => fail()
+                end
+              | PRIM(p as CCALLprim{name="word_sub0",...}, [a,i as INTEGER(idx,_)]) =>
+                let val (a',cv) = contr (env,a)
+                    fun fail () = (PRIM(p,[a',i]),CUNKNOWN)
+                    fun mk s i = let val e = INTEGER(i,intDefaultType())
+                                 in tick ("contr - table2d_size" ^ s);
+                                    decr_uses a'; (e, CCONST e)
+                                 end
+                in if safeLambdaExp a' then
+                     case (idx,cv) of
+                         (0, CBLK2SZ (SOME i,_)) => mk "0" i
+                       | (1, CBLK2SZ (_,SOME i)) => mk "1" i
+                       | _ => fail()
+                   else fail()
                 end
 	      | PRIM(prim,lambs) => (PRIM(prim,map (fst o (fn e => contr (env,e))) lambs),CUNKNOWN)
 	      | FIX{functions,scope} =>
@@ -1811,6 +1938,7 @@ structure OptLambda: OPT_LAMBDA =
 		| toInt (CFIX _) = 5
 		| toInt (CBLKSZ _) = 6
 		| toInt (CRNG _) = 7
+		| toInt (CBLK2SZ _) = 8
 
 	      fun fun_CVAR _ =
 		  Pickle.con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
@@ -1838,9 +1966,12 @@ structure OptLambda: OPT_LAMBDA =
 		  Pickle.con1 (fn (l,h) => CRNG{low=l,high=h}) (fn CRNG{low,high} => (low,high)
                                                                  | _ => die "pu_contract_env.CRNG")
 		  (Pickle.pairGen(Pickle.optionGen pu_intinf, Pickle.optionGen pu_intinf))
+	      fun fun_CBLK2SZ _ =
+		  Pickle.con1 CBLK2SZ (fn CBLK2SZ a => a | _ => die "pu_contract_env.CBLK2SZ")
+		  (Pickle.pairGen(Pickle.optionGen pu_intinf, Pickle.optionGen pu_intinf))
 	      val pu_cv =
 		  Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
-						       fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,fun_CRNG])
+						       fun_CCONST,fun_CFN,fun_CFIX,fun_CBLKSZ,fun_CRNG,fun_CBLK2SZ])
 	  in LvarMap.pu Lvars.pu
 	      (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
 	  end
@@ -2573,6 +2704,58 @@ structure OptLambda: OPT_LAMBDA =
 	 end
    end
 
+   local
+   fun exec (e: LambdaExp) (scope: LambdaExp) : LambdaExp =
+       let val lv = Lvars.newLvar()
+       in LET{pat=[(lv,[],unit_Type)],
+              bind=e,scope=scope}
+       end
+   fun assign tyvars aType instances a (i:int) e =
+       let val iType = intDefaultType()
+       in PRIM(CCALLprim{name="word_update0",instances=instances,tyvars=tyvars,
+                         Type=ARROWtype([aType,iType,iType],[unit_Type])},
+               [a,INTEGER(IntInf.fromInt i,iType),e])
+       end
+   in
+   fun table2d_simplify lamb =
+       case lamb of
+           PRIM(CCALLprim{name="word_table2d0",instances,tyvars,
+                          Type=ARROWtype([iType,_,_],[aType])},lambs) =>
+           (case map table2d_simplify lambs of
+                [n,nr,nc] =>
+                let val lv = Lvars.newLvar()
+                    val a = VAR{lvar=lv,instances=[],regvars=nil}
+                    val e0 = assign tyvars aType instances a 0 nr
+                    val e1 = assign tyvars aType instances a 1 nc
+                    val S = mk_subst (fn () => "table2d_simplify.word_table2d0") (tyvars,instances)
+                    val aType' = on_Type S aType
+                in LET{pat=[(lv,nil,aType')],
+                       bind=PRIM(CCALLprim{name="word_table0",instances=instances,
+                                           tyvars=tyvars,
+                                           Type=ARROWtype([iType],[aType])},[n]),
+                       scope=exec e0 (exec e1 a)}
+                end
+              | _ => die "table2d_simplify: word_table2d0")
+         | PRIM(CCALLprim{name="word_table2d0_init",instances,tyvars,
+                          Type=ARROWtype([iType,eType,_,_],[aType])},lambs) =>
+           (case map table2d_simplify lambs of
+                [n,e,nr,nc] =>
+                let val lv = Lvars.newLvar()
+                    val a = VAR{lvar=lv,instances=[],regvars=nil}
+                    val e0 = assign tyvars aType instances a 0 nr
+                    val e1 = assign tyvars aType instances a 1 nc
+                    val S = mk_subst (fn () => "table2d_simplify.word_table2d0_init") (tyvars,instances)
+                    val aType' = on_Type S aType
+                in LET{pat=[(lv,nil,aType')],
+                       bind=PRIM(CCALLprim{name="word_table_init",instances=instances,
+                                           tyvars=tyvars,
+                                           Type=ARROWtype([iType,eType],[aType])},[n,e]),
+                       scope=exec e0 (exec e1 a)}
+                end
+              | _ => die "table2d_simplify: word_table2d0_init")
+         | _ => map_lamb table2d_simplify lamb
+   end
+
 
 
    (* -----------------------------------------------------------------
@@ -3000,6 +3183,7 @@ structure OptLambda: OPT_LAMBDA =
 	let val (lamb,let_env) = functionalise_let let_env lamb
 	    val lamb = fix_conversion lamb
 	    val (lamb,inveta_env) = inverse_eta_for_fix_bound_lvars inveta_env lamb
+            val lamb = table2d_simplify lamb
 	in (lamb, (inveta_env, let_env))
 	end
 
