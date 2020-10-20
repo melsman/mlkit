@@ -935,6 +935,12 @@ structure OptLambda: OPT_LAMBDA =
 		  childsep=PP.RIGHT ".",
 		  children=[layout_tyvars tyvars,layout_cv cv]}
 
+      val layout_contract_env : env -> StringTree =
+	LvarMap.layoutMap {start="ContractEnv={",eq="->", sep=", ", finish="}"}
+	(PP.LEAF o Lvars.pr_lvar') layout_cv_scheme
+
+      fun pr_contract_env e =
+          PP.outputTree (print, layout_contract_env e, 200)
 
       fun cross_module_inline (lvars_free_ok, excons_free_ok) lvar (tyvars,cv) =
 	cross_module_opt()
@@ -986,17 +992,17 @@ structure OptLambda: OPT_LAMBDA =
                               case e of
                                   PRIM(CCALLprim{name="__less_int64ub",...},[VAR {lvar,...},INTEGER(i,_)]) => certain_gte lvar i
                                 | PRIM(CCALLprim{name="__greatereq_int64ub",...},[VAR {lvar,...},INTEGER(i,_)]) => certain_lt lvar i
-(*
                                 | SWITCH_C (SWITCH(e,[((con',_),PRIM(CONprim{con=con'',...},[]))],SOME e_f')) =>
                                   if Con.eq(con',Con.con_TRUE) andalso Con.eq(con'',Con.con_TRUE)
                                   then join (comp_env_f e, comp_env_f e_f')
                                   else NONE
-*)
                                 | _ => NONE
+(*
                           fun comp_env_t e =
                               case e of
                                   PRIM(CCALLprim{name="__less_int64ub",...},[VAR {lvar,...},INTEGER(i,_)]) => certain_lt lvar i
                                 | _ => NONE
+*)
                       in case (exn e_t, exn e_f) of
                              (NONE,NONE) => exn e
                            | (SOME env_t,NONE) => if LvarMap.isEmpty env_t then comp_env_f e
@@ -1333,37 +1339,43 @@ structure OptLambda: OPT_LAMBDA =
           in case opt of
                  SOME e => (tick "constant-folding"; (e,CCONST e))
                | NONE =>
-                 let fun rightlift opr i NONE = false
-                       | rightlift opr i (SOME i') = opr(i,i')
-                     fun leftlift opr NONE i = false
-                       | leftlift opr (SOME i) i' = opr(i,i')
-                     fun try opr xs =
+                 let datatype cmp = LT | LTE | GT | GTE
+                     fun Not LT = GTE
+                       | Not LTE = GT
+                       | Not GT = LTE
+                       | Not GTE = LT
+                     fun rightlift LT i {low=SOME j,high=NONE} = i < j
+                       | rightlift LTE i {low=SOME j,high=NONE} = i <= j
+                       | rightlift GT i {low=NONE,high=SOME j} = i > j
+                       | rightlift GTE i {low=NONE,high=SOME j} = i >= j
+                       | rightlift _ _ _ = false
+                     fun try (opr:cmp) xs =
                          case xs of
                              [INTEGER(i,_),VAR{lvar,...}] =>
                              (case lookup_lvar(env,lvar) of
-                                  SOME(_,CRNG{low,high}) =>
-                                  if rightlift opr i low then SOME lexp_true
-                                  else if rightlift (not o opr) i high then SOME lexp_false
+                                  SOME(_,CRNG rng) =>
+                                  if rightlift opr i rng then SOME lexp_true
+                                  else if rightlift (Not opr) i rng then SOME lexp_false
                                   else NONE
                                 | _ => NONE)
                            | [VAR{lvar,...},INTEGER(i,_)] =>
                              (case lookup_lvar(env,lvar) of
-                                  SOME(_,CRNG{low,high}) =>
-                                  if leftlift opr high i then SOME lexp_true
-                                  else if leftlift (not o opr) low i then SOME lexp_false
+                                  SOME(_,CRNG rng) =>
+                                  if rightlift (Not opr) i rng then SOME lexp_true
+                                  else if rightlift opr i rng then SOME lexp_false
                                   else NONE
                                 | _ => NONE)
                            | _ => NONE (* memo: more cases! *)
                      val opt2 =
                          case lamb of
-                             PRIM(CCALLprim{name="__less_int64ub",...},xs) => try (op <) xs
-                           | PRIM(CCALLprim{name="__less_int63",...},xs) => try (op <) xs
-                           | PRIM(CCALLprim{name="__lesseq_int64ub",...},xs) => try (op <=) xs
-                           | PRIM(CCALLprim{name="__lesseq_int63",...},xs) => try (op <=) xs
-                           | PRIM(CCALLprim{name="__greater_int64ub",...},xs) => try (op >) xs
-                           | PRIM(CCALLprim{name="__greater_int63",...},xs) => try (op >) xs
-                           | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try (op >=) xs
-                           | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try (op >=) xs
+                             PRIM(CCALLprim{name="__less_int64ub",...},xs) => try LT xs
+                           | PRIM(CCALLprim{name="__less_int63",...},xs) => try LT xs
+                           | PRIM(CCALLprim{name="__lesseq_int64ub",...},xs) => try LTE xs
+                           | PRIM(CCALLprim{name="__lesseq_int63",...},xs) => try LTE xs
+                           | PRIM(CCALLprim{name="__greater_int64ub",...},xs) => try GT xs
+                           | PRIM(CCALLprim{name="__greater_int63",...},xs) => try GT xs
+                           | PRIM(CCALLprim{name="__greatereq_int64ub",...},xs) => try GTE xs
+                           | PRIM(CCALLprim{name="__greatereq_int63",...},xs) => try GTE xs
                            | _ => NONE
                  in case opt2 of
                         SOME e => (tick "range-folding"; (e,CCONST e))
@@ -1730,11 +1742,14 @@ structure OptLambda: OPT_LAMBDA =
 				     of VAR _ => CVAR bind'
 				      | _ => cv)
 		   val env' = LvarMap.add(lvar,(tyvars,cv'),env)
-(*
+
                    val env' = case exn_anti_env bind of                  (* under which conditions does bind not raise an exception *)
                                   NONE => env'
-                                | SOME env'' => LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind is sure to raise an exception, but we will ignore this fact *)
-*)
+                                | SOME env'' =>
+                                  let (*val () = if LvarMap.isEmpty env'' then ()
+                                               else pr_contract_env env''*)
+                                  in LvarMap.plus(env',env'') (* if env'' = empty then, in principle bind is sure to raise an exception, but we will ignore this fact *)
+                                  end
 		   val (scope',cv_scope) = contr (env', scope)
 		   val cv_scope' = remove lvar cv_scope
 	       in reduce (env, (LET{pat=pat,bind=bind',scope=scope'}, cv_scope'))
@@ -1885,6 +1900,8 @@ structure OptLambda: OPT_LAMBDA =
     in
       type contract_env = env
 
+      val layout_contract_env = layout_contract_env
+
       fun contract_env_dummy lamb : contract_env =
 	let val lvars = #1(exports lamb)
 	in List.foldl (fn (lv, acc) => LvarMap.add(lv,(nil,CUNKNOWN),acc))
@@ -1924,10 +1941,6 @@ structure OptLambda: OPT_LAMBDA =
 			end
 		       | NONE => die "restrict_contract_env.lv not in env")
 	(LvarMap.empty,cons,tns) lvars
-
-      val layout_contract_env : contract_env -> StringTree =
-	LvarMap.layoutMap {start="ContractEnv={",eq="->", sep=", ", finish="}"}
-	(PP.LEAF o Lvars.pr_lvar') layout_cv_scheme
 
       val pu_contract_env =
 	  let fun toInt (CVAR _) = 0
