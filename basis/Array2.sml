@@ -27,11 +27,16 @@ fun sub2 (a : 'a array, cols:int, r:int, c:int) : 'a =
 fun update2 (a : 'a array, cols:int, r:int, c:int, v:'a) : unit =
     prim ("word_update0", (a, r*cols+c+2, v))
 
-(* word_table2d0 is in OptLambda compiled into calls to word_table0
-   and consecutive updates to store the sizes of each dimension in
-   slot 0 and 1. Similarly for word_table2d0_init, which is in
-   OptLambda compiled into calls to word_table_init and consecutive
-   updates to store the sizes of each dimension in slot 0 and 1.
+(* The primitive word_table2d0 is in OptLambda compiled into calls to
+   word_table0 and consecutive updates to store the sizes of each
+   dimension in slot 0 and 1. Similarly for word_table2d0_init, which
+   is in OptLambda compiled into calls to word_table_init and
+   consecutive updates to store the sizes of each dimension in slot 0
+   and 1.
+
+   It is safe (also when gc is enabled) to store integers in the first
+   slots of arrays allocated with word_table0 as the integers are
+   tagged when gc is enabled.
 *)
 
 fun table2d0 (n:int,r:int,c:int) : 'a array = prim ("word_table2d0", (n,r,c))
