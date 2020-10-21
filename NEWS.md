@@ -1,7 +1,19 @@
 ## MLKit NEWS
 
+### MLKit version 4.5.1 is released
+
+* mael 2020-10-20: Static elimination of some array-bounds checks for
+  Array2 arrays.
+
+* mael 2020-10-20: More efficient implementation of Array2 structure.
+
+* mael 2020-10-21: Static stack-alignment in native backend.
+
+### MLKit version 4.5.0 is released
+
 * mael 2020-04-30: Support for Word64, Word63, Int64, and Int63
-  structures in the native backend.
+  structures in the native backend. Default int and word sizes are now
+  64 bits (63 bits when gc is enabled).
 
 * mael 2020-04-30: Unboxing optimisation for double-precision floats.
 
