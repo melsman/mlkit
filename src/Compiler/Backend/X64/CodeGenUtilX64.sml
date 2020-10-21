@@ -2640,7 +2640,7 @@ struct
                | NONE =>
                 (move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
                  I.sarq(I "1", R tmp_reg1) ::                     (* untag i: tmp_reg1 >> 1 *)
-                 I.salq(I "2", R tmp_reg1) ::                     (* i << 2 *)
+                 I.salq(I "3", R tmp_reg1) ::                     (* i << 3 *)
                  move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
                  I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
                  move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
@@ -2655,7 +2655,7 @@ struct
              | SOME _ => die "word_update0_2"
              | NONE =>
               move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
-              I.imulq(I "4", R tmp_reg1) ::                    (* i << 2 *)
+              I.salq(I "3", R tmp_reg1) ::                     (* i << 3 *)
               move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
               I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
               move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
@@ -2701,7 +2701,7 @@ struct
                | NONE =>
                 (move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
                  I.sarq(I "1", R tmp_reg1) ::                     (* untag i: tmp_reg1 >> 1 *)
-                 I.salq(I "2", R tmp_reg1) ::                     (* i << 2 *)
+                 I.salq(I "3", R tmp_reg1) ::                     (* i << 3 *)
                  move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
                  I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
                  load_real(x,tmp_reg0,size_ff,tmp_freg0)          (* tmp_freg0 = !x *)
@@ -2717,7 +2717,7 @@ struct
              | SOME _ => die "blockf64_update_real_2"
              | NONE =>
               move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
-              I.imulq(I "4", R tmp_reg1) ::                    (* i << 2 *)
+              I.salq(I "3", R tmp_reg1) ::                     (* i << 3 *)
               move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
               I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
               load_real(x,tmp_reg0,size_ff,tmp_freg0)          (* tmp_freg0 = !x *)
