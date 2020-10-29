@@ -7,7 +7,7 @@ Library.
 
 ## Test Statistics and Benchmarking
 
-[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit) [Benchmarking](http://elsman.com/mlkit-charting/)
+[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit) [Benchmarking](https://elsman.com/mlkit-bench/)
 
 ## Installation
 
@@ -86,6 +86,9 @@ __[MLton](http://mlton.org) >= 20051202:__
 $ mlton
 MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
 ````
+
+If a version prior to 20201023 is used, you may need to adjust the
+`mlton`-flags setup in the file `Makefiledefault`.
 
 __A working MLKit compiler >= 4.3.0:__
 ````bash
