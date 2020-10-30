@@ -1,6 +1,6 @@
 language: c
 
-dist: xenial
+dist: bionic
 
 os:
  - linux
