@@ -621,44 +621,9 @@ struct
         in loop(rev args, size_ff)
         end
 
-    fun pop_args name nargs C =
-        case nargs
-         of 0 => C
-          | n => I.addq(I (i2s (8* (case name of ":" => n-1 | _ => n))), R rsp) :: C
-
-    local
-      fun iterl f a n =
-	  if n <= 0 then a
-	  else iterl f (f(n,a)) (n-1)
-(*
-    fun iterr f a n =
-	if n <= 0 then a
-	else f(n, iterr f a (n-1))
-*)
-
-      (* for alignment of the stack, both tmp_reg0 and tmp_reg1 can be used *)
-      fun align nargs C =
-	  let val tmp = tmp_reg0
-	      val tmp1 = tmp_reg1
-	  in
-	    I.leaq(D(i2s(8*nargs), rsp), R tmp) ::      (*  tmp = rsp + 8n; memoize esp as it should be *)
-                                                        (*                  restored after call *)
-	    I.subq(I(i2s(8*(nargs+5))), R rsp) ::       (*  rsp = rsp - 32 - 8 - 8n ; alignment *)
-	    I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::    (*  rsp = rsp & 0xFFFFFFFFFFFFFFF0; alignment *)
-	    I.addq(I(i2s(8*(nargs+1))), R rsp) ::       (* Make room for args to be pushed, so that once *)
-	    I.push(R tmp) ::                            (*  the args are pushed, the stack is aligned *)
-	    iterl (fn (i,C) =>
-		     I.movq(D(i2s(~8*i), tmp), R tmp1) ::  (* notice: for x64, rsp points to the last slot used *)
-		     I.push(R tmp1) :: C
-		  )
-		  C nargs
-	  end
-
-    in
-      fun maybe_align nargs F C =
-          if nargs = 0 then F C
-          else F (I.addq(I(i2s(8*nargs)),R rsp):: C)
-    end
+    fun maybe_align nargs F C =
+        if nargs = 0 then F C
+        else F (I.addq(I(i2s(8*nargs)),R rsp):: C)
 
     fun regs_atys nil acc = nil
       | regs_atys (SS.PHREG_ATY r::atys) acc = regs_atys atys (r::acc)
@@ -858,27 +823,7 @@ struct
          I.lab l ::
          copy(tmp_reg1, t, C))
       end
-(*
-    fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
-      let val n = if region_profiling() then n0 + BI.objectDescSizeP
-                  else n0
-          val l = new_local_lab "return_from_alloc"
-          fun post_prof C =
-            if region_profiling() then   (* tmp_reg1 now points at the object descriptor; initialize it *)
-              I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
-              I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
-              I.leaq(D (i2s (8*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) :: C  (* make tmp_reg1 point at object *)
-            else C
-      in
-        copy(t,tmp_reg1,
-        I.push(LA l) ::
-        move_immed(IntInf.fromInt n, R tmp_reg0,
-        I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-        I.lab l ::
-        post_prof
-        (copy(tmp_reg1,t,C))))
-      end
-*)
+
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
@@ -904,7 +849,7 @@ struct
               fun maybe_update_alloc_period C =
                   if gc_p() then
                     I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
-                    I.addq(I (i2s n), R tmp_reg0) ::
+                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
                     I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
                     C
                   else C
@@ -935,29 +880,6 @@ struct
     fun alloc_untagged_value_kill_tmp01 (t:reg,n,size_ff,pp:LS.pp,C) =  (* n: size of untagged pair, e.g. *)
         alloc_kill_tmp01 (t,n,size_ff,pp,
         I.leaq(D("-8",t), R t) :: C)
-(*
-      let val n0 = size_alloc (* size of untagged pair, e.g. *)
-          val n = if region_profiling() then n0 + BI.objectDescSizeP
-                  else n0
-          val l = new_local_lab "return_from_alloc"
-          fun post (t, C) =
-            if region_profiling() then   (* tmp_reg1 now points at the object descriptor; initialize it *)
-              I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
-              I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
-              I.leaq(D (i2s (8*(BI.objectDescSizeP-1)), tmp_reg1), R t) :: C  (* make tmp_reg1 point at
-                                                                               * word before object *)
-            else
-              I.leaq(D("-8",tmp_reg1), R t) :: C  (* make tmp_reg1 point at
-                                                   * word before object *)
-      in
-        copy(t,tmp_reg1,
-        I.push(LA l) ::
-        move_immed(IntInf.fromInt n, R tmp_reg0,
-        I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-        I.lab l ::
-        post (t,C)))
-      end
-  *)
 
     fun set_atbot_bit (dst_reg:reg,C) =
       I.orq(I "2", R dst_reg) :: C
@@ -1918,33 +1840,6 @@ struct
          in x_C(finst(R x, R d) :: C')
          end
 
-     (*
-     fun bin_f64_op s finst (x,y,d,size_ff:int,C) =
-         let val x = resolve_f64_aty (fn() => s ^ "-x") x
-             val y = resolve_f64_aty (fn() => s ^ "-y") y
-             val d = resolve_f64_aty (fn() => s ^ "-d") d
-         in if y = d then
-              if x = d then
-                finst(R d, R d) :: C
-              else
-                copy_f64(y, tmp_freg1,
-                copy_f64(x, d,
-                finst(R tmp_freg1, R d) ::
-                C))
-            else
-              copy_f64(x, d,
-              finst(R y, R d) ::
-              C)
-       end
-*)
-
-(*
-     fun uno_f64_op s finst (x,d,size_ff:int,C) =
-         let val x = resolve_f64_aty (fn() => s ^ "-x") x
-             val d = resolve_f64_aty (fn() => s ^ "-d") d
-         in finst(R x, R d) :: C
-       end
-*)
      val plus_f64 = bin_f64_op "addsd" I.addsd
      val minus_f64 = bin_f64_op "subsd" I.subsd
      val mul_f64 = bin_f64_op "mulsd" I.mulsd

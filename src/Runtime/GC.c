@@ -409,9 +409,8 @@ size_lobj (size_t tag)
 {
   switch ( tag_kind(tag) ) {
   case TAG_STRING: {
-    size_t sz_bytes;
-    sz_bytes = get_string_size(tag) + 1 + (sizeof(void *));              // 1 for zero-termination, sizeof(void *) for size field
-    return sz_bytes%(sizeof(void *)) ? (sizeof(void *))+(sizeof(void *))*(sz_bytes/(sizeof(void *))) : sz_bytes;  // alignment
+    size_t sz_bytes = get_string_size(tag) + 1 + (sizeof(void *));              // 1 for zero-termination, sizeof(void *) for size field
+    return (sz_bytes % (sizeof(void *))) ? (sizeof(void *))+(sizeof(void *))*(sz_bytes/(sizeof(void *))) : sz_bytes;  // alignment
   }
   case TAG_TABLE:
     return (sizeof(void *))*(get_table_size(tag) + 1);
@@ -440,6 +439,14 @@ next_value(uintptr_t* s, uintptr_t* a) {
   if ( end_of_region_page_or_full(s, a, rp) )
     {
       s = ((uintptr_t*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+
+#ifdef CHECK_GC
+      rp = clear_tospace_bit(rp->n);
+      uintptr_t *s1 = (uintptr_t *) &(rp->i);
+      if (s1 != s) {
+	die ("next_value err");
+      }
+#endif /*CHECK_GC*/
     }
   return s;
 }
@@ -461,53 +468,50 @@ next_untagged_value(uintptr_t* s, uintptr_t* a) {
  * Find allocated bytes in generations/regions; for measurements
  * -------------------------------------------------------------- */
 
-static long
+static size_t
 allocated_bytes_in_gen(Gen *gen)
 {
-  uintptr_t *s;  // scan pointer
-  Rp *rp;
+  ////printf("allocated_bytes_in_gen begin\n");
   size_t allocated_bytes = 0;
-
-  rp = clear_fp(gen->fp); // Maybe the generation-bit is set
-  s = (uintptr_t *) &(rp->i);
+  Rp *rp = clear_fp(gen->fp);                           // Maybe the generation-bit is set
+  uintptr_t *s = (uintptr_t *) &(rp->i);                // scan pointer
+  ////printf("before while; rp = %p; s = %p\n",rp,s);
   while (s != gen->a) {
     #ifdef PROFILING
     s += sizeObjectDesc;
     #endif
-    switch (val_tag_kind_const(s)) {
+    ////printf("in while; s = %p, gen->a = %p\n",s,gen->a);
+    ////printf("in while; tag: %lx\n",val_tag_kind_const(s));
+    size_t sz = 0;
+    switch (val_tag_kind(s)) {
     case TAG_STRING: {
       // adjust scan_ptr to after the string
-      size_t sz;
       String str = (String)s;
-      sz = get_string_size(str->size) + 1 /*for zero*/ + (sizeof(void *)) /*for tag*/;
-      sz = (sz%(sizeof(void *))) ? (1+sz/(sizeof(void *))) : (sz/(sizeof(void *)));
-      s += sz;
-      allocated_bytes += ((sizeof(void *))*sz);
+      sz = get_string_size(str->size) + 1 /*for zero*/ + (sizeof(void *)) /*for tag*/;  // bytes
+      sz = (sz%(sizeof(void *))) ? (1+sz/(sizeof(void *))) : (sz/(sizeof(void *)));     // words
       break;
     }
     case TAG_TABLE: {
-      size_t sz;
       Table table = (Table)s;
       sz = get_table_size(table->size) + 1;
-      s += sz;
-      allocated_bytes += ((sizeof(void *))*sz);
       break;
     }
     case TAG_RECORD: {
-      size_t sz = get_record_size(*s); /* Size excludes descriptor */
-      s += (1 + sz);
-      allocated_bytes += ((sizeof(void *)) + (sizeof(void *))*sz);
+      sz = get_record_size(*s) + 1; /* Size excludes descriptor */
+      ////printf("record of sz: %ld, skip: %ld\n", sz, get_record_skip(*s));
+      ////printf("float? = %f; s(1) = %ld; s(2) = %ld\n", (double)get_d(s), *(s+1),*(s+2));
       break;
     }
     case TAG_CON0: {
-      s++;
-      allocated_bytes += (sizeof(void *));
+      sz = 1;
       break;
     }
-    case TAG_CON1:
+    case TAG_CON1: {
+      sz = 2;
+      break;
+    }
     case TAG_REF: {
-      s += 2;
-      allocated_bytes += ((sizeof(void *))*2);
+      die("allocated_bytes_in_gen: REFs are untagged...");
       break;
     }
     default: {
@@ -525,14 +529,19 @@ allocated_bytes_in_gen(Gen *gen)
       break;
     }
     }
+    ////printf("before next_value; s = %p\n",s);
+    s += sz;
+    allocated_bytes += ((sizeof(void *))*sz);
     s = next_value(s,gen->a);
+    ////printf("after next_value; s = %p\n",s);
   }
+  ////printf("allocated_bytes_in_gen end\n");
   return allocated_bytes;
 }
 
 // Assumes that region does not contain untagged pairs or
 // untagged refs
-static long
+static size_t
 allocated_bytes_in_region(Region r)
 {
   return allocated_bytes_in_gen(&(r->g0))
@@ -542,11 +551,11 @@ allocated_bytes_in_region(Region r)
     ;
 }
 
-static inline long
-allocated_bytes_in_gen_untagged(Gen *gen, int obj_sz)  // obj_sz is in words
+static inline size_t
+allocated_bytes_in_gen_untagged(Gen *gen, long obj_sz)  // obj_sz is in words
 {
   Rp* rp;
-  long n = 0;
+  size_t n = 0;
   for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     {
       if ( clear_tospace_bit(rp->n) )
@@ -558,7 +567,7 @@ allocated_bytes_in_gen_untagged(Gen *gen, int obj_sz)  // obj_sz is in words
   return n;
 }
 
-static long
+static size_t
 allocated_bytes_in_region_untagged(Ro* r, long obj_sz)   // obj_sz is in words
 {
   return allocated_bytes_in_gen_untagged(&(r->g0),obj_sz)
@@ -568,26 +577,32 @@ allocated_bytes_in_region_untagged(Ro* r, long obj_sz)   // obj_sz is in words
     ;
 }
 
-static long
+static size_t
 allocated_bytes_in_regions(void)
 {
-  long n = 0;
+  size_t n = 0;
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
+      size_t m = 0;
       switch (rtype(r->g0)) { // g0 and g1 has the same rtype
       case RTYPE_PAIR:
-	n += allocated_bytes_in_region_untagged(r,2);
+	m = allocated_bytes_in_region_untagged(r,2);
+	////printf("pair: %ld\n",m);
 	break;
       case RTYPE_REF:
-	n += allocated_bytes_in_region_untagged(r,1);
+	m = allocated_bytes_in_region_untagged(r,1);
+	////printf("ref: %ld\n",m);
 	break;
       case RTYPE_TRIPLE:
-	n += allocated_bytes_in_region_untagged(r,3);
+	m = allocated_bytes_in_region_untagged(r,3);
+	////printf("triple: %ld\n",m);
 	break;
       default:
-	n += allocated_bytes_in_region(r);
+	m = allocated_bytes_in_region(r);
+	////printf("other: %ld\n",m);
       }
+      n += m;
     }
   return n;
 }
@@ -709,8 +724,8 @@ get_size_obj(uintptr_t *obj_ptr)
   case TAG_TABLE:  return get_table_size(*obj_ptr) + 1;
   case TAG_STRING:
     {
-      ssize_t size = get_string_size(*obj_ptr) + 1 + (sizeof(void *));   // 1 for zero-termination, sizeof(void *) for tag
-      return size%(sizeof(void *)) ? 1 + (size/(sizeof(void *))) : size/(sizeof(void *));      // alignment
+      ssize_t sz = get_string_size(*obj_ptr) + 1 + (sizeof(void *));   // 1 for zero-termination, sizeof(void *) for tag
+      return sz%(sizeof(void *)) ? 1+sz/(sizeof(void *)) : sz/(sizeof(void *));      // alignment
     }
   default:
     {
@@ -1072,7 +1087,7 @@ scan_tagged_value(uintptr_t *s)      // s is the scan pointer
   case TAG_STRING: {                        // Do not GC the content of a string but
     String str = (String)s;
     sz = get_string_size(str->size) + 1 + (sizeof(void *));    // 1 for zero, sizeof(void *) for tag
-    sz = (sz%(sizeof(void *))) ? (1+sz/(sizeof(void *))) : (sz/(sizeof(void *)));
+    sz = sz%(sizeof(void *)) ? 1+sz/(sizeof(void *)) : (sz/(sizeof(void *)));
     return s + sz;
   }
   case TAG_TABLE: {
@@ -1298,7 +1313,7 @@ gc(uintptr_t **sp, size_t reg_map)
   extern long rp_total;
   struct rusage rusage_begin;
   struct rusage rusage_end;
-  unsigned long bytes_from_space = 0;
+  size_t bytes_from_space = 0;
   unsigned long pages_from_space = 0;
   unsigned long alloc_period_save = 0;
   Ro *r;
@@ -1307,6 +1322,10 @@ gc(uintptr_t **sp, size_t reg_map)
   // Region.c for determining whether the tospace-bit should be set on
   // new allocated pages.
   doing_gc = 1;
+
+#ifdef CHECK_GC
+  ////printf("entering gc\n");
+#endif
 
 #ifdef ENABLE_GEN_GC
   // See code below after GC proper
@@ -1346,8 +1365,11 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif
 	      num_gc);
       fflush(stderr);
+      ////fprintf(stderr,"[GC: allocated_bytes_in_regions]\n");
       bytes_from_space = allocated_bytes_in_regions();
+      ////fprintf(stderr,"[GC: allocated_pages_in_regions]\n");
       pages_from_space = allocated_pages_in_regions();
+      ////fprintf(stderr,"[GC: allocated_bytes_in_lobjs]\n");
       lobjs_beforegc = allocated_bytes_in_lobjs();
       alloc_period_save = alloc_period;
       alloc_period = 0;
@@ -1355,9 +1377,9 @@ gc(uintptr_t **sp, size_t reg_map)
 
   // Initialize the scan stack (for Infinite Regions) and the
   // container (for Finite Regions and large objects)
-  /// fprintf(stderr,"[GC: init_scan_stack]\n");
+  ////fprintf(stderr,"[GC: init_scan_stack]\n");
   init_scan_stack();
-  /// fprintf(stderr,"[GC: init_scan_container]\n");
+  ////fprintf(stderr,"[GC: init_scan_container]\n");
   init_scan_container();
 
 #ifdef ENABLE_GEN_GC
@@ -1391,7 +1413,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // CHECK_GC
 #endif // ENABLE_GEN_GC
 
-  /// fprintf(stderr,"[GC: mk_from_space]\n");
+  ////fprintf(stderr,"[GC: mk_from_space]\n");
   mk_from_space();
 
 #ifdef ENABLE_GEN_GC
@@ -1468,7 +1490,7 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // ENABLE_GEN_GC
 
   // Search for live registers
-  /// fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
+  ////fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
   sp_ptr = sp;
   w = reg_map;
   for ( offset = 0 ; offset < NUM_REGS ; offset++ ) {
@@ -1680,6 +1702,7 @@ gc(uintptr_t **sp, size_t reg_map)
 
   if ( verbose_gc || report_gc )
     {
+      ////printf("in gc\n");
       getrusage(RUSAGE_SELF, &rusage_end);
       time_gc_one_ms = // 10x ms to get better precision in reporting
 	((rusage_end.ru_utime.tv_sec+rusage_end.ru_stime.tv_sec)*10000 +
@@ -1728,38 +1751,71 @@ gc(uintptr_t **sp, size_t reg_map)
   if ( verbose_gc )
     {
       double RI = 0.0, GC = 0.0, FRAG = 0.0;
-      unsigned long bytes_to_space;
-      unsigned long pages_to_space;
-
+      size_t bytes_to_space;
+      size_t pages_to_space;
+      //size_t copied_bytes = alloc_period;
       bytes_to_space = allocated_bytes_in_regions(); // ok gengc
       pages_to_space = allocated_pages_in_regions(); // ok gengc
       lobjs_aftergc = allocated_bytes_in_lobjs();  // ok gengc
       alloc_period = alloc_period_save;            // ok gengc
       alloc_total += alloc_period;                 // ok gengc
       alloc_total += lobjs_period;                 // ok gengc
+
+      // +------- Run -------+------- GC ------+----- Run -- -
+      // R0        dR        R1                R2
+      // L0        dL        L1                L2
+      //
+      // R_ri = R0 + dR - R1   (bytes in regions freed by RI)
+      // L_ri = L0 + dL - L1   (bytes in lobjs freed by RI)
+      //
+      // R_gc = R2 - R1        (bytes in regions freed by GC)
+      // L_gc = L2 - L1        (bytes in lobjs freed by GC)
+      //
+      // P_ri = 100 * (R_ri + L_ri) / (R_ri + L_ri + R_gc + L_gc)
+      // P_gc = 100 * (R_gc + L_gc) / (R_ri + L_ri + R_gc + L_gc)
+
       gc_total += (bytes_from_space + lobjs_beforegc - bytes_to_space - lobjs_aftergc);
 
       fprintf(stderr,"(%ld.%ldms)", time_gc_one_ms / 10, time_gc_one_ms % 10);
-      /*
-      fprintf(stderr, " rp_total: %ld\n", rp_total);
-      fprintf(stderr, " size_scan_stack: %ld\n", (size_scan_stack*sizeof(void *)) / 1024);
-      fprintf(stderr, " size_scan_container: %ld\n", (size_scan_container*sizeof(void *)) / 1024);
-      fprintf(stderr, " to_space_old: %ld\n", to_space_old);
-      fprintf(stderr, " alloc_period: %ld\n", alloc_period);
-      fprintf(stderr, " alloc_period_save: %ld\n", alloc_period_save);
-      fprintf(stderr, " bytes_from_space: %ld\n", bytes_from_space);
-      fprintf(stderr, " bytes_to_space: %ld\n", bytes_to_space);
-      fprintf(stderr, " lobjs_beforegc: %ld\n", lobjs_beforegc);
-      fprintf(stderr, " lobjs_aftergc: %ld\n", lobjs_aftergc);
-      fprintf(stderr, " lobjs_period: %ld\n", lobjs_period);
-      fprintf(stderr, " lobjs_aftergc_old: %ld\n", lobjs_aftergc_old);
-      */
+
+      //// fprintf(stderr, " rp_total: %ld\n", rp_total);
+      //// fprintf(stderr, " size_scan_stack: %ld\n", (size_scan_stack*sizeof(void *)) / 1024);
+      //// fprintf(stderr, " size_scan_container: %ld\n", (size_scan_container*sizeof(void *)) / 1024);
+      //// fprintf(stderr, " to_space_old     - R0: %ld\n", to_space_old);
+      //// fprintf(stderr, " alloc_period     - dR: %ld\n", alloc_period);
+      //fprintf(stderr, " alloc_period_save: %ld\n", alloc_period_save);
+      //// fprintf(stderr, " bytes_from_space - R1: %ld\n", bytes_from_space);
+      //// fprintf(stderr, " bytes_to_space   - R2: %ld\n", bytes_to_space);
+      //// fprintf(stderr, " copied_bytes     - (=R2?): %ld\n", copied_bytes);
+      //// fprintf(stderr, " lobjs_beforegc: %ld\n", lobjs_beforegc);
+      //// fprintf(stderr, " lobjs_aftergc: %ld\n", lobjs_aftergc);
+      //// fprintf(stderr, " lobjs_period: %ld\n", lobjs_period);
+      //// fprintf(stderr, " lobjs_aftergc_old: %ld\n", lobjs_aftergc_old);
+
+      double P_ri = 0.0;
+      double P_gc = 0.0;
       if ( num_gc != 1 )
 	{
-	  RI = 100.0 * ( ((double)(to_space_old + lobjs_aftergc_old + alloc_period +
-				   lobjs_period - bytes_from_space - lobjs_beforegc)) /
-			 ((double)(to_space_old + lobjs_aftergc_old + alloc_period +
-				   lobjs_period - bytes_to_space - lobjs_aftergc)));
+	  double R0, R1, R2, L0, L1, L2, R_ri, L_ri, R_gc, L_gc, dR, dL;
+	  R0 = (double)to_space_old;
+	  R1 = (double)bytes_from_space;
+	  R2 = (double)bytes_to_space;
+	  L0 = (double)lobjs_aftergc_old;
+	  L1 = (double)lobjs_beforegc;
+	  L2 = (double)lobjs_aftergc;
+	  dL = (double)lobjs_period;
+	  dR = (double)alloc_period;
+	  R_ri = R0 + dR - R1;
+	  L_ri = L0 + dL - L1;
+	  R_gc = R1 - R2;
+	  L_gc = L1 - L2;
+	  P_ri = 100.0 * (R_ri + L_ri) / (R_ri + L_ri + R_gc + L_gc);
+	  P_gc = 100.0 * (R_gc + L_gc) / (R_ri + L_ri + R_gc + L_gc);
+
+	  RI = 100.0 * ( ((double)((double)to_space_old + (double)lobjs_aftergc_old + (double)alloc_period +
+				   (double)lobjs_period - (double)bytes_from_space - (double)lobjs_beforegc)) /
+			 ((double)((double)to_space_old + (double)lobjs_aftergc_old + (double)alloc_period +
+				   (double)lobjs_period - (double)bytes_to_space - (double)lobjs_aftergc)));
 
 	  GC = 100.0 * ( ((double)(bytes_from_space + lobjs_beforegc
 				   - bytes_to_space - lobjs_aftergc)) /
@@ -1782,7 +1838,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	      lobjs_aftergc / 1024,
 	      size_free_list());
       fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%, S:%luMb]\n",
-	      RI, GC, (size_t)(stack_bot_gc - stack_top_gc) / 1024 / 1024);
+	      P_ri, P_gc, (size_t)(stack_bot_gc - stack_top_gc) / 1024 / 1024);
 
       to_space_old = bytes_to_space;
       lobjs_aftergc_old = lobjs_aftergc;

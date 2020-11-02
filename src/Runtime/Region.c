@@ -818,7 +818,7 @@ allocGen (Gen *gen, size_t n) {
     }
 
 #ifdef ENABLE_GC
-  alloc_period += sizeof(void*)*n;
+  alloc_period += (sizeof(void*) * n);
 #endif
 
   t1 = gen->a;
@@ -828,7 +828,8 @@ allocGen (Gen *gen, size_t n) {
   if (t2 > t3) {
     #if defined(PROFILING) || defined(ENABLE_GC)
        /* insert zeros in the rest of the current region page;
-	* mael 2019-01-28: why is this necessary when just GC is enabled? */
+	* mael 2019-01-28: why is this necessary when just GC is enabled?
+	* WELL, we need it for printing statistics with -verbose_gc... */
        for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
     #endif
     alloc_new_block(gen);

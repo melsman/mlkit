@@ -54,7 +54,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     val ml_false         = 1     (* The representation of false *)
     val ml_unit          = 1     (* The representation of unit *)
 
-    fun tag_real (i:bool)              = gen_record_tag(2,2,i,6)          (* memo: maybe only 1 word! *)
+    fun tag_real (i:bool)              = gen_record_tag(1,1,i,6)          (* memo: maybe only 1 word! *)
     fun tag_word_boxed (i:bool)        = gen_record_tag(1,1,i,6)
     fun tag_string (i:bool,size)       = gen_string_tag(size,i,1)
     fun tag_record (i:bool,size)       = gen_record_tag(size,0,i,6)

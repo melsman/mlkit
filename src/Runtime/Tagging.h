@@ -48,7 +48,7 @@
 #define get_table_size(s)   ((s) >> 6)
 
 #ifdef TAG_VALUES
-#define val_tag_real              (gen_record_tag(2,2,0,6))
+#define val_tag_real              (gen_record_tag(1,1,0,6))
 #define val_tag_record(s)         (gen_record_tag((s),0,0,6))
 #define val_tag_scalar_record(s)  (gen_record_tag((s),(s),0,6))
 #define val_tag_ref               (gen_string_tag(0,0,5))
@@ -120,13 +120,13 @@
 					set_dtag((mlReal));}
 #ifdef PROFILING
 #define allocRealProf(realRho, realPtr, pPoint) {\
-  realPtr = (uintptr_t *) alloc(realRho, 3+sizeObjectDesc);\
+  realPtr = (uintptr_t *) alloc(realRho, 2+sizeObjectDesc);\
   ((ObjectDesc *) realPtr)->atId = pPoint; \
   ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
   realPtr = (uintptr_t *)(((ObjectDesc *)realPtr)+1); \
 }
 #else
-#define allocReal(realRho, realPtr) {realPtr = (uintptr_t *) alloc(realRho,3);}
+#define allocReal(realRho, realPtr) {realPtr = (uintptr_t *) alloc(realRho,2);}
 #endif
 #else // NO TAGGING
 #define get_d(s)     (* (double *)(((size_t *)s)))
@@ -135,13 +135,13 @@
 #define convertRealToML(cReal, mlReal) {get_d((mlReal)) = (cReal);}
 #ifdef PROFILING
 #define allocRealProf(realRho, realPtr, pPoint) {\
-  realPtr = (uintptr_t *) alloc(realRho, 2+sizeObjectDesc);\
+  realPtr = (uintptr_t *) alloc(realRho, 1+sizeObjectDesc);\
   ((ObjectDesc *) realPtr)->atId = pPoint; \
-  ((ObjectDesc *) realPtr)->size = 2; /* Size is two words. */ \
+  ((ObjectDesc *) realPtr)->size = 1; /* Size is one word. */ \
   realPtr = (uintptr_t *)(((ObjectDesc *)realPtr)+1); \
 }
 #else
-#define allocReal(realRho, realPtr) {realPtr = (uintptr_t *) alloc(realRho,2);}
+#define allocReal(realRho, realPtr) {realPtr = (uintptr_t *) alloc(realRho,1);}
 #endif
 #endif
 
