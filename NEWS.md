@@ -1,5 +1,8 @@
 ## MLKit NEWS
 
+* mael 2020-11-09: Fixed error with respect to `-report_gc` and
+  `-verbose_gc` (issue #50).
+
 ### MLKit version 4.5.1 is released
 
 * mael 2020-10-20: Static elimination of some array-bounds checks for

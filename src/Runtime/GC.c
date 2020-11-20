@@ -179,6 +179,12 @@ copy_words(uintptr_t *from,uintptr_t *to,size_t num)
   return;
 }
 
+int
+imax(int a, int b) {
+  if (a > b) { return a; }
+  else { return b; }
+}
+
 /*******************************/
 /* SCAN STACK INFINITE REGIONS */
 /*******************************/
@@ -1720,7 +1726,7 @@ gc(uintptr_t **sp, size_t reg_map)
 
   // Update the GC treshold for region pages - we add -1.0 to
   // leave room for copying...
-  rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_total / heap_to_live_ratio);
+  //rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_total / heap_to_live_ratio);
   if ( (int)((heap_to_live_ratio - 1.0) * (double)rp_used) > rp_gc_treshold )
     {
 #ifdef ENABLE_GEN_GC
