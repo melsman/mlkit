@@ -1502,7 +1502,7 @@ struct
         | RegionExp.LETREGION_B{B,body,...} =>
             let val _ = sawLetregion();  (* for profiling *)
                 val (body',dep) = mk_deptr(EE,body, dep)
-                val discharged = map Eff.find (!B)
+                val discharged = !B
                 val discharged_rhos_sorted = rev(Eff.sort(List.filter Eff.is_rho (discharged)))
             in (LETREGION{B = B,
                           rhos = ref (map (fn rho => (rho,Mul.NUM 1)) discharged_rhos_sorted),

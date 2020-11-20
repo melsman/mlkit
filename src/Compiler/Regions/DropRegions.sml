@@ -23,7 +23,7 @@ structure DropRegions: DROP_REGIONS =
     * Various functions
     * ----------------------------------------------------------------- *)
 
-    fun rt_place place = case Eff.get_place_ty (Eff.find place)
+    fun rt_place place = case Eff.get_place_ty place
 			   of SOME rt => rt
 			    | NONE => die "rt_place"
 
@@ -40,7 +40,7 @@ structure DropRegions: DROP_REGIONS =
       | pr_rt Eff.TOP_RT = "top"
 
     fun bot_region place = case rt_place place of Eff.BOT_RT => true | _ => false
-    fun word_region place = case Eff.get_place_ty (Eff.find place)
+    fun word_region place = case Eff.get_place_ty place
 			      of SOME rt => Eff.is_wordsize rt
 			       | NONE => die "word_region"
     fun word_or_bot_region place = case rt_place place
@@ -60,10 +60,10 @@ structure DropRegions: DROP_REGIONS =
 
 									         (******************)
     local val bucket : place list ref = ref []                                   (* Visited fields *)
-    in fun unvisit place = Eff.get_visited(Eff.find place) := false              (******************)
+    in fun unvisit place = Eff.get_visited place := false              (******************)
        fun reset_bucket () = (List.app unvisit (!bucket); bucket := [])
-       fun visit place = (Eff.get_visited(Eff.find  place) := true; bucket := (place :: !bucket))
-       fun is_visited place = !(Eff.get_visited(Eff.find  place))
+       fun visit place = (Eff.get_visited place := true; bucket := (place :: !bucket))
+       fun is_visited place = !(Eff.get_visited place)
     end
 
 
@@ -73,12 +73,10 @@ structure DropRegions: DROP_REGIONS =
       let                                      (* a rho is marked if it *)
 	                              	       (* should NOT be dropped *)
                                                (*************************)
-        val places = map Eff.find places
-        val arreffs= map Eff.find arreffs
 	fun visit_put_rhos [] = ()
 
 	  | visit_put_rhos (arreff::arreffs) =
-	  let fun visit_eval_effect effect = if Eff.is_put(Eff.find effect) then visit(Eff.rho_of(Eff.find effect)) else ()
+	  let fun visit_eval_effect effect = if Eff.is_put effect then visit(Eff.rho_of effect) else ()
 	      val _ = List.app visit_eval_effect (Eff.represents arreff)
 	  in visit_put_rhos arreffs
 	  end
@@ -219,7 +217,7 @@ structure DropRegions: DROP_REGIONS =
 	      fun subst rho =
 		case FinMapEq.lookup Eff.eq_effect regvar_env rho
 		  of SOME LETREGION_INF => ATTOP
-		    (case Eff.get_place_ty (Eff.find rho)
+		    (case Eff.get_place_ty rho
 		       of SOME Eff.STRING_RT => Eff.toplevel_region_withtype_string
 			| SOME Eff.PAIR_RT => Eff.toplevel_region_withtype_pair
 			| SOME Eff.ARRAY_RT => Eff.toplevel_region_withtype_array

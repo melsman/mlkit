@@ -162,8 +162,8 @@ struct
 
   fun eq_effect(node1, node2) = G.eq_nodes(node1,node2)
 
-  fun layout_effect e = G.layout_node layout_einfo (G.find e)
-  fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [G.find(e)]
+  fun layout_effect e = G.layout_node layout_einfo e
+  fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [e]
 
   fun get_instance effect =
      case G.find_info effect of
@@ -191,7 +191,7 @@ struct
 
   fun acc_rho effect (acc: effect list): effect list =
       case (G.find_info effect, G.find_visited effect) of
-	  (RHO{put = SOME _, ...}, r as ref false) => (r:= true; G.find effect :: acc)
+	  (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect :: acc)
 	| _ => acc
 
   fun pinned_explicit_rho effect : regvar option =
@@ -277,10 +277,10 @@ struct
   end
 
   fun mkPut (n: effect) = (* n must represent a region variable*)
-      let val n = G.find n
+      let
       in
        case G.find_info n of
-         RHO{put=SOME n',...} => G.find n'  (* hash consing *)
+         RHO{put=SOME n',...} => n'  (* hash consing *)
        | RHO{put=NONE,key,level,get,instance,pix,ty,rv_opt,pinned} =>
            let (* create new node *)
                val new = G.mk_node PUT
@@ -294,10 +294,10 @@ struct
       end
 
   fun mkGet (n: effect) = (* n must represent a region variable*)
-      let val n = G.find n
+      let
       in
        case G.find_info n of
-         RHO{get=SOME n',...} => G.find n'  (* hash consing *)
+         RHO{get=SOME n',...} => n'  (* hash consing *)
        | RHO{get=NONE,key,level,put,instance,pix,ty,rv_opt,pinned} =>
            let (* create new node *)
                val new = G.mk_node GET
@@ -321,14 +321,12 @@ struct
   fun mkEps (level,key) = G.mk_node(EPS{key = ref key, level = ref level,
 				        represents = NONE, pix = ref ~1,
 				        instance = ref NONE})
-  fun find node = G.find node
-
   fun remove_duplicates effects =
     let fun loop([], acc) = acc
           | loop(effect::rest, acc) =
               let val r = (G.find_visited effect)
               in if !r then loop(rest,acc)
-                 else (r:= true; loop(rest, find effect::acc))
+                 else (r:= true; loop(rest, effect::acc))
               end
 
         val result = loop(effects,[])
@@ -726,7 +724,7 @@ struct
 
   fun rename_epss_aux (epss, c: cone as (n,_), f, g) : effect list * cone =
       foldr (fn (eps,(epss',c)) =>
-                  case G.find_info(G.find eps) of
+                  case G.find_info eps of
                     EPS{level,pix,(*represents = NONE,*)...} =>
                      let val k = freshInt()
                          val new_eps=
@@ -1123,7 +1121,6 @@ tracing *)
 
         and search (n: effect, ns : effect list) : effect list =
           let
-            val n = G.find n
             val r = G.find_visited n
           in
             if !r then ns
@@ -1189,10 +1186,10 @@ tracing *)
 		        val _  = l:= newlevel
 		        val cone'' = add(effect, newlevel, !key,cone')
                                      (* put node back in cone at lower level *)
-                    in low' (cone'',G.out_of_node (G.find effect))
+                    in low' (cone'',G.out_of_node effect)
                     end
                 | NONE => (* not EPS or RHO, no level; just lower children *)
-                  low'(cone,G.out_of_node (G.find effect))
+                  low'(cone,G.out_of_node effect)
    in fn effect => fn cone => low(effect,cone)
    end
 
@@ -1205,12 +1202,10 @@ tracing *)
      (* Computes l1 \ l2;
        First mark all nodes in l2; then select unmarked nodes from l1 (these
        are the result). Finally, unmark all nodes in l2 *)
-     let val l1 = map find l1
-         and l2 = map find l2
-     in app (fn node => G.find_visited node:= true) l2;
+      ( app (fn node => G.find_visited node:= true) l2;
         List.filter (fn node => not(!(G.find_visited node))) l1
-          footnote app (fn node => G.find_visited node:= false) l2
-     end
+                    footnote app (fn node => G.find_visited node:= false) l2
+      )
 
   fun say_eps eps = PP.outputTree(say, layout_effect eps, !Flags.colwidth)
 
@@ -1225,7 +1220,7 @@ tracing *)
           SOME delta =>
             let val nodes = computeIncrement delta
                 val to_be_added = setminus(nodes, G.nodes(G.subgraph [eps]))
-            in  G.add_edges(G.find eps, to_be_added)(*;
+            in  G.add_edges(eps, to_be_added)(*;
                 say "update_areff:result = ";*)
                 (*PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth) *)
             end
@@ -1351,20 +1346,15 @@ tracing *)
   *)
 
   fun unifyNodes f (node1, node2) cone : cone =
-    let val(node1, node2) = (G.find node1, G.find node2)
-    in if G.eq_nodes(node1,node2) then cone
-       else let val cone1 = mkSameLevel(node1, node2) cone
-	    in f(node1, node2);
-	      cone1
-	    end
-    end
+    if G.eq_nodes(node1,node2) then cone
+    else let val cone1 = mkSameLevel(node1, node2) cone
+	 in f(node1, node2);
+	    cone1
+	 end
 
   fun unifyNodes_no_lowering f (n1, n2) : unit =
-    let val(n1,n2) = (G.find n1, G.find n2)
-    in if G.eq_nodes(n1,n2) then ()
-       else (f(n1, n2); ())
-
-    end
+      if G.eq_nodes(n1,n2) then ()
+      else (f(n1, n2); ())
 
   (* unifyRho(rho_node1, rho_node2) cone : cone
      First lower rho_node1 and rho_node2 to the same level; then union
@@ -1429,9 +1419,6 @@ tracing *)
   fun instNodes l cone = #1(instNodesClever l cone)
   and instNodesClever(l : (effect * effect) list) cone : cone * (effect * delta_phi)list=
     let
-      val l = map (fn (dom,rng) => (G.find dom, rng)) l
-      (* all first components of l now canonical *)
-
       (* bound_to_free_no_transparent nodes: map each non-transparent n
          to itself, if it is not
          in the domain of "subst" and map it to "subst(n)" otherwise;
@@ -1443,39 +1430,37 @@ tracing *)
       (* assumption: no node in "nodes" need be subjected to "find" *)
 
       fun bound_to_free node=
-          let val node = find node
-          in case G.find_info(node) of
-                 PUT =>
-                 (case G.out_of_node node of
-                      (rho_origin::_) =>
-                      (case !(get_instance rho_origin) of
-                           (SOME node') => (* generic *) SOME(mkPut node')
-                         | NONE => (* non-generic *)
-                           SOME node
-                      )
-                    | _ => die "instNodes: put node has no region argument"
+          case G.find_info(node) of
+              PUT =>
+              (case G.out_of_node node of
+                   (rho_origin::_) =>
+                   (case !(get_instance rho_origin) of
+                        (SOME node') => (* generic *) SOME(mkPut node')
+                      | NONE => (* non-generic *)
+                        SOME node
+                   )
+                 | _ => die "instNodes: put node has no region argument"
+              )
+            | GET =>
+              (case G.out_of_node node of
+                   (rho_origin::_) =>
+                   (case !(get_instance rho_origin) of
+                        SOME node' => (* generic *) SOME(mkGet node')
+                      | NONE => (* non-generic *) SOME node
+                   )
+                 | _ => die "instNodes: get node has no region argument"
                  )
-               | GET =>
-                 (case G.out_of_node node of
-                      (rho_origin::_) =>
-                      (case !(get_instance rho_origin) of
-                           SOME node' => (* generic *) SOME(mkGet node')
-                         | NONE => (* non-generic *) SOME node
-                      )
-                    | _ => die "instNodes: get node has no region argument"
-                 )
-               | UNION _ => NONE (* node not bound *)
-	       | WORDEFFECT => SOME node           (*do not return NONE as this would make G.multi_graft
-					            *trace the outedges of the node, which include
-					            *the region variable r2 (global word region). *)
-               | EPS{instance as ref i,  ...} =>
-                 (case i of
-                      g as SOME n' => (* generic *) g
-                    | NONE => (* non-generic*) SOME node
-                 )
-               | RHO{instance as ref i, key,...} => die ("bound_to_free.RHO: " ^
-						         PP.flatten1 (layout_effect node) ^ "\n")
-          end
+            | UNION _ => NONE (* node not bound *)
+	    | WORDEFFECT => SOME node           (*do not return NONE as this would make G.multi_graft
+					         *trace the outedges of the node, which include
+					         *the region variable r2 (global word region). *)
+            | EPS{instance as ref i,  ...} =>
+              (case i of
+                   g as SOME n' => (* generic *) g
+                 | NONE => (* non-generic*) SOME node
+              )
+            | RHO{instance as ref i, key,...} => die ("bound_to_free.RHO: " ^
+						      PP.flatten1 (layout_effect node) ^ "\n")
 
       fun lower_new_edges (n:effect, new_target_nodes:effect list) cone : cone =
           let val level = noSome (level_of n, "instNodes: no level")
@@ -1506,7 +1491,6 @@ tracing *)
   fun observeDelta(l: int, source: delta_phi, destination: effect): effect list * delta_phi =
     let
       (*val _ = Profile.profileOn()*)
-      val destination = G.find destination
 (*
       val _ = say("\n-----------------\nLEVEL = " ^ Int.toString l ^ "\n")
       val _ = say("SOURCE = ")
@@ -1555,7 +1539,6 @@ tracing *)
         and search (n: effect, ns : effect list) : effect list =
           let
             val _ = sawNode()
-            val n = G.find n
             val r = G.find_visited n
           in
             if !r then ns
@@ -1612,11 +1595,11 @@ tracing *)
       *)
 
       G.visit_all destination;                        (* (1) *)
-      let val nodes_to_add = collect(l,source)       (* (2) *)
+      let val nodes_to_add = collect(l,source)        (* (2) *)
       in
         G.unvisit_all destination;                    (* (3) *)
         unvisitDelta source;                          (* (3) *)
-        G.add_edges(G.find destination, nodes_to_add);(* (4) *)
+        G.add_edges(destination, nodes_to_add);       (* (4) *)
         (*Profile.profileOff();*)
 (*        say("\nDESTINATION AFTER OBSERVE= ");
         PP.outputTree(say, layout_effect_deep destination, !Flags.colwidth);
@@ -1872,7 +1855,7 @@ tracing *)
       case G.find_info eps_node of
           EPS{represents = SOME l, ...} => l
         | UNION{represents = SOME l} => l
-        | PUT  => [G.find eps_node]
+        | PUT  => [eps_node]
         | GET  => []
 	| WORDEFFECT => []
         | RHO _ => []
@@ -1902,7 +1885,7 @@ tracing *)
          or PUT rho or GET rho for rho in discharged_basis:
       *)
       let val refs = foldl (fn (a,b) => visit_eps_or_rho a b) [] discharged_basis
-          fun keep (ae,mul): bool = not(!(G.find_visited(G.find ae)))
+          fun keep (ae,mul): bool = not(!(G.find_visited ae))
       in
          List.filter keep psi footnote
             app (fn r => r := false) refs
@@ -1999,7 +1982,6 @@ tracing *)
       let
         fun search (n: effect) : effect list  =
           let
-            val n = find n
             val r = G.find_visited n
           in
             if !r then

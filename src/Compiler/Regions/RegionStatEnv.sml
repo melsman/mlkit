@@ -308,10 +308,10 @@ structure RegionStatEnv: REGION_STAT_ENV =
 	  val rhos_epss_free = E.remove_duplicates rhos_epss_free
 	  fun closure ([],acc) = acc
 	    | closure (rho_eps::rest,acc) =
-	    closure(rest, let val rho_eps= E.find rho_eps in
+	    closure(rest, let in
                            if E.is_arrow_effect rho_eps then
 			    foldl (fn (node, acc) =>
-                                        let val node = E.find node in
+                                        let in
   					  if E.is_arrow_effect node then node::acc
 					  else if E.is_put node orelse E.is_get node then
 					    E.rho_of node :: acc

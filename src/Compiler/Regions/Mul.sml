@@ -37,8 +37,7 @@ struct
   type cone = Eff.cone
   structure Effect = Eff
 
-  fun rho_of ae = Eff.rho_of (Eff.find ae)
-
+  fun rho_of ae = Eff.rho_of ae
 
   datatype mul = INF | NUM of int
   val K =  1 (* the largest finite multiplicity *)
@@ -349,7 +348,7 @@ struct
 
   (* layout_ateffect ae sets and clears visited fields*)
   fun layout_ateffect ae =
-       if Eff.is_arrow_effect(Eff.find ae) then Eff.layout_effect ae
+       if Eff.is_arrow_effect ae then Eff.layout_effect ae
        else Eff.layout_effect_deep ae
 
   (* layout_effectvar: no side effect *)
@@ -751,7 +750,7 @@ struct
 
   fun apply_mulef (S, [])= []
     | apply_mulef (S, psi0 as (ae_m as (eps,mul))::psi) =
-            if Eff.is_arrow_effect (Eff.find eps)
+            if Eff.is_arrow_effect eps
               then case getimage(S, eps) of
         	     SOME (eps', psi') =>
                        sumef([(eps', mul)],

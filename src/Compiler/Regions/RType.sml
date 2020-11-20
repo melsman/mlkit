@@ -611,8 +611,6 @@ struct
           val _ = PP.outputTree(logsay,lay_ty tau,!Flags.colwidth)
           val _ = logsay ("\nSr = " ^ concat (map (fn (rho, rho') => show_rho rho ^ "->" ^show_rho rho' ^ ",") Sr))
           *)
-          val find = E.find
-
           fun fst(x,y) = x
 
           fun cp_var node =
@@ -737,10 +735,6 @@ struct
            il as (types,places,arreffs)) cone =
         let
           (*val _ = Profile.profileOn();*)
-          val find = E.find
-          val rhos = map find rhos  and epsilons = map find epsilons
-          and places = map find places and arreffs = map find arreffs
-
           (* set types of places according to rhos *)
           val _ = update_runtypes(places, rhos)
 (*
@@ -760,7 +754,7 @@ struct
 
   fun inst sigma_il cone =
       let val (a,cone,c) = instClever sigma_il cone
-          val places = map E.find (#2(#2(sigma_il)))
+          val places = #2(#2(sigma_il))
           val cone = unify_with_toplevel_wordregion (cone, places)
       in (a,cone)
       end

@@ -17,7 +17,6 @@ sig
   val key_of_eps_or_rho : effect -> int
   val setkey: (unit -> int) -> effect -> unit
   val empty: effect
-  val find: effect -> effect
   val eq_effect: effect * effect -> bool
 
   val pu_effect  : effect Pickle.pu
