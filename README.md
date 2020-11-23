@@ -7,7 +7,7 @@ Library.
 
 ## Test Statistics and Benchmarking
 
-[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit) [Benchmarking](https://elsman.com/mlkit-bench/)
+[![CI](https://github.com/melsman/mlkit/workflows/CI/badge.svg)](https://github.com/melsman/mlkit/actions) [Benchmarking](https://elsman.com/mlkit-bench/)
 
 ## Installation
 

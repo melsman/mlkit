@@ -52,7 +52,7 @@ jobs:
           make -C test test_mlkit_no_gc
           make -C test/explicit_regions all
 
-      - name: Configure SmltoJs
+      - name: Configure SmlToJs
         run: |
           ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
 
@@ -114,7 +114,7 @@ jobs:
           make -C test test_mlkit_no_gc
           make -C test/explicit_regions all
 
-      - name: Configure SmltoJs
+      - name: Configure SmlToJs
         run: |
           ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
 

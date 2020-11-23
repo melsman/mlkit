@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build-test-release-ubuntu:
+    name: Build, test, and upload release binaries
+    if: github.event.base_ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y gcc mlton autoconf make
+
+      - name: Configure
+        run: |
+          ./autobuild
+          ./configure
+
+      - name: Build MLKit
+        run: |
+          make mlkit
+          make mlkit_basislibs
+
+      - name: Install MLKit
+        run: |
+          sudo make install
+
+      - name: Run MLKit tests
+        run: |
+          make -C test_dev test
+          make -C test test_mlkit
+          make -C test test_mlkit_no_gc
+          make -C test/explicit_regions all
+
+      - name: Configure SmlToJs
+        run: |
+          ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
+
+      - name: Build SmlToJs
+        run: |
+          make smltojs
+          make smltojs_basislibs
+
+      - name: Install SmlToJs
+        run: |
+          sudo make install_smltojs
+
+      - name: Run SmlToJs tests
+        run: |
+          make -C js/test test
+
+      - name: Build binary distribution
+        run: |
+          make mlkit_bin_dist
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/mlkit_bin_dist.tgz
+          tag: ${{ github.ref }}
+          overwrite: true

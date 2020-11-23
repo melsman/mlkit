@@ -548,7 +548,7 @@ mlkit_bin_dist:
 	rm -rf dist/$(BIN_DIST)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
-	(cd dist && tar czvf $(BIN_DIST).tgz $(BIN_DIST))
+	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
 
 # -----------------------------------------------------
 # Target for building SMLserver binary package. The target
