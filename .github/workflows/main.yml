@@ -64,10 +64,10 @@ jobs:
         run: |
           brew update
           rm -f /usr/local/include/c++
-	  brew install gcc
-	  brew install autoconf
-	  brew install make
-	  brew install mlton
+          brew install gcc
+          brew install autoconf
+          brew install make
+          brew install mlton
 
       - name: Configure
         run: |
