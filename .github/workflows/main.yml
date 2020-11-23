@@ -67,7 +67,7 @@ jobs:
           brew install gcc
           brew install autoconf
           brew install make
-	  # The brew version of MLton has a bug
+          # The brew version of MLton has a bug
           brew install mlton --HEAD
 
       - name: Configure
