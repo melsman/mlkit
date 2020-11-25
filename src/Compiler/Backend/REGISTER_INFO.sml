@@ -15,6 +15,9 @@ signature REGISTER_INFO =
     val caller_save_phregset : lvarset
     val is_caller_save       : lvar -> bool
 
+    val f64_phregs         : lvar list   (* floating point registers available for *)
+    val f64_phregset       : lvarset     (* register allocation (excluding two tmp registers) *)
+
     (* CCALLs *)
 
     val args_reg_ccall             : reg list   (* Machine registers containing arguments in CCALLs *)

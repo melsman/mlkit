@@ -39,8 +39,8 @@ val test11 = test "test11" ((prod (minint,~1) seq "WRONG") handle Overflow => "O
 fun checkDivMod i d =
   let val q = i div d
       val r = i mod d
-  in 
-(*      printVal i seq TextIO.output(TextIO.stdOut, " "); 
+  in
+(*      printVal i seq TextIO.output(TextIO.stdOut, " ");
       printVal d seq TextIO.output(TextIO.stdOut, "   "); *)
       if (d * q + r = i) andalso
 	  ((0 <= r andalso r < d) orelse (d < r andalso r <= 0))

@@ -27,6 +27,7 @@ structure ErrorInfo: ERROR_INFO =
     type strid             = StrId.strid
     type longstrid         = StrId.longstrid
     type funid             = FunId.funid
+    type regvar            = RegVar.regvar
 
     val StringTree_to_string = PrettyPrint.flatten1
 
@@ -39,6 +40,7 @@ structure ErrorInfo: ERROR_INFO =
                         | STRID_RID of strid
                         | SIGID_RID of sigid
                         | FUNID_RID of funid
+                        | REGVAR_RID of regvar
 
     fun pr_repeatedId (ID_RID id) = Ident.pr_id id
       | pr_repeatedId (LAB_RID lab) = Lab.pr_Lab lab
@@ -49,6 +51,7 @@ structure ErrorInfo: ERROR_INFO =
       | pr_repeatedId (STRID_RID strid) = StrId.pr_StrId strid
       | pr_repeatedId (SIGID_RID sigid) = SigId.pr_SigId sigid
       | pr_repeatedId (FUNID_RID funid) = FunId.pr_FunId funid
+      | pr_repeatedId (REGVAR_RID regvar) = RegVar.pr regvar
 
     datatype ErrorInfo =
      (* Core errors: *)
@@ -63,7 +66,7 @@ structure ErrorInfo: ERROR_INFO =
       | UNGENERALISABLE_TYVARS of id list
       | REALSCON_ATPAT
       | WRONG_ARITY of {expected: int, actual: int}
-      | FLEX_REC_NOT_RESOLVED 
+      | FLEX_REC_NOT_RESOLVED
       | REPEATED_IDS of RepeatedId list
       | TYVARS_NOT_IN_TYVARSEQ of string list
       | DATATYPES_ESCAPE_SCOPE of TyName list
@@ -91,13 +94,17 @@ structure ErrorInfo: ERROR_INFO =
       (* Signature matching errors: *)
       | SIGMATCH_ERROR of SigMatchError
 
-     (* Module unification errors: *)
+      (* Module unification errors: *)
       | CYCLE of longstrid
       | U_RIGIDTYCLASH of longtycon * longtycon
       | TYPESTRILLFORMEDNESS of longtycon * longtycon
       | U_CONFLICTING_DOMCE of longtycon * longtycon
       | U_CONFLICTINGARITY of longtycon * longtycon
       | RIGIDTYFUNEQERROR of longtycon * longtycon
+
+      (* Explicit regions errors *)
+      | REGVARS_IDONLY
+      | REGVARS_SCOPED_TWICE of regvar list
 
     type Report = Report.Report
     val line = Report.line
@@ -168,14 +175,14 @@ structure ErrorInfo: ERROR_INFO =
 	    line ("Type rank error,")
 	    // line ("   expecting: " ^ pr ty1)
 	    // line ("   found:     " ^ pr ty2)
-	    // line ("The generative type " ^ TyName.pr_TyName tn ^ 
+	    // line ("The generative type " ^ TyName.pr_TyName tn ^
 		     " is newer than the free type variable " ^ pr_tv tv ^ ".")
 	  end
 
 
       | report (LOOKUP_LONGID longid) =
 	  line ("unbound identifier " ^ Ident.pr_longid longid ^ ".")
-	  
+
       | report (LOOKUP_LONGTYCON longtycon) =
 	  line ("unbound type constructor " ^ TyCon.pr_LongTyCon longtycon ^ ".")
 
@@ -186,7 +193,7 @@ structure ErrorInfo: ERROR_INFO =
 	  line ("qualified identifier not allowed.")
 
       | report (UNGUARDED_TYVARS tyvars) =
-	  line ("unguarded type variable" ^ maybe_plural_s tyvars 
+	  line ("unguarded type variable" ^ maybe_plural_s tyvars
 		^ pp_list TyVar.string tyvars
 		^ " in topdec.")
 
@@ -251,13 +258,13 @@ structure ErrorInfo: ERROR_INFO =
 
       | report (EXDESC_SIDECONDITION) =
 	  line "Type variables not allowed in type expression in exception description"
-             
+
       | report (SHARING_TYPE_NOT_TYNAME (longtycon, theta)) =
 	  line (TyCon.pr_LongTyCon longtycon
 		^ " is "
 		^ TypeFcn.pretty_string' (StatObject.newTVNames ()) theta
 	        ^ ", so you cannot share it with anything.")
-		    
+
       | report (SHARING_TYPE_RIGID (longtycon, t)) =
 	  line (longtycon_and_tyname_as_string longtycon t
 		^ " is defined before the preceding specification,")
@@ -269,7 +276,7 @@ structure ErrorInfo: ERROR_INFO =
 		^ " because their arities are different.")
 
       | report (WHERE_TYPE_NOT_WELLFORMED (longtycon, t, tau)) =
-	  line (longtycon_and_tyname_as_string longtycon t 
+	  line (longtycon_and_tyname_as_string longtycon t
 		^ " is bound to a datatype; it cannot also be "
 		^ Type.pretty_string (StatObject.newTVNames ()) tau ^ ".")
 
@@ -289,7 +296,7 @@ structure ErrorInfo: ERROR_INFO =
 	  line (TyCon.pr_LongTyCon longtycon
 		^ " is "
 		^ TypeFcn.pretty_string' TVNames theta
-	        ^ ", so it cannot be " 
+	        ^ ", so it cannot be "
 	        ^ Type.pretty_string TVNames tau ^ ".")
 	  end
 
@@ -330,7 +337,7 @@ structure ErrorInfo: ERROR_INFO =
 		 // line (" clashes with the value environment in the structure.)")
 
 	       | NOTYENRICHMENT{qualid=(strids, id),str_sigma,str_vce,sig_sigma,sig_vce} =>
-		 line ("Error in signature matching:") 
+		 line ("Error in signature matching:")
 		 // line ("the type specified in the signature does not enrich")
 		 // line ("the type inferred in the structure;")
 		 // line ("Structure declares:")
@@ -341,7 +348,7 @@ structure ErrorInfo: ERROR_INFO =
 		 // line ("  " ^ StringTree_to_string(StatObject.TypeScheme.layout sig_sigma) ^ ".")
 
 	       | EXCNOTEQUAL(strids, id, (ty1, ty2)) =>
-		 line("Error in signature matching:") 
+		 line("Error in signature matching:")
 		 // line("specified and declared type for exception `"
 			 ^ prStrIds strids ^ Ident.pr_id id ^"' differ;")
 		 // line("  declared  type: " ^ Type.string ty1)
@@ -367,6 +374,11 @@ structure ErrorInfo: ERROR_INFO =
       | report (RIGIDTYFUNEQERROR args) =
 	  line ("Equality attribute differs: " ^ pr_UnifyArgs args)
 
+      | report REGVARS_IDONLY =
+          line "Only functions can be parameterised over regions"
+
+      | report (REGVARS_SCOPED_TWICE rs) =
+          line ("Explicit region variable(s) already in scope: " ^ pp_list RegVar.pr rs)
 
     structure ErrorCode =
       struct
@@ -426,6 +438,8 @@ structure ErrorInfo: ERROR_INFO =
 	     | U_CONFLICTING_DOMCE _ =>                 "U_CONFLICTING_DOMCE"
 	     | U_CONFLICTINGARITY _ =>                  "U_CONFLICTINGARITY"
 	     | RIGIDTYFUNEQERROR _ =>                   "RIGIDTYFUNEQERROR"
+             | REGVARS_IDONLY =>                        "REGVARS_IDONLY"
+             | REGVARS_SCOPED_TWICE _ =>                "REGVARS_SCOPED_TWICE"
 
 	val error_code_parse = "PARSE"
 
@@ -434,5 +448,3 @@ structure ErrorInfo: ERROR_INFO =
       end
 
   end;
-
-

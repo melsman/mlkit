@@ -5,9 +5,9 @@ MLKit covers all of Standard ML, as defined in the 1997 edition of the
 Definition of Standard ML and supports most of the Standard ML Basis
 Library.
 
-## Statistics
+## Test Statistics and Benchmarking
 
-[![Build Status](https://travis-ci.org/melsman/mlkit.svg?branch=master)](https://travis-ci.org/melsman/mlkit)
+[![CI](https://github.com/melsman/mlkit/workflows/CI/badge.svg)](https://github.com/melsman/mlkit/actions) [Benchmarking](https://elsman.com/mlkit-bench/)
 
 ## Installation
 
@@ -29,7 +29,8 @@ using an [mlkit PPA from Launchpad](https://launchpad.net/~pmunksgaard/+archive/
   Standard ML Basis Library. The support for ML Basis Files makes it
   easy to compile a program with different Standard ML
   compilers. Currently, both [MLton](http://mlton.org) and the MLKit supports the concept
-  of ML Basis Files.
+  of ML Basis Files. The MLKit works well together with [smlpkg](https://github.com/diku-dk/smlpkg), a
+  generic package manager for Standard ML libraries and programs.
 
 * Region-Based Memory Management: Memory allocation directives (both
   allocation and deallocation) are inferred by the compiler, which
@@ -85,6 +86,9 @@ __[MLton](http://mlton.org) >= 20051202:__
 $ mlton
 MLton 20051202 (built Sat Dec 03 04:20:11 2005 on pavilion)
 ````
+
+If a version prior to 20201023 is used, you may need to adjust the
+`mlton`-flags setup in the file `Makefiledefault`.
 
 __A working MLKit compiler >= 4.3.0:__
 ````bash

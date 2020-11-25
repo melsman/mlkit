@@ -1,7 +1,7 @@
 (* Exception constructors for the lambda language *)
 
 signature EXCON =
-  sig 
+  sig
 
     (* Exception constructors are based on names which may be
      * `matched'. In particular, if two exception constructors, exc1
@@ -23,11 +23,13 @@ signature EXCON =
     val name : excon -> name
 
     (* Predefined exception constructors *)
-    val ex_DIV      : excon
-    val ex_MATCH    : excon
-    val ex_BIND     : excon
-    val ex_OVERFLOW : excon
+    val ex_DIV       : excon
+    val ex_MATCH     : excon
+    val ex_BIND      : excon
+    val ex_OVERFLOW  : excon
     val ex_INTERRUPT : excon
+    val ex_SUBSCRIPT : excon
+    val ex_SIZE      : excon
 
     val exconsPredefined : excon list
 

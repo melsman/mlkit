@@ -41,45 +41,49 @@ include Makefiledefault
 
 CLEAN=rm -rf MLB *~ .\#*
 
-.PHONY: mlkit smltojs mlkit_kam smlserver barry clean clean_mlb install
-.PHONY: install_smlserver install_smlserver0 install_include
-
+.PHONY: mlkit
 mlkit:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit
 	$(MAKE) man_mlkit
 
+.PHONY: smltojs
 smltojs:
 	$(MKDIR) bin
 	$(MAKE) -C src smltojs
 	$(MAKE) man_smltojs
 
-all: mlkit mlkit_libs smltojs smltojs_basislibs
+all: mlkit mlkit_basislibs smltojs smltojs_basislibs
 
 smlserver_all: smlserver smlserver_libs
 
-.PHONY: smlserver_basislib smlserver_libs smlserver_kitlib smlserver_weblib
+.PHONY: smlserver_basislib
 smlserver_basislib:
 	(cd basis && SML_LIB=.. ../bin/smlserverc -c basis.mlb)
 
+.PHONY: smlserver_kitlib
 smlserver_kitlib:
 	(cd basis && SML_LIB=.. ../bin/smlserverc -c kitlib.mlb)
 
+.PHONY: smlserver_weblib
 smlserver_weblib:
 	(cd basis && SML_LIB=.. ../bin/smlserverc -c web/lib.mlb)
 
+.PHONY: mlkit_basislibs
 mlkit_basislibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof basis.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof basis.mlb)
 
+.PHONY: mlkit_kitlibs
 mlkit_kitlibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof kitlib.mlb)
 
+.PHONY: smlserver_libs
 smlserver_libs: mlkit_cleanlibs
 	$(MAKE) smlserver_basislib
 	$(MAKE) smlserver_kitlib
@@ -107,12 +111,14 @@ smltojs_basislibs: smltojs_cleanlibs
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c xmlrpc.mlb)
 	(cd js/basis && SML_LIB=.. ../../bin/smltojs -aopt -export_basis_js -c dojo.mlb)
 
+.PHONY: install_smltojs_basislibs
 install_smltojs_basislibs:
 	$(MKDIR) $(LIBDIR)/basis
 	$(INSTALLDATA) -p js/basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/MLB/Js/
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js} $(LIBDIR)/basis/MLB/Js
 
+.PHONY: install_smlserver_basislib
 install_smlserver_basislib:
 	$(MKDIR) $(LIBDIR)/basis/MLB/SMLserver
 	$(MKDIR) $(LIBDIR)/basis/io/MLB/SMLserver
@@ -123,6 +129,7 @@ install_smlserver_basislib:
 	$(INSTALLDATA) -p basis/web/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/web/MLB/SMLserver
 	$(INSTALLDATA) -p basis/web/xmlrpc/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
 
+.PHONY: install_mlkit_basislibs
 install_mlkit_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/MLB
 	$(MKDIR) $(LIBDIR)/basis/MLB/RI
@@ -143,19 +150,24 @@ install_mlkit_basislibs:
 	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
 	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 
+.PHONY: mlkit_kam
 mlkit_kam:
 	$(MKDIR) bin
 	$(MAKE) -C src mlkit_kam
 
+.PHONY: smlserver
 smlserver:
 	$(MKDIR) bin
 	$(MAKE) -C src smlserver
 	$(MAKE) man_smlserver
 
+.PHONY: barry
 barry:
 	$(MKDIR) bin
 	$(MAKE) -C src barry
+	$(MAKE) man_barry
 
+.PHONY: clean
 clean:
 	$(CLEAN) bin run lib bootstrap dist man/man1/*.1 doc/README_SMLSERVER_BIN doc/README_BIN
 	cd basis && $(MAKE) clean
@@ -174,30 +186,36 @@ clean:
 	cd smlserver/xt/www && $(CLEAN)
 	$(MAKE) -C js clean
 
+.PHONY: clean_mlb
 clean_mlb:
 	find . -name "MLB" -type d | xargs rm -Rf
 
+.PHONY: install_kitdemo
 install_kitdemo:
 	$(MKDIR) $(DATADIR)/kitdemo
 	$(MKDIR) $(DATADIR)/kitdemo/utils
 	$(INSTALLDATA) kitdemo/*.{sml,sig,mlb,c} $(DATADIR)/kitdemo
 	$(INSTALLDATA) kitdemo/utils/*.{sml,mlb} $(DATADIR)/kitdemo/utils
 
+.PHONY: install_basis
 install_basis:
 	$(MKDIR) $(LIBDIR)/basis
 	$(MKDIR) $(LIBDIR)/basis/io
 	$(INSTALLDATA) -p basis/*.{sml,sig,mlb} $(LIBDIR)/basis
 	$(INSTALLDATA) -p basis/io/*.{sml,sig} $(LIBDIR)/basis/io
 
+.PHONY: install_man
 install_man:
 	$(MKDIR) $(MANDIR)
 	$(MKDIR) $(MANDIR)/man1
 	$(INSTALLDATA) man/man1/*.1 $(MANDIR)/man1
 
+.PHONY: install_license
 install_license:
 	$(MKDIR) $(DATADIR)/doc/$(KIND)/license
 	$(INSTALLDATA) doc/license/{GPL-LICENSE,MLKit-LICENSE,MLton-LICENSE,SMLNJ-LIB-LICENSE,SMLNJ-LICENSE,CODEMIRROR-LICENSE} $(DATADIR)/doc/$(KIND)/license
 
+.PHONY: install_top
 install_top:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
@@ -206,6 +224,7 @@ install_top:
 	$(INSTALL) mkinstalldirs configure $(INSTDIR)
 	$(MAKE) install_basis
 
+.PHONY: install_runtime
 install_runtime:
 	$(MKDIR) $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystem.a $(LIBDIR)/lib
@@ -215,10 +234,12 @@ install_runtime:
 	$(INSTALLDATA) lib/runtimeSystemGenGC.a $(LIBDIR)/lib
 	$(INSTALLDATA) lib/runtimeSystemGenGCProf.a $(LIBDIR)/lib
 
+.PHONY: install_include
 install_include:
 	$(MKDIR) $(DATADIR)/include
 	$(INSTALLDATA) src/Runtime/*.h $(DATADIR)/include
 
+.PHONY: install0
 install0:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(BINDIR)
@@ -251,6 +272,7 @@ install0:
 	$(INSTALLDATA) src/Tools/ml-yacc/doc/mlyacc.pdf $(DATADIR)/doc/mlkit/
 	$(INSTALLDATA) NEWS.md $(DATADIR)/doc/mlkit/
 
+.PHONY: install
 install:
 	$(MAKE) install0
 	$(MKDIR) $(SYSCONFDIR)/mlkit
@@ -259,6 +281,7 @@ install:
            else echo "SML_LIB $(exec_prefix)/lib/mlkit" > $(SYSCONFDIR)/mlkit/mlb-path-map; \
         fi
 
+.PHONY: install_test
 install_test:
 	$(MKDIR) $(DATADIR)/test
 	$(MKDIR) $(DATADIR)/test/mlyacc $(DATADIR)/test/ray $(DATADIR)/test/nucleic $(DATADIR)/test/danwang
@@ -282,6 +305,7 @@ install_test:
 	cd $(DATADIR)/test && echo -e 'hardlinkA' >> hardlinkA
 	cd $(DATADIR)/test && ln -f hardlinkA hardlinkB
 
+.PHONY: install_src
 install_src:
 	$(MKDIR) $(INSTDIR)/src
 	$(MKDIR) $(INSTDIR)/src/Common $(INSTDIR)/src/Compiler $(INSTDIR)/src/Manager $(INSTDIR)/src/Kitlib $(INSTDIR)/src/Pickle
@@ -326,19 +350,23 @@ install_src:
 	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb,in} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
 	$(INSTALLDATA) src/Tools/MspComp/*.sml src/Tools/MspComp/Makefile $(INSTDIR)/src/Tools/MspComp
 
+.PHONY: bootstrap0
 bootstrap0: install_test install_src
 	$(INSTALL) bin/kittester $(BINDIR)
 
+.PHONY: bootstrap_first
 bootstrap_first:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
 	$(INSTALL) bin/{mlkit,rp2ps} $(BINDIR)
 	$(MAKE) bootstrap0
 
+.PHONY: bootstrap_next_build
 bootstrap_next_build:
 	cd src && $(MAKE) genopcodes BINDIR=../$(BINDIR)
 	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native64.mlb
 
+.PHONY: bootstrap_next_install
 bootstrap_next_install:
 	$(MAKE) install_top
 	$(MAKE) install_runtime
@@ -347,6 +375,7 @@ bootstrap_next_install:
 	$(MAKE) install_test
 	$(MAKE) install_src
 
+.PHONY: bootstrap_next
 bootstrap_next:
 	$(MAKE) bootstrap_next_build
 	$(MAKE) bootstrap_next_install
@@ -382,6 +411,93 @@ man_smlserver:
 man_smltojs:
 	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/lib/smltojs bin/smltojs -man > man/man1/smltojs.1
+
+.PHONY: man_barry
+man_barry:
+	$(MKDIR) man/man1
+	SML_LIB=$(exec_prefix)/lib/barry bin/barry -man > man/man1/barry.1
+
+.PHONY: install_barry0
+install_barry0:
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/barry $(BINDIR)
+	$(MKDIR) $(LIBDIR)/barry
+#	$(MAKE) install_barry_basislibs LIBDIR=$(LIBDIR)/barry
+	$(MAKE) install_kitdemo DATADIR=$(DATADIR)/barry
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/barry.1 $(MANDIR)/man1
+	$(MKDIR) $(INSTDIR)/share/doc/barry
+	$(MAKE) install_license KIND=barry
+	$(INSTALLDATA) doc/mlkit.pdf $(DATADIR)/doc/barry
+	$(INSTALLDATA) README_BARRY.md $(DATADIR)/doc/barry
+
+.PHONY: install_barry
+install_barry: install_barry0
+	$(MKDIR) $(SYSCONFDIR)/barry
+	if [ -e $(SYSCONFDIR)/barry/mlb-path-map ]; \
+           then true; \
+           else echo "SML_LIB $(exec_prefix)/lib/barry" > $(SYSCONFDIR)/barry/mlb-path-map; \
+        fi
+
+.PHONY: install_smltojs0
+install_smltojs0:
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/smltojs $(BINDIR)
+	$(MKDIR) $(LIBDIR)/smltojs
+	$(MAKE) install_smltojs_basislibs LIBDIR=$(LIBDIR)/smltojs
+	$(INSTALLDATA) js/prims.js $(LIBDIR)/smltojs
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/smltojs.1 $(MANDIR)/man1
+	$(MKDIR) $(INSTDIR)/share/doc/smltojs
+	$(MAKE) install_license KIND=smltojs
+	$(INSTALLDATA) README_SMLTOJS.md $(DATADIR)/doc/smltojs
+	$(MKDIR) $(INSTDIR)/share/smltojs/test
+	$(INSTALLDATA) js/test/*.{sml,sig,mlb,png,gif} $(INSTDIR)/share/smltojs/test
+
+.PHONY: install_smltojs
+install_smltojs: install_smltojs0
+	$(MKDIR) $(SYSCONFDIR)/smltojs
+	if [ -e $(SYSCONFDIR)/smltojs/mlb-path-map ]; \
+           then true; \
+           else echo "SML_LIB $(exec_prefix)/lib/smltojs" > $(SYSCONFDIR)/smltojs/mlb-path-map; \
+        fi
+
+.PHONY: install_smlserver0
+install_smlserver0:
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(BINDIR)
+	$(INSTALL) bin/smlserverc $(BINDIR)
+	$(INSTALL) bin/smlserver-wrap $(BINDIR)
+	$(INSTALL) bin/mspcomp $(BINDIR)
+	$(MKDIR) $(LIBDIR)/smlserver
+	$(MAKE) install_smlserver_basislib LIBDIR=$(LIBDIR)/smlserver
+	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
+	$(MKDIR) $(LIBDIR)/smlserver/basis/web
+	$(MKDIR) $(LIBDIR)/smlserver/basis/web/xmlrpc
+	$(INSTALLDATA) -p basis/web/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web
+	$(INSTALLDATA) -p basis/web/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web/xmlrpc
+#	$(MKDIR) $(MANDIR)
+	$(MKDIR) $(MANDIR)/man1
+	$(INSTALLDATA) man/man1/smlserverc.1 $(MANDIR)/man1
+#	$(MKDIR) $(INSTDIR)/share
+#	$(MKDIR) $(INSTDIR)/share/smlserver
+#	$(MKDIR) $(INSTDIR)/share/doc
+	$(MKDIR) $(INSTDIR)/share/doc/smlserver
+	$(MAKE) install_license KIND=smlserver
+	$(INSTALLDATA) README_SMLSERVER.md $(DATADIR)/doc/smlserver
+	$(INSTALLDATA) NEWS_SMLSERVER.md $(DATADIR)/doc/smlserver
+	$(MAKE) -C smlserver_demo install LIBDIR=$(LIBDIR)/smlserver
+	$(MAKE) -C src/SMLserver/apache install LIBDIR=$(LIBDIR)/smlserver/lib
+
+.PHONY: install_smlserver
+install_smlserver: install_smlserver0
+	$(MKDIR) $(SYSCONFDIR)/smlserverc
+	if [ -e $(SYSCONFDIR)/smlserverc/mlb-path-map ]; \
+           then true; \
+           else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
+        fi
 
 # -----------------------------------------------------
 # Target for building MLKit binary package. The target
@@ -432,8 +548,7 @@ mlkit_bin_dist:
 	rm -rf dist/$(BIN_DIST)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
-	(cd dist && tar czvf $(BIN_DIST).tgz $(BIN_DIST))
-
+	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
 
 # -----------------------------------------------------
 # Target for building SMLserver binary package. The target
@@ -455,7 +570,6 @@ smlserver_i386_tgz:
 bootstrap_kam: install_kam bootstrap0
 
 install_kam:
-	rm -rf $(INSTDIR_KAM)
 	$(MKDIR) $(INSTDIR_KAM)
 	$(MKDIR) $(INSTDIR_KAM)/bin
 	$(MKDIR) $(INSTDIR_KAM)/doc
@@ -473,81 +587,3 @@ install_kam:
 #	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
 #	rm -f /usr/bin/mlkit_kam
 #	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
-
-install_barry:
-	rm -rf $(INSTDIR_BARRY)
-	$(MKDIR) $(INSTDIR_BARRY)
-	$(MKDIR) $(INSTDIR_BARRY)/bin
-	$(MKDIR) $(INSTDIR_BARRY)/doc
-	$(INSTALL) bin/barry.$(ARCH-OS) $(INSTDIR_BARRY)/bin
-	$(INSTALL) copyright $(INSTDIR_BARRY)
-	$(INSTALL) README.md $(INSTDIR_BARRY)
-	$(INSTALL) README_BARRY.md $(INSTDIR_BARRY)
-	$(INSTALL) -R kitdemo $(INSTDIR_BARRY)/kitdemo
-	$(INSTALL) -R ml-yacc-lib $(INSTDIR_BARRY)/ml-yacc-lib
-	$(INSTALL) -R basis $(INSTDIR_BARRY)/basis
-	$(INSTALL) doc/mlkit.pdf $(INSTDIR_BARRY)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR_BARRY)
-	chmod -R ug+rw $(INSTDIR_BARRY)
-	chmod -R o+r $(INSTDIR_BARRY)
-
-	echo '#!/bin/sh' > $(INSTDIR_BARRY)/bin/barry
-	echo -e '$(INSTDIR_BARRY)/bin/barry.$(ARCH-OS) $(INSTDIR_BARRY) $$*' >> $(INSTDIR_BARRY)/bin/barry
-	chmod a+x $(INSTDIR_BARRY)/bin/barry
-	rm -f /usr/bin/barry
-	cp -f -p $(INSTDIR_BARRY)/bin/barry /usr/bin/barry
-
-install_smltojs0:
-	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(BINDIR)
-	$(INSTALL) bin/smltojs $(BINDIR)
-	$(MKDIR) $(LIBDIR)/smltojs
-	$(MAKE) install_smltojs_basislibs LIBDIR=$(LIBDIR)/smltojs
-	$(INSTALLDATA) js/prims.js $(LIBDIR)/smltojs
-	$(MKDIR) $(MANDIR)/man1
-	$(INSTALLDATA) man/man1/smltojs.1 $(MANDIR)/man1
-	$(MKDIR) $(INSTDIR)/share/doc/smltojs
-	$(MAKE) install_license KIND=smltojs
-	$(INSTALLDATA) README_SMLTOJS.md $(DATADIR)/doc/smltojs
-	$(MKDIR) $(INSTDIR)/share/smltojs/test
-	$(INSTALLDATA) js/test/*.{sml,sig,mlb,png,gif} $(INSTDIR)/share/smltojs/test
-
-install_smltojs: install_smltojs0
-	$(MKDIR) $(SYSCONFDIR)/smltojs
-	if [ -e $(SYSCONFDIR)/smltojs/mlb-path-map ]; \
-           then true; \
-           else echo "SML_LIB $(exec_prefix)/lib/smltojs" > $(SYSCONFDIR)/smltojs/mlb-path-map; \
-        fi
-
-install_smlserver0:
-	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(BINDIR)
-	$(INSTALL) bin/smlserverc $(BINDIR)
-	$(INSTALL) bin/smlserver-wrap $(BINDIR)
-	$(INSTALL) bin/mspcomp $(BINDIR)
-	$(MKDIR) $(LIBDIR)/smlserver
-	$(MAKE) install_smlserver_basislib LIBDIR=$(LIBDIR)/smlserver
-	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
-	$(MKDIR) $(LIBDIR)/smlserver/basis/web
-	$(MKDIR) $(LIBDIR)/smlserver/basis/web/xmlrpc
-	$(INSTALLDATA) -p basis/web/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web
-	$(INSTALLDATA) -p basis/web/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web/xmlrpc
-#	$(MKDIR) $(MANDIR)
-	$(MKDIR) $(MANDIR)/man1
-	$(INSTALLDATA) man/man1/smlserverc.1 $(MANDIR)/man1
-#	$(MKDIR) $(INSTDIR)/share
-#	$(MKDIR) $(INSTDIR)/share/smlserver
-#	$(MKDIR) $(INSTDIR)/share/doc
-	$(MKDIR) $(INSTDIR)/share/doc/smlserver
-	$(MAKE) install_license KIND=smlserver
-	$(INSTALLDATA) README_SMLSERVER.md $(DATADIR)/doc/smlserver
-	$(INSTALLDATA) NEWS_SMLSERVER.md $(DATADIR)/doc/smlserver
-	$(MAKE) -C smlserver_demo install LIBDIR=$(LIBDIR)/smlserver
-	$(MAKE) -C src/SMLserver/apache install LIBDIR=$(LIBDIR)/smlserver/lib
-
-install_smlserver:install_smlserver0
-	$(MKDIR) $(SYSCONFDIR)/smlserverc
-	if [ -e $(SYSCONFDIR)/smlserverc/mlb-path-map ]; \
-           then true; \
-           else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
-        fi

@@ -19,14 +19,14 @@ features:
 
 ## Compilation
 
-Barry is known to work on Linux and MacOS boxes. To compile Barry from
+Barry is known to work on Linux and macOS boxes. To compile Barry from
 the MLKit sources, simply type
 
     $ make barry
 
-from within the `kit/` directory. If compilation succeeds, an executable
-file `kit/bin/barry` should now be available. If you wish to install
-Barry on your system, type
+from within the toplevel directory. If compilation succeeds, an
+executable file `bin/barry` should now be available. If you wish
+to install Barry on your system, type
 
     $ sudo make install_barry
 

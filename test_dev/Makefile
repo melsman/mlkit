@@ -29,7 +29,8 @@ GCP_RESFILES_MLB=$(TESTFILES_MLB:%.mlb=%-gcp.mlbres)
 
 RESFILES_PROF=$(GCP_RESFILES) $(GCP_RESFILES_MLB) $(P_RESFILES) $(P_RESFILES_MLB)
 #RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB) $(RI_RESFILES) $(RI_RESFILES_MLB)
-RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB)
+RESFILES_ALL=$(RI_RESFILES) $(RI_RESFILES_MLB) $(GC_RESFILES) $(GC_RESFILES_MLB)
+#RESFILES_ALL=$(GC_RESFILES) $(GC_RESFILES_MLB)
 
 #EXEFLAGS=-verbose_gc
 #EXEFLAGS=-disable_gc -verbose_gc
@@ -56,27 +57,35 @@ runtime:
 	make -C ../src/Runtime runtimeSystemGCProf.a runtimeSystemGC.a runtimeSystemProf.a runtimeSystem.a
 
 %-ri.exe: %.sml
+	@echo "\nSML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $<" >> complog.txt
 	@SML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $< >> complog.txt
 
 %-ri.mlbexe: %.mlb
+	@echo "\nSML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $<" >> complog.txt
 	@SML_LIB=.. $(MLKIT) $(RI_FLAGS) -o $@ $< >> complog.txt
 
 %-gc.exe: %.sml
-	SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<
+	@echo "\nSML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<" >> complog.txt
+	@SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $< >> complog.txt
 
 %-gc.mlbexe: %.mlb
-	SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<
+	@echo "\nSML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $<" >> complog.txt
+	@SML_LIB=.. $(MLKIT) $(GC_FLAGS) -o $@ $< >> complog.txt
 
 %-p.exe: %.sml
+	@echo "\nSML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $<" >> complog.txt
 	@SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $< >> complog.txt
 
 %-p.mlbexe: %.mlb
+	@echo "\nSML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $<" >> complog.txt
 	@SML_LIB=.. $(MLKIT) $(PROF_FLAGS) -o $@ $< >> complog.txt
 
 %-gcp.exe: %.sml
+	@echo "\nSML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $<" >> complog.txt
 	@SML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $< >> complog.txt
 
 %-gcp.mlbexe: %.mlb
+	@echo "\nSML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $<" >> complog.txt
 	@SML_LIB=.. $(MLKIT) $(GC_PROF_FLAGS) -o $@ $< >> complog.txt
 
 %.mlbout: %.mlbexe
@@ -244,3 +253,8 @@ dummy2: $(TESTFILES_MLB:%.mlb=%-ri.mlbexe) $(TESTFILES_MLB:%.mlb=%-gc.mlbexe) $(
 dummy3: $(TESTFILES:%.sml=%-ri.out) $(TESTFILES:%.sml=%-gc.out) $(TESTFILES:%.sml=%-p.out) $(TESTFILES:%.sml=%-gcp.out)
 
 dummy3: $(TESTFILES_MLB:%.mlb=%-ri.mlbout) $(TESTFILES_MLB:%.mlb=%-gc.mlbout) $(TESTFILES_MLB:%.mlb=%-p.mlbout) $(TESTFILES_MLB:%.mlb=%-gcp.mlbout)
+
+.PHONY: work
+work:
+	rm -rf MLB
+	../bin/mlkit --no_basislib block_real.sml

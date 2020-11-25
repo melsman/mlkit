@@ -18,7 +18,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
     (*import from ModuleEnvironments:*)
     structure G            = ModuleEnvironments.G
     structure F            = ModuleEnvironments.F
-    structure B            = ModuleEnvironments.B 
+    structure B            = ModuleEnvironments.B
 
     (*import from ModuleStatObject:*)
     structure Sigma        = ModuleStatObject.Sigma
@@ -46,7 +46,7 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
 
     fun reportVE (render, pathR, VE, bindings) =
       VE.report
-	(fn (id, VE.LONGVAR sigma) => 
+	(fn (id, VE.LONGVAR sigma) =>
 	      Report.line ("val "
 			   ^ Ident.pr_id id
 			   ^ (if bindings then " = " ^ render (pathR, id, sigma)
@@ -107,13 +107,13 @@ structure TopLevelReport: TOP_LEVEL_REPORT =
 	SE
       )
 
-    and reportEnvSTATIC E = 
+    and reportEnvSTATIC E =
           reportEnv (fn _ => Crash.impossible "TopLevelReport.reportEnvSTATIC",
 		     [], E, false)
 
     and reportEnv(render, pathR, env, bindings) =
       let
-	val (SE, TE, VE) = E.un env
+	val (SE, TE, VE, _) = E.un env
       in
 	reportSE(render, pathR, SE, bindings)
 	// TE.report {tyEnv=TE, bindings=bindings}

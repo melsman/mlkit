@@ -2,7 +2,7 @@
 
 functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
   struct
-    
+
     open LexBasics Token
     fun impossible s = Crash.impossible ("LexUtils." ^ s)
     fun noSome NONE s = impossible s
@@ -35,32 +35,30 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	 | _ => false			(* We can't get nil (or [_]). *)
 
     local
-      fun ordw c = Word32.fromInt(ord c)
+      fun ordw c = IntInf.fromInt(ord c)
 
-      fun chars_to_w (#"0" :: #"x" :: chars) = chars_to_w_in_base 0w16 chars
-	| chars_to_w chars = chars_to_w_in_base 0w10 chars
-      and chars_to_w_in_base base chars = chars_to_w_in_base0 base 0w0 chars
+      fun chars_to_w (#"0" :: #"x" :: chars) = chars_to_w_in_base 16 chars
+	| chars_to_w chars = chars_to_w_in_base 10 chars
+      and chars_to_w_in_base base chars = chars_to_w_in_base0 base 0 chars
       and chars_to_w_in_base0 base n [] = n
 	| chars_to_w_in_base0 base n (char :: chars) =
 	    (case char_to_w_opt base char of
-	       SOME i => (* a new digit is added; manually raise Overflow if 
-			  * new value is smaller than old value *)
+	       SOME i =>
 		 let val new = n * base + i
-		 in if new < n then raise Overflow
-		    else chars_to_w_in_base0 base new chars
+		 in chars_to_w_in_base0 base new chars
 		 end
 	     | NONE => n)
       and char_to_w_opt base char =
-	let val i = if Char.isUpper char then ordw char - ordw #"A" + 0w10
-		    else if Char.isLower char then ordw char - ordw #"a" + 0w10
+	let val i = if Char.isUpper char then ordw char - ordw #"A" + 10
+		    else if Char.isLower char then ordw char - ordw #"a" + 10
 			 else if Char.isDigit char then ordw char - ordw #"0"
 			      else base (*hack*)
-	in 
+	in
 	  if i<base then SOME i else NONE
 	end handle _ => NONE
 
-      fun asWord0 (#"0" :: #"w" :: #"x" :: chars) = chars_to_w_in_base 0w16 chars 
-	| asWord0 (#"0" :: #"w" :: chars) = chars_to_w_in_base 0w10 chars
+      fun asWord0 (#"0" :: #"w" :: #"x" :: chars) = chars_to_w_in_base 16 chars
+	| asWord0 (#"0" :: #"w" :: chars) = chars_to_w_in_base 10 chars
 	| asWord0 _ = impossible "asWord0"
 
       fun exception_to_opt p x = SOME (p x) handle Overflow => NONE
@@ -86,9 +84,9 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 				 else NONE
 	      in i
 	      end handle _ => NONE
-		  		  
+
 	fun chars_to_int cs : IntInf.int =
-	    case cs of 
+	    case cs of
 		#"~" :: cs => IntInf.~ (chars_to_i cs)
 	      | _ => chars_to_i cs
       in
@@ -135,8 +133,8 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
     in
       fun addAsciiChar (pos, text) arg =
 	add_numbered_char (pos, text) arg 255
-	(case explode text 
-	   of [#"\\", c1, c2, c3] => (Word32.toInt(chars_to_w_in_base 0w10 [c1, c2, c3])
+	(case explode text
+	   of [#"\\", c1, c2, c3] => (IntInf.toInt(chars_to_w_in_base 10 [c1, c2, c3])
 				      handle _ => impossible "addAsciiChar.Overflow")
 	    | _ => impossible "addAsciiChar")
 
@@ -145,15 +143,21 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 
       fun addUnicodeChar (pos, text) arg =
 	add_numbered_char (pos, text) arg 255
-	(case explode text 
+	(case explode text
 	   of [#"\\", #"u", c1, c2, c3, c4] =>
-	     (Word32.toInt(chars_to_w_in_base 0w16 [c1, c2, c3, c4])
+	     (IntInf.toInt(chars_to_w_in_base 16 [c1, c2, c3, c4])
 	      handle _ => impossible "addUnicodeChar.Overflow")
 	    | _ => impossible "addUnicodeChar")
 
     end (*local*)
 
     fun asString(LEX_ARGUMENT{stringChars, ...}) = concat(rev (!stringChars))
+
+    val explicit_regions = ref false
+    val _ = Flags.add_bool_entry
+       {long="explicit_regions", short=SOME "er", neg=false, item=explicit_regions,
+	menu=["Control", "Explicit regions"],
+	desc="Support programming with explicit regions."}
 
    (* Keyword detection (better done here than by the lexer). *)
 
@@ -211,10 +215,13 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
 	   | "=>"	 => keyword DARROW
 	   | "->"	 => keyword ARROW
 	   | "#"	 => keyword HASH
-	   | "*"	 => keyword STAR
-					(* Not actually reserved, but ... *)
+	   | "*"	 => keyword STAR    (* Not actually reserved, but ... *)
 
-	   | _		 => ID(text, p1, p2)
+	   | _		 => if !explicit_regions then
+                              if text = "region" then keyword REGION
+                              else if text = "`" then keyword BACKQUOTE
+                              else ID(text, p1, p2)
+                            else ID(text, p1, p2)
       end
 
     fun incComment(LEX_ARGUMENT{commentDepth,...}) =
@@ -234,7 +241,7 @@ functor LexUtils(Token: Topdec_TOKENS): LEX_UTILS =
     fun parStackPop (LEX_ARGUMENT {parStack,...}) : unit =
       case !parStack
 	of (r::t) => parStack := t
-	 | _ => raise Fail "LexUtils.parStackPop"      
+	 | _ => raise Fail "LexUtils.parStackPop"
     fun parStackIsEmpty (LEX_ARGUMENT {parStack,...}) : bool =
       case !parStack
 	of nil => true

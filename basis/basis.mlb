@@ -2,9 +2,9 @@
 
 local
     Initial.sml
-    basis General = 
-      bas 
-        GENERAL.sig General.sml OPTION.sig Option.sml 
+    basis General =
+      bas
+        GENERAL.sig General.sml OPTION.sig Option.sml
       end
 
     basis Initial2 =
@@ -23,8 +23,8 @@ local
         let open General List
             basis Poly =
               let wordtables.sml TableSlice.sml
-              in bas 
-                    VECTOR.sig Vector.sml 
+              in bas
+                    VECTOR.sig Vector.sml
                     VECTOR_SLICE.sml VectorSlice.sml
                     ARRAY.sig Array.sml
                     ARRAY_SLICE.sml ArraySlice.sml
@@ -32,18 +32,18 @@ local
                  end
               end
         in bas
-              open Poly   
-              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
+              open Poly
+              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml
 	      MONO_VECTOR_SLICE.sml MONO_ARRAY_SLICE.sml ByteSlice.sml
            end
         end
 
-    basis String = 
+    basis String =
        let open General ArrayVector
        in bas
-             STRING_CVT.sml StringCvt.sml 
+             STRING_CVT.sml StringCvt.sml
              local open List
-                   STR_BASE.sml StrBase.sml 
+                   STR_BASE.sml StrBase.sml
              in
                 Char.sml String.sml CHAR.sig STRING.sig SUBSTRING.sig Substring.sml
              end
@@ -55,8 +55,8 @@ local
        in bas TEXT.sig Text.sml end
        end
 
-    basis Bool = 
-       let open General String 
+    basis Bool =
+       let open General String
        in bas BOOL.sig Bool.sml end
        end
 
@@ -67,28 +67,32 @@ local
 
     basis Word =
        let open General String IntInfRep
-           basis W = bas WORD.sig Word.sml Word32.sml Word31.sml Word8.sml end
+           basis W = bas WORD.sig Word.sml Word64.sml Word63.sml Word32.sml Word31.sml Word8.sml end
            basis PW = let open ArrayVector W
-                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
+                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end
                       end
        in bas open W PW end
        end
 
-    basis Byte = 
+    basis Byte =
        let open General String ArrayVector Word
        in bas BYTE.sig Byte.sml end
        end
- 
+
     basis Int =
        let open General String IntInfRep
-       in bas INTEGER.sml Int.sml Int32.sml Int31.sml end
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml Int63.sml Int64.sml end
        end
 
     basis Real =
        let open General String Int
-       in bas MATH.sig Math.sml REAL.sig Real.sml 
+       in bas MATH.sig Math.sml REAL.sig Real.sml
 	    local open Byte ArrayVector
             in PACK_REAL.sml PackRealLittle.sml PackRealBig.sml
+            end
+            local open List ArrayVector
+                  RealTable.sml
+            in RealArrayVector.sml
             end
 	  end
        end
@@ -96,21 +100,21 @@ local
     basis IntInf =
        let open General List ArrayVector String Word Int Real
        in bas ann safeLinkTimeElimination
-              in INT_INF.sml IntInf.sml 
+              in INT_INF.sml IntInf.sml
               end
           end
        end
-(*  
+(*
     basis Polyhash =
        let open General String ArrayVector Word
        in bas POLYHASH.sig Polyhash.sml end
        end
 *)
     basis Io =
-       let open General String List 
-       in bas IO.sml (* TEXT_IO.sml TextIO.sml 
+       let open General String List
+       in bas IO.sml (* TEXT_IO.sml TextIO.sml
               local open Word ArrayVector Byte
-              in BIN_IO.sml BinIO.sml 
+              in BIN_IO.sml BinIO.sml
               end *)
           end
        end
@@ -121,21 +125,21 @@ local
               basis Random = let open Real in bas RANDOM.sig Random.sml end end
               basis Path = let open List in bas OS_PATH.sml Path.sml end end
               basis FileSys = let open List Time Random Path Byte ArrayVector Initial2
-                              in bas OS_FILE_SYS.sml FileSys.sml end 
+                              in bas OS_FILE_SYS.sml FileSys.sml end
                               end
-              basis Process = let open Time Int in 
+              basis Process = let open Time Int in
                                 bas OS_PROCESS.sml local open List in Process.sml end end end
               basis Os = let open FileSys Path Process Word in bas OS_IO.sml OS.sml end end
               basis CommandLine = bas COMMAND_LINE.sml CommandLine.sml end
               basis Date = let open Int Real Time IntInf in bas DATE.sig Date.sml end end
               basis Timer = let open Int Time IntInf in bas TIMER.sig Timer.sml end end
-          in bas open Time Random Path FileSys 
+          in bas open Time Random Path FileSys
                       Process Os CommandLine Date Timer
              end
           end
        end
 
-    basis OSError = 
+    basis OSError =
         let open General System
         in bas OSError.sml end
         end
@@ -162,19 +166,19 @@ local
        in bas BitFlags.sml end
        end
 
-     basis Posix = 
+     basis Posix =
        let open General Word System List Int Real PrimIO Byte ArrayVector
                 IntInf OSError BitFlags
-       in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml 
-              POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml 
-              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sig Posix.sml 
+       in bas BIT_FLAGS.sml POSIX_IO.sml POSIX_PROCESS.sml POSIX_PROCENV.sml
+              POSIX_FILE_SYS.sml POSIX_SIGNAL.sml POSIX_ERROR.sml
+              POSIX_SYS_DB.sml POSIX_TTY.sml POSIX.sig Posix.sml
           end
        end
 
     basis IO =
       let open General
-        basis Cleaner = 
-          let open List System 
+        basis Cleaner =
+          let open List System
           in bas io/cleaner.sig io/cleaner.sml end
           end
         basis Stream =
@@ -188,20 +192,20 @@ local
         basis BinTextIO =
           let open Stream String ArrayVector PrimIO Int Posix Imperative Word
           in bas ann safeLinkTimeElimination
-                 in io/text-stream-io.sig io/text-io.sig io/text-io.sml 
-                    io/bin-stream-io.sig io/bin-io.sig io/bin-io.sml 
+                 in io/text-stream-io.sig io/text-io.sig io/text-io.sml
+                    io/bin-stream-io.sig io/bin-io.sig io/bin-io.sml
                  end
              end
           end
       in bas open Stream BinTextIO Imperative end
       end
 (*
-    basis Sml90 = 
+    basis Sml90 =
        let open General List String Real IO
        in bas SML90.sml end
-       end 
+       end
 *)
 in
-  open General List ArrayVector String Bool Word Byte 
+  open General List ArrayVector String Bool Word Byte
        Int Real IntInf IntInfRep Io System Text Posix IO (* Sml90 *)
 end

@@ -72,6 +72,8 @@ structure Ident: IDENT =
     val id_Bind = ID "Bind"
     val id_Overflow = ID "Overflow"
     val id_Interrupt = ID "Interrupt"
+    val id_Subscript = ID "Subscript"
+    val id_Size = ID "Size"
 
     (* misc: *)
 
@@ -91,7 +93,7 @@ structure Ident: IDENT =
       val count = ref initial
       fun unique() = (count := !count + 1;
 		      "var" ^ Int.toString (!count))
-      fun unique_named (s:string) = 
+      fun unique_named (s:string) =
                      (count := !count + 1;
 		      s (*^ Int.toString (!count)*))
     in

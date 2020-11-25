@@ -5,11 +5,11 @@
  * interface. *)
 
 
-signature KIT_COMPILER = 
-  sig include MANAGER 
+signature KIT_COMPILER =
+  sig include MANAGER
     val kitexe : string * string list -> OS.Process.status
-  end 
-    
+  end
+
 functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
   struct
     open Execution
@@ -32,8 +32,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
       val mk_modcode = ManagerObjects.ModCode.mk_modcode
       val emit = ManagerObjects.ModCode.emit
     end
-                     
-    structure IntModules = 
+
+    structure IntModules =
 	IntModules(structure ManagerObjects = ManagerObjects
                    structure ModCodeMini = ModCodeMini
 		   structure Execution = Execution
@@ -51,19 +51,19 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun set_paths install_dir =
 	    Flags.install_dir := install_dir
 
-	val date = Version.configure_date
+	val date = Version.commit_date
 
-	fun print_greetings() =
+	fun print_greetings () =
 	    let val version = Version.version ^ " (" ^ date ^ ")"
-              val msg = 
+              val msg =
                   if !Flags.SMLserver then "SMLserver Compiler " ^ version ^ "\n"
                   else if backend_name = "SmlToJs" then "SmlToJs " ^ version ^ "\n"
-                  else ("MLKit " ^ version ^ " [" 
+                  else ("MLKit " ^ version ^ " ["
                         ^ backend_name ^ " Backend]\n")
             in print msg
 	    end
-	    
-	fun print_usage() = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
+
+	fun print_usage () = print ("\nUsage: " ^ cmd_name() ^ " [OPTION]... [file.sml | file.sig | file.mlb]\n\n" ^
 				   "Options:\n\n")
 
 	val options = [("version", ["v","V"], ["Print version information and exit."]),
@@ -75,46 +75,46 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun print_indent nil = ()
 	  | print_indent (s::ss) = (print ("     " ^ s ^ "\n"); print_indent ss)
 
-      	fun print_options() = 
-              app (fn (t, s, l) => (print("--" ^ t ^ 
+      	fun print_options () =
+              app (fn (t, s, l) => (print("--" ^ t ^
                                            (String.concat (List.map (fn x => ", -" ^ x) s)) ^
                                            "\n"); print_indent l; print "\n"))
                                   options
-	local 
+	local
 	    (* is overloading of options allowed? *)
 	    val unary_options =
-		[("help", fn s => (print "\n"; 
-				   print (Flags.help s); 
+		[("help", fn s => (print "\n";
+				   print (Flags.help s);
 				   print "\n";
 				   raise Fail ""))]
-		
+
 	    val nullary_options =
-		[("version", fn () => (print_greetings(); 
+		[("version", fn () => (print_greetings();
 				       raise Fail "")),
 		 ("man", fn () => (print(Man.gen {cmd=cmd_name,date=date,
 						  extraOptions=options,
 						  version=Version.version});
 				   raise Fail "")),
-		 ("v", fn () => (print_greetings(); 
+		 ("v", fn () => (print_greetings();
 				 raise Fail "")),
-		 ("V", fn () => (print_greetings(); 
+		 ("V", fn () => (print_greetings();
 				 raise Fail "")),
-		 ("help", fn () => (print_greetings(); 
+		 ("help", fn () => (print_greetings();
 				    print_usage();
 				    print_options();
-				    print (Flags.help_all()); 
+				    print (Flags.help_all());
 				    raise Fail ""))]
-		
-	    fun go_files [file] = 
-		((Manager.comp file; OS.Process.success) 
+
+	    fun go_files [file] =
+		((Manager.comp file; OS.Process.success)
 		 handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
 	      | go_files _ = (print_greetings(); print_usage(); print_options(); raise Fail "")
 
 	    fun go_options options =
 		let val rest = Flags.read_options{options=options, nullary=nullary_options,
 						  unary=unary_options}
-		    val baseDir = 
-			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of 
+		    val baseDir =
+			 case ManagerObjects.Environment.getEnvVal "SML_LIB" of
 			     SOME v => v
 			   | NONE => raise Fail ("A library install directory must be provided in an\n" ^
 						 "environment variable SML_LIB or as a path-definition\n" ^
@@ -125,7 +125,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		end
 	in
   	    (* fun die s = Crash.impossible ("KitCompiler." ^ s) *)
-  	    fun kitexe(root_dir, args) = 
+  	    fun kitexe (root_dir, args) =
 		go_options args
 		handle Fail "" => OS.Process.success
 		     | Fail s => (print ("* Error: " ^ s ^ ".\n");
@@ -136,5 +136,5 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	open Manager
 	val kitexe = kitexe
     end
-	
+
   end (*KitCompiler*)

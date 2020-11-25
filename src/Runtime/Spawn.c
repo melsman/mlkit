@@ -9,7 +9,7 @@
 #include <errno.h>
 #include "Locks.h"
 
-//#define PARALLEL_DEBUG
+#define PARALLEL_DEBUG
 
 #ifdef PARALLEL_DEBUG
 #define tdebug(s) printf(s);

@@ -1,7 +1,7 @@
 (* This test works only for 32-bit implementations! *)
 
 
-local 
+local
   open Int32
 in
 val maxint : int32 = 2147483647
@@ -44,8 +44,8 @@ val test11 = test "test11" ((prod (minint,~1) seq "WRONG") handle Overflow => "O
 fun checkDivMod i d =
   let val q = i div d
       val r = i mod d
-  in 
-(*      printVal i seq TextIO.output(TextIO.stdOut, " "); 
+  in
+(*      printVal i seq TextIO.output(TextIO.stdOut, " ");
       printVal d seq TextIO.output(TextIO.stdOut, "   "); *)
       if (d * q + r = i) andalso
 	  ((0 <= r andalso r < d) orelse (d < r andalso r <= 0))
@@ -73,20 +73,17 @@ val test26 = test "test26" ((minint div ~1 seq  "WRONG") handle Overflow => "OK"
 
 
 (* toInt *)
-fun iftag yes no = 
-  if Int.precision = SOME 31 then yes else no
-
-val test27 = test "test27" ((toInt maxint seq (iftag "WRONG" "OK")) 
-			    handle Overflow => iftag "OK" "WRONG")
-val test27a = test "test27a" ((toInt (maxint-10) seq (iftag "WRONG" "OK")) 
-			      handle Overflow => iftag "OK" "WRONG")
-val test28 = test "test28" ((toInt minint seq (iftag "WRONG" "OK")) 
-			    handle Overflow => iftag "OK" "WRONG")
-val test28a = test "test28a" ((toInt (minint+10) seq (iftag "WRONG" "OK")) 
-			      handle Overflow => iftag "OK" "WRONG")
-val test29 = test "test29" ((check (SOME(toInt (maxint div 2)) = Option.map Int31.toInt Int31.maxInt)) 
+val test27 = test "test27" ((toInt maxint seq "OK")
+			    handle Overflow => "WRONG")
+val test27a = test "test27a" ((toInt (maxint-10) seq "OK")
+			      handle Overflow => "WRONG")
+val test28 = test "test28" ((toInt minint seq "OK")
+			    handle Overflow => "WRONG")
+val test28a = test "test28a" ((toInt (minint+10) seq "OK")
+			      handle Overflow => "WRONG")
+val test29 = test "test29" ((check (SOME(toInt (maxint div 2)) = Option.map Int31.toInt Int31.maxInt))
 			    handle Overflow => "EXN")
-val test29a = test "test29a" ((check (SOME(toInt (minint div 2)) = Option.map Int31.toInt Int31.minInt)) 
+val test29a = test "test29a" ((check (SOME(toInt (minint div 2)) = Option.map Int31.toInt Int31.minInt))
 			      handle Overflow => "EXN")
 
 end

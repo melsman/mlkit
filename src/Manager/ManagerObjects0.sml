@@ -1,10 +1,10 @@
-(* COMPILER_ENV is the lambda env mapping structure and value 
+(* COMPILER_ENV is the lambda env mapping structure and value
  * identifiers to lambda env's and lvars *)
 
-(* COMPILE_BASIS is the combined basis of all environments in 
- * the backend *) 
+(* COMPILE_BASIS is the combined basis of all environments in
+ * the backend *)
 
-functor ManagerObjects0(structure Execution : EXECUTION) 
+functor ManagerObjects0(structure Execution : EXECUTION)
         : MANAGER_OBJECTS0 =
   struct
     structure PP = PrettyPrint
@@ -28,9 +28,9 @@ functor ManagerObjects0(structure Execution : EXECUTION)
     type strid = ModuleEnvironments.strid
     type sigid = ModuleEnvironments.sigid
 
-    type ElabBasis = ModuleEnvironments.Basis 
+    type ElabBasis = ModuleEnvironments.Basis
     type InfixBasis = InfixBasis.Basis
-    type opaq_env = OpacityElim.opaq_env     
+    type opaq_env = OpacityElim.opaq_env
 
     type md5 = string
     type BodyBuilderClos = {infB: InfixBasis,
@@ -46,7 +46,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
     datatype IntFunEnv = IFE of (funid, absprjid * strid * ElabEnv * BodyBuilderClos * IntBasis) FinMap.map
          and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
 
-    (* Instead of storing structure expressions in functor environments, information necessary for recreating 
+    (* Instead of storing structure expressions in functor environments, information necessary for recreating
      * structure expressions is stored (BodyBuilderClos). *)
 
     local
@@ -55,7 +55,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		    childsep=PP.RIGHT", ", children=[]}
     in
 	fun layoutIntSigEnv (ISE ise) = FinMap.layoutMap{start="IntSigEnv = [", eq="->",sep=", ", finish="]"}
-	    (PP.LEAF o SigId.pr_SigId) 
+	    (PP.LEAF o SigId.pr_SigId)
 	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
 
 	fun layoutIntBasis(IB(ife,ise,ce,cb)) =
@@ -64,12 +64,12 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 			      layoutIntSigEnv ise,
 			      CompilerEnv.layoutCEnv ce,
 			      CompileBasis.layout_CompileBasis cb]}
-	and layoutClos a = 
+	and layoutClos a =
 	    let val (absprjid, strid, E, BBC, ib) = a
 	    in PP.NODE{start="<", finish=">",
 		       childsep=PP.RIGHT", ", indent=2,
 		       children=[layoutBBC BBC,
-				 layoutIntBasis ib]}				 
+				 layoutIntBasis ib]}
 	    end
 	and layoutIntFunEnv (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
 	    (PP.LEAF o FunId.pr_FunId) layoutClos ife
@@ -79,26 +79,26 @@ functor ManagerObjects0(structure Execution : EXECUTION)
     (* Picklers *)
 
     val pu_BodyBuilderClos =
-	let fun to ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext)) = 
+	let fun to ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext)) =
 		{infB=infB,elabB=elabB,absprjid=absprjid,filemd5=filemd5,
 		 opaq_env=opaq_env,T=T,resE=resE,filetext=filetext}
 	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filemd5=filemd5,filetext,
 		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(opaq_env,T),(resE,filemd5,filetext))
 	in Pickle.convert (to,from)
 	    (Pickle.tup3Gen0(Pickle.tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
-			     Pickle.pairGen0(OpacityEnv.pu,Pickle.listGen TyName.pu), 
+			     Pickle.pairGen0(OpacityEnv.pu,Pickle.listGen TyName.pu),
 			     Pickle.tup3Gen0(Environments.E.pu,Pickle.string,Pickle.string)))
 	end
 
     val pu_IntSigEnv =
-	Pickle.convert (ISE, fn ISE v => v) 
+	Pickle.convert (ISE, fn ISE v => v)
 	(FinMap.pu(SigId.pu,TyName.Set.pu TyName.pu))
 
     val (pu_IntFunEnv,pu_IntBasis) =
 	let fun IntFunEnvToInt _ = 0
 	    fun IntBasisToInt _ = 0
 	    fun fun_IFE (pu_IntFunEnv, pu_IntBasis) =
-		Pickle.con1 IFE (fn IFE a => a)		
+		Pickle.con1 IFE (fn IFE a => a)
 		(FinMap.pu (FunId.pu,
 			    Pickle.convert (fn ((a,b),(d,e,f)) => (a,b,d,e,f), fn (a,b,d,e,f) => ((a,b),(d,e,f)))
 			    (Pickle.pairGen0(Pickle.pairGen0(ModuleEnvironments.pu_absprjid,StrId.pu),
@@ -125,12 +125,12 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	  (foldl (fn (funid, acc) =>
 		  case FinMap.lookup ife funid
 		    of SOME e => FinMap.add(funid,e,acc)
-		     | NONE => die ("IntFunEnv.restrict: could not find funid " ^ FunId.pr_FunId funid)) 
+		     | NONE => die ("IntFunEnv.restrict: could not find funid " ^ FunId.pr_FunId funid))
 	   FinMap.empty funids)
 	fun enrich(IFE ife0, IFE ife) : bool = (* using md5 checksums; enrichment for free variables is checked *)
 	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
-			of SOME obj0 => 
+			of SOME obj0 =>
 			    #1 obj = #1 obj0                               (* absprjid *)
 			    andalso #filemd5 (#4 obj) = #filemd5 (#4 obj0) (* md5 of functor body *)
 			 | NONE => false) true ife
@@ -155,9 +155,9 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	  (foldl (fn (sigid, acc) =>
 		  case FinMap.lookup ise sigid
 		    of SOME e => FinMap.add(sigid,e,acc)
-		     | NONE => die ("IntSigEnv.restrict: could not find sigid " ^ SigId.pr_SigId sigid)) 
+		     | NONE => die ("IntSigEnv.restrict: could not find sigid " ^ SigId.pr_SigId sigid))
 	   FinMap.empty sigids)
-	fun enrich(ISE ise0, ISE ise) : bool = 
+	fun enrich(ISE ise0, ISE ise) : bool =
 	  FinMap.Fold(fn ((sigid, T), b) => b andalso
 		      case FinMap.lookup ise0 sigid
 			of SOME T0 => TyName.Set.eq T T0
@@ -194,8 +194,8 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val _ = pp_tynames "Restricting ce to tynames" tynames
 *)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
-		fun tynames_ife(IFE ife) = 
-		  let fun tynames_obj ((_,_,_,_,obj),tns) = 
+		fun tynames_ife(IFE ife) =
+		  let fun tynames_obj ((_,_,_,_,obj),tns) =
 		        let val IB(_,ise,ce,_) = obj
 			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
 			end
@@ -204,7 +204,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val tynames =
 		    TyName.Set.union
 		    (IntSigEnv.tynames ise')
-		    (TyName.Set.fromList		     
+		    (TyName.Set.fromList
 		     (CompilerEnv.tynamesOfCEnv ce'
 		      @ tynames_ife ife'
 		      @ tynames))
@@ -214,15 +214,15 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
 		val cb' = CompileBasis.restrict0(cb,(lvars,tynames,cons,excons))
-		  
+
 	    (* because of the delayed interpretation of functors, we
-	     * need also add the compiler bases for each of the functor 
-	     * identifiers to the resulting interpretation basis; see 
-	     * the example test/fxp_err.sml for an example where not 
+	     * need also add the compiler bases for each of the functor
+	     * identifiers to the resulting interpretation basis; see
+	     * the example test/fxp_err.sml for an example where not
 	     * adding compiler bases causes the compiler to crash. *)
 
 (*I don't udnerstand this; mael 2004-11-24
-		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) => 
+		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) =>
 					   let val IB ib = #6 functorClos
 					   in CompileBasis.plus(cb,#4 ib)
 					   end) cb' ife'
@@ -231,18 +231,23 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    in IB (ife',ise',ce',cb'')
 	    end
 
-	fun restrict (ib, ids, tynames) = 
+	fun restrict (ib, ids, tynames) =
 	    let val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
-			       TyName.tyName_INT31,   (* int31, int32, intinf, word8, word31, word32 needed *)
-			       TyName.tyName_INT32,   (*     because of overloading *)
+			       TyName.tyName_INT31,   (* int31, int32, int63, int64, intinf, word8, word31, *)
+			       TyName.tyName_INT32,   (*  word32, word63, word64 needed because of overloading *)
+			       TyName.tyName_INT63,
+			       TyName.tyName_INT64,
 			       TyName.tyName_INTINF,
 			       TyName.tyName_WORD8,
 			       TyName.tyName_WORD31,
 			       TyName.tyName_WORD32,
+			       TyName.tyName_WORD63,
+			       TyName.tyName_WORD64,
 			       TyName.tyName_STRING,  (* string is needed for string constants *)
 			       TyName.tyName_CHAR,    (* char is needed for char constants *)
 			       TyName.tyName_REF,
-			       TyName.tyName_REAL]    (* real needed because of overloading *)
+			       TyName.tyName_REAL,    (* real needed because of overloading *)
+			       TyName.tyName_F64]     (* f64 needed because of optimiser *)
 		  @ TyName.Set.list tynames
 		val IB(ife,ise,ce,cb) = ib
 		val {funids, sigids, longstrids, longvids, longtycons} = ids
@@ -253,8 +258,8 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
 			else ()
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
-		fun tynames_ife(IFE ife) = 
-		  let fun tynames_obj ((_,_,_,_,obj),tns) = 
+		fun tynames_ife(IFE ife) =
+		  let fun tynames_obj ((_,_,_,_,obj),tns) =
 		        let val IB(_,ise,ce,_) = obj
 			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
 			end
@@ -271,13 +276,13 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
 		val cb' = CompileBasis.restrict(cb,(lvars,tynames,cons,excons))
-		  
+
 	    (* because of the delayed interpretation of functors, we
-	     * need also add the compiler bases for each of the functor 
-	     * identifiers to the resulting interpretation basis; see 
-	     * the example test/fxp_err.sml for an example where not 
+	     * need also add the compiler bases for each of the functor
+	     * identifiers to the resulting interpretation basis; see
+	     * the example test/fxp_err.sml for an example where not
 	     * adding compiler bases causes the compiler to crash. *)
-		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) => 
+		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) =>
 					   let val IB ib = #5 functorClos
 					   in CompileBasis.plus(cb,#4 ib)
 					   end) cb' ife'
@@ -291,7 +296,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	  in IB(ife1,ise1,ce1,cb1')
 	  end
 
-	local 
+	local
 	    fun db_f s true = true
 	      | db_f s false = false before print ("IntBasis.enrich:" ^ s ^ " false\n")
 
@@ -301,7 +306,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    fun CompileBasis_enrich a = db_f "CompileBasis" (CompileBasis.enrich a)
 	in
 	  fun enrich(IB(ife0,ise0,ce0,cb0),IB(ife,ise,ce,cb)) =
-	    IntFunEnv_enrich(ife0,ife) andalso IntSigEnv_enrich(ise0,ise) 
+	    IntFunEnv_enrich(ife0,ife) andalso IntSigEnv_enrich(ise0,ise)
 	    andalso CompilerEnv_enrichCEnv(ce0,ce) andalso CompileBasis_enrich(cb0,cb)
 	end
 
@@ -311,7 +316,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	        val ce2 = CompilerEnv.lookup_longstrid ce2 longstrid
 	    in
 	      CompilerEnv.enrichCEnv(ce1,ce2) andalso CompilerEnv.enrichCEnv(ce2,ce1) andalso
-	      let 
+	      let
 		fun restr ce cb =
 		  let val lvars = CompilerEnv.lvarsOfCEnv ce
 		      val tynames = CompilerEnv.tynamesOfCEnv ce
@@ -325,16 +330,16 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	      end
 	    end
 	  fun agree2 ([], _,_) = true
-	    | agree2 (longstrid::longstrids, B1, B2) = 
+	    | agree2 (longstrid::longstrids, B1, B2) =
 	    agree1(longstrid, B1, B2) andalso agree2(longstrids, B1, B2)
 	in
-	  fun agree (l, IB B1, IB B2) = agree2 (l, B1, B2) 
+	  fun agree (l, IB B1, IB B2) = agree2 (l, B1, B2)
 	end
 
 	val layout = layoutIntBasis
 
 	  (* operations used in Manager, only. *)
-	fun initial() = IB (IntFunEnv.initial, IntSigEnv.initial, 
+	fun initial() = IB (IntFunEnv.initial, IntSigEnv.initial,
 			    CompilerEnv.initialCEnv(), CompileBasis.initial)
 	val pu = pu_IntBasis
 
@@ -358,8 +363,8 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		 OpacityEnv.plus(rea,rea'), IntBasis.plus(intb, intb'))
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
-	fun log s = TextIO.output(TextIO.stdOut,s)			
-	fun debug(s, b) = 
+	fun log s = TextIO.output(TextIO.stdOut,s)
+	fun debug(s, b) =
 	  if !debug_man_enrich then
 	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
 	     else log("\n" ^ s ^ ": enrich failed."); b)
@@ -370,8 +375,8 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	  fun OpacityElim_enrich a = OpacityEnv.enrich a
 	  fun IntBasis_enrich a = IntBasis.enrich a
 	in
-	  fun enrich (BASIS (infB1,elabB1,rea1,tintB1), (BASIS (infB2,elabB2,rea2,tintB2), dom_rea)) = 
-	    debug("InfixBasis", InfixBasis_eq(infB1,infB2)) andalso 
+	  fun enrich (BASIS (infB1,elabB1,rea1,tintB1), (BASIS (infB2,elabB2,rea2,tintB2), dom_rea)) =
+	    debug("InfixBasis", InfixBasis_eq(infB1,infB2)) andalso
 	    debug("ElabBasis", ModuleEnvironments_B_enrich (elabB1,elabB2)) andalso
 	    debug("OpacityEnv", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
 	    debug("IntBasis", IntBasis_enrich(tintB1,tintB2))
@@ -384,11 +389,11 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    let val _ = chat "[restricting elaboration basis begin...]"
 		val eB' = ModuleEnvironments.B.restrict(eB,ids)
 		val _ = chat "[restricting elaboration basis end...]"
-		    
+
 		val _ = chat "[finding tynames in elaboration basis begin...]"
 		val tynames_eB' = ModuleEnvironments.B.tynames eB'
 		val _ = chat "[finding tynames in elaboration basis end...]"
-		    
+
 		val _ = chat "[restricting opacity env begin...]"
 		val oe' = OpacityEnv.restrict(oe,(#funids ids,tynames_eB'))
 		val tynames_oe' = StatObject.Realisation.tynamesRng(OpacityEnv.rea_of oe')
@@ -397,7 +402,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 
 		val _ = chat "[restricting interpretation basis begin...]"
 		val iB' = IntBasis.restrict(iB,ids,tynames_oe')
-		val _ = chat "[restricting interpretation basis end...]"		   
+		val _ = chat "[restricting interpretation basis end...]"
 	    in (BASIS(infB,eB',oe',iB'),tynames)
 	    end
 
@@ -408,15 +413,15 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    in BASIS(infB,eB,oe,iB)
 	    end
 
-	fun domain(BASIS(_,eB,_,_)) : longids = ModuleEnvironments.B.domain eB 
+	fun domain(BASIS(_,eB,_,_)) : longids = ModuleEnvironments.B.domain eB
 
 	fun db_f s true = true
 	  | db_f s false = false before print ("Basis.eq:" ^ s ^ " false\n")
 
 	fun eq(BASIS(infB1,eB1,oe1,iB1), BASIS(infB2,eB2,oe2,iB2)) =
-	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso 
+	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso
 	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1)) andalso
-	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso 
+	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso
 	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
@@ -424,7 +429,7 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
 			    OpacityEnv.layout rea, IntBasis.layout intB]}
 
-	fun closure (B': Basis, B: Basis) : Basis = 
+	fun closure (B': Basis, B: Basis) : Basis =
 	    (* closure_B'(B) : the closure of B w.r.t. B' *)
 (*was:
 	    let val dom = domain B
@@ -441,10 +446,10 @@ functor ManagerObjects0(structure Execution : EXECUTION)
                        print "\nB = \n";
                        PP.printTree (layout B);
                        print "\n")
-                     else ()                
+                     else ()
 *)
 		val dom = domain B
-		fun subtractPredefinedTynames tns = 
+		fun subtractPredefinedTynames tns =
 		    TyName.Set.difference tns (TyName.Set.fromList TyName.tynamesPredefined)
 		val tynames_eB = subtractPredefinedTynames(ModuleEnvironments.B.tynames eB)
 		val oe1 = OpacityEnv.plus(oe',oe)
@@ -457,43 +462,43 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    in
 		BASIS(infB,eB,oe2,iBclosed)
 	    end
-	  
-	fun initial() = BASIS (InfixBasis.emptyB, 
-			       ModuleEnvironments.B.initial(), 
-			       OpacityEnv.initial, 
+
+	fun initial() = BASIS (InfixBasis.emptyB,
+			       ModuleEnvironments.B.initial(),
+			       OpacityEnv.initial,
 			       IntBasis.initial())
 	val _ = app Name.mk_rigid (!Name.bucket)
 
 	val pu =
 	    Pickle.comment "MO.Basis"
 	    (Pickle.convert (BASIS, fn BASIS a => a)
-	     (Pickle.tup4Gen0(InfixBasis.pu, 
-			      Pickle.comment "ModuleEnvironments.B.pu" ModuleEnvironments.B.pu, 
-			      Pickle.comment "OpacityEnv.pu" OpacityEnv.pu, 
+	     (Pickle.tup4Gen0(InfixBasis.pu,
+			      Pickle.comment "ModuleEnvironments.B.pu" ModuleEnvironments.B.pu,
+			      Pickle.comment "OpacityEnv.pu" OpacityEnv.pu,
 			      IntBasis.pu)))
 
 	type Basis0 = InfixBasis * ElabBasis
 	val pu_Basis0 =
 	    Pickle.pairGen(InfixBasis.pu, ModuleEnvironments.B.pu)
-	fun plusBasis0 ((ib,eb),(ib',eb')) = 
+	fun plusBasis0 ((ib,eb),(ib',eb')) =
 	    (InfixBasis.compose(ib,ib'), ModuleEnvironments.B.plus(eb,eb'))
-	fun initialBasis0() = 
+	fun initialBasis0() =
 	    (InfixBasis.emptyB, ModuleEnvironments.B.initial())
 	fun matchBasis0 ((infB,eB), (infB0,eB0)) =
 	    let val _ = ModuleEnvironments.B.match(eB,eB0)
 	    in (infB,eB)
 	    end
 	fun eqBasis0((infB1,eB1), (infB2,eB2)) =
-	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso 
+	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso
 	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1))
 
 	type Basis1 = opaq_env * IntBasis
 	val pu_Basis1 =
 	    Pickle.pairGen(OpacityEnv.pu, IntBasis.pu)
-	fun plusBasis1((oe,ib),(oe',ib')) = 
+	fun plusBasis1((oe,ib),(oe',ib')) =
 	    (OpacityEnv.plus(oe,oe'),
 	     IntBasis.plus(ib,ib'))
-	fun initialBasis1() = (OpacityEnv.initial, 
+	fun initialBasis1() = (OpacityEnv.initial,
 			       IntBasis.initial())
 	fun matchBasis1 ((oe,iB), (oe0,iB0)) =
 	    let val _ = OpacityEnv.match(oe,oe0)
@@ -501,11 +506,11 @@ functor ManagerObjects0(structure Execution : EXECUTION)
 	    in (oe,iB)
 	    end
 	fun eqBasis1((oe1,iB1), (oe2,iB2)) =
-	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso 
+	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso
 	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
       end
 
     type name = Name.name
-    
+
   end

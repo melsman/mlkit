@@ -15,8 +15,8 @@ structure Flags: FLAGS =
 
         (a) declare a new boolean reference, r
         (b) add r to the menu (with a menu text) at an appropriate place
-        (c) add r to the `Adding initial entries' section below, together with 
-	    a search key (a string), which can be used by the modules that 
+        (c) add r to the `Adding initial entries' section below, together with
+	    a search key (a string), which can be used by the modules that
             want to access the flag.
         (d) recompile this functor and the functor which uses the new flag
 
@@ -24,13 +24,13 @@ structure Flags: FLAGS =
 
 
     fun has_sml_source_ext (s: string) :bool =
-	case s of 
+	case s of
 	    "sml" => true
 	  | "sig" => true
 	  | _ => false
 
     val install_dir = ref "You_did_not_set_path_to_install_dir"
-     
+
     (* Pretty Printing *)
 
     val raggedRight = PrettyPrint.raggedRight
@@ -96,7 +96,7 @@ structure Flags: FLAGS =
       fun warn report = warnings := report :: !warnings
       val warn_string = warn o Report.line
 
-      fun report_warnings () = 
+      fun report_warnings () =
 	    (case !warnings of
 	       [] =>  ()
 	     | reports =>
@@ -114,7 +114,7 @@ structure Flags: FLAGS =
 
 
     (* -----------------------------------
-     *         Parse functions 
+     *         Parse functions
      * ----------------------------------- *)
 
     type ('a, 'b) reader = ('a, 'b) StringCvt.reader
@@ -133,7 +133,7 @@ structure Flags: FLAGS =
     fun getc [] = NONE
       | getc (c::cs) = SOME(c,cs)
 
-           
+
           (**************************************************)
           (*           structure Directory                  *)
           (*                                                *)
@@ -142,30 +142,30 @@ structure Flags: FLAGS =
 	  (* etc. Also, readScript is here.                 *)
           (**************************************************)
 
-    type bentry = {long: string,           (* long option for use with mlkit command 
+    type bentry = {long: string,           (* long option for use with mlkit command
 					    *   using `--', script files, and internally
-					    *   in the mlkit to lookup the current setting 
+					    *   in the mlkit to lookup the current setting
 					    *   during execution. *)
 		   short: string option,   (* short option used in commands with - *)
 		   menu: string list,      (* entry::path; nil means no-show*)
 		   item: bool ref,         (* the actual flag *)
-		   neg: bool,              (* should negated flags be introduced? 
+		   neg: bool,              (* should negated flags be introduced?
 					    *   -no_opt,  --no_optimiser *)
-		   desc: string}           (* description string; format manually 
+		   desc: string}           (* description string; format manually
 					    *   with new-lines *)
 
-    type baentry = {long: string,           (* long option for use with mlkit command 
+    type baentry = {long: string,           (* long option for use with mlkit command
 					     *   using `--', script files, and internally
-					     *   in the mlkit to lookup the current setting 
+					     *   in the mlkit to lookup the current setting
 					     *   during execution. *)
 		    short: string option,   (* short option used in commands with - *)
 		    menu: string list,      (* entry::path; nil means no-show*)
 		    item: bool ref,         (* the actual flag *)
 		    on: unit->unit,         (* function to apply to turn entry on *)
 		    off: unit->unit,        (* function to apply to turn entry off;
-					     * a toggling function can be made from 
+					     * a toggling function can be made from
 					     * these two and the item. *)
-		    desc: string}           (* description string; format manually 
+		    desc: string}           (* description string; format manually
 					     *   with new-lines *)
 
     type 'a entry = {long: string,
@@ -182,8 +182,8 @@ structure Directory : sig
 			val int_entry           : int entry -> (unit -> int)
 			val bool_action_entry   : baentry -> unit
 
-			val is_on               : string -> bool 
-			val is_on0              : string -> unit -> bool 
+			val is_on               : string -> bool
+			val is_on0              : string -> unit -> bool
 			val turn_on             : string -> unit
 			val turn_off            : string -> unit
 			val add_string_entry    : string * string ref -> (unit -> string)
@@ -208,14 +208,14 @@ structure Directory : sig
 
 			(* help_all()  provides help on all options in the directory *)
 			val help_all : unit -> string
-      val getOptions  : unit -> 
+      val getOptions  : unit ->
                           {desc : string, long : string list, short : string list,
                            kind : string option, default : string option} list
 
 		      end =
 struct
 
-    datatype entry0 = INT_ENTRY of int entry 
+    datatype entry0 = INT_ENTRY of int entry
                     | BOOL_ENTRY of bentry
                     | BOOLA_ENTRY of baentry        (* action entry *)
                     | STRING_ENTRY of string entry
@@ -228,10 +228,10 @@ struct
     val dir : entry0 M.map ref = ref M.empty
 
     fun bool_entry (e:bentry) : unit -> bool =
-      case M.lookup (!dir) (#long e) 
+      case M.lookup (!dir) (#long e)
 	of SOME _ => die ("bool_entry: entry " ^ (#long e) ^ " already in directory")
 	 | NONE => (dir := M.add(#long e, BOOL_ENTRY e,
-				 case #short e of 
+				 case #short e of
 				     SOME s => M.add(s, BOOL_ENTRY e, !dir)
 				   | NONE => !dir);
 		    let val r = #item e
@@ -239,7 +239,7 @@ struct
 		    end)
 
     fun bool_action_entry (e:baentry) : unit =
-      case M.lookup (!dir) (#long e) 
+      case M.lookup (!dir) (#long e)
 	of SOME _ => die ("bool_action_entry: entry " ^ (#long e) ^ " already in directory")
 	 | NONE => dir := M.add(#long e, BOOLA_ENTRY e,
 				case #short e
@@ -247,10 +247,10 @@ struct
 				   | NONE => !dir)
 
     fun string_entry (e:string entry) : unit -> string =
-      case M.lookup (!dir) (#long e) 
+      case M.lookup (!dir) (#long e)
 	of SOME _ => die ("string_entry: entry " ^ (#long e) ^ " already in directory")
 	 | NONE => (dir := M.add(#long e, STRING_ENTRY e,
-				 case #short e of 
+				 case #short e of
 				     SOME s => M.add(s, STRING_ENTRY e, !dir)
 				   | NONE => !dir);
 		    let val r = #item e
@@ -258,10 +258,10 @@ struct
 		    end)
 
     fun stringlist_entry (e:string list entry) : unit -> string list =
-      case M.lookup (!dir) (#long e) 
+      case M.lookup (!dir) (#long e)
 	of SOME _ => die ("stringlist_entry: entry " ^ (#long e) ^ " already in directory")
 	 | NONE => (dir := M.add(#long e, STRINGLIST_ENTRY e,
-				 case #short e of 
+				 case #short e of
 				     SOME s => M.add(s, STRINGLIST_ENTRY e, !dir)
 				   | NONE => !dir);
 		    let val r = #item e
@@ -269,10 +269,10 @@ struct
 		    end)
 
     fun int_entry (e:int entry) : unit -> int =
-      case M.lookup (!dir) (#long e) 
+      case M.lookup (!dir) (#long e)
 	of SOME _ => die ("int_entry: entry " ^ (#long e) ^ " already in directory")
-	 | NONE => (dir := M.add(#long e, INT_ENTRY e, 
-				 case #short e of 
+	 | NONE => (dir := M.add(#long e, INT_ENTRY e,
+				 case #short e of
 				     SOME s => M.add(s, INT_ENTRY e, !dir)
 				   | NONE => !dir);
 		    let val r = #item e
@@ -307,7 +307,7 @@ struct
 
   val get_stringlist_entry = ! o lookup_stringlist_entry
 
-  fun is_on0 (key: string) : unit -> bool = 
+  fun is_on0 (key: string) : unit -> bool =
     case M.lookup (!dir) key
       of SOME (BOOL_ENTRY {item,...}) => (fn () => !item)
        | SOME (BOOLA_ENTRY {item,...}) => (fn () => !item)
@@ -316,31 +316,31 @@ struct
 
   fun is_on k = is_on0 k ()
 
-  fun turn_on (key: string) : unit = 
+  fun turn_on (key: string) : unit =
     case M.lookup (!dir) key
       of SOME (BOOL_ENTRY e) => #item e := true
        | SOME (BOOLA_ENTRY e) => #on e ()
        | SOME _ => raise Fail ("option " ^ key ^ " is of wrong kind")
        | NONE => raise Fail ("invalid option: " ^ key)
 
-  fun turn_off (key: string) : unit = 
+  fun turn_off (key: string) : unit =
     case M.lookup (!dir) key
       of SOME (BOOL_ENTRY e) => #item e := false
        | SOME (BOOLA_ENTRY e) => #off e ()
        | SOME _ => die ("turn_off: entry " ^ key ^ " is of wrong kind")
        | NONE => die ("turn_off: no entry " ^ key ^ " in directory")
 
-  fun add_string_entry (long, item) = 
-    string_entry {long=long, short=NONE, desc="", item=item, menu=nil} 
+  fun add_string_entry (long, item) =
+    string_entry {long=long, short=NONE, desc="", item=item, menu=nil}
 
-  fun add_stringlist_entry (long, item) = 
-    stringlist_entry {long=long, short=NONE, desc="", item=item, menu=nil} 
+  fun add_stringlist_entry (long, item) =
+    stringlist_entry {long=long, short=NONE, desc="", item=item, menu=nil}
 
-  fun add_int_entry (long, item) = 
-    int_entry {long=long, short=NONE, desc="", item=item, menu=nil} 
+  fun add_int_entry (long, item) =
+    int_entry {long=long, short=NONE, desc="", item=item, menu=nil}
 
-  fun add_bool_entry (long, item) = 
-    bool_entry {long=long, short=NONE, desc="", item=item, menu=nil, neg=false} 
+  fun add_bool_entry (long, item) =
+    bool_entry {long=long, short=NONE, desc="", item=item, menu=nil, neg=false}
 
   fun lookup_notnull_menu dir key =
     let fun ok (BOOL_ENTRY{menu=nil,...}) = false
@@ -377,58 +377,58 @@ struct
   fun read_options  {nullary:(string*(unit->unit))list,
 		     unary:(string*(string->unit))list,
 		     options: string list} : string list =
-    let	
+    let
       fun loop nil = nil
 	| loop (all as s::ss) =
 	case opt s
-	  of SOME key => 
+	  of SOME key =>
 	    (case negation key
 	       of SOME no_key =>
 		 (case lookup_notnull_menu (!dir) no_key
-		    of SOME (BOOL_ENTRY e) => 
+		    of SOME (BOOL_ENTRY e) =>
 		      if #neg e then (#item e := false; loop ss)
 		      else raise Fail ("negation not allowed on option: " ^ no_key)
 		     | SOME (BOOLA_ENTRY e) => (#off e (); loop ss)
 		     | SOME _ => raise Fail ("negation not allowed on option: " ^ no_key)
 		     | NONE => raise Fail ("unknown option: " ^ s))
-		| NONE => 
+		| NONE =>
 		 (case lookup_notnull_menu (!dir) key
 		    of SOME (BOOL_ENTRY e) => (#item e := true; loop ss)
 		     | SOME (BOOLA_ENTRY e) => (#on e (); loop ss)
-		     | SOME (STRING_ENTRY e) => 
+		     | SOME (STRING_ENTRY e) =>
 		      (case ss
 			 of s::ss => (#item e := s; loop ss)
 			  | _ => raise Fail ("missing argument to " ^ s))
-		     | SOME (STRINGLIST_ENTRY e) => 
+		     | SOME (STRINGLIST_ENTRY e) =>
 			   let fun is_opt s = (String.sub(s,0) = #"-") handle _ => false
-			       fun readToOpt (all as [s],acc) = 
+			       fun readToOpt (all as [s],acc) =
 				   if is_opt s then (rev acc, all)
 				   else (case OS.Path.ext s of
 					     SOME ext => if has_sml_source_ext ext then (rev acc, all)
 							 else (rev (s::acc),nil)
 					   | _ => (rev (s::acc),nil))
-				 | readToOpt (all as s::ss,acc) = 
+				 | readToOpt (all as s::ss,acc) =
 				       if is_opt s then (rev acc,all)
 				       else readToOpt(ss,s::acc)
 				 | readToOpt (nil,acc) = (rev acc,nil)
 			       val (args,rest) = readToOpt (ss,nil)
 			   in (#item e := args; loop rest)
 			   end
-		     | SOME (INT_ENTRY e) => 
+		     | SOME (INT_ENTRY e) =>
 			 (case ss
-			    of s::ss => 
+			    of s::ss =>
 			      (case Int.fromString s
 				 of SOME i => (#item e := i; loop ss)
 				  | NONE => raise Fail ("expecting integer argument to " ^ s))
 			     | _ => raise Fail ("missing argument to " ^ s))
-		     | NONE => 
-			    let 
+		     | NONE =>
+			    let
 			      fun try_nullary exn =
 				case lookup_key key nullary
 				  of SOME f => (f(); loop ss)
 				   | NONE => raise exn
 			    in case lookup_key key unary
-				 of SOME f => 
+				 of SOME f =>
 				   (case ss
 				      of s::ss => (f s; loop ss)
 				       | nil => try_nullary (Fail("missing argument to " ^ s)))
@@ -442,7 +442,7 @@ struct
 
   (* help key  provides help information for the key *)
   fun help' (key: string) =
-    let 
+    let
   fun optToList NONE = []
     | optToList (SOME a) = [a]
 
@@ -454,29 +454,29 @@ struct
   fun negationNew (e:bentry, kind) =
       if not(#neg e) then []
       else [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-             kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}] 
-           
+             kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}]
+
   fun negationNew' (e:baentry, kind) =
       [{long = ["no_" ^ (#long e)], short = map (fn x => "no_" ^ x) (optToList (#short e)),
-        kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}] 
+        kind = kind, default = NONE, desc = "Opposite of --" ^ #long e ^ opt(#short e) ^ "."}]
 
     in
-      (case lookup_notnull_menu (!dir) key 
+      (case lookup_notnull_menu (!dir) key
 	 of SOME (BOOL_ENTRY e) =>
-     {long = [#long e], short = optToList (#short e), kind = NONE, 
+     {long = [#long e], short = optToList (#short e), kind = NONE,
       default = SOME (bitem (!(#item e))), desc = #desc e} ::
       (negationNew (e,NONE))
-	  | SOME (BOOLA_ENTRY e) => 
+	  | SOME (BOOLA_ENTRY e) =>
      {long = [#long e], short = optToList (#short e), default = SOME (bitem (!(#item e))),
       desc = #desc e, kind = NONE} ::
       negationNew' (e,NONE)
-	  | SOME (STRING_ENTRY e) => 
+	  | SOME (STRING_ENTRY e) =>
      {long = [#long e], short = optToList (#short e),
       default = let val a = (String.toString(!(#item e)))
                 in if a = "" then NONE else SOME a
                 end,
       desc = #desc e, kind = SOME "S"} :: []
-	  | SOME (STRINGLIST_ENTRY e) => 
+	  | SOME (STRINGLIST_ENTRY e) =>
      {long = [#long e], short = optToList (#short e), default = NONE,
       desc = #desc e, kind = SOME "S"} :: []
 	  | SOME (INT_ENTRY e) =>
@@ -488,7 +488,7 @@ struct
   fun print_help tail x =
     let
       val width = 60
-      fun indent s = 
+      fun indent s =
         map (fn s => "     " ^ s ^ "\n") (String.tokens (fn c => c = #"\n") s)
 
       fun addBetween _ [] = []
@@ -498,12 +498,12 @@ struct
       fun pkind NONE = ""
         | pkind (SOME k) = " " ^ k
 
-      fun p {long,short,kind,default,desc} = 
+      fun p {long,short,kind,default,desc} =
         let
           val name = String.concat (
-                      (addBetween ", " 
+                      (addBetween ", "
                         (List.map (fn x => "--" ^ x ^ (pkind kind)) long)) @
-                      (List.map (fn x => ", -" ^ x ^ (pkind kind)) short) @ [" "]) 
+                      (List.map (fn x => ", -" ^ x ^ (pkind kind)) short) @ [" "])
           val firstline = case default
                           of NONE => name ^ "\n"
                            | SOME default => StringCvt.padRight #" " (width - (String.size default)) name ^ "(" ^ default ^ ")\n"
@@ -514,7 +514,7 @@ struct
     end
 
     fun help x = print_help "" (help' x)
-	
+
   (* help_all()  provides help on all options in the directory *)
   fun help_all' () =
     let val dom = rev(M.dom (!dir))
@@ -536,11 +536,11 @@ struct
     fun cmp c ([],[]) = EQUAL
       | cmp c ([],_) = LESS
       | cmp c (_,[]) = GREATER
-      | cmp c (x::xs,y::ys) = case c (x,y) 
+      | cmp c (x::xs,y::ys) = case c (x,y)
                               of EQUAL => cmp c (xs,ys)
                                | GREATER => GREATER
                                | LESS => LESS
-    in Listsort.sort 
+    in Listsort.sort
         (fn ({long = l1,...},{long = l2,...}) => cmp String.compare (l1,l2))
         (foldl add [] dom)
     end
@@ -552,27 +552,27 @@ end (* Directory *)
 
 (**structure Menu = Menu(val help_topic = Directory.help)**)
 
-fun add_bool_entry e = 
+fun add_bool_entry e =
   case #menu e
     of nil => Directory.bool_entry e
      | path => ((**Menu.add_flag_to_menu(#long e, path, #item e); **)
 		Directory.bool_entry e)
 
-fun add_string_entry e = 
+fun add_string_entry e =
   case #menu e
-    of nil => Directory.string_entry e 
+    of nil => Directory.string_entry e
      | path => ((**Menu.add_string_to_menu(#long e, path, #item e);**)
 		Directory.string_entry e)
 
-fun add_stringlist_entry e = 
-  case #menu e of 
-      nil => Directory.stringlist_entry e 
+fun add_stringlist_entry e =
+  case #menu e of
+      nil => Directory.stringlist_entry e
     | path => ( (* Menu.add_string_to_menu(#long e, path, #item e); *)
 	       Directory.stringlist_entry e)
 
-fun add_int_entry e = 
+fun add_int_entry e =
   case #menu e
-    of nil => Directory.int_entry e 
+    of nil => Directory.int_entry e
      | path => ((**Menu.add_int_to_menu(#long e, path, #item e);**)
 		Directory.int_entry e)
 
@@ -599,12 +599,12 @@ fun add_bool_action_entry e =
   (*1. Printing of intermediate forms*)
 
 local
-  fun add (l, sh, s, r, desc) : unit = 
+  fun add (l, sh, s, r, desc) : unit =
       (add_bool_entry {long=l, short=sh, menu=["Printing of intermediate forms",s],
-		       item=r, neg=false, desc=desc}; 
+		       item=r, neg=false, desc=desc};
        ())
 in
-  val _ = add  ("print_opt_lambda_expression", SOME "Pole", "print optimised lambda expression", 
+  val _ = add  ("print_opt_lambda_expression", SOME "Pole", "print optimised lambda expression",
 		print_opt_lambda_expression, "Print Lambda Expression after optimisation.")
 end
 
@@ -627,16 +627,16 @@ in
 	 \expressions and types.")
 end
 
-val _ = add_int_entry {long="width",short=SOME "w", menu=["Layout", "text width in pretty-printing"], 
+val _ = add_int_entry {long="width",short=SOME "w", menu=["Layout", "text width in pretty-printing"],
 		       item=colwidth,
 		       desc="Column width used when pretty printing intermediate code."}
 
   (*3. Control*)
 
 val recompile_basislib = ref false
-val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch", 
+val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch",
 			menu=["Control", "recompile basis library"],
-			item=recompile_basislib,neg=false, 
+			item=recompile_basislib,neg=false,
 			desc=
 			"Recompile basis library from scratch. This option\n\
 			 \is useful together with other options that control\n\
@@ -672,31 +672,37 @@ val _ = add_bool_entry {long="tag_values", short=SOME"tag", item=tag_values,
 val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
 			menu=["Control", "tag pairs"], neg=false,
 			desc=
-			"Use a tagged representation of pairs for garbage\n\			
+			"Use a tagged representation of pairs for garbage\n\
 			 \collection. Garbage collection works fine with a\n\
 			 \tag-free representation of pairs, so this option\n\
 			 \is here for measurement purposes."}
 
+val _ = add_bool_entry {long="values_64bit", short=NONE, item=ref true,
+			menu=["Control", "values 64bit"], neg=false,
+			desc=
+			"Support 64-bit values. Should be enabled for \n\
+                        \backends supporting 64-bit integers and words."}
+
 local
   val gc = ref false
   val gengc = ref false
-  fun off() = (gc := false; 
+  fun off() = (gc := false;
 	       preserve_tail_calls := false;
 	       dangling_pointers := true;
-               Directory.turn_off "aggresive_opt";
-	       tag_values := false) 
-  fun on() = (gc := true; 
-	      preserve_tail_calls := true;	      
+               Directory.turn_on "aggresive_opt";
+	       tag_values := false)
+  fun on() = (gc := true;
+	      preserve_tail_calls := true;
 	      dangling_pointers := false;
               Directory.turn_on "aggresive_opt";
-	      tag_values := true) 
+	      tag_values := true)
   fun off_gengc() = (off(); (* We also turn gc off *)
 		     gengc := false)
   fun on_gengc() = (on(); (* Gen GC needs gc to be turned on as well *)
-		    gengc := true) 
+		    gengc := true)
 in
   val _ = add_bool_action_entry
-    {long="garbage_collection", menu=["Control", "garbage collection"], 
+    {long="garbage_collection", menu=["Control", "garbage collection"],
      item=gc, on=on, off=off, short=SOME "gc",
      desc="Enable garbage collection. When enabled, regions are\n\
       \garbage collected during execution of the program. When\n\
@@ -710,7 +716,7 @@ in
       \collection implicitly enables the preservation of tail\n\
       \calls (see the option ``preserve_tail_calls''.)"}
   val _ = add_bool_action_entry
-    {long="generational_garbage_collection", menu=["Control", "generational garbage collection"], 
+    {long="generational_garbage_collection", menu=["Control", "generational garbage collection"],
      item=gengc, on=on_gengc, off=off_gengc, short=SOME "gengc",
      desc="Enable generational garbage collection. Same as option\n\
           \garbage collection except that two generations are used\n\
@@ -724,7 +730,7 @@ in
   val _ = app (add false)
   [
 (*
-   ("all_multiplicities_infinite", NONE, "all multiplicities infinite (for POPL 96)", 
+   ("all_multiplicities_infinite", NONE, "all multiplicities infinite (for POPL 96)",
     all_multiplicities_infinite,
     "Use only infinite regions. That is, store all values in\n\
      \infinite regions, which do not reside on the stack, but\n\
@@ -774,12 +780,12 @@ val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))
 
   (*4. File menu*)
 
-val _ = add_bool_entry 
-     {long="log_to_file", short=NONE, menu=["File", "Log to file"], 
+val _ = add_bool_entry
+     {long="log_to_file", short=NONE, menu=["File", "Log to file"],
       neg=false, item=log_to_file, desc="Log to files instead of stdout."}
 
-val _ = add_string_entry 
-     {long="SML_LIB", short=NONE, menu=["File", "installation directory"], 
+val _ = add_string_entry
+     {long="SML_LIB", short=NONE, menu=["File", "installation directory"],
       item=install_dir,
       desc=
        "Installation directory for the MLKit standard library. For normal\n\
@@ -826,7 +832,7 @@ local
     fun add p n (l,sh,s,r,d) : unit = (add_bool_entry {long=l, short=sh, menu=p @[s],
 						       item=r, neg=n, desc=d}; ())
 in
-  val _ = app (add ["Debug", "Lambda"] true) 
+  val _ = app (add ["Debug", "Lambda"] true)
   [
    ("type_check_lambda", NONE, "type check lambda expressions", type_check_lambda,
     "Type check lambda expression prior to performing region\n\
@@ -836,7 +842,7 @@ in
      \in the compiler.")
    ]
 
-  val _ = app (add ["Debug", "Manager"] false) 
+  val _ = app (add ["Debug", "Manager"] false)
   [
    ("debug_linking", NONE, "debug_linking", ref false,
     "Debug linking of target code by showing which object\n\
@@ -849,7 +855,7 @@ in
      \for which the program unit depends upon has changed.")
    ]
 
-  val _ = app (add ["Debug"] false) 
+  val _ = app (add ["Debug"] false)
   [
    ("chat", SOME "verbose", "chat", chat,
     "Print a message for each compilation step in the compiler."),
@@ -868,8 +874,8 @@ end
   val _ = add_bool_entry0 ("enhanced_atbot_analysis", enhanced_atbot_analysis)
   val _ = add_bool_entry0 ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
 
-  val _ = add_bool_entry 
-      {long="compile_only", short=SOME "c", 
+  val _ = add_bool_entry
+      {long="compile_only", short=SOME "c",
        menu=["Control","compile only"],
        item=ref false, neg=false, desc=
        "Compile only. Suppresses generation of executable"}
@@ -888,18 +894,18 @@ val read_options = Directory.read_options
 val help = Directory.help
 val help_all = Directory.help_all
 type options = {desc : string, long : string list, short : string list,
-                kind : string option, default : string option} 
+                kind : string option, default : string option}
 val getOptions = Directory.getOptions : unit -> options list
 
 val SMLserver = ref false
 
-datatype compiler_mode = 
+datatype compiler_mode =
     LINK_MODE of string list  (* lnk-files *)
   | LOAD_BASES of string list   (* eb-files to be loaded; nil if normal *)
-    
+
 val compiler_mode : compiler_mode ref = ref (LOAD_BASES nil)
-    
-structure Statistics = 
+
+structure Statistics =
   struct
     val no_dangling_pointers_changes = ref 0
     val no_dangling_pointers_changes_total = ref 0
@@ -907,9 +913,9 @@ structure Statistics =
 		   no_dangling_pointers_changes_total := 0)
   end
 
-end (* functor Flags *)  
-   
-  
+end (* functor Flags *)
+
+
 
 structure profRegInf =
   struct

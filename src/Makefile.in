@@ -82,7 +82,7 @@ smlserver_kit: basics mlbmake mllex-yacc
 	$(INSTALL) -p smlserverc $(BINDIR)
 
 .PHONY: barry
-barry: basics mllex-yacc
+barry: basics mlbmake mllex-yacc
 	$(MLCOMP) -output barry Compiler/barry.mlb
 	$(INSTALL) -p barry $(BINDIR)
 

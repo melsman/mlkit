@@ -55,6 +55,29 @@ __div_int31(ssize_t x0, ssize_t y0, uintptr_t exn)                   /* ML */
 }
 
 ssize_t
+__div_int63(ssize_t x0, ssize_t y0, uintptr_t exn)                   /* ML */
+{
+  long int x = (long int)x0;
+  long int y = (long int)y0;
+  if (y == 1)
+    {
+      raise_exn(exn);
+      return 0;                         // never reached
+    }
+  if ( y == -1 && x == ( 2 * (-4611686018427387904) + 1 ) )    // = 2 * Int63.minInt + 1
+    {
+      raise_exn((uintptr_t)&exn_OVERFLOW);
+      return 0;                         // never reached
+    }
+  if (x == 1) return 1;
+  if (x < 1 && y > 1)
+    return (2*((x+1)/(y-1))-1);
+  else if (x > 1 && y < 1)
+    return (2*((x-3)/(y-1))-1);
+  else return (2*((x-1)/(y-1))+1);
+}
+
+ssize_t
 __div_int32ub(ssize_t x0, ssize_t y0, uintptr_t exn)                 /* ML */
 {
   int x = (int)x0;
@@ -65,6 +88,28 @@ __div_int32ub(ssize_t x0, ssize_t y0, uintptr_t exn)                 /* ML */
       return 0;                                // never reached
     }
   if ( y == -1 && x == (-2147483647 - 1) )
+    {
+      raise_exn((uintptr_t)&exn_OVERFLOW);
+      return 0;                                // never reached
+    }
+  if (x < 0 && y > 0)
+    return ((x + 1) / y) - 1;
+  else if (x > 0 && y < 0)
+    return ((x - 1) / y) - 1;
+  else return x / y;
+}
+
+ssize_t
+__div_int64ub(ssize_t x0, ssize_t y0, uintptr_t exn)                 /* ML */
+{
+  long int x = (long int)x0;
+  long int y = (long int)y0;
+  if (y == 0)
+    {
+      raise_exn(exn);
+      return 0;                                // never reached
+    }
+  if ( y == -1 && x == (-9223372036854775807 - 1) )
     {
       raise_exn((uintptr_t)&exn_OVERFLOW);
       return 0;                                // never reached
@@ -90,6 +135,19 @@ __div_word32ub(size_t x0, size_t y0, uintptr_t exn)          /* ML */
 }
 
 size_t
+__div_word64ub(size_t x0, size_t y0, uintptr_t exn)          /* ML */
+{
+  unsigned long int x = (unsigned long int)x0;
+  unsigned long int y = (unsigned long int)y0;
+  if ( y == 0 )
+    {
+      raise_exn(exn);
+      return 0;                               // never reached
+    }
+  return (x / y);
+}
+
+size_t
 __div_word31(size_t x, size_t y, uintptr_t exn)            /* ML */
 {
   unsigned int xC = i31_to_i32ub((unsigned int)x);
@@ -103,11 +161,42 @@ __div_word31(size_t x, size_t y, uintptr_t exn)            /* ML */
   return i32ub_to_i31(xC / yC);
 }
 
+size_t
+__div_word63(size_t x, size_t y, uintptr_t exn)            /* ML */
+{
+  unsigned long int xC = i63_to_i64ub((unsigned long int)x);
+  unsigned long int yC = i63_to_i64ub((unsigned long int)y);
+
+  if ( yC == 0 )
+    {
+      raise_exn(exn);
+      return 0;                               // never reached
+    }
+  return i64ub_to_i63(xC / yC);
+}
+
 ssize_t
 __mod_int31(ssize_t x0ML, ssize_t y0ML, uintptr_t exn)
 {
   int xML = (int)x0ML;
   int yML = (int)y0ML;
+
+  if ( yML == 1 )
+    {
+      raise_exn(exn);
+      return 0;                               // never reached
+    }
+  if ((xML-1)%(yML-1) == 0 || (xML>1 && yML>1) || (xML<1 && yML<1))
+    return ((xML-1)%(yML-1))+1;
+  else
+    return ((xML-1)%(yML-1))+yML;
+}
+
+ssize_t
+__mod_int63(ssize_t x0ML, ssize_t y0ML, uintptr_t exn)
+{
+  long int xML = (long int)x0ML;
+  long int yML = (long int)y0ML;
 
   if ( yML == 1 )
     {
@@ -137,11 +226,41 @@ __mod_int32ub(ssize_t x0, ssize_t y0, uintptr_t exn)
   return (x % y) + y;
 }
 
+ssize_t
+__mod_int64ub(ssize_t x0, ssize_t y0, uintptr_t exn)
+{
+  long int x = (long int)x0;
+  long int y = (long int)y0;
+  if ( y == 0 )
+    {
+      raise_exn(exn);
+      return 0;                               // never reached
+    }
+  if ( (x > 0 && y > 0) || (x < 0 && y < 0) || (x % y == 0) )
+    {
+      return x % y;
+    }
+  return (x % y) + y;
+}
+
 size_t
 __mod_word32ub(size_t x0, size_t y0, uintptr_t exn)
 {
   unsigned int x = (unsigned int)x0;
   unsigned int y = (unsigned int)y0;
+  if ( y == 0 )
+    {
+      raise_exn(exn);
+      return 0;                              // never reached
+    }
+  return (x % y);
+}
+
+size_t
+__mod_word64ub(size_t x0, size_t y0, uintptr_t exn)
+{
+  unsigned long int x = (unsigned long int)x0;
+  unsigned long int y = (unsigned long int)y0;
   if ( y == 0 )
     {
       raise_exn(exn);
@@ -164,10 +283,30 @@ __mod_word31(size_t x, size_t y, uintptr_t exn)
   return i32ub_to_i31(xC % yC);
 }
 
+size_t
+__mod_word63(size_t x, size_t y, uintptr_t exn)
+{
+  unsigned long int xC = i63_to_i64ub((unsigned long int)x);
+  unsigned long int yC = i63_to_i64ub((unsigned long int)y);
+
+  if ( yC == 0 )
+    {
+      raise_exn(exn);
+      return 0;                              // never reached
+    }
+  return i64ub_to_i63(xC % yC);
+}
+
 ssize_t
 __quot_int32ub(ssize_t xML, ssize_t yML)
 {
   return ((int)xML)/((int)yML);
+}
+
+ssize_t
+__quot_int64ub(ssize_t xML, ssize_t yML)
+{
+  return ((long int)xML)/((long int)yML);
 }
 
 ssize_t
@@ -181,9 +320,25 @@ __quot_int31(ssize_t xML, ssize_t yML)
 }
 
 ssize_t
+__quot_int63(ssize_t xML, ssize_t yML)
+{
+  long int xC,yC;
+
+  xC = i63_to_i64ub((long int)xML);
+  yC = i63_to_i64ub((long int)yML);
+  return i64ub_to_i63(xC / yC);
+}
+
+ssize_t
 __rem_int32ub(ssize_t xML, ssize_t yML)
 {
   return ((int)xML) % ((int)yML);
+}
+
+ssize_t
+__rem_int64ub(ssize_t xML, ssize_t yML)
+{
+  return ((long int)xML) % ((long int)yML);
 }
 
 ssize_t
@@ -195,6 +350,17 @@ __rem_int31(ssize_t xML, ssize_t yML)
   yC = i31_to_i32ub((int)yML);
 
   return i32ub_to_i31(xC % yC);
+}
+
+ssize_t
+__rem_int63(ssize_t xML, ssize_t yML)
+{
+  long int xC,yC;
+
+  xC = i63_to_i64ub((long int)xML);
+  yC = i63_to_i64ub((long int)yML);
+
+  return i64ub_to_i63(xC % yC);
 }
 
 #ifdef TAG_VALUES
@@ -249,13 +415,63 @@ __rem_int32b(size_t* b, size_t* x, size_t* y)
   return b;
 }
 
+size_t*
+__div_int64b(size_t* b, size_t* x, size_t* y, uintptr_t exn)
+{
+  get_i64b(b) = __div_int64ub(get_i64b(x), get_i64b(y), exn);
+  set_i64b_tag(b);
+  return b;
+}
+
+size_t*
+__div_word64b(size_t* b, size_t* x, size_t* y, uintptr_t exn)
+{
+  get_i64b(b) = __div_word64ub(get_i64b(x), get_i64b(y), exn);
+  set_i64b_tag(b);
+  return b;
+}
+
+size_t*
+__mod_int64b(size_t* b, size_t* x, size_t* y, uintptr_t exn)
+{
+  get_i64b(b) = __mod_int64ub(get_i64b(x), get_i64b(y), exn);
+  set_i64b_tag(b);
+  return b;
+}
+
+size_t*
+__mod_word64b(size_t* b, size_t* x, size_t* y, uintptr_t exn)
+{
+  get_i64b(b) = __mod_word64ub(get_i64b(x), get_i64b(y), exn);
+  set_i64b_tag(b);
+  return b;
+}
+
+// quot need not check for y being 0; this is checked for in Int64
+size_t*
+__quot_int64b(size_t* b, size_t* x, size_t* y)
+{
+  get_i64b(b) = __quot_int64ub(get_i64b(x), get_i64b(y));
+  set_i64b_tag(b);
+  return b;
+}
+
+// rem need not check for y being 0; this is checked for in Int64
+size_t*
+__rem_int64b(size_t* b, size_t* x, size_t* y)
+{
+  get_i64b(b) = __rem_int64ub(get_i64b(x), get_i64b(y));
+  set_i64b_tag(b);
+  return b;
+}
+
 #endif /*TAG_VALUES*/
 
 ssize_t
 realInt(ssize_t d, ssize_t x)
 {
   debug(printf("[realInt: d = %zu, x = %zu\n", d, x));
-  get_d(d) = (double) (convertIntToC((int)x));
+  get_d(d) = (double) (convertIntToC((long int)x));
   set_dtag(d);
   debug(printf("]\n"));
   return d;
@@ -273,11 +489,11 @@ divFloat(ssize_t d, ssize_t x, ssize_t y)
   return d;
 }
 
-ssize_t
+long int
 floorFloat(ssize_t f)
 {
   double r;
-  ssize_t i;
+  long int i;
 
   r = get_d(f);
   if( r >= 0.0 )
@@ -286,16 +502,16 @@ floorFloat(ssize_t f)
 	{
 	  raise_exn((uintptr_t)&exn_OVERFLOW);
 	}
-      return (convertIntToML((ssize_t) r));
+      return (convertIntToML((long int) r));
     }
   if( r < Min_Int_d )
     {
       raise_exn((uintptr_t)&exn_OVERFLOW);
     }
-  i = (ssize_t) r;
+  i = (long int) r;
   if( r < ((double) i) )
     {
-      i -= 1;
+      i -= 1L;
     }
   return convertIntToML(i);
 }

@@ -2,7 +2,7 @@
  Context, Definition 1997, fig. 10, p. 16.  And explicit
  tyvars, and constructor_map*)
 
-signature ENVIRONMENTS = 
+signature ENVIRONMENTS =
   sig
     (*types provided by this module:*)
     type VarEnv
@@ -24,7 +24,7 @@ signature ENVIRONMENTS =
     type realisation
     eqtype id
     type strid
-    type tycon = TyName.tycon 
+    type tycon = TyName.tycon
     type ExplicitTyVar
     type longid
     type longtycon
@@ -34,7 +34,7 @@ signature ENVIRONMENTS =
     type valbind (*syntactic class of valbinds*)
     type StringTree = TyName.Set.StringTree
     type Report
-      
+
 
     val ExplicitTyVarsTy : ty -> ExplicitTyVar EqSet.Set
     val unguarded_valbind : valbind -> ExplicitTyVar list
@@ -43,7 +43,7 @@ signature ENVIRONMENTS =
        yes, and they oughta be in DecGrammar instead of here.*)
 
 
-                       (*value environments*) 
+                       (*value environments*)
 
     structure VE :
       sig
@@ -73,7 +73,7 @@ signature ENVIRONMENTS =
 
 	val on                   : Substitution * VarEnv -> VarEnv
 	val tynames              : VarEnv -> TyName.Set.Set
-	val restrict             : VarEnv * id list -> VarEnv 
+	val restrict             : VarEnv * id list -> VarEnv
 	val close                : VarEnv -> VarEnv
 	val layout               : VarEnv -> StringTree
 	val report               : (id * range -> Report) * VarEnv -> Report
@@ -81,9 +81,9 @@ signature ENVIRONMENTS =
 
 	val pu                   : VarEnv Pickle.pu
       end (*VE*)
-    
 
-                        (*type structures*) 
+
+                        (*type structures*)
 
     structure TyStr :
       sig
@@ -98,7 +98,7 @@ signature ENVIRONMENTS =
 	val pu                   : TyStr Pickle.pu
       end (*TyStr*)
 
-    
+
                        (*type environments*)
 
     structure TE :
@@ -147,11 +147,13 @@ signature ENVIRONMENTS =
 
 
                           (*environments*)
-    
+
     structure E :
       sig
-	val mk                   : StrEnv * TyEnv * VarEnv -> Env
-	val un                   : Env -> StrEnv * TyEnv * VarEnv
+	val mk                   : StrEnv * TyEnv * VarEnv * RegVar.regvar list -> Env
+	val un                   : Env -> StrEnv * TyEnv * VarEnv * RegVar.regvar list
+        val from_R               : RegVar.regvar list -> Env
+        val to_R                 : Env -> RegVar.regvar list
 	val from_VE_and_TE       : (VarEnv * TyEnv) -> Env
 	val from_VE              : VarEnv -> Env
 	val to_VE                : Env -> VarEnv
@@ -176,12 +178,11 @@ signature ENVIRONMENTS =
 	val layout               : Env -> StringTree
 
 	(* Support for recompilation *)
-	val restrict             : Env * {longvids:longid list, longtycons:longtycon list, 
+	val restrict             : Env * {longvids:longid list, longtycons:longtycon list,
 					  longstrids: longstrid list} -> Env
 	val match                : Env * Env -> unit
 	val enrich               : Env * Env -> bool   (* strong enrichment *)
 	val eq                   : Env * Env -> bool
-
 	val pu                   : Env Pickle.pu
       end (*E*)
 
@@ -198,6 +199,7 @@ signature ENVIRONMENTS =
 	val plus_TE              : Context * TyEnv    -> Context
 	val plus_VE_and_TE       : Context * (VarEnv * TyEnv) -> Context
 	val to_U                 : Context -> ExplicitTyVar list
+        val to_R                 : Context -> RegVar.regvar list
 	val ExplicitTyVar_lookup : Context -> ExplicitTyVar -> Type option
 	val from_E               : Env -> Context
 	val on                   : Substitution * Context  -> Context
@@ -231,7 +233,7 @@ signature ENVIRONMENTS =
 
 	val layout               : Context -> StringTree
 
-	val pu                   : Context Pickle.pu 
+	val pu                   : Context Pickle.pu
       end (*C*)
 
 
@@ -299,11 +301,11 @@ signature ENVIRONMENTS =
 	 to a fresh tyname:*)
 
 	val renaming             : TyName.Set.Set -> realisation
-	val renaming'            : TyName.Set.Set -> TyName.Set.Set * realisation  
+	val renaming'            : TyName.Set.Set -> TyName.Set.Set * realisation
 	val layout               : realisation -> StringTree
 
 	val pu                   : realisation Pickle.pu
- 
+
       end (*Realisation*)
 
     val ABS : TyEnv * Env -> TyName list * Env * realisation
@@ -331,7 +333,7 @@ signature ENVIRONMENTS =
     datatype restricter = Restr of {strids: (strid * restricter) list,
 				    vids: id list, tycons: tycon list}
                         | Whole
- 
-    val create_restricter : {longstrids: longstrid list, longtycons: longtycon list, 
+
+    val create_restricter : {longstrids: longstrid list, longtycons: longtycon list,
 			     longvids: longid list} -> restricter
   end;

@@ -421,12 +421,13 @@ struct
 
   fun unify_mu (mu1, mu2:mu) cone: E.cone =
     List.foldl u cone (BasisCompat.ListPair.zipEq(ann_mu0 (mu1, []),ann_mu0 (mu2, [])))
-    handle _ => let val (_,lay_mu) = mk_layout false;
+    handle (X as Report.DeepError _) => raise X
+         | X => let val (_,lay_mu) = mk_layout false;
                      fun dump(mu) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_mu mu, !Flags.colwidth)
                  in
                      TextIO.output(!Flags.log, "mu1 = \n"); dump mu1;
                      TextIO.output(!Flags.log, "mu2 = \n"); dump mu2;
-                     die "unify: types with places do not unify"
+                     die ("unify: types with places do not unify: " ^ General.exnMessage X)
                  end
 
   fun unify_mus (mus1, mus2) cone: E.cone =
@@ -610,8 +611,6 @@ struct
           val _ = PP.outputTree(logsay,lay_ty tau,!Flags.colwidth)
           val _ = logsay ("\nSr = " ^ concat (map (fn (rho, rho') => show_rho rho ^ "->" ^show_rho rho' ^ ",") Sr))
           *)
-          val find = E.find
-
           fun fst(x,y) = x
 
           fun cp_var node =
@@ -736,10 +735,6 @@ struct
            il as (types,places,arreffs)) cone =
         let
           (*val _ = Profile.profileOn();*)
-          val find = E.find
-          val rhos = map find rhos  and epsilons = map find epsilons
-          and places = map find places and arreffs = map find arreffs
-
           (* set types of places according to rhos *)
           val _ = update_runtypes(places, rhos)
 (*
@@ -759,7 +754,7 @@ struct
 
   fun inst sigma_il cone =
       let val (a,cone,c) = instClever sigma_il cone
-          val places = map E.find (#2(#2(sigma_il)))
+          val places = #2(#2(sigma_il))
           val cone = unify_with_toplevel_wordregion (cone, places)
       in (a,cone)
       end
@@ -1244,19 +1239,34 @@ struct
    * inference, integer and word types are resolved to be either word8,
    * word31, word32, int31, or int32. The default integer type is
    * dynamically determined to be the largest integer type that fits
-   * in 32 bits; similarly for words. *)
+   * in 32 bits; similarly for words.
+   *
+   * MEMO: we will later modify this to 64 bits...
+   *)
 
   val int31Type: Type = CONSTYPE(TyName.tyName_INT31,[],[],[])
   val int32Type: Type = CONSTYPE(TyName.tyName_INT32,[],[],[])
+  val int63Type: Type = CONSTYPE(TyName.tyName_INT63,[],[],[])
+  val int64Type: Type = CONSTYPE(TyName.tyName_INT64,[],[],[])
   val word8Type: Type = CONSTYPE(TyName.tyName_WORD8,[],[],[])
   val word31Type: Type = CONSTYPE(TyName.tyName_WORD31,[],[],[])
   val word32Type: Type = CONSTYPE(TyName.tyName_WORD32,[],[],[])
+  val word63Type: Type = CONSTYPE(TyName.tyName_WORD63,[],[],[])
+  val word64Type: Type = CONSTYPE(TyName.tyName_WORD64,[],[],[])
 
   val exnType: Type = CONSTYPE(TyName.tyName_EXN,[],[],[])
   val boolType: Type = CONSTYPE(TyName.tyName_BOOL,[],[],[])
   val realType: Type = CONSTYPE(TyName.tyName_REAL,[],[],[])
+  val f64Type: Type = CONSTYPE(TyName.tyName_F64,[],[],[])
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
+  val chararrayType: Type = CONSTYPE(TyName.tyName_CHARARRAY,[],[],[])
+
   val unitType: Type = RECORD[]
+
+  fun isF64Type t =
+      case t of
+          CONSTYPE(tn,_,_,_) => TyName.eq(tn,TyName.tyName_F64)
+        | _ => false
 
   fun unboxed t =
     case t
@@ -1306,7 +1316,9 @@ struct
         else if TyName.eq (tyname, TyName.tyName_REAL) then
           SOME (RegConst.size_of_real ())
         else if (TyName.eq (tyname, TyName.tyName_WORD32)
-                 orelse TyName.eq (tyname, TyName.tyName_INT32)) then
+                 orelse TyName.eq (tyname, TyName.tyName_INT32)
+                 orelse TyName.eq (tyname, TyName.tyName_INT64)
+                 orelse TyName.eq (tyname, TyName.tyName_WORD64)) then
           (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
           SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
         else if (TyName.eq (tyname, TyName.tyName_STRING)

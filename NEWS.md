@@ -1,5 +1,28 @@
 ## MLKit NEWS
 
+* mael 2020-11-09: Fixed error with respect to `-report_gc` and
+  `-verbose_gc` (issue #50).
+
+### MLKit version 4.5.1 is released
+
+* mael 2020-10-20: Static elimination of some array-bounds checks for
+  Array2 arrays.
+
+* mael 2020-10-20: More efficient implementation of Array2 structure.
+
+* mael 2020-10-21: Static stack-alignment in native backend.
+
+### MLKit version 4.5.0 is released
+
+* mael 2020-04-30: Support for Word64, Word63, Int64, and Int63
+  structures in the native backend. Default int and word sizes are now
+  64 bits (63 bits when gc is enabled).
+
+* mael 2020-04-30: Unboxing optimisation for double-precision floats.
+
+* mael 2020-04-30: Preliminary support for source-level region
+  annotations.
+
 * mael 2019-07-03: Fixed bug on macOS wrt setting stacksize.
 
 * mael 2019-07-03: Fixed bug on macOS wrt Time exception during

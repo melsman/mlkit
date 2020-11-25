@@ -91,7 +91,7 @@
                 don't use semicolons.
  *)
 
-open GrammarUtils 
+open GrammarUtils
 open M (*from inside GrammarUtils*)
 open DecGrammar (*from inside TopdecGrammar*)
 open LexBasics
@@ -131,18 +131,23 @@ type arg = unit
 (*Other core terminals. DECPOSINTEGER is the set of decimal
  unsigned integer constants which *aren't* single digits - they
  come in as DIGIT. So, we have a rule for detecting numbers as
- either DECPOSINTEGER, DECNEGINTEGER or DIGIT or HEXINTEGER. 
+ either DECPOSINTEGER, DECNEGINTEGER or DIGIT or HEXINTEGER.
  The reason integers are split into so many categories is that
  we want to distinguish digits (from integers in general) in
  infix declarations, and positive, decimal integers (from
  integers in general) for labels.*)
 
         | DECPOSINTEGER of IntInf.int option | DECNEGINTEGER of IntInf.int option
-	| HEXINTEGER of IntInf.int option | DIGIT of int 
-	| WORD of Word32.word option
+	| HEXINTEGER of IntInf.int option | DIGIT of int
+	| WORD of IntInf.int option
 	| REAL of string option | STRING of string
 	| BEGINQ | ENDQ of string | OBJL of string | AQID of string
-        | ID of string | TYVAR of string 
+        | ID of string | TYVAR of string
+
+(* Additional reserved keyword for supporting region annotations *)
+
+        | BACKQUOTE
+        | REGION
 
 (* Junk: *)
         | EOF
@@ -152,7 +157,7 @@ type arg = unit
 %value  DECPOSINTEGER   (SOME (IntInf.fromInt 0))
 %value  DECNEGINTEGER   (SOME (IntInf.fromInt 0))
 %value  HEXINTEGER      (SOME (IntInf.fromInt 0))
-%value  WORD		(SOME 0w0)
+%value  WORD		(SOME 0)
 %value  REAL            (SOME "0.0")
 %value  STRING          ("")
 %value  ID              ("bogus")
@@ -383,6 +388,8 @@ type arg = unit
 
 %right  STAR
 
+%right  REGION          (* L/R is arbitrary. *)
+
 %pos            LexBasics.pos
 %eop            SEMICOLON EOF
 %noshift        EOF
@@ -436,7 +443,7 @@ DIGIT_opt:
           DIGIT         ( SOME DIGIT )
         | (* -none- *)  ( NONE )
 
-DecPosInteger: 
+DecPosInteger:
 	  DECPOSINTEGER ( raise_lexical_error_if_none
 			    DECPOSINTEGERleft DECPOSINTEGER )
         | DIGIT         ( IntInf.fromInt DIGIT )
@@ -544,13 +551,13 @@ TopDec_opt:
 FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe EQUALS StrExp AndFunBind_opt
                         ( let val i_body = PP SigExp_constraint_maybeleft StrExpright
                               val empty_strdec = EMPTYstrdec (PP defaultPos defaultPos)
-                          in 
+                          in
                              FUNBIND (PP Ident1left
 				     (rightmost info_on_strexp StrExp
 				                info_on_funbind AndFunBind_opt),
                                    mk_FunId Ident1, mk_StrId Ident2, SigExp,
                                    LETstrexp(i_body, empty_strdec,
-                                             SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp), 
+                                             SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp),
                                    AndFunBind_opt)
                           end )
 
@@ -581,11 +588,11 @@ SigExp_constraint_maybe:
 
 
 SigExp_constraint:
-          COLON SigExp  ( (fn leftpos => fn strexp => 
+          COLON SigExp  ( (fn leftpos => fn strexp =>
 			   TRANSPARENT_CONSTRAINTstrexp
 			     (PP leftpos SigExpright, strexp, SigExp)) )
 	| COLONGREATER SigExp
-	                ( (fn leftpos => fn strexp => 
+	                ( (fn leftpos => fn strexp =>
 			   OPAQUE_CONSTRAINTstrexp
 			     (PP leftpos SigExpright, strexp, SigExp)) )
 
@@ -627,7 +634,7 @@ ConDesc:
 			       (PP OpIdentleft
 				  (rightmost_of_three OpIdentright
 				              get_info_ty OfTy_opt
-					      info_on_condesc BarConDesc_opt), 
+					      info_on_condesc BarConDesc_opt),
 				mk_Id id, OfTy_opt, BarConDesc_opt)
                           end )
 
@@ -641,14 +648,14 @@ DatDesc:  TyVarSeq TypeIdent EQUALS ConDesc AndDatDesc_opt
 				                info_on_datdesc AndDatDesc_opt),
 				   TyVarSeq, mk_TyCon TypeIdent,
 				   ConDesc, AndDatDesc_opt) )
-DatDesc_zero_arity:  
+DatDesc_zero_arity:
           TypeIdent EQUALS ConDesc AndDatDesc_opt
                         ( DATDESC (PP TypeIdentleft
 				     (rightmost info_on_condesc ConDesc
 				                info_on_datdesc AndDatDesc_opt),
 				   [], mk_TyCon TypeIdent,
 				   ConDesc, AndDatDesc_opt) )
-DatDesc_nonzero_arity:  
+DatDesc_nonzero_arity:
           TyVarSeq1 TypeIdent EQUALS ConDesc AndDatDesc_opt
                         ( DATDESC (PP TyVarSeq1left
 				     (rightmost info_on_condesc ConDesc
@@ -674,11 +681,11 @@ TypAbbreviationAND_seq1:
 			( TypAbbreviation :: TypAbbreviationAND_seq1 )
 	| TypAbbreviation
 			( [TypAbbreviation] )
-	  
+
 TypAbbreviation:
           TyVarSeq TypeIdent EQUALS Ty
  			( (TyVarSeq, mk_TyCon TypeIdent, Ty,
-			   PP TyVarSeqleft Tyright, PP TyVarSeqleft TypeIdentright) )        
+			   PP TyVarSeqleft Tyright, PP TyVarSeqleft TypeIdentright) )
 
 ValDesc:  EqIdent COLON Ty AndValDesc_opt
                         ( VALDESC (PP EqIdentleft
@@ -802,8 +809,8 @@ OneStrDec:
 StrBind:  Ident SigExp_constraint_maybe EQUALS StrExp AndStrBind_opt
                         ( STRBIND (PP Identleft
 				     (rightmost info_on_strexp StrExp
-				                info_on_strbind AndStrBind_opt), 
-				   mk_StrId Ident, SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp, 
+				                info_on_strbind AndStrBind_opt),
+				   mk_StrId Ident, SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp,
 				   AndStrBind_opt) )
 
 AndStrBind_opt:
@@ -858,14 +865,39 @@ AndSigBind_opt:
 (* Expressions, Matches, Declarations and Bindings (V4 sec. 2.8 fig. 3): *)
 
 AtExp:
-          SCon          ( SCONatexp (PP SConleft SConright, SCon) )
+          SCon          ( SCONatexp (PP SConleft SConright, SCon, NONE) )
+        | SCon BACKQUOTE EqIdent
+                        ( SCONatexp (PP SConleft SConright, SCon,
+                                     SOME (PP BACKQUOTEleft EqIdentright,
+                                           RegVar.mk_Named EqIdent)) )
+        | LongOpIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                        ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            IDENTatexp (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp),
+                                         SOME (PP BACKQUOTEleft RBRACKETright,
+                                               map RegVar.mk_Named EqIdent_seq1))
+                          end )
+        | LongOpIdent BACKQUOTE EqIdent
+                        ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            IDENTatexp (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp),
+                                         SOME (PP BACKQUOTEleft EqIdentright,
+                                               [RegVar.mk_Named EqIdent]))
+                          end )
         | LongOpEqIdent ( let val OP_OPT (id, withOp) = LongOpEqIdent
                           in
 			    IDENTatexp (PP LongOpEqIdentleft LongOpEqIdentright,
-					OP_OPT (mk_LongId id, withOp))
+					OP_OPT (mk_LongId id, withOp), NONE)
                           end )
         | LBRACE ExpRow_opt RBRACE
-                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt) )
+                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt,
+                                       NONE) )
+        | LBRACE ExpRow_opt RBRACE BACKQUOTE EqIdent
+                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt,
+                                       SOME (PP BACKQUOTEleft EqIdentright,
+                                             RegVar.mk_Named EqIdent)) )
         | LET Dec IN Exp_ END
                         ( LETatexp (PP LETleft ENDright, Dec, Exp_) )
         | LPAREN Exp_ RPAREN
@@ -882,9 +914,13 @@ AtExp:
    though the equivalent forms aren't.
  *)
 
-        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, NONE) )
+        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, NONE, NONE) )
         | LPAREN ExpComma_seq2 RPAREN
-                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 )
+                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 NONE )
+        | LPAREN ExpComma_seq2 RPAREN BACKQUOTE EqIdent
+                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2
+                                                (SOME(PP BACKQUOTEleft EqIdentright,
+                                                      RegVar.mk_Named EqIdent)) )
         | HASH Label    ( hash (PP HASHleft Labelright) Label )
         | LPAREN ExpSemicolon_seq2 RPAREN
                         ( PARatexp (PP LPARENleft RPARENright,
@@ -896,15 +932,15 @@ AtExp:
                         ( list_atexp (PP LBRACKETleft RBRACKETright) ExpComma_seq0 )
 
         | AQID                    (IDENTatexp (PP AQIDleft AQIDright,
-					       OP_OPT (mk_LongId [AQID], false)))
+					       OP_OPT (mk_LongId [AQID], false), NONE))
         | Quote                   ( list_atexp (PP Quoteleft Quoteright) Quote )
 
 Quote   : BEGINQ ENDQ             ([exp_quote (PP BEGINQleft ENDQright) ENDQ])
         | BEGINQ OtList ENDQ      (OtList @ [exp_quote (PP ENDQleft ENDQright) ENDQ])
 
-OtList  : OBJL AtExp              ([exp_quote (PP OBJLleft OBJLright) OBJL, 
+OtList  : OBJL AtExp              ([exp_quote (PP OBJLleft OBJLright) OBJL,
 				   exp_antiquote (PP AtExpleft AtExpright) AtExp])
-        | OBJL AtExp OtList       (exp_quote (PP OBJLleft OBJLright) OBJL :: 
+        | OBJL AtExp OtList       (exp_quote (PP OBJLleft OBJLright) OBJL ::
 				   exp_antiquote (PP AtExpleft AtExpright) AtExp :: OtList)
 
 AtExp_seq1:
@@ -979,7 +1015,7 @@ Exp_:     AtExp_seq1    ( UNRES_INFIXexp (PP AtExp_seq1left AtExp_seq1right, AtE
 Match_:   MRule BarMatch_opt
                         ( MATCH (PP MRuleleft
 				   (rightmost get_info_mrule MRule
-				              get_info_match BarMatch_opt), 
+				              get_info_match BarMatch_opt),
 				 MRule, BarMatch_opt) )
 
 BarMatch_opt:
@@ -1070,6 +1106,12 @@ OneDec_sans_LOCAL:
 			( UNRES_FUNdec (PP FUNleft (right (get_info_FValBind FValBind)),
 					TyVarSeq1, FValBind) )
 
+        | REGION EqIdent_seq1
+                        ( REGIONdec (PP REGIONleft EqIdent_seq1right,
+				     (PP EqIdent_seq1left EqIdent_seq1right,
+                                      map RegVar.mk_Named EqIdent_seq1)) )
+
+
 (* a `OneDec' is a single declaration phrase, including LOCAL. No semicolons. *)
 
 OneDec:   LOCAL Dec IN Dec END
@@ -1104,18 +1146,18 @@ ValBind:
           Pat EQUALS Exp_ AndValBind_opt
 	                ( PLAINvalbind (PP Patleft
 					  (rightmost get_info_exp Exp_
-					             get_info_valbind AndValBind_opt), 
+					             get_info_valbind AndValBind_opt),
 					Pat, Exp_, AndValBind_opt) )
 (*KILL 25/02/1997 17:03. tho.:
                         ( case AndValBind_opt of
-			    SOME vb  => 
+			    SOME vb  =>
                                 let val i = GrammarUtils.C.get_info_valbind vb
 		                    val (from,to) = GrammarUtils.un_PP i
                                 in
                                     PLAINvalbind (PP Patleft to,
 						  Pat, Exp_, AndValBind_opt)
                                 end
-                            | NONE => 
+                            | NONE =>
                                     PLAINvalbind (PP Patleft Exp_right,
 						  Pat, Exp_, AndValBind_opt) )
 *)
@@ -1246,7 +1288,7 @@ ExBind:
                           in
                             EXEQUAL (PP OpIdentleft
 				       (rightmost' LongOpEqIdentright
-					  get_info_exbind AndExBind_opt), 
+					  get_info_exbind AndExBind_opt),
 				     OP_OPT (mk_Id id1, withOp1),
 				     OP_OPT (mk_LongId id2, withOp2),
 				     AndExBind_opt)
@@ -1299,13 +1341,29 @@ OfTy_opt:
 AtPat:
           UNDERBAR      ( WILDCARDatpat (PP UNDERBARleft UNDERBARright) )
         | SCon          ( SCONatpat (PP SConleft SConright, SCon) )
+        | LongOpIdent BACKQUOTE LBRACKET EqIdent_seq1 RBRACKET
+                        ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp),
+                                         SOME (PP BACKQUOTEleft RBRACKETright,
+                                               map RegVar.mk_Named EqIdent_seq1))
+                          end )
+        | LongOpIdent BACKQUOTE EqIdent
+                        ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp),
+                                         SOME (PP BACKQUOTEleft EqIdentright,
+                                               [RegVar.mk_Named EqIdent]))
+                          end )
         | LongOpIdent   ( let val OP_OPT (id, withOp) = LongOpIdent
                           in
                             LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
-					 OP_OPT (mk_LongId id, withOp))
+					 OP_OPT (mk_LongId id, withOp), NONE)
                           end )
         | OP EQUALS     ( LONGIDatpat (PP OPleft EQUALSright,
-				       OP_OPT (mk_LongId ["="], true)) )
+				       OP_OPT (mk_LongId ["="], true), NONE) )
                                 (* "op =" is a special case pattern we allow
                                    in the prelude only *)
         | LBRACE PatRow_opt RBRACE
@@ -1349,7 +1407,7 @@ PatRow:
 				     ATPATpat
 				       (info_ident,
 					LONGIDatpat
-					  (info_ident, OP_OPT (mk_LongId [Ident], false)))
+					  (info_ident, OP_OPT (mk_LongId [Ident], false), NONE))
 			     in
 			       case (ColonTy_opt, AsPat_opt) of
 				 (_, SOME pat) =>

@@ -66,6 +66,7 @@ ftv.sml
 elabDecBug.sml      ccl ecte
 oh-no.sml           ccl       nobasislib
 oh-no2.sml          ccl       nobasislib
+real_match.sml                nobasislib
 
 (* Tests of some benchmark programs *)
 
@@ -109,6 +110,9 @@ int31.sml
 int31_2.sml
 int32.sml
 int32_2.sml
+int63.sml
+int63_2.sml
+int64.sml
 intinf.sml
 intinf2.sml
 list.sml
@@ -128,8 +132,8 @@ time.sml
 math.sml                                       (* ok, but not quite the
                                                   semantics of the basis
                                                   library specification *)
-listsort.mlb
 date.sml
+date2.sml
 timer.sml
 unixpath.sml
 cmdline.sml
@@ -139,8 +143,7 @@ word.sml
 word8.sml
 word31.sml
 word32.sml
-regexp1.mlb
-regexp2.mlb
+word64.sml
 pickletest.mlb
 packreal.sml
 packreal2.sml
@@ -149,3 +152,5 @@ stream.mlb
 natset.sml
 fns.sml
 datatypes.sml
+real64vector.sml
+real64array.sml

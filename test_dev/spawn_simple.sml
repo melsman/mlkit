@@ -20,12 +20,22 @@ fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 in
 val rf = ref(fn () => print "hi\n")
 val f = !rf
+val () = print "Hi - 1\n"
 val fp_f : foreignptr = prim("pointer", f) (* very unsafe *)
+val () = print "Hi - 2\n"
 val () = prim("function_test", fp_f)
-
-val fp : foreignptr = prim("spawnone", fp_f)
+val () = print "Hi - 3\n"
 
 fun fib x = if x < 2 then 1 else fib(x-1)+fib(x-2)
 
-val a = fib 28
+val a = fib 42
+
+val () = print "Starting thread\n"
+
+val fp : foreignptr = prim("spawnone", fp_f)
+
+
+val a = fib 42
+
+val () = print "Done\n"
 end

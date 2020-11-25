@@ -12,6 +12,7 @@ signature LVARS =
 
     val newLvar : unit -> lvar
     val new_named_lvar : string -> lvar
+    val renew : lvar -> lvar
 
     val pr_lvar : lvar -> string
     val pr_lvar' : lvar -> string       (* with key *)
@@ -28,6 +29,9 @@ signature LVARS =
     val decr_use : lvar -> unit
     val zero_use : lvar -> bool
     val one_use : lvar -> bool
+
+    val set_ubf64 : lvar -> unit
+    val get_ubf64 : lvar -> bool
 
     (* Names *)
     type name
@@ -49,8 +53,8 @@ signature LVARS =
   sestoft@dina.kvl.dk
 ***********************************************************************)
 
-signature LVARSET = 
-    sig 
+signature LVARSET =
+    sig
 	type lvar			(* = Lvars.lvar *)
 	type lvarset			(* set of lvar  *)
 	val empty        : lvarset
@@ -64,7 +68,7 @@ signature LVARSET =
 	val disjoint     : lvarset * lvarset -> bool
 	val lvarsetof    : lvar list -> lvarset
 
-	val members      : lvarset -> lvar list		
+	val members      : lvarset -> lvar list
 	val foldset      : ('a * lvar -> 'a) -> 'a * lvarset -> 'a
 	val mapset       : (lvar -> 'a) -> lvarset -> 'a list
         val findLvar     : (lvar -> '_a option) -> lvarset -> (lvar * '_a)option

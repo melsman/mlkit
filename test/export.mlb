@@ -1,7 +1,18 @@
 (* Compile and run this project as follows:
-   > gcc -c -o export.a export.c
-   > mlkit export.mlb
-   > ./run
+
+   $ gcc -c -o export.o export.c
+   $ ar rcs libexport.a export.o
+   $ mlkit --libdirs . --libs m,c,dl,export export.mlb
+   [reading source file:	export.sml]
+   [wrote X64 code file:	MLB/RI_GC/export.sml.s]
+   [wrote X64 code file:	MLB/RI_GC/base-link_objects.s]
+   [wrote executable file:	run]
+   $ ./run
+   Calling ML function "incr"
+   incr(8) = 77
+   Calling ML function "incr" again
+   incr(8) = 13
+
 *)
 
 local $SML_LIB/basis/basis.mlb

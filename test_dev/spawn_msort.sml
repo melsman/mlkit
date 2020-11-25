@@ -263,7 +263,7 @@ fun chk (x::(ys as y::xs)) =
   | chk _ = "ok\n"
 
 val () =
-    let val P = 16
+    let val P = 8
         val () = print "generating input...\n"
         val xs = randlist (10,100) 500000 0
         val () = print "starting merge sort...\n"

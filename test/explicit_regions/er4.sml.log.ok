@@ -1,0 +1,7 @@
+[reading source file:	er4.sml]
+> val f : unit->int
+er4.sml, line 5, column 17:
+    let val a = 3.2`r
+                   ^^
+Explicit region variable `r is not in scope.
+Stopping compilation of MLB-file due to error (code 1).

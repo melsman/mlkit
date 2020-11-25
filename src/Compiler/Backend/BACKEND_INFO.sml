@@ -18,21 +18,22 @@ signature BACKEND_INFO =
     val pr_tag_w : Word32.word -> string
     val pr_tag_i : int -> string
 
-    val tag_real   : bool -> Word32.word
+    val tag_real       : bool -> Word32.word
     val tag_word_boxed : bool -> Word32.word
-    val tag_string : bool * int -> Word32.word
-    val tag_record : bool * int -> Word32.word
-    val tag_con0   : bool * int -> Word32.word
-    val tag_con1   : bool * int -> Word32.word
-    val tag_ref    : bool -> Word32.word
-    val tag_clos   : bool * int * int -> Word32.word
-    val tag_sclos  : bool * int * int -> Word32.word
-    val tag_regvec : bool * int -> Word32.word
-    val tag_table  : bool * int -> Word32.word
-    val tag_exname : bool -> Word32.word
-    val tag_excon0 : bool -> Word32.word
-    val tag_excon1 : bool -> Word32.word
-    val tag_ignore : Word32.word
+    val tag_string     : bool * int -> Word32.word
+    val tag_record     : bool * int -> Word32.word
+    val tag_blockf64   : bool * int -> Word32.word
+    val tag_con0       : bool * int -> Word32.word
+    val tag_con1       : bool * int -> Word32.word
+    val tag_ref        : bool -> Word32.word
+    val tag_clos       : bool * int * int -> Word32.word
+    val tag_sclos      : bool * int * int -> Word32.word
+    val tag_regvec     : bool * int -> Word32.word
+    val tag_table      : bool * int -> Word32.word
+    val tag_exname     : bool -> Word32.word
+    val tag_excon0     : bool -> Word32.word
+    val tag_excon1     : bool -> Word32.word
+    val tag_ignore     : Word32.word
 
     val inf_bit          : int (* We must add 1 to an address to set the infinite bit. *)
     val atbot_bit        : int (* We must add 2 to an address to set the atbot bit. *)
@@ -59,6 +60,8 @@ signature BACKEND_INFO =
     val exn_BIND_lab      : label
     val exn_OVERFLOW_lab  : label
     val exn_INTERRUPT_lab : label
+    val exn_SUBSCRIPT_lab : label
+    val exn_SIZE_lab      : label
 
     val toplevel_region_withtype_top_lab    : label
     val toplevel_region_withtype_bot_lab    : label
@@ -72,16 +75,6 @@ signature BACKEND_INFO =
     val minCodeInBinSearch : int
     val maxDiff            : int
     val minJumpTabSize     : int
-
-    (* is_prim(name) returns true if name is not implemented by a C call,
-     * but rather in machine code; primitives do not destroy all
-     * caller save registers, as C calls do. *)
-
-    val is_prim : string -> bool
-
-    (* is_flow_prim(name) returns true if name is a flow primitive such
-     * as __less_int31 and __equal_word32ub. *)
-    val is_flow_prim : string -> bool
 
     val down_growing_stack : bool         (* true for x86/x64 code generation *)
   end

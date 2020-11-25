@@ -19,7 +19,7 @@ signature LEX_UTILS =
     val asQualId: string -> string list
     val asDigit: string -> int
     val asInteger: string -> IntInf.int option
-    val asWord: string -> Word32.word option
+    val asWord: string -> IntInf.int option
     val asReal: string -> string option
 
     val initArg: SourceReader -> LexArgument
@@ -42,4 +42,7 @@ signature LEX_UTILS =
     val parStackPush : int ref -> LexArgument -> unit
     val parStackPop : LexArgument -> unit
     val parStackIsEmpty : LexArgument -> bool
+
+    val explicit_regions : bool ref  (* if set, the lexer will support
+                                      * 'region' tokens *)
   end;

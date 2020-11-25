@@ -21,8 +21,9 @@ signature LAMBDA_EXP =
     type con
     type excon
     type TyName
+    type regvar
 
-    eqtype tyvar 
+    eqtype tyvar
     val fresh_tyvar : unit -> tyvar
     val fresh_eqtyvar : unit -> tyvar
     val pr_tyvar : tyvar -> string
@@ -45,37 +46,44 @@ signature LAMBDA_EXP =
     val exnType : Type
     val int31Type : Type
     val int32Type : Type
+    val int63Type : Type
+    val int64Type : Type
     val intinfType : Type
-    val intDefaultType : unit -> Type   (* int31 if tag_values, otherwise int32 *)
+    val intDefaultType : unit -> Type   (* int63 if tag_values, otherwise int64 *)
     val word31Type : Type
     val word32Type : Type
-    val wordDefaultType : unit -> Type  (* word31 if tag_values, otherwise word32 *)
+    val word63Type : Type
+    val word64Type : Type
+    val wordDefaultType : unit -> Type  (* word63 if tag_values, otherwise word64 *)
     val realType: Type
+    val f64Type: Type
     val stringType: Type
+    val chararrayType: Type
 
-    datatype TypeList =                               (* To allow the result of a declaration *)  
+    datatype TypeList =                               (* To allow the result of a declaration *)
         Types of Type list                            (* to be a raised Bind exception. *)
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
 		  declared_excons: (excon * Type option) list}
       | RaisedExnBind
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
-        CONprim of {con : con, instances : 'Type list}
+        CONprim of {con : con, instances : 'Type list, regvar: regvar option}
       | DECONprim of {con : con, instances : 'Type list, lv_opt: lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
-      | RECORDprim 
-      | SELECTprim of int        
+      | RECORDprim of regvar option
+      | SELECTprim of int
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
       | DEREFprim of {instance: 'Type}
-      | REFprim of {instance: 'Type}
+      | REFprim of {instance: 'Type, regvar: regvar option}
       | ASSIGNprim of {instance: 'Type}
       | EQUALprim of {instance: 'Type}
       | CCALLprim of {name : string,                  (* Primitives, etc. *)
 		      instances : 'Type list,
 		      tyvars : tyvar list,
-		      Type : 'Type} 
+		      Type : 'Type}
+      | BLOCKF64prim
       | EXPORTprim of {name : string,
 		       instance_arg : 'Type,
 		       instance_res : 'Type}
@@ -90,16 +98,20 @@ signature LAMBDA_EXP =
       (* list of mutual recursive datatype declarations *)
 
     and LambdaExp =
-        VAR      of {lvar: lvar, instances : Type list}
-      | INTEGER  of Int32.int * Type
-      | WORD     of Word32.word * Type
-      | STRING   of string
-      | REAL     of string
+        VAR      of {lvar: lvar, instances : Type list, regvars: regvar list}
+      | INTEGER  of IntInf.int * Type
+      | WORD     of IntInf.int * Type
+      | STRING   of string * regvar option
+      | REAL     of string * regvar option
+      | F64      of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,
 		     scope: LambdaExp}
-      | FIX      of {functions : {lvar : lvar, 
+      | LETREGION of {regvars: regvar list,
+                      scope: LambdaExp}
+      | FIX      of {functions : {lvar : lvar,
+                                  regvars: regvar list,
 				  tyvars : tyvar list,
 				  Type : Type,
 				  bind : LambdaExp} list,
@@ -108,8 +120,8 @@ signature LAMBDA_EXP =
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
-      | SWITCH_I of {switch: Int32.int Switch, precision: int}
-      | SWITCH_W of {switch: Word32.word Switch, precision: int}
+      | SWITCH_I of {switch: IntInf.int Switch, precision: int}
+      | SWITCH_W of {switch: IntInf.int Switch, precision: int}
       | SWITCH_S of string Switch
       | SWITCH_C of (con*lvar option) Switch
       | SWITCH_E of (excon*lvar option) Switch
@@ -117,7 +129,7 @@ signature LAMBDA_EXP =
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
                        (* a frame is the result of a structure-level
-                        * declaration. 
+                        * declaration.
 			*)
 
     and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
@@ -125,14 +137,14 @@ signature LAMBDA_EXP =
     val size: LambdaExp -> int
     val size_incl_types: LambdaExp -> int
 
-    (* These predicates approximate whether a lambda program performs 
-     * side effects; they are used to determine if a program unit can 
+    (* These predicates approximate whether a lambda program performs
+     * side effects; they are used to determine if a program unit can
      * be discharged at link time in case it is not used. They are also
-     * used by the optimiser to remove bindings of variables that are 
+     * used by the optimiser to remove bindings of variables that are
      * not used. *)
     val safeLambdaExp: LambdaExp -> bool
     val safeLambdaExps: LambdaExp list -> bool
-    val safeLambdaPgm: LambdaPgm -> bool 
+    val safeLambdaPgm: LambdaPgm -> bool
 
     type StringTree
     val layoutLambdaPgm: LambdaPgm -> StringTree
@@ -145,11 +157,12 @@ signature LAMBDA_EXP =
     (* Generate ML code *)
     val barify : LambdaPgm -> StringTree
 
+    val pu_intinf     : IntInf.int Pickle.pu
     val pu_tyvar      : tyvar Pickle.pu
     val pu_tyvars     : tyvar list Pickle.pu
     val pu_Type       : Type Pickle.pu
     val pu_Types      : Type list Pickle.pu
-    val pu_TypeScheme : (tyvar list * Type) Pickle.pu 
+    val pu_TypeScheme : (tyvar list * Type) Pickle.pu
     val pu_LambdaExp  : LambdaExp Pickle.pu
 
     structure TyvarSet : KIT_MONO_SET where type elt = tyvar

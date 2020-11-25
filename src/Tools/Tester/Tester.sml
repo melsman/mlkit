@@ -7,6 +7,7 @@ signature TESTER =
 structure Tester : TESTER =
   struct
     val log = "TESTmessages"
+    val logdirect = ref false
 
     fun files_equal (s1,s2) =
       let fun open_file s = TextIO.openIn s
@@ -20,16 +21,27 @@ structure Tester : TESTER =
 
 
     local
+      val all_test_counts = ref 0
+      val test_counter = ref 0
       val error_counter = ref 0
       val dotcounter = ref 0
+      fun print_progress () =
+          print (" [" ^ Int.toString (!test_counter) ^ "/"
+                 ^ Int.toString (!all_test_counts) ^ "]")
       fun pr_dot () =
           if !dotcounter < 60 then
             ( dotcounter := !dotcounter + 1
             ; print ".")
           else ( dotcounter := 1
+               ; print_progress()
                ; print "\n.")
     in
-      fun reset_error_counter() = error_counter:=0
+      fun set_all_test_counts c =
+          all_test_counts := c
+      fun test_tick () =
+          test_counter := !test_counter + 1
+      val print_progress = print_progress
+      fun reset_error_counter () = error_counter:=0
       val msglog = ref TextIO.stdOut
       fun msg0 s = (TextIO.output(!msglog,s ^ "\n"); TextIO.flushOut (!msglog);
 		   TestReport.add_log_line s)
@@ -66,7 +78,8 @@ structure Tester : TESTER =
 	  end
 	val {dir, file} = OS.Path.splitDirFile filepath
 	val _ = if dir="" then () else OS.FileSys.chDir dir
-	val compile_command_base = kitexe ^ " --log_to_file " ^
+	val compile_command_base = kitexe ^
+          (if !logdirect then " " else " --log_to_file ") ^
 	  (if opt "nobasislib" then "-no_basislib " else "") ^
 	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
           (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "")
@@ -77,15 +90,15 @@ structure Tester : TESTER =
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
 	        if opt "ecte" (*Expect Compile Time Error*) then
-		  if success then (msgErr "unexpected compile time success"; false)
+		  if success then (msgErr ("unexpected compile time success for " ^ file); false)
 		  else (msgOk "expected compile time failure"; true)
 		else
 		  if success then (msgOk "expected compile time success"; true)
-		  else (msgErr "unexpected compile time failure"; false)
+		  else (msgErr ("unexpected compile time failure for " ^ file) ; false)
 	  in
 	    if opt "ccl" (*Compare Compiler Logs*) then
 	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)
-			      else (msgErr "log not equal to log.ok"; false)
+			      else (msgErr ("compile log " ^ file ^ ".log not equal to " ^ file ^ ".log.ok"); false)
 	      in TestReport.add_compout_line {name=filepath, match=SOME match,
 					      success_as_expected=success_as_expected()}
 	      end
@@ -130,10 +143,10 @@ structure Tester : TESTER =
 					      rss=rss,stk=stk,exe=exe,
 					      real=real,user=user,sys=sys}
 
-		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s);
+		end handle Fail s => (msgErr (exe_file ^ " failure (" ^ file_label ^ "): " ^ s);
 				      TestReport.add_runtime_bare_line(file_label,false))
                          | Time.Time =>
-                                     (msgErr ("Time raised during execution of " ^ exe_file);
+                                     (msgErr ("Time raised during execution of " ^ exe_file ^ " (" ^ file_label ^ ")");
 				      TestReport.add_runtime_bare_line(file_label,false))
 	      else
 		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file ^ " 2>&1" (*".out"*))
@@ -141,7 +154,7 @@ structure Tester : TESTER =
 		  if (not(opt "ue" (*Uncaught Exception*) ) andalso OS.Process.isSuccess res)
 		    orelse (opt "ue" (*Uncaught Exception*) andalso not(OS.Process.isSuccess res)) then
 		      TestReport.add_runtime_bare_line(file_label,test_output())
-		  else (msgErr (exe_file ^ " failure");
+		  else (msgErr (exe_file ^ " failure ("  ^ file_label ^ ")");
 			TestReport.add_runtime_bare_line(file_label,false))
 		end
 	    end
@@ -149,7 +162,9 @@ structure Tester : TESTER =
 		TestReport.add_runtime_bare_line(filepath,false))
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
-        if OS.Process.isSuccess(OS.Process.system (compile_command ^ " >> ./" ^ log)) then
+        if OS.Process.isSuccess(OS.Process.system (compile_command ^
+                                                   (if !logdirect then " > " ^ file ^ ".log"
+                                                    else " >> ./" ^ log))) then
 	  (maybe_compare_complogs true;
 	   maybe_report_comptimes();
 	   rename_and_run(" ri ",".out",".out.ok")
@@ -159,13 +174,16 @@ structure Tester : TESTER =
 	recover()
       end
 
-    fun process_args (kitexe::testfile::flags) = SOME (kitexe,testfile,flags)
+    fun process_args (kitexe::"--logdirect"::testfile::flags) =
+        (logdirect := true; SOME (kitexe,testfile,flags))
+      | process_args (kitexe::testfile::flags) = SOME (kitexe,testfile,flags)
       | process_args _ = NONE
 
-    fun print_usage progname = print("\nUsage: kittester mlkit testfile [OPTION...]\n\
+    fun print_usage progname = print("\nUsage: kittester mlkit [--logdirect] testfile [OPTION...]\n\
 				     \  mlkit: path to executable MLKit\n\
+                                     \  --logdirect: use direct logging without -log_to_file\n\
 				     \  testfile: path to test file.\n\
-				     \  Options are passed on to the MLKit for each\n\
+				     \  OPTION... are passed on to the MLKit for each\n\
 				     \    compilation.\n")
 
     fun main (progname, args) =
@@ -181,8 +199,10 @@ structure Tester : TESTER =
 		  | SOME (testfile_string,entries) =>
 		    let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
 		                          | TestFile.MLB (filepath,opt) => (filepath,opt,kitexe)) entries
-		    in (app (process_entry flags) entries)
+                        val () = set_all_test_counts (List.length entries)
+		    in (app (fn e => (process_entry flags e; test_tick())) entries)
                        handle Time.Time => (print "bad time2\n" ; raise Fail "bad2") ;
+                       print_progress();
 		       msgErrors();
 		       (TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe})
                        handle Time.Time => (print "bad time1\n" ; raise Fail "bad1")

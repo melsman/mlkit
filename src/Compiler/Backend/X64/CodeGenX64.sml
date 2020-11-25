@@ -21,1948 +21,21 @@ functor CodeGenX64(structure BackendInfo : BACKEND_INFO
                      where type label = AddressLabels.label)
     : CODE_GEN =
 struct
-  structure PP = PrettyPrint
-  structure Labels = AddressLabels
-  structure I = InstsX64
-  structure RI = I.RI (* RegisterInfo *)
-  structure BI = BackendInfo
-  structure SS = SubstAndSimplify
-  structure LS = LineStmt
 
-  val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
+  structure CodeGenUtil = CodeGenUtilX64(structure BackendInfo = BackendInfo
+                                         structure JumpTables = JumpTables
+                                         structure CallConv = CallConv
+                                         structure LineStmt = LineStmt
+                                         structure SubstAndSimplify = SubstAndSimplify)
 
-  type label = Labels.label
-  type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
-  type StoreTypeCO = SubstAndSimplify.StoreTypeCO
-  type AtySS = SubstAndSimplify.Aty
-  datatype reg = datatype I.reg
-  datatype ea = datatype I.ea
-  datatype lab = datatype I.lab
-  type offset = int
-  type AsmPrg = I.AsmPrg
+  open CodeGenUtil
 
-  val tmp_reg0 = I.tmp_reg0
-  val tmp_reg1 = I.tmp_reg1
-  val caller_save_regs_ccall = map RI.lv_to_reg RI.caller_save_ccall_phregs
-  val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
-  val all_regs = map RI.lv_to_reg RI.all_regs
-
-  (***********)
-  (* Logging *)
-  (***********)
-  fun log s = TextIO.output(!Flags.log,s ^ "\n")
-  fun msg s = TextIO.output(TextIO.stdOut, s)
-  fun chat(s: string) = if !Flags.chat then msg (s) else ()
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
-  fun not_impl n = die ("prim(" ^ n ^ ") not implemented")
-  fun fast_pr stringtree =
-    (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
-     TextIO.output(!Flags.log, "\n"))
-
-  fun display(title, tree) =
-    fast_pr(PP.NODE{start=title ^ ": ",
-                    finish="",
-                    indent=3,
-                    children=[tree],
-                    childsep=PP.NOSEP
-                    })
-
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-  val _ = Flags.add_bool_entry {long="comments_in_x64_asmcode", short=NONE, item=ref false,
-                                menu=["Debug", "comments in x64 assembler code"], neg=false,
-                                desc="Insert comments in x64 assembler code."}
-
-  val jump_tables = true
-  val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x64_asmcode"
-  val gc_p = Flags.is_on0 "garbage_collection"
-  val tag_pairs_p = Flags.is_on0 "tag_pairs"
-
-  (* Simple memory profiling - remember to enable the flag
-   * SIMPLE_MEMPROF in Runtime/Flags.h when you change this flag. *)
-  fun simple_memprof_p () = false
-  val stack_min = NameLab "stack_min"
-
-  (**********************************
-   * Some code generation utilities *
-   **********************************)
-
-  fun comment(str,C) = if !comments_in_asmcode then I.comment str :: C
-                       else C
-  fun comment_fn(f, C) = if !comments_in_asmcode then I.comment (f()) :: C
-                         else C
-
-  fun rem_dead_code nil = nil
-    | rem_dead_code (C as i :: C') =
-    case i
-      of I.lab _ => C
-       | I.dot_long _ => C
-       | I.dot_quad _ => C
-       | I.dot_byte _ => C
-       | I.dot_align _ => C
-       | I.dot_globl _ => C
-       | I.dot_text => C
-       | I.dot_data => C
-       | I.comment s => i :: rem_dead_code C'
-       | _ => rem_dead_code C'
-
-  (********************************)
-  (* CG on Top Level Declarations *)
-  (********************************)
 
   local
-  (******************************)
-  (* Dynamicly linked functions *)
-  (******************************)
-
-  local val dynamic = ref (Binarymap.mkDict String.compare)
-  in fun add_dynamic (name,l1,l2) = dynamic := Binarymap.insert(!dynamic, name, (l1,l2))
-     val get_dynamic = fn x=> Binarymap.peek (!dynamic, x)
-  end
-
-
-    (* Global Labels *)
-    val exn_ptr_lab = NameLab "exn_ptr"
-    val exn_counter_lab = NameLab "exnameCounter"
-    val time_to_gc_lab = NameLab "time_to_gc"     (* Declared in GC.c *)
-    val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)
-    val stack_bot_gc_lab = NameLab "stack_bot_gc" (* Declared in GC.c *)
-    val gc_stub_lab = NameLab "__gc_stub"
-    val global_region_labs =
-      [(Effect.toplevel_region_withtype_top, BI.toplevel_region_withtype_top_lab),
-       (Effect.toplevel_region_withtype_string, BI.toplevel_region_withtype_string_lab),
-       (Effect.toplevel_region_withtype_pair, BI.toplevel_region_withtype_pair_lab),
-       (Effect.toplevel_region_withtype_array, BI.toplevel_region_withtype_array_lab),
-       (Effect.toplevel_region_withtype_ref, BI.toplevel_region_withtype_ref_lab),
-       (Effect.toplevel_region_withtype_triple, BI.toplevel_region_withtype_triple_lab)]
-
-    (* Labels Local To This Compilation Unit *)
-    fun new_local_lab name = LocalLab (Labels.new_named name)
-    local
-      val counter = ref 0
-      fun incr() = (counter := !counter + 1; !counter)
-    in
-      fun new_dynamicFn_lab() : lab = DatLab(Labels.new_named ("DynLab" ^ Int.toString(incr())))
-      fun new_string_lab() : lab = DatLab(Labels.new_named ("StringLab" ^ Int.toString(incr())))
-      fun new_float_lab() : lab = DatLab(Labels.new_named ("FloatLab" ^ Int.toString(incr())))
-      fun new_num_lab() : lab = DatLab(Labels.new_named ("BoxedNumLab" ^ Int.toString(incr())))
-      fun reset_label_counter() = counter := 0
-    end
-
-    (* Static Data inserted at the beginning of the code. *)
-    local
-      val static_data : I.inst list ref = ref []
-    in
-      fun add_static_data (insts) = (static_data := insts @ !static_data)
-      fun reset_static_data () = static_data := []
-      fun get_static_data C = !static_data @ C
-    end
-
-    (* giving numbers to registers---for garbage collection *)
-    fun lv_to_reg_no lv =
-        case RI.lv_to_reg lv of
-            rax => 0 | rbx => 1 | rcx => 2 | rdx => 3
-          | rsi => 4 | rdi => 5 | rbp => 6 | rsp => 7
-          | r8 => 8 | r9 => 9 | r10 => 10 | r11 => 11
-          | r12 => 12 | r13 => 13 | r14 => 14 | r15 => 15
-          | r => die ("lv_to_reg.no: " ^ I.pr_reg r)
-
-    (* Convert ~n to -n; works for all int32 values including Int32.minInt *)
-    fun intToStr (i : Int32.int) : string =
-      let fun tr s = case explode s
-                       of #"~"::rest => implode (#"-"::rest)
-                        | _ => s
-      in tr (Int32.toString i)
-      end
-
-    fun wordToStr (w : Word32.word) : string =
-      "0x" ^ Word32.toString w
-
-    (* Convert ~n to -n *)
-    fun i2s i = if i >= 0 then Int.toString i
-                else "-" ^ Int.toString (~i)
-
-    (* We make the offset base explicit in the following functions *)
-    datatype Offset =
-        WORDS of int
-      | BYTES of int
-
-    fun isZeroOffset (WORDS 0) = true
-      | isZeroOffset (BYTES 0) = true
-      | isZeroOffset _ = false
-
-    fun offset_bytes (WORDS w) = i2s (8*w)  (* a WORD can contain a ptr or an unboxed integer or word value *)
-      | offset_bytes (BYTES b) = i2s b
-
-    fun copy(r1, r2, C) = if r1 = r2 then C
-                          else I.movq(R r1, R r2) :: C
-
-    (* Can be used to load from the stack or from a record *)
-    (* d = b[n]                                            *)
-    fun load_indexed(d:ea,b:reg,n:Offset,C) =
-        I.movq(D(offset_bytes n,b), d) :: C
-
-    (* Can be used to update the stack or store in a record *)
-    (* b[n] = s                                             *)
-    fun store_indexed(b:reg,n:Offset,s:ea,C) =
-        I.movq(s,D(offset_bytes n,b)) :: C
-
-    (* Calculate an address given a base and an offset *)
-    (* dst = base + x                                  *)
-    fun base_plus_offset(b:reg,n:Offset,d:reg,C) =
-        if d = b andalso isZeroOffset n then C
-        else I.leaq(D(offset_bytes n, b), R d) :: C
-
-    fun mkIntAty i = SS.INTEGER_ATY {value=Int32.fromInt i,
-                                     precision=if BI.tag_values() then 31 else 32}
-
-    fun maybeTagInt {value: Int32.int, precision:int} : Int32.int =
-      case precision
-        of 31 => ((2 * value + 1)         (* use tagged-unboxed representation *)
-                  handle Overflow => die "maybeTagInt.Overflow")
-         | 32 => value                    (* use untagged representation - maybe boxed *)
-         | _ => die "maybeTagInt"
-
-    fun maybeTagWord {value: Word32.word, precision:int} : Word32.word =
-      case precision
-        of 31 =>                            (* use tagged representation *)
-          let val w = 0w2 * value + 0w1
-          in if w < value then die "maybeTagWord.Overflow"
-             else w
-          end
-         | 32 => value                      (* use untagged representation - maybe boxed *)
-         | _ => die "maybeTagWord"
-
-    (* formatting of immediate integer and word values *)
-    fun fmtInt a : string = intToStr(maybeTagInt a)
-    fun fmtWord a : string = wordToStr(maybeTagWord a)
-
-    (* Store a constant *)
-    fun store_immed(w:Word32.word,r:reg,offset:Offset,C) =
-      I.movq(I (wordToStr w), D(offset_bytes offset,r)) :: C
-
-    fun move_immed(0,R d,C) = I.xorq(R d, R d) :: C
-      | move_immed(x,d:ea,C) = I.movq(I (intToStr x), d) :: C
-
-    fun move_num(x,ea:ea,C) =
-      if (x = "0" orelse x = "0x0") andalso (case ea of R _ => true | _ => false)
-          then I.xorq(ea, ea) :: C
-      else I.movq(I x, ea) :: C
-
-    fun move_num_boxed(x,ea:ea,C) =
-      if not(BI.tag_values()) then die "move_num_boxed.boxed integers/words necessary only when tagging is enabled"
-      else
-        let val num_lab = new_num_lab()
-          val _ = add_static_data [I.dot_data,
-                                   I.dot_align 8,
-                                   I.lab num_lab,
-                                   I.dot_quad(BI.pr_tag_w(BI.tag_word_boxed(true))),
-                                   I.dot_quad x]
-        in I.movq(LA num_lab, ea) :: C
-        end
-
-    (* returns true if boxed representation is used for
-     * integers of the given precision *)
-    fun boxedNum (precision:int) : bool =
-      precision > 31 andalso BI.tag_values()
-
-
-    (* Find a register for aty and generate code to store into the aty *)
-    fun resolve_aty_def(SS.STACK_ATY offset,t:reg,size_ff,C) =
-         (t,store_indexed(rsp,WORDS(size_ff-offset-1),R t,C))       (*was ~size_ff+offset*)
-      | resolve_aty_def(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C)
-      | resolve_aty_def(SS.UNIT_ATY,t:reg,size_ff,C)  = (t,C)
-      | resolve_aty_def _ = die "resolve_aty_def: ATY cannot be defined"
-
-    fun move_num_generic (precision, num, ea, C) =
-        if boxedNum precision then move_num_boxed(num, ea, C)
-        else move_num(num, ea, C)
-
-    fun move_unit(ea,C) =
-        if BI.tag_values() then
-            move_immed(Int32.fromInt BI.ml_unit,ea,C) (* gc needs value! *)
-        else C
-
-    (* Make sure that the aty ends up in register dst_reg *)
-    fun move_aty_into_reg(aty,dst_reg,size_ff,C) =
-      case aty
-        of SS.REG_I_ATY offset =>
-          base_plus_offset(rsp,BYTES(size_ff*8-offset*8-8+BI.inf_bit),dst_reg,C)
-         | SS.REG_F_ATY offset =>
-          base_plus_offset(rsp,WORDS(size_ff-offset-1),dst_reg,C)
-         | SS.STACK_ATY offset =>
-          load_indexed(R dst_reg,rsp,WORDS(size_ff-offset-1),C)
-         | SS.DROPPED_RVAR_ATY => C
-         | SS.PHREG_ATY phreg => copy(phreg,dst_reg,C)
-         | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
-         | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, R dst_reg, C)
-         | SS.UNIT_ATY => move_unit (R dst_reg, C)
-         | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
-
-    (* dst_aty = src_reg *)
-    fun move_reg_into_aty(src_reg:reg,dst_aty,size_ff,C) =
-      case dst_aty
-        of SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
-         | SS.STACK_ATY offset => store_indexed(rsp,WORDS(size_ff-offset-1),R src_reg,C)    (*was ~size_ff+offset*)
-         | SS.UNIT_ATY => C (* wild card definition - do nothing *)
-         | _ => die "move_reg_into_aty: ATY not recognized"
-
-    (* dst_aty = src_aty *)
-    fun move_aty_to_aty(SS.PHREG_ATY src_reg,dst_aty,size_ff,C) = move_reg_into_aty(src_reg,dst_aty,size_ff,C)
-      | move_aty_to_aty(src_aty,SS.PHREG_ATY dst_reg,size_ff,C) = move_aty_into_reg(src_aty,dst_reg,size_ff,C)
-      | move_aty_to_aty(src_aty,SS.UNIT_ATY,size_ff,C) = C
-      | move_aty_to_aty(src_aty,dst_aty,size_ff,C) =
-      let val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,size_ff,C)
-      in move_aty_into_reg(src_aty,reg_for_result,size_ff,C')
-      end
-
-    (* dst_aty = src_aty[offset] *)
-    fun move_index_aty_to_aty(SS.PHREG_ATY src_reg,SS.PHREG_ATY dst_reg,offset:Offset,t:reg,size_ff,C) =
-          load_indexed(R dst_reg,src_reg,offset,C)
-      | move_index_aty_to_aty(SS.PHREG_ATY src_reg,dst_aty,offset:Offset,t:reg,size_ff,C) =
-          load_indexed(R t,src_reg,offset,
-          move_reg_into_aty(t,dst_aty,size_ff,C))
-      | move_index_aty_to_aty(src_aty,dst_aty,offset,t:reg,size_ff,C) = (* can be optimised!! *)
-          move_aty_into_reg(src_aty,t,size_ff,
-          load_indexed(R t,t,offset,
-          move_reg_into_aty(t,dst_aty,size_ff,C)))
-
-    (* dst_aty = &lab *)
-    fun load_label_addr(lab,dst_aty,t:reg,size_ff,C) =
-        case dst_aty of
-            SS.PHREG_ATY d => I.movq(LA lab, R d) :: C
-          | SS.STACK_ATY offset =>
-            I.movq(LA lab, R t) :: store_indexed(rsp, WORDS(size_ff-offset-1), R t, C)
-            (*store_indexed(rsp, WORDS(size_ff-offset-1), LA lab, C)*)
-          | _ => die "load_label_addr.wrong ATY"
-
-    (* dst_aty = lab[0] *)
-    fun load_from_label(lab,dst_aty,t:reg,size_ff,C) =
-        case dst_aty of
-            SS.PHREG_ATY d =>
-            I.movq(LA lab, R d) ::
-            I.movq(D("0",d), R d) :: C
-          | SS.STACK_ATY offset =>
-            I.movq(LA lab, R t) ::
-            I.movq(D("0",t), R t) ::
-            store_indexed(rsp, WORDS(size_ff-offset-1), R t, C)
-          | SS.UNIT_ATY => C
-          | _ => die "load_from_label.wrong ATY"
-
-    (* lab[0] = src_aty *)
-    fun store_in_label(src_aty,lab,tmp1:reg,size_ff,C) =
-        case src_aty of
-            SS.PHREG_ATY s =>
-            I.movq(LA lab,R tmp1) :: I.movq(R s, D("0",tmp1)) :: C
-          | SS.INTEGER_ATY i =>
-            I.movq(LA lab,R tmp1) :: move_num_generic (#precision i, fmtInt i, D("0",tmp1), C)
-          | SS.WORD_ATY w =>
-            I.movq(LA lab,R tmp1) :: move_num_generic (#precision w, fmtWord w, D("0",tmp1), C)
-          | SS.UNIT_ATY =>
-            I.movq(LA lab,R tmp1) :: move_unit(D("0",tmp1), C)
-(*        | SS.STACK_ATY offset => load_indexed(L lab, rsp, WORDS(size_ff-offset-1), C) *)
-          | _ => move_aty_into_reg(src_aty,tmp1,size_ff,
-                 I.movq(R tmp1, L lab) :: C)
-
-    (* Generate a string label *)
-    fun gen_string_lab str =
-      let val string_lab = new_string_lab()
-
-          (* generate a .byte pseudo instuction for each character in
-           * the string and generate a .byte 0 instruction at the end. *)
-          val bytes =
-            foldr(fn (ch, acc) => I.dot_byte (Int.toString(ord ch)) :: acc)
-            [I.dot_byte "0"] (explode str)
-
-          val _ = add_static_data (I.dot_data ::
-                                   I.dot_align 8 ::
-                                   I.lab string_lab ::
-                                   I.dot_quad(BI.pr_tag_w(BI.tag_string(true,size(str)))) ::
-                                   bytes)
-      in string_lab
-      end
-
-    (* Generate a Data label *)
-    fun gen_data_lab lab = add_static_data [I.dot_data,
-                                            I.dot_align 8,
-                                            I.lab (DatLab lab),
-                                            I.dot_quad (i2s BI.ml_unit)]  (* was "0" but use ml_unit instead for GC 2001-01-09, Niels *)
-
-    fun store_aty_indexed(b:reg,n:Offset,aty,t:reg,size_ff,C) =
-        let fun ea() = D(offset_bytes n,b)
-            fun default() =
-                move_aty_into_reg(aty,t,size_ff,
-                 store_indexed(b,n,R t,C))
-            fun direct_word (w:{value: Word32.word, precision:int}) : bool =
-                not(boxedNum(#precision w)) andalso
-                case #precision w of
-                    32 => #value w <= 0wxFFFF
-                  | 31 => #value w <= 0wx7FFF
-                  | _ => die "store_aty_indexed.direct_word - weird precision"
-            fun direct_int (i:{value: Int32.int, precision:int}) =
-                not(boxedNum(#precision i)) andalso
-                case #precision i of
-                    32 => #value i <= 0x7FFF andalso #value i > ~0x8000
-                  | 31 => #value i <= 0x3FFF andalso #value i > ~0x4000
-                  | _ => die "store_aty_indexed.direct_int - weird precision"
-        in
-            case aty of
-                SS.PHREG_ATY s => I.movq(R s,ea()) :: C
-              | SS.INTEGER_ATY i => if direct_int i then
-                                      move_num_generic (#precision i, fmtInt i, ea(), C)
-                                    else default()
-              | SS.WORD_ATY w => if direct_word w then move_num_generic (#precision w, fmtWord w, ea(), C)
-                                 else default()
-              | SS.UNIT_ATY => move_unit(ea(),C)
-              | _ => default()
-        end
-
-
-    (* Can be used to update the stack or a record when the argument is an ATY *)
-    (* base_reg[offset] = src_aty *)
-    fun store_aty_in_reg_record(aty,t:reg,b,n:Offset,size_ff,C) =
-        store_aty_indexed(b:reg,n:Offset,aty,t:reg,size_ff,C)
-
-    (* Can be used to load from the stack or a record when destination is an ATY *)
-    (* dst_aty = base_reg[offset] *)
-    fun load_aty_from_reg_record(SS.PHREG_ATY dst_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-          load_indexed(R dst_reg,base_reg,offset,C)
-      | load_aty_from_reg_record(dst_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
-          load_indexed(R t,base_reg,offset,
-          move_reg_into_aty(t,dst_aty,size_ff,C))
-
-    (* base_aty[offset] = src_aty *)
-    fun store_aty_in_aty_record(src_aty,base_aty,offset:Offset,t1:reg,t2:reg,size_ff,C) =
-      case (src_aty,base_aty)
-        of (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store_indexed(base_reg,offset,R src_reg,C)
-         | (SS.PHREG_ATY src_reg,base_aty) => move_aty_into_reg(base_aty,t2,size_ff,  (* can be optimised *)
-                                              store_indexed(t2,offset,R src_reg,C))
-         | (src_aty,SS.PHREG_ATY base_reg) => move_aty_into_reg(src_aty,t1,size_ff,
-                                              store_indexed(base_reg,offset,R t1,C))
-         | (src_aty,base_aty) => move_aty_into_reg(src_aty,t1,size_ff, (* can be optimised *)
-                                 move_aty_into_reg(base_aty,t2,size_ff,
-                                 store_indexed(t2,offset,R t1,C)))
-
-    (* push(aty), i.e., rsp-=8; rsp[0] = aty (different than on hp) *)
-    (* size_ff is for rsp before rsp is moved. *)
-    fun push_aty(aty,t:reg,size_ff,C) =
-      let
-        fun default() = move_aty_into_reg(aty,t,size_ff,
-                         I.push(R t) :: C)
-      in case aty
-           of SS.PHREG_ATY aty_reg => I.push(R aty_reg) :: C
-            | SS.INTEGER_ATY i =>
-             if boxedNum (#precision i) then default()
-             else I.push(I (fmtInt i)) :: C
-            | SS.WORD_ATY w =>
-               if boxedNum (#precision w) then default()
-               else I.push(I (fmtWord w)) :: C
-            | _ => default()
-      end
-
-    (* pop(aty), i.e., aty=rsp[0]; rsp+=8 *)
-    (* size_ff is for sp after pop *)
-    fun pop_aty(SS.PHREG_ATY aty_reg,t:reg,size_ff,C) = I.pop(R aty_reg) :: C
-      | pop_aty(aty,t:reg,size_ff,C) = (I.pop(R t) ::
-                                        move_reg_into_aty(t,aty,size_ff,C))
-
-    (* Returns a register with arg and a continuation function. *)
-    fun resolve_arg_aty(arg:SS.Aty,t:reg,size_ff:int) : reg * (I.inst list -> I.inst list) =
-      case arg
-        of SS.PHREG_ATY r => (r, fn C => C)
-         | _ => (t, fn C => move_aty_into_reg(arg,t,size_ff,C))
-
-    fun add_aty_to_reg(arg:SS.Aty,tmp:reg,t:reg,size_ff:int,C:I.inst list) : I.inst list =
-      case arg
-        of SS.PHREG_ATY r => I.addq(R r, R t) :: C
-         | _ => move_aty_into_reg(arg,tmp,size_ff, I.addq(R tmp, R t) :: C)
-
-    (* Push float on float stack *)
-    fun load_float_aty(float_aty, t, size_ff, xmm_reg) =
-      let val disp = if BI.tag_values() then "8"
-                     else "0"
-      in fn C => case float_aty
-                   of SS.PHREG_ATY x => I.movsd(D(disp, x),R xmm_reg) :: C
-                    | _ => move_aty_into_reg(float_aty,t,size_ff,
-                           I.movsd(D(disp, t),R xmm_reg) :: C)
-      end
-
-    (* Pop float from float stack *)
-    fun store_float_reg(base_reg,t:reg,xmm_reg,C) =
-      if BI.tag_values() then
-        store_immed(BI.tag_real false, base_reg, WORDS 0,
-        I.movsd (R xmm_reg,D("8",base_reg)) :: C)   (* mael 2003-05-08 *)
-      else
-        I.movsd (R xmm_reg,D("0",base_reg)) :: C
-
-
-    (* When tag free collection of pairs is enabled, a bit is stored
-       in the region descriptor if the region is an infinite region
-       holding pairs, refs, triples and arrays. Here we arrange that
-       special C functions for allocating regions are called for
-       regions containing pairs, refs, triples and arrays; these C
-       functions then take care of setting the appropriate bit.
-
-       Notice the difference between the function
-       values_in_region_untagged being regions containing untagged
-       values and the function
-       regions_holding_values_of_the_same_type_only being regions
-       holding values of the same type and this type is set in the
-       region descriptor.*)
-
-    fun values_in_region_untagged (place:Effect.place) : bool =
-        BI.tag_values() andalso not(tag_pairs_p())
-        andalso (case Effect.get_place_ty place of
-                     SOME Effect.PAIR_RT => true
-                   | SOME Effect.REF_RT => true
-                   | SOME Effect.TRIPLE_RT => true
-                   | _ => false)
-
-    fun regions_holding_values_of_the_same_type_only (place:Effect.place) : bool =
-        BI.tag_values() andalso not(tag_pairs_p())
-        andalso (case Effect.get_place_ty place of
-                     SOME Effect.PAIR_RT => true
-                   | SOME Effect.REF_RT => true
-                   | SOME Effect.TRIPLE_RT => true
-                   | SOME Effect.ARRAY_RT => true
-                   | _ => false)
-
-
-    (***********************)
-    (* Calling C Functions *)
-    (***********************)
-
-    local
-
-      fun callc_static_or_dynamic (name : string, nargs, fnlab, C) =
-          case name of
-              ":" =>
-              let
-                  val () = die ("callc_static_or_dynamic.dynamic call not yet ported: '" ^ name ^ "'")
-                  val () =
-                      if nargs < 1 then
-                          die "callc_static_or_dynamic: Dynamic linking requires a string as first argument."
-                      else ()
-                  val fp = new_dynamicFn_lab()
-                  val fcall = new_dynamicFn_lab()
-                  val nfcall = new_dynamicFn_lab()
-                  val finish = new_dynamicFn_lab()
-              in
-                  I.movq (L fp, R rax) ::
-                  I.cmpq (I "0",R rax) ::
-                  I.je nfcall ::
-                I.lab fcall ::
-                  I.addq (I "8",R rsp) ::
-                  I.call' (R rax) ::
-                  I.jmp (L finish) ::
-                I.lab nfcall ::
-                  I.subq (I "8", R rsp) ::
-                  I.movq (LA fp, R rdx) ::
-                  I.movq (R rdx, D("0",rsp)) ::
-                  I.call fnlab ::
-                  I.addq (I "8", R rsp) ::
-                  I.movq (L fp, R rax) ::
-                  I.cmpq (I "0", R rax) ::
-                  I.jne fcall::
-                  I.addq (I "8", R rsp)::
-                  I.call (NameLab "__raise_match")::
-                  I.jmp (L finish)::
-                  I.dot_data::
-                  I.dot_align 8::
-                  I.dot_size (fp, 8)::
-                I.lab fp ::
-                  I.dot_quad "0" ::
-                  I.dot_text ::
-                I.lab finish :: C
-              end
-       | _ => I.call(NameLab name) :: C
-    in
-
-    (* better alignment technique that allows for arguments on the stack *)
-    fun push_args push_arg size_ff args C =
-        let fun loop ([], _) = C
-              | loop (arg :: rest, size_ff) = (push_arg(arg,size_ff,
-                                                        loop (rest, size_ff + 1)))
-        in loop(rev args, size_ff)
-        end
-
-    fun pop_args name nargs C =
-        case nargs
-         of 0 => C
-          | n => I.addq(I (i2s (8* (case name of ":" => n-1 | _ => n))), R rsp) :: C
-
-    local
-      fun iterl f a n =
-	  if n <= 0 then a
-	  else iterl f (f(n,a)) (n-1)
-(*
-    fun iterr f a n =
-	if n <= 0 then a
-	else f(n, iterr f a (n-1))
-*)
-
-      (* for alignment of the stack, both tmp_reg0 and tmp_reg1 can be used *)
-      fun align nargs C =
-	  let val tmp = tmp_reg0
-	      val tmp1 = tmp_reg1
-	  in
-	    I.leaq(D(i2s(8*nargs), rsp), R tmp) ::      (*  tmp = rsp + 8n; memoize esp as it should be *)
-                                                        (*                  restored after call *)
-	    I.subq(I(i2s(8*(nargs+5))), R rsp) ::       (*  rsp = rsp - 32 - 8 - 8n ; alignment *)
-	    I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::    (*  rsp = rsp & 0xFFFFFFFFFFFFFFF0; alignment *)
-	    I.addq(I(i2s(8*(nargs+1))), R rsp) ::       (* Make room for args to be pushed, so that once *)
-	    I.push(R tmp) ::                            (*  the args are pushed, the stack is aligned *)
-	    iterl (fn (i,C) =>
-		     I.movq(D(i2s(~8*i), tmp), R tmp1) ::  (* notice: for x64, rsp points to the last slot used *)
-		     I.push(R tmp1) :: C
-		  )
-		  C nargs
-	  end
-
-      fun restore_stack_alignment nargs C =
-	  let val tmp = tmp_reg0
-	  in I.movq(D(i2s(8*nargs), rsp), R tmp) ::  (* notice: for x64, rsp points to the last slot used *)
-	     I.movq(R tmp, R rsp) ::
-	     C
-	  end
-    in
-      fun needs_align () = true
-	  (* I.sysname() = "Darwin" *)
-
-      fun maybe_align nargs F C =
-          if needs_align() then
-            align nargs (F (restore_stack_alignment nargs C))
-          else F C
-    end
-(*
-    fun maybe_align {even:bool} F C =                (* ME: maybe there is a better way *)
-        let val tmp = I.rbx                          (* callee save scratch register *)
-            fun align C =
-                I.comment "ALIGN USING rbx" ::
-                I.push (R rbx) ::
-                I.movq(R rsp, R tmp) ::      (* tmp = rsp; memoize rsp as it should be restored after call *)
-                I.subq(I "16", R rsp) ::     (* rsp = rsp - 16; alignment *)
-                I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) :: (* rsp = rsp & 0xFFFFFFFFFFFFFFF0; alignment *)
-                if even then C else I.subq (I "8", R rsp) :: C
-            fun restore_align C =  (* restore previous stack pointer *)
-                I.movq(R tmp, R rsp) ::
-                I.pop (R rbx) ::
-                C
-            fun needs_align () = I.sysname() = "Darwin"
-        in if needs_align() then
-             align(F(restore_align C))
-           else F C
-        end
-*)
-    fun regs_atys nil acc = nil
-      | regs_atys (SS.PHREG_ATY r::atys) acc = regs_atys atys (r::acc)
-      | regs_atys (_ ::atys) acc = regs_atys atys acc
-
-    fun member r nil = false
-      | member r (x::xs) = r = x orelse member r xs
-(*
-    fun subst_ea s t ea =
-        case ea of
-            R r => if r=s then R t else ea
-          | L _ => ea
-          | LA _ => ea
-          | I _ => ea
-          | D(str,r) => if r=s then D(str,t) else ea
-          | DD(str1,r1,r2,str2) =>
-            if r1=s orelse r2=s then
-              let val r1'=if r1=s then t else r1
-                  val r2'=if r2=s then t else r2
-              in DD(str1,r1',r2',str2)
-              end
-            else ea
-*)
-    (* move the first six arguments into the appropriate registers *)
-    fun shuffle_args (size_ff:int)
-                     (mv_aty_to_reg: SS.Aty * 'a * reg * int * I.inst list -> I.inst list)
-                     (args:(SS.Aty * 'a * reg)list)
-                     (C:I.inst list) : I.inst list =
-        let (*val args = List.filter (fn (aty,_,r) => not(SS.eq_aty (aty,SS.PHREG_ATY r))) args*)
-            val regs = regs_atys (List.map #1 args) nil
-            fun loop nil acc = acc
-              | loop ((aty,info,r)::args) (C,rem)=
-                if not (member r regs) then
-                  let val (C,rem) = loop args (C,rem)
-                  in (mv_aty_to_reg (aty:SS.Aty,info:'a,r:reg,size_ff,C),rem)
-                  end
-                else loop args (C,(aty,info,r)::rem)
-            val (C,args) = loop args (C,nil)
-        in case args of
-               nil => C
-             | (_,_,r)::_ => die "shuffle_args: not quite done"
-        end
-
-    fun warn s = print ("** WARNING: " ^ s ^ "\n")
-
-    (* 1. push stack arguments
-       2. shuffle register arguments (adjust size_ff)
-       3. align rsp (and modify location of stack arguments)
-       4. make the call
-       5. on return, reestablish (esp)
-     *)
-
-    fun compile_c_call_prim (name:string, args:SS.Aty list, opt_ret:SS.Aty option, size_ff:int, tmp:reg, C) =
-        let fun drop n nil = nil
-              | drop 0 xs = xs
-              | drop n (x::xs) = drop (n-1) xs
-            fun push_arg(aty,size_ff,C) = push_aty(aty,tmp,size_ff,C)
-            val nargs = List.length args
-(*
-            val () = if nargs > List.length RI.args_reg_ccall then
-                       warn ("compile_c_call_prim: at most " ^
-                             Int.toString (List.length RI.args_reg_ccall) ^
-                             " arguments are passed in registers - " ^ name ^ " takes " ^
-                             Int.toString nargs ^ " arguments")
-                     else ()
-*)
-            val args_stack = drop (List.length RI.args_reg_ccall) args
-            val nargs_stack = List.length args_stack
-            val args = ListPair.zip (args, RI.args_reg_ccall)
-            val args = map (fn (x,y) => (x,(),y)) args
-            fun store_ret(SOME d,C) = move_reg_into_aty(rax,d,size_ff,C)
-              | store_ret(NONE,C) = C
-            (* val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
-            (* With dynamic linking there must be at least one argument (the name to be bound). *)
-            val dynlinklab = "localResolveLibFnManual"
-            fun mv (aty,_,r,sz_ff,C) = move_aty_into_reg(aty,r,sz_ff,C)
-        in shuffle_args size_ff mv args
-            (push_args push_arg size_ff args_stack
-              (maybe_align nargs_stack
-                (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab, C))
-                  (store_ret(opt_ret,C))))
-        end
-
-    (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
-     * convert the C result to an ML result. Currently supports at most 6 arguments. *)
-    fun compile_c_call_auto (name,args,opt_res,size_ff,tmp,C) =
-        let val args = if List.length args > List.length RI.args_reg_ccall then
-                         die ("compile_c_call_auto: at most " ^
-                              Int.toString (List.length RI.args_reg_ccall) ^
-                              " arguments are supported")
-                       else ListPair.zip (args, RI.args_reg_ccall)
-            val args = List.map (fn ((x:SS.Aty,y:LS.foreign_type),z:reg) => (x,y,z)) args
-            fun mov_bool ((aty,r),size_ff,C) =
-                move_aty_into_reg(aty,r,size_ff,
-                                  I.shrq(I "1", R r) :: C)
-
-            fun mov_int ((aty,r),size_ff,C) =
-                if BI.tag_values() then
-                  move_aty_into_reg(aty,r,size_ff,
-                                    I.shrq(I "1", R r) :: C)
-                else
-                  move_aty_into_reg(aty,r,size_ff,C)
-
-            fun mov_foreignptr ((aty,r),size_ff,C) =
-                if BI.tag_values() then
-                  case aty of
-                      SS.PHREG_ATY r => I.leaq(D("-1", r), R r) :: C
-                    | _ => move_aty_into_reg(aty,r,size_ff,
-                                             I.leaq(D("-1", r), R r) :: C)
-                else move_aty_into_reg(aty,r,size_ff,C)
-
-            fun mov_chararray ((aty,r),size_ff,C) =
-                case aty of
-                    SS.PHREG_ATY r' => I.leaq(D("8", r'), R r) :: C
-                  | _ => move_aty_into_reg(aty,r,size_ff,
-                                           I.leaq(D("8", r), R r) :: C)
-
-            fun mov_arg (aty,ft:LS.foreign_type,r,size_ff,C) =
-                let val mov_fun = case ft
-                                   of LS.Bool => mov_bool
-                                    | LS.Int => mov_int
-                                    | LS.ForeignPtr => mov_foreignptr
-                                    | LS.CharArray => mov_chararray
-                                    | LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
-                in mov_fun((aty,r),size_ff,C)
-                end
-
-            fun tag_bool_result (r,C) = I.leaq(DD("1", r, r, ""), R r) :: C
-
-            fun maybe_tag_int_result (r,C) =
-                if BI.tag_values() then I.leaq(DD("1", r, r, ""), R r) :: C
-                else C
-
-            fun maybe_tag_foreignptr_result (r,C) =
-                if BI.tag_values() then I.leaq(D("1", r), R r) :: C
-                else C
-
-            fun convert_result ft =
-                case ft of
-                    LS.Bool => tag_bool_result
-                  | LS.Int => maybe_tag_int_result
-                  | LS.ForeignPtr => maybe_tag_foreignptr_result
-                  | LS.Unit => die "convert_result.Unit already dealt with"
-                  | LS.CharArray => die "convert_result.CharArray foreign type not supported in auto-conversion result"
-
-            fun store_result ((aty,ft:LS.foreign_type), C) =
-                case ft of
-                    LS.Unit => C
-                  | _ => convert_result ft (rax, move_reg_into_aty(rax,aty,size_ff,C))
-
-            val dynlinklab = "localResolveLibFnAuto"
-            val nargs = List.length args (* not used for static calls *)
-        in shuffle_args size_ff mov_arg args
-             (maybe_align 0 (fn C => callc_static_or_dynamic (name, nargs, NameLab dynlinklab,C))
-               (store_result(opt_res,C)))
-        end
-    end
-
-    (**********************)
-    (* Garbage Collection *)
-    (**********************)
-
-    (* Put a bitvector into the code. *)
-    fun gen_bv (ws,C) =
-      let fun gen_bv'([],C) = C
-            | gen_bv'(w::ws,C) = gen_bv'(ws,I.dot_quad ("0x"^Word32.fmt StringCvt.HEX w)::C)
-      in if gc_p() then gen_bv'(ws,C)
-         else C
-      end
-
-    (* reg_map is a register map describing live registers at entry to the function       *)
-    (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
-    fun do_gc(reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args,C) =
-      if gc_p() then
-        let
-          val l = new_local_lab "return_from_gc_stub"
-          val reg_map_immed = "0x" ^ Word32.fmt StringCvt.HEX reg_map
-          val size_ff = 0 (*dummy*)
-        in
-(*
-          load_label_addr(time_to_gc_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* tmp_reg1 = &gc_flag *)
-          I.movq(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
-*)
-          I.cmpq(I "1", L time_to_gc_lab) ::
-(*          I.jmp (L l) ::  (* for disabling gc *) *)
-          I.jne l ::
-          I.movq(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
-          load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
-          I.push(I (i2s size_ccf)) ::
-          I.push(I (i2s size_rcf)) ::
-          I.push(I (i2s size_spilled_region_args)) ::
-          I.jmp(L gc_stub_lab) ::
-          I.lab l :: C)
-        end
-      else C
-
-    (*********************)
-    (* Allocation Points *)
-    (*********************)
-
-    (* Status Bits Are Not Cleared! We preserve the value in register t,
-     * t may be used in a call to alloc. *)
-
-    fun reset_region(t:reg,tmp:reg,size_ff,C) =
-      let val l = new_local_lab "return_from_alloc"
-      in copy(t,tmp_reg1,
-         I.push(LA l) ::
-         I.jmp(L(NameLab "__reset_region")) ::
-         I.lab l ::
-         copy(tmp_reg1, t, C))
-      end
-
-    fun alloc_kill_tmp01(t:reg,n0:int,size_ff,pp:LS.pp,C) =
-      let val n = if region_profiling() then n0 + BI.objectDescSizeP
-                  else n0
-          val l = new_local_lab "return_from_alloc"
-          fun post_prof C =
-            if region_profiling() then   (* tmp_reg1 now points at the object descriptor; initialize it *)
-              I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
-              I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
-              I.leaq(D (i2s (8*BI.objectDescSizeP), tmp_reg1), R tmp_reg1) :: C  (* make tmp_reg1 point at object *)
-            else C
-      in
-        copy(t,tmp_reg1,
-        I.push(LA l) ::
-        move_immed(Int32.fromInt n, R tmp_reg0,
-        I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-        I.lab l ::
-        post_prof
-        (copy(tmp_reg1,t,C))))
-      end
-
-    (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled
-     * then the following function is used for allocating pairs in
-     * infinite regions. *)
-
-    fun alloc_untagged_value_kill_tmp01(t:reg,size_alloc,size_ff,pp:LS.pp,C) =
-      let val n0 = size_alloc (* size of untagged pair, e.g. *)
-          val n = if region_profiling() then n0 + BI.objectDescSizeP
-                  else n0
-          val l = new_local_lab "return_from_alloc"
-          fun post (t, C) =
-            if region_profiling() then   (* tmp_reg1 now points at the object descriptor; initialize it *)
-              I.movq(I (i2s pp), D("0",tmp_reg1)) ::               (* first word is pp *)
-              I.movq(I (i2s n0), D("8",tmp_reg1)) ::               (* second word is object size *)
-              I.leaq(D (i2s (8*(BI.objectDescSizeP-1)), tmp_reg1), R t) :: C  (* make tmp_reg1 point at
-                                                                                         * word before object *)
-            else
-              I.leaq(D("-8",tmp_reg1), R t) :: C  (* make tmp_reg1 point at
-                                                   * word before object *)
-      in
-        copy(t,tmp_reg1,
-        I.push(LA l) ::
-        move_immed(Int32.fromInt n, R tmp_reg0,
-        I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
-        I.lab l ::
-        post (t,C)))
-      end
-
-    fun set_atbot_bit(dst_reg:reg,C) =
-      I.orq(I "2", R dst_reg) :: C
-
-    fun clear_atbot_bit(dst_reg:reg,C) =
-      I.btrq (I "1", R dst_reg) :: C
-
-    fun set_inf_bit(dst_reg:reg,C) =
-      I.orq(I "1", R dst_reg) :: C
-
-    fun set_inf_bit_and_atbot_bit(dst_reg:reg,C) =
-      I.orq(I "3", R dst_reg) :: C
-
-    (* move_aty_into_reg_ap differs from move_aty_into_reg in the case where aty is a phreg! *)
-    (* We must always make a copy of phreg because we may overwrite status bits in phreg.    *)
-    fun move_aty_into_reg_ap(aty,dst_reg,size_ff,C) =
-      case aty
-        of SS.REG_I_ATY offset => base_plus_offset(rsp,BYTES(size_ff*8-offset*8-8(*+BI.inf_bit*)),dst_reg,
-                                                   set_inf_bit(dst_reg,C))
-         | SS.REG_F_ATY offset => base_plus_offset(rsp,WORDS(size_ff-offset-1),dst_reg,C)
-         | SS.STACK_ATY offset => load_indexed(R dst_reg,rsp,WORDS(size_ff-offset-1),C)
-         | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
-         | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory"
-
-    fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
-      if region_profiling() then
-        if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")
-        else I.movq(I(i2s pp), D("-16", obj_ptr)) :: C  (* two words offset *)
-      else C
-
-    fun alloc_ap_kill_tmp01(sma, dst_reg:reg, n, size_ff, C) =
-      case sma
-        of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => C
-         | LS.IGNORE => C
-         | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   alloc_kill_tmp01(dst_reg,n,size_ff,pp,C))
-         | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   store_pp_prof(dst_reg,pp,C))
-         | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,    (* atbot bit not set; its a finite region *)
-                                   store_pp_prof(dst_reg,pp,C))
-         | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   alloc_kill_tmp01(dst_reg,n,size_ff,pp,C))
-         | LS.ATTOP_FF(aty,pp) =>
-          let val cont_lab = new_local_lab "no_alloc"
-          in move_aty_into_reg_ap(aty,dst_reg,size_ff,
-             I.btq(I "0", R dst_reg) :: (* inf bit set? *)
-             I.jnc cont_lab ::
-             alloc_kill_tmp01(dst_reg,n,size_ff,pp,
-             I.lab cont_lab :: C))
-          end
-         | LS.ATBOT_LI(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff,
-          reset_region(dst_reg,tmp_reg0,size_ff,     (* dst_reg is preserved for alloc *)
-          alloc_kill_tmp01(dst_reg,n,size_ff,pp,C)))
-         | LS.SAT_FI(aty,pp) =>
-          let val default_lab = new_local_lab "no_reset"
-          in move_aty_into_reg_ap(aty,dst_reg,size_ff,
-             I.btq(I "1", R dst_reg) ::     (* atbot bit set? *)
-             I.jnc default_lab ::
-             reset_region(dst_reg,tmp_reg0,size_ff,
-             I.lab default_lab ::         (* dst_reg is preverved over the call *)
-             alloc_kill_tmp01(dst_reg,n,size_ff,pp,C)))
-          end
-         | LS.SAT_FF(aty,pp) =>
-          let val finite_lab = new_local_lab "no_alloc"
-              val attop_lab = new_local_lab "no_reset"
-          in move_aty_into_reg_ap(aty,dst_reg,size_ff,
-             I.btq (I "0", R dst_reg) ::  (* inf bit set? *)
-             I.jnc finite_lab ::
-             I.btq (I "1", R dst_reg) ::  (* atbot bit set? *)
-             I.jnc attop_lab ::
-             reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
-             I.lab attop_lab ::
-             alloc_kill_tmp01(dst_reg,n,size_ff,pp,
-             I.lab finite_lab :: C)))
-          end
-
-    fun alloc_untagged_value_ap_kill_tmp01 (sma, dst_reg:reg, size_alloc, size_ff, C) =
-      case sma
-        of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.1"
-         | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.2"
-         | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.3"
-         | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.4"
-         | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.5"
-         | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.6"
-         | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.7"
-         | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.8"
-         | LS.IGNORE => die "alloc_untagged_value_ap_kill_tmp01.9"
-         | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C))
-         | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   store_pp_prof(dst_reg,pp, C))
-         | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,    (* atbot bit not set; its a finite region *)
-                                   store_pp_prof(dst_reg,pp, C))
-         | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C))
-         | LS.ATTOP_FF(aty,pp) =>
-          let val cont_lab = new_local_lab "cont"
-          in move_aty_into_reg_ap(aty,dst_reg,size_ff,
-             I.btq(I "0", R dst_reg) :: (* inf bit set? *)
-             I.jnc cont_lab ::
-             alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,
-             I.lab cont_lab :: C))
-          end
-         | LS.ATBOT_LI(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff,
-          reset_region(dst_reg,tmp_reg0,size_ff,     (* dst_reg is preserved for alloc *)
-          alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C)))
-         | LS.SAT_FI(aty,pp) =>
-          let val default_lab = new_local_lab "no_reset"
-          in move_aty_into_reg_ap(aty,dst_reg,size_ff,
-             I.btq(I "1", R dst_reg) ::     (* atbot bit set? *)
-             I.jnc default_lab ::
-             reset_region(dst_reg,tmp_reg0,size_ff,
-             I.lab default_lab ::         (* dst_reg is preverved over the call *)
-             alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C)))
-          end
-         | LS.SAT_FF(aty,pp) =>
-          let val finite_lab = new_local_lab "no_alloc"
-              val attop_lab = new_local_lab "no_reset"
-              val cont_lab = new_local_lab "cont"
-          in move_aty_into_reg_ap(aty,dst_reg,size_ff,
-             I.btq (I "0", R dst_reg) ::  (* inf bit set? *)
-             I.jnc cont_lab ::
-             I.btq (I "1", R dst_reg) ::  (* atbot bit set? *)
-             I.jnc attop_lab ::
-             reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
-             I.lab attop_lab ::
-             alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,
-             I.lab cont_lab :: C)))
-          end
-
-    (* Set Atbot bits on region variables *)
-    fun prefix_sm(sma,dst_reg:reg,size_ff,C) =
-      case sma
-        of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
-         | LS.IGNORE => die "prefix_sm: IGNORE not implemented."
-         | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.ATTOP_FI(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff,
-          clear_atbot_bit(dst_reg,C))
-         | LS.ATTOP_FF(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff, (* It is necessary to clear atbot bit *)
-          clear_atbot_bit(dst_reg,C))               (* because the region may be infinite *)
-         | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) =>
-          base_plus_offset(rsp,BYTES(size_ff*8-offset_reg_i*8-8(*+BI.inf_bit+BI.atbot_bit*)),dst_reg,
-          set_inf_bit_and_atbot_bit(dst_reg, C))
-         | LS.ATBOT_LI(aty,pp) =>
-          move_aty_into_reg_ap(aty,dst_reg,size_ff,
-          set_atbot_bit(dst_reg,C))
-         | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-         | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-
-    (* Used to build a region vector *)
-    fun store_sm_in_record(sma,tmp:reg,base_reg,offset,size_ff,C) =
-      case sma
-        of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-         | LS.IGNORE => die "store_sm_in_record: IGNORE not implemented."
-         | LS.ATTOP_LI(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,R phreg,C)
-         | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-                                  store_indexed(base_reg,offset,R tmp,C))
-         | LS.ATTOP_LF(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,R phreg,C)
-         | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-                                  store_indexed(base_reg,offset,R tmp,C))
-         | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-                                  clear_atbot_bit(tmp,
-                                  store_indexed(base_reg,offset,R tmp,C)))
-         | LS.ATTOP_FF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-                                  clear_atbot_bit(tmp,                   (* The region may be infinite *)
-                                  store_indexed(base_reg,offset,R tmp,C))) (* so we clear the atbot bit *)
-         | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) =>
-          base_plus_offset(rsp,BYTES(size_ff*8-offset_reg_i*8-8(*+BI.inf_bit+BI.atbot_bit*)),tmp,
-          set_inf_bit_and_atbot_bit(tmp,
-          store_indexed(base_reg,offset,R tmp,C)))
-         | LS.ATBOT_LI(aty,pp) =>
-          move_aty_into_reg_ap(aty,tmp,size_ff,
-          set_atbot_bit(tmp,
-          store_indexed(base_reg,offset,R tmp,C)))
-         | LS.ATBOT_LF(SS.PHREG_ATY phreg,pp) =>
-          store_indexed(base_reg,offset,R phreg,C) (* The region is finite so no atbot bit is necessary *)
-         | LS.ATBOT_LF(aty,pp) =>
-          move_aty_into_reg_ap(aty,tmp,size_ff,
-          store_indexed(base_reg,offset,R tmp,C))
-         | LS.SAT_FI(SS.PHREG_ATY phreg,pp) =>
-          store_indexed(base_reg,offset,R phreg,C) (* The storage bit is already recorded in phreg *)
-         | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-                                store_indexed(base_reg,offset,R tmp,C))
-         | LS.SAT_FF(SS.PHREG_ATY phreg,pp) =>
-          store_indexed(base_reg,offset,R phreg,C) (* The storage bit is already recorded in phreg *)
-         | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-                                store_indexed(base_reg,offset,R tmp,C))
-
-    fun force_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) =
-      let fun do_reset(aty,pp) = move_aty_into_reg_ap(aty,t,size_ff,
-                                  reset_region(t,tmp_reg0,size_ff,C))
-          fun maybe_reset(aty,pp) =
-            let val default_lab = new_local_lab "no_reset"
-            in move_aty_into_reg_ap(aty,t,size_ff, (* We check the inf bit but not the storage mode *)
-               I.btq(I "0", R t) ::                (* Is region infinite? kill tmp_reg0. *)
-               I.jnc default_lab ::
-               reset_region(t,tmp_reg0,size_ff,
-               I.lab default_lab :: C))
-            end
-      in case sma
-           of LS.ATTOP_LI(aty,pp) => do_reset(aty,pp)
-            | LS.ATTOP_LF _ => C
-            | LS.ATTOP_FI(aty,pp) => do_reset(aty,pp)
-            | LS.ATTOP_FF(aty,pp) => maybe_reset(aty,pp)
-            | LS.ATBOT_LI(aty,pp) => do_reset(aty,pp)
-            | LS.ATBOT_LF _ => C
-            | LS.SAT_FI(aty,pp) => do_reset(aty,pp)     (* We do not check the storage mode *)
-            | LS.SAT_FF(aty,pp) => maybe_reset(aty,pp)
-            | LS.IGNORE => C
-      end
-
-      fun maybe_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) =
-        case sma
-          of LS.ATBOT_LI(aty,pp) => move_aty_into_reg_ap(aty,t,size_ff,
-                                    reset_region(t,tmp_reg0,size_ff,C))
-           | LS.SAT_FI(aty,pp) =>
-            let val default_lab = new_local_lab "no_reset"
-            in move_aty_into_reg_ap(aty,t,size_ff,
-               I.btq(I "1", R t) :: (* Is storage mode atbot? kill tmp_reg0. *)
-               I.jnc default_lab ::
-               reset_region(t,tmp_reg0,size_ff,
-               I.lab default_lab :: C))
-            end
-           | LS.SAT_FF(aty,pp) =>
-            let val default_lab = new_local_lab "no_reset"
-            in move_aty_into_reg_ap(aty,t,size_ff,
-               I.btq (I "0", R t) ::  (* Is region infinite? *)
-               I.jnc default_lab ::
-               I.btq (I "1", R t) ::  (* Is atbot bit set? *)
-               I.jnc default_lab ::
-               reset_region(t,tmp_reg0,size_ff,
-               I.lab default_lab :: C))
-            end
-           | _ => C
-
-      (* Compile Switch Statements *)
-      local
-        fun new_label str = new_local_lab str
-        fun label(lab,C) = I.lab lab :: C
-        fun jmp(lab,C) = I.jmp(L lab) :: rem_dead_code C
-        fun inline_cont C =
-          case C
-            of (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
-             | _ => NONE
-      in
-        fun binary_search(sels,
-                          default,
-                          opr: I.ea,
-                          compile_insts,
-                          toInt : 'a -> Int32.int,
-                          C) =
-          let
-            val sels = map (fn (i,e) => (toInt i, e)) sels
-            fun if_not_equal_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jne lab :: C
-            fun if_less_than_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jl lab :: C
-            fun if_greater_than_go_lab (lab,i,C) = I.cmpq(I (intToStr i),opr) :: I.jg lab :: C
-          in
-            if jump_tables then
-              JumpTables.binary_search_new
-              (sels,
-               default,
-               comment,
-               new_label,
-               if_not_equal_go_lab,
-               if_less_than_go_lab,
-               if_greater_than_go_lab,
-               compile_insts,
-               label,
-               jmp,
-               fn (sel1,sel2) => Int32.abs(sel1-sel2), (* sel_dist *)
-               fn (lab,sel,_,C) => (I.movq(opr, R tmp_reg0) ::
-                                    I.salq(I "3", R tmp_reg0) ::
-                                    I.push(R tmp_reg1) ::
-                                    I.movq(LA lab,R tmp_reg1) ::
-                                    I.addq(R tmp_reg1, R tmp_reg0) ::
-                                    I.pop(R tmp_reg1) ::
-                                    I.jmp(D(intToStr(~8*sel), tmp_reg0)) ::
-                                    rem_dead_code C),
-               fn (lab,C) => I.dot_quad (I.pr_lab lab) :: C, (*add_label_to_jump_tab*)
-               I.eq_lab,
-               inline_cont,
-               C)
-            else
-              JumpTables.linear_search_new(sels,
-                                           default,
-                                           comment,
-                                           new_label,
-                                           if_not_equal_go_lab,
-                                           compile_insts,
-                                           label,
-                                           jmp,
-                                           inline_cont,
-                                           C)
-          end
-      end
-
-      (* Compile switches on constructors, integers, and words *)
-      fun compileNumSwitch {size_ff,size_ccf,CG_lss,toInt,opr_aty,oprBoxed,sels,default,C} =
-        let
-          val (opr_reg, F) =
-            case opr_aty
-              of SS.PHREG_ATY r => (r, fn C => C)
-               | _ => (tmp_reg1, fn C => move_aty_into_reg(opr_aty,tmp_reg1,size_ff, C))
-          val opr = if oprBoxed then D("8", opr_reg)   (* boxed representation of nums *)
-                    else R opr_reg                     (* unboxed representation of nums *)
-        in
-          F (binary_search(sels,
-                           default,
-                           opr,
-                           fn (lss,C) => CG_lss(lss,size_ff,size_ccf,C), (* compile_insts *)
-                           toInt,
-                           C))
-        end
-
-
-      fun cmpi_kill_tmp01 {box} (jump,x,y,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            val true_lab = new_local_lab "true"
-            val cont_lab = new_local_lab "cont"
-            fun compare C =
-              if box then
-                I.movq(D("8",y_reg), R tmp_reg1) ::
-                I.movq(D("8",x_reg), R tmp_reg0) ::
-                I.cmpl(R (I.doubleOfQuadReg tmp_reg1),
-                       R (I.doubleOfQuadReg tmp_reg0)) :: C
-              else I.cmpl(R (I.doubleOfQuadReg y_reg),
-                          R (I.doubleOfQuadReg x_reg)) :: C
-        in
-           x_C(
-           y_C(
-           compare (
-           jump true_lab ::
-           I.movq(I (i2s BI.ml_false), R d_reg) ::
-           I.jmp(L cont_lab) ::
-           I.lab true_lab ::
-           I.movq(I (i2s BI.ml_true), R d_reg) ::
-           I.lab cont_lab :: C')))
-        end
-
-      fun cmpi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) =
-        let
-          val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-          val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-        in
-          x_C(y_C(
-          I.cmpl(R (I.doubleOfQuadReg y_reg), R (I.doubleOfQuadReg x_reg)) ::
-          jump lab_t ::
-          I.jmp (L lab_f) :: rem_dead_code C))
-        end
-
-      (* version with boxed arguments; assume tagging is enabled *)
-      fun cmpbi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) =
-        if BI.tag_values() then
-          let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-              val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-          in
-            x_C(y_C(
-            I.movq(D("8", y_reg), R tmp_reg1) ::
-            I.movq(D("8", x_reg), R tmp_reg0) ::
-            I.cmpl(R (I.doubleOfQuadReg tmp_reg1),
-                   R (I.doubleOfQuadReg tmp_reg0)) ::
-            jump lab_t ::
-            I.jmp (L lab_f) :: rem_dead_code C))
-          end
-        else die "cmpbi_and_jmp_kill_tmp01: tagging disabled!"
-
-      fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
-
-      fun sub_num_kill_tmp01 {ovf : bool, tag: bool} (x,y,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            fun check_ovf C = if ovf then jump_overflow C else C
-            fun do_tag C = if tag then I.addq(I "1",R d_reg) :: check_ovf C   (* check twice *)
-                           else C
-        in
-          x_C(y_C(
-          copy(y_reg, tmp_reg1,
-          copy(x_reg, d_reg,
-          I.subl(R (I.doubleOfQuadReg tmp_reg1),
-                 R (I.doubleOfQuadReg d_reg)) ::
-          check_ovf (do_tag C')))))
-        end
-
-      fun add_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) =  (* Be careful - when tag and ovf, add may
-                                                             * raise overflow when it is not supposed
-                                                             * to, if one is not careful! sub_num above
-                                                             * is ok, I think! mael 2001-05-19 *)
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            fun check_ovf C = if ovf then jump_overflow C else C
-            fun do_tag C = if tag then I.addl(I "-1", R (I.doubleOfQuadReg d_reg)) :: check_ovf C
-                           else C
-        in if tag andalso ovf then
-             (x_C(y_C(
-              copy(y_reg, tmp_reg1, I.sarl(I "1", R (I.doubleOfQuadReg tmp_reg1)) ::    (* t1 = untag y *)
-              copy(x_reg, tmp_reg0, I.sarl(I "1", R (I.doubleOfQuadReg tmp_reg0)) ::    (* t0 = untag x *)
-              I.addl(R (I.doubleOfQuadReg tmp_reg0),
-                     R (I.doubleOfQuadReg tmp_reg1)) ::             (* t1 = t1 + t0 *)
-              copy(tmp_reg1, d_reg,
-              I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::         (* d = tag d *)
-              I.sarl(I "1", R (I.doubleOfQuadReg d_reg)) ::         (* d = untag d *)
-              I.cmpl(R (I.doubleOfQuadReg d_reg),
-                     R (I.doubleOfQuadReg tmp_reg1)) ::
-              I.jne (NameLab "__raise_overflow") ::
-              I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::         (* d = tag d *)
-              C'))))))
-           else
-             (x_C(y_C(
-              copy(y_reg, tmp_reg1,
-              copy(x_reg, d_reg,
-              I.addl(R (I.doubleOfQuadReg tmp_reg1),
-                     R (I.doubleOfQuadReg d_reg)) ::
-              check_ovf (do_tag C'))))))
-        end
-
-      fun mul_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) = (* does (1 * valOf Int31.minInt) raise Overflow ? *)
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            fun check_ovf C = if ovf then jump_overflow C else C
-        in x_C(y_C(
-           copy(y_reg, tmp_reg1,
-           copy(x_reg, d_reg,
-           if tag then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
-                I.sarl(I "1", R (I.doubleOfQuadReg d_reg)) ::
-                I.subl(I "1", R (I.doubleOfQuadReg tmp_reg1)) ::
-                I.imull(R (I.doubleOfQuadReg tmp_reg1),
-                        R (I.doubleOfQuadReg d_reg)) ::
-                check_ovf (
-                I.addl(I "1", R (I.doubleOfQuadReg d_reg)) ::
-                check_ovf C')
-           else
-             I.imull(R (I.doubleOfQuadReg tmp_reg1),
-                     R (I.doubleOfQuadReg d_reg)) ::
-             check_ovf C'))))
-        end
-
-      fun neg_int_kill_tmp0 {tag} (x,d,size_ff,C) =
-        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-            val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-            fun do_tag C = if tag then I.addl(I "2", R (I.doubleOfQuadReg d_reg)) ::
-                                       jump_overflow C
-                           else C
-        in x_C(copy(x_reg, d_reg,
-           I.negl (R (I.doubleOfQuadReg d_reg)) ::
-           jump_overflow (
-           do_tag C')))
-        end
-
-      fun neg_int32b_kill_tmp0 (b,x,d,size_ff,C) =
-        if not(BI.tag_values()) then die "neg_int32b_kill_tmp0.tagging required"
-        else
-          let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-              val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-          in x_C(
-             load_indexed(R tmp_reg0,x_reg,WORDS 1,
-             I.negl(R (I.doubleOfQuadReg tmp_reg0)) ::
-             jump_overflow (
-             move_aty_into_reg(b,d_reg,size_ff,
-             store_indexed(d_reg,WORDS 1, R tmp_reg0,                        (* store negated value *)
-             store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
-          end
-
-     fun abs_int_kill_tmp0 {tag} (x,d,size_ff,C) =
-       let val cont_lab = new_local_lab "cont"
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun do_tag C = if tag then I.addl(I "2", R (I.doubleOfQuadReg d_reg)) ::
-                                      jump_overflow C
-                          else C
-       in
-         x_C(copy(x_reg,d_reg,
-         I.cmpl(I "0", R (I.doubleOfQuadReg d_reg)) ::
-         I.jge cont_lab ::
-         I.negl (R (I.doubleOfQuadReg d_reg)) ::
-         jump_overflow (
-         do_tag (
-         I.lab cont_lab :: C'))))
-       end
-
-
-     fun abs_int32b_kill_tmp0 (b,x,d,size_ff,C) =
-       let val cont_lab = new_local_lab "cont"
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
-       in
-         x_C(
-         load_indexed(R tmp_reg0,x_reg,WORDS 1,
-         I.cmpl(I "0", R (I.doubleOfQuadReg tmp_reg0)) ::
-         I.jge cont_lab ::
-         I.negl (R (I.doubleOfQuadReg tmp_reg0)) ::
-         jump_overflow (
-         I.lab cont_lab ::
-         move_aty_into_reg(b,d_reg,size_ff,
-         store_indexed(d_reg, WORDS 1, R tmp_reg0,                       (* store negated value *)
-         store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
-       end
-
-     fun word32ub_to_int32ub (x,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-       in x_C(copy(x_reg, d_reg,
-                   I.btq(I "31", R d_reg) ::     (* sign bit set? *)
-                   I.jc (NameLab "__raise_overflow") :: C'))
-       end
-
-     fun num31_to_num32ub (x,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-       in x_C(copy(x_reg, d_reg, I.sarl (I "1", R (I.doubleOfQuadReg d_reg)) :: C'))
-       end
-
-     fun int32_to_int31 {boxedarg} (x,d,size_ff,C) =
-       let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
-                               else copy(x_reg,d_reg,C)
-       in x_C(
-          maybe_unbox(
-          I.imull(I "2", R (I.doubleOfQuadReg d_reg)) ::
-          jump_overflow (
-          I.addq(I "1", R d_reg) :: C')))   (* No need to check for overflow after adding 1; the
-                                             * intermediate result is even (after multiplying
-                                             * with 2) so adding one cannot give Overflow because the
-                                             * largest integer is odd! mael 2001-04-29 *)
-       end
-
-     fun word32_to_int31 {boxedarg,ovf} (x,d,size_ff,C) =
-       let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
-                               else copy(x_reg,d_reg,C)
-           fun check_ovf C =
-             if ovf then
-               I.btq(I "30", R d_reg) ::
-               I.jc (NameLab "__raise_overflow") ::
-               C
-             else C
-       in x_C(
-          maybe_unbox(
-          check_ovf(
-          I.imull(I "2", R (I.doubleOfQuadReg d_reg)) ::
-          jump_overflow (
-          I.addq(I "1", R d_reg) :: C'))))   (* No need to check for overflow after adding 1; the
-                                              * intermediate result is even (after multiplying
-                                              * with 2) so adding one cannot give Overflow because the
-                                              * largest integer is odd! mael 2001-04-29 *)
-       end
-
-     fun word32_to_word31 {boxedarg} (x,d,size_ff,C) =
-       let
-           val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-           fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
-                               else copy(x_reg,d_reg,C)
-       in x_C(
-          maybe_unbox(
-(*
-          I.salq(I "1", R d_reg) ::
-          I.addq(I "1", R d_reg) ::
-*)        I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
-          C'))
-       end
-
-     fun bin_float_op_kill_tmp01 finst (x,y,b,d,size_ff,C) =
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff, xmm1)
-           val y_C = load_float_aty(y, tmp_reg0, size_ff, xmm0)
-           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-       in
-         y_C(x_C(finst(R xmm0,R xmm1) ::
-         b_C(store_float_reg(b_reg,tmp_reg1,xmm1,
-         copy(b_reg,d_reg, C')))))
-       end
-
-     fun addf_kill_tmp01 a = bin_float_op_kill_tmp01 I.addsd a
-     fun subf_kill_tmp01 a = bin_float_op_kill_tmp01 I.subsd a
-     fun mulf_kill_tmp01 a = bin_float_op_kill_tmp01 I.mulsd a
-     fun divf_kill_tmp01 a = bin_float_op_kill_tmp01 I.divsd a
-
-     fun negf_kill_tmp01 (b,x,d,size_ff,C) =
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff,xmm1)
-           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-       in
-         x_C(I.xorps (R xmm0,R xmm0) :: I.subsd (R xmm1,R xmm0) ::
-         b_C(store_float_reg(b_reg,tmp_reg1,xmm0,
-         copy(b_reg,d_reg, C'))))
-       end
-
-     fun absf_kill_tmp01 (b,x,d,size_ff,C) =
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff,xmm1)
-           val (b_reg, b_C) = resolve_arg_aty(b, tmp_reg0, size_ff)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-       in
-         x_C(I.xorps (R xmm0,R xmm0) :: I.subsd (R xmm1,R xmm0) :: I.maxsd (R xmm1,R xmm0) ::
-         b_C(store_float_reg(b_reg,tmp_reg1,xmm0,
-         copy(b_reg,d_reg, C'))))
-       end
-
-     datatype cond = LESSTHAN | LESSEQUAL | GREATERTHAN | GREATEREQUAL
-
-     fun cmpf_kill_tmp01 (cond,x,y,d,size_ff,C) = (* ME MEMO *)
-       let val x_C = load_float_aty(x, tmp_reg0, size_ff, xmm0)
-           val y_C = load_float_aty(y, tmp_reg0, size_ff, xmm1)
-           val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
-           val true_lab = new_local_lab "true"
-           val cont_lab = new_local_lab "cont"
-           val jump = (* from gcc experiments *)
-               case cond of
-                   LESSTHAN => I.jb      (*below*)
-                 | LESSEQUAL => I.jbe    (*below or equal*)
-                 | GREATERTHAN => I.ja   (*above*)
-                 | GREATEREQUAL => I.jae (*above or equal*)
-           val load_args = x_C o y_C
-       in
-         load_args(I.ucomisd (R xmm1, R xmm0) ::
-         jump true_lab ::
-         I.movq(I (i2s BI.ml_false), R d_reg) ::
-         I.jmp(L cont_lab) ::
-         I.lab true_lab ::
-         I.movq(I (i2s BI.ml_true), R d_reg) ::
-         I.lab cont_lab ::
-         C')
-       end
-
-     fun bin_op_kill_tmp01 inst (x,y,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in
-         x_C(y_C(
-         copy(y_reg, tmp_reg1,
-         copy(x_reg, d_reg,
-         inst(R (I.doubleOfQuadReg tmp_reg1),
-              R (I.doubleOfQuadReg d_reg)) :: C'))))
-       end
-
-     (* andb and orb are the same for 31 bit (tagged) and
-      * 32 bit (untagged) representations *)
-     fun andb_word_kill_tmp01 a = bin_op_kill_tmp01 I.andl a   (* A[x&y] = A[x] & A[y]  tagging *)
-     fun orb_word_kill_tmp01 a = bin_op_kill_tmp01 I.orl a     (* A[x|y] = A[x] | A[y]  tagging *)
-
-     (* xorb needs to set the lowest bit for the 31 bit (tagged) version *)
-     fun xorb_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-           fun do_tag C = if tag then I.orq(I "1", R d_reg) :: C else C
-       in
-         x_C(y_C(
-         copy(y_reg, tmp_reg1,
-         copy(x_reg, d_reg,
-         I.xorl(R (I.doubleOfQuadReg tmp_reg1),
-                R (I.doubleOfQuadReg d_reg)) ::
-         do_tag C'))))
-       end
-
-     fun bin_op_w32boxed__ {ovf} inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       if not(BI.tag_values()) then die "bin_op_w32boxed__.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-             val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-             fun check_ovf C = if ovf then jump_overflow C else C
-         in
-           x_C(
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
-           y_C(
-           load_indexed(R tmp_reg1,y_reg,WORDS 1,
-           inst(R (I.doubleOfQuadReg tmp_reg0),
-                R (I.doubleOfQuadReg tmp_reg1)) ::
-           check_ovf (
-           move_aty_into_reg(r,d_reg,size_ff,
-           store_indexed(d_reg,WORDS 1,R tmp_reg1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))  (* store tag *)
-         end
-
-     fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.addl (r,x,y,d,size_ff,C)
-
-     fun subw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subq *)
-
-     fun mulw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.imull (r,x,y,d,size_ff,C)
-
-     fun orw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.orl (r,x,y,d,size_ff,C)
-
-     fun andw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.andl (r,x,y,d,size_ff,C)
-
-     fun xorw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       bin_op_w32boxed__ {ovf=false} I.xorl (r,x,y,d,size_ff,C)
-
-     fun mul_int32b (b,x,y,d,size_ff,C) =
-       bin_op_w32boxed__ {ovf=true} I.imull (b,x,y,d,size_ff,C)
-
-     fun sub_int32b (b,x,y,d,size_ff,C) =
-       bin_op_w32boxed__ {ovf=true} I.subl (b,y,x,d,size_ff,C)
-
-     fun add_int32b (b,x,y,d,size_ff,C) =
-       bin_op_w32boxed__ {ovf=true} I.addl (b,x,y,d,size_ff,C)
-
-     fun num31_to_num32b(b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
-       if BI.tag_values() then
-         let val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-         in
-           move_aty_into_reg(x,tmp_reg0,size_ff,
-           I.sarl(I "1", R (I.doubleOfQuadReg tmp_reg0)) ::
-           move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg,WORDS 1, R tmp_reg0,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
-         end
-       else die "num31_to_num32b.tagging_disabled"
-
-     fun num32b_to_num32b {ovf:bool} (b,x,d,size_ff,C) =
-       if not(BI.tag_values()) then die "num32b_to_num32b.tagging_disabled"
-       else
-         let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-             val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
-             fun check_ovf C =
-               if ovf then
-                 I.btq(I "31", R tmp_reg0) ::     (* sign bit set? *)
-                 I.jc (NameLab "__raise_overflow") :: C
-               else C
-         in
-           x_C (
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
-           check_ovf (
-           move_aty_into_reg(b,d_reg,size_ff,
-           store_indexed(d_reg, WORDS 1, R tmp_reg0,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
-         end
-
-     fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) =
-       if not(BI.tag_values()) then die "shift_w32boxed__.tagging is not enabled as required"
-       else
-       (* y is unboxed and tagged *)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
-       in
-         x_C(
-         load_indexed(R tmp_reg1,x_reg,WORDS 1,
-         copy(rcx, tmp_reg0,                         (* save rcx *)
-         y_C(
-         copy(y_reg,rcx,                             (* tmp_reg0 = %r10, see InstsX64.sml *)
-         I.sarq (I "1", R rcx) ::                    (* untag y: y >> 1 *)
-         inst(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
-         copy(tmp_reg0, rcx,                         (* restore rcx *)
-         move_aty_into_reg(r,d_reg,size_ff,
-         store_indexed(d_reg,WORDS 1, R tmp_reg1,
-         store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))))   (* store tag *)
-       end
-
-     fun shift_leftw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
-
-     fun shift_right_signedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
-
-     fun shift_right_unsignedw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
-
-     fun shift_left_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-           (* y is represented tagged only when BI.tag_values() is true *)
-           fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
-                           else C
-       in
-         if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
-           x_C(
-           I.movq(R rcx, R tmp_reg0) ::                       (* save rcx *)
-           copy(x_reg, tmp_reg1,
-           y_C(
-           copy(y_reg, rcx,
-           I.decq (R tmp_reg1) ::                             (* x - 1  *)
-           untag_y (                                          (* y >> 1 *)
-           I.sall (R cl, R (I.doubleOfQuadReg tmp_reg1)) ::   (*   <<   *)
-           I.movq (R tmp_reg0, R rcx) ::                      (* restore rcx *)
-           I.incq (R tmp_reg1) ::           (* 1 +    *)
-           copy(tmp_reg1, d_reg, C'))))))
-         else
-           x_C(
-           copy(rcx, tmp_reg0,                                (* save rcx *)
-           copy(x_reg, tmp_reg1,
-           y_C(
-           copy(y_reg, rcx,
-           I.sall(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
-           copy(tmp_reg0, rcx,                                (* restore rcx *)
-           copy(tmp_reg1, d_reg, C')))))))
-       end
-
-     fun shift_right_signed_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10*)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-           (* y is represented tagged only when BI.tag_values() is true *)
-           fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
-                           else C
-       in
-         if tag then                         (* 1 | ((x) >> (y >> 1)) *)
-           x_C(
-           I.movq(R rcx, R tmp_reg0) ::                        (* save rcx *)
-           copy(x_reg, tmp_reg1,
-           y_C(
-           copy(y_reg, rcx,
-           I.decq (R tmp_reg1) ::                              (* x - 1  *)
-           untag_y (                                           (* y >> 1 *)
-           I.sarl (R cl, R (I.doubleOfQuadReg tmp_reg1)) ::    (* x >>   *)
-           copy(tmp_reg0, rcx,                                 (* restore rcx *)
-           I.orq (I "1", R tmp_reg1) ::                        (* 1 |    *)
-           copy(tmp_reg1, d_reg, C')))))))
-         else
-           x_C(
-           copy(rcx, tmp_reg0,                                 (* save rcx *)
-           copy(x_reg, tmp_reg1,
-           y_C(
-           copy(y_reg, rcx,
-           I.sarl(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
-           copy(tmp_reg0, rcx,                                 (* restore rcx *)
-           copy(tmp_reg1, d_reg, C')))))))
-       end
-
-     fun shift_right_unsigned_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %r10 *)
-       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-           val (y_reg,y_C) = resolve_arg_aty(y,rcx,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-           (* y is represented tagged only when BI.tag_values() is true *)
-           fun untag_y C = if BI.tag_values() then I.sarq (I "1", R rcx) :: C     (* y >> 1 *)
-                           else C
-       in
-         if tag then                                           (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
-           x_C(
-           copy(rcx, tmp_reg0,                                 (* save rcx *)
-           copy(x_reg, tmp_reg1,
-           y_C(
-           copy(y_reg, rcx,
-           untag_y (                                           (* y >> 1                *)
-           I.shrl (R cl, R (I.doubleOfQuadReg tmp_reg1)) ::    (* (unsigned long)x >>   *)
-           I.orq (I "1", R tmp_reg1) ::                        (* 1 |                   *)
-           copy(tmp_reg0, rcx,
-           copy(tmp_reg1, d_reg, C'))))))))
-         else
-           x_C(
-           copy(rcx, tmp_reg0,                                 (* save rcx *)
-           copy(x_reg, tmp_reg1,
-           y_C(
-           copy(y_reg, rcx,
-           I.shrl(R cl, R (I.doubleOfQuadReg tmp_reg1)) ::
-           copy(tmp_reg0, rcx,                                 (* restore rcx *)
-           copy(tmp_reg1, d_reg, C')))))))
-       end
-
-     fun bytetable_sub(t,i,d,size_ff,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
-           val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-           (* i is represented tagged only when BI.tag_values() is true *)
-       in if BI.tag_values() then
-            t_C(i_C(
-            copy(i_reg, rcx,                 (* tmp_reg0 = %rcx *)
-            I.sarq (I "1", R rcx) ::         (* i >> 1 *)
-            I.movzbq(DD("8",t_reg,rcx,"1"), R d_reg) ::
-            I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
-            C')))
-          else
-            t_C(i_C(
-            I.movzbq(DD("8",t_reg,i_reg,"1"), R d_reg) ::
-            C'))
-       end
-
-     fun resolve_args(atys,ts,size_ff) =
-       case atys
-         of nil => SOME (nil, fn C => C)
-          | SS.PHREG_ATY r :: atys =>
-           (case resolve_args(atys,ts,size_ff)
-              of SOME (rs,F) => SOME (r::rs,F)
-               | NONE => NONE)
-          | aty :: atys =>
-              (case ts
-                 of nil => NONE
-                  | t::ts =>
-                   (case resolve_args(atys,ts,size_ff)
-                      of SOME (rs,F) => SOME (t::rs, fn C => F(move_aty_into_reg(aty,t,size_ff,C)))
-                       | NONE => NONE))
-
-     fun bytetable_update(t,i,x,d,size_ff,C) =
-       if BI.tag_values() then
-         let
-           (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-         in
-            move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
-            move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
-            I.sarq (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
-            I.addq(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
-            move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%r10) = x *)
-            I.sarq (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
-            I.movb(R r10b, D("8", tmp_reg1)) ::                 (* *(tmp_reg1+8) = %r10b *)
-            move_immed(Int32.fromInt BI.ml_unit, R d_reg,       (* d = () *)
-            C'))))
-         end
-       else
-         (case resolve_args([t,i],[tmp_reg1],size_ff)
-            of SOME ([t_reg,i_reg],F) =>
-              F(
-              move_aty_into_reg(x,tmp_reg0,size_ff,
-              I.movb(R r10b, DD("8", t_reg, i_reg, "1")) ::    (*tmp_reg0==%r10*)
-              C))
-             | SOME _ => die "bytetable_update"
-             | NONE =>
-              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
-              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
-              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
-              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 (%rcx) = x *)
-              I.movb(R r10b, D("8", tmp_reg1)) ::              (* *(tmp_reg1+8) = %r10b *)
-              C))))
-
-     fun bytetable_size(t,d,size_ff,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg0,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-       in if BI.tag_values() then
-            t_C(
-            I.movq(D("0",t_reg), R d_reg) ::
-            I.sarq (I "6", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) *)
-(*
-            I.salq(I "1", R d_reg) ::          (* d = tag d *)
-            I.addq(I "1", R d_reg) ::
-*)          I.leaq(DD("1", d_reg, d_reg, ""), R d_reg) ::
-            C')
-          else
-            t_C(
-            I.movq(D("0",t_reg), R d_reg) ::
-            I.sarq (I "6", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) *)
-            C')
-       end
-
-     fun word_sub0(t,i,d,size_ff,C) =
-       let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-           (* i is represented tagged only when BI.tag_values() is true *)
-       in if BI.tag_values() then
-            t_C(
-            move_aty_into_reg(i,tmp_reg0,size_ff,
-            I.sarq (I "1", R tmp_reg0) ::         (* i >> 1 *)
-            I.movq(DD("8",t_reg,tmp_reg0,"8"), R d_reg) ::
-            C'))
-          else
-            let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
-            in
-              t_C(i_C(
-              I.movq(DD("8",t_reg,i_reg,"8"), R d_reg) ::
-              C'))
-            end
-       end
-
-     fun word_update0(t,i,x,d,size_ff,C) =
-       if BI.tag_values() then
-         let
-           (* i, x are represented tagged only when BI.tag_values() is true *)
-           val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-         in
-            case resolve_args([t,x],[tmp_reg1], size_ff)
-              of SOME ([t_reg,x_reg], F) =>
-                F(move_aty_into_reg(i,tmp_reg0,size_ff,
-                  I.sarq (I "1", R tmp_reg0) ::
-                  I.movq(R x_reg, DD("8", t_reg, tmp_reg0, "8")) ::
-                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,
-                  C')))
-               | SOME _ => die "word_update0_1"
-               | NONE =>
-                (move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
-                 I.sarq(I "1", R tmp_reg1) ::                     (* untag i: tmp_reg1 >> 1 *)
-                 I.salq(I "2", R tmp_reg1) ::                     (* i << 2 *)
-                 move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
-                 I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
-                 move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
-                 I.movq(R tmp_reg0, D("8", tmp_reg1)) ::          (* *(tmp_reg1+8) = tmp_reg0 *)
-                 move_immed(Int32.fromInt BI.ml_unit, R d_reg,    (* d = () *)
-                 C')))))
-         end
-       else
-         (case resolve_args([t,i,x],[tmp_reg0,tmp_reg1], size_ff)
-            of SOME ([t_reg,i_reg,x_reg], F) =>
-              F(I.movq(R x_reg, DD("8", t_reg, i_reg, "8")) :: C)
-             | SOME _ => die "word_update0_2"
-             | NONE =>
-              move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
-              I.imulq(I "4", R tmp_reg1) ::                    (* i << 2 *)
-              move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
-              I.addq(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
-              move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
-              I.movq(R tmp_reg0, D("8", tmp_reg1)) ::          (* *(tmp_reg1+8) = tmp_reg0 *)
-              C))))
-
-     fun table_size a = bytetable_size a
-
      (*******************)
      (* Code Generation *)
      (*******************)
-
-     (* printing an assignment *)
-     fun debug_assign(str,C) = C
-(*      if Flags.is_on "debug_codeGen" then
-      let
-        val string_lab = gen_string_lab (str ^ "\n")
-      in
-        COMMENT "Start of Debug Assignment" ::
-        load_label_addr_kill_gen1(string_lab,SS.PHREG_ATY arg0,0,
-                        compile_c_call_prim("printString",[SS.PHREG_ATY arg0],NONE,0,tmp_reg0 (*not used*),
-                                            COMMENT "End of Debug Assignment" :: C))
-      end
-      else C*)
 
      fun CG_lss(lss,size_ff,size_ccf,C) =
        let
@@ -1976,7 +49,6 @@ struct
                   if Con.eq(con,Con.con_FALSE) then I.jmp(L(LocalLab lab_f)) :: rem_dead_code C
                   else die "CG_lss: unmatched assign on flow variable"
                | LS.ASSIGN{pat,bind} =>
-                debug_assign(""(*pr_ls ls*),
                 comment_fn (fn () => "ASSIGN: " ^ pr_ls ls,
                 (case bind
                    of LS.ATOM src_aty => move_aty_to_aty(src_aty,pat,size_ff,C)
@@ -1993,15 +65,30 @@ struct
                          val _ =
                            if BI.tag_values() then
                              add_static_data [I.dot_data,
+                                              I.dot_align 8,
                                               I.lab float_lab,
                                               I.dot_quad(BI.pr_tag_w(BI.tag_real(true))),
                                               I.dot_double str]
                            else
                              add_static_data [I.dot_data,
+                                              I.dot_align 8,
                                               I.lab float_lab,
                                               I.dot_double str]
                      in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
                      end
+                    | LS.F64 str =>
+                      let val (d, C') = resolve_aty_def(pat, tmp_freg0, size_ff, C)
+                      in case str of
+                             "0.0" => I.xorps (R d, R d) :: C'
+                           | _ => let val float_lab = new_float_lab()
+                                      val _ = add_static_data [I.dot_data,
+                                                               I.dot_align 8,
+                                                               I.lab float_lab,
+                                                               I.dot_double str]
+                                  in I.movq(LA float_lab, R tmp_reg0) ::
+                                     I.movsd(D("0", tmp_reg0),R d) :: C'
+                                  end
+                      end
                     | LS.CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} =>
                      let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                          val num_elems = List.length (LS.smash_free elems)
@@ -2114,6 +201,25 @@ struct
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
                          store_elems (num_elems-1))
                      end
+                    | LS.BLOCKF64{elems=[],alloc,tag} =>
+                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                    | LS.BLOCKF64{elems,alloc,tag} =>
+                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                         val num_elems = List.length elems
+                         fun store_elems last_offset =
+                             #2(foldr (fn (aty,(offset,C)) =>
+                                       (offset-1,store_aty_in_reg_record(aty,tmp_freg0,reg_for_result,
+                                                                         WORDS offset,size_ff, C)))
+                                (last_offset,C') elems)
+                     in
+                       if BI.tag_values() then
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         store_immed(tag, reg_for_result, WORDS 0,
+                         store_elems num_elems))
+                       else
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
+                         store_elems (num_elems-1))
+                     end
                     | LS.SELECT(i,aty) =>
                      if BI.tag_values() then
                        move_index_aty_to_aty(aty,pat,WORDS(i+1),tmp_reg1,size_ff,C)
@@ -2130,7 +236,7 @@ struct
                                 else i
                               val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                             in
-                              move_immed(Int32.fromInt tag, R reg_for_result,C')
+                              move_immed(IntInf.fromInt tag, R reg_for_result,C')
                             end
                         | LS.UNBOXED i =>
                             let
@@ -2141,7 +247,7 @@ struct
                                        maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C))
                                 C aux_regions
                             in
-                              reset_regions(move_immed(Int32.fromInt tag, R reg_for_result,C'))
+                              reset_regions(move_immed(IntInf.fromInt tag, R reg_for_result,C'))
                             end
                         | LS.BOXED i =>
                             let
@@ -2215,11 +321,6 @@ struct
                              alloc_untagged_value_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref()-1,size_ff,C)
                            else
                              alloc_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref(),size_ff,C)
-(*                       val size_of_ref = to be removed 2003-08-26, nh
-                           if BI.tag_values() andalso not (tag_pairs_p()) then
-                             BI.size_of_ref() - 1
-                           else
-                             BI.size_of_ref()*)
                      in
                        if SS.eq_aty(pat,aty) then (* We must preserve aty *)
                          (*alloc_ap_kill_tmp01(alloc,tmp_reg1,size_of_ref,size_ff, to be removed 2003-08-26, nh*)
@@ -2239,7 +340,7 @@ struct
                      in
                        store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
                        if BI.tag_values() then
-                         move_immed(Int32.fromInt BI.ml_unit, R reg_for_result,C')
+                         move_immed(IntInf.fromInt BI.ml_unit, R reg_for_result,C')
                        else C')
                      end
                     | LS.PASS_PTR_TO_MEM(alloc,i,untagged_value) =>
@@ -2260,7 +361,7 @@ struct
                        val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
                      in
                        prefix_sm(alloc,reg_for_result,size_ff,C')
-                     end))
+                     end)
                   ) (* END ASSIGN *)
 
                | LS.FLUSH(aty,offset) => comment_fn (fn () => "FLUSH: " ^ pr_ls ls,
@@ -2544,7 +645,8 @@ struct
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
                   let
-                    val (t_lab,f_lab) = if sel_val = Int32.fromInt BI.ml_true then (lab_t,lab_f) else (lab_f,lab_t)
+                    val (t_lab,f_lab) = if sel_val = IntInf.fromInt BI.ml_true then (lab_t,lab_f)
+                                        else (lab_f,lab_t)
                     val lab_exit = new_local_lab "lab_exit"
                   in
                     I.lab(LocalLab t_lab) ::
@@ -2558,7 +660,7 @@ struct
                   compileNumSwitch {size_ff=size_ff,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
-                                    toInt=fn i => maybeTagInt{value=i, precision=precision},
+                                    toInt=fn i => maybeTagIntOrWord{value=i, precision=precision},
                                     opr_aty=opr_aty,
                                     oprBoxed=boxedNum precision,
                                     sels=sels,
@@ -2568,7 +670,7 @@ struct
                   compileNumSwitch {size_ff=size_ff,
                                     size_ccf=size_ccf,
                                     CG_lss=CG_lss,
-                                    toInt=fn w => Int32.fromLarge(Word32.toLargeIntX (maybeTagWord{value=w, precision=precision})),
+                                    toInt=fn w => maybeTagIntOrWord{value=w, precision=precision},
                                     opr_aty=opr_aty,
                                     oprBoxed=boxedNum precision,
                                     sels=sels,
@@ -2596,9 +698,9 @@ struct
                                       | ((con,con_kind),_)::rest => con_kind
                     val sels' = map (fn ((con,con_kind),sel_insts) =>
                                      case con_kind
-                                       of LS.ENUM i => (Int32.fromInt i,sel_insts)
-                                        | LS.UNBOXED i => (Int32.fromInt i,sel_insts)
-                                        | LS.BOXED i => (Int32.fromInt i,sel_insts)) sels
+                                       of LS.ENUM i => (IntInf.fromInt i,sel_insts)
+                                        | LS.UNBOXED i => (IntInf.fromInt i,sel_insts)
+                                        | LS.BOXED i => (IntInf.fromInt i,sel_insts)) sels
                     fun UbTagCon(src_aty,C) =
                       let val cont_lab = new_local_lab "cont"
                       in move_aty_into_reg(src_aty,tmp_reg0,size_ff,
@@ -2621,7 +723,7 @@ struct
                     F (compileNumSwitch {size_ff=size_ff,
                                          size_ccf=size_ccf,
                                          CG_lss=CG_lss,
-                                         toInt=fn i => i,   (* tagging already done in ClosExp *)
+                                         toInt=fn x => x,   (* tagging already done in ClosExp *)
                                          opr_aty=opr_aty,
                                          oprBoxed=false,
                                          sels=sels',
@@ -2638,192 +740,423 @@ struct
                | LS.PRIM{name,args,res=[SS.FLOW_VAR_ATY(lv,lab_t,lab_f)]} =>
                   comment_fn (fn () => "PRIM FLOW: " ^ pr_ls ls,
                   let val (lab_t,lab_f) = (LocalLab lab_t,LocalLab lab_f)
-                      fun cmp(i,x,y) = cmpi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
-                      fun cmp_boxed(i,x,y) = cmpbi_and_jmp_kill_tmp01(i,x,y,lab_t,lab_f,size_ff,C)
-                  in case (name,args)
-                       of ("__equal_int32ub",[x,y]) => cmp(I.je,x,y)
-                        | ("__equal_int32b",[x,y]) => cmp_boxed(I.je,x,y)
-                        | ("__equal_int31",[x,y]) => cmp(I.je,x,y)
-                        | ("__equal_word31",[x,y]) => cmp(I.je,x,y)
-                        | ("__equal_word32ub",[x,y]) => cmp(I.je,x,y)
-                        | ("__equal_word32b",[x,y]) => cmp_boxed(I.je,x,y)
-                        | ("__less_int32ub",[x,y]) => cmp(I.jl,x,y)
-                        | ("__less_int32b",[x,y]) => cmp_boxed(I.jl,x,y)
-                        | ("__less_int31",[x,y]) => cmp(I.jl,x,y)
-                        | ("__less_word31",[x,y]) => cmp(I.jb,x,y)
-                        | ("__less_word32ub",[x,y]) => cmp(I.jb,x,y)
-                        | ("__less_word32b",[x,y]) => cmp_boxed(I.jb,x,y)
-                        | ("__lesseq_int32ub",[x,y]) => cmp(I.jle,x,y)
-                        | ("__lesseq_int32b",[x,y]) => cmp_boxed(I.jle,x,y)
-                        | ("__lesseq_int31",[x,y]) => cmp(I.jle,x,y)
-                        | ("__lesseq_word31",[x,y]) => cmp(I.jbe,x,y)
-                        | ("__lesseq_word32ub",[x,y]) => cmp(I.jbe,x,y)
-                        | ("__lesseq_word32b",[x,y]) => cmp_boxed(I.jbe,x,y)
-                        | ("__greater_int32ub",[x,y]) => cmp(I.jg,x,y)
-                        | ("__greater_int32b",[x,y]) => cmp_boxed(I.jg,x,y)
-                        | ("__greater_int31",[x,y]) => cmp(I.jg,x,y)
-                        | ("__greater_word31",[x,y]) => cmp(I.ja,x,y)
-                        | ("__greater_word32ub",[x,y]) => cmp(I.ja,x,y)
-                        | ("__greater_word32b",[x,y]) => cmp_boxed(I.ja,x,y)
-                        | ("__greatereq_int32ub",[x,y]) => cmp(I.jge,x,y)
-                        | ("__greatereq_int32b",[x,y]) => cmp_boxed(I.jge,x,y)
-                        | ("__greatereq_int31",[x,y]) => cmp(I.jge,x,y)
-                        | ("__greatereq_word31",[x,y]) => cmp(I.jae,x,y)
-                        | ("__greatereq_word32ub",[x,y]) => cmp(I.jae,x,y)
-                        | ("__greatereq_word32b",[x,y]) => cmp_boxed(I.jae,x,y)
-                        | _ => die "CG_ls: Unknown PRIM used on Flow Variable"
+                      val (x,y) = case args of
+                                      [x,y] => (x,y)
+                                    | _ => die "CG_ls: Expecting two arguments for flow primitive"
+                      fun cmp i = cmpi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp_boxed i = cmpbi_and_jmp_kill_tmp01 {quad=false} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp_quad i = cmpi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmp_boxed_quad i = cmpbi_and_jmp_kill_tmp01 {quad=true} (i,x,y,lab_t,lab_f,size_ff,C)
+                      fun cmpf64 i = cmpf64_and_jmp(i,x,y,lab_t,lab_f,size_ff,C)
+                      open PrimName
+                  in case name of
+                         Equal_int32ub =>  cmp       I.je
+                       | Equal_int32b =>   cmp_boxed I.je
+                       | Equal_int31 =>    cmp       I.je
+                       | Equal_word31 =>   cmp       I.je
+                       | Equal_word32ub => cmp       I.je
+                       | Equal_word32b =>  cmp_boxed I.je
+
+                       | Equal_int64ub =>  cmp_quad       I.je
+                       | Equal_int64b =>   cmp_boxed_quad I.je
+                       | Equal_int63 =>    cmp_quad       I.je
+                       | Equal_word63 =>   cmp_quad       I.je
+                       | Equal_word64ub => cmp_quad       I.je
+                       | Equal_word64b =>  cmp_boxed_quad I.je
+
+                       | Less_int32ub =>    cmp       I.jl
+                       | Less_int32b =>     cmp_boxed I.jl
+                       | Less_int31 =>      cmp       I.jl
+                       | Less_word31 =>     cmp       I.jb
+                       | Less_word32ub =>   cmp       I.jb
+                       | Less_word32b =>    cmp_boxed I.jb
+
+                       | Less_int64ub =>    cmp_quad       I.jl
+                       | Less_int64b =>     cmp_boxed_quad I.jl
+                       | Less_int63 =>      cmp_quad       I.jl
+                       | Less_word63 =>     cmp_quad       I.jb
+                       | Less_word64ub =>   cmp_quad       I.jb
+                       | Less_word64b =>    cmp_boxed_quad I.jb
+
+                       | Lesseq_int32ub =>  cmp       I.jle
+                       | Lesseq_int32b =>   cmp_boxed I.jle
+                       | Lesseq_int31 =>    cmp       I.jle
+                       | Lesseq_word31 =>   cmp       I.jbe
+                       | Lesseq_word32ub => cmp       I.jbe
+                       | Lesseq_word32b =>  cmp_boxed I.jbe
+
+                       | Lesseq_int64ub =>  cmp_quad       I.jle
+                       | Lesseq_int64b =>   cmp_boxed_quad I.jle
+                       | Lesseq_int63 =>    cmp_quad       I.jle
+                       | Lesseq_word63 =>   cmp_quad       I.jbe
+                       | Lesseq_word64ub => cmp_quad       I.jbe
+                       | Lesseq_word64b =>  cmp_boxed_quad I.jbe
+
+                       | Greater_int32ub =>  cmp       I.jg
+                       | Greater_int32b =>   cmp_boxed I.jg
+                       | Greater_int31 =>    cmp       I.jg
+                       | Greater_word31 =>   cmp       I.ja
+                       | Greater_word32ub => cmp       I.ja
+                       | Greater_word32b =>  cmp_boxed I.ja
+
+                       | Greater_int64ub =>  cmp_quad       I.jg
+                       | Greater_int64b =>   cmp_boxed_quad I.jg
+                       | Greater_int63 =>    cmp_quad       I.jg
+                       | Greater_word63 =>   cmp_quad       I.ja
+                       | Greater_word64ub => cmp_quad       I.ja
+                       | Greater_word64b =>  cmp_boxed_quad I.ja
+
+                       | Greatereq_int32ub =>  cmp       I.jge
+                       | Greatereq_int32b =>   cmp_boxed I.jge
+                       | Greatereq_int31 =>    cmp       I.jge
+                       | Greatereq_word31 =>   cmp       I.jae
+                       | Greatereq_word32ub => cmp       I.jae
+                       | Greatereq_word32b =>  cmp_boxed I.jae
+
+                       | Greatereq_int64ub =>  cmp_quad       I.jge
+                       | Greatereq_int64b =>   cmp_boxed_quad I.jge
+                       | Greatereq_int63 =>    cmp_quad       I.jge
+                       | Greatereq_word63 =>   cmp_quad       I.jae
+                       | Greatereq_word64ub => cmp_quad       I.jae
+                       | Greatereq_word64b =>  cmp_boxed_quad I.jae
+
+                       | Less_f64 => cmpf64 I.jb
+                       | Lesseq_f64 => cmpf64 I.jbe
+                       | Greater_f64 => cmpf64 I.ja
+                       | Greatereq_f64 => cmpf64 I.jae
+                       | _ => die "CG_ls: Unsupported PRIM used with Flow Variable"
                   end)
                | LS.PRIM{name,args,res} =>
-                  let
-                  in
+                 let val d = case res of nil => SS.UNIT_ATY
+                                       | [d] => d
+                                       | _ => die "CG_ls: expecting at most a single return value for primitive"
+                     open PrimName
+                 in
                   comment_fn (fn () => "PRIM: " ^ pr_ls ls,
                   (* Note that the prim names are defined in BackendInfo! *)
-                  (case (name,args,case res of nil => [SS.UNIT_ATY] | _ => res)
-                     of ("__equal_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                      | ("__equal_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.je,x,y,d,size_ff,C)
-                      | ("__equal_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                      | ("__equal_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                      | ("__equal_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.je,x,y,d,size_ff,C)
-                      | ("__equal_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.je,x,y,d,size_ff,C)
+                  (case args of
+                       [] =>
+                       (case name of
+                          Fresh_exname =>
+                          I.movq(L exn_counter_lab, R tmp_reg0) ::
+                          move_reg_into_aty(tmp_reg0,d,size_ff,
+                          I.addq(I "1", R tmp_reg0) ::
+                          I.movq(R tmp_reg0, L exn_counter_lab) :: C)
+                         | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
+                     | [x] =>
+                       let val arg = (x,d,size_ff,C)
+                       in case name of
+                              Neg_int32ub => neg_int_kill_tmp0 {tag=false, quad=false} arg
+                            | Neg_int31 =>   neg_int_kill_tmp0 {tag=true,  quad=false} arg
+                            | Neg_int64ub => neg_int_kill_tmp0 {tag=false, quad=true}  arg
+                            | Neg_int63 =>   neg_int_kill_tmp0 {tag=true,  quad=true}  arg
 
-                      | ("__plus_int32ub",[x,y],[d]) => add_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-                      | ("__plus_int32b",[b,x,y],[d]) => add_int32b (b,x,y,d,size_ff,C)
-                      | ("__plus_int31",[x,y],[d]) => add_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
-                      | ("__plus_word31",[x,y],[d]) => add_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
-                      | ("__plus_word32ub",[x,y],[d]) => add_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
-                      | ("__plus_word32b",[b,x,y],[d]) => addw32boxed(b,x,y,d,size_ff,C)
-                      | ("__plus_real",[b,x,y],[d]) => addf_kill_tmp01(x,y,b,d,size_ff,C)
+                            | Abs_int32ub => abs_int_kill_tmp0 {tag=false, quad=false} arg
+                            | Abs_int31 =>   abs_int_kill_tmp0 {tag=true,  quad=false} arg
+                            | Abs_int64ub => abs_int_kill_tmp0 {tag=false, quad=true}  arg
+                            | Abs_int63 =>   abs_int_kill_tmp0 {tag=true,  quad=true}  arg
 
-                      | ("__minus_int32ub",[x,y],[d]) => sub_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-                      | ("__minus_int32b",[b,x,y],[d]) => sub_int32b (b,x,y,d,size_ff,C)
-                      | ("__minus_int31",[x,y],[d]) => sub_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
-                      | ("__minus_word31",[x,y],[d]) => sub_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
-                      | ("__minus_word32ub",[x,y],[d]) => sub_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
-                      | ("__minus_word32b",[b,x,y],[d]) => subw32boxed(b,x,y,d,size_ff,C)
-                      | ("__minus_real",[b,x,y],[d]) => subf_kill_tmp01(x,y,b,d,size_ff,C)
+                            | Int31_to_int32ub     => num31_to_num32ub arg
+                            | Int32b_to_int31      => int32_to_int31 {boxedarg=true} arg
+                            | Int32ub_to_int31     => int32_to_int31 {boxedarg=false} arg
+                            | Word31_to_word32ub   => num31_to_num32ub arg
+                            | Word32b_to_word31    => word32_to_word31 {boxedarg=true} arg
+                            | Word32ub_to_word31   => word32_to_word31 {boxedarg=false} arg
+                            | Word31_to_word32ub_X => num31_to_num32ub arg
+                            | Word32ub_to_int32ub  => word32ub_to_int32ub arg
+                            | Word32b_to_int31     => word32_to_int31 {boxedarg=true,ovf=true} arg
+                            | Int32b_to_word31     => word32_to_word31 {boxedarg=true} arg
+                            | Word32b_to_int31_X   => word32_to_int31 {boxedarg=true,ovf=false} arg
 
-                      | ("__mul_int32ub", [x,y], [d]) => mul_num_kill_tmp01 {ovf=true,tag=false} (x,y,d,size_ff,C)
-                      | ("__mul_int32b", [b,x,y], [d]) => mul_int32b (b,x,y,d,size_ff,C)
-                      | ("__mul_int31", [x,y], [d]) => mul_num_kill_tmp01 {ovf=true,tag=true} (x,y,d,size_ff,C)
-                      | ("__mul_word31", [x,y], [d]) => mul_num_kill_tmp01 {ovf=false,tag=true} (x,y,d,size_ff,C)
-                      | ("__mul_word32ub", [x,y], [d]) => mul_num_kill_tmp01 {ovf=false,tag=false} (x,y,d,size_ff,C)
-                      | ("__mul_word32b", [b,x,y], [d]) => mulw32boxed(b,x,y,d,size_ff,C)
-                      | ("__mul_real",[b,x,y],[d]) => mulf_kill_tmp01(x,y,b,d,size_ff,C)
+                            | Word64ub_to_word32ub => word64ub_to_word32ub arg
+                            | Word32ub_to_word64ub => word32ub_to_word64ub {signext=false} arg
+                            | Word64ub_to_int32ub  => word64ub_to_int32ub arg
+                            | Word64ub_to_int64ub  => num64ub_to_num64ub {ovf=true} arg
+                            | Word64ub_to_int64ub_X => num64ub_to_num64ub {ovf=false} arg
 
-                      | ("__div_real", [b,x,y],[d]) => divf_kill_tmp01(x,y,b,d,size_ff,C)
+                            | Word64b_to_int31     => word64_to_int31 {boxedarg=true,ovf=true} arg
+                            | Word64b_to_int31_X   => word64_to_int31 {boxedarg=true,ovf=false} arg
 
-                      | ("__neg_int32ub",[x],[d]) => neg_int_kill_tmp0 {tag=false} (x,d,size_ff,C)
-                      | ("__neg_int32b",[b,x],[d]) => neg_int32b_kill_tmp0 (b,x,d,size_ff,C)
-                      | ("__neg_int31",[x],[d]) => neg_int_kill_tmp0 {tag=true} (x,d,size_ff,C)
-                      | ("__neg_real",[b,x],[d]) => negf_kill_tmp01(b,x,d,size_ff,C)
+                            | Int32ub_to_int64ub   => int32ub_to_int64ub arg
+                            | Int64ub_to_word64ub  => num64ub_to_num64ub {ovf=false} arg
 
-                      | ("__abs_int32ub",[x],[d]) => abs_int_kill_tmp0 {tag=false} (x,d,size_ff,C)
-                      | ("__abs_int32b",[b,x],[d]) => abs_int32b_kill_tmp0 (b,x,d,size_ff,C)
-                      | ("__abs_int31",[x],[d]) => abs_int_kill_tmp0 {tag=true} (x,d,size_ff,C)
-                      | ("__abs_real",[b,x],[d]) => absf_kill_tmp01(b,x,d,size_ff,C)
+                            | Int64b_to_int31      => int64_to_int31 {boxedarg=true} arg
 
-                      | ("__less_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jl,x,y,d,size_ff,C)
-                      | ("__less_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jl,x,y,d,size_ff,C)
-                      | ("__less_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jl,x,y,d,size_ff,C)
-                      | ("__less_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
-                      | ("__less_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jb,x,y,d,size_ff,C)
-                      | ("__less_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jb,x,y,d,size_ff,C)
-                      | ("__less_real",[x,y],[d]) => cmpf_kill_tmp01(LESSTHAN,x,y,d,size_ff,C)
+                            | Int64ub_to_int32ub   => int64ub_to_int32ub arg
 
-                      | ("__lesseq_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
-                      | ("__lesseq_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jle,x,y,d,size_ff,C)
-                      | ("__lesseq_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jle,x,y,d,size_ff,C)
-                      | ("__lesseq_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
-                      | ("__lesseq_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jbe,x,y,d,size_ff,C)
-                      | ("__lesseq_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jbe,x,y,d,size_ff,C)
-                      | ("__lesseq_real",[x,y],[d]) => cmpf_kill_tmp01(LESSEQUAL,x,y,d,size_ff,C)
+                            | Int31_to_int64ub     => int31_to_int64ub arg
 
-                      | ("__greater_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
-                      | ("__greater_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jg,x,y,d,size_ff,C)
-                      | ("__greater_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jg,x,y,d,size_ff,C)
-                      | ("__greater_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
-                      | ("__greater_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.ja,x,y,d,size_ff,C)
-                      | ("__greater_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.ja,x,y,d,size_ff,C)
-                      | ("__greater_real",[x,y],[d]) => cmpf_kill_tmp01(GREATERTHAN,x,y,d,size_ff,C)
+                            | Int64b_to_int63      => int64_to_int63 {boxedarg=true} arg
+                            | Word64b_to_word63    => word64_to_num63 {boxedarg=true,ovf=false} arg
+                            | Word32b_to_word63    => word32_to_word63 {boxedarg=true,signext=false} arg
+                            | Word63_to_word31     => word63_to_word31 arg
+                            | Word31_to_word63_X   => num31_to_num63 {signext=true} arg
+                            | Word31_to_word63     => num31_to_num63 {signext=false} arg
 
-                      | ("__greatereq_int32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
-                      | ("__greatereq_int32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jge,x,y,d,size_ff,C)
-                      | ("__greatereq_int31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jge,x,y,d,size_ff,C)
-                      | ("__greatereq_word31",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
-                      | ("__greatereq_word32ub",[x,y],[d]) => cmpi_kill_tmp01 {box=false} (I.jae,x,y,d,size_ff,C)
-                      | ("__greatereq_word32b",[x,y],[d]) => cmpi_kill_tmp01 {box=true} (I.jae,x,y,d,size_ff,C)
-                      | ("__greatereq_real",[x,y],[d]) => cmpf_kill_tmp01(GREATEREQUAL,x,y,d,size_ff,C)
+                            | Int32b_to_int63      => word32_to_word63 {boxedarg=true,signext=true} arg
+                            | Int63_to_int31       => int63_to_int31 arg
+                            | Int31_to_int63       => num31_to_num63 {signext=true} arg
+                            | Word32b_to_int63     => word32_to_word63 {boxedarg=true,signext=false} arg
+                            | Word32b_to_int63_X   => word32_to_word63 {boxedarg=true,signext=true} arg
+                            | Word64b_to_word31    => word64_to_word31 {boxedarg=true} arg
 
-                      | ("__andb_word31",[x,y],[d]) => andb_word_kill_tmp01(x,y,d,size_ff,C)
-                      | ("__andb_word32ub",[x,y],[d]) => andb_word_kill_tmp01(x,y,d,size_ff,C)
-                      | ("__andb_word32b",[b,x,y],[d]) => andw32boxed__(b,x,y,d,size_ff,C)
+                            | Word64b_to_int63     => word64_to_num63 {boxedarg=true,ovf=true} arg
+                            | Word64b_to_int63_X   => word64_to_num63 {boxedarg=true,ovf=false} arg
 
-                      | ("__orb_word31",[x,y],[d]) => orb_word_kill_tmp01(x,y,d,size_ff,C)
-                      | ("__orb_word32ub",[x,y],[d]) => orb_word_kill_tmp01(x,y,d,size_ff,C)
-                      | ("__orb_word32b",[b,x,y],[d]) => orw32boxed__(b,x,y,d,size_ff,C)
+                            | Int63_to_int64ub     => num63_to_num64ub {shr_inst=I.sarq} arg
 
-                      | ("__xorb_word31",[x,y],[d]) => xorb_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                      | ("__xorb_word32ub",[x,y],[d]) => xorb_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                      | ("__xorb_word32b",[b,x,y],[d]) => xorw32boxed__(b,x,y,d,size_ff,C)
+                            | Int64ub_to_int63     => int64_to_int63 {boxedarg=false} arg
 
-                      | ("__shift_left_word31",[x,y],[d]) => shift_left_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                      | ("__shift_left_word32ub",[x,y],[d]) => shift_left_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                      | ("__shift_left_word32b",[b,x,y],[d]) => shift_leftw32boxed__(b,x,y,d,size_ff,C)
+                            | Word63_to_word64ub   => num63_to_num64ub {shr_inst=I.shrq} arg
+                            | Word63_to_word64ub_X => num63_to_num64ub {shr_inst=I.sarq} arg
 
-                      | ("__shift_right_signed_word31",[x,y],[d]) =>
-                       shift_right_signed_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                      | ("__shift_right_signed_word32ub",[x,y],[d]) =>
-                       shift_right_signed_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                      | ("__shift_right_signed_word32b",[b,x,y],[d]) =>
-                       shift_right_signedw32boxed__(b,x,y,d,size_ff,C)
+                            | Word64ub_to_word31   => word64_to_word31 {boxedarg=false} arg
+                            | Int64ub_to_int31     => int64_to_int31 {boxedarg=false} arg
 
-                      | ("__shift_right_unsigned_word31",[x,y],[d]) =>
-                       shift_right_unsigned_word_kill_tmp01 {tag=true} (x,y,d,size_ff,C)
-                      | ("__shift_right_unsigned_word32ub",[x,y],[d]) =>
-                       shift_right_unsigned_word_kill_tmp01 {tag=false} (x,y,d,size_ff,C)
-                      | ("__shift_right_unsigned_word32b",[b,x,y],[d]) =>
-                       shift_right_unsignedw32boxed__(b,x,y,d,size_ff,C)
+                            | Word31_to_word64ub   => word31_to_word64ub {signext=false} arg
+                            | Word31_to_word64ub_X => word31_to_word64ub {signext=true} arg
 
-                      | ("__int31_to_int32b",[b,x],[d]) => num31_to_num32b(b,x,d,size_ff,C)
-                      | ("__int31_to_int32ub",[x],[d]) => num31_to_num32ub(x,d,size_ff,C)
-                      | ("__int32b_to_int31",[x],[d]) => int32_to_int31 {boxedarg=true} (x,d,size_ff,C)
-                      | ("__int32ub_to_int31",[x],[d]) => int32_to_int31 {boxedarg=false} (x,d,size_ff,C)
+                            | Word32ub_to_int64ub  => word32ub_to_word64ub {signext=false} arg
+                            | Word32ub_to_int64ub_X => word32ub_to_word64ub {signext=true} arg
+                            | Word32ub_to_word64ub_X => word32ub_to_word64ub {signext=true} arg
 
-                      | ("__word31_to_word32b",[b,x],[d]) => num31_to_num32b(b,x,d,size_ff,C)
-                      | ("__word31_to_word32ub",[x],[d]) => num31_to_num32ub(x,d,size_ff,C)
-                      | ("__word32b_to_word31",[x],[d]) => word32_to_word31 {boxedarg=true} (x,d,size_ff,C)
-                      | ("__word32ub_to_word31",[x],[d]) => word32_to_word31 {boxedarg=false} (x,d,size_ff,C)
+                            | Bytetable_size => bytetable_size arg
+                            | Table_size     => table_size arg
 
-                      | ("__word31_to_word32ub_X",[x],[d]) => num31_to_num32ub(x,d,size_ff,C)
-                      | ("__word31_to_word32b_X",[b,x],[d]) => num31_to_num32b(b,x,d,size_ff,C)
+                            | Real_to_f64    => real_to_f64 arg
+                            | Sqrt_f64       => sqrt_f64 arg
+                            | Neg_f64        => neg_f64 arg
+                            | Abs_f64        => abs_f64 arg
+                            | Int_to_f64     => int_to_f64 arg
+                            | Blockf64_size  => blockf64_size arg
 
-                      | ("__word32b_to_int32b",[b,x],[d]) => num32b_to_num32b {ovf=true} (b,x,d,size_ff,C)
-                      | ("__word32b_to_int32b_X",[b,x],[d]) => num32b_to_num32b {ovf=false} (b,x,d,size_ff,C)
-                      | ("__int32b_to_word32b",[b,x],[d]) => num32b_to_num32b {ovf=false} (b,x,d,size_ff,C)
-                      | ("__word32ub_to_int32ub",[x],[d]) => word32ub_to_int32ub(x,d,size_ff,C)
-                      | ("__word32b_to_int31",[x],[d]) => word32_to_int31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
-                      | ("__int32b_to_word31",[x],[d]) => word32_to_word31 {boxedarg=true} (x,d,size_ff,C)
-                      | ("__word32b_to_int31_X", [x],[d]) => word32_to_int31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
+                            | Is_null => cmpi_kill_tmp01 {box=false,quad=false} I.je
+                                                         (x, SS.INTEGER_ATY{value=IntInf.fromInt 0,
+                                                                            precision=32},d,size_ff,C)
+                            | _ => die ("unsupported prim with 1 arg: " ^ PrimName.pp_prim name)
+                       end
+                     | [x,y] =>
+                       let val arg = (x,y,d,size_ff,C)
+                       in case name of
+                              Equal_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
+                            | Equal_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.je arg
+                            | Equal_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.je arg
+                            | Equal_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
+                            | Equal_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.je arg
+                            | Equal_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.je arg
 
-                      | ("__fresh_exname",[],[aty]) =>
-                       I.movq(L exn_counter_lab, R tmp_reg0) ::
-                       move_reg_into_aty(tmp_reg0,aty,size_ff,
-                       I.addq(I "1", R tmp_reg0) ::
-                       I.movq(R tmp_reg0, L exn_counter_lab) :: C)
+                            | Plus_int32ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
+                            | Plus_int31 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
+                            | Plus_word31 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=false} arg
+                            | Plus_word32ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=false} arg
+                            | Plus_int64ub =>  add_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  arg
+                            | Plus_int63 =>    add_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  arg
+                            | Plus_word63 =>   add_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
+                            | Plus_word64ub => add_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                      | ("__bytetable_sub", [t,i], [d]) => bytetable_sub(t,i,d,size_ff,C)
-                      | ("__bytetable_size", [t], [d]) => bytetable_size(t,d,size_ff,C)
-                      | ("__bytetable_update", [t,i,x], [d]) => bytetable_update(t,i,x,d,size_ff,C)
+                            | Minus_int32ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
+                            | Minus_int31 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
+                            | Minus_word31 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=false} arg
+                            | Minus_word32ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=false} arg
+                            | Minus_int64ub =>  sub_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  arg
+                            | Minus_int63 =>    sub_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  arg
+                            | Minus_word63 =>   sub_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
+                            | Minus_word64ub => sub_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                      | ("word_sub0", [t,i], [d]) => word_sub0(t,i,d,size_ff,C)
-                      | ("table_size", [t], [d]) => table_size(t,d,size_ff,C)
-                      | ("word_update0", [t,i,x], [d]) => word_update0(t,i,x,d,size_ff,C)
+                            | Mul_int32ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=false} arg
+                            | Mul_int31 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=false} arg
+                            | Mul_word31 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=false} arg
+                            | Mul_word32ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=false} arg
+                            | Mul_int64ub =>  mul_num_kill_tmp01 {ovf=true,  tag=false, quad=true}  arg
+                            | Mul_int63 =>    mul_num_kill_tmp01 {ovf=true,  tag=true,  quad=true}  arg
+                            | Mul_word63 =>   mul_num_kill_tmp01 {ovf=false, tag=true,  quad=true}  arg
+                            | Mul_word64ub => mul_num_kill_tmp01 {ovf=false, tag=false, quad=true}  arg
 
-                      | ("__is_null", [t], [d]) =>
-                       cmpi_kill_tmp01 {box=false} (I.je,t, SS.INTEGER_ATY{value=Int32.fromInt 0,
-                                                                           precision=32},d,size_ff,C)
-                      | _ => die ("PRIM(" ^ name ^ ") not implemented")))
-                  end
+                            | Neg_int32b => neg_int_boxed_kill_tmp0 {quad=false} arg
+                            | Neg_int64b => neg_int_boxed_kill_tmp0 {quad=true} arg
+                            | Neg_real =>   negf_kill_tmp01 arg
+                            | Abs_int32b => abs_int_boxed_kill_tmp0 {quad=false} arg
+                            | Abs_int64b => abs_int_boxed_kill_tmp0 {quad=true} arg
+                            | Abs_real =>   absf_kill_tmp01 arg
+
+                            | Less_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
+                            | Less_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jl arg
+                            | Less_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jl arg
+                            | Less_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
+                            | Less_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jb arg
+                            | Less_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jb arg
+                            | Less_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
+                            | Less_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jl arg
+                            | Less_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jl arg
+                            | Less_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
+                            | Less_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jb arg
+                            | Less_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jb arg
+
+                            | Less_real => cmpf_kill_tmp01 LESSTHAN arg
+                            | Less_f64 =>  cmpf64_kill_tmp0 LESSTHAN arg
+
+                            | Lesseq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
+                            | Lesseq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jle arg
+                            | Lesseq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jle arg
+                            | Lesseq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
+                            | Lesseq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jbe arg
+                            | Lesseq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jbe arg
+                            | Lesseq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
+                            | Lesseq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jle arg
+                            | Lesseq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jle arg
+                            | Lesseq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
+                            | Lesseq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jbe arg
+                            | Lesseq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jbe arg
+
+                            | Lesseq_real => cmpf_kill_tmp01 LESSEQUAL arg
+                            | Lesseq_f64 =>  cmpf64_kill_tmp0 LESSEQUAL arg
+
+                            | Greater_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
+                            | Greater_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jg arg
+                            | Greater_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jg arg
+                            | Greater_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
+                            | Greater_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.ja arg
+                            | Greater_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.ja arg
+                            | Greater_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
+                            | Greater_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jg arg
+                            | Greater_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jg arg
+                            | Greater_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
+                            | Greater_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.ja arg
+                            | Greater_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.ja arg
+
+                            | Greater_real => cmpf_kill_tmp01 GREATERTHAN arg
+                            | Greater_f64 =>  cmpf64_kill_tmp0 GREATERTHAN arg
+
+                            | Greatereq_int32ub =>  cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
+                            | Greatereq_int32b =>   cmpi_kill_tmp01 {box=true,  quad=false} I.jge arg
+                            | Greatereq_int31 =>    cmpi_kill_tmp01 {box=false, quad=false} I.jge arg
+                            | Greatereq_word31 =>   cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
+                            | Greatereq_word32ub => cmpi_kill_tmp01 {box=false, quad=false} I.jae arg
+                            | Greatereq_word32b =>  cmpi_kill_tmp01 {box=true,  quad=false} I.jae arg
+                            | Greatereq_int64ub =>  cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
+                            | Greatereq_int64b =>   cmpi_kill_tmp01 {box=true,  quad=true}  I.jge arg
+                            | Greatereq_int63 =>    cmpi_kill_tmp01 {box=false, quad=true}  I.jge arg
+                            | Greatereq_word63 =>   cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
+                            | Greatereq_word64ub => cmpi_kill_tmp01 {box=false, quad=true}  I.jae arg
+                            | Greatereq_word64b =>  cmpi_kill_tmp01 {box=true,  quad=true}  I.jae arg
+
+                            | Greatereq_real => cmpf_kill_tmp01 GREATEREQUAL arg
+                            | Greatereq_f64 =>  cmpf64_kill_tmp0 GREATEREQUAL arg
+
+                            | Andb_word31 =>   andb_word_kill_tmp01 {quad=false} arg
+                            | Andb_word32ub => andb_word_kill_tmp01 {quad=false} arg
+                            | Andb_word63 =>   andb_word_kill_tmp01 {quad=true}  arg
+                            | Andb_word64ub => andb_word_kill_tmp01 {quad=true}  arg
+
+                            | Orb_word31 =>   orb_word_kill_tmp01 {quad=false} arg
+                            | Orb_word32ub => orb_word_kill_tmp01 {quad=false} arg
+                            | Orb_word63 =>   orb_word_kill_tmp01 {quad=true}  arg
+                            | Orb_word64ub => orb_word_kill_tmp01 {quad=true}  arg
+
+                            | Xorb_word31 =>   xorb_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Xorb_word32ub => xorb_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Xorb_word63 =>   xorb_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Xorb_word64ub => xorb_word_kill_tmp01 {tag=false, quad=true}  arg
+
+                            | Shift_left_word31 =>   shift_left_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Shift_left_word32ub => shift_left_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Shift_left_word63 =>   shift_left_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Shift_left_word64ub => shift_left_word_kill_tmp01 {tag=false, quad=true}  arg
+
+                            | Shift_right_signed_word31 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Shift_right_signed_word32ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Shift_right_signed_word63 =>   shift_right_signed_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Shift_right_signed_word64ub => shift_right_signed_word_kill_tmp01 {tag=false, quad=true}  arg
+
+                            | Shift_right_unsigned_word31 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=false} arg
+                            | Shift_right_unsigned_word32ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=false} arg
+                            | Shift_right_unsigned_word63 =>   shift_right_unsigned_word_kill_tmp01 {tag=true,  quad=true}  arg
+                            | Shift_right_unsigned_word64ub => shift_right_unsigned_word_kill_tmp01 {tag=false, quad=true}  arg
+
+                            | Int31_to_int32b => num31_to_num_boxed {quad=false} arg
+                            | Word31_to_word32b => num31_to_num_boxed {quad=false} arg
+                            | Word31_to_word32b_X => num31_to_num_boxed {quad=false} arg
+                            | Word32b_to_int32b => num32b_to_num32b {ovf=true} arg
+                            | Word32b_to_int32b_X => num32b_to_num32b {ovf=false} arg
+                            | Int32b_to_word32b => num32b_to_num32b {ovf=false} arg
+
+                            | Word64b_to_int64b_X => num64b_to_num64b {ovf=false} arg
+                            | Word64b_to_int64b => num64b_to_num64b {ovf=true} arg
+                            | Word32b_to_word64b => word32b_to_word64b {signext=false} arg
+                            | Word32b_to_word64b_X => word32b_to_word64b {signext=true} arg
+                            | Word64b_to_word32b => num64b_to_num32b arg
+                            | Word31_to_word64b => word31_to_word64b {signext=false} arg
+                            | Word31_to_word64b_X => word31_to_word64b {signext=true} arg
+
+                            | Int32b_to_int64b => int32b_to_int64b arg
+                            | Int64b_to_word64b => num64b_to_num64b {ovf=false} arg
+
+                            | Int31_to_int64b => num31_to_num_boxed {quad=true} arg
+
+                            | Int63_to_int64b => num63_to_num64b {shr_inst=I.sarq} arg
+                            | Word63_to_word32b => word63_to_word32b arg
+                            | Word63_to_word64b => num63_to_num64b {shr_inst=I.shrq} arg
+                            | Word63_to_word64b_X => num63_to_num64b {shr_inst=I.sarq} arg
+
+                            | Int63_to_int32b => int63_to_int32b arg
+
+                            | Bytetable_sub => bytetable_sub arg
+                            | Word_sub0 => word_sub0 arg
+                            | Plus_f64 => plus_f64 arg
+                            | Minus_f64 => minus_f64 arg
+                            | Mul_f64 => mul_f64 arg
+                            | Div_f64 => div_f64 arg
+                            | Max_f64 => max_f64 arg
+                            | Min_f64 => min_f64 arg
+                            | F64_to_real => f64_to_real_kill_tmp01 arg
+                            | Blockf64_alloc => blockf64_alloc arg
+                            | Blockf64_sub_f64 => blockf64_sub_f64 arg
+                            | _ => die ("unsupported prim with 2 args: " ^ PrimName.pp_prim name)
+                       end
+                     | [b,x,y] =>
+                       (case name of
+                            Plus_int32b => add_int32b (b,x,y,d,size_ff,C)
+                          | Plus_int64b => add_int64b (b,x,y,d,size_ff,C)
+                          | Plus_word32b => addw32boxed (b,x,y,d,size_ff,C)
+                          | Plus_word64b => addw64boxed (b,x,y,d,size_ff,C)
+                          | Plus_real => addf_kill_tmp01 (x,y,b,d,size_ff,C)
+                          | Minus_int32b => sub_int32b (b,x,y,d,size_ff,C)
+                          | Minus_int64b => sub_int64b (b,x,y,d,size_ff,C)
+                          | Minus_word32b => subw32boxed (b,x,y,d,size_ff,C)
+                          | Minus_word64b => subw64boxed (b,x,y,d,size_ff,C)
+                          | Minus_real => subf_kill_tmp01 (x,y,b,d,size_ff,C)
+                          | Mul_int32b => mul_int32b (b,x,y,d,size_ff,C)
+                          | Mul_int64b => mul_int64b (b,x,y,d,size_ff,C)
+                          | Mul_word32b => mulw32boxed (b,x,y,d,size_ff,C)
+                          | Mul_word64b => mulw64boxed (b,x,y,d,size_ff,C)
+                          | Mul_real => mulf_kill_tmp01 (x,y,b,d,size_ff,C)
+                          | Div_real => divf_kill_tmp01 (x,y,b,d,size_ff,C)
+                          | Andb_word32b => andw32boxed__ (b,x,y,d,size_ff,C)
+                          | Andb_word64b => andw64boxed__ (b,x,y,d,size_ff,C)
+                          | Orb_word32b => orw32boxed__ (b,x,y,d,size_ff,C)
+                          | Orb_word64b => orw64boxed__ (b,x,y,d,size_ff,C)
+                          | Xorb_word32b => xorw32boxed__ (b,x,y,d,size_ff,C)
+                          | Xorb_word64b => xorw64boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_left_word32b => shift_leftw32boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_left_word64b => shift_leftw64boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_signed_word32b => shift_right_signedw32boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_signed_word64b => shift_right_signedw64boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word32b => shift_right_unsignedw32boxed__ (b,x,y,d,size_ff,C)
+                          | Shift_right_unsigned_word64b => shift_right_unsignedw64boxed__ (b,x,y,d,size_ff,C)
+                          | Bytetable_update => bytetable_update (b,x,y,d,size_ff,C)
+                          | Word_update0 => word_update0 (b,x,y,d,size_ff,C)
+                          | Blockf64_update_real => blockf64_update_real (b,x,y,d,size_ff,C)
+                          | Blockf64_sub_real => blockf64_sub_real (b,x,y,d,size_ff,C)
+                          | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,size_ff,C)
+                          | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
+                     | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
+                 end
                | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
                  let
                    (* The call_closure C function takes one argument (an ML closure). It
@@ -2865,11 +1198,6 @@ struct
                     fun comp_c_call(all_args,res,C) =
                       compile_c_call_prim(name, all_args, res, size_ff, tmp_reg1, C)
                     val _ =
-                      if BI.is_prim name then
-                        die ("CCALL." ^ name ^ " is meant to be a primitive inlined by the compiler " ^
-                             "- but it is not dealt with!")
-                      else ()
-                    val _ =
                       case (explode name, rhos_for_result)
                         of (_, nil) => ()
                          | (#"@" :: _, _) =>
@@ -2897,14 +1225,6 @@ struct
                          | _ => die "CCall with more than one result variable"))
                   end
                | LS.CCALL_AUTO{name, args, res} =>
-                 let
-                    (*val () = print ("CCALL_AUTO: " ^ name ^ "\n")*)
-                    val _ =
-                      if BI.is_prim name then
-                        die ("CCALL_AUTO." ^ name ^ " is meant to be a primitive inlined by the compiler " ^
-                             "- but it is not dealt with!")
-                      else ()
-                  in
 
         (* With dynamicly linked functions the first argument must be the name of   *)
         (* the function. If we where to implement automatic conversion into regions *)
@@ -2912,7 +1232,7 @@ struct
 
                     comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
                                 compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C))
-                  end
+
                | LS.EXPORT{name,
                            clos_lab,
                            arg=(aty,ft1,ft2)} =>
@@ -2937,34 +1257,36 @@ struct
                             I.dot_text,
                             I.dot_globl lab, (* The C function entry *)
                             I.lab lab]
-                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
+                         @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
                          @ [I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
-                            I.push (I "1"),                       (* push dummy *)
+                            I.push (I "1"),                       (* push dummy (alignment) *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
                             I.movq(R rdi, R rax),                 (* move result to %rax *)
-                            I.addq(I "8", R rsp)]                 (* pop dummy *)
+                            I.addq(I "8", R rsp)]                 (* pop dummy (alignment) *)
                          @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                          @ [I.ret])
 
                      val saveregs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
-                                    caller_save_regs_ccall
+                                    caller_save_regs_ccall (* 0 regs *)
                      fun push_callersave_regs C =
                          foldl (fn (r, C) => I.push(R r) :: C) C saveregs
                      fun pop_callersave_regs C =
                          foldr (fn (r, C) => I.pop(R r) :: C) C saveregs
 
                   in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
-                                 store_in_label(aty,clos_lab,tmp_reg1,size_ff,
-                                                I.movq (LA lab, R tmp_reg0) ::
-                                                I.movq (LA stringlab, R tmp_reg1) ::
-                                                push_callersave_regs
-                                                (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
-                                                                                     SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
-                                                pop_callersave_regs C))))
+                     store_in_label(aty,clos_lab,tmp_reg1,size_ff,
+                     I.movq (LA lab, R tmp_reg0) ::
+                     I.movq (LA stringlab, R tmp_reg1) ::
+                     I.push (I "1") ::
+                     push_callersave_regs
+                     (compile_c_call_prim("sml_regCfuns",[SS.PHREG_ATY tmp_reg1,
+                                                          SS.PHREG_ATY tmp_reg0],NONE,0, tmp_reg1,
+                      pop_callersave_regs
+                      (I.addq (I "8", R rsp) :: C)))))
                   end
                 )
        in
@@ -3014,16 +1336,13 @@ struct
         val w0 = Word32.fromInt 0
         fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
         fun pws ws = app pw ws
-        fun set_bit(bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
+        fun set_bit (bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
 
         val size_ff = CallConv.get_frame_size cc
         val size_ccf = CallConv.get_ccf_size cc
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                                (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
-        val C = base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
-                                 I.pop (R tmp_reg1) ::
-                                 I.jmp (R tmp_reg1) :: [])
         val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
         val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_args cc)
         val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
@@ -3031,13 +1350,21 @@ struct
         val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args
         val _ = pw reg_map
    *)
+        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
+
+        val () = reset_code_blocks()
+        val C =
+            checkGC(
+            base_plus_offset(rsp,WORDS(~size_ff),rsp,
+            do_simple_memprof(
+            do_prof(
+            CG_lss(lss,size_ff,size_ccf,
+            base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
+            I.pop (R tmp_reg1) ::
+            I.jmp (R tmp_reg1) ::
+            GCsnippet))))))
       in
-        gen_fn(lab,
-               do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args,
-                base_plus_offset(rsp,WORDS(~size_ff),rsp,
-                 do_simple_memprof(
-                 do_prof(
-                  CG_lss(lss,size_ff,size_ccf,C))))))
+        gen_fn(lab, C @ get_code_blocks())
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -3064,14 +1391,14 @@ struct
     (***************************************************)
     (* Init Code and Static Data for this program unit *)
     (***************************************************)
-    fun static_data(l:label) =
+    fun static_data (l:label) =
       I.dot_data ::
       comment ("START OF STATIC DATA AREA",
       data_begin_lab (l,
       get_static_data (data_end_lab(l,
       comment ("END OF STATIC DATA AREA",nil)))))
 
-    fun init_x64_code() = [I.dot_text]
+    fun init_x64_code () = [I.dot_text]
   in
     fun CG {main_lab:label,
             code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
@@ -3087,6 +1414,7 @@ struct
         val x64_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
                        init_code = init_x64_code(),
                        static_data = static_data main_lab}
+        val x64_prg = I.optimise x64_prg
         val _ = chat "]\n"
       in
         x64_prg
@@ -3109,7 +1437,7 @@ val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data lab
 val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 *)
 
-        fun slot_for_datlab((_,l),C) =
+        fun slot_for_datlab ((_,l),C) =
             let fun maybe_dotsize C =
                     if I.sysname() = "Darwin" then C
                     else I.dot_size(DatLab l, 8) :: C
@@ -3121,7 +1449,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                                I.dot_quad "1" :: C)
             end
 
-        fun slots_for_datlabs(l,C) = foldr slot_for_datlab C l
+        fun slots_for_datlabs (l,C) = foldr slot_for_datlab C l
 
         fun toplevel_handler C =
           let
@@ -3141,7 +1469,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun store_exported_data_for_gc (labs,C) =
             if gc_p() then
               let (* Make sure to leave stack 16-byte aligned if required by os *)
-                  val F = if needs_align () andalso length(labs) mod 2 = 0 then
+                  val F = if length(labs) mod 2 = 0 then
                             fn C => I.push (I "1") :: C (* align *)
                           else fn C => C
               in F(foldr (fn (l,acc) => I.push(LA l) :: acc)
@@ -3149,7 +1477,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                           I.movq(R rsp, L data_lab_ptr_lab) :: C) labs)
               end
           else C
-
 
         fun raise_insts C = (* expects exception value in register rdi!! *)
           let
@@ -3183,7 +1510,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           end
 
         (* primitive exceptions *)
-        fun setup_primitive_exception((n,exn_string,exn_lab,exn_flush_lab),C) =
+        fun setup_primitive_exception ((n,exn_string,exn_lab,exn_flush_lab),C) =
           let
             val string_lab = gen_string_lab exn_string
             val _ =
@@ -3242,8 +1569,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                                     (1, "Bind", NameLab "exn_BIND", DatLab BI.exn_BIND_lab),
                                     (2, "Overflow", NameLab "exn_OVERFLOW", DatLab BI.exn_OVERFLOW_lab),
                                     (3, "Interrupt", NameLab "exn_INTERRUPT", DatLab BI.exn_INTERRUPT_lab),
-                                    (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab)]
-        val initial_exnname_counter = 5
+                                    (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab),
+                                    (5, "Subscript", NameLab "exn_SUBSCRIPT", DatLab BI.exn_SUBSCRIPT_lab),
+                                    (6, "Size", NameLab "exn_SIZE", DatLab BI.exn_SIZE_lab)
+                                   ]
+        val initial_exnname_counter = List.length primitive_exceptions
 
         fun init_primitive_exception_constructors_code C =
           foldl (fn (t,C) => setup_primitive_exception(t,C)) C primitive_exceptions
@@ -3262,7 +1592,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         (* args can only be tmp_reg0 and tmp_reg1; no arguments
          * on the stack; only the return address! Destroys tmp_reg0! *)
-        fun ccall_stub(stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
+        fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
           let
             val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
                             caller_save_regs_ccall  (* maybe also save the other
@@ -3319,7 +1649,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                              (NameLab "__raise_div",BI.exn_DIV_lab),
                              (NameLab "__raise_match",BI.exn_MATCH_lab),
                              (NameLab "__raise_bind",BI.exn_BIND_lab),
-                             (NameLab "__raise_interrupt", BI.exn_INTERRUPT_lab)]
+                             (NameLab "__raise_interrupt", BI.exn_INTERRUPT_lab),
+                             (NameLab "__raise_subscript", BI.exn_SUBSCRIPT_lab),
+                             (NameLab "__raise_size", BI.exn_SIZE_lab)]
           in I.dot_text ::(List.foldr (fn ((nl,dl),C') =>
                                           I.dot_globl nl ::
                                           I.lab nl::
@@ -3334,18 +1666,23 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 foldr (fn (r, C) => I.push(R r) :: C) C all_regs
               fun pop_all_regs C =
                 foldl (fn (r, C) => I.pop(R r) :: C) C all_regs
-              fun pop_size_ccf_rcf_reg_args C = base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
+              fun pop_size_ccf_rcf_reg_args C =
+                  base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
               val size_ff = 0 (*dummy*)
             in
               I.dot_text ::
               I.dot_globl gc_stub_lab ::
               I.lab gc_stub_lab ::
-              push_all_regs (* The return lab and rcx are also preserved *)
+              push_all_regs                             (* The return lab and rcx are also preserved (16 regs) *)
               (copy(rsp,tmp_reg0,
-                    compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
-                                        pop_all_regs( (* The return lab and tmp_reg0 are also popped again *)
-                                        pop_size_ccf_rcf_reg_args(
-                                        (I.jmp(R tmp_reg0) :: C))))))
+              (copy(rsp,r15,                            (* Save rsp in r15 (callee-save ccall register *)
+              I.push(I "1") ::                          (* at this point we don't know whether the stack *)
+              I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::  (* is aligned, so we force align it here... *)
+              compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
+              copy(r15,rsp,                             (* Reposition stack *)
+              pop_all_regs(                             (* The return lab and tmp_reg0 are also popped again *)
+              pop_size_ccf_rcf_reg_args(
+              (I.jmp(R tmp_reg0) :: C)))))))))
             end
           else C
 
@@ -3381,7 +1718,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 end
             else C
 
-        fun generate_jump_code_progunits(progunit_labs,C) =
+        fun generate_jump_code_progunits (progunit_labs,C) =
           foldr (fn (l,C) =>
                  let val next_lab = new_local_lab "next_progunit_lab"
                  in
@@ -3392,10 +1729,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* Marks no more frames on stack. For calculating rootset. *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary offsetToReturn *)
                    I.dot_quad "0xFFFFFFFFFFFFFFFF" :: (* An arbitrary function number. *)
-                   I.lab next_lab :: C))
+                   I.lab next_lab ::
+                   C))
                  end) C progunit_labs
 
-        fun allocate_global_regions(region_labs,C) =
+        fun allocate_global_regions (region_labs,C) =
           let
             fun maybe_pass_region_id (region_id,C) =
               if region_profiling() then I.movq(I (i2s region_id), R rsi) :: C
@@ -3429,8 +1767,17 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                    let val region_id = Effect.key_of_eps_or_rho rho
                        val name = c_name rho
                        val C = I.movq(R rax, L (DatLab lab)) :: C
+                       val sz_regdesc = BI.size_of_reg_desc()
+                       val sz_regdesc = if sz_regdesc mod 2 = 0 then sz_regdesc
+                                        else sz_regdesc+1
+                       val sz_regdesc_bytes = 8 * sz_regdesc
+                       (* The stack is thus ensured to be 16-byte aligned after the
+                        * return address is pushed on the stack by the call instruction.
+                        *)
+(*
                        val sz_regdesc_bytes = 8*BI.size_of_reg_desc()
                        val sz_regdesc_bytes = maybe_align16 sz_regdesc_bytes
+*)
                    in
                        I.subq(I(i2s sz_regdesc_bytes), R rsp) ::  (* MAEL: maybe align *)
                        I.movq(R rsp, R rdi) ::
@@ -3451,6 +1798,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 I.movq(R rsp, D("8", rsp)) :: C
           in
             comment ("PUSH TOP-LEVEL HANDLER ON STACK",
+            I.subq(I "8", R rsp) ::                       (* anti-align *)
             I.subq(I "32", R rsp) ::
             I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("0", rsp)) ::
@@ -3458,7 +1806,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq(L exn_ptr_lab, R tmp_reg1) ::
             I.movq(R tmp_reg1, D("16", rsp)) ::
             I.movq(R rsp, D("24", rsp)) ::
-            I.movq(R rsp, L exn_ptr_lab) :: C))
+            I.movq(R rsp, L exn_ptr_lab) ::
+            I.subq(I "8", R rsp) ::                       (* align *)
+            C))
           end
 
         fun init_stack_bot_gc C =
@@ -3483,7 +1833,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.dot_align 8 ::
             I.dot_globl (NameLab "code") ::
             I.lab (NameLab "code") ::
-
+            I.push(I "1") ::                           (* 16-align stack *)
             (* Compute range of data space *)
             generate_data_begin_end(progunit_labs,
 
@@ -3511,6 +1861,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
+            (*I.push(I "1") ::*) (* ensure stack is 16-byte aligned after return address is pushed on the
+                              * stack by the I.call instruction. *)
             compile_c_call_prim("terminateML", [mkIntAty 0],
                                 NONE,0,rax, (* instead of res we return the result from
                                              * the last function call *)
@@ -3521,8 +1873,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                               overflow_stub o gc_stub o proftick) nil
         fun data_begin C =
             if gc_p() then
-                (I.lab (data_begin_init_lab) :: C)
+              (I.lab (data_begin_init_lab) :: C)
             else C
+
         fun data_end C =
             if gc_p() then
                 (I.dot_align 8 ::

@@ -2,13 +2,14 @@
 
  Part of the front end:
 
-        parsing                 elaboration                 
+        parsing                 elaboration
                  TopdecGrammar  (ElabTopdec)  TopdecGrammar  (CompileDec)
   SML  --------->    with     -------------->     with      -------------> LambdaExp
-                   ParseInfo                    ElabInfo 
+                   ParseInfo                    ElabInfo
 
  ParseInfo is the information on the abstract syntax tree after
- parsing.  It is a pair containing SourceInfo and DFInfo.
+ parsing.  It is a pair containing SourceInfo and DFInfo (Derived
+ Form).
 
  The SourceInfo on a syntax tree node is the position in the
  source SML program of the beginning and the end of the text that
@@ -17,8 +18,6 @@
  DFInfo is not always present on a syntax tree node.  Each kind
  of info is implemented by a module called the same as the info
  kind.*)
-
-(*$PARSE_INFO : SOURCE_INFO DF_INFO*)
 
 signature PARSE_INFO =
   sig
@@ -40,4 +39,4 @@ signature PARSE_INFO =
     val plus_DFInfo     : ParseInfo -> DFInfo -> ParseInfo
     val to_DFInfo       : ParseInfo -> DFInfo option
     val layout          : ParseInfo -> StringTree
-  end;
+  end

@@ -10,6 +10,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
      * --------------------------------------------------------- *)
 
     val letrec_polymorphism_only = ref false   (* see the main function below. *)
+    val tag_values = Flags.is_on0 "tag_values"
 
     open LambdaExp TyName
 
@@ -168,11 +169,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	  TyNameMap.fromList  [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
 			       (tyName_INT31, []),
 			       (tyName_INT32, []),
+			       (tyName_INT63, []),
+			       (tyName_INT64, []),
 			       (tyName_INTINF, [Con.con_INTINF]),
 			       (tyName_WORD8, []),
 			       (tyName_WORD31, []),
 			       (tyName_WORD32, []),
+			       (tyName_WORD63, []),
+			       (tyName_WORD64, []),
 			       (tyName_REAL, []),
+			       (tyName_F64, []),
 			       (tyName_STRING, []),
 			       (tyName_CHAR, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
@@ -191,7 +197,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 			      (Excon.ex_MATCH, NONE),
 			      (Excon.ex_BIND, NONE),
 			      (Excon.ex_OVERFLOW, NONE),
-			      (Excon.ex_INTERRUPT, NONE)]
+			      (Excon.ex_INTERRUPT, NONE),
+			      (Excon.ex_SUBSCRIPT, NONE),
+			      (Excon.ex_SIZE, NONE)
+                             ]
 
 	val ftv_initial =
 	  ConMap.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)
@@ -325,12 +334,12 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				       layout_lvar_env lvar_env,
 				       layout_excon_env excon_env]}
 
-	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
+	fun restrict (env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
 	  let
               fun say s = print(s^"\n");
-              fun sayenv() = PP.outputTree(print,layout_env env, !Flags.colwidth)
-	      fun sayset() = PP.outputTree(print,NatSet.layoutSet {start="{",finish="}",
-								   sep=","} (PP.LEAF o pr_tyvar) ftv,
+              fun sayenv () = PP.outputTree(print,layout_env env, !Flags.colwidth)
+	      fun sayset () = PP.outputTree(print,NatSet.layoutSet {start="{",finish="}",
+								    sep=","} (PP.LEAF o pr_tyvar) ftv,
 					   !Flags.colwidth)
 	      val _ = if NatSet.isEmpty ftv then () (* there can no-longer be free type variables in
 						     * a topdec - see EfficientElab/ElabTopdec.sml; mael 2007-11-05 *)
@@ -441,7 +450,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
     val unit_Type = RECORDtype []
 
-    fun tyvars_not_in_env(tyvars, env) =
+    fun tyvars_not_in_env (tyvars, env) =
       if NatSet.isEmpty (NatSet.intersect (NatSet.fromList tyvars) (ftv_env env)) then ()
       else die "tyvars_not_in_env.TYVARS in Env!!"
 
@@ -517,7 +526,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       let val type_e = type_lexp env
       in
 	case prim
-	  of CONprim{con,instances} =>
+	  of CONprim{con,instances,regvar} =>
 	    (valid_ts env instances;
 	     case lexps
 	       of [] => [mk_instance(lookup_con env con, instances)]
@@ -566,7 +575,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 					  end
 					 | NONE => die "DEEXCONprim.Unary excon does not have arrow type")
 			 | _ => die "DEEXCONprim.Wrong number of args")
-	   | RECORDprim => [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
+	   | RECORDprim _ => [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
 	   | SELECTprim i =>
 			(case lexps
 			   of [lexp] =>
@@ -588,7 +597,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				    end
 				   | _ => die "DEREFprim.Wrong instance")
 		   | _ => die "DEREFprim.Wrong number of args")
-	   | REFprim {instance} => (* as CONprim *)
+	   | REFprim {instance,regvar} => (* as CONprim *)
 		  let val typescheme_REF =
 		         let val tyvar = fresh_tyvar()
 			 in close_Type (ARROWtype([TYVARtype tyvar], [CONStype([TYVARtype tyvar], tyName_REF)]))
@@ -648,23 +657,27 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				log_st (layoutTypes ts_arg);
 				log "but found types:\n"; log_st (layoutTypes ts);
 				die "c function call")
-                        fun is_unboxed t =
+                        val unboxed_types =
                             let open LambdaExp
-                                val unboxed_types = [boolType, unitType, int31Type, word31Type,
-						     intDefaultType(), wordDefaultType(), foreignptrType]
-			    in List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
+                            in [boolType, unitType, int31Type, word31Type,
+                                int63Type, word63Type,
+				intDefaultType(), wordDefaultType(), foreignptrType]
+                               @ (if tag_values() then []
+                                  else [int32Type, word32Type])
                             end
+                        fun is_unboxed t =
+                            List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
 			val _ =
-                            case name of
-                                "id" =>        (* check that casts are only performed on unboxed values;
-						* casting of boxed values is region unsafe! *)
-			        (case (ts_arg, ts_res) of
-                                     ([ta], [tr]) => if is_unboxed ta andalso is_unboxed tr then ()
-				                     else die "c function `id' is used to cast to or from a boxed type; \
-                                                             \ it is region-unsafe to use `id' this way! Rewrite your program!!"
-		                   | _ => die "c function `id' does not have a valid type"
-                                )
-                              | "pointer" =>
+	                    if name = "id" orelse name = "ord" then
+                              (* check that casts are only performed on unboxed values;
+			       * casting of boxed values is region unsafe! *)
+			      (case (ts_arg, ts_res) of
+                                   ([ta], [tr]) =>
+			             if is_unboxed ta andalso is_unboxed tr then ()
+				     else die "c function `id' is used to cast to or from a boxed type; \
+			                      \ it is region-unsafe to   use `id' this way! Rewrite your program!!"
+		                 | _ => die "c function `id' does not have a valid type")
+			    else if name = "pointer" then
                                 (case (ts_arg, ts_res) of
                                      ([ta], [tr]) =>
                                      if LambdaBasics.eq_Type(tr,foreignptrType) andalso not(is_unboxed ta) then ()
@@ -674,10 +687,16 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                              \ object pointed to is no longer accessed.!!"
 		                   | _ => die "c function `pointer' does not have a valid type"
                                 )
-			      | _ => ()
+                            else ()
 		    in ts_res
 		    end
-		| _ => die ("c function " ^ name ^ " does not have arrow type"))
+		 | _ => die ("c function " ^ name ^ " does not have arrow type"))
+           | BLOCKF64prim =>
+             let val ts = map (unTypeListOne "BLOCKF64" o type_e) lexps
+             in List.app (fn t => if LambdaBasics.eq_Type(t,f64Type) then ()
+                                  else die ("wrong blockf64 element type; got " ^ prType t)) ts
+              ; [stringType]
+             end
 	   | EXPORTprim {name, instance_arg, instance_res} =>
 	       (valid_t env instance_arg;
 		valid_t env instance_res;
@@ -713,12 +732,13 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
     (* Type checking of lambda expressions *)
     and type_lexp (env:env) (lexp:LambdaExp) : TypeList =
       (case lexp
-	of VAR{lvar,instances} => (valid_ts env instances;
-				   Types [mk_instance(lookup_lvar env lvar, instances)])
+	of VAR{lvar,instances,regvars} => (valid_ts env instances;
+				           Types [mk_instance(lookup_lvar env lvar, instances)])
 	 | INTEGER (i,t) => (valid_t env t; Types [t])    (* TODO: i31, i32 - compare with literal i *)
 	 | WORD (w,t) => (valid_t env t; Types [t])       (* TODO: w31, w32 - compare with literal w *)
 	 | STRING s => Types [CONStype([], tyName_STRING)]
 	 | REAL s => Types [CONStype([], tyName_REAL)]
+	 | F64 s => Types [CONStype([], tyName_F64)]
 	 | FN {pat,body} =>
 	  let val env' = foldl (fn ((lvar,Type), env) =>
 				     add_lvar(lvar,([],Type),env)) env pat
@@ -760,9 +780,10 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	  in
 	    type_lexp env_scope scope
 	  end
+         | LETREGION{regvars,scope} => type_lexp env scope
 	 | FIX {functions, scope} =>
 	  let (* env' is the environment for checking function bodies *)
-              val env' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
+              val env' = foldl (fn ({lvar,regvars,tyvars,Type,bind}, env) =>   (* memo:regvars *)
 				     (valid_s env (tyvars,Type); add_lvar(lvar,([],Type),add_tyvars(tyvars,env)))) env functions
 (*	      val _ =
 		let type t = {lvar:lvar,tyvars:tyvar list, Type : Type, bind:LambdaExp}
@@ -779,7 +800,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 
               val _ = app (eqType "FIX") type_pairs
 
-	      val env_scope = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
+	      val env_scope = foldl (fn ({lvar,regvars,tyvars,Type,bind}, env) =>
 				      (tyvars_not_in_env(tyvars, env);
 				       add_lvar(lvar,(tyvars,Type),env))) env functions
 	  in
@@ -817,6 +838,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_INT31
 			   | 32 => tyName_INT32
+			   | 63 => tyName_INT63
+			   | 64 => tyName_INT64
                         (* | ~1 => tyName_INTINF *)  (* IntInf's have been compiled away at this point *)
 			   | _ => die ("SWITCH_I.precision = " ^ Int.toString precision)
 	   in type_switch (type_lexp env) (fn _ => tn) switch
@@ -825,6 +848,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 	   let val tn = case precision
 			  of 31 => tyName_WORD31  (* word8 type translated into default word type in CompileDec *)
 			   | 32 => tyName_WORD32
+			   | 63 => tyName_WORD63
+			   | 64 => tyName_WORD64
 			   | _ => die "SWITCH_I"
 	   in type_switch (type_lexp env) (fn _ => tn) switch
 	   end

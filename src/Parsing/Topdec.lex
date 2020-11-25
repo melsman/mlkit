@@ -73,7 +73,7 @@
   fun addUnicodeChar (arg, yypos, yytext) =
     LexUtils.addUnicodeChar (positionOfStream (arg, yypos), yytext) arg
 
-  fun has_quote s = 
+  fun has_quote s =
     let fun loop i = ((String.sub(s,i) = #"`") orelse loop (i+1))
       handle _ => false
     in loop 0
@@ -179,10 +179,11 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 <INITIAL>{SymbolicIdNoQuote} => (token_id(yytext,arg,yypos));
 <INITIAL>{QualifiedIdNoQuote} => (token_qualid(yytext,arg,yypos));
 
-<INITIAL>"`"            => ((* a starting quote *)
-                            YYBEGIN Q; 
-                            LexUtils.clearString arg;
-                            token0 (BEGINQ,arg,yypos,yytext));
+<INITIAL>"`"            => (if quotation() then
+			      (YYBEGIN Q;  (* a starting quote *)
+			       LexUtils.clearString arg;
+			       token0 (BEGINQ,arg,yypos,yytext))
+      	                    else (token0(BACKQUOTE, arg, yypos, yytext)));
 
 <Q>"^`"                 => (LexUtils.addChars "`" arg; continue());
 <Q>"^^"                 => (LexUtils.addChars "^" arg; continue());
@@ -199,7 +200,7 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 <Q>\n                   => (LexUtils.addChars yytext arg; continue());
 
 <AQ>{VWhiteSpace}       => (continue());
-<AQ>{NormalId}          => (YYBEGIN Q; LexUtils.clearString arg; 
+<AQ>{NormalId}          => (YYBEGIN Q; LexUtils.clearString arg;
 			    token1(AQID, yytext, arg, yypos, yytext));
 <AQ>"("                 => (YYBEGIN INITIAL;
 			    LexUtils.parStackPush (ref 1) arg;

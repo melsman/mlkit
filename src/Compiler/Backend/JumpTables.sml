@@ -17,7 +17,7 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 			  inline_cont: 'inst list -> ('inst list -> 'inst list) option,
 			  C: 'inst list) =
       let
-	    (* To avoid jump-to-jumps, jump-to-returns, etc., we look at the continuation to 
+	    (* To avoid jump-to-jumps, jump-to-returns, etc., we look at the continuation to
 	     * see if parts of the continuation can be inlined instead of jumped to.
 	     *)
 	    val (endsel, endswitch) =
@@ -42,18 +42,18 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 					   comment("end linear switch",C)))) sels)
       end
 
-    fun binary_search_new(sels:(Int32.int*'sinst) list,
+    fun binary_search_new(sels:(IntInf.int*'sinst) list,
 			  default: 'sinst,
 			  comment: string * 'inst list -> 'inst list,
 			  new_label : string -> 'label,
-			  if_not_equal_go_lab_sel: 'label * Int32.int * 'inst list -> 'inst list,
-			  if_less_than_go_lab_sel: 'label * Int32.int * 'inst list -> 'inst list,
-			  if_greater_than_go_lab_sel: 'label * Int32.int * 'inst list -> 'inst list,
+			  if_not_equal_go_lab_sel: 'label * IntInf.int * 'inst list -> 'inst list,
+			  if_less_than_go_lab_sel: 'label * IntInf.int * 'inst list -> 'inst list,
+			  if_greater_than_go_lab_sel: 'label * IntInf.int * 'inst list -> 'inst list,
 			  compile_insts: 'sinst * 'inst list -> 'inst list,
 			  label: 'label * 'inst list -> 'inst list,
 			  jmp: 'label * 'inst list -> 'inst list,
-			  sel_dist: Int32.int * Int32.int -> Int32.int,
-			  jump_table_header: 'label * Int32.int * Int32.int * 'inst list -> 'inst list,
+			  sel_dist: IntInf.int * IntInf.int -> IntInf.int,
+			  jump_table_header: 'label * IntInf.int * IntInf.int * 'inst list -> 'inst list,
 			  add_label_to_jump_tab: 'label * 'inst list -> 'inst list,
 			  eq_lab : 'label * 'label -> bool,
 			  inline_cont: 'inst list -> ('inst list -> 'inst list) option,
@@ -65,7 +65,7 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 	    (*  Compilation functions for the binary switch with jump tables.  *)
 	    (* Switch([(const,is),...,(const,is)],default)                     *)
 	    (*-----------------------------------------------------------------*)
-	      
+
 	    fun add_group(startSel,finishSel,accGrp) acc =
 	      let
 		val lenAccGrp = length accGrp
@@ -87,13 +87,13 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 	      | group_sel_list(NONE, NONE, (sel, selCode)::rest, [], acc) =
 	      group_sel_list(SOME sel, SOME sel, rest, [(sel,selCode)], acc)
 	      | group_sel_list(SOME startSel, SOME finishSel, (sel,selCode)::rest, accGrp, acc) =
-	      if sel_dist(startSel,sel) <= Int32.fromInt BI.maxDiff then
+	      if sel_dist(startSel,sel) <= IntInf.fromInt BI.maxDiff then
 		group_sel_list(SOME sel, SOME finishSel, rest, (sel,selCode)::accGrp, acc)
 	      else
 		group_sel_list(SOME sel, SOME sel, rest, [(sel,selCode)],
 			       add_group (startSel,finishSel,accGrp) acc)
 	      | group_sel_list _ = die "JumpTables.group_sel_list"
-		
+
 	    (* The lists returned may not be reversed! *)
 	    fun split_list [] = (NONE, NONE, NONE)
 	      | split_list xs =
@@ -105,7 +105,7 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 		      val xsLeft = case xs1
 				     of [] => NONE
 				      | _ => SOME xs1
-		      val xsRight = case rest 
+		      val xsRight = case rest
 				      of [] => NONE
 				       | _ => SOME rest
 		    in
@@ -117,8 +117,8 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 	      in
 		split_list' (lenxs div 2) [] xs
 	      end
-	    
-	    (* To avoid jump-to-jumps, jump-to-returns, etc., we look at the continuation to 
+
+	    (* To avoid jump-to-jumps, jump-to-returns, etc., we look at the continuation to
 	     * see if parts of the continuation can be inlined instead of jumped to.
 	     *)
 	    val (endsel, endswitch) =
@@ -129,7 +129,7 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 		      fn C => label(lab_exit, C))
 		  end
 		 | SOME f => (f, fn C => C)
-	      
+
 	    fun switch_with_jump_table([],defaultLab,C) = die "JumpTables: switch_with_jump_table has no selections."
 	      | switch_with_jump_table([(sel, selCode)],defaultLab,C) = compile_insts(selCode, endsel C)
 	      | switch_with_jump_table(sels as (sel,selCode)::rest, defaultLab,C) =
@@ -154,12 +154,12 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 		    end
 		fun merge([],C) = C
 		  | merge(x::xs,C) = x::merge(xs,C)
-		  
+
 		val (jumpTableCode, switchCode) = make_sel_code(sel,sels,C)
-		val jumpTableCode' = label(jumpTableLab,merge(jumpTableCode,switchCode)) 
+		val jumpTableCode' = label(jumpTableLab,merge(jumpTableCode,switchCode))
 
 		val len = (* there may be holes in the jumptable; count these in the length, also *)
-		  case rev sels  
+		  case rev sels
 		    of ((last_sel,_)::_) => last_sel - sel + 1
 		     | _ => die ("switch_with_jump_table.len")
 	      in
@@ -168,7 +168,7 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 		else
 		  jump_table_header(jumpTableLab,sel,len,jumpTableCode')
 	      end
-		  
+
 	    fun bin_search_code (leftLab,start,finish,rightLab,C) =
 	      if start = finish then
 		if eq_lab(leftLab,rightLab) then
@@ -215,11 +215,11 @@ functor JumpTables(BI : BACKEND_INFO) : JUMP_TABLES =
 			      switch_with_jump_table(sels,defaultLab,C))
 	      | gen_binary_switch ((NONE, NONE, NONE),defaultLab,C) = die "JumpTables. genBinarySwitch, no selections."
 	      | gen_binary_switch _ = die "JumpTables.genBinarySwitch"
-		    
-	    val sels_sorted = ListSort.sort 
-	      (fn (i1, is1) => 
+
+	    val sels_sorted = ListSort.sort
+	      (fn (i1, is1) =>
 	       (fn (i2, is2) => i1 > i2)) sels
-		    
+
 	    val group_sels = group_sel_list (NONE, NONE, sels_sorted, [], [])
 	    val default_lab = new_label "defaultLab"
 	  in

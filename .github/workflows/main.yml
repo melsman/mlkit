@@ -1,0 +1,136 @@
+# This is the MLKit main workflow for building and testing the MLKit
+# on various architectures.  The workflow contains two jobs called
+# "build-and-test-ubuntu" and "build-and-test-macos". It is triggered
+# on push or pull request events but only for the master branch.
+
+name: CI
+
+on:
+
+  push:
+    branches: [ master ]
+
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+
+  build-test-ubuntu:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y gcc mlton autoconf make
+
+      - name: Configure
+        run: |
+          ./autobuild
+          ./configure
+
+      - name: Build MLKit
+        run: |
+          make mlkit
+          make mlkit_basislibs
+
+      - name: Install MLKit
+        run: |
+          sudo make install
+
+      - name: Run MLKit tests
+        run: |
+          make -C test_dev test
+          make -C test test_mlkit
+          make -C test test_mlkit_no_gc
+          make -C test/explicit_regions all
+
+      - name: Configure SmlToJs
+        run: |
+          ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
+
+      - name: Build SmlToJs
+        run: |
+          make smltojs
+          make smltojs_basislibs
+
+      - name: Install SmlToJs
+        run: |
+          sudo make install_smltojs
+
+      - name: Run SmlToJs tests
+        run: |
+          make -C js/test test
+
+      - name: Build binary distribution
+        run: |
+          make mlkit_bin_dist
+
+  build-test-macos:
+
+    runs-on: macos-latest
+
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          brew update
+          rm -f /usr/local/include/c++
+          brew install gcc
+          brew install autoconf
+          brew install make
+          # The brew version of MLton has a bug
+          brew install mlton --HEAD
+          brew tap homebrew/cask
+          brew cask install phantomjs
+
+      - name: Configure
+        run: |
+          ./autobuild
+          ./configure
+
+      - name: Build MLKit
+        run: |
+          make mlkit
+          make mlkit_basislibs
+
+      - name: Install MLKit
+        run: |
+          sudo make install
+
+      - name: Run tests
+        run: |
+          make -C test_dev test
+          make -C test test_mlkit
+          make -C test test_mlkit_no_gc
+          make -C test/explicit_regions all
+
+      - name: Configure SmlToJs
+        run: |
+          ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
+
+      - name: Build SmlToJs
+        run: |
+          make smltojs
+          make smltojs_basislibs
+
+      - name: Install SmlToJs
+        run: |
+          sudo make install_smltojs
+
+      - name: Run SmlToJs tests
+        run: |
+          make -C js/test test
+
+      - name: Build binary distribution
+        run: |
+          make mlkit_bin_dist

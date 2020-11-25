@@ -20,9 +20,9 @@ datatype conRep = (* representation of value constructors for datatypes *)
 (* Replacing lvars in an expression to other lvars *)
 type rep = (lvar, lvar) FinMapEq.map
 
-fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances}) : Exp =
+fun replace_lvs (rep:rep) (e as L.VAR{lvar,instances,regvars}) : Exp =
     (case FinMapEq.lookup Lvars.eq rep lvar of
-         SOME lv => L.VAR{lvar=lv,instances=instances}
+         SOME lv => L.VAR{lvar=lv,instances=instances,regvars=nil}
        | NONE => e)
   | replace_lvs rep (L.FRAME _) = die "rename_lvs: FRAME construct not expected"
   | replace_lvs rep e = LambdaBasics.map_lamb (replace_lvs rep) e
@@ -273,7 +273,7 @@ fun resolveS (arg: J.stmt option * 'a) (f: 'a -> cont -> J.stmt) : ret =
       (SOME s,es') => S(fn k => s & f es' k)
     | (NONE,es') => S(fn k => f es' k)
 
-fun jint i = J.Cnst(J.Int(Int32.fromInt i))
+fun jint i = J.Cnst(J.Int(IntInf.fromInt i))
 val jcnst0 = jint 0
 val jcnst1 = jint 1
 val junit = jcnst0
@@ -284,8 +284,8 @@ val jnull = J.Cnst J.Null
 (* Compilation of value constructors *)
 fun ppCon C c : J.cnst =
     case Env.M.lookup (Context.envOf C) c of
-      SOME(STD i) => J.Int(Int32.fromInt i)
-    | SOME(ENUM i) => J.Int(Int32.fromInt i)
+      SOME(STD i) => J.Int(IntInf.fromInt i)
+    | SOME(ENUM i) => J.Int(IntInf.fromInt i)
     | SOME(BOOL true) => J.Bool true
     | SOME(BOOL false) => J.Bool false
     | SOME UNBOXED_NULL => J.Null
@@ -331,9 +331,9 @@ arithmentic operations must consider signs explicitly.
 fun jandw e w = J.Prim("&",[e,J.Cnst(J.Word w)])
 fun jorw e w = J.Prim("|",[e,J.Cnst(J.Word w)])
 
-fun wrapWord31 (e: J.exp) : J.exp = jandw e 0wx7FFFFFFF
+fun wrapWord31 (e: J.exp) : J.exp = jandw e 0x7FFFFFFF
 
-fun wrapWord32 (e: J.exp) : J.exp = jandw e 0wxFFFFFFFF
+fun wrapWord32 (e: J.exp) : J.exp = jandw e 0xFFFFFFFF
 
 fun callPrim0 n = J.App(J.Id n,[])
 
@@ -356,16 +356,19 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__plus_word32ub" => wrapWord32(J.Prim("+", [e1,e2]))
     | "__plus_word31" => wrapWord31(J.Prim("+", [e1,e2]))
     | "__plus_real" => J.Prim("+", [e1,e2])
+    | "__plus_f64" => J.Prim("+", [e1,e2])
     | "__minus_int32ub" => chkOvfI32(J.Prim("-", [e1,e2]))
     | "__minus_int31" => chkOvfI31(J.Prim("-", [e1,e2]))
     | "__minus_word32ub" => wrapWord32(J.Prim("-", [e1,e2]))
     | "__minus_word31" => wrapWord31(J.Prim("-", [e1,e2]))
     | "__minus_real" => J.Prim("-", [e1,e2])
+    | "__minus_f64" => J.Prim("-", [e1,e2])
     | "__mul_int32ub" => chkOvfI32(J.Prim("*", [e1,e2]))
     | "__mul_int31" => chkOvfI31(J.Prim("*", [e1,e2]))
     | "__mul_word32ub" => wrapWord32(J.Prim("*", [e1,e2]))
     | "__mul_word31" => wrapWord31(J.Prim("*", [e1,e2]))
     | "__mul_real" => J.Prim("*", [e1,e2])
+    | "__mul_f64" => J.Prim("*", [e1,e2])
 
     | "__less_int32ub" => J.Prim("<", [e1,e2])
     | "__lesseq_int32ub" => J.Prim("<=", [e1,e2])
@@ -392,6 +395,12 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__lesseq_real" => J.Prim("<=", [e1,e2])
     | "__greatereq_real" => J.Prim(">=", [e1,e2])
     | "__greater_real" => J.Prim(">", [e1,e2])
+
+    | "__less_f64" => J.Prim("<", [e1,e2])
+    | "__lesseq_f64" => J.Prim("<=", [e1,e2])
+    | "__greatereq_f64" => J.Prim(">=", [e1,e2])
+    | "__greater_f64" => J.Prim(">", [e1,e2])
+
     | "__bytetable_sub" => J.App(J.Prop(e1,"charCodeAt"),[e2])
     | "concatStringML" => J.Prim("+", [e1,e2])
     | "word_sub0" => J.Sub(e1,e2)
@@ -406,11 +415,11 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__shift_right_signed_word32ub" => J.Prim(">>", [e1,e2])
     | "__shift_right_signed_word31" =>
       J.IfExp(J.Prim("&", [e1,J.Id "-0x40000000"]),
-              jandw (J.Prim(">>", [jorw e1 0wx80000000, e2])) 0wx7FFFFFFF,
+              jandw (J.Prim(">>", [jorw e1 0x80000000, e2])) 0x7FFFFFFF,
               J.Prim(">>", [e1,e2]))
 
-    | "__shift_left_word31" => wrapWord31(J.Prim("<<",[e1,jandw e2 0wx1F]))
-    | "__shift_left_word32ub" => wrapWord32(J.Prim("<<",[e1,jandw e2 0wx1F]))
+    | "__shift_left_word31" => wrapWord31(J.Prim("<<",[e1,jandw e2 0x1F]))
+    | "__shift_left_word32ub" => wrapWord32(J.Prim("<<",[e1,jandw e2 0x1F]))
 
     | "__andb_word32ub" => J.Prim("&",[e1,e2])
     | "__andb_word31" => J.Prim("&",[e1,e2])
@@ -430,6 +439,7 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__rem_int32ub" => J.Prim("%",[e1,e2])
 
     | "divFloat" => J.Prim("/",[e1,e2])
+    | "__div_f64" => J.Prim("/",[e1,e2])
     | "atan2Float" => callPrim2 "Math.atan2" e1 e2
 
     | "powFloat" => callPrim2 "Math.pow" e1 e2
@@ -463,6 +473,7 @@ fun pToJs1 name e : J.exp =
       | "printStringML" => callPrim1 "document.write" e
       | "exnNameML" => J.Sub(e,jcnst0)
       | "id" => e
+      | "ord" => e
       | "word_table0" => J.App(J.Id "Array",[e])
       | "table_size" => J.Prop(e,"length")
       | "chararray_to_string" => callPrim1 "SmlPrims.charArrayToString" e
@@ -472,9 +483,11 @@ fun pToJs1 name e : J.exp =
       | "__neg_int32ub" => chkOvfI32(J.Prim("-",[e]))
       | "__neg_int31" => chkOvfI31(J.Prim("-",[e]))
       | "__neg_real" => J.Prim("-",[e])
+      | "__neg_f64" => J.Prim("-",[e])
       | "__abs_int32ub" => chkOvfI32(callPrim1 "Math.abs" e)
       | "__abs_int31" => chkOvfI31(callPrim1 "Math.abs" e)
       | "__abs_real" => callPrim1 "Math.abs" e
+      | "__abs_f64" => callPrim1 "Math.abs" e
 
       | "__int32ub_to_int" => e
       | "__int_to_int32ub" => e
@@ -523,6 +536,12 @@ fun pToJs1 name e : J.exp =
       | "sml_localtime" => callPrim1 "SmlPrims.localtime" e
       | "sml_gmtime" => callPrim1 "SmlPrims.gmtime" e
       | "sml_mktime" => callPrim1 "SmlPrims.mktime" e
+
+      | "__real_to_f64" => e
+      | "__f64_to_real" => e
+      | "__int_to_f64" => e
+
+      | "__sqrt_f64" => callPrim1 "Math.sqrt" e
       | _ => die ("pToJs1 unimplemented: " ^ name)
 
 fun pToJs0 name =
@@ -687,7 +706,7 @@ end
 (* Monomorphic non recursive functions are compiled into simple
  * function expressions. *)
 
-fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_}] =
+fun monoNonRec [{lvar,bind=L.FN{pat,body,...},tyvars=_,Type=_,regvars}] =
     if lvarInExp lvar body then NONE
     else SOME(lvar,pat,body)
   | monoNonRec _ = NONE
@@ -706,8 +725,9 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     L.VAR {lvar,...} => E(J.Id(prLvar C lvar))
   | L.INTEGER (v,_) => E(J.Cnst(J.Int v))
   | L.WORD (v,_) => E(J.Cnst(J.Word v))
-  | L.STRING v => E(J.Cnst(J.Str v))
-  | L.REAL v => E(J.Cnst(J.Real v))
+  | L.STRING (v,_) => E(J.Cnst(J.Str v))
+  | L.REAL (v,_) => E(J.Cnst(J.Real v))
+  | L.F64 v => E(J.Cnst(J.Real v))
   | L.PRIM(L.CONprim {con,...},nil) => E(ppConNullary C con)
   | L.PRIM(L.CONprim {con,...},[e]) =>
     resolveE (toj1 C P e) (ppConUnary C con)
@@ -725,13 +745,13 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     resolveE (toj1 C P e) (fn e' => J.Array [J.Id(exconName excon),e'])
   | L.PRIM(L.DEEXCONprim excon,[e]) => (* unary *)
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst1))
-  | L.PRIM(L.RECORDprim, []) => E junit
-  | L.PRIM(L.RECORDprim, es) => resolveE (tojs C P es) J.Array
+  | L.PRIM(L.RECORDprim _, []) => E junit
+  | L.PRIM(L.RECORDprim _, es) => resolveE (tojs C P es) J.Array
   | L.PRIM(L.UB_RECORDprim, [e]) => toj C P e
   | L.PRIM(L.UB_RECORDprim, es) => die ("UB_RECORD unimplemented. size(args) = "
                                         ^ Int.toString (List.length es))
   | L.PRIM(L.SELECTprim i,[e]) =>
-    resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(Int32.fromInt i))))
+    resolveE (toj1 C P e) (fn e' => J.Sub(e',J.Cnst(J.Int(IntInf.fromInt i))))
   | L.PRIM(L.DEREFprim _, [e]) =>
     resolveE (toj1 C P e) (fn e' => J.Sub(e', jcnst0))
   | L.PRIM(L.REFprim _, [e]) =>
@@ -755,7 +775,8 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
              val env_id = prLvar C (Lvars.new_named_lvar "env")
              val rep : rep = (fromList o map (fn (lv,lv',_) => (lv,lv'))) lvs_lvs'_idxs
              val body' = replace_lvs rep body
-             val binds = map (fn (_,lv',i) => J.Var(prLvar C lv', SOME(J.Sub(J.Id env_id,J.Cnst(J.Int i))))) lvs_lvs'_idxs
+             val binds = map (fn (_,lv',i) => J.Var(prLvar C lv', SOME(J.Sub(J.Id env_id,J.Cnst(J.Int i)))))
+                             lvs_lvs'_idxs
              val g = J.Fun(ids, J.Seq (binds@[wrapRet(RetCont NONE) (toj C P body')]))
              val f = J.Fun([env_id], J.Return g)
              val es = map (J.Id o prLvar C) fvs
@@ -781,6 +802,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
                                | _ => die "LET.unimplemented"
     in toj_let C P (lvs, binds, scope)
     end
+  | L.LETREGION {scope,...} => toj C P e
   | L.FIX{functions,scope} =>
     (case monoNonRec functions of
        SOME (lv,pat,body) =>
@@ -873,7 +895,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
     (case name of
        "execStmtJS" =>
        (case exps
-         of L.STRING s :: L.STRING argNames :: args =>  (* static code *)
+         of L.STRING (s,_) :: L.STRING (argNames,_) :: args =>  (* static code *)
             resolveE (tojs C P args) (fn es' => J.App(J.Fun([argNames],J.Embed s), es'))   (* hack with argNames pretty printing *)
           | s :: argNames :: args => (* dynamic code *)
             resolveE (tojs C P (s::argNames::args))
@@ -883,7 +905,7 @@ fun toj C (P:{clos_p:bool}) (e:Exp) : ret =
           | _ => die "toj.execStmtJS : string-->string-->args")
      | "callJS" =>
        (case exps
-         of L.STRING f :: args =>  (* static code *)
+         of L.STRING (f,_) :: args =>  (* static code *)
             resolveE (tojs C P args) (fn es' => J.App(J.Id f,es'))
           | f :: args => (* dynamic code *)
             let val xs = ((String.concatWith ",") o #2)

@@ -1,0 +1,9 @@
+[reading source file:	er6.sml]
+> val ! : 'a ref->'a
+  val f : unit->real
+  val x : real ref
+er6.sml, line 8, column 6:
+  fun f `[r] () : real =
+        ^^^^
+Explicit region variable `r is forced out of scope.
+Stopping compilation of MLB-file due to error (code 1).
