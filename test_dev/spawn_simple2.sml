@@ -21,13 +21,22 @@ in
 val rs = ref "hi\n"
 val rf = ref(fn () => print (!rs))
 val f = !rf
+(*
+val () = print "Hi\n"
+val () = print "Hi\n"
+*)
 val fp_f : foreignptr = prim("pointer", f) (* very unsafe *)
 val () = prim("function_test", fp_f)
 
 val () = rs := "hi there\n"
 val fp : foreignptr = prim("spawnone", fp_f)
 
+val () = prim("thread_get", fp)
+
 fun fib x = if x < 2 then 1 else fib(x-1)+fib(x-2)
 
-val a = fib 28
+val a = fib 9
+
+val () = print "Hi\n"
+
 end

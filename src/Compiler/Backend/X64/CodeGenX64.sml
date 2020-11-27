@@ -1178,12 +1178,17 @@ struct
                                                I.movq(D("0",rdi),R rdi),             (* extract closure from threadinfo arg *)
                                                I.movq(R rdi,R rax),                  (* move closure into closure register *)
                                                I.movq(D(offset_codeptr,rdi), R r10), (* extract code pointer into %r10 from C arg *)
+                                               I.push(I"0"),                         (* push dummy - for 16-byte alignment *)
                                                I.push (LA return_lab),               (* push return address *)
                                                I.jmp (R r10),                        (* call ML function *)
                                                I.lab return_lab,                     (* ML result is now in rdi *)
-                                               I.movq(R rdi, R tmp_reg0)]
+                                               I.pop(R rax),                         (* pop dummy - for 16-byte alignment *)
+                                               I.movq(R rdi, R tmp_reg0),
+                                               I.push(I"0")                          (* push dummy - for 16-byte alignment *)
+                                              ]
                                             @ compile_c_call_prim("pthread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
-                                              [I.movq(I "0", R rax)]                 (* move result to %rax *)
+                                              [I.pop(R rax),                         (* pop dummy - for 16-byte alignment *)
+                                               I.movq(I "0", R rax)]                 (* move result to %rax *)
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                                             @ [I.ret])))
 

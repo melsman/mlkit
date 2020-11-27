@@ -5,8 +5,9 @@
 #ifndef __SPAWN_H
 #define __SPAWN_H
 
-// Many of the below functions need to be used as follows in the
-// various runtime routines:
+// Many of the below functions need to be wrapped in an "#ifdef
+// PARALLEL" construct as follows, when used in the various runtime
+// routines:
 //
 // #ifdef PARALLEL
 // thread_init_all();

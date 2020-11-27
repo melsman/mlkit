@@ -26,18 +26,43 @@ fun printNum (i:int) : unit = prim("printNum", i)
 in
 structure T :> THREAD = struct
   type thread = foreignptr
+
+  (* From a type perspective, we include the type of the function in
+   * the type of the thread, which means that regions in the effect of
+   * the function will occur in the type of the thread. *)
+
   type 'a t = (unit->'a) * thread
   fun get ((_,t0): 'a t) : 'a = prim("thread_get", t0)
   fun spawn (f: unit->'a) (k: 'a t -> 'b) : 'b =
       let val rf = ref f
-          val fp_f : foreignptr = prim("pointer", !rf) (* very unsafe *)
-          val () = if false then (f();()) else ()      (* mimic that spawn has the effect of calling f *)
-          (*val () = prim("function_test", fp_f) *)
+          val fp_f : foreignptr = prim("pointer", !rf)
+
+          (* From a region inference perspective, coercing the type of
+           * a function to a pointer type is very unsafe, as the
+           * pointer type contains no information about which regions
+           * need to be kept alive for the pointer value to be
+           * valid. By including the type of the function in the type
+           * of the thread value, however, we keep all necessary
+           * regions alive. *)
+
+          (* val () = prim("function_test", fp_f) *)
           val t0 : thread = prim("spawnone", fp_f)
           val t: 'a t = (f,t0)
           val res = k t
-          val _ = get t                                (* make sure the thread has terminated before returning *)
-          val () = prim("thread_free",t0)
+          val _ = if !(ref true) then get t else f()   (* make sure the thread has terminated before returning *)
+                                                       (* and mimic that, from a type perspective, spawn has *)
+                                                       (* the effect of calling f *)
+
+          (* Notice that it is not safe to call `thread_free t0` here
+           * as t0 may be live through later calls to `get t`.
+           *
+           * What is needed is for the ThreadInfo structs to be region allocated and to
+           * add finalisers (thread_free) to objects in these regions. I wonder whether
+           * we can detach the thread already in the thread_get function (the mutex and
+           * the ThreadInfo struct must be kept live of course.
+           *)
+
+          (* val () = prim("thread_free", t0) *)
       in res
       end
 end

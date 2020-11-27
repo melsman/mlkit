@@ -9,7 +9,7 @@
 #include <errno.h>
 #include "Locks.h"
 
-#define PARALLEL_DEBUG
+// #define PARALLEL_DEBUG
 
 #ifdef PARALLEL_DEBUG
 #define tdebug(s) printf(s);
@@ -144,6 +144,8 @@ thread_get(ThreadInfo *ti)
   pthread_mutex_lock(&(ti->mutex));  // use a mutex; different threads
   if (ti->joined == 0) {             // may call get on a thread
     ti->retval = thread_join(ti->thread);
+    pthread_detach(ti->thread);
+    ti->thread = (pthread_t)NULL;
     ti->joined = 1;
     if (ti->freelist) {
       // take freelist lock and add pages to global freelist
@@ -195,7 +197,7 @@ function_test(void* f) {
 void
 thread_free(ThreadInfo* t) {
   pthread_mutex_destroy(&(t->mutex));
-  pthread_detach(t->thread);
+  if (t->thread) { pthread_detach(t->thread); }
   free((void*)t);
 }
 
