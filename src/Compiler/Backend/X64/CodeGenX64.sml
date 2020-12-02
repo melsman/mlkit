@@ -217,8 +217,12 @@ struct
                          store_immed(tag, reg_for_result, WORDS 0,
                          store_elems num_elems))
                        else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
-                         store_elems (num_elems-1))
+                         (* don't bother to store the tag, but make room for it so that
+                          * other operations work; currently, dynamically sized f64blocks are
+                          * allocated with allocStringML and subscripting and updating values in such
+                          * blocks are shared with subscripting and allocating in statically sized blocks.*)
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         store_elems num_elems)
                      end
                     | LS.SELECT(i,aty) =>
                      if BI.tag_values() then

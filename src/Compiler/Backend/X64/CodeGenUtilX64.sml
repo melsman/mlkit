@@ -2647,14 +2647,14 @@ struct
                   in move_aty_into_reg(i,tmp_reg1,size_ff,              (* tmp_reg1 = i *)
                      I.sarq(I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
                      move_aty_into_reg(t,tmp_reg0,size_ff,              (* tmp_reg0 = t *)
-                     (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::    (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
+                     (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::    (* *(8+tmp_reg0+8*tmp_reg1) = freg *)
                       move_immed(IntInf.fromInt BI.ml_unit, R d_reg,    (* d = () *)
                       C'))))
                   end
                 else
                   move_aty_into_reg(i,tmp_reg1,size_ff,                 (* tmp_reg1 = i *)
                   move_aty_into_reg(t,tmp_reg0,size_ff,                 (* tmp_reg0 = t *)
-                  (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::       (* *(8+tmp_reg1+8*tmp_reg1) = freg *)
+                  (I.movsd(R x, DD("8",tmp_reg0,tmp_reg1,"8")) ::       (* *(8+tmp_reg0+8*tmp_reg1) = freg *)
                    C))))
          end
 
