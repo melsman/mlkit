@@ -43,6 +43,7 @@ mlkit_runtime: basics
 	$(MAKE) -C Runtime runtimeSystemGCProf.a
 	$(MAKE) -C Runtime runtimeSystemGenGC.a
 	$(MAKE) -C Runtime runtimeSystemGenGCProf.a
+	$(MAKE) -C Runtime runtimeSystemPar.a
 #	$(MAKE) -C Runtime runtimeSystemGCTP.a
 #	$(MAKE) -C Runtime runtimeSystemGCTPProf.a
 #	$(MAKE) -C Runtime runtimeSystemTag.a

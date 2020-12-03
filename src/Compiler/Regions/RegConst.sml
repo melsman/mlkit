@@ -34,6 +34,9 @@ struct
   fun size_of_record l =
     if tag_values() then List.length l + 1 else List.length l
 
+  fun size_of_blockf64 l =  (* room for size/tag, even when gc is disabled *)
+    List.length l + 1
+
   fun size_closure (l1,l2,l3) =
     if tag_values() then List.length l1 + List.length l2 + List.length l3 + 1 + 1 (* code pointer and tag *)
     else List.length l1 + List.length l2 + List.length l3 + 1

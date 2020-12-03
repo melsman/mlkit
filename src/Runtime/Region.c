@@ -9,19 +9,13 @@
 #include "GC.h"
 #include "CommandLine.h"
 #include "Locks.h"
+
+#ifdef PARALLEL
+#include "Spawn.h"
+#endif
+
 #include "Runtime.h"
 
-/*
-#if defined(THREADS) && defined(AOLSERVER)
-#include "/opt/aolserver/include/ns.h"
-extern Ns_Mutex freelistMutex;
-#define FREELIST_MUTEX_LOCK     Ns_LockMutex(&freelistMutex);
-#define FREELIST_MUTEX_UNLOCK   Ns_UnlockMutex(&freelistMutex);
-#else
-#define FREELIST_MUTEX_LOCK
-#define FREELIST_MUTEX_UNLOCK
-#endif
-*/
 /*----------------------------------------------------*
  * Hash table to collect region page reuse statistics *
  *  region_page_addr -> int                           *
@@ -421,14 +415,38 @@ alloc_new_block(Gen *gen)
     }
   #endif /* ENABLE_GC */
 
+  #ifdef KAM
   LOCK_LOCK(FREELISTMUTEX);
-  if ( freelist == NULL ) callSbrk();
-  np = freelist;
-  freelist = freelist->n;
+  #endif
+  if ( FREELIST == NULL ) {
+    #ifdef PARALLEL
+    LOCK_LOCK(FREELISTMUTEX);
+    if ( freelist == NULL ) {
+      callSbrk();
+    }
+    // Now we know there are pages in freelist and none in FREELIST
+    if (FREELIST) {
+      die("ERROR: alloc_new_block failed; expecting empty FREELIST\n");
+    }
+    if ( freelist == NULL ) {
+      die ("ERROR: alloc_new_block failed; expecting non-empty freelist\n");
+    }
+    FREELIST = freelist;
+    freelist = freelist->n;
+    FREELIST->n = NULL;
+    LOCK_UNLOCK(FREELISTMUTEX);
+    #else
+    callSbrk();
+    #endif /* PARALLEL */
+  }
+  np = FREELIST;
+  FREELIST = FREELIST->n;
 
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
+  #ifdef KAM
   LOCK_UNLOCK(FREELISTMUTEX);
+  #endif
 
 #ifdef ENABLE_GEN_GC
   // update colorPtr so that all new objects are considered to be in
@@ -642,15 +660,18 @@ void deallocateRegion(
 
   /* Insert the region pages in the freelist; there is always
    * at least one page in a generation. */
+  #ifdef KAM
   LOCK_LOCK(FREELISTMUTEX);
-  (((Rp *)TOP_REGION->g0.b)-1)->n = freelist;  // Free pages in generation 0
-  freelist = clear_fp(TOP_REGION->g0.fp);
+  #endif
+  (((Rp *)TOP_REGION->g0.b)-1)->n = FREELIST;  // Free pages in generation 0
+  FREELIST = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
-  (((Rp *)TOP_REGION->g1.b)-1)->n = freelist;  // Free pages in generation 1
-  freelist = clear_fp(TOP_REGION->g1.fp);
+  (((Rp *)TOP_REGION->g1.b)-1)->n = FREELIST;  // Free pages in generation 1
+  FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
+  #ifdef KAM
   LOCK_UNLOCK(FREELISTMUTEX);
-
+  #endif
   TOP_REGION=TOP_REGION->p;
 
   debug(printf("]\n"));
@@ -874,10 +895,14 @@ void resetGen(Gen *gen)
                             //   concerning conservative computation.
 #endif /* ENABLE_GC */
 
+#ifdef KAM
     LOCK_LOCK(FREELISTMUTEX);
-    (((Rp *)(gen->b))-1)->n = freelist;
-    freelist = (clear_fp(gen->fp))->n;
+#endif
+    (((Rp *)(gen->b))-1)->n = FREELIST;
+    FREELIST = (clear_fp(gen->fp))->n;
+#ifdef KAM
     LOCK_UNLOCK(FREELISTMUTEX);
+#endif
     (clear_fp(gen->fp))->n = NULL;
   }
 
@@ -1301,8 +1326,8 @@ free_region_pages(Rp* first, Rp* last)
   if ( first == 0 )
     return;
   LOCK_LOCK(FREELISTMUTEX);
-  last->n = freelist;
-  freelist = first;
+  last->n = FREELIST;
+  FREELIST = first;
   LOCK_UNLOCK(FREELISTMUTEX);
   return;
 }

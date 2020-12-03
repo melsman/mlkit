@@ -147,6 +147,12 @@ structure ExecutionX64: EXECUTION =
 	   end
 	 else ()
 
+    val _ = Flags.add_bool_entry
+	{long="parallelism", short=SOME "par", neg=false,
+	 menu=["Control","parallelism"], item=ref false,
+	 desc="When enabled, the runtime system supports\n\
+          \parallel threads."}
+
     val backend_name = "X64"
 
     type CompileBasis = CompileBasis.CompileBasis
@@ -268,9 +274,21 @@ structure ExecutionX64: EXECUTION =
 	  val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
           val gengc_p = Flags.is_on0 "generational_garbage_collection"
+          val parallelism_p = Flags.is_on0 "parallelism"
 
 	  fun path_to_runtime () =
-	    let fun file () =
+            let fun file () =
+              if parallelism_p() then
+                (if tag_values() then
+                   die "parallelism enabled - turn off value tagging"
+                 else if gc_p() then
+                   die "parallelism enabled - turn off gc"
+                 else if !region_profiling then
+                   die "parallelism enabled - turn off prof"
+                 else if tag_pairs_p() then
+                   die "parallelism enabled - turn off pair tagging"
+                 else "runtimeSystemPar.a")
+              else
 	      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
 	      if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
 	      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
@@ -296,6 +314,7 @@ structure ExecutionX64: EXECUTION =
       val gc_p = Flags.is_on0 "garbage_collection"
       val gengc_p = Flags.is_on0 "generational_garbage_collection"
       val region_inference = Flags.is_on0 "region_inference"
+      val parallelism_p = Flags.is_on0 "parallelism"
     in
       fun maybe_prefix_RI s =
           if region_inference() then "RI_" ^ s
@@ -317,6 +336,7 @@ structure ExecutionX64: EXECUTION =
 		    | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
 		    | (false,     false,  false,              _)     => if region_inference() then "RI"
                                                                         else "NO"
+              val subdir = if parallelism_p() then subdir ^ "_PAR" else subdir
 	  in "MLB" ## subdir
 	  end
     end

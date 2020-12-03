@@ -657,25 +657,37 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
 				log_st (layoutTypes ts_arg);
 				log "but found types:\n"; log_st (layoutTypes ts);
 				die "c function call")
+                        val unboxed_types =
+                            let open LambdaExp
+                            in [boolType, unitType, int31Type, word31Type,
+                                int63Type, word63Type,
+				intDefaultType(), wordDefaultType(), foreignptrType]
+                               @ (if tag_values() then []
+                                  else [int32Type, word32Type])
+                            end
+                        fun is_unboxed t =
+                            List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
 			val _ =
 	                    if name = "id" orelse name = "ord" then
                               (* check that casts are only performed on unboxed values;
 			       * casting of boxed values is region unsafe! *)
-			      (case (ts_arg, ts_res)
-			        of ([ta], [tr]) =>
-				   let open LambdaExp
-				       val unboxed_types = [boolType, unitType, int31Type, word31Type,
-                                                            int63Type, word63Type,
-							    intDefaultType(), wordDefaultType(), foreignptrType]
-                                                           @ (if tag_values() then []
-                                                              else [int32Type, word32Type])
-				       fun ok t = List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
-				   in if ok ta andalso ok tr then ()
-				      else die "c function `id' is used to cast to or from a boxed type; \
-			                     \ it is region-unsafe to   use `id' this way! Rewrite your program!!"
-				   end
+			      (case (ts_arg, ts_res) of
+                                   ([ta], [tr]) =>
+			             if is_unboxed ta andalso is_unboxed tr then ()
+				     else die "c function `id' is used to cast to or from a boxed type; \
+			                      \ it is region-unsafe to   use `id' this way! Rewrite your program!!"
 		                 | _ => die "c function `id' does not have a valid type")
-			    else ()
+			    else if name = "pointer" then
+                                (case (ts_arg, ts_res) of
+                                     ([ta], [tr]) =>
+                                     if LambdaBasics.eq_Type(tr,foreignptrType) andalso not(is_unboxed ta) then ()
+                                     else die "c function `pointer': 'a -> foreignptr is used to cast a boxed object to a pointer; \
+			                     \ it is a very region-unsafe operation; the programmer needs to \
+                                             \ keep the boxed object live until it can be argued that the \
+                                             \ object pointed to is no longer accessed.!!"
+		                   | _ => die "c function `pointer' does not have a valid type"
+                                )
+                            else ()
 		    in ts_res
 		    end
 		 | _ => die ("c function " ^ name ^ " does not have arrow type"))

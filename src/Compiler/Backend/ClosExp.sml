@@ -2200,6 +2200,12 @@ struct
 	       (case trs of
 		  [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
 		| _ => die "CCALL: ``id'' with more than one tr")
+	   | MulExp.CCALL({name = "pointer", mu_result, rhos_for_result}, trs) =>
+             (* unsafe cast; pointer : 'a -> foreignptr, in particular with 'a
+              * instantiated to a function *)
+	       (case trs of
+		  [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
+		| _ => die "CCALL: ``pointer'' with more than one tr")
 	   | MulExp.CCALL({name = "ord", mu_result, rhos_for_result}, trs) =>
 	       (case trs of
 		  [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
@@ -2931,6 +2937,10 @@ struct
 	       (case trs of
 		  [tr] => liftTrip tr env lab
 		| _ => die "CCALL: ``id'' with more than one tr")
+	   | MulExp.CCALL({name = "pointer", mu_result, rhos_for_result}, trs) =>
+	       (case trs of
+		  [tr] => liftTrip tr env lab
+		| _ => die "CCALL: ``pointer'' with more than one tr")
 	   | MulExp.CCALL({name = "ord", mu_result, rhos_for_result}, trs) =>
 	       (case trs of
 		  [tr] => liftTrip tr env lab

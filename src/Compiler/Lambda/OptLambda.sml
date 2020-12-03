@@ -744,6 +744,7 @@ structure OptLambda: OPT_LAMBDA =
               | "__max_f64" => true
               | "__min_f64" => true
               | "__blockf64_sub_f64" => true
+              | "__less_f64" => true
               | _ => false) andalso simple_nonexpanding e1 andalso simple_nonexpanding e2
          | _ => false
 
@@ -1643,9 +1644,31 @@ structure OptLambda: OPT_LAMBDA =
                          SOME (f e))
                       | LET{pat,bind,scope} => loop scope (f o (fn e => LET{pat=pat,bind=bind,scope=e}))
                       | _ => NONE
-            in case loop e (fn x => x) of
-                   NONE => constantFolding env lamb fail
-                 | SOME e' => reduce(env,(e',CUNKNOWN))
+                fun default () =
+                    case loop e (fn x => x) of
+                        NONE => constantFolding env lamb fail
+                      | SOME e' => reduce(env,(e',CUNKNOWN))
+            in case e of
+                   SWITCH_C(SWITCH(e,es,eopt)) =>
+                   let fun is_f64_to_real e =
+                           case e of
+                               PRIM(CCALLprim{name="__f64_to_real",...},_) => true
+                             | _ => false
+                   in if simple_nonexpanding e
+                         andalso List.all (is_f64_to_real o #2) es
+                         andalso (case eopt of SOME e => is_f64_to_real e
+                                             | NONE => true)
+                      then
+                        ( tick "switch real_to_f64"
+                        ; reduce(env,
+                                 (SWITCH_C(SWITCH(e,
+                                                  List.map (fn (c,e) => (c,real_to_f64 e)) es,
+                                                  Option.map real_to_f64 eopt)),
+                                  CUNKNOWN))
+                        )
+                      else default()
+                   end
+                 | _ => default()
             end
           | PRIM(CCALLprim{name="ord",...}, [WORD (i,t)]) =>
             (tick "ord immed"; (INTEGER(i,intDefaultType()), CUNKNOWN))

@@ -217,8 +217,12 @@ struct
                          store_immed(tag, reg_for_result, WORDS 0,
                          store_elems num_elems))
                        else
-                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
-                         store_elems (num_elems-1))
+                         (* don't bother to store the tag, but make room for it so that
+                          * other operations work; currently, dynamically sized f64blocks are
+                          * allocated with allocStringML and subscripting and updating values in such
+                          * blocks are shared with subscripting and allocating in statically sized blocks.*)
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+                         store_elems num_elems)
                      end
                     | LS.SELECT(i,aty) =>
                      if BI.tag_values() then
@@ -614,7 +618,7 @@ struct
                       store_indexed(rsp,WORDS(size_ff-offset-1+3), R rsp,C))
                     fun default_code C = comment ("HANDLER DEFAULT CODE",
                       CG_lss(default,size_ff,size_ccf,C))
-                    fun restore_exp_ptr C =
+                    fun restore_exn_ptr C =
                       comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
                       load_indexed(R tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
                       I.movq(R tmp_reg1, L exn_ptr_lab) ::
@@ -636,7 +640,7 @@ struct
                     store_exn_ptr(
                     store_sp(
                     default_code(
-                    restore_exp_ptr(
+                    restore_exn_ptr(
                     handl_return_code(comment ("END OF EXCEPTION HANDLER", C))))))))))
                   end
                | LS.RAISE{arg=arg_aty,defined_atys} =>
@@ -1156,6 +1160,47 @@ struct
                           | Blockf64_update_f64 => blockf64_update_f64 (b,x,y,d,size_ff,C)
                           | _ => die ("unsupported prim with 3 args: " ^ PrimName.pp_prim name))
                      | _ => die ("PRIM(" ^ PrimName.pp_prim name ^ ") not implemented")))
+                 end
+               | LS.CCALL{name="spawnone",args=[arg],rhos_for_result=nil,res=[res]} =>
+                 let
+                   (* The call_closure C function takes one argument (an ML closure). It
+                    * extracts the closure pointer and the closure environment from the argument
+                    * and makes an ML call to the function represented by the closure. *)
+                   val name = "spawnone"
+                   val offset_codeptr = if BI.tag_values() then "8" else "0"
+                   val call_closure_lab = new_local_lab (name ^ "_call_closure")
+                   val return_lab = new_local_lab ("return_" ^ name)
+                   val _ = add_static_data ([I.dot_text,
+                                             I.dot_align 8,
+                                             (*I.dot_globl call_closure_lab, (* The C function entry *) *)
+                                             I.lab call_closure_lab]
+                                            @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
+                                            @ [I.movq(R rdi,R tmp_reg0)]
+                                            (* now initialize thread local data to point to the threadinfo struct *)
+                                            @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
+                                              [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
+                                               I.movq(D("0",rdi),R rdi),             (* extract closure from threadinfo arg *)
+                                               I.movq(R rdi,R rax),                  (* move closure into closure register *)
+                                               I.movq(D(offset_codeptr,rdi), R r10), (* extract code pointer into %r10 from C arg *)
+                                               I.push(I"0"),                         (* push dummy - for 16-byte alignment *)
+                                               I.push (LA return_lab),               (* push return address *)
+                                               I.jmp (R r10),                        (* call ML function *)
+                                               I.lab return_lab,                     (* ML result is now in rdi *)
+                                               I.pop(R rax),                         (* pop dummy - for 16-byte alignment *)
+                                               I.movq(R rdi, R tmp_reg0),
+                                               I.push(I"0")                          (* push dummy - for 16-byte alignment *)
+                                              ]
+                                            @ compile_c_call_prim("pthread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
+                                              [I.pop(R rax),                         (* pop dummy - for 16-byte alignment *)
+                                               I.movq(I "0", R rax)]                 (* move result to %rax *)
+                                            @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
+                                            @ [I.ret])))
+
+                 in I.movq(LA call_closure_lab, R tmp_reg0) ::
+                    move_aty_into_reg(arg, tmp_reg1, size_ff,
+                    (* call thread_create function, which will create a thread from the
+                     * argument function by applying it to the second argument *)
+                    compile_c_call_prim("thread_create", [SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1], SOME res, size_ff, tmp_reg1, C))
                  end
                | LS.CCALL{name,args,rhos_for_result,res} =>
                   let

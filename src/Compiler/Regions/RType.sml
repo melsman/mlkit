@@ -1260,6 +1260,7 @@ struct
   val f64Type: Type = CONSTYPE(TyName.tyName_F64,[],[],[])
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])
   val chararrayType: Type = CONSTYPE(TyName.tyName_CHARARRAY,[],[],[])
+
   val unitType: Type = RECORD[]
 
   fun isF64Type t =
@@ -1373,7 +1374,7 @@ struct
          | CONSTYPE (tyname, mus, rhos, nil) => fv_mus(mus,add_rho(rho,add_rhos(rhos,acc)))
          | CONSTYPE (tyname, _, _, _) => die "frv_except_tyvar_rhos.non-empty arrow-effect set"
          | RECORD mus => fv_mus(mus,add_rho(rho,acc))
-         | FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1"
+         | FUN (mus, eps0, mus') => acc (*die "frv_except_tyvar_rhos1"*) (* support 'pointer' : 'a -> foreignptr function with 'a instantiated to a function *)
   in
     fun frv_except_tyvar_rhos mus =
       let val rhos = fv_mus (mus, nil)
