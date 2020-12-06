@@ -871,14 +871,13 @@ struct
             I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
             I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
             I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
-            I.cmpxchgq(R tmp_reg0, D("0",tmp_reg1)) ::              (*   compare with rax and swap        *)
-            I.jne l_expand ::
+            I.cmpxchgq(R tmp_reg0, D("0",tmp_reg1)) ::              (*   tmp_reg1[0] = tmp_reg0           *)
+            I.jne l_expand ::                                       (*      (if rax = tmp_reg1[0])        *)
             I.pop (R rax) ::                                        (*   restore rax from stack           *)
-            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *) (* use "lock cmpxchg (tmp_reg1), tmp_reg0_old *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
-            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
+            (copy(tmp_reg1,t,C)))))                                 (*     in tmp_reg1.                   *)
           end
         else
           let val n = n0
@@ -904,7 +903,7 @@ struct
             I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
             I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
             I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
-            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *) (* use "lock cmpxchg (tmp_reg1), tmp_reg0_old *)
+            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
