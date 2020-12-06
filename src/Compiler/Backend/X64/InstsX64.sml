@@ -111,6 +111,7 @@ structure InstsX64: INSTS_X64 =
     | cmpq of ea * ea
     | btq of ea * ea    (* bit test; sets carry flag *)
     | btrq of ea * ea   (* bit test and reset; sets carry flag *)
+    | cmpxchgq of ea * ea
 
     | movsd of ea * ea
     | mulsd of ea * ea
@@ -351,6 +352,7 @@ structure InstsX64: INSTS_X64 =
                | cmpq a => emit_bin("cmpq", a)
                | btq a => emit_bin("btq", a)
                | btrq a => emit_bin("btrq", a)
+               | cmpxchgq a => emit_bin("lock cmpxchgq", a)
 
                | movsd a => emit_bin("movsd", a)
                | mulsd a => emit_bin("mulsd", a)
@@ -609,6 +611,7 @@ structure InstsX64: INSTS_X64 =
              | cmpq (ea1,ea2) => cmpq (Em ea1,Em ea2)
              | btq (ea1,ea2) => btq (Em ea1,Em ea2)
              | btrq (ea1,ea2) => btrq (Em ea1,Em ea2)
+             | cmpxchgq (ea1,ea2) => cmpxchgq (Em ea1,Em ea2)
              | movsd (ea1,ea2) => movsd (Em ea1,Em ea2)
              | mulsd (ea1,ea2) => mulsd (Em ea1,Em ea2)
              | divsd (ea1,ea2) => divsd (Em ea1,Em ea2)

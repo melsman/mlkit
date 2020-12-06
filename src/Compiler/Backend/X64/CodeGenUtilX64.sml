@@ -28,6 +28,8 @@ struct
 
   val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
+  fun parallelism_p () : bool = Flags.is_on "parallelism"
+
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeCO = SubstAndSimplify.StoreTypeCO
@@ -842,6 +844,42 @@ struct
              post_prof
              (copy(tmp_reg1,t,C))))
           end
+        else if parallelism_p() then
+          let val n = n0
+              val l = new_local_lab "return_from_alloc"
+              val l_expand = new_local_lab "alloc_expand"
+              fun maybe_update_alloc_period C =
+                  if gc_p() then
+                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
+                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
+                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
+                    C
+                  else C
+              val () =
+                  add_code_block
+                      (I.lab l_expand ::                            (* expand:                            *)
+                       I.pop(R I.rax) ::                            (*   restore rax                      *)
+                       I.push(LA l) ::                              (*   push continuation label          *)
+                       move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
+                       I.jmp(L(NameLab "__allocate")) :: nil))      (*   jmp to __allocate with args in   *)
+          in
+            copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
+            I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
+            load_indexed(R tmp_reg0,tmp_reg1,WORDS 0,               (*   tmp_reg0 = tmp_reg1[0]           *)
+            I.push(R I.rax) ::                                      (*   save rax on the stack            *)
+            I.movq(R tmp_reg0, R I.rax) ::                          (*   rax = tmp_reg0                   *)
+            I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
+            I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
+            I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
+            I.cmpxchgq(R tmp_reg0, D("0",tmp_reg1)) ::              (*   compare with rax and swap        *)
+            I.jne l_expand ::
+            I.pop (R rax) ::                                        (*   restore rax from stack           *)
+            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *) (* use "lock cmpxchg (tmp_reg1), tmp_reg0_old *)
+            I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
+            maybe_update_alloc_period(
+            I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
+            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
+          end
         else
           let val n = n0
               val l = new_local_lab "return_from_alloc"
@@ -866,7 +904,7 @@ struct
             I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
             I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
             I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
-            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
+            store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *) (* use "lock cmpxchg (tmp_reg1), tmp_reg0_old *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)

@@ -330,12 +330,12 @@ structure ExecutionX64: EXECUTION =
 		    | (false,     true,   false,              false) => maybe_prefix_RI "GC"
 		    | (false,     true,   true,               true)  => maybe_prefix_RI "GC_TP_PROF"
 		    | (false,     true,   false,              true)  => maybe_prefix_RI "GC_TP"
-		    | (true,      true,   true,               false) => maybe_prefix_RI "GEN_GC_PROF"
-		    | (true,      true,   false,              false) => maybe_prefix_RI "GEN_GC"
+		    | (true,      true,   true,               false) => maybe_prefix_RI "GENGC_PROF"
+		    | (true,      true,   false,              false) => maybe_prefix_RI "GENGC"
 		    | (true,      _,      _,                  _)     => die "Illegal combination of generational garbage collection and tagged pairs"
 		    | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
 		    | (false,     false,  false,              _)     => if region_inference() then "RI"
-                                                                        else "NO"
+                                                                        else "NOGC"
               val subdir = if parallelism_p() then subdir ^ "_PAR" else subdir
 	  in "MLB" ## subdir
 	  end

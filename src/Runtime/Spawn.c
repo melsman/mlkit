@@ -76,9 +76,9 @@ thread_init(ThreadInfo* ti) {
 
 ThreadInfo*
 thread_info(void) {
-  tdebug("[Entering thread_info]\n");
+  //tdebug("[Entering thread_info]\n");
   ThreadInfo* ti = (ThreadInfo*)pthread_getspecific(threadinfo_key);
-  tdebug("[Exiting thread_info]\n");
+  //tdebug("[Exiting thread_info]\n");
   return ti;
 }
 
@@ -105,7 +105,7 @@ void *
 thread_join(pthread_t t) {
   void *value;
   int rc;
-  tdebug("[Entering thread_join]\n");
+  tdebug1("[Entering thread_join - t = %p]\n",t);
   rc = pthread_join(t, &value);
   if (rc) {
     printf("ERROR; return code from pthread_join() is %d; EINVAL=%d, ESRCH=%d, EDEADLK=%d\n", rc, EINVAL, ESRCH, EDEADLK);
@@ -144,7 +144,6 @@ thread_get(ThreadInfo *ti)
   pthread_mutex_lock(&(ti->mutex));  // use a mutex; different threads
   if (ti->joined == 0) {             // may call get on a thread
     ti->retval = thread_join(ti->thread);
-    pthread_detach(ti->thread);
     ti->thread = (pthread_t)NULL;
     ti->joined = 1;
     if (ti->freelist) {
@@ -181,7 +180,7 @@ thread_create(void* (*f)(ThreadInfo*), void* arg)
     exit(-1);
   }
   thread_new(f,ti);
-  tdebug("[Exiting thread_create]\n");
+  tdebug1("[Exiting thread_create - t = %p]\n", ti->thread);
   return ti;
 }
 
