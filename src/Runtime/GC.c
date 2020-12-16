@@ -330,7 +330,7 @@ static inline void
 mk_from_space_gen(Gen *gen)
 {
   // Move region pages to from-space
-  (((Rp *)gen->b)-1)->n = from_space_begin;
+  last_rp_of_gen(gen)->n = from_space_begin;
   from_space_begin = clear_fp(gen->fp);
 
   // Allocate new region page
@@ -344,7 +344,7 @@ mk_from_space_gen(Gen *gen)
     else
       gen->fp = NULL;
   }
-  alloc_new_block(gen);
+  gen->a = alloc_new_block(gen);
 }
 
 static void mk_from_space()
@@ -356,7 +356,7 @@ static void mk_from_space()
 #endif
 
   from_space_begin = NULL;
-  from_space_end = (((Rp *)TOP_REGION->g0.b)-1); // Points at last region page
+  from_space_end = last_rp_of_gen(&(TOP_REGION->g0)); // Points at last region page
 
   for( r = TOP_REGION ; r ; r = r->p )
     {
@@ -1402,7 +1402,7 @@ gc(uintptr_t **sp, size_t reg_map)
 	      if ( rp->colorPtr != (uintptr_t *)(rp+1) )
 		{
 		  pp_gen(&(r->g1));
-		  printf("r->g1.b=%p\n", r->g1.b);
+		  // printf("r->g1.b=%p\n", r->g1.b);
 		  die ("problem with middle page");
 		}
 	    }

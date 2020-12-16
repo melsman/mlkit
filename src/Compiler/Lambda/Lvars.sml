@@ -49,6 +49,8 @@ structure Lvars: LVARS =
 
     fun leq (lv1,lv2) = lt(lv1,lv2) orelse eq(lv1,lv2)
 
+    fun str ({str,...}:lvar) : string = str
+
     fun usage ({use,...} : lvar) = use
     fun reset_use lv = usage lv := 0
     fun incr_use lv = usage lv := (!(usage lv) + 1)

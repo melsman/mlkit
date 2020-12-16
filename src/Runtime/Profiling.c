@@ -363,7 +363,7 @@ PrintGen(Gen *gen)
   Rp *p;
   if ( gen )
     {
-      fprintf(stderr,"\n  Address of Gen: %p, First free word: %p, Border of region: %p\n     ",gen,gen->a,gen->b);
+      fprintf(stderr,"\n  Address of Gen: %p, First free word: %p, Border of region: %p\n     ",gen,gen->a,rpBoundary(gen->a));
       for ( p = clear_fp(gen->fp) , i = 1 ; p ; p = p->n , i++ )
 	{
 	  fprintf(stderr,"-->Page%2ld:%p",i,p);

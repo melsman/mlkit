@@ -33,6 +33,8 @@ signature LVARS =
     val set_ubf64 : lvar -> unit
     val get_ubf64 : lvar -> bool
 
+    val str : lvar -> string           (* access to internal string representation *)
+
     (* Names *)
     type name
     val match : lvar * lvar -> unit

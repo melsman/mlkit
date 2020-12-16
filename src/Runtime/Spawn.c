@@ -24,13 +24,24 @@
 // Region page free-list mutex
 pthread_mutex_t rp_freelist_mutex;
 
-// lock rp_freelist_mutex
+// Global alloc mutex
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+pthread_mutex_t global_alloc_mutex;
+#endif
+
+// Lock/unlock mutex
 void
 mutex_lock(int id) {
   if (id == FREELISTMUTEX) {
     pthread_mutex_lock(&rp_freelist_mutex);
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+  } else if (id == GLOBALALLOCMUTEX) {
+    pthread_mutex_lock(&global_alloc_mutex);
+#endif
+
   } else {
-    printf("mutex_lock: got id %d; supporting only FREELISTMUTEX", id);
+    printf("ERROR: mutex_lock: lock id %d not supported", id);
     exit(-1);
   }
 }
@@ -39,8 +50,14 @@ void
 mutex_unlock(int id) {
   if (id == FREELISTMUTEX) {
     pthread_mutex_unlock(&rp_freelist_mutex);
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+  } else if (id == GLOBALALLOCMUTEX) {
+    pthread_mutex_unlock(&global_alloc_mutex);
+#endif
+
   } else {
-    printf("mutex_unlock: got id %d; supporting only FREELISTMUTEX", id);
+    printf("ERROR: mutex_unlock: lock id %d not supported", id);
     exit(-1);
   }
 }
@@ -60,9 +77,15 @@ thread_init_all(void) {
   pthread_key_create(&threadinfo_key, NULL);
   thread_init(ti);
   if (pthread_mutex_init(&rp_freelist_mutex, NULL) != 0) {
-    printf("ERROR: thread_init_all: mutex init has failed\n");
+    printf("ERROR: thread_init_all: rp_freelist_mutex init has failed\n");
     exit(-1);
   }
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+  if (pthread_mutex_init(&global_alloc_mutex, NULL) != 0) {
+    printf("ERROR: thread_init_all: global_alloc_mutex init has failed\n");
+    exit(-1);
+  }
+#endif
   tdebug("[Exiting thread_init_all]\n");
 }
 

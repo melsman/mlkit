@@ -16,6 +16,11 @@ test_mlkit_no_gc: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc)
 	/bin/mv test_report.html test_report-native-nogc-$(DATE).html
 
+.PHONY: test_mlkit_par
+test_mlkit_par: prepare
+	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -no_gc -par)
+	/bin/mv test_report.html test_report-native-par-$(DATE).html
+
 .PHONY: test_mlkit_gengc
 test_mlkit_gengc: prepare
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit all.tst -gengc)

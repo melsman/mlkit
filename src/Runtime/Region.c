@@ -208,7 +208,6 @@ void printTopRegInfo() {
   printf("printRegInfo\n");
   printf("Region at address: %0x\n", r);
   printf("  fp: %0x\n", (r->g0.fp));
-  printf("  b : %0x\n", (r->g0.b));
   printf("  a : %0x\n", (r->g0.a));
   printf("  p : %0x\n", (r->p));
 
@@ -231,7 +230,7 @@ pp_gen(Gen *gen)
 	  gen,
 	  gen->fp,
 	  gen->a,
-	  gen->b);
+	  rpBoundary(gen->a));
   for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
 #ifdef ENABLE_GEN_GC
     fprintf(stderr,"  Rp %p, next:%p, colorPtr:%p, data: %p, rp+1: %p\n",
@@ -379,11 +378,12 @@ size_free_list()
  *  The second argument is a pointer to the generation in r to use      *
  *  Important: alloc_new_block must preserve all marks in fp (Region.h) *
  *----------------------------------------------------------------------*/
-void
+uintptr_t *
 alloc_new_block(Gen *gen)
 {
   Rp* np;
   debug(printf("[alloc_new_block: gen: %p", gen);)
+
 #ifdef PROFILING
   Ro *r;
   r = get_ro_from_gen(*gen);
@@ -473,12 +473,12 @@ alloc_new_block(Gen *gen)
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
-    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) ) // keep to-space bit
-      (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); // updates the next field in the last
+    if ( doing_gc && is_tospace_bit(last_rp_of_gen(gen)->n) ) // keep to-space bit
+      last_rp_of_gen(gen)->n = set_tospace_bit(np); // updates the next field in the last
                                                      // region page, but keeps the bit
     else
 #endif
-      (((Rp *)(gen->b))-1)->n = np; // Updates the next field in the last region page.
+    last_rp_of_gen(gen)->n = np; // Updates the next field in the last region page.
   else {
 #ifdef ENABLE_GC
     uintptr_t rt;
@@ -491,10 +491,9 @@ alloc_new_block(Gen *gen)
 #endif
       gen->fp = np;                /* Update pointer to the first page. */
   }
-  gen->a = (uintptr_t *) (&(np->i));      /* Updates the allocation pointer. */
-  gen->b = (uintptr_t *) (np+1);          /* Updates the border pointer. */
 
   debug(printf("]\n");)
+  return (uintptr_t *) (&(np->i));    /* Return the allocation pointer. */
 }
 
 /*----------------------------------------------------------------------*
@@ -514,13 +513,13 @@ allocateRegion0(Region r
   r = clearStatusBits(r);
 
   r->g0.fp = NULL;
-  r->p = TOP_REGION;	         // Push this region onto the region stack
-  r->lobjs = NULL;               // The list of large objects is empty
-  alloc_new_block(&(r->g0));     // Allocate the first region page in g0
+  r->p = TOP_REGION;	                   // Push this region onto the region stack
+  r->lobjs = NULL;                         // The list of large objects is empty
+  r->g0.a = alloc_new_block(&(r->g0));     // Allocate the first region page in g0
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
-  set_gen_1(r->g1);              // Mark generation
-  alloc_new_block(&(r->g1));     // Allocate the first region page in g1
+  set_gen_1(r->g1);                        // Mark generation
+  r->g1.a = alloc_new_block(&(r->g1));     // Allocate the first region page in g1
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
@@ -663,10 +662,10 @@ void deallocateRegion(
   #ifdef KAM
   LOCK_LOCK(FREELISTMUTEX);
   #endif
-  (((Rp *)TOP_REGION->g0.b)-1)->n = FREELIST;  // Free pages in generation 0
+  last_rp_of_gen(&(TOP_REGION->g0))->n = FREELIST;  // Free pages in generation 0
   FREELIST = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
-  (((Rp *)TOP_REGION->g1.b)-1)->n = FREELIST;  // Free pages in generation 1
+  last_rp_of_gen(&(TOP_REGION->g1))->n = FREELIST;  // Free pages in generation 1
   FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
   #ifdef KAM
@@ -813,6 +812,9 @@ allocGen (Gen *gen, size_t n) {
 
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+      LOCK_LOCK(GLOBALALLOCMUTEX);
+#endif
       Lobjs* lobjs;
       //fprintf(stderr,"Allocating large object of %d words\n", n);
       r = get_ro_from_gen(*gen);
@@ -831,6 +833,11 @@ allocGen (Gen *gen, size_t n) {
 	  time_to_gc = 1;
 	}
 #endif
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+      LOCK_UNLOCK(GLOBALALLOCMUTEX);
+#endif
+
       // set the constant bit so that GC won't run
       // through the thing before there is data in the
       // object. This shouldn't be necessary; mael 2005-11-09
@@ -842,10 +849,73 @@ allocGen (Gen *gen, size_t n) {
   alloc_period += (sizeof(void*) * n);
 #endif
 
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+
+  if ( 0 ) {  // simple mutex-based locking (assumes simple_p is true in CodeGenUtilX64.sml)
+    LOCK_LOCK(GLOBALALLOCMUTEX);
+    t1 = gen->a;
+    t2 = t1 + n;
+    t3 = rpBoundary(t1);
+    if (t2 > t3) {
+#if defined(PROFILING) || defined(ENABLE_GC)
+      for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
+#endif
+      t1 = alloc_new_block(gen);
+      t2 = t1 + n;
+    }
+    gen->a = t2;
+    LOCK_UNLOCK(GLOBALALLOCMUTEX);
+  } else {
+
+    // Partial lock-free atomic allocation
+ start:
   t1 = gen->a;
   t2 = t1 + n;
+  t3 = rpBoundary(t1);
+  if (t2 <= t3) {
+    if (! __atomic_compare_exchange(&(gen->a), &t1, &t2, FALSE,
+				    __ATOMIC_SEQ_CST,
+				    __ATOMIC_SEQ_CST)) {
+      goto start;  // goto start if gen->a <> t1
+    }
+  } else {
+    // t2 > t3  -- not enough space for object
+    LOCK_LOCK(GLOBALALLOCMUTEX);
+    t1 = gen->a;
+    t2 = t1 + n;
+    t3 = rpBoundary(t1);
+    if (t2 <= t3) {
+      // now there is space; some other thread has allocated a page - try again
+      LOCK_UNLOCK(GLOBALALLOCMUTEX);
+      goto start;
+    }
+    // t2 > t3
+    if (! __atomic_compare_exchange(&(gen->a), &t1, &t3, FALSE,
+				    __ATOMIC_SEQ_CST,
+				    __ATOMIC_SEQ_CST)) {
+      LOCK_UNLOCK(GLOBALALLOCMUTEX);
+      goto start; // goto start if gen->a <> t1
+    }
+    // after the above atomic op, assembler alloc in another thread cannot win the race
+#if defined(PROFILING) || defined(ENABLE_GC)
+    /* insert zeros in the rest of the current region page;
+     * mael 2019-01-28: why is this necessary when just GC is enabled?
+     * WELL, we need it for printing statistics with -verbose_gc... */
+    for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
+#endif
+    t1 = alloc_new_block(gen);
+    t2 = t1+n;
+    asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
+    gen->a = t2;
+    LOCK_UNLOCK(GLOBALALLOCMUTEX);
+  }
 
-  t3 = gen->b;
+  }
+
+#else
+  t1 = gen->a;
+  t2 = t1 + n;
+  t3 = rpBoundary(t1);
   if (t2 > t3) {
     #if defined(PROFILING) || defined(ENABLE_GC)
        /* insert zeros in the rest of the current region page;
@@ -853,12 +923,12 @@ allocGen (Gen *gen, size_t n) {
 	* WELL, we need it for printing statistics with -verbose_gc... */
        for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
     #endif
-    alloc_new_block(gen);
-
+    gen->a = alloc_new_block(gen);
     t1 = gen->a;
     t2 = t1+n;
   }
   gen->a = t2;
+#endif /* PARALLEL_GLOBAL_ALLOC_LOCK */
 
   #ifdef ENABLE_GC
   #ifdef CHECK_GC
@@ -898,7 +968,7 @@ void resetGen(Gen *gen)
 #ifdef KAM
     LOCK_LOCK(FREELISTMUTEX);
 #endif
-    (((Rp *)(gen->b))-1)->n = FREELIST;
+    (last_rp_of_gen(gen))->n = FREELIST;
     FREELIST = (clear_fp(gen->fp))->n;
 #ifdef KAM
     LOCK_UNLOCK(FREELISTMUTEX);
@@ -910,7 +980,6 @@ void resetGen(Gen *gen)
 #ifdef ENABLE_GEN_GC
   (clear_fp(gen->fp))->colorPtr = gen->a;      /* beginning of data in first page */
 #endif /* ENABLE_GEN_GC */
-  gen->b = (uintptr_t *)((clear_fp(gen->fp))+1);     /* end of data in first page */
 
   return;
 }
@@ -1080,12 +1149,12 @@ allocRegionInfiniteProfiling(Region r, size_t regionId)
   r->lobjs = NULL;               // The list of large objects is empty
 
   r->g0.fp = NULL;
-  alloc_new_block(&(r->g0));     // Allocate the first region page in g0
+  (&(r->g0))->a = alloc_new_block(&(r->g0));     // Allocate the first region page in g0
 
 #ifdef ENABLE_GEN_GC
   r->g1.fp = NULL;
   set_gen_1(r->g1);              // Mark generation
-  alloc_new_block(&(r->g1));     // Allocate the first region page in g1
+  (&(r->g1))->a = alloc_new_block(&(r->g1));     // Allocate the first region page in g1
 
 #endif /* ENABLE_GEN_GC */
 

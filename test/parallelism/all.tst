@@ -19,9 +19,12 @@ Test files may contain Standard ML like comments.
 *)
 
 (* simple tests *)
+spawn.sml                 nobasislib
 spawn_simple.sml          nobasislib
 spawn_simple2.sml         nobasislib
 spawn_simple3.sml         nobasislib
 spawn_simple4.sml         nobasislib
 spawn_simple5.sml         nobasislib
 spawn_simple6.sml         nobasislib
+spawn100.sml              nobasislib
+spawn_lists.sml           nobasislib

@@ -9,6 +9,11 @@ void mutex_unlock(int id);                    // defined in Spawn.c
 #define LOCK_UNLOCK(name) mutex_unlock(name)
 #define FREELISTMUTEX      1
 #define FUNCTIONTABLEMUTEX 3
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+#define GLOBALALLOCMUTEX 4
+#endif // PARALLEL_GLOBAL_ALLOC_LOCK
+
 #else // PARALLEL
 
 #include "../config.h"

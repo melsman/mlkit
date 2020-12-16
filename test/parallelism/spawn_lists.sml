@@ -140,26 +140,48 @@ infixr 5  ::
 infix  4  = <> > >= < <=
 
 fun pmap (f:'a->'b) (xs:'a list):'b list =
-    let fun g nil k = k()
-          | g (x::xs) k =
-            T.spawn (fn() => f x) (fn t =>
-            g xs (fn() => T.get t :: k()))
-    in  g xs (fn () => nil)
+    let fun g nil = nil
+          | g (x::xs) = T.spawn (fn() => f x) (fn t =>
+                        let val ys = g xs
+                        in T.get t :: ys
+                        end)
+    in  g xs
     end
-
-val xs = [1,2,3,4]
-
-datatype q = Q of int
-
-fun sel (Q q) = q
-fun add0 (Q q1,Q q2) = Q(q1+q2)
-fun add (q1,q2) = if false then q1 else if false then q2 else if false then add(q2,q1) else add0(q1,q2)
-
-val ys = pmap (fn x => let val p = Q (x*x)
-                       in sel (add (p,p))
-                       end) xs
 
 fun prNums nil = ()
   | prNums (x::xs) = (printNum x; prNums xs)
 
-val () = prNums ys
+fun fib n = if n < 2 then 1 else fib (n-1) + fib (n-2)
+
+fun rev xs =
+    let fun loop nil acc = acc
+          | loop (x::xs) acc = loop xs (x::acc)
+    in loop xs nil
+    end
+
+fun map f xs =
+    let fun loop nil acc = rev acc
+          | loop (x::xs) acc = loop xs (f x ::acc)
+    in loop xs nil
+    end
+
+fun length xs =
+    let fun loop nil n = n
+          | loop (_ :: xs) n = loop xs (n+1)
+    in loop xs 0
+    end
+
+fun iota 0 acc = acc
+  | iota n acc = iota (n-1) (n::acc)
+
+fun run xs =
+    let
+      val () = prNums xs
+      val lsts : int list list =
+          pmap (fn x => map (fn y => x+y) (iota 18000 nil)) xs
+      val ys = map length lsts
+    in prNums ys
+    end
+
+val () =
+    run (iota 100 nil)

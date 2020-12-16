@@ -85,7 +85,7 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
 
     local
       val region_large_objects = true (* upon change, also change src/Runtime/Makefile *)
-      val size_gen = 3
+      val size_gen = 2
       fun size_lobjs () = if region_large_objects then 1 else 0
       fun size_g0 () = size_gen
       fun size_prev_ptr () = 1

@@ -1080,6 +1080,18 @@ structure OptLambda: OPT_LAMBDA =
 	  of FN _ => small_lamb (!max_inline_size) lamb andalso closed lamb
 	   | _ => false
 *)
+
+      fun noinline lvar =
+          let val s = Lvars.str lvar
+              val postfix = "__noinline__"
+              val i = String.size s - String.size postfix
+              val res = i > 0 andalso
+                        let val ext = String.extract(s,i,NONE)
+                        in postfix = ext
+                        end
+          in res
+          end
+
       fun is_inlinable_fn lvar lamb =
 	  case lamb of
               FN _ => always_inline_function lvar orelse small_lamb (max_inline_size()) lamb
@@ -1758,7 +1770,8 @@ structure OptLambda: OPT_LAMBDA =
 	       end
 	      | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
 	       let val (bind', cv) = contr (env, bind)
-		   val cv' = if (*is_small_closed_fn*) is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
+		   val cv' = if noinline lvar then CUNKNOWN
+                             else if (*is_small_closed_fn*) is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
 			     else if is_fn bind' then CFN{lexp=bind',large=true}
                              else if is_unboxed_value bind' then CCONST bind'
 			     else (case bind'

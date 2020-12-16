@@ -826,6 +826,7 @@ struct
          copy(tmp_reg1, t, C))
       end
 
+    fun simple_p () = false
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
@@ -844,6 +845,25 @@ struct
              post_prof
              (copy(tmp_reg1,t,C))))
           end
+        else if parallelism_p() andalso simple_p() then
+          let val n = n0
+              val l = new_local_lab "return_from_alloc"
+              fun maybe_update_alloc_period C =
+                  if gc_p() then
+                    I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
+                    I.addq(I (i2s (8*n)), R tmp_reg0) ::
+                    I.movq(R tmp_reg0, L(NameLab "alloc_period")) ::
+                    C
+                  else C
+          in
+            I.push(LA l) ::                              (*   push continuation label          *)
+            copy(t,tmp_reg1,
+            move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
+            I.jmp(L(NameLab "__allocate")) ::            (*   jmp to __allocate with args in   *)
+            maybe_update_alloc_period(
+            I.lab l ::                                   (*     tmp_reg1 and tmp_reg0; result  *)
+            copy(tmp_reg1,t,C))))                        (*     in tmp_reg1.                   *)
+          end
         else if parallelism_p() then
           let val n = n0
               val l = new_local_lab "return_from_alloc"
@@ -859,25 +879,33 @@ struct
                   add_code_block
                       (I.lab l_expand ::                            (* expand:                            *)
                        I.pop(R I.rax) ::                            (*   restore rax                      *)
+                       I.pop(R tmp_reg1) ::
                        I.push(LA l) ::                              (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
                        I.jmp(L(NameLab "__allocate")) :: nil))      (*   jmp to __allocate with args in   *)
           in
             copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
             I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
-            load_indexed(R tmp_reg0,tmp_reg1,WORDS 0,               (*   tmp_reg0 = tmp_reg1[0]           *)
+            I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
+            load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
             I.push(R I.rax) ::                                      (*   save rax on the stack            *)
-            I.movq(R tmp_reg0, R I.rax) ::                          (*   rax = tmp_reg0                   *)
-            I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
-            I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
-            I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
-            I.cmpxchgq(R tmp_reg0, D("0",tmp_reg1)) ::              (*   tmp_reg1[0] = tmp_reg0           *)
+            I.movq(R tmp_reg1, R I.rax) ::                          (*   rax = tmp_reg1                   *)
+            I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
+            copy(tmp_reg1, tmp_reg0,
+            I.orq(I "0x3FF", R tmp_reg0) ::
+            I.addq(I (i2s (8*n)), R tmp_reg1) ::                    (*   tmp_reg1 = tmp_reg1 + 8n         *)
+            I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+            I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
+            I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
+            I.movq(D("8",rsp),R tmp_reg1) ::
+            I.cmpxchgq(R tmp_reg0,D("0",tmp_reg1)) ::               (*   tmp_reg1[0] = tmp_reg0           *)
             I.jne l_expand ::                                       (*      (if rax = tmp_reg1[0])        *)
-            I.pop (R rax) ::                                        (*   restore rax from stack           *)
+            I.pop (R rax) ::
+            I.pop (R tmp_reg1) ::
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
-            (copy(tmp_reg1,t,C)))))                                 (*     in tmp_reg1.                   *)
+            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
           end
         else
           let val n = n0
@@ -893,21 +921,28 @@ struct
               val () =
                   add_code_block
                       (I.lab l_expand ::                            (* expand:                            *)
+                       I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
                        I.push(LA l) ::                              (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
                        I.jmp(L(NameLab "__allocate")) :: nil))      (*   jmp to __allocate with args in   *)
           in
             copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
             I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)
-            load_indexed(R tmp_reg0,tmp_reg1,WORDS 0,               (*   tmp_reg0 = tmp_reg1[0]           *)
-            I.addq(I (i2s (8*n)), R tmp_reg0) ::                    (*   tmp_reg0 = tmp_reg0 + 8n         *)
-            I.cmpq(D("8",tmp_reg1), R tmp_reg0) ::                  (*   jmp expand if (tmp_reg0 > boundary) *)
-            I.jg l_expand ::                                        (*     (boundary offset 1Word in rd   *)
+            I.push(R tmp_reg1) ::                                   (*   push tmp_reg1                    *)
+            load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
+            I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
+            copy(tmp_reg1, tmp_reg0,
+            I.orq(I "0x3FF", R tmp_reg0) ::
+            I.addq(I (i2s (8*n)), R tmp_reg1) ::                    (*   tmp_reg1 = tmp_reg1 + 8n         *)
+            I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
+            I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
+            I.leaq(D("1",tmp_reg1),R tmp_reg0) ::                   (*   tmp_reg0 = tmp_reg1 + 1          *)
+            I.pop (R tmp_reg1) ::
             store_indexed (tmp_reg1,WORDS 0,R tmp_reg0,             (*   tmp_reg1[0] = tmp_reg0           *)
             I.leaq(D(i2s(~8*n),tmp_reg0),R tmp_reg1) ::             (*   tmp_reg1 = tmp_reg0 - 8n         *)
             maybe_update_alloc_period(
             I.lab l ::                                              (*     tmp_reg1 and tmp_reg0; result  *)
-            (copy(tmp_reg1,t,C))))))                                (*     in tmp_reg1.                   *)
+            (copy(tmp_reg1,t,C)))))))                               (*     in tmp_reg1.                   *)
           end
 
     (* When tagging is enabled (for gc) and tag-free pairs (and triples) are enabled

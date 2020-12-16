@@ -26,15 +26,10 @@ fun printNum (i:int) : unit = prim("printNum", i)
 in
 structure T :> THREAD = struct
   type thread = foreignptr
-
-  (* From a type perspective, we include the type of the function in
-   * the type of the thread, which means that regions in the effect of
-   * the function will occur in the type of the thread. *)
-
-  type 'a t = (unit->'a) * thread
-  fun get ((_,t0): 'a t) : 'a = prim("thread_get", t0)
-  fun spawn (f: unit->'a) (k: 'a t -> 'b) : 'b =
-      let val rf = ref f
+  type 'a t = ((unit->'a) * thread) ref
+  fun get__noinline__ ((ref (f,t0)): 'a t) : 'a = prim("thread_get", t0)
+  fun spawn__noinline__ (f: unit->'a) (k: 'a t -> 'b) : 'b =
+      let val rf : (unit -> 'a) ref = ref f
           val fp_f : foreignptr = prim("pointer", !rf)
 
           (* From a region inference perspective, coercing the type of
@@ -43,15 +38,21 @@ structure T :> THREAD = struct
            * need to be kept alive for the pointer value to be
            * valid. By including the type of the function in the type
            * of the thread value, however, we keep all necessary
-           * regions alive. *)
+           * regions alive.
+           *
+           * Moreover, we encapsulate the function in a ref to avoid
+           * that the closure is inlined into the "pointer" prim
+           * argument. If it is inlined, the closure will be allocated
+           * in a local stack-allocated region inside the "pointer"
+           * prim value, which cause the program to segfault.. *)
 
           (* val () = prim("function_test", fp_f) *)
           val t0 : thread = prim("spawnone", fp_f)
-          val t: 'a t = (f,t0)
+          val t: 'a t = ref (f,t0)
           val res = k t
-          val _ = if !(ref true) then get t else f()   (* make sure the thread has terminated before returning *)
-                                                       (* and mimic that, from a type perspective, spawn has *)
-                                                       (* the effect of calling f *)
+          val _ = if !(ref true)            (* make sure the thread has terminated before returning *)
+                  then get__noinline__ t    (* and mimic that, from a type perspective, spawn has *)
+                  else !rf()                (* the effect of calling f *)
 
           (* Notice that it is not safe to call `thread_free t0` here
            * as t0 may be live through later calls to `get t`.
@@ -65,6 +66,9 @@ structure T :> THREAD = struct
           (* val () = prim("thread_free", t0) *)
       in res
       end
+
+  fun spawn x = spawn__noinline__ x
+  fun get x = get__noinline__ x
 end
 (*
 structure T :> THREAD = struct

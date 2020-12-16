@@ -49,16 +49,16 @@ struct
     if tag_values() then List.length l + 1
     else List.length l
 
-  fun size_exname() =
+  fun size_exname () =
     if tag_values() then 3 else 2
 
-  fun size_excon0() =
+  fun size_excon0 () =
     if tag_values() then 2 else 1
 
-  fun size_excon1() =
+  fun size_excon1 () =
     if tag_values() then 3 else 2
 
-  fun size_con0() = 1 (* boxed CON0 is always 1 word *)
-  fun size_con1() = 2 (* boxed CON1 is always 2 words. *)
+  fun size_con0 () = 1 (* boxed CON0 is always 1 word *)
+  fun size_con1 () = 2 (* boxed CON1 is always 2 words. *)
 
 end;

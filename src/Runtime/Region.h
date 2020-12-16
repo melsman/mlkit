@@ -108,6 +108,18 @@ typedef struct rp {
 
 #define is_rp_aligned(rp)  (((rp) & (sizeof(Rp)-1)) == 0)
 
+// [rpBoundary(a)] returns the boundary for the last region page
+// associated with the region for which a is the allocation
+// pointer. The boundary is defined as a pointer to the first word
+// following the last page. Because a may point to the boundary, we
+// subtract one (byte) from a so that we make sure that it is a
+// pointer into the page (initially, it points past the
+// next-pointer)...
+
+#define rpBoundary(a)      ((uintptr_t *)(((((unsigned long)a)-1) | (sizeof(Rp)-1))+1))
+#define last_rp_of_gen(g)  ((Rp*)(((unsigned long)(((Gen*)g)->a)-1) & (~(sizeof(Rp)-1))))
+
+
 /* Free pages are kept in a free list. When the free list becomes
  * empty and more space is required, the runtime system calls the
  * operating system function malloc in order to get space for a number
@@ -182,24 +194,20 @@ typedef struct lobjs {
 /* By introducing generational garbage collection we need two region
    page lists in each region descriptor. We therefore define a
    sub-structure called Gen (for generation) containing the three
-   pointers controlling the allocation into a generation: fp, a and
-   b. */
+   pointers controlling the allocation into a generation: fp and a. */
 
 typedef struct gen {
   uintptr_t * a;  /* Pointer to first unused word in the newest region
-                     page of the region. */
-  uintptr_t * b;  /* Pointer to the border of the newest region page,
-                     defined as the address of the first word to
-                     follow the region page. One maintains the
-                     invariant a<=b; a=b means the region page is
-                     full. */
+                     page of the region. This value is also used for
+                     finding the page boundary. */
   Rp *fp;   /* Pointer to the oldest (first allocated) page of the
                region.  The beginning of the newest page of the region
-               can be calculated as a fixed offset from b. Thus the
-               region descriptor gives direct access to both the first
-               and the last region page of the region. This makes it
-               possible to deallocate the entire region in constant
-               time, by appending it to the free list. */
+               can be calculated from a using page alignment
+               properties.  Thus the region descriptor gives direct
+               access to both the first and the last region page of
+               the region. This makes it possible to deallocate the
+               entire region in constant time, by appending it to the
+               free list. */
 } Gen;
 
 
@@ -249,7 +257,7 @@ typedef Ro* Region;
 #define MIN_NO_OF_PAGES_IN_REGION 1
 #endif /* ENABLE_GEN_GC */
 
-#define freeInRegion(rAddr)   (rAddr->g0.b - rAddr->g0.a) /* Returns freespace in words. */
+#define freeInRegion(rAddr)   (rpBoundary(rAddr->g0.a) - rAddr->g0.a) /* Returns freespace in words. */
 
 #define descRo_a(rAddr,w) (rAddr->g0.a = rAddr->g0.a - w) /* Used in IO.inputStream */
 
@@ -396,7 +404,7 @@ void deallocateRegionsUntil_X64(Region rAddr);
 
 uintptr_t *alloc (Region r, size_t n);
 uintptr_t *allocGen (Gen *gen, size_t n);
-void alloc_new_block(Gen *gen);
+uintptr_t *alloc_new_block(Gen *gen);
 void callSbrk();
 
 #ifdef ENABLE_GC_OLD
