@@ -25,8 +25,15 @@ fun pmap (f:'a->'b) (xs:'a list):'b list =
     in  g xs (fn () => nil)
     end
 
+
 fun par (f,g) =
     T.spawn g (fn t => (f(), T.get t))
+(*
+fun par (f,g) =
+    T.spawn f (fn t1 =>
+    T.spawn g (fn t2 =>
+    (T.get t1, T.get t2)))
+*)
 
 fun pair (f,g) (x,y) = par (fn () => f x, fn () => g y)
 
