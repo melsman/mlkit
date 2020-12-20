@@ -153,6 +153,19 @@ structure ExecutionX64: EXECUTION =
 	 desc="When enabled, the runtime system supports\n\
           \parallel threads."}
 
+    local val default = ""
+    in
+	val _ = Flags.add_string_entry
+	    {long="mlb-subdir", short=NONE, item=ref default,
+	     menu=["Control", "Use MLB subdir-postfix"],
+	     desc="For ensuring that the smart recompilation scheme\n\
+	      \is not reusing target-code compiled with different\n\
+              \settings, a string provided with the mlb-subdir\n\
+              \option can ensure the use of consistently generated\n\
+              \code. This option is Useful, in particular, when\n\
+              \performing benchmarking."}
+    end
+
     val backend_name = "X64"
 
     type CompileBasis = CompileBasis.CompileBasis
@@ -337,6 +350,10 @@ structure ExecutionX64: EXECUTION =
 		    | (false,     false,  false,              _)     => if region_inference() then "RI"
                                                                         else "NOGC"
               val subdir = if parallelism_p() then subdir ^ "_PAR" else subdir
+              val subdir = case Flags.get_string_entry "mlb-subdir" of
+                               "" => subdir
+                             | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x
+                                    else subdir
 	  in "MLB" ## subdir
 	  end
     end
