@@ -153,6 +153,9 @@ structure ExecutionX64: EXECUTION =
 	 desc="When enabled, the runtime system supports\n\
           \parallel threads."}
 
+    val parallelism_p = Flags.is_on0 "parallelism"
+
+
     local val default = ""
     in
 	val _ = Flags.add_string_entry
@@ -270,8 +273,13 @@ structure ExecutionX64: EXECUTION =
 	      case !(Flags.lookup_string_entry "libdirs") of
 		  "" => ""
 		| libdirs => " " ^ libdirsConvertList libdirs
-	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^
-	    concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(!libs)
+
+          val pthread = if parallelism_p() andalso not(onmac_p())
+                        then " -pthread"
+                        else ""
+          val cc = !(Flags.lookup_string_entry "c_compiler")
+	  val shell_cmd = cc ^ " -o " ^ run ^ " " ^
+	    concat files ^ path_to_runtime() ^ libdirs ^ libConvertList(!libs) ^ pthread
       in
 	execute_command shell_cmd;
 	strip run;
@@ -287,7 +295,6 @@ structure ExecutionX64: EXECUTION =
 	  val tag_pairs_p = Flags.is_on0 "tag_pairs"
           val gc_p = Flags.is_on0 "garbage_collection"
           val gengc_p = Flags.is_on0 "generational_garbage_collection"
-          val parallelism_p = Flags.is_on0 "parallelism"
 
 	  fun path_to_runtime () =
             let fun file () =
