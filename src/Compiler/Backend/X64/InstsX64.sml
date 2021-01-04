@@ -430,10 +430,10 @@ structure InstsX64: INSTS_X64 =
                static_data: inst list}, filename) =
       let
         val os : TextIO.outstream = TextIO.openOut filename
-        val section =
-            if sysname() = "Darwin" then ".note.GNU-stack,\"\""
-            else ".note.GNU-stack,\"\",@progbits"
-        val static_data = dot_section section :: static_data
+        val static_data =
+            if sysname() = "Darwin" then
+              (* dot_section ".note.GNU-stack,\"\"" :: *) static_data
+            else dot_section ".note.GNU-stack,\"\",@progbits" :: static_data
       in (emit_insts (os, init_code);
           app (emit_topdecl os) top_decls;
           emit_insts (os, static_data);

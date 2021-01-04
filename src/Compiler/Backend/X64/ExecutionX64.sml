@@ -81,7 +81,7 @@ structure ExecutionX64: EXECUTION =
 	end
 
     val _ = Flags.add_string_entry
-	let val mac_as = "gcc -c -no-integrated-as"
+	let val mac_as = "as -q" (* "gcc -c -no-integrated-as" *)
             val linux_as = "as --64"
 	    val ass = if onmac_p() then mac_as else linux_as
 	in
