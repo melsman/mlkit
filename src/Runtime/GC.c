@@ -1843,8 +1843,10 @@ gc(uintptr_t **sp, size_t reg_map)
 	      region_utilize(pages_to_space, bytes_to_space),
 	      lobjs_aftergc / 1024,
 	      size_free_list());
-      fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%, S:%luMb]\n",
-	      P_ri, P_gc, (size_t)(stack_bot_gc - stack_top_gc) / 1024 / 1024);
+      fprintf(stderr, "RI:%2.0lf%%, GC:%2.0lf%%, S:%luMb, RSS:%luKb -> %luKb]\n",
+	      P_ri, P_gc, (size_t)(stack_bot_gc - stack_top_gc) / 1024 / 1024,
+	      rusage_begin.ru_maxrss / 1024,
+	      rusage_end.ru_maxrss / 1024);
 
       to_space_old = bytes_to_space;
       lobjs_aftergc_old = lobjs_aftergc;

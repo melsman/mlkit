@@ -3187,7 +3187,7 @@ structure OptLambda: OPT_LAMBDA =
        LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'),
        LvarMap.plus (e5,e5'), LvarMap.plus (e6,e6'))
 
-    fun restrict((inv_eta_env,let_env, unbox_fix_env,uc_env,cenv1,cenv2), lvars, cons, tns) =
+    fun restrict ((inv_eta_env,let_env, unbox_fix_env,uc_env,cenv1,cenv2), lvars, cons, tns) =
       let val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
 	  val e2 = restrict_let_env(let_env,lvars)
 	  val e3 = restrict_unbox_fix_env(unbox_fix_env,lvars)

@@ -762,10 +762,10 @@ void callSbrk() {
   }
   np->n = old_free_list;
 
-  #ifdef ENABLE_GC
-  if (!disable_gc)
-    time_to_gc = 1;
-  #endif /* ENABLE_GC */
+  //  #ifdef ENABLE_GC
+  //  if (!disable_gc)
+  //    time_to_gc = 1;
+  //  #endif /* ENABLE_GC */
 
   return;
 }
@@ -816,8 +816,10 @@ allocGen (Gen *gen, size_t n) {
       LOCK_LOCK(GLOBALALLOCMUTEX);
 #endif
       Lobjs* lobjs;
-      //fprintf(stderr,"Allocating large object of %d words\n", n);
       r = get_ro_from_gen(*gen);
+      //#ifdef ENABLE_GC
+      // fprintf(stderr,"Allocating large object (of type %lu) of %zu words\n", rtype(*gen), n);
+      //#endif
       lobjs = alloc_lobjs(n);
       //fprintf(stderr,"Allocated large object of %d words (address: %p) ; header at %p\n", n, &(lobjs->value), lobjs);
       lobjs->next = set_lobj_bit(r->lobjs);
