@@ -3,8 +3,6 @@ local
 in
   THREAD.sig
   ThreadSeq.sml
-  Thread.sml
   FORK_JOIN.sig
   ForkJoinSeq.sml
-  ForkJoin.sml
 end

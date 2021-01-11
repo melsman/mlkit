@@ -5,4 +5,7 @@ signature FORK_JOIN = sig
   val pmap   : ('a -> 'b) -> 'a list -> 'b list
 
   val alloc  : int -> 'a -> 'a array
+
+  type pspec = int * int (* max parallelism, min sequential work *)
+  val parfor' : pspec -> int * int -> (int -> unit) -> unit
 end

@@ -1,4 +1,8 @@
 structure ForkJoin :> FORK_JOIN = struct
+
+fun alloc (n:int) (v:'a) : 'a array =
+    prim ("word_table0", n)
+
 structure T = Thread
 
 fun for (lo,hi) (f:int->unit) : unit =
@@ -37,6 +41,21 @@ fun par (f,g) =
 
 fun pair (f,g) (x,y) = par (fn () => f x, fn () => g y)
 
-fun alloc n v = Array.tabulate(n,fn _ => v)
+type pspec = int * int (* max parallelism, min sequential work *)
+
+fun parfor' (P,G) (lo,hi) (f:int->unit) : unit =
+    let val n = hi-lo
+        val m = Int.min(P+1, 1 + (n-1) div G) (* groups *)
+        val k = n div m                   (* group size *)
+        fun loop (lo,hi) =
+            if lo >= hi then ()
+            else let val m = lo+k
+                 in if m >= hi (* last bucket *)
+                    then for (lo,hi) f
+                    else T.spawn (fn () => for (lo,m) f)
+                                 (fn _ => loop (m,hi))
+                 end
+    in loop (lo,hi)
+    end
 
 end
