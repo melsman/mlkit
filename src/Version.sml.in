@@ -5,6 +5,7 @@
 structure Version =
   struct
     val version = "@PACKAGE_VERSION@"
+    val gitversion = "@GITVERSION@"
     val commit_date = "@COMMITDATE@"
     val configure_date = "@DATE@"
   end

@@ -1,4 +1,4 @@
-AC_INIT(MLKit, [m4_esyscmd_s(echo $(git describe --abbrev --dirty --always --tags))])
+AC_INIT(MLKit, [v4.5.3])
 AC_CONFIG_HEADERS([src/config.h])
 AC_REVISION($Revision$)
 AC_CONFIG_FILES([src/SMLserver/apache/Makefile
@@ -68,5 +68,8 @@ AC_MSG_RESULT($DATE)
 
 COMMITDATE=`git log -1 --format=%cI`
 AC_SUBST(COMMITDATE)
+
+GITVERSION=`git describe --abbrev --dirty --always --tags`
+AC_SUBST(GITVERSION)
 
 AC_OUTPUT

@@ -541,7 +541,7 @@ smltojs_x64_tgz:
 #  $ make smltojs
 #  $ make smltojs_basislibs
 # -----------------------------------------------------
-BIN_DIST=mlkit_bin_dist
+BIN_DIST?=mlkit_bin_dist
 .PHONY: mlkit_bin_dist
 mlkit_bin_dist:
 	$(MKDIR) dist
@@ -549,6 +549,14 @@ mlkit_bin_dist:
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
+
+.PHONY: mlkit_bin_dist_linux
+mlkit_bin_dist_linux:
+	BIN_DIST=mlkit_bin_dist_linux make mlkit_bin_dist
+
+.PHONY: mlkit_bin_dist_macos
+mlkit_bin_dist_macos:
+	BIN_DIST=mlkit_bin_dist_macos make mlkit_bin_dist
 
 # -----------------------------------------------------
 # Target for building SMLserver binary package. The target

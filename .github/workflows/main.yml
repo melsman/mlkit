@@ -1,7 +1,7 @@
 # This is the MLKit main workflow for building and testing the MLKit
 # on various architectures.  The workflow contains two jobs called
-# "build-and-test-ubuntu" and "build-and-test-macos". It is triggered
-# on push or pull request events but only for the master branch.
+# "build-test-ubuntu" and "build-test-macos". It is triggered on
+# push or pull request events but only for the master branch.
 
 name: CI
 
@@ -71,7 +71,7 @@ jobs:
 
       - name: Build binary distribution
         run: |
-          make mlkit_bin_dist
+          make mlkit_bin_dist_linux
 
   build-test-macos:
 
@@ -83,8 +83,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # brew update
-          # rm -f /usr/local/include/c++
           brew install gcc
           brew install autoconf
           brew install make
@@ -133,4 +131,4 @@ jobs:
 
       - name: Build binary distribution
         run: |
-          make mlkit_bin_dist
+          make mlkit_bin_dist_macos
