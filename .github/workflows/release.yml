@@ -59,13 +59,13 @@ jobs:
 
       - name: Build binary distribution
         run: |
-          make mlkit_bin_dist_linux
+          make mlkit_bin_dist
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/mlkit_bin_dist_linux.tgz
+          file: dist/mlkit-bin-dist-linux.tgz
           tag: ${{ github.ref }}
           overwrite: true
 
@@ -127,12 +127,12 @@ jobs:
 
       - name: Build binary distribution
         run: |
-          make mlkit_bin_dist_macos
+          make mlkit_bin_dist
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/mlkit_bin_dist_macos.tgz
+          file: dist/mlkit-bin-dist-darwin.tgz
           tag: ${{ github.ref }}
           overwrite: true

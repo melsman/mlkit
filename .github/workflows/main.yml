@@ -71,7 +71,7 @@ jobs:
 
       - name: Build binary distribution
         run: |
-          make mlkit_bin_dist_linux
+          make mlkit_bin_dist
 
   build-test-macos:
 
@@ -131,4 +131,4 @@ jobs:
 
       - name: Build binary distribution
         run: |
-          make mlkit_bin_dist_macos
+          make mlkit_bin_dist
