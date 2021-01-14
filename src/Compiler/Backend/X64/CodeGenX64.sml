@@ -891,7 +891,7 @@ struct
                             | Int31_to_int64ub     => int31_to_int64ub arg
 
                             | Int64b_to_int63      => int64_to_int63 {boxedarg=true} arg
-                            | Word64b_to_word63    => word64_to_num63 {boxedarg=true,ovf=false} arg
+                            | Word64b_to_word63    => word64_to_word63 {boxedarg=true} arg
                             | Word32b_to_word63    => word32_to_word63 {boxedarg=true,signext=false} arg
                             | Word63_to_word31     => word63_to_word31 arg
                             | Word31_to_word63_X   => num31_to_num63 {signext=true} arg
@@ -904,8 +904,8 @@ struct
                             | Word32b_to_int63_X   => word32_to_word63 {boxedarg=true,signext=true} arg
                             | Word64b_to_word31    => word64_to_word31 {boxedarg=true} arg
 
-                            | Word64b_to_int63     => word64_to_num63 {boxedarg=true,ovf=true} arg
-                            | Word64b_to_int63_X   => word64_to_num63 {boxedarg=true,ovf=false} arg
+                            | Word64b_to_int63     => word64_to_int63 {boxedarg=true,ovf=true} arg
+                            | Word64b_to_int63_X   => word64_to_int63 {boxedarg=true,ovf=false} arg
 
                             | Int63_to_int64ub     => num63_to_num64ub {shr_inst=I.sarq} arg
 
