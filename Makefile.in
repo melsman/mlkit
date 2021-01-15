@@ -549,6 +549,13 @@ mlkit_bin_dist:
 	rm -rf dist/$(BIN_DIST)
 	$(MAKE) install0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
 	$(MAKE) install_smltojs0 DESTDIR=$(CWD)/dist/$(BIN_DIST) prefix=
+	echo 'PREFIX?=/usr/local' > $(CWD)/dist/$(BIN_DIST)/Makefile
+	echo '.PHONY: install' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	echo 'install:' >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	echo "\t"'for d in $$$$(find * -type d); do install -d "$$(PREFIX)/$$$$d"; done' \
+                >> $(CWD)/dist/$(BIN_DIST)/Makefile
+	echo "\t"'for f in $$$$(find * -type f | grep -v Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done' \
+                >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
 
 
