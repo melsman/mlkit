@@ -7,7 +7,7 @@ group: navigation
 
 ### Current Maintainer
 
-* [Martin Elsman](http://www.elsman.com)
+* [Martin Elsman](http://elsman.com)
 
 ### Previous Contributors
 
@@ -15,7 +15,7 @@ group: navigation
 
 * [Carsten Varming](https://www.linkedin.com/in/varming) (Developer)
 
-* [Mads Tofte](http://www.itu.dk/people/tofte) (Main architect of adding region support to the MLKit, co-developer of MLKit version 1)
+* [Mads Tofte](https://www.linkedin.com/in/mads-tofte-13b28a16) (Main architect of adding region support to the MLKit, co-developer of MLKit version 1)
 
 * [Lars Birkedal](http://cs.au.dk/~birke/) (Co-developer of region runtime system and various region representation analyses, co-developer of MLKit version 1)
 
