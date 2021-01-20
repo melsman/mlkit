@@ -55,7 +55,7 @@ jobs:
           # The brew version of MLton has a bug
           brew install mlton --HEAD
           brew tap homebrew/cask
-          brew cask install phantomjs
+          brew install --cask phantomjs
 
       - name: Check
         run: |
