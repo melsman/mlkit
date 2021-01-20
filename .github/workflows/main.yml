@@ -1,7 +1,9 @@
 # This is the MLKit main workflow for building and testing the MLKit
-# on various architectures.  The workflow contains two jobs called
-# "build-test-ubuntu" and "build-test-macos". It is triggered on
-# push or pull request events but only for the master branch.
+# on various architectures.  The workflow contains a job called
+# "build-test-deploy". It is triggered on push or pull request events
+# on the master branch. It is also triggered when a tag is pushed, in
+# which case a binary distribution is deployed. The build matrix is
+# currently setup to run only with mlton as the primary SML compiler.
 
 name: CI
 
@@ -9,6 +11,9 @@ on:
 
   push:
     branches: [ master ]
+
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
   pull_request:
     branches: [ master ]
@@ -18,18 +23,45 @@ on:
 
 jobs:
 
-  build-test-ubuntu:
+  build-test-deploy:
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+#        mlcomp: [mlkit, mlton]
+        mlcomp: [mlton]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
 
       - uses: actions/checkout@v2
 
-      - name: Install dependencies
+      - name: Setup environment
         run: |
-          sudo apt-get -qq update
+          echo "OS=$(uname -s | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "RUNHOME=$(echo $HOME)" >> $GITHUB_ENV
+
+      - name: Install dependencies (linux)
+        if: ${{ env.OS == 'linux' && matrix.mlcomp == 'mlton' }}
+        run: |
+#          sudo apt-get -qq update
           sudo apt-get install -y gcc mlton autoconf make
+
+      - name: Install dependencies (macos)
+        if: ${{ env.OS == 'darwin' && matrix.mlcomp == 'mlton' }}
+        run: |
+          brew install gcc autoconf make
+          # The brew version of MLton has a bug
+          brew install mlton --HEAD
+          brew tap homebrew/cask
+          brew cask install phantomjs
+
+      - name: Check
+        run: |
+          mlton
+          echo 'github.event_name: ' ${{ github.event_name }}
+          echo 'github.ref: ' ${{ github.ref }}
 
       - name: Configure
         run: |
@@ -73,62 +105,11 @@ jobs:
         run: |
           make mlkit_bin_dist
 
-  build-test-macos:
-
-    runs-on: macos-latest
-
-    steps:
-
-      - uses: actions/checkout@v2
-
-      - name: Install dependencies
-        run: |
-          brew install gcc
-          brew install autoconf
-          brew install make
-          # The brew version of MLton has a bug
-          brew install mlton --HEAD
-          brew tap homebrew/cask
-          brew cask install phantomjs
-
-      - name: Configure
-        run: |
-          ./autobuild
-          ./configure
-
-      - name: Build MLKit
-        run: |
-          make mlkit
-          make mlkit_basislibs
-
-      - name: Install MLKit
-        run: |
-          sudo make install
-
-      - name: Run tests
-        run: |
-          make -C test_dev test
-          make -C test test_mlkit
-          make -C test test_mlkit_no_gc
-          make -C test/explicit_regions all
-
-      - name: Configure SmlToJs
-        run: |
-          ./configure --with-compiler="SML_LIB=`pwd` `pwd`/bin/mlkit"
-
-      - name: Build SmlToJs
-        run: |
-          make smltojs
-          make smltojs_basislibs
-
-      - name: Install SmlToJs
-        run: |
-          sudo make install_smltojs
-
-      - name: Run SmlToJs tests
-        run: |
-          make -C js/test test
-
-      - name: Build binary distribution
-        run: |
-          make mlkit_bin_dist
+      - name: Upload release
+        if: ${{ matrix.mlcomp == 'mlton' && github.event_name == 'push' && contains(github.ref, '/tags/v') }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/mlkit-bin-dist-${{ env.OS }}.tgz
+          tag: ${{ github.ref }}
+          overwrite: true
