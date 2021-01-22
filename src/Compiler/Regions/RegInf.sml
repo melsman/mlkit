@@ -497,6 +497,7 @@ struct
        | Exp.BLOCKF64 (_, ts) => foldr(fn (t, (B, d)) =>
 					  let val (B', d') = R(B,rse,t) in (B', d && d') end)
                                       (B,delta_emp) ts
+       | Exp.SCRATCHMEM _ => (B, delta_emp)
        | Exp.EXPORT (_, t) => R(B,rse,t)
        | Exp.RESET_REGIONS (_, t) => R(B,rse,t)
        | Exp.FRAME{declared_lvars,declared_excons} =>

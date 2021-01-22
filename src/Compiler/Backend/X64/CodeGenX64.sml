@@ -224,6 +224,24 @@ struct
                          alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
                          store_elems num_elems)
                      end
+                    | LS.SCRATCHMEM{bytes=0,alloc,tag} =>
+                     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+                    | LS.SCRATCHMEM{bytes,alloc,tag} =>
+                     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+                         val words = (8-1+bytes)div 8
+                     in
+                       if BI.tag_values() then
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,words+1,size_ff,
+                         store_immed(tag, reg_for_result, WORDS 0,
+                         C'))
+                       else
+                         (* don't bother to store the tag, but make room for it so that
+                          * other operations work; currently, dynamically sized f64blocks are
+                          * allocated with allocStringML and subscripting and updating values in such
+                          * blocks are shared with subscripting and allocating in statically sized blocks.*)
+                         alloc_ap_kill_tmp01(alloc,reg_for_result,words+1,size_ff,
+                         C')
+                     end
                     | LS.SELECT(i,aty) =>
                      if BI.tag_values() then
                        move_index_aty_to_aty(aty,pat,WORDS(i+1),tmp_reg1,size_ff,C)

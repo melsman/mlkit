@@ -100,6 +100,7 @@ struct
     | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
+    | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: Word32.word}
     | SELECT          of int * 'aty
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
@@ -278,6 +279,7 @@ struct
 					      finish="} " ^ pr_sma pr_aty alloc,
 					      childsep=RIGHT ",",
 					      children= map (layout_aty pr_aty) elems}
+	 | SCRATCHMEM{bytes,alloc,tag} => LEAF("scratch(" ^ Int.toString bytes ^ "," ^ pr_sma pr_aty alloc ^ ")")
 	 | SELECT(i,aty) => HNODE{start="#" ^ Int.toString i ^ "(",
 				  finish=")",
 				  childsep=NOSEP,
@@ -571,6 +573,7 @@ struct
       | ce_to_atom (ClosExp.WORD i) = WORD i
       | ce_to_atom (ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE,tag,maybeuntag}) = UNIT
       | ce_to_atom (ClosExp.BLOCKF64{elems=[],alloc=ClosExp.IGNORE,tag}) = UNIT
+      | ce_to_atom (ClosExp.SCRATCHMEM{bytes=0,alloc=ClosExp.IGNORE,tag}) = UNIT
       | ce_to_atom ce = die ("ce_to_atom: expression not an atom:" ^ PP.flatten1(ClosExp.layout_clos_exp ce))
 
     fun ce_to_atom_opt (NONE) = NONE
@@ -654,6 +657,8 @@ struct
 	  maybe_assign (lvars_res, RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag,maybeuntag=maybeuntag}, acc)
 	 | ClosExp.BLOCKF64{elems,alloc,tag} =>
 	  maybe_assign (lvars_res, BLOCKF64{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag}, acc)
+	 | ClosExp.SCRATCHMEM{bytes,alloc,tag} =>
+	  maybe_assign (lvars_res, SCRATCHMEM{bytes=bytes,alloc=sma_to_sma alloc,tag=tag}, acc)
 	 | ClosExp.SELECT(i,ce) =>
 	  maybe_assign (lvars_res, SELECT(i,ce_to_atom ce), acc)
 	 | ClosExp.FNJMP{opr,args,clos} =>
@@ -835,6 +840,7 @@ struct
     | get_phreg_se (SCLOS_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
     | get_phreg_se (RECORD{elems,alloc,tag,maybeuntag},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
     | get_phreg_se (BLOCKF64{elems,alloc,tag},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
+    | get_phreg_se (SCRATCHMEM{bytes,alloc,tag},acc) = get_phreg_sma(alloc, acc)
     | get_phreg_se (SELECT(i,atom),acc) = get_phreg_atom(atom,acc)
     | get_phreg_se (CON0{con,con_kind,aux_regions,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(aux_regions,acc))
     | get_phreg_se (CON1{con,con_kind,alloc,arg},acc) = get_phreg_sma(alloc,get_phreg_atom(arg,acc))
@@ -961,6 +967,7 @@ struct
       | (SCLOS_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
       | (RECORD{elems,alloc,tag,maybeuntag},acc) => get_var_sma(alloc, get_var_atoms(elems,acc))
       | (BLOCKF64{elems,alloc,tag},acc) => get_var_sma(alloc, get_var_atoms(elems,acc))
+      | (SCRATCHMEM{bytes,alloc,tag},acc) => get_var_sma(alloc,acc)
       | (SELECT(i,atom),acc) => get_var_atom(atom,acc)
       | (CON0{con,con_kind,aux_regions,alloc},acc) => get_var_sma(alloc, get_var_smas(aux_regions,acc))
       | (CON1{con,con_kind,alloc,arg},acc) => get_var_sma(alloc,get_var_atom(arg,acc))
@@ -1115,6 +1122,7 @@ struct
 		       alloc = map_sma alloc}
 	  | map_se (RECORD{elems,alloc,tag,maybeuntag}) = RECORD{elems=map_atys elems,alloc=map_sma alloc,tag=tag,maybeuntag=maybeuntag}
 	  | map_se (BLOCKF64{elems,alloc,tag}) = BLOCKF64{elems=map_atys elems,alloc=map_sma alloc,tag=tag}
+	  | map_se (SCRATCHMEM{bytes,alloc,tag}) = SCRATCHMEM{bytes=bytes,alloc=map_sma alloc,tag=tag}
 	  | map_se (SELECT(i,aty)) = SELECT(i,map_aty aty)
 	  | map_se (CON0{con,con_kind,aux_regions,alloc}) = CON0{con=con,con_kind=con_kind,aux_regions=map_smas aux_regions,alloc=map_sma alloc}
 	  | map_se (CON1{con,con_kind,alloc,arg}) = CON1{con=con,con_kind=con_kind,alloc=map_sma alloc,arg=map_aty arg}

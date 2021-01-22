@@ -515,7 +515,7 @@ struct
             (BLOCKF64((rho,norm_liveset(union_llv(freeInArgs, liveset))), map #1 children),
              freeInArgs)
 	 end
-
+      | SCRATCHMEM(n,a) => (SCRATCHMEM(n,(a, norm_liveset liveset)), empty_liveset)
       | EXPORT(i,tr1) =>
          let val (tr1', free_in_tr1) = llv(tr1,liveset)
          in (EXPORT(i,tr1'), free_in_tr1)

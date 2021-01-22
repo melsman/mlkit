@@ -530,6 +530,10 @@ structure DropRegions: DROP_REGIONS =
                                                    ([], acc) trs
                   in (BLOCKF64(S(drop_atplace alloc), trs'), acc)
                   end
+	     | SCRATCHMEM (n,alloc) =>
+                  let val acc = maybe_add regvar_env (drop_atplace alloc, acc)
+                  in (SCRATCHMEM(n,S(drop_atplace alloc)), acc)
+                  end
 	     | EXPORT(i,tr) =>
                  let val (tr', acc) = drop env tr acc
 		 in (EXPORT (i,tr'), acc)

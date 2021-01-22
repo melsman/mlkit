@@ -386,7 +386,7 @@ structure OptLambda: OPT_LAMBDA =
 	      | (EXPORTprim{name=n,instance_arg=a,instance_res=r}, EXPORTprim{name=n',instance_arg=a',instance_res=r'}) =>
 		    n = n' andalso eq_Type(a,a') andalso eq_Type(r,r')
               | (BLOCKF64prim, BLOCKF64prim) => true
-
+              | (SCRATCHMEMprim n, SCRATCHMEMprim n') => n = n'
 	      | _ => false
 
 	fun eq_sw eq_lamb0m eq (SWITCH(e,es,eo),SWITCH(e',es',eo')) =
@@ -627,6 +627,7 @@ structure OptLambda: OPT_LAMBDA =
                | PRIM(SELECTprim _, es) => safeLooks es
                | PRIM(RECORDprim _, es) => safeLooks es
                | PRIM(BLOCKF64prim, es) => safeLooks es
+               | PRIM(SCRATCHMEMprim _, []) => true
                | PRIM(DROPprim, es) => safeLooks es
                | PRIM(CONprim _, es) => safeLooks es
                | SWITCH_C sw => safeLook_sw safeLook sw

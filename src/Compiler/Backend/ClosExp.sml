@@ -87,6 +87,7 @@ struct
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: ClosExp list, alloc: sma, tag: Word32.word}
+    | SCRATCHMEM      of {bytes:int, alloc: sma, tag: Word32.word}
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
@@ -227,6 +228,8 @@ struct
 						     finish="} " ^ (flatten1(pr_sma alloc)),
 						     childsep=RIGHT ",",
 						     children= map layout_ce elems}
+      | layout_ce(SCRATCHMEM{bytes,alloc,tag}) = LEAF("scratch(" ^ Int.toString bytes ^
+                                                      flatten1(pr_sma alloc))
       | layout_ce(SELECT(i,ce)) = HNODE{start="#" ^ Int.toString i ^ "(",
 					finish=")",
 					childsep=NOSEP,
@@ -611,6 +614,7 @@ struct
 	       | MulExp.DEEXCON(excon,tr) => MulExp.DEEXCON(excon, NTrip tr true)
 	       | MulExp.RECORD(alloc, trs) => MulExp.RECORD(alloc, map (fn tr => NTrip tr true) trs)
 	       | MulExp.BLOCKF64(alloc, trs) => MulExp.BLOCKF64(alloc, map (fn tr => NTrip tr true) trs)
+	       | MulExp.SCRATCHMEM(n,alloc) => MulExp.SCRATCHMEM(n,alloc)
 	       | MulExp.SELECT(i,tr) => MulExp.SELECT(i,NTrip tr true)
 	       | MulExp.DEREF tr => MulExp.DEREF (NTrip tr true)
 	       | MulExp.REF(a,tr) => MulExp.REF(a,NTrip tr true)
@@ -940,6 +944,7 @@ struct
 		   let val Fenv_res = List.foldl (fn (tr,base) => #1(FTrip tr base Env)) Fenv trs
 		   in (Fenv_res, [OTHER])
 		   end
+		 | MulExp.SCRATCHMEM(n,alloc) => (Fenv, [OTHER])
 		 | MulExp.SELECT(i,tr) => FTrip tr Fenv Env
 		 | MulExp.DEREF tr => FTrip tr Fenv Env
 		 | MulExp.REF(a,tr) => FTrip tr Fenv Env
@@ -2104,6 +2109,15 @@ struct
 				      alloc=one_in_list(smas),
 				      tag=BI.tag_blockf64(false,length ces)},ses),NONE_SE)
 	       end
+	   | MulExp.SCRATCHMEM(n,alloc) =>
+	       let
+		 val (sma,se_a) = convert_alloc(alloc,env)
+		 val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_a)],[])
+	       in
+		 (insert_ses(SCRATCHMEM{bytes=n,
+				        alloc=one_in_list(smas),
+				        tag=BI.tag_blockf64(false,(8+n-1) div 8)},ses),NONE_SE)
+	       end
 	   | MulExp.SELECT(i,tr) =>
 	       let
 		 val (ce,se) = ccTrip tr env lab cur_rv
@@ -2878,6 +2892,9 @@ struct
 	       BLOCKF64{elems=List.map (fn tr => liftTrip tr env lab) trs,
 		        alloc=convert_alloc(alloc,env),
 		        tag=BI.tag_blockf64(false,length trs)}
+	   | MulExp.SCRATCHMEM(n,alloc) => SCRATCHMEM {bytes=n,
+                                                       alloc=convert_alloc(alloc,env),
+                                                       tag=BI.tag_blockf64(false,(8+n-1) div 8)}
 	   | MulExp.SELECT(i,tr) => SELECT(i,liftTrip tr env lab)
 	   | MulExp.REF(a,tr) => REF(convert_alloc(a,env),liftTrip tr env lab)
 	   | MulExp.DEREF tr => DEREF(liftTrip tr env lab)

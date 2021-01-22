@@ -697,6 +697,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                   else die ("wrong blockf64 element type; got " ^ prType t)) ts
               ; [stringType]
              end
+           | SCRATCHMEMprim _ => [stringType]
 	   | EXPORTprim {name, instance_arg, instance_res} =>
 	       (valid_t env instance_arg;
 		valid_t env instance_res;

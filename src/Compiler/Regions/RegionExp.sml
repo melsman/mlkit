@@ -110,6 +110,7 @@ struct
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list
       | BLOCKF64 of 'a * ('a,'b)trip list
+      | SCRATCHMEM of int * 'a  (* bytes; type string *)
       | EXPORT   of {name : string,
 		     mu_arg : Type * place, (*mu of argument to c function*)
 		     mu_res : Type * place}
@@ -182,6 +183,7 @@ struct
       | EQUAL (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | CCALL (_,trs) => foldl (uncurry mkPhiTr) acc trs
       | BLOCKF64 (_,trs) => foldl (uncurry mkPhiTr) acc trs
+      | SCRATCHMEM _ => acc
       | EXPORT (_,tr) => mkPhiTr tr acc
       | RESET_REGIONS (_, tr) => mkPhiTr tr acc
       | FRAME _ => acc
@@ -525,6 +527,10 @@ old*)
             in
             PP.NODE{start = "{", finish = "}" ^ alloc_s, indent = 1, childsep = PP.RIGHT", ",
                     children = map (fn trip => layTrip(trip,0)) args}
+            end
+        | SCRATCHMEM(n,alloc) =>
+            let val alloc_s = alloc_string alloc
+            in PP.LEAF ("scratch(" ^ Int.toString n ^ ")" ^ alloc_s)
             end
         | EXPORT ({name, mu_arg, mu_res}, arg) =>
             PP.NODE {start = "_export(" ^ name ^ ", ", finish = "):"
@@ -885,6 +891,7 @@ for more info*)
 	   | EQUAL (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
 	   | CCALL (_,trs) => app normTrip trs
 	   | BLOCKF64 (_,trs) => app normTrip trs
+           | SCRATCHMEM _ => ()
 	   | EXPORT (_, tr) => normTrip tr
 	   | RESET_REGIONS (_, tr) => normTrip tr
            | FRAME{declared_lvars, ...} =>()

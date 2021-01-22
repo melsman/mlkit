@@ -161,6 +161,7 @@ struct
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b,'c)trip list  (* Calling C functions *)
       | BLOCKF64 of 'a * ('a,'b,'c)trip list
+      | SCRATCHMEM of int * 'a
       | EXPORT   of {name : string,
 		     mu_arg : Type * place, (*mu of argument for c function*)
 		     mu_res : Type * place}
@@ -310,6 +311,7 @@ struct
              | CCALL(_,l) => app (warn_puts_trip TE) l
              | EXPORT(_,tr) => warn_puts_trip TE tr
              | BLOCKF64(_,l) => app (warn_puts_trip TE) l
+             | SCRATCHMEM _ => ()
              | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
              | FRAME _ => ()
              | LETREGION{body, ...} => warn_puts_trip TE body
@@ -518,6 +520,7 @@ struct
              | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | CCALL(_,l) => app (warn_dangle_trip TE) l
              | BLOCKF64(_,l) => app (warn_dangle_trip TE) l
+             | SCRATCHMEM _ => ()
              | EXPORT(_,tr) => warn_dangle_trip TE tr
              | RESET_REGIONS(_,tr) => warn_dangle_trip TE tr
              | FRAME _ => ()
@@ -1024,6 +1027,10 @@ struct
             PP.NODE{start = "{", finish = "}" ^ alloc_s, indent = 1, childsep = PP.RIGHT", ",
                     children = map (fn trip => layTrip(trip,0)) args}
             end
+        | SCRATCHMEM(n,alloc) =>
+            let val alloc_s = alloc_string alloc
+            in PP.LEAF ("scratch(" ^ Int.toString n ^ ")" ^ alloc_s)
+            end
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
@@ -1324,6 +1331,7 @@ struct
     | EQUAL(info,tr1,tr2)=>e_to_t(EQUAL(info,eval env tr1, eval env tr2))
     | CCALL(info,trs) => e_to_t(CCALL(info, map (eval env) trs))
     | BLOCKF64(a, trs) => e_to_t(BLOCKF64(a, map (eval env) trs))
+    | SCRATCHMEM(n,a) => e_to_t(SCRATCHMEM(n,a))
     | EXPORT(info,tr) => e_to_t(EXPORT(info,  eval env tr))
     | RESET_REGIONS(info,tr) => e_to_t(RESET_REGIONS(info, eval env tr))
     | FRAME f => tr
@@ -1619,6 +1627,8 @@ struct
             let val (trs',dep) = mk_deps(EE,trs,dep)
             in (BLOCKF64(p,trs'),dep)
             end
+	| RegionExp.SCRATCHMEM (n,p) =>
+            (SCRATCHMEM(n,p),dep)
 	| RegionExp.EXPORT(c,tr) =>
             let val (tr',dep) = mk_deptr(EE,tr,dep)
             in (EXPORT(c,tr'),dep)
@@ -1897,6 +1907,7 @@ struct
        | CCALL(info, trs) =>
             many_sub trs (fn trs' => e_to_t(CCALL(info,trs')))
        | BLOCKF64(a, trs) => many_sub trs  (fn lvars' => (e_to_t(BLOCKF64(a,lvars'))))
+       | SCRATCHMEM _ => k tr
        | EXPORT(info, tr) =>
             one_sub tr (fn tr' => e_to_t(EXPORT(info,tr')))
        | RESET_REGIONS(info, tr1) =>
@@ -1995,6 +2006,7 @@ struct
       | (EQUAL(_,tr1,tr1'), EQUAL(_,tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
       | (CCALL(_,trs1), CCALL(_,trs2)) => eq_list eq (trs1,trs2)
       | (BLOCKF64(a, trs1), BLOCKF64(a', trs2)) => eq_list eq (trs1,trs2)
+      | (SCRATCHMEM(n,a), SCRATCHMEM(n',a')) => n=n'
       | (EXPORT(_,tr1), EXPORT(_,tr2)) => eq(tr1,tr2)
       | (RESET_REGIONS(_,t1), RESET_REGIONS(_,t2)) => eq(t1,t2)
       | (FRAME _, FRAME _) => true
@@ -2220,6 +2232,7 @@ struct
                   let val (l', cont') = tailList(l, NEXT)
                   in (BLOCKF64(a, l'), cont')
                   end
+              | SCRATCHMEM(n,a) => (SCRATCHMEM(n,a),NEXT)
               | EXPORT(tyinfo,tr) =>
                   let val (tr', _) = tail(tr,NEXT)
                   in (EXPORT(tyinfo, tr'), NEXT)
