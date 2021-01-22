@@ -1096,6 +1096,15 @@ good *)
 	   NOTAIL)
         end
 
+    | E.PRIM(E.SCRATCHMEMprim n, []) =>
+        let val tau = R.stringType
+            val (rho,B) = Eff.freshRhoWithTy(R.runtype tau, B)
+            val phi = Eff.mkPut rho
+        in
+          (B, E'.TR(E'.SCRATCHMEM(n,rho), E'.Mus [(tau, rho)], phi),
+	   NOTAIL)
+        end
+
     | E.PRIM (E.EXPORTprim {name, instance_arg, instance_res}, [e0]) =>
           (*
                      e  => [mu], phi    mu=(mu1 -phi0-> mu2,rho)

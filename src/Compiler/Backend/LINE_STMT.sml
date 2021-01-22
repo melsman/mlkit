@@ -83,6 +83,7 @@ signature LINE_STMT =
     | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
     | BLOCKF64        of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
+    | SCRATCHMEM      of {bytes: int, alloc: 'aty sma, tag: Word32.word}
     | SELECT          of int * 'aty
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}

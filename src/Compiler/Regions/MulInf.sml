@@ -366,6 +366,7 @@ struct
                     val psi = sum_psis(Mul.put p :: map get_psi triples)
                 in psi_r:= psi
                 end
+          | SCRATCHMEM(n,p) => psi_r:= Mul.put p
           | EXPORT(_,tr) =>
               (infer_trip(tr);
                psi_r:= get_psi tr
@@ -492,6 +493,7 @@ struct
           | EQUAL(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
           | CCALL(_, trips) => app set_trip trips
           | BLOCKF64 (_, triples) => app set_trip triples
+          | SCRATCHMEM _ => ()
 	  | EXPORT(_,tr) => set_trip tr
           | RESET_REGIONS(_, tr) => set_trip tr
           | FRAME _ => ()
@@ -712,6 +714,7 @@ struct
 		| EQUAL (_,t1,t2) => (appt f t1; appt f t2)
 		| CCALL (_,ts) => List.app (appt f) ts
 		| BLOCKF64 (_,ts) => List.app (appt f) ts
+                | SCRATCHMEM _ => ()
 		| EXPORT (_,t) => appt f t
 		| RESET_REGIONS (_,t) => appt f t
 		| FRAME _ => ()

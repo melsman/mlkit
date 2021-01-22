@@ -157,6 +157,7 @@ signature MUL_EXP =
 	 happens to be used for more than one thing.*)
 
       | BLOCKF64 of 'a * ('a,'b,'c)trip list
+      | SCRATCHMEM of int * 'a
 
       | EXPORT   of {name : string,
 		     mu_arg : Type * place, (*mu of argument for c function*)

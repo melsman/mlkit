@@ -84,6 +84,7 @@ signature LAMBDA_EXP =
 		      tyvars : tyvar list,
 		      Type : 'Type}
       | BLOCKF64prim
+      | SCRATCHMEMprim of int                         (* bytes *)
       | EXPORTprim of {name : string,
 		       instance_arg : 'Type,
 		       instance_res : 'Type}

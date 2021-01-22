@@ -600,6 +600,7 @@ structure AtInf: AT_INF =
 				     rhos_for_result},
 				map (sma_trip sme) trs)
 		     | BLOCKF64 (alloc, trs) => BLOCKF64(which_at sme alloc,map (sma_trip sme) trs)
+		     | SCRATCHMEM (n,alloc) => SCRATCHMEM(n,which_at sme alloc)
 		     | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)
 		     | RESET_REGIONS ({force, alloc = (p, liveset), ...}, tr as (TR(VAR{lvar,...},meta,_,_))) =>
                           (case meta of

@@ -102,6 +102,7 @@ structure LambdaExp: LAMBDA_EXP =
 		      tyvars : tyvar list,
 		      Type : 'Type}
       | BLOCKF64prim
+      | SCRATCHMEMprim of int                         (* bytes *)
       | EXPORTprim of {name : string,
 		       instance_arg : 'Type,
 		       instance_res : 'Type}
@@ -298,6 +299,7 @@ structure LambdaExp: LAMBDA_EXP =
 	  | DEEXCONprim _      => ()
 	  | RECORDprim _       => ()
 	  | BLOCKF64prim       => ()
+	  | SCRATCHMEMprim _   => ()
           | UB_RECORDprim      => ()
 	  | SELECTprim _       => ()
 	  | EQUALprim _        => ()
@@ -627,6 +629,7 @@ structure LambdaExp: LAMBDA_EXP =
 	      if !barify_p then PP.LEAF ("Prim." ^ strip_ name)
 	      else PP.LEAF ("ccall " ^ name)
       | BLOCKF64prim => PP.LEAF "blockf64"
+      | SCRATCHMEMprim n => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
       | EXPORTprim {name, instance_arg, instance_res} =>
           if !Flags.print_types then
 	      PP.NODE {start="_export(" ^ name ^ " ", finish=")", indent=2,
@@ -961,6 +964,7 @@ structure LambdaExp: LAMBDA_EXP =
                       children=map (fn e => layoutLambdaExp(e,0)) lambs,
                       childsep=PP.RIGHT ","}
            end
+         | (SCRATCHMEMprim n,_) => PP.LEAF ("scratchmem(" ^ Int.toString n ^ ")")
          | (UB_RECORDprim,_) =>
 	      let val (s,f) = if !barify_p then ("(",")") else ("<",">")
 	      in PP.NODE{start=s,finish=f,indent=1,
@@ -1433,6 +1437,7 @@ structure LambdaExp: LAMBDA_EXP =
 	      | toInt (RESET_REGIONSprim _) = 14
 	      | toInt (FORCE_RESET_REGIONSprim _) = 15
               | toInt BLOCKF64prim = 16
+              | toInt (SCRATCHMEMprim _) = 17
 
 	    fun fun_CONprim _ =
 		Pickle.con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
@@ -1487,6 +1492,9 @@ structure LambdaExp: LAMBDA_EXP =
 		Pickle.con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
 		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    val fun_BLOCKF64prim = Pickle.con0 BLOCKF64prim
+	    fun fun_SCRATCHMEMprim _ =
+		Pickle.con1 SCRATCHMEMprim (fn SCRATCHMEMprim a => a | _ => die "pu_prim.SCRATCHMEMprim")
+		Pickle.int
 	in Pickle.dataGen("LambdaExp.prim",toInt,[fun_CONprim,
 						  fun_DECONprim,
 						  fun_EXCONprim,
@@ -1503,7 +1511,8 @@ structure LambdaExp: LAMBDA_EXP =
 						  fun_EXPORTprim,
 						  fun_RESET_REGIONSprim,
 						  fun_FORCE_RESET_REGIONSprim,
-                                                  fun_BLOCKF64prim])
+                                                  fun_BLOCKF64prim,
+                                                  fun_SCRATCHMEMprim])
 	end
 
     fun pu_Switch pu_a pu_LambdaExp =
@@ -1734,6 +1743,7 @@ structure LambdaExp: LAMBDA_EXP =
       | CCALLprim {instances, tyvars, Type, ...} =>
         tyvars_Types s instances (tyvars_Scheme s (tyvars, Type) acc)
       | BLOCKF64prim => acc
+      | SCRATCHMEMprim _ => acc
       | EXPORTprim {instance_arg,instance_res, ...} =>
         tyvars_Type s instance_arg (tyvars_Type s instance_res acc)
       | RESET_REGIONSprim{instance} => tyvars_Type s instance acc

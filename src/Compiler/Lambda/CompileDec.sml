@@ -2713,6 +2713,15 @@ the 12 lines above are very similar to the code below
                     val args' = map (real_to_f64 o compileExp env) args   (* each of type real *)
                 in TLE.PRIM(TLE.BLOCKF64prim, args')
                 end
+              | "__scratchmem" =>
+                let val bytes =
+                        case args of
+                            [ATEXPexp(_,SCONatexp(_, SCon.INTEGER bytes, _))] =>
+                            (Int.fromLarge bytes
+                             handle _ => die "compileExp: too large int in __scratchmem primitive")
+                          | _ => die "compileExp: expecting one static integer to __scratchmem primitive"
+                in TLE.PRIM(TLE.SCRATCHMEMprim bytes, [])
+                end
 	      | _ =>
 		  (*unrecognised prim name: this must be a c call; let us
 		   hope the run-time system defines a function called s:*)

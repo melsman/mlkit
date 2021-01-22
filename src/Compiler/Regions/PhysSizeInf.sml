@@ -193,6 +193,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | CCALL ({rhos_for_result, ...}, trs) => (List.app (add_atp o #1) rhos_for_result;
 							List.app fv trs)
 	      | BLOCKF64 (alloc, trs) => (add_atp alloc; List.app fv trs)
+	      | SCRATCHMEM (n,alloc) => add_atp alloc
 	      | EXPORT (_,tr) => fv tr
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) =>
                       (add_atp alloc;
@@ -292,6 +293,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (ifv tr1; ifv tr2)
 	      | CCALL (_, trs) => List.app ifv trs
 	      | BLOCKF64 (alloc, trs) => List.app ifv trs
+	      | SCRATCHMEM (n,alloc) => ()
 	      | EXPORT (_, tr) => ifv tr
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => ifv tr
 	      | FRAME{declared_lvars, declared_excons} => ()
@@ -621,6 +623,11 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 	       of (NONE, []) => ()  (* unit *)
 		| (SOME place, _) => psi_add_place_size(place, size_of_blockf64 trs)
 		| _ => die "psi_tr.BLOCKF64"; List.app (psi_tr env) trs)
+	 | SCRATCHMEM (n,alloc) =>
+            (case (n, place_atplace alloc)
+	       of (0,NONE) => ()  (* unit *)
+		| (_,SOME place) => psi_add_place_size(place, WORDS(1+(n+8-1)div 8))   (* n=3b => w(n)=1+10 div 8= 1w; n=9b => w(n)=1+16 div 8=3w *)
+		| _ => die "psi_tr.SCRATCHMEM")
 	 | EXPORT(_,tr) => psi_tr env tr
 	 | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => psi_tr env tr
 	 | FRAME{declared_lvars, ...} =>
@@ -724,6 +731,7 @@ structure PhysSizeInf: PHYS_SIZE_INF =
 		             map ips trs)
 		   end
 	       | BLOCKF64 (alloc, trs) => BLOCKF64 (pp alloc, map ips trs)
+	       | SCRATCHMEM (n,alloc) => SCRATCHMEM (n,pp alloc)
 	       | EXPORT (i,tr) => EXPORT (i,ips tr)
 	       | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) =>
                      RESET_REGIONS ({force=force, alloc=pp alloc,

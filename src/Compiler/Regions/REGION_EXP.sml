@@ -102,6 +102,7 @@ signature REGION_EXP =
 	            * ('a,'b)trip list  (* Calling C functions *)
 
       | BLOCKF64 of 'a * ('a,'b)trip list
+      | SCRATCHMEM of int * 'a  (* bytes; type string *)
 
       (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
 
