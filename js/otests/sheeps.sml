@@ -12,7 +12,7 @@ val timeElem = tag "span" ($"0")
 
 val body = taga "div" [("style","width:600;height:600;")]
              (taga "h1" [("align","center")] ($"RWP Example: Sheeps") &
-              taga "h2" [("align","center")] ($"Score: " & scoreElem 
+              taga "h2" [("align","center")] ($"Score: " & scoreElem
                                               & $" " & $"Time: " & timeElem) &
               taga "h2" [("align","center")] msgElem)
 
@@ -22,9 +22,9 @@ local
 open Rwp
 infix *** &&& >>>
 
-val time0 : int b = 
+val time0 : int b =
     let val t0 = Time.now()
-    in arr (fn t => IntInf.toInt(Time.toMilliseconds(Time.-(t,t0)))) 
+    in arr (fn t => IntInf.toInt(Time.toMilliseconds(Time.-(t,t0))))
            (timer 20)
     end
 
@@ -72,7 +72,7 @@ in
    * called later with a stopable version of the sheep behavior. *)
 
   fun mkSheep n : (int*int)b * ((int*int)b -> unit) =
-      let val e = taga0 "img" [("src","https://www.smlserver.org/images/sheep.png")]
+      let val e = taga0 "img" [("src","otests/sheep.png")]
           val e' = mkBox e false
           val sheepPos0 = (200 + 70 * n, 200 + 70 * n)
           val s = hold sheepPos0 (fold newSheep sheepPos0 (changes m))
@@ -80,7 +80,7 @@ in
       end
 end
 
-val sheeps : ((int*int)b * ((int*int)b -> unit)) list = 
+val sheeps : ((int*int)b * ((int*int)b -> unit)) list =
     List.tabulate (3, mkSheep)
 
 val boxPos = (400,200)
@@ -89,27 +89,27 @@ val sheepDim = (50,50)
 
 val sheepInBox : (int*int)b -> bool b =
     arr (fn (x,y) => x > #1 boxPos andalso x + #1 sheepDim < #1 boxPos + #1 boxDim
-                     andalso 
-                     y > #2 boxPos andalso y + #2 sheepDim < #2 boxPos + #2 boxDim) 
+                     andalso
+                     y > #2 boxPos andalso y + #2 sheepDim < #2 boxPos + #2 boxDim)
 
 local
-  val sheepsBox : bool list b = 
+  val sheepsBox : bool list b =
       list(map (sheepInBox o #1) sheeps)
 
   val sheepsInBox : bool b =
       arr (List.all (fn x => x)) sheepsBox
 
-  val stop = sheepsInBox  (* Stop the game when all sheeps 
+  val stop = sheepsInBox  (* Stop the game when all sheeps
                            * are in the box. *)
 in
-  val sheepsInBox : bool b = 
+  val sheepsInBox : bool b =
       until (stop, sheepsInBox)
 
-  val score : int b = 
+  val score : int b =
       until (stop, arr (List.length o List.filter (fn x => x)) sheepsBox)
 
-  val () = (* apply DOM-installers to stopable versions of the sheeps *) 
-      List.app (fn (x,f) => 
+  val () = (* apply DOM-installers to stopable versions of the sheeps *)
+      List.app (fn (x,f) =>
                    let val x = until(stop,x)
                    in f x
                    end) sheeps
@@ -120,9 +120,9 @@ val boxElem = mkBox (Js.createTextNode "") true
 val _ = setPos boxElem (const boxPos)
 val _ = setSize boxElem boxDim
 
-val msg = 
+val msg =
     iff (sheepsInBox,
-         const "Good - <a href='rwp_ex3.html'>play again?</a>",
+         const "Good Work!",
          const "Use your mouse to put the sheeps in the box!")
 
 val boxColor =

@@ -1,5 +1,5 @@
 local
-  basis.mlb
+  $(SML_LIB)/basis/basis.mlb
   REAL64_BLOCK_BASE.sml
 in
   Real64Blocks.sml
