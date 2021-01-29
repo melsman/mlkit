@@ -1,29 +1,33 @@
+(* Dropbox support using OAuth2 (implicit flow) and Dropbox API v2 *)
+
 signature DROPBOX = sig
   type client
-  type datastoremanager
-  type datastore
-  type table
-           
-  val load                 : (unit -> unit) -> unit
+  type 'a cont = ('a -> unit) -> unit
+
   val client               : string -> client    (* string is client key *)
-  val authenticate         : client -> (string option -> unit) -> unit
-  val authenticate0        : client -> unit
-  val dropboxUid           : client -> string
-  val isAuthenticated      : client -> bool
-  val signOut              : client -> (unit -> unit) -> unit
+  val authorize            : client -> unit
+  val dropboxUid           : client -> string cont
+  val isAuthorized         : client -> bool
+  val signOut              : client -> unit cont
 
-  val getDatastoreManager  : client -> datastoremanager
-  val openDefaultDatastore : datastoremanager -> (string * datastore -> unit) -> unit
-  val deleteDatastore      : datastoremanager -> datastore -> unit
-
-  val getTable             : datastore -> string -> table
-
-  type record
-  type hash = (string * string) list
-  val insert               : table -> hash -> unit
-  val deleteRecord         : record -> unit
-  val query                : table -> hash -> record list
-  val set                  : record -> string -> string -> unit
-  val get                  : record -> string -> string
-  val allRecords           : table -> record list
+  structure FileStore : sig
+    type filestore
+    type filename = string and dirname = string
+    val filestore   : client -> filestore
+    val all_files   : filestore -> filename list cont
+    val content     : filestore -> filename -> string cont
+    val write_file  : filestore -> filename -> string -> {msg:string} cont
+    val mkdir       : filestore -> dirname -> {msg:string} cont
+    val delete_file : filestore -> filename -> {msg:string} cont
+    val delete_dir  : filestore -> dirname -> {msg:string} cont
+    val move_file   : filestore -> filename -> filename -> {msg:string} cont
+    val move_dir    : filestore -> dirname -> dirname -> {msg:string} cont
+  end
 end
+
+(**
+
+[FileStore.write_file fs path s k] writes the content s into path at
+filestore fs. The continuation function k is passed a message string.
+
+*)
