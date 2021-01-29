@@ -856,17 +856,16 @@ struct
       (case X.demoinput of NONE => ret () | SOME demo => Menu.item m_file ("Open Demo File", NONE, menuHandle_OpenDemo tabs fts demo)) >>= (fn () =>
       (case X.dropboxKey of NONE => ret () | SOME key =>
        Menu.menu m_left "Dropbox" >>= (fn m_dropbox =>
-       (Dropbox.load (fn () =>
-                        let val c = Dropbox.client key
-                            val () = if Dropbox.isAuthorized c then
-                                       (Files.load c fts;
-                                        Dropbox.dropboxUid c (fn uid => log ("Authorized to use " ^ uid ^ "'s Dropbox App Folder"));
-                                        setDropboxPng())
-                                     else log "Not Dropbox authorized"
-                            val m = Menu.item m_dropbox ("Sign in", SOME EditorIcon.createLink, menuHandle_DropboxSignIn key) >>= (fn () =>
-                                    Menu.item m_dropbox ("Sign out", SOME EditorIcon.unlink, menuHandle_DropboxSignOut c fts closetab))
-                        in run m
-                        end);
+       (let val c = Dropbox.client key
+            val () = if Dropbox.isAuthorized c then
+                       (Files.load c fts;
+                        Dropbox.dropboxUid c (fn uid => log ("Authorized to use " ^ uid ^ "'s Dropbox App Folder"));
+                        setDropboxPng())
+                     else log "Not Dropbox authorized"
+            val m = Menu.item m_dropbox ("Sign in", SOME EditorIcon.createLink, menuHandle_DropboxSignIn key)
+                              >>= (fn () => Menu.item m_dropbox ("Sign out", SOME EditorIcon.unlink, menuHandle_DropboxSignOut c fts closetab))
+        in run m
+        end;
         ret ()))) >>= (fn () =>
       Menu.item m_left (X.computeLabel, NONE, menuHandle_CompileAndRun) >>= (fn () =>
       Menu.item m_left ("Clear output", NONE, clearoutarea) >>= (fn () =>

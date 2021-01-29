@@ -1,11 +1,9 @@
+(* Dropbox support using OAuth2 (implicit flow) and Dropbox API v2 *)
+
 signature DROPBOX = sig
   type client
-  type datastoremanager
-  type datastore
-  type table
   type 'a cont = ('a -> unit) -> unit
 
-  val load                 : unit cont
   val client               : string -> client    (* string is client key *)
   val authorize            : client -> unit
   val dropboxUid           : client -> string cont
@@ -27,10 +25,9 @@ signature DROPBOX = sig
   end
 end
 
-
 (**
 
-[FileStore.write_file fs path s g] writes the content s into path at
-filestore fs. The function g is passed a message string.
+[FileStore.write_file fs path s k] writes the content s into path at
+filestore fs. The continuation function k is passed a message string.
 
 *)

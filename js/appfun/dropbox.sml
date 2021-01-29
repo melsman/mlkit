@@ -1,73 +1,4 @@
-(*
-
-OAuth 2.0 Single Page web-app authorization flow with PKCE ("pixie"):
-
-See https://aaronparecki.com/oauth-2-simplified/#single-page-apps
-
-0) User loads App in a browser by loading http://localhost:80 (or example.com)
-
-1) App creates a random string called the code verifier, say "mycodeverifier0232323"
-
-2) App sha256-hases the code verifier and base64-encodes it. The
-    result is called the code challenge, say vTO4G3OgwbUoXh2Ox-Uz4NcVUoC2BM0WskH9274RsYg
-
-3) App presents a page to the user with a link:
-
-    https://www.dropbox.com/oauth2/authorize?\
-       client_id=ybrud729cldjn66& \
-       response_type=code& \
-       redirect_uri=http://localhost:80& \
-       code_challenge=vTO4G3OgwbUoXh2Ox-Uz4NcVUoC2BM0WskH9274RsYg& \
-       code_challenge_method=S256& \
-       state=tryauth
-
-    https://www.dropbox.com/oauth2/authorize?client_id=ybrud729cldjn66&response_type=code&redirect_uri=http://localhost:80&code_challenge=vTO4G3OgwbUoXh2Ox-Uz4NcVUoC2BM0WskH9274RsYg&code_challenge_method=S256&state=yes_sir
-
-   Here the client_id specifically identifies the App (defined once at
-   App creation time).
-
-4) If the user clicks the link, for making use of a
-   Dropbox/Apps/appname directory structure, the user is redirected to
-   dropbox.com, where the user can accept the linking.
-
-5) Once (and only if) accepted by the user, dropbox.com will reply
-   with a 302 (redirect) with the localhost:80 as the
-   redirect_uri, appended with a "?state=tryauth&code=..." string.
-
-6) The web app should check that the state is tryauth and hold on to
-   the returned authorization code.
-
-7) Now the app will make another request to exchange the authorization
-   code to an access token:
-
-   https://www.dropbox.com/oauth2/token?code=QzPQCCJn_dcAAAAAAABUXv8nUUiBKp7uKo7Mz2-NxYc&redirect_uri=http://localhost:80&grant_type=authorization_code&code_verifier=mycodeverifier0232323
-
-
-   curl -X GET https://www.dropbox.com/oauth2/authorize \
-       -F "client_id=ybrud729cldjn66" \
-       -F "response_type=code" \
-       -F "redirect_uri=http://localhost:80" \
-       -F "code_challenge=vTO4G3OgwbUoXh2Ox-Uz4NcVUoC2BM0WskH9274RsYg" \
-       -F "code_challenge_method=S256" \
-       -F "state=tryauth"
-
-   curl -X POST https://www.dropbox.com/oauth2/token -F "code=QzPQCCJn_dcAAAAAAABUXZWdB7sbXSusRBmvK5dTBsI" -F "redirect_uri=http://localhost:80" -F "grant_type=authorization_code" -F "code_verifier=mycodeverifier0232323"
-
-   curl -H "Authorization: Bearer $TOKEN"
-
-
-Eksample:
-
-A) Url in browser:
-
-   https://www.dropbox.com/oauth2/authorize?client_id=ybrud729cldjn66&response_type=code&redirect_uri=http://localhost:80&code_challenge=vTO4G3OgwbUoXh2Ox-Uz4NcVUoC2BM0WskH9274RsYg&code_challenge_method=S256&state=yes_sir
-
-Implicit flow:
-
-   https://www.dropbox.com/oauth2/authorize?client_id=ybrud729cldjn66&response_type=token&redirect_uri=http://localhost:80&state=yes_sir
-
-
-*)
+(* Dropbox support using OAuth2 (implicit flow) and Dropbox API v2 *)
 
 structure Dropbox :> DROPBOX = struct
 
@@ -75,13 +6,8 @@ infix *>
 fun a *> b = (a,b)
 
 type client = OAuth.client
-type datastoremanager = unit
-type datastore = unit
-type table = unit
 
 type 'a cont = ('a -> unit) -> unit
-
-fun load f = f()
 
 fun client (client_id:string) =
     OAuth.client {authorize="https://www.dropbox.com/oauth2/authorize",
