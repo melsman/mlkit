@@ -63,7 +63,7 @@ fun token (c:client) : token option =
         SOME t => SOME t
       | NONE =>
         (case String.tokens (fn c => c = #"#") (getLocation()) of
-             [_,args_string] =>
+             [baselocation,args_string] =>
              let val args : string list = String.tokens (fn c => c = #"&") args_string
                  val arg_pairs = keyvalues args
                  fun check key expected =
@@ -81,6 +81,7 @@ fun token (c:client) : token option =
                            | NONE => raise Fail ("OAuth.token: Expecting access_token")
                  val () = setCookie oauth_access_token_key t
                  val () = deleteCookie oauth_state_key
+                 val () = setLocation baselocation
              in SOME t
              end
            | _ => NONE)

@@ -41,6 +41,8 @@ signature OAUTH = sig
                 client_id: string,
                 redirect_uri: string} -> client
 
+  val getLocation : unit -> string         (* get window.location.href *)
+
   (* Implicit flow *)
   val authorize : client -> unit
   val token     : client -> token option

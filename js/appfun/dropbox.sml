@@ -9,10 +9,20 @@ type client = OAuth.client
 
 type 'a cont = ('a -> unit) -> unit
 
+fun strip_hash href =
+    case String.tokens (fn c => c = #"#") href of
+        nil => href
+      | h::_ => h
+
+fun strip_trailing_slash (s:string) : string =
+    if size s >= 1 andalso String.sub(s,size s - 1) = #"/" then
+      String.extract(s,0,SOME(size s - 1))
+    else s
+
 fun client (client_id:string) =
     OAuth.client {authorize="https://www.dropbox.com/oauth2/authorize",
                   client_id=client_id,
-                  redirect_uri="http://localhost:8000"}
+                  redirect_uri=strip_trailing_slash(strip_hash(OAuth.getLocation()))}
 
 fun authorize (c:client) : unit =
     OAuth.authorize c
