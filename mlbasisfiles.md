@@ -7,11 +7,13 @@ _By Martin Elsman_
 An ML Basis File, in short MLB-file, is a file that lists the SML
 source files that make up a project or a library. An MLB-file can also
 reference other MLB-files, so one can organise projects in a
-hierarchical manner. MLB-files are enforced not to be cyclic.
+hierarchical manner. MLB-files are enforced not to be cyclic and works
+well with [smlpkg](https://github.com/diku-dk/smlpkg) package
+management.
 
 ### Syntax and Semantics of MLB-files
 
-MLB-files have file extension .mlb. The content of an MLB-file is a
+MLB-files have file extension `.mlb`. The content of an MLB-file is a
 basis declaration, for which the grammar is given as follows. We
 assume a denumerable infinite set of basis identifiers Bid, ranged
 over by bid. We use longbid to range over long basis identifiers, that
@@ -39,7 +41,7 @@ location of the MLB-file. Paths can reference, so-called MLB path
 variables using the $(VAR) notation, where VAR is an MLB path
 variable. In particular, MLB-files can reference the Basis Library,
 using the MLB path variable $(SML_LIB), by including the path
-$(SML_LIB)/basis/basis.mlb. An MLB path variable _V_ is resolved
+`$(SML_LIB)/basis/basis.mlb`. An MLB path variable _V_ is resolved
 according to the following rules:
 
 1. First, look for an environment variable with name _V_.
@@ -58,7 +60,7 @@ identifiers of an MLB-file is the union of the identifiers being
 declared by source files in the MLB-file, excluding source files that
 are included using local. As an example of the use of basis
 identifiers and local to limit what identifiers are declared by an
-MLB-file, consult the MLB-file basis/basis.mlb.
+MLB-file, consult the MLB-file `basis/basis.mlb`.
 
 Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
@@ -87,17 +89,17 @@ Thus, the separate compilation system is a way of avoiding recompiling
 parts of a (possibly) long sequence of declarations, while ensuring
 that the result is always the same as if one had compiled the entire
 program from scratch. As an example, consider the MLB-file
-(kitdemo/scan.mlb) for a text scanning example. It contains the
+(`kitdemo/scan.mlb`) for a text scanning example. It contains the
 following three lines:
 
     $(SML_LIB)/basis/basis.mlb
     lib.sml
     scan.sml
 
-The source files for the project are lib.sml and scan.sml, which are
-both located in the directory where scan.mlb is located. Whereas each
-of the source files lib.sml and scan.sml depends on the Basis Library,
-the source file scan.sml also depends on lib.sml.
+The source files for the project are `lib.sml` and `scan.sml`, which are
+both located in the directory where `scan.mlb` is located. Whereas each
+of the source files `lib.sml` and `scan.sml` depends on the Basis Library,
+the source file `scan.sml` also depends on `lib.sml`.
 
 Compiling an MLB-file is easy; simply give it as an argument to the
 MLKit executable. When the MLB-file is first compiled, the MLKit
@@ -132,13 +134,13 @@ instance, and still achieve that a source file is not necessarily
 recompiled even though source files, on which it depends, are
 modified.
 
-Let us assume that we modify the source file lib.sml of the text
-scanning example, after having compiled the MLB-file kitdemo/scan.mlb
+Let us assume that we modify the source file `lib.sml` of the text
+scanning example, after having compiled the MLB-file `kitdemo/scan.mlb`
 once. When compiling the MLB-file again, the MLKit checks whether the
-assumptions under which the source file scan.sml was compiled have
-changed, and if so, recompiles scan.sml. Modifying only comments or
-string constants inside lib.sml or extending its set of declared
-identifiers does not trigger recompilation of scan.sml.
+assumptions under which the source file `scan.sml` was compiled have
+changed, and if so, recompiles `scan.sml`. Modifying only comments or
+string constants inside `lib.sml` or extending its set of declared
+identifiers does not trigger recompilation of `scan.sml`.
 
 Some of the information a source file depends on is the ML type
 schemes of its free variables. It also depends on, for example, the
@@ -149,9 +151,9 @@ region-annotated type scheme with place for a free variable may have
 changed, even though the underlying ML type scheme has not.
 
 As an example, consider what happens if we modify the function
-readWord in the source file lib.sml so that it puts its result in a
+readWord in the source file `lib.sml` so that it puts its result in a
 global region. This modification will trigger recompilation of the
-source file scan.sml, because the assumptions under which it was
+source file `scan.sml`, because the assumptions under which it was
 previously compiled have changed. Besides changes in region-annotated
 type schemes with places, changes in multiplicities and in physical
 sizes of formal region variables of functions may also trigger

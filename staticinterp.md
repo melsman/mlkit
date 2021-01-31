@@ -42,19 +42,19 @@ consider:
 		   type t
 		   val f : int -> t
 		   val g : t -> int * int
-		 end) = 
+		 end) =
     struct
        val it = #1(g(f(5)))
     end;
 
-The formal parameter signature for X does not give any region type
-schemes for f and g. For example, the signature does not say whether g
+The formal parameter signature for `X` does not give any region type
+schemes for `f` and `g`. For example, the signature does not say whether `g`
 creates the pair it returns in a fresh region, or perhaps always
 returns some fixed pair which resides in a global
-region. Consequently, region inference of the body of F is not
-possible: we cannot know whether the pair returned by g can be
+region. Consequently, region inference of the body of `F` is not
+possible: we cannot know whether the pair returned by `g` can be
 deallocated after the first projection has been applied to it.  Now
-consider an application of F:
+consider an application of `F`:
 
     structure S = F(struct
 		      type t = int
@@ -62,8 +62,8 @@ consider an application of F:
 		      fun g(n:int) = (n,n)
 		    end)
 
-Region inference of the actual argument to the call of F shows that
-the actual g creates a fresh pair. The code generated for the
+Region inference of the actual argument to the call of `F` shows that
+the actual `g` creates a fresh pair. The code generated for the
 application will be equivalent to:
 
     local
@@ -74,7 +74,7 @@ application will be equivalent to:
       val it = #1(g(f(5))
     end
 
-Therefore, region inference will determine that the pair created by g
+Therefore, region inference will determine that the pair created by `g`
 can indeed be reclaimed after the first projection has been applied to
 it.
 
