@@ -40,10 +40,41 @@ CODEMIRRORFLAGS=-jslibs "../../js/codemirror/codemirror.js"
 JS_PATH_FLAGS=-js_path_compress -js_path_prefix "src/Compiler" -js_path_relative_to $(SRC_ROOT)
 JSDOCFILES=js/doc/*.{html,css,js} js/doc/images/*.png
 DOJO=/Users/mael/dojo-release-1.9.1
-# Before running "make smltojsonline", make sure to run "make smltojs; make smltojs_basislibs"
-# in the parent directory; otherwise, certain js-files will be missing.
-# For trying smltojsonline on http://localhost:8000, first start a web-server in the smltojsonline directory:
+
+IDE_BASISLIBS=Initial General Option List ListPair Vector VectorSlice	\
+   Array ArraySlice Array2 ByteTable ByteSlice StringCvt String2	\
+   Substring Text Bool IntInfRep Word32 Word8 Word31 Pack32Little	\
+   Pack32Big Byte Int32 Int31 Math Real IntInf Time Random Path Date	\
+   Timer TextIO JsCore Js Html Rwp XMLrpcClient dojo formlets utest
+IDE_BASISLIBS_PATHS=$(IDE_BASISLIBS:%=js/basis/MLB/Js/%.sml.o.eb.js)
+IDE_EXTRACODE=Array2-sml ArraySlice-sml-code1 ArraySlice-sml-code3	\
+   VectorSlice-sml-code1 VectorSlice-sml-code3 ByteTable-sml-code11	\
+   ByteTable-sml-code14 ByteTable-sml-code16 ByteTable-sml-code17	\
+   ByteTable-sml-code20 ByteTable-sml-code22 ByteTable-sml-code3	\
+   ByteTable-sml-code5 ByteTable-sml-code6 ByteTable-sml-code9		\
+   ByteSlice-sml-code1 ByteSlice-sml-code10 ByteSlice-sml-code12	\
+   ByteSlice-sml-code3 ByteSlice-sml-code4 ByteSlice-sml-code6		\
+   ByteSlice-sml-code7 ByteSlice-sml-code9 Bool-sml Char-sml Byte-sml	\
+   StrBase-sml Math-sml Html-sml Rwp-sml Parsercomb-sml			\
+   XMLrpcClient-sml-code1 XMLrpcClient-sml-code2			\
+   XMLrpcClient-sml-code3 utest-sml
+IDE_EXTRACODE_PATHS=$(IDE_EXTRACODE:%=js/basis/MLB/Js/%.js)
+
+#
+# We bundle javascript files together in two bundles, one for code to
+# be used for starting the app (bundle.js) and one for holding basis
+# environment bindings and basis library code that the compiler is not
+# using (bundle_extra.js).  The bundle_extra.js file needs to be kept
+# in sync with the mentioned basislibs files in SmlToJsCompApp.sml.
+#
+# Before running "make smltojsonline", make sure to run "make smltojs;
+# make smltojs_basislibs" in the parent directory; otherwise, certain
+# js-files will be missing.  For trying smltojsonline on
+# http://localhost:8000, first start a web-server in the smltojsonline
+# directory:
+#
 #   python -m SimpleHTTPServer 8000
+#
 
 smltojsonline: Makefile doc favicon.ico
 	rm -rf smltojsonline
@@ -59,6 +90,10 @@ smltojsonline: Makefile doc favicon.ico
 	cp -p otests/content smltojsonline/otests/
 	(cd otests; for f in `ls *.sml`; do cp -p $${f} ../smltojsonline/otests/$${f}_; done)
 	(cd otests; cp -p *.png ../smltojsonline/otests)
+	(cd smltojsonline; cat index.html | grep 'script type' | sed -e 's/^.*src=\"\([^"]*\)".*$$/\1/' | xargs cat > bundle.js)
+	(cd smltojsonline; mv index.html index-split.html)
+	(cd smltojsonline; echo '<script type="text/javascript" src="bundle.js"></script>' > index.html)
+	(cd smltojsonline; cat $(IDE_BASISLIBS_PATHS) $(IDE_EXTRACODE_PATHS) > bundle_extra.js)
 
 # Before running "make smltojs_web", make sure to run "make smltojs; make smltojs_basislibs"
 # in the parent directory; otherwise, certain js-files are missing and will not be

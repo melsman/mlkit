@@ -92,7 +92,8 @@ structure SmlToJsAppArg : APP_ARG = struct
                    "JsCore", "Js", "Html", "Rwp", "XMLrpcClient", "dojo", "formlets", "utest"
                   ]
 
-  val script_paths =
+  val script_paths = ["bundle_extra.js"]
+(*
       let fun basispath n = "js/basis/MLB/Js/" ^ n ^ ".sml.o.eb.js"
           fun implpath n = "js/basis/MLB/Js/" ^ n ^ ".js"
       in List.map basispath basislibs @
@@ -113,6 +114,7 @@ structure SmlToJsAppArg : APP_ARG = struct
        * and need to be mentioned here, so that they can be
        * explicitly loaded! *)
       end
+*)
 
   val envRef : Env.t option ref = ref NONE
 
