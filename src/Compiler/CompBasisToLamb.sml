@@ -84,7 +84,7 @@ structure CompBasisToLamb
       end
 
     fun restrict ({EqEnv,OEnv,TCEnv,NEnv},
-		  (lvars,tynames,cons,excons)) =
+		  (lvs,tns,cns,excons)) =
       let
 
 	(* Martin Elsman wants to write a comment here 09/09/1997
@@ -102,23 +102,30 @@ structure CompBasisToLamb
          * included here, which allows us to let the optimiser
          * inline array and string subscription and array allocation
          * across module boundaries.
+         *
+         * To allow for even more aggressive inlining, all what is
+         * needed is to track the identifiers that are free in the
+         * terms that are inlined. If we restrict these identifiers to
+         * those that are already exported by the program unit (those
+         * lvars occurring in the frame contruct), we need not update
+         * the frame construct.
          *)
 
           val excons =
               Excon.ex_DIV :: Excon.ex_MATCH :: Excon.ex_BIND ::
               Excon.ex_SUBSCRIPT :: Excon.ex_SIZE :: excons
-	  val cons = Con.con_NIL :: Con.con_CONS ::
-	      Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cons   (* for elim eq *)
-	  val cons = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cons
-                     else cons
-	  val tynames = TyName.tyName_LIST :: TyName.tyName_INTINF ::
+	  val cns = Con.con_NIL :: Con.con_CONS ::
+	      Con.con_TRUE :: Con.con_FALSE :: Con.con_INTINF :: cns   (* for elim eq *)
+	  val cns = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cns
+                    else cns
+	  val tns = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
 	      TyName.tyName_VECTOR ::               (* for elim eq *)
-              TyName.tyName_CHARARRAY :: tynames    (* for inlining primitives *)
-          val tynames = if quotation() then TyName.tyName_FRAG :: tynames
-                        else tynames
+              TyName.tyName_CHARARRAY :: tns    (* for inlining primitives *)
+          val tns = if quotation() then TyName.tyName_FRAG :: tns
+                    else tns
 
-          val NEnv1 = LambdaBasics.Normalize.restrict(NEnv,lvars)
+          val NEnv1 = LambdaBasics.Normalize.restrict(NEnv,lvs)
               handle x =>
                (say "CompBasisToLamb.restrict: Normalize.restrict failed\n";
                 say "Normalize environment is:\n";
@@ -126,20 +133,22 @@ structure CompBasisToLamb
                 say "(end of normalize environment)\n";
                 raise x)
 
-	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames}) handle x =>
+	  val (lvs_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvs,tynames=tns}) handle x =>
                (say "CompBasisToLamb.restrict: ElimiateEq.restrict failed\n";
                 say "Equality environment is:\n";
                 PP.outputTree(say,  EliminateEq.layout_env EqEnv, 100);
                 say "(end of equality environment)\n";
                 raise x)
-	  val lvars = lvars_eq @ lvars
-	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
-          val tynames = TyName.tyName_F64 :: tynames (* for optimiser float unboxing *)
-	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
+	  val lvs = lvs_eq @ lvs
+	  val (OEnv1,lvs',cns',tns') = OptLambda.restrict(OEnv,lvs,cns,tns)
+          val lvs = lvs' @ lvs
+          val cns = cns' @ cns
+          val tns = TyName.tyName_F64 :: tns' @ tns (* for optimiser float unboxing *)
+	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvs,tynames=tns,cons=cns,excons=excons})
       in ({NEnv=NEnv1,
            TCEnv=TCEnv1,
 	   EqEnv=EqEnv1,
-	   OEnv=OEnv1}, lvars, tynames, cons, excons)
+	   OEnv=OEnv1}, lvs, tns, cns, excons)
       end
 
     fun subtractPredefinedCons cons =
@@ -171,9 +180,10 @@ structure CompBasisToLamb
           val NEnv1 = LambdaBasics.Normalize.restrict(NEnv,lvars)
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
 	  val lvars = lvars_eq @ lvars
-	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
-	  val tynames = subtractPredefinedTynames tynames
-	  val cons = subtractPredefinedCons cons
+	  val (OEnv1,lvars',cons',tynames') = OptLambda.restrict(OEnv,lvars,cons,tynames)
+          val lvars = lvars' @ lvars
+	  val tynames = subtractPredefinedTynames (tynames' @ tynames)
+	  val cons = subtractPredefinedCons (cons' @ cons)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
       in ({NEnv=NEnv1,
            TCEnv=TCEnv1,

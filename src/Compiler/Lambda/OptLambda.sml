@@ -1923,7 +1923,7 @@ structure OptLambda: OPT_LAMBDA =
 		     List.foldl (fn (lv,acc) =>
 				 case LvarMap.lookup env lv
 				   of SOME res =>
-				     if cross_module_inline (nil, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE]) lv res
+				     if cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE]) lv res
 				       then LvarMap.add(lv,res,acc)
 				     else LvarMap.add(lv,(nil,CUNKNOWN),acc)
 				    | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc))
@@ -1967,17 +1967,46 @@ structure OptLambda: OPT_LAMBDA =
 			of SOME res1 => eq_cv_scheme(res1,res2)
 			 | NONE => false) true ce2
 
-      fun free_contract_env_res(res,cons,tns) = (cons,tns)
+      (* Restrict *)
 
-      fun restrict_contract_env (ce,lvars,cons,tns) =
-	List.foldl (fn (lv,(e,cons,tns)) =>
-		    case LvarMap.lookup ce lv
-		      of SOME res =>
-			let val (cons,tns) = free_contract_env_res(res,cons,tns)
-			in (LvarMap.add(lv,res,e),cons,tns)
-			end
-		       | NONE => die "restrict_contract_env.lv not in env")
-	(LvarMap.empty,cons,tns) lvars
+      fun free_exp (e,(lvs,cns,tns)) =
+          let val (lvs',_) = LambdaBasics.freevars e
+          in (lvs'@lvs,cns,tns)
+          end
+
+      fun free_cv (cv,acc) =
+          case cv of
+              CVAR exp => free_exp (exp,acc)
+            | CRECORD cvs => List.foldl free_cv acc cvs
+            | CUNKNOWN => acc
+            | CCONST exp => free_exp (exp,acc)
+            | CFN {lexp: LambdaExp, large:bool} => free_exp(lexp,acc)
+	    | CFIX {Type: Type, bind: LambdaExp, large: bool} => free_exp(bind,acc)
+            | CBLKSZ _ => acc
+            | CBLK2SZ _ => acc
+            | CRNG _ => acc
+
+      fun free_contract_env_res ((_,cv),acc) =
+          free_cv(cv,acc)
+
+      local
+        fun restrict_contract_env0 (ce,lvs) =
+	    List.foldl (fn (lv,(e,acc)) =>
+		           case LvarMap.lookup ce lv of
+                               SOME res =>
+			       let val acc = free_contract_env_res(res,acc)
+			       in (LvarMap.add(lv,res,e),acc)
+			       end
+		             | NONE => die "restrict_contract_env.lv not in env")
+	               (LvarMap.empty,(nil,nil,nil)) lvs
+        fun clean () = ( reset_lvar_bucket(); reset_excon_bucket() )
+      in
+        fun restrict_contract_env (ce,lvs) =
+            let val () = clean()
+                val (e,(lvs,cns,tns)) = restrict_contract_env0 (ce,lvs)
+            in clean() ; (e,lvs,cns,tns)
+            end handle X => ( clean() ; raise X)
+      end
 
       val pu_contract_env =
 	  let fun toInt (CVAR _) = 0
@@ -3189,14 +3218,17 @@ structure OptLambda: OPT_LAMBDA =
        LvarMap.plus (e5,e5'), LvarMap.plus (e6,e6'))
 
     fun restrict ((inv_eta_env,let_env, unbox_fix_env,uc_env,cenv1,cenv2), lvars, cons, tns) =
-      let val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
-	  val e2 = restrict_let_env(let_env,lvars)
+        let
+	  val (e5,lvs1,cons1,tns1) = restrict_contract_env(cenv1,lvars)
+          val lvars = lvs1 @ lvars
 	  val e3 = restrict_unbox_fix_env(unbox_fix_env,lvars)
 	  val e4 = restrict_uc_env(uc_env,lvars)
-	  val (e5,cons1,tns1) = restrict_contract_env(cenv1,lvars,cons,tns)
-	  val (e6,cons2,tns2) = restrict_contract_env(cenv2,lvars,cons,tns)
+	  val (e6,lvs2,cons2,tns2) = restrict_contract_env(cenv2,lvars)
+          val lvars = lvs2@lvars
+          val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
+	  val e2 = restrict_let_env(let_env,lvars)
       in
-	((e1, e2, e3, e4, e5, e6), cons1 @ cons2, tns1 @ tns2)
+	((e1, e2, e3, e4, e5, e6), lvs1 @ lvs2, cons1 @ cons2, tns1 @ tns2)
       end
 
     val debug_man_enrich = Flags.is_on0 "debug_man_enrich"

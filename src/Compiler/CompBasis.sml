@@ -169,7 +169,10 @@ structure CompBasis: COMP_BASIS =
           val NEnv1 = Normalize.restrict(NEnv,lvars)
           val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
           val lvars = lvars_eq @ lvars
-          val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
+          val (OEnv1,lvars',cons',tynames') = OptLambda.restrict(OEnv,lvars,cons,tynames)
+          val lvars = lvars' @ lvars
+          val cons = cons' @ cons
+          val tynames = tynames' @ tynames
           val tynames = TyName.tyName_F64 :: tynames (* for optimiser float unboxing *)
           val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
           val rse1 = RegionStatEnv.restrict(rse,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
@@ -221,7 +224,10 @@ structure CompBasis: COMP_BASIS =
           val NEnv1 = Normalize.restrict(NEnv,lvars)
           val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
           val lvars = lvars_eq @ lvars
-          val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
+          val (OEnv1,lvars',cons',tynames') = OptLambda.restrict(OEnv,lvars,cons,tynames)
+          val lvars = lvars' @ lvars
+          val cons = cons' @ cons
+          val tynames = tynames' @ tynames
           val tynames = subtractPredefinedTynames tynames
           val cons = subtractPredefinedCons cons
           val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
