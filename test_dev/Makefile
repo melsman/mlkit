@@ -15,7 +15,7 @@ TESTFILES=scratchmem.sml int_first.sml raise_div.sml b3.sml a1.sml exn1.sml exn2
 
 #exception4.sml
 
-TESTFILES_MLB=a.mlb b.mlb c.mlb
+TESTFILES_MLB=a.mlb b.mlb c.mlb xinline.mlb
 
 RI_RESFILES=$(TESTFILES:%.sml=%-ri.res)
 GC_RESFILES=$(TESTFILES:%.sml=%-gc.res)
