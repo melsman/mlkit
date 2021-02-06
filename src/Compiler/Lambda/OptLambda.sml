@@ -439,27 +439,6 @@ structure OptLambda: OPT_LAMBDA =
 		     end
 		 end
 		 andalso eq_lamb0 (LvarMap.add(lv,lv',m)) (s,s')
-(*
-	  | eq_lamb0 m (FIX{functions=[{lvar=lv,tyvars=tvs,Type=t,bind=b}],scope=s},
-			FIX{functions=[{lvar=lv',tyvars=tvs',Type=t',bind=b'}],scope=s'}) =
-		 length tvs = length tvs'
-		 andalso
-		 let
-		     val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs
-		     val S = mk_subst (fn () => "eq_lamb01") (tvs,tv_taus)
-		     val S' = mk_subst (fn () => "eq_lamb02") (tvs',tv_taus)
-		     val t = on_Type S t
-		     val t' = on_Type S' t'
-		 in eq_Type(t,t')
-		     andalso
-		     let
-			 val b = on_LambdaExp S b
-			 val b' = on_LambdaExp S' b'
-		     in eq_lamb0 (LvarMap.add(lv,lv',m)) (b,b')
-		     end
-		 end
-		 andalso eq_lamb0 (LvarMap.add(lv,lv',m)) (s,s')
-*)
 	  | eq_lamb0 _ _ = false
     in
 	fun eq_lamb p = eq_lamb0 LvarMap.empty p
@@ -1075,27 +1054,23 @@ structure OptLambda: OPT_LAMBDA =
 	   | FRAME {declared_lvars,...} => app (fn {lvar,...} => (incr_use lvar; incr_use lvar)) declared_lvars
 	   | _ => app_lamb init e
 
-(*
-      fun is_small_closed_fn lamb =
-	case lamb
-	  of FN _ => small_lamb (!max_inline_size) lamb andalso closed lamb
-	   | _ => false
-*)
-
-      fun noinline lvar =
-          let val s = Lvars.str lvar
-              val postfix = "__noinline__"
-              val i = String.size s - String.size postfix
-              val res = i > 0 andalso
-                        let val ext = String.extract(s,i,NONE)
-                        in postfix = ext
-                        end
-          in res
+      local
+        fun suffix suf lv =
+          let val s = Lvars.str lv
+              val i = String.size s - String.size suf
+          in i > 0 andalso
+             let val ext = String.extract(s,i,NONE)
+             in suf = ext
+             end
           end
+      in
+        fun noinline_lvar lv = suffix "__noinline" lv
+        fun inline_lvar lv = suffix "__inline" lv
+      end
 
       fun is_inlinable_fn lvar lamb =
 	  case lamb of
-              FN _ => always_inline_function lvar orelse small_lamb (max_inline_size()) lamb
+              FN _ => inline_lvar lvar orelse always_inline_function lvar orelse small_lamb (max_inline_size()) lamb
 	    | _ => false
 
       fun is_fn (FN _) = true
@@ -1115,12 +1090,6 @@ structure OptLambda: OPT_LAMBDA =
                       (case buildargs args of
                          SOME(f,instances) => SOME(fn x => PRIM(p,f x), instances)
                        | NONE => NONE)
-(*
-                    | PRIM(p,arg::args) =>
-                      (case build arg of
-                         SOME(f,instances) => SOME(fn x => PRIM(p,f x :: args), instances)
-                       | NONE => NONE)
-*)
                     | _ => NONE
               and buildargs args =
                   case args of
@@ -1643,12 +1612,6 @@ structure OptLambda: OPT_LAMBDA =
           | PRIM(CCALLprim{name="__real_to_f64",...}, [REAL(s,_)]) =>
             (tick "real immed to f64 immed";
              reduce (env,(F64 s,CUNKNOWN)))
-(*
-          | PRIM(CCALLprim{name="__real_to_f64",...},
-                 [PRIM(CCALLprim{name="__f64_to_real",...},[x])]) =>
-            (tick "real unbox o box elimination";
-             reduce (env,(x,CUNKNOWN)))
-*)
           | PRIM(CCALLprim{name="__real_to_f64",...},[e]) =>
             let fun loop e f =
                     case e of
@@ -1771,7 +1734,7 @@ structure OptLambda: OPT_LAMBDA =
 	       end
 	      | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
 	       let val (bind', cv) = contr (env, bind)
-		   val cv' = if noinline lvar then CUNKNOWN
+		   val cv' = if noinline_lvar lvar then CUNKNOWN
                              else if (*is_small_closed_fn*) is_inlinable_fn lvar bind' then CFN{lexp=bind',large=false}
 			     else if is_fn bind' then CFN{lexp=bind',large=true}
                              else if is_unboxed_value bind' then CCONST bind'

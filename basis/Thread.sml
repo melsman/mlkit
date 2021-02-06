@@ -1,8 +1,8 @@
 structure Thread :> THREAD = struct
   type thread = foreignptr
   type 'a t = ((unit->'a) * thread) ref
-  fun get__noinline__ ((ref (f,t0)): 'a t) : 'a = prim("thread_get", t0)
-  fun spawn__noinline__ (f: unit->'a) (k: 'a t -> 'b) : 'b =
+  fun get__noinline ((ref (f,t0)): 'a t) : 'a = prim("thread_get", t0)
+  fun spawn__noinline (f: unit->'a) (k: 'a t -> 'b) : 'b =
       let val rf : (unit -> 'a) ref = ref f
           val fp_f : foreignptr = prim("pointer", !rf)
 
@@ -24,9 +24,9 @@ structure Thread :> THREAD = struct
           val t0 : thread = prim("spawnone", fp_f)
           val t: 'a t = ref (f,t0)
           val res = k t
-          val _ = if !(ref true)            (* make sure the thread has terminated before returning *)
-                  then get__noinline__ t    (* and mimic that, from a type perspective, spawn has *)
-                  else !rf()                (* the effect of calling f *)
+          val _ = if !(ref true)          (* make sure the thread has terminated before returning *)
+                  then get__noinline t    (* and mimic that, from a type perspective, spawn has *)
+                  else !rf()              (* the effect of calling f *)
 
           (* Notice that it is not safe to call `thread_free t0` here
            * as t0 may be live through later calls to `get t`.
@@ -40,6 +40,6 @@ structure Thread :> THREAD = struct
       in res
       end
 
-  fun spawn x = spawn__noinline__ x
-  fun get x = get__noinline__ x
+  fun spawn x = spawn__noinline x
+  fun get x = get__noinline x
 end
