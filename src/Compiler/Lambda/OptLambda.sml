@@ -1379,13 +1379,11 @@ structure OptLambda: OPT_LAMBDA =
            (f64_to_real (f64unop (real_to_f64 x)), CUNKNOWN))
 
       fun reduce (env, (fail as (lamb,cv))) =
-	case lamb
-	  of VAR{lvar,instances,regvars=[]} =>
-	    ((*output(!Flags.log, Lvars.pr_lvar lvar ^ ":" );*)
+	  case lamb of VAR{lvar,instances,regvars=[]} =>
+            ( (*output(!Flags.log, Lvars.pr_lvar lvar ^ ":" );*)
              case lookup_lvar(env,lvar)
 	       of SOME (tyvars,cv) =>
-		 ((*output(!Flags.log, show_cv cv ^ "\n");*)
-                  case cv
+		  (case cv
 		    of CFN {lexp=lamb',large} =>
 		      if large andalso not(Lvars.one_use lvar) then (lamb, CVAR lamb)
 		      else let val S = mk_subst (fn () => "reduce1") (tyvars, instances)
@@ -1884,12 +1882,14 @@ structure OptLambda: OPT_LAMBDA =
 		   val excons = map #1 declared_excons
 		   val env' =
 		     List.foldl (fn (lv,acc) =>
-				 case LvarMap.lookup env lv
-				   of SOME res =>
-				     if cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE]) lv res
-				       then LvarMap.add(lv,res,acc)
-				     else LvarMap.add(lv,(nil,CUNKNOWN),acc)
-				    | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc))
+				    case LvarMap.lookup env lv of
+                                        SOME res =>
+                                        let val xinl = cross_module_inline (lvars, [Excon.ex_SUBSCRIPT,Excon.ex_SIZE]) lv res
+                                        in if xinl
+                                           then LvarMap.add(lv,res,acc)
+				           else LvarMap.add(lv,(nil,CUNKNOWN),acc)
+                                        end
+				      | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc))
 		     LvarMap.empty lvars
 	       in  frame_contract_env := SOME env'
 		 ; app mk_live_excon excons
@@ -1970,6 +1970,32 @@ structure OptLambda: OPT_LAMBDA =
             in clean() ; (e,lvs,cns,tns)
             end handle X => ( clean() ; raise X)
       end
+
+      (* Warn on functions that are specified to be inlined but for
+         which their definitions are not provided in the compiler
+         environments.
+       *)
+
+      fun warn_on_failed_inlines ce1 ce2 : unit =
+        let fun warn lv =
+                print ("** WARNING: variable '" ^ Lvars.pr_lvar lv ^ "' is not inlined. Expressions\n\
+                       \** that are effectful are not inlined and neither are functions that refer\n\
+                       \** to unexported identifiers.\n")
+            fun check cv k =
+                case cv of
+                    CFN _ => ()
+                  | CCONST _ => ()
+                  | _ => k()
+        in LvarMap.Fold (fn ((lv,(_,cv)),()) =>
+                            if inline_lvar lv then
+                              check cv (fn () =>
+                                           case LvarMap.lookup ce2 lv of
+                                               NONE => warn lv
+                                            |  SOME (_,cv) => check cv (fn () => warn lv))
+                            else ()) () ce1
+        end
+
+      (* Serialisation *)
 
       val pu_contract_env =
 	  let fun toInt (CVAR _) = 0
@@ -3255,6 +3281,7 @@ structure OptLambda: OPT_LAMBDA =
 (*	    val _ = prLambdaExp "Before rewriting" lamb *)
 	    val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
 	    val env = (env1,env2,ubenv,ucenv,cenv,cenv2)
+            val () = warn_on_failed_inlines cenv cenv2
 	in
 	    (PGM(DATBINDS db, lamb), env)
 	end
