@@ -6,6 +6,6 @@ signature FORK_JOIN = sig
 
   val alloc  : int -> 'a -> 'a array
 
-  type pspec = int * int (* max parallelism, min sequential work *)
-  val parfor' : pspec -> int * int -> (int -> unit) -> unit
+  type gcs = int * int (* max parallelism, min sequential work *)
+  val parfor' : gcs -> int * int -> (int -> unit) -> unit
 end

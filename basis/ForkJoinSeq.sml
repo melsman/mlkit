@@ -15,7 +15,7 @@ fun pmap f xs = List.map f xs
 
 fun alloc n v = Array.tabulate(n,fn _ => v)
 
-type pspec = int * int (* max parallelism, min sequential work *)
+type gcs = int * int (* max parallelism, min sequential work *)
 fun parfor' (_,G) = parfor G
 
 end

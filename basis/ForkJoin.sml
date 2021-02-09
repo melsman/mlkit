@@ -41,7 +41,7 @@ fun par (f,g) =
 
 fun pair (f,g) (x,y) = par (fn () => f x, fn () => g y)
 
-type pspec = int * int (* max parallelism, min sequential work *)
+type gcs = int * int (* max parallelism, min sequential work *)
 
 fun parfor' (P,G) (lo,hi) (f:int->unit) : unit =
     let val n = hi-lo
