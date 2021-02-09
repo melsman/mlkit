@@ -552,9 +552,9 @@ mlkit_bin_dist:
 	echo 'PREFIX?=/usr/local' > $(CWD)/dist/$(BIN_DIST)/Makefile
 	echo '.PHONY: install' >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	echo 'install:' >> $(CWD)/dist/$(BIN_DIST)/Makefile
-	echo "\t"'for d in $$$$(find * -type d); do install -d "$$(PREFIX)/$$$$d"; done' \
+	printf "\t"'for d in $$$$(find * -type d); do install -d "$$(PREFIX)/$$$$d"; done\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
-	echo "\t"'for f in $$$$(find * -type f | grep -v Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done' \
+	printf "\t"'for f in $$$$(find * -type f | grep -v Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
 
