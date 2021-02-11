@@ -408,7 +408,8 @@ static void mk_from_space()
 #define tag_forward_ptr(x)          ((unsigned long)(x))
 
 // Region pages are of size 1Kb and aligned
-#define get_rp_header(x)            ((Rp *)(((unsigned long)(x)) & 0xFFFFFFFFFFFFFC00))
+//#define get_rp_header(x)            ((Rp *)(((unsigned long)(x)) & 0xFFFFFFFFFFFFFC00))
+#define get_rp_header(x)            ((Rp *)(((unsigned long)(x)) & (~(REGION_PAGE_SIZE_BYTES-1))))
 
 size_t
 size_lobj (size_t tag)
@@ -1836,10 +1837,10 @@ gc(uintptr_t **sp, size_t reg_map)
 	}
 
       fprintf(stderr,"%ldkb(%2.0f%%)+L%zdkb -> %ldkb(%2.0f%%)+L%zdkb, FL:%zdkb, ",
-	      pages_from_space,
+	      (REGION_PAGE_SIZE_BYTES/1024) * pages_from_space,
 	      region_utilize(pages_from_space, bytes_from_space),
 	      lobjs_beforegc / 1024,
-	      pages_to_space,
+	      (REGION_PAGE_SIZE_BYTES/1024) * pages_to_space,
 	      region_utilize(pages_to_space, bytes_to_space),
 	      lobjs_aftergc / 1024,
 	      size_free_list());

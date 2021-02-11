@@ -685,12 +685,12 @@ alloc_lobjs(int n) {
   char *p;
   size_t r;
   size_t sz_bytes;
-  sz_bytes = sizeof(uintptr_t)*n + sizeof(Lobjs) + 1024;
+  sz_bytes = sizeof(uintptr_t)*n + sizeof(Lobjs) + sizeof(Rp);  /* ensure alignment on Rp boundaries */
   p = malloc(sz_bytes);
   if ( p == NULL )
     die("alloc_lobjs: malloc returned NULL");
-  if ( (r = (size_t)p % 1024) ) {
-    lobjs = (Lobjs*)(p + 1024 - r);
+  if ( (r = (size_t)p % sizeof(Rp)) ) {
+    lobjs = (Lobjs*)(p + sizeof(Rp) - r);
   } else {
     lobjs = (Lobjs*)p;
   }
@@ -726,9 +726,9 @@ void callSbrk() {
   /* We must manually insure double alignment. Some operating systems (like *
    * HP UX) does not return a double aligned address...                     */
 
-  /* For GC we require 1Kb alignments, that is the size of a region page! */
+  /* For GC we require alignments according to the size of region pages! */
 
-  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) + 1024 );
+  sb = malloc(BYTES_ALLOC_BY_SBRK + sizeof(Rp) + sizeof(Rp) );
 
   if ( sb == NULL ) {
     perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");

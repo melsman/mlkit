@@ -1,4 +1,7 @@
-structure ForkJoin :> FORK_JOIN = struct
+structure ForkJoin :>
+          sig include FORK_JOIN
+(*              val parfor'__noinline : (int*int->unit) -> gcs -> int*int -> unit *)
+          end = struct
 
 fun alloc (n:int) (v:'a) : 'a array =
     prim ("word_table0", n)
@@ -43,19 +46,27 @@ fun pair (f,g) (x,y) = par (fn () => f x, fn () => g y)
 
 type gcs = int * int (* max parallelism, min sequential work *)
 
-fun parfor' (P,G) (lo,hi) (f:int->unit) : unit =
+fun parfor'__noinline (doit:int*int->unit) (P,G) (lo,hi) : unit =
+    if hi-lo <= 0 then () else
     let val n = hi-lo
-        val m = Int.min(P+1, 1 + (n-1) div G) (* groups *)
-        val k = n div m                   (* group size *)
+        val m = Int.min(P+1, 1 + (n-1) div G) (* blocks *)
+        val k = n div m                   (* block size *)
         fun loop (lo,hi) =
             if lo >= hi then ()
             else let val m = lo+k
-                 in if m >= hi (* last bucket *)
-                    then for (lo,hi) f
-                    else T.spawn (fn () => for (lo,m) f)
+                 in if m >= hi (* last block *)
+                    then doit (lo,hi)
+                    else T.spawn (fn () => doit (lo,m))
                                  (fn _ => loop (m,hi))
                  end
     in loop (lo,hi)
     end
 
+
+fun parfor'__inline gcs (lo,hi) (f:int->unit) : unit =
+    let fun doit (lo,hi) = for (lo,hi) f
+    in parfor'__noinline doit gcs (lo,hi)
+    end
+
+val parfor' = parfor'__inline
 end

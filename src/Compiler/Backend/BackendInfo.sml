@@ -83,6 +83,8 @@ functor BackendInfo(val down_growing_stack : bool) : BACKEND_INFO =
     val size_of_record = RegConst.size_of_record
     fun size_of_handle () = 4
 
+    fun size_region_page () = 8*1024  (* see also Region.h: REGION_PAGE_SIZE_BYTES *)
+
     local
       val region_large_objects = true (* upon change, also change src/Runtime/Makefile *)
       val size_gen = 2
