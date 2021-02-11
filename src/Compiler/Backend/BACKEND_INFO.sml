@@ -44,6 +44,8 @@ signature BACKEND_INFO =
     val size_of_record   : 'a list -> int
     val size_of_handle   : unit -> int
 
+    val size_region_page : unit -> int  (* see also Region.h: REGION_PAGE_SIZE_BYTES *)
+
     val size_of_reg_desc : unit -> int  (* dependent on whether region profiling is enabled *)
 
     val finiteRegionDescSizeP : int     (* Number of words in a finite region

@@ -78,24 +78,29 @@ extern RegionPageMap* rpMap;
  * of words in the header part of each region page.
  *
  * HEADER_WORDS_IN_REGION_PAGE + ALLOCATABLE_WORDS_IN_REGION_PAGE must
- * be one 1Kb - used by GC.
+ * be a power of two (default was 1Kb, but is now 8k). Used by GC, for
+ * instance.
+ *
+ * Remember also to change the function 'size_region_page' in
+ * src/Compiler/Backend/BackendInfo.sml
  */
+
+#define REGION_PAGE_SIZE_BYTES (8*1024)
 
 #ifdef ENABLE_GEN_GC
 #define HEADER_WORDS_IN_REGION_PAGE 3
-#if defined(__LP64__) || (__WORDSIZE == 64)
-#define ALLOCATABLE_WORDS_IN_REGION_PAGE 125
 #else
-#define ALLOCATABLE_WORDS_IN_REGION_PAGE 253
-#endif
-#else /* not(ENABLE_GEN_GC) */
 #define HEADER_WORDS_IN_REGION_PAGE 2
-#if defined(__LP64__) || (__WORDSIZE == 64)
-#define ALLOCATABLE_WORDS_IN_REGION_PAGE 126
-#else
-#define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
-#endif
 #endif /* ENABLE_GEN_GC */
+
+#if defined(__LP64__) || (__WORDSIZE == 64)
+#define WORD_SIZE_BYTES 8
+#else
+#define WORD_SIZE_BYTES 4
+#endif
+
+#define ALLOCATABLE_WORDS_IN_REGION_PAGE ((REGION_PAGE_SIZE_BYTES / WORD_SIZE_BYTES) - HEADER_WORDS_IN_REGION_PAGE)
+
 
 typedef struct rp {
   struct rp *n;                   /* NULL or pointer to next page. */
@@ -307,7 +312,7 @@ typedef Ro* Region;
 #define gen_status(gen)      ((uintptr_t)((gen).fp) & GENERATION_STATUS)
 #define generation(gen)      ((uintptr_t)((gen).fp) & GENERATION)
 #define clear_fp(fp)        ((Rp*)((uintptr_t)(fp) & (UINTPTR_MAX ^ 0x1F)))
-// #define clear_fp(fp)        ((Rp*)((unsigned long)(fp) & 0xFFFFFFE0))
+
 #define is_pairregion(gen)   (rtype(gen) == RTYPE_PAIR)
 #define is_arrayregion(gen)  (rtype(gen) == RTYPE_ARRAY)
 #define is_refregion(gen)    (rtype(gen) == RTYPE_REF)
@@ -319,10 +324,10 @@ typedef Ro* Region;
 #define set_tripleregion(gen) (set_fp((gen),RTYPE_TRIPLE))
 #define set_gen_status_SOME(gen) (set_fp((gen),GENERATION_STATUS))
 #define set_gen_status_NONE(gen) ((gen).fp = (Rp*)(((uintptr_t)((gen).fp)) & (UINTPTR_MAX ^ 0x8)))
-// #define set_gen_status_NONE(gen) ((gen).fp = (Rp*)(((unsigned long)((gen).fp)) & 0xFFFFFFF7))
+
 #define is_gen_status_NONE(gen)  (gen_status(gen) == 0)
 #define set_gen_0(gen)           ((gen).fp = (Rp*)(((uintptr_t)((gen).fp)) & (UINTPTR_MAX ^ 0x10)))
-// #define set_gen_0(gen)           ((gen).fp = (Rp*)(((unsigned long)((gen).fp)) & 0xFFFFFFEF))
+
 #define set_gen_1(gen)           (set_fp((gen),GENERATION))
 #define is_gen_1(gen)            (generation(gen) == GENERATION)
 #else
@@ -353,13 +358,13 @@ of the region and is useful for, among other things, tail recursion).
 /* C ~ 1100, D ~ 1101, E ~ 1110 og F ~ 1111. */
 #define setInfiniteBit(x)   ((x) | 0x1)
 #define clearInfiniteBit(x) ((x) & (UINTPTR_MAX ^ 0x1))
-// #define clearInfiniteBit(x) ((x) & 0xFFFFFFFE)
+
 #define setAtbotBit(x)      ((x) | 0x2)
 #define clearAtbotBit(x)    ((x) & (UINTPTR_MAX ^ 0x2))
-// #define clearAtbotBit(x)    ((x) & 0xFFFFFFFD)
+
 #define setStatusBits(x)    ((x) | 0x3)
 #define clearStatusBits(x)  ((Region)(((uintptr_t)(x)) & (UINTPTR_MAX ^ 0x3)))
-// #define clearStatusBits(x)  ((Region)(((unsigned long)(x)) & 0xFFFFFFFC))
+
 #define is_inf_and_atbot(x) ((((uintptr_t)(x)) & 0x3)==0x3)
 #define is_inf(x)           ((((uintptr_t)(x)) & 0x1)==0x1)
 #define is_atbot(x)         ((((uintptr_t)(x)) & 0x2)==0x2)

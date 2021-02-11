@@ -827,6 +827,8 @@ struct
       end
 
     fun simple_p () = false
+    fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
+
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
         if region_profiling() then
           let val n = n0 + BI.objectDescSizeP
@@ -892,7 +894,7 @@ struct
             I.movq(R tmp_reg1, R I.rax) ::                          (*   rax = tmp_reg1                   *)
             I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
             copy(tmp_reg1, tmp_reg0,
-            I.orq(I "0x3FF", R tmp_reg0) ::
+            I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
             I.addq(I (i2s (8*n)), R tmp_reg1) ::                    (*   tmp_reg1 = tmp_reg1 + 8n         *)
             I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
             I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
@@ -932,7 +934,7 @@ struct
             load_indexed(R tmp_reg1,tmp_reg1,WORDS 0,               (*   tmp_reg1 = tmp_reg1[0]           *)
             I.addq(I "-1", R tmp_reg1) ::                           (*   tmp_reg1 = tmp_reg1 - 1          *)
             copy(tmp_reg1, tmp_reg0,
-            I.orq(I "0x3FF", R tmp_reg0) ::
+            I.orq(I (allocBoundaryMask()), R tmp_reg0) ::
             I.addq(I (i2s (8*n)), R tmp_reg1) ::                    (*   tmp_reg1 = tmp_reg1 + 8n         *)
             I.cmpq(R tmp_reg0, R tmp_reg1) ::                       (*   jmp expand if (tmp_reg0 > tmp_reg1) *)
             I.jg l_expand ::                                        (*        (a-1+8n > boundary-1)       *)
