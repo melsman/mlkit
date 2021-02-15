@@ -81,6 +81,7 @@ ssize_t ceilFloat(ssize_t f);
 ssize_t roundFloat(ssize_t f);
 ssize_t truncFloat(ssize_t f);
 ssize_t divFloat(ssize_t d, ssize_t x, ssize_t y);
+ssize_t remFloat(ssize_t d, ssize_t x, ssize_t y);
 
 ssize_t sqrtFloat(ssize_t d, ssize_t s);
 ssize_t sinFloat(ssize_t d, ssize_t s);
