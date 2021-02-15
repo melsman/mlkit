@@ -497,6 +497,38 @@ remFloat(ssize_t d, ssize_t x, ssize_t y)
   return d;
 }
 
+ssize_t
+realFloor(ssize_t d, ssize_t x)
+{
+  get_d(d) = floor(get_d(x));
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+realCeil(ssize_t d, ssize_t x)
+{
+  get_d(d) = ceil(get_d(x));
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+realTrunc(ssize_t d, ssize_t x)
+{
+  get_d(d) = trunc(get_d(x));
+  set_dtag(d);
+  return d;
+}
+
+ssize_t
+realRound(ssize_t d, ssize_t x)
+{
+  get_d(d) = round(get_d(x));
+  set_dtag(d);
+  return d;
+}
+
 long int
 floorFloat(ssize_t f)
 {

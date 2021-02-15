@@ -22,6 +22,11 @@ signature REAL = sig
   val fromDefault : real -> real
   val fromInt     : int -> real
 
+  val realFloor : real -> real
+  val realCeil  : real -> real
+  val realTrunc : real -> real
+  val realRound : real -> real
+
   val floor : real -> int
   val ceil  : real -> int
   val trunc : real -> int

@@ -39,6 +39,10 @@ __rem_int32ub
 __rem_int31
 divFloat
 remFloat
+realFloor
+realCeil
+realTrunc
+realRound
 sinFloat
 cosFloat
 atanFloat
