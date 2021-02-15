@@ -489,6 +489,14 @@ divFloat(ssize_t d, ssize_t x, ssize_t y)
   return d;
 }
 
+ssize_t
+remFloat(ssize_t d, ssize_t x, ssize_t y)
+{
+  get_d(d) = fmod(get_d(x), get_d(y));
+  set_dtag(d);
+  return d;
+}
+
 long int
 floorFloat(ssize_t f)
 {

@@ -439,6 +439,7 @@ fun pToJs2 name e1 e2 : J.exp =
     | "__rem_int32ub" => J.Prim("%",[e1,e2])
 
     | "divFloat" => J.Prim("/",[e1,e2])
+    | "remFloat" => J.Prim("%",[e1,e2])
     | "__div_f64" => J.Prim("/",[e1,e2])
     | "atan2Float" => callPrim2 "Math.atan2" e1 e2
 

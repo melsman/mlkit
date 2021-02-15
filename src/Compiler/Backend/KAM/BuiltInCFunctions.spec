@@ -38,6 +38,7 @@ __quot_int31
 __rem_int32ub
 __rem_int31
 divFloat
+remFloat
 sinFloat
 cosFloat
 atanFloat

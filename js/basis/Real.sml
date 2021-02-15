@@ -10,6 +10,7 @@ structure Real : REAL =
     fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
 
     fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
+    fun rem (x: real, y: real): real = prim ("remFloat", (x, y))
 
     fun sub_unsafe (s:string,i:int) : char = prim ("__bytetable_sub", (s,i))
 

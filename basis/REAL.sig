@@ -10,6 +10,7 @@ signature REAL = sig
   val -    : real * real -> real
   val *    : real * real -> real
   val /    : real * real -> real
+  val rem  : real * real -> real
   val abs  : real -> real
   val min  : real * real -> real
   val max  : real * real -> real
