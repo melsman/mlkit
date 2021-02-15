@@ -31,7 +31,7 @@
    polymorphic equality is disabled boxed representation must be
    used. */
 
-#define REGION_PAGE_BAG_SIZE 30
+#define REGION_PAGE_BAG_SIZE 100
 #define HEAP_TO_LIVE_RATIO 3.0
 
 #ifdef DEBUG

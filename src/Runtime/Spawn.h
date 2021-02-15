@@ -17,8 +17,6 @@
 #include <pthread.h>
 #include "Region.h"
 
-#define NUM_THREADS	4
-
 typedef struct {
   void *arg;
   int tid;

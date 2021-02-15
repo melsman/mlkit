@@ -421,19 +421,28 @@ alloc_new_block(Gen *gen)
   if ( FREELIST == NULL ) {
     #ifdef PARALLEL
     LOCK_LOCK(FREELISTMUTEX);
-    if ( freelist == NULL ) {
-      callSbrk();
-    }
-    // Now we know there are pages in freelist and none in FREELIST
+    // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
+    // FREELIST; allocate more pages in freelist if necessary, by
+    // calling callSbrk.
+
+    // We know for sure that there are no pages in FREELIST
     if (FREELIST) {
       die("ERROR: alloc_new_block failed; expecting empty FREELIST\n");
     }
-    if ( freelist == NULL ) {
-      die ("ERROR: alloc_new_block failed; expecting non-empty freelist\n");
+
+    for ( int k = REGION_PAGE_BAG_SIZE >> 1 ; k > 0 ;  k-- ) {
+      if ( freelist == NULL ) {
+	callSbrk();
+      }
+      // Now we know there are pages in freelist
+      if ( freelist == NULL ) {
+	die ("ERROR: alloc_new_block failed; expecting non-empty freelist\n");
+      }
+      Rp * fl_tmp = FREELIST;
+      FREELIST = freelist;
+      freelist = freelist->n;
+      FREELIST->n = fl_tmp;
     }
-    FREELIST = freelist;
-    freelist = freelist->n;
-    FREELIST->n = NULL;
     LOCK_UNLOCK(FREELISTMUTEX);
     #else
     callSbrk();
