@@ -225,34 +225,36 @@ thread_free(ThreadInfo* t) {
 
 // TEST CODE
 
-void *BusyWork(ThreadInfo *ti)
-{
-   int i;
-   double result = 0.0;
-   long tid = (long)(ti->arg);
-   printf("Thread %ld starting...\n",tid);
-   for (i=0; i<1000000; i++)
-   {
-      result = result + sin(i) * tan(i);
-   }
-   printf("Thread %ld done. Result = %e\n",tid, result);
-   pthread_exit(ti->arg);
-}
+// #define NUM_THREADS	4
 
-int test_main (int argc, char *argv[])
-{
-  ThreadInfo* threads[NUM_THREADS];
-  long int t;
-  for(t=0; t<NUM_THREADS; t++) {
-    printf("Main: creating thread %ld\n", t);
-    threads[t] = thread_create(BusyWork,(void *)t);
-  }
-  for(t=0; t<NUM_THREADS; t++) {
-    void *value = thread_get(threads[t]);
-    thread_free(threads[t]);
-    threads[t] = NULL;
-    printf("Main: thread %ld returned %ld\n", t, (long)value);
-  }
-  printf("Main: program completed. Exiting.\n");
-  pthread_exit(NULL);
-}
+/* void *BusyWork(ThreadInfo *ti) */
+/* { */
+/*    int i; */
+/*    double result = 0.0; */
+/*    long tid = (long)(ti->arg); */
+/*    printf("Thread %ld starting...\n",tid); */
+/*    for (i=0; i<1000000; i++) */
+/*    { */
+/*       result = result + sin(i) * tan(i); */
+/*    } */
+/*    printf("Thread %ld done. Result = %e\n",tid, result); */
+/*    pthread_exit(ti->arg); */
+/* } */
+
+/* int test_main (int argc, char *argv[]) */
+/* { */
+/*   ThreadInfo* threads[NUM_THREADS]; */
+/*   long int t; */
+/*   for(t=0; t<NUM_THREADS; t++) { */
+/*     printf("Main: creating thread %ld\n", t); */
+/*     threads[t] = thread_create(BusyWork,(void *)t); */
+/*   } */
+/*   for(t=0; t<NUM_THREADS; t++) { */
+/*     void *value = thread_get(threads[t]); */
+/*     thread_free(threads[t]); */
+/*     threads[t] = NULL; */
+/*     printf("Main: thread %ld returned %ld\n", t, (long)value); */
+/*   } */
+/*   printf("Main: program completed. Exiting.\n"); */
+/*   pthread_exit(NULL); */
+/* } */
