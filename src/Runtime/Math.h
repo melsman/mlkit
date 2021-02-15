@@ -80,6 +80,10 @@ ssize_t floorFloat(ssize_t f);
 ssize_t ceilFloat(ssize_t f);
 ssize_t roundFloat(ssize_t f);
 ssize_t truncFloat(ssize_t f);
+ssize_t realFloor(ssize_t d, ssize_t x);
+ssize_t realCeil(ssize_t d, ssize_t x);
+ssize_t realTrunc(ssize_t d, ssize_t x);
+ssize_t realRound(ssize_t d, ssize_t x);
 ssize_t divFloat(ssize_t d, ssize_t x, ssize_t y);
 ssize_t remFloat(ssize_t d, ssize_t x, ssize_t y);
 

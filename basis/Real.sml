@@ -9,6 +9,11 @@ structure Real : REAL =
     fun ceil (x : real) : int = prim ("ceilFloat", x)      (* may raise Overflow *)
     fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
 
+    fun realFloor (x: real) : real = prim ("realFloor", x)
+    fun realCeil (x: real) : real = prim ("realCeil", x)
+    fun realTrunc (x: real) : real = prim ("realTrunc", x)
+    fun realRound (x: real) : real = prim ("realRound", x)
+
     fun (x: real) / (y: real): real = prim ("divFloat", (x, y))
     fun rem (x: real, y: real): real = prim ("remFloat", (x, y))
     fun to_string_gen (s : string) (x : real) : string =
