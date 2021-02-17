@@ -189,6 +189,17 @@ $ ./run
 hello world
 ````
 
+## Trying Without Installing
+
+You can run `mlkit` without installing it, but you should then point
+the environment variable `SML_LIB` at the build directory (which
+contains the `basis` and the `lib` directories) whenever you run
+`mlkit`.  E.g:
+
+```bash
+$ SML_LIB=$PWD bin/mlkit
+```
+
 ## More Information
 
 See the [MLKit home page](http://melsman.github.io/mlkit).
