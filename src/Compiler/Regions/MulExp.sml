@@ -4,7 +4,7 @@ struct
     structure Eff = Effect
     structure R = RType
     structure RSE = RegionStatEnv
-    structure Lvar = Lvars
+    structure Lvars = Lvars
     structure Lam = LambdaExp
     structure RegionExp = RegionExp
     structure PP = PrettyPrint
@@ -36,7 +36,7 @@ struct
 
     fun die s  = Crash.impossible ("MulExp." ^ s)
 
-    type lvar = Lvar.lvar
+    type lvar = Lvars.lvar
     type con = Con.con
     type excon = Excon.excon
     type TyName = TyName.TyName
@@ -74,9 +74,9 @@ struct
     fun layout_sr NOT_YET_DETERMINED = NONE
       | layout_sr (SR{store, fetch}) =
           let val t1 = PP.HNODE{start = "{store: ", finish = "}", childsep = PP.RIGHT " ",
-                          children = map (PP.LEAF o Lvar.pr_lvar) store}
+                          children = map (PP.LEAF o Lvars.pr_lvar) store}
               val t2 = PP.HNODE{start = "{fetch: ", finish = "}", childsep = PP.RIGHT " ",
-                          children = map (PP.LEAF o Lvar.pr_lvar) fetch}
+                          children = map (PP.LEAF o Lvars.pr_lvar) fetch}
           in SOME(t1,t2)
           end
 
@@ -226,7 +226,7 @@ struct
 				      if Eff.eq_effect(rho,p) orelse
                                          List.exists (fn rho' => Eff.eq_effect(rho,rho'))
                                          (R.frv_sigma sigma)
-                                      then Lvar.pr_lvar lvar :: l
+                                      then Lvars.pr_lvar lvar :: l
 				      else l
 				     ) excons_rho TE
 
@@ -236,7 +236,7 @@ struct
 		    map (fn s => " " ^ s) lvars_and_excons_rho) @ ["\n"]
 		 end
 	 in
-            Flags.warn (line (Lvar.pr_lvar lvar
+            Flags.warn (line (Lvars.pr_lvar lvar
 					      ^ "\t has a type scheme with escaping put effects\
 					       \ on region(s): ")
 	                // line (concat (flatten (map report_rho rhos))))
@@ -392,14 +392,14 @@ struct
                          | NONE => die "bad_rhos: no level"
                ) rhos
 
-  type bad_lvars = (Lvar.lvar * (sigma*place)*place list)list
+  type bad_lvars = (Lvars.lvar * (sigma*place)*place list)list
 
   fun bad_lvars(fn_level, TE, lvars) : bad_lvars =
     foldl (fn (lvar, acc) => case RSE.lookupLvar TE lvar of
                   SOME (_,_,_,sigma,p,_,_) =>
                     (case bad_rhos(fn_level, p:: R.frv_sigma sigma) of
                        [] => acc
-                     | l  => (print ("** Lvar " ^ Lvar.pr_lvar lvar ^ " has a type scheme with a region \n\
+                     | l  => (print ("** Lvar " ^ Lvars.pr_lvar lvar ^ " has a type scheme with a region \n\
 		                     \   variable with higher level than the epsilon of the function.\n");
 			      (lvar,(sigma,p), l) :: acc))
                 | NONE => die "bad_lvars: lvar not in scope")
@@ -424,10 +424,10 @@ struct
     let val source_identification =
           case e of FN{pat, ...} =>
             "** Potentially dangling references out of closure for  fn " ^
-              concat(map (fn (lvar,_) => " " ^ Lvar.pr_lvar lvar) pat) ^ ":\n"
+              concat(map (fn (lvar,_) => " " ^ Lvars.pr_lvar lvar) pat) ^ ":\n"
           | _ => die "report_dangling: expression is not a lambda abstraction"
         val bad_lvar_lines =
-             map (fn (lvar,(sigma,p), bad_rhos) => concat["   " ^ Lvar.pr_lvar lvar^ ": " ^ show_rhos bad_rhos ^ "\n"])
+             map (fn (lvar,(sigma,p), bad_rhos) => concat["   " ^ Lvars.pr_lvar lvar^ ": " ^ show_rhos bad_rhos ^ "\n"])
                  l1
         val bad_excon_lines =
              map (fn (excon,(tau,p), bad_rhos) => concat["   " ^ Excon.pr_excon excon^ ": " ^ show_rhos bad_rhos ^ "\n"])
@@ -602,15 +602,16 @@ struct
     let
       open PP
 
-      fun colon_pair(t1, t2) =
+      fun colon_pair (t1, t2) =
            PP.NODE{start = "", finish   ="", indent = 0, childsep = PP.RIGHT ":",
                    children = [t1,t2]}
 
-      fun alloc_string alloc = case (layout_alloc alloc)
-				 of SOME t => let val s = PP.flatten1 t
-					      in if s = "" then "" else " " ^ s
-					      end
-				  | NONE => ""
+      fun maybe_prefix_space s = if s = "" then s else " " ^ s
+
+      fun alloc_string alloc =
+          case layout_alloc alloc of
+              SOME t => PP.flatten1 t
+	    | NONE => ""
 
       fun layList f l = NODE{start = "[", finish = "]", indent = 1, childsep = RIGHT ",",
                              children = map f l}
@@ -645,8 +646,8 @@ struct
 
       fun layMeta metatype = RegionExp.layMeta metatype
 
-      fun layVarMu(x,mu) = if !Flags.print_types then LEAF (concat[Lvar.pr_lvar x, ":",  PP.flatten1(layMu mu)])
-			   else LEAF (Lvar.pr_lvar x)
+      fun layVarMu (x,mu) = if !Flags.print_types then LEAF (concat[Lvars.pr_lvar x, ":",  PP.flatten1(layMu mu)])
+			   else LEAF (Lvars.pr_lvar x)
       fun layPatFn  [] = LEAF("() => ")
         | layPatFn  [(x,mu)] = NODE{start = "", finish = " => ", indent = 0, childsep = NOSEP,
                                     children = [layVarMu(x,mu)]}
@@ -654,9 +655,9 @@ struct
                               children = map layVarMu pat}
 
 
-     fun layVarSigma(lvar,alphas,rhos,epss, tau, rho) =
+     fun layVarSigma start (lvar,alphas,rhos,epss, tau, rho) =
          let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
-             val start:string = Lvar.pr_lvar lvar ^
+             val start:string = start ^ Lvars.pr_lvar lvar ^
                                  (if !Flags.print_types then ":" else "")
              val sigma_rho_t = if print_regions() andalso !Flags.print_types andalso
 				 (print_word_regions() orelse not(isWordRegion rho)) then
@@ -669,42 +670,34 @@ struct
                     childsep = PP.NOSEP, children = [sigma_rho_t]}
          end
 
+     fun layPatLet [] = LEAF("val _")  (* wild card *)
+       | layPatLet [one as (lvar,_,tyvars,ref epss,tau,rho)] =
+         layVarSigma "val " (lvar,tyvars,[],epss,tau,rho)
+       | layPatLet pat = HNODE{start = "val (", finish = ")", childsep = RIGHT",",
+                               children = map (fn (lvar,_,tyvars,ref epss,tau,rho) =>
+                                                  layVarSigma "" (lvar,tyvars,[],epss,tau,rho)) pat}
 
-
-      fun layPatLet [] = LEAF("_")  (* wild card *)
-        | layPatLet [one as (lvar,_,tyvars,ref epss,tau,rho)] =
-             layVarSigma(lvar,tyvars,[],epss,tau,rho)
-        | layPatLet pat = HNODE{start = "(", finish = ")", childsep = RIGHT",",
-                              children = map (fn (lvar,_,tyvars,ref epss,tau,rho) =>
-                                              layVarSigma(lvar,tyvars,[],epss,tau,rho)) pat}
-
-
-    fun layoutSwitch laytrip show_const (SWITCH(lamb,rules,wildcardOpt)) =
-      let
-        fun child(x,lamb) =
-          PP.NODE{start="",finish="",indent=0,
-                  children=[PP.LEAF (show_const x),
-                            laytrip(lamb,0)],
-                  childsep=PP.RIGHT " => "}
-        val t1 = PP.NODE{start="(case ",finish=" ",indent=6, childsep = PP.NOSEP,
-                         children=[laytrip(lamb,0)]}
-        val t2 = PP.NODE{start = "of " , finish = "" (*") (*case*) "*), indent = 3,
-                         childsep=PP.LEFT " | ",
-                         children = (map child rules) @
-                                  (case wildcardOpt of
-                                     NONE => []
-                                   | SOME lamb =>
-                                       [PP.NODE{start="",finish="",indent=0,
-                                                children=[PP.LEAF "_",
-                                                          laytrip(lamb,0)],
-                                                childsep=PP.RIGHT " => "}])}
-
-	val t2' = PP.NODE{start="",finish=") (*case*) ", indent = 3, childsep=PP.NOSEP,
-			  children=[t2]}
-      in
-       PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NOSEP,
-               children = [t1,t2']}
-      end
+    fun layoutSwitch n laytrip show_const (SWITCH(lamb,rules,wildcardOpt)) =
+        let val rules = map (fn (x,lamb) => (show_const x,lamb)) rules @
+                        (case wildcardOpt of
+                             SOME lamb => [("_", lamb)]
+                           | NONE => [])
+            fun child (x,lamb) =
+                PP.NODE{start="", finish="", indent=0,
+                        children=[PP.LEAF x, laytrip(lamb,1)],
+                        childsep=PP.RIGHT " => "}
+            val t1 = PP.NODE{start="case ", finish=" of ", indent=5, childsep=PP.NOSEP,
+                             children=[laytrip(lamb,1)]}
+            val t2 = PP.NODE{start="" , finish="", indent=2,
+                             childsep=PP.LEFT " | ",
+                             children=map child rules}
+        in if n >= 1 then
+             PP.NODE{start="(", finish=")", indent=1, childsep=PP.NOSEP,
+                     children=[t1,t2]}
+           else
+             PP.NODE{start="", finish="", indent=0, childsep=PP.NOSEP,
+                     children=[t1,t2]}
+        end
 
       fun lay_il (lvar_string:string, terminator: string, il, rhos_actuals) : StringTree =
           let val (taus,rhos,epss)= R.un_il(il)
@@ -726,20 +719,20 @@ struct
                    children = get_opt [rho_actuals_t_opt, taus_opt,rhos_opt,epss_opt]}
           end
 
-      fun laypoly(lvar,fix_bound,il,rhos_actuals) =
+      fun laypoly (lvar,fix_bound,il,rhos_actuals) =
           case (fix_bound, R.un_il il)
-           of  (false, ([],[],[])) => LEAF (Lvar.pr_lvar lvar)
-	    | _ => lay_il(Lvar.pr_lvar lvar, "", il, rhos_actuals)
+           of  (false, ([],[],[])) => LEAF (Lvars.pr_lvar lvar)
+	    | _ => lay_il(Lvars.pr_lvar lvar, "", il, rhos_actuals)
 
       fun dont_lay_il (lvar_string:string, terminator: string, il) : StringTree =
           LEAF(lvar_string ^ terminator)
 
-      (* precedence levels: lam : 1
+      (* precedence levels: lam, case, branches : 1
                             + - etc : 2
                             app   : 3 *)
               (* n is precedence of parent - or 0 if no parens around lamb are needed *)
 
-      fun layBin(bop:string, n, t1, t2, SOME a) =
+      fun layBin (bop:string, n, t1, t2, SOME a) =
          (case alloc_string a
 	    of "" => (* put parenthesis, if precedence dictates it *)
 	      if n>=2 then
@@ -758,57 +751,21 @@ struct
 	      else
 		NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT bop,
 		     children = [layTrip(t1,2), layTrip(t2,2)]}
-
-(*
-      and try_bin(lvar, t as TR(UB_RECORD[t1,t2], _, _, _), rhos_actuals as [],n) =
-	(* actual dropped... *)
-	let open Lvar
-	in case primitive lvar
-	     of SOME prim =>
-	       (case prim
-		  of PLUS_INT => layBin(" + ", n, t1, t2, NONE)
-		   | MINUS_INT => layBin(" - ", n, t1, t2, NONE)
-		   | MUL_INT => layBin(" * ", n, t1, t2, NONE)
-		   | LESS_INT => layBin(" < ", n, t1, t2, NONE)
-		   | LESSEQ_INT => layBin(" <= ", n, t1, t2, NONE)
-		   | GREATER_INT => layBin(" > ", n, t1, t2, NONE)
-		   | GREATEREQ_INT => layBin(" >= ", n, t1, t2, NONE)
-		   | LESS_FLOAT => layBin(" < ", n, t1, t2, NONE)
-		   | LESSEQ_FLOAT => layBin(" <= ", n, t1, t2, NONE)
-		   | GREATER_FLOAT => layBin(" > ", n, t1, t2, NONE)
-		   | GREATEREQ_FLOAT => layBin(" >= ", n, t1, t2, NONE)
-		   | _ => die "try_bin1")
-	      | NONE => raise Match
-	end
-	| try_bin(lvar, t as TR(UB_RECORD[t1,t2], _, _, _), rhos_actuals as [rho],n) =
-	let open Lvar
-	in case primitive lvar
-	     of SOME prim =>
-	       (case prim
-		  of PLUS_FLOAT => layBin(" + ", n, t1, t2, SOME rho)
-		   | MINUS_FLOAT => layBin(" - ", n, t1, t2, SOME rho)
-		   | MUL_FLOAT => layBin(" * ", n, t1, t2, SOME rho)
-		   | DIV_FLOAT => layBin(" / ", n, t1, t2, SOME rho)
-		   | _ => die "try_bin2")
-	      | NONE => raise Match
-	end
-	| try_bin _ = raise Match
-*)
-      and layExp(lamb: ('a, 'b, 'c) LambdaExp,n): StringTree =
+      and layExp (lamb: ('a, 'b, 'c) LambdaExp,n): StringTree =
         case lamb of
           VAR{lvar,il,fix_bound=false,rhos_actuals=ref[],plain_arreffs,other} =>  (* fix-bound variables and prims *)
             (case R.un_il(il) of                                             (* are treated below (APP) *)
-               ([],[],[]) => LEAF(Lvar.pr_lvar lvar)
-             | _ => lay_il(Lvar.pr_lvar lvar, "", il, []))    (* rhos_actuals empty if lvar is not fix-bound *)
+               ([],[],[]) => LEAF(Lvars.pr_lvar lvar)
+             | _ => lay_il(Lvars.pr_lvar lvar, "", il, []))    (* rhos_actuals empty if lvar is not fix-bound *)
 
         | VAR{lvar,il,fix_bound=false,rhos_actuals=ref should_not_happen,
                    plain_arreffs,other} =>  (* fix-bound variables and prims *)
             (case R.un_il(il) of                                             (* are treated below (APP) *)
-               ([],[],[]) => LEAF(Lvar.pr_lvar lvar)
-             | _ => lay_il(Lvar.pr_lvar lvar, "", il, should_not_happen))    (* rhos_actuals should be empty if lvar is not fix-bound *)
+               ([],[],[]) => LEAF(Lvars.pr_lvar lvar)
+             | _ => lay_il(Lvars.pr_lvar lvar, "", il, should_not_happen))    (* rhos_actuals should be empty if lvar is not fix-bound *)
 
         | VAR{lvar, il, fix_bound=true, rhos_actuals = ref rhos_actuals, plain_arreffs,other} =>
-            lay_il(Lvar.pr_lvar lvar, "", il, rhos_actuals) ^^^ layout_other other
+            lay_il(Lvars.pr_lvar lvar, "", il, rhos_actuals) ^^^ layout_other other
 
         | INTEGER(i, t, a) => LEAF(IntInf.toString i ^^ layout_alloc a)
         | WORD(w, t, a) => LEAF("0x" ^ IntInf.fmt StringCvt.HEX w ^^ layout_alloc a)
@@ -819,20 +776,38 @@ struct
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ",
                     children = map (fn trip => layTrip(trip,0)) args}
         | CON0{con, il, aux_regions,alloc} => (* nullary constructor *)
-            let
-               val alloc_s = alloc_string alloc
-(*                   case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => "" *)
-            in dont_lay_il(Con.pr_con con, alloc_s, il)
+            let val alloc_s = alloc_string alloc
+            in dont_lay_il(Con.pr_con con, maybe_prefix_space alloc_s, il)
             end
         | CON1({con, il, alloc},trip) => (* unary constructor *)
-            let
-               val alloc_s = alloc_string alloc
-(*                   case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => "" *)
-               val t1 = dont_lay_il(Con.pr_con con, alloc_s, il)
-            in
-             PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
-                     children = [t1, layTrip(trip,3)]}
-            end
+          let fun trylist e =
+                  case e of
+                      CON0{con,alloc,...} =>
+                      if Con.eq(con,Con.con_NIL) then SOME([],alloc)
+                      else NONE
+                    | CON1({con,...},TR(RECORD(a,[t1,TR(e2,_,_,_)]),_,_,_)) =>
+                      if Con.eq(con,Con.con_CONS) then
+                        case trylist e2 of
+                            SOME(ts,_) => SOME (t1::ts,a)
+                          | NONE => NONE
+                      else NONE
+                    | _ => NONE
+          in case trylist lamb of
+                 SOME(ts,alloc) =>
+                 let val l = layList (fn t => layTrip(t,0)) ts
+                     val alloc_s = alloc_string alloc
+                 in if print_regions() andalso alloc_s <> "" then
+                      PP.NODE{start="", finish="", indent = 0, childsep = PP.RIGHT " ",
+                              children = [l, PP.LEAF alloc_s]}
+                    else l
+                 end
+               | NONE =>
+                 let val alloc_s = alloc_string alloc
+                     val t1 = dont_lay_il(Con.pr_con con, maybe_prefix_space alloc_s, il)
+                 in PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
+                            children = [t1, layTrip(trip,3)]}
+                 end
+          end
         | DECON({con, il},trip) => (* destruction *)
             let
                val t1 = dont_lay_il("decon_" ^ Con.pr_con con , "", il)
@@ -845,7 +820,7 @@ struct
              PP.LEAF(Excon.pr_excon excon)
         | EXCON(excon, SOME (alloc,t)) => (* unary exception constructor *)
              let
-               val alloc_s = alloc_string alloc
+               val alloc_s = maybe_prefix_space (alloc_string alloc)
              in
                PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
                        children = [PP.LEAF(Excon.pr_excon excon ^ alloc_s), layTrip(t,3)]}
@@ -865,21 +840,17 @@ struct
                      children = [layTrip(trip,3)]}
         | FN{pat,body,free,alloc}=> layLam((pat,body,alloc), n, "")
         | APP(NONE,_,TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2) =>
-           ((* try_bin(lvar,t2,rhos_actuals,n)
-            handle Match => *)
            let
                   (*        f il (exp)
                                       OR
                             f il
                               (exp)
                   *)
-
 	     val t1 = laypoly(lvar,fix_bound,il,rhos_actuals)
           in
              PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
                      children = [t1, layTrip(t2,3)]}
           end
-         )
         | APP(NONE,_,t1, t2) =>
            NODE{start = if n>3 then "(" else "",
                 finish = if n>3 then ")" else "",
@@ -904,7 +875,7 @@ struct
                 finish = if n>3 then ")" else "",
                 childsep = RIGHT " ", indent = 1,
                 children = [layTrip(t1,3), layTrip(t2,4)]}
-        | EXCEPTION _ => layout_let_fix_and_exception lamb
+        | EXCEPTION _ => layout_let_fix_region_and_exception n lamb
         | HANDLE(t1,t2) =>
            NODE{start = if n>=2 then "(" else "",
                 finish = if n>=2 then ")" else "",
@@ -915,10 +886,10 @@ struct
                 finish = if n>=3 then ")" else "",
                 childsep = NOSEP, indent = 6,
                 children = [layTrip(t1,2)]}
-        | LET{k_let,pat, bind, scope} => layout_let_fix_and_exception lamb
-        | FIX _ => layout_let_fix_and_exception lamb
+        | LET{k_let,pat, bind, scope} => layout_let_fix_region_and_exception n lamb
+        | FIX _ => layout_let_fix_region_and_exception n lamb
         | REF(alloc, t) =>
-            let val s = alloc_string alloc
+            let val s = maybe_prefix_space (alloc_string alloc)
             in  PP.NODE{start = if n>=3 then "(ref" ^ s ^ " "
                                 else "ref" ^ s ^ " ",
                         finish = if n>=3 then ")" else "",
@@ -936,15 +907,8 @@ struct
                         children = [layTrip(t1,2), layTrip(t2,2)]}
             end
         | DROP(t) => layTrip(t,n)
-(*
-	    PP.NODE{start = if n>=3 then "(drop "
-			    else "drop ",
-                    finish = if n>=3 then ")" else "",
-		    indent = 6, childsep = PP.NOSEP,
-		    children = [layTrip(t,4)]}
-*)
         | EQUAL({mu_of_arg1,mu_of_arg2, alloc}, arg1, arg2) =>
-            let val eq = if print_regions() then  " =" ^ alloc_string alloc ^ " " else " = "
+            let val eq = if print_regions() then  " =" ^ maybe_prefix_space(alloc_string alloc) ^ " " else " = "
                 val ty = if !(Flags.print_types)
                            then concat["(* domain of = is: ",
                                         PP.flatten1(layMu mu_of_arg1), "*",
@@ -960,57 +924,90 @@ struct
 	    let val rhos_for_result_sts = if print_regions()
 	                                  then map (PP.LEAF o alloc_string o #1) rhos_for_result
 	                                  else []
-                fun prettyCcallName name =
-                    case name of
-                        "__minus_f64" => SOME "minus_f64"
-                      | "__plus_f64" => SOME "plus_f64"
-                      | "__mul_f64" => SOME "mul_f64"
-                      | "__div_f64" => SOME "div_f64"
-                      | "__max_f64" => SOME "max_f64"
-                      | "__min_f64" => SOME "min_f64"
-                      | "__neg_f64" => SOME "neg_f64"
-                      | "__abs_f64" => SOME "abs_f64"
-                      | "__sqrt_f64" => SOME "sqrt_f64"
-                      | "__minus_real" => SOME "minus_real"
-                      | "__plus_real" => SOME "plus_real"
-                      | "__mul_real" => SOME "mul_real"
-                      | "__div_real" => SOME "div_real"
-                      | "__max_real" => SOME "max_real"
-                      | "__min_real" => SOME "min_real"
-                      | "__neg_real" => SOME "neg_real"
-                      | "__abs_real" => SOME "abs_real"
-                      | "__sqrt_real" => SOME "sqrt_real"
-                      | "__int_to_f64" => SOME "int_to_f64"
-                      | "__real_to_f64" => SOME "real_to_f64"
-                      | "__f64_to_real" => SOME "f64_to_real"
-                      | "__blockf64_sub_f64" => SOME "blockf64_sub_f64"
-                      | "__plus_int31" => SOME "plus_int31"
-                      | "__minus_int31" => SOME "minus_int31"
-                      | "__mul_int31" => SOME "mul_int31"
-                      | "__div_int31" => SOME "div_int31"
-                      | "__less_int31" => SOME "less_int31"
-                      | "__greater_int31" => SOME "greater_int31"
-                      | "__lesseq_int31" => SOME "lesseq_int31"
-                      | "__greatereq_int31" => SOME "greatereq_int31"
-                      | "__less_real" => SOME "less_real"
-                      | "__greater_real" => SOME "greater_real"
-                      | "__lesseq_real" => SOME "lesseq_real"
-                      | "__greatereq_real" => SOME "greatereq_real"
-                      | "__less_f64" => SOME "less_f64"
-                      | "__greater_f64" => SOME "greater_f64"
-                      | "__lesseq_f64" => SOME "lesseq_f64"
-                      | "__greatereq_f64" => SOME "greatereq_f64"
+                fun drop__ n =
+                    if size n > 2 andalso String.sub(n,0) = #"_" andalso String.sub(n,1) = #"_"
+                    then SOME(String.extract(n,2,NONE))
+                    else NONE
+
+                fun conv n =
+                    case n of
+                        "plus" => SOME "+"
+                      | "minus" => SOME "-"
+                      | "mul" => SOME "*"
+                      | "div" => SOME "/"
+                      | "less" => SOME "<"
+                      | "lesseq" => SOME "<="
+                      | "greater" => SOME ">"
+                      | "greatereq" => SOME ">="
+                      | "equal" => SOME "="
                       | _ => NONE
-                val (start, preF) =
-                    case prettyCcallName name of
-                        SOME n => (n ^ "(", fn cs => cs)
-                      | NONE => ("ccall(", fn cs => PP.LEAF name :: cs)
-	    in PP.NODE {start = start, finish = ")"
-			^ (if !Flags.print_types then ":" ^ PP.flatten1(layMu mu_result) else ""),
-			indent = 6, childsep = PP.RIGHT ", ",
-			children = preF(rhos_for_result_sts
-		                        @ (map (fn t => layTrip(t,0)) args))}
-	    end
+
+                fun check ty =
+                    case ty of
+                        "f64" => true
+                      | "real" => true
+                      | "int31" => true
+                      | "int32ub" => true
+                      | "int64ub" => true
+                      | "word32ub" => true
+                      | "word64ub" => true
+                      | _ => false
+
+                fun try_infix name =
+                    case drop__ name of
+                        NONE => NONE
+                      | SOME n =>
+                        case String.tokens (fn c => c = #"_") n of
+                            [opr,ty] => if check ty then conv opr
+                                        else NONE
+                          | _ => NONE
+
+                fun print_without_ccall name =
+                    case name of
+                        "__max_f64" => true
+                      | "__min_f64" => true
+                      | "__neg_f64" => true
+                      | "__abs_f64" => true
+                      | "__sqrt_f64" => true
+                      | "__max_real" => true
+                      | "__min_real" => true
+                      | "__neg_real" => true
+                      | "__abs_real" => true
+                      | "__sqrt_real" => true
+                      | "__int_to_f64" => true
+                      | "__real_to_f64" => true
+                      | "__f64_to_real" => true
+                      | "__blockf64_sub_f64" => true
+                      | "__xorb_word32ub" => true
+                      | "__word64ub_to_word32ub" => true
+                      | "__word32ub_to_int64ub" => true
+                      | "__shift_right_unsigned_word32ub" => true
+                      | "__shift_left_word32ub" => true
+                      | "__andb_word32ub" => true
+                      | "table_size" => true
+                      | "concatStringML" => true
+                      | "word_sub0" => true
+                      | "word_update0" => true
+                      | "word_table0" => true
+                      | _ => false
+                fun wrap s opr = s ^ opr ^ s
+            in case (rhos_for_result, try_infix name, args) of
+                   ([], SOME opr, [t1,t2]) => layBin(wrap " " opr, n, t1, t2, NONE)
+                 | _ =>
+                   let val start = if print_without_ccall name
+                                   then (case drop__ name of
+                                             SOME n => n
+                                           | NONE => name) ^ "("
+                                   else "$" ^ name ^ "("
+                       val ty = if !Flags.print_types then ":" ^ PP.flatten1(layMu mu_result)
+                                else ""
+	           in PP.NODE {start = start,
+                               finish = ")" ^ ty,
+			       indent = 2, childsep = PP.RIGHT ", ",
+			       children = rhos_for_result_sts
+		                          @ (map (fn t => layTrip(t,0)) args)}
+	           end
+            end
         | EXPORT ({name, mu_arg, mu_res}, arg) =>
 	    let
 	    in PP.NODE {start = "_export(" ^ name, finish = ")"
@@ -1039,34 +1036,12 @@ struct
                       indent = size fcn + 2, childsep = PP.NOSEP,
                       children = [aux_regions_t,layTrip(t,0)]}
            end
-        | LETREGION{B, rhos = ref l, body} =>
-           if print_regions()
-           then
-            (case  l  of
-               [] => layTrip(body,n)
-            | _ (*binders*) =>
-                 let
-                   val binders: StringTree list = layHseq layout_bind l
-                   val t1 =
-                     NODE{start = "letregion ", finish = "", childsep = NOSEP, indent = 10,
-                          children = [HNODE{start = "", finish = "", childsep = RIGHT", ",
-                                            children = binders}]}
-                   val t2 =
-                     NODE{start = "in ", finish = "", childsep = NOSEP, indent = 3,
-                          children = [layTrip(body,0)]}
-                   val t3 =
-                     NODE{start = "end (*", finish = "*)", childsep = NOSEP, indent =  6,
-                          children = [HNODE{start = "", finish = "", childsep = RIGHT", ",
-                                            children = binders}]}
-                 in NODE{start = "", finish = "", indent = 0, childsep = RIGHT" ", children = [t1,t2,t3]}
-                 end
-               )
-            else layTrip(body,n)
-        | SWITCH_I {switch,precision} => layoutSwitch layTrip IntInf.toString switch
-        | SWITCH_W {switch,precision} => layoutSwitch layTrip (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
-        | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
-        | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
-        | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
+        | LETREGION{B, rhos = ref l, body} => layout_let_fix_region_and_exception n lamb
+        | SWITCH_I {switch,precision} => layoutSwitch n layTrip IntInf.toString switch
+        | SWITCH_W {switch,precision} => layoutSwitch n layTrip (fn w => "0x" ^ IntInf.fmt StringCvt.HEX w) switch
+        | SWITCH_S(sw) => layoutSwitch n layTrip (fn s => s) sw
+        | SWITCH_C(sw) => layoutSwitch n layTrip Con.pr_con sw
+        | SWITCH_E(sw) => layoutSwitch n layTrip Excon.pr_excon sw
         | FRAME{declared_lvars, declared_excons} =>
              let val l1 = map layout_declared_lvar
                               declared_lvars
@@ -1079,13 +1054,13 @@ struct
 
       and layout_declared_lvar {lvar, sigma, place, other} =
 	if not(print_word_regions()) andalso isWordRegion place then
-	  NODE{start = Lvar.pr_lvar lvar ^ ": ", finish = "",
+	  NODE{start = Lvars.pr_lvar lvar ^ ": ", finish = "",
 	       indent = 5, childsep = NOSEP,
 	       children = [if !Flags.print_types then
 			     R.mk_lay_sigma omit_region_info sigma
 			   else LEAF "_"]}
 	else
-	  NODE{start = Lvar.pr_lvar lvar ^ ": (", finish = ")",
+	  NODE{start = Lvars.pr_lvar lvar ^ ": (", finish = ")",
 	       indent = 5, childsep = RIGHT",",
 	       children = [if !Flags.print_types then
 			     R.mk_lay_sigma omit_region_info sigma
@@ -1133,55 +1108,61 @@ struct
                       indent=1, childsep = PP.NOSEP,
                       children=[first_line,layTrip(body,1)]}
           end
-      and layout_let_fix_and_exception lexp =
-          let
-            val inInfo = ref ""
-            fun layout_rec lexp =
+      and layout_let_fix_region_and_exception n lexp =
+          let val inInfo = ref ""
+              fun layout_rec lexp =
                   case lexp of
-                    LET{k_let,pat , bind, scope = t2 as TR(e2,_,_,_)} =>
-                        let
-                          val (binds, body) = layout_rec e2
+                      LET{k_let,pat , bind, scope = t2 as TR(e2,_,_,_)} =>
+                      let val (binds, body) = layout_rec e2
                           val _ = inInfo := "(* let *)"
                           val pat' = map (fn (lvar,il,tyvars,epss,ty,p,_) =>(lvar,il,tyvars,epss,ty,p)) pat
-                        in
-                           (mk_valbind(pat',bind)::binds, body)
-                        end
-                  | FIX({free,shared_clos,functions,scope = t2 as TR(e2, _,_,_)}) =>
-                        let
-                          val (binds', body) = layout_rec e2
+                      in (mk_valbind(pat',bind)::binds, body)
+                      end
+                    | FIX({free,shared_clos,functions,scope = t2 as TR(e2, _,_,_)}) =>
+                      let val (binds', body) = layout_rec e2
                           val _ = inInfo := "(* fix *)"
-                        in
-                          (mk_mutual_binding (layout_alloc shared_clos,rev functions):: binds', body)
-                        end
-                  | EXCEPTION(excon, nullary, mu, alloc, scope as TR(e2, _,_,_)) =>
-                        let
-                          val (binds', body) = layout_rec e2
+                      in (mk_mutual_binding (layout_alloc shared_clos,rev functions):: binds', body)
+                      end
+                    | EXCEPTION(excon, nullary, mu, alloc, scope as TR(e2, _,_,_)) =>
+                      let val (binds', body) = layout_rec e2
                           val _ = inInfo := "(* exn *)"
-                        in
-(*                        ((append_info_with_name omit_region_info " (* exn value or name " " *)" info  *)
-                           (mk_excon_binding(excon,nullary, layout_alloc alloc, mu)::binds', body)
-                        end
-		  | LETREGION{B,rhos=ref [],body=TR(body,_,_,_)} => layout_rec body
-                  | _ => ([],layExp(lexp,0))
-
-           val (l, body) = layout_rec lexp
-           val bindings =  NODE{start = "", finish = "", childsep = RIGHT "; ", indent = 0, children = l}
-          in
-            PP.NODE{start= "let ",
-                    finish=" end " (* ^ (!inInfo) *),   (*martin*)
-                    indent=4,
-                    children=[bindings,body],
-                    childsep=LEFT (" in " (* ^ (!inInfo) *) )} (*martin*)
+                      in (* ((append_info_with_name omit_region_info " (* exn value or name " " *)" info  *)
+                        (mk_excon_binding(excon,nullary, layout_alloc alloc, mu)::binds', body)
+                      end
+                    | LETREGION{B, rhos = ref l, body=TR(e2,_,_,_)} =>
+                      if not(print_regions()) orelse List.null l then layout_rec e2 else
+                      let val (binds', body) = layout_rec e2
+                          val _ = inInfo := "(* region *)"
+                          fun mk_region_binding l =
+                              let val binders: StringTree list = layHseq layout_bind l
+                              in NODE{start = "region ", finish = "", childsep = NOSEP, indent = 10,
+                                      children = [HNODE{start = "", finish = "", childsep = RIGHT", ",
+                                                        children = binders}]}
+                              end
+                      in (mk_region_binding l :: binds', body)
+                      end
+                    | _ => ([],lexp)
+          in case layout_rec lexp of
+                 ([], body) => layExp(body,n)
+               | (l, body) =>
+                 let val bindings = NODE{start = "", finish = "", childsep = RIGHT "; ", indent = 0, children = l}
+                 in PP.NODE{start= "let ",
+                            finish=" end" (* ^ (!inInfo) *),   (*martin*)
+                            indent=4,
+                            children=[bindings,layExp(body,0)],
+                            childsep=LEFT (" in " (* ^ (!inInfo) *) )} (*martin*)
+                 end
           end
 
-      and mk_valbind(pat, t) =
-        let
-            val child1 = layPatLet pat
-         in
-            NODE{start = "val ",finish="",childsep=RIGHT " = ",
-                 indent=4,  children=[child1, layTrip(t,0)] }
+      and layIndent2 t = NODE{start="",finish="",indent=2,children=[t],
+                               childsep=NOSEP}
+      and mk_valbind (pat, t) =
+        let val child1 = layPatLet pat
+        in NODE{start="", finish="", childsep=RIGHT " = ",
+                indent=0, children=[child1, layIndent2(layTrip(t,0))]}
         end
-      and mk_excon_binding(excon, nullary, alloc_t, mu) =
+
+      and mk_excon_binding (excon, nullary, alloc_t, mu) =
             (* exception EXCON : mu  (* exn value or name at RHO *) or
                excpetion EXCON : mu
             *)
@@ -1192,11 +1173,12 @@ struct
                  indent=4,  children=[LEAF(Excon.pr_excon excon), LEAF ":", layMu mu,
                                       LEAF("(* exn value or name " ^ PP.flatten1 t ^ " *)")]}
         )
-      and  mk_mutual_binding(opt_alloc, functions) =
-        let fun mk_fix({lvar,occ,tyvars,rhos,epss,Type, rhos_formals= ref rhos_formals,
-                        bound_but_never_written_into,
-			bind as TR(FN{pat, body, ...},_,_,_),other})  (no, rest_of_mutual_binding) =
-              (*
+
+      and mk_mutual_binding (opt_alloc, functions) =
+        let fun mk_fix ({lvar,occ,tyvars,rhos,epss,Type, rhos_formals= ref rhos_formals,
+                         bound_but_never_written_into,
+			 bind as TR(FN{pat, body, ...},_,_,_),other})  (no, rest_of_mutual_binding) =
+                (*
 
                    fun fljadsfj <: sigma> <at rho> <[rho1, ..., rho_k]> (x_1, ..., x_n)  =
                        -------------------------------------------------------------------
@@ -1222,11 +1204,11 @@ struct
                                                   children = layHseq layout_bind l})
                                       else NONE
                           | _ => NONE
-                     val value_formals = PP.HNODE{start="(", finish = ")= ", childsep = PP.RIGHT ", ",
-                                                  children = map (fn (lvar,_) => PP.LEAF(Lvar.pr_lvar lvar)) pat}
+                     val value_formals = PP.HNODE{start="(", finish = ") = ", childsep = PP.RIGHT ", ",
+                                                  children = map (fn (lvar,_) => PP.LEAF(Lvars.pr_lvar lvar)) pat}
                      val body_t = layTrip(body, 0)
                      val t1 = PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
-                                      children = PP.LEAF (Lvar.pr_lvar lvar)::
+                                      children = PP.LEAF (Lvars.pr_lvar lvar)::
                                                  get_opt[sigma_t_opt, opt_alloc, rho_formals_opt,dropped_rho_formals_opt, SOME(value_formals)]}
                     in
                       PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NOSEP,
@@ -1249,19 +1231,19 @@ struct
     end
 
 
-  fun layoutLambdaExp(layout_alloc: ('a -> StringTree option))
-                     (layout_alloc_short: ('a -> StringTree option))
-                     (layout_binder: ('b -> StringTree option))
-                     (layout_other : 'c -> StringTree option)
-                     (e: ('a, 'b, 'c)LambdaExp) :StringTree =
-            #1(mkLay(not(print_regions()))
-                  layout_alloc layout_alloc_short layout_binder layout_other) e
+  fun layoutLambdaExp (layout_alloc: ('a -> StringTree option))
+                      (layout_alloc_short: ('a -> StringTree option))
+                      (layout_binder: ('b -> StringTree option))
+                      (layout_other : 'c -> StringTree option)
+                      (e: ('a, 'b, 'c)LambdaExp) :StringTree =
+      #1(mkLay(not(print_regions()))
+              layout_alloc layout_alloc_short layout_binder layout_other) e
 
   exception Lookup
 
   fun lookup env lvar =
     let fun loop [] = raise Lookup
-          | loop ((lvar',tr')::rest) = if Lvar.eq(lvar,lvar') then tr' else loop rest
+          | loop ((lvar',tr')::rest) = if Lvars.eq(lvar,lvar') then tr' else loop rest
     in loop env
     end
 
@@ -1273,7 +1255,7 @@ struct
       SWITCH(eval env tr0,
              map (fn (c, tr) => (c, eval [] tr)) match,
              case t_opt of NONE => NONE | SOME t => SOME(eval [] t))
-    fun e_to_t(e') = TR(e',mu,phi,psi)
+    fun e_to_t e' = TR(e',mu,phi,psi)
   in
     case e of
       VAR{lvar, ...} => (lookup env lvar handle Lookup => tr)
@@ -1337,7 +1319,7 @@ struct
     | FRAME f => tr
   end
 
-  fun k_evalPgm(PGM{expression = tr, export_datbinds,import_vars,export_vars,export_basis,export_Psi}) =
+  fun k_evalPgm (PGM{expression = tr, export_datbinds,import_vars,export_vars,export_basis,export_Psi}) =
       PGM{expression = eval [] tr,
           export_datbinds=export_datbinds,
           import_vars = import_vars,
@@ -1345,28 +1327,28 @@ struct
           export_basis = export_basis,
           export_Psi = export_Psi}
 
-  fun layoutLambdaTrip(layout_alloc: ('a -> StringTree option))
+  fun layoutLambdaTrip (layout_alloc: ('a -> StringTree option))
+                       (layout_alloc_short: ('a -> StringTree option))
+                       (layout_binder: ('b -> StringTree option))
+                       (layout_other : 'c -> StringTree option)
+                       (t: ('a, 'b, 'c)trip) :StringTree =
+      #2(mkLay(not(print_regions()))
+              layout_alloc layout_alloc_short layout_binder
+              layout_other)
+        (if print_K_normal_forms() then t else eval [] t)
+
+
+
+  fun layoutLambdaPgm (layout_alloc: ('a -> StringTree option))
                       (layout_alloc_short: ('a -> StringTree option))
                       (layout_binder: ('b -> StringTree option))
-                      (layout_other : 'c -> StringTree option)
-                      (t: ('a, 'b, 'c)trip) :StringTree =
-            #2(mkLay(not(print_regions()))
-                      layout_alloc layout_alloc_short layout_binder
-                      layout_other)
-              (if print_K_normal_forms() then t else eval [] t)
-
-
-
-  fun layoutLambdaPgm(layout_alloc: ('a -> StringTree option))
-                     (layout_alloc_short: ('a -> StringTree option))
-                     (layout_binder: ('b -> StringTree option))
-                     (layout_other: ('c -> StringTree option))
-                     (p as PGM{expression = trip_in as TR(lamb,meta,rea,_),
-                               export_datbinds = datbinds as RegionExp.DATBINDS dblist,
-			       import_vars,
-			       export_vars,
-                               export_basis,
-                               export_Psi}):StringTree =
+                      (layout_other: ('c -> StringTree option))
+                      (p as PGM{expression = trip_in as TR(lamb,meta,rea,_),
+                                export_datbinds = datbinds as RegionExp.DATBINDS dblist,
+			        import_vars,
+			        export_vars,
+                                export_basis,
+                                export_Psi}):StringTree =
       let
         val layout_sigma = R.mk_lay_sigma  (not(print_regions()))
         val (layExp,layTrip,layMus,layMeta) = mkLay(not(print_regions()))
@@ -1484,10 +1466,10 @@ struct
           RegionExp.VAR{lvar, il_r, fix_bound} =>
              let val (_,rhos,eff_nodes) = R.un_il(#1(!il_r))
 		 val arreffs = map (fn eps => (eps, Eff.mk_phi eps)) eff_nodes
-                               handle _ => die ("VAR (mk_phi failed), lvar = " ^ Lvar.pr_lvar lvar)
+                               handle _ => die ("VAR (mk_phi failed), lvar = " ^ Lvars.pr_lvar lvar)
 		 val r  = Mul.lookup_efenv(EE, lvar)
                                handle _ => die ("VAR (lookup_efenv failed), lvar = "
-                                                ^ Lvar.pr_lvar lvar)
+                                                ^ Lvars.pr_lvar lvar)
 	     in
 	       (VAR{lvar=lvar, il = #1(!il_r) , plain_arreffs = arreffs,
                     fix_bound=fix_bound,rhos_actuals=ref rhos, other = r}, dep)
@@ -1687,7 +1669,7 @@ struct
   local
     val r = ref 0
   in
-    fun fresh _ = (r:= !r + 1; Lvar.new_named_lvar ("k" ^ Int.toString(!r)))
+    fun fresh _ = (r:= !r + 1; Lvars.new_named_lvar ("k" ^ Int.toString(!r)))
   end
 
   exception Abort
@@ -1729,7 +1711,7 @@ struct
                 in [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
                 end
               | RegionExp.RaisedExnBind => []
-              | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
+              | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvars.pr_lvar lvar ^ ". Metatype is " ^
 		          PP.flatten1 (RegionExp.layMeta mu))
       end
 
@@ -1956,7 +1938,7 @@ struct
   in
      (case (e1,e2) of
         (VAR{lvar=lvar1, ...}, VAR{lvar=lvar2,...}) =>
-            Lvar.eq(lvar1,lvar2)
+            Lvars.eq(lvar1,lvar2)
       | (INTEGER(i,t,_), INTEGER(i',t',_)) => i=i'
       | (WORD(w,t,_), WORD(w',t',_)) => w=w'
       | (STRING(s,_), STRING(s',_)) => s=s'
@@ -1965,17 +1947,17 @@ struct
       | (UB_RECORD ts1, UB_RECORD ts2) =>
            eq_list eq (ts1,ts2)
       | (FN{pat = pat1, body = body1, ...}, FN{pat = pat2, body = body2, ...}) =>
-           eq_list (fn ((lvar1,_), (lvar2,_)) => Lvar.eq(lvar1,lvar2)) (pat1,pat2) andalso
+           eq_list (fn ((lvar1,_), (lvar2,_)) => Lvars.eq(lvar1,lvar2)) (pat1,pat2) andalso
            eq(body1,body2)
       | (LETREGION{B = r1, rhos = r1', body= body1}, LETREGION{B = r2, rhos = r2', body= body2}) =>
            r1 = r2 andalso r1' = r2' andalso eq(body1,body2)
       | (LET{pat=pat1,bind=bind1,...}, LET{pat=pat2,bind=bind2,...}) =>
-           eq_list (fn ((lvar1, _, _, _, _, _, _), (lvar2,_,_,_,_,_, _)) => Lvar.eq(lvar1,lvar2)) (pat1,pat2)
+           eq_list (fn ((lvar1, _, _, _, _, _, _), (lvar2,_,_,_,_,_, _)) => Lvars.eq(lvar1,lvar2)) (pat1,pat2)
            andalso
            eq(bind1,bind2)
       | (FIX{functions=functions1, scope = scope1, ...}, FIX{functions=functions2, scope = scope2, ...}) =>
            eq_list (fn ({lvar=lvar1,bind=bind1,...} , {lvar=lvar2,bind=bind2,...}) =>
-                           Lvar.eq(lvar1,lvar2) andalso eq(bind1,bind2)) (functions1,functions2)
+                           Lvars.eq(lvar1,lvar2) andalso eq(bind1,bind2)) (functions1,functions2)
            andalso eq(scope1,scope2)
       | (APP(ck1,sr1,t1,t1'), APP(ck2,sr2,t2,t2')) =>
            eq(t1,t2) andalso eq(t1',t2')

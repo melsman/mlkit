@@ -1185,8 +1185,11 @@ structure OptLambda: OPT_LAMBDA =
 	    | WORD (_,t) => if tag_values() then (not(eq_Type(t, word32Type)) andalso
                                                   not(eq_Type(t, word64Type)))
 			    else true
+            | F64 _ => true
 	    | PRIM(CONprim {con,...},nil) => is_boolean con
 	    | _ => false
+
+      fun constfold_f64 () = false
 
       fun constantFolding (env:env) lamb fail =
           let val opt =
@@ -1299,6 +1302,41 @@ structure OptLambda: OPT_LAMBDA =
                                   | "__orb_word63" => SOME(WORD(IntInf.orb(v1,v2),t))
                                   | "__orb_word64b" => SOME(WORD(IntInf.orb(v1,v2),t))
                                   | "__orb_word64ub" => SOME(WORD(IntInf.orb(v1,v2),t))
+                                  | _ => NONE
+                             end
+                           | [F64 s1,F64 s2] =>
+                             if not(constfold_f64()) then NONE
+                             else
+                             let fun oppc opr =
+                                     case (Real.fromString s1, Real.fromString s2) of
+                                         (SOME r1, SOME r2) => SOME(if opr(r1,r2) then lexp_true else lexp_false)
+                                       | _ => NONE
+                                 fun opp opr =
+                                     case (Real.fromString s1, Real.fromString s2) of
+                                         (SOME r1, SOME r2) => SOME(F64(Real.fmt (StringCvt.FIX(SOME 10)) (opr(r1,r2))))
+                                       | _ => NONE
+                             in case name of
+                                    "__minus_f64" => opp Real.-
+                                  | "__plus_f64" => opp Real.+
+                                  | "__mul_f64" => opp Real.*
+                                  | "__div_f64" => opp Real./
+                                  | "__less_f64" => oppc Real.<
+                                  | "__greater_f64" => oppc Real.>
+                                  | "__lesseq_f64" => oppc Real.<=
+                                  | "__greatereq_f64" => oppc Real.>=
+                                  | _ => NONE
+                             end
+                           | [F64 s] =>
+                             if not(constfold_f64()) then NONE
+                             else
+                             let fun opp opr =
+                                     case Real.fromString s of
+                                         SOME r => SOME(F64(Real.fmt (StringCvt.EXACT) (opr r)))
+                                       | _ => NONE
+                             in case name of
+                                    "__neg_f64" => opp Real.~
+                                  | "__abs_f64" => opp Real.abs
+                                  | "__sqrt_f64" => opp Math.sqrt
                                   | _ => NONE
                              end
                            | [STRING(s,NONE)] =>
@@ -1629,9 +1667,10 @@ structure OptLambda: OPT_LAMBDA =
                                PRIM(CCALLprim{name="__f64_to_real",...},_) => true
                              | _ => false
                    in if simple_nonexpanding e
-                         andalso List.all (is_f64_to_real o #2) es
-                         andalso (case eopt of SOME e => is_f64_to_real e
-                                             | NONE => true)
+                         andalso let val es = case eopt of SOME e => e::map #2 es
+                                                         | NONE => map #2 es
+                                 in List.exists (is_f64_to_real) es
+                                 end
                       then
                         ( tick "switch real_to_f64"
                         ; reduce(env,
