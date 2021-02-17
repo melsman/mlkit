@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <errno.h>
+#include <string.h>
 #include "Locks.h"
 
 // #define PARALLEL_DEBUG
@@ -116,7 +117,7 @@ thread_new(void* (*f)(ThreadInfo*), ThreadInfo* ti) {
 
   rc = pthread_create(&(ti->thread), &attr, (void* (*)(void*))f, (void*)ti);
   if (rc) {
-    printf("ERROR; return code from pthread_create() is %d\n", rc);
+    printf("ERROR; return code from pthread_create() is %d (%s)\n", rc, strerror(rc));
     exit(-1);
   }
   pthread_attr_destroy(&attr);
@@ -131,7 +132,7 @@ thread_join(pthread_t t) {
   tdebug1("[Entering thread_join - t = %p]\n",t);
   rc = pthread_join(t, &value);
   if (rc) {
-    printf("ERROR; return code from pthread_join() is %d; EINVAL=%d, ESRCH=%d, EDEADLK=%d\n", rc, EINVAL, ESRCH, EDEADLK);
+    printf("ERROR; return code from pthread_join() is %d (%s)\n", rc, strerror(rc));
     exit(-1);
   }
   tdebug2("[Exiting thread_join: completed join with thread %ld having a value of %ld]\n",(long)0,(long)value);
