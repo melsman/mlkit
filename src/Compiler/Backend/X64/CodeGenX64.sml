@@ -1663,6 +1663,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun allocate C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
           ccall_stub("__allocate", "alloc", [tmp_reg1, tmp_reg0], true, C)
 
+        fun allocate_unprotected C = (* args in tmp_reg1 and tmp_reg0; result in tmp_reg1. *)
+            if parallelism_p() andalso par_alloc_unprotected_p() then
+              ccall_stub("__allocate_unprotected", "alloc_unprotected", [tmp_reg1, tmp_reg0], true, C)
+            else C
+
         fun resetregion C =
           ccall_stub("__reset_region", "resetRegion", [tmp_reg1], true, C)
 
@@ -1896,7 +1901,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.ret :: C))))))))))))
 
         val init_link_code = (main_insts o raise_insts o
-                              toplevel_handler o allocate o resetregion o
+                              toplevel_handler o allocate o allocate_unprotected o resetregion o
                               overflow_stub o gc_stub o proftick) nil
         fun data_begin C =
             if gc_p() then

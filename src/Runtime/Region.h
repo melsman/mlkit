@@ -408,9 +408,15 @@ void deallocateRegionsUntil_X64(Region rAddr);
 #endif
 
 uintptr_t *alloc (Region r, size_t n);
-uintptr_t *allocGen (Gen *gen, size_t n);
 uintptr_t *alloc_new_block(Gen *gen);
 void callSbrk();
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+uintptr_t *alloc_unprotected (Region r, size_t n);
+uintptr_t *allocGen (Gen *gen, size_t n, int protect_p);
+#else
+uintptr_t *allocGen (Gen *gen, size_t n);
+#endif
 
 #ifdef ENABLE_GC_OLD
 void callSbrkArg(size_t no_of_region_pages);

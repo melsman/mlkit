@@ -788,7 +788,12 @@ void callSbrk() {
  *  malloc.                                                             *
  *----------------------------------------------------------------------*/
 inline uintptr_t *
-allocGen (Gen *gen, size_t n) {
+allocGen (Gen *gen, size_t n
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+	  , int protect_p
+#endif
+	  ) {
   uintptr_t *t1;
   uintptr_t *t2;
   uintptr_t *t3;
@@ -822,7 +827,9 @@ allocGen (Gen *gen, size_t n) {
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-      LOCK_LOCK(GLOBALALLOCMUTEX);
+      if (protect_p) {
+	LOCK_LOCK(GLOBALALLOCMUTEX);
+      }
 #endif
       Lobjs* lobjs;
       r = get_ro_from_gen(*gen);
@@ -846,7 +853,9 @@ allocGen (Gen *gen, size_t n) {
 #endif
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
-      LOCK_UNLOCK(GLOBALALLOCMUTEX);
+      if (protect_p) {
+	LOCK_UNLOCK(GLOBALALLOCMUTEX);
+      }
 #endif
 
       // set the constant bit so that GC won't run
@@ -862,84 +871,88 @@ allocGen (Gen *gen, size_t n) {
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
 
-  if ( 0 ) {  // simple mutex-based locking (assumes simple_p is true in CodeGenUtilX64.sml)
-    LOCK_LOCK(GLOBALALLOCMUTEX);
+  if (protect_p) {
+
+    if ( 0 ) {  // simple mutex-based locking (assumes simple_p is true in CodeGenUtilX64.sml)
+      LOCK_LOCK(GLOBALALLOCMUTEX);
+      t1 = gen->a;
+      t2 = t1 + n;
+      t3 = rpBoundary(t1);
+      if (t2 > t3) {
+#if defined(PROFILING) || defined(ENABLE_GC)
+	for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
+#endif
+	t1 = alloc_new_block(gen);
+	t2 = t1 + n;
+      }
+      gen->a = t2;
+      LOCK_UNLOCK(GLOBALALLOCMUTEX);
+    } else {
+
+      // Partial lock-free atomic allocation
+    start:
+      t1 = gen->a;
+      t2 = t1 + n;
+      t3 = rpBoundary(t1);
+      if (t2 <= t3) {
+	if (! __atomic_compare_exchange(&(gen->a), &t1, &t2, FALSE,
+					__ATOMIC_SEQ_CST,
+					__ATOMIC_SEQ_CST)) {
+	  goto start;  // goto start if gen->a <> t1
+	}
+      } else {
+	// t2 > t3  -- not enough space for object
+	LOCK_LOCK(GLOBALALLOCMUTEX);
+	t1 = gen->a;
+	t2 = t1 + n;
+	t3 = rpBoundary(t1);
+	if (t2 <= t3) {
+	  // now there is space; some other thread has allocated a page - try again
+	  LOCK_UNLOCK(GLOBALALLOCMUTEX);
+	  goto start;
+	}
+	// t2 > t3
+	if (! __atomic_compare_exchange(&(gen->a), &t1, &t3, FALSE,
+					__ATOMIC_SEQ_CST,
+					__ATOMIC_SEQ_CST)) {
+	  LOCK_UNLOCK(GLOBALALLOCMUTEX);
+	  goto start; // goto start if gen->a <> t1
+	}
+	// after the above atomic op, assembler alloc in another thread cannot win the race
+#if defined(PROFILING) || defined(ENABLE_GC)
+	/* insert zeros in the rest of the current region page;
+	 * mael 2019-01-28: why is this necessary when just GC is enabled?
+	 * WELL, we need it for printing statistics with -verbose_gc... */
+	for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
+#endif
+	t1 = alloc_new_block(gen);
+	t2 = t1+n;
+	asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
+	gen->a = t2;
+	LOCK_UNLOCK(GLOBALALLOCMUTEX);
+      }
+    }
+  } else { // no protection
+#endif
     t1 = gen->a;
     t2 = t1 + n;
     t3 = rpBoundary(t1);
     if (t2 > t3) {
 #if defined(PROFILING) || defined(ENABLE_GC)
+      /* insert zeros in the rest of the current region page;
+       * mael 2019-01-28: why is this necessary when just GC is enabled?
+       * WELL, we need it for printing statistics with -verbose_gc... */
       for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
 #endif
-      t1 = alloc_new_block(gen);
-      t2 = t1 + n;
+      gen->a = alloc_new_block(gen);
+      t1 = gen->a;
+      t2 = t1+n;
     }
     gen->a = t2;
-    LOCK_UNLOCK(GLOBALALLOCMUTEX);
-  } else {
 
-    // Partial lock-free atomic allocation
- start:
-  t1 = gen->a;
-  t2 = t1 + n;
-  t3 = rpBoundary(t1);
-  if (t2 <= t3) {
-    if (! __atomic_compare_exchange(&(gen->a), &t1, &t2, FALSE,
-				    __ATOMIC_SEQ_CST,
-				    __ATOMIC_SEQ_CST)) {
-      goto start;  // goto start if gen->a <> t1
-    }
-  } else {
-    // t2 > t3  -- not enough space for object
-    LOCK_LOCK(GLOBALALLOCMUTEX);
-    t1 = gen->a;
-    t2 = t1 + n;
-    t3 = rpBoundary(t1);
-    if (t2 <= t3) {
-      // now there is space; some other thread has allocated a page - try again
-      LOCK_UNLOCK(GLOBALALLOCMUTEX);
-      goto start;
-    }
-    // t2 > t3
-    if (! __atomic_compare_exchange(&(gen->a), &t1, &t3, FALSE,
-				    __ATOMIC_SEQ_CST,
-				    __ATOMIC_SEQ_CST)) {
-      LOCK_UNLOCK(GLOBALALLOCMUTEX);
-      goto start; // goto start if gen->a <> t1
-    }
-    // after the above atomic op, assembler alloc in another thread cannot win the race
-#if defined(PROFILING) || defined(ENABLE_GC)
-    /* insert zeros in the rest of the current region page;
-     * mael 2019-01-28: why is this necessary when just GC is enabled?
-     * WELL, we need it for printing statistics with -verbose_gc... */
-    for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+  } // no protection
 #endif
-    t1 = alloc_new_block(gen);
-    t2 = t1+n;
-    asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
-    gen->a = t2;
-    LOCK_UNLOCK(GLOBALALLOCMUTEX);
-  }
-
-  }
-
-#else
-  t1 = gen->a;
-  t2 = t1 + n;
-  t3 = rpBoundary(t1);
-  if (t2 > t3) {
-    #if defined(PROFILING) || defined(ENABLE_GC)
-       /* insert zeros in the rest of the current region page;
-	* mael 2019-01-28: why is this necessary when just GC is enabled?
-	* WELL, we need it for printing statistics with -verbose_gc... */
-       for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
-    #endif
-    gen->a = alloc_new_block(gen);
-    t1 = gen->a;
-    t2 = t1+n;
-  }
-  gen->a = t2;
-#endif /* PARALLEL_GLOBAL_ALLOC_LOCK */
 
   #ifdef ENABLE_GC
   #ifdef CHECK_GC
@@ -956,8 +969,20 @@ allocGen (Gen *gen, size_t n) {
 }
 
 uintptr_t *alloc (Region r, size_t n) {
-  return allocGen(&(clearStatusBits(r)->g0),n);
+  return allocGen(&(clearStatusBits(r)->g0),n
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+		  , TRUE
+#endif
+		  );
 }
+
+#ifdef PARALLEL_GLOBAL_ALLOC_LOCK
+uintptr_t *alloc_unprotected (Region r, size_t n) {
+  return allocGen(&(clearStatusBits(r)->g0),n
+		  , FALSE
+		  );
+}
+#endif
 
 /*----------------------------------------------------------------------*
  *resetRegion:                                                          *
