@@ -155,6 +155,13 @@ structure ExecutionX64: EXECUTION =
 
     val parallelism_p = Flags.is_on0 "parallelism"
 
+    val _ = Flags.add_bool_entry
+	{long="parallelism_alloc_unprotected", short=SOME "par0", neg=false,
+	 menu=["Control","parallelism allocation unprotected"], item=ref false,
+	 desc="When enabled, allocation into a region is not\n\
+          \guaranteed to be atomic."}
+
+    val par_alloc_unprotected_p = Flags.is_on0 "parallelism_alloc_unprotected"
 
     local val default = ""
     in
@@ -335,6 +342,7 @@ structure ExecutionX64: EXECUTION =
       val gengc_p = Flags.is_on0 "generational_garbage_collection"
       val region_inference = Flags.is_on0 "region_inference"
       val parallelism_p = Flags.is_on0 "parallelism"
+      val par_alloc_unprotected_p = Flags.is_on0 "parallelism_alloc_unprotected"
     in
       fun maybe_prefix_RI s =
           if region_inference() then "RI_" ^ s
@@ -356,7 +364,11 @@ structure ExecutionX64: EXECUTION =
 		    | (false,     false,  true,               _)     => maybe_prefix_RI "PROF"
 		    | (false,     false,  false,              _)     => if region_inference() then "RI"
                                                                         else "NOGC"
-              val subdir = if parallelism_p() then subdir ^ "_PAR" else subdir
+              val subdir = if parallelism_p() then
+                             if par_alloc_unprotected_p() then
+                               subdir ^ "_PAR0"
+                             else subdir ^ "_PAR"
+                           else subdir
               val subdir = case Flags.get_string_entry "mlb-subdir" of
                                "" => subdir
                              | x => if CharVector.all Char.isAlphaNum x then subdir ^ "_" ^ x

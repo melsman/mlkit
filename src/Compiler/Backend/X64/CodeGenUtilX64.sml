@@ -29,6 +29,7 @@ struct
   val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
   fun parallelism_p () : bool = Flags.is_on "parallelism"
+  fun par_alloc_unprotected_p () : bool = Flags.is_on "parallelism_alloc_unprotected"
 
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
@@ -827,6 +828,7 @@ struct
       end
 
     fun simple_p () = false
+
     fun allocBoundaryMask () = "0x" ^ Int.fmt StringCvt.HEX (BI.size_region_page() - 1)  (* e.g. 0x3FF (1023) *)
 
     fun alloc_kill_tmp01 (t:reg,n0:int,size_ff,pp:LS.pp,C) =
@@ -866,7 +868,7 @@ struct
             I.lab l ::                                   (*     tmp_reg1 and tmp_reg0; result  *)
             copy(tmp_reg1,t,C))))                        (*     in tmp_reg1.                   *)
           end
-        else if parallelism_p() then
+        else if parallelism_p() andalso not(par_alloc_unprotected_p()) then
           let val n = n0
               val l = new_local_lab "return_from_alloc"
               val l_expand = new_local_lab "alloc_expand"
@@ -913,6 +915,10 @@ struct
           let val n = n0
               val l = new_local_lab "return_from_alloc"
               val l_expand = new_local_lab "alloc_expand"
+              val allocate_lab =
+                  if parallelism_p() andalso par_alloc_unprotected_p() then
+                    NameLab "__allocate_unprotected"
+                  else NameLab "__allocate"
               fun maybe_update_alloc_period C =
                   if gc_p() then
                     I.movq(L(NameLab "alloc_period"), R tmp_reg0) ::
@@ -926,7 +932,7 @@ struct
                        I.pop(R tmp_reg1) ::                         (*   pop region ptr                   *)
                        I.push(LA l) ::                              (*   push continuation label          *)
                        move_immed(IntInf.fromInt n, R tmp_reg0,     (*   tmp_reg0 = n                     *)
-                       I.jmp(L(NameLab "__allocate")) :: nil))      (*   jmp to __allocate with args in   *)
+                       I.jmp(L allocate_lab) :: nil))      (*   jmp to __allocate with args in   *)
           in
             copy(t,tmp_reg1,                                        (*   tmp_reg1 = t                     *)
             I.andq(I (i2s (~4)), R tmp_reg1) ::                     (*   tmp_reg1 = clearBits(tmp_reg1)   *)

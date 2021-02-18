@@ -1,5 +1,15 @@
 ## MLKit NEWS
 
+* mael 2021-02-17: Preliminary support for fork-join based
+  task-parallelism. See the `par-benchmarks` folder in the
+  [mlkit-bench](http://github.com/melsman/mlkit-bench) github
+  repository for examples.
+
+* mael 2021-02-17: Prettier priniting of multiplicity terms (e.g.,
+  -Pcee).
+
+### MLKit version 4.5.7 is released
+
 * mael 2020-11-09: Fixed error with respect to `-report_gc` and
   `-verbose_gc` (issue #50).
 
