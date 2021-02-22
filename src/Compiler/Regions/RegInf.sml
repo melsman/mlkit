@@ -63,21 +63,20 @@ struct
   fun observeDelta x = Effect.observeDelta x
   fun popAndClean B  = Effect.popAndClean B
 
-  fun Below(B, mus) =
+  fun Below (B, mus) =
     let val free_rhos_and_epss = ann_mus mus []
-        val B' = foldl  (uncurry (Effect.lower(Effect.level B - 1))) B free_rhos_and_epss
+        val B' = foldl (uncurry (Effect.lower(Effect.level B - 1))) B free_rhos_and_epss
                  handle _ => die "Below.lower failed\n"
     in
         popAndClean(B')
             handle _ => die "Below.popAndClean failed\n"
     end
 
-
-  fun retract(B, body as Exp.TR(e, Exp.Mus mus, phi),
-              delta_phi_body: Effect.delta_phi,
-              discharged_basis: effect list ref,
-              discharged_phi: effect list ref,
-              old_effect_of_letregion): cone * Effect.delta_phi =
+  fun retract (B, body as Exp.TR(e, Exp.Mus mus, phi),
+               delta_phi_body: Effect.delta_phi,
+               discharged_basis: effect list ref,
+               discharged_phi: effect list ref,
+               old_effect_of_letregion): cone * Effect.delta_phi =
         let
           (*val () = print "[Retract..."*)
           val (B_discharge,B_keep) = Below(B, mus)
@@ -309,10 +308,9 @@ struct
        | Exp.LETREGION_B{B = B1, discharged_phi, body} =>
            let
              val discharged_basis = !B1
-             val B = pushLayer(discharged_basis,B) handle _ =>
-                       die "pushLayer failed\n"
+             val B = pushLayer(discharged_basis,B)
+                     handle _ => die "pushLayer failed\n"
              val (B, delta_phi_body) = R(B,rse,body)
-
            in
              retract(B, body, delta_phi_body, B1, discharged_phi, phi)
            end

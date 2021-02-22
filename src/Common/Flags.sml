@@ -687,7 +687,6 @@ local
   val gc = ref false
   val gengc = ref false
   fun off() = (gc := false;
-	       preserve_tail_calls := false;
 	       dangling_pointers := true;
                Directory.turn_on "aggresive_opt";
 	       tag_values := false)

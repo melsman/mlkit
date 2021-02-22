@@ -527,18 +527,18 @@ struct
   (* remove "effect" with "key" from "cone" at "level" *)
 
   fun remove (effect, level, key, cone as (n, c)): cone=
-    case Cone.lookup c (!level) of
+    case Cone.lookup c level of
          NONE => die "remove: (no such level in cone)"
-       | SOME layer => (case ConeLayer.remove(key,layer) of
-           SOME layer' => (n,Cone.add(!level,layer',c))
-                                    (* replaces old layer*)
-         | _ => die ("remove: failed to remove effect " ^ PP.flatten1 (layout_effect effect) ^
-		     "\nfrom cone at level " ^ Int.toString (!level) ^
-		     "\n(no key " ^ Int.toString key ^ " in cone)" ^
-		     "\n(key(effect) = " ^
-		     (case get_key_of_eps_or_rho effect of
-                          NONE => "NONE"
-			| SOME k => Int.toString k)))
+       | SOME layer =>
+         case ConeLayer.remove(key,layer) of
+             SOME layer' => (n,Cone.add(level,layer',c)) (* replaces old layer*)
+           | _ => die ("remove: failed to remove effect " ^ PP.flatten1 (layout_effect effect) ^
+		       "\nfrom cone at level " ^ Int.toString level ^
+		       "\n(no key " ^ Int.toString key ^ " in cone)" ^
+		       "\n(key(effect) = " ^
+		       (case get_key_of_eps_or_rho effect of
+                            NONE => "NONE"
+			  | SOME k => Int.toString k))
 
   (* add "effect" with "key" to "cone" at "level" *)
 
@@ -607,7 +607,6 @@ struct
           val layer = ConeLayer.fromSortedList l (ConeLayer.mkEmpty())
       in (n+1, Cone.add(n+1, layer, c))
       end
-
 
   (* pop topmost layer of cone *)
   fun pop ((n,c):cone): coneLayer * cone =
@@ -1182,7 +1181,7 @@ tracing *)
                                                           RegVar.pr rv ^ " is forced out of scope.")
                                     in raise Report.DeepError (report0 // report)
                                     end
-                        val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
+                        val cone' = remove(effect,n,!key,cone) (* take node out of cone *)
 		        val _  = l:= newlevel
 		        val cone'' = add(effect, newlevel, !key,cone')
                                      (* put node back in cone at lower level *)
@@ -1848,19 +1847,6 @@ tracing *)
      val sort_ae = sort
   end
 
-  (* mk_phi(eps_node): returns list of atomic effects in the effect which has
-     eps_node as its primary effect variable. *)
-
-  fun mk_phi eps_node =
-      case G.find_info eps_node of
-          EPS{represents = SOME l, ...} => l
-        | UNION{represents = SOME l} => l
-        | PUT  => [eps_node]
-        | GET  => []
-	| WORDEFFECT => []
-        | RHO _ => []
-        | _ => die "mk_phi"
-
   fun visit_eps_or_rho node acc =
     let val i = G.find_info node
         val r = G.find_visited node
@@ -2059,12 +2045,27 @@ tracing *)
            raise exn)
       end
 
+  (* mk_phi(eps_node): returns list of atomic effects in the effect which has
+     eps_node as its primary effect variable. *)
+
+  fun mk_phi eps_node =
+      case G.find_info eps_node of
+          EPS{represents = SOME l, ...} => l
+        | UNION{represents = SOME l} => l
+        | PUT  => [eps_node]
+        | GET  => []
+	| WORDEFFECT => []
+        | RHO _ => []
+        | EPS _ => die "mk_phi.EPS"
+        | UNION _ => die "mk_phi.UNION"
+
   fun represents eps =
       case G.find_info eps of
 	  EPS{represents = SOME l, ...} => l
 	| _ => (say "No info for eps\n";
 		say_eps eps;
 		die ("represents"))
+
 end
 
 (*

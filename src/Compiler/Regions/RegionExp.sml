@@ -547,11 +547,11 @@ old*)
                       children = [aux_regions_t,layTrip(t,0)]}
            end
         | LETREGION_B{B = ref [], body,...} => layTrip(body,n)
-        | LETREGION_B{B, body,...} =>
+        | LETREGION_B{B, body, ...} =>
             (case Eff.layoutEtas (!B)  of
                [] => layTrip(body,n)
             | binders =>
-                 let
+              let
                    val t1 =
                      NODE{start = "letregion ", finish = " ", childsep = NOSEP, indent = 10,
                           children = [HNODE{start = "", finish = "", childsep = RIGHT", ",

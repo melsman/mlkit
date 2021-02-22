@@ -210,17 +210,20 @@ struct
 
   datatype cont = TAIL | NOTAIL
 
-  fun retract (B, t as E'.TR(e, E'.Mus mus, phi), cont) =
-    if false (*preserve_tail_calls()*) andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
-      let val free_rhos_and_epss = R.ann_mus mus []
-          val B = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
-			     B free_rhos_and_epss
+  fun retract (toplevel:bool) (B, t as E'.TR(e, E'.Mus mus, phi), cont) =
+      if toplevel then (B,t,cont)
+      else if (*preserve_tail_calls()*) false andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
+        let val B = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
+			       B (R.ann_mus mus [])
+            val B = List.foldl (uncurry (Eff.lower(Eff.level B - 1)))
+		               B (Eff.topLayer B)
+
 (*	  val _ = app (fn effect =>
 		       let val effect = if Eff.is_get effect orelse Eff.is_put effect then Eff.rho_of effect
 					else effect
 		       in Eff.unify_with_toplevel_effect effect
 		       end) (Eff.topLayer B) *)
-	  val B = List.foldl (fn (eff,B) => Eff.lower 1 eff B) B (Eff.topLayer B)
+(*	  val B = List.foldl (fn (eff,B) => Eff.lower 1 eff B) B (Eff.topLayer B) *)
 (*
 	  val phi' = mkUnion([])
 	  val (discharged_phi,_) = observeDelta(Eff.level B - 1, Eff.Lf[phi],phi')
@@ -234,20 +237,25 @@ struct
           val B = List.foldl (fn (eff,B) => lower 1 eff B) B discharged_phi
 *)
 (*	  val B = Eff.restrain B *)
-      in (#2 (Eff.pop B), t, TAIL)
-      end
-    else
-    let
-      val (B_discharge,B_keep) = Below(B, mus)
-      val phi' = Eff.mkUnion([])
-      val (discharged_phi,_) = Eff.observeDelta(Eff.level B_keep, Eff.Lf[phi],phi')
-      (* phi' updated to contain observed effect *)
-    in (B_keep, E'.TR(E'.LETREGION_B{B= ref B_discharge,
-                                     discharged_phi = ref discharged_phi,
-                                     body = t}, E'.Mus mus, phi'),
-	NOTAIL)
-    end
-    | retract (B, t, c) = (B, t, c)
+        in (#2 (Eff.pop B), t, TAIL)
+        end
+      else
+        let
+          val (B_discharge,B_keep) = Below(B, mus)
+          val phi' = Eff.mkUnion([])
+          val (discharged_phi,_) = Eff.observeDelta(Eff.level B_keep, Eff.Lf[phi],phi')
+                                                   (* phi' updated to contain observed effect *)
+        in (B_keep, E'.TR(E'.LETREGION_B{B= ref B_discharge,
+                                         discharged_phi = ref discharged_phi,
+                                         body = t}, E'.Mus mus, phi'),
+	    cont)
+        end
+    | retract toplevel (B, t as E'.TR(_,E'.Frame _,_), c) =
+      if toplevel then (B, t, c)
+      else die "retract.Frame"
+    | retract toplevel (B, t as E'.TR(_,E'.RaisedExnBind,_), c) =
+      if toplevel then (B, t, c)
+      else die "retract.RaisedExnBind"
 
   val count_RegEffClos = ref 0 (* for statistics (toplas submission) *)
 
@@ -330,6 +338,26 @@ struct
           (A1, tau', il)
       end
 
+    fun tailContextSw tailContext (E.SWITCH(e0: E.LambdaExp,
+                                            choices: ('c * E.LambdaExp) list,
+                                            last: E.LambdaExp option)) =
+        List.foldl (fn ((_,e),a) => a orelse tailContext e)
+                   (case last of
+                        SOME e => tailContext e
+                      | NONE => false) choices
+
+    fun tailContext e =
+        case e of
+            E.APP _ => true
+          | E.LET{scope,...} => tailContext scope
+(*          | E.FIX{scope,...} => tailContext scope *)
+          | E.SWITCH_I {switch,...} => tailContextSw tailContext switch
+          | E.SWITCH_W {switch,...} => tailContextSw tailContext switch
+          | E.SWITCH_S switch => tailContextSw tailContext switch
+          | E.SWITCH_C switch => tailContextSw tailContext switch
+          | E.SWITCH_E switch => tailContextSw tailContext switch
+          | _ => false
+
     (* get_exn_mu(mu') if mu' is the type and place of a nullary exception constructor,
        return mu'; otherwise mu' = (mu_1 -> mu_2, rho): return mu_2 *)
 
@@ -360,11 +388,12 @@ struct
       | meetSwitch _    _    = NOTAIL
 
     fun spreadSwitch (B:cone) spread con excon_mus
-                 (E.SWITCH(e0: E.LambdaExp,
-                           choices: ('c * E.LambdaExp) list,
-                           last: E.LambdaExp option),toplevel,cont): cone * (place,unit)E'.trip * cont =
-    let
-      val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
+                 (sw as E.SWITCH(e0: E.LambdaExp,
+                                 choices: ('c * E.LambdaExp) list,
+                                 last: E.LambdaExp option),toplevel,cont): cone * (place,unit)E'.trip * cont =
+     let
+      val no_push = toplevel orelse (cont = TAIL andalso tailContextSw tailContext sw)
+      val B = pushIfNotTopLevel(no_push,B) (* for retract *)
       val (B,t0 as E'.TR(e', meta_0, phi_0),_) = spread(B,e0,false,NOTAIL)
       val mus_0 = unMus "spreadSwitch" meta_0
       val mu_0 as (_,object_rho) =
@@ -409,7 +438,7 @@ struct
                             )
       val e' = E'.SWITCH(t0,ListPair.zip(map #1 choices, new_choices), new_last)
     in
-      retract(B,E'.TR(con(e'), metatype,phi), contAcc)
+      retract no_push (B,E'.TR(con(e'), metatype,phi), contAcc)
     end handle X as Report.DeepError _ => raise X
              | X => die ("spreadSwitch: cannot spread; exception " ^ exnName X ^ " raised")
 
@@ -558,8 +587,8 @@ struct
         in
             if simple_application then (B, E'.TR(E'.APP(t1,t2), E'.Mus mus1,
                     Eff.mkUnion([eps_phi0, Eff.mkGet rho_0, phi1,phi2])),cont)
-            else retract(B, E'.TR(E'.APP(t1,t2), E'.Mus mus1,
-                    Eff.mkUnion([eps_phi0, Eff.mkGet rho_0, phi1,phi2])),cont)
+            else retract toplevel (B, E'.TR(E'.APP(t1,t2), E'.Mus mus1,
+                                            Eff.mkUnion([eps_phi0, Eff.mkGet rho_0, phi1,phi2])),cont)
         end
 
    | E.LET{pat=nil, bind = e1_ML, scope = e2_ML} =>   (* wild card *)
@@ -575,7 +604,8 @@ struct
 
    | E.LET{pat, bind = e1_ML, scope = e2_ML} =>
         let
-           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
+           val no_push = toplevel orelse (cont = TAIL andalso tailContext e2_ML)
+           val B = pushIfNotTopLevel(no_push,B) (* for retract *)
            val (B, t1 as E'.TR(e1, meta, phi1), _) = S(B, e1_ML, false, NOTAIL)
            val mus = unMus "S.LET" meta
            fun loop_pat([], [], B, rse, pat'_list) = (B,rse, rev pat'_list)
@@ -596,9 +626,9 @@ struct
            val (B,rse, pat'_list) = loop_pat(pat, mus, B, rse, [])
            val (B, t2 as E'.TR(e2, meta2, phi2),cont) = spreadExp(B,rse,e2_ML,toplevel,cont)
         in
-          retract(B, E'.TR(E'.LET{pat = pat'_list,
-                                  bind = t1, scope = t2}, meta2, Eff.mkUnion([phi1,phi2])),
-		  cont)
+          retract no_push (B, E'.TR(E'.LET{pat = pat'_list,
+                                           bind = t1, scope = t2}, meta2, Eff.mkUnion([phi1,phi2])),
+		            cont)
         end
 
 (* good (as in paper):
@@ -638,7 +668,8 @@ good *)
 
     | E.FIX{functions, scope} =>
         let
-          val B = pushIfNotTopLevel(toplevel,B) ;         (* for pop in retract *)
+            val no_push = toplevel (*orelse (cont = TAIL andalso tailContext scope) *)
+            val B = pushIfNotTopLevel(no_push,B) ;         (* for pop in retract *)
             val retract_level = Eff.level B
             val (rho,B) = Eff.freshRhoWithTy(Eff.TOP_RT,B) (* for shared region closure *)
             val phi1 = Eff.mkPut rho
@@ -647,8 +678,8 @@ good *)
             val (B, t2 as E'.TR(_, meta2, phi2), cont) = spreadExp(B, rse2, scope,toplevel,cont)
             val e' = E'.FIX{shared_clos = rho,functions = functions',scope = t2}
         in
-          retract(B, E'.TR(e', meta2, Eff.mkUnion([phi1,phi2])),
-		  cont)
+          retract no_push (B, E'.TR(e', meta2, Eff.mkUnion([phi1,phi2])),
+		           cont)
         end (* FIX *)
 
     | E.EXCEPTION(excon, ty_opt: E.Type option, e2: E.LambdaExp) =>
@@ -680,9 +711,9 @@ good *)
             val rse' = RSE.declareExcon(excon, mu, rse)
             val (B, t2 as E'.TR(e2', meta2, phi2), cont) = spreadExp(B,rse',e2, toplevel, cont)
         in
-            retract(B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), meta2,
-                      Eff.mkUnion([Eff.mkPut rho,phi2])),
-		    cont)
+          retract toplevel (B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), meta2,
+                                     Eff.mkUnion([Eff.mkPut rho,phi2])),
+		            cont)
         end
 
     | E.RAISE(e1: E.LambdaExp, description) =>
@@ -704,7 +735,7 @@ good *)
                                        let val (rho,B) = Eff.freshRhoRegVar (B,rv)
                                        in (B,RSE.declareRegVar(rv,rho,rse))
                                        end) (B,rse) regvars
-      in retract(spreadExp(B,rse,scope,toplevel,NOTAIL))
+      in retract toplevel (spreadExp(B,rse,scope,toplevel,NOTAIL))
       end
     | E.HANDLE(e1,e2) =>
         let
@@ -726,8 +757,8 @@ good *)
                    val B = List.foldl (uncurry (Eff.lower 2))
 				    B (R.ann_mus mus21 [])
                in
-                 retract(B, E'.TR( E'.HANDLE(t1,t2), E'.Mus mus22, phi),
-		         NOTAIL)
+                 retract toplevel (B, E'.TR( E'.HANDLE(t1,t2), E'.Mus mus22, phi),
+		                   NOTAIL)
                end
              | NONE => die "S: ill-typed handle expression")
           | _ => die "S: ill-typed handle expression"
@@ -765,9 +796,9 @@ good *)
             [(ty, rho)] =>
             (case R.unCONSTYPE ty of
                SOME(tyname_ref, mus, [], []) =>
-               retract(B, E'.TR(E'.DEREF t1, E'.Mus mus,
-                                Eff.mkUnion([Eff.mkGet rho, phi1])),
-		       NOTAIL)
+               retract toplevel (B, E'.TR(E'.DEREF t1, E'.Mus mus,
+                                          Eff.mkUnion([Eff.mkGet rho, phi1])),
+		                 NOTAIL)
              | _ => die "S: ill-typed rereferencing")
           | _ => die "S: ill-typed rereferencing"
         end
@@ -802,8 +833,8 @@ good *)
                     val (rho3, B) = Eff.freshRhoWithTy(Eff.WORD_RT, B)
                     val phi = Eff.mkUnion([(*Eff.mkPut rho1,mael*) Eff.mkGet rho1, Eff.mkPut rho3,phi1, phi2])
                 in
-                  retract(B, E'.TR(E'.ASSIGN(rho3,t1,t2), E'.Mus [(R.unitType, rho3)], phi),
-			  NOTAIL)
+                  retract toplevel (B, E'.TR(E'.ASSIGN(rho3,t1,t2), E'.Mus [(R.unitType, rho3)], phi),
+			            NOTAIL)
                 end
               | _ => die "S: ill-typed assignment")
            | _ => die "S: ill-typed assignment"
@@ -821,7 +852,7 @@ good *)
           val (B, t1 as E'.TR(e1', meta1, phi1), _) = S(B,e1, false, NOTAIL)
 (*          val mus1 = unMus "S.DROPprim" meta1 *)
 	in
-	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1), NOTAIL)
+	  retract toplevel (B, E'.TR(E'.DROP t1, E'.Mus [], phi1), NOTAIL)
 	end
 
     | E.SWITCH_I {switch: IntInf.int E.Switch, precision} =>
@@ -887,9 +918,9 @@ good *)
           val mu1' = unMus "S.DECONprim" meta1'
           val B = R.unify_mus(mu1',mus2) B
         in
-          retract(B, E'.TR(E'.DECON({con=con, il = il},t1), E'.Mus mu1,
-                           Eff.mkUnion([phi1,Eff.mkGet(#2 mu2)])),
-		  NOTAIL)
+          retract toplevel (B, E'.TR(E'.DECON({con=con, il = il},t1), E'.Mus mu1,
+                                     Eff.mkUnion([phi1,Eff.mkGet(#2 mu2)])),
+		            NOTAIL)
         end
     | E.PRIM(E.EXCONprim excon, []) =>
         let
@@ -937,9 +968,9 @@ good *)
           val mu1' = unMus "S.DEEXCONprim" meta1'
           val B = R.unify_mus(mu1',mus2) B
         in
-          retract(B, E'.TR(E'.DEEXCON(excon,t1), E'.Mus mu1,
-                           Eff.mkUnion([phi1,Eff.mkGet(#2 mu2)])),
-		  NOTAIL)
+          retract toplevel (B, E'.TR(E'.DEEXCON(excon,t1), E'.Mus mu1,
+                                     Eff.mkUnion([phi1,Eff.mkGet(#2 mu2)])),
+		            NOTAIL)
         end
     | E.PRIM(E.RECORDprim rv_opt,args) =>
         let val (B, trips) = List.foldr (fn (arg, (B, trips)) =>
@@ -986,8 +1017,8 @@ good *)
           val mu = List.nth(mus,i) handle Subscript => die "S (select) : select index out of range"
           val phi = Eff.mkUnion([Eff.mkGet rho, phi1])
         in
-          retract(B, E'.TR(E'.SELECT(i, t1), E'.Mus [mu], phi),
-		  NOTAIL)
+          retract toplevel (B, E'.TR(E'.SELECT(i, t1), E'.Mus [mu], phi),
+		            NOTAIL)
         end
 
     | E.PRIM(E.EQUALprim{instance: E.Type}, [arg1, arg2]) =>
@@ -1012,9 +1043,9 @@ good *)
           val (mu1,mu2) = case (mus1,mus2) of ([mu1],[mu2]) => (mu1,mu2)
                                             | _ => die "S: ill-typed equality"
         in
-          retract(B, E'.TR(E'.EQUAL({mu_of_arg1 = mu1, mu_of_arg2 = mu2, alloc = rho},t1,t2),
-                           E'.Mus mus, phi),
-		  NOTAIL)
+          retract toplevel (B, E'.TR(E'.EQUAL({mu_of_arg1 = mu1, mu_of_arg2 = mu2, alloc = rho},t1,t2),
+                                     E'.Mus mus, phi),
+		            NOTAIL)
         end
 
     (*`CCALLprim {name, ...} es' is like an application of a variable `name'
@@ -1071,8 +1102,8 @@ good *)
 		 val e' = E'.CCALL ({name = name, mu_result = mu_r,
 				     rhos_for_result = rhos_for_result}, trs')
 	       in
-		 retract (B, E'.TR (e', E'.Mus [mu_r], Eff.mkUnion (eps_phi0 :: phis)),
-			  NOTAIL)
+		 retract toplevel (B, E'.TR (e', E'.Mus [mu_r], Eff.mkUnion (eps_phi0 :: phis)),
+			           NOTAIL)
 	       end
 	   | _ => die "CCALL: tau not function type")
 	end handle (X as Report.DeepError _) => raise X
@@ -1144,8 +1175,8 @@ good *)
 			     ; print "\n")
 *)
 	       in
-		 retract (B, E'.TR (e', E'.Mus [mu], (*was: eps_phi0*) phi),
-			  NOTAIL)
+		 retract toplevel (B, E'.TR (e', E'.Mus [mu], (*was: eps_phi0*) phi),
+			           NOTAIL)
 	       end
              | _ => die "EXPORT: function does not have function type")
 	   | _ => die "EXPORT: function does not have function type"
