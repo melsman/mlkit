@@ -1,4 +1,4 @@
-functor WF(W : WORD) :> WORD = 
+functor WordN(W : WORD) :> WORD =
   struct
     type word = W.word
     val wordSize = W.wordSize
@@ -9,7 +9,7 @@ functor WF(W : WORD) :> WORD =
     fun norm w = W.andb(w,low)
     val toLargeX = W.toLargeX o signextend
     val toLargeWord = toLarge
-    val toLargeWordX = toLargeX 
+    val toLargeWordX = toLargeX
     val fromLarge = norm o W.fromLarge
     val fromLargeWord = fromLarge
     val toLargeInt = W.toLargeInt
@@ -25,20 +25,20 @@ functor WF(W : WORD) :> WORD =
     val notb = norm o W.notb
     val << = norm o W.<<
     val >> = W.>>
-    val ~>> = W.~>> o (fn (x,y) => (signextend x,y))
+    val ~>> = norm o W.~>> o (fn (x,y) => (signextend x,y))
 
     val op+ = norm o W.+
     val op- = norm o W.-
     val op* = norm o W.*
     val op div = W.div
     val op mod = W.mod
-	
+
     val compare = W.compare
     val op< = W.<
     val op<= = W.<=
     val op> = W.>
     val op>= = W.>=
-	
+
     val ~ = norm o W.~
     val min = W.min
     val max = W.max
@@ -48,7 +48,7 @@ functor WF(W : WORD) :> WORD =
     fun scan r gc s = let val v = W.scan r gc s in Option.map (fn (w,r) => if W.andb(w,high) = W.fromInt 0 then (w,r) else raise Overflow) v end
     fun fromString s = let val v = W.fromString s in Option.map (fn w => if W.andb(w,high) = W.fromInt 0 then w else raise Overflow) v end
   end
-
+(*
 structure Word30 = WF(struct open Word val wordSize = 30 end)
 structure Word29 = WF(struct open Word val wordSize = 29 end)
 structure Word28 = WF(struct open Word val wordSize = 28 end)
@@ -78,4 +78,4 @@ structure Word4 = WF(struct open Word8 val wordSize = 4 end)
 structure Word3 = WF(struct open Word8 val wordSize = 3 end)
 structure Word2 = WF(struct open Word8 val wordSize = 2 end)
 structure Word1 = WF(struct open Word8 val wordSize = 1 end)
-
+*)

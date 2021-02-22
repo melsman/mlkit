@@ -141,6 +141,7 @@ filesys.sml                                    (* See test/README *)
 real.sml
 word.sml
 word8.sml
+word16.sml
 word31.sml
 word32.sml
 word64.sml
