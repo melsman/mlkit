@@ -42,4 +42,7 @@ structure Thread :> THREAD = struct
 
   fun spawn x = spawn__noinline x
   fun get x = get__noinline x
+
+  fun numCores () : int =
+      prim("numCores",())
 end

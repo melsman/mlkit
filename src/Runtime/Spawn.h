@@ -14,6 +14,7 @@
 // #endif
 //
 
+#include <sys/types.h>
 #include <pthread.h>
 #include "Region.h"
 
@@ -70,5 +71,7 @@ void* thread_get(ThreadInfo *ti);
 ThreadInfo* thread_create(void* (*f)(ThreadInfo*), void* arg);
 
 void thread_free(ThreadInfo* t);
+
+ssize_t numCores(void);
 
 #endif /* __SPAWN_H */
