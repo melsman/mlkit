@@ -9,6 +9,18 @@
 #include <errno.h>
 #include <string.h>
 #include "Locks.h"
+#include "Tagging.h"
+
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+// For getting cpu usage of threads
+// #include <mach/mach.h>
+// #include <sys/resource.h>
+#elif defined(__linux__)
+#include <sys/sysinfo.h>
+// #include <sys/resource.h>
+// #include <signal.h>
+#endif
 
 // #define PARALLEL_DEBUG
 
@@ -222,6 +234,24 @@ thread_free(ThreadInfo* t) {
   pthread_mutex_destroy(&(t->mutex));
   if (t->thread) { pthread_detach(t->thread); }
   free((void*)t);
+}
+
+ssize_t
+numCores(void) {
+  int ncores;
+#if defined(__APPLE__)
+  size_t ncores_size = sizeof(ncores);
+  if (sysctlbyname("hw.logicalcpu", &ncores, &ncores_size, NULL, 0) != 0) {
+    fprintf(stderr, "sysctlbyname (hw.logicalcpu) failed.");
+    ncores = -1;
+  }
+#elif defined(__linux__)
+  ncores = get_nprocs();
+#else
+  fprintf(stderr, "operating system not recognised\n");
+  ncores = -1;
+#endif
+  return convertIntToML(ncores);
 }
 
 // TEST CODE
