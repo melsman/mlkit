@@ -418,7 +418,7 @@ alloc_new_block(Gen *gen)
   #ifdef KAM
   LOCK_LOCK(FREELISTMUTEX);
   #endif
-  if ( FREELIST == NULL ) {
+  if ( FREELIST == NULL ) {          // FREELIST is the thread's own free-list (when PARALLEL is true)
     #ifdef PARALLEL
     LOCK_LOCK(FREELISTMUTEX);
     // Take half REGION_PAGE_BAG_SIZE pages from freelist and move to
@@ -828,7 +828,7 @@ allocGen (Gen *gen, size_t n
     {
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
       if (protect_p) {
-	LOCK_LOCK(GLOBALALLOCMUTEX);
+	LOCK_LOCK(GLOBALALLOCMUTEX);             ///// HERE WE COULD JUST TAKE THE REGION'S LOCK
       }
 #endif
       Lobjs* lobjs;
@@ -854,7 +854,7 @@ allocGen (Gen *gen, size_t n
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
       if (protect_p) {
-	LOCK_UNLOCK(GLOBALALLOCMUTEX);
+	LOCK_UNLOCK(GLOBALALLOCMUTEX);             ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
       }
 #endif
 
@@ -874,7 +874,7 @@ allocGen (Gen *gen, size_t n
   if (protect_p) {
 
     if ( 0 ) {  // simple mutex-based locking (assumes simple_p is true in CodeGenUtilX64.sml)
-      LOCK_LOCK(GLOBALALLOCMUTEX);
+      LOCK_LOCK(GLOBALALLOCMUTEX);                ///// HERE WE COULD JUST TAKE THE REGION'S LOCK
       t1 = gen->a;
       t2 = t1 + n;
       t3 = rpBoundary(t1);
@@ -886,7 +886,7 @@ allocGen (Gen *gen, size_t n
 	t2 = t1 + n;
       }
       gen->a = t2;
-      LOCK_UNLOCK(GLOBALALLOCMUTEX);
+      LOCK_UNLOCK(GLOBALALLOCMUTEX);             ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
     } else {
 
       // Partial lock-free atomic allocation
@@ -902,7 +902,8 @@ allocGen (Gen *gen, size_t n
 	}
       } else {
 	// t2 > t3  -- not enough space for object
-	LOCK_LOCK(GLOBALALLOCMUTEX);
+	LOCK_LOCK(GLOBALALLOCMUTEX);               ///// HERE WE COULD JUST TAKE THE REGION'S LOCK
+	//printf("taking lock on %p\n", gen);
       locked_start:
 	t1 = gen->a;
 	t2 = t1 + n;
@@ -916,7 +917,7 @@ allocGen (Gen *gen, size_t n
 	    goto locked_start;  // goto start if gen->a <> t1
 	  }
 	  // Allocation succeeded! Unlock and proceed to exit
-	  LOCK_UNLOCK(GLOBALALLOCMUTEX);
+	  LOCK_UNLOCK(GLOBALALLOCMUTEX);                         ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
 	  goto finish; // t1 contains the pointer to the allocated memory and gen->a has been updated
 	}
 	// t2 > t3
@@ -939,7 +940,7 @@ allocGen (Gen *gen, size_t n
 	t2 = t1+n;
 	asm volatile("mfence":::"memory"); // Prevent CPU & compiler reordering
 	gen->a = t2;
-	LOCK_UNLOCK(GLOBALALLOCMUTEX);
+	LOCK_UNLOCK(GLOBALALLOCMUTEX);          ///// HERE WE COULD JUST RELEASE THE REGION'S LOCK
       }
     }
   } else { // no protection

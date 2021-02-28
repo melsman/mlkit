@@ -26,6 +26,13 @@ struct
 	  \region type scheme contains a put effect on a region\n\
 	  \that is not quantified."}
 
+    val warn_on_parallel_puts = Flags.add_bool_entry
+	{long="warn_on_parallel_puts", short=NONE, menu=["Control","warn on parallel put effects"],
+	 item=ref false, neg=false, desc=
+	 "Enable the compiler to issue a warning whenever a \n\
+	  \par-construct is passed functions with intersecting\n\
+	  \put effects."}
+
     fun uncurry f (a, b) = f a b
 
     fun quote s = "\"" ^ String.toString s ^ "\""
@@ -202,7 +209,7 @@ struct
 						     * lvars with rho free in their type and place
 						     * have already been reported once *)
 
-  fun pp_regvar rho =  PP.flatten1(Eff.layout_effect rho)
+  fun pp_regvar rho = PP.flatten1(Eff.layout_effect rho)
   fun flatten [] = []
     | flatten (l::rest) = l @ flatten rest
 
@@ -242,9 +249,14 @@ struct
 	                // line (concat (flatten (map report_rho rhos))))
 	 end
 
+    fun pr_ty ty =
+        let val (lay_ty, _) = R.mk_layout false
+        in PP.flatten1(lay_ty ty)
+        end
+
     fun warn_puts (TE:regionStatEnv,
                    (PGM{expression = TR(e,_,_,_), ...}):(place,'a,'b) LambdaPgm ):unit =
-    if not(warn_on_escaping_puts())
+    if not(warn_on_escaping_puts() orelse warn_on_parallel_puts())
       then ()
     else
       let
@@ -260,8 +272,9 @@ struct
 	             fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                                     bound_but_never_written_into,other,bind} =
 	                  let val sigma = R.FORALL(tyvars,rhos,epss,Type)
-	                  in
-	                     warn_if_escaping_puts(TE, lvar, sigma);
+	                  in (if warn_on_escaping_puts() then
+	                        warn_if_escaping_puts(TE, lvar, sigma)
+                              else ());
 			     warn_puts_trip TE' bind
 	                  end
 	         in
@@ -317,7 +330,45 @@ struct
              | LETREGION{body, ...} => warn_puts_trip TE body
 	     | _ => ()
 
-           and warn_puts_trip TE (TR(e,_,_,_)) = warn_puts TE e
+           and warn_puts_trip TE (TR(e,mt,_,_)) =
+               case e of
+                   VAR {lvar, il, plain_arreffs, fix_bound=true, rhos_actuals, other} =>
+                   if Lvars.pr_lvar lvar = "par" andalso warn_on_parallel_puts() then
+                     (case mt of
+                          RegionExp.Mus[(ty,p)] =>
+                          (case R.unFUN ty of
+                               SOME([(ty1,_),(ty2,_)],_,_) =>
+                               (case (R.unFUN ty1, R.unFUN ty2) of
+                                    (SOME(_,ae1,_), SOME(_,ae2,_)) =>
+                                    let val s1 = R.type_to_scheme ty1
+                                        val s2 = R.type_to_scheme ty2
+                                        val ps1 = R.free_puts s1
+                                        val ps2 = R.free_puts s2
+                                        fun pr_effect e = PP.flatten1(Eff.layout_effect e)
+                                        fun pr_puteffect e = "put(" ^ pr_effect e ^ ")"
+                                        fun pr_list p l = "{" ^ String.concatWith "," (List.map p l) ^ "}"
+                                        val pr_puteffects = pr_list pr_puteffect
+                                        fun intersect nil l2 acc = acc
+                                          | intersect l1 nil acc = acc
+                                          | intersect (x::xs) ys acc =
+                                            intersect xs ys (if List.exists (fn y => Eff.eq_effect(x,y)) ys
+                                                             then x::acc else acc)
+                                        val problematic = intersect ps1 ps2 nil
+                                    in
+                                      case problematic of
+                                          nil => Flags.warn (line "** Great: par is passed two functions with non-intersecting put effects!" //
+                                                             line ("**  fun1: " ^ pr_puteffects ps1) //
+                                                             line ("**  fun2: " ^ pr_puteffects ps2))
+                                        | xs => Flags.warn (line ("** Ugggh: par is passed two functions with intersecting put effects!") //
+                                                            line ("**  problematic effects: " ^ pr_puteffects xs) //
+                                                            line ("**  fun1: " ^ pr_puteffects ps1) //
+                                                            line ("**  fun2: " ^ pr_puteffects ps2))
+                                    end
+                                  | _ => print "par - no match - fun2\n")
+                             | _ => print "par - no match - fun\n")
+                        | _ => print "par - no match - mt\n")
+                   else ()
+                 | _ => warn_puts TE e
 
 	   and warn_puts_i TE (SWITCH(e, list, e')) =
 	       (warn_puts_trip TE e;
