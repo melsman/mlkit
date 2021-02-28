@@ -903,22 +903,32 @@ allocGen (Gen *gen, size_t n
       } else {
 	// t2 > t3  -- not enough space for object
 	LOCK_LOCK(GLOBALALLOCMUTEX);
+      locked_start:
 	t1 = gen->a;
 	t2 = t1 + n;
 	t3 = rpBoundary(t1);
 	if (t2 <= t3) {
 	  // now there is space; some other thread has allocated a page - try again
+	  if (! __atomic_compare_exchange(&(gen->a), &t1, &t2, FALSE,
+					  __ATOMIC_SEQ_CST,
+					  __ATOMIC_SEQ_CST)) {
+	    // Someone without the lock has updated the allocation pointer, so we try again (we have the lock)
+	    goto locked_start;  // goto start if gen->a <> t1
+	  }
+	  // Allocation succeeded! Unlock and proceed to exit
 	  LOCK_UNLOCK(GLOBALALLOCMUTEX);
-	  goto start;
+	  goto finish; // t1 contains the pointer to the allocated memory and gen->a has been updated
 	}
 	// t2 > t3
+	// Attempt to store the boundary in gen->a
 	if (! __atomic_compare_exchange(&(gen->a), &t1, &t3, FALSE,
 					__ATOMIC_SEQ_CST,
 					__ATOMIC_SEQ_CST)) {
-	  LOCK_UNLOCK(GLOBALALLOCMUTEX);
-	  goto start; // goto start if gen->a <> t1
+	  // Somebody else who hasn't got the lock has managed to update the allocation pointer - we try again...
+	  goto locked_start;
 	}
-	// after the above atomic op, assembler alloc in another thread cannot win the race
+	// After the success of the above atomic op, assembler allocation code executed by another thread cannot update the allocation pointer
+	// We
 #if defined(PROFILING) || defined(ENABLE_GC)
 	/* insert zeros in the rest of the current region page;
 	 * mael 2019-01-28: why is this necessary when just GC is enabled?
@@ -952,6 +962,8 @@ allocGen (Gen *gen, size_t n
 
 #ifdef PARALLEL_GLOBAL_ALLOC_LOCK
   } // no protection
+
+ finish:
 #endif
 
   #ifdef ENABLE_GC
