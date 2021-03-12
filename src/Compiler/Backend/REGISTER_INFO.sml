@@ -9,7 +9,9 @@ signature REGISTER_INFO =
     val args_phreg : lvar list    (* Machine registers containing arguments *)
     val res_phreg  : lvar list    (* Machine registers containing results *)
 
-    val all_regs : lvar list
+    val args_phfreg : lvar list    (* Machine registers containing float arguments *)
+
+    val all_regs : lvar list      (* All general-purpose registers *)
 
     val caller_save_phregs   : lvar list
     val caller_save_phregset : lvarset

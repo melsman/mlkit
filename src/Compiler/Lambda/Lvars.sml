@@ -25,7 +25,7 @@ structure Lvars: LVARS =
 
     fun newLvar () : lvar = new_named_lvar ""
 
-    fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
+    fun pr_lvar ({str="",name,ubf64,...} : lvar) : string = (if !ubf64 then "f" else "v") ^ Int.toString (#1(Name.key name))
       | pr_lvar {str,...} = str
 
     fun renew (lv:lvar) : lvar =
@@ -33,10 +33,10 @@ structure Lvars: LVARS =
 	 free=ref false, inserted=ref false,
 	 use=ref 0, ubf64=ref (!(#ubf64 lv))}
 
-    fun pr_lvar' ({str,name,...} : lvar) : string =
+    fun pr_lvar' ({str,name,ubf64,...} : lvar) : string =
 	let val (i,s) = Name.key name
-	    val str = if str = "" then "v:" else str ^ ":"
-	in str ^ Int.toString i ^ ":" ^ s
+	    val str = if str = "" then (if !ubf64 then "f" else "v") else str
+	in str ^ ":" ^ Int.toString i ^ ":" ^ s
 	end
 
     fun name ({name,...} : lvar) : name = name

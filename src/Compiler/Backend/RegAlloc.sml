@@ -48,9 +48,9 @@ struct
   | PHREG_STY of lvar * lvar
   | FV_STY    of lvar * label * label
 
-  fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
-    | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LS.pr_phreg phreg
-    | pr_sty(FV_STY(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
+  fun pr_sty (STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
+    | pr_sty (PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LS.pr_phreg phreg
+    | pr_sty (FV_STY(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
 
   fun pr_atom atom = LS.pr_atom atom
 
@@ -61,21 +61,20 @@ struct
   fun chat (s: string) = if !Flags.chat then print (s ^ "\n") else ()
   fun die s  = Crash.impossible ("RegAlloc." ^ s)
   fun fast_pr stringtree =
-    (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
-     TextIO.output(!Flags.log, "\n"))
+      (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
+       TextIO.output(!Flags.log, "\n"))
 
-  fun display(title, tree) =
-    fast_pr(PP.NODE{start=title ^ ": ",
-                    finish="",
-                    indent=3,
-                    children=[tree],
-                    childsep=PP.NOSEP
-                    })
+  fun display (title, tree) =
+      fast_pr(PP.NODE{start=title ^ ": ",
+                      finish="",
+                      indent=3,
+                      children=[tree],
+                      childsep=PP.NOSEP
+                     })
 
-  fun one_in_list([]) = die "one_in_list: list has zero elements."
-    | one_in_list([x]) = x
+  fun one_in_list [] = die "one_in_list: list has zero elements."
+    | one_in_list [x] = x
     | one_in_list _ = die "one_in_list: list has more than one element."
-
 
   val export_ig_flag = false
 
@@ -84,57 +83,66 @@ struct
   (*************************************************)
   local
     fun mk_sty lv = LS.V lv (* Flow variables are annotated later *)
-    fun resolve_args([],lss) = lss
-      | resolve_args((atom,phreg)::args,lss) =
-      resolve_args(args,LS.ASSIGN{pat=atom,bind=LS.ATOM(LS.PHREG phreg)}::lss)
 
-    fun resolve_res([],lss) = lss
-      | resolve_res((atom,phreg)::res,lss) =
-      resolve_res(res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM atom}::lss)
+    fun resolve_args ([],lss) = lss
+      | resolve_args ((atom,phreg)::args,lss) =
+        resolve_args (args,LS.ASSIGN{pat=atom,bind=LS.ATOM(LS.PHREG phreg)}::lss)
+
+    fun resolve_res ([],lss) = lss
+      | resolve_res ((atom,phreg)::res,lss) =
+        resolve_res (res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM atom}::lss)
+
+    fun resolve_app {clos,args,reg_args,fargs,res} =
+        CallConv.resolve_app
+            {arg_regs=RI.args_phreg,
+             arg_fregs=RI.args_phfreg,
+             res_regs=RI.res_phreg}
+            LS.PHREG
+            {clos=clos,args=args,
+             reg_args=reg_args,fargs=fargs,res=res}
+
+    fun resolve_cc cc =
+        CallConv.resolve_cc
+            {arg_regs=RI.args_phreg,
+             arg_fregs=RI.args_phfreg,
+             res_regs=RI.res_phreg}
+            cc
 
     fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
-      LS.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
+        LS.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
 
-    fun CC_ls(LS.FNJMP{opr,args,clos,res,bv},rest) =
-      let
-        val ({clos,args,res,...},assign_list_args,assign_list_res) =
-          CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=NONE,reg_args=[],res=res}
-        in
-          resolve_res(assign_list_args,
-                      LS.FNJMP{opr=opr,args=args,clos=clos,res=res,bv=bv}::
-                      resolve_args(assign_list_res,rest))
+    fun CC_ls (LS.FNJMP{opr,args,clos,res,bv},rest) =
+        let val ({clos,args,res,...}, alist_args, alist_res) =
+                resolve_app {clos=clos,args=args,reg_args=[],fargs=[],res=res}
+        in resolve_res(alist_args,
+                       LS.FNJMP{opr=opr,args=args,clos=clos,res=res,bv=bv}::
+                       resolve_args(alist_res,rest))
         end
-        | CC_ls(LS.FNCALL{opr,args,clos,res,bv},rest) =
-        let
-          val ({clos,args,res,...},assign_list_args,assign_list_res) =
-            CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=NONE,reg_args=[],res=res}
-        in
-          resolve_res(assign_list_args,
-                      LS.FNCALL{opr=opr,args=args,clos=clos,res=res,bv=bv}::
-                      resolve_args(assign_list_res,rest))
+      | CC_ls(LS.FNCALL{opr,args,clos,res,bv},rest) =
+        let val ({clos,args,res,...}, alist_args, alist_res) =
+                resolve_app {clos=clos,args=args,reg_args=[],fargs=[],res=res}
+        in resolve_res(alist_args,
+                       LS.FNCALL{opr=opr,args=args,clos=clos,res=res,bv=bv}::
+                       resolve_args(alist_res,rest))
         end
-        | CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,res,bv},rest) =
-        let
-          val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) =
-            CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
-        in
-          resolve_res(assign_list_args,
-                      LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bv}::
-                      resolve_args(assign_list_res,rest))
+        | CC_ls(LS.JMP{opr,args,reg_args,fargs,clos,res,bv},rest) =
+        let val ({clos,args,res,reg_args,fargs}, alist_args, alist_res) =
+                resolve_app {clos=clos,args=args,reg_args=reg_args,fargs=fargs,res=res}
+        in resolve_res(alist_args,
+                       LS.JMP{opr=opr,args=args,reg_args=reg_args,fargs=fargs,clos=clos,res=res,bv=bv}::
+                       resolve_args(alist_res,rest))
         end
-        | CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv},rest) =
-        let
-          val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) =
-            CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
-        in
-          resolve_res(assign_list_args,
-                      LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bv}::
-                      resolve_args(assign_list_res,rest))
+        | CC_ls(LS.FUNCALL{opr,args,reg_args,fargs,clos,res,bv},rest) =
+        let val ({clos,args,res,reg_args,fargs}, alist_args, alist_res) =
+                resolve_app {clos=clos,args=args,reg_args=reg_args,fargs=fargs,res=res}
+        in resolve_res(alist_args,
+                       LS.FUNCALL{opr=opr,args=args,reg_args=reg_args,clos=clos,fargs=fargs,res=res,bv=bv}::
+                       resolve_args(alist_res,rest))
         end
         | CC_ls(LS.LETREGION{rhos,body},rest) = LS.LETREGION{rhos=rhos,body=CC_lss body}::rest
         | CC_ls(LS.SCOPE{pat,scope},rest) = LS.SCOPE{pat=pat,scope=CC_lss scope}::rest
         | CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset},rest) =
-        LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv,bv),offset=offset}::rest
+          LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv,bv),offset=offset}::rest
         | CC_ls(LS.HANDLE{default,handl,handl_return,offset},rest) = die "CC_ls: handl_return in HANDLE not empty"
         | CC_ls(LS.SWITCH_I {switch,precision},rest) = LS.SWITCH_I {switch=CC_sw CC_lss switch,
                                                                     precision=precision}::rest
@@ -163,34 +171,30 @@ struct
         end
         | CC_ls (ls,rest) = ls::rest
 
-      and CC_lss(lss) = List.foldr (fn (ls,acc) => CC_ls(ls,acc)) [] lss
+      and CC_lss lss = List.foldr (fn (ls,acc) => CC_ls(ls,acc)) [] lss
   in
-      fun CC_top_decl(LS.FUN(lab,cc,lss)) =
-        let
-          val (cc',args,res) = CallConv.resolve_cc RI.args_phreg RI.res_phreg cc
-          val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
-          val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
-          val body_lss = CC_lss(lss)
-          val body_args =
-             LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
-          val body_res =
-            LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
-        in
-          LS.FUN(lab,cc',[body_res])
-        end
-        | CC_top_decl(LS.FN(lab,cc,lss)) =
-        let
-          val (cc',args,res) = CallConv.resolve_cc RI.args_phreg RI.res_phreg cc
-          val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
-          val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
-          val body_lss = CC_lss(lss)
-          val body_args =
-            LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
-          val body_res =
-            LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
-        in
-          LS.FN(lab,cc',[body_res])
-        end
+     fun CC_top_decl (LS.FUN(lab,cc,lss)) =
+         let val (cc',args,res) = resolve_cc cc
+             val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
+             val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
+             val body_lss = CC_lss(lss)
+             val body_args =
+                 LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
+             val body_res =
+                 LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
+         in LS.FUN(lab,cc',[body_res])
+         end
+       | CC_top_decl (LS.FN(lab,cc,lss)) =
+         let val (cc',args,res) = resolve_cc cc
+             val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
+             val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
+             val body_lss = CC_lss(lss)
+             val body_args =
+                 LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
+             val body_res =
+                 LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
+         in LS.FN(lab,cc',[body_res])
+         end
   end
 
   fun coalesce_binops lss =
@@ -395,13 +399,19 @@ struct
 
   fun key' (n : node) = key(#lv n)
 
+  (* We differentiate between the two different *register kinds*,
+     namely General Purpose Registers (GPRs) and Floating Point
+     Registers (FPRs). Some of the worklists are split into the two
+     register kinds, others are not. In general, move-lists are not.
+   *)
+
   (* Precolored nodes *)
   val precolored : node list =
     map (fn lv => {lv=lv,degree=ref 0, mv_related=ref NONE,
                    worklist=ref precolored_enum, adjList=ref nil,
                    alias = ref NONE, color=ref (SOME lv),
                    lrs = ref no_call, uses = ref 0})
-        RI.caller_save_phregs
+        (RI.caller_save_phregs @ RI.args_phfreg)
 
   fun reset_precolored () =
       app (fn ({lv,degree, mv_related, worklist, adjList, alias, color, lrs, uses} : node) =>
@@ -739,9 +749,9 @@ struct
     end
 
   fun Freeze () : unit =  (* invariant : freezeWorklist is normalised and non-empty *)
-    case !freezeWorklist
-      of u :: _ => (simplifyWorklistAdd u; FreezeMoves u)
-       | _ => die "Freeze"
+      case !freezeWorklist of
+          u :: _ => (simplifyWorklistAdd u; FreezeMoves u)
+        | _ => die "Freeze"
 
   fun SelectSpill () : unit = (* invariant : spillWorklist is normalised and non-empty *)
     let
@@ -749,19 +759,19 @@ struct
         | lrs_factor c_call = 1.2
         | lrs_factor ml_call = 1.5
       fun pri (n:node) = Real.fromInt(!(#uses n)) / Real.fromInt(!(#degree n))  (**lrs_factor(!(#lrs n))06/04/1999, Niels*)
-      fun select_spill() = (* use lowest priority: uses/degree*lrs_factor *)
-        case !spillWorklist of
-          m :: rest => #1(foldl (fn (n,(m,mpri)) =>
-                                 let val npri = pri n
-                                 in if mpri < npri then (m,mpri) else (n,npri) end) (m,pri m) rest)
-        | _ => die "SelectSpill.select_spill"
+      fun select_spill () = (* use lowest priority: uses/degree*lrs_factor *)
+          case !spillWorklist of
+              m :: rest => #1(foldl (fn (n,(m,mpri)) =>
+                                        let val npri = pri n
+                                        in if mpri < npri then (m,mpri) else (n,npri) end) (m,pri m) rest)
+            | _ => die "SelectSpill.select_spill"
 
-      fun order_mv_related(n:node,m:node) =
-        if List.length(NodeMoves n) < List.length(NodeMoves m) then n else m
-      fun select_spill2() = (* spill non-move related nodes *)
-        case !spillWorklist of
-          m :: rest => foldl order_mv_related m rest
-        | _ => die "SelectSpill.select_spill2"
+      fun order_mv_related (n:node,m:node) =
+          if List.length(NodeMoves n) < List.length(NodeMoves m) then n else m
+      fun select_spill2 () = (* spill non-move related nodes *)
+          case !spillWorklist of
+              m :: rest => foldl order_mv_related m rest
+            | _ => die "SelectSpill.select_spill2"
       val m = select_spill()
     in
       (simplifyWorklistAdd m; FreezeMoves m)
@@ -774,12 +784,12 @@ struct
 
   fun AssignColors () : unit =
     let
-      fun assign_color (n:node,pri1,pri2,notOkColors) =
-        (case Lvarset.members (Lvarset.difference(pri1,notOkColors)) of
-           nil => (case Lvarset.members (Lvarset.difference(pri2,notOkColors)) of
-                     nil => (spilledNodesAdd n; inc_spills())
-                   | c::_ => (coloredNodesAdd n; #color n := SOME c; inc_assigned_colors()))
-         | c::_ => (coloredNodesAdd n; #color n := SOME c; inc_assigned_colors()))
+      fun assign_color (n:node,pri1,pri2,notOkColors) =                         (* memo: we can do this without allocating lists! *)
+          case Lvarset.members (Lvarset.difference(pri1,notOkColors)) of
+              nil => (case Lvarset.members (Lvarset.difference(pri2,notOkColors)) of
+                          nil => (spilledNodesAdd n; inc_spills())
+                        | c::_ => (coloredNodesAdd n; #color n := SOME c; inc_assigned_colors()))
+            | c::_ => (coloredNodesAdd n; #color n := SOME c; inc_assigned_colors())
 
       fun find_color (n:node,notOkColors) =
           if Lvars.get_ubf64(#lv n) then
@@ -812,7 +822,9 @@ struct
                                  else ()) (!coalescedNodes)
            | n::ns =>
             let
-              val _ = if !(#worklist n) = coalescedNodes_enum then die "assigning color to coalesced node" else ()
+              val _ = if !(#worklist n) = coalescedNodes_enum
+                      then die "assigning color to coalesced node" else ()
+              (* don't choose a color that is in an alias-relation with a conflicting node *)
               val notOkColors =
                 foldl (fn (w:lvar,set) =>
                        let val n = GetAliasLv w
@@ -832,63 +844,58 @@ struct
     in pop_loop (!selectStack)
     end
 
-  (* args_on_stack_lvs is the set of those lvars that are passed to
-   * the function on the stack! *)
-
-  fun MakeInitial (args_on_stack_lvs, lss) =
+  fun MakeInitial lss =
     let
       fun add_use lv =
-        let
-          val i = key lv
-        in
-          case nTableLookup i
-            of SOME n => #uses n := !(#uses n) + 1
-             | NONE => () (*mael die ("MakeInitial.add_use: " ^ Lvars.pr_lvar lv ^ " not in nTableLookup") *)
-        end
+          let val i = key lv
+          in case nTableLookup i of
+                 SOME n => #uses n := !(#uses n) + 1
+               | NONE => () (*mael die ("MakeInitial.add_use: " ^ Lvars.pr_lvar lv ^ " not in nTableLookup") *)
+          end
+
       fun add lv =
-        let
-          val i = key lv
-        in
-          case nTableLookup i
-            of SOME n => () (* Multiple definition in switch *)
-             | NONE => let
-                         val n : node = {lv=lv,degree=ref 0, mv_related=ref NONE,
-                                         worklist=ref initial_enum, adjList=ref nil,
-                                         alias = ref NONE, color=ref NONE,
-                                         lrs = ref no_call, uses = ref 0}
-                       in
-                         nTableAdd(i,n); initial := n :: !initial; inc_initial()
+        let val i = key lv
+        in case nTableLookup i of
+               SOME n => () (* Multiple definition in switch *)
+             | NONE => let val n : node = {lv=lv,degree=ref 0, mv_related=ref NONE,
+                                           worklist=ref initial_enum, adjList=ref nil,
+                                           alias = ref NONE, color=ref NONE,
+                                           lrs = ref no_call, uses = ref 0}
+                       in nTableAdd(i,n); initial := n :: !initial; inc_initial()
                        end
         end
+
       fun mk_sw mk (LS.SWITCH(a,sels,default)) =
-        (app add_use (LS.get_var_atom(a,nil));
-         app (fn (_,lss) => app mk lss) sels;
-         app mk default)
+          (app add_use (LS.get_var_atom(a,nil));
+           app (fn (_,lss) => app mk lss) sels;
+           app mk default)
+
       fun default ls =
           let val (def,use) = LS.def_use_lvar_ls ls
           in app add def;
              app add_use use
           end
+
       fun mk ls =
-        case ls
-          of LS.FLUSH _ => die "MakeInitial: FLUSH not inserted yet."
-           | LS.FETCH _ => die "MakeInitial: FETCH not inserted yet."
-           | LS.LETREGION{rhos,body} => app mk body
-           | LS.SCOPE{pat,scope} => app mk scope
-           | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv,bv),offset} =>
-            (app add (LS.get_var_atom (handl_lv,nil));
-             app add (LS.get_var_atom (handl_return_lv,nil));
-             app mk handl_lss;
-             app mk default;
-             app mk handl_return_lss)
-           | LS.SWITCH_I {switch,precision} => mk_sw mk switch
-           | LS.SWITCH_W {switch,precision} => mk_sw mk switch
-           | LS.SWITCH_S sw => mk_sw mk sw
-           | LS.SWITCH_C sw => mk_sw mk sw
-           | LS.SWITCH_E sw => mk_sw mk sw
-           | ls as LS.CCALL _ => (app add RI.args_phreg_ccall; default ls)
-           | ls as LS.CCALL_AUTO _ => (app add RI.args_phreg_ccall; default ls)
-           | ls => default ls
+          case ls of
+              LS.FLUSH _ => die "MakeInitial: FLUSH not inserted yet."
+            | LS.FETCH _ => die "MakeInitial: FETCH not inserted yet."
+            | LS.LETREGION{rhos,body} => app mk body
+            | LS.SCOPE{pat,scope} => app mk scope
+            | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv,bv),offset} =>
+              (app add (LS.get_var_atom (handl_lv,nil));
+               app add (LS.get_var_atom (handl_return_lv,nil));
+               app mk handl_lss;
+               app mk default;
+               app mk handl_return_lss)
+            | LS.SWITCH_I {switch,precision} => mk_sw mk switch
+            | LS.SWITCH_W {switch,precision} => mk_sw mk switch
+            | LS.SWITCH_S sw => mk_sw mk sw
+            | LS.SWITCH_C sw => mk_sw mk sw
+            | LS.SWITCH_E sw => mk_sw mk sw
+            | ls as LS.CCALL _ => (app add RI.args_phreg_ccall; default ls)
+            | ls as LS.CCALL_AUTO _ => (app add RI.args_phreg_ccall; default ls)
+            | ls => default ls
     in app mk lss
     end
 
@@ -1104,7 +1111,7 @@ struct
 
   fun ra_body (fun_name, args_on_stack_lvs, lss) =
       let
-        fun repeat() =
+        fun repeat () =
             (if not(isEmpty_simplifyWorklist()) then Simplify()
              else if not(isEmpty_worklistMoves()) then Coalesce()
              else if not(isEmpty_freezeWorklist()) then Freeze()
@@ -1114,18 +1121,18 @@ struct
                 andalso isEmpty_freezeWorklist() andalso isEmpty_spillWorklist() then ()
              else repeat())
 
-        fun assign(LS.V lv) =
+        fun assign (LS.V lv) =
           (case nTableLookup (key lv)
             of SOME n =>
               (case !(#color n)
                  of SOME c => PHREG_STY (lv,c)
                   | NONE => STACK_STY lv)
              | NONE => die "ra_body.assign: lvar not assigned a color")
-          | assign(LS.FV lv) = FV_STY lv
+          | assign (LS.FV lv) = FV_STY lv
 
         val lss = coalesce_binops lss
         val _ = (raReset();
-                 MakeInitial (args_on_stack_lvs, lss);
+                 MakeInitial lss;
                  (*print ("MakeInitial done - " ^ fun_name ^ "\n");*)
                  Build (args_on_stack_lvs, lss);
                  (*print ("Build done\n");*)

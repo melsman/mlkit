@@ -393,8 +393,10 @@ struct
                | LS.FNJMP(cc as {opr,args,clos,res,bv}) =>
                 comment_fn (fn () => "FNJMP: " ^ pr_ls ls,
                 let
-                  val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,
-                                                                    reg_args=[],reg_vec=NONE,res=res}
+                  val (spilled_args,_) =
+                      CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                                               res_regs=RI.res_phreg}
+                                              {args=args, clos=clos, reg_args=[], fargs=[], res=res}
                   val offset_codeptr = if BI.tag_values() then "8" else "0"
                 in
                   if List.length spilled_args > 0 then
@@ -415,8 +417,10 @@ struct
                   comment_fn (fn () => "FNCALL: " ^ pr_ls ls,
                   let
                     val offset_codeptr = if BI.tag_values() then "8" else "0"
-                    val (spilled_args,spilled_res,_) =
-                      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=[],reg_vec=NONE,res=res}
+                    val (spilled_args,spilled_res) =
+                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                                                 res_regs=RI.res_phreg}
+                                                {args=args,clos=clos,reg_args=[],fargs=[],res=res}
                     val size_rcf = length spilled_res
                     val size_ccf = length spilled_args
                     val size_cc = size_rcf+size_ccf+1
@@ -444,7 +448,7 @@ struct
                     I.push(LA return_lab) ::                                          (* Push Return Label *)
                     flush_args(jmp(gen_bv(bv, I.lab return_lab :: fetch_res C))))
                   end)
-               | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
+               | LS.JMP(cc as {opr,args,reg_args,clos,fargs,res,bv}) =>
                   comment_fn (fn () => "JMP: " ^ pr_ls ls,
                   let
                   (* The stack looks as follows - growing downwards to the right:
@@ -457,10 +461,12 @@ struct
                    * the values in ``| ccf | ff |'' may be needed. On the other hand, some of the
                    * arguments may be positioned on the stack correctly already.
                    *)
-                    val (spilled_args, (* those arguments that need be passed on the stack *)
-                         spilled_res,  (* those return values that are returned on the stack *)
-                         _) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg
-                              {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
+                    val (spilled_args,   (* those arguments that need be passed on the stack *)
+                         spilled_res) =  (* those return values that are returned on the stack *)
+                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg, arg_fregs=RI.args_phfreg,
+                                                 res_regs=RI.res_phreg}
+                                                {args=args,clos=clos,reg_args=reg_args,
+                                                 fargs=fargs,res=res}
 
                     val size_rcf = length spilled_res
                     val size_ccf_new = length spilled_args
@@ -492,16 +498,18 @@ struct
                      (base_plus_offset(rsp,WORDS(size_ff+size_ccf),rsp,
                                        jmp C)))
                   end)
-               | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
+               | LS.FUNCALL{opr,args,reg_args,clos,fargs,res,bv} =>
                   comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
                   let
-                    val (spilled_args,spilled_res,_) =
-                        CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,
-                                                                            reg_vec=reg_vec,res=res}
+                    val (spilled_args,spilled_res) =
+                        CallConv.resolve_act_cc {arg_regs=RI.args_phreg,arg_fregs=RI.args_phfreg,
+                                                 res_regs=RI.res_phreg}
+                                                {args=args, clos=clos, reg_args=reg_args,
+                                                 fargs=fargs, res=res}
                     val size_rcf = List.length spilled_res
                     val return_lab = new_local_lab "return_from_app"
                     fun flush_args C =
-                      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C (spilled_args)
+                      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
                     (* We pop in reverse order such that size_ff+offset works *)
                     fun fetch_res C =
                       foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res)
@@ -1371,7 +1379,7 @@ struct
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                                (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
         val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
-        val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_args cc)
+        val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_and_float_args cc)
         val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
    (*
         val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args

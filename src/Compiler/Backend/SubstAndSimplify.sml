@@ -182,13 +182,13 @@ struct
 	   res=atoms_to_atys res,
 	   bv=bv}
 
-	fun do_fun_app{opr,args,clos,res,reg_vec,reg_args,bv} =
+	fun do_fun_app{opr,args,clos,res,reg_args,fargs,bv} =
 	  {opr=opr,
 	   args=atoms_to_atys args,
 	   clos=atom_to_aty_opt(clos,ATYmap,RHOmap),
 	   res=atoms_to_atys res,
-	   reg_vec=atom_to_aty_opt(reg_vec,ATYmap,RHOmap),
 	   reg_args=atoms_to_atys reg_args,
+           fargs=atoms_to_atys fargs,
 	   bv=bv}
 
 	fun SS_se(LS.ATOM atom) = LS.ATOM (atom_to_aty' atom)

@@ -443,21 +443,24 @@ struct
              move_aty_into_reg(base_aty,t2,size_ff,
               store_indexed(t2,offset,R t1,C)))
 
-    (* push(aty), i.e., rsp-=8; rsp[0] = aty (different than on hp) *)
+    (* push_aty, i.e., rsp-=8; rsp[0] = aty (different than on hp) *)
     (* size_ff is for rsp before rsp is moved. *)
     fun push_aty (aty,t:reg,size_ff,C) =
       let
         fun default () = move_aty_into_reg(aty,t,size_ff,
                          I.push(R t) :: C)
-      in case aty
-           of SS.PHREG_ATY aty_reg => I.push(R aty_reg) :: C
-            | SS.INTEGER_ATY i =>
+      in case aty of
+             SS.PHREG_ATY aty_reg =>
+             if I.is_xmm aty_reg then
+               I.subq(I "8", R rsp) :: I.movsd(R aty_reg, D("",rsp)) :: C
+             else I.push(R aty_reg) :: C
+           | SS.INTEGER_ATY i =>
              if boxedNum (#precision i) then default()
              else I.push(I (fmtInt i)) :: C
-            | SS.WORD_ATY w =>
-               if boxedNum (#precision w) then default()
-               else I.push(I (fmtWord w)) :: C
-            | _ => default()
+           | SS.WORD_ATY w =>
+             if boxedNum (#precision w) then default()
+             else I.push(I (fmtWord w)) :: C
+           | _ => default()
       end
 
     (* pop(aty), i.e., aty=rsp[0]; rsp+=8 *)
@@ -668,7 +671,7 @@ struct
         let fun drop n nil = nil
               | drop 0 xs = xs
               | drop n (x::xs) = drop (n-1) xs
-            fun push_arg(aty,size_ff,C) = push_aty(aty,tmp,size_ff,C)
+            fun push_arg (aty,size_ff,C) = push_aty(aty,tmp,size_ff,C)
             val nargs = List.length args
 (*
             val () = if nargs > List.length RI.args_reg_ccall then
@@ -682,8 +685,8 @@ struct
             val nargs_stack = List.length args_stack
             val args = ListPair.zip (args, RI.args_reg_ccall)
             val args = map (fn (x,y) => (x,(),y)) args
-            fun store_ret(SOME d,C) = move_reg_into_aty(rax,d,size_ff,C)
-              | store_ret(NONE,C) = C
+            fun store_ret (SOME d,C) = move_reg_into_aty(rax,d,size_ff,C)
+              | store_ret (NONE,C) = C
             (* val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
             (* With dynamic linking there must be at least one argument (the name to be bound). *)
             val dynlinklab = "localResolveLibFnManual"

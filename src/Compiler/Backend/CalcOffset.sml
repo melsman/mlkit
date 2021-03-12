@@ -70,7 +70,7 @@ struct
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
      TextIO.output(!Flags.log, "\n"))
 
-  fun display(title, tree) =
+  fun display (title, tree) =
     fast_pr(PP.NODE{start=title ^ ": ",
 		    finish="",
 		    indent=3,
@@ -90,38 +90,30 @@ struct
     local
       val max_offset = ref 0
     in
-      fun reset_max_offset() = (max_offset := BI.init_frame_offset)
+      fun reset_max_offset () = (max_offset := BI.init_frame_offset)
       infix ++
-      fun offset ++ inc =
-	if offset+inc < !max_offset then
-	  offset+inc
-	else
-	  (max_offset := offset+inc;
-	   offset+inc)
-      fun get_max_offset lab =
-	let val offset = !max_offset
-	    fun ceil n off =
-	      let val rest = off mod n
-	      in if rest = 0 then off
-		 else off + n - rest
-	      end
-(*
-	    val offset = ceil 8 offset
-            val _ = print ("Max-offset for " ^ Labels.pr_label lab ^ ": " ^ Int.toString offset ^ "\n")
-*)
-	in
-	  offset
-	end
+      fun offset ++ inc = fn s =>
+        let val new = offset + inc
+            val () = if new > !max_offset then max_offset := new
+                     else ()
+        in (*print ("[s: " ^ s ^ "; new offset: " ^ Int.toString new ^
+                  "; increase by: " ^ Int.toString inc ^
+                  "; max: " ^ Int.toString (!max_offset) ^ "]\n")
+         ; *) new
+        end
+
+      fun get_max_offset () = !max_offset
     end
 
-    fun lookup_lv(lv_map,lv) =
+    fun lookup_lv (lv_map,lv) =
       case LvarFinMap.lookup lv_map lv of
 	SOME r => r
       | NONE  => die ("lookup_lv(" ^ (Lvars.pr_lvar lv) ^ ")")
-    fun add_lv(lv_map,r,lv) = LvarFinMap.add(lv,r,lv_map)
 
-    fun assign_offset_atom(LS.VAR lv,LVmap,PHmap) = lookup_lv(LVmap,lv)
-      | assign_offset_atom(LS.PHREG phreg,LVmap,PHmap) = lookup_lv(PHmap,phreg)
+    fun add_lv (lv_map,r,lv) = LvarFinMap.add(lv,r,lv_map)
+
+    fun assign_offset_atom (LS.VAR lv,LVmap,PHmap) = lookup_lv(LVmap,lv)
+      | assign_offset_atom (LS.PHREG phreg,LVmap,PHmap) = lookup_lv(PHmap,phreg)
       | assign_offset_atom _ = die "assign_offset_atom: not a VAR or PHREG."
 
   (* On the x86, the stack grows towards negative infinity, thus, the
@@ -134,15 +126,15 @@ struct
      offset (offset+obj_size-1) is eventually subtracted from
      (sp+size_ff). *)
 
-    fun assign_binders(binders,offset) =    (* We assume that the stack is growing downwards *)
+    fun assign_binders (binders,offset) =    (* We assume that the stack is growing downwards *)
       let
-	fun assign_binder(((place,phsize),_),(acc,offset)) =
+	fun assign_binder (((place,phsize),_),(acc,offset)) =
 	  let fun f ann_offset = ((place,phsize),ann_offset)::acc
 	  in case phsize
 	       of PhysSizeInf.INF =>
 		 let val size = BI.size_of_reg_desc()
 		     val ann_offset = offset + size - 1
-		 in (f ann_offset, offset ++ size)
+		 in (f ann_offset, (offset ++ size) "inf")
 		 end
 		| PhysSizeInf.WORDS 0 =>
 		 let val ann_offset = offset - 1
@@ -153,26 +145,26 @@ struct
 		   let val size = (obj_size + BI.objectDescSizeP 	(*       :       :                   *)
 				   + BI.finiteRegionDescSizeP)	        (*       +-------+                   *)
 		       val ann_offset = offset + obj_size - 1		(*      /|       | <- sp+size_ff     *)
-		   in (f ann_offset, offset ++ size)  		        (* s   / |  obj  |     - offset      *)
+		   in (f ann_offset, (offset ++ size) "fin")            (* s   / |  obj  |     - offset      *)
 		   end							(* i _/  |       | <- sp+size_ff     *)
 		 else 							(* z  \  +-------+     - ann_offset  *)
 		   let val ann_offset = offset + obj_size - 1		(* e   \ |objDesc|                   *)
-		   in (f ann_offset, offset ++ obj_size)		(*      \|regDesc|            | s    *)
+		   in (f ann_offset, (offset ++ obj_size) "fin")	(*      \|regDesc|            | s    *)
 		   end							(*       +-------+            | t    *)
 	  end                                                           (*       :       :            | a    *)
       in                                                                (*       |       | <- sp      | c    *)
 	foldr assign_binder ([],offset) binders                         (*       +-------+            V k    *)
       end
 
-    fun assign_stys(stys,LVmap,PHmap,offset) =
+    fun assign_stys (stys,LVmap,PHmap,offset) =
       let
-	fun assign_sty(IFF.STACK_STY lv,LVmap,PHmap,offset) = (STACK_STY(lv,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
-	  | assign_sty(IFF.PHREG_STY(lv,phreg),LVmap,PHmap,offset) = (PHREG_STY(lv,phreg),LVmap,PHmap,offset)
-	  | assign_sty(IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) =
-	      (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_lv(PHmap,offset,phreg),offset++1)
-	  | assign_sty(IFF.FLUSHED_CALLER_STY(lv,phreg),LVmap,PHmap,offset) =
-	      (FLUSHED_CALLER_STY(lv,phreg,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
-	  | assign_sty(IFF.FV_STY lv,LVamp,PHmap,offset) = (FV_STY lv,LVmap,PHmap,offset)
+	fun assign_sty (IFF.STACK_STY lv,LVmap,PHmap,offset) = (STACK_STY(lv,offset),add_lv(LVmap,offset,lv),PHmap,(offset++1)"stack_sty")
+	  | assign_sty (IFF.PHREG_STY(lv,phreg),LVmap,PHmap,offset) = (PHREG_STY(lv,phreg),LVmap,PHmap,offset)
+	  | assign_sty (IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) =
+	      (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_lv(PHmap,offset,phreg),(offset++1)"flushed_callee_sty")
+	  | assign_sty (IFF.FLUSHED_CALLER_STY(lv,phreg),LVmap,PHmap,offset) =
+	      (FLUSHED_CALLER_STY(lv,phreg,offset),add_lv(LVmap,offset,lv),PHmap,(offset++1)"flushed_caller_sty")
+	  | assign_sty (IFF.FV_STY lv,LVamp,PHmap,offset) = (FV_STY lv,LVmap,PHmap,offset)
       in
 	foldl (fn (sty,(stys_acc,LVmap,PHmap,offset)) =>
 	       let
@@ -182,7 +174,7 @@ struct
 	       end) ([],LVmap,PHmap,offset) stys
       end
 
-    fun CO_sw(CO_lss,switch_con,LS.SWITCH(atom,sels,default),LVmap,PHmap,offset) =
+    fun CO_sw (CO_lss,switch_con,LS.SWITCH(atom,sels,default),LVmap,PHmap,offset) =
       let
 	val sels' =
 	  foldr (fn ((sel,lss),sels_acum) => (sel,CO_lss(lss,LVmap,PHmap,offset,[]))::sels_acum) [] sels
@@ -191,58 +183,58 @@ struct
 	switch_con(LS.SWITCH(atom,sels',default'))
       end
 
-    fun CO_lss([],LVmap,PHmap,offset,acc) = acc
-      | CO_lss(LS.ASSIGN a::lss,LVmap,PHmap,offset,acc) = LS.ASSIGN a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FLUSH(atom,_)::lss,LVmap,PHmap,offset,acc) =
+    fun CO_lss ([],LVmap,PHmap,offset,acc) = acc
+      | CO_lss (LS.ASSIGN a::lss,LVmap,PHmap,offset,acc) = LS.ASSIGN a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.FLUSH(atom,_)::lss,LVmap,PHmap,offset,acc) =
           LS.FLUSH(atom,assign_offset_atom(atom,LVmap,PHmap))::CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FETCH(atom,_)::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.FETCH(atom,_)::lss,LVmap,PHmap,offset,acc) =
           LS.FETCH(atom,assign_offset_atom(atom,LVmap,PHmap))::CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FNJMP a::lss,LVmap,PHmap,offset,acc) = LS.FNJMP a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FNCALL a::lss,LVmap,PHmap,offset,acc) = LS.FNCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.JMP a::lss,LVmap,PHmap,offset,acc) = LS.JMP a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.FUNCALL a::lss,LVmap,PHmap,offset,acc) = LS.FUNCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.LETREGION{rhos,body}::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.FNJMP a::lss,LVmap,PHmap,offset,acc) = LS.FNJMP a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.FNCALL a::lss,LVmap,PHmap,offset,acc) = LS.FNCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.JMP a::lss,LVmap,PHmap,offset,acc) = LS.JMP a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.FUNCALL a::lss,LVmap,PHmap,offset,acc) = LS.FUNCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.LETREGION{rhos,body}::lss,LVmap,PHmap,offset,acc) =
       let
 	val (binders',offset') = assign_binders(rhos,offset)
       in
 	LS.LETREGION{rhos=binders',body=CO_lss(body,LVmap,PHmap,offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.SCOPE{pat,scope}::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.SCOPE{pat,scope}::lss,LVmap,PHmap,offset,acc) =
       let
 	val (pat',LVmap',PHmap',offset') = assign_stys(pat,LVmap,PHmap,offset)
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.HANDLE{default,handl=(handl,handl_lv),
+      | CO_lss (LS.HANDLE{default,handl=(handl,handl_lv),
 			 handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) =
       let
 	val obj_size = BI.size_of_handle()
 	val ann_offset = offset+obj_size-1 (*offset+(1-obj_size)*)
-	val handl' = CO_lss(handl,LVmap,PHmap,offset++obj_size,[])
-	val default' = CO_lss(default,LVmap,PHmap,offset++obj_size,[])
+	val handl' = CO_lss(handl,LVmap,PHmap,(offset++obj_size)"handl",[])
+	val default' = CO_lss(default,LVmap,PHmap,(offset++obj_size)"handle2",[])
 	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(BI.size_of_handle())*),[])
       in
 	LS.HANDLE{default=default',handl=(handl',handl_lv),
 		  handl_return=(handl_return',handl_return_lv,bv),offset=ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_I {switch,precision}::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.SWITCH_I {switch,precision}::lss,LVmap,PHmap,offset,acc) =
       CO_sw(CO_lss, fn sw => LS.SWITCH_I {switch=sw,precision=precision},
 	    switch,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_W {switch,precision}::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.SWITCH_W {switch,precision}::lss,LVmap,PHmap,offset,acc) =
       CO_sw(CO_lss, fn sw => LS.SWITCH_W {switch=sw,precision=precision},
 	    switch,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_S sw::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.SWITCH_S sw::lss,LVmap,PHmap,offset,acc) =
           CO_sw(CO_lss,LS.SWITCH_S,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_C sw::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.SWITCH_C sw::lss,LVmap,PHmap,offset,acc) =
           CO_sw(CO_lss,LS.SWITCH_C,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_E sw::lss,LVmap,PHmap,offset,acc) =
+      | CO_lss (LS.SWITCH_E sw::lss,LVmap,PHmap,offset,acc) =
           CO_sw(CO_lss,LS.SWITCH_E,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.RESET_REGIONS a::lss,LVmap,PHmap,offset,acc) = LS.RESET_REGIONS a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.PRIM a::lss,LVmap,PHmap,offset,acc) = LS.PRIM a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.CCALL a::lss,LVmap,PHmap,offset,acc) = LS.CCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.CCALL_AUTO a::lss,LVmap,PHmap,offset,acc) = LS.CCALL_AUTO a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.EXPORT a::lss,LVmap,PHmap,offset,acc) = LS.EXPORT a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.RESET_REGIONS a::lss,LVmap,PHmap,offset,acc) = LS.RESET_REGIONS a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.PRIM a::lss,LVmap,PHmap,offset,acc) = LS.PRIM a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.CCALL a::lss,LVmap,PHmap,offset,acc) = LS.CCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.CCALL_AUTO a::lss,LVmap,PHmap,offset,acc) = LS.CCALL_AUTO a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss (LS.EXPORT a::lss,LVmap,PHmap,offset,acc) = LS.EXPORT a :: CO_lss(lss,LVmap,PHmap,offset,acc)
 
     (********************************)
     (* CO on Top level Declarations *)
@@ -254,21 +246,22 @@ struct
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
 
-        val size_ff0 = get_max_offset lab
+        val size_ff0 = get_max_offset ()
         val size_cc = CallConv.get_cc_size cc
+(*        val () = print ("size_ff0: " ^ Int.toString size_ff0 ^ "; size_cc: " ^ Int.toString size_cc ^ "\n") *)
         val size_ff = if (size_ff0 + size_cc) mod 2 = 0 then size_ff0 else size_ff0+1
 	val cc' = CallConv.add_frame_size(cc,size_ff)
       in
 	gen_fn(lab,cc',lss_co)
       end
 
-    fun CO_top_decl(LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
-      | CO_top_decl(LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
+    fun CO_top_decl (LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
+      | CO_top_decl (LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
   in
     fun CO {main_lab:label,
-	     code=iff_prg: (StoreTypeIFF,unit,Atom) LinePrg,
-	     imports:label list * label list,
-	     exports:label list * label list} =
+	    code=iff_prg: (StoreTypeIFF,unit,Atom) LinePrg,
+	    imports:label list * label list,
+	    exports:label list * label list} =
       let
 	val _ = chat "[Calculate Offsets..."
 	val line_prg_co = foldr (fn (func,acc) => CO_top_decl func :: acc) [] iff_prg
@@ -367,7 +360,7 @@ struct
         new_fun_nr() :: (Word32.fromInt (size_ff+size_ccf)) :: (Word32.fromInt size_fd) :: ws
       end
 
-    fun CBV_sw(CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
+    fun CBV_sw (CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
       let
 	val (L_set',lss') = CBV_lss(lss,LVenv,L_set)
 	val (sels',L_set_sels) =
@@ -388,8 +381,8 @@ struct
     fun CBV_lss (lss,size_ccf,size_rcf,size_ff,LVenv_cc) =
       let
 	val size_cc = size_ccf + size_rcf + 1 (* +1 for return address *)
-	fun CBV_lss'([],LVenv,L_set) = (L_set,[])
-	  | CBV_lss'(ls::lss,LVenv,L_set) =
+	fun CBV_lss' ([],LVenv,L_set) = (L_set,[])
+	  | CBV_lss' (ls::lss,LVenv,L_set) =
 	  (case ls of
 	     LS.FNJMP(cc as {opr,args,clos,res,bv}) =>
 	       let
@@ -414,7 +407,7 @@ struct
 		(lvset_add(lvset_kill_def,use,LVenv),
 		 LS.FNCALL{opr=opr,args=args,clos=clos,res=res,bv=bit_vector}::lss')
 	       end
-	  | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
+	  | LS.JMP(cc as {opr,args,reg_args,clos,fargs,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LS.def_use_var_ls_cbv ls (* Don't include lvars bound to regions *)
@@ -422,9 +415,9 @@ struct
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
-		 LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bit_vector}::lss')
+		 LS.JMP{opr=opr,args=args,reg_args=reg_args,clos=clos,fargs=fargs,res=res,bv=bit_vector}::lss')
 	       end
-	   | LS.FUNCALL(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
+	   | LS.FUNCALL(cc as {opr,args,reg_args,clos,fargs,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LS.def_use_var_ls_cbv ls (* Don't include lvars bound to regions *)
@@ -432,7 +425,7 @@ struct
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
-		 LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bit_vector}::lss')
+		 LS.FUNCALL{opr=opr,args=args,reg_args=reg_args,clos=clos,fargs=fargs,res=res,bv=bit_vector}::lss')
 	       end
 	   | LS.LETREGION{rhos,body} =>
 	       let
@@ -530,8 +523,8 @@ struct
 	gen_fn(lab,cc,lss_cbv)
       end
 
-    fun CBV_top_decl(LS.FUN(lab,cc,lss)) = do_top_decl LS.FUN (lab,cc,lss)
-      | CBV_top_decl(LS.FN(lab,cc,lss)) = do_top_decl LS.FN (lab,cc,lss)
+    fun CBV_top_decl (LS.FUN(lab,cc,lss)) = do_top_decl LS.FUN (lab,cc,lss)
+      | CBV_top_decl (LS.FN(lab,cc,lss)) = do_top_decl LS.FN (lab,cc,lss)
 
   in
     fun CBV {main_lab:label,

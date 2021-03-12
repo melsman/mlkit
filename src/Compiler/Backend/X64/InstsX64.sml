@@ -462,25 +462,38 @@ structure InstsX64: INSTS_X64 =
         val (rax_lv,rbx_lv,rcx_lv,rdx_lv,rsi_lv,rdi_lv,rbp_lv,rsp_lv,
              r8_lv,r9_lv,r10_lv,r11_lv,r12_lv,r13_lv,r14_lv,r15_lv) =
             case all_regs of
-                [rax_lv,rbx_lv,rcx_lv,rdx_lv,rsi_lv,rdi_lv,rbp_lv,rsp_lv,
-                 r8_lv,r9_lv,r10_lv,r11_lv,r12_lv,r13_lv,r14_lv,r15_lv] =>
-                (rax_lv,rbx_lv,rcx_lv,rdx_lv,rsi_lv,rdi_lv,rbp_lv,rsp_lv,
-                 r8_lv,r9_lv,r10_lv,r11_lv,r12_lv,r13_lv,r14_lv,r15_lv)
-            | _ => die "RI.all_regs mismatch"
+                [v0,v1,v2,v3,v4,v5,v6,v7,
+                 v8,v9,v10,v11,v12,v13,v14,v15] => (v0,v1,v2,v3,v4,v5,v6,v7,
+                                                    v8,v9,v10,v11,v12,v13,v14,v15)
+              | _ => die "RI.all_regs mismatch"
 
         val xmm_regs = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7,
                         xmm8,xmm9,xmm10,xmm11,xmm12,xmm13,xmm14,xmm15]
 
-        val f64_lvs_with_phregs = map (fn r => (Lvars.new_named_lvar (pr_reg r),r)) xmm_regs
+        val lvs_with_phfregs = map (fn r => let val lv = Lvars.new_named_lvar (pr_reg r)
+                                                val () = Lvars.set_ubf64 lv
+                                            in (lv,r)
+                                            end) xmm_regs
+
+        val all_fregs = map #1 lvs_with_phfregs
         val f64_phregs =
-            case map #1 f64_lvs_with_phregs of
-                _ :: _ :: rest => rest
+            case rev all_fregs of
+                _ :: _ :: rest => rev rest
               | _ => die "f64_phregs.impossible"
+
+        val (xmm0_lv,xmm1_lv,xmm2_lv,xmm3_lv,xmm4_lv,xmm5_lv,xmm6_lv,xmm7_lv,
+             xmm8_lv,xmm9_lv,xmm10_lv,xmm11_lv,xmm12_lv,xmm13_lv,xmm14_lv,xmm15_lv) =
+            case map #1 lvs_with_phfregs of
+                [v0,v1,v2,v3,v4,v5,v6,v7,
+                 v8,v9,v10,v11,v12,v13,v14,v15] => (v0,v1,v2,v3,v4,v5,v6,v7,
+                                                    v8,v9,v10,v11,v12,v13,v14,v15)
+              | _ => die "RI.all_fregs mismatch"
+
 
         val f64_phregset = Lvarset.lvarsetof f64_phregs
 
         val map_lvs_to_reg =
-            LvarFinMap.fromList(lvs_with_phregs @ f64_lvs_with_phregs)
+            LvarFinMap.fromList(lvs_with_phregs @ lvs_with_phfregs)
 
         fun is_reg lv =
             case LvarFinMap.lookup map_lvs_to_reg lv of
@@ -494,16 +507,47 @@ structure InstsX64: INSTS_X64 =
 
         fun reg_to_lv r =
             case r of
-                rax => rax_lv | rbx => rbx_lv | rcx => rcx_lv | rdx => rdx_lv
-              | rsi => rsi_lv | rdi => rdi_lv | rbp => rbp_lv | rsp => rsp_lv
-              | r8 => r8_lv | r9 => r9_lv | r10 => r10_lv | r11 => r11_lv
-              | r12 => r12_lv | r13 => r13_lv | r14 => r14_lv | r15 => r15_lv
+                rax => rax_lv
+              | rbx => rbx_lv
+              | rcx => rcx_lv
+              | rdx => rdx_lv
+              | rsi => rsi_lv
+              | rdi => rdi_lv
+              | rbp => rbp_lv
+              | rsp => rsp_lv
+              | r8 => r8_lv
+              | r9 => r9_lv
+              | r10 => r10_lv
+              | r11 => r11_lv
+              | r12 => r12_lv
+              | r13 => r13_lv
+              | r14 => r14_lv
+              | r15 => r15_lv
+              | xmm0 => xmm0_lv
+              | xmm1 => xmm1_lv
+              | xmm2 => xmm2_lv
+              | xmm3 => xmm3_lv
+              | xmm4 => xmm4_lv
+              | xmm5 => xmm5_lv
+              | xmm6 => xmm6_lv
+              | xmm7 => xmm7_lv
+              | xmm8 => xmm8_lv
+              | xmm9 => xmm9_lv
+              | xmm10 => xmm10_lv
+              | xmm11 => xmm11_lv
+              | xmm12 => xmm12_lv
+              | xmm13 => xmm13_lv
+              | xmm14 => xmm14_lv
+              | xmm15 => xmm15_lv
               | _ => die ("reg_to_lv: " ^ pr_reg r ^ " not available for register allocation")
 
         val reg_args = [rax,rbx,rdi]
         val args_phreg = map reg_to_lv reg_args
         val reg_res = [rdi,rbx,rax]
         val res_phreg = map reg_to_lv reg_res
+
+        val freg_args = [xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7]
+        val args_phfreg = map reg_to_lv freg_args
 
         val args_reg_ccall = [rdi,rsi,rdx,rcx,r8,r9]
         val args_phreg_ccall = map reg_to_lv args_reg_ccall
@@ -531,8 +575,8 @@ structure InstsX64: INSTS_X64 =
     val tmp_reg0 = r10 (* CALLER saves scratch registers *)
     val tmp_reg1 = r11
 
-    val tmp_freg0 = xmm0
-    val tmp_freg1 = xmm1
+    val tmp_freg0 = xmm14
+    val tmp_freg1 = xmm15
 
     fun doubleOfQuadReg r =
         case r of

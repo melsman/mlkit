@@ -53,8 +53,6 @@ struct
     in print (s ^ " = ["); loop lvs; print "]\n"
     end
 
-  val region_vectors = false
-
   (***********)
   (* ClosExp *)
   (***********)
@@ -1660,18 +1658,11 @@ struct
 			 (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos_fn),shared_clos_size,formals))) lvars_labels_formals)
 		     val lv_rv = fresh_lvar("rv")
 		     val (reg_args, env_with_rv) =
-		       if region_vectors then
-			 let val e = #1(List.foldl (fn ((place,_),(env,i)) =>
-						    (CE.declareRho(place,CE.SELECT(lv_rv,i),env),i+1))
-					(env_with_funs, BI.init_regvec_offset) formals) (* formals may be empty! *)
-			 in (nil, e)
-			 end
-		       else (List.foldr (fn ((place,_),(lvs,env)) =>
-					 let val lv = fresh_lvar "regarg"
-					 in (lv::lvs, CE.declareRho(place,CE.LVAR lv,env))
-					 end)
-			     (nil,env_with_funs) formals)
-
+                         List.foldr (fn ((place,_),(lvs,env)) =>
+					let val lv = fresh_lvar "regarg"
+					in (lv::lvs, CE.declareRho(place,CE.LVAR lv,env))
+					end)
+			            (nil,env_with_funs) formals
 		     val env_with_rho_kind =
 			  (env_with_rv plus_decl_with CE.declareRhoKind)
 			  (map (fn (place,phsize) => (place,mult("f",phsize))) formals)
@@ -1690,12 +1681,10 @@ struct
 (*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^
 				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
-		     val (lv_rv_opt, lv_rv_var_opt) =
-		       if List.null formals orelse not(region_vectors) then (NONE, NONE)
-		       else (SOME lv_rv, SOME(VAR lv_rv))
-		     val cc = CallConv.mk_cc_fun(args,sclos,lv_rv_opt,reg_args,ress)
+                     val (fargs,args) = List.partition Lvars.get_ubf64 args
+		     val cc = CallConv.mk_cc_fun(args,sclos,reg_args,fargs,ress)
 		   in
-		     add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab lv_rv_var_opt))
+		     add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab NONE))
 		   end
 		 val _ = List.app compile_fn (zip5 (lvars,binds,formalss,dropss,labels))
 	       in
@@ -2589,7 +2578,8 @@ struct
 (*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^
 				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
-		     val cc = CallConv.mk_cc_fun(args,sclos,NONE,rho_lvs,pseudo_res_lvars)
+                     val (fargs,args) = List.partition Lvars.get_ubf64 args
+		     val cc = CallConv.mk_cc_fun(args,sclos,rho_lvs,fargs,pseudo_res_lvars)
 		   in
 		     add_new_fun(lab,cc,liftTrip body env_with_args lab)
 		   end
