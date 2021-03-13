@@ -318,7 +318,11 @@ struct
     val no_call = ref 0
     val c_call  = ref 0
     val ml_call = ref 0
+    val Kref = ref 0
+    fun getK () = !Kref
   in
+    fun setK K = Kref := K
+
     fun fix_int i = StringCvt.padLeft #" " 7 (Int.toString i)
 
     fun procent (t:int,b:int) =
@@ -327,7 +331,8 @@ struct
 
     fun pp_stat () =
         if !Flags.chat then
-          (chat ("Number of nodes.....: " ^ fix_int(!no_of_nodes) ^ procent(!no_of_nodes,!no_of_nodes));
+          (chat ("K...................: " ^ fix_int (getK()));
+           chat ("Number of nodes.....: " ^ fix_int(!no_of_nodes) ^ procent(!no_of_nodes,!no_of_nodes));
            chat ("Spilled nodes.......: " ^ fix_int(!spills) ^ procent(!spills,!no_of_nodes));
            chat ("Assigned_colors.....: " ^ fix_int(!assigned_colors) ^ procent(!assigned_colors,!no_of_nodes));
            chat ("Number of moves.....: " ^ fix_int(!no_of_moves) ^ procent(!no_of_moves,!no_of_moves));
@@ -386,9 +391,9 @@ struct
   datatype live_range_status =
     no_call | c_call | ml_call (* Does the live range cross a c-call or a ml-call. *)
 
-  fun merge_lrs(no_call,s2) = s2
-    | merge_lrs(c_call,ml_call) = ml_call
-    | merge_lrs(s1,_) = s1
+  fun merge_lrs (no_call,s2) = s2
+    | merge_lrs (c_call,ml_call) = ml_call
+    | merge_lrs (s1,_) = s1
 
   type count = int
   type key = int
@@ -419,57 +424,68 @@ struct
                adjList:=nil; alias:=NONE; color:=SOME lv; lrs:=no_call; uses:=0))
           precolored
 
-  val allColors : lvarset = Lvarset.lvarsetof(map (#lv) precolored)
+(*  val allColors : lvarset = Lvarset.lvarsetof(map (#lv) precolored)*)
   val K = length precolored
+  val () = setK K
+
+  fun makeWorklist (c:worklist_enum) : {reset   : unit -> unit,
+                                        add     : node -> unit,
+                                        isEmpty : unit -> bool,
+                                        getAll  : unit -> node list,
+                                        getOne  : unit -> node option} =
+      let val wl : node list ref = ref []
+          fun getOne () =
+              case !wl of
+                  nil => NONE
+                | n::ns => if !(#worklist n) = c then SOME n
+                           else ( wl:=ns ; getOne())
+          fun isEmpty () =
+              case getOne() of
+                  NONE => true
+                | _ => false
+      in {reset = fn () => wl := [],
+          add = fn (n:node) => (#worklist n := c; wl := n :: !wl),
+          isEmpty = isEmpty,
+          getAll = fn () =>
+                      let val l = List.filter (fn n => !(#worklist n) = c) (!wl)
+                      in wl := l
+                       ; l
+                      end,
+          getOne = getOne}
+      end
 
   (* Work lists *)
-  val initial          : node list ref = ref []
-  val simplifyWorklist : node list ref = ref []
-  val freezeWorklist   : node list ref = ref []
-  val spillWorklist    : node list ref = ref []
-  val spilledNodes     : node list ref = ref []
-  val coalescedNodes   : node list ref = ref []
-  val coloredNodes     : node list ref = ref []
-  val selectStack      : node list ref = ref []
+  val {reset=initialReset, add=initialAdd, isEmpty=isEmpty_initial, getAll=initialGetAll, ...} =
+      makeWorklist initial_enum
+  val {reset=simplifyWorklistReset, add=simplifyWorklistAdd, isEmpty=isEmpty_simplifyWorklist, getOne=simplifyWorklistGetOne, ...} =
+      makeWorklist simplifyWorklist_enum
+
+  val {reset=freezeWorklistReset, add=freezeWorklistAdd, isEmpty=isEmpty_freezeWorklist, getOne=freezeWorklistGetOne, ...} =
+      makeWorklist freezeWorklist_enum
+
+  val {reset=spillWorklistReset, add=spillWorklistAdd, isEmpty=isEmpty_spillWorklist, getAll=spillWorklistGetAll, ...} =
+      makeWorklist spillWorklist_enum
+
+  val {reset=spilledNodesReset, add=spilledNodesAdd, ...} =
+      makeWorklist spilledNodes_enum
+
+  val {reset=coalescedNodesReset, add=coalescedNodesAdd, getAll=coalescedNodesGetAll, ...} =
+      makeWorklist coalescedNodes_enum
+
+  val {reset=coloredNodesReset, add=coloredNodesAdd, ...} =
+      makeWorklist coloredNodes_enum
+
+  val {reset=selectStackReset, add=selectStackAdd, getAll=selectStackGetAll, ...} =
+      makeWorklist selectStack_enum
 
   fun worklistsReset () =
-      (initial := nil; simplifyWorklist := nil;
-       freezeWorklist := nil; spillWorklist := nil;
-       spilledNodes := nil; coalescedNodes := nil;
-       coalescedNodes := nil; coloredNodes := nil;
-       selectStack := nil)
+      (initialReset(); simplifyWorklistReset();
+       freezeWorklistReset(); spillWorklistReset();
+       spilledNodesReset(); coalescedNodesReset();
+       coloredNodesReset(); selectStackReset())
 
   fun isEmpty nil = true
     | isEmpty _ = false
-
-  local
-    fun norm (wle:worklist_enum) (wl:node list ref) : unit =
-        wl := List.filter (fn n => !(#worklist n) = wle) (!wl)
-    fun norm_simplifyWorklist () = norm simplifyWorklist_enum simplifyWorklist
-    fun norm_freezeWorklist () = norm freezeWorklist_enum freezeWorklist
-    fun norm_spillWorklist () = norm spillWorklist_enum spillWorklist
-  in
-    fun isEmpty_simplifyWorklist () =
-      (norm_simplifyWorklist(); isEmpty(!simplifyWorklist))
-    fun isEmpty_freezeWorklist () =
-      (norm_freezeWorklist(); isEmpty(!freezeWorklist))
-    fun isEmpty_spillWorklist () =
-      (norm_spillWorklist(); isEmpty(!spillWorklist))
-  end
-
-  local fun add (wl:node list ref) c (n:node) = (#worklist n := c; wl := n :: !wl)
-  in fun initialAdd n = add initial initial_enum n
-     fun simplifyWorklistAdd n = add simplifyWorklist simplifyWorklist_enum n
-     fun freezeWorklistAdd n = (add freezeWorklist freezeWorklist_enum n)
-     fun spillWorklistAdd n = add spillWorklist spillWorklist_enum n
-     fun spilledNodesAdd n =
-(*       if Lvars.get_ubf64(#lv n) then
-           die "spill of ubf64 variable not supported"
-         else*) add spilledNodes spilledNodes_enum n
-     fun coalescedNodesAdd n =
-         add coalescedNodes coalescedNodes_enum n
-     fun coloredNodesAdd n = add coloredNodes coloredNodes_enum n
-  end
 
   datatype movelist_enum =
            coalescedMoves_enum | constrainedMoves_enum |
@@ -486,13 +502,13 @@ struct
   val worklistMoves    : move list ref = ref []
   val activeMoves      : move list ref = ref []
 
-  fun movelistsReset() =
+  fun movelistsReset () =
       (coalescedMoves := nil; constrainedMoves := nil;
        frozenMoves := nil; worklistMoves := nil; activeMoves := nil)
 
   local
     fun norm (mle:movelist_enum) (ml:move list ref) : unit=
-      ml := List.filter (fn m => !(#movelist m) = mle) (!ml)
+        ml := List.filter (fn m => !(#movelist m) = mle) (!ml)
   in fun norm_worklistMoves () = norm worklistMoves_enum worklistMoves
      fun isEmpty_worklistMoves () =
          (norm_worklistMoves(); isEmpty(!worklistMoves))
@@ -621,20 +637,17 @@ struct
     end
 
   local
-    fun push (n:node) : unit = (selectStack := n :: (!selectStack);
-                                (#worklist n) := selectStack_enum)
+    fun push (n:node) : unit = selectStackAdd n
   in
-    fun Simplify () = (* invariant : simplifyWorklist is normalised and non-empty *)
-        case !simplifyWorklist
-         of n::_ => (push n; app DecrementDegree (Adjecent n))
-          | nil => die "Simplify"
+    fun Simplify () = (* invariant : simplifyWorklist is non-empty *)
+        case simplifyWorklistGetOne() of
+            SOME n => (push n; app DecrementDegree (Adjecent n))
+          | NONE => die "Simplify"
   end
 
-  fun AddEdge (u : lvar ,v : lvar) : unit =
-    let
-      val (u_key, v_key) = (key u, key v)
-    in
-      if u_key = v_key orelse adjSetMember(u_key, v_key) then ()
+  fun AddEdge (u: lvar, v: lvar) : unit =
+    let val (u_key, v_key) = (key u, key v)
+    in if u_key = v_key orelse adjSetMember(u_key, v_key) orelse Lvars.get_ubf64 u <> Lvars.get_ubf64 v then ()
        else
          (adjSetAdd(u_key,v_key);
           case nTableLookup u_key
@@ -664,7 +677,7 @@ struct
           else
             simplifyWorklistAdd n
     in
-      app do_n (!initial)
+      app do_n (initialGetAll())
     end
 
   fun AddWorkList (u : node) : unit =
@@ -676,11 +689,11 @@ struct
     !(#degree t) < K orelse !(#worklist t) = precolored_enum orelse adjSetMember(key' t, key' r)
 
   fun Conservative (nodes:lvarset) : bool =
-    let val nodes = map (fn lv => case nTableLookup (key lv)
-                                    of SOME n => n
-                                     | NONE => die "Conservative") (Lvarset.members nodes)
-    in (foldl (fn (n,k) => if !(#degree n) >= K then k+1 else k) 0 nodes) < K
-    end
+      Lvarset.foldset (fn (k, lv) =>
+                          case nTableLookup (key lv) of
+                              SOME n => if !(#degree n) >= K then k+1 else k
+                            | NONE => die "Conservative") (0,nodes)
+      < K
 
   fun check_same_kind s (u:node) (v:node) : unit =
       let fun ubf64_of_node (n:node) : bool = Lvars.get_ubf64 (#lv u)
@@ -749,9 +762,9 @@ struct
     end
 
   fun Freeze () : unit =  (* invariant : freezeWorklist is normalised and non-empty *)
-      case !freezeWorklist of
-          u :: _ => (simplifyWorklistAdd u; FreezeMoves u)
-        | _ => die "Freeze"
+      case freezeWorklistGetOne() of
+          SOME u => (simplifyWorklistAdd u; FreezeMoves u)
+        | NONE => die "Freeze"
 
   fun SelectSpill () : unit = (* invariant : spillWorklist is normalised and non-empty *)
     let
@@ -760,7 +773,7 @@ struct
         | lrs_factor ml_call = 1.5
       fun pri (n:node) = Real.fromInt(!(#uses n)) / Real.fromInt(!(#degree n))  (**lrs_factor(!(#lrs n))06/04/1999, Niels*)
       fun select_spill () = (* use lowest priority: uses/degree*lrs_factor *)
-          case !spillWorklist of
+          case spillWorklistGetAll() of
               m :: rest => #1(foldl (fn (n,(m,mpri)) =>
                                         let val npri = pri n
                                         in if mpri < npri then (m,mpri) else (n,npri) end) (m,pri m) rest)
@@ -769,7 +782,7 @@ struct
       fun order_mv_related (n:node,m:node) =
           if List.length(NodeMoves n) < List.length(NodeMoves m) then n else m
       fun select_spill2 () = (* spill non-move related nodes *)
-          case !spillWorklist of
+          case spillWorklistGetAll() of
               m :: rest => foldl order_mv_related m rest
             | _ => die "SelectSpill.select_spill2"
       val m = select_spill()
@@ -819,7 +832,7 @@ struct
         case ns
           of nil => app (fn n => if !(#worklist n) = coalescedNodes_enum then
                                    (#color n := !(#color(GetAliasNode n)); inc_assigned_colors())
-                                 else ()) (!coalescedNodes)
+                                 else ()) (coalescedNodesGetAll())
            | n::ns =>
             let
               val _ = if !(#worklist n) = coalescedNodes_enum
@@ -841,7 +854,7 @@ struct
               find_color(*_simple*)(n,notOkColors);
               pop_loop ns
             end
-    in pop_loop (!selectStack)
+    in pop_loop (selectStackGetAll())
     end
 
   fun MakeInitial lss =
@@ -861,7 +874,7 @@ struct
                                            worklist=ref initial_enum, adjList=ref nil,
                                            alias = ref NONE, color=ref NONE,
                                            lrs = ref no_call, uses = ref 0}
-                       in nTableAdd(i,n); initial := n :: !initial; inc_initial()
+                       in nTableAdd(i,n); initialAdd n; inc_initial()
                        end
         end
 
@@ -1089,7 +1102,7 @@ struct
           (EdgeSet.apply (fn (s1,s2) => TextIO.output(stream, pp_edge(s1,s2,"continuous"))) (!edge_set);
            EdgeSet.apply (fn (s1,s2) => TextIO.output(stream, pp_edge(s1,s2, "dotted"))) (!move_set))
       in
-        (app do_n (!initial);
+        (app do_n (initialGetAll());
          app do_n precolored;
          export_edges())
       end
