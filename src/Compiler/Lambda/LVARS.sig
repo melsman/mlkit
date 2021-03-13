@@ -73,5 +73,7 @@ signature LVARSET =
 	val members      : lvarset -> lvar list
 	val foldset      : ('a * lvar -> 'a) -> 'a * lvarset -> 'a
 	val mapset       : (lvar -> 'a) -> lvarset -> 'a list
+	val appset       : (lvar -> unit) -> lvarset -> unit
         val findLvar     : (lvar -> '_a option) -> lvarset -> (lvar * '_a)option
+        val one_in_difference : lvarset * lvarset -> lvar option
     end

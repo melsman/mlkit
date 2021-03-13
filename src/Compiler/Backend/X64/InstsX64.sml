@@ -478,7 +478,7 @@ structure InstsX64: INSTS_X64 =
         val all_fregs = map #1 lvs_with_phfregs
         val f64_phregs =
             case rev all_fregs of
-                _ :: _ :: rest => rev rest
+                _ :: _ :: rest => rev rest              (* two registers reserved as temporaries *)
               | _ => die "f64_phregs.impossible"
 
         val (xmm0_lv,xmm1_lv,xmm2_lv,xmm3_lv,xmm4_lv,xmm5_lv,xmm6_lv,xmm7_lv,
