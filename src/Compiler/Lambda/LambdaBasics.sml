@@ -691,6 +691,15 @@ structure LambdaBasics: LAMBDA_BASICS =
 	in subst
 	end
 
+      fun contains_f64Type t =
+          case t of
+              TYVARtype _ => false
+	    | ARROWtype(ts1,ts2) => contains_f64Types ts1 orelse contains_f64Types ts2
+	    | CONStype(ts,tn) => TyName.eq(TyName.tyName_F64,tn) orelse contains_f64Types ts
+	    | RECORDtype ts => contains_f64Types ts
+      and contains_f64Types nil = false
+        | contains_f64Types (t::ts) = contains_f64Type t orelse contains_f64Types ts
+
     end (*local*)
 
     structure TVS = TyvarSet

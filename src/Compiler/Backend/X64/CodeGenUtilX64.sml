@@ -46,10 +46,6 @@ struct
   val tmp_freg0 = I.tmp_freg0
   val tmp_freg1 = I.tmp_freg1
 
-  val caller_save_regs_ccall = map RI.lv_to_reg RI.caller_save_ccall_phregs
-  val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
-  val all_regs = map RI.lv_to_reg RI.all_regs
-
   (***********)
   (* Logging *)
   (***********)
@@ -195,7 +191,7 @@ struct
     (* Can be used to load from the stack or from a record *)
     (* d = b[n]                                            *)
     fun load_indexed (d:ea,b:reg,n:Offset,C) =
-        if I.is_xmm b then die "load_indexed: wrong kind of register"
+        if I.is_xmm b then die ("load_indexed: wrong kind of register")
         else if is_xmm_ea d then I.movsd(D(offset_bytes n,b), d) :: C
         else I.movq(D(offset_bytes n,b), d) :: C
 
@@ -306,16 +302,16 @@ struct
 
     (* dst_aty = src_aty[offset] *)
     fun move_index_aty_to_aty (SS.PHREG_ATY src_reg,SS.PHREG_ATY dst_reg,offset:Offset,t:reg,size_ff,C) =
-        load_indexed(R dst_reg,src_reg,offset,C)
+        load_indexed (R dst_reg,src_reg,offset,C)
       | move_index_aty_to_aty (SS.PHREG_ATY src_reg,dst_aty,offset:Offset,t:reg,size_ff,C) =
-        load_indexed(R t,src_reg,offset,
+        load_indexed (R t,src_reg,offset,
          move_reg_into_aty(t,dst_aty,size_ff,C))
-      | move_index_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,offset,_,size_ff,C) =
-        move_aty_into_reg(src_aty,dst_reg,size_ff,
-         load_indexed(R dst_reg,dst_reg,offset,C))
+      | move_index_aty_to_aty (src_aty,SS.PHREG_ATY dst_reg,offset,t:reg,size_ff,C) =
+        move_aty_into_reg(src_aty,t(*dst_reg*),size_ff,
+         load_indexed (R dst_reg,t(*dst_reg*),offset,C))
       | move_index_aty_to_aty (src_aty,dst_aty,offset,t:reg,size_ff,C) = (* can be optimised!! *)
         move_aty_into_reg(src_aty,t,size_ff,
-         load_indexed(R t,t,offset,
+         load_indexed (R t,t,offset,
           move_reg_into_aty(t,dst_aty,size_ff,C)))
 
     (* dst_aty = &lab *)
@@ -423,9 +419,9 @@ struct
     (* Can be used to load from the stack or a record when destination is an ATY *)
     (* dst_aty = base_reg[offset] *)
     fun load_aty_from_reg_record (SS.PHREG_ATY dst_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-        load_indexed(R dst_reg,base_reg,offset,C)
+        load_indexed (R dst_reg,base_reg,offset,C)
       | load_aty_from_reg_record (dst_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
-        load_indexed(R t,base_reg,offset,
+        load_indexed (R t,base_reg,offset,
          move_reg_into_aty(t,dst_aty,size_ff,C))
 
     (* base_aty[offset] = src_aty *)
@@ -792,7 +788,7 @@ struct
      * The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0
      *)
     fun do_gc (reg_map:Word32.word,size_ccf,size_rcf,
-               size_spilled_region_args) =
+               size_spilled_region_and_float_args) =
       if gc_p() then
         let
           val l_gc_done = new_local_lab "gc_done"
@@ -808,7 +804,7 @@ struct
            load_label_addr(l_gc_done,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,   (* tmp_reg0 = return address *)
            I.push(I (i2s size_ccf)) ::
            I.push(I (i2s size_rcf)) ::
-           I.push(I (i2s size_spilled_region_args)) ::
+           I.push(I (i2s size_spilled_region_and_float_args)) ::
            I.jmp(L gc_stub_lab) :: nil))
         end
       else (fn C => C, nil)
@@ -1533,7 +1529,7 @@ struct
                   then (I.negq, fn r => r)
                   else (I.negl, I.doubleOfQuadReg)
           in x_C(
-             load_indexed(R tmp_reg0,x_reg,WORDS 1,
+             load_indexed (R tmp_reg0,x_reg,WORDS 1,
              inst_neg(R (maybeDoubleOfQuadReg tmp_reg0)) ::
              jump_overflow (
              move_aty_into_reg(b,d_reg,size_ff,
@@ -1575,7 +1571,7 @@ struct
                else (I.cmpl, I.negl, I.doubleOfQuadReg)
        in
          x_C(
-         load_indexed(R tmp_reg0,x_reg,WORDS 1,
+         load_indexed (R tmp_reg0,x_reg,WORDS 1,
          inst_cmp (I "0", R (maybeDoubleOfQuadReg tmp_reg0)) ::
          I.jge cont_lab ::
          inst_neg (R (maybeDoubleOfQuadReg tmp_reg0)) ::
@@ -1910,10 +1906,13 @@ struct
          else if I.is_xmm x andalso I.is_xmm y then I.movsd(R x,R y)::C
          else die "copy_f64: expecting xmm registers"
 
-     fun bin_f64_op s finst (x,y,d,size_ff:int,C) =
+     fun bin_f64_op s finst (x,y0,d,size_ff:int,C) =
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
-             val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val (y, y_C) = resolve_arg_aty(y0,tmp_freg1,size_ff)
              val (d, C') = resolve_aty_def(d,tmp_freg0,size_ff, C)
+             val () = if I.is_xmm y then () else die ("bin_f64_op: " ^ s ^ " - wrong y register - " ^ SS.pr_aty y0)
+             val () = if I.is_xmm x then () else die ("bin_f64_op: " ^ s ^ " - wrong x register")
+             val () = if I.is_xmm d then () else die ("bin_f64_op: " ^ s ^ " - wrong d register")
          in x_C(y_C(
             if y = d then
               if x = d then
@@ -1968,6 +1967,8 @@ struct
      fun cmpf64_kill_tmp0 cond (x,y,d,size_ff,C) = (* ME MEMO *)
          let val (x, x_C) = resolve_arg_aty(x,tmp_freg0,size_ff)
              val (y, y_C) = resolve_arg_aty(y,tmp_freg1,size_ff)
+             val () = if I.is_xmm x then () else die ("cmpf64_kill_tmp0: " ^ pp_cond cond ^ " - wrong x register")
+             val () = if I.is_xmm y then () else die ("cmpf64_kill_tmp0: " ^ pp_cond cond ^ " - wrong y register")
              val (d_reg, C') = resolve_aty_def(d, tmp_reg0, size_ff, C)
              val true_lab = new_local_lab "true"
              val cont_lab = new_local_lab "cont"
@@ -2134,9 +2135,9 @@ struct
                                         else I.doubleOfQuadReg
          in
            x_C(
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           load_indexed (R tmp_reg0,x_reg,WORDS 1,
            y_C(
-           load_indexed(R tmp_reg1,y_reg,WORDS 1,
+           load_indexed (R tmp_reg1,y_reg,WORDS 1,
            inst(R (maybeDoubleOfQuadReg tmp_reg0),
                 R (maybeDoubleOfQuadReg tmp_reg1)) ::
            check_ovf (
@@ -2227,7 +2228,7 @@ struct
                else C
          in
            x_C (
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           load_indexed (R tmp_reg0,x_reg,WORDS 1,
            check_ovf (
            move_aty_into_reg(b,d_reg,size_ff,
            store_indexed(d_reg, WORDS 1, R tmp_reg0,
@@ -2246,7 +2247,7 @@ struct
                else C
          in
            x_C (
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           load_indexed (R tmp_reg0,x_reg,WORDS 1,
            check_ovf (
            move_aty_into_reg(b,d_reg,size_ff,
            store_indexed(d_reg, WORDS 1, R tmp_reg0,
@@ -2264,7 +2265,7 @@ struct
                  else C
          in
            x_C (
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           load_indexed (R tmp_reg0,x_reg,WORDS 1,
            maybe_signext(
            move_aty_into_reg(b,d_reg,size_ff,
            store_indexed(d_reg, WORDS 1, R tmp_reg0,
@@ -2278,7 +2279,7 @@ struct
              val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
          in
            x_C (
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           load_indexed (R tmp_reg0,x_reg,WORDS 1,
            I.movslq(R (I.doubleOfQuadReg tmp_reg0), R tmp_reg0) ::       (* sign-extend *)
            move_aty_into_reg(b,d_reg,size_ff,
            store_indexed(d_reg, WORDS 1, R tmp_reg0,
@@ -2292,7 +2293,7 @@ struct
              val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
          in
            x_C (
-           load_indexed(R tmp_reg0,x_reg,WORDS 1,
+           load_indexed (R tmp_reg0,x_reg,WORDS 1,
            I.mov(R (I.doubleOfQuadReg tmp_reg0),R (I.doubleOfQuadReg tmp_reg0)) ::  (* clears the upper bits *)
            move_aty_into_reg(b,d_reg,size_ff,
            store_indexed(d_reg, WORDS 1, R tmp_reg0,
@@ -2376,7 +2377,7 @@ struct
                                       else I.doubleOfQuadReg
        in
          x_C(
-         load_indexed(R tmp_reg1,x_reg,WORDS 1,
+         load_indexed (R tmp_reg1,x_reg,WORDS 1,
          copy(rcx, tmp_reg0,                         (* save rcx *)
          y_C(
          copy(y_reg,rcx,                             (* tmp_reg0 = %r10, see InstsX64.sml *)

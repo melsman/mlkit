@@ -34,7 +34,8 @@ signature CALL_CONV =
 
     val get_spilled_args              : cc -> lvar list
     val get_spilled_args_with_offsets : cc -> (lvar * offset) list
-    val get_spilled_region_args       : cc -> lvar list
+(*    val get_spilled_region_args       : cc -> lvar list *)
+    val get_spilled_region_and_float_args : cc -> lvar list
 
     val get_spilled_res               : cc -> lvar list
     val get_spilled_res_with_offsets  : cc -> (lvar * offset) list

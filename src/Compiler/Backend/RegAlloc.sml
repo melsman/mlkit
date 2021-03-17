@@ -1216,4 +1216,4 @@ struct
   fun ra_dummy code = ra_main code ra_dummy_prg
   fun ra code = ra_main code ra_prg
 
-end;
+end

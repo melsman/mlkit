@@ -169,15 +169,15 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
               val ((afstys,fstys), (ps,_)) = resolv (fstys,(ps,fregs))
               val (astys',arstys',afstys') =
                   if BI.down_growing_stack then
-                    let val arstys' = map assign_stack (rev rstys)
+                    let val afstys' = map assign_stack (rev fstys)
+                        val arstys' = map assign_stack (rev rstys)
                         val astys' = map assign_stack (rev stys)
-                        val afstys' = map assign_stack (rev fstys)
                     in (astys',arstys',afstys')
                     end
                   else
-                    let val afstys' = map assign_stack fstys
-                        val astys' = map assign_stack stys
+                    let val astys' = map assign_stack stys
                         val arstys' = map assign_stack rstys
+                        val afstys' = map assign_stack fstys
                     in (astys', arstys',afstys')
                     end
           in (astys@astys', arstys@arstys', afstys@afstys', ps)
@@ -296,6 +296,9 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
       fun get_spilled_region_args {clos,args,reg_args,fargs,res,frame_size} =
           map #1 (get_spilled_stys(reg_args,[]))
 
+      fun get_spilled_region_and_float_args {clos,args,reg_args,fargs,res,frame_size} =
+          map #1 (get_spilled_stys(reg_args,get_spilled_stys(fargs,[])))
+
       fun get_spilled_args_with_offsets {clos,args,reg_args,fargs,res,frame_size} =
           get_spilled_sty_opt(clos,get_spilled_stys(args,get_spilled_stys(reg_args,get_spilled_stys(fargs,[]))))
 
@@ -309,12 +312,12 @@ functor CallConv(BI : BACKEND_INFO) : CALL_CONV =
       fun resolve_act_cc {arg_regs, arg_fregs, res_regs}
                          ({clos: 'a option, args: 'a list, reg_args: 'a list,
                            fargs: 'a list, res: 'a list}: 'a cc0) =
-        let fun append_to_list_opt (NONE,l) = l
-              | append_to_list_opt (SOME e,l) = e::l
+        let fun cons_list_opt (NONE,l) = l
+              | cons_list_opt (SOME e,l) = e::l
             fun calc_offset ([],offset,l) = (offset,List.rev l)
               | calc_offset (a::aa,offset,l) = calc_offset(aa,offset+1,(a,offset)::l)
             val res_stack = List.drop(res,List.length res_regs) handle General.Subscript => []
-            val args_gpr = append_to_list_opt(clos,args@reg_args)      (* general purpose registers *)
+            val args_gpr = cons_list_opt(clos,args@reg_args)      (* general purpose registers *)
             val args_stack = List.drop(args_gpr, List.length arg_regs) handle General.Subscript => []
             val fargs_stack = List.drop(fargs,List.length arg_fregs) handle General.Subscript => []
             val (o_res,aty_res) = calc_offset(res_stack,0,[])

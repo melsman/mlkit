@@ -557,22 +557,17 @@ structure InstsX64: INSTS_X64 =
         fun is_caller_save phreg = Lvarset.member(phreg,caller_save_phregset)
 
         (* Conventions for calls to C (standard calling conventions) *)
-        val args_reg_ccall = [rdi,rsi,rdx,rcx,r8,r9]
+        val args_reg_ccall = [rdi,rsi,rdx,rcx,r8,r9]                                       (* https://www.agner.org/optimize/calling_conventions.pdf, section 6 *)
         val res_reg_ccall = [rax]
 
         val args_phreg_ccall = map reg_to_lv args_reg_ccall
         val args_ccall_phregset = Lvarset.lvarsetof args_phreg_ccall
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
 
-        val callee_save_regs_ccall = [rbx,rbp,r12,r13,r14,r15]
+        val callee_save_regs_ccall = [rbx,rbp,r12,r13,r14,r15]                             (* https://www.agner.org/optimize/calling_conventions.pdf, section 6 *)
         val callee_save_ccall_phregs = map reg_to_lv callee_save_regs_ccall
         val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
         fun is_callee_save_ccall phreg = false
-
-        val caller_save_regs_ccall = [] (*[r10,r11]*)
-        val caller_save_ccall_phregs   = map reg_to_lv caller_save_regs_ccall
-        val caller_save_ccall_phregset = Lvarset.lvarsetof caller_save_ccall_phregs
-        fun is_caller_save_ccall phreg = Lvarset.member(phreg,caller_save_ccall_phregset)
       end
 
     val tmp_reg0 = r10 (* CALLER saves scratch registers *)

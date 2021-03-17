@@ -477,6 +477,8 @@ struct
 	       let (* We define the stack slot *)
 		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = (LS.get_var_atom(atom,[]),[]) (* ok, if atom is a phreg, i.e. spilled - but what about lvars bound to regions?*)
+                 val () = List.app (fn lv => if Lvars.get_ubf64 lv then die "FLUSH: uggh"
+                                             else ()) use
 	       in
 		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
 		  ls::lss')
@@ -486,6 +488,8 @@ struct
 	       let (* We use the stack slot (i.e., the stack slot is live) *)
 		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = ([],[](*LS.get_var_atom(atom,[])2001-03-14, Niels*)) (* ok, if atom is a phreg, i.e. spilled - but what about lvars bound to regions?*)
+                 val () = List.app (fn lv => if Lvars.get_ubf64 lv then die "FETCH: uggh"
+                                             else ()) use
 	       in
 		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
 		  ls::lss')

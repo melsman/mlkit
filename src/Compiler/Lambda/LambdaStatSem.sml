@@ -240,11 +240,11 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
            excon_env=excon_env}
 
         fun add_lvar (lvar, TypeScheme, {ftv,con_env,tyname_env,lvar_env,excon_env}) =
-          {ftv=NatSet.union ftv (ftv_TypeScheme TypeScheme),
-           con_env=con_env,
-           tyname_env=tyname_env,
-           lvar_env=LvarMap.add (lvar,TypeScheme,lvar_env),
-           excon_env=excon_env}
+            {ftv=NatSet.union ftv (ftv_TypeScheme TypeScheme),
+             con_env=con_env,
+             tyname_env=tyname_env,
+             lvar_env=LvarMap.add (lvar,TypeScheme,lvar_env),
+             excon_env=excon_env}
 
         fun add_excon (excon, TypeOpt, {ftv,con_env,tyname_env,lvar_env,excon_env}) =
           let val ftv' = case TypeOpt
@@ -423,21 +423,51 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
           valid_t (add_tyvars(tvs,e)) ty
         end
 
-    (* we CANNOT use `=' to check equality of types - we use eq_Type. *)
+    fun check_ts_no_f64 s ts =
+        if LambdaBasics.contains_f64Types ts then die ("check_ts_no_f64: " ^ s)
+        else ()
+
+    fun check_t_no_f64 s t =
+        if LambdaBasics.contains_f64Type t then die ("check_t_no_f64: " ^ s)
+        else ()
 
     val eq_Type = LambdaBasics.eq_Type
     val eq_Types = LambdaBasics.eq_Types
 
-    fun instantiable_ty t =
-        not(eq_Type (f64Type, t))
+    fun check_t_no_f64_but_top s t =
+        if eq_Type(t, f64Type) then ()
+        else if LambdaBasics.contains_f64Type t then die ("check_t_no_f64_but_top: " ^ s)
+        else ()
 
-    fun mk_instance ((tyvars,Type):TypeScheme, instances : Type list) =
+    fun check_f64ok {ccall:bool} s t =
+        if eq_Type(t, f64Type) then ()
+        else case t of
+                 ARROWtype(ts,ts') =>
+                 ( (case ts' of
+                        [t'] => if ccall andalso eq_Type(t', f64Type) then ()
+                                else check_ts_no_f64 "check_f64ok:fun.res: " ts'
+                      | _ => check_ts_no_f64 "check_f64ok:fun.res: " ts')
+                 ; List.app (fn t =>
+                                if eq_Type(t, f64Type) then ()
+                                else check_t_no_f64 "check_f64ok:fun.arg" t) ts
+                 )
+               | _ => check_t_no_f64 "check_f64ok" t
+
+
+    fun instantiable_ty t =
+        not(LambdaBasics.contains_f64Type t)
+
+    fun mk_instance0 {ccall:bool}  ((tyvars,Type):TypeScheme, instances : Type list) =
         let
           val () = app (fn t => if instantiable_ty t then ()
                                 else die ("mk_instance. Type cannot be an instance: " ^ prType t)) instances
           val S = LambdaBasics.mk_subst (fn () => "mk_instance") (tyvars, instances)
-        in LambdaBasics.on_Type S Type
+          val t = LambdaBasics.on_Type S Type
+        in check_f64ok {ccall=ccall} "mk_instance" t; t
         end
+
+    val mk_instance_ccall = mk_instance0 {ccall=true}
+    val mk_instance = mk_instance0 {ccall=false}
 
     fun eqType s (tau,tau') = if eq_Type(tau,tau') then ()
                               else (log "--------------------------------\n";
@@ -471,7 +501,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
      *                                             | Types t1...tn
      *
      * The least upper bound, lub of two TypeList's is used for
-     * infer a TypeList for branching expressions. Latice:
+     * infering a TypeList for branching expressions. Latice:
      *
      *                  Types o o  Frame
      *                         \|
@@ -531,7 +561,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
       in
         case prim
           of CONprim{con,instances,regvar} =>
-            (valid_ts env instances;
+             (valid_ts env instances;
+              check_ts_no_f64 "CONprim" instances;
              case lexps
                of [] => [mk_instance(lookup_con env con, instances)]
                 | [lexp] =>
@@ -543,7 +574,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      | _ => die "CONprim.Unary constructor does not have arrow type")
                 | _ => die "CONprim.Wrong number of args")
            | DECONprim{con,instances,...} =>
-               (valid_ts env instances;
+             (valid_ts env instances;
+              check_ts_no_f64 "DECONprim" instances;
                 case lexps
                   of [lexp] => (case mk_instance(lookup_con env con, instances)
                                   of ARROWtype([t1],[t2]) =>
@@ -579,7 +611,11 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                                           end
                                          | NONE => die "DEEXCONprim.Unary excon does not have arrow type")
                          | _ => die "DEEXCONprim.Wrong number of args")
-           | RECORDprim _ => [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
+           | RECORDprim _ =>
+             let val ts = [RECORDtype(map ((unTypeListOne "RECORDprim") o type_e) lexps)]
+             in check_ts_no_f64 "RECORDprim" ts
+              ; ts
+             end
            | SELECTprim i =>
                         (case lexps
                            of [lexp] =>
@@ -590,7 +626,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                             | _ => die "SELECTprim.Wrong number of args.")
            | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
            | DEREFprim {instance} => (* instance: argument type of primitive *)
-               (valid_t env instance;
+             (valid_t env instance;
+              check_t_no_f64 "DEREFprim" instance;
                 case lexps
                   of [lexp] => (case instance
                                   of CONStype([t], tyName_REF) =>
@@ -607,6 +644,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                          in close_Type (ARROWtype([TYVARtype tyvar], [CONStype([TYVARtype tyvar], tyName_REF)]))
                          end
                   in valid_t env instance;
+                     check_t_no_f64 "REFprim" instance;
                       case lexps
                        of [lexp] =>
                          (case mk_instance(typescheme_REF, [instance])
@@ -620,7 +658,8 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                       | _ => die "REFprim.Wrong number of args"
                   end
            | ASSIGNprim {instance} => (* instance: argument type of primitive *)
-               (valid_t env instance;
+             (valid_t env instance;
+              check_t_no_f64 "ASSIGNprim" instance;
                 case lexps
                   of [lexp1, lexp2] => (case instance
                                           of RECORDtype [CONStype([t], tyName_REF), t'] =>
@@ -637,12 +676,14 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                      of [lexp] => (type_e lexp; nil)
                       | _ => die "DROPprim -- one parameter expected")
            | EQUALprim {instance} => (* instance: argument type of primitive *)
-               (valid_t env instance;
-                case lexps
+             (valid_t env instance;
+              case lexps
                   of [lexp1,lexp2] => (case instance
                                          of RECORDtype [t1,t2] =>
                                            let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)
                                                val ts2 = unTypeList "EQUALprim2" (type_e lexp2)
+                                               val () = check_t_no_f64_but_top "EQUALprim.1" t1
+                                               val () = check_t_no_f64_but_top "EQUALprim.2" t2
                                            in if eq_Type(t1,t2) andalso eq_Types(ts1,[t1])
                                                          andalso eq_Types(ts2,[t2]) then [CONStype([], tyName_BOOL)]
                                               else die "EQUALprim3"
@@ -652,7 +693,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
            | CCALLprim {name, instances, tyvars, Type} =>
                (valid_ts env instances;
                 valid_s env (tyvars,Type);
-                case mk_instance ((tyvars, Type), instances) of
+                case mk_instance_ccall ((tyvars, Type), instances) of
                   ARROWtype (ts_arg, ts_res) =>
                     let val ts = map (unTypeListOne "CCALL" o type_e) lexps
                         val ts_res =
@@ -715,6 +756,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                 end)
            | RESET_REGIONSprim {instance} =>
              (valid_t env instance;
+              check_t_no_f64 "RESET_REGIONSprim" instance;
               case lexps
                 of [lexp] =>
                   let val ts = unTypeList "RESET_REGIONSprim1" (type_e lexp)
@@ -724,6 +766,7 @@ structure LambdaStatSem: LAMBDA_STAT_SEM =
                  | _ => die "RESET_REGIONSprim.Wrong number of args")
            | FORCE_RESET_REGIONSprim {instance} =>
              (valid_t env instance;
+              check_t_no_f64 "FORCE_RESET_REGIONSprim" instance;
               case lexps
                 of [lexp] =>
                   let val ts = unTypeList "FORCE_RESET_REGIONSprim" (type_e lexp)

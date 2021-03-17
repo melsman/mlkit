@@ -71,16 +71,22 @@ ssize_t major_p = 0;                      // flag to specify whether gc should b
 
 // This implementation assumes a down growing stack (e.g., X64)
 
+// Only the potential floating point argument registers needs to be saved - freg_args in InstsX64
 #if defined(__LP64__) || (__WORDSIZE == 64)
 #define NUM_REGS 16
+#define NUM_FREGS 8
 #else
 #define NUM_REGS 8
 #endif
 
 /* Layout of stack:
 
-          Reg31
-          Reg30
+          Xmm07
+          Xmm06
+            |
+          Xmm00
+          Reg15
+          Reg14
             |
           Reg01
           Reg00
@@ -1301,6 +1307,10 @@ region_utilize(long pages, long bytes)
     return 0.0;
 }
 
+// --------------------
+// GC ALGORITHM
+// --------------------
+
 void
 gc(uintptr_t **sp, size_t reg_map)
 {
@@ -1315,7 +1325,7 @@ gc(uintptr_t **sp, size_t reg_map)
   long offset;
   uintptr_t *value_ptr;
   long num_d_labs;
-  long size_rcf, size_ccf, size_spilled_region_args;
+  long size_rcf, size_ccf, size_spilled_region_and_float_args;
   extern long rp_used;
   extern long rp_total;
   struct rusage rusage_begin;
@@ -1497,7 +1507,9 @@ gc(uintptr_t **sp, size_t reg_map)
 #endif // ENABLE_GEN_GC
 
   // Search for live registers
-  ////fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: search for live registers - sp=%p, reg_map=%zx]\n", sp, reg_map);
+#endif
   sp_ptr = sp;
   w = reg_map;
   for ( offset = 0 ; offset < NUM_REGS ; offset++ ) {
@@ -1509,26 +1521,30 @@ gc(uintptr_t **sp, size_t reg_map)
   }
 
   // Do spilled arguments and results to current function
-  /// fprintf(stderr,"[GC: do spilled arguments - sp=%p, reg_map=%zx, NUM_REGS=%d]\n", sp, reg_map, NUM_REGS);
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: do spilled arguments - sp=%p, reg_map=%zx, NUM_REGS=%d]\n", sp, reg_map, NUM_REGS);
+#endif
 
   sp_ptr = sp;
-  sp_ptr = sp_ptr + NUM_REGS;   // points at size_spilled_region_args
+  sp_ptr = sp_ptr + NUM_REGS + NUM_FREGS;   // points at size_spilled_region_and_float_args
 
-  size_spilled_region_args = *((long *)sp_ptr);
+  size_spilled_region_and_float_args = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at size_rcf
   size_rcf = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at size_ccf
   size_ccf = *((long *)sp_ptr);
   predSPDef(sp_ptr,1);          // sp_ptr points at last arg. to current function
 
-  /// fprintf(stderr,"[GC: calc done; size_spilled_region_args=%zx; size_rcf=%zx; size_ccf=%zx]\n",
-  ///  	      size_spilled_region_args,size_rcf,size_ccf);
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: calc done; size_spilled_region_and_float_args=%zx; size_rcf=%zx; size_ccf=%zx]\n",
+	  size_spilled_region_and_float_args,size_rcf,size_ccf);
+#endif
 
-  // All arguments to current function are live - except for region arguments.
+  // All arguments to current function are live - except for region arguments and float arguments.
   for ( offset = 0 ; offset < size_ccf ; offset++ ) {
     value_ptr = ((uintptr_t *)sp_ptr);
     predSPDef(sp_ptr,1);
-    if ( offset >= size_spilled_region_args )
+    if ( offset >= size_spilled_region_and_float_args )
       {
 	*value_ptr = evacuate(*value_ptr);
       }
@@ -1544,14 +1560,18 @@ gc(uintptr_t **sp, size_t reg_map)
   /*   - return address                              */
   /*   - spilled results                             */
 
-  /// fprintf(stderr,"[GC: FD processing]\n");
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: FD processing]\n");
+#endif
 
   fd_ptr = *sp_ptr;
   fd_offset_to_return = *(fd_ptr-2);
   fd_size = *(fd_ptr-3);
   predSPDef(sp_ptr,size_rcf);
 
-  /// fprintf(stderr,"[GC: FD entering loop; sp_ptr=%p; fd_ptr=%p]\n",sp_ptr,fd_ptr);
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: FD entering loop; sp_ptr=%p; fd_ptr=%p]\n",sp_ptr,fd_ptr);
+#endif
 
   // sp_ptr points at first address before FD
   while ( fd_size != /* 0xFFFFFFFFFFFFFFFF */ UINTPTR_MAX)
@@ -1591,7 +1611,9 @@ gc(uintptr_t **sp, size_t reg_map)
       predSPDef(sp_ptr,size_rcf);
     }
 
-  // fprintf(stderr,"[GC: FD after loop]\n");
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: FD after loop]\n");
+#endif
 
   // Search for data labels; they are part of the root-set.
   num_d_labs = *data_lab_ptr; /* Number of data labels */
@@ -1601,7 +1623,15 @@ gc(uintptr_t **sp, size_t reg_map)
     *value_ptr = evacuate(*value_ptr);
   }
 
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: Done data labels]\n");
+#endif
+
   do_scan_stack();
+
+#ifdef DEBUG_GC
+  fprintf(stderr,"[GC: Done scan stack]\n");
+#endif
 
   // We Are Done And Can Now Insert from-space Into The FreeList
   from_space_end->n = freelist;

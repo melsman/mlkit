@@ -32,6 +32,10 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
+  val caller_save_regs_ccall = nil(*map RI.lv_to_reg RI.caller_save_ccall_phregs*)
+  val callee_save_regs_ccall = map RI.lv_to_reg RI.callee_save_ccall_phregs
+  val all_regs = map RI.lv_to_reg RI.all_regs
+
   local
      (*******************)
      (* Code Generation *)
@@ -1378,14 +1382,14 @@ struct
         val size_rcf = CallConv.get_rcf_size cc
 (*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^
                                                (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
-        val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
+        val size_spilled_region_and_float_args = List.length (CallConv.get_spilled_region_and_float_args cc)
         val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_and_float_args cc)
         val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
    (*
         val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args
         val _ = pw reg_map
    *)
-        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args)
+        val (checkGC,GCsnippet) = do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_and_float_args)
 
         val () = reset_code_blocks()
         val C =
@@ -1625,12 +1629,23 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                             I.dot_quad "0" :: nil)
         val _  = add_static_data static_data
 
-        (* args can only be tmp_reg0 and tmp_reg1; no arguments
+
+        fun push_reg (r,C) =
+            if I.is_xmm r then
+              I.subq(I "8", R rsp) :: I.movsd(R r, D("",rsp)) :: C
+            else I.push (R r) :: C
+
+        fun pop_reg (r,C) =
+            if I.is_xmm r then
+              I.movsd(D("",rsp), R r) :: I.addq(I "8", R rsp) :: C
+            else I.pop (R r) :: C
+
+        (* args can only be tmp_reg0 (r10) and tmp_reg1 (r11); no arguments
          * on the stack; only the return address! Destroys tmp_reg0! *)
         fun ccall_stub (stubname, cfunction, args, ret, C) =  (* result in tmp_reg1 if ret=true *)
           let
-            val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax ::
-                            caller_save_regs_ccall  (* maybe also save the other
+            val save_regs = rdi :: rsi :: rdx :: rcx :: r8 :: r9 :: rax :: map RI.lv_to_reg RI.f64_phregs
+                        (*caller_save_regs_ccall*)  (* maybe also save the other
                                                      * ccall argument registers and the
                                                      * ccall result register rax *)
 
@@ -1640,8 +1655,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                allocation may choose to map variables to these
                registers:
 
-                 X = [rax,rbx,rdi,rdx,rsi] u [rbx,rbp,r12,r13,r14,r15]
-                   = [rax,rbx,rdi,rdx,rsi,rbp,r12,r13,r14,r15]
+                 X = {rax,rbx,rdi,rdx,rsi} U {rbx,rbp,r12,r13,r14,r15} U {xmm0..xmm13}
+                   = {rax,rbx,rdi,rdx,rsi,rbp,r12,r13,r14,r15} U {xmm0..xmm13}
 
                Here are the registers that are not saved:
 
@@ -1650,10 +1665,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                These should exactly be the callee-save registers!
             *)
 
-            fun push_callersave_regs C =
-              foldl (fn (r, C) => I.push(R r) :: C) C save_regs
-            fun pop_callersave_regs C =
-              foldr (fn (r, C) => I.pop(R r) :: C) C save_regs
+            fun push_callersave_regs C = foldl push_reg C save_regs
+            fun pop_callersave_regs C = foldr pop_reg C save_regs
             val size_ff = 0 (* dummy *)
             val stublab = NameLab stubname
             val res = if ret then SOME (SS.PHREG_ATY tmp_reg1) else NONE
@@ -1702,10 +1715,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun gc_stub C = (* tmp_reg1 must contain the register map and tmp_reg0 the return address. *)
           if gc_p() then
             let
-              fun push_all_regs C =
-                foldr (fn (r, C) => I.push(R r) :: C) C all_regs
-              fun pop_all_regs C =
-                foldl (fn (r, C) => I.pop(R r) :: C) C all_regs
+              (* first push the fpr registers; the runtime systems knows
+                 about the order the registers appear on the stack *)
+              val regs_to_store = map RI.lv_to_reg RI.args_phfreg @ all_regs
+              fun push_all_regs C = foldr push_reg C regs_to_store
+              fun pop_all_regs C = foldl pop_reg C regs_to_store
               fun pop_size_ccf_rcf_reg_args C =
                   base_plus_offset(rsp,WORDS 3,rsp,C) (* they are pushed in do_gc *)
               val size_ff = 0 (*dummy*)

@@ -1192,26 +1192,31 @@ struct
 
     fun lookup_ve env lv =
       let
-	fun resolve_se(CE.LVAR lv') = (VAR lv',NONE_SE)
-	  | resolve_se(CE.SELECT(lv',i)) =
+	fun resolve_se {f64} (CE.LVAR lv') =
+            let val () = if f64 <> Lvars.get_ubf64 lv' then die "f64 mismatch" else ()
+            in (VAR lv',NONE_SE)
+            end
+	  | resolve_se {f64} (CE.SELECT(lv',i)) =
 	      let
-		val lv'' = fresh_lvar("lookup_ve")
+		val lv'' = fresh_lvar ("lookup_ve")
+                val () = if f64 then Lvars.set_ubf64 lv'' else ()
 	      in
 		(VAR lv'',SELECT_SE(lv'',i,lv'))
 	      end
-	  | resolve_se(CE.LABEL lab) =
+	  | resolve_se {f64} (CE.LABEL lab) =
 	      let
 		val lv' = fresh_lvar("lookup_ve")
+                val () = if f64 then Lvars.set_ubf64 lv' else ()
 	      in
 		(VAR lv',FETCH_SE (lv',lab))
 	      end
-	  | resolve_se _ = die "resolve_se: wrong FIX or RVAR binding in VE"
+	  | resolve_se _ _ = die "resolve_se: wrong FIX or RVAR binding in VE"
       in
 	case CE.lookupVarOpt env lv of
-	  SOME(CE.FIX(_,SOME a,_,_)) => resolve_se(a)
-	| SOME(CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
-	| SOME(a) => resolve_se(a)
-	| NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
+	    SOME (CE.FIX(_,SOME a,_,_)) => resolve_se {f64=false} a
+	  | SOME (CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
+	  | SOME a => resolve_se {f64=Lvars.get_ubf64 lv} a
+	  | NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
       end
 
     fun lookup_fun env lv =

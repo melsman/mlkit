@@ -28,6 +28,16 @@ structure OptLambda: OPT_LAMBDA =
         in loop (0,xs)
         end
 
+    fun appi f xs =
+        let fun loop (i,nil) = ()
+              | loop (i,x::xs) =
+                let val () = f(i,x) in loop(i+1,xs) end
+        in loop (0,xs)
+        end
+
+
+    fun pr_Type t = PP.flatten1 (layoutType t)
+
    (* -----------------------------------------------------------------
     * Some Optimisation Constants
     * ----------------------------------------------------------------- *)
@@ -748,7 +758,7 @@ structure OptLambda: OPT_LAMBDA =
         fun add_excon_bucket excon = excon_bucket := (excon :: !excon_bucket)
       in
         fun reset_excon_bucket () = excon_bucket := []
-        fun is_live_excon excon = List.exists (fn excon' => Excon.eq(excon, excon')) (!excon_bucket)
+        fun is_live_excon excon = is_in_ex excon (!excon_bucket)
         fun mk_live_excon excon = if is_live_excon excon then () else add_excon_bucket excon
       end
 
@@ -2603,33 +2613,47 @@ structure OptLambda: OPT_LAMBDA =
      (* Given a lambda variable `lv` and an integer `i`, see if there are
         any `i`-select occurences of it in `exp` that does not immediately
         unbox the real value; if so, the function is not
-        real-select-unboxable, wrt. its `i`'th argument. *)
+        real-select-unboxable, wrt. its `i`'th argument. We also allow for intermediate
+        bindings of the form `let x = #i v in scope`, where `x` appears
+        in `scope` in contexts of the form `real_to_f64 x`.*)
 
-     fun real_select_unboxable (lv:lvar) (i:int) exp : bool =
+     fun real_select_unboxable (fun_lv:lvar) (lv:lvar) (i:int) exp : bool =
          let exception NonSelect
-             fun f lv exp =
+             fun f lvs lv exp =   (* lvs are let-bound variables bound to (#i lv) *)
                  case exp of
-                     PRIM (CCALLprim{name="__real_to_f64",...},
-                           [PRIM (SELECTprim j, [VAR {lvar,...}])]) => ()
+                     PRIM (CCALLprim{name="__real_to_f64",...}, [PRIM (SELECTprim j, [VAR {lvar,...}])]) => ()
+                   | PRIM (CCALLprim{name="__real_to_f64",...}, [VAR{lvar,...}]) => ()
                    | PRIM (SELECTprim j, [VAR {lvar,...}]) =>
                      if Lvars.eq(lv,lvar) andalso j = i then raise NonSelect
                      else ()
-                   | VAR {lvar,...} => if Lvars.eq(lv,lvar) then raise NonSelect
+                   | VAR {lvar,...} => if Lvars.eq(lv,lvar) orelse is_in_lv lvar lvs then raise NonSelect
                                        else ()
-                   | _ => app_lamb (f lv) exp
-         in (f lv exp; true) handle NonSelect => false
+                   | LET{pat=[(lv1,nil,t)],bind=PRIM (SELECTprim j, [VAR {lvar,...}]),scope} =>
+                     if Lvars.eq(lv,lvar) andalso j=i then f (lv1::lvs) lv scope
+                     else f lvs lv scope
+                   | APP(VAR{lvar,...},PRIM(RECORDprim _,es),_) =>
+                     if Lvars.eq(lvar,fun_lv) then
+                       appi (fn (j,e) => if i = j then (case e of
+                                                            VAR{lvar,...} => ()
+                                                          | _ => f lvs lv e)
+                                         else f lvs lv e) es
+                     else app_lamb (f lvs lv) exp
+                   | _ => app_lamb (f lvs lv) exp
+         in (f [] lv exp; true) handle NonSelect => false
          end
 
     (* Given a lambda variable (`lv` : `t1` * ... * `tn`), where `ts`
        = [`t1`,...,`tn`], for each `ti` = `real`, detect if `lv`
        occurs only on the form `real_to_f64(#i v)` in `exp`. For those
        `ti` for which this property holds, we convert the `ti` into
-       `f64` and return [`t1'`,...,`tn'`]. *)
+       `f64` and return [`t1'`,...,`tn'`]. We also allow for intermediate
+       bindings of the form `let x = #i v in scope`, where `x` appears
+       in `scope` in contexts of the form `real_to_f64 x`. *)
 
-     fun unbox_args (unbox_reals:bool) (lv:lvar) exp (ts:Type list) : Type list option =
+     fun unbox_args (fun_lv:lvar) (lv:lvar) exp (ts:Type list) : Type list option =
          let fun conv (i,t) =
                  if eq_Type (t, realType) then
-                   if real_select_unboxable lv i exp then f64Type
+                   if real_select_unboxable fun_lv lv i exp then f64Type
                    else t
                  else t
          in if unboxable lv exp then
@@ -2637,22 +2661,24 @@ structure OptLambda: OPT_LAMBDA =
             else NONE
          end
 
-
      (* The environment *)
 
      datatype fix_boxity =
          NORMAL_ARGS
-       | UNBOXED_ARGS of tyvar list * Type (* sigma is the scheme of the function after unboxing *)
+       | F64_LOCAL                                 (* variabel bound locally within a function body *)
+       | UNBOXED_ARGS of tyvar list * Type         (* sigma is the scheme of the function after unboxing *)
        | ARG_VARS of (lvar * Type) Vector.vector
 
      fun layout_fix_boxity NORMAL_ARGS = PP.LEAF "NORMAL_ARGS"
        | layout_fix_boxity (UNBOXED_ARGS sigma) = layoutTypeScheme sigma
        | layout_fix_boxity (ARG_VARS _) = PP.LEAF "ARG_VARS"
+       | layout_fix_boxity F64_LOCAL = PP.LEAF "F64_LOCAL"
 
      fun eq_fix_boxity (NORMAL_ARGS,NORMAL_ARGS) = true
        | eq_fix_boxity (ARG_VARS _, _) = die "eq_fix_boxity; shouldn't get here"
        | eq_fix_boxity (_, ARG_VARS _) = die "eq_fix_boxity; shouldn't get here"
-       | eq_fix_boxity (UNBOXED_ARGS sigma1, UNBOXED_ARGS sigma2) = eq_sigma(sigma1, sigma2)
+       | eq_fix_boxity (UNBOXED_ARGS s1, UNBOXED_ARGS s2) = eq_sigma(s1,s2)
+       | eq_fix_boxity (F64_LOCAL, F64_LOCAL) = true
        | eq_fix_boxity _ = false
 
      type unbox_fix_env = fix_boxity LvarMap.map
@@ -2725,16 +2751,16 @@ structure OptLambda: OPT_LAMBDA =
          case lamb of
              FIX {functions, scope} =>   (* memo:regvars *)
              (let fun add_env r ({lvar,regvars,tyvars,Type,bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
-                    let fun normal () = LvarMap.add (lvar, NORMAL_ARGS, env)
+                    let fun normal () = add_lv (lvar, NORMAL_ARGS, env)
                     in (* interesting only if the function takes a tuple of arguments *)
                       case Type of
                           ARROWtype([RECORDtype nil],res) => normal()
                         | ARROWtype([rt as RECORDtype ts],res) =>
                           if optimise_p() andalso unbox_function_arguments() then
-                            case unbox_args (List.null tyvars) lv body ts of
+                            case unbox_args lvar lv body ts of
                                 NONE => normal()
-                              | SOME ts => LvarMap.add(lvar,UNBOXED_ARGS (if r then nil else tyvars,
-                                                                          ARROWtype(ts,res)),env)
+                              | SOME ts => add_lv(lvar,UNBOXED_ARGS (if r then nil else tyvars,
+                                                                     ARROWtype(ts,res)),env)
                           else normal()
                         | _ => normal()
                     end
@@ -2747,7 +2773,10 @@ structure OptLambda: OPT_LAMBDA =
                          | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_))) =>
                            let (* create argument env *)
                              val (body, argpat) = hoist_lvars(body,lv,argTypes)
-                             val env' = LvarMap.add(lv, ARG_VARS(Vector.fromList argpat), env)
+                             val env' = add_lv(lv, ARG_VARS(Vector.fromList argpat), env)
+                             val env' = List.foldl (fn ((lv,t),e) => if eq_Type(t,f64Type)
+                                                                     then add_lv(lv,F64_LOCAL,e)
+                                                                     else e) env' argpat
                              val body' = trans env' body
                            in mk_fun Type' argpat body'
                            end
@@ -2764,24 +2793,16 @@ structure OptLambda: OPT_LAMBDA =
                               ; app (fn {lvar,...} => print (Lvars.pr_lvar lvar ^ " ")) functions
                               ; print "\n"; raise X)
              )
-           | PRIM(cc as CCALLprim {name="__real_to_f64",...}, [PRIM(SELECTprim i, [VAR{lvar,instances,regvars}])]) =>
-             (case lookup env lvar of
-                  SOME (ARG_VARS vector) =>
-                  if null instances andalso null regvars then
-                    let val (lv,ty) = Vector.sub (vector, i) handle _ => die "trans.select-f64"
-                    in if eq_Type(ty,f64Type) then VAR{lvar=lv,instances=[],regvars=[]}
-                       else PRIM(cc,[VAR{lvar=lv,instances=[],regvars=[]}])
-                    end
-                  else die "trans.select-f64.instances"
-                | _ => lamb)
+
            | PRIM(SELECTprim i, [VAR{lvar,instances,regvars}]) =>
              (case lookup env lvar of
                   SOME (ARG_VARS vector) =>
                   if null instances andalso null regvars then
-                    let val (lv,ty) = Vector.sub (vector, i) handle _ => die "trans.select"
-                    in VAR{lvar=lv,instances=[],regvars=[]}
+                    let val (lv,ty) = Vector.sub (vector, i) handle _ => die "trans.select-f64"
+                    in if eq_Type(ty,f64Type) then f64_to_real(VAR{lvar=lv,instances=[],regvars=[]})
+                       else VAR{lvar=lv,instances=[],regvars=[]}
                     end
-                  else die "trans.select.instances"
+                  else die "trans.select-f64.instances"
                 | _ => lamb)
            | APP(lvexp as VAR{lvar,instances,regvars=[]}, arg, _) =>
              let fun mk_app lv ts =
@@ -2794,17 +2815,15 @@ structure OptLambda: OPT_LAMBDA =
                        | (t::ts, e::es) => (if eq_Type(t,f64Type) then real_to_f64 e else e) :: maybe_unbox_reals ts es
                        | _ => die "trans.app.maybe_unbox_reals"
              in case lookup env lvar of
-                    SOME(UNBOXED_ARGS (sigma as (tyvars, ARROWtype(argTypes,res)))) =>   (* if tyvars<>nil then argTypes will not contain a f64Type *)
+                    SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,res))) =>
                     let val sz = length argTypes
                     in case arg of
                            PRIM(RECORDprim _, args) =>
                            if length args <> sz then die "unbox_fix_args.trans.app(length)"
                            else APP(lvexp,
-                                    PRIM(UB_RECORDprim, maybe_unbox_reals argTypes (map (trans env) args)),
+                                    PRIM(UB_RECORDprim,
+                                         maybe_unbox_reals argTypes (map (trans env) args)),
                                     NONE)
-(*
-                         | _ => APP(trans env lvexp, trans env arg, NONE) (* deal properly with conversion *)
-*)
                          | VAR{lvar,instances=[],regvars=[]} => mk_app lvar argTypes
                          | _ =>
                            let val lv_tmp = Lvars.newLvar()
@@ -2820,9 +2839,8 @@ structure OptLambda: OPT_LAMBDA =
              end
            | VAR{lvar,instances,regvars=[]} =>
              (case lookup env lvar of
-                  SOME(UNBOXED_ARGS (sigma as (tyvars, ARROWtype(argTypes,res)))) =>
+                  SOME(UNBOXED_ARGS (tyvars, ARROWtype(argTypes,res))) =>
                   let val _ = tick "unbox - inverse-eta"
-                      (*val () = print ("Eta-converting: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                       val lv = Lvars.newLvar()
                       val S = mk_subst (fn _ => "unbox.subst") (tyvars,instances)
                       val argTypes' = map f64TypeToRealTypeShallow argTypes
@@ -2830,16 +2848,37 @@ structure OptLambda: OPT_LAMBDA =
                       val args = unbox_args_exp lv argTypes
                   in FN{pat=[(lv,tau)],body=APP(lamb, args, NONE)}
                   end
+                | SOME F64_LOCAL => if null instances then
+                                      f64_to_real lamb
+                                    else die "trans.select-f64.instances"
                 | _ => lamb)
            | FRAME{declared_lvars,...} =>
              let val env' = restrict_unbox_fix_env (env, map #lvar declared_lvars)
              in (frame_unbox_fix_env := env' ; lamb)
              end
            | LET {pat,bind,scope} =>
-             let val env' = List.foldl (fn ((lvar,_,_),e) => LvarMap.add(lvar,NORMAL_ARGS,e)) env pat
-             in LET{pat=pat,
-                    bind=trans env bind,
-                    scope=trans env' scope}
+             let fun default () =
+                     let val env' = List.foldl (fn ((lvar,_,_),e) => LvarMap.add(lvar,NORMAL_ARGS,e)) env pat
+                     in LET{pat=pat,
+                            bind=trans env bind,
+                            scope=trans env' scope}
+                     end
+             in case (pat,bind) of
+                    ([(lv,nil,t)], PRIM(SELECTprim j,[VAR{lvar,...}])) =>
+                    if eq_Type(t,realType) then
+                      (case lookup env lvar of
+                           SOME(ARG_VARS vec) =>
+                           let val (lv_arg,t) = Vector.sub(vec,j) handle _ => die "unbox_fix.trans"
+                           in if eq_Type(t,f64Type) then
+                                ( Lvars.set_ubf64 lv
+                                ; LET{pat=[(lv,nil,f64Type)],bind=VAR{lvar=lv_arg,instances=nil,regvars=nil},
+                                      scope=trans (LvarMap.add(lv,F64_LOCAL,env)) scope}
+                                )
+                              else default()
+                           end
+                         | _ => default())
+                    else default ()
+                  | _ => default()
              end
            | _ => map_lamb (trans env) lamb
    in
@@ -2847,21 +2886,27 @@ structure OptLambda: OPT_LAMBDA =
      val layout_unbox_fix_env = layout_unbox_fix_env
      val enrich_unbox_fix_env = enrich_unbox_fix_env
      type unbox_fix_env = unbox_fix_env
-     fun pr_env e =
-       PP.outputTree (print, layout_unbox_fix_env e, 200)
+     fun pr_env e = PP.outputTree (print, layout_unbox_fix_env e, 200)
+
      fun unbox_fix_args (env:unbox_fix_env) lamb : LambdaExp * unbox_fix_env =
        let
-(*
-         val _ = print "Import unbox_fix_env:\n"
-         val _ = pr_env env
-*)
-           val _ = frame_unbox_fix_env := LvarMap.empty
-           val lamb = trans env lamb
-(*
-           val _ = print "\nExport unbox_fix_env:\n"
-           val _ = pr_env (!frame_unbox_fix_env)
-           val _ = print "\n"
-*)
+         val debug_unboxing = false
+
+         val () = if debug_unboxing then
+                    ( print "Import unbox_fix_env:\n"
+                    ; pr_env env
+                    ; prLambdaExp "Expression before transformation" lamb)
+                  else ()
+
+         val _ = frame_unbox_fix_env := LvarMap.empty
+         val lamb = trans env lamb
+
+         val () = if debug_unboxing then
+                    ( print "\nExport unbox_fix_env:\n"
+                    ; pr_env (!frame_unbox_fix_env)
+                    ; print "\n")
+                  else ()
+
        in (lamb, !frame_unbox_fix_env)
        end
 
@@ -2870,6 +2915,7 @@ structure OptLambda: OPT_LAMBDA =
              fun toInt (NORMAL_ARGS) = 0
                | toInt (UNBOXED_ARGS _) = 1
                | toInt (ARG_VARS _) = 2
+               | toInt F64_LOCAL = 3
              val fun_NORMAL_ARGS = Pickle.con0 NORMAL_ARGS
              fun fun_UNBOXED_ARGS _ =
                  Pickle.con1 UNBOXED_ARGS (fn UNBOXED_ARGS a => a | _ => die "pu.UNBOXED_ARGS")
@@ -2877,8 +2923,10 @@ structure OptLambda: OPT_LAMBDA =
              fun fun_ARG_VARS _ =
                  Pickle.con1 ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
                  pu_lvarTypeVector
+             val fun_F64_LOCAL = Pickle.con0 F64_LOCAL
              val pu_fix_boxity =
-                 Pickle.dataGen("OptLambda.fix_boxity",toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
+                 Pickle.dataGen("OptLambda.fix_boxity",toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,
+                                                              fun_ARG_VARS,fun_F64_LOCAL])
          in LvarMap.pu Lvars.pu pu_fix_boxity
          end
    end
