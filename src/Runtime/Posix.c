@@ -302,6 +302,12 @@ sml_dupfd(size_t f, size_t arg)
   return (size_t) fcntl((int) f, F_DUPFD, (long) arg);
 }
 
+size_t
+sml_dup2(size_t f, size_t t)
+{
+  return (size_t) dup2((int) f, (int) t);
+}
+
 uintptr_t
 sml_getStdNumbers(uintptr_t triple)
 {

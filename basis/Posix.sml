@@ -823,6 +823,10 @@ struct
 
     fun dup f = dupfd {old = f, base = 0}
 
+    fun dup2 {old, new} = let val a = prim ("@sml_dup2", (old : int, new : int)) : int
+                          in if a = ~1 then raiseSys "dup2" NONE "" else ()
+                          end
+
     fun lseek (fd, p, w) =
         let
           val k = case w of SEEK_SET => 0
