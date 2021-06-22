@@ -24,6 +24,7 @@ signature POSIX_IO =
 
     val close : file_desc -> unit
     val dup : file_desc -> file_desc
+    val dup2 : {old : file_desc, new : file_desc} -> unit
     val dupfd : {old : file_desc, base : file_desc} -> file_desc
     val pipe : unit -> {infd : file_desc, outfd : file_desc}
    
