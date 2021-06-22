@@ -236,7 +236,7 @@ sml_lower(char *name, size_t rwx_mode, size_t flags, size_t perm, size_t i, size
 extern char **environ;
 
 uintptr_t
-sml_exec (String path, uintptr_t sl, int envl, int kind)
+sml_exec (String path, uintptr_t sl, uintptr_t envl, int kind)
 {
   String elemML;
   int n, i;
