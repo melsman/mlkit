@@ -156,11 +156,6 @@ local
          bas NET_HOST_DB.sml SOCKET.sml end
        end*)
 
-(*    basis Unix =
-       let open Word System Io
-       in
-         bas UNIX.sml (*UNIX_SOCK.sml*) end
-       end*)
 
      basis PrimIO =
        let open General System ArrayVector Io Int String Word
@@ -211,7 +206,13 @@ local
        in bas SML90.sml end
        end
 *)
+
+    basis Unix =
+       let open General Word System Posix IO String
+       in
+         bas UNIX.sig Unix.sml (*UNIX_SOCK.sml*) end
+       end
 in
   open General List ArrayVector String Bool Word Byte
-       Int Real IntInf IntInfRep Io System Text Posix IO (* Sml90 *)
+       Int Real IntInf IntInfRep Io System Text Posix IO Unix (* Sml90 *)
 end
