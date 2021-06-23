@@ -937,6 +937,7 @@ REG_POLY_FUN_HDR(sml_environ, Region rl, Region rs)
     first(pair) = (uintptr_t) REG_POLY_CALL(convertStringToML, rs, *m);
     second(pair) = (uintptr_t) list;
     makeCONS(pair,list);
+    m++;
   }
   return list;
 }
