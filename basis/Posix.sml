@@ -584,6 +584,13 @@ struct
     val stdout = Initial.Posix_File_Sys.stdout
     val stderr = Initial.Posix_File_Sys.stderr
 
+    structure FD =
+    struct
+      open Initial.Posix_File_Sys.FD
+      structure A = BitFlags(Initial.Posix_File_Sys.FD)
+      open A
+    end
+
     structure S =
     struct
       open Initial.Posix_File_Sys.S
@@ -801,6 +808,12 @@ struct
       | F_WRLCK
       | F_UNLCK
 
+    structure FD :
+      sig
+        include BIT_FLAGS
+        val cloexec : flags
+      end = FileSys.FD
+
     structure O :
       sig
         include BIT_FLAGS
@@ -826,6 +839,12 @@ struct
     fun dup2 {old, new} = let val a = prim ("@sml_dup2", (old : int, new : int)) : int
                           in if a = ~1 then raiseSys "dup2" NONE "" else ()
                           end
+
+    fun getfd fd = FD.fromWord (SysWord.fromInt (prim("@sml_getfd", fd : int)))
+
+    fun setfd (fd, flags) = let val a = prim("@sml_setfd", (fd: int, SysWord.toInt (FD.toWord flags)))
+                            in if a = ~1 then raiseSys "setfd" NONE "" else ()
+                            end
 
     fun lseek (fd, p, w) =
         let
