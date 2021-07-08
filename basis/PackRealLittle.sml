@@ -27,5 +27,5 @@ structure PackRealLittle : PACK_REAL =
         end
     
     fun update(a,i,r) =
-          Word8Array.copyVec {src=toBytes r, dst=a, di=i}
+          Word8Array.copyVec {src=toBytes r, dst=a, di=i*bytesPerElem}
   end
