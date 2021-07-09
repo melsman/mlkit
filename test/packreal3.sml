@@ -2,8 +2,6 @@
 
 fun check' f = (if f () then "OK" else "WRONG") handle ? => "EXN ("^(exnName ?)^")";
 
-(*functor Test(P : PACK_REAL) =
- *)
 functor Test(P : sig
                    val subVec : Word8Vector.vector * int -> real
                    val subArr : Word8Array.array * int -> real
