@@ -452,10 +452,12 @@ struct
       in case aty
            of SS.PHREG_ATY aty_reg => I.push(R aty_reg) :: C
             | SS.INTEGER_ATY i =>
-             if boxedNum (#precision i) then default()
+              if boxedNum (#precision i)
+                 orelse #value i > 0x3FFFFFFF
+                 orelse #value i <= ~0x40000000 then default()
              else I.push(I (fmtInt i)) :: C
             | SS.WORD_ATY w =>
-               if boxedNum (#precision w) then default()
+               if boxedNum (#precision w) orelse #value w > 0x7FFFFFFF then default()
                else I.push(I (fmtWord w)) :: C
             | _ => default()
       end

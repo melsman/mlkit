@@ -315,8 +315,8 @@ structure InstsX64: INSTS_X64 =
                | movzbq a => emit_bin ("movzbq", a)
                | movslq a => emit_bin ("movslq", a)
                | leaq a => emit_bin ("leaq", a)
-               | push ea => emit_unary ("push", ea)
-               | pop ea => emit_unary ("pop", ea)
+               | push ea => emit_unary ("pushq", ea)
+               | pop ea => emit_unary ("popq", ea)
                | andb a => emit_bin("andb", a)
 
                | addl a => emit_bin("addl", a)
