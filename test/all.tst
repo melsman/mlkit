@@ -148,6 +148,7 @@ word64.sml
 pickletest.mlb
 packreal.sml
 packreal2.sml
+packreal3.sml
 patricia.sml
 stream.mlb
 natset.sml
