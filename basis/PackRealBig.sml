@@ -19,12 +19,12 @@ structure PackRealBig : PACK_REAL =
             reverse_gen Word8VectorSlice.length Word8VectorSlice.sub (
                 Word8VectorSlice.slice(vec, i*bytesPerElem, SOME bytesPerElem)))
 
-    fun subArr(vec, i) =
+    fun subArr (vec, i) =
         Little.fromBytes(
             reverse_gen Word8ArraySlice.length Word8ArraySlice.sub (
                 Word8ArraySlice.slice(vec, i*bytesPerElem, SOME bytesPerElem)))
 
-    fun update(arr, i, r) =
+    fun update (arr, i, r) =
         Word8Array.copyVec {src=toBytes r, dst=arr, di=i*bytesPerElem}
 
   end
