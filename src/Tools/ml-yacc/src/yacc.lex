@@ -68,11 +68,11 @@ tyvar="'"{idchars}*;
 qualid ={id}".";
 %%
 <INITIAL>"(*"	=> (Add yytext; YYBEGIN COMMENT; commentLevel := 1;
-		    continue() before YYBEGIN INITIAL);
+		    continue(); YYBEGIN INITIAL; continue());
 <A>"(*"		=> (YYBEGIN EMPTYCOMMENT; commentLevel := 1; continue());
 <CODE>"(*"	=> (Add yytext; YYBEGIN COMMENT; commentLevel := 1;
-		    continue() before YYBEGIN CODE);
-<INITIAL>[^%\013\n]+ => (Add yytext; continue());
+		    continue(); YYBEGIN CODE; continue());
+<INITIAL>[^(%\013\n]+ => (Add yytext; continue());
 <INITIAL>"%%"	 => (YYBEGIN A; HEADER (concat (rev (!text)),!lineno,!lineno));
 <INITIAL,CODE,COMMENT,F,EMPTYCOMMENT>{eol}  => (Add yytext; inc lineno; continue());
 <INITIAL>.	 => (Add yytext; continue());
@@ -137,4 +137,3 @@ qualid ={id}".";
 <F>\\		=> (Add yytext; YYBEGIN STRING; continue());
 <F>.		=> (Add yytext; error inputSource (!lineno) "unclosed string";
 		    YYBEGIN CODE; continue());
-
