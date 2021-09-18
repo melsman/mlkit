@@ -1,5 +1,19 @@
 ## MLKit NEWS
 
+* mael 2021-09-17: Fixed smltojs problem with generating statements
+  consisting og lambda expressions.
+
+* mael 2021-09-17: Fixed problem with dealing with comments in
+  ML-Yacc; fix ported from upstream implementation.
+
+* mael 2021-07-15: PackReal{Big,Little} fixes (due to Ken Friis
+  Larsen).
+
+* mael 2021-06-23: Support for the Unix structure (due to Troels
+  Henriksen).
+
+* mael 2021-06-23: Fixes and additions to the Posix structure.
+
 * mael 2021-02-17: Preliminary support for fork-join based
   task-parallelism. See the `par-benchmarks` folder in the
   [mlkit-bench](http://github.com/melsman/mlkit-bench) github
@@ -7,6 +21,8 @@
 
 * mael 2021-02-17: Prettier priniting of multiplicity terms (e.g.,
   -Pcee).
+
+* mael 2021-02-15: More Real functionality (realCeil and friends).
 
 ### MLKit version 4.5.7 is released
 
