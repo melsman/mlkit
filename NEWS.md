@@ -1,6 +1,6 @@
 ## MLKit NEWS
 
-### MLKit version 4.5.8 is released
+### MLKit version 4.5.9 is released
 
 * mael 2021-09-17: Fixed smltojs problem with generating statements
   consisting og lambda expressions.
