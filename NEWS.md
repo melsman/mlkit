@@ -1,5 +1,7 @@
 ## MLKit NEWS
 
+### MLKit version 4.5.8 is released
+
 * mael 2021-09-17: Fixed smltojs problem with generating statements
   consisting og lambda expressions.
 
@@ -19,7 +21,7 @@
   [mlkit-bench](http://github.com/melsman/mlkit-bench) github
   repository for examples.
 
-* mael 2021-02-17: Prettier priniting of multiplicity terms (e.g.,
+* mael 2021-02-17: Prettier printing of multiplicity terms (e.g.,
   -Pcee).
 
 * mael 2021-02-15: More Real functionality (realCeil and friends).
