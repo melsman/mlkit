@@ -897,8 +897,6 @@ type options = {desc : string, long : string list, short : string list,
                 kind : string option, default : string option}
 val getOptions = Directory.getOptions : unit -> options list
 
-val SMLserver = ref false
-
 datatype compiler_mode =
     LINK_MODE of string list  (* lnk-files *)
   | LOAD_BASES of string list   (* eb-files to be loaded; nil if normal *)

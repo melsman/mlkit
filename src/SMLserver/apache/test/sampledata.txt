@@ -1,6 +1,0 @@
-S:0:220 testserver
-S:0:250 Ok
-S:0:250 Ok
-S:0:550 No
-S:0:354 Give me it
-S:100:250 Ok

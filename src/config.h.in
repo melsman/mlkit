@@ -84,9 +84,6 @@
 /* Define to 1 if you have the <utime.h> header file. */
 #undef HAVE_UTIME_H
 
-/* Oracle location */
-#undef ORACLEDIR
-
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
@@ -105,13 +102,7 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Smlserver requested */
-#undef SMLSERVER
-
 /* Define to 1 if all of the C90 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for
    backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
-
-/* Kam backend should be threaded */
-#undef THREADED

@@ -1,15 +1,15 @@
-(* COMPILER_ENV is the lambda env mapping structure and value 
+(* COMPILER_ENV is the lambda env mapping structure and value
  * identifiers to lambda env's and lvars *)
 
-(* COMPILE_BASIS is the combined basis of all environments in 
- * the backend *) 
+(* COMPILE_BASIS is the combined basis of all environments in
+ * the backend *)
 
 functor ManagerObjects(
                          structure Execution : EXECUTION
                          val program_name : unit -> string
                        ) : MANAGER_OBJECTS =
   struct
-    local structure MO = 
+    local structure MO =
              ManagerObjects0(structure Execution = Execution)
     in open MO
     end
@@ -33,7 +33,7 @@ functor ManagerObjects(
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
-    val link_time_dead_code_elimination = 
+    val link_time_dead_code_elimination =
 	Flags.add_bool_entry {long="link_time_dead_code_elimination", short=SOME "ltdce", item=ref true,
 			      menu=["Control", "link time dead code elimination"], neg=true,
 			      desc="Link time dead code elimination."}
@@ -43,7 +43,7 @@ functor ManagerObjects(
       fun pr_debug_linking s = if !debug_linking then print s else ()
     end
 
-    (* 
+    (*
      * Modification times of files
      *)
 
@@ -78,14 +78,14 @@ functor ManagerObjects(
 	 * Creating directories for target code
 	 * ----------------------------------------------- *)
 
-	fun maybe_create_dir d : unit = 
+	fun maybe_create_dir d : unit =
 	    if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
 		if OS.FileSys.isDir d then ()
 		else error ("The file " ^ quot d ^ " is not a directory")
-	    else ((OS.FileSys.mkDir d;()) handle _ => 
-		  error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ 
+	    else ((OS.FileSys.mkDir d;()) handle _ =>
+		  error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^
 			 OS.FileSys.getDir()))
-		
+
 	fun maybe_create_dirs {prepath:string,dirs:string} : unit =
 	    let val dirs = String.tokens (fn c => c = #"/") dirs
 		fun loop (p, nil) = ()
@@ -95,16 +95,16 @@ functor ManagerObjects(
 	    in loop(prepath, dirs)
 	    end
 
-	fun maybe_create_mlbdir {prepath:string} : unit = 
+	fun maybe_create_mlbdir {prepath:string} : unit =
 	    maybe_create_dirs {prepath=prepath,dirs=mlbdir()}
 
 
 	(* -----------------------------------------------
-	 * Emit assembler code and assemble it. 
+	 * Emit assembler code and assemble it.
 	 * ----------------------------------------------- *)
 
 	fun emit (target,absprjid,filename) =
-	    let fun esc n = 
+	    let fun esc n =
 		  let fun loop nil acc = implode(rev acc)
                         | loop (#"." :: #"." :: cc) acc = loop cc (#"%"::acc)
                         | loop (#"/" :: cc) acc = loop cc (#"+"::acc)
@@ -113,13 +113,13 @@ functor ManagerObjects(
 		  end
 		val target_filename =
 		   if Flags.is_on "compile_only" then
-		       let val p = OS.Path.base(Flags.get_string_entry "output") 
+		       let val p = OS.Path.base(Flags.get_string_entry "output")
 			   val filename = OS.Path.file filename
 		       in if OS.Path.file p = filename then p else p ^ "." ^ filename
 		       end
 		   else
 (*
-		       let 
+		       let
 			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ esc filename
 			   val target_filename = pmdir() ^ target_filename
 		       in OS.Path.mkAbsolute{path=target_filename, relativeTo=OS.FileSys.getDir()}
@@ -140,7 +140,7 @@ functor ManagerObjects(
 	(* -------------------------------------------------------------
 	 * Link time dead code elimination; we eliminate all unnecessary
 	 * object files from the link sequence before we do the actual
-	 * linking. 
+	 * linking.
 	 * ------------------------------------------------------------- *)
 
 	structure labelTable : sig type table
@@ -154,14 +154,14 @@ functor ManagerObjects(
 	    val table_size_word = Word.fromInt table_size
 	    fun hash s =
 	      let fun loop (0, acc) = acc
-		    | loop (i, acc) = loop(i-1, Word.+(Word.*(0w19,acc), 
+		    | loop (i, acc) = loop(i-1, Word.+(Word.*(0w19,acc),
 						       Word.fromInt(Char.ord(String.sub(s,i-1)))))
 	      in Word.toInt(Word.mod(loop (String.size s, 0w0), table_size_word))
 	      end
 	    fun mk () = Array.array (table_size, nil)
 	    fun member (a:string) l =
 	      let fun f [] = false
-		    | f (x::xs) = a=x orelse f xs 
+		    | f (x::xs) = a=x orelse f xs
 	      in f l
 	      end
 	    fun look (table,lab) =
@@ -170,7 +170,7 @@ functor ManagerObjects(
 		  val l = Array.sub(table,h)
 	      in member s l
 	      end
-	    fun insert (table,lab) = 
+	    fun insert (table,lab) =
 	      let val s = Execution.pr_lab lab
 		  val h = hash s
 		  val l = Array.sub(table,h)
@@ -182,32 +182,32 @@ functor ManagerObjects(
 	fun unsafe(tf,li) = Execution.unsafe_linkinfo li
 	fun exports(tf,li) = Execution.exports_of_linkinfo li
 	fun imports(tf,li) = Execution.imports_of_linkinfo li
-	fun dead_code_elim tfiles_with_linkinfos = 
-	  let 
+	fun dead_code_elim tfiles_with_linkinfos =
+	  let
 	    val _ = pr_debug_linking "[Link time dead code elimination begin...]\n"
 	    val table = labelTable.mk()
 	    val allexports = labelTable.mk()
 	    fun require (f_labs,d_labs) : unit = (List.app (fn lab => labelTable.insert(table,lab)) f_labs;
 						  List.app (fn lab => labelTable.insert(table,lab)) d_labs) (* 2001-01-09, Niels *)
 	    fun add_exports_to_allexports (f_labs,d_labs) =
-		let fun look l = 
+		let fun look l =
 			if labelTable.look(allexports, l) then
 			    die ("Label " ^ Execution.pr_lab l ^ " allready exported")
 			else ()
 		in
 		    (List.app (fn lab => (look lab ; labelTable.insert(allexports,lab))) f_labs;
-		     List.app (fn lab => (look lab ; labelTable.insert(allexports,lab))) d_labs)		
+		     List.app (fn lab => (look lab ; labelTable.insert(allexports,lab))) d_labs)
 		end
-		
-	    fun required (f_labs,d_labs) : bool = 
+
+	    fun required (f_labs,d_labs) : bool =
 	      foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab))
 	      (foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab)) false f_labs) d_labs  (* 2001-01-09, Niels *)
 	    fun reduce [] = []
-	      | reduce (obj::rest) = 
+	      | reduce (obj::rest) =
 	      let val rest' = reduce rest
 		  fun pp_unsafe true = " (unsafe)"
 		    | pp_unsafe false = " (safe)"
-	      in if unsafe obj orelse required (exports obj) then 
+	      in if unsafe obj orelse required (exports obj) then
 		     (pr_debug_linking ("Using       " ^ #1 obj ^ pp_unsafe(unsafe obj) ^ "\n")
 		      ; require (imports obj)
 		      ; add_exports_to_allexports (exports obj)
@@ -227,20 +227,20 @@ functor ManagerObjects(
 	  | elim_dupl ( f :: fs , acc ) = elim_dupl ( fs, if member f acc then acc else f :: acc )
 
 	(* --------------------------------------------------------------
-	 * link (target_files,linkinfos): Produce a link file "link.s". 
+	 * link (target_files,linkinfos): Produce a link file "link.s".
 	 * Then link the entire project and produce an executable "run".
 	 * -------------------------------------------------------------- *)
 
 	fun link (tfiles_with_linkinfos, extobjs, run) : unit =
-	  let 
-	    val tfiles_with_linkinfos = 
+	  let
+	    val tfiles_with_linkinfos =
 	      if link_time_dead_code_elimination() then dead_code_elim tfiles_with_linkinfos
 	      else tfiles_with_linkinfos
 	    val linkinfos = map #2 tfiles_with_linkinfos
 	    val target_files = map #1 tfiles_with_linkinfos
 	    val labs = map Execution.code_label_of_linkinfo linkinfos
-	    val exports = 
-	      List.foldr (fn ((fs,ds),(acc_f,acc_d)) =>  (fs@acc_f, ds@acc_d)) ([],[]) 
+	    val exports =
+	      List.foldr (fn ((fs,ds),(acc_f,acc_d)) =>  (fs@acc_f, ds@acc_d)) ([],[])
 	      (map Execution.exports_of_linkinfo linkinfos)  (* 2001-01-09, Niels *)
 	    val extobjs = elim_dupl (extobjs,[])
 	  in case Execution.generate_link_code
@@ -250,13 +250,13 @@ functor ManagerObjects(
 		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
 		     delete_file linkfile_o
 		 end
-		| NONE => 
+		| NONE =>
 		 link_files_with_runtime_system target_files run
 	  end
       end (*structure SystemTools*)
 
-    datatype modcode = EMPTY_MODC 
-                     | SEQ_MODC of modcode * modcode 
+    datatype modcode = EMPTY_MODC
+                     | SEQ_MODC of modcode * modcode
                      | EMITTED_MODC of filename * linkinfo
                      | NOTEMITTED_MODC of target * linkinfo * filename
 
@@ -269,18 +269,18 @@ functor ManagerObjects(
 	fun exist EMPTY_MODC = true
 	  | exist (SEQ_MODC(mc1,mc2)) = exist mc1 andalso exist mc2
 	  | exist (NOTEMITTED_MODC _) = true
-	  | exist (EMITTED_MODC(file,_)) = 
+	  | exist (EMITTED_MODC(file,_)) =
 	  let val res = OS.FileSys.access (file,[]) handle _ => false
 	  in if res then res
 	     else (print ("File " ^ file ^ " not present\n"); res)
 	  end
 
 	fun emit(absprjid: absprjid, modc) =
-	  let 
+	  let
 	    fun em EMPTY_MODC = EMPTY_MODC
 	      | em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
 	      | em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
-	      | em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
+	      | em (NOTEMITTED_MODC(target,linkinfo,filename)) =
 	      EMITTED_MODC(SystemTools.emit(target,ModuleEnvironments.absprjid_to_string absprjid,filename),linkinfo)
                            (*puts ".o" on filename*)
 	  in em modc
@@ -306,7 +306,7 @@ functor ManagerObjects(
 		      | get (NOTEMITTED_MODC(target,li,filename), acc) = die "mk_exe_all_emitted"
 		in SystemTools.link(get(modc,[]), extobjs, run)
 		end
-	    
+
 	fun all_emitted modc : bool =
 	  case modc
 	    of NOTEMITTED_MODC _ => false
@@ -317,7 +317,7 @@ functor ManagerObjects(
 	  case mc
 	    of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
 	     | EMITTED_MODC(tfile,_) => tfile::acc
-	     | _ => acc   
+	     | _ => acc
 
 	fun delete_files (SEQ_MODC(mc1,mc2)) = (delete_files mc1; delete_files mc2)
 	  | delete_files (EMITTED_MODC(fp,_)) = SystemTools.delete_file fp
@@ -335,62 +335,21 @@ functor ManagerObjects(
 	  in "PM/" ^ base_absprjid ^ ".timestamp"
 	  end
 *)
-	fun ulfile (absprjid: absprjid) : string =
-	    let val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
-	    in "PM/" ^ base_absprjid ^ ".ul"
-	    end
-
-	fun deleteUlfile absprjid : unit =
-	  if not(!Flags.SMLserver) then ()
-	  else let val f = ulfile absprjid
-	       in OS.FileSys.remove f handle _ => ()
-	       end
 
 	fun list_minus (xs,nil) = xs
-	  | list_minus (x::xs,y::ys) = 
+	  | list_minus (x::xs,y::ys) =
 	    if x = y then list_minus(xs,ys)
 	    else die "list_minus.prefix error1"
 	  | list_minus _ = die "list_minus.prefix error2"
 
 	fun target_files modc : string list =
 	    let fun files (mc,acc) =
-		case mc of 
+		case mc of
 		    SEQ_MODC(mc1,mc2) => files(mc1,files(mc2,acc))
 		  | EMITTED_MODC(tfile,_) => tfile::acc
 		  | NOTEMITTED_MODC(target,li,filename) => die "target_files: file not emitted"
-		  | _ => acc  
+		  | _ => acc
 	    in files(modc,nil)
-	    end	    
-
-	fun makeUlfile (ulfile: string, modc, modc') : unit =
-	  if not(!Flags.SMLserver) then ()
-	  else
-	      (* modc is a prefix of modc' *)
-	    let 
-		val _ = 
-		    if not (all_emitted modc) orelse not(all_emitted modc') then
-			die "makeUlfile: not all emitted"
-		    else ()
-(*		val modc = emit (absprjid, modc') *)
-	      val uofiles_local = target_files modc
-	      val uofiles_local_and_scripts = target_files modc'
-	      val uofiles_scripts = list_minus(uofiles_local_and_scripts,uofiles_local)
-(*	      val uofiles_scripts = map OS.Path.file uofiles_scripts *)
-	      val _ = 
-		  let val os = TextIO.openOut ulfile
-		  in    app (fn f => TextIO.output(os, f ^ "\n")) uofiles_local
-		      ; TextIO.output(os, "scripts:\n")
-		      ; app (fn f => TextIO.output(os, f ^ "\n")) uofiles_scripts
-		      ; TextIO.closeOut os
-		  end
-(*
-	      val timeStampFile = timeStampFileName absprjid
-	      val os = TextIO.openOut timeStampFile
-	      val _ = TextIO.output(os, "")
-	      val _ = TextIO.closeOut os;
-*)
-	    in	      
-	      print("[wrote file " ^ ulfile ^ "]\n")
 	    end
 
 	val pu =
@@ -399,14 +358,14 @@ functor ManagerObjects(
 		  | toInt (EMITTED_MODC _) = 2
 		  | toInt (NOTEMITTED_MODC _) = 3
 		val fun_EMPTY_MODC = Pickle.con0 EMPTY_MODC
-		fun fun_SEQ_MODC pu = 
+		fun fun_SEQ_MODC pu =
 		    Pickle.con1 SEQ_MODC (fn SEQ_MODC a => a | _ => die "ModCode.pu.SEQ_MODC")
 		    (Pickle.pairGen(pu,pu))
-		fun fun_EMITTED_MODC _ = 
+		fun fun_EMITTED_MODC _ =
 		    Pickle.con1 EMITTED_MODC (fn EMITTED_MODC a => a | _ => die "ModCode.pu.EMITTED_MODC")
 		    (Pickle.pairGen(Pickle.string,Execution.pu_linkinfo))
 		fun error _ = die "ModCode.pu.NOTEMITTED_MODC"
-		fun fun_NOTEMITTED_MODC _ = 
+		fun fun_NOTEMITTED_MODC _ =
 		    Pickle.con1 error error (Pickle.convert (error,error) Pickle.unit)
 	    in Pickle.dataGen("ModCode",toInt,[fun_EMPTY_MODC,
 					       fun_SEQ_MODC,
@@ -423,9 +382,9 @@ functor ManagerObjects(
 	    (OS.Path.getParent o OS.Path.getParent) s
 
 	fun dirMod d m =
-	    dirMod0 (fn fp => 
+	    dirMod0 (fn fp =>
 		     let val p = d ## OS.Path.file fp
-			 val p = 
+			 val p =
 			     if OS.Path.isAbsolute d then p
 			     else subtract_mlbdir(OS.Path.dir fp) ## p
 		     in p
@@ -433,7 +392,7 @@ functor ManagerObjects(
 
 	fun absDirMod absd m =
 	    dirMod0 (fn fp => absd ## OS.Path.file fp) m
-	    
+
       end
 
   end
