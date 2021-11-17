@@ -175,9 +175,6 @@ typedef struct lobjs {
 #ifdef ENABLE_GC
   void* orig;             // pointer to memory allocated by malloc - for freeing
 #endif
-#ifdef KAM
-  size_t sizeOfLobj;      // size of this object
-#endif
   uintptr_t value;        // a large object; inlined to avoid pointer-indirection
 } Lobjs;
 
@@ -371,18 +368,10 @@ of the region and is useful for, among other things, tail recursion).
 
 /*----------------------------------------------------------------*
  * Type of freelist and top-level region                          *
- *                                                                *
- * When the KAM backend is used, we use an indirection to hold    *
- * the top-level region, so as to support multiple threads.       *
  *----------------------------------------------------------------*/
 
 extern Rp * freelist;
 
-#ifdef KAM
-#define TOP_REGION   (*topRegionCell)
-#define FREELIST     freelist
-void free_region_pages(Rp* first, Rp* last);
-#else
 #ifdef PARALLEL
 #define TOP_REGION   (thread_info()->top_region)
 #define FREELIST     (thread_info()->freelist)
@@ -391,21 +380,15 @@ extern Ro * topRegion;
 #define TOP_REGION   topRegion
 #define FREELIST     freelist
 #endif
-#endif
+
 
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-#ifdef KAM
-Region allocateRegion(Region roAddr, Region* topRegionCell);
-void deallocateRegion(Region* topRegionCell);
-void deallocateRegionsUntil(Region rAdr, Region* topRegionCell);
-#else
 Region allocateRegion(Region roAddr);
 void deallocateRegion();
 void deallocateRegionsUntil(Region rAddr);
 void deallocateRegionsUntil_X64(Region rAddr);
-#endif
 
 uintptr_t *alloc (Region r, size_t n);
 uintptr_t *alloc_new_block(Gen *gen);

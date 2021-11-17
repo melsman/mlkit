@@ -28,10 +28,6 @@
 #include "Profiling.h"
 #endif
 
-#ifdef KAM
-#include "Interp.h"
-#endif
-
 #ifdef PARALLEL
 #include "Spawn.h"
 #endif
@@ -355,11 +351,7 @@ sig_handler_fpe(void)
   return; /* never comes here */
 }
 
-#ifndef KAM
 extern void code(void);
-#endif
-
-#ifndef APACHE
 
 int
 main(int argc, char *argv[])
@@ -412,12 +404,7 @@ rpMap = regionPageMapNew();
   //signal(SIGFPE, (SignalHandler)sig_handler_fpe);
 
   debug(printf("Starting execution...\n");)
-#ifdef KAM
-  return (main_interp(argc, argv));
-#else
   code();
   return (EXIT_FAILURE);   /* never comes here (i.e., exits through
                             * terminateML or uncaught_exception) */
-#endif
 }
-#endif

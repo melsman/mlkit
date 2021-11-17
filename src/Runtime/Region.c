@@ -129,9 +129,7 @@ RegionPageMap* rpMap = NULL;
  *----------------------------------------------------------------*/
 Rp * freelist = NULL;
 
-#ifndef KAM
 Ro * topRegion;
-#endif
 
 #ifdef ENABLE_GC
 long rp_used = 0;
@@ -415,9 +413,6 @@ alloc_new_block(Gen *gen)
     }
   #endif /* ENABLE_GC */
 
-  #ifdef KAM
-  LOCK_LOCK(FREELISTMUTEX);
-  #endif
   if ( FREELIST == NULL ) {          // FREELIST is the thread's own free-list (when PARALLEL is true)
     #ifdef PARALLEL
     LOCK_LOCK(FREELISTMUTEX);
@@ -452,10 +447,6 @@ alloc_new_block(Gen *gen)
   FREELIST = FREELIST->n;
 
   REGION_PAGE_MAP_INCR(np); // update frequency hashtable
-
-  #ifdef KAM
-  LOCK_UNLOCK(FREELISTMUTEX);
-  #endif
 
 #ifdef ENABLE_GEN_GC
   // update colorPtr so that all new objects are considered to be in
@@ -512,11 +503,7 @@ alloc_new_block(Gen *gen)
  *  in roAddr.                                                          *
  *----------------------------------------------------------------------*/
 static inline Region
-allocateRegion0(Region r
-#ifdef KAM
-		, Region* topRegionCell
-#endif
-		)
+allocateRegion0(Region r)
 {
   debug(printf("[allocateRegion (rAddr=%p)...",r));
   r = clearStatusBits(r);
@@ -538,17 +525,9 @@ allocateRegion0(Region r
 }
 
 Region
-allocateRegion(Region r
-#ifdef KAM
-	       , Region* topRegionCell
-#endif
-		    )
+allocateRegion(Region r)
 {
-  r = allocateRegion0(r
-#ifdef KAM
-		      , topRegionCell
-#endif
-		      );
+  r = allocateRegion0(r);
   r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
@@ -637,11 +616,7 @@ void free_lobjs(Lobjs* lobjs)
  *  free list. There have to be atleast one region on the stack.        *
  *  When profiling we also use this function.                           *
  *----------------------------------------------------------------------*/
-void deallocateRegion(
-#ifdef KAM
-		      Region* topRegionCell
-#endif
-		     ) {
+void deallocateRegion() {
 #ifdef PROFILING
   int i;
 #endif
@@ -668,18 +643,12 @@ void deallocateRegion(
 
   /* Insert the region pages in the freelist; there is always
    * at least one page in a generation. */
-  #ifdef KAM
-  LOCK_LOCK(FREELISTMUTEX);
-  #endif
   last_rp_of_gen(&(TOP_REGION->g0))->n = FREELIST;  // Free pages in generation 0
   FREELIST = clear_fp(TOP_REGION->g0.fp);
 #ifdef ENABLE_GEN_GC
   last_rp_of_gen(&(TOP_REGION->g1))->n = FREELIST;  // Free pages in generation 1
   FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
-  #ifdef KAM
-  LOCK_UNLOCK(FREELISTMUTEX);
-  #endif
   TOP_REGION=TOP_REGION->p;
 
   debug(printf("]\n"));
@@ -712,9 +681,6 @@ alloc_lobjs(int n) {
   if ( lobjs == NULL )
     die("alloc_lobjs: malloc returned NULL");
 #endif /* ENABLE_GC */
-#ifdef KAM
-  lobjs->sizeOfLobj = sizeof(uintptr_t)*n;
-#endif
   return lobjs;
 }
 
@@ -1014,14 +980,8 @@ void resetGen(Gen *gen)
                             //   concerning conservative computation.
 #endif /* ENABLE_GC */
 
-#ifdef KAM
-    LOCK_LOCK(FREELISTMUTEX);
-#endif
     (last_rp_of_gen(gen))->n = FREELIST;
     FREELIST = (clear_fp(gen->fp))->n;
-#ifdef KAM
-    LOCK_UNLOCK(FREELISTMUTEX);
-#endif
     (clear_fp(gen->fp))->n = NULL;
   }
 
@@ -1085,11 +1045,7 @@ resetRegion(Region rAdr)
  *  The function does not return or alter anything.                        *
  *-------------------------------------------------------------------------*/
 void
-deallocateRegionsUntil(Region r
-#ifdef KAM
-		       , Region* topRegionCell
-#endif
-		       )
+deallocateRegionsUntil(Region r)
 {
   // debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
 
@@ -1106,11 +1062,7 @@ deallocateRegionsUntil(Region r
   while (r <= TOP_REGION)
     {
       /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
-      deallocateRegion(
-#ifdef KAM
-		       topRegionCell
-#endif
-		      );
+      deallocateRegion();
     }
 
   debug(printf("]\n"));
@@ -1122,7 +1074,6 @@ deallocateRegionsUntil(Region r
  *deallocateRegionsUntil_X64: version of the above function working with   *
  *  the stack growing towards negative infinity.                           *
  *-------------------------------------------------------------------------*/
-#ifndef KAM
 void
 deallocateRegionsUntil_X64(Region r)
 {
@@ -1153,9 +1104,6 @@ deallocateRegionsUntil_X64(Region r)
 
   return;
 }
-#endif /* not KAM */
-
-
 
 /*----------------------------------------------------------------*
  *        Profiling functions                                     *
@@ -1436,17 +1384,3 @@ allocProfiling(Region r, size_t n, size_t pPoint)
   return allocGenProfiling(&(clearStatusBits(r)->g0),n,pPoint);
 }
 #endif /*PROFILING*/
-
-#ifdef KAM
-void
-free_region_pages(Rp* first, Rp* last)
-{
-  if ( first == 0 )
-    return;
-  LOCK_LOCK(FREELISTMUTEX);
-  last->n = FREELIST;
-  FREELIST = first;
-  LOCK_UNLOCK(FREELISTMUTEX);
-  return;
-}
-#endif /*KAM*/
