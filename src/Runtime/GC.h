@@ -43,7 +43,7 @@ points_into_dataspace (uintptr_t *p) {
 
 size_t size_lobj(size_t tag);
 
-void gc(size_t **sp, size_t reg_map);
+void gc(Context ctx, size_t **sp, size_t reg_map);
 
 #endif /*ENABLE_GC*/
 

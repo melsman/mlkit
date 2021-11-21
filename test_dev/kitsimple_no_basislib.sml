@@ -36,13 +36,20 @@ fun atan2 (y : real, x : real) : real = prim ("atan2Float", (y,x))
 fun exp (r : real) : real = prim ("expFloat", r)
 fun pow (x : real, y : real) : real = prim ("powFloat", (x,y))
 fun real (x : int) : real = prim ("realInt", x)
-fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
+
+fun getCtx () : foreignptr = prim("__get_ctx",())
+fun floor (x : real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
+
 fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
 fun concat (ss : string list) : string = prim ("implodeStringML", ss)
 fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
 fun size (s : string) : int = prim ("__bytetable_size", s)
-fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+
+fun chr (i:int) : char =
+    if i>=0 andalso i<256 then prim ("id", i)
+    else raise Chr
+
 fun ord (c : char) : int = prim ("id", c)
 fun print (x:string):unit = prim("printStringML",x)
 fun append [] ys = ys

@@ -305,57 +305,61 @@ sig_handler_segv(int sig, siginfo_t *info, void *extra)
 }
 */
 
-void
-sig_handler_int(void)
-{
-  signal(SIGINT, (SignalHandler)sig_handler_int);    /* setup handler again */
+/* void */
+/* sig_handler_int(void) */
+/* { */
+/*   signal(SIGINT, (SignalHandler)sig_handler_int);    /\* setup handler again *\/ */
 
-#ifdef ENABLE_GC
-  if ( doing_gc ) {
-    raised_exn_interupt=1;
-    return;
-  }
-#endif /* ENABLE_GC */
+/* #ifdef ENABLE_GC */
+/*   if ( doing_gc ) { */
+/*     raised_exn_interupt=1; */
+/*     return; */
+/*   } */
+/* #endif /\* ENABLE_GC *\/ */
 
-#ifdef PROFILING
-  if ( doing_prof ) {
-    raised_exn_interupt_prof=1;
-    return;
-  }
-#endif /* PROFILING */
+/* #ifdef PROFILING */
+/*   if ( doing_prof ) { */
+/*     raised_exn_interupt_prof=1; */
+/*     return; */
+/*   } */
+/* #endif /\* PROFILING *\/ */
 
-  raise_exn((uintptr_t)&exn_INTERRUPT);
-  return; /* never comes here */
-}
+/*   raise_exn((uintptr_t)&exn_INTERRUPT); */
+/*   return; /\* never comes here *\/ */
+/* } */
 
-void
-sig_handler_fpe(void)
-{
-  signal(SIGFPE, (SignalHandler)sig_handler_fpe);    /* setup handler again */
+/* void */
+/* sig_handler_fpe(void) */
+/* { */
+/*   signal(SIGFPE, (SignalHandler)sig_handler_fpe);    /\* setup handler again *\/ */
 
-#ifdef ENABLE_GC
-  if ( doing_gc ) {
-    raised_exn_overflow=1;
-    return;
-  }
-#endif /* ENABLE_GC */
+/* #ifdef ENABLE_GC */
+/*   if ( doing_gc ) { */
+/*     raised_exn_overflow=1; */
+/*     return; */
+/*   } */
+/* #endif /\* ENABLE_GC *\/ */
 
-#ifdef PROFILING
-  if ( doing_prof ) {
-    raised_exn_overflow_prof=1;
-    return;
-  }
-#endif /* PROFILING */
+/* #ifdef PROFILING */
+/*   if ( doing_prof ) { */
+/*     raised_exn_overflow_prof=1; */
+/*     return; */
+/*   } */
+/* #endif /\* PROFILING *\/ */
 
-  raise_exn((uintptr_t)&exn_OVERFLOW);
-  return; /* never comes here */
-}
+/*   raise_exn((uintptr_t)&exn_OVERFLOW); */
+/*   return; /\* never comes here *\/ */
+/* } */
 
-extern void code(void);
+
+extern void code(Context ctx);
 
 int
 main(int argc, char *argv[])
 {
+  Context ctx = (Context) malloc(sizeof(context));
+  ctx->topregion = NULL;
+
   //static struct sigaction sigact;
   //static sigset_t sigset;
 
@@ -404,7 +408,8 @@ rpMap = regionPageMapNew();
   //signal(SIGFPE, (SignalHandler)sig_handler_fpe);
 
   debug(printf("Starting execution...\n");)
-  code();
+
+  code(ctx);
   return (EXIT_FAILURE);   /* never comes here (i.e., exits through
                             * terminateML or uncaught_exception) */
 }

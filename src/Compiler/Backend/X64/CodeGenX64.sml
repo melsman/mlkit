@@ -582,7 +582,7 @@ struct
                                   else "allocateRegion"
                               in
                                   base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
-                                    compile_c_call_prim(name,[SS.PHREG_ATY tmp_reg1],NONE,
+                                    compile_c_call_prim(name,[SS.PHREG_ATY I.r14, SS.PHREG_ATY tmp_reg1],NONE,
                                                         size_ff,tmp_reg0(*not used*),C))
                               end
                     fun dealloc_region_prim (((place,phsize),offset),C) =
@@ -593,12 +593,12 @@ struct
                             compile_c_call_prim("deallocRegionFiniteProfiling",[],NONE,
                                                 size_ff,tmp_reg0(*not used*),C)
                            | LineStmt.INF =>
-                            compile_c_call_prim("deallocateRegion",[],NONE,size_ff,tmp_reg0(*not used*),C)
+                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,size_ff,tmp_reg0(*not used*),C)
                       else
                         case phsize
                           of LineStmt.WORDS i => C
                            | LineStmt.INF =>
-                            compile_c_call_prim("deallocateRegion",[],NONE,size_ff,tmp_reg0(*not used*),C)
+                            compile_c_call_prim("deallocateRegion",[SS.PHREG_ATY I.r14],NONE,size_ff,tmp_reg0(*not used*),C)
                   in
                     foldr alloc_region_prim
                     (CG_lss(body,size_ff,size_ccf,
@@ -662,8 +662,8 @@ struct
                     handl_return_code(comment ("END OF EXCEPTION HANDLER", C))))))))))
                   end
                | LS.RAISE{arg=arg_aty,defined_atys} =>
-                  move_aty_into_reg(arg_aty,rdi,size_ff,              (* function never returns *)
-                  maybe_align 0 (fn C => I.call (NameLab "raise_exn") :: rem_dead_code C) C)
+                  move_aty_into_reg(arg_aty,rsi,size_ff,      (* arg1: context, arg2: exception value *)        (* function never returns *)
+                  maybe_align 0 (fn C => I.movq(R r14, R rdi) :: I.call (NameLab "raise_exn") :: rem_dead_code C) C)
                | LS.SWITCH_I{switch=LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default),
                              precision} =>
                   let
@@ -864,6 +864,8 @@ struct
                           move_reg_into_aty(tmp_reg0,d,size_ff,
                           I.addq(I "1", R tmp_reg0) ::
                           I.movq(R tmp_reg0, L exn_counter_lab) :: C)
+                         | Get_ctx =>
+                           move_reg_into_aty(r14,d,size_ff,C)
                          | _ => die ("unsupported prim with 0 args: " ^ PrimName.pp_prim name))
                      | [x] =>
                        let val arg = (x,d,size_ff,C)
@@ -1193,7 +1195,8 @@ struct
                                              (*I.dot_globl call_closure_lab, (* The C function entry *) *)
                                              I.lab call_closure_lab]
                                             @ (map (fn r => I.push (R r)) callee_save_regs_ccall)
-                                            @ [I.movq(R rdi,R tmp_reg0)]
+                                            @ [I.subq(I "8", R rsp),    (* align stack *)
+                                               I.movq(R rdi,R tmp_reg0)]
                                             (* now initialize thread local data to point to the threadinfo struct *)
                                             @ compile_c_call_prim("thread_init", [SS.PHREG_ATY tmp_reg0], SOME (SS.PHREG_ATY tmp_reg0), size_ff (* not used *), tmp_reg1,
                                               [I.movq(R tmp_reg0, R rdi),            (* restore argument, which is passed through thread_init *)
@@ -1209,7 +1212,7 @@ struct
                                                I.push(I"0")                          (* push dummy - for 16-byte alignment *)
                                               ]
                                             @ compile_c_call_prim("pthread_exit", [SS.PHREG_ATY tmp_reg0], NONE, size_ff (* not used *), tmp_reg1,
-                                              [I.pop(R rax),                         (* pop dummy - for 16-byte alignment *)
+                                              [I.addq(I "16", R rsp),                 (* adjust stack - for 16-byte alignment *)
                                                I.movq(I "0", R rax)]                 (* move result to %rax *)
                                             @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                                             @ [I.ret])))
@@ -1225,31 +1228,33 @@ struct
                     fun comp_c_call(all_args,res,C) =
                       compile_c_call_prim(name, all_args, res, size_ff, tmp_reg1, C)
                     val _ =
-                      case (explode name, rhos_for_result)
-                        of (_, nil) => ()
-                         | (#"@" :: _, _) =>
-                          die ("CCALL." ^ name ^ ": auto-convertion is supported only for\n" ^
-                               "functions returning integers and taking integers as arguments!\n" ^
-                               "The function " ^ name ^ " takes " ^ Int.toString (length rhos_for_result) ^
-                               "region arguments.")
-                         | _ => ()
+                        case (explode name, rhos_for_result) of
+                            (_, nil) => ()
+                          | (#"@" :: _, _) =>
+                            die ("CCALL." ^ name ^ ": auto-convertion is supported only for\n" ^
+                                 "functions returning integers and taking integers as arguments!\n" ^
+                                 "The function " ^ name ^ " takes " ^ Int.toString (length rhos_for_result) ^
+                                 "region arguments.")
+                          | _ => ()
                   in
 
-        (* the first argument in a dynamic function call, is the name of the function, *)
-        (* that argument must be on the top of the stack, as it is poped just before   *)
-        (* function invocation.                                                        *)
-        (* It is used to bind an address the first time the function is called         *)
+                    (* the first argument in a dynamic function call, is the name of the function, *)
+                    (* that argument must be on the top of the stack, as it is poped just before   *)
+                    (* function invocation.                                                        *)
+                    (* It is used to bind an address the first time the function is called         *)
 
                     comment_fn (fn () => "CCALL: " ^ pr_ls ls,
-                   (case (case name of ":" => (let val (a1,ar) = valOf (List.getItem args)
-                                  in a1 ::(rhos_for_result@ar)
-                                  end
-                                  handle Option.Option =>
-                                         die ("Dynamic liking requires a string as first argument."))
-                     | _ => (rhos_for_result@args), res)
-                        of (all_args,[]) => comp_c_call(all_args, NONE, C)
-                         | (all_args, [res_aty]) => comp_c_call(all_args, SOME res_aty, C)
-                         | _ => die "CCall with more than one result variable"))
+                                let val all_args =
+                                        case name of
+                                            ":" => (case args of
+                                                        a1::ar => a1 ::(rhos_for_result@ar)
+                                                      | _ => die ("Dynamic liking requires a string as first argument."))
+                                          | _ => (rhos_for_result@args)
+                                in case res of
+                                       [] => comp_c_call(all_args, NONE, C)
+                                     | [res_aty] => comp_c_call(all_args, SOME res_aty, C)
+                                     | _ => die "CCall with more than one result variable"
+                                end)
                   end
                | LS.CCALL_AUTO{name, args, res} =>
 
@@ -1285,7 +1290,8 @@ struct
                             I.dot_globl lab, (* The C function entry *)
                             I.lab lab]
                          @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
-                         @ [I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
+                         @ [I.subq(I "8", R rsp),                 (* push dummy (align stack) *)
+                            I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
                             I.push (I "1"),                       (* push dummy (alignment) *)
@@ -1293,7 +1299,7 @@ struct
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
                             I.movq(R rdi, R rax),                 (* move result to %rax *)
-                            I.addq(I "8", R rsp)]                 (* pop dummy (alignment) *)
+                            I.addq(I "16", R rsp)]                 (* pop dummy x2 (align stack) *)
                          @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                          @ [I.ret])
 
@@ -1505,7 +1511,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               end
           else C
 
-        fun raise_insts C = (* expects exception value in register rdi!! *)
+        fun raise_insts C = (* expects ctx in rdi and exception value in register rsi!! *)
           let
             val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
             val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
@@ -1513,10 +1519,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           in
             I.dot_globl(NameLab "raise_exn") ::
             I.lab (NameLab "raise_exn") ::
-            I.movq (R rdi, R r15) :: (* move argument to callee-save register *)
+            I.movq (R rdi, R r14) :: (* reinstall context pointer *)
+            I.movq (R rsi, R r15) :: (* move argument to callee-save register *)
             comment ("DEALLOCATE REGIONS UNTIL",
             I.movq(L exn_ptr_lab, R tmp_reg1) ::
-            compile_c_call_prim("deallocateRegionsUntil_X64",[SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
+            compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY I.r14,SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
 
             comment ("RESTORE EXN PTR",
             I.movq(L exn_ptr_lab, R tmp_reg1) ::
@@ -1687,7 +1694,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
           in I.dot_text ::(List.foldr (fn ((nl,dl),C') =>
                                           I.dot_globl nl ::
                                           I.lab nl::
-                                          I.movq(L(DatLab dl),R rdi)::
+                                          I.movq(R r14, R rdi) ::            (* arg1: context *)
+                                          I.movq(L(DatLab dl),R rsi)::       (* arg2: exception value *)
                                           I.call(NameLab "raise_exn")::C') C stublab)
           end
 
@@ -1710,8 +1718,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               (copy(rsp,r15,                            (* Save rsp in r15 (callee-save ccall register *)
               I.push(I "1") ::                          (* at this point we don't know whether the stack *)
               I.andq(I "0xFFFFFFFFFFFFFFF0", R rsp) ::  (* is aligned, so we force align it here... *)
-              compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
-              copy(r15,rsp,                             (* Reposition stack *)
+              compile_c_call_prim("gc",[SS.PHREG_ATY r14,SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,rax,
+              copy(r15,rsp,                             (* Reposition stack; r14 is the context (first arg to gc) *)
               pop_all_regs(                             (* The return lab and tmp_reg0 are also popped again *)
               pop_size_ccf_rcf_reg_args(
               (I.jmp(R tmp_reg0) :: C)))))))))
@@ -1768,7 +1776,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         fun allocate_global_regions (region_labs,C) =
           let
             fun maybe_pass_region_id (region_id,C) =
-              if region_profiling() then I.movq(I (i2s region_id), R rsi) :: C
+              if region_profiling() then I.movq(I (i2s region_id), R rdx) :: C
               else C
             (* Notice, that regionId is not tagged because compile_c_call is not used *)
             (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
@@ -1812,7 +1820,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 *)
                    in
                        I.subq(I(i2s sz_regdesc_bytes), R rsp) ::  (* MAEL: maybe align *)
-                       I.movq(R rsp, R rdi) ::
+                       I.movq(R r14, R rdi) ::
+                       I.movq(R rsp, R rsi) ::
                        maybe_pass_region_id (region_id,
                                              I.call(NameLab name) ::
                                              C)
@@ -1866,6 +1875,10 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.dot_globl (NameLab "code") ::
             I.lab (NameLab "code") ::
             I.push(I "1") ::                           (* 16-align stack *)
+
+            (* Install argument context in context register *)
+            I.movq(R rdi, R r14) ::
+
             (* Compute range of data space *)
             generate_data_begin_end(progunit_labs,
 

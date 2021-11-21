@@ -1302,7 +1302,7 @@ region_utilize(long pages, long bytes)
 }
 
 void
-gc(uintptr_t **sp, size_t reg_map)
+gc(Context ctx, uintptr_t **sp, size_t reg_map)
 {
   long time_gc_one_ms = 0;
   extern Rp* freelist;
@@ -1859,9 +1859,9 @@ gc(uintptr_t **sp, size_t reg_map)
   doing_gc = 0; // Mutex on the garbage collector
 
   if (raised_exn_interupt)
-    raise_exn((uintptr_t)&exn_INTERRUPT);
+    raise_exn(ctx,(uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow)
-    raise_exn((uintptr_t)&exn_OVERFLOW);
+    raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
   return;
 }
 

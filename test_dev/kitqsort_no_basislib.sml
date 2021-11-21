@@ -40,7 +40,11 @@ fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
 fun concat (ss : string list) : string = prim ("implodeStringML", ss)
 fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+
+fun chr (i:int) : char =
+    if i>=0 andalso i<256 then prim ("id", i)
+    else raise Chr
+
 fun ord (c : char) : int = prim ("id", c)
 fun print (x:string):unit = prim("printStringML",x)
 

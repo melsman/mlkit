@@ -163,6 +163,7 @@ structure CompBasis: COMP_BASIS =
                      else cons
           val tynames = TyName.tyName_LIST :: TyName.tyName_INTINF ::
               TyName.tyName_BOOL ::
+              TyName.tyName_FOREIGNPTR ::
               TyName.tyName_VECTOR :: tynames     (* for elim eq *)
           val tynames = if quotation() then TyName.tyName_FRAG :: tynames
                         else tynames

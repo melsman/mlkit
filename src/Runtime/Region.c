@@ -366,8 +366,8 @@ size_free_list()
  * callSbrk: Updates the freelist with new region pages.                   *
  * alloc: Allocates n words in a region.                                   *
  * resetRegion: Resets a region by freeing all pages except one            *
- * deallocateRegionsUntil: All regions above a threshold are deallocated.  *
- * deallocateRegionsUntil_X64: ---- for stack growing towards -inf         *
+ * deallocateRegionsUntil: All regions below a threshold are deallocated.  *
+ *   (stack grows downwards)                                               *
  *-------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------*
@@ -503,7 +503,7 @@ alloc_new_block(Gen *gen)
  *  in roAddr.                                                          *
  *----------------------------------------------------------------------*/
 static inline Region
-allocateRegion0(Region r)
+allocateRegion0(Context ctx, Region r)
 {
   debug(printf("[allocateRegion (rAddr=%p)...",r));
   r = clearStatusBits(r);
@@ -519,24 +519,25 @@ allocateRegion0(Region r)
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
+  ctx->topregion = r;
 
   debug(printf("]\n"));
   return r;
 }
 
 Region
-allocateRegion(Region r)
+allocateRegion(Context ctx, Region r)
 {
-  r = allocateRegion0(r);
+  r = allocateRegion0(ctx,r);
   r = (Region)setInfiniteBit((uintptr_t)r);
   return r;
 }
 
 #ifdef ENABLE_GC
 Region
-allocatePairRegion(Region r)
+allocatePairRegion(Context ctx, Region r)
 {
-  r = allocateRegion0(r);
+  r = allocateRegion0(ctx,r);
   set_pairregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_pairregion(r->g1);
@@ -546,9 +547,9 @@ allocatePairRegion(Region r)
 }
 
 Region
-allocateArrayRegion(Region r)
+allocateArrayRegion(Context ctx, Region r)
 {
-  r = allocateRegion0(r);
+  r = allocateRegion0(ctx,r);
   set_arrayregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_arrayregion(r->g1);
@@ -558,9 +559,9 @@ allocateArrayRegion(Region r)
 }
 
 Region
-allocateRefRegion(Region r)
+allocateRefRegion(Context ctx, Region r)
 {
-  r = allocateRegion0(r);
+  r = allocateRegion0(ctx,r);
   set_refregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_refregion(r->g1);
@@ -570,9 +571,9 @@ allocateRefRegion(Region r)
 }
 
 Region
-allocateTripleRegion(Region r)
+allocateTripleRegion(Context ctx, Region r)
 {
-  r = allocateRegion0(r);
+  r = allocateRegion0(ctx,r);
   set_tripleregion(r->g0);
 #ifdef ENABLE_GEN_GC
   set_tripleregion(r->g1);
@@ -616,7 +617,7 @@ void free_lobjs(Lobjs* lobjs)
  *  free list. There have to be atleast one region on the stack.        *
  *  When profiling we also use this function.                           *
  *----------------------------------------------------------------------*/
-void deallocateRegion() {
+void deallocateRegion(Context ctx) {
 #ifdef PROFILING
   int i;
 #endif
@@ -650,6 +651,7 @@ void deallocateRegion() {
   FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
   TOP_REGION=TOP_REGION->p;
+  ctx->topregion = ctx->topregion->p;
 
   debug(printf("]\n"));
 
@@ -1039,47 +1041,17 @@ resetRegion(Region rAdr)
 }
 
 /*-------------------------------------------------------------------------*
- *deallocateRegionsUntil:                                                  *
- *  It is called with rAddr=sp, which do not nessesaraly point at a region *
- *  description. It deallocates all regions that are placed over sp.       *
- *  The function does not return or alter anything.                        *
+ * deallocateRegionsUntil:                                                 *
+ *  It is called with rAddr=sp, which do not necessarily point at a region *
+ *  description. It deallocates all regions that are placed under sp.      *
+ * (notice: the stack is growing downwards                                 *
  *-------------------------------------------------------------------------*/
 void
-deallocateRegionsUntil(Region r)
+deallocateRegionsUntil(Context ctx, Region r)
 {
-  // debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
+  //  debug(printf("[deallocateRegionsUntil(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
 
-  r = clearStatusBits(r);
-
-#ifdef PROFILING
-  callsOfDeallocateRegionsUntil++;
-  while ((FiniteRegionDesc *)r <= topFiniteRegion)
-    {
-      deallocRegionFiniteProfiling();
-    }
-#endif
-
-  while (r <= TOP_REGION)
-    {
-      /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
-      deallocateRegion();
-    }
-
-  debug(printf("]\n"));
-
-  return;
-}
-
-/*-------------------------------------------------------------------------*
- *deallocateRegionsUntil_X64: version of the above function working with   *
- *  the stack growing towards negative infinity.                           *
- *-------------------------------------------------------------------------*/
-void
-deallocateRegionsUntil_X64(Region r)
-{
-  //  debug(printf("[deallocateRegionsUntil_X64(r = %x, topFiniteRegion = %x)...\n", r, topFiniteRegion));
-
-  debug(printf("[deallocateRegionsUntil_X64(r = %p)...\n", r));
+  debug(printf("[deallocateRegionsUntil(r = %p)...\n", r));
 
   r = clearStatusBits(r);
 
@@ -1097,7 +1069,7 @@ deallocateRegionsUntil_X64(Region r)
   while (r >= TOP_REGION)
     {
       /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
-      deallocateRegion();
+      deallocateRegion(ctx);
     }
 
   debug(printf("]\n"));
@@ -1128,7 +1100,7 @@ deallocateRegionsUntil_X64(Region r)
  *  roAddr points at.                                                   *
  *----------------------------------------------------------------------*/
 Region
-allocRegionInfiniteProfiling(Region r, size_t regionId)
+allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
   /* printf("[allocRegionInfiniteProfiling r=%x, regionId=%d...", r, regionId);*/
 
@@ -1167,16 +1139,16 @@ allocRegionInfiniteProfiling(Region r, size_t regionId)
 /* In CodeGenX64, we use a generic function to compile a C-call. The regionId */
 /* may therefore be tagged, which this stub-function takes care of.           */
 Region
-allocRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+allocRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId)
 {
-  return allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  return allocRegionInfiniteProfiling(ctx, r, convertIntToC(regionId));
 }
 
 #ifdef ENABLE_GC
 Region
-allocPairRegionInfiniteProfiling(Region r, size_t regionId)
+allocPairRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, regionId);
+  r = allocRegionInfiniteProfiling(ctx, r, regionId);
   set_pairregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_pairregion(clearStatusBits(r)->g1);
@@ -1185,9 +1157,9 @@ allocPairRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocArrayRegionInfiniteProfiling(Region r, size_t regionId)
+allocArrayRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, regionId);
+  r = allocRegionInfiniteProfiling(ctx, r, regionId);
   set_arrayregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_arrayregion(clearStatusBits(r)->g1);
@@ -1197,9 +1169,9 @@ allocArrayRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocRefRegionInfiniteProfiling(Region r, size_t regionId)
+allocRefRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, regionId);
+  r = allocRegionInfiniteProfiling(ctx, r, regionId);
   set_refregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_refregion(clearStatusBits(r)->g1);
@@ -1209,9 +1181,9 @@ allocRefRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocTripleRegionInfiniteProfiling(Region r, size_t regionId)
+allocTripleRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, regionId);
+  r = allocRegionInfiniteProfiling(ctx, r, regionId);
   set_tripleregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_tripleregion(clearStatusBits(r)->g1);
@@ -1221,9 +1193,9 @@ allocTripleRegionInfiniteProfiling(Region r, size_t regionId)
 }
 
 Region
-allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+allocPairRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  r = allocRegionInfiniteProfiling(ctx, r, convertIntToC(regionId));
   set_pairregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_pairregion(clearStatusBits(r)->g1);
@@ -1233,9 +1205,9 @@ allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 }
 
 Region
-allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+allocArrayRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  r = allocRegionInfiniteProfiling(ctx, r, convertIntToC(regionId));
   set_arrayregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_arrayregion(clearStatusBits(r)->g1);
@@ -1245,9 +1217,9 @@ allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 }
 
 Region
-allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+allocRefRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  r = allocRegionInfiniteProfiling(ctx, r, convertIntToC(regionId));
   set_refregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_refregion(clearStatusBits(r)->g1);
@@ -1257,9 +1229,9 @@ allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
 }
 
 Region
-allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId)
+allocTripleRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId)
 {
-  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  r = allocRegionInfiniteProfiling(ctx, r, convertIntToC(regionId));
   set_tripleregion(clearStatusBits(r)->g0);
 #ifdef ENABLE_GEN_GC
   set_tripleregion(clearStatusBits(r)->g1);

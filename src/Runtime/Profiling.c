@@ -846,7 +846,7 @@ profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion,
 }
 
 void
-profileTick(long *stackTop)
+profileTick(Context ctx, long *stackTop)
 {
   TickList *newTick;
   FiniteRegionDesc *frd;
@@ -1137,9 +1137,9 @@ profileTick(long *stackTop)
   /*  checkProfTab("profileTick.exit"); */
 
   if (raised_exn_interupt_prof)
-    raise_exn((uintptr_t)&exn_INTERRUPT);
+    raise_exn(ctx,(uintptr_t)&exn_INTERRUPT);
   if (raised_exn_overflow_prof)
-    raise_exn((uintptr_t)&exn_OVERFLOW);
+    raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
 }
 
 /*-------------------------------------------------------------------*

@@ -263,12 +263,11 @@ typedef Ro* Region;
 
 #define descRo_a(rAddr,w) (rAddr->g0.a = rAddr->g0.a - w) /* Used in IO.inputStream */
 
-
-// When GC is enabled, bits in the region descriptor (in the r->g0.fp pointer)
-// are used to tell the type of values in the region, in the
+// When GC is enabled, bits in the region descriptor (in the r->g0.fp
+// pointer) are used to tell the type of values in the region, in the
 // case that the values are untagged. Because region pages are aligned
-// on 1k boundaries, plenty of bits are available in the r->g0.fp pointer.
-// We use the three least significant bits:
+// on 1k boundaries, plenty of bits are available in the r->g0.fp
+// pointer.  We use the three least significant bits:
 //
 //     000    (hex 0x0)   ordinary tagged values
 //     001    (hex 0x1)   pairs
@@ -288,11 +287,13 @@ typedef Ro* Region;
 //    X0XXX status NONE saying that the generation is not on the scan stack
 //    0XXXX this is generation 0  (young generation)
 //    1XXXX this is generation 1  (old generation)
+//
 // Notice, that the generation g0 is always used no matter what mode
 // the compiler is in (no gc, gc or gen gc). The generation g1 is only
 // used when generational gc is enabled. It is thus always possible to
 // write r->g0, whereas r->g1 makes sense only when generational gc is
 // enabled.
+//
 // We do not explicitly set the generation 0 bit when allocating a
 // region because the bit is 0 by default, that is, set_gen_0 is not
 // used in Region.c
@@ -338,21 +339,20 @@ typedef Ro* Region;
 #define get_ro_from_gen(gen)    ( (Ro*)(((uintptr_t)(&(gen)))-offsetG0InRo) )
 #endif /* ENABLE_GEN_GC */
 
-/*
-Region polymorphism
--------------------
-Regions can be passed to functions at runtime. The machine value that represents
-a region in this situation is a 64 bit word. The least significant bit is 1
-iff the region is infinite. The second least significant bit is 1 iff stores
-into the region should be preceded by emptying the region of values before
-storing the new value (this is called storing a value at the {\em bottom}
-of the region and is useful for, among other things, tail recursion).
+// ## Region polymorphism
+//
+// Regions can be passed to functions at runtime. The machine value
+// that represents a region in this situation is a 64 bit word. The
+// least significant bit is 1 iff the region is infinite. The second
+// least significant bit is 1 iff stores into the region should be
+// preceded by emptying the region of values before storing the new
+// value (this is called storing a value at the _bottom_ of the region
+// and is useful for, among other things, tail recursion).
 
-*/
+// Operations on the two least significant
+// bits in a region pointer.
+// C ~ 1100, D ~ 1101, E ~ 1110 og F ~ 1111.
 
-/* Operations on the two least significant   */
-/* bits in a regionpointer.                  */
-/* C ~ 1100, D ~ 1101, E ~ 1110 og F ~ 1111. */
 #define setInfiniteBit(x)   ((x) | 0x1)
 #define clearInfiniteBit(x) ((x) & (UINTPTR_MAX ^ 0x1))
 
@@ -365,6 +365,23 @@ of the region and is useful for, among other things, tail recursion).
 #define is_inf_and_atbot(x) ((((uintptr_t)(x)) & 0x3)==0x3)
 #define is_inf(x)           ((((uintptr_t)(x)) & 0x1)==0x1)
 #define is_atbot(x)         ((((uintptr_t)(x)) & 0x2)==0x2)
+
+// ## Contexts
+//
+// Evaluation happens in a context, meaning that, during evaluation,
+// access to the top-most region, the current exception handler, and
+// other stateful information can be accessed through the context. A
+// pointer to the context is held in a designated register during
+// evaluation. Because evaluation happens in a context, multiple
+// threads can execute in parallel in different contexts, which has
+// many benefits.
+
+typedef struct {
+  Region topregion;
+  Rp *freelist;
+} context;
+
+typedef context* Context;
 
 /*----------------------------------------------------------------*
  * Type of freelist and top-level region                          *
@@ -381,14 +398,12 @@ extern Ro * topRegion;
 #define FREELIST     freelist
 #endif
 
-
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-Region allocateRegion(Region roAddr);
-void deallocateRegion();
-void deallocateRegionsUntil(Region rAddr);
-void deallocateRegionsUntil_X64(Region rAddr);
+Region allocateRegion(Context ctx, Region roAddr);
+void deallocateRegion(Context ctx);
+void deallocateRegionsUntil(Context ctx, Region rAddr);
 
 uintptr_t *alloc (Region r, size_t n);
 uintptr_t *alloc_new_block(Gen *gen);
@@ -406,19 +421,19 @@ void callSbrkArg(size_t no_of_region_pages);
 #endif
 
 #ifdef ENABLE_GC
-Region allocatePairRegion(Region roAddr);
-Region allocateArrayRegion(Region roAddr);
-Region allocateRefRegion(Region roAddr);
-Region allocateTripleRegion(Region roAddr);
+Region allocatePairRegion(Context ctx, Region roAddr);
+Region allocateArrayRegion(Context ctx, Region roAddr);
+Region allocateRefRegion(Context ctx, Region roAddr);
+Region allocateTripleRegion(Context ctx, Region roAddr);
 #ifdef PROFILING
-Region allocPairRegionInfiniteProfiling(Region r, size_t regionId);
-Region allocPairRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
-Region allocArrayRegionInfiniteProfiling(Region r, size_t regionId);
-Region allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
-Region allocRefRegionInfiniteProfiling(Region r, size_t regionId);
-Region allocRefRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
-Region allocTripleRegionInfiniteProfiling(Region r, size_t regionId);
-Region allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, size_t regionId);
+Region allocPairRegionInfiniteProfiling(Context ctx, Region r, size_t regionId);
+Region allocPairRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId);
+Region allocArrayRegionInfiniteProfiling(Context ctx, Region r, size_t regionId);
+Region allocArrayRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId);
+Region allocRefRegionInfiniteProfiling(Context ctx, Region r, size_t regionId);
+Region allocRefRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId);
+Region allocTripleRegionInfiniteProfiling(Context ctx, Region r, size_t regionId);
+Region allocTripleRegionInfiniteProfilingMaybeUnTag(Context ctx, Region r, size_t regionId);
 #endif /* PROFILING */
 #endif /* ENABLE_GC */
 
@@ -444,20 +459,19 @@ typedef struct finiteRegionDesc {
 } FiniteRegionDesc;
 #define sizeFiniteRegionDesc (sizeof(FiniteRegionDesc)/sizeof(long*))
 
-/*
-Object descriptors
-------------------
-When profiling is turned on, every object is prefixed by an
-object descriptor, containing the information that is needed
-in order to traverse objects in regions and identify allocation
-points in the source program. A {\em program point} is an integer
-which identifies the point in the source program where a value
-is created - the user turns on a flag in the compiler to make
-it print programs annotated with their program points.
 
-Every object is stored taking up a multiple of words (not bytes).
-This applies irrespective of whether profiling is turned on or not.
-*/
+// ## Object descriptors
+//
+// When profiling is turned on, every object is prefixed by an object
+// descriptor, containing the information that is needed in order to
+// traverse objects in regions and identify allocation points in the
+// source program. A {\em program point} is an integer which
+// identifies the point in the source program where a value is created
+// - the user turns on a flag in the compiler to make it print
+// programs annotated with their program points.
+//
+// Every object is stored taking up a multiple of words (not bytes).
+// This applies irrespective of whether profiling is turned on or not.
 
 typedef struct objectDesc {
   size_t atId;               /* Allocation point. */
@@ -465,18 +479,17 @@ typedef struct objectDesc {
 } ObjectDesc;
 #define sizeObjectDesc (sizeof(ObjectDesc)/(sizeof(long*)))
 
-/*
-Profiling is done by scanning the store at regular intervals.
-Every such interruption of the normal execution is called
-a {\em profile tick}. During a profile tick, the runtime system
-scans all the regions accessible from the region stack (which
-is one of the reasons why region descriptors are linked together).
-The scanning of an infinite region is done by scanning each page
-in turn. Scanning of a page starts at the left end and progresses
-from object to object (using the size information that prefixes
-every object) and it stops when the value 'notPP' follows after
-an object:
-*/
+
+// Profiling is done by scanning the store at regular intervals.
+// Every such interruption of the normal execution is called a
+// _profile tick_. During a profile tick, the runtime system scans all
+// the regions accessible from the region stack (which is one of the
+// reasons why region descriptors are linked together).  The scanning
+// of an infinite region is done by scanning each page in
+// turn. Scanning of a page starts at the left end and progresses from
+// object to object (using the size information that prefixes every
+// object) and it stops when the value 'notPP' follows after an
+// object:
 
 /*----------------------------------------------------------------------*
  * Extern declarations, mostly of global variables that store profiling *
@@ -514,8 +527,8 @@ extern FiniteRegionDesc * topFiniteRegion;
 // extern uintptr_t size_to_space;
 
 /* Profiling functions. */
-Region allocRegionInfiniteProfiling(Region roAddr, size_t regionId);
-Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, size_t regionId);
+Region allocRegionInfiniteProfiling(Context ctx, Region roAddr, size_t regionId);
+Region allocRegionInfiniteProfilingMaybeUnTag(Context ctx, Region roAddr, size_t regionId);
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, size_t regionId, size_t size);
 void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, size_t regionId, size_t size);
 void deallocRegionFiniteProfiling(void);

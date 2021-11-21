@@ -512,7 +512,7 @@ structure InstsX64: INSTS_X64 =
         val res_phreg_ccall = map reg_to_lv res_reg_ccall
 
         fun reg_eq (reg1,reg2) = reg1 = reg2
-        val callee_save_regs_ccall = [rbx,rbp,r12,r13,r14,r15]
+        val callee_save_regs_ccall = [rbx,rbp,r12,r13,(*r14,*)r15]   (* save r14 for context pointer; r15 used by raise_inst *)
         val callee_save_ccall_phregs = map reg_to_lv callee_save_regs_ccall
         val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
         fun is_callee_save_ccall phreg = false
