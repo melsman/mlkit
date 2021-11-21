@@ -164,10 +164,19 @@ sml_setFailNumber(uintptr_t ep, int i)
   return;
 }
 
+
+// Here is the main thread's "uncaught exception" handler; for server
+// purposes, will later allow for end users to install their own
+// uncaught exception handlers. A spawned thread has its own kind of
+// uncaught exception handler, which will install the exception value
+// in the thread context and raise it if the parent thread tries to
+// join the thread.
+
 void
-uncaught_exception (String exnStr, unsigned long n, uintptr_t ep)
+uncaught_exception (Context ctx, String exnStr, unsigned long n, uintptr_t ep)
 {
   uintptr_t a;
+  ctx->uncaught_exnname = convertIntToC(n);
   fprintf(stderr,"uncaught exception ");
   fflush(stderr);
   fputs(&(exnStr->data), stderr);
@@ -359,6 +368,7 @@ main(int argc, char *argv[])
 {
   Context ctx = (Context) malloc(sizeof(context));
   ctx->topregion = NULL;
+  ctx->exnptr = NULL;
 
   //static struct sigaction sigact;
   //static sigset_t sigset;

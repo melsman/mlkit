@@ -7,6 +7,7 @@
 
 #include "String.h"
 #include "Flags.h"
+#include "Region.h"
 
 /* Structure of the runtime system is as follows:
 
@@ -65,7 +66,6 @@ int die (const char *);
 int die2 (const char *, const char *);
 long terminate (long status);    /* status is a C value */
 long terminateML (long status);  /* status is an ML value */
-void uncaught_exception (StringDesc *exnStr, unsigned long, uintptr_t);
+void uncaught_exception (Context ctx, StringDesc *exnStr, unsigned long, uintptr_t);
 
 #endif /* RUNTIME_H */
-

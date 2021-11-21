@@ -32,6 +32,8 @@ struct
 
   fun die s  = Crash.impossible ("CodeGenX64." ^ s)
 
+  val ctx_exnptr_offs = "8"
+
   local
      (*******************)
      (* Code Generation *)
@@ -614,7 +616,7 @@ struct
     (* sp[offset+3] = address of the first cell after the activation record used when resetting sp.           *)
     (* Note that we call deallocate_regions_until to the address above the exception handler, (i.e., some of  *)
     (* the infinite regions inside the activation record are also deallocated)!                               *)
-                  let
+                 let
                     val handl_return_lab = new_local_lab "handl_return"
                     val handl_join_lab = new_local_lab "handl_join"
                     fun handl_code C = comment ("HANDL_CODE", CG_lss(handl,size_ff,size_ccf,C))
@@ -627,11 +629,14 @@ struct
                       store_indexed(rsp,WORDS(size_ff-offset-1), R tmp_reg1,C))
                     fun store_exn_ptr C =
                       comment ("STORE EXN PTR: sp[offset+2] = exnPtr",
-                      I.movq(L exn_ptr_lab, R tmp_reg1) ::
+(*                    I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
+                      I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
                       store_indexed(rsp,WORDS(size_ff-offset-1+2), R tmp_reg1,
                       comment ("CALC NEW exnPtr: exnPtr = sp-size_ff+offset+size_of_handle",
                       base_plus_offset(rsp,WORDS(size_ff-offset-1(*-BI.size_of_handle()*)),tmp_reg1,        (*hmmm *)
-                      I.movq(R tmp_reg1, L exn_ptr_lab) :: C))))
+(*                    I.movq(R tmp_reg1, L exn_ptr_lab) :: *)
+                      I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
+                      C))))
                     fun store_sp C =
                       comment ("STORE SP: sp[offset+3] = sp",
                       store_indexed(rsp,WORDS(size_ff-offset-1+3), R rsp,C))
@@ -640,7 +645,8 @@ struct
                     fun restore_exn_ptr C =
                       comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
                       load_indexed(R tmp_reg1,rsp,WORDS(size_ff-offset-1+2),
-                      I.movq(R tmp_reg1, L exn_ptr_lab) ::
+(*                    I.movq(R tmp_reg1, L exn_ptr_lab) :: *)
+                      I.movq(R tmp_reg1, D(ctx_exnptr_offs,r14)) ::
                       I.jmp(L handl_join_lab) ::C))
                     fun handl_return_code C =
                       let val res_reg = RI.lv_to_reg(CallConv.handl_return_phreg RI.res_phreg)
@@ -1496,7 +1502,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
               load_indexed(R arg_reg,arg_reg,WORDS offset,
               load_indexed(R tmp_reg1,arg_reg, WORDS offset,
               load_indexed(R arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
-              compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY arg_reg,SS.PHREG_ATY tmp_reg1,
+              compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY r14,   (* evaluation context *)
+                                                        SS.PHREG_ATY arg_reg,SS.PHREG_ATY tmp_reg1,
                                                         SS.PHREG_ATY tmp_reg0],NONE,0,tmp_reg1,C))))
           end
 
@@ -1523,13 +1530,16 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq (R rdi, R r14) :: (* reinstall context pointer *)
             I.movq (R rsi, R r15) :: (* move argument to callee-save register *)
             comment ("DEALLOCATE REGIONS UNTIL",
-            I.movq(L exn_ptr_lab, R tmp_reg1) ::
+(*          I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
+            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
             compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY I.r14,SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
 
             comment ("RESTORE EXN PTR",
-            I.movq(L exn_ptr_lab, R tmp_reg1) ::
+(*          I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
+            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
             I.movq(D("16",tmp_reg1), R tmp_reg0) ::   (* was:8 *)
-            I.movq(R tmp_reg0, L exn_ptr_lab) ::
+(*          I.movq(R tmp_reg0, L exn_ptr_lab) :: *)
+            I.movq(R tmp_reg0, D(ctx_exnptr_offs,r14)) ::
 
             comment ("INSTALL HANDLER EXN-ARGUMENT",
             I.movq(R r15, R arg_reg) ::
@@ -1619,10 +1629,12 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                             I.dot_globl exn_counter_lab ::
                             I.lab exn_counter_lab :: (* The Global Exception Counter *)
                             I.dot_quad (i2s initial_exnname_counter) ::
-
+(*
                             I.dot_globl exn_ptr_lab ::
                             I.lab exn_ptr_lab :: (* The Global Exception Pointer *)
-                            I.dot_quad "0" :: nil)
+                            I.dot_quad "0" ::
+*)
+                            nil)
         val _  = add_static_data static_data
 
         (* args can only be tmp_reg0 and tmp_reg1; no arguments
@@ -1845,10 +1857,12 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("0", rsp)) ::
             gen_clos (
-            I.movq(L exn_ptr_lab, R tmp_reg1) ::
+(*            I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
+            I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("16", rsp)) ::
             I.movq(R rsp, D("24", rsp)) ::
-            I.movq(R rsp, L exn_ptr_lab) ::
+(*            I.movq(R rsp, L exn_ptr_lab) :: *)
+            I.movq(R rsp, D(ctx_exnptr_offs,r14)) ::
             I.subq(I "8", R rsp) ::                       (* align *)
             C))
           end

@@ -377,7 +377,9 @@ typedef Ro* Region;
 // many benefits.
 
 typedef struct {
-  Region topregion;
+  Region topregion;             // toplevel region
+  void *exnptr;                 // pointer to toplevel handler
+  long int uncaught_exnname;    // > 0 implies uncaught exception
   Rp *freelist;
 } context;
 
