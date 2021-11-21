@@ -530,7 +530,7 @@ sml_devinode(uintptr_t vAddr, Context ctx, String path, uintptr_t exn)          
 }
 
 size_t
-sml_system(String cmd, uintptr_t exn)         /* SML Basis */
+sml_system(String cmd)         /* SML Basis */
 {
   int res;
   res = system(&(cmd->data));

@@ -129,8 +129,6 @@ RegionPageMap* rpMap = NULL;
  *----------------------------------------------------------------*/
 Rp * freelist = NULL;
 
-Ro * topRegion;
-
 #ifdef ENABLE_GC
 long rp_used = 0;
 #endif /* ENABLE_GC */
@@ -519,7 +517,6 @@ allocateRegion0(Context ctx, Region r)
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
-  ctx->topregion = r;
 
   debug(printf("]\n"));
   return r;
@@ -650,8 +647,7 @@ void deallocateRegion(Context ctx) {
   last_rp_of_gen(&(TOP_REGION->g1))->n = FREELIST;  // Free pages in generation 1
   FREELIST = clear_fp(TOP_REGION->g1.fp);
 #endif /* ENABLE_GEN_GC */
-  TOP_REGION=TOP_REGION->p;
-  ctx->topregion = ctx->topregion->p;
+  TOP_REGION = TOP_REGION->p;
 
   debug(printf("]\n"));
 
@@ -1128,7 +1124,6 @@ allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
-  ctx->topregion = r;
 
   r = (Region)setInfiniteBit((uintptr_t)r);
 

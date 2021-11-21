@@ -658,7 +658,7 @@ pp_infinite_region (Region r)
  * regions on screen.                                *
  *---------------------------------------------------*/
 void
-pp_infinite_regions()
+pp_infinite_regions(Context ctx)
 {
   Region r;
 

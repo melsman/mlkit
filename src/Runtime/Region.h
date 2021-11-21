@@ -393,8 +393,7 @@ extern Rp * freelist;
 #define TOP_REGION   (thread_info()->top_region)
 #define FREELIST     (thread_info()->freelist)
 #else
-extern Ro * topRegion;
-#define TOP_REGION   topRegion
+#define TOP_REGION   ctx->topregion
 #define FREELIST     freelist
 #endif
 

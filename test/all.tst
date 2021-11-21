@@ -157,3 +157,6 @@ datatypes.sml
 real64vector.sml
 real64array.sml
 hatch1.sml
+
+export2.sml
+export3.sml
