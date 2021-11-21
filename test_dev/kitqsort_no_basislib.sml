@@ -53,7 +53,10 @@ fun append [] ys = ys
 fun xs @ ys = append xs ys
 
 fun real (x : int) : real = prim ("realInt", x)
-fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
+
+fun getCtx () : foreignptr = prim("__get_ctx",())
+
+fun floor (x : real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
 
 fun not true = false
   | not false = true

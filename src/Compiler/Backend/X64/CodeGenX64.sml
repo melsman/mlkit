@@ -528,7 +528,7 @@ struct
                            end
                       else C
 
-                    fun alloc_region_prim(((place,phsize),offset),C) =
+                    fun alloc_region_prim (((place,phsize),offset),C) =
                       if region_profiling() then
                         case phsize
                           of LineStmt.WORDS 0 => C (* zero-sized finite region *)
@@ -561,7 +561,8 @@ struct
                             in
                             base_plus_offset(rsp,WORDS(size_ff-offset-1),tmp_reg1,
                               compile_c_call_prim(name,
-                                                  [SS.PHREG_ATY tmp_reg1,
+                                                  [SS.PHREG_ATY I.r14,           (* evaluation context *)
+                                                   SS.PHREG_ATY tmp_reg1,
                                                    key place], NONE,
                                                   size_ff,tmp_reg0(*not used*),C))
                             end
@@ -1680,7 +1681,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
         fun proftick C =
           if region_profiling() then
-            ccall_stub("__proftick", "profileTick", [tmp_reg1], false, C)
+            ccall_stub("__proftick", "profileTick", [r14,tmp_reg1], false, C)   (* first argument is the evaluation context *)
           else C
 
         fun overflow_stub C =

@@ -1128,6 +1128,7 @@ allocRegionInfiniteProfiling(Context ctx, Region r, size_t regionId)
 #endif /* ENABLE_GEN_GC */
 
   TOP_REGION = r;
+  ctx->topregion = r;
 
   r = (Region)setInfiniteBit((uintptr_t)r);
 

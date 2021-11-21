@@ -62,7 +62,6 @@ fun append [] ys = ys
 fun xs @ ys = append xs ys
 
 fun real (x : int) : real = prim ("realInt", x)
-fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
 
 fun not true = false
   | not false = true
