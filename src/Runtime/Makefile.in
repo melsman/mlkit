@@ -13,7 +13,7 @@ BINDIR=@top_srcdir@/bin
 LIBDIR=@top_srcdir@/lib
 
 OFILES=Runtime.o IO.o String.o Math.o Region.o Icp.o Table.o Time.o Profiling.o CommandLine.o \
-       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o
+       Posix.o Dlsym.o ../CUtils/hashmap.o ../CUtils/hashmap_typed.o Export.o Socket.o
 OFILESWITHGC=$(OFILES) GC.o
 OFILESWITHPAR=$(OFILES) Spawn.o
 CFILES_PAR=$(OFILESWITHPAR:%.o=%.c)

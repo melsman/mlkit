@@ -1,25 +1,33 @@
+(** NetHostDB interface
+
+This structure provides functionality for accessing the information
+contained in the network host data base. The structure can be used to
+convert host names to Internet addresses.
+
+*)
+
 signature NET_HOST_DB =
   sig
     eqtype in_addr
     eqtype addr_family
     type entry
 
-    val name : entry -> string
-    val aliases : entry -> string list
-    val addrType : entry -> addr_family
-    val addr : entry -> in_addr
-    val addrs : entry -> in_addr list
-    val getByName : string -> entry option
-    val getByAddr : in_addr -> entry option
+    val name        : entry -> string
+    val aliases     : entry -> string list
+    val addrType    : entry -> addr_family
+    val addr        : entry -> in_addr
+    val addrs       : entry -> in_addr list
+    val getByName   : string -> entry option
+    val getByAddr   : in_addr -> entry option
     val getHostName : unit -> string
 
-    val toString : in_addr -> string
-    val scan       : (char, 'a) StringCvt.reader
-                       -> (in_addr, 'a) StringCvt.reader
-    val fromString : string -> in_addr option 
+    val toString    : in_addr -> string
+    val scan        : (char, 'a) StringCvt.reader
+                      -> (in_addr, 'a) StringCvt.reader
+    val fromString  : string -> in_addr option
   end
 
-(*
+(**
 eqtype in_addr
     The type representing an Internet address.
 
@@ -78,15 +86,15 @@ fromString s
     Addresses in this notation have one of the following forms:
 
     a
-        where a is a 32-bit unsigned integer constant. 
+        where a is a 32-bit unsigned integer constant.
     a.b
         where a is an 8-bit unsigned integer constant, and b is a 24-bit
-        integer constant. 
+        integer constant.
     a.b.c
         where a and b are 8-bit unsigned integer constants, and c is a 16-bit
-        integer constant. 
+        integer constant.
     a.b.c.d
-        where a, b, c, and d are 8-bit integer constants. 
+        where a, b, c, and d are 8-bit integer constants.
 
     The integer constants may be decimal, octal, or hexadecimal, as specified
     in the C language.
