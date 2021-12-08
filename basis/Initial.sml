@@ -338,6 +338,4 @@ structure Initial =
           end
         end
 
-
-
   end

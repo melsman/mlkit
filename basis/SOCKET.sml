@@ -1,648 +1,330 @@
-signature SOCKET =
-  sig
-    type ('af,'sock_type) sock
-    type 'af sock_addr
-    type dgram
-    type 'mode stream
-    type passive
-    type active
+local
+
+  fun not_impl s = raise Fail ("not implemented: " ^ s)
+
+  fun getCtx () : foreignptr = prim("__get_ctx",())
+
+  (* error utilities *)
+
+  fun failure s =
+      let fun errno () : int = prim("sml_errno",())
+          fun errmsg (i : int) : string = prim("sml_errormsg", i)
+      in raise Fail (s ^ ": " ^ errmsg(errno()))
+      end
+
+  fun maybe_failure s i =
+      if i < 0 then failure s
+      else ()
+
+  structure Socket : sig
+    datatype af = Inet_af | Unix_af
+    datatype sock_addr0 =
+           Inet_sa of {addr:int,port:int}
+         | Unix_sa of {name:string}
+    type sock0 = {fd:int,af:af}
+    include SOCKET
+      where type ('af,'sd) sock = sock0
+      where type 'af sock_addr = sock_addr0
+    val INADDR_ANY : int
+    val AF_INET : int
+    val SO_REUSEADDR : int
+    val SOCK_STREAM : int
+  end = struct
+
+    (* see socket.c *)
+
+    val { AF_INET      : int
+        , AF_UNIX      : int
+        , INADDR_ANY   : int
+        , SHUT_RD      : int
+        , SHUT_RDWR    : int
+        , SHUT_WR      : int
+        , SOCK_DGRAM   : int
+        , SOCK_RAW     : int
+        , SOCK_STREAM  : int
+        , SO_BROADCAST : int
+        , SO_DEBUG     : int
+        , SO_DONTROUTE : int
+        , SO_ERROR     : int
+        , SO_KEEPALIVE : int
+        , SO_LINGER    : int
+        , SO_OOBINLINE : int
+        , SO_RCVBUF    : int
+        , SO_REUSEADDR : int
+        , SO_SNDBUF    : int
+        , SO_TYPE      : int
+        } = prim("sml_sock_getDefines",())
+
+    datatype af = Inet_af | Unix_af
+
+    type sock0 = {fd:int, af:af}
+
+    datatype sock_addr0 =
+             Inet_sa of {addr:int,port:int}
+           | Unix_sa of {name:string}
+
+    type ('af,'st) sock = sock0
+    type 'af sock_addr = sock_addr0
+    datatype 'm stream = STREAM
+    datatype passive = PASSIVE
+    datatype active = ACTIVE
 
     structure AF : sig
-        type addr_family = NetHostDB.addr_family
-        val list : unit -> (string * addr_family) list
-        val toString   : addr_family -> string
-        val fromString : string -> addr_family option
-      end
+      type addr_family
+      val list       : unit -> (string * addr_family) list
+      val toString   : addr_family -> string
+      val fromString : string -> addr_family option
+    end = struct
+      type addr_family = int
+      fun list () =
+          [("INET", AF_INET),
+           ("UNIX", AF_UNIX)]
+      fun toString i =
+          if i = AF_INET then "INET"
+          else if i = AF_UNIX then "UNIX"
+          else raise Fail "Socket.AF.toString: impossible"
+      fun fromString "INET" = SOME AF_INET
+        | fromString "UNIX" = SOME AF_UNIX
+        | fromString _ = NONE
+    end
 
     structure SOCK : sig
-        eqtype sock_type
-        val stream : sock_type
-        val dgram : sock_type
-        val list : unit -> (string * sock_type) list
-        val toString   : sock_type -> string
-        val fromString : string -> sock_type option
-      end
+      eqtype sock_type
+      val stream     : sock_type
+      val dgram      : sock_type
+      val list       : unit -> (string * sock_type) list
+      val toString   : sock_type -> string
+      val fromString : string -> sock_type option
+    end = struct
+      type sock_type = int
+      val stream = SOCK_STREAM
+      val dgram = SOCK_DGRAM
+      fun list () = [("DGRAM",SOCK_DGRAM),
+                     ("RAW",SOCK_RAW),
+                     ("STREAM",SOCK_STREAM)]
+      fun toString i =
+          if i = SOCK_DGRAM then "DGRAM"
+          else if i = SOCK_RAW then "RAM"
+          else if i = SOCK_STREAM then "STREAM"
+          else raise Fail "Socket.SOCK.toString: impossible"
+      fun fromString "DGRAM" = SOME SOCK_DGRAM
+        | fromString "RAW" = SOME SOCK_RAW
+        | fromString "STREAM" = SOME SOCK_STREAM
+        | fromString _ = NONE
+    end
 
-    structure Ctl : sig
-        val getDEBUG : ('af, 'sock_type) sock -> bool
-        val setDEBUG : ('af, 'sock_type) sock * bool -> unit
-        val getREUSEADDR : ('af, 'sock_type) sock -> bool
-        val setREUSEADDR : ('af, 'sock_type) sock * bool
-                             -> unit
-        val getKEEPALIVE : ('af, 'sock_type) sock -> bool
-        val setKEEPALIVE : ('af, 'sock_type) sock * bool
-                             -> unit
-        val getDONTROUTE : ('af, 'sock_type) sock -> bool
-        val setDONTROUTE : ('af, 'sock_type) sock * bool
-                             -> unit
-        val getLINGER : ('af, 'sock_type) sock
-                          -> Time.time option
-        val setLINGER : ('af, 'sock_type) sock
-                          * Time.time option -> unit
-        val getBROADCAST : ('af, 'sock_type) sock -> bool
-        val setBROADCAST : ('af, 'sock_type) sock * bool
-                             -> unit
-        val getOOBINLINE : ('af, 'sock_type) sock -> bool
-        val setOOBINLINE : ('af, 'sock_type) sock * bool
-                             -> unit
-        val getSNDBUF : ('af, 'sock_type) sock -> int
-        val setSNDBUF : ('af, 'sock_type) sock * int -> unit
-        val getRCVBUF : ('af, 'sock_type) sock -> int
-        val setRCVBUF : ('af, 'sock_type) sock * int -> unit
-        val getTYPE : ('af, 'sock_type) sock -> SOCK.sock_type
-        val getERROR : ('af, 'sock_type) sock -> bool
-        val getPeerName : ('af, 'sock_type) sock
-                            -> 'af sock_addr
-        val getSockName : ('af, 'sock_type) sock
-                            -> 'af sock_addr
-        val getNREAD : ('af, 'sock_type) sock -> int
-        val getATMARK : ('af, active stream) sock -> bool
-      end
+    structure Ctl = struct
+      fun getSockOptInt0 (s:('af, 'st) sock, opt:int) : int =
+          prim("sml_sock_getsockopt", (#fd s,opt))
 
-    val sameAddr : 'af sock_addr * 'af sock_addr -> bool
-    val familyOfAddr : 'af sock_addr -> AF.addr_family
+      fun getSockOptInt (opt:int) str (s:('af, 'st) sock)  : int =
+          let val ret = getSockOptInt0(s,opt)
+          in maybe_failure str ret
+           ; ret
+          end
 
-    val bind : ('af, 'sock_type) sock * 'af sock_addr -> unit
-    val listen : ('af, passive stream) sock * int -> unit
-    val accept : ('af, passive stream) sock
-                   -> ('af, active stream) sock * 'af sock_addr
-    val acceptNB : ('af, passive stream) sock
-                     -> (('af, active stream) sock
-                     * 'af sock_addr) option
-    val connect : ('af, 'sock_type) sock * 'af sock_addr
-                    -> unit
-    val connectNB : ('af, 'sock_type) sock * 'af sock_addr
-                      -> bool
+      fun setSockOptInt (opt:int) (str:string) (s:('af, 'st) sock, v:int) : unit =
+          let val ret = prim("sml_sock_setsockopt", (#fd s,opt,v))
+          in maybe_failure str ret
+          end
 
-    val close : ('af, 'sock_type) sock -> unit
-    datatype shutdown_mode
-      = NO_RECVS
-      | NO_SENDS
-      | NO_RECVS_OR_SENDS
-    val shutdown : ('af, 'mode stream) sock * shutdown_mode
-                     -> unit
+      fun getSockOptBool (opt:int) (str:string) (s:('af, 'st) sock) : bool =
+          let val ret = getSockOptInt0(s,opt)
+          in maybe_failure str ret
+           ; ret > 0
+          end
 
-    type sock_desc
-    val sockDesc : ('af, 'sock_type) sock -> sock_desc
-    val sameDesc : sock_desc * sock_desc -> bool
-    val select : {
-                     rds : sock_desc list,
-                     wrs : sock_desc list,
-                     exs : sock_desc list,
-                     timeout : Time.time option
-                   }
-                   -> {
-                     rds : sock_desc list,
+      fun setSockOptBool (opt:int) (str:string) (s:('af, 'st) sock, b:bool) : unit =
+          let val ret = prim("sml_sock_setsockopt", (#fd s,opt,b))
+          in maybe_failure str ret
+          end
+
+      fun getDEBUG s = getSockOptBool SO_DEBUG "Socket.Ctl.getDEBUG" s
+      fun setDEBUG (s,b) = setSockOptBool SO_DEBUG "Socket.Ctl.setDEBUG" (s,b)
+
+      fun getREUSEADDR s = getSockOptBool SO_REUSEADDR "Socket.Ctl.getREUSEADDR" s
+      fun setREUSEADDR (s,b) = setSockOptBool SO_REUSEADDR "Socket.Ctl.setREUSEADDR" (s,b)
+
+      fun getKEEPALIVE s = getSockOptBool SO_KEEPALIVE "Socket.Ctl.getKEEPALIVE" s
+      fun setKEEPALIVE (s,b) = setSockOptBool SO_KEEPALIVE "Socket.Ctl.setKEEPALIVE" (s,b)
+
+      fun getDONTROUTE s = getSockOptBool SO_DONTROUTE "Socket.Ctl.getDONTROUTE" s
+      fun setDONTROUTE (s,b) = setSockOptBool SO_DONTROUTE "Socket.Ctl.setDONTROUTE" (s,b)
+
+      fun getBROADCAST s = getSockOptBool SO_BROADCAST "Socket.Ctl.getBROADCAST" s
+      fun setBROADCAST (s,b) = setSockOptBool SO_BROADCAST "Socket.Ctl.setBROADCAST" (s,b)
+
+      fun getOOBINLINE s = getSockOptBool SO_OOBINLINE "Socket.Ctl.getOOBINLINE" s
+      fun setOOBINLINE (s,b) = setSockOptBool SO_OOBINLINE "Socket.Ctl.setOOBINLINE" (s,b)
+
+      fun getERROR s = getSockOptBool SO_ERROR "Socket.Ctl.getERROR" s
+
+(*
+    val getLINGER    : ('af, 'st) sock -> Time.time option
+    val setLINGER    : ('af, 'st) sock * Time.time option -> unit
+*)
+
+      fun getSNDBUF s = getSockOptInt SO_SNDBUF "Socket.Ctl.getSNDBUF" s
+      fun setSNDBUF (s,b) = setSockOptInt SO_SNDBUF "Socket.Ctl.setSNDBUF" (s,b)
+
+      fun getRCVBUF s = getSockOptInt SO_RCVBUF "Socket.Ctl.getRCVBUF" s
+      fun setRCVBUF (s,b) = setSockOptInt SO_RCVBUF "Socket.Ctl.setRCVBUF" (s,b)
+
+      fun getTYPE s : SOCK.sock_type = getSockOptInt SO_TYPE "Socket.Ctl.getTYPE" s
+
+(*
+    val getPeerName  : ('af, 'st) sock -> 'af sock_addr
+    val getSockName  : ('af, 'st) sock -> 'af sock_addr
+    val getNREAD     : ('af, 'st) sock -> int
+    val getATMARK    : ('af, active stream) sock -> bool
+*)
+    end
+
+    type sock_desc = int
+    fun sockDesc (s: ('af, 'st) sock) : sock_desc = #fd s
+    fun sameDesc (s1: sock_desc, s2: sock_desc) : bool = s1 = s2
+
+    fun select { rds : sock_desc list,
+                 wrs : sock_desc list,
+                 exs : sock_desc list,
+                 timeout : Time.time option
+               } : { rds : sock_desc list,
                      wrs : sock_desc list,
                      exs : sock_desc list
-                   }
-    val ioDesc : ('af, 'sock_type) sock -> OS.IO.iodesc
+                   } =
+        let val t = case timeout of NONE => ~1.0
+                                  | SOME t => Time.toReal t
+            val (rds, wrs, exs) = prim("sml_sock_select", (getCtx(),rds,wrs,exs,t))
+        in {rds=List.rev rds, wrs=List.rev wrs, exs=List.rev exs}
+        end
+
+    fun ioDesc (s: ('af, 'st) sock) : OS.IO.iodesc =
+        prim("id", #fd s)
 
     type out_flags = {don't_route : bool, oob : bool}
     type in_flags = {peek : bool, oob : bool}
 
-    val sendVec : ('af, active stream) sock
-                    * Word8VectorSlice.slice -> int
-    val sendArr : ('af, active stream) sock
-                    * Word8ArraySlice.slice -> int
-    val sendVec' : ('af, active stream) sock
-                     * Word8VectorSlice.slice
-                     * out_flags -> int
-    val sendArr' : ('af, active stream) sock
-                     * Word8ArraySlice.slice
-                     * out_flags -> int
-    val sendVecNB  : ('af, active stream) sock
-                       * Word8VectorSlice.slice -> int option
-    val sendVecNB' : ('af, active stream) sock
-                       * Word8VectorSlice.slice
-                       * out_flags -> int option
-    val sendArrNB  : ('af, active stream) sock
-                       * Word8ArraySlice.slice -> int option
-    val sendArrNB' : ('af, active stream) sock
-                       * Word8ArraySlice.slice
-                       * out_flags -> int option
+    fun sendVec ({fd,...} : ('af, active stream) sock,
+                 slc : Word8VectorSlice.slice) : int =
+        let val (v,i,n) = Word8VectorSlice.base slc
+            val ret = prim("sml_sock_sendvec", (fd,v,i,n))
+        in maybe_failure "sendVec" ret
+         ; ret
+        end
 
-    val recvVec  : ('af, active stream) sock * int
-                     -> Word8Vector.vector
-    val recvVec' : ('af, active stream) sock * int * in_flags
-                     -> Word8Vector.vector
-    val recvArr  : ('af, active stream) sock
-                     * Word8ArraySlice.slice -> int
-    val recvArr' : ('af, active stream) sock
-                     * Word8ArraySlice.slice
-                     * in_flags -> int
-    val recvVecNB  : ('af, active stream) sock * int
-                       -> Word8Vector.vector option
-    val recvVecNB' : ('af, active stream) sock * int * in_flags
-                       -> Word8Vector.vector option
-    val recvArrNB  : ('af, active stream) sock
-                       * Word8ArraySlice.slice -> int option
-    val recvArrNB' : ('af, active stream) sock
-                       * Word8ArraySlice.slice
-                       * in_flags -> int option
+    (* Word8ArraySlices are represented the same as Word8VectorSlices *)
+    fun sendArr ({fd,...} : ('af, active stream) sock,
+                 slc : Word8ArraySlice.slice) : int =
+        let val (v,i,n) = Word8ArraySlice.base slc
+            val ret = prim("sml_sock_sendvec", (fd,v,i,n))
+        in maybe_failure "sendArr" ret
+         ; ret
+        end
 
-    val sendVecTo : ('af, dgram) sock
-                      * 'af sock_addr
-                      * Word8VectorSlice.slice -> unit
-    val sendArrTo : ('af, dgram) sock
-                      * 'af sock_addr
-                      * Word8ArraySlice.slice -> unit
-    val sendVecTo' : ('af, dgram) sock
-                       * 'af sock_addr
-                       * Word8VectorSlice.slice
-                       * out_flags -> unit
-    val sendArrTo' : ('af, dgram) sock
-                       * 'af sock_addr
-                       * Word8ArraySlice.slice
-                       * out_flags -> unit
-    val sendVecToNB  : ('af, dgram) sock
-                         * 'af sock_addr
-                         * Word8VectorSlice.slice -> bool
-    val sendVecToNB' : ('af, dgram) sock
-                         * 'af sock_addr
-                         * Word8VectorSlice.slice
-                         * out_flags -> bool
-    val sendArrToNB  : ('af, dgram) sock
-                         * 'af sock_addr
-                         * Word8ArraySlice.slice -> bool
-    val sendArrToNB' : ('af, dgram) sock
-                         * 'af sock_addr
-                         * Word8ArraySlice.slice
-                         * out_flags -> bool
+    fun recvVec ({fd,...} : ('af, active stream) sock,
+                 i : int) : Word8Vector.vector =
+        prim("sml_sock_recvvec",(getCtx(),fd,i))
+        handle Overflow => failure "recvVec"
 
-    val recvVecFrom  : ('af, dgram) sock * int
-                         -> Word8Vector.vector
-                         * 'sock_type sock_addr
-    val recvVecFrom' : ('af, dgram) sock * int * in_flags
-                         -> Word8Vector.vector
-                         * 'sock_type sock_addr
-    val recvArrFrom  : ('af, dgram) sock
-                         * Word8ArraySlice.slice
-                         -> int * 'af sock_addr
-    val recvArrFrom' : ('af, dgram) sock
-                         * Word8ArraySlice.slice
-                         * in_flags -> int * 'af sock_addr
-    val recvVecFromNB  : ('af, dgram) sock * int
-                           -> (Word8Vector.vector
-                           * 'sock_type sock_addr) option
-    val recvVecFromNB' : ('af, dgram) sock * int * in_flags
-                           -> (Word8Vector.vector
-                           * 'sock_type sock_addr) option
-    val recvArrFromNB  : ('af, dgram) sock
-                           * Word8ArraySlice.slice
-                           -> (int * 'af sock_addr) option
-    val recvArrFromNB' : ('af, dgram) sock
-                           * Word8ArraySlice.slice
-                           * in_flags
-                           -> (int * 'af sock_addr) option
+    fun close ({fd,...} : ('af, 'st) sock) : unit =
+        prim("@close", fd)
+
+    datatype shutdown_mode = NO_RECVS
+                           | NO_SENDS
+                           | NO_RECVS_OR_SENDS
+
+    fun shutdown (s: ('af, 'mode stream) sock,
+                  sm: shutdown_mode) : unit =
+        let val ret = prim("@shutdown",
+                           (#fd s,
+                            case sm of
+                                NO_RECVS => SHUT_RD
+                              | NO_SENDS => SHUT_WR
+                              | NO_RECVS_OR_SENDS => SHUT_RDWR))
+        in maybe_failure "Socket.shutdown" ret
+        end
+
+    fun sameAddr (a1: 'af sock_addr, a2: 'af sock_addr) : bool =
+        a1 = a2
+
+    fun familyOfAddr (sa: 'af sock_addr) : AF.addr_family =
+        case sa of
+            Inet_sa _ => AF_INET
+          | Unix_sa _ => AF_UNIX
+
+    fun bind ({fd,af} : ('af, 'st) sock, a: 'af sock_addr) : unit =
+        case (af, a) of
+            (Inet_af, Inet_sa {addr,port}) =>
+            let val ret : int = prim("sml_sock_bind_inet", (fd,addr,port))
+            in maybe_failure "bind" ret
+            end
+          | (Unix_af, Unix_sa {name}) =>
+            let val ret : int = prim("sml_sock_bind_unix", (fd,name))
+            in maybe_failure "bind" ret
+            end
+          | _ => raise Fail "Socket.impossible"
+
+    fun listen ({fd,...} : ('af, passive stream) sock, i: int) : unit =
+        let val ret : int = prim("sml_sock_listen", (fd,i))
+        in maybe_failure "listen" ret
+        end
+
+    fun accept ({fd,af} : ('af, passive stream) sock)
+        : ('af, active stream) sock * 'af sock_addr =
+        case af of
+            Inet_af =>
+            let val (fd', addr, port) = prim("sml_sock_accept_inet",(getCtx(),fd))
+                                        handle Overflow => failure "accept"
+            in ({fd=fd',af=af}, Inet_sa{addr=addr,port=port})
+            end
+          | Unix_af =>
+            let val (fd', name) = prim("sml_sock_accept_unix",(getCtx(),fd))
+                                  handle Overflow => failure "accept"
+            in ({fd=fd',af=af}, Unix_sa{name=name})
+            end
+
   end
 
-(*
-type ('af,'sock_type) sock
-    The type of a socket. Sockets are polymorphic over both the address family
-    and the socket type. The type parameter 'af is instantiated with the
-    appropriate address family type (INetSock.inet or UnixSock.unix). The type
-    parameter 'sock_type is instantiated with the appropriate socket type
-    (dgram or stream).
-
-type 'af sock_addr
-    The type of a socket address. The type parameter 'af describes the address
-    family of the address (INetSock.inet or UnixSock.unix).
-
-type dgram
-    The witness type for datagram sockets.
-
-type 'mode stream
-    The witness type for stream sockets. The type parameter 'mode describes the
-    mode of the stream socket: active or passive.
-
-structure AF
-    The AF substructure defines an abstract type that represents the different
-    network-address families.
-
-    val list : unit -> (string * addr_family) list
-        This returns a list of all the available address families. Every
-        element of the list is a pair (name,af) where name is the name of the
-        address family, and af is the actual address family value.
-
-        The names of the address families are taken from the symbolic constants
-        used in the C Socket API and stripping the leading ``AF_.'' For
-        example, the Unix-domain address family is named "UNIX", the
-        Internet-domain address family is named "INET", and the Apple Talk
-        address family is named "APPLETALK".
-
-    val toString : addr_family -> string
-    val fromString : string -> addr_family option
-        These convert between address family values and their names. For
-        example, the expression toString (INetSock.inetAF) returns the string
-        "INET". fromString returns NONE if no family value corresponds to the
-        given name.
-
-        If a pair (name,af) is in the list returned by list, then it is the
-        case that name is equal to toString(af).
-
-structure SOCK
-    The SOCK substructure provides an abstract type and operations for the
-    different types of sockets. This type is used by the getTYPE function.
-
-    eqtype sock_type
-        The type of socket types.
-
-    val stream : sock_type
-        The stream socket type value.
-
-    val dgram : sock_type
-        The datagram socket type value.
-
-    val list : unit -> (string * sock_type) list
-        A list of the available socket types. Every element of the list is of
-        the form (name,sty) where name is the name of the socket type, and sty
-        is the actual socket type value.
-
-        The list of possible socket type names includes "STREAM" for stream
-        sockets, "DGRAM" for datagram sockets, and "RAW" for raw sockets. These
-        names are formed by taking the symbolic constants from the C API and
-        removing the leading ``SOCK_.''
-
-    val toString : sock_type -> string
-    val fromString : string -> sock_type option
-        These convert between a socket type value and its name (e.g.,
-        "STREAM"). fromString returns NONE if no socket type value corresponds
-        to the name.
-
-        If a pair (name,sty) is in the list returned by list, then it is the
-        case that name is equal to toString(sty).
-
-structure Ctl
-    The Ctl substructure provides support for manipulating the options
-    associated with a socket. These functions raise the SysErr exception when
-    the argument socket has been closed.
-
-    val getDEBUG : ('af, 'sock_type) sock -> bool
-    val setDEBUG : ('af, 'sock_type) sock * bool -> unit
-        These functions query and set the SO_DEBUG flag for the socket. This
-        flag enables or disables low-level debugging within the kernel.
-        Enabled, it allows the kernel to maintain a history of the recent
-        packets that have been received or sent.
-
-    val getREUSEADDR : ('af, 'sock_type) sock -> bool
-    val setREUSEADDR : ('af, 'sock_type) sock * bool -> unit
-        These query and set the SO_REUSEADDR flag for the socket. When true,
-        this flag instructs the system to allow reuse of local socket addresses
-        in bind calls.
-
-    val getKEEPALIVE : ('af, 'sock_type) sock -> bool
-    val setKEEPALIVE : ('af, 'sock_type) sock * bool -> unit
-        These query and set the SO_KEEPALIVE flag for the socket. When true,
-        the system will generate periodic transmissions on a connected socket,
-        when no other data is being exchanged.
-
-    val getDONTROUTE : ('af, 'sock_type) sock -> bool
-    val setDONTROUTE : ('af, 'sock_type) sock * bool -> unit
-        These query and set the SO_DONTROUTE flag for the socket. When this
-        flag is true, outgoing messages bypass the normal routing mechanisms of
-        the underlying protocol, and are instead directed to the appropriate
-        network interface as specified by the network portion of the
-        destination address. Note that this option can be specified on a per
-        message basis by using one of the sendVec', sendArr', sendVecTo', or
-        sendArrTo' functions.
-
-    val getLINGER : ('af, 'sock_type) sock -> Time.time option
-    val setLINGER : ('af, 'sock_type) sock * Time.time option
-                      -> unit
-        These functions query and set the SO_LINGER flag for the socket sock.
-        This flag controls the action taken when unsent messages are queued on
-        socket and a close is performed.  If the flag is set to NONE, then the
-        system will close the socket as quickly as possible, discarding data if
-        necessary. If the flag is set to SOME(t) and the socket promises
-        reliable delivery, then the system will block the close operation until
-        the data is delivered or the timeout t expires. If t is negative or too
-        large, then the Time is raised.
-
-    val getBROADCAST : ('af, 'sock_type) sock -> bool
-    val setBROADCAST : ('af, 'sock_type) sock * bool -> unit
-        These query and set the SO_BROADCAST flag for the socket sock, which
-        enables or disables the ability of the process to send broadcast
-        messages over the socket.
-
-    val getOOBINLINE : ('af, 'sock_type) sock -> bool
-    val setOOBINLINE : ('af, 'sock_type) sock * bool -> unit
-        These query and set the SO_OOBINLINE flag for the socket. When set,
-        this indicates that out-of-band data should be placed in the normal
-        input queue of the socket. Note that this option can be specified on a
-        per message basis by using one of the sendVec', sendArr', sendVecTo',
-        or sendArrTo' functions.
-
-    val getSNDBUF : ('af, 'sock_type) sock -> int
-    val setSNDBUF : ('af, 'sock_type) sock * int -> unit
-        These query and set the size of the send queue buffer for the socket.
-
-    val getRCVBUF : ('af, 'sock_type) sock -> int
-    val setRCVBUF : ('af, 'sock_type) sock * int -> unit
-        These query and set the size of receive queue buffer for the socket.
-
-    val getTYPE : ('af, 'sock_type) sock -> SOCK.sock_type
-        This returns the socket type of the socket.
-
-    val getERROR : ('af, 'sock_type) sock -> bool
-        This indicates whether or not an error has occurred.
-
-    val getPeerName : ('af, 'sock_type) sock -> 'af sock_addr
-        This returns the socket address to which the socket is connected.
-
-    val getSockName : ('af, 'sock_type) sock -> 'af sock_addr
-        This returns the socket address to which the socket is bound.
-
-    val getNREAD : ('af, 'sock_type) sock -> int
-        This returns the number of bytes available for reading on the socket.
-
-    val getATMARK : ('af, active stream) sock -> bool
-        This indicates whether or not the read pointer on the socket is
-        currently at the out-of-band mark.
-
-val sameAddr : 'af sock_addr * 'af sock_addr -> bool
-    This tests whether two socket addresses are the same address.
-
-familyOfAddr addr
-    returns the address family of the socket address addr.
-
-bind (sock, sa)
-    binds the address sa to the passive socket sock. This function raises
-    SysErr when the address sa is already in use, when sock is already bound to
-    an address, or when sock has been closed.
-
-listen (sock, n)
-    creates a queue (of size n) for pending questions associated to the socket
-    sock. The size of queue is limited by the underlying system, but requesting
-    a queue size larger than the limit does not cause an error (a typical limit
-    is 128, but older systems use a limit of 5).
-
-    This function raises the SysErr exception if sock has been closed.
-
-accept sock
-    extracts the first connection request from the queue of pending connections
-    for the socket sock. The socket must have been bound to an address via bind
-    and enabled for listening via listen. If a connection is present, accept
-    returns a pair (s,sa) consisting of a new active socket s with the same
-    properties as sock and the address sa of the connecting entity. If no
-    pending connections are present on the queue then accept blocks until a
-    connection is requested. One can test for pending connection requests by
-    using the select function to test the socket for reading.
-
-    This function raises the SysErr exception if sock has not been properly
-    bound and enabled, or it sock has been closed.
-
-val acceptNB : ('af, passive stream) sock
-                 -> (('af, active stream) sock
-                 * 'af sock_addr) option
-    This function is the nonblocking form of the accept operation. If the
-    operation can complete without blocking (i.e., there is a pending
-    connection), then this function returns SOME(s,sa), where s is a new active
-    socket with the same properties as sock and sa is the the address of the
-    connecting entity. If there are no pending connections, then this function
-    returns NONE.
-
-    This function raises the SysErr exception if sock has not been properly
-    bound and enabled, or it sock has been closed.
-
-connect (sock, sa)
-    attempts to connect the socket sock to the address sa. If sock is a
-    datagram socket, the address specifies the peer with which the socket is to
-    be associated; sa is the address to which datagrams are to be sent, and the
-    only address from which datagrams are to be received.  If sock is a stream
-    socket, the address specifies another socket to which to connect.
-
-    This function raises the SysErr exception when the address specified by sa
-    is unreachable, when the connection is refused or times out, when sock is
-    already connected, or when sock has been closed.
-
-val connectNB : ('af, 'sock_type) sock * 'af sock_addr
-                  -> bool
-    This function is the nonblocking form of connect. If the connection can be
-    established without blocking the caller (which is typically true for
-    datagram sockets, but not stream sockets), then true is returned.
-    Otherwise, false is returned and the connection attempt is started; one can
-    test for the completion of the connection by testing the socket for writing
-    using the select function. This function will raise SysErr if it is called
-    on a socket for which a previous connection attempt has not yet been
-    completed.
-
-close sock
-    closes the connection to the socket sock. This function raises the SysErr
-    exception if the socket has already been closed.
-
-shutdown (sock, mode)
-    shuts down all or part of a full-duplex connection on socket sock. If mode
-    is NO_RECVS, further receives will be disallowed. If mode is NO_SENDS,
-    further sends will be disallowed. If mode is NO_RECVS_OR_SENDS, further
-    sends and receives will be disallowed. This function raises the SysErr
-    exception if the socket is not connected or has been closed.
-
-type sock_desc
-    This type is an abstract name for a socket, which is used to support
-    polling on collections of sockets.
-
-sockDesc sock
-    returns a socket descriptor that names the socket sock.
-
-sameDesc (sd1, sd2)
-    returns true if the two socket descriptors sd1 and sd2 describe the same
-    underlying socket. Thus, the expression sameDesc(sockDesc sock, sockDesc
-    sock) will always return true for any socket sock.
-
-select {rds, wrs, exs, timeout}
-    examines the sockets in rds, wrs, and exs to see if they are ready for
-    reading, writing, or have an exceptional condition pending, respectively.
-    The calling program is blocked until either one or more of the named
-    sockets is ``ready '' or the specified timeout expires (where a timeout of
-    NONE never expires). The result of select is a record of three lists of
-    socket descriptors containing the ready sockets from the corresponding
-    argument lists. The order in which socket descriptors appear in the
-    argument lists is preserved in the result lists. A timeout is signified by
-    a result of three empty lists.
-
-    This function raises SysErr if any of the argument sockets have been closed
-    or if the timeout value is negative.
-
-    Note that one can test if a call to accept will block by using select to
-    see if the socket is ready to read. Similarly, one can use select to test
-    if a call to connect will block by seeing if the socket is ready to write.
-
-ioDesc sock
-    returns the I/O descriptor corresponding to socket sock. This descriptor
-    can be used to poll the socket via pollDesc and poll in the OS.IO
-    structure. Using the polling mechanism from OS.IO has the advantage that
-    different kinds of I/O objects can be mixed, but not all systems support
-    polling on sockets this way. If an application is only polling sockets,
-    then it is more portable to use the select function defined above.
-
-type out_flags = {don't_route : bool, oob : bool}
-    Flags used in the general form of socket output operations.
-
-type in_flags = {peek : bool, oob : bool}
-    Flags used in the general form of socket input operations.
-
-sendVec (sock, slice)
-sendArr (sock, slice)
-    These functions send the bytes in the slice slice on the active stream
-    socket sock. They return the number of bytes actually sent.
-
-    These functions raise SysErr if sock has been closed.
-
-sendVec' (sock, slice, {don't_route, oob})
-sendArr' (sock, slice, {don't_route, oob})
-    These functions send the bytes in the slice slice on the active stream
-    socket sock. They return the number of bytes actually sent. If the
-    don't_route flag is true, the data is sent bypassing the normal routing
-    mechanism of the protocol. If oob is true, the data is sent out-of-band,
-    that is, before any other data which may have been buffered.
-
-    These functions raise SysErr if sock has been closed.
-
-val sendVecNB : ('af, active stream) sock
-                  * Word8VectorSlice.slice -> int option
-val sendVecNB' : ('af, active stream) sock
-                   * Word8VectorSlice.slice
-                   * out_flags -> int option
-val sendArrNB : ('af, active stream) sock
-                  * Word8ArraySlice.slice -> int option
-val sendArrNB' : ('af, active stream) sock
-                   * Word8ArraySlice.slice
-                   * out_flags -> int option
-    These functions are the nonblocking versions of sendVec, sendVec', sendArr,
-    and sendArr' (resp.). They have the same semantics as their blocking forms,
-    with the exception that when the operation can complete without blocking,
-    then the result is wrapped in SOME and if the operation would have to wait
-    to send the data, then NONE is returned instead.
-
-recvVec (sock, n)
-recvVec'(sock, n, {peek,oob})
-    These functions receive up to n bytes from the active stream socket sock.
-    The size of the resulting vector is the number of bytes that were
-    successfully received, which may be less than n. If the connection has been
-    closed at the other end (or if n is 0), then the empty vector will be
-    returned.
-
-    In the second version, if peek is true, the data is received but not
-    discarded from the connection. If oob is true, the data is received
-    out-of-band, that is, before any other incoming data that may have been
-    buffered.
-
-    These functions raise SysErr if the socket sock has been closed and they
-    raise Size if n < 0 or n > Word8Vector.maxLen.
-
-recvArr (sock, slice)
-recvArr' (sock, slice, {peek, oob})
-    These functions read data from the socket sock into the array slice slice.
-    They return the number of bytes actually received. If the connection has
-    been closed at the other end or the slice is empty, then 0 is returned.
-
-    For recvArr', if peek is true, the data is received but not discarded from
-    the connection.  If oob is true, the data is received out-of-band, that is,
-    before any other incoming data that may have been buffered.
-
-    These functions raise SysErr if sock has been closed.
-
-val recvVecNB : ('af, active stream) sock * int
-                  -> Word8Vector.vector option
-val recvVecNB' : ('af, active stream) sock * int * in_flags
-                   -> Word8Vector.vector option
-val recvArrNB : ('af, active stream) sock
-                  * Word8ArraySlice.slice -> int option
-val recvArrNB' : ('af, active stream) sock
-                   * Word8ArraySlice.slice
-                   * in_flags -> int option
-    These functions are the nonblocking versions of recvVec, recvVec', recvArr,
-    and recvArr' (resp.). They have the same semantics as their blocking forms,
-    with the exception that when the operation can complete without blocking,
-    then the result is wrapped in SOME and if the operation would have to wait
-    for input, then NONE is returned instead.
-
-sendVecTo (sock, sa, slice)
-sendArrTo (sock, sa, slice)
-    These functions send the message specified by the slice slice on the
-    datagram socket sock to the address sa.
-
-    These functions raise SysErr if sock has been closed or if the socket has
-    been connected to a different address than sa.
-
-sendVecTo' (sock, sa, slice, {don't_route, oob})
-sendArrTo' (sock, sa, slice, {don't_route, oob})
-    These functions send the message specified by the slice slice on the
-    datagram socket sock to the address
-
-    If the don't_route flag is true, the data is sent bypassing the normal
-    routing mechanism of the protocol. If oob is true, the data is sent
-    out-of-band, that is, before any other data which may have been buffered.
-
-    These functions raise SysErr if sock has been closed or if the socket has
-    been connected to a different address than sa.
-
-val sendVecToNB : ('af, dgram) sock
-                    * 'af sock_addr
-                    * Word8VectorSlice.slice -> bool
-val sendVecToNB' : ('af, dgram) sock
-                     * 'af sock_addr
-                     * Word8VectorSlice.slice
-                     * out_flags -> bool
-val sendArrToNB : ('af, dgram) sock
-                    * 'af sock_addr
-                    * Word8ArraySlice.slice -> bool
-val sendArrToNB' : ('af, dgram) sock
-                     * 'af sock_addr
-                     * Word8ArraySlice.slice
-                     * out_flags -> bool
-    These functions are the nonblocking versions of sendVecTo, sendVecTo',
-    sendArrTo, and sendArrTo' (resp.). They have the same semantics as their
-    blocking forms, with the exception that if the operation can complete
-    without blocking, then the operation is performed and true is returned.
-    Otherwise, false is returned and the message is not sent.
-
-recvVecFrom (sock, n)
-recvVecFrom' (sock, n, {peek, oob})
-    These functions receive up to n bytes on the datagram socket sock, and
-    return a pair (vec,sa), where the vector vec is the received message, and
-    sa is the socket address from the which the data originated. If the message
-    is larger than n, then data may be lost.
-
-    In the second form, if peek is true, the data is received but not discarded
-    from the connection. If oob is true, the data is received out-of-band, that
-    is, before any other incoming data that may have been buffered.
-
-    These functions raise SysErr if sock has been closed; they raise Size if n
-    < 0 or n > Word8Vector.maxLen.
-
-recvArrFrom (sock, slice)
-recvArrFrom' (sock, slice)
-    These functions read a message from the datagram socket sock into the array
-    slice slice.  If the message is larger than the size of the slice, then
-    data may be lost. They return the number of bytes actually received. If the
-    connection has been closed at the other end or the slice is empty, then 0
-    is returned.
-
-    For recvArrFrom', if peek is true, the data is received but not discarded
-    from the connection. If oob is true, the data is received out-of-band, that
-    is, before any other incoming data that may have been buffered.
-
-    These functions raise SysErr if sock has been closed.
-
-val recvVecFromNB : ('af, dgram) sock * int
-                      -> (Word8Vector.vector
-                      * 'sock_type sock_addr) option
-val recvVecFromNB' : ('af, dgram) sock * int * in_flags
-                       -> (Word8Vector.vector
-                       * 'sock_type sock_addr) option
-val recvArrFromNB : ('af, dgram) sock
-                      * Word8ArraySlice.slice
-                      -> (int * 'af sock_addr) option
-val recvArrFromNB' : ('af, dgram) sock
-                       * Word8ArraySlice.slice
-                       * in_flags
-                       -> (int * 'af sock_addr) option
-    These functions are the nonblocking versions of recvVecFrom, recvVecFrom',
-    recvArrFrom, and recvArrFrom' (resp.). They have the same semantics as
-    their blocking forms, with the exception that when the operation can
-    complete without blocking, then the result is wrapped in SOME and if the
-    operation would have to wait for input, then NONE is returned instead.
-
-*)
+  structure INetSock = struct
+    datatype inet = INET
+    type 'st sock = (inet, 'st) Socket.sock
+    type 'm stream_sock = 'm Socket.stream sock
+    type sock_addr = inet Socket.sock_addr
+    val inetAF = Socket.AF_INET
+    fun any (p:int) : sock_addr =
+        Socket.Inet_sa {addr=Socket.INADDR_ANY,port=p}
+    structure TCP = struct
+    fun socket () : 'm stream_sock =
+        let val res = prim("sml_sock_socket", (Socket.AF_INET,Socket.SOCK_STREAM))
+        in maybe_failure "socket" res
+         ; {fd=res,af=Socket.Inet_af}
+        end
+    end
+  end
+
+  structure All :>
+            sig
+              structure Socket : SOCKET
+              structure INetSock :
+                        sig
+                          type inet
+                          type 'st sock = (inet,'st) Socket.sock
+                          type 'm stream_sock = 'm Socket.stream sock
+                          type sock_addr = inet Socket.sock_addr
+                          val inetAF : Socket.AF.addr_family
+                          val any : int -> sock_addr
+                          structure TCP :
+                                    sig
+                                      val socket : unit -> 'm stream_sock
+                                    end
+                        end
+            end =
+  struct
+  structure Socket = Socket
+  structure INetSock = INetSock
+  end
+
+in
+  structure Socket = All.Socket
+  structure INetSock = All.INetSock
+end

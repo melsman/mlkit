@@ -1,5 +1,0 @@
-
-changed 
-  STACK_SIZE_INIT to 10*1024
-  malloc to MemPtrNew
-

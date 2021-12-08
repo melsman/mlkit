@@ -12,13 +12,13 @@
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-uintptr_t openInStream(String filenamePtr, uintptr_t exn);
-uintptr_t openOutStream(String filenamePtr, uintptr_t exn);
-uintptr_t openAppendStream(String filenamePtr, uintptr_t exn);
+uintptr_t openInStream(Context ctx, String filenamePtr, uintptr_t exn);
+uintptr_t openOutStream(Context ctx, String filenamePtr, uintptr_t exn);
+uintptr_t openAppendStream(Context ctx, String filenamePtr, uintptr_t exn);
 void closeStream(uintptr_t stream);
 // int endOfStream(FILE *stream);
-uintptr_t outputStream(uintptr_t outStream, String stringPtr, uintptr_t exn);
-uintptr_t outputBinStream(uintptr_t outStream, String stringPtr, uintptr_t exn);
+uintptr_t outputStream(Context ctx, uintptr_t outStream, String stringPtr, uintptr_t exn);
+uintptr_t outputBinStream(Context ctx, uintptr_t outStream, String stringPtr, uintptr_t exn);
 void flushStream(uintptr_t stream);
 uintptr_t stdInStream(uintptr_t dummy);
 uintptr_t stdOutStream(uintptr_t dummy);

@@ -3,7 +3,7 @@
  *----------------------------------------------------------------*/
 
 /*
-  A string is represented as a C-string prepended with the 
+  A string is represented as a C-string prepended with the
   string size (tagged).
 
   A char is represented as an integer (i.e., either as i or 2i+1 if
@@ -33,16 +33,12 @@ typedef StringDesc* String;
 
 #define sizeStringDefine(str)    ((((String)(str))->size) >> 6) /* Remove stringtag. We do not tag the size. */
 
-void convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn);
+void convertStringToC(Context ctx, String mlStr, char *buf, size_t buflen, uintptr_t exn);
 
 /******************************************************************
  * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
  ******************************************************************/
 
-size_t chrCharML(size_t charNrML, uintptr_t exn);
-// int __bytetable_size(String str);
-// int __bytetable_sub(String str, int i);
-// void __bytetable_update(String str, int i, int c);
 void printStringML(String str);
 size_t lessStringML(String str1, String str2);
 size_t lesseqStringML(String str1, String str2);

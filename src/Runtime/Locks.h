@@ -19,22 +19,7 @@ void mutex_unlock(int id);                    // defined in Spawn.c
 #include "../config.h"
 
 #ifdef THREADS
-#ifdef APACHE
-
-#define str(s)      # s
-#define xstr(s)     str(s)
-
-#include "../SMLserver/apache/Locks.h"
-
-#define LOCK_LOCK(name) runtime_lock(name)
-#define LOCK_UNLOCK(name) runtime_unlock(name)
-
-#define CODECACHEMUTEX     0
-#define FREELISTMUTEX      1
-#define STACKPOOLMUTEX     2
-#define FUNCTIONTABLEMUTEX 3
-
-#elif PTHREADS  // APACHE
+#ifdef PTHREADS
 
 #define CODECACHEMUTEX     0
 #define FREELISTMUTEX      1

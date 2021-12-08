@@ -65,23 +65,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
            \js-client."}
           ; Flags.is_on0 "export_basis_js")
 
-    val extendedtyping =
-        (Flags.add_bool_entry
-         {long="extended_typing", short=SOME "xt", neg=false,
-          item=ref false,
-          menu=["Control", "extended typing (SMLserver)"],
-          desc="When this flag is enabled, SMLserver requires\n\
-           \scripts to be functor SCRIPTLET's, which are\n\
-           \automatically instantiated by SMLserver in a\n\
-           \type safe way. To construct and link to XHTML\n\
-           \forms in a type safe way, SMLserver constructs an\n\
-           \abstract interface to the forms from the functor\n\
-           \arguments of the scriptlets. This interface is\n\
-           \constructed and written to the file scripts.gen.sml\n\
-           \prior to the actual type checking and compilation\n\
-           \of the project."}
-          ; Flags.is_on0 "extended_typing")
-
     val print_export_bases =
         (Flags.add_bool_entry
          {long="print_export_bases", short=SOME "Peb", neg=false,
@@ -112,13 +95,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
         \executable."}
 
     val _ = Flags.add_stringlist_entry
-      {long="link_code_scripts", short=SOME "link_scripts", item=ref nil,
-       menu=["File", "link files scripts"],
-       desc="Link-files for SMLserver scripts; link-files\n\
-        \specified with -link represent libraries when\n\
-        \mlkit is used with SMLserver."}
-
-    val _ = Flags.add_stringlist_entry
       {long="load_basis_files", short=SOME "load", item=ref nil,
        menu=["File", "Basis files to load before compilation"],
        desc="Basis files to be loaded before compilation\n\
@@ -145,12 +121,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     exception PARSE_ELAB_ERROR = MO.PARSE_ELAB_ERROR
     fun error a = MO.error a
     val quot = MO.quot
-
-    (* SMLserver components *)
-
-    (* Support for parsing scriptlet form argument - i.e., functor
-     * arguments *)
-    structure Scriptlet = Scriptlet(val error = error)
 
     (* -----------------------------------------
      * Unit names, file names and directories
@@ -717,30 +687,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 ) handle XX => (log_cleanup(); raise XX)
       end
 
-(*
-    fun smlserver_preprocess prj =
-        if not(extendedtyping()) then prj
-        else
-            case Project.getParbody prj of
-                NONE => prj
-              | SOME unitids =>
-                    let (* Parse scriptlets *)
-                        fun valspecToField (n,t) = {name=n,typ=t}
-                        val formIfaceFile = "scripts.gen.sml"
-                        val _ = print "[parsing arguments of scriptlet functors]\n"
-                        val formIfaces = map Scriptlet.parseArgsFile unitids
-                        val formIfaces =
-                            map (fn {funid,valspecs} =>
-                                 {name=funid,fields=map valspecToField valspecs})
-                            formIfaces
-                        val prj = Project.prependUnit (formIfaceFile,prj)
-                        val prj = Project.appendFunctorInstances prj
-                    in    Scriptlet.genScriptletInstantiations formIfaces
-                        ; Scriptlet.genFormInterface formIfaceFile formIfaces
-                        ; prj
-                    end
-*)
-
      fun writeAll (f,s) =
          let val os = TextIO.openOut f
          in (TextIO.output(os,s);
@@ -774,34 +720,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      end
 
     structure MlbProject = MlbProject(ManagerObjects.Environment)
-    structure UlFile = UlFile(MlbProject)
-    fun mlb_to_ulfile (f:string->string list)
-        {mlbfile:string} : string =
-        let val ul  = UlFile.from_mlbfile f mlbfile
-        in UlFile.pp_ul ul
-        end
 
     fun link_lnk_files (mlbfile_opt:string option) : unit =
         let val _ = chat "reading link files"
             val lnkFiles = Flags.get_stringlist_entry "link"
             val modc = readLinkFiles lnkFiles
-        in if !Flags.SMLserver then
-               (case mlbfile_opt of
-                    SOME mlbfile =>
-                    let val _ = chat "creating ul file"
-                        val s = mlb_to_ulfile getUoFiles {mlbfile=mlbfile}
-                        val ulfile = !run_file
-                    in writeAll(ulfile,s)
-                     ; print("[wrote file " ^ ulfile ^ "]\n")
-                    end
-                  | NONE =>
-                    let val lnkFilesScripts = Flags.get_stringlist_entry "link_scripts"
-                        val modc_scripts = readLinkFiles lnkFilesScripts
-                    in ModCode.makeUlfile (!run_file,modc,ModCode.seq(modc,modc_scripts))
-                    end)
-           else
-               (chat "making executable";
-                ModCode.mk_exe_all_emitted(modc, nil, !run_file))
+        in chat "making executable";
+           ModCode.mk_exe_all_emitted(modc, nil, !run_file)
         end
 
     (* ----------------------------
@@ -934,7 +859,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
           fun link0 mlbfile target lnkFiles lnkFilesScripts () =
               (Flags.lookup_string_entry "output" := target;
                Flags.lookup_stringlist_entry "link" := lnkFiles;
-               Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;
+               (*Flags.lookup_stringlist_entry "link_scripts" := lnkFilesScripts;*)
                link_lnk_files (SOME mlbfile))
         in
           fun link {verbose} {mlbfile,target,lnkFiles,lnkFilesScripts,flags=""} :unit =
@@ -1011,13 +936,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
               in OS.FileSys.remove mlb_file
               end
           | MLB s =>
-            let val target =
-                    if !Flags.SMLserver then
-                      let val {dir,file} = OS.Path.splitDirFile s
-                        val op ## = OS.Path.concat infix ##
-                      in dir ## MO.mlbdir() ## (OS.Path.base file ^ ".ul")
-                      end
-                    else Flags.get_string_entry "output"
+            let val target = Flags.get_string_entry "output"
             in
               (MlbMake.build{flags="",mlbfile=s,target=target}
                handle Fail s => raise Fail s

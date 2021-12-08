@@ -12,7 +12,6 @@ VPATH=@srcdir@
 
 SYSCONFDIR=$(DESTDIR)@sysconfdir@
 INSTDIR=$(DESTDIR)$(exec_prefix)
-INSTDIR_KAM=$(DESTDIR)@exec_prefix@
 INSTDIR_BARRY=$(DESTDIR)@exec_prefix@
 MANDIR=$(DESTDIR)@mandir@
 LIBDIR=$(DESTDIR)@libdir@
@@ -30,7 +29,6 @@ MLCOMP=@mlcomp@
 CWD=$(shell pwd)
 
 export INSTDIR
-export INSTDIR_KAM
 export INSTDIR_BARRY
 
 include Makefiledefault
@@ -55,20 +53,6 @@ smltojs:
 
 all: mlkit mlkit_basislibs smltojs smltojs_basislibs
 
-smlserver_all: smlserver smlserver_libs
-
-.PHONY: smlserver_basislib
-smlserver_basislib:
-	(cd basis && SML_LIB=.. ../bin/smlserverc -c basis.mlb)
-
-.PHONY: smlserver_kitlib
-smlserver_kitlib:
-	(cd basis && SML_LIB=.. ../bin/smlserverc -c kitlib.mlb)
-
-.PHONY: smlserver_weblib
-smlserver_weblib:
-	(cd basis && SML_LIB=.. ../bin/smlserverc -c web/lib.mlb)
-
 .PHONY: mlkit_basislibs
 mlkit_basislibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc basis.mlb)
@@ -82,12 +66,6 @@ mlkit_kitlibs:
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -gc -prof kitlib.mlb)
 	(cd basis && SML_LIB=.. ../bin/mlkit -c -no_gc -prof kitlib.mlb)
-
-.PHONY: smlserver_libs
-smlserver_libs: mlkit_cleanlibs
-	$(MAKE) smlserver_basislib
-	$(MAKE) smlserver_kitlib
-	$(MAKE) smlserver_weblib
 
 .PHONY: mlkit_cleanlibs
 mlkit_cleanlibs:
@@ -118,17 +96,6 @@ install_smltojs_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/MLB/Js/
 	$(INSTALLDATA) -p js/basis/MLB/Js/*.{d,eb,eb1,lnk,js} $(LIBDIR)/basis/MLB/Js
 
-.PHONY: install_smlserver_basislib
-install_smlserver_basislib:
-	$(MKDIR) $(LIBDIR)/basis/MLB/SMLserver
-	$(MKDIR) $(LIBDIR)/basis/io/MLB/SMLserver
-	$(MKDIR) $(LIBDIR)/basis/web/MLB/SMLserver
-	$(MKDIR) $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
-	$(INSTALLDATA) -p basis/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/MLB/SMLserver
-	$(INSTALLDATA) -p basis/io/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/io/MLB/SMLserver
-	$(INSTALLDATA) -p basis/web/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/web/MLB/SMLserver
-	$(INSTALLDATA) -p basis/web/xmlrpc/MLB/SMLserver/*.{d,eb,eb1,lnk,uo} $(LIBDIR)/basis/web/xmlrpc/MLB/SMLserver
-
 .PHONY: install_mlkit_basislibs
 install_mlkit_basislibs:
 	$(MKDIR) $(LIBDIR)/basis/MLB
@@ -150,17 +117,6 @@ install_mlkit_basislibs:
 	$(INSTALLDATA) -p basis/io/MLB/RI_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_PROF
 	$(INSTALLDATA) -p basis/io/MLB/RI_GC_PROF/*.{d,eb,eb1,lnk,o,rev} $(LIBDIR)/basis/io/MLB/RI_GC_PROF
 
-.PHONY: mlkit_kam
-mlkit_kam:
-	$(MKDIR) bin
-	$(MAKE) -C src mlkit_kam
-
-.PHONY: smlserver
-smlserver:
-	$(MKDIR) bin
-	$(MAKE) -C src smlserver
-	$(MAKE) man_smlserver
-
 .PHONY: barry
 barry:
 	$(MKDIR) bin
@@ -169,7 +125,7 @@ barry:
 
 .PHONY: clean
 clean:
-	$(CLEAN) bin run lib bootstrap dist man/man1/*.1 doc/README_SMLSERVER_BIN doc/README_BIN
+	$(CLEAN) bin run lib bootstrap dist man/man1/*.1 doc/README_BIN
 	cd basis && $(MAKE) clean
 	cd doc/manual && $(MAKE) clean
 	cd kitlib && $(CLEAN) run
@@ -178,12 +134,6 @@ clean:
 	cd test && $(MAKE) clean
 	cd test_dev && $(MAKE) clean
 	cd src && $(MAKE) clean
-	$(MAKE) -C smlserver_demo clean
-	cd smlserver && $(CLEAN)
-	cd smlserver/xt && $(CLEAN)
-	cd smlserver/xt/demolib && $(CLEAN)
-	cd smlserver/xt/libxt && $(CLEAN)
-	cd smlserver/xt/www && $(CLEAN)
 	$(MAKE) -C js clean
 
 .PHONY: clean_mlb
@@ -310,15 +260,12 @@ install_src:
 	$(MKDIR) $(INSTDIR)/src
 	$(MKDIR) $(INSTDIR)/src/Common $(INSTDIR)/src/Compiler $(INSTDIR)/src/Manager $(INSTDIR)/src/Kitlib $(INSTDIR)/src/Pickle
 	$(MKDIR) $(INSTDIR)/src/CUtils $(INSTDIR)/src/Edlib $(INSTDIR)/src/Parsing $(INSTDIR)/src/Runtime
-	$(MKDIR) $(INSTDIR)/src/SMLserver $(INSTDIR)/src/Tools
-	$(MKDIR) $(INSTDIR)/src/SMLserver/apache
-	$(MKDIR) $(INSTDIR)/src/SMLserver/apache/test
+	$(MKDIR) $(INSTDIR)/src/Tools
 	$(MKDIR) $(INSTDIR)/src/Common/EfficientElab
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend $(INSTDIR)/src/Compiler/Lambda $(INSTDIR)/src/Compiler/Regions
-	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy $(INSTDIR)/src/Compiler/Backend/KAM
-	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X86
+	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/Barry $(INSTDIR)/src/Compiler/Backend/Dummy
 	$(MKDIR) $(INSTDIR)/src/Compiler/Backend/X64
-	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/GenOpcodes $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
+	$(MKDIR) $(INSTDIR)/src/Tools/Benchmark $(INSTDIR)/src/Tools/MlbMake $(INSTDIR)/src/Tools/Rp2ps
 	$(MKDIR) $(INSTDIR)/src/Tools/Tester $(INSTDIR)/src/Tools/MspComp
 	$(INSTALLDATA) src/Makefile src/*.{sml,in} $(INSTDIR)/src
 	$(INSTALLDATA) src/Common/*.{mlb,sig,sml} $(INSTDIR)/src/Common
@@ -329,8 +276,6 @@ install_src:
 	$(INSTALLDATA) src/Compiler/Backend/*.sml $(INSTDIR)/src/Compiler/Backend
 	$(INSTALLDATA) src/Compiler/Backend/Barry/*.sml $(INSTDIR)/src/Compiler/Backend/Barry
 	$(INSTALLDATA) src/Compiler/Backend/Dummy/*.sml $(INSTDIR)/src/Compiler/Backend/Dummy
-	$(INSTALLDATA) src/Compiler/Backend/KAM/*.{sml,spec} $(INSTDIR)/src/Compiler/Backend/KAM
-	$(INSTALLDATA) src/Compiler/Backend/X86/*.sml $(INSTDIR)/src/Compiler/Backend/X86
 	$(INSTALLDATA) src/Compiler/Backend/X64/*.sml $(INSTDIR)/src/Compiler/Backend/X64
 	$(INSTALLDATA) src/Manager/*.{sml,sig,mlb} $(INSTDIR)/src/Manager
 	$(INSTALLDATA) src/Kitlib/*.{sml,sig,mlb} $(INSTDIR)/src/Kitlib
@@ -339,12 +284,7 @@ install_src:
 	$(INSTALLDATA) src/Edlib/Makefile src/Edlib/*.{sml,sig,mlb} $(INSTDIR)/src/Edlib
 	$(INSTALLDATA) src/Parsing/*.{sml,sig,grm,lex} $(INSTDIR)/src/Parsing
 	$(INSTALLDATA) src/Runtime/Makefile src/Runtime/*.{c,h,in} $(INSTDIR)/src/Runtime
-	$(INSTALLDATA) src/SMLserver/*.{c,h} $(INSTDIR)/src/SMLserver
-	$(INSTALLDATA) src/SMLserver/apache/Makefile.in src/SMLserver/apache/Makefile src/SMLserver/apache/README $(INSTDIR)/src/SMLserver/apache
-	$(INSTALLDATA) src/SMLserver/apache/Notes src/SMLserver/apache/*.{c,h,in} $(INSTDIR)/src/SMLserver/apache
-	$(INSTALLDATA) src/SMLserver/apache/test/Makefile src/SMLserver/apache/test/*.{c,txt} $(INSTDIR)/src/SMLserver/apache/test
 	$(INSTALLDATA) src/Tools/Benchmark/*.{sml,mlb} src/Tools/Benchmark/Makefile $(INSTDIR)/src/Tools/Benchmark
-	$(INSTALLDATA) src/Tools/GenOpcodes/*.{sml,mlb,in} src/Tools/GenOpcodes/Makefile $(INSTDIR)/src/Tools/GenOpcodes
 	$(INSTALLDATA) src/Tools/MlbMake/*.{sml,sig,mlb,in} src/Tools/MlbMake/Makefile $(INSTDIR)/src/Tools/MlbMake
 	$(INSTALLDATA) src/Tools/Rp2ps/*.{c,h,in} src/Tools/Rp2ps/Makefile $(INSTDIR)/src/Tools/Rp2ps
 	$(INSTALLDATA) src/Tools/Tester/*.{sml,mlb,in} src/Tools/Tester/Makefile $(INSTDIR)/src/Tools/Tester
@@ -363,7 +303,6 @@ bootstrap_first:
 
 .PHONY: bootstrap_next_build
 bootstrap_next_build:
-	cd src && $(MAKE) genopcodes BINDIR=../$(BINDIR)
 	cd src/Compiler && SML_LIB=$(CWD) ../../bin/mlkit -gc native64.mlb
 
 .PHONY: bootstrap_next_install
@@ -401,11 +340,6 @@ bootstrap:
 man_mlkit:
 	$(MKDIR) man/man1
 	SML_LIB=$(exec_prefix)/lib/mlkit bin/mlkit -man > man/man1/mlkit.1
-
-.PHONY: man_smlserver
-man_smlserver:
-	$(MKDIR) man/man1
-	SML_LIB=$(exec_prefix)/lib/smlserver bin/smlserverc -man > man/man1/smlserverc.1
 
 .PHONY: man_smltojs
 man_smltojs:
@@ -462,41 +396,6 @@ install_smltojs: install_smltojs0
 	if [ -e $(SYSCONFDIR)/smltojs/mlb-path-map ]; \
            then true; \
            else echo "SML_LIB $(exec_prefix)/lib/smltojs" > $(SYSCONFDIR)/smltojs/mlb-path-map; \
-        fi
-
-.PHONY: install_smlserver0
-install_smlserver0:
-	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(BINDIR)
-	$(INSTALL) bin/smlserverc $(BINDIR)
-	$(INSTALL) bin/smlserver-wrap $(BINDIR)
-	$(INSTALL) bin/mspcomp $(BINDIR)
-	$(MKDIR) $(LIBDIR)/smlserver
-	$(MAKE) install_smlserver_basislib LIBDIR=$(LIBDIR)/smlserver
-	$(MAKE) install_basis LIBDIR=$(LIBDIR)/smlserver
-	$(MKDIR) $(LIBDIR)/smlserver/basis/web
-	$(MKDIR) $(LIBDIR)/smlserver/basis/web/xmlrpc
-	$(INSTALLDATA) -p basis/web/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web
-	$(INSTALLDATA) -p basis/web/xmlrpc/*.{sml,sig,mlb} $(LIBDIR)/smlserver/basis/web/xmlrpc
-#	$(MKDIR) $(MANDIR)
-	$(MKDIR) $(MANDIR)/man1
-	$(INSTALLDATA) man/man1/smlserverc.1 $(MANDIR)/man1
-#	$(MKDIR) $(INSTDIR)/share
-#	$(MKDIR) $(INSTDIR)/share/smlserver
-#	$(MKDIR) $(INSTDIR)/share/doc
-	$(MKDIR) $(INSTDIR)/share/doc/smlserver
-	$(MAKE) install_license KIND=smlserver
-	$(INSTALLDATA) README_SMLSERVER.md $(DATADIR)/doc/smlserver
-	$(INSTALLDATA) NEWS_SMLSERVER.md $(DATADIR)/doc/smlserver
-	$(MAKE) -C smlserver_demo install LIBDIR=$(LIBDIR)/smlserver
-	$(MAKE) -C src/SMLserver/apache install LIBDIR=$(LIBDIR)/smlserver/lib
-
-.PHONY: install_smlserver
-install_smlserver: install_smlserver0
-	$(MKDIR) $(SYSCONFDIR)/smlserverc
-	if [ -e $(SYSCONFDIR)/smlserverc/mlb-path-map ]; \
-           then true; \
-           else echo "SML_LIB $(exec_prefix)/lib/smlserver" > $(SYSCONFDIR)/smlserverc/mlb-path-map; \
         fi
 
 # -----------------------------------------------------
@@ -557,42 +456,3 @@ mlkit_bin_dist:
 	printf "\t"'for f in $$$$(find * -type f | grep -v Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
-
-
-# -----------------------------------------------------
-# Target for building SMLserver binary package. The target
-# assumes that SMLserver has been build using
-#  $ ./autobuild
-#  $ ./configure --enable-SMLserver --with-apxs=`which apxs2` --enable-odbc
-#  $ make smlserver_all
-# -----------------------------------------------------
-SMLSERVER_DIST_BIN=smlserver-$(KITVERSION)-i386
-.PHONY: smlserver_i386_tgz
-smlserver_i386_tgz:
-	$(MKDIR) dist
-	rm -rf dist/$(SMLSERVER_DIST_BIN)
-	$(MAKE) install_smlserver0 DESTDIR=$(CWD)/dist/$(SMLSERVER_DIST_BIN) prefix=
-	$(INSTALLDATA) doc/README_SMLSERVER_BIN dist/$(SMLSERVER_DIST_BIN)/share/doc/smlserver
-	(cd dist && tar czvf $(SMLSERVER_DIST_BIN).tgz $(SMLSERVER_DIST_BIN))
-
-# The following is obsolete!!
-bootstrap_kam: install_kam bootstrap0
-
-install_kam:
-	$(MKDIR) $(INSTDIR_KAM)
-	$(MKDIR) $(INSTDIR_KAM)/bin
-	$(MKDIR) $(INSTDIR_KAM)/doc
-	$(INSTALL) bin/mlkit_kam $(INSTDIR_KAM)/bin
-	$(INSTALL) bin/kam $(INSTDIR_KAM)/bin
-	$(INSTALLDATA) copyright $(INSTDIR_KAM)
-	$(INSTALLDATA) README.md $(INSTDIR_KAM)
-	$(INSTALLDATA) -R kitdemo $(INSTDIR_KAM)/kitdemo
-	$(INSTALLDATA) -R ml-yacc-lib $(INSTDIR_KAM)/ml-yacc-lib
-	$(INSTALLDATA) -R basis $(INSTDIR_KAM)/basis
-	$(INSTALLDATA) doc/mlkit.pdf $(INSTDIR_KAM)/doc
-
-#	echo '#!/bin/sh' > $(INSTDIR_KAM)/bin/mlkit_kam
-#	echo -e '$(INSTDIR_KAM)/bin/mlkit_kam.$(ARCH-OS) $(INSTDIR_KAM) $$*' >> $(INSTDIR_KAM)/bin/mlkit_kam
-#	chmod a+x $(INSTDIR_KAM)/bin/mlkit_kam
-#	rm -f /usr/bin/mlkit_kam
-#	cp -f -p $(INSTDIR_KAM)/bin/mlkit_kam /usr/bin/mlkit_kam
