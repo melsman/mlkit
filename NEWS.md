@@ -1,8 +1,8 @@
 ## MLKit NEWS
 
 * mael 2021-11-15: Removed all SMLserver code as well as the KAM
-  bytecode backend as it is no longer maintained. SMLserver2 will be
-  based on the native backend.
+  bytecode backend as it is no longer maintained. The successor to
+  SMLserver will be based on the native backend.
 
 ### MLKit version 4.5.9 is released
 
