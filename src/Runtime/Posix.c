@@ -82,7 +82,7 @@ sml_waitpid(uintptr_t pair, size_t waitpid_arg, size_t flags)
 }
 
 ssize_t
-sml_sysconf(ssize_t t)
+sml_sysconf(Context ctx, ssize_t t)
 {
   long res;
   switch (convertIntToC(t))
@@ -124,7 +124,7 @@ sml_sysconf(ssize_t t)
       res = sysconf(_SC_GETPW_R_SIZE_MAX);
       break;
     default:
-      raise_exn((uintptr_t)&exn_OVERFLOW);
+      raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
       res = 0;
       break;
   }
@@ -142,14 +142,14 @@ usec_of_clock_t(long clk_tck, clock_t c) {
 }
 
 uintptr_t
-sml_times(uintptr_t tuple)
+sml_times(uintptr_t tuple, Context ctx)   // ctx after storage arguments
 {
   struct tms buf;
   clock_t r;
   long clk_tck = sysconf(_SC_CLK_TCK);
   mkTagRecordML(tuple, 8);
   r = times(&buf);  // returns number of seconds since year 1970; use getrealtime instead in Posix.sml
-  if (r == (clock_t) -1) raise_exn((uintptr_t)&exn_OVERFLOW);
+  if (r == (clock_t) -1) raise_exn(ctx,(uintptr_t)&exn_OVERFLOW);
   elemRecordML(tuple,0) = convertIntToML(sec_of_clock_t(clk_tck, buf.tms_utime));
   elemRecordML(tuple,1) = convertIntToML(usec_of_clock_t(clk_tck, buf.tms_utime));
   elemRecordML(tuple,2) = convertIntToML(sec_of_clock_t(clk_tck, buf.tms_stime));
@@ -748,7 +748,7 @@ REG_POLY_FUN_HDR(sml_errorName, Region rs, uintptr_t e)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberListR, Region memberR, size_t g, size_t s, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberListR, Region memberR, Context ctx, size_t g, size_t s, uintptr_t exn)
 {
   uintptr_t res;
   uintptr_t *list, *pair;
@@ -775,7 +775,7 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
   if (!gbuf2)
   {
     free(b);
-    raise_exn(exn);
+    raise_exn(ctx,exn);
   }
   first(triple) = (size_t) REG_POLY_CALL(convertStringToML, nameR, gbuf2->gr_name);
   members = gbuf2->gr_mem;
@@ -794,7 +794,7 @@ REG_POLY_FUN_HDR(sml_getgrgid, uintptr_t triple, Region nameR, Region memberList
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memberR, String nameML, size_t s, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memberR, Context ctx, String nameML, size_t s, uintptr_t exn)
 {
   uintptr_t res;
   uintptr_t *list, *pair;
@@ -821,7 +821,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
   if (!gbuf2)
   {
     free(b);
-    raise_exn(exn);
+    raise_exn(ctx,exn);
   }
   first(triple) = convertIntToML(gbuf2->gr_gid);
   members = gbuf2->gr_mem;
@@ -840,7 +840,7 @@ REG_POLY_FUN_HDR(sml_getgrnam, uintptr_t triple, Region memberListR, Region memb
 }
 
 long
-REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region shellR, long u, long s, long exn)
+REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region shellR, Context ctx, long u, long s, long exn)
 {
   long res;
   char *b;
@@ -865,7 +865,7 @@ REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region sh
   if (!pbuf2)
   {
     free(b);
-    raise_exn(exn);
+    raise_exn(ctx,exn);
   }
   elemRecordML(tuple,0) = (long) REG_POLY_CALL(convertStringToML, nameR, pbuf2->pw_name);
   elemRecordML(tuple,1) = (long) pbuf2->pw_gid;
@@ -876,7 +876,7 @@ REG_POLY_FUN_HDR(sml_getpwuid, long tuple, Region nameR, Region homeR, Region sh
 }
 
 long
-REG_POLY_FUN_HDR(sml_getpwnam, long tuple, Region homeR, Region shellR, String nameML, long s, long exn)
+REG_POLY_FUN_HDR(sml_getpwnam, long tuple, Region homeR, Region shellR, Context ctx, String nameML, long s, long exn)
 {
   long res;
   char *b;
@@ -901,7 +901,7 @@ REG_POLY_FUN_HDR(sml_getpwnam, long tuple, Region homeR, Region shellR, String n
   if (!pbuf2)
   {
     free(b);
-    raise_exn(exn);
+    raise_exn(ctx,exn);
   }
   elemRecordML(tuple,0) = (long) pbuf2->pw_uid;
   elemRecordML(tuple,1) = (long) pbuf2->pw_gid;
@@ -943,7 +943,7 @@ REG_POLY_FUN_HDR(sml_environ, Region rl, Region rs)
 }
 
 uintptr_t
-REG_POLY_FUN_HDR(sml_getgroups, uintptr_t rp, Region rs, uintptr_t exn)
+REG_POLY_FUN_HDR(sml_getgroups, uintptr_t rp, Region rs, Context ctx, uintptr_t exn)
 {
   uintptr_t *pair, *list;
   gid_t *tmp;
@@ -968,7 +968,7 @@ REG_POLY_FUN_HDR(sml_getgroups, uintptr_t rp, Region rs, uintptr_t exn)
   if (r == -1)
   {
     free(tmp);
-    raise_exn(exn);
+    raise_exn(ctx,exn);
   }
   for(i=0; i<r; i++)
   {

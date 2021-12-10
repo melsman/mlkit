@@ -56,10 +56,6 @@ which are built on top of MLKit:
 
 * [SMLToJs](/README_SMLTOJS.md). A compiler that compiles all of Standard ML into JavaScript.
 
-* [SMLserver](/README_SMLSERVER.md). A compiler and Apache module that
-  allow for Standard ML to be efficiently executed in a web-server
-  context.
-
 * [Barry](/README_BARRY.md). A Standard ML source-to-source compiler
   that will eliminate modules, using static interpretation and
   generate optimised Core-language Standard ML code.

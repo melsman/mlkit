@@ -36,7 +36,7 @@ REG_POLY_FUN_HDR(allocString, Region rAddr, size_t size)
 
 // convertStringToC: Copy ML string to 'buf' of size 'buflen'
 void
-convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
+convertStringToC(Context ctx, String mlStr, char *buf, size_t buflen, uintptr_t exn)
 {
   size_t sz;
   char *p;
@@ -44,7 +44,7 @@ convertStringToC(String mlStr, char *buf, size_t buflen, uintptr_t exn)
   sz = sizeStringDefine(mlStr);
   if ( sz > buflen-1)
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   for ( p = &(mlStr->data); *p != '\0'; )
     {
@@ -116,18 +116,6 @@ REG_POLY_FUN_HDR(allocStringC, Region rAddr, size_t sizeC)
   String strPtr;
   strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
-}
-
-size_t
-chrCharML(size_t charNrML, uintptr_t exn)
-{
-  size_t charNrC = convertIntToC(charNrML);
-  if ( charNrC <= 255 )
-    {
-      return convertIntToML (charNrC);
-    }
-  raise_exn(exn);
-  return 0;        // never reached
 }
 
 String

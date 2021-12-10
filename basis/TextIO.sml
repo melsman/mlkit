@@ -1,4 +1,4 @@
- 
+
 structure TextIO : TEXT_IO =
   struct
 
@@ -8,6 +8,8 @@ structure TextIO : TEXT_IO =
 
     type instream = {ic: int, name: string}
     type outstream = {oc: int, name: string}
+
+    fun getCtx () : foreignptr = prim("__get_ctx",())
 
     (* Primitives *)
     fun sub_ (s:vector,i:int) : elem = prim ("__bytetable_sub", (s,i))
@@ -22,30 +24,30 @@ structure TextIO : TEXT_IO =
 
     fun closeIn ({ic,...} : instream) : unit = prim ("closeStream", ic)
 
-    fun inputN_ (ic:int, n:int) : string = prim ("inputStream", (ic, n))    
-    fun input1_ (ic:int) : int = prim ("input1Stream", ic)    
+    fun inputN_ (ic:int, n:int) : string = prim ("inputStream", (ic, n))
+    fun input1_ (ic:int) : int = prim ("input1Stream", ic)
 
-    fun lookahead_ (ic: int): int = prim ("lookaheadStream", ic) 
+    fun lookahead_ (ic: int): int = prim ("lookaheadStream", ic)
 
     exception CannotOpen
-    fun raiseIo fcn nam exn = 
-      raise IO.Io {function = fcn^"", name = nam^"", cause = exn} 
-    fun openIn (f: string) : instream = 
-      {ic=prim("openInStream",(f, CannotOpen)), 
+    fun raiseIo fcn nam exn =
+      raise IO.Io {function = fcn^"", name = nam^"", cause = exn}
+    fun openIn (f: string) : instream =
+      {ic=prim("openInStream",(getCtx(), f, CannotOpen)),
        name=f} handle exn => raiseIo "openIn" f exn
-    fun openOut(f: string): outstream = 
-      {oc=prim("openOutStream",(f, CannotOpen)), 
+    fun openOut (f: string): outstream =
+      {oc=prim("openOutStream",(getCtx(), f, CannotOpen)),
        name=f} handle exn => raiseIo "openOut" f exn
-    fun openAppend(f: string): outstream =
-      {oc=prim("openAppendStream",(f, CannotOpen)), 
+    fun openAppend (f: string): outstream =
+      {oc=prim("openAppendStream",(getCtx(), f, CannotOpen)),
        name=f} handle exn => raiseIo "openAppend" f exn
 
-    fun closeOut({oc, name}: outstream) : unit = prim ("closeStream", oc)
+    fun closeOut ({oc, name}: outstream) : unit = prim ("closeStream", oc)
 
-    fun flushOut({oc,name}: outstream) : unit = prim ("flushStream", oc)
+    fun flushOut ({oc,name}: outstream) : unit = prim ("flushStream", oc)
 
-    fun output0(os as {oc,name},str,function):unit =
-      (prim ("outputStream", (oc, str, IO.ClosedStream));
+    fun output0 (os as {oc,name},str,function):unit =
+      (prim ("outputStream", (getCtx(), oc, str, IO.ClosedStream));
        if os = stdErr then flushOut os else ())
       handle exn as IO.ClosedStream => raiseIo function name exn
 
@@ -62,10 +64,10 @@ structure TextIO : TEXT_IO =
 
     fun inputN ({ic, name} : instream, n) =
       if n < 0 orelse n > String.maxSize then raise Size
-      else 
+      else
 	if n <= 64 then inputN_ (ic, n)
 	else
-	  let 
+	  let
 	    fun loop(n,acc) =
 	      if n <= 64 then concat(rev (inputN_(ic, n) :: acc))
 	      else
@@ -104,14 +106,14 @@ structure TextIO : TEXT_IO =
 		of SOME c => (update_ (buf, charno mod 512, c);
 			      read := !read + 1;
 			      SOME(c, charno+1))
-		 | NONE => NONE 
-      in case scan getc 0 
+		 | NONE => NONE
+      in case scan getc 0
 	   of NONE => NONE
 	    | SOME(res, _) => SOME res
       end
 
     fun scanStream scan is = scanStream0(scan, is)
-(*    
+(*
     fun inputNoBlock (is : instream) : vector option =
       raise Fail "not implemented"
 *)
@@ -124,18 +126,18 @@ structure TextIO : TEXT_IO =
 
     fun endOfStream is = (lookahead is = NONE)
 
-    fun inputLine(is) = 
-       let fun loop(acc) =  
+    fun inputLine is =
+       let fun loop(acc) =
 	         case input1 is
 		   of SOME (c as #"\n") => SOME(implode(rev(c :: acc)))
 		    | SOME c => loop(c::acc)
-		    | NONE => case acc 
+		    | NONE => case acc
 				of [] => NONE
 				 | _ => SOME(implode(rev(#"\n" :: acc)))
        in loop([])
        end
 
-    fun output(os, str) = output0(os, str, "output")
+    fun output (os, str) = output0(os, str, "output")
 
     fun outputSubstr (os, sus) =
       let val str = Substring.string sus

@@ -5,9 +5,12 @@ structure Real : REAL =
     (* Primitives *)
 
     fun real (x : int) : real = prim ("realInt", x)
-    fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
-    fun ceil (x : real) : int = prim ("ceilFloat", x)      (* may raise Overflow *)
-    fun trunc (x : real) : int = prim ("truncFloat", x)    (* may raise Overflow *)
+
+    fun getCtx () : foreignptr = prim("__get_ctx",())
+
+    fun floor (x : real) : int = prim ("floorFloat", (getCtx(),x))    (* may raise Overflow *)
+    fun ceil (x : real) : int = prim ("ceilFloat", (getCtx(),x))      (* may raise Overflow *)
+    fun trunc (x : real) : int = prim ("truncFloat", (getCtx(),x))    (* may raise Overflow *)
 
     fun realFloor (x: real) : real = prim ("realFloor", x)
     fun realCeil (x: real) : real = prim ("realCeil", x)

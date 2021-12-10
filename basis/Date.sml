@@ -37,6 +37,8 @@ structure Date :> DATE =
 		 tm_year   : int
 		 }
 
+    fun getCtx () : foreignptr = prim("__get_ctx",())
+
     fun getlocaltime_ (r : real) : tmoz = prim("sml_localtime", r)
     fun getunivtime_ (r : real) : tmoz = prim("sml_gmtime", r)
     fun mktime_ (t : tmoz) : real = prim("sml_mktime", t)
@@ -46,8 +48,8 @@ structure Date :> DATE =
 
     local val asctime_exn = Initial.fail_asctime
           val strftime_exn = Initial.fail_strftime
-    in fun asctime_ (t : tmoz) : string = prim("sml_asctime", (t,asctime_exn))
-       fun strftime_ (s : string, t : tmoz) : string = prim("sml_strftime", (s,t,Overflow(*strftime_exn*)))
+    in fun asctime_ (t : tmoz) : string = prim("sml_asctime", (getCtx(),t,asctime_exn))
+       fun strftime_ (s : string, t : tmoz) : string = prim("sml_strftime", (getCtx(),s,t,Overflow(*strftime_exn*)))
     end
 
     val toweekday = fn 0 => Sun | 1 => Mon | 2 => Tue | 3 => Wed

@@ -11,6 +11,7 @@
 #include "String.h"
 #include "Math.h"
 #include "Exception.h"
+#include "Region.h"
 
 #define tm2cal(tptr)   mktime(tptr)
 
@@ -96,7 +97,7 @@ sml_mktime (uintptr_t vAddr, uintptr_t v)
 }
 
 String
-REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn)
+REG_POLY_FUN_HDR(sml_asctime, Region rAddr, Context ctx, uintptr_t v, int exn)
 {
   struct tm tmr;
   char *r;
@@ -113,13 +114,13 @@ REG_POLY_FUN_HDR(sml_asctime, Region rAddr, uintptr_t v, int exn)
   r = asctime_r(&tmr, res);
   if ( r == NULL )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
 String
-REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, uintptr_t v, int exn)
+REG_POLY_FUN_HDR(sml_strftime, Region rAddr, Context ctx, String fmt, uintptr_t v, int exn)
 {
   struct tm tmr;
   int ressize;
@@ -137,7 +138,7 @@ REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, uintptr_t v, int exn)
   ressize = strftime(buf, BUFSIZE, &(fmt->data), &tmr);
   if ( ressize == 0 || ressize == BUFSIZE )
     {
-      raise_exn(exn);
+      raise_exn(ctx,exn);
     }
   return REG_POLY_CALL(convertStringToML, rAddr, buf);
 #undef BUFSIZE

@@ -56,8 +56,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	fun print_greetings () =
 	    let val version = Version.version ^ " (" ^ Version.gitversion ^ " - " ^ date ^ ")"
               val msg =
-                  if !Flags.SMLserver then "SMLserver Compiler " ^ version ^ "\n"
-                  else if backend_name = "SmlToJs" then "SmlToJs " ^ version ^ "\n"
+                  if backend_name = "SmlToJs" then "SmlToJs " ^ version ^ "\n"
                   else ("MLKit " ^ version ^ " ["
                         ^ backend_name ^ " Backend]\n")
             in print msg

@@ -4,7 +4,7 @@ DATE=$(shell /bin/date -u '+%Y-%m-%dT-%H:%M:%S')
 test: test_mlkit_no_gc test_mlkit
 
 .PHONY: all
-all: test_kam test_mlkit
+all: test_mlkit
 
 .PHONY: test_mlkit
 test_mlkit: prepare
@@ -30,11 +30,6 @@ test_mlkit_gengc: prepare
 test_mlkit_gengc_pickle:
 	(export SML_LIB=`(cd ..; pwd)`; ../bin/kittester ../bin/mlkit pickle.tst -gengc)
 	/bin/mv test_report.html test_report-native-gengc-$(DATE).html
-
-.PHONY: test_kam
-test_kam: prepare
-	(export SML_LIB=`(cd ..; pwd)`;	../bin/kittester ../bin/mlkit_kam all.tst)
-	/bin/mv test_report.html test_report-kam-$(DATE).html
 
 .PHONY: prepare
 prepare: testlink hardlinkA hardlinkB

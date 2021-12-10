@@ -4,7 +4,7 @@ programming language.
 MLKit COPYRIGHT NOTICE, LICENSE AND DISCLAIMER.
 
 Copyright (c) 1998-2012 by Copenhagen University, Edinburgh
-   University, the IT University of Copenhagen, and 2008-2012 Martin Elsman
+   University, the IT University of Copenhagen, and 2008-2021 Martin Elsman
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License as
@@ -19,8 +19,9 @@ General Public License for more details; see the file GPL-LICENSE.
 For the source distributions, the files in the directories
 src/Runtime/ and basis/ and js/ are distributed under the MIT license;
 see the files src/Runtime/MIT-LICENSE and basis/MIT-LICENSE and
-js/MIT-LICENSE. All other files are distributed under the GPL license;
-see the file GPL-LICENSE.
+js/MIT-LICENSE; some exceptions appear in the table below, as some
+source code is copied from packages with BSD-style licenses. All other
+files are distributed under the GPL license; see the file GPL-LICENSE.
 
 For the binary distributions, the files in the directory lib/ are
 distributed under the MIT license; see the file MIT-LICENSE. All other
@@ -31,27 +32,31 @@ Below is an overview of uses of other packages and their licenses:
 Package     License                        Use
 ---------------------------------------------------------------------
 SML/NJ      SMLNJ-LICENSE (BSD-style)      Ported some libraries for
-                                           basis.mlb: IntInf, 
+                                           basis.mlb: IntInf,
                                            Pack32Big, Pack32Little
                                            (in basis/).
                                            src/Tools/ml-lex,
                                            src/Tools/ml-yacc
 
-SML/NJ Lib  SMLNJ-LIB-LICENSE (BSD-style)  Ported some libraries for 
+SML/NJ Lib  SMLNJ-LIB-LICENSE (BSD-style)  Ported some libraries for
                                            kitlib.mlb (in basis/); see
-                                           individual files for 
+                                           individual files for
                                            details.
 
-            copyright.att (BSD-style)      1993 versions of 
+            copyright.att (BSD-style)      1993 versions of
                                            Polyhash.sml, POLYHASH.sml
                                            (in basis/ and src/Pickle/)
 
 MLton       MLton-LICENSE (BSD-style)      Ported some libraries for
-                                           basis.mlb: PrimIO, StreamIO, 
+                                           basis.mlb: PrimIO, StreamIO,
                                            TextIO, ImperativeIO, BinIO
                                            (in basis/).
 
-install-sh  X-LICENSE (MIT-style)          install-sh 
+MLton    MLton-HPND-LICENSE (HPND-style)   Made use of some functionality for
+                                           basis.mlb: NetHostDb scan function, e.g.
+                                           (in basis/).
+
+install-sh  X-LICENSE (MIT-style)          install-sh
 
 CodeMirror  CODEMIRROR-LICENSE (BSD-style) Embedded editor in browser-
                                            hosted Standard ML compiler

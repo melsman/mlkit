@@ -1,9 +1,9 @@
 (* FileSys -- 1995-06-16, 1995-09-25, 1996-05-01, 1996-10-13 *)
 
-(* The preliminary OS structure defined here is 
+(* The preliminary OS structure defined here is
  * hidden by a redeclaration later.. *)
 
-structure OS = 
+structure OS =
   struct
     type syserror = int
     exception SysErr = Initial2.SysErr
@@ -12,20 +12,20 @@ structure OS =
     fun errorMsg (err : int) : string = prim("sml_errormsg", err)
     fun errorName (err : int) : string =
          let
-           val s = prim("sml_errorName", err : int) : string 
+           val s = prim("sml_errorName", err : int) : string
          in
            if isNull s
            then raise Fail ("OS.errorName: " ^ Int.toString err ^ " not a valid error number")
            else
-             let 
+             let
                val a = String.map Char.toLower (Byte.unpackStringVec(Word8VectorSlice.slice((Byte.stringToBytes s),1,NONE)))
              in if a = "2big" then "toobig" else a
              end
          end
-    fun syserror (err : string) : syserror option = 
+    fun syserror (err : string) : syserror option =
          let
            val err = if err = "toobig" then "E2BIG" else "E" ^ (String.map Char.toUpper err)
-           val s = prim("@sml_syserror", err : string) : int 
+           val s = prim("@sml_syserror", err : string) : int
          in
            if s = ~1 then NONE else SOME s
          end
@@ -40,19 +40,21 @@ structure FileSys : OS_FILE_SYS =
 
     type file_id = {dev:int,ino:int}  (* with ordering *)
     infix <<
-    fun ({dev,ino} : file_id) << ({dev=dev',ino=ino'} : file_id) : bool = 
+    fun ({dev,ino} : file_id) << ({dev=dev',ino=ino'} : file_id) : bool =
       dev < dev' orelse (dev = dev' andalso ino < ino')
 
     (* Primitives from Runtime/IO.c -- raise Fail on error *)
     val failexn = Initial.FileSys.filesys_fail
 
-    fun chdir_ (s : string) : unit =                     prim("sml_chdir", (s, failexn))
-    fun remove_ (s : string) : unit =                    prim("sml_remove", (s, failexn))
-    fun rename_ (s1 : string, s2 : string) : unit =      prim("sml_rename", (s1, s2, failexn))
-    fun access_ (s : string, i : int) : bool =           prim("sml_access", (s, i, failexn))
-    fun getdir_ () : string =                            prim("sml_getdir", failexn) 
-    fun isdir_ (s : string) : bool =                     prim("sml_isdir", (s,failexn))
-    fun mkdir_ (s : string) : unit =                     prim("sml_mkdir", (s, failexn))
+    fun getCtx () : foreignptr = prim("__get_ctx",())
+
+    fun chdir_ (s : string) : unit =                     prim("sml_chdir", (getCtx(), s, failexn))
+    fun remove_ (s : string) : unit =                    prim("sml_remove", (getCtx(), s, failexn))
+    fun rename_ (s1 : string, s2 : string) : unit =      prim("sml_rename", (getCtx(), s1, s2, failexn))
+    fun access_ (s : string, i : int) : bool =           prim("sml_access", (s, i))
+    fun getdir_ () : string =                            prim("sml_getdir", (getCtx(), failexn))
+    fun isdir_ (s : string) : bool =                     prim("sml_isdir", (getCtx(), s,failexn))
+    fun mkdir_ (s : string) : unit =                     prim("sml_mkdir", (getCtx(), s, failexn))
     fun tmpnam_ (c: int) : string =
       if c > 10 then raise failexn
       else
@@ -61,26 +63,25 @@ structure FileSys : OS_FILE_SYS =
 	in if access_(f,0) then tmpnam_(c+1)
 	   else f
 	end
-    fun modtime_ (s : string) : real =                   prim("sml_modtime", (s, failexn))
-    fun rmdir_ (s : string) : unit =                     prim("sml_rmdir", (s, failexn))
-    fun settime_ (s : string, r : real) : unit =         prim("sml_settime", (s,r,failexn))
-    fun filesize_ (s : string) : int =                   prim("sml_filesize", (s, failexn))
-    fun opendir_ (s : string) : dirstruct_ =             prim("sml_opendir", (s, failexn))
-    fun readdir_ (d : dirstruct_) : string =             prim("sml_readdir", (d,failexn))
+    fun modtime_ (s : string) : real =                   prim("sml_modtime", (getCtx(), s, failexn))
+    fun rmdir_ (s : string) : unit =                     prim("sml_rmdir", (getCtx(), s, failexn))
+    fun settime_ (s : string, r : real) : unit =         prim("sml_settime", (getCtx(), s,r,failexn))
+    fun filesize_ (s : string) : int =                   prim("sml_filesize", (getCtx(), s, failexn))
+    fun opendir_ (s : string) : dirstruct_ =             prim("sml_opendir", (getCtx(), s, failexn))
+    fun readdir_ (d : dirstruct_) : string =             prim("sml_readdir", (getCtx(), d,failexn))
     fun rewinddir_ (d : dirstruct_) : unit =             prim("sml_rewinddir", d)
-    fun closedir_ (d : dirstruct_) : unit =              prim("sml_closedir", (d, failexn))
+    fun closedir_ (d : dirstruct_) : unit =              prim("sml_closedir", (getCtx(), d, failexn))
     fun errno_ () : OS.syserror =                        prim("sml_errno", ())
     fun errormsg_ (err : OS.syserror) : string =         prim("sml_errormsg", err)
     fun mkerrno_ (i : int) : OS.syserror =               prim("id", i)
-    fun islink_ (s : string) : bool =                    prim("sml_islink", (s, failexn))
-    fun isreg_ (s : string) : bool =                     prim("sml_isreg", (s, failexn))
-    fun readlink_ (s : string) : string =                prim("sml_readlink", (s, failexn))
-    fun realpath_ (s : string) : string =                prim("sml_realpath", (s, failexn))
-    fun devinode_ (s : string) : file_id =               prim("sml_devinode", (s, failexn))
+    fun islink_ (s : string) : bool =                    prim("sml_islink", (getCtx(), s, failexn))
+    fun isreg_ (s : string) : bool =                     prim("sml_isreg", (getCtx(), s, failexn))
+    fun readlink_ (s : string) : string =                prim("sml_readlink", (getCtx(), s, failexn))
+    fun realpath_ (s : string) : string =                prim("sml_realpath", (getCtx(), s, failexn))
+    fun devinode_ (s : string) : file_id =               prim("sml_devinode", (getCtx(), s, failexn))
     fun int_to_word_ (i : int) : word =                  prim("id", i)
 
     fun isNull (s : string) = prim("__is_null", s) : bool
-
 
     fun formatErr mlOp (SOME operand) reason =
 	mlOp ^ " failed on `" ^ operand ^ "': " ^ reason
@@ -202,7 +203,7 @@ structure FileSys : OS_FILE_SYS =
       | readDir (arg as ref (SOME dstr)) =
 	let val e = (SOME (readdir_ dstr)) handle Fail _ => NONE
 	in
-    Option.join(Option.map(fn entry => 
+    Option.join(Option.map(fn entry =>
 	    if entry <> Path.parentArc andalso entry <> Path.currentArc then
 		SOME entry
 	    else

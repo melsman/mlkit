@@ -102,7 +102,7 @@ struct
   (********************************)
 
     (* Global Labels *)
-    val exn_ptr_lab = NameLab "exn_ptr"
+(*    val exn_ptr_lab = NameLab "exn_ptr" *)
     val exn_counter_lab = NameLab "exnameCounter"
     val time_to_gc_lab = NameLab "time_to_gc"     (* Declared in GC.c *)
     val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)

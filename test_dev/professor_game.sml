@@ -90,7 +90,10 @@ fun size xs =
     in acc xs 0
     end
 
-fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+fun chr (i:int) : char =
+    if i>=0 andalso i<256 then prim ("id", i)
+    else raise Chr
+
 fun ord (c : char) : int = prim ("id", c)
 
 fun digit n = chr(ord #"0" + n)

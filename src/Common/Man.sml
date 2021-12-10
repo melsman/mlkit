@@ -4,25 +4,21 @@ structure Man :
 	val gen : {cmd:unit->string,
 		   date:string,
 		   extraOptions: (string * string list * string list)list,
-		   version:string} 
+		   version:string}
 	    -> string
-    end = 
+    end =
 struct
 
-  fun isSMLserver exe : bool =
-      String.isSubstring "smlserverc" exe
-      
   fun isSMLtoJs exe : bool =
       String.isSubstring "smltojs" exe
-      
+
   val homepage = "http://melsman.github.io/mlkit"
-  val homepage_smlserver = "http://www.smlserver.org"
   val homepage_smltojs = "http://www.smlserver.org/smltojs"
 
     fun concatWith2 (s1,s2) nil = ""
       | concatWith2 (s1,s2) [x] = x
       | concatWith2 (s1,s2) [x1,x2] = x1 ^ s2 ^ x2
-      | concatWith2 (s1,s2) l = 
+      | concatWith2 (s1,s2) l =
 	let fun loop [x,y] = x ^ s1 ^ s2 ^ y      (* ", " ^ " and " *)
 	      | loop (x::xs) = x ^ s1 ^ loop xs
               | loop _ = raise Fail "concatWith2.impossible"
@@ -33,12 +29,12 @@ struct
       | addBetween _ (x::[]) = [x]
       | addBetween s (x::y::zz) = x:: s :: (addBetween s (y :: zz))
 
-    fun printDefs () = 
+    fun printDefs () =
       let
-        val formatDefaults = 
+        val formatDefaults =
 	    List.mapPartial (fn ({default,long,short,...} : Flags.options)
                                 => Option.map (fn d => case List.getItem short
-                                                        of NONE => 
+                                                        of NONE =>
                                                            Option.valOf(Option.map (fn (l,_) => {name = "--" ^ l, value = d}) (List.getItem long))
                                                          | SOME (s,_) => {name = "-" ^ s, value = d} )
                                               default)
@@ -50,21 +46,21 @@ struct
 
     fun printOpts extra =
       let
-        fun pLong (l,short,kind) = let 
+        fun pLong (l,short,kind) = let
                                val kk = case kind of NONE => "" | SOME a => " " ^ a
-                             in 
+                             in
                                String.concat (addBetween ", " ((List.map (fn x => "--" ^ x ^ kk) l) @ (List.map (fn x => "-" ^ x ^ kk) short)))
                              end
         fun printOps ({long,short,desc,kind,...} : Flags.options) =
                String.concat [".IP \"\\fB", pLong (long,short,kind), "\\fR\" 4\n",".IX Item \"", pLong (long,short,kind), "\"\n",
-                              desc,"\n"] 
+                              desc,"\n"]
         fun genExtra (l,s,d) = {long = [l], short = s, desc = String.concat d, kind = NONE, default = NONE}
         val extra' = List.map genExtra extra
 
         fun cmp c ([],[]) = EQUAL
           | cmp c ([],_) = LESS
           | cmp c (_,[]) = GREATER
-          | cmp c (x::xs,y::ys) = case c (x,y) 
+          | cmp c (x::xs,y::ys) = case c (x,y)
                                   of EQUAL => cmp c (xs,ys)
                                    | GREATER => GREATER
                                    | LESS => LESS
@@ -73,7 +69,7 @@ struct
         String.concat (List.map printOps (sort (Flags.getOptions () @ extra')))
       end
 
-    structure Devel = 
+    structure Devel =
       struct
 
         val developers = ["Lars Birkedal", "Martin Elsman",
@@ -82,68 +78,58 @@ struct
 
         val contributers = ["Peter Bertelsen",
 			    "Vesa Karvonen",
-			    "Ken Friis Larsen", 
+			    "Ken Friis Larsen",
 			    "Henning Niss",
 			    "Peter Sestoft"]
 
-        val smlserver_developers = ["Martin Elsman",
-				    "Niels Hallenberg",
-				    "Carsten Varming"]
-		     
         val smltojs_developers = ["Martin Elsman"]
 
       end
 
     fun mkStr s = "\"" ^ s ^ "\""
-            
-    fun files exe = 
+
+    fun files exe =
 	[("/etc/" ^ exe ^ "/mlb-path-map", "System-wide configuration of library and runtime system locations"),
 	 ("~/." ^ exe ^ "/mlb-path-map", "User specific configuration of library and runtime system locations")]
 
-    fun header exe date version = 
-	let val title = 
-		if isSMLserver exe then
-		    mkStr "Standard ML compiler for SMLserver"
-                else if isSMLtoJs exe then
+    fun header exe date version =
+	let val title =
+                if isSMLtoJs exe then
                   mkStr "SMLtoJs - a Standard ML to JavaScript compiler"
 		else mkStr "MLKit - a compiler for Standard ML"
 	in
-	    String.concat [".TH ", exe, " 1 \"", date, "\" \"version ", 
+	    String.concat [".TH ", exe, " 1 \"", date, "\" \"version ",
 			   version, "\" ",title,"\n"]
 	end
-    
-    fun name exe = 
-	let val text = 
-		if isSMLserver exe then
-		  "Standard ML compiler for SMLserver"
-                else if isSMLtoJs exe then
+
+    fun name exe =
+	let val text =
+		if isSMLtoJs exe then
                   "Standard ML to JavaScript compiler"
 		else "A fullblown Standard ML compiler"
-	in 
+	in
 	    ".SH NAME\n" ^ exe ^ " \\- " ^ text ^ " \n"
 	end
 
-    fun defaults() = 
-	String.concat [".SH DEFAULTS\n", 
+    fun defaults () =
+	String.concat [".SH DEFAULTS\n",
 		       printDefs(),
 		       ".\n"]
 
-    fun synopsis exe = 
+    fun synopsis exe =
 	String.concat [".SH SYNOPSIS\n",
 		       exe, " [OPTION]... [file.sml | file.sig | file.mlb]\n\n",
 		       "All possible options are listed below.\n"]
 
-    fun description exe = 
-	let val (name, result, homepage) = 
-		if isSMLserver exe then 
-                  ("SMLserver", "loadable bytecode files ", homepage_smlserver)
-                else if isSMLtoJs exe then
-                  ("SMLtoJs", "an HTML-file, containing references to generated JavaScript files, ", homepage_smltojs)                  
+    fun description exe =
+	let val (name, result, homepage) =
+		if isSMLtoJs exe then
+                  ("SMLtoJs", "an HTML-file, containing references to generated JavaScript files, ", homepage_smltojs)
 		else
                   ("MLKit", "an executable file\n.B run\n", homepage)
 	in
 	    String.concat[".SH DESCRIPTION\n",
-			  "When invoked, \n.B ", exe, "\nwill compile the specified sources into ", result, 
+			  "When invoked, \n.B ", exe, "\nwill compile the specified sources into ", result,
 			  "through a series of translation phases. Various options (see below) can be used to control the ",
 			  "printing of intermediate forms and to control to which degree various optimizations are performed. If source files ",
 			  "are organised in ML Basis Files (files with extension .mlb), the compiler will memoize symbol table ",
@@ -153,47 +139,43 @@ struct
 			  ".B ", homepage, "\n"]
 	end
 
-    fun options extraOptions = 
+    fun options extraOptions =
 	String.concat [".SH OPTIONS\n", printOpts extraOptions]
-          
-    val exit = 
+
+    val exit =
 	String.concat [".SH EXIT STATUS\nExits with status 0 on success and -1 on failure.\n"]
 
-    fun environment exe = 
+    fun environment exe =
 	String.concat [".SH ENVIRONMENT\n",
 		       "A library install directory must be provided ",
 		       "in an environment variable SML_LIB or as a path-definition ",
 		       "in either the system wide path-map /etc/" ^ exe ^ "/mlb-path-map ",
 		       "or in the user's personal path-map ~/." ^ exe ^ "/mlb-path-map.\n"]
 
-    val files = fn exe => 
+    val files = fn exe =>
         String.concat [".SH FILES\n",
 		       String.concat (List.map (fn (f,e) => ".IP " ^ f ^ "\n" ^ e ^ "\n" ) (files exe))]
 (*
     val diag = String.concat [".SH DIAGNOSTICS\n",
                               "The following diagnostics may be issued on stderr:\n"]
 *)
-    fun examples exe = 
+    fun examples exe =
         if isSMLtoJs exe then
           String.concat [".SH EXAMPLES\n",
                          "For examples, consult the SMLtoJs home page.\n"]
         else
 	  let val (name, title) =
-		  if isSMLserver exe then
-		    ("SMLserver", "book \"SMLserver, A Functional Approach to Web Publishing\"")
-		  else ("MLKit", "MLKit manual \"Programming with Regions in the MLKit\"")
+		  ("MLKit", "MLKit manual \"Programming with Regions in the MLKit\"")
 	  in
 	    String.concat [".SH EXAMPLES\n",
 			   "For examples, consult the ", title,
 			   ", which is available from the ", name, " home page.\n"]
 	  end
-			   
 
-    fun standard exe = 
-	let 
+    fun standard exe =
+	let
           val based_on_mlkit_maybe =
-	      if isSMLserver exe then "SMLserver is based on the MLKit. "
-              else if isSMLtoJs exe then
+	      if isSMLtoJs exe then
                 "SMLtoJs is based on the MLKit. "
 	      else ""
           val maybe_all_basis =
@@ -208,40 +190,27 @@ struct
 	end
 
     fun credits exe =
-	let val smlserver_maybe =
-		if isSMLserver exe then 
-		    ("SMLserver was developed by " ^ concatWith2 (", ", " and ") Devel.smlserver_developers ^ ". ")
-		else ""
-          val c =
+	let val c =
               if isSMLtoJs exe then
                 ["SMLtoJs was developed by " ^ concatWith2 (", ", " and ") Devel.smltojs_developers ^ ". ",
                  "Many people have helped developing the MLKit on which SMLtoJs is built; see the MLKit home page for details."]
               else
-                [smlserver_maybe,
-	         "The MLKit (version 2 and beyond) was developed by ",
+                ["The MLKit (version 2 and beyond) was developed by ",
 	         concatWith2 (", "," and ") Devel.developers,
 	         ". People who have contributed with bug-fixes and improvements include ",
 	         concatWith2 (", ", " and ") Devel.contributers,
 	         ". Nick Rothwell and David N. Turner took part in the development of the MLKit version 1.\n"]
-	in 
+	in
 	    String.concat ([".SH CREDITS\n"] @ c)
 	end
 
-    fun seealso exe = 
-	let val smlserver_maybe =
-		if isSMLserver exe orelse isSMLtoJs exe then 
-		    ("See the book \"SMLserver, A Functional Approach to Web Publishing\", available from the " ^
-		     "SMLserver home page, for an introduction to programming efficient Web applications with SMLserver. " ^
-		     "For installation instructions, see the file README_SMLSERVER in the distribution. ")
-		else ""
-	in
-	    String.concat [".SH SEE ALSO\n", smlserver_maybe,
+    fun seealso exe =
+        String.concat [".SH SEE ALSO\n",
 			   "See the MLKit manual \"Programming with Regions in the MLKit\", available from the ",
 			   "MLKit home page\n\n",
 			   ".B ", homepage, "\n\nfor an in-depth introduction to programming with regions in the MLKit.\n\n",
 			   "The home page also provides an overview of which parts of ",
 			   "the Standard ML Basis Library the MLKit implements, along with download and installation instructions."]
-	end
 
     fun gen {cmd:unit->string,date:string,
 	     extraOptions : (string * string list * string list) list,
