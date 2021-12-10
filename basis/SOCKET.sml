@@ -291,8 +291,10 @@ local
     type 'm stream_sock = 'm Socket.stream sock
     type sock_addr = inet Socket.sock_addr
     val inetAF = Socket.AF_INET
+    
     fun toAddr (ia:int, port:int) =
         Socket.Inet_sa {addr=ia,port=port}
+    
     fun any (p:int) : sock_addr =
         toAddr (Socket.INADDR_ANY,p)
 

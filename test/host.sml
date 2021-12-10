@@ -37,6 +37,7 @@ val () =
                 val () = print "Addresses:\n"
                 val () = List.app (fn a => print (NetHostDB.toString a ^ "\n"))
                                   (NetHostDB.addrs e)
+
             in ()
             end
           | NONE => print "ERR: no host data\n"
