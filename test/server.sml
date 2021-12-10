@@ -1,11 +1,18 @@
 
 fun sendHello sock =
-    let
+    let val bind_addr = Socket.Ctl.getSockName sock
+        val bind_pair = INetSock.fromAddr bind_addr
+        val peer_addr = Socket.Ctl.getPeerName sock
+        val peer_pair = INetSock.fromAddr peer_addr
+        fun pr (inaddr,port) = NetHostDB.toString inaddr ^ ":" ^ Int.toString port
         val t = Time.now()
         val date = Date.fromTimeLocal t
         val date_str = Date.toString date
-        val msg = "Hello world! " ^
-                  "The date is " ^ date_str ^ "..."
+        val msg = "Hello world! \n" ^
+                  "The date is " ^ date_str ^ "... \n" ^
+                  "Bound address is " ^ pr bind_pair ^ "... \n" ^
+                  "Peer address is " ^ pr peer_pair ^ "... "
+
         val res = "HTTP/1.1 200 OK\r\nContent-Length: " ^ Int.toString (size msg) ^
                   "\r\n\r\n" ^ msg ^ "\r\n\r\n"
         val slc = Word8VectorSlice.full (Byte.stringToBytes res)

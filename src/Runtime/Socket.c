@@ -139,6 +139,123 @@ REG_POLY_FUN_HDR(sml_sock_accept_unix,
   return vPair;
 }
 
+uintptr_t
+sml_getsockname_inet(uintptr_t vPair,
+		     size_t sock)
+{
+  // return type is "addr * port"
+  // vPair points to allocated return pair
+
+  sml_debug("[sml_getsockname_inet");
+
+  struct sockaddr_in addr;
+  socklen_t len = sizeof(addr);
+
+  // initialise allocated memory
+  mkTagPairML(vPair);
+  first(vPair) = convertIntToML(0);              // initialise
+  second(vPair) = convertIntToML(0);
+  int ret = getsockname(convertIntToC(sock),
+			(struct sockaddr *) &addr,
+			&len);
+
+  if (ret < 0 || len > sizeof(addr)) {
+    sml_debug("]*\n");
+    second(vPair) = convertIntToML(-1);
+    return vPair;
+  }
+  first(vPair) = convertIntToML(ntohl(addr.sin_addr.s_addr));
+  second(vPair) = convertIntToML(ntohs(addr.sin_port));
+  sml_debug("]\n");
+  return vPair;
+}
+
+String
+REG_POLY_FUN_HDR(sml_getsockname_unix,
+		 Region rString,
+		 size_t sock)
+{
+  // rString points to a string region
+
+  sml_debug("[sml_getsockname_unix");
+
+  struct sockaddr_un addr;
+  socklen_t len = sizeof(addr);
+
+  // initialise allocated memory
+  memset(&addr, '\0', sizeof(addr)); // zero structure out
+  int ret = getsockname(convertIntToC(sock),
+			(struct sockaddr *) &addr,
+			&len);
+
+  if (ret < 0 || len > sizeof(addr)) {
+    sml_debug("]*\n");
+    return NULL;
+  }
+  String s = REG_POLY_CALL(convertStringToML, rString, addr.sun_path);
+  sml_debug("]\n");
+  return s;
+}
+
+uintptr_t
+sml_getpeername_inet(uintptr_t vPair,
+		     size_t sock)
+{
+  // return type is "addr * port"
+  // vPair points to allocated return pair
+
+  sml_debug("[sml_getpeername_inet");
+
+  struct sockaddr_in addr;
+  socklen_t len = sizeof(addr);
+
+  // initialise allocated memory
+  mkTagPairML(vPair);
+  first(vPair) = convertIntToML(0);              // initialise
+  second(vPair) = convertIntToML(0);
+  int ret = getpeername(convertIntToC(sock),
+			(struct sockaddr *) &addr,
+			&len);
+
+  if (ret < 0 || len > sizeof(addr)) {
+    sml_debug("]*\n");
+    second(vPair) = convertIntToML(-1);
+    return vPair;
+  }
+  first(vPair) = convertIntToML(ntohl(addr.sin_addr.s_addr));
+  second(vPair) = convertIntToML(ntohs(addr.sin_port));
+  sml_debug("]\n");
+  return vPair;
+}
+
+String
+REG_POLY_FUN_HDR(sml_getpeername_unix,
+		 Region rString,
+		 size_t sock)
+{
+  // rString points to a string region
+
+  sml_debug("[sml_getpeername_unix");
+
+  struct sockaddr_un addr;
+  socklen_t len = sizeof(addr);
+
+  // initialise allocated memory
+  memset(&addr, '\0', sizeof(addr)); // zero structure out
+  int ret = getpeername(convertIntToC(sock),
+			(struct sockaddr *) &addr,
+			&len);
+
+  if (ret < 0 || len > sizeof(addr)) {
+    sml_debug("]*\n");
+    return NULL;
+  }
+  String s = REG_POLY_CALL(convertStringToML, rString, addr.sun_path);
+  sml_debug("]\n");
+  return s;
+}
+
+
 // returns -1 on error
 size_t
 sml_sock_listen(size_t sock, size_t i)

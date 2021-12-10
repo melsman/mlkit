@@ -47,9 +47,10 @@ signature SOCKET = sig
     val setRCVBUF    : ('af, 'st) sock * int -> unit
     val getTYPE      : ('af, 'st) sock -> SOCK.sock_type
     val getERROR     : ('af, 'st) sock -> bool
-(*
+
     val getPeerName  : ('af, 'st) sock -> 'af sock_addr
     val getSockName  : ('af, 'st) sock -> 'af sock_addr
+(*
     val getNREAD     : ('af, 'st) sock -> int
     val getATMARK    : ('af, active stream) sock -> bool
 *)

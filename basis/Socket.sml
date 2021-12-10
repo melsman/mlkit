@@ -2,6 +2,8 @@ local
 
   fun not_impl s = raise Fail ("not implemented: " ^ s)
 
+  fun isNull s = prim("__is_null",s : string) : bool
+
   fun getCtx () : foreignptr = prim("__get_ctx",())
 
   (* error utilities *)
@@ -178,6 +180,33 @@ local
     val getNREAD     : ('af, 'st) sock -> int
     val getATMARK    : ('af, active stream) sock -> bool
 *)
+
+      fun getPeerName (s:('af, 'st) sock) : 'af sock_addr =
+          case #af s of
+              Inet_af =>
+              let val (addr,port) = prim("sml_getpeername_inet", #fd s)
+              in maybe_failure "Socket.Ctl.getPeerName" port
+               ; Inet_sa {addr=addr,port=port}
+              end
+            | Unix_af =>
+              let val name = prim("sml_getpeername_unix", #fd s)
+              in if isNull name then failure "Socket.Ctl.getPeerName"
+                 else Unix_sa {name=name}
+              end
+
+      fun getSockName (s:('af, 'st) sock) : 'af sock_addr =
+          case #af s of
+              Inet_af =>
+              let val (addr,port) = prim("sml_getsockname_inet", #fd s)
+              in maybe_failure "Socket.Ctl.getSockName" port
+               ; Inet_sa {addr=addr,port=port}
+              end
+            | Unix_af =>
+              let val name = prim("sml_getsockname_unix", #fd s)
+              in if isNull name then failure "Socket.Ctl.getSockName"
+                 else Unix_sa {name=name}
+              end
+
     end
 
     type sock_desc = int
