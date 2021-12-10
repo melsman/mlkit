@@ -1,5 +1,4 @@
 local
   $(SML_LIB)/basis/basis.mlb
-  $(SML_LIB)/basis/socket.mlb
 in host.sml
 end
