@@ -3,9 +3,8 @@ local
   $(SML_LIB)/basis/basis.mlb
 in
   NET_HOST_DB.sig
-  NetHostDb.sml
+  NetHostDB.sml
   SOCKET.sig
   Socket.sml
   INET_SOCK.sig
-
 end

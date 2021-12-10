@@ -10,12 +10,12 @@ signature INET_SOCK = sig
   type 'st sock = (inet,'st) Socket.sock
   type 'm stream_sock = 'm Socket.stream sock
   type sock_addr = inet Socket.sock_addr
+
   val inetAF : Socket.AF.addr_family
-(*
   val toAddr : NetHostDB.in_addr * int -> sock_addr
   val fromAddr : sock_addr -> NetHostDB.in_addr * int
-*)
   val any : int -> sock_addr
+
   structure TCP : sig
     val socket : unit -> 'm stream_sock
 (*

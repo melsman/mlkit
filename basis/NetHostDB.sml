@@ -1,4 +1,4 @@
-structure NetHostDb :> NET_HOST_DB = struct
+structure NetHostDB : NET_HOST_DB = struct
 
 fun not_impl s = raise Fail ("not implemented: " ^ s)
 

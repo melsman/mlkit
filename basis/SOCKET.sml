@@ -291,8 +291,14 @@ local
     type 'm stream_sock = 'm Socket.stream sock
     type sock_addr = inet Socket.sock_addr
     val inetAF = Socket.AF_INET
+    fun toAddr (ia:int, port:int) =
+        Socket.Inet_sa {addr=ia,port=port}
     fun any (p:int) : sock_addr =
-        Socket.Inet_sa {addr=Socket.INADDR_ANY,port=p}
+        toAddr (Socket.INADDR_ANY,p)
+
+    fun fromAddr (Socket.Inet_sa{addr,port}) = (addr,port)
+      | fromAddr _ = raise Fail "INetSock.fromAddr: impossible"
+
     structure TCP = struct
     fun socket () : 'm stream_sock =
         let val res = prim("sml_sock_socket", (Socket.AF_INET,Socket.SOCK_STREAM))
@@ -311,8 +317,12 @@ local
                           type 'st sock = (inet,'st) Socket.sock
                           type 'm stream_sock = 'm Socket.stream sock
                           type sock_addr = inet Socket.sock_addr
+
                           val inetAF : Socket.AF.addr_family
+                          val toAddr : NetHostDB.in_addr * int -> sock_addr
+                          val fromAddr : sock_addr -> NetHostDB.in_addr * int
                           val any : int -> sock_addr
+
                           structure TCP :
                                     sig
                                       val socket : unit -> 'm stream_sock
