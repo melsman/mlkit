@@ -81,9 +81,7 @@ jobs:
         run: |
           make -C test_dev test
           make -C test test_mlkit
-          cat test/atExit0.sml.out
           make -C test test_mlkit_no_gc
-          cat test/atExit0.sml.out
           make -C test/explicit_regions all
           make -C test/parallelism all
 
