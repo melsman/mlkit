@@ -1276,8 +1276,8 @@ struct
                            clos_lab,
                            arg=(aty,ft1,ft2)} =>
                   let val clos_lab = DatLab clos_lab
-                      (*val clos_lab = NameLab (name ^ "_clos")*)
                       val return_lab = new_local_lab ("return_" ^ name)
+                      val ctx_lab = NameLab ("ctx_" ^ name)
                       val offset_codeptr = if BI.tag_values() then "8" else "0"
                       val lab = NameLab name   (* lab is the C function to call after the hook has been setup *)
                       val stringlab = gen_string_lab name
@@ -1289,6 +1289,9 @@ struct
                       val _ = add_static_data
                           ([I.dot_data,
                             I.dot_align 8,
+                            I.dot_globl ctx_lab,  (* Slot for storing ctx *)
+                            I.lab ctx_lab,
+                            I.dot_quad (i2s BI.ml_unit),
                             I.dot_globl clos_lab,
                             I.lab clos_lab,  (* Slot for storing a pointer to the ML closure; the
                                               * ML closure object may move due to GCs. *)
@@ -1297,16 +1300,14 @@ struct
                             I.dot_globl lab, (* The C function entry *)
                             I.lab lab]
                          @ (map (fn r => I.push (R r)) callee_save_regs_ccall) (* 5 regs *)
-                         @ [I.subq(I "8", R rsp),                 (* push dummy (align stack) *)
+                         @ [I.movq (L ctx_lab, R r14),            (* load ctx into ctx register *)
                             I.movq (L clos_lab, R rax),           (* load closure into ML arg 1 *)
                             I.movq (R rdi, R rbx),                (* move C arg into ML arg 2 *)
                             I.movq(D(offset_codeptr,rax), R r10), (* extract code pointer into %r10 *)
-                            I.push (I "1"),                       (* push dummy (alignment) *)
                             I.push (LA return_lab),               (* push return address *)
                             I.jmp (R r10),                        (* call ML function *)
                             I.lab return_lab,
-                            I.movq(R rdi, R rax),                 (* move result to %rax *)
-                            I.addq(I "16", R rsp)]                 (* pop dummy x2 (align stack) *)
+                            I.movq(R rdi, R rax)]                 (* move result to %rax *)
                          @ (map (fn r => I.pop (R r)) (List.rev callee_save_regs_ccall))
                          @ [I.ret])
 
@@ -1319,6 +1320,7 @@ struct
 
                   in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
                      store_in_label(aty,clos_lab,tmp_reg1,size_ff,
+                     I.movq (R r14, L ctx_lab) ::
                      I.movq (LA lab, R tmp_reg0) ::
                      I.movq (LA stringlab, R tmp_reg1) ::
                      I.push (I "1") ::
@@ -1621,7 +1623,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
         val initial_exnname_counter = List.length primitive_exceptions
 
         fun init_primitive_exception_constructors_code C =
-          foldl (fn (t,C) => setup_primitive_exception(t,C)) C primitive_exceptions
+            foldl setup_primitive_exception C primitive_exceptions
 
         val static_data =
           slots_for_datlabs(global_region_labs,
@@ -1629,11 +1631,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                             I.dot_globl exn_counter_lab ::
                             I.lab exn_counter_lab :: (* The Global Exception Counter *)
                             I.dot_quad (i2s initial_exnname_counter) ::
-(*
-                            I.dot_globl exn_ptr_lab ::
-                            I.lab exn_ptr_lab :: (* The Global Exception Pointer *)
-                            I.dot_quad "0" ::
-*)
                             nil)
         val _  = add_static_data static_data
 
@@ -1812,9 +1809,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                 else
                     if region_profiling() then "allocRegionInfiniteProfiling"
                     else "allocateRegion"
-            fun maybe_align16 i =
-                if i mod 16 = 0 then i + 8
-                else i + (16 - i mod 16) + 8
           in
             foldl (fn ((rho,lab),C) =>
                    let val region_id = Effect.key_of_eps_or_rho rho
@@ -1827,12 +1821,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
                        (* The stack is thus ensured to be 16-byte aligned after the
                         * return address is pushed on the stack by the call instruction.
                         *)
-(*
-                       val sz_regdesc_bytes = 8*BI.size_of_reg_desc()
-                       val sz_regdesc_bytes = maybe_align16 sz_regdesc_bytes
-*)
                    in
-                       I.subq(I(i2s sz_regdesc_bytes), R rsp) ::  (* MAEL: maybe align *)
+                       I.subq(I(i2s sz_regdesc_bytes), R rsp) ::
                        I.movq(R r14, R rdi) ::
                        I.movq(R rsp, R rsi) ::
                        maybe_pass_region_id (region_id,
@@ -1857,11 +1847,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
             I.movq(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("0", rsp)) ::
             gen_clos (
-(*            I.movq(L exn_ptr_lab, R tmp_reg1) :: *)
             I.movq(D(ctx_exnptr_offs,r14), R tmp_reg1) ::
             I.movq(R tmp_reg1, D("16", rsp)) ::
             I.movq(R rsp, D("24", rsp)) ::
-(*            I.movq(R rsp, L exn_ptr_lab) :: *)
             I.movq(R rsp, D(ctx_exnptr_offs,r14)) ::
             I.subq(I "8", R rsp) ::                       (* align *)
             C))
@@ -1922,7 +1910,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
             (* Exit instructions *)
             (*I.push(I "1") ::*) (* ensure stack is 16-byte aligned after return address is pushed on the
-                              * stack by the I.call instruction. *)
+                                  * stack by the I.call instruction. *)
             compile_c_call_prim("terminateML", [mkIntAty 0],
                                 NONE,0,rax, (* instead of res we return the result from
                                              * the last function call *)
