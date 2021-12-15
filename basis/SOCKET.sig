@@ -65,9 +65,10 @@ signature SOCKET = sig
                 -> ('af, active stream) sock * 'af sock_addr
 (*
   val acceptNB : ('af, passive stream) sock
-                   -> (('af, active stream) sock
-                       * 'af sock_addr) option
+                -> (('af, active stream) sock * 'af sock_addr) option
+*)
   val connect : ('af, 'st) sock * 'af sock_addr -> unit
+(*
   val connectNB : ('af, 'st) sock * 'af sock_addr -> bool
 *)
 

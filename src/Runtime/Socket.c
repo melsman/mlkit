@@ -336,6 +336,41 @@ sml_sock_bind_unix(size_t sock, String name)
   return convertIntToML(ret);
 }
 
+// connect: returns -1 on error
+size_t
+sml_sock_connect_inet(size_t sock, size_t addr, size_t port)
+{
+  sml_debug("[sml_sock_connect_inet");
+  struct sockaddr_in saddr;
+  int size = sizeof(struct sockaddr_in);
+  memset(&saddr, '\0', size);
+  saddr.sin_family = AF_INET;
+  saddr.sin_addr.s_addr = htonl(convertIntToC(addr));
+  saddr.sin_port = htons(convertIntToC(port));
+
+  int ret = connect(convertIntToC(sock),
+		    (struct sockaddr *) &saddr,
+		    size);
+  sml_debug("]\n");
+  return convertIntToML(ret);
+}
+
+// connect: returns -1 on error
+size_t
+sml_sock_connect_unix(size_t sock, String name)
+{
+  sml_debug("[sml_sock_connect_unix");
+  struct sockaddr_un saddr;
+  int size = sizeStringDefine(name) + 1;             // 0-terminated string
+  saddr.sun_family = AF_UNIX;
+  bcopy(&(name->data), saddr.sun_path, size);
+  int ret = connect(convertIntToC(sock),
+		    (struct sockaddr *) &saddr,
+		    size);
+  sml_debug("]\n");
+  return convertIntToML(ret);
+}
+
 // setsockopt: returns -1 on error
 size_t
 sml_sock_setsockopt(size_t sock, size_t v, size_t b)

@@ -175,8 +175,6 @@ local
       fun getTYPE s : SOCK.sock_type = getSockOptInt SO_TYPE "Socket.Ctl.getTYPE" s
 
 (*
-    val getPeerName  : ('af, 'st) sock -> 'af sock_addr
-    val getSockName  : ('af, 'st) sock -> 'af sock_addr
     val getNREAD     : ('af, 'st) sock -> int
     val getATMARK    : ('af, active stream) sock -> bool
 *)
@@ -291,7 +289,7 @@ local
             let val ret : int = prim("sml_sock_bind_unix", (fd,name))
             in maybe_failure "bind" ret
             end
-          | _ => raise Fail "Socket.impossible"
+          | _ => raise Fail "Socket.bind: impossible"
 
     fun listen ({fd,...} : ('af, passive stream) sock, i: int) : unit =
         let val ret : int = prim("sml_sock_listen", (fd,i))
@@ -311,6 +309,18 @@ local
                                   handle Overflow => failure "accept"
             in ({fd=fd',af=af}, Unix_sa{name=name})
             end
+
+    fun connect ({fd,af} : ('af, 'st) sock, a: 'af sock_addr) : unit =
+        case (af, a) of
+            (Inet_af, Inet_sa {addr,port}) =>
+            let val ret : int = prim("sml_sock_connect_inet", (fd,addr,port))
+            in maybe_failure "connect" ret
+            end
+          | (Unix_af, Unix_sa {name}) =>
+            let val ret : int = prim("sml_sock_connect_unix", (fd,name))
+            in maybe_failure "conect" ret
+            end
+          | _ => raise Fail "Socket.connect: impossible"
 
   end
 
