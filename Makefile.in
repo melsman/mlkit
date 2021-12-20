@@ -453,6 +453,6 @@ mlkit_bin_dist:
 	echo 'install:' >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	printf "\t"'for d in $$$$(find * -type d); do install -d "$$(PREFIX)/$$$$d"; done\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
-	printf "\t"'for f in $$$$(find * -type f | grep -v Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done\n' \
+	printf "\t"'for f in $$$$(find * -type f | grep -v ^Makefile); do install -p "$$$$f" "$$(PREFIX)/$$$$f"; done\n' \
                 >> $(CWD)/dist/$(BIN_DIST)/Makefile
 	(cd dist && tar czf $(BIN_DIST).tgz $(BIN_DIST))
