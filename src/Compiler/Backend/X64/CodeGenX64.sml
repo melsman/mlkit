@@ -1350,6 +1350,7 @@ struct
        if region_profiling() then
          let val labStack = new_local_lab "profStack"
            val labCont = new_local_lab "profCont"
+           val labCont1 = new_local_lab "profCont1-"
            val labCont2 = new_local_lab "profCont2-"
            val maxStackLab = NameLab "maxStack"
            val timeToProfLab = NameLab "timeToProfile"
@@ -1362,12 +1363,28 @@ struct
            I.addq(L (NameLab "allocProfNowFin"), R tmp_reg0) ::               (*     + regionDescUseProfFin   *)
            I.movq(R tmp_reg0, L (NameLab "maxProfStack")) ::                  (*     + allocProfNowFin ;      *)
            I.lab labCont ::                                                   (* }                            *)
+                                                                              (* reg0 = stackBot - rsp + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin); *)
+                                                                              (* if ( reg0 > maxMem ) maxMem = reg0; *)
+           I.movq(L (NameLab "allocNowInf"), R tmp_reg0) ::
+           I.subq(L (NameLab "regionDescUseProfInf"), R tmp_reg0) ::
+           I.subq(L (NameLab "regionDescUseProfFin"), R tmp_reg0) ::
+           I.subq(L (NameLab "allocProfNowFin"), R tmp_reg0) ::
+           I.imulq(I "8", R tmp_reg0) ::
+           I.addq(L (NameLab "stackBot"), R tmp_reg0) ::
+           I.subq(R rsp, R tmp_reg0) ::
+           I.movq(L (NameLab "maxMem"), R tmp_reg1) ::
+           I.cmpq(R tmp_reg1, R tmp_reg0) ::
+           I.jl labCont1 ::
+           I.movq(R tmp_reg0, L (NameLab "maxMem")) ::
+
+           I.lab labCont1 ::
            I.movq(L timeToProfLab, R tmp_reg0) ::                             (* if ( timeToProfile )         *)
            I.cmpq(I "0", R tmp_reg0) ::                                       (*    call __proftick(rsp);     *)
            I.je labCont2 ::
            I.movq (R rsp, R tmp_reg1) ::              (* proftick assumes argument in tmp_reg1 *)
            I.push (LA labCont2) ::                    (* push return address *)
            I.jmp (L(NameLab "__proftick")) ::
+
            I.lab labCont2 ::
            C
          end

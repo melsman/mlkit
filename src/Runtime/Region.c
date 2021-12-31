@@ -135,6 +135,9 @@ long rp_used = 0;
 long rp_total = 0;
 
 #ifdef PROFILING
+
+extern long* stackBot;
+
 FiniteRegionDesc * topFiniteRegion = NULL;
 
 unsigned long callsOfDeallocateRegionInf=0,
@@ -158,7 +161,7 @@ unsigned long callsOfDeallocateRegionInf=0,
              maxAllocProfFin=0,         /* At time maxAllocFin how much were used on object descriptors. */
              maxAlloc=0,                /* Max. allocated data in both inf. and fin. regions. */
                                         /* Are not nessesarily equal to maxAllocInf+maxAllocFin!!! */
-
+             maxMem=0,                  /* Max. allocated data on stack and in regions (finite and infinite) */
              regionDescUseInf=0,        /* Words used on non profiling information in inf. region descriptors. */
 	     maxRegionDescUseInf=0,     /* Max. words used on non profiling information in inf. region descriptors. */
              regionDescUseProfInf=0,    /* Words used on profiling information in inf. region descriptors. */
@@ -783,6 +786,14 @@ allocGen (Gen *gen, size_t n
   allocProfNowInf += sizeObjectDesc;
   if (maxAllocInf == allocNowInf) maxAllocProfInf = allocProfNowInf;
   r->allocProfNow += sizeObjectDesc;
+
+  //  register long *stackTop asm ("rsp");
+  long stackTop;
+  __asm__ volatile ("movq %%rsp, %0"
+		    : "=r" (stackTop)
+		    );
+
+  maxMem = max(maxMem, ((long)stackBot) - ((long)stackTop) + 8*(allocNowInf-regionDescUseProfInf-regionDescUseProfFin-allocProfNowFin));
 #endif /* PROFILING */
 
   // see if the size of requested memory exceeds

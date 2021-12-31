@@ -106,6 +106,13 @@ REG_POLY_FUN_HDR(allocStringML, Region rAddr, size_t sizeML)
 {
   size_t sizeC = convertIntToC(sizeML);
   String strPtr;
+
+  // maybe reset region
+  if ( is_inf_and_atbot(rAddr) )
+    {
+      resetRegion(rAddr);
+    }
+
   strPtr = REG_POLY_CALL(allocString, rAddr, sizeC);
   return strPtr;
 }
@@ -124,6 +131,9 @@ REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2)
   String res;
   char *s, *p;
   size_t i, sz;
+
+  // resetting not possible due to possible aliasing
+
   debug(printf("[enter concatStringML (rAddr=%p,str1=%p,str2=%p)]\n", rAddr,str1,str2);)
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
   res = REG_POLY_CALL(allocString, rAddr, sz);

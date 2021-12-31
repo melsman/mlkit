@@ -351,6 +351,10 @@ REG_POLY_FUN_HDR(sml_readVec,uintptr_t pair, Region sr, int fd, int n1)
   String s;
   mkTagPairML(pair);
   n = convertIntToC(n1);
+  if ( is_inf_and_atbot(sr) )
+    {
+      resetRegion(sr);
+    }
   s = REG_POLY_CALL(allocStringC, sr, n+1);
   ((char *)&(s->data))[n] = 0;
   r = read(convertIntToC(fd), &(s->data), n);
