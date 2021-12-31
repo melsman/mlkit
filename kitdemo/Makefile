@@ -38,7 +38,7 @@ mylibtest-t: libmylib-t.a
 	$(MLKIT) -gc -o mylibtest-t -libdirs "." -libs "m,c,dl,mylib-t" mylib.mlb
 
 clean:
-	rm -rf *~ *.o $(TARGETS) *.rp *.ps MLB run mylibtest mylibtest-p mylibtest-pt mylibtest-t *.pdf *.exe
+	rm -rf *~ *.o $(TARGETS) *.rp *.ps MLB run mylibtest mylibtest-p mylibtest-pt mylibtest-t *.pdf *.exe *.log *.out *.vcg
 	(cd utils; rm -rf *~ MLB)
 
 .PHONY: pdfs
