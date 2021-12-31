@@ -6,7 +6,7 @@ group: navigation
 ---
 {% include JB/setup %}
 
-### MLKit User's Guide 
+### MLKit User's Guide
 
 <img width="160" alt="Old logo" align="right" src="{{BASE_PATH}}/images/books.gif">
 
@@ -23,8 +23,7 @@ A guide for programming with regions in the MLKit is available:
 
 * Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
 Højfeld Olesen, and Peter Sestoft. __Programming with Regions in the
-MLKit (revised for Version 4.3.0)__. Technical Report. IT University of
-Copenhagen. Januar 2006. [pdf]({{BASE_PATH}}/pdf/mlkit-4.3.0.pdf), [bibtex]({{BASE_PATH}}/pdf/mlkit-4.3.0-bibtex.txt).
+MLKit (revised for Version 4.6.0)__. Department of Computer Science, University of Copenhagen. December 2021. [pdf](/pdf/mlkit-4.6.0.pdf), [bibtex](/pdf/mlkit-4.6.0-bibtex.txt).
 
 ### Other Resources
 

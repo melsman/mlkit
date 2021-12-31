@@ -6,6 +6,8 @@ group: navigation
 ---
 {% include JB/setup %}
 
+* Martin Elsman and Niels Hallenberg. __Integrating region memory management and tag-free generational garbage collection__. In _Journal of Functional Programming (JFP)_. Volume 31, E4. [DOI](http://dx.doi.org/10.1017/S0956796821000010). Cambridge University Press. February 2021.
+
 * Martin Elsman and Niels Hallenberg. __On the Effects of Integrating Region-based Memory Management and Generational Garbage Collection in ML__. In
 _International Symposium on Practical Aspects of Declarative Languages
 (PADL '20)_. New Orleans, USA. January, 2020.
@@ -97,6 +99,10 @@ Thesis. Technical University of Denmark. August 1994. [pdf]({{BASE_PATH}}/pdf/ma
 Copenhagen. 1994. [pdf]({{BASE_PATH}}/pdf/magnus.pdf).
 
 ### Technical Reports and Student Projects
+
+* Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy
+Højfeld Olesen, and Peter Sestoft. __Programming with Regions in the
+MLKit (revised for Version 4.6.0)__. Department of Computer Science, University of Copenhagen. December 2021. [pdf](/pdf/mlkit-4.6.0.pdf), [bibtex](/pdf/mlkit-4.6.0-bibtex.txt).
 
 * Martin Elsman and Niels Hallenberg. __Combining Region Inference and Generational Garbage Collection__. Department of Computer Science, University of Copenhagen (DIKU), Denmark. DIKU Technical report 2019/01. ISSN 0107-8283. November 2019. [pdf](/pdf/gengc-techreport.pdf).
 
